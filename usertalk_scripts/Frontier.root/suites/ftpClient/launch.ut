@@ -14,4 +14,4 @@ with ftpClient.data {
 				currentid = id;
 				return (true)}}};
 	
-	return (false)} « Couldn't launch the FTP client app.
+	return (false)} // Couldn't launch the FTP client app.

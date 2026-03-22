@@ -1,10 +1,10 @@
 on opCollapse () {
-	«Created, Thu, Jul 13, 2000 at 11:19:59 PM by AR
-		«This script is called when the user collapses a headline in an outline. It loops over scripts in user.callbacks.opCollapse.
-		«Add your callback scripts to user.callbacks.opCollapse. Return true if you "consume" the event, return false if you want other callback scripts to get a shot at it.
-	«Changes:
-		«Thursday, September 28, 2000 at 6:06:44 PM by JES
-			«Allow callbacks to be addresses or addresses of addresses...
+	//Created, Thu, Jul 13, 2000 at 11:19:59 PM by AR
+		//This script is called when the user collapses a headline in an outline. It loops over scripts in user.callbacks.opCollapse.
+		//Add your callback scripts to user.callbacks.opCollapse. Return true if you "consume" the event, return false if you want other callback scripts to get a shot at it.
+	//Changes:
+		//Thursday, September 28, 2000 at 6:06:44 PM by JES
+			//Allow callbacks to be addresses or addresses of addresses...
 	local (adrscript);
 	if not defined (user.callbacks.opCollapse) {
 		new (tableType, @user.callbacks.opCollapse)};

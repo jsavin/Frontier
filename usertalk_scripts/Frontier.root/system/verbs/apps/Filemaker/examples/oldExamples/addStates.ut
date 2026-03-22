@@ -1,22 +1,22 @@
-«add 50 states and their capitals to the Test Database
-	«be sure the State Capitals database is open before running this
-	«If a record for a state exists and has the wrong capital, it will still have
-	«the wrong capital after running this script.  Repairing that is left as
-	«an exercise.
+//add 50 states and their capitals to the Test Database
+	//be sure the State Capitals database is open before running this
+	//If a record for a state exists and has the wrong capital, it will still have
+	//the wrong capital after running this script.  Repairing that is left as
+	//an exercise.
 
 on addState (stateName, stateCapital) {
 	with objectModel, FileMaker {
 		if not exists (record[cell["Name"] == stateName]) {
-			«create (record, stateName + tab + stateCapital, 0, 0) « Frontier 2.0 form
+			//create (record, stateName + tab + stateCapital, 0, 0) // Frontier 2.0 form
 			create (record, {stateName, stateCapital});
-			msg (stateName)} «show name in Frontier main window
+			msg (stateName)} //show name in Frontier main window
 		else {
 			msg (stateName + " already exists!")}};
-	«clock.waitSixtieths (15) « For the Frontier 2.0 form under Frontier 3.0,
-		«it appears necessary (on my Macintosh IIci) to slow the script down
-		«about this much, to avoid spurious error reports from FileMaker.
-		«Changing to the list form of the data input, rather than tab-delimited
-		«seems to remove the need for the delay
+	//clock.waitSixtieths (15) // For the Frontier 2.0 form under Frontier 3.0,
+		//it appears necessary (on my Macintosh IIci) to slow the script down
+		//about this much, to avoid spurious error reports from FileMaker.
+		//Changing to the list form of the data input, rather than tab-delimited
+		//seems to remove the need for the delay
 	rollBeachball ()};
 
 addState ("Alabama", "Montgomery");

@@ -1,7 +1,7 @@
 on getHomepageArchiveUrl (msgNum, adrSite = nil) {
-	«Get the URL of the homepage archive page, given a news item's message number
-		«This script can be called from outside the page rendering context if adrSite is not nil.
-		«07/12/00; 4:09:44 PM by JES
+	//Get the URL of the homepage archive page, given a news item's message number
+		//This script can be called from outside the page rendering context if adrSite is not nil.
+		//07/12/00; 4:09:44 PM by JES
 	
 	if adrSite == nil { // get the site address if not passed in
 		adrSite = manilaSuite.getSiteAddress ()};

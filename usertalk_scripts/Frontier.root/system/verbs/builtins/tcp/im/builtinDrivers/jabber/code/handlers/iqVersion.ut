@@ -1,8 +1,8 @@
 on iqVersion ( connection, mesAdr, iq, query ) {
-	«Changes
-		«5/14/02; 1:51:34 PM by JB
-			«Changelog created.
-	«iqVersion will respond to a version information request from anybody, or handle
+	//Changes
+		//5/14/02; 1:51:34 PM by JB
+			//Changelog created.
+	//iqVersion will respond to a version information request from anybody, or handle
 	on addAtt ( XMLadr, name, value ) {
 		if not defined ( XMLadr^.["/atts"] ) {
 			new ( tableType, @XMLadr^.["/atts"] )};

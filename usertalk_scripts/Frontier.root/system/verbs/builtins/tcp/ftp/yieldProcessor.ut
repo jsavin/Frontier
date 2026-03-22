@@ -1,7 +1,7 @@
 on yieldProcessor () {
-	«Changes
-		«12/14/01; 3:03:54 AM by JES
-			«On Windows and MacOS X, sleep for 1/6 sec instead of a full second. On Mac Classic, preserve current behavior.
+	//Changes
+		//12/14/01; 3:03:54 AM by JES
+			//On Windows and MacOS X, sleep for 1/6 sec instead of a full second. On Mac Classic, preserve current behavior.
 	sys.systemTask ();
 	if system.environment.isMac {
 		if not system.environment.isCarbon {

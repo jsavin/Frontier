@@ -1,7 +1,7 @@
 on getRootName (adrSite=nil) {
-	«Get the name of the discussion group.
-		«This script can be called from outside the page rendering context if adrSite is not nil.
-		«10/19/99; 4:05:49 PM by PBS
+	//Get the name of the discussion group.
+		//This script can be called from outside the page rendering context if adrSite is not nil.
+		//10/19/99; 4:05:49 PM by PBS
 	
 	if adrSite != nil {
 		return (manilaSuite.discuss.getRootNameFromSiteAddress (adrSite))};

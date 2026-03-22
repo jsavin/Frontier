@@ -1,11 +1,11 @@
 on writeToAudit (adrBeforeImage, sitename, objectID, adrmember, adrBackLinkTbl) {
-	«manilaSuite.versioning.writeToAudit : 04/05/18, 21:26:21 by DAB
-		«make sure the versioning is available
-		«move the data saved in the checkout (in custody tables) to the versionLog
-		«was manilaFixer.versioning.writeToAudit : 02/03/26, 21:40:41 by DAB
+	//manilaSuite.versioning.writeToAudit : 04/05/18, 21:26:21 by DAB
+		//make sure the versioning is available
+		//move the data saved in the checkout (in custody tables) to the versionLog
+		//was manilaFixer.versioning.writeToAudit : 02/03/26, 21:40:41 by DAB
 	
 	local (adrLogEntry);
-	«compute adress of Beforeimage in the versioning log
+	//compute adress of Beforeimage in the versioning log
 	local (f = manilaSuite.versioning.getCurrentFile ());
 	
 	local (adrSubtable = @[f] [1].[sitename]);

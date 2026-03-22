@@ -1,14 +1,14 @@
 on doExport (adr, kind, location, compression) {
-	«Changes
-		«3/18/04; 7:42:04 PM by JES
-			«Add file extenion on Mac as well as Windows -- needed for proper OS X typing, and mime-type sending in static web servers. Also, smart-limit file name to 31 characters (limit imposed by OS 9 and Carbon API).
-	bundle { «be sure kind and type are compatible
+	//Changes
+		//3/18/04; 7:42:04 PM by JES
+			//Add file extenion on Mac as well as Windows -- needed for proper OS X typing, and mime-type sending in static web servers. Also, smart-limit file name to 31 characters (limit imposed by OS 9 and Carbon API).
+	bundle { //be sure kind and type are compatible
 		on check () {
 			if kind == "Folder" {
 				if typeOf (adr^) != tableType {
 					scriptError ("Only tables can be exported in this format.")}
 				else {
-					return}}; «it's ok
+					return}}; //it's ok
 			if typeOf (adr^) != scriptType {
 				if kind != "Packed object" {
 					scriptError ("Only scripts can be exported in this format.")}
@@ -16,7 +16,7 @@ on doExport (adr, kind, location, compression) {
 					return}}};
 		check ()};
 	local (f, fname, objectname);
-	bundle { «set fname
+	bundle { //set fname
 		local (tablename, quotedname);
 		objectname = nameOf (adr^);
 		if string.hasSuffix (“"]”, adr) {
@@ -59,8 +59,8 @@ on doExport (adr, kind, location, compression) {
 			if not file.exists (lastfolder) {
 				lastfolder = file.folderFromPath (Frontier.getProgramPath ())};
 			f = lastfolder + fname;
-			«Append file suffixes if pref is set to true
-				«Mon, Jan 26, 1998 at 5:10:25 PM by PBS
+			//Append file suffixes if pref is set to true
+				//Mon, Jan 26, 1998 at 5:10:25 PM by PBS
 			if not defined (user.prefs.appendFileSuffixes) {
 				user.prefs.appendFileSuffixes = false};
 			if user.prefs.appendFileSuffixes {
@@ -78,7 +78,7 @@ on doExport (adr, kind, location, compression) {
 	local (packedfile);
 	if compression == "None" {
 		packedfile = f}
-	else { «must create it in a temporary location
+	else { //must create it in a temporary location
 		local (tempfolder = file.getSpecialFolderPath ("", "Temporary Items", true));
 		packedfile = tempfolder + objectname};
 	case kind {

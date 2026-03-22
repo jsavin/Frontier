@@ -1,30 +1,30 @@
 on getGifHeightWidth (f) {
-	«Change notes:
-		«7/30/97 PBS: f can be an address or a file path.
-		«10/31/97 at 8:19:56 AM by DW -- moved from toys.getGifHeightWidth
-			«Old script version:
-				«local (signature, version, height, width, s, t, hwlist = {})
-				«signature = string (file.read (path, 3))
-				«version = string (file.read (path, 3))
-				«s = file.read (path, 1) « reverse byte order
-				«t = file.read (path, 1)
-				«if sys.os() == "MacOS"
-					«width = number (t + s)
-				«else
-					«width = number (s + t)
-				«s = file.read (path, 1)
-				«t = file.read (path, 1)
-				«if sys.os() == "MacOS"
-					«height = number (t + s)
-				«else
-					«height = number (s + t)
-				«file.close (path)
-				«hwList = hwList + height
-				«hwList = hwList + width
-				«return (hwList)
-		«5/19/96 MAH
-			«takes file path to gif image as parameter
-			«returns list {height, width} of image in pixels
+	//Change notes:
+		//7/30/97 PBS: f can be an address or a file path.
+		//10/31/97 at 8:19:56 AM by DW -- moved from toys.getGifHeightWidth
+			//Old script version:
+				//local (signature, version, height, width, s, t, hwlist = {})
+				//signature = string (file.read (path, 3))
+				//version = string (file.read (path, 3))
+				//s = file.read (path, 1) // reverse byte order
+				//t = file.read (path, 1)
+				//if sys.os() == "MacOS"
+					//width = number (t + s)
+				//else
+					//width = number (s + t)
+				//s = file.read (path, 1)
+				//t = file.read (path, 1)
+				//if sys.os() == "MacOS"
+					//height = number (t + s)
+				//else
+					//height = number (s + t)
+				//file.close (path)
+				//hwList = hwList + height
+				//hwList = hwList + width
+				//return (hwList)
+		//5/19/96 MAH
+			//takes file path to gif image as parameter
+			//returns list {height, width} of image in pixels
 	if typeOf (f) == addressType {
 		on numberFromBytes (ix) {
 			local (low = string.mid (string.hex (f^ [ix]), 5, 2));

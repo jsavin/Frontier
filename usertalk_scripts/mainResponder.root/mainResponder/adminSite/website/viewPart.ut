@@ -1,13 +1,13 @@
 on viewPart () {
-	«Changes
-		«7/22/05; 3:50:54 PM by JES
-			«Fix a bug in the move-to-before checkpoint POST handler. Parts were being moved to just before the latest change before the checkpoint, instead of to just before the latest change *after* the checkpoint.
-		«7/20/05; 5:13:34 PM by JES
-			«If the part is an image (gif or jpeg), add an img tag with the url to the image, so the user can see it.
-		«7/20/05; 3:16:24 AM by JES
-			«Created. View a part in a #changes table, or at any odb address.
+	//Changes
+		//7/22/05; 3:50:54 PM by JES
+			//Fix a bug in the move-to-before checkpoint POST handler. Parts were being moved to just before the latest change before the checkpoint, instead of to just before the latest change *after* the checkpoint.
+		//7/20/05; 5:13:34 PM by JES
+			//If the part is an image (gif or jpeg), add an img tag with the url to the image, so the user can see it.
+		//7/20/05; 3:16:24 AM by JES
+			//Created. View a part in a #changes table, or at any odb address.
 	local (pta = html.getPageTableAddress ());
-	«workspace.pt = pta^
+	//workspace.pt = pta^
 	
 	local (htext);
 	on add (s) {

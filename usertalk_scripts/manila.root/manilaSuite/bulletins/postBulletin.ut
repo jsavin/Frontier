@@ -1,49 +1,49 @@
 on postBulletin (pta=nil) {
-	«Changes:
-		«2/21/07; 1:11:43 PM by LL
-			«Fixed a bug with plain text receipients being shown when a bulletin was being sent out to HTML recipients only. Don't generate the plain text reciepients list or the plain version of the bulletin when only sending to HTML recipients.
-		«2005 and earlier
-			«11/2/05; 4:31:05 AM by JES
-				«Call through manilaSuite.members.getMemberEmail to get member email addresses.
-			«10/15/05; 4:36:16 AM by JES
-				«Add cohorts feature.
-					«Change by DAB.
-			«10/22/04; 11:20:58 AM by EDS
-				«incorporating DAB changes, 
-					«Added pref to not send as bcc, since that trips up many spam checks at places liks aol. 
-			«4/27/03; 2:05:37 PM by JES
-				«Pop searchArgs off the referer URL when doing the referer check.
-			«11/28/2000; 7:56:54 AM by DW
-				«Send a copy of each bulletin to the editorial notification mail address, so the editors of the site get a copy of the bulletin. 
-			«08/07/00; 5:03:13 PM by PBS
-				«Call manilaSuite.sendMail instead of tcp.sendMail, so the Manila-level mail sending callbacks can have a shot at filtering, logging, or sending email.
-			«07/16/00; 4:46:44 PM by PBS
-				«Use the bottleneck script -- manilaSuite.bulletins.getSubscribersTable -- to get the list of subscribers, so this code isn't duplicated. (It was duplicated, now it's not.)
-			«05/11/00; 7:24:54 PM by JES
-				«merged in Brent's security fix for the client side trojan horse attack.
-			«05/09/00; 10:38:30 PM by PBS
-				«Check the referer to defeat the client side trojan horse.
-			«04/18/00; 7:42:06 PM by JES
-				«localized
-			«4/14/00; 11:15:40 AM by DW
-				«In sendMail subroutine, the first parameter is the recipient of the email. That's why the sysop is getting 1 copy of every bulletin for every 10 that go out. I changed the parameter to the empty string, if the sysop wants to receive the bulletin, he or she can subscribe.
-			«1/17/00; 6:56:15 AM by DW
-				«In sendMail subroutine, I think the bcc lists are getting too long for one of our servers. Instead of tracking this down, I'm sending one message for each group of ten recipients. In general it's a good idea to do this, the messages will get out more quickly, and some groups have thousands of members, and such long bcc lists are unncecessarily hard on mail servers.
-			«1/13/00; 7:12:13 PM by DW
-				«Allow a callback to fill in the two lists.
-				«The callback is in newssite.bulletins.getRecipientsCallback
-			«11/8/99; 2:34:44 PM by PBS
-				«Preview is now a button rather than a checkbox.
-				«The preview page has a title at the top: Bulletin Preview.
-				«The preview page has Edit and Send buttons at the bottom.
-			«7/25/99; 10:34:42 AM by DW
-				«add a local routine, sendMail, that handles mail sending. we can't use manilaSuite.sendMail because we want to send to a blind list and it doesn't offer an interface for that.
-			«7/14/99; 11:33:22 PM by PBS
-				«Send mail by calling manilaSuite.sendMail.
-				«The manilaSuite.sendMail script will use userLandWidgets.manilaMailSender if present, otherwise it will use tcp.sendMail.
-			«7/13/99; 12:42:42 PM by PBS
-				«This script was using the default membership group: it was hard-coded.
-				«Now it uses the membership group for this site.
+	//Changes:
+		//2/21/07; 1:11:43 PM by LL
+			//Fixed a bug with plain text receipients being shown when a bulletin was being sent out to HTML recipients only. Don't generate the plain text reciepients list or the plain version of the bulletin when only sending to HTML recipients.
+		//2005 and earlier
+			//11/2/05; 4:31:05 AM by JES
+				//Call through manilaSuite.members.getMemberEmail to get member email addresses.
+			//10/15/05; 4:36:16 AM by JES
+				//Add cohorts feature.
+					//Change by DAB.
+			//10/22/04; 11:20:58 AM by EDS
+				//incorporating DAB changes, 
+					//Added pref to not send as bcc, since that trips up many spam checks at places liks aol. 
+			//4/27/03; 2:05:37 PM by JES
+				//Pop searchArgs off the referer URL when doing the referer check.
+			//11/28/2000; 7:56:54 AM by DW
+				//Send a copy of each bulletin to the editorial notification mail address, so the editors of the site get a copy of the bulletin. 
+			//08/07/00; 5:03:13 PM by PBS
+				//Call manilaSuite.sendMail instead of tcp.sendMail, so the Manila-level mail sending callbacks can have a shot at filtering, logging, or sending email.
+			//07/16/00; 4:46:44 PM by PBS
+				//Use the bottleneck script -- manilaSuite.bulletins.getSubscribersTable -- to get the list of subscribers, so this code isn't duplicated. (It was duplicated, now it's not.)
+			//05/11/00; 7:24:54 PM by JES
+				//merged in Brent's security fix for the client side trojan horse attack.
+			//05/09/00; 10:38:30 PM by PBS
+				//Check the referer to defeat the client side trojan horse.
+			//04/18/00; 7:42:06 PM by JES
+				//localized
+			//4/14/00; 11:15:40 AM by DW
+				//In sendMail subroutine, the first parameter is the recipient of the email. That's why the sysop is getting 1 copy of every bulletin for every 10 that go out. I changed the parameter to the empty string, if the sysop wants to receive the bulletin, he or she can subscribe.
+			//1/17/00; 6:56:15 AM by DW
+				//In sendMail subroutine, I think the bcc lists are getting too long for one of our servers. Instead of tracking this down, I'm sending one message for each group of ten recipients. In general it's a good idea to do this, the messages will get out more quickly, and some groups have thousands of members, and such long bcc lists are unncecessarily hard on mail servers.
+			//1/13/00; 7:12:13 PM by DW
+				//Allow a callback to fill in the two lists.
+				//The callback is in newssite.bulletins.getRecipientsCallback
+			//11/8/99; 2:34:44 PM by PBS
+				//Preview is now a button rather than a checkbox.
+				//The preview page has a title at the top: Bulletin Preview.
+				//The preview page has Edit and Send buttons at the bottom.
+			//7/25/99; 10:34:42 AM by DW
+				//add a local routine, sendMail, that handles mail sending. we can't use manilaSuite.sendMail because we want to send to a blind list and it doesn't offer an interface for that.
+			//7/14/99; 11:33:22 PM by PBS
+				//Send mail by calling manilaSuite.sendMail.
+				//The manilaSuite.sendMail script will use userLandWidgets.manilaMailSender if present, otherwise it will use tcp.sendMail.
+			//7/13/99; 12:42:42 PM by PBS
+				//This script was using the default membership group: it was hard-coded.
+				//Now it uses the membership group for this site.
 	
 	local (maxRecipientsPerMessage = 10);
 	if defined(config.manila.prefs.maxEmailRecipients) {
@@ -53,7 +53,7 @@ on postBulletin (pta=nil) {
 		on sendIt () {
 			if bcc endsWith "," {
 				bcc = string.delete (bcc, sizeOf (bcc), 1)};
-			«tcp.sendMail ("", subject, msgText, adrPrefs^.senderEmail, bcc:bcc, mimeType:mimeType)
+			//tcp.sendMail ("", subject, msgText, adrPrefs^.senderEmail, bcc:bcc, mimeType:mimeType)
 			manilaSuite.sendMail ("", subject, msgText, adrPrefs^.senderEmail, bcc:bcc, mimeType:mimeType); //PBS 08/07/00: call Manila's sendMail wrapper, so Manila-level callbacks get a shot at sending email, filtering, logging, etc.
 			bcc = ""};
 		if maxRecipientsPerMessage equals 1 { // 10/25/04; 6:45:54 AM by EDS
@@ -77,7 +77,7 @@ on postBulletin (pta=nil) {
 		local (flPost = string.lower (pta^.method) == "post");
 		if not flPost {
 			scriptError ("Can't display this page because it was not requested via POST method.")};
-		«Referer can be /bulletins/, /bulletins/default, or /bulletins/postCatcher
+		//Referer can be /bulletins/, /bulletins/default, or /bulletins/postCatcher
 		local (referer = pta^.requestHeaders.referer);
 		local (lowerReferer = string.lower (referer));
 		lowerReferer = string.popSuffix (lowerReferer, "?");
@@ -154,48 +154,48 @@ on postBulletin (pta=nil) {
 			local (adrItem);
 			for adrItem in @subscribersTable.html { //HTML recipients
 				try {htmlRecipients = htmlRecipients + {manilaSuite.members.getMemberEmail (@adrMembers^.[nameOf (adrItem^)]) } };
-				«bundle //old code
-					«case true //05/06/23, 14:17:55 by DAB
-						«not defined(adrMembers^.[nameOf (adrItem^)].personalinfo.email)
-						«adrMembers^.[nameOf (adrItem^)].personalinfo.email == ""
-							«htmlRecipients = htmlRecipients + {nameOf (adrItem^)}
-					«else
-						«htmlRecipients = htmlRecipients + {adrMembers^.[nameOf (adrItem^)].personalinfo.email}
-				«bundle //really old code
-					«htmlRecipients = htmlRecipients + {nameOf (adrItem^)}};
+				//bundle //old code
+					//case true //05/06/23, 14:17:55 by DAB
+						//not defined(adrMembers^.[nameOf (adrItem^)].personalinfo.email)
+						//adrMembers^.[nameOf (adrItem^)].personalinfo.email == ""
+							//htmlRecipients = htmlRecipients + {nameOf (adrItem^)}
+					//else
+						//htmlRecipients = htmlRecipients + {adrMembers^.[nameOf (adrItem^)].personalinfo.email}
+				//bundle //really old code
+					//htmlRecipients = htmlRecipients + {nameOf (adrItem^)}};
 			if not flHtmlOnly {
 				for adrItem in @subscribersTable.plain { //plain text recipients
 					try {plainRecipients = plainRecipients + {manilaSuite.members.getMemberEmail (@adrMembers^.[nameOf (adrItem^)]) } };
-					«bundle //old code
-						«case true //05/06/23, 14:17:55 by DAB
-							«not defined(adrMembers^.[nameOf (adrItem^)].personalinfo.email)
-							«adrMembers^.[nameOf (adrItem^)].personalinfo.email == ""
-								«plainRecipients = plainRecipients + {nameOf (adrItem^)}
-						«else
-							«plainRecipients = plainRecipients + {adrMembers^.[nameOf (adrItem^)].personalinfo.email}
-					«bundle //really old code
-						«plainRecipients = plainRecipients + {nameOf (adrItem^)}}}};
+					//bundle //old code
+						//case true //05/06/23, 14:17:55 by DAB
+							//not defined(adrMembers^.[nameOf (adrItem^)].personalinfo.email)
+							//adrMembers^.[nameOf (adrItem^)].personalinfo.email == ""
+								//plainRecipients = plainRecipients + {nameOf (adrItem^)}
+						//else
+							//plainRecipients = plainRecipients + {adrMembers^.[nameOf (adrItem^)].personalinfo.email}
+					//bundle //really old code
+						//plainRecipients = plainRecipients + {nameOf (adrItem^)}}}};
 		
-		«Old code, commented out 07/16/00 by PBS
-			«if defined (adrPrefs^.getRecipientsCallback)
-				«adrPrefs^.getRecipientsCallback (@plainRecipients, @htmlRecipients)
-			«else
-				«local (groupName)
-				«groupName = pta^.responderAttributes.defaultMembershipGroup
-				«local (adrTable = mainResponder.members.getMembershipTable (groupName))
-				«adrTable = @adrTable^.users
-				«local (i, adrUser, recipient)
-				«for i = 1 to sizeOf (adrTable^)
-					«adrUser = @adrTable^ [i]
-					«recipient = nameof (adrUser^)
-					«if not defined (adrUser^.bulletins)
-						«continue
-					«try
-						«if adrUser^.bulletins.enabled
-							«if adrUser^.bulletins.inHtml
-								«htmlRecipients = htmlRecipients + {recipient}
-							«else
-								«plainRecipients = plainRecipients + {recipient}};};
+		//Old code, commented out 07/16/00 by PBS
+			//if defined (adrPrefs^.getRecipientsCallback)
+				//adrPrefs^.getRecipientsCallback (@plainRecipients, @htmlRecipients)
+			//else
+				//local (groupName)
+				//groupName = pta^.responderAttributes.defaultMembershipGroup
+				//local (adrTable = mainResponder.members.getMembershipTable (groupName))
+				//adrTable = @adrTable^.users
+				//local (i, adrUser, recipient)
+				//for i = 1 to sizeOf (adrTable^)
+					//adrUser = @adrTable^ [i]
+					//recipient = nameof (adrUser^)
+					//if not defined (adrUser^.bulletins)
+						//continue
+					//try
+						//if adrUser^.bulletins.enabled
+							//if adrUser^.bulletins.inHtml
+								//htmlRecipients = htmlRecipients + {recipient}
+							//else
+								//plainRecipients = plainRecipients + {recipient}};};
 	bundle { //add notification email addresses to both lists, 11/28/2000 DW
 		local (notifylist = manilasuite.emailnotification.getnotifylist (pta^.newssite));
 		local (item);

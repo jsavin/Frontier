@@ -1,9 +1,9 @@
 on rpcGetMembershipGroup (dgName, adrMembershipGroupName) {
-	«Given a dg name, get the name of the membership group.
-		«Return true if found, false otherwise.
-		«It found, then adrMembershipGroupName^ will contain the name of the membership group.
-		«This script is designed to run outside the page rendering context.
-		«10/18/99; 4:32:50 PM by PBS
+	//Given a dg name, get the name of the membership group.
+		//Return true if found, false otherwise.
+		//It found, then adrMembershipGroupName^ will contain the name of the membership group.
+		//This script is designed to run outside the page rendering context.
+		//10/18/99; 4:32:50 PM by PBS
 	
 	local (adrRoot);
 	if not (manilaSuite.discuss.rpcGetGroupAddress (dgName, @adrRoot)) {

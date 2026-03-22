@@ -1,31 +1,31 @@
 on editNavLinks () {
-	«Changes
-		«3/27/06; 4:32:25 PM by JES
-			«Properly handle deletion of the only nav link.
-		«9/19/05; 3:30:51 PM by JES
-			«Changed Cohort column header to "Visible To", which newbies will understand more easily.
-		«13/07/05; 6:01:57 PM by PR
-			«Add a new drop down for cohorts, only the selected cohort will be able to see the specified nav item
-			«The cohort is specfied in the XML using 'cohort=cohortname'
-		«7/5/05; 4:46:20 PM by JES
-			«Add new checkbox column for specifying that a link is private. Private links are displayed only for editors. They're specified in the XML using the editorsOnly="true" attribute on an item.
-		«3/17/05; 5:19:08 PM by JES
-			«Provide a mechanism for inserting non-breaking spaces in link names. Non-breaking spaces are represented by "\ " in the web UI, and are translated in both directions.
-		«8/18/03; 11:15:11 AM by JES
-			«Fixed a bug which could sometimes cause the arrow operations not to work.
-		«5/22/03; 12:37:11 PM by JES
-			«Use locally served arrow icons instead of hard-coded ones.
-		«5/5/03; 11:32:23 AM by JES
-			«Added support for navigation links which are specified using a shortcut or msgnum.
-		«5/3/03; 3:03:57 PM by JES
-			«Don't throw an error if there are no items in the navigation structure.
-		«4/22/03; 10:46:50 AM by JES
-			«When processing changes, encode &, <, >, and " characters, so that the XML will be well formed. The browser will happily decode these characters when going in the other direction.
-		«4/21/03; 4:47:02 PM by JES
-			«Localized. Added managing editor/content editor tests. Load the arrow icons from the local server instead of using hard-coded urls. Decompile the XML structure back into XML when POSTing.
-		«4/20/03; 4:12:58 PM by DW
-			«Bryan Bell wants a navigation links editor for his users.
-				«http://static.redjupiter.com/images/bryanbell/navLinks.gif
+	//Changes
+		//3/27/06; 4:32:25 PM by JES
+			//Properly handle deletion of the only nav link.
+		//9/19/05; 3:30:51 PM by JES
+			//Changed Cohort column header to "Visible To", which newbies will understand more easily.
+		//13/07/05; 6:01:57 PM by PR
+			//Add a new drop down for cohorts, only the selected cohort will be able to see the specified nav item
+			//The cohort is specfied in the XML using 'cohort=cohortname'
+		//7/5/05; 4:46:20 PM by JES
+			//Add new checkbox column for specifying that a link is private. Private links are displayed only for editors. They're specified in the XML using the editorsOnly="true" attribute on an item.
+		//3/17/05; 5:19:08 PM by JES
+			//Provide a mechanism for inserting non-breaking spaces in link names. Non-breaking spaces are represented by "\ " in the web UI, and are translated in both directions.
+		//8/18/03; 11:15:11 AM by JES
+			//Fixed a bug which could sometimes cause the arrow operations not to work.
+		//5/22/03; 12:37:11 PM by JES
+			//Use locally served arrow icons instead of hard-coded ones.
+		//5/5/03; 11:32:23 AM by JES
+			//Added support for navigation links which are specified using a shortcut or msgnum.
+		//5/3/03; 3:03:57 PM by JES
+			//Don't throw an error if there are no items in the navigation structure.
+		//4/22/03; 10:46:50 AM by JES
+			//When processing changes, encode &, <, >, and " characters, so that the XML will be well formed. The browser will happily decode these characters when going in the other direction.
+		//4/21/03; 4:47:02 PM by JES
+			//Localized. Added managing editor/content editor tests. Load the arrow icons from the local server instead of using hard-coded urls. Decompile the XML structure back into XML when POSTing.
+		//4/20/03; 4:12:58 PM by DW
+			//Bryan Bell wants a navigation links editor for his users.
+				//http://static.redjupiter.com/images/bryanbell/navLinks.gif
 	local (pta = html.getpagetableaddress ());
 	bundle { //managing/content editor test
 		if not manilaSuite.editors.managingEditorTest () {
@@ -69,12 +69,12 @@ on editNavLinks () {
 		s = string.replaceAll (s, "<", "&lt;");
 		s = string.replaceAll (s, ">", "&gt;");
 		s = string.replaceAll (s, "\"", "&quot;");
-		«s = string.replaceAll (s, "\'", "&apos;")
+		//s = string.replaceAll (s, "\'", "&apos;")
 		return (s)};
 	
 	local (msgforuser = "");
 	if pta^.method == "POST" {
-		«scratchpad.params = pta^
+		//scratchpad.params = pta^
 		local (flchanges = false);
 		local (args = pta^.postargs);
 		bundle { //moving items
@@ -117,7 +117,7 @@ on editNavLinks () {
 							adratts^.name = string.replaceAll (encode (adr^), "\\ ", "&nbsp;");
 							flchanges = true};
 						local (newvalue = args.["value" + ix]);
-						«local (flEditorsOnly = defined (args.["flEditorsOnly" + ix]))
+						//local (flEditorsOnly = defined (args.["flEditorsOnly" + ix]))
 						if defined (args.["cohort" + ix]) {
 							adratts^.cohort = args.["cohort" + ix];
 							flchanges = true};
@@ -149,14 +149,14 @@ on editNavLinks () {
 									if defined (adratts^.msgnum) {
 										delete (@adratts^.msgnum)};
 									adrvalue^ = ""}}};
-						«if flEditorsOnly
-							«if not defined (adratts^.editorsOnly)
-								«adratts^.editorsOnly = "true"
-								«flchanges = true
-						«else
-							«if defined (adratts^.editorsOnly)
-								«delete (@adratts^.editorsOnly)
-								«flchanges = true
+						//if flEditorsOnly
+							//if not defined (adratts^.editorsOnly)
+								//adratts^.editorsOnly = "true"
+								//flchanges = true
+						//else
+							//if defined (adratts^.editorsOnly)
+								//delete (@adratts^.editorsOnly)
+								//flchanges = true
 						if adrvalue^ != newvalue {
 							adrvalue^ = encode (newvalue);
 							flchanges = true}}}};
@@ -172,14 +172,14 @@ on editNavLinks () {
 						flchanges = true}}};
 			bundle { //new item?
 				if (args.newname != "") and (args.newurl != "") { //a new item was specified
-					«local (flEditorsOnly = defined (args.newFlEditorsOnly))
+					//local (flEditorsOnly = defined (args.newFlEditorsOnly))
 					local (adrnavigator = @adrstructure^ [1]);
 					local (adrnewitem = xml.addTable (adrnavigator, "item"));
 					local (adratts = @adrnewitem^.["/atts"]);
 					new (tabletype, adratts);
 					adratts^.name = encode (args.newname);
-					«if flEditorsOnly
-						«adratts^.editorsOnly = "true"
+					//if flEditorsOnly
+						//adratts^.editorsOnly = "true"
 					if defined (args.["newcohort"]) {
 						adratts^.cohort = args.["newcohort"]};
 					local (adrvalue = @adratts^.pagename);
@@ -223,11 +223,11 @@ on editNavLinks () {
 				local (currentCohort = "Everyone");
 				if defined (adritem^.["/atts"].cohort) {
 					currentCohort = adritem^.["/atts"].cohort};
-				«local (privateChecked = "")
-				«if defined (adritem^.["/atts"].editorsOnly)
-					«if adritem^.["/atts"].editorsOnly
-						«privateChecked = " checked"
-				«local (privateCheck = "<input type=\"checkbox\" name=\"flEditorsOnly" + ct + "\"" + privateChecked + ">")
+				//local (privateChecked = "")
+				//if defined (adritem^.["/atts"].editorsOnly)
+					//if adritem^.["/atts"].editorsOnly
+						//privateChecked = " checked"
+				//local (privateCheck = "<input type=\"checkbox\" name=\"flEditorsOnly" + ct + "\"" + privateChecked + ">")
 				bundle { //set arrows
 					if ct == 1 {
 						if sizeOf (adritems^) == 1 {
@@ -263,6 +263,6 @@ on editNavLinks () {
 		add ("<p><font color=\"green\"><i>" + msgforuser + "</i></font></p>")};
 	
 	return (manilasuite.untaint (htmltext))};
-«bundle //test code
-	«html.setpagetableaddress (@scratchpad.params)
-	«editNavLinks ()
+//bundle //test code
+	//html.setpagetableaddress (@scratchpad.params)
+	//editNavLinks ()

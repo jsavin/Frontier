@@ -1,17 +1,17 @@
 on getFileSize (adrTable) {
-	«Changes
-		«09/18/06; 6:32:56 PM by LL
-			«Reinstate change for using cached gems file size
-		«13/05/05; 12:09:17 PM by PR
-			«back off change, no real performance gain and added complexity
-		«3/13/05; 6:59:40 PM by JES
-			«File sizes are now cached in sizeBytes, in the gem table. We now return cached sizes instead of reading from disk.
-		«04/14/00; 12:24:14 AM by PBS
-			«Created. Get the size of one associated file on disk.
+	//Changes
+		//09/18/06; 6:32:56 PM by LL
+			//Reinstate change for using cached gems file size
+		//13/05/05; 12:09:17 PM by PR
+			//back off change, no real performance gain and added complexity
+		//3/13/05; 6:59:40 PM by JES
+			//File sizes are now cached in sizeBytes, in the gem table. We now return cached sizes instead of reading from disk.
+		//04/14/00; 12:24:14 AM by PBS
+			//Created. Get the size of one associated file on disk.
 	
 	local (f);
 	if not defined (adrTable^.sizeBytes) {
 		f = adrTable^.f;
 		adrTable^.sizeBytes = file.size (f)};
 	return (adrTable^.sizeBytes);
-	}«return (file.size(adrTable^.f)) // 13/05/05; 12:10:49 PM by PR backed off previous change
+	}//return (file.size(adrTable^.f)) // 13/05/05; 12:10:49 PM by PR backed off previous change

@@ -1,11 +1,11 @@
 local (adroutline = @user.webBrowser.tours.menu);
-if not defined (adroutline^) { «create the menu if necessary
+if not defined (adroutline^) { //create the menu if necessary
 	new (menubartype, adroutline);
 	target.set (adroutline);
 	editmenu.setfont ("geneva");
 	editmenu.setfontsize (12);
 	op.setLineText ("Tours");
 	target.clear ()};
-«edit (adroutline)
+//edit (adroutline)
 target.set (adroutline);
 return (adroutline)

@@ -1,5 +1,5 @@
 on getFileData (path) {
-	«This script is called from the FATP file clicker script.
+	//This script is called from the FATP file clicker script.
 	local (flRunnable = false, flOdb = false, adrDest);
 	local (pageSource = fatPages.readSourceFile (path));
 	
@@ -12,7 +12,7 @@ on getFileData (path) {
 	
 	bundle { //is this a runnable desktop script?
 		if string.lower (file.type (path)) == "ftds" {
-			«Desktop scripts are of type ftds.
+			//Desktop scripts are of type ftds.
 			flRunnable = true};
 		if defined (atts.runnable) and atts.runnable {
 			flRunnable = true};

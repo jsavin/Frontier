@@ -1,8 +1,8 @@
 on getPrevDate (username, password, siteName, dt) {
-	«Get the date previous to dt in the home page calendar.
-		«Changes:
-			«06/22/00; 9:49:26 PM by JES
-				«Bug fix - the call to manilaSuite.rpcUtils.memberCheck didn't pass the beginningErrorString parameter
+	//Get the date previous to dt in the home page calendar.
+		//Changes:
+			//06/22/00; 9:49:26 PM by JES
+				//Bug fix - the call to manilaSuite.rpcUtils.memberCheck didn't pass the beginningErrorString parameter
 	
 	bundle { //make sure the person is a member of the site
 		local (beginningErrorString = "Can't get the previous date in the home page calendar because ");

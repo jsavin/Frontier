@@ -1,7 +1,7 @@
 on getMessageFromRelativePath (path, adrSite=nil) {
-	«Changes
-		«10/24/05; 2:20:44 AM by JES
-			«Created. Given a relative path and the address of a site, return the address of the message table that corresponds to the path.
+	//Changes
+		//10/24/05; 2:20:44 AM by JES
+			//Created. Given a relative path and the address of a site, return the address of the message table that corresponds to the path.
 	
 	if adrSite == nil { //get from website framework
 		adrSite = manilaSuite.getSiteAddress ()};

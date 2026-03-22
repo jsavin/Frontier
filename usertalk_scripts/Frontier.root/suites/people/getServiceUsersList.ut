@@ -1,6 +1,6 @@
 on getServiceUsersList (serviceName) {
-	«Get the users of a specific service. Expand groups into individual users, remove duplicates.
-		«Return false if the service doesn't exist.
+	//Get the users of a specific service. Expand groups into individual users, remove duplicates.
+		//Return false if the service doesn't exist.
 	local (usersTable, usersList = {});
 	if not (people.serviceExists (serviceName)) {
 		return (false)};

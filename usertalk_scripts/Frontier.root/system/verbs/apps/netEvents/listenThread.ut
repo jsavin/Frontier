@@ -1,7 +1,7 @@
 on listenThread (port, stream, callback, refcon, onceOnly = false) {
 	local (timedOut);
 	
-	netEvents.init (); «make sure all the tables we need are set up
+	netEvents.init (); //make sure all the tables we need are set up
 	
 	loop {
 		timedOut = false;

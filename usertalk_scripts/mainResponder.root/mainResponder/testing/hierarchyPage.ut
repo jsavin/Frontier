@@ -1,21 +1,21 @@
 on hierarchyPage () {
-	«Dive into the XML #hierarchy structure and find and build a page
-		«Changes:
-			«10/13/99; 6:29:53 PM by PBS
-				«Commented out code checking pta^.lastNomad. It appears to be unneeded code -- and actually causes the whole thing not to work on some systems.
-				«Handle default directory items. In other words, http://docserver.userland.com/file/default works the same as http://docserver.userland.com/file/.
+	//Dive into the XML #hierarchy structure and find and build a page
+		//Changes:
+			//10/13/99; 6:29:53 PM by PBS
+				//Commented out code checking pta^.lastNomad. It appears to be unneeded code -- and actually causes the whole thing not to work on some systems.
+				//Handle default directory items. In other words, http://docserver.userland.com/file/default works the same as http://docserver.userland.com/file/.
 	
 	local (pta = html.getPageTableAddress ());
-	«temp.pt = pta^
+	//temp.pt = pta^
 	local (adrTable = pta^.hierarchy);
 	local (adrHierarchy = pta^.hierarchy);
 	local (path = pta^.remainingPath);
 	
-	«First be sure the last nomad pointed to the top of this site: if not, the object really can't be found.
-	«if pta^.lastNomad != pta^.adrSiteRootTable and pta^.lastNomad != pta^.responderAttributes.objectNotFoundHandler //PBS 10/13/99: commented out: appears to be unneeded, in fact it causes a problem with some people's setups.
-		«scriptError ("Can't process the request because there is no object named \"" + string.nthField (pta^.remainingPath, "/", string.countFields (pta^.remainingPath, "/")) + "\".")
+	//First be sure the last nomad pointed to the top of this site: if not, the object really can't be found.
+	//if pta^.lastNomad != pta^.adrSiteRootTable and pta^.lastNomad != pta^.responderAttributes.objectNotFoundHandler //PBS 10/13/99: commented out: appears to be unneeded, in fact it causes a problem with some people's setups.
+		//scriptError ("Can't process the request because there is no object named \"" + string.nthField (pta^.remainingPath, "/", string.countFields (pta^.remainingPath, "/")) + "\".")
 	bundle { //compile the XML outline if needed
-		«The hierarchy table contains the XML outline (outline) and a compiled XML table (structure). They should be in synch. When editing, always edit the outline.
+		//The hierarchy table contains the XML outline (outline) and a compiled XML table (structure). They should be in synch. When editing, always edit the outline.
 		
 		local (flCompile = true);
 		
@@ -51,7 +51,7 @@ on hierarchyPage () {
 			if not (s endswith "/") and (string.lower (defaults) contains string.lower (string.nthField (s, "/", string.countFields (s, "/")))) {
 				return (nomad)};
 			scriptError ("Can't process the request because there is no object named \"" + name + "\".");
-			};«return (nomad) //don't advance, this way we might at least find the right category, if not the right page
+			};//return (nomad) //don't advance, this way we might at least find the right category, if not the right page
 		
 		return (nomad)};
 	
@@ -63,10 +63,10 @@ on hierarchyPage () {
 			path = string.delete (path, 1, sizeOf (pathPart));
 			path = string.popLeading (path, '/')};
 		
-		«If this is a category, make sure there's a trailing slash, unless the end of the path ends with a default directory item name.
+		//If this is a category, make sure there's a trailing slash, unless the end of the path ends with a default directory item name.
 		if string.lower (string.nthField (nameOf (nomad^), '\t', 2)) == "category" {
 			if not (pta^.remainingPath endsWith "/") {
-				«PBS 10/13/99: Handle default directory items.
+				//PBS 10/13/99: Handle default directory items.
 				local (lowerLastPathPart = string.lower (string.nthField (pta^.path, '/', string.countFields (pta^.path, '/'))));
 				local (i, flDefault = false);
 				for i = 1 to sizeOf (pta^.responderAttributes.defaultDirectoryItems) {
@@ -160,7 +160,7 @@ on hierarchyPage () {
 			local (msgNum = xml.getAttributeValue (nomad, "msgNum"));
 			displayMessage (msgNum)}};
 	
-	«Build hierarchy path.
+	//Build hierarchy path.
 	bundle {
 		local (pathText);
 		local (adrTable = nomad);

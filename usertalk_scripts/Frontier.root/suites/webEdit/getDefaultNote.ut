@@ -1,15 +1,15 @@
 on getDefaultNote (adr, adrAdrCache=nil, flAnyComment=false) {
-	«Changes
-		«9/28/05; 3:15:25 PM by JES
-			«New optional parameter, flAnyComment. If true, ignore presence or absence of user's initials in comments.
-		«9/19/05; 3:27:21 PM by JES
-			«When setting adrInCache for the note, use the short address, not the full address including the file path. Very long names caused target.set to crash in op.newOutlineObject.
-		«8/31/05; 2:12:22 AM by JES
-			«Bug fix: flUseCache not defined.
-		«8/31/05; 2:04:59 AM by JES
-			«Fixes to note caching code -- we only use a cached note if we couldn't generate one from the object itself.
-		«8/31/05; 12:36:37 AM by JES
-			«Created. Get the string for the default note for a Check In or Send To Server.
+	//Changes
+		//9/28/05; 3:15:25 PM by JES
+			//New optional parameter, flAnyComment. If true, ignore presence or absence of user's initials in comments.
+		//9/19/05; 3:27:21 PM by JES
+			//When setting adrInCache for the note, use the short address, not the full address including the file path. Very long names caused target.set to crash in op.newOutlineObject.
+		//8/31/05; 2:12:22 AM by JES
+			//Bug fix: flUseCache not defined.
+		//8/31/05; 2:04:59 AM by JES
+			//Fixes to note caching code -- we only use a cached note if we couldn't generate one from the object itself.
+		//8/31/05; 12:36:37 AM by JES
+			//Created. Get the string for the default note for a Check In or Send To Server.
 	local (s = "", adrInCache, flUseCache = false);
 	if adrAdrCache != nil {
 		flUseCache = true};
@@ -61,7 +61,7 @@ on getDefaultNote (adr, adrAdrCache=nil, flAnyComment=false) {
 		window.attributes.setOne ("type", "webEditNote", @adrInCache^.note);
 		adrAdrCache^ = @adrInCache^.note};
 	return (s)};
-«bundle //test code
-	«local (adrCache)
-	«getDefaultNote (this, @adrCache)
-	«msg (adrCache)
+//bundle //test code
+	//local (adrCache)
+	//getDefaultNote (this, @adrCache)
+	//msg (adrCache)

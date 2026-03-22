@@ -1,9 +1,9 @@
 on memberMonitorNotify (adrSite, adrGroup, adrMember, language) {
-	«Changes
-		«11/2/05; 4:39:11 AM by JES
-			«Call through manilaSuite.members.getMemberEmail to get members' email addresses.
-		«10/11/05, 16:03:02 by DAB
-			«An example membership group callback that handles any and all of the callback types, by emailing to notify email address.
+	//Changes
+		//11/2/05; 4:39:11 AM by JES
+			//Call through manilaSuite.members.getMemberEmail to get members' email addresses.
+		//10/11/05, 16:03:02 by DAB
+			//An example membership group callback that handles any and all of the callback types, by emailing to notify email address.
 	local (recipients);
 	local (sender);
 	bundle { //get the recipients list
@@ -32,16 +32,16 @@ on memberMonitorNotify (adrSite, adrGroup, adrMember, language) {
 		local (oneRecipient, adrUser);
 		for oneRecipient in recipients {
 			adrUser = @adrUser^.[oneRecipient];
-			«bundle //old code
-				«case true //05/10/13, 16:39:22 by DAB
-					«not defined (adrUser^)
-						«continue
-					«not defined (adrUser^.personalinfo) 
-					«not defined (adrUser^.personalinfo.email) 
-					«adrUser^.personalinfo.email != ""
-						«
-				«else
-					«oneRecipient = adrUser^.personalinfo.email
+			//bundle //old code
+				//case true //05/10/13, 16:39:22 by DAB
+					//not defined (adrUser^)
+						//continue
+					//not defined (adrUser^.personalinfo) 
+					//not defined (adrUser^.personalinfo.email) 
+					//adrUser^.personalinfo.email != ""
+						//
+				//else
+					//oneRecipient = adrUser^.personalinfo.email
 			try {
 				oneRecipient = manilaSuite.members.getMemberEmail (adrUser);
 				manilaSuite.sendMail (oneRecipient, emailSubject, emailMessage, sender)}}};

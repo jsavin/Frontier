@@ -1,9 +1,9 @@
 on checkIn (adrSitePrefs) {
-	«Release custody of the sign out members box.
-		«02/11/00; 11:40:38 AM by PBS
-	«Changes
-		«9/6/01; 8:31:20 PM by JES
-			«Changed params from a list to a record of named parameters, for SOAP compatibility.
+	//Release custody of the sign out members box.
+		//02/11/00; 11:40:38 AM by PBS
+	//Changes
+		//9/6/01; 8:31:20 PM by JES
+			//Changed params from a list to a record of named parameters, for SOAP compatibility.
 	
 	local (methodName = "manila.signOutMembersBox.checkIn");
 	with adrSitePrefs^ {

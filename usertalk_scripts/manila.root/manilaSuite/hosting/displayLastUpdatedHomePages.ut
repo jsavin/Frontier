@@ -1,9 +1,9 @@
 on displayLastUpdatedHomePages (n) {
-	«Display the n last updated home pages on this server. This is called from a macro.
-		«05/11/00; 6:02:44 PM by PBS
-		«Changes:
-		«1/25/02; 6:24:23 PM by PBS
-			«Performance enhancements in the local "add" routine -- add a trailing semicolon; use parentheses to get the expression in x = x + y form (which is optimized by the kernel).
+	//Display the n last updated home pages on this server. This is called from a macro.
+		//05/11/00; 6:02:44 PM by PBS
+		//Changes:
+		//1/25/02; 6:24:23 PM by PBS
+			//Performance enhancements in the local "add" routine -- add a trailing semicolon; use parentheses to get the expression in x = x + y form (which is optimized by the kernel).
 	
 	local (htmlText = "", indentLevel = 0);
 	on add (s) {

@@ -1,35 +1,35 @@
 on checkMembership (adrobject, adrparamtable) { //scriptError if no cookie and one is required
-	«Changes:
-		«10/3/05; 5:44:55 AM by JES
-			«Fix bug where if the admin login is enabled, non-admin members were being incorrectly redirected to the login page.
-		«9/16/05; 5:13:44 PM by JES
-			«If config.mainResponder.prefs.flAdminGroupAlwaysAllowed is defined and true, also check for login credentials in the admin membership group.
-		«8/8/02; 2:50:37 PM by JES
-			«Support for storage of member passwords as binaries instead of as clear-text strings.
-		«1/28/02; 10:18:24 PM by PBS
-			«It should not be a fatal error if for some reason the person's password is missing from their membership record.
-		«9/26/01; 4:17:25 PM by PBS
-			«Common situation -- membership not required and the user has no cookies. Short-circuit and return early.
-		«12/29/00; 10:26:33 AM by PBS
-			«There was an error with blocked members -- the path to the localized string was incorrect, so the string wouldn't be found. Now it's correct.
-		«10/27/00; 10:38:34 PM by PBS
-			«Pass pta parameter to mainResponder.members.sendMail.
-		«10/27/00; 1:06:47 AM by PBS
-			«When passing the redirect parameter to the logon page, include the pathArgs, if any. This way if someone was trying to get to a msgReader$ page, they'll get there after they login.
-		«08/31/00; 4:58:50 PM by PBS
-			«Updated to pass the address of the param table in calls to mainResponder.getString, since the call to html.getPageTableAddress may fail in mainResponder.getString. Matt Neuburg's diagnosis: http://frontier.userland.com/discuss/msgReader$5436
-		«05/01/00; 7:05:43 PM by JES
-			«Changed getString calls to use a replacement table address instead of a lists
-		«04/14/00; 8:22:52 PM by JES
-			«localized
-		«04/10/00; 12:21:59 PM by PBS
-			«Support for hashed cookies, an optional new format which does not send the password in plain text.
-		«12/6/99; 4:08:33 PM by PBS
-			«This script was redundantly parsing the POST args into a table, even though they'd already been parsed. This was inefficient. Furthermore, it wasn't parsing multi-part file uploads properly, leading to the picture uploading bug reported by Manila users.
-		«7/30/99; 1:48:16 PM by PBS
-			«When redirecting someone who doesn't have the cookie (and membership is required) to the login page, add as search args the URL of the page the person is on. That way the login page can redirect the person back once they've logged in.
-			«In other words, instead of redirecting here: http://news.userland.com/member/login
-			«Redirect here: http://news.userland.com/member/login?http://news.userland.com/prefs/
+	//Changes:
+		//10/3/05; 5:44:55 AM by JES
+			//Fix bug where if the admin login is enabled, non-admin members were being incorrectly redirected to the login page.
+		//9/16/05; 5:13:44 PM by JES
+			//If config.mainResponder.prefs.flAdminGroupAlwaysAllowed is defined and true, also check for login credentials in the admin membership group.
+		//8/8/02; 2:50:37 PM by JES
+			//Support for storage of member passwords as binaries instead of as clear-text strings.
+		//1/28/02; 10:18:24 PM by PBS
+			//It should not be a fatal error if for some reason the person's password is missing from their membership record.
+		//9/26/01; 4:17:25 PM by PBS
+			//Common situation -- membership not required and the user has no cookies. Short-circuit and return early.
+		//12/29/00; 10:26:33 AM by PBS
+			//There was an error with blocked members -- the path to the localized string was incorrect, so the string wouldn't be found. Now it's correct.
+		//10/27/00; 10:38:34 PM by PBS
+			//Pass pta parameter to mainResponder.members.sendMail.
+		//10/27/00; 1:06:47 AM by PBS
+			//When passing the redirect parameter to the logon page, include the pathArgs, if any. This way if someone was trying to get to a msgReader$ page, they'll get there after they login.
+		//08/31/00; 4:58:50 PM by PBS
+			//Updated to pass the address of the param table in calls to mainResponder.getString, since the call to html.getPageTableAddress may fail in mainResponder.getString. Matt Neuburg's diagnosis: http://frontier.userland.com/discuss/msgReader$5436
+		//05/01/00; 7:05:43 PM by JES
+			//Changed getString calls to use a replacement table address instead of a lists
+		//04/14/00; 8:22:52 PM by JES
+			//localized
+		//04/10/00; 12:21:59 PM by PBS
+			//Support for hashed cookies, an optional new format which does not send the password in plain text.
+		//12/6/99; 4:08:33 PM by PBS
+			//This script was redundantly parsing the POST args into a table, even though they'd already been parsed. This was inefficient. Furthermore, it wasn't parsing multi-part file uploads properly, leading to the picture uploading bug reported by Manila users.
+		//7/30/99; 1:48:16 PM by PBS
+			//When redirecting someone who doesn't have the cookie (and membership is required) to the login page, add as search args the URL of the page the person is on. That way the login page can redirect the person back once they've logged in.
+			//In other words, instead of redirecting here: http://news.userland.com/member/login
+			//Redirect here: http://news.userland.com/member/login?http://news.userland.com/prefs/
 	
 	local (adratts = @adrparamtable^.responderAttributes, lookInGroup, flMustBeMember = false);
 	
@@ -52,9 +52,9 @@ on checkMembership (adrobject, adrparamtable) { //scriptError if no cookie and o
 					return (false)};
 				local (innerCaseCookieName = string.innerCaseName (myCookieName));
 				if defined (adrparamtable^.requestHeaders.cookies.[innerCaseCookieName]) { //we prefer the innerCased name
-					«Some versions of Netscape care about blanks in the cookie names, we're transitioning from using spaces
-						«the innerCasing should happen when we send back the cookie
-						«we should always prefer the innerCased version
+					//Some versions of Netscape care about blanks in the cookie names, we're transitioning from using spaces
+						//the innerCasing should happen when we send back the cookie
+						//we should always prefer the innerCased version
 					myCookieName = innerCaseCookieName}
 				else {
 					if not defined (adrparamtable^.requestHeaders.cookies.[myCookieName]) {
@@ -95,7 +95,7 @@ on checkMembership (adrobject, adrparamtable) { //scriptError if no cookie and o
 					if not (getMemberAddress ()) {
 						return (false)};
 					
-					«Authenticate and set adrMemberInfo if authentic.
+					//Authenticate and set adrMemberInfo if authentic.
 					if not defined (adrMember^.password) { //PBS 01/28/02: should not be a fatal error
 						return (false)};
 					if mainResponder.members.compareHashes (cookieArgTable.h, adrMember^.password, lookInGroup) {
@@ -121,15 +121,15 @@ on checkMembership (adrobject, adrparamtable) { //scriptError if no cookie and o
 				return (false)}}; //not a good cookie
 		if not hasGoodCookie () {
 			if flMustBeMember {
-				«PBS 7/30/99: add as search args the page that you were on before the redirect happened. That way the login page can send you back where you came from after you've logged in.
+				//PBS 7/30/99: add as search args the page that you were on before the redirect happened. That way the login page can send you back where you came from after you've logged in.
 				if defined (adrParamTable^.host) and defined (adrParamTable^.URI) {
 					local (currentPage = adrParamTable^.uri);
 					if adrParamTable^.pathArgs != "" {
 						currentPage = currentPage + "$" + adrParamTable^.pathArgs};
-					«scriptError ("!redirect " + adratts^.urls^.memberLogon + "?http://" + adrParamTable^.host + currentPage)
+					//scriptError ("!redirect " + adratts^.urls^.memberLogon + "?http://" + adrParamTable^.host + currentPage)
 					redirectUrl = adratts^.urls^.memberLogon + "?http://" + adrParamTable^.host + currentPage}
 				else {
-					«scriptError ("!redirect " + adratts^.urls^.memberLogon)
+					//scriptError ("!redirect " + adratts^.urls^.memberLogon)
 					redirectUrl =  adratts^.urls^.memberLogon}};
 			return (false)};
 		return (true)};
@@ -151,9 +151,9 @@ on checkMembership (adrobject, adrparamtable) { //scriptError if no cookie and o
 		case adrparamtable^.method {
 			"POST" {
 				local (args);
-				«PBS 12/6/99: don't parse the POST args again, use the already-parsed POST args.
-					«If the already-parsed table doesn't exist, then *do* parse the POST args, but do it properly when the POST args are multi-part file uploads.
-					«This fixes the picture uploading bug reported by Manila users.
+				//PBS 12/6/99: don't parse the POST args again, use the already-parsed POST args.
+					//If the already-parsed table doesn't exist, then *do* parse the POST args, but do it properly when the POST args are multi-part file uploads.
+					//This fixes the picture uploading bug reported by Manila users.
 				if not defined (adrParamTable^.postArgs) {
 					if string.lower (adrparamtable^.requestHeaders.["Content-type"]) beginsWith "multipart/form-data" {
 						mainResponder.parseMultipart (adrParamTable)} //parse multipart form into adrparamtable^.postArgs
@@ -171,21 +171,21 @@ on checkMembership (adrobject, adrparamtable) { //scriptError if no cookie and o
 							local (mailaddress = string.urldecode (args.mailaddress));
 							mainresponder.members.sendMail (mailaddress, adrmembers, adrparamtable); //PBS 10/27/00: pass page table parameter
 							adrparamtable^.mailAddress = mailaddress; //make it available to the logon macro
-							«scriptError ("!redirect " + adratts^.urls^.memberCheckMail + "$" + mailaddress)
+							//scriptError ("!redirect " + adratts^.urls^.memberCheckMail + "$" + mailaddress)
 							redirectUrl = adratts^.urls^.memberCheckMail + "$" + mailaddress;
 							return (false)}};
 					"superlogonform" { //one place to send them to, does everything, 3/9/99; 9:36:43 AM by DW
-						«it's called from whois.userland.com, so the user doesn't have to leave the home page to get the cookie
+						//it's called from whois.userland.com, so the user doesn't have to leave the home page to get the cookie
 						local (mailaddress = string.urldecode (args.mailaddress));
 						local (password = string.urldecode (args.password));
 						if password == "" { //send password via email
 							mainresponder.members.sendMail (mailaddress, adrmembers);
-							«scriptError ("!redirect " + adrparamtable^.requestheaders.referer + "$" + args.mailaddress)
+							//scriptError ("!redirect " + adrparamtable^.requestheaders.referer + "$" + args.mailaddress)
 							redirectUrl = adrparamtable^.requestheaders.referer + "$" + args.mailaddress;
 							return (false)}
 						else {
 							userRequestsCookie ();
-							«scriptError ("!redirect " + adrparamtable^.requestheaders.referer)
+							//scriptError ("!redirect " + adrparamtable^.requestheaders.referer)
 							redirectUrl = adrparamtable^.requestheaders.referer;
 							return (false)}}}
 				else { // Tue, 23 Mar 1999 21:24:15 GMT by AR

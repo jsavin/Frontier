@@ -1,10 +1,10 @@
 on unblock (username, password, siteName, memberKey) {
-	«Unblock a member.
-		«Changes:
-			«3/31/05; 4:02:25 AM by JES
-				«Call callbacks when a member is unblocked.
-			«12/17/01; 9:27:35 PM by PBS
-				«Fixed a typo, a missing @ sign.
+	//Unblock a member.
+		//Changes:
+			//3/31/05; 4:02:25 AM by JES
+				//Call callbacks when a member is unblocked.
+			//12/17/01; 9:27:35 PM by PBS
+				//Fixed a typo, a missing @ sign.
 	
 	bundle { //make sure this person is a managing editor of the site.
 		local (beginningErrorString = "Can't unblock member \"" + memberKey + "\" because ");
@@ -15,7 +15,7 @@ on unblock (username, password, siteName, memberKey) {
 	local (adrMember = mainResponder.members.getMemberTable (adrGroup, memberKey));
 	if not defined (adrMember^) {
 		scriptError ("Can't unblock \"" + memberKey + "\" because a member with that username does not exist.")};
-	«try {delete (@adrMember^.blocked)} //PBS 12/17/01: fixed typo, added missing @ sign
+	//try {delete (@adrMember^.blocked)} //PBS 12/17/01: fixed typo, added missing @ sign
 	try {
 		delete (@adrMember^.blocked); //PBS 12/17/01: fixed typo, added missing @ sign
 		manilaSuite.members.callbacks(adrSite, adrGroup, adrMember, "unblock")}; //05/03/24, 22:58:38 by DAB

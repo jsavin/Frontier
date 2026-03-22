@@ -1,8 +1,8 @@
 on getPrevDate (username, password, siteName, dt) {
-	«Get the date previous to dt in the message calendar.
-		«Changes:
-			«06/23/00; 10:25:22 AM by JES
-				«Bug fix - the call to mainResponder.calendar.getMostRecentDay was passing the calendar, not the address of the calendar
+	//Get the date previous to dt in the message calendar.
+		//Changes:
+			//06/23/00; 10:25:22 AM by JES
+				//Bug fix - the call to mainResponder.calendar.getMostRecentDay was passing the calendar, not the address of the calendar
 	
 	bundle { //make sure this user has access to the discussion group
 		local (beginningErrorString = "Can't get the date previous to \"" + dt + "\" in the message calendar because ");

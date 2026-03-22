@@ -1,14 +1,14 @@
 on buildGlossary (adrGlossary = table.getCursorAddress (), flinteract = false, adrFilterScript = nil) {
-	«10/9/98; 7:28:39 AM by DW
-		«added filter callback script, to allow custom glossary builders for specific websites
-			«I needed this to convert the Scripting News site to run dynamically.
-		«if there's an error, we display a dialog...
-			«asking if the user wants to edit the object, or continue building the glossary
-		«if flinteract is true, show the addresses of tables we add thru msg.
-	«Thu, Jan 14, 1999 at 4:25:18 PM by PBS
-		«If an object has a . character in its name, don't convert the dot to a /.
-		«This allows for pages whose names contain their file suffix.
-		«The same fix was made to html.addPageToGlossary.
+	//10/9/98; 7:28:39 AM by DW
+		//added filter callback script, to allow custom glossary builders for specific websites
+			//I needed this to convert the Scripting News site to run dynamically.
+		//if there's an error, we display a dialog...
+			//asking if the user wants to edit the object, or continue building the glossary
+		//if flinteract is true, show the addresses of tables we add thru msg.
+	//Thu, Jan 14, 1999 at 4:25:18 PM by PBS
+		//If an object has a . character in its name, don't convert the dot to a /.
+		//This allows for pages whose names contain their file suffix.
+		//The same fix was made to html.addPageToGlossary.
 	
 	local (name = nameOf (adrGlossary^));
 	if (string.lower (name) != "glossary") and (string.lower (name) != "#glossary") {

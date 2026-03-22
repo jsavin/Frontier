@@ -1,36 +1,36 @@
 on editInBrowser (msgNum=nil, title=nil, flLinkToReferer=true, actionUrl=nil) {
-	«Edit this page in the browser.
-	«Changes:
-		«3/25/07; 4:45:16 PM by LL
-			«Display error message text if defined.
-		«1/31/06; 2:13:07 AM by JES
-			«Add support for pending posts.
-		«7/6/05; 2:40:31 AM by JES
-			«Comment out call to manilaSuite.getNewsSitePref("flNewsItemSite"), which was marked as a temporary fix, not to ship by DAB. This call was preventing the Edit This Page button from redirecting to the news item editor, and loading some XML in the DG page editor. Not fun for non-XML users.
-		«4/18/03; 1:02:53 AM by JES
-			«When redirecting to the news items edit in browser page, go to the #edit anchor so the user can edit the text right away without having to scroll down to the editing form.
-		«4/1/03; 12:43:29 PM by JES
-			«If this message is a news item, redirect to the news items edit in browser page.
-		«11/19/02; 7:22:00 PM by JES
-			«Comment out debugging code.
-		«11/19/02; 5:51:38 PM by JES
-			«Fix numerous problems with the admin box when it appears on editInBrowser pages.
-		«06/14/02; 12:46:27 AM by JES
-			«Don't use a maxlength attribute for the subject field.
-		«10/09/00; 1:29:44 AM by JES
-			«Add calls to manilaSuite.discuss.confirmBox and manilaSute.dicsuss.adminBox, when using the topics-based DG.
-		«05/01/00; 3:58:20 PM by JES
-			«Changed getString calls to use a replacement table address instead of a lists
-		«04/19/00 at 3:26:52 PM by JES
-			«localized
-		«03/19/00; 12:46:25 PM by PBS
-			«You can now specify the msgNum of the message to edit and the title of the page via optional parameters.
-			«You can turn off linking to the referer. You can specify an alternate actionUrl, in case you need to over-ride post handling.
-		«02/09/00; 6:51:27 PM by PBS
-			«Commented out obsolete code for sending a message to Pike on clicking the Edit this Page button. Added code for custody: if the member can't check out the object, an error is displayed instead of the editing form.
+	//Edit this page in the browser.
+	//Changes:
+		//3/25/07; 4:45:16 PM by LL
+			//Display error message text if defined.
+		//1/31/06; 2:13:07 AM by JES
+			//Add support for pending posts.
+		//7/6/05; 2:40:31 AM by JES
+			//Comment out call to manilaSuite.getNewsSitePref("flNewsItemSite"), which was marked as a temporary fix, not to ship by DAB. This call was preventing the Edit This Page button from redirecting to the news item editor, and loading some XML in the DG page editor. Not fun for non-XML users.
+		//4/18/03; 1:02:53 AM by JES
+			//When redirecting to the news items edit in browser page, go to the #edit anchor so the user can edit the text right away without having to scroll down to the editing form.
+		//4/1/03; 12:43:29 PM by JES
+			//If this message is a news item, redirect to the news items edit in browser page.
+		//11/19/02; 7:22:00 PM by JES
+			//Comment out debugging code.
+		//11/19/02; 5:51:38 PM by JES
+			//Fix numerous problems with the admin box when it appears on editInBrowser pages.
+		//06/14/02; 12:46:27 AM by JES
+			//Don't use a maxlength attribute for the subject field.
+		//10/09/00; 1:29:44 AM by JES
+			//Add calls to manilaSuite.discuss.confirmBox and manilaSute.dicsuss.adminBox, when using the topics-based DG.
+		//05/01/00; 3:58:20 PM by JES
+			//Changed getString calls to use a replacement table address instead of a lists
+		//04/19/00 at 3:26:52 PM by JES
+			//localized
+		//03/19/00; 12:46:25 PM by PBS
+			//You can now specify the msgNum of the message to edit and the title of the page via optional parameters.
+			//You can turn off linking to the referer. You can specify an alternate actionUrl, in case you need to over-ride post handling.
+		//02/09/00; 6:51:27 PM by PBS
+			//Commented out obsolete code for sending a message to Pike on clicking the Edit this Page button. Added code for custody: if the member can't check out the object, an error is displayed instead of the editing form.
 	
 	local (pta = html.getPageTableAddress ());
-	«workspace.pt = pta^
+	//workspace.pt = pta^
 	if title == nil { //PBS 03/19/00: title is now an optional parameter
 		title = manilaSuite.getString ("discuss.editMessagePageTitle")}; // 4/19/00 JES: localized
 	pta^.title = title;
@@ -57,7 +57,7 @@ on editInBrowser (msgNum=nil, title=nil, flLinkToReferer=true, actionUrl=nil) {
 		flPending = adrMsgTable^.flPending};
 	local (flPost = (pta^.method == "POST") );
 	
-	«if manilaSuite.getNewsSitePref("flNewsItemSite") //temporary fix; DO NOT SHIP 04.11.02, 15:44:24 by DAB
+	//if manilaSuite.getNewsSitePref("flNewsItemSite") //temporary fix; DO NOT SHIP 04.11.02, 15:44:24 by DAB
 	if manilaSuite.news.isNewsItem (adrMsgTable) { //if this is a news item, redirect to the edit news item page
 		if flPost and (not flDeleted) { //Edit this Page button is always a POST; if deleted, a post is an undelete command
 			local (editUrl = manilaSuite.getUrl ("newsItemEditInBrowser"));
@@ -69,18 +69,18 @@ on editInBrowser (msgNum=nil, title=nil, flLinkToReferer=true, actionUrl=nil) {
 	
 	manilaSuite.discuss.setLastUpdateTime (adrMsgTable);
 	
-	«bundle //possibly edit in Pike //PBS 02/09/00: commented out because we didn't wire the Edit this Page button to Pike. This code is obsolete.
-		«local (adrSite = manilaSuite.getSiteAddress (pta))
-		«local (sitename = manilaSuite.getSiteName (adrSite))
-		«local (username = nameOf (pta^.adrMemberInfo^))
-		«if manilaSuite.pikeUserLoggedOn (adrSite, username)
-			«local (params, msgtable, adrDiscuss = manilaSuite.rpcUtils.getDiscussAddress (sitename))
-			«msgtable = adrMsgTable^
-			«msgtable.url = adrDiscuss^.prefs.msgReaderUrl + msgnum
-			«manilaSuite.rpcUtils.cleanMessageTableForExport (@msgtable)
-			«params = {sitename, msgtable}
-			«betty.rpc.client (pta^.client, 1973, "pike.receiveMessage", @params)
-			«return ("true")
+	//bundle //possibly edit in Pike //PBS 02/09/00: commented out because we didn't wire the Edit this Page button to Pike. This code is obsolete.
+		//local (adrSite = manilaSuite.getSiteAddress (pta))
+		//local (sitename = manilaSuite.getSiteName (adrSite))
+		//local (username = nameOf (pta^.adrMemberInfo^))
+		//if manilaSuite.pikeUserLoggedOn (adrSite, username)
+			//local (params, msgtable, adrDiscuss = manilaSuite.rpcUtils.getDiscussAddress (sitename))
+			//msgtable = adrMsgTable^
+			//msgtable.url = adrDiscuss^.prefs.msgReaderUrl + msgnum
+			//manilaSuite.rpcUtils.cleanMessageTableForExport (@msgtable)
+			//params = {sitename, msgtable}
+			//betty.rpc.client (pta^.client, 1973, "pike.receiveMessage", @params)
+			//return ("true")
 	
 	local (htmlText = "", confirmbox = "");
 	bundle { //call confirmBox if needed, and make sure flDeleted is correct after confirmation
@@ -129,7 +129,7 @@ on editInBrowser (msgNum=nil, title=nil, flLinkToReferer=true, actionUrl=nil) {
 			if defined (pta^.errorText) {
 				errorText = "<p><font color=\"red\">" + pta^.errorText + "</font></p>"};
 			
-			«htmlText = htmltext  + confirmbox + mainResponder.discuss.editMessageForm (msgNum, flLinkToReferer:flLinkToReferer, flShowFileList:false, flShowFileUpload:false, filePrompt:manilaSuite.getString ("discuss.attachImagePrompt"), subjectPrompt:subjectPrompt, actionUrl:actionUrl, flLimitSubjectLength:false) // 4/19/00 JES: localized
+			//htmlText = htmltext  + confirmbox + mainResponder.discuss.editMessageForm (msgNum, flLinkToReferer:flLinkToReferer, flShowFileList:false, flShowFileUpload:false, filePrompt:manilaSuite.getString ("discuss.attachImagePrompt"), subjectPrompt:subjectPrompt, actionUrl:actionUrl, flLimitSubjectLength:false) // 4/19/00 JES: localized
 			local (adrETPbuilder = @mainResponder.discuss.editMessageForm);
 			manilaSuite.plugins.ETPoverride.getScriptAddress("discussEditInbrowser", @adrETPbuilder);
 			local (editForm =  adrETPbuilder^ (msgNum, flLinkToReferer:flLinkToReferer, flShowFileList:false, flShowFileUpload:false, filePrompt:manilaSuite.getString ("discuss.attachImagePrompt"), subjectPrompt:subjectPrompt, actionUrl:actionUrl, flLimitSubjectLength:false)); //04.05.27, 13:41:33 by DAB
@@ -143,7 +143,7 @@ on editInBrowser (msgNum=nil, title=nil, flLinkToReferer=true, actionUrl=nil) {
 		local (adrSite = pta^.adrSiteRootTable);
 		
 		if not manilaSuite.custody.memberCanCheckOutObject (adrMsgTable, adrMember, adrSite, true) { //true because it's a message
-			«For dg messages, the checked out identifier is the address of the message table, not the address of the body or outline.
+			//For dg messages, the checked out identifier is the address of the message table, not the address of the body or outline.
 			local (title = adrMsgTable^.subject);
 			title = manilaSuite.unTaint (title);
 			

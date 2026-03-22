@@ -1,6 +1,6 @@
 on serverAllowsStaticRendering () {
-	«Return true if static rendering is on at the server level and the prefs are set. Otherwise, return false.
-		«03/13/00; 9:47:51 PM by PBS
+	//Return true if static rendering is on at the server level and the prefs are set. Otherwise, return false.
+		//03/13/00; 9:47:51 PM by PBS
 	
 	bundle { //assure prefs
 		if not defined (config.manila.prefs.flStaticRenderingEnabled) {

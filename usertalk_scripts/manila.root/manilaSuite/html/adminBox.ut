@@ -1,50 +1,50 @@
 on adminBox (pta=nil, msgNum=nil) {
-	«Draw the admin box, which has checkboxes for the actions you can perform on a story or message.
-		«Do you want to make this message a story?
-		«Do you want to delete this message?
-		«Do you want to un-delete this message?
-		«Do you want to remove this story from the stories list?
-		«Do you want to remove this picture from the pictures list?
-		«Do you want to make this the home page?
-		«Do you want to set a path for this message?
-		«Do you want to enable/disable bylines for this story?
-	«Changes:
-		«1/31/06; 2:29:21 AM by JES
-			«Add commands for editorial approval, and revert to approval pending. Change width of admin box from 300 to 350 pixels.
-		«9/14/05; 1:51:30 AM by JES
-			«Allow news items to be made into stories and to set a relative path.
-			«Re-sorted change notes.
-		«7/2/05; 3:04:06 AM by JES
-			«If doing content-only rendering, return the empty string.
-		«10/16/03; 3:28:49 PM by JES
-			«Added labels for admin box commands to make them easier to select. Added JavaScript onfocus handler to automatically select the Set Path command when entering a path. Factored code that generates Radio buttons and labels.
-		«9/23/03; 1:44:54 PM by JES
-			«Added the Admin box for Content Editors. Required for static rendering.
-		«4/25/03; 3:41:39 PM by JES
-			«Enabled the delete option on story and picture pages.
-		«4/18/03; 2:31:57 PM by JES
-			«Default is to have no command selected, instead of defaulting to the delete command.
-		«12/16/02; 9:17:58 PM by JES
-			«Added support for storyReader and hierarchy pages.
-		«9/28/01; 2:02:10 PM by PBS
-			«If print-friendly template, just return "".
-		«10/09/00; 12:44:16 AM by JES
-			«Add the msgNum as a hidden input, if specified
-		«07/01/00; 12:31:54 AM by JES
-			«Localized story byline options.
-		«06/29/00; 10:40:44 PM by PBS
-			«You can now enable and disable bylines on a story-by-story basis.
-		«04/25/00; 1:20:50 PM by PBS
-			«Support for news items. If the message is a news item, you can't make it the home page. If news items are turned on, you can't make other messages the home page.
-		«04/21/00; 12:35:50 AM by JES
-			«Localized.
-		«03/03/00; 9:47:19 PM by PBS
-			«Added support for setting the path to a message via the Admin box.
-		«12/13/99; 11:21:19 AM by PBS
-			«Respect the managing editor's color preferences for Admin boxes.
-		«11/8/99; 1:41:36 PM by PBS
-			«Now works with storyReader pages, not just msgReader pages.
-			«If the dg message is a picture, or contains an image table, then you can add or remove it from the pictures list.
+	//Draw the admin box, which has checkboxes for the actions you can perform on a story or message.
+		//Do you want to make this message a story?
+		//Do you want to delete this message?
+		//Do you want to un-delete this message?
+		//Do you want to remove this story from the stories list?
+		//Do you want to remove this picture from the pictures list?
+		//Do you want to make this the home page?
+		//Do you want to set a path for this message?
+		//Do you want to enable/disable bylines for this story?
+	//Changes:
+		//1/31/06; 2:29:21 AM by JES
+			//Add commands for editorial approval, and revert to approval pending. Change width of admin box from 300 to 350 pixels.
+		//9/14/05; 1:51:30 AM by JES
+			//Allow news items to be made into stories and to set a relative path.
+			//Re-sorted change notes.
+		//7/2/05; 3:04:06 AM by JES
+			//If doing content-only rendering, return the empty string.
+		//10/16/03; 3:28:49 PM by JES
+			//Added labels for admin box commands to make them easier to select. Added JavaScript onfocus handler to automatically select the Set Path command when entering a path. Factored code that generates Radio buttons and labels.
+		//9/23/03; 1:44:54 PM by JES
+			//Added the Admin box for Content Editors. Required for static rendering.
+		//4/25/03; 3:41:39 PM by JES
+			//Enabled the delete option on story and picture pages.
+		//4/18/03; 2:31:57 PM by JES
+			//Default is to have no command selected, instead of defaulting to the delete command.
+		//12/16/02; 9:17:58 PM by JES
+			//Added support for storyReader and hierarchy pages.
+		//9/28/01; 2:02:10 PM by PBS
+			//If print-friendly template, just return "".
+		//10/09/00; 12:44:16 AM by JES
+			//Add the msgNum as a hidden input, if specified
+		//07/01/00; 12:31:54 AM by JES
+			//Localized story byline options.
+		//06/29/00; 10:40:44 PM by PBS
+			//You can now enable and disable bylines on a story-by-story basis.
+		//04/25/00; 1:20:50 PM by PBS
+			//Support for news items. If the message is a news item, you can't make it the home page. If news items are turned on, you can't make other messages the home page.
+		//04/21/00; 12:35:50 AM by JES
+			//Localized.
+		//03/03/00; 9:47:19 PM by PBS
+			//Added support for setting the path to a message via the Admin box.
+		//12/13/99; 11:21:19 AM by PBS
+			//Respect the managing editor's color preferences for Admin boxes.
+		//11/8/99; 1:41:36 PM by PBS
+			//Now works with storyReader pages, not just msgReader pages.
+			//If the dg message is a picture, or contains an image table, then you can add or remove it from the pictures list.
 	
 	if pta == nil {
 		pta = html.getPageTableAddress ()};
@@ -87,20 +87,20 @@ on adminBox (pta=nil, msgNum=nil) {
 		flPicture = true};
 	
 	bundle { //build the top of the table
-		«bundle //old code
-			«local (action = pta^.fname)
-			«local (action = pta^.urls^.discussMsgReader)
-			«if not (action endsWith "$")
-				«action = action + "$"
-			«if pta^.pathArgs != ""
-				«action = action + pta^.pathArgs
-			«else
-				«action = action + adrMsgTable^.msgNum
+		//bundle //old code
+			//local (action = pta^.fname)
+			//local (action = pta^.urls^.discussMsgReader)
+			//if not (action endsWith "$")
+				//action = action + "$"
+			//if pta^.pathArgs != ""
+				//action = action + pta^.pathArgs
+			//else
+				//action = action + adrMsgTable^.msgNum
 		local (action = pta^.fname);
 		if action beginsWith "#objectNotFoundHandler" {
 			action = pta^.uri}
 		else {
-			«local (action = pta^.urls^.discussMsgReader)
+			//local (action = pta^.urls^.discussMsgReader)
 			if not (action endsWith "$") {
 				action = action + "$"};
 			if pta^.pathArgs != "" {
@@ -126,7 +126,7 @@ on adminBox (pta=nil, msgNum=nil) {
 			if flBr {
 				s = s + "<br>"};
 			s = s + "<input type=\"radio\" name=\"adminCommand\" id=\"" + command + "\" value=\"" + command + "\"" + checked + ">" + "<label for=\"" + command + "\">" + label + "</label>";
-			«s = s + "<input type=\"radio\" name=\"adminCommand\" value=\"" + command + "\"" + checked + ">" + label
+			//s = s + "<input type=\"radio\" name=\"adminCommand\" value=\"" + command + "\"" + checked + ">" + label
 			return};
 		
 		if defined (adrMsgTable^.image) {
@@ -141,7 +141,7 @@ on adminBox (pta=nil, msgNum=nil) {
 		if flNewsItem {
 			message = "news item"};
 		
-		«Delete this message?
+		//Delete this message?
 		if true { //flInDg
 			if not flDeleted {
 				local (prompt); // 4/21/00 JES: localize prompt text
@@ -157,7 +157,7 @@ on adminBox (pta=nil, msgNum=nil) {
 				radioButton ("delete", prompt);
 				flBr = true}};
 		
-		«Undelete this message?
+		//Undelete this message?
 		if true { //flInDg
 			if flDeleted {
 				local (prompt); // 4/21/00 JES: localize prompt text
@@ -173,7 +173,7 @@ on adminBox (pta=nil, msgNum=nil) {
 				radioButton ("undelete", prompt);
 				flBr = true}};
 		
-		«Approve this message?
+		//Approve this message?
 		if flPending and (not flDeleted) {
 			local (prompt);
 			case string.lower (message) {
@@ -188,7 +188,7 @@ on adminBox (pta=nil, msgNum=nil) {
 			radioButton ("approve", prompt);
 			flBr = true};
 		
-		«Revert this message to pending approval?
+		//Revert this message to pending approval?
 		if (not flPending) and (not flDeleted) {
 			local (prompt);
 			case string.lower (message) {
@@ -203,32 +203,32 @@ on adminBox (pta=nil, msgNum=nil) {
 			radioButton ("makepending", prompt);
 			flBr = true};
 		
-		«Remove from stories list?
+		//Remove from stories list?
 		if flStory and (not flDeleted) {
 			radioButton ("unmakeStory", manilaSuite.getString ("html.removeFromStoriesList", pta: pta) );
 			flBr = true};
 		
-		«Remove from pictures list?
+		//Remove from pictures list?
 		if flPicture and (not flDeleted) {
 			radioButton ("unmakePicture", manilaSuite.getString ("html.removeFromPicturesList", pta: pta) );
 			flBr = true};
 		
-		«Make this message a story?
+		//Make this message a story?
 		if (not flStory) and (not flDeleted) and (not flImageTable) { //and (not flNewsItem)
 			radioButton ("makeStory", manilaSuite.getString ("html.makeThisMessageAStory", pta: pta) );
 			flBr = true};
 		
-		«Make this message a picture?
+		//Make this message a picture?
 		if (not flPicture) and (not flDeleted) and (flImageTable) and (not flNewsItem) {
 			radioButton ("makePicture", manilaSuite.getString ("html.makeThisMessageAPicture", pta: pta) );
 			flBr = true};
 		
-		«Make this the home page?
+		//Make this the home page?
 		if (not flDeleted) and (not flPicture) and (not flImageTable) and (not flNewsItem) and (not flNewsItemsEnabled) {
 			radioButton ("makeHomePage", manilaSuite.getString ("html.makeThisTheHomepage", pta: pta) );
 			flBr = true};
 		
-		«Enable/disable bylines?
+		//Enable/disable bylines?
 		if flStory and (not flDeleted) and (not flNewsItem) { //if it's a story
 			local (flSiteBylines = false);
 			if defined (pta^.newsSite^.flBylinesOnStories) {
@@ -246,7 +246,7 @@ on adminBox (pta=nil, msgNum=nil) {
 			radioButton (value, message);
 			flBr = true};
 		
-		«Set a path for this page?
+		//Set a path for this page?
 		if (not flDeleted) and (not flPicture) and (not flImageTable) { //and (not flNewsItem)
 			local (currentPath = manilaSuite.siteStructure.getRelativePathToMessage (adrMsgTable^.msgNum, pta^.adrSiteRootTable));
 			currentPath = string.popLeading (currentPath, '/');

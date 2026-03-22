@@ -1,11 +1,11 @@
 on getUrl (picNum=nil, adrSite=nil) {
-	«Changes
-		«4/11/05; 2:03:25 AM by JES
-			«Created. Get the URL for a picture.
-			«If the picture is being served from a static server, use that URL, otherwise use the dynamic one.
-				«If picNum isn't specified, we try to get it from pathArgs in the page table.
-				«If adrSite isn't specified, we call manilaSuite.getSiteAddress.
-				«If both are passed in, then we can be called outside of the website framework context.
+	//Changes
+		//4/11/05; 2:03:25 AM by JES
+			//Created. Get the URL for a picture.
+			//If the picture is being served from a static server, use that URL, otherwise use the dynamic one.
+				//If picNum isn't specified, we try to get it from pathArgs in the page table.
+				//If adrSite isn't specified, we call manilaSuite.getSiteAddress.
+				//If both are passed in, then we can be called outside of the website framework context.
 	if picNum == nil or adrSite == nil { //we'll need the page table address to get default values
 		local (pta = html.getPageTableAddress ());
 		if picNum == nil {

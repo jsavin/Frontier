@@ -1,25 +1,25 @@
 on tableToFiles (adrTable, destFolderPath, flMsgs = false) {
-	«Changes:
-		«10/2/25; 1:49:10 AM by JES
-			«Given the address of a table, export the table to a hierarchy of files and folders on disk.
-				«Description:
-					«Tables are represented by folders whose name matches the table name.
-					«Scalars within each table are saved in a .tsv file named _scalars.tsv.
-					«Non-scalars (besides tables) are saved with an extension matching the object type, so for example Scripts get a .scpt extension. 
-					«List and record type objects are saved in TSV format (tab-separated values). Tab and CR characters are escaped to ensure the TSV is valid. Each value will have two columns: the type, and the value itself. For records, the columns are name, type, value. For lists the columns are type and value. Lists or records that contain non-scalar members will trigger a scriptError.
-					«tableToFiles is loosely based on table.tableToXml.
-				«Parameters:
-					«adrTable: The address of the table to export
-					«destFolderPath: The file path to the folder where the table should be exported
-					«flMsgs: Whether or not to show msgs about progress (default: false)
-				«Exceptions:
-					«Outlines are saved as .opml files (via op.outlineToXml).
-					«WPTexts are saved as plain text files with a .txt extension (text formatting is lost).
-				«Filename normalization:
-					«Filenames are normalized using string.urlEncode first, then replacing all the % characters with ( and using a closing ) after the two-character hex number representing the character, so Tab first becomes %09 and is converted to (09).
-					«This ensures that filenames are always valid on any system, while preserving the special characters.
-					«Note: string.urlEncode doesn't handle some characters, so we convert them here.
-					«Note: For readability, spaces are preserved as-is, and are not converted to (20).
+	//Changes:
+		//10/2/25; 1:49:10 AM by JES
+			//Given the address of a table, export the table to a hierarchy of files and folders on disk.
+				//Description:
+					//Tables are represented by folders whose name matches the table name.
+					//Scalars within each table are saved in a .tsv file named _scalars.tsv.
+					//Non-scalars (besides tables) are saved with an extension matching the object type, so for example Scripts get a .scpt extension. 
+					//List and record type objects are saved in TSV format (tab-separated values). Tab and CR characters are escaped to ensure the TSV is valid. Each value will have two columns: the type, and the value itself. For records, the columns are name, type, value. For lists the columns are type and value. Lists or records that contain non-scalar members will trigger a scriptError.
+					//tableToFiles is loosely based on table.tableToXml.
+				//Parameters:
+					//adrTable: The address of the table to export
+					//destFolderPath: The file path to the folder where the table should be exported
+					//flMsgs: Whether or not to show msgs about progress (default: false)
+				//Exceptions:
+					//Outlines are saved as .opml files (via op.outlineToXml).
+					//WPTexts are saved as plain text files with a .txt extension (text formatting is lost).
+				//Filename normalization:
+					//Filenames are normalized using string.urlEncode first, then replacing all the % characters with ( and using a closing ) after the two-character hex number representing the character, so Tab first becomes %09 and is converted to (09).
+					//This ensures that filenames are always valid on any system, while preserving the special characters.
+					//Note: string.urlEncode doesn't handle some characters, so we convert them here.
+					//Note: For readability, spaces are preserved as-is, and are not converted to (20).
 	
 	on normalize (s) {
 		s = string.urlEncode (s);
@@ -42,9 +42,9 @@ on tableToFiles (adrTable, destFolderPath, flMsgs = false) {
 				i++}};
 		return (name)};
 	on escape (s) { //escape-encode values of list and record type objects
-		«10/2/25; 2:08:32 PM by JES
-			«We use TSV format for these objects, so we need to ensure that values escape carriage returns, linefeeds, and tabs.
-			«Note: table.tableToFiles will fail if lists or records contain non-scalar objects.
+		//10/2/25; 2:08:32 PM by JES
+			//We use TSV format for these objects, so we need to ensure that values escape carriage returns, linefeeds, and tabs.
+			//Note: table.tableToFiles will fail if lists or records contain non-scalar objects.
 		s = string.replaceAll ("\t", "\\t");
 		s = string.replaceAll ("\r", "\\r");
 		s = string.replaceAll ("\n", "\\n");
@@ -104,8 +104,8 @@ on tableToFiles (adrTable, destFolderPath, flMsgs = false) {
 		for i = 1 to ct {
 			local (item = adr^[i]);
 			local (name = false);
-			«if flrecord
-				«name = nameOf (adr^[i])
+			//if flrecord
+				//name = nameOf (adr^[i])
 			main (@item, name)};
 		
 		add ("</" + elementname + ">"); indlev--};

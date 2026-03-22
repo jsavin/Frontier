@@ -1,6 +1,6 @@
-on setPosition (folderpath, h, v) { « set the position of the indicated folder's window
-	«For compatibility.  With the Scriptable Finder, suggest
-		«set (window["foo"].position, {h, v}) or suitable variation
+on setPosition (folderpath, h, v) { // set the position of the indicated folder's window
+	//For compatibility.  With the Scriptable Finder, suggest
+		//set (window["foo"].position, {h, v}) or suitable variation
 	local (fwindow);
 	if not Finder.makeWindow (folderpath, 0, @fwindow) {
 		return (false)};

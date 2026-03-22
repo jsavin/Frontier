@@ -1,6 +1,6 @@
-«Changes
-	«7/9/03; 3:57:29 PM by JES
-		«Register the site in config.mainResponder.domains, as a sub-site in the site tree if necessary.
+//Changes
+	//7/9/03; 3:57:29 PM by JES
+		//Register the site in config.mainResponder.domains, as a sub-site in the site tree if necessary.
 
 local (adr = table.getCursorAddress ());
 while (sizeOf (string.parseAddress (adr)) > 2) {

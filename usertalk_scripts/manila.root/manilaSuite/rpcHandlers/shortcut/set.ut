@@ -1,5 +1,5 @@
 on set (username, password, siteName, shortcutName, shortcutData) {
-	«Set a shortcut named shortcutName to shortcutData.
+	//Set a shortcut named shortcutName to shortcutData.
 	
 	bundle { //make sure this person is a managing editor of the site.
 		local (beginningErrorString = "Can't set shortcut \"" + shortcutName + "\" because ");

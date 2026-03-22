@@ -1,7 +1,7 @@
 on homepage (driverName, screenname, message) {
-	«Changes
-		«8/12/02; 3:53:58 AM by JES
-			«Rewrite for simplified architecture.
+	//Changes
+		//8/12/02; 3:53:58 AM by JES
+			//Rewrite for simplified architecture.
 	
 	local (siteurl = user.im.responders.manila.prefs.currentSite);
 	if siteurl == "" {

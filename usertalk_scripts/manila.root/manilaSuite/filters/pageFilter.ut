@@ -1,29 +1,29 @@
 on pageFilter (pta) {
-	«Changes:
-		«10/26/05; 1:53:20 AM by JES
-			«Added support for pageFilter callback at config.manila.callbacks.filters.pageFilter.
-				«Scripts in the pageFilter callbacks table are called in turn, and return values are ignored.
-				«The pageFilter callbacks are called last, after Manila's built-in pageFilter.
-		«4/24/05; 4:14:46 AM by JES
-			«Added support for colors as pseudo-macros in the cascading style sheet. Any color defined in #newsSite.colors can be referenced by name as a pseudo-macro, i.e. {bgcolor}.
-		«12/05/05; 3:03:30 PM by PR
-			«use the aux content-only tempalte
-		«4/14/05; 2:47:20 AM by JES
-			«Fix bug in aux templates. Bug found by LL and fix by DAB.
-		«04/05/21, 11:36:53 by DAB
-			«if member  was constrained to  read only access to the content; restore full rights
-		«04/05/16, 18:49:59 by DAB
-			«set alternate templates if configured to do so
-		«1/20/05; 2:03:00 AM by JES
-			«If pta^.flAnchorRelNofollow is defined and true, add a rel="nofollow" attribute to all links in bodytext, process bodytext macros here, and create place-holder in pta^.template for manilaSuite.filters.finalFilter.
-		«12/30/04; 4:10:13 AM by JES
-			«Handle content-only rendering: if pta^.flContentOnlyTemplate is defined and true, then only serve the content of the page.
-		«2/21/03; 6:46:48 PM by JES
-			«Don't do any HTML-ish work here unless pta^.flHtml is true.
-		«06/19/00; 2:05:01 PM by JES
-			«Localized the rendering of dates and times returned by the postTime and lastUpdate macros
-		«10/2/01; 1:01:52 PM by PBS
-			«Allow the site to have its own print-friendly template.
+	//Changes:
+		//10/26/05; 1:53:20 AM by JES
+			//Added support for pageFilter callback at config.manila.callbacks.filters.pageFilter.
+				//Scripts in the pageFilter callbacks table are called in turn, and return values are ignored.
+				//The pageFilter callbacks are called last, after Manila's built-in pageFilter.
+		//4/24/05; 4:14:46 AM by JES
+			//Added support for colors as pseudo-macros in the cascading style sheet. Any color defined in #newsSite.colors can be referenced by name as a pseudo-macro, i.e. {bgcolor}.
+		//12/05/05; 3:03:30 PM by PR
+			//use the aux content-only tempalte
+		//4/14/05; 2:47:20 AM by JES
+			//Fix bug in aux templates. Bug found by LL and fix by DAB.
+		//04/05/21, 11:36:53 by DAB
+			//if member  was constrained to  read only access to the content; restore full rights
+		//04/05/16, 18:49:59 by DAB
+			//set alternate templates if configured to do so
+		//1/20/05; 2:03:00 AM by JES
+			//If pta^.flAnchorRelNofollow is defined and true, add a rel="nofollow" attribute to all links in bodytext, process bodytext macros here, and create place-holder in pta^.template for manilaSuite.filters.finalFilter.
+		//12/30/04; 4:10:13 AM by JES
+			//Handle content-only rendering: if pta^.flContentOnlyTemplate is defined and true, then only serve the content of the page.
+		//2/21/03; 6:46:48 PM by JES
+			//Don't do any HTML-ish work here unless pta^.flHtml is true.
+		//06/19/00; 2:05:01 PM by JES
+			//Localized the rendering of dates and times returned by the postTime and lastUpdate macros
+		//10/2/01; 1:01:52 PM by PBS
+			//Allow the site to have its own print-friendly template.
 	
 	local (adrsite = pta^.adrSiteRootTable);
 	
@@ -43,33 +43,33 @@ on pageFilter (pta) {
 				pta^.template = string (manilaData.printFriendlyTemplates.template)}};
 		if pta^.flContentOnlyTemplate { //JES 12/30/04: support for content-only rendering
 			flUseAuxTemplates = false; //04/05/16, 18:49:56 by DAB
-			«pta^.template = "{bodytext}"
+			//pta^.template = "{bodytext}"
 			manilaSuite.sitePrefs.auxtemplates.setTemplateTo (pta, "content-only")}; // 10/05/05; 4:15:31 PM by PR use the content only aux template instead
 		
-		«if pta^.adrObject == @adrsite^.admin.sitePrefs.default
-			«if manilaSuite.sitePrefs.setTemplate ()
-				«flUseAuxTemplates = false
+		//if pta^.adrObject == @adrsite^.admin.sitePrefs.default
+			//if manilaSuite.sitePrefs.setTemplate ()
+				//flUseAuxTemplates = false
 		if flUseAuxTemplates { //from #templates in pageTable 04/05/16, 18:51:50 by DAB
 			manilaSuite.sitePrefs.auxtemplates.setPageTemplate(pta)}};
 	
-	«Work around the <title> problem.
-		«html.buildObject replaces <title> with the title of the page, but we don't want that to happen.
+	//Work around the <title> problem.
+		//html.buildObject replaces <title> with the title of the page, but we don't want that to happen.
 	if typeOf (pta^.template) == stringType and not pta^.indirectTemplate {
 		pta^.template = string.replace (pta^.template, "<title>", "[[title]]")};
 	
-	«If in sitePrefs or prefs, substitute our own JavaScript.
+	//If in sitePrefs or prefs, substitute our own JavaScript.
 	if flHtml {
 		local (adrParent = parentOf (pta^.adrObject^));
 		local (lowerName = string.lower (nameOf (adrParent^)));
-		«if lowerName == "siteprefs" or lowerName == "prefs"
-			«local (s)
-			«if not defined (pta^.javaScript)
-				«pta^.javaScript = ""
-			«if defined (pta^.javaScript^)
-				«s = string (pta^.javaScript^)
-				«delete (@pta^.javaScript)
-				«pta^.javaScript = s
-			«pta^.javaScript = pta^.javaScript + string (manilaData.sitePrefs.javaScript)
+		//if lowerName == "siteprefs" or lowerName == "prefs"
+			//local (s)
+			//if not defined (pta^.javaScript)
+				//pta^.javaScript = ""
+			//if defined (pta^.javaScript^)
+				//s = string (pta^.javaScript^)
+				//delete (@pta^.javaScript)
+				//pta^.javaScript = s
+			//pta^.javaScript = pta^.javaScript + string (manilaData.sitePrefs.javaScript)
 		if string.lower (nameOf (pta^.adrObject^)) == "popupwindow" {
 			try {delete (@pta^.javaScript)}}};
 	

@@ -1,8 +1,8 @@
 on openDocument (f) {
-	«Microsoft and Netscape implement required.openDocument differently
-		«Microsoft opens the document in a new window
-		«Netscape displays the document in the current browser window
-		«We're going to stick with the Netscape interpretation
-		«So we send an openURL instead
-		«DW Sat, Apr 13, 1996 at 7:32:24 PM
+	//Microsoft and Netscape implement required.openDocument differently
+		//Microsoft opens the document in a new window
+		//Netscape displays the document in the current browser window
+		//We're going to stick with the Netscape interpretation
+		//So we send an openURL instead
+		//DW Sat, Apr 13, 1996 at 7:32:24 PM
 	return (webBrowser.openUrl (html.getFileUrl (f)))}

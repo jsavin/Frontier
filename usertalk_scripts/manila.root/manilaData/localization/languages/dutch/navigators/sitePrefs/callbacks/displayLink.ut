@@ -1,6 +1,6 @@
 on displayLink (name) {
-	«Callback that can specify whether or not to display a link.
-		«03/14/00; 12:25:26 AM by PBS
+	//Callback that can specify whether or not to display a link.
+		//03/14/00; 12:25:26 AM by PBS
 	
 	local (pta = html.getPageTableAddress ());
 	local (lowerName = string.lower (name));

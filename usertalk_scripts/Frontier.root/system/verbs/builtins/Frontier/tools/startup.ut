@@ -1,25 +1,25 @@
 on startup () {
-	«Install every Tool that is enabled. Uninstall every Tool that is disabled.
-		«01/06/01; 7:03:27 PM by PBS
-		«Changes:
-			«3/31/02; 3:41:01 AM by JES
-				«Write out nodeTypes' custom icons within a try block, in case the nodeType no longer exists. Prevents errors at startup after a nodeType has been deleted.
-			«11/30/01; 5:01:11 PM by JES
-				«Install Tools in a try statement.
-			«8/21/01; 12:08:46 AM by JES
-				«If no Tools are installed, then call system.menus.buildMenuBar so that the Tools menu will appear in the menu bar, regardless of wheteher there are any Tools installed.
-			«7/12/01; 3:45:38 AM by JES
-				«When writing out custom icons, dive into addresses of nodeType tables.
-			«2/13/01; 2:17:54 PM by PBS
-				«Don't install Tools such as Music.root, StaticSites.root, etc.
-			«2/12/01; 12:13:40 PM by PBS
-				«Check if Music.root exists in the Tools folder before attempting to build the Player app sub-menu. This prevents a scriptError during startup if you don't have or have moved Music.root.
+	//Install every Tool that is enabled. Uninstall every Tool that is disabled.
+		//01/06/01; 7:03:27 PM by PBS
+		//Changes:
+			//3/31/02; 3:41:01 AM by JES
+				//Write out nodeTypes' custom icons within a try block, in case the nodeType no longer exists. Prevents errors at startup after a nodeType has been deleted.
+			//11/30/01; 5:01:11 PM by JES
+				//Install Tools in a try statement.
+			//8/21/01; 12:08:46 AM by JES
+				//If no Tools are installed, then call system.menus.buildMenuBar so that the Tools menu will appear in the menu bar, regardless of wheteher there are any Tools installed.
+			//7/12/01; 3:45:38 AM by JES
+				//When writing out custom icons, dive into addresses of nodeType tables.
+			//2/13/01; 2:17:54 PM by PBS
+				//Don't install Tools such as Music.root, StaticSites.root, etc.
+			//2/12/01; 12:13:40 PM by PBS
+				//Check if Music.root exists in the Tools folder before attempting to build the Player app sub-menu. This prevents a scriptError during startup if you don't have or have moved Music.root.
 	
 	Frontier.tools.init (); //11/28/00 JES
 	
 	bundle { //PBS 08/16/00: write out custom icons
-		«Custom icons are written to the [program folder]/Appearance/Icons/ directory.
-		«04/18/2001 JES: cribbed from startup.startupScript in Radio
+		//Custom icons are written to the [program folder]/Appearance/Icons/ directory.
+		//04/18/2001 JES: cribbed from startup.startupScript in Radio
 		local (appFolder = file.folderFromPath (Frontier.getProgramPath ()));
 		local (pc = file.getPathChar ());
 		local (iconsFolder = appFolder + "Appearance" + pc + "Icons" + pc);

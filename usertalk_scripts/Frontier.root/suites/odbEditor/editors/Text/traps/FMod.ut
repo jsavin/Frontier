@@ -1,6 +1,6 @@
 on FMod (fsFileBeingModified, fsNewLocation=nil) {
-	«scratchpad.fsFileBeingModified = fsFileBeingModified
-	«scratchpad.fsNewLocation = fsNewLocation
+	//scratchpad.fsFileBeingModified = fsFileBeingModified
+	//scratchpad.fsNewLocation = fsNewLocation
 	local (adrfiletable = @user.odbEditors.data.openfiles, i);
 	for i = 1 to sizeof (adrfiletable) {
 		if adrfiletable^ [i] [1] == fsFileBeingModified {

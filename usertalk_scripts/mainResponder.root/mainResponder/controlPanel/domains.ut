@@ -1,8 +1,8 @@
 on domains () {
-	«Display the list of domains on this server.
-		«Changes:
-			«06/10/00; 10:53:10 PM by PBS
-				«Domains can be tables.
+	//Display the list of domains on this server.
+		//Changes:
+			//06/10/00; 10:53:10 PM by PBS
+				//Domains can be tables.
 	local (pta = html.getPageTableAddress ());
 	pta^.title = "Domains";
 	
@@ -21,7 +21,7 @@ on domains () {
 		for i = 1 to sizeOf (config.mainResponder.domains) {
 			local (adrItem = @config.mainResponder.domains [i]);
 			
-			«Get info about this domain.
+			//Get info about this domain.
 			local (domainName = nameOf (adrItem^));
 			local (domainValue);
 			if typeOf (adrItem^) == tableType { //PBS 06/10/00: domains can be tables
@@ -30,17 +30,17 @@ on domains () {
 				domainValue = adrItem^};
 			local (bytes = 0, hits = 0, ticks = 0);
 			
-			«Look up stats for this domain.
+			//Look up stats for this domain.
 			if defined (adrStats^.[domainName]) {
 				bytes = adrStats^.[domainName].bytes;
 				hits = adrStats^.[domainName].hits;
 				ticks = adrStats^.[domainName].ticks};
 			
-			«Create a new table entry for this domain.
+			//Create a new table entry for this domain.
 			local (adrEntry = @infoTable.[domainName]);
 			new (tableType, adrEntry);
 			
-			«Populate the table entry.
+			//Populate the table entry.
 			adrEntry^.name = domainName;
 			try {
 				adrEntry^.documentsRoot = domainValue}
@@ -78,10 +78,10 @@ on domains () {
 				else {
 					html.table.addRow (adrTable)^.cells = {link, docsRoot}}}}};
 	
-	«add ("Shown here are the domains hosted on this server, and the ")
-	«if flShowStats
-		«add ("hits, bytes served, and ")
-	«add ("document root for each.<p>")
+	//add ("Shown here are the domains hosted on this server, and the ")
+	//if flShowStats
+		//add ("hits, bytes served, and ")
+	//add ("document root for each.<p>")
 	add (html.table.render (adrTable));
 	html.table.delete (adrTable);
 	

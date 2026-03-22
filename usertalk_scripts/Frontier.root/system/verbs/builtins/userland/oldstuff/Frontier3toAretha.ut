@@ -4,24 +4,24 @@ on do (adr) {
 	if defined (adr^) {
 		msg (nameof (adr^));
 		delete (adr)}};
-bundle { «do the top level
+bundle { //do the top level
 	do (@root. examples);
 	do (@root. helptext);
 	do (@root. people);
 	do (@root. readme)};
-bundle { «do the suites table
+bundle { //do the suites table
 	do (@suites. backups);
 	do (@suites. buglist);
 	do (@suites. docs);
 	do (@suites. readme);
 	do (@suites. samples);
 	do (@suites. tablemap)};
-bundle { «do the system.extensions table
+bundle { //do the system.extensions table
 	do (@system.extensions.locker)};
-bundle { «do the system startup table
+bundle { //do the system startup table
 	do (@system.startup.installcomplete);
 	do (@system.startup.firsttime)};
-bundle { «do the user table
+bundle { //do the user table
 	do (@user.infodialog);
 	do (@user.login);
 	do (@user.pathpatcher);

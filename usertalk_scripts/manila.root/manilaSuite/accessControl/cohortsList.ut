@@ -1,8 +1,8 @@
-«on cohortsList (pta)
+//on cohortsList (pta)
 on cohortsList (pta, maxCohortEntries=nil) {
-	«manilaSuite.AccessControl.cohortsList : 04/05/20, 16:45:31 by DAB
-		«returns a list of cohort names for which contains this member key
-		«was manilaFixer.accessControl.cohortsList : 02/02/21, 15:05:01 by DAB
+	//manilaSuite.AccessControl.cohortsList : 04/05/20, 16:45:31 by DAB
+		//returns a list of cohort names for which contains this member key
+		//was manilaFixer.accessControl.cohortsList : 02/02/21, 15:05:01 by DAB
 	local (lst = {});
 	
 	local (adrSite = manilaSuite.getManilaSiteAddress(pta));

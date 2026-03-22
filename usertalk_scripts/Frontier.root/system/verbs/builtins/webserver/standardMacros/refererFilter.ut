@@ -8,4 +8,4 @@ on refererFilter (referer, matchString, returnString) {
 	else {
 		if referer contains matchString {
 			return (returnString)}};
-	return ("")}; « return empty string if condition is not met.
+	return ("")}; // return empty string if condition is not met.

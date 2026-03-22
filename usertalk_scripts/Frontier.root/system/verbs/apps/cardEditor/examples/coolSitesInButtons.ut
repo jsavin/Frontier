@@ -8,7 +8,7 @@ for i = 1 to sizeof (adr^) {
 	local (buttontext = nameof (adr^ [i]));
 	local (buttonname = "button" + i);
 	cardEditor.newObject (card.types.buttonType, buttonname, buttontext, webaddress);
-	bundle { «set up attributes of new object
+	bundle { //set up attributes of new object
 		local (atts);
 		new (tableType, @atts);
 		atts.rect = rectangle.set (t, l, b, r);
@@ -22,7 +22,7 @@ for i = 1 to sizeof (adr^) {
 		atts.filc = rgb.set (-1, -1, -1);
 		atts.txtc = rgb.set (0, 0, 0);
 		atts.frmc = rgb.set (0, 0, 0);
-		atts.flag = false; «it's not the default button
+		atts.flag = false; //it's not the default button
 		atts.lang = 'NURL';
 		atts.font = "geneva";
 		atts.size = 9;

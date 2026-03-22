@@ -1,19 +1,19 @@
 on getGuestSubtable (logname) {
-	«Changes
-		«3/31/05; 3:02:08 AM by JES
-			«Find the top-level table in the log guest database by looking at system.temp.log.adrLogTopTable, instead of addressing by index[1] here. Should (once and for all) prevent "item #1 not defined" errors.
-			«system.temp.log.adrLogTopTable is set by log.getCurrentFile.
-		«1/8/99; 9:20:55 AM by DW, work around kernel bug
-			«when log.getCurrentFile is called from an agent at midnight it fails to create the table, so we miss logging that one event until the kernel is fixed. in the meantime, I want to catch the next items without failing.
-		«12/14/98; 8:13:56 PM by DW
-			«This is the basic log access routine. Give me the name of a log, and I'll return you the address of the table containing its log.
+	//Changes
+		//3/31/05; 3:02:08 AM by JES
+			//Find the top-level table in the log guest database by looking at system.temp.log.adrLogTopTable, instead of addressing by index[1] here. Should (once and for all) prevent "item #1 not defined" errors.
+			//system.temp.log.adrLogTopTable is set by log.getCurrentFile.
+		//1/8/99; 9:20:55 AM by DW, work around kernel bug
+			//when log.getCurrentFile is called from an agent at midnight it fails to create the table, so we miss logging that one event until the kernel is fixed. in the meantime, I want to catch the next items without failing.
+		//12/14/98; 8:13:56 PM by DW
+			//This is the basic log access routine. Give me the name of a log, and I'll return you the address of the table containing its log.
 	
 	local (f = log.getCurrentFile ());
-	«bundle //work around kernel bug, 1/8/99 DW
-		«local (adrtopitem = @[f] [1])
-		«if typeof (adrtopitem^) != tabletype
-			«new (tabletype, @[f].[date.shortstring (clock.now ())])
-			«delete (adrtopitem)
+	//bundle //work around kernel bug, 1/8/99 DW
+		//local (adrtopitem = @[f] [1])
+		//if typeof (adrtopitem^) != tabletype
+			//new (tabletype, @[f].[date.shortstring (clock.now ())])
+			//delete (adrtopitem)
 	
 	local (adrsubtable = @system.temp.log.adrLogTopTable^.[logname]);
 	if not defined (adrsubtable^) {

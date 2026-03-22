@@ -1,12 +1,12 @@
 on finder2Click (path) {
 	local (filetype);
 	filetype = file.type (path);
-	«msg (filetype)
+	//msg (filetype)
 	local (adrScript = @Frontier.clickers.["type" + filetype]);
 	if not defined (adrScript^) {
 		adrScript = @Frontier.clickers.["type????"]};
 	
-	if not defined (system.deskscripts) { «make sure the table is there
+	if not defined (system.deskscripts) { //make sure the table is there
 		new (tableType, @system.deskscripts)};
 	
 	local (returnedVal);

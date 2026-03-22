@@ -1,11 +1,11 @@
 on isValidEmailAddress (s) {
-	«Changes
-		«10/15/04; 6:01:15 PM by JES
-			«Check an email address, s, for conformance to RFC 822 mailbox syntax.
-				«Returns true if s is a valid email address according to RFC 822.
-				«Errors are notified by a scriptError if the email address is not valid.
-				«Copyright David Bayly, Jobsurf Ltd 99/08/28, 21:53:04 
-					«Permission is hereby granted to make free use of this script as long as this copyright is retained.
+	//Changes
+		//10/15/04; 6:01:15 PM by JES
+			//Check an email address, s, for conformance to RFC 822 mailbox syntax.
+				//Returns true if s is a valid email address according to RFC 822.
+				//Errors are notified by a scriptError if the email address is not valid.
+				//Copyright David Bayly, Jobsurf Ltd 99/08/28, 21:53:04 
+					//Permission is hereby granted to make free use of this script as long as this copyright is retained.
 	on createStack () { //clone of stack.create that puts stacks in temp 
 		if frontier.version () >= 5 { //store the stack in the temp table
 			table.surepath ("temp.stack.pool.x");
@@ -275,8 +275,8 @@ on isValidEmailAddress (s) {
 	else {
 		stack.dispose (stackAdr);
 		scriptError ("string.isValidEmailAddress: " + tryError)}};
-«bundle //testing
-	«string.isValidEmailAddress ("webmaster@userland.com")
-		«true
-	«string.isValidEmailAddress ("webmaster@userland@com>")
-		«true
+//bundle //testing
+	//string.isValidEmailAddress ("webmaster@userland.com")
+		//true
+	//string.isValidEmailAddress ("webmaster@userland@com>")
+		//true

@@ -6,5 +6,5 @@ on getFrontWindowURL () {
 	windowinfo = netscape.getWindowInfo (windowlist [1]);
 	return (windowinfo [1])};
 
-«bundle «test code
-	«dialog.alert (getFrontWindowURL ())
+//bundle //test code
+	//dialog.alert (getFrontWindowURL ())

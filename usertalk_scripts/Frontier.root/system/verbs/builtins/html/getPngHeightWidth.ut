@@ -1,7 +1,7 @@
 on getPngHeightWidth (f) {
-	«Change notes:
-		«3/5/07; 11:17:58 AM by LL
-			«Created.
+	//Change notes:
+		//3/5/07; 11:17:58 AM by LL
+			//Created.
 	local (signature, height, width, s, hwlist = {});
 	case typeOf (f) {
 		addressType {
@@ -22,5 +22,5 @@ on getPngHeightWidth (f) {
 	hwList = hwList + height;
 	hwList = hwList + width;
 	return (hwList)};
-«getPngHeightWidth ("C:\\testImage.png")
-«getPngHeightWidth (@scratchpad.testPngImage)
+//getPngHeightWidth ("C:\\testImage.png")
+//getPngHeightWidth (@scratchpad.testPngImage)

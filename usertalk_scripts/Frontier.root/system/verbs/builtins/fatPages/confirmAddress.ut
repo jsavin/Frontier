@@ -1,7 +1,7 @@
 on confirmAddress (adr) {
-	«Changes
-		«3/31/2004; 1:37:38 PM by JES
-			«Use string.popFileFromAddress to shorten the address in the replace confirmation dialog.
+	//Changes
+		//3/31/2004; 1:37:38 PM by JES
+			//Use string.popFileFromAddress to shorten the address in the replace confirmation dialog.
 	loop { //get destination address from the user, confirmation
 		on popPath (s) {
 			local (i, flbrackets = false, ch);

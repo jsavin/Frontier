@@ -1,4 +1,4 @@
-on abortStream (stream) { «Close a stream immediately
+on abortStream (stream) { //Close a stream immediately
 	if defined (user.netEvents.listens.[stream]) {
 		delete (@user.netEvents.listens.[stream])};
 	return (appleEvent (netEvents.id, 'WAPI', 'ABOR',  '----', long (stream)))}

@@ -20,8 +20,8 @@ on mapNetworkDrive (drive, share) {
 	return (boolean (com.callScript (s, "VBScript", "Main", {drive, share})))};
 bundle { //test code
 	winShell.mapNetworkDrive ("F:", "\\\\Madrid\\D Drive")
-		«true;
+		//true;
 	winShell.mapNetworkDrive ("G:", "\\\\Madrid\\C Drive")
-		«true;
+		//true;
 	winShell.mapNetworkDrive ("G:", "\\\\Cobra\\Apache")
-		«false}
+		//false}

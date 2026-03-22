@@ -1,8 +1,8 @@
-«Changes
-	«8/14/01; 9:07:56 AM by DW
-		«Runs in a separate thread, watching a mail account you specify. When a message appears, if its subject is the secret subject, post the contents of the message to your Blogger blog.
-		«This script is derived from Radio's mail-to-weblog feature, myUserLandSuite.blog.checkMail.
-		«http://frontier.userland.com/blogger#mailToBlog
+//Changes
+	//8/14/01; 9:07:56 AM by DW
+		//Runs in a separate thread, watching a mail account you specify. When a message appears, if its subject is the secret subject, post the contents of the message to your Blogger blog.
+		//This script is derived from Radio's mail-to-weblog feature, myUserLandSuite.blog.checkMail.
+		//http://frontier.userland.com/blogger#mailToBlog
 
 blogger.init ();
 if user.blogger.mailToBlog.enabled {

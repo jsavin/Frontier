@@ -1,12 +1,12 @@
 on getLanguageTableAddress (pta = nil) {
-	«4/17/00; 1:22:19 AM by JES
-	«Returns the address of the language table corresponding to the language specified in the page table.
-		«If the page table specifies languageTableAddress, return that address
-		«If the page table does not specify languageTableAddress, return the address to the table corresponding to the language in the page table
-		«If the page table does not specify a language or if there's no translation table for the specified language, return the default address, the address of the English language table
-	«Changes:
-		«05/01/00; 1:51:33 PM by JES
-			«added checking for global Frontier language pref at user.prefs.language -- this is the default fallback for Frontier.getString
+	//4/17/00; 1:22:19 AM by JES
+	//Returns the address of the language table corresponding to the language specified in the page table.
+		//If the page table specifies languageTableAddress, return that address
+		//If the page table does not specify languageTableAddress, return the address to the table corresponding to the language in the page table
+		//If the page table does not specify a language or if there's no translation table for the specified language, return the default address, the address of the English language table
+	//Changes:
+		//05/01/00; 1:51:33 PM by JES
+			//added checking for global Frontier language pref at user.prefs.language -- this is the default fallback for Frontier.getString
 	
 	if pta == nil {
 		pta = html.getPageTableAddress ()};

@@ -1,6 +1,6 @@
 on generate () {
-	«manilaSuite.passwords.generate : 05/02/13, 11:29:38 by DAB
-		«was the passwordmaker suite in bayly.root
+	//manilaSuite.passwords.generate : 05/02/13, 11:29:38 by DAB
+		//was the passwordmaker suite in bayly.root
 	local (sep = manilaSuite.passwords.data.seperators[random ( 1, sizeOf (manilaSuite.passwords.data.seperators))]);
 	on getWord(except = "") {
 		local (ix);
@@ -22,4 +22,4 @@ on generate () {
 	
 	return word1 + sep +  word2};
 manilaSuite.passwords.generate ()
-	«"sulks.dolls"
+	//"sulks.dolls"

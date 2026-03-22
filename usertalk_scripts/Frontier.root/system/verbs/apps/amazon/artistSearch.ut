@@ -1,13 +1,13 @@
 on artistSearch (artist, productline="music", page=1, flDetails=false) {
-	«Changes
-		«9/9/02; 9:34:50 PM by JES
-			«Created. Do an artist search on Amazon's database, and return the result.
-			«Parameters:
-				«artist -- the artist to search for
-				«productline -- the name of the product line to search
-				«page -- the page of results to return
-					«results are paged, since there may be *many* results. Default is to return the 1st page
-				«flDetails -- if true, the full results including sales ranking and reviews is returned. if false, then only catalog information is returned. default is false.
+	//Changes
+		//9/9/02; 9:34:50 PM by JES
+			//Created. Do an artist search on Amazon's database, and return the result.
+			//Parameters:
+				//artist -- the artist to search for
+				//productline -- the name of the product line to search
+				//page -- the page of results to return
+					//results are paged, since there may be *many* results. Default is to return the 1st page
+				//flDetails -- if true, the full results including sales ranking and reviews is returned. if false, then only catalog information is returned. default is false.
 	local (type = "lite");
 	if flDetails {
 		type = "heavy"};
@@ -19,5 +19,5 @@ on artistSearch (artist, productline="music", page=1, flDetails=false) {
 	return (amazon.call (nameOf (this^), t))};
 bundle { //test code
 	scratchpad.result = artistSearch ("painting over picasso")
-		«Here's an Easter Egg for you -- the guy who wrote this code played bass on the album returned by this search request. ;->;
+		//Here's an Easter Egg for you -- the guy who wrote this code played bass on the album returned by this search request. ;->;
 	edit (@scratchpad.result)}

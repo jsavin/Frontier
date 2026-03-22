@@ -1,6 +1,6 @@
 on deleteAssociatedFile (adrTable) {
-	«Delete a file on disk associated with a gem message. If a file exists and was deleted, return true, otherwise return false.
-		«04/13/00; 3:53:37 PM by PBS
+	//Delete a file on disk associated with a gem message. If a file exists and was deleted, return true, otherwise return false.
+		//04/13/00; 3:53:37 PM by PBS
 	
 	if defined (adrTable^.f) {
 		local (f = adrTable^.f);

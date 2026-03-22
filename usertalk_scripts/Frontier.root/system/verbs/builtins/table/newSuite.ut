@@ -1,14 +1,14 @@
 on newSuite (adrSuite) {
-	«Creates a new suite of scripts in Frontier's database
-		«and then creates a sub-table in the suites table
-		«it creates:
-			«a starter menu
-			«an installMenu script
-			«an empty readMe text window
-		«thanks to:
-			«Peter Dako, for writing the 1st version of this script
-	«8/31/99; 12:19:36 PM by DW
-		«Call system.menus.buildSuitesSubmenu when we're finished to update the Suites sub-menu of the Main menu.
+	//Creates a new suite of scripts in Frontier's database
+		//and then creates a sub-table in the suites table
+		//it creates:
+			//a starter menu
+			//an installMenu script
+			//an empty readMe text window
+		//thanks to:
+			//Peter Dako, for writing the 1st version of this script
+	//8/31/99; 12:19:36 PM by DW
+		//Call system.menus.buildSuitesSubmenu when we're finished to update the Suites sub-menu of the Main menu.
 	
 	local (suiteName = nameOf (adrSuite^));
 	local (prettySuiteName = string.upper (suiteName [1]) + string.mid (suiteName, 2, sizeof (suiteName)));
@@ -27,7 +27,7 @@ on newSuite (adrSuite) {
 		addCommand ("-", "");
 		addCommand ("Edit Menu", "edit (@" + suiteName + ".menu)");
 		addCommand ("Edit Table", "edit (@" + suiteName + ")");
-		bundle { «work around an apparent bug in the Windows version, 11/3/97 DW
+		bundle { //work around an apparent bug in the Windows version, 11/3/97 DW
 			op.firstSummit ();
 			if op.getLineText () == "" {
 				op.deleteLine ()}};
@@ -44,12 +44,12 @@ on newSuite (adrSuite) {
 		wp.insert ("[Things To Watch Out For]" + cr + cr);
 		window.zoom (adrReadMe);
 		target.clear ()};
-	«bundle //build the installMenu script
-		«local (adrInstallMenuScript = @adrSuite^.installMenu)
-		«new (scriptType, adrInstallMenuScript)
-		«target.set (adrInstallMenuScript)
-		«op.setLineText ("return (menu.install (@" + suiteName + ".menu))")
-		«target.clear ()
+	//bundle //build the installMenu script
+		//local (adrInstallMenuScript = @adrSuite^.installMenu)
+		//new (scriptType, adrInstallMenuScript)
+		//target.set (adrInstallMenuScript)
+		//op.setLineText ("return (menu.install (@" + suiteName + ".menu))")
+		//target.clear ()
 	bundle { //build the init script
 		local (adrInitScript = @adrSuite^.init);
 		new (scriptType, adrInitScript);
@@ -58,11 +58,11 @@ on newSuite (adrSuite) {
 		op.insert ("new (tableType, @user." + suitename + ")", right);
 		target.clear ()};
 	
-	«menu.importSuite (adrSuite, prettySuiteName) //add a command to the Suites menu
-	«menu.addSuite (adrSuite) «it appears in the menubar now
+	//menu.importSuite (adrSuite, prettySuiteName) //add a command to the Suites menu
+	//menu.addSuite (adrSuite) //it appears in the menubar now
 	
 	system.menus.buildSuitesSubmenu (); //add DG to Suites sub-menu of the Main menu
 	return (true)};
-«bundle //test code
-	«newSuite (@suites.blagooey)
-	«edit (@suites.blagooey)
+//bundle //test code
+	//newSuite (@suites.blagooey)
+	//edit (@suites.blagooey)

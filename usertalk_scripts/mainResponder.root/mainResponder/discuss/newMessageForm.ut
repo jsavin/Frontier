@@ -1,48 +1,48 @@
 on newMessageForm (inResponseTo=0, subject="", subjectprompt=nil, buttontext=nil, redirectUrl=nil, flShowFileUpload=false, fileprompt=nil, bodyprompt=nil, actionURL="", pta=nil, flEditableSubject=true, bodyText="", flLimitSubjectLength=true) {
-	«Changes:
-		«9/24/04; 3:21:29 AM by JES
-			«Increased size of subject input field to 70 (from 40). Increased maxlength of subject to 255 (from 60).
-		«2/3/04; 4:46:08 PM by JES
-			«Small formatting fix when the WYSIWYG editor is enabled, but the client doesn't support it.
-		«8/22/03; 12:55:26 PM by JES
-			«Slight formatting fix when not using the WYSIWYG editor.
-		«8/15/03; 3:29:16 PM by JES
-			«Added support for Mozilla's rich text editor.
-		«9/13/01; 2:07:45 PM by PBS
-			«New optional parameter flLimitSubjectLength. Default is true, previous behavior. No breakage. If false, then there's no maxLength attribute for the subject input field. Manila needed this.
-		«05/30/01; 11:20:22 PM by JES
-			«New optional parameter: bodyText, allows an app to set the default body of a new message. Manila uses this to give the user a second shot at adding a message when they forgot to enter a subject.
-		«2000:
-			«4/12/00; 1:08:45 PM by JES
-				«Localized using mainResponder.getString
-			«02/15/00; 11:15:48 AM by PBS
-				«Add the HTML Editor to the new message form if its not turned off and the user is running a compatible browser.
-			«10/02/00; 6:03:52 PM by JES
-				«Added WYSIWYG HTML editor.
-			«10/03/00; 2:38:30 PM by PBS
-				«Support a choice of editors -- none, HTML Tags, WYSIWYG.
-			«10/09/00; 6:25:39 PM by JES
-				«New optional parameter: flEditableSubject, determines whether the user gets a subject field to edit or not.
-		«1999:
-			«Wed, 20 May 1999 6:58:21 GMT by DW
-				«Added optional param, redirectUrl. If it is not nil, add a hidden field containing the URL, so the form can redirect to a more relevant place. 
-			«Thu, 20 May 1999 16:03:20 GMT by AR
-				«Added optional parameter, flShowFileUpload. It defaults to false. If true, a form element of type=file is displayed between the <textarea> and the submit button.
-				«Added optional parameter, fileprompt. It defaults to "Attach file". It's used as the label for the optional type=file form element.
-			«Fri, 21 May 1999 11:55:12 GMT by AR
-				«Added optional bodyprompt parameter, similar to subjectprompt and fileprompt.
-				«Added optional actionURL parameter to set the form action URL. If its value is the empty string (the default), we use pta^.responderattributes.urls^.discussPostMessage.
-			«5/22/99; 9:08:21 PM by DW
-				«Moved the fileUpload part after the subject, I want every new message form to begin with the subject prompt. Consistency counts!
-			«Mon, Aug 2, 1999 at 3:54:26 PM by PBS
-				«New optional pta parameter.
-			«9/23/99; 11:44:24 AM by PBS
-				«Encode quotes in the subject as &quot; HTML entities so the value attribute in the input box doesn't terminate prematurely. In other words:
-				«The tag might look like this:
-				«<input size="40" maxlength="60" name="subject" value="Re: "Foo" bar">
-				«Now it looks like this:
-				«<input size="40" maxlength="60" name="subject" value="Re: &quot;Foo&quot; bar">
-				«This is safe to do because the entity will be translated back into an actual quote. You don't end up with HTML entities in the subject field of the stored dg message, you get actual quote marks, as you should.
+	//Changes:
+		//9/24/04; 3:21:29 AM by JES
+			//Increased size of subject input field to 70 (from 40). Increased maxlength of subject to 255 (from 60).
+		//2/3/04; 4:46:08 PM by JES
+			//Small formatting fix when the WYSIWYG editor is enabled, but the client doesn't support it.
+		//8/22/03; 12:55:26 PM by JES
+			//Slight formatting fix when not using the WYSIWYG editor.
+		//8/15/03; 3:29:16 PM by JES
+			//Added support for Mozilla's rich text editor.
+		//9/13/01; 2:07:45 PM by PBS
+			//New optional parameter flLimitSubjectLength. Default is true, previous behavior. No breakage. If false, then there's no maxLength attribute for the subject input field. Manila needed this.
+		//05/30/01; 11:20:22 PM by JES
+			//New optional parameter: bodyText, allows an app to set the default body of a new message. Manila uses this to give the user a second shot at adding a message when they forgot to enter a subject.
+		//2000:
+			//4/12/00; 1:08:45 PM by JES
+				//Localized using mainResponder.getString
+			//02/15/00; 11:15:48 AM by PBS
+				//Add the HTML Editor to the new message form if its not turned off and the user is running a compatible browser.
+			//10/02/00; 6:03:52 PM by JES
+				//Added WYSIWYG HTML editor.
+			//10/03/00; 2:38:30 PM by PBS
+				//Support a choice of editors -- none, HTML Tags, WYSIWYG.
+			//10/09/00; 6:25:39 PM by JES
+				//New optional parameter: flEditableSubject, determines whether the user gets a subject field to edit or not.
+		//1999:
+			//Wed, 20 May 1999 6:58:21 GMT by DW
+				//Added optional param, redirectUrl. If it is not nil, add a hidden field containing the URL, so the form can redirect to a more relevant place. 
+			//Thu, 20 May 1999 16:03:20 GMT by AR
+				//Added optional parameter, flShowFileUpload. It defaults to false. If true, a form element of type=file is displayed between the <textarea> and the submit button.
+				//Added optional parameter, fileprompt. It defaults to "Attach file". It's used as the label for the optional type=file form element.
+			//Fri, 21 May 1999 11:55:12 GMT by AR
+				//Added optional bodyprompt parameter, similar to subjectprompt and fileprompt.
+				//Added optional actionURL parameter to set the form action URL. If its value is the empty string (the default), we use pta^.responderattributes.urls^.discussPostMessage.
+			//5/22/99; 9:08:21 PM by DW
+				//Moved the fileUpload part after the subject, I want every new message form to begin with the subject prompt. Consistency counts!
+			//Mon, Aug 2, 1999 at 3:54:26 PM by PBS
+				//New optional pta parameter.
+			//9/23/99; 11:44:24 AM by PBS
+				//Encode quotes in the subject as &quot; HTML entities so the value attribute in the input box doesn't terminate prematurely. In other words:
+				//The tag might look like this:
+				//<input size="40" maxlength="60" name="subject" value="Re: "Foo" bar">
+				//Now it looks like this:
+				//<input size="40" maxlength="60" name="subject" value="Re: &quot;Foo&quot; bar">
+				//This is safe to do because the entity will be translated back into an actual quote. You don't end up with HTML entities in the subject field of the stored dg message, you get actual quote marks, as you should.
 	
 	if pta == nil {
 		pta = html.getPageTableAddress ()};
@@ -80,11 +80,11 @@ on newMessageForm (inResponseTo=0, subject="", subjectprompt=nil, buttontext=nil
 	if redirectUrl != nil {
 		add ("<input type=\"hidden\" name=\"redirect\" value=\"" + redirectUrl + "\">")};
 	
-	«bundle // old code
-		«subject = string.replaceAll (subject, "\"", "&quot;") //PBS 9/23/99: turn quotes into HTML entities
-		«if subjectprompt == nil //4/12/00; 1:11:55 PM by JES: localize default subjectprompt
-			«subjectprompt = mainResponder.getString ("discuss.responseSubjectPrompt")
-		«add ("<b>" + subjectprompt + "</b><br><input size=\"40\" maxlength=\"60\" name=\"subject\" value=\"" + subject + "\"><p>")
+	//bundle // old code
+		//subject = string.replaceAll (subject, "\"", "&quot;") //PBS 9/23/99: turn quotes into HTML entities
+		//if subjectprompt == nil //4/12/00; 1:11:55 PM by JES: localize default subjectprompt
+			//subjectprompt = mainResponder.getString ("discuss.responseSubjectPrompt")
+		//add ("<b>" + subjectprompt + "</b><br><input size=\"40\" maxlength=\"60\" name=\"subject\" value=\"" + subject + "\"><p>")
 	if flEditableSubject { // 10/09/00 JES
 		subject = string.replaceAll (subject, "\"", "&quot;"); //PBS 9/23/99: turn quotes into HTML entities
 		if subjectprompt == nil { //4/12/00; 1:11:55 PM by JES: localize default subjectprompt
@@ -100,7 +100,7 @@ on newMessageForm (inResponseTo=0, subject="", subjectprompt=nil, buttontext=nil
 			fileprompt = mainResponder.getString ("discuss.attachFilePrompt")};
 		add ("<b>" + fileprompt + "</b><br><input type=\"file\" name=\"attachfile\"><p>")};
 	
-	«PBS 02/15/00: possibly add the HTML editor buttons and menus.
+	//PBS 02/15/00: possibly add the HTML editor buttons and menus.
 	if bodyprompt == nil { //4/12/00; 1:15:56 PM by JES: localized default bodyprompt
 		bodyprompt = mainResponder.getString ("discuss.messageTextPrompt")};
 	if editorText == "" {

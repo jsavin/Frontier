@@ -1,13 +1,13 @@
 on notifyNewsItemStatusChange (adrMsg, adrSite, url, adrMember, status) {
-	«Notify editors that the status of a news item has changed.
-		«7/21/07; 10:28:10 PM by LL
-			«Fixed a typo for the adrMsg parameter. 
-		«12/10/06; 3:13:08 PM by LL
-			«Fixed a bug where emails might not be sent if there were multiple recipients, because the recipient list was a sting, and coercion to a list failed. Instead, convert to a list by calling manilaSuite.admin.stringToList.
-		«04/30/00; 6:25:08 PM by PBS
-		«Changes:
-			«08/07/00; 9:11:05 PM by PBS
-				«Call manilaSuite.sendMail rather than tcp.sendMail.
+	//Notify editors that the status of a news item has changed.
+		//7/21/07; 10:28:10 PM by LL
+			//Fixed a typo for the adrMsg parameter. 
+		//12/10/06; 3:13:08 PM by LL
+			//Fixed a bug where emails might not be sent if there were multiple recipients, because the recipient list was a sting, and coercion to a list failed. Instead, convert to a list by calling manilaSuite.admin.stringToList.
+		//04/30/00; 6:25:08 PM by PBS
+		//Changes:
+			//08/07/00; 9:11:05 PM by PBS
+				//Call manilaSuite.sendMail rather than tcp.sendMail.
 	
 	local (adrNewsSite = @adrSite^.["#newsSite"]);
 	local (lowerStatus = string.lower (status));
@@ -53,7 +53,7 @@ on notifyNewsItemStatusChange (adrMsg, adrSite, url, adrMember, status) {
 		bundle { //send the email
 			local (oneRecipient);
 			for oneRecipient in recipients {
-				«try {tcp.sendMail (oneRecipient, emailSubject, emailMessage, sender)}
+				//try {tcp.sendMail (oneRecipient, emailSubject, emailMessage, sender)}
 				try {manilaSuite.sendMail (oneRecipient, emailSubject, emailMessage, sender)}}}}; //PBS 08/07/00: call manilaSuite.sendMail rather than tcp.sendMail
 	
 	return (true)}

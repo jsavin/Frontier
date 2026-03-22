@@ -1,9 +1,9 @@
 on enable (username, password, siteName) {
-	«Use the home page template.
-		«10/14/00; 2:08:11 PM by PBS
-		«Changes:
-			«12/10/01; 6:02:18 PM by PBS
-				«Toss the home page cache.
+	//Use the home page template.
+		//10/14/00; 2:08:11 PM by PBS
+		//Changes:
+			//12/10/01; 6:02:18 PM by PBS
+				//Toss the home page cache.
 	
 	bundle { //make sure this person is a managing editor of the site.
 		local (beginningErrorString = "Can't enable the home page template because ");

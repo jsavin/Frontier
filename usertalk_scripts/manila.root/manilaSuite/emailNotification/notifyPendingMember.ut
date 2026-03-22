@@ -1,9 +1,9 @@
 on notifyPendingMember (recipient, sender, subject, name, emailAddress, comment, pendingMembersUrl, siteUrl) {
-	«Changes:
-		«4/7/07; 1:22:26 PM by LL
-			«Include site URL with member approval notification email.
-		«3/19/07; 5:51:45 PM by LL
-			«Created
+	//Changes:
+		//4/7/07; 1:22:26 PM by LL
+			//Include site URL with member approval notification email.
+		//3/19/07; 5:51:45 PM by LL
+			//Created
 	local (msgtext = "", indentlevel = 0);
 	on add (s) {
 		msgtext = msgtext + string.filledstring ("\t", indentlevel) + s + "\r"};

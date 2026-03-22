@@ -1,10 +1,10 @@
 on callHandler (rpcServer="localhost", rpcPort=user.inetd.config.http.port, procedureName="", adrparamlist=nil, fldebug=false, ticksToTimeOut=nil, flShowMessages=true, rpcPath=nil, flAsynch=false, adrCallback=nil, extraInfo=nil, adrErrorCallback=nil, username="", password="") {
 	
-	«11/19/00; 11:15:19 PM by JES
-		«Call either an XML-RPC handler or a SOAP handler, depending on the pref at user.manila.prefs.flUseSoap
-	«Changes:
-		«02/04/01; 4:56:48 PM by JES
-			«Call soap.rpc.client with the correct actionUri and methodName. Prevents generation of XML with elements containing slash characters.
+	//11/19/00; 11:15:19 PM by JES
+		//Call either an XML-RPC handler or a SOAP handler, depending on the pref at user.manila.prefs.flUseSoap
+	//Changes:
+		//02/04/01; 4:56:48 PM by JES
+			//Call soap.rpc.client with the correct actionUri and methodName. Prevents generation of XML with elements containing slash characters.
 	
 	bundle { // make sure the pref exists
 		if not defined (user.manila) {
@@ -19,7 +19,7 @@ on callHandler (rpcServer="localhost", rpcPort=user.inetd.config.http.port, proc
 				user.manila.prefs.flUseSoap = false}}};
 	
 	if user.manila.prefs.flUseSoap {
-		«Transform the request parameters so they can be used to call a SOAP handler.
+		//Transform the request parameters so they can be used to call a SOAP handler.
 		local (action, ppath);
 		action = string.nthField (procedureName, ".", string.countFields (procedureName, "."));
 		ppath = "/" + string.mid (procedureName, 1, sizeof (procedureName) - (sizeof (action) + 1) );

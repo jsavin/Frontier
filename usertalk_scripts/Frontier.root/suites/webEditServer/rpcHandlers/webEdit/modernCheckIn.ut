@@ -1,24 +1,24 @@
 on modernCheckIn (userName, password, adrObject, data, objectType, note="") {
-	«Changes
-		«7/6/05; 7:38:10 PM by JES
-			«Pop off the file-part of the address when returning to the client. Closes a small security vulnerability, in addition to making confirmation dialogs on the client easier to read.
-		«9/24/99; 11:28:35 AM by PBS
-			«This is a new check-in interface. It's modern in that it's cleaner: rather than returning a string indicating success or failure, it returns a struct with information. This check-in interface takes the same arguments as the original check-in interface, which still exists and is still supported. What this interface allows you to do is write your own client-side code for checking in objects.
-				«Contents of the struct:
-					«resultCode -- a number.
-						«1 -- successful check-in.
-						«2 -- bad username or password. Failure.
-						«3 -- checked out by another user. Failure.
-						«4 -- parent or grandparent (etc.) is checked out by another user. Failure.
-						«5 -- child or grandchild (etc.) is checked out by another user. Failure.
-						«6 -- item not checked out. Failure.
-					«errorString -- if successful, it's empty. Otherwise it's a human-friendly error message.
-					«resultString -- if successful, a human-friendly success message.
-					«checkedOutBy -- if the object, or ancestor or descendant of the object, is currently checked out (see resultCodes #3, 4, and 5), this is the username of the person who has custody.
-					«flCheckedIn -- a simple boolean that indicates success or failure. If resultCode #1, then this is true, otherwise it's false.
-					«checkedOutAncestor -- if resultCode #4, this is the address of the ancestor that's already checked out.
-					«checkedOutDescendant -- if result #5, this is the address of the descendant that's already checked out.
-				«It calls the same callbacks as the older check-in interface.
+	//Changes
+		//7/6/05; 7:38:10 PM by JES
+			//Pop off the file-part of the address when returning to the client. Closes a small security vulnerability, in addition to making confirmation dialogs on the client easier to read.
+		//9/24/99; 11:28:35 AM by PBS
+			//This is a new check-in interface. It's modern in that it's cleaner: rather than returning a string indicating success or failure, it returns a struct with information. This check-in interface takes the same arguments as the original check-in interface, which still exists and is still supported. What this interface allows you to do is write your own client-side code for checking in objects.
+				//Contents of the struct:
+					//resultCode -- a number.
+						//1 -- successful check-in.
+						//2 -- bad username or password. Failure.
+						//3 -- checked out by another user. Failure.
+						//4 -- parent or grandparent (etc.) is checked out by another user. Failure.
+						//5 -- child or grandchild (etc.) is checked out by another user. Failure.
+						//6 -- item not checked out. Failure.
+					//errorString -- if successful, it's empty. Otherwise it's a human-friendly error message.
+					//resultString -- if successful, a human-friendly success message.
+					//checkedOutBy -- if the object, or ancestor or descendant of the object, is currently checked out (see resultCodes #3, 4, and 5), this is the username of the person who has custody.
+					//flCheckedIn -- a simple boolean that indicates success or failure. If resultCode #1, then this is true, otherwise it's false.
+					//checkedOutAncestor -- if resultCode #4, this is the address of the ancestor that's already checked out.
+					//checkedOutDescendant -- if result #5, this is the address of the descendant that's already checked out.
+				//It calls the same callbacks as the older check-in interface.
 	
 	local (adrPreCallback = @user.webEditServer.callbacks.preCheckIn);
 	local (adrCallback = @user.webEditServer.callbacks.checkIn);
@@ -71,7 +71,7 @@ on modernCheckIn (userName, password, adrObject, data, objectType, note="") {
 						return (true)}}}};
 		return (false)};
 	
-	«Make sure the object is checked out by this user, if the object already exists.
+	//Make sure the object is checked out by this user, if the object already exists.
 	if defined (adrObject^) {
 		if not (custody.isCheckedOutByUser (adrObject, userName)) {
 			if defined (user.custody.objects.[adrObject]) { //is it checked out by another user?
@@ -109,12 +109,12 @@ on modernCheckIn (userName, password, adrObject, data, objectType, note="") {
 	
 	webEditServer.callbackLoop (adrCallback, adrObject, userName, now, note);
 	
-	«Add to the imported objects log.
+	//Add to the imported objects log.
 	export.addToLog (adrObject, notes:"From " + username);
 	
 	filemenu.saveMyRoot (adrobject);
 	
-	«The check-in was successful.
+	//The check-in was successful.
 	resultTable.resultCode = 1;
 	resultTable.flCheckedIn = true;
 	resultTable.resultString = string.popFileFromAddress (adrObject) + " has been checked in.";

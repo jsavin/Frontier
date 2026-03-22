@@ -1,31 +1,31 @@
 on glossSub (whatGlossEntry, whatText, whatTarget=nil, anchor=nil, class=nil, title=nil, accesskey=nil, hreflang=nil, tabindex=nil, onmouseover="", onmouseout="", onclick="") {
-	«Changes:
-		«05/04/13, 10:13:40 by DAB
-			«Add optional paramaters for link attributes title, accesskey, hreflang, tabindex, onmouseover, onmouseout, onclick.
-		«11/19/97 at 2:37:30 PM by DW
-			«Written by Matt Neuburg, matt@tidbits.com, 
-				«Here's Matt's original posting that went with this script:
-					«Date:        08/17  5:07 PM
-					«Received:    08/17  5:26 PM
-					«From:        Matt Neuburg, matt@tidbits.com
-					«Reply-To:    frontier-central@scripting.com
-					«To:          frontier-central@scripting.com
-					«
-					«Here's a new version of glossSub() I just knocked together. As you know,
-					«glossSub() is a script you're supposed to call from a macro in a Web page
-					«object; it lets you use live link glossary entries, either normal <a>-type
-					«or automatically-generated glossPatch type, in such a way that the live
-					«link emanates from *any* text you desire, not just the text "hard-coded"
-					«into the link.
-					«
-					«This new version has two changes: (1) it decodes glossPatch expressions 
-					«all the way to HTML, and (2) it does targets, which a number of people have
-					«asked me about.
-					«
-					«Hope this proves useful. Share and enjoy (meaning, if there's something
-					«wrong with it, please post a fix!) - m.
-				«Converted to UserLand-style code, 11/19/97 at 2:37:30 PM by DW.
-				«For samples of calls see websites.samples.testNewFeatures.
+	//Changes:
+		//05/04/13, 10:13:40 by DAB
+			//Add optional paramaters for link attributes title, accesskey, hreflang, tabindex, onmouseover, onmouseout, onclick.
+		//11/19/97 at 2:37:30 PM by DW
+			//Written by Matt Neuburg, matt@tidbits.com, 
+				//Here's Matt's original posting that went with this script:
+					//Date:        08/17  5:07 PM
+					//Received:    08/17  5:26 PM
+					//From:        Matt Neuburg, matt@tidbits.com
+					//Reply-To:    frontier-central@scripting.com
+					//To:          frontier-central@scripting.com
+					//
+					//Here's a new version of glossSub() I just knocked together. As you know,
+					//glossSub() is a script you're supposed to call from a macro in a Web page
+					//object; it lets you use live link glossary entries, either normal <a>-type
+					//or automatically-generated glossPatch type, in such a way that the live
+					//link emanates from *any* text you desire, not just the text "hard-coded"
+					//into the link.
+					//
+					//This new version has two changes: (1) it decodes glossPatch expressions 
+					//all the way to HTML, and (2) it does targets, which a number of people have
+					//asked me about.
+					//
+					//Hope this proves useful. Share and enjoy (meaning, if there's something
+					//wrong with it, please post a fix!) - m.
+				//Converted to UserLand-style code, 11/19/97 at 2:37:30 PM by DW.
+				//For samples of calls see websites.samples.testNewFeatures.
 	
 	local (adrPageTable = html.getPageTableAddress ());
 	local (s = html.refGlossary (whatGlossEntry));

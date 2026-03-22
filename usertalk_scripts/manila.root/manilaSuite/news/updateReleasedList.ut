@@ -1,9 +1,9 @@
 on updateReleasedList (adrMsgTable, adrSite) {
-	«Changes
-		«1/31/06; 2:49:47 AM by JES
-			«Delete flPending flag at top-level of message table when indexing released items.
-	«Update the index of released news items, if this is a released news item.
-		«04/20/00; 1:36:47 AM by PBS
+	//Changes
+		//1/31/06; 2:49:47 AM by JES
+			//Delete flPending flag at top-level of message table when indexing released items.
+	//Update the index of released news items, if this is a released news item.
+		//04/20/00; 1:36:47 AM by PBS
 	
 	local (flDelete = false);
 	

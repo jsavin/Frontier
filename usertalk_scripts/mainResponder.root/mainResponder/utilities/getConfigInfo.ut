@@ -1,5 +1,5 @@
 on getConfigInfo (flIncludeHeader=true) {
-	«Get general config info about Frontier, mainResponder, and Manila.
+	//Get general config info about Frontier, mainResponder, and Manila.
 	local (mailtext = "", indentlevel = 0);
 	local (fldebug = false); //should false except when you're working on the script
 	on add (s) {
@@ -120,7 +120,7 @@ on getConfigInfo (flIncludeHeader=true) {
 		if defined (user.betty.queueOutgoing.table) {
 			ctOutgoingAsynchMessages = sizeOf (user.betty.queueOutgoing.table)};
 		addOnOff ("Allow by IP Only", user.betty.prefs.flAllowByIPOnly);
-		«addOnOff ("Keep Asynch Client Log", user.betty.prefs.flKeepAsynchClientLog)
+		//addOnOff ("Keep Asynch Client Log", user.betty.prefs.flKeepAsynchClientLog)
 		addOnOff ("Keep Server Log", user.betty.prefs.flKeepServerLog);
 		add ("RPC Client Default Path: " + user.betty.prefs.rpcClientDefaultPath);
 		add ("RPC Client Default Timeout: " + user.betty.prefs.rpcClientDefaultTimeout);

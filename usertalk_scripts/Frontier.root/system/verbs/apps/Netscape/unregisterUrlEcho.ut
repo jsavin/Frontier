@@ -1,4 +1,4 @@
-on unregisterUrlEcho (x) { «cancels URL echo
+on unregisterUrlEcho (x) { //cancels URL echo
 	pack (x, @x);
 	setbinarytype (@x, 'sign');
 	return (appleEvent (Netscape.id, 'WWW!', 'UNRU', '----', x))}

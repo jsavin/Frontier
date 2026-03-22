@@ -10,7 +10,7 @@ on getOne (attname, adrval, adrwindow=nil) {
 					adrval^ = adratts^.[attname];
 					return (true)}}}};
 	return (false)};
-«bundle //test code
-	«local (val)
-	«getOne ("type", @val)
-	«dialog.alert (val)
+//bundle //test code
+	//local (val)
+	//getOne ("type", @val)
+	//dialog.alert (val)

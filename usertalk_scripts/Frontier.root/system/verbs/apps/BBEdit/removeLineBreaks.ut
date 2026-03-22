@@ -1,2 +1,2 @@
-on removeLineBreaks (selectionOnly = nil) { «Removes hard line-break characters from a document, making it suitable for soft-wrapping.
+on removeLineBreaks (selectionOnly = nil) { //Removes hard line-break characters from a document, making it suitable for soft-wrapping.
 	return (appleEvent (BBEdit.id, 'R*ch', 'RHLB', 'Osel', boolean (selectionOnly)))}

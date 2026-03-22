@@ -1,9 +1,9 @@
 on getPageType (adrMsg, adrSite) {
-	«Return a string, the type of page: Message, Story, Picture, or Home Page.
-		«04/04/00; 10:56:01 PM by PBS
-		«Changes:
-			«04/25/00; 2:04:56 PM by PBS
-				«Support for news items.
+	//Return a string, the type of page: Message, Story, Picture, or Home Page.
+		//04/04/00; 10:56:01 PM by PBS
+		//Changes:
+			//04/25/00; 2:04:56 PM by PBS
+				//Support for news items.
 	
 	local (adrNewsSite = @adrSite^.["#newsSite"]);
 	

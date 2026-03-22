@@ -1,5 +1,5 @@
 on connect(adrSelf) {
-	«# make the connection
+	//# make the connection
 	try {
 		adrSelf^._socket = tcp.openStream( adrSelf^.TOC_SERV[1], adrSelf^.TOC_SERV[2]  )}
 	else {

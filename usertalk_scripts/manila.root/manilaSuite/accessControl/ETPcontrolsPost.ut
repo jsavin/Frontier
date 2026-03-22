@@ -1,16 +1,16 @@
 on ETPcontrolsPost () {
-	«manilaSuite.accessControl.ETPcontrolsPost : 04/05/21, 14:50:19 by DAB
-		«handle the form fields added in manilaFixer.accessControl.finalFilter 
-		«which set the access control values in the message table
-			«cohorts to set are in pta^.postargs.access_chohorts
-			«release times to be specified
-		«this is a callback, the following globals are set up in manilaSuite.callbacks.callbackLoop
-			«adrMsg
-			«adrSite
-			«language  (may be nil)
-			«url
-			«adrMember
-		«was manilaFixer.accessControl.newOrChangedCallback : 02/04/07, 17:30:55 by DAB
+	//manilaSuite.accessControl.ETPcontrolsPost : 04/05/21, 14:50:19 by DAB
+		//handle the form fields added in manilaFixer.accessControl.finalFilter 
+		//which set the access control values in the message table
+			//cohorts to set are in pta^.postargs.access_chohorts
+			//release times to be specified
+		//this is a callback, the following globals are set up in manilaSuite.callbacks.callbackLoop
+			//adrMsg
+			//adrSite
+			//language  (may be nil)
+			//url
+			//adrMember
+		//was manilaFixer.accessControl.newOrChangedCallback : 02/04/07, 17:30:55 by DAB
 	local (pta = html.getPageTableAddress());
 	
 	if not defined(pta^.postargs.accesscontrol_fields) {

@@ -1,16 +1,16 @@
 on addFile () {
-	«Changes
-		«3/13/07; 2:42:05 PM by LL
-			«If the file is uploaded to a Themes folder, setup the folder to be rescanned since the themes thread is going to be disabled.
-		«9/26/05; 9:56:19 PM by JES
-			«Ensure that the filename we use is the file name part sent by the browser, not the full file path on the client machine.
-		«9/26/05; 2:15:08 PM by JES
-			«New Yes/No option for opening databases at startup -- if Yes, we add to user.databases, and also open immediately.
-			«Special handling for root files uploaded to the Tools folder -- if enabled, we install the Tool immediately.
-		«7/27/05; 2:31:26 PM by JES
-			«Add replacement confirmation. Close opened files/databases before replacing, if possible.
-		«7/27/05; 4:23:35 AM by JES
-			«Created. Provide a way for admins to upload a file into their installation.
+	//Changes
+		//3/13/07; 2:42:05 PM by LL
+			//If the file is uploaded to a Themes folder, setup the folder to be rescanned since the themes thread is going to be disabled.
+		//9/26/05; 9:56:19 PM by JES
+			//Ensure that the filename we use is the file name part sent by the browser, not the full file path on the client machine.
+		//9/26/05; 2:15:08 PM by JES
+			//New Yes/No option for opening databases at startup -- if Yes, we add to user.databases, and also open immediately.
+			//Special handling for root files uploaded to the Tools folder -- if enabled, we install the Tool immediately.
+		//7/27/05; 2:31:26 PM by JES
+			//Add replacement confirmation. Close opened files/databases before replacing, if possible.
+		//7/27/05; 4:23:35 AM by JES
+			//Created. Provide a way for admins to upload a file into their installation.
 	local (pta = html.getPageTableAddress ());
 	pta^.title = "Add File";
 	

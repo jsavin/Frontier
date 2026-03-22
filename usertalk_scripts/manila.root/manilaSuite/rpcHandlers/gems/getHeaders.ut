@@ -1,7 +1,7 @@
 on getHeaders (siteName, ct, username="", password="") {
-	«Changes
-		«3/19/05; 11:30:13 PM by JES
-			«Created. Return headers for the most recent ct gems in the site.
+	//Changes
+		//3/19/05; 11:30:13 PM by JES
+			//Created. Return headers for the most recent ct gems in the site.
 	local (adrsite = manilaSuite.rpcUtils.getSiteAddress (siteName));
 	local (t); new (tableType, @t); //fake page table for manilaSuite.editors.editorialPageAccess call
 	t.newsSite = manilaSuite.getNewsSiteAddress (adrsite);

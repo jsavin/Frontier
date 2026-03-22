@@ -1,5 +1,5 @@
 on serviceIsAttachedToGroup (serviceName, groupName) {
-	«Does a group have access to a service?
+	//Does a group have access to a service?
 	local (adrGroup = people.getGroupTable (groupName));
 	if not (people.groupExists (groupName)) {
 		return (false)};

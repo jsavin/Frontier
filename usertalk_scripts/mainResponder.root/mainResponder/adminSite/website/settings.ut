@@ -1,11 +1,11 @@
 on settings () {
-	«Changes
-		«9/26/05; 6:01:33 PM by JES
-			«Change default title to "Settings" as passed into radio.prefs.browser.
-		«9/8/02; 3:56:17 PM by JES
-			«Add the title to the settings pages.
-		«6/12/02; 3:57:59 PM by JES
-			«Created. Hard-wired to browse the prefs in English. Later when language is an option this can be beefed-up. (DW)
+	//Changes
+		//9/26/05; 6:01:33 PM by JES
+			//Change default title to "Settings" as passed into radio.prefs.browser.
+		//9/8/02; 3:56:17 PM by JES
+			//Add the title to the settings pages.
+		//6/12/02; 3:57:59 PM by JES
+			//Created. Hard-wired to browse the prefs in English. Later when language is an option this can be beefed-up. (DW)
 	local (pta = html.getPageTableAddress ());
 	pta^.title = "Settings";
 	if pta^.searchArgs == "" or pta^.searchArgs == "page=1" { //default page has not title in the body of the page

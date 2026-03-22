@@ -1,5 +1,5 @@
-«10/22/98; 8:23:16 AM by DW
-	«copies all the needed parts that live in Frontier.root
+//10/22/98; 8:23:16 AM by DW
+	//copies all the needed parts that live in Frontier.root
 
 window.about ();
 local (adrpartslist = @mainresponder.data.partslist);

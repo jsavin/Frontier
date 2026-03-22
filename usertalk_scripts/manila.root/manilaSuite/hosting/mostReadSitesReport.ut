@@ -1,9 +1,9 @@
 on mostReadSitesReport (adrSitesTable, n, d=nil) {
-	«Generate a page listing the n most read sites.
-		«05/03/00; 3:11:34 PM by PBS
-		«Changes:
-			«05/15/00; 7:49:25 PM by JES
-				«localized
+	//Generate a page listing the n most read sites.
+		//05/03/00; 3:11:34 PM by PBS
+		//Changes:
+			//05/15/00; 7:49:25 PM by JES
+				//localized
 	
 	local (htmlText, indentLevel = 0);
 	on add (s) {

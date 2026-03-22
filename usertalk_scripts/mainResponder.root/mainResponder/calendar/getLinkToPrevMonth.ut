@@ -1,6 +1,6 @@
 on getLinkToPrevMonth (adrcal, d, url) {
-	«Get a link to the previous month in the calendar.
-		«03/20/01; 4:51:35 PM by PBS
+	//Get a link to the previous month in the calendar.
+		//03/20/01; 4:51:35 PM by PBS
 	
 	local (firstDay = mainResponder.calendar.getFirstDay (adrCal));
 	if firstDay >= date.firstOfMonth (d) {

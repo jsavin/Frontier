@@ -1,2 +1,2 @@
-on fetchurl (x) { «Return the contents of a URL.
+on fetchurl (x) { //Return the contents of a URL.
 	return (appleEvent (Eudora.id, 'GURL', 'FURL', '----', string (x)))}

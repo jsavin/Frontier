@@ -23,5 +23,5 @@ on initMessageTable (adrmsg, adrdirectoryinfo) {
 			local (pta = html.getpagetableaddress ());
 			if timeCreated (@adrdirectoryinfo^.cache) < pta^.newsSite^.directory.templateModified {
 				clearcache ()}}}};
-«bundle //test code
-	«initmessagetable (@superopendirectorymanilawebsite.["#discussionGroup"].messages.["0000004"])
+//bundle //test code
+	//initmessagetable (@superopendirectorymanilawebsite.["#discussionGroup"].messages.["0000004"])

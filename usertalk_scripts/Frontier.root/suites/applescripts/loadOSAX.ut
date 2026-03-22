@@ -21,16 +21,16 @@ on loadOSAX (f) {
 			if not defined (adrTable^) {
 				new (tableType, adrTable)};
 			
-			if not aeteParsed { «a hacked up copy of commercial.parseAete
-				on parseAete (appPath, adrTable) { «parse the app's aete resource and build a verb table
-					«version 2.1, copyright © 1992, 1993 UserLand Software Inc.
-						«9/24/92 dmb - first cut parsing the application aete resource directly
-						«2/11/93 dmb - updated for latest aete changes. handle special class properties.
-						«7/09/93 dmb - coerce parameter types. avoid language reserved word collisions
-						«7/30/93 dmb - add " = nil" to optional parameter definitions
-						«8/10/93 dmb - don't create items with names that match objectModel scripts
-						«9/02/93 dmb - handle 'c@#^' psuedo property
-						«9/15/93 dmb - fixed bug in 'c@#^' handling and post processing
+			if not aeteParsed { //a hacked up copy of commercial.parseAete
+				on parseAete (appPath, adrTable) { //parse the app's aete resource and build a verb table
+					//version 2.1, copyright © 1992, 1993 UserLand Software Inc.
+						//9/24/92 dmb - first cut parsing the application aete resource directly
+						//2/11/93 dmb - updated for latest aete changes. handle special class properties.
+						//7/09/93 dmb - coerce parameter types. avoid language reserved word collisions
+						//7/30/93 dmb - add " = nil" to optional parameter definitions
+						//8/10/93 dmb - don't create items with names that match objectModel scripts
+						//9/02/93 dmb - handle 'c@#^' psuedo property
+						//9/15/93 dmb - fixed bug in 'c@#^' handling and post processing
 					local (aete, ix = 1);
 					on getshort () {
 						local (n);
@@ -54,7 +54,7 @@ on loadOSAX (f) {
 					on getname () {
 						local (ixSpace, x);
 						x = string.lower (getstring ());
-						while string.countWords (x) > 1 { «make it an innerCase identifier
+						while string.countWords (x) > 1 { //make it an innerCase identifier
 							ixSpace = string.patternMatch (' ', x);
 							ch = string.upper (string.nthChar (x, ixSpace + 1));
 							x= string.firstWord (x) + ch + string.mid (x, ixSpace + 2, infinity)};
@@ -65,7 +65,7 @@ on loadOSAX (f) {
 					on skipbytes (n) {
 						ix = ix + n};
 					on align () {
-						if ix % 2 == 0 { «remember, we're in a 1-based world, so this is an odd byte
+						if ix % 2 == 0 { //remember, we're in a 1-based world, so this is an odd byte
 							++ix}};
 					on assignUnique (name, adrValue) {
 						on sameValue (adr1, adr2) {
@@ -98,7 +98,7 @@ on loadOSAX (f) {
 							close (adr);
 							return (true)};
 						on makeName (type) {
-							«based on the direct parameter's type, come up with a name for it
+							//based on the direct parameter's type, come up with a name for it
 							case type {
 								objspecType {
 									return ("obj")};
@@ -179,7 +179,7 @@ on loadOSAX (f) {
 							rtn = string.popTrailing (rtn, ' ');
 							rtn = string.replaceAll (rtn, " = nil", "");
 							rtn = string.replaceAll (rtn, " = 'no  '", "");
-							if string.length (rtn) > 1 { «has at least one param
+							if string.length (rtn) > 1 { //has at least one param
 								rtn = ", " + rtn};
 							rtn = suiteName + '.' + verb + " (" + appName + ".id" + rtn;
 							rtn = "return (" + rtn + ')';
@@ -196,21 +196,21 @@ on loadOSAX (f) {
 								paramtype = getstring4 ();
 								skipstring ();
 								align ();
-								«skipbytes (2) «param flags
-								flags = getshort (); «param flags
+								//skipbytes (2) //param flags
+								flags = getshort (); //param flags
 								if not isFirst {
 									hdr = hdr + ", "};
 								hdr = hdr + paramname;
-								if flags < 0 { «high bit set -> optional parameter
+								if flags < 0 { //high bit set -> optional parameter
 									hdr = hdr + " = nil"};
 								rtn = rtn + ", '" + id + "', " + makeParam (paramname, paramtype);
 								isFirst = false}};
 						ctevents = getshort ();
-						if mapSuite (suiteCode, @adrSuite) { «map all events of suite
+						if mapSuite (suiteCode, @adrSuite) { //map all events of suite
 							for i = 1 to sizeOf (adrSuite^) {
 								mapEvent (@adrSuite^ [i], adrTable)}};
 						eventprefix = "return (appleEvent (@" + nameOf (adrTable^) + ".code.AEVT";
-						for ixevent = 1 to ctevents { «add / overwrite event provided
+						for ixevent = 1 to ctevents { //add / overwrite event provided
 							local (eventname, comment, class, paramname, paramtype, id, hdr, rtn, adr);
 							eventname = getname ();
 							comment = getstring ();
@@ -220,22 +220,22 @@ on loadOSAX (f) {
 							adr = @adrTable^.[eventname];
 							hdr = "on " + eventname + " (";
 							rtn = eventprefix + class + id + ", '" + class + "', '" + id + "'";
-							skipbytes (4); «reply type
-							skipstring (); «reply description
+							skipbytes (4); //reply type
+							skipstring (); //reply description
 							align ();
-							skipbytes (2); «flags
-							paramtype = getstring4 (); «direct param type
-							skipstring (); «direct param description
+							skipbytes (2); //flags
+							paramtype = getstring4 (); //direct param type
+							skipstring (); //direct param description
 							align ();
-							skipbytes (2); «reply flags
-							if paramtype != 'null' { «has a direct param
+							skipbytes (2); //reply flags
+							if paramtype != 'null' { //has a direct param
 								local (paramname = makeName (paramtype));
 								hdr = hdr + paramname;
 								rtn = rtn + ", '----', " + makeParam (paramname, paramtype);
 								parseParams (false)}
 							else {
 								parseParams (true)};
-							hdr = hdr + ") «" + comment;
+							hdr = hdr + ") //" + comment;
 							rtn = rtn + "))";
 							makeScript (hdr, rtn, adr)}};
 					on parseClasses () {
@@ -247,15 +247,15 @@ on loadOSAX (f) {
 								name = getname ();
 								align ();
 								value = getstring4 ();
-								if value == 'c@#!' { «kAESpecialClassProperties
+								if value == 'c@#!' { //kAESpecialClassProperties
 									skipSpecialClass = true};
-								if value == 'c@#^' { «same props & elements as class
+								if value == 'c@#^' { //same props & elements as class
 									sameAsClass = getstring4 ();
-									description = "all properties of " + sameAsClass + '*'} «append asterix for postprocessing f & r
+									description = "all properties of " + sameAsClass + '*'} //append asterix for postprocessing f & r
 								else {
-									skipbytes (4); «property class
+									skipbytes (4); //property class
 									description = name};
-								s = getstring (); «what is it?
+								s = getstring (); //what is it?
 								if string.length (s) > 0 {
 									description = description + " -- " + s};
 								align ();
@@ -271,13 +271,13 @@ on loadOSAX (f) {
 								op.insert ("all elements of " + sameAsClass + '*', dir);
 								dir = down};
 							for ixelement = 1 to getshort () {
-								«skipbytes (4) «element class
+								//skipbytes (4) //element class
 								value = getstring4 ();
 								if not skipSpecialClass {
-									op.insert (string (value) + '*', dir); «append asterix for postprocessing f & r
+									op.insert (string (value) + '*', dir); //append asterix for postprocessing f & r
 									dir = down};
 								for ixkeyform = 1 to getshort () {
-									skipbytes (4)}}}; «ignore it
+									skipbytes (4)}}}; //ignore it
 						target.set (@adrTable^.objectHierarchy);
 						editMenu.setFontSize (9);
 						dir == noDirection;
@@ -286,7 +286,7 @@ on loadOSAX (f) {
 							classname = getname ();
 							align ();
 							classID = getstring4 ();
-							description = classname + " -- " + getstring (); «the class description
+							description = classname + " -- " + getstring (); //the class description
 							if dir == noDirection {
 								op.setLineText (description)}
 							else {
@@ -295,7 +295,7 @@ on loadOSAX (f) {
 							op.insert ("Properties:", dir);
 							align ();
 							parseProperties ();
-							if dir == right { «nothing added
+							if dir == right { //nothing added
 								op.deleteLine ()}
 							else {
 								op.go (left, 1)};
@@ -308,7 +308,7 @@ on loadOSAX (f) {
 								op.deleteLine ();
 								dir = down};
 							parseElements ();
-							if dir == right { «nothing added
+							if dir == right { //nothing added
 								op.deleteLine ()};
 							op.go (left, infinity)};
 						op.firstSummit ();
@@ -331,12 +331,12 @@ on loadOSAX (f) {
 								align ();
 								value = enum (getstring4 ());
 								assignUnique (name, @value);
-								«adr = @adrTable^.[name]
-								«if defined (adr^) «name already used
-									«if (typeOf (adr^) != binaryType) or (adr^ != value) «not a duplicate, use unique name
-										«table.assign (table.uniqueName (name, adrTable), value)
-								«else
-									«adr^ = value
+								//adr = @adrTable^.[name]
+								//if defined (adr^) //name already used
+									//if (typeOf (adr^) != binaryType) or (adr^ != value) //not a duplicate, use unique name
+										//table.assign (table.uniqueName (name, adrTable), value)
+								//else
+									//adr^ = value
 								skipstring ();
 								align ()}};
 						for ixEnumeration = 1 to getshort () {
@@ -345,31 +345,31 @@ on loadOSAX (f) {
 					on parseSuites () {
 						local (ixsuite, suiteCode, dir);
 						for ixsuite = 1 to getshort () {
-							getstring (); «name of the suite
-							skipstring (); «description
+							getstring (); //name of the suite
+							skipstring (); //description
 							align ();
 							suiteCode = getstring4 ();
-							skipbytes (4); «skip up to event array
+							skipbytes (4); //skip up to event array
 							parseEvents ();
 							parseClasses ();
 							parseComparisonOps ();
 							parseEnumerations ()}};
-					bundle { «make sure the table exists
+					bundle { //make sure the table exists
 						if not defined (adrTable^) {
 							new (tableType, adrTable)}};
-					bundle { «set up the class hierarchy outline
+					bundle { //set up the class hierarchy outline
 						new (outlineType, @adrTable^.objectHierarchy)};
-					bundle { «parse the resource
+					bundle { //parse the resource
 						local (name);
 						if !rez.getNthResource (appPath, 'aete', 1, @name, @aete) {
 							scriptError ("Couldn't find the resource.")};
-						string.setWordChar (' '); «make sure it's normal
-						skipbytes (6); «skip up to suite array
+						string.setWordChar (' '); //make sure it's normal
+						skipbytes (6); //skip up to suite array
 						parseSuites ()};
-					bundle { «post-process the class hierarchy outline
+					bundle { //post-process the class hierarchy outline
 						local (savedparams);
 						
-						table.assign (@savedparams, user.prefs.search); «save off
+						table.assign (@savedparams, user.prefs.search); //save off
 						user.prefs.search.wholewords = true;
 						user.prefs.search.wraparound = true;
 						
@@ -394,7 +394,7 @@ on loadOSAX (f) {
 						
 						target.clear ();
 						
-						table.assign (@user.prefs.search, savedparams)}; «restore originals
+						table.assign (@user.prefs.search, savedparams)}; //restore originals
 					msg ("");
 					window.open (adrTable);
 					return (true)};
@@ -406,8 +406,8 @@ on loadOSAX (f) {
 				new (tableType, adrCode)};
 			
 			local (adrObject = @adrCode^.[resName]);
-			«if not dialog.ask ("Address for new " + resType + "?", @adrObject)
-				«return (false)
+			//if not dialog.ask ("Address for new " + resType + "?", @adrObject)
+				//return (false)
 			
 			if confirmations {
 				if defined (adrObject^) {

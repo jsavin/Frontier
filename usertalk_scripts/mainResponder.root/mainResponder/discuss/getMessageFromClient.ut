@@ -1,13 +1,13 @@
 on getMessageFromClient (client, port) {
-	«Changes
-		«Sat, 06 Mar 1999 17:21:35 GMT by AR
-			«Deactivated adrmsg^.htmlCache code.
-		«11/6/99; 7:59:01 PM by PBS
-			«Pass incoming text through mainResponder.neuterText, to make extra sure that unwanted macros and tags are neutered.
-		«11/16/99; 11:31:59 AM by PBS
-			«Use mainResponder's memberCanEdit callback to allow managing editors of Manila sites to edit pages using the Edit in Frontier button.
-		«05/01/00; 7:48:38 PM by JES
-			«Changed getString calls to use a replacement table address instead of a lists
+	//Changes
+		//Sat, 06 Mar 1999 17:21:35 GMT by AR
+			//Deactivated adrmsg^.htmlCache code.
+		//11/6/99; 7:59:01 PM by PBS
+			//Pass incoming text through mainResponder.neuterText, to make extra sure that unwanted macros and tags are neutered.
+		//11/16/99; 11:31:59 AM by PBS
+			//Use mainResponder's memberCanEdit callback to allow managing editors of Manila sites to edit pages using the Edit in Frontier button.
+		//05/01/00; 7:48:38 PM by JES
+			//Changed getString calls to use a replacement table address instead of a lists
 	if client == "127.0.0.1" {
 		client = "localhost"};
 	local (xmltext = base64.decode (betty.rpc.client (client, port, "editorial.returnMessage")));
@@ -71,7 +71,7 @@ on getMessageFromClient (client, port) {
 	
 	local (adrmsg = mainresponder.discuss.getmessagetable (adrmsgnum^));
 	if adrmsg^.member != nameof (adrmemberinfo^) { //not the author of the message
-		«PBS 11/16/99: use the memberCanEdit callback to allow managing editors of Manila sites to use the Edit in Frontier button for all stories and messages.
+		//PBS 11/16/99: use the memberCanEdit callback to allow managing editors of Manila sites to use the Edit in Frontier button for all stories and messages.
 		if defined (config.mainResponder.callbacks.memberCanEdit) {
 			local (pta = html.getPageTableAddress ());
 			pta^.adrMsgToEdit = adrMsg;
@@ -92,7 +92,7 @@ on getMessageFromClient (client, port) {
 	if flalsolist {
 		adrmsg^.alsoListedIn = alsoListedList};
 	
-	«try {delete (@adrmsg^.htmlcache)}  // Deactivated.
+	//try {delete (@adrmsg^.htmlcache)}  // Deactivated.
 	try {delete (@adrmsg^.toptopicscache)};
 	filemenu.savemyroot (adrmsg);
 	

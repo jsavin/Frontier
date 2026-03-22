@@ -1,7 +1,7 @@
 on get (username, password, siteName, cohort) {
-	«manilaSuite.rpcHandlers.accesscontrol.configure.cohorts.get : 04/05/21, 09:53:13 by DAB
-		«returns list of members in cohort
-		«manilaFixer.rpcHandlers.accesscontrol.configure.cohorts.get : 02/03/15, 15:02:32 by DAB
+	//manilaSuite.rpcHandlers.accesscontrol.configure.cohorts.get : 04/05/21, 09:53:13 by DAB
+		//returns list of members in cohort
+		//manilaFixer.rpcHandlers.accesscontrol.configure.cohorts.get : 02/03/15, 15:02:32 by DAB
 	local (errStr = "Can't get members of cohort " + cohort + " because ");
 	manilaSuite.rpcUtils.dgAccessCheck (siteName, username, password, errStr);
 	local (adrSite = manilaSuite.rpcUtils.getSiteAddress (siteName));

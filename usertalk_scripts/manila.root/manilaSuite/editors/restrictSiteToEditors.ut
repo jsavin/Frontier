@@ -1,20 +1,20 @@
 on restrictSiteToEditors (pta, flMembersOnly=false) {
-	«Changes:
-		«1/6/06; 2:43:54 AM by JES
-			«If a callback errors starting with !, re-throw the error. Allows callbacks to do redirection.
-		«12/14/05; 1:40:36 AM by JES
-			«New optional parameter, flMembersOnly. If true, then we check for membership instead of editorial status. If rejected, we redirect to the members only page instead of the editors only page.
-				«(Both the Members Only and the Editors Only page are public.)
-		«5/23/05; 1:56:05 AM by JES
-			«Added callback support. Callbacks are at config.manila.callbacks.editorsOnlyTests. Each is called with the address of the site. If any returns false, then we bail out, and allow the page to be served. If none returns false, then we do our normal routine.
-		«3/7/05; 5:56:27 PM by JES
-			«Generalized authentication support to include machine readable formats wherever they reside in the site.
-		«10/11/03; 4:05:59 AM by JES
-			«Added support for HTTP authentication for syndication feeds: site RSS and scriptingNews2 feeds, and discussion group RSS feeds.
-		«09/19/00; 2:46:13 PM by PBS
-			«The /xml/externalEditorInfo.xml is also legal, so people can create Manila site nodes in Radio UserLand.
-		«01/20/00; 10:32:54 PM by PBS
-			«This site is restricted to editors only. If this person is an editor, they can view the site. If they're not an editor, or they're not logged in, they can view the login page only, but not the rest of the site. Update: the /xml/externalEditorInfo.xml is also legal, so people can create Manila site nodes in Radio UserLand.
+	//Changes:
+		//1/6/06; 2:43:54 AM by JES
+			//If a callback errors starting with !, re-throw the error. Allows callbacks to do redirection.
+		//12/14/05; 1:40:36 AM by JES
+			//New optional parameter, flMembersOnly. If true, then we check for membership instead of editorial status. If rejected, we redirect to the members only page instead of the editors only page.
+				//(Both the Members Only and the Editors Only page are public.)
+		//5/23/05; 1:56:05 AM by JES
+			//Added callback support. Callbacks are at config.manila.callbacks.editorsOnlyTests. Each is called with the address of the site. If any returns false, then we bail out, and allow the page to be served. If none returns false, then we do our normal routine.
+		//3/7/05; 5:56:27 PM by JES
+			//Generalized authentication support to include machine readable formats wherever they reside in the site.
+		//10/11/03; 4:05:59 AM by JES
+			//Added support for HTTP authentication for syndication feeds: site RSS and scriptingNews2 feeds, and discussion group RSS feeds.
+		//09/19/00; 2:46:13 PM by PBS
+			//The /xml/externalEditorInfo.xml is also legal, so people can create Manila site nodes in Radio UserLand.
+		//01/20/00; 10:32:54 PM by PBS
+			//This site is restricted to editors only. If this person is an editor, they can view the site. If they're not an editor, or they're not logged in, they can view the login page only, but not the rest of the site. Update: the /xml/externalEditorInfo.xml is also legal, so people can create Manila site nodes in Radio UserLand.
 	
 	local (flEditor = manilaSuite.editors.editorialTest (pta));
 	local (adrsite = manilaSuite.getSiteAddress (pta));
@@ -81,19 +81,19 @@ on restrictSiteToEditors (pta, flMembersOnly=false) {
 			lowerurl endswith ".xml" {
 				if checkUrl (lowerUrl, true) {
 					return (true)}}};
-		«bundle //old code
-			«if checkUrl (siteUrl + "xml/rss.xml", true)
-				«return (true)
-			«if checkUrl (siteUrl + "xml/scriptingNews2.xml", true)
-				«return (true)
-			«if checkUrl (siteUrl + "xml/rsd.xml", true)
-				«return (true)
-			«if checkUrl (manilaSuite.getUrl ("discussHomePage") + "rss.xml", true)
-				«return (true)
-			«if checkUrl (manilaSuite.getUrl ("discussHomePage") + "topicsRss.xml", true)
-				«return (true)
+		//bundle //old code
+			//if checkUrl (siteUrl + "xml/rss.xml", true)
+				//return (true)
+			//if checkUrl (siteUrl + "xml/scriptingNews2.xml", true)
+				//return (true)
+			//if checkUrl (siteUrl + "xml/rsd.xml", true)
+				//return (true)
+			//if checkUrl (manilaSuite.getUrl ("discussHomePage") + "rss.xml", true)
+				//return (true)
+			//if checkUrl (manilaSuite.getUrl ("discussHomePage") + "topicsRss.xml", true)
+				//return (true)
 		
-		«Allow for news item department RSS feeds
+		//Allow for news item department RSS feeds
 		if lowerUrl beginswith string.lower (manilaSuite.getUrl ("editorialNewsItems") + "departments/") {
 			if mainResponder.security.httpAuthentication (pta^.newsSite^.siteName, pta, groupname) {
 				return (true)}}};

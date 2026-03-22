@@ -1,6 +1,6 @@
 on checkIn (username, password, siteName) {
-	«Release custody of the site structure outline.
-		«02/11/00; 11:19:43 AM by PBS
+	//Release custody of the site structure outline.
+		//02/11/00; 11:19:43 AM by PBS
 	
 	local (adrSite = manilaSuite.rpcUtils.getSiteAddress (siteName));
 	local (adrObject = @adrSite^.["#hierarchy"].outline);

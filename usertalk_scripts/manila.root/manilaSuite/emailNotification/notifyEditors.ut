@@ -1,23 +1,23 @@
 on notifyEditors (adrMsg, adrSite, url, adrMember, flNew, language = nil) {
-	«Send out email notification to the editors that a message is new or changed.
-		«04/04/00; 9:36:25 PM by PBS
-		«Changes:
-			«05/01/00; 5:27:33 PM by PBS
-				«Support for email notification for new and changed news items.
-			«05/20/00; 9:30:26 PM by JES
-				«localized
-			«08/07/00; 9:12:45 PM by PBS
-				«Call manilaSuite.sendMail rather than tcp.sendMail.
-			«10/31/00; 8:32:47 PM by JES
-				«Don't send new message notification for new news items.
-			«11/14/2000; 6:39:34 PM by DW
-				«If it's an outline, send out OPML text. 
-				«Good for spreading the gospel of OPML.
-			«11/17/2000; 2:35:28 PM by DW
-				«Sending OPML text is no fun.
-				«Instead send indented text.
-			«05/07/01; 3:28:42 PM by JES
-				«Fixed a bug where emails might not be sent if there were multiple recipients, because the recipient list was a sting, and coercion to a list failed. Instead, convert to a list by calling manilaSuite.admin.stringToList.
+	//Send out email notification to the editors that a message is new or changed.
+		//04/04/00; 9:36:25 PM by PBS
+		//Changes:
+			//05/01/00; 5:27:33 PM by PBS
+				//Support for email notification for new and changed news items.
+			//05/20/00; 9:30:26 PM by JES
+				//localized
+			//08/07/00; 9:12:45 PM by PBS
+				//Call manilaSuite.sendMail rather than tcp.sendMail.
+			//10/31/00; 8:32:47 PM by JES
+				//Don't send new message notification for new news items.
+			//11/14/2000; 6:39:34 PM by DW
+				//If it's an outline, send out OPML text. 
+				//Good for spreading the gospel of OPML.
+			//11/17/2000; 2:35:28 PM by DW
+				//Sending OPML text is no fun.
+				//Instead send indented text.
+			//05/07/01; 3:28:42 PM by JES
+				//Fixed a bug where emails might not be sent if there were multiple recipients, because the recipient list was a sting, and coercion to a list failed. Instead, convert to a list by calling manilaSuite.admin.stringToList.
 	
 	local (adrNewsSite = @adrSite^.["#newsSite"]);
 	
@@ -29,7 +29,7 @@ on notifyEditors (adrMsg, adrSite, url, adrMember, flNew, language = nil) {
 			"message" {
 				if flNew {
 					if adrMsg^.body beginsWith "<newsItem>\r\t" { //10/31/00 JES: aviod double-notification of new news items caused by allowing callbacks to run, which was needed for search engine indexing
-						«The reason for comparing the string in the body is that there's no newsItem subtable in the message table, because the script that created the newsItem hasn't made the table yet. It can't, since it doesn't know where the message table is until after mainResponder creates the message... But mainResponder is our caller here.
+						//The reason for comparing the string in the body is that there's no newsItem subtable in the message table, because the script that created the newsItem hasn't made the table yet. It can't, since it doesn't know where the message table is until after mainResponder creates the message... But mainResponder is our caller here.
 						return (true)};
 					adrFlag = @adrNewsSite^.flNotifyNewMessages}
 				else {
@@ -87,7 +87,7 @@ on notifyEditors (adrMsg, adrSite, url, adrMember, flNew, language = nil) {
 		bundle { //send the email
 			local (oneRecipient);
 			for oneRecipient in recipients {
-				«try {tcp.sendMail (oneRecipient, emailSubject, emailMessage, sender)}
+				//try {tcp.sendMail (oneRecipient, emailSubject, emailMessage, sender)}
 				try {manilaSuite.sendMail (oneRecipient, emailSubject, emailMessage, sender)}}}}; //PBS 08/07/00: call manilaSuite.sendMail rather than tcp.sendMail
 	
 	return (true)}

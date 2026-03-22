@@ -1,7 +1,7 @@
 on browser (linecount, colors) { //a macro that returns HTML for the log
-	«Changes:
-		«4/14/00; 5:28:17 PM by JES
-			«localized
+	//Changes:
+		//4/14/00; 5:28:17 PM by JES
+			//localized
 	local (adrlog = log.getGuestSubTable ("mainResponder"));
 	linecount = number (linecount); //I keep getting bit by this, when called thru a macro, it's a string DW
 	
@@ -69,11 +69,11 @@ on browser (linecount, colors) { //a macro that returns HTML for the log
 						if searchargs != "" {
 							link = link + "?" + searchargs}};
 					add (td ("<a href=\"" + link + "\">" + url + "</a>"))};
-				«bundle //add the host
-					«if defined (host)
-						«add (td (host))
-					«else
-						«add (td ("&nbsp;"))
+				//bundle //add the host
+					//if defined (host)
+						//add (td (host))
+					//else
+						//add (td ("&nbsp;"))
 				bundle { //add the referrer
 					if defined (referrer) {
 						add (td ("<a href=\"" + referrer + "\">*</a>"))}
@@ -83,13 +83,13 @@ on browser (linecount, colors) { //a macro that returns HTML for the log
 			
 			adritem^.htmlcache = string.delete (htmltext, 1, ixhtmltext);
 			adritem^.htmlcache = string.delete (adritem^.htmlcache, sizeof (adritem^.htmlcache), 1)};
-		«linecount--
-		«if linecount <= 0
-			«break};
+		//linecount--
+		//if linecount <= 0
+			//break};
 	
-	«for ixlog = sizelog downto 1
-		«adrhourtable = @adrlog^ [ixlog] //generate in reverse-chronologic order
-		«for j = sizeof (adrhourtable^) downto 1
+	//for ixlog = sizelog downto 1
+		//adrhourtable = @adrlog^ [ixlog] //generate in reverse-chronologic order
+		//for j = sizeof (adrhourtable^) downto 1
 	
 	add ("</table>"); indentlevel--;
 	

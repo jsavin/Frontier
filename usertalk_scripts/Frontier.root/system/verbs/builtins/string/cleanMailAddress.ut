@@ -1,5 +1,5 @@
 on cleanMailAddress (email) {
-	«10/31/97 at 6:53:16 AM by DW -- moved from toys.cleanMailAddress
+	//10/31/97 at 6:53:16 AM by DW -- moved from toys.cleanMailAddress
 	
 	local (len = sizeof (email), ix, mailpart = "", commentpart = "", ch);
 	if email beginswith "\"" {
@@ -17,8 +17,8 @@ on cleanMailAddress (email) {
 		mailpart = string.mid (email, ix + 1, len - ix - 1);
 		commentpart = string.mid (email, 1, ix - 2);
 		return (mailpart + " (" + commentpart + ")")};
-	return (email)}; «no change, not a recognized format
+	return (email)}; //no change, not a recognized format
 
-«bundle «test code
-	«dialog.alert (cleanMailAddress ("\"Avraham Tzur\" <tzur@interval.com>"))
-	«dialog.alert (cleanMailAddress ("Carl Stork <carls@microsoft.com>"))
+//bundle //test code
+	//dialog.alert (cleanMailAddress ("\"Avraham Tzur\" <tzur@interval.com>"))
+	//dialog.alert (cleanMailAddress ("Carl Stork <carls@microsoft.com>"))

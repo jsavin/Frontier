@@ -1,6 +1,6 @@
 on displayScreenShot (themeName=nil, pta=nil) {
-	«Return a screen shot for a theme.
-		«05/26/00; 1:14:53 AM by PBS
+	//Return a screen shot for a theme.
+		//05/26/00; 1:14:53 AM by PBS
 	
 	if pta == nil {
 		pta = parentOf (code)};

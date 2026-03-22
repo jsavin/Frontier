@@ -1,7 +1,7 @@
 on getMemberInfoAddress (pta, subtableID, flBySitename = false) {
-	«manilaSuite.AccessControl.getMemberInfoAddress : 04/05/20, 17:44:01 by DAB
-		«a bottleneck script for address of data stored in member record.
-		«based on manilaFixer.utilities.getMemberInfoAddress : 02/08/04, 10:14:52 by DAB
+	//manilaSuite.AccessControl.getMemberInfoAddress : 04/05/20, 17:44:01 by DAB
+		//a bottleneck script for address of data stored in member record.
+		//based on manilaFixer.utilities.getMemberInfoAddress : 02/08/04, 10:14:52 by DAB
 	if not defined(pta^.adrMemberInfo) {
 		return false};
 	if not defined(pta^.adrMemberInfo^.[subtableID]) {

@@ -1,7 +1,7 @@
 on handler (pta, adrObject) {
-	«manilaSuite.sitePrefs.handlers.signoutMembersBox : 04/05/15, 21:19:42 by DAB
-		«factored out of manilaSuite.admin.advancedPage (with extreme prejudice) 
-	«messages at manilaData.localization.languages.english.strings.admin
+	//manilaSuite.sitePrefs.handlers.signoutMembersBox : 04/05/15, 21:19:42 by DAB
+		//factored out of manilaSuite.admin.advancedPage (with extreme prejudice) 
+	//messages at manilaData.localization.languages.english.strings.admin
 	local (advancedPageName = pta^.pathArgs);
 	local (adrSite= manilaSuite.getManilaSiteAddress(pta));
 	local (flMemberHasPike = manilaSuite.pike.memberHasPike (pta));
@@ -42,7 +42,7 @@ on handler (pta, adrObject) {
 				
 				manilaSuite.custody.checkInAndOut(adrObject, pta^.adrMemberInfo, pta^.adrSiteRootTable, false);
 				add(manilaSuite.sitePrefs.utility.successMessage(pta, "admin.signOutMembersBoxRestoreSuccess", @replacementTable));
-				«cause the containing frame to refresh
+				//cause the containing frame to refresh
 				add("\r<script language = 'javascript'>parent.location='" + pta^.fname + "$" + advancedPageName + "?" +shortname +"=1'</script>")};
 			defined (pta^.postArgs.no) { //cancel restore 05/04/26, 17:41:39 by DAB
 				}}
@@ -59,7 +59,7 @@ on handler (pta, adrObject) {
 			manilaSuite.custody.checkInAndOut(adrObject, pta^.adrMemberInfo, pta^.adrSiteRootTable, false);
 			
 			add(manilaSuite.sitePrefs.utility.successMessage(pta, "admin.signOutMembersBoxUpdateSuccess", @replacementTable));
-			«cause the containing frame to refresh
+			//cause the containing frame to refresh
 			add("\r<script language = 'javascript'>parent.location='" + pta^.fname + "$" + advancedPageName + "?" +shortname +"=1'</script>")}};
 	
 	if pta^.searchArgs != "" {

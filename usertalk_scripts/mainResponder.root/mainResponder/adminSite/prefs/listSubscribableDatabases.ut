@@ -1,21 +1,21 @@
 on listSubscribableDatabases () {
-	«Changes
-		«9/30/05; 3:06:33 AM by JES
-			«Fix typo in tool-tip: Click, not Clock.
-		«7/27/05; 5:20:39 AM by JES
-			«Added a link below the databases to the Add File page.
-		«7/19/05; 3:55:18 AM by JES
-			«For databases with >0 changes, link the change count to the manageChanges page for the database.
-		«7/19/05; 3:38:06 AM by JES
-			«Improved formatting of the table. Database name is now a link to download (a copy of) the database. Added file size column.
-		«6/16/05; 4:17:30 AM by JES
-			«Add checkbox for setting a checkpoint. Updates checked in after setting a checkpoint are not sent to subscriers until after the checkpoint is removed.
-		«9/7/02; 10:22:30 PM by JES
-			«Be more tolerant about which databases are allowed to be subscribed.
-		«8/26/02; 5:52:49 PM by JES
-			«Created. Lists databases on this server, with checkboxes for whether or not the database should be subscribable.
+	//Changes
+		//9/30/05; 3:06:33 AM by JES
+			//Fix typo in tool-tip: Click, not Clock.
+		//7/27/05; 5:20:39 AM by JES
+			//Added a link below the databases to the Add File page.
+		//7/19/05; 3:55:18 AM by JES
+			//For databases with >0 changes, link the change count to the manageChanges page for the database.
+		//7/19/05; 3:38:06 AM by JES
+			//Improved formatting of the table. Database name is now a link to download (a copy of) the database. Added file size column.
+		//6/16/05; 4:17:30 AM by JES
+			//Add checkbox for setting a checkpoint. Updates checked in after setting a checkpoint are not sent to subscriers until after the checkpoint is removed.
+		//9/7/02; 10:22:30 PM by JES
+			//Be more tolerant about which databases are allowed to be subscribed.
+		//8/26/02; 5:52:49 PM by JES
+			//Created. Lists databases on this server, with checkboxes for whether or not the database should be subscribable.
 	local (pta = html.getPageTableAddress ());
-	«workspace.pt = pta^
+	//workspace.pt = pta^
 	
 	local (bgcolors = {pta^.trbg1, pta^.trbg2});
 	
@@ -175,13 +175,13 @@ on listSubscribableDatabases () {
 					changesLink = "<a href=\"/manageChanges$" + dbrelpath + "\" title=\"Click to manage changes in this database...\">" + adrdb^.changes + "</a>"};
 				add ("<td class=\"small\" align=\"right\">" + changesLink + "&nbsp;</td>");
 				add ("</tr>")};
-			};«add ("<tr><td>&nbsp;</td></tr>"); ct = 0
+			};//add ("<tr><td>&nbsp;</td></tr>"); ct = 0
 		
 		add ("</table>")};
 	
 	add ("<p>You can add a database to your server via the <a href=\"/addFile\">Add File</a> page.</p>");
 	
 	return (htmltext)};
-«bundle //test code
-	«html.setPageTableAddress (@workspace.pt)
-	«listSubscribableDatabases ()
+//bundle //test code
+	//html.setPageTableAddress (@workspace.pt)
+	//listSubscribableDatabases ()

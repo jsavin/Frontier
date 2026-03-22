@@ -1,13 +1,13 @@
 on editAdvancedItemInPikePage (pta=nil) {
-	«Edit an item from the Advanced panel in Pike.
-		«01/13/00; 8:52:48 PM by PBS
-		«Changes:
-			«02/11/00; 2:39:41 PM by PBS
-				«Make sure the item isn't being edited by somebody else. If it's okay to edit, then check it out.
-			«04/21/00; 2:39:37 PM by JES
-				«localized
-			«05/01/00; 2:38:56 PM by JES
-				«getString calls now pass the address of a replacement table instead of a list.
+	//Edit an item from the Advanced panel in Pike.
+		//01/13/00; 8:52:48 PM by PBS
+		//Changes:
+			//02/11/00; 2:39:41 PM by PBS
+				//Make sure the item isn't being edited by somebody else. If it's okay to edit, then check it out.
+			//04/21/00; 2:39:37 PM by JES
+				//localized
+			//05/01/00; 2:38:56 PM by JES
+				//getString calls now pass the address of a replacement table instead of a list.
 	
 	if pta == nil {
 		pta = html.getPageTableAddress ()};

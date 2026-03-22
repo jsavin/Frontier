@@ -1,6 +1,6 @@
 on getTemplate (appkey, blogid, username, password, templateType) {
-	«8/27/01; 3:27:22 PM by JES
-		«Blogger API glue for using manila.advancedPref.get to get the site's template and news item template.
+	//8/27/01; 3:27:22 PM by JES
+		//Blogger API glue for using manila.advancedPref.get to get the site's template and news item template.
 	local (siteurl = blogid); //these are synonymous for Manila sites
 	local (sitename = manilaSuite.rpcHandlers.getSiteName (siteurl));
 	bundle { //make sure siteurl starts with http:// and ends with /

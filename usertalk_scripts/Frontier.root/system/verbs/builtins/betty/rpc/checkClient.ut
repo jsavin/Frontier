@@ -1,15 +1,15 @@
 on checkClient (adrParamTable) {
-	«Changes
-		«1/31/02; 2:06:22 PM by JES
-			«Perform the allow-by-IP address security check for betty.rpc.server and soap.rpc.server. Returns true if the RPC call is allowed, or false if not.
-			«Factored from betty.rpc.server.
+	//Changes
+		//1/31/02; 2:06:22 PM by JES
+			//Perform the allow-by-IP address security check for betty.rpc.server and soap.rpc.server. Returns true if the RPC call is allowed, or false if not.
+			//Factored from betty.rpc.server.
 	local (flBlocked = false);
 	if defined (user.betty.prefs.flAllowByIpOnly) {
 		if user.betty.prefs.flAllowByIpOnly {
 			flBlocked = true;
 			local (okIpList = user.betty.prefs.allowedIpAddresses);
 			if typeOf (okIpList) == stringType {
-				«It's a comma-delimited string: create a local list from that string.
+				//It's a comma-delimited string: create a local list from that string.
 				local (s = okIpList);
 				okIpList = {};
 				local (i);

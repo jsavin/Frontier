@@ -1,6 +1,6 @@
 on editStory (username, password, sitename, pathToStory, storytitle, storytext) {
-	«3/9/99; 4:14:31 AM by DW
-		«return the address of the story, common code for new story and edit story
+	//3/9/99; 4:14:31 AM by DW
+		//return the address of the story, common code for new story and edit story
 	local (now = clock.now ());
 	local (adrnewstable = mainResponder.news.openRoot (sitename));
 	local (adrprefs = @adrnewstable^.["#newsSite"]);
@@ -30,5 +30,5 @@ on editStory (username, password, sitename, pathToStory, storytitle, storytext) 
 	adrmsg^.subject = mainresponder.neutertext (storytitle);
 	fileMenu.saveMyRoot (adrmsg);
 	return (pathToStory)};
-«bundle //test code
-	«editStory ("dave@userland.com", "xxx", "scriptingNews", "1999/03/thisIsATestMessage", "Hello Bay Area", "blah blah, YAH!")
+//bundle //test code
+	//editStory ("dave@userland.com", "xxx", "scriptingNews", "1999/03/thisIsATestMessage", "Hello Bay Area", "blah blah, YAH!")

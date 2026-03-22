@@ -1,9 +1,9 @@
 on get (siteName, role, username, password) {
-	«Get info about editors in a given role. You must be an editor to access this information.
-		«10/28/00; 11:45:23 AM by PBS
-	«Changes:
-		«11/14/00; 3:08:44 AM by JES
-			«Made singular forms of role names legal, eg. managingEditor, vs. managingEditors.
+	//Get info about editors in a given role. You must be an editor to access this information.
+		//10/28/00; 11:45:23 AM by PBS
+	//Changes:
+		//11/14/00; 3:08:44 AM by JES
+			//Made singular forms of role names legal, eg. managingEditor, vs. managingEditors.
 	
 	bundle { //make sure this person is an editor of the site.
 		local (beginningErrorString = "Can't get the editors list because ");

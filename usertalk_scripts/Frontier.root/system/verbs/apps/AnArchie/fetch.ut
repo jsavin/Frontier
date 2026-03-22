@@ -1,11 +1,11 @@
-«fetch a file via ftp into "destFile"
+//fetch a file via ftp into "destFile"
 on fetch (destFile, hostName = nil, searchPath, fname = nil, user = nil, password = nil, viaAlex = nil, expandWith = nil, binary=nil) {
 	case (typeof(searchPath)) {
 		recordType {
 			with anarchie, eventInfo {
 				fname = searchPath[1];
 				hostName = searchPath[host];
-				searchPath = searchPath[path] + fname}}; « use full path
+				searchPath = searchPath[path] + fname}}; // use full path
 		listType {
 			for i = 1 to sizeof(searchPath) {
 				anarchie.fetch(destFile, hostName, searchPath[i], fname, user, password, viaAlex, expandWith, binary)}}};

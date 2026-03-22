@@ -1,16 +1,16 @@
 on main (adrmsg, adrelement, flEnforceSimpleTypes=true, flDuplicatesToArrays=false) {
-	«Changes:
-		«4/13/06; 4:07:24 AM by JES
-			«Pass flDuplicatesToArrays to soap.decode.array.
-		«4/13/06; 3:37:51 AM by JES
-			«New optional parameter, flDuplicatesToArrays. If true, duplicate scalars are converted to arrays of scalars. Default is false, preserving existing behavior.
-			«Passed in by soap.rpc.client.
-		«05/04/01; 7:20:53 PM by JES
-			«If an element has no children, and also has cdata, it's not an empty struct -- it's a simple-type. Decode it as such.
-		«04/05/01; 9:57:05 PM by JES
-			«Get types as determined by the schema namespace URI specified by the message. New optional parameter, flEnforceSimpleTypes, specifies whether to fault on elements whose type is not specified. This is passed to soap.decode.struct and soap.decode.array.
-		«03/26/01; 11:51:43 AM by JES
-			«Added decoding of Void elements.
+	//Changes:
+		//4/13/06; 4:07:24 AM by JES
+			//Pass flDuplicatesToArrays to soap.decode.array.
+		//4/13/06; 3:37:51 AM by JES
+			//New optional parameter, flDuplicatesToArrays. If true, duplicate scalars are converted to arrays of scalars. Default is false, preserving existing behavior.
+			//Passed in by soap.rpc.client.
+		//05/04/01; 7:20:53 PM by JES
+			//If an element has no children, and also has cdata, it's not an empty struct -- it's a simple-type. Decode it as such.
+		//04/05/01; 9:57:05 PM by JES
+			//Get types as determined by the schema namespace URI specified by the message. New optional parameter, flEnforceSimpleTypes, specifies whether to fault on elements whose type is not specified. This is passed to soap.decode.struct and soap.decode.array.
+		//03/26/01; 11:51:43 AM by JES
+			//Added decoding of Void elements.
 	soap.xmlutils.pushScope (adrmsg, adrelement);
 	local (value, href);
 	try {

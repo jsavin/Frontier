@@ -1,46 +1,46 @@
 on frontierValueToTaggedText (adrFrontierValue, indentlevel) {
-	«Thursday, November 11, 1999 at 2:27:22 AM by AR
-		«Implemented as a kernel verb in Frontier 6.1.
-		«Old code
-			«on frontierValueToTaggedText (adrFrontierValue, indentlevel)
-				«8/7/98; 7:49:10 PM by DW -- if it's a string, don't indent
-					«the indentation becomes part of the string! not good...
-					«see addValue for the implementation
-				«Thu, 27 May 1999 22:02:21 GMT by AR and SMD
-					«Previously, an error message was generated when you tried to convert a list object to tagged text which contained a table followed by a scalar value. This bug has been fixed.
-				«local (xmltext = "")
-				«on add (s)
-					«xmltext = xmltext + string.filledstring ("\t", indentlevel) + s + "\r"
-				«on addValue (adritem)
-					«if typeof (adritem^) == stringtype
-						«add ("<value>" + xml.coercions.frontierValueToTaggedText (adritem, indentlevel) + "</value>")
-					«else
-						«add ("<value>"); indentlevel++
-						«add (xml.coercions.frontierValueToTaggedText (adritem, indentlevel))
-						«add ("</value>"); indentlevel--
-				«case typeOf (adrFrontierValue^)
-					«listtype
-						«local (item, ix)
-						«add ("<array>"); indentlevel++
-						«add ("<data>"); indentlevel++
-						«for ix = 1 to sizeof (adrFrontierValue^)  //Thu, 27 May 1999 22:02:21 GMT by AR
-							«table.assign (@item, adrFrontierValue^[ix])
-							«addValue (@item)
-						«add ("</data>"); indentlevel--
-						«add ("</array>"); indentlevel--
-					«tabletype
-						«local (i, ct = sizeof (adrFrontierValue^), adritem)
-						«add ("<struct>"); indentlevel++
-						«for i = 1 to ct
-							«adritem = @adrFrontierValue^ [i]
-							«add ("<member>"); indentlevel++
-							«add ("<name>" + nameof (adritem^) + "</name>")
-							«addValue (adritem)
-							«add ("</member>"); indentlevel--
-						«add ("</struct>"); indentlevel--
-				«else
-					«add (xml.valToString (adrFrontierValue^, indentlevel))
-				«xmltext = string.popleading (xmltext, "\t")
-				«xmltext = string.poptrailing (xmltext, "\r")
-				«return (xmltext)
+	//Thursday, November 11, 1999 at 2:27:22 AM by AR
+		//Implemented as a kernel verb in Frontier 6.1.
+		//Old code
+			//on frontierValueToTaggedText (adrFrontierValue, indentlevel)
+				//8/7/98; 7:49:10 PM by DW -- if it's a string, don't indent
+					//the indentation becomes part of the string! not good...
+					//see addValue for the implementation
+				//Thu, 27 May 1999 22:02:21 GMT by AR and SMD
+					//Previously, an error message was generated when you tried to convert a list object to tagged text which contained a table followed by a scalar value. This bug has been fixed.
+				//local (xmltext = "")
+				//on add (s)
+					//xmltext = xmltext + string.filledstring ("\t", indentlevel) + s + "\r"
+				//on addValue (adritem)
+					//if typeof (adritem^) == stringtype
+						//add ("<value>" + xml.coercions.frontierValueToTaggedText (adritem, indentlevel) + "</value>")
+					//else
+						//add ("<value>"); indentlevel++
+						//add (xml.coercions.frontierValueToTaggedText (adritem, indentlevel))
+						//add ("</value>"); indentlevel--
+				//case typeOf (adrFrontierValue^)
+					//listtype
+						//local (item, ix)
+						//add ("<array>"); indentlevel++
+						//add ("<data>"); indentlevel++
+						//for ix = 1 to sizeof (adrFrontierValue^)  //Thu, 27 May 1999 22:02:21 GMT by AR
+							//table.assign (@item, adrFrontierValue^[ix])
+							//addValue (@item)
+						//add ("</data>"); indentlevel--
+						//add ("</array>"); indentlevel--
+					//tabletype
+						//local (i, ct = sizeof (adrFrontierValue^), adritem)
+						//add ("<struct>"); indentlevel++
+						//for i = 1 to ct
+							//adritem = @adrFrontierValue^ [i]
+							//add ("<member>"); indentlevel++
+							//add ("<name>" + nameof (adritem^) + "</name>")
+							//addValue (adritem)
+							//add ("</member>"); indentlevel--
+						//add ("</struct>"); indentlevel--
+				//else
+					//add (xml.valToString (adrFrontierValue^, indentlevel))
+				//xmltext = string.popleading (xmltext, "\t")
+				//xmltext = string.poptrailing (xmltext, "\r")
+				//return (xmltext)
 	kernel (xml.frontiervaluetotaggedtext)}

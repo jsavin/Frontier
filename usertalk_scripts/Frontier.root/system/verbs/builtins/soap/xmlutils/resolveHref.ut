@@ -1,7 +1,7 @@
 on resolveHref (adrmsg, adrelement) {
-	«Changes:
-		«04/05/01; 5:49:40 PM by JES
-			«Look for elements whose id matches the href value, without a leading '#' character. Fixes a bug where referenced elements would never be found.
+	//Changes:
+		//04/05/01; 5:49:40 PM by JES
+			//Look for elements whose id matches the href value, without a leading '#' character. Fixes a bug where referenced elements would never be found.
 	on resolveOneReference (adrmsg, id) {
 		if id beginsWith "#" {
 			id = string.mid (id, 2, infinity)};

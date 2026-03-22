@@ -1,5 +1,5 @@
 on init () {
-	«Changes
-		«5/15/02; 12:25:41 PM by JB
-			«Created.
+	//Changes
+		//5/15/02; 12:25:41 PM by JB
+			//Created.
 	tcp.im.builtinDrivers.jabber.code.init ()}

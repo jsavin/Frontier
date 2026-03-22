@@ -1,23 +1,23 @@
 on themesPage (pta=nil) {
-	«Changes:
-		«3/27/06; 5:11:12 PM by JES
-			«Don't show all themes to admin. Callbacks can override, but the admin should see the cleaner list by default.
-		«2/19/06; 3:45:14 AM by JES
-			«Add callback for theme availability. Makes it possible to customize theme availability on a site-by-site basis. Callbacks return -1 to force a theme to be listed, 0 to force a theme to not be listed, and 1 (true) to do the default behavior.
-				«Callbacks are at config.manila.callbacks.isThemeAvailable. Each is called with a single parameter -- the address of a theme table in config.manila.themes.
-				«We use 1 for default behavior, since this is what scripts that don't have an explicit return value return. It's minimum-impact if a mistake is made. One can just return true for normal behavior, and false to hide a theme. The -1 return value is a special case, used to display a theme regardless of whether it's enabled in the server prefs or not.
-			«Make all themes available to server admins, unless a callback overrides it.
-		«10/1/05; 2:45:09 AM by JES
-			«Fix double-display of page title.
-		«1/25/02; 6:30:56 PM by PBS
-			«Performance enhancements in the local "add" routine -- add a trailing semicolon; use parentheses to get the expression in x = x + y form (which is optimized by the kernel).
-		«06/10/00; 6:50:45 PM by JES
-			«localized
-		«06/05/00; 3:53:41 PM by PBS
-			«The selected radio button should be the last theme applied. If none, use default.
-			«The theme name should be a link to the site it comes from, if any.
-		«05/25/00; 10:55:10 PM by PBS
-			«Created. Implement the themes-chooser page on a Manila site.
+	//Changes:
+		//3/27/06; 5:11:12 PM by JES
+			//Don't show all themes to admin. Callbacks can override, but the admin should see the cleaner list by default.
+		//2/19/06; 3:45:14 AM by JES
+			//Add callback for theme availability. Makes it possible to customize theme availability on a site-by-site basis. Callbacks return -1 to force a theme to be listed, 0 to force a theme to not be listed, and 1 (true) to do the default behavior.
+				//Callbacks are at config.manila.callbacks.isThemeAvailable. Each is called with a single parameter -- the address of a theme table in config.manila.themes.
+				//We use 1 for default behavior, since this is what scripts that don't have an explicit return value return. It's minimum-impact if a mistake is made. One can just return true for normal behavior, and false to hide a theme. The -1 return value is a special case, used to display a theme regardless of whether it's enabled in the server prefs or not.
+			//Make all themes available to server admins, unless a callback overrides it.
+		//10/1/05; 2:45:09 AM by JES
+			//Fix double-display of page title.
+		//1/25/02; 6:30:56 PM by PBS
+			//Performance enhancements in the local "add" routine -- add a trailing semicolon; use parentheses to get the expression in x = x + y form (which is optimized by the kernel).
+		//06/10/00; 6:50:45 PM by JES
+			//localized
+		//06/05/00; 3:53:41 PM by PBS
+			//The selected radio button should be the last theme applied. If none, use default.
+			//The theme name should be a link to the site it comes from, if any.
+		//05/25/00; 10:55:10 PM by PBS
+			//Created. Implement the themes-chooser page on a Manila site.
 	
 	if not defined (config.manila.themes) {
 		manilaSuite.init ()};
@@ -64,7 +64,7 @@ on themesPage (pta=nil) {
 					manilaSuite.referer.checkSelf (); //check referer to defeat client side trojan horse
 					if defined (pta^.postArgs.yes) {
 						manilaSuite.themes.apply (adrSite, themeName, false);
-						«Refresh page.
+						//Refresh page.
 						mainResponder.redirect (pta^.fname + "$" + pta^.pathArgs + "?refresh");
 						return ("")}}
 				else {
@@ -72,12 +72,12 @@ on themesPage (pta=nil) {
 					replacementTable.themeName = themeName;
 					scriptError (manilaSuite.getString ("themes.nonexistantThemeError", @replacementTable, pta: pta))}}}};
 	
-	«bundle //site shell upgrade -- add script that displays the screen shot
-		«if not defined (adrSite^.admin.sitePrefs.themes)
-			«adrSite^.admin.sitePrefs.themes = manilaData.newSiteTemplate.admin.sitePrefs.themes
+	//bundle //site shell upgrade -- add script that displays the screen shot
+		//if not defined (adrSite^.admin.sitePrefs.themes)
+			//adrSite^.admin.sitePrefs.themes = manilaData.newSiteTemplate.admin.sitePrefs.themes
 	
 	bundle { //add title and page description
-		«add ("<h2>" + pta^.title + "</h2>")
+		//add ("<h2>" + pta^.title + "</h2>")
 		add (manilaSuite.getString ("themes.themesPageDescription", pta: pta))};
 	
 	bundle { //create the form
@@ -123,16 +123,16 @@ on themesPage (pta=nil) {
 			add ("</font>");
 			add ("</td>");
 			indentLevel--;
-			«add ("<td valign=\"top\">")
-			«indentLevel++
-			«local (url = previewLink + string.urlEncode (name))
-			«local (link)
-			«link = "<a href=\"" + url + "\" target=\"screenshot\">Screen Shot</a>"
-			«if url != ""
-				«link = "<a href=\"" + url + "\">Site</a>"
-			«add (link)
-			«add ("</td>")
-			«indentLevel--
+			//add ("<td valign=\"top\">")
+			//indentLevel++
+			//local (url = previewLink + string.urlEncode (name))
+			//local (link)
+			//link = "<a href=\"" + url + "\" target=\"screenshot\">Screen Shot</a>"
+			//if url != ""
+				//link = "<a href=\"" + url + "\">Site</a>"
+			//add (link)
+			//add ("</td>")
+			//indentLevel--
 			add ("</tr>");
 			indentLevel--};
 		
@@ -142,8 +142,8 @@ on themesPage (pta=nil) {
 		
 		for adrItem in adrThemes {
 			local (flListTheme = false);
-			«if flServerAdmin
-				«flListTheme = true
+			//if flServerAdmin
+				//flListTheme = true
 			if adrItem^.flPublic and adrItem^.flEnabled {
 				flListTheme = true};
 			bundle { //call callbacks -- if any returns false, don't list the theme
@@ -189,6 +189,6 @@ on themesPage (pta=nil) {
 		indentLevel--};
 	
 	return (manilaSuite.unTaint (htmlText))}; //no curly brace macros should be evaluated in this page text
-«bundle //test code
-	«html.setPageTableAddress (@workspace.pt)
-	«themesPage (@workspace.pt)
+//bundle //test code
+	//html.setPageTableAddress (@workspace.pt)
+	//themesPage (@workspace.pt)

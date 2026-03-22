@@ -11,9 +11,9 @@ local (num = random (1, 50));
 local (expectedResult = num * 3);
 local (actualResult);
 
-«actualResult = com.callScript (scriptCode, "VBScript", "Main", {num})
-«
-«if actualResult != expectedResult
-	«scriptError (actualResult + " != " + expectedResult)
+//actualResult = com.callScript (scriptCode, "VBScript", "Main", {num})
+//
+//if actualResult != expectedResult
+	//scriptError (actualResult + " != " + expectedResult)
 
 temp.testct++

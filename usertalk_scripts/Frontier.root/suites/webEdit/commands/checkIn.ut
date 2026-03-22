@@ -1,7 +1,7 @@
 on checkIn () {
-	«Changes
-		«8/31/05; 1:32:24 AM by JES
-			«Added new outline-with-buttons based note editor.
+	//Changes
+		//8/31/05; 1:32:24 AM by JES
+			//Added new outline-with-buttons based note editor.
 	
 	local (adrObject, s, note = "");
 	
@@ -27,5 +27,5 @@ on checkIn () {
 	webEdit.notify (s);
 	
 	return (true)};
-«bundle //test code
-	«checkIn ()
+//bundle //test code
+	//checkIn ()

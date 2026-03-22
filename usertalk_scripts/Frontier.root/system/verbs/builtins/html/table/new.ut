@@ -1,5 +1,5 @@
 on new (border=0, cellspacing=0, cellpadding=0, cols=1, method="html") {
-	«Create a new Frontier table that will later be rendered.
+	//Create a new Frontier table that will later be rendered.
 	local (adrStorage = @system.temp.html);
 	if not defined (adrStorage^) {
 		new (tableType, adrStorage)};

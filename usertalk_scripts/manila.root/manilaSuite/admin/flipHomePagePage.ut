@@ -1,4 +1,4 @@
-«05/14/00; 11:37:29 PM by JES -- the localized version of the Flip Home Page page
+//05/14/00; 11:37:29 PM by JES -- the localized version of the Flip Home Page page
 
 local (htmltext, indentlevel = 0, pta = html.getPageTableAddress ());
 

@@ -1,9 +1,9 @@
 on restoreDefault (adrSitePrefs) {
-	«Restore to default the home page template.
-		«10/14/00; 4:02:59 PM by PBS
-	«Changes
-		«9/6/01; 8:11:31 PM by JES
-			«Changed params from a list to a record of named parameters, for SOAP compatibility.
+	//Restore to default the home page template.
+		//10/14/00; 4:02:59 PM by PBS
+	//Changes
+		//9/6/01; 8:11:31 PM by JES
+			//Changed params from a list to a record of named parameters, for SOAP compatibility.
 	with adrSitePrefs^ {
 		local (params = {"username":username, "password":string (password), "siteName":sitename});
 		return (manila.callHandler (host, port, "manila.homePageTemplate.restoreDefault", @params, rpcPath:rpcPath))}}

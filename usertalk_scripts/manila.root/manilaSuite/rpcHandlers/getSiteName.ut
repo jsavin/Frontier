@@ -1,5 +1,5 @@
 on getSiteName (siteUrl) {
-	«Changes:
-		«4/2/01; 1:47:46 AM by JES
-			«Changed the name of the input parameter from url to siteUrl -- for SOAP compatibility.
+	//Changes:
+		//4/2/01; 1:47:46 AM by JES
+			//Changed the name of the input parameter from url to siteUrl -- for SOAP compatibility.
 	return (manilaSuite.rpcUtils.urlToSiteName (siteUrl))}

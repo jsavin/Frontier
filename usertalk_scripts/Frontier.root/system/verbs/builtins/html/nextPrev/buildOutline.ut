@@ -1,7 +1,7 @@
 on buildOutline (adrtable, adroutline) {
-	«Changes
-		«10/4/04; 6:56:23 PM by JES
-			«Bug fix: properly handle addresses in guest databases.
+	//Changes
+		//10/4/04; 6:56:23 PM by JES
+			//Bug fix: properly handle addresses in guest databases.
 	local (oldtarget = target.get ());
 	new (outlinetype, adroutline);
 	target.set (adroutline);
@@ -9,7 +9,7 @@ on buildOutline (adrtable, adroutline) {
 	local (dir = down);
 	on traverse (adrtable) {
 		local (s);
-		«s = string(adrtable) + "." + html.getPref ("defaultFileName")   //99/11/26, 22:04:40 by DAB
+		//s = string(adrtable) + "." + html.getPref ("defaultFileName")   //99/11/26, 22:04:40 by DAB
 		s = string.popfileFromAddress (adrtable) + "." + html.getPref ("defaultFileName");
 		if firstline {
 			op.setLineText (s);
@@ -27,7 +27,7 @@ on buildOutline (adrtable, adroutline) {
 			if typeOf (adrsubitem^) == tableType {
 				traverse (adrsubitem)} //recurse
 			else {
-				«op.insert (adrsubitem, dir)
+				//op.insert (adrsubitem, dir)
 				op.insert(string.popFileFromAddress(adrsubitem), dir)}; //99/11/26, 21:56:40 by DAB
 			rollBeachBall ()}};
 	local (firstline = true);
@@ -35,5 +35,5 @@ on buildOutline (adrtable, adroutline) {
 	op.firstSummit ();
 	target.set (oldtarget);
 	return (true)};
-«bundle { //test code
-	«buildOutline (@user.websites.midas, @user.websites.midas.["#nextPrevs"])
+//bundle { //test code
+	//buildOutline (@user.websites.midas, @user.websites.midas.["#nextPrevs"])

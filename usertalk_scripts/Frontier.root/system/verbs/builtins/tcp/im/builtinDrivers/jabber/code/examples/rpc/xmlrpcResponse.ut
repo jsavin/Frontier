@@ -1,8 +1,8 @@
 on xmlrpcResponse ( connection, mesAdr, iq, query) {
-	«Changes
-		«5/14/02; 1:51:34 PM by JB
-			«Changelog created.
-	«This handles receiving a methodResponse, converting the response back into Frontier types, and turning control over to either the jabber.rpc call (synchronous), or the user-registered callback (asynchronous).
+	//Changes
+		//5/14/02; 1:51:34 PM by JB
+			//Changelog created.
+	//This handles receiving a methodResponse, converting the response back into Frontier types, and turning control over to either the jabber.rpc call (synchronous), or the user-registered callback (asynchronous).
 	local ( methodResponse, id, from, type, params, param, value, flGotRpcError = false, fault, struct, memberlist, faultCode, faultString );
 	id = xml.getAttributeValue(iq, "id");
 	id = tcp.im.builtinDrivers.jabber.code.idTables.getAdr(id);

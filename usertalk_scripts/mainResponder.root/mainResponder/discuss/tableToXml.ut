@@ -1,12 +1,12 @@
 on tableToXml (adrstorage, cookie=nil, flIncludeEnclosure=false) {
-	«8/15/99; 8:28:26 AM by DW
-		«Major overhaul for new discussion group archiving feature.
+	//8/15/99; 8:28:26 AM by DW
+		//Major overhaul for new discussion group archiving feature.
 	local (xmltext = "", indentlevel = 0);
 	on add (s) {
 		xmltext = xmltext + string.filledString ("\t", indentlevel) + s + "\r"};
 	on processString (s) {
-		«s = string.replaceall (s, "&", "&amp;")
-		«s = string.replaceall (s, "\"", "\\\"")
+		//s = string.replaceall (s, "&", "&amp;")
+		//s = string.replaceall (s, "\"", "\\\"")
 		s = string.replaceall (s, "&lt;", "&amp;lt;");
 		s = string.replaceall (s, "<", "&lt;");
 		return (s)};

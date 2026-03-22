@@ -1,17 +1,17 @@
 on bodyTag (pagetable=nil) { // Build a body tag, with background image and text atts.
-	«Call this macro from your pageheader attribute to automatically build your body tag.
-		«Example of a #pageHeader outline.
-			«<html>
-			«<head>
-				«<title>
-					«{title}
-				«</title>
-			«</head>
-			«{bodyTag ()}
-		«Monday, January 05, 1998 at 4:17:30 PM by PBS
-		«Changes 4/6/98:
-			«Added support for onload and onunload parameters.
-			«Use #onload and #onunload directives.
+	//Call this macro from your pageheader attribute to automatically build your body tag.
+		//Example of a #pageHeader outline.
+			//<html>
+			//<head>
+				//<title>
+					//{title}
+				//</title>
+			//</head>
+			//{bodyTag ()}
+		//Monday, January 05, 1998 at 4:17:30 PM by PBS
+		//Changes 4/6/98:
+			//Added support for onload and onunload parameters.
+			//Use #onload and #onunload directives.
 	
 	local (htmltext, bgref, oneatt);
 	local (attslist = {"bgcolor", "alink", "vlink", "link", "text", "topmargin", "leftmargin", "marginheight", "marginwidth", "onload", "onunload"});
@@ -22,12 +22,12 @@ on bodyTag (pagetable=nil) { // Build a body tag, with background image and text
 	on add (s) {
 		htmltext = htmltext + s};
 	
-	«Add background image.
+	//Add background image.
 	bgref = html.data.standardMacros.bgImageRef (pagetable:pagetable);
 	if bgref != "" {
 		add (" " + bgref)};
 	
-	«Add bgcolor, link, alink, vlink, text, topmargin, and leftmargin attributes.
+	//Add bgcolor, link, alink, vlink, text, topmargin, and leftmargin attributes.
 	for oneatt in attslist {
 		if defined (pagetable^.[oneatt]) {
 			local (s = pagetable^.[oneatt]);
@@ -41,16 +41,16 @@ on bodyTag (pagetable=nil) { // Build a body tag, with background image and text
 					s = "";
 					on pushhex (gun) {
 						local (hexs = string.hex (gun));
-						hexs = string.delete (hexs, 1, 2); «pop off 0x
-						«hexs = string.mid (hexs, 1, 2) «keep 2 most significant digits
-						«JimC - above was wrong - this works for 255 based colors
-						hexs = string.mid (hexs, string.length(hexs)-1, 2); «keep 2 most significant digits
+						hexs = string.delete (hexs, 1, 2); //pop off 0x
+						//hexs = string.mid (hexs, 1, 2) //keep 2 most significant digits
+						//JimC - above was wrong - this works for 255 based colors
+						hexs = string.mid (hexs, string.length(hexs)-1, 2); //keep 2 most significant digits
 						s = s + hexs};
 					pushhex (r);
 					pushhex (g);
 					pushhex (b)}
 				else {
-					if not (s beginsWith "0") { «leave number values alone
+					if not (s beginsWith "0") { //leave number values alone
 						 try {s = evaluate (s)}}};
 				s = "#" + s};
 			add (" " + oneatt+ "=\"" + s + "\"")}};

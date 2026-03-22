@@ -1,7 +1,7 @@
 on addButtons (pta, adrObject, sectionName, flPikeButton=true, optButtonName="", optButtonValue="") {
-	«manilaSuite.sitePrefs.utility.addButtons : 04/05/13, 21:29:04 by DAB
-		«factored from manilaSuite.sitePrefs.advancedPage
-	«messages at manilaData.localization.languages.english.strings.admin
+	//manilaSuite.sitePrefs.utility.addButtons : 04/05/13, 21:29:04 by DAB
+		//factored from manilaSuite.sitePrefs.advancedPage
+	//messages at manilaData.localization.languages.english.strings.admin
 	local (htmlText = "");
 	on add (s) {
 		htmlText = htmlText + s;};

@@ -1,15 +1,15 @@
 on flipHomePageButton () {
-	«Build the flip home page button.
-		«Changes:
-			«10/31/99; 4:34:57 PM by PBS
-				«Only a managing editor gets a flip home page button.
-				«Code cleanup.
-			«04/02/00; 6:52:45 PM by PBS
-				«Respect time zone preferences for the current site.
-			«04/20/00; 5:56:15 PM by JES
-				«localized
-			«9/10/01; 11:35:10 AM by PBS
-				«Now a JavaScript dialog confirms that you want to flip the home page, saving a round trip to the server. (Thanks to Steve Ivy for the suggestion and the JavaScript code.)
+	//Build the flip home page button.
+		//Changes:
+			//10/31/99; 4:34:57 PM by PBS
+				//Only a managing editor gets a flip home page button.
+				//Code cleanup.
+			//04/02/00; 6:52:45 PM by PBS
+				//Respect time zone preferences for the current site.
+			//04/20/00; 5:56:15 PM by JES
+				//localized
+			//9/10/01; 11:35:10 AM by PBS
+				//Now a JavaScript dialog confirms that you want to flip the home page, saving a round trip to the server. (Thanks to Steve Ivy for the suggestion and the JavaScript code.)
 	
 	local (pta = html.getPageTableAddress ());
 	
@@ -35,9 +35,9 @@ on flipHomePageButton () {
 		local (flipHomePageUrl = manilaSuite.getUrl ("flipHomePage", pta));
 		
 		add ("<center>"); indentLevel++;
-		«add ("<form method=\"POST\" action=\"" + flipHomePageUrl + "\">"); indentLevel++
-		«add ("<input type=\"submit\" value=\"" + manilaSuite.getString ("admin.flipHomePageButton") + "\">") // 4/20/00 JES: localized
-		«add ("</form>"); indentLevel--
+		//add ("<form method=\"POST\" action=\"" + flipHomePageUrl + "\">"); indentLevel++
+		//add ("<input type=\"submit\" value=\"" + manilaSuite.getString ("admin.flipHomePageButton") + "\">") // 4/20/00 JES: localized
+		//add ("</form>"); indentLevel--
 		add ("<script><!-- Begin hiding from older browsers"); indentLevel++; //PBS 09/10/01: JavaScript confirmation
 		add ("function confirmFlip () {"); indentLevel++;
 		add ("\treturn confirm (\"Are you sure you want to flip the home page?\");");

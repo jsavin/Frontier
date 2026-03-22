@@ -1,6 +1,6 @@
 on getNewsItemsTable (adrSite) {
-	«Return the address of the news items table in a site. This table contains prefs and data about the news items, pending and posted, for a site.
-		«04/19/00; 10:16:22 PM by PBS
+	//Return the address of the news items table in a site. This table contains prefs and data about the news items, pending and posted, for a site.
+		//04/19/00; 10:16:22 PM by PBS
 	
 	local (adrNewsSite = manilaSuite.getNewsSiteAddress (adrSite));
 	local (adrTable = @adrNewsSite^.newsItems);

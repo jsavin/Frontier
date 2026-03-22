@@ -1,5 +1,5 @@
 on noObjectError (path=nil, url=nil) {
-	«This error message is called from several different scripts.
+	//This error message is called from several different scripts.
 	if path != nil {
 		scriptError ("The file \"" + file.fileFromPath (path) + "\" does not contain an embedded object.")};
 	if url != nil {

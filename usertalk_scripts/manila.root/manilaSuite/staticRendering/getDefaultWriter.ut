@@ -1,10 +1,10 @@
 on getDefaultWriter (adrSite) {
-	«returns the default writing method for the site.
-		«Tue, Apr 29, 2003 at 9:42:36 AM by EDS
+	//returns the default writing method for the site.
+		//Tue, Apr 29, 2003 at 9:42:36 AM by EDS
 	local {
 		writerList = manilaSuite.staticRendering.getAvailableWritersList (adrSite)};
 	if sizeOf (writerList) > 0 {
 		return (writerList[1])}
 	else {
-		«this is kinda fake, since there are no available filewriters. This preserves the default condition though, so I'm going to have it in here
+		//this is kinda fake, since there are no available filewriters. This preserves the default condition though, so I'm going to have it in here
 		return("file")}}

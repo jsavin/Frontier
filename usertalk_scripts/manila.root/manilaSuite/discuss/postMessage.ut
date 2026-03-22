@@ -1,36 +1,36 @@
 on postMessage (alsoListedIn="") {
-	«Post a message.
-	«Changes:
-		«4/12/07; 3:20:25 PM by LL
-			«Support a new site level preference to support a limited set of HTML tags for members.
-		«3/25/07; 4:26:22 PM by LL
-			«Update to the messageSubmit callback to allow the callback to return an error message to the user.
-		«2/21/07; 9:59:51 AM by LL
-			«Added support for a new or changed message submit callback.
-		«2005 and earlier
-			«7/22/05; 4:09:48 PM by JES
-				«Only call manilaSuite.log.add if defined.
-			«7/6/05; 2:43:51 AM by JES
-				«Log an event when a new message is posted. (Restore an older change which had been overwritten with 9.5 changes.)
-			«10/26/99; 11:16:32 AM by PBS
-				«Respect the alsoListedIn parameter, don't enforce that alsoListedIn be the stories category.
-				«The call to the newStoryCallback script was failing because it had been moved. The call has been fixed.
-			«10/26/99; 11:25:09 AM by PBS
-				«Don't call the newStoryCallback script: now we're getting double email notifications. It appears to be unneeded.
-			«12/26/99; 5:18:27 PM by PBS
-				«Commented-out a redundant call to fileMenu.saveMyRoot, which increases performance when messages are posted.
-			«04/03/00; 11:15:44 AM by PBS
-				«Time zone support for Manila -- convert post time to use the site's time zone prefs.
-			«04/19/00 at 6:35:57 PM by JES
-				«localized
-			«05/09/00; 10:40:09 PM by PBS
-				«Check the referer to defeat the client side trojan horse.
-			«05/11/00; 7:53:40 PM by JES
-				«merged in Brent's security fix for the client side trojan horse attack.
-			«10/09/00; 10:18:26 PM by PBS
-				«Make sure indexes get updated -- pass adrSite to add-category script.
-			«05/30/01; 11:23:02 PM by JES
-				«Added error handling for when the subject is left empty. Now we give the user a second chance at posting the message, instead of discarding their edits. This is important because the WYSIWYG editor would lose the content of the message, when the user hits the browser's back button.
+	//Post a message.
+	//Changes:
+		//4/12/07; 3:20:25 PM by LL
+			//Support a new site level preference to support a limited set of HTML tags for members.
+		//3/25/07; 4:26:22 PM by LL
+			//Update to the messageSubmit callback to allow the callback to return an error message to the user.
+		//2/21/07; 9:59:51 AM by LL
+			//Added support for a new or changed message submit callback.
+		//2005 and earlier
+			//7/22/05; 4:09:48 PM by JES
+				//Only call manilaSuite.log.add if defined.
+			//7/6/05; 2:43:51 AM by JES
+				//Log an event when a new message is posted. (Restore an older change which had been overwritten with 9.5 changes.)
+			//10/26/99; 11:16:32 AM by PBS
+				//Respect the alsoListedIn parameter, don't enforce that alsoListedIn be the stories category.
+				//The call to the newStoryCallback script was failing because it had been moved. The call has been fixed.
+			//10/26/99; 11:25:09 AM by PBS
+				//Don't call the newStoryCallback script: now we're getting double email notifications. It appears to be unneeded.
+			//12/26/99; 5:18:27 PM by PBS
+				//Commented-out a redundant call to fileMenu.saveMyRoot, which increases performance when messages are posted.
+			//04/03/00; 11:15:44 AM by PBS
+				//Time zone support for Manila -- convert post time to use the site's time zone prefs.
+			//04/19/00 at 6:35:57 PM by JES
+				//localized
+			//05/09/00; 10:40:09 PM by PBS
+				//Check the referer to defeat the client side trojan horse.
+			//05/11/00; 7:53:40 PM by JES
+				//merged in Brent's security fix for the client side trojan horse attack.
+			//10/09/00; 10:18:26 PM by PBS
+				//Make sure indexes get updated -- pass adrSite to add-category script.
+			//05/30/01; 11:23:02 PM by JES
+				//Added error handling for when the subject is left empty. Now we give the user a second chance at posting the message, instead of discarding their edits. This is important because the WYSIWYG editor would lose the content of the message, when the user hits the browser's back button.
 	
 	bundle { //PBS 05/09/00: check referers to defeat client side trojan horse
 		local (flOkayReferer = false);
@@ -39,12 +39,12 @@ on postMessage (alsoListedIn="") {
 			flOkayReferer = true};
 		if not flOkayReferer { //new thread referer
 			try {
-				«manilaSuite.referer.checkNew ("discussNewThread")
+				//manilaSuite.referer.checkNew ("discussNewThread")
 				manilaSuite.referer.checkNew ("discussNewThread", "discussPostMessage"); //04.06.23, 14:55:27 by DAB
 				flOkayReferer = true}};
 		if not flOkayReferer { //new story referer
 			try {
-				«manilaSuite.referer.checkNew ("editorialNewStory")
+				//manilaSuite.referer.checkNew ("editorialNewStory")
 				manilaSuite.referer.checkNew ("editorialNewStory", "discussPostStory"); //04.06.23, 14:55:43 by DAB
 				flOkayReferer = true}};
 		if not flOkayReferer {
@@ -128,6 +128,6 @@ on postMessage (alsoListedIn="") {
 	if defined (pta^.postArgs.redirect) {
 		local (redirectUrl = manilaSuite.unTaint (pta^.postArgs.redirect + msgNum));
 		mainResponder.redirect (redirectUrl)};
-	«try {manilaSuite.callbacks.newStoryCallback (adrTable)}
+	//try {manilaSuite.callbacks.newStoryCallback (adrTable)}
 	
 	return ("")}

@@ -1,6 +1,6 @@
 on initPluginStorage (pluginName, adrSite) {
-	«Init the storage in a site for a plugin.
-		«02/22/00; 1:50:16 PM by PBS
+	//Init the storage in a site for a plugin.
+		//02/22/00; 1:50:16 PM by PBS
 	
 	local (adrStorage = manilaSuite.plugins.getStorageAddress (pluginName, adrSite));
 	

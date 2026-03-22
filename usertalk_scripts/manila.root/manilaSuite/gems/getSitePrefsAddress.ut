@@ -1,6 +1,6 @@
 on getSitePrefsAddress (adrSite) {
-	«Return the gems prefs table address for a site.
-		«04/14/00; 2:02:59 PM by PBS
+	//Return the gems prefs table address for a site.
+		//04/14/00; 2:02:59 PM by PBS
 	
 	local (adrTable = manilaSuite.gems.getSiteGemsAddress (adrSite));
 	local (adrPrefs = @adrTable^.prefs);

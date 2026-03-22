@@ -1,17 +1,17 @@
 on opmlToBlogroll (opmlUrl, flProcessMacros=true, cssPrefix="blogroll", cacheSeconds=60, flXmlButton=true, recentlyUpdatedLinkPrefix="", recentlyUpdatedLinkSuffix="") {
-	«Changes
-		«9/13/04; 1:27:41 PM by SK
-			«Removed valign attribute from mini-mug and mini-XML buttons.
-		«7/29/02; 2:06:22 AM by JES
-			«New optional parameters, recentlyUpdatedLinkPrefix and recentlyUpdatedLinkSuffix, specify snippets of HTML text to prepend and append to links generated from OPML elements that have an isRecent attribute whose value is true.
-			«Respect title and target attributes of outline elements if present, and include them in the link tag.
-		«6/2/02; 3:18:11 PM by DW
-			«Leave behind clues for the blogroll link.
-			«http://radio.userland.com/radioMacrosHeadLinks
-		«5/28/02; 2:25:05 PM by JES
-			«New optional parameter, flXmlButton specifies whether to add an XML button after the links. Defaults to true.
-		«5/22/02; 3:37:18 PM by JES
-			«Created. Renders blogroll links given the URL of an OPML file.
+	//Changes
+		//9/13/04; 1:27:41 PM by SK
+			//Removed valign attribute from mini-mug and mini-XML buttons.
+		//7/29/02; 2:06:22 AM by JES
+			//New optional parameters, recentlyUpdatedLinkPrefix and recentlyUpdatedLinkSuffix, specify snippets of HTML text to prepend and append to links generated from OPML elements that have an isRecent attribute whose value is true.
+			//Respect title and target attributes of outline elements if present, and include them in the link tag.
+		//6/2/02; 3:18:11 PM by DW
+			//Leave behind clues for the blogroll link.
+			//http://radio.userland.com/radioMacrosHeadLinks
+		//5/28/02; 2:25:05 PM by JES
+			//New optional parameter, flXmlButton specifies whether to add an XML button after the links. Defaults to true.
+		//5/22/02; 3:37:18 PM by JES
+			//Created. Renders blogroll links given the URL of an OPML file.
 	
 	bundle { //leave hint for link generator, 6/2/02 by DW
 		local (pta = html.getpagetableaddress ());
@@ -127,10 +127,10 @@ on opmlToBlogroll (opmlUrl, flProcessMacros=true, cssPrefix="blogroll", cacheSec
 	
 	return (htmltext)};
 
-«bundle //test code
-	«local (f = user.radio.prefs.wwwFolder + "gems" + file.getPathChar () + "mySubscriptions.opml")
-	«local (url = radio.upstream.getFileUrl (f))
-	«local (startticks = clock.ticks ())
-	«blogroll (url, false)
-	«local (totalticks = clock.ticks () - startticks)
-	«dialog.notify (totalticks)
+//bundle //test code
+	//local (f = user.radio.prefs.wwwFolder + "gems" + file.getPathChar () + "mySubscriptions.opml")
+	//local (url = radio.upstream.getFileUrl (f))
+	//local (startticks = clock.ticks ())
+	//blogroll (url, false)
+	//local (totalticks = clock.ticks () - startticks)
+	//dialog.notify (totalticks)

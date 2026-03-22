@@ -1,8 +1,8 @@
-«Changes
-	«2/2/02; 4:23:16 PM by JES
-		«Pass a 0 to file.getFileDialog, for the type parameter instead of nil. Fixes a bug where files could not be opened on MacOS X.
-	«11/25/01; 9:13:34 AM by DW
-		«Created.
+//Changes
+	//2/2/02; 4:23:16 PM by JES
+		//Pass a 0 to file.getFileDialog, for the type parameter instead of nil. Fixes a bug where files could not be opened on MacOS X.
+	//11/25/01; 9:13:34 AM by DW
+		//Created.
 
 local (f);
 if file.getfiledialog ("Choose a subscriptions file:", @f, 0) {

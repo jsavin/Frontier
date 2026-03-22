@@ -1,5 +1,5 @@
 on set (username, password, siteName, prefName, prefdata) {
-	«Set the contents of one site pref.
+	//Set the contents of one site pref.
 	
 	bundle { //make sure this person is a managing editor of the site.
 		local (beginningErrorString = "Can't set the site pref \"" + prefName + "\" because ");

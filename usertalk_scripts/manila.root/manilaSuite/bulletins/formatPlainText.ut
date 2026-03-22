@@ -1,16 +1,16 @@
 on formatPlainText (s) { //format a bulletin for people receiving plainText email
-	«Changes:
-		«4/27/03; 2:17:27 PM by JES
-			«Call through string.htmlToEmail to format the plain-text version of the bulletin.
-		«11/05/00; 2:22:45 AM by JES
-			«Added asterixes around bold tags. Deal with uppercase anchor tags properly.
+	//Changes:
+		//4/27/03; 2:17:27 PM by JES
+			//Call through string.htmlToEmail to format the plain-text version of the bulletin.
+		//11/05/00; 2:22:45 AM by JES
+			//Added asterixes around bold tags. Deal with uppercase anchor tags properly.
 	
 	if defined (string.htmlToEmail) {
 		return (string.htmlToEmail (s))};
 	
 	local (plainText = "");
 	
-	«Pull out the <a href>s, puts links at end
+	//Pull out the <a href>s, puts links at end
 	on chewOneBit (s) {
 		on extractLinks (s, adrLinks, adrLines) {
 			local (links = {}, lines = {}, pat, endPat, ix, leftHalf);

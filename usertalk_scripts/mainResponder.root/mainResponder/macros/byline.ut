@@ -1,5 +1,5 @@
 on byline (author, postTime, style="default") {
-	«05/07/00 JES: Returns the text of a byline for a DG message or a story.
+	//05/07/00 JES: Returns the text of a byline for a DG message or a story.
 	local (s, replacementTable);
 	new (tableType, @replacementTable);
 	replacementTable.name = author;

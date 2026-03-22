@@ -1,12 +1,12 @@
 on robotsTxt (adrsite=nil, flIncluded=false) {
-	«Changes
-		«3/7/06; 1:53:57 AM by JES
-			«Possible fix for crashing bug when recursively adding sub-site paths to top-level robots.txt file.
-			«Add to disable recursion in sib-sites robots.txt for top-level sites. Default preserves existing behavior.
-		«7/14/03; 11:39:47 AM by JES
-			«Added global pref for enabling or disabling robots.txt at config.manila.prefs.flRobotsTxtEnabled. Defaults to enabled.
-		«7/8/03; 1:59:30 PM by JES
-			«Created. Generate a robots.txt file.
+	//Changes
+		//3/7/06; 1:53:57 AM by JES
+			//Possible fix for crashing bug when recursively adding sub-site paths to top-level robots.txt file.
+			//Add to disable recursion in sib-sites robots.txt for top-level sites. Default preserves existing behavior.
+		//7/14/03; 11:39:47 AM by JES
+			//Added global pref for enabling or disabling robots.txt at config.manila.prefs.flRobotsTxtEnabled. Defaults to enabled.
+		//7/8/03; 1:59:30 PM by JES
+			//Created. Generate a robots.txt file.
 	
 	local (pta);
 	
@@ -81,6 +81,6 @@ on robotsTxt (adrsite=nil, flIncluded=false) {
 		add ("")};
 	
 	return (txt)};
-«bundle //test code
-	«html.setPageTableAddress (@workspace.pt)
-	«robotsTxt (@homeManilaWebsite)
+//bundle //test code
+	//html.setPageTableAddress (@workspace.pt)
+	//robotsTxt (@homeManilaWebsite)

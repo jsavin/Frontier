@@ -1,6 +1,6 @@
 on scriptingNews2Link () {
-	«02/07/01; 2:57:38 PM by JES
-		«Generate a link to a Manila site's scriptingNews2 channel.
+	//02/07/01; 2:57:38 PM by JES
+		//Generate a link to a Manila site's scriptingNews2 channel.
 	local (adrSite = manilaSuite.getSiteAddress ());
 	local (flSyndicate = manilaSuite.getNewsSitePref ("flSyndicate", adrSite));
 	if not flSyndicate { //return the empty string

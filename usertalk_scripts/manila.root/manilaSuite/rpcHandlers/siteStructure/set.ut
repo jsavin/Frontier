@@ -1,12 +1,12 @@
 on set (username, password, siteName, s, windowInfoTable) {
-	«Set the site structure XML text to s.
-		«Changes:
-			«06/05/05; 8:14:06 PM by PR
-				«added a check to siteStructure.isValid before storing
-			«02/06/00; 9:11:15 PM by PBS
-				«Save the window info table.
-			«02/22/01; 12:06:02 AM by JES
-				«Convert outgoing text from Mac to Latin, if the server is a Mac.
+	//Set the site structure XML text to s.
+		//Changes:
+			//06/05/05; 8:14:06 PM by PR
+				//added a check to siteStructure.isValid before storing
+			//02/06/00; 9:11:15 PM by PBS
+				//Save the window info table.
+			//02/22/01; 12:06:02 AM by JES
+				//Convert outgoing text from Mac to Latin, if the server is a Mac.
 	
 	bundle { //make sure this person is a managing editor of the site.
 		local (beginningErrorString = "Can't set the site structure because ");
@@ -30,7 +30,7 @@ on set (username, password, siteName, s, windowInfoTable) {
 			local (adrDG = manilaSuite.discuss.getDiscussionGroupAddress(adrSite));
 			local (errors = "");
 			new (tableType, @pta);
-			«pta.manilaLanguageTableAddress = @manilaData.localization.languages.[adrSite^.["#prefs"].language]
+			//pta.manilaLanguageTableAddress = @manilaData.localization.languages.[adrSite^.["#prefs"].language]
 			pta.manilaLanguageTableAddress = @manilaData.localization.languages.english; // 06/05/05; 8:21:17 PM by PR default to english as all other rpc returns are in english
 			html.setPageTableAddress (@pta);
 			on gatherErrors (e) {
@@ -47,5 +47,5 @@ on set (username, password, siteName, s, windowInfoTable) {
 	fileMenu.saveMyRoot (adrSite);
 	
 	return (true)};
-«bundle // test
-	«set ("patrick@userland.com", "12345", "homeManilaWebsite", string(scratchpad.testoutline), "windowInfo")
+//bundle // test
+	//set ("patrick@userland.com", "12345", "homeManilaWebsite", string(scratchpad.testoutline), "windowInfo")

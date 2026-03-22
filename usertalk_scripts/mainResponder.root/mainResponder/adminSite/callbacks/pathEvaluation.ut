@@ -1,20 +1,20 @@
 on pathEvaluation () {
-	«Changes
-		«7/19/05; 3:00:50 AM by JES
-			«Handle admin site database downloads.
-		«6/12/02; 4:33:05 PM by JES
-			«Allow loads of controlPanel and mainResponderResources URLs to pass through unmodified.
-		«6/6/02; 12:26:36 PM by JES
-			«Created. If the port is the one specified by user.inetd.config.http2, set the address of the object to serve, to the address of the specified object in the admin site table.
+	//Changes
+		//7/19/05; 3:00:50 AM by JES
+			//Handle admin site database downloads.
+		//6/12/02; 4:33:05 PM by JES
+			//Allow loads of controlPanel and mainResponderResources URLs to pass through unmodified.
+		//6/6/02; 12:26:36 PM by JES
+			//Created. If the port is the one specified by user.inetd.config.http2, set the address of the object to serve, to the address of the specified object in the admin site table.
 	local (pta, port);
 	if defined (host) { //This strange construction allows for easier debugging. See notes below.
-		«When called from mainResponder.respond, host will be defined, and its parent is the page table.
+		//When called from mainResponder.respond, host will be defined, and its parent is the page table.
 		pta = parentOf (host);
 		port = pta^.port;
-		«bundle //debugging code. NOTE: comment this out when done debugging.
-			«workspace.pt = pta^}
+		//bundle //debugging code. NOTE: comment this out when done debugging.
+			//workspace.pt = pta^}
 	else { //for debugging
-		«Since host was not defined, we assume that we've got a saved page table from a previous browser hit, and get the port and pageTableAddress from there.
+		//Since host was not defined, we assume that we've got a saved page table from a previous browser hit, and get the port and pageTableAddress from there.
 		port = workspace.pt.port;
 		pta = @workspace.pt};
 	on gatherAttributes () {
@@ -43,7 +43,7 @@ on pathEvaluation () {
 				return (false)}};
 		pta^.title = nameOf (nomad^); //default title
 		pta^.adrObjectToServe = nomad;
-		«gatherAttributes ()
+		//gatherAttributes ()
 		return (true)};
 	on toolsDive (pathstring) {
 		local (pathpart = string.nthfield (pathstring, "/", 1));
@@ -88,7 +88,7 @@ on pathEvaluation () {
 						adrtempsite^.[s] = nomad^;
 						pta^.title = s;
 						pta^.adrObjectToServe = @adrtempsite^.[s];
-						«gatherAttributes ()
+						//gatherAttributes ()
 						return (true)}}}};
 		return (false)};
 	

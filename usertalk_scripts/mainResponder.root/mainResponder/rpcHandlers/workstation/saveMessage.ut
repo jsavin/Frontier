@@ -12,7 +12,7 @@ on saveMessage (msgNum, discussRoot, userName, password, docTable) {
 		local (adrmsg = mainResponder.editorial.getMessageTable (discussRoot, msgnum));
 		op.newOutlineObject (adrmsg^.body, @adrmsg^.body)};
 	
-	«Add enclosures
+	//Add enclosures
 	if defined (docTable.enclosureBits) and (docTable.enclosureBits) == tableType {
 		local (ix, binaryfolder = mainResponder.editorial.getMessageBinaryFolder (discussRoot, msgnum));
 		for ix = 1 to sizeof (docTable.enclosureBits) {

@@ -1,4 +1,4 @@
-on isScriptable () { « return true if the Scriptable Finder is present
+on isScriptable () { // return true if the Scriptable Finder is present
 	local (x);
 	x = gestalt ('fndr');
 	if x == -1 {

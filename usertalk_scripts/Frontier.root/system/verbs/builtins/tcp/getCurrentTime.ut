@@ -1,36 +1,36 @@
 on getCurrentTime (server="time-b.timefreq.bldrdoc.gov", flMessages=true) {
-	«Changes
-		«10/2/01; 9:17:54 PM by DW
-			«Created. Use the RFC 868 protocol to talk to a NIST server to get the current date-time. 
-			«http://docserver.userland.com/tcp/getCurrentTime
-			«It returns a binary number of seconds since 1/1/1900. Frontier's internal time format is expressed in the number of seconds since 1/1/04.
-				«date (0)
-					«"1/1/1904; 12:00:00 AM"
-				«So, our mission is to subtract from the number returned by NIST the number of seconds in four years.
-				«4 * 365 * 24 * 60 * 60
-					«126144000
-				«Aha, that worked. Now we have to adjust for GMT.
-			«date.getCurrentTimeZone ()
-				«-25200
-			«http://www.boulder.nist.gov/timefreq/service/its.htm
-				«"This simple protocol returns a 32-bit unformatted binary number that represents the time in UTC seconds since January 1, 1900. The server listens for Time Protocol requests on port 37, and responds in either tcp/ip or udp/ip formats. Conversion to local time (if necessary) is the responsibility of the client program. The 32-bit binary format can represent times over a span of about 136 years with a resolution of 1 second. There is no provision for increasing the resolution or increasing the range of years.
-				«"The strength of the time protocol is its simplicity. Since many computers keep time internally as the number of seconds since January 1, 1970 (or another date), converting the received time to the necessary format is often a simple matter of binary arithmetic. However, the format does not allow any additional information to be transmitted, such as advance notification of leap seconds or daylight savings time, or information about the health of the server."
-			«http://www.boulder.nist.gov/timefreq/service/time-servers.html
-				«time-a.nist.gov 129.6.15.28 NIST, Gaithersburg, Maryland 
-				«time-b.nist.gov 129.6.15.29 NIST, Gaithersburg, Maryland 
-				«time-a.timefreq.bldrdoc.gov 132.163.4.101 NIST, Boulder, Colorado 
-				«time-b.timefreq.bldrdoc.gov 132.163.4.102 NIST, Boulder, Colorado 
-				«time-c.timefreq.bldrdoc.gov 132.163.4.103 NIST, Boulder, Colorado 
-				«utcnist.colorado.edu 128.138.140.44 University of Colorado, Boulder 
-				«time.nist.gov 192.43.244.18 NCAR, Boulder, Colorado 
-				«time-nw.nist.gov 131.107.1.10 Microsoft, Redmond, Washington 
-				«nist1.datum.com 63.149.208.50 Datum, San Jose, California 
-				«nist1.dc.glassey.com 216.200.93.8 Abovenet, Virginia 
-				«nist1.ny.glassey.com 208.184.49.9 Abovenet, New York City 
-				«nist1.sj.glassey.com 207.126.103.204 Abovenet, San Jose, California 
-				«nist1.aol-ca.truetime.com 207.200.81.113 TrueTime, AOL facility, Sunnyvale, California 
-				«nist1.aol-va.truetime.com 205.188.185.33 TrueTime, AOL facility, Virginia 
-			«http://www.faqs.org/rfcs/rfc868.html
+	//Changes
+		//10/2/01; 9:17:54 PM by DW
+			//Created. Use the RFC 868 protocol to talk to a NIST server to get the current date-time. 
+			//http://docserver.userland.com/tcp/getCurrentTime
+			//It returns a binary number of seconds since 1/1/1900. Frontier's internal time format is expressed in the number of seconds since 1/1/04.
+				//date (0)
+					//"1/1/1904; 12:00:00 AM"
+				//So, our mission is to subtract from the number returned by NIST the number of seconds in four years.
+				//4 * 365 * 24 * 60 * 60
+					//126144000
+				//Aha, that worked. Now we have to adjust for GMT.
+			//date.getCurrentTimeZone ()
+				//-25200
+			//http://www.boulder.nist.gov/timefreq/service/its.htm
+				//"This simple protocol returns a 32-bit unformatted binary number that represents the time in UTC seconds since January 1, 1900. The server listens for Time Protocol requests on port 37, and responds in either tcp/ip or udp/ip formats. Conversion to local time (if necessary) is the responsibility of the client program. The 32-bit binary format can represent times over a span of about 136 years with a resolution of 1 second. There is no provision for increasing the resolution or increasing the range of years.
+				//"The strength of the time protocol is its simplicity. Since many computers keep time internally as the number of seconds since January 1, 1970 (or another date), converting the received time to the necessary format is often a simple matter of binary arithmetic. However, the format does not allow any additional information to be transmitted, such as advance notification of leap seconds or daylight savings time, or information about the health of the server."
+			//http://www.boulder.nist.gov/timefreq/service/time-servers.html
+				//time-a.nist.gov 129.6.15.28 NIST, Gaithersburg, Maryland 
+				//time-b.nist.gov 129.6.15.29 NIST, Gaithersburg, Maryland 
+				//time-a.timefreq.bldrdoc.gov 132.163.4.101 NIST, Boulder, Colorado 
+				//time-b.timefreq.bldrdoc.gov 132.163.4.102 NIST, Boulder, Colorado 
+				//time-c.timefreq.bldrdoc.gov 132.163.4.103 NIST, Boulder, Colorado 
+				//utcnist.colorado.edu 128.138.140.44 University of Colorado, Boulder 
+				//time.nist.gov 192.43.244.18 NCAR, Boulder, Colorado 
+				//time-nw.nist.gov 131.107.1.10 Microsoft, Redmond, Washington 
+				//nist1.datum.com 63.149.208.50 Datum, San Jose, California 
+				//nist1.dc.glassey.com 216.200.93.8 Abovenet, Virginia 
+				//nist1.ny.glassey.com 208.184.49.9 Abovenet, New York City 
+				//nist1.sj.glassey.com 207.126.103.204 Abovenet, San Jose, California 
+				//nist1.aol-ca.truetime.com 207.200.81.113 TrueTime, AOL facility, Sunnyvale, California 
+				//nist1.aol-va.truetime.com 205.188.185.33 TrueTime, AOL facility, Virginia 
+			//http://www.faqs.org/rfcs/rfc868.html
 	on displayMsg (s) {
 		msg ("tcp.getCurrentTime: " + s)};
 	if tcp.isOffline () {
@@ -45,5 +45,5 @@ on getCurrentTime (server="time-b.timefreq.bldrdoc.gov", flMessages=true) {
 	if flMessages { //clean up the message area
 		msg ("")};
 	return (d)};
-«bundle //test code
-	«dialog.alert (tcp.getCurrentTime ())
+//bundle //test code
+	//dialog.alert (tcp.getCurrentTime ())

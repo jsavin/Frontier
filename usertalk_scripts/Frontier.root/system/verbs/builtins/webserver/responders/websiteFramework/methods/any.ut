@@ -1,17 +1,17 @@
 on any (adrParamTable) {
-	«Changes
-		«12/15/01; 8:44:25 AM by DW
-			«Allow the Radio responder to handle the .wsf's it sees fit to. Meet the new boss. ;->
-		«3/18/01; 1:48:03 PM by PBS
-			«Don't leave dangling page table addresses in the temp table after building a page -- call html.deletePageTableAddress.
-		«3/16/01; 10:03:25 PM by PBS
-			«If the request is for the default page in a table, but the request doesn't end with a /, redirect so the request ends with a /.
-		«1/23/01; 5:13:53 PM by JES
-			«Call html.buildObject in a try block, so that a firstFilter script can set the response code and call scriptError, to redirect the browser or make an authentication challenge.
-		«1/19/01; 1:48:26 PM by PBS
-			«Don't url-encode the URI when serving the default page in a table. This broke My UserLand on the Desktop.
-		«Sat, 06 Jun 1998 01:51:15 GMT; RAB
-			«Gave html.buildObject direct access to the real adrParamTable so that it can make error conditions, etc.
+	//Changes
+		//12/15/01; 8:44:25 AM by DW
+			//Allow the Radio responder to handle the .wsf's it sees fit to. Meet the new boss. ;->
+		//3/18/01; 1:48:03 PM by PBS
+			//Don't leave dangling page table addresses in the temp table after building a page -- call html.deletePageTableAddress.
+		//3/16/01; 10:03:25 PM by PBS
+			//If the request is for the default page in a table, but the request doesn't end with a /, redirect so the request ends with a /.
+		//1/23/01; 5:13:53 PM by JES
+			//Call html.buildObject in a try block, so that a firstFilter script can set the response code and call scriptError, to redirect the browser or make an authentication challenge.
+		//1/19/01; 1:48:26 PM by PBS
+			//Don't url-encode the URI when serving the default page in a table. This broke My UserLand on the Desktop.
+		//Sat, 06 Jun 1998 01:51:15 GMT; RAB
+			//Gave html.buildObject direct access to the real adrParamTable so that it can make error conditions, etc.
 	local (objType, mimeType); //For type info
 	local (adrRequestHeaders, adrResponseHeaders);
 	local (dataTableAdr, responderTableAdr,  docTreeTableAdr, prefsTableAdr);
@@ -64,17 +64,17 @@ on any (adrParamTable) {
 	bundle { //parse the URl into an ODB/file path
 		objName = string.urlDecode(adrParamTable^.path);
 		objName = string.popSuffix (objName, '.'); //pop off the .wsf extension
-		«The following is the main security and path processing script.  The result from this script is an error or the final
-		«file or odb specification for the responder to serve.
+		//The following is the main security and path processing script.  The result from this script is an error or the final
+		//file or odb specification for the responder to serve.
 		if ! webserver.util.pathToAddressExt (objName, docTreeTableAdr, adrParamTable) {
 			return (true)}; //The error is already set.
 		objName = adrParamTable^.resultPath}; //as returned from pathToAddressExt
 	
 	if adrParamTable^.resultType == addressType { // we are serving out of the ODB
-		«Start the serving process
+		//Start the serving process
 		if typeOf (objName^) == tableType {
 			local (i);
-			«Check for the default element to render
+			//Check for the default element to render
 			for i in prefsTableAdr^.ODBdefault {
 				local (default);
 				default = @objName^.[i];
@@ -89,7 +89,7 @@ on any (adrParamTable) {
 						return (true)};
 					adrParamTable^.path = string.popTrailing (adrParamTable^.path, "/");
 					adrParamTable^.path = adrParamTable^.path + "/" + i + ".wsf";
-					«adrParamTable^.URI = string.urlEncode(adrParamTable^.path)
+					//adrParamTable^.URI = string.urlEncode(adrParamTable^.path)
 					adrParamTable^.URI = adrParamTable^.path; //PBS 01/19/01: don't URL-encode the URI
 					return (this^ (adrParamTable))}}; // Yes we recurse here so default behaves correctly
 			bundle { //Tables are not served
@@ -100,10 +100,10 @@ on any (adrParamTable) {
 			return (serve (objName))}}
 	else { //otherwise it should be serving out of the file system
 		if adrParamTable^.resultType == filespecType { // we are serving out of the File System
-			«Start the serving process
+			//Start the serving process
 			if file.isFolder (objName) {
 				local (i);
-				«Check for the default element to render
+				//Check for the default element to render
 				for i in prefsTableAdr^.fileDefault {
 					local (default);
 					default = string.popTrailing (objName, file.getPathChar()) + file.getPathChar() + i;

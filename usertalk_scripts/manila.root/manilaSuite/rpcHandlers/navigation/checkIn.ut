@@ -1,6 +1,6 @@
 on checkIn (username, password, siteName) {
-	«Release custody of the navigation.
-		«02/11/00; 11:17:08 AM by PBS
+	//Release custody of the navigation.
+		//02/11/00; 11:17:08 AM by PBS
 	
 	local (adrSite = manilaSuite.rpcUtils.getSiteAddress (siteName));
 	local (adrObject = @adrSite^.["#navigator"].outline);

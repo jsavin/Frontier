@@ -1,9 +1,9 @@
-«Fri, Dec 5, 1997 at 1:28:29 AM by PBS
-	«Moved from toys.listSelectedScripts.
-	«Cleaned up for Frontier 5:
-		«Files can be of type 2CLK, FATP, or FTsc.
-		«Don't set font and size of new outline.
-		«Change 'LAND' to frontier.id.
+//Fri, Dec 5, 1997 at 1:28:29 AM by PBS
+	//Moved from toys.listSelectedScripts.
+	//Cleaned up for Frontier 5:
+		//Files can be of type 2CLK, FATP, or FTsc.
+		//Don't set font and size of new outline.
+		//Change 'LAND' to frontier.id.
 on visit (path) {
 	local (f);
 	fileloop (f in path, infinity) {
@@ -13,17 +13,17 @@ on visit (path) {
 				'FATP';
 				'2CLK' {
 					if firstline {
-						op.setLineText (f); «replace the blank line in all new outline windows
+						op.setLineText (f); //replace the blank line in all new outline windows
 						firstline = false}
 					else {
-						op.insert (f, down)}}}}}; «add a new line
+						op.insert (f, down)}}}}}; //add a new line
 	return (true)};
 
 local (firstline = true);
 local (adrOutline = @scratchpad.finderList);
 Frontier.bringToFront ();
-new (outlineType, adrOutline); «create a new outline, overwrites any existing outline
-target.set (adrOutline); «all subsequent commands apply to this window
-edit (adrOutline); «open the outline in a window so you can watch the script run
-FinderMenu.visitPaths (@visit); «process each of the files selected in the Finder
+new (outlineType, adrOutline); //create a new outline, overwrites any existing outline
+target.set (adrOutline); //all subsequent commands apply to this window
+edit (adrOutline); //open the outline in a window so you can watch the script run
+FinderMenu.visitPaths (@visit); //process each of the files selected in the Finder
 target.clear ()

@@ -1,75 +1,75 @@
 on drawNavigator (pta=nil) {
-	«Changes:
-		«10/7/05; 3:45:43 AM by JES
-			«Fix bug in last optimization.
-		«10/7/05; 3:33:39 AM by JES
-			«Re-instate the span, class navigatorLinkCurrent around current page (disabled) links. Removed old commented code.
-			«Optimization: When checking cohorts, get the address of the membership group from the page table.
-		«9/28/05; 12:23:57 PM by JES
-			«Bug fix: Don't check timeModified on the navigator's structure table if it doesn't exist. Cleaned up compile-if-dirty logic to make script more readable.
-		«19/09/05; 6:33:12 PM by PR
-			«changed the accesscontrol check from checkMemberCohorts to checkMemberCohortsFromGroup to bypass the pta^.adrMemberInfo call...
-		«9/8/05; 4:54:46 PM by JES
-			«Ensure that the compiled navigator is not empty.
-		«13/07/05; 5:51:58 PM by PR
-			«check to to see if navigator items are restricted to cohorts
-		«27/04/05; 7:18:12 PM by PR
-			«string.iso8859encode requires two parameters, a string (name, not linetext) and a table 
-		«3/17/05; 4:06:26 PM by JES
-			«If the html pref is set, escape link text using string.iso8859encode.
-		«2004
-			«10/23/04; 1:57:18 PM by JES
-				«If itemFormat is based on lists, then strip out the list tags when adding the edit button.
-			«3/2/04; 1:39:02 PM by JES
-				«Added support for currentItemFormat -- used to specify the appearance of the current page link.
-		«2003
-			«4/28/03; 12:55:52 PM by JES
-				«Respect the flNavigatorEditButton news site pref. (It defaults to true, and is changed using a checkbox next to the navigation links XML on the Advanced prefs page.)
-			«4/21/03; 5:22:10 PM by JES
-				«Add an Edit button below the links if we're not doing static rendering. Only add <br> tags to links that appear in the Prefs system, not to links on the public pages.
-		«2002
-			«10/24/02; 11:37:18 PM by JES
-				«Wrap the navigator link for the current item in a span tag with a class of navigatorLinkCurrent.
-			«6/30/02; 2:49:32 PM by JES
-				«Improved algorithm for determining whether the navigator is rendered vertically or horizontally. Added CSS class, navigatorLink, to the <a href> elements. Use the XHTML-compatible <br /> instead of <br>.
-			«1/25/02; 6:06:27 PM by PBS
-				«Performance enhancement in the local "add" routine -- add a trailing semicolon; use parentheses to get the expression in x = x + y form (which is optimized by the kernel).
-		«2001
-			«03/20/01; 2:26:26 PM by PBS
-				«If the name attribute doesn't exist for an item in the navigator, it should not be a fatal error which prevents rendering the rest of the items in the navigator and the rest of the page.
-		«2000
-			«10/28/00; 12:57:52 AM by PBS
-				«Differentiate between vertical and horizontal navbars. Add <br> tag only if it's a vertical navbar.
-			«05/05/00; 4:39:31 PM by JES
-				«localized prefs navigator
-					«we figure out if the navigator is the prefs navigator, find the localized one if we can, and then set pta^.navigator to point at that one before we call manilaSuite.html.drawNavigator
-			«04/03/00; 12:30:48 AM by PBS
-				«Support for callbacks -- a callback can specify whether or not to display a link.
-			«02/24/00; 6:54:31 PM by PBS
-				«Remove support for plugins menuScript -- it's not needed.
-			«02/23/00; 4:31:17 PM by PBS
-				«Support for plug-ins that may have a menuScript defined.
-			«1/12/00; 6:07:55 PM by PBS
-				«In the JavaScript rollover code, replace dots with underscores, so the JavaScript will continue to work even if the images have extensions. (For instance, they may be coming from a static server.)
-			«1/7/00; 5:27:53 PM by PBS
-				«Support for pictures in navigation: picture, rollover, and disabled attributes are now supported.
-		«1999
-			«12/13/99; 3:11:06 PM by PBS
-				«A blank line was being left between navigator items which would sometimes get translated to a paragraph tag. Now fixed.
-			«12/12/99; 5:58:32 PM by PBS
-				«Respect the formatting preferences the managing editor has set up. Navigation can now be horizontal, or use separators, and so on.
-			«11/10/99; 1:45:58 PM by PBS
-				«Fixed a bug: if the pagename in the XML text starts with http://[servername]/, then the current page wouldn't be disabled. Now it will be disabled.
-			«10/27/99; 2:30:23 PM by PBS
-				«If a link has editorsOnly="true" as an attribute, then its displayed only if the person viewing the page is a contributing or managing editor.
-			«?/?/99 by PBS
-				«Created. Draw the navigator links. The current page should be disabled.
+	//Changes:
+		//10/7/05; 3:45:43 AM by JES
+			//Fix bug in last optimization.
+		//10/7/05; 3:33:39 AM by JES
+			//Re-instate the span, class navigatorLinkCurrent around current page (disabled) links. Removed old commented code.
+			//Optimization: When checking cohorts, get the address of the membership group from the page table.
+		//9/28/05; 12:23:57 PM by JES
+			//Bug fix: Don't check timeModified on the navigator's structure table if it doesn't exist. Cleaned up compile-if-dirty logic to make script more readable.
+		//19/09/05; 6:33:12 PM by PR
+			//changed the accesscontrol check from checkMemberCohorts to checkMemberCohortsFromGroup to bypass the pta^.adrMemberInfo call...
+		//9/8/05; 4:54:46 PM by JES
+			//Ensure that the compiled navigator is not empty.
+		//13/07/05; 5:51:58 PM by PR
+			//check to to see if navigator items are restricted to cohorts
+		//27/04/05; 7:18:12 PM by PR
+			//string.iso8859encode requires two parameters, a string (name, not linetext) and a table 
+		//3/17/05; 4:06:26 PM by JES
+			//If the html pref is set, escape link text using string.iso8859encode.
+		//2004
+			//10/23/04; 1:57:18 PM by JES
+				//If itemFormat is based on lists, then strip out the list tags when adding the edit button.
+			//3/2/04; 1:39:02 PM by JES
+				//Added support for currentItemFormat -- used to specify the appearance of the current page link.
+		//2003
+			//4/28/03; 12:55:52 PM by JES
+				//Respect the flNavigatorEditButton news site pref. (It defaults to true, and is changed using a checkbox next to the navigation links XML on the Advanced prefs page.)
+			//4/21/03; 5:22:10 PM by JES
+				//Add an Edit button below the links if we're not doing static rendering. Only add <br> tags to links that appear in the Prefs system, not to links on the public pages.
+		//2002
+			//10/24/02; 11:37:18 PM by JES
+				//Wrap the navigator link for the current item in a span tag with a class of navigatorLinkCurrent.
+			//6/30/02; 2:49:32 PM by JES
+				//Improved algorithm for determining whether the navigator is rendered vertically or horizontally. Added CSS class, navigatorLink, to the <a href> elements. Use the XHTML-compatible <br /> instead of <br>.
+			//1/25/02; 6:06:27 PM by PBS
+				//Performance enhancement in the local "add" routine -- add a trailing semicolon; use parentheses to get the expression in x = x + y form (which is optimized by the kernel).
+		//2001
+			//03/20/01; 2:26:26 PM by PBS
+				//If the name attribute doesn't exist for an item in the navigator, it should not be a fatal error which prevents rendering the rest of the items in the navigator and the rest of the page.
+		//2000
+			//10/28/00; 12:57:52 AM by PBS
+				//Differentiate between vertical and horizontal navbars. Add <br> tag only if it's a vertical navbar.
+			//05/05/00; 4:39:31 PM by JES
+				//localized prefs navigator
+					//we figure out if the navigator is the prefs navigator, find the localized one if we can, and then set pta^.navigator to point at that one before we call manilaSuite.html.drawNavigator
+			//04/03/00; 12:30:48 AM by PBS
+				//Support for callbacks -- a callback can specify whether or not to display a link.
+			//02/24/00; 6:54:31 PM by PBS
+				//Remove support for plugins menuScript -- it's not needed.
+			//02/23/00; 4:31:17 PM by PBS
+				//Support for plug-ins that may have a menuScript defined.
+			//1/12/00; 6:07:55 PM by PBS
+				//In the JavaScript rollover code, replace dots with underscores, so the JavaScript will continue to work even if the images have extensions. (For instance, they may be coming from a static server.)
+			//1/7/00; 5:27:53 PM by PBS
+				//Support for pictures in navigation: picture, rollover, and disabled attributes are now supported.
+		//1999
+			//12/13/99; 3:11:06 PM by PBS
+				//A blank line was being left between navigator items which would sometimes get translated to a paragraph tag. Now fixed.
+			//12/12/99; 5:58:32 PM by PBS
+				//Respect the formatting preferences the managing editor has set up. Navigation can now be horizontal, or use separators, and so on.
+			//11/10/99; 1:45:58 PM by PBS
+				//Fixed a bug: if the pagename in the XML text starts with http://[servername]/, then the current page wouldn't be disabled. Now it will be disabled.
+			//10/27/99; 2:30:23 PM by PBS
+				//If a link has editorsOnly="true" as an attribute, then its displayed only if the person viewing the page is a contributing or managing editor.
+			//?/?/99 by PBS
+				//Created. Draw the navigator links. The current page should be disabled.
 	
 	if pta == nil {
 		pta = html.getPageTableAddress ()};
 	
 	bundle { // 05/05/00 JES: localize the prefs navigator (the wizard is localized in manilaSuite.admin.sitePrefsPage)
-		«The wizard and the navigator must have the same names for panels, or prefsBrowser won't work.
+		//The wizard and the navigator must have the same names for panels, or prefsBrowser won't work.
 		if address (pta^.navigator) == @manilaData.sitePrefs.navigator {
 			local (adrLanguageTable = manilaSuite.getLanguageTableAddress (pta: pta));
 			if defined (adrLanguageTable^.navigators.sitePrefs) { // is there a localized wizard?
@@ -86,15 +86,15 @@ on drawNavigator (pta=nil) {
 				if address (pta^.navigator) == @manilaData.sitePrefs.navigator { // no server or Frontier default, use manilaData.sitePrefs.wizard
 					pta^.navigator = @manilaData.sitePrefs.navigator}}}};
 	
-	«bundle //PBS 02/24/00: support for plug-ins that have a menuScript defined.
-		«if defined (pta^.pluginName) //are we in a plug-in's website fragment?
-			«local (pluginName = pta^.pluginName)
-			«local (adrConfig = manilaSuite.plugins.getConfigAddress (pluginName))
-			«if defined (adrConfig^.menuScript)
-				«local (adrMenuScript = @adrConfig^.menuScript)
-				«if typeOf (adrConfig^.menuScript) == addressType
-					«adrMenuScript = adrConfig^.menuScript
-				«return (manilaSuite.unTaint (adrMenuScript^ ()))
+	//bundle //PBS 02/24/00: support for plug-ins that have a menuScript defined.
+		//if defined (pta^.pluginName) //are we in a plug-in's website fragment?
+			//local (pluginName = pta^.pluginName)
+			//local (adrConfig = manilaSuite.plugins.getConfigAddress (pluginName))
+			//if defined (adrConfig^.menuScript)
+				//local (adrMenuScript = @adrConfig^.menuScript)
+				//if typeOf (adrConfig^.menuScript) == addressType
+					//adrMenuScript = adrConfig^.menuScript
+				//return (manilaSuite.unTaint (adrMenuScript^ ()))
 	
 	local (htmlText = "");
 	local (i);
@@ -162,7 +162,7 @@ on drawNavigator (pta=nil) {
 		if strippedUri contains "/" and not (strippedPageName contains "/") {
 			strippedPageName = string.popSuffix (strippedUri, "/") + "/" + strippedPageName};
 		
-		«Add the link, enabled or disabled.
+		//Add the link, enabled or disabled.
 		if strippedUri == strippedPageName { // was: if pta^.uri == pagename: PBS 5/21/99
 			addDisabledLink ();
 			return (true)}
@@ -233,7 +233,7 @@ on drawNavigator (pta=nil) {
 		add (s)};
 	
 	bundle { //compile the xml text if it's been modified
-		«If the structure table is not defined or the outline has been modified more recently than the structure table, compile.
+		//If the structure table is not defined or the outline has been modified more recently than the structure table, compile.
 		local (flCompile = false);
 		if defined (adrNavigator^.structure) { //structure exists -- verify not empty and not stale
 			if sizeOf (adrNavigator^.structure) == 0 { //empty

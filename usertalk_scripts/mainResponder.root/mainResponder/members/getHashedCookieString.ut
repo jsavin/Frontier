@@ -1,11 +1,11 @@
 on getHashedCookieString (adrGroup, memberKey, password, groupName, flExpireAtEndOfSession=false) {
-	«Changes:
-		«10/1/05; 4:01:46 AM by JES
-			«Call through mainResponder.members.getCookieDomain to get the cookieDomain to use in the cookie.
-		«9/12/01; 3:45:16 PM by PBS
-			«New parameter: flExpireAtEndOfSession. If true, then any expires setting is over-ridden, and the cookie expires at end of session.
-		«04/10/00; 12:10:50 PM by PBS
-			«Created. Create a new-style cookie string.
+	//Changes:
+		//10/1/05; 4:01:46 AM by JES
+			//Call through mainResponder.members.getCookieDomain to get the cookieDomain to use in the cookie.
+		//9/12/01; 3:45:16 PM by PBS
+			//New parameter: flExpireAtEndOfSession. If true, then any expires setting is over-ridden, and the cookie expires at end of session.
+		//04/10/00; 12:10:50 PM by PBS
+			//Created. Create a new-style cookie string.
 	
 	local (s);
 	s = string.innerCaseName (adrGroup^.cookieName) + "=";

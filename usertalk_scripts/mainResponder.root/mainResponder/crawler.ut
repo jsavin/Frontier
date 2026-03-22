@@ -47,12 +47,12 @@ on crawler (adrobject, adrcallback = @msg) {
 	else {
 		new (tabletype, adrstack)};
 	crawlObject (adrobject)};
-«bundle //test code
-	«on callback (adrobject)
-		«case typeof (adrobject^)
-			«filespectype
-				«msg (adrobject^)
-		«else
-			«msg (adrobject)
-		«return (true)
-	«crawler (@config.mainresponder.domains, @callback)
+//bundle //test code
+	//on callback (adrobject)
+		//case typeof (adrobject^)
+			//filespectype
+				//msg (adrobject^)
+		//else
+			//msg (adrobject)
+		//return (true)
+	//crawler (@config.mainresponder.domains, @callback)

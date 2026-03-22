@@ -1,19 +1,19 @@
 on init (adrsite=nil) {
-	«Changes
-		«1/31/06; 3:41:12 AM by JES
-			«Init flCommentsModerated to false, preserving existing behavior for legacy sites. New sites will have this feature enabled by default.
-		«12/15/05; 12:04:42 AM by JES
-			«Init flLoginRequired to false.
-		«7/22/03; 4:56:33 PM by JES
-			«Init data tables needed to support trackback for Radio Hosting.
-		«10/6/02; 8:40:57 PM by JES
-			«New optional parameter, adrsite. If supplied, this script can be called outside the website framework context.
-		«7/12/02; 3:09:14 PM by JES
-			«Initialize postLink preference.
-		«2/23/02; 1:29:01 AM by JS
-			«Initialize the counterScriptCache sub-table of the radioHosting.comments sub-table in the #newsSite table.
-		«2/17/02; 11:02:53 PM by JS
-			«Created. Initialize the comments sub-table of a Manila site's newsSite table.
+	//Changes
+		//1/31/06; 3:41:12 AM by JES
+			//Init flCommentsModerated to false, preserving existing behavior for legacy sites. New sites will have this feature enabled by default.
+		//12/15/05; 12:04:42 AM by JES
+			//Init flLoginRequired to false.
+		//7/22/03; 4:56:33 PM by JES
+			//Init data tables needed to support trackback for Radio Hosting.
+		//10/6/02; 8:40:57 PM by JES
+			//New optional parameter, adrsite. If supplied, this script can be called outside the website framework context.
+		//7/12/02; 3:09:14 PM by JES
+			//Initialize postLink preference.
+		//2/23/02; 1:29:01 AM by JS
+			//Initialize the counterScriptCache sub-table of the radioHosting.comments sub-table in the #newsSite table.
+		//2/17/02; 11:02:53 PM by JS
+			//Created. Initialize the comments sub-table of a Manila site's newsSite table.
 	if adrsite == nil {
 		adrsite = manilaSuite.getSiteAddress ()};
 	local (adrnewssite = manilaSuite.getNewsSiteAddress (adrsite));

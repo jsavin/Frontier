@@ -1,30 +1,30 @@
 on includeMessage (msgNum, flEditButton=true, flDgLink=true, flProcessMacros=false, flExternalEditorButton=false) {
-	«Changes:
-		«6/13/07; 9:03:04 PM by LL
-			«Bug fix. Content editors should be able to see the Edit button as well.
-		«5/5/06; 9:25:42 PM by JES
-			«Removed debugging call, msg (tryerror).
-		«10/24/05; 3:11:23 AM by JES
-			«Enable shortcut and site structure lookups. Pass in a string value for msgNum -- either a shortcut name or a relative path within the site, to include the message with that shortcut or relative path.
-			«Re-worked recursion checking code to allow a message to be included on a page multiple times, but not allow it to be included in a recursive fashion.
-		«2000-2003
-			«04/17/03; 1:35:12 PM by JES
-				«Fix a problem where the default first news item would be included instead of the about message, after having applied a theme to a site which was created as a news items site.
-			«04/21/02; 6:16:11 PM by JES
-				«Disallow recursive message inclusion.
-			«11/21/00; 6:08:16 PM by PBS
-				«Use the new bottleneck routine for displaying an edit message in Pike button.
-			«11/13/00; 6:14:40 PM by PBS
-				«New optional parameter: flExternalEditorButton. False by default. Display a button for editing in an external editor if this member can edit the message and that person uses an external editor.
-			«10/26/00; 1:28:26 AM by PBS
-				«New optional parameter: flProcessMacros. If true, macros and shortcuts in the included message are expanded.
-			«06/22/00; 12:52:56 AM by JES
-				«Support news items rendering.
-			«06/09/00; 3:34:35 AM by JES
-				«Localized Edit button text
-			«05/31/00; 2:58:13 PM by PBS
-				«Created. Add a dg message as a component of a page. Pass it the msgNum of the dg message to include. If you're the managing editor, you get an Edit button, if flEditButton is true. If you have dg access, you get a dg link, if flDgLink is true. If flProcessMacros is true, the macros and shortcuts in the included message are expanded.
-					«Based on the editComponent sample: http://samples.userland.com/stories/storyReader$88
+	//Changes:
+		//6/13/07; 9:03:04 PM by LL
+			//Bug fix. Content editors should be able to see the Edit button as well.
+		//5/5/06; 9:25:42 PM by JES
+			//Removed debugging call, msg (tryerror).
+		//10/24/05; 3:11:23 AM by JES
+			//Enable shortcut and site structure lookups. Pass in a string value for msgNum -- either a shortcut name or a relative path within the site, to include the message with that shortcut or relative path.
+			//Re-worked recursion checking code to allow a message to be included on a page multiple times, but not allow it to be included in a recursive fashion.
+		//2000-2003
+			//04/17/03; 1:35:12 PM by JES
+				//Fix a problem where the default first news item would be included instead of the about message, after having applied a theme to a site which was created as a news items site.
+			//04/21/02; 6:16:11 PM by JES
+				//Disallow recursive message inclusion.
+			//11/21/00; 6:08:16 PM by PBS
+				//Use the new bottleneck routine for displaying an edit message in Pike button.
+			//11/13/00; 6:14:40 PM by PBS
+				//New optional parameter: flExternalEditorButton. False by default. Display a button for editing in an external editor if this member can edit the message and that person uses an external editor.
+			//10/26/00; 1:28:26 AM by PBS
+				//New optional parameter: flProcessMacros. If true, macros and shortcuts in the included message are expanded.
+			//06/22/00; 12:52:56 AM by JES
+				//Support news items rendering.
+			//06/09/00; 3:34:35 AM by JES
+				//Localized Edit button text
+			//05/31/00; 2:58:13 PM by PBS
+				//Created. Add a dg message as a component of a page. Pass it the msgNum of the dg message to include. If you're the managing editor, you get an Edit button, if flEditButton is true. If you have dg access, you get a dg link, if flDgLink is true. If flProcessMacros is true, the macros and shortcuts in the included message are expanded.
+					//Based on the editComponent sample: http://samples.userland.com/stories/storyReader$88
 	
 	local (pta = html.getPageTableAddress ());
 	local (adrMsgTable);
@@ -50,9 +50,9 @@ on includeMessage (msgNum, flEditButton=true, flDgLink=true, flProcessMacros=fal
 	if adrMsgTable == nil { //didn't find shortcut -- look up by message number
 		adrMsgTable = mainResponder.discuss.getMessageTable (msgNum);
 		if msgNum == 2 { //4/16/03; 4:20:51 PM by JES -- ugly hack for including the about message
-			«Here's why we do this
-				«If the site was created as a news items site, then the about message will be message 3, instead of message 2. We take care of this already when creating a new site -- the template and home page template get patched with the correct message number, but when applying a Theme, this doesn't happen.
-				«We can be sure that if the site was created as a news items site, that message 2 is the default first news item, and that message 3 is the about message, so we check to see if we're including message 2, and message 2 is a news item -- if that's the case, then we include message 3 -- the about message -- instead.
+			//Here's why we do this
+				//If the site was created as a news items site, then the about message will be message 3, instead of message 2. We take care of this already when creating a new site -- the template and home page template get patched with the correct message number, but when applying a Theme, this doesn't happen.
+				//We can be sure that if the site was created as a news items site, that message 2 is the default first news item, and that message 3 is the about message, so we check to see if we're including message 2, and message 2 is a news item -- if that's the case, then we include message 3 -- the about message -- instead.
 			if defined (adrMsgTable^.newsItem) {
 				msgNum = 3;
 				adrMsgTable = mainResponder.discuss.getMessageTable (msgNum)}}};
@@ -66,7 +66,7 @@ on includeMessage (msgNum, flEditButton=true, flDgLink=true, flProcessMacros=fal
 				pta^.includedMessageNums = pta^.includedMessageNums + adrMsgTable^.msgNum}}
 		else {
 			pta^.includedMessageNums = {adrMsgTable^.msgNum}}};
-	«local (text = string (adrMsgTable^.body))
+	//local (text = string (adrMsgTable^.body))
 	local (text);
 	if defined (adrMsgTable^.newsItem) {
 		text = manilaSuite.callbacks.getBodyCallback (adrMsgTable)}
@@ -116,8 +116,8 @@ on includeMessage (msgNum, flEditButton=true, flDgLink=true, flProcessMacros=fal
 	
 	return (htmlText)};
 
-«bundle //test code
-	«if defined (workspace.pt.includedMessageNums)
-		«delete (@workspace.pt.includedMessageNums)
-	«html.setPageTableAddress (@workspace.pt)
-	«includeMessage ("test")
+//bundle //test code
+	//if defined (workspace.pt.includedMessageNums)
+		//delete (@workspace.pt.includedMessageNums)
+	//html.setPageTableAddress (@workspace.pt)
+	//includeMessage ("test")

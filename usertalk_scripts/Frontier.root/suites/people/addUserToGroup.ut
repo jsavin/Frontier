@@ -1,5 +1,5 @@
 on addUserToGroup (userName, groupName) {
-	«Add a user to a group. Return false if the user or group doesn't exist.
+	//Add a user to a group. Return false if the user or group doesn't exist.
 	local (adrGroup = people.getGroupTable (groupName));
 	if not (people.groupExists (groupName, adrGroup)) {
 		return (false)};

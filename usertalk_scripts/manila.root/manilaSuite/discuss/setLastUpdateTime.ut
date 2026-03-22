@@ -1,9 +1,9 @@
 on setLastUpdateTime (adrMsgTable) {
-	«Set the last update time in the page table. Get the value from the dg message.
-		«11/11/99; 12:21:45 AM by PBS
-		«Changes:
-			«06/19/00; 2:15:11 PM by JES
-				«set postTime as well as last update time, since it's now legal
+	//Set the last update time in the page table. Get the value from the dg message.
+		//11/11/99; 12:21:45 AM by PBS
+		//Changes:
+			//06/19/00; 2:15:11 PM by JES
+				//set postTime as well as last update time, since it's now legal
 	
 	local (pta = html.getPageTableAddress ());
 	

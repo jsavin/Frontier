@@ -1,6 +1,6 @@
 on writeReport (f) {
-	file.new (f); «create the file
-	file.setType (f, 'TEXT'); «it's a text file
+	file.new (f); //create the file
+	file.setType (f, 'TEXT'); //it's a text file
 	file.setCreator (f, Netscape.id);
 	file.open (f);
 	on add (s) {
@@ -8,7 +8,7 @@ on writeReport (f) {
 	add ("<html>\r");
 	add ("<body bgcolor=\"#FFFFFF\">\r");
 	add ("<code>Last build on " + clock.now () + ".</code>");
-	bundle { «popular pages
+	bundle { //popular pages
 		local (lastRanking = user.webstar.lastRanking);
 		user.webstar.lastranking = {};
 		local (colwidths = {50, 50, 0});
@@ -46,21 +46,21 @@ on writeReport (f) {
 				user.webstar.lastranking = user.webstar.lastranking + url}};
 		add ("</table>\r");
 		add ("</blockquote>\r")};
-	«bundle «active readers
-		«add ("<br><br><h2>The most active readers</h2>")
-		«add ("<blockquote>\r")
-		«add ("<pre>\r")
-		«add ("<b>reads\tuser\r\r</b>")
-		«for i = sizeof (user.webstar.hosts) downto 1
-			«msg (i)
-			«val = user.webstar.hosts [i]
-			«if val > 1
-				«file.write (f, val + "\t" + nameof (user.webstar.hosts [i]) + "\r")
-		«add ("</pre>\r")
-		«add ("</blockquote>\r")
+	//bundle //active readers
+		//add ("<br><br><h2>The most active readers</h2>")
+		//add ("<blockquote>\r")
+		//add ("<pre>\r")
+		//add ("<b>reads\tuser\r\r</b>")
+		//for i = sizeof (user.webstar.hosts) downto 1
+			//msg (i)
+			//val = user.webstar.hosts [i]
+			//if val > 1
+				//file.write (f, val + "\t" + nameof (user.webstar.hosts [i]) + "\r")
+		//add ("</pre>\r")
+		//add ("</blockquote>\r")
 	add ("</body>\r</html>");
 	file.close (f);
 	filemenu.save ()};
-bundle { «test code
+bundle { //test code
 	writeReport ("jaz disk 1:tmp.html");
 	webbrowser.opendocument ("jaz disk 1:tmp.html")}

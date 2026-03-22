@@ -1,26 +1,26 @@
 on httpAuthentication (realm, pta=nil, groupname="default", memberList=nil, securityLevel=0, fldebug=false, domain="/", noncesExpireAfterMinutes=15) {
-	«Change Notes
-		«Docs: http://docserver.userland.com/mainResponder/security/httpAuthentication
-		«8/8/02; 3:01:37 PM by JES
-			«Support for passwords stored as binaries instead of as clear-text strings.
-		«Changes before 1/1/2001
-			«06/19/00; 9:55:54 AM by JES
-				«localization bug fix: when outside wsf context, html.getPageTableAddress was failing in mainResponder.getString
-				«Added support for Frontier language setting in user.prefs
-			«05/01/00; 6:40:25 PM by JES
-				«Changed getString calls to use a replacement table address instead of a lists
-			«Sunday, December 19, 1999 at 4:30:04 PM by AR
-				«Closed a security hole in the Basic Authentication process.
-			«Sunday, November 07, 1999 at 9:26:41 PM by AR
-				«username is now case-insensitive
-			«Tuesday, October 26, 1999 at 4:12:49 PM by AR
-				«Basic Access Authentication as well as Digest Access Authentication are supported per RFC 2617
-				«We assume that we are called from a mainResponder #security script. If we aren't, please pass us the address of the param table.
-			«4/16/00; 1:21:20 AM by JES
-				«localized all error strings
+	//Change Notes
+		//Docs: http://docserver.userland.com/mainResponder/security/httpAuthentication
+		//8/8/02; 3:01:37 PM by JES
+			//Support for passwords stored as binaries instead of as clear-text strings.
+		//Changes before 1/1/2001
+			//06/19/00; 9:55:54 AM by JES
+				//localization bug fix: when outside wsf context, html.getPageTableAddress was failing in mainResponder.getString
+				//Added support for Frontier language setting in user.prefs
+			//05/01/00; 6:40:25 PM by JES
+				//Changed getString calls to use a replacement table address instead of a lists
+			//Sunday, December 19, 1999 at 4:30:04 PM by AR
+				//Closed a security hole in the Basic Authentication process.
+			//Sunday, November 07, 1999 at 9:26:41 PM by AR
+				//username is now case-insensitive
+			//Tuesday, October 26, 1999 at 4:12:49 PM by AR
+				//Basic Access Authentication as well as Digest Access Authentication are supported per RFC 2617
+				//We assume that we are called from a mainResponder #security script. If we aren't, please pass us the address of the param table.
+			//4/16/00; 1:21:20 AM by JES
+				//localized all error strings
 	
-	«4/16/00; 4:50:45 PM by JES: temporary page table for localization support
-		«for localization, we have to have a page table with at least the language, so we make a temporary one
+	//4/16/00; 4:50:45 PM by JES: temporary page table for localization support
+		//for localization, we have to have a page table with at least the language, so we make a temporary one
 	local (tempTable); new (tableType, @tempTable);
 	if pta != nil { // if in wsf context, use the language defined by the site, if any
 		if defined (pta^.language) {

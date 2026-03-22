@@ -1,7 +1,7 @@
 on getMessage (msgnum) {
-	«12/5/98; 9:59:25 AM by DW
-		«Return all the information we have for a message
-		«Let the XML-RPC support which is kernelized, do the marshalling
+	//12/5/98; 9:59:25 AM by DW
+		//Return all the information we have for a message
+		//Let the XML-RPC support which is kernelized, do the marshalling
 	
 	local (adrmsgs = @[mainresponder.discuss.openfile ()].discuss.messages);
 	return (adrmsgs^.[string.padwithzeros (msgnum, 7)])}

@@ -1,7 +1,7 @@
 on registerHandler (handlerType, handlerScriptAdr, connection = nil, namespace = "") {
-	«Changes
-		«5/14/02; 1:51:34 PM by JB
-			«Changelog created.
+	//Changes
+		//5/14/02; 1:51:34 PM by JB
+			//Changelog created.
 	if connection == nil {
 		connection = @system.temp.jabber.connection};
 	local ( handlerAdr = @user.im.jabber.handlers.[string(connection)] );

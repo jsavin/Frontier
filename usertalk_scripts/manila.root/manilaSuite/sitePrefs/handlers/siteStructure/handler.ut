@@ -1,12 +1,12 @@
 on handler (pta, adrObject) {
-	«Changes
-		«1/29/06; 11:56:06 PM by JES
-			«Fix typo, pta^.pta^. ... -> pta^. ...
-		«4/16/05; 1:52:11 AM by JES
-			«Disabled map (table) view of site structure, due to unresolved issues. These will be fixed during the beta process, and released later.
-		«04/05/15, 17:36:04 by DAB
-			«factored out of manilaSuite.admin.advancedPage (with extreme prejudice) 
-				«messages at manilaData.localization.languages.english.strings.admin
+	//Changes
+		//1/29/06; 11:56:06 PM by JES
+			//Fix typo, pta^.pta^. ... -> pta^. ...
+		//4/16/05; 1:52:11 AM by JES
+			//Disabled map (table) view of site structure, due to unresolved issues. These will be fixed during the beta process, and released later.
+		//04/05/15, 17:36:04 by DAB
+			//factored out of manilaSuite.admin.advancedPage (with extreme prejudice) 
+				//messages at manilaData.localization.languages.english.strings.admin
 	local (advancedPageName = pta^.pathArgs);
 	local (adrSite= manilaSuite.getManilaSiteAddress(pta));
 	local (flMemberHasPike = manilaSuite.pike.memberHasPike (pta));
@@ -68,14 +68,14 @@ on handler (pta, adrObject) {
 			s = manilaSuite.unTaint (s);
 			local (t);
 			local (adrDG = manilaSuite.discuss.getDiscussionGroupAddress(adrSite));
-			on errorReport(messageText) { «05/05/04, 15:53:42 by DAB
+			on errorReport(messageText) { //05/05/04, 15:53:42 by DAB
 				add("<p style='color:red'>");
 				add(messageText);
 				add("</p>");
 				return true};
 			try {
 				xml.compile (s, @t);
-				if manilaSuite.sitePrefs.siteStructure.isValid(@t, @errorReport, adrDG^.prefs.nextMsgNum, adrSite) { «made Conditional
+				if manilaSuite.sitePrefs.siteStructure.isValid(@t, @errorReport, adrDG^.prefs.nextMsgNum, adrSite) { //made Conditional
 					wp.newTextObject (s, adrObject);
 					manilaSuite.custody.checkInAndOut(adrObject, pta^.adrMemberInfo, pta^.adrSiteRootTable, false);
 					

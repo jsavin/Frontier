@@ -6,13 +6,13 @@ on ipFilter (clientIp, matchString, returnString) {
 	else {
 		if clientIp beginsWith matchString {
 			return (returnString)}};
-	return ("")}; « return empty string if condition is not met.
+	return ("")}; // return empty string if condition is not met.
 
-«bundle «test code
-	«dialog.notify (ipFilter ("198.148.149.12", "198", "Hello1"))
-	«dialog.notify (ipFilter ("198.148.149.12", "198.148", "Hello2"))
-	«dialog.notify (ipFilter ("198.148.149.12", "198.148.149", "Hello3"))
-	«dialog.notify (ipFilter ("198.148.149.12", "198.148.149.12", "Hello4"))
-	«dialog.notify (ipFilter ("198.148.149.12", "198.148.150.12", "Hello5"))
-	«dialog.notify (ipFilter ("198.148.149.12", "!198.148.150.12", "Hello6"))
-	«dialog.notify (ipFilter ("198.148.149.12", "!198.148.149.12", "Hello7"))
+//bundle //test code
+	//dialog.notify (ipFilter ("198.148.149.12", "198", "Hello1"))
+	//dialog.notify (ipFilter ("198.148.149.12", "198.148", "Hello2"))
+	//dialog.notify (ipFilter ("198.148.149.12", "198.148.149", "Hello3"))
+	//dialog.notify (ipFilter ("198.148.149.12", "198.148.149.12", "Hello4"))
+	//dialog.notify (ipFilter ("198.148.149.12", "198.148.150.12", "Hello5"))
+	//dialog.notify (ipFilter ("198.148.149.12", "!198.148.150.12", "Hello6"))
+	//dialog.notify (ipFilter ("198.148.149.12", "!198.148.149.12", "Hello7"))

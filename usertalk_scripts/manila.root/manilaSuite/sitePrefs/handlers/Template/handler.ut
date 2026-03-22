@@ -1,10 +1,10 @@
 on handler (pta, adrObject) {
-	«Changes
-		«10/3/05; 2:53:43 AM by JES
-			«Updated script to UserLand coding style.
-		«04/05/14, 19:18:39 by DAB
-			«Created. Factored out of manilaSuite.admin.advancedPage.
-				«messages at manilaData.localization.languages.english.strings.admin
+	//Changes
+		//10/3/05; 2:53:43 AM by JES
+			//Updated script to UserLand coding style.
+		//04/05/14, 19:18:39 by DAB
+			//Created. Factored out of manilaSuite.admin.advancedPage.
+				//messages at manilaData.localization.languages.english.strings.admin
 	local (advancedPageName = pta^.pathArgs);
 	local (adrSite= manilaSuite.getManilaSiteAddress (pta));
 	local (flMemberHasPike = manilaSuite.pike.memberHasPike (pta));
@@ -43,7 +43,7 @@ on handler (pta, adrObject) {
 				manilaSuite.themes.restoreTemplate (@siteInfo);
 				manilaSuite.custody.checkInAndOut (adrObject, pta^.adrMemberInfo, pta^.adrSiteRootTable, false);
 				add (manilaSuite.sitePrefs.utility.successMessage (pta, "admin.templateHasBeenRestoredToDefault", @replacementTable));
-				«cause the containing frame to refresh
+				//cause the containing frame to refresh
 				add ("\r<script language = \"javascript\">parent.location='" + pta^.fname + "$" + advancedPageName + "?" +shortname +"=1'</script>")};
 			defined (pta^.postArgs.no) { //cancel restore 05/04/26, 17:41:39 by DAB
 				}}
@@ -57,7 +57,7 @@ on handler (pta, adrObject) {
 				manilaSuite.custody.checkInAndOut (adrObject, pta^.adrMemberInfo, pta^.adrSiteRootTable, false);
 				
 				add (manilaSuite.sitePrefs.utility.successMessage (pta, "admin.templateUpdateSuccess", @replacementTable));
-				«cause the containing frame to refresh
+				//cause the containing frame to refresh
 				add ("\r<script language = \"javascript\">parent.location='" + pta^.fname + "$" + advancedPageName + "?" +shortname + "=2'</script>")}
 			else {
 				add (manilaSuite.sitePrefs.utility.errorMessage (errorString, flLocalised:false))}}}; //04/06/14, 15:16:10 by DAB

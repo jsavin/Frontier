@@ -1,9 +1,9 @@
 on getStoriesHeaders (adrSitePrefs, editorEmail) {
-	«Get a struct containing the story headers for a given editor.
-		«11/14/00; 3:17:37 AM by JES
-	«Changes
-		«9/6/01; 8:00:42 PM by JES
-			«Changed params from a list to a record of named parameters, for SOAP compatibility.
+	//Get a struct containing the story headers for a given editor.
+		//11/14/00; 3:17:37 AM by JES
+	//Changes
+		//9/6/01; 8:00:42 PM by JES
+			//Changed params from a list to a record of named parameters, for SOAP compatibility.
 	with adrSitePrefs^ {
 		local (params = {"siteName":sitename, "editorEmail":editorEmail, "username":username, "password":string (password)});
 		return (manila.callHandler (host, port, "manila.editors.getStoriesHeaders", @params, rpcPath:rpcPath))}}

@@ -1,6 +1,6 @@
 on restoreNewsDayTemplate (adrSiteInfo) {
-	«Restore the news day template to the default.
-		«06/06/00; 3:48:02 PM by PBS
+	//Restore the news day template to the default.
+		//06/06/00; 3:48:02 PM by PBS
 	
 	local (adrSite = adrSiteInfo^.adrSite);
 	manilaSuite.themes.restoreToDefault (adrSite, "newsDayTemplate");

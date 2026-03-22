@@ -1,8 +1,8 @@
 on monitorIndexingSessions () {
-	«Changes
-		«8/3/02; 10:24:02 PM by JES
-			«Created. Monitors all indexing sessions, kicking off any that hve been interrupted.
-				«Modeled after scheduler.monitorThreads.
+	//Changes
+		//8/3/02; 10:24:02 PM by JES
+			//Created. Monitors all indexing sessions, kicking off any that hve been interrupted.
+				//Modeled after scheduler.monitorThreads.
 	if not config.manila.prefs.flRestartSearchEngineIndexSessions {
 		return (0)};
 	local (ctthreads = 0);
@@ -28,11 +28,11 @@ on monitorIndexingSessions () {
 						adrdata^.indexQueue.threadId = idThread}}}}};
 	return (ctthreads)};
 bundle { //test code
-	«bundle //1000 runs
-		«local (ticks = clock.ticks ())
-		«for i = 1 to 1000
-			«monitorIndexingSessions ()
-		«dialog.alert (double (clock.ticks () - ticks) / 60)
+	//bundle //1000 runs
+		//local (ticks = clock.ticks ())
+		//for i = 1 to 1000
+			//monitorIndexingSessions ()
+		//dialog.alert (double (clock.ticks () - ticks) / 60)
 	bundle { //1 run
 		local (ticks = clock.ticks ());
 		monitorIndexingSessions ();

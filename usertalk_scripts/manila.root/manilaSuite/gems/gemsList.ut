@@ -1,25 +1,25 @@
 on gemsList (flCreateLink=true) {
-	«Changes:
-		«11/10/05; 3:02:48 AM by JES
-			«Moved upload link to above the list, to match the stories and pictures page change released with 9.5.
-		«03/24/05, 21:56:45 by DAB
-			«Call manilaSuite.gems.markDeleted instead of doing deletion here.
-		«12/22/04; 12:07:14 PM by LL
-			«Localize the dates used in the gems list.
-		«9/23/03; 4:44:29 PM by JES
-			«Allow content editors to delete gems.
-		«04/20/00; 7:48:34 PM by JES
-			«Localized.
-		«05/25/00; 1:41:43 AM by JES
-			«Don't test that the delete button was named "delete" because localized sites fail the test.
-		«06/30/00; 11:16:47 AM by PBS
-			«Don't scriptError if the gem file isn't found, just skip it.
-		«9/28/01; 2:49:47 PM by PBS
-			«Support for print-friendly template.
-		«1/25/02; 6:23:24 PM by PBS
-			«Performance enhancements in the local "add" routine -- add a trailing semicolon; use parentheses to get the expression in x = x + y form (which is optimized by the kernel).
-		«04/14/00; 5:47:03 PM by PBS
-			«Created. Display the list of gems, with checkboxes and a Delete button if you're an ME.
+	//Changes:
+		//11/10/05; 3:02:48 AM by JES
+			//Moved upload link to above the list, to match the stories and pictures page change released with 9.5.
+		//03/24/05, 21:56:45 by DAB
+			//Call manilaSuite.gems.markDeleted instead of doing deletion here.
+		//12/22/04; 12:07:14 PM by LL
+			//Localize the dates used in the gems list.
+		//9/23/03; 4:44:29 PM by JES
+			//Allow content editors to delete gems.
+		//04/20/00; 7:48:34 PM by JES
+			//Localized.
+		//05/25/00; 1:41:43 AM by JES
+			//Don't test that the delete button was named "delete" because localized sites fail the test.
+		//06/30/00; 11:16:47 AM by PBS
+			//Don't scriptError if the gem file isn't found, just skip it.
+		//9/28/01; 2:49:47 PM by PBS
+			//Support for print-friendly template.
+		//1/25/02; 6:23:24 PM by PBS
+			//Performance enhancements in the local "add" routine -- add a trailing semicolon; use parentheses to get the expression in x = x + y form (which is optimized by the kernel).
+		//04/14/00; 5:47:03 PM by PBS
+			//Created. Display the list of gems, with checkboxes and a Delete button if you're an ME.
 	
 	local (pta = html.getPageTableAddress ());
 	local (flEditor = manilaSuite.editors.editorialTest ());
@@ -43,7 +43,7 @@ on gemsList (flCreateLink=true) {
 	if flPost { //handle delete command
 		if flCanDelete { //managing editors only may delete from a list
 			if defined (pta^.postArgs.delete) {
-				«if string.lower (pta^.postArgs.delete) == "delete" // 05/25/00 JES: this test fails if the site is not in English
+				//if string.lower (pta^.postArgs.delete) == "delete" // 05/25/00 JES: this test fails if the site is not in English
 				local (lowerCategory = "gems");
 				local (adrItem);
 				for adrItem in @pta^.postArgs {
@@ -56,22 +56,22 @@ on gemsList (flCreateLink=true) {
 						try {
 							num = number (lowerName);
 							flDelete = true};
-						«if flDelete
-							«local (adrTable = manilaSuite.gems.getGemAddress (adrSite, num))
-							«manilaSuite.gems.deleteAssociatedFile (adrTable)
-							«manilaSuite.gems.deleteAssociatedShortcut (adrTable)
-							«manilaSuite.gems.deleteFromGemsList (adrTable)
-							«
-							«bundle //call delete gems callbacks, if any 04/08/23, 14:50:01 by DAB
-								«local (t)
-								«bundle //build context data for callback
-									«new(tabletype, @t)
-									«t.adrSite = adrSite
-									«t.adrGemTable = adrTable
-									«t.adrMember = pta^.adrMemberInfo
-									«t.flDeleting = true
-								«
-								«manilaSuite.callbacks.deleteGemCallback(@t)
+						//if flDelete
+							//local (adrTable = manilaSuite.gems.getGemAddress (adrSite, num))
+							//manilaSuite.gems.deleteAssociatedFile (adrTable)
+							//manilaSuite.gems.deleteAssociatedShortcut (adrTable)
+							//manilaSuite.gems.deleteFromGemsList (adrTable)
+							//
+							//bundle //call delete gems callbacks, if any 04/08/23, 14:50:01 by DAB
+								//local (t)
+								//bundle //build context data for callback
+									//new(tabletype, @t)
+									//t.adrSite = adrSite
+									//t.adrGemTable = adrTable
+									//t.adrMember = pta^.adrMemberInfo
+									//t.flDeleting = true
+								//
+								//manilaSuite.callbacks.deleteGemCallback(@t)
 						if flDelete { //05/03/24, 21:56:45 by DAB
 							manilaSuite.gems.markDeleted(adrSite, num, pta^.adrMemberInfo)}}}}}};
 	
@@ -94,13 +94,13 @@ on gemsList (flCreateLink=true) {
 			add ("<tr>");
 			if flCanDelete {
 				td ("&nbsp;")};
-			«04/20/00; 8:02:10 PM by JES: localized column headings
+			//04/20/00; 8:02:10 PM by JES: localized column headings
 			td (manilaSuite.getString ("common.dateColumnName"), flBold: true);
 			td (manilaSuite.getString ("common.titleColumnName"), flBold: true);
 			td (manilaSuite.getString ("common.originatorColumnName"), flBold: true);
 			td (manilaSuite.getString ("common.sizeColumnName"), "right", true);
 			td (manilaSuite.getString ("common.typeColumnName"), flBold: true);
-			«td ("<b>URL</b>")
+			//td ("<b>URL</b>")
 			add ("</tr>")};
 		
 		local (i, ct = sizeOf (adrMessages^));
@@ -119,7 +119,7 @@ on gemsList (flCreateLink=true) {
 			if flCanDelete { //add checkbox
 				td ("<input type=\"checkbox\" name=\"gems" + adrMsgTable^.num + "\">")};
 			td (date.shortString (adrMsgTable^.postTime));
-			«td (adrMsgTable^.title)
+			//td (adrMsgTable^.title)
 			if flGemsAreEditable { //04/08/28, 09:41:09 by DAB
 				if defined(adrMsgTable^.shortcut) and (adrMsgTable^.title != adrMsgTable^.shortcut) { //03/04/17, 18:47:52 by DAB
 					td (html.getLink(adrMsgTable^.title, editGemURL + i) + " (&quot;" + adrMsgTable^.shortcut + "&quot;)")} //05/02/14, 16:11:30 by DAB
@@ -138,7 +138,7 @@ on gemsList (flCreateLink=true) {
 			add ("<tr>");
 			if flCanDelete {
 				add ("<td>&nbsp;</td>")};
-			«add ("<td>&nbsp;</td>")
+			//add ("<td>&nbsp;</td>")
 			local (cols = 5);
 			add ("<td colspan=\"" + cols + "\"><font size=\"-1\">&nbsp;");
 			local (url = adrMsgTable^.url);

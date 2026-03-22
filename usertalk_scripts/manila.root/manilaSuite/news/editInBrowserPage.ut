@@ -1,35 +1,35 @@
 on editInBrowserPage () {
-	«Changes:
-		«9/6/05; 6:54:28 PM by JES
-			«Add support for ETP callback, newsEditInBrowser.
-		«7/10/05; 4:35:39 AM by JES
-			«Added support for summary fields, which get passed to manilaSuite.news.editForm.
-		«7/9/05; 5:44:35 AM by JES
-			«Pass flFullItemPage to manilaSuite.news.formatNewsItem as true. Causes the full text of the news item to always appear in the preview area above the editor, regardless of what the news item summary prefs are set to.
-		«3/12/05; 5:31:05 AM by JES
-			«If the news item has an enclosure, pass its address to manilaSuite.news.editForm so the user gets some feedback that their enclosure is still registered.
-		«Changes before 2005
-			«4/18/03; 6:50:22 PM by JES
-				«After posting an item which was edited via the edit link on the home page, redirect to the item itself, not just the top of the home page.
-			«4/18/03; 6:31:02 PM by JES
-				«Undid the last change.
-			«4/18/03; 3:10:15 PM by JES
-				«Commented out the preview at the top of the Edit News Item page.
-			«4/17/03; 11:36:36 PM by JES
-				«Add an #edit anchor to the default redirect URL so we go straight back to the editing form instead of to the preview at the top.
-				«If a URL argument named redirectUrl is present, use its value for the redirectUrl parameter to manilaSuite.news.editForm. Used when clicking the edit link on the home page to redirect back to the item after POSTing the edited version.
-			«4/1/03; 12:27:24 PM by JES
-				«Don't throw an error if the news item doesn't define a department, url or description.
-			«11/21/00; 4:33:40 PM by PBS
-				«Use the new bottleneck for the Pike edit message button.
-			«05/11/00; 8:01:59 PM by JES
-				«merged in Brent's security fix for the client side trojan horse attack.
-			«05/09/00; 10:41:34 PM by PBS
-				«Check referer to defeat the client side trojan horse.
-			«05/04/00; 7:43:15 PM by JES
-				«localized
-			«04/20/00; 2:39:41 PM by PBS
-				«Created. Edit a news item in the browser.
+	//Changes:
+		//9/6/05; 6:54:28 PM by JES
+			//Add support for ETP callback, newsEditInBrowser.
+		//7/10/05; 4:35:39 AM by JES
+			//Added support for summary fields, which get passed to manilaSuite.news.editForm.
+		//7/9/05; 5:44:35 AM by JES
+			//Pass flFullItemPage to manilaSuite.news.formatNewsItem as true. Causes the full text of the news item to always appear in the preview area above the editor, regardless of what the news item summary prefs are set to.
+		//3/12/05; 5:31:05 AM by JES
+			//If the news item has an enclosure, pass its address to manilaSuite.news.editForm so the user gets some feedback that their enclosure is still registered.
+		//Changes before 2005
+			//4/18/03; 6:50:22 PM by JES
+				//After posting an item which was edited via the edit link on the home page, redirect to the item itself, not just the top of the home page.
+			//4/18/03; 6:31:02 PM by JES
+				//Undid the last change.
+			//4/18/03; 3:10:15 PM by JES
+				//Commented out the preview at the top of the Edit News Item page.
+			//4/17/03; 11:36:36 PM by JES
+				//Add an #edit anchor to the default redirect URL so we go straight back to the editing form instead of to the preview at the top.
+				//If a URL argument named redirectUrl is present, use its value for the redirectUrl parameter to manilaSuite.news.editForm. Used when clicking the edit link on the home page to redirect back to the item after POSTing the edited version.
+			//4/1/03; 12:27:24 PM by JES
+				//Don't throw an error if the news item doesn't define a department, url or description.
+			//11/21/00; 4:33:40 PM by PBS
+				//Use the new bottleneck for the Pike edit message button.
+			//05/11/00; 8:01:59 PM by JES
+				//merged in Brent's security fix for the client side trojan horse attack.
+			//05/09/00; 10:41:34 PM by PBS
+				//Check referer to defeat the client side trojan horse.
+			//05/04/00; 7:43:15 PM by JES
+				//localized
+			//04/20/00; 2:39:41 PM by PBS
+				//Created. Edit a news item in the browser.
 	
 	local (pta = html.getPageTableAddress ());
 	workspace.pt = pta^;
@@ -89,12 +89,12 @@ on editInBrowserPage () {
 					redirectUrl = pta^.responderAttributes.redirectUrl};
 				scriptError ("!redirect " + redirectUrl)}};
 		
-		«Recalculate these booleans, since their values may be different now that the news item has been released or posted to the home page.
+		//Recalculate these booleans, since their values may be different now that the news item has been released or posted to the home page.
 		flMemberCanEdit = manilaSuite.news.memberCanEdit (adrMsgTable, pta^.adrMemberInfo);
 		flMemberCanPostToHomePage = manilaSuite.news.memberCanPostToHomePage ()};
 	
-	«if flMemberCanEdit
-		«add ("<h3>Preview</h3>")
+	//if flMemberCanEdit
+		//add ("<h3>Preview</h3>")
 	local (newsItemTemplate = manilaSuite.news.getNewsItemTemplate (adrSite));
 	local (memberKey = nameOf (pta^.adrMemberInfo^));
 	on addPostOrReleaseButton () { //add Post to Homepage or Release button
@@ -112,29 +112,29 @@ on editInBrowserPage () {
 						add ("<input type=\"submit\" name=\"Post\" value=\"" + manilaSuite.getString ("news.postToHomePageButton") + "\">")}}}};
 		
 		add ("</form>")};
-	«addPostOrReleaseButton () //form for posting to home page -- above preview
+	//addPostOrReleaseButton () //form for posting to home page -- above preview
 	add (manilaSuite.news.formatNewsItem (adrMsgTable, newsItemTemplate, false, flFullItemPage:true));
 	addPostOrReleaseButton (); //form for posting to home page -- below preview
 	
 	if flMemberCanEdit {
-		«add ("<p><hr><h3>Edit</h3>")
+		//add ("<p><hr><h3>Edit</h3>")
 		bundle { //Add the Edit in Pike button
 			if defined (pta^.responderAttributes.urls^.editInPike) {
-				«if manilaSuite.pike.memberHasPike (pta)
-					«local (editInPikeUrl = pta^.responderAttributes.urls^.editInPike)
-					«if not (editInPikeUrl endsWith "$")
-						«editInPikeUrl = editInPikeUrl + "$"
-					«editInPikeUrl = editInPikeUrl + adrMsgTable^.msgNum
-					«local (adrSite = pta^.adrSiteRootTable)
-					«local (adrMember = pta^.adrMemberInfo)
-					«add ("<p>" + manilaSuite.pike.pikeButton (editInPikeUrl, adrMsgTable, adrMember, adrSite, true, manilaSuite.getString ("news.editInPike"), pta)) //true because this is a message
+				//if manilaSuite.pike.memberHasPike (pta)
+					//local (editInPikeUrl = pta^.responderAttributes.urls^.editInPike)
+					//if not (editInPikeUrl endsWith "$")
+						//editInPikeUrl = editInPikeUrl + "$"
+					//editInPikeUrl = editInPikeUrl + adrMsgTable^.msgNum
+					//local (adrSite = pta^.adrSiteRootTable)
+					//local (adrMember = pta^.adrMemberInfo)
+					//add ("<p>" + manilaSuite.pike.pikeButton (editInPikeUrl, adrMsgTable, adrMember, adrSite, true, manilaSuite.getString ("news.editInPike"), pta)) //true because this is a message
 				add (manilaSuite.pike.editMessageButton (adrMsgTable, pta:pta))}}; //PBS 11/21/00: bottleneck for edit-message buttons //PBS 11/27/00: specify named pta parameter
 		add ("<p>");
 		if defined (pta^.searchArgTable.redirectUrl) {
 			redirectUrl = pta^.searchArgTable.redirectUrl};
 		if defined (pta^.searchArgTable.home) {
 			redirectUrl = pta^.ftpSite^.url + "#a" + adrMsgTable^.msgNum};
-		«local (editForm = manilaSuite.news.editForm (pageTitle, title, description, linkUrl, departmentName, adrDepartments, msgNum, actionUrl, redirectUrl, buttonText, enclosure, summary))
+		//local (editForm = manilaSuite.news.editForm (pageTitle, title, description, linkUrl, departmentName, adrDepartments, msgNum, actionUrl, redirectUrl, buttonText, enclosure, summary))
 		local (adrETPBuilder = @manilaSuite.news.editForm);
 		manilaSuite.plugins.ETPoverride.getScriptAddress("newsEditInBrowser", @adrETPbuilder);
 		local (editForm = adrETPBuilder^ (pageTitle, title, description, linkUrl, departmentName, adrDepartments, msgNum, actionUrl, redirectUrl, buttonText, enclosure, summary));
@@ -149,6 +149,6 @@ on editInBrowserPage () {
 		pta^.title = manilaSuite.getString ("news.previewPageTitle")};
 	
 	return (htmlText)};
-«bundle //test code
-	«html.setPageTableAddress (@workspace.pt)
-	«editInBrowserPage ()
+//bundle //test code
+	//html.setPageTableAddress (@workspace.pt)
+	//editInBrowserPage ()

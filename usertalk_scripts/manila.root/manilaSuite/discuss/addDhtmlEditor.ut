@@ -1,6 +1,6 @@
 on addDhtmlEditor (pta=nil) {
-	«Add the DHTML Editor buttons and scripts.
-		«02/14/00; 9:13:54 AM by PBS
+	//Add the DHTML Editor buttons and scripts.
+		//02/14/00; 9:13:54 AM by PBS
 	
 	if pta == nil {
 		pta = html.getPageTableAddress ()};

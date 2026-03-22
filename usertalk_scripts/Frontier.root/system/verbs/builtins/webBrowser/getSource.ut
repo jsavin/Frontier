@@ -1,4 +1,4 @@
-on getSource (url, timeoutsecs) { «returns the HTML source stored at that URL
+on getSource (url, timeoutsecs) { //returns the HTML source stored at that URL
 	case sys.os () {
 		"MacOS" {
 			local (f = webBrowser.getScriptPrefsFolder () + "HTML Source", s);
@@ -7,7 +7,7 @@ on getSource (url, timeoutsecs) { «returns the HTML source stored at that URL
 			local (loopstarttime = clock.now ());
 			while not file.exists (f) {
 				rollbeachball ();
-				if (clock.now () - loopstarttime) > timeoutsecs { «timeout
+				if (clock.now () - loopstarttime) > timeoutsecs { //timeout
 					return ("")}};
 			while file.isbusy (f) {};
 			

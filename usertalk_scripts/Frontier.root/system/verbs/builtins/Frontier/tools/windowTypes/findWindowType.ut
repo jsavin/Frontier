@@ -18,6 +18,6 @@ on findWindowType (type = "", adradrtable=nil, adrwindow=nil) {
 			adradrtable^ = adrtable};
 		return (true)};
 	return (false)};
-«bundle //test code
-	«dialog.alert (findwindowtype ("", @adrtable))
-	«dialog.alert (adrtable)
+//bundle //test code
+	//dialog.alert (findwindowtype ("", @adrtable))
+	//dialog.alert (adrtable)

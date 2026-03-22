@@ -1,29 +1,29 @@
 on neuterJavaScript (s, legalProtocolSchemes=nil) {
-	«Neuter JavaScript in a string; neuter <script> tags, event handlers, and javascript: (and similar) protocols.
-		«Changes:
-			«2/10/02; 11:51:27 PM by JES
-				«Fixed a bug where HTML attribute values which contained the string "on" would cause incorrect neutering of the text. Fixed a bug where if there were more than one on-event attribute, only the first would be neutered.
-			«12/28/01; 4:20:30 AM by JES
-				«Fixed a bug where HTML comments which contained the string "on" would not be closed properly, resulting in incorrectly formatted HTML.
-			«2/23/01; 7:40:23 PM by JES
-				«Fixed a bug where an un-closed tag would cause a script error, array index out of range.
-			«2/20/01; 4:52:06 PM by PBS
-				«Optimization: fast return if the string does not contain a < character.
-			«2/20/01; 4:33:17 PM by JES
-				«Fixed a bug where quote characters inside event handlers could potentially allow arbitrary text to pass through this filter.
-			«2/20/01; 12:23:53 PM by JES
-				«Instead of neutering event handlers by inserting an 'x' character, remove event handlers completely.
-				«Neuter illegal protocol schemes in all applicable attributes, not just href's.
-				«Instead of neutering attributes when the protocol scheme is illegal, neuter the entire tag by replacing the opening < with &lt;.
-			«2/19/01; 5:26:22 PM by PBS
-				«Removed flNeuterEventHandlers and flNeuterScriptTags parameters.
-				«Made legalProtocolSchemes an optional parameter. If not supplied, use the default list. The caller can either not supply it or over-ride it entirely.
-			«2/19/01; 2:29:55 PM by JES
-				«Neuter all illegal protocol schemes from <a href> tags.
-			«2/17/01; 1:24:12 AM by JES
-				«A whitespace character may be a space, a carriage return, or a linefeed character -- not just a space. Neuter <a href's which are javascript: protocol links, i.e. <a href="javascript:...>...</a>
-			«2/16/01; 9:06:43 PM by PBS
-				«Created.
+	//Neuter JavaScript in a string; neuter <script> tags, event handlers, and javascript: (and similar) protocols.
+		//Changes:
+			//2/10/02; 11:51:27 PM by JES
+				//Fixed a bug where HTML attribute values which contained the string "on" would cause incorrect neutering of the text. Fixed a bug where if there were more than one on-event attribute, only the first would be neutered.
+			//12/28/01; 4:20:30 AM by JES
+				//Fixed a bug where HTML comments which contained the string "on" would not be closed properly, resulting in incorrectly formatted HTML.
+			//2/23/01; 7:40:23 PM by JES
+				//Fixed a bug where an un-closed tag would cause a script error, array index out of range.
+			//2/20/01; 4:52:06 PM by PBS
+				//Optimization: fast return if the string does not contain a < character.
+			//2/20/01; 4:33:17 PM by JES
+				//Fixed a bug where quote characters inside event handlers could potentially allow arbitrary text to pass through this filter.
+			//2/20/01; 12:23:53 PM by JES
+				//Instead of neutering event handlers by inserting an 'x' character, remove event handlers completely.
+				//Neuter illegal protocol schemes in all applicable attributes, not just href's.
+				//Instead of neutering attributes when the protocol scheme is illegal, neuter the entire tag by replacing the opening < with &lt;.
+			//2/19/01; 5:26:22 PM by PBS
+				//Removed flNeuterEventHandlers and flNeuterScriptTags parameters.
+				//Made legalProtocolSchemes an optional parameter. If not supplied, use the default list. The caller can either not supply it or over-ride it entirely.
+			//2/19/01; 2:29:55 PM by JES
+				//Neuter all illegal protocol schemes from <a href> tags.
+			//2/17/01; 1:24:12 AM by JES
+				//A whitespace character may be a space, a carriage return, or a linefeed character -- not just a space. Neuter <a href's which are javascript: protocol links, i.e. <a href="javascript:...>...</a>
+			//2/16/01; 9:06:43 PM by PBS
+				//Created.
 	if not (s contains "<") { //fast return if no < character
 		return (s)};
 	
@@ -140,62 +140,62 @@ on neuterJavaScript (s, legalProtocolSchemes=nil) {
 		ix++};
 	
 	return (s)};
-«bundle //test code
-	«html.neuterJavaScript ("<script type=\"text\">Foo</script>")
-		«"&lt;script type=\"text\">Foo&lt;/script>"
-	«html.neuterJavaScript ("\"<script type=\"text\">Foo</script>")
-		«"\"&lt;script type=\"text\">Foo&lt;/script>"
-	«html.neuterJavaScript ("< script    type=\"text\">Foo</      script>")
-		«"&lt; script    type=\"text\">Foo&lt;/      script>"
-	«html.neuterJavaScript ("Foobar \r\n< script    type=\"text\">Foo</      script>")
-		«"Foobar \r\n&lt; script    type=\"text\">Foo&lt;/      script>"
-	«html.neuterJavaScript ("<hr> <a href=\"http://foo.com/\" onmouseover='bar'>Foobar</a><p>\r\n< script    type=\"text\">Foo</      script>")
-		«"<hr> <a href=\"http://foo.com/\">Foobar</a><p>\r\n&lt; script    type=\"text\">Foo&lt;/      script>"
-	«html.neuterJavaScript ("<a onmouseout='foo'\">Bar</a>")
-		«"<a\">Bar</a>"
-	«html.neuterJavaScript ("<a onmouseout='foo>' onmouseover='bar'>Bar</a>")
-		«"<a>Bar</a>"
-	«html.neuterJavaScript ("<a onmouseout='foo'> onmouseover='bar' Bar</a>")
-		«"<a> onmouseover='bar' Bar</a>"
-	«html.neuterJavaScript ("<a href='onmouseover.html'> onmouseover='bar' Bar</a>")
-		«"<a href='onmouseover.html'> onmouseover='bar' Bar</a>"
-	«html.neuterJavaScript ("<a href=\"javascript:foo\">Bar</a>")
-		«"&lt;a href=\"javascript:foo\">Bar</a>"
-	«html.neuterJavaScript ("<img src=\"javascript:foo\">")
-		«"&lt;img src=\"javascript:foo\">"
-	«html.neuterJavaScript ("<a href=\"perlscript:foo\">Bar</a>")
-		«"&lt;a href=\"perlscript:foo\">Bar</a>"
-	«html.neuterJavaScript ("<a href=\" _some-other_script : foo \">Bar</a>")
-		«"&lt;a href=\" _some-other_script : foo \">Bar</a>"
-	«html.neuterJavaScript ("<a href=\" _some-other_script : foo \" style='bar:baz'>Bar</a>")
-		«"&lt;a href=\" _some-other_script : foo \" style='bar:baz'>Bar</a>"
-	«html.neuterJavaScript ("<a href=\"http://foo\">Bar</a>")
-		«"<a href=\"http://foo\">Bar</a>"
-	«html.neuterJavaScript ("<a href=\"/foo\">Bar</a>")
-		«"<a href=\"/foo\">Bar</a>"
-	«html.neuterJavaScript ("<a href=\"../foo\">Bar</a>")
-		«"<a href=\"../foo\">Bar</a>"
-	«html.neuterJavaScript ("<a href=\"foo\">Bar</a>")
-		«"<a href=\"foo\">Bar</a>"
-	«html.neuterJavaScript ("<a href='foo' style=baz:bam>Bar</a>")
-		«"<a href='foo' style=baz:bam>Bar</a>"
-	«html.neuterJavaScript ("<a href=\"foo\'\" onmouseover=\'foo\'>Bar</a>")
-		«"<a href=\"foo'\">Bar</a>"
-	«html.neuterJavaScript ("<a href=\"http://foo\'\" onmouseover=\'foo\'>Bar</a>", {"ftp", "mailto"})
-		«"&lt;a href=\"http://foo'\" onmouseover='foo'>Bar</a>"
-	«html.neuterJavaScript ("<hr onmouseover='window.alert (\"Message\")' foo>")
-		«"<hr foo>"
-	«html.neuterJavaScript ("<table><tr><td background=\"perlscript:deleteEverything\">Look out!!!</td></tr></table>")
-		«"<table><tr>&lt;td background=\"perlscript:deleteEverything\">Look out!!!</td></tr></table>"
-	«html.neuterJavaScript ("<hr onmouseover='window.alert (\"Mess\\'a>ge\")' foo>")
-		«"<hr foo>"
-	«html.neuterJavaScript ("<hr onmouseover=\"foo\">")
-		«"<hr>"
-	«html.neuterJavaScript ("<hr onmouseover='window.alert (\"Message\")'>") 
-		«"<hr>"
-	«html.neuterJavaScript ("foo bar baz")
-		«"foo bar baz"
-	«html.neuterJavaScript ("<!-- Get your groove on, Baby! -->")
-		«"<!-- Get your groove on, Baby! -->"
-	«html.neuterJavaScript("<a title='foo on bar' onmouseover='foo on bar' onmouseout='eatme()'>baz</a>")
-		«"<a title='foo on bar'>baz</a>"
+//bundle //test code
+	//html.neuterJavaScript ("<script type=\"text\">Foo</script>")
+		//"&lt;script type=\"text\">Foo&lt;/script>"
+	//html.neuterJavaScript ("\"<script type=\"text\">Foo</script>")
+		//"\"&lt;script type=\"text\">Foo&lt;/script>"
+	//html.neuterJavaScript ("< script    type=\"text\">Foo</      script>")
+		//"&lt; script    type=\"text\">Foo&lt;/      script>"
+	//html.neuterJavaScript ("Foobar \r\n< script    type=\"text\">Foo</      script>")
+		//"Foobar \r\n&lt; script    type=\"text\">Foo&lt;/      script>"
+	//html.neuterJavaScript ("<hr> <a href=\"http://foo.com/\" onmouseover='bar'>Foobar</a><p>\r\n< script    type=\"text\">Foo</      script>")
+		//"<hr> <a href=\"http://foo.com/\">Foobar</a><p>\r\n&lt; script    type=\"text\">Foo&lt;/      script>"
+	//html.neuterJavaScript ("<a onmouseout='foo'\">Bar</a>")
+		//"<a\">Bar</a>"
+	//html.neuterJavaScript ("<a onmouseout='foo>' onmouseover='bar'>Bar</a>")
+		//"<a>Bar</a>"
+	//html.neuterJavaScript ("<a onmouseout='foo'> onmouseover='bar' Bar</a>")
+		//"<a> onmouseover='bar' Bar</a>"
+	//html.neuterJavaScript ("<a href='onmouseover.html'> onmouseover='bar' Bar</a>")
+		//"<a href='onmouseover.html'> onmouseover='bar' Bar</a>"
+	//html.neuterJavaScript ("<a href=\"javascript:foo\">Bar</a>")
+		//"&lt;a href=\"javascript:foo\">Bar</a>"
+	//html.neuterJavaScript ("<img src=\"javascript:foo\">")
+		//"&lt;img src=\"javascript:foo\">"
+	//html.neuterJavaScript ("<a href=\"perlscript:foo\">Bar</a>")
+		//"&lt;a href=\"perlscript:foo\">Bar</a>"
+	//html.neuterJavaScript ("<a href=\" _some-other_script : foo \">Bar</a>")
+		//"&lt;a href=\" _some-other_script : foo \">Bar</a>"
+	//html.neuterJavaScript ("<a href=\" _some-other_script : foo \" style='bar:baz'>Bar</a>")
+		//"&lt;a href=\" _some-other_script : foo \" style='bar:baz'>Bar</a>"
+	//html.neuterJavaScript ("<a href=\"http://foo\">Bar</a>")
+		//"<a href=\"http://foo\">Bar</a>"
+	//html.neuterJavaScript ("<a href=\"/foo\">Bar</a>")
+		//"<a href=\"/foo\">Bar</a>"
+	//html.neuterJavaScript ("<a href=\"../foo\">Bar</a>")
+		//"<a href=\"../foo\">Bar</a>"
+	//html.neuterJavaScript ("<a href=\"foo\">Bar</a>")
+		//"<a href=\"foo\">Bar</a>"
+	//html.neuterJavaScript ("<a href='foo' style=baz:bam>Bar</a>")
+		//"<a href='foo' style=baz:bam>Bar</a>"
+	//html.neuterJavaScript ("<a href=\"foo\'\" onmouseover=\'foo\'>Bar</a>")
+		//"<a href=\"foo'\">Bar</a>"
+	//html.neuterJavaScript ("<a href=\"http://foo\'\" onmouseover=\'foo\'>Bar</a>", {"ftp", "mailto"})
+		//"&lt;a href=\"http://foo'\" onmouseover='foo'>Bar</a>"
+	//html.neuterJavaScript ("<hr onmouseover='window.alert (\"Message\")' foo>")
+		//"<hr foo>"
+	//html.neuterJavaScript ("<table><tr><td background=\"perlscript:deleteEverything\">Look out!!!</td></tr></table>")
+		//"<table><tr>&lt;td background=\"perlscript:deleteEverything\">Look out!!!</td></tr></table>"
+	//html.neuterJavaScript ("<hr onmouseover='window.alert (\"Mess\\'a>ge\")' foo>")
+		//"<hr foo>"
+	//html.neuterJavaScript ("<hr onmouseover=\"foo\">")
+		//"<hr>"
+	//html.neuterJavaScript ("<hr onmouseover='window.alert (\"Message\")'>") 
+		//"<hr>"
+	//html.neuterJavaScript ("foo bar baz")
+		//"foo bar baz"
+	//html.neuterJavaScript ("<!-- Get your groove on, Baby! -->")
+		//"<!-- Get your groove on, Baby! -->"
+	//html.neuterJavaScript("<a title='foo on bar' onmouseover='foo on bar' onmouseout='eatme()'>baz</a>")
+		//"<a title='foo on bar'>baz</a>"

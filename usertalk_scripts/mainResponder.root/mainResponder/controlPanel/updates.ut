@@ -1,8 +1,8 @@
-«Display the most recent sets of updates.
-	«11/23/99; 1:56:13 PM by PBS
-	«Changes:
-		«06/28/00; 11:55:48 AM by PBS
-			«If logging is off, say so, don't say that there haven't been recent updates.
+//Display the most recent sets of updates.
+	//11/23/99; 1:56:13 PM by PBS
+	//Changes:
+		//06/28/00; 11:55:48 AM by PBS
+			//If logging is off, say so, don't say that there haven't been recent updates.
 
 local (pta = html.getPageTableAddress ());
 pta^.title = "Most Recent Updates";
@@ -19,7 +19,7 @@ on noUpdates () {
 
 bundle { //return if there haven't been any updates
 	if not defined (adrOutline^) {
-		«noUpdates ()
+		//noUpdates ()
 		if not user.rootUpdates.prefs.flShowUpdatesToUser {
 			add ("Root updates logging is not turned on.")} //PBS 06/28/00: if logging is off, say so, don't say that there haven't been recent updates
 		else {

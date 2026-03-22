@@ -1,11 +1,11 @@
 on setOffline (flOffline) {
-	«Changes
-		«10/16/01; 7:49:05 PM by JES
-			«Call the callback scripts when we just went online, or when we're about to go offline. Now the callbacks can make an RPC request when switching to either state, not just in the case where we're about to go offline.
-		«10/16/01; 12:45:33 PM by DW
-			«Allow for callbacks.
-		«09/22/00; 11:25:18 AM by PBS
-			«Created. Set the offline flag. If flOffline is true, the user is working offline.
+	//Changes
+		//10/16/01; 7:49:05 PM by JES
+			//Call the callback scripts when we just went online, or when we're about to go offline. Now the callbacks can make an RPC request when switching to either state, not just in the case where we're about to go offline.
+		//10/16/01; 12:45:33 PM by DW
+			//Allow for callbacks.
+		//09/22/00; 11:25:18 AM by PBS
+			//Created. Set the offline flag. If flOffline is true, the user is working offline.
 	
 	if not tcp.isOffline () { //call the callbacks
 		system.callbacks.tcpSetOffline (flOffline)};
@@ -20,5 +20,5 @@ on setOffline (flOffline) {
 		system.callbacks.tcpSetOffline (flOffline)}; //call the callbacks
 	
 	return (true)};
-«bundle //test code
-	«setOffline (false)
+//bundle //test code
+	//setOffline (false)

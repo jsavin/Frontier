@@ -1,9 +1,9 @@
 on linkToStyleSheet (flUseImportCommand=false) {
-	«Changes
-		«4/30/03; 9:31:12 PM by JES
-			«Use <link...></link> instead of <link... /> for validation.
-		«4/20/03; 1:17:43 AM by JES
-			«Created. Generates a link to the CSS file created via the Advanced prefs page.
+	//Changes
+		//4/30/03; 9:31:12 PM by JES
+			//Use <link...></link> instead of <link... /> for validation.
+		//4/20/03; 1:17:43 AM by JES
+			//Created. Generates a link to the CSS file created via the Advanced prefs page.
 	local (gemsUrl = manilaSuite.getUrl ("editorialGems"));
 	local (cssUrl = gemsUrl + "styleSheet.txt");
 	local (linktext);

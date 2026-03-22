@@ -6,12 +6,12 @@ on deletePageFromLocalIndex (url) {
 	
 	msg ("Search Engine: De-indexing " + url + "...");
 	
-	«First de-index the page.
+	//First de-index the page.
 	searchEngine.deIndexPage (url, adrIndex);
 	
 	msg ("Search Engine: Removing page info for " + url + "...");
 	
-	«Then remove the info about the page.
+	//Then remove the info about the page.
 	if defined (adrPages^.[url]) {
 		delete (@adrPages^.[url])};
 	
@@ -26,13 +26,13 @@ bundle { //test code
 		else {
 			break}};
 	
-	«Close the index.
-	«msg ("Search Engine: Closing Index.root...")
-	«fileMenu.close (indexPath)
-	«
-	«Re-open the index.
-	«msg ("Search Engine: Opening Index.root...")
-	«fileMenu.open (indexPath, true) //open it hidden
+	//Close the index.
+	//msg ("Search Engine: Closing Index.root...")
+	//fileMenu.close (indexPath)
+	//
+	//Re-open the index.
+	//msg ("Search Engine: Opening Index.root...")
+	//fileMenu.open (indexPath, true) //open it hidden
 	
 	msg ("");
 	return (true)}

@@ -1,5 +1,5 @@
-on linkToNetworkApp (id) { «call this instead of app.start
-	«id is what you receive back from sys.browseNetwork
-		«if you want to communicate with an app running on the network
+on linkToNetworkApp (id) { //call this instead of app.start
+	//id is what you receive back from sys.browseNetwork
+		//if you want to communicate with an app running on the network
 	app.idnetworkapp = id;
 	return (true)}

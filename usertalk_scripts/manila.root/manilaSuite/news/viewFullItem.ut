@@ -1,15 +1,15 @@
 on viewFullItem (msgNum=0) {
-	«Changes:
-		«4/13/07; 4:28:59 PM by JES
-			«Reworked code that works around duplicate titles -- now the title will render in the <head> section, but won't be duplicated in the <body>, if both the full-item template and page template have {title} macros.
-			«Made it possible for callers to specify the message to render in one of two ways:
-				«1. Pass in a value for the msgNum parameter.
-				«2. Set pta^.msgNum.
-				«If not passed, or if 0 is passed, we pull the message number from pta^.pathArgs as before.
-		«4/13/07; 4:07:19 PM by JES
-			«Add admin/confirm box, respecting prefs, just as story-reader page does.
-		«4/23/03; 6:56:30 PM by JES
-			«Created. View the full text of a news item through the (new) news items fullTextTemplate.
+	//Changes:
+		//4/13/07; 4:28:59 PM by JES
+			//Reworked code that works around duplicate titles -- now the title will render in the <head> section, but won't be duplicated in the <body>, if both the full-item template and page template have {title} macros.
+			//Made it possible for callers to specify the message to render in one of two ways:
+				//1. Pass in a value for the msgNum parameter.
+				//2. Set pta^.msgNum.
+				//If not passed, or if 0 is passed, we pull the message number from pta^.pathArgs as before.
+		//4/13/07; 4:07:19 PM by JES
+			//Add admin/confirm box, respecting prefs, just as story-reader page does.
+		//4/23/03; 6:56:30 PM by JES
+			//Created. View the full text of a news item through the (new) news items fullTextTemplate.
 	local (pta = html.getPageTableAddress ());
 	local (adrSite = pta^.adrSiteRootTable);
 	local (groupName = pta^.defaultMembershipGroup);
@@ -52,6 +52,6 @@ on viewFullItem (msgNum=0) {
 					pta^.title = ""}}}};
 	
 	return (htext)};
-«bundle //test code
-	«html.setPageTableAddress (@workspace.pt)
-	«viewFullItem ()
+//bundle //test code
+	//html.setPageTableAddress (@workspace.pt)
+	//viewFullItem ()

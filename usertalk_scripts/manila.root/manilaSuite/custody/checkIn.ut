@@ -1,7 +1,7 @@
 on checkIn (adrObject, adrMember, adrSite, flMessage=false) {
-	«Check in an object. Return false if the object can't be checked in. The only reason an object can't be checked in (at least in this context) is that it's already checked out by someone else.
-		«02/08/00; 10:18:17 PM by PBS
-		« 04/05/18, 21:23:06 by DAB call versioning
+	//Check in an object. Return false if the object can't be checked in. The only reason an object can't be checked in (at least in this context) is that it's already checked out by someone else.
+		//02/08/00; 10:18:17 PM by PBS
+		// 04/05/18, 21:23:06 by DAB call versioning
 	
 	local (adrTable = manilaSuite.custody.getObjectsTableAddress (adrSite, flMessage));
 	local (objectIdentifier = manilaSuite.custody.getObjectIdentifier (adrObject, flMessage));

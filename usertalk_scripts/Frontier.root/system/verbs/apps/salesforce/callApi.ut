@@ -1,7 +1,7 @@
 on callApi (adrSession, method, paramRecord={}, structType=nil, adrBeforeDecompileCallback=nil) {
-	«Changes
-		«4/19/06; 7:00:29 PM by JES
-			«Created. General wrapper for making calls to the Salesforce API.
+	//Changes
+		//4/19/06; 7:00:29 PM by JES
+			//Created. General wrapper for making calls to the Salesforce API.
 	
 	local (SessionHeader); new (tableType, @SessionHeader);
 	SessionHeader.["h:sessionId"] = adrSession^.sessionId;

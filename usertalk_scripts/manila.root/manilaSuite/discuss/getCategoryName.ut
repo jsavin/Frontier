@@ -1,12 +1,12 @@
 on getCategoryName (categoryName, adrSite=nil) {
-	«Get the name of a category, whether it's stories, pictures, or home pages.
-		«This script can run outside the page rendering context if adrSite is not nil.
-		«10/19/99; 3:39:06 PM by PBS
-	«Changes:
-		«1/31/06; 3:17:59 AM by JES
-			«Allow arbitrary category names, with long-name calcualtion based on storiesListedIn.
-		«10/11/00; 12:03:13 PM by PBS
-			«Older sites might not have the home pages category, so create it.
+	//Get the name of a category, whether it's stories, pictures, or home pages.
+		//This script can run outside the page rendering context if adrSite is not nil.
+		//10/19/99; 3:39:06 PM by PBS
+	//Changes:
+		//1/31/06; 3:17:59 AM by JES
+			//Allow arbitrary category names, with long-name calcualtion based on storiesListedIn.
+		//10/11/00; 12:03:13 PM by PBS
+			//Older sites might not have the home pages category, so create it.
 	
 	local (s);
 	local (lowerName = string.lower (categoryName));

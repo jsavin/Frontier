@@ -1,5 +1,5 @@
-«Possibly send email to the editors that a news item has been released.
-	«04/30/00; 6:23:07 PM by PBS
+//Possibly send email to the editors that a news item has been released.
+	//04/30/00; 6:23:07 PM by PBS
 
 manilaSuite.emailNotification.notifyNewsItemStatusChange (adrMsg, adrSite, url, adrMember, "released");
 return (true)

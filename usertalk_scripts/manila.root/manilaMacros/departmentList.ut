@@ -1,5 +1,5 @@
 on departmentList () {
-	«Changes
-		«9/4/03; 11:49:30 PM by JES
-			«Created. List the departments in a Manila site.
+	//Changes
+		//9/4/03; 11:49:30 PM by JES
+			//Created. List the departments in a Manila site.
 	return (manilaSuite.news.departmentDefaultPage ())}

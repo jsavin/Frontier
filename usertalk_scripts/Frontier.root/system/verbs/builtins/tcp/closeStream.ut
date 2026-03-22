@@ -1,2 +1,2 @@
-on closeStream (stream) { «Close a stream.
+on closeStream (stream) { //Close a stream.
 	kernel (tcp.closeStream)}

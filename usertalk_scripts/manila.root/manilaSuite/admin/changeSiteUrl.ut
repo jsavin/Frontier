@@ -1,14 +1,14 @@
 on changeSiteUrl (oldUrl, newUrl, adrSite) {
-	«Recalculate all URLs used by this site since we've just switched the base URL.
-		«Changes:
-			«10/30/99; 5:01:28 PM by PBS
-				«Untaint URLs, they may have come from anywhere.
-			«12/17/99; 1:13:56 AM by PBS
-				«Use string.replaceAll rather than searchEngine.replaceAll to avoid infinite loops, now that string.replaceAll can do case-inensitive replacements.
-				«Delete the stories and pictures caches from the discuss group.
-				«Fixed the cowskull link and rssInfo tables.
-			«10/31/00; 7:28:47 PM by JES
-				«Fix urls in the ["#discussionGroup"].prefs table.
+	//Recalculate all URLs used by this site since we've just switched the base URL.
+		//Changes:
+			//10/30/99; 5:01:28 PM by PBS
+				//Untaint URLs, they may have come from anywhere.
+			//12/17/99; 1:13:56 AM by PBS
+				//Use string.replaceAll rather than searchEngine.replaceAll to avoid infinite loops, now that string.replaceAll can do case-inensitive replacements.
+				//Delete the stories and pictures caches from the discuss group.
+				//Fixed the cowskull link and rssInfo tables.
+			//10/31/00; 7:28:47 PM by JES
+				//Fix urls in the ["#discussionGroup"].prefs table.
 	
 	on replace (s) {
 		s = string.replaceAll (s, oldUrl, newUrl, false); //PBS 12/17/99: use string.replaceAll
@@ -28,23 +28,23 @@ on changeSiteUrl (oldUrl, newUrl, adrSite) {
 	
 	adrSite^.["#ftpSite"].url = replace (adrSite^.["#ftpSite"].url);
 	
-	«Discussion group -- 10/31/00 JES: fix DG urls
+	//Discussion group -- 10/31/00 JES: fix DG urls
 	local (adrDg = @adrSite^.["#discussionGroup"]);
 	if defined (adrDg^) {
 		adrDg^.prefs.msgReaderUrl = adrSite^.["#urls"].discussMsgReader;
 		adrDg^.prefs.url = adrSite^.["#urls"].storyReader};
 	
-	«Navigator.
+	//Navigator.
 	local (s = string (adrSite^.["#navigator"].outline));
 	s = replace (s);
 	wp.newTextObject (s, @adrSite^.["#navigator"].outline);
 	
-	«Template.
+	//Template.
 	s = string (adrSite^.["#template"]);
 	s = replace (s);
 	wp.newTextObject (s, @adrSite^.["#template"]);
 	
-	«Cowskull link.
+	//Cowskull link.
 	if defined (adrSite^.["#newsSite"].cowSkullImage) {
 		adrSite^.["#newsSite"].cowSkullImage = replace (adrSite^.["#newsSite"].cowSkullImage)};
 	

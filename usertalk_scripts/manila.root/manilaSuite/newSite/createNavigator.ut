@@ -1,6 +1,6 @@
 on createNavigator (adrSiteInfo) {
-	«Create the navigator, the left-side links.
-		«10/21/99; 2:17:40 PM by PBS
+	//Create the navigator, the left-side links.
+		//10/21/99; 2:17:40 PM by PBS
 	
 	local (adrNavigator = @adrSiteInfo^.adrSite^.["#navigator"]);
 	local (adrXml = @adrNavigator^.outline);
@@ -20,8 +20,8 @@ on createNavigator (adrSiteInfo) {
 	baseRelativeUrl = "/" + urlParts [3];
 	
 	addItem ("Home", baseRelativeUrl); //home page
-	«addItem ("FAQ", baseRelativeUrl + "faq") //FAQ page
-	«addItem ("Feedback", baseRelativeUrl + "feedback") //Feedback Page
+	//addItem ("FAQ", baseRelativeUrl + "faq") //FAQ page
+	//addItem ("Feedback", baseRelativeUrl + "feedback") //Feedback Page
 	
 	xmlText = xmlText + "   </navigator>";
 	

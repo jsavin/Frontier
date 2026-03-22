@@ -1,11 +1,11 @@
 on map (actionURL, shortname) {
-	«manilaSuite.sitePrefs.handlers.siteStructure.map : 04/05/16, 15:06:26 by DAB
-		«manilaFixer.siteStructure.Map : 01/01/22, 17:59:40 by DAB
-			«returns a page showing the entire site structure
-		«map (renamed) : 01/04/21, 15:37:27 by DAB
-		«01/05/20, 09:47:06 by DAB
-			«add site structure editing capability
-	«messages at manilaData.localization.languages.english.strings.siteStructure
+	//manilaSuite.sitePrefs.handlers.siteStructure.map : 04/05/16, 15:06:26 by DAB
+		//manilaFixer.siteStructure.Map : 01/01/22, 17:59:40 by DAB
+			//returns a page showing the entire site structure
+		//map (renamed) : 01/04/21, 15:37:27 by DAB
+		//01/05/20, 09:47:06 by DAB
+			//add site structure editing capability
+	//messages at manilaData.localization.languages.english.strings.siteStructure
 	local (pta = html.getPageTableAddress());
 	local (adrSite = manilaSuite.getSiteAddress(pta));
 	local (adrDiscuss = manilaSuite.discuss.getRootFromSiteAddress (adrSite));
@@ -22,7 +22,7 @@ on map (actionURL, shortname) {
 		replTbl.pathAttributes = html.getLink("Path Attributes", "http://www.baylys.com:8080/manila/Techniques/PathAtts")};
 	
 	bundle { //compile the XML outline if needed
-		«The hierarchy table contains the XML outline (outline) and a compiled XML table (structure). They should be in synch. When editing, always edit the outline.
+		//The hierarchy table contains the XML outline (outline) and a compiled XML table (structure). They should be in synch. When editing, always edit the outline.
 		local (adrTable = pta^.hierarchy);
 		local (flCompile = true);
 		
@@ -35,7 +35,7 @@ on map (actionURL, shortname) {
 			manilaSuite.siteStructure.buildPathsTable (adrSite)}}; //rebuild the paths table too
 	
 	on walkforAttributes(adrTbl, adrAttsTbl) {
-		«Create a table of names of attributes used in this site structure
+		//Create a table of names of attributes used in this site structure
 		local (adr, cnt=0);
 		for adr in adrTbl {
 			case true {
@@ -94,8 +94,8 @@ on map (actionURL, shortname) {
 			add("</td>");
 			add("\r\t\t<td>");
 			add(path);
-			«add("<input type = 'hidden' name = 'path'  value = '" + path + "'>")
-			«add("<input type = 'hidden' name = 'path'  value = \"" + bayly.iso8859encode(string.replaceAll(path, "\"","&quot;")) + "\">")
+			//add("<input type = 'hidden' name = 'path'  value = '" + path + "'>")
+			//add("<input type = 'hidden' name = 'path'  value = \"" + bayly.iso8859encode(string.replaceAll(path, "\"","&quot;")) + "\">")
 			add("<input type = 'hidden' name = 'path'  value = \"" + string.iso8859encode(string.replaceAll(path, "\"","&quot;")) + "\">");
 			add("\</td>");
 			add("\r\t</tr>")};
@@ -129,7 +129,7 @@ on map (actionURL, shortname) {
 		bundle { //new att row
 			add("\r\t<tr>");
 			add("\r\t\t<th align = 'right'>");
-			«add(manilaSuite.getString("siteStructure.formDetailNewAttText",  @replTbl,  pta:pta))
+			//add(manilaSuite.getString("siteStructure.formDetailNewAttText",  @replTbl,  pta:pta))
 			add("<input type = 'text' name = 'new.attribute.name' value = '" + manilaSuite.getString("siteStructure.formDetailNewAttText",  @replTbl,  pta:pta) + "' size = '10' maxlength = '255'>");
 			add("</th>");
 			add("\r\t\t<td>");
@@ -165,7 +165,7 @@ on map (actionURL, shortname) {
 		local (flChangeSeen = false, structureTbl);
 		local (haveToWalkAgain = false);
 		on errorReport(errID) {
-			«msg("Error " + errID)
+			//msg("Error " + errID)
 			add("<p align = 'center' style ='color:red'>");
 			add(manilaSuite.getString("siteStructure." + errID,  @replTbl, pta:pta) );
 			add("</p>")};
@@ -181,7 +181,7 @@ on map (actionURL, shortname) {
 				if ix > 1 {
 					hierarchyText = string.mid(hierarchyText, ix, infinity)};
 				wp.newTextObject (hierarchyText, @pta^.hierarchy^.outline);
-				«and rebuild the structure
+				//and rebuild the structure
 				xml.compile (string (pta^.hierarchy^.outline), @pta^.hierarchy^.structure);
 				manilaSuite.siteStructure.buildPathsTable (adrSite); //rebuild the paths table too
 				
@@ -219,7 +219,7 @@ on map (actionURL, shortname) {
 					for adr in adrEntry {
 						if manilaSuite.sitePrefs.siteStructure.isXMLInternal(adr) {
 							continue};
-						«no good, story of category underneath
+						//no good, story of category underneath
 						errorReport("errDeleteSubordinates");
 						return false}};
 				
@@ -315,7 +315,7 @@ on map (actionURL, shortname) {
 				defined(pta^.postargs.mark) { //make a form for one entry
 					add("<hr align = 'center' width = '50%'>");
 					add(detailForm(string.urldecode(pta^.postargs.mark)));
-					};«add("<hr align = 'center' width = '50%'>")
+					};//add("<hr align = 'center' width = '50%'>")
 				defined(pta^.postargs.URI) and pta^.postArgs.URI != "" {
 					structureTbl = pta^.hierarchy^.structure;
 					local (path = pta^.postArgs.URI);
@@ -330,7 +330,7 @@ on map (actionURL, shortname) {
 						if  adr != nil {
 							errorReport("errAddPathExists");
 							return false};
-						«gather msgNUM and name for new entry
+						//gather msgNUM and name for new entry
 						local (msgNum = 0);
 						if defined(pta^.postArgs.msgNum) and (pta^.postArgs.msgNum != "") { //msgNum is optional  for categories
 							try {
@@ -376,7 +376,7 @@ on map (actionURL, shortname) {
 							
 							add("<hr align = 'center' width = '50%'>");
 							add(detailForm(path));
-							}«add("<hr align = 'center' width = '50%'>")
+							}//add("<hr align = 'center' width = '50%'>")
 						else {
 							add("<p align = 'center' style='color:blue'>");
 							add(manilaSuite.getString("siteStructure.reportPathAdded", @replTbl, pta:pta) );
@@ -386,8 +386,8 @@ on map (actionURL, shortname) {
 			case true {
 				defined(pta^.postargs.mark) { //make a form for one entry
 					
-					local (url = string.urlDecode(pta^.postargs.mark)) «2007/10/10, 18:47:48 by DAB
-						«local (url = pta^.postargs.startURL);
+					local (url = string.urlDecode(pta^.postargs.mark)) //2007/10/10, 18:47:48 by DAB
+						//local (url = pta^.postargs.startURL);
 					on checkURL() {
 						if url == "" {
 							errorReport("errNoURL");
@@ -401,8 +401,8 @@ on map (actionURL, shortname) {
 					if checkurl() {
 						if manilaSuite.sitePrefs.siteStructure.siteStructureSort(adrSite, url) {
 							add("<p align = 'center' style = 'color:blue'>");
-							add(manilaSuite.getString("siteStructure.reportSortDone", @replTbl, pta:pta)) «2007/10/10, 18:56:23 by DAB
-								«add(manila.getString("siteStructure.reportSortDone", @replTbl, pta:pta));
+							add(manilaSuite.getString("siteStructure.reportSortDone", @replTbl, pta:pta)) //2007/10/10, 18:56:23 by DAB
+								//add(manila.getString("siteStructure.reportSortDone", @replTbl, pta:pta));
 							add("</p>")}
 						else {
 							replTbl.url = url;
@@ -415,27 +415,27 @@ on map (actionURL, shortname) {
 				if typeof(ids) != listType {
 					ids = {ids}}};
 			adrStorage^.directives = ids;
-			«manilaSuite.sitePrefs.siteStructure.installFilterPatch ("pagefilterMF", "try {manilaFixer.siteStructure.setDirectives(pta)}", ids == {}, staticSite:false, adrSite:adrSite)    
-			«try
-				«manilaSuite.sitePrefs.siteStructure.installFilterPatch ("pagefilterMF", "try {manilaFixer.siteStructure.setDirectives(pta)}", ids=={}, staticSite:true, adrSite:adrSite)    };
+			//manilaSuite.sitePrefs.siteStructure.installFilterPatch ("pagefilterMF", "try {manilaFixer.siteStructure.setDirectives(pta)}", ids == {}, staticSite:false, adrSite:adrSite)    
+			//try
+				//manilaSuite.sitePrefs.siteStructure.installFilterPatch ("pagefilterMF", "try {manilaFixer.siteStructure.setDirectives(pta)}", ids=={}, staticSite:true, adrSite:adrSite)    };
 		
-		«if defined(pta^.postArgs.selectETPitems)          //02/09/26, 14:33:09 by DAB
-			«if not defined(adrStorage^.sitestructure)
-				«new(tabletype, @adrStorage^.sitestructure)
-			«local (ids = {})
-			«try
-				«ids = pta^.postArgs.etpitems
-				«if typeof(ids) != listType
-					«ids = {ids}
-			«adrStorage^.siteStructure.ETPitems= ids
-			«manilaSuite.sitePrefs.siteStructure.installFilterPatch("pageFilterMF", "try {manilaFixer.storyPost.pageFilter(pta)}", ids == {}) 
-			«manilaSuite.sitePrefs.siteStructure.installFilterPatch("finalFilterMF", "try {manilaFixer.storyPost.finalFilter(pta)}", ids == {})   
+		//if defined(pta^.postArgs.selectETPitems)          //02/09/26, 14:33:09 by DAB
+			//if not defined(adrStorage^.sitestructure)
+				//new(tabletype, @adrStorage^.sitestructure)
+			//local (ids = {})
+			//try
+				//ids = pta^.postArgs.etpitems
+				//if typeof(ids) != listType
+					//ids = {ids}
+			//adrStorage^.siteStructure.ETPitems= ids
+			//manilaSuite.sitePrefs.siteStructure.installFilterPatch("pageFilterMF", "try {manilaFixer.storyPost.pageFilter(pta)}", ids == {}) 
+			//manilaSuite.sitePrefs.siteStructure.installFilterPatch("finalFilterMF", "try {manilaFixer.storyPost.finalFilter(pta)}", ids == {})   
 		
 		if defined(pta^.postArgs.sitestructureRender) { //02/04/01, 16:17:08 by DAB
 			add(manilaSuite.sitePrefs.siteStructure.renderDirectory(string.urldecode(pta^.postargs.mark)))};
 		
 		if flChangeSeen {
-			on errorReport(messageText) { «05/05/04, 15:53:42 by DAB
+			on errorReport(messageText) { //05/05/04, 15:53:42 by DAB
 				add("<p style='color:red'>");
 				add(messageText);
 				add("</p>");
@@ -444,44 +444,44 @@ on map (actionURL, shortname) {
 			if manilaSuite.sitePrefs.siteStructure.isValid(@structureTbl, @errorReport, adrDiscuss^.prefs.nextMsgNum, adrSite) {
 				updateHierarchy()}}};
 	
-	«if sizeOf(attnames) > 2     //build a form to select path attributes set from ETP forms
-		«add("<hr align = 'center' width = '50%'>")
-		«add(manilaSuite.getString("siteStructure.ETPHelptext", @replTbl, pta:pta))
-		«add("\r<form name = 'etpitems'  action = '" + pta^.URI + "' method = 'POST'>")
-		«add("\r<table align = 'center' >")
-		«bundle    //row for 
-			«add("\r\t<tr>")
-			«add("\r\t\t<td align = 'right'>")
-			«local (N = sizeof(attnames) - 2)
-			«if N > 10
-				«N = 10
-			«add("\r\t\t\t<select name = 'etpitems' multiple size = '" + N + "'>")
-			«bundle
-				«local (ix, nme, selected)
-				«for ix = 1 to sizeof(attNamesSorted)
-					«nme = attNamesSorted[ix]
-					«if {"msgnum", "name", "template"} contains string.lower(nme)
-						«continue
-					«selected = ""
-					«try
-						«if adrStorage^.siteStructure.ETPItems contains nme
-							«selected = " selected"
-					«add("\r\t\t\t\<option" + selected + ">" +  attNamesSorted[ix] + "</option>")
-			«add("</select>")
-			«add("</td>")
-			«add("\r\t\t<td align = 'left'>")
-			«add("<input type = 'submit' name = 'selectETPitems' value = '" + manilaSuite.getString("siteStructure.formSubmitsetETPItems", @replTbl, pta:pta)  + "'>")    //no reset by design
-			«add("</td>")
-			«add("\r\t</tr>")
-		«add("\r</table>")
-		«add("\r</form>")
+	//if sizeOf(attnames) > 2     //build a form to select path attributes set from ETP forms
+		//add("<hr align = 'center' width = '50%'>")
+		//add(manilaSuite.getString("siteStructure.ETPHelptext", @replTbl, pta:pta))
+		//add("\r<form name = 'etpitems'  action = '" + pta^.URI + "' method = 'POST'>")
+		//add("\r<table align = 'center' >")
+		//bundle    //row for 
+			//add("\r\t<tr>")
+			//add("\r\t\t<td align = 'right'>")
+			//local (N = sizeof(attnames) - 2)
+			//if N > 10
+				//N = 10
+			//add("\r\t\t\t<select name = 'etpitems' multiple size = '" + N + "'>")
+			//bundle
+				//local (ix, nme, selected)
+				//for ix = 1 to sizeof(attNamesSorted)
+					//nme = attNamesSorted[ix]
+					//if {"msgnum", "name", "template"} contains string.lower(nme)
+						//continue
+					//selected = ""
+					//try
+						//if adrStorage^.siteStructure.ETPItems contains nme
+							//selected = " selected"
+					//add("\r\t\t\t\<option" + selected + ">" +  attNamesSorted[ix] + "</option>")
+			//add("</select>")
+			//add("</td>")
+			//add("\r\t\t<td align = 'left'>")
+			//add("<input type = 'submit' name = 'selectETPitems' value = '" + manilaSuite.getString("siteStructure.formSubmitsetETPItems", @replTbl, pta:pta)  + "'>")    //no reset by design
+			//add("</td>")
+			//add("\r\t</tr>")
+		//add("\r</table>")
+		//add("\r</form>")
 	
 	local (flHTMLTableStarted=false);
 	on startTable() {
 		flHTMLTableStarted = true;
 		add("<hr align = 'center' width = '50%'>");
 		add(manilaSuite.getString("siteStructure.structureMapHelptext", @replTbl, pta:pta));
-		«add("<p align = 'center'>")
+		//add("<p align = 'center'>")
 		add("\r<form name = 'structuremap' action = '" + actionURL + "' method = 'POST'>");
 		add ("\r<input type='hidden' name='" + shortName + "' value='true'>");
 		add("\r<table align = 'center' border = '1'>");
@@ -562,16 +562,16 @@ on map (actionURL, shortname) {
 			add("\r\t\t<td nowrap>");
 			add(URI);
 			add("</td>");
-			«bundle
-				«add("\r\t\t<td>")
-				«if defined(pta^.glossary.[name])
-					«add("\"" + name + "\"")
-				«else
-					«add(name)
-				«add("</td>")
-				«add("\r\t\t<td align = 'right'>")
-				«add(msgnum)
-				«add("</td>")
+			//bundle
+				//add("\r\t\t<td>")
+				//if defined(pta^.glossary.[name])
+					//add("\"" + name + "\"")
+				//else
+					//add(name)
+				//add("</td>")
+				//add("\r\t\t<td align = 'right'>")
+				//add(msgnum)
+				//add("</td>")
 			for ix = 1 to sizeof(attNamesSorted) {
 				local (attname = string.lower(attNamesSorted[ix]));
 				local (s = "&nbsp;");
@@ -579,23 +579,23 @@ on map (actionURL, shortname) {
 				case attname {
 					"name" {
 						add("\r\t\t<td>");
-						«if defined(pta^.glossary^.[s])
-							«add("\"" + s + "\"")
-						«else
-							«add(s)
-						«add(html.getLink(s, pta^.urls^.newsHome + string.popLeading(uri, "/")))    //01/05/13, 15:06:48 by DAB
-						«add("<input type = 'text' name = '" + string.urlencode(URI) + "$" + attname + "' value = '" + s + "' size = '30' maxlength = '255'>")   //01/05/19, 18:01:46 by DAB
+						//if defined(pta^.glossary^.[s])
+							//add("\"" + s + "\"")
+						//else
+							//add(s)
+						//add(html.getLink(s, pta^.urls^.newsHome + string.popLeading(uri, "/")))    //01/05/13, 15:06:48 by DAB
+						//add("<input type = 'text' name = '" + string.urlencode(URI) + "$" + attname + "' value = '" + s + "' size = '30' maxlength = '255'>")   //01/05/19, 18:01:46 by DAB
 						add(s);
 						add("</td>")};
 					"msgnum" {
 						add("\r\t\t<td align = 'right'>");
-						«add(s)
+						//add(s)
 						add(html.getLink(s, pta^.urls^.newsHome + string.popLeading(uri, "/"))); //01/05/19, 17:59:35 by DAB
 						add("</td>")}}
 				else {
 					add("\r\t\t<td>");
 					add(s);
-					«add("<input type = 'text' name = '" + string.urlencode(URI) + "$" + attname + "' value = '" + s + "' size = '30' maxlength = '255'>")   //01/05/19, 18:01:46 by DAB
+					//add("<input type = 'text' name = '" + string.urlencode(URI) + "$" + attname + "' value = '" + s + "' size = '30' maxlength = '255'>")   //01/05/19, 18:01:46 by DAB
 					add("</td>")}};
 			add("\r\t</tr>")}};
 	
@@ -608,11 +608,11 @@ on map (actionURL, shortname) {
 				manilaSuite.sitePrefs.siteStructure.isXMLCategory(adr) {
 					local (URI = pathToDate + xml.getAttributeValue(adr, "pathname") + "/");
 					report(URI, adr);
-					«local (msgnum, name)
-					«try
-						«msgnum = xml.getAttributeValue(adr, "msgNum")
-						«name =  xml.getAttributeValue(adr, "name")
-						«report(path, name, msgnum)
+					//local (msgnum, name)
+					//try
+						//msgnum = xml.getAttributeValue(adr, "msgNum")
+						//name =  xml.getAttributeValue(adr, "name")
+						//report(path, name, msgnum)
 					walk(adr, URI)};
 				manilaSuite.sitePrefs.siteStructure.isXMLStory(adr) {
 					local (URI = pathToDate + xml.getAttributeValue(adr, "pathname") );

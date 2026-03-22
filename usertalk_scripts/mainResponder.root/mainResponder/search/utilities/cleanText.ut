@@ -1,11 +1,11 @@
 on cleanText (s) {
-	«Prepare text to be indexed.
-		«Replace whitespace characters and punctuation with spaces.
-		«(Don't replace #, <, >, {, and } characters.)
-		«Then strip HTML tags and macros.
-	«Changes
-		«8/2/02; 5:18:49 PM by JES
-			«Use string.multipleReplaceAll, if available.
+	//Prepare text to be indexed.
+		//Replace whitespace characters and punctuation with spaces.
+		//(Don't replace #, <, >, {, and } characters.)
+		//Then strip HTML tags and macros.
+	//Changes
+		//8/2/02; 5:18:49 PM by JES
+			//Use string.multipleReplaceAll, if available.
 	
 	if defined (string.multipleReplaceAll) {
 		local (replchars = "\r\n\t.-\\/:?!;@$%^&*)([]");
@@ -44,6 +44,6 @@ on cleanText (s) {
 	
 	return (s)};
 
-«bundle //test code
-	«mainResponder.search.utilities.cleanText ("foo-bar's bim!")
-		«"foo bar's bim "
+//bundle //test code
+	//mainResponder.search.utilities.cleanText ("foo-bar's bim!")
+		//"foo bar's bim "

@@ -1,8 +1,8 @@
 on threadedSiteIndex (adrsite) {
-	«Changes
-		«8/3/02; 11:10:21 PM by JES
-			«Created. Index an entire Manila site. This script is intended to be run in its own thread. See manilaSuite.search.monitorIndexingSessions, which spawns indexing threads that run this script.
-			«Keeps information about the session in the search.indexQueue sub-table of the site's newsSite table.
+	//Changes
+		//8/3/02; 11:10:21 PM by JES
+			//Created. Index an entire Manila site. This script is intended to be run in its own thread. See manilaSuite.search.monitorIndexingSessions, which spawns indexing threads that run this script.
+			//Keeps information about the session in the search.indexQueue sub-table of the site's newsSite table.
 	local (adrdata = manilaSuite.search.init (adrsite));
 	bundle { //find reasons not to run the index
 		if not manilaSuite.getNewsSitePref ("search.flIndex", adrsite, false) { //indexing is off for this site
@@ -48,6 +48,6 @@ on threadedSiteIndex (adrsite) {
 	
 	return (true)};
 
-«bundle //test code
-	«threadedSiteIndex (@searchTest1ManilaWebsite)
-	«threadedSiteIndex (@testManilaWebsite)
+//bundle //test code
+	//threadedSiteIndex (@searchTest1ManilaWebsite)
+	//threadedSiteIndex (@testManilaWebsite)

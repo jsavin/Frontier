@@ -1,6 +1,6 @@
 on getGroupServices (groupName, adrGroup=nil) {
-	«Return a list of services this group has access to.
-		«Return false if the group doesn't exist.
+	//Return a list of services this group has access to.
+		//Return false if the group doesn't exist.
 	local (i, serviceList = {});
 	if adrGroup == nil {
 		adrGroup = people.getGroupTable (groupName)};

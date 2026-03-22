@@ -1,6 +1,6 @@
 on relativePathToAddress (relativePath, adrSite) {
-	«Convert a relative path to a site address.
-		«02/22/00; 2:26:45 PM by PBS
+	//Convert a relative path to a site address.
+		//02/22/00; 2:26:45 PM by PBS
 	
 	local (adr = adrSite);
 	while (sizeOf (relativePath) > 0) {

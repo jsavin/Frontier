@@ -1,2 +1,2 @@
-on move (obj, moveTo) { «Move an object
+on move (obj, moveTo) { //Move an object
 	return (core.move (Fetch.id, obj, moveTo))}

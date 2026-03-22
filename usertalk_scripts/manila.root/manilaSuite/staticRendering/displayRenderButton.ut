@@ -1,16 +1,16 @@
 on displayRenderButton (pta=nil) {
-	«Changes:
-		«9/23/03; 1:47:58 PM by JES
-			«Added the Render This Page button for Content Editors.
-		«5/17/03; 8:55:16 PM by JES
-			«Log an event when a page is rendered.
-		«9/28/01; 2:26:40 PM by PBS
-			«Don't display button if this is a print-friendly version.
-			«This form now gets a name.
-		«05/24/00; 7:29:54 PM by JES
-			«localized
-		«03/14/00; 6:42:11 PM by PBS
-			«Created. Display an edit this page button if the conditions are correct.
+	//Changes:
+		//9/23/03; 1:47:58 PM by JES
+			//Added the Render This Page button for Content Editors.
+		//5/17/03; 8:55:16 PM by JES
+			//Log an event when a page is rendered.
+		//9/28/01; 2:26:40 PM by PBS
+			//Don't display button if this is a print-friendly version.
+			//This form now gets a name.
+		//05/24/00; 7:29:54 PM by JES
+			//localized
+		//03/14/00; 6:42:11 PM by PBS
+			//Created. Display an edit this page button if the conditions are correct.
 	
 	if pta == nil {
 		pta = html.getPageTableAddress ()};
@@ -63,7 +63,7 @@ on displayRenderButton (pta=nil) {
 					if defined (manilaSuite.log) {
 						local (t); new (tableType, @t); t.url = pt.url;
 						manilaSuite.log.addWithAttribution ("renderPage", startticks, @t)}};
-				«Weird, but a delay is needed for the sake of the static server.
+				//Weird, but a delay is needed for the sake of the static server.
 				thread.sleepTicks (30);
 				mainResponder.redirect (pt.url);
 				scriptError ("!redirect " + pt.url)}}};

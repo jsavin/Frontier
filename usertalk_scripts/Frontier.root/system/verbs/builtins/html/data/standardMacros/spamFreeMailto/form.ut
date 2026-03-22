@@ -1,22 +1,22 @@
 on form (serverName, serverUrl, adrGetRecipientCallback, adrGetRecipientNameCallback, cookieName="spamFreeMailForm", prompt=nil, promptWithReferer=nil, namePrompt="Your name", mailAddressPrompt="Mail address", urlPrompt="URL", messagePrompt="Message", submitButtonText="Submit", checkboxLabel=nil, textBelowForm=nil, template=nil, templateWithReferer=nil, subjectTemplate=nil, adrLogCallback=nil, pageTitle="Mail a note to {username}", confirmPageTitle="Mail was sent to {username}") {
-	«Changes
-		«4/17/06; 5:39:28 PM by JES
-			«Defeat cross-site-scripting exploit.
-		«4/20/03; 6:35:04 PM by JES
-			«Factored from radioCommunityServerSuite.spamFreeMailTo.form.
-		«Original change notes:
-			«3/17/02; 6:42:41 PM by JES
-				«When sending mail, include a link to this community server, instead of to radio.userland.com.
-			«2/2/02; 9:19:47 AM by DW
-				«1. If the user's browser supports the "referer" feature (some don't or some have bugs) we include a third link in the email we send, a pointer to the page the user came from. This lets you know which post they were responding to when they clicked on the mailto icon.
-				«2. There's one fewer line between the header and the body of the message. There were three before, now there are two.
-				«3. The Important notes section at the bottom of the page links to this page.
-				«4. The site title and description now describe this application. For some reason in the past it said something about static site stats. Another experiment in human perception, while working on it I didn't even see it, nor did any users complain about this most obvious mistake.
-				«5. The title on the page you see after the mail has been sent makes sense. It says that Mail Was Sent, it used to prompt you to send a mail. Oooops.
-			«1/24/02; 12:54:50 PM by DW
-				«Make the cookie live longer. Add a send-to-self checkbox.
-			«1/19/02; 11:22:56 AM by DW
-				«Created.
+	//Changes
+		//4/17/06; 5:39:28 PM by JES
+			//Defeat cross-site-scripting exploit.
+		//4/20/03; 6:35:04 PM by JES
+			//Factored from radioCommunityServerSuite.spamFreeMailTo.form.
+		//Original change notes:
+			//3/17/02; 6:42:41 PM by JES
+				//When sending mail, include a link to this community server, instead of to radio.userland.com.
+			//2/2/02; 9:19:47 AM by DW
+				//1. If the user's browser supports the "referer" feature (some don't or some have bugs) we include a third link in the email we send, a pointer to the page the user came from. This lets you know which post they were responding to when they clicked on the mailto icon.
+				//2. There's one fewer line between the header and the body of the message. There were three before, now there are two.
+				//3. The Important notes section at the bottom of the page links to this page.
+				//4. The site title and description now describe this application. For some reason in the past it said something about static site stats. Another experiment in human perception, while working on it I didn't even see it, nor did any users complain about this most obvious mistake.
+				//5. The title on the page you see after the mail has been sent makes sense. It says that Mail Was Sent, it used to prompt you to send a mail. Oooops.
+			//1/24/02; 12:54:50 PM by DW
+				//Make the cookie live longer. Add a send-to-self checkbox.
+			//1/19/02; 11:22:56 AM by DW
+				//Created.
 	
 	bundle { //get default templates if not specified
 		if prompt == nil {
@@ -49,14 +49,14 @@ on form (serverName, serverUrl, adrGetRecipientCallback, adrGetRecipientNameCall
 	
 	local (recipient = adrGetRecipientCallback^ (args.usernum));
 	local (recipientName = adrGetRecipientNameCallback^ (args.usernum));
-	«scratchpad.params = pta^
+	//scratchpad.params = pta^
 	
 	local (title);
 	if pta^.method == "POST" {
 		local (postargs);
 		new (tabletype, @postargs);
 		webserver.parseargs (pta^.requestbody, @postargs);
-		«scratchpad.postargs = postargs; edit (@scratchpad.postargs)
+		//scratchpad.postargs = postargs; edit (@scratchpad.postargs)
 		bundle { //set cookie
 			pta^.responseHeaders.["Set-Cookie"] = cookieName + "=" + string.urlEncode (postargs.name + "\r" + postargs.mail + "\r" + postargs.url) + ";path=/;expires=Mon, 01 Apr 2030 07:00:00 GMT"};
 		local (referer = "");
@@ -132,6 +132,6 @@ on form (serverName, serverUrl, adrGetRecipientCallback, adrGetRecipientNameCall
 		title = string.replaceAll (pageTitle, "{username}", recipientName)};
 	pta^.title = title;
 	return (htmltext)};
-«bundle //test code
-	«html.setPageTableAddress (@workspace.pt)
-	«form ("My Site", "http://foo.com/", @msg, @msg)
+//bundle //test code
+	//html.setPageTableAddress (@workspace.pt)
+	//form ("My Site", "http://foo.com/", @msg, @msg)

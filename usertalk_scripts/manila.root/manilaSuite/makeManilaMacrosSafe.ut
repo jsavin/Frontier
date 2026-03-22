@@ -1,6 +1,6 @@
 on makeManilaMacrosSafe () {
-	«Copy info from manilaData.legalMacros. Make macros in manilaMacros safe.
-		«05/10/00; 6:18:02 PM by PBS
+	//Copy info from manilaData.legalMacros. Make macros in manilaMacros safe.
+		//05/10/00; 6:18:02 PM by PBS
 	
 	local (adrLegalMacros = @config.mainResponder.prefs.legalMacros);
 	if not defined (adrLegalMacros^) {

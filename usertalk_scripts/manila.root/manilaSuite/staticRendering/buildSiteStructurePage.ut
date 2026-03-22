@@ -1,9 +1,9 @@
 on buildSiteStructurePage (relativePath) {
-	«Build a site structure page by calling manilaSuite.hierarchyPage.
-		«03/13/00; 2:51:57 PM by PBS
-		«Changes:
-			«12/19/01; 9:19:09 PM by PBS
-				«Instead of calling manilaSuite.hierarchyPage directly, call the site's #objectNotFoundHandler.
+	//Build a site structure page by calling manilaSuite.hierarchyPage.
+		//03/13/00; 2:51:57 PM by PBS
+		//Changes:
+			//12/19/01; 9:19:09 PM by PBS
+				//Instead of calling manilaSuite.hierarchyPage directly, call the site's #objectNotFoundHandler.
 	
 	local (pta = html.getPageTableAddress ());
 	local (adrManilaSite = manilaSuite.staticRendering.getManilaSiteAddress ());
@@ -25,8 +25,8 @@ on buildSiteStructurePage (relativePath) {
 	else {
 		htmlText = manilaSuite.hierarchyPage ()};
 	
-	«bundle //we're not supporting the hierarchyPath element yet
-		«pta^.hierarchyPath = ""
+	//bundle //we're not supporting the hierarchyPath element yet
+		//pta^.hierarchyPath = ""
 	
 	pta^.adrSiteRootTable = pta^.adrStaticSite; //restore the actual site table address
 	

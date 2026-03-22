@@ -1,11 +1,11 @@
 on flip (username, password, siteName) {
-	«Flip the home page.
-		«10/02/00; 9:20:53 PM by PBS
-	«Changes
-		«10/10/03; 1:27:44 PM by JES
-			«Fix a bug which would cause an error if called outside the XML-RPC framework.
-		«4/8/03; 11:38:26 PM by JES
-			«Add the client's IP address to the message table of the new home page.
+	//Flip the home page.
+		//10/02/00; 9:20:53 PM by PBS
+	//Changes
+		//10/10/03; 1:27:44 PM by JES
+			//Fix a bug which would cause an error if called outside the XML-RPC framework.
+		//4/8/03; 11:38:26 PM by JES
+			//Add the client's IP address to the message table of the new home page.
 	
 	bundle { //make sure this person is a managing editor of the site.
 		local (beginningErrorString = "Can't flip the home page because ");

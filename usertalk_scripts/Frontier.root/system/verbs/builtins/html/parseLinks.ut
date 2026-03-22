@@ -1,11 +1,11 @@
 on parseLinks (htmltext, adrlinks) {
-	«Changes
-		«6/3/02; 7:59:19 AM by DW
-			«Created. 
-			«A very simple parser with a single goal, pull all the <links> out of an HTML document, and return a table with the extracted information. 
-			«Each sub-table of the table pointed to by adrlinks will contain the attributes of one of the <link>s. We use a trick to build this, for each link element, we convert it to XML and pass it through xml.compile. Its attributes sub-table is then copied into the returned links table. Works like a charm.
-			«We don't make sure that it's valid HTML. In other words, it will accept link elements that are in the body, not just in the head. 
-			«If there's an error, adrlinks contains the links we found before the error, we return false.
+	//Changes
+		//6/3/02; 7:59:19 AM by DW
+			//Created. 
+			//A very simple parser with a single goal, pull all the <links> out of an HTML document, and return a table with the extracted information. 
+			//Each sub-table of the table pointed to by adrlinks will contain the attributes of one of the <link>s. We use a trick to build this, for each link element, we convert it to XML and pass it through xml.compile. Its attributes sub-table is then copied into the returned links table. Works like a charm.
+			//We don't make sure that it's valid HTML. In other words, it will accept link elements that are in the body, not just in the head. 
+			//If there's an error, adrlinks contains the links we found before the error, we return false.
 	local (s = string.lower (htmltext), ct = 1);
 	new (tabletype, adrlinks);
 	try {
@@ -27,7 +27,7 @@ on parseLinks (htmltext, adrlinks) {
 		return (true)}
 	else {
 		return (false)}};
-«bundle //test code
-	«if not defined (scratchpad.dhrbhome)
-		«scratchpad.dhrbhome = tcp.httpreadurl ("http://radio.weblogs.com/0001015/")
-	«parselinks (scratchpad.dhrbhome, @scratchpad.links)
+//bundle //test code
+	//if not defined (scratchpad.dhrbhome)
+		//scratchpad.dhrbhome = tcp.httpreadurl ("http://radio.weblogs.com/0001015/")
+	//parselinks (scratchpad.dhrbhome, @scratchpad.links)

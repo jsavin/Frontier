@@ -1,15 +1,15 @@
 on emailResponse (adrMsg, adrSite, url, adrMember, language = nil) {
-	«Changes:
-		«11/2/05; 4:31:38 AM by JES
-			«Call through manilaSuite.members.getMemberEmail to get member email addresses.
-		«10/15/05; 4:51:00 AM by JES
-			«If defined, use personalInfo.email for the recipient's email address.
-		«08/07/00; 9:12:01 PM by PBS
-			«Call manilaSuite.sendMail rather than tcp.sendMail.
-		«05/20/00; 9:30:06 PM by JES
-			«localized
-		«04/05/00; 2:51:05 PM by PBS
-			«Created. If a poster requested the responses be sent via email, send the response.
+	//Changes:
+		//11/2/05; 4:31:38 AM by JES
+			//Call through manilaSuite.members.getMemberEmail to get member email addresses.
+		//10/15/05; 4:51:00 AM by JES
+			//If defined, use personalInfo.email for the recipient's email address.
+		//08/07/00; 9:12:01 PM by PBS
+			//Call manilaSuite.sendMail rather than tcp.sendMail.
+		//05/20/00; 9:30:06 PM by JES
+			//localized
+		//04/05/00; 2:51:05 PM by PBS
+			//Created. If a poster requested the responses be sent via email, send the response.
 	
 	if not defined (adrMsg^.inResponseTo) {
 		return (true)};
@@ -50,13 +50,13 @@ on emailResponse (adrMsg, adrSite, url, adrMember, language = nil) {
 				local (adrSubscriber = @parentMessageTable^.emailSubscribers [i]);
 				try {
 					local (emailAddress = manilaSuite.members.getMemberEmail (adrSubscriber));
-					«case true //05/10/13, 16:39:22 by DAB
-						«not defined (adrSubscriber^.personalinfo)
-						«not defined (adrSubscriber^.personalinfo.email)
-						«adrSubscriber^.personalinfo.email == ""
-							«emailAddress = nameOf (adrSubscriber^)
-					«else
-						«emailAddress = adrSubscriber^.personalinfo.email
+					//case true //05/10/13, 16:39:22 by DAB
+						//not defined (adrSubscriber^.personalinfo)
+						//not defined (adrSubscriber^.personalinfo.email)
+						//adrSubscriber^.personalinfo.email == ""
+							//emailAddress = nameOf (adrSubscriber^)
+					//else
+						//emailAddress = adrSubscriber^.personalinfo.email
 					recipients = recipients + emailAddress;
 					recipients = recipients + ", "}};
 			recipients = string.popSuffix (s, ",");

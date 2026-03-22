@@ -1,4 +1,4 @@
-on getURL (url) { « Fetch a URL and display or save it.
+on getURL (url) { // Fetch a URL and display or save it.
 	case ftpClient.data.currentid {
 		Anarchie.id {
 			local (result);

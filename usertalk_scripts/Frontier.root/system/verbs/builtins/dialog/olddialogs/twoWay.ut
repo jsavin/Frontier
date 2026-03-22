@@ -14,7 +14,7 @@ on twoWay (prompt, button1, button2) {
 				userhitbutton1 = false;
 				return (false)}}
 		else {
-			return (true)}}; «keep going if item isn't OK or Cancel
+			return (true)}}; //keep going if item isn't OK or Cancel
 	dialog.run (263, 1, @itemhit);
 	return (userhitbutton1)};
 dialog.alert (twoway ("hello", 1, 2))

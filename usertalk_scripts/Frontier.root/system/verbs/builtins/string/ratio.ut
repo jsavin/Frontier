@@ -12,5 +12,5 @@ on ratio (numerator, denominator, places) { //return a string that represents a 
 	num = long (num * shifter); //let the rounding code kick in
 	num = double (num) / shifter;
 	return (string (num))};
-«bundle //test code
-	«dialog.alert (ratio (1, 3, 2))
+//bundle //test code
+	//dialog.alert (ratio (1, 3, 2))

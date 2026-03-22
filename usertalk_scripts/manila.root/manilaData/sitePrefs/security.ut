@@ -1,7 +1,7 @@
-«Only the managing editor can access the sitePrefs. Content Editor can access navigation XML.
-	«Changes:
-		«12/3/01; 6:15:22 PM by PBS
-			«The Content Editor can access the navigation on the Advanced page.
+//Only the managing editor can access the sitePrefs. Content Editor can access navigation XML.
+	//Changes:
+		//12/3/01; 6:15:22 PM by PBS
+			//The Content Editor can access the navigation on the Advanced page.
 
 local (pta = parentOf (code));
 local (url = string.lower (pta^.uri + "$"+ pta^.pathArgs)); //PBS 12/03/01: Content Editor can edit nav links

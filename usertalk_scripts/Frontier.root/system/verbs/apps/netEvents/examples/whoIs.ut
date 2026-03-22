@@ -12,7 +12,7 @@ on whois (domain, server = "rs.internic.net") {
 				s = s + netEvents.readStream (stream, bytespending)}}};
 	netEvents.closeStream (stream);
 	return (s)};
-bundle { «test code
+bundle { //test code
 	if dialog.ask ("Who is?", @scratchpad.whois) {
 		wp.newtextobject (whois (scratchpad.whois), @scratchpad.theyare);
 		edit (@scratchpad.theyare)}}

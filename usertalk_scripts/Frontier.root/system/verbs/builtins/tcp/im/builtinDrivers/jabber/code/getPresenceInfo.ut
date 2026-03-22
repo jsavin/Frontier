@@ -1,8 +1,8 @@
 on getPresenceInfo ( jabberId, connection = @system.temp.jabber.connection ) {
-	«Changes
-		«5/14/02; 1:51:34 PM by JB
-			«Changelog created.
-	«Returns presence information on the given resource.
+	//Changes
+		//5/14/02; 1:51:34 PM by JB
+			//Changelog created.
+	//Returns presence information on the given resource.
 	local ( jId = tcp.im.builtinDrivers.jabber.code.parseJabberId ( jabberId ) );
 	local ( userserver = jId[1] + "@" + jId[2] );
 	local ( presenceAdr = @connection^.presence[userserver] );

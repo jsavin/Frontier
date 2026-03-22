@@ -1,14 +1,14 @@
 on set (adrSitePrefs, s, windowInfoTable) {
-	«Set the text of a cascading style sheet on the server.
-	«Changes:
-		«02/06/00; 9:21:32 PM by PBS
-			«Try to send the window info table. This try is necessary while we transition the Manila RPC interface.
-		«02/19/00; 6:47:05 PM by PBS
-			«Removed the try statement. now that manila.root has been updated.
-		«03/23/00; 12:28:40 PM by PBS
-			«Turn off httpClient messages so Pike can display its own message.
-		«9/6/01; 7:55:19 PM by JES
-			«Changed params from a list to a record of named parameters, for SOAP compatibility.
+	//Set the text of a cascading style sheet on the server.
+	//Changes:
+		//02/06/00; 9:21:32 PM by PBS
+			//Try to send the window info table. This try is necessary while we transition the Manila RPC interface.
+		//02/19/00; 6:47:05 PM by PBS
+			//Removed the try statement. now that manila.root has been updated.
+		//03/23/00; 12:28:40 PM by PBS
+			//Turn off httpClient messages so Pike can display its own message.
+		//9/6/01; 7:55:19 PM by JES
+			//Changed params from a list to a record of named parameters, for SOAP compatibility.
 	
 	with adrSitePrefs^ {
 		local (params = {"username":username, "password":string (password), "siteName":sitename, "s":string (s), "windowInfoTable":windowInfoTable});

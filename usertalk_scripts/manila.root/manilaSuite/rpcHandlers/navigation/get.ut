@@ -1,12 +1,12 @@
 on get (username, password, siteName) {
-	«Get the navigation text.
-		«Changes:
-			«03/24/00; 7:21:05 PM by PBS
-				«Fixed a minor bug -- adrNewsSite was referred to, but it doesn't exist.
-			«06/22/00; 4:07:30 PM by JES
-				«Removed deletion of windowInfo table if getWindowInfoTable returns false.
-			«02/21/01; 11:55:10 PM by JES
-				«Convert Mac text to Latin if the server is a Mac.
+	//Get the navigation text.
+		//Changes:
+			//03/24/00; 7:21:05 PM by PBS
+				//Fixed a minor bug -- adrNewsSite was referred to, but it doesn't exist.
+			//06/22/00; 4:07:30 PM by JES
+				//Removed deletion of windowInfo table if getWindowInfoTable returns false.
+			//02/21/01; 11:55:10 PM by JES
+				//Convert Mac text to Latin if the server is a Mac.
 	
 	bundle { //make sure this person is a managing editor of the site.
 		local (beginningErrorString = "Can't get the navigation because ");
@@ -26,9 +26,9 @@ on get (username, password, siteName) {
 	bundle { //get window info table
 		new (tableType, @t.windowInfo);
 		local (itemName = "navigation");
-		«if not (manilaSuite.rpcUtils.getWindowInfoTable (itemName, adrSite, @t.windowInfo))
-			«delete (@t.windowInfo)
-		«06/22/00 JES: removed deletion of windowInfo table if getWindowInfoTable returns false
+		//if not (manilaSuite.rpcUtils.getWindowInfoTable (itemName, adrSite, @t.windowInfo))
+			//delete (@t.windowInfo)
+		//06/22/00 JES: removed deletion of windowInfo table if getWindowInfoTable returns false
 		manilaSuite.rpcUtils.getWindowInfoTable (itemName, adrSite, @t.windowInfo)};
 	
 	return (t)}

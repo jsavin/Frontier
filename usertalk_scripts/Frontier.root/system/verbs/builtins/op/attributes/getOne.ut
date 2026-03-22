@@ -6,7 +6,7 @@ on getOne (attname, adrval) {
 		return (false)};
 	adrval^ = attstable.[attname];
 	return (true)};
-«bundle //test code
-	«local (name)
-	«getOne ("f", @name)
-	«dialog.alert (name)
+//bundle //test code
+	//local (name)
+	//getOne ("f", @name)
+	//dialog.alert (name)

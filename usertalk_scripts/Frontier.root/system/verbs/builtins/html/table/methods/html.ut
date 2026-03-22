@@ -1,5 +1,5 @@
 on html (adrTable) {
-	«Render a Frontier table as an HTML table.
+	//Render a Frontier table as an HTML table.
 	local (htmlText = "", indentLevel = 0);
 	on add (s) {
 		htmlText = htmlText + string.filledString ("\t", indentLevel) + s + "\r"};

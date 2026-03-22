@@ -1,4 +1,4 @@
-on beginprogress (n, withMessage) { «Initialize a progress indicator.
+on beginprogress (n, withMessage) { //Initialize a progress indicator.
 	case sys.os () {
 		"MacCn";
 		"MacOS" {

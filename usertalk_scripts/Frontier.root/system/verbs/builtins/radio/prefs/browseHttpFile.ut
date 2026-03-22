@@ -1,9 +1,9 @@
 on browseHttpFile (url, ctCacheSeconds=3600, flNeuterMacros=true) {
-	«Changes
-		«2/5/02; 11:45:03 AM by PBS
-			«Conditionalized to work in Frontier.
-		«11/23/01; 12:25:25 PM by DW
-			«Created. Reads an OPML file via HTTP and runs it through the browser.
+	//Changes
+		//2/5/02; 11:45:03 AM by PBS
+			//Conditionalized to work in Frontier.
+		//11/23/01; 12:25:25 PM by DW
+			//Created. Reads an OPML file via HTTP and runs it through the browser.
 	local (flread = true, adrincache);
 	bundle { //set flread, adrincache
 		if not defined (system.temp.radio) { //PBS 02/05/02: this table may not exist in Frontier
@@ -25,5 +25,5 @@ on browseHttpFile (url, ctCacheSeconds=3600, flNeuterMacros=true) {
 		op.xmltooutline (xmltext, adrincache);
 		settimemodified (adrincache, clock.now ())};
 	return (radio.prefs.browser (adrincache))};
-«bundle //test code
-	«browseHttpFile ("http://radio.weblogs.com/0001015/gems/todolist.opml")
+//bundle //test code
+	//browseHttpFile ("http://radio.weblogs.com/0001015/gems/todolist.opml")

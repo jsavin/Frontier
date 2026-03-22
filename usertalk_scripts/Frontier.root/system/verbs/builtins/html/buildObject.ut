@@ -44,7 +44,7 @@ on buildObject (adrObject, adrPageTable=@websites.["#data"], templateName=nil) {
 			local (folder = html.getSiteFolder (adrPageTable));
 			f = folder + subDirectoryPath + fname;
 			if not defined (adrPageTable^.requestHeaders) { //PBS 12/3/98
-				«Don't create the folders if this is a dynamic page.
+				//Don't create the folders if this is a dynamic page.
 				file.sureFilePath (f)};
 			if not (url endsWith fname) {
 				url = string.popSuffix (url, '/');
@@ -86,8 +86,8 @@ on buildObject (adrObject, adrPageTable=@websites.["#data"], templateName=nil) {
 		if html.getPref ("tagSubstitution", adrPageTable) {
 			s = string.replaceall (s, "<title>", t);
 			s = string.replaceall (s, "<meat>", ro); //grandfathered in, for perpetuity
-			s = string.replaceall (s, "<bodytext>", ro); «4.0.1
-			s = string.replaceall (s, "{bodytext}", ro)}; «5.0
+			s = string.replaceall (s, "<bodytext>", ro); //4.0.1
+			s = string.replaceall (s, "{bodytext}", ro)}; //5.0
 		bundle { //call to html.processMacros
 			if flSemaphores {
 				semaphore.lock ("html.data.adrPageTable", 3600)};
@@ -98,7 +98,7 @@ on buildObject (adrObject, adrPageTable=@websites.["#data"], templateName=nil) {
 			if flSemaphores {
 				semaphore.unlock ("html.data.adrPageTable")}};
 		bundle { //4.2 -- relative addresses are supported directly
-			«Mon, Dec 30, 1996 at 6:26:26 AM by DW
+			//Mon, Dec 30, 1996 at 6:26:26 AM by DW
 			renderedtext = s;
 			s = html.data.standardMacros.glossaryPatcher (adrPageTable);
 			s = renderedtext};
@@ -118,11 +118,11 @@ on buildObject (adrObject, adrPageTable=@websites.["#data"], templateName=nil) {
 			if html.getPref ("addLineFeeds", adrPageTable) {
 				s = string.replaceAll (s, "\r", "\r\n")}};
 		bundle { //5.0 -- add fatpage comment after everything else
-			«This used to be generated in the pageFooter macro
-				«But then it would get run thru html.processMacros.
-				«Usually not a problem, but sometimes...
-				«Also, grandfathering-in the noHintsInHeader attribute. 
-				«It's an old name for fatpages.
+			//This used to be generated in the pageFooter macro
+				//But then it would get run thru html.processMacros.
+				//Usually not a problem, but sometimes...
+				//Also, grandfathering-in the noHintsInHeader attribute. 
+				//It's an old name for fatpages.
 			local (flHints = not html.getPref ("noHintsInHeader", adrPageTable));
 			local (flFatPageComment = html.getPref ("isFatPage", adrPageTable));
 			if flHints or flFatPageComment {

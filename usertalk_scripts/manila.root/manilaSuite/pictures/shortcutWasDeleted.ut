@@ -1,6 +1,6 @@
 on shortcutWasDeleted (adrMsgTable) {
-	«Return true if the shortcut was deleted. We know it was deleted if there's a shortcut entry in the image table that does not exist in the #glossary.
-		«01/12/00; 3:03:33 PM by PBS
+	//Return true if the shortcut was deleted. We know it was deleted if there's a shortcut entry in the image table that does not exist in the #glossary.
+		//01/12/00; 3:03:33 PM by PBS
 	
 	local (shortcut);
 	if manilaSuite.pictures.getShortcutFromImageTable (adrMsgTable, @shortcut) {

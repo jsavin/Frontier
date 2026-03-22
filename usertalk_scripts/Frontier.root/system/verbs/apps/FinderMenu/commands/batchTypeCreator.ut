@@ -1,18 +1,18 @@
-«DW 1/7/96, new script, does type/creator set for all the selected files
-	«and for all files contained in selected folders
-	«this is a very powerful script, use it carefully
-	«it's useful for people who master software products or CDs
-	«lots of other scripts like this are possible, like icon sorting/positioning
-	«to call it, add a command to system.menubars.MACS, call it Batch Type Creator
-		«in its script, call FinderMenu.commands.batchTypeCreator
-		«switch into the Finder, select some files or folders and
-		«choose the command from the Finder's menu bar
+//DW 1/7/96, new script, does type/creator set for all the selected files
+	//and for all files contained in selected folders
+	//this is a very powerful script, use it carefully
+	//it's useful for people who master software products or CDs
+	//lots of other scripts like this are possible, like icon sorting/positioning
+	//to call it, add a command to system.menubars.MACS, call it Batch Type Creator
+		//in its script, call FinderMenu.commands.batchTypeCreator
+		//switch into the Finder, select some files or folders and
+		//choose the command from the Finder's menu bar
 
 local (selectionlist = FinderMenu.getSelectionList ());
 if sizeOf (selectionlist) == 0 {
 	dialog.alert ("Can't set types and creators because no files are selected in the Finder.");
 	return};
-bundle { «display the dialog
+bundle { //display the dialog
 	if not defined (findermenu.cards.data.typestring) {
 		findermenu.cards.data.typestring = 'TEXT';
 		findermenu.cards.data.creatorstring = 'ttxt'};

@@ -1,2 +1,2 @@
-on open (obj) { «Open an object
+on open (obj) { //Open an object
 	return (core.open (Fetch.id, obj))}

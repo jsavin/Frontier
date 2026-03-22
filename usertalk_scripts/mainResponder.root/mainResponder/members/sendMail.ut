@@ -1,13 +1,13 @@
 on sendMail (mailaddress, adrmemberstable, pta=nil) {
-	«Changes:
-		«8/8/02; 2:58:26 PM by JES
-			«Support for passwords stored as binaries instead of as clear-text strings.
-		«10/27/00; 10:35:01 PM by PBS
-			«The page table addres is now an optional parameter. It may be needed by localization routines.
-		«05/01/00; 6:58:20 PM by JES
-			«Changed getString calls to use a replacement table address instead of a lists
-		«04/14/00; 9:15:22 PM by JES
-			«localized error messages
+	//Changes:
+		//8/8/02; 2:58:26 PM by JES
+			//Support for passwords stored as binaries instead of as clear-text strings.
+		//10/27/00; 10:35:01 PM by PBS
+			//The page table addres is now an optional parameter. It may be needed by localization routines.
+		//05/01/00; 6:58:20 PM by JES
+			//Changed getString calls to use a replacement table address instead of a lists
+		//04/14/00; 9:15:22 PM by JES
+			//localized error messages
 	mainresponder.members.validmailaddress (mailaddress); //scriptErrors if not valid
 	
 	local (adrusers = @adrmemberstable^.users);
@@ -47,5 +47,5 @@ on sendMail (mailaddress, adrmemberstable, pta=nil) {
 		msg ("")}; //erase messages displayed by tcp.sendMail
 	fileMenu.saveMyRoot (adrmemberstable);
 	return (true)};
-«bundle //test code
-	«sendMail ("dave@userland.com", @["C:\\Palm Springs\\Websites\\discussiongroup.root"].["#members"])
+//bundle //test code
+	//sendMail ("dave@userland.com", @["C:\\Palm Springs\\Websites\\discussiongroup.root"].["#members"])

@@ -1,13 +1,13 @@
 on getMessagesRss (adrsite=nil, maxitems=50) {
-	«Changes
-		«10/17/05; 2:00:49 AM by JES
-			«If the feed is being read by an authenticating client, list all messages, not just the ones set in the DG listing prefs.
-		«4/10/04; 2:02:20 AM by JES
-			«Respect prefs for whether to list home pages, stories, news items and pictures in the DG.
-		«10/11/03; 10:50:53 PM by JES
-			«Call manilaSuite.editors.restrictSiteToEditors for editors only sites instead of returning a 404 page.
-		«5/9/03; 9:13:18 PM by JES
-			«Created.
+	//Changes
+		//10/17/05; 2:00:49 AM by JES
+			//If the feed is being read by an authenticating client, list all messages, not just the ones set in the DG listing prefs.
+		//4/10/04; 2:02:20 AM by JES
+			//Respect prefs for whether to list home pages, stories, news items and pictures in the DG.
+		//10/11/03; 10:50:53 PM by JES
+			//Call manilaSuite.editors.restrictSiteToEditors for editors only sites instead of returning a 404 page.
+		//5/9/03; 9:13:18 PM by JES
+			//Created.
 	if adrsite == nil {
 		adrsite = manilaSuite.getSiteAddress ()};
 	local (flEnabled = config.manila.prefs.flDiscussRssEnabled);
@@ -34,6 +34,6 @@ on getMessagesRss (adrsite=nil, maxitems=50) {
 		else { //non-authenticated -- just list what the prefs tell us to list
 			return (manilaSuite.discuss.isMessageInDiscussionGroup (adrmsg, adrsite))}};
 	return (manilaSuite.discuss.rss.getRss (adrsite, @includeCallback, title:title, link:link, maxitems:maxitems))};
-«bundle //test code
-	«wp.newTextObject (getMessagesRss (@jaketest2ManilaWebsite), @workspace.rssText)
-	«edit (@workspace.rssText)
+//bundle //test code
+	//wp.newTextObject (getMessagesRss (@jaketest2ManilaWebsite), @workspace.rssText)
+	//edit (@workspace.rssText)

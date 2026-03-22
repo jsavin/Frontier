@@ -1,6 +1,6 @@
 on getCanonicalName (linetext) {
-	«11/6/2000; 6:12:56 PM by DW
-		«Take everything to the left of the hyphen (if present), remove all punctuation, and innerCase it. This is the string we use to refer to the directory page in a URI.
+	//11/6/2000; 6:12:56 PM by DW
+		//Take everything to the left of the hyphen (if present), remove all punctuation, and innerCase it. This is the string we use to refer to the directory page in a URI.
 	local (i, name = linetext);
 	for i = 1 to sizeof (name) {
 		if name [i] == '-' {

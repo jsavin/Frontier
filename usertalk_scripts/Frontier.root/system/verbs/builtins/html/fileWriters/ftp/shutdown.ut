@@ -1,15 +1,15 @@
 on shutdown (adrStorage) {
-	«The shutdown script is called when a rendering session completes.
-		«A rendering session is usually one of two things:
-			«1) A single page is being rendered.
-				«In this case this script is called after the page has been rendered.
-			«2) An entire table has been rendered.
-				«In this case this script is called after all the pages in the table have been rendered.
-			«Other types of rendering sessions may exist in the future,
-				«but the pattern will remain the same.
-	«The FTP shutdown script is where the FTP file writer closes the session.
-	«adrStorage is the address of private storage for this file writer for this session.
-		«5/1/03; 10:35:52 PM by EDS
+	//The shutdown script is called when a rendering session completes.
+		//A rendering session is usually one of two things:
+			//1) A single page is being rendered.
+				//In this case this script is called after the page has been rendered.
+			//2) An entire table has been rendered.
+				//In this case this script is called after all the pages in the table have been rendered.
+			//Other types of rendering sessions may exist in the future,
+				//but the pattern will remain the same.
+	//The FTP shutdown script is where the FTP file writer closes the session.
+	//adrStorage is the address of private storage for this file writer for this session.
+		//5/1/03; 10:35:52 PM by EDS
 	
 	if defined(adrStorage^.adrConnectionTable) {
 		try {

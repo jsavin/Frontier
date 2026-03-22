@@ -18,11 +18,11 @@ on addToLog (label, commandname, atts) {
 			op.go (left, 1)};
 		op.setDisplay (true);
 		odbServer.targetClear (@user.odbServer.log)}};
-«bundle «test code
-	«local (atts)
-	«new (tabletype, @atts)
-	«atts.xxx = clock.now ()
-	«atts.yyy = clock.now ()
-	«atts.zzz = clock.now ()
-	«for i = 1 to 10
-		«addToLog ("test", @atts)
+//bundle //test code
+	//local (atts)
+	//new (tabletype, @atts)
+	//atts.xxx = clock.now ()
+	//atts.yyy = clock.now ()
+	//atts.zzz = clock.now ()
+	//for i = 1 to 10
+		//addToLog ("test", @atts)

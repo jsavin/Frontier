@@ -1,6 +1,6 @@
 on addToPostOrderTable (adrMsgTable, adrSite) {
-	«Add the item to the chronological table of items posted to the home page.
-		«04/20/00; 3:57:29 PM by PBS
+	//Add the item to the chronological table of items posted to the home page.
+		//04/20/00; 3:57:29 PM by PBS
 	
 	local (adrIndex = manilaSuite.news.getIndexAddress ("postOrder", adrSite));
 	local (postTime = manilaSuite.news.getPostTime (adrMsgTable, adrSite));

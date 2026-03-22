@@ -1,20 +1,20 @@
 on signOut () {
-	«Changes:
-		«10/28/05; 10:44:51 PM by JES
-			«Comment out debugging code.
-		«10/28/05; 6:06:54 PM by JES
-			«If the cookieDomain for this group is a wild-card domain, clear legacy host-name-specific cookies.
-		«10/3/05; 2:03:30 PM by JES
-			«Ensure that both the site cookie and the admin cookie are reset, if the admin login feature is enabled.
-		«7/6/05; 3:29:15 AM by JES
-			«Log the sign out event. (Restoring an old change from 5/15/03, as yet unreleased.)
-		«3/28/05; 2:19:24 PM by JES
-			«Localized. Call sign-out callbacks.
-				«3/24/05, 23:19:29 by DAB
-		«10/24/99; 1:06:57 PM by PBS
-			«If the member is already signed out, a bug would present an error message about "" not being defined. Now check to see if the member is actually signed in before signing out.
-		«?/?/99 by PBS
-			«Created. Sign out a member.
+	//Changes:
+		//10/28/05; 10:44:51 PM by JES
+			//Comment out debugging code.
+		//10/28/05; 6:06:54 PM by JES
+			//If the cookieDomain for this group is a wild-card domain, clear legacy host-name-specific cookies.
+		//10/3/05; 2:03:30 PM by JES
+			//Ensure that both the site cookie and the admin cookie are reset, if the admin login feature is enabled.
+		//7/6/05; 3:29:15 AM by JES
+			//Log the sign out event. (Restoring an old change from 5/15/03, as yet unreleased.)
+		//3/28/05; 2:19:24 PM by JES
+			//Localized. Call sign-out callbacks.
+				//3/24/05, 23:19:29 by DAB
+		//10/24/99; 1:06:57 PM by PBS
+			//If the member is already signed out, a bug would present an error message about "" not being defined. Now check to see if the member is actually signed in before signing out.
+		//?/?/99 by PBS
+			//Created. Sign out a member.
 	
 	local (pta = html.getPageTableAddress ());
 	if defined (pta^.adrMemberInfo) { //PBS 10/24/99: sign out members only if they're already signed in
@@ -45,7 +45,7 @@ on signOut () {
 				cookieHeaders = oneCookie}
 			else { //this is an awful hack to get more than one cookie set -- we're doing a string hack on the webserver returns headers -- ouch!
 				cookieHeaders = cookieHeaders + "\r\nSet-Cookie: " + oneCookie};
-			«system.temp.debugString = cookieHeaders
+			//system.temp.debugString = cookieHeaders
 			return};
 		clearCookieForGroup (pta^.defaultMembershipGroup);
 		if config.mainResponder.prefs.flAdminGroupAlwaysAllowed {
@@ -62,7 +62,7 @@ on signOut () {
 		if defined (manilaSuite.log.addEvent) {
 			manilaSuite.log.addEvent ("memberLogoff", startticks, @t)}};
 	pta^.title = manilaSuite.getString ("members.signoutPageTitle", pta: pta); // 05/03/25, 11:26:17 by DAB 
-	return (manilaSuite.getString ("members.signedoutNow", pta: pta))}; «05/03/25, 11:27:09 by DAB
-«bundle //test code
-	«html.setPageTableAddress (@workspace.pt)
-	«signOut ()
+	return (manilaSuite.getString ("members.signedoutNow", pta: pta))}; //05/03/25, 11:27:09 by DAB
+//bundle //test code
+	//html.setPageTableAddress (@workspace.pt)
+	//signOut ()

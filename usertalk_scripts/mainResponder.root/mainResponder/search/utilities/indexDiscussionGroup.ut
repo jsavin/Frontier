@@ -1,4 +1,4 @@
-«Index the UserLand Discussion Group.
+//Index the UserLand Discussion Group.
 local (adrMessages);
 local (siteName = "Discussion Group");
 local (siteUrl = "http://discuss.userland.com/");

@@ -1,6 +1,6 @@
 on getSiteFragmentAddress (pluginName, adrSite) {
-	«Get the address of the location where the plugin should place its website fragment in a Manila site. If the website fragment already exists in a Manila site, return the address of the existing fragment.
-		«02/22/00; 2:01:21 PM by PBS
+	//Get the address of the location where the plugin should place its website fragment in a Manila site. If the website fragment already exists in a Manila site, return the address of the existing fragment.
+		//02/22/00; 2:01:21 PM by PBS
 	
 	local (adrConfig = manilaSuite.plugins.getConfigAddress (pluginName));
 	

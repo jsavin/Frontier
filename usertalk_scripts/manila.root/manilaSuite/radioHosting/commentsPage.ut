@@ -1,112 +1,112 @@
 on commentsPage () {
-	«Changes:
-		«3/25/13; 11:53:12 PM by JES
-			«Don't moderate comments if the logged in user is an editor of the site.
-		«4/12/07; 3:20:25 PM by LL
-			«Support a new site level preference to support a limited set of HTML tags for members.
-		«3/25/07; 3:56:49 PM by LL
-			«Update to the commentSubmit callback to allow the callback to return an error message to the user.
-			«Changed error message text to red.
-		«2/6/07; 11:59:32 AM by LL
-			«Bug fix: To allow members or editors already logged in to post comments if the preference to require membership to post a comment was enabled.
-		«2/5/07; 12:56:37 PM by LL
-			«Don't display the comment and TrackBack pages if the features aren't enabled.
-			«Delete contents of messages when deleting comments.
-			«Restrict the body size of submitted comments to 15KB.
-		«2006
-			«11/7/06; 2:29:00 PM by LL
-				«Prevent a new comment from replacing values for an existing membership record.
-			«4/17/06 at 12:42:56 PM by LL
-				«Added support for a TrackBack submit callback.
-			«2/1/06; 2:21:56 AM by JES
-				«Fix bug if comment moderation is not enabled.
-			«1/31/06; 1:45:19 AM by JES
-				«Add moderation feature for comments posted in a Manila site.
-			«1/13/06; 4:00:15 AM by JES
-				«Various and sundry hand-waving needed in order for the Radio-hosting login-to-delete-trackback feature to work properly.
-		«2005
-			«12/15/05; 12:53:22 AM by JES
-				«Implement login-to-comment feature.
-			«11/1/05; 2:51:20 AM by JES
-				«Change call to tcp.sendMail to manilaSuite.sendMail.
-			«9/16/05; 1:26:06 AM by JES
-				«Removed debugging code.
-			«9/16/05; 1:05:12 AM by JES
-				«If a comment is in response to a post on this site, use the news item title for the subject of the comment DG message, but only if the news item title is non-empty. Fixed a bug which prevented us from properly recognising that a comment popup is for this site.
-			«9/14/05; 4:14:04 PM by JES
-				«In comment emails, make the commenter's website link an actual link, instead of just including the URL. Add some space below the comment text.
-			«9/14/05; 1:55:21 PM by JES
-				«Changed subject of comment notification emails to include the commented post's title, if available.
-				«Changed sender of comment notification emails to the email address of the comment poster, so that the recipient(s) can reply directly in email.
-				«Add comment permalink to the comment after the comment text in notification emails -- makes spam much easier to find and delete.
-				«Moved the commenter's web link, IP address and domain to below the comment text.
-			«9/14/05; 2:36:04 AM by JES
-				«Restore auto-paragraph functionality to comments windows, which had been lost durning work on comment moderation.
-			«3/30/05; 6:03:05 PM by JES
-				«Changed Cancel button to Close button.
-			«1/20/05; 1:53:02 AM by JES
-				«Set pta^.flAnchorRelNofollow to true. Causes Manila's finalFilter to add a rel="nofollow" attribute to all <a ... > tags.
-		«2004
-			«12/30/04; 2:29:42 PM by JES
-				«Address possible security issue.
-			«12/09/04; 11:56:34 AM by LL
-				«Fixed a bug in the comment moderation cookie to correctly calculate the expiration date of the cookie.
-			«11/22/04; 3:15:57 PM by JES
-				«Add referer checking, as a measure to prevent comment spam.
-			«11/14/04; 11:11:59 PM by SK
-				«Changed comment deletion prompt text to be more user friendly.
-			«22/10/04; 4:50:01 PM by PR
-				«re-enabled trackback, we'll use a radio pref...
-			«13/09/04; 1:59:55 PM by PR
-				«fixed a bug in count messages
-			«03/09/04; 10:43:13 AM by PR
-				«added initUserStats
-			«01/09/04; 1:01:34 PM by PR
-				«Added the comment count to the post storage and whenLastModified
-			«23/08/04; 11:33:10 AM by PR
-				«updated the validation scheme to use the userprefs password
-			«21/08/04; 10:06:17 AM by PR
-				«bugfix, changed comment logout link to use webserver.encodeArgs
-			«19/08/04; 9:46:59 AM by PR
-				«added radio comment moderation
-			«7/21/04; 2:46:25 PM by JES
-				«Added ability for Managing editors to delete comments. Added permalinks.
-		«2003
-			«9/16/03; 1:13:00 AM by JES
-				«Added support for sending comment notification via email to Radio users.
-			«9/11/03; 12:55:02 PM by JES
-				«Strip HTML markup from TrackBack excerpt, title, weblog name and URL. The trackBack spec doesn't allow markup.
-			«9/9/03; 1:24:09 AM by JES
-				«Added auto-discovery feature for Radio's comment notification via email feature.
-			«9/2/03; 11:42:25 AM by JES
-				«Don't increment the read count for comments after posting a new comment.
-			«8/1/03; 2:14:00 PM by JES
-				«Work around a bug in MovableType where it would send TrackBack pings using an HTTP GET instead of an HTTP POST. Clear TrackBack counter JavaScript cache when responding to a TrackBack ping sent using HTTP GET.
-			«7/22/03; 4:40:07 PM by JES
-				«Added support for TrackBack. If the pathArg, $trackback is present, then we're handling trackback instead of comments.
-			«4/8/03; 11:34:26 PM by JES
-				«Added support for the {ipAddress} macro in the comment item template.
-			«4/8/03; 2:44:27 AM by JES
-				«Limit the size of the returned message page to 100KB.
-			«2/21/03; 1:16:10 AM by JES
-				«When the comment link is to a message in the same site running the comments service (i.e. this site), render the entire DG thread, regardless of whether the comment was made through the comments UI or through the DG interface.
-			«2/17/03; 5:09:56 PM by JES
-				«If a posted comment is in response to a message in the same site doing the Radio Hosting, set the message's inResponseTo field so that it will link back to the message that the commenter is responding to.
-		«2002
-			«9/24/02; 1:05:39 AM by JES
-				«If running on MacOS, convert the text of posted comments to Mac text before creating the message.
-			«7/12/02; 3:08:27 PM by JES
-				«Added support for links back to the original post, if available.
-			«2/23/02; 1:27:37 AM by JS
-				«Added support for returning the JavaScript to render a comment count in the browser.
-			«2/17/02; 2:03:56 AM by JS
-				«Created. Render a comments page for an arbitrary site and postnum. Create new members for people who create comments, as needed. Set a cookie for membership, so the user doesn't have to re-enter their name, email and website url.
+	//Changes:
+		//3/25/13; 11:53:12 PM by JES
+			//Don't moderate comments if the logged in user is an editor of the site.
+		//4/12/07; 3:20:25 PM by LL
+			//Support a new site level preference to support a limited set of HTML tags for members.
+		//3/25/07; 3:56:49 PM by LL
+			//Update to the commentSubmit callback to allow the callback to return an error message to the user.
+			//Changed error message text to red.
+		//2/6/07; 11:59:32 AM by LL
+			//Bug fix: To allow members or editors already logged in to post comments if the preference to require membership to post a comment was enabled.
+		//2/5/07; 12:56:37 PM by LL
+			//Don't display the comment and TrackBack pages if the features aren't enabled.
+			//Delete contents of messages when deleting comments.
+			//Restrict the body size of submitted comments to 15KB.
+		//2006
+			//11/7/06; 2:29:00 PM by LL
+				//Prevent a new comment from replacing values for an existing membership record.
+			//4/17/06 at 12:42:56 PM by LL
+				//Added support for a TrackBack submit callback.
+			//2/1/06; 2:21:56 AM by JES
+				//Fix bug if comment moderation is not enabled.
+			//1/31/06; 1:45:19 AM by JES
+				//Add moderation feature for comments posted in a Manila site.
+			//1/13/06; 4:00:15 AM by JES
+				//Various and sundry hand-waving needed in order for the Radio-hosting login-to-delete-trackback feature to work properly.
+		//2005
+			//12/15/05; 12:53:22 AM by JES
+				//Implement login-to-comment feature.
+			//11/1/05; 2:51:20 AM by JES
+				//Change call to tcp.sendMail to manilaSuite.sendMail.
+			//9/16/05; 1:26:06 AM by JES
+				//Removed debugging code.
+			//9/16/05; 1:05:12 AM by JES
+				//If a comment is in response to a post on this site, use the news item title for the subject of the comment DG message, but only if the news item title is non-empty. Fixed a bug which prevented us from properly recognising that a comment popup is for this site.
+			//9/14/05; 4:14:04 PM by JES
+				//In comment emails, make the commenter's website link an actual link, instead of just including the URL. Add some space below the comment text.
+			//9/14/05; 1:55:21 PM by JES
+				//Changed subject of comment notification emails to include the commented post's title, if available.
+				//Changed sender of comment notification emails to the email address of the comment poster, so that the recipient(s) can reply directly in email.
+				//Add comment permalink to the comment after the comment text in notification emails -- makes spam much easier to find and delete.
+				//Moved the commenter's web link, IP address and domain to below the comment text.
+			//9/14/05; 2:36:04 AM by JES
+				//Restore auto-paragraph functionality to comments windows, which had been lost durning work on comment moderation.
+			//3/30/05; 6:03:05 PM by JES
+				//Changed Cancel button to Close button.
+			//1/20/05; 1:53:02 AM by JES
+				//Set pta^.flAnchorRelNofollow to true. Causes Manila's finalFilter to add a rel="nofollow" attribute to all <a ... > tags.
+		//2004
+			//12/30/04; 2:29:42 PM by JES
+				//Address possible security issue.
+			//12/09/04; 11:56:34 AM by LL
+				//Fixed a bug in the comment moderation cookie to correctly calculate the expiration date of the cookie.
+			//11/22/04; 3:15:57 PM by JES
+				//Add referer checking, as a measure to prevent comment spam.
+			//11/14/04; 11:11:59 PM by SK
+				//Changed comment deletion prompt text to be more user friendly.
+			//22/10/04; 4:50:01 PM by PR
+				//re-enabled trackback, we'll use a radio pref...
+			//13/09/04; 1:59:55 PM by PR
+				//fixed a bug in count messages
+			//03/09/04; 10:43:13 AM by PR
+				//added initUserStats
+			//01/09/04; 1:01:34 PM by PR
+				//Added the comment count to the post storage and whenLastModified
+			//23/08/04; 11:33:10 AM by PR
+				//updated the validation scheme to use the userprefs password
+			//21/08/04; 10:06:17 AM by PR
+				//bugfix, changed comment logout link to use webserver.encodeArgs
+			//19/08/04; 9:46:59 AM by PR
+				//added radio comment moderation
+			//7/21/04; 2:46:25 PM by JES
+				//Added ability for Managing editors to delete comments. Added permalinks.
+		//2003
+			//9/16/03; 1:13:00 AM by JES
+				//Added support for sending comment notification via email to Radio users.
+			//9/11/03; 12:55:02 PM by JES
+				//Strip HTML markup from TrackBack excerpt, title, weblog name and URL. The trackBack spec doesn't allow markup.
+			//9/9/03; 1:24:09 AM by JES
+				//Added auto-discovery feature for Radio's comment notification via email feature.
+			//9/2/03; 11:42:25 AM by JES
+				//Don't increment the read count for comments after posting a new comment.
+			//8/1/03; 2:14:00 PM by JES
+				//Work around a bug in MovableType where it would send TrackBack pings using an HTTP GET instead of an HTTP POST. Clear TrackBack counter JavaScript cache when responding to a TrackBack ping sent using HTTP GET.
+			//7/22/03; 4:40:07 PM by JES
+				//Added support for TrackBack. If the pathArg, $trackback is present, then we're handling trackback instead of comments.
+			//4/8/03; 11:34:26 PM by JES
+				//Added support for the {ipAddress} macro in the comment item template.
+			//4/8/03; 2:44:27 AM by JES
+				//Limit the size of the returned message page to 100KB.
+			//2/21/03; 1:16:10 AM by JES
+				//When the comment link is to a message in the same site running the comments service (i.e. this site), render the entire DG thread, regardless of whether the comment was made through the comments UI or through the DG interface.
+			//2/17/03; 5:09:56 PM by JES
+				//If a posted comment is in response to a message in the same site doing the Radio Hosting, set the message's inResponseTo field so that it will link back to the message that the commenter is responding to.
+		//2002
+			//9/24/02; 1:05:39 AM by JES
+				//If running on MacOS, convert the text of posted comments to Mac text before creating the message.
+			//7/12/02; 3:08:27 PM by JES
+				//Added support for links back to the original post, if available.
+			//2/23/02; 1:27:37 AM by JS
+				//Added support for returning the JavaScript to render a comment count in the browser.
+			//2/17/02; 2:03:56 AM by JS
+				//Created. Render a comments page for an arbitrary site and postnum. Create new members for people who create comments, as needed. Set a cookie for membership, so the user doesn't have to re-enter their name, email and website url.
 	
 	local (adrdata = manilaSuite.radioHosting.init ());
 	local (flLoginRequiredForComments = adrdata^.flLoginRequired);
 	local (pta = html.getPageTableAddress ());
 	pta^.flAnchorRelNofollow = true; //JES 1/20/05: tell Manila's finalFilter to add rel="nofollow" to all <a ... > tags
-	«workspace.pt = pta^
+	//workspace.pt = pta^
 	
 	if (not config.manila.prefs.flRadioHostingEnabled) or (not adrdata^.flEnabled) { //return a 404 page
 		return (manilaSuite.notFound.page (pta))};
@@ -142,7 +142,7 @@ on commentsPage () {
 	if usernum contains "#" { //workaround a bug
 		usernum = string.nthField (usernum, "#", 1)};
 	
-	«23/08/04; 11:13:19 AM by PR: If the user prefs for this user contains a password then we can show the moderation form
+	//23/08/04; 11:13:19 AM by PR: If the user prefs for this user contains a password then we can show the moderation form
 	local (flRadio = false, userPassword);
 	if defined (adrData^.userPrefs.[usernum].password) {
 		flRadio = true;
@@ -153,8 +153,8 @@ on commentsPage () {
 	
 	local (flCanDeleteComments = false);
 	bundle { //set flCanDeleteComments
-		«7/21/04; 2:47:31 PM by JES: Right now, this is only implemented for Manila site Managing/Content Editors. Radio may come later.
-		«19/08/04; 9:41:53 AM by PR: implemented a Radio editor check
+		//7/21/04; 2:47:31 PM by JES: Right now, this is only implemented for Manila site Managing/Content Editors. Radio may come later.
+		//19/08/04; 9:41:53 AM by PR: implemented a Radio editor check
 		if flRadio {
 			flCanDeleteComments = manilaSuite.radioHosting.canEditComments (pta, getargs.u, userPassword)}
 		else {
@@ -175,8 +175,8 @@ on commentsPage () {
 	local (loginError = "");
 	
 	bundle { //process searchArgs: logout if c=logout. return counter JavaScript if c=counts
-		«on setRadioCookie (flClear=false) // 19/08/04; 9:35:34 AM by PR set or clear the cookie for the radio comment editor
-			«JES 1/13/06: Factored to manilaSuite.radioHosting.setRadioCookie.
+		//on setRadioCookie (flClear=false) // 19/08/04; 9:35:34 AM by PR set or clear the cookie for the radio comment editor
+			//JES 1/13/06: Factored to manilaSuite.radioHosting.setRadioCookie.
 		if defined (getargs.c) {
 			if getargs.c == "logout" { //clear mainResponder cookie and redirect to clear comments cookie
 				local (groupname = pta^.defaultMembershipGroup);
@@ -190,16 +190,16 @@ on commentsPage () {
 				delete (@getargs.c);
 				mainResponder.redirect (pta^.path + "?" + webserver.encodeArgs (@getargs));
 				return ("")};
-			«if getargs.c == "counts" // 02/09/04; 1:21:16 PM by PR: moved
-				«pta^.template = "{bodytext}"
-				«if flTrackback //trackback counters
-					«return ("{manilaSuite.radioHosting.renderCounterJavaScript (flTrackBack:true)}")
-				«else //comment counters
-					«return ("{manilaSuite.radioHosting.renderCounterJavaScript ()}")
-			«if getargs.c == "getRpcInfo" // 27/09/04; 10:16:48 AM by PR: moved
-				«pta^.template = "{bodytext}"
-				«pta^.responseHeaders.["Content-Type"] = "text/xml"
-				«return ("{manilaSuite.radioHosting.getRpcInfo ()}")
+			//if getargs.c == "counts" // 02/09/04; 1:21:16 PM by PR: moved
+				//pta^.template = "{bodytext}"
+				//if flTrackback //trackback counters
+					//return ("{manilaSuite.radioHosting.renderCounterJavaScript (flTrackBack:true)}")
+				//else //comment counters
+					//return ("{manilaSuite.radioHosting.renderCounterJavaScript ()}")
+			//if getargs.c == "getRpcInfo" // 27/09/04; 10:16:48 AM by PR: moved
+				//pta^.template = "{bodytext}"
+				//pta^.responseHeaders.["Content-Type"] = "text/xml"
+				//return ("{manilaSuite.radioHosting.getRpcInfo ()}")
 			if getargs.c == "radioLogin" { // 19/08/04; 9:34:57 AM by PR handle a radio user login
 				if flRadio {
 					if string.hashmd5(pta^.postargs.password) == userPassword {
@@ -286,7 +286,7 @@ on commentsPage () {
 		local (adrmember = mainResponder.members.getMemberTable (groupname, memberkey));
 		return (adrmember)};
 	on addRadioModeration () {
-		«19/08/04; 9:34:06 AM by PR if this a radio comment display the moderation form
+		//19/08/04; 9:34:06 AM by PR if this a radio comment display the moderation form
 		if flRadio {
 			local (s = "");
 			if !flCanDeleteComments {
@@ -295,7 +295,7 @@ on commentsPage () {
 				s = s + ("<p><hr size=\"1\" width=\"100%\"><p>" + manilaSuite.getString ("radioHosting.commentModerationPrompt") + "<br /><br /><b>Password:</b> <input name=\"password\" type=\"password\" /> <input type=\"submit\" value=\"" + manilaSuite.getString ("common.submitButton") + "\" /></p>\r");
 				s = s + "<input type=\"hidden\" name=\"c\" value=\"radioLogin\" />"}
 			else {
-				«logout message
+				//logout message
 				s = s + "<p><a target=\"_self\" href=\"" + pta^.path + "?c=radioLogout&" + webserver.encodeArgs (@getargs) + "\">" + manilaSuite.getString ("radioHosting.disableCommentDeletion") + "</a></p>"};
 			return (s)};
 		return ""};
@@ -308,15 +308,15 @@ on commentsPage () {
 		return ("Request Forbidden.")};
 	
 	if flTrackback { //handle trackback posts (pings) and pop-up window rendering
-		«bundle //debugging
-			«if not defined (workspace.tbs)
-				«new (tableType, @workspace.tbs)
-			«workspace.tbs.[string (clock.now ()) + "_" + clock.ticks ()] = pta^
+		//bundle //debugging
+			//if not defined (workspace.tbs)
+				//new (tableType, @workspace.tbs)
+			//workspace.tbs.[string (clock.now ()) + "_" + clock.ticks ()] = pta^
 		local (flPing = (pta^.method == "POST") );
 		if defined (pta^.postArgs.deleteTrackbacks) { //cause form posts for trackback deletion to get passed to manilaSuite.trackback.defaultPage
 			flPing = false};
 		bundle { //work around a bug in MovableType
-			«Ben Trott tells us that if the ping URL contains a query string, then MT uses a GET instead of a POST, for backward compatibility with older MT installations that implement the old version of the TrackBack spec.
+			//Ben Trott tells us that if the ping URL contains a query string, then MT uses a GET instead of a POST, for backward compatibility with older MT installations that implement the old version of the TrackBack spec.
 			if pta^.requestBody contains "url=" {
 				webserver.parseargs (pta^.requestBody, @getargs)};
 			if defined (getargs.title) {
@@ -327,8 +327,8 @@ on commentsPage () {
 				if defined (adrcache^) { //clear counter cache
 					delete (adrcache)}}};
 		if flPing { //accept an incoming ping
-			«adrcomments is the address of a sub-table for this usernum and post
-				«we'll treat it as if it were a message table, and allow the trackback sub-system to store its data there.
+			//adrcomments is the address of a sub-table for this usernum and post
+				//we'll treat it as if it were a message table, and allow the trackback sub-system to store its data there.
 			bundle { //call trackbackSubmit callbacks
 				try {
 					local (adrcallbacks = @config.manila.callbacks.trackbackSubmit);
@@ -396,7 +396,7 @@ on commentsPage () {
 		bundle { //render commentform
 			on addToCommentForm (s) {
 				commentform = commentform + (string.trimWhiteSpace (s) + "\r");};
-			«addToCommentForm ("<form method=\"POST\" target=\"_self\">")
+			//addToCommentForm ("<form method=\"POST\" target=\"_self\">")
 			addToCommentForm ("<a name=\"newComment\"></a>");
 			if flModeratedCommentPosted {
 				addToCommentForm ("<p><b>" + manilaSuite.getString ("radioHosting.commentSubmittedForApproval") + "</b></p>")};
@@ -437,7 +437,7 @@ on commentsPage () {
 				local (linktext = manilaSuite.getString ("radioHosting.notSoAndSo", @t));
 				local (tooltip = manilaSuite.getString ("radioHosting.clickIfYoureNotSoAndSo", @t));
 				logoutlink = "<span>[<a href=\"" + pta^.uri + "?c=logout&" + webserver.encodeArgs (@getargs) + "\" title=\"" + tooltip + "\" target=\"_self\">" + linktext + "</a>]</span>";
-				};«logoutlink = "<span>[<a href=\"" + pta^.uri + "?u=" + usernum + "&p=" + postnum + "&c=logout\" title=\"" + tooltip + "\" target=\"_self\">" + linktext + "</a>]</span>"
+				};//logoutlink = "<span>[<a href=\"" + pta^.uri + "?u=" + usernum + "&p=" + postnum + "&c=logout\" title=\"" + tooltip + "\" target=\"_self\">" + linktext + "</a>]</span>"
 			addToCommentForm ("[[message]]");
 			bundle { //header
 				addToCommentForm ("<tr><td class=\"form\" colspan=\"2\" width=\"100%\"><b>" + manilaSuite.getString ("radioHosting.addYourCommentPrompt") + "</b>&nbsp;&nbsp;" + logoutlink + "</td></tr>")};
@@ -476,7 +476,7 @@ on commentsPage () {
 				addToCommentForm ("<input type=\"hidden\" name=\"link\" value=\"" + string.urlEncode (postlink) + "\" />")};
 			bundle { // 19/08/04; 9:34:27 AM by PR add radio moderation
 				addToCommentForm (addRadioModeration())};
-			};«addToCommentForm ("</form>")
+			};//addToCommentForm ("</form>")
 		bundle { //do string replacements on header and footer
 			header = string.replaceAll (header, "{commentForm}", commentform, false);
 			footer = string.replaceAll (footer, "{commentForm}", commentform, false)};
@@ -616,7 +616,7 @@ on commentsPage () {
 										inResponseTo = adrcomments^}}
 								else { //is the comment in this site?
 									if flCommentsInThisSite { //string.lower (postlink) beginsWith string.lower (manilaSuite.getSiteUrl (adrsite))
-										«The comment is in response to a message in this Manila site -- get the message number from the URL
+										//The comment is in response to a message in this Manila site -- get the message number from the URL
 										try { //this shold never fail
 											inResponseTo = number (string.delete (string.nthField (postlink, "#", string.countFields (postlink, "#")), 1, 1) )}}}};
 							local (subject = "Comment on post " + postnum);
@@ -688,9 +688,9 @@ on commentsPage () {
 									pta^.manilaCommentInfo.commentUrl = pta^.urls^.discussMsgReader + msgnum;
 									pta^.manilaCommentInfo.commenterIpAddress = pta^.client;
 									pta^.manilaCommentInfo.commentText = s;
-									«pta^.manilaCommentInfo.flNotify = adrsite^.["#newsSite"].flNotifyNewMessages
+									//pta^.manilaCommentInfo.flNotify = adrsite^.["#newsSite"].flNotifyNewMessages
 									pta^.manilaCommentInfo.flNotify = manilaSuite.getNewsSitePref ("flNotifyNewComments", adrsite, adrsite^.["#newsSite"].flNotifyNewMessages, true);
-									«pta^.manilaCommentInfo.emailSender = adrsite^.["#newsSite"].notifySender
+									//pta^.manilaCommentInfo.emailSender = adrsite^.["#newsSite"].notifySender
 									pta^.manilaCommentInfo.emailSender = email; //commenter's email address -- so recipient can reply in email directly
 									pta^.manilaCommentInfo.emailRecipient = adrsite^.["#newsSite"].notifyList;
 									pta^.manilaCommentInfo.flPending = flCommentModerationEnabled;
@@ -758,7 +758,7 @@ on commentsPage () {
 										if pta^.manilaCommentInfo.flNotify {
 											local (recipient = pta^.manilaCommentInfo.emailRecipient);
 											local (sender = pta^.manilaCommentInfo.emailSender);
-											«local (subject = "[Manila] New comment on \"" + pta^.manilaCommentInfo.siteName + "\"")
+											//local (subject = "[Manila] New comment on \"" + pta^.manilaCommentInfo.siteName + "\"")
 											local (commentSiteName = pta^.manilaCommentInfo.siteName);
 											local (inResponseToTitle = pta^.manilaCommentInfo.inResponseToTitle);
 											local (inResponseToUrl = pta^.manilaCommentInfo.inResponseToUrl);
@@ -798,7 +798,7 @@ on commentsPage () {
 							return ("")}}}};
 			if defined (postargs.deleteComments) { //JES 7/21/04: handle comment deletion
 				if flCanDeleteComments { //security check -- must have cookie to delete
-					«workspace.pt = pta^; edit (@workspace.pt)
+					//workspace.pt = pta^; edit (@workspace.pt)
 					local (adr);
 					for adr in @postargs {
 						if adr^ == "xxx" {
@@ -836,17 +836,17 @@ on commentsPage () {
 					memberurl = adrmember^.personalInfo.webSiteUrl};
 				if memberurl != "" {
 					memberlink = html.getLink (memberlink, memberurl)};
-				«bundle // unused code
-					«local (posttime)
-					«bundle //set posttime
-						«local (day, month, year, hour, minute, second, amPmString = "am")
-						«date.get (adrmsg^.postTime, @day, @month, @year, @hour, @minute, @second)
-						«if hour > 12
-							«amPmString = "pm"
-							«hour = hour - 12
-						«if hour == 0
-							«hour = 12
-						«posttime = month + "/" + day + "/" + string.delete (year, 1, 2) + " " + hour + ":" + string.padWithZeros (minute, 2) + amPmString
+				//bundle // unused code
+					//local (posttime)
+					//bundle //set posttime
+						//local (day, month, year, hour, minute, second, amPmString = "am")
+						//date.get (adrmsg^.postTime, @day, @month, @year, @hour, @minute, @second)
+						//if hour > 12
+							//amPmString = "pm"
+							//hour = hour - 12
+						//if hour == 0
+							//hour = 12
+						//posttime = month + "/" + day + "/" + string.delete (year, 1, 2) + " " + hour + ":" + string.padWithZeros (minute, 2) + amPmString
 				bundle { //do string replacements
 					s = string.replaceAll (s, "{bgcolor}", bgcolor, false);
 					if flCanDeleteComments { //JES 7/21/04: add checkbox for deleting comment, below comment text
@@ -869,8 +869,8 @@ on commentsPage () {
 					local (ipaddress = "");
 					if defined (adrmsg^.ipAddress) {ipaddress = adrmsg^.ipAddress};
 					s = string.replaceAll (s, "{ipAddress}", ipaddress, false)};
-				«bundle //1/15/05 by DW -- add rel="nofollow" on all anchors
-					«s = string.replaceall (s, "<a", "<a rel=\"nofollow\"", false)
+				//bundle //1/15/05 by DW -- add rel="nofollow" on all anchors
+					//s = string.replaceall (s, "<a", "<a rel=\"nofollow\"", false)
 				add (s);
 				if not (pta^.method == "POST") {
 					adrmsg^.ctReads++};
@@ -897,8 +897,8 @@ on commentsPage () {
 		if flError { //replace the message with the error message
 			footer = string.replace (footer, "[[message]]", "<tr><td class=\"comment\" colspan=\"2\" width=\"100%\" style=\"color:red\"><b>" + errorMessage + "</b></td></tr>")};
 		if flComments { //add the comments
-			«if flCanDeleteComments //JES 7/21/04: form start for comment deletion
-				«add ("<form method=\"POST\" target=\"_self\">")
+			//if flCanDeleteComments //JES 7/21/04: form start for comment deletion
+				//add ("<form method=\"POST\" target=\"_self\">")
 			if flCommentsInThisSite {
 				local (msgnum = number (postnum));
 				local (adrmsg = manilaSuite.discuss.getMessageTable (msgnum, adrsite));
@@ -911,18 +911,18 @@ on commentsPage () {
 				local (msgnum = adrcomments^.msgnum);
 				local (adrmsg = manilaSuite.discuss.getMessageTable (msgnum, adrsite));
 				addMessage (msgnum)};
-			«if flCanDeleteComments //JES 7/21/04: delete button for comment deletion, form end
-				«local (lowerTrimmedTemplate = string.lower (string.trimWhiteSpace (string (adrdata^.comments.itemTemplate) )) )
-				«local (flAddTableTags = false)
-				«if lowerTrimmedTemplate contains "<tr"
-					«if not (lowerTrimmedTemplate contains "<table")
-						«flAddTableTags = true
-				«local (deleteButton = "<input type=\"submit\" name=\"deleteComments\" value=\"" + manilaSuite.getString ("radioHosting.deleteCommnetsButton") + "\" />")
-				«if flAddTableTags
-					«add ("<tr bgcolor=\"" + bgcolor + "\"><td>" + deleteButton + "</td></tr>")
-				«else
-					«add ("<br /><br />" + deleteButton)
-				«add ("</form>")
+			//if flCanDeleteComments //JES 7/21/04: delete button for comment deletion, form end
+				//local (lowerTrimmedTemplate = string.lower (string.trimWhiteSpace (string (adrdata^.comments.itemTemplate) )) )
+				//local (flAddTableTags = false)
+				//if lowerTrimmedTemplate contains "<tr"
+					//if not (lowerTrimmedTemplate contains "<table")
+						//flAddTableTags = true
+				//local (deleteButton = "<input type=\"submit\" name=\"deleteComments\" value=\"" + manilaSuite.getString ("radioHosting.deleteCommnetsButton") + "\" />")
+				//if flAddTableTags
+					//add ("<tr bgcolor=\"" + bgcolor + "\"><td>" + deleteButton + "</td></tr>")
+				//else
+					//add ("<br /><br />" + deleteButton)
+				//add ("</form>")
 			footer = string.replace (footer, "[[message]]", "")};
 		if ctcomments < 1 { //no comments
 			footer = string.replace (footer, "[[message]]", "<tr><td class=\"comment\" colspan=\"2\" width=\"100%\" bgcolor=\"" + bgcolor + "\"><b>" + manilaSuite.getString ("radioHosting.noCommentsFound") + "</b></td></tr><tr><td colspan=\"2\">&nbsp;</td></tr>")};
@@ -931,7 +931,7 @@ on commentsPage () {
 			add ("</form>")}};
 	
 	return (htmltext)};
-«bundle //testing
-	«html.setPageTableAddress (@workspace.pt)
-	«commentsPage ()
-	«html.deletePageTableAddress ()
+//bundle //testing
+	//html.setPageTableAddress (@workspace.pt)
+	//commentsPage ()
+	//html.deletePageTableAddress ()

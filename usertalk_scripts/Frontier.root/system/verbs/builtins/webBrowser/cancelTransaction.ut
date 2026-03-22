@@ -1,4 +1,4 @@
-on canceltransaction (n) { «Tells the Web browser to cancel a TransactionID is progress which the application has initiated via an OpenURL or ShowFile command.
+on canceltransaction (n) { //Tells the Web browser to cancel a TransactionID is progress which the application has initiated via an OpenURL or ShowFile command.
 	case sys.os () {
 		"MacCn";
 		"MacOS" {

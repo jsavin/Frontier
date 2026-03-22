@@ -1,5 +1,5 @@
 on folderVerb (verbid, path) {
-	«handle one of the finder's basic verbs that operates on an item in a folder
+	//handle one of the finder's basic verbs that operates on an item in a folder
 	local (folder, filelist);
 	if file.isVolume (path) {
 		folder = file.getSpecialFolderPath ("", "Desktop Folder", false)}

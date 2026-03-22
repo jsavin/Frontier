@@ -1,13 +1,13 @@
 on getItemAddress (nomad, name, pagename=nil, indexPageNames={"default", "index"}) {
-	«Changes
-		«4/27/06; 6:10:30 PM by JES
-			«Created. Find the address of an item in a site structure hierarchy given its path name. Factored from manilaSuite.hierarchyPage.
-				«nomad is an address in the site's compiled #hierarchy table (adrsite^.#hierarchy.structure)
-				«name is the name of the object to find inside the table referenced by nomad
-				«pagename is the last part of the path, for example for a path of /foo/bar, pass in "bar"
-				«indexPageNames is a list of names for default pages (index pages)
-			«Returns the address of the item if found, or false if not found.
-			«Can be called outside the web server context.
+	//Changes
+		//4/27/06; 6:10:30 PM by JES
+			//Created. Find the address of an item in a site structure hierarchy given its path name. Factored from manilaSuite.hierarchyPage.
+				//nomad is an address in the site's compiled #hierarchy table (adrsite^.#hierarchy.structure)
+				//name is the name of the object to find inside the table referenced by nomad
+				//pagename is the last part of the path, for example for a path of /foo/bar, pass in "bar"
+				//indexPageNames is a list of names for default pages (index pages)
+			//Returns the address of the item if found, or false if not found.
+			//Can be called outside the web server context.
 	
 	local (lowerName = string.lower (name));
 	local (flFound = false);

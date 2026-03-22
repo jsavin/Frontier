@@ -1,17 +1,17 @@
 on mostReadMessages () {
-	«Display the most-read messages.
-		«Changes:
-			«4/20/03; 1:07:58 PM by JES
-				«Pass the group name to mainResponder.discuss.listTopMessages.
-			«04/19/00 at 6:17:40 PM by JES
-				«localized
-			«02/12/00; 3:39:17 PM by PBS
-				«Bug fix: new sites would never get their stats compiled if stats are not being compiled every night. Now they will.
-				«Removed the line about rankings being compiled every night -- because it's not necessarily true, since stats may be compiled on demand rather than nightly.
-			«01/28/00; 12:49:44 PM by PBS
-				«If the stats haven't been compiled today, compile them before displaying. This was added because we found that the nightly dg stats compilation takes a long time on EditThisPage.Com, so we disabled it. For servers with lots of sites, it's more efficient to compile stats as needed, and cache them until the next day.
-			«12/6/99; 5:55:25 PM by PBS
-				«The error message displayed when no rankings had been compiled was missing the word "because."
+	//Display the most-read messages.
+		//Changes:
+			//4/20/03; 1:07:58 PM by JES
+				//Pass the group name to mainResponder.discuss.listTopMessages.
+			//04/19/00 at 6:17:40 PM by JES
+				//localized
+			//02/12/00; 3:39:17 PM by PBS
+				//Bug fix: new sites would never get their stats compiled if stats are not being compiled every night. Now they will.
+				//Removed the line about rankings being compiled every night -- because it's not necessarily true, since stats may be compiled on demand rather than nightly.
+			//01/28/00; 12:49:44 PM by PBS
+				//If the stats haven't been compiled today, compile them before displaying. This was added because we found that the nightly dg stats compilation takes a long time on EditThisPage.Com, so we disabled it. For servers with lots of sites, it's more efficient to compile stats as needed, and cache them until the next day.
+			//12/6/99; 5:55:25 PM by PBS
+				//The error message displayed when no rankings had been compiled was missing the word "because."
 	
 	local (pta = html.getPageTableAddress ());
 	pta^.activeUrls = false;
@@ -55,7 +55,7 @@ on mostReadMessages () {
 	
 	htmlText = manilaSuite.unTaint (mainResponder.discuss.listTopMessages (numMessages, storyUrl, pta^.defaultMembershipGroup));
 	
-	«htmlText = htmlText + "\r<p>"
-	«htmlText = htmlText + "<i>Rankings are compiled every night.</i>"
+	//htmlText = htmlText + "\r<p>"
+	//htmlText = htmlText + "<i>Rankings are compiled every night.</i>"
 	
 	return (htmlText)}

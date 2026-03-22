@@ -1,6 +1,6 @@
-«Changes
-	«4/11/02; 1:05:46 AM by JES
-		«Removed "out of a possible" connection limit text. Added support for actual RAM and VRAM usage on M
+//Changes
+	//4/11/02; 1:05:46 AM by JES
+		//Removed "out of a possible" connection limit text. Added support for actual RAM and VRAM usage on M
 local (htmltext = "");
 on add (s) {
 	htmltext = htmltext + s};

@@ -1,5 +1,5 @@
 on serviceExists (serviceName, adrService=nil) {
-	«Does a service exist? Return true or false.
+	//Does a service exist? Return true or false.
 	if adrService == nil {
 		adrService = people.getServiceTable (serviceName)};
 	if not defined (adrService^) {

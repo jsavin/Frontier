@@ -1,8 +1,8 @@
 on getMemberName (memberKey, adrName) {
-	«Get the name of a member.
-		«Return true if the name was defined, false otherwise.
-		«Put the name in adrName^.
-		«10/27/99; 10:10:07 PM by PBS
+	//Get the name of a member.
+		//Return true if the name was defined, false otherwise.
+		//Put the name in adrName^.
+		//10/27/99; 10:10:07 PM by PBS
 	
 	local (pta = html.getPageTableAddress ());
 	local (groupName = pta^.defaultMembershipGroup);

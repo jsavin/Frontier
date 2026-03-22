@@ -1,21 +1,21 @@
 on signUpCallback (flConfirmPendingMember=false) {
-	«This is called from prefsSuite.browser after a signup form has been processed.
-		«This gives us the chance to send email and build a welcome page.
-	«Changes:
-		«3/19/07; 5:56:54 PM by LL
-			«Support new member approval.
-		«5/15/03; 6:34:30 PM by JES
-			«Log an event when a new member signs up.
-		«3/31/05; 4:04:33 AM by JES
-			«Call callbacks when a member signs up.
-		«3/10/05; 4:45:22 AM by JES
-			«Handle both ends of a two-step new member signup process, requiring confirmation via email.
-		«07/27/01; 6:52:23 PM by JES
-			«Call manilaSuite.members.sendMemberSignupMail to send the email.
-		«08/07/00; 9:15:21 PM by PBS
-			«Call manilaSuite.sendMail rather than tcp.sendMail.
-		«05/29/00; 3:26:28 PM by JES
-			«localized new member welcome page title.
+	//This is called from prefsSuite.browser after a signup form has been processed.
+		//This gives us the chance to send email and build a welcome page.
+	//Changes:
+		//3/19/07; 5:56:54 PM by LL
+			//Support new member approval.
+		//5/15/03; 6:34:30 PM by JES
+			//Log an event when a new member signs up.
+		//3/31/05; 4:04:33 AM by JES
+			//Call callbacks when a member signs up.
+		//3/10/05; 4:45:22 AM by JES
+			//Handle both ends of a two-step new member signup process, requiring confirmation via email.
+		//07/27/01; 6:52:23 PM by JES
+			//Call manilaSuite.members.sendMemberSignupMail to send the email.
+		//08/07/00; 9:15:21 PM by PBS
+			//Call manilaSuite.sendMail rather than tcp.sendMail.
+		//05/29/00; 3:26:28 PM by JES
+			//localized new member welcome page title.
 	
 	local (pta = html.getPageTableAddress ());
 	local (htmlText);
@@ -30,12 +30,12 @@ on signUpCallback (flConfirmPendingMember=false) {
 		htmlText = htmlText + s};
 	if manilaSuite.getNewsSitePref ("flMemberSignupEmailConfirmation", default:false) and (not flConfirmPendingMember) {
 		
-		«How new account email confirmation works: 3/10/05; 4:41:53 AM by JES
-			«We're called by prefsSuite.browser, (our address is passed in by manilaSuite.members.signUpPage), after the member table is created.
-			«We move it to a pendingMembers table, and send email to the pending member with a unique code in a URL to confirm membership.
-			«When they load that URL, the table is copied back to the users sub-table of the membership group, and we get called again...
-			«but this time we're called with flConfirmPendingMember, and directly by manilaSuite.members.signUpPage, instead of prefsSuite.browser.
-				«prefsSuite.browser doesn't get a second shot at new members -- it does all its work before the confirmation request email is sent.
+		//How new account email confirmation works: 3/10/05; 4:41:53 AM by JES
+			//We're called by prefsSuite.browser, (our address is passed in by manilaSuite.members.signUpPage), after the member table is created.
+			//We move it to a pendingMembers table, and send email to the pending member with a unique code in a URL to confirm membership.
+			//When they load that URL, the table is copied back to the users sub-table of the membership group, and we get called again...
+			//but this time we're called with flConfirmPendingMember, and directly by manilaSuite.members.signUpPage, instead of prefsSuite.browser.
+				//prefsSuite.browser doesn't get a second shot at new members -- it does all its work before the confirmation request email is sent.
 		
 		local (adrPendingMember);
 		bundle { //move the member record to a table of quarantined members
@@ -93,20 +93,20 @@ on signUpCallback (flConfirmPendingMember=false) {
 				htmlText = searchEngine.replaceAll (htmlText, "{discussionGroupLink}", discussionGroupLink, true);
 				htmlText = searchEngine.replaceAll (htmlText, "{signOutLink}", signOutLink, true)};
 			
-			«bundle //send email
-				«local (emailText, subject, fromAddress)
-				«emailText = string (pta^.newsSite^.emailConfirmation)
-				«subject = string (pta^.newsSite^.emailConfirmationSubject)
-				«fromAddress = string (pta^.newsSite^.emailConfirmationSender)
-				«
-				«local (recipient = pta^.adrMemberInfo^.personalInfo.email)
-				«emailText = searchEngine.replaceAll (emailText, "{password}", pta^.adrMemberInfo^.password, true)
-				«emailText = searchEngine.replaceAll (emailText, "{memberName}", memberName, true)
-				«emailText = searchEngine.replaceAll (emailText, "{loginUrl}", loginUrl, true)
-				«emailText = searchEngine.replaceAll (emailText, "{signOutLink}", signOutLink, true)
-				«
-				«tcp.sendMail (recipient, subject, emailText, fromAddress)
-				«manilaSuite.sendMail (recipient, subject, emailText, fromAddress) //PBS 08/07/00: call manilaSuite.sendMail
+			//bundle //send email
+				//local (emailText, subject, fromAddress)
+				//emailText = string (pta^.newsSite^.emailConfirmation)
+				//subject = string (pta^.newsSite^.emailConfirmationSubject)
+				//fromAddress = string (pta^.newsSite^.emailConfirmationSender)
+				//
+				//local (recipient = pta^.adrMemberInfo^.personalInfo.email)
+				//emailText = searchEngine.replaceAll (emailText, "{password}", pta^.adrMemberInfo^.password, true)
+				//emailText = searchEngine.replaceAll (emailText, "{memberName}", memberName, true)
+				//emailText = searchEngine.replaceAll (emailText, "{loginUrl}", loginUrl, true)
+				//emailText = searchEngine.replaceAll (emailText, "{signOutLink}", signOutLink, true)
+				//
+				//tcp.sendMail (recipient, subject, emailText, fromAddress)
+				//manilaSuite.sendMail (recipient, subject, emailText, fromAddress) //PBS 08/07/00: call manilaSuite.sendMail
 			manilaSuite.members.sendMemberSignupMail ();
 			
 			local (adrSite = manilaSuite.getManilaSiteAddress(pta)); //05/03/24, 23:45:34 by DAB

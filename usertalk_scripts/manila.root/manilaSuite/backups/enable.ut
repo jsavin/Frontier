@@ -1,5 +1,5 @@
 on enable () {
-	«Changes
-		«6/26/02; 8:00:26 PM by JES
-			«Created.
+	//Changes
+		//6/26/02; 8:00:26 PM by JES
+			//Created.
 	config.manila.backups.flEnabled = true}

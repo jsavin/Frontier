@@ -1,2 +1,2 @@
-on redo () { «Reverse the action of the immediately preceding undo
+on redo () { //Reverse the action of the immediately preceding undo
 	return (appleEvent (Filemaker.id, 'misc', 'redo'))}

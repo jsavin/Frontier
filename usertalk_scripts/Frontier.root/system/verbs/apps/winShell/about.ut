@@ -1,8 +1,8 @@
 on about () {
-	«Display the shell's About Window.
+	//Display the shell's About Window.
 	local (dllPath = winShell.getDllPath ()); //path to DLL containing shell verbs
 	
 	return (boolean (dll.call (dllPath, "shellabout")))};
-«bundle //test code
-	«winShell.about ()
-		«true
+//bundle //test code
+	//winShell.about ()
+		//true

@@ -5,5 +5,5 @@ on getRootAddress (adr) { //return the address of the root of the db containing 
 		local (x = string.parseAddress (adr));
 		return (@[x [1]])};
 	return (@root)};
-«bundle //test code
-	«dialog.alert (getRootAddress (table.getCursorAddress ()))
+//bundle //test code
+	//dialog.alert (getRootAddress (table.getCursorAddress ()))

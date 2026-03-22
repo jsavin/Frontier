@@ -1,18 +1,18 @@
 on renderWholeCalendar (adrManilaSite, adrStaticSite=nil) {
-	«Render the entire home page archive.
-		«03/06/00; 11:33:11 PM by PBS
-		«Changes:
-			«11/4/06; 5:29:20 PM by LL
-				«Discontinue rendering a page for the year in the top level folder since the page has no contents.
-			«05/01/00; 5:25:21 PM by PBS
-				«Support for news items -- this script can render archive pages that are news item pages.
+	//Render the entire home page archive.
+		//03/06/00; 11:33:11 PM by PBS
+		//Changes:
+			//11/4/06; 5:29:20 PM by LL
+				//Discontinue rendering a page for the year in the top level folder since the page has no contents.
+			//05/01/00; 5:25:21 PM by PBS
+				//Support for news items -- this script can render archive pages that are news item pages.
 	
 	local (i);
 	for i = 1904 to 2040 {
 		if defined (adrManilaSite^.[i]) {
 			local (relativePath = nameOf (adrManilaSite^.[i]));
 			local (adr = @adrManilaSite^.[i]);
-			«manilaSuite.staticRendering.renderPage (nameOf (adrManilaSite^.[i]), adrManilaSite, adrStaticSite)
+			//manilaSuite.staticRendering.renderPage (nameOf (adrManilaSite^.[i]), adrManilaSite, adrStaticSite)
 			local (adrMonth);
 			for adrMonth in adr {
 				local (adrDay);

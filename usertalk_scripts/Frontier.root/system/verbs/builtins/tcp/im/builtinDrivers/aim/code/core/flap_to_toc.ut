@@ -1,27 +1,27 @@
 on flap_to_toc(adrSelf,ftype,strMsg) {
 	if ftype == 2 {
-		«B is a char (byte)
-		«strMsg = strMsg + struct.pack("!B", 0)
+		//B is a char (byte)
+		//strMsg = strMsg + struct.pack("!B", 0)
 		strMsg = strMsg + '\x00'};
-	«bundle // python  code
-		«ditems = []
-		«ditems.append("*")
-		«ditems.append(struct.pack("!BHH", ftype, adrSelf^._seq, len(strMsg)))
-		«ditems.append(strMsg)
-		«data = "".join(ditems)
+	//bundle // python  code
+		//ditems = []
+		//ditems.append("*")
+		//ditems.append(struct.pack("!BHH", ftype, adrSelf^._seq, len(strMsg)))
+		//ditems.append(strMsg)
+		//data = "".join(ditems)
 	local {
 		b1;
 		i1;
 		i2;
 		h1;
 		h2};
-	«on get2Byte(val, adr)
-		«local
-			«msB 
-			«lsB 
-		«pack( char(val / 256), @msB)
-		«pack(  char(val % 256), @lsB)
-		«adr^ = string(msB) + string(lsB)
+	//on get2Byte(val, adr)
+		//local
+			//msB 
+			//lsB 
+		//pack( char(val / 256), @msB)
+		//pack(  char(val % 256), @lsB)
+		//adr^ = string(msB) + string(lsB)
 	
 	pack(char(ftype),@b1);
 	pack(short(adrSelf^._seq), @s1);
@@ -33,7 +33,7 @@ on flap_to_toc(adrSelf,ftype,strMsg) {
 	
 	
 	if not tcp.writeStringToStream(adrSelf^._socket, dItems, sizeOf(dItems), 10) {
-		«#maybe make less severe later
+		//#maybe make less severe later
 		tcp.im.builtinDrivers.aim.code.core.ferror(adrSelf,"FATAL: Couldn't send all data to TOC Server\n")};
 	
 	adrSelf^._seq = adrSelf^._seq + 1;

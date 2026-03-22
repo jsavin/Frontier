@@ -1,8 +1,8 @@
 on cleanText (s) {
-	«Prepare text to be indexed.
-		«Replace whitespace characters and punctuation with spaces.
-		«(Don't replace #, <, >, {, and } characters.)
-		«Then strip HTML tags and macros.
+	//Prepare text to be indexed.
+		//Replace whitespace characters and punctuation with spaces.
+		//(Don't replace #, <, >, {, and } characters.)
+		//Then strip HTML tags and macros.
 	s = string.replaceAll (s, "\r", " ");
 	s = string.replaceAll (s, "\n", " ");
 	s = string.replaceAll (s, "\t", " ");

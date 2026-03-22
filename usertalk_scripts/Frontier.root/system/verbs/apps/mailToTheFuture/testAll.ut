@@ -1,6 +1,6 @@
-«3/31/01; 8:22:10 PM by DW
-	«See http://frontier.userland.com/mailToTheFuture
-	«Step through this script in the debugger. It will show you the results it gets.
+//3/31/01; 8:22:10 PM by DW
+	//See http://frontier.userland.com/mailToTheFuture
+	//Step through this script in the debugger. It will show you the results it gets.
 
 local (msgnum);
 mailToTheFuture.init ();

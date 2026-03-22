@@ -1,5 +1,5 @@
 on deIndexPage (pageID, adrIndex=nil, siteName=nil) {
-	«Loop through an index, removing all references to a page.
+	//Loop through an index, removing all references to a page.
 	
 	on kernelcall (pageID, adrIndex) {
 		kernel (searchEngine.deIndexPage)};

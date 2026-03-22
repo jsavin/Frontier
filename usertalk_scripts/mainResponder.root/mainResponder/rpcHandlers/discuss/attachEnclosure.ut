@@ -1,8 +1,8 @@
 on attachEnclosure (dgname, username, password, msgnum, enclosureType, enclosureBits, enclosureAddress) {
-	«9/6/99; 10:25:02 AM by DW, XML-RPC call to enclose an object to a message
-		«Changes:
-			«10/5/99; 1:47:05 PM by PBS
-				«Added support for addresses and strings that can be coerced to addresses in discuss.root.
+	//9/6/99; 10:25:02 AM by DW, XML-RPC call to enclose an object to a message
+		//Changes:
+			//10/5/99; 1:47:05 PM by PBS
+				//Added support for addresses and strings that can be coerced to addresses in discuss.root.
 	local (adrlog = log.addtoguestdatabase ("discussXmlRpcInterface"));
 	bundle { //logging code
 		adrlog^.operation = "attachEnclosure";

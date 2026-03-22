@@ -1,7 +1,7 @@
 on appIsRunning (id) {
-	«Changes
-		«1/10/03; 5:43:55 PM by JES
-			«Convert to id a string before calling the kernel. Works around a bug in some MacOS X installations where sys.appIsRunning would return true even if the app was not running.
+	//Changes
+		//1/10/03; 5:43:55 PM by JES
+			//Convert to id a string before calling the kernel. Works around a bug in some MacOS X installations where sys.appIsRunning would return true even if the app was not running.
 	on kernelCall (id) {
 		kernel (sys.appisrunning)};
 	return (kernelCall (string (id)))}

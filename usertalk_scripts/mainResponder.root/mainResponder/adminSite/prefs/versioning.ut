@@ -1,14 +1,14 @@
 on versioning () {
-	«mainResponder.adminSite.prefs.versioning : 04.05.19, 15:05:07 by DAB
-	«Changes
-		«12/21/06; 3:56:36 PM by LL
-			«Fix layout issue when displaying versioning preferences for sites.
-		«10/7/05; 2:43:02 PM by JES
-			«Fix typo.
-		«2/17/05; 2:35:42 PM by JES
-			«Rework HTML rendering to fix with UserLand's server prefs style. May still want to change from radio buttons to checkboxes. Also, this page will most likely fail to load on servers with a very large number of sites.
-		«04.05.19, 15:05:07 by DAB
-			«Created.
+	//mainResponder.adminSite.prefs.versioning : 04.05.19, 15:05:07 by DAB
+	//Changes
+		//12/21/06; 3:56:36 PM by LL
+			//Fix layout issue when displaying versioning preferences for sites.
+		//10/7/05; 2:43:02 PM by JES
+			//Fix typo.
+		//2/17/05; 2:35:42 PM by JES
+			//Rework HTML rendering to fix with UserLand's server prefs style. May still want to change from radio buttons to checkboxes. Also, this page will most likely fail to load on servers with a very large number of sites.
+		//04.05.19, 15:05:07 by DAB
+			//Created.
 	local (pta = html.getPageTableAddress ());
 	local (bgcolors = {pta^.trbg2, pta^.trbg1});
 	local (htmltext);
@@ -44,7 +44,7 @@ on versioning () {
 	availabilityLevel =  manilaSuite.versioning.getConfiguration(@maxLogs, @maxVersions);
 	
 	add ("<table border='0'>");
-	«add("Configure Manila versioning, the sites for which it is enabled, and the level in each site.")
+	//add("Configure Manila versioning, the sites for which it is enabled, and the level in each site.")
 	
 	bundle { //row for versioning availability 
 		add("<tr>");
@@ -103,7 +103,7 @@ on versioning () {
 		for adrEntry in  @config.manila.sites {
 			local (sitename = nameof(adrEntry^));
 			local  (adrSite = adrEntry^);
-			«msg("Processing " + sitename)
+			//msg("Processing " + sitename)
 			if not defined(adrSite^) {
 				continue};
 			local (adrNewsSite = manilaSuite.getNewsSiteAddress(adrSite));
@@ -124,7 +124,7 @@ on versioning () {
 			add("<td><input type = 'radio' name='versioning_" + sitename + "' value='true'" + yes + ">&nbsp;On</td>");
 			add("<td style='padding-right:25px'><input type = 'radio' name='versioning_" + sitename + "' value='false'" + no + ">&nbsp;Off</td>");
 			
-			«add column for restore  02/04/25, 15:35:17 by DAB
+			//add column for restore  02/04/25, 15:35:17 by DAB
 			if flSiteRestoreEnabled or (defined(adrNewsSite^.versioning.enabled) and adrNewsSite^.versioning.enabled) {
 				bundle { //set yes and no for restore
 					yes = "";

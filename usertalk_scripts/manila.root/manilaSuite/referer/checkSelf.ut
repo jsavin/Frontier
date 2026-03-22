@@ -1,11 +1,11 @@
 on checkSelf () {
-	«Changes
-		«7/14/05; 3:30:50 PM by JES
-			«Add support for referer checking pref.
-		«08/10/02; 7:31:20 PM by JES
-			«Added support for hierarchy pages.
-		«05/09/00; 6:40:41 PM by PBS
-			«Created. The referer must be the page itself. In this case, checking searchArgs and pathArgs isn't necessary.
+	//Changes
+		//7/14/05; 3:30:50 PM by JES
+			//Add support for referer checking pref.
+		//08/10/02; 7:31:20 PM by JES
+			//Added support for hierarchy pages.
+		//05/09/00; 6:40:41 PM by PBS
+			//Created. The referer must be the page itself. In this case, checking searchArgs and pathArgs isn't necessary.
 	
 	if not manilaSuite.referer.checkIsEnabled () {
 		return (true)};

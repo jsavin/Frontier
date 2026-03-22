@@ -1,6 +1,6 @@
 on getIndexAddress (indexName, adrSite) {
-	«Get the address of an index.
-		«04/20/00; 1:33:54 AM by PBS
+	//Get the address of an index.
+		//04/20/00; 1:33:54 AM by PBS
 	
 	local (adrTable = manilaSuite.news.getNewsItemsTable (adrSite));
 	if not defined (adrTable^.[indexName]) {

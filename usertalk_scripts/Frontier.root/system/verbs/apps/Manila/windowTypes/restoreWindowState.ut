@@ -1,9 +1,9 @@
 on restoreWindowState (adr, adrInfo) {
-	«Restore the state of a window, its position, size, scroll state, and expansion state.
-		«05/02/00; 6:06:35 PM by PBS
-	«Changes:
-		«12/05/00; 11:35:27 PM by JES
-			«If adrInfo^ is not a tableType object, create a windowInfoTable based on the outline window.
+	//Restore the state of a window, its position, size, scroll state, and expansion state.
+		//05/02/00; 6:06:35 PM by PBS
+	//Changes:
+		//12/05/00; 11:35:27 PM by JES
+			//If adrInfo^ is not a tableType object, create a windowInfoTable based on the outline window.
 	
 	local (oldTarget = target.set (adr));
 	

@@ -1,46 +1,46 @@
 on postItemPage (pta=nil) {
-	«Changes:
-		«09/18/06; 4:24:45 PM by LL
-			«Bug fix: Return an error message to the user if there is a problem encountered while posting the enclosure.
-		«10/18/05; 3:39:53 AM by JES
-			«If multiple departments is enabled, and a news item is posted with no department, including Home Page, revert the news item to pending status, so it can be found easily on the Pending News Items page.
-		«10/17/05; 7:19:12 PM by JES
-			«Don't unnecessarily calculate the message table address a second time.
-		«10/17/05; 6:01:08 PM by JES
-			«Handle Revert to Pending button on edit news item page, for reverting posted items to pending status.
-		«9/14/05; 1:19:38 AM by JES
-			«Set pta^.adrPostedMessage to the address of the (newly) posted message table containing this news item. Provides a caller with the possibility of further manipulation of the news item.
-		«9/13/05; 7:35:27 PM by JES
-			«Added support for ETP callback validation, newsPostItem.
-		«8/23/05; 4:46:51 AM by JES
-			«Add support for Send Bulletin and Delete buttons on the edit form.
-		«7/10/05; 4:35:23 AM by JES
-			«Added support for summary field.
-		«7/7/05; 5:39:20 AM by JES
-			«Added support for multiple departments and home page pseudo-department.
-		«3/11/05; 7:31:36 PM by JES
-			«Added support for enclosures.
-		«2000-2004
-			«7/15/2003; 3:56:43 PM by JES
-				«Add support for maunal trackback pings.
-			«4/24/03; 5:47:40 PM by JES
-				«If the pref is enabled, possibly pick up the per-item comment link checkbox.
-			«4/17/03; 11:28:58 PM by JES
-				«When handling a POST for an existing news item, redirect to the editing form, skipping the preview. For new items, we want to see the preview, but for existing items, we want to go straight to the editing form again.
-			«4/8/03; 3:47:29 PM by JES
-				«Add the client IP address to the message table.
-			«10/29/00; 7:47:24 PM by JES
-				«Allow callbacks to run in mainresponder.discuss.addMessage to support search engine indexing of news items.
-			«07/05/00; 1:39:59 PM by PBS
-				«Neuter tags -- News Items obeys the legal tags list.
-			«05/11/00; 8:06:37 PM by JES
-				«merged in Brent's security fix for the client side trojan horse attack.
-			«05/09/00; 10:42:28 PM by PBS
-				«Check referer to defeat the client side trojan horse.
-			«05/04/00; 5:28:40 PM by JES
-				«localized
-			«04/19/00; 11:44:12 PM by PBS
-				«Created. Post a news item.
+	//Changes:
+		//09/18/06; 4:24:45 PM by LL
+			//Bug fix: Return an error message to the user if there is a problem encountered while posting the enclosure.
+		//10/18/05; 3:39:53 AM by JES
+			//If multiple departments is enabled, and a news item is posted with no department, including Home Page, revert the news item to pending status, so it can be found easily on the Pending News Items page.
+		//10/17/05; 7:19:12 PM by JES
+			//Don't unnecessarily calculate the message table address a second time.
+		//10/17/05; 6:01:08 PM by JES
+			//Handle Revert to Pending button on edit news item page, for reverting posted items to pending status.
+		//9/14/05; 1:19:38 AM by JES
+			//Set pta^.adrPostedMessage to the address of the (newly) posted message table containing this news item. Provides a caller with the possibility of further manipulation of the news item.
+		//9/13/05; 7:35:27 PM by JES
+			//Added support for ETP callback validation, newsPostItem.
+		//8/23/05; 4:46:51 AM by JES
+			//Add support for Send Bulletin and Delete buttons on the edit form.
+		//7/10/05; 4:35:23 AM by JES
+			//Added support for summary field.
+		//7/7/05; 5:39:20 AM by JES
+			//Added support for multiple departments and home page pseudo-department.
+		//3/11/05; 7:31:36 PM by JES
+			//Added support for enclosures.
+		//2000-2004
+			//7/15/2003; 3:56:43 PM by JES
+				//Add support for maunal trackback pings.
+			//4/24/03; 5:47:40 PM by JES
+				//If the pref is enabled, possibly pick up the per-item comment link checkbox.
+			//4/17/03; 11:28:58 PM by JES
+				//When handling a POST for an existing news item, redirect to the editing form, skipping the preview. For new items, we want to see the preview, but for existing items, we want to go straight to the editing form again.
+			//4/8/03; 3:47:29 PM by JES
+				//Add the client IP address to the message table.
+			//10/29/00; 7:47:24 PM by JES
+				//Allow callbacks to run in mainresponder.discuss.addMessage to support search engine indexing of news items.
+			//07/05/00; 1:39:59 PM by PBS
+				//Neuter tags -- News Items obeys the legal tags list.
+			//05/11/00; 8:06:37 PM by JES
+				//merged in Brent's security fix for the client side trojan horse attack.
+			//05/09/00; 10:42:28 PM by PBS
+				//Check referer to defeat the client side trojan horse.
+			//05/04/00; 5:28:40 PM by JES
+				//localized
+			//04/19/00; 11:44:12 PM by PBS
+				//Created. Post a news item.
 	
 	if pta == nil {
 		pta = html.getPageTableAddress ()};
@@ -114,7 +114,7 @@ on postItemPage (pta=nil) {
 			t.summary = pta^.postArgs.summary};
 		
 		bundle { //PBS 07/05/00: neuter tags, so News Items obeys legal tags
-			«It's tricky because this is a case of embedding HTML in XML.
+			//It's tricky because this is a case of embedding HTML in XML.
 			local (adrLegalTags = @config.mainResponder.prefs.legalTags);
 			if defined (pta^.newsSite^.legalTags) {
 				adrLegalTags = @pta^.newsSite^.legalTags};

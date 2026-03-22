@@ -1,11 +1,11 @@
 on deleteMessagesPage () {
-	«Changes
-		«3/26/07; 3:47:23 PM by LL
-			«Created.
-			«Search by email address or content (subject and body)
+	//Changes
+		//3/26/07; 3:47:23 PM by LL
+			//Created.
+			//Search by email address or content (subject and body)
 	local (pta = html.getpagetableaddress ());
-	«bundle //testing
-		«workspace.pt = pta^; edit (@workspace.pt)
+	//bundle //testing
+		//workspace.pt = pta^; edit (@workspace.pt)
 	bundle { //managing editor test
 		if not manilaSuite.editors.managingEditorTest () {
 			scriptError (manilaSuite.getString ("admin.cantDisplayPageNoPermission"))}};
@@ -108,7 +108,7 @@ on deleteMessagesPage () {
 					adrMsgTable^.body = "";
 					adrMsgTable^.subject = "";
 					adrMsgTable^.inResponseTo = -2;
-					}};«manilaSuite.discuss.removeCategoryFromMessage (adrMsgTable, storiesCategory, adrSite) //PBS 10/09/00: update indexes
+					}};//manilaSuite.discuss.removeCategoryFromMessage (adrMsgTable, storiesCategory, adrSite) //PBS 10/09/00: update indexes
 			
 			if defined (adrargs^.searchUntil) {
 				sizeTable = number (adrargs^.searchUntil);
@@ -178,6 +178,6 @@ on deleteMessagesPage () {
 	
 	
 	return (htext)};
-«bundle //test code
-	«html.setPageTableAddress (@workspace.pt)
-	«deleteMessagesPage ()
+//bundle //test code
+	//html.setPageTableAddress (@workspace.pt)
+	//deleteMessagesPage ()

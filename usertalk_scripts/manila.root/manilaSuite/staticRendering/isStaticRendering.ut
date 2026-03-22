@@ -1,9 +1,9 @@
 on isStaticRendering (pta=nil) {
-	«Call this script if you want to know if this is a static rendering.
-		«03/06/00; 9:36:21 PM by PBS
-		«Changes:
-			«03/14/01; 3:50:50 PM by PBS
-				«pta is a new optional parameter.
+	//Call this script if you want to know if this is a static rendering.
+		//03/06/00; 9:36:21 PM by PBS
+		//Changes:
+			//03/14/01; 3:50:50 PM by PBS
+				//pta is a new optional parameter.
 	
 	if pta == nil {
 		pta = html.getPageTableAddress ()};

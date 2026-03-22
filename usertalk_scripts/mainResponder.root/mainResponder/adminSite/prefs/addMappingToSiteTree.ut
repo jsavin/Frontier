@@ -1,8 +1,8 @@
 on addMappingToSiteTree () {
-	«Changes
-		«6/27/02; 5:25:57 PM by JES
-			«Created. UI for adding a site to a site tree mapping in config.mainResponder.domains.
-				«The form has three fields, domain, path, and object to serve.
+	//Changes
+		//6/27/02; 5:25:57 PM by JES
+			//Created. UI for adding a site to a site tree mapping in config.mainResponder.domains.
+				//The form has three fields, domain, path, and object to serve.
 	local (pta = html.getPageTableAddress ());
 	local (htmltext = "");
 	on add (s) {
@@ -11,8 +11,8 @@ on addMappingToSiteTree () {
 		s = string.replaceAll (s, "\"", "&quot;");
 		return (s)};
 	
-	«bundle //explanatory text
-		«add ("To add a site to the domains served on this server, type the domain name and path, enter the object to serve, and click the Add Site button. If the domain already exists, the site will be added to its site tree. If the domain does not exist, a new domain will be created.")
+	//bundle //explanatory text
+		//add ("To add a site to the domains served on this server, type the domain name and path, enter the object to serve, and click the Add Site button. If the domain already exists, the site will be added to its site tree. If the domain does not exist, a new domain will be created.")
 	
 	on sureDomain (domain) {
 		local (adrdom = @config.mainResponder.domains.[domain]);
@@ -50,7 +50,7 @@ on addMappingToSiteTree () {
 	
 	local (errormessage="", domain="", path="", object="");
 	if pta^.method == "POST" {
-		«workspace.pt = pta^
+		//workspace.pt = pta^
 		local (adrargs = @pta^.postargs);
 		if defined (adrargs^.addSite) {
 			domain = adrargs^.domain;

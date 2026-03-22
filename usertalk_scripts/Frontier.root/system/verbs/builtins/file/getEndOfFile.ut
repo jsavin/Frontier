@@ -1,2 +1,2 @@
-on getEndOfFile (path) { «new in Frontier 5.0.1
+on getEndOfFile (path) { //new in Frontier 5.0.1
 	kernel (file.getEndoffile)}

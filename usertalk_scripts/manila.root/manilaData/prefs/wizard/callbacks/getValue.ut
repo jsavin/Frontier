@@ -1,6 +1,6 @@
 on getValue (partialAddress, defaultValue) {
-	«Get a value from a member's prefs. Handle the issue with bulletins prefs not specifying the subtable. (Each site gets a subtable in the member's bulletins table, this way multiple sites can share a membership group.)
-		«12/14/01; 1:31:32 PM by PBS
+	//Get a value from a member's prefs. Handle the issue with bulletins prefs not specifying the subtable. (Each site gets a subtable in the member's bulletins table, this way multiple sites can share a membership group.)
+		//12/14/01; 1:31:32 PM by PBS
 	
 	local (adrNewsSite = manilaSuite.getNewsSiteAddress ());
 	local (adrSite = manilaSuite.getSiteAddress ());

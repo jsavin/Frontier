@@ -1,47 +1,47 @@
 on getLegalMacrosForObject (objectName) {
-	«Changes:
-		«3/20/05; 2:14:44 AM by JES
-			«Added support for enclosureLink, enclosureUrl, enclosureName, enclosureSize and enclosureIcon in news item templates.
-		«4/28/04; 1:00:27 AM by JES
-			«Add support for encodedPermalinkUrl pseudo-macro in news item templates.
-			«Add pseudo-macros: msgNum and itemNum (a synonym for msgNum borrowed from Radio).
-		«3/4/04; 1:38:16 AM by JES
-			«Add support for currentItemFormat from navigation appearance.
-		«7/14/03; 5:14:14 PM by JES
-			«Added cases for trackback-related templates.
-		«4/23/03; 3:46:04 PM by JES
-			«Added support for summary and full text news item templates. Added the following legal macros to those templates, and the regular news item template: {summary}, {editButton}, {fullItemUrl}, {fullItemWordCount}, {fullItemCharacterCount}, and {permalinkUrl}.
-		«4/1/03; 3:55:06 PM by JES
-			«Added support for {departmentLink} in news item templates.
-		«3/27/03; 4:16:39 PM by JES
-			«Added support for {commentLink} in news item templates.
-		«2/12/03; 5:12:44 PM by JES
-			«Added support for {permaLink} in news item templates.
-		«4/5/02; 3:02:58 AM by JES
-			«Added support for responseitemfulltemplate.
-		«10/8/01; 3:15:18 PM by PBS
-			«Support for some missing slides and directory templates.
-		«3/6/01; 10:41:36 AM by DW
-			«Allow {subItems} to pass through without neutering.
-		«2000:
-			«06/26/00; 3:37:28 PM by JES
-				«Fixed problem where there was already a legal macro entry which was a table.
-			«07/08/00; 2:12:34 AM by PBS
-				«Support the new {link} macro for the News Items template.
-			«10/25/00; 9:22:32 PM by JES
-				«Support all the legal macros for the discussion group templates.
-			«10/27/00; 9:05:46 PM by JES
-				«Fixed bug where responseItemTemplate macros would get neutered.
-			«11/04/00; 9:08:41 PM by JES
-				«Fixed a bug where the enclosureLink macro was getting neutered.
-			«11/20/00; 5:09:21 PM by PBS
-				«Get legal macros for the directory template.
-			«12/14/2000; 8:13:39 AM by DW
-				«Allow {opmlUrl} to pass through without neutering.
-			«12/18/00; 4:20:25 PM by PBS
-				«Slides template.
-			«06/06/00; 1:49:43 AM by PBS
-				«Return a legal macros table for an object, given its name.
+	//Changes:
+		//3/20/05; 2:14:44 AM by JES
+			//Added support for enclosureLink, enclosureUrl, enclosureName, enclosureSize and enclosureIcon in news item templates.
+		//4/28/04; 1:00:27 AM by JES
+			//Add support for encodedPermalinkUrl pseudo-macro in news item templates.
+			//Add pseudo-macros: msgNum and itemNum (a synonym for msgNum borrowed from Radio).
+		//3/4/04; 1:38:16 AM by JES
+			//Add support for currentItemFormat from navigation appearance.
+		//7/14/03; 5:14:14 PM by JES
+			//Added cases for trackback-related templates.
+		//4/23/03; 3:46:04 PM by JES
+			//Added support for summary and full text news item templates. Added the following legal macros to those templates, and the regular news item template: {summary}, {editButton}, {fullItemUrl}, {fullItemWordCount}, {fullItemCharacterCount}, and {permalinkUrl}.
+		//4/1/03; 3:55:06 PM by JES
+			//Added support for {departmentLink} in news item templates.
+		//3/27/03; 4:16:39 PM by JES
+			//Added support for {commentLink} in news item templates.
+		//2/12/03; 5:12:44 PM by JES
+			//Added support for {permaLink} in news item templates.
+		//4/5/02; 3:02:58 AM by JES
+			//Added support for responseitemfulltemplate.
+		//10/8/01; 3:15:18 PM by PBS
+			//Support for some missing slides and directory templates.
+		//3/6/01; 10:41:36 AM by DW
+			//Allow {subItems} to pass through without neutering.
+		//2000:
+			//06/26/00; 3:37:28 PM by JES
+				//Fixed problem where there was already a legal macro entry which was a table.
+			//07/08/00; 2:12:34 AM by PBS
+				//Support the new {link} macro for the News Items template.
+			//10/25/00; 9:22:32 PM by JES
+				//Support all the legal macros for the discussion group templates.
+			//10/27/00; 9:05:46 PM by JES
+				//Fixed bug where responseItemTemplate macros would get neutered.
+			//11/04/00; 9:08:41 PM by JES
+				//Fixed a bug where the enclosureLink macro was getting neutered.
+			//11/20/00; 5:09:21 PM by PBS
+				//Get legal macros for the directory template.
+			//12/14/2000; 8:13:39 AM by DW
+				//Allow {opmlUrl} to pass through without neutering.
+			//12/18/00; 4:20:25 PM by PBS
+				//Slides template.
+			//06/06/00; 1:49:43 AM by PBS
+				//Return a legal macros table for an object, given its name.
 	
 	objectName = string.dropNonAlphas (objectName);
 	objectName = string.lower (objectName);

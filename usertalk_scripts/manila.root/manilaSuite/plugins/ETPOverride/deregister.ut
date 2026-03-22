@@ -1,13 +1,13 @@
 on deregister (adrSite, urlName, adrScript) {
-	«Changes
-		«9/13/05; 8:37:50 PM by JES
-			«Add support for news item callback: Always allow deregistration regardless of whether there's a matching #url.
-			«Reformat code to UserLand's style.
-		«04/06/17, 13:06:49 by DAB
-			«Creatd. Deregister a script to build the ETP forms for urlname
-				«urlName must be the name of an entry in #urls
-					«not all urlnames are associated with a form, that's ok the scripts are never called
-			«you should not call this unless you registered the script at urlname
+	//Changes
+		//9/13/05; 8:37:50 PM by JES
+			//Add support for news item callback: Always allow deregistration regardless of whether there's a matching #url.
+			//Reformat code to UserLand's style.
+		//04/06/17, 13:06:49 by DAB
+			//Creatd. Deregister a script to build the ETP forms for urlname
+				//urlName must be the name of an entry in #urls
+					//not all urlnames are associated with a form, that's ok the scripts are never called
+			//you should not call this unless you registered the script at urlname
 	local (flNewsItemCallback = false);
 	case string.lower (urlName) { //support for "special" news item callbacks which don't correspond to #urls
 		"newsreader";
@@ -18,7 +18,7 @@ on deregister (adrSite, urlName, adrScript) {
 			flNewsItemCallback = true}};
 	case true { //reasons to not accept parameters
 		urlname == "";
-		«not defined (adrSite^.["#urls"].[urlname])
+		//not defined (adrSite^.["#urls"].[urlname])
 		not defined (adrSite^.["#prefs"].ETPformSubstitutes);
 		not defined (adrSite^.["#prefs"].ETPformSubstitutes.[urlname]);
 		not defined (adrScript^) {
@@ -28,5 +28,5 @@ on deregister (adrSite, urlName, adrScript) {
 		adrSite^.["#prefs"].ETPformSubstitutes.[urlname] != string.popFileFromAddress (adrScript) {
 			return (false)}};
 	return (delete (@adrSite^.["#prefs"].ETPformSubstitutes.[urlname]))};
-«bundle //test code
-	«manilaSuite.plugins.ETPoverride.deregister (@homeManilaWebsite, "newsReader", @workspace.etpOverrideTest.newsReader)
+//bundle //test code
+	//manilaSuite.plugins.ETPoverride.deregister (@homeManilaWebsite, "newsReader", @workspace.etpOverrideTest.newsReader)

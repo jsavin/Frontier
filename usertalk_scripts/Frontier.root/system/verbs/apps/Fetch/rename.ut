@@ -1,2 +1,2 @@
-on rename (host, path, user, password, url, newname) { «rename file or directory
+on rename (host, path, user, password, url, newname) { //rename file or directory
 	return (appleEvent (Fetch.id, 'Arch', 'Rena', 'FTPh', string (host), 'FTPc', string (path), 'ArGU', string (user), 'ArGp', string (password), 'ArUR', string (url), 'NewN', string (newname)))}

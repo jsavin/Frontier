@@ -1,13 +1,13 @@
-«This is a script instead of a constant so it can become smarter if it needs to.
-	«Changes:
-		«11/15/04; 12:53:05 PM by SK
-			«Added support for Mozilla Firefox browsers on MacOS X and Windows NT/2000/XP
-		«1/10/03; 5:49:15 PM by JES
-			«Added support for Safari on MacOS X.
-		«9/21/02; 5:28:28 PM by JES
-			«Added support for Chimera Navigator on OS X.
-		«1/9/02; 3:27:15 PM by PBS
-			«Added support for Mozilla, Opera, and iCab.
+//This is a script instead of a constant so it can become smarter if it needs to.
+	//Changes:
+		//11/15/04; 12:53:05 PM by SK
+			//Added support for Mozilla Firefox browsers on MacOS X and Windows NT/2000/XP
+		//1/10/03; 5:49:15 PM by JES
+			//Added support for Safari on MacOS X.
+		//9/21/02; 5:28:28 PM by JES
+			//Added support for Chimera Navigator on OS X.
+		//1/9/02; 3:27:15 PM by PBS
+			//Added support for Mozilla, Opera, and iCab.
 case sys.os () {
 	"MacOS" {
 		if defined (system.environment.isCarbon) and system.environment.isCarbon {

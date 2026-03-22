@@ -1,15 +1,15 @@
 on viewRssBox (url, boxTitle=nil, align="", width=125, frameColor="#000000", titleBarTextColor="#000000", titleBarColor="#ADD8E6", boxFillColor="#FFFFFF", timeZone="PST", hspace=0, vspace=0, maxItems=infinity) {
-	«Changes:
-		«01/02/01; 11:51:05 AM by PBS
-			«Save and restore the page table, since the indirect call to tcp.httpClient may result in a page rendering in this same thread if the call is to this same server.
-		«01/04/01; 4:54:17 PM by JES
-			«Fixed problem with HTML validation: height and width attributes are illegal for tr tags.
-		«1/6/2001; 11:37:10 AM by DW
-			«Add storyArrivedCallback to handle publish-subscribe notification.
-		«02/09/01; 6:52:50 PM by PBS
-			«New optional maxItems parameter, defaults to infinity (current behavior), allows the caller to specify the maximum number of news items that appear in the HTML rendering. This parameter is passed through to xml.rss.viewRssBox, which passes it to xml.rss.getHtmlRendering.
-		«05/08/01; 12:15:13 AM by JES
-			«Pick up the time zone setting from the Manila site's prefs, and pass it to xml.rss.viewRssBox, as an hour offset.
+	//Changes:
+		//01/02/01; 11:51:05 AM by PBS
+			//Save and restore the page table, since the indirect call to tcp.httpClient may result in a page rendering in this same thread if the call is to this same server.
+		//01/04/01; 4:54:17 PM by JES
+			//Fixed problem with HTML validation: height and width attributes are illegal for tr tags.
+		//1/6/2001; 11:37:10 AM by DW
+			//Add storyArrivedCallback to handle publish-subscribe notification.
+		//02/09/01; 6:52:50 PM by PBS
+			//New optional maxItems parameter, defaults to infinity (current behavior), allows the caller to specify the maximum number of news items that appear in the HTML rendering. This parameter is passed through to xml.rss.viewRssBox, which passes it to xml.rss.getHtmlRendering.
+		//05/08/01; 12:15:13 AM by JES
+			//Pick up the time zone setting from the Manila site's prefs, and pass it to xml.rss.viewRssBox, as an hour offset.
 	local (timeZoneOffsetHours = 0);
 	bundle { //get timeZoneOffsetHours
 		local (adrsite = manilaSuite.getSiteAddress ());
@@ -18,8 +18,8 @@ on viewRssBox (url, boxTitle=nil, align="", width=125, frameColor="#000000", tit
 			timeZoneOffsetSeconds = (0 - date.getCurrentTimeZone ()) + timeZoneOffsetSeconds;
 			timeZoneOffsetHours = timeZoneOffsetSeconds / 3600}};
 	on storyArrivedCallback (adrservice, adritem) {
-		«Called from xml.rss.compileService.
-			«The services are in user.xml.rss.cache
+		//Called from xml.rss.compileService.
+			//The services are in user.xml.rss.cache
 		manilaSuite.rss.storyArrived (adrservice);
 		return (true)};
 	local (htmltext = "\r\n", indentlevel = 0);
@@ -37,6 +37,6 @@ on viewRssBox (url, boxTitle=nil, align="", width=125, frameColor="#000000", tit
 	add ("<tr><td height=\"" + vspace + "\" colspan=\"3\"></td></tr>");
 	add ("</table>"); indentlevel--;
 	return (htmltext)};
-«bundle //test code
-	«user.xml.rss.cache
-	«viewRssBox ("http://www.ourfavoritesongs.com/users/dave@userland.com/rss/dotComs.xml")
+//bundle //test code
+	//user.xml.rss.cache
+	//viewRssBox ("http://www.ourfavoritesongs.com/users/dave@userland.com/rss/dotComs.xml")

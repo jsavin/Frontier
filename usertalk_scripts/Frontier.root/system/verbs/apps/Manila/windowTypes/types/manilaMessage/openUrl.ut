@@ -1,8 +1,8 @@
 on openUrl (url) {
-	«7/13/01; 5:08:35 PM by JES
-		«Open a Manila site message URL for editing. The url should be like this: http://www.mysite.com/discuss/reader$40.opml
+	//7/13/01; 5:08:35 PM by JES
+		//Open a Manila site message URL for editing. The url should be like this: http://www.mysite.com/discuss/reader$40.opml
 	
-	«Get the siteUrl and msgNum.
+	//Get the siteUrl and msgNum.
 	local (discussUrl = string.popSuffix (url, '/'));
 	local (siteUrl = string.popSuffix (discussUrl, '/'));
 	siteUrl = siteUrl + "/";
@@ -10,7 +10,7 @@ on openUrl (url) {
 	local (msgNum = string.nthField (url, '$', lastField));
 	msgNum = string.popSuffix (msgNum);
 	
-	«Open the message.
+	//Open the message.
 	local (adrtype = parentOf (this^));
 	return (adrtype^.openMessage (siteUrl, msgNum))}; //open message
 

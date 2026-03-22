@@ -1,66 +1,66 @@
 on createSiteForm (pta=nil) {
-	«Changes:
-		«3/20/07; 3:47:48 PM by LL
-			«Added support for an editorial mode hosting pref to set default editorial preferences when creating a site.
-		«2005 and earlier
-			«11/1/05; 2:48:56 AM by JES
-				«Change call to tcp.sendMail to manilaSuite.sendMail.
-			«05/05/04, 13:58:03 by DAB
-				«DAB Changes from 03/01/05, 16:09:10
-					«all sites get their own root
-						«from the controlpanel  - always
-						«user form entry - if boolean config.manila.prefs.flOneSitePerRoot exists use that value
-					«A site preference can be set In #prefs flCannotChangeEmail
-						«true  - email address is taken from member record (non controlapnel calls)
-						«false - sets as before from the form
-					«name restricted to max of 18 chars - otherwise backups fail on Macintosh for folder name too long
-			«5/3/04; 6:15:26 PM by JES
-				«Make sure that site creation doesn't fail if one of the new hosting prefs is not defined.
-			«4/9/04; 5:34:36 PM by JES
-				«Handle the case where the site's hosting prefs don't define flRequireEmailConfirmation.
-			«7/9/03; 3:24:36 PM by JES
-				«Add sub-sites to the site tree for the base domain, or to the default domain if the base domain is not defined in config.mainResponder.domains.
-				«If the site has hosting prefs, but the hosting prefs table's flEnabled boolean is false, return an error.
-				«Added support for additional prefs from the hosting prefs table:
-					«defaultEditor
-					«defaultLanguage
-					«defaultHomePageSubject, defaultHomePageText
-					«defaultNewsItemTitle, defaultNewsItemText, defaultNewsItemLink
-					«flEnabled
-					«flNewsItemsEnabled
-					«flRequireEmailConfirmation, flRestrictByEmailDomain, restrictToDomain
-			«3/31/03; 3:04:43 PM by JES
-				«Fixed a bug which caused the create site form in the control panel not to work. Thanks to Sam Reynolds for debugging and suggesting the fix.
-			«8/16/02; 4:42:24 PM by JES
-				«Added support for creating sites via the Frontier Admin site.
-			«07/12/00; 3:18:55 PM by PBS
-				«Support for shared membership groups. The prefs table may specify using the membership group that the create-a-site site uses. config.manila.hosting.sites.default.flUseHostingSiteMembershipGroup, if defined and true, means to use the membership group of the create-a-site site.
-				«Simplified canonical site names and site table names. The canonical site name is always just the path. The site table name is always the path plus "ManilaWebsite."
-			«07/03/00; 12:12:57 PM by JES
-				«Localized error messages.
-			«06/28/00; 12:27:43 PM by PBS
-				«If the domain doesn't exist, use the default. Don't convert or create any siteTree tables. Make sure the canonical site name is a short name.
-			«06/27/00; 12:30:27 PM by JES
-				«Bug fix - make sure the siteTree.directory table in config.mainResponder.domains contains an outline, after creating a sub-site.
-			«06/26/00; 7:49:48 PM by JES
-				«Bug fix - fixed createSiteForm on storyReader and msgReader pages
-			«06/25/00; 12:51:16 AM by JES
-				«Bug fix -- support for servers running on ports other than 80
-			«06/23/00; 10:05:39 PM by PBS
-				«The default theme didn't show up in the Create-a-Site form on the Control Panel -- now it does.
-				«When building the pop-up menu, use the display name of the Theme.
-			«06/22/00; 4:14:12 PM by PBS
-				«Make sure baseDomain is a good domain, doesn't have slashes or an http:// prefix. If doing top-level sites, make sure there's a period at the front.
-			«06/22/00; 1:13:38 AM by JES
-				«localized
-			«06/17/00; 11:20:02 PM by PBS
-				«If the base domain doesn't exist on config.mainResponder.domains, and sub-sites are being created, create the domain.
-				«Check the outline's mod date, re-compile if necessary, when adding a sub-site.
-			«05/26/00; 11:50:27 AM by PBS
-				«Created. Display a create a site form. If a POST, then create the site if the inputs are good. Otherwise return an error.
+	//Changes:
+		//3/20/07; 3:47:48 PM by LL
+			//Added support for an editorial mode hosting pref to set default editorial preferences when creating a site.
+		//2005 and earlier
+			//11/1/05; 2:48:56 AM by JES
+				//Change call to tcp.sendMail to manilaSuite.sendMail.
+			//05/05/04, 13:58:03 by DAB
+				//DAB Changes from 03/01/05, 16:09:10
+					//all sites get their own root
+						//from the controlpanel  - always
+						//user form entry - if boolean config.manila.prefs.flOneSitePerRoot exists use that value
+					//A site preference can be set In #prefs flCannotChangeEmail
+						//true  - email address is taken from member record (non controlapnel calls)
+						//false - sets as before from the form
+					//name restricted to max of 18 chars - otherwise backups fail on Macintosh for folder name too long
+			//5/3/04; 6:15:26 PM by JES
+				//Make sure that site creation doesn't fail if one of the new hosting prefs is not defined.
+			//4/9/04; 5:34:36 PM by JES
+				//Handle the case where the site's hosting prefs don't define flRequireEmailConfirmation.
+			//7/9/03; 3:24:36 PM by JES
+				//Add sub-sites to the site tree for the base domain, or to the default domain if the base domain is not defined in config.mainResponder.domains.
+				//If the site has hosting prefs, but the hosting prefs table's flEnabled boolean is false, return an error.
+				//Added support for additional prefs from the hosting prefs table:
+					//defaultEditor
+					//defaultLanguage
+					//defaultHomePageSubject, defaultHomePageText
+					//defaultNewsItemTitle, defaultNewsItemText, defaultNewsItemLink
+					//flEnabled
+					//flNewsItemsEnabled
+					//flRequireEmailConfirmation, flRestrictByEmailDomain, restrictToDomain
+			//3/31/03; 3:04:43 PM by JES
+				//Fixed a bug which caused the create site form in the control panel not to work. Thanks to Sam Reynolds for debugging and suggesting the fix.
+			//8/16/02; 4:42:24 PM by JES
+				//Added support for creating sites via the Frontier Admin site.
+			//07/12/00; 3:18:55 PM by PBS
+				//Support for shared membership groups. The prefs table may specify using the membership group that the create-a-site site uses. config.manila.hosting.sites.default.flUseHostingSiteMembershipGroup, if defined and true, means to use the membership group of the create-a-site site.
+				//Simplified canonical site names and site table names. The canonical site name is always just the path. The site table name is always the path plus "ManilaWebsite."
+			//07/03/00; 12:12:57 PM by JES
+				//Localized error messages.
+			//06/28/00; 12:27:43 PM by PBS
+				//If the domain doesn't exist, use the default. Don't convert or create any siteTree tables. Make sure the canonical site name is a short name.
+			//06/27/00; 12:30:27 PM by JES
+				//Bug fix - make sure the siteTree.directory table in config.mainResponder.domains contains an outline, after creating a sub-site.
+			//06/26/00; 7:49:48 PM by JES
+				//Bug fix - fixed createSiteForm on storyReader and msgReader pages
+			//06/25/00; 12:51:16 AM by JES
+				//Bug fix -- support for servers running on ports other than 80
+			//06/23/00; 10:05:39 PM by PBS
+				//The default theme didn't show up in the Create-a-Site form on the Control Panel -- now it does.
+				//When building the pop-up menu, use the display name of the Theme.
+			//06/22/00; 4:14:12 PM by PBS
+				//Make sure baseDomain is a good domain, doesn't have slashes or an http:// prefix. If doing top-level sites, make sure there's a period at the front.
+			//06/22/00; 1:13:38 AM by JES
+				//localized
+			//06/17/00; 11:20:02 PM by PBS
+				//If the base domain doesn't exist on config.mainResponder.domains, and sub-sites are being created, create the domain.
+				//Check the outline's mod date, re-compile if necessary, when adding a sub-site.
+			//05/26/00; 11:50:27 AM by PBS
+				//Created. Display a create a site form. If a POST, then create the site if the inputs are good. Otherwise return an error.
 	
 	if pta == nil {pta = html.getPageTableAddress ()};
-	«workspace.pt = pta^
+	//workspace.pt = pta^
 	
 	local (adrPrefs);
 	local (flControlPanel = false);
@@ -83,8 +83,8 @@ on createSiteForm (pta=nil) {
 	local (flEditorsOnly = adrPrefs^.flEditorsOnlyCreateSites);
 	local (flConvertToSiteTree = false); //PBS 06/28/00
 	local (flSiteTreeExists = false);
-	local (flCannotChangeEmail = false); «03/01/02, 18:34:33 by DAB
-	try {flCannotChangeEmail = adrPrefs^.flCannotChangeEmail}; «03/01/02, 18:34:37 by DAB
+	local (flCannotChangeEmail = false); //03/01/02, 18:34:33 by DAB
+	try {flCannotChangeEmail = adrPrefs^.flCannotChangeEmail}; //03/01/02, 18:34:37 by DAB
 	
 	bundle { //PBS 06/28/00: find out if we need to convert to a siteTree
 		local (domainMinusPort = string.popSuffix (baseDomain, ':'));
@@ -122,10 +122,10 @@ on createSiteForm (pta=nil) {
 		if pta^.pathArgs != "" { // 06/26/00 JES: fixed form on storyReader and msgReader pages
 			action = action + "$" + pta^.pathArgs};
 		add ("<form method=\"post\" action=\"" + action + "\">");
-		if flCannotChangeEmail { «01/10/17, 14:01:05 by DAB
+		if flCannotChangeEmail { //01/10/17, 14:01:05 by DAB
 			add ("<input type='hidden' name='email' value='" + manilaSuite.translateToEntities (email) + "'>")};
 		indentLevel++;
-		«local (host = pta^.host)
+		//local (host = pta^.host)
 		add ("<table border=\"0\" cellpadding=\"3\" cellspacing=\"0\">");
 		indentLevel++;
 		bundle { //host
@@ -139,10 +139,10 @@ on createSiteForm (pta=nil) {
 				indentLevel--;
 				add ("<td valign=\"top\" align=\"left\">");
 				indentLevel++;
-				«add ("<input size=\"25\" name=\"path\" value=\"" + manilaSuite.translateToEntities (path) + "\">/")
-				«(31- string.length("ManilaWebsite"))
-					«18
-				add ("<input size=\"18\" maxlength = '18'  name=\"path\" value=\"" + manilaSuite.translateToEntities (path) + "\">/"); «04/05/03, 15:26:33 by DAB
+				//add ("<input size=\"25\" name=\"path\" value=\"" + manilaSuite.translateToEntities (path) + "\">/")
+				//(31- string.length("ManilaWebsite"))
+					//18
+				add ("<input size=\"18\" maxlength = '18'  name=\"path\" value=\"" + manilaSuite.translateToEntities (path) + "\">/"); //04/05/03, 15:26:33 by DAB
 				add ("</td>");
 				indentLevel--;
 				add ("</tr>");
@@ -178,7 +178,7 @@ on createSiteForm (pta=nil) {
 			indentLevel--;
 			add ("</tr>");
 			indentLevel--};
-		if not flCannotChangeEmail { «01/10/17, 14:01:05 by DAB email  conditional
+		if not flCannotChangeEmail { //01/10/17, 14:01:05 by DAB email  conditional
 			add ("<tr>");
 			indentLevel++;
 			add ("<td valign=\"top\" align=\"right\">");
@@ -323,7 +323,7 @@ on createSiteForm (pta=nil) {
 				bundle { //name
 					if name == "" {
 						errorMessage = manilaSuite.getString ("hosting.cantCreateSiteNoNameSpecified", pta: pta)};
-					if defined(maniladata.newSiteTemplate.[name]) or ({"home", "faq", "feedback"} contains string.lower(name) ) { «02/01/18, 12:01:07 by DAB
+					if defined(maniladata.newSiteTemplate.[name]) or ({"home", "faq", "feedback"} contains string.lower(name) ) { //02/01/18, 12:01:07 by DAB
 						errormessage = name + " is reserved, please choose another name"};
 					if errorMessage != "" {
 						return (error (errorMessage))}};
@@ -409,7 +409,7 @@ on createSiteForm (pta=nil) {
 							local (adr);
 							for adr in adrpendingsites {
 								if adr^.path == path {
-									«addError ("A pending site on this server will be named \"" + path + "\"")
+									//addError ("A pending site on this server will be named \"" + path + "\"")
 									return (error (manilaSuite.getString ("hosting.cantCreateSiteAlreadyExists", pta: pta)))}}}};
 					bundle { //if validated, send an email
 						if sizeof (errorlist) == 0 { //validated
@@ -482,25 +482,25 @@ on createSiteForm (pta=nil) {
 			
 			local (canonicalSiteName, siteTableName);
 			bundle { //create canonical site name
-				«bundle //old code
-					«local (mangledHostName = string.innerCaseName (string.replaceAll (pta^.host, ".", " ")))
-					«local (mangledHostName)
-					«bundle //JES 06/24/00: fix for domains with a . or a : in them
-						«mangledHostName = string.replaceAll (string.replaceAll (pta^.host, ".", " "), "-", " ")
-						«mangledHostName = string.nthField (mangledHostName, ':', 1) // handle non-80 ports
-						«mangledHostName = string.innerCaseName (mangledHostName)
-					«local (firstChar = mangledHostName [1])
-					«firstChar = string.upper (firstChar)
-					«mangledHostName [1] = firstChar
-					«canonicalSiteName = path + mangledHostName
-					«canonicalSiteName = string.mid (canonicalSiteName, 1, 31 - sizeOf ("ManilaWebsite")) //Macs
-					«canonicalSiteName = canonicalSiteName + "ManilaWebsite"
-					«siteTableName = canonicalSiteName
-					«if flSiteTreeExists
-						«canonicalSiteName = siteTableName
-					«else
-						«canonicalSiteName = path
-				«PBS 07/12/00: simplification -- the canonical site name is always just the path. The table name is always the canonical site name plus "ManilaWebsite"
+				//bundle //old code
+					//local (mangledHostName = string.innerCaseName (string.replaceAll (pta^.host, ".", " ")))
+					//local (mangledHostName)
+					//bundle //JES 06/24/00: fix for domains with a . or a : in them
+						//mangledHostName = string.replaceAll (string.replaceAll (pta^.host, ".", " "), "-", " ")
+						//mangledHostName = string.nthField (mangledHostName, ':', 1) // handle non-80 ports
+						//mangledHostName = string.innerCaseName (mangledHostName)
+					//local (firstChar = mangledHostName [1])
+					//firstChar = string.upper (firstChar)
+					//mangledHostName [1] = firstChar
+					//canonicalSiteName = path + mangledHostName
+					//canonicalSiteName = string.mid (canonicalSiteName, 1, 31 - sizeOf ("ManilaWebsite")) //Macs
+					//canonicalSiteName = canonicalSiteName + "ManilaWebsite"
+					//siteTableName = canonicalSiteName
+					//if flSiteTreeExists
+						//canonicalSiteName = siteTableName
+					//else
+						//canonicalSiteName = path
+				//PBS 07/12/00: simplification -- the canonical site name is always just the path. The table name is always the canonical site name plus "ManilaWebsite"
 				canonicalSiteName = path;
 				canonicalSiteName = string.mid (canonicalSiteName, 1, 31 - sizeOf ("ManilaWebsite")); //Macs
 				siteTableName = canonicalSiteName + "ManilaWebsite"};
@@ -541,11 +541,11 @@ on createSiteForm (pta=nil) {
 					flAddToDomains = true};
 				local (flAddToUserDatabases = false);
 				local (flUseExistingGdb = true)
-					«local (flUseExistingGdb = not flControlpanel)    «05/06/15, 14:52:22 by DAB;
-				if defined(config.manila.prefs.flOneSitePerRoot) { «03/01/05, 16:42:03 by DAB
-					flUseExistingGdb = not config.manila.prefs.flOneSitePerRoot; «03/05/19, 12:59:20 by DAB
-					flAddToUserDatabases  = true}; «03/11/11, 08:48:54 by DAB
-				if defined(maniladata.newSiteTemplate.[name]) or ({"home", "faq", "feedback"} contains string.lower(name) ) { «02/01/18, 12:01:07 by DAB
+					//local (flUseExistingGdb = not flControlpanel)    //05/06/15, 14:52:22 by DAB;
+				if defined(config.manila.prefs.flOneSitePerRoot) { //03/01/05, 16:42:03 by DAB
+					flUseExistingGdb = not config.manila.prefs.flOneSitePerRoot; //03/05/19, 12:59:20 by DAB
+					flAddToUserDatabases  = true}; //03/11/11, 08:48:54 by DAB
+				if defined(maniladata.newSiteTemplate.[name]) or ({"home", "faq", "feedback"} contains string.lower(name) ) { //02/01/18, 12:01:07 by DAB
 					errormessage = name + " is reserved, please choose another name"};
 				local (existingGdbName);
 				if not defined (config.manila.prefs.hostingGdbName) {
@@ -578,7 +578,7 @@ on createSiteForm (pta=nil) {
 						setUrl ("prefsHome"); //prefs page
 						setUrl ("profilesHome"); //profiles page
 						
-						«Make sure cookie domain is of the form .domain.tld -- if not sub-sites, that is (sub-sites work automatically)
+						//Make sure cookie domain is of the form .domain.tld -- if not sub-sites, that is (sub-sites work automatically)
 						if not flSubSites {
 							local (adrGroup = mainResponder.members.getMembershipTable (membershipGroupName));
 							local (cookieDomain = adrPrefs^.baseDomain); //hey, the value's right there, excellent, no string splitting needed -- it even starts with a .
@@ -707,25 +707,25 @@ on createSiteForm (pta=nil) {
 				bundle { //create the site and re-direct
 					local (siteUrl = "http://" + baseDomain + "/" + path + "/");
 					siteInfo = createSite (siteUrl)};
-				«bundle //old code for adding to site tree
-					«bundle //add to siteTree if needed
-						«if defined (adrDomain^.siteTree)
-							«local (adrStructure = @adrDomain^.siteTree.directory.structure [1] [1])
-							«local (adrSiteEntry)
-							«adrSiteEntry = xml.addTable (adrStructure, "site")
-							«new (tableType, @adrSiteEntry^.["/atts"])
-							«adrSiteEntry^.["/atts"].name = path
-							«adrSiteEntry^.["/atts"].address = canonicalSiteName
-							«adrSiteEntry^.["/atts"].address = siteTableName //PBS 07/12/00: it's the table name, not the canonical site name, that goes here
-							«try
-								«delete (@adrStructure^.["/pcdata"])
-							«local (s = xml.decompile (adrStructure))
-							«bundle //re-build the outline
-								«local (xmlHeader = string.nthField (s, '\r', 1))
-								«s = string.delete (s, 1, sizeOf (xmlHeader))
-								«s = string.trimWhiteSpace (s)
-								«s = "<siteTree>\r" + s + "\r\t</siteTree>"
-								«wp.newTextObject (s, @adrDomain^.siteTree.directory.outline)
+				//bundle //old code for adding to site tree
+					//bundle //add to siteTree if needed
+						//if defined (adrDomain^.siteTree)
+							//local (adrStructure = @adrDomain^.siteTree.directory.structure [1] [1])
+							//local (adrSiteEntry)
+							//adrSiteEntry = xml.addTable (adrStructure, "site")
+							//new (tableType, @adrSiteEntry^.["/atts"])
+							//adrSiteEntry^.["/atts"].name = path
+							//adrSiteEntry^.["/atts"].address = canonicalSiteName
+							//adrSiteEntry^.["/atts"].address = siteTableName //PBS 07/12/00: it's the table name, not the canonical site name, that goes here
+							//try
+								//delete (@adrStructure^.["/pcdata"])
+							//local (s = xml.decompile (adrStructure))
+							//bundle //re-build the outline
+								//local (xmlHeader = string.nthField (s, '\r', 1))
+								//s = string.delete (s, 1, sizeOf (xmlHeader))
+								//s = string.trimWhiteSpace (s)
+								//s = "<siteTree>\r" + s + "\r\t</siteTree>"
+								//wp.newTextObject (s, @adrDomain^.siteTree.directory.outline)
 				try { //new code for adding to site tree
 					if defined (adrdomain^) {
 						mainResponder.siteTree.addSiteToTree (baseDomain, path, siteInfo.adrSite, false, true)}
@@ -755,6 +755,6 @@ on createSiteForm (pta=nil) {
 		buildForm (path, name, email, password, theme)};
 	
 	return (manilaSuite.unTaint (htmlText))}; //no further macros should be processed in this text
-«bundle //test code
-	«html.setpagetableaddress (@workspace.pt)
-	«createsiteform ()
+//bundle //test code
+	//html.setpagetableaddress (@workspace.pt)
+	//createsiteform ()

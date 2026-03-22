@@ -1,8 +1,8 @@
 on getStats (username, password, siteName) {
-	«Get statistics about page reads.
-		«Changes:
-			«06/22/00; 11:14:33 PM by JES
-				«Was calling cleanForExport (undefined), not cleanObjectForExport.
+	//Get statistics about page reads.
+		//Changes:
+			//06/22/00; 11:14:33 PM by JES
+				//Was calling cleanForExport (undefined), not cleanObjectForExport.
 	
 	bundle { //make sure this person is a managing editor of the site.
 		local (beginningErrorString = "Can't get message statistics because ");

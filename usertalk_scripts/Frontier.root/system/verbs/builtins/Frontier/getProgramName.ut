@@ -1,9 +1,9 @@
 on getProgramName () {
-	«Changes
-		«6/23/05; 9:37:10 PM by MB
-			«Updated inclusion of Radio's version number
-		«5/19/01; 9:41:59 AM by DW
-			«Created. Returns the program name and version in a string that can be displayed or included in an automatically generated file.
+	//Changes
+		//6/23/05; 9:37:10 PM by MB
+			//Updated inclusion of Radio's version number
+		//5/19/01; 9:41:59 AM by DW
+			//Created. Returns the program name and version in a string that can be displayed or included in an automatically generated file.
 	local (s);
 	local (v = Frontier.version ());
 	if system.environment.isRadio {
@@ -14,5 +14,5 @@ on getProgramName () {
 		s = "UserLand Frontier"};
 	s = s + ( " v" + v );
 	return (s)};
-«bundle //test code
-	«dialog.alert (getProgramName ())
+//bundle //test code
+	//dialog.alert (getProgramName ())

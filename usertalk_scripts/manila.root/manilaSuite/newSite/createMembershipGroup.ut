@@ -1,9 +1,9 @@
 on createMembershipGroup (adrSiteInfo) {
-	«Changes
-		«9/30/03; 12:26:42 PM by JES
-			«Store passwords as binary values in the membership group.
-		«10/21/99; 12:48:49 PM by PBS
-			«Created: Create the membership group for a site, if it doesn't already exist.
+	//Changes
+		//9/30/03; 12:26:42 PM by JES
+			//Store passwords as binary values in the membership group.
+		//10/21/99; 12:48:49 PM by PBS
+			//Created: Create the membership group for a site, if it doesn't already exist.
 	
 	local (groupName = adrSiteInfo^.membershipGroupName);
 	local (adrGroup);
@@ -11,7 +11,7 @@ on createMembershipGroup (adrSiteInfo) {
 	
 	try { //check to see if it's already defined
 		adrGroup = mainResponder.members.getMembershipTable (groupName);
-		«It exists. Don't create it.
+		//It exists. Don't create it.
 		adrSiteInfo^.adrMembershipGroup = adrGroup;
 		return (true)};
 	

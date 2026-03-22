@@ -1,6 +1,6 @@
 on page (pta=nil) {
-	«Build a 404 page and set the return code.
-		«10/15/01; 9:01:21 PM by PBS
+	//Build a 404 page and set the return code.
+		//10/15/01; 9:01:21 PM by PBS
 	
 	if pta == nil {
 		pta = html.getPageTableAddress ()};

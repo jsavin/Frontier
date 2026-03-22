@@ -1,42 +1,42 @@
 on outlineToXml (adrOutline, ownerName=user.prefs.name, ownerEmail=user.prefs.mailAddress, adrCloud=nil, flDeHoist=false) {
-	«Changes:
-		«10/14/05; 10:04:33 PM by JES
-			«New optional parameter, flDeHoist. If true, we first fully de-hoist the outline before making a local copy, and then re-hoist to original position. Used to fix a bug in OPML file saving, when the outline is hoisted; we no longer lose the non-visible part of the outline.
-		«6/23/05; 9:55:54 PM by MB
-			«Use Frontier.getProgramName to generate appstring
-		«Archives
-			«1/28/03; 4:28:20 PM by JES
-				«Encode entities in the window title. Prevents formation of mal-formed XML when the outline window contains less-than or greater-than characters.
-			«5/24/02; 3:02:46 PM by JES
-				«Add an XML comment to the top of the file, saying what application generated the OPML. Cleaned up change notes.
-			«12/20/01; 8:50:05 AM by DB
-				«Fixed target setting and set more window attributes before calling the kernel
-			«12/19/01; 9:43:48 AM by DMB
-				«Added adrCloud parameter
-			«7/19/01; 1:34:43 PM by JES
-				«Preserve the window title, by patching the xml returned by the kernelCall.
-			«7/18/01; 8:33:08 PM by JES
-				«Copy the outline to a temporary outline contained in a local table object, instead of to @[windowTitle]^, to prevent the possibility of stomping on objects in the odb.
-			«2/18/01; 4:58:37 PM by PBS
-				«Preserve size, expansion state, scroll state, and window title.
-			«1/1/01; 12:58:02 PM by DW
-				«Preserve the dateCreated attribute of the OPML document. 
-			«1/1/01; 12:25:24 PM by DW
-				«In the 11/17 change the cure was worse than the disease. Now all outlines have a <title> of "localOutline". Not good. To work around this, I create a local outline with the same name as the original, then pass its address to the kernel.
-			«11/17/00; 4:18:33 PM by JES
-				«Convert a copy of the outline to opml instead of converting the outline itself, since if the outline is in text mode, the last-typed changes aren't added to the opml.
-			«09/17/00; 4:06:33 PM by PBS
-				«Kernelized. Also added ownerName and ownerEmail optional parameters.
-			«9/7/00; 2:53:03 PM by JES
-				«Set the target to oldTarget before returning xmltext.
-			«8/25/00; 11:13:16 AM by DW
-				«Version 1.0d2. Add <ownerName> and <ownerEmail> to the <head>.
-			«07/27/00; 3:24:37 PM by PBS
-				«Encode > characters as &gt;, so the generated XML can be compiled later.
-			«7/26/00; 6:38:36 PM by DW
-				«Encode ampersands, quotes and less-thans in attributes.
-			«7/19/00; 6:30:02 PM by DW
-				«Created.
+	//Changes:
+		//10/14/05; 10:04:33 PM by JES
+			//New optional parameter, flDeHoist. If true, we first fully de-hoist the outline before making a local copy, and then re-hoist to original position. Used to fix a bug in OPML file saving, when the outline is hoisted; we no longer lose the non-visible part of the outline.
+		//6/23/05; 9:55:54 PM by MB
+			//Use Frontier.getProgramName to generate appstring
+		//Archives
+			//1/28/03; 4:28:20 PM by JES
+				//Encode entities in the window title. Prevents formation of mal-formed XML when the outline window contains less-than or greater-than characters.
+			//5/24/02; 3:02:46 PM by JES
+				//Add an XML comment to the top of the file, saying what application generated the OPML. Cleaned up change notes.
+			//12/20/01; 8:50:05 AM by DB
+				//Fixed target setting and set more window attributes before calling the kernel
+			//12/19/01; 9:43:48 AM by DMB
+				//Added adrCloud parameter
+			//7/19/01; 1:34:43 PM by JES
+				//Preserve the window title, by patching the xml returned by the kernelCall.
+			//7/18/01; 8:33:08 PM by JES
+				//Copy the outline to a temporary outline contained in a local table object, instead of to @[windowTitle]^, to prevent the possibility of stomping on objects in the odb.
+			//2/18/01; 4:58:37 PM by PBS
+				//Preserve size, expansion state, scroll state, and window title.
+			//1/1/01; 12:58:02 PM by DW
+				//Preserve the dateCreated attribute of the OPML document. 
+			//1/1/01; 12:25:24 PM by DW
+				//In the 11/17 change the cure was worse than the disease. Now all outlines have a <title> of "localOutline". Not good. To work around this, I create a local outline with the same name as the original, then pass its address to the kernel.
+			//11/17/00; 4:18:33 PM by JES
+				//Convert a copy of the outline to opml instead of converting the outline itself, since if the outline is in text mode, the last-typed changes aren't added to the opml.
+			//09/17/00; 4:06:33 PM by PBS
+				//Kernelized. Also added ownerName and ownerEmail optional parameters.
+			//9/7/00; 2:53:03 PM by JES
+				//Set the target to oldTarget before returning xmltext.
+			//8/25/00; 11:13:16 AM by DW
+				//Version 1.0d2. Add <ownerName> and <ownerEmail> to the <head>.
+			//07/27/00; 3:24:37 PM by PBS
+				//Encode > characters as &gt;, so the generated XML can be compiled later.
+			//7/26/00; 6:38:36 PM by DW
+				//Encode ampersands, quotes and less-thans in attributes.
+			//7/19/00; 6:30:02 PM by DW
+				//Created.
 	local (localoutline);
 	
 	if flDehoist { //de-hoist, make a copy, and reset
@@ -74,7 +74,7 @@ on outlineToXml (adrOutline, ownerName=user.prefs.name, ownerEmail=user.prefs.ma
 			window.getSize (adroutline, @windowwidth, @windowheight);
 			window.getPosition (adroutline, @windowleft, @windowtop);
 			windowtitle = window.gettitle (adroutline);
-			};«target.set (oldtarget)
+			};//target.set (oldtarget)
 		local (xmltext = "", indentlevel = 0);
 		on add (s) {
 			xmltext = xmltext + string.filledstring ("\t", indentlevel) + s + "\r"};
@@ -164,26 +164,26 @@ on outlineToXml (adrOutline, ownerName=user.prefs.name, ownerEmail=user.prefs.ma
 				kernel (op.outlineToXml)};
 			xmltext = kernelCall (@localoutline, ownerName, ownerEmail, adrCloud)};
 		try {target.set (oldTarget)};
-		«bundle //patch the <title> element
-			«local (ixstart = string.patternMatch ("<title>", xmltext) + 7)
-			«local (ixend = string.patternMatch ("</title>", xmltext))
-			«xmltext = string.delete (xmltext, ixstart, ixend - ixstart)
-			«xmltext = string.insert (windowTitle, xmltext, ixstart)
+		//bundle //patch the <title> element
+			//local (ixstart = string.patternMatch ("<title>", xmltext) + 7)
+			//local (ixend = string.patternMatch ("</title>", xmltext))
+			//xmltext = string.delete (xmltext, ixstart, ixend - ixstart)
+			//xmltext = string.insert (windowTitle, xmltext, ixstart)
 		bundle { //add a comment saying what application generated the OPML
-			«Example comment:
-				«<!-- OPML generated by Radio UserLand v8.0.5 on Fri, 24 May 2002 20:43:14 GMT -->
+			//Example comment:
+				//<!-- OPML generated by Radio UserLand v8.0.5 on Fri, 24 May 2002 20:43:14 GMT -->
 			local (appstring);
-			«bundle //set appstring
-				«if system.environment.isRadio
-					«appstring = "Radio UserLand "
-				«else //Frontier
-					«appstring = "UserLand Frontier "
-				«appstring = appstring + "v" + frontier.version ()
+			//bundle //set appstring
+				//if system.environment.isRadio
+					//appstring = "Radio UserLand "
+				//else //Frontier
+					//appstring = "UserLand Frontier "
+				//appstring = appstring + "v" + frontier.version ()
 			appstring = Frontier.getProgramName (); // 6/23/05; 9:54:33 PM by MB
 			local (commenttext = "<!-- OPML generated by " + appstring + " on " + date.netStandardString (clock.now ()) + " -->\r\n");
 			local (ix = string.patternMatch ("<opml ", xmltext));
 			xmltext = string.insert (commenttext, xmltext, ix)};
 		return (xmltext)}};
-«bundle //test code
-	«wp.newTextObject (op.outlineToXml (window.frontmost (), flDeHoist:true), @scratchpad.opmlText)
-	«edit (@scratchpad.opmlText)
+//bundle //test code
+	//wp.newTextObject (op.outlineToXml (window.frontmost (), flDeHoist:true), @scratchpad.opmlText)
+	//edit (@scratchpad.opmlText)

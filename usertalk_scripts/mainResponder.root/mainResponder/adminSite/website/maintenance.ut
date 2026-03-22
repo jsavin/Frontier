@@ -1,16 +1,16 @@
 on maintenance () {
-	«Changes
-		«5/16/07; 11:28:30 AM by LL
-			«Added new maintenance command to clean referer stats on the server.
-		«3/14/07; 11:24:43 PM by LL
-			«Add new command to reset site preferences for membership related settings.
-			«Removed Updates command.
-		«11/24/06; 5:32:39 PM by LL
-			«Corrected some text on the page.
-		«9/8/02; 4:46:12 PM by JES
-			«Fixed a typo. Implemented the Reset search enging index function, with a confirmation page.
-		«8/18/02; 10:08:53 PM by JES
-			«Created. Render a page of server maintenance functions.
+	//Changes
+		//5/16/07; 11:28:30 AM by LL
+			//Added new maintenance command to clean referer stats on the server.
+		//3/14/07; 11:24:43 PM by LL
+			//Add new command to reset site preferences for membership related settings.
+			//Removed Updates command.
+		//11/24/06; 5:32:39 PM by LL
+			//Corrected some text on the page.
+		//9/8/02; 4:46:12 PM by JES
+			//Fixed a typo. Implemented the Reset search enging index function, with a confirmation page.
+		//8/18/02; 10:08:53 PM by JES
+			//Created. Render a page of server maintenance functions.
 	local (pta = html.getPageTableAddress ());
 	pta^.title = "Maintenance";
 	
@@ -72,13 +72,13 @@ on maintenance () {
 	bundle { //explanatory text
 		add ("<p>This page provides access to server-wide maintenance functions like Backups, Search Engine Indexing options.</p>")};
 	
-	«bundle //database update options
-		«add ("<h4><a name=\"updates\"></a>Updates</h4>")
-		«add ("<form method=\"POST\">")
-		«bundle //explanatory text
-			«add ("<p>Manila can automatically connect to a server at UserLand, to get new features and bug fixes. Only those parts that have changed since the last update will be installed. To update your databases now, click the Update Now button.</p>")
-		«add (mainResponder.adminSite.prefs.updateNowButton (false))
-		«add ("</form>")
+	//bundle //database update options
+		//add ("<h4><a name=\"updates\"></a>Updates</h4>")
+		//add ("<form method=\"POST\">")
+		//bundle //explanatory text
+			//add ("<p>Manila can automatically connect to a server at UserLand, to get new features and bug fixes. Only those parts that have changed since the last update will be installed. To update your databases now, click the Update Now button.</p>")
+		//add (mainResponder.adminSite.prefs.updateNowButton (false))
+		//add ("</form>")
 	bundle { //reset site membership preferences
 		add ("<h4><a name=\"manilaMembershipSettings\"></a>Reset Manila Sites Editorial Settings</h4>");
 		add ("<form method=\"POST\">");

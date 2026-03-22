@@ -13,7 +13,7 @@ on viewGroup () {
 		if groupName == "" or groupName == false {
 			return ("Can't view a group because no group name was specified.")}};
 	
-	«hr ()
+	//hr ()
 	
 	add ("<h3>Members of group " + groupName + ":</h3>\r");
 	add (html.getPageTableAddress ()^.tools^.displayUsers (groupName:groupName));
@@ -46,7 +46,7 @@ on viewGroup () {
 	add ("<h3>Services attached to group " + groupName + ":</h3>\r");
 	add (html.getPageTableAddress ()^.tools^.displayGroupServices (groupName));
 	
-	«hr ()
+	//hr ()
 	
 	bundle { //attach service to group dialog
 		local (servicesList = people.getGroupServices (groupName));
@@ -79,6 +79,6 @@ on viewGroup () {
 				add ("<input type=\"hidden\" value=\"" + groupName + "\" name=\"groupName\">");
 				add ("<p>\r<input type=\"submit\" value=\"Attach Service\"></form>")}}};
 	
-	«hr ()
+	//hr ()
 	
 	return (htmlText)}

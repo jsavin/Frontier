@@ -1,192 +1,192 @@
 on setValue (partialAddress, adrVal) {
-	«Changes:
-		«3/22/07; 1:23:50 PM by LL
-			«Add support for always display member login box and member approval preferences.
-		«1/12/07; 4:51:40 PM by LL
-			«Add support for pref to disable Suggest-A-Link on directory pages.
-		«11/26/06; 11:37:16 AM by LL
-			«Add support for pref to disable spam-free mailto links.
-		«9/19/06; 9:12:01 PM by LL
-			«Prevent the static site URL from being accidentally wiped out when submitting the Rendering prefs page.
-		«1/31/06; 3:39:59 AM by JES
-			«Add support for comment moderation feature.
-		«2005
-			«12/15/05; 1:13:25 AM by JES
-				«Add support for login required feature for comment pop-ups. (Pref is on News Items prefs page.)
-			«12/14/05; 1:39:42 AM by JES
-				«Add support for members only prefs -- enabled, page text and page title.
-			«12/6/05; 11:46:15 PM by JES
-				«Bug fix: Properly set subject and text for new member confirmation emails.
-			«7/14/05; 3:24:27 PM by JES
-				«Add pref for enabling/disabling referer checking.
-			«7/11/05; 2:40:09 PM by JES
-				«When setting up safe macros for discussion group topicListItemTemplate and topicTemplate, use table.assign to create the macros in the local safe macros table, instead of operator-assignment. May fix an error reported by Andy Foote.
-			«7/9/05; 4:44:57 AM by JES
-				«Add support for news item summary prefs.
-			«7/8/05; 4:00:39 PM by JES
-				«Trim white space from new department names before creating.
-			«7/7/05; 5:45:12 PM by JES
-				«Add pref for enabling multiple news item departments.
-			«3/11/05; 7:17:18 PM by JES
-				«Added support for enclosure prefs for news items.
-			«3/11/05; 4:38:33 AM by JES
-				«Added support for new prefs for two-step new member signup process with email confirmation.
-			«01/20/05; 8:21:49 PM by LL
-				«Support for a new Discussion Group preference to add the nofollow attribute to all links in discussion group messages.
-		«2004
-			«12/21/04; 12:45:49 PM by LL
-				«Support for alternate news item date and time formats.
-		«2003
-			«9/30/03; 1:34:37 PM by JES
-				«Added support for webmaster Syndication pref.
-			«9/26/03; 12:24:00 PM by JES
-				«Added support for content editor news item permissions.
-			«9/15/03; 11:30:57 PM by JES
-				«Added pref for comment notification in email.
-			«5/26/03; 7:03:52 PM by JES
-				«Added option to the Syndication prefs page for DG-RSS feeds.
-			«5/9/03; 3:44:16 PM by JES
-				«Added support for the Mail-to-Weblog prefs.
-			«5/2/03; 3:12:02 PM by EDS
-				«Added support for FTP filewriter prefs.
-			«4/24/03; 5:46:56 PM by JES
-				«Two new news items prefs: Comment links enabled/disabled by default, and whether or not to show a per-item comment link checkbox.
-			«4/11/03; 1:31:16 PM by JES
-				«Added support for the prefs in the License section of the Syndication prefs page.
-			«4/8/03; 4:02:51 PM by JES
-				«Added support for {ipAddress} macro in comment template and DG message template and topic message template.
-			«4/1/03; 4:21:49 PM by JES
-				«Get legal macros for the news item template through a call to manilaSuite.themes.getLegalMacrosForObject. This adds support for the {departmentLink} macro.
-			«3/8/03; 1:27:31 AM by JES
-				«Added support for the News Aggregator prefs page.
-			«2/17/03; 6:01:53 PM by JES
-				«Added support for comment link templates for news items, and made {commentLink} a legal macro in the news items template.
-		«2002
-			«7/12/02; 3:12:30 PM by JES
-				«Added support for the postLink preference for Radio comments.
-			«4/4/02; 12:36:13 AM by JES
-				«Added prefs for listing stories, news items and pictures in the discussion group.
-				«Added support for new DG response list prefs.
-			«2/20/02; 4:11:18 AM by JES
-				«Set values for the Radio hosting prefs page.
-			«2/13/02; 2:18:04 PM by PBS
-				«{permaLink} is now safe for news items template.
-		«2001
-			«05/23/01; 5:19:26 PM by PBS
-				«Set flRadioEditingAllowed.
-			«06/11/01; 9:07:30 PM by JES
-				«Made macros legal for discussion group list header/footer templates.
-			«9/10/01; 10:22:21 AM by PBS
-				«When setting the background picture, don't set adrNewsSite^.backgroundPicture, since it's unused.
-			«9/10/01; 5:08:45 PM by PBS
-				«Support for setting max news items per department page.
-			«9/12/01; 2:39:21 PM by PBS
-				«Support for access pref for stories, pictures, and gems pages.
-			«9/12/01; 4:47:04 PM by PBS
-				«Support for flCookiesExpireAtEndOfSession.
-			«9/13/01; 2:31:08 PM by PBS
-				«Support for home page date format.
-			«9/13/01; 6:13:21 PM by PBS
-				«Support for plain prefs template.
-			«9/14/01; 2:34:12 PM by PBS
-				«Support for permanent link icon.
-			«9/17/01; 2:46:24 PM by PBS
-				«Support for home page caching pref.
-			«9/18/01; 4:10:58 PM by PBS
-				«Support for margins.
-			«9/20/01; 4:16:04 PM by PBS
-				«Allow subItems macro for directory templates.
-			«10/1/01; 4:17:39 PM by PBS
-				«Support for per-site pref for sending notices of home page updates to UserLand.
-			«11/26/01; 10:29:27 AM by PBS
-				«Support content editors list.
-		«2000
-			«1/6/00; 2:44:06 PM by PBS
-				«flMembersListPublic is a new pref that specifies whether or not the members list at /stats/members is public.
-			«01/26/00 3:18:18 PM by PBS
-				«Support for editors only access to site.
-			«02/12/00; 11:39:56 AM by PBS
-				«Support for the custody time out preference.
-			«03/14/00; 2:58:47 PM by PBS
-				«Added support for static rendering prefs.
-			«04/03/00; 2:21:22 PM by PBS
-				«Support for time zone preference.
-			«04/09/00; 5:37:22 PM by PBS
-				«Support for turning on and off titles on archived home pages.
-			«04/15/00; 6:40:09 PM by PBS
-				«Support for gems prefs.
-			«05/01/00; 5:37:31 PM by PBS
-				«Support for news items prefs.
-			«05/02/00; 2:19:38 PM by PBS
-				«Support for two new News Items prefs: home page title and news days.
-			«05/07/00; 8:14:20 PM by JES
-				«localized error messages -- Note that this script is duplicated in localization tables. I've localized this copy because not all languages have localization tables.
-			«05/20/00; 9:00:06 PM by JES
-				«language pref
-			«06/15/00; 4:39:38 PM by PBS
-				«Support for background picture glossary entries.
-			«06/15/00; 11:42:57 PM by JES
-				«merged Brent's background image pref
-			«07/08/00; 1:43:33 AM by JES
-				«Support prefs for displaying n messages on the main discussion group listing page.
-			«07/08/00; 2:00:51 AM by PBS
-				«Support the new {link} macro allowed in the News Items template.
-			«09/30/00; 4:43:34 PM by PBS
-				«Support for number of topics in discuss topics listing.
-			«10/03/00; 3:33:27 PM by PBS
-				«Editing tool pref.
-			«10/04/00; 10:44:26 AM by PBS
-				«Default editor is now HTML Tags.
-			«10/16/00; 6:35:25 PM by JES
-				«Added support for discussion group template prefs.
-			«10/27/00; 3:45:45 AM by JES
-				«Added DG theme preferences.
-			«10/29/00; 7:11:27 PM by JES
-				«Set the copyright owner for scriptingNews2.xml renderings.
-			«10/31/00; 4:48:50 PM by JES
-				«When changing the site's lanugage, rebuild the signup wizard so that the required fields will be in the correct language.
-			«11/03/00; 5:03:06 PM by JES
-				«Fixed a bug when submitting the appearance prefs page if the user had never submitted custom prefs for the site. (There's no signupWizard in the #newsSite table if the user has never set custom prefs, so when the appearance page tries to rebuild the signupWizard in the correct language, the call to manilaSuite.prefs.buildSignUpStructure was failing.)
-			«11/20/00; 3:01:55 PM by PBS
-				«Directories prefs.
-			«11/21/2000; 11:10:38 AM by DW
-				«More directories prefs.
-			«11/24/2000; 12:15:23 PM by DW
-				«Added calls to manilaSuite.directory.setTemplateModified.
-			«11/25/00; 6:51:57 PM by PBS
-				«newsRoom.directory.flDisplayTitle turns off the title for directory pages.
-			«12/14/2000; 8:10:50 AM by DW
-				«Allow {opmlUrl} to pass through without neutering.
-			«12/18/00; 4:18:22 PM by PBS
-				«Slides prefs.
-			«12/29/00; 10:17:36 PM by JES
-				«Make all legal macros legal in a message list item template (one of the discussion group templates).
-		«1999
-			«10/27/99; 10:58:36 PM by PBS
-				«notifySender is the from email address for email notification.
-				«Set the list of managing editors at #newsSite.sysopMail.
-				«New prefs for dg and members box background colors: colors.membersBox and colors.discussListings.
-				«Syndication prefs panel support.
-			«10/28/99; 2:16:40 PM by PBS
-				«Ensure that the template has bodytext and editorialMenu macros.
-			«10/30/99; 2:01:55 PM by PBS
-				«More color prefs: membersBoxHeader, membersBoxHeaderText, separator, separatorText.
-			«11/1/99; 9:53:31 AM by PBS
-				«New pref: flEditFormOnHomePage controls whether or not to have a text area on the home page.
-			«11/1/99; 12:42:00 PM by PBS
-				«newsRoom.customPreferences is the XML for the prefs page.
-				«newsRoom.flUseCustomPrefsWizard toggles using the custom prefs wizard.
-				«No more profiles assigning.
-			«11/1/99; 5:03:59 PM by PBS
-				«Legal tags are site-specific prefs now.
-			«12/10/99; 10:19:07 AM by PBS
-				«numNewsDaysToRender is a pref that specifies how many days to render on the home page. The default is 1, current behavior.
-			«12/13/99; 6:43:20 PM by PBS
-				«New prefs for the Admin Box colors.
-			«12/17/99; 11:35:07 AM by PBS
-				«New pref for the cowskull image link.
-			«?/?/99 by PBS
-				«Created. Set one pref for a Manila site.
+	//Changes:
+		//3/22/07; 1:23:50 PM by LL
+			//Add support for always display member login box and member approval preferences.
+		//1/12/07; 4:51:40 PM by LL
+			//Add support for pref to disable Suggest-A-Link on directory pages.
+		//11/26/06; 11:37:16 AM by LL
+			//Add support for pref to disable spam-free mailto links.
+		//9/19/06; 9:12:01 PM by LL
+			//Prevent the static site URL from being accidentally wiped out when submitting the Rendering prefs page.
+		//1/31/06; 3:39:59 AM by JES
+			//Add support for comment moderation feature.
+		//2005
+			//12/15/05; 1:13:25 AM by JES
+				//Add support for login required feature for comment pop-ups. (Pref is on News Items prefs page.)
+			//12/14/05; 1:39:42 AM by JES
+				//Add support for members only prefs -- enabled, page text and page title.
+			//12/6/05; 11:46:15 PM by JES
+				//Bug fix: Properly set subject and text for new member confirmation emails.
+			//7/14/05; 3:24:27 PM by JES
+				//Add pref for enabling/disabling referer checking.
+			//7/11/05; 2:40:09 PM by JES
+				//When setting up safe macros for discussion group topicListItemTemplate and topicTemplate, use table.assign to create the macros in the local safe macros table, instead of operator-assignment. May fix an error reported by Andy Foote.
+			//7/9/05; 4:44:57 AM by JES
+				//Add support for news item summary prefs.
+			//7/8/05; 4:00:39 PM by JES
+				//Trim white space from new department names before creating.
+			//7/7/05; 5:45:12 PM by JES
+				//Add pref for enabling multiple news item departments.
+			//3/11/05; 7:17:18 PM by JES
+				//Added support for enclosure prefs for news items.
+			//3/11/05; 4:38:33 AM by JES
+				//Added support for new prefs for two-step new member signup process with email confirmation.
+			//01/20/05; 8:21:49 PM by LL
+				//Support for a new Discussion Group preference to add the nofollow attribute to all links in discussion group messages.
+		//2004
+			//12/21/04; 12:45:49 PM by LL
+				//Support for alternate news item date and time formats.
+		//2003
+			//9/30/03; 1:34:37 PM by JES
+				//Added support for webmaster Syndication pref.
+			//9/26/03; 12:24:00 PM by JES
+				//Added support for content editor news item permissions.
+			//9/15/03; 11:30:57 PM by JES
+				//Added pref for comment notification in email.
+			//5/26/03; 7:03:52 PM by JES
+				//Added option to the Syndication prefs page for DG-RSS feeds.
+			//5/9/03; 3:44:16 PM by JES
+				//Added support for the Mail-to-Weblog prefs.
+			//5/2/03; 3:12:02 PM by EDS
+				//Added support for FTP filewriter prefs.
+			//4/24/03; 5:46:56 PM by JES
+				//Two new news items prefs: Comment links enabled/disabled by default, and whether or not to show a per-item comment link checkbox.
+			//4/11/03; 1:31:16 PM by JES
+				//Added support for the prefs in the License section of the Syndication prefs page.
+			//4/8/03; 4:02:51 PM by JES
+				//Added support for {ipAddress} macro in comment template and DG message template and topic message template.
+			//4/1/03; 4:21:49 PM by JES
+				//Get legal macros for the news item template through a call to manilaSuite.themes.getLegalMacrosForObject. This adds support for the {departmentLink} macro.
+			//3/8/03; 1:27:31 AM by JES
+				//Added support for the News Aggregator prefs page.
+			//2/17/03; 6:01:53 PM by JES
+				//Added support for comment link templates for news items, and made {commentLink} a legal macro in the news items template.
+		//2002
+			//7/12/02; 3:12:30 PM by JES
+				//Added support for the postLink preference for Radio comments.
+			//4/4/02; 12:36:13 AM by JES
+				//Added prefs for listing stories, news items and pictures in the discussion group.
+				//Added support for new DG response list prefs.
+			//2/20/02; 4:11:18 AM by JES
+				//Set values for the Radio hosting prefs page.
+			//2/13/02; 2:18:04 PM by PBS
+				//{permaLink} is now safe for news items template.
+		//2001
+			//05/23/01; 5:19:26 PM by PBS
+				//Set flRadioEditingAllowed.
+			//06/11/01; 9:07:30 PM by JES
+				//Made macros legal for discussion group list header/footer templates.
+			//9/10/01; 10:22:21 AM by PBS
+				//When setting the background picture, don't set adrNewsSite^.backgroundPicture, since it's unused.
+			//9/10/01; 5:08:45 PM by PBS
+				//Support for setting max news items per department page.
+			//9/12/01; 2:39:21 PM by PBS
+				//Support for access pref for stories, pictures, and gems pages.
+			//9/12/01; 4:47:04 PM by PBS
+				//Support for flCookiesExpireAtEndOfSession.
+			//9/13/01; 2:31:08 PM by PBS
+				//Support for home page date format.
+			//9/13/01; 6:13:21 PM by PBS
+				//Support for plain prefs template.
+			//9/14/01; 2:34:12 PM by PBS
+				//Support for permanent link icon.
+			//9/17/01; 2:46:24 PM by PBS
+				//Support for home page caching pref.
+			//9/18/01; 4:10:58 PM by PBS
+				//Support for margins.
+			//9/20/01; 4:16:04 PM by PBS
+				//Allow subItems macro for directory templates.
+			//10/1/01; 4:17:39 PM by PBS
+				//Support for per-site pref for sending notices of home page updates to UserLand.
+			//11/26/01; 10:29:27 AM by PBS
+				//Support content editors list.
+		//2000
+			//1/6/00; 2:44:06 PM by PBS
+				//flMembersListPublic is a new pref that specifies whether or not the members list at /stats/members is public.
+			//01/26/00 3:18:18 PM by PBS
+				//Support for editors only access to site.
+			//02/12/00; 11:39:56 AM by PBS
+				//Support for the custody time out preference.
+			//03/14/00; 2:58:47 PM by PBS
+				//Added support for static rendering prefs.
+			//04/03/00; 2:21:22 PM by PBS
+				//Support for time zone preference.
+			//04/09/00; 5:37:22 PM by PBS
+				//Support for turning on and off titles on archived home pages.
+			//04/15/00; 6:40:09 PM by PBS
+				//Support for gems prefs.
+			//05/01/00; 5:37:31 PM by PBS
+				//Support for news items prefs.
+			//05/02/00; 2:19:38 PM by PBS
+				//Support for two new News Items prefs: home page title and news days.
+			//05/07/00; 8:14:20 PM by JES
+				//localized error messages -- Note that this script is duplicated in localization tables. I've localized this copy because not all languages have localization tables.
+			//05/20/00; 9:00:06 PM by JES
+				//language pref
+			//06/15/00; 4:39:38 PM by PBS
+				//Support for background picture glossary entries.
+			//06/15/00; 11:42:57 PM by JES
+				//merged Brent's background image pref
+			//07/08/00; 1:43:33 AM by JES
+				//Support prefs for displaying n messages on the main discussion group listing page.
+			//07/08/00; 2:00:51 AM by PBS
+				//Support the new {link} macro allowed in the News Items template.
+			//09/30/00; 4:43:34 PM by PBS
+				//Support for number of topics in discuss topics listing.
+			//10/03/00; 3:33:27 PM by PBS
+				//Editing tool pref.
+			//10/04/00; 10:44:26 AM by PBS
+				//Default editor is now HTML Tags.
+			//10/16/00; 6:35:25 PM by JES
+				//Added support for discussion group template prefs.
+			//10/27/00; 3:45:45 AM by JES
+				//Added DG theme preferences.
+			//10/29/00; 7:11:27 PM by JES
+				//Set the copyright owner for scriptingNews2.xml renderings.
+			//10/31/00; 4:48:50 PM by JES
+				//When changing the site's lanugage, rebuild the signup wizard so that the required fields will be in the correct language.
+			//11/03/00; 5:03:06 PM by JES
+				//Fixed a bug when submitting the appearance prefs page if the user had never submitted custom prefs for the site. (There's no signupWizard in the #newsSite table if the user has never set custom prefs, so when the appearance page tries to rebuild the signupWizard in the correct language, the call to manilaSuite.prefs.buildSignUpStructure was failing.)
+			//11/20/00; 3:01:55 PM by PBS
+				//Directories prefs.
+			//11/21/2000; 11:10:38 AM by DW
+				//More directories prefs.
+			//11/24/2000; 12:15:23 PM by DW
+				//Added calls to manilaSuite.directory.setTemplateModified.
+			//11/25/00; 6:51:57 PM by PBS
+				//newsRoom.directory.flDisplayTitle turns off the title for directory pages.
+			//12/14/2000; 8:10:50 AM by DW
+				//Allow {opmlUrl} to pass through without neutering.
+			//12/18/00; 4:18:22 PM by PBS
+				//Slides prefs.
+			//12/29/00; 10:17:36 PM by JES
+				//Make all legal macros legal in a message list item template (one of the discussion group templates).
+		//1999
+			//10/27/99; 10:58:36 PM by PBS
+				//notifySender is the from email address for email notification.
+				//Set the list of managing editors at #newsSite.sysopMail.
+				//New prefs for dg and members box background colors: colors.membersBox and colors.discussListings.
+				//Syndication prefs panel support.
+			//10/28/99; 2:16:40 PM by PBS
+				//Ensure that the template has bodytext and editorialMenu macros.
+			//10/30/99; 2:01:55 PM by PBS
+				//More color prefs: membersBoxHeader, membersBoxHeaderText, separator, separatorText.
+			//11/1/99; 9:53:31 AM by PBS
+				//New pref: flEditFormOnHomePage controls whether or not to have a text area on the home page.
+			//11/1/99; 12:42:00 PM by PBS
+				//newsRoom.customPreferences is the XML for the prefs page.
+				//newsRoom.flUseCustomPrefsWizard toggles using the custom prefs wizard.
+				//No more profiles assigning.
+			//11/1/99; 5:03:59 PM by PBS
+				//Legal tags are site-specific prefs now.
+			//12/10/99; 10:19:07 AM by PBS
+				//numNewsDaysToRender is a pref that specifies how many days to render on the home page. The default is 1, current behavior.
+			//12/13/99; 6:43:20 PM by PBS
+				//New prefs for the Admin Box colors.
+			//12/17/99; 11:35:07 AM by PBS
+				//New pref for the cowskull image link.
+			//?/?/99 by PBS
+				//Created. Set one pref for a Manila site.
 	
 	local (pta = html.getPageTableAddress ());
 	local (adrNewsSite = pta^.newsSite);
@@ -217,7 +217,7 @@ on setValue (partialAddress, adrVal) {
 		"newsRoom.autoShortcuts" {
 			adrNewsSite^.autoShortcuts = boolean (adrVal^)};
 		"newsRoom.backgroundPicture" {
-			«adrNewsSite^.backgroundPicture = string (adrVal^) //PBS 09/10/01: commented out bogus code
+			//adrNewsSite^.backgroundPicture = string (adrVal^) //PBS 09/10/01: commented out bogus code
 			local (s = string (adrVal^));
 			s = string.trimWhiteSpace (s);
 			s = string.popLeading (s, "\""); //people might mistakenly add quotes
@@ -953,7 +953,7 @@ on setValue (partialAddress, adrVal) {
 			s = string.replaceAll (s, lf, "");
 			s = mainResponder.neuterText (s, flNeuterMacros:true, flNeuterTags:false);
 			
-			«Check the template for needed macros.
+			//Check the template for needed macros.
 			local (errorString);
 			if not (manilaSuite.admin.isGoodTemplate (s, @errorString)) {
 				errorString = string.replaceAll (errorString, "{", "&#123;");
@@ -1083,7 +1083,7 @@ on setValue (partialAddress, adrVal) {
 		"newsRoom.staticRenderingMethod" {
 			try {manilaSuite.staticRendering.setWritingMethod(adrSite, adrVal^)}};
 		"newsRoom.staticRenderingURL" {
-			«be careful here, don't want to wipe out the file version.
+			//be careful here, don't want to wipe out the file version.
 			if string(adrVal^) != "" {
 				adrNewsSite^.staticSite.["#ftpsite"].url = string(adrVal^)}};
 		"newsRoom.staticRenderingHost" {
@@ -1192,7 +1192,7 @@ on setValue (partialAddress, adrVal) {
 			adrNewsSite^.monthlyArchivePageFormat = manilaSuite.unTaint (string (adrVal^))};
 		"newsRoom.yearlyArchivePageFormat" {
 			adrNewsSite^.yearlyArchivePageFormat = manilaSuite.unTaint (string (adrVal^))};
-		"newsRoom.flStoriesAlphaSort" { «03/02/12, 14:38:38 by DAB
+		"newsRoom.flStoriesAlphaSort" { //03/02/12, 14:38:38 by DAB
 			adrNewsSite^.flStoriesAlphaSort = boolean (adrVal^)}};
 	
 	return (true)}

@@ -1,4 +1,4 @@
-on getDiskFile () { «4.2.3
+on getDiskFile () { //4.2.3
 	local (s);
 	with objectModel, BBEdit, eventInfo {
 		try {

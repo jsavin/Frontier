@@ -1,11 +1,11 @@
 on isAvailable (adrSite) {
-	«Return true if static rendering is available for this site.
-		«03/14/00; 12:00:49 AM by PBS
+	//Return true if static rendering is available for this site.
+		//03/14/00; 12:00:49 AM by PBS
 	
 	if manilaSuite.staticRendering.serverAllowsStaticRendering () {
 		return (true)};
 	
-	«Static rendering is off at the server level, but this site may be an exception.
+	//Static rendering is off at the server level, but this site may be an exception.
 	local (adrNewsSite = @adrSite^.["#newsSite"]);
 	
 	bundle { //ensure prefs

@@ -1,6 +1,6 @@
 on newsItemsEnabled (adrSite) {
-	«Return true if news items are enabled for this site.
-		«04/24/00; 3:43:18 PM by PBS
+	//Return true if news items are enabled for this site.
+		//04/24/00; 3:43:18 PM by PBS
 	
 	if not defined (adrSite^.["#newsSite"].flNewsItemSite) {
 		adrSite^.["#newsSite"].flNewsItemSite = false};

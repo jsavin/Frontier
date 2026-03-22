@@ -1,13 +1,13 @@
 on changeMessageDeletion (adrMsgTable, adrMember, adrSite, flDeleting, flDeindex=true) {
-	«Changes
-		«1/31/06; 6:26:32 PM by JES
-			«New optional parameter, flDeindex. If false, don't remove deleted messages from indexes. (Default is true, preserving existing behavior.)
-	«manilaSuite.discuss.changeMessageDeletion : 04/06/14, 21:02:27 by DAB
-		«central place to delete or undelete messages
-		«handles custody issues consistently
-		«implements deletemessage callback
+	//Changes
+		//1/31/06; 6:26:32 PM by JES
+			//New optional parameter, flDeindex. If false, don't remove deleted messages from indexes. (Default is true, preserving existing behavior.)
+	//manilaSuite.discuss.changeMessageDeletion : 04/06/14, 21:02:27 by DAB
+		//central place to delete or undelete messages
+		//handles custody issues consistently
+		//implements deletemessage callback
 	if not manilaSuite.custody.memberCanCheckOutObject (adrMsgTable, adrMember, adrSite, true) { //true because it's a message
-		«For dg messages, the checked out identifier is the address of the message table, not the address of the body or outline.
+		//For dg messages, the checked out identifier is the address of the message table, not the address of the body or outline.
 		local (title = adrMsgTable^.subject);
 		title = manilaSuite.unTaint (title);
 		

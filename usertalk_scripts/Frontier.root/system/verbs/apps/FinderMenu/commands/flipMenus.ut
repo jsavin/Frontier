@@ -1,13 +1,13 @@
-«implements the old "Flip Menus" command
-	«it switches your menu bar from "vertical" to "horizontal"
-		«vertical: all the menus are hierarchies off the Scripts menu
-		«horizontal: this Scripts menu disappears, replaced by all the submenus
-	«it was in beta versions of the FinderMenu package...
-		«we took it out of the release package
-	«we took this out because it screws with the Read Me command
-		«it's more important that people understand what's going on here
-		«and that we don't get people saying "look at all the menus they added to the Finder"
-		«it's better to go easy at first, I think -- DW
+//implements the old "Flip Menus" command
+	//it switches your menu bar from "vertical" to "horizontal"
+		//vertical: all the menus are hierarchies off the Scripts menu
+		//horizontal: this Scripts menu disappears, replaced by all the submenus
+	//it was in beta versions of the FinderMenu package...
+		//we took it out of the release package
+	//we took this out because it screws with the Read Me command
+		//it's more important that people understand what's going on here
+		//and that we don't get people saying "look at all the menus they added to the Finder"
+		//it's better to go easy at first, I think -- DW
 
 target.set (@system.menubars.["ÄMNU"]);
 op.firstSummit ();

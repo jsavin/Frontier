@@ -1,6 +1,6 @@
 on getRelativePath (pta=nil) {
-	«Get the relative path to the page being built.
-		«03/14/00; 6:53:07 PM by PBS
+	//Get the relative path to the page being built.
+		//03/14/00; 6:53:07 PM by PBS
 	
 	if pta == nil {
 		local (pta = html.getPageTableAddress ())};

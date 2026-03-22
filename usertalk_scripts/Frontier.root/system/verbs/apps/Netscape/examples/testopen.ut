@@ -1,4 +1,4 @@
-«a simple burn-in script -- see how long it runs!
+//a simple burn-in script -- see how long it runs!
 local (ct = 0);
 netscape.bringtofront ();
 loop {

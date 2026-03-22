@@ -1,6 +1,6 @@
-«Changes
-	«1/15/02; 8:18:48 AM by DW
-		«Created. A developer working on a Tool needs a way to cause all the relevant parts of the Tool, its menu, RPC handlers, etc, to be re-installed. Luckily there's a single script that does this, so this new command is just a user interface on to that script. Bring a Tool the front and choose the Re-Install Frontmost Tool command from the Developers sub-menu of the Tools menu. After confirmation, the tool is re-installed. A big developer time-saver.
+//Changes
+	//1/15/02; 8:18:48 AM by DW
+		//Created. A developer working on a Tool needs a way to cause all the relevant parts of the Tool, its menu, RPC handlers, etc, to be re-installed. Luckily there's a single script that does this, so this new command is just a user interface on to that script. Bring a Tool the front and choose the Re-Install Frontmost Tool command from the Developers sub-menu of the Tools menu. After confirmation, the tool is re-installed. A big developer time-saver.
 local (adr = window.frontmost ());
 if not table.inGuestDatabase (adr) {
 	scriptError ("Can't re-install the Tool because the frontmost window does not contain a guest database.")};

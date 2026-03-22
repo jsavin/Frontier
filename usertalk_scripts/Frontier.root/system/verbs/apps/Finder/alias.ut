@@ -1,6 +1,6 @@
-on alias (path) { «execute the Make Alias command on the indicated file/folder
-	«retained for compatibility.  Consider a make () in the form seen below, instead
-		«[see Finder.examples.makeRootAlias () for some additional capabilites when you use make ()
+on alias (path) { //execute the Make Alias command on the indicated file/folder
+	//retained for compatibility.  Consider a make () in the form seen below, instead
+		//[see Finder.examples.makeRootAlias () for some additional capabilites when you use make ()
 	if !Finder.isScriptable () {
 		return (Finder.folderVerb ('sali', path))};
 	Finder.make (Finder.aliasFile, aliasTo: Finder.finderSpec (path));

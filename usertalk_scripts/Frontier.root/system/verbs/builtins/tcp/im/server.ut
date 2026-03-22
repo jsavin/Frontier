@@ -1,9 +1,9 @@
 on server (driverName, screenname, message) {
-	«Changes
-		«9/21/02; 6:08:35 PM by JES
-			«If no responder handles the message, don't send a return message to the sender. Prevents infinite loops when talking to another implementation of tcp.im.
-		«8/11/02; 7:58:43 PM by JES
-			«Follow addresses when finding responder tables. Allows for easy installation of drivers by a Tool, for example.
+	//Changes
+		//9/21/02; 6:08:35 PM by JES
+			//If no responder handles the message, don't send a return message to the sender. Prevents infinite loops when talking to another implementation of tcp.im.
+		//8/11/02; 7:58:43 PM by JES
+			//Follow addresses when finding responder tables. Allows for easy installation of drivers by a Tool, for example.
 	local (fldebug = false);
 	if fldebug {
 		if not defined (workspace.message) or string (workspace.message) == "" {
@@ -27,6 +27,6 @@ on server (driverName, screenname, message) {
 						return tcp.im.send (driverName, screenName, "Can't complete your request because an error occurred: \"" + tcp.im.utilities.cleanError (tryerror) + "\"")}}}}};
 	if user.im.prefs.flLog {
 		tcp.im.log.add ("Error response to \"" + screenname + "\": No responder accepted the message.", startticks)};
-	};«tcp.im.send (driverName, screenName, user.im.prefs.sorryMessage)
-«bundle //test code
-	«dialog.alert (server ("aim", "xxx", "news"))
+	};//tcp.im.send (driverName, screenName, user.im.prefs.sorryMessage)
+//bundle //test code
+	//dialog.alert (server ("aim", "xxx", "news"))

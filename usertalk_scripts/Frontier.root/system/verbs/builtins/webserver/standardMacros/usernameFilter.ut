@@ -8,4 +8,4 @@ on usernameFilter (username, matchString, returnString) {
 	else {
 		if username == matchString {
 			return (returnString)}};
-	return ("")} « return empty string if condition is not met.
+	return ("")} // return empty string if condition is not met.

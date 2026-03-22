@@ -1,8 +1,8 @@
 on pubsubSubscribe (dest = "", subscribeTo = nil, nsList = {}, id = nil, connection = @system.temp.jabber.connection) {
-	«Changes
-		«5/14/02; 1:51:34 PM by JB
-			«Changelog created.
-	«Sends a pub-sub subscription request. 
+	//Changes
+		//5/14/02; 1:51:34 PM by JB
+			//Changelog created.
+	//Sends a pub-sub subscription request. 
 	on addAtt ( XMLadr, name, value ) {
 		if not defined ( XMLadr^.["/atts"] ) {
 			new ( tableType, @XMLadr^.["/atts"] )};

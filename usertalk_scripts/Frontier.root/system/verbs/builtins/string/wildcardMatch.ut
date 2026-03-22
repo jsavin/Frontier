@@ -1,7 +1,7 @@
 on wildcardMatch (s, pattern, flCaseSensitive=true) {
-	«Changes
-		«11/15/02; 2:11:08 PM by JES
-			«Created. Returns true if s matches the wildcard pattern.
+	//Changes
+		//11/15/02; 2:11:08 PM by JES
+			//Created. Returns true if s matches the wildcard pattern.
 	if pattern == "*" {
 		return (true)};
 	if not flCaseSensitive {
@@ -30,8 +30,8 @@ on wildcardMatch (s, pattern, flCaseSensitive=true) {
 			return (s endswith onepart)};
 		endix = ix + sizepart};
 	return (true)};
-«bundle //testing
-	«string.wildcardMatch ("this is a wildcard test", "is*test")
-		«false
-	«string.wildcardMatch ("this is a wildcard test", "*is*test")
-		«true
+//bundle //testing
+	//string.wildcardMatch ("this is a wildcard test", "is*test")
+		//false
+	//string.wildcardMatch ("this is a wildcard test", "*is*test")
+		//true

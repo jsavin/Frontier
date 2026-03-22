@@ -14,5 +14,5 @@ on timeString (theDate = clock.now (), includeSeconds=true) { //return just the 
 		s = s + ":" + string.padwithzeros (second, 2)};
 	s = s + " " + ampm;
 	return (s)};
-«bundle //test code
-	«dialog.alert (date.timeString (theDate: date ("10/7/98"), includeSeconds:true))
+//bundle //test code
+	//dialog.alert (date.timeString (theDate: date ("10/7/98"), includeSeconds:true))

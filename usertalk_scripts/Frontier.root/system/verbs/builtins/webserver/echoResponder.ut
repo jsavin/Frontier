@@ -1,9 +1,9 @@
 on echoResponder (adrParamTable) {
-	«3/3/98 at 9:36:20 PM by WMF
-		«This is a debugging responder that echos all the parameters that are available to a responder 
-		«It is similar to the samples.tellParams CGI
-	«9/26/98; 6:38:48 AM by DW
-		«improved the HTML it generates to make it prettier and to learn how to upgrade responders
+	//3/3/98 at 9:36:20 PM by WMF
+		//This is a debugging responder that echos all the parameters that are available to a responder 
+		//It is similar to the samples.tellParams CGI
+	//9/26/98; 6:38:48 AM by DW
+		//improved the HTML it generates to make it prettier and to learn how to upgrade responders
 	
 	local (htmltext = "", indentlevel = 0);
 	on add (s) {
@@ -65,12 +65,12 @@ on echoResponder (adrParamTable) {
 	adrParamTable^.responseHeaders.["Content-Type"] = "text/html"; // always set the MIME type
 	adrParamTable^.responseBody = htmltext;
 	return (true)};
-«bundle //test code
-	«local (params)
-	«new (tabletype, @params)
-	«params.client = tcp.dns.getMyDomainName ()
-	«new (tabletype, @params.requestHeaders)
-	«params.requestHeaders.somevalue = "Hello!"
-	«new (tabletype, @params.responseHeaders)
-	«get (@params)
-	«webbrowser.displaytext (params.responseBody)
+//bundle //test code
+	//local (params)
+	//new (tabletype, @params)
+	//params.client = tcp.dns.getMyDomainName ()
+	//new (tabletype, @params.requestHeaders)
+	//params.requestHeaders.somevalue = "Hello!"
+	//new (tabletype, @params.responseHeaders)
+	//get (@params)
+	//webbrowser.displaytext (params.responseBody)

@@ -1,13 +1,13 @@
 on getMyDottedId () { //return the dotted id of the system we're running on
-	«Changes
-		«1/6/06; 3:52:31 AM by JES
-			«Added some safety checks to make sure we get a proper ID from the UNIX shell on Carbon. If not, we use the old method.
-		«1/4/06; 5:19:49 PM by SK
-			«On MacOS X machines, we need to work around a kernel bug and get the IP using the Unix command "ifconfig" and grep the result.
-		«5/7/00; 11:24:17 AM by DW
-			«http://docserver.userland.com/tcp/dnsGetMyDottedId
-			«This code was popping up everywhere, and it was possible to optimize it. By caching the IP address in system.temp, the tick count went from 104 to 5. Well worth doing if you have code that needs to know the IP address.
-			«Important note: We don't guarantee that system.temp.myIpAddress will stay at this location. If you want the IP address of the machine you're running on, call this script. (Note to UserLand people, it really should be in system.environment.)
+	//Changes
+		//1/6/06; 3:52:31 AM by JES
+			//Added some safety checks to make sure we get a proper ID from the UNIX shell on Carbon. If not, we use the old method.
+		//1/4/06; 5:19:49 PM by SK
+			//On MacOS X machines, we need to work around a kernel bug and get the IP using the Unix command "ifconfig" and grep the result.
+		//5/7/00; 11:24:17 AM by DW
+			//http://docserver.userland.com/tcp/dnsGetMyDottedId
+			//This code was popping up everywhere, and it was possible to optimize it. By caching the IP address in system.temp, the tick count went from 104 to 5. Well worth doing if you have code that needs to know the IP address.
+			//Important note: We don't guarantee that system.temp.myIpAddress will stay at this location. If you want the IP address of the machine you're running on, call this script. (Note to UserLand people, it really should be in system.environment.)
 	if not defined (system.temp.myIpAddress) {
 		if system.environment.isCarbon { //check to see if we're running MacOS X
 			local (bashCmd = "ifconfig | grep \"inet \" | grep -v 127.0.0.1 | cut -d \" \" -f2");
@@ -18,8 +18,8 @@ on getMyDottedId () { //return the dotted id of the system we're running on
 					return (system.temp.myIpAddress)}}};
 		system.temp.myIpAddress = tcp.addressDecode (tcp.myAddress ())};
 	return (system.temp.myIpAddress)};
-«bundle //test code
-	«local (tc = clock.ticks ())
-	«for i = 1 to 1000
-		«getMyDottedId ()
-	«dialog.alert (clock.ticks () - tc)
+//bundle //test code
+	//local (tc = clock.ticks ())
+	//for i = 1 to 1000
+		//getMyDottedId ()
+	//dialog.alert (clock.ticks () - tc)

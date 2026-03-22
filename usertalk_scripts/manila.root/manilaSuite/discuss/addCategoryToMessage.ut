@@ -1,14 +1,14 @@
 on addCategoryToMessage (adrMsgTable, category, adrSite=nil) {
-	«Changes:
-		«1/31/06; 3:34:13 AM by JES
-			«Add support for arbitrary categories.
-		«10/09/00; 9:58:23 PM by PBS
-			«adrSite, optional parameter. If supplied we can update the index for this category.
-		«10/19/99; 3:58:26 PM by PBS
-			«Created. Make this message a member of the specified category.
-				«This script can be called from outside the page rendering context.
-				«If this message is already a member of the category, leave it as-is.
-				«If this message is a member of other categories, don't erase those other categories.
+	//Changes:
+		//1/31/06; 3:34:13 AM by JES
+			//Add support for arbitrary categories.
+		//10/09/00; 9:58:23 PM by PBS
+			//adrSite, optional parameter. If supplied we can update the index for this category.
+		//10/19/99; 3:58:26 PM by PBS
+			//Created. Make this message a member of the specified category.
+				//This script can be called from outside the page rendering context.
+				//If this message is already a member of the category, leave it as-is.
+				//If this message is a member of other categories, don't erase those other categories.
 	
 	if not defined (adrMsgTable^.alsoListedIn) {
 		adrMsgTable^.alsoListedIn = {}};

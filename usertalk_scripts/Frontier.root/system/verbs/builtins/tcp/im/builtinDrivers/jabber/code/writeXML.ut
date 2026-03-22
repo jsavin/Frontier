@@ -1,8 +1,8 @@
 on writeXML (XML, connection = @system.temp.jabber.connection) {
-	«Changes
-		«5/14/02; 1:51:34 PM by JB
-			«Changelog created.
-	«writeXML directly outputs XML to the Jabber XML stream. Use with extreme caution; if the XML is not valid, you'll corrupt the stream unrecoverably. I recommend passing in an XML table, but watch for the "empty XML table" bug, if it hasn't been fixed yet.
+	//Changes
+		//5/14/02; 1:51:34 PM by JB
+			//Changelog created.
+	//writeXML directly outputs XML to the Jabber XML stream. Use with extreme caution; if the XML is not valid, you'll corrupt the stream unrecoverably. I recommend passing in an XML table, but watch for the "empty XML table" bug, if it hasn't been fixed yet.
 	if not defined ( connection^ ) {
 		scriptError ("Can't write to Jabber server because the connection reference is invalid.")};
 	

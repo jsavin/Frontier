@@ -1,4 +1,4 @@
-«Script: system.verbs.builtins.webserver.standardMacros.browserFilter; Version 1; Date: Thu, 14 May 1998 22:12:50 GMT; ID: RAB
+//Script: system.verbs.builtins.webserver.standardMacros.browserFilter; Version 1; Date: Thu, 14 May 1998 22:12:50 GMT; ID: RAB
 on browserFilter (userAgent, matchString, returnString) {
 	userAgent = string.upper (userAgent);
 	matchString = string.upper (matchString);
@@ -9,4 +9,4 @@ on browserFilter (userAgent, matchString, returnString) {
 	else {
 		if userAgent contains matchString {
 			return (returnString)}};
-	return ("")} « return empty string if condition is not met.
+	return ("")} // return empty string if condition is not met.

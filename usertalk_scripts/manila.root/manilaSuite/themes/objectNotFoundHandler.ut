@@ -1,7 +1,7 @@
 on objectNotFoundHandler (pta=nil) {
-	«If this is the right page, [themeName].fttb, then return the theme.
-		«If not, just redirect to the right page, because we're nice, why display an error.
-		«06/05/00; 7:19:19 PM by PBS
+	//If this is the right page, [themeName].fttb, then return the theme.
+		//If not, just redirect to the right page, because we're nice, why display an error.
+		//06/05/00; 7:19:19 PM by PBS
 	
 	if pta == nil {
 		pta = parentOf (code)}; //not in website framework context. If in website framework context, supply pta parameter.

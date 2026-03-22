@@ -1,11 +1,11 @@
 on updateNowButton (flInTable=true) {
-	«Changes
-		«2/7/07; 2:44:11 PM by LL
-			«Minor changes to the text.
-		«12/16/03; 3:41:23 AM by JES
-			«If the user updates their databases without error, clear the pending updates table so we don't show them stuff they've already seen.
-		«6/26/02; 11:07:31 PM by JES
-			«Created.
+	//Changes
+		//2/7/07; 2:44:11 PM by LL
+			//Minor changes to the text.
+		//12/16/03; 3:41:23 AM by JES
+			//If the user updates their databases without error, clear the pending updates table so we don't show them stuff they've already seen.
+		//6/26/02; 11:07:31 PM by JES
+			//Created.
 	local (pta = html.getPageTableAddress ());
 	local (htmltext = "");
 	on add (s) {

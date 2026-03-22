@@ -1,2 +1,2 @@
-on create (new, withData = nil, withProperties = nil, at = nil) { «Create a new element
+on create (new, withData = nil, withProperties = nil, at = nil) { //Create a new element
 	return (core.create (Fetch.id, new, withData, withProperties, at))}

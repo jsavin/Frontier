@@ -1,10 +1,10 @@
 on resolveShortcut (shortcutPath) {
-	«Resolve a Windows shortcut.
-		«Pass in the path to the shortcut file,
-		«and get back the path to the file it points to.
+	//Resolve a Windows shortcut.
+		//Pass in the path to the shortcut file,
+		//and get back the path to the file it points to.
 	return (dll.call (winShell.getDllPath (), "resolveshortcutverb", shortcutPath))};
-«bundle //test code
-	«winShell.createShortCut ("C:\\Frontier.lnk", "D:\\Frontier\\Frontier.exe")
-		«true
-	«winShell.resolveShortcut ("C:\\Frontier.lnk")
-		«"D:\\Frontier\\Frontier.exe"
+//bundle //test code
+	//winShell.createShortCut ("C:\\Frontier.lnk", "D:\\Frontier\\Frontier.exe")
+		//true
+	//winShell.resolveShortcut ("C:\\Frontier.lnk")
+		//"D:\\Frontier\\Frontier.exe"

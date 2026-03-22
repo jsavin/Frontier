@@ -1,8 +1,8 @@
-«Possibly send email to the editors that content has changed.
-	«04/04/00; 11:02:01 PM by PBS
-	«Changes:
-		«05/19/00; 5:15:56 PM by JES
-			«added language parameter to email call -- for localization
+//Possibly send email to the editors that content has changed.
+	//04/04/00; 11:02:01 PM by PBS
+	//Changes:
+		//05/19/00; 5:15:56 PM by JES
+			//added language parameter to email call -- for localization
 
 local (flNew = false);
 

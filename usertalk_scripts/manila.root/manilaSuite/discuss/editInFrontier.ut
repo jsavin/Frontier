@@ -1,8 +1,8 @@
-«Changes:
-	«04/19/00 at 4:15:50 PM by JES
-		«localized
-	«05/01/00; 3:57:07 PM by JES
-		«Changed getString calls to use a replacement table address instead of a lists
+//Changes:
+	//04/19/00 at 4:15:50 PM by JES
+		//localized
+	//05/01/00; 3:57:07 PM by JES
+		//Changed getString calls to use a replacement table address instead of a lists
 
 local (pta = html.getPageTableAddress ());
 local (msgNum = pta^.postArgs.msgNum);
@@ -20,28 +20,28 @@ else { //it didn't work
 	tryError = manilaSuite.untaint (tryError);
 	replacementTable.error = tryError;
 	add (manilaSuite.getString ("discuss.couldntSendContentsOfMessagePage", @replacementTable)); // 4/19/00 JES: localized
-	«bundle // old code for filling in non-localized bodytext
-		«add ("Sorry, the server couldn't send the contents of message " + msgNum + " to your workstation.<p>")
-		«add ("Here's the message we received from your workstation (it may be cryptic):")
-		«add ("<blockquote><i>" + manilaSuite.unTaint (tryError) + "</i></blockquote>")
-		«add ("<b>Here are some things to check</b>:<ul><p>"); indentLevel++
-		«add ("<li>You must be running an authorized alpha of Frontier 6.<p>")
-		«add ("<li>You must have suites.editorial installed and initialized.<p>")
-		«add ("<li>The Frontier application must be running <i>on your workstation.</i><p>")
-		«add ("<li>Frontier must be running on port 80. (This will become a preference setting.)<p>")
-		«add ("<li>If you're sure everything is set up correctly, and you're coming in thru a proxy server or firewall, please check with your system administrator about a possible server configuration error.<p>")
-		«add ("</ul>"); indentLevel--
+	//bundle // old code for filling in non-localized bodytext
+		//add ("Sorry, the server couldn't send the contents of message " + msgNum + " to your workstation.<p>")
+		//add ("Here's the message we received from your workstation (it may be cryptic):")
+		//add ("<blockquote><i>" + manilaSuite.unTaint (tryError) + "</i></blockquote>")
+		//add ("<b>Here are some things to check</b>:<ul><p>"); indentLevel++
+		//add ("<li>You must be running an authorized alpha of Frontier 6.<p>")
+		//add ("<li>You must have suites.editorial installed and initialized.<p>")
+		//add ("<li>The Frontier application must be running <i>on your workstation.</i><p>")
+		//add ("<li>Frontier must be running on port 80. (This will become a preference setting.)<p>")
+		//add ("<li>If you're sure everything is set up correctly, and you're coming in thru a proxy server or firewall, please check with your system administrator about a possible server configuration error.<p>")
+		//add ("</ul>"); indentLevel--
 	return (htmlText)};
 
 pta^.title = manilaSuite.getString ("discuss.yourOutlineIsReadyPageTitle");
 
 add ("<font size=\"+0\">"); indentLevel++;
 add (manilaSuite.getString ("discuss.editInFrontierInstructions", @replacementTable)); // 4/19/00 JES: localized
-«bundle // old code for filling in non-localized bodytext
-	«add ("The server has automatically sent a copy of message " + msgNum + " to your workstation.<ul><p>"); indentLevel++
-	«add ("<li>When you bring Frontier to the front, you will see an outline window containing the XML structure for this message.<p>")
-	«add ("<li>You can only edit the &lt;body> and &lt;subject> part of the message. Preserve the message structure, don't reorganize the outline.<p>")
-	«add ("<li>When you're finished editing the outline, come back to this page and click on the button below.<p>")
+//bundle // old code for filling in non-localized bodytext
+	//add ("The server has automatically sent a copy of message " + msgNum + " to your workstation.<ul><p>"); indentLevel++
+	//add ("<li>When you bring Frontier to the front, you will see an outline window containing the XML structure for this message.<p>")
+	//add ("<li>You can only edit the &lt;body> and &lt;subject> part of the message. Preserve the message structure, don't reorganize the outline.<p>")
+	//add ("<li>When you're finished editing the outline, come back to this page and click on the button below.<p>")
 
 bundle { //form with a button in it
 	add ("<form method=\"POST\" action=\"" + manilaSuite.getUrl ("discussGetChangesFromWorkstation") + "\">"); indentLevel++;

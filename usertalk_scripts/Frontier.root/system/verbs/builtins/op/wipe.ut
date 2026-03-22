@@ -1,5 +1,5 @@
 on wipe () {
 	op.firstSummit ();
-	op.demote (); «now there's only one summit
-	op.deleteLine (); «zap it -- very fast!
+	op.demote (); //now there's only one summit
+	op.deleteLine (); //zap it -- very fast!
 	return (true)}

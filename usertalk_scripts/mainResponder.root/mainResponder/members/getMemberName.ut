@@ -1,9 +1,9 @@
 on getMemberName (groupName, memberKey, adrMembers=nil) {
-	«Changes:
-		«10/11/05; 2:47:15 AM by JES
-			«If the pref is set for admin super-user and no matching member is found in the specified membership group, return the name of the matching admin group member.
-		«9/26/01; 6:20:26 PM by PBS
-			«New optional parameter: adrMembers is the address of the membership group.
+	//Changes:
+		//10/11/05; 2:47:15 AM by JES
+			//If the pref is set for admin super-user and no matching member is found in the specified membership group, return the name of the matching admin group member.
+		//9/26/01; 6:20:26 PM by PBS
+			//New optional parameter: adrMembers is the address of the membership group.
 	on obscureEmail (email) {
 		if email contains '@' {
 			local (part1 = string.nthField (email, '@', 1));

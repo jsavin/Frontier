@@ -1,2 +1,2 @@
-on download (obj) { «get a remote file or directory
+on download (obj) { //get a remote file or directory
 	return (appleEvent (Fetch.id, 'FTCh', 'Dnld', '----', objspec (obj)))}

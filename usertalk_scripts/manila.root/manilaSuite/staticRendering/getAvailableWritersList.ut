@@ -1,6 +1,6 @@
 on getAvailableWritersList (adrSite) {
-	«Return the list of available file writers for the given site. 
-		«Tue, Apr 29, 2003 at 9:42:36 AM by EDS
+	//Return the list of available file writers for the given site. 
+		//Tue, Apr 29, 2003 at 9:42:36 AM by EDS
 	local {
 		writerList = {}};
 	case true {
@@ -16,5 +16,5 @@ on getAvailableWritersList (adrSite) {
 		defined (config.manila.prefs.flStaticRenderingFTPEnabled) and config.manila.prefs.flStaticRenderingFTPEnabled {
 			writerList = writerList +"ftp"}};
 	return (writerList)};
-«bundle //test code
-	«getAvailableWritersList (@fooManilaWebsite)
+//bundle //test code
+	//getAvailableWritersList (@fooManilaWebsite)

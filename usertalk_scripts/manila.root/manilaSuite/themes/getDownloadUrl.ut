@@ -1,10 +1,10 @@
 on getDownloadUrl (adrSite) {
-	«Changes
-		«10/11/02; 11:15:31 PM by JES
-			«If the site does not have its own theme configured, but a theme has been applied, link to the theme's home page.
-		«06/05/00; 8:17:13 PM by PBS
-			«Created.
-			«Given the address of a site, return the URL for downloading the theme from the site.
+	//Changes
+		//10/11/02; 11:15:31 PM by JES
+			//If the site does not have its own theme configured, but a theme has been applied, link to the theme's home page.
+		//06/05/00; 8:17:13 PM by PBS
+			//Created.
+			//Given the address of a site, return the URL for downloading the theme from the site.
 	
 	local (url);
 	local (baseUrl = adrSite^.["#ftpSite"].url);

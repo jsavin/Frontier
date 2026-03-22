@@ -1,7 +1,7 @@
 on startup () {
-	«Changes
-		«7/30/02; 3:16:32 PM by JES
-			«Created. If user.im.prefs.flConnectAtStartup is true, call everyone's startup scripts.
+	//Changes
+		//7/30/02; 3:16:32 PM by JES
+			//Created. If user.im.prefs.flConnectAtStartup is true, call everyone's startup scripts.
 	if user.im.prefs.flConnectAtStartup {
 		local (driverNames = {});
 		on getDriversFromTable (adrtable) {

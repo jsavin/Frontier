@@ -1,16 +1,16 @@
-«Changes
-	«Saturday, August 12, 2000 at 9:36:47 PM by DW
-		«Called when the user 2clicks on a user node. We fill in the contents of their directory outline, in the indicated folder.
-	«Friday, August 25, 2000 at 12:15:48 PM by DW
-		«Don't expand all folders and sub-folders on initial expand. 
-	«Monday, August 28, 2000 at 5:41:57 PM by PBS
-		«Collapse the sub-outline before inserting it, to prevent the bug where the user's node jumps to the top of the window when it doesn't need to.
-	«Saturday, September 16, 2000 at 5:03:55 PM by PBS
-		«Ask for directory.opml first. If not found, ask for directory.xml.
-	«Wednesday, September 20, 2000 at 2:19:51 PM by PBS
-		«Call playlist.httpClient so the script can accept OPML documents.
-	«12/31/00; 5:56:10 PM by JES
-		«On Macs, convert opml text to Mac text before converting to an outline.
+//Changes
+	//Saturday, August 12, 2000 at 9:36:47 PM by DW
+		//Called when the user 2clicks on a user node. We fill in the contents of their directory outline, in the indicated folder.
+	//Friday, August 25, 2000 at 12:15:48 PM by DW
+		//Don't expand all folders and sub-folders on initial expand. 
+	//Monday, August 28, 2000 at 5:41:57 PM by PBS
+		//Collapse the sub-outline before inserting it, to prevent the bug where the user's node jumps to the top of the window when it doesn't need to.
+	//Saturday, September 16, 2000 at 5:03:55 PM by PBS
+		//Ask for directory.opml first. If not found, ask for directory.xml.
+	//Wednesday, September 20, 2000 at 2:19:51 PM by PBS
+		//Call playlist.httpClient so the script can accept OPML documents.
+	//12/31/00; 5:56:10 PM by JES
+		//On Macs, convert opml text to Mac text before converting to an outline.
 local (url);
 op.attributes.getOne ("url", @url);
 local (xmlText);

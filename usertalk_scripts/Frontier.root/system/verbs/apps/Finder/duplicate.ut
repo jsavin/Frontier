@@ -1,20 +1,20 @@
 on duplicate (obj, duplicateTo = nil, replacing = nil) {
-	«Duplicate object(s).  duplicateTo (if present) must refer to a container
-	«Replacing can be false (the default), in which case it is an error if there already is a file with the same name
-		«in the duplicateTo container;
-		«or true, conflicts, or existingItems in which case the newly created file(s) replaces existing file(s)
-	«on adjustDuplicateTo (dupSpec)
-		«case typeOf (dupSpec)
-			«listType
-				«local (x, newList = {})
-				«for x in dupSpec
-					«newList = adjustDuplicateTo (x)
-				«return (newList)
-			«aliasType
-			«stringType
-				«return (filespec (dupSpec))
-		«else
-			«return (dupSpec)
+	//Duplicate object(s).  duplicateTo (if present) must refer to a container
+	//Replacing can be false (the default), in which case it is an error if there already is a file with the same name
+		//in the duplicateTo container;
+		//or true, conflicts, or existingItems in which case the newly created file(s) replaces existing file(s)
+	//on adjustDuplicateTo (dupSpec)
+		//case typeOf (dupSpec)
+			//listType
+				//local (x, newList = {})
+				//for x in dupSpec
+					//newList = adjustDuplicateTo (x)
+				//return (newList)
+			//aliasType
+			//stringType
+				//return (filespec (dupSpec))
+		//else
+			//return (dupSpec)
 	
 	if Finder.isScriptable () {
 		if typeOf (duplicateTo) != unknownType {

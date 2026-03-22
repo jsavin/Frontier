@@ -1,24 +1,24 @@
 on updateSubscriptions (flSubscribeAll = false) {
-	«Changes
-		«12/27/01; 5:55:13 PM by PBS
-			«If this is Frontier, check the firewall pref at adrdata^.prefs.flBehindFirewall since user.radio is not defined.
-		«12/9/01; 10:41:43 AM by DW
-			«Respect user.radio.prefs.flBehindFirewall. 
-			«People behind firewalls cannot receive notifications. 
-			«No point requesting them.
-		«1/7/01; 12:36:24 PM by DW
-			«Add support for HTTP-POST notification.
-		«1/6/01; 8:46:28 PM by DW
-			«Logging code is controlled by a preference.
-		«1/6/01; 3:46:22 PM by JES
-			«Changed the value of the 1st and 3rd parameters in the SOAP implementation to supply the correct actionURI and methodName.
-		«1/5/01; 7:54:01 PM by DW
-			«Add SOAP implementation. 
-		«1/5/01; 7:24:13 PM by DW
-			«Add a boolean parameter, if true, we resubscribe to all, our IP address might have changed.
-		«1/5/01; 5:32:13 PM by DW
-			«Created. Send a request to receive notification for channels that support clouds. 
-			«Only send a request once every twenty-four hours.
+	//Changes
+		//12/27/01; 5:55:13 PM by PBS
+			//If this is Frontier, check the firewall pref at adrdata^.prefs.flBehindFirewall since user.radio is not defined.
+		//12/9/01; 10:41:43 AM by DW
+			//Respect user.radio.prefs.flBehindFirewall. 
+			//People behind firewalls cannot receive notifications. 
+			//No point requesting them.
+		//1/7/01; 12:36:24 PM by DW
+			//Add support for HTTP-POST notification.
+		//1/6/01; 8:46:28 PM by DW
+			//Logging code is controlled by a preference.
+		//1/6/01; 3:46:22 PM by JES
+			//Changed the value of the 1st and 3rd parameters in the SOAP implementation to supply the correct actionURI and methodName.
+		//1/5/01; 7:54:01 PM by DW
+			//Add SOAP implementation. 
+		//1/5/01; 7:24:13 PM by DW
+			//Add a boolean parameter, if true, we resubscribe to all, our IP address might have changed.
+		//1/5/01; 5:32:13 PM by DW
+			//Created. Send a request to receive notification for channels that support clouds. 
+			//Only send a request once every twenty-four hours.
 	local (adrdata = xml.aggregator.init ());
 	local (flBehindFirewall = false);
 	if system.environment.isRadio { //PBS 12/27/01: flBehindFirewall pref is in different places for Radio and Frontier
@@ -31,7 +31,7 @@ on updateSubscriptions (flSubscribeAll = false) {
 		for adrservice in @adrdata^.services {
 			if defined (adrservice^.compilation) {
 				if defined (adrservice^.compilation.cloud) {
-					«edit (adrservice)
+					//edit (adrservice)
 					local (flsubscribe = true);
 					if not flSubscribeAll {
 						if defined (adrservice^.timeLastSubscribe) {
@@ -47,16 +47,16 @@ on updateSubscriptions (flSubscribeAll = false) {
 								if protocol == "soap" {
 									local (params = {"channelChanged", user.inetd.config.http.port, "/aggregator", "soap", {url}});
 									soap.rpc.client (path, registerProcedure, @params, domain, port)};
-								«if protocol == "http-post"
-									«local (args)
-									«new (tabletype, @args)
-									«args.target = url
-									«args.responder = "http://" + tcp.dns.getmydottedid () + ":" + user.inetd.config.http.port + "/myUserLand/remotePostAllowed/channelChanged.wsf"
-									«tcp.httpClient ("POST", domain, port, path, data:webserver.encodeargs (@args), datatype:"application/x-www-form-urlencoded")
+								//if protocol == "http-post"
+									//local (args)
+									//new (tabletype, @args)
+									//args.target = url
+									//args.responder = "http://" + tcp.dns.getmydottedid () + ":" + user.inetd.config.http.port + "/myUserLand/remotePostAllowed/channelChanged.wsf"
+									//tcp.httpClient ("POST", domain, port, path, data:webserver.encodeargs (@args), datatype:"application/x-www-form-urlencoded")
 								htmltext = htmltext + "<a href=\"" + url + "\">" + adrservice^.compilation.channeltitle + "</a> "}};
 						adrservice^.timeLastSubscribe = now}}}};
 		if adrdata^.prefs.flLogNotification {
 			if htmltext != "" {
 				try {radio.log.add ("Please notify", htmltext, startticks)}}}}};
-«bundle //test code
-	«updateSubscriptions (true)
+//bundle //test code
+	//updateSubscriptions (true)

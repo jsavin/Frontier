@@ -1,9 +1,9 @@
 on emailConfig (flAddFormTags = true) {
-	«Changes
-		«4/13/04; 12:40:22 AM by JES
-			«Optional param, flAddFormTags, used for calling this page within a radio.prefs.browser outline.
-		«12/17/01; 2:30:49 PM by PBS
-			«Created. Email Frontier configuration to someone (such as UserLand). No passwords are included in the email.
+	//Changes
+		//4/13/04; 12:40:22 AM by JES
+			//Optional param, flAddFormTags, used for calling this page within a radio.prefs.browser outline.
+		//12/17/01; 2:30:49 PM by PBS
+			//Created. Email Frontier configuration to someone (such as UserLand). No passwords are included in the email.
 	local (pta = html.getpagetableaddress ());
 	pta^.title = "Email Config";
 	workspace.pt = pta^;

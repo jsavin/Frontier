@@ -1,7 +1,7 @@
 on script (driverName, screenname, message) {
-	«Changes
-		«8/11/02; 7:32:19 PM by JES
-			«Created.
+	//Changes
+		//8/11/02; 7:32:19 PM by JES
+			//Created.
 	local (method = string.nthField (message, " ", 2));
 	local (adrresponder = parentOf (this^));
 	local (adrmethods = @adrresponder^.methods);

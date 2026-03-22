@@ -1,15 +1,15 @@
 on removeSiteFromTree (domainName, path, flDeleteSubSites = false, flConvertToSiteTree = false, adrDomains = @config.mainResponder.domains) {
-	«Changes
-		«5/1/06; 8:03:37 PM by JES
-			«Touch the site tree outline before calling compileIfDirty, to make sure we re-compile the XML.
-		«9/22/04; 2:37:05 AM by JES
-			«Use a semaphore lock to prevent multiple threads from trying to update a given domain's site tree simultaneously.
-		«8/13/02; 4:55:17 PM by JES
-			«Pass adrDomains to mainResponder.siteTree.convertDomainToSiteTree.
-		«8/13/02; 3:48:55 PM by JES
-			«New optional parameter, adrDomains. Compile the site tree XML after removing the site from the tree.
-		«7/2/02; 3:59:52 AM by JES
-			«Created.
+	//Changes
+		//5/1/06; 8:03:37 PM by JES
+			//Touch the site tree outline before calling compileIfDirty, to make sure we re-compile the XML.
+		//9/22/04; 2:37:05 AM by JES
+			//Use a semaphore lock to prevent multiple threads from trying to update a given domain's site tree simultaneously.
+		//8/13/02; 4:55:17 PM by JES
+			//Pass adrDomains to mainResponder.siteTree.convertDomainToSiteTree.
+		//8/13/02; 3:48:55 PM by JES
+			//New optional parameter, adrDomains. Compile the site tree XML after removing the site from the tree.
+		//7/2/02; 3:59:52 AM by JES
+			//Created.
 	local (adrdomain = @adrDomains^.[domainName]);
 	
 	on lockDomain () { //semaphore lock for two seconds
@@ -69,9 +69,9 @@ on removeSiteFromTree (domainName, path, flDeleteSubSites = false, flConvertToSi
 	setTimeModified (adroutline, clock.now ());
 	mainResponder.siteTree.compileIfDirty (adrdomain);
 	unlockDomain ()};
-«bundle //test code
-	«removeSiteFromTree ("default", "foo")
-	«removeSiteFromTree ("default", "bar")
-	«removeSiteFromTree ("default", "baz")
-	«removeSiteFromTree ("default", "flim/flam")
-	«removeSiteFromTree ("default", "flim", true)
+//bundle //test code
+	//removeSiteFromTree ("default", "foo")
+	//removeSiteFromTree ("default", "bar")
+	//removeSiteFromTree ("default", "baz")
+	//removeSiteFromTree ("default", "flim/flam")
+	//removeSiteFromTree ("default", "flim", true)

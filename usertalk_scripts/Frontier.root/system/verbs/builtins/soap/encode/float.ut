@@ -1,11 +1,11 @@
 on float (val) {
-	«04/11/01; 3:07:28 PM by JES
-		«Created. Encodes a float as a string, possibly in exponential notation.
-	«Changes:
-		«04/11/01; 4:06:57 PM by JES
-			«Properly encode negative numbers when using exponential notation.
-		«04/12/01; 1:14:43 PM by JES
-			«Fixed a bug where "special" floating point values, INF, -INF and NaN, weren't properly encoded.
+	//04/11/01; 3:07:28 PM by JES
+		//Created. Encodes a float as a string, possibly in exponential notation.
+	//Changes:
+		//04/11/01; 4:06:57 PM by JES
+			//Properly encode negative numbers when using exponential notation.
+		//04/12/01; 1:14:43 PM by JES
+			//Fixed a bug where "special" floating point values, INF, -INF and NaN, weren't properly encoded.
 	case val { //special IEEE floating point values, INF, -INF and NaN
 		soap.constants.floatINF {
 			return ("INF")};

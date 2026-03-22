@@ -1,11 +1,11 @@
 on edit (adr, windowTitle=nil, flReadOnly=false, adrButtonTable=nil) {
-	«Open a window for editing. Return the address of the previous target.
-		«Changes:
-			«08/14/00; 2:29:34 PM by PBS
-				«Instead of using a try statement to determine if it's a window-based object or a scalar, use a case statement. Supply the flReadOnly parameter to window.open only if this is 7.0b6 or greater.
-				«If you're using 7.0b5 or earlier, then the flReadOnly parameter has no effect, but it can still be passed to this script without causing an error.
-			«11/2/01; 10:46:03 AM by BS
-				«adrButtonTable is a new optional parameter. If set, it's the address of a table of scripts to attach to buttons in an outline window.
+	//Open a window for editing. Return the address of the previous target.
+		//Changes:
+			//08/14/00; 2:29:34 PM by PBS
+				//Instead of using a try statement to determine if it's a window-based object or a scalar, use a case statement. Supply the flReadOnly parameter to window.open only if this is 7.0b6 or greater.
+				//If you're using 7.0b5 or earlier, then the flReadOnly parameter has no effect, but it can still be passed to this script without causing an error.
+			//11/2/01; 10:46:03 AM by BS
+				//adrButtonTable is a new optional parameter. If set, it's the address of a table of scripts to attach to buttons in an outline window.
 	
 	if defined (adr^) { //is it defined?
 		case typeOf (adr^) { //is it a window-based object?
@@ -26,7 +26,7 @@ on edit (adr, windowTitle=nil, flReadOnly=false, adrButtonTable=nil) {
 						window.open (adr, flReadOnly)}};
 				return (oldTarget)}}};
 	
-	«It's a scalar or it's not defined.
+	//It's a scalar or it's not defined.
 	local (oldtarget = target.get ());
 	on kernelcall (adr) {
 		kernel (lang.edit)};

@@ -1,2 +1,2 @@
-on memAvail () { «returns FreeMem inside Card Runner
+on memAvail () { //returns FreeMem inside Card Runner
 	return (appleEvent (0, card.id, 'mema'))}

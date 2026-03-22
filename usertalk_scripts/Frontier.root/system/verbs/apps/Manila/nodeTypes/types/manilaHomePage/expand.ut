@@ -49,7 +49,7 @@ local (msgnum = manila.homepage.getMsgNum (@siteinfo));
 
 local (adrtype);
 Frontier.tools.windowTypes.findWindowType ("manilaMessage", @adrtype);
-«adrtype^.openMessage (siteurl, msgnum, flHomePage:true) //this didn't work
+//adrtype^.openMessage (siteurl, msgnum, flHomePage:true) //this didn't work
 thread.callscript (@adrtype^.openMessage, {siteurl, msgnum, false, true});
 
 return (true)

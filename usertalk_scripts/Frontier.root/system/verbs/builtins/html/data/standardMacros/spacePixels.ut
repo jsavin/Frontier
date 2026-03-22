@@ -25,7 +25,7 @@ on spacePixels (ctpixels, orientation="horizontal") {
 			spaceGif = adrPageTable^.spaceGif};
 		if spaceGif != nil { //user has specified an alternate gif
 			if spaceGif contains ".gif" or spaceGif beginsWith "http://" {
-				«It's hard-coded.
+				//It's hard-coded.
 				fname = spaceGif;
 				return (buildHtml ())}
 			else { //call imageRef
@@ -37,13 +37,13 @@ on spacePixels (ctpixels, orientation="horizontal") {
 				return (html.data.standardMacros.imageRef (spaceGif, "", width:width, height:height))}}};
 	
 	bundle { //write default space.gif to disk
-		«This is optimized for file and ftp -- don't write if the file already exists on disk.
+		//This is optimized for file and ftp -- don't write if the file already exists on disk.
 		local (fileWriter, preview = false);
 		try {preview = adrPageTable^.preview};
 		fileWriter = adrPageTable^.fileWriter;
 		on writeSpaceGif () {
 			html.writeFile (f, @html.data.images.space, 'GIFf', html.getPref ("imgFileCreator", adrPageTable), clock.now (), adrPageTable);
-			};«file.writeWholeFile (f, html.data.images.space, 'GIFf', html.getPref ("imgFileCreator", adrPageTable), clock.now ())
+			};//file.writeWholeFile (f, html.data.images.space, 'GIFf', html.getPref ("imgFileCreator", adrPageTable), clock.now ())
 		if string.lower (fileWriter) == "file" {
 			if not (file.exists (f)) {
 				writeSpaceGif ()}}

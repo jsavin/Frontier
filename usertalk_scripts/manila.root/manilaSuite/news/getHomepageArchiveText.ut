@@ -1,9 +1,9 @@
 on getHomepageArchiveText (msgNum, adrSite=nil) {
-	«Get the text of the homepage archive, given a news item's message number
-		«This script doesn't do any formatting. The text it returns is for search engine indexing.
-		«This script can be called from outside the page rendering context if adrSite is not nil.
-		«msgNum can be any posted message for a given day, not just the most recent one.
-		«07/12/00; 5:29:53 PM by JES
+	//Get the text of the homepage archive, given a news item's message number
+		//This script doesn't do any formatting. The text it returns is for search engine indexing.
+		//This script can be called from outside the page rendering context if adrSite is not nil.
+		//msgNum can be any posted message for a given day, not just the most recent one.
+		//07/12/00; 5:29:53 PM by JES
 	
 	if adrSite == nil { // get the site address if not passed in
 		adrSite = manilaSuite.getSiteAddress ()};

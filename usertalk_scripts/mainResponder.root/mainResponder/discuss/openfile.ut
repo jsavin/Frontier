@@ -1,4 +1,4 @@
-«12/9/98; 6:55:19 PM by DW
-	«it used to open discuss.root and check to see all the tables were there
-	«but it's a bottleneck routine, so it made sense to move this code to mainResponder.startup
+//12/9/98; 6:55:19 PM by DW
+	//it used to open discuss.root and check to see all the tables were there
+	//but it's a bottleneck routine, so it made sense to move this code to mainResponder.startup
 return (system.temp.mainResponder.discussRootFile)

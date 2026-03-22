@@ -1,5 +1,5 @@
-on exists (obj) { «Verify if an object exists
-	«return (appleEvent (Finder.id, 'core', 'doex', '----', objspec (obj)))
+on exists (obj) { //Verify if an object exists
+	//return (appleEvent (Finder.id, 'core', 'doex', '----', objspec (obj)))
 	case typeOf (obj) {
 		objspecType {
 			return (appleEvent (Finder.id, 'core', 'doex', '----', objspec (obj)))};
@@ -15,8 +15,8 @@ on exists (obj) { «Verify if an object exists
 					obj = Finder.finderSpec (obj)}
 				else {
 					return (false)}};
-			if hasObject { « if it had non-object, that is now an object (and does exist)
-				«if it also had one or more objects, we still have to ask about those
+			if hasObject { // if it had non-object, that is now an object (and does exist)
+				//if it also had one or more objects, we still have to ask about those
 				return (appleEvent (Finder.id, 'core', 'doex', '----', Finder.finderSpec (obj)))}}}
 	else {
 		try {

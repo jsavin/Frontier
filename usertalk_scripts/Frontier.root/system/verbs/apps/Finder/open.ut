@@ -1,4 +1,4 @@
-on open (obj, using = nil) { «Open the specified object(s)
+on open (obj, using = nil) { //Open the specified object(s)
 	if Finder.isScriptable () {
 		if typeOf (using) != unknownType {
 			using = Finder.finderParam (using)};

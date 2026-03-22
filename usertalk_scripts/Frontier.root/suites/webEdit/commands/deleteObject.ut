@@ -1,6 +1,6 @@
-«Changes
-	«8/31/05; 12:08:51 AM by JES
-		«Show the server name in the delete confirmation dialog.
+//Changes
+	//8/31/05; 12:08:51 AM by JES
+		//Show the server name in the delete confirmation dialog.
 
 local (adrObject);
 

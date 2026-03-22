@@ -1,13 +1,13 @@
 on rpc (rpcServer="localhost", rpcPort=user.inetd.config.http.port, procedureName="", adrparamlist=nil, fldebug=false, ticksToTimeOut=nil, flShowMessages=true, rpcPath=nil, flAsynch=false, adrCallback=nil, extraInfo=nil, adrErrorCallback=nil, username="", password="", protocol="xml-rpc", soapAction="") {
-	«Changes
-		«4/5/01; 7:33:50 PM by DW
-			«Created. A long time ago I promised that we'd have one interface for calling out through either xml-rpc or soap. Somehow we ended up with two system calls, each with irritatingly different parameter lists. It's driving me crazy, so I made a single routine that calls either. There's a reason for this, SOAP offers a lot of options that XML-RPC doesn't. So this interface makes it possible to call SOAP handlers that behave like XML-RPC handlers (they can be called from other SOAP stacks, that's the advantage).
-			«It has the same parameter list as betty.rpc.client, by design, you can simply replace calls to betty.rpc.client with calls to xml.rpc. 
-			«There are two new optional parameters, protocol and soapAction. If protocol is "soap" we call soap.rpc.client. It has other optional params, but I'm not sure it's necessary to expose them through this interface. soap.rpc.client isn't going away.
-			«There's a little strangeness when it comes to procedure names. SOAP procedure names can't have dots or any other special characters because on the wire they are XML elements. So we strip off everything to the left of the last dot in the procedure name. This probably needs to be generalized to look for characters other than dots.
-			«Also it should be said somewhere that, while we still have support for agent-based asynchronous xml-rpc, it's probably a better idea to use thread.callScript to do an asynch call. Much cleaner. The asynch implementation was done before we had thread.callScript.
-		«7/23/01; 9:41:28 PM by JES
-			«For SOAP calls, include rpcPath in the call, allowing for a request to have a URI that's different from the value of the SOAPAction header.
+	//Changes
+		//4/5/01; 7:33:50 PM by DW
+			//Created. A long time ago I promised that we'd have one interface for calling out through either xml-rpc or soap. Somehow we ended up with two system calls, each with irritatingly different parameter lists. It's driving me crazy, so I made a single routine that calls either. There's a reason for this, SOAP offers a lot of options that XML-RPC doesn't. So this interface makes it possible to call SOAP handlers that behave like XML-RPC handlers (they can be called from other SOAP stacks, that's the advantage).
+			//It has the same parameter list as betty.rpc.client, by design, you can simply replace calls to betty.rpc.client with calls to xml.rpc. 
+			//There are two new optional parameters, protocol and soapAction. If protocol is "soap" we call soap.rpc.client. It has other optional params, but I'm not sure it's necessary to expose them through this interface. soap.rpc.client isn't going away.
+			//There's a little strangeness when it comes to procedure names. SOAP procedure names can't have dots or any other special characters because on the wire they are XML elements. So we strip off everything to the left of the last dot in the procedure name. This probably needs to be generalized to look for characters other than dots.
+			//Also it should be said somewhere that, while we still have support for agent-based asynchronous xml-rpc, it's probably a better idea to use thread.callScript to do an asynch call. Much cleaner. The asynch implementation was done before we had thread.callScript.
+		//7/23/01; 9:41:28 PM by JES
+			//For SOAP calls, include rpcPath in the call, allowing for a request to have a URI that's different from the value of the SOAPAction header.
 	case string.lower (protocol) {
 		"xml-rpc" {
 			return (betty.rpc.client (rpcServer, rpcPort, procedureName, adrparamlist, fldebug, ticksToTimeOut, flShowMessages, rpcPath, flAsynch, adrCallback, extraInfo, adrErrorCallback, username, password))};

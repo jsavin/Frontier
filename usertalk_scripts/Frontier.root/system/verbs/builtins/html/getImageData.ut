@@ -1,37 +1,37 @@
 on getImageData (imageSpec, pageTable=nil) {
-	«Get image data: URL, path, address, file type, suffix, height, and width.
-		«Writes the image file to disk.
-		«Returns a table containing:
-			«url
-				«Relative URL.
-			«path
-				«Path to file on disk.
-			«adrImage
-				«The address of the image in the odb.
-			«macFileType
-				«Mac file type.
-			«suffix
-				«".gif" or ".jpg"
-			«height
-				«The actual height of the image.
-			«width
-				«The actual width of the image.
-		«Changes:
-			«Sunday, January 18, 1998 at 3:43:02 PM by PBS
-			«10/3/98; 8:00:58 AM by DW
-				«if there there's a pref "noImageExtensions", then we empty out the extension
-				«we need this to support rendering from within mainResponder
-			«PBS 1/11/99
-				«The pref is changed from "noImageExtensions" to "imageExtensions" so
-				«it can default to true.
-				«If imageExtensions is false, then empty out the extension,
-				«to support rendering from mainResponder.
-			«06/01/00; 6:39:47 PM by PBS
-				«Send the pageTable parameter to html.getPref when getting the imageFolderSubtables pref.
-			«06/17/00; 7:40:10 PM by PBS
-				«Don't write to disk if this is a dynamic page.
-			«07/05/00; 5:45:35 PM by PBS
-				«Get the JPEG height and width from the JPEG object in Frontier, not from the JPEG file on disk -- because this script may be running in a dynamic webserver context and there may not be a JPEG file on disk.
+	//Get image data: URL, path, address, file type, suffix, height, and width.
+		//Writes the image file to disk.
+		//Returns a table containing:
+			//url
+				//Relative URL.
+			//path
+				//Path to file on disk.
+			//adrImage
+				//The address of the image in the odb.
+			//macFileType
+				//Mac file type.
+			//suffix
+				//".gif" or ".jpg"
+			//height
+				//The actual height of the image.
+			//width
+				//The actual width of the image.
+		//Changes:
+			//Sunday, January 18, 1998 at 3:43:02 PM by PBS
+			//10/3/98; 8:00:58 AM by DW
+				//if there there's a pref "noImageExtensions", then we empty out the extension
+				//we need this to support rendering from within mainResponder
+			//PBS 1/11/99
+				//The pref is changed from "noImageExtensions" to "imageExtensions" so
+				//it can default to true.
+				//If imageExtensions is false, then empty out the extension,
+				//to support rendering from mainResponder.
+			//06/01/00; 6:39:47 PM by PBS
+				//Send the pageTable parameter to html.getPref when getting the imageFolderSubtables pref.
+			//06/17/00; 7:40:10 PM by PBS
+				//Don't write to disk if this is a dynamic page.
+			//07/05/00; 5:45:35 PM by PBS
+				//Get the JPEG height and width from the JPEG object in Frontier, not from the JPEG file on disk -- because this script may be running in a dynamic webserver context and there may not be a JPEG file on disk.
 	
 	if pageTable == nil {
 		try {
@@ -113,7 +113,7 @@ on getImageData (imageSpec, pageTable=nil) {
 			"jpeg" {
 				extension = ".jpg";
 				macFileType = 'JPEG'}};
-		«We might be running in the website framework responder.
+		//We might be running in the website framework responder.
 		if html.inResponder (pageTable) {
 			extension = ".wsf"};
 		if not (html.getPref ("imageExtensions", pageTable)) { //10/3/98; 7:58:52 AM by DW, to support mainResponder images
@@ -128,7 +128,7 @@ on getImageData (imageSpec, pageTable=nil) {
 			if lowerWriter != "file" {
 				html.writeFile (f, adrImage, macFileType, html.getPref ("imgFileCreator", pageTable), clock.now (), pageTable)};
 			if (not flcache) or (not (file.exists (f))) { //if caching is off, or the file doesn't exist, write to disk.
-				«We need to write to disk to get the size info.
+				//We need to write to disk to get the size info.
 				if not defined (pageTable^.requestHeaders) { //PBS 06/17/00: don't write to disk if this is a dynamic page
 					file.sureFilePath (f);
 					file.writeWholeFile (f, adrImage^, macFileType, html.getPref ("imgFileCreator", pageTable), clock.now ())}}}};
@@ -136,7 +136,7 @@ on getImageData (imageSpec, pageTable=nil) {
 	bundle { //get height and width of image
 		local (flfound = false);
 		if flcache { // get height and width from the image cache
-			«Thursday, January 15, 1998 at 3:55:21 PM by PBS
+			//Thursday, January 15, 1998 at 3:55:21 PM by PBS
 			local (adrCache = @system.temp.htmlImageCache);
 			if not defined (adrCache^) {
 				new (tableType, adrCache)};

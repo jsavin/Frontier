@@ -1,4 +1,4 @@
-on print (obj) { «Print the specified object(s)
+on print (obj) { //Print the specified object(s)
 	if Finder.isScriptable () {
 		return (appleEvent (Finder.id, 'aevt', 'pdoc', '----', Finder.finderSpec (obj)))}
 	else {

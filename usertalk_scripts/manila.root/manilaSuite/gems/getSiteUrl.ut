@@ -1,6 +1,6 @@
 on getSiteUrl (adrSite) {
-	«Get the URL to the folder containing gems for this site.
-		«04/13/00; 9:36:38 PM by PBS
+	//Get the URL to the folder containing gems for this site.
+		//04/13/00; 9:36:38 PM by PBS
 	
 	local (adrPrefs = manilaSuite.gems.getSitePrefsAddress (adrSite));
 	if defined (adrPrefs^.url) {

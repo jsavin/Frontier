@@ -1,8 +1,8 @@
-on mkdir (domain, path, account, password) { « Make directory remotely.
+on mkdir (domain, path, account, password) { // Make directory remotely.
 	case ftpClient.data.currentid {
 		Anarchie.id {
 			local (result);
-			if path[sizeOf (path)] == '/' { « Anarchie doesn't like slashes at the end of directory names.
+			if path[sizeOf (path)] == '/' { // Anarchie doesn't like slashes at the end of directory names.
 				path = string.delete (path, sizeOf (path), infinity)};
 			result = Anarchie.mkdir (domain, path, account, password, nil);
 			if result == 0 {

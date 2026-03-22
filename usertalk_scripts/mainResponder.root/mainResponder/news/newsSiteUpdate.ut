@@ -1,11 +1,11 @@
 on newsSiteUpdate (adrmsg) {
-	«Changes
-		«3/17/1999; 4:41:53 PM by DW
-			«New script. The message has been updated, schedule a static page build if one is required.
-		«3/16/1999; 9:29:03 AM by DW
-			«Rewritten , now can handle static pages that are named index, index.html, default, default.html, or foo.xyz.htm. 
-		«Wed, 26 May 1999 18:56:33 GMT by AR
-			«Bug fix: We now check whether the news site actually has a staticPage table.
+	//Changes
+		//3/17/1999; 4:41:53 PM by DW
+			//New script. The message has been updated, schedule a static page build if one is required.
+		//3/16/1999; 9:29:03 AM by DW
+			//Rewritten , now can handle static pages that are named index, index.html, default, default.html, or foo.xyz.htm. 
+		//Wed, 26 May 1999 18:56:33 GMT by AR
+			//Bug fix: We now check whether the news site actually has a staticPage table.
 	if defined (adrmsg^.inNewsSite) {
 		local (adrroot = mainResponder.news.openRoot (adrmsg^.inNewsSite));
 		local (adrstatictable = @adrroot^.staticPage);

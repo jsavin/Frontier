@@ -1,6 +1,6 @@
 on postedNewsItemCallback (adrMsg) {
-	«Notify the world that a news item has been posted to the home page. This is the website framework context entry point.
-		«04/30/00; 6:32:10 PM by PBS
+	//Notify the world that a news item has been posted to the home page. This is the website framework context entry point.
+		//04/30/00; 6:32:10 PM by PBS
 	
 	local (adrCallbacks = @manilaSuite.callbacks.postedNewsItem);
 	local (adrUserCallbacks = @config.manila.callbacks.postedNewsItem);

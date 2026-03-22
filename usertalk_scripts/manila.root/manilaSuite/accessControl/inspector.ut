@@ -1,11 +1,11 @@
 on inspector () {
-	«Changes
-		«2/22/06; 7:41:40 PM by JES
-			«Reformat HTML to match the rest of the admin page.
-		«04/05/20, 17:20:39 by DAB
-			«create and process data for cohort mainteance 
-			«inspector : 02/05/07, 17:04:16 by DAB
-			«messages at manilaData.localization.languages.english.strings.accessControl
+	//Changes
+		//2/22/06; 7:41:40 PM by JES
+			//Reformat HTML to match the rest of the admin page.
+		//04/05/20, 17:20:39 by DAB
+			//create and process data for cohort mainteance 
+			//inspector : 02/05/07, 17:04:16 by DAB
+			//messages at manilaData.localization.languages.english.strings.accessControl
 	local (pta = html.getPageTableAddress());
 	local (adrSite = manilaSuite.getManilaSiteAddress(pta));
 	local (adrNewsSite = manilaSuite.getNewsSiteAddress(adrSite));
@@ -37,8 +37,8 @@ on inspector () {
 		errCntr++};
 	
 	if pta^.method == "POST" {
-		«pta^.title = manilaSuite.getString("accessControl.pageTitle", pta:pta)    //02/03/24, 09:36:57 by DAB
-		«pta^.navigatorLinks = manilaFixer.drawManilaMenu ()
+		//pta^.title = manilaSuite.getString("accessControl.pageTitle", pta:pta)    //02/03/24, 09:36:57 by DAB
+		//pta^.navigatorLinks = manilaFixer.drawManilaMenu ()
 		
 		case true {
 			defined(pta^.postArgs.inspectchange);
@@ -48,8 +48,8 @@ on inspector () {
 				add(manilaSuite.AccessControl.indexDisplay(@indexTbl, pta^.postArgs.indexKey));
 				return htmlText};
 			defined(pta^.postArgs.inspectMember) { //03/01/12, 18:24:56 by DAB
-				«return manilaSuite.accessControl.membersMessages(adrSite, pta^.postargs.memberkey)
-				«memberkey is an index into users subtable 04/05/31, 12:27:00 by DAB
+				//return manilaSuite.accessControl.membersMessages(adrSite, pta^.postargs.memberkey)
+				//memberkey is an index into users subtable 04/05/31, 12:27:00 by DAB
 				local (memberKey = nameOf(adrGroup^.users[number(pta^.postargs.memberkey)]));
 				replTbl.memberKey = memberKey;
 				case true {
@@ -91,15 +91,15 @@ on inspector () {
 		add("\r\t\t<tr>");
 		add("\r\t\t\t<td>" + manilaSuite.getString("accesscontrol.inspectUserFormID", pta: pta) + "</td>");
 		add("\r\t\t\t<td>");
-		«add("\r\t\t\t\t<select name = 'memberkey'>")
-		«local (adrMember, nme, selected)
-		«for adrMember in @adrGroup^.users
-			«selected = ""
-			«nme = string.lower(nameof(adrMember^) )
-			«if nme == string.lower(nameof(pta^.adrMemberinfo^))
-				«selected = " selected"
-			«add("\r\t\t\t\t\t<option value = '" + nme+ "'" + selected + ">" + string.replace(nme, "@", "&#064;")  + "</option>")
-		«add("\r\t\t\t\t</select>")
+		//add("\r\t\t\t\t<select name = 'memberkey'>")
+		//local (adrMember, nme, selected)
+		//for adrMember in @adrGroup^.users
+			//selected = ""
+			//nme = string.lower(nameof(adrMember^) )
+			//if nme == string.lower(nameof(pta^.adrMemberinfo^))
+				//selected = " selected"
+			//add("\r\t\t\t\t\t<option value = '" + nme+ "'" + selected + ">" + string.replace(nme, "@", "&#064;")  + "</option>")
+		//add("\r\t\t\t\t</select>")
 		add(manilaSuite.accessControl.memberMenu(pta, "inspect", "memberkey", {nameOf(pta^.adrMemberInfo^)}, 1, 100));
 		add("</td>");
 		add("<td>");

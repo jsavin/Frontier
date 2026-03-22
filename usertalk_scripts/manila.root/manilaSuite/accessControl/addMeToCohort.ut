@@ -1,7 +1,7 @@
 on addMeToCohort (pta, cohortID,  flCreateCohort=false) {
-	«manilaSuite.AccessControl.addMeToCohort : 04/05/20, 16:11:51 by DAB
-		«adds current user to cohort "X"; creating the cohort if necessary (if flCreateCohort is true)
-		«was manilaFixer.accessControl.addMeToCohort : 04/05/13, 12:24:33 by DAB
+	//manilaSuite.AccessControl.addMeToCohort : 04/05/20, 16:11:51 by DAB
+		//adds current user to cohort "X"; creating the cohort if necessary (if flCreateCohort is true)
+		//was manilaFixer.accessControl.addMeToCohort : 04/05/13, 12:24:33 by DAB
 	if not defined(pta^.adrMemberInfo) {
 		return false};
 	local (adrSite = manilaSuite.getManilaSiteAddress(pta));

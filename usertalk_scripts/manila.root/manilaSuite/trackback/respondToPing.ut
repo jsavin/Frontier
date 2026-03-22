@@ -1,17 +1,17 @@
 on respondToPing () {
-	«Changes
-		«3/21/07; 2:55:01 PM by LL
-			«Do not respond to pings for sites that don't have the TrackBack feature enabled.
-		«4/20/06; 2:30:41 PM by JES
-			«Add missing forbiddenPage handler.
-		«4/17/06 at 12:42:56 PM by LL
-			«Added support for a TrackBack submit callback.
-		«9/11/03; 12:51:53 PM by JES
-			«Strip HTML markup from the excerpt, title, weblog name and URL. The trackBack spec doesn't allow markup.
-		«5/1/03; 12:13:30 PM by JES
-			«Created. Respond to a Trackback ping to a message in a Manila site.
+	//Changes
+		//3/21/07; 2:55:01 PM by LL
+			//Do not respond to pings for sites that don't have the TrackBack feature enabled.
+		//4/20/06; 2:30:41 PM by JES
+			//Add missing forbiddenPage handler.
+		//4/17/06 at 12:42:56 PM by LL
+			//Added support for a TrackBack submit callback.
+		//9/11/03; 12:51:53 PM by JES
+			//Strip HTML markup from the excerpt, title, weblog name and URL. The trackBack spec doesn't allow markup.
+		//5/1/03; 12:13:30 PM by JES
+			//Created. Respond to a Trackback ping to a message in a Manila site.
 	local (pta = html.getPageTableAddress ());
-	«workspace.pt = pta^ //debugging
+	//workspace.pt = pta^ //debugging
 	
 	local (msgnum = pta^.pathArgs);
 	local (adrmsg = manilaSuite.discuss.getMessageTable (msgnum));
@@ -64,6 +64,6 @@ on respondToPing () {
 			adrurl^.flPosted = false}};
 	
 	return (trackback.respondToPing (@respondCallback))};
-«bundle //test code
-	«html.setPageTableAddress (@workspace.pt)
-	«respondToPing ()
+//bundle //test code
+	//html.setPageTableAddress (@workspace.pt)
+	//respondToPing ()

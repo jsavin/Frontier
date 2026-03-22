@@ -1,5 +1,5 @@
-«This script lets us know if anything material changed in the compile/decompile process
-	«3/27/98; 6:09:38 AM by DW
+//This script lets us know if anything material changed in the compile/decompile process
+	//3/27/98; 6:09:38 AM by DW
 
 window.about ();
 local (adrdata = @parentof (this^)^.data);

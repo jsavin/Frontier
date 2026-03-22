@@ -1,36 +1,36 @@
 on promoteToHomePage (msgNum, adrSite=nil) {
-	«Changes:
-		«3/2/07; 1:29:57 PM by LL
-			«Ping the Google BlogSearch server if the homepage updates. Also, ping the RCS if it's running locally.
-			«Don't ping for members only or editors only sites.
-		«2003 and earlier
-			«7/24/03; 2:05:33 PM by DW
-				«Call weblogUpdates.ping in a thread so the user doesn't have to wait for it.
-			«10/09/00; 10:17:37 PM by PBS
-				«Make sure indexes get updated -- pass adrSite parameter to add-category script.
-			«11/9/01; 9:42:35 AM by PBS
-				«Ping Weblogs.Com if the pref is set.
-			«10/19/99; 3:19:16 PM by PBS
-				«Make this story the home page.
-					«Link it into the calendar.
-					«Set alsoListedIn to [siteName]HomePages.
-					«This script can be called from outside the page rendering context if adrSite is not nil.
+	//Changes:
+		//3/2/07; 1:29:57 PM by LL
+			//Ping the Google BlogSearch server if the homepage updates. Also, ping the RCS if it's running locally.
+			//Don't ping for members only or editors only sites.
+		//2003 and earlier
+			//7/24/03; 2:05:33 PM by DW
+				//Call weblogUpdates.ping in a thread so the user doesn't have to wait for it.
+			//10/09/00; 10:17:37 PM by PBS
+				//Make sure indexes get updated -- pass adrSite parameter to add-category script.
+			//11/9/01; 9:42:35 AM by PBS
+				//Ping Weblogs.Com if the pref is set.
+			//10/19/99; 3:19:16 PM by PBS
+				//Make this story the home page.
+					//Link it into the calendar.
+					//Set alsoListedIn to [siteName]HomePages.
+					//This script can be called from outside the page rendering context if adrSite is not nil.
 	
 	local (adrMsgTable = manilaSuite.discuss.getMessageTable (msgNum, adrSite));
 	local (homePagesCategory, lowerCategoryName, adrStory);
 	
-	«Get home pages category
+	//Get home pages category
 	homePagesCategory = manilaSuite.discuss.getHomePagesCategory (adrSite);
 	
-	«Set the alsoListedIn field for this story
+	//Set the alsoListedIn field for this story
 	manilaSuite.discuss.addCategoryToMessage (adrMsgTable, homePagesCategory, adrSite); //PBS 10/09/00: pass adrSite parameter
 	
-	«Set the discuss link for the home page.
+	//Set the discuss link for the home page.
 	local (adrDiscussLinks = manilaSuite.getDiscussLinksAddress (adrSite));
 	adrDiscussLinks^.homePageMsgNum = msgNum;
 	
-	«Add the page to the calendar structure for this site.
-		«It will be available at a path like: /2000/05/14/innerCaseAlphaNumericName
+	//Add the page to the calendar structure for this site.
+		//It will be available at a path like: /2000/05/14/innerCaseAlphaNumericName
 	bundle {
 		local (postTime = adrMsgTable^.postTime);
 		local (adrCal = adrSite);

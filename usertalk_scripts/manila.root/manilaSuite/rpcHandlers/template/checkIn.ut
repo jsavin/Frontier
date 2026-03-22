@@ -1,6 +1,6 @@
 on checkIn (username, password, siteName) {
-	«Release custody of the template.
-		«02/11/00; 11:20:29 AM by PBS
+	//Release custody of the template.
+		//02/11/00; 11:20:29 AM by PBS
 	
 	local (adrSite = manilaSuite.rpcUtils.getSiteAddress (siteName));
 	local (adrObject = @adrSite^.["#template"]);

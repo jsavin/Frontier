@@ -1,7 +1,7 @@
 on c_ERROR(adrSelf,id,data) {
-	«# let's just grab the errors we care about!
+	//# let's just grab the errors we care about!
 	
-	«#still more fields
+	//#still more fields
 	if data contains ':' {
 		data = number (string.nthField(data,':',1))}
 	else {
@@ -19,5 +19,5 @@ on c_ERROR(adrSelf,id,data) {
 		989 {
 			tcp.im.builtinDrivers.aim.code.core.ferror(adrSelf,"FATAL: Couldn't sign on; An unknown error occurred")}}
 	else {
-		«# try to let further implementation handle it
+		//# try to let further implementation handle it
 		tcp.im.builtinDrivers.aim.code.core._callsub(adrSelf, id, {adrSelf, data})}}

@@ -1,8 +1,8 @@
 on create (username, password, siteName, memberKey, memberName, memberPassword) {
-	«Create a new member with a member key, name, and password.
-	«Changes
-		«3/31/05; 4:01:08 AM by JES
-			«Call callbacks when a member is created.
+	//Create a new member with a member key, name, and password.
+	//Changes
+		//3/31/05; 4:01:08 AM by JES
+			//Call callbacks when a member is created.
 	
 	bundle { //make sure this person is a managing editor of the site.
 		local (beginningErrorString = "Can't create member \"" + memberName + "\" because ");
@@ -18,7 +18,7 @@ on create (username, password, siteName, memberKey, memberName, memberPassword) 
 		adrMember^.personalInfo.name = memberName;
 		
 		manilaSuite.members.callbacks(adrSite, adrMember, "signup") //05/06/15, 14:19:22 by DAB
-			«manilaSuite.members.callbacks(adrSite, adrGroup, adrMember, "signup") //05/03/24, 22:58:38 by DAB;
+			//manilaSuite.members.callbacks(adrSite, adrGroup, adrMember, "signup") //05/03/24, 22:58:38 by DAB;
 		return (true)};
 	
 	return (false)}

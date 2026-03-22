@@ -1,8 +1,8 @@
 on pathToSiteStructureValue (xmlAtt) {
-	«manilaSuite.sitePrefs.siteStructure.pathToSiteStructureValue
-		«based on userlands'  manilasuite.hierarchypage
-		«returns boolean for success; if located the attribute is stuffed into the page table
-		«was manilaFixer.utilities.pathToSiteStructureValue : 02/02/26, 16:13:34 by DAB
+	//manilaSuite.sitePrefs.siteStructure.pathToSiteStructureValue
+		//based on userlands'  manilasuite.hierarchypage
+		//returns boolean for success; if located the attribute is stuffed into the page table
+		//was manilaFixer.utilities.pathToSiteStructureValue : 02/02/26, 16:13:34 by DAB
 	local (pta = html.getPageTableAddress ());
 	local (adrTable = pta^.hierarchy);
 	local (path = pta^.remainingPath);
@@ -43,7 +43,7 @@ on pathToSiteStructureValue (xmlAtt) {
 		path = string.delete (path, 1, sizeOf (pathPart));
 		path = string.popLeading (path, '/')};
 	
-	«If this is a category, make sure there's a trailing slash, unless the end of the path ends with a default directory item name.
+	//If this is a category, make sure there's a trailing slash, unless the end of the path ends with a default directory item name.
 	if string.lower (string.nthField (nameOf (nomad^), '\t', 2)) == "category" {
 		if not (pta^.remainingPath endsWith "/") {
 			local (lowerLastPathPart = string.lower (string.nthField (pta^.path, '/', string.countFields (pta^.path, '/'))));

@@ -1,6 +1,6 @@
 on setAdvancedPref (username, password, siteName, itemName, friendlyItemName, s, windowInfoTable, flNeuterTags=true) {
-	«A common bottleneck routine for setting an advanced pref.
-		«12/18/00; 4:35:25 PM by PBS
+	//A common bottleneck routine for setting an advanced pref.
+		//12/18/00; 4:35:25 PM by PBS
 	
 	bundle { //make sure this person is a managing editor of the site.
 		local (beginningErrorString = "Can't set the " + friendlyItemName + " because ");

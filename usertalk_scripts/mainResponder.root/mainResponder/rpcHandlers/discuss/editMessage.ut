@@ -1,8 +1,8 @@
 on editMessage (dgname, username, password, msgnum) {
-	«8/20/99; 12:24:47 PM by DW, XML-RPC call to get the contents of a message
-		«Changes:
-			«10/5/99; 1:49:52 PM by PBS
-				«Added support for addresses and strings that can be coerced to addresses in discuss.root.
+	//8/20/99; 12:24:47 PM by DW, XML-RPC call to get the contents of a message
+		//Changes:
+			//10/5/99; 1:49:52 PM by PBS
+				//Added support for addresses and strings that can be coerced to addresses in discuss.root.
 	local (adrlog = log.addtoguestdatabase ("discussXmlRpcInterface"));
 	bundle { //logging code
 		adrlog^.operation = "editMessage";

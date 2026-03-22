@@ -1,9 +1,9 @@
 on popupMenuPref (prompt, adrpref, valuelist, menuitemslist) {
-	«Changes
-		«8/20/02; 11:45:02 PM by JES
-			«If the prompt ends with a question-mark, don't add the colon character.
-		«8/15/02; 1:54:42 AM by JES
-			«Created. Run a popup menu preference.
+	//Changes
+		//8/20/02; 11:45:02 PM by JES
+			//If the prompt ends with a question-mark, don't add the colon character.
+		//8/15/02; 1:54:42 AM by JES
+			//Created. Run a popup menu preference.
 	local (pta = html.getPageTableAddress ());
 	local (htmltext);
 	on add (s) {

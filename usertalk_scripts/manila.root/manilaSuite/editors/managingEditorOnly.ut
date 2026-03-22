@@ -1,8 +1,8 @@
 on managingEditorOnly () {
-	«Call this script from a #security script when you want to ensure that only the managing editor has access.
-		«Changes:
-			«04/10/00; 3:00:32 PM by PBS
-				«Support the new hashed cookie format. Also: call the new bottleneck script at manilaSuite.editors.prefsSecurity.
+	//Call this script from a #security script when you want to ensure that only the managing editor has access.
+		//Changes:
+			//04/10/00; 3:00:32 PM by PBS
+				//Support the new hashed cookie format. Also: call the new bottleneck script at manilaSuite.editors.prefsSecurity.
 	
 	local (adrNewsSite = responderAttributes.newsSite);
 	local (meList = adrNewsSite^.sysopMail);

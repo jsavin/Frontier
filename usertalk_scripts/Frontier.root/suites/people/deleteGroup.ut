@@ -1,9 +1,9 @@
 on deleteGroup (groupName, adrGroup=nil) {
-	«Delete a group.
+	//Delete a group.
 	if adrGroup == nil {
 		adrGroup = people.getGroupTable (groupName)};
 	if not (people.groupExists (groupName, adrGroup)) {
 		return (false)};
-	«adrGroup^.enabled = false
+	//adrGroup^.enabled = false
 	delete (adrGroup);
 	return (true)}

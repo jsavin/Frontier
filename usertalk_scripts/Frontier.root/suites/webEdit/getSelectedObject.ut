@@ -1,8 +1,8 @@
 on getSelectedObject () {
-	«Changes
-		«7/6/05; 8:58:25 PM by JES
-			«New pref, user.webEdit.prefs.flGetAddressesFromNotepad.
-				«If true, and the frontmost window is the workspace.notepad or user.rootUpdates.updateOutline, then we get the address from the text of the current outline heading.
+	//Changes
+		//7/6/05; 8:58:25 PM by JES
+			//New pref, user.webEdit.prefs.flGetAddressesFromNotepad.
+				//If true, and the frontmost window is the workspace.notepad or user.rootUpdates.updateOutline, then we get the address from the text of the current outline heading.
 	local (adr);
 	adr = table.getCursorAddress ();
 	if not defined (user.webEdit.prefs.flGetAddressesFromNotepad) {

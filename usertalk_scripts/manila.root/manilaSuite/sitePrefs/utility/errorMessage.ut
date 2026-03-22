@@ -1,5 +1,5 @@
 on errorMessage (messageText, adrReplTbl=nil, flLocalised= true) {
-	«manilaSuite.sitePrefs.utility.errorMessage : 04/05/14, 20:47:30 by DAB
+	//manilaSuite.sitePrefs.utility.errorMessage : 04/05/14, 20:47:30 by DAB
 	local (htmlText = "");
 	on add (s) {
 		htmlText = htmlText + s;};

@@ -1,3 +1,3 @@
-on putAway (path) { «execute the Put Away command on the indicated object
-	«the path must be to an object on the Desktop or in the Trash
+on putAway (path) { //execute the Put Away command on the indicated object
+	//the path must be to an object on the Desktop or in the Trash
 	return (Finder.folderVerb ('sput', path))}

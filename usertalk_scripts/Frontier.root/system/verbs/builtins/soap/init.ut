@@ -4,7 +4,7 @@ if not defined (user.webserver.responders.SOAP.condition) {
 	user.webserver.responders.SOAP.condition = "soap.responder.condition ()"};
 if not defined (user.webserver.responders.SOAP.enabled) {
 	user.webserver.responders.SOAP.enabled = true;
-	};«user.webserver.responders.SOAP.enabled = false //PBS 6/25/00
+	};//user.webserver.responders.SOAP.enabled = false //PBS 6/25/00
 if not defined (user.webserver.responders.SOAP.methods) {
 	user.webserver.responders.SOAP.methods = @soap.responder.methods};
 if not defined (user.soap) {

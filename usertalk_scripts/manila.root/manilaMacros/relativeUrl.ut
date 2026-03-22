@@ -1,13 +1,13 @@
 on relativeUrl (path) {
-	«Changes
-		«3/22/06; 2:54:55 AM by JES
-			«Add support for shortcut sharing.
-		«3/22/06; 1:52:18 AM by JES
-			«Bug fix when path is a shortcut to a gem -- adrsite, not siteUrl.
-		«3/21/06; 9:29:41 PM by JES
-			«Path can now be any shortcut name.
-		«4/4/03; 3:22:24 PM by JES
-			«Return the URL to a page on a site, given its relative path.
+	//Changes
+		//3/22/06; 2:54:55 AM by JES
+			//Add support for shortcut sharing.
+		//3/22/06; 1:52:18 AM by JES
+			//Bug fix when path is a shortcut to a gem -- adrsite, not siteUrl.
+		//3/21/06; 9:29:41 PM by JES
+			//Path can now be any shortcut name.
+		//4/4/03; 3:22:24 PM by JES
+			//Return the URL to a page on a site, given its relative path.
 	local (pta = html.getPageTableAddress ());
 	local (adrsite = manilaSuite.getSiteAddress (pta));
 	local (siteUrl = manilaSuite.getSiteUrl (adrsite));
@@ -49,6 +49,6 @@ on relativeUrl (path) {
 				if myGlossRef (callbackResult, @url) {
 					return (url)}}}};
 	
-	«Didn't find a shortcut -- use the path as a url
+	//Didn't find a shortcut -- use the path as a url
 	path = string.popLeading (path, '/');
 	return (siteUrl + path)}

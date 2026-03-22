@@ -1,12 +1,12 @@
 on init () {
-	«Changes
-		«7/30/02; 3:15:00 PM by JES
-			«Initialize user.im.jabber.prefs.flConnectAtStartup to false.
-		«7/30/02; 2:08:33 PM by JES
-			«Init user.im.jabber.flActive to false instead of true. If running in Frontier, set user.im.jabber.resource to Frontier instead of RadioUserLand.
-		«5/14/02; 1:51:34 PM by JB
-			«Changelog created.
-	«Initializes the data at user.im.jabber
+	//Changes
+		//7/30/02; 3:15:00 PM by JES
+			//Initialize user.im.jabber.prefs.flConnectAtStartup to false.
+		//7/30/02; 2:08:33 PM by JES
+			//Init user.im.jabber.flActive to false instead of true. If running in Frontier, set user.im.jabber.resource to Frontier instead of RadioUserLand.
+		//5/14/02; 1:51:34 PM by JB
+			//Changelog created.
+	//Initializes the data at user.im.jabber
 	on niceCreateTable ( adr ) {
 		if not defined(adr^) {
 			new (tableType, adr)}};
@@ -72,7 +72,7 @@ on init () {
 		local (prefs = @user.im.jabber.prefs );
 		niceCreateTable ( prefs );
 		niceSetBool ( @prefs^.flDebug, false );
-		«niceSetBool ( @prefs^.forceActive, false ) // might be used later
+		//niceSetBool ( @prefs^.forceActive, false ) // might be used later
 		niceSetBool ( @prefs^.flConnectAtStartup, false );
 		niceSetNum ( @prefs^.streamScanFrequency, 30 )}; // half a second
 	bundle { // system.temp tables

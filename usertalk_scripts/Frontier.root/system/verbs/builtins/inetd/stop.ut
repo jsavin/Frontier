@@ -1,5 +1,5 @@
-«Shut down all daemons.
-	«Saturday, December 20, 1997 at 7:19:00 PM by PBS
+//Shut down all daemons.
+	//Saturday, December 20, 1997 at 7:19:00 PM by PBS
 local (i);
 local (listenerTableAdr = @user.inetd.listens);
 for i = sizeOf (listenerTableAdr^) downTo 1 {

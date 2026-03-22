@@ -1,7 +1,7 @@
 on updateAllChangesTables () {
-	«Changes
-		«6/17/05; 7:56:17 PM by JES
-			«Created. Called in its own thread from mainResponder.init (which itself is called once a minute), our job is to loop over all open databases and make sure that their changes tables are up-to-date.
+	//Changes
+		//6/17/05; 7:56:17 PM by JES
+			//Created. Called in its own thread from mainResponder.init (which itself is called once a minute), our job is to loop over all open databases and make sure that their changes tables are up-to-date.
 	local (adrdb, i, sizetable = sizeOf (user.databases));
 	for i = 1 to sizetable {
 		try {
@@ -11,5 +11,5 @@ on updateAllChangesTables () {
 					if defined (adrdb^.["#changes"]) {
 						mainResponder.subscriptions.updateChangesTable (@adrdb^.["#changes"], true)}}}}};
 	return};
-«bundle //test code
-	«updateAllChangesTables ()
+//bundle //test code
+	//updateAllChangesTables ()

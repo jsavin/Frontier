@@ -1,4 +1,4 @@
-on close (obj) { «Close an object
+on close (obj) { //Close an object
 	if Finder.isScriptable () {
 		return (appleEvent (Finder.id, 'core', 'clos', '----', Finder.finderSpec (obj)))}
 	else {

@@ -1,2 +1,2 @@
-on setUnits (label) { «this string is added to the end of every bar value   
+on setUnits (label) { //this string is added to the end of every bar value   
 	return (appleEvent (BarChart.id, 'BARC', 'sunt', '----', string (label)))}

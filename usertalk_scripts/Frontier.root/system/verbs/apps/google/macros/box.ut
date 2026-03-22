@@ -1,11 +1,11 @@
 on box (searchterm, ctResults=10, tableWidth=191, frameColor="#000000", boxColor="#FFFFFF", helpLink="http://radio.userland.com/googleBox", textClass="", align="") {
-	«Changes
-		«4/11/02; 6:19:45 PM by DW
-			«Add an align parameter.
-		«4/11/02; 2:08:24 PM by DW
-			«During the private test period we could request as many as 100 results, so no matter what we always asked for 100, and cached the response, so if you decided you wanted 25 instead of 10, we wouldn't have to hit Google's server again. They apparently changed the limit on the server, so no one's google-boxes are working. This fix should make it work again.
-		«4/9/02; 12:25:34 PM by DW
-			«Created.
+	//Changes
+		//4/11/02; 6:19:45 PM by DW
+			//Add an align parameter.
+		//4/11/02; 2:08:24 PM by DW
+			//During the private test period we could request as many as 100 results, so no matter what we always asked for 100, and cached the response, so if you decided you wanted 25 instead of 10, we wouldn't have to hit Google's server again. They apparently changed the limit on the server, so no one's google-boxes are working. This fix should make it work again.
+		//4/9/02; 12:25:34 PM by DW
+			//Created.
 	local (htmltext = "", indentlevel = 0);
 	on add (s) {
 		htmltext = htmltext + (string.filledstring ("\t", indentlevel) + s + "\r");};
@@ -52,5 +52,5 @@ on box (searchterm, ctResults=10, tableWidth=191, frameColor="#000000", boxColor
 		add ("<br><table><tr><td valign=\"top\"><a href=\"" + helpLink + "\"><img src=\"http://static.userland.com/shortcuts/images/qbullets/help.gif\" width=\"12\" height=\"11\" border=\"0\" alt=\"Help link\"></a></td><td valign=\"top\">" + textpre + "&nbsp;<i>" + whenLastRead + ".</i>" + textpost + "</td></tr></table>");
 		add ("</td></tr></table></td></tr></table>"); indentlevel--};
 	return (htmltext)};
-«bundle //test code
-	«webbrowser.displaytext (box ("dhrb", 25, boxcolor:"whitesmoke", align:"right") + string.filledstring ("oh the buzzing of the bees ", 500))
+//bundle //test code
+	//webbrowser.displaytext (box ("dhrb", 25, boxcolor:"whitesmoke", align:"right") + string.filledstring ("oh the buzzing of the bees ", 500))

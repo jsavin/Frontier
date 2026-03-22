@@ -1,6 +1,6 @@
 on init (adrSite) {
-	«manilaSuite.AccessControl.init : 04/05/20, 17:18:13 by DAB
-		«manilaFixer.accessControl.init : 04/05/08, 11:49:07 by DAB
+	//manilaSuite.AccessControl.init : 04/05/20, 17:18:13 by DAB
+		//manilaFixer.accessControl.init : 04/05/08, 11:49:07 by DAB
 	local (adrNewsSite = manilaSuite.getNewsSiteAddress(adrSite));
 	if not defined(adrNewsSite^.accessControl) {
 		new(tabletype, @adrNewsSite^.accessControl);

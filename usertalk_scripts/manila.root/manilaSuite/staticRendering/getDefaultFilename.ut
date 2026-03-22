@@ -1,6 +1,6 @@
 on getDefaultFilename () {
-	«Get the name of the default file name, usually index.html or default.html.
-		«03/13/00; 10:15:59 PM by PBS
+	//Get the name of the default file name, usually index.html or default.html.
+		//03/13/00; 10:15:59 PM by PBS
 	
 	local (pta = html.getPageTableAddress ());
 	

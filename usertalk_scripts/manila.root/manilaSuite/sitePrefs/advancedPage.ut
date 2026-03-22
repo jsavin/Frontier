@@ -1,19 +1,19 @@
 on advancedPage (pta=nil) {
-	«Changes:
-		«3/25/06; 2:13:04 AM by JES
-			«When calling handlers, replace all left-curly-brace characters with HTML entities. Prevents pseudo-macros which are replaced in Manila's filters from being inadvertently lost.
-		«12/13/05; 2:11:07 AM by JES
-			«If an advanced page handler has a sub-item named url, use [siteUrl] + url for the link in the advanced prefs menu. This allows handlers to link to pages outside of advanced prefs (like Download My Site).
-		«12/13/05; 2:00:59 AM by JES
-			«If an advanced page handler has a sub-item named condition, use it to determine whether or not to display the link. Conditions can be booleans, strings (which are evaluated) or scripts (which are called).
-			«Needed for the Download My Site link, which only appears if site downloads are enabled on the server.
-		«3/1/05; 1:07:31 AM by JES
-			«Fixed issue where titles on prefs pages would be rendered twice at the top of the page -- once by the template, and once in this script.
-			«For the page title, include the name of the object being edited.
-		«2/16/05; 5:03:09 AM by JES
-			«Handlers now have the abiity to override the default height by applying a multipler named iFrameHeight in their table. This is multiplied by the default height to get the actual height used in the iframe tag.
-		«05/13/04, 16:46:15 by DAB
-			«Created. This is the dispatch procedure for the advanced prefs. We build the links across the top here, but call handlers for each. Messages at manilaData.localization.languages.english.strings.admin.
+	//Changes:
+		//3/25/06; 2:13:04 AM by JES
+			//When calling handlers, replace all left-curly-brace characters with HTML entities. Prevents pseudo-macros which are replaced in Manila's filters from being inadvertently lost.
+		//12/13/05; 2:11:07 AM by JES
+			//If an advanced page handler has a sub-item named url, use [siteUrl] + url for the link in the advanced prefs menu. This allows handlers to link to pages outside of advanced prefs (like Download My Site).
+		//12/13/05; 2:00:59 AM by JES
+			//If an advanced page handler has a sub-item named condition, use it to determine whether or not to display the link. Conditions can be booleans, strings (which are evaluated) or scripts (which are called).
+			//Needed for the Download My Site link, which only appears if site downloads are enabled on the server.
+		//3/1/05; 1:07:31 AM by JES
+			//Fixed issue where titles on prefs pages would be rendered twice at the top of the page -- once by the template, and once in this script.
+			//For the page title, include the name of the object being edited.
+		//2/16/05; 5:03:09 AM by JES
+			//Handlers now have the abiity to override the default height by applying a multipler named iFrameHeight in their table. This is multiplied by the default height to get the actual height used in the iframe tag.
+		//05/13/04, 16:46:15 by DAB
+			//Created. This is the dispatch procedure for the advanced prefs. We build the links across the top here, but call handlers for each. Messages at manilaData.localization.languages.english.strings.admin.
 	if pta == nil {pta = html.getPageTableAddress()};
 	local (adrSite= manilaSuite.getManilaSiteAddress(pta));
 	local (flContentEditor = false);
@@ -45,15 +45,15 @@ on advancedPage (pta=nil) {
 					pta^.title = pta^.title + ": " + manilaSuite.getString ("admin." + pagename + "PageTitle", pta:pta)}}
 			else {
 				pta^.title = pta^.title + ": " + manilaSuite.getString ("admin." + pagename + "SectionName", pta:pta)}};
-		«PBS 12/03/01: get localized Navigation page title
+		//PBS 12/03/01: get localized Navigation page title
 		if flContentEditor {
 			pta^. title = manilaSuite.getString ("admin.NavigationSectionName", pta: pta);
 			pta^.navigator = @pta^.adrSiteRootTable^.["#navigator"]}; //use site navigator
-		«add ("\r<h2>" + pta^.title + "</h2>")
+		//add ("\r<h2>" + pta^.title + "</h2>")
 		if not flContentEditor {
 			add (manilaSuite.getString ("admin.advancedPageDescription", pta: pta) );
 			add("\r<p>");
-			«build the navigation links
+			//build the navigation links
 			local (adrnav = @manilaSuite.sitePrefs.advancedPageMenu);
 			local (i, adr, lastNum=1, nme, sectionName, delim="", url, sizenav = sizeOf (adrnav^));
 			for i = 1 to sizenav {
@@ -89,7 +89,7 @@ on advancedPage (pta=nil) {
 			add("\r</p>")}};
 	
 	bundle { //add a meta tag
-		«This page should expire immediately, it should never be cached. For this to work, the template should include the {meta} safe macro.4
+		//This page should expire immediately, it should never be cached. For this to work, the template should include the {meta} safe macro.4
 		
 		local (s = "<meta http-equiv='Expires' content='Mon, 01 Jan 1990 01:00:00 GMT'>");
 		s = s + "\r<meta http-equiv='cache-control' content='no-cache'>";
@@ -106,12 +106,12 @@ on advancedPage (pta=nil) {
 		replacementTable.displayName = manilaSuite.sitePrefs.utility.getDisplayName (pta, pagename)};
 	
 	if pagename != "" {
-		«check the item out now
+		//check the item out now
 		local (adrObject = manilaSuite.custody.getAdvancedItemAddress(pagename, adrSite));
 		if not manilaSuite.custody.checkOut(adrObject, pta^.adrMemberInfo, pta^.adrSiteRootTable, false) {
 			add(manilaSuite.sitePrefs.utility.errorMessage("cantEditCheckedOutItemError", @replacementTable));
 			return htmltext};
-		«undo checkouts for any other advanced items this user owns in this site
+		//undo checkouts for any other advanced items this user owns in this site
 		manilaSuite.custody.undoCheckOutAdvancedExcept(adrObject, pta^.adrMemberInfo, pta^.adrSiteRootTable);
 		
 		case true {
@@ -130,11 +130,11 @@ on advancedPage (pta=nil) {
 			if defined (manilaSuite.sitePrefs.handlers.[pagename].iFrameHeight) {
 				height = number (double (manilaSuite.sitePrefs.handlers.[pagename].iFrameHeight) * number (height))};
 			add("\r<iframe src='" + url + "'  frameborder='0' width='" + manilaSuite.sitePrefs.data.iFrameWidth + "' height = '" + height + "' title='" + pagename + "'>")
-				«add("\r<iframe src='" + url + "'  frameborder='0' width='" + manilaSuite.sitePrefs.data.iFrameWidth + "' height = '" + manilaSuite.sitePrefs.data.iFrameHeight + "' scrolling='" + manilaSuite.sitePrefs.data.iFrameScrolling + "' title='" + pagename + "'>");;
+				//add("\r<iframe src='" + url + "'  frameborder='0' width='" + manilaSuite.sitePrefs.data.iFrameWidth + "' height = '" + manilaSuite.sitePrefs.data.iFrameHeight + "' scrolling='" + manilaSuite.sitePrefs.data.iFrameScrolling + "' title='" + pagename + "'>");;
 			add (manilaSuite.getString ("admin.advancedNeedsIframes", pta: pta) );
 			add("\r</iframe>")}}
 	else {
-		«undo checkouts for ALL advanced items this user owns in this site
+		//undo checkouts for ALL advanced items this user owns in this site
 		manilaSuite.custody.undoCheckOutAdvancedExcept(nil, pta^.adrMemberInfo, pta^.adrSiteRootTable);
 		
 		add (manilaSuite.getString ("admin.advancedClickToStart", pta: pta) )};

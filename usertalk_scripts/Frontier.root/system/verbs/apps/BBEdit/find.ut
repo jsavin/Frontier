@@ -1,5 +1,5 @@
 on find (s, selectionOnly = nil, caseSensitive = nil, entireWord = nil, wrapAround = nil, startAtTop = nil, extendSelection = nil, reverseSearch = nil, grep = nil, multiFile = nil, startingAt = nil, nestedFolders = nil, skipShielded = nil, skipSystem = nil, textFilesOnly = nil) {
-	«Searches for text in the front window, or optionally in multiple files.
-	«Revisions:
-		«11/01/95 ECT: fixed incomplete definition
+	//Searches for text in the front window, or optionally in multiple files.
+	//Revisions:
+		//11/01/95 ECT: fixed incomplete definition
 	return (appleEvent (BBEdit.id, 'R*ch', 'Find', '----', string (s), 'Osel', boolean (selectionOnly), 'Case', boolean (caseSensitive), 'Word', boolean (entireWord), 'Wrap', boolean (wrapAround), 'Top ', boolean (startAtTop), 'Xsel', boolean (extendSelection), 'Back', boolean (reverseSearch), 'Grep', boolean (grep), 'MltF', boolean (multiFile), 'Strt', filespec (startingAt), 'Nstd', boolean (nestedFolders), 'Shld', boolean (skipShielded), 'SysF', boolean (skipSystem), 'txtF', boolean (textFilesOnly)))}

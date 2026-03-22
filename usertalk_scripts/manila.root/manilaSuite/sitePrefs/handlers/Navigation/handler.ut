@@ -1,7 +1,7 @@
 on handler (pta, adrObject) {
-	«manilaSuite.sitePrefs.handlers.Navigation.handler : 04/05/13, 18:39:38 by DAB
-		«factored out of manilaSuite.admin.advancedPage (with extreme prejudice) 
-	«messages at manilaData.localization.languages.english.strings.admin
+	//manilaSuite.sitePrefs.handlers.Navigation.handler : 04/05/13, 18:39:38 by DAB
+		//factored out of manilaSuite.admin.advancedPage (with extreme prejudice) 
+	//messages at manilaData.localization.languages.english.strings.admin
 	local (advancedPageName = pta^.pathArgs);
 	local (adrSite= manilaSuite.getManilaSiteAddress(pta));
 	local (flMemberHasPike = manilaSuite.pike.memberHasPike (pta));

@@ -1,12 +1,12 @@
 on getUsersMapKey (memberKey, adrMembershipGroup=nil) {
-	«Changes
-		«12/13/05; 1:39:47 AM by JES
-			«Only rebuild the usersMap table when usersMapNextKey is undefined, if its size is different from the size of the membership group's users table.
-		«8/4/05; 3:18:43 AM by JES
-			«If the key for the given member doesn't match the email address for the member's key, delete both and create a new mapping.
-			«This should gradually correct bad data in the usersMap and member records.
-		«11/24/04; 6:19:32 PM by JES
-			«Created. Given a memberKey, get the numeric usersMap key associated with the member.
+	//Changes
+		//12/13/05; 1:39:47 AM by JES
+			//Only rebuild the usersMap table when usersMapNextKey is undefined, if its size is different from the size of the membership group's users table.
+		//8/4/05; 3:18:43 AM by JES
+			//If the key for the given member doesn't match the email address for the member's key, delete both and create a new mapping.
+			//This should gradually correct bad data in the usersMap and member records.
+		//11/24/04; 6:19:32 PM by JES
+			//Created. Given a memberKey, get the numeric usersMap key associated with the member.
 	if adrMembershipGroup == nil {
 		local (pta = html.getPageTableAddress ());
 		local (groupName = pta^.defaultMembershipGroup);

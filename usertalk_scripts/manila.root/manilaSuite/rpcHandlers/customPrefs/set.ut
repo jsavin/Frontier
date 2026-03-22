@@ -1,12 +1,12 @@
 on set (username, password, siteName, s, windowInfoTable) {
-	«Set the custom prefs XML text.
-		«Changes:
-			«02/06/00; 9:07:14 PM by PBS
-				«Save the window info table.
-			«05/30/00; 9:02:23 PM by JES
-				«Bug fix: Setting the custom prefs now updates the new member signup wizard as well.
-			«02/22/01; 12:06:02 AM by JES
-				«Convert outgoing text from Mac to Latin, if the server is a Mac.
+	//Set the custom prefs XML text.
+		//Changes:
+			//02/06/00; 9:07:14 PM by PBS
+				//Save the window info table.
+			//05/30/00; 9:02:23 PM by JES
+				//Bug fix: Setting the custom prefs now updates the new member signup wizard as well.
+			//02/22/01; 12:06:02 AM by JES
+				//Convert outgoing text from Mac to Latin, if the server is a Mac.
 	
 	bundle { //make sure this person is a managing editor of the site.
 		local (beginningErrorString = "Can't set the custom prefs because ");
@@ -43,7 +43,7 @@ on set (username, password, siteName, s, windowInfoTable) {
 		scriptError ("Can't update the custom member preferences because " + tryerror)};
 	
 	bundle { //PBS 20/06/00: save the window info table
-		«local (adrSite = parentOf (adrNewsSite^)) // 05/30/00 JES
+		//local (adrSite = parentOf (adrNewsSite^)) // 05/30/00 JES
 		manilaSuite.rpcUtils.setWindowInfoTable (windowInfoTable, "customPrefs", adrSite)};
 	
 	fileMenu.saveMyRoot (adrNewsSite);

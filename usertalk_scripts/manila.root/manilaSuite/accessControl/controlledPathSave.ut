@@ -1,9 +1,9 @@
 on controlledPathSave (adrSite, pathID, permittedCohorts) {
-	«12/11/07; 9:45:47 PM by LL
-		«Bug fix: When leaving the controlled path set to everyone unchanged, fix a bug where it tried to delete a value that didn't exist. 
-	«manilaSuite.accessControl.controlledPathSave ; 05/05/16, 00:01:16 by DAB
-		«create/modify the cohorts permitted to access a known path. 
-		«you can modify a non standard path, biut not add it here
+	//12/11/07; 9:45:47 PM by LL
+		//Bug fix: When leaving the controlled path set to everyone unchanged, fix a bug where it tried to delete a value that didn't exist. 
+	//manilaSuite.accessControl.controlledPathSave ; 05/05/16, 00:01:16 by DAB
+		//create/modify the cohorts permitted to access a known path. 
+		//you can modify a non standard path, biut not add it here
 	local (adrTable = adrSite);
 	on pathToAddress() {
 		local (sx = string.popTrailing(string.popLeading(adrNewsSite^.accessControl.controlledPaths.[pathid].path, "/"), "/"));
@@ -21,8 +21,8 @@ on controlledPathSave (adrSite, pathID, permittedCohorts) {
 		new(tabletype, @adrNewsSite^.accessControl.controlledPaths)};
 	
 	case true {
-		permittedCohorts == {}; «falls back to default
-		permittedCohorts contains "Everyone" { «same as no restriction
+		permittedCohorts == {}; //falls back to default
+		permittedCohorts contains "Everyone" { //same as no restriction
 			if defined(adrNewsSite^.accessControl.controlledPaths.[pathid].cohorts) {
 				delete(@adrNewsSite^.accessControl.controlledPaths.[pathid].cohorts)};
 			if pathToAddress() {
@@ -40,5 +40,5 @@ on controlledPathSave (adrSite, pathID, permittedCohorts) {
 	
 	return true};
 bundle {
-	«controlledPathSave (@funkymanilawebsite, "stats", {"Members Only"})
+	//controlledPathSave (@funkymanilawebsite, "stats", {"Members Only"})
 	controlledPathSave (@funkymanilawebsite, "stats", {"Everyone"})}

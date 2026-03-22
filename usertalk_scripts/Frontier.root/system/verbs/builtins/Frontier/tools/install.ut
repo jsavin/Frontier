@@ -1,47 +1,47 @@
 on install (f) {
-	«Changes:
-		«2/10/06; 3:30:51 PM by JES
-			«Fix typo -> "suite", not "sutie".
-		«2/10/06; 12:37:53 AM by JES
-			«If a tool defines a script named customInstall in its Suite table, run it last, after all default registration, but before refreshing the menubar, calling afterInstall callbacks and kicking off the Tool's thread.
-		«Archive:
-			«06/24/02; 3:05:44 PM by JES
-				«If a Tool's suite has a localization sub-table, register the languages in the appropriate localization sub-table(s).
-			«06/12/02; 12:13:04 AM by JES
-				«Install callbacks in the user.radio.callbacks table, if the Tool has callbacks at toolSuite.callbacks.radio, and user.radio.callbacks is defined.
-			«03/07/02; 12:02:37 AM by JES
-				«Call scheduler.monitorThreads after installing the Tool, to kick off its thread (if it exists).
-			«12/01/01; 6:34:14 PM by JES
-				«Fixed a bug installing Tools windowTypes in the user.tools.windowTypes table.
-			«11/30/01; 5:04:11 PM by JES
-				«Install windowTypes and noteTypes addresses inside a try statement, so that installation won't fail if there's already a table at the address.
-			«11/29/01; 5:12:36 PM by JES
-				«Fixed a bug installing windowTypes.
-			«11/26/01; 10:58:48 PM by JES
-				«Call callbacks at user.tools.callbacks.beforeInstall with the path to the Tool database before installing the Tool. If the callback returns false, don't install the Tool.
-				«Call callbacks at user.tools.callbacks.afterInstall with the address of the Tool's database, after installing the Tool. The return value is ignored.
-			«10/07/01; 8:32:22 PM by JES
-				«Only create the user.tools.databases table for this tool if it's not already defined. Create user.tools.databases.[toolName].flEnabled if not already defined.
-			«07/02/01; 2:54:03 AM by JES
-				«Install user windowTypes.
-			«05/10/01; 4:52:47 PM by JES
-				«If this is a Macintosh, make sure that .root files have the correct type/creator codes.
-			«04/28/01; 7:44:27 PM by JES
-				«Install the website framework site in a try block, because user.webserver.responders.websiteFramework may not exist.
-			«12/26/00; 5:39:46 PM by PBS
-				«Rebuild the menubar, in case the Tool has a menu referenced in user.menus.
-			«11/28/00; 12:30:13 by JES
-				«Call playlist.init before installing tools. Call the tool's upgradeToTool script if flUpgradeToTool is true.
-			«10/27/00; 2:39:32 PM by JES
-				«Make sure the icons folder exists before attempting to write icons to disk.
-			«10/18/00; 8:17:36 PM by JES
-				«Fixed a bug where a tool's icon files would not be written to disk.
-			«10/03/00; 10:33:37 PM by PBS
-				«Fix for installing callbacks -- the parameters to table.assign were switched.
-			«10/01/00; 1:16:35 AM by PBS
-				«Minor cleanups.
-			«09/26/00 at 4:50:49 PM by JES
-				«Created. Install a tool, given the path to the tool's guest database.
+	//Changes:
+		//2/10/06; 3:30:51 PM by JES
+			//Fix typo -> "suite", not "sutie".
+		//2/10/06; 12:37:53 AM by JES
+			//If a tool defines a script named customInstall in its Suite table, run it last, after all default registration, but before refreshing the menubar, calling afterInstall callbacks and kicking off the Tool's thread.
+		//Archive:
+			//06/24/02; 3:05:44 PM by JES
+				//If a Tool's suite has a localization sub-table, register the languages in the appropriate localization sub-table(s).
+			//06/12/02; 12:13:04 AM by JES
+				//Install callbacks in the user.radio.callbacks table, if the Tool has callbacks at toolSuite.callbacks.radio, and user.radio.callbacks is defined.
+			//03/07/02; 12:02:37 AM by JES
+				//Call scheduler.monitorThreads after installing the Tool, to kick off its thread (if it exists).
+			//12/01/01; 6:34:14 PM by JES
+				//Fixed a bug installing Tools windowTypes in the user.tools.windowTypes table.
+			//11/30/01; 5:04:11 PM by JES
+				//Install windowTypes and noteTypes addresses inside a try statement, so that installation won't fail if there's already a table at the address.
+			//11/29/01; 5:12:36 PM by JES
+				//Fixed a bug installing windowTypes.
+			//11/26/01; 10:58:48 PM by JES
+				//Call callbacks at user.tools.callbacks.beforeInstall with the path to the Tool database before installing the Tool. If the callback returns false, don't install the Tool.
+				//Call callbacks at user.tools.callbacks.afterInstall with the address of the Tool's database, after installing the Tool. The return value is ignored.
+			//10/07/01; 8:32:22 PM by JES
+				//Only create the user.tools.databases table for this tool if it's not already defined. Create user.tools.databases.[toolName].flEnabled if not already defined.
+			//07/02/01; 2:54:03 AM by JES
+				//Install user windowTypes.
+			//05/10/01; 4:52:47 PM by JES
+				//If this is a Macintosh, make sure that .root files have the correct type/creator codes.
+			//04/28/01; 7:44:27 PM by JES
+				//Install the website framework site in a try block, because user.webserver.responders.websiteFramework may not exist.
+			//12/26/00; 5:39:46 PM by PBS
+				//Rebuild the menubar, in case the Tool has a menu referenced in user.menus.
+			//11/28/00; 12:30:13 by JES
+				//Call playlist.init before installing tools. Call the tool's upgradeToTool script if flUpgradeToTool is true.
+			//10/27/00; 2:39:32 PM by JES
+				//Make sure the icons folder exists before attempting to write icons to disk.
+			//10/18/00; 8:17:36 PM by JES
+				//Fixed a bug where a tool's icon files would not be written to disk.
+			//10/03/00; 10:33:37 PM by PBS
+				//Fix for installing callbacks -- the parameters to table.assign were switched.
+			//10/01/00; 1:16:35 AM by PBS
+				//Minor cleanups.
+			//09/26/00 at 4:50:49 PM by JES
+				//Created. Install a tool, given the path to the tool's guest database.
 	
 	bundle { //run beforeInstall callbacks -- if any of the callbacks returns false, don't install the Tool
 		local (adrcallbacks = @user.tools.callbacks.beforeInstall);
@@ -66,7 +66,7 @@ on install (f) {
 	local (name = Frontier.tools.cleanToolName (fname));
 	
 	on getTable (itemName, adrAdrTable) {
-		«Return true if the table exists in the tool gdb and is non-empty. Return false otherwise. adrAdrTable^ gets the address of the table.
+		//Return true if the table exists in the tool gdb and is non-empty. Return false otherwise. adrAdrTable^ gets the address of the table.
 		local (adrTable = @adrTool^.[name + itemName]);
 		if defined (adrTable^) { //does the item exist?
 			if sizeOf (adrTable^) > 0 { //is the table non-empty?
@@ -74,7 +74,7 @@ on install (f) {
 				return (true)}};
 		return (false)};
 	on installItem (adrTable, itemName, flCopy=false) {
-		«Install only if the item exists in the tool database.
+		//Install only if the item exists in the tool database.
 		local (adrItem);
 		if getTable (itemName, @adrItem) {
 			if flCopy {
@@ -269,5 +269,5 @@ on install (f) {
 	scheduler.monitorThreads (); //start the Tool's thread immediately
 	
 	return (true)};
-«bundle //debugging
-	«install (frontier.pathString + "Guest Databases:apps:userlandwidgets.root")
+//bundle //debugging
+	//install (frontier.pathString + "Guest Databases:apps:userlandwidgets.root")

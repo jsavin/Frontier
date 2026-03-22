@@ -1,7 +1,7 @@
 on modifySites (editorialMode) {
-	«Changes
-		«3/14/07; 11:47:16 PM by LL
-			«Created.
+	//Changes
+		//3/14/07; 11:47:16 PM by LL
+			//Created.
 	local (adrItem);
 	local (htmltext);
 	

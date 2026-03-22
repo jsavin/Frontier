@@ -1,9 +1,9 @@
 on dive (adrsite, path, indexPageNames={"default", "index"}, flCreate=false, typeToCreate="story") {
-	«Changes
-		«4/27/06; 6:20:12 PM by JES
-			«Created. Given the address of a Manila site and a path, dive into the site's hierarchy.
-			«Returns the address of the item specified by path, or false if not found.
-			«Can be called outside the web server context.
+	//Changes
+		//4/27/06; 6:20:12 PM by JES
+			//Created. Given the address of a Manila site and a path, dive into the site's hierarchy.
+			//Returns the address of the item specified by path, or false if not found.
+			//Can be called outside the web server context.
 	
 	path = string.popLeading (path, "/");
 	local (adrTable = @adrsite^.["#hierarchy"]);

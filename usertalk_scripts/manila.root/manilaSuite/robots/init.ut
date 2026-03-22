@@ -1,7 +1,7 @@
 on init (adrsite=nil) {
-	«Changes
-		«7/8/03; 1:25:51 PM by JES
-			«Created.
+	//Changes
+		//7/8/03; 1:25:51 PM by JES
+			//Created.
 	if adrsite == nil {
 		adrsite = manilaSuite.getSiteAddress ()};
 	local (adrnewssite = manilaSuite.getNewsSiteAddress (adrsite));
@@ -21,5 +21,5 @@ on init (adrsite=nil) {
 		adrdata^.paths.["/stats/referers"] = true};
 	
 	return (adrdata)};
-«bundle //test code
-	«init (@jaketest2ManilaWebsite)
+//bundle //test code
+	//init (@jaketest2ManilaWebsite)

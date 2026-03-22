@@ -1,2 +1,2 @@
-on emptyTrash () { «empties the Finder's trashcan, no confirmation
+on emptyTrash () { //empties the Finder's trashcan, no confirmation
 	return (finderEvent (Finder.id, Finder.class, 'empt'))}

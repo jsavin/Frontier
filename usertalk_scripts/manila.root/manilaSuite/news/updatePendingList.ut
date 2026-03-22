@@ -1,6 +1,6 @@
 on updatePendingList (adrMsgTable, adrSite) {
-	«Update the pending list, if this item has not yet been posted.
-		«04/20/00; 2:22:54 PM by PBS
+	//Update the pending list, if this item has not yet been posted.
+		//04/20/00; 2:22:54 PM by PBS
 	
 	local (flDelete = false);
 	

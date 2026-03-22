@@ -1,17 +1,17 @@
 on addReferer (pta=nil) {
-	«Changes:
-		«11/22/06; 3:03:50 PM by LL
-			«Support for new server-level preference to disable referer logging. The site-level preference can only be used to turn off logging for a site when the server level preference is enabled for referers logging.
-		«12/13/05; 4:26:03 AM by JES
-			«Skip referers on port 5336 and on this server's admin port (most likely also 5336).
-		«5/8/03; 1:25:51 PM by JES
-			«Call callbacks in config.manila.callbacks.addReferer. Each script in this table gets an opportunity to block the referer logging.
-			«Callbacks take one parameter, pta -- the page table address.
-			«If any callback script returns false, the referer is blocked.
-		«7/20/02; 1:41:50 AM by JES
-			«If a newsSite pref named flLogReferers is defined and false, then don't log the referers at all. Added to accomodate scaling issues with very high-traffic sites.
-		«11/02/00; 2:46:11 PM by WM
-			«Add a referer to the referers table.
+	//Changes:
+		//11/22/06; 3:03:50 PM by LL
+			//Support for new server-level preference to disable referer logging. The site-level preference can only be used to turn off logging for a site when the server level preference is enabled for referers logging.
+		//12/13/05; 4:26:03 AM by JES
+			//Skip referers on port 5336 and on this server's admin port (most likely also 5336).
+		//5/8/03; 1:25:51 PM by JES
+			//Call callbacks in config.manila.callbacks.addReferer. Each script in this table gets an opportunity to block the referer logging.
+			//Callbacks take one parameter, pta -- the page table address.
+			//If any callback script returns false, the referer is blocked.
+		//7/20/02; 1:41:50 AM by JES
+			//If a newsSite pref named flLogReferers is defined and false, then don't log the referers at all. Added to accomodate scaling issues with very high-traffic sites.
+		//11/02/00; 2:46:11 PM by WM
+			//Add a referer to the referers table.
 	if pta == nil {
 		pta = html.getPageTableAddress ()};
 	if not defined (pta^.requestHeaders.referer) {

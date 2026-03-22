@@ -1,9 +1,9 @@
 on getPrefsAddressForSite (adrSite, adrAdrPrefs) {
-	«Changes
-		«3/18/04; 3:26:32 PM by JES
-			«Make sure that the prefs table's name is the site's canonical name before returning.
-		«06/12/00; 11:11:09 PM by PBS
-			«Created. adrAdrPrefs^ gets the address of the prefs table for this site. Return false if no prefs.
+	//Changes
+		//3/18/04; 3:26:32 PM by JES
+			//Make sure that the prefs table's name is the site's canonical name before returning.
+		//06/12/00; 11:11:09 PM by PBS
+			//Created. adrAdrPrefs^ gets the address of the prefs table for this site. Return false if no prefs.
 	
 	local (canonicalSiteName);
 	try { //set canonicalSiteName
@@ -25,7 +25,7 @@ on getPrefsAddressForSite (adrSite, adrAdrPrefs) {
 			adrAdrPrefs^ = adrPrefs;
 			return (true)}};
 	return (false)};
-«bundle //testing
-	«local (adrprefs)
-	«getPrefsAddressForSite (@createASiteManilaWebsite, @adrprefs)
-	«dialog.notify (adrprefs)
+//bundle //testing
+	//local (adrprefs)
+	//getPrefsAddressForSite (@createASiteManilaWebsite, @adrprefs)
+	//dialog.notify (adrprefs)

@@ -1,7 +1,7 @@
 on isHomePage (adrMsgTable, adrSite=nil) {
-	«Is a discussion group message a home page?
-		«This script can run outside the page rendering context if adrSite is not nil.
-		«10/19/99; 3:51:09 PM by PBS
+	//Is a discussion group message a home page?
+		//This script can run outside the page rendering context if adrSite is not nil.
+		//10/19/99; 3:51:09 PM by PBS
 	
 	local (category = manilaSuite.discuss.getHomePagesCategory (adrSite));
 	return (manilaSuite.discuss.isInCategory (adrMsgTable, category))}

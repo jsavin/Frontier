@@ -1,6 +1,6 @@
 on checkIn (userName, password, adrObject) {
-	«Check in an object.
-		«Wed, Jun 10, 1998 at 7:52:29 PM by PBS
+	//Check in an object.
+		//Wed, Jun 10, 1998 at 7:52:29 PM by PBS
 	
 	custody.authenticate (userName, password, adrObject, false);
 	

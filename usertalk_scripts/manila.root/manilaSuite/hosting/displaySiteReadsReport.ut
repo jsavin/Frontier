@@ -1,9 +1,9 @@
 on displaySiteReadsReport (flAllTime=true) {
-	«Display the site reads report.
-		«05/09/00; 1:08:52 AM by PBS
-		«Changes:
-			«05/15/00; 7:51:48 PM by JES
-				«localized
+	//Display the site reads report.
+		//05/09/00; 1:08:52 AM by PBS
+		//Changes:
+			//05/15/00; 7:51:48 PM by JES
+				//localized
 	
 	local (pta, tempTable);
 	try { // try to get pta for language (won't work outside wsf context)

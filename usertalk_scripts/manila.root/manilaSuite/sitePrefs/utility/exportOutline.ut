@@ -1,9 +1,9 @@
 on exportOutline (s) {
-	«manilaSuite.sitePrefs.utility.exportOutline : 04/05/13, 21:29:04 by DAB
-		«factored from manilaSuite.sitePrefs.advancedPage
-	«s = string.replaceall (s, "\t", "  ")
-	«s = string.replaceall (s, "&", "&amp;")
-	«s = string.replaceall (s, "<", "&lt;")
-	«s = string.replaceall (s, ">", "&gt;")
-	«return (s)
+	//manilaSuite.sitePrefs.utility.exportOutline : 04/05/13, 21:29:04 by DAB
+		//factored from manilaSuite.sitePrefs.advancedPage
+	//s = string.replaceall (s, "\t", "  ")
+	//s = string.replaceall (s, "&", "&amp;")
+	//s = string.replaceall (s, "<", "&lt;")
+	//s = string.replaceall (s, ">", "&gt;")
+	//return (s)
 	return string.replaceAll (string.replaceAll (string.replaceall (string.replaceall (string.replaceall (string.replaceall (s, "\t", "  "), "&", "&amp;"), "<", "&lt;"), ">", "&gt;"), "\\", "&#092;"), "\"", "&quot;")}

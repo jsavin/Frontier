@@ -1,9 +1,9 @@
 on listenStream (port, depth, callback, refcon = 0, ip=0) {
-	«Change Notes
-		«1/16/00; 12:17:04 PM by RAB
-			«Support for IP address control on Windows.
-		«Tue, Apr 25, 2000 at 11:27:05 PM by AR
-			«Support for IP address control on Mac OS PPC.
+	//Change Notes
+		//1/16/00; 12:17:04 PM by RAB
+			//Support for IP address control on Windows.
+		//Tue, Apr 25, 2000 at 11:27:05 PM by AR
+			//Support for IP address control on Mac OS PPC.
 	on kernelCall (port, depth, callback, refcon, addr) {
 		kernel (tcp.listenStream)};
 	on oldKernelCall (port, depth, callback, refcon) {

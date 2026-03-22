@@ -1,6 +1,6 @@
 on getType (adr) { //5.0 -- this code is widely replicated
 	local (type = unknownType);
-	if adr != "" { «a window is open
+	if adr != "" { //a window is open
 		if window.isMenuScript (adr) {
 			type = scripttype}
 		else {

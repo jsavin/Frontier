@@ -1,12 +1,12 @@
 on getSignature () {
-	«Sat, Aug 10, 1996 at 12:10:52 AM by BAD
-		«Added alias folowing capability for Eudora folder
+	//Sat, Aug 10, 1996 at 12:10:52 AM by BAD
+		//Added alias folowing capability for Eudora folder
 	local {
 		sigFPath;
 		signature};
 	with Eudora,eventInfo {
 		sigFPath = file.getSystemFolderPath() + get(setting[6214]) + ":";
-		if file.isAlias(sigFPath) { « Follow any aliases
+		if file.isAlias(sigFPath) { // Follow any aliases
 			sigFPath = file.followAlias(sigFPath)};
 		sigFPath = sigFPath + get(setting[9205]) + ":" + get(setting[7210])};
 	file.open(sigFPath);

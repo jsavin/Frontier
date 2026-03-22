@@ -1,9 +1,9 @@
 on numberPref (prompt, adrnumber, lowerbound=0, upperbound=infinity, colspan=1, textToRight="") {
-	«Changes:
-		«8/3/02; 8:43:10 PM by JES
-			«Quote characters in addresses were mangling the HTML, so now addresses are url-encoded when generating the form element. When processing a POST, we look for the url-encoded field in the postArgs table.
-		«2/5/02; 11:34:44 AM by PBS
-			«Conditionalized to work in Frontier.
+	//Changes:
+		//8/3/02; 8:43:10 PM by JES
+			//Quote characters in addresses were mangling the HTML, so now addresses are url-encoded when generating the form element. When processing a POST, we look for the url-encoded field in the postArgs table.
+		//2/5/02; 11:34:44 AM by PBS
+			//Conditionalized to work in Frontier.
 	local (pta = html.getpagetableaddress ());
 	local (size = sizeof (string (upperbound)));
 	if sizeof (string (lowerbound)) > size {

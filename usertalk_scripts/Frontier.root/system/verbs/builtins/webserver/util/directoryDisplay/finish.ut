@@ -1,3 +1,3 @@
-«Script: system.verbs.builtins.webserver.util.directoryDisplay.finish; Version 1; Date: Thu, 07 May 1998 21:41:31 GMT; ID: RAB
+//Script: system.verbs.builtins.webserver.util.directoryDisplay.finish; Version 1; Date: Thu, 07 May 1998 21:41:31 GMT; ID: RAB
 on finish () {
 	return ("<TR> <TD COLSPAN=\"5\"><HR NOSHADE></TD> </TR>" + cr + "</TABLE></BODY></HTML>" + cr)}

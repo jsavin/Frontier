@@ -1,21 +1,21 @@
 on set (username, password, siteName, itemName, s, windowInfoTable) {
-	«Set the text of an advanced pref template.
-		«This script calls through the older RPC handlers.
-		«If advanced prefs items are added in the future, they should do their processing here.
-		«11/17/00; 9:10:50 PM by JES
-		«Changes:
-			«11/20/00; 5:03:29 PM by PBS
-				«Handle directory template.
-			«12/02/00; 7:15:40 PM by PBS
-				«When saving the directory template, call manilaSuite.directory.setTemplateModified, so caches know to clear.
-			«12/18/00; 4:33:25 PM by PBS
-				«Slides template.
-			«01/02/01; 11:43:28 AM by PBS
-				«adrSite wasn't defined, leading to a scriptError for some templates.
-			«02/22/01; 12:06:02 AM by JES
-				«Convert outgoing text from Mac to Latin, if the server is a Mac.
-			«10/2/01; 3:02:48 PM by PBS
-				«Print friendly template.
+	//Set the text of an advanced pref template.
+		//This script calls through the older RPC handlers.
+		//If advanced prefs items are added in the future, they should do their processing here.
+		//11/17/00; 9:10:50 PM by JES
+		//Changes:
+			//11/20/00; 5:03:29 PM by PBS
+				//Handle directory template.
+			//12/02/00; 7:15:40 PM by PBS
+				//When saving the directory template, call manilaSuite.directory.setTemplateModified, so caches know to clear.
+			//12/18/00; 4:33:25 PM by PBS
+				//Slides template.
+			//01/02/01; 11:43:28 AM by PBS
+				//adrSite wasn't defined, leading to a scriptError for some templates.
+			//02/22/01; 12:06:02 AM by JES
+				//Convert outgoing text from Mac to Latin, if the server is a Mac.
+			//10/2/01; 3:02:48 PM by PBS
+				//Print friendly template.
 	
 	local (adrHandler);
 	local (adrSite = config.manila.sites.[siteName]); //PBS 01/02/00: adrSite must be defined

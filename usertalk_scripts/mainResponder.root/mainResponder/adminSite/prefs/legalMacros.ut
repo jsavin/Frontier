@@ -1,9 +1,9 @@
 on legalMacros () {
-	«Changes
-		«9/5/02; 2:32:40 PM by JES
-			«Add () after the name of a macro in the list of legal macros, to indicate that the macro takes parameters.
-		«8/20/02; 8:17:17 PM by JES
-			«Created.
+	//Changes
+		//9/5/02; 2:32:40 PM by JES
+			//Add () after the name of a macro in the list of legal macros, to indicate that the macro takes parameters.
+		//8/20/02; 8:17:17 PM by JES
+			//Created.
 	local (pta = html.getPageTableAddress ());
 	local (bgcolors = {pta^.trbg2, pta^.trbg1});
 	local (htmltext);

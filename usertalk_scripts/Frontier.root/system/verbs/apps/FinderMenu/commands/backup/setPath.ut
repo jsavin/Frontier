@@ -1,5 +1,5 @@
-«prompt the user for the "path" to the backup folder
-	«Cleaned up: Sat, Jan 11, 1997 at 8:42:48 AM by DW.
+//prompt the user for the "path" to the backup folder
+	//Cleaned up: Sat, Jan 11, 1997 at 8:42:48 AM by DW.
 local (folder, sellist);
 FinderMenu.init ();
 sellist = finderMenu.getSelectionList ();

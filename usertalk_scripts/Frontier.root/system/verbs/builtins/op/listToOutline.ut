@@ -1,5 +1,5 @@
-on listToOutline (theList, adroutline) { «4.2
-	«10/31/97 at 12:07:54 PM by DW -- moved from toys.listToOutline
+on listToOutline (theList, adroutline) { //4.2
+	//10/31/97 at 12:07:54 PM by DW -- moved from toys.listToOutline
 	local (oldtarget = target.get (), dir = down);
 	target.set (adroutline);
 	on insertList (theList) {
@@ -16,12 +16,12 @@ on listToOutline (theList, adroutline) { «4.2
 	insertList (theList);
 	target.set (oldtarget);
 	return (theList)};
-«bundle «test code
-	«try {delete (@scratchpad.xxx)}
-	«scratchpad.theList = op.outlineToList (@tablemap.thelist)
-	«new (outlinetype, @scratchpad.xxx)
-	«target.set (@scratchpad.xxx)
-	«listToOutline (scratchpad.theList, @scratchpad.xxx)
-	«op.firstSummit ()
-	«op.deleteLine ()
-	«edit (@scratchpad.xxx)
+//bundle //test code
+	//try {delete (@scratchpad.xxx)}
+	//scratchpad.theList = op.outlineToList (@tablemap.thelist)
+	//new (outlinetype, @scratchpad.xxx)
+	//target.set (@scratchpad.xxx)
+	//listToOutline (scratchpad.theList, @scratchpad.xxx)
+	//op.firstSummit ()
+	//op.deleteLine ()
+	//edit (@scratchpad.xxx)

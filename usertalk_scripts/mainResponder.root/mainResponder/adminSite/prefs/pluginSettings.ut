@@ -1,7 +1,7 @@
 on pluginSettings () {
-	«Changes
-		«8/27/04; 2:49:31 PM by JES
-			«Created. Implement UI for specific plug-in visibility settings, available from Settings -> Manila -> Plug-ins in the Admin site.
+	//Changes
+		//8/27/04; 2:49:31 PM by JES
+			//Created. Implement UI for specific plug-in visibility settings, available from Settings -> Manila -> Plug-ins in the Admin site.
 	local (pta = html.getPageTableAddress ());
 	
 	local (htext = "");
@@ -9,7 +9,7 @@ on pluginSettings () {
 		htext = htext + (s + cr);};
 	
 	if pta^.method == "POST" {
-		«workspace.pt = pta^; edit (@workspace.pt)
+		//workspace.pt = pta^; edit (@workspace.pt)
 		local (adr);
 		for adr in @config.manila.plugins.prefs {
 			local (name = nameOf (adr^));

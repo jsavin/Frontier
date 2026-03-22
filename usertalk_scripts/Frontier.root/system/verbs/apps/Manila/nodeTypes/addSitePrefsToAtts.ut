@@ -1,6 +1,6 @@
 on addSitePrefsToAtts (adrinfo, adrAtts) {
-	«Add prefs like rpc server, rpc port, to an atts table. This allows an item to stand alone.
-		«Wed, Aug 23, 2000 at 4:34:00 PM by PBS
+	//Add prefs like rpc server, rpc port, to an atts table. This allows an item to stand alone.
+		//Wed, Aug 23, 2000 at 4:34:00 PM by PBS
 	
 	if not defined (adrAtts^.siteName) {
 		adrAtts^.canonicalSiteName = adrinfo^.siteName};

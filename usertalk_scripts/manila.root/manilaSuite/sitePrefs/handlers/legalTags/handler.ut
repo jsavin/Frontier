@@ -1,12 +1,12 @@
 on handler (pta, adrObject) {
-	«Changes
-		«4/21/07; 11:59:46 PM by TAC
-			«Bug fix for members limited html tags feature not working
-			«moved page desc above site legal tags section of page
-		«4/12/07; 4:37:16 PM by LL
-			«Support a new preference to limit members to a set of HTML formatting commands.
-		«04/17/05; 13:28:43 by DAB
-			«Created.  Borrowed from manilaSuite.admin.legalTagsPage, messages at manilaData.localization.languages.english.strings.admin
+	//Changes
+		//4/21/07; 11:59:46 PM by TAC
+			//Bug fix for members limited html tags feature not working
+			//moved page desc above site legal tags section of page
+		//4/12/07; 4:37:16 PM by LL
+			//Support a new preference to limit members to a set of HTML formatting commands.
+		//04/17/05; 13:28:43 by DAB
+			//Created.  Borrowed from manilaSuite.admin.legalTagsPage, messages at manilaData.localization.languages.english.strings.admin
 	
 	local (advancedPageName = pta^.pathArgs);
 	local (adrSite= manilaSuite.getManilaSiteAddress(pta));

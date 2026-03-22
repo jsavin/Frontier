@@ -1,4 +1,4 @@
-on makingprogress (n, withMessage, currentSetting) { «Updates the progress indicator associated with TransactionID
+on makingprogress (n, withMessage, currentSetting) { //Updates the progress indicator associated with TransactionID
 	case sys.os () {
 		"MacOS" {
 			return (appleEvent (user.webBrowser.currentid, 'WWW!', 'PRMK', '----', long (n), 'PMSG', string (withMessage), 'CURR', long (currentSetting)))}}}

@@ -1,9 +1,9 @@
 on findWindowWithMatchingAtts (adratts, adradrwindow, adrwindows=nil) {
-	«Changes:
-		«9/6/01; 7:20:20 PM by JES
-			«Fix item #1 errors.
-		«10/11/01; 3:02:26 AM by JES
-			«Dereference the address of the window's table when checking its type. Without this, the matching window would never be found.
+	//Changes:
+		//9/6/01; 7:20:20 PM by JES
+			//Fix item #1 errors.
+		//10/11/01; 3:02:26 AM by JES
+			//Dereference the address of the window's table when checking its type. Without this, the matching window would never be found.
 	
 	if adrwindows == nil {
 		adrwindows = Frontier.tools.windowTypes.init ()};

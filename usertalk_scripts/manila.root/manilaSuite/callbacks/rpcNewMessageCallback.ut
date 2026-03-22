@@ -1,6 +1,6 @@
 on rpcNewMessageCallback (adrMsg) {
-	«Notify the world that a new message has been created. This is the XML-RPC context entry point.
-		«04/04/00; 9:49:17 PM by PBS
+	//Notify the world that a new message has been created. This is the XML-RPC context entry point.
+		//04/04/00; 9:49:17 PM by PBS
 	
 	local (adrCallbacks = @manilaSuite.callbacks.newMessage);
 	local (adrUserCallbacks = @config.manila.callbacks.newMessage);

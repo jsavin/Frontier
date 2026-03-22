@@ -1,9 +1,9 @@
 on createDefaultSite (siteName="createASiteManilaWebsite", password=nil, serverName=nil, displaySiteName=nil, tagline=nil, theme=nil, path="/", flHostingSite=false) {
-	«Changes
-		«8/21/02; 2:28:49 PM by JES
-			«Create a default Manila site. There may be more than one. Cribbed from userland.createDefaultIspSite.
-				«Return true if it gets created, return false if it already exists and thus doesn't get created.
-				«This is a wrapper for manilaSuite.clone. It's called from userland.finishInstall.
+	//Changes
+		//8/21/02; 2:28:49 PM by JES
+			//Create a default Manila site. There may be more than one. Cribbed from userland.createDefaultIspSite.
+				//Return true if it gets created, return false if it already exists and thus doesn't get created.
+				//This is a wrapper for manilaSuite.clone. It's called from userland.finishInstall.
 	if flHostingSite { //set up ISP prefs in config.root
 		if not defined (config.manila.hosting) {
 			new (tableType, @config.manila.hosting)};
@@ -28,7 +28,7 @@ on createDefaultSite (siteName="createASiteManilaWebsite", password=nil, serverN
 		else {
 			fileMenu.new (gdbPath);
 			window.hide (@[gdbPath]);
-			}};«fileMenu.save (gdbPath)
+			}};//fileMenu.save (gdbPath)
 	
 	bundle { //add hosting gdb to user.databases
 		local (adrTable = @user.databases.[gdbName]);

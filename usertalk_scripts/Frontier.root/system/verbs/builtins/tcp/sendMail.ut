@@ -1,26 +1,26 @@
 on sendMail (recipient="", subject="", message="", sender=user.prefs.mailAddress, cc="", bcc="", host=user.prefs.mailHost, mimeType="text/plain", adrHdrTable=nil, timeOutTicks=60*60,  flMessages=true) {
-	«Changes
-		«3/19/07; 4:34:59 PM by LL
-			«Ensure that line-endings get converted.
-		«9/14/05; 1:42:09 PM by JES
-			«Ensure that user.callbacks.tcpSendMail exists.
-		«7/23/05; 1:26:41 AM by JES
-			«Moved tcp.isOffline check to after the user callbacks are called. A callback may want to queue email or send it through some other method like a scriptable client or local SMTP server.
-		«6/24/05; 3:57:46 PM by MB
-			«Simplified X-Mailer tag generation by calling Frontier.getProgramName
-		«Fri, Sep 22, 2000 at 11:36:53 AM by PBS
-			«Check offline status -- don't send email if working offline.
-		«11/05/1999 at 12:57:30 AM by AR
-			«Updated to use 6.1 TCP verbs.
-			«Cleaned up low-level error messages to conform to "Can't do x because y" scheme.
-		«7/25/99; 8:04:26 AM by DW
-			«Loop over scripts in user.callbacks.sendmail table.
-		«Wed, 16 Jun 1999 00:05:16 GMT by AR
-			«Added optional adrHdrTable parameter, the address of a table. If an address is specified, its fields are added to the message header, possibly overriding standard header items.
-			«Added optional timeOutTicks parameter. The default value is 3600 ticks (60 seconds). If the connection is idle for more than the specified number of ticks while waiting for a response from the server, the connection is closed and an error message is generated.
-			«Added optional flMessages parameter. If it is true (the default), status messages will be displayed in Frontier's About window. The displayed messages are prefixed with the name of this script. Before we return, we clean up the message area.
-			«Added extensive error checking and reporting code. If the script returns true, it is now safe to assume that the message was accepted by the server. Status messages received from the server indicating that an error has occured are no longer ignored. Whenever an error occurs, we try to shut down the connection gracefully before throwing a scripterror.
-			«Calls to thread.sleepFor were added to the TCP read/write loops for improved thread-friendliness.
+	//Changes
+		//3/19/07; 4:34:59 PM by LL
+			//Ensure that line-endings get converted.
+		//9/14/05; 1:42:09 PM by JES
+			//Ensure that user.callbacks.tcpSendMail exists.
+		//7/23/05; 1:26:41 AM by JES
+			//Moved tcp.isOffline check to after the user callbacks are called. A callback may want to queue email or send it through some other method like a scriptable client or local SMTP server.
+		//6/24/05; 3:57:46 PM by MB
+			//Simplified X-Mailer tag generation by calling Frontier.getProgramName
+		//Fri, Sep 22, 2000 at 11:36:53 AM by PBS
+			//Check offline status -- don't send email if working offline.
+		//11/05/1999 at 12:57:30 AM by AR
+			//Updated to use 6.1 TCP verbs.
+			//Cleaned up low-level error messages to conform to "Can't do x because y" scheme.
+		//7/25/99; 8:04:26 AM by DW
+			//Loop over scripts in user.callbacks.sendmail table.
+		//Wed, 16 Jun 1999 00:05:16 GMT by AR
+			//Added optional adrHdrTable parameter, the address of a table. If an address is specified, its fields are added to the message header, possibly overriding standard header items.
+			//Added optional timeOutTicks parameter. The default value is 3600 ticks (60 seconds). If the connection is idle for more than the specified number of ticks while waiting for a response from the server, the connection is closed and an error message is generated.
+			//Added optional flMessages parameter. If it is true (the default), status messages will be displayed in Frontier's About window. The displayed messages are prefixed with the name of this script. Before we return, we clean up the message area.
+			//Added extensive error checking and reporting code. If the script returns true, it is now safe to assume that the message was accepted by the server. Status messages received from the server indicating that an error has occured are no longer ignored. Whenever an error occurs, we try to shut down the connection gracefully before throwing a scripterror.
+			//Calls to thread.sleepFor were added to the TCP read/write loops for improved thread-friendliness.
 	
 	bundle { //loop over callbacks
 		if not defined (user.callbacks.tcpSendMail) {
@@ -32,7 +32,7 @@ on sendMail (recipient="", subject="", message="", sender=user.prefs.mailAddress
 					local (adrcallback = @user.callbacks.tcpSendMail [i]);
 					if typeof (adrcallback^) == scriptType { //avoid problems with item #1s
 						if adrcallback^ (recipient, subject, message, sender, cc, bcc, mimetype) {
-							«callback returns true if it consumed the sendMail operation
+							//callback returns true if it consumed the sendMail operation
 							return (true)}}}}}};
 	
 	if tcp.isOffline () { //PBS 09/22/00: check offline status
@@ -92,29 +92,29 @@ on sendMail (recipient="", subject="", message="", sender=user.prefs.mailAddress
 		add (message)}; //add our message text to the buffer
 	
 	on sendCommandToServer (stream, command) { //AR 10/27/1999
-		«on sendCommandToServer (stream, command) //pre-6.1 code
-			«local (chunksize = 4 * 1024)
-			«local (lastWrite = clock.ticks ())
-			«loop //write command to the stream
-				«try
-					«if sizeof (command) <= chunkSize
-						«tcp.writeStream (stream, command)
-						«sys.systemTask()
-						«thread.sleepfor (0)
-						«break
-					«tcp.writeStream (stream, string.mid (command, 1, chunkSize))
-					«command = string.delete (command, 1, chunkSize)
-					«sys.systemTask()
-					«thread.sleepfor (0)
-					«lastWrite = clock.ticks ()
-				«else
-					«if (tryError contains "10035") and (clock.ticks () < (lastWrite + (60 * 10))) //10035 means the socket buffers are not ready, give them up to 10 seconds.
-						«sys.systemTask()
-						«thread.sleepfor (1) //yield this thread for a second to allow normal frontier processing
-					«else
-						«try {tcp.closeStream (stream)}
-						«scriptError ("Error communicating with SMTP host: " + tryError) // re-throw the error
-			«return (true)
+		//on sendCommandToServer (stream, command) //pre-6.1 code
+			//local (chunksize = 4 * 1024)
+			//local (lastWrite = clock.ticks ())
+			//loop //write command to the stream
+				//try
+					//if sizeof (command) <= chunkSize
+						//tcp.writeStream (stream, command)
+						//sys.systemTask()
+						//thread.sleepfor (0)
+						//break
+					//tcp.writeStream (stream, string.mid (command, 1, chunkSize))
+					//command = string.delete (command, 1, chunkSize)
+					//sys.systemTask()
+					//thread.sleepfor (0)
+					//lastWrite = clock.ticks ()
+				//else
+					//if (tryError contains "10035") and (clock.ticks () < (lastWrite + (60 * 10))) //10035 means the socket buffers are not ready, give them up to 10 seconds.
+						//sys.systemTask()
+						//thread.sleepfor (1) //yield this thread for a second to allow normal frontier processing
+					//else
+						//try {tcp.closeStream (stream)}
+						//scriptError ("Error communicating with SMTP host: " + tryError) // re-throw the error
+			//return (true)
 		try {
 			tcp.writeStringToStream (stream, command, 4096, timeOutTicks / 60)}
 		else {
@@ -124,34 +124,34 @@ on sendMail (recipient="", subject="", message="", sender=user.prefs.mailAddress
 			scriptError ("Can't send mail because a connection error occured: " + tryerror)};
 		return (true)};
 	on receiveServerResponse (stream) { //AR 10/27/1999
-		«on receiveServerResponse (stream) //pre-6.1 code
-			«local (response = "", bytesPending = 0, ix, linetext)
-			«local (timeout = clock.ticks () + timeOutTicks)
-			«loop //read data from the stream
-				«case tcp.statusStream (stream, @bytespending)
-					«"DATA"  //read data
-						«response = response + tcp.readStream (stream, bytespending)
-						«ix = string.patternMatch ("\r\n", response)
-						«while (ix > 0)  //handle multi-line responses
-							«linetext = string.mid (response, 1, ix-1)
-							«if string.nthChar (linetext, 4) == ' ' //the final line of the response has a space as the fourth char
-								«return (linetext)
-							«response = string.delete (response, 1, ix+1)
-							«ix = string.patternMatch ("\r\n", response)
-						«sys.systemTask()
-						«thread.sleepfor (0)
-						«timeout = clock.ticks () + timeOutTicks
-						«continue
-					«"OPEN"  //waiting for data
-						«if clock.ticks () > timeout
-							«scriptError ("Can't send mail because the connection to " + host + " timed out.")
-						«sys.systemTask()
-						«thread.sleepfor (0)
-						«continue
-				«else //connection terminated prematurely
-					«try {tcp.closeStream (stream)}
-					«scriptError ("Can't send mail because the connection to " + host + " was terminated prematurely.")
-			«return ("") //this should never be executed, either we return the server's final response line or we throw a scripterror
+		//on receiveServerResponse (stream) //pre-6.1 code
+			//local (response = "", bytesPending = 0, ix, linetext)
+			//local (timeout = clock.ticks () + timeOutTicks)
+			//loop //read data from the stream
+				//case tcp.statusStream (stream, @bytespending)
+					//"DATA"  //read data
+						//response = response + tcp.readStream (stream, bytespending)
+						//ix = string.patternMatch ("\r\n", response)
+						//while (ix > 0)  //handle multi-line responses
+							//linetext = string.mid (response, 1, ix-1)
+							//if string.nthChar (linetext, 4) == ' ' //the final line of the response has a space as the fourth char
+								//return (linetext)
+							//response = string.delete (response, 1, ix+1)
+							//ix = string.patternMatch ("\r\n", response)
+						//sys.systemTask()
+						//thread.sleepfor (0)
+						//timeout = clock.ticks () + timeOutTicks
+						//continue
+					//"OPEN"  //waiting for data
+						//if clock.ticks () > timeout
+							//scriptError ("Can't send mail because the connection to " + host + " timed out.")
+						//sys.systemTask()
+						//thread.sleepfor (0)
+						//continue
+				//else //connection terminated prematurely
+					//try {tcp.closeStream (stream)}
+					//scriptError ("Can't send mail because the connection to " + host + " was terminated prematurely.")
+			//return ("") //this should never be executed, either we return the server's final response line or we throw a scripterror
 		local (ix, linetext);
 		loop { //read data from the stream
 			try {

@@ -1,6 +1,6 @@
 on checkOut (username, password, adrObject, siteName, flMessage=false) {
-	«Lock an item -- check it out.
-		«11/21/00; 12:58:56 PM by PBS
+	//Lock an item -- check it out.
+		//11/21/00; 12:58:56 PM by PBS
 	
 	local (adrSite = config.manila.sites.[siteName]);
 	local (adrGroup = manilaSuite.rpcUtils.getMembersAddress (siteName));

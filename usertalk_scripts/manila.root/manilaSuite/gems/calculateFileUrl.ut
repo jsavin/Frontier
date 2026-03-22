@@ -1,6 +1,6 @@
 on calculateFileUrl (adrSite, adrData) {
-	«Calculate the URL to this new gem that's about to be written to disk.
-		«04/14/00; 4:30:25 PM by PBS
+	//Calculate the URL to this new gem that's about to be written to disk.
+		//04/14/00; 4:30:25 PM by PBS
 	
 	local (url = manilaSuite.gems.getSiteUrl (adrSite));
 	url = url + adrData^.fileName;

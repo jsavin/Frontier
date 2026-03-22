@@ -1,9 +1,9 @@
 on compileIfDirty (adrSite) {
-	«Compile the XML site structure if dirty.
-		«03/03/00; 6:48:25 PM by PBS
-		«Changes:
-			«03/28/00; 12:48:06 AM by PBS
-				«Re-compile if the paths table isn't present.
+	//Compile the XML site structure if dirty.
+		//03/03/00; 6:48:25 PM by PBS
+		//Changes:
+			//03/28/00; 12:48:06 AM by PBS
+				//Re-compile if the paths table isn't present.
 	
 	local (adrTable = @adrSite^.["#hierarchy"]);
 	if defined (adrTable^.structure) {

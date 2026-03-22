@@ -1,6 +1,6 @@
 on enableRpcHandlers () {
-	«Enable plugins RPC handlers.
-		«02/24/00; 2:56:32 PM by PBS
+	//Enable plugins RPC handlers.
+		//02/24/00; 2:56:32 PM by PBS
 	
 	if not defined (config.manila.plugins) {
 		new (tableType, @config.manila.plugins)};

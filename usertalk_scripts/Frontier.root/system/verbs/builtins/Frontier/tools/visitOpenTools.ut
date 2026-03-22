@@ -1,6 +1,6 @@
 on visitOpenTools (adrCallback) {
-	«Visit each open Tool. adrCallback^ is called for each Tool. The callback takes the file path of the Tool. If the callback returns false, the visiting stops.
-		«01/06/01; 3:47:38 PM by PBS
+	//Visit each open Tool. adrCallback^ is called for each Tool. The callback takes the file path of the Tool. If the callback returns false, the visiting stops.
+		//01/06/01; 3:47:38 PM by PBS
 	
 	local (toolsFolder = Frontier.tools.getToolsFolderPath ());
 	local (f);

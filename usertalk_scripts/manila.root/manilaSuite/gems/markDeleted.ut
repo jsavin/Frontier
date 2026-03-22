@@ -1,7 +1,7 @@
 on markDeleted (adrSite, num, adrMemberTbl) {
-	«Changes
-		«05/03/24, 21:53:35 by DAB
-			«Factored from gems.gemsLister for use in rpchandlers.
+	//Changes
+		//05/03/24, 21:53:35 by DAB
+			//Factored from gems.gemsLister for use in rpchandlers.
 	local (adrTable = manilaSuite.gems.getGemAddress (adrSite, num));
 	manilaSuite.gems.deleteAssociatedFile (adrTable);
 	manilaSuite.gems.deleteAssociatedShortcut (adrTable);

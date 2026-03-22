@@ -1,5 +1,5 @@
 export.init ();
-try { «set user.export.lastaddress
+try { //set user.export.lastaddress
 	local (adr = address (window.frontmost ()));
 	if typeOf (adr^) == tabletype {
 		adr = table.getcursor ()};

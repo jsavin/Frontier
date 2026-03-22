@@ -1,8 +1,8 @@
 on indexDisplay (adrIndex, fieldID) {
-	«manilaSuite.AccessControl.indexDisplay : 04/05/20, 17:11:55 by DAB
-		«display an report page showign an  index  created by manilaSuite.accessControl.indexBy
-		«was manilaFixer.accessControl.indexDisplay : 02/05/07, 16:22:31 by DAB
-	«message at manilaData.localization.languages.english.strings.accessControl
+	//manilaSuite.AccessControl.indexDisplay : 04/05/20, 17:11:55 by DAB
+		//display an report page showign an  index  created by manilaSuite.accessControl.indexBy
+		//was manilaFixer.accessControl.indexDisplay : 02/05/07, 16:22:31 by DAB
+	//message at manilaData.localization.languages.english.strings.accessControl
 	local (pta = html.getPageTableAddress());
 	local (adrSite = manilaSuite.getManilaSiteAddress(pta));
 	local (sitename = manilaSuite.getCanonicalSitename(adrSite));

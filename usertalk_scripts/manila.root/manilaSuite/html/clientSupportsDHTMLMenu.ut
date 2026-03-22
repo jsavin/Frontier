@@ -1,6 +1,6 @@
 on clientSupportsDHTMLMenu (pta=nil) {
-	«05/22/00; 12:44:54 AM by JES
-		«return true if the client's browser supports our DHTML menus and the pref is true
+	//05/22/00; 12:44:54 AM by JES
+		//return true if the client's browser supports our DHTML menus and the pref is true
 	
 	if pta==nil {
 		pta = html.getPAgeTableAddress ()};

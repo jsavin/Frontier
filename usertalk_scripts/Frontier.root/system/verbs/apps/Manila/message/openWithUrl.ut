@@ -1,8 +1,8 @@
 on openWithUrl (username, password, url, rpcPath = "/RPC2") {
-	«11/14/00; 10:38:54 PM by JES
-	«Changes
-		«9/6/01; 8:24:10 PM by JES
-			«Changed params from a list to a record of named parameters, for SOAP compatibility.
+	//11/14/00; 10:38:54 PM by JES
+	//Changes
+		//9/6/01; 8:24:10 PM by JES
+			//Changed params from a list to a record of named parameters, for SOAP compatibility.
 	local (urlParts = string.urlSplit (url));
 	local (host = urlParts[2]);
 	local (port = 80);

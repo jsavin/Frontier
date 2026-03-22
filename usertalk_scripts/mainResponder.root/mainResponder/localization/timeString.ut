@@ -1,12 +1,12 @@
 on timeString (d, pta=nil) {
-	«Gets the localized version of a time string for a given date value.
-		«d is a date or a string that can be coerced to a date
-	«4/12/00; 6:04:03 PM by JES
-	«Changes:
-		«05/17/00 6:38:19 PM by JS
-			«optimized -- no longer call mainResponder.localization.getDateTimeReplacementTable, rather build the table here
-		«06/28/00; 1:05:16 AM by JES
-			«Fixed problem with midnight hour on 12-hour clocks displaying as 0:xx:xx
+	//Gets the localized version of a time string for a given date value.
+		//d is a date or a string that can be coerced to a date
+	//4/12/00; 6:04:03 PM by JES
+	//Changes:
+		//05/17/00 6:38:19 PM by JS
+			//optimized -- no longer call mainResponder.localization.getDateTimeReplacementTable, rather build the table here
+		//06/28/00; 1:05:16 AM by JES
+			//Fixed problem with midnight hour on 12-hour clocks displaying as 0:xx:xx
 	
 	if pta == nil {
 		pta = html.getPageTableAddress ()};

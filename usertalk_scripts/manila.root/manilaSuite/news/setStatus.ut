@@ -1,9 +1,9 @@
 on setStatus (msgNum, adrSite, status, adrMsgTable=nil) {
-	«Changes
-		«10/17/05; 7:14:50 PM by JES
-			«Remove items which were posted and are being set to editing or released from the postOrder index.
-		«10/17/05; 5:23:57 PM by JES
-			«Set the status of a news item to editing, released or posted.
+	//Changes
+		//10/17/05; 7:14:50 PM by JES
+			//Remove items which were posted and are being set to editing or released from the postOrder index.
+		//10/17/05; 5:23:57 PM by JES
+			//Set the status of a news item to editing, released or posted.
 	
 	if adrMsgTable == nil { //set adrMsgTable
 		adrMsgTable = manilaSuite.discuss.getMessageTableFromSiteAddress (adrSite, msgNum)};

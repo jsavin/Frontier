@@ -1,6 +1,6 @@
 on sendPartial (data, adrParamTable, more=true) {
-	«Cross-platform wrapper for send-partial calls.
-		«Saturday, January 10, 1998 at 4:41:26 PM by PBS
+	//Cross-platform wrapper for send-partial calls.
+		//Saturday, January 10, 1998 at 4:41:26 PM by PBS
 	
 	local (flFrontierIsServer = false);
 	local (flExternalMac = false);

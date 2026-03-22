@@ -1,315 +1,315 @@
 on draw (pta = nil) {
-	«Draws the HTML form for an htmlDialog
-		«Monday, July 24, 2000 at 11:56:49 PM by JES
-			«Rewritten to handle multi-column forms
-			«bundle // old version
-				«on draw (pta=nil)
-					«Draws the HTML form for an htmlDialog
-					«Changes:
-						«Monday, July 24, 2000 at 4:10:04 PM by JES
-							«Changed formatting of preferences items, to make the dialogs look more like standard Windows dialogs.
-					«
-					«if not system.environment.isWindows
-						«scriptError ("HTML dialogs are only available on Windows.")
-					«
-					«if pta == nil
-						«pta = html.getPageTableAddress ()
-					«
-					«local (prefsAddress = pta^.wizardPrefsAddress)
-					«local (adrWizard = pta^.wizard)
-					«local (adrCallbacks = @adrwizard^.callbacks, flCallbacks = defined (adrCallbacks^))
-					«local (panelNum = pta^.panelNum)
-					«local (htmlText = "", indentLevel = 0)
-					«local (adrPanel)
-					«local (panelTitle, panelType, description)
-					«local (pageName = nameOf (pta^.adrobject^))
-					«local (valueString)
-					«
-					«on add (s)
-						«htmlText = htmlText + string.filledString ("\t", indentLevel) + s + "\r"
-					«
-					«html.dialog.compileIfDirty (pta) //compile the XML if needed
-					«
-					«bundle //get the address of the panel structure
-						«local (panelList = xml.getAddressList (@adrWizard^.structure [1], "panel"))
-						«adrPanel = panelList [panelNum]
-					«
-					«bundle //get the panel title, description, height, width, and type
-						«panelTitle = xml.getAttribute (adrPanel, "title")^
-						«pta^.title = panelTitle
-						«
-						«bundle // height and width, replaced in the CSS later
-							«try //get dialog height
-								«height = xml.getAttributeValue (adrPanel, "height")
-							«else
-								«height = 250
-							«try //get dialog width
-								«width = xml.getAttributeValue (adrPanel, "width")
-							«else
-								«width = 250
-						«try //get dialog description
-							«description = xml.getValue (adrPanel, "description")
-							«description = string.replaceAll (description, "\t", "")
-							«description = string.replaceAll (description, "\r", "<p>")
-						«try //get dialog type
-							«panelType = xml.getAttribute (adrPanel, "type")^
-					«
-					«bundle //handle the cascading style sheet
-						«if typeOf (pta^.css) == addressType
-							«pta^.css = string (pta^.css^)
-						«pta^.css = string.replaceAll (pta^.css, "[[height]]", height)
-						«pta^.css = string.replaceAll (pta^.css, "[[width]]", width)
-					«
-					«if panelType // short-circuit for special types
-						«Right now, there are only two special types, notify and alert
-							«notify corresponds to dialog.notify()
-								«static text with no inputs, and only an OK button.
-							«alert corresponds to dialog.alert()
-								«same as dialog.notify, but with a beep
-						«
-						«on doNotifyOrAlert ()
-							«local (s, adrText = xml.getAttribute (adrPanel, "adr")^)
-							«bundle // page table attributes to make it easy to edit the text
-								«pta^.javaScript = ""
-								«pta^.clayCompatibility = true
-								«pta^.autoParagraphs = true
-							«bundle // the top part of the window -- above the buttons
-								«s = "<table cellpadding=\"0\" cellspacing=\"0\" border=\"0\" width=\"100%\" height=\"100%\"><tr><td valign=\"top\">\r"
-								«s = s + string (adrText^) + "\r"
-								«s = s + "</td></tr>\r"
-							«bundle // add the OK button at the bottom
-								«s = s + "<tr><td valign=\"bottom\" align=\"right\">\r"
-								«s = s + "<input type=\"button\" onclick=\"window.close ()\" value=\"    OK    \">\r<p>"
-								«s = s + "</td></tr></table>"
-							«return (s)
-						«case panelType
-							«"alert"
-								«speaker.beep ()
-								«return (doNotifyOrAlert ())
-							«"notify"
-								«return (doNotifyOrAlert ())
-					«
-					«on getPrefAddress (partialAddress) //takes a partial address, returns an address into user's member table
-						«local (nomad = @prefsAddress^, s)
-						«partialAddress = string.replaceAll (partialAddress, "_", ".")
-						«
-						«loop
-							«if not (partialAddress contains ".")
-								«nomad = @nomad^.[partialAddress]
-								«break
-							«s = string.nthField (partialAddress, '.', 1)
-							«nomad = @nomad^.[s]
-							«if not defined (nomad^)
-								«new (tableType, nomad)
-							«partialAddress = string.delete (partialAddress, 1, sizeOf (s) + 1)
-						«
-						«return (nomad)
-					«
-					«local (adrTable = @pta^.argTable, ct = sizeof (adrTable^), i, adrItem, val)
-					«
-					«bundle //add the form with the items
-						«add ("<table cellpadding=\"2\" cellspacing=\"0\" border=\"0\" width=\"100%\">"); indentlevel++
-						«
-						«local (itemlist = xml.getAddressList (adrpanel, "item"))
-						«local (ct = sizeof (itemList), i, adritem, adr, title, type, popuptext, defaultvalue, inRow = false, colspan, colspanString)
-						«
-						«for i = 1 to ct
-							«adritem = itemlist [i]
-							«
-							«bundle //set title
-								«title = ""
-								«try // not all items have titles -- rowStart and rowEnd types are examples
-									«title = string.replaceAll (xml.getattribute (adritem, "title")^, " ", "&nbsp;")
-							«
-							«try // get the colspan attribute
-								«colspan = false
-								«colspanString = ""
-								«colspan = xml.getattribute (adritem, "colspan")^
-								«colspanString = " colspan=\"" + colspan + "\""
-							«
-							«type = string.lower (xml.getattribute (adritem, "type")^) //types are unicase
-							«case string.lower (type) // handle special cases: separator, rowStart and rowEnd
-								«"separator"
-									«bundle // add the sub-table for the heading
-										«add ("<tr><td" + colspanString + " style=\"padding-left: 8;\">"); indentlevel++
-										«add ("<p><br><table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\"><tr>"); indentlevel++
-										«add ("<td valign=\"top\">" + string.replaceAll (title, " ", "&nbsp;") + "&nbsp;&nbsp;</td>")
-										«add ("<td valign=\"bottom\" width=\"100%\"><hr></td>")
-										«add ("</tr></table>"); indentlevel--
-										«add ("</td></tr>"); indentlevel--
-									«continue
-								«"rowstart"
-									«add ("<tr>"); indentlevel++
-									«inRow = true
-									«continue
-								«"rowend"
-									«add ("</tr>"); indentlevel--
-									«inRow = false
-									«continue
-							«
-							«try // get the address of the pref
-								«adr = xml.getattribute (adritem, "adr")^ //adr attribute is optional, for example separators don't have adrs
-							«else
-								«adr = ""
-							«adr = string.replaceAll (adr, ".", "_")
-							«
-							«if not inRow
-								«add ("<tr>"); indentlevel++
-							«
-							«bundle //set defaultvalue
-								«defaultvalue = ""
-								«try
-									«local (adrobject = getPrefAddress (adr))
-									«if typeof (adrobject^) == tabletype //it's a multi-part object
-										«defaultvalue = adrobject^.filename
-									«else
-										«if typeOf (adrObject^) == listType
-											«defaultvalue = string (adrobject^)
-										«else
-											«defaultvalue = adrobject^
-								«if flcallbacks
-									«local (adrcallback = @adrcallbacks^.getValue)
-									«if defined (adrcallback^)
-										«defaultvalue = adrcallback^ (string.replaceAll (adr, "_", "."), defaultvalue) //adr is the partial address, the callback should be a big case statement, based on which value is being asked for
-							«
-							«local (titleOnRight = false)
-							«local (titleOnTop = false)
-							«case string.lower (type) // set booleans for formatting the item's title.
-								«"password"
-								«"text"
-								«"string"
-									«titleOnTop = true
-								«"checkbox"
-									«titleOnRight = true
-							«
-							«if titleOnRight // checkbox item titles go on the right side
-								«add ("<td style=\"padding-left:60;\" colspan=\"2\">"); indentlevel++
-							«else
-								«if titleOnTop
-									«add ("<td valign=\"middle\" style=\"padding-left:60;\" colspan=\"2\">" + title + "<br>"); indentlevel++
-								«else
-									«add ("<td valign=\"middle\" style=\"padding-left:60;\">" + title + "</td>")
-									«add ("<td>"); indentlevel++
-							«
-							«case string.lower (type) // add the form's input elements
-								«"string"
-									«local (size = adrWizard^.prefs.stringDefaultSize, maxlength = adrWizard^.prefs.stringDefaultMaxLength)
-									«try {size = xml.getattribute (adritem, "size")^}
-									«try {maxlength = xml.getattribute (adritem, "maxlength")^}
-									«add ("<input type=\"text\" name=\"" + adr + "\" size=\"" + size + "\" maxlength=\"" + maxlength + "\" value=\"" + defaultvalue + "\">")
-								«"static"
-									«Add the hidden field so the value is processed with the form, add just the defualt value as the static display.
-									«add (defaultvalue)
-									«add ("<input type=\"hidden\" name=\"" + adr + "\" value=\"" + defaultvalue + "\">")
-								«"hidden"
-									«Add the hidden field so the value is processed with the form.
-									«add ("<input type=\"hidden\" name=\"" + adr + "\" value=\"" + defaultvalue + "\">")
-								«"popup"
-									«<SELECT name="state">
-										«<OPTION>Select a state
-										«<OPTION VALUE="AL">Alabama 
-										«<OPTION VALUE="AK">Alaska 
-										«<OPTION VALUE="AZ">Arizona 
-										«<OPTION VALUE="AR">Arkansas 
-										«</SELECT>
-									«add ("<select name=\"" + adr + "\">"); indentLevel++
-									«local (optionList = xml.getAddressList (adritem, "option"))
-									«local (i, ct = sizeof (optionList), title, value, s)
-									«for i = 1 to ct
-										«title = xml.getAttribute (optionList [i], "title")^
-										«value = xml.getAttribute (optionList [i], "value")^
-										«s = ""
-										«if defaultValue == value
-											«s = " selected"
-										«add ("<option value=\"" + value + "\"" + s + ">" + title + "</option>")
-									«add ("</select>"); indentlevel--
-								«"password"
-									«local (size = adrWizard^.prefs.passwordDefaultSize, maxlength = adrWizard^.prefs.passwordDefaultMaxLength)
-									«try {size = xml.getAttribute (adritem, "size")^}
-									«try {maxlength = xml.getAttribute (adritem, "maxlength")^}
-									«add ("<input type=\"password\" name=\"" + adr + "\" size=\"" + size + "\" maxlength=\"" + maxlength + "\" value=\"" + defaultValue + "\">")
-								«"text"
-									«local (rows = adrWizard^.prefs.textDefaultRows, cols = adrWizard^.prefs.textDefaultCols)
-									«try {rows = xml.getattribute (adritem, "rows")^}
-									«try {cols = xml.getattribute (adritem, "cols")^}
-									«add ("<textarea name=\"" + adr + "\" rows=\"" + rows + "\" cols=\"" + cols + "\" wrap=\"soft\">" + defaultvalue + "</textarea>")
-								«"boolean"
-									«on addradio (val, flchecked, linetext)
-										«local (s = "<input type=\"radio\" name=\"" + adr + "\" value=" + val)
-										«if flchecked
-											«s = s + " checked"
-										«add (s + ">" + linetext)
-									«addradio ("true", boolean (defaultvalue), "Yes")
-									«addradio ("false", !boolean (defaultvalue), "No")
-									«add ("<input type=\"radio\" name=\"" + adr + "\" value=" + "1 checked" + ">" + "Yes")
-									«add ("<input type=\"radio\" name=\"" + adr + "\" value=\"" + "0" + "\">" + "No")
-								«"checkbox"
-									«if defaultvalue
-										«add ("<input type=\"checkbox\" name=\"" + adr + "\"  value=\"" + defaultvalue + "\" checked>")
-									«else
-										«add ("<input type=\"checkbox\" name=\"" + adr + "\"  value=\"" + defaultvalue + "\">")
-								«"picture"
-									«add ("<input name=\"" + adr + "\" type=\"file\" size=\"40\" value=\"" + defaultvalue + "\">")
-								«"custom"
-									«if flcallbacks //allow application to do object rendering
-										«local (adrcallback = @adrcallbacks^.customRenderer)
-										«if defined (adrcallback^)
-											«add (adrcallback^ (string.replaceAll (adr, "_", "."), defaultvalue, adritem)) //send the partial address, the default value, and the address of the XML table of the object being rendered
-									«else
-										«add ("&nbsp;")
-							«else // unrecognized type -- don't render an input element
-								«add ("&nbsp;")
-							«
-							«case type // use correct JavaScript corresponding to input type
-								«"checkbox"
-									«valueString = valueString + "\"" + adr + "=\" + " + adr + ".status"
-								«"boolean"
-									«valueString = valueString + "\"" + adr + "=\" + " + adr + "[0].checked"
-							«else
-								«valueString = valueString + "\"" + adr + "=\" + " + adr + ".value"
-							«if i < ct
-								«valueString = valueString + " + \"&\" + "
-							«
-							«if titleOnRight // checkbox item titles go on the right side
-								«add ("<td valign=\"middle\">" + title + "</td>")
-								«add (title + "</td>")
-							«
-							«add ("</td>"); indentlevel--
-							«
-							«if not inRow
-								«add ("</tr>"); indentlevel--
-						«
-						«add ("<tr>"); indentlevel++
-						«add ("<td>&nbsp;</td>")
-						«
-						«bundle //add OK and Cancel buttons
-							«local (s)
-							«s = s + "&nbsp;<input type=\"button\" onclick=\"doCancel ()\" value=\"Cancel\">"
-							«s = s + "&nbsp;<input type=\"submit\" onclick=\"doOkay ()\" value=\"    OK    \">"
-							«add ("<td align=\"right\" colspan=\"10\"><p><br>" + s + "</td>")
-						«
-						«add ("</tr>"); indentlevel--
-						«add ("</table>"); indentlevel--
-						«add ("</form>"); indentlevel--
-					«
-					«bundle //handle JavaScript script
-						«if typeOf (pta^.javaScript) == addressType
-							«pta^.javaScript = string (pta^.javaScript^)
-						«pta^.javaScript = string.replace (pta^.javaScript, "[[values]]", valueString)
-					«
-					«
-					«return (htmlText)
-		«Changes:
-			«Tuesday, August 08, 2000 at 3:02:54 PM by JES
-				«Removed requirement for a prefs table within the wizard table. Fixed problem getting default values when a getValue callback is not defined.
-			«Sat, Sep 2, 2000 at 11:45:28 PM by JES
-				«New type, HTML, which is a textarea with an HTML editor.
-			«Sunday, September 10, 2000 at 5:41:22 PM by JES
-				«Added prompt item type, and okButtonText and cancelButtonText attributes to the panel. Added align attribute to item elements.
-			«Wednesday, October 04, 2000 at 6:49:09 PM by JES
-				«Small adjustment to spacing of rendered dialog items.
-			«2/28/01; 3:34:07 PM by JES
-				«If pta^.flDrawCancelButton is defined and false, don't draw the Cancel button.
+	//Draws the HTML form for an htmlDialog
+		//Monday, July 24, 2000 at 11:56:49 PM by JES
+			//Rewritten to handle multi-column forms
+			//bundle // old version
+				//on draw (pta=nil)
+					//Draws the HTML form for an htmlDialog
+					//Changes:
+						//Monday, July 24, 2000 at 4:10:04 PM by JES
+							//Changed formatting of preferences items, to make the dialogs look more like standard Windows dialogs.
+					//
+					//if not system.environment.isWindows
+						//scriptError ("HTML dialogs are only available on Windows.")
+					//
+					//if pta == nil
+						//pta = html.getPageTableAddress ()
+					//
+					//local (prefsAddress = pta^.wizardPrefsAddress)
+					//local (adrWizard = pta^.wizard)
+					//local (adrCallbacks = @adrwizard^.callbacks, flCallbacks = defined (adrCallbacks^))
+					//local (panelNum = pta^.panelNum)
+					//local (htmlText = "", indentLevel = 0)
+					//local (adrPanel)
+					//local (panelTitle, panelType, description)
+					//local (pageName = nameOf (pta^.adrobject^))
+					//local (valueString)
+					//
+					//on add (s)
+						//htmlText = htmlText + string.filledString ("\t", indentLevel) + s + "\r"
+					//
+					//html.dialog.compileIfDirty (pta) //compile the XML if needed
+					//
+					//bundle //get the address of the panel structure
+						//local (panelList = xml.getAddressList (@adrWizard^.structure [1], "panel"))
+						//adrPanel = panelList [panelNum]
+					//
+					//bundle //get the panel title, description, height, width, and type
+						//panelTitle = xml.getAttribute (adrPanel, "title")^
+						//pta^.title = panelTitle
+						//
+						//bundle // height and width, replaced in the CSS later
+							//try //get dialog height
+								//height = xml.getAttributeValue (adrPanel, "height")
+							//else
+								//height = 250
+							//try //get dialog width
+								//width = xml.getAttributeValue (adrPanel, "width")
+							//else
+								//width = 250
+						//try //get dialog description
+							//description = xml.getValue (adrPanel, "description")
+							//description = string.replaceAll (description, "\t", "")
+							//description = string.replaceAll (description, "\r", "<p>")
+						//try //get dialog type
+							//panelType = xml.getAttribute (adrPanel, "type")^
+					//
+					//bundle //handle the cascading style sheet
+						//if typeOf (pta^.css) == addressType
+							//pta^.css = string (pta^.css^)
+						//pta^.css = string.replaceAll (pta^.css, "[[height]]", height)
+						//pta^.css = string.replaceAll (pta^.css, "[[width]]", width)
+					//
+					//if panelType // short-circuit for special types
+						//Right now, there are only two special types, notify and alert
+							//notify corresponds to dialog.notify()
+								//static text with no inputs, and only an OK button.
+							//alert corresponds to dialog.alert()
+								//same as dialog.notify, but with a beep
+						//
+						//on doNotifyOrAlert ()
+							//local (s, adrText = xml.getAttribute (adrPanel, "adr")^)
+							//bundle // page table attributes to make it easy to edit the text
+								//pta^.javaScript = ""
+								//pta^.clayCompatibility = true
+								//pta^.autoParagraphs = true
+							//bundle // the top part of the window -- above the buttons
+								//s = "<table cellpadding=\"0\" cellspacing=\"0\" border=\"0\" width=\"100%\" height=\"100%\"><tr><td valign=\"top\">\r"
+								//s = s + string (adrText^) + "\r"
+								//s = s + "</td></tr>\r"
+							//bundle // add the OK button at the bottom
+								//s = s + "<tr><td valign=\"bottom\" align=\"right\">\r"
+								//s = s + "<input type=\"button\" onclick=\"window.close ()\" value=\"    OK    \">\r<p>"
+								//s = s + "</td></tr></table>"
+							//return (s)
+						//case panelType
+							//"alert"
+								//speaker.beep ()
+								//return (doNotifyOrAlert ())
+							//"notify"
+								//return (doNotifyOrAlert ())
+					//
+					//on getPrefAddress (partialAddress) //takes a partial address, returns an address into user's member table
+						//local (nomad = @prefsAddress^, s)
+						//partialAddress = string.replaceAll (partialAddress, "_", ".")
+						//
+						//loop
+							//if not (partialAddress contains ".")
+								//nomad = @nomad^.[partialAddress]
+								//break
+							//s = string.nthField (partialAddress, '.', 1)
+							//nomad = @nomad^.[s]
+							//if not defined (nomad^)
+								//new (tableType, nomad)
+							//partialAddress = string.delete (partialAddress, 1, sizeOf (s) + 1)
+						//
+						//return (nomad)
+					//
+					//local (adrTable = @pta^.argTable, ct = sizeof (adrTable^), i, adrItem, val)
+					//
+					//bundle //add the form with the items
+						//add ("<table cellpadding=\"2\" cellspacing=\"0\" border=\"0\" width=\"100%\">"); indentlevel++
+						//
+						//local (itemlist = xml.getAddressList (adrpanel, "item"))
+						//local (ct = sizeof (itemList), i, adritem, adr, title, type, popuptext, defaultvalue, inRow = false, colspan, colspanString)
+						//
+						//for i = 1 to ct
+							//adritem = itemlist [i]
+							//
+							//bundle //set title
+								//title = ""
+								//try // not all items have titles -- rowStart and rowEnd types are examples
+									//title = string.replaceAll (xml.getattribute (adritem, "title")^, " ", "&nbsp;")
+							//
+							//try // get the colspan attribute
+								//colspan = false
+								//colspanString = ""
+								//colspan = xml.getattribute (adritem, "colspan")^
+								//colspanString = " colspan=\"" + colspan + "\""
+							//
+							//type = string.lower (xml.getattribute (adritem, "type")^) //types are unicase
+							//case string.lower (type) // handle special cases: separator, rowStart and rowEnd
+								//"separator"
+									//bundle // add the sub-table for the heading
+										//add ("<tr><td" + colspanString + " style=\"padding-left: 8;\">"); indentlevel++
+										//add ("<p><br><table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\"><tr>"); indentlevel++
+										//add ("<td valign=\"top\">" + string.replaceAll (title, " ", "&nbsp;") + "&nbsp;&nbsp;</td>")
+										//add ("<td valign=\"bottom\" width=\"100%\"><hr></td>")
+										//add ("</tr></table>"); indentlevel--
+										//add ("</td></tr>"); indentlevel--
+									//continue
+								//"rowstart"
+									//add ("<tr>"); indentlevel++
+									//inRow = true
+									//continue
+								//"rowend"
+									//add ("</tr>"); indentlevel--
+									//inRow = false
+									//continue
+							//
+							//try // get the address of the pref
+								//adr = xml.getattribute (adritem, "adr")^ //adr attribute is optional, for example separators don't have adrs
+							//else
+								//adr = ""
+							//adr = string.replaceAll (adr, ".", "_")
+							//
+							//if not inRow
+								//add ("<tr>"); indentlevel++
+							//
+							//bundle //set defaultvalue
+								//defaultvalue = ""
+								//try
+									//local (adrobject = getPrefAddress (adr))
+									//if typeof (adrobject^) == tabletype //it's a multi-part object
+										//defaultvalue = adrobject^.filename
+									//else
+										//if typeOf (adrObject^) == listType
+											//defaultvalue = string (adrobject^)
+										//else
+											//defaultvalue = adrobject^
+								//if flcallbacks
+									//local (adrcallback = @adrcallbacks^.getValue)
+									//if defined (adrcallback^)
+										//defaultvalue = adrcallback^ (string.replaceAll (adr, "_", "."), defaultvalue) //adr is the partial address, the callback should be a big case statement, based on which value is being asked for
+							//
+							//local (titleOnRight = false)
+							//local (titleOnTop = false)
+							//case string.lower (type) // set booleans for formatting the item's title.
+								//"password"
+								//"text"
+								//"string"
+									//titleOnTop = true
+								//"checkbox"
+									//titleOnRight = true
+							//
+							//if titleOnRight // checkbox item titles go on the right side
+								//add ("<td style=\"padding-left:60;\" colspan=\"2\">"); indentlevel++
+							//else
+								//if titleOnTop
+									//add ("<td valign=\"middle\" style=\"padding-left:60;\" colspan=\"2\">" + title + "<br>"); indentlevel++
+								//else
+									//add ("<td valign=\"middle\" style=\"padding-left:60;\">" + title + "</td>")
+									//add ("<td>"); indentlevel++
+							//
+							//case string.lower (type) // add the form's input elements
+								//"string"
+									//local (size = adrWizard^.prefs.stringDefaultSize, maxlength = adrWizard^.prefs.stringDefaultMaxLength)
+									//try {size = xml.getattribute (adritem, "size")^}
+									//try {maxlength = xml.getattribute (adritem, "maxlength")^}
+									//add ("<input type=\"text\" name=\"" + adr + "\" size=\"" + size + "\" maxlength=\"" + maxlength + "\" value=\"" + defaultvalue + "\">")
+								//"static"
+									//Add the hidden field so the value is processed with the form, add just the defualt value as the static display.
+									//add (defaultvalue)
+									//add ("<input type=\"hidden\" name=\"" + adr + "\" value=\"" + defaultvalue + "\">")
+								//"hidden"
+									//Add the hidden field so the value is processed with the form.
+									//add ("<input type=\"hidden\" name=\"" + adr + "\" value=\"" + defaultvalue + "\">")
+								//"popup"
+									//<SELECT name="state">
+										//<OPTION>Select a state
+										//<OPTION VALUE="AL">Alabama 
+										//<OPTION VALUE="AK">Alaska 
+										//<OPTION VALUE="AZ">Arizona 
+										//<OPTION VALUE="AR">Arkansas 
+										//</SELECT>
+									//add ("<select name=\"" + adr + "\">"); indentLevel++
+									//local (optionList = xml.getAddressList (adritem, "option"))
+									//local (i, ct = sizeof (optionList), title, value, s)
+									//for i = 1 to ct
+										//title = xml.getAttribute (optionList [i], "title")^
+										//value = xml.getAttribute (optionList [i], "value")^
+										//s = ""
+										//if defaultValue == value
+											//s = " selected"
+										//add ("<option value=\"" + value + "\"" + s + ">" + title + "</option>")
+									//add ("</select>"); indentlevel--
+								//"password"
+									//local (size = adrWizard^.prefs.passwordDefaultSize, maxlength = adrWizard^.prefs.passwordDefaultMaxLength)
+									//try {size = xml.getAttribute (adritem, "size")^}
+									//try {maxlength = xml.getAttribute (adritem, "maxlength")^}
+									//add ("<input type=\"password\" name=\"" + adr + "\" size=\"" + size + "\" maxlength=\"" + maxlength + "\" value=\"" + defaultValue + "\">")
+								//"text"
+									//local (rows = adrWizard^.prefs.textDefaultRows, cols = adrWizard^.prefs.textDefaultCols)
+									//try {rows = xml.getattribute (adritem, "rows")^}
+									//try {cols = xml.getattribute (adritem, "cols")^}
+									//add ("<textarea name=\"" + adr + "\" rows=\"" + rows + "\" cols=\"" + cols + "\" wrap=\"soft\">" + defaultvalue + "</textarea>")
+								//"boolean"
+									//on addradio (val, flchecked, linetext)
+										//local (s = "<input type=\"radio\" name=\"" + adr + "\" value=" + val)
+										//if flchecked
+											//s = s + " checked"
+										//add (s + ">" + linetext)
+									//addradio ("true", boolean (defaultvalue), "Yes")
+									//addradio ("false", !boolean (defaultvalue), "No")
+									//add ("<input type=\"radio\" name=\"" + adr + "\" value=" + "1 checked" + ">" + "Yes")
+									//add ("<input type=\"radio\" name=\"" + adr + "\" value=\"" + "0" + "\">" + "No")
+								//"checkbox"
+									//if defaultvalue
+										//add ("<input type=\"checkbox\" name=\"" + adr + "\"  value=\"" + defaultvalue + "\" checked>")
+									//else
+										//add ("<input type=\"checkbox\" name=\"" + adr + "\"  value=\"" + defaultvalue + "\">")
+								//"picture"
+									//add ("<input name=\"" + adr + "\" type=\"file\" size=\"40\" value=\"" + defaultvalue + "\">")
+								//"custom"
+									//if flcallbacks //allow application to do object rendering
+										//local (adrcallback = @adrcallbacks^.customRenderer)
+										//if defined (adrcallback^)
+											//add (adrcallback^ (string.replaceAll (adr, "_", "."), defaultvalue, adritem)) //send the partial address, the default value, and the address of the XML table of the object being rendered
+									//else
+										//add ("&nbsp;")
+							//else // unrecognized type -- don't render an input element
+								//add ("&nbsp;")
+							//
+							//case type // use correct JavaScript corresponding to input type
+								//"checkbox"
+									//valueString = valueString + "\"" + adr + "=\" + " + adr + ".status"
+								//"boolean"
+									//valueString = valueString + "\"" + adr + "=\" + " + adr + "[0].checked"
+							//else
+								//valueString = valueString + "\"" + adr + "=\" + " + adr + ".value"
+							//if i < ct
+								//valueString = valueString + " + \"&\" + "
+							//
+							//if titleOnRight // checkbox item titles go on the right side
+								//add ("<td valign=\"middle\">" + title + "</td>")
+								//add (title + "</td>")
+							//
+							//add ("</td>"); indentlevel--
+							//
+							//if not inRow
+								//add ("</tr>"); indentlevel--
+						//
+						//add ("<tr>"); indentlevel++
+						//add ("<td>&nbsp;</td>")
+						//
+						//bundle //add OK and Cancel buttons
+							//local (s)
+							//s = s + "&nbsp;<input type=\"button\" onclick=\"doCancel ()\" value=\"Cancel\">"
+							//s = s + "&nbsp;<input type=\"submit\" onclick=\"doOkay ()\" value=\"    OK    \">"
+							//add ("<td align=\"right\" colspan=\"10\"><p><br>" + s + "</td>")
+						//
+						//add ("</tr>"); indentlevel--
+						//add ("</table>"); indentlevel--
+						//add ("</form>"); indentlevel--
+					//
+					//bundle //handle JavaScript script
+						//if typeOf (pta^.javaScript) == addressType
+							//pta^.javaScript = string (pta^.javaScript^)
+						//pta^.javaScript = string.replace (pta^.javaScript, "[[values]]", valueString)
+					//
+					//
+					//return (htmlText)
+		//Changes:
+			//Tuesday, August 08, 2000 at 3:02:54 PM by JES
+				//Removed requirement for a prefs table within the wizard table. Fixed problem getting default values when a getValue callback is not defined.
+			//Sat, Sep 2, 2000 at 11:45:28 PM by JES
+				//New type, HTML, which is a textarea with an HTML editor.
+			//Sunday, September 10, 2000 at 5:41:22 PM by JES
+				//Added prompt item type, and okButtonText and cancelButtonText attributes to the panel. Added align attribute to item elements.
+			//Wednesday, October 04, 2000 at 6:49:09 PM by JES
+				//Small adjustment to spacing of rendered dialog items.
+			//2/28/01; 3:34:07 PM by JES
+				//If pta^.flDrawCancelButton is defined and false, don't draw the Cancel button.
 	
 	if not system.environment.isWindows {
 		scriptError ("HTML dialogs are only available on Windows.")};
@@ -367,11 +367,11 @@ on draw (pta = nil) {
 		pta^.css = string.replaceAll (pta^.css, "[[width]]", width)};
 	
 	if panelType { // short-circuit for special types -- alert and notify
-		«Right now, there are only two special types, notify and alert
-			«notify corresponds to dialog.notify()
-				«static text with no inputs, and only an OK button.
-			«alert corresponds to dialog.alert()
-				«same as dialog.notify, but with a beep
+		//Right now, there are only two special types, notify and alert
+			//notify corresponds to dialog.notify()
+				//static text with no inputs, and only an OK button.
+			//alert corresponds to dialog.alert()
+				//same as dialog.notify, but with a beep
 		
 		on doNotifyOrAlert () {
 			local (s, adrText = xml.getAttribute (adrPanel, "adr")^);
@@ -435,10 +435,10 @@ on draw (pta = nil) {
 			add ("</table>"); indentlevel--};
 		on startRow (padding=0) {
 			add ("<tr><td style=\"padding-left: " + padding + ";\">&nbsp;</td>"); indentlevel++;
-			};«add ("<tr><td style=\"padding-left: " + padding + ";\">"); indentlevel++
+			};//add ("<tr><td style=\"padding-left: " + padding + ";\">"); indentlevel++
 		on endRow () {
 			add ("</td></tr>"); indentlevel--;
-			};«add ("</tr>"); indentlevel--
+			};//add ("</tr>"); indentlevel--
 		on td (indent=0, align=nil) {
 			local (styleString = "", alignString = "");
 			if indent != 0 {
@@ -459,31 +459,31 @@ on draw (pta = nil) {
 					try {cols = xml.getattribute (adritem, "cols")^};
 					add (string (html.dialog.data.htmlEditor));
 					add ("<textarea name=\"" + adrPref + "\" rows=\"" + rows + "\" cols=\"" + cols + "\" wrap=\"soft\">" + defaultvalue + "</textarea>")};
-				«"static"
-					«Add the hidden field so the value is processed with the form, add just the defualt value as the static display.
-					«add (defaultvalue)
-					«add ("<input type=\"hidden\" name=\"" + adrPref + "\" value=\"" + defaultvalue + "\">")
-				«"popup"
-					«<SELECT name="state">
-						«<OPTION>Select a state
-						«<OPTION VALUE="AL">Alabama 
-						«<OPTION VALUE="AK">Alaska 
-						«<OPTION VALUE="AZ">Arizona 
-						«<OPTION VALUE="AR">Arkansas 
-						«</SELECT>
-					«add ("<select name=\"" + adrPref + "\">"); indentLevel++
-					«local (optionList = xml.getAddressList (adritem, "option"))
-					«local (i, ct = sizeof (optionList), title, value, s)
-					«for i = 1 to ct
-						«title = xml.getAttribute (optionList [i], "title")^
-						«value = xml.getAttribute (optionList [i], "value")^
-						«s = ""
-						«if defaultValue == value
-							«s = " selected"
-						«add ("<option value=\"" + value + "\"" + s + ">" + title + "</option>")
-					«add ("</select>"); indentlevel--
-				«"picture"
-					«add ("<input name=\"" + adrPref + "\" type=\"file\" size=\"40\" value=\"" + defaultvalue + "\">")
+				//"static"
+					//Add the hidden field so the value is processed with the form, add just the defualt value as the static display.
+					//add (defaultvalue)
+					//add ("<input type=\"hidden\" name=\"" + adrPref + "\" value=\"" + defaultvalue + "\">")
+				//"popup"
+					//<SELECT name="state">
+						//<OPTION>Select a state
+						//<OPTION VALUE="AL">Alabama 
+						//<OPTION VALUE="AK">Alaska 
+						//<OPTION VALUE="AZ">Arizona 
+						//<OPTION VALUE="AR">Arkansas 
+						//</SELECT>
+					//add ("<select name=\"" + adrPref + "\">"); indentLevel++
+					//local (optionList = xml.getAddressList (adritem, "option"))
+					//local (i, ct = sizeof (optionList), title, value, s)
+					//for i = 1 to ct
+						//title = xml.getAttribute (optionList [i], "title")^
+						//value = xml.getAttribute (optionList [i], "value")^
+						//s = ""
+						//if defaultValue == value
+							//s = " selected"
+						//add ("<option value=\"" + value + "\"" + s + ">" + title + "</option>")
+					//add ("</select>"); indentlevel--
+				//"picture"
+					//add ("<input name=\"" + adrPref + "\" type=\"file\" size=\"40\" value=\"" + defaultvalue + "\">")
 				"string" {
 					local (size = 25, maxlength = 50); // 08/08/00 JES: added defaults so adrWizard^.prefs can be undefined
 					try {size = adrWizard^.prefs.stringDefaultSize};
@@ -499,7 +499,7 @@ on draw (pta = nil) {
 					try {maxlength = xml.getAttribute (adritem, "maxlength")^};
 					add ("<input type=\"password\" name=\"" + adrPref + "\" size=\"" + size + "\" maxlength=\"" + maxlength + "\" value=\"" + defaultValue + "\">")};
 				"hidden" {
-					«Add the hidden field so the value is processed with the form.
+					//Add the hidden field so the value is processed with the form.
 					add ("<input type=\"hidden\" name=\"" + adrPref + "\" value=\"" + defaultvalue + "\">")};
 				"boolean" {
 					on addradio (val, flchecked, linetext) {
@@ -509,8 +509,8 @@ on draw (pta = nil) {
 						add (s + ">" + linetext)};
 					addradio ("true", boolean (defaultvalue), "Yes");
 					addradio ("false", !boolean (defaultvalue), "No");
-					«add ("<input type=\"radio\" name=\"" + adrPref + "\" value=" + "1 checked" + ">" + "Yes")
-					};«add ("<input type=\"radio\" name=\"" + adrPref + "\" value=\"" + "0" + "\">" + "No")
+					//add ("<input type=\"radio\" name=\"" + adrPref + "\" value=" + "1 checked" + ">" + "Yes")
+					};//add ("<input type=\"radio\" name=\"" + adrPref + "\" value=\"" + "0" + "\">" + "No")
 				"checkbox" {
 					if defaultvalue {
 						add ("<input type=\"checkbox\" name=\"" + adrPref + "\"  value=\"" + defaultvalue + "\" checked>")}
@@ -562,7 +562,7 @@ on draw (pta = nil) {
 					if itemTitle != nil {
 						add (itemTitle + "<br>")};
 					addField (adrItem, itemType, prefAdr, getDefaultValue (prefAdr));
-					};«add ("</td>")
+					};//add ("</td>")
 				"html" {
 					td (10);
 					if itemTitle != nil {
@@ -580,20 +580,20 @@ on draw (pta = nil) {
 					if itemTitle != nil {
 						add ("&nbsp;" + itemTitle + "</td>")}};
 				"separator" {
-					«bundle // old code
-						«add ("<td style=\"padding-left: 8;\">"); indentlevel++
-						«add ("<p><br><table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\"><tr>"); indentlevel++
-						«add ("<td valign=\"top\">" + string.replaceAll (itemTitle, " ", "&nbsp;") + "&nbsp;&nbsp;</td>")
-						«add ("<td valign=\"bottom\" width=\"100%\"><hr></td>")
-						«add ("</tr></table>"); indentlevel--
-						«add ("</td>"); indentlevel--
+					//bundle // old code
+						//add ("<td style=\"padding-left: 8;\">"); indentlevel++
+						//add ("<p><br><table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\"><tr>"); indentlevel++
+						//add ("<td valign=\"top\">" + string.replaceAll (itemTitle, " ", "&nbsp;") + "&nbsp;&nbsp;</td>")
+						//add ("<td valign=\"bottom\" width=\"100%\"><hr></td>")
+						//add ("</tr></table>"); indentlevel--
+						//add ("</td>"); indentlevel--
 					add ("<table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\"><tr>"); indentlevel++;
 					td (0); add ("&nbsp;</td>");
 					if itemTitle != nil {
 						add ("<td valign=\"top\">" + string.replaceAll (itemTitle, " ", "&nbsp;") + "&nbsp;&nbsp;</td>")};
 					add ("<td valign=\"bottom\" width=\"100%\"><hr></td>");
 					add ("</tr></table>"); indentlevel--;
-					};«add ("</td>")
+					};//add ("</td>")
 				"custom" { // custom items are handled by the callback, and are on a row by themselves
 					addField (adrItem, itemType, prefAdr, getDefaultValue (prefAdr))}}
 			else {
@@ -614,7 +614,7 @@ on draw (pta = nil) {
 					startRow ();
 					startTable ();
 					
-					«local (colspanText = "", styleText = "")
+					//local (colspanText = "", styleText = "")
 					addItem (adr, itemIndent + 12);
 					
 					endTable ();

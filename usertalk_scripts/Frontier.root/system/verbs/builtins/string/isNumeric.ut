@@ -1,2 +1,2 @@
-on isNumeric (ch) { «new in 4.0b7
+on isNumeric (ch) { //new in 4.0b7
 	kernel (string.isNumeric)}

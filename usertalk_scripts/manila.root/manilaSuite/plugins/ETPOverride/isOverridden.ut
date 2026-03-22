@@ -1,4 +1,4 @@
 on isOverridden (urlName) {
-	«manilaSuite.plugins.ETPoverride.isOverridden : 04/08/28, 09:17:34 by DAB
+	//manilaSuite.plugins.ETPoverride.isOverridden : 04/08/28, 09:17:34 by DAB
 	local (pta = html.getPageTableAddress());
 	return  defined(pta^.ETPformSubstitutes^.[urlName])}

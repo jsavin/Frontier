@@ -1,4 +1,4 @@
 on redirect (url) { //call this from a page being rendered, in a macro, to tell respond to redirect
 	local (pta = html.getPageTableAddress ());
 	pta^.responderAttributes.redirectUrl = url;
-	}«scratchpad.urlwatcher = url
+	}//scratchpad.urlwatcher = url

@@ -1,12 +1,12 @@
 on backupAllSites () {
-	«Changes
-		«11/1/05; 2:46:26 AM by JES
-			«Change call to tcp.sendMail to manilaSuite.sendMail.
-		«10/15/04; 11:45:01 PM by JES
-			«Skip sites which are not defined.
-				«Change recommended by David Bayly.
-		«6/26/02; 6:56:02 PM by JES
-			«Created.
+	//Changes
+		//11/1/05; 2:46:26 AM by JES
+			//Change call to tcp.sendMail to manilaSuite.sendMail.
+		//10/15/04; 11:45:01 PM by JES
+			//Skip sites which are not defined.
+				//Change recommended by David Bayly.
+		//6/26/02; 6:56:02 PM by JES
+			//Created.
 	local (adrsites = @config.manila.backups.sites);
 	local (backupFolder = config.manila.backups.backupFolder);
 	local (adr, data, ctsites = 0);
@@ -56,5 +56,5 @@ on backupAllSites () {
 		manilaSuite.sendMail (config.manila.backups.notifyList, "Daily Manila backup for " + tcp.dns.getmydottedid (), htmltext, mimetype:"text/html")};
 	
 	return (true)};
-«bundle //test code
-	«backupAllSites ()
+//bundle //test code
+	//backupAllSites ()

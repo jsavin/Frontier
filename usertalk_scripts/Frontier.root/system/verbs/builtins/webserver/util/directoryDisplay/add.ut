@@ -1,6 +1,6 @@
-«Script: system.verbs.builtins.webserver.util.directoryDisplay.add; Version 2; Date: Fri, 08 May 1998 16:36:31 GMT; ID: RAB
-	«Modified so that the kind is already set to the MIME type.  Note special MIME type for text/table and text/directory
-«Script: system.verbs.builtins.webserver.util.directoryDisplay.add; Version 1; Date: Thu, 07 May 1998 21:25:28 GMT; ID: RAB
+//Script: system.verbs.builtins.webserver.util.directoryDisplay.add; Version 2; Date: Fri, 08 May 1998 16:36:31 GMT; ID: RAB
+	//Modified so that the kind is already set to the MIME type.  Note special MIME type for text/table and text/directory
+//Script: system.verbs.builtins.webserver.util.directoryDisplay.add; Version 1; Date: Thu, 07 May 1998 21:25:28 GMT; ID: RAB
 on add (kind, hrefName, itemName, itemSize, itemModDate) {
 	local (icon, s);
 	if defined (user.webserver.prefs.MIME2icon.[kind]) {

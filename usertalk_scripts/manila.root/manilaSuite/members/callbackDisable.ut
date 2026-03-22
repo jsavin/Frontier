@@ -1,13 +1,13 @@
 on callbackDisable (adrSite, whichCallback, key) {
-	«manilaSuite.members.callbackDisable : 05/04/02, 16:05:20 by DAB
-		«set up the membershipgroup of adrsite to no longer have a  callback 
-		«values for whichCallback 
-			«signup (also called for manual and rpchandler member create operations)
-			«login
-			«block 
-			«unblock
-			«signout
-			«delete   (from admin page)
+	//manilaSuite.members.callbackDisable : 05/04/02, 16:05:20 by DAB
+		//set up the membershipgroup of adrsite to no longer have a  callback 
+		//values for whichCallback 
+			//signup (also called for manual and rpchandler member create operations)
+			//login
+			//block 
+			//unblock
+			//signout
+			//delete   (from admin page)
 	whichCallback = string.lower(whichCallback);
 	case whichCallback {
 		"signup";

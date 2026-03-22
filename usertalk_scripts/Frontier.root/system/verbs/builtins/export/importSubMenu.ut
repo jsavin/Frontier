@@ -1,10 +1,10 @@
 on importSubMenu (path) {
-	Frontier.findertofront = false; «Frontier should remain in front after importing
+	Frontier.findertofront = false; //Frontier should remain in front after importing
 	
 	local (subMenu, adrReceiver, parent);
-	bundle { «load in a menubar object into subMenu, determine location of receiving menubar
-		local (resdata); «holds the data received from resource fork
-		local (resname); «name of the resource, tells us which menubar to paste into
+	bundle { //load in a menubar object into subMenu, determine location of receiving menubar
+		local (resdata); //holds the data received from resource fork
+		local (resname); //name of the resource, tells us which menubar to paste into
 		if not rez.getNthResource (path, 'data', 1, @resname, @resdata) {
 			return (false)};
 		unpack (@resdata, @resdata);
@@ -17,7 +17,7 @@ on importSubMenu (path) {
 				return (false)};
 			new (menubarType, adrReceiver)}};
 	
-	bundle { «get the name of the parent menu from the 'STR ' resource
+	bundle { //get the name of the parent menu from the 'STR ' resource
 		if not rez.getStringResource (path, 132, @parent) {
 			parent = ""}};
 	

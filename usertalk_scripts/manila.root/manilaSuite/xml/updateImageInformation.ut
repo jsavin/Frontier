@@ -1,6 +1,6 @@
 on updateImageInformation () {
-	«The channel graphic may have changed, so update its associated info.
-		«10/28/99; 12:42:29 AM by PBS
+	//The channel graphic may have changed, so update its associated info.
+		//10/28/99; 12:42:29 AM by PBS
 	
 	local (pta = html.getPageTableAddress ());
 	local (adrPrefs = manilaSuite.xml.getRssPrefsAddress ());

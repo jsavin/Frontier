@@ -11,5 +11,5 @@ on setOne (attname, attval, adrwindow=nil) {
 			table.assign (adratt, attval);
 			return (true)}};
 	return (false)};
-«bundle //testing
-	«setOne ("type", "manilaSite")
+//bundle //testing
+	//setOne ("type", "manilaSite")

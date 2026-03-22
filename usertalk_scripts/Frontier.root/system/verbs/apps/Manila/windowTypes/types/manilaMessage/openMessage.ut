@@ -1,10 +1,10 @@
 on openMessage (siteurl, msgnum, flHidden=false, flHomePage=false, adradrwindow=nil) {
-	«Open a message in a Manila site.
-	«Changes
-		«3/27/07; 12:41:36 PM by LL
-			«Check the message out prior to trying to get the message from the server.
-		«3/11/02; 11:56:46 AM by JES
-			«If this is a Mac, and the message is opml, convert to Mac text.
+	//Open a message in a Manila site.
+	//Changes
+		//3/27/07; 12:41:36 PM by LL
+			//Check the message out prior to trying to get the message from the server.
+		//3/11/02; 11:56:46 AM by JES
+			//If this is a Mac, and the message is opml, convert to Mac text.
 	
 	bundle { //if the window is already open, bring it to the front
 		local (t); new (tableType, @t);
@@ -125,5 +125,5 @@ on openMessage (siteurl, msgnum, flHidden=false, flHomePage=false, adradrwindow=
 	
 	return (true)};
 
-«bundle //debugging
-	«openMessage ("http://test.w2k.jspace.org/", 3)
+//bundle //debugging
+	//openMessage ("http://test.w2k.jspace.org/", 3)

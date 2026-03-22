@@ -1,2 +1,2 @@
-on domenu (x, appID = WebStar.id) { «Execute the specified menu item from the server menus. Obsolete.
+on domenu (x, appID = WebStar.id) { //Execute the specified menu item from the server menus. Obsolete.
 	return (appleEvent (appID, 'WWW½', 'menu', '----', x))}

@@ -1,7 +1,7 @@
 on tableToPlist (adrTable, flAllowSpecialTypes=false) {
-	«Changes
-		«9/23/05; 1:21:12 PM by JES
-			«Created. Given the address of a table, return a representation of the table data in XML plist format.
+	//Changes
+		//9/23/05; 1:21:12 PM by JES
+			//Created. Given the address of a table, return a representation of the table data in XML plist format.
 	
 	local (xtext="", il=0);
 	on add (s) {

@@ -1,7 +1,7 @@
 on buildServerSubMenu () {
-	«Changes
-		«8/30/05; 5:38:53 PM by JES
-			«Changes to include the current server name in the Set Current Server command.
+	//Changes
+		//8/30/05; 5:38:53 PM by JES
+			//Changes to include the current server name in the Set Current Server command.
 	
 	local (oldTarget = target.get ());
 	
@@ -39,5 +39,5 @@ on buildServerSubMenu () {
 	try {target.set (oldTarget)};
 	
 	return (true)};
-«bundle //test code
-	«buildServerSubMenu ()
+//bundle //test code
+	//buildServerSubMenu ()

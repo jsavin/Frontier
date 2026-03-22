@@ -1,15 +1,15 @@
 on tableToHTML (adrtable, adrparamtable) {
-	«Changes:
-		«Thu, 04 Mar 1999 02:52:01 GMT by AR
-			«Changed one occurence of config.mainResponder.urls to adrparamtable^.responderAttributes.urls^
-		«01/28/00; 12:06:48 AM by PBS
-			«Ensure that either resources.root exists, or there is an address at config.mainResponder.sites.resources that is the address of mainResponder.resources.
+	//Changes:
+		//Thu, 04 Mar 1999 02:52:01 GMT by AR
+			//Changed one occurence of config.mainResponder.urls to adrparamtable^.responderAttributes.urls^
+		//01/28/00; 12:06:48 AM by PBS
+			//Ensure that either resources.root exists, or there is an address at config.mainResponder.sites.resources that is the address of mainResponder.resources.
 	local (htmltext = "", indentlevel = 0);
 	bundle { //PBS 01/28/00: mainResponder.resources
-		«This fixes the 6.1 bug that left folder and table listings without icons, since resources.root didn't ship with Frontier anymore. Now the contents of resources.root are stored at mainResponder.root. If resources.root is not present on the system, we create a pointer in config.mainResponder.sites.resources to point to mainResponder.resources.
+		//This fixes the 6.1 bug that left folder and table listings without icons, since resources.root didn't ship with Frontier anymore. Now the contents of resources.root are stored at mainResponder.root. If resources.root is not present on the system, we create a pointer in config.mainResponder.sites.resources to point to mainResponder.resources.
 		local (pathToResourcesRoot = Frontier.getSubFolder ("www") + "resources.root");
 		if not (file.exists (pathToResourcesRoot)) {
-			«Create an entry at config.mainResponder.sites.resources that's the address of mainResponder.resources.
+			//Create an entry at config.mainResponder.sites.resources that's the address of mainResponder.resources.
 			if not defined (config.mainResponder.sites) {
 				new (tableType, @config.mainResponder.sites)};
 			if not defined (config.mainResponder.sites.resources) {

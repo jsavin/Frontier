@@ -1,7 +1,7 @@
 on delete (username, password, siteName, cohort) {
-	«manilaSuite.rpcHandlers.accesscontrol.configure.cohorts.delete : 04/05/21, 09:52:07 by DAB
-		«delete a cohort from the memebrship group of the site at sitename
-		«was manilaFixer.rpcHandlers.accesscontrol.configure.cohorts.delete : 02/03/15, 15:22:53 by DAB
+	//manilaSuite.rpcHandlers.accesscontrol.configure.cohorts.delete : 04/05/21, 09:52:07 by DAB
+		//delete a cohort from the memebrship group of the site at sitename
+		//was manilaFixer.rpcHandlers.accesscontrol.configure.cohorts.delete : 02/03/15, 15:22:53 by DAB
 	local (errStr = "Can't delete cohort " + cohort + " because ");
 	manilaSuite.rpcUtils.dgAccessCheck (siteName, username, password, errStr);
 	local (adrSite = manilaSuite.rpcUtils.getSiteAddress (siteName));

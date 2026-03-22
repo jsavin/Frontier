@@ -1,9 +1,9 @@
 on assignProfiles (pta=nil) {
-	«Changes:
-		«04/21/00; 2:26:22 AM by JES
-			«localized
-		«05/01/00; 3:08:37 PM by JES
-			«Changed getString calls to use a replacement table address instead of a lists
+	//Changes:
+		//04/21/00; 2:26:22 AM by JES
+			//localized
+		//05/01/00; 3:08:37 PM by JES
+			//Changed getString calls to use a replacement table address instead of a lists
 	
 	local (editorsList);
 	

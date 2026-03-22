@@ -1,17 +1,17 @@
 on setCookie (mailaddress, password, adrMembers=nil, pta=nil, groupName=nil, flExpireAtEndOfSession=false) {
-	«Changes:
-		«10/1/05; 4:41:15 AM by JES
-			«Fix bug: flExpireAtEndOfSession not defined.
-		«10/1/05; 4:16:24 AM by JES
-			«Call through mainResponder.members.getCookieDomain to get the cookieDomain to use in the cookie.
-		«8/8/02; 2:59:32 PM by JES
-			«Support for passwords stored as binaries instead of as clear-text strings.
-		«9/12/01; 3:45:57 PM by PBS
-			«New parameter: flExpireAtEndOfSession. If true, then any expires setting is over-ridden, and the cookie expires at end of session.
-		«04/10/00; 12:08:26 PM by PBS
-			«Support for hashed cookies. groupName is a new optional parameter. It's a good idea to supply it, since the new feature needs the groupName.
-		«10/7/99; 8:33:53 PM by DW
-			«If cookieExpires is empty, don't add an "expires" attribute to the cookie.
+	//Changes:
+		//10/1/05; 4:41:15 AM by JES
+			//Fix bug: flExpireAtEndOfSession not defined.
+		//10/1/05; 4:16:24 AM by JES
+			//Call through mainResponder.members.getCookieDomain to get the cookieDomain to use in the cookie.
+		//8/8/02; 2:59:32 PM by JES
+			//Support for passwords stored as binaries instead of as clear-text strings.
+		//9/12/01; 3:45:57 PM by PBS
+			//New parameter: flExpireAtEndOfSession. If true, then any expires setting is over-ridden, and the cookie expires at end of session.
+		//04/10/00; 12:08:26 PM by PBS
+			//Support for hashed cookies. groupName is a new optional parameter. It's a good idea to supply it, since the new feature needs the groupName.
+		//10/7/99; 8:33:53 PM by DW
+			//If cookieExpires is empty, don't add an "expires" attribute to the cookie.
 	
 	if pta == nil {
 		pta = html.getPageTableAddress ()};
@@ -26,7 +26,7 @@ on setCookie (mailaddress, password, adrMembers=nil, pta=nil, groupName=nil, flE
 	
 	if flUseHashedCookies { //PBS 04/10/00: use new format?
 		if groupName == nil { //get the group name if not supplied
-			«Get the group name.
+			//Get the group name.
 			if defined (pta^.responderAttributes.defaultMembershipGroup) {
 				groupName = pta^.responderAttributes.defaultMembershipGroup};
 			if defined (pta^.responderAttributes.members) {

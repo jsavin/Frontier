@@ -1,9 +1,9 @@
 on init (adrservice) {
-	«Changes
-		«10/3/02; 3:41:06 PM by JES
-			«Created.
-			«The init script is called for each service, before a scan begins.
-			«It clears any blogChannel data left over from a previous scan. The blogChannel sub-table of the compilation table will be re-created by the individual driver scripts if any blogChannel elements are found when compiling the feed.
+	//Changes
+		//10/3/02; 3:41:06 PM by JES
+			//Created.
+			//The init script is called for each service, before a scan begins.
+			//It clears any blogChannel data left over from a previous scan. The blogChannel sub-table of the compilation table will be re-created by the individual driver scripts if any blogChannel elements are found when compiling the feed.
 	local (adrcompilation = @adrservice^.compilation);
 	if not defined (adrcompilation^) {
 		new (tableType, adrcompilation)};

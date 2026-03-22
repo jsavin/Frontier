@@ -1,8 +1,8 @@
 on isMemberInCohort (pta, cohortID, defaultValue=false) {
-	«manilaSuite.AccessControl.isMemberInCohort : 04/05/20, 17:29:45 by DAB
-		«answers the question "Is the current member in the site cohort called cohortiD?"
-		«if the cohort doesn't exist; returns defaultValue
-		«was manilaFixer.accessControl.isMemberInCohort : 04/05/13, 08:33:55 by DAB
+	//manilaSuite.AccessControl.isMemberInCohort : 04/05/20, 17:29:45 by DAB
+		//answers the question "Is the current member in the site cohort called cohortiD?"
+		//if the cohort doesn't exist; returns defaultValue
+		//was manilaFixer.accessControl.isMemberInCohort : 04/05/13, 08:33:55 by DAB
 	local (adrSite = manilaSuite.getManilaSiteAddress(pta));
 	local (adrGroup = manilaSuite.members.getGroupFromSiteAddress(adrSite));
 	local (adrCohorts = @adrGroup^.cohorts);

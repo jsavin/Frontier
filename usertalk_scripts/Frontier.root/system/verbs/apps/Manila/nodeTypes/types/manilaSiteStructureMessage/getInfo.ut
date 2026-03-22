@@ -1,6 +1,6 @@
-«Changes:
-	«12/08/00 12:51:37 PM by JES
-		«Added name and description to Get Info dialog.
+//Changes:
+	//12/08/00 12:51:37 PM by JES
+		//Added name and description to Get Info dialog.
 local (infoText =  "");
 on add (s) {
 	infoText = infoText + s + "\r"};

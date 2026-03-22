@@ -1,6 +1,6 @@
 on doRpcCallbacks (adrCallbacks, adrUserCallbacks, adrMsg) {
-	«Common code for RPC callbacks, both new and changed story callbacks.
-		«04/05/00; 12:21:24 AM by PBS
+	//Common code for RPC callbacks, both new and changed story callbacks.
+		//04/05/00; 12:21:24 AM by PBS
 	
 	if not defined (adrSite) { //make sure adrSite is in our context table -- this script expects to be called from config.mainResponder.callbacks.rpcSaveMessage, which means there's a context table
 		return (true)};

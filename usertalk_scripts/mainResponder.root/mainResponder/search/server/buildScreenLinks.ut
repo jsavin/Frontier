@@ -1,8 +1,8 @@
 on buildScreenLinks (adrSearch, adrScreen, adrSearchRequest) {
-	«Build links to more screens.
-		«Changes:
-			«10/1/99; 1:51:31 PM by PBS
-				«Support for searching multiple sites.
+	//Build links to more screens.
+		//Changes:
+			//10/1/99; 1:51:31 PM by PBS
+				//Support for searching multiple sites.
 	
 	local (htmlText);
 	local (i);

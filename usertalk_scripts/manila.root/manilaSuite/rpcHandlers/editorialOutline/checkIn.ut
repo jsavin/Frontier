@@ -1,6 +1,6 @@
 on checkIn (siteName, username, password) {
-	«Release custody of the editorial outline.
-		«10/12/00; 9:49:07 PM by PBS
+	//Release custody of the editorial outline.
+		//10/12/00; 9:49:07 PM by PBS
 	
 	bundle { //make sure this person is a managing editor of the site.
 		local (beginningErrorString = "Can't check in the editorial outline because ");

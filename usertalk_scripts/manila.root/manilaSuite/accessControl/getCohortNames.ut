@@ -1,7 +1,7 @@
 on getCohortNames (adrSite) {
-	«manilaSuite.AccessControl.getCohortNames : 04/05/20, 17:01:30 by DAB
-		«returns  a list of short adresses of cohort entries
-		«was manilaFixer.accessControl.getCohortNames  : 02/10/23, 21:12:43 by DAB
+	//manilaSuite.AccessControl.getCohortNames : 04/05/20, 17:01:30 by DAB
+		//returns  a list of short adresses of cohort entries
+		//was manilaFixer.accessControl.getCohortNames  : 02/10/23, 21:12:43 by DAB
 	local (adrGroup = manilaSuite.members.getGroupFromSiteAddress(adrSite));
 	local (adrCohorts = @adrGroup^.cohorts);
 	if not defined(adrCohorts) {
@@ -14,4 +14,4 @@ on getCohortNames (adrSite) {
 		userCohorts[0] = string.popfileFromAddress(adr)};
 	return userCohorts};
 manilaFixer.accessControl.getCohortNames(@myfirstSiteManilawebsite)
-	«{"MyFirstSiteManilaWebsite.[\"#membershipGroup\"].cohorts.sampleProject", "MyFirstSiteManilaWebsite.[\"#membershipGroup\"].cohorts.test2", "MyFirstSiteManilaWebsite.[\"#membershipGroup\"].cohorts.test3", "MyFirstSiteManilaWebsite.[\"#membershipGroup\"]...
+	//{"MyFirstSiteManilaWebsite.[\"#membershipGroup\"].cohorts.sampleProject", "MyFirstSiteManilaWebsite.[\"#membershipGroup\"].cohorts.test2", "MyFirstSiteManilaWebsite.[\"#membershipGroup\"].cohorts.test3", "MyFirstSiteManilaWebsite.[\"#membershipGroup\"]...

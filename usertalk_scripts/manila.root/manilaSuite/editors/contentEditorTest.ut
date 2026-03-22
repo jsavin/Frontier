@@ -1,6 +1,6 @@
 on contentEditorTest (pta=nil) {
-	«Return true if this is a content editor, false otherwise.
-		«11/26/01; 9:36:54 AM by PBS
+	//Return true if this is a content editor, false otherwise.
+		//11/26/01; 9:36:54 AM by PBS
 	
 	if pta == nil {
 		pta = html.getPageTableAddress ()};

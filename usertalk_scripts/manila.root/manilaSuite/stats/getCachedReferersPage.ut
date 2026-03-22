@@ -1,6 +1,6 @@
 on getCachedReferersPage (adrText, pta=nil) {
-	«Put the cached referers page in adrText^. If cache is old, return false.
-		«11/02/00; 5:10:59 PM by WM
+	//Put the cached referers page in adrText^. If cache is old, return false.
+		//11/02/00; 5:10:59 PM by WM
 	if pta == nil {
 		pta = html.getPageTableAddress ()};
 	local (adrSite = manilaSuite.getManilaSiteAddress (pta));

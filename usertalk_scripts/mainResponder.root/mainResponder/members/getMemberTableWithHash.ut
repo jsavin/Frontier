@@ -1,11 +1,11 @@
 on getMemberTableWithHash (groupName, userName, hashString) {
-	«Return the address to the user's table.
-		«On the way in, check the hashString and scriptError if it's not correct.
-			«This is a basic access routine for #security scripts.
-			«04/10/00; 2:43:10 PM by PBS
-		«Changes
-			«8/8/02; 2:56:30 PM by JES
-				«Support for passwords stored as binaries instead of as clear-text strings.
+	//Return the address to the user's table.
+		//On the way in, check the hashString and scriptError if it's not correct.
+			//This is a basic access routine for #security scripts.
+			//04/10/00; 2:43:10 PM by PBS
+		//Changes
+			//8/8/02; 2:56:30 PM by JES
+				//Support for passwords stored as binaries instead of as clear-text strings.
 	
 	local (adrUser = mainResponder.members.getMemberTable (groupName, userName));
 	if mainResponder.members.compareHashes (hashString, string (adrUser^.password), groupName) {

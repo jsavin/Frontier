@@ -1,8 +1,8 @@
 on renderStyleSheet (adrOutline, adrPageTable=nil) {
-	«Given the address of an outline, render it as a CSS style sheet.
-		«PBS 5/14/98.
-		«Added op.setDisplay (false) and (true)
-			«at the suggestion of Seth Dillingham, 5/15/98.
+	//Given the address of an outline, render it as a CSS style sheet.
+		//PBS 5/14/98.
+		//Added op.setDisplay (false) and (true)
+			//at the suggestion of Seth Dillingham, 5/15/98.
 	local (oldtarget, htmlText = "");
 	local (level = 0, lastLevel = 0);
 	

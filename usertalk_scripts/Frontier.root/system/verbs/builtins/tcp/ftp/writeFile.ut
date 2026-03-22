@@ -1,16 +1,16 @@
 on writeFile (adrconnectiontable, filetext, path) {
-	«Upload a file via FTP.
-		«Changes:
-			«09/06/00; 2:35:03 PM by PBS
-				«Fix for "dataport not defined" bug.
+	//Upload a file via FTP.
+		//Changes:
+			//09/06/00; 2:35:03 PM by PBS
+				//Fix for "dataport not defined" bug.
 	local (response);
 	local (adrlistens = @system.temp.ftpClientListens);
 	if not defined (adrlistens^) {
 		new (tabletype, adrlistens)};
 	local (adrdaemon = @tcp.ftp.daemon);
 	on fatal (errmsg) {
-		«tcp.ftp.quit ()
-		«delete (adrconnectiontable)
+		//tcp.ftp.quit ()
+		//delete (adrconnectiontable)
 		tcp.ftp.closeConnection (adrconnectiontable);
 		scriptError (errmsg)};
 	on sureDirectory (directory) {
@@ -128,7 +128,7 @@ on writeFile (adrconnectiontable, filetext, path) {
 			response = tcp.ftp.sendCommand (adrconnectiontable, "STOR " + filename);
 			case true {
 				response beginsWith "425" {
-					«clock.waitSeconds (2)
+					//clock.waitSeconds (2)
 					thread.sleepFor (2);
 					continue};
 				response beginsWith "5" {

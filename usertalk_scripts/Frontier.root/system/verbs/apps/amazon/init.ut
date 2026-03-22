@@ -1,7 +1,7 @@
 on init () {
-	«Changes
-		«9/9/02; 9:49:39 PM by JES
-			«Created.
+	//Changes
+		//9/9/02; 9:49:39 PM by JES
+			//Created.
 	if not defined (user.amazon) {
 		new (tableType, @user.amazon)};
 	if not defined (user.amazon.key) {

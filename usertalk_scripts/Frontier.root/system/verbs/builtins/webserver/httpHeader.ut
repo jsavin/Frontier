@@ -1,24 +1,24 @@
-«Script: system.verbs.builtins.webserver.httpHeader; Version 1; Date: Thu, 14 May 1998 21:40:04 GMT; ID: RAB
+//Script: system.verbs.builtins.webserver.httpHeader; Version 1; Date: Thu, 14 May 1998 21:40:04 GMT; ID: RAB
 on httpHeader (status = "200 OK", modifier = "text/html") {
-	«This script produces standard HTTP Headers using this syntax:
-		«httpHeader ([status], [modifier])
-		«the parameters are:
-			«type: default = "200 OK", This is the standard HTTP status code
-			«modifier : default = "text/html", This is either the content type of the data
-				«returned.  In the case of a 302 FOUND header this parameter is the location (URL)
-				«to redirect the request.
-		«httpHeader () will return the most commonly used header for cgi's.
+	//This script produces standard HTTP Headers using this syntax:
+		//httpHeader ([status], [modifier])
+		//the parameters are:
+			//type: default = "200 OK", This is the standard HTTP status code
+			//modifier : default = "text/html", This is either the content type of the data
+				//returned.  In the case of a 302 FOUND header this parameter is the location (URL)
+				//to redirect the request.
+		//httpHeader () will return the most commonly used header for cgi's.
 	
 	local (servername, s);
 	
 	serverName = webserver.util.getServerString(); // set the server
 	case status {
-		"401 UNAUTHORIZED" { « requests username/password from browser
+		"401 UNAUTHORIZED" { // requests username/password from browser
 			s = "HTTP/1.0 " + status + "\r\nWWW-Authenticate: Basic realm=\"" + modifier + "\"\r\n";
 			s = s + "Server: " + serverName + "\r\n\r\n"};
-		"302 FOUND" { « redirect header
-			s = "HTTP/1.0 " + status + "\r\nLocation: " + modifier + "\r\n"; « old redirect standard
-			s = s + "URI: " + modifier + "\r\n"; « new redirect standard
+		"302 FOUND" { // redirect header
+			s = "HTTP/1.0 " + status + "\r\nLocation: " + modifier + "\r\n"; // old redirect standard
+			s = s + "URI: " + modifier + "\r\n"; // new redirect standard
 			s = s + "Server: " + serverName + "\r\n\r\n"}}
 	else {
 		s = "HTTP/1.0 " + status + "\r\nServer: " + serverName + "\r\n";

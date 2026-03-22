@@ -1,6 +1,6 @@
 on platformLink (includeVersion=false) {
-	«Generates a link to the operating system that a web page was built on.
-		«New: 10/29/97 at 2:57:06 PM by DW.
+	//Generates a link to the operating system that a web page was built on.
+		//New: 10/29/97 at 2:57:06 PM by DW.
 	local (url);
 	case sys.os () {
 		"Win95" {

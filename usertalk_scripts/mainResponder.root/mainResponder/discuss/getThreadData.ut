@@ -1,13 +1,13 @@
 on getThreadData (adrTable, d, threadAliveDays, pta=nil, adrInDgCallback=nil) {
-	«Build a table containing information about each live thread for a given day
-		«10/10/00; 5:51:11 PM by JES
-	«Changes:
-		«10/11/00; 1:29:52 PM by JES
-			«Fixed bug where only two days of topics were alive, regardless of the value of threadAliveDays.
-		«10/14/00; 2:32:23 PM by JES
-			«Changed the message count to the count of the message and all responses, not just immediate daughters.
-		«4/4/02; 12:57:40 AM by JES
-			«New optional paramter, adrInDgCallback. If non-nil, call the callback for each message. If the callback returns false, don't list the message. If it returns true, preserve current behavior.
+	//Build a table containing information about each live thread for a given day
+		//10/10/00; 5:51:11 PM by JES
+	//Changes:
+		//10/11/00; 1:29:52 PM by JES
+			//Fixed bug where only two days of topics were alive, regardless of the value of threadAliveDays.
+		//10/14/00; 2:32:23 PM by JES
+			//Changed the message count to the count of the message and all responses, not just immediate daughters.
+		//4/4/02; 12:57:40 AM by JES
+			//New optional paramter, adrInDgCallback. If non-nil, call the callback for each message. If the callback returns false, don't list the message. If it returns true, preserve current behavior.
 	
 	if pta == nil {
 		pta = html.getPageTableAddress ()};

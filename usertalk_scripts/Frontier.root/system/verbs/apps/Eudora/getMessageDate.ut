@@ -4,5 +4,5 @@ on getMessageDate (msgObj) {
 		try {
 			val = core.get (id, msgObj.field ["Date"]) - "Date: "}
 		else {
-			return ("")}}; «out box messages don't have dates
+			return ("")}}; //out box messages don't have dates
 	return (date (val))}

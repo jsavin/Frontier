@@ -1,9 +1,9 @@
 on newGemForm (redirectUrl=nil, actionURL="") {
-	«Display the new Gem form.
-		«04/14/00; 3:50:23 PM by PBS
-	«Changes:
-		«04/20/00; 8:08:50 PM by JES
-			«localized
+	//Display the new Gem form.
+		//04/14/00; 3:50:23 PM by PBS
+	//Changes:
+		//04/20/00; 8:08:50 PM by JES
+			//localized
 	
 	local (titlePrompt = manilaSuite.getString ("gems.titlePrompt"));
 	local (filePrompt = manilaSuite.getString ("gems.chooseFilePrompt"));

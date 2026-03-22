@@ -1,7 +1,7 @@
 on timeStampPopup (pta, selectPrefix, defaultValue = clock.now(), adrValue = nil, fl12Clock=false) {
-	«manilaSuite.AccessControl.timeStampPopup : 04/05/20, 18:07:00 by DAB
-		«build a web control for a timestamp using localised popups
-		«was manilaFixer.accessControl.timeStampPopup : 02/02/25, 13:26:31 by DAB
+	//manilaSuite.AccessControl.timeStampPopup : 04/05/20, 18:07:00 by DAB
+		//build a web control for a timestamp using localised popups
+		//was manilaFixer.accessControl.timeStampPopup : 02/02/25, 13:26:31 by DAB
 	local (nowdd, nowmm, nowyy, nowH, nowM, NowS);
 	date.get(defaultValue, @nowdd, @nowmm, @nowyy, @nowH, @nowM, @nowS);
 	

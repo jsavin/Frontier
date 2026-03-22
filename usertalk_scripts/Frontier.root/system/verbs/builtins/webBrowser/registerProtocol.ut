@@ -1,4 +1,4 @@
-on registerProtocol (x, forProtocol) { «Registers application as a “handler” for this protocol with a given prefix. The handler will receive “OpenURL”, or if that fails, “GetURL” event.
+on registerProtocol (x, forProtocol) { //Registers application as a “handler” for this protocol with a given prefix. The handler will receive “OpenURL”, or if that fails, “GetURL” event.
 	case sys.os () {
 		"MacOS" {
 			pack (x, @x);

@@ -1,7 +1,7 @@
 on dive (adrtable, path, flCreateSubSites = false) {
-	«Changes
-		«7/2/02; 4:04:27 AM by JES
-			«Created.
+	//Changes
+		//7/2/02; 4:04:27 AM by JES
+			//Created.
 	local (nomad = adrtable);
 	on getSiteAddress (adrtable, adradrsite, name) {
 		local (lowername = string.lower (name));
@@ -26,12 +26,12 @@ on dive (adrtable, path, flCreateSubSites = false) {
 			else {
 				scriptError ("Can't dive into siteTree because there is no (sub-)site named \"" + pathPart + "\".")}}};
 	return (nomad)};
-«bundle //testing
-	«local (xstruct)
-	«local (adrdomain = @config.mainResponder.domains.default)
-	«local (adroutline = @adrdomain^.siteTree.directory.outline)
-	«xml.compile (string (adroutline^), @xstruct)
-	«local (adrtree = xml.getAddress (@xstruct, "siteTree"))
-	«local (adrtopsite = xml.getAddress (adrtree, "site"))
-	«dive (adrtopsite, "foo")
-	«dive (adrtopsite, "foo/bar/baz")
+//bundle //testing
+	//local (xstruct)
+	//local (adrdomain = @config.mainResponder.domains.default)
+	//local (adroutline = @adrdomain^.siteTree.directory.outline)
+	//xml.compile (string (adroutline^), @xstruct)
+	//local (adrtree = xml.getAddress (@xstruct, "siteTree"))
+	//local (adrtopsite = xml.getAddress (adrtree, "site"))
+	//dive (adrtopsite, "foo")
+	//dive (adrtopsite, "foo/bar/baz")

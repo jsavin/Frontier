@@ -12,6 +12,6 @@ on getPost (appkey, postid, username, password) {
 		t.postid = siteName + "#" + adrmsg^.msgnum;
 		return (t)};
 	return (getPost (adrmsg))};
-«bundle //test code
-	«local (post = getPost ("xxx", "blogger#18", "jake@userland.com", user.prefs.manilaPassword))
-	«dialog.alert (post.postid)
+//bundle //test code
+	//local (post = getPost ("xxx", "blogger#18", "jake@userland.com", user.prefs.manilaPassword))
+	//dialog.alert (post.postid)

@@ -1,6 +1,6 @@
 on getGroupMembers (groupName) {
-	«Returns a list of the members of a group.
-		«Returns false if the group doesn't exist.
+	//Returns a list of the members of a group.
+		//Returns false if the group doesn't exist.
 	local (i, memberList = {});
 	local (adrGroup = people.getGroupTable (groupName));
 	if not (people.groupExists (groupName, adrGroup)) {

@@ -1,9 +1,9 @@
 on inGuestDatabase (adr) {
-	«Does the address point to an object inside an existing guest database?
-		«Tue, Sep 29, 1998 at 4:52:15 PM by PBS
-	«Changes
-		«12/3/01; 5:50:30 PM by JES
-			«If running on Carbon, don't require the guest database to have Mac type/creator codes. (This is the same behavior as on Windows.)
+	//Does the address point to an object inside an existing guest database?
+		//Tue, Sep 29, 1998 at 4:52:15 PM by PBS
+	//Changes
+		//12/3/01; 5:50:30 PM by JES
+			//If running on Carbon, don't require the guest database to have Mac type/creator codes. (This is the same behavior as on Windows.)
 	
 	local (addressList = string.parseAddress (adr));
 	local (f = addressList [1]);

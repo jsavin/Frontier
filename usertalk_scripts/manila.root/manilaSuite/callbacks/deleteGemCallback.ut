@@ -1,7 +1,7 @@
 on deleteGemCallback (adrContextTable) {
-	«manilaSuite.callbacks.deleteGemCallback : 04/06/14, 21:13:37 by DAB
-		«This callback runner allows the server manager to place a set of callback scripts 
-		«at config.manila.callbacks.deleteGem to handle deleting and undeleting of Gems
+	//manilaSuite.callbacks.deleteGemCallback : 04/06/14, 21:13:37 by DAB
+		//This callback runner allows the server manager to place a set of callback scripts 
+		//at config.manila.callbacks.deleteGem to handle deleting and undeleting of Gems
 	
 	local (adrUserCallbacks = @config.manila.callbacks.deleteGem);
 	

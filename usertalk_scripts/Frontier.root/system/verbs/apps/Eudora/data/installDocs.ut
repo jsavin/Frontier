@@ -1,5 +1,5 @@
 adrOutline=@eudora.data.docserversource;
-bundle { «traverse the outline, writing one verb at a time
+bundle { //traverse the outline, writing one verb at a time
 	target.set (adrOutline);
 	op.firstsummit ();
 	op.fullcollapse ();
@@ -30,7 +30,7 @@ bundle { «traverse the outline, writing one verb at a time
 				if ctSubs > 0 {
 					op.expand (1);
 					op.go (right, 1);
-					if (ctSubs == 1) and (section == "Examples") { «an example
+					if (ctSubs == 1) and (section == "Examples") { //an example
 						local (line);
 						line = op.getLineText ();
 						s = s + tab + line + cr}
@@ -68,5 +68,5 @@ bundle { «traverse the outline, writing one verb at a time
 		if not op.go (down, 1) {
 			break}};
 	op.firstsummit ();
-	target.clear (); «done with the outline
+	target.clear (); //done with the outline
 	msg("")}

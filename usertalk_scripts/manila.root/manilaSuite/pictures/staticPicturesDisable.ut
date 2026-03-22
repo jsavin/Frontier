@@ -1,7 +1,7 @@
 on staticPicturesDisable (adrSite) {
-	«manilaSuite.pictures.staticPicturesDisable : 04/05/23, 09:20:38 by DAB
-		«undo static picture serving in this site
-		«returns coutn of messages changed
+	//manilaSuite.pictures.staticPicturesDisable : 04/05/23, 09:20:38 by DAB
+		//undo static picture serving in this site
+		//returns coutn of messages changed
 	local (cnt=0);
 	on disableOne(adrMsg) {
 		if manilaSuite.pictures.writeToDiskUndo(adrMSg) {

@@ -1,6 +1,6 @@
 on enabledOnServer () {
-	«Return true if gems are enabled globally on this server.
-		«04/13/00; 9:07:51 PM by PBS
+	//Return true if gems are enabled globally on this server.
+		//04/13/00; 9:07:51 PM by PBS
 	
 	if not defined (config.manila.prefs.flGemsEnabled) {
 		config.manila.prefs.flGemsEnabled = false};

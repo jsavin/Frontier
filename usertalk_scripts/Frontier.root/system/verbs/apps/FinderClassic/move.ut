@@ -1,4 +1,4 @@
-on move (selectionpath, folderpath) { «drag (move) the selection into the folder
+on move (selectionpath, folderpath) { //drag (move) the selection into the folder
 	folder = alias (folderpath);
 	selection = Finder.makeAliasList (selectionpath);
 	return (finderEvent (Finder.id, Finder.class, 'move', '----', folder, 'fsel', selection, 'fmsc', 0))}

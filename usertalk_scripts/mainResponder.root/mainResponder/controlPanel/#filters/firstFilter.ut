@@ -1,9 +1,9 @@
 on firstFilter (pta) {
-	«Changes:
-		«05/10/00; 1:26:58 AM by PBS
-			«Check the referer to defeat the client side trojan horse bug.
-		«12/7/01; 7:13:21 PM by PBS
-			«Ignore search args.
+	//Changes:
+		//05/10/00; 1:26:58 AM by PBS
+			//Check the referer to defeat the client side trojan horse bug.
+		//12/7/01; 7:13:21 PM by PBS
+			//Ignore search args.
 	
 	Frontier.versionRequired ("6.1b16");
 	bundle { //PBS 05/10/00: check referer to defeat client side trojan horse

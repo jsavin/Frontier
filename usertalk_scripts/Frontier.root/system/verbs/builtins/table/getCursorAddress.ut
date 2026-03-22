@@ -1,7 +1,7 @@
-on getCursorAddress () { «4.0.2 -- return the address of the current object
-	«if a non-table window is frontmost, it's the address of that window
-		«if a table window is frontmost, it's the address of the cell cursor
-	«10/31/97 at 7:59:16 AM by DW -- moved from toys.getCursorAddress
+on getCursorAddress () { //4.0.2 -- return the address of the current object
+	//if a non-table window is frontmost, it's the address of that window
+		//if a table window is frontmost, it's the address of the cell cursor
+	//10/31/97 at 7:59:16 AM by DW -- moved from toys.getCursorAddress
 	
 	local (adrobject = address (window.frontmost ()));
 	if adrobject == nil {
@@ -9,5 +9,5 @@ on getCursorAddress () { «4.0.2 -- return the address of the current object
 	if typeOf (adrobject^) == tabletype {
 		adrobject = table.getCursor ()};
 	return (adrobject)};
-«bundle «test code
-	«dialog.alert (getCursorAddress ())
+//bundle //test code
+	//dialog.alert (getCursorAddress ())

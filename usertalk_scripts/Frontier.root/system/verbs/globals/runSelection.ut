@@ -1,49 +1,49 @@
 on runSelection () {
-	«Fri, Aug 16, 1996 at 6:02:42 AM by DW
-		«runs cards
-	«modified for Frontier 3.0 -- 11/12/93 DW
-		«handles compiled code
-		«doesn't display result if it hasn't been set
-		«uses window.msg too, in case the main window is hidden
+	//Fri, Aug 16, 1996 at 6:02:42 AM by DW
+		//runs cards
+	//modified for Frontier 3.0 -- 11/12/93 DW
+		//handles compiled code
+		//doesn't display result if it hasn't been set
+		//uses window.msg too, in case the main window is hidden
 	on kernelcall () {
 		kernel (window.runselection)};
 	on runoutlineselection () {
-		«deposit the value as a comment underneath the headline
-			«operate on the original front window, allow for side-effects
+		//deposit the value as a comment underneath the headline
+			//operate on the original front window, allow for side-effects
 		
-		origwindow = window.frontmost (); «remember original frontmost window
-		origcursor = op.getcursor (); «remember original bar cursor
+		origwindow = window.frontmost (); //remember original frontmost window
+		origcursor = op.getcursor (); //remember original bar cursor
 		
 		wp.setTextMode (false);
 		
-		s = displaystring (evaluate (op.getlinetext ())); «evaluate the expression
+		s = displaystring (evaluate (op.getlinetext ())); //evaluate the expression
 		
-		if origwindow equals "" { «avoid errors in menu-script windows
+		if origwindow equals "" { //avoid errors in menu-script windows
 			if window.frontmost () notequals "" {
-				«special case for windows linked into menu bars
-				«if the script caused a window change, don't try to deposit value comment
+				//special case for windows linked into menu bars
+				//if the script caused a window change, don't try to deposit value comment
 				return (true)}}
 		else {
 			try {
 				target.set (origwindow)}
-			else { «it must have been deleted by the script
+			else { //it must have been deleted by the script
 				return (true)}};
 		
-		bundle { «deposit comment in window with script
-			op.setcursor (origcursor); «restore the cursor, avoid side-effect errors
+		bundle { //deposit comment in window with script
+			op.setcursor (origcursor); //restore the cursor, avoid side-effect errors
 			local (displayon = op.getdisplay ());
-			op.setdisplay (false); «turn the display off
+			op.setdisplay (false); //turn the display off
 			op.expand (1);
-			if op.go (right, 1) { «the line has at least one subhead
-				if script.iscomment () { «smash pre-existing value, stored in a comment line
+			if op.go (right, 1) { //the line has at least one subhead
+				if script.iscomment () { //smash pre-existing value, stored in a comment line
 					op.setlinetext (s);
 					op.go (left, 1);
-					op.setdisplay (displayon); «restore the outline display
+					op.setdisplay (displayon); //restore the outline display
 					return (true)};
-				op.go (left, 1)}; «put cursor back on line with program text
+				op.go (left, 1)}; //put cursor back on line with program text
 			op.insert (s, right);
 			script.makecomment ();
-			op.setdisplay (displayon); «restore the outline display
+			op.setdisplay (displayon); //restore the outline display
 			op.go (left, 1);
 			target.clear ()};
 		
@@ -53,19 +53,19 @@ on runSelection () {
 		local (adr = table.getCursor ());
 		local (result);
 		case typeOf (adr^) {
-			codeType; «11/12/93 DW
+			codeType; //11/12/93 DW
 			scriptType {
 				result = adr^ ()};
 			stringType {
 				result = evaluate (adr^)};
-			binaryType { «Fri, Aug 16, 1996 at 6:04:10 AM by DW
+			binaryType { //Fri, Aug 16, 1996 at 6:04:10 AM by DW
 				if getBinaryType (adr^) == 'CARD' {
 					card.run (adr)}
 				else {
 					speaker.beep ()}}}
 		else {
 			speaker.beep ()};
-		if result != nil { «11/12/93 DW
+		if result != nil { //11/12/93 DW
 			local (s = displaystring (result));
 			msg (s);
 			window.msg (s)};
@@ -80,16 +80,16 @@ on runSelection () {
 		s ();
 		return (true)};
 	local (frontwindow = window.frontmost ());
-	if frontwindow == "" { «no window open, or it's not an object db window
+	if frontwindow == "" { //no window open, or it's not an object db window
 		speaker.beep ();
 		return (false)};
-	if window.ismenuscript (frontwindow) { «it's a script linked into a menubar
-		«window.frontmost can't return an address for these windows
+	if window.ismenuscript (frontwindow) { //it's a script linked into a menubar
+		//window.frontmost can't return an address for these windows
 		
 		runoutlineselection ();
 		return (true)};
-	if defined (frontwindow^) { «see if it's a script or an outline
-		case typeOf (frontwindow^) { «override for script-implemented running
+	if defined (frontwindow^) { //see if it's a script or an outline
+		case typeOf (frontwindow^) { //override for script-implemented running
 			outlinetype;
 			scripttype {
 				return (runoutlineselection ())};
@@ -99,7 +99,7 @@ on runSelection () {
 				return (runwpselection ())};
 			menubartype {
 				return (runmenuselection ())}}};
-	if not kernelcall () { «default action: use kernel
+	if not kernelcall () { //default action: use kernel
 		speaker.beep ();
 		return (false)};
 	return (true)}

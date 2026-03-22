@@ -1,19 +1,19 @@
 on writeToDisk (adrMsgTable, fileName="", mimeType="") {
-	«Changes:
-		«3/13/07; 12:11:08 PM by LL
-			«Add support for PNG images.
-		«7/11/05; 4:13:13 AM by JES
-			«If we're editing an existing image, and we can't create the path to the static file, make sure to delete the old one, so the new image URL (the dynamic URL) will be used.
-		«5/28/05; 10:16:20 PM by JES
-			«If the folder can't be found or created, return false. We don't want the user to ever see an error because of this.
-		«5/27/05; 6:07:57 PM by JES
-			«New optional parameters, fileName and mimeType. Makes it possible to call this verb outside of the context of posting an image.
-		«7/30/02; 11:30:32 PM by JES
-			«Filename length limit on MacOS is 31 characters, not 32.
-		«03/01/00; 4:06:15 PM by PBS
-			«Deal with files that contain non-alphas or spaces -- remove them.
-		«02/29/00; 6:04:14 PM by PBS
-			«Write a picture to disk, if the prefs are set up that way.
+	//Changes:
+		//3/13/07; 12:11:08 PM by LL
+			//Add support for PNG images.
+		//7/11/05; 4:13:13 AM by JES
+			//If we're editing an existing image, and we can't create the path to the static file, make sure to delete the old one, so the new image URL (the dynamic URL) will be used.
+		//5/28/05; 10:16:20 PM by JES
+			//If the folder can't be found or created, return false. We don't want the user to ever see an error because of this.
+		//5/27/05; 6:07:57 PM by JES
+			//New optional parameters, fileName and mimeType. Makes it possible to call this verb outside of the context of posting an image.
+		//7/30/02; 11:30:32 PM by JES
+			//Filename length limit on MacOS is 31 characters, not 32.
+		//03/01/00; 4:06:15 PM by PBS
+			//Deal with files that contain non-alphas or spaces -- remove them.
+		//02/29/00; 6:04:14 PM by PBS
+			//Write a picture to disk, if the prefs are set up that way.
 	
 	local (pta = html.getPageTableAddress ());
 	

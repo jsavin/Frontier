@@ -1,7 +1,7 @@
 on getSubItemData (userName, password, adrTable) {
-	«Changes
-		«8/30/05; 4:38:11 PM by JES
-			«Created. Get data about a table's sub-items from the server.
+	//Changes
+		//8/30/05; 4:38:11 PM by JES
+			//Created. Get data about a table's sub-items from the server.
 	
 	webEditServer.init (); //ensure callback tables are initialized
 	

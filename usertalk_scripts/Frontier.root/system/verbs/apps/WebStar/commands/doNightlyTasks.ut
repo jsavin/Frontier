@@ -1,4 +1,4 @@
-«docs: user.websites.frontier.netScripting.webStarCommands
+//docs: user.websites.frontier.netScripting.webStarCommands
 webstar.commands.init ();
 local (frontierfolder = file.folderFromPath (Frontier.getProgramPath ()));
 local (wstasksfolder = frontierfolder + "WebSTAR Tasks:");
@@ -24,7 +24,7 @@ if not sys.appIsRunning (WebSTAR.id) {
 WebSTAR.bringToFront ();
 if user.webstar.nightlyLogDigest {
 	if lastlogfile != "" {
-		new (tabletype, @user.webstar.urls); «start the count over every day
+		new (tabletype, @user.webstar.urls); //start the count over every day
 		webstar.commands.digestLog (lastlogfile);
 		webstar.commands.writeReport (wsfolder + "logDigest.html")}};
 if user.webstar.nightlyMirror {
@@ -36,9 +36,9 @@ if user.webstar.nightlyMirror {
 			if file.isFolder (targetfolder) {
 				on filter (f) {
 					local (fname = file.fileFromPath (f));
-					if file.type (f) == 'APPL' { «don't mirror apps
+					if file.type (f) == 'APPL' { //don't mirror apps
 						return (false)};
-					if file.isAlias (f) { «don't mirror aliases
+					if file.isAlias (f) { //don't mirror aliases
 						return (false)};
 					case fname {
 						"Saved Logfiles:";

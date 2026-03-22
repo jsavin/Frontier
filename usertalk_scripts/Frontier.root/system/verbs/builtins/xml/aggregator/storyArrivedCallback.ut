@@ -1,27 +1,27 @@
 on storyArrivedCallback (adrservice, adritem) {
-	«Changes
-		«6/12/03; 1:02:12 PM by JES
-			«If the pref is set to save item data (adrdata^.prefs.flSaveItemData == true), copy the item's data table to the story table.
-		«1/23/03; 11:31:45 AM by DW
-			«If the item has a permalink, copy it in into the story.
-		«10/17/02; 5:22:07 PM by JES
-			«If the item has comments, copy the url into the story.
-		«4/25/02; 12:10:02 PM by DW
-			«Don't pass the enclosure table through html.neuterJavaScript, it's a senseless thing to do. Whoever added this code must not have looked to see that the enclosure is a table, not a string.
-		«1/28/02; 6:34:48 PM by JES
-			«Don't convert the channelTitle and storyText to Mac text (on MacOS), since this is already done in xml.rss.compileService.
-		«11/7/01; 7:13:04 PM by DW
-			«Change system.temp.aggregator to adrdata^.stats.lastRun.
-		«2/22/01; 10:09:33 PM by JES
-			«If this is a Mac, convert the channel title and story text to Mac text.
-		«2/20/01; 4:18:21 PM by PBS
-			«Make sure JavaScript is neutered. Curly braces are already neutered by xml.rss.compileService.
-		«1/13/01; 6:47:08 PM by DW
-			«If the item has an enclosure copy it into the story.
-		«1/8/01; 10:37:11 AM by DW
-			«Clear the viewStories cache when a story arrives.
-		«Monday, December 18, 2000 at 8:39:44 AM by DW
-			«Created. adrservice points to the service that contains the story, adritem points to an item in a channel compilation.
+	//Changes
+		//6/12/03; 1:02:12 PM by JES
+			//If the pref is set to save item data (adrdata^.prefs.flSaveItemData == true), copy the item's data table to the story table.
+		//1/23/03; 11:31:45 AM by DW
+			//If the item has a permalink, copy it in into the story.
+		//10/17/02; 5:22:07 PM by JES
+			//If the item has comments, copy the url into the story.
+		//4/25/02; 12:10:02 PM by DW
+			//Don't pass the enclosure table through html.neuterJavaScript, it's a senseless thing to do. Whoever added this code must not have looked to see that the enclosure is a table, not a string.
+		//1/28/02; 6:34:48 PM by JES
+			//Don't convert the channelTitle and storyText to Mac text (on MacOS), since this is already done in xml.rss.compileService.
+		//11/7/01; 7:13:04 PM by DW
+			//Change system.temp.aggregator to adrdata^.stats.lastRun.
+		//2/22/01; 10:09:33 PM by JES
+			//If this is a Mac, convert the channel title and story text to Mac text.
+		//2/20/01; 4:18:21 PM by PBS
+			//Make sure JavaScript is neutered. Curly braces are already neutered by xml.rss.compileService.
+		//1/13/01; 6:47:08 PM by DW
+			//If the item has an enclosure copy it into the story.
+		//1/8/01; 10:37:11 AM by DW
+			//Clear the viewStories cache when a story arrives.
+		//Monday, December 18, 2000 at 8:39:44 AM by DW
+			//Created. adrservice points to the service that contains the story, adritem points to an item in a channel compilation.
 	local (adrdata = xml.aggregator.init ());
 	adrdata^.stats.lastRun.ctNewStories++;
 	
@@ -34,9 +34,9 @@ on storyArrivedCallback (adrservice, adritem) {
 	adrstory^.channeltitle = html.neuterJavaScript (adrservice^.compilation.channeltitle);
 	adrstory^.storytext = html.neuterJavaScript (adritem^.title);
 	adrstory^.time = clock.now ();
-	«if system.environment.isMac
-		«adrstory^.channeltitle = latinToMac.convert (adrstory^.channeltitle)
-		«adrstory^.storytext = latinToMac.convert (adrstory^.storytext)
+	//if system.environment.isMac
+		//adrstory^.channeltitle = latinToMac.convert (adrstory^.channeltitle)
+		//adrstory^.storytext = latinToMac.convert (adrstory^.storytext)
 	if defined (adritem^.enclosure) {
 		adrstory^.enclosure = adritem^.enclosure};
 	if defined (adritem^.comments) {
@@ -47,13 +47,13 @@ on storyArrivedCallback (adrservice, adritem) {
 		if defined (adritem^.data) {
 			adrstory^.data = adritem^.data}};
 	bundle { //PBS 02/20/01: make sure the compilation table for this service has its JavaScript neutered
-		«This should be fast, because html.neuterJavaScript returns right away if a string doesn't contain a < character, and none of these items should contain a < character. In the case where one does, it's a good thing we're doing this neutering.
+		//This should be fast, because html.neuterJavaScript returns right away if a string doesn't contain a < character, and none of these items should contain a < character. In the case where one does, it's a good thing we're doing this neutering.
 		if defined (adrService^.compilation) {
 			local (adr);
 			for adr in @adrService^.compilation {
 				if typeOf (adr^) == stringType {
 					adr^ = html.neuterJavaScript (adr^)}}}};
-	«adrstory^.data = adritem^
+	//adrstory^.data = adritem^
 	bundle { //call the callbacks
 		try {
 			local (adrcallback);
@@ -63,5 +63,5 @@ on storyArrivedCallback (adrservice, adritem) {
 				adrcallback^ (adrservice, adrItem)}}};
 	xml.aggregator.clearCache ();
 	return (adrstory)};
-«bundle //test code
-	«storyArrivedCallback (@aggregatorData.services.["http://radio.weblogs.com/0001015/rss.xml"], @aggregatorData.services.["http://radio.weblogs.com/0001015/rss.xml"].compilation.items.["00011"])
+//bundle //test code
+	//storyArrivedCallback (@aggregatorData.services.["http://radio.weblogs.com/0001015/rss.xml"], @aggregatorData.services.["http://radio.weblogs.com/0001015/rss.xml"].compilation.items.["00011"])

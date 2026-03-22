@@ -1,25 +1,25 @@
 on membersListPage () {
-	«Changes:
-		«11/2/05; 4:13:14 AM by JES
-			«If usernames are not required to be email addresses in this site, change column header from Email to Username. Localized.
-		«10/20/05; 2:07:13 AM by JES
-			«Don't allow members to be deleted if the membership group is outside of this site.
-		«8/30/05; 2:50:09 PM by JES
-			«If the number of members to list, as passed in through the URL to the member list page, is > 250, set to 250. This absolute maximum will prevent either inadvertent or intentional listing of very large numbers of members, which could cause the server to become unresponsive.
-		«11/24/04; 6:25:16 PM by JES
-			«When getting the usersMap key for a member, call through mainResponder.members.getUsersMapKey instead of generating it here.
-		«9/11/03; 5:23:38 PM by JES
-			«Added support for multiple pages for sites with large numbers of members.
-		«9/1/03; 5:26:18 PM by JES
-			«Add managerial functions for managing editors: Managing editors can see email addresses of members, and send mail to them directly by clicking their email address. Managing editors can also block, un-block and delete members.
-		«4/19/03; 12:31:11 PM by JES
-			«Use the new numeric mapped member keys member links instead of older style links which include the member's email address.
-		«04/21/00; 2:49:35 AM by JES
-			«localized
-		«01/6/00; 3:46:09 PM by PBS
-			«If flMembersListPublic is false, don't display the members list, it's private for the ME only.
-		«12/11/99; 3:50:42 PM by PBS
-			«Created. Generate an HTML list of all the members, linking each one to their profile page.
+	//Changes:
+		//11/2/05; 4:13:14 AM by JES
+			//If usernames are not required to be email addresses in this site, change column header from Email to Username. Localized.
+		//10/20/05; 2:07:13 AM by JES
+			//Don't allow members to be deleted if the membership group is outside of this site.
+		//8/30/05; 2:50:09 PM by JES
+			//If the number of members to list, as passed in through the URL to the member list page, is > 250, set to 250. This absolute maximum will prevent either inadvertent or intentional listing of very large numbers of members, which could cause the server to become unresponsive.
+		//11/24/04; 6:25:16 PM by JES
+			//When getting the usersMap key for a member, call through mainResponder.members.getUsersMapKey instead of generating it here.
+		//9/11/03; 5:23:38 PM by JES
+			//Added support for multiple pages for sites with large numbers of members.
+		//9/1/03; 5:26:18 PM by JES
+			//Add managerial functions for managing editors: Managing editors can see email addresses of members, and send mail to them directly by clicking their email address. Managing editors can also block, un-block and delete members.
+		//4/19/03; 12:31:11 PM by JES
+			//Use the new numeric mapped member keys member links instead of older style links which include the member's email address.
+		//04/21/00; 2:49:35 AM by JES
+			//localized
+		//01/6/00; 3:46:09 PM by PBS
+			//If flMembersListPublic is false, don't display the members list, it's private for the ME only.
+		//12/11/99; 3:50:42 PM by PBS
+			//Created. Generate an HTML list of all the members, linking each one to their profile page.
 	
 	local (pta = html.getPageTableAddress ());
 	local (flManagingEditor = manilaSuite.editors.managingEditorTest (pta));
@@ -27,10 +27,10 @@ on membersListPage () {
 	pta^.title = manilaSuite.getString ("members.membersPageTitle"); // 4/21/00 JES: localized
 	
 	bundle { //PBS 1/6/00: don't display the members list if flMembersListPublic is false.
-		«The default below is true to take care of existing sites which expect the list to be public. New sites will have their pref set to false by default, because it's false in the new site template.
+		//The default below is true to take care of existing sites which expect the list to be public. New sites will have their pref set to false by default, because it's false in the new site template.
 		local (flPublic = manilaSuite.getNewsSitePref ("flMembersListPublic", default:true, flCreate:true));
 		if not flManagingEditor and not flPublic {
-			«This isn't the managing editor and the list isn't public. Don't display the list.
+			//This isn't the managing editor and the list isn't public. Don't display the list.
 			return (manilaSuite.getString ("members.membersListNotAvailableToPublic"))}}; // 4/21/00 JES: localized
 	
 	local (adrsite = manilaSuite.getSiteAddress (pta));

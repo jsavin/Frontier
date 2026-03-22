@@ -1,15 +1,15 @@
 on addTask (taskTime, scriptString, minutesBetweenRuns) {
-	«Add a task to the tasks table.
-		«taskTime is the next time the task will be run.
-		«scriptString is the text of a short script that we run.
-		«minutesBetweenRuns is self-documenting...
-			«if it's 0, the task is deleted after it is run
-		«Changes
-			«Create the script as a script object, not as a string.
-				«3/9/99 AR
-	«10/13/99; 8:46:25 AM by DW
-		«Initialize ctRuns to zero.
-		«http://frontier.userland.com/discuss/msgReader$1868
+	//Add a task to the tasks table.
+		//taskTime is the next time the task will be run.
+		//scriptString is the text of a short script that we run.
+		//minutesBetweenRuns is self-documenting...
+			//if it's 0, the task is deleted after it is run
+		//Changes
+			//Create the script as a script object, not as a string.
+				//3/9/99 AR
+	//10/13/99; 8:46:25 AM by DW
+		//Initialize ctRuns to zero.
+		//http://frontier.userland.com/discuss/msgReader$1868
 	local (adr);
 	adr = table.uniqueName ("task", @user.scheduler.tasks);
 	new (tableType, adr);

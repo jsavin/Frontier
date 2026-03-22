@@ -1,13 +1,13 @@
-«copies selected fields from the stress database to a new database
-	«be sure you run the stressBase script first
+//copies selected fields from the stress database to a new database
+	//be sure you run the stressBase script first
 
 local (sourcefnum, destfnum);
-bundle { «start up uBASE, open the stress base, create a new file
+bundle { //start up uBASE, open the stress base, create a new file
 	ubase.launch ();
 	local (ubasefolder = file.folderFromPath (ubase.appinfo.path));
 	sourcefnum = ubase.openFile (ubasefolder + "Stress Database");
 	destfnum = ubase.newFile (ubasefolder + "Stress Database Subset");
-	ubase.bringToFront (); «so we can watch the records being added
+	ubase.bringToFront (); //so we can watch the records being added
 	ubase.addField (destfnum, 'long', longType);
 	ubase.addField (destfnum, 'date', dateType);
 	ubase.addField (destfnum, 'stri', stringType)};

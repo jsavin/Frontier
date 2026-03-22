@@ -1,15 +1,15 @@
 on xmlToTable (xmltext, adrtable=nil) {
-	«Changes:
-		«1/31/03; 3:40:12 PM by JES
-			«Decode "alpha" entities in attribute values in the correct order.
-		«6/29/01; 3:13:54 PM by JES
-			«Fixed various problems with entity-decoding.
-		«6/28/01; 10:28:58 PM by JES
-			«Convert the XML representation of a table, into a Frontier table as specified here:
-			«http://smurfturf.manilasites.com/stories/storyReader$214
-			«s is the XML text
-			«adrtable is the address of the location to create the table.
-				«If nil, the table will be created at the address specified by the address attribute of the top-level <table> element.
+	//Changes:
+		//1/31/03; 3:40:12 PM by JES
+			//Decode "alpha" entities in attribute values in the correct order.
+		//6/29/01; 3:13:54 PM by JES
+			//Fixed various problems with entity-decoding.
+		//6/28/01; 10:28:58 PM by JES
+			//Convert the XML representation of a table, into a Frontier table as specified here:
+			//http://smurfturf.manilasites.com/stories/storyReader$214
+			//s is the XML text
+			//adrtable is the address of the location to create the table.
+				//If nil, the table will be created at the address specified by the address attribute of the top-level <table> element.
 	
 	local (xstruct);
 	xml.compile (xmltext, @xstruct);
@@ -156,6 +156,6 @@ on xmlToTable (xmltext, adrtable=nil) {
 	doTable (adrtablestruct, adrtable);
 	
 	return (true)};
-«bundle //testing
-	«table.xmlToTable ("<table name=\"myTable\" address=\"workspace.myTable\"><string name=\"myString\" value=\"This is a string.\"/></table>")
-	«table.xmlToTable (string (workspace.foo), @workspace.deserializedTable)
+//bundle //testing
+	//table.xmlToTable ("<table name=\"myTable\" address=\"workspace.myTable\"><string name=\"myString\" value=\"This is a string.\"/></table>")
+	//table.xmlToTable (string (workspace.foo), @workspace.deserializedTable)

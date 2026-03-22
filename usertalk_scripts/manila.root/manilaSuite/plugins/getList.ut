@@ -1,9 +1,9 @@
 on getList (flIncludeHiddenPlugins=false) {
-	«Changes
-		«8/25/04; 1:00:28 PM by JES
-			«Support new prefs for plugin permissions and #security scripts using a call through manilaSuite.plugins.isPermittedInSite.
-		«02/24/00; 11:11:14 AM by PBS
-			«Get a list of the names of all the plug-ins installed on this server.
+	//Changes
+		//8/25/04; 1:00:28 PM by JES
+			//Support new prefs for plugin permissions and #security scripts using a call through manilaSuite.plugins.isPermittedInSite.
+		//02/24/00; 11:11:14 AM by PBS
+			//Get a list of the names of all the plug-ins installed on this server.
 	
 	local (pta = html.getPageTableAddress ());
 	

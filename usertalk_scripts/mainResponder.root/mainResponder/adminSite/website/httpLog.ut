@@ -1,9 +1,9 @@
 on httpLog (maxitems=200) {
-	«Changes
-		«4/15/08; 10:51:35 PM by LL
-			«If HTTP logging is not enabled, return message with instructions to enable the setting.
-		«8/2/02; 2:23:36 PM by JES
-			«Created.
+	//Changes
+		//4/15/08; 10:51:35 PM by LL
+			//If HTTP logging is not enabled, return message with instructions to enable the setting.
+		//8/2/02; 2:23:36 PM by JES
+			//Created.
 	local (pta = html.getPageTableAddress ());
 	pta^.title = "HTTP Server Log";
 	local (colors = {pta^.trbg1, pta^.trbg2});
@@ -39,7 +39,7 @@ on httpLog (maxitems=200) {
 					add (td (link))}
 				else {
 					local (client = xml.convertToDisplayName (nameof (adritem^)));
-					«try {client = tcp.dns.getDomainName (client)}
+					//try {client = tcp.dns.getDomainName (client)}
 					add (td (client))}};
 			bundle { //add the host and link
 				local (link = "http://");
@@ -71,4 +71,4 @@ on httpLog (maxitems=200) {
 			return (logtext + "<p>There are no items to list at this time.</p>")}
 		else {
 			return (logtext + "<p>There are no items to list at this time. You should first enable logging of HTTP requests on the <a href=\"/settings?page=1.9\">Logging and Statistics Settings</a> page.</p>")}};
-	}«return (mainResponder.log.browser (50, colors, "small", true, 12, false, maxitems))
+	}//return (mainResponder.log.browser (50, colors, "small", true, 12, false, maxitems))

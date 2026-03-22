@@ -1,9 +1,9 @@
 on batchExport (exportoutline = @user.batchExporter.list, log = @user.batchExporter.log) {
-	«http://www.scripting.com/frontier/snippets/batchExporter.html
+	//http://www.scripting.com/frontier/snippets/batchExporter.html
 	
-	«Sat, Nov 1, 1997 at 7:15:08 AM by DW
-		«Fixed two minor bugs, it wasn't respecting the second parameter.
-		«Fixed path characters, replaced hard-coded colons with calls to file.getPathChar
+	//Sat, Nov 1, 1997 at 7:15:08 AM by DW
+		//Fixed two minor bugs, it wasn't respecting the second parameter.
+		//Fixed path characters, replaced hard-coded colons with calls to file.getPathChar
 	
 	local (pathchar = file.getPathChar ());
 	batchExporter.init ();
@@ -32,7 +32,7 @@ on batchExport (exportoutline = @user.batchExporter.list, log = @user.batchExpor
 		if user.batchExporter.keepLog {
 			target.set (log);
 			op.go (left, 1)}};
-	if user.batchExporter.keepLog { «set up the log outline
+	if user.batchExporter.keepLog { //set up the log outline
 		local (s = "Batch Exporter run on " + clock.now ());
 		if defined (log^) {
 			target.set (log);
@@ -46,8 +46,8 @@ on batchExport (exportoutline = @user.batchExporter.list, log = @user.batchExpor
 	
 	local (ctexportedobjects = 0);
 	on cleanFileName (adr, isFolder=false) {
-		«Monday, March 02, 1998 at 12:20:00 AM by PBS
-			«Add suffixes on Windows -- Macs too if pref is set.
+		//Monday, March 02, 1998 at 12:20:00 AM by PBS
+			//Add suffixes on Windows -- Macs too if pref is set.
 		local (name = nameOf (adr^));
 		local (maxlen);
 		case sys.os () {
@@ -72,10 +72,10 @@ on batchExport (exportoutline = @user.batchExporter.list, log = @user.batchExpor
 						name = name + "." + string.lower (frontier.getFileType (typeOf (adr^)))}}}};
 		name = string.replaceAll (name, pathchar, "-");
 		return (name)};
-	on exportItemsSeparately (adritem) { «always returns false
-		«Change in policy -- Sun, Feb 2, 1997 at 10:36:22 AM by DW
-			«Now we only export sub-items separately if we failed when when we tried to export the whole thing
-			«See readme doc for details.
+	on exportItemsSeparately (adritem) { //always returns false
+		//Change in policy -- Sun, Feb 2, 1997 at 10:36:22 AM by DW
+			//Now we only export sub-items separately if we failed when when we tried to export the whole thing
+			//See readme doc for details.
 		return (false);
 		if not table.tableContains (@user.website, adritem) {
 			return (false)};

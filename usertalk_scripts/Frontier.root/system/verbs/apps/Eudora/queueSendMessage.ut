@@ -1,10 +1,10 @@
-«This script will send or queue the current doing whatever the opposite of your preference is
-	«It is only used from the shared menu
+//This script will send or queue the current doing whatever the opposite of your preference is
+	//It is only used from the shared menu
 on queueSendMessage () {
 	local (aMsg = eudora.getCurrentMessageObject());
 	try {
 		case Eudora.getSetting (25) {
-			"y" { «message sent immediately Queue it
+			"y" { //message sent immediately Queue it
 				eudora.queue (aMsg)};
 			"n" {
 				eudora.queue (aMsg);

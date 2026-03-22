@@ -1,6 +1,6 @@
-«Changes
-	«4/8/02; 11:32:08 PM by JES
-		«Created. 
+//Changes
+	//4/8/02; 11:32:08 PM by JES
+		//Created. 
 if not defined (user.google) {
 	new (tableType, @user.google)};
 if not defined (user.google.key) {

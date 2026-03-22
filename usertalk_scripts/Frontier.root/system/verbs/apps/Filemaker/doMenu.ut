@@ -1,2 +1,2 @@
-on doMenu (x) { «Execute a menu command
+on doMenu (x) { //Execute a menu command
 	return (appleEvent (FileMaker.id, 'misc', 'menu', '----', x))}

@@ -2,8 +2,8 @@ on searchPage (flshowSiteNames=nil, flDoSearch=true) {
 	local (pta = html.getPageTableAddress ());
 	local (adrLinks = manilaSuite.getDiscussLinksAddress ());
 	
-	«if not defined (pta^.newsSite^.flSearchable) or not pta^.newsSite^.flSearchable
-		«scriptError ("Can't display this page because this site is not searchable.")
+	//if not defined (pta^.newsSite^.flSearchable) or not pta^.newsSite^.flSearchable
+		//scriptError ("Can't display this page because this site is not searchable.")
 	local (msgNum = adrLinks^.searchMsgNum);
 	
 	pta^.flReadMessageProcessMacros = false;
@@ -34,8 +34,8 @@ on searchPage (flshowSiteNames=nil, flDoSearch=true) {
 		htmlText = htmlText + s};
 	
 	add (string (adrMsgTable^.body));
-	«add (mainResponder.discuss.readMessage (msgNum, false, false, false, false, false, false, false, false, false, flShowCowSkullLink:false))
-	«add (mainResponder.discuss.readMessage (msgNum, false, false, false, false, false, false, true, false, false, flShowCowSkullLink:false))
+	//add (mainResponder.discuss.readMessage (msgNum, false, false, false, false, false, false, false, false, false, flShowCowSkullLink:false))
+	//add (mainResponder.discuss.readMessage (msgNum, false, false, false, false, false, false, true, false, false, flShowCowSkullLink:false))
 	add ("<br>");
 	pta^.title = adrMsgTable^.subject;
 	

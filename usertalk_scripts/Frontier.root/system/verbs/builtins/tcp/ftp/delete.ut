@@ -1,7 +1,7 @@
 on delete (adrconnectiontable, path) {
-	«Changes
-		«12/13/01; 11:28:34 AM by JES
-			«Created. Delete a file via FTP.
+	//Changes
+		//12/13/01; 11:28:34 AM by JES
+			//Created. Delete a file via FTP.
 	on setDirectory (directory) {
 		if directory == adrconnectiontable^.currentHostDirectory { //we're already there
 			return (true)};

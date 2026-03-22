@@ -1,7 +1,7 @@
 on ensureValidHomePageCalendar (adrSite) {
-	«Changes
-		«4/1/03; 2:31:06 PM by JES
-			«Created. Ensures that the site contains a valid home page calendar. Called from manilaSuite.filters.firstFilter.
+	//Changes
+		//4/1/03; 2:31:06 PM by JES
+			//Created. Ensures that the site contains a valid home page calendar. Called from manilaSuite.filters.firstFilter.
 	try { //if we can't get the last day in the calendar, then the calendar is invalid
 		local (lastDayAddress = mainResponder.calendar.getLastAddress (adrSite))}
 	else { //there was an error -- fix the problem

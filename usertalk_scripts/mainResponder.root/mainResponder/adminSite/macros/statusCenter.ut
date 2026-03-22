@@ -1,19 +1,19 @@
 on statusCenter () {
-	«Changes
-		«11/24/06; 5:05:19 PM by LL
-			«Add Manila license status to the status center.
-		«3/22/06; 12:42:38 AM by JES
-			«Add support for MacOS X specific RAM usage via unix ps command.
-		«1/5/06; 4:25:41 AM by JES
-			«Update URL style for control panel add-ins so that they can use Radio prefs-outline style wizards.
-		«9/22/05; 3:20:25 AM by JES
-			«Add Manila version to the software versions listed in the status center.
-		«7/15/04; 5:00:47 PM by JES
-			«Updated trial version notice.
-		«5/19/04; 6:31:44 PM by JES
-			«Added support for control panel add-ins. They appear below Tools.
-		«6/7/02; 2:57:43 PM by JES
-			«Created.
+	//Changes
+		//11/24/06; 5:05:19 PM by LL
+			//Add Manila license status to the status center.
+		//3/22/06; 12:42:38 AM by JES
+			//Add support for MacOS X specific RAM usage via unix ps command.
+		//1/5/06; 4:25:41 AM by JES
+			//Update URL style for control panel add-ins so that they can use Radio prefs-outline style wizards.
+		//9/22/05; 3:20:25 AM by JES
+			//Add Manila version to the software versions listed in the status center.
+		//7/15/04; 5:00:47 PM by JES
+			//Updated trial version notice.
+		//5/19/04; 6:31:44 PM by JES
+			//Added support for control panel add-ins. They appear below Tools.
+		//6/7/02; 2:57:43 PM by JES
+			//Created.
 	
 	local (pta = html.getPageTableAddress ());
 	local (htmltext = "", indentlevel = 0);
@@ -24,9 +24,9 @@ on statusCenter () {
 		add (s);
 		add ("</div>"); indentlevel--};
 	
-	«Notes -- to do?
-		«Add "web server" and "xml-rpc/soap" sections?
-		«Support center? (probably not yet)
+	//Notes -- to do?
+		//Add "web server" and "xml-rpc/soap" sections?
+		//Support center? (probably not yet)
 	bundle { //license status
 		if defined (userland.trialVersion.flTrialVersion) {
 			if userland.trialVersion.flTrialVersion {
@@ -90,17 +90,17 @@ on statusCenter () {
 			local (homeVolFree = file.freeSpaceOnVolumeDouble (nomad));
 			local (percentFree = (number (homeVolFree / homeVolSize * 1000)) / 10.0);
 			addSubItem (string.gigabyteString (homeVolFree) + " of " + string.gigaByteString (homeVolSize) + " available on <a href=\"" + mainResponder.adminSite.urls.disk + "\" " + tooltip ("disk status") + ">disk</a>. (" + percentFree + "%)")};
-		«bundle //license status
-			«if defined (userland.trialVersion.flTrialVersion)
-				«if not (userland.trialVersion.flTrialVersion)
-					«if defined (userland.trialVersion.whenLicenseExpires)
-						«addSubItem ("Manila license expires on: " + date.longString (userland.trialVersion.whenLicenseExpires))
-						«local (now = clock.now ())
-						«local (whenExpires = date (userland.trialVersion.whenLicenseExpires))
-						«local (daysRemaining = (number (whenExpires) - number (now)) /  (24 * 60 * 60))
-						«daysRemaining = 40
-						«if daysRemaining < 61 and daysRemaining > -1
-							«addSubItem ("<b>Note:</b> You have " +  daysRemaining + " day(s) left in your license.  To renew your license please visit the <a href=\"http://manila.userland.com/renewLicense\">store website</a>.")};
+		//bundle //license status
+			//if defined (userland.trialVersion.flTrialVersion)
+				//if not (userland.trialVersion.flTrialVersion)
+					//if defined (userland.trialVersion.whenLicenseExpires)
+						//addSubItem ("Manila license expires on: " + date.longString (userland.trialVersion.whenLicenseExpires))
+						//local (now = clock.now ())
+						//local (whenExpires = date (userland.trialVersion.whenLicenseExpires))
+						//local (daysRemaining = (number (whenExpires) - number (now)) /  (24 * 60 * 60))
+						//daysRemaining = 40
+						//if daysRemaining < 61 and daysRemaining > -1
+							//addSubItem ("<b>Note:</b> You have " +  daysRemaining + " day(s) left in your license.  To renew your license please visit the <a href=\"http://manila.userland.com/renewLicense\">store website</a>.")};
 	bundle { //tools status
 		local (adr, cttools = 0);
 		for adr in @user.tools.databases {
@@ -165,7 +165,7 @@ on statusCenter () {
 			if defined (system.environment.isCarbon) and system.environment.isCarbon {
 				osname = "MacOS X";
 				bundle { //set osversion
-					«JES 8/4/02: MacOS X returns a version string in decimal, but the visual representation is actually the hexadecimal version -- we get something like 16.1.5, but that really should be displayed as 10.1.5. 0x10 == 16. Strange, but true...
+					//JES 8/4/02: MacOS X returns a version string in decimal, but the visual representation is actually the hexadecimal version -- we get something like 16.1.5, but that really should be displayed as 10.1.5. 0x10 == 16. Strange, but true...
 					local (firstpart = string.nthField (system.environment.osVersionString, ".", 1));
 					osversion = string.delete (system.environment.osVersionString, 1, sizeOf (firstpart));
 					osversion = number (string.nthField (string.hex (firstpart), "x", 2)) + osversion}}
@@ -183,5 +183,5 @@ on statusCenter () {
 	
 	return (htmltext)};
 
-«bundle //test code
-	«statusCenter ()
+//bundle //test code
+	//statusCenter ()

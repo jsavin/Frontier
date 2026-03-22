@@ -1,4 +1,4 @@
-on fetch (f, domain, path, account, password) { « Fetch a file via FTP.
+on fetch (f, domain, path, account, password) { // Fetch a file via FTP.
 	local (fname = ftpClient.fileFromPath(path));
 	if ftpClient.isFolder (domain, path, account, password) {
 		local (i);

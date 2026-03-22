@@ -1,7 +1,7 @@
 on readFileIntoTextObject (f, adrTextObject) {
-	«10/31/97 at 12:46:11 PM by DW -- moved from toys.readFileIntoTextObject
-		« Changes notes:
-			«PBS 8/3/98: Save and (try to) restore the old target.
+	//10/31/97 at 12:46:11 PM by DW -- moved from toys.readFileIntoTextObject
+		// Changes notes:
+			//PBS 8/3/98: Save and (try to) restore the old target.
 	local (oldTarget);
 	new (wpTextType, adrTextObject);
 	oldTarget = target.set (adrTextObject);

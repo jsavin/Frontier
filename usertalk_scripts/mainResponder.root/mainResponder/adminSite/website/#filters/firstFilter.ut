@@ -1,20 +1,20 @@
 on firstFilter (pta) {
-	«Changes:
-		«10/11/05; 3:15:44 PM by JES
-			«If pta^.adrMemberInfo is defined, call mainResponder.members.setCookie to make sure that the admin user has an admin cookie.
-		«9/22/05; 2:41:22 AM by JES
-			«Call mainResponder.init to make sure everything is defined.
-		«6/9/02; 3:57:30 PM by JES
-			«Parse searchArgs, and ensure that both pta^.searchArgTable and pta^.postArgs are defined.
-		«05/10/00; 1:26:58 AM by PBS
-			«Check the referer to defeat the client side trojan horse bug.
-		«12/7/01; 7:13:21 PM by PBS
-			«Ignore search args.
+	//Changes:
+		//10/11/05; 3:15:44 PM by JES
+			//If pta^.adrMemberInfo is defined, call mainResponder.members.setCookie to make sure that the admin user has an admin cookie.
+		//9/22/05; 2:41:22 AM by JES
+			//Call mainResponder.init to make sure everything is defined.
+		//6/9/02; 3:57:30 PM by JES
+			//Parse searchArgs, and ensure that both pta^.searchArgTable and pta^.postArgs are defined.
+		//05/10/00; 1:26:58 AM by PBS
+			//Check the referer to defeat the client side trojan horse bug.
+		//12/7/01; 7:13:21 PM by PBS
+			//Ignore search args.
 	
 	Frontier.versionRequired ("8.0");
 	mainResponder.init ();
 	bundle { //make sure that pta^.url is correct
-		«parentOf (parentOf (this^)^)^.["#ftpSite"].url = "http://" + pta^.host + "/"
+		//parentOf (parentOf (this^)^)^.["#ftpSite"].url = "http://" + pta^.host + "/"
 		pta^.url = "http://" + pta^.host + pta^.uri};
 	bundle { //PBS 05/10/00: check referer to defeat client side trojan horse
 		if pta^.method == "POST" {

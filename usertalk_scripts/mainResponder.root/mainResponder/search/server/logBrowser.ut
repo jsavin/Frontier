@@ -11,7 +11,7 @@ on logBrowser (linecount, colors) { //a macro that returns HTML for the log
 	local (i, j, adrhourtable, adritem, sizelog = sizeof (adrlog^), ixlog, sizehourtable);
 	add ("<table width=\"92%\" border=\"0\" cellpadding=\"0\" cellspacing=\"0\">"); indentlevel++;
 	
-	«Add headers.
+	//Add headers.
 	add ("<tr>");
 	indentlevel++;
 	add ("<td height=\"28\"></td>"); //a dummy table cell to establish row height

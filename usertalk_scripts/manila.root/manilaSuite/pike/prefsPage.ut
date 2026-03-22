@@ -1,17 +1,17 @@
 on prefsPage (pta=nil) {
-	«This displays the Pike Prefs page.
-		«01/14/00; 11:45:40 AM by PBS
-		«Changes:
-			«05/05/00; 2:55:03 PM by JES
-				«localized
-			«05/09/00; 10:43:57 PM by PBS
-				«Check the referer to defeat the client side trojan horse.
-			«05/11/00; 8:15:12 PM by JES
-				«merged in Brent's security fix for the client side trojan horse attack.
-			«05/27/00; 2:54:37 PM by JES
-				«localized boolean names and submit button
-			«12/22/00; 7:12:18 PM by JES
-				«Redirect to /prefs/radio/ if the url is /prefs/pike/
+	//This displays the Pike Prefs page.
+		//01/14/00; 11:45:40 AM by PBS
+		//Changes:
+			//05/05/00; 2:55:03 PM by JES
+				//localized
+			//05/09/00; 10:43:57 PM by PBS
+				//Check the referer to defeat the client side trojan horse.
+			//05/11/00; 8:15:12 PM by JES
+				//merged in Brent's security fix for the client side trojan horse attack.
+			//05/27/00; 2:54:37 PM by JES
+				//localized boolean names and submit button
+			//12/22/00; 7:12:18 PM by JES
+				//Redirect to /prefs/radio/ if the url is /prefs/pike/
 	
 	if pta == nil {
 		pta = html.getPageTableAddress ()};

@@ -1,11 +1,11 @@
 on glossaryPatcher (adrPageTable=nil) {
-	«Scan the fully rendered page for [[#glossPatch xxx|yyy]]
-		«and generate relative href's for these references.
-		«Sun, Nov 3, 1996: if xxx is empty, just generate the URL, not an href
-			«This supports the JavaScript popup menu in the DaveNet website
-		«Author: Dave Winer, dwiner@well.com
-		«Mon, Jan 20, 1997 at 3:30:04 PM by PH
-			«Only do the work if the pref is set to true
+	//Scan the fully rendered page for [[#glossPatch xxx|yyy]]
+		//and generate relative href's for these references.
+		//Sun, Nov 3, 1996: if xxx is empty, just generate the URL, not an href
+			//This supports the JavaScript popup menu in the DaveNet website
+		//Author: Dave Winer, dwiner@well.com
+		//Mon, Jan 20, 1997 at 3:30:04 PM by PH
+			//Only do the work if the pref is set to true
 	if adrPageTable == nil {
 		adrPageTable = html.getPageTableAddress ()};
 	if not html.getPref ("useGlossPatcher", adrPageTable) {
@@ -22,17 +22,17 @@ on glossaryPatcher (adrPageTable=nil) {
 			if ixstart == 0 {
 				break};
 			ix = ixstart + sizeof (pattern);
-			«loop «find the ]], when loop completes, ix points at second ]
-				«if ix > sizeof (renderedtext)
-					«ix = sizeof (renderedtext)
-					«break
-				«if string.nthChar (renderedtext, ix) == ']'
-					«if string.nthChar (renderedtext, ix - 1) == ']'
-						«ixend = ix
-						«break
-				«ix++
-			«Performance boost: use string.patternMatch rather than the above loop.
-				«Monday, January 12, 1998 at 2:29:21 PM by PBS
+			//loop //find the ]], when loop completes, ix points at second ]
+				//if ix > sizeof (renderedtext)
+					//ix = sizeof (renderedtext)
+					//break
+				//if string.nthChar (renderedtext, ix) == ']'
+					//if string.nthChar (renderedtext, ix - 1) == ']'
+						//ixend = ix
+						//break
+				//ix++
+			//Performance boost: use string.patternMatch rather than the above loop.
+				//Monday, January 12, 1998 at 2:29:21 PM by PBS
 			ixend = string.patternMatch ("]]", string.mid (renderedtext, ix, infinity)) + ix;
 			ix = ixend + 1;
 			if ix == 1 {
@@ -48,7 +48,7 @@ on glossaryPatcher (adrPageTable=nil) {
 			local (s, linetext, patch);
 			s = string.mid (renderedtext, ixstart, ixend - ixstart + 1);
 			s = string.delete (s, 1, sizeof (pattern));
-			«url = url + string.nthField (s, '|', 2) + html.getPref ("fileExtension", adrPageTable)
+			//url = url + string.nthField (s, '|', 2) + html.getPref ("fileExtension", adrPageTable)
 			bundle { //add the path to url, it's more complicated because the extension may already be there
 				local (path = string.nthField (s, '|', 2));
 				local (extension = string.nthField (path, '.', 2));

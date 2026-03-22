@@ -1,6 +1,6 @@
 on namespaceCollectDefinitions (adrmsg, adrelement) {
-	«Tue, May 9, 2000 at 1:46:02 AM by AR
-		«Check the element's attributes for namespace definitions and add them to the current scope
+	//Tue, May 9, 2000 at 1:46:02 AM by AR
+		//Check the element's attributes for namespace definitions and add them to the current scope
 	local (adrtable = @adrmsg^.scopestack);
 	if defined (adrelement^.["/atts"]) {
 		local (adr, adrattributes = @adrelement^.["/atts"], adrstackframe = @adrtable^[sizeof (adrtable^)].namespaces, name);

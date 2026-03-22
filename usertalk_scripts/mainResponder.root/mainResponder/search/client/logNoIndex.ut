@@ -1,9 +1,9 @@
 on logNoIndex (adrObject, reason) {
-	«Changes
-		«8/1/02; 7:04:33 PM by JES
-			«If config.mainresponder.search.prefs.flLogEnabled is false, don't do anything.
-		«Add an entry to the log saying why we couldn't index this object.
-			«This will help when debugging the client side of the search engine.
+	//Changes
+		//8/1/02; 7:04:33 PM by JES
+			//If config.mainresponder.search.prefs.flLogEnabled is false, don't do anything.
+		//Add an entry to the log saying why we couldn't index this object.
+			//This will help when debugging the client side of the search engine.
 	
 	if not config.mainresponder.search.prefs.flLogEnabled {
 		return (true)};

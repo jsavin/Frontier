@@ -1,6 +1,6 @@
-«A demonstration of how to create your own look to forwarded mail.
-	«A good example of the non object model approach to Eudora
-on forwardMessage (email) { «forward the current message
+//A demonstration of how to create your own look to forwarded mail.
+	//A good example of the non object model approach to Eudora
+on forwardMessage (email) { //forward the current message
 	local (x = Eudora.getCurrentMessageObject ());
 	local (sender = Eudora.getMessageSender (x));
 	local (recipient = Eudora.getMessageTo (x));
@@ -9,7 +9,7 @@ on forwardMessage (email) { «forward the current message
 	local (text = Eudora.getMessageText (x));
 	
 	local (newtext);
-	bundle { «create the text that we're going to send
+	bundle { //create the text that we're going to send
 		local (overalltitle, dashes, header, footer, preamble);
 		overalltitle = "FORWARDED MESSAGE";
 		dashes = string.filledstring ('-', sizeof (overalltitle));
@@ -30,7 +30,7 @@ on forwardMessage (email) { «forward the current message
 		preamble = preamble + "---" + cr + cr;
 		
 		newtext = header + Eudora.ucmds.massageText (2, 60, preamble + text) + footer};
-	bundle { «create the new mail message in Eudora
+	bundle { //create the new mail message in Eudora
 		local (x);
 		x = Eudora.createMessage ();
 		Eudora.setMessageTo (x, email);

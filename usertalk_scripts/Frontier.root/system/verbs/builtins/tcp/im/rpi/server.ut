@@ -1,56 +1,56 @@
 on server (xmltext, adrhandlerstable=@user.im.rpiHandlers, driverName=nil, screenName=nil) {
-	«Changes
-		«9/19/02; 3:32:46 PM by AR
-			«Accept driverName and screenName as optional parameters, put them into a local table and use that table as context when calling #security scripts and the RPI handler.
-		«5/24/02; 1:20:02 PM by JB
-			«Modified to use base64 encoding.
-				«Some drivers can't guarentee what happens to whitespace. For human-targetted messages, we can tolerate this, but "A File.txt" is not the same as "A  File.txt" (two spaces)... for RPI purposes, we must be exact. Solution: base64-encode the payloads.
-			«This no longer follows the exact XML-RPC encoding spec. The following change to the spec as of May 24, 2002 are hereby made:
-				«The payload of all <string>'s is modified to be base64 encoded. All other scalars are left as-is. This applies *before* all rules about XML-RPC encoding as specified in the XML-RPC spec and XML spec, which is to say, it renders those rules irrelevent. Thus, when sending a string parameter of "<", what goes out to the driver will be base64.encode("<", infinity), which does not need to be further XML-encoded. This *only* applies to string parameters.
-		«5/15/02; 9:08:46 PM by JB
-			«Modified to only invoke the targetted script, and not return any messages to the sender.
-		«5/8/02; 3:09:56 PM by DW
-			«Cribbed from betty.rpc.server.
-	«local (xmlResponse = "", indentlevel = 1)
-	«on add (s)
-		«xmlResponse = xmlResponse + (string.filledString ("\t", indentlevel) + s + "\r\n");
-	«
-	«on rpcFault (errorstring, errornum)
-		«add ("<?xml version=\"1.0\"?>")
-		«add ("<methodResponse>"); indentlevel++
-		«add ("<fault>"); indentlevel++
-		«add ("<value>"); indentlevel++
-		«add ("<struct>"); indentlevel++
-		«
-		«add ("<member>"); indentlevel++
-		«add ("<name>faultCode</name>")
-		«add ("<value>"); indentlevel++
-		«add ("<int>" + errornum + "</int>")
-		«add ("</value>"); indentlevel--
-		«add ("</member>"); indentlevel--
-		«
-		«bundle //AR 6/14/1999: make sure errorstring is encoded
-			«errorstring = string.replaceAll (errorstring, "&", "&amp;")
-			«errorstring = string.replaceAll (errorstring, "<", "&lt;")
-		«
-		«add ("<member>"); indentlevel++
-		«add ("<name>faultString</name>")
-		«add ("<value>"); indentlevel++
-		«add ("<string>" + errorstring + "</string>")
-		«add ("</value>"); indentlevel--
-		«add ("</member>"); indentlevel--
-		«
-		«add ("</struct>"); indentlevel--
-		«add ("</value>"); indentlevel++
-		«add ("</fault>"); indentlevel--
-		«add ("</methodResponse>"); indentlevel--
+	//Changes
+		//9/19/02; 3:32:46 PM by AR
+			//Accept driverName and screenName as optional parameters, put them into a local table and use that table as context when calling #security scripts and the RPI handler.
+		//5/24/02; 1:20:02 PM by JB
+			//Modified to use base64 encoding.
+				//Some drivers can't guarentee what happens to whitespace. For human-targetted messages, we can tolerate this, but "A File.txt" is not the same as "A  File.txt" (two spaces)... for RPI purposes, we must be exact. Solution: base64-encode the payloads.
+			//This no longer follows the exact XML-RPC encoding spec. The following change to the spec as of May 24, 2002 are hereby made:
+				//The payload of all <string>'s is modified to be base64 encoded. All other scalars are left as-is. This applies *before* all rules about XML-RPC encoding as specified in the XML-RPC spec and XML spec, which is to say, it renders those rules irrelevent. Thus, when sending a string parameter of "<", what goes out to the driver will be base64.encode("<", infinity), which does not need to be further XML-encoded. This *only* applies to string parameters.
+		//5/15/02; 9:08:46 PM by JB
+			//Modified to only invoke the targetted script, and not return any messages to the sender.
+		//5/8/02; 3:09:56 PM by DW
+			//Cribbed from betty.rpc.server.
+	//local (xmlResponse = "", indentlevel = 1)
+	//on add (s)
+		//xmlResponse = xmlResponse + (string.filledString ("\t", indentlevel) + s + "\r\n");
+	//
+	//on rpcFault (errorstring, errornum)
+		//add ("<?xml version=\"1.0\"?>")
+		//add ("<methodResponse>"); indentlevel++
+		//add ("<fault>"); indentlevel++
+		//add ("<value>"); indentlevel++
+		//add ("<struct>"); indentlevel++
+		//
+		//add ("<member>"); indentlevel++
+		//add ("<name>faultCode</name>")
+		//add ("<value>"); indentlevel++
+		//add ("<int>" + errornum + "</int>")
+		//add ("</value>"); indentlevel--
+		//add ("</member>"); indentlevel--
+		//
+		//bundle //AR 6/14/1999: make sure errorstring is encoded
+			//errorstring = string.replaceAll (errorstring, "&", "&amp;")
+			//errorstring = string.replaceAll (errorstring, "<", "&lt;")
+		//
+		//add ("<member>"); indentlevel++
+		//add ("<name>faultString</name>")
+		//add ("<value>"); indentlevel++
+		//add ("<string>" + errorstring + "</string>")
+		//add ("</value>"); indentlevel--
+		//add ("</member>"); indentlevel--
+		//
+		//add ("</struct>"); indentlevel--
+		//add ("</value>"); indentlevel++
+		//add ("</fault>"); indentlevel--
+		//add ("</methodResponse>"); indentlevel--
 	
 	local (xtable);
 	bundle { //compile xmltext into xtable
 		try {
 			xml.compile (xmlText, @xtable)}
 		else {
-			«return (rpcFault (tryError, betty.rpc.errorcodes.xmlFormatError))
+			//return (rpcFault (tryError, betty.rpc.errorcodes.xmlFormatError))
 			return}};
 	
 	local (procedureName, paramlist);
@@ -85,10 +85,10 @@ on server (xmltext, adrhandlerstable=@user.im.rpiHandlers, driverName=nil, scree
 							table.assign (@val, base64.decode(adrvalue^))} // JB 5/24/02
 						else {
 							table.assign (@val, adrvalue^)};
-						};«table.assign (@val, adrvalue^) //AR 6/14/1999 // orignal else clause
+						};//table.assign (@val, adrvalue^) //AR 6/14/1999 // orignal else clause
 					paramlist = paramlist + {val}}}}
 		else {
-			«return (rpcFault (tryError, betty.rpc.errorcodes.illegalCallStructureError))
+			//return (rpcFault (tryError, betty.rpc.errorcodes.illegalCallStructureError))
 			return}};
 	
 	local (contextTable);
@@ -116,7 +116,7 @@ on server (xmltext, adrhandlerstable=@user.im.rpiHandlers, driverName=nil, scree
 				s = string.delete (s, 1, sizeof (name) + 1)};
 			adrscript = nomad}
 		else {
-			«return (rpcFault (tryError, betty.rpc.errorcodes.scriptAddressError))
+			//return (rpcFault (tryError, betty.rpc.errorcodes.scriptAddressError))
 			return};
 		
 		try { //check in with the #security scripts
@@ -124,35 +124,35 @@ on server (xmltext, adrhandlerstable=@user.im.rpiHandlers, driverName=nil, scree
 			for adr in securitylist {
 				callScript (string (adr), {}, @contextTable)}}
 		else {
-			«return (rpcFault (tryError, betty.rpc.errorcodes.securityFault))
+			//return (rpcFault (tryError, betty.rpc.errorcodes.securityFault))
 			return};
 		
-		«local (scriptResponse)
+		//local (scriptResponse)
 		try { //call the script
 			callScript (string (adrscript), paramlist, @contextTable);
-			}«scriptResponse = callScript (string (adrscript), paramlist)
+			}//scriptResponse = callScript (string (adrscript), paramlist)
 		else {
-			«return (rpcFault (tryError, betty.rpc.errorcodes.scriptError))
+			//return (rpcFault (tryError, betty.rpc.errorcodes.scriptError))
 			return};
 		
-		«local (encodedString)
-		«try //encode the response
-			«encodedString = xml.coercions.frontierValueToTaggedText (@scriptResponse, 1)
-		«else
-			«return (rpcFault (tryError, betty.rpc.errorcodes.encodingFailure))
-		«
-		«try //add the encoded string to the returned XML text
-			«add ("<?xml version=\"1.0\"?>")
-			«add ("<methodResponse>"); indentlevel++
-			«add ("<params>"); indentlevel++
-			«add ("<param>"); indentlevel++
-			«add ("<value>" + encodedString + "</value>")
-			«add ("</param>"); indentlevel--
-			«add ("</params>"); indentlevel--
-			«add ("</methodResponse>"); indentlevel--
-		«else
-			«return (rpcFault (tryError, betty.rpc.errorcodes.addReturnedValueError))};
-	«return (xmlResponse)
+		//local (encodedString)
+		//try //encode the response
+			//encodedString = xml.coercions.frontierValueToTaggedText (@scriptResponse, 1)
+		//else
+			//return (rpcFault (tryError, betty.rpc.errorcodes.encodingFailure))
+		//
+		//try //add the encoded string to the returned XML text
+			//add ("<?xml version=\"1.0\"?>")
+			//add ("<methodResponse>"); indentlevel++
+			//add ("<params>"); indentlevel++
+			//add ("<param>"); indentlevel++
+			//add ("<value>" + encodedString + "</value>")
+			//add ("</param>"); indentlevel--
+			//add ("</params>"); indentlevel--
+			//add ("</methodResponse>"); indentlevel--
+		//else
+			//return (rpcFault (tryError, betty.rpc.errorcodes.addReturnedValueError))};
+	//return (xmlResponse)
 	return};
 bundle { //test code
 	server (string (workspace.rpcCall))}

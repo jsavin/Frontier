@@ -1,8 +1,8 @@
 on openRoot (rootName) {
-	«Return the address of a news site, given the site's name.
-		«Changes:
-			«06/01/00; 5:55:25 PM by PBS
-				«Allow an entry in news.root be an address or string (that can be coerced to an address) that points to a table in another database. Bug 
+	//Return the address of a news site, given the site's name.
+		//Changes:
+			//06/01/00; 5:55:25 PM by PBS
+				//Allow an entry in news.root be an address or string (that can be coerced to an address) that points to a table in another database. Bug 
 	
 	on error () {
 		scriptError ("There is no news root named \"" + rootName + "\".")};

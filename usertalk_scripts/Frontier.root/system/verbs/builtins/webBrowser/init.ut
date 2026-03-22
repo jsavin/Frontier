@@ -1,8 +1,8 @@
-«Changes
-	«10/20/02; 2:29:14 AM by JES
-		«Init user.webBrowser.proxy.exceptions.
-	«12/19/01; 10:02:39 PM by JES
-		«Created. Initialize webBrowser settings. For now, only user.webBrowser.proxy.
+//Changes
+	//10/20/02; 2:29:14 AM by JES
+		//Init user.webBrowser.proxy.exceptions.
+	//12/19/01; 10:02:39 PM by JES
+		//Created. Initialize webBrowser settings. For now, only user.webBrowser.proxy.
 
 if not defined (user.webBrowser) {
 	new (tableType, @user.webBrowser)};

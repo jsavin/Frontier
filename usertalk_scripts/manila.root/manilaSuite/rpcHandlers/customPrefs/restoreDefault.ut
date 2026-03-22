@@ -1,5 +1,5 @@
 on restoreDefault (username, password, siteName) {
-	«Restore the custom prefs XML text to the default.
+	//Restore the custom prefs XML text to the default.
 	
 	bundle { //make sure this person is a managing editor of the site.
 		local (beginningErrorString = "Can't restore the custom prefs to the default because ");

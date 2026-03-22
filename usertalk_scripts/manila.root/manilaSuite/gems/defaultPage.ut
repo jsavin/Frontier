@@ -1,15 +1,15 @@
 on defaultPage (pta=nil) {
-	«Changes:
-		«5/26/03; 1:29:02 PM by JES
-			«Call string.gigabyteString for the free space on volume string, instead of string.megabyteString.
-		«04/20/00; 7:45:02 PM by JES
-			«localized
-		«05/01/00; 3:22:48 PM by JES
-			«Changed getString calls to use a replacement table address instead of a lists
-		«9/12/01; 2:58:46 PM by PBS
-			«Support for access privileges.
-		«04/12/00; 6:05:52 PM by PBS
-			«Created. Return a list of all gems with a new-gem link.
+	//Changes:
+		//5/26/03; 1:29:02 PM by JES
+			//Call string.gigabyteString for the free space on volume string, instead of string.megabyteString.
+		//04/20/00; 7:45:02 PM by JES
+			//localized
+		//05/01/00; 3:22:48 PM by JES
+			//Changed getString calls to use a replacement table address instead of a lists
+		//9/12/01; 2:58:46 PM by PBS
+			//Support for access privileges.
+		//04/12/00; 6:05:52 PM by PBS
+			//Created. Return a list of all gems with a new-gem link.
 	
 	if pta == nil {
 		pta = html.getPageTableAddress ()};

@@ -1,7 +1,7 @@
 on singleSiteFilter (adrsearch) {
-	«Changes
-		«8/11/02; 2:21:44 AM by JES
-			«Created. A search result filter which removes all hits that aren't in the site specified by the siteurl searchArg.
+	//Changes
+		//8/11/02; 2:21:44 AM by JES
+			//Created. A search result filter which removes all hits that aren't in the site specified by the siteurl searchArg.
 	local (siteurl = "http"); //default to all http pages
 	bundle { //set siteUrl if siteurl search arg is present
 		local (t); new (tableType, @t);

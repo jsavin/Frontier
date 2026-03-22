@@ -1,14 +1,14 @@
 on theRenderer (adroutline) {
-	«Changes
-		«5/27/02; 7:57:33 AM by DW
-			«Implement support for date-based permalinks.
-			«http://scriptingnews.userland.com/backissues/2002/05/27#newFormatForPermalinksOnScriptingNews
-		«6/27/00; 8:48:58 PM by DW
-			«Added support for <internalLink> rule.
-		«2/27/01; 6:51:30 PM by BS
-			«Commented out a line of debugging code.
-		«9/19/01; 11:36:43 AM by DW
-			«When generating an internalLink, provide a boolean parameter that says whether or not the line has subheads. A different (smaller) graphic can be used for these entries. See pikeRenderer.drivers.html.internallink for a corresponding change. 
+	//Changes
+		//5/27/02; 7:57:33 AM by DW
+			//Implement support for date-based permalinks.
+			//http://scriptingnews.userland.com/backissues/2002/05/27#newFormatForPermalinksOnScriptingNews
+		//6/27/00; 8:48:58 PM by DW
+			//Added support for <internalLink> rule.
+		//2/27/01; 6:51:30 PM by BS
+			//Commented out a line of debugging code.
+		//9/19/01; 11:36:43 AM by DW
+			//When generating an internalLink, provide a boolean parameter that says whether or not the line has subheads. A different (smaller) graphic can be used for these entries. See pikeRenderer.drivers.html.internallink for a corresponding change. 
 	local (adrdriver = @pikeRenderer.drivers.html); //default
 	bundle { //set driver if it's specified
 		local (pta = html.getPageTableAddress ());
@@ -41,7 +41,7 @@ on theRenderer (adroutline) {
 							if (typeof (val) == stringtype) and (val == "infinity") {
 								val = infinity};
 							adrrule^ = val}}}}};
-		};«scratchpad.myrules = adrtable^
+		};//scratchpad.myrules = adrtable^
 	local (s = "", level = 0);
 	op.firstsummit ();
 	on getLevel () {
@@ -54,7 +54,7 @@ on theRenderer (adroutline) {
 			if string.lower (linetext) beginswith "<rules>" {
 				local (xmltext = op.getsuboutline ());
 				xml.compile (xmltext, @struct);
-				«scratchpad.struct = struct //PBS 02/27/01: commented out
+				//scratchpad.struct = struct //PBS 02/27/01: commented out
 				local (adrrules = xml.getaddress (@struct, "rules"));
 				local (rulelist = xml.getaddresslist (adrrules, "rule"), item, startlevel, endlevel);
 				for item in rulelist {
@@ -69,7 +69,7 @@ on theRenderer (adroutline) {
 						for legalvalue in legalvaluetags {
 							try {adrsub^.values.[legalvalue] = xml.getaddress (item, legalvalue)^}}}};
 				getmyrules (@myrules);
-				}«op.deleteline ()
+				}//op.deleteline ()
 			else {
 				if string.lower (linetext) == "<debug/>" {
 					scratchpad.rules = rules;
@@ -98,10 +98,10 @@ on theRenderer (adroutline) {
 								try {
 									adrdriver^.internalLink (myrules.internalLink, linetext, @prestring, @poststring, flsubs, permalinkstring)}
 								else {
-									«5/27/02 by DW -- no breakage if they are using a custom driver that doesn't support the permalinkstring param
+									//5/27/02 by DW -- no breakage if they are using a custom driver that doesn't support the permalinkstring param
 									adrdriver^.internalLink (myrules.internalLink, linetext, @prestring, @poststring, flsubs)}}
 							else {
-								«9/19/01 by DW -- no breakage if they are using a custom driver that doesn't support the flsubs param
+								//9/19/01 by DW -- no breakage if they are using a custom driver that doesn't support the flsubs param
 								adrdriver^.internalLink (myrules.internalLink, linetext, @prestring, @poststring)}};
 						if defined (myrules.outlinespacing) {
 							adrdriver^.outlinespacing (myrules.outlinespacing, @prestring, @poststring)};
@@ -121,13 +121,13 @@ on theRenderer (adroutline) {
 		popruleslevel ()};
 	getLevel ();
 	return (s)};
-«bundle //test code
-	«edit (@websites.pikerenderer.default)
-	«scratchpad.theoutline = websites.pikerenderer.default
-	«target.set (@scratchpad.theoutline)
-	«op.firstsummit ()
-	«while op.getlinetext () beginswith "#"
-		«op.deleteline ()
-	«wp.newtextobject (pikeRenderer (@scratchpad.theoutline), @scratchpad.theRenderedText)
-	«edit (@scratchpad.theRenderedText)
-	«webbrowser.displaytext (string (scratchpad.theRenderedText))
+//bundle //test code
+	//edit (@websites.pikerenderer.default)
+	//scratchpad.theoutline = websites.pikerenderer.default
+	//target.set (@scratchpad.theoutline)
+	//op.firstsummit ()
+	//while op.getlinetext () beginswith "#"
+		//op.deleteline ()
+	//wp.newtextobject (pikeRenderer (@scratchpad.theoutline), @scratchpad.theRenderedText)
+	//edit (@scratchpad.theRenderedText)
+	//webbrowser.displaytext (string (scratchpad.theRenderedText))

@@ -1,27 +1,27 @@
 on manageChanges () {
-	«Changes
-		«10/5/05; 7:46:18 PM by JES
-			«Fix copy/paste bug in error message and confirmation message after moving part(s) to before the checkpoint.
-		«9/30/05; 3:29:07 AM by JES
-			«Don't fail trying to get the type of an item. If what is an address, pop the file part off.
-		«9/30/05; 3:25:11 AM by JES
-			«Don't fail if a change doesn't have a data sub-element.
-		«8/31/05; 2:54:49 AM by JES
-			«Add a tiny bit of padding to make the table easier to read when change notes are included.
-		«8/31/05; 2:06:26 AM by JES
-			«Additional note formatting: replace cr's with line breaks, tabs with &mdash, and & with &amp;.
-		«8/30/05; 4:13:14 PM by JES
-			«Fix vertical alignment and cell padding for readability.
-		«8/30/05; 4:02:20 PM by JES
-			«Re-enabled code for displaying change notes ('why'). Instead of showing the text in its own column, we display it underneath the 'what' part for horizontal space-saving and readability.
-		«8/15/05; 1:21:44 AM by JES
-			«Fix error after deletion. After deletion, we needed to reset the local, sizeChanges, which tracks the size of the changes table.
-		«7/21/05; 4:20:09 AM by JES
-			«Added handling for all operations, preserving which objects are checked in the UI. Added multiple-page support -- default is max 100 items per page.
-		«7/19/05; 3:59:38 AM by JES
-			«Created. Run the change manager for a subscribable database.
+	//Changes
+		//10/5/05; 7:46:18 PM by JES
+			//Fix copy/paste bug in error message and confirmation message after moving part(s) to before the checkpoint.
+		//9/30/05; 3:29:07 AM by JES
+			//Don't fail trying to get the type of an item. If what is an address, pop the file part off.
+		//9/30/05; 3:25:11 AM by JES
+			//Don't fail if a change doesn't have a data sub-element.
+		//8/31/05; 2:54:49 AM by JES
+			//Add a tiny bit of padding to make the table easier to read when change notes are included.
+		//8/31/05; 2:06:26 AM by JES
+			//Additional note formatting: replace cr's with line breaks, tabs with &mdash, and & with &amp;.
+		//8/30/05; 4:13:14 PM by JES
+			//Fix vertical alignment and cell padding for readability.
+		//8/30/05; 4:02:20 PM by JES
+			//Re-enabled code for displaying change notes ('why'). Instead of showing the text in its own column, we display it underneath the 'what' part for horizontal space-saving and readability.
+		//8/15/05; 1:21:44 AM by JES
+			//Fix error after deletion. After deletion, we needed to reset the local, sizeChanges, which tracks the size of the changes table.
+		//7/21/05; 4:20:09 AM by JES
+			//Added handling for all operations, preserving which objects are checked in the UI. Added multiple-page support -- default is max 100 items per page.
+		//7/19/05; 3:59:38 AM by JES
+			//Created. Run the change manager for a subscribable database.
 	local (pta = html.getPageTableAddress ());
-	«workspace.pt = pta^
+	//workspace.pt = pta^
 	
 	local (flIncludeWhy = true);
 	local (bgcolors = {pta^.trbg2, pta^.trbg1});
@@ -166,29 +166,29 @@ on manageChanges () {
 								ctToRenumber = ctMoved}};
 						for adr in @t { //preserve selection
 							table.rename (@adrargs^.[string.urlEncode (nameOf (adr^))], string.urlEncode (adr^))};
-						«bundle //non-working renumbering code
-							«new (tableType, @t)
-							«local (i)
-							«local (ixLastAfter = number (string.nthField (nameOf (adrchanges^[sizeChanges]), "\t", 1)))
-							«ixLastAfter = ixLastAfter + (1000 * ctToRenumber)
-							«for i = sizeChanges downto 1
-								«local (adr = @adrchanges^[i])
-								«local (change = nameOf (adr^))
-								«local (ixChange = number (string.nthField (change, "\t", 1)))
-								«if ixChange == ixLast
-									«break
-								«local (newNumber = ixLastAfter)
-								«local (newName = string.padWithZeros (newNumber, 8) + "\t" + xml.convertToDisplayName (change))
-								«while defined (adrchanges^.[newName]) //should almost never happen
-									«newNumber--
-									«newName = string.padWithZeros (newNumber, 8) + "\t" + xml.convertToDisplayName (change)
-								«t.[change] = newName
-								«table.rename (adr, newName)
-								«ixLastAfter = ixLastAfter - 1000
-							«for adr in @t //preserve selection -- intermediate step
-								«local (oldName = string.urlEncode (nameOf (adr^)))
-								«if defined (adrargs^.[oldName])
-									«table.rename (@adrargs^.[oldName], string.urlEncode (adr^))
+						//bundle //non-working renumbering code
+							//new (tableType, @t)
+							//local (i)
+							//local (ixLastAfter = number (string.nthField (nameOf (adrchanges^[sizeChanges]), "\t", 1)))
+							//ixLastAfter = ixLastAfter + (1000 * ctToRenumber)
+							//for i = sizeChanges downto 1
+								//local (adr = @adrchanges^[i])
+								//local (change = nameOf (adr^))
+								//local (ixChange = number (string.nthField (change, "\t", 1)))
+								//if ixChange == ixLast
+									//break
+								//local (newNumber = ixLastAfter)
+								//local (newName = string.padWithZeros (newNumber, 8) + "\t" + xml.convertToDisplayName (change))
+								//while defined (adrchanges^.[newName]) //should almost never happen
+									//newNumber--
+									//newName = string.padWithZeros (newNumber, 8) + "\t" + xml.convertToDisplayName (change)
+								//t.[change] = newName
+								//table.rename (adr, newName)
+								//ixLastAfter = ixLastAfter - 1000
+							//for adr in @t //preserve selection -- intermediate step
+								//local (oldName = string.urlEncode (nameOf (adr^)))
+								//if defined (adrargs^.[oldName])
+									//table.rename (@adrargs^.[oldName], string.urlEncode (adr^))
 						add ("<p><b>" + ctMoved + " change(s) moved to after the checkpoint.</b></p>")}
 					else {
 						add ("<p><b>Can't move changes because all changes are already after the checkpoint.</b></p>")}};
@@ -281,8 +281,8 @@ on manageChanges () {
 					checked = " checked"}
 				else { //if asking for delete confirmation or move confirmation, skip non-selected parts
 					case true {
-						«defined (adrargs^.moveAfterCheckpoint)
-						«defined (adrargs^.moveBeforeCheckpoint)
+						//defined (adrargs^.moveAfterCheckpoint)
+						//defined (adrargs^.moveBeforeCheckpoint)
 						defined (adrargs^.deleteChecked) {
 							continue}}}};
 			add ("<tr bgcolor=\"" + bgcolors[(++ct % 2) + 1] + "\">");
@@ -347,6 +347,6 @@ on manageChanges () {
 	add ("</form>");
 	
 	return (htext)};
-«bundle //test code
-	«html.setPageTableAddress (@workspace.pt)
-	«manageChanges ()
+//bundle //test code
+	//html.setPageTableAddress (@workspace.pt)
+	//manageChanges ()

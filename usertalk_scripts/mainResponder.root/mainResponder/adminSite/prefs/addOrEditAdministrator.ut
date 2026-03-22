@@ -1,12 +1,12 @@
 on addOrEditAdministrator () {
-	«Changes
-		«9/20/06; 1:28:33 PM by LL
-			«Modification to edit administrator form with change password in it's own section.
-			«Bug fix: Correct an issue that prevented an error message from being display if there was a problem adding or editing an administrator.
-		«9/30/03; 12:35:15 PM by JES
-			«Store passwords in the admin membership group as binary values.
-		«6/27/02; 12:06:52 AM by JES
-			«Created.
+	//Changes
+		//9/20/06; 1:28:33 PM by LL
+			//Modification to edit administrator form with change password in it's own section.
+			//Bug fix: Correct an issue that prevented an error message from being display if there was a problem adding or editing an administrator.
+		//9/30/03; 12:35:15 PM by JES
+			//Store passwords in the admin membership group as binary values.
+		//6/27/02; 12:06:52 AM by JES
+			//Created.
 	local (pta = html.getPageTableAddress ());
 	local (htmltext = "");
 	on add (s) {
@@ -75,7 +75,7 @@ on addOrEditAdministrator () {
 		if defined (pta^.searchArgTable.adminUser) {
 			email = pta^.searchArgTable.adminUser;
 			local (adrmember = mainResponder.members.getMemberTable ("admin", email));
-			«password = string (adrmember^.password)
+			//password = string (adrmember^.password)
 			try {name = adrmember^.personalInfo.name}};
 		if name != "" {
 			if defined (user.people.users.[name]) {

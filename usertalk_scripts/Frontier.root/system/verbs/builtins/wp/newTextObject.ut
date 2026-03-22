@@ -1,5 +1,5 @@
 on newTextObject (s, adr) {
-	«10/31/97 at 12:24:59 PM by DW -- moved from toys.newTextObject
+	//10/31/97 at 12:24:59 PM by DW -- moved from toys.newTextObject
 	local (oldTarget);
 	if not defined (adr^) {
 		new (wpTextType, adr)}

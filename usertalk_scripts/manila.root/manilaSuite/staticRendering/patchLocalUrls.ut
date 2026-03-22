@@ -1,27 +1,27 @@
 on patchLocalUrls (s) {
-	«Patch all the local URLs in the page.
-		«03/05/00; 11:20:55 PM by PBS
-		«Changes:
-			«03/29/00; 9:07:05 PM by PBS
-				«Don't attempt to patch URLs that begin with mailto, ftp, or https
-			«04/08/00; 9:23:46 AM by PBS
-				«Removed test code bundle from the bottom of the script.
-			«04/12/00; 2:02:19 AM by PBS
-				«Fixed a possible endless loop when dynamic-only URLs don't begin with http://
-			«06/01/00; 1:45:54 PM by PBS
-				«Don't attempt to patch URLs that begin with "javascript."
-			«03/06/01; 4:55:20 PM by PBS
-				«If a URL begins with #, return as-is, since it's an anchor.
-			«03/16/01; 9:20:44 PM by PBS
-				«If a link contains attributes in addition to href, preserve those attributes in the static version.
-				«Fix for relative links -- a link to somePage would be translated to somepage/somepage.html. Now it will be properly translated to somepage.html.
-			«03/21/01; 8:00:48 PM by PBS
-				«Handle URLs that contain #, ?, or $ properly -- add the suffix before the fragment. This fixes, among other things, the problem with static rendering and the internalLink rule in the pikeRenderer.
-			«05/06/01; 12:42:58 AM by JES
-				«Convert the filename to lowercase, but don't convert the path part of the URI to lower-case, because html.buildObject will keep the same case as the path specified in the site-structure.
-					«If it were 9 months ago, I'd have modified the rendering so that folder names would be lowercase, but there are too many already-rendered pages out there to do this -- it would have too much potential for creating 404s. Also, the lower-case links are already broken, so making this change doesn't indroduce any breakage that wasn't already there.
-			«12/19/01; 9:16:29 PM by PBS
-				«Handle URLs of the form /aaa/bbb/ -- URLs that end with slashes were broken. Fixed.
+	//Patch all the local URLs in the page.
+		//03/05/00; 11:20:55 PM by PBS
+		//Changes:
+			//03/29/00; 9:07:05 PM by PBS
+				//Don't attempt to patch URLs that begin with mailto, ftp, or https
+			//04/08/00; 9:23:46 AM by PBS
+				//Removed test code bundle from the bottom of the script.
+			//04/12/00; 2:02:19 AM by PBS
+				//Fixed a possible endless loop when dynamic-only URLs don't begin with http://
+			//06/01/00; 1:45:54 PM by PBS
+				//Don't attempt to patch URLs that begin with "javascript."
+			//03/06/01; 4:55:20 PM by PBS
+				//If a URL begins with #, return as-is, since it's an anchor.
+			//03/16/01; 9:20:44 PM by PBS
+				//If a link contains attributes in addition to href, preserve those attributes in the static version.
+				//Fix for relative links -- a link to somePage would be translated to somepage/somepage.html. Now it will be properly translated to somepage.html.
+			//03/21/01; 8:00:48 PM by PBS
+				//Handle URLs that contain #, ?, or $ properly -- add the suffix before the fragment. This fixes, among other things, the problem with static rendering and the internalLink rule in the pikeRenderer.
+			//05/06/01; 12:42:58 AM by JES
+				//Convert the filename to lowercase, but don't convert the path part of the URI to lower-case, because html.buildObject will keep the same case as the path specified in the site-structure.
+					//If it were 9 months ago, I'd have modified the rendering so that folder names would be lowercase, but there are too many already-rendered pages out there to do this -- it would have too much potential for creating 404s. Also, the lower-case links are already broken, so making this change doesn't indroduce any breakage that wasn't already there.
+			//12/19/01; 9:16:29 PM by PBS
+				//Handle URLs of the form /aaa/bbb/ -- URLs that end with slashes were broken. Fixed.
 	
 	local (pta = html.getPageTableAddress ());
 	local (htmlText);
@@ -78,16 +78,16 @@ on patchLocalUrls (s) {
 				return ("http://" + dynamicServer + url)}; //PBS 04/12/00: site of infinite loop (fixed)
 			return (url)};
 		
-		«if lowerUrl contains "/discuss/" or lowerUrl contains "/stories/"
-			«if (lowerUrl beginsWith string.lower (dynamicUrl)) or (not (lowerUrl beginsWith "http://"))
-				«local (ix = string.patternMatch ("/discuss/", lowerUrl))
-				«if ix < 1
-					«ix = string.patternMatch ("/stories/", lowerUrl)
-				«local (s = url)
-				«if ix > 0
-					«s = string.delete (url, 1, ix)
-				«s = dynamicUrl + s
-				«return (s)
+		//if lowerUrl contains "/discuss/" or lowerUrl contains "/stories/"
+			//if (lowerUrl beginsWith string.lower (dynamicUrl)) or (not (lowerUrl beginsWith "http://"))
+				//local (ix = string.patternMatch ("/discuss/", lowerUrl))
+				//if ix < 1
+					//ix = string.patternMatch ("/stories/", lowerUrl)
+				//local (s = url)
+				//if ix > 0
+					//s = string.delete (url, 1, ix)
+				//s = dynamicUrl + s
+				//return (s)
 		local (originalUrl = url);
 		url = string.replace (url, dynamicUrl, staticUrl, false);
 		if originalUrl beginsWith "http://" and url == originalUrl {
@@ -114,13 +114,13 @@ on patchLocalUrls (s) {
 			staticUri = "/" + urlParts [3];
 			url = string.replace (url, dynamicUri, staticUri, false);
 			bundle { //05/05/2001 JES: convert the filename to lowercase, but don't convert the path part
-				«url = string.lower (url) // (old code)
+				//url = string.lower (url) // (old code)
 				if not (url endsWith "/") { //PBS 12/19/01: skip lowering the filename if path ends with /
 					local (filename = string.nthField (url, "/", string.countFields (url, "/")));
 					url = string.mid (url, 1, sizeOf (url) - sizeOf (filename)) + string.lower (filename)}};
 			patchUrlWithFragment ();
-			«if not (url endsWith "/") //PBS 03/16/01: add suffix to relative links that are to pages instead of folders
-				«url = url + suffix};
+			//if not (url endsWith "/") //PBS 03/16/01: add suffix to relative links that are to pages instead of folders
+				//url = url + suffix};
 		
 		if url != originalUrl or (not (url beginsWith "http://")) { //did the URL get filtered? It's local, it may be a picture, or we may need to add an .html suffix.
 			if lowerUrl contains "/picture$" {
@@ -134,10 +134,10 @@ on patchLocalUrls (s) {
 					url = dynamicUrl + "picture$" + msgNum}}
 			else {
 				patchUrlWithFragment ();
-				«if not (url endsWith "/")
-					«if not (url endsWith suffix)
-						«url = string.lower (url)
-						«url = manilaSuite.staticRendering.convertUrl (url)}};
+				//if not (url endsWith "/")
+					//if not (url endsWith suffix)
+						//url = string.lower (url)
+						//url = manilaSuite.staticRendering.convertUrl (url)}};
 		
 		return (url)};
 	

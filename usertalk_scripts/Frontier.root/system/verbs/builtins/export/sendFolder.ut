@@ -7,8 +7,8 @@ on sendFolder (adr, folder) { //new in 4.0.1
 	
 	on doTable (adrtable, folder) {
 		on cleanFileName (adr, isFolder=false) {
-			«Monday, March 02, 1998 at 12:20:00 AM by PBS
-				«Add suffixes on Windows -- Macs too if pref is set.
+			//Monday, March 02, 1998 at 12:20:00 AM by PBS
+				//Add suffixes on Windows -- Macs too if pref is set.
 			local (name = nameOf (adr^));
 			local (maxlen, pathchar = file.getPathChar ());
 			case sys.os () {
@@ -38,8 +38,8 @@ on sendFolder (adr, folder) { //new in 4.0.1
 		for i = 1 to ct {
 			local (adr = @adrtable^ [i]);
 			local (name = nameOf (adr^));
-			«if sizeof (name) > 31
-				«name = string.mid (name, 1, 31)
+			//if sizeof (name) > 31
+				//name = string.mid (name, 1, 31)
 			name = cleanFileName (adr, (typeOf (adr^) == tableType));
 			name = string.replaceAll (name, file.getPathChar (), "-");
 			name = string.replaceAll (name, "/", "-"); //Frontier/Win chokes on /s too

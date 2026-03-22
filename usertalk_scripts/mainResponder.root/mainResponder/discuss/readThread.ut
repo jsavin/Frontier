@@ -1,17 +1,17 @@
 on readThread (msgNum, flResponseForm=true, flShowThreadLinks=true, flShowAuthors=true, flShowPostTime=true, flShowThreadInfo=true, flShowReadCount=true, flShowResponseCount=true, flShowEnclosures=true, editPageUrl="", flShowCowSkullLink=false, pta=nil, adrMsgTable=nil, adrData=nil, adrGetBodyCallback=nil, adrGetTimeCallback=nil, fleditableSubject=false, cssPrefix="", threadAliveDays=5, threadActiveDays=1, bgColor="ivory", otherColor="beige", headerColor="black", headerTextColor="ivory", adrTemplate=nil, adrTopicTemplate=nil, defaultMode="day", activeThreadIcon=nil, inactiveThreadIcon=nil, userIcon=nil, adrInDgCallback=nil, flUseMappedMemberKeys=false) {
-	«This is the main bottleneck script for displaying discussion group threads.
-		«10/09/00; 6:24:12 PM by JES
-	«Changes
-		«4/4/02; 1:07:05 AM by JES
-			«New optional parameter, adrInDgCallback, is the address of a callback which determines whether a message should be included in the rendering. If the callback returns true, add the message. If it returns false, don't add the message.
-		«10/17/01; 10:46:43 AM by PBS
-			«Don't use IP address in links to built-in icons.
-		«9/26/01; 6:58:09 PM by PBS
-			«Don't call tcp.myDottedId, call tcp.dns.getMyDottedId since it caches.
-		«11/04/00; 10:08:13 PM by JES
-			«Fixed a bug where the incorrect URL would be generated for a thread's status icon. Fixed a bug where the incorrect icon would be used in the next and previous topic links.
-		«10/13/00; 12:06:11 AM by JES
-			«Added support for topic templates.
+	//This is the main bottleneck script for displaying discussion group threads.
+		//10/09/00; 6:24:12 PM by JES
+	//Changes
+		//4/4/02; 1:07:05 AM by JES
+			//New optional parameter, adrInDgCallback, is the address of a callback which determines whether a message should be included in the rendering. If the callback returns true, add the message. If it returns false, don't add the message.
+		//10/17/01; 10:46:43 AM by PBS
+			//Don't use IP address in links to built-in icons.
+		//9/26/01; 6:58:09 PM by PBS
+			//Don't call tcp.myDottedId, call tcp.dns.getMyDottedId since it caches.
+		//11/04/00; 10:08:13 PM by JES
+			//Fixed a bug where the incorrect URL would be generated for a thread's status icon. Fixed a bug where the incorrect icon would be used in the next and previous topic links.
+		//10/13/00; 12:06:11 AM by JES
+			//Added support for topic templates.
 	
 	bundle { //get page table, discussion group, and message table addresses
 		if pta == nil {
@@ -23,9 +23,9 @@ on readThread (msgNum, flResponseForm=true, flShowThreadLinks=true, flShowAuthor
 	
 	if string.lower (pta^.method) != "post" { // redirect to the top message in the thread
 		if adrMsgTable^.inResponseTo != 0 { // redirect to the topic reader page -- to the message requested.
-			«bundle //increment read stats before redirecting
-				«adrMsgTable^.ctReads++
-				«config.mainResponder.stats.ctDiscussionGroupReads++
+			//bundle //increment read stats before redirecting
+				//adrMsgTable^.ctReads++
+				//config.mainResponder.stats.ctDiscussionGroupReads++
 			local (nomad = adrMsgTable);
 			while (nomad^.inResponseTo > 0) {
 				nomad = mainResponder.discuss.getMessageTable (nomad^.inResponseTo, pta, adrData)};
@@ -142,9 +142,9 @@ on readThread (msgNum, flResponseForm=true, flShowThreadLinks=true, flShowAuthor
 			add (mainResponder.getString ("discuss.messageDeleted"));
 			return (htmlText)}};
 	
-	«bundle //increment read stats on the top message
-		«adrMsgTable^.ctReads++
-		«config.mainResponder.stats.ctDiscussionGroupReads++
+	//bundle //increment read stats on the top message
+		//adrMsgTable^.ctReads++
+		//config.mainResponder.stats.ctDiscussionGroupReads++
 	
 	local (topicTable);
 	new (tableType, @topicTable);
@@ -163,12 +163,12 @@ on readThread (msgNum, flResponseForm=true, flShowThreadLinks=true, flShowAuthor
 	local (userIconUrl, userIconHeight = 16, userIconWidth = 16);
 	local (activeThreadImgUrl, inactiveThreadImgUrl, threadStatusIconWidth = 17, threadStatusIconHeight = 14);
 	bundle { // build image data for internal link arrows and message status icons
-		«local (myDottedId = tcp.myDottedId ())
-		«local (myDottedId = tcp.dns.getMyDottedId ()) //PBS 09/26/01: faster
-		«local (myPort = user.inetd.config.http.port)
-		«local (portString = "")
-		«if myPort != 80
-			«portString = ":" + myPort
+		//local (myDottedId = tcp.myDottedId ())
+		//local (myDottedId = tcp.dns.getMyDottedId ()) //PBS 09/26/01: faster
+		//local (myPort = user.inetd.config.http.port)
+		//local (portString = "")
+		//if myPort != 80
+			//portString = ":" + myPort
 		local (resourcesUrl = "/mainResponderResources/");
 		
 		activeThreadImgUrl = resourcesUrl + "icons/folder.open2";

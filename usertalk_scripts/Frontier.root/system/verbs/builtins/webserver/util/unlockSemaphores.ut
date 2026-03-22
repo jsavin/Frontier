@@ -1,6 +1,6 @@
 on unlockSemaphores () {
-	«March 08, 1998 at 3:12:16 PM by WMF
-		«This script unlocks any semaphores that were locked by the current thread
+	//March 08, 1998 at 3:12:16 PM by WMF
+		//This script unlocks any semaphores that were locked by the current thread
 	local {
 		me = thread.getCurrentID ();
 		i};

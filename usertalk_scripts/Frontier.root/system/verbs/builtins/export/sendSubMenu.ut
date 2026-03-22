@@ -7,26 +7,26 @@ on sendSubMenu () {
 	
 	local (subMenu);
 	
-	bundle { «create a menubar object in subMenu, containing the selection
-		wp.setTextMode (false); «be sure copy gets outline stuff
+	bundle { //create a menubar object in subMenu, containing the selection
+		wp.setTextMode (false); //be sure copy gets outline stuff
 		editMenu.copy ();
 		new (menubarType, @subMenu);
 		target.set (@subMenu);
 		editMenu.paste ();
-		op.firstSummit (); «put cursor on blank line
-		op.deleteLine (); «delete it
+		op.firstSummit (); //put cursor on blank line
+		op.deleteLine (); //delete it
 		target.clear ()};
 	
-	bundle { «create the new file, the importer script is embedded in it
+	bundle { //create the new file, the importer script is embedded in it
 		export.sendtodesktop (@export.callImportSubMenu, fname)};
 	
-	bundle { «save the submenu into a 'data' resource
+	bundle { //save the submenu into a 'data' resource
 		local (resdata, cmdName);
 		pack (subMenu, @resdata);
 		pack (resdata, @resdata);
 		rez.putNamedResource (fname, 'data', string (adrMenuBar), @resdata)};
 	
-	bundle { «for the future, get the name of the parent menu in a 'STR ' resource
+	bundle { //for the future, get the name of the parent menu in a 'STR ' resource
 		local (parent, saveCursor);
 		op.setDisplay (false);
 		saveCursor = op.getCursor ();

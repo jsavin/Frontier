@@ -1,4 +1,4 @@
-«Add the Server menu to user.menus, if it's not already there. Re-build the menubar if the menu was added.
+//Add the Server menu to user.menus, if it's not already there. Re-build the menubar if the menu was added.
 
 local (i, flMenuFound = false);
 

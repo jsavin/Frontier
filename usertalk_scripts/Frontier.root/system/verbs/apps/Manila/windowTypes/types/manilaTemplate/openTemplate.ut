@@ -1,5 +1,5 @@
 on openTemplate (siteurl, type, flHidden=false, adradrwindow=nil) {
-	«Open a template or other advanced item in a Manila site.
+	//Open a template or other advanced item in a Manila site.
 	
 	bundle { //if the window is already opened, bring it to the front
 		local (t); new (tableType, @t);

@@ -1,2 +1,2 @@
-on writeStream (stream, data) { «Write data from an open stream
+on writeStream (stream, data) { //Write data from an open stream
 	kernel (tcp.writestream)}

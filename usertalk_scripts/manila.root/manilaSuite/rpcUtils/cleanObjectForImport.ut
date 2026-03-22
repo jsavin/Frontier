@@ -1,6 +1,6 @@
 on cleanObjectForImport (adrObject, flEnableSafeMacros = false) {
-	«Monday, November 22, 1999 at 1:39:15 AM by AR
-		«Make sure it's safe to import the object
+	//Monday, November 22, 1999 at 1:39:15 AM by AR
+		//Make sure it's safe to import the object
 	on cleanObject (adrObject) {
 		case typeOf (adrObject^) {
 			listType {

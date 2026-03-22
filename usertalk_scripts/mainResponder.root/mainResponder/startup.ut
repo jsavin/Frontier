@@ -1,29 +1,29 @@
 on startup () {
-	«Changes:
-		«10/1/05; 3:30:17 AM by JES
-			«Set user.scheduler.tasks.nightlyUpdates.flConfirmAtStartup to false. Don't needlessly interrupt the startup process with a confirmation dialog.
-		«1999-2003
-			«12/17/03; 1:14:06 AM by JES
-				«Turn off automatic nightly updates.
-			«07/29/00; 10:12:31 AM by PBS
-				«Ensure that the everyMinute task, if it already exists, is valid. It's crucial to save databases every minute.
-			«05/15/00; 9:33:03 PM by PBS
-				«Make sure the nightlyUpdates task has been created. This scheduler task handles updating the various Frontier gdbs. It was uncoupled from mainResponder.background.everyNight, as machines were competing on the hour to get updates. Now the times are more dispersed.
-			«12/30/99; 12:16:25 PM by PBS
-				«When creating a new default membership group, set the cookie expiration date to Mon, 01 Apr 2030 07:00:00 GMT.
-			«12/11/99; 5:29:27 AM by AR
-				«Updated the code for hooking into the scheduler: Only create entries in user.scheduler if they don't already exist. Also, use scripts instead of addresses for better portability.
-			«11/15/99; 10:57:16 PM by PBS
-				«On some systems, if any or all of config.root, discuss.root, members.root, and news.root are open before mainResponder's startup script runs, this would cause the startup script to abort with an error. Now the startup script checks to see if a database is open before trying to open it -- if it's already open, it doesn't try to open it.
-			«10/25/99; 2:55:22 PM by PBS
-				«Create callbacks in user.webEditServer.callbacks as scripts, not addresses, since addresses break when Frontier is moved to another machine or folder or the hard drive is renamed. This removes the leading cause of problems with WebEditServer.
-				«Changed default root updates prefs. Server is updates.userland.com, URL is http://frontier.userland.com/updates/mainResponder
-			«3/25/99; 3:11:02 PM by PBS
-				«Don't create an empty news.root if none exists.
-			«3/9/99; 4:14:33 PM by PBS
-				«Call Frontier.getSubFolder rather than mainResponder.getFolder.
-			«?/?/99; 10:07:27 AM
-				«This script is called when Frontier starts up, to get mainResponder ready for another session.
+	//Changes:
+		//10/1/05; 3:30:17 AM by JES
+			//Set user.scheduler.tasks.nightlyUpdates.flConfirmAtStartup to false. Don't needlessly interrupt the startup process with a confirmation dialog.
+		//1999-2003
+			//12/17/03; 1:14:06 AM by JES
+				//Turn off automatic nightly updates.
+			//07/29/00; 10:12:31 AM by PBS
+				//Ensure that the everyMinute task, if it already exists, is valid. It's crucial to save databases every minute.
+			//05/15/00; 9:33:03 PM by PBS
+				//Make sure the nightlyUpdates task has been created. This scheduler task handles updating the various Frontier gdbs. It was uncoupled from mainResponder.background.everyNight, as machines were competing on the hour to get updates. Now the times are more dispersed.
+			//12/30/99; 12:16:25 PM by PBS
+				//When creating a new default membership group, set the cookie expiration date to Mon, 01 Apr 2030 07:00:00 GMT.
+			//12/11/99; 5:29:27 AM by AR
+				//Updated the code for hooking into the scheduler: Only create entries in user.scheduler if they don't already exist. Also, use scripts instead of addresses for better portability.
+			//11/15/99; 10:57:16 PM by PBS
+				//On some systems, if any or all of config.root, discuss.root, members.root, and news.root are open before mainResponder's startup script runs, this would cause the startup script to abort with an error. Now the startup script checks to see if a database is open before trying to open it -- if it's already open, it doesn't try to open it.
+			//10/25/99; 2:55:22 PM by PBS
+				//Create callbacks in user.webEditServer.callbacks as scripts, not addresses, since addresses break when Frontier is moved to another machine or folder or the hard drive is renamed. This removes the leading cause of problems with WebEditServer.
+				//Changed default root updates prefs. Server is updates.userland.com, URL is http://frontier.userland.com/updates/mainResponder
+			//3/25/99; 3:11:02 PM by PBS
+				//Don't create an empty news.root if none exists.
+			//3/9/99; 4:14:33 PM by PBS
+				//Call Frontier.getSubFolder rather than mainResponder.getFolder.
+			//?/?/99; 10:07:27 AM
+				//This script is called when Frontier starts up, to get mainResponder ready for another session.
 	
 	on startupmsg (s) {
 		msg ("mainResponder.startup: " + s)};
@@ -33,11 +33,11 @@ on startup () {
 	system.temp.mainResponder.mainResponderRootFile = alist [1];
 	
 	bundle { //get the path to Index.root
-		«Tuesday, January 19, 1999 at 3:52:27 PM by PBS
+		//Tuesday, January 19, 1999 at 3:52:27 PM by PBS
 		system.temp.mainResponder.indexRootFile = Frontier.getSubFolder ("ops/") + "Index.root"};
 	
 	bundle { //system.temp.mainResponder.search
-		«Tuesday, January 19, 1999 at 3:44:11 PM by PBS
+		//Tuesday, January 19, 1999 at 3:44:11 PM by PBS
 		new (tableType, @system.temp.mainResponder.search)};
 	
 	bundle { //open config.root
@@ -52,7 +52,7 @@ on startup () {
 	
 	mainResponder.init ();
 	
-	«Init Frontier.root stuff
+	//Init Frontier.root stuff
 	bundle { //add XML-RPC handlers
 		if not defined (user.betty.rpcHandlers.nirvanaServer) {
 			user.betty.rpcHandlers.nirvanaServer = @mainResponder.rpcHandlers};
@@ -101,7 +101,7 @@ on startup () {
 			adrTable^.error = "";
 			adrTable^.minutesBetweenRuns = 1440;
 			
-			«Get a task time that's a random 5 to 55 minutes in the hour after the overnight script runs.
+			//Get a task time that's a random 5 to 55 minutes in the hour after the overnight script runs.
 			local (overnightTaskTime = user.scheduler.tasks.overnight.taskTime);
 			local (minutesPastTime = random (5, 55));
 			local (updatesTaskTime = overnightTaskTime + (minutesPastTime * 60));
@@ -110,7 +110,7 @@ on startup () {
 			user.scheduler.tasks.nightlyUpdates.flConfirmAtStartup = false}};
 	
 	bundle { //init rootUpdates prefs for mainResponder.root.
-		«Wednesday, March 03, 1999 at 11:40:43 AM by PBS
+		//Wednesday, March 03, 1999 at 11:40:43 AM by PBS
 		local (adrTable = @user.rootUpdates.servers.mainResponder);
 		if not defined (adrTable^) {
 			new (tableType, adrTable)};
@@ -149,11 +149,11 @@ on startup () {
 			local (adrprefs = @adrdata^.prefs);
 			if not defined (adrprefs^) {
 				new (tabletype, adrprefs)};
-			«if not defined (adrprefs^.auditTrail)  //Fri, 12 Mar 1999 17:43:10 GMT by AR
-				«adrprefs^.auditTrail = true
-			«if not defined (adrprefs^.auditTrailFolder)
-				«local (pc = file.getpathchar ())
-				«adrprefs^.auditTrailFolder = Frontier.getSubFolder ("/ops/discuss/") //PBS 3/9/99
+			//if not defined (adrprefs^.auditTrail)  //Fri, 12 Mar 1999 17:43:10 GMT by AR
+				//adrprefs^.auditTrail = true
+			//if not defined (adrprefs^.auditTrailFolder)
+				//local (pc = file.getpathchar ())
+				//adrprefs^.auditTrailFolder = Frontier.getSubFolder ("/ops/discuss/") //PBS 3/9/99
 			if not defined (adrprefs^.nextMsgNum) {
 				adrprefs^.nextMsgNum = 1};
 			if not defined (adrprefs^.url) { //PBS 3/16/99
@@ -180,7 +180,7 @@ on startup () {
 		if not defined (adrtable^.cookieDomain) {
 			adrtable^.cookieDomain = ""};
 		if not defined (adrtable^.cookieExpires) {
-			«adrtable^.cookieExpires = "Friday, 31-Dec-99 23:59:59 GMT"
+			//adrtable^.cookieExpires = "Friday, 31-Dec-99 23:59:59 GMT"
 			adrtable^.cookieExpires = "Mon, 01 Apr 2030 07:00:00 GMT"}; //PBS 12/30/99: set the cookie expiration date farther in the future
 		if not defined (adrtable^.cookieName) {
 			adrtable^.cookieName = "Nirvana Server"};

@@ -1,26 +1,26 @@
 on createInstallFile (appname, appcreator, fname) {
-	«11/18/93 DW: fixed a bug that kept the path from getting set to ""
-		«the "assignment" to adr^.appInfo.path was a == not a =
+	//11/18/93 DW: fixed a bug that kept the path from getting set to ""
+		//the "assignment" to adr^.appInfo.path was a == not a =
 	
 	local (x);
-	bundle { «create the file, save the install script
-		«copy embedded script into a local so that running it won't overwrite latest version
+	bundle { //create the file, save the install script
+		//copy embedded script into a local so that running it won't overwrite latest version
 		local (callInstallApp);
 		table.assign (@callInstallApp, commercial.callInstallApp);
 		export.sendtodesktop (@callInstallApp, fname)};
-	bundle { «save the app name and creator id
+	bundle { //save the app name and creator id
 		rez.putstringresource (fname, 140, appname);
 		rez.putstringresource (fname, 141, appcreator)};
-	bundle { «save runtime menubar, if one is defined
+	bundle { //save runtime menubar, if one is defined
 		adr = @system.menubars.[appcreator];
 		if defined (adr^) {
 			pack (adr^, @x);
 			rez.putresource (fname, menubartype, 128, @x)}};
-	bundle { «save glue scripts
+	bundle { //save glue scripts
 		adr = @system.verbs.apps.[appname];
 		if defined (adr^) {
-			local (oldpath = adr^.appInfo.path); «save so we can restore it later
-			adr^.appInfo.path = ""; «it'll be set the first time the user runs the app
+			local (oldpath = adr^.appInfo.path); //save so we can restore it later
+			adr^.appInfo.path = ""; //it'll be set the first time the user runs the app
 			pack (adr^, @x);
 			rez.putresource (fname, tabletype, 128, @x);
 			adr^.appInfo.path = oldpath}};

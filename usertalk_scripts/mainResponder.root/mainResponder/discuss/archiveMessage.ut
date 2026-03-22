@@ -1,15 +1,15 @@
 on archiveMessage (adrmsg) {
-	«8/13/99; 10:31:23 PM by DW
-		«writes an xml-formatted archive of the discussion group message
-		«Changes:
-			«12/6/99; 11:29:55 AM by PBS
-				«When archiving a discussion group message that's not stored in discuss.root (a Manila dg message, for instance), get the real name of the discussion group so it's not archived wrongly in a folder named #discussionGroup.
-			«12/23/99; 10:06:51 AM by DW
-				«This may be a major performance bottleneck. Add an optimization, we now store a ctRevisions item in the message table and bump it every time. This saves us from having to loop over the archive folder, so messages that are updated many times won't become slower and slower to update. 
-			«06/28/00; 1:23:26 AM by JES
-				«Make sure folder names aren't more than 31 characters long if running on a Mac
-					«First remove the ManilaWebsite part, then truncate to 31 characters
-						«This may not be optimal, but for most people it will suffice.
+	//8/13/99; 10:31:23 PM by DW
+		//writes an xml-formatted archive of the discussion group message
+		//Changes:
+			//12/6/99; 11:29:55 AM by PBS
+				//When archiving a discussion group message that's not stored in discuss.root (a Manila dg message, for instance), get the real name of the discussion group so it's not archived wrongly in a folder named #discussionGroup.
+			//12/23/99; 10:06:51 AM by DW
+				//This may be a major performance bottleneck. Add an optimization, we now store a ctRevisions item in the message table and bump it every time. This saves us from having to loop over the archive folder, so messages that are updated many times won't become slower and slower to update. 
+			//06/28/00; 1:23:26 AM by JES
+				//Make sure folder names aren't more than 31 characters long if running on a Mac
+					//First remove the ManilaWebsite part, then truncate to 31 characters
+						//This may not be optimal, but for most people it will suffice.
 	if config.mainresponder.prefs.flArchiveDiscuss {
 		local (pc = file.getpathchar (), now = clock.now ());
 		local (xmltext = mainresponder.discuss.tabletoxml (adrmsg, flIncludeEnclosure:true));
@@ -64,5 +64,5 @@ on archiveMessage (adrmsg) {
 				params.nameDiscussGroup = nameDiscussGroup;
 				mainResponder.callbackLoop (@config.mainresponder.callbacks.archiveDiscussMessage, @params)}};
 		return (f)}};
-«bundle //test code
-	«archiveMessage (@discuss.messages.["0000001"])
+//bundle //test code
+	//archiveMessage (@discuss.messages.["0000001"])

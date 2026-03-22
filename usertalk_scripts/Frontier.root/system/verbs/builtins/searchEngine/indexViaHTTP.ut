@@ -1,11 +1,11 @@
 on indexViaHTTP (siteName, url, username="", password="",cookiesOn=false, timeOutTicks=60*30, adrStopWords=nil) {
 	
-	«Fetch a page via HTTP and index it.
-		«Return the entire, unprocessed text of the page if successful --
-			«because a crawler might be calling this script,
-			«and a crawler would need to extract URLs from the page text.
-			«
-			«Leave it up to the caller to save the GDB (call searchEngine.saveIndex).
+	//Fetch a page via HTTP and index it.
+		//Return the entire, unprocessed text of the page if successful --
+			//because a crawler might be calling this script,
+			//and a crawler would need to extract URLs from the page text.
+			//
+			//Leave it up to the caller to save the GDB (call searchEngine.saveIndex).
 	
 	local (server, port = 80, path, s);
 	local (adrIndex, adrPreviews);
@@ -32,7 +32,7 @@ on indexViaHTTP (siteName, url, username="", password="",cookiesOn=false, timeOu
 	bundle { //fetch the text of the page via HTTP
 		s = tcp.httpClient (server:server, port:port, path:path, username:username, password:password, cookiesOn:cookiesOn, timeOutTicks:timeOutTicks);
 		
-		«Separate the page text from the page header.
+		//Separate the page text from the page header.
 		local (ix = string.patternMatch ("\r\n\r\n", s));
 		
 		if ix < 1 {
@@ -52,12 +52,12 @@ on indexViaHTTP (siteName, url, username="", password="",cookiesOn=false, timeOu
 	
 	msg ("Search Engine: Indexing: " + url);
 	
-	«Create a preview for this page.
-		«This should always be done before adding a page to the index.
+	//Create a preview for this page.
+		//This should always be done before adding a page to the index.
 	searchEngine.createPreview (pageText, pageTitle, url, url, adrPreviews);
 	
-	«Add the page to the index.
-		«It's okay to call this verb if the page has been indexed before.
+	//Add the page to the index.
+		//It's okay to call this verb if the page has been indexed before.
 	searchEngine.indexPage (url, url, pageTitle, pageText, adrIndex, adrStopWords);
 	
 	msg ("");

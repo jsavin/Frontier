@@ -1,6 +1,6 @@
 on maintenanceMode () {
-	«12/30/09; 1:24:53 AM by JES
-		«Created. Access control callback for the maintenance page feature.
+	//12/30/09; 1:24:53 AM by JES
+		//Created. Access control callback for the maintenance page feature.
 	local (pta = parentOf (port));
 	if config.mainResponder.prefs.maintenanceMode.flEnabled {
 		local (flReturn = false);

@@ -1,34 +1,34 @@
 on server (actionURI, adrRequestText, adrResponseText) {
-	«Changes:
-		«01/31/02; 3:25:22 PM by JES
-			«Added a security check by IP address, using betty.rpc.checkClient. Return a client-fault if the IP address check fails.
-		«09/03/01; 1:58:16 PM by JES
-			«Return a more descriptive error if the parameter names do not match the expected parameter names.
-		«05/29/01; 7:35:14 PM by JES
-			«Fixed a problem decoding entity-encoded markup.
-		«05/04/01; 12:30:14 AM by JES
-			«Bug fix: Fully qualified URLs in the value of the SOAPAction header weren't being processed with enough specificity. We now include the server as part of the ODB path to the RPC handler, in order to properly differentiate services from each other.
-		«04/11/01; 12:23:32 AM by JES
-			«Allow for processing of requests encoded as ISO-8859-1 (Latin1).
-		«04/07/01; 7:26:24 PM by JES
-			«Fault if a header element has an actor attribute whose value isn't the "special URI" for actor-next. (See section 4.2.2.)
-		«04/04/01; 5:45:11 PM by JES
-			«Convert to ascii from utf-8 or utf-16 if charset is specified in the Content-Type request header. When generating a response, convert to the same character set as the request.
-		«04/03/01; 5:04:25 PM by JES
-			«Reject requests which contain more than one Body element. Reject requests with Header after Body. Fixed a bug where the incorrect fault code would be generated when a request included a header with a mustUnderstand attribute.
-		«04/01/01; 3:10:28 AM by JES
-			«Properly encode void responses with an empty response element, instead of a response element containing an empty param element.
-				«A void response element is returned as a zero-length binary whose binary type is unknownType, since returning nil doesn't work.
-		«03/29/01; 7:17:58 PM by JES
-			«Call the RPC handler using callScript with a record, instead of a list. Adds support for named parameters.
-		«03/28/01; 7:13:21 PM by JES
-			«Allow for fully qualified URLs in the value of the SOAPAction header. We strip off the http:// and the server, and use just the URI part to find the RPC handler.
-		«03/17/01; 8:50:37 PM by JES
-			«Add adrRequest to the context the RPC handler is called in, so that the handler can define customNamespace, customNamespaceURI, and customArrayType. Needed for WSDL support. customNamespace, customNamespaceURI, and customArrayType are passed into soap.encode.main so that arrays of structs can be serialized.
-		«02/04/01; 5:43:42 PM by JES
-			«Verify that the request's methodName is valid, and return a fault if not.
-		«11/21/00; 4:02:59 PM by JES
-			«Add client and responder to the request table before calling the RPC handler, so the RPC handler can discover the responder name and client's IP address.
+	//Changes:
+		//01/31/02; 3:25:22 PM by JES
+			//Added a security check by IP address, using betty.rpc.checkClient. Return a client-fault if the IP address check fails.
+		//09/03/01; 1:58:16 PM by JES
+			//Return a more descriptive error if the parameter names do not match the expected parameter names.
+		//05/29/01; 7:35:14 PM by JES
+			//Fixed a problem decoding entity-encoded markup.
+		//05/04/01; 12:30:14 AM by JES
+			//Bug fix: Fully qualified URLs in the value of the SOAPAction header weren't being processed with enough specificity. We now include the server as part of the ODB path to the RPC handler, in order to properly differentiate services from each other.
+		//04/11/01; 12:23:32 AM by JES
+			//Allow for processing of requests encoded as ISO-8859-1 (Latin1).
+		//04/07/01; 7:26:24 PM by JES
+			//Fault if a header element has an actor attribute whose value isn't the "special URI" for actor-next. (See section 4.2.2.)
+		//04/04/01; 5:45:11 PM by JES
+			//Convert to ascii from utf-8 or utf-16 if charset is specified in the Content-Type request header. When generating a response, convert to the same character set as the request.
+		//04/03/01; 5:04:25 PM by JES
+			//Reject requests which contain more than one Body element. Reject requests with Header after Body. Fixed a bug where the incorrect fault code would be generated when a request included a header with a mustUnderstand attribute.
+		//04/01/01; 3:10:28 AM by JES
+			//Properly encode void responses with an empty response element, instead of a response element containing an empty param element.
+				//A void response element is returned as a zero-length binary whose binary type is unknownType, since returning nil doesn't work.
+		//03/29/01; 7:17:58 PM by JES
+			//Call the RPC handler using callScript with a record, instead of a list. Adds support for named parameters.
+		//03/28/01; 7:13:21 PM by JES
+			//Allow for fully qualified URLs in the value of the SOAPAction header. We strip off the http:// and the server, and use just the URI part to find the RPC handler.
+		//03/17/01; 8:50:37 PM by JES
+			//Add adrRequest to the context the RPC handler is called in, so that the handler can define customNamespace, customNamespaceURI, and customArrayType. Needed for WSDL support. customNamespace, customNamespaceURI, and customArrayType are passed into soap.encode.main so that arrays of structs can be serialized.
+		//02/04/01; 5:43:42 PM by JES
+			//Verify that the request's methodName is valid, and return a fault if not.
+		//11/21/00; 4:02:59 PM by JES
+			//Add client and responder to the request table before calling the RPC handler, so the RPC handler can discover the responder name and client's IP address.
 	
 	local (flfault = false);
 	local (methodname, responsename, paramrecord = {}, returnvalue);
@@ -69,17 +69,17 @@ on server (actionURI, adrRequestText, adrResponseText) {
 		adrfaultstring = soap.xmlutils.addElement (adrfaultstruct, "faultstring");
 		soap.xmlutils.setCharacterData (adrfaultstring, soap.xmlutils.encodeWithAmpersands (faultstring));
 		
-		«bundle //add faultfactor (commented out because it's not required since we're the final destination of the request)
-			«local (faultfactor)
-			«if actionURI beginsWith "http://"
-				«faultfactor = actionURI
-			«else //construct the faultfactor from ip, port and actionURI
-				«local (ipandport = tcp.myDottedId ())
-				«if user.inetd.config.http.port != 80
-					«ipandport = ipandport + ":" + user.inetd.config.http.port
-				«faultfactor = "http://" + ipandport + actionURI
-			«adrfaultfactor = soap.xmlutils.addElement (adrfaultstruct, "faultfactor")
-			«soap.xmlutils.setCharacterData (adrfaultfactor, soap.xmlutils.encodeWithAmpersands (faultfactor))
+		//bundle //add faultfactor (commented out because it's not required since we're the final destination of the request)
+			//local (faultfactor)
+			//if actionURI beginsWith "http://"
+				//faultfactor = actionURI
+			//else //construct the faultfactor from ip, port and actionURI
+				//local (ipandport = tcp.myDottedId ())
+				//if user.inetd.config.http.port != 80
+					//ipandport = ipandport + ":" + user.inetd.config.http.port
+				//faultfactor = "http://" + ipandport + actionURI
+			//adrfaultfactor = soap.xmlutils.addElement (adrfaultstruct, "faultfactor")
+			//soap.xmlutils.setCharacterData (adrfaultfactor, soap.xmlutils.encodeWithAmpersands (faultfactor))
 		
 		adrResponseText^ = xml.decompile (adrdocument);
 		
@@ -95,7 +95,7 @@ on server (actionURI, adrRequestText, adrResponseText) {
 		if not flfault { //build document tree from XML text
 			try {
 				on fixEntities (s) {
-					«Works around a bug in xml.compile, where both &amp;quot; and &quot; are decoded as &quot;. Clearly this shouldn't be the case, but to fix xml-compile at this point is asking for trouble.
+					//Works around a bug in xml.compile, where both &amp;quot; and &quot; are decoded as &quot;. Clearly this shouldn't be the case, but to fix xml-compile at this point is asking for trouble.
 					s = string.replaceAll (s, "&amp;amp;", "&amp;amp;amp;");
 					s = string.replaceAll (s, "&amp;quot;", "&amp;amp;quot;");
 					s = string.replaceAll (s, "&amp;apos;", "&amp;amp;apos;");
@@ -328,10 +328,10 @@ on server (actionURI, adrRequestText, adrResponseText) {
 	
 	return (not flfault)};
 
-«bundle //test code
-	«local (actionURI = "/validator1")
-	«local (requesttext = string (scratchpad.soapRequest))
-	«local (responsetext)
-	«server (actionURI, @requesttext, @responsetext)
-	«op.newOutlineObject (responsetext, @scratchpad.soapResponse)
-	«edit (@scratchpad.soapResponse)
+//bundle //test code
+	//local (actionURI = "/validator1")
+	//local (requesttext = string (scratchpad.soapRequest))
+	//local (responsetext)
+	//server (actionURI, @requesttext, @responsetext)
+	//op.newOutlineObject (responsetext, @scratchpad.soapResponse)
+	//edit (@scratchpad.soapResponse)

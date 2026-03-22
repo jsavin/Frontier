@@ -1,8 +1,8 @@
 on attachPicture (username, password, siteName, msgNum, mimeType, pictureBits) {
-	«Attach picture data to a message.
-		«Changes:
-			«10/09/00; 10:22:51 PM by PBS
-				«Make sure pictures index gets updated.
+	//Attach picture data to a message.
+		//Changes:
+			//10/09/00; 10:22:51 PM by PBS
+				//Make sure pictures index gets updated.
 	
 	bundle { //make sure this user has access to the discussion group
 		local (beginningErrorString = "Can't attach a picture to message \"" + msgNum + "\" because ");

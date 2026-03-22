@@ -1,10 +1,10 @@
 on handler (pta, adrObject) {
-	«Changes
-		«1/9/09; 11:52:41 AM by LL
-			«Fixed a problem with errror message not being returned when submitting changes.
-		«04/05/15, 13:00:09 by DAB
-			«Created. Factored out of manilaSuite.admin.advancedPage.
-				«messages at manilaData.localization.languages.english.strings.admin
+	//Changes
+		//1/9/09; 11:52:41 AM by LL
+			//Fixed a problem with errror message not being returned when submitting changes.
+		//04/05/15, 13:00:09 by DAB
+			//Created. Factored out of manilaSuite.admin.advancedPage.
+				//messages at manilaData.localization.languages.english.strings.admin
 	local (advancedPageName = pta^.pathArgs);
 	local (adrSite= manilaSuite.getManilaSiteAddress(pta));
 	local (flMemberHasPike = manilaSuite.pike.memberHasPike (pta));
@@ -40,8 +40,8 @@ on handler (pta, adrObject) {
 				pta^.newsSite^.flUseHomePageTemplate = false; //turn off template
 				manilaSuite.custody.checkInAndOut(adrObject, pta^.adrMemberInfo, pta^.adrSiteRootTable, false);
 				add(manilaSuite.sitePrefs.utility.successMessage(pta, "admin.templateHasBeenRestoredToDefault", @replacementTable));
-				«cause the containing frame to refresh
-				};«add("\r<script language = 'javascript'>parent.location='" + pta^.fname + "$" + advancedPageName + "?" +shortname +"=1'</script>")
+				//cause the containing frame to refresh
+				};//add("\r<script language = 'javascript'>parent.location='" + pta^.fname + "$" + advancedPageName + "?" +shortname +"=1'</script>")
 			defined (pta^.postArgs.no) { //cancel restore 05/04/26, 17:41:39 by DAB
 				}}
 		else { //try to update the template
@@ -54,21 +54,21 @@ on handler (pta, adrObject) {
 				pta^.newsSite^.flUseHomePageTemplate = defined (pta^.postArgs.flUseHomePageTemplate);
 				manilaSuite.custody.checkInAndOut(adrObject, pta^.adrMemberInfo, pta^.adrSiteRootTable, false);
 				add(manilaSuite.sitePrefs.utility.successMessage(pta, "admin.homePageTemplateUpdateSuccess", @replacementTable));
-				«cause the containing frame to refresh
-				}«add("\r<script language = 'javascript'>parent.location='" + pta^.fname + "$" + advancedPageName + "?" +shortname + "=2'</script>")
+				//cause the containing frame to refresh
+				}//add("\r<script language = 'javascript'>parent.location='" + pta^.fname + "$" + advancedPageName + "?" +shortname + "=2'</script>")
 			else {
 				add (manilaSuite.sitePrefs.utility.errorMessage (errorString, flLocalised:false))}}};
 	
-	«if pta^.searchArgs != ""
-		«local (argTable)
-		«new (tableType, @argTable)
-		«webserver.parseArgs (searchArgs, @argTable)
-		«if defined (argTable.[shortName]) //search args are used to signify a success message through a refresh/redirect
-			«case argTable.[shortName]
-				«"1"
-					«add(manilaSuite.sitePrefs.utility.successMessage(pta, "admin.templateHasBeenRestoredToDefault", @replacementTable))
-				«"2"
-					«add(manilaSuite.sitePrefs.utility.successMessage(pta, "admin.homePageTemplateUpdateSuccess", @replacementTable))
+	//if pta^.searchArgs != ""
+		//local (argTable)
+		//new (tableType, @argTable)
+		//webserver.parseArgs (searchArgs, @argTable)
+		//if defined (argTable.[shortName]) //search args are used to signify a success message through a refresh/redirect
+			//case argTable.[shortName]
+				//"1"
+					//add(manilaSuite.sitePrefs.utility.successMessage(pta, "admin.templateHasBeenRestoredToDefault", @replacementTable))
+				//"2"
+					//add(manilaSuite.sitePrefs.utility.successMessage(pta, "admin.homePageTemplateUpdateSuccess", @replacementTable))
 	
 	add ("\r<form method='POST' action='" + pta^.fname + "$" + advancedPageName + "' name ='" + advancedPageName + "'>");
 	add ("\r<table border='0' cellpadding='7' cellspacing='0' width='100%'>");

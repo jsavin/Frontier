@@ -1,11 +1,11 @@
-«Changes
-	«10/23/04; 1:15:12 AM by JES
-		«For new installs, initialize config.mainResponder.prefs.flMapFirstLevelOfUrlsToManilaSites to false.
+//Changes
+	//10/23/04; 1:15:12 AM by JES
+		//For new installs, initialize config.mainResponder.prefs.flMapFirstLevelOfUrlsToManilaSites to false.
 
 bundle { //perform deletions
 	try {delete (@user.scheduler.hourly.mainResponder)}; //we do this from the agent
 	try {delete (@system.startup.mainResponder)}; //it's now called nirvanaServer
-	«try {delete (@user.betty.rpcHandlers.mainResponder)} //it's now called nirvanaServer
+	//try {delete (@user.betty.rpcHandlers.mainResponder)} //it's now called nirvanaServer
 	try {delete (@user.menus.mainResponder)}; //it's now called nirvanaServer
 	try {delete (@user.webeditserver.callbacks.checkin.mainResponder)}; //it's now called nirvanaServer
 	try {delete (@system.agents.mainResponder)}; //it's now called nirvanaServer
@@ -20,7 +20,7 @@ bundle { //perform deletions
 	try {delete (@user.scheduler.tasks.overnight)}; //it'll get recreated by scheduler.init
 	try {delete (@user.scheduler.tasks.hourly)}; //it'll get recreated by scheduler.init
 	
-	«Delete old code from mainResponder.root.
+	//Delete old code from mainResponder.root.
 	try {delete (@mainResponder.pounder)};
 	try {delete (@mainResponder.discuss.macros)};
 	try {delete (@mainResponder.readMe)};
@@ -71,7 +71,7 @@ user.scheduler.everyMinute.nirvanaServer = @mainresponder.background.everyminute
 user.scheduler.hourly.searchEngine = @mainResponder.search.server.indexStoredPages;
 
 bundle { //update rootUpdates prefs for mainResponder.root.
-	«Wednesday, March 03, 1999 at 11:40:43 AM by PBS
+	//Wednesday, March 03, 1999 at 11:40:43 AM by PBS
 	local (adrTable = @user.rootUpdates.servers.mainResponder);
 	if not defined (adrTable^) {
 		new (tableType, adrTable)};

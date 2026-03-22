@@ -1,9 +1,9 @@
 on get (username, password, siteName) {
-	«Get the text of the news item template.
-		«04/30/00; 11:32:18 PM by PBS
-	«Changes:
-		«02/21/01; 11:55:10 PM by JES
-			«Convert Mac text to Latin if the server is a Mac.
+	//Get the text of the news item template.
+		//04/30/00; 11:32:18 PM by PBS
+	//Changes:
+		//02/21/01; 11:55:10 PM by JES
+			//Convert Mac text to Latin if the server is a Mac.
 	
 	bundle { //make sure this person is a managing editor of the site.
 		local (beginningErrorString = "Can't get the news item template because ");

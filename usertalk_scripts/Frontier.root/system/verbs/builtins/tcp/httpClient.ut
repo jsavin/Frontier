@@ -1,75 +1,75 @@
 on httpClient (method="GET", server="", port=nil, path="", proxy=user.webBrowser.proxy.domain, proxyPort=user.webBrowser.proxy.port, proxyUserName=user.webBrowser.proxy.userName, proxyPassword=user.webBrowser.proxy.password, data="", datatype="", username="", password="", adrHdrTable=nil, cookiesOn=false, debug=false, timeOutTicks=60*30, flMessages=true, ctFollowRedirects=0, flJustHeaders=false, flAcceptOpml=false, flUseProxy=nil, adrRedirectInfo=nil) {
-	«Changes
-		«6/24/05; 3:53:14 PM by MB
-			«Simplified user-agent generation by calling Frontier.getProgramName
-		«3/31/05; 3:40:31 AM by JES
-			«Properly handle port forwarding on OS X, when deciding whether to short-circuit the socket connection, flSameMachine. Fix recommended by DAB.
-		«Changes before 2005
-			«2/7/03; 3:49:12 PM by JES
-				«When testing for proxy-exempt servers, don't inclue the port number if specified in the server parameter.
-			«10/20/02; 2:32:23 AM by JES
-				«Respect user.webBrowser.proxy.exceptions.
-			«10/16/02; 6:55:56 PM by JES
-				«Removed debugging code.
-			«10/14/02; 11:10:16 AM by JES
-				«If server is 127.0.0.1 or "localhost", set flUseProxy to false.
-			«10/13/02; 6:23:28 PM by DW
-				«New optional param -- adrRedirectInfo. If it's non-nil (the default) and we're redirecting, we fill the table with info about the redirect. The RSS aggregator needs this information, and it may prove useful in other places. See xml.rss.readService for an example of its usage.
-			«12/19/01; 9:58:10 PM by JES
-				«Added a call to webBrowser.init, which initializes prefs at user.webBrowser.proxy. Added optional parameter, flUseProxy, which defaults to nil. If nil, then the value at user.webBrowser.proxy.enabled is used. Pass the value of flUseProxy when following redirects.
-			«8/14/01; 1:49:11 PM by JES
-				«When recursing to following redirects, pass in the flJustHeaders and flAcceptOpml parameters.
-			«8/9/01; 6:10:17 PM by JES
-				«If the stream is unexpectedly closed by the remote host, call tcp.abortStream, to avoid consuming the available connections.
-			«8/8/01; 3:21:27 PM by JES
-				«If no Accept header has been passed in, add an Accept header with the value: text/x-opml, */*, so that we get the response in opml instead of html.
-			«3/1/01; 1:57:33 PM by PBS
-				«Trim white space around the content-length header before coercing it to a number. If a server adds white space here, the coercion would fail, resulting in a connection counter leak. (History: this was discovered in Radio when reading the Red Herring channel.)
-			«1/10/01; 10:36:30 AM by DW
-				«Add an optional parameter, flJustHeaders, if true, we don't read the body, we just return the header portion of the response. This is useful if you just want to know how big a download is, and want to defer downloading big things until the middle of the night when it's quiet on the Internet.
-			«1/7/01; 9:44:18 PM by DW
-				«In Radio, set User-Agent to Radio UserLand.
-				«Changed the header so it doesn't use backslashes. The outliner now supports wrapping headlines.
-			«9/22/00; 11:27:50 AM by PBS
-				«Respect the user's offline settings.
-			«11/5/99; 3:00:39 AM by AR
-				«If the server doesn't send a Content-Length header, read until connection closes.
-			«10/21/99; 3:57:29 PM by AR
-				«Adapted to use new TCP verbs in 6.1.
-			«6/14/99; 5:23:37 AM by AR
-				«If flMessages is true, we now clean up the message area before we return.
-			«6/13/99; 9:20:04 AM by AR
-				«Both the read and write loop now yield time to other Frontier threads and to the system.
-				«The Host header is now generated correctly if the request goes thru a proxy server.
-				«Fixed a few inconsistencies in the cookie handling code. Thinks should now work correctly when connecting via a proxy server.
-				«Added an optional parameter, ctFollowRedirects, determining the number of times that HTTP redirects will be followed. In order to preserve previous behaviour, the default value is 0.
-			«3/4/99; 11:54:30 AM by PBS
-				«If adrHdrTable^ contains a "Host" sub-item, don't add a Host header item.
-			«3/2/99; 10:43:18 AM by DW
-				«if adrHdrTable^ contains a "User-Agent" sub-item, don't add a User-Agent header item
-			«10/25/98; 6:33:59 AM by DW
-				«allow the use of a colon in the server name to specify the port
-					«example: www.scripting.com:80
-				«if present, we use that port, not the one specified in the call
-					«the assumption is that most callers either specify 80 or don't specify the port at all
-					«for crawlers, for example, they definitely want to use the port specified in the server string
-					«some commands, esp in the webBrowser class, get the url from another piece of software
-			«9/28/98; 4:42:12 AM by DW
-				«if we're sending to the same machine, set the stream ID to 0
-				«user.webserver.responders.CGI.methods.any is copying it, hope no CGIs are using it!
-			«9/17/98; 7:11:56 AM by DW
-				«msgs now say that they're from tcp.httpClient.
-				«changed Connection to xxx timed out message to...
-					«Can't process the request because the connection to xxx timed out.
-				«allow server to be "localhost", if so, we totally optimize the functionality
-			«2/13/98; 8:57:10 AM by DW
-				«Initial code assembled from various sample scripts by Dave Winer.
-				«The goal is to have a single documented way to talk to HTTP servers.
-				«It's got a long parameter list, but requires no configuration, doesn't run off a user.xxx table.
-				«The target user of this script is someone who needs to understand how the code works.
-				«It will be distributed with Frontier on both platforms as soon as we agree that this is complete and works.
-				«When you call it, use parameter labels, don't depend on the order of these params.
-				«For examples, see tcp.examples.
+	//Changes
+		//6/24/05; 3:53:14 PM by MB
+			//Simplified user-agent generation by calling Frontier.getProgramName
+		//3/31/05; 3:40:31 AM by JES
+			//Properly handle port forwarding on OS X, when deciding whether to short-circuit the socket connection, flSameMachine. Fix recommended by DAB.
+		//Changes before 2005
+			//2/7/03; 3:49:12 PM by JES
+				//When testing for proxy-exempt servers, don't inclue the port number if specified in the server parameter.
+			//10/20/02; 2:32:23 AM by JES
+				//Respect user.webBrowser.proxy.exceptions.
+			//10/16/02; 6:55:56 PM by JES
+				//Removed debugging code.
+			//10/14/02; 11:10:16 AM by JES
+				//If server is 127.0.0.1 or "localhost", set flUseProxy to false.
+			//10/13/02; 6:23:28 PM by DW
+				//New optional param -- adrRedirectInfo. If it's non-nil (the default) and we're redirecting, we fill the table with info about the redirect. The RSS aggregator needs this information, and it may prove useful in other places. See xml.rss.readService for an example of its usage.
+			//12/19/01; 9:58:10 PM by JES
+				//Added a call to webBrowser.init, which initializes prefs at user.webBrowser.proxy. Added optional parameter, flUseProxy, which defaults to nil. If nil, then the value at user.webBrowser.proxy.enabled is used. Pass the value of flUseProxy when following redirects.
+			//8/14/01; 1:49:11 PM by JES
+				//When recursing to following redirects, pass in the flJustHeaders and flAcceptOpml parameters.
+			//8/9/01; 6:10:17 PM by JES
+				//If the stream is unexpectedly closed by the remote host, call tcp.abortStream, to avoid consuming the available connections.
+			//8/8/01; 3:21:27 PM by JES
+				//If no Accept header has been passed in, add an Accept header with the value: text/x-opml, */*, so that we get the response in opml instead of html.
+			//3/1/01; 1:57:33 PM by PBS
+				//Trim white space around the content-length header before coercing it to a number. If a server adds white space here, the coercion would fail, resulting in a connection counter leak. (History: this was discovered in Radio when reading the Red Herring channel.)
+			//1/10/01; 10:36:30 AM by DW
+				//Add an optional parameter, flJustHeaders, if true, we don't read the body, we just return the header portion of the response. This is useful if you just want to know how big a download is, and want to defer downloading big things until the middle of the night when it's quiet on the Internet.
+			//1/7/01; 9:44:18 PM by DW
+				//In Radio, set User-Agent to Radio UserLand.
+				//Changed the header so it doesn't use backslashes. The outliner now supports wrapping headlines.
+			//9/22/00; 11:27:50 AM by PBS
+				//Respect the user's offline settings.
+			//11/5/99; 3:00:39 AM by AR
+				//If the server doesn't send a Content-Length header, read until connection closes.
+			//10/21/99; 3:57:29 PM by AR
+				//Adapted to use new TCP verbs in 6.1.
+			//6/14/99; 5:23:37 AM by AR
+				//If flMessages is true, we now clean up the message area before we return.
+			//6/13/99; 9:20:04 AM by AR
+				//Both the read and write loop now yield time to other Frontier threads and to the system.
+				//The Host header is now generated correctly if the request goes thru a proxy server.
+				//Fixed a few inconsistencies in the cookie handling code. Thinks should now work correctly when connecting via a proxy server.
+				//Added an optional parameter, ctFollowRedirects, determining the number of times that HTTP redirects will be followed. In order to preserve previous behaviour, the default value is 0.
+			//3/4/99; 11:54:30 AM by PBS
+				//If adrHdrTable^ contains a "Host" sub-item, don't add a Host header item.
+			//3/2/99; 10:43:18 AM by DW
+				//if adrHdrTable^ contains a "User-Agent" sub-item, don't add a User-Agent header item
+			//10/25/98; 6:33:59 AM by DW
+				//allow the use of a colon in the server name to specify the port
+					//example: www.scripting.com:80
+				//if present, we use that port, not the one specified in the call
+					//the assumption is that most callers either specify 80 or don't specify the port at all
+					//for crawlers, for example, they definitely want to use the port specified in the server string
+					//some commands, esp in the webBrowser class, get the url from another piece of software
+			//9/28/98; 4:42:12 AM by DW
+				//if we're sending to the same machine, set the stream ID to 0
+				//user.webserver.responders.CGI.methods.any is copying it, hope no CGIs are using it!
+			//9/17/98; 7:11:56 AM by DW
+				//msgs now say that they're from tcp.httpClient.
+				//changed Connection to xxx timed out message to...
+					//Can't process the request because the connection to xxx timed out.
+				//allow server to be "localhost", if so, we totally optimize the functionality
+			//2/13/98; 8:57:10 AM by DW
+				//Initial code assembled from various sample scripts by Dave Winer.
+				//The goal is to have a single documented way to talk to HTTP servers.
+				//It's got a long parameter list, but requires no configuration, doesn't run off a user.xxx table.
+				//The target user of this script is someone who needs to understand how the code works.
+				//It will be distributed with Frontier on both platforms as soon as we agree that this is complete and works.
+				//When you call it, use parameter labels, don't depend on the order of these params.
+				//For examples, see tcp.examples.
 	
 	if tcp.isOffline () { //PBS 09/22/00: check offline status
 		scriptError ("Can't send HTTP request because TCP is offline.")};
@@ -150,7 +150,7 @@ on httpClient (method="GET", server="", port=nil, path="", proxy=user.webBrowser
 		else {
 			try {flSameMachine = tcp.equalNames (server, myAddress)}}; //DW 3/9/98
 		
-		«PBS 9/18/98: check that the server on the requested port is Frontier.
+		//PBS 9/18/98: check that the server on the requested port is Frontier.
 		if port != user.inetd.config.http.port {
 			if defined (user.inetd.config.http.apparentPort) { //handle OS X port forwarding case
 				if port != user.inetd.config.http.apparentPort {

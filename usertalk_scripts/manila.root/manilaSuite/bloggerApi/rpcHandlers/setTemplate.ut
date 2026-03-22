@@ -1,6 +1,6 @@
 on setTemplate (appkey, blogid, username, password, template, templateType) {
-	«8/27/01; 3:56:35 PM by JES
-		«Blogger API glue for using manila.advancedPref.set to set the site's template and news item template.
+	//8/27/01; 3:56:35 PM by JES
+		//Blogger API glue for using manila.advancedPref.set to set the site's template and news item template.
 	local (siteurl = blogid); //these are synonymous for Manila sites
 	local (sitename = manilaSuite.rpcHandlers.getSiteName (siteurl));
 	bundle { //make sure siteurl starts with http:// and ends with /

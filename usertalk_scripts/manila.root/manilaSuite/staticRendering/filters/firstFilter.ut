@@ -1,18 +1,18 @@
 on firstFilter (pta) {
-	«Declare that this is a static rendering to all who care.
-		«Changes:
-			«10/16/04; 12:31:14 AM by JES
-				«Added support for indirectTemplate.
-					«Change recommended by David Bayly.
-			«9/29/01; 2:50:10 PM by PBS
-				«Set flPrintFriendlyTemplate to false.
-			«10/14/00; 2:26:31 PM by PBS
-				«Support alternate home page template.
-			«07/19/00; 4:04:09 PM by PBS
-				«Respect the pref for the cowskull icon -- use what's defined in the site, not the generic.
-				«If the discussion group is not open to members, don't display a cowskull at all.
-			«05/24/00; 8:08:20 PM by JES
-				«Localized.
+	//Declare that this is a static rendering to all who care.
+		//Changes:
+			//10/16/04; 12:31:14 AM by JES
+				//Added support for indirectTemplate.
+					//Change recommended by David Bayly.
+			//9/29/01; 2:50:10 PM by PBS
+				//Set flPrintFriendlyTemplate to false.
+			//10/14/00; 2:26:31 PM by PBS
+				//Support alternate home page template.
+			//07/19/00; 4:04:09 PM by PBS
+				//Respect the pref for the cowskull icon -- use what's defined in the site, not the generic.
+				//If the discussion group is not open to members, don't display a cowskull at all.
+			//05/24/00; 8:08:20 PM by JES
+				//Localized.
 	pta^.flManilaStaticRendering = true;
 	
 	bundle { //get prefs from Manila site
@@ -64,10 +64,10 @@ on firstFilter (pta) {
 		
 		pta^.postTime = manilaSuite.convertTime (timeCreated (pta^.adrObject), pta: pta);
 		pta^.lastUpdate = manilaSuite.convertTime (timeModified (pta^.adrObject), pta: pta);
-		};«pta^.lastUpdateString = "[[lastUpdateString]]"// 05/25/00 JES -- this was redundant
+		};//pta^.lastUpdateString = "[[lastUpdateString]]"// 05/25/00 JES -- this was redundant
 	
 	bundle { //body tag
-		«pta^.body = html.data.standardMacros.bodyTag ()
+		//pta^.body = html.data.standardMacros.bodyTag ()
 		pta^.body = manilaSuite.html.bodyTag ();
 		pta^.prefsBasedBodyTag = pta^.body};
 	
@@ -94,7 +94,7 @@ on firstFilter (pta) {
 			pta^.cowSkullImage = adrNewsSite^.cowSkullImage}};
 	
 	s = string.replace (s, "<title>", "<Title>", false);
-	«s = string.replaceAll (s, adrManilaSite^.["#ftpSite"].url, pta^.ftpSite^.url, false)
+	//s = string.replaceAll (s, adrManilaSite^.["#ftpSite"].url, pta^.ftpSite^.url, false)
 	
 	pta^.calendar = "";
 	
@@ -102,7 +102,7 @@ on firstFilter (pta) {
 		local (urlParts = string.urlSplit (pta^.ftpSite^.url));
 		pta^.host = urlParts [2]};
 	bundle { //navigator
-		«s = string.replaceAll (s, "{navigatorLinks}", "", false)
+		//s = string.replaceAll (s, "{navigatorLinks}", "", false)
 		local (urlParts);
 		urlParts = string.urlSplit (pta^.url);
 		pta^.uri = "/" + urlParts [3];

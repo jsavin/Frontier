@@ -1,9 +1,9 @@
-on buildCDF (adrsite) { «build a Microsoft CDF-format file for the site
-	«Original version by Wesley Felter, wesf@mail.utexas.edu
-		«Second version by Dave Winer, dwiner@well.com
-			«Mon, Apr 14, 1997 at 11:18:55 AM by DW
-		«For docs, see http://www.microsoft.com/standards/cdf.htm.
-		«The site must have a #cdf table at the top level. 
+on buildCDF (adrsite) { //build a Microsoft CDF-format file for the site
+	//Original version by Wesley Felter, wesf@mail.utexas.edu
+		//Second version by Dave Winer, dwiner@well.com
+			//Mon, Apr 14, 1997 at 11:18:55 AM by DW
+		//For docs, see http://www.microsoft.com/standards/cdf.htm.
+		//The site must have a #cdf table at the top level. 
 	local (adrcdf = @adrsite^.["#cdf"]);
 	if not defined (adrcdf^) {
 		scriptError (adrsite + " doesn't have contain a #cdf table.")};
@@ -20,14 +20,14 @@ on buildCDF (adrsite) { «build a Microsoft CDF-format file for the site
 			add ("<LastMod VALUE=\"" + dateString (timeModified (adr)) + "\" />\r")};
 		add ("<!DOCTYPE Channel SYSTEM \"http://www.w3c.org/Channel.dtd\" >\r\r");
 		local (adrlist = {});
-		bundle { «add channel header
+		bundle { //add channel header
 			add ("<Channel HREF=\"" + siteurl + "\" IsClonable=");
 			if isClonable {
 				add ("YES")}
 			else {
 				add ("NO")};
 			add (" >\r")};
-		bundle { «add pagesThatChange, each one an "item"
+		bundle { //add pagesThatChange, each one an "item"
 			target.set (@adrcdf^.pagesThatChange);
 			op.firstSummit ();
 			loop {
@@ -60,7 +60,7 @@ on buildCDF (adrsite) { «build a Microsoft CDF-format file for the site
 				if not op.go (down, 1) {
 					break}};
 			target.clear ()};
-		bundle { «add schedule
+		bundle { //add schedule
 			add ("\r\t<schedule>\r");
 			if defined (schedule.startDate) {
 				add ("\t\t<StartDate VALUE=\"" + dateString (schedule.startDate) + "\" />\r")};
@@ -76,6 +76,6 @@ on buildCDF (adrsite) { «build a Microsoft CDF-format file for the site
 		add ("\r\t</Channel>");
 		};
 	return (channeltext)};
-«bundle «test code
-	«wp.newtextobject (buildCDF (@user.websites.davenet), @scratchpad.cdf)
-	«edit (@scratchpad.cdf)
+//bundle //test code
+	//wp.newtextobject (buildCDF (@user.websites.davenet), @scratchpad.cdf)
+	//edit (@scratchpad.cdf)

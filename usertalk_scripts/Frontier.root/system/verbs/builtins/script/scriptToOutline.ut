@@ -1,9 +1,9 @@
-on scriptToOutline (adrscript, adroutline) { «Fri, Aug 16, 1996 at 8:36:58 AM by DW
-	«10/31/97 at 1:17:49 PM by DW -- moved from toys.scriptToOutline
-	«this script is used in producing the Samples website
-		«http://www.scripting.com/samples/
-		«we have good html rendering tools for outlines, that don't work with scripts
-		«we make an outline that reflects the contents of the script, suitable for display
+on scriptToOutline (adrscript, adroutline) { //Fri, Aug 16, 1996 at 8:36:58 AM by DW
+	//10/31/97 at 1:17:49 PM by DW -- moved from toys.scriptToOutline
+	//this script is used in producing the Samples website
+		//http://www.scripting.com/samples/
+		//we have good html rendering tools for outlines, that don't work with scripts
+		//we make an outline that reflects the contents of the script, suitable for display
 	local (oldTarget = target.set (adrscript));
 	local (wasmodified = window.isModified (adrscript));
 	window.setModified (adrscript, true);
@@ -16,10 +16,10 @@ on scriptToOutline (adrscript, adroutline) { «Fri, Aug 16, 1996 at 8:36:58 AM b
 		loop {
 			target.set (adrscript);
 			ctsubs = op.countSubs (1);
-			s = op.getLineText (); «get line from the script
+			s = op.getLineText (); //get line from the script
 			curlineiscomment = script.isComment ();
 			if curlineiscomment or leveliscomment {
-				s = "«" + s};
+				s = "//" + s};
 			target.set (adroutline);
 			if dir == nodirection {
 				op.setlinetext (s)}

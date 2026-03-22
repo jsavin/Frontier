@@ -1,7 +1,7 @@
 on getLocalizedObject (objectId, adrLanguageTable, adrAdrObject, defaultLanguage=nil) {
-	«Changes
-		«6/24/02; 2:14:47 PM by JES
-			«Created. Factored from Frontier.getString.
+	//Changes
+		//6/24/02; 2:14:47 PM by JES
+			//Created. Factored from Frontier.getString.
 	
 	on dive (id, adr, adradrobject) {
 		if not defined (adr^) {
@@ -39,9 +39,9 @@ on getLocalizedObject (objectId, adrLanguageTable, adrAdrObject, defaultLanguage
 				return (true)}}};
 	
 	return (false)}; //didn't find it
-«bundle //test code
-	«local (adr)
-	«local (t = clock.ticks ())
-	«for i = 1 to 1000
-		«getLocalizedObject ("strings.weblogPostForm.postButton", @radio.data.localization.languages.english, @adr)
-	«dialog.notify (clock.ticks () - t)
+//bundle //test code
+	//local (adr)
+	//local (t = clock.ticks ())
+	//for i = 1 to 1000
+		//getLocalizedObject ("strings.weblogPostForm.postButton", @radio.data.localization.languages.english, @adr)
+	//dialog.notify (clock.ticks () - t)

@@ -1,9 +1,9 @@
 on convertDomainToSiteTree (domainName, adrDomains = @config.mainResponder.domains) {
-	«Changes
-		«8/13/02; 3:48:22 PM by JES
-			«New optional parameter, adrDomains. Compile the siteTree XML if needed, after converting the domain to a siteTree domain.
-		«7/2/02; 12:01:55 AM by JES
-			«Created.
+	//Changes
+		//8/13/02; 3:48:22 PM by JES
+			//New optional parameter, adrDomains. Compile the siteTree XML if needed, after converting the domain to a siteTree domain.
+		//7/2/02; 12:01:55 AM by JES
+			//Created.
 	local (adrdomain = @adrDomains^.[domainName]);
 	if defined (adrdomain^.siteTree) { //already a siteTree type domain?
 		scriptError ("Can't convert the domain, \"" + domainName + "\" to a siteTree because it already is one.")};
@@ -49,4 +49,4 @@ on convertDomainToSiteTree (domainName, adrDomains = @config.mainResponder.domai
 	return (true)};
 bundle { //testing
 	convertDomainToSiteTree ("default");
-	}«convertDomainToSiteTree ("foo")
+	}//convertDomainToSiteTree ("foo")

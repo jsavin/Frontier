@@ -1,5 +1,5 @@
 on webEditCallback (adrObject, userName=nil, now=nil, description=nil) {
-	«Whenever a page has been checked in via WebEdit, this script gets called.
-		«We use a try statement so errors don't stop the WebEdit process.
+	//Whenever a page has been checked in via WebEdit, this script gets called.
+		//We use a try statement so errors don't stop the WebEdit process.
 	try {mainResponder.search.client.index (adrObject)};
 	return (true)}

@@ -1,23 +1,23 @@
 on postItemToHomePage (adrMsgTable, adrSite) {
-	«Changes:
-		«10/18/05; 3:45:27 AM by JES
-			«If multiple departments is enabled and no department is selected, ensure that flOnHomePage is true. The item must show up somewhere, and the home page is the right place.
-		«9/13/05; 7:36:27 PM by JES
-			«Added support for ETP callback validation, newsPostItemToHomePage.
-		«10/2/01; 8:33:21 PM by PBS
-			«Call manilaSuite.callbacks.homePageUpdate with News Items sites so notification gets sent.
-		«08/20/01; 4:40:05 PM by JES
-			«Modified to work outside of the website framework context, by removing references to pta, and commenting out the call to html.getPageTableAddress.
-		«06/10/00; 10:24:21 PM by PBS
-			«Don't allow a News Item to be posted twice to the home page.
-		«05/12/00; 3:55:27 PM by PBS
-			«Don't add private sites to changed home pages calendar.
-		«05/06/00; 3:56:04 PM by PBS
-			«Add to changed home pages calendar.
-		«05/01/00; 10:41:00 PM by PBS
-			«Call the homePageUpdate callback
-		«04/20/00; 3:56:01 PM by PBS
-			«Mark an item as posted to the home page.
+	//Changes:
+		//10/18/05; 3:45:27 AM by JES
+			//If multiple departments is enabled and no department is selected, ensure that flOnHomePage is true. The item must show up somewhere, and the home page is the right place.
+		//9/13/05; 7:36:27 PM by JES
+			//Added support for ETP callback validation, newsPostItemToHomePage.
+		//10/2/01; 8:33:21 PM by PBS
+			//Call manilaSuite.callbacks.homePageUpdate with News Items sites so notification gets sent.
+		//08/20/01; 4:40:05 PM by JES
+			//Modified to work outside of the website framework context, by removing references to pta, and commenting out the call to html.getPageTableAddress.
+		//06/10/00; 10:24:21 PM by PBS
+			//Don't allow a News Item to be posted twice to the home page.
+		//05/12/00; 3:55:27 PM by PBS
+			//Don't add private sites to changed home pages calendar.
+		//05/06/00; 3:56:04 PM by PBS
+			//Add to changed home pages calendar.
+		//05/01/00; 10:41:00 PM by PBS
+			//Call the homePageUpdate callback
+		//04/20/00; 3:56:01 PM by PBS
+			//Mark an item as posted to the home page.
 	
 	if not (manilaSuite.news.isPosted (adrMsgTable)) { //PBS 6/10/00: don't allow a News Item to be posted twice
 		
@@ -41,32 +41,32 @@ on postItemToHomePage (adrMsgTable, adrSite) {
 		manilaSuite.news.addToCalendar (adrSite, now);
 		manilaSuite.callbacks.postedNewsItemCallback (adrMsgTable);
 		
-		«try //PBS 05/01/00: force a call to the home page update callback scripts
-			«local (adrCallbacks = nil)
-			«local (adrUserCallbacks = @config.manila.callbacks.homePageUpdate)
-			«local (url = adrSite^.["#ftpSite"].url)
-			«local (pta = html.getPageTableAddress ())
-			«local (memberKey = adrMsgTable^.member)
-			«local (siteName = manilaSuite.getCanonicalSiteName (adrSite))
-			«local (groupname = manilaSuite.rpcUtils.getMembersGroupName (siteName))
-			«local (adrMember = mainResponder.members.getMemberTable (groupName, memberKey))
-			«local (newText = string (adrMsgTable^.body))
-			«manilaSuite.callbacks.callbackLoop (adrCallbacks, adrUserCallbacks, adrMsgTable, adrSite, url, adrMember, newText)
-			«bundle //PBS 05/06/00: add to changed home pages calendar
-				«local (flAddToChangesTable = true)
-				«if defined (adrSite^.["#newsSite"].flEditorsOnlyAccessToSite) //PBS 05/12/00: don't add private sites to changes table
-					«if (adrSite^.["#newsSite"].flEditorsOnlyAccessToSite)
-						«flAddToChangesTable = false
-				«if flAddToChangesTable
-					«local (url, siteName)
-					«url = adrSite^.["#ftpSite"].url
-					«if manilaSuite.staticRendering.isEnabled (adrSite) //get static home page URL
-						«if defined (adrSite^.["#newsSite"].staticSite.["#ftpSite"].url)
-							«local (staticUrl = adrSite^.["#newsSite"].staticSite.["#ftpSite"].url)
-							«if string.trimWhiteSpace (staticUrl) != ""
-								«url = staticUrl
-					«siteName = adrSite^.["#newsSite"].siteName
-					«manilaSuite.hosting.addChangedHomePage (url, siteName)
+		//try //PBS 05/01/00: force a call to the home page update callback scripts
+			//local (adrCallbacks = nil)
+			//local (adrUserCallbacks = @config.manila.callbacks.homePageUpdate)
+			//local (url = adrSite^.["#ftpSite"].url)
+			//local (pta = html.getPageTableAddress ())
+			//local (memberKey = adrMsgTable^.member)
+			//local (siteName = manilaSuite.getCanonicalSiteName (adrSite))
+			//local (groupname = manilaSuite.rpcUtils.getMembersGroupName (siteName))
+			//local (adrMember = mainResponder.members.getMemberTable (groupName, memberKey))
+			//local (newText = string (adrMsgTable^.body))
+			//manilaSuite.callbacks.callbackLoop (adrCallbacks, adrUserCallbacks, adrMsgTable, adrSite, url, adrMember, newText)
+			//bundle //PBS 05/06/00: add to changed home pages calendar
+				//local (flAddToChangesTable = true)
+				//if defined (adrSite^.["#newsSite"].flEditorsOnlyAccessToSite) //PBS 05/12/00: don't add private sites to changes table
+					//if (adrSite^.["#newsSite"].flEditorsOnlyAccessToSite)
+						//flAddToChangesTable = false
+				//if flAddToChangesTable
+					//local (url, siteName)
+					//url = adrSite^.["#ftpSite"].url
+					//if manilaSuite.staticRendering.isEnabled (adrSite) //get static home page URL
+						//if defined (adrSite^.["#newsSite"].staticSite.["#ftpSite"].url)
+							//local (staticUrl = adrSite^.["#newsSite"].staticSite.["#ftpSite"].url)
+							//if string.trimWhiteSpace (staticUrl) != ""
+								//url = staticUrl
+					//siteName = adrSite^.["#newsSite"].siteName
+					//manilaSuite.hosting.addChangedHomePage (url, siteName)
 		try {
 			local (adrMember = mainResponder.members.getMemberTable (adrSite^.["#prefs"].defaultMembershipGroup, adrMsgTable^.member));
 			manilaSuite.callbacks.homePageUpdate (adrMsgTable, adrSite, adrMember, string (adrMsgTable^.body), true)}}; //PBS 10/02/01: call home page update callback

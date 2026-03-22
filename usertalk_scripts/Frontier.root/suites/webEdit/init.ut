@@ -1,9 +1,9 @@
-«Set up the user.webEdit table.
-«Changes
-	«9/6/05; 1:28:01 PM by JES
-		«Don't check for the Override Server Directive command.
-	«8/30/05; 5:37:06 PM by JES
-		«Ensure that the WebEdit menu has an Override Server Directive command.
+//Set up the user.webEdit table.
+//Changes
+	//9/6/05; 1:28:01 PM by JES
+		//Don't check for the Override Server Directive command.
+	//8/30/05; 5:37:06 PM by JES
+		//Ensure that the WebEdit menu has an Override Server Directive command.
 if not (defined (user.webEdit)) {
 	new (tableType, @user.webEdit)};
 if not (defined (user.webEdit.servers)) {
@@ -19,13 +19,13 @@ if not (defined (user.webEdit.prefs.flDialogs)) {
 
 webEdit.buildServerSubMenu ();
 
-«bundle //ensure Override Server Directive command
-	«local (oldTarget = target.set (@webEdit.menu))
-	«op.firstSummit ()
-	«op.expand (1)
-	«op.go (right, 1)
-	«op.go (down, infinity)
-	«if op.getLineText () != "=webEdit.menuItems.overrideDirective ()"
-		«menu.addMenuCommand (@webEdit.menu, "WebEdit", "=webEdit.menuItems.overrideDirective ()", "user.webEdit.prefs.overrideWebEditServerDirective = !user.webEdit.prefs.overrideWebEditServerDirective")
+//bundle //ensure Override Server Directive command
+	//local (oldTarget = target.set (@webEdit.menu))
+	//op.firstSummit ()
+	//op.expand (1)
+	//op.go (right, 1)
+	//op.go (down, infinity)
+	//if op.getLineText () != "=webEdit.menuItems.overrideDirective ()"
+		//menu.addMenuCommand (@webEdit.menu, "WebEdit", "=webEdit.menuItems.overrideDirective ()", "user.webEdit.prefs.overrideWebEditServerDirective = !user.webEdit.prefs.overrideWebEditServerDirective")
 
 return (true)

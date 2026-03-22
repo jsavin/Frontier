@@ -1,5 +1,5 @@
 on removeFromStoriesList (username, password, siteName, msgNum) {
-	«Remove a message from the stories list.
+	//Remove a message from the stories list.
 	
 	bundle { //make sure this person is a managing editor of the site.
 		local (beginningErrorString = "Can't remove message \"" + msgNum + "\" from the stories list because ");

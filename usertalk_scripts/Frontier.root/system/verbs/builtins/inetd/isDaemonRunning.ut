@@ -1,4 +1,4 @@
-«Script: system.verbs.builtins.inetd.isDaemonRunning; Version 1; Date: Thu, 14 May 1998 03:31:57 GMT; ID: RAB
+//Script: system.verbs.builtins.inetd.isDaemonRunning; Version 1; Date: Thu, 14 May 1998 03:31:57 GMT; ID: RAB
 on isDaemonRunning (adrDaemonTable) {
 	local (port = adrDaemonTable^.port);
 	local (listenerTableAdr = @user.inetd.listens.[port]);
@@ -10,5 +10,5 @@ on isDaemonRunning (adrDaemonTable) {
 			return (false)};
 		return (true)};
 	return (false)};
-«bundle //test code
-	«isDaemonRunning (@user.inetd.config.http)
+//bundle //test code
+	//isDaemonRunning (@user.inetd.config.http)

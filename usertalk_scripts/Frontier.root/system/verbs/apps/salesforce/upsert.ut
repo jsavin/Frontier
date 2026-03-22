@@ -1,7 +1,7 @@
 on upsert (adrSession, objectType, keyField, adrDataTable) {
-	«Changes
-		«4/20/06; 3:02:54 AM by JES
-			«Created. Update an object of the given objectType, with field values as specified by name/value pairs in the table referenced by adrDataTable.
+	//Changes
+		//4/20/06; 3:02:54 AM by JES
+			//Created. Update an object of the given objectType, with field values as specified by name/value pairs in the table referenced by adrDataTable.
 	scriptError ("Can't call upsert because the API version must be at least 7.0, and the Frontier SOAP implementation doesn't use the format required by API version 7.0.");
 	local (t); new (tableType, @t);
 	local (adr);
@@ -17,11 +17,11 @@ on upsert (adrSession, objectType, keyField, adrDataTable) {
 		return (retval.id)}
 	else { //throw the error
 		scriptError ("Can't update the object because the server returned an error: " + retval.errors.message)}};
-«bundle //testing
-	«local (t); new (tableType, @t)
-	«t.Name = "Futty Nuzzbutter"
-	«t.SLASerialNumber__c = "123"
-	«local (sesnum = sizeOf (system.temp.salesforce.sessions))
-	«local (adrSession = @system.temp.salesforce.sessions[sesnum])
-	«table.assign (@workspace.retval, this^ (adrSession, "Account", "SLASerialNumber__c", @t) )
-	«edit (@workspace.retval)
+//bundle //testing
+	//local (t); new (tableType, @t)
+	//t.Name = "Futty Nuzzbutter"
+	//t.SLASerialNumber__c = "123"
+	//local (sesnum = sizeOf (system.temp.salesforce.sessions))
+	//local (adrSession = @system.temp.salesforce.sessions[sesnum])
+	//table.assign (@workspace.retval, this^ (adrSession, "Account", "SLASerialNumber__c", @t) )
+	//edit (@workspace.retval)

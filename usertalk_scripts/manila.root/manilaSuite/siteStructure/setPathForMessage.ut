@@ -1,13 +1,13 @@
 on setPathForMessage (path, adrMsgTable, adrSite) {
-	«Set the site structure path to this message. Return the address of the item added or changed in the site structure. Do an xml de-compile to re-build the outline.
-		«03/03/00; 8:36:57 PM by PBS
-		«Changes:
-			«03/19/00; 12:00:40 AM by PBS
-				«The name attribute now gets the subject from the dg message.
-			«06/19/00; 4:30:59 PM by PBS
-				«If the structure is an empty string, handle this case, make it a table -- this way we don't get errors when adding an item.
-			«10/09/00; 10:14:36 PM by PBS
-				«When promoting to story, supply the adrSite param, so the indexes can get updated.
+	//Set the site structure path to this message. Return the address of the item added or changed in the site structure. Do an xml de-compile to re-build the outline.
+		//03/03/00; 8:36:57 PM by PBS
+		//Changes:
+			//03/19/00; 12:00:40 AM by PBS
+				//The name attribute now gets the subject from the dg message.
+			//06/19/00; 4:30:59 PM by PBS
+				//If the structure is an empty string, handle this case, make it a table -- this way we don't get errors when adding an item.
+			//10/09/00; 10:14:36 PM by PBS
+				//When promoting to story, supply the adrSite param, so the indexes can get updated.
 	
 	local (adrHierarchy = @adrSite^.["#hierarchy"]);
 	if typeOf (adrHierarchy^.structure [1]) != tableType {

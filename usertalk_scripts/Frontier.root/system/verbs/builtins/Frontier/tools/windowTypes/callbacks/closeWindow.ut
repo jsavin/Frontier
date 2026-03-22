@@ -1,9 +1,9 @@
 on closeWindow (adr) {
-	«Changes
-		«11/28/01; 2:47:30 PM by JES
-			«Work around a crashing kernel bug.
-		«11/28/01; 1:32:39 PM by JES
-			«If Frontier.tools.windowTypes.commands.close returns false, i.e. the user clicked the Cancel button in a save confirmation dialog, don't allow the window to close.
+	//Changes
+		//11/28/01; 2:47:30 PM by JES
+			//Work around a crashing kernel bug.
+		//11/28/01; 1:32:39 PM by JES
+			//If Frontier.tools.windowTypes.commands.close returns false, i.e. the user clicked the Cancel button in a save confirmation dialog, don't allow the window to close.
 	if not defined (adr^) { //not an addressible window -- fixes a freeze on the close box, for the Find & Replace dialog
 		return (true)}; //allow the rest of the closeWindow callbacks to run, or allow the window to close if no more callbacks
 	local (windowType);
@@ -20,5 +20,5 @@ on closeWindow (adr) {
 				return (false)}}};
 	return (true)}; //default behavior
 
-«bundle //debugging
-	«closeWindow (window.frontMost ())
+//bundle //debugging
+	//closeWindow (window.frontMost ())

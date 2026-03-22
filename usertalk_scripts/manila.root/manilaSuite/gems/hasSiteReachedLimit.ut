@@ -1,6 +1,6 @@
 on hasSiteReachedLimit (adrSite) {
-	«Return true if the site has reached or exceeded its allowed hard drive space.
-		«04/13/00; 9:14:54 PM by PBS
+	//Return true if the site has reached or exceeded its allowed hard drive space.
+		//04/13/00; 9:14:54 PM by PBS
 	
 	local (limit = manilaSuite.gems.getSiteLimit (adrSite));
 	

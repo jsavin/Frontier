@@ -19,5 +19,5 @@ on close (adr) {
 	close (adr);
 	return (true)};
 
-«bundle //debugging
-	«close (window.frontmost ())
+//bundle //debugging
+	//close (window.frontmost ())

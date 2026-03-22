@@ -1,4 +1,4 @@
-on unregisterUrlEcho (x) { «cancels URL echo
+on unregisterUrlEcho (x) { //cancels URL echo
 	case sys.os () {
 		"MacOS" {
 			pack (x, @x);

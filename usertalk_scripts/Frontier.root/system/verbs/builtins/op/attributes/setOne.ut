@@ -1,9 +1,9 @@
 on setOne (attname, attval) {
-	«Changes
-		«Thursday, August 03, 2000 at 1:56:15 PM by DW
-			«New routine.
-		«Monday, August 07, 2000 at 9:21:44 AM by DW
-			«Moved from playlist.setHeadlineAttribute.
+	//Changes
+		//Thursday, August 03, 2000 at 1:56:15 PM by DW
+			//New routine.
+		//Monday, August 07, 2000 at 9:21:44 AM by DW
+			//Moved from playlist.setHeadlineAttribute.
 	local (attstable, data = op.getrefcon ());
 	if typeof (data) != binarytype { //has no attributes
 		new (tabletype, @attstable)}
@@ -13,5 +13,5 @@ on setOne (attname, attval) {
 	pack (attstable, @packeddata);
 	op.setrefcon (packeddata);
 	return (true)};
-«bundle //test code
-	«setHeadlineAttribute ("time", clock.now ())
+//bundle //test code
+	//setHeadlineAttribute ("time", clock.now ())

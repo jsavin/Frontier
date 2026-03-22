@@ -1,9 +1,9 @@
 on rpcLog (maxitems=200) {
-	«Changes
-		«9/8/02; 10:57:49 PM by JES
-			«Fixed alignment of column labels.
-		«8/2/02; 2:23:36 PM by JES
-			«Created.
+	//Changes
+		//9/8/02; 10:57:49 PM by JES
+			//Fixed alignment of column labels.
+		//8/2/02; 2:23:36 PM by JES
+			//Created.
 	local (pta = html.getPageTableAddress ());
 	pta^.title = "XML-RPC and SOAP Log";
 	local (colors = {pta^.trbg1, pta^.trbg2});

@@ -1,11 +1,11 @@
 on formStart (fieldName=nil, action=nil, name="editPostForm", method="POST", enctype=nil, pta=nil) {
-	«Changes
-		«4/8/05; 4:40:51 AM by JES
-			«Changed default for name from nil to "editPostForm". Makes the default values of this verb work with the defaults for html.editor.get.
-		«8/5/03; 6:25:29 PM by JES
-			«Added support for the Mozilla rich text editor.
-		«8/31/01; 12:37:44 PM by JES
-			«Created. Get the opening <form> tag for the HTML editor.
+	//Changes
+		//4/8/05; 4:40:51 AM by JES
+			//Changed default for name from nil to "editPostForm". Makes the default values of this verb work with the defaults for html.editor.get.
+		//8/5/03; 6:25:29 PM by JES
+			//Added support for the Mozilla rich text editor.
+		//8/31/01; 12:37:44 PM by JES
+			//Created. Get the opening <form> tag for the HTML editor.
 	
 	if pta == nil {
 		pta = html.getPageTableAddress ()};
@@ -41,6 +41,6 @@ on formStart (fieldName=nil, action=nil, name="editPostForm", method="POST", enc
 	add (">");
 	
 	return (htmltext)};
-«bundle //testing
-	«html.editor.formStart (pta:@workspace.pt)
-		«"<form name=\"htmlEditor\" method=\"POST\" onsubmit=\"setMode(true);document.htmlEditor.body.value=document.frames('idEdit').document.body.innerHtml\">"
+//bundle //testing
+	//html.editor.formStart (pta:@workspace.pt)
+		//"<form name=\"htmlEditor\" method=\"POST\" onsubmit=\"setMode(true);document.htmlEditor.body.value=document.frames('idEdit').document.body.innerHtml\">"

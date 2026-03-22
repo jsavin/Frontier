@@ -1,12 +1,12 @@
 on renderHomePage () {
-	«Publish a home page.
-		«Changes:
-			«8/31/06; 11:33:46 AM by LL
-				«Support RSS auto-discovery for static rendered sites.
-			«04/01/00; PM by PBS
-				«Call script.compile to make sure no dialogs about closing an uncompiled script appear.
-			«05/31/00; 3:45:36 PM by PBS
-				«Bring the manilaMacros table in to scope when building a page.
+	//Publish a home page.
+		//Changes:
+			//8/31/06; 11:33:46 AM by LL
+				//Support RSS auto-discovery for static rendered sites.
+			//04/01/00; PM by PBS
+				//Call script.compile to make sure no dialogs about closing an uncompiled script appear.
+			//05/31/00; 3:45:36 PM by PBS
+				//Bring the manilaMacros table in to scope when building a page.
 	
 	local (pta = html.getPageTableAddress ());
 	

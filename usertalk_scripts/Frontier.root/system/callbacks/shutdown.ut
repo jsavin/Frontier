@@ -1,7 +1,7 @@
-«Call user's shutdown scripts.
-«Changes:
-	«Thursday, September 28, 2000 at 6:50:39 PM by JES
-		«Allow the callback to be an address or the address of an address...
+//Call user's shutdown scripts.
+//Changes:
+	//Thursday, September 28, 2000 at 6:50:39 PM by JES
+		//Allow the callback to be an address or the address of an address...
 local (i);
 local (adr = @user.callbacks.shutdown);
 if not defined (adr^) {

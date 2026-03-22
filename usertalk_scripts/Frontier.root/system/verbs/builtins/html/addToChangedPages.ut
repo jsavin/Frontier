@@ -1,13 +1,13 @@
 on addToChangedPages (adrPage) { //4.2
-	«Return true if we added the page to the Changed Pages list.
-		«Pages that are exempt:
-			«anything that's not contained within root.websites
-			«any item whose name begins with #
-			«any item contained in a table named glossary, tools or images
-			«tables
-		«Fri, Dec 20, 1996 at 7:35:24 AM by DW
-		«Revised 12/6/98 by PBS:
-			«Now works with guest databases.
+	//Return true if we added the page to the Changed Pages list.
+		//Pages that are exempt:
+			//anything that's not contained within root.websites
+			//any item whose name begins with #
+			//any item contained in a table named glossary, tools or images
+			//tables
+		//Fri, Dec 20, 1996 at 7:35:24 AM by DW
+		//Revised 12/6/98 by PBS:
+			//Now works with guest databases.
 	
 	local (flFoundFtpSite = false);
 	
@@ -21,7 +21,7 @@ on addToChangedPages (adrPage) { //4.2
 				return (false)};
 			nomad = parentOf (nomad^);
 			
-			«Is there an #ftpSite table? PBS 12/6/98
+			//Is there an #ftpSite table? PBS 12/6/98
 			case true {
 				defined (nomad^.["#ftpSite"]);
 				defined (nomad^.["#prefs"].["#ftpSite"]);

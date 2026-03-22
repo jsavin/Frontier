@@ -1,9 +1,9 @@
 on openConnection ( host = "", username = "", password = "", resource = "", port = "", registrationInfoAdr = "", flCreateNewAccount = true, mustCreateNewAccount = false, loginTimeout = 60*60, connection = nil ) {
-	«Changes
-		«5/14/02; 1:51:34 PM by JB
-			«Changelog created.
-	«Jabber framework internal args:
-		«mustCreateNewAccount: If true, this invocation will attempt to create a new account. Otherwise, it will try to login to an existing account.
+	//Changes
+		//5/14/02; 1:51:34 PM by JB
+			//Changelog created.
+	//Jabber framework internal args:
+		//mustCreateNewAccount: If true, this invocation will attempt to create a new account. Otherwise, it will try to login to an existing account.
 	tcp.im.builtinDrivers.jabber.code.init();
 	if not user.im.jabber.flActive {
 		scriptError ( "Can't open connection because the Jabber framework is inactive." )};
@@ -71,7 +71,7 @@ on openConnection ( host = "", username = "", password = "", resource = "", port
 	thread.callScript (@tcp.im.builtinDrivers.jabber.code.thread, { connection } );
 	
 	// uncomment this if you comment the thread.easyCall, so you don't stall on the code below
-	«return
+	//return
 	
 	try {
 		semaphore.lock(loginSemName, loginTimeout )};

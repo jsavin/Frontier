@@ -1,17 +1,17 @@
 on rssToOutline (xmltext, adroutline, url="") {
-	«Changes:
-		«11/23/01; 3:22:28 PM by JES
-			«Re-checked in to fix a problem (also now fixed) caused by userland.cleanPikeRoot.
-		«10/11/01; 2:40:28 PM by PBS
-			«If no url item is present, try to get it from the description.
-		«8/10/01; 7:21:39 PM by JES
-			«Support RSS 0.92.
-		«9/27/00 at 6:23:24 PM by JES
-			«Commented debugging code.
-		«9/27/00 at 6:03:59 PM by JES
-			«Decode XML entities in URLs when setting the link node's URL attribute.
-		«8/16/00 at 2:24:14 PM by DW
-			«Parse the xmltext as a RSS 0.91 channel, into the outline. If url is nonempty, add it as an attribute to the main headline. 
+	//Changes:
+		//11/23/01; 3:22:28 PM by JES
+			//Re-checked in to fix a problem (also now fixed) caused by userland.cleanPikeRoot.
+		//10/11/01; 2:40:28 PM by PBS
+			//If no url item is present, try to get it from the description.
+		//8/10/01; 7:21:39 PM by JES
+			//Support RSS 0.92.
+		//9/27/00 at 6:23:24 PM by JES
+			//Commented debugging code.
+		//9/27/00 at 6:03:59 PM by JES
+			//Decode XML entities in URLs when setting the link node's URL attribute.
+		//8/16/00 at 2:24:14 PM by DW
+			//Parse the xmltext as a RSS 0.91 channel, into the outline. If url is nonempty, add it as an attribute to the main headline. 
 	local (xtable);
 	new (outlinetype, adroutline);
 	xml.compile (xmltext, @xtable);
@@ -77,28 +77,28 @@ on rssToOutline (xmltext, adroutline, url="") {
 					op.insert (title, insertdir)}}
 			else {
 				bundle { //make the description look nice in an outline
-					«bundle //this code is too slow -- don't bother to strip markup
-						«on replaceTag (tagName, replaceStartTagWith, replaceEndDagWith = "")
-							«local (searchString = "<" + string.lower (tagName))
-							«local (ct = sizeOf (searchString))
-							«local (descriptionSize = sizeOf (description))
-							«local (ix = descriptionSize - ct)
-							«while ix > 0
-								«if string.lower (string.mid (description, ix, ct)) == searchString //this is a hit
-									«local (ixend = ix + ct)
-									«while ixend <= descriptionSize
-										«if description[ixend] == '>' //delete up to here
-											«description = string.delete (description, ix, ixend - ix + 1)
-											«descriptionSize = sizeOf (description)
-											«break
-										«ixend++
-								«ix--
-						«replaceTag ("br", "\r")
-						«replaceTag ("p", "\r")
-						«replaceTag ("li", "\t\r")
-						«replaceTag ("blockquote", "")
-						«replaceTag ("ol", "")
-						«replaceTag ("ul", "")
+					//bundle //this code is too slow -- don't bother to strip markup
+						//on replaceTag (tagName, replaceStartTagWith, replaceEndDagWith = "")
+							//local (searchString = "<" + string.lower (tagName))
+							//local (ct = sizeOf (searchString))
+							//local (descriptionSize = sizeOf (description))
+							//local (ix = descriptionSize - ct)
+							//while ix > 0
+								//if string.lower (string.mid (description, ix, ct)) == searchString //this is a hit
+									//local (ixend = ix + ct)
+									//while ixend <= descriptionSize
+										//if description[ixend] == '>' //delete up to here
+											//description = string.delete (description, ix, ixend - ix + 1)
+											//descriptionSize = sizeOf (description)
+											//break
+										//ixend++
+								//ix--
+						//replaceTag ("br", "\r")
+						//replaceTag ("p", "\r")
+						//replaceTag ("li", "\t\r")
+						//replaceTag ("blockquote", "")
+						//replaceTag ("ol", "")
+						//replaceTag ("ul", "")
 					description = string.replaceAll (description, "<br>", "\r", false);
 					description = string.replaceAll (description, "<p>", "\r", false);
 					description = string.replaceAll (description, "</p>", "", false);
@@ -138,9 +138,9 @@ on rssToOutline (xmltext, adroutline, url="") {
 	window.setposition (adroutline, 75, 125);
 	window.setsize (adroutline, 400, 450);
 	target.set (oldtarget)};
-«bundle //test code
-	«local (url = "http://www.palmstation.com/palmstation.rdf")
-	«local (s = tcp.httpReadUrl (url))
-	«wp.newtextobject (s, @scratchpad.rsstext)
-	«rssToOutline (string (scratchpad.rsstext), @scratchpad.rssOutline, url)
-	«edit (@scratchpad.rssOutline)
+//bundle //test code
+	//local (url = "http://www.palmstation.com/palmstation.rdf")
+	//local (s = tcp.httpReadUrl (url))
+	//wp.newtextobject (s, @scratchpad.rsstext)
+	//rssToOutline (string (scratchpad.rsstext), @scratchpad.rssOutline, url)
+	//edit (@scratchpad.rssOutline)

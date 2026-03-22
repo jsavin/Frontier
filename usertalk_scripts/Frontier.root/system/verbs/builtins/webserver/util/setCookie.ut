@@ -1,10 +1,10 @@
 on setCookie (adrParams, cookieName, cookieValue, cookieDomain="", cookieExpires="", cookiePath="/", flSecure=false) {
-	«10/8/99; 6:47:12 AM by DW
-		«New routine, encapsulates as much special knowledge as we can about creating cookies.
-		«We read this spec carefully while writing this: http://home.netscape.com/newsref/std/cookie_spec.html
-	«10/13/99; 6:57:13 AM by DW
-		«If cookieExpires is a date, we do the date-to-string conversion for you, per the Netscape spec.
-		«http://frontier.userland.com/discuss/msgReader$1869
+	//10/8/99; 6:47:12 AM by DW
+		//New routine, encapsulates as much special knowledge as we can about creating cookies.
+		//We read this spec carefully while writing this: http://home.netscape.com/newsref/std/cookie_spec.html
+	//10/13/99; 6:57:13 AM by DW
+		//If cookieExpires is a date, we do the date-to-string conversion for you, per the Netscape spec.
+		//http://frontier.userland.com/discuss/msgReader$1869
 	local (s = cookieName + "=" + string.urlEncode (cookieValue));
 	if cookieDomain != "" {
 		s = s + "; domain=" + cookieDomain};
@@ -25,8 +25,8 @@ on setCookie (adrParams, cookieName, cookieValue, cookieDomain="", cookieExpires
 		else {
 			adrcookie^ = s}};
 	return (s)};
-«bundle //test code
-	«local (params)
-	«new (tabletype, @params)
-	«new (tabletype, @params.responseHeaders)
-	«clipboard.putvalue (webserver.util.setCookie (@params, "test cookie", "12345", cookieExpires: date ("4/1/2034")))
+//bundle //test code
+	//local (params)
+	//new (tabletype, @params)
+	//new (tabletype, @params.responseHeaders)
+	//clipboard.putvalue (webserver.util.setCookie (@params, "test cookie", "12345", cookieExpires: date ("4/1/2034")))

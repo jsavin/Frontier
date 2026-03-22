@@ -1,5 +1,5 @@
 on setPageTableAddress (adrPageTable) {
-	«Store the page table address
+	//Store the page table address
 	local (adrAddressesTable = @system.temp.pageTableAddresses);
 	if not defined (adrAddressesTable^) {
 		new (tableType, adrAddressesTable)};

@@ -1,87 +1,87 @@
 on addToHomePage (username, password, siteUrl, text) {
-	«Add an item to the home page. This handler is different from other handlers in that it takes the URL of a Manila site rather than the name -- this is because people know the URLs of their sites but don't always know their canonical names.
-		«02/15/00; 3:43:20 PM by PBS
-		«Changes:
-			«03/30/00; 3:17:17 PM by PBS
-				«If the prefs are set up to do this, automatically do a static rendering of the home page.
-			«04/05/00; 12:12:22 PM by PBS
-				«Call the homePageUpdate callbacks and rpcSaveMessage callbacks.
-			«06/22/00; 5:45:13 PM by JES
-				«Added support for new XML-based domain hierarchy structure for Manila Express.
-			«03/28/01; 6:00:30 PM by PBS
-				«Pass the address of the legal tags table for this site to mainResponder.discuss.setMessageText, so the legal tags for this site are used when neutering text.
-			«09/09/01; 4:21:04 PM by JES
-				«Get the site address by calling manilaSuite.rpcUtils.getSiteAddress, with the name of the site as obtained by manilaSuite.rpcHandlers.getSiteName. This prevents a bunch of heavy-duty parsing of XML in the config.mainResponder.domains table, as well as fixing an infinite loop bug.
-			«12/10/01; 6:05:01 PM by PBS
-				«Toss the home page cache.
+	//Add an item to the home page. This handler is different from other handlers in that it takes the URL of a Manila site rather than the name -- this is because people know the URLs of their sites but don't always know their canonical names.
+		//02/15/00; 3:43:20 PM by PBS
+		//Changes:
+			//03/30/00; 3:17:17 PM by PBS
+				//If the prefs are set up to do this, automatically do a static rendering of the home page.
+			//04/05/00; 12:12:22 PM by PBS
+				//Call the homePageUpdate callbacks and rpcSaveMessage callbacks.
+			//06/22/00; 5:45:13 PM by JES
+				//Added support for new XML-based domain hierarchy structure for Manila Express.
+			//03/28/01; 6:00:30 PM by PBS
+				//Pass the address of the legal tags table for this site to mainResponder.discuss.setMessageText, so the legal tags for this site are used when neutering text.
+			//09/09/01; 4:21:04 PM by JES
+				//Get the site address by calling manilaSuite.rpcUtils.getSiteAddress, with the name of the site as obtained by manilaSuite.rpcHandlers.getSiteName. This prevents a bunch of heavy-duty parsing of XML in the config.mainResponder.domains table, as well as fixing an infinite loop bug.
+			//12/10/01; 6:05:01 PM by PBS
+				//Toss the home page cache.
 	
 	local (siteName, adrSite);
 	bundle { //get the address of the site from its URL
 		siteName = manilaSuite.rpcHandlers.getSiteName (siteUrl);
 		adrSite = manilaSuite.rpcUtils.getSiteAddress (siteName);
-		«bundle //old code
-			«local (urlParts = string.urlSplit (siteUrl))
-			«local (domain, path)
-			«domain = urlParts [2]
-			«path = urlParts [3]
-			«
-			«local (nomad)
-			«if defined (config.mainResponder.domains.[domain])
-				«nomad = @config.mainResponder.domains.[domain]
-			«else
-				«nomad = @config.mainResponder.domains.default
-			«
-			«local (flFirstTimeThrough = true)
-			«if typeOf (nomad^) == tableType // 06/22/00 JES: XML domain struct support
-				«local (siteAddress, siteAddressList)
-				«if defined (nomad^.siteTree.directory.structure) // defined in XML?
-					«if path endsWith "/"
-						«path = string.mid (path, 1, sizeOf (path) - 1)
-					«nomad = @nomad^.siteTree.directory.structure
-					«nomad = xml.getAddress (nomad, "siteTree")
-					«while (sizeOf (path) > 0)
-						«local (pathPart = string.nthField (path, '/', 1))
-						«if pathPart == ""
-							«break
-						«if flFirstTimeThrough
-							«if defined (config.manila.sites.[pathPart])
-								«nomad = config.manila.sites.[pathPart]
-								«continue
-							«nomad = xml.getAddress (nomad, "site")
-							«flFirstTimeThrough = false
-						«path = string.delete (path, 1, sizeOf (pathPart))
-						«siteAddressList = xml.getAddressList (nomad, "site")
-						«for siteAddress in siteAddressList
-							«if string.lower (xml.getAttributeValue (siteAddress, "name")) == string.lower (pathPart)
-								«nomad = address (xml.getAttributeValue (siteAddress, "address"))
-								«break
-				«else
-					«scriptError ("Can't add to home page because " + siteUrl + " is the not the URL of a Manila site.")
-			«else // old style sub-site support
-				«nomad = nomad^
-				«local (ixPort = string.patternMatch (":", domain))
-				«if ixPort > 0
-					«domain = string.mid (domain, 1, ixPort - 1)
-				«while (sizeOf (path) > 0)
-					«local (pathPart = string.nthField (path, '/', 1))
-					«if pathPart == ""
-						«break
-					«path = string.delete (path, 1, sizeOf (pathPart))
-					«if flFirstTimeThrough
-						«if defined (config.manila.sites.[pathPart])
-							«nomad = config.manila.sites.[pathPart]
-							«continue
-						«flFirstTimeThrough = false
-					«if defined (nomad^.[pathPart])
-						«nomad = @nomad^.[pathPart]
-						«if typeOf (nomad^.[pathPart]) == addressType
-							«nomad = nomad^
-			«if not (manilaSuite.isManilaSite (nomad))
-				«scriptError ("Can't add to home page because " + siteUrl + " is the not the URL of a Manila site.")
-			«
-			«adrSite = nomad};
+		//bundle //old code
+			//local (urlParts = string.urlSplit (siteUrl))
+			//local (domain, path)
+			//domain = urlParts [2]
+			//path = urlParts [3]
+			//
+			//local (nomad)
+			//if defined (config.mainResponder.domains.[domain])
+				//nomad = @config.mainResponder.domains.[domain]
+			//else
+				//nomad = @config.mainResponder.domains.default
+			//
+			//local (flFirstTimeThrough = true)
+			//if typeOf (nomad^) == tableType // 06/22/00 JES: XML domain struct support
+				//local (siteAddress, siteAddressList)
+				//if defined (nomad^.siteTree.directory.structure) // defined in XML?
+					//if path endsWith "/"
+						//path = string.mid (path, 1, sizeOf (path) - 1)
+					//nomad = @nomad^.siteTree.directory.structure
+					//nomad = xml.getAddress (nomad, "siteTree")
+					//while (sizeOf (path) > 0)
+						//local (pathPart = string.nthField (path, '/', 1))
+						//if pathPart == ""
+							//break
+						//if flFirstTimeThrough
+							//if defined (config.manila.sites.[pathPart])
+								//nomad = config.manila.sites.[pathPart]
+								//continue
+							//nomad = xml.getAddress (nomad, "site")
+							//flFirstTimeThrough = false
+						//path = string.delete (path, 1, sizeOf (pathPart))
+						//siteAddressList = xml.getAddressList (nomad, "site")
+						//for siteAddress in siteAddressList
+							//if string.lower (xml.getAttributeValue (siteAddress, "name")) == string.lower (pathPart)
+								//nomad = address (xml.getAttributeValue (siteAddress, "address"))
+								//break
+				//else
+					//scriptError ("Can't add to home page because " + siteUrl + " is the not the URL of a Manila site.")
+			//else // old style sub-site support
+				//nomad = nomad^
+				//local (ixPort = string.patternMatch (":", domain))
+				//if ixPort > 0
+					//domain = string.mid (domain, 1, ixPort - 1)
+				//while (sizeOf (path) > 0)
+					//local (pathPart = string.nthField (path, '/', 1))
+					//if pathPart == ""
+						//break
+					//path = string.delete (path, 1, sizeOf (pathPart))
+					//if flFirstTimeThrough
+						//if defined (config.manila.sites.[pathPart])
+							//nomad = config.manila.sites.[pathPart]
+							//continue
+						//flFirstTimeThrough = false
+					//if defined (nomad^.[pathPart])
+						//nomad = @nomad^.[pathPart]
+						//if typeOf (nomad^.[pathPart]) == addressType
+							//nomad = nomad^
+			//if not (manilaSuite.isManilaSite (nomad))
+				//scriptError ("Can't add to home page because " + siteUrl + " is the not the URL of a Manila site.")
+			//
+			//adrSite = nomad};
 	
-	«local (siteName = manilaSuite.getCanonicalSiteName (adrSite))
+	//local (siteName = manilaSuite.getCanonicalSiteName (adrSite))
 	local (adrDg = manilaSuite.rpcUtils.getDiscussAddress (siteName));
 	local (homePageMsgNum = adrSite^.["#newsSite"].discussLinks.homePageMsgNum);
 	local (adrMsg = mainResponder.discuss.getMessageTable (homePageMsgNum, adrRoot:adrDg));

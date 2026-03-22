@@ -1,5 +1,5 @@
 on attachServiceToGroup (groupName, serviceName) {
-	«Give a group access to a service.
+	//Give a group access to a service.
 	local (adrUserServiceTable);
 	adrGroupServiceTable = @user.people.groups.[groupName].services.[serviceName];
 	if adrGroupServiceTable == false {

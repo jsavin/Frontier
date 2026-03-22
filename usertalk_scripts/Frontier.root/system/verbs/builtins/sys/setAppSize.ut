@@ -1,6 +1,6 @@
 on setAppSize (path, n) {
 	local (x);
-	if not rez.getResource (path, 'SIZE', 0, @x) { «try user-defined size 1st
+	if not rez.getResource (path, 'SIZE', 0, @x) { //try user-defined size 1st
 		if not rez.getResource (path, 'SIZE', -1, @x) {
 			return (false)}};
 	x = string.mid (x, 1, 2) + string (binary (long (n))) + string.mid (x, 7, infinity);

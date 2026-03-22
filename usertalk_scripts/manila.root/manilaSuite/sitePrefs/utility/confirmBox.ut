@@ -1,9 +1,9 @@
 on confirmBox (pta, sectionName, messageID, adrReplaceTbl, contextName=nil, contextValue=nil) {
-	«manilaSuite.sitePrefs.utility.confirmBox : 04/05/14, 21:54:31 by DAB
-		«builds a box to say "Do you really want to..."?
-		«factored out of manilaSuite.admin.advancedPage (with extreme prejudice) 
-		«html made more 4.0 compliant and CSS used instead of deprecated font and centre
-	«messages at manilaData.localization.languages.english.strings.admin
+	//manilaSuite.sitePrefs.utility.confirmBox : 04/05/14, 21:54:31 by DAB
+		//builds a box to say "Do you really want to..."?
+		//factored out of manilaSuite.admin.advancedPage (with extreme prejudice) 
+		//html made more 4.0 compliant and CSS used instead of deprecated font and centre
+	//messages at manilaData.localization.languages.english.strings.admin
 	local (htmltext = "");
 	on add(s) {
 		htmltext = htmltext + s;};
@@ -24,9 +24,9 @@ on confirmBox (pta, sectionName, messageID, adrReplaceTbl, contextName=nil, cont
 		bundle { //header row
 			add("\r\t<tr bgcolor='" + headerColor + "'>");
 			add("\r\t\t<td align='left'>");
-			«add("<b><font color='" + headerTextColor + "'>Confirm</font></b>")
+			//add("<b><font color='" + headerTextColor + "'>Confirm</font></b>")
 			add("<span style='color:" + headerTextColor + ";font-weight:bold'>"); //css 04/05/14, 22:12:41 by DAB
-			«add("Confirm")    
+			//add("Confirm")    
 			add(manilaSuite.getString ("admin.confirmBoxHeader",  pta: pta)); //localise 04/05/14, 22:12:26 by DAB
 			add("</span>");
 			add("</td>");
@@ -35,10 +35,10 @@ on confirmBox (pta, sectionName, messageID, adrReplaceTbl, contextName=nil, cont
 		bundle { //row for message and buttons
 			add("\r\t<tr bgcolor='" + backgroundColor + "'>");
 			add("\r\t\t<td>");
-			«add(message + "<br>"
+			//add(message + "<br>"
 			add(manilaSuite.getString (messageID, adrReplaceTbl, pta: pta));
-			«add("<font color='" + backgroundTextColor + "'>")
-			«add("<p align='right'>"
+			//add("<font color='" + backgroundTextColor + "'>")
+			//add("<p align='right'>"
 			add("<p style='color:'" + backgroundTextColor + ";text-align:right'>");
 			add("<input type='submit' name='no' value='&nbsp;&nbsp;" + manilaSuite.getString ("common.noButton", pta: pta) + "&nbsp;&nbsp;'>&nbsp;&nbsp;");
 			add("<input type='submit' name='doRestoreDefault' value='&nbsp;" + manilaSuite.getString ("common.yesButton", pta: pta) + "&nbsp;'>&nbsp;&nbsp;");

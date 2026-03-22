@@ -1,15 +1,15 @@
 on timeStamp () {
-	«Changes
-		«Saturday, December 30, 2000 at 10:42:56 AM by DW
-			«This script is ancient and frustrating. 
-			«I like short timestamps, not the long string you see at the head of this comment. 
-			«So let's create a new preference, user.prefs.flShortTimeStamp. If it doesn't exist, we create it. It defaults to false. So if you prefer the current behavior, you do nothing. If you want a shorter stamp, set it true.
-		«12/30/2000; 10:48:54 AM by DW
-			«It works! ;->
-		«12/30/2000; 10:52:56 AM by DW
-			«When timestamping in a table, add the stamp in the table your cursor is in. This feature is so old it predates the outline browser for the object db tables.
-		«12/30/00; 12:21:14 PM by DW
-			«Chopped off the first two numbers of the year. You can figure it out. 
+	//Changes
+		//Saturday, December 30, 2000 at 10:42:56 AM by DW
+			//This script is ancient and frustrating. 
+			//I like short timestamps, not the long string you see at the head of this comment. 
+			//So let's create a new preference, user.prefs.flShortTimeStamp. If it doesn't exist, we create it. It defaults to false. So if you prefer the current behavior, you do nothing. If you want a shorter stamp, set it true.
+		//12/30/2000; 10:48:54 AM by DW
+			//It works! ;->
+		//12/30/2000; 10:52:56 AM by DW
+			//When timestamping in a table, add the stamp in the table your cursor is in. This feature is so old it predates the outline browser for the object db tables.
+		//12/30/00; 12:21:14 PM by DW
+			//Chopped off the first two numbers of the year. You can figure it out. 
 	local (flshortstamp);
 	bundle { //get flshortstamp
 		if not defined (user.prefs.flShortTimeStamp) {

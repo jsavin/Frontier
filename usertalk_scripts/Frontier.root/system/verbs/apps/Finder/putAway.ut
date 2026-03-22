@@ -1,4 +1,4 @@
-on putAway (obj) { «Put away the specified object(s)
+on putAway (obj) { //Put away the specified object(s)
 	if Finder.isScriptable () {
 		return (appleEvent (Finder.id, 'fndr', 'ptwy', '----', Finder.finderSpec (obj)))}
 	else {

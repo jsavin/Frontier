@@ -1,12 +1,12 @@
 on rpcMessageEnclosure (client, port, msgnum) {
-	«9/6/99; 4:01:16 PM by DW
-		«First try sending the object to userland.receiveObject, if that fails, try sending to editorial.receiveEnclosure.
-		«For more information see http://frontier.userland.com/discuss/msgReader$1277.
-		«Changes:
-			«04/12/00; 1:37:43 PM by JES
-				«localized using mainResponder.getString
-			«05/01/00; 7:26:52 PM by JES
-				«Changed getString calls to use a replacement table address instead of a lists
+	//9/6/99; 4:01:16 PM by DW
+		//First try sending the object to userland.receiveObject, if that fails, try sending to editorial.receiveEnclosure.
+		//For more information see http://frontier.userland.com/discuss/msgReader$1277.
+		//Changes:
+			//04/12/00; 1:37:43 PM by JES
+				//localized using mainResponder.getString
+			//05/01/00; 7:26:52 PM by JES
+				//Changed getString calls to use a replacement table address instead of a lists
 	local (pta = html.getpagetableaddress ());
 	local (htmltext = "", indentlevel = 0);
 	on add (s) {
@@ -42,5 +42,5 @@ on rpcMessageEnclosure (client, port, msgnum) {
 					add (s)}}}};
 	return (htmltext)};
 
-«bundle //test code
-	«rpcMessageEnclosure (tcp.dns.getmydomainname (), 80, 868)
+//bundle //test code
+	//rpcMessageEnclosure (tcp.dns.getmydomainname (), 80, 868)

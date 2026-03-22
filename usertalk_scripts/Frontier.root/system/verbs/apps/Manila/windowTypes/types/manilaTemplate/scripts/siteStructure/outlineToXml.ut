@@ -1,23 +1,23 @@
 on outlineToXml (adrOutline) {
-	«Changes:
-		«2/11/04; 1:58:45 AM by JES
-			«Added support for redirects from within a Manila site structure.
-		«12/22/01; 3:53:29 AM by JES
-			«Call latinToMac.macToLatin instead of playlist.convertToLatin.
-		«12/19/01; 2:46:03 PM by JES
-			«Added some msg calls to let the user know that we're building the site structure XML. This is important for large site structure outlines, like the DocServer site structure outline.
-		«7/22/01; 12:32:07 AM by JES
-			«Encode xml entities in name and description attributes.
-		«3/18/01; 4:23:29 PM by PBS
-			«Close <category> tags that don't contain any stories or other categories. Fixes the bug reported on this page: http://radio.userland.com/discuss/msgReader$5625?mode=day
-		«12/31/00; 5:18:02 PM by JES
-			«On Macs, convert opml text from Mac to latin.
-		«Fri, Dec 8, 2000 at 1:07:34 PM by JES
-			«Bug fix: Always add non-empty descriptions for categories, not just when the category doesn't have an associated message number.
-		«Tuesday, September 19, 2000 at 2:24:04 PM by PBS
-			«Get description attributes and add to XML text.
-		«Wed, Aug 23, 2000 at 2:26:50 AM by PBS
-			«Created. Turn a fancy site structure editor into its plain XML text representation. Return XML text. This is just like an outline renderer -- it's a special case of outline renderer.
+	//Changes:
+		//2/11/04; 1:58:45 AM by JES
+			//Added support for redirects from within a Manila site structure.
+		//12/22/01; 3:53:29 AM by JES
+			//Call latinToMac.macToLatin instead of playlist.convertToLatin.
+		//12/19/01; 2:46:03 PM by JES
+			//Added some msg calls to let the user know that we're building the site structure XML. This is important for large site structure outlines, like the DocServer site structure outline.
+		//7/22/01; 12:32:07 AM by JES
+			//Encode xml entities in name and description attributes.
+		//3/18/01; 4:23:29 PM by PBS
+			//Close <category> tags that don't contain any stories or other categories. Fixes the bug reported on this page: http://radio.userland.com/discuss/msgReader$5625?mode=day
+		//12/31/00; 5:18:02 PM by JES
+			//On Macs, convert opml text from Mac to latin.
+		//Fri, Dec 8, 2000 at 1:07:34 PM by JES
+			//Bug fix: Always add non-empty descriptions for categories, not just when the category doesn't have an associated message number.
+		//Tuesday, September 19, 2000 at 2:24:04 PM by PBS
+			//Get description attributes and add to XML text.
+		//Wed, Aug 23, 2000 at 2:26:50 AM by PBS
+			//Created. Turn a fancy site structure editor into its plain XML text representation. Return XML text. This is just like an outline renderer -- it's a special case of outline renderer.
 	
 	local (xmlText = "<hierarchy>\r");
 	
@@ -110,5 +110,5 @@ on outlineToXml (adrOutline) {
 		xmltext = latinToMac.macToLatin (xmlText)};
 	
 	return (xmlText)};
-«bundle //test code
-	«wp.newTextObject (outlineToXml (window.frontmost ()), @workspace.xtext)
+//bundle //test code
+	//wp.newTextObject (outlineToXml (window.frontmost ()), @workspace.xtext)

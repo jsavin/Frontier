@@ -1,49 +1,49 @@
 on structToFrontierValue (adrstruct, adrFrontierVal) {
-	«Thursday, November 11, 1999 at 2:28:23 AM by AR
-		«Implemented as a kernel verb in Frontier 6.1.
-		«Old code
-			«on structToFrontierValue (adrstruct, adrFrontierVal)
-				«a recursive routine that converts a complex xml-table structure to a frontier value
-					«<struct>s are converted to tables
-					«<array>s are converted to lists
-				«Fri, 04 Jun 1999 17:19:38 GMT by AR and PBS
-					«Added code to work around 255 chars address problem in xml.getAddressList, allowing the conversion of deeply nested arrays and structs.
-				«local (name = string.nthfield (nameof (adrstruct^), '\t', 2))
-				«case name
-					«"struct"
-						«new (tabletype, adrFrontierVal)
-						«local (i)
-						«for i = 1 to sizeOf (adrstruct^)
-							«local (itemName = string.nthField (nameOf (adrstruct^ [i]), '\t', 2))
-							«if itemName == "member"
-								«local (member = @adrstruct^ [i])
-								«local (name, adrvalue)
-								«name = xml.getValue (member, "name") 
-								«adrvalue = xml.getAddress (member, "value")
-								«if typeof (adrvalue^) == tabletype
-									«local (coercedvalue)
-									«xml.coercions.structToFrontierValue (@adrvalue^ [1], @coercedvalue)
-									«adrFrontierVal^.[name] = coercedvalue
-								«else
-									«adrFrontierVal^.[name] = adrvalue^
-						«return (true)
-					«"array"
-						«local (i, val = {}, adrdata = xml.getAddress (adrstruct, "data"))
-						«for i = 1 to sizeOf (adrdata^)
-							«local (itemName = string.nthField (nameOf (adrdata^ [i]), '\t', 2))
-							«if itemName == "value"
-								«local (adrvalue = @adrdata^ [i])
-								«if typeof (adrvalue^) == tabletype
-									«local (coercedvalue)
-									«xml.coercions.structToFrontierValue (@adrvalue^ [1], @coercedvalue)
-									«val = val + {coercedvalue}
-								«else
-									«val = val + adrvalue^
-						«adrFrontierVal^ = val
-						«return (true)
-					«"base64" //2/28/99; 11:32:12 AM by DW
-						«adrFrontierVal^ = binary (base64.decode (adrstruct^))
-						«return (true)
-				«adrFrontierVal^ = adrstruct^
-				«return (true)
+	//Thursday, November 11, 1999 at 2:28:23 AM by AR
+		//Implemented as a kernel verb in Frontier 6.1.
+		//Old code
+			//on structToFrontierValue (adrstruct, adrFrontierVal)
+				//a recursive routine that converts a complex xml-table structure to a frontier value
+					//<struct>s are converted to tables
+					//<array>s are converted to lists
+				//Fri, 04 Jun 1999 17:19:38 GMT by AR and PBS
+					//Added code to work around 255 chars address problem in xml.getAddressList, allowing the conversion of deeply nested arrays and structs.
+				//local (name = string.nthfield (nameof (adrstruct^), '\t', 2))
+				//case name
+					//"struct"
+						//new (tabletype, adrFrontierVal)
+						//local (i)
+						//for i = 1 to sizeOf (adrstruct^)
+							//local (itemName = string.nthField (nameOf (adrstruct^ [i]), '\t', 2))
+							//if itemName == "member"
+								//local (member = @adrstruct^ [i])
+								//local (name, adrvalue)
+								//name = xml.getValue (member, "name") 
+								//adrvalue = xml.getAddress (member, "value")
+								//if typeof (adrvalue^) == tabletype
+									//local (coercedvalue)
+									//xml.coercions.structToFrontierValue (@adrvalue^ [1], @coercedvalue)
+									//adrFrontierVal^.[name] = coercedvalue
+								//else
+									//adrFrontierVal^.[name] = adrvalue^
+						//return (true)
+					//"array"
+						//local (i, val = {}, adrdata = xml.getAddress (adrstruct, "data"))
+						//for i = 1 to sizeOf (adrdata^)
+							//local (itemName = string.nthField (nameOf (adrdata^ [i]), '\t', 2))
+							//if itemName == "value"
+								//local (adrvalue = @adrdata^ [i])
+								//if typeof (adrvalue^) == tabletype
+									//local (coercedvalue)
+									//xml.coercions.structToFrontierValue (@adrvalue^ [1], @coercedvalue)
+									//val = val + {coercedvalue}
+								//else
+									//val = val + adrvalue^
+						//adrFrontierVal^ = val
+						//return (true)
+					//"base64" //2/28/99; 11:32:12 AM by DW
+						//adrFrontierVal^ = binary (base64.decode (adrstruct^))
+						//return (true)
+				//adrFrontierVal^ = adrstruct^
+				//return (true)
 	kernel (xml.structtofrontiervalue)}

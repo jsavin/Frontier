@@ -1,53 +1,53 @@
 on editMessageForm (msgNum, flLinkToReferer=false, flShowFileList=false, flShowFileUpload=false, fileprompt=nil, subjectPrompt=nil, bodyPrompt=nil, actionURL="", flLimitSubjectLength=true) {
-	«Display the edit message form.
-	«Changes:
-		«9/24/04; 3:19:22 AM by JES
-			«Increased size of subject input field to 70 (from 40). Increased maxlength of subject to 255 (from 60).
-		«8/22/03; 12:55:35 PM by JES
-			«Slight formatting fix when not using the WYSIWYG editor.
-		«8/14/03; 12:40:09 AM by JES
-			«Added support for the Mozilla rich text editor.
-		«6/14/02; 12:43:47 AM by JES
-			«New optional parameter flLimitSubjectLength. Default is true, previous behavior. No breakage. If false, then there's no maxLength attribute for the subject input field. Manila needed this.
-		«05/23/01; 3:01:59 PM by PBS
-			«Change in policy for Radio-edited messages. If it was edited in Radio, allow the person to edit the rendered text -- but give them a warning saying that their outline formatting will be lost.
-		«12/14/00; 7:11:22 PM by PBS
-			«If a message was edited in Radio, is an OPML document, then the browser form allows you to edit the OPML, not the rendered version.
-		«10/02/00; 6:03:52 PM by JES
-			«Added WYSIWYG HTML editor.
-		«4/10/00; 4:15:32 PM by JES
-			«Localized using mainResponder.getSting
-			«Moved default text lookups into the body of the script because if they're in the declaration, it gets really long
-		«03/19/00; 12:56:49 PM by PBS
-			«In the editing form, convert left curly braces to HTML entities to prevent unwanted macro expansion -- which means you can now call this script from a page that is itself a script.
-		«03/15/00; 5:25:54 PM by PBS
-			«When computing the path to the attachments folder for this message, it now calls mainResponder.discuss.getMessageAttachmentsFolder -- a new bottleneck script.
-		«02/15/00; 11:47:11 AM by PBS
-			«If the HTML editor hasn't been turned off, and the user is running a compatible browser, add the HTML editor.
-		«01/31/00; 3:17:41 PM by PBS
-			«In the subject and text, convert quotes, ampersands, and left carets to HTML entities.
-		«9/23/99; 11:39:21 AM by PBS
-			«Encode quotes in the subject as &quot; HTML entities so the value attribute in the input box doesn't terminate prematurely. In other words:
-			«The tag might look like this:
-			«<input size="40" maxlength="60" name="subject" value="Re: "Foo" bar">
-			«Now it looks like this:
-			«<input size="40" maxlength="60" name="subject" value="Re: &quot;Foo&quot; bar">
-			«This is safe to do because the entity will be translated back into an actual quote. You don't end up with HTML entities in the subject field of the stored dg message, you get actual quote marks, as you should.
-		«Wednesday, June 09, 1999 at 4:49:09 PM by PBS
-			«Call mainResponder.discuss.memberCanEdit to determine if the member can edit this message.
-		«Fri, 21 May 1999 17:33:22 GMT by AR
-			«Added optional parameter, subjectPrompt. It defaults to "Subject". It's used as the label for the subject form element.
-			«Added optional parameter, bodyPrompt. It defaults to "Text". It's used as the label for the message text form element.
-			«Added optional parameter, actionURL. It's the URL for the action attribute of the form tag. If its value is the empty string (the default), we use pta^.responderAttributes.urls^.discussPostEditedMessage.
-		«Thu, 20 May 1999 16:15:08 GMT by AR
-			«Added optional parameter, flShowFileUpload. It defaults to false. If true, a form element of type=file is displayed between the <textarea> and the submit button.
-			«Added optional parameter, filePrompt. It defaults to "Attach file". It's used as the label for the optional type=file form element.
-			«Added optional parameter named flShowFileList. It defaults to false. If true, a table of URLs pointing to the attached files is displayed between the <textarea> and the type=file form element. The rows consists of two cells. The first cell is a checkbox, the second cell contains the absolute URL of the file. If you check the checkbox and submit the page, the file is deleted from the associated folder.
-		«Wed, 19 May 1999 20:16:19 GMT by DW
-			«Added hidden field containing the referer URL, so the form can redirect back to the place where the request to edit the object came from. Added optional param, flLinkToReferer, to control this feature.
+	//Display the edit message form.
+	//Changes:
+		//9/24/04; 3:19:22 AM by JES
+			//Increased size of subject input field to 70 (from 40). Increased maxlength of subject to 255 (from 60).
+		//8/22/03; 12:55:35 PM by JES
+			//Slight formatting fix when not using the WYSIWYG editor.
+		//8/14/03; 12:40:09 AM by JES
+			//Added support for the Mozilla rich text editor.
+		//6/14/02; 12:43:47 AM by JES
+			//New optional parameter flLimitSubjectLength. Default is true, previous behavior. No breakage. If false, then there's no maxLength attribute for the subject input field. Manila needed this.
+		//05/23/01; 3:01:59 PM by PBS
+			//Change in policy for Radio-edited messages. If it was edited in Radio, allow the person to edit the rendered text -- but give them a warning saying that their outline formatting will be lost.
+		//12/14/00; 7:11:22 PM by PBS
+			//If a message was edited in Radio, is an OPML document, then the browser form allows you to edit the OPML, not the rendered version.
+		//10/02/00; 6:03:52 PM by JES
+			//Added WYSIWYG HTML editor.
+		//4/10/00; 4:15:32 PM by JES
+			//Localized using mainResponder.getSting
+			//Moved default text lookups into the body of the script because if they're in the declaration, it gets really long
+		//03/19/00; 12:56:49 PM by PBS
+			//In the editing form, convert left curly braces to HTML entities to prevent unwanted macro expansion -- which means you can now call this script from a page that is itself a script.
+		//03/15/00; 5:25:54 PM by PBS
+			//When computing the path to the attachments folder for this message, it now calls mainResponder.discuss.getMessageAttachmentsFolder -- a new bottleneck script.
+		//02/15/00; 11:47:11 AM by PBS
+			//If the HTML editor hasn't been turned off, and the user is running a compatible browser, add the HTML editor.
+		//01/31/00; 3:17:41 PM by PBS
+			//In the subject and text, convert quotes, ampersands, and left carets to HTML entities.
+		//9/23/99; 11:39:21 AM by PBS
+			//Encode quotes in the subject as &quot; HTML entities so the value attribute in the input box doesn't terminate prematurely. In other words:
+			//The tag might look like this:
+			//<input size="40" maxlength="60" name="subject" value="Re: "Foo" bar">
+			//Now it looks like this:
+			//<input size="40" maxlength="60" name="subject" value="Re: &quot;Foo&quot; bar">
+			//This is safe to do because the entity will be translated back into an actual quote. You don't end up with HTML entities in the subject field of the stored dg message, you get actual quote marks, as you should.
+		//Wednesday, June 09, 1999 at 4:49:09 PM by PBS
+			//Call mainResponder.discuss.memberCanEdit to determine if the member can edit this message.
+		//Fri, 21 May 1999 17:33:22 GMT by AR
+			//Added optional parameter, subjectPrompt. It defaults to "Subject". It's used as the label for the subject form element.
+			//Added optional parameter, bodyPrompt. It defaults to "Text". It's used as the label for the message text form element.
+			//Added optional parameter, actionURL. It's the URL for the action attribute of the form tag. If its value is the empty string (the default), we use pta^.responderAttributes.urls^.discussPostEditedMessage.
+		//Thu, 20 May 1999 16:15:08 GMT by AR
+			//Added optional parameter, flShowFileUpload. It defaults to false. If true, a form element of type=file is displayed between the <textarea> and the submit button.
+			//Added optional parameter, filePrompt. It defaults to "Attach file". It's used as the label for the optional type=file form element.
+			//Added optional parameter named flShowFileList. It defaults to false. If true, a table of URLs pointing to the attached files is displayed between the <textarea> and the type=file form element. The rows consists of two cells. The first cell is a checkbox, the second cell contains the absolute URL of the file. If you check the checkbox and submit the page, the file is deleted from the associated folder.
+		//Wed, 19 May 1999 20:16:19 GMT by DW
+			//Added hidden field containing the referer URL, so the form can redirect back to the place where the request to edit the object came from. Added optional param, flLinkToReferer, to control this feature.
 	
 	local (pta = html.getPageTableAddress ());
-	«workspace.pt = pta^; edit (@workspace.pt) //debugging
+	//workspace.pt = pta^; edit (@workspace.pt) //debugging
 	local (htmlText = "", indentLevel = 0);
 	local (flWysEditor = false, flTagEditor = true);
 	bundle { //figure out which editing tool is preferred
@@ -60,7 +60,7 @@ on editMessageForm (msgNum, flLinkToReferer=false, flShowFileList=false, flShowF
 		htmlText = htmlText + string.filledString ("\t", indentLevel) + s + "\r"};
 	
 	on translateToEntities (s) {
-		«It's not necessary to translate everything, just ampersands, quotes, and left carets.
+		//It's not necessary to translate everything, just ampersands, quotes, and left carets.
 		s = string.replaceAll (s, "&", "&amp;");
 		s = string.replaceAll (s, "<", "&lt;"); //PBS 01/31/00: convert carets to entities
 		s = string.replaceAll (s, "\"", "&quot;"); //PBS 01/31/00: convert quotes to entities
@@ -70,18 +70,18 @@ on editMessageForm (msgNum, flLinkToReferer=false, flShowFileList=false, flShowF
 	local (flOpml = false);
 	local (adrMsg = mainResponder.discuss.getMessageTable (msgNum, pta:pta));
 	local (s = string (adrMsg^.body));
-	«bundle //PBS 12/14/00: if this was edited in Radio, return the OPML
-		«if defined (adrMsg^.opml)
-			«if not (date.versionLessThan (Frontier.version (), "7.0b21")) //requires 7.0b21 or greater
-				«local (membershipGroup = pta^.defaultMembershipGroup)
-				«local (memberName = mainResponder.members.getMemberName (membershipGroup, adrMsg^.member))
-				«s = string (adrMsg^.opml)
-				«s = op.outlineToXml (@adrMsg^.outline, memberName, adrMsg^.member)
-				«local (ix = string.patternMatch ("<title>", s))
-				«local (ixend = string.patternMatch ("</title>", s))
-				«s = string.delete (s, ix, ixend - ix)
-				«s = string.insert ("<title>" + adrMsg^.subject, s, ix)
-				«flOpml = true
+	//bundle //PBS 12/14/00: if this was edited in Radio, return the OPML
+		//if defined (adrMsg^.opml)
+			//if not (date.versionLessThan (Frontier.version (), "7.0b21")) //requires 7.0b21 or greater
+				//local (membershipGroup = pta^.defaultMembershipGroup)
+				//local (memberName = mainResponder.members.getMemberName (membershipGroup, adrMsg^.member))
+				//s = string (adrMsg^.opml)
+				//s = op.outlineToXml (@adrMsg^.outline, memberName, adrMsg^.member)
+				//local (ix = string.patternMatch ("<title>", s))
+				//local (ixend = string.patternMatch ("</title>", s))
+				//s = string.delete (s, ix, ixend - ix)
+				//s = string.insert ("<title>" + adrMsg^.subject, s, ix)
+				//flOpml = true
 	bundle { //PBS 05/23/01: if this was edited in Radio, present a warning
 		if defined (adrMsg^.opml) {
 			add ("<font color=\"red\">This text was previously edited in an outline in Radio. If you edit it in your browser, your outline formatting may be lost.<p>Click the Back button in your browser if you don't want to edit in your browser.</font><p>\r")}};
@@ -90,8 +90,8 @@ on editMessageForm (msgNum, flLinkToReferer=false, flShowFileList=false, flShowF
 	
 	if not (mainResponder.discuss.memberCanEdit (adrMsg, pta^.adrMemberInfo)) { //PBS 6/9/99
 		scriptError (mainResponder.getString ("discuss.cantEditBecauseNoPermission"))};
-	«if string.lower (adrMsg^.member) != string.lower (nameOf (pta^.adrmemberinfo^))
-		«scriptError ("Can't edit this message because you are not the author of the message.")
+	//if string.lower (adrMsg^.member) != string.lower (nameOf (pta^.adrmemberinfo^))
+		//scriptError ("Can't edit this message because you are not the author of the message.")
 	
 	local (enctypeAttrib = "");
 	if flShowFileUpload {
@@ -125,18 +125,18 @@ on editMessageForm (msgNum, flLinkToReferer=false, flShowFileList=false, flShowF
 		bundle { //compute folderPath and urlPrefix
 			folderPath = mainResponder.discuss.getMessageAttachmentsFolder (adrMsg, @urlPrefix);
 			
-			«PBS 03/15/00: old code, now factored out
-				«local (pc = file.getPathChar ())
-				«local (adrDiscuss = mainResponder.discuss.openRoot ())
-				«on addToPaths (s) //append sub-folders to folderPath
-					«folderPath = folderPath + s + pc
-					«urlPrefix = urlPrefix + s + "/"
-				«folderPath = adrDiscuss^.prefs.binaryServerFolder
-				«urlPrefix = adrDiscuss^.prefs.binaryServerURL
-				«addToPaths (pta^.members)
-				«addToPaths (adrMsg^.member)
-				«addToPaths (nameOf (adrDiscuss^))
-				«addToPaths (msgNum)};
+			//PBS 03/15/00: old code, now factored out
+				//local (pc = file.getPathChar ())
+				//local (adrDiscuss = mainResponder.discuss.openRoot ())
+				//on addToPaths (s) //append sub-folders to folderPath
+					//folderPath = folderPath + s + pc
+					//urlPrefix = urlPrefix + s + "/"
+				//folderPath = adrDiscuss^.prefs.binaryServerFolder
+				//urlPrefix = adrDiscuss^.prefs.binaryServerURL
+				//addToPaths (pta^.members)
+				//addToPaths (adrMsg^.member)
+				//addToPaths (nameOf (adrDiscuss^))
+				//addToPaths (msgNum)};
 		if (file.exists (folderPath) and (file.filesInFolder (folderPath, 1) > 0)) {
 			add ("<p><table>"); indentLevel++;
 			add ("<tr>"); indentLevel++;
@@ -152,7 +152,7 @@ on editMessageForm (msgNum, flLinkToReferer=false, flShowFileList=false, flShowF
 				add ("</tr>"); indentLevel--};
 			add ("</table><p>"); indentLevel--}};
 	
-	«Subject prompt.
+	//Subject prompt.
 	local (subject = adrMsg^.subject);
 	subject = translateToEntities (subject); //PBS 01/31/00: convert quotes, ampersands, and left carets to HTML entities.
 	if subjectprompt == nil { //JES 04/10/00: get the default subjectprompt
@@ -162,7 +162,7 @@ on editMessageForm (msgNum, flLinkToReferer=false, flShowFileList=false, flShowF
 	else { //no subject length limit
 		add ("<b>" + subjectPrompt + "</b><br><input size=\"70\" name=\"subject\" value=\"" + subject + "\">")};
 	
-	«PBS 02/15/00: possibly add the HTML editor buttons and menus.
+	//PBS 02/15/00: possibly add the HTML editor buttons and menus.
 	if bodyprompt == nil { //JES 04/10/00: get the default bodyprompt
 		bodyprompt = mainResponder.getString("discuss.editMessageDefaultBodyPrompt")};
 	if editorText == "" {
@@ -180,7 +180,7 @@ on editMessageForm (msgNum, flLinkToReferer=false, flShowFileList=false, flShowF
 	add ("</form>"); indentLevel--;
 	
 	return (htmlText)};
-«bundle //test code
-	«html.setPageTableAddress (@workspace.pt)
-	«editMessageForm (22, subjectPrompt:"Subject", bodyPrompt:"Body")
-	«html.deletePageTableAddress ()
+//bundle //test code
+	//html.setPageTableAddress (@workspace.pt)
+	//editMessageForm (22, subjectPrompt:"Subject", bodyPrompt:"Body")
+	//html.deletePageTableAddress ()

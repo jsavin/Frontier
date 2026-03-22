@@ -1,6 +1,6 @@
-«Changes
-	«12/2/01; 1:53:14 AM by JES
-		«Respect offline status.
+//Changes
+	//12/2/01; 1:53:14 AM by JES
+		//Respect offline status.
 if not tcp.isOffline () {
 	local (adrdata = weblogsCom.init ());
 	if adrdata^.prefs.enabled {

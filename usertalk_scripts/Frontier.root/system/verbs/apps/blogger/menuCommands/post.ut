@@ -1,5 +1,5 @@
-«8/12/01; 12:59:31 PM by DW
-	«The frontmost window contains an outline. The bar cursor line contains a post for the user's Blogger website. If it's a new post, send it to Blogger, get back the postId and attach it to the headline as an attribute. If it already has such an attribute, send an editPost message to Blogger.
+//8/12/01; 12:59:31 PM by DW
+	//The frontmost window contains an outline. The bar cursor line contains a post for the user's Blogger website. If it's a new post, send it to Blogger, get back the postId and attach it to the headline as an attribute. If it already has such an attribute, send an editPost message to Blogger.
 
 local (adroutline = address (window.frontmost ()));
 if typeof (adroutline^) != outlinetype {

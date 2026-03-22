@@ -1,8 +1,8 @@
 on getCheckedOutItems () {
-	«Return a list of records of checked out items.
-		«Format:
-			«"user": [current owner name], "checkedOutDate": [when the object was checked out], "address": [address of the object]
-		«Wed, Jun 10, 1998 at 5:44:51 PM by PBS
+	//Return a list of records of checked out items.
+		//Format:
+			//"user": [current owner name], "checkedOutDate": [when the object was checked out], "address": [address of the object]
+		//Wed, Jun 10, 1998 at 5:44:51 PM by PBS
 	
 	local (adrTable = @user.custody.objects);
 	local (i, objectsList = {});

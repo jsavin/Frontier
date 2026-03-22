@@ -1,5 +1,5 @@
 on indexFolder (folder, siteName, baseURL, adrStopWords=nil) {
-	«Index all the files in a folder and its subfolders.
+	//Index all the files in a folder and its subfolders.
 	local (pc = file.getPathChar ());
 	local (f);
 	
@@ -54,16 +54,16 @@ on indexFolder (folder, siteName, baseURL, adrStopWords=nil) {
 				
 				msg ("Search Engine: Indexing: " + url);
 				
-				«Create a preview for this page.
-					«Always create a preview before indexing the page.
+				//Create a preview for this page.
+					//Always create a preview before indexing the page.
 				searchEngine.createPreview (bodyText, title, url, f, adrPreviews, file.modified (f));
 				
-				«Index the page.
+				//Index the page.
 				searchEngine.indexPage (f, url, title, bodyText, adrIndex, adrStopWords)}};
 		
 		sys.systemTask ()};
 	
-	«Save the guest database containing the index.
+	//Save the guest database containing the index.
 	searchEngine.saveIndex (siteName, adrIndex);
 	
 	return (true)}

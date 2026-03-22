@@ -1,7 +1,7 @@
 on searchThisSite () {
-	«Changes
-		«8/11/02; 1:51:43 AM by JES
-			«Created. Search a single Manila site.
+	//Changes
+		//8/11/02; 1:51:43 AM by JES
+			//Created. Search a single Manila site.
 	local (pta = html.getPageTableAddress ());
 	pta^.title = "Search";
 	

@@ -3,7 +3,7 @@ on globalReplace (searchstring, replacestring) {
 	
 	search.params.flatsearch = true;
 	search.params.frontwindowonly = false;
-	«search.params.wraparound = true
+	//search.params.wraparound = true
 	
 	search.params.searchfor = searchstring;
 	search.params.replacewith = replacestring;
@@ -11,6 +11,6 @@ on globalReplace (searchstring, replacestring) {
 	search.reset ();
 	numreplaced = search.replaceall ();
 	
-	search.params = savedparams; «restore originals
+	search.params = savedparams; //restore originals
 	
 	return (numreplaced)}

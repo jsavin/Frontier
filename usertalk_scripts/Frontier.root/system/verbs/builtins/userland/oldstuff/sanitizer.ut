@@ -1,53 +1,53 @@
 on sanitizeFrontierRoot (path) {
-	«this script is used to "virginize" the Frontier root file
-		«it deletes all stuff that might have accumulated while testing
-		«and it resets all globals to their default values
+	//this script is used to "virginize" the Frontier root file
+		//it deletes all stuff that might have accumulated while testing
+		//and it resets all globals to their default values
 	
 	if file.filefrompath (Frontier.getfilepath ()) != "Frontier.root" or user.initials == "DW" {
 		scriptError ("I just saved your ass, Dave.")};
 	
 	
-	bundle { «empty the system.deskscripts table
+	bundle { //empty the system.deskscripts table
 		local (i);
 		for i = sizeof (system.deskscripts) downto 1 {
 			delete (@system.deskscripts [i])}};
 	
-	«bundle «empty the system.menubars table (almost)
-		«local (i)
-		«for i = sizeof (system.menubars) downto 1
-			«adr = @system.menubars [i]
-			«if adr != @system.menubars.LAND
-				«delete (adr)
+	//bundle //empty the system.menubars table (almost)
+		//local (i)
+		//for i = sizeof (system.menubars) downto 1
+			//adr = @system.menubars [i]
+			//if adr != @system.menubars.LAND
+				//delete (adr)
 	
-	«bundle «empty the suites table (almost)
-		«local (i)
-		«for i = sizeof (root.suites) downto 1
-			«adr = @root.suites [i]
-			«s = nameOf (adr^)
-			«if (s != "commercial") and (s != "export") and (s != "states") and (s != "scheduler")
-				«delete (adr)
+	//bundle //empty the suites table (almost)
+		//local (i)
+		//for i = sizeof (root.suites) downto 1
+			//adr = @root.suites [i]
+			//s = nameOf (adr^)
+			//if (s != "commercial") and (s != "export") and (s != "states") and (s != "scheduler")
+				//delete (adr)
 	
-	«bundle «empty the extensions table (almost)
-		«local (i)
-		«for i = sizeof (system.extensions) downto 1
-			«adr = @system.extensions [i]
-			«s = nameOf (adr^)
-			«if (s != "forks") and (s != "locker") and (s != "passwordDialog")
-				«delete (adr)
+	//bundle //empty the extensions table (almost)
+		//local (i)
+		//for i = sizeof (system.extensions) downto 1
+			//adr = @system.extensions [i]
+			//s = nameOf (adr^)
+			//if (s != "forks") and (s != "locker") and (s != "passwordDialog")
+				//delete (adr)
 	
-	«bundle «empty the system.verbs.apps table (almost)
-		«local (i)
-		«for i = sizeof (system.verbs.apps) downto 1
-			«adr = @system.verbs.apps [i]
-			«if adr != @system.verbs.apps.Finder
-				«delete (adr)
+	//bundle //empty the system.verbs.apps table (almost)
+		//local (i)
+		//for i = sizeof (system.verbs.apps) downto 1
+			//adr = @system.verbs.apps [i]
+			//if adr != @system.verbs.apps.Finder
+				//delete (adr)
 	
-	bundle { «initialize the user table
+	bundle { //initialize the user table
 		user.name = "";
 		user.initials = "";
 		user.organization = ""};
 	
-	bundle { «set the ship date
+	bundle { //set the ship date
 		local (shipdate);
 		try {
 			shipdate = date (file.fileFromPath (path) - "sanitizeFrontierRoot")}
@@ -56,11 +56,11 @@ on sanitizeFrontierRoot (path) {
 			dialog.ask ("Ship date:", @shipdate)};
 		Frontier.shipdate = date (shipdate)};
 	
-	bundle { «initialize misc stuff
+	bundle { //initialize misc stuff
 		new (tableType, @system.droplet);
 		new (tableType, @root.scratchpad)};
 	
-	bundle { «initialize the system.startup table
+	bundle { //initialize the system.startup table
 		system.startup.firstTime = true;
 		system.startup.installComplete = false};
 	

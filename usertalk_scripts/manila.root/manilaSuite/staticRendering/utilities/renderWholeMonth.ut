@@ -1,6 +1,6 @@
 on renderWholeMonth (adrManilaSite, adrStaticSite=nil, dateInMonth=clock.now ()) {
-	«Render one month of home pages.
-		«9/7/01; 4:22:10 PM by PBS
+	//Render one month of home pages.
+		//9/7/01; 4:22:10 PM by PBS
 	
 	local (oldPta = html.getPageTableAddress ());
 	manilaSuite.staticRendering.startRenderSession (adrManilaSite, true);

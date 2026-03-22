@@ -1,8 +1,8 @@
 on rpc (dest, procedureName = "", adrParamList = nil, flDebug = false, secondsToTimeOut = 60, flAsync = false, adrCallback = nil, extraInfo = nil, adrTimeoutCallback = nil, id = nil, adrErrorCallback = nil, connection = nil) {
-	«Changes
-		«5/14/02; 1:51:34 PM by JB
-			«Changelog created.
-	«This script implements the client end of Jabber RPC
+	//Changes
+		//5/14/02; 1:51:34 PM by JB
+			//Changelog created.
+	//This script implements the client end of Jabber RPC
 	on addAtt ( XMLadr, name, value ) {
 		if not defined ( XMLadr^.["/atts"] ) {
 			new ( tableType, @XMLadr^.["/atts"] )};

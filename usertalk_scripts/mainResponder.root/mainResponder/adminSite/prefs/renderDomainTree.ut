@@ -1,9 +1,9 @@
 on renderDomainTree (domain, maxsites=50) {
-	«Changes
-		«9/7/02; 1:29:32 PM by JES
-			«Handle non-site tree address-type domains.
-		«8/5/02; 9:16:19 PM by JES
-			«Created.
+	//Changes
+		//9/7/02; 1:29:32 PM by JES
+			//Handle non-site tree address-type domains.
+		//8/5/02; 9:16:19 PM by JES
+			//Created.
 	local (htmltext);
 	on add (s) {
 		htmltext = htmltext + (s + "\r");};
@@ -112,6 +112,6 @@ on renderDomainTree (domain, maxsites=50) {
 	
 	return (htmltext)};
 
-«bundle //test code
-	«html.setPageTableAddress (@workspace.pt)
-	«renderDomainTree ("127.0.0.1")
+//bundle //test code
+	//html.setPageTableAddress (@workspace.pt)
+	//renderDomainTree ("127.0.0.1")

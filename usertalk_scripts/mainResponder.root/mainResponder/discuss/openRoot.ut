@@ -1,16 +1,16 @@
 on openRoot (pta=nil) {
-	«Adds another level to mainResponder.discuss.openFile. 
-		«We return the address of the root of the discussion group referenced by rootname. This is the central routine for allowing multiple discussion roots.
-		«1/10/99; 9:50:54 AM by DW
-		«Changes
-			«Wed, 03 Mar 1999 21:19:08 GMT by AR
-				«Fixed scriptError message to use the correct variable name.
-			«Mon, Aug 2, 1999 at 2:14:13 PM by PBS
-				«Optional pta parameter allows us to circumvent the try statement if pta is passed. Try statements should be avoided when possible. (mainResponder profiling showed that this verb was a minor performance bottleneck in its previous state.)
-				«Removed local declaration of f -- it was unused.
-				«Added several comments to the script.
-			«10/2/99; 10:38:00 PM by PBS
-				«Addresses (and strings that can be coerced to addresses) are allowed in discuss.root. These addresses point to discussion group storage. This was implemented to allow for greater portability: a website guest database can contain its discussion group.
+	//Adds another level to mainResponder.discuss.openFile. 
+		//We return the address of the root of the discussion group referenced by rootname. This is the central routine for allowing multiple discussion roots.
+		//1/10/99; 9:50:54 AM by DW
+		//Changes
+			//Wed, 03 Mar 1999 21:19:08 GMT by AR
+				//Fixed scriptError message to use the correct variable name.
+			//Mon, Aug 2, 1999 at 2:14:13 PM by PBS
+				//Optional pta parameter allows us to circumvent the try statement if pta is passed. Try statements should be avoided when possible. (mainResponder profiling showed that this verb was a minor performance bottleneck in its previous state.)
+				//Removed local declaration of f -- it was unused.
+				//Added several comments to the script.
+			//10/2/99; 10:38:00 PM by PBS
+				//Addresses (and strings that can be coerced to addresses) are allowed in discuss.root. These addresses point to discussion group storage. This was implemented to allow for greater portability: a website guest database can contain its discussion group.
 	
 	local (rootName = config.mainResponder.prefs.defaultDiscussRoot, adr);
 	

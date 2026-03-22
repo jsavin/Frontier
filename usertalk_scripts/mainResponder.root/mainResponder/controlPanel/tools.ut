@@ -1,20 +1,20 @@
-«Display the Tools page in the Frontier Control Panel which allows one to turn on and off Tools. Based on the Tools page in Radio UserLand.
-	«Changes:
-		«6/18/02; 6:55:01 PM by JES
-			«If the Tool's info table includes a localUrl, use that URL for the Tool's name-link.
-		«1/21/02; 9:38:38 PM by PBS
-			«Fixed an errant reference to user.radio.
-			«Fixed a bug where sometimes a Tool wouldn't get enabled.
-		«12/3/01; 9:32:42 PM by PBS
-			«Created.
+//Display the Tools page in the Frontier Control Panel which allows one to turn on and off Tools. Based on the Tools page in Radio UserLand.
+	//Changes:
+		//6/18/02; 6:55:01 PM by JES
+			//If the Tool's info table includes a localUrl, use that URL for the Tool's name-link.
+		//1/21/02; 9:38:38 PM by PBS
+			//Fixed an errant reference to user.radio.
+			//Fixed a bug where sometimes a Tool wouldn't get enabled.
+		//12/3/01; 9:32:42 PM by PBS
+			//Created.
 Frontier.tools.init ();
 
 local (htmltext, indentlevel = 0);
 on add (s) {
 	htmltext = htmltext + string.filledstring ("\t", indentlevel) + s + "\r\n"};
 on translateToEntities (s) {
-	«Before putting some text in an input field or textarea, translating certain entities will ensure that the HTML on the page won't get messed up.
-		«01/10/01; 4:49:47 PM by PBS
+	//Before putting some text in an input field or textarea, translating certain entities will ensure that the HTML on the page won't get messed up.
+		//01/10/01; 4:49:47 PM by PBS
 	s = string.replaceAll (s, "&", "&amp;");
 	s = string.replaceAll (s, "<", "&lt;");
 	s = string.replaceAll (s, "\"", "&quot;");
@@ -41,56 +41,56 @@ if pta^.method == "POST" {
 					filemenu.open (f, true);
 					Frontier.tools.enable (f, true);
 					Frontier.tools.install (f);
-					«bundle //possibly install pages from the tool's website into the filesystem
-						«local (cleanName = Frontier.tools.cleanToolName (name))
-						«local (adrsite = @[f].[cleanName + "Website"])
-						«if defined (adrsite^)
-							«if not defined (adrsite^.["#template"])
-								«local (folder = user.radio.prefs.wwwfolder + cleanName + pc)
-								«bundle //write a #upstream.xml to the folder, whose type is none
-									«local (f = folder + radio.data.fileNames.upstreamFileName)
-									«file.sureFilePath (f)
-									«file.writeWholeFile (f, "<upstream type=\"none\"/>")
-								«local (adritem)
-								«on installItem (adritem, folder)
-									«local (itemname = nameOf (adritem^))
-									«if not (itemname beginsWith "#") //a page or a table
-										«local (filetext, extension = ".txt")
-										«case typeOf (adritem^)
-											«tableType
-												«local (subfolder = folder + itemname + pc)
-												«local (adrsubitem)
-												«for adrsubitem in adritem
-													«installItem (adrsubitem, subfolder)
-												«continue
-											«scriptType //make a wrapper file
-												«local (adrpage = string.popFileFromAddress (adritem))
-												«filetext = "<%" + adrpage + " ()%>"
-											«outlineType //convert to opml
-												«filetext = op.outlineToXml (adritem)
-												«extension = ".opml"
-										«else //coerce to string, and write the file
-											«filetext = string (adritem^)
-										«local (f = folder + itemname + extension)
-										«file.sureFilePath (f)
-										«file.writeWholeFile (f, filetext)
-								«for adritem in adrsite //install the tool's website pages into the www folder
-									«installItem (adritem, folder)
-								«bundle //delete the entry for the Tool's website in the websiteFramework responder's docTree, so the radio responder will handle the hits
-									«if defined (user.webserver.responders.websiteFramework.data.docTree.[cleanName])
-										«delete (@user.webserver.responders.websiteFramework.data.docTree.[cleanName])}}
+					//bundle //possibly install pages from the tool's website into the filesystem
+						//local (cleanName = Frontier.tools.cleanToolName (name))
+						//local (adrsite = @[f].[cleanName + "Website"])
+						//if defined (adrsite^)
+							//if not defined (adrsite^.["#template"])
+								//local (folder = user.radio.prefs.wwwfolder + cleanName + pc)
+								//bundle //write a #upstream.xml to the folder, whose type is none
+									//local (f = folder + radio.data.fileNames.upstreamFileName)
+									//file.sureFilePath (f)
+									//file.writeWholeFile (f, "<upstream type=\"none\"/>")
+								//local (adritem)
+								//on installItem (adritem, folder)
+									//local (itemname = nameOf (adritem^))
+									//if not (itemname beginsWith "#") //a page or a table
+										//local (filetext, extension = ".txt")
+										//case typeOf (adritem^)
+											//tableType
+												//local (subfolder = folder + itemname + pc)
+												//local (adrsubitem)
+												//for adrsubitem in adritem
+													//installItem (adrsubitem, subfolder)
+												//continue
+											//scriptType //make a wrapper file
+												//local (adrpage = string.popFileFromAddress (adritem))
+												//filetext = "<%" + adrpage + " ()%>"
+											//outlineType //convert to opml
+												//filetext = op.outlineToXml (adritem)
+												//extension = ".opml"
+										//else //coerce to string, and write the file
+											//filetext = string (adritem^)
+										//local (f = folder + itemname + extension)
+										//file.sureFilePath (f)
+										//file.writeWholeFile (f, filetext)
+								//for adritem in adrsite //install the tool's website pages into the www folder
+									//installItem (adritem, folder)
+								//bundle //delete the entry for the Tool's website in the websiteFramework responder's docTree, so the radio responder will handle the hits
+									//if defined (user.webserver.responders.websiteFramework.data.docTree.[cleanName])
+										//delete (@user.webserver.responders.websiteFramework.data.docTree.[cleanName])}}
 			else { //disabled tool
 				if defined ([f]) {
 					fileMenu.saveMyRoot (@[f]);
-					«bundle //possibly delete the tool's pages from the filesystem
-						«local (cleanName = Frontier.tools.cleanToolName (name))
-						«local (adrsite = @[f].[cleanName + "Website"])
-						«if defined (adrsite^)
-							«local (folder = user.radio.prefs.wwwfolder + cleanname + pc)
-							«if file.exists (folder)
-								«if file.isFolder (folder)
-									«try //avoid file permissions errors
-										«file.deleteFolder (folder)
+					//bundle //possibly delete the tool's pages from the filesystem
+						//local (cleanName = Frontier.tools.cleanToolName (name))
+						//local (adrsite = @[f].[cleanName + "Website"])
+						//if defined (adrsite^)
+							//local (folder = user.radio.prefs.wwwfolder + cleanname + pc)
+							//if file.exists (folder)
+								//if file.isFolder (folder)
+									//try //avoid file permissions errors
+										//file.deleteFolder (folder)
 					Frontier.tools.uninstall (f);
 					menus.buildMenuBar (); //PBS 10/23/01: refresh the menu
 					Frontier.tools.enable (f, false);
@@ -115,7 +115,7 @@ bundle { //add the Tools
 		if not file.exists (f) {
 			continue};
 		bundle { //PBS 10/19/01: make sure it's actually in the Tools folder
-			«Mac filespecs may follow the Tool when it has been moved out of the Tools folder.
+			//Mac filespecs may follow the Tool when it has been moved out of the Tools folder.
 			local (folder = file.folderFromPath (f));
 			if string.lower (folder) != string.lower (toolsFolder) { //check to see if its parent is the Tools folder
 				continue}};

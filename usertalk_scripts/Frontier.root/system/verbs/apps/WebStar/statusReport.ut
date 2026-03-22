@@ -1,2 +1,2 @@
-on statusReport (appID = WebStar.id) { «Return status information about the server
+on statusReport (appID = WebStar.id) { //Return status information about the server
 	return (appleEvent (appID, 'WWW½', 'stat'))}

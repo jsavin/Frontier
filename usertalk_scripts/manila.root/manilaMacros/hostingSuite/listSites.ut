@@ -1,6 +1,6 @@
 on listSites (flSearchable=false) {
-	«List sites on this server. Optionally present a search form. The search form matches against site names, site URLs, ME names, ME email addresses.
-		«07/18/00; 12:21:03 AM by PBS
+	//List sites on this server. Optionally present a search form. The search form matches against site names, site URLs, ME names, ME email addresses.
+		//07/18/00; 12:21:03 AM by PBS
 	
 	local (pta = html.getPageTableAddress ());
 	

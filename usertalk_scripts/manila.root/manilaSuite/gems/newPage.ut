@@ -1,11 +1,11 @@
 on newPage (pta=nil) {
-	«Display a form for uploading a new gem.
-		«04/12/00; 6:00:44 PM by PBS
-	«Changes:
-		«04/20/00; 8:13:36 PM by JES
-			«localized
-		«05/01/00; 3:18:03 PM by JES
-			«Changed getString calls to use a replacement table address instead of a lists
+	//Display a form for uploading a new gem.
+		//04/12/00; 6:00:44 PM by PBS
+	//Changes:
+		//04/20/00; 8:13:36 PM by JES
+			//localized
+		//05/01/00; 3:18:03 PM by JES
+			//Changed getString calls to use a replacement table address instead of a lists
 	
 	if pta == nil {
 		pta = html.getPageTableAddress ()};
@@ -18,7 +18,7 @@ on newPage (pta=nil) {
 		local (adrSite = manilaSuite.getManilaSiteAddress (pta));
 		local (flLimitReached = manilaSuite.gems.hasSiteReachedLimit (adrSite));
 		if flLimitReached {
-			«local (currentSize = manilaSuite.gems.getCurrentSiteFolderSize (adrSite))
+			//local (currentSize = manilaSuite.gems.getCurrentSiteFolderSize (adrSite))
 			local (limit = manilaSuite.gems.getSiteLimit (adrSite));
 			limit = string.megabyteString (limit);
 			local (replacementTable); new (tableType, @replacementTable); // 05/01/00 JES: use replacement table instead of a list
@@ -26,7 +26,7 @@ on newPage (pta=nil) {
 			htmlText = manilaSuite.getString ("gems.sizeLimitReachedError", @replacementTable, pta: pta); // 4/20/00 JES: localized
 			return (htmlText)}};
 	
-	«htmlText = manilaSuite.gems.newGemForm (pta^.urls^.editorialGems, pta^.urls^.gemPostMessage)
+	//htmlText = manilaSuite.gems.newGemForm (pta^.urls^.editorialGems, pta^.urls^.gemPostMessage)
 	local (adrETPbuilder = @manilaSuite.gems.newGemForm); //04.06.22, 22:13:57 by DAB
 	manilaSuite.plugins.ETPoverride.getScriptAddress("gemNewMessage", @adrETPbuilder); //04.06.23, 12:24:58 by DAB
 	htmlText = adrETPbuilder^ (pta^.urls^.editorialGems, pta^.urls^.gemPostMessage); //04.06.23, 14:44:45 by DAB

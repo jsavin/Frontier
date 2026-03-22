@@ -1,5 +1,5 @@
-«deletes all {aretha stats} tables in the root file
-	«these are produced by the scripting.com software
+//deletes all {aretha stats} tables in the root file
+	//these are produced by the scripting.com software
 
 on traverse (adr) {
 	local (i);

@@ -1,2 +1,2 @@
-on reload (x = nil) { «Reloads the current url
+on reload (x = nil) { //Reloads the current url
 	return (appleEvent (netscape.id, 'MOSS', 'relo', '----', x))}

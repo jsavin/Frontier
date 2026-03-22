@@ -1,27 +1,27 @@
 on getHtmlRendering (adrservice, boxTitle=nil, width=125, frameColor="#000000", titleBarTextColor="#000000", titleBarColor="#ADD8E6", boxFillColor="#FFFFFF", timeZone="PST", maxItems=infinity, timeZoneOffsetHours=0) {
-	«Changes:
-		«10/21/01; 9:35:58 PM by DW
-			«All items have bullets, even if they don't have sources.
-		«05/07/01; 8:17:37 PM by JES
-			«New optional parameter, timeZoneOffsetHours, used for adjusting time display, according to a Manila site's time zone pref setting. Bug fix: display the time if the channel was updated in the last 24 hours. Formerly, the update time was displayed as a date, even if it had been updated one minute ago, at 12:00 AM.
-		«3/28/01; 2:18:17 PM by PBS
-			«Added alt attributes to img tags, for proper HTML.
-		«02/09/01; 6:50:57 PM by PBS
-			«New optional maxItems parameter, defaults to infinity (current behavior), allows the caller to specify the maximum number of news items that appear in the HTML rendering.
-		«1/6/2001; 2:45:19 PM by DW
-			«In the box title, replace all spaces with non-breaking spaces.
-		«1/6/2001; 2:41:15 PM by DW
-			«Use a different bullet, one that displays well on a non-white background.
-		«01/04/01; 5:38:13 PM by JES
-			«Changed the width attribute for the inner-most td tags to 100%, since IE for Windows wasn't respecting the absolute width attribute.
-		«1/4/2001; 3:49:55 PM by JES
-			«Fixed HTML validation error, and problem with width specification.
-		«1/4/2001; 8:19:02 AM by DW
-			«More tweaks to formatting w/o box.
-		«1/2/2001; 1:31:26 PM by DW
-			«Minor tweaks to formatting w/o box.
-		«1/2/01; 12:22:56 PM by DW
-			«If width is infinity, don't do the box.
+	//Changes:
+		//10/21/01; 9:35:58 PM by DW
+			//All items have bullets, even if they don't have sources.
+		//05/07/01; 8:17:37 PM by JES
+			//New optional parameter, timeZoneOffsetHours, used for adjusting time display, according to a Manila site's time zone pref setting. Bug fix: display the time if the channel was updated in the last 24 hours. Formerly, the update time was displayed as a date, even if it had been updated one minute ago, at 12:00 AM.
+		//3/28/01; 2:18:17 PM by PBS
+			//Added alt attributes to img tags, for proper HTML.
+		//02/09/01; 6:50:57 PM by PBS
+			//New optional maxItems parameter, defaults to infinity (current behavior), allows the caller to specify the maximum number of news items that appear in the HTML rendering.
+		//1/6/2001; 2:45:19 PM by DW
+			//In the box title, replace all spaces with non-breaking spaces.
+		//1/6/2001; 2:41:15 PM by DW
+			//Use a different bullet, one that displays well on a non-white background.
+		//01/04/01; 5:38:13 PM by JES
+			//Changed the width attribute for the inner-most td tags to 100%, since IE for Windows wasn't respecting the absolute width attribute.
+		//1/4/2001; 3:49:55 PM by JES
+			//Fixed HTML validation error, and problem with width specification.
+		//1/4/2001; 8:19:02 AM by DW
+			//More tweaks to formatting w/o box.
+		//1/2/2001; 1:31:26 PM by DW
+			//Minor tweaks to formatting w/o box.
+		//1/2/01; 12:22:56 PM by DW
+			//If width is infinity, don't do the box.
 	local (flbox = width != infinity);
 	local (adrtable = @adrservice^.compilation);
 	on neuter (s) {
@@ -80,7 +80,7 @@ on getHtmlRendering (adrservice, boxTitle=nil, width=125, frameColor="#000000", 
 			add ("<td width=\"100%\" colspan=\"3\">"); indentlevel++}
 		else {
 			add ("<table cellspacing=\"0\" cellpadding=\"5\" border=\"0\">"); indentlevel++;
-			};«add ("<tr><td></td><td><font size=\"-1\">XML</font></td></tr>")
+			};//add ("<tr><td></td><td><font size=\"-1\">XML</font></td></tr>")
 		bundle { //generate the news items
 			local (storyLink, i, ct = 0);
 			if sizeof (imagelink) > 0 {
@@ -93,7 +93,7 @@ on getHtmlRendering (adrservice, boxTitle=nil, width=125, frameColor="#000000", 
 						align = " hspace=\"10\" vspace=\"2\" align=\"left\""};
 					if defined (adritem^.sourceChannelTitle) {
 						bullet = "<a href=\"" + adritem^.sourceChannelUrl + "\" title=\"Source: " + adritem^.sourceChannelTitle + "\"><img src=\"http://www.scripting.com/images/bullet.gif\" height=\"10\" width=\"5\"" + align + " border=\"0\" alt=\"Source: " + adrItem^.sourceChannelTitle + "\"></a>"; //PBS 03/28/01: add alt tag -- it's the name of the source
-						}«http://static.userland.com/shortcuts/images/qbullets/text.gif
+						}//http://static.userland.com/shortcuts/images/qbullets/text.gif
 					else {
 						bullet = "<img src=\"http://www.scripting.com/images/bullet.gif\" height=\"10\" width=\"5\"" + align + " border=\"0\" alt=\"Bullet\">"}};
 				if flbox {
@@ -126,7 +126,7 @@ on getHtmlRendering (adrservice, boxTitle=nil, width=125, frameColor="#000000", 
 		add ("</tr>"); indentlevel--;
 		add ("</table>"); indentlevel--};
 	adrservice^.htmlRendering = htmltext;
-	«scratchpad.service = adrservice^
+	//scratchpad.service = adrservice^
 	return (htmltext)};
-«bundle //test code
-	«webbrowser.displaytext (getHtmlRendering (@scratchpad.service, width:300))
+//bundle //test code
+	//webbrowser.displaytext (getHtmlRendering (@scratchpad.service, width:300))

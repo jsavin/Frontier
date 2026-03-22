@@ -1,6 +1,6 @@
 on editorialPageAccess (pageName, pta) {
-	«Check access privileges for an editorial page.
-		«9/12/01; 2:46:54 PM by PBS
+	//Check access privileges for an editorial page.
+		//9/12/01; 2:46:54 PM by PBS
 	
 	if not defined (pta^.newsSite^.editorialPagesAccess) {
 		pta^.newsSite^.editorialPagesAccess = manilaData.newSiteTemplate.["#newsSite"].editorialPagesAccess};

@@ -1,5 +1,5 @@
 on getToolsFolderPath () {
-	«Make sure the Tools folder exists; return the path.
+	//Make sure the Tools folder exists; return the path.
 	local (folder, pc = file.getPathChar ());
 	if system.environment.isPike {
 		folder = Frontier.pathString + "Tools" + pc}

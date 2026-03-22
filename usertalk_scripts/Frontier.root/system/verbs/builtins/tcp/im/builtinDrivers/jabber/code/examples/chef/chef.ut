@@ -1,9 +1,9 @@
 on chef (s, flBork = true) {
-	«Chunges:
-		«5/13/02; 11:07:02 PM by JB
-			«Chungeloog created.
-			«
-			«Bork bork bork!
+	//Chunges:
+		//5/13/02; 11:07:02 PM by JB
+			//Chungeloog created.
+			//
+			//Bork bork bork!
 	s = string.replaceAll (s, "an", "un" );
 	s = string.replaceAll (s, "An", "Un" );
 	s = string.replaceAll (s, "au", "oo" );

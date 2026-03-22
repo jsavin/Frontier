@@ -1,9 +1,9 @@
 on editor (flIncludeIntroText=true) {
-	«Changes
-		«11/3/04; 6:23:00 PM by JES
-			«If the feature is not enabled for this site, don't display the editor.
-		«5/21/03; 3:41:53 PM by JES
-			«Created. Admin interface for editing path-based permissions in a Manila site.
+	//Changes
+		//11/3/04; 6:23:00 PM by JES
+			//If the feature is not enabled for this site, don't display the editor.
+		//5/21/03; 3:41:53 PM by JES
+			//Created. Admin interface for editing path-based permissions in a Manila site.
 	
 	return ("Disabled"); // 11/05/05; 10:46:18 AM by PR disabled
 	

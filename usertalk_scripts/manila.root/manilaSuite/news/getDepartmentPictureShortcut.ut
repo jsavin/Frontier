@@ -1,6 +1,6 @@
 on getDepartmentPictureShortcut (adrSite, name) {
-	«Get the picture shortcut name for a department.
-		«04/20/00; 9:22:34 PM by PBS
+	//Get the picture shortcut name for a department.
+		//04/20/00; 9:22:34 PM by PBS
 	
 	local (adrDepartments = manilaSuite.news.getDepartmentTableAddress (adrSite));
 	return (adrDepartments^.[name].pictureShortcut)}

@@ -1,6 +1,6 @@
 local (confirmationdisabled = false);
-local (ctmatches = 0); «number of locked files we found
-local (ctunlocked = 0); «number of files we unlocked
+local (ctmatches = 0); //number of locked files we found
+local (ctunlocked = 0); //number of files we unlocked
 local (usercancelled = false);
 
 on unlockFolder (folder) {
@@ -8,7 +8,7 @@ on unlockFolder (folder) {
 	rollBeachball ();
 	fileloop (f in folder) {
 		if file.isFolder (f) {
-			if not unlockFolder (f) { «user cancelled
+			if not unlockFolder (f) { //user cancelled
 				return (false)}}
 		else {
 			if file.isLocked (f) {
@@ -23,15 +23,15 @@ on unlockFolder (folder) {
 					result = dialog.yesNoCancel (s);
 					msg ("");
 					case result {
-						1 { «yes
+						1 { //yes
 							if kb.optionKey () {
 								confirmationdisabled = true};
 							unlock = true};
-						2 { «no
+						2 { //no
 							unlock = false};
-						3 { «cancel
+						3 { //cancel
 							usercancelled = true;
-							return (false)}}}; «halt traversal
+							return (false)}}}; //halt traversal
 				ctmatches++;
 				if unlock {
 					ctunlocked++;

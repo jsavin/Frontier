@@ -1,11 +1,11 @@
 on includeHttp (url, flCache=true) {
-	«Changes
-		«3/24/06; 3:10:50 AM by JES
-			«New optional parameter, flCache. If false, we don't do any caching. Default is true, preserving existing behavior.
-		«12/29/2000; 12:08:23 PM by DW
-			«You provide an http url, we'll get the contents and include it in your Manila page. As usual we cache the request for one hour. Maximum size that we'll return is 32K, so it's only good for relatively small snippets.
-			«We do not neuter curly braces in the text received through HTTP. If you call this script from another script that is then processed beware, you should neuter the text first, otherwise you could open a security hole. We felt it was important to not neuter the text because other languages, notably JavaScript, use curly braces in their syntax, and that's a totally legitimate use for this macro.
-			«http://macros.userland.com/includeHttp
+	//Changes
+		//3/24/06; 3:10:50 AM by JES
+			//New optional parameter, flCache. If false, we don't do any caching. Default is true, preserving existing behavior.
+		//12/29/2000; 12:08:23 PM by DW
+			//You provide an http url, we'll get the contents and include it in your Manila page. As usual we cache the request for one hour. Maximum size that we'll return is 32K, so it's only good for relatively small snippets.
+			//We do not neuter curly braces in the text received through HTTP. If you call this script from another script that is then processed beware, you should neuter the text first, otherwise you could open a security hole. We felt it was important to not neuter the text because other languages, notably JavaScript, use curly braces in their syntax, and that's a totally legitimate use for this macro.
+			//http://macros.userland.com/includeHttp
 	local (maxsize = 32767);
 	local (t, adrincache, flread = true);
 	if flCache {

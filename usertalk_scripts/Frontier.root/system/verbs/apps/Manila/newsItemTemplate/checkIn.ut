@@ -1,9 +1,9 @@
 on checkIn (adrSitePrefs) {
-	«Release custody of the news item template.
-		«04/30/00; 11:29:20 PM by PBS
-	«Changes
-		«9/6/01; 8:28:38 PM by JES
-			«Changed params from a list to a record of named parameters, for SOAP compatibility.
+	//Release custody of the news item template.
+		//04/30/00; 11:29:20 PM by PBS
+	//Changes
+		//9/6/01; 8:28:38 PM by JES
+			//Changed params from a list to a record of named parameters, for SOAP compatibility.
 	
 	local (methodName = "manila.newsItemTemplate.checkIn");
 	with adrSitePrefs^ {

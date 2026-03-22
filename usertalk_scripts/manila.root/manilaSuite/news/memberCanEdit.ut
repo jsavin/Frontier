@@ -1,14 +1,14 @@
 on memberCanEdit (adrMsgTable, adrMember, adrSite=nil) {
-	«News items have diffrent rules about who can edit them. It's not necessarily true that the original author can edit his or her news items -- if it's been released for posting, then you must be a managing editor.
-		«Call this script only if you know this is a Manila site and you know adrMsgTable points to a news item in the dg.
-		«04/25/00; 2:27:58 PM by PBS
-	«Changes:
-		«9/8/03; 4:57:16 PM by JES
-			«Content editors can edit any news item. This editorial class was missed when the content editor was added to Manila.
-				«Quote from the docs: "The Content Editor can edit all the stories, pictures, and messages on a site like a Managing Editor but can't edit templates and set the various site preferences."
-				«http://manilanewbies.userland.com/stories/storyReader$6089
-		«8/19/01; 11:56:04 PM by JES
-			«Modified to make it possibled to call this script from outside the website framework context. All that was required was an additional parameter: adrSite. If nil (the default) then it's assumed that we're in the website framework context. Otherwise, it doesn't matter what the context is.
+	//News items have diffrent rules about who can edit them. It's not necessarily true that the original author can edit his or her news items -- if it's been released for posting, then you must be a managing editor.
+		//Call this script only if you know this is a Manila site and you know adrMsgTable points to a news item in the dg.
+		//04/25/00; 2:27:58 PM by PBS
+	//Changes:
+		//9/8/03; 4:57:16 PM by JES
+			//Content editors can edit any news item. This editorial class was missed when the content editor was added to Manila.
+				//Quote from the docs: "The Content Editor can edit all the stories, pictures, and messages on a site like a Managing Editor but can't edit templates and set the various site preferences."
+				//http://manilanewbies.userland.com/stories/storyReader$6089
+		//8/19/01; 11:56:04 PM by JES
+			//Modified to make it possibled to call this script from outside the website framework context. All that was required was an additional parameter: adrSite. If nil (the default) then it's assumed that we're in the website framework context. Otherwise, it doesn't matter what the context is.
 	
 	local (flManagingEditor = false, flContentEditor = false);
 	if adrSite == nil { //assume we're called in the website framework context
@@ -22,19 +22,19 @@ on memberCanEdit (adrMsgTable, adrMember, adrSite=nil) {
 		flManagingEditor = manilaSuite.rpcUtils.isManagingEditor (siteName, username);
 		flContentEditor = manilaSuite.rpcUtils.isContentEditor (siteName, username)};
 	
-	«First check custody.
+	//First check custody.
 	bundle {
 		if not (manilaSuite.custody.memberCanCheckOutObject (adrMsgTable, adrMember, adrSite, true)) {
 			return (false)}};
 	
-	«local (flManagingEditor = manilaSuite.editors.managingEditorTest (pta)) //8/19/01 JES: commented out; see if adrSite == nil, above.
+	//local (flManagingEditor = manilaSuite.editors.managingEditorTest (pta)) //8/19/01 JES: commented out; see if adrSite == nil, above.
 	if flManagingEditor or flContentEditor { //managing editors and content editors can always edit, no matter what
 		return (true)};
 	
 	if manilaSuite.news.isReleased (adrMsgTable) { //once released, only an ME may edit
 		return (false)};
 	
-	«It's not released, so it can be edited by the member.
+	//It's not released, so it can be edited by the member.
 	local (flMemberIsAuthor = false, memberKey);
 	memberKey = nameOf (adrMember^);
 	if string.lower (memberKey) == string.lower (adrMsgTable^.member) {

@@ -1,9 +1,9 @@
 on messageUndo (pta, adrMsg) {
-	«Changes
-		«05/03/30, 11:12:34 by DAB
-			«Repair shortcuts to pictures after rolling a picture back to a previous version.
-		«04/05/18, 21:27:59 by DAB
-			«Created. Perform the actual rollback operation for messages; provoked by a post on the rollback form in an ETP page script.
+	//Changes
+		//05/03/30, 11:12:34 by DAB
+			//Repair shortcuts to pictures after rolling a picture back to a previous version.
+		//04/05/18, 21:27:59 by DAB
+			//Created. Perform the actual rollback operation for messages; provoked by a post on the rollback form in an ETP page script.
 	local (adrSite = manilaSuite.getmanilaSiteAddress(pta));
 	local (adrMember = pta^.adrMemberInfo);
 	local (maxFilesOpened, maxVersions); //04/05/18, 21:50:36 by DAB
@@ -107,9 +107,9 @@ on messageUndo (pta, adrMsg) {
 			manilaSuite.custody.undoCheckOut (adrMsg, adrMember, adrSite, flMessage:true)}
 		else {
 			manilaSuite.custody.checkIn (adrMsg, adrMember, adrSite, true)};
-		«local (redirectUrl = pta^.responderAttributes.urls^.discussMsgReader + msgNum)
-		«if defined (pta^.postArgs.referer)
-			«redirectUrl = pta^.postArgs.referer
-		};«mainResponder.redirect (redirectUrl)
+		//local (redirectUrl = pta^.responderAttributes.urls^.discussMsgReader + msgNum)
+		//if defined (pta^.postArgs.referer)
+			//redirectUrl = pta^.postArgs.referer
+		};//mainResponder.redirect (redirectUrl)
 	
 	return  htmlText}

@@ -1,7 +1,7 @@
 on getFileSuffix (type) { //5.0
-	«Given an object type, return the proper suffix for that type of file
-		«On Mac it returns the empty string.
-		«PBS 1/10/98: Returns "fatp" for scalars.
+	//Given an object type, return the proper suffix for that type of file
+		//On Mac it returns the empty string.
+		//PBS 1/10/98: Returns "fatp" for scalars.
 	local (s = "");
 	case sys.os () {
 		"Win95";

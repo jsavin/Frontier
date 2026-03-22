@@ -1,6 +1,6 @@
 on saveIndex (siteName=nil, adrIndex = nil) {
-	«Save a guest database containing an index.
-		«Either siteName, adrIndex, or both must be supplied.
+	//Save a guest database containing an index.
+		//Either siteName, adrIndex, or both must be supplied.
 	local (f);
 	if adrIndex == nil {
 		if siteName == nil {

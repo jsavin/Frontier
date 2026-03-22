@@ -1,5 +1,5 @@
 on updateShortcut (adrMsgTable) {
-	«A new or edited picture has just been uploaded. Update the shortcut. The shortcut may have been deleted -- in that case, do nothing.
+	//A new or edited picture has just been uploaded. Update the shortcut. The shortcut may have been deleted -- in that case, do nothing.
 	
 	if manilaSuite.pictures.shortcutWasDeleted (adrMsgTable) {
 		return (true)}; //didn't update anything, but that's fine, the shortcut was deleted

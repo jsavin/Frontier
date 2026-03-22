@@ -1,6 +1,6 @@
-«Fri, Dec 5, 1997 at 1:37:09 AM by PBS
-	«Moved from toys.editFileList.
-	«The textEditorApp pref is now stored at user.prefs.textEditorApp.
+//Fri, Dec 5, 1997 at 1:37:09 AM by PBS
+	//Moved from toys.editFileList.
+	//The textEditorApp pref is now stored at user.prefs.textEditorApp.
 on editFileList (filelist) {
 	local (f);
 	on prompt () {

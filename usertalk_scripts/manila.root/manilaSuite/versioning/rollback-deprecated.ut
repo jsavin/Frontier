@@ -1,8 +1,8 @@
 on rollback () {
-	«manilaSuite.versioning.rollback : 04/05/18, 21:27:59 by DAB
-		«perform the actual rollback operation for messages; provoked by a post on the rollback form
-		«in an ETP form
-		«manilaFixer.versioning.rollback : 02/04/14, 15:31:11 by DAB
+	//manilaSuite.versioning.rollback : 04/05/18, 21:27:59 by DAB
+		//perform the actual rollback operation for messages; provoked by a post on the rollback form
+		//in an ETP form
+		//manilaFixer.versioning.rollback : 02/04/14, 15:31:11 by DAB
 	local (pta = html.getPageTableAddress());
 	local (adrSite = manilaSuite.getmanilaSiteAddress(pta));
 	local (adrMember = pta^.adrMemberInfo);
@@ -106,7 +106,7 @@ on rollback () {
 		mainResponder.redirect (redirectUrl)};
 	
 	return  htmlText};
-«bundle
-	«local (tbl = temp.pta.["123"].firstFilter)
-	«html.setPageTableAddress(@tbl)
-	«rollback()
+//bundle
+	//local (tbl = temp.pta.["123"].firstFilter)
+	//html.setPageTableAddress(@tbl)
+	//rollback()

@@ -1,10 +1,10 @@
 on ping (email, password, status, adruserinfo=nil, adrdata=@xmlStorageSystem.data, adrclouddata=nil) {
-	«Changes:
-		«11/22/01; 6:14:11 PM by DW
-			«New optional param, adrclouddata. If it's not nil, we copy the cloudData out of the response into adrclouddata. This table contains information that the cloud is maintaining for the user, such as the IP address, when they last upstreamed and whether or not the user is behind a firewall.
-		«10/15/01; 8:58:57 PM by DW
-			«Created.
-			«http://www.soapware.org/xmlStorageSystem#ping
+	//Changes:
+		//11/22/01; 6:14:11 PM by DW
+			//New optional param, adrclouddata. If it's not nil, we copy the cloudData out of the response into adrclouddata. This table contains information that the cloud is maintaining for the user, such as the IP address, when they last upstreamed and whether or not the user is behind a firewall.
+		//10/15/01; 8:58:57 PM by DW
+			//Created.
+			//http://www.soapware.org/xmlStorageSystem#ping
 	local (info);
 	xmlStorageSystem.init ();
 	if adruserinfo == nil {
@@ -22,8 +22,8 @@ on ping (email, password, status, adruserinfo=nil, adrdata=@xmlStorageSystem.dat
 			return (false)};
 		if adrclouddata != nil {
 			adrclouddata^ = result.clouddata};
-		«scratchpad.result = result
+		//scratchpad.result = result
 		return (not result.flerror)}};
-«bundle //test code
-	«local (info); new (tabletype, @info); info.flBehindFirewall = false
-	«ping (user.radio.prefs.usernum, user.radio.prefs.passwords.default, 0, @info, adrclouddata:@scratchpad.clouddata)
+//bundle //test code
+	//local (info); new (tabletype, @info); info.flBehindFirewall = false
+	//ping (user.radio.prefs.usernum, user.radio.prefs.passwords.default, 0, @info, adrclouddata:@scratchpad.clouddata)

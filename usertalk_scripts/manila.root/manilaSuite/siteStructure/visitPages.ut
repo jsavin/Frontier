@@ -1,9 +1,9 @@
 on visitPages (adrSite, adrCallback) {
-	«Visit all the site structure pages in a Manila site. The callback takes the address of the page and the relative path.
-		«03/13/00; 4:19:32 PM by PBS
-	«Changes
-		«9/24/04; 3:44:28 AM by JES
-			«Yield processor time in the main loop.
+	//Visit all the site structure pages in a Manila site. The callback takes the address of the page and the relative path.
+		//03/13/00; 4:19:32 PM by PBS
+	//Changes
+		//9/24/04; 3:44:28 AM by JES
+			//Yield processor time in the main loop.
 	
 	local (adrStructure = @adrSite^.["#hierarchy"].structure [1]);
 	local (relativePath = "/");

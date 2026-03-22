@@ -1,11 +1,11 @@
 on trialVersionCheck (flOpenSerialNumberPage=true) {
-	«Changes
-		«9/10/02; 4:56:35 PM by JES
-			«New optional parameter, flOpenSerialNumberPage. If true, open the serial number page when the trial expires. If false, just disable the UI. Defaults to true. Return true if the trial version has expired, or false if the trial is not expired or not a trial version.
-		«7/31/02; 4:59:53 PM by JES
-			«Open the serial number page in the admin site, not inthe control panel.
-		«4/8/02; 3:30:31 PM by JES
-			«Cribbed from radio.thread.agents.trialVersion
+	//Changes
+		//9/10/02; 4:56:35 PM by JES
+			//New optional parameter, flOpenSerialNumberPage. If true, open the serial number page when the trial expires. If false, just disable the UI. Defaults to true. Return true if the trial version has expired, or false if the trial is not expired or not a trial version.
+		//7/31/02; 4:59:53 PM by JES
+			//Open the serial number page in the admin site, not inthe control panel.
+		//4/8/02; 3:30:31 PM by JES
+			//Cribbed from radio.thread.agents.trialVersion
 	local (daysInTrial = 60);
 	bundle { //initialize userland.trialVersion for Frontier
 		if not defined (userland.trialVersion) {
@@ -20,7 +20,7 @@ on trialVersionCheck (flOpenSerialNumberPage=true) {
 		if not defined (userland.trialVersion.flExpired) {
 			userland.trialVersion.flExpired = false}};
 	if userland.trialVersion.flTrialVersion { //check to see if we already have a valid serial number
-		«The server admin may have entered a serial number directly into user.prefs.serialNumber.
+		//The server admin may have entered a serial number directly into user.prefs.serialNumber.
 		if userland.isValidSerialNumber (string.upper (user.prefs.serialNumber)) and (user.prefs.serialNumber != "A1NX-5JF5-1909") {
 			userland.trialVersion.flTrialVersion = false}};
 	if not userland.trialVersion.flTrialVersion { //if not trial version, make sure whenRegistered is defined

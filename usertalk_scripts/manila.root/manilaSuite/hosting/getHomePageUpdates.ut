@@ -1,13 +1,13 @@
 on getHomePageUpdates (min, max) {
-	«Return a structure containing info about home page updates that took place between min and max times.
-		«It's a table with subtables for each site.
-		«Each subtable contains:
-			«time
-			«URL
-		«05/06/00; 8:26:02 PM by PBS
-	«Changes:
-		«04/21/01; 11:41:26 PM by JES
-			«Rewritten to get update data from the flat table at config.manila.updatedHomePages.
+	//Return a structure containing info about home page updates that took place between min and max times.
+		//It's a table with subtables for each site.
+		//Each subtable contains:
+			//time
+			//URL
+		//05/06/00; 8:26:02 PM by PBS
+	//Changes:
+		//04/21/01; 11:41:26 PM by JES
+			//Rewritten to get update data from the flat table at config.manila.updatedHomePages.
 	
 	local (t);
 	new (tableType, @t);

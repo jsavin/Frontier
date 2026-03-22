@@ -1,9 +1,9 @@
 on viewDirectoryBox (path, boxTitle="", align="", width=175, frameColor="black", titleTextColor="white", boxFillColor="white", hspace=0, vspace=0) {
-	«Changes:
-		«12/28/2000; 8:24:23 AM by DW
-			«The vspace parameter wasn't being used. I wonder why this was never reported, or was it?
-		«02/26/01; 12:22:10 AM by PBS
-			«If the context is static rendering, then it's necessary to set pta^.method as "GET" -- otherwise the rendering code will generate a scriptError.
+	//Changes:
+		//12/28/2000; 8:24:23 AM by DW
+			//The vspace parameter wasn't being used. I wonder why this was never reported, or was it?
+		//02/26/01; 12:22:10 AM by PBS
+			//If the context is static rendering, then it's necessary to set pta^.method as "GET" -- otherwise the rendering code will generate a scriptError.
 	local (htmltext = "", indentlevel = 0);
 	on add (s) {
 		htmltext = htmltext + string.filledString ("\t", indentlevel) + s + "\r"};

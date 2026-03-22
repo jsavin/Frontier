@@ -1,14 +1,14 @@
 on scanFolder (folder=nil, adrThemes=nil) {
-	«Loop through the themes folder, importing all new and changed themes. This script is called by the Manila thread.
-		«06/06/00; 5:18:41 PM by PBS
-		«Changes:
-			«10/27/00; 3:47:43 AM by JES
-				«Added optional parameters: folder and adrThemes
-					«Support for DG themes
-			«05/16/01; 10:38:50 AM by PBS
-				«Skip invisible files -- especially important on OS X.
-			«11/26/01; 7:55:54 PM by PBS
-				«Skip files that begin with "."
+	//Loop through the themes folder, importing all new and changed themes. This script is called by the Manila thread.
+		//06/06/00; 5:18:41 PM by PBS
+		//Changes:
+			//10/27/00; 3:47:43 AM by JES
+				//Added optional parameters: folder and adrThemes
+					//Support for DG themes
+			//05/16/01; 10:38:50 AM by PBS
+				//Skip invisible files -- especially important on OS X.
+			//11/26/01; 7:55:54 PM by PBS
+				//Skip files that begin with "."
 	
 	if folder == nil {
 		folder = Frontier.getSubFolder ("ops/themes/")};

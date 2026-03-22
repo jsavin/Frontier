@@ -1,9 +1,9 @@
 on cleanReferersTable (adrSite) {
-	«Remove old referers from the referers table.
-		«11/02/00; 2:39:56 PM by PBS
-		«Changes:
-			«11/22/00; 6:12:12 PM by PBS
-				«Sometimes old referers weren't getting cleaned out -- now they all are. There was a missing coercion to date.
+	//Remove old referers from the referers table.
+		//11/02/00; 2:39:56 PM by PBS
+		//Changes:
+			//11/22/00; 6:12:12 PM by PBS
+				//Sometimes old referers weren't getting cleaned out -- now they all are. There was a missing coercion to date.
 	
 	local (adrTable = manilaSuite.stats.getReferersTableAddress (adrSite));
 	local (i);

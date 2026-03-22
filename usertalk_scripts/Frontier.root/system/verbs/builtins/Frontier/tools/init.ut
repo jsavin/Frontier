@@ -1,16 +1,16 @@
-«4/18/01; 1:20:35 AM by JES
-	«Cribbed from playlist.tools from Radio.root.
-«Changes:
-	«11/26/01; 5:55:25 PM by JES
-		«Create callback tables at user.tools.callbacks. Right now, there are four callbacks, beforeInstall, beforeUninstall, afterInstall, and afterUninstall.
-	«9/19/01; 5:41:45 PM by JES
-		«Create an empty table at system.temp.Frontier.tools, for storing temporary information about Tools.
-	«7/1/01; 7:01:01 PM by JES
-		«Added initialization of windowTypes-related items.
-	«6/21/01; 1:20:57 AM by JES
-		«If this is Radio, only check to see if user.menus.tools == @playlist.tools.menu, if playlist.tools.menu is defined.
-	«04/22/01; 8:58:49 PM by JES
-		«Be sure the user.html.callbacks.fileWriters.ftp table exists.
+//4/18/01; 1:20:35 AM by JES
+	//Cribbed from playlist.tools from Radio.root.
+//Changes:
+	//11/26/01; 5:55:25 PM by JES
+		//Create callback tables at user.tools.callbacks. Right now, there are four callbacks, beforeInstall, beforeUninstall, afterInstall, and afterUninstall.
+	//9/19/01; 5:41:45 PM by JES
+		//Create an empty table at system.temp.Frontier.tools, for storing temporary information about Tools.
+	//7/1/01; 7:01:01 PM by JES
+		//Added initialization of windowTypes-related items.
+	//6/21/01; 1:20:57 AM by JES
+		//If this is Radio, only check to see if user.menus.tools == @playlist.tools.menu, if playlist.tools.menu is defined.
+	//04/22/01; 8:58:49 PM by JES
+		//Be sure the user.html.callbacks.fileWriters.ftp table exists.
 
 on installCallback (adrcode, name, replaceIfEqualsString=nil, adrCallbacks=@user.callbacks) {
 	local (adrtable = @adrCallbacks^.[name]);
@@ -57,37 +57,37 @@ bundle { //make sure nodeTypes-related callbacks are installed
 	installCallback (adrcode, "opCollapse", "return (Frontier.tools.opExpandCallback ())");
 	installCallback (adrcode, "opExpand", "return (Frontier.tools.opExpandCallback ())");
 	installCallback (adrcode, "opRightClick", "on tools (adrmenu) {\r\treturn (Frontier.tools.opRightClickCallback (adrmenu))}");
-	«bundle //old code
-		«bundle //opCollapse
-			«local (adrtable = @user.callbacks.opCollapse)
-			«if not defined (adrtable^)
-				«new (tableType, adrtable)
-			«local (adrscript = @adrtable^.tools)
-			«if defined (adrscript^)
-				«if string (adrscript^) == "return (Frontier.tools.opExpandCallback ())"
-					«delete (adrscript)
-			«if not defined (adrscript^)
-				«adrscript^ = @adrcode^.opCollapse
-		«bundle //opExpand
-			«local (adrtable = @user.callbacks.opExpand)
-			«if not defined (adrtable^)
-				«new (tableType, adrtable)
-			«local (adrscript = @adrtable^.tools)
-			«if defined (adrscript^)
-				«if string (adrscript^) == "return (Frontier.tools.opExpandCallback ())"
-					«delete (adrscript)
-			«if not defined (adrscript^)
-				«adrscript^ = @adrcode^.opExpand
-		«bundle //opRightClick
-			«local (adrtable = @user.callbacks.opRightClick)
-			«if not defined (adrtable^)
-				«new (tableType, adrtable)
-			«local (adrscript = @adrtable^.tools)
-			«if defined (adrscript^)
-				«if string (adrscript^) == "on tools (adrmenu) {\r\treturn (Frontier.tools.opRightClickCallback (adrmenu))}"
-					«delete (adrscript)
-			«if not defined (adrscript^)
-				«adrscript^ = @adrcode^.opRightClick};
+	//bundle //old code
+		//bundle //opCollapse
+			//local (adrtable = @user.callbacks.opCollapse)
+			//if not defined (adrtable^)
+				//new (tableType, adrtable)
+			//local (adrscript = @adrtable^.tools)
+			//if defined (adrscript^)
+				//if string (adrscript^) == "return (Frontier.tools.opExpandCallback ())"
+					//delete (adrscript)
+			//if not defined (adrscript^)
+				//adrscript^ = @adrcode^.opCollapse
+		//bundle //opExpand
+			//local (adrtable = @user.callbacks.opExpand)
+			//if not defined (adrtable^)
+				//new (tableType, adrtable)
+			//local (adrscript = @adrtable^.tools)
+			//if defined (adrscript^)
+				//if string (adrscript^) == "return (Frontier.tools.opExpandCallback ())"
+					//delete (adrscript)
+			//if not defined (adrscript^)
+				//adrscript^ = @adrcode^.opExpand
+		//bundle //opRightClick
+			//local (adrtable = @user.callbacks.opRightClick)
+			//if not defined (adrtable^)
+				//new (tableType, adrtable)
+			//local (adrscript = @adrtable^.tools)
+			//if defined (adrscript^)
+				//if string (adrscript^) == "on tools (adrmenu) {\r\treturn (Frontier.tools.opRightClickCallback (adrmenu))}"
+					//delete (adrscript)
+			//if not defined (adrscript^)
+				//adrscript^ = @adrcode^.opRightClick};
 bundle { //make sure the html fileWriters callbacks table exists
 	if not defined (user.html.callbacks) {
 		new (tableType, @user.html.callbacks)};
@@ -101,13 +101,13 @@ bundle { //init user.tools.windowTypes
 bundle { //make sure windowTypes-related callbacks are installed
 	local (adrcode = @Frontier.tools.windowTypes.callbacks);
 	
-	«Builtin callbacks
+	//Builtin callbacks
 	installCallback (adrcode, "closeWindow");
 	installCallback (adrcode, "openWindow");
 	installCallback (adrcode, "saveWindow");
 	
 	
-	«Outline callbacks
+	//Outline callbacks
 	installCallback (adrcode, "opReturnKey");
 	installCallback (adrcode, "opCursorMoved");
 	};

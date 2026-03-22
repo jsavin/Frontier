@@ -1,8 +1,8 @@
 on getRssPrefsAddress () {
-	«Get the address of the #rssInfo table.
-		«It may be in a top-level #rssInfo table or at #newsSite.rssInfo.
-		«If it doesn't exist, create it.
-		«10/27/99; 10:04:23 PM by PBS
+	//Get the address of the #rssInfo table.
+		//It may be in a top-level #rssInfo table or at #newsSite.rssInfo.
+		//If it doesn't exist, create it.
+		//10/27/99; 10:04:23 PM by PBS
 	
 	local (pta = html.getPageTableAddress ());
 	
@@ -14,10 +14,10 @@ on getRssPrefsAddress () {
 	
 	local (adrPrefs = @pta^.newsSite^.rssInfo);
 	
-	«Copy in the default rssInfo table from the new site template.
+	//Copy in the default rssInfo table from the new site template.
 	adrPrefs^ = manilaData.newSiteTemplate.["#newsSite"].rssInfo;
 	
-	«Call the manilaSuite.newSite.createRssInfo script to initialize the table.
+	//Call the manilaSuite.newSite.createRssInfo script to initialize the table.
 	local (siteInfo);
 	new (tableType, @siteInfo);
 	siteInfo.adrSite = pta^.adrSiteRootTable;

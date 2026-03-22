@@ -1,12 +1,12 @@
 on ftpTable (adrTable, flDialog=true, flDisplayInBrowser=false, adrPageTable=nil, template=nil) {
-	«Publish an entire table and its subtables.
-		«When rendering scalable content, call html.ftpTable multiple times,
-		«each time with a different template parameter.
-		«(To use the default template, don't pass a template parameter,
-		«or pass nil.)
-	«Changes
-		«10/4/04; 11:27:20 PM by JES
-			«When calling html.callFileWriterStartup and html.callFileWriterShutdown, pass the value of the template parameter. Change suggested by DAB.
+	//Publish an entire table and its subtables.
+		//When rendering scalable content, call html.ftpTable multiple times,
+		//each time with a different template parameter.
+		//(To use the default template, don't pass a template parameter,
+		//or pass nil.)
+	//Changes
+		//10/4/04; 11:27:20 PM by JES
+			//When calling html.callFileWriterStartup and html.callFileWriterShutdown, pass the value of the template parameter. Change suggested by DAB.
 	
 	local (f = "", url = "", siteTableAdr);
 	local (flDisplay = true, pageTable);
@@ -33,7 +33,7 @@ on ftpTable (adrTable, flDialog=true, flDisplayInBrowser=false, adrPageTable=nil
 					s = html.buildObject (adr, adrPageTable, template);
 					
 					if flDisplayInBrowser {
-						«If this is the default page for this site, save the path.
+						//If this is the default page for this site, save the path.
 						local (default = html.getPref ("defaultFileName", adrPageTable));
 						
 						if string.lower (nameOf (adr^)) == string.lower (default) {
@@ -53,7 +53,7 @@ on ftpTable (adrTable, flDialog=true, flDisplayInBrowser=false, adrPageTable=nil
 	
 	window.msg ("");
 	
-	«Display in browser.
+	//Display in browser.
 	if flDisplayInBrowser {
 		siteTableAdr = html.getSiteTable (adrPageTable);
 		
@@ -69,7 +69,7 @@ on ftpTable (adrTable, flDialog=true, flDisplayInBrowser=false, adrPageTable=nil
 		if user.webBrowser.bringToFrontOnPreview {
 			webBrowser.bringToFront ()}};
 	
-	«Show a dialog.
+	//Show a dialog.
 	if flDialog {
 		speaker.beep (); //4.2.1
 		dialog.notify ("The \"" + nameOf (adrTable^) + "\" table has been published.")}; //4.2.1

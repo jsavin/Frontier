@@ -1,5 +1,5 @@
 on fileFromPath (path) {
-	«path is a string representing a Unix-style pathname
+	//path is a string representing a Unix-style pathname
 	if (path == "") or (path == nil) {
 		return ("")}
 	else {
@@ -9,5 +9,5 @@ on fileFromPath (path) {
 		for i = sizeOf (path) downto 1 {
 			if path [i] == '/' {
 				return string.mid (path, i + 1, infinity)}};
-		«No slash in string.
+		//No slash in string.
 		return (path)}}

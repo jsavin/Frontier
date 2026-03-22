@@ -1,7 +1,7 @@
 on iqAuth ( connection = @system.temp.jabber.connection ) {
-	«Changes
-		«5/14/02; 1:51:34 PM by JB
-			«Changelog created.
+	//Changes
+		//5/14/02; 1:51:34 PM by JB
+			//Changelog created.
 	on addAtt ( XMLadr, name, value ) {
 		if not defined ( XMLadr^.["/atts"] ) {
 			new ( tableType, @XMLadr^.["/atts"] )};

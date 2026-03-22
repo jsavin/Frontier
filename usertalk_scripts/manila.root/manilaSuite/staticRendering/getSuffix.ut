@@ -1,17 +1,17 @@
 on getSuffix () {
-	«Changes
-		«8/11/04; 2:42:27 AM by JES
-			«Respect the defaultFileName website framework directive.
-		«03/13/00; 10:21:27 PM by PBS
-			«Get the static rendering suffix.
+	//Changes
+		//8/11/04; 2:42:27 AM by JES
+			//Respect the defaultFileName website framework directive.
+		//03/13/00; 10:21:27 PM by PBS
+			//Get the static rendering suffix.
 	
 	local (pta = html.getPageTableAddress ());
 	
 	if defined (pta^.fileExtension) {
 		return (pta^.fileExtension)};
 	
-	«if defined (pta^.adrStaticSite^.["#prefs"].defaultFilename)
-		«return (pta^.adrStaticSite^.["#prefs"].defaultFilename)
+	//if defined (pta^.adrStaticSite^.["#prefs"].defaultFilename)
+		//return (pta^.adrStaticSite^.["#prefs"].defaultFilename)
 	local (default = config.manila.prefs.staticRenderingDefaultFilename);
 	if defined (pta^.adrStaticSite^.["#prefs"].defaultFilename) { //added 00/12/31, 17:16:00 by DAB
 		default = pta^.adrStaticSite^.["#prefs"].defaultFilename};

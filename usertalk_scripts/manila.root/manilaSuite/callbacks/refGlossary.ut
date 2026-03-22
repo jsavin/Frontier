@@ -1,9 +1,9 @@
 on refGlossary (s) {
-	«Changes
-		«3/22/06; 3:07:29 AM by JES
-			«Fix a bug in the way we were handling gem glossary entries from sub- and parent-sites, which caused them not to get expanded properly.
-		«3/22/06; 1:30:32 AM by JES
-			«Created. Entry point for Manila's glossary (shortcut) processor.
+	//Changes
+		//3/22/06; 3:07:29 AM by JES
+			//Fix a bug in the way we were handling gem glossary entries from sub- and parent-sites, which caused them not to get expanded properly.
+		//3/22/06; 1:30:32 AM by JES
+			//Created. Entry point for Manila's glossary (shortcut) processor.
 	local (pta = html.getPageTableAddress ());
 	if manilaSuite.isManilaSite (pta^.adrSiteRootTable) {
 		if config.manila.prefs.flShortcutLookupInSubSites or config.manila.prefs.flShortcutLookupInParentSites {

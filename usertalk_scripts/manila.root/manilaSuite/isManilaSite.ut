@@ -1,12 +1,12 @@
 on isManilaSite (adrSite) {
-	«Is a site a Manila site?
-		«This script can be called from outside the rendering context.
-		«10/19/99; 5:01:56 PM by PBS
+	//Is a site a Manila site?
+		//This script can be called from outside the rendering context.
+		//10/19/99; 5:01:56 PM by PBS
 	
 	if not defined (adrSite^.["#newsSite"].discussLinks) { //distinctive feature
 		if not defined (adrSite^.["#newsSite"].storiesListedIn) { //another distinctive feature
 			return (false)}};
 	
-	«It's a Manila site.
+	//It's a Manila site.
 	
 	return (true)}

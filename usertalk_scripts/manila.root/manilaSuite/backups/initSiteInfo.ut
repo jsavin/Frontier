@@ -1,7 +1,7 @@
 on initSiteInfo (adrsite, flEnabled = false) {
-	«Changes
-		«6/26/02; 8:30:39 PM by JES
-			«Created.
+	//Changes
+		//6/26/02; 8:30:39 PM by JES
+			//Created.
 	local (sitename = manilaSuite.getCanonicalSiteName (adrsite));
 	local (adrconfig = @config.manila.backups.sites.[sitename]);
 	if not defined (adrconfig^) {

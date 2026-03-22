@@ -1,5 +1,5 @@
 on copy (sourcepath, destpath) {
-	on filter (fname) { «trivial filter
-		«msg ("Copying " + file.fileFromPath (fname) + ".")
+	on filter (fname) { //trivial filter
+		//msg ("Copying " + file.fileFromPath (fname) + ".")
 		return (true)};
 	return (file.filteredCopy (sourcepath, destpath, @filter))}

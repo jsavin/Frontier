@@ -1,2 +1,2 @@
-on undo () { «undo the last operation
+on undo () { //undo the last operation
 	return (appleEvent (AnArchie.id, 'core', 'undo'))}

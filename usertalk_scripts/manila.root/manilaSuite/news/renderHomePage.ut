@@ -1,9 +1,9 @@
 on renderHomePage (pta=nil, flUseNewsDayTemplate=false) {
-	«Wrapper script for rendering the home page.
-		«04/24/00; 3:31:09 PM by PBS
-		«Changes:
-			«05/02/00; 5:02:00 PM by PBS
-				«Support for the news day template.
+	//Wrapper script for rendering the home page.
+		//04/24/00; 3:31:09 PM by PBS
+		//Changes:
+			//05/02/00; 5:02:00 PM by PBS
+				//Support for the news day template.
 	
 	if pta == nil {
 		pta = html.getPageTableAddress ()};

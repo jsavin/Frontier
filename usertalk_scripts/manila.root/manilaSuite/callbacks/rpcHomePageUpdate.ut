@@ -1,10 +1,10 @@
 on rpcHomePageUpdate (adrMsg, adrSite, siteName, newText, username, password) {
-	«Changes
-		«6/3/05; 5:27:52 PM by JES
-			«Bug fix: If adrMsg^ was not a news item, manilaSuite.callbacks.homePageUpdate was called with flNewsItem as false, which caused it to return immediately. This in essence meant that the home page update callbacks were never executed for news items posted to the home page via Manila's RPC interfaces.
-			«Now we send flNewsItem to manilaSuite.callbacks.homePageUpdate: true if adrMsg^ is a news item, and false if not.
-		«04/05/00; 12:43:52 PM by PBS
-			«Created. Call the homePageUpdate callbacks from an RPC handler.
+	//Changes
+		//6/3/05; 5:27:52 PM by JES
+			//Bug fix: If adrMsg^ was not a news item, manilaSuite.callbacks.homePageUpdate was called with flNewsItem as false, which caused it to return immediately. This in essence meant that the home page update callbacks were never executed for news items posted to the home page via Manila's RPC interfaces.
+			//Now we send flNewsItem to manilaSuite.callbacks.homePageUpdate: true if adrMsg^ is a news item, and false if not.
+		//04/05/00; 12:43:52 PM by PBS
+			//Created. Call the homePageUpdate callbacks from an RPC handler.
 	
 	local (adrMember);
 	bundle { //get the address of this member

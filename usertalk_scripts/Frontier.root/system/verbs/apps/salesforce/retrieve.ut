@@ -1,8 +1,8 @@
 on retrieve (adrSession, objectType, objectId, fields={}) {
-	«Changes
-		«4/20/06; 4:56:10 AM by JES
-			«Created. Retrieve the specified fields for a given object.
-				«fields can be a list of field names (list of strings), or a comma-separated string containing field names.
+	//Changes
+		//4/20/06; 4:56:10 AM by JES
+			//Created. Retrieve the specified fields for a given object.
+				//fields can be a list of field names (list of strings), or a comma-separated string containing field names.
 	local (fieldList = "");
 	if typeOf (fields) == listType {
 		local (i, ct = sizeOf (fields));
@@ -14,20 +14,20 @@ on retrieve (adrSession, objectType, objectId, fields={}) {
 	else {
 		fieldList = fields};
 	return (salesforce.callApi (adrSession, nameOf (this^), {"fieldList":fieldList, "sObjectType":objectType, "ids":objectId}))};
-«bundle //testing
-	«local (adrses)
-	«bundle //set adrses
-		«if defined (temp.salesforce.sessions) and sizeOf (temp.salesforce.sessions)
-			«local (sesnum = sizeOf (temp.salesforce.sessions))
-			«adrses = @temp.salesforce.sessions[sesnum]
-		«else //log in
-			«salesforce.login (workspace.salesforcecomUsername, workspace.salesforcecomPassword, @adrses)
-	«workspace.retval = this^ (adrses, "Account", "0013000000D0Hl4AAF", \
-		«{"Id", "Name", "BillingStreet", "BillingCity", "BillingState", "BillingPostalCode", "Phone"})
-	«workspace.retval = this^ (adrses, "Account", "0013000000D0Hl4AAF", \
-		«"Id, Name, BillingStreet, BillingCity, BillingState, BillingPostalCode, Phone")
-	«workspace.retval = this^ (adrses, "Account", "0013000000D0Hl4AAF", "Phone")
-	«workspace.retval = this^ (adrses, "Account", "0013000000D0Hl4AAF", "Id")
-	«workspace.retval = this^ (adrses, "Account", "0013000000D0Hl4AAF", "doesntExist")
-	«workspace.retval = this^ (adrses, "Account", "doesntExist", "Id")
-	«edit (@workspace.retval); op.fullExpand (); window.zoom (@workspace.retval)
+//bundle //testing
+	//local (adrses)
+	//bundle //set adrses
+		//if defined (temp.salesforce.sessions) and sizeOf (temp.salesforce.sessions)
+			//local (sesnum = sizeOf (temp.salesforce.sessions))
+			//adrses = @temp.salesforce.sessions[sesnum]
+		//else //log in
+			//salesforce.login (workspace.salesforcecomUsername, workspace.salesforcecomPassword, @adrses)
+	//workspace.retval = this^ (adrses, "Account", "0013000000D0Hl4AAF", \
+		//{"Id", "Name", "BillingStreet", "BillingCity", "BillingState", "BillingPostalCode", "Phone"})
+	//workspace.retval = this^ (adrses, "Account", "0013000000D0Hl4AAF", \
+		//"Id, Name, BillingStreet, BillingCity, BillingState, BillingPostalCode, Phone")
+	//workspace.retval = this^ (adrses, "Account", "0013000000D0Hl4AAF", "Phone")
+	//workspace.retval = this^ (adrses, "Account", "0013000000D0Hl4AAF", "Id")
+	//workspace.retval = this^ (adrses, "Account", "0013000000D0Hl4AAF", "doesntExist")
+	//workspace.retval = this^ (adrses, "Account", "doesntExist", "Id")
+	//edit (@workspace.retval); op.fullExpand (); window.zoom (@workspace.retval)

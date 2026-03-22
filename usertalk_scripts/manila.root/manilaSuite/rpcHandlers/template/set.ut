@@ -1,12 +1,12 @@
 on set (username, password, siteName, s, windowInfoTable) {
-	«Set the template text to s.
-		«Changes:
-			«02/06/00; 9:11:54 PM by PBS
-				«Save the window info table.
-			«02/22/01; 12:06:02 AM by JES
-				«Convert outgoing text from Mac to Latin, if the server is a Mac.
-			«12/10/01; 6:03:42 PM by PBS
-				«Toss the home page cache.
+	//Set the template text to s.
+		//Changes:
+			//02/06/00; 9:11:54 PM by PBS
+				//Save the window info table.
+			//02/22/01; 12:06:02 AM by JES
+				//Convert outgoing text from Mac to Latin, if the server is a Mac.
+			//12/10/01; 6:03:42 PM by PBS
+				//Toss the home page cache.
 	
 	bundle { //make sure this person is a managing editor of the site.
 		local (beginningErrorString = "Can't set the template because ");

@@ -10,7 +10,7 @@ on addLegend (legendName) {
 				return (true)};
 			return (false)};
 		
-		«Check the cases where the log is empty.
+		//Check the cases where the log is empty.
 		case string.lower (legendName) {
 			"http" {
 				if not (user.betty.prefs.flKeepServerLog) {
@@ -33,7 +33,7 @@ on addLegend (legendName) {
 				if logIsEmpty ("Search Engine Indexer") {
 					return ("")}}}};
 	
-	«add ("<br><hr noshade size=\"1\"><br>\r")
+	//add ("<br><hr noshade size=\"1\"><br>\r")
 	add ("<p>");
 	add ("<b>What each of these columns mean:</b><p>\r");
 	

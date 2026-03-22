@@ -1,9 +1,9 @@
 on renderHierarchyPage () {
-	«Publish one site structure page.
-		«03/03/00; 10:48:19 PM by PBS
-		«Changes:
-			«05/31/00; 3:46:16 PM by PBS
-				«Bring the manilaMacros table in to scope when building a page.
+	//Publish one site structure page.
+		//03/03/00; 10:48:19 PM by PBS
+		//Changes:
+			//05/31/00; 3:46:16 PM by PBS
+				//Bring the manilaMacros table in to scope when building a page.
 	
 	local (pta = html.getPageTableAddress ());
 	

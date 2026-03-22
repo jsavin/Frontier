@@ -1,14 +1,14 @@
 on simplePage (msgNum, flProcessMacros=false, flAutoParagraphs=false, flExpandUrls=false, pta=nil) {
-	«A simple way to display a page with Edit this Page buttons.
-		«If called from within a wp-text or outline, set flProcessMacros, flAutoParagraphs, and flExpandUrls to true.
-			«If called from a page that's a script, leave the optional parameters as is.
-		«Changes:
-			«7/2/05; 3:02:12 AM by JES
-				«Only include "cow skull" link if not doing a content-only page.
-			«9/28/01; 2:40:33 PM by PBS
-				«Support for print-friendly template.
-			«05/01/00; 5:22:15 PM by PBS
-				«Supplies mainResponder.discuss.readMessage's adrGetBodyCallback -- key to supporting news items, which over-ride normal formatting, since they're stored as XML text.
+	//A simple way to display a page with Edit this Page buttons.
+		//If called from within a wp-text or outline, set flProcessMacros, flAutoParagraphs, and flExpandUrls to true.
+			//If called from a page that's a script, leave the optional parameters as is.
+		//Changes:
+			//7/2/05; 3:02:12 AM by JES
+				//Only include "cow skull" link if not doing a content-only page.
+			//9/28/01; 2:40:33 PM by PBS
+				//Support for print-friendly template.
+			//05/01/00; 5:22:15 PM by PBS
+				//Supplies mainResponder.discuss.readMessage's adrGetBodyCallback -- key to supporting news items, which over-ride normal formatting, since they're stored as XML text.
 	
 	if pta == nil {
 		pta = html.getPageTableAddress ()};

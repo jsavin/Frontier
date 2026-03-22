@@ -1,5 +1,5 @@
 on commandBar (discussRoot, bgcolor="#CCCCCC") {
-	«local (pta = html.getPageTableAddress ())
+	//local (pta = html.getPageTableAddress ())
 	
 	local (authinfo = mainResponder.editorial.getClientUsernamePassword (discussRoot));
 	local (htmlText = "", indentLevel = 0);

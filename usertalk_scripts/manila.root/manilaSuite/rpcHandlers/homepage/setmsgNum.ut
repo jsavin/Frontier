@@ -1,10 +1,10 @@
 on setMsgNum (username, password, siteName, msgNum) {
-	«Set the msgNum of the current home page.
-		«Changes:
-			«06/22/00; 8:13:05 PM by JES
-				«bug fix - the script was defined as set, not setMsgNum
-			«12/10/01; 6:05:57 PM by PBS
-				«Toss the home page cache.
+	//Set the msgNum of the current home page.
+		//Changes:
+			//06/22/00; 8:13:05 PM by JES
+				//bug fix - the script was defined as set, not setMsgNum
+			//12/10/01; 6:05:57 PM by PBS
+				//Toss the home page cache.
 	
 	bundle { //make sure this person is a managing editor of the site.
 		local (beginningErrorString = "Can't set the msgNum of the home page because ");
@@ -17,13 +17,13 @@ on setMsgNum (username, password, siteName, msgNum) {
 	local (homepagesCategory = manilaSuite.discuss.getHomepagesCategory (adrSite));
 	local (discussname = manilaSuite.rpcUtils.getDiscussGroupName (siteName));
 	
-	«make it the homepage
+	//make it the homepage
 	adrNewsSite^.discussLinks.homePagemsgNum = number (msgNum);
 	
-	«make it belong to the homepage category
+	//make it belong to the homepage category
 	manilaSuite.discuss.addCategoryToMessage (adrmsg, homepagesCategory, adrSite); //PBS 10/09/00: pass adrSite param -- update indexes
 	
-	«add it to the hompepage calendar
+	//add it to the hompepage calendar
 	local (adrDay = mainResponder.calendar.getDayAddress (adrSite, date (adrmsg^.postTime), flCreate:true));
 	new (tableType, adrDay);
 	adrDay^.discussionRoot = string (discussname);

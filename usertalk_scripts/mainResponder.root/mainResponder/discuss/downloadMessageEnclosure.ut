@@ -1,13 +1,13 @@
 on downloadMessageEnclosure (msgnum) {
-	«Changes:
-		«03/15/00; 5:35:47 PM by PBS
-			«If the fatPages icon doesn't exist in the website, use the version that's stored in mainResponder.resources.
-			«This policy prevents breakage -- in case someone has put a custom fatPages icon in their website.
-			«Another change: delete application/x-frontier- from the type string only if the type string begins with application/x-frontier-.
-		«04/10/00; 3:29:18 PM by JES
-			«Localized string constants using mainResponder.getString
-		«05/01/00; 2:25:04 PM by JES
-			«call getString with a replacement table address, not a list
+	//Changes:
+		//03/15/00; 5:35:47 PM by PBS
+			//If the fatPages icon doesn't exist in the website, use the version that's stored in mainResponder.resources.
+			//This policy prevents breakage -- in case someone has put a custom fatPages icon in their website.
+			//Another change: delete application/x-frontier- from the type string only if the type string begins with application/x-frontier-.
+		//04/10/00; 3:29:18 PM by JES
+			//Localized string constants using mainResponder.getString
+		//05/01/00; 2:25:04 PM by JES
+			//call getString with a replacement table address, not a list
 	
 	local (htmltext = "", indentlevel = 0);
 	on add (s) {
@@ -23,7 +23,7 @@ on downloadMessageEnclosure (msgnum) {
 	local (adrmsg = mainresponder.discuss.getmessagetable (msgnum));
 	local (typestring = adrMsg^.enclosureType);
 	bundle { //set typestring
-		«PBS 03/15/00: delete application/x-frontier- from the type string only if it's actually present.
+		//PBS 03/15/00: delete application/x-frontier- from the type string only if it's actually present.
 		local (prefix = "application/x-frontier-");
 		temp.ts = typestring;
 		if typeString beginsWith prefix {

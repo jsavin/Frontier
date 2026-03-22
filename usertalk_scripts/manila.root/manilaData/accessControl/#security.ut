@@ -18,7 +18,7 @@ bundle { // set adrMemberInfo if the user is logged in
 					cookie = string.urlDecode (cookie);
 					local (password = string.nthField (cookie, '\t', 2));
 					pt.adrMemberInfo = mainResponder.members.getMemberTableWithPassword (groupName, memberKey, password)}}}}};
-«adrGroup = responderAttributes.membershipgroup
+//adrGroup = responderAttributes.membershipgroup
 if not manilaSuite.accessControl.checkMemberCohorts(@pt, [[cohorts]], adrGroup) {
 	code = 401; //unauthorized 
 	responseBody = webserver.util.buildErrorPage ("401 UNAUTHORIZED", "Access to this URI is restricted.");

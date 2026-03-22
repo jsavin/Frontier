@@ -1,9 +1,9 @@
 on init (adrsite) {
-	«Changes
-		«7/21/03; 4:16:31 PM by JES
-			«Only install the trackback sub-table of the site's newsItems table if the site has a newsItems table.
-		«4/24/03; 7:20:18 AM by DW
-			«Created.
+	//Changes
+		//7/21/03; 4:16:31 PM by JES
+			//Only install the trackback sub-table of the site's newsItems table if the site has a newsItems table.
+		//4/24/03; 7:20:18 AM by DW
+			//Created.
 	if defined (adrsite^.newsItems) {
 		if not defined (adrsite^.newsItems.trackback) {
 			adrsite^.newsItems.trackback = manilaData.newSiteTemplate.newsItems.trackback}};
@@ -27,5 +27,5 @@ on init (adrsite) {
 	if not defined (adrtrackback^.colors.bgcolor2) {
 		adrtrackback^.colors.bgcolor2 = "#CCCCCC"};
 	return (adrtrackback)};
-«bundle //test code
-	«init (@tbtestManilaWebsite)
+//bundle //test code
+	//init (@tbtestManilaWebsite)

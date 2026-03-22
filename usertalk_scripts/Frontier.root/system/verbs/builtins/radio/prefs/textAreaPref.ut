@@ -1,21 +1,21 @@
 on textAreaPref (prompt, adrstring, cols=70, rows=5, colspan=1, flXml=false) {
-	«Changes
-		«12/30/09; 2:54:05 AM by JES
-			«If not running in Radio, prevent the website framework from hotting up URLs.
-		«5/23/05; 10:34:17 PM by JES
-			«New optional parameter, flXml. If true, we validate the XML before storing it, in case the user made an error.
-		«8/3/02; 8:43:10 PM by JES
-			«Quote characters in addresses were mangling the HTML, so now addresses are url-encoded when generating the form element. When processing a POST, we look for the url-encoded field in the postArgs table.
-		«2/17/02; 5:00:41 PM by DW
-			«Get postargs from different place in Frontier.
-		«2/17/02; 4:49:50 PM by DW
-			«Call html.translateToEntities instead of radio.html.translateToEntities.
-		«1/28/02; 6:31:49 PM by JES
-			«If this is MacOS, convert POSTed strings to Mac text, before storing the value.
-		«1/7/02; 6:07:54 PM by JES
-			«Call radio.html.translateToEntities instead of doing string replacements here. Also, replace carriage returns with &#013;. These changes together make it so that textarea prefs will round-trip properly.
-		«11/21/01; 8:36:33 PM by JES
-			«If adrstring points at a wpText, convert it to a string.
+	//Changes
+		//12/30/09; 2:54:05 AM by JES
+			//If not running in Radio, prevent the website framework from hotting up URLs.
+		//5/23/05; 10:34:17 PM by JES
+			//New optional parameter, flXml. If true, we validate the XML before storing it, in case the user made an error.
+		//8/3/02; 8:43:10 PM by JES
+			//Quote characters in addresses were mangling the HTML, so now addresses are url-encoded when generating the form element. When processing a POST, we look for the url-encoded field in the postArgs table.
+		//2/17/02; 5:00:41 PM by DW
+			//Get postargs from different place in Frontier.
+		//2/17/02; 4:49:50 PM by DW
+			//Call html.translateToEntities instead of radio.html.translateToEntities.
+		//1/28/02; 6:31:49 PM by JES
+			//If this is MacOS, convert POSTed strings to Mac text, before storing the value.
+		//1/7/02; 6:07:54 PM by JES
+			//Call radio.html.translateToEntities instead of doing string replacements here. Also, replace carriage returns with &#013;. These changes together make it so that textarea prefs will round-trip properly.
+		//11/21/01; 8:36:33 PM by JES
+			//If adrstring points at a wpText, convert it to a string.
 	on demunge (s) {
 		if typeOf (s) != stringType {
 			table.assign (@s, string (s))};

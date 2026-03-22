@@ -1,10 +1,10 @@
 on set (username, password, siteName, s, windowInfoTable) {
-	«Set the text of the JavaScript.
-		«Changes:
-			«02/06/00; 9:08:04 PM by PBS
-				«Save the window info table.
-			«02/22/01; 12:06:02 AM by JES
-				«Convert outgoing text from Mac to Latin, if the server is a Mac.
+	//Set the text of the JavaScript.
+		//Changes:
+			//02/06/00; 9:08:04 PM by PBS
+				//Save the window info table.
+			//02/22/01; 12:06:02 AM by JES
+				//Convert outgoing text from Mac to Latin, if the server is a Mac.
 	
 	bundle { //make sure this person is a managing editor of the site.
 		local (beginningErrorString = "Can't set the JavaScript because ");

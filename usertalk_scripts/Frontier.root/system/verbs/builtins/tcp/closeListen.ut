@@ -1,2 +1,2 @@
-on closeListen (listenID) { «Close a listener
+on closeListen (listenID) { //Close a listener
 	kernel (tcp.closeListen)}

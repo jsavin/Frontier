@@ -1,52 +1,52 @@
 on editorialLinks (pta=nil) {
-	«Build the editorial links for contributing, content, and managing editors.
-		«Changes:
-			«6/10/07; 12:38:47 PM by LL
-				«Support a new server level preference to override the help link URL.
-			«2/22/07; 1:30:19 AM by JS
-				«Add a space after each link. Some mobile browsers run the links together all on one line without this, even on very narrow layouts.
-			«2005
-				«10/19/05; 6:18:08 PM by JES
-					«Fix typo: adrcallback, not adrcallbak.
-				«10/17/05; 12:42:32 AM by JES
-					«Bug fix: If canonical site name is "manilaWebsite", don't strip from the site name when adding admin page link.
-				«10/17/05; 12:22:01 AM by JES
-					«Restore generating help link from pta^.urls^.editorialHelp. Help URL is now set in firstFilter, based on site shell version and presence of manilaData.constants.helpUrlDefault. Link is only changed if its value is present in manilaData.legacyObjects.helpUrls.
-				«10/3/05; 2:35:40 PM by JES
-					«If logged in as a server admin, change Editors Only to Admins Only, and make it a link to the admin page for the current site.
-				«10/1/05; 4:07:42 PM by JES
-					«If logged in as a server admin, italicize the Editors Only menu prompt to give a hint to the user.
-				«4/4/05; 2:04:32 AM by JES
-					«Added support for callbacks at config.manila.callbacks.editorialLinks. Callbacks return some HTML text for the editorial links to override the default. Return false to allow Manila to do its thing.
-			«2004 and earlier
-				«12/2/04; 2:03:58 PM by JES
-					«Plug-ins can override the default link text by defining a string named editorsOnlyLinkText in their config table.
-				«10/22/04; 10:11:18 AM by EDS
-					«added base url to plugin url when adding for non ME editors, incorporating DAB patch
-				«6/1/03; 11:40:22 AM by JES
-					«Change Help link to the new Manila User's Guide. When adding the current page in the Manila site to the searchArgs for the help link, url-encode the path to the current page.
-				«6/30/02; 3:18:22 PM by JES
-					«Added CSS class, editorialLink, to the <a href> elements.
-				«1/25/02; 6:05:42 PM by PBS
-					«Performance enhancement in the local "add" routine -- add a trailing semicolon; use parentheses to get the expression in x = x + y form (which is optimized by the kernel).
-				«12/3/01; 5:19:40 PM by PBS
-					«Allow Content Editors to edit navigation XML.
-				«05/08/00; 7:00:03 PM by JES
-					«Fix broken link for localized prefs
-				«05/08/00; 12:51:07 AM by JES
-					«localized the DHTML menu -- localizers copy the object at manilaData.dhtmlEditorialMenu, and translate the text to their liking
-				«05/01/00; 5:29:44 PM by PBS
-					«Add the News link if news items are enabled.
-				«04/27/00; 12:28:49 PM by JES
-					«added IE5 support for DHTML menu
-				«04/21/00; 1:14:12 AM by JES
-					«localized, with the exception of the plugin interface
-				«04/16/00; 11:34:45 AM by PBS
-					«Add the Gems link, if gems are enabled for this site.
-				«02/23/00; 4:08:47 PM by PBS
-					«Support for Manila plug-ins -- plug-ins can show up in the Editors only menu.
-				«12/9/99; 10:57:35 PM by PBS
-					«Minor performance boost gained by untainting the text at the end rather than for each URL individually.
+	//Build the editorial links for contributing, content, and managing editors.
+		//Changes:
+			//6/10/07; 12:38:47 PM by LL
+				//Support a new server level preference to override the help link URL.
+			//2/22/07; 1:30:19 AM by JS
+				//Add a space after each link. Some mobile browsers run the links together all on one line without this, even on very narrow layouts.
+			//2005
+				//10/19/05; 6:18:08 PM by JES
+					//Fix typo: adrcallback, not adrcallbak.
+				//10/17/05; 12:42:32 AM by JES
+					//Bug fix: If canonical site name is "manilaWebsite", don't strip from the site name when adding admin page link.
+				//10/17/05; 12:22:01 AM by JES
+					//Restore generating help link from pta^.urls^.editorialHelp. Help URL is now set in firstFilter, based on site shell version and presence of manilaData.constants.helpUrlDefault. Link is only changed if its value is present in manilaData.legacyObjects.helpUrls.
+				//10/3/05; 2:35:40 PM by JES
+					//If logged in as a server admin, change Editors Only to Admins Only, and make it a link to the admin page for the current site.
+				//10/1/05; 4:07:42 PM by JES
+					//If logged in as a server admin, italicize the Editors Only menu prompt to give a hint to the user.
+				//4/4/05; 2:04:32 AM by JES
+					//Added support for callbacks at config.manila.callbacks.editorialLinks. Callbacks return some HTML text for the editorial links to override the default. Return false to allow Manila to do its thing.
+			//2004 and earlier
+				//12/2/04; 2:03:58 PM by JES
+					//Plug-ins can override the default link text by defining a string named editorsOnlyLinkText in their config table.
+				//10/22/04; 10:11:18 AM by EDS
+					//added base url to plugin url when adding for non ME editors, incorporating DAB patch
+				//6/1/03; 11:40:22 AM by JES
+					//Change Help link to the new Manila User's Guide. When adding the current page in the Manila site to the searchArgs for the help link, url-encode the path to the current page.
+				//6/30/02; 3:18:22 PM by JES
+					//Added CSS class, editorialLink, to the <a href> elements.
+				//1/25/02; 6:05:42 PM by PBS
+					//Performance enhancement in the local "add" routine -- add a trailing semicolon; use parentheses to get the expression in x = x + y form (which is optimized by the kernel).
+				//12/3/01; 5:19:40 PM by PBS
+					//Allow Content Editors to edit navigation XML.
+				//05/08/00; 7:00:03 PM by JES
+					//Fix broken link for localized prefs
+				//05/08/00; 12:51:07 AM by JES
+					//localized the DHTML menu -- localizers copy the object at manilaData.dhtmlEditorialMenu, and translate the text to their liking
+				//05/01/00; 5:29:44 PM by PBS
+					//Add the News link if news items are enabled.
+				//04/27/00; 12:28:49 PM by JES
+					//added IE5 support for DHTML menu
+				//04/21/00; 1:14:12 AM by JES
+					//localized, with the exception of the plugin interface
+				//04/16/00; 11:34:45 AM by PBS
+					//Add the Gems link, if gems are enabled for this site.
+				//02/23/00; 4:08:47 PM by PBS
+					//Support for Manila plug-ins -- plug-ins can show up in the Editors only menu.
+				//12/9/99; 10:57:35 PM by PBS
+					//Minor performance boost gained by untainting the text at the end rather than for each URL individually.
 	
 	if not defined (config.manila.callbacks.editorialLinks) {
 		new (tableType, @config.manila.callbacks.editorialLinks)};
@@ -65,7 +65,7 @@ on editorialLinks (pta=nil) {
 	if pta^.flEditor { //build the Editors Only links
 		local (htmlText = "");
 		
-		«local (flManagingEditor = manilaSuite.editors.managingEditorTest (pta))
+		//local (flManagingEditor = manilaSuite.editors.managingEditorTest (pta))
 		local (flManagingEditor = pta^.flManagingEditor);
 		local (flContentEditor = pta^.flContentEditor);
 		

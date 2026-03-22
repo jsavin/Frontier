@@ -1,9 +1,9 @@
 on checkIn (adrSitePrefs) {
-	«Release custody of the editorial outline.
-		«11/14/00; 2:57:15 AM by JES
-	«Changes
-		«9/6/01; 7:57:02 PM by JES
-			«Changed params from a list to a record of named parameters, for SOAP compatibility.
+	//Release custody of the editorial outline.
+		//11/14/00; 2:57:15 AM by JES
+	//Changes
+		//9/6/01; 7:57:02 PM by JES
+			//Changed params from a list to a record of named parameters, for SOAP compatibility.
 	
 	local (methodName = "manila.editorialOutline.checkIn");
 	with adrSitePrefs^ {

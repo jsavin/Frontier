@@ -1,2 +1,2 @@
-on select (obj) { «Select the specified object
+on select (obj) { //Select the specified object
 	return (appleEvent (BBEdit.id, 'misc', 'slct', '----', objspec (obj)))}

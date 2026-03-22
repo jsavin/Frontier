@@ -1,9 +1,9 @@
-«9/29/99; 3:33:48 AM by DW
-	«Loops over all open windows in Frontier and hides the databases and closes all other windows. 
-	«It leaves the About window open. If you prefer to have the About window closed to, change the value of the boolean.
+//9/29/99; 3:33:48 AM by DW
+	//Loops over all open windows in Frontier and hides the databases and closes all other windows. 
+	//It leaves the About window open. If you prefer to have the About window closed to, change the value of the boolean.
 local (flCloseAboutWindow = false);
 local (nomad = window.frontmost ());
-while (nomad != "") { «loop until window is nil
+while (nomad != "") { //loop until window is nil
 	local (nextnomad = window.next (nomad)); //get now in case window is closed
 	if nomad == "About Frontier" {
 		if flCloseAboutWindow {

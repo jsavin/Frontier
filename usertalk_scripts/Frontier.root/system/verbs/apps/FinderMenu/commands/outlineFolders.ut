@@ -1,18 +1,18 @@
-«select a set of folders in the Finder, then run this command
-	«we create an outline of all the folders you selected
-	«note -- we use the new FinderMenu.getSelectionList verb in 2.1
-	«also -- check for Runtime, there's no outliner in Frontier Runtime
+//select a set of folders in the Finder, then run this command
+	//we create an outline of all the folders you selected
+	//note -- we use the new FinderMenu.getSelectionList verb in 2.1
+	//also -- check for Runtime, there's no outliner in Frontier Runtime
 
 if Frontier.isRuntime () {
 	scriptError ("This script uses features that are not available in Frontier Runtime.")};
 
 local (adrOutline = @scratchpad.finderOutline);
 Frontier.bringToFront ();
-new (outlineType, adrOutline); «create a new outline, overwrites any existing outline
-target.set (adrOutline); «all subsequent commands apply to this window
-editMenu.setFont ("Geneva"); «the outline is displayed in Geneva 9-point
+new (outlineType, adrOutline); //create a new outline, overwrites any existing outline
+target.set (adrOutline); //all subsequent commands apply to this window
+editMenu.setFont ("Geneva"); //the outline is displayed in Geneva 9-point
 editMenu.setFontSize (9);
-edit (adrOutline); «open the outline in a window so you can watch the script run
+edit (adrOutline); //open the outline in a window so you can watch the script run
 local (firstFolder = true);
 
 local (f);
@@ -23,10 +23,10 @@ for f in FinderMenu.getSelectionList () {
 		fileloop (f in path) {
 			op.insert (file.fileFromPath (f), dir);
 			dir = down;
-			if file.isFolder (f) { «dive into the folder
+			if file.isFolder (f) { //dive into the folder
 				dir = right;
-				traverse (f); «recurse
-				if dir != right { «at least one item added from the folder
+				traverse (f); //recurse
+				if dir != right { //at least one item added from the folder
 					op.go (left, 1)};
 				dir = down};
 			rollBeachBall ()}};
@@ -37,8 +37,8 @@ for f in FinderMenu.getSelectionList () {
 	else {
 		op.insert (f, down)};
 	
-	local (dir = right); «first headline inserted to the right of summit
+	local (dir = right); //first headline inserted to the right of summit
 	traverse (f);
-	op.go (left, infinity)}; «pop out to the main head for this folder
+	op.go (left, infinity)}; //pop out to the main head for this folder
 op.firstSummit ();
 op.fullCollapse ()

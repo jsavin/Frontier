@@ -1,183 +1,183 @@
-«Changes
-	«8/18/02; 5:26:14 PM by JES
-		«Open the setupFrontier page in the mainResponder admin site, instead of the older one in the control panel. We use port 5335 for this.
-	«4/11/02; 3:02:14 PM by JES
-		«Rewrite: This script now installs mainResponder and manila, and opens the Setup Frontier Control Panel page. Called by startup.startupScript.
-		«bundle //original code
-			«10/20/99; 12:29:43 PM by DW
-				«This is a test version of the script that will run the first time the user runs Frontier, after entering a correct serial number.
-				«After confirmation we connect with a UserLand.Com server that walks the user thru a wizard-like configuration process. We poll the server every five seconds to see if the user has clicked on the Finish>> button. When this happens our XML-RPC call will not error. 
-				«We then copy the information from the table it returns into the appropriate locations in the local database and take any actions implicit in the configuration.
-				«Changes:
-					«10/26/99; 2:56:52 PM by PBS
-						«Moved the main code out of the loop. Since it was in a try, it could lead to an infinite loop.
-						«If the user has chosen to turn on the webserver:
-							«Set up mainResponder.root and manila.root.
-							«Build a default Manila site.
-							«Add the Server menu to the menu bar.
-							«If the webserver is already running, but on another port, stop it and restart it on the specified port.
-			«
-			«local (server = "installfrontier.userland.com", port = 80, procedure = "installFrontier.getInstallationData")
-			«if dialog.confirm ("Connect to UserLand.Com to finish installation?")
-				«try
-					«local (uniqueNumber = clock.ticks ())
-					«local (keyString = user.prefs.serialNumber + "!" + uniqueNumber)
-					«local (configuration)
-					«
-					«if system.environment.isCarbon
-						«webBrowser.openUrl ("http://" + server + "/07/00/osx$" + keyString) 
-					«else
-						«webBrowser.openUrl ("http://" + server + "/07/00/default$" + keyString) 
-					«
-					«webBrowser.bringToFront ()
-					«
-					«loop //loop until the configuration data is returned via XML-RPC
-						«thread.sleepFor (5)
-						«try
-							«local (params = {user.prefs.serialNumber, uniqueNumber})
-							«msg ("Polling..." + clock.now ())
-							«configuration = betty.rpc.client (server, port, procedure, @params)
-							«msg ("")
-							«break
-					«
-					«Set up basic Frontier prefs.
-					«user.prefs.mailHost = configuration.mailHost
-					«user.prefs.initials = configuration.userInitials
-					«user.prefs.mailAddress = configuration.userMailAddress
-					«user.prefs.name = configuration.userName
-					«user.prefs.organization = configuration.userOrganization
-					«
-					«bundle //webserver configuration
-						«local (adrTable = @user.inetd.config.http)
-						«local (flServerOnNow = inetd.isDaemonRunning (adrtable))
-						«
-						«if configuration.webServerOn //set up the webserver
-							«
-							«if flServerOnNow and adrTable^.port != configuration.webServerPort
-								«If the server's on, but on another port, stop it, so it will be restarted on the specified port.
-								«inetd.stopOne (adrTable)
-								«flServerOnNow = false
-							«if not flServerOnNow
-								«adrTable^.startup = true
-								«inetd.startOne (adrTable)
-							«
-							«userland.installApp ("mainResponder.root")
-							«userland.installApp ("manila.root")
-							«
-							«bundle //CP prefs
-								«local (adrRoot = @[system.temp.mainResponder.membersRootFile])
-								«local (adrGroup = @adrRoot^.admin)
-								«bundle //create the Admin membership group if needed
-									«if not defined (adrGroup^)
-										«new (tableType, adrGroup)
-									«if not defined (adrGroup^.callbacks)
-										«new (tableType, @adrGroup^.callbacks)
-									«if not defined (adrGroup^.cookieDomain)
-										«adrGroup^.cookieDomain = ""
-									«if not defined (adrGroup^.cookieExpires)
-										«adrGroup^.cookieExpires = "Mon, 01 Apr 2030 07:00:00 GMT"
-									«if not defined (adrGroup^.cookieName)
-										«adrGroup^.cookieName = "Admin"
-									«if not defined (adrGroup^.mailReturnAddress)
-										«adrGroup^.mailReturnAddress = user.prefs.mailAddress
-									«if not defined (adrGroup^.mailSubject)
-										«adrGroup^.mailSubject = "Admin"
-									«if not defined (adrGroup^.mailTemplate)
-										«wp.newTextObject ("", @adrGroup^.mailTemplate)
-									«if not defined (adrGroup^.openToPublic)
-										«adrGroup^.openToPublic = false
-									«if not defined (adrGroup^.users)
-										«new (tableType, @adrGroup^.users)
-								«
-								«local (adrMember = @adrGroup^.users.[user.prefs.mailAddress])
-								«if not defined (adrMember^)
-									«new (tableType, adrMember)
-								«adrMember^.password = configuration.userPassword
-								«if not defined (adrMember^.personalInfo)
-									«new (tableType, @adrMember^.personalInfo)
-								«if not defined (adrMember^.personalInfo.name)
-									«adrMember^.personalInfo.name = user.prefs.name
-							«
-							«bundle //add prefs.root to user.databases and open it hidden
-								«local (adrTable = @user.databases.["prefs.root"])
-								«new (tableType, adrTable)
-								«local (f = Frontier.getSubFolder ("www") + "prefs.root")
-								«adrTable^.f = f
-								«adrTable^.openOnStartup = true
-								«adrTable^.runStartupScript = false
-								«adrTable^.supportsSubscribe = false
-								«if not defined ([f]) //open prefs.root if necessary
-									«fileMenu.open (f, true)
-							«
-							«bundle //set up root updates prefs
-								«local (lastUpdateTime = date.netStandardString (Frontier.shipDate))
-								«local (lastUpdateTime = userland.initialLastUpdateTime)
-								«user.rootUpdates.servers.mainResponder.lastUpdate = lastUpdateTime
-								«user.rootUpdates.servers.manila.lastUpdate = lastUpdateTime
-								«user.rootUpdates.servers.prefs = user.rootUpdates.servers.manila
-								«user.rootUpdates.servers.prefs.dbName = "prefs.root"
-								«user.rootUpdates.servers.prefs.url = ""
-								«user.rootUpdates.servers.manila.url = ""
-							«
-							«Create the default Manila website if it doesn't already exist.
-							«local (serverName = configuration.webServerName)
-							«if configuration.webServerPort != 80
-								«serverName = serverName + ":" + configuration.webServerPort
-							«config.manila.prefs.baseUrl = "http://" + serverName + "/"
-							«userland.createDefaultManilaSite (configuration.webSiteName, serverName:serverName)
-							«userland.createDefaultIspSite (serverName:serverName, password:configuration.userPassword)
-							«
-							«Add the Server menu to user.menus, if it's not already there.
-							«userland.addServerMenu ()
-							«
-							«bundle //PBS 05/11/01: port forwarding
-								«if system.environment.isCarbon
-									«local (port = number (configuration.webServerPort))
-									«if port < 1024 //uh-oh, UNIX
-										«try
-											«Frontier.bringToFront ()
-											«if dialog.yesNo ("Set up port forwarding?")
-											«local (realPort = 8080)
-											«if defined (configuration.webServerRealPort)
-												«realPort = number (string.trimWhiteSpace (configuration.webServerRealPort))
-											«configuration.webServerPort = realPort
-											«adrTable^.apparentPort = port
-											«adrTable^.port = realPort
-											«userland.portForward ()
-						«else
-							«if flServerOnNow
-								«inetd.stopOne (adrTable)
-								«adrTable^.startup = false
-						«
-						«adrTable^.port = configuration.webServerPort
-					«
-					«fileMenu.save () //all changes are in Frontier.root, for now
-					«
-					«return (true)
-				«else
-					«wp.newTextObject (tryError, @temp.installError)
-					«edit (@temp.installError)
-			«window.update ("Update Frontier")
-			«return (false)
+//Changes
+	//8/18/02; 5:26:14 PM by JES
+		//Open the setupFrontier page in the mainResponder admin site, instead of the older one in the control panel. We use port 5335 for this.
+	//4/11/02; 3:02:14 PM by JES
+		//Rewrite: This script now installs mainResponder and manila, and opens the Setup Frontier Control Panel page. Called by startup.startupScript.
+		//bundle //original code
+			//10/20/99; 12:29:43 PM by DW
+				//This is a test version of the script that will run the first time the user runs Frontier, after entering a correct serial number.
+				//After confirmation we connect with a UserLand.Com server that walks the user thru a wizard-like configuration process. We poll the server every five seconds to see if the user has clicked on the Finish>> button. When this happens our XML-RPC call will not error. 
+				//We then copy the information from the table it returns into the appropriate locations in the local database and take any actions implicit in the configuration.
+				//Changes:
+					//10/26/99; 2:56:52 PM by PBS
+						//Moved the main code out of the loop. Since it was in a try, it could lead to an infinite loop.
+						//If the user has chosen to turn on the webserver:
+							//Set up mainResponder.root and manila.root.
+							//Build a default Manila site.
+							//Add the Server menu to the menu bar.
+							//If the webserver is already running, but on another port, stop it and restart it on the specified port.
+			//
+			//local (server = "installfrontier.userland.com", port = 80, procedure = "installFrontier.getInstallationData")
+			//if dialog.confirm ("Connect to UserLand.Com to finish installation?")
+				//try
+					//local (uniqueNumber = clock.ticks ())
+					//local (keyString = user.prefs.serialNumber + "!" + uniqueNumber)
+					//local (configuration)
+					//
+					//if system.environment.isCarbon
+						//webBrowser.openUrl ("http://" + server + "/07/00/osx$" + keyString) 
+					//else
+						//webBrowser.openUrl ("http://" + server + "/07/00/default$" + keyString) 
+					//
+					//webBrowser.bringToFront ()
+					//
+					//loop //loop until the configuration data is returned via XML-RPC
+						//thread.sleepFor (5)
+						//try
+							//local (params = {user.prefs.serialNumber, uniqueNumber})
+							//msg ("Polling..." + clock.now ())
+							//configuration = betty.rpc.client (server, port, procedure, @params)
+							//msg ("")
+							//break
+					//
+					//Set up basic Frontier prefs.
+					//user.prefs.mailHost = configuration.mailHost
+					//user.prefs.initials = configuration.userInitials
+					//user.prefs.mailAddress = configuration.userMailAddress
+					//user.prefs.name = configuration.userName
+					//user.prefs.organization = configuration.userOrganization
+					//
+					//bundle //webserver configuration
+						//local (adrTable = @user.inetd.config.http)
+						//local (flServerOnNow = inetd.isDaemonRunning (adrtable))
+						//
+						//if configuration.webServerOn //set up the webserver
+							//
+							//if flServerOnNow and adrTable^.port != configuration.webServerPort
+								//If the server's on, but on another port, stop it, so it will be restarted on the specified port.
+								//inetd.stopOne (adrTable)
+								//flServerOnNow = false
+							//if not flServerOnNow
+								//adrTable^.startup = true
+								//inetd.startOne (adrTable)
+							//
+							//userland.installApp ("mainResponder.root")
+							//userland.installApp ("manila.root")
+							//
+							//bundle //CP prefs
+								//local (adrRoot = @[system.temp.mainResponder.membersRootFile])
+								//local (adrGroup = @adrRoot^.admin)
+								//bundle //create the Admin membership group if needed
+									//if not defined (adrGroup^)
+										//new (tableType, adrGroup)
+									//if not defined (adrGroup^.callbacks)
+										//new (tableType, @adrGroup^.callbacks)
+									//if not defined (adrGroup^.cookieDomain)
+										//adrGroup^.cookieDomain = ""
+									//if not defined (adrGroup^.cookieExpires)
+										//adrGroup^.cookieExpires = "Mon, 01 Apr 2030 07:00:00 GMT"
+									//if not defined (adrGroup^.cookieName)
+										//adrGroup^.cookieName = "Admin"
+									//if not defined (adrGroup^.mailReturnAddress)
+										//adrGroup^.mailReturnAddress = user.prefs.mailAddress
+									//if not defined (adrGroup^.mailSubject)
+										//adrGroup^.mailSubject = "Admin"
+									//if not defined (adrGroup^.mailTemplate)
+										//wp.newTextObject ("", @adrGroup^.mailTemplate)
+									//if not defined (adrGroup^.openToPublic)
+										//adrGroup^.openToPublic = false
+									//if not defined (adrGroup^.users)
+										//new (tableType, @adrGroup^.users)
+								//
+								//local (adrMember = @adrGroup^.users.[user.prefs.mailAddress])
+								//if not defined (adrMember^)
+									//new (tableType, adrMember)
+								//adrMember^.password = configuration.userPassword
+								//if not defined (adrMember^.personalInfo)
+									//new (tableType, @adrMember^.personalInfo)
+								//if not defined (adrMember^.personalInfo.name)
+									//adrMember^.personalInfo.name = user.prefs.name
+							//
+							//bundle //add prefs.root to user.databases and open it hidden
+								//local (adrTable = @user.databases.["prefs.root"])
+								//new (tableType, adrTable)
+								//local (f = Frontier.getSubFolder ("www") + "prefs.root")
+								//adrTable^.f = f
+								//adrTable^.openOnStartup = true
+								//adrTable^.runStartupScript = false
+								//adrTable^.supportsSubscribe = false
+								//if not defined ([f]) //open prefs.root if necessary
+									//fileMenu.open (f, true)
+							//
+							//bundle //set up root updates prefs
+								//local (lastUpdateTime = date.netStandardString (Frontier.shipDate))
+								//local (lastUpdateTime = userland.initialLastUpdateTime)
+								//user.rootUpdates.servers.mainResponder.lastUpdate = lastUpdateTime
+								//user.rootUpdates.servers.manila.lastUpdate = lastUpdateTime
+								//user.rootUpdates.servers.prefs = user.rootUpdates.servers.manila
+								//user.rootUpdates.servers.prefs.dbName = "prefs.root"
+								//user.rootUpdates.servers.prefs.url = ""
+								//user.rootUpdates.servers.manila.url = ""
+							//
+							//Create the default Manila website if it doesn't already exist.
+							//local (serverName = configuration.webServerName)
+							//if configuration.webServerPort != 80
+								//serverName = serverName + ":" + configuration.webServerPort
+							//config.manila.prefs.baseUrl = "http://" + serverName + "/"
+							//userland.createDefaultManilaSite (configuration.webSiteName, serverName:serverName)
+							//userland.createDefaultIspSite (serverName:serverName, password:configuration.userPassword)
+							//
+							//Add the Server menu to user.menus, if it's not already there.
+							//userland.addServerMenu ()
+							//
+							//bundle //PBS 05/11/01: port forwarding
+								//if system.environment.isCarbon
+									//local (port = number (configuration.webServerPort))
+									//if port < 1024 //uh-oh, UNIX
+										//try
+											//Frontier.bringToFront ()
+											//if dialog.yesNo ("Set up port forwarding?")
+											//local (realPort = 8080)
+											//if defined (configuration.webServerRealPort)
+												//realPort = number (string.trimWhiteSpace (configuration.webServerRealPort))
+											//configuration.webServerPort = realPort
+											//adrTable^.apparentPort = port
+											//adrTable^.port = realPort
+											//userland.portForward ()
+						//else
+							//if flServerOnNow
+								//inetd.stopOne (adrTable)
+								//adrTable^.startup = false
+						//
+						//adrTable^.port = configuration.webServerPort
+					//
+					//fileMenu.save () //all changes are in Frontier.root, for now
+					//
+					//return (true)
+				//else
+					//wp.newTextObject (tryError, @temp.installError)
+					//edit (@temp.installError)
+			//window.update ("Update Frontier")
+			//return (false)
 
-«bundle //make sure we have a web browser for Windows
-	«if system.environment.isWindows
-		«user.webBrowser.winDefaultBrowserApp = file.findApplication ("htm")
-«
-«bundle //start the webserver on port 80, unless running on MacOS X -- there we're on 8080
-	«local (port = 80)
-	«if system.environment.isCarbon //port 8080 -- will be forwarded by userland.completeSetup
-		«port = 8080
-	«local (adrtable = @user.inetd.config.http)
-	«adrtable^.startup = true
-	«if inetd.isDaemonRunning (adrtable)
-		«if port != adrtable^.port
-			«inetd.stopOne (adrtable)
-			«adrtable^.port = port
-	«if not inetd.isDaemonRunning (adrtable)
-		«inetd.startOne (adrtable)
-	«if system.environment.isCarbon //set apparentPort, used by userland.completeSetup to set up port forwarding
-		«adrtable^.apparentPort = 80
+//bundle //make sure we have a web browser for Windows
+	//if system.environment.isWindows
+		//user.webBrowser.winDefaultBrowserApp = file.findApplication ("htm")
+//
+//bundle //start the webserver on port 80, unless running on MacOS X -- there we're on 8080
+	//local (port = 80)
+	//if system.environment.isCarbon //port 8080 -- will be forwarded by userland.completeSetup
+		//port = 8080
+	//local (adrtable = @user.inetd.config.http)
+	//adrtable^.startup = true
+	//if inetd.isDaemonRunning (adrtable)
+		//if port != adrtable^.port
+			//inetd.stopOne (adrtable)
+			//adrtable^.port = port
+	//if not inetd.isDaemonRunning (adrtable)
+		//inetd.startOne (adrtable)
+	//if system.environment.isCarbon //set apparentPort, used by userland.completeSetup to set up port forwarding
+		//adrtable^.apparentPort = 80
 
 userland.trialVersionCheck ();
 
@@ -225,9 +225,9 @@ local (setupUrl = "http://127.0.0.1" + portString + "/setupFrontier");
 if not defined (system.temp.installer) {
 	new (tableType, @system.temp.installer)};
 system.temp.installer.urlToOpen = setupUrl;
-«webBrowser.openUrl (setupUrl)
-«webBrowser.bringToFront ()
+//webBrowser.openUrl (setupUrl)
+//webBrowser.bringToFront ()
 
-«fileMenu.save () //all changes are in Frontier.root, for now
+//fileMenu.save () //all changes are in Frontier.root, for now
 
 return (true)

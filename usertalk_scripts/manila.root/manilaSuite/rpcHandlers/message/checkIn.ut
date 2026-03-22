@@ -1,6 +1,6 @@
 on checkIn (username, password, siteName, msgNum) {
-	«Release custody of this message.
-		«02/11/00; 3:40:09 PM by PBS
+	//Release custody of this message.
+		//02/11/00; 3:40:09 PM by PBS
 	
 	local (adrGroup = manilaSuite.rpcUtils.getMembersAddress (siteName));
 	local (adrMembers = @adrGroup^.users);

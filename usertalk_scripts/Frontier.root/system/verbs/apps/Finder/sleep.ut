@@ -1,5 +1,5 @@
-on sleep () { «Sleep the Macintosh
-	try { « this should work for any Finder
+on sleep () { //Sleep the Macintosh
+	try { // this should work for any Finder
 		return (finderEvent (Finder.id, Finder.class, 'slep'))}
-	else { « in case it doesn't
+	else { // in case it doesn't
 		return (appleEvent (Finder.id, 'fndr', 'snoz'))}}

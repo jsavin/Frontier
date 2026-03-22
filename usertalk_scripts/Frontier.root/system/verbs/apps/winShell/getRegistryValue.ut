@@ -1,13 +1,13 @@
 on getRegistryValue (registryPath) {
-	«The beginning of the path must contain one of the following:
-		«HKCU = HKEY_CURRENT_USER
-		«HKLM = HKEY_LOCAL_MACHINE
-		«HKCR = HKEY_CLASSES_ROOT
+	//The beginning of the path must contain one of the following:
+		//HKCU = HKEY_CURRENT_USER
+		//HKLM = HKEY_LOCAL_MACHINE
+		//HKCR = HKEY_CLASSES_ROOT
 	
 	local (s = string (winShell.data.scripts.getRegistryValue));
 	
 	return (com.callScript (s, "VBScript", "Main", {registryPath}))};
-«bundle //test code
-	«winShell.getRegistryValue ("HKCU\\Software\\UserLand\\Frontier\\FrameH")
-		«"937"
-	«winShell.getRegistryValue ("HKsdCU\\Softsdware\\UsersdsdLand\\Fronddtier\\") //bogus path
+//bundle //test code
+	//winShell.getRegistryValue ("HKCU\\Software\\UserLand\\Frontier\\FrameH")
+		//"937"
+	//winShell.getRegistryValue ("HKsdCU\\Softsdware\\UsersdsdLand\\Fronddtier\\") //bogus path

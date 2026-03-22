@@ -1,8 +1,8 @@
-«Universal tellParams script by Mason Hale 9/17/95
-	«server-independent - doesn't rely on specific parameters
-	«simply returns contents of parameter table
-	«encloses multiple line values in <pre> tags
-	«shows sub-table values
+//Universal tellParams script by Mason Hale 9/17/95
+	//server-independent - doesn't rely on specific parameters
+	//simply returns contents of parameter table
+	//encloses multiple line values in <pre> tags
+	//shows sub-table values
 on tellParams (adrParams) {
 	local (htmltext = webServer.httpHeader (), i);
 	on add (s) {

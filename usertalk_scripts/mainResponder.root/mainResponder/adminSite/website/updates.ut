@@ -1,7 +1,7 @@
 on updates () {
-	«Changes
-		«12/16/03; 3:33:02 AM by JES
-			«Created. Display the pending feature updates and bug fixes which have yet to be downloaded.
+	//Changes
+		//12/16/03; 3:33:02 AM by JES
+			//Created. Display the pending feature updates and bug fixes which have yet to be downloaded.
 	local (pta = html.getPageTableAddress ());
 	pta^.title = "Pending Updates";
 	

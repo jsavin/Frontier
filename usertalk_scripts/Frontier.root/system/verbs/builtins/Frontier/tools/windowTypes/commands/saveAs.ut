@@ -1,5 +1,5 @@
 on saveAs (adrItem=nil) {
-	«Handle the Save As command.
+	//Handle the Save As command.
 	
 	if adrItem == nil { //default to frontmost window
 		adrItem = window.frontmost ()};
@@ -52,12 +52,12 @@ on saveAs (adrItem=nil) {
 			if adrType^.saveAs (adrItem) {
 				return (true)}}};
 	
-	«Do we want to call the odb-export code here?
+	//Do we want to call the odb-export code here?
 	export.commands.export ();
 	
 	saveDatabase ();
 	return (true);
 	};
 
-«bundle //debugging
-	«saveAs ()
+//bundle //debugging
+	//saveAs ()

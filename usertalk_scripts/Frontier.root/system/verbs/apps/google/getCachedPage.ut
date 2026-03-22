@@ -1,17 +1,17 @@
 on getCachedPage (url, key=user.google.key) {
-	«Changes
-		«4/14/02; 12:27:39 PM by DW
-			«Add key as an optional parameter.
-		«4/8/02; 11:54:01 PM by JES
-			«Created.
+	//Changes
+		//4/14/02; 12:27:39 PM by DW
+			//Add key as an optional parameter.
+		//4/8/02; 11:54:01 PM by JES
+			//Created.
 	google.init ();
 	local (result);
 	with google.data {
 		local (params = {"key":key, "url":url});
 		result = soap.rpc.client (path, methods.getCachedPage, @params, server, port, soapAction:soapAction, methodNamespace:"m", methodNamespaceUri:namespace)};
 	return (result)};
-«bundle //testing
-	«local (url = "http://www.userland.com/")
-	«local (htmltext)
-	«htmltext = getCachedPage (url)
-	«webBrowser.displayText (htmltext)
+//bundle //testing
+	//local (url = "http://www.userland.com/")
+	//local (htmltext)
+	//htmltext = getCachedPage (url)
+	//webBrowser.displayText (htmltext)

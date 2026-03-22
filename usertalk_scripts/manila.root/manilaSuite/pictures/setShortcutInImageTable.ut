@@ -1,6 +1,6 @@
 on setShortcutInImageTable (adrMsgTable, shortcut) {
-	«Set the shortcut field in the image table. This script shouldn't fail, unless you pass in an invalid adrMsgTable.
-		«01/12/00; 2:40:04 PM by PBS
+	//Set the shortcut field in the image table. This script shouldn't fail, unless you pass in an invalid adrMsgTable.
+		//01/12/00; 2:40:04 PM by PBS
 	
 	if not defined (adrMsgTable^.image) {
 		new (tableType, adrMsgTable^.image)};

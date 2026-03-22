@@ -1,11 +1,11 @@
 on isEnabled (f) {
-	«Return true if a Tool is enabled, false otherwise. Tools are disabled when:
-		«1. There is a top-level item in the gdb named #enabled.
-		«2. #enabled is false.
-		«01/05/01; 5:12:27 PM by PBS
-	«Changes
-		«10/7/01; 8:34:11 PM by JES
-			«Respect the flEnabled flag in the tool's user table.
+	//Return true if a Tool is enabled, false otherwise. Tools are disabled when:
+		//1. There is a top-level item in the gdb named #enabled.
+		//2. #enabled is false.
+		//01/05/01; 5:12:27 PM by PBS
+	//Changes
+		//10/7/01; 8:34:11 PM by JES
+			//Respect the flEnabled flag in the tool's user table.
 	
 	local (flEnabled = true);
 	

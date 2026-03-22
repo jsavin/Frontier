@@ -1,20 +1,20 @@
-«Changes
-	«10/20/02; 9:45:48 AM by DW
-		«If urlChanged is the empty string, delete the service, per the spec:
-			«http://backend.userland.com/redirectRss
-		«We're also releasing xml.rss.formatDrivers.redirect today.
-	«10/15/02; 11:05:44 AM by DW
-		«Every five minutes look for urlChanged in each service table, and if present, change the name of the table and delete urlChanged. This feature will be used by the XML-level redirector, once we decide what the feshtunken element will be named, what namespace it's in, and whether it makes the RDF people happy or not. As Ralph Cramden used to say "One of these days Alice.."
-	«12/4/01; 12:42:47 PM by DW
-		«If enabled, do an aggregator run at startup.
-	«12/2/01; 1:46:56 AM by JES
-		«Respect offline status.
-	«11/30/01; 2:13:29 PM by DW
-		«Don't run the aggregator scan if one is already running.
-	«10/30/01; 7:01:37 AM by DW
-		«If running in Radio, send radio.log.add to xml.aggregator.readAllServices as its log callback.
-	«10/19/01; 7:58:47 PM by DW10/19/01; 7:58:48 PM by DW
-		«Updated to call the archiver.
+//Changes
+	//10/20/02; 9:45:48 AM by DW
+		//If urlChanged is the empty string, delete the service, per the spec:
+			//http://backend.userland.com/redirectRss
+		//We're also releasing xml.rss.formatDrivers.redirect today.
+	//10/15/02; 11:05:44 AM by DW
+		//Every five minutes look for urlChanged in each service table, and if present, change the name of the table and delete urlChanged. This feature will be used by the XML-level redirector, once we decide what the feshtunken element will be named, what namespace it's in, and whether it makes the RDF people happy or not. As Ralph Cramden used to say "One of these days Alice.."
+	//12/4/01; 12:42:47 PM by DW
+		//If enabled, do an aggregator run at startup.
+	//12/2/01; 1:46:56 AM by JES
+		//Respect offline status.
+	//11/30/01; 2:13:29 PM by DW
+		//Don't run the aggregator scan if one is already running.
+	//10/30/01; 7:01:37 AM by DW
+		//If running in Radio, send radio.log.add to xml.aggregator.readAllServices as its log callback.
+	//10/19/01; 7:58:47 PM by DW10/19/01; 7:58:48 PM by DW
+		//Updated to call the archiver.
 local (flstartup = false);
 bundle { //set flstartup
 	if not defined (system.temp.xmlAggregator) {

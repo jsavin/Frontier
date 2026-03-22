@@ -1,6 +1,6 @@
 on unpackDB (adrDatabase, folderPath, reportError = false) {
-	«Sat, Dec 6, 1997 at 1:49:35 AM by PBS
-		«Fixed toys reference.
+	//Sat, Dec 6, 1997 at 1:49:35 AM by PBS
+		//Fixed toys reference.
 	local {
 		newDBPath = folderPath + nameOf (adrDatabase^)};
 	on doIt () {

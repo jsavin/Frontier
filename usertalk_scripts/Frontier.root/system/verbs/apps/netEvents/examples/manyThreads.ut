@@ -1,7 +1,7 @@
 local (domain = "ws3.scripting.com");
 local (adroutline = @system.verbs.apps.netEvents.examples.scriptingPaths);
-«local (domain = "www.biap.com")
-«local (adroutline = @system.verbs.apps.netEvents.examples.biapPaths)
+//local (domain = "www.biap.com")
+//local (adroutline = @system.verbs.apps.netEvents.examples.biapPaths)
 local (adrlist = {});
 bundle {
 	target.set (adroutline);

@@ -1,8 +1,8 @@
-«I used this script to move all the object model stuff
-	«into the Fetch.eventInfo table
-	«it could be used to process a glue table
-	«for other object model apps
-	«DW 11/18/95
+//I used this script to move all the object model stuff
+	//into the Fetch.eventInfo table
+	//it could be used to process a glue table
+	//for other object model apps
+	//DW 11/18/95
 
 local (i);
 new (tabletype, @fetch.eventInfo);

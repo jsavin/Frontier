@@ -1,7 +1,7 @@
 on viewPageTitle (flAlwaysViewTitle=false) {
-	«Changes
-		«9/26/05; 6:00:34 PM by JES
-			«If pta^.headTitle is defined, return it instead of pta^.title. Optional parameter, flAlwaysViewTitle.
+	//Changes
+		//9/26/05; 6:00:34 PM by JES
+			//If pta^.headTitle is defined, return it instead of pta^.title. Optional parameter, flAlwaysViewTitle.
 	local (pta = html.getpagetableaddress (), flTitleOnPage = true);
 	if defined (pta^.flTitleOnPage) {
 		flTitleOnPage = pta^.flTitleOnPage};

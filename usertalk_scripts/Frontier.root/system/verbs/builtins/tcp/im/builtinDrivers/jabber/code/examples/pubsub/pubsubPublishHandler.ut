@@ -1,7 +1,7 @@
 on pubsubPublishHandler (iq, query, connection) {
-	«Changes
-		«5/14/02; 1:51:34 PM by JB
-			«Changelog created.
+	//Changes
+		//5/14/02; 1:51:34 PM by JB
+			//Changelog created.
 	local ( publications = xml.getAddressList ( query, "publish" ) );
 	try {
 		xml.getAddress(iq, "error");

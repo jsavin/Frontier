@@ -1,14 +1,14 @@
-on runDirectives (wpstring, adrPageTable=@websites.["#data"]) { «4.2 -- extracted from renderObject macro
-	«wpstring contains a page of text
-		«run all the #directives and return the cleaned up text
+on runDirectives (wpstring, adrPageTable=@websites.["#data"]) { //4.2 -- extracted from renderObject macro
+	//wpstring contains a page of text
+		//run all the #directives and return the cleaned up text
 	if html.getPref ("useKernelCode", adrPageTable) {
 		on kernelcall (wpstring, adrPageTable) {
 			kernel (html.runDirectives)};
 		return (kernelcall (wpstring, adrPageTable))}
 	else {
-		wpstring = string.replaceAll (wpstring, "\n", ""); «work around Windows problem -- 11/11/97 DW
+		wpstring = string.replaceAll (wpstring, "\n", ""); //work around Windows problem -- 11/11/97 DW
 		local (s = "");
-		loop { «process #directives
+		loop { //process #directives
 			if sizeof (wpstring) == 0 {
 				break};
 			local (line = string.nthField (wpstring, "\r", 1));

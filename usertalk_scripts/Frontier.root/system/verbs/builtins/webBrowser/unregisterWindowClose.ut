@@ -1,4 +1,4 @@
-on unregisterwindowclose (x) { «Notifies that the sending application would no longer like to receive WindowClose events.
+on unregisterwindowclose (x) { //Notifies that the sending application would no longer like to receive WindowClose events.
 	case sys.os () {
 		"MacOS" {
 			return (appleEvent (user.webBrowser.currentid, 'WWW!', 'UNRC', '----', x))}}}

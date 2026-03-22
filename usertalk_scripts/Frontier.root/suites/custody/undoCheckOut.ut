@@ -1,6 +1,6 @@
 on undoCheckOut (userName, password, adrObject) {
-	«Undo a checkout.
-		«Sat, Mar 6, 1999 at 10:36:58 PM by PBS
+	//Undo a checkout.
+		//Sat, Mar 6, 1999 at 10:36:58 PM by PBS
 	
 	custody.authenticate (userName, password, adrObject, false);
 	

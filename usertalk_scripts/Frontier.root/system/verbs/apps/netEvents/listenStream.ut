@@ -1,10 +1,10 @@
 on listenStream (port, flwaitloop = true, refcon = 0, timeout = 0) {
-	«Set up a listener on the indicated port.
-		«If flwaitloop is true, we wait for a connection to be created.
+	//Set up a listener on the indicated port.
+		//If flwaitloop is true, we wait for a connection to be created.
 	local (stream);
 	local (timedOut);
 	
-	netEvents.init (); «make sure all the tables we need are set up
+	netEvents.init (); //make sure all the tables we need are set up
 	
 	loop { // we loop in case NetEvents times-out.
 		timedOut = false;
@@ -20,7 +20,7 @@ on listenStream (port, flwaitloop = true, refcon = 0, timeout = 0) {
 		else { // we've been asked to wait
 			local (tc = clock.ticks ());
 			while not adrtable^.ready {
-				if clock.ticks () > (tc + 1800) { «30 seconds
+				if clock.ticks () > (tc + 1800) { //30 seconds
 					local (status, bytespending);
 					status = netEvents.statusStream (stream, @bytespending);
 					if status == "INACTIVE" {
@@ -32,4 +32,4 @@ on listenStream (port, flwaitloop = true, refcon = 0, timeout = 0) {
 			if timedOut {
 				continue}
 			else {
-				return (stream)}}}} «the caller is now ready to start reading from the stream
+				return (stream)}}}} //the caller is now ready to start reading from the stream

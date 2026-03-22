@@ -1,6 +1,6 @@
-«Changes:
-	«7/2/01; 1:59:58 AM by JES
-		«Init user.tools.nodeTypes.user and user.tools.nodeTypes.users
+//Changes:
+	//7/2/01; 1:59:58 AM by JES
+		//Init user.tools.nodeTypes.user and user.tools.nodeTypes.users
 if not defined (user.xmlStorageSystem) {
 	new (tabletype, @user.xmlStorageSystem)};
 if not defined (user.xmlStorageSystem.pubSubCallbacks) {

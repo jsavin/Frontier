@@ -1,42 +1,42 @@
 on getValue (partialAddress, defaultValue) {
-	«Get one value for the control panel settings.
-		«Changes:
-			«7/3/02; 12:43:33 AM by JES
-				«Added support for the Meta-Weblog API. See http://frontier.userland.com/metaWeblogApi
-			«1/28/02; 2:06:41 PM by PBS
-				«Support pref for Manila RSS pub-sub.
-			«1/21/02; 9:57:08 PM by PBS
-				«Support for enabling the Blogger API.
-			«2001:
-				«02/06/01; 2:07:14 AM by JES
-					«Added site download preferences.
-				«12/6/01; 10:00:52 PM by PBS
-					«Common log format prefs.
-			«2000:
-				«01/18/00; 6:23:01 PM by PBS
-					«Support for enabling/disabling Manila RPC and for setting the base URL for Manila sites created via the New Site page.
-				«02/24/00; 3:03:49 PM by PBS
-					«Added support for Manila plug-ins RPC handlers.
-				«03/01/00; 2:49:37 PM by PBS
-					«Added support for Manila static pictures writing to disk.
-				«03/13/00; 9:36:31 PM by PBS
-					«Added support for Manila static rendering prefs.
-				«04/07/00; 6:46:02 PM by PBS
-					«Support for the discussion group email subscriptions pref.
-				«04/10/00; 8:45:09 PM by PBS
-					«Support for hashed cookies global preference.
-				«04/15/00; 5:54:03 PM by PBS
-					«Added support for gems prefs to the Manila prefs page.
-				«05/10/00; 4:23:15 PM by PBS
-					«Support a pref for writing out a nightly XML file listing the top 100 most read sites.
-				«07/11/00; 3:17:01 PM by PBS
-					«Added prefs for common log logging and root updates logging.
-				«07/12/00; 5:45:22 PM by PBS
-					«Added prefs for sharing a membership group.
-				«11/10/00; 12:04:23 PM by PBS
-					«Added the home page updates pref for sending update notices to UserLand.
-				«11/19/00; 4:18:35 PM by PBS
-					«Add command for enabling the Manila SOAP interface.
+	//Get one value for the control panel settings.
+		//Changes:
+			//7/3/02; 12:43:33 AM by JES
+				//Added support for the Meta-Weblog API. See http://frontier.userland.com/metaWeblogApi
+			//1/28/02; 2:06:41 PM by PBS
+				//Support pref for Manila RSS pub-sub.
+			//1/21/02; 9:57:08 PM by PBS
+				//Support for enabling the Blogger API.
+			//2001:
+				//02/06/01; 2:07:14 AM by JES
+					//Added site download preferences.
+				//12/6/01; 10:00:52 PM by PBS
+					//Common log format prefs.
+			//2000:
+				//01/18/00; 6:23:01 PM by PBS
+					//Support for enabling/disabling Manila RPC and for setting the base URL for Manila sites created via the New Site page.
+				//02/24/00; 3:03:49 PM by PBS
+					//Added support for Manila plug-ins RPC handlers.
+				//03/01/00; 2:49:37 PM by PBS
+					//Added support for Manila static pictures writing to disk.
+				//03/13/00; 9:36:31 PM by PBS
+					//Added support for Manila static rendering prefs.
+				//04/07/00; 6:46:02 PM by PBS
+					//Support for the discussion group email subscriptions pref.
+				//04/10/00; 8:45:09 PM by PBS
+					//Support for hashed cookies global preference.
+				//04/15/00; 5:54:03 PM by PBS
+					//Added support for gems prefs to the Manila prefs page.
+				//05/10/00; 4:23:15 PM by PBS
+					//Support a pref for writing out a nightly XML file listing the top 100 most read sites.
+				//07/11/00; 3:17:01 PM by PBS
+					//Added prefs for common log logging and root updates logging.
+				//07/12/00; 5:45:22 PM by PBS
+					//Added prefs for sharing a membership group.
+				//11/10/00; 12:04:23 PM by PBS
+					//Added the home page updates pref for sending update notices to UserLand.
+				//11/19/00; 4:18:35 PM by PBS
+					//Add command for enabling the Manila SOAP interface.
 	
 	on checkUpdateList (gdbName) {
 		if not defined (config.mainResponder.prefs.updateNightlyList) {

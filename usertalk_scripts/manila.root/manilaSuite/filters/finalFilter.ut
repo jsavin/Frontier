@@ -1,59 +1,59 @@
 on finalFilter (pta) {
-	«Final filter for a Manila site.
-	«Changes:
-		«09/15/06; 3:11:38 PM by LL
-			«Comment out call to manilaSuite.stats.addHit. Now called from manilaSuite.filters.firstFilter.
-		«2/20/06; 4:23:06 AM by JES
-			«Allow macros to throw "!" errors for mainResponder, regardless of the value of pta^.code.
-		«2/17/06; 5:14:13 PM by JES
-			«Add support for macros which throw special errors starting with the '!' character, to be picked up by mainResponder.
-		«10/26/05; 1:53:20 AM by JES
-			«Added support for finalFilter callback at config.manila.callbacks.filters.finalFilter.
-				«Scripts in the finalFilter callbacks table are called in turn, and return values are ignored.
-				«The finalFilter callbacks are called last, after Manila does its finalFilter processing.
-		«5/23/05; 2:43:14 AM by JES
-			«Don't test for pta^.flEditor before calling manilaSuite.html.editorialLinks. This prevented the callbacks from running (which might like to place some HTML in the page despite editorial status). In any case, manilaSuite.html.editorialLinks was already testing pta^.flEditor. :-\
-		«1/21/05; 5:30:11 PM by JES
-			«If pta^.flAnchorRelNofollow is defined and true, replace place-holder with munged rel="nofollow" bodytext which was set up in manilaSuite.filters.pageFilter.
-		«8/14/03; 1:43:17 AM by JES
-			«If the Mozilla rich text editor is present on the page, and we're not doing static rendering, add the required onload event handler to the page's <body> tag.
-		«2/21/03; 6:49:02 PM by JES
-			«Don't do any HTML-ish work here unless pta^.flHtml is true.
-		«10/26/02; 10:16:48 AM by JES
-			«Comment out call to manilaSuite.stats.addReferer. Now called from manilaSuite.filters.firstFilter.
-		«10/24/02; 12:04:57 PM by JES
-			«Implement ETag support for Manila RSS and scriptingNews2 feeds.
-		«8/13/02; 4:38:36 PM by JES
-			«If RCS is installed, add this page to RCS' stats tables.
-		«12/3/01; 6:10:29 PM by PBS
-			«Build the navigation links here, since the rendered page may have changed what navigator to use.
-		«9/27/01; 3:44:24 PM by PBS
-			«Backed off sending Last-Modified headers -- browsers were caching too much.
-		«9/26/01; 2:15:00 PM by PBS
-			«Send last-modified header for stories and messages.
-		«9/19/01; 3:27:35 PM by PBS
-			«XML feed caching.
-		«9/17/01; 2:13:15 PM by PBS
-			«Cache the home page if the pref is set.
-		«03/23/01; 6:46:52 PM by PBS
-			«Minor performance enhancement in adding to the glossary -- avoid expensive calls when possible.
-		«02/06/01; 10:29:42 AM by PBS
-			«Call the global finalFilter callbacks at config.manila.callbacks.finalFilter.
-		«2000:
-			«02/24/00; 11:49:24 AM by PBS
-				«Build the Editors only menu as the last step: as its elements are no longer static, it may have been changed during the course of building the page.
-			«02/28/00; 9:45:04 AM by PBS
-				«No need to swap in image data in the final filter -- manilaSuite.pictures.displayPicture now uses the !return mechanism to return the image data. This should mean a small performance gain for serving pictures.
-			«04/20/00; 5:30:15 PM by JES
-				«localized last update string
-			«05/01/00; 3:36:06 PM by JES
-				«Changed getString calls to use a replacement table address instead of a lists
-			«11/02/00; 2:49:32 PM by WM
-				«Save referer stats.
-			«11/09/00; 3:22:58 PM by PBS
-				«Save hits-by-hour.
-			«11/22/00; 11:11:25 PM by PBS
-				«Wrap call to manilaSuite.stats.addReferer in a try -- it may in rare cases causes a scriptError which should be non-fatal.
+	//Final filter for a Manila site.
+	//Changes:
+		//09/15/06; 3:11:38 PM by LL
+			//Comment out call to manilaSuite.stats.addHit. Now called from manilaSuite.filters.firstFilter.
+		//2/20/06; 4:23:06 AM by JES
+			//Allow macros to throw "!" errors for mainResponder, regardless of the value of pta^.code.
+		//2/17/06; 5:14:13 PM by JES
+			//Add support for macros which throw special errors starting with the '!' character, to be picked up by mainResponder.
+		//10/26/05; 1:53:20 AM by JES
+			//Added support for finalFilter callback at config.manila.callbacks.filters.finalFilter.
+				//Scripts in the finalFilter callbacks table are called in turn, and return values are ignored.
+				//The finalFilter callbacks are called last, after Manila does its finalFilter processing.
+		//5/23/05; 2:43:14 AM by JES
+			//Don't test for pta^.flEditor before calling manilaSuite.html.editorialLinks. This prevented the callbacks from running (which might like to place some HTML in the page despite editorial status). In any case, manilaSuite.html.editorialLinks was already testing pta^.flEditor. :-\
+		//1/21/05; 5:30:11 PM by JES
+			//If pta^.flAnchorRelNofollow is defined and true, replace place-holder with munged rel="nofollow" bodytext which was set up in manilaSuite.filters.pageFilter.
+		//8/14/03; 1:43:17 AM by JES
+			//If the Mozilla rich text editor is present on the page, and we're not doing static rendering, add the required onload event handler to the page's <body> tag.
+		//2/21/03; 6:49:02 PM by JES
+			//Don't do any HTML-ish work here unless pta^.flHtml is true.
+		//10/26/02; 10:16:48 AM by JES
+			//Comment out call to manilaSuite.stats.addReferer. Now called from manilaSuite.filters.firstFilter.
+		//10/24/02; 12:04:57 PM by JES
+			//Implement ETag support for Manila RSS and scriptingNews2 feeds.
+		//8/13/02; 4:38:36 PM by JES
+			//If RCS is installed, add this page to RCS' stats tables.
+		//12/3/01; 6:10:29 PM by PBS
+			//Build the navigation links here, since the rendered page may have changed what navigator to use.
+		//9/27/01; 3:44:24 PM by PBS
+			//Backed off sending Last-Modified headers -- browsers were caching too much.
+		//9/26/01; 2:15:00 PM by PBS
+			//Send last-modified header for stories and messages.
+		//9/19/01; 3:27:35 PM by PBS
+			//XML feed caching.
+		//9/17/01; 2:13:15 PM by PBS
+			//Cache the home page if the pref is set.
+		//03/23/01; 6:46:52 PM by PBS
+			//Minor performance enhancement in adding to the glossary -- avoid expensive calls when possible.
+		//02/06/01; 10:29:42 AM by PBS
+			//Call the global finalFilter callbacks at config.manila.callbacks.finalFilter.
+		//2000:
+			//02/24/00; 11:49:24 AM by PBS
+				//Build the Editors only menu as the last step: as its elements are no longer static, it may have been changed during the course of building the page.
+			//02/28/00; 9:45:04 AM by PBS
+				//No need to swap in image data in the final filter -- manilaSuite.pictures.displayPicture now uses the !return mechanism to return the image data. This should mean a small performance gain for serving pictures.
+			//04/20/00; 5:30:15 PM by JES
+				//localized last update string
+			//05/01/00; 3:36:06 PM by JES
+				//Changed getString calls to use a replacement table address instead of a lists
+			//11/02/00; 2:49:32 PM by WM
+				//Save referer stats.
+			//11/09/00; 3:22:58 PM by PBS
+				//Save hits-by-hour.
+			//11/22/00; 11:11:25 PM by PBS
+				//Wrap call to manilaSuite.stats.addReferer in a try -- it may in rare cases causes a scriptError which should be non-fatal.
 	
 	local (flHtml = pta^.flHtml);
 	
@@ -74,18 +74,18 @@ on finalFilter (pta) {
 	
 	if flHtml { //PBS 02/24/00: build the editorial menu last, not first -- it may have been changed by the plug-ins page
 		local (s);
-		«if pta^.flEditor
+		//if pta^.flEditor
 		s = manilaSuite.html.editorialLinks (pta);
 		pta^.renderedText = string.replaceAll (pta^.renderedText, "{replaceEditorialMenuInFinalFilter}", s, false)};
 	if flHtml { //PBS 12/03/01: build the navigation links last, not first -- it may have been changed by the rendered page
 		local (s = manilaSuite.html.drawNavigator (pta));
 		pta^.renderedText = string.replaceAll (pta^.renderedText, "{replaceNavLinksInFinalFilter}", s, false)};
 	
-	«bundle //replace rendered text with image if needed. //PBS 02/28/00: no longer needed
-		«This way the displayPicture script can be in a section where #flRender is true.
-		«if defined (pta^.swapInImage)
-			«pta^.renderedText = pta^.swapInImage
-			«return (true)
+	//bundle //replace rendered text with image if needed. //PBS 02/28/00: no longer needed
+		//This way the displayPicture script can be in a section where #flRender is true.
+		//if defined (pta^.swapInImage)
+			//pta^.renderedText = pta^.swapInImage
+			//return (true)
 	
 	if flHtml { //replace the last update string with the last update time
 		local (lastUpdateString); // 4/20/00 JES: localized
@@ -136,7 +136,7 @@ on finalFilter (pta) {
 							addToGlossary ()}}}}}};
 	
 	if flHtml { //strip in edit home page field. PBS 7/12/99
-		«The edit home page text area has to be stripped in after macros have been processed.
+		//The edit home page text area has to be stripped in after macros have been processed.
 		if defined (pta^.homePageEditField) {
 			pta^.renderedText = string.replace (pta^.renderedText, "[[homePageEditField]]", pta^.homePageEditField)}};
 	
@@ -149,11 +149,11 @@ on finalFilter (pta) {
 						ix = ix + 5;
 						pta^.renderedText = string.insert (" onload=\"try{StartEditor()}catch(e){}\" ", pta^.renderedText, ix)}}}}};
 	
-	«bundle //PBS 11/2/00: save referer info
-		«if defined (pta^.requestHeaders.referer)
-			«try {manilaSuite.stats.addReferer (pta)} //PBS 11/22/00: use a try; may cause scriptError which shouldn't be fatal
-	«bundle //PBS 11/9/00: save hits-by-hour info
-		«try {manilaSuite.stats.addHit (pta)}
+	//bundle //PBS 11/2/00: save referer info
+		//if defined (pta^.requestHeaders.referer)
+			//try {manilaSuite.stats.addReferer (pta)} //PBS 11/22/00: use a try; may cause scriptError which shouldn't be fatal
+	//bundle //PBS 11/9/00: save hits-by-hour info
+		//try {manilaSuite.stats.addHit (pta)}
 	bundle { //JES 8/13/02: RCS stats integration
 		if defined (radioCommunityServerData.weblogStats.groups.default) {
 			try { //a failure here should not be fatal
@@ -210,17 +210,17 @@ on finalFilter (pta) {
 						if sizeOf (pta^.renderedText) > 0 {
 							if not defined (pta^.newsSite^.cache) {
 								new (tableType, @pta^.newsSite^.cache)};
-							«table.assign (@pta^.newsSite^.cache.[feedname], pta^.renderedText)
+							//table.assign (@pta^.newsSite^.cache.[feedname], pta^.renderedText)
 							new (tableType, @pta^.newsSite^.cache.[feedname]);
 							pta^.newsSite^.cache.[feedname].responseHeaders = pta^.responseHeaders;
 							pta^.newsSite^.cache.[feedname].body = pta^.renderedText}}};
 				cacheFeed ("rss");
 				cacheFeed ("scriptingNews2")}}};
 	
-	«bundle //PBS 09.26/01: last-modified header //PBS 09/27/01: backed off
-		«if defined (pta^.lastUpdate)
-			«if defined (pta^.msgNum)
-				«pta^.responseHeaders.["Last-Modified"] = date.netStandardString (pta^.lastUpdate)
+	//bundle //PBS 09.26/01: last-modified header //PBS 09/27/01: backed off
+		//if defined (pta^.lastUpdate)
+			//if defined (pta^.msgNum)
+				//pta^.responseHeaders.["Last-Modified"] = date.netStandardString (pta^.lastUpdate)
 	
 	bundle { //call finalFilter callbacks
 		if defined (config.manila.callbacks.filters.finalFilter) {

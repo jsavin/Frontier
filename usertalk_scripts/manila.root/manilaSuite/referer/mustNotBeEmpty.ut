@@ -1,9 +1,9 @@
 on mustNotBeEmpty () {
-	«Changes
-		«7/14/05; 3:30:50 PM by JES
-			«Add support for referer checking pref.
-		«05/09/00; 11:42:47 PM by PBS
-			«Created. Make sure the referer is not empty.
+	//Changes
+		//7/14/05; 3:30:50 PM by JES
+			//Add support for referer checking pref.
+		//05/09/00; 11:42:47 PM by PBS
+			//Created. Make sure the referer is not empty.
 	
 	if not manilaSuite.referer.checkIsEnabled () {
 		return (true)};

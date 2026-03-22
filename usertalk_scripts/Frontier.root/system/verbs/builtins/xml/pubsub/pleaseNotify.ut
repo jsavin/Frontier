@@ -1,6 +1,6 @@
 on pleaseNotify (notifyProcedure, port, path, protocol, urllist, client, adrTable, timeExpires=nil) {
-	«Process a please notify request. Store the information in a notification requests table.
-		«1/15/02; 5:04:51 PM by PBS
+	//Process a please notify request. Store the information in a notification requests table.
+		//1/15/02; 5:04:51 PM by PBS
 	xml.pubsub.initTable (adrTable); //make sure the notifications data structure is set up
 	if timeExpires == nil {
 		timeExpires = clock.now () + (25 * 60 * 60)}; //default is good for 25 hours

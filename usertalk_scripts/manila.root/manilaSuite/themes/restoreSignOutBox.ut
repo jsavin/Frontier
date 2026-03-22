@@ -1,6 +1,6 @@
 on restoreSignOutBox (adrSiteInfo) {
-	«Restore the sign out box to the default.
-		«06/06/00; 3:56:12 PM by PBS
+	//Restore the sign out box to the default.
+		//06/06/00; 3:56:12 PM by PBS
 	
 	local (adrSite = adrSiteInfo^.adrSite);
 	local (objectName = "membersBoxTemplates");

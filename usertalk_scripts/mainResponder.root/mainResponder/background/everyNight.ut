@@ -1,19 +1,19 @@
-«Run mainResponder's every night scripts.
-	«Changes:
-		«Thu, 25 Feb 1999 02:16:25 GMT by AR
-			«Added the backupmodifiedfile sub-routine and some support code.
-				«This sub-routine only copies the file, if no current backup copy exists.
-				«For now, it's only called to back up the files in the www subfolder.
-		«Thu, 25 Feb 1999 16:42:09 GMT by AR
-			«Files that don't need to be backed up are no longer added to filetable.
-		«Tue, Mar 9, 1999 at 4:07:09 PM by PBS
-			«Use Frontier.getSubFolder rather than mainResponder.getFolder.
-		«Wed, 28 Apr 1999 20:50:13 GMT by AR
-			«Modified backupmodifiedfile subroutine to better handle files that are currently open but haven't been modified yet, using window.ismodified
-		«8/13/99; 7:54:12 PM by DW
-			«call mainResponder.discuss.everyNight if pref is true
-		«05/15/00; 9:25:28 PM by PBS
-			«Don't do root updates at this time. The problem is that they were all bunched up together on the hour, and people's roots were not getting updated due to the competition.
+//Run mainResponder's every night scripts.
+	//Changes:
+		//Thu, 25 Feb 1999 02:16:25 GMT by AR
+			//Added the backupmodifiedfile sub-routine and some support code.
+				//This sub-routine only copies the file, if no current backup copy exists.
+				//For now, it's only called to back up the files in the www subfolder.
+		//Thu, 25 Feb 1999 16:42:09 GMT by AR
+			//Files that don't need to be backed up are no longer added to filetable.
+		//Tue, Mar 9, 1999 at 4:07:09 PM by PBS
+			//Use Frontier.getSubFolder rather than mainResponder.getFolder.
+		//Wed, 28 Apr 1999 20:50:13 GMT by AR
+			//Modified backupmodifiedfile subroutine to better handle files that are currently open but haven't been modified yet, using window.ismodified
+		//8/13/99; 7:54:12 PM by DW
+			//call mainResponder.discuss.everyNight if pref is true
+		//05/15/00; 9:25:28 PM by PBS
+			//Don't do root updates at this time. The problem is that they were all bunched up together on the hour, and people's roots were not getting updated due to the competition.
 
 if config.mainResponder.prefs.flBackupNightly {
 	local (folder = config.mainresponder.prefs.backupfolder);

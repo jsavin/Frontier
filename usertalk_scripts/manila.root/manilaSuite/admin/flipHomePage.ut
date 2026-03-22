@@ -1,13 +1,13 @@
 on flipHomePage (adrSite, siteName, adrMemberInfo, ipAddress=nil) {
-	«Flip the home page. This script does not assume a rendering context, so it's okay to call it from RPC handlers. It also assumes that the caller has already authenticated the member.
-		«10/02/00; 9:23:53 PM by PBS
-	«Changes
-		«1/30/04; 4:55:51 PM by JES
-			«Add the new home page to the home page index.
-		«5/16/03; 12:13:15 PM by JES
-			«Log the event.
-		«4/8/03; 11:35:57 PM by JES
-			«Add the client's ip address to the message table for the new home page.
+	//Flip the home page. This script does not assume a rendering context, so it's okay to call it from RPC handlers. It also assumes that the caller has already authenticated the member.
+		//10/02/00; 9:23:53 PM by PBS
+	//Changes
+		//1/30/04; 4:55:51 PM by JES
+			//Add the new home page to the home page index.
+		//5/16/03; 12:13:15 PM by JES
+			//Log the event.
+		//4/8/03; 11:35:57 PM by JES
+			//Add the client's ip address to the message table for the new home page.
 	
 	local (startticks = clock.ticks ());
 	
@@ -34,7 +34,7 @@ on flipHomePage (adrSite, siteName, adrMemberInfo, ipAddress=nil) {
 	local (subject = adrPrevMsg^.subject);
 	local (flEmptySubject = false);
 	if subject == "" { //PBS: 12/26/99: empty subjects will cause mainResponder to return an error, so work around the problem.
-		«subject = manilaSuite.getString ("admin.untitled")
+		//subject = manilaSuite.getString ("admin.untitled")
 		subject = "Untitled";
 		flEmptySubject = true};
 	
@@ -70,8 +70,8 @@ on flipHomePage (adrSite, siteName, adrMemberInfo, ipAddress=nil) {
 				manilaSuite.log.addEvent ("flipHomePage", startticks, @t)}}};
 	
 	return (true)};
-«bundle //test code
-	«local (adrsite = @testManilaWebsite)
-	«local (siteName = manilaSuite.getCanonicalSiteName (adrSite))
-	«local (adrMemberInfo = @testManilaWebsite.["#membershipGroup"].users.["jake@userland.com"])
-	«flipHomePage (adrSite, siteName, adrMemberInfo)
+//bundle //test code
+	//local (adrsite = @testManilaWebsite)
+	//local (siteName = manilaSuite.getCanonicalSiteName (adrSite))
+	//local (adrMemberInfo = @testManilaWebsite.["#membershipGroup"].users.["jake@userland.com"])
+	//flipHomePage (adrSite, siteName, adrMemberInfo)

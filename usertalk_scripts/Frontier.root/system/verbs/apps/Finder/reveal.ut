@@ -1,4 +1,4 @@
-on reveal (obj) { «Bring the specified object(s) into view
+on reveal (obj) { //Bring the specified object(s) into view
 	
 	if Finder.isScriptable () {
 		return (appleEvent (Finder.id, 'misc', 'mvis', '----', Finder.finderSpec (obj)))}

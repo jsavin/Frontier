@@ -1,9 +1,9 @@
 on openConnection (host, username, password, flmessages=true, port=21) {
-	«Changes
-		«1/12/05; 8:50:19 AM by SK
-			«Added "port" parameter, allowing a user to specify a non-standard port.
-		«5/17/03; 8:41:44 PM by JES
-			«Fixed a bug which could mask the real error message from the server, if the server drops the connection after a failed login.
+	//Changes
+		//1/12/05; 8:50:19 AM by SK
+			//Added "port" parameter, allowing a user to specify a non-standard port.
+		//5/17/03; 8:41:44 PM by JES
+			//Fixed a bug which could mask the real error message from the server, if the server drops the connection after a failed login.
 	local (adrconnectiontable);
 	bundle { //allocate a table to store information for this connection
 		local (adrtable = @system.temp.ftp);
@@ -22,8 +22,8 @@ on openConnection (host, username, password, flmessages=true, port=21) {
 		adrconnectiontable^.host = host;
 		adrconnectiontable^.username = username};
 	on fatal (errmsg) {
-		«tcp.ftp.quit ()
-		«delete (adrconnectiontable)
+		//tcp.ftp.quit ()
+		//delete (adrconnectiontable)
 		try { //should not be fatal
 			tcp.closeStream (adrconnectiontable^.commandStream)};
 		try { //should also not be fatal

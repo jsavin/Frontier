@@ -1,15 +1,15 @@
 on log (message, adrObject, errorMessage=nil) {
-	«Changes
-		«8/1/02; 7:04:14 PM by JES
-			«If config.mainresponder.search.prefs.flLogEnabled is false, don't do anything.
-		«Log a Search Engine Client message.
+	//Changes
+		//8/1/02; 7:04:14 PM by JES
+			//If config.mainresponder.search.prefs.flLogEnabled is false, don't do anything.
+		//Log a Search Engine Client message.
 	
 	if not config.mainresponder.search.prefs.flLogEnabled {
 		return (false)};
 	
 	local (logName = "Search Engine Client");
 	
-	«log.add (message, logName, flWpText:true) //add the message to the Search Engine Client log
+	//log.add (message, logName, flWpText:true) //add the message to the Search Engine Client log
 	
 	local (adrItem = log.addToGuestDatabase (logName, flHourlyRoll:true));
 	if message != nil {

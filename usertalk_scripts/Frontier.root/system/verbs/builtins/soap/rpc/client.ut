@@ -1,33 +1,33 @@
 on client (actionURI, methodName, adrparams, rpcServer="localhost", rpcPort=user.inetd.config.http.port, username="", password="", fldebug=false, ticksToTimeOut=nil, flShowMessages=true, soapAction=nil, methodNamespace=nil, methodNamespaceURI=nil, customStructType=nil, customNamespace=nil, customNamespaceURI=nil, charset=soap.constants.charsetUsAscii, flEnforceSimpleTypes=true, adrHeaderData=nil, headerNamespaceURI=nil, flDuplicatesToArrays=false, adrBeforeDecompileCallback=nil) {
-	«Changes:
-		«4/21/06; 7:52:03 PM by JES
-			«New optional parameter, adrBeforeDecompileCallback. If non-nil, the script at this address is called with the address of the compiled XML for the SOAP request, before decompiling into XML-text for the request. This gives callers a last shot at modifying the request XML, before the requst is fired off to the server.
-		«4/13/06; 2:53:26 AM by JES
-			«New optional parameters, adrHeaderData and headerNamespaceURI. adrHeaderData is the address of an object to encode as the SOAP-ENV:Header. headerNamespaceURI is the namespace URI for the SOAP-ENV:Header namespace declaration.
-			«New optional parameter, flDuplicatesToArrays. If true, duplicate scalars are converted to arrays of scalars. Default is false, preserving existing behavior.
-		«02/04/01; 5:37:09 PM by JES
-			«Verify that the supplied methodName is valid. Prevents generation of invalid XML.
-		«03/25/01; 2:22:56 AM by JES
-			«New optional parameter, soapAction, which overrides the value of the SOAPAction HTTP header. (Normally it defaults to the value of ActionURI.)
-			«New optional parameters, methodNamespace and methodNamespaceURI, facilitate namespace declaration in the methodCall element (the first sub-element of <Body>).
-		«03/25/01; 7:12:26 PM by JES
-			«New optional parameters: customArrayType, customNamespace, and customNamespaceURI -- for setting array type, namespace and namespaceURI for arrays of structs.
-		«04/01/01; 1:02:03 AM by JES
-			«If there are no input parameters, don't add a parameter accessor element.
-		«04/02/01; 5:10:05 PM by JES
-			«Fixed a bug where a closing tag for the method element wasn't generated.
-		«04/02/01; 7:29:04 PM by JES
-			«If methodNamespace is given, but methodNamespaceURI is not, generate an error. If methodNamespaceURI is given, but methodNamespace is not, generate an error.
-		«04/03/01; 7:21:40 PM by JES
-			«New optional parameter, charset, specifies the character encoding for the request. Default is us-ascii.
-		«04/06/01; 7:05:08 PM by JES
-			«Fixed a bug finding the response element: find the element whose name begins with the request method name. (see Section 7.1)
-		«04/07/01; 7:21:47 PM by JES
-			«Fixed a bug where void method calls (calls with no parameters) would not have namespace qualification on the method call element. Changed name of customArrayType parameter to customStructType.
-		«04/13/01; 12:52:58 PM by JES
-			«Fixed a bug where void method calls made without specifying a methodNamespace would not have a closing tag on the parameter element.
-		«05/29/01; 7:34:39 PM by JES
-			«Fixed a problem decoding entity-encoded markup.
+	//Changes:
+		//4/21/06; 7:52:03 PM by JES
+			//New optional parameter, adrBeforeDecompileCallback. If non-nil, the script at this address is called with the address of the compiled XML for the SOAP request, before decompiling into XML-text for the request. This gives callers a last shot at modifying the request XML, before the requst is fired off to the server.
+		//4/13/06; 2:53:26 AM by JES
+			//New optional parameters, adrHeaderData and headerNamespaceURI. adrHeaderData is the address of an object to encode as the SOAP-ENV:Header. headerNamespaceURI is the namespace URI for the SOAP-ENV:Header namespace declaration.
+			//New optional parameter, flDuplicatesToArrays. If true, duplicate scalars are converted to arrays of scalars. Default is false, preserving existing behavior.
+		//02/04/01; 5:37:09 PM by JES
+			//Verify that the supplied methodName is valid. Prevents generation of invalid XML.
+		//03/25/01; 2:22:56 AM by JES
+			//New optional parameter, soapAction, which overrides the value of the SOAPAction HTTP header. (Normally it defaults to the value of ActionURI.)
+			//New optional parameters, methodNamespace and methodNamespaceURI, facilitate namespace declaration in the methodCall element (the first sub-element of <Body>).
+		//03/25/01; 7:12:26 PM by JES
+			//New optional parameters: customArrayType, customNamespace, and customNamespaceURI -- for setting array type, namespace and namespaceURI for arrays of structs.
+		//04/01/01; 1:02:03 AM by JES
+			//If there are no input parameters, don't add a parameter accessor element.
+		//04/02/01; 5:10:05 PM by JES
+			//Fixed a bug where a closing tag for the method element wasn't generated.
+		//04/02/01; 7:29:04 PM by JES
+			//If methodNamespace is given, but methodNamespaceURI is not, generate an error. If methodNamespaceURI is given, but methodNamespace is not, generate an error.
+		//04/03/01; 7:21:40 PM by JES
+			//New optional parameter, charset, specifies the character encoding for the request. Default is us-ascii.
+		//04/06/01; 7:05:08 PM by JES
+			//Fixed a bug finding the response element: find the element whose name begins with the request method name. (see Section 7.1)
+		//04/07/01; 7:21:47 PM by JES
+			//Fixed a bug where void method calls (calls with no parameters) would not have namespace qualification on the method call element. Changed name of customArrayType parameter to customStructType.
+		//04/13/01; 12:52:58 PM by JES
+			//Fixed a bug where void method calls made without specifying a methodNamespace would not have a closing tag on the parameter element.
+		//05/29/01; 7:34:39 PM by JES
+			//Fixed a problem decoding entity-encoded markup.
 	
 	bundle { //make sure methodName is valid
 		on methodNameError () {
@@ -177,7 +177,7 @@ on client (actionURI, methodName, adrparams, rpcServer="localhost", rpcPort=user
 						responseText = string.utf16ToAnsi (responseText)}}}};
 		bundle { //build document tree from XML text
 			on fixEntities (s) {
-				«Works around a bug in xml.compile, where both &amp;quot; and &quot; are decoded as &quot;. Clearly this shouldn't be the case, but to fix xml-compile at this point is asking for trouble.
+				//Works around a bug in xml.compile, where both &amp;quot; and &quot; are decoded as &quot;. Clearly this shouldn't be the case, but to fix xml-compile at this point is asking for trouble.
 				s = string.replaceAll (s, "&amp;amp;", "&amp;amp;amp;");
 				s = string.replaceAll (s, "&amp;quot;", "&amp;amp;quot;");
 				s = string.replaceAll (s, "&amp;apos;", "&amp;amp;apos;");
@@ -227,37 +227,37 @@ on client (actionURI, methodName, adrparams, rpcServer="localhost", rpcPort=user
 	
 	return (returnvalue)};
 
-«bundle //debugging code
-	«bundle //examples/getStateList
-		«local (returnvalue, params = {{1, 2, 3}})
-		«returnvalue = client (actionURI:"/examples", methodName:"getStateList", adrparams:@params, rpcServer:"superhonker.userland.com", fldebug:true)
-		«edit (@scratchpad.httpCommand)
-		«edit (@scratchpad.httpResult)
-		«dialog.notify (returnvalue)
-	«bundle //examples/getStateName
-		«local (returnvalue, params = {50})
-		«returnvalue = client (actionURI:"/examples", methodName:"getStateName", adrparams:@params)
-		«dialog.notify (returnvalue)
-	«bundle //examples/getStateNames
-		«local (returnvalue, params = {11, 22, 33, 44})
-		«returnvalue = client (actionURI:"/examples", methodName:"getStateNames", rpcServer:"superhonker.userland.com", adrparams:@params)
-		«dialog.notify (returnvalue)
-	«bundle //examples/getStateStruct
-		«local (returnvalue, params, struct)
-		«new (tableType, @struct)
-		«struct.a = 11
-		«struct.b = 22
-		«struct.c = 33
-		«struct.d = 44
-		«params = {struct}
-		«returnvalue = client (actionURI:"/examples", methodName:"getStateStruct", rpcServer:"superhonker.userland.com", adrparams:@params, fldebug:true)
-		«temp.returnvalue = returnvalue
-		«edit (@temp.returnvalue)
-	«bundle //examples/getCurrentTime
-		«local (returnvalue, params = {})
-		«returnvalue = client (actionURI:"/examples", methodName:"getCurrentTime", rpcServer:"superhonker.userland.com", adrparams:@params, fldebug:true)
-		«dialog.notify (returnvalue)
-	«bundle //examples/getCurrentTime -- throws an error because there are too many parameters
-		«local (returnvalue, params = {1, 2, 3})
-		«returnvalue = client (actionURI:"/examples", methodName:"getCurrentTime", rpcServer:"superhonker.userland.com", adrparams:@params, fldebug:true)
-		«dialog.notify (returnvalue)
+//bundle //debugging code
+	//bundle //examples/getStateList
+		//local (returnvalue, params = {{1, 2, 3}})
+		//returnvalue = client (actionURI:"/examples", methodName:"getStateList", adrparams:@params, rpcServer:"superhonker.userland.com", fldebug:true)
+		//edit (@scratchpad.httpCommand)
+		//edit (@scratchpad.httpResult)
+		//dialog.notify (returnvalue)
+	//bundle //examples/getStateName
+		//local (returnvalue, params = {50})
+		//returnvalue = client (actionURI:"/examples", methodName:"getStateName", adrparams:@params)
+		//dialog.notify (returnvalue)
+	//bundle //examples/getStateNames
+		//local (returnvalue, params = {11, 22, 33, 44})
+		//returnvalue = client (actionURI:"/examples", methodName:"getStateNames", rpcServer:"superhonker.userland.com", adrparams:@params)
+		//dialog.notify (returnvalue)
+	//bundle //examples/getStateStruct
+		//local (returnvalue, params, struct)
+		//new (tableType, @struct)
+		//struct.a = 11
+		//struct.b = 22
+		//struct.c = 33
+		//struct.d = 44
+		//params = {struct}
+		//returnvalue = client (actionURI:"/examples", methodName:"getStateStruct", rpcServer:"superhonker.userland.com", adrparams:@params, fldebug:true)
+		//temp.returnvalue = returnvalue
+		//edit (@temp.returnvalue)
+	//bundle //examples/getCurrentTime
+		//local (returnvalue, params = {})
+		//returnvalue = client (actionURI:"/examples", methodName:"getCurrentTime", rpcServer:"superhonker.userland.com", adrparams:@params, fldebug:true)
+		//dialog.notify (returnvalue)
+	//bundle //examples/getCurrentTime -- throws an error because there are too many parameters
+		//local (returnvalue, params = {1, 2, 3})
+		//returnvalue = client (actionURI:"/examples", methodName:"getCurrentTime", rpcServer:"superhonker.userland.com", adrparams:@params, fldebug:true)
+		//dialog.notify (returnvalue)

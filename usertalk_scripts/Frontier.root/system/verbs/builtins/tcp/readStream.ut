@@ -1,2 +1,2 @@
-on readStream (stream, bytesToRead) { «Read from an open stream
+on readStream (stream, bytesToRead) { //Read from an open stream
 	kernel (tcp.readStream)}

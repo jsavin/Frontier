@@ -1,19 +1,19 @@
 on newPost (blogid, username, password, struct, publish) {
-	«Changes
-		«10/17/05; 4:56:22 AM by JES
-			«Bug fix: Removing department validation had broken department support. Fixed.
-		«10/17/05; 3:25:15 AM by JES
-			«Add support for multiple categories.
-		«7/19/04; 6:32:03 PM by JES
-			«Decode &quot; and &apos; to the " and ' characters in the title and description, since they're not decoded by xml.compile, when the RPC call comes in.
-		«8/13/02; 12:08:32 AM by JES
-			«Removed the appKey parameter -- it's not in the spec.
-		«7/4/02; 1:18:13 AM by JES
-			«Added support for departments (a.k.a. categories). Because Manila news items can be in only one department, only the first category in the post's categories sub-struct will be taken into account. Subsequent categories will be ignored.
-		«Mon, Jul 1, 2002 at 20:08:07 by JTC
-			«Created.
-			«See http://www.xmlrpc.com/metaWeblogApi
-			«Cobbled from manilSuite.bloggerApi and radio.weblog.metaWeblogApi
+	//Changes
+		//10/17/05; 4:56:22 AM by JES
+			//Bug fix: Removing department validation had broken department support. Fixed.
+		//10/17/05; 3:25:15 AM by JES
+			//Add support for multiple categories.
+		//7/19/04; 6:32:03 PM by JES
+			//Decode &quot; and &apos; to the " and ' characters in the title and description, since they're not decoded by xml.compile, when the RPC call comes in.
+		//8/13/02; 12:08:32 AM by JES
+			//Removed the appKey parameter -- it's not in the spec.
+		//7/4/02; 1:18:13 AM by JES
+			//Added support for departments (a.k.a. categories). Because Manila news items can be in only one department, only the first category in the post's categories sub-struct will be taken into account. Subsequent categories will be ignored.
+		//Mon, Jul 1, 2002 at 20:08:07 by JTC
+			//Created.
+			//See http://www.xmlrpc.com/metaWeblogApi
+			//Cobbled from manilSuite.bloggerApi and radio.weblog.metaWeblogApi
 	local (siteurl = blogid); //these are synonymous for Manila sites
 	local (sitename = manilaSuite.rpcHandlers.getSiteName (siteurl));
 	local (title = "metaWeblog News Item", url = "", description = "", department = "");
@@ -33,35 +33,35 @@ on newPost (blogid, username, password, struct, publish) {
 				department = struct.category}
 			else {
 				if defined (struct.categories) {
-					«bundle //old code -- single category
-						«Assume the first category, even if there are more than one
-						«dept = struct.categories[1]
+					//bundle //old code -- single category
+						//Assume the first category, even if there are more than one
+						//dept = struct.categories[1]
 					local (cat);
 					department = {};
 					for cat in struct.categories {
 						department = department + cat}}};
-			«if dept != "" //JES 10/17/05: don't validate departments
-				«try //if any part of this block fails, don't set the department
-					«local (adrnewssite = manilaSuite.rpcUtils.getNewsSiteAddress (sitename))
-					«local (adrdepts = address (string (adrnewssite + "." + "newsItems.departments")))
-					«if defined (adrdepts^.[dept])
-						«department = dept}};
+			//if dept != "" //JES 10/17/05: don't validate departments
+				//try //if any part of this block fails, don't set the department
+					//local (adrnewssite = manilaSuite.rpcUtils.getNewsSiteAddress (sitename))
+					//local (adrdepts = address (string (adrnewssite + "." + "newsItems.departments")))
+					//if defined (adrdepts^.[dept])
+						//department = dept}};
 	local (msgnum = manilaSuite.rpcHandlers.newsItem.create (username, password, sitename, title, url, description, department, publish));
 	return (sitename + "#" + msgnum)};
-«bundle //test code
-	«bundle //post, not publish
-		«local (struct)
-		«new (tableType, @struct)
-		«struct.description = "This item should <i>not</i> immediately appear on the home page."
-		«struct.link = "http://radio.weblogs.com/0001018/"
-		«struct.title = "metaWeblog ticks " + clock.ticks()
-		«struct.categories = {"test2"}
-		«dialog.alert (newPost ("xxx", user.prefs.manila.siteName, user.prefs.manila.username, user.prefs.manila.password, struct, false))
-	«bundle //post and publish
-		«local (struct)
-		«new (tableType, @struct)
-		«struct.description = "This item <i>should</i> immediately appear on the home page."
-		«struct.link = "http://radio.weblogs.com/0001018/"
-		«struct.title = "metaWeblog ticks " + clock.ticks()
-		«struct.categories = {"test2"}
-		«dialog.alert (newPost ("xxx", user.prefs.manila.siteName, user.prefs.manila.username, user.prefs.manila.password, struct, true))
+//bundle //test code
+	//bundle //post, not publish
+		//local (struct)
+		//new (tableType, @struct)
+		//struct.description = "This item should <i>not</i> immediately appear on the home page."
+		//struct.link = "http://radio.weblogs.com/0001018/"
+		//struct.title = "metaWeblog ticks " + clock.ticks()
+		//struct.categories = {"test2"}
+		//dialog.alert (newPost ("xxx", user.prefs.manila.siteName, user.prefs.manila.username, user.prefs.manila.password, struct, false))
+	//bundle //post and publish
+		//local (struct)
+		//new (tableType, @struct)
+		//struct.description = "This item <i>should</i> immediately appear on the home page."
+		//struct.link = "http://radio.weblogs.com/0001018/"
+		//struct.title = "metaWeblog ticks " + clock.ticks()
+		//struct.categories = {"test2"}
+		//dialog.alert (newPost ("xxx", user.prefs.manila.siteName, user.prefs.manila.username, user.prefs.manila.password, struct, true))

@@ -1,7 +1,7 @@
 on findDriver (type, adradrdriver) {
-	«Changes
-		«5/6/02; 8:07:29 PM by DW
-			«Created.
+	//Changes
+		//5/6/02; 8:07:29 PM by DW
+			//Created.
 	tcp.im.init ();
 	on findInTable (adrtable) {
 		local (adr = @adrtable^.[type]);
@@ -16,7 +16,7 @@ on findDriver (type, adradrdriver) {
 	if findInTable (@tcp.im.builtinDrivers) {
 		return (true)};
 	return (false)};
-«bundle //test code
-	«local (adrdriver)
-	«findDriver ("aim", @adrdriver)
-	«dialog.alert (adrdriver)
+//bundle //test code
+	//local (adrdriver)
+	//findDriver ("aim", @adrdriver)
+	//dialog.alert (adrdriver)

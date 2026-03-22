@@ -1,6 +1,6 @@
 on rpcFormatLastNItems (siteName) {
-	«Get the last n items formatted properly. This supports the manila.homepage.getCurrentContent RPC handler.
-		«04/25/00; 5:53:53 PM by PBS
+	//Get the last n items formatted properly. This supports the manila.homepage.getCurrentContent RPC handler.
+		//04/25/00; 5:53:53 PM by PBS
 	
 	local (adrSite = config.manila.sites.[siteName]);
 	local (n = manilaSuite.news.getItemsPerPagePref (adrSite));

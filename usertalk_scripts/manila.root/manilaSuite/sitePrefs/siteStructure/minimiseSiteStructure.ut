@@ -1,9 +1,9 @@
 on minimiseSiteStructure (pta=nil) {
-	«manilaSuite.sitePrefs.siteStructure.minimiseSiteStructure : 04/05/16, 17:05:32 by DAB
-		«copy a minimal version of the site structure table to the pagetable
-		«Minimal means that all table entries except that required to walk to the the entry 
-		«representing the current url, and any substructure it has. (subdirectory) 
-		«manilaFixer.siteStructure.minimiseSiteStructure : 02/07/21, 13:07:48 by DAB
+	//manilaSuite.sitePrefs.siteStructure.minimiseSiteStructure : 04/05/16, 17:05:32 by DAB
+		//copy a minimal version of the site structure table to the pagetable
+		//Minimal means that all table entries except that required to walk to the the entry 
+		//representing the current url, and any substructure it has. (subdirectory) 
+		//manilaFixer.siteStructure.minimiseSiteStructure : 02/07/21, 13:07:48 by DAB
 	if pta == nil {
 		pta = html.getPageTableAddress()};
 	
@@ -66,23 +66,23 @@ on minimiseSiteStructure (pta=nil) {
 			defined (pta^.msgNum) {
 				msgNum = pta^.msgNum};
 			pta^.pathArgs != "" {
-				«msgNum = number (pta^.pathArgs)
+				//msgNum = number (pta^.pathArgs)
 				if manilaSuite.sitePrefs.utility.isPositiveInteger(pta^.pathArgs) {
 					msgNum = number (pta^.pathArgs)}}};
 		if msgNum != 0 and defined(pta^.hierarchy^.paths.[msgnum]) { //
 			pathSought = string.lower(pta^.hierarchy^.paths.[msgnum])}};
 	
-	«Establish context from the  path and minimise the copy of the structure table
+	//Establish context from the  path and minimise the copy of the structure table
 	if not trimByPath (pathSought) {
 		local (referer = "");
 		try {referer = " (referer " +  pta^.requestHeaders.referer + ")"};
-		«manilaFixer.logger("setupHierarchy:No path " + pathSought + referer)   
+		//manilaFixer.logger("setupHierarchy:No path " + pathSought + referer)   
 		if pathSought beginswith "http/" { //02/05/26, 05:53:00 by DAB
 			local (adr = system.verbs.builtins.log.addToGuestDatabase("setupHierarchy"));
 			adr^.pagetable = pta^}};
 	
 	return true};
-«bundle
-	«local (tbl = temp.pta.["123"].finalFilter)
-	«html.setpageTableaddress(@tbl)
-	«minimiseSiteStructure(@rbl)
+//bundle
+	//local (tbl = temp.pta.["123"].finalFilter)
+	//html.setpageTableaddress(@tbl)
+	//minimiseSiteStructure(@rbl)

@@ -1,17 +1,17 @@
 on opmlBlogroll (opmlUrl, flProcessMacros=true, cssPrefix="blogroll", recentlyUpdatedLinkPrefix="", recentlyUpdatedLinkSuffix="") {
-	«Changes
-		«4/4/03; 2:19:11 PM by JES
-			«Add a <link> tag to pta^.meta with the URL of the blogroll OPML file.
-		«5/23/02; 4:03:53 PM by JES
-			«Created. Wrapper for html.data.standardMacros.opmlToBlogroll, that passes in parameters required for unsafe macros to be neutered.
+	//Changes
+		//4/4/03; 2:19:11 PM by JES
+			//Add a <link> tag to pta^.meta with the URL of the blogroll OPML file.
+		//5/23/02; 4:03:53 PM by JES
+			//Created. Wrapper for html.data.standardMacros.opmlToBlogroll, that passes in parameters required for unsafe macros to be neutered.
 	local (pta = html.getPageTableAddress ());
 	local (htmltext = html.data.standardMacros.opmlToBlogroll (opmlUrl, false, cssPrefix, 3600, recentlyUpdatedLinkPrefix:recentlyUpdatedLinkPrefix, recentlyUpdatedLinkSuffix:recentlyUpdatedLinkSuffix)); //cache for 1 hour, don't process macros -- they need to be neutered first
 	htmltext = mainResponder.neuterText (htmltext, true, true);
 	if flProcessMacros {
 		htmltext = html.processMacros (htmltext)};
 	try { //04/04/03 JES: add <link> tag with the URL to mySubscriptions.opml to pta^.meta
-		«Example <link> tag:
-			«<link rel="blogroll" type="text/x-opml" title="Blogroll" href="http://radio.weblogs.com/gems/blogroll.xml">
+		//Example <link> tag:
+			//<link rel="blogroll" type="text/x-opml" title="Blogroll" href="http://radio.weblogs.com/gems/blogroll.xml">
 		local (linkstring = "<link rel=\"blogroll\" type=\"text/x-opml\" title=\"Blogroll\" href=\"" + opmlUrl + "\" />");
 		if defined (pta^.meta) {
 			pta^.meta = pta^.meta + "\r" + linkstring}

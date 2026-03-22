@@ -1,6 +1,6 @@
 on getPikeInfo (pta=nil) {
-	«Get info about the machine running Pike: ip address, RPC path, and port. Return a table.
-		«01/13/00; 3:45:46 PM by PBS
+	//Get info about the machine running Pike: ip address, RPC path, and port. Return a table.
+		//01/13/00; 3:45:46 PM by PBS
 	
 	if pta == nil {
 		pta = html.getPageTableAddress ()};

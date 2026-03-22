@@ -1,18 +1,18 @@
 on postMessage (flAcceptFileUploads=false, postTime=clock.now ()) {
-	«Post a discussion group message.
-		«Changes:
-			«4/8/03; 2:56:30 PM by JES
-				«Pass the address of a data table to mainResponder.discuss.addMessage. The data table contains the POST-ing client's IP address, which mainResponder.discuss.addMessage will save in the message table.
-			«10/08/00; 4:58:57 PM by JES
-				«Redirect if the postArgs contains a redirect url
-			«04/02/00; 7:17:10 PM by PBS
-				«Added postTime parameter so Manila can over-ride -- Manila can support time zone preferences.
-			«5/26/99; 02:01:42 GMT by AR
-				«Added groupName parameter to call to mainresponder.discuss.addmessage.
-			«5/20/99; 16:28:38 GMT by AR
-				«Added optional parameter named flAcceptFileUploads and defaulting to false. If true, the script saves attached files to the enclosure folder structure.
-			«5/19/99; 14:59:20 GMT by DW
-				«It now returns the msgNum of the new message so a caller can do stmemberKey with the table before returning.
+	//Post a discussion group message.
+		//Changes:
+			//4/8/03; 2:56:30 PM by JES
+				//Pass the address of a data table to mainResponder.discuss.addMessage. The data table contains the POST-ing client's IP address, which mainResponder.discuss.addMessage will save in the message table.
+			//10/08/00; 4:58:57 PM by JES
+				//Redirect if the postArgs contains a redirect url
+			//04/02/00; 7:17:10 PM by PBS
+				//Added postTime parameter so Manila can over-ride -- Manila can support time zone preferences.
+			//5/26/99; 02:01:42 GMT by AR
+				//Added groupName parameter to call to mainresponder.discuss.addmessage.
+			//5/20/99; 16:28:38 GMT by AR
+				//Added optional parameter named flAcceptFileUploads and defaulting to false. If true, the script saves attached files to the enclosure folder structure.
+			//5/19/99; 14:59:20 GMT by DW
+				//It now returns the msgNum of the new message so a caller can do stmemberKey with the table before returning.
 	
 	local (pta = html.getPageTableAddress ());
 	local (subject = pta^.postArgs.subject);

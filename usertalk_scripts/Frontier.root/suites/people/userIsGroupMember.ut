@@ -1,5 +1,5 @@
 on userIsGroupMember (userName, groupName, adrUser=nil, adrGroup=nil) {
-	«Return true if a user is a member of a group, false otherwise.
+	//Return true if a user is a member of a group, false otherwise.
 	if adrUser == nil {
 		adrUser = people.getUserTable (userName)};
 	if adrGroup == nil {

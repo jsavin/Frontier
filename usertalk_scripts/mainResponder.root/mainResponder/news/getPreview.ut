@@ -1,13 +1,13 @@
 on getPreview (sitename) { //returns HTML that previews the current news page
-	«look for a script called #preview at the top level of the news site
-		«if it doesn't exist, the site can't be previewed, we scriptError
-		«if it exists, call it and return what it returns
-		«2/18/99; 3:57:34 AM by DW
-	«Changes:
-		«04/16/00; 6:50:46 PM by JES
-			«localized
-		«05/01/00; 6:51:02 PM by JES
-			«Changed getString calls to use a replacement table address instead of a lists
+	//look for a script called #preview at the top level of the news site
+		//if it doesn't exist, the site can't be previewed, we scriptError
+		//if it exists, call it and return what it returns
+		//2/18/99; 3:57:34 AM by DW
+	//Changes:
+		//04/16/00; 6:50:46 PM by JES
+			//localized
+		//05/01/00; 6:51:02 PM by JES
+			//Changed getString calls to use a replacement table address instead of a lists
 	
 	local (adrnewstable = mainResponder.news.openRoot (sitename));
 	local (adrscript = @adrnewstable^.["#newsSite"].preview);

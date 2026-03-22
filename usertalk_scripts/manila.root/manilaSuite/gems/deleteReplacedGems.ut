@@ -1,6 +1,6 @@
 on deleteReplacedGems (f, adrSite) {
-	«Check for old Gems with the same file name. Those Gems should be marked as deleted, as the new Gem over-writes them. Return the number of Gems marked as deleted.
-		«07/02/00; 5:52:10 PM by PBS
+	//Check for old Gems with the same file name. Those Gems should be marked as deleted, as the new Gem over-writes them. Return the number of Gems marked as deleted.
+		//07/02/00; 5:52:10 PM by PBS
 	
 	local (adrGems = manilaSuite.gems.getSiteDataAddress (adrSite));
 	local (adrItem);

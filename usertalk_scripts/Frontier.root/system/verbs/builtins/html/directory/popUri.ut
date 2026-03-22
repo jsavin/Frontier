@@ -2,7 +2,7 @@ on popuri (uri, levels) {
 	on skiptosquiggle (i) {
 		local (j);
 		for j = i - 1 downto 1 {
-			«msg (string.mid (uri, 1, j))
+			//msg (string.mid (uri, 1, j))
 			if uri [j] == "~" {
 				return (j - 1)}}};
 	local (i, ct = 0, flskip, sizeuri = sizeof (uri));
@@ -14,18 +14,18 @@ on popuri (uri, levels) {
 	loop {
 		if i < 1 {
 			return ("")};
-		«msg (string.mid (uri, 1, i))
+		//msg (string.mid (uri, 1, i))
 		if uri [i] == "/" {
 			if ++ct == levels {
 				return (string.mid (uri, 1, i - 1))};
 			i--;
 			if i < 1 {
 				return ("")};
-			«msg (string.mid (uri, 1, i))
+			//msg (string.mid (uri, 1, i))
 			if uri [i] == "~" {
 				i = skiptosquiggle (i)}}
 		else {
 			i--}}};
 bundle { //test code
-	«dialog.alert (popuri ("theWeb/development/contentManagement/~4/userland/software/frontier~", 2))
+	//dialog.alert (popuri ("theWeb/development/contentManagement/~4/userland/software/frontier~", 2))
 	dialog.alert (popuri ("theWeb/development/contentManagement", 2))}

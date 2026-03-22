@@ -1,8 +1,8 @@
 on client (drivername, screenname, procedurename, paramlist) {
-	«Changes
-		«5/9/02; 11:09:12 AM by DW
-			«Created.
+	//Changes
+		//5/9/02; 11:09:12 AM by DW
+			//Created.
 	tcp.im.send (drivername, screenname, tcp.im.rpi.encode (procedurename, paramlist))};
 bundle { //test code
 	dialog.notify (client ("aim", "eatthefuture", "examples.getstatename", {12}) );
-	}«dialog.notify (client ("jabber", "Jeremy@192.168.0.4/Human", "examples.getStateName", {"\""}) )
+	}//dialog.notify (client ("jabber", "Jeremy@192.168.0.4/Human", "examples.getStateName", {"\""}) )

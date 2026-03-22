@@ -1,24 +1,24 @@
 on setUpSafeScripts (pta=nil) {
-	«Set up the safe identifiers.
-		«Changes:
-			«3/12/07; 2:24:03 PM by LL
-				«Support the new login box template.
-			«11/8/06; 3:48:46 PM by LL
-				«Removed the text included in the whoAmI macro since it wasn't localized and makes the macro more usable in different situations.
-			«12/17/99; 10:07:13 PM by PBS
-				«Call the new manilaSuite.html.bodyTag script rather than html.data.standardMacros.bodyTag. This improves performance, and fixes one of the two known ways of making your site inacessible as a result of editing your template.
-			«02/24/00; 11:52:06 AM by PBS
-				«Don't build the Editors only menu here -- it now gets built in the finalFilter, since it's contents may change during the course of building the page. This is part of plug-ins support.
-			«04/03/00; 11:16:42 AM by PBS
-				«When building date macros, use the time zone settings for this site.
-			«05/22/00; 01:25:20 AM by JES
-				«Added DHTML menus JavaScript
-			«05/29/00; 4:15:27 AM by JES
-				«added DHTML menus CSS
-			«05/31/00; 12:10:24 PM by JES
-				«Localized monthName and dayName macros
-			«12/3/01; 6:13:19 PM by PBS
-				«Navigator links will be done in the finalFilter, since the rendered page may change which navigator to use.
+	//Set up the safe identifiers.
+		//Changes:
+			//3/12/07; 2:24:03 PM by LL
+				//Support the new login box template.
+			//11/8/06; 3:48:46 PM by LL
+				//Removed the text included in the whoAmI macro since it wasn't localized and makes the macro more usable in different situations.
+			//12/17/99; 10:07:13 PM by PBS
+				//Call the new manilaSuite.html.bodyTag script rather than html.data.standardMacros.bodyTag. This improves performance, and fixes one of the two known ways of making your site inacessible as a result of editing your template.
+			//02/24/00; 11:52:06 AM by PBS
+				//Don't build the Editors only menu here -- it now gets built in the finalFilter, since it's contents may change during the course of building the page. This is part of plug-ins support.
+			//04/03/00; 11:16:42 AM by PBS
+				//When building date macros, use the time zone settings for this site.
+			//05/22/00; 01:25:20 AM by JES
+				//Added DHTML menus JavaScript
+			//05/29/00; 4:15:27 AM by JES
+				//added DHTML menus CSS
+			//05/31/00; 12:10:24 PM by JES
+				//Localized monthName and dayName macros
+			//12/3/01; 6:13:19 PM by PBS
+				//Navigator links will be done in the finalFilter, since the rendered page may change which navigator to use.
 	
 	if pta == nil {
 		pta = html.getPageTableAddress ()};
@@ -29,11 +29,11 @@ on setUpSafeScripts (pta=nil) {
 		local (adrLanguageTable = mainResponder.localization.getLanguageTableAddress (pta)); // 05/31/00 JES
 		local (d = manilaSuite.convertTime ()); //PBS 04/03/00: use time zone settings
 		pta^.day = date.day (d);
-		«pta^.dayName = date.dayOfWeekToString (date.dayOfWeek (d))
+		//pta^.dayName = date.dayOfWeekToString (date.dayOfWeek (d))
 		pta^.dayName = adrLanguageTable^.strings.date.dayOfWeekNames.[date.dayOfWeek (d)];
 		
 		pta^.month = date.month (d);
-		«pta^.monthName = date.monthToString (date.month (d))
+		//pta^.monthName = date.monthToString (date.month (d))
 		pta^.monthName = adrLanguageTable^.strings.date.monthNames.[string.padWithZeros (date.month (d), 2)];
 		
 		pta^.year = date.year (d);
@@ -51,9 +51,9 @@ on setUpSafeScripts (pta=nil) {
 				pta^.headerGraphic = manilaSuite.pictures.imgTagFromMsgNum (adrDiscussLinks^.headerMsgNum)}};
 		if not defined (pta^.headerGraphic) {
 			pta^.headerGraphic = ""};
-		«pta^.editorialMenu = manilaSuite.html.editorialLinks (pta)
+		//pta^.editorialMenu = manilaSuite.html.editorialLinks (pta)
 		pta^.editorialMenu = "{replaceEditorialMenuInFinalFilter}"; //PBS 02/04/00: it now gets built in the finalFilter, since it may change during the course of building a page
-		«pta^.navigatorLinks = manilaSuite.html.drawNavigator (pta)
+		//pta^.navigatorLinks = manilaSuite.html.drawNavigator (pta)
 		pta^.navigatorLinks = "{replaceNavLinksInFinalFilter}"; //PBS 12/03/01
 		pta^.tagLine = string (adrNewsSite^.tagLine);
 		pta^.hierarchyPath = "";
@@ -70,7 +70,7 @@ on setUpSafeScripts (pta=nil) {
 			adrSite^.["#prefs"].spaceGif = "space"}};
 	
 	bundle { //body tag
-		«pta^.body = html.data.standardMacros.bodyTag ()
+		//pta^.body = html.data.standardMacros.bodyTag ()
 		pta^.body = manilaSuite.html.bodyTag ()};
 	
 	bundle { //JavaScript, css, meta
@@ -101,19 +101,19 @@ on setUpSafeScripts (pta=nil) {
 	
 	bundle { //membership box
 		pta^.membershipBox = manilaSuite.html.drawMembershipBox (pta);
-		«if defined (pta^.newsSite^.flMembership) and pta^.newsSite^.flMembership
-		«else
-			«pta^.membershipBox = ""};
+		//if defined (pta^.newsSite^.flMembership) and pta^.newsSite^.flMembership
+		//else
+			//pta^.membershipBox = ""};
 	
 	bundle { //whoAmI, prefsBasedBodyTag (member-specific scripts)
 		if defined (pta^.adrMemberInfo) {
-			«whoAmI
+			//whoAmI
 			if defined (pta^.adrMemberInfo^.personalInfo.name) {
 				pta^.whoAmI = pta^.adrMemberInfo^.personalInfo.name}
 			else {
 				pta^.whoAmI = nameOf (pta^.adrMemberInfo^)};
 			
-			«prefsBasedBodyTag
+			//prefsBasedBodyTag
 			local (adrappearance = @pta^.adrMemberInfo^.appearance);
 			if defined (adrAppearance^.bgcolor) {
 				pta^.bgcolor = adrAppearance^.bgcolor};

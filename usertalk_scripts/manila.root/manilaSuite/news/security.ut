@@ -1,6 +1,6 @@
 on security () {
-	«Allow only people who are allowed to create new news items to enter the editorial newsItems section.
-		«04/25/00; 3:11:00 PM by PBS
+	//Allow only people who are allowed to create new news items to enter the editorial newsItems section.
+		//04/25/00; 3:11:00 PM by PBS
 	local (adrNewsSite = responderAttributes.newsSite);
 	
 	local (tempTable);
@@ -33,7 +33,7 @@ on security () {
 		manilaSuite.editors.managingEditorOnly ();
 		return (true)};
 	
-	«If contributing editors are okay, let them in.
+	//If contributing editors are okay, let them in.
 	try { //is this a contributing editor?
 		manilaSuite.editors.editorsOnly ();
 		if defined (adrNewsSite^.newsItems.access.flContributingEditorsCreate) {

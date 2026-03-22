@@ -1,11 +1,11 @@
 on setManagingEditorList (s, adrNewsSite=nil, flPreserveCurrentEditor=true) {
-	«Changes
-		«10/3/05; 4:39:03 AM by JES
-			«If logged in as an admin, don't add the admin's email address to the managing editor list.
-		«9/10/02; 10:14:57 PM by JES
-			«New optional parameters, adrNewsSite and flPreserveCurrentEditor. If adrNewsSite is supplied, then this script can be called outside the website framework context. flPreserveCurrentEditor will also need to be false for this to work.
-		«11/11/99; 4:38:05 PM by PBS
-			«Given a string from a sitePrefs panel, update the managing editors list. Don't let the currently-logged in ME take themselves off the list!
+	//Changes
+		//10/3/05; 4:39:03 AM by JES
+			//If logged in as an admin, don't add the admin's email address to the managing editor list.
+		//9/10/02; 10:14:57 PM by JES
+			//New optional parameters, adrNewsSite and flPreserveCurrentEditor. If adrNewsSite is supplied, then this script can be called outside the website framework context. flPreserveCurrentEditor will also need to be false for this to work.
+		//11/11/99; 4:38:05 PM by PBS
+			//Given a string from a sitePrefs panel, update the managing editors list. Don't let the currently-logged in ME take themselves off the list!
 	
 	local (meList = manilaSuite.admin.stringToList (s));
 	

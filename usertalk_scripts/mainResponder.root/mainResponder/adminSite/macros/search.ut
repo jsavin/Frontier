@@ -1,9 +1,9 @@
 on search () {
-	«Changes
-		«8/18/02; 7:03:26 PM by JES
-			«If this server is not a search engine server, return the empty string.
-		«8/8/02; 3:13:31 AM by JES
-			«Created. Render a miniature search form.
+	//Changes
+		//8/18/02; 7:03:26 PM by JES
+			//If this server is not a search engine server, return the empty string.
+		//8/8/02; 3:13:31 AM by JES
+			//Created. Render a miniature search form.
 	
 	if not config.mainResponder.prefs.flSearchEngine {
 		return ("")};

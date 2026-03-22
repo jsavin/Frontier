@@ -1,10 +1,10 @@
 on delete (userName, password, adrObject) {
-	«Delete an object on the server.
-	«Changes
-		«7/6/05; 7:40:33 PM by JES
-			«Also remove file-part from address in error messages.
-		«7/6/05; 7:35:00 PM by JES
-			«Pop off the file-part of the address when returning to the client. Closes a small security vulnerability, in addition to making confirmation dialogs on the client easier to read.
+	//Delete an object on the server.
+	//Changes
+		//7/6/05; 7:40:33 PM by JES
+			//Also remove file-part from address in error messages.
+		//7/6/05; 7:35:00 PM by JES
+			//Pop off the file-part of the address when returning to the client. Closes a small security vulnerability, in addition to making confirmation dialogs on the client easier to read.
 	
 	local (adrPreCallback = @user.webEditServer.callbacks.preDelete);
 	local (adrCallback = @user.webEditServer.callbacks.delete);
@@ -15,8 +15,8 @@ on delete (userName, password, adrObject) {
 	
 	adrObject = webEditServer.fixGuestDbAdr (adrObject);
 	
-	«Make sure the object is checked out by this user.
-		«You can only delete objects you've checked out.
+	//Make sure the object is checked out by this user.
+		//You can only delete objects you've checked out.
 	if not (custody.isCheckedOutByUser (adrObject, userName)) {
 		return ("Can't delete " + string.popFileFromAddress (adrObject) + " because " + userName + " has not checked it out.")};
 	

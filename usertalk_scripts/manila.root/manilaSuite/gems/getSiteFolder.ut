@@ -1,6 +1,6 @@
 on getSiteFolder (adrSite) {
-	«Get the path on disk to the folder containing gems for this site.
-		«04/13/00; 9:19:30 PM by PBS
+	//Get the path on disk to the folder containing gems for this site.
+		//04/13/00; 9:19:30 PM by PBS
 	
 	local (adrPrefs = manilaSuite.gems.getSitePrefsAddress (adrSite));
 	if defined (adrPrefs^.folder) {

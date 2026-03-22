@@ -1,2 +1,2 @@
-on insertGlossaryEntry (s) { «Inserts the specified glossary entry into the front editing window.
+on insertGlossaryEntry (s) { //Inserts the specified glossary entry into the front editing window.
 	return (appleEvent (BBEdit.id, 'R*ch', 'Igls', '----', string (s)))}

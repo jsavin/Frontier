@@ -1,11 +1,11 @@
 on get (adrhandlers, path, protocol, flObscureIp = false) {
-	«Changes
-		«3/5/01; 3:41:09 PM by DW
-			«Add flObscureIp optional param, makes it possible to produce sample files without publishing the IP address of a specific machine.
-		«3/5/01; 12:34:51 PM by DW
-			«Added SOAP 1.1 support.
-		«3/4/01; 9:00:07 PM by DW
-			«Created. 
+	//Changes
+		//3/5/01; 3:41:09 PM by DW
+			//Add flObscureIp optional param, makes it possible to produce sample files without publishing the IP address of a specific machine.
+		//3/5/01; 12:34:51 PM by DW
+			//Added SOAP 1.1 support.
+		//3/4/01; 9:00:07 PM by DW
+			//Created. 
 	
 	local (xmltext = "", indentlevel = 0);
 	on add (s) {
@@ -68,14 +68,14 @@ on get (adrhandlers, path, protocol, flObscureIp = false) {
 										local (field = string.nthfield (s, ",", 1));
 										s = string.delete (s, 1, sizeof (field) + 1);
 										params = params + {string.trimwhitespace (field)}}}}};
-						«msg ("betty.rpc.getAlidl: " + name)
+						//msg ("betty.rpc.getAlidl: " + name)
 						case protocol {
 							"xml-rpc" {
 								add ("<procedure name=\"" + name + "\" ctParams=\"" + sizeof (params) + "\">"); indentlevel++};
 							"soap" {
-								«3/5/01; 1:10:07 PM by DW
-									«name contains a dotted path to the object. This won't work in SOAP. We allowed for this with the optional path attribute. We split the name into two parts.
-									«
+								//3/5/01; 1:10:07 PM by DW
+									//name contains a dotted path to the object. This won't work in SOAP. We allowed for this with the optional path attribute. We split the name into two parts.
+									//
 								local (procname = name, procpath = "");
 								if procname contains "." {
 									procname = string.nthfield (procname, ".", string.countfields (procname, "."));
@@ -104,6 +104,6 @@ bundle { //test code
 		local (f = "c:\\program files\\radio userland\\www\\alidlExamples\\" + foldername + "\\" + productname + ".xml");
 		file.surefilepath (f);
 		file.writewholefile (f, s);
-		};«webbrowser.openurl ("http://www.ourfavoritesongs.com/users/dave@userland.com/alidlExamples/" + foldername + "/" + productname + ".xml")
+		};//webbrowser.openurl ("http://www.ourfavoritesongs.com/users/dave@userland.com/alidlExamples/" + foldername + "/" + productname + ".xml")
 	writefile (get (@user.soap.rpcHandlers, "/", "soap", true), "soap");
 	writefile (get (@user.betty.rpcHandlers, "/RPC2", "xml-rpc", true), "xmlrpc")}

@@ -1,11 +1,11 @@
 on logonForm (bgcolor = ivory) { //a macro, call it from your logon page
-	«Changes
-		«4/14/00; 9:09:39 PM by JES
-			«localized prompts for mail address and password
-		«Wed, 26 May 1999 01:40:21 GMT by AR
-			«Eliminated some dead code.
+	//Changes
+		//4/14/00; 9:09:39 PM by JES
+			//localized prompts for mail address and password
+		//Wed, 26 May 1999 01:40:21 GMT by AR
+			//Eliminated some dead code.
 	local (pta = html.getPageTableAddress ());
-	«local (formaction = pta^.path) //send the message back to the same place
+	//local (formaction = pta^.path) //send the message back to the same place
 	
 	local (formaction = pta^.responderattributes.urls^.memberHome); //send the user to the home page
 	formaction = formaction + "$" + nameof (this^); //add the name of the macro that generated the form to the request

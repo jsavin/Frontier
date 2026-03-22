@@ -1,15 +1,15 @@
 on getOutline (siteName, username, password) {
-	«An external editor wants to open the editorial site outline.
-		«Return a struct with:
-			«siteOutline -- binary of site outline OPML document.
-			«flCheckedOut -- true if someone else has it checked out
-			«editorialRole -- ME, CE, member, unknown
-			«flAcceptsOpml -- a flag which tells editorial clients whether they can save messages as opml
-			«displaySiteName -- the site's display name
-		«03/08/01; 7:39:13 PM by JES
-			«Cribbed from manilaSuite.rpcHandlers.editorialOutline.get. This script does not do base64 encoding.
-		«07/13/01; 1:31:14 PM by JES
-			«Added displaySiteName to the returned table.
+	//An external editor wants to open the editorial site outline.
+		//Return a struct with:
+			//siteOutline -- binary of site outline OPML document.
+			//flCheckedOut -- true if someone else has it checked out
+			//editorialRole -- ME, CE, member, unknown
+			//flAcceptsOpml -- a flag which tells editorial clients whether they can save messages as opml
+			//displaySiteName -- the site's display name
+		//03/08/01; 7:39:13 PM by JES
+			//Cribbed from manilaSuite.rpcHandlers.editorialOutline.get. This script does not do base64 encoding.
+		//07/13/01; 1:31:14 PM by JES
+			//Added displaySiteName to the returned table.
 	
 	local (editorialRole, flCheckedOut, binarySiteOutline);
 	local (flCanCheckOut = false);

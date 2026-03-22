@@ -1,26 +1,26 @@
 on postEditedMsg (flNeuterMacros=true, flNeuterText=true, flCheckReferer=true) {
-	«Post an edited message.
-		«Changes:
-			«4/12/07; 3:20:25 PM by LL
-				«Support a new site level preference to support a limited set of HTML tags for members.
-			«2/21/07; 9:59:51 AM by LL
-				«Added support for a new or changed message submit callback.
-			«2000 and earlier
-				«02/09/00; 7:06:22 PM by PBS
-					«Custody: it's an error if the person doesn't have custody of this story.
-					«Deleted call to manilaSuite.changedStoryCallback, which doesn't exist.
-				«04/03/00; 11:14:06 AM by PBS
-					«Pass last update time to mainResponder -- support for Manila time zones.
-				«04/05/00; 12:49:51 PM by PBS
-					«Call the home page update callbacks.
-				«04/19/00 at 6:32:31 PM by JES
-					«localized
-				«05/09/00; 10:40:35 PM by PBS
-					«Check referer to defeat the client side trojan horse.
-				«05/11/00; 7:51:36 PM by JES
-					«merged in Brent's security fix for the client side trojan horse attack.
-				«10/13/04; 2:18:21 AM by JES
-					«Call mainResponder.discuss.postEditedMessage with flAcceptFileDeletions as true.
+	//Post an edited message.
+		//Changes:
+			//4/12/07; 3:20:25 PM by LL
+				//Support a new site level preference to support a limited set of HTML tags for members.
+			//2/21/07; 9:59:51 AM by LL
+				//Added support for a new or changed message submit callback.
+			//2000 and earlier
+				//02/09/00; 7:06:22 PM by PBS
+					//Custody: it's an error if the person doesn't have custody of this story.
+					//Deleted call to manilaSuite.changedStoryCallback, which doesn't exist.
+				//04/03/00; 11:14:06 AM by PBS
+					//Pass last update time to mainResponder -- support for Manila time zones.
+				//04/05/00; 12:49:51 PM by PBS
+					//Call the home page update callbacks.
+				//04/19/00 at 6:32:31 PM by JES
+					//localized
+				//05/09/00; 10:40:35 PM by PBS
+					//Check referer to defeat the client side trojan horse.
+				//05/11/00; 7:51:36 PM by JES
+					//merged in Brent's security fix for the client side trojan horse attack.
+				//10/13/04; 2:18:21 AM by JES
+					//Call mainResponder.discuss.postEditedMessage with flAcceptFileDeletions as true.
 	
 	local (pta = html.getPageTableAddress ());
 	pta^.title = manilaSuite.getString ("discuss.messageReceivedPageTitle"); // 4/19/00 JES: localized
@@ -70,7 +70,7 @@ on postEditedMsg (flNeuterMacros=true, flNeuterText=true, flCheckReferer=true) {
 			local (newText = pta^.postArgs.body);
 			try {manilaSuite.callbacks.homePageUpdate (adrMsg, adrSite, adrMember, newText)}}};
 	
-	«mainResponder.discuss.postEditedMessage (flAcceptFileUploads:true, flAcceptFileDeletions:false, flNeuterText:flNeuterText, flNeuterMacros:flNeuterMacros, lastUpdateTime:manilaSuite.convertTime ()) //PBS 04/03/00: use the current time zone to set the last update time
+	//mainResponder.discuss.postEditedMessage (flAcceptFileUploads:true, flAcceptFileDeletions:false, flNeuterText:flNeuterText, flNeuterMacros:flNeuterMacros, lastUpdateTime:manilaSuite.convertTime ()) //PBS 04/03/00: use the current time zone to set the last update time
 	bundle { //check legal tags for member
 		if not (pta^.flEditor == true) {
 			if not defined (config.manila.prefs.flRestrictHtmlForMembers) {

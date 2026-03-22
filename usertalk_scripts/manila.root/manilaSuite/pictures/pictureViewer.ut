@@ -1,26 +1,26 @@
 on pictureViewer (pta=nil) {
-	«Changes:
-		«1/31/06; 2:51:44 AM by JES
-			«Same behavior for pending pictures as for deleted ones.
-		«9/26/05; 4:27:33 PM by JES
-			«If the message is flagged as deleted, don't add the shortcut explanatory text or the cowskull link.
-		«9/26/05; 4:20:34 PM by JES
-			«Small formatting fix -- removed unwanted <p> tags.
-		«9/26/05; 4:10:49 PM by JES
-			«Include the Admin/Confirm box on pictureViewer pages.
-			«Removed a bunch of commented-out code.
-			«Only add the skull link HTML if the skull image is non-empty.
-		«1999-2000
-			«05/01/00; 2:50:03 PM by JES
-				«Changed getString calls to use a replacement table address instead of a lists
-			«04/21/00; 3:26:37 AM by JES
-				«localized
-			«1/12/00; 5:06:20 PM by PBS
-				«Don't calculate and update the shortcut here, just get the shortcut name and display it. The shortcut is now updated when the picture is uploaded, not when it's viewed on this page. This was leading to side effects with pictures saved on a static server: the shortcuts were getting confused. The problem also meant that you could never delete a shortcut to a picture, since the pictureViewer page would always recreate it.
-			«11/8/99; 10:52:00 AM by PBS
-				«The glossary entry is now the title of the picture. The title does not point to the pictureViewer page: it's an img tag referencing the picture.
-			«?/?/99 by PBS
-				«Display a picture in a page.
+	//Changes:
+		//1/31/06; 2:51:44 AM by JES
+			//Same behavior for pending pictures as for deleted ones.
+		//9/26/05; 4:27:33 PM by JES
+			//If the message is flagged as deleted, don't add the shortcut explanatory text or the cowskull link.
+		//9/26/05; 4:20:34 PM by JES
+			//Small formatting fix -- removed unwanted <p> tags.
+		//9/26/05; 4:10:49 PM by JES
+			//Include the Admin/Confirm box on pictureViewer pages.
+			//Removed a bunch of commented-out code.
+			//Only add the skull link HTML if the skull image is non-empty.
+		//1999-2000
+			//05/01/00; 2:50:03 PM by JES
+				//Changed getString calls to use a replacement table address instead of a lists
+			//04/21/00; 3:26:37 AM by JES
+				//localized
+			//1/12/00; 5:06:20 PM by PBS
+				//Don't calculate and update the shortcut here, just get the shortcut name and display it. The shortcut is now updated when the picture is uploaded, not when it's viewed on this page. This was leading to side effects with pictures saved on a static server: the shortcuts were getting confused. The problem also meant that you could never delete a shortcut to a picture, since the pictureViewer page would always recreate it.
+			//11/8/99; 10:52:00 AM by PBS
+				//The glossary entry is now the title of the picture. The title does not point to the pictureViewer page: it's an img tag referencing the picture.
+			//?/?/99 by PBS
+				//Display a picture in a page.
 	
 	if pta == nil {
 		pta = html.getPageTableAddress ()};

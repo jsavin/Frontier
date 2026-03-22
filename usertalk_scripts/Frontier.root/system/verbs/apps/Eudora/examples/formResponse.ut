@@ -7,7 +7,7 @@ on formResponse (templatename) {
 	local (sentat = Eudora.getMessageDate (x));
 	
 	local (greetings);
-	bundle { «set greetings string
+	bundle { //set greetings string
 		local (day, month, year, hour, minute, second);
 		date.get (clock.now (), @day, @month, @year, @hour, @minute, @second);
 		if hour < 12 {

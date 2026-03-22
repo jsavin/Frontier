@@ -1,5 +1,5 @@
 on fileExists (domain, path, account, password) {
-	« Determines if a file exists in a given directory on an FTP server.
+	// Determines if a file exists in a given directory on an FTP server.
 	local {
 		parent;
 		fname;
@@ -11,7 +11,7 @@ on fileExists (domain, path, account, password) {
 	parent = ftpClient.folderFromPath (path);
 	try {
 		for i in ftpClient.list (domain, parent, account, password) {
-			if i == fname { « The file exists.
+			if i == fname { // The file exists.
 				return (true)}}};
-	«File not found.
+	//File not found.
 	return (false)}

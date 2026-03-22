@@ -1,8 +1,8 @@
-«Changes:
-	«5/13/02; 11:04:24 PM by JB
-		«Changelog created. This script cleans out the id tables and maintains the system.temp.jabber.connection connection.
+//Changes:
+	//5/13/02; 11:04:24 PM by JB
+		//Changelog created. This script cleans out the id tables and maintains the system.temp.jabber.connection connection.
 on shouldJabberBeOn ( ) {
-	«Decides whether the framework-maintained Jabber connection should be off or on. true for on, false for off.
+	//Decides whether the framework-maintained Jabber connection should be off or on. true for on, false for off.
 	if tcp.isOffline() {
 		return false};
 	if not defined ( user.im.jabber.flActive ) or user.im.jabber.flActive == false {
@@ -48,16 +48,16 @@ for i = sizeOf  ( system.temp.jabber.idTables ) downto 1 { // cleanup the id tab
 
 return;
 
-«bundle //commented code
-	«if not defined ( user.im.jabber.lastXSSSubUpdate )
-		«user.im.jabber.lastXSSSubUpdate = date(0)
-	«if defined ( user.im.jabber.prefs ) and not defined ( user.im.jabber.prefs.acceptXSSpubs ) // run only if a previous init has run
-		«jabber.init()
-	«if jabberOn and user.im.jabber.prefs.acceptXSSpubs and clock.now() - user.im.jabber.lastXSSSubUpdate > 24*60*60 and defined(system.temp.jabber.connection) // refresh subscriptions
-		«for subscription in @aggregatorData.services
-			«local ( url = nameOf ( subscription^ ) )
-			«if defined ( subscription^.compilation.cloud )
-				«with subscription^.compilation.cloud
-					«tcp.im.builtinDrivers.jabber.code.messages.pubsubSubscribe(user.im.jabber.prefs.xssBridge, protocol + "@" + domain + ":" + port + path + "/" + registerProcedure, url)
-		«radio.log.add("Jabber", "Adding in jabber subscriptions.", clock.ticks())
-		«user.im.jabber.lastXSSSubUpdate = clock.now()
+//bundle //commented code
+	//if not defined ( user.im.jabber.lastXSSSubUpdate )
+		//user.im.jabber.lastXSSSubUpdate = date(0)
+	//if defined ( user.im.jabber.prefs ) and not defined ( user.im.jabber.prefs.acceptXSSpubs ) // run only if a previous init has run
+		//jabber.init()
+	//if jabberOn and user.im.jabber.prefs.acceptXSSpubs and clock.now() - user.im.jabber.lastXSSSubUpdate > 24*60*60 and defined(system.temp.jabber.connection) // refresh subscriptions
+		//for subscription in @aggregatorData.services
+			//local ( url = nameOf ( subscription^ ) )
+			//if defined ( subscription^.compilation.cloud )
+				//with subscription^.compilation.cloud
+					//tcp.im.builtinDrivers.jabber.code.messages.pubsubSubscribe(user.im.jabber.prefs.xssBridge, protocol + "@" + domain + ":" + port + path + "/" + registerProcedure, url)
+		//radio.log.add("Jabber", "Adding in jabber subscriptions.", clock.ticks())
+		//user.im.jabber.lastXSSSubUpdate = clock.now()

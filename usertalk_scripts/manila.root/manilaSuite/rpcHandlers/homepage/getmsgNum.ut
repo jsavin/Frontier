@@ -1,5 +1,5 @@
 on getmsgNum (username, password, siteName) {
-	«Get the msgNum of the current home page.
+	//Get the msgNum of the current home page.
 	
 	bundle { //make sure this person is a managing editor of the site.
 		local (beginningErrorString = "Can't get the msgNum of the home page because ");

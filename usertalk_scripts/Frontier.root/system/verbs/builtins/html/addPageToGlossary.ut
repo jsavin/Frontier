@@ -1,12 +1,12 @@
 on addPageToGlossary (adrPageTable) { //5.0
-	«Changes:
-		«Sunday, January 18, 1998 at 8:31:46 PM by PBS
-			«Build glossary references relative to the ftpSite rather than the glossary.
-		«Sat, May 16, 1998 at 5:29:08 PM by PBS
-			«Avoid name collisions -- remove "with adrPageTable" statement.
-		«Thu, Jan 14, 1999 at 3:28:18 PM by PBS
-			«The name of the page may contain a .html (for example) --
-				«don't convert that . to a /, or else glossary entries will be wrong.
+	//Changes:
+		//Sunday, January 18, 1998 at 8:31:46 PM by PBS
+			//Build glossary references relative to the ftpSite rather than the glossary.
+		//Sat, May 16, 1998 at 5:29:08 PM by PBS
+			//Avoid name collisions -- remove "with adrPageTable" statement.
+		//Thu, Jan 14, 1999 at 3:28:18 PM by PBS
+			//The name of the page may contain a .html (for example) --
+				//don't convert that . to a /, or else glossary entries will be wrong.
 	local (stringStrip = string (parentOf (adrPageTable^.ftpSite^)));
 	local (path = string (adrPageTable^.adrObject));
 	

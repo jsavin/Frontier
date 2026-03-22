@@ -1,9 +1,9 @@
 on getMessageWml (msgNum, flStripHtml = false, pta = nil) {
 	
-	«Build one or more WML documents based on the specified DG message.
-		«02/16/2000 at 7:30:31 AM by AR
-			«If neccessary, the document is split up into several decks. We're using simple heuristics to determine the compiled size of a deck. The Nokia 7110 crashes when it receives a compiled deck larger then about 1400 bytes.
-			«The WAP/WML specs are available from http://www.wapforum.org/
+	//Build one or more WML documents based on the specified DG message.
+		//02/16/2000 at 7:30:31 AM by AR
+			//If neccessary, the document is split up into several decks. We're using simple heuristics to determine the compiled size of a deck. The Nokia 7110 crashes when it receives a compiled deck larger then about 1400 bytes.
+			//The WAP/WML specs are available from http://www.wapforum.org/
 	
 	if pta == nil {
 		pta = html.getPageTableAddress ()};
@@ -28,11 +28,11 @@ on getMessageWml (msgNum, flStripHtml = false, pta = nil) {
 	local (adrmsg = mainResponder.discuss.getMessageTable (msgNum, pta));
 	
 	bundle { //prevent the card from being served from the cache
-		«See http://wap.colorline.no/wap-faq/?format=html#04.005
-			«Expires: Mon, 26 Jul 1997 05:00:00 GMT
-			«Last-Modified: DD. month YYYY HH:MM:SS GMT
-			«Cache-Control: no-cache, must-revalidate
-			«Pragma: no-cache
+		//See http://wap.colorline.no/wap-faq/?format=html#04.005
+			//Expires: Mon, 26 Jul 1997 05:00:00 GMT
+			//Last-Modified: DD. month YYYY HH:MM:SS GMT
+			//Cache-Control: no-cache, must-revalidate
+			//Pragma: no-cache
 		pta^.responseHeaders.["Expires"] = date.netStandardString (date.set (2, 1, 2000, 0, 0, 0)); //in the past
 		pta^.responseHeaders.["Last-Modified"] = date.netStandardString (adrmsg^.lastUpdate);
 		pta^.responseHeaders.["Cache-Control"] = "no-cache, must-revalidate";

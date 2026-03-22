@@ -1,16 +1,16 @@
 on getServerTimestamp (adrSession) {
-	«Changes
-		«4/20/06; 5:19:00 AM by JES
-			«Created. Retrieves the current system timestamp (GMT) from the Web service.
+	//Changes
+		//4/20/06; 5:19:00 AM by JES
+			//Created. Retrieves the current system timestamp (GMT) from the Web service.
 	local (retval = salesforce.callApi (adrSession, nameOf (this^), {}));
 	return (date.iso8601StringToDate (retval.timestamp))};
-«bundle //testing
-	«local (adrses)
-	«bundle //set adrses
-		«if defined (temp.salesforce.sessions) and sizeOf (temp.salesforce.sessions)
-			«local (sesnum = sizeOf (temp.salesforce.sessions))
-			«adrses = @temp.salesforce.sessions[sesnum]
-		«else //log in
-			«salesforce.login (workspace.salesforcecomUsername, workspace.salesforcecomPassword, @adrses)
-	«table.assign (@workspace.retval, this^ (adrses))
-	«edit (@workspace.retval)
+//bundle //testing
+	//local (adrses)
+	//bundle //set adrses
+		//if defined (temp.salesforce.sessions) and sizeOf (temp.salesforce.sessions)
+			//local (sesnum = sizeOf (temp.salesforce.sessions))
+			//adrses = @temp.salesforce.sessions[sesnum]
+		//else //log in
+			//salesforce.login (workspace.salesforcecomUsername, workspace.salesforcecomPassword, @adrses)
+	//table.assign (@workspace.retval, this^ (adrses))
+	//edit (@workspace.retval)

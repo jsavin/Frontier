@@ -1,81 +1,81 @@
 on viewDirectory (flTopLevel = false, msgnum = nil,  flDirectoryInABox = false) {
-	«Changes
-		«1/12/07; 4:35:10 PM by LL
-			«Support a new site-level preference on whether the Suggest-A-Link should be displayed for directory pages. It defaults to true to maintain current behaviour.
-		«11/1/06; 4:03:27 PM by LL
-			«Include the IP address and domain of the person suggesting the link for suggest a link notification emails.
-		«2000:
-			«11/9/2000; 6:24:10 AM by DW
-				«Created.
-			«11/9/2000; 5:52:41 PM by DW
-				«Added params. If flTopLevel, we know to render the top level of the directory. In this case msgnum must be set to the msg containing the outline for the directory to render.
-			«11/16/2000; 7:20:51 AM by DW
-				«Include author information, number of hits, etc; at the bottom of the directory display.
-			«11/16/2000; 10:34:18 AM by DW
-				«msgnum can be a path now, like 4/theWeb/publications/news/general, which allows you to start at a deeply nested point in a directory.
-			«11/17/2000; 7:49:02 AM by DW
-				«Suggest a link feature.
-			«11/22/2000; 7:07:00 AM by DW
-				«Finish up templatization.
-			«11/22/00; 5:02:45 PM by PBS
-				«Don't read from or save in cache if flDirectoryInABox is true.
-			«11/23/2000; 4:38:25 PM by DW
-				«When displaying in a box, don't display comments.
-			«11/24/2000; 8:07:56 AM by DW
-				«Don't set the page title if flDirectoryInABox is true.
-			«11/24/2000; 7:19:24 PM by DW
-				«Relax rule about inclusion, now included directories can be anywhere
-					«Add a new branch to the cache in each dg message, called xmlstructs
-						«The name of each item is its url. If the value is a boolean false, that means we weren't able to read or parse the file. Don't retry. 
-						«The cache is filled when you display the level containing the link. Only files whose extension are .opml are checked. 
-						«The url that's generated keys off the name of the item, get its link to locate the xmlstruct in the cache.
-					«Changed parts
-						«manilaSuite.directory.viewDirectory
-						«manilaSuite.directory.walk
-						«manilaSuite.directory.initMessageTable
-			«11/26/00; 1:21:32 PM by PBS
-				«Add the external editor button ("Pike button") below directories if the viewer has edit privileges.
-				«Inhibit title display, unless the pref is turned on. (It's off by default.)
-				«Static rendering fix -- check that searchArgs is defined before referencing it. This fixes the viewDirectoryBox macro on the static version of pages.
-				«Fixed HTML errors -- there were tags being added that are in the directory template. They were hard-coded, they needed to be removed.
-			«11/26/2000; 7:48:14 PM by DW
-				«Added support for the directories table.
-			«11/26/00; 9:57:01 PM by PBS
-				«Fixed an HTML bug -- with the suggest a link page, the table was not being closed. Now it is. (An earlier HTML fix was half-right -- I had commented out a closing table tag, but the wrong one.)
-			«11/27/2000; 9:11:14 AM by DW
-				«Getting directories displaying correctly again.
-				«It seems clear to me that the change that Brent made can't work. He's commenting out a closing-table tag without commenting the balancing opening-table tag. If this works, the previous code must have been wrong in some way. It clearly doesn't work, this screen shot illustrates.
-				«http://www.scripting.com/images/misalignedDirectory.gif
-				«It seems clear to me that the directory items must be a table. Each item is a row in a table, if it's not a table, what table will enclose them? I just don't see the logic.
-				«Anyway, I think what we're generating now is right. 
-			«11/27/00; 12:37:46 PM by PBS
-				«There were a number of small bugs fixed.
-				«1. The outer table didn't also add outer tr and td tags. So you could have <table..><table..>, which is illegal. Now it does add tr and td tags (and close them later).
-				«2. The suggest-a-link page page was adding outer tr and td tags, but the directory rendering was not. So now neither do. (See above.)
-				«3. When building a directory page, the outer table was getting tossed. A line that read htmltext = s should have read htmltext = htmltext + s. But the closing outer table tag was still being added, so you had an extra closing table tag with directories, but not with the suggest-a-link page.
-				«4. An HTML validation issue was fixed -- a tr tag cannot have a height attribute. The height attribute was moved to the enclosed td tag. There's still a validation issue with the textarea tag -- wrap is not allowed. But that's all throughout Manila, and no good solution exists for removing it.
-			«12/5/2000; 8:43:53 PM by DW
-				«Add an expiration facility for cached pages. Search the script for adrexpires to see how it works. Quite simple.
-			«12/12/2000; 5:17:10 PM by DW
-				«When rendering a directory box, hand-construct the URL for linking to included directories. 
-			«12/14/2000; 9:01:05 AM by DW
-				«Add support for {opmlUrl} feature.
-			«12/15/2000; 1:37:10 AM by DW
-				«Suggest-a-link email comes from the submitter
-		«2001:
-			«3/1/01; 2:03:06 PM by DW
-				«Fix two bugs in shortDate subroutine.
-			«3/6/01; 10:39:17 AM by DW
-				«Add {subItems} macro, says how many items are displayed at the level you're viewing. I got tired of counting the number of new SOAP implementations by hand. A good problem to have!!
-				«Also, to make it legal, I also had to add an assignment in the "directorytemplate" branch in manilaSuite.themes.getLegalMacrosForObject
-			«3/13/01; 9:01:41 PM by DW
-				«The page title of the top-level of each directory was the empty string. Uck. Added a conditional test, if it's empty, set it to the subject of the topmost message, topMsgSubject. 
-			«03/20/01; 9:50:47 PM by PBS
-				«The page title of the top-level of each directory was not getting set in the cache -- the title in the cache was the empty string. Now it's cached.
-			«12/13/01; 1:40:41 PM by PBS
-				«Fixed a date coercion bug in international systems. The bug was that a date wasn't being coerced. See the shortDate subroutine.
-			«12/19/01; 2:42:16 PM by PBS
-				«Call manilaSuite.sendMail rather than tcp.sendMail, so user callbacks get called, so text gets converted (bug fix from David Bayly on Frontier-Server list).
+	//Changes
+		//1/12/07; 4:35:10 PM by LL
+			//Support a new site-level preference on whether the Suggest-A-Link should be displayed for directory pages. It defaults to true to maintain current behaviour.
+		//11/1/06; 4:03:27 PM by LL
+			//Include the IP address and domain of the person suggesting the link for suggest a link notification emails.
+		//2000:
+			//11/9/2000; 6:24:10 AM by DW
+				//Created.
+			//11/9/2000; 5:52:41 PM by DW
+				//Added params. If flTopLevel, we know to render the top level of the directory. In this case msgnum must be set to the msg containing the outline for the directory to render.
+			//11/16/2000; 7:20:51 AM by DW
+				//Include author information, number of hits, etc; at the bottom of the directory display.
+			//11/16/2000; 10:34:18 AM by DW
+				//msgnum can be a path now, like 4/theWeb/publications/news/general, which allows you to start at a deeply nested point in a directory.
+			//11/17/2000; 7:49:02 AM by DW
+				//Suggest a link feature.
+			//11/22/2000; 7:07:00 AM by DW
+				//Finish up templatization.
+			//11/22/00; 5:02:45 PM by PBS
+				//Don't read from or save in cache if flDirectoryInABox is true.
+			//11/23/2000; 4:38:25 PM by DW
+				//When displaying in a box, don't display comments.
+			//11/24/2000; 8:07:56 AM by DW
+				//Don't set the page title if flDirectoryInABox is true.
+			//11/24/2000; 7:19:24 PM by DW
+				//Relax rule about inclusion, now included directories can be anywhere
+					//Add a new branch to the cache in each dg message, called xmlstructs
+						//The name of each item is its url. If the value is a boolean false, that means we weren't able to read or parse the file. Don't retry. 
+						//The cache is filled when you display the level containing the link. Only files whose extension are .opml are checked. 
+						//The url that's generated keys off the name of the item, get its link to locate the xmlstruct in the cache.
+					//Changed parts
+						//manilaSuite.directory.viewDirectory
+						//manilaSuite.directory.walk
+						//manilaSuite.directory.initMessageTable
+			//11/26/00; 1:21:32 PM by PBS
+				//Add the external editor button ("Pike button") below directories if the viewer has edit privileges.
+				//Inhibit title display, unless the pref is turned on. (It's off by default.)
+				//Static rendering fix -- check that searchArgs is defined before referencing it. This fixes the viewDirectoryBox macro on the static version of pages.
+				//Fixed HTML errors -- there were tags being added that are in the directory template. They were hard-coded, they needed to be removed.
+			//11/26/2000; 7:48:14 PM by DW
+				//Added support for the directories table.
+			//11/26/00; 9:57:01 PM by PBS
+				//Fixed an HTML bug -- with the suggest a link page, the table was not being closed. Now it is. (An earlier HTML fix was half-right -- I had commented out a closing table tag, but the wrong one.)
+			//11/27/2000; 9:11:14 AM by DW
+				//Getting directories displaying correctly again.
+				//It seems clear to me that the change that Brent made can't work. He's commenting out a closing-table tag without commenting the balancing opening-table tag. If this works, the previous code must have been wrong in some way. It clearly doesn't work, this screen shot illustrates.
+				//http://www.scripting.com/images/misalignedDirectory.gif
+				//It seems clear to me that the directory items must be a table. Each item is a row in a table, if it's not a table, what table will enclose them? I just don't see the logic.
+				//Anyway, I think what we're generating now is right. 
+			//11/27/00; 12:37:46 PM by PBS
+				//There were a number of small bugs fixed.
+				//1. The outer table didn't also add outer tr and td tags. So you could have <table..><table..>, which is illegal. Now it does add tr and td tags (and close them later).
+				//2. The suggest-a-link page page was adding outer tr and td tags, but the directory rendering was not. So now neither do. (See above.)
+				//3. When building a directory page, the outer table was getting tossed. A line that read htmltext = s should have read htmltext = htmltext + s. But the closing outer table tag was still being added, so you had an extra closing table tag with directories, but not with the suggest-a-link page.
+				//4. An HTML validation issue was fixed -- a tr tag cannot have a height attribute. The height attribute was moved to the enclosed td tag. There's still a validation issue with the textarea tag -- wrap is not allowed. But that's all throughout Manila, and no good solution exists for removing it.
+			//12/5/2000; 8:43:53 PM by DW
+				//Add an expiration facility for cached pages. Search the script for adrexpires to see how it works. Quite simple.
+			//12/12/2000; 5:17:10 PM by DW
+				//When rendering a directory box, hand-construct the URL for linking to included directories. 
+			//12/14/2000; 9:01:05 AM by DW
+				//Add support for {opmlUrl} feature.
+			//12/15/2000; 1:37:10 AM by DW
+				//Suggest-a-link email comes from the submitter
+		//2001:
+			//3/1/01; 2:03:06 PM by DW
+				//Fix two bugs in shortDate subroutine.
+			//3/6/01; 10:39:17 AM by DW
+				//Add {subItems} macro, says how many items are displayed at the level you're viewing. I got tired of counting the number of new SOAP implementations by hand. A good problem to have!!
+				//Also, to make it legal, I also had to add an assignment in the "directorytemplate" branch in manilaSuite.themes.getLegalMacrosForObject
+			//3/13/01; 9:01:41 PM by DW
+				//The page title of the top-level of each directory was the empty string. Uck. Added a conditional test, if it's empty, set it to the subject of the topmost message, topMsgSubject. 
+			//03/20/01; 9:50:47 PM by PBS
+				//The page title of the top-level of each directory was not getting set in the cache -- the title in the cache was the empty string. Now it's cached.
+			//12/13/01; 1:40:41 PM by PBS
+				//Fixed a date coercion bug in international systems. The bug was that a date wasn't being coerced. See the shortDate subroutine.
+			//12/19/01; 2:42:16 PM by PBS
+				//Call manilaSuite.sendMail rather than tcp.sendMail, so user callbacks get called, so text gets converted (bug fix from David Bayly on Frontier-Server list).
 	
 	local (flusecache = true); //set this false if you're debugging
 	
@@ -156,10 +156,10 @@ on viewDirectory (flTopLevel = false, msgnum = nil,  flDirectoryInABox = false) 
 			if pta^.method == "GET" {
 				if not flDirectoryInABox {
 					if not defined (searchArgs.command) {
-						«Note
-							«If we didn't check for the command, the suggest-a-link feature wouldn't work. 
-								«We'd return the cached "content page" for the URL. 
-								«If a command is present that's a clue that we can't use the cache.
+						//Note
+							//If we didn't check for the command, the suggest-a-link feature wouldn't work. 
+								//We'd return the cached "content page" for the URL. 
+								//If a command is present that's a clue that we can't use the cache.
 						local (flexpired = true);
 						if defined (adrexpires^) {
 							if clock.now () < adrexpires^ {
@@ -251,7 +251,7 @@ on viewDirectory (flTopLevel = false, msgnum = nil,  flDirectoryInABox = false) 
 							text = xml.entityDecode (text, flAlphaEntities:true)};
 						bundle { //skip over rules
 							if string.lower (text) beginswith "<rules>" {
-								«add ("<tr><td valign=\"top\">&nbsp;</td><td>" + rules.columns.value + "</td></tr>")
+								//add ("<tr><td valign=\"top\">&nbsp;</td><td>" + rules.columns.value + "</td></tr>")
 								return}};
 						for adrsub in adr { //see if it has subs
 							if not (nameof (adrsub^) beginswith "/") { //it's an outline
@@ -281,7 +281,7 @@ on viewDirectory (flTopLevel = false, msgnum = nil,  flDirectoryInABox = false) 
 										flSkipLeadingComment = false;
 										return};
 									text = string.replaceall (adrprefs^.commentTemplate, "{comment}", text);
-									«text = "<i>" + text + "<br><br></i>"
+									//text = "<i>" + text + "<br><br></i>"
 									type = "comment"}};
 							try { //handle link
 								if adr^.["/atts"].type == "link" {
@@ -318,8 +318,8 @@ on viewDirectory (flTopLevel = false, msgnum = nil,  flDirectoryInABox = false) 
 								addtoitemlist ("<td>&nbsp;</td><td>" + text + "</td>")}
 							else {
 								bundle { //move the icon down by a few pixels
-									«explanation
-										«Comments must be aligned at the top for multi-line elements, but it looks awkward for single-line items if it's flush with the top.
+									//explanation
+										//Comments must be aligned at the top for multi-line elements, but it looks awkward for single-line items if it's flush with the top.
 									icon = "<table cellspacing=\"0\" cellpadding=\"0\"><tr><td height=\"2\"></td></tr><tr><td>" + icon + "</td></tr></table>"}; //PBS 11/27/00: tr tags may not have height attributes -- moved height attribute to td tag (validation issue)
 								addtoitemlist ("<td align=\"right\" valign=\"top\">" + icon + "</td><td valign=\"top\">" + text + "</td>")}}
 						else {
@@ -399,8 +399,8 @@ on viewDirectory (flTopLevel = false, msgnum = nil,  flDirectoryInABox = false) 
 					add ("<tr><td>&nbsp;</td><td><input type=\"submit\" name=\"submit\" value=\"Submit\"></td></tr>");
 					add ("</table>"); indentlevel--;
 					add ("<input name=\"command\" type=\"hidden\" value=\"" + "sendASuggestion" + "\">");
-					«add ("<input name=\"referer\" type=\"hidden\" value=\"" + referer + "\">")
-					«add ("<input name=\"editor\" type=\"hidden\" value=\"" + base64.encode (editoremail, infinity) + "\">")
+					//add ("<input name=\"referer\" type=\"hidden\" value=\"" + referer + "\">")
+					//add ("<input name=\"editor\" type=\"hidden\" value=\"" + base64.encode (editoremail, infinity) + "\">")
 					add ("</form>"); indentlevel--;
 					add ("When you click on Submit, an email will be sent to " + ownername + ", the editor of this directory page. <i>There is no guarantee that the suggested site will appear in this directory.</i>")}
 				else {
@@ -429,7 +429,7 @@ on viewDirectory (flTopLevel = false, msgnum = nil,  flDirectoryInABox = false) 
 					try { //domain name
 						add ("");
 						add ("Domain name: " + tcp.dns.getDomainName (pta^.client))};
-					«tcp.sendMail (owneremail, "Suggested Link: " + pta^.postargs.title, mailtext, pta^.postargs.email)
+					//tcp.sendMail (owneremail, "Suggested Link: " + pta^.postargs.title, mailtext, pta^.postargs.email)
 					manilaSuite.sendMail (owneremail, "Suggested Link: " + pta^.postargs.title, mailtext, pta^.postargs.email); //PBS 12/19/01: use manilaSuite.sendMail, so user callbacks get called, so text gets converted (bug fix from David Bayly on Frontier-Server list)
 					local (args);
 					new (tabletype, @args);

@@ -1,25 +1,25 @@
 on pictureRef (shortcutName, explanation=nil, hspace="", align="", usemap="", ismap=false, border=0, glossref="", vspace="", lowsrc="", rollsrc="", height="", width="", name="", id="", style="", class="", title="", onload="", onabort="", onerror="", onmouseOver="", onmouseOut="", onClick="", flNoLinkToCurrentPage=false, currentPageShortcut="") {
-	«Changes:
-		«8/12/05; 12:19:16 PM by JES
-			«When checking to see if we're rendering the current page, only check pta^.pathargs if defined.
-		«7/6/05; 8:48:09 PM by JES
-			«Added callback support. All parameters for this macro are also in scope in the callback script. In addition, the following are also defined: adrsite -- the address of the site, imageTable -- a sub-table which contains information about the image. If the callback returns a string, return that string. If it returns anything else, ignore the return result.
-			«Callbacks are set up by either adding its address to the page table in a variable named adrPictureRefCallback, or by defining a thread-global named adrPictureRefCallback before calling this macro.
-			«Callbacks are utilized in theme-creation for capturing images which are included in the site's templates using the pictureRef macro. These images are added automatically to the theme, and are added to the site the theme is applied to.
-		«27/06/05; 3:08:14 PM by PR
-			«in error subroutine, pass named pta to getString
-			«if the glossref points to an image, build an href
-		«05/04/13, 10:17:19 by DAB
-			«Optional onload, onabort, onerror javascript handlers for the img tag.
-			«glossRef paramater javascript handlers onmouseOver , onmouseOut , onClick - used only if glossRef is non empty.
-			«Optional flNoLinkToCurrentPage parameter, disables glossRef linkage if the glossRef resolves to the current page.
-			«Optional currentPageShortcut parameter, is used as alternate picture if this is the current page and flNoLinkToCurrentPage is off.
-		«12/21/01; 3:01:51 PM by PBS
-			«It is no longer a fatal error if the image has no alt text.
-		«06/10/00; 6:28:47 PM by JES
-			«localized error message
-		«06/02/00; 5:13:46 PM by PBS
-			«Created. Include a picture in a web page. This macro is modelled after imageRef, but is specifically for Manila sites. The first parameter is the name of the shortcut. The pageTable parameter has been removed.
+	//Changes:
+		//8/12/05; 12:19:16 PM by JES
+			//When checking to see if we're rendering the current page, only check pta^.pathargs if defined.
+		//7/6/05; 8:48:09 PM by JES
+			//Added callback support. All parameters for this macro are also in scope in the callback script. In addition, the following are also defined: adrsite -- the address of the site, imageTable -- a sub-table which contains information about the image. If the callback returns a string, return that string. If it returns anything else, ignore the return result.
+			//Callbacks are set up by either adding its address to the page table in a variable named adrPictureRefCallback, or by defining a thread-global named adrPictureRefCallback before calling this macro.
+			//Callbacks are utilized in theme-creation for capturing images which are included in the site's templates using the pictureRef macro. These images are added automatically to the theme, and are added to the site the theme is applied to.
+		//27/06/05; 3:08:14 PM by PR
+			//in error subroutine, pass named pta to getString
+			//if the glossref points to an image, build an href
+		//05/04/13, 10:17:19 by DAB
+			//Optional onload, onabort, onerror javascript handlers for the img tag.
+			//glossRef paramater javascript handlers onmouseOver , onmouseOut , onClick - used only if glossRef is non empty.
+			//Optional flNoLinkToCurrentPage parameter, disables glossRef linkage if the glossRef resolves to the current page.
+			//Optional currentPageShortcut parameter, is used as alternate picture if this is the current page and flNoLinkToCurrentPage is off.
+		//12/21/01; 3:01:51 PM by PBS
+			//It is no longer a fatal error if the image has no alt text.
+		//06/10/00; 6:28:47 PM by JES
+			//localized error message
+		//06/02/00; 5:13:46 PM by PBS
+			//Created. Include a picture in a web page. This macro is modelled after imageRef, but is specifically for Manila sites. The first parameter is the name of the shortcut. The pageTable parameter has been removed.
 	
 	local (htmlText = "");
 	local (heightWidthString = "");
@@ -44,7 +44,7 @@ on pictureRef (shortcutName, explanation=nil, hspace="", align="", usemap="", is
 				try {
 					glossaryImageTag = html.refGlossary (shortcutName)}
 				else {
-					«error ("it doesn't exist in the list of shortcuts for this site.", shortcutName)
+					//error ("it doesn't exist in the list of shortcuts for this site.", shortcutName)
 					try {
 						local (adrGlobalSite = config.manila.prefs.globalSiteAddress); //04/05/18, 11:07:35 by DAB
 						glossaryImageTag = adrGlobalSite^.["#glossary"].[shortcutName]}
@@ -52,7 +52,7 @@ on pictureRef (shortcutName, explanation=nil, hspace="", align="", usemap="", is
 						error ("it doesn't exist in the list of shortcuts for this site.", shortcutName)}}};
 			
 			bundle { //get URL, height, width, and alt text from glossary entry
-				«<img src="http://static2.userland.com/pictures/itworkedcom/lightGrayBg.gif" height="40" width="22" border="0" alt="lightGrayBg.gif: ">
+				//<img src="http://static2.userland.com/pictures/itworkedcom/lightGrayBg.gif" height="40" width="22" border="0" alt="lightGrayBg.gif: ">
 				local (xmlText = glossaryImageTag);
 				xmlText = string.insert ("/", xmlText, sizeOf (xmlText)); //add closing slash so it can be compiled
 				
@@ -170,7 +170,7 @@ on pictureRef (shortcutName, explanation=nil, hspace="", align="", usemap="", is
 				add (" id=\"" + id + "\"")};
 			if lowsrc != "" {
 				local (lowSrcData);
-				new (tabletype, @lowSrcData); «05/06/15, 14:58:14 by DAB
+				new (tabletype, @lowSrcData); //05/06/15, 14:58:14 by DAB
 				getImageTable (lowSrc, @lowSrcData);
 				add (" lowsrc=\"" + lowSrcData.src + "\"")};
 			if explanation == nil {
@@ -190,7 +190,7 @@ on pictureRef (shortcutName, explanation=nil, hspace="", align="", usemap="", is
 				add (" ismap")};
 			if rollsrc != "" {
 				local (rollData);
-				new(tabletype, @rollData); «05/06/15, 14:58:09 by DAB
+				new(tabletype, @rollData); //05/06/15, 14:58:09 by DAB
 				getImagetable (rollSrc, @rollData);
 				add (" onmouseout=\"this.src='" + imageTable.src + "'\"");
 				add (" onmouseover=\"this.src='" + rollData.src + "'\"")};
@@ -212,24 +212,24 @@ on pictureRef (shortcutName, explanation=nil, hspace="", align="", usemap="", is
 			
 			add (">")};
 		
-		«if glossref != "" //5.0 enclose the imageref in an anchor or glosspatch
-			«local (s = html.refGlossary (glossref))
-			«assume we have a hard-coded link or a glosspatch
-				«<a href="http://www.scripting.com/frontier/">Frontier</a> or
-				«[[#glossPatch Welcome to Alpha User's Test Page!|websitessamples/randomStuff|]]
-			«if s beginsWith "[[#"
-				«local (ix = string.patternMatch (' ', s))
-				«s = string.delete (s, 1, ix)
-				«s = string.nthField (s, '|', 2) «this is the part we keep
-				«htmltext = "[[#glossPatch " + htmltext + "|" + s + "|]]"
-			«else «assume it's an a href
-				«s = string.nthField (s, '>', 1) + ">" «pop off the <a href="xxx"> part
-				«htmltext = s + htmltext + "</a>"
+		//if glossref != "" //5.0 enclose the imageref in an anchor or glosspatch
+			//local (s = html.refGlossary (glossref))
+			//assume we have a hard-coded link or a glosspatch
+				//<a href="http://www.scripting.com/frontier/">Frontier</a> or
+				//[[#glossPatch Welcome to Alpha User's Test Page!|websitessamples/randomStuff|]]
+			//if s beginsWith "[[#"
+				//local (ix = string.patternMatch (' ', s))
+				//s = string.delete (s, 1, ix)
+				//s = string.nthField (s, '|', 2) //this is the part we keep
+				//htmltext = "[[#glossPatch " + htmltext + "|" + s + "|]]"
+			//else //assume it's an a href
+				//s = string.nthField (s, '>', 1) + ">" //pop off the <a href="xxx"> part
+				//htmltext = s + htmltext + "</a>"
 		if glossRef != "" { //05/04/13, 10:27:43 by DAB
 			if htmlText beginsWith "[[#" {
 				local (ix = string.patternMatch (' ', glossRefValue));
 				glossRefValue = string.delete (glossRefValue, 1, ix);
-				glossRefValue = string.nthField (glossRefValue, '|', 2); «this is the part we keep
+				glossRefValue = string.nthField (glossRefValue, '|', 2); //this is the part we keep
 				htmltext = "[[#glossPatch " + htmltext + "|" + glossRefValue + "|]]"}
 			else { //assume it's an a href
 				glossRefAtts[1].["/pcdata"] = htmltext;

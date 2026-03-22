@@ -1,6 +1,6 @@
 on getTemplate (appkey, blogid, username, password, templateType) {
-	«Changes
-		«3/28/07; 1:27:54 AM by JES
-			«Created. Implement now-deprecated Blogger API function in MetaWeblog API for Manila.
-				«http://www.xmlrpc.com/stories/storyReader$2460
+	//Changes
+		//3/28/07; 1:27:54 AM by JES
+			//Created. Implement now-deprecated Blogger API function in MetaWeblog API for Manila.
+				//http://www.xmlrpc.com/stories/storyReader$2460
 	return (manilaSuite.bloggerApi.rpcHandlers.getTemplate (appkey, blogid, username, password, templateType))}

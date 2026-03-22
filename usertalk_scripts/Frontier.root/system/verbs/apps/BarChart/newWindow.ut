@@ -1,4 +1,4 @@
-on newWindow (ctbars, title, units) { «create a new BarChart window
+on newWindow (ctbars, title, units) { //create a new BarChart window
 	if not app.newWindow (title) {
 		return (false)};
 	if not BarChart.setBarCount (ctbars) {

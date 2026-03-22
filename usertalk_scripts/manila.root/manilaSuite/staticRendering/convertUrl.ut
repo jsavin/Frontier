@@ -1,6 +1,6 @@
 on convertUrl (url) {
-	«Pass this a filtered URL minus a suffix, this script will fix the filename and add the suffix.
-		«03/09/00; 12:49:34 AM by PBS
+	//Pass this a filtered URL minus a suffix, this script will fix the filename and add the suffix.
+		//03/09/00; 12:49:34 AM by PBS
 	
 	if url endsWith "/" {
 		return (url)};

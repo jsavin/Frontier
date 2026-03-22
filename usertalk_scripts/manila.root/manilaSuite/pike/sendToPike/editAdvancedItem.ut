@@ -1,9 +1,9 @@
 on editAdvancedItem (itemName, pta=nil) {
-	«Send a message to Pike: please open a window to edit this template, JavaScript, or other site management item from the Advanced page.
-		«01/13/00; 4:37:42 PM by PBS
-		«Changes:
-			«02/06/00; 9:14:41 PM by PBS
-				«Send the window info table to Pike as part of the itemInfoTable.
+	//Send a message to Pike: please open a window to edit this template, JavaScript, or other site management item from the Advanced page.
+		//01/13/00; 4:37:42 PM by PBS
+		//Changes:
+			//02/06/00; 9:14:41 PM by PBS
+				//Send the window info table to Pike as part of the itemInfoTable.
 	
 	local (pikeIp, pikePort, pikeRpcPath);
 	bundle { //get information about the machine running Pike
@@ -20,18 +20,18 @@ on editAdvancedItem (itemName, pta=nil) {
 	
 	local (itemInfoTable);
 	bundle { //get info about the current item
-		«The table contains two elements:
-			«body -- the contents of the item.
-			«type -- the name of the item type.
-				«Template
-				«Navigation
-				«Cascading Style Sheet
-				«JavaScript
-				«Site Structure
-				«Custom Prefs
-				«News Day Template
-				«Join Now Members Box
-				«Sign Out Members Box
+		//The table contains two elements:
+			//body -- the contents of the item.
+			//type -- the name of the item type.
+				//Template
+				//Navigation
+				//Cascading Style Sheet
+				//JavaScript
+				//Site Structure
+				//Custom Prefs
+				//News Day Template
+				//Join Now Members Box
+				//Sign Out Members Box
 		new (tableType, @itemInfoTable);
 		itemInfoTable.body = manilaSuite.pike.getAdvancedItemAsString (itemName);
 		itemInfoTable.type = itemName;

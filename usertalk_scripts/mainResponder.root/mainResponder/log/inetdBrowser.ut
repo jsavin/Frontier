@@ -1,7 +1,7 @@
 on inetdBrowser (logname="inetd") { //no formatting on the tables
-	«Changes:
-		«4/14/00; 5:38:19 PM by JES
-			«localized
+	//Changes:
+		//4/14/00; 5:38:19 PM by JES
+			//localized
 	local (htmltext = "", indentlevel = 0);
 	on add (s) {
 		htmltext = htmltext + string.filledString ("\t", indentlevel) + s + "\r"};
@@ -28,5 +28,5 @@ on inetdBrowser (logname="inetd") { //no formatting on the tables
 		add ("</tr>"); indentlevel--};
 	add ("</table>"); indentlevel--;
 	return (htmltext)};
-«bundle //test code
-	«schedulerBrowser ()
+//bundle //test code
+	//schedulerBrowser ()

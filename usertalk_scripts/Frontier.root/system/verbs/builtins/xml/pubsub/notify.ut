@@ -1,6 +1,6 @@
 on notify (url, adrTable) {
-	«Notify a client that a resource has changed.
-		«1/15/02; 5:14:56 PM by PBS
+	//Notify a client that a resource has changed.
+		//1/15/02; 5:14:56 PM by PBS
 	xml.pubsub.initTable (adrTable);
 	bundle { //don't do notification more often than once per 15 seconds
 		local (adrmostrecent = @adrTable^.mostRecentNotify);

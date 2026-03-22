@@ -1,9 +1,9 @@
 on getHash (password, groupName) {
-	«Create a hashed string consisting of the password and the membership group name.
-		«04/10/00; 11:52:58 AM by PBS
-		«Changes
-			«8/8/02; 2:55:23 PM by JES
-				«Support for passwords stored as binaries instead of as clear-text strings.
+	//Create a hashed string consisting of the password and the membership group name.
+		//04/10/00; 11:52:58 AM by PBS
+		//Changes
+			//8/8/02; 2:55:23 PM by JES
+				//Support for passwords stored as binaries instead of as clear-text strings.
 	
 	local (s = string (password) + string.lower (groupName)); //make groupName case insensitive
 	s = string.hashMD5 (s);

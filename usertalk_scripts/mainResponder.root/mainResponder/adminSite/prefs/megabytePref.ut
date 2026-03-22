@@ -1,7 +1,7 @@
 on megabytePref (prompt, adrnumber, lowerbound=0, upperbound=infinity, colspan=1, textToRight="") {
-	«Changes:
-		«4/22/03; 2:31:21 AM by JES
-			«Created.
+	//Changes:
+		//4/22/03; 2:31:21 AM by JES
+			//Created.
 	local (pta = html.getpagetableaddress ());
 	local (size = 6);
 	if sizeof (string (lowerbound)) > size {

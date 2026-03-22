@@ -1,16 +1,16 @@
-«on addAndDemoMenus ()  « From Frontier Extras 5/93
-	«with objectModel, FileMaker
-		«local (anItem, aMenu)
-		«putAppleListItem ("MenuInfo", name, @anItem)
-		«create (menuItem, 0, anItem, 0)
-		«putAppleListItem ("UnknownItem", name, @anItem)
-		«create (menuItem, 0, anItem, 0)
-		«putAppleListItem ("Examples", name, @aMenu)
-		«create (menu, 0, aMenu, 0)
-		«putAppleListItem ("UnknownSubItem", name, @anItem)
-		«create (menuItem, 0, anItem, endOf(menu["Examples"]))
-		«dialog.alert ("When FileMaker is in front, look in the External item in the Scripts menu.  Select MenuInfo.")
-		«FileMaker.bringToFront()
+//on addAndDemoMenus ()  // From Frontier Extras 5/93
+	//with objectModel, FileMaker
+		//local (anItem, aMenu)
+		//putAppleListItem ("MenuInfo", name, @anItem)
+		//create (menuItem, 0, anItem, 0)
+		//putAppleListItem ("UnknownItem", name, @anItem)
+		//create (menuItem, 0, anItem, 0)
+		//putAppleListItem ("Examples", name, @aMenu)
+		//create (menu, 0, aMenu, 0)
+		//putAppleListItem ("UnknownSubItem", name, @anItem)
+		//create (menuItem, 0, anItem, endOf(menu["Examples"]))
+		//dialog.alert ("When FileMaker is in front, look in the External item in the Scripts menu.  Select MenuInfo.")
+		//FileMaker.bringToFront()
 on addAndDemoMenus () {
 	with objectModel, FileMaker {
 		local (anItem, aMenu);

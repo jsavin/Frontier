@@ -1,12 +1,12 @@
 on schedulerBrowser (logname="schedulerMonitor") { //no formatting on the tables
-	«12/18/98; 8:07:13 AM by DW
-		«We can use this displayer to see logs before they have special code for displaying them.
-		«A useful tool for debugging logs.
-		«Changes:
-			«4/14/00; 5:49:59 PM by JES
-				«localized
-			«11/4/99; 11:34:26 PM by PBS
-				«Fixed the call to hierarchicTableDisplayer: it's actually in html.data.standardMacros, not user.html.macros.
+	//12/18/98; 8:07:13 AM by DW
+		//We can use this displayer to see logs before they have special code for displaying them.
+		//A useful tool for debugging logs.
+		//Changes:
+			//4/14/00; 5:49:59 PM by JES
+				//localized
+			//11/4/99; 11:34:26 PM by PBS
+				//Fixed the call to hierarchicTableDisplayer: it's actually in html.data.standardMacros, not user.html.macros.
 	local (htmltext = "", indentlevel = 0);
 	on add (s) {
 		htmltext = htmltext + string.filledString ("\t", indentlevel) + s + "\r"};
@@ -33,5 +33,5 @@ on schedulerBrowser (logname="schedulerMonitor") { //no formatting on the tables
 		add ("</tr>"); indentlevel--};
 	add ("</table>"); indentlevel--;
 	return (htmltext)};
-«bundle //test code
-	«schedulerBrowser ()
+//bundle //test code
+	//schedulerBrowser ()

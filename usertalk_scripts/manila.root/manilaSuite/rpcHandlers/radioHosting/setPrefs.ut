@@ -1,12 +1,12 @@
 on setPrefs (siteName, blogId, password, data) {
-	«Changes
-		«9/9/03; 1:41:58 AM by JES
-			«Created. Set the prefs for a hosted site, after authorizing.
-			«Parameters:
-				«siteName -- the canonical site name of the hosting Manila site
-				«blogId -- the ID of the hosted weblog (usually an RCS usernum)
-				«password -- the MD5 hash of the blog's password
-				«data -- the preference data, and RPC information
+	//Changes
+		//9/9/03; 1:41:58 AM by JES
+			//Created. Set the prefs for a hosted site, after authorizing.
+			//Parameters:
+				//siteName -- the canonical site name of the hosting Manila site
+				//blogId -- the ID of the hosted weblog (usually an RCS usernum)
+				//password -- the MD5 hash of the blog's password
+				//data -- the preference data, and RPC information
 	local (adrsite = manilaSuite.rpcUtils.getSiteAddress (siteName));
 	local (adrdata = manilaSuite.radioHosting.init (adrsite));
 	if adrdata^.flEnabled {
@@ -27,16 +27,16 @@ on setPrefs (siteName, blogId, password, data) {
 			scriptError ("Can't set the prefs because this user/password combination is invalid.")}}
 	else { //error
 		scriptError ("Can't set the prefs because Radio Hosting is not enabled in this Manila site.")}};
-«bundle //test code
-	«local (data); new (tableType, @data)
-	«bundle //fill in the data table
-		«new (tableType, @data.communityServer)
-		«data.communityServer.server = "127.0.0.1"
-		«data.communityServer.port = 80
-		«data.communityServer.path = "/RPC2"
-		«data.communityServer.methodName = "xmlStorageSystem.validateUser"
-		«
-		«new (tableType, @data.prefs)
-		«data.prefs.flNotifyNewComments = true
-		«data.prefs.sendNotificationTo = "jake@userland.com"
-	«setPrefs ("test", 1000, string.hashMd5 ("password"), data)
+//bundle //test code
+	//local (data); new (tableType, @data)
+	//bundle //fill in the data table
+		//new (tableType, @data.communityServer)
+		//data.communityServer.server = "127.0.0.1"
+		//data.communityServer.port = 80
+		//data.communityServer.path = "/RPC2"
+		//data.communityServer.methodName = "xmlStorageSystem.validateUser"
+		//
+		//new (tableType, @data.prefs)
+		//data.prefs.flNotifyNewComments = true
+		//data.prefs.sendNotificationTo = "jake@userland.com"
+	//setPrefs ("test", 1000, string.hashMd5 ("password"), data)

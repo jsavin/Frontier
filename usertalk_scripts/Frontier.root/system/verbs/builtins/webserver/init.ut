@@ -1,24 +1,24 @@
-«Change Notes:
-	«9/19/02; 2:28:50 AM by JES
-		«Initialize the port 5336 listener.
-	«8/21/02; 9:33:34 PM by JES
-		«Initialize the commonLog prefs sub-table.
-	«11/5/99; 7:15:29 PM by AR
-		«Set up user.webserver.postFilters.domainStats.
-		«Set up user.webserver.prefs.flDomainStats.
-	«10/1/98; 6:34:12 PM by DW
-		«no longer expects certain responders to be installed
-		«no longer creates the log file for the commonLog postfilter
-		«no longer creates user.webserver.utilities if it doesn't exist
-	«12/16/98; 5:36:45 PM by DW
-		«roll-in of features from mainResponder project
-		«user.webserver.stats and user.webserver.prefs.flStats
-	«3/19/99; 2:11:09 PM by PBS
-		«New pref: user.webserver.prefs.flWaitDuringStartup.
-			«Default is true. If true, Frontier waits to handle incoming http requests while starting up.
-			«It waits by looping in webserver.server until Frontier has started up.
-			«People running Frontier behind IIS should set this to false, or else Frontier may hang during startup.
-			«Everybody else should set it to true.
+//Change Notes:
+	//9/19/02; 2:28:50 AM by JES
+		//Initialize the port 5336 listener.
+	//8/21/02; 9:33:34 PM by JES
+		//Initialize the commonLog prefs sub-table.
+	//11/5/99; 7:15:29 PM by AR
+		//Set up user.webserver.postFilters.domainStats.
+		//Set up user.webserver.prefs.flDomainStats.
+	//10/1/98; 6:34:12 PM by DW
+		//no longer expects certain responders to be installed
+		//no longer creates the log file for the commonLog postfilter
+		//no longer creates user.webserver.utilities if it doesn't exist
+	//12/16/98; 5:36:45 PM by DW
+		//roll-in of features from mainResponder project
+		//user.webserver.stats and user.webserver.prefs.flStats
+	//3/19/99; 2:11:09 PM by PBS
+		//New pref: user.webserver.prefs.flWaitDuringStartup.
+			//Default is true. If true, Frontier waits to handle incoming http requests while starting up.
+			//It waits by looping in webserver.server until Frontier has started up.
+			//People running Frontier behind IIS should set this to false, or else Frontier may hang during startup.
+			//Everybody else should set it to true.
 
 bundle { //make sure inetd is set up
 	inetd.init (); //this must be done before webserver will work.
@@ -41,12 +41,12 @@ bundle { //create top-level tables of user.webserver
 		new (tableType, @user.webserver.callbacks.filterPage)};
 	if not defined (user.webserver.cgis) {
 		new (tableType, @user.webserver.cgis)};
-	«if not defined (user.webserver.utilities)
-		«new (tableType, @user.webserver.utilities)
+	//if not defined (user.webserver.utilities)
+		//new (tableType, @user.webserver.utilities)
 	if not defined (user.webserver.actions) {
 		user.webserver.actions= webserver.data.actions};
-	«if not defined (user.webserver.cgis.samples)
-		«user.webserver.cgis.samples = webserver.data.cgis.samples
+	//if not defined (user.webserver.cgis.samples)
+		//user.webserver.cgis.samples = webserver.data.cgis.samples
 	if not defined (user.webserver.responders) {
 		user.webserver.responders = webserver.data.responders};
 	if not defined (user.webserver.preFilters) {
@@ -107,15 +107,15 @@ bundle { //6.0, initialize stats
 	user.webserver.stats.minMemAvail = infinity;
 	user.webserver.stats.hits = 0;
 	user.webserver.stats.upSince = clock.now ()};
-«bundle // set up log for commonLog postFilter 
-	«if (not defined (user.webserver.prefs.logFile)) or (not file.exists (user.webserver.prefs.logFile))
-		«user.webserver.prefs.logFile = frontier.pathstring + "Logs" + file.getPathChar () + "Web Server Log.txt"
-	«file.sureFilePath (user.webserver.prefs.logFile)
-	«if not file.exists (user.webserver.prefs.logFile)
-		«file.new (user.webserver.prefs.logFile)
-		«if (sys.os () == osMacOS)
-			«file.setType (user.webserver.prefs.logFile, 'TEXT')
-			«file.setCreator (user.webserver.prefs.logFile, 'R*ch')
+//bundle // set up log for commonLog postFilter 
+	//if (not defined (user.webserver.prefs.logFile)) or (not file.exists (user.webserver.prefs.logFile))
+		//user.webserver.prefs.logFile = frontier.pathstring + "Logs" + file.getPathChar () + "Web Server Log.txt"
+	//file.sureFilePath (user.webserver.prefs.logFile)
+	//if not file.exists (user.webserver.prefs.logFile)
+		//file.new (user.webserver.prefs.logFile)
+		//if (sys.os () == osMacOS)
+			//file.setType (user.webserver.prefs.logFile, 'TEXT')
+			//file.setCreator (user.webserver.prefs.logFile, 'R*ch')
 bundle { //AR 11/5/99: set up domainStats postFilter
 	if not defined (user.webserver.postfilters.domainStats) {
 		script.newScriptObject ("on domainStats (pta)" + cr + tab + "return (webserver.postFilters.domainStats (pta))", @user.webserver.postFilters.domainStats)}};

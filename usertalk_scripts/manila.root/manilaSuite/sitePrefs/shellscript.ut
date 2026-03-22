@@ -1,11 +1,11 @@
 on shellscript (adrSite) {
-	«Changes
-		«2/28/05; 1:08:42 PM by JES
-			«Use the script-based default page when upgrading the site shell, instead of the wptext type version.
-	«manilaSuite.sitePrefs.shellscript : 04/05/14, 18:54:08 by DAB
-		«convert one site to the new style of advanced sitesprefs
+	//Changes
+		//2/28/05; 1:08:42 PM by JES
+			//Use the script-based default page when upgrading the site shell, instead of the wptext type version.
+	//manilaSuite.sitePrefs.shellscript : 04/05/14, 18:54:08 by DAB
+		//convert one site to the new style of advanced sitesprefs
 	table.assign(@adrSite^.admin.sitePrefs.default, manilaData.newSiteTemplate.admin.sitePrefs.default);
-	«table.assign(@adrSite^.admin.sitePrefs.default, manilaSuite.sitePrefs.maniladata.siteprefs.default) //05/01/03, 19:44:41 by DAB
+	//table.assign(@adrSite^.admin.sitePrefs.default, manilaSuite.sitePrefs.maniladata.siteprefs.default) //05/01/03, 19:44:41 by DAB
 	if not defined( adrSite^.["#newsSite"].cascadingStyleSheet) {
 		adrSite^.["#newsSite"].cascadingStyleSheet =  "&lt;style type=\"text/css\"&gt;\r\r  &lt;/style&gt;"};
 	if not defined(adrSite^.["#newsSite"].externalStyleSheet) {
@@ -29,5 +29,5 @@ on shellscript (adrSite) {
 		adrSite^.gems.edit.postEditedGem = manilaData.newSiteTemplate.gems.edit.postEditedGem};
 	
 	return true};
-«bundle //test code
-	«shellscript (@jpManilawebsite)
+//bundle //test code
+	//shellscript (@jpManilawebsite)

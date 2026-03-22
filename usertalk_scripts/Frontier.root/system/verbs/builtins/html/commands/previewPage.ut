@@ -1,4 +1,4 @@
-«Setting html.data.flPreview true alerts the website framework that this is a page preview.
+//Setting html.data.flPreview true alerts the website framework that this is a page preview.
 
 html.data.flPreview = true; //set the preview flag
 

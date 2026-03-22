@@ -1,2 +1,2 @@
-on shutdown () { «Shut Down the Macintosh
+on shutdown () { //Shut Down the Macintosh
 	return (finderEvent (Finder.id, Finder.class, 'shut'))}

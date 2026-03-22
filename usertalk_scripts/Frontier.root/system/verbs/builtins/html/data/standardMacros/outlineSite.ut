@@ -1,17 +1,17 @@
-on outlineSite (tableadr = nil, maxwidth = 400, indentpixels = 25) { «4.2
-	«return HTML that represents an outline of the site
-		«For each page, if it has a #subtext entry, include that text.
-		«Thu, Dec 12, 1996 at 6:49:42 AM by DW
-		«Change notes:
-			«Respects file suffix settings of different pages.
-			«Friday, January 02, 1998 at 11:49:24 PM by PBS
+on outlineSite (tableadr = nil, maxwidth = 400, indentpixels = 25) { //4.2
+	//return HTML that represents an outline of the site
+		//For each page, if it has a #subtext entry, include that text.
+		//Thu, Dec 12, 1996 at 6:49:42 AM by DW
+		//Change notes:
+			//Respects file suffix settings of different pages.
+			//Friday, January 02, 1998 at 11:49:24 PM by PBS
 	local (adrPageTable = html.getPageTableAddress ());
 	local (flResponder = html.inResponder (adrPageTable));
 	
 	if tableadr == nil {
 		tableadr = adrPageTable^.adrSiteRootTable};
 	local (subtextfonttag, headfonttag, defaultname);
-	bundle { «set subtextfonttag, headfonttag, defaultname
+	bundle { //set subtextfonttag, headfonttag, defaultname
 		if defined (adrPageTable^.siteOutlineSubtextFont) {
 			subtextfonttag = adrPageTable^.siteOutlineSubtextFont}
 		else {
@@ -35,9 +35,9 @@ on outlineSite (tableadr = nil, maxwidth = 400, indentpixels = 25) { «4.2
 	if fldebug {
 		editMenu.setFont ("geneva");
 		editMenu.setFontSize (9)};
-	«edit (outlineadr)
+	//edit (outlineadr)
 	op.setLineText ("Outline of " + tableAdr + " table");
-	local (dir = right); «first headline inserted to the right
+	local (dir = right); //first headline inserted to the right
 	on traverse (adr, url) {
 		local (adrsubitem, i, name);
 		if op.countsubs (1) > 0 {
@@ -49,7 +49,7 @@ on outlineSite (tableadr = nil, maxwidth = 400, indentpixels = 25) { «4.2
 			adrsubitem = @adr^ [i];
 			fltable = typeOf (adrsubitem^) == tableType;
 			name = nameof (adrsubitem^);
-			bundle { «we ignore some objects...
+			bundle { //we ignore some objects...
 				if name beginswith "#" {
 					continue};
 				case name {
@@ -60,9 +60,9 @@ on outlineSite (tableadr = nil, maxwidth = 400, indentpixels = 25) { «4.2
 					"images";
 					"glossary" {
 						continue}};
-				if adrsubitem == adrPageTable^.adrObject { «don't include the page being rendered
+				if adrsubitem == adrPageTable^.adrObject { //don't include the page being rendered
 					continue}};
-			bundle { «insert the head
+			bundle { //insert the head
 				local (head, title = name, indent = level * indentpixels, adrtext);
 				local (link, plaintitle);
 				head = "<table>";
@@ -103,7 +103,7 @@ on outlineSite (tableadr = nil, maxwidth = 400, indentpixels = 25) { «4.2
 					head = head + link + title + "</a>"};
 				head = head + "</td></table>";
 				op.insert ("<!--9" + plaintitle + "-->", dir);
-				bundle { «insert the link for this line
+				bundle { //insert the link for this line
 					local (nextdir = right);
 					op.insert ("<!--1--><table>", right);
 					op.insert ("<tr>", right);
@@ -146,9 +146,9 @@ on outlineSite (tableadr = nil, maxwidth = 400, indentpixels = 25) { «4.2
 			if fltable {
 				dir = right;
 				level++;
-				traverse (adrsubitem, url + name + "/"); «recurse
+				traverse (adrsubitem, url + name + "/"); //recurse
 				level--;
-				if dir != right { «at least one item added from the table
+				if dir != right { //at least one item added from the table
 					op.sort ();
 					op.go (left, 1)}};
 			dir = down;
@@ -161,7 +161,7 @@ on outlineSite (tableadr = nil, maxwidth = 400, indentpixels = 25) { «4.2
 	if fldebug {
 		user.websites.midas.xxx = localoutline;
 		edit (@user.websites.midas.xxx)};
-	bundle { «convert to string, clean up, return
+	bundle { //convert to string, clean up, return
 		local (s = string (localoutline));
 		s = string.replaceAll (s, "<!--1-->", "");
 		s = string.replaceAll (s, "<!--2-->", "");

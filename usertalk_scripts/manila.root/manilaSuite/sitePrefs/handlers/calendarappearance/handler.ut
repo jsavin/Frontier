@@ -1,7 +1,7 @@
 on handler (pta, adrObject) {
-	«manilaSuite.sitePrefs.handlers.calendarappearance.handler : 04/05/15, 20:47:18 by DAB
-		«factored out of manilaSuite.admin.advancedPage (with extreme prejudice) 
-	«messages at manilaData.localization.languages.english.strings.admin
+	//manilaSuite.sitePrefs.handlers.calendarappearance.handler : 04/05/15, 20:47:18 by DAB
+		//factored out of manilaSuite.admin.advancedPage (with extreme prejudice) 
+	//messages at manilaData.localization.languages.english.strings.admin
 	local (advancedPageName = pta^.pathArgs);
 	local (adrSite= manilaSuite.getManilaSiteAddress(pta));
 	local (flMemberHasPike = manilaSuite.pike.memberHasPike (pta));
@@ -42,7 +42,7 @@ on handler (pta, adrObject) {
 				manilaSuite.custody.checkInAndOut(adrObject, pta^.adrMemberInfo, pta^.adrSiteRootTable, false);
 				
 				add(manilaSuite.sitePrefs.utility.successMessage(pta, "admin.calAppearanceRestoredSuccess", @replacementTable));
-				«cause the containing frame to refresh
+				//cause the containing frame to refresh
 				add("\r<script language = 'javascript'>parent.location='" + pta^.fname + "$" + advancedPageName + "?" +shortname +"=1'</script>")};
 			defined (pta^.postArgs.no) { //cancel restore 05/04/26, 17:41:39 by DAB
 				}}
@@ -52,9 +52,9 @@ on handler (pta, adrObject) {
 			adrObject^.dayTemplate = manilaSuite.unTaint (string.replace(pta^.postArgs.dayTemplate, "{item}", "***", false));
 			manilaSuite.custody.checkInAndOut(adrObject, pta^.adrMemberInfo, pta^.adrSiteRootTable, false);
 			
-			«Refresh the page.
+			//Refresh the page.
 			add(manilaSuite.sitePrefs.utility.successMessage(pta, "admin.navAppearanceUpdated", @replacementTable));
-			«cause the containing frame to refresh
+			//cause the containing frame to refresh
 			add("\r<script language = 'javascript'>parent.location='" + pta^.fname + "$" + advancedPageName + "?" +shortname + "=2'</script>")}};
 	
 	if pta^.searchArgs != "" {
@@ -80,9 +80,9 @@ on handler (pta, adrObject) {
 		s = string.replaceAll (s, "***", "{item}");
 		return (s)};
 	
-	«local (myt, dnt, dt)
-	«bundle         //get the current prefs
-		«manilaSuite.html.getCalendarTemplates (@myt, @dnt, @dt)
+	//local (myt, dnt, dt)
+	//bundle         //get the current prefs
+		//manilaSuite.html.getCalendarTemplates (@myt, @dnt, @dt)
 	
 	bundle { //row for 'monthYearTemplate'
 		add ("\r\t<tr>");

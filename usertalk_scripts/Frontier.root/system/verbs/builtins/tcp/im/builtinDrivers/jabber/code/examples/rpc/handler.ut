@@ -1,8 +1,8 @@
 on handler ( iq, query, connection ) {
-	«Changes
-		«5/14/02; 1:51:34 PM by JB
-			«Changelog created.
-	«This is the handler for RPC calls. You can just run the code, and it should self-install. This is because of what the last line of the code is, not a feature of running handler scripts.
+	//Changes
+		//5/14/02; 1:51:34 PM by JB
+			//Changelog created.
+	//This is the handler for RPC calls. You can just run the code, and it should self-install. This is because of what the last line of the code is, not a feature of running handler scripts.
 	local ( type );
 	type = xml.getAttributeValue ( iq, "type" );
 	if type == "set" {

@@ -1,7 +1,7 @@
 on getMemberTableFromSiteAddress (adrSite, memberKey) {
-	«Get the address of a user's membership table.
-		«This script may run outside a page rendering context.
-		«10/19/99; 3:05:39 PM by PBS
+	//Get the address of a user's membership table.
+		//This script may run outside a page rendering context.
+		//10/19/99; 3:05:39 PM by PBS
 	
 	local (groupName = manilaSuite.members.getGroupNameFromSiteAddress (adrSite));
 	local (adrUser = mainResponder.members.getMemberTable (groupName, memberKey));

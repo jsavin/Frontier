@@ -1,11 +1,11 @@
 on logMacroError (macro, errorString) {
-	«Change notes:
-		«10/4/04; 6:59:51 PM by JES
-			«Log additional info. Do logging in a try block so the server will still respond if there's an error doing the logging. Change suggested by DAB.
-		«12/14/98; 7:55:03 PM by DW
-			«Funnel it thru log.add
-		«Tue, Jun 16, 1998 at 7:33:16 PM by PBS
-			«Log to file if Frontier is a server.
+	//Change notes:
+		//10/4/04; 6:59:51 PM by JES
+			//Log additional info. Do logging in a try block so the server will still respond if there's an error doing the logging. Change suggested by DAB.
+		//12/14/98; 7:55:03 PM by DW
+			//Funnel it thru log.add
+		//Tue, Jun 16, 1998 at 7:33:16 PM by PBS
+			//Log to file if Frontier is a server.
 	local (s = "");
 	try { //DAB
 		local (pta = html.getPageTableAddress ());

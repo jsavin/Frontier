@@ -1,9 +1,9 @@
 on daemon (adrparams) {
-	«adrparams is the address of a table containing
-		«client -- a 4-byte encoded IP address, call netevents.addressToName to convert it to a string
-		«ready -- always true
-		«refcon -- always 0
-		«stream -- the stream id for this NetEvents message
+	//adrparams is the address of a table containing
+		//client -- a 4-byte encoded IP address, call netevents.addressToName to convert it to a string
+		//ready -- always true
+		//refcon -- always 0
+		//stream -- the stream id for this NetEvents message
 	scratchpad.odbServerParams = adrparams^;
 	local (s, x, bytespending);
 	local (endcommand = "endodbservercommand");

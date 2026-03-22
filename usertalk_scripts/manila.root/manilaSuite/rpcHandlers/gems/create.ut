@@ -1,9 +1,9 @@
 on create (username, password, siteName, fileName, theData, mimeType = "", title = "") {
-	«Changes
-		«3/19/05; 11:11:17 PM by JES
-			«Improve security and error reporting.
-		«3/19/05; 3:53:15 PM by TAC
-			«Created. Create a new gem in gems storage.
+	//Changes
+		//3/19/05; 11:11:17 PM by JES
+			//Improve security and error reporting.
+		//3/19/05; 3:53:15 PM by TAC
+			//Created. Create a new gem in gems storage.
 	local (adrSite = manilaSuite.rpcUtils.getSiteAddress (siteName), dataTable);
 	bundle { //security and error testing
 		local (beginningErrorString = "Can't create a new gem because ");
@@ -34,7 +34,7 @@ on create (username, password, siteName, fileName, theData, mimeType = "", title
 				timeZone = adrSite^.["#newsSite"].timeZone.zone};
 			dataTable.postTime = postTime;
 			dataTable.timeZone = timeZone}};
-	«Create the new gem: write to disk, store info in site, possibly create shortcut.
+	//Create the new gem: write to disk, store info in site, possibly create shortcut.
 	local (adrGemTable);
 	try {
 		adrGemTable = manilaSuite.gems.createNewGem (adrSite, @dataTable)}

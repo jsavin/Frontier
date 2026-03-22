@@ -1,9 +1,9 @@
-on getFileURL (f) { «returns a URL for the indicated file
-	«Changes:
-		«06/07/01; 3:29:45 PM by PBS
-			«In OS X, the URL must be constructed slightly differently.
-		«6/8/01; 9:46:40 AM by PBS
-			«The last change broke Windows machines: the condition for replacing %3A with a colon should run if it's a Windows machine, not if it's a Macintosh. It was backwards.
+on getFileURL (f) { //returns a URL for the indicated file
+	//Changes:
+		//06/07/01; 3:29:45 PM by PBS
+			//In OS X, the URL must be constructed slightly differently.
+		//6/8/01; 9:46:40 AM by PBS
+			//The last change broke Windows machines: the condition for replacing %3A with a colon should run if it's a Windows machine, not if it's a Macintosh. It was backwards.
 	local (s = string (f), encodedPathChar);
 	s = string.urlEncode (s);
 	encodedPathChar = string.urlEncode (file.getPathChar ());

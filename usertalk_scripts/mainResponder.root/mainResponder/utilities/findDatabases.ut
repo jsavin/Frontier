@@ -1,6 +1,6 @@
-«crawl the server structure, add each root file to config.mainresponder.databases
-	«I needed this to get started really using config.mainresponder.databases
-	«10/21/98; 8:10:58 AM by DW
+//crawl the server structure, add each root file to config.mainresponder.databases
+	//I needed this to get started really using config.mainresponder.databases
+	//10/21/98; 8:10:58 AM by DW
 
 on createRecord (f) {
 	local (name = file.filefrompath (f));

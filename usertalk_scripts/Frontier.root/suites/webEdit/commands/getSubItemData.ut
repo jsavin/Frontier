@@ -1,7 +1,7 @@
-«Changes
-	«8/30/05; 6:34:52 PM by JES
-		«Get data about the sub-items of the selected table from the server, and insert place holders if necessary.
-		«If the cursor is on the table in question, we expand the sub-table in place to reveal the sub-item place-holders. If not, then we just open the table.
+//Changes
+	//8/30/05; 6:34:52 PM by JES
+		//Get data about the sub-items of the selected table from the server, and insert place holders if necessary.
+		//If the cursor is on the table in question, we expand the sub-table in place to reveal the sub-item place-holders. If not, then we just open the table.
 
 local (adrObject);
 

@@ -20,19 +20,19 @@ on sortIcons (folder) {
 		if v > maxv {
 			maxv = v};
 		msg (maxh + ", " + maxv)};
-	fileloop (f in folder) { «do files first
+	fileloop (f in folder) { //do files first
 		if not file.isFolder (f) {
 			rollBeachball ();
 			file.setIconPos (f, h, v);
 			bumppos ()}};
-	fileloop (f in folder) { «do folders second
+	fileloop (f in folder) { //do folders second
 		if file.isFolder (f) {
 			rollBeachball ();
 			file.setIconPos (f, h, v);
 			bumppos ()}};
-	«fileloop (f in folder) «dive into each folder
-		«if file.isFolder (f)
-			«sortIcons (f)};
+	//fileloop (f in folder) //dive into each folder
+		//if file.isFolder (f)
+			//sortIcons (f)};
 
 on visit (path) {
 	local (folder = path);

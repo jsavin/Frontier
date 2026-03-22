@@ -1,4 +1,4 @@
-«return a string which is displayed in Frontier's menu bar
+//return a string which is displayed in Frontier's menu bar
 
 if webbrowser.tours.flrecording {
 	return ("End Web Tour")}

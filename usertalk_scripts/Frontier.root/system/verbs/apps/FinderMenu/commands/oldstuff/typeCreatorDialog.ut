@@ -1,19 +1,19 @@
 on doDialog (path) {
-	local { «names of the fields of the dialog
+	local { //names of the fields of the dialog
 		okitem = 1;
 		cancelitem = 2;
 		promptitem = 3;
 		typeitem = 4;
 		creatoritem = 5};
-	local { «original values of each of the editable fields
+	local { //original values of each of the editable fields
 		fname = file.fileFromPath (path);
 		type = file.type (path);
 		creator = file.creator (path)};
-	on copytodialog () { «copy info about "path" into the dialog
+	on copytodialog () { //copy info about "path" into the dialog
 		dialog.setvalue (promptitem, "File “" + fname + "”:");
 		dialog.setvalue (typeitem, type);
 		dialog.setvalue (creatoritem, creator)};
-	on copyfromdialog () { «copy info about "path" from the dialog to the file
+	on copyfromdialog () { //copy info about "path" from the dialog to the file
 		local (s);
 		
 		on check4chars (s, msg) {
@@ -23,19 +23,19 @@ on doDialog (path) {
 				msg = "File " + msg + " must be exactly four characters long. “";
 				msg = msg + s + "” has " + sizeof (s) + " characters.";
 				dialog.alert (msg);
-				return (false)}}; «don't get rid of dialog
+				return (false)}}; //don't get rid of dialog
 		s = dialog.getvalue (typeitem);
 		if s != string (type) {
 			if not check4chars (s, "type") {
-				«dialog.setvalue (typeitem, type) «restore to original value
-				return (false)}; «don't get rid of dialog
+				//dialog.setvalue (typeitem, type) //restore to original value
+				return (false)}; //don't get rid of dialog
 			file.setType (path, s)};
 		
 		s = dialog.getvalue (creatoritem);
 		if s != string (creator) {
 			if not check4chars (s, "type") {
-				«dialog.setvalue (creatoritem, creator) «restore to original value
-				return (false)}; «don't get rid of dialog
+				//dialog.setvalue (creatoritem, creator) //restore to original value
+				return (false)}; //don't get rid of dialog
 			file.setCreator (path, s)};
 		
 		return (true)};
@@ -50,15 +50,15 @@ on doDialog (path) {
 			cancelitem {
 				return (false)}}
 		else {
-			return (true)}}; «keep going if item isn't OK or Cancel
+			return (true)}}; //keep going if item isn't OK or Cancel
 	
 	if not file.exists (path) {
 		scripterror ("File " + fname + " doesn't exist.")};
-	if not file.isFolder (path) { «only works for files, not folders
+	if not file.isFolder (path) { //only works for files, not folders
 		dialog.run (dlogResource, okitem, @itemhit)};
 	return (true)};
 
-«local (dlogResource = dialog.loadFromFile ("Creator & Type Dialog.DW"))
+//local (dlogResource = dialog.loadFromFile ("Creator & Type Dialog.DW"))
 local (dlogResource = findermenu.commands.typeDialog.copyToResourceFork ());
 
 FinderMenu.visitPaths (@doDialog)

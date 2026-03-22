@@ -1,32 +1,32 @@
 on readAllServices (maxStories=infinity, adrlogcallback=nil, adrdata=nil) {
-	«Changes:
-		«12/27/01; 1:31:55 PM by PBS
-			«Pass adrdata to xml.aggregator.unsubscribeErrantServices, xml.aggregator.clearCache.
-			«When calling preScan and postScan callbacks, call scripts in adrdata^.callbacks, not in aggregatorData.callbacks.
-		«12/4/01; 7:22:27 PM by DW
-			«Call scripts in aggregatorData.callbacks.preScan before doing scan, in aggregatorData.callbacks.postScan after finishing scan.
-		«12/3/01; 6:06:45 PM by DW
-			«Call xml.aggregator.unsubscribeErrantServices before scanning.
-		«11/30/01; 2:18:19 PM by DW
-			«Set a boolean, adrdata^.stats.lastRun.flScanRunningNow, when you start and finish.
-		«11/7/01; 7:04:22 PM by DW
-			«Change system.temp.aggregator to adrdata^.stats.lastRun.
-		«10/30/01; 7:35:53 AM by DW
-			«Call radio.aggregator.preCacheNewsPage after scan if running in Radio.
-		«10/26/01; 7:16:09 PM by DW
-			«Change final status message to include the number of stories.
-		«8/14/01; 7:32:07 PM by JES
-			«New optional parameter, adrdata, is the address for aggregator data storage. Default is to get the address by calling xml.aggregator.init.
-		«2/23/01; 2:11:17 PM by PBS
-			«New optional parameter, maxStories. It's not a hard maximum, the number of new stories may go a little over. We don't stop compiling all the stories in a service just because we're going a little over the limit. This is used at first time root run, so we don't read 250 stories.
-		«1/6/01; 8:43:58 PM by DW
-			«Logging code is now controlled by a preference.
-		«1/2/01; 5:02:11 PM by DW
-			«Save services list after scan is complete.
-		«12/30/00; 7:58:28 PM by DW
-			«Added logging code.
-		«Sunday, December 17, 2000 at 10:27:43 AM by DW
-			«Created
+	//Changes:
+		//12/27/01; 1:31:55 PM by PBS
+			//Pass adrdata to xml.aggregator.unsubscribeErrantServices, xml.aggregator.clearCache.
+			//When calling preScan and postScan callbacks, call scripts in adrdata^.callbacks, not in aggregatorData.callbacks.
+		//12/4/01; 7:22:27 PM by DW
+			//Call scripts in aggregatorData.callbacks.preScan before doing scan, in aggregatorData.callbacks.postScan after finishing scan.
+		//12/3/01; 6:06:45 PM by DW
+			//Call xml.aggregator.unsubscribeErrantServices before scanning.
+		//11/30/01; 2:18:19 PM by DW
+			//Set a boolean, adrdata^.stats.lastRun.flScanRunningNow, when you start and finish.
+		//11/7/01; 7:04:22 PM by DW
+			//Change system.temp.aggregator to adrdata^.stats.lastRun.
+		//10/30/01; 7:35:53 AM by DW
+			//Call radio.aggregator.preCacheNewsPage after scan if running in Radio.
+		//10/26/01; 7:16:09 PM by DW
+			//Change final status message to include the number of stories.
+		//8/14/01; 7:32:07 PM by JES
+			//New optional parameter, adrdata, is the address for aggregator data storage. Default is to get the address by calling xml.aggregator.init.
+		//2/23/01; 2:11:17 PM by PBS
+			//New optional parameter, maxStories. It's not a hard maximum, the number of new stories may go a little over. We don't stop compiling all the stories in a service just because we're going a little over the limit. This is used at first time root run, so we don't read 250 stories.
+		//1/6/01; 8:43:58 PM by DW
+			//Logging code is now controlled by a preference.
+		//1/2/01; 5:02:11 PM by DW
+			//Save services list after scan is complete.
+		//12/30/00; 7:58:28 PM by DW
+			//Added logging code.
+		//Sunday, December 17, 2000 at 10:27:43 AM by DW
+			//Created
 	
 	local (startticks = clock.ticks ());
 	
@@ -98,5 +98,5 @@ on readAllServices (maxStories=infinity, adrlogcallback=nil, adrdata=nil) {
 	adrdata^.stats.lastRun.flScanRunningNow = false;
 	doCallbacks (@adrdata^.callbacks.postScan);
 	msg ("")};
-«bundle //test code
-	«readAllServices (adrlogcallback:@radio.log.add)
+//bundle //test code
+	//readAllServices (adrlogcallback:@radio.log.add)

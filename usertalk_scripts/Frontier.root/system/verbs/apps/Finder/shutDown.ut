@@ -1,5 +1,5 @@
-on shutDown () { «Shut Down the Macintosh
-	try { « this should work with any Finder
+on shutDown () { //Shut Down the Macintosh
+	try { // this should work with any Finder
 		return (finderEvent (Finder.id, Finder.class, 'shut'))}
-	else { « in case it doesn't
+	else { // in case it doesn't
 		return (appleEvent (Finder.id, 'fndr', 'shut'))}}

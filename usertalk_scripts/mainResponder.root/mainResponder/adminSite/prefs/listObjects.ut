@@ -1,7 +1,7 @@
 on listObjects () {
-	«Changes
-		«9/5/02; 2:45:13 AM by JES
-			«Created.
+	//Changes
+		//9/5/02; 2:45:13 AM by JES
+			//Created.
 	local (pta = html.getPageTableAddress ());
 	local (bgcolors = {pta^.trbg1, pta^.trbg2});
 	

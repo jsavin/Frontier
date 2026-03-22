@@ -1,14 +1,14 @@
 on messageViewers (itemTemplate = "{count}</td><td>{name}</td><td>{lastaccess}", listprefix = "<table>", listSuffix = "</table>", itemPrefix = "<tr><td>", itemSuffix="</td></tr>", cohortToView="", noAccessesMessage="No tracked accesses") {
-	«Changes
-		«05/04/10, 14:36:27 by DAB
-			«use access control tracking data to see who has read current message
-				«just builds a list of member names
-				«template "macros" are
-					«count
-					«name
-					«lastAcess
-					«firstaccess
-			«was ManilaExtras.messageViewers : 02/09/28, 15:22:26 by DAB
+	//Changes
+		//05/04/10, 14:36:27 by DAB
+			//use access control tracking data to see who has read current message
+				//just builds a list of member names
+				//template "macros" are
+					//count
+					//name
+					//lastAcess
+					//firstaccess
+			//was ManilaExtras.messageViewers : 02/09/28, 15:22:26 by DAB
 	local (pta = html.getPageTableAddress());
 	local (adrMsg = manilaSuite.discuss.getCurrentMessageTable (pta:pta));
 	if not defined(adrMsg^) {

@@ -1,4 +1,4 @@
-«Set up user.custody table.
+//Set up user.custody table.
 if not defined (user.custody) {
 	new (tableType, @user.custody)};
 if not defined (user.custody.objects) {
@@ -8,7 +8,7 @@ if not defined (user.custody.prefs) {
 if not defined (user.custody.prefs.timeOutMinutes) {
 	user.custody.prefs.timeOutMinutes = 60 * 24}; //24 hours
 
-«Register with the People suite.
+//Register with the People suite.
 people.newService ("Custody");
 
 return (true)

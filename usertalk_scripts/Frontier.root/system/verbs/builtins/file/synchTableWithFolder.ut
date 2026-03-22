@@ -1,17 +1,17 @@
 on synchTableWithFolder (folder, adrtable, adrcallback=nil) {
-	«Changes
-		«2/11/02; 2:17:35 AM by JES
-			«Fix for MacOS X users: Skip all files and folders whose names begin with a "." character, before doing any mod-date checking. This test was being done before, but too late for it to have worked properly.
-		«2/4/02; 9:55:40 AM by DW
-			«Fix for Mac OS X users. Ignore all files whose names begin with a dot.
-		«1/30/02; 7:54:08 PM by DW
-			«Earlier versions couldn't work with scalars because timeModified verb doesn't work with scalars. The problem was that the type "code" is a scalar type, and that's what we were working with. So the contents of the Macros folder was loaded every ten seconds whether or not there were any changes. 
-			«We now keep a cache at system.temp.fileSynchCache, with an entry for each scalar we're managing, indexed by its file path, with a value of the last time it was loaded. This way if the file changes, we reload it, but otherwise we have a reliable mod date for the scalar.
-		«1/5/02; 1:00:36 PM by DW
-			«Added callback, called when a new object is loaded, the callback can do type coercion if it wants something other than the default, or it can delete the object.
-		«1/1/02; 7:44:23 AM by DW
-			«Created. I don't know why we didn't do this verb sooner, but it's killer, and very fast, something you can call from a background thread script to keep an object database table synchronized with a folder. We need this in work we're doing with Radio, where there's a new CMS where the content lives in the file system, now we can have renderers, macros, and perhaps other things in file system as well.
-			«http://docserver.userland.com/file/synchTableWithFolder
+	//Changes
+		//2/11/02; 2:17:35 AM by JES
+			//Fix for MacOS X users: Skip all files and folders whose names begin with a "." character, before doing any mod-date checking. This test was being done before, but too late for it to have worked properly.
+		//2/4/02; 9:55:40 AM by DW
+			//Fix for Mac OS X users. Ignore all files whose names begin with a dot.
+		//1/30/02; 7:54:08 PM by DW
+			//Earlier versions couldn't work with scalars because timeModified verb doesn't work with scalars. The problem was that the type "code" is a scalar type, and that's what we were working with. So the contents of the Macros folder was loaded every ten seconds whether or not there were any changes. 
+			//We now keep a cache at system.temp.fileSynchCache, with an entry for each scalar we're managing, indexed by its file path, with a value of the last time it was loaded. This way if the file changes, we reload it, but otherwise we have a reliable mod date for the scalar.
+		//1/5/02; 1:00:36 PM by DW
+			//Added callback, called when a new object is loaded, the callback can do type coercion if it wants something other than the default, or it can delete the object.
+		//1/1/02; 7:44:23 AM by DW
+			//Created. I don't know why we didn't do this verb sooner, but it's killer, and very fast, something you can call from a background thread script to keep an object database table synchronized with a folder. We need this in work we're doing with Radio, where there's a new CMS where the content lives in the file system, now we can have renderers, macros, and perhaps other things in file system as well.
+			//http://docserver.userland.com/file/synchTableWithFolder
 	bundle { //pass 1, add new or changed files
 		local (adrcache = @system.temp.fileSynchCache);
 		if not defined (adrcache^) {
@@ -117,18 +117,18 @@ on synchTableWithFolder (folder, adrtable, adrcallback=nil) {
 						delete (adr)}}}};
 		dotable (adrtable, folder)};
 	return (true)};
-«bundle //new test code
-	«file.synchTableWithFolder (frontier.pathstring + "Macros" + file.getPathChar (), @radio.data.website.["#tools"], nil)
-«bundle //old test code
-	«local (folder = frontier.pathstring + "testSynchWithFolder" + file.getpathchar ())
-	«local (adrtable = @scratchpad.testSynchWithFolder)
-	«bundle //set up the folder
-		«local (i)
-		«for i = 1 to 10
-			«local (f = folder + states.nthstate (i) + ".txt")
-			«file.surefilepath (f)
-			«file.writewholefile (f, i)
-		«adrtable = 
-	«local (startticks = clock.ticks ())
-	«synchTableWithFolder (folder, adrtable)
-	«dialog.alert (clock.ticks () - startticks)
+//bundle //new test code
+	//file.synchTableWithFolder (frontier.pathstring + "Macros" + file.getPathChar (), @radio.data.website.["#tools"], nil)
+//bundle //old test code
+	//local (folder = frontier.pathstring + "testSynchWithFolder" + file.getpathchar ())
+	//local (adrtable = @scratchpad.testSynchWithFolder)
+	//bundle //set up the folder
+		//local (i)
+		//for i = 1 to 10
+			//local (f = folder + states.nthstate (i) + ".txt")
+			//file.surefilepath (f)
+			//file.writewholefile (f, i)
+		//adrtable = 
+	//local (startticks = clock.ticks ())
+	//synchTableWithFolder (folder, adrtable)
+	//dialog.alert (clock.ticks () - startticks)

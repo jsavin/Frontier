@@ -1,7 +1,7 @@
 on channelChanged (url) {
-	«Changes
-		«1/6/2001; 11:06:54 AM by DW
-			«Created. Called from manilaSuite.rpcHandlers.rss.channelChanged.
+	//Changes
+		//1/6/2001; 11:06:54 AM by DW
+			//Created. Called from manilaSuite.rpcHandlers.rss.channelChanged.
 	local (adrservice = @user.xml.rss.cache.[url]);
 	try {delete (@adrservice^.xmltext)};
 	try {new (tabletype, @adrservice^.compilation.itemHistory)};

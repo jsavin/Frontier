@@ -1,4 +1,4 @@
 on readable () {
-	«Run the "readable" Common Styles command.
-		«09/29/00; 5:59:22 PM by PBS
+	//Run the "readable" Common Styles command.
+		//09/29/00; 5:59:22 PM by PBS
 	menus.scripts.styleCommand ("readable")}

@@ -1,9 +1,9 @@
 on init (adrsite) {
-	«Changes
-		«11/3/04; 6:17:11 PM by JES
-			«Added flEnabled flag to the pathPermissions sub-table. Default is true.
-		«5/21/03; 3:22:24 PM by JES
-			«Created. Initialize path permissions for a given Manila site.
+	//Changes
+		//11/3/04; 6:17:11 PM by JES
+			//Added flEnabled flag to the pathPermissions sub-table. Default is true.
+		//5/21/03; 3:22:24 PM by JES
+			//Created. Initialize path permissions for a given Manila site.
 	
 	return (true); // 11/05/05; 10:46:02 AM by PR wired off
 	

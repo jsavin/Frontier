@@ -1,11 +1,11 @@
-«Do mainResponder tasks that run every minute.
-	«Changes:
-		«3/4/03; 3:20:27 PM by JES
-			«Call mainResponder.init once a minute -- at this time on a 500MHz G3 its average execution time is 0.027 seconds on an idle machine -- certainly worth the tradeoff for simplicity in dependent code.
-		«8/1/02; 7:23:44 PM by JES
-			«If the search engine is enabled, and this is the minute to index, kick off the index in its own thread.
-		«12/26/99 ;7:12:46 PM by PBS
-			«Bug fix: save all open databases that have been modified, not just databases listed in user.databases and mainResponder-specific databases. If the new verb table.visitOpenDatabases exists, call that instead of mainResponder.visitDatabases.
+//Do mainResponder tasks that run every minute.
+	//Changes:
+		//3/4/03; 3:20:27 PM by JES
+			//Call mainResponder.init once a minute -- at this time on a 500MHz G3 its average execution time is 0.027 seconds on an idle machine -- certainly worth the tradeoff for simplicity in dependent code.
+		//8/1/02; 7:23:44 PM by JES
+			//If the search engine is enabled, and this is the minute to index, kick off the index in its own thread.
+		//12/26/99 ;7:12:46 PM by PBS
+			//Bug fix: save all open databases that have been modified, not just databases listed in user.databases and mainResponder-specific databases. If the new verb table.visitOpenDatabases exists, call that instead of mainResponder.visitDatabases.
 
 mainResponder.init ();
 bundle { //trial
@@ -27,7 +27,7 @@ if config.mainResponder.prefs.flBuildPagesInBackground {
 					local (t); new (tableType, @t);
 					html.buildOnePage (adrPage, @t);
 					subtaskInfo.["builtPage" + i] = adrPage;
-					«frontier.bringtofront ()
+					//frontier.bringtofront ()
 					pageList = pageList + {adrPage}}}};
 		html.deletePageTableAddress ()}}; //8/22/99; 10:58:08 AM by DW
 subtaskInfo.ctDatabasesSaved = 0;
@@ -51,7 +51,7 @@ if config.mainResponder.prefs.flSaveDatabasesEveryMinute { //save all open guest
 				saveString = saveString + " to save; ";
 				msg (saveString + Frontier.countThreads () + " threads; Pausing...");
 				thread.sleepFor (3);
-				«msg ("mainResponder.background.everyMinute: Saved " + file.fileFromPath (f) + ".")
+				//msg ("mainResponder.background.everyMinute: Saved " + file.fileFromPath (f) + ".")
 				ctSaved++};
 			return (true)};
 		local (adrVisitScript = @mainResponder.visitDatabases);

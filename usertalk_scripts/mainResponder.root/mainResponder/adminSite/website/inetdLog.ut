@@ -1,7 +1,7 @@
 on inetdLog (maxitems=200) {
-	«Changes
-		«8/2/02; 2:23:36 PM by JES
-			«Created.
+	//Changes
+		//8/2/02; 2:23:36 PM by JES
+			//Created.
 	local (pta = html.getPageTableAddress ());
 	pta^.title = "inetd Log";
 	local (colors = {pta^.trbg1, pta^.trbg2});
@@ -24,4 +24,4 @@ on inetdLog (maxitems=200) {
 		return (logtext)}
 	else {
 		return (logtext + "<p>There are no items to list at this time.</p>")};
-	}«return (mainResponder.log.browser (50, colors, "small", true, 12, false, maxitems))
+	}//return (mainResponder.log.browser (50, colors, "small", true, 12, false, maxitems))

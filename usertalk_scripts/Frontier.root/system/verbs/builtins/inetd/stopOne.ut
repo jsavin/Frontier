@@ -1,8 +1,8 @@
 on stopOne (adrDaemonTable) {
-	«Change Notes
-		«Script: system.verbs.builtins.inetd.stopOne; Version 1; Date: Thu, 14 May 1998 03:35:26 GMT; ID: RAB
-		«Mon, Apr 24, 2000 at 8:21:26 PM by AR
-			«Starting with 6.2b8, the additional listeners are no longer needed on PPC Macs.
+	//Change Notes
+		//Script: system.verbs.builtins.inetd.stopOne; Version 1; Date: Thu, 14 May 1998 03:35:26 GMT; ID: RAB
+		//Mon, Apr 24, 2000 at 8:21:26 PM by AR
+			//Starting with 6.2b8, the additional listeners are no longer needed on PPC Macs.
 	local (nameDaemon = nameOf (adrDaemonTable^));
 	local (port = adrDaemonTable^.port);
 	if not defined (user.inetd.listens.[port].ref) {

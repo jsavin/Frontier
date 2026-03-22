@@ -1,6 +1,6 @@
 on restartIndex (siteName, flMessages=false) {
-	«Delete all pages from the index that are in the specified site.
-		«Returns the number of pages deleted.
+	//Delete all pages from the index that are in the specified site.
+		//Returns the number of pages deleted.
 	
 	local (indexPath = mainResponder.search.utilities.getIndexPath ());
 	
@@ -12,7 +12,7 @@ on restartIndex (siteName, flMessages=false) {
 	local (i, lowerSiteName = string.lower (siteName));
 	local (ctDeletes = 0);
 	
-	«Loop through all indexed pages, looking for pages in this site.
+	//Loop through all indexed pages, looking for pages in this site.
 	for i = sizeOf (adrPageInfoTable^) downTo 1 {
 		local (adrPageInfo = @adrPageInfoTable^ [i]);
 		local (url = nameOf (adrPageInfo^));
@@ -23,9 +23,9 @@ on restartIndex (siteName, flMessages=false) {
 		if defined (adrPageInfo^.siteName) {
 			local (lowerPageSite = string.lower (adrPageInfo^.siteName));
 			
-			«Is this page in the site?
+			//Is this page in the site?
 			if lowerPageSite == lowerSiteName {
-				«Delete this page from the index.
+				//Delete this page from the index.
 				
 				if flMessages {
 					msg ("Search Engine: de-indexing " + url + "...")};

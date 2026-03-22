@@ -1,18 +1,18 @@
 on getString (stringId, replacementTableAddress = nil, languageTableAddress = nil, pta = nil) {
-	«Get the localized version of a string inside Manila's localization table: manilaData.localization.strings.[subadr...]
-		«04/17/00; 1:18:36 AM by JES
-		«Changes:
-			«2/18/05; 3:51:41 PM by JES
-				«Disable caching. This is already being done by mainResponder.getString.
-			«02/17/05; 2:03:28 AM by JES
-				«Respect the flLocalizationCache directive. This allows developers to more easily work with their own localizations. Default is to use the cache, preserving current behavior. Default value may be overwritten in #prefs, in the page table, in mainResponder directives, or in user.html.prefs.
-			«03/14/01; 6:25:41 PM by PBS
-				«Another optimization -- since this is expensive, we can use caching when there's no replacement table address.
-			«03/14/01; 3:02:58 PM by PBS
-				«Minor optimization: don't call manilaSuite.getLanguageTableAddress unless absolutely necessary.
-			«05/01/00; 1:54:27 PM by JES
-				«Now uses replacement tables instead of lists.
-				«Changed name of first parameter from subAdr to stringId.
+	//Get the localized version of a string inside Manila's localization table: manilaData.localization.strings.[subadr...]
+		//04/17/00; 1:18:36 AM by JES
+		//Changes:
+			//2/18/05; 3:51:41 PM by JES
+				//Disable caching. This is already being done by mainResponder.getString.
+			//02/17/05; 2:03:28 AM by JES
+				//Respect the flLocalizationCache directive. This allows developers to more easily work with their own localizations. Default is to use the cache, preserving current behavior. Default value may be overwritten in #prefs, in the page table, in mainResponder directives, or in user.html.prefs.
+			//03/14/01; 6:25:41 PM by PBS
+				//Another optimization -- since this is expensive, we can use caching when there's no replacement table address.
+			//03/14/01; 3:02:58 PM by PBS
+				//Minor optimization: don't call manilaSuite.getLanguageTableAddress unless absolutely necessary.
+			//05/01/00; 1:54:27 PM by JES
+				//Now uses replacement tables instead of lists.
+				//Changed name of first parameter from subAdr to stringId.
 	
 	if pta == nil {
 		pta = html.getPageTableAddress ()};
@@ -21,21 +21,21 @@ on getString (stringId, replacementTableAddress = nil, languageTableAddress = ni
 			languageTableAddress = pta^.manilaLanguageTableAddress}
 		else {
 			languageTableAddress = manilaSuite.getLanguageTableAddress (pta: pta)}};
-	«if replacementTableAddress == nil //PBS 03/14/01: do caching
-		«if html.getPref ("flLocalizationCache")
-			«if not defined (temp.manila)
-				«new (tableType, @temp.manila)
-			«local (adrCache = @temp.manila.localizationCache)
-			«if not defined (adrCache^)
-				«new (tableType, adrCache)
-			«local (lang = nameOf (languageTableAddress^))
-			«local (adrLang = @adrCache^.[lang])
-			«if not defined (adrLang^)
-				«new (tableType, adrLang)
-			«if defined (adrLang^.[stringId])
-				«return (adrLang^.[stringId])
-			«local (s = mainResponder.getString (stringId, nil, languageTableAddress, pta))
-			«adrLang^.[stringId] = s
-			«return (s)
+	//if replacementTableAddress == nil //PBS 03/14/01: do caching
+		//if html.getPref ("flLocalizationCache")
+			//if not defined (temp.manila)
+				//new (tableType, @temp.manila)
+			//local (adrCache = @temp.manila.localizationCache)
+			//if not defined (adrCache^)
+				//new (tableType, adrCache)
+			//local (lang = nameOf (languageTableAddress^))
+			//local (adrLang = @adrCache^.[lang])
+			//if not defined (adrLang^)
+				//new (tableType, adrLang)
+			//if defined (adrLang^.[stringId])
+				//return (adrLang^.[stringId])
+			//local (s = mainResponder.getString (stringId, nil, languageTableAddress, pta))
+			//adrLang^.[stringId] = s
+			//return (s)
 	
 	return (mainResponder.getString (stringId, replacementTableAddress, languageTableAddress, pta))}

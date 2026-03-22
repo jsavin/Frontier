@@ -1,2 +1,2 @@
-on count (obj, each) { «Return the number of elements of a particular class within an object
+on count (obj, each) { //Return the number of elements of a particular class within an object
 	return (appleEvent (Finder.id, 'core', 'cnte', '----', Finder.finderSpec (obj), 'kocl', string4 (each)))}

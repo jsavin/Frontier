@@ -1,16 +1,16 @@
-«Script: system.verbs.builtins.webserver.util.readBytes; Version 1; Date: Fri, 15 May 1998 07:52:22 GMT; ID: RAB
+//Script: system.verbs.builtins.webserver.util.readBytes; Version 1; Date: Fri, 15 May 1998 07:52:22 GMT; ID: RAB
 on readBytes (stream, bytesToRead, timeoutSecs=10) {
-	«March 19, 1998 at 5:02:05 PM by WMF
-		«This script reads a certain number of bytes from a TCP stream
-		«It returns the data that was read
-		«An error will be thrown if no data arrives before the timeout expires
+	//March 19, 1998 at 5:02:05 PM by WMF
+		//This script reads a certain number of bytes from a TCP stream
+		//It returns the data that was read
+		//An error will be thrown if no data arrives before the timeout expires
 	local (bytes = 0, data = "", timeout);
 	
 	timeout = clock.ticks () + 60 * timeoutSecs; // convert to ticks
 	bytesToRead = number (bytesToRead);
 	
 	while (sizeOf (data) < bytesToRead) {
-		«we haven't read in the whole data yet
+		//we haven't read in the whole data yet
 		if (clock.ticks () > timeout) { // the client timed out
 			scriptError ("The connection timed out before enough data was read.")};
 		case tcp.statusStream (stream, @bytes) {

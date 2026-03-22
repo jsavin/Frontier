@@ -1,21 +1,21 @@
 on server (xmlText, adrParamTable) { //called from the RPC2 responder on an incoming request
-	«Change notes:
-		«01/31/02; 2:13:15 PM by JES
-			«Factored the security check by IP address to betty.rpc.checkClient, so the check can be used for both XML-RPC and SOAP.
-		«04/27/01; 7:58:15 PM by JES
-			«If a request doesn't have a <params> element, don't fault. Instead treat it as a call with no input parameters.
-		«Thu, 02 Dec 1999 at 5:17:37 PM by AR
-			«Disabled fldebug flag again.
-		«Wed, 04 Nov 1999 at 10:33:45 PM by AR
-			«If user.betty.prefs.flAllowByIpOnly is true, block XML-RPC requests from anyone except those IP addresses listed in user.betty.prefs.allowedIpAddresses
-		«Mon, 25 Oct 1999 at 11:07:19 PM by AR
-			«If user.betty.prefs.flKeepServerLog is true, we log all incoming requests to the rpcServer section of the daily log GDB.
-		«Mon, 14 Jun 1999 15:46:57 GMT by AR
-			«When walking the XML structure to extract the parameters, we now handle the case correctly when a parameter is a table and the next parameter is a scalar.
-			«If an RPC fault occurs, left angle brackets and ampersands in the error string are now properly encoded to ensure that the XML-RPC response is well-formed.
-		«Friday, July 17, 1998 at 12:57:38 PM by PBS
-			«XML header is now lowercase to conform to the XML spec.
-			«Turned off debugging; use a local table rather than a global table so the server is thread-safe.
+	//Change notes:
+		//01/31/02; 2:13:15 PM by JES
+			//Factored the security check by IP address to betty.rpc.checkClient, so the check can be used for both XML-RPC and SOAP.
+		//04/27/01; 7:58:15 PM by JES
+			//If a request doesn't have a <params> element, don't fault. Instead treat it as a call with no input parameters.
+		//Thu, 02 Dec 1999 at 5:17:37 PM by AR
+			//Disabled fldebug flag again.
+		//Wed, 04 Nov 1999 at 10:33:45 PM by AR
+			//If user.betty.prefs.flAllowByIpOnly is true, block XML-RPC requests from anyone except those IP addresses listed in user.betty.prefs.allowedIpAddresses
+		//Mon, 25 Oct 1999 at 11:07:19 PM by AR
+			//If user.betty.prefs.flKeepServerLog is true, we log all incoming requests to the rpcServer section of the daily log GDB.
+		//Mon, 14 Jun 1999 15:46:57 GMT by AR
+			//When walking the XML structure to extract the parameters, we now handle the case correctly when a parameter is a table and the next parameter is a scalar.
+			//If an RPC fault occurs, left angle brackets and ampersands in the error string are now properly encoded to ensure that the XML-RPC response is well-formed.
+		//Friday, July 17, 1998 at 12:57:38 PM by PBS
+			//XML header is now lowercase to conform to the XML spec.
+			//Turned off debugging; use a local table rather than a global table so the server is thread-safe.
 	
 	local (fldebug = false, flFault = false, securitylist = {});
 	
@@ -79,28 +79,28 @@ on server (xmlText, adrParamTable) { //called from the RPC2 responder on an inco
 	bundle { //AR 11/04/1999: check for rpc request blocking
 		if not betty.rpc.checkClient (adrParamTable) { //1/31/02 JES: factored for use for both XML-RPC and SOAP
 			rpcFault ("Access not allowed from " + adrParamTable^.client + ".", betty.rpc.errorCodes.securityFault)};
-		«if defined (user.betty.prefs.flAllowByIpOnly)
-			«if user.betty.prefs.flAllowByIpOnly
-				«local (flBlocked = true)
-				«local (okIpList = user.betty.prefs.allowedIpAddresses)
-				«if typeOf (okIpList) == stringType
-					«It's a comma-delimited string: create a local list from that string.
-					«local (s = okIpList)
-					«okIpList = {}
-					«local (i)
-					«for i = 1 to string.countFields (s, ',')
-						«local (oneIpAddress = string.nthField (s, ',', i))
-						«oneIpAddress = string.trimWhiteSpace (oneIpAddress)
-						«if oneIpAddress != ""
-							«okIpList = okIpList + oneIpAddress
-				«local (oneIp)
-				«for oneIp in okIpList
-					«if string.trimWhiteSpace (oneIp) != ""
-						«if adrParamTable^.client == oneIp
-							«flblocked = false
-							«break
-				«if flblocked
-					«rpcFault ("Access not allowed from " + adrParamTable^.client + ".", betty.rpc.errorCodes.securityFault)};
+		//if defined (user.betty.prefs.flAllowByIpOnly)
+			//if user.betty.prefs.flAllowByIpOnly
+				//local (flBlocked = true)
+				//local (okIpList = user.betty.prefs.allowedIpAddresses)
+				//if typeOf (okIpList) == stringType
+					//It's a comma-delimited string: create a local list from that string.
+					//local (s = okIpList)
+					//okIpList = {}
+					//local (i)
+					//for i = 1 to string.countFields (s, ',')
+						//local (oneIpAddress = string.nthField (s, ',', i))
+						//oneIpAddress = string.trimWhiteSpace (oneIpAddress)
+						//if oneIpAddress != ""
+							//okIpList = okIpList + oneIpAddress
+				//local (oneIp)
+				//for oneIp in okIpList
+					//if string.trimWhiteSpace (oneIp) != ""
+						//if adrParamTable^.client == oneIp
+							//flblocked = false
+							//break
+				//if flblocked
+					//rpcFault ("Access not allowed from " + adrParamTable^.client + ".", betty.rpc.errorCodes.securityFault)};
 	
 	if (not flFault) { //get the procedure name and the paramlist
 		on parseXML () {

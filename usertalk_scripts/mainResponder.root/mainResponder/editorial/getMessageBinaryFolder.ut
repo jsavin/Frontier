@@ -2,7 +2,7 @@ on getMessageBinaryFolder (discussRoot, msgnum) {
 	local (adrdiscuss = mainResponder.editorial.getDiscussTableAddress (discussRoot));
 	local (adrmsg = mainResponder.editorial.getMessageTable (discussRoot, msgnum));
 	local (membergroup = adrdiscuss^.editorialprefs.membershipgroup);
-	«local (url = adrdiscuss^.editorialprefs.binaryServerFolder)
+	//local (url = adrdiscuss^.editorialprefs.binaryServerFolder)
 	local (url = adrdiscuss^.prefs.binaryServerFolder);
 	local (pc = file.getPathChar ());
 	on add (s) {

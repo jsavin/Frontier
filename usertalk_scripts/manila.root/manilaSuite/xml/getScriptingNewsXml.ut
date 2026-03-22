@@ -1,33 +1,33 @@
 on getScriptingNewsXml () {
-	«Build a scriptingNews syndication file.
-		«Changes:
-			«12/10/06; 2:09:10 PM by LL
-				«Removed channel-level <webMaster> and <managingEditor> elements because they include email addresses which could be mined by spammers.
-			«2002 and earlier
-				«10/24/02; 12:05:28 PM by JES
-					«Implement ETag support.
-				«1/25/02; 6:32:22 PM by PBS
-					«Performance enhancements in the local "add" routine -- add a trailing semicolon; use parentheses to get the expression in x = x + y form (which is optimized by the kernel).
-				«12/26/01; 9:38:47 PM by PBS
-					«When building the links and lines parallel lists, make sure, before adding to the lists, that the added items are non-empty. This ensures that the lists are indeed parallel, and you don't get a situation where one is longer than the other.
-				«12/13/01; 5:19:15 PM by PBS
-					«Fixed case-sensitivity issues.
-				«02/27/01; 9:10:29 PM by JES
-					«Fixed a bug where the <postTime> header always specified May 24, 2000.
-				«11/08/00; 11:24:11 AM by PBS
-					«Fixed a bug in picking up the membership group name.
-				«11/01/00; 12:21:44 PM by PBS
-					«Properly handle links with attributes -- for example, if you're using the internalLink rule as on Scripting News, you get links with title attributes.
-				«10/29/00; 9:49:54 PM by JES
-					«Fixed bug where the copyright message was always "Copyright 1007-[year] UserLand Software, Inc."
-				«05/01/00; 5:18:34 PM by PBS
-					«Support for news items. Each news item is stored in a separate dg message.
-				«03/27/00; 10:04:53 PM by PBS
-					«Two new patterns to items break on: \r\r and <br><br>\r -- both are needed for Pike support.
-				«12/28/99; 2:35:57 PM by PBS
-					«Problems with shortcuts and macros fixed -- the links weren't being extracted properly, and unencoded angle brackets were showing up in the XML file.
-				«12/13/99; 10:28:59 PM by PBS
-					«Get the site URL from the #ftpSite table. This is the the canonical location in a given site for this piece of data. Side effect: this fixes a syndication bug for ETP sites -- the URLs in their #rssInfo tables are sometimes wrong.
+	//Build a scriptingNews syndication file.
+		//Changes:
+			//12/10/06; 2:09:10 PM by LL
+				//Removed channel-level <webMaster> and <managingEditor> elements because they include email addresses which could be mined by spammers.
+			//2002 and earlier
+				//10/24/02; 12:05:28 PM by JES
+					//Implement ETag support.
+				//1/25/02; 6:32:22 PM by PBS
+					//Performance enhancements in the local "add" routine -- add a trailing semicolon; use parentheses to get the expression in x = x + y form (which is optimized by the kernel).
+				//12/26/01; 9:38:47 PM by PBS
+					//When building the links and lines parallel lists, make sure, before adding to the lists, that the added items are non-empty. This ensures that the lists are indeed parallel, and you don't get a situation where one is longer than the other.
+				//12/13/01; 5:19:15 PM by PBS
+					//Fixed case-sensitivity issues.
+				//02/27/01; 9:10:29 PM by JES
+					//Fixed a bug where the <postTime> header always specified May 24, 2000.
+				//11/08/00; 11:24:11 AM by PBS
+					//Fixed a bug in picking up the membership group name.
+				//11/01/00; 12:21:44 PM by PBS
+					//Properly handle links with attributes -- for example, if you're using the internalLink rule as on Scripting News, you get links with title attributes.
+				//10/29/00; 9:49:54 PM by JES
+					//Fixed bug where the copyright message was always "Copyright 1007-[year] UserLand Software, Inc."
+				//05/01/00; 5:18:34 PM by PBS
+					//Support for news items. Each news item is stored in a separate dg message.
+				//03/27/00; 10:04:53 PM by PBS
+					//Two new patterns to items break on: \r\r and <br><br>\r -- both are needed for Pike support.
+				//12/28/99; 2:35:57 PM by PBS
+					//Problems with shortcuts and macros fixed -- the links weren't being extracted properly, and unencoded angle brackets were showing up in the XML file.
+				//12/13/99; 10:28:59 PM by PBS
+					//Get the site URL from the #ftpSite table. This is the the canonical location in a given site for this piece of data. Side effect: this fixes a syndication bug for ETP sites -- the URLs in their #rssInfo tables are sometimes wrong.
 	
 	local (pta = html.getPageTableAddress ());
 	local (adrSite = manilaSuite.getManilaSiteAddress (pta));
@@ -129,7 +129,7 @@ on getScriptingNewsXml () {
 						sizePattern = sizeOf (pattern);
 						ix = string.patternMatch (pattern, s);
 						return (ix > 0)};
-					«if not (tryPattern ("\r\n\r\n"))
+					//if not (tryPattern ("\r\n\r\n"))
 					if not (tryPattern ("\r\r")) {
 						tryPattern ("<br><br>\r")};
 					if ix == 0 {
@@ -149,29 +149,29 @@ on getScriptingNewsXml () {
 						local (adrCal = @adrData^.calendar);
 						firstYear = date.year (mainResponder.calendar.getFirstDay (adrCal));
 						
-						«if defined (pta^.newsSite^.rssInfo.userLandExtensions.copyrightOwner)
-							«copyrightOwner = pta^.newsSite^.rssInfo.userLandExtensions.copyrightOwner
-						«else // base copyright info on site info
-							«local (numEditors = 1, sysopMail)
-							«if typeOf (pta^.newsSite^.sysopMail) == listType
-								«numEditors = sizeOf (pta^.newsSite^.sysopMail)
-								«sysopMail = pta^.newsSite^.sysopMail[1]
-							«else
-								«sysopMail = pta^.newsSite^.sysopMail
-							«if numEditors == 1 // copyright owner is the managing editor
-								«copyrightOwner = mainResponder.members.getMemberName (pta^.defaultMembershipGroup, sysopMail)
-							«else // copyright owner is based on the site name
-								«copyrightOwner = pta^.newsSite^.siteName
-								«copyrightOwner = string.replaceAll (copyrightOwner, "&", "&amp;")
-								«copyrightOwner = string.replaceAll (copyrightOwner, "<", "&lt;")
-								«copyrightOwner = string.replaceAll (copyrightOwner, ">", "&gt;")};
+						//if defined (pta^.newsSite^.rssInfo.userLandExtensions.copyrightOwner)
+							//copyrightOwner = pta^.newsSite^.rssInfo.userLandExtensions.copyrightOwner
+						//else // base copyright info on site info
+							//local (numEditors = 1, sysopMail)
+							//if typeOf (pta^.newsSite^.sysopMail) == listType
+								//numEditors = sizeOf (pta^.newsSite^.sysopMail)
+								//sysopMail = pta^.newsSite^.sysopMail[1]
+							//else
+								//sysopMail = pta^.newsSite^.sysopMail
+							//if numEditors == 1 // copyright owner is the managing editor
+								//copyrightOwner = mainResponder.members.getMemberName (pta^.defaultMembershipGroup, sysopMail)
+							//else // copyright owner is based on the site name
+								//copyrightOwner = pta^.newsSite^.siteName
+								//copyrightOwner = string.replaceAll (copyrightOwner, "&", "&amp;")
+								//copyrightOwner = string.replaceAll (copyrightOwner, "<", "&lt;")
+								//copyrightOwner = string.replaceAll (copyrightOwner, ">", "&gt;")};
 					add ("<header>"); indent++;
 					local (s = "Copyright " + firstYear);
 					local (day, month, year, hour, minute, second);
 					date.get (clock.now (), @day, @month, @year, @hour, @minute, @second);
 					if year > firstYear {
 						s = s + "-" + year};
-					«add ("<copyright>" + s + " " + copyrightOwner + "</copyright>")
+					//add ("<copyright>" + s + " " + copyrightOwner + "</copyright>")
 					add ("<scriptingNewsVersion>2.0b1</scriptingNewsVersion>");
 					local (pubDate);
 					bundle { //derive the publication date from posttime
@@ -179,23 +179,23 @@ on getScriptingNewsXml () {
 						date.get (pta^.posttime, @day, @month, @year, @hour, @minute, @second);
 						pubDate = date.set (day, month, year, 0, 0, 0)};
 					add ("<pubDate>" + date.netStandardString (pubDate) + "</pubDate>");
-					«add ("<lastBuildDate>" + date.netStandardString (clock.now ()) + "</lastBuildDate>")
+					//add ("<lastBuildDate>" + date.netStandardString (clock.now ()) + "</lastBuildDate>")
 					add ("<lastBuildDate>" + date.netStandardString (pta^.postTime) + "</lastBuildDate>");
 					add ("<docs>" + "http://my.userland.com/stories/storyReader$11" + "</docs>");
 					add ("<channelDescription>" + pta^.rssInfo^.channelDescription + "</channelDescription>");
-					«add ("<channelLink>" + pta^.rssInfo^.channelLink + "</channelLink>")
+					//add ("<channelLink>" + pta^.rssInfo^.channelLink + "</channelLink>")
 					add ("<channelLink>" + pta^.ftpSite^.url + "</channelLink>"); //PBS 12/13/99: use URL of site for channel link
 					add ("<channelTitle>" + pta^.rssInfo^.channelTitle + "</channelTitle>");
 					try { //image is optional
-						«add ("<imageLink>" + pta^.rssInfo^.imageLink + "</imageLink>")
+						//add ("<imageLink>" + pta^.rssInfo^.imageLink + "</imageLink>")
 						add ("<imageLink>" + pta^.ftpSite^.url + "</imageLink>"); //PBS 12/13/99: use URL of site for image link
 						add ("<imageTitle>" + pta^.rssInfo^.imageTitle + "</imageTitle>");
 						add ("<imageUrl>" + pta^.rssInfo^.imageUrl + "</imageUrl>");
 						add ("<imageHeight>" + pta^.rssInfo^.userLandExtensions.imageHeight + "</imageHeight>");
 						add ("<imageWidth>" + pta^.rssInfo^.userLandExtensions.imageWidth + "</imageWidth>");
 						add ("<imageCaption>" + pta^.rssInfo^.userLandExtensions.imageCaption + "</imageCaption>")};
-					«add ("<managingEditor>" + pta^.rssInfo^.userLandExtensions.managingEditor + "</managingEditor>")
-					«add ("<webmaster>" + pta^.rssInfo^.userLandExtensions.webmaster + "</webmaster>")
+					//add ("<managingEditor>" + pta^.rssInfo^.userLandExtensions.managingEditor + "</managingEditor>")
+					//add ("<webmaster>" + pta^.rssInfo^.userLandExtensions.webmaster + "</webmaster>")
 					add ("<language>" + pta^.rssInfo^.userLandExtensions.language + "</language>");
 					if defined (pta^.rssInfo^.userLandExtensions.skipHours) { //skipHours is optional
 						local (item);
@@ -210,7 +210,7 @@ on getScriptingNewsXml () {
 						add ("</skipDays>"); indent--};
 					add ("</header>"); indent--}};
 			on newsItemsToXml () {
-				«Concatenate the news items, then call stringToXml.
+				//Concatenate the news items, then call stringToXml.
 				local (n = manilaSuite.news.getItemsPerPagePref (adrSite));
 				local (msgList = manilaSuite.news.getLastNMessageNumbers (n));
 				local (s = "");
@@ -283,7 +283,7 @@ on getScriptingNewsXml () {
 			adr = mainResponder.calendar.getMostRecentAddress (adrSite)};
 		local (xmlText = getXmlText (adr));
 		
-		«PBS 12/28/99: turn off macros and glossary lookups -- otherwise a second round of processing would happen.
+		//PBS 12/28/99: turn off macros and glossary lookups -- otherwise a second round of processing would happen.
 		pta^.processMacros = false;
 		pta^.expandGlossaryItems = false;
 		

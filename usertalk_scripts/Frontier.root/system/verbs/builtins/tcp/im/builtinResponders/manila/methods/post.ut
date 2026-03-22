@@ -1,7 +1,7 @@
 on add (driverName, screenname, message) {
-	«Changes
-		«8/12/02; 2:33:20 AM by JES
-			«Rewrite for simplified architecture.
+	//Changes
+		//8/12/02; 2:33:20 AM by JES
+			//Rewrite for simplified architecture.
 	local (text = string.delete (message, 1, 11)); //pop off "manila add "
 	text = string.trimWhiteSpace (text) + "\r\n\r\n";
 	

@@ -1,13 +1,13 @@
-«run this overnight to watch for memory leaks
+//run this overnight to watch for memory leaks
 
 local (fnum);
-bundle { «start up uBASE, open the file
+bundle { //start up uBASE, open the file
 	local (ubasefolder);
 	ubase.launch ();
 	ubasefolder = file.folderFromPath (ubase.appinfo.path);
 	fnum = ubase.openFile (ubasefolder + "States Database")};
 
-bundle { «visit all the records in the database
+bundle { //visit all the records in the database
 	local (key, x);
 	loop {
 		key = states.nthState (random (1, 50));

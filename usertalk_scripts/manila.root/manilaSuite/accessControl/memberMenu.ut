@@ -1,6 +1,6 @@
 on memberMenu(pta, formID, elementID, selectedMembers, multiBoxSize=0, maxEntriesPerMenu) {
-	«manilaSuite.accessControl.memberMenu : 04/05/29, 14:06:23 by DAB
-		«return a table of select menus that allow drilling down to a specific member key
+	//manilaSuite.accessControl.memberMenu : 04/05/29, 14:06:23 by DAB
+		//return a table of select menus that allow drilling down to a specific member key
 	local (adrSite = manilaSuite.getManilaSiteAddress(pta));
 	local (adrGroup = manilaSuite.members.getGroupFromSiteAddress(adrSite));
 	local (adrUsers = @adrGroup^.users);
@@ -125,7 +125,7 @@ on memberMenu(pta, formID, elementID, selectedMembers, multiBoxSize=0, maxEntrie
 		add("<input type ='hidden' name='" + formID+"_"+elementID+"_drilldown' value='0'>")};
 	
 	return htmltext};
-«bundle
-	«wp.newtextObject(memberMenu(@baylysManilaWebsite, "users", "fred", "dbayly@udena.ch", 4, 10), @temp.memberMenu)
-	«wp.newtextObject(memberMenu(@hamricksManilaWebsite, "users", "fred", "dbayly@udena.ch", 10, 100), @temp.memberMenu)
-	«edit(@temp.memberMenu)
+//bundle
+	//wp.newtextObject(memberMenu(@baylysManilaWebsite, "users", "fred", "dbayly@udena.ch", 4, 10), @temp.memberMenu)
+	//wp.newtextObject(memberMenu(@hamricksManilaWebsite, "users", "fred", "dbayly@udena.ch", 10, 100), @temp.memberMenu)
+	//edit(@temp.memberMenu)

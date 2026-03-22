@@ -17,15 +17,15 @@ on openMessage (msgNum, discussRoot, userName, password) {
 		if file.exists (binaryfolder) {
 			fileloop (f in binaryfolder, 1) {
 				docTable.binaryNames.[file.fileFromPath (f)] = file.size (f)}}};
-	«doctable.binaryServerURL = mainResponder.editorial.getDiscussTableAddress (discussRoot)^.editorialprefs.binaryServerURL
-	«if defined (doctable.enclosureBits)  //add table of enclosure names
-		«if typeof (doctable.enclosureBits) == tableType
-			«local (ix)
-			«new (tableType, @doctable.enclosures)
-			«for ix = 1 to sizeof (doctable.enclosureBits)
-				«if typeof (doctable.enclosureBits [ix]) == binaryType
-					«doctable.enclosures.[nameOf (doctable.enclosureBits [ix])] = getBinaryType (doctable.enclosureBits [ix])
-		«delete (@doctable.enclosureBits)
+	//doctable.binaryServerURL = mainResponder.editorial.getDiscussTableAddress (discussRoot)^.editorialprefs.binaryServerURL
+	//if defined (doctable.enclosureBits)  //add table of enclosure names
+		//if typeof (doctable.enclosureBits) == tableType
+			//local (ix)
+			//new (tableType, @doctable.enclosures)
+			//for ix = 1 to sizeof (doctable.enclosureBits)
+				//if typeof (doctable.enclosureBits [ix]) == binaryType
+					//doctable.enclosures.[nameOf (doctable.enclosureBits [ix])] = getBinaryType (doctable.enclosureBits [ix])
+		//delete (@doctable.enclosureBits)
 	mainResponder.editorial.cleanDocTableForExport (@doctable);
 	
 	return (docTable)} //send it to the workstation

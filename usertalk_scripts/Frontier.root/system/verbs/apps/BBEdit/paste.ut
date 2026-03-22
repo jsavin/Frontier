@@ -1,2 +1,2 @@
-on paste (obj) { «Paste an object from the clipboard
+on paste (obj) { //Paste an object from the clipboard
 	return (appleEvent (BBEdit.id, 'misc', 'past', '----', objspec (obj)))}

@@ -1,4 +1,4 @@
 on render (adrTable) {
-	«Render a Frontier table via the appropriate method.
+	//Render a Frontier table via the appropriate method.
 	local (adrScript = @html.table.methods.[adrTable^.method]);
 	return (adrScript^ (adrTable))}

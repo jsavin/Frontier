@@ -1,9 +1,9 @@
 on setup (pta, cohorts, adrTbl) {
-	«Changes
-		«10/15/05; 4:11:24 AM by JES
-			«Edit script to UserLand code style.
-		«10/09/05, 13:49:29 by DAB
-			«Created. Given a list of cohorts, initialise yabl at adrTbl tro do bulk testing. Cohorts may be empty.
+	//Changes
+		//10/15/05; 4:11:24 AM by JES
+			//Edit script to UserLand code style.
+		//10/09/05, 13:49:29 by DAB
+			//Created. Given a list of cohorts, initialise yabl at adrTbl tro do bulk testing. Cohorts may be empty.
 	local (adrSite = manilaSuite.getManilaSiteAddress (pta));
 	local (adrGroup = mainResponder.members.getMembershipTable (pta^.responderAttributes.defaultMembershipGroup));
 	local (adrCohorts = @adrGroup^.cohorts);

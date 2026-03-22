@@ -1,8 +1,8 @@
 on hasValidPicture (pta=nil, adrErrorString=nil) {
-	«Return true if there's an attached picture and it's type is GIF or JPEG, otherwise return false and fill in the error string.
-		«1/3/00;12:01:05 PM by PBS
-		«3/13/07; 12:11:08 PM by LL
-			«Add support for PNG images.
+	//Return true if there's an attached picture and it's type is GIF or JPEG, otherwise return false and fill in the error string.
+		//1/3/00;12:01:05 PM by PBS
+		//3/13/07; 12:11:08 PM by LL
+			//Add support for PNG images.
 	
 	if pta == nil {
 		pta = html.getPageTableAddress ()};

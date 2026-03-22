@@ -1,28 +1,28 @@
 on completeSetup (serverDomainName="127.0.0.1", defaultSitePassword="", adminPassword="", flSavePortForwardingPassword=true, flEnablePortForwarding=true) {
-	«Changes
-		«12/13/05; 4:05:31 AM by JES
-			«New default paths for static rendering, gems, static images and downloaded sites: manilaSites, manilaFiles, manilaStaticFiles and manilaDownloadedSites.
-		«5/19/04; 4:16:11 PM by JES
-			«The Create-a-Site Manila site must *not* be a news item site.
-		«5/18/04; 11:17:51 PM by JES
-			«New optional parameter, flEnablePortForwarding. If false, don't install port forwarding startup callback, don't set password, and don't start forwarding.
-		«4/2/04; 2:51:52 PM by JES
-			«Ensure that folders for static rendering, gems, static images and downloaded sites all exist.
-			«Force recompile of the default domain's site tree after creating all the sub-sites.
-		«3/12/04; 4:43:38 PM by JES
-			«Fixed configuration of site tree and manila prefs for static rendering, gems, static images and downloaded sites.
-		«3/12/04; 4:31:37 PM by JES
-			«Modified port forwarding startup callback, so that it works properly regardless of whether the sysadmin has saved their MacOS X admin password.
-		«9/5/02; 11:57:47 PM by JES
-			«Set config.manila.backups.notifyList after completing the setup. Initialize static file prefs -- static rendering, static pictures, gems and site downloads.
-		«4/11/02; 5:14:28 PM by JES
-			«Created. After personalizing Frontier 8.0.7 via the Setup Frontier Control Panel page, this script is called. Code cribbed from userland.finishInstall.
-			«Here, we do the following:
-				«1) Add prefs.root to user.databases, and open it.
-				«2) Set up root-updates prefs for Manila.
-				«3) Set up the default Manila site (the Create-a-Site Manila site).
-				«4) Add the Server menu to user.menus, if it's not already there.
-				«5) If running on MacOS X, set up port-forwarding.
+	//Changes
+		//12/13/05; 4:05:31 AM by JES
+			//New default paths for static rendering, gems, static images and downloaded sites: manilaSites, manilaFiles, manilaStaticFiles and manilaDownloadedSites.
+		//5/19/04; 4:16:11 PM by JES
+			//The Create-a-Site Manila site must *not* be a news item site.
+		//5/18/04; 11:17:51 PM by JES
+			//New optional parameter, flEnablePortForwarding. If false, don't install port forwarding startup callback, don't set password, and don't start forwarding.
+		//4/2/04; 2:51:52 PM by JES
+			//Ensure that folders for static rendering, gems, static images and downloaded sites all exist.
+			//Force recompile of the default domain's site tree after creating all the sub-sites.
+		//3/12/04; 4:43:38 PM by JES
+			//Fixed configuration of site tree and manila prefs for static rendering, gems, static images and downloaded sites.
+		//3/12/04; 4:31:37 PM by JES
+			//Modified port forwarding startup callback, so that it works properly regardless of whether the sysadmin has saved their MacOS X admin password.
+		//9/5/02; 11:57:47 PM by JES
+			//Set config.manila.backups.notifyList after completing the setup. Initialize static file prefs -- static rendering, static pictures, gems and site downloads.
+		//4/11/02; 5:14:28 PM by JES
+			//Created. After personalizing Frontier 8.0.7 via the Setup Frontier Control Panel page, this script is called. Code cribbed from userland.finishInstall.
+			//Here, we do the following:
+				//1) Add prefs.root to user.databases, and open it.
+				//2) Set up root-updates prefs for Manila.
+				//3) Set up the default Manila site (the Create-a-Site Manila site).
+				//4) Add the Server menu to user.menus, if it's not already there.
+				//5) If running on MacOS X, set up port-forwarding.
 	
 	local (pc = file.getPathChar ());
 	
@@ -39,7 +39,7 @@ on completeSetup (serverDomainName="127.0.0.1", defaultSitePassword="", adminPas
 			fileMenu.open (f, true)}};
 	
 	bundle { //set up root updates prefs
-		«local (lastUpdateTime = date.netStandardString (Frontier.shipDate))
+		//local (lastUpdateTime = date.netStandardString (Frontier.shipDate))
 		local (lastUpdateTime = userland.initialLastUpdateTime);
 		if date (user.rootUpdates.servers.mainResponder.lastUpdate) < date (lastUpdateTime) {
 			user.rootUpdates.servers.mainResponder.lastUpdate = lastUpdateTime};
@@ -100,7 +100,7 @@ on completeSetup (serverDomainName="127.0.0.1", defaultSitePassword="", adminPas
 				if not defined ([canonicalSiteName]) { //only create the default site if it doesn't already exist -- it may have been purposely uninstalled
 					userland.createDefaultSite (canonicalSiteName, defaultSitePassword, serverName, displaySiteName, tagline, theme, path, flHostingSite)}}};
 		
-		«createSite ("myManilaServerManilaWebsite", "My Manila Server", "View stats, and find and create sites, with a click of the mouse.", "myManilaServer")
+		//createSite ("myManilaServerManilaWebsite", "My Manila Server", "View stats, and find and create sites, with a click of the mouse.", "myManilaServer")
 		
 		createSite ("homeManilaWebsite", "Home", "", "firstSite");
 		createSite ("createASiteManilaWebsite", "Create a Manila Site", "Create a new Manila site whenever you want.", "ISP2", "/newSite/", true);
@@ -170,14 +170,14 @@ on completeSetup (serverDomainName="127.0.0.1", defaultSitePassword="", adminPas
 	
 	return (true)};
 
-«bundle //testing
-	«bundle //delete initial sites
-		«try {delete (@config.manila.sites.home)}
-		«try {delete (@config.manila.sites.createASite)}
-		«try {delete (@homeManilaWebsite)}
-		«try {delete (@homeManilaWebsiteMembers)}
-		«try {delete (@homeManilaWebsiteDiscuss)}
-		«try {delete (@createASiteManilaWebsite)}
-		«try {delete (@createASiteManilaWebsiteMembers)}
-		«try {delete (@createASiteManilaWebsiteDiscuss)}
-	«completeSetup ()
+//bundle //testing
+	//bundle //delete initial sites
+		//try {delete (@config.manila.sites.home)}
+		//try {delete (@config.manila.sites.createASite)}
+		//try {delete (@homeManilaWebsite)}
+		//try {delete (@homeManilaWebsiteMembers)}
+		//try {delete (@homeManilaWebsiteDiscuss)}
+		//try {delete (@createASiteManilaWebsite)}
+		//try {delete (@createASiteManilaWebsiteMembers)}
+		//try {delete (@createASiteManilaWebsiteDiscuss)}
+	//completeSetup ()

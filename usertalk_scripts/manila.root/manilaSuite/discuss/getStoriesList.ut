@@ -1,5 +1,5 @@
 on getStoriesList (category=nil, discussRoot=nil, adrSite=nil) {
-	«Get a list of msgNums of stories. Loop through all the messages in the discussion group.
+	//Get a list of msgNums of stories. Loop through all the messages in the discussion group.
 	
 	local (adrNewsSite = manilaSuite.getNewsSiteAddress (adrSite));
 	local (storiesList = {});

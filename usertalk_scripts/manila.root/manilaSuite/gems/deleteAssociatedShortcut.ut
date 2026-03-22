@@ -1,6 +1,6 @@
 on deleteAssociatedShortcut (adrTable) {
-	«Delete the canonical shortcut for this gem.
-		«04/14/00; 12:09:59 AM by PBS
+	//Delete the canonical shortcut for this gem.
+		//04/14/00; 12:09:59 AM by PBS
 	
 	if defined (adrTable^.shortcut) {
 		local (shortcutName = adrTable^.shortcut);

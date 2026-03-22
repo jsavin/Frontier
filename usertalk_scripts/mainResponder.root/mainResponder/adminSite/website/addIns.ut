@@ -1,11 +1,11 @@
 on addIns () {
-	«Changes
-		«9/27/05; 1:45:56 AM by JES
-			«Use the name of the entry in config.mainResponder.controlPanel.wizards for the page name, instead of the outline (when using radio.prefs.browser style outlines).
-		«9/27/05; 1:09:20 AM by JES
-			«Add support for radio.prefs.browser-style outlines as control panel add-ins. Change URL scheme to use pathArgs instead of searchArgs for links to add-ins.
-		«02/09/16, 12:42:35 by DAB
-			«Created. Support conrol panel add-ins as extra menu in admin website.
+	//Changes
+		//9/27/05; 1:45:56 AM by JES
+			//Use the name of the entry in config.mainResponder.controlPanel.wizards for the page name, instead of the outline (when using radio.prefs.browser style outlines).
+		//9/27/05; 1:09:20 AM by JES
+			//Add support for radio.prefs.browser-style outlines as control panel add-ins. Change URL scheme to use pathArgs instead of searchArgs for links to add-ins.
+		//02/09/16, 12:42:35 by DAB
+			//Created. Support conrol panel add-ins as extra menu in admin website.
 	local (pta = html.getPageTableAddress ());
 	pta^.title = "Add-ins";
 	local (bgcolor1 = pta^.trbg1, bgcolor2 = pta^.trbg2, ctitems);
@@ -41,8 +41,8 @@ on addIns () {
 	
 	local (adrWizard);
 	local (command = "view", message = "");
-	«if defined (pta^.searchArgTable.command)
-		«command = pta^.searchArgTable.command
+	//if defined (pta^.searchArgTable.command)
+		//command = pta^.searchArgTable.command
 	if defined (pta^.pathArgs) {
 		command = pta^.pathArgs};
 	if defined (pta^.postArgs.command) {
@@ -52,9 +52,9 @@ on addIns () {
 			if sizeof (config.mainresponder.controlPanel.wizards) > 0 {
 				addHeader ("The following Add-ins are installed on this server:");
 				for adrWizard in @config.mainresponder.controlPanel.wizards {
-					«while typeOf (adrWizard^) == addressType //de-reference, possibly
-						«adrWizard = adrWizard^
-					«addRow (html.getLink (nameOf (adrWizard^), "addIns"  + "?command=" + nameOf (adrWizard^)), "")
+					//while typeOf (adrWizard^) == addressType //de-reference, possibly
+						//adrWizard = adrWizard^
+					//addRow (html.getLink (nameOf (adrWizard^), "addIns"  + "?command=" + nameOf (adrWizard^)), "")
 					addRow (html.getLink (nameOf (adrWizard^), "addIns"  + "$" + nameOf (adrWizard^)), "")};
 				on addFooter () {
 					add ("</table>"); indentlevel--}}

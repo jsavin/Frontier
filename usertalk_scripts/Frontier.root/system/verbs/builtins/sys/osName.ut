@@ -6,5 +6,5 @@ on osName () {
 			return ("Windows 95")};
 		"WinNT" {
 			return ("Windows NT")}}};
-«bundle «test code
-	«dialog.alert (osName ())
+//bundle //test code
+	//dialog.alert (osName ())

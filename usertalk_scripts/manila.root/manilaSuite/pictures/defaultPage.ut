@@ -1,8 +1,8 @@
 on defaultPage () {
-	«05/22/00; 6:08:12 PM by JES -- localized version of the pictures list page
-		«Changes:
-			«9/12/01; 2:57:30 PM by PBS
-				«Support for access privileges.
+	//05/22/00; 6:08:12 PM by JES -- localized version of the pictures list page
+		//Changes:
+			//9/12/01; 2:57:30 PM by PBS
+				//Support for access privileges.
 	
 	local (pta = html.getPageTableAddress ());
 	local (adrSite = manilaSuite.getManilaSiteAddress(pta));
@@ -24,12 +24,12 @@ on defaultPage () {
 	
 	bundle { //PBS 09/12/01: check access privileges for pictures page
 		if not (manilaSuite.editors.editorialPageAccess ("pictures", pta)) {
-			«return ("Can't display the Pictures page because you don't have sufficient access privileges.")
+			//return ("Can't display the Pictures page because you don't have sufficient access privileges.")
 			return manilaSuite.getString ("discuss.cantDisplayPicturesPage", @replacementTable, pta:pta)}}; //04/06/14, 22:58:16 by DAB
 	
 	on checkMessageOut(adrMsgTable) { //04/06/14, 22:39:48 by DAB
 		if not manilaSuite.custody.memberCanCheckOutObject (adrMsgTable, pta^.adrMemberInfo, adrSite, true) { //true because it's a message
-			«For dg messages, the checked out identifier is the address of the message table, not the address of the body or outline.
+			//For dg messages, the checked out identifier is the address of the message table, not the address of the body or outline.
 			local (title = adrMsgTable^.subject);
 			title = manilaSuite.unTaint (title);
 			
@@ -83,14 +83,14 @@ on defaultPage () {
 					oneArg = string.lower (oneArg);
 					if oneArg beginsWith "delete" { //delete from the stories list
 						msgNum = string.popLeading (oneArg - "delete", '0');
-						«mainResponder.discuss.deleteMessage (msgNum)
+						//mainResponder.discuss.deleteMessage (msgNum)
 						local (adrMsgTable = mainResponder.discuss.getMessageTable (msgNum));
-						«manilaSuite.discuss.removeCategoryFromMessage (adrMsgTable, picturesCategory, adrSite) //PBS 10/09/00: update indexes
+						//manilaSuite.discuss.removeCategoryFromMessage (adrMsgTable, picturesCategory, adrSite) //PBS 10/09/00: update indexes
 						manilaSuite.discuss.changeMessageDeletion(adrMsgTable, pta^.adrMemberInfo, adrSite, true)}}}}};
 	
 	add (manilaSuite.getString ("pictures.defaultPageDescription", @replacementTable, pta:pta) + "\r");
 	
-	«add (manilaSuite.storyList ("pictures"))
+	//add (manilaSuite.storyList ("pictures"))
 	add ("<form method='POST' action='" + manilaSuite.getUrl ("editorialPictures", pta) + "'>");
 	add (manilaSuite.storyList ("pictures", true,  20, flIncludeCheckBox:true,  boxPrefix:"delete", flUseSiteStructurePaths:false)); //04/05/27, 16:35:45 by DAB
 	if pta^.flEditor { //add to pictures list form 04/05/28, 07:58:39 by DAB

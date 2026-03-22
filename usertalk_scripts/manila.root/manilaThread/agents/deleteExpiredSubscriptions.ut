@@ -1,5 +1,5 @@
-«Delete expired subscriptions.
-	«1/15/02; 6:17:23 PM by PBS
+//Delete expired subscriptions.
+	//1/15/02; 6:17:23 PM by PBS
 if defined (xml.pubsub) {
 	local (day, month, year, hour, minute, second);
 	date.get (clock.now (), @day, @month, @year, @hour, @minute, @second);

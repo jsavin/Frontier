@@ -1,8 +1,8 @@
 on deleteService (serviceName) {
-	«Delete a service. Return false if it didn't already exist.
+	//Delete a service. Return false if it didn't already exist.
 	local (adrService = people.getServiceTable (serviceName));
 	if not (people.serviceExists (serviceName, adrService)) {
 		return (false)};
-	«adrService^.enabled = false
+	//adrService^.enabled = false
 	delete (adrService);
 	return (true)}

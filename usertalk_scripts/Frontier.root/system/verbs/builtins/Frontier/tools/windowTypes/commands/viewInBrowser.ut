@@ -1,20 +1,20 @@
 on viewInBrowser (adr = nil) {
-	«Change Notes
-		«Fri, Jul 7, 2000 at 11:00:09 PM by AR
-			«Call any scripts in user.pike.commandCallbacks.viewInBrowser
-			«If one of the scripts returns true, we're done
-		«Sat, Aug 26, 2000 at 6:10:27 PM by JES
-			«Use the website framework to preview weblog pages
-		«10/02/00; 12:17:32 PM by PBS
-			«Callbacks can be addresses.
-		«11/30/00; 12:18:18 AM by JES
-			«Dereference callback addresses in a try block in case a tool's odb is not opened
-		«12/14/00; 12:18:27 AM by PBS
-			«View local, file-based outlines in the browser.
-		«12/29/00; 3:39:07 PM by JES
-			«View object database outlines in the browser.
-		«05/2501; 10:33:51 PM by JES
-			«Optimization: Don't save Manila site outlines, unless they've been modified.
+	//Change Notes
+		//Fri, Jul 7, 2000 at 11:00:09 PM by AR
+			//Call any scripts in user.pike.commandCallbacks.viewInBrowser
+			//If one of the scripts returns true, we're done
+		//Sat, Aug 26, 2000 at 6:10:27 PM by JES
+			//Use the website framework to preview weblog pages
+		//10/02/00; 12:17:32 PM by PBS
+			//Callbacks can be addresses.
+		//11/30/00; 12:18:18 AM by JES
+			//Dereference callback addresses in a try block in case a tool's odb is not opened
+		//12/14/00; 12:18:27 AM by PBS
+			//View local, file-based outlines in the browser.
+		//12/29/00; 3:39:07 PM by JES
+			//View object database outlines in the browser.
+		//05/2501; 10:33:51 PM by JES
+			//Optimization: Don't save Manila site outlines, unless they've been modified.
 	
 	if adr == nil { //default to the front window
 		try {adr = table.getCursorAddress ()}};
@@ -55,5 +55,5 @@ on viewInBrowser (adr = nil) {
 	
 	return (false)};
 
-«bundle // debugging
-	«viewInBrowser (window.frontmost ())
+//bundle // debugging
+	//viewInBrowser (window.frontmost ())

@@ -1,7 +1,7 @@
 on getMessageTable (msgNum, adrSite=nil) {
-	«Get the address of a discussion group message table.
-		«This script can be called from outside the page rendering context if adrSite is not nil.
-		«10/19/99; 4:09:32 PM by PBS
+	//Get the address of a discussion group message table.
+		//This script can be called from outside the page rendering context if adrSite is not nil.
+		//10/19/99; 4:09:32 PM by PBS
 	
 	if adrSite != nil {
 		return (manilaSuite.discuss.getMessageTableFromSiteAddress (adrSite, msgNum))};

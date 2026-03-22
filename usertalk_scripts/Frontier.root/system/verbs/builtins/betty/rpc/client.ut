@@ -1,50 +1,50 @@
 on client (rpcServer="localhost", rpcPort=user.inetd.config.http.port, procedureName="", adrparamlist=nil, fldebug=false, ticksToTimeOut=nil, flShowMessages=true, rpcPath=nil, flAsynch=false, adrCallback=nil, extraInfo=nil, adrErrorCallback=nil, username="", password="") {
-	«Change
-		«8/20/02; 4:43:35 AM by JES
-			«Respect user.betty.prefs.flSaveDatabaseAfterAsynchRpcCall.
-		«1/4/02; 7:15:55 PM by DW
-			«If user.betty.prefs.flKeepClientCallTicks is true, keep track of call stats in system.temp.betty.clientCallTicks.
-			«Added a test code bundle at the end of the routine.
-		«8/20/00 by AR
-			«Added optional username and password parameters for HTTP Basic Authentication.
-		«10/8/99 by DW
-			«Added optional adrErrorCallback parameter, if specified, this script is called when there's an error sending an asynchronous XML-RPC call. 
-		«3/6/99 by DW
-			«Added three optional parameters to allow asynchronous RPC-ing that try until they connect.
-				«flAsynch, defaults to false, if true it's an asynchronous call.
-				«adrCallback, defaults to nil, if non-nil, it's the routine we call when we connect.
-				«It takes a single parameter, the value returned by the RPC server.
-				«The routine pointed to by this address must not be local to the script calling betty.rpc.client because it won't be around when the actual RPC call is made.
-				«It must be in Frontier.root or in a guest database.
-				«extraInfo, defaults to nil, it's any kind of object, it's available to the callback to help it interpret the response. 
-			«It will create a table at user.betty.queueOutgoing, which is watched by the agent.
-		«1/17/99 by DW
-			«Change default value of ticksToTimeOut to nil. If it's nil, set it to user.betty.prefs.rpcClientDefaultTimeout.
-			«Change default value of rpcPath to nil. If it's nil, set it to user.betty.prefs.rpcClientDefaultPath.
-		«1/15/99 by DW
-			«added optional parameter, rpcPath, to facilitate communication with non-Frontier XML-RPC servers.
-		«11/14/98 by DW
-			«In the 11/5 change, RPC error reporting lost a lot of its value due to a too-local declaration of adrtable.
-		«11/5/98 by DW
-			«At the end of betty.rpc.client, there was some real ancient code for producing examples
-				«It was copying the XML request and the compiled XML that was returned into the params list
-				«However, it's legal to call this routine without specifying the param list, it would fail if you did so.
-				«This code was only useful to people writing docs and testing this.
-				«Now it's deployed, things will run faster if we don't do this.
-				«And now you can leave out params if the procedure you're calling takes no parameters.
-		«11/1/98 by DW
-			«Added ticksToTimeOut optional parameter, it's passed on to tcp.httpClient
-				«Some operations take more than 30 seconds to complete, that's the default on tcp.httpClient
-				«I imagine that some take much less than 30 seconds too...
-			«Added flShowMessages optional parameter, it's also passed on to tcp.httpClient
-				«If true, it will display messages in Frontier's About window, if false it won't.
-				«Previously, there was no way for an RPC caller to turn on tcp.httpClient messages.
-				«This is important if you want to see what's going on at the HTTP level.
-		«7/17/98 by PBS
-			«XML header is now lowercase to conform to spec.
-			«Changed xml table from temp.rpcReturn to a local table for thread-safety.
-		«4/4/98 by DW
-			«A full-featured client for the RPC2 responder
+	//Change
+		//8/20/02; 4:43:35 AM by JES
+			//Respect user.betty.prefs.flSaveDatabaseAfterAsynchRpcCall.
+		//1/4/02; 7:15:55 PM by DW
+			//If user.betty.prefs.flKeepClientCallTicks is true, keep track of call stats in system.temp.betty.clientCallTicks.
+			//Added a test code bundle at the end of the routine.
+		//8/20/00 by AR
+			//Added optional username and password parameters for HTTP Basic Authentication.
+		//10/8/99 by DW
+			//Added optional adrErrorCallback parameter, if specified, this script is called when there's an error sending an asynchronous XML-RPC call. 
+		//3/6/99 by DW
+			//Added three optional parameters to allow asynchronous RPC-ing that try until they connect.
+				//flAsynch, defaults to false, if true it's an asynchronous call.
+				//adrCallback, defaults to nil, if non-nil, it's the routine we call when we connect.
+				//It takes a single parameter, the value returned by the RPC server.
+				//The routine pointed to by this address must not be local to the script calling betty.rpc.client because it won't be around when the actual RPC call is made.
+				//It must be in Frontier.root or in a guest database.
+				//extraInfo, defaults to nil, it's any kind of object, it's available to the callback to help it interpret the response. 
+			//It will create a table at user.betty.queueOutgoing, which is watched by the agent.
+		//1/17/99 by DW
+			//Change default value of ticksToTimeOut to nil. If it's nil, set it to user.betty.prefs.rpcClientDefaultTimeout.
+			//Change default value of rpcPath to nil. If it's nil, set it to user.betty.prefs.rpcClientDefaultPath.
+		//1/15/99 by DW
+			//added optional parameter, rpcPath, to facilitate communication with non-Frontier XML-RPC servers.
+		//11/14/98 by DW
+			//In the 11/5 change, RPC error reporting lost a lot of its value due to a too-local declaration of adrtable.
+		//11/5/98 by DW
+			//At the end of betty.rpc.client, there was some real ancient code for producing examples
+				//It was copying the XML request and the compiled XML that was returned into the params list
+				//However, it's legal to call this routine without specifying the param list, it would fail if you did so.
+				//This code was only useful to people writing docs and testing this.
+				//Now it's deployed, things will run faster if we don't do this.
+				//And now you can leave out params if the procedure you're calling takes no parameters.
+		//11/1/98 by DW
+			//Added ticksToTimeOut optional parameter, it's passed on to tcp.httpClient
+				//Some operations take more than 30 seconds to complete, that's the default on tcp.httpClient
+				//I imagine that some take much less than 30 seconds too...
+			//Added flShowMessages optional parameter, it's also passed on to tcp.httpClient
+				//If true, it will display messages in Frontier's About window, if false it won't.
+				//Previously, there was no way for an RPC caller to turn on tcp.httpClient messages.
+				//This is important if you want to see what's going on at the HTTP level.
+		//7/17/98 by PBS
+			//XML header is now lowercase to conform to spec.
+			//Changed xml table from temp.rpcReturn to a local table for thread-safety.
+		//4/4/98 by DW
+			//A full-featured client for the RPC2 responder
 	
 	local (startticks = clock.ticks ());
 	betty.init (); //1/17/99 DW, make sure user.betty.prefs is set up
@@ -105,7 +105,7 @@ on client (rpcServer="localhost", rpcPort=user.inetd.config.http.port, procedure
 			local (item);
 			for item in adrparamlist^ {
 				add ("<param>"); indentlevel++;
-				«add ("<name>" + nameOf (adritem^) + "</name>")
+				//add ("<name>" + nameOf (adritem^) + "</name>")
 				add ("<value>" + xml.coercions.frontierValueToTaggedText (@item, indentlevel) + "</value>");
 				add ("</param>"); indentlevel--;
 				if typeOf (item) == tableType {
@@ -164,6 +164,6 @@ on client (rpcServer="localhost", rpcPort=user.inetd.config.http.port, procedure
 				adrcount^ = 0};
 			adrcount^ = adrcount^ + (clock.ticks () - startticks)}};
 	return (returnedValue)};
-«bundle //test code
-	«local (params = {"Dave's Handsome Radio Blog", "http://radio.weblogs.com/0001015/"})
-	«scratchpad.response = betty.rpc.client ("rpc.weblogs.com", 80, "weblogUpdates.ping", @params)
+//bundle //test code
+	//local (params = {"Dave's Handsome Radio Blog", "http://radio.weblogs.com/0001015/"})
+	//scratchpad.response = betty.rpc.client ("rpc.weblogs.com", 80, "weblogUpdates.ping", @params)

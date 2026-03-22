@@ -1,4 +1,4 @@
-on normalName (name) { «turn a file system name into an odb name
+on normalName (name) { //turn a file system name into an odb name
 	local (len = sizeof (name), i, ch);
 	for i = len downto 1 {
 		ch = name [i];

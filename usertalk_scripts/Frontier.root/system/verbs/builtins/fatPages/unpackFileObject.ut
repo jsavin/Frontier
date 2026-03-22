@@ -15,12 +15,12 @@ on unpackFileObject (adrAtts, path, flRunnable=false) {
 		return (true)};
 	unpackWindow (@data, path);
 	if flRunnable { //it's a desktop script
-		«File-based, runnable desktop script
+		//File-based, runnable desktop script
 		system.deskscripts.path = path;
 		[path] ();
 		window.close (path)}
 	else { //it's not a desktop script
-		«File-based window
+		//File-based window
 		window.show (path);
 		window.bringToFront (path)};
 	return (true)}

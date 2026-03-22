@@ -1,11 +1,11 @@
-«Changes
-	«Mon, Aug 21, 2000 at 5:34:19 PM by PBS
-		«Created. Expand a node that contains messages and/or other discuss containers.
-	«Saturday, September 30, 2000 at 10:57:10 AM by DW
-		«When expanding a "toplevel" subtype, add another node, "threads".
-		«Then add a "threads" branch to the case statement.
-	«9/17/01; 12:33:33 PM by JES
-		«Fixed a bug where discussion group nodes wouldn't be expanded, if the site contains only one year.
+//Changes
+	//Mon, Aug 21, 2000 at 5:34:19 PM by PBS
+		//Created. Expand a node that contains messages and/or other discuss containers.
+	//Saturday, September 30, 2000 at 10:57:10 AM by DW
+		//When expanding a "toplevel" subtype, add another node, "threads".
+		//Then add a "threads" branch to the case statement.
+	//9/17/01; 12:33:33 PM by JES
+		//Fixed a bug where discussion group nodes wouldn't be expanded, if the site contains only one year.
 
 local (oldTarget = target.set (window.frontmost ()));
 local (oldDisplay = op.getDisplay ());
@@ -60,7 +60,7 @@ on addContainer (linetext, containerType, url, year=nil, month=nil, day=nil) {
 	manila.nodeTypes.addSitePrefsToAtts (adrinfo, @atts);
 	op.attributes.addGroup (@atts)};
 on addMessage (adrTable, flLastMessage=false) {
-	«scratchpad.msgtable = adrtable^
+	//scratchpad.msgtable = adrtable^
 	local (linetext = adrTable^.subject);
 	local (author = adrTable^.memberName);
 	if author != adrTable^.member {
@@ -105,13 +105,13 @@ on resetOpState () {
 
 case type {
 	"toplevel" { //it contains Current and year nodes
-		«Insert Current container.
+		//Insert Current container.
 		local (url = baseDiscussUrl);
 		
-		«Insert years.
+		//Insert years.
 		local (years);
 		on getYears () {
-			«Copied from suites.playlist.manila.rpc.getDiscussCalendarYears
+			//Copied from suites.playlist.manila.rpc.getDiscussCalendarYears
 			firstDate = manila.message.calendar.getFirstDate (@sitePrefs);
 			lastDate = manila.message.calendar.getLastDate (@sitePrefs);
 			
@@ -144,8 +144,8 @@ case type {
 	"current" { //get the message headers for the current day
 		local (messageHeaders);
 		on getMessageHeaders () {
-			«playlist.manila.rpc.getDiscussCurrentMessageHeaders (siteUrl, @messageHeaders)
-			«local (sitePrefs = suites.playlist.manila.getRpcInfoTableFromPrefs (siteUrl))
+			//playlist.manila.rpc.getDiscussCurrentMessageHeaders (siteUrl, @messageHeaders)
+			//local (sitePrefs = suites.playlist.manila.getRpcInfoTableFromPrefs (siteUrl))
 			messageHeaders = manila.message.getCurrentHeaders (@siteprefs);
 			return (true)};
 		if not (passwordLoop (@getMessageHeaders)) {
@@ -160,8 +160,8 @@ case type {
 	"threads" { //get the most recent top-level messages in the DG
 		local (messageHeaders);
 		on getMessageHeaders () {
-			«playlist.manila.rpc.getDiscussCurrentThreadsHeaders (siteUrl, @messageHeaders)
-			«scratchpad.messageHeaders = messageHeaders
+			//playlist.manila.rpc.getDiscussCurrentThreadsHeaders (siteUrl, @messageHeaders)
+			//scratchpad.messageHeaders = messageHeaders
 			messageHeaders = manila.message.getCurrentThreads (@siteprefs)};
 		if not (passwordLoop (@getMessageHeaders)) {
 			resetOpState ();
@@ -178,7 +178,7 @@ case type {
 		op.attributes.getOne ("year", @year);
 		local (months);
 		on getMonths () {
-			«months = suites.playlist.manila.rpc.getDiscussCalendarMonths (siteUrl, year)
+			//months = suites.playlist.manila.rpc.getDiscussCalendarMonths (siteUrl, year)
 			months = manila.message.calendar.getMonthsInYear (@siteprefs, year)};
 		if not (passwordLoop (@getMonths)) {
 			resetOpState ();
@@ -195,7 +195,7 @@ case type {
 		month = atts.month;
 		local (days);
 		on getDays () {
-			«days = playlist.manila.rpc.getDiscussCalendarDays (siteUrl, year, month)
+			//days = playlist.manila.rpc.getDiscussCalendarDays (siteUrl, year, month)
 			days = manila.message.calendar.getDaysInMonth (@siteprefs, year, month)};
 		if not (passwordLoop (@getDays)) {
 			resetOpState ();
@@ -214,7 +214,7 @@ case type {
 		local (messageHeaders);
 		local (d = date.set (day, month, year, 0, 0, 0));
 		on getDayHeaders () {
-			«playlist.manila.rpc.getDiscussMessageHeaders (siteUrl, @messageHeaders, d)
+			//playlist.manila.rpc.getDiscussMessageHeaders (siteUrl, @messageHeaders, d)
 			messageHeaders = manila.message.getHeaders (@siteprefs, d)};
 		if not (passwordLoop (@getDayHeaders)) {
 			resetOpState ();

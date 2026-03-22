@@ -1,9 +1,9 @@
 on stop () {
-	«Changes
-		«7/29/02; 11:39:03 PM by JES
-			«Clear idTables after closing the connection.
-		«5/15/02; 12:26:54 PM by JB
-			«Created.
+	//Changes
+		//7/29/02; 11:39:03 PM by JES
+			//Clear idTables after closing the connection.
+		//5/15/02; 12:26:54 PM by JB
+			//Created.
 	tcp.im.builtinDrivers.jabber.code.closeConnection();
 	try {new (tableType, @system.temp.jabber.idTables) };
 	user.im.jabber.flActive = false}; //tell the everyMinute script to stop

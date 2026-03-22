@@ -1,2 +1,2 @@
-on duplicate (obj, duplicateTo = nil) { «Duplicate an object
+on duplicate (obj, duplicateTo = nil) { //Duplicate an object
 	return (appleEvent (Filemaker.id, 'core', 'clon', '----', objspec (obj), 'insh', duplicateTo))}

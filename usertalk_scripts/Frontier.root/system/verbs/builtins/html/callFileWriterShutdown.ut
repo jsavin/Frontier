@@ -1,9 +1,9 @@
 on callFileWriterShutdown (adrObject, adrPageTable, templateName=nil) {
-	«Tuesday, April 14, 1998 at 4:10:23 PM by PBS
+	//Tuesday, April 14, 1998 at 4:10:23 PM by PBS
 	local (adrStorage);
 	adrStorage = html.getFileWriterStorage ();
 	
-	«Call file writer shutdown script.
+	//Call file writer shutdown script.
 	local (adrFtpSite = adrStorage^.adrFtpSite);
 	local (method, adrScript);
 	method = adrStorage^.method;

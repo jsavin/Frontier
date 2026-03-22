@@ -4,15 +4,15 @@ on fileToURL (f) {
 	local (i, field, ctfields = string.countFields (f, pc));
 	for i = 1 to ctfields {
 		field = string.nthField (f, pc, i);
-		«if sys.os () beginsWith "Win"
-			«if i == 1
-				«field = field - ":"
+		//if sys.os () beginsWith "Win"
+			//if i == 1
+				//field = field - ":"
 		s = s + "/" + field};
 	if file.exists (f) {
 		if file.isFolder (f) {
 			s = s + "/"}};
 	return (s)};
 
-«bundle «test code
-	«dialog.alert (fileToURL (websites.["#data"].f))
-	«dialog.alert (fileToURL (frontier.getprogrampath ()))
+//bundle //test code
+	//dialog.alert (fileToURL (websites.["#data"].f))
+	//dialog.alert (fileToURL (frontier.getprogrampath ()))

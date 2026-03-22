@@ -1,15 +1,15 @@
 on renderNewsDay (s, d, title="", templateText=nil, pta=nil) {
-	«Render text through the news day template.
-		«05/02/00; 2:57:30 PM by PBS
-		«Changes:
-			«05/14/00; 6:46:36 PM by JES
-				«localized
-			«05/31/00; 12:51:21 PM by JES
-				«localized {newsPostTime}
-			«9/13/01; 3:56:13 PM by PBS
-				«Support for alternate date formats.
-			«9/14/01; 2:59:06 PM by PBS
-				«Support for custom permanent link icons.
+	//Render text through the news day template.
+		//05/02/00; 2:57:30 PM by PBS
+		//Changes:
+			//05/14/00; 6:46:36 PM by JES
+				//localized
+			//05/31/00; 12:51:21 PM by JES
+				//localized {newsPostTime}
+			//9/13/01; 3:56:13 PM by PBS
+				//Support for alternate date formats.
+			//9/14/01; 2:59:06 PM by PBS
+				//Support for custom permanent link icons.
 	
 	local (htmlText);
 	
@@ -35,7 +35,7 @@ on renderNewsDay (s, d, title="", templateText=nil, pta=nil) {
 			imgSrc = pta^.newsSite^.permanentLinkImage};
 		if (imgSrc contains "<img") and (not (imgSrc contains "alt=")) { //add alt tag
 			imgSrc = string.replace (imgSrc, "<img ", "<img alt=\"" + archiveLinkTitle + "\" ")};
-		«archiveLink = "<a href=\"" + manilaSuite.getUrL ("newsHome") + year + "/" + month + "/" + day + "\" title=\"" + manilaSuite.getString ("news.archiveLinkTitle", @replacementTable, pta: pta) + ".\"><img src=\"http://static.userland.com/misc/snImages/dailyLinkIcon.gif\" height=\"15\" width=\"12\" border=\"0\"></a>"
+		//archiveLink = "<a href=\"" + manilaSuite.getUrL ("newsHome") + year + "/" + month + "/" + day + "\" title=\"" + manilaSuite.getString ("news.archiveLinkTitle", @replacementTable, pta: pta) + ".\"><img src=\"http://static.userland.com/misc/snImages/dailyLinkIcon.gif\" height=\"15\" width=\"12\" border=\"0\"></a>"
 		archiveLink = "<a href=\"" + manilaSuite.getUrl ("newsHome") + year + "/" + month + "/" + day + "\" title=\"" + archiveLinkTitle + ".\">" + imgSrc + "</a>";
 		if manilaSuite.staticRendering.isStaticRendering () {
 			archiveLink = manilaSuite.staticRendering.patchLocalUrls (archiveLink)}};
@@ -64,7 +64,7 @@ on renderNewsDay (s, d, title="", templateText=nil, pta=nil) {
 				dateString = string.padWithZeros (day, 2) + "." + string.padWithZeros (month, 2) + "." + year}}};
 	
 	htmlText = templateText;
-	«htmlText = string.replaceAll (htmlText, "{newsPostTime}", mainResponder.localization.longDateString (d, pta), false) // 05/31/00 JES: localized
+	//htmlText = string.replaceAll (htmlText, "{newsPostTime}", mainResponder.localization.longDateString (d, pta), false) // 05/31/00 JES: localized
 	htmlText = string.replaceAll (htmlText, "{newsPostTime}", dateString, false); // 05/31/00 JES: localized
 	htmlText = string.replaceAll (htmlText, "{newsContent}", s, false);
 	htmlText = string.replaceAll (htmlText, "{newsTitle}", title, false);

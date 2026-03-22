@@ -1,6 +1,6 @@
 on getNewTable (adrSite) {
-	«Create a new table in data storage and return the address of the table.
-		«04/14/00; 2:09:43 PM by PBS
+	//Create a new table in data storage and return the address of the table.
+		//04/14/00; 2:09:43 PM by PBS
 	
 	local (adrPrefs = manilaSuite.gems.getSitePrefsAddress (adrSite));
 	if not defined (adrPrefs^.nextGemNum) {

@@ -1,11 +1,11 @@
 on message ( connection, mesAdr ) {
-	«Changes
-		«5/14/02; 1:51:34 PM by JB
-			«Changelog created.
+	//Changes
+		//5/14/02; 1:51:34 PM by JB
+			//Changelog created.
 	local ( from, dest, body, m, subject = nil, thread = nil, type = "");
 	m = xml.getAddress ( mesAdr, "message" );
 	try {
-		«Jabber echos the messages that have an error, with an addition error tag. To prevent infinite loops, we have to catch these and discard them. Since messages don't have id tags, we can't do much more then this.
+		//Jabber echos the messages that have an error, with an addition error tag. To prevent infinite loops, we have to catch these and discard them. Since messages don't have id tags, we can't do much more then this.
 		xml.getAddress ( m, "error" );
 		return};
 	from = xml.getAttributeValue ( m, "from" );
@@ -17,8 +17,8 @@ on message ( connection, mesAdr ) {
 	body = xml.getAddress ( m, "body" )^;
 	body = tcp.im.builtinDrivers.jabber.code.xmlAlphaDecode(body);
 	body = xml.entityDecode(body);
-	«body = string.utf8ToAnsi(body)
-	«body = string.replaceAll ( body, "&apos;", "'" )
+	//body = string.utf8ToAnsi(body)
+	//body = string.replaceAll ( body, "&apos;", "'" )
 	try {
 		thread = xml.getAddress ( m, "thread" )^};
 	

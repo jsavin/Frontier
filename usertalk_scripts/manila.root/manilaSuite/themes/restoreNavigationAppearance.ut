@@ -1,6 +1,6 @@
 on restoreNavigationAppearance (adrSiteInfo) {
-	«Restore the navigation appearance to the default.
-		«06/06/00; 3:49:01 PM by PBS
+	//Restore the navigation appearance to the default.
+		//06/06/00; 3:49:01 PM by PBS
 	
 	local (adrSite = adrSiteInfo^.adrSite);
 	local (objectName = "navigation");

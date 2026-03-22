@@ -1,21 +1,21 @@
 on getSubscribersTable (adrSubscribersTable, pta=nil, adrMembers=nil, cohorts={}) {
-	«Changes:
-		«09/15/06; 3:06:13 PM by LL
-			«Initialized local variable adrUser.
-		«10/15/05; 4:40:08 AM by JES
-			«Add optional param, cohorts.
-				«Change by DAB.
-		«2000
-			«1/16/00; 9:59:53 AM by DW
-				«If there's a callback defined, use it to fill in the subscribers table.
-			«07/16/00; 4:41:27 PM by PBS
-				«If the site has a bulletins pref name, look in that subtable. In other words, the pref may be at adrMemberInfo^.bulletins.[prefName] instead of adrMemberInfo^.bulletins.
-				«The idea is to allow sites that share a membership group to have separate membership prefs for bulletins.
-			«?/?/00 by PBS
-				«Get a table containing two subtables, HTML and plain.
-					«The HTML table contains the memberKey/name pairs for HTML bulletins subscribers.
-					«The plain table contains the memberKey/name pairs for plain text bulletins subscribers.
-					«Names are empty when the name is empty or isn't specified in the member record.
+	//Changes:
+		//09/15/06; 3:06:13 PM by LL
+			//Initialized local variable adrUser.
+		//10/15/05; 4:40:08 AM by JES
+			//Add optional param, cohorts.
+				//Change by DAB.
+		//2000
+			//1/16/00; 9:59:53 AM by DW
+				//If there's a callback defined, use it to fill in the subscribers table.
+			//07/16/00; 4:41:27 PM by PBS
+				//If the site has a bulletins pref name, look in that subtable. In other words, the pref may be at adrMemberInfo^.bulletins.[prefName] instead of adrMemberInfo^.bulletins.
+				//The idea is to allow sites that share a membership group to have separate membership prefs for bulletins.
+			//?/?/00 by PBS
+				//Get a table containing two subtables, HTML and plain.
+					//The HTML table contains the memberKey/name pairs for HTML bulletins subscribers.
+					//The plain table contains the memberKey/name pairs for plain text bulletins subscribers.
+					//Names are empty when the name is empty or isn't specified in the member record.
 	
 	if pta == nil {
 		pta = html.getPageTableAddress ()};
@@ -37,7 +37,7 @@ on getSubscribersTable (adrSubscribersTable, pta=nil, adrMembers=nil, cohorts={}
 		local (adrGroup = mainResponder.members.getMembershipTable (pta^.responderAttributes.defaultMembershipGroup));
 		adrMembers = @adrGroup^.users};
 	
-	«Make sure the HTML and plain tables exist.
+	//Make sure the HTML and plain tables exist.
 	if not defined (adrSubscribersTable^.html) {
 		new (tableType, @adrSubscribersTable^.html)};
 	if not defined (adrSubscribersTable^.plain) {
@@ -53,7 +53,7 @@ on getSubscribersTable (adrSubscribersTable, pta=nil, adrMembers=nil, cohorts={}
 		if subtableName != "" {
 			flPrefsSubtable = true}};
 	
-	local (cohortsTest); «05/10/09, 13:42:17 by DAB
+	local (cohortsTest); //05/10/09, 13:42:17 by DAB
 	manilaSuite.accessControl.bulkTest.setup (pta, cohorts, @cohortsTest); //05/10/09, 14:13:37 by DAB
 	
 	for i = 1 to sizeof (adrMembers^) { //loop through the table building the subscribers table
@@ -69,9 +69,9 @@ on getSubscribersTable (adrSubscribersTable, pta=nil, adrMembers=nil, cohorts={}
 		memberKey = nameof (adrUser^);
 		
 		if defined (adrUser^.personalInfo.name) { //set name
-			«1/13/00; 6:53:18 PM by DW
-				«It's possible for personalInfo.name to be a table, containing a Content-Type and data. 
-				«We only want the data part. 
+			//1/13/00; 6:53:18 PM by DW
+				//It's possible for personalInfo.name to be a table, containing a Content-Type and data. 
+				//We only want the data part. 
 			case typeof (adrUser^.personalInfo.name) {
 				tabletype {
 					name = string (adrUser^.personalInfo.name.data)};

@@ -9,17 +9,17 @@ on urlToFile (s) {
 			s = string.replaceAll (s, "/", ":")};
 		"Win95";
 		"WinNT" {
-			«11/13/97 at 2:40:52 AM by DW
-				«I tested file URLs in MSIE 4.0, we produce a URL that's compatible
-			local (ix = string.patternMatch ("/", s)); «find the first slash
-			if ix > 1 { «found one, and it's not the first char
-				if s [ix - 1] != ":" { «the previous char is not a colon
+			//11/13/97 at 2:40:52 AM by DW
+				//I tested file URLs in MSIE 4.0, we produce a URL that's compatible
+			local (ix = string.patternMatch ("/", s)); //find the first slash
+			if ix > 1 { //found one, and it's not the first char
+				if s [ix - 1] != ":" { //the previous char is not a colon
 					s = string.insert (":", s, ix)}};
-			«s = string.replace (s, "/", ":/") «add a colon after the drive letter (or name)
+			//s = string.replace (s, "/", ":/") //add a colon after the drive letter (or name)
 			s = string.replaceAll (s, "/", "\\")}};
 	return (s)};
 
-«bundle «test code
-	«dialog.alert (urltofile (file.filetourl (frontier.getprogrampath ())))
-	«dialog.alert (urltofile ("file:///Macintosh%20HD/Online%20Docs/admin/credits.html"))
-	«urltofile ("oh the buzzing")
+//bundle //test code
+	//dialog.alert (urltofile (file.filetourl (frontier.getprogrampath ())))
+	//dialog.alert (urltofile ("file:///Macintosh%20HD/Online%20Docs/admin/credits.html"))
+	//urltofile ("oh the buzzing")

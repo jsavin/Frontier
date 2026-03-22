@@ -1,12 +1,12 @@
 on usrtlk (url) {
-	«DW Sun, Apr 14, 1996 at 9:24:15 AM
-		«disabled the safetyCheck call
-			«if you want to experiment with Frontier as a safe client scripting platform
-			«uncomment the call to webBrowser.protocols.safetyCheck below
+	//DW Sun, Apr 14, 1996 at 9:24:15 AM
+		//disabled the safetyCheck call
+			//if you want to experiment with Frontier as a safe client scripting platform
+			//uncomment the call to webBrowser.protocols.safetyCheck below
 	local (protocolstring = string.nthField (url, ':', 1));
 	url = string.delete (url, 1, sizeof (protocolstring) + 1);
 	url = toys.urlDecode (url);
-	«if not webBrowser.protocols.safetyCheck (url)
-		«return (false)
+	//if not webBrowser.protocols.safetyCheck (url)
+		//return (false)
 	evaluate (url);
 	return (true)}

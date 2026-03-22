@@ -1,16 +1,16 @@
 on uninstallSubMenu (menuName) {
-	«Uninstall a Tool's sub-menu from the Tools menu.
-		«Changes:
-			«10/04/00; 5:25:14 PM by PBS
-				«Do a case-insensitive comparison on the name
-			«10/06/00; 10:05:37 PM by PBS
-				«Make sure the target gets restored no matter what path is taken.
-			«11/08/00; 6:35:40 PM by PBS
-				«Protect the Tools menu with a semaphore.
-			«11/28//00; 10:10:27 PM by JES
-				«Unlock the semaphore after the submenu is deleted, but before returning.
-			«11/30/00; 1:55:24 AM by JES
-				«Deal properly with removal of submenus which contain space characters.
+	//Uninstall a Tool's sub-menu from the Tools menu.
+		//Changes:
+			//10/04/00; 5:25:14 PM by PBS
+				//Do a case-insensitive comparison on the name
+			//10/06/00; 10:05:37 PM by PBS
+				//Make sure the target gets restored no matter what path is taken.
+			//11/08/00; 6:35:40 PM by PBS
+				//Protect the Tools menu with a semaphore.
+			//11/28//00; 10:10:27 PM by JES
+				//Unlock the semaphore after the submenu is deleted, but before returning.
+			//11/30/00; 1:55:24 AM by JES
+				//Deal properly with removal of submenus which contain space characters.
 	local (lowerMenuName = string.lower (menuName));
 	local (adrToolsMenu = @Frontier.tools.menu);
 	local (oldTarget = target.set (adrToolsMenu));

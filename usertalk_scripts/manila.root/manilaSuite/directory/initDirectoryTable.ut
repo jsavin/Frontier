@@ -1,10 +1,10 @@
 on initDirectoryTable (adrmsg) {
-	«Changes
-		«11/26/2000; 6:47:01 PM by DW
-			«Created. Locate the subtable of the directories table that keeps information about the indicated message. Transition from the old way, where we stored the directory information as a sub-table of the dg message table. The contents of this table was being transmitted when Radio opened it as an outline, it was unnecessary bloat. Better to keep this stuff in a separate special place.
-			«The directories table is at the top level of the discussion group structure.
-		«12/5/2000; 8:34:42 PM by DW
-			«Add initialization for the "expires" sub-table, which contains the expiration time for each of the cached directory pages.
+	//Changes
+		//11/26/2000; 6:47:01 PM by DW
+			//Created. Locate the subtable of the directories table that keeps information about the indicated message. Transition from the old way, where we stored the directory information as a sub-table of the dg message table. The contents of this table was being transmitted when Radio opened it as an outline, it was unnecessary bloat. Better to keep this stuff in a separate special place.
+			//The directories table is at the top level of the discussion group structure.
+		//12/5/2000; 8:34:42 PM by DW
+			//Add initialization for the "expires" sub-table, which contains the expiration time for each of the cached directory pages.
 	local (adrdiscuss = parentof (parentof (adrmsg^)^));
 	local (adrdirectories = @adrdiscuss^.directories);
 	if not defined (adrdirectories^) {
@@ -36,7 +36,7 @@ on initDirectoryTable (adrmsg) {
 		if not defined (adrhits^) {
 			new (tabletype, adrhits)}};
 	return (adrtable)};
-«bundle //test code
-	«local (adrmsg = @worldoutlineManilaWebsite.["#discussionGroup"].messages.["0000004"])
-	«for i = 1 to 1000
-		«initDirectoryTable (adrmsg)
+//bundle //test code
+	//local (adrmsg = @worldoutlineManilaWebsite.["#discussionGroup"].messages.["0000004"])
+	//for i = 1 to 1000
+		//initDirectoryTable (adrmsg)

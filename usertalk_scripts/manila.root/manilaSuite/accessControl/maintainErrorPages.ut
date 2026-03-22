@@ -1,9 +1,9 @@
 on maintainErrorPages () {
-	«Changes
-		«4/16/05; 2:25:36 AM by JES
-			«Split error page titles out into their own fields, with macro neutering, handling special characters properly (quot, apos, etc).
-		«04/05/20, 17:55:53 by DAB
-			«Created. Allow user to change the 2 error pages and the error gif.
+	//Changes
+		//4/16/05; 2:25:36 AM by JES
+			//Split error page titles out into their own fields, with macro neutering, handling special characters properly (quot, apos, etc).
+		//04/05/20, 17:55:53 by DAB
+			//Created. Allow user to change the 2 error pages and the error gif.
 	local (pta = html.getPageTableAddress());
 	local (adrSite = manilaSuite.getManilaSiteAddress(pta));
 	local (adrNewsSite = manilaSuite.getNewsSiteAddress(adrSite));

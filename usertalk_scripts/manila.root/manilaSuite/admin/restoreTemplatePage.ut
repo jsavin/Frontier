@@ -1,19 +1,19 @@
 on restoreTemplatePage (pta=nil) {
-	«Emergency restore template to default page.
-		«04/12/00; 2:13:10 PM by PBS
-		«Changes:
-			«04/18/00; 3:47:42 PM by JES
-				«localized
-			«05/01/00; 4:11:32 PM by JES
-				«Changed getString calls to use a replacement table address instead of a lists
-			«05/09/00; 10:34:36 PM by PBS
-				«Check the referer to defeat the client side trojan horse.
-			«05/11/00; 7:02:20 PM by JES
-				«merged in Brent's security fix for the client side trojan horse attack.
-			«06/06/00; 4:48:47 PM by PBS
-				«Call the themes restore script.
-			«06/11/00; 3:50:52 AM by JES
-				«Merged Brent's themes restore code
+	//Emergency restore template to default page.
+		//04/12/00; 2:13:10 PM by PBS
+		//Changes:
+			//04/18/00; 3:47:42 PM by JES
+				//localized
+			//05/01/00; 4:11:32 PM by JES
+				//Changed getString calls to use a replacement table address instead of a lists
+			//05/09/00; 10:34:36 PM by PBS
+				//Check the referer to defeat the client side trojan horse.
+			//05/11/00; 7:02:20 PM by JES
+				//merged in Brent's security fix for the client side trojan horse attack.
+			//06/06/00; 4:48:47 PM by PBS
+				//Call the themes restore script.
+			//06/11/00; 3:50:52 AM by JES
+				//Merged Brent's themes restore code
 	
 	if pta == nil {
 		pta = html.getPageTableAddress ()};
@@ -32,14 +32,14 @@ on restoreTemplatePage (pta=nil) {
 	if flPost {
 		manilaSuite.referer.checkSelf (); //PBS 05/09/00: check that referer is this page to defeat client side trojan horse
 		if defined (pta^.postArgs.restoreTemplateToDefault) {
-			«4/18/00 JES: removed paranoid test because localization could break it
-				«if string.lower (pta^.postArgs.restoreTemplateToDefault) == "yes"
+			//4/18/00 JES: removed paranoid test because localization could break it
+				//if string.lower (pta^.postArgs.restoreTemplateToDefault) == "yes"
 			local (siteInfo);
 			new (tableType, @siteInfo);
 			local (adrSite = pta^.adrSiteRootTable);
 			siteInfo.adrSite = adrSite;
 			siteInfo.siteName = nameOf (adrSite^); //PBS 12/13/99: fix for siteName not defined error
-			«manilaSuite.newSite.createTemplate (@siteInfo)
+			//manilaSuite.newSite.createTemplate (@siteInfo)
 			manilaSuite.themes.restoreTemplate (@siteInfo);
 			add (manilaSuite.getString ("admin.restoreTemplateSuccess", pta: pta) + "<p>"); // 4/18/00 JES: localized
 			local (homeUrl = pta^.ftpSite^.url);

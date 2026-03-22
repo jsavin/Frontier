@@ -1,27 +1,27 @@
 on storyReader (msgNum=nil, pta=nil) {
-	«Changes:
-		«2/15/05; 4:00:16 PM by JES
-			«Restored pref for turning off the admin box on story pages, but with new default. Old code used a default of false, new version defaults to true, preserving current behavior of showing the box by default.
-		«4/25/03; 3:44:44 PM by JES
-			«Story pages always get the Admin box.
-		«4/19/03; 11:16:16 PM by JES
-			«Pass in true for the value of flUseMappedMemberKeys when calling mainResponder.discuss.readMessage.
-		«8/10/02; 7:12:18 PM by JES
-			«Add the admin box if the pref is set. Default is no admin box.
-		«1/14/02; 3:13:44 PM by PBS
-			«If the pathArgs or msgNum endsWith .opml, return as OPML document.
-		«06/19/00; 2:21:46 PM by JES
-			«Set postTime in the page table, since it's now a legal macro
-		«05/04/00; 3:39:58 PM by JES
-			«localized
-		«05/01/00; 5:23:15 PM by PBS
-			«News items support: supplies the adrGetBodyCallback parameter to mainResponder.discuss.readMessage. This allows Manila to format news items properly, since mainResponder doesn't know about the news items XML format.
-		«12/21/99; 12:28:57 PM by PBS
-			«Automatic shortcuts for stories were not being generated -- now they are.
-		«12/14/99; 11:13:38 AM by PBS
-			«No Admin box for story pages, it was too confusing. It still appears in the discussion group interface.
-		«11/8/99; 11:32:38 AM by PBS
-			«Story reader pages now get an Admin box, the same one as for dg messages. This way you don't have to go the dg message version of a story to remove it from the stories list.
+	//Changes:
+		//2/15/05; 4:00:16 PM by JES
+			//Restored pref for turning off the admin box on story pages, but with new default. Old code used a default of false, new version defaults to true, preserving current behavior of showing the box by default.
+		//4/25/03; 3:44:44 PM by JES
+			//Story pages always get the Admin box.
+		//4/19/03; 11:16:16 PM by JES
+			//Pass in true for the value of flUseMappedMemberKeys when calling mainResponder.discuss.readMessage.
+		//8/10/02; 7:12:18 PM by JES
+			//Add the admin box if the pref is set. Default is no admin box.
+		//1/14/02; 3:13:44 PM by PBS
+			//If the pathArgs or msgNum endsWith .opml, return as OPML document.
+		//06/19/00; 2:21:46 PM by JES
+			//Set postTime in the page table, since it's now a legal macro
+		//05/04/00; 3:39:58 PM by JES
+			//localized
+		//05/01/00; 5:23:15 PM by PBS
+			//News items support: supplies the adrGetBodyCallback parameter to mainResponder.discuss.readMessage. This allows Manila to format news items properly, since mainResponder doesn't know about the news items XML format.
+		//12/21/99; 12:28:57 PM by PBS
+			//Automatic shortcuts for stories were not being generated -- now they are.
+		//12/14/99; 11:13:38 AM by PBS
+			//No Admin box for story pages, it was too confusing. It still appears in the discussion group interface.
+		//11/8/99; 11:32:38 AM by PBS
+			//Story reader pages now get an Admin box, the same one as for dg messages. This way you don't have to go the dg message version of a story to remove it from the stories list.
 	
 	manilaSuite.accesscontrol.checks(); //04.05.22, 18:59:50 by DAB
 	if pta == nil {
@@ -45,7 +45,7 @@ on storyReader (msgNum=nil, pta=nil) {
 	pta^.lastUpdate = adrTable^.lastUpdate;
 	pta^.postTime = adrTable^.postTime; //JES 06/19/00: now a legal macro, so it needs to get set.
 	
-	«Do we display bylines for stories? PBS 6/5/99
+	//Do we display bylines for stories? PBS 6/5/99
 	local (flByline);
 	flByline = boolean (manilaSuite.getNewsSitePref ("flBylinesOnStories", default:true, flCreate:true));
 	local (adrNewsSite = pta^.newsSite);

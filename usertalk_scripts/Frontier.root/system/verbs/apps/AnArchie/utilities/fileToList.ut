@@ -1,7 +1,7 @@
 on fileToList (path) {
 	local(fileText, fList = {});
 	
-	bundle { « get the text!
+	bundle { // get the text!
 		file.open(path);
 		fileText = file.read(path, infinity);
 		file.close(path)};

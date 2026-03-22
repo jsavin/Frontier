@@ -1,12 +1,12 @@
 on typeosas (path) {
-	«open a file of type osas, an AppleScript Script Editor file containing an OSA script
+	//open a file of type osas, an AppleScript Script Editor file containing an OSA script
 	
 	local (resdata, adr);
 	
 	if not rez.getResource (path, scriptType, 128, @resdata) {
 		scriptError ("Can't open script in file \"" + file.fileFromPath (path) + "\".")};
 	
-	if Frontier.isRuntime () { «just run the script
+	if Frontier.isRuntime () { //just run the script
 		return (resdata ())};
 	
 	adr = @system.deskscripts.[file.fileFromPath (path)];
@@ -14,8 +14,8 @@ on typeosas (path) {
 	osa.getSource (@resdata, adr);
 	delete (@resdata);
 	
-	export.lastfolder = file.folderFromPath (path); «set default for script export
-	system.deskscripts.path = path; «make path available for debugging
+	export.lastfolder = file.folderFromPath (path); //set default for script export
+	system.deskscripts.path = path; //make path available for debugging
 	
 	Frontier.bringToFront ();
 	Frontier.findertofront = false;

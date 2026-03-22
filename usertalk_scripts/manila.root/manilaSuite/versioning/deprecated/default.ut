@@ -1,5 +1,5 @@
 on default () {
-	«manilaFixer.versioning.default : 02/03/21, 21:56:52 by DAB
+	//manilaFixer.versioning.default : 02/03/21, 21:56:52 by DAB
 	local (pta = html.getPageTableAddress());
 	local (adrSite = manilaSuite.getManilaSiteAddress(pta));
 	local (sitename = manilaSuite.getCanonicalSitename(adrSite));
@@ -43,35 +43,35 @@ on default () {
 			if versioningState == 2 {
 				adrStorage^.versioning.enabled = true}};
 		
-		«if pta^.method == "POST"
-			«case true
-				«defined(pta^.postargs.toggleversioning)
-					«manilaFixer.versioning.toggleState(defined(pta^.postargs.enabled) and (pta^.postargs.enabled == "on"))
+		//if pta^.method == "POST"
+			//case true
+				//defined(pta^.postargs.toggleversioning)
+					//manilaFixer.versioning.toggleState(defined(pta^.postargs.enabled) and (pta^.postargs.enabled == "on"))
 		
-		«bundle    //build the form to toggle versioning
-			«local (checked = "")
-			«if adrStorage^.versioning.enabled 
-				«checked = " checked"
-			«
-			«add("\r<form method = 'post' action = '" + pta^.url + "' name = 'toggleversioning'>")
-			«add("\r\t<table align = 'center'>")
-			«bundle    //row for checkbox
-				«add("\r\t\t<tr>")
-				«add("\r\t\t<td align = 'right'>")
-				«add(manilafixer.getString("Versioning.formIDEnabled", @replTbl, pta))
-				«add("</td>")
-				«add("\r\t\t<td align = 'left'>")
-				«add("<input type = 'checkbox' name = 'enabled'" + checked + ">")
-				«add("</td>")
-				«add("\r\t\t</tr>")
-			«bundle    //row for button
-				«add("\r\t\t<tr>")
-				«add("\r\t\t<td align = 'center' colspan = '2'>")
-				«add("<input type = 'submit' name = 'toggleversioning' value = '" + manilafixer.getString("Versioning.buttontoggleversioning", pta:pta) + "'>")
-				«add("</td>")
-				«add("\r\t\t</tr>")
-			«add("\r\t</table>")
-			«add("\r</form>")
+		//bundle    //build the form to toggle versioning
+			//local (checked = "")
+			//if adrStorage^.versioning.enabled 
+				//checked = " checked"
+			//
+			//add("\r<form method = 'post' action = '" + pta^.url + "' name = 'toggleversioning'>")
+			//add("\r\t<table align = 'center'>")
+			//bundle    //row for checkbox
+				//add("\r\t\t<tr>")
+				//add("\r\t\t<td align = 'right'>")
+				//add(manilafixer.getString("Versioning.formIDEnabled", @replTbl, pta))
+				//add("</td>")
+				//add("\r\t\t<td align = 'left'>")
+				//add("<input type = 'checkbox' name = 'enabled'" + checked + ">")
+				//add("</td>")
+				//add("\r\t\t</tr>")
+			//bundle    //row for button
+				//add("\r\t\t<tr>")
+				//add("\r\t\t<td align = 'center' colspan = '2'>")
+				//add("<input type = 'submit' name = 'toggleversioning' value = '" + manilafixer.getString("Versioning.buttontoggleversioning", pta:pta) + "'>")
+				//add("</td>")
+				//add("\r\t\t</tr>")
+			//add("\r\t</table>")
+			//add("\r</form>")
 		flRollbackCheckBox = true; //02/04/25, 11:50:13 by DAB
 		flVersioningCheckBox = true}; //02/04/25, 11:50:13 by DAB
 	

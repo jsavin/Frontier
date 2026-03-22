@@ -1,2 +1,2 @@
-on deleteUser (x, realm, appID = WebStar.id) { «Delete specified user from a particular security realm
+on deleteUser (x, realm, appID = WebStar.id) { //Delete specified user from a particular security realm
 	return (appleEvent (appID, 'WWW½', 'DUsr', '----', x, 'DUrm', realm))}

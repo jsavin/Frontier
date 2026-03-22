@@ -1,7 +1,7 @@
 on listAdministrators () {
-	«Changes
-		«6/27/02; 1:36:55 AM by JES
-			«Created.
+	//Changes
+		//6/27/02; 1:36:55 AM by JES
+			//Created.
 	local (pta = html.getPageTableAddress ());
 	pta^.flAddSubmitButton = false; //suppress the default submit button
 	if defined (pta^.searchArgTable.adminUser) { //return the empty string if editing an existing member

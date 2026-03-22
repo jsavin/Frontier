@@ -1,26 +1,26 @@
 on opRightClick (adradrmenu) {
-	«Changes
-		«4/22/06; 4:11:51 AM by JES
-			«Add Make/Un-Comment commands for script windows. Bug fix: Only display the Expand All Subs command if the heading has sub-subs.
-		«9/19/05; 3:32:20 PM by JES
-			«Add Set/Clear Breakpoint and Compile Script commands for script windows.
-		«8/23/05; 5:57:54 PM by JES
-			«Added support in the right click menu for Add Link and Jump. Operation on the selection is smart, based on whether it's an outline or a script, read-only or not, in text mode or not, and what the selected text is.
-		«3/25/02; 8:49:42 PM by JES
-			«Add the Post to Weblog command, if running in Radio.
-		«6/23/01; 12:38:36 AM by JES
-			«If a nodeType has a getBookmarkLogic script, then flbookmarkpossible is true. Call builtins.bookmarksMenu.add to add a bookmark, instead of Frontier.tools.commands.addBookmark.
-		«12/30/00; 8:02:50 PM by JES
-			«Only add the Add Link command for nodes which are links, or which have no type.
-		«12/18/00; 8:52:54 PM by JES
-			«Script for the Add Bookmark command calls playlist.bookmark.addNodeItem. Make it possible to bookmark a Manila site's homepage, templates, and siteStructureMessage nodes.
-		«Saturday, December 02, 2000 at 2:46:18 PM by PBS
-			«Add an Add Link... command when:
-				«It's an outline.
-				«The outline is not read only.
-				«There are no subheads.
-		«Monday, September 18, 2000 at 5:28:05 AM by DW
-			«The code for Expand All Subheads was wrong, it was only expanding one level of subheads. 
+	//Changes
+		//4/22/06; 4:11:51 AM by JES
+			//Add Make/Un-Comment commands for script windows. Bug fix: Only display the Expand All Subs command if the heading has sub-subs.
+		//9/19/05; 3:32:20 PM by JES
+			//Add Set/Clear Breakpoint and Compile Script commands for script windows.
+		//8/23/05; 5:57:54 PM by JES
+			//Added support in the right click menu for Add Link and Jump. Operation on the selection is smart, based on whether it's an outline or a script, read-only or not, in text mode or not, and what the selected text is.
+		//3/25/02; 8:49:42 PM by JES
+			//Add the Post to Weblog command, if running in Radio.
+		//6/23/01; 12:38:36 AM by JES
+			//If a nodeType has a getBookmarkLogic script, then flbookmarkpossible is true. Call builtins.bookmarksMenu.add to add a bookmark, instead of Frontier.tools.commands.addBookmark.
+		//12/30/00; 8:02:50 PM by JES
+			//Only add the Add Link command for nodes which are links, or which have no type.
+		//12/18/00; 8:52:54 PM by JES
+			//Script for the Add Bookmark command calls playlist.bookmark.addNodeItem. Make it possible to bookmark a Manila site's homepage, templates, and siteStructureMessage nodes.
+		//Saturday, December 02, 2000 at 2:46:18 PM by PBS
+			//Add an Add Link... command when:
+				//It's an outline.
+				//The outline is not read only.
+				//There are no subheads.
+		//Monday, September 18, 2000 at 5:28:05 AM by DW
+			//The code for Expand All Subheads was wrong, it was only expanding one level of subheads. 
 	
 	local (adrMenu = @system.temp.rightClickMenu);
 	
@@ -58,14 +58,14 @@ on opRightClick (adradrmenu) {
 		if not flbookmarkpossible {
 			local (url);
 			flbookmarkpossible = op.attributes.getOne ("url", @url)};
-		«if not flbookmarkpossible //12/18/00 JES: bookmarks are possible for homepage, template and siteStructureMessage nodes
-			«local (type, url)
-			«if op.attributes.getOne ("type", @type)
-				«flbookmarkpossible = string.lower (type) == "manilahomepage"
-				«if not flbookmarkpossible
-					«flbookmarkpossible = string.lower (type)  == "manilatemplate"
-				«if not flbookmarkpossible
-					«flbookmarkpossible = string.lower (type)  == "manilasitestructuremessage"};
+		//if not flbookmarkpossible //12/18/00 JES: bookmarks are possible for homepage, template and siteStructureMessage nodes
+			//local (type, url)
+			//if op.attributes.getOne ("type", @type)
+				//flbookmarkpossible = string.lower (type) == "manilahomepage"
+				//if not flbookmarkpossible
+					//flbookmarkpossible = string.lower (type)  == "manilatemplate"
+				//if not flbookmarkpossible
+					//flbookmarkpossible = string.lower (type)  == "manilasitestructuremessage"};
 	
 	local (nodeType);
 	op.attributes.getOne ("type", @nodeType);
@@ -214,24 +214,24 @@ on opRightClick (adradrmenu) {
 					else { //script
 						adrJump = selText}};
 				if flHtmlFormatting and url == "" { //expand selection to include HTML
-					«if linetext contains "://" //non-working, somewhat illogical code
-						«local (ix = string.patternMatch ("://", string.mid (linetext, 1, selEnd)))
-						«if ix > 0
-							«while ix > 1
-								«if " \"'" contains linetext[ix]
-									«ix++
-									«break
-								«ix--
-							«local (s = string.mid (linetext, ix, infinity))
-							«ix = string.patternMatch ("://", s) + 3
-							«local (ct = sizeOf (s))
-							«if ix > ct
-								«ix = ct
-							«while ix < ct
-								«if " \"'" contains s[ix+1]
-									«break
-								«ix++
-							«url = string.mid (s, 1, ix)
+					//if linetext contains "://" //non-working, somewhat illogical code
+						//local (ix = string.patternMatch ("://", string.mid (linetext, 1, selEnd)))
+						//if ix > 0
+							//while ix > 1
+								//if " \"'" contains linetext[ix]
+									//ix++
+									//break
+								//ix--
+							//local (s = string.mid (linetext, ix, infinity))
+							//ix = string.patternMatch ("://", s) + 3
+							//local (ct = sizeOf (s))
+							//if ix > ct
+								//ix = ct
+							//while ix < ct
+								//if " \"'" contains s[ix+1]
+									//break
+								//ix++
+							//url = string.mid (s, 1, ix)
 					local (tagUrl = "");
 					if selectionIsWithinUrlTag (@tagUrl) { //expand to include the tag (and closing tag), and set the url
 						expandToStopChars ("<", ">");

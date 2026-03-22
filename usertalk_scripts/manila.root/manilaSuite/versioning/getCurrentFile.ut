@@ -1,7 +1,7 @@
 on getCurrentFile() {
-	«manilaSuite.versioning.getCurrentFile : 04/05/18, 21:18:08 by DAB
-		«manilaFixer.versioning.getCurrentFile : 02/03/26, 21:44:32 by DAB
-			«cloned from manilaFixer.log.getCurrentFile
+	//manilaSuite.versioning.getCurrentFile : 04/05/18, 21:18:08 by DAB
+		//manilaFixer.versioning.getCurrentFile : 02/03/26, 21:44:32 by DAB
+			//cloned from manilaFixer.log.getCurrentFile
 	if not defined(system.temp.versioning) {
 		new(tabletype, @system.temp.versioning)};
 	if not defined(system.temp.versioning.dayLastversioningAdd) {
@@ -25,7 +25,7 @@ on getCurrentFile() {
 		date.get (now, @day, @month, @year, @hour, @minute, @second);
 		local (datefname = year + "-" + string.padwithzeros (month, 2) + "-" + string.padwithzeros (day, 2));
 		
-		«Get the log folder. It's stored at config.manila.versioning.prefs.Folder
+		//Get the log folder. It's stored at config.manila.versioning.prefs.Folder
 		if not (file.exists (config.manila.prefs.versioning.Folder)) {
 			try {
 				config.manila.prefs.versioning.Folder  = Frontier.getSubFolder ("ops/versioning/")}

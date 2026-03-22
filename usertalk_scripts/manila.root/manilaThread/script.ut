@@ -1,14 +1,14 @@
-«Changes:
-	«3/15/03; 4:55:37 PM by JES
-		«If not defined, create the manilaThread.stats table.
-	«10/27/00; 3:46:35 AM by JES
-		«Added scanning for DG themes.
-	«11/05/00; 6:12:23 PM by PBS.
-		«Don't attempt to load theme files while Frontier is still starting up: wait until after startup is finished.
-	«12/29/00; 10:36:31 AM by PBS
-		«Call manilaSuite.init to enable any new legal macros, make sure callbacks exist, and so on.
-	«1/15/02; 6:06:50 PM by PBS
-		«Created an agents sub-table. More modular, easier to maintain, follows current best practices.
+//Changes:
+	//3/15/03; 4:55:37 PM by JES
+		//If not defined, create the manilaThread.stats table.
+	//10/27/00; 3:46:35 AM by JES
+		//Added scanning for DG themes.
+	//11/05/00; 6:12:23 PM by PBS.
+		//Don't attempt to load theme files while Frontier is still starting up: wait until after startup is finished.
+	//12/29/00; 10:36:31 AM by PBS
+		//Call manilaSuite.init to enable any new legal macros, make sure callbacks exist, and so on.
+	//1/15/02; 6:06:50 PM by PBS
+		//Created an agents sub-table. More modular, easier to maintain, follows current best practices.
 loop {
 	local (flStartingUp = false);
 	if defined (system.temp.Frontier.startingUp) {

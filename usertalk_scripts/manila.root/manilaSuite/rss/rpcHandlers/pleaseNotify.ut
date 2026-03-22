@@ -1,5 +1,5 @@
 on pleaseNotify (notifyProcedure, port, path, protocol, urllist) {
-	«1/15/02; 4:58:06 PM by PBS
+	//1/15/02; 4:58:06 PM by PBS
 	local (result);
 	new (tabletype, @result);
 	try {

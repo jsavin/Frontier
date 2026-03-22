@@ -1,6 +1,6 @@
 on createNewsDayTemplate (adrSiteInfo) {
-	«Create the default news day template.
-		«12/9/99; 11:59:49 PM by PBS
+	//Create the default news day template.
+		//12/9/99; 11:59:49 PM by PBS
 	
 	local (adrSite = adrSiteInfo^.adrSite);
 	local (adrNewsSite = @adrSite^.["#newsSite"]);

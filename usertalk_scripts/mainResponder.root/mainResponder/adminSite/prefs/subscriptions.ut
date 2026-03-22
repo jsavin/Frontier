@@ -1,20 +1,20 @@
 on subscriptions () {
-	«Changes
-		«3/7/06; 4:44:33 AM by JES
-			«Accept feed:// urls.
-		«3/13/03; 3:11:00 AM by JES
-			«When unsubscribing from a feed, make sure that all installed Manila sites are also unsubscribed.
-		«3/10/03; 8:44:32 PM by JES
-			«Set the border attribute for the XML icon IMG tag to "0".
-		«3/4/03; 3:34:29 PM by JES
-			«Created. Render the list of subscriptions global to this server, along with a field for adding a new subscription.
+	//Changes
+		//3/7/06; 4:44:33 AM by JES
+			//Accept feed:// urls.
+		//3/13/03; 3:11:00 AM by JES
+			//When unsubscribing from a feed, make sure that all installed Manila sites are also unsubscribed.
+		//3/10/03; 8:44:32 PM by JES
+			//Set the border attribute for the XML icon IMG tag to "0".
+		//3/4/03; 3:34:29 PM by JES
+			//Created. Render the list of subscriptions global to this server, along with a field for adding a new subscription.
 	local (htext);
 	on add (s) {
 		htext = htext + (s + "\r");};
 	on getDateString (when, flIncludeSeconds=true) {
-		«Changes
-			«1/15/01; 11:00:50 AM by DW
-				«Return the time string if it's today, return the date string if it's earlier.
+		//Changes
+			//1/15/01; 11:00:50 AM by DW
+				//Return the time string if it's today, return the date string if it's earlier.
 		local (day, month, year, hour, minute, second, nowday, nowmonth, nowyear);
 		date.get (when, @day, @month, @year, @hour, @minute, @second);
 		date.get (clock.now (), @nowday, @nowmonth, @nowyear, @hour, @minute, @second);

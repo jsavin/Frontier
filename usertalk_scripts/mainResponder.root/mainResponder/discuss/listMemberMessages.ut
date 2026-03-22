@@ -1,8 +1,8 @@
 on listMemberMessages (memberkey, url=nil) {
-	«Changes:
-		«4/12/00; 1:06:12 PM by JES
-			«Localized column headings using mainResponder.getString
-			«Localized date display using mainResponder.localization.shortDateString
+	//Changes:
+		//4/12/00; 1:06:12 PM by JES
+			//Localized column headings using mainResponder.getString
+			//Localized date display using mainResponder.localization.shortDateString
 	local (htmltext = "", indentlevel = 0);
 	if url == nil {
 		local (pta = html.getPageTableAddress ());

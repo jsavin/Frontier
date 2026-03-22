@@ -1,2 +1,2 @@
-on delete (obj) { «Delete an element from an object
+on delete (obj) { //Delete an element from an object
 	return (appleEvent (Finder.id, 'core', 'delo', '----', Finder.finderSpec (obj)))}

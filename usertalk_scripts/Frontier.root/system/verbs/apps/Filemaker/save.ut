@@ -1,2 +1,2 @@
-on save (obj) { «Save an object
+on save (obj) { //Save an object
 	return (appleEvent (Filemaker.id, 'core', 'save', '----', objspec (obj)))}

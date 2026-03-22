@@ -1,8 +1,8 @@
 on iqLoggedIn ( connection, mesAdr, iq, query) {
-	«Changes
-		«5/14/02; 1:51:34 PM by JB
-			«Changelog created.
-	«This script handles the response from the server if the login is successful
+	//Changes
+		//5/14/02; 1:51:34 PM by JB
+			//Changelog created.
+	//This script handles the response from the server if the login is successful
 	try {
 		local ( type, iqTag, idTbl );
 		iqTag = xml.getAddress ( mesAdr, "iq" );

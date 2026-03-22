@@ -1,5 +1,5 @@
 on isWindowDirty (adr) {
-	«Return true if the window needs to be saved.
+	//Return true if the window needs to be saved.
 	
 	bundle { //a windowType can override the isDirty behavior
 		local (adrtype);
@@ -18,5 +18,5 @@ on isWindowDirty (adr) {
 	
 	return (false)};
 
-«bundle //debugging
-	«msg (isWindowDirty (window.frontmost ()))
+//bundle //debugging
+	//msg (isWindowDirty (window.frontmost ()))

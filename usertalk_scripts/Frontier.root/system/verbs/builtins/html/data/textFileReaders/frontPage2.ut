@@ -1,9 +1,9 @@
 on frontPage2 (f, adrTable) {
-	«Return true if the file is a FrontPage 2.0 file and it was successfully loaded into the table.
-		«Info that's stored in the table:
-			«title -- a string, the title of the document
-			«pagetext -- a string that contains the cleaned up text
-		«Fri, Nov 29, 1996 at 12:13:39 PM by DW
+	//Return true if the file is a FrontPage 2.0 file and it was successfully loaded into the table.
+		//Info that's stored in the table:
+			//title -- a string, the title of the document
+			//pagetext -- a string that contains the cleaned up text
+		//Fri, Nov 29, 1996 at 12:13:39 PM by DW
 	local (magicstring = "<meta name=\"GENERATOR\" content=\"Microsoft FrontPage 2.0\">");
 	if not (defined (adrTable^.pageText)) {
 		adrTable^.pageText = ""};

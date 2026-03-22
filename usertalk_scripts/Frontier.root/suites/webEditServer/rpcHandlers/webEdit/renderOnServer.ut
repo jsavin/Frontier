@@ -1,8 +1,8 @@
 on renderOnServer (userName, password, adrObject) {
-	«Render a page on the server.
-	«Changes
-		«7/6/05; 7:44:31 PM by JES
-			«Remove file-part from address in error messages.
+	//Render a page on the server.
+	//Changes
+		//7/6/05; 7:44:31 PM by JES
+			//Remove file-part from address in error messages.
 	
 	local (adrPreCallback = @user.webEditServer.callbacks.preRenderOnServer);
 	local (adrCallback = @user.webEditServer.callbacks.renderOnServer);

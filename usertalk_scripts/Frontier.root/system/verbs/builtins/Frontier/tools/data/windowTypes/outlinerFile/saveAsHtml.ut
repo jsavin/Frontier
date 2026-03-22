@@ -1,27 +1,27 @@
 on saveAsHtml (adrOutline, adrFilepath=nil, flPreview=false) { //Render an outline as HTML and save it to disk.
-	«Changes
-		«4/27/02; 9:51:38 AM by DW
-			«The flPreview flag is nutty. It's always false based on the way it's called from the kernel. Setting it true doesn't get the document to open in the browser which is what previewing should do. Further, if it's false, it opens the document in an outline window. Oy. So I changed it, so that unconditionally, the HTML rendering is displayed in the browser after you save it. Don't try turning it on, please. It's not a well-designed feature. 
-		«4/27/02; 9:30:14 AM by DW
-			«There were two references to "adr" in this script, and apparently, at one time, the address of the outline was called adr, but not any more. These two changes made Save As HTML command in the File menu work on a relatively virgin Radio 8 installation.
-		«1/30/02; 2:07:42 AM by JES
-			«Removed reference to pike.getPreferencesFolder.
-		«1/29/02; 10:39:41 PM by JES
-			«Removed references to pike.isLocalOutline and pike.titleToHtmlFileName.
-		«12/10/01; 12:33:40 AM by JES
-			«Commented out the block where a default file path was set. Not only did it reference the deprecated pike.getPreferencesFolder, but it wasn't needed in the first place. Now all we set is the default filename.
-		«12/15/00; 6:20:38 PM by PBS
-			«Call user.pike.renderOutline to create the HTML document. This script may be changed by the user to over-ride the standard behavior.
-		«12/20/00; 2:02:56 AM by JES
-			«If on a Mac, convert Mac characters to latin before writing the file to disk.
-		«12/26/00; 2:43:55 PM by PBS
-			«Works with non-file-based outlines -- gets title from window title. If local, file based outline, get it from file info table.
-		«12/13/00; 5:41:50 PM by PBS
-			«Created. Render an outline as HTML and save it to disk.
-			«adr is the address of the window to save
-			«adrFilepath is the address from which to get the file path. If adrFilepath^ == nil, it will be set to the generated file path.
-			«If flPreview is true, the file is saved in [Radio Folder]/Preferences/View in Browser/[outlineName].html.
-			«If flPreview is false, the HTML file is opened in Radio.
+	//Changes
+		//4/27/02; 9:51:38 AM by DW
+			//The flPreview flag is nutty. It's always false based on the way it's called from the kernel. Setting it true doesn't get the document to open in the browser which is what previewing should do. Further, if it's false, it opens the document in an outline window. Oy. So I changed it, so that unconditionally, the HTML rendering is displayed in the browser after you save it. Don't try turning it on, please. It's not a well-designed feature. 
+		//4/27/02; 9:30:14 AM by DW
+			//There were two references to "adr" in this script, and apparently, at one time, the address of the outline was called adr, but not any more. These two changes made Save As HTML command in the File menu work on a relatively virgin Radio 8 installation.
+		//1/30/02; 2:07:42 AM by JES
+			//Removed reference to pike.getPreferencesFolder.
+		//1/29/02; 10:39:41 PM by JES
+			//Removed references to pike.isLocalOutline and pike.titleToHtmlFileName.
+		//12/10/01; 12:33:40 AM by JES
+			//Commented out the block where a default file path was set. Not only did it reference the deprecated pike.getPreferencesFolder, but it wasn't needed in the first place. Now all we set is the default filename.
+		//12/15/00; 6:20:38 PM by PBS
+			//Call user.pike.renderOutline to create the HTML document. This script may be changed by the user to over-ride the standard behavior.
+		//12/20/00; 2:02:56 AM by JES
+			//If on a Mac, convert Mac characters to latin before writing the file to disk.
+		//12/26/00; 2:43:55 PM by PBS
+			//Works with non-file-based outlines -- gets title from window title. If local, file based outline, get it from file info table.
+		//12/13/00; 5:41:50 PM by PBS
+			//Created. Render an outline as HTML and save it to disk.
+			//adr is the address of the window to save
+			//adrFilepath is the address from which to get the file path. If adrFilepath^ == nil, it will be set to the generated file path.
+			//If flPreview is true, the file is saved in [Radio Folder]/Preferences/View in Browser/[outlineName].html.
+			//If flPreview is false, the HTML file is opened in Radio.
 	
 	local (f);
 	if adrFilepath != nil {
@@ -59,14 +59,14 @@ on saveAsHtml (adrOutline, adrFilepath=nil, flPreview=false) { //Render an outli
 						htmlSetByUserRenderer = true}}}};
 		if not htmlSetByUserRenderer { //do default rendering
 			on renderOutline (adrOutline) { //from pike.renderOutline
-				«Render an outline. Return the text of the rendering.
-					«If the outline contains rules, use pikeRenderer. Otherwise do a default unordered list rendering.
-					«12/13/00; 5:03:46 PM by PBS
-					«Changes:
-						«12/26/00; 2:44:31 PM by PBS
-							«Works with non-file-based outlines -- gets title from window title. If local, file based outline, get it from file info table.
-						«12/26/00; 5:11:21 PM by PBS
-							«Add HTML 4.01 Transitional doctype declaration.
+				//Render an outline. Return the text of the rendering.
+					//If the outline contains rules, use pikeRenderer. Otherwise do a default unordered list rendering.
+					//12/13/00; 5:03:46 PM by PBS
+					//Changes:
+						//12/26/00; 2:44:31 PM by PBS
+							//Works with non-file-based outlines -- gets title from window title. If local, file based outline, get it from file info table.
+						//12/26/00; 5:11:21 PM by PBS
+							//Add HTML 4.01 Transitional doctype declaration.
 				
 				local (s);
 				local (adrParentTable = parentOf (adrOutline^));
@@ -91,17 +91,17 @@ on saveAsHtml (adrOutline, adrFilepath=nil, flPreview=false) { //Render an outli
 					s = html.getOutlineHtml (adrOutline, "\r<ul>", "\r</ul>", "\r<li>", "</li>")};
 				
 				bundle { //add HTML header and footer
-					«Header.
+					//Header.
 					local (headerText = "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01 Transitional//EN\">\r"); //PBS 12/26/00: add DOCTYPE declaration
 					headerText = headerText + "<html>\r\t<head><title>" + title + "</title></head>\r";
 					headerText = headerText + "\t<body bgcolor=\"white\">\r";
 					
-					«HTML title.
+					//HTML title.
 					headerText = headerText + "<h2>" + title + "</h2>\r";
 					
 					s = headerText + s;
 					
-					«Footer.
+					//Footer.
 					local (footerText = "\r\t\t</body>\r\t</html>");
 					
 					s = s + footerText};
@@ -121,7 +121,7 @@ on saveAsHtml (adrOutline, adrFilepath=nil, flPreview=false) { //Render an outli
 		adrFilepath^ = f};
 	
 	bundle { //4/27/02 by DW, see comment at head of script
-		«if not flPreview
-			«return (Frontier.tools.windowTypes.commands.open (f))
+		//if not flPreview
+			//return (Frontier.tools.windowTypes.commands.open (f))
 		webbrowser.opendocument (f)};
 	return (true)}

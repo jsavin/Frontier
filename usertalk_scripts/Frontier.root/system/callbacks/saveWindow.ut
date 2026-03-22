@@ -1,14 +1,14 @@
-on saveWindow (w, runnable = false) { «new in Frontier 4.0b7
-	«Thursday, July 17, 1997
-		«New parameter: runnable, defaults to false.
-		«If true, this is a deskscript.
-	«Call user's saveWindow scripts.
-		«For notification only. This script
-		«will save the window no matter what the
-		«user's scripts return.
-	«Changes:
-		«Thursday, September 28, 2000 at 6:24:24 PM by JES
-			«Allow the callback to be an address or the address of an address...
+on saveWindow (w, runnable = false) { //new in Frontier 4.0b7
+	//Thursday, July 17, 1997
+		//New parameter: runnable, defaults to false.
+		//If true, this is a deskscript.
+	//Call user's saveWindow scripts.
+		//For notification only. This script
+		//will save the window no matter what the
+		//user's scripts return.
+	//Changes:
+		//Thursday, September 28, 2000 at 6:24:24 PM by JES
+			//Allow the callback to be an address or the address of an address...
 	local (i);
 	if string.lower (window.getFile (w)) endsWith ".ftds" {
 		runnable = true};

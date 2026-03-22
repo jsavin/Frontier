@@ -43,7 +43,7 @@ on loadSite (folder) {
 			else {
 				local (fname = file.fileFromPath (f));
 				local (suffix);
-				bundle { «figure out what the file's suffix is
+				bundle { //figure out what the file's suffix is
 					suffix = "." + string.nthfield (fname, '.', string.countfields (fname, '.'))};
 				local (ct = sizeof (suffix));
 				local (pagename = string.delete (fname, sizeof (fname) - ct + 1, ct));
@@ -84,9 +84,9 @@ on loadSite (folder) {
 						mime = "application/x-stuffit"};
 					".pdf" {
 						mime = "application/pdf"}};
-				«if isDefined (pagepath)
-					«finder.reveal (f)
-					«scriptError ("This file would replace a page that's already in the odb. Please rename the file or delete it from the website folder.")
+				//if isDefined (pagepath)
+					//finder.reveal (f)
+					//scriptError ("This file would replace a page that's already in the odb. Please rename the file or delete it from the website folder.")
 				newObject (pagepath, s, mime);
 				ctfiles++}}};
 	loadFolder (folder, "odb.");
@@ -95,7 +95,7 @@ on loadSite (folder) {
 		db.close (rootf)};
 	return (ctfiles)};
 
-bundle { «test code
-	«file.filteredcopy ("Internal:Apps:WebStar:frontier:", "Jaz Disk 1:frontier:", @msg)
-	«loadsite ("Macintosh HD:Apps:WebStar:frontier:")
+bundle { //test code
+	//file.filteredcopy ("Internal:Apps:WebStar:frontier:", "Jaz Disk 1:frontier:", @msg)
+	//loadsite ("Macintosh HD:Apps:WebStar:frontier:")
 	loadsite ("Internal:Apps:WebStar:docserver:")}

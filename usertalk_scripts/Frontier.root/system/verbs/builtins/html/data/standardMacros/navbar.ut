@@ -1,31 +1,31 @@
 on navbar (outlineName, orientation="vertical", itemSeparator=" | ", lineSeparator="<p>", maxPerLine=nil, linkColor=nil, hoverColor=nil, boldLinks=false, boldCurrentPage=false, boldCategories=false, categoryColor=nil, showCategories=true, breakAtCategories=false, extraCategoryLine=false, indentSpaces=0, linkClass=nil, adrPageTable=nil, flXmlOutline=false) {
-	«This is a general macro for creating text-based navigation bars.
-		«Thu, May 14, 1998 at 4:57:12 PM by PBS
-		«The outlineName parameter should be the name of an outline that's in your #prefs table.
-		«This macro uses an outline in this form:
-			«[odb address or URL] [Text title]
-			«websites.mySite.default Home
-			«http://www.scripting.com/ Scripting News
-		«Any line that is a comment or has subheads is a category line.
-			«Categories are not links -- they're a type of header.
-		«Navbars can be horizontal or vertical.
-		«The current page is not a link.
-	«Changes:
-		«Thu, Dec 10, 1998 at 12:14:55 PM by PBS
-			«Added support for ftp links.
-		«Tue, 15 Jun 1999 21:24:43 GMT by DW and AR
-			«Bug fix: If the navbar is built from an old-style outline, we work on a copy to be thread-safe.
-			«Bug fix: If breakAtCategories is true, we no longer remove a random number of chars from the end of the last line before the new category.
-			«Added new optional parameter flXmlOutline to support XML-formatted outlines. We compile the outline to a structure, in the same table as the outline, with the same name, with "Structure" appended to the end of the name. We watch the mod date of the outline, if it hasn't changed since the last compilation, we don't recompile it. 
-			«Example XML outline:
-				«<navbar>
-					«<category title="Samples Site"/>
-					«<odb>websites.samples.default</odb>
-					«<odb title="Random Stuff">websites.samples.randomStuff</odb>
-					«<category title="Other Sites"/>
-					«<url title="Frontier">http://frontier.userland.com/</url>
-					«<glossref>Scripting News</glossref>
-					«</navbar>
+	//This is a general macro for creating text-based navigation bars.
+		//Thu, May 14, 1998 at 4:57:12 PM by PBS
+		//The outlineName parameter should be the name of an outline that's in your #prefs table.
+		//This macro uses an outline in this form:
+			//[odb address or URL] [Text title]
+			//websites.mySite.default Home
+			//http://www.scripting.com/ Scripting News
+		//Any line that is a comment or has subheads is a category line.
+			//Categories are not links -- they're a type of header.
+		//Navbars can be horizontal or vertical.
+		//The current page is not a link.
+	//Changes:
+		//Thu, Dec 10, 1998 at 12:14:55 PM by PBS
+			//Added support for ftp links.
+		//Tue, 15 Jun 1999 21:24:43 GMT by DW and AR
+			//Bug fix: If the navbar is built from an old-style outline, we work on a copy to be thread-safe.
+			//Bug fix: If breakAtCategories is true, we no longer remove a random number of chars from the end of the last line before the new category.
+			//Added new optional parameter flXmlOutline to support XML-formatted outlines. We compile the outline to a structure, in the same table as the outline, with the same name, with "Structure" appended to the end of the name. We watch the mod date of the outline, if it hasn't changed since the last compilation, we don't recompile it. 
+			//Example XML outline:
+				//<navbar>
+					//<category title="Samples Site"/>
+					//<odb>websites.samples.default</odb>
+					//<odb title="Random Stuff">websites.samples.randomStuff</odb>
+					//<category title="Other Sites"/>
+					//<url title="Frontier">http://frontier.userland.com/</url>
+					//<glossref>Scripting News</glossref>
+					//</navbar>
 	
 	local (htmlText, indent);
 	local (flVertical = (string.lower (orientation) == "vertical"));
@@ -33,7 +33,7 @@ on navbar (outlineName, orientation="vertical", itemSeparator=" | ", lineSeparat
 	if indentSpaces > 0 {
 		indent = string.filledString ("&nbsp;", number (indentSpaces))};
 	
-	«Try to convert link, hover, and category colors to a hex number.
+	//Try to convert link, hover, and category colors to a hex number.
 	bundle {
 		on convertColor (oneColor) {
 			if defined (system.verbs.colors.[oneColor]) {
@@ -67,7 +67,7 @@ on navbar (outlineName, orientation="vertical", itemSeparator=" | ", lineSeparat
 			lastSeparatorLength = string.length (itemSeparator)};
 		return (true)};
 	on subtractLastSeparator () { //subtract an item separator
-		«An item separator is the last thing added.
+		//An item separator is the last thing added.
 		local (lenText = string.length (htmlText));
 		htmlText = string.mid (htmlText, 1, lenText - lastSeparatorLength);
 		return (true)};
@@ -96,22 +96,22 @@ on navbar (outlineName, orientation="vertical", itemSeparator=" | ", lineSeparat
 		if linkColor != nil { //add the link color
 			styleTag = styleTag + " style=\"color: '" + linkColor + "'\""};
 		if hoverColor != nil { //add the hover color
-			«Note: this requires that you have some JavaScript in your pageHeader.
-				«Like this:
-					«<script>
-						«<!--
-							«var oldcolor
-							«function highlight (s, highlightcolor) {
-								«oldcolor = s.style.color
-								«s.style.color = highlightcolor
-								«return (true)
-								«} //highlight
-							«function unhighlight (s) {
-								«s.style.color = oldcolor
-								«return (true)
-								«} //unhighlight
-						«-->
-					«</script>
+			//Note: this requires that you have some JavaScript in your pageHeader.
+				//Like this:
+					//<script>
+						//<!--
+							//var oldcolor
+							//function highlight (s, highlightcolor) {
+								//oldcolor = s.style.color
+								//s.style.color = highlightcolor
+								//return (true)
+								//} //highlight
+							//function unhighlight (s) {
+								//s.style.color = oldcolor
+								//return (true)
+								//} //unhighlight
+						//-->
+					//</script>
 			styleTag = styleTag + " onmouseover=\"highlight (this, '" + hoverColor + "')\" onmouseout=\"unhighlight (this)\""};
 		
 		styleTag = styleTag + ">";

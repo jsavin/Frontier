@@ -1,4 +1,4 @@
-«Script: system.verbs.builtins.webserver.util.directoryDisplay.start; Version 1; Date: Thu, 07 May 1998 21:19:15 GMT; ID: RAB
+//Script: system.verbs.builtins.webserver.util.directoryDisplay.start; Version 1; Date: Thu, 07 May 1998 21:19:15 GMT; ID: RAB
 on start (path) {
 	local (s);
 	s = "<HTML><HEAD><TITLE>Index of " + path + "</TITLE></HEAD>" + cr;

@@ -1,6 +1,6 @@
 on pikeIsEnabledForSite (adrSite=nil) {
-	«Return true if Radio is enabled for this site. If you're in an RPC context, pass the address of the site. Otherwise it will be gotten from the page table.
-		«05/23/01; 5:25:34 PM by PBS
+	//Return true if Radio is enabled for this site. If you're in an RPC context, pass the address of the site. Otherwise it will be gotten from the page table.
+		//05/23/01; 5:25:34 PM by PBS
 	
 	if adrSite == nil {
 		adrSite = html.getPageTableAddress ()^.adrSiteRoot};

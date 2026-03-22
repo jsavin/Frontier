@@ -1,6 +1,6 @@
 on initTable (adrTable) {
-	«Initialize a pubsub server-side table. Private.
-		«1/15/02; 5:02:40 PM by PBS
+	//Initialize a pubsub server-side table. Private.
+		//1/15/02; 5:02:40 PM by PBS
 	if not defined (adrTable^) {
 		new (tableType, adrTable)};
 	if not defined (adrTable^.mostRecentNotify) {

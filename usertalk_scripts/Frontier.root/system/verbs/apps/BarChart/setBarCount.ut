@@ -1,2 +1,2 @@
-on setBarCount (ctbars) { «reset the number of bars frontmost BC window
+on setBarCount (ctbars) { //reset the number of bars frontmost BC window
 	return (appleEvent (BarChart.id, 'BARC', 'scnt', '----', short (ctbars)))}

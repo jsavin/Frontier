@@ -1,6 +1,6 @@
 on deleteFromIndex (indexName, adrMsgTable, adrSite) {
-	«Delete from an index.
-		«04/20/00; 2:14:26 PM by PBS
+	//Delete from an index.
+		//04/20/00; 2:14:26 PM by PBS
 	
 	local (adrIndex = manilaSuite.news.getIndexAddress (indexName, adrSite));
 	local (msgNum = adrMsgTable^.msgNum);

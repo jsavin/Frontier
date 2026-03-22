@@ -1,9 +1,9 @@
 on renewLicense () {
-	«Changes
-		«11/24/06; 5:26:49 PM by LL
-			«Changed some text on the page.
-		«9/17/03; 6:00:50 PM by JES
-			«Created. Source for the renew license page in the Frontier Admin site.
+	//Changes
+		//11/24/06; 5:26:49 PM by LL
+			//Changed some text on the page.
+		//9/17/03; 6:00:50 PM by JES
+			//Created. Source for the renew license page in the Frontier Admin site.
 	local (pta = html.getpagetableaddress ());
 	local (htmltext = "", indentlevel = 0);
 	on add (s) {

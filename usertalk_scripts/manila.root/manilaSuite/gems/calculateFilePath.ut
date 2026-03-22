@@ -1,16 +1,16 @@
 on calculateFilePath (adrSite, adrData) {
-	«Calculate the file path for this new gem that's about to be written to disk.
-		«04/14/00; 4:16:54 PM by PBS
-		«Changes:
-			«10/30/00; 2:16:21 AM by JES
-				«Fixed bug where files with uppercase suffixes would upload with repeated suffixes (for example foo.PDF.PDF, instead of foo.PDF).
-			«12/10/01; 4:53:21 PM by PBS
-				«Save the filename in the data table so the URL calculator knows what it is. (In case the filename had to be changed.)
-				«Remove spaces and other illegal characters from the file name.
-			«12/11/01; 1:13:42 PM by PBS
-				«Max filename length is 31, not 32.
-			«12/11/01; 2:33:32 PM by PBS
-				«Get the max filename length from prefs.
+	//Calculate the file path for this new gem that's about to be written to disk.
+		//04/14/00; 4:16:54 PM by PBS
+		//Changes:
+			//10/30/00; 2:16:21 AM by JES
+				//Fixed bug where files with uppercase suffixes would upload with repeated suffixes (for example foo.PDF.PDF, instead of foo.PDF).
+			//12/10/01; 4:53:21 PM by PBS
+				//Save the filename in the data table so the URL calculator knows what it is. (In case the filename had to be changed.)
+				//Remove spaces and other illegal characters from the file name.
+			//12/11/01; 1:13:42 PM by PBS
+				//Max filename length is 31, not 32.
+			//12/11/01; 2:33:32 PM by PBS
+				//Get the max filename length from prefs.
 	
 	local (suffix);
 	local (fname = adrData^.fileName);
@@ -25,7 +25,7 @@ on calculateFilePath (adrSite, adrData) {
 		local (i);
 		for i = sizeOf (fname) downTo 1 { //PBS 12/10/01: drop illegal characters
 			local (ch = fname [i]);
-			«Must be a ., letter, or number.
+			//Must be a ., letter, or number.
 			if (ch != ".") and (not (string.isAlpha (ch))) and (not (string.isNumeric (ch))) {
 				fname = string.delete (fname, i, 1)}}; //delete this character
 		if not (string.lower (fname) endsWith string.lower (suffix)) { //10/30/00 JES: compare lowercase suffix

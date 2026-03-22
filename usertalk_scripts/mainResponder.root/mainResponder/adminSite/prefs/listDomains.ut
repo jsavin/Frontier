@@ -1,17 +1,17 @@
 on listDomains (maxdomains=250) {
-	«Changes
-		«9/26/05; 5:05:41 PM by JES
-			«If an error occurs listing a domain, add it to the page. Make the background color of error rows red, so they're easier to see.
-		«9/26/05; 5:04:08 PM by JES
-			«Fix bug which could mask errors listing a domain.
-		«4/8/04; 2:05:56 AM by JES
-			«List up to 250 domains instead of 100.
-		«9/7/02; 1:26:25 PM by JES
-			«List up to 100 domains instead of 50.
-		«8/21/02; 9:26:30 PM by JES
-			«Only compile the domain's site tree if it's actually a siteTree-domain.
-		«8/5/02; 9:17:32 PM by JES
-			«Created.
+	//Changes
+		//9/26/05; 5:05:41 PM by JES
+			//If an error occurs listing a domain, add it to the page. Make the background color of error rows red, so they're easier to see.
+		//9/26/05; 5:04:08 PM by JES
+			//Fix bug which could mask errors listing a domain.
+		//4/8/04; 2:05:56 AM by JES
+			//List up to 250 domains instead of 100.
+		//9/7/02; 1:26:25 PM by JES
+			//List up to 100 domains instead of 50.
+		//8/21/02; 9:26:30 PM by JES
+			//Only compile the domain's site tree if it's actually a siteTree-domain.
+		//8/5/02; 9:17:32 PM by JES
+			//Created.
 	local (pta = html.getPageTableAddress ());
 	local (htmltext);
 	on add (s) {
@@ -19,7 +19,7 @@ on listDomains (maxdomains=250) {
 	
 	local (flConfirmDomainDelete = false, flConfirmMultiSiteDelete = false, flRedirect = false);
 	if pta^.method == "POST" {
-		«workspace.pt = pta^
+		//workspace.pt = pta^
 		local (adrargs = @pta^.postargs);
 		if defined (adrargs^.delete) {
 			local (adr);
@@ -102,6 +102,6 @@ on listDomains (maxdomains=250) {
 	
 	return (htmltext)};
 
-«bundle //test code
-	«html.setPageTableAddress (@workspace.pt)
-	«listDomains ()
+//bundle //test code
+	//html.setPageTableAddress (@workspace.pt)
+	//listDomains ()

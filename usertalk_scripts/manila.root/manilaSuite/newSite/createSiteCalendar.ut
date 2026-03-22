@@ -1,11 +1,11 @@
 on createSiteCalendar (adrSiteInfo) {
-	«Changes:
-		«4/13/06; 12:44:07 AM by JES
-			«Don't overwrite any tables or sub-items which already exist.
-		«01/29/00; 12:31:07 PM by PBS
-			«Create the home page in the calendar for the day before the site was created, so the Flip Home Page button shows up when the site is created.
-		«10/21/99; 3:11:05 PM by PBS
-			«Created: Create the calendar in the site shell. At this point, it has just one item, the current home page.
+	//Changes:
+		//4/13/06; 12:44:07 AM by JES
+			//Don't overwrite any tables or sub-items which already exist.
+		//01/29/00; 12:31:07 PM by PBS
+			//Create the home page in the calendar for the day before the site was created, so the Flip Home Page button shows up when the site is created.
+		//10/21/99; 3:11:05 PM by PBS
+			//Created: Create the calendar in the site shell. At this point, it has just one item, the current home page.
 	
 	local (adrSite = adrSiteInfo^.adrSite);
 	local (discussRoot = adrSite^.["#prefs"].discussionRoot);

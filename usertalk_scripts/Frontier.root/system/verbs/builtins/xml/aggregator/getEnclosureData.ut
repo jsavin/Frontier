@@ -1,9 +1,9 @@
 on getEnclosureData (url, adrenclosure) {
-	«Changes
-		«1/10/01; 12:38:16 PM by DW
-			«Make an HTTP request to get the header info for the indicated url and store it in the enclosure table. If it worked, the table will have url, length and type elements. If it failed it will have url and error (containing the error string).
-		«1/17/01; 6:56:47 AM by DW
-			«Ooops, length must be a number.
+	//Changes
+		//1/10/01; 12:38:16 PM by DW
+			//Make an HTTP request to get the header info for the indicated url and store it in the enclosure table. If it worked, the table will have url, length and type elements. If it failed it will have url and error (containing the error string).
+		//1/17/01; 6:56:47 AM by DW
+			//Ooops, length must be a number.
 	table.emptytable (adrenclosure);
 	adrenclosure^.url = url;
 	try {
@@ -13,5 +13,5 @@ on getEnclosureData (url, adrenclosure) {
 		adrenclosure^.type = headers.["Content-Type"]}
 	else {
 		adrenclosure^.error = tryError}};
-«bundle //test code
-	«getEnclosureData ("http://www.scripting.com/mp3s/touchOfGrey.mp3", @myUserLandData.stories.["00008242"].enclosure)
+//bundle //test code
+	//getEnclosureData ("http://www.scripting.com/mp3s/touchOfGrey.mp3", @myUserLandData.stories.["00008242"].enclosure)

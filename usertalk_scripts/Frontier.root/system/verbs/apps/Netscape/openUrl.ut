@@ -1,2 +1,2 @@
-on openUrl (s, openUrlIn = nil) { «Loads a URL
+on openUrl (s, openUrlIn = nil) { //Loads a URL
 	return (appleEvent (netscape.id, 'GURL', 'GURL', '----', string (s), 'cwin', openUrlIn))}

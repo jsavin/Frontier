@@ -1,7 +1,7 @@
 on getAutoDiscoveryXML (adrMsg, adrSite=nil, adrDescription=nil, permalinkURL=nil) {
-	«Changes
-		«04/10/24, 22:54:41 by DAB
-			«Created. Return the RDF auto-discovery XML for a news item.
+	//Changes
+		//04/10/24, 22:54:41 by DAB
+			//Created. Return the RDF auto-discovery XML for a news item.
 	if adrSite == nil { //get default for adrSite
 		adrSite = manilaSuite.getSiteAddress ()};
 	if adrDescription == nil { //get default for adrDescription

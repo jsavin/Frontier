@@ -1,21 +1,21 @@
 on getHtmlEditor (msgText="", pta=nil, wysiwygHeightPixels=300, fieldName="body", formName="editMessageForm") {
-	«Changes:
-		«8/22/03; 12:52:58 PM by JES
-			«Adjusted the size of the editor. It was too small when the browser was not WYSIWYG-capable.
-		«8/14/03; 12:41:14 AM by JES
-			«Added support for Mozilla's rich text editor.
-		«04/28/01; 2:46:27 PM by JES
-			«Return the editor for MSIE 6, as well as MSIE 5.
-		«10/03/00; 10:14:26 PM by JES
-			«No longer necessary to put JavaScript in head portion of page.
-		«10/03/00; 2:08:12 PM by PBS
-			«Support choice of editors -- WYSIWYG, HTML Tags, None.
-		«10/02/00; 6:03:52 PM by JES
-			«Return the WYSIWYG HTML editor instead of the older DHTML editor. Use the editor with MSIE4 as well as MSIE5
-		«4/10/00; 6:26:41 PM by JES
-			«Localized -- gets the editor itself using mainResponder.getString
-		«02/14/00; 9:13:54 AM by PBS
-			«Add the HTML Editor buttons and scripts.
+	//Changes:
+		//8/22/03; 12:52:58 PM by JES
+			//Adjusted the size of the editor. It was too small when the browser was not WYSIWYG-capable.
+		//8/14/03; 12:41:14 AM by JES
+			//Added support for Mozilla's rich text editor.
+		//04/28/01; 2:46:27 PM by JES
+			//Return the editor for MSIE 6, as well as MSIE 5.
+		//10/03/00; 10:14:26 PM by JES
+			//No longer necessary to put JavaScript in head portion of page.
+		//10/03/00; 2:08:12 PM by PBS
+			//Support choice of editors -- WYSIWYG, HTML Tags, None.
+		//10/02/00; 6:03:52 PM by JES
+			//Return the WYSIWYG HTML editor instead of the older DHTML editor. Use the editor with MSIE4 as well as MSIE5
+		//4/10/00; 6:26:41 PM by JES
+			//Localized -- gets the editor itself using mainResponder.getString
+		//02/14/00; 9:13:54 AM by PBS
+			//Add the HTML Editor buttons and scripts.
 	
 	if pta == nil {
 		pta = html.getPageTableAddress ()};
@@ -65,12 +65,12 @@ on getHtmlEditor (msgText="", pta=nil, wysiwygHeightPixels=300, fieldName="body"
 		
 		bundle { //get JavaScript only if this is the WYSIWYG editor
 			if flWysEditor {
-				«if defined (pta^.javaScript) //JES 10/03/00: no longer needed
-					«if typeOf (pta^.javaScript) == addressType
-						«pta^.javaScript = string (pta^.javaScript^)
-					«pta^.javaScript = pta^.javaScript + string (mainResponder.data.ieHtmlEditorScript)
-				«else
-					«pta^.javaScript = string (mainResponder.data.ieHtmlEditorScript)
+				//if defined (pta^.javaScript) //JES 10/03/00: no longer needed
+					//if typeOf (pta^.javaScript) == addressType
+						//pta^.javaScript = string (pta^.javaScript^)
+					//pta^.javaScript = pta^.javaScript + string (mainResponder.data.ieHtmlEditorScript)
+				//else
+					//pta^.javaScript = string (mainResponder.data.ieHtmlEditorScript)
 				
 				s = string.replace (s, "[[messageText]]", msgText);
 				s = string.replace (s, "[[heightPixels]]", wysiwygHeightPixels)}};

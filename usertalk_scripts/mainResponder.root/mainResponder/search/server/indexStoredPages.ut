@@ -1,10 +1,10 @@
 on indexStoredPages () {
-	«Index all the pages in the index queue.
-		«Changes:
-			«8/2/02; 2:51:46 AM by JES
-				«Index pages stored in the queue database, mainResponderSearchQueue.root, as opened by Frontier.openDataFile. We still support the queue in config.root, but new pages submitted for indexing are now in their own database. This cuts down on database bloat in config.root.
-			«9/28/99; 2:12:37 PM by PBS
-				«An indexName item may be stored with the page. If it is, then use the specified index, otherwise use the default index.
+	//Index all the pages in the index queue.
+		//Changes:
+			//8/2/02; 2:51:46 AM by JES
+				//Index pages stored in the queue database, mainResponderSearchQueue.root, as opened by Frontier.openDataFile. We still support the queue in config.root, but new pages submitted for indexing are now in their own database. This cuts down on database bloat in config.root.
+			//9/28/99; 2:12:37 PM by PBS
+				//An indexName item may be stored with the page. If it is, then use the specified index, otherwise use the default index.
 	
 	bundle { //is this a search engine server? If not, don't index any pages.
 		if not config.mainResponder.prefs.flSearchEngine {
@@ -40,7 +40,7 @@ on indexStoredPages () {
 				delete (@adrTable^ [i])}}; //delete this page from the queue
 		
 		bundle { //save config.root and any indexes that need saving
-			«Save config.root.
+			//Save config.root.
 			msg ("Search Engine: Saving search queue...");
 			fileMenu.saveMyRoot (adrTable);
 			msg ("");
@@ -50,15 +50,15 @@ on indexStoredPages () {
 				for i = 1 to sizeOf (indexesUsed) { //loop through the indexes
 					local (indexPath = mainResponder.search.utilities.getIndexPath (indexesUsed [i]));
 					
-					«Save the index.
+					//Save the index.
 					msg ("Search Engine: Saving " + indexesUsed [i] + "...");
 					fileMenu.save (indexPath);
 					
-					«Close the index.
+					//Close the index.
 					msg ("Search Engine: Closing " + indexesUsed [i] + "...");
 					fileMenu.close (indexPath);
 					
-					«Re-open the index.
+					//Re-open the index.
 					msg ("Search Engine: Opening " + indexesUsed [i] + "...");
 					fileMenu.open (indexPath, true); //open it hidden
 					msg ("")}}};

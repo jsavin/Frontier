@@ -1,32 +1,32 @@
 on listDay (d, bgColor="ivory", otherColor="beige", tableWidth=425, pta=nil, headerColor="black", headerTextColor=nil, cssPrefix="") {
-	«List the discussion group messages for a single day.
-		«Changes:
-			«Sat, 27 Feb 1999 23:16:13 GMT by AR
-				«Modified call to mainresponder.calendar.getdayaddress so it doesn't create the calendar entry
-				«Tweaked the html code to use valign=middle instead of valign=center
-			«Mon, 01 Mar 1999 15:01:02 GMT by AR
-				«The script's parameter must be a date type - otherwise a scripterror will be thrown.
-					«To convert other date representations to date type, take a look at mainResponder.calendar.getAddressDay and mainResponder.calendar.pathArgsToDate
-			«Sat, 06 Mar 1999 17:08:06 GMT by AR
-				«Commented out code for caching table lines.
-			«Wed, 26 May 1999 01:10:41 GMT by AR
-				«Added new optional paramaters bgcolor, othercolor, and tablewidth to allow the calling script more influence over the layout of the table.
-				«Changed value of membershipGroup from config.mainresponder.globals.defaultMembershipGroup to pta^.responderAttributes.defaultMembershipGroup.
-			«Tue, Aug 3, 1999 at 12:39:52 PM by PBS
-				«Added optional pta parameter.
-				«Since member names are often repeated, added a local table to cache the names while building the page, to avoid unnecessary calls out.
-			«10/30/99; 1:12:22 PM by PBS
-				«headerColor is a new optional parameter for specifying the color of the header at the top of a discussion group messages list. If not specified, the default is black, which is current behavior.
-				«headerTextColor is a new optional parameter for specifying the color of the text inside the header. If not specified, the default is the parameter in bgColor.
-				«In both cases, default behavior applies if you don't specify the parameter.
-			«04/12/00; 1:01:38 PM by JES
-				«Localized column headers and table header using mainResponder.getString
-			«05/30/00; 5:22:03 PM by PBS
-				«cssPrefix is a new optional parameter. If supplied, then CSS classes are added to the tables, rows, cells, and font tags.
-			«05/31/00; 3:50:03 PM by PBS
-				«Typo fix: there was a colspan=6 when there are only 5 columns.
-			«06/01/00; 9:04:38 PM by JES
-				«merged CSS code with localization code
+	//List the discussion group messages for a single day.
+		//Changes:
+			//Sat, 27 Feb 1999 23:16:13 GMT by AR
+				//Modified call to mainresponder.calendar.getdayaddress so it doesn't create the calendar entry
+				//Tweaked the html code to use valign=middle instead of valign=center
+			//Mon, 01 Mar 1999 15:01:02 GMT by AR
+				//The script's parameter must be a date type - otherwise a scripterror will be thrown.
+					//To convert other date representations to date type, take a look at mainResponder.calendar.getAddressDay and mainResponder.calendar.pathArgsToDate
+			//Sat, 06 Mar 1999 17:08:06 GMT by AR
+				//Commented out code for caching table lines.
+			//Wed, 26 May 1999 01:10:41 GMT by AR
+				//Added new optional paramaters bgcolor, othercolor, and tablewidth to allow the calling script more influence over the layout of the table.
+				//Changed value of membershipGroup from config.mainresponder.globals.defaultMembershipGroup to pta^.responderAttributes.defaultMembershipGroup.
+			//Tue, Aug 3, 1999 at 12:39:52 PM by PBS
+				//Added optional pta parameter.
+				//Since member names are often repeated, added a local table to cache the names while building the page, to avoid unnecessary calls out.
+			//10/30/99; 1:12:22 PM by PBS
+				//headerColor is a new optional parameter for specifying the color of the header at the top of a discussion group messages list. If not specified, the default is black, which is current behavior.
+				//headerTextColor is a new optional parameter for specifying the color of the text inside the header. If not specified, the default is the parameter in bgColor.
+				//In both cases, default behavior applies if you don't specify the parameter.
+			//04/12/00; 1:01:38 PM by JES
+				//Localized column headers and table header using mainResponder.getString
+			//05/30/00; 5:22:03 PM by PBS
+				//cssPrefix is a new optional parameter. If supplied, then CSS classes are added to the tables, rows, cells, and font tags.
+			//05/31/00; 3:50:03 PM by PBS
+				//Typo fix: there was a colspan=6 when there are only 5 columns.
+			//06/01/00; 9:04:38 PM by JES
+				//merged CSS code with localization code
 	
 	if pta == nil {
 		pta = html.getPageTableAddress ()};
@@ -46,8 +46,8 @@ on listDay (d, bgColor="ivory", otherColor="beige", tableWidth=425, pta=nil, hea
 	on add (s) {
 		htmlText = htmlText + string.filledString ("\t", indentLevel) + s + "\r"};
 	
-	«on td (s, align="")
-		«add ("<td nowrap " + align + " valign=\"middle\"><font size=\"-1\">&nbsp;&nbsp;" + s + "&nbsp;&nbsp;</font></td>")
+	//on td (s, align="")
+		//add ("<td nowrap " + align + " valign=\"middle\"><font size=\"-1\">&nbsp;&nbsp;" + s + "&nbsp;&nbsp;</font></td>")
 	on td (s, align="", class="", height="") {
 		local (fontClass = "");
 		if (flCss) and (class != "") {
@@ -61,8 +61,8 @@ on listDay (d, bgColor="ivory", otherColor="beige", tableWidth=425, pta=nil, hea
 		add ("<td nowrap" + align + " valign=\"middle\"" + class + height + "><font size=\"-1\"" + fontClass + ">&nbsp;&nbsp;" + s + "&nbsp;&nbsp;</font></td>")};
 	
 	on shortenString (s, maxLen=35) {
-		«if sizeOf (s) <= maxLen
-			«return (s)
+		//if sizeOf (s) <= maxLen
+			//return (s)
 		return (string.mid (s, 1, maxLen - 3) + "...")};
 	
 	try { //get the address of this day in the calendar structure for this discussion group.
@@ -71,20 +71,20 @@ on listDay (d, bgColor="ivory", otherColor="beige", tableWidth=425, pta=nil, hea
 	else {
 		ct = 0}; //no messages yet, shortcut building of message listing
 	
-	«add ("<table cellpadding=\"0\" cellspacing=\"1\">"); indentLevel++
+	//add ("<table cellpadding=\"0\" cellspacing=\"1\">"); indentLevel++
 	bundle { //start the table
 		if flCss {
 			add ("<table cellpadding=\"0\" cellspacing=\"1\" class=\"" + cssPrefix + "Table\">"); indentLevel++}
 		else {
 			add ("<table cellpadding=\"0\" cellspacing=\"1\">"); indentLevel++}};
 	
-	«bundle //add the date on a black background
-		«add ("<tr><td height=\"10\"><td>&nbsp;</td></tr>") //blank spacer row
-		«add ("<tr bgcolor=\"" + headerColor + "\">"); indentLevel++ //PBS 10/30/99: variable header color, black by default
-		«if headerTextColor == nil //PBS 10/30/99: the header text color may also be specified
-			«headerTextColor = bgColor
-		«add ("<td height=\"24\" width=\"" + tableWidth + "\" colspan=\"6\"><font color=\"" + headerTextColor + "\" size=\"-0\">&nbsp;<b>&nbsp;" + mainResponder.localization.longDateString (d, pta) + "&nbsp;</b></font></td>") // 4/13/00 JES: localized the date
-		«add ("</tr>"); indentLevel--
+	//bundle //add the date on a black background
+		//add ("<tr><td height=\"10\"><td>&nbsp;</td></tr>") //blank spacer row
+		//add ("<tr bgcolor=\"" + headerColor + "\">"); indentLevel++ //PBS 10/30/99: variable header color, black by default
+		//if headerTextColor == nil //PBS 10/30/99: the header text color may also be specified
+			//headerTextColor = bgColor
+		//add ("<td height=\"24\" width=\"" + tableWidth + "\" colspan=\"6\"><font color=\"" + headerTextColor + "\" size=\"-0\">&nbsp;<b>&nbsp;" + mainResponder.localization.longDateString (d, pta) + "&nbsp;</b></font></td>") // 4/13/00 JES: localized the date
+		//add ("</tr>"); indentLevel--
 	bundle { //add the date on a black background
 		if flCss { //header row
 			add ("<tr bgcolor=\"" + headerColor + "\" class=\"" + cssPrefix + "SeparatorRow\">"); indentLevel++} //PBS 10/30/99: variable header color, black by default
@@ -102,15 +102,15 @@ on listDay (d, bgColor="ivory", otherColor="beige", tableWidth=425, pta=nil, hea
 		add ("</tr>"); indentLevel--};
 	
 	bundle { //add column titles
-		«bundle // 06/01/00 JES: old code
-			«add ("<tr bgcolor=\"" + otherColor + "\">"); indentLevel++
-			«add ("<td height=\"28\"></td>") //a dummy table cell to establish row height
+		//bundle // 06/01/00 JES: old code
+			//add ("<tr bgcolor=\"" + otherColor + "\">"); indentLevel++
+			//add ("<td height=\"28\"></td>") //a dummy table cell to establish row height
 		if flCss { //titles row
 			add ("<tr bgcolor=\"" + otherColor + "\" class=\"" + cssPrefix + "TitleRow\">"); indentLevel++}
 		else {
 			add ("<tr bgcolor=\"" + otherColor + "\">"); indentLevel++};
 		
-		«4/13/00; 3:53:31 PM by JES -- localized column headers
+		//4/13/00; 3:53:31 PM by JES -- localized column headers
 		td ("<b>" + mainResponder.getString ("listHeaders.shortNum") + "</b>", align:"align=\"center\"", class:"MessageLinkTitle", height:28);
 		td ("<b>" + mainResponder.getString ("listHeaders.posted") + "</b>", align:"align=\"center\"", class:"PostedTitle");
 		td ("<b>" + mainResponder.getString ("listHeaders.ct") + "</b>", align:"align=\"center\"", class:"ReadsTitle");
@@ -125,7 +125,7 @@ on listDay (d, bgColor="ivory", otherColor="beige", tableWidth=425, pta=nil, hea
 		
 		bundle { //was this message deleted? If so, skip it.
 			if defined (adrItem^.flDeleted) {
-				«The flDeleted flag may not exist: it's necessary to test for existence before testing whether it's true or false.
+				//The flDeleted flag may not exist: it's necessary to test for existence before testing whether it's true or false.
 				if adrItem^.flDeleted {
 					continue}}};
 		
@@ -164,32 +164,32 @@ on listDay (d, bgColor="ivory", otherColor="beige", tableWidth=425, pta=nil, hea
 		
 		add ("</tr>"); indentLevel--;
 		
-		«bundle  //code to implement caching (deactivated)
-			«if false //defined (adritem^.htmlcache)
-				«local (oldindentlevel = indentlevel)
-				«indentlevel = 0
-				«add (adritem^.htmlcache)
-				«indentlevel = oldindentlevel
-			«else
-				«on shortenstring (s, maxlen=35)
-					«if sizeof (s) <= maxlen
-						«return (s)
-					«return (string.mid (s, 1, maxlen - 3) + "...")
-				«local (ixhtmltext = sizeof (htmltext))
-				«add ("<tr bgcolor=\"" + othercolor + "\">"); indentlevel++
-				«add ("<td height=\"28\"></td>") //a dummy table cell to establish row height
-				«bundle //add the message number, it's the link
-					«local (url = pta^.responderAttributes.urls^.discussMsgReader + adritem^.msgnum)
-					«td ("<a href=\"" + url + "\">" + adritem^.msgnum + "</a>", align:"align=\"center\"")
-				«td (date.timeString (adritem^.posttime, includeSeconds:false), align:"align=\"center\"")
-				«td (adritem^.ctreads, align:"align=\"right\"")
-				«local (membername = mainResponder.members.getMemberName (membershipGroup, adritem^.member))
-				«td (shortenstring (membername, 20))
-				«td (shortenstring (adritem^.subject, 40))
-				«add ("</tr>"); indentlevel--
-				«
-				«adritem^.htmlcache = string.delete (htmltext, 1, ixhtmltext)
-				«adritem^.htmlcache = string.delete (adritem^.htmlcache, sizeof (adritem^.htmlcache), 1)};
+		//bundle  //code to implement caching (deactivated)
+			//if false //defined (adritem^.htmlcache)
+				//local (oldindentlevel = indentlevel)
+				//indentlevel = 0
+				//add (adritem^.htmlcache)
+				//indentlevel = oldindentlevel
+			//else
+				//on shortenstring (s, maxlen=35)
+					//if sizeof (s) <= maxlen
+						//return (s)
+					//return (string.mid (s, 1, maxlen - 3) + "...")
+				//local (ixhtmltext = sizeof (htmltext))
+				//add ("<tr bgcolor=\"" + othercolor + "\">"); indentlevel++
+				//add ("<td height=\"28\"></td>") //a dummy table cell to establish row height
+				//bundle //add the message number, it's the link
+					//local (url = pta^.responderAttributes.urls^.discussMsgReader + adritem^.msgnum)
+					//td ("<a href=\"" + url + "\">" + adritem^.msgnum + "</a>", align:"align=\"center\"")
+				//td (date.timeString (adritem^.posttime, includeSeconds:false), align:"align=\"center\"")
+				//td (adritem^.ctreads, align:"align=\"right\"")
+				//local (membername = mainResponder.members.getMemberName (membershipGroup, adritem^.member))
+				//td (shortenstring (membername, 20))
+				//td (shortenstring (adritem^.subject, 40))
+				//add ("</tr>"); indentlevel--
+				//
+				//adritem^.htmlcache = string.delete (htmltext, 1, ixhtmltext)
+				//adritem^.htmlcache = string.delete (adritem^.htmlcache, sizeof (adritem^.htmlcache), 1)};
 	
 	add ("</table>"); indentLevel--;
 	

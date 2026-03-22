@@ -1,6 +1,6 @@
 on getSubFolder (path) {
-	«12/13/98; 7:01:34 AM by DW
-		«A new core verb, we are going to move all UserLand-managed folders in to this folder. Others are welcome to do so too.
+	//12/13/98; 7:01:34 AM by DW
+		//A new core verb, we are going to move all UserLand-managed folders in to this folder. Others are welcome to do so too.
 	local (pc = file.getPathChar ());
 	local (folderPath = Frontier.pathString + "Guest Databases" + pc);
 	if not (file.exists (folderPath)) {

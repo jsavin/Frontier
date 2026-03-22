@@ -1,6 +1,6 @@
 on createNewShortcut (adrMsgTable) {
-	«Create a new shortcut for this picture. We know we need a new shortcut, there's no question about it. Avoid over-writing an existing shortcut.
-		«01/12/00; 3:09:24 PM by PBS
+	//Create a new shortcut for this picture. We know we need a new shortcut, there's no question about it. Avoid over-writing an existing shortcut.
+		//01/12/00; 3:09:24 PM by PBS
 	
 	local (shortcut = manilaSuite.unTaint (adrMsgTable^.subject));
 	local (pta = html.getPageTableAddress ());
@@ -14,13 +14,13 @@ on createNewShortcut (adrMsgTable) {
 		manilaSuite.pictures.setShortcutInImageTable (adrMsgTable, shortcutName); //save it for later
 		return (true)};
 	
-	«Best case, most common case: no item exists in the glossary with this name.
+	//Best case, most common case: no item exists in the glossary with this name.
 	bundle {
 		if not defined (adrGlossary^.[shortcut]) {
 			addToGlossary (@adrGlossary^.[shortcut]);
 			return (true)}};
 	
-	«Worst case -- there's already a glossary item with the same name, but we already know it's not the same shortcut, a new shortcut is needed. Create a new one by appending a number.
+	//Worst case -- there's already a glossary item with the same name, but we already know it's not the same shortcut, a new shortcut is needed. Create a new one by appending a number.
 	bundle {
 		local (ix = 2);
 		loop {

@@ -1,9 +1,9 @@
 on renderArchivePage (adrTable, pta=nil, flUseNewsDayTemplate=false) {
-	«Render all the posts for a given day.
-		«04/24/00; 3:51:01 PM by PBS
-		«Changes:
-			«05/02/00; 5:02:43 PM by PBS
-				«Support for the news day template.
+	//Render all the posts for a given day.
+		//04/24/00; 3:51:01 PM by PBS
+		//Changes:
+			//05/02/00; 5:02:43 PM by PBS
+				//Support for the news day template.
 	
 	if pta == nil {
 		pta = html.getPageTableAddress ()};

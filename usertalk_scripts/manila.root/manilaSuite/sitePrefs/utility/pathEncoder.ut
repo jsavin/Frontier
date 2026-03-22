@@ -1,14 +1,14 @@
 on pathEncoder(path) {
-	«manilaSuite.sitePrefs.utility.pathEncoder : 04/05/16, 17:38:21 by DAB
-		«ensure that all path nodes are url encoded
-		«02/05/26, 12:08:06 by DAB
-			«urls must in iso8859-1 before encoding !!!!
-		«was manilafixer.utilities.pathEncoder : 0/04/23, 16:46:56 by DAB
+	//manilaSuite.sitePrefs.utility.pathEncoder : 04/05/16, 17:38:21 by DAB
+		//ensure that all path nodes are url encoded
+		//02/05/26, 12:08:06 by DAB
+			//urls must in iso8859-1 before encoding !!!!
+		//was manilafixer.utilities.pathEncoder : 0/04/23, 16:46:56 by DAB
 	local (newPath = "");
 	local (N = string.countFields(path, "/"));
 	local (ix);
 	for ix = 1 to N {
-		«newPath = newPath + string.urlencode(string.nthField(path, "/", ix)) + "/"
+		//newPath = newPath + string.urlencode(string.nthField(path, "/", ix)) + "/"
 		s = string.nthField(path, "/", ix);
 		if sys.OS() == "MacOS" { //02/05/26, 11:55:39 by DAB
 			s = string.macToLatin(s)}; //urls must be in iso8859-1
@@ -17,19 +17,19 @@ on pathEncoder(path) {
 		newpath = string.popTrailing(newPath,  "/")};
 	
 	return newPath};
-«bundle
-	«manilaFixer.utilities.pathEncoder("de/glossary/glossar E")
-		«"de/glossary/glossar%20E"
-	«manilaFixer.utilities.pathEncoder("de/glossary/glossar E/")
-		«"de/glossary/glossar%20E/"
-	«manilaFixer.utilities.pathEncoder("de/glossary/mŸs")
-		«"de/glossary/m%FCs"
-	«string.urldecode(manilaFixer.utilities.pathEncoder("de/glossary/mŸs"))
-		«"de/glossary/müs"
-	«string.latinToMac(string.urldecode(manilaFixer.utilities.pathEncoder("de/glossary/mŸs")))
-		«"de/glossary/mŸs"
-«bundle
-	«local (xurl = "http://www.quint-essenz.ch/it/introduction/A B C")
-	«local (bits = string.urlsplit(xurl))
-	«xurl = bits[1] + bits[2] + "/" +  manilaFixer.utilities.pathEncoder(bits[3])
-	«msg(xurl)
+//bundle
+	//manilaFixer.utilities.pathEncoder("de/glossary/glossar E")
+		//"de/glossary/glossar%20E"
+	//manilaFixer.utilities.pathEncoder("de/glossary/glossar E/")
+		//"de/glossary/glossar%20E/"
+	//manilaFixer.utilities.pathEncoder("de/glossary/mŸs")
+		//"de/glossary/m%FCs"
+	//string.urldecode(manilaFixer.utilities.pathEncoder("de/glossary/mŸs"))
+		//"de/glossary/müs"
+	//string.latinToMac(string.urldecode(manilaFixer.utilities.pathEncoder("de/glossary/mŸs")))
+		//"de/glossary/mŸs"
+//bundle
+	//local (xurl = "http://www.quint-essenz.ch/it/introduction/A B C")
+	//local (bits = string.urlsplit(xurl))
+	//xurl = bits[1] + bits[2] + "/" +  manilaFixer.utilities.pathEncoder(bits[3])
+	//msg(xurl)

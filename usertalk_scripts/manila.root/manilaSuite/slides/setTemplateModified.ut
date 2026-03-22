@@ -1,6 +1,6 @@
 on setTemplateModified (adrNewsSite) {
-	«Declare that the template has been modified so the cache can be invalidated.
-		«12/18/00; 10:27:22 PM by PBS
+	//Declare that the template has been modified so the cache can be invalidated.
+		//12/18/00; 10:27:22 PM by PBS
 	
 	adrNewsSite^.slides.templateModified = clock.now ();
 	

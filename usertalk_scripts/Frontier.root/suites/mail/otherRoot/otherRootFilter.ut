@@ -1,17 +1,17 @@
 on defaultFilter (mailerappname, whatEvent, theList) {
-	«this is a specialized mail filter script
-		«it flows the messages out into another object db file, mail.root
-		«it's created in the same folder as the Frontier app
-		«if you want to try it out, copy it into user.mail.agents
-	«whatEvent can take on the following values:
-		«wHCn - hasConnected
-		«wArv - mailArrives
-		«wSnt - mailSent
-		«wFil - opensFilters
-		«wWcn - willConnect
+	//this is a specialized mail filter script
+		//it flows the messages out into another object db file, mail.root
+		//it's created in the same folder as the Frontier app
+		//if you want to try it out, copy it into user.mail.agents
+	//whatEvent can take on the following values:
+		//wHCn - hasConnected
+		//wArv - mailArrives
+		//wSnt - mailSent
+		//wFil - opensFilters
+		//wWcn - willConnect
 	
 	local (directionstring);
-	case whatEvent { «we only handle in and out events
+	case whatEvent { //we only handle in and out events
 		'wHCn';
 		'wFil';
 		'wWcn' {
@@ -20,7 +20,7 @@ on defaultFilter (mailerappname, whatEvent, theList) {
 			directionstring = "in"};
 		'wSnt' {
 			directionstring = "out"}};
-	if sizeof (thelist) > 0 { «for debugging, if there's a problem we can repeat it in debugger
+	if sizeof (thelist) > 0 { //for debugging, if there's a problem we can repeat it in debugger
 		scratchpad.enotlist = theList};
 	local (i, mailmsg);
 	mail.otherRoot.open ();
@@ -42,5 +42,5 @@ on defaultFilter (mailerappname, whatEvent, theList) {
 		mail.otherRoot.addMessage (@mailmsg, user.mail.prefs.msgcount)};
 	mail.otherRoot.close ();
 	return (true)};
-«bundle «test code
-	«defaultFilter ("Eudora", 'wArv', scratchpad.enotlist)
+//bundle //test code
+	//defaultFilter ("Eudora", 'wArv', scratchpad.enotlist)

@@ -1,9 +1,9 @@
 on getSiteLimit (adrSite) {
-	«Changes
-		«10/11/05; 5:07:01 AM by JES
-			«Change default storage limit to 100MB.
-		«04/13/00; 9:15:42 PM by PBS
-			«Created. Return the number of bytes a site is allowed in hard drive space for gems.
+	//Changes
+		//10/11/05; 5:07:01 AM by JES
+			//Change default storage limit to 100MB.
+		//04/13/00; 9:15:42 PM by PBS
+			//Created. Return the number of bytes a site is allowed in hard drive space for gems.
 	
 	bundle { //check site first
 		local (adrPrefs = manilaSuite.gems.getSitePrefsAddress (adrSite));

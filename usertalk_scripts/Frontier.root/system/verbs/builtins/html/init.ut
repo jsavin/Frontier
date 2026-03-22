@@ -1,7 +1,7 @@
-«New: Sat, Nov 23, 1996 at 12:28:00 PM by DW
-	«Changes:
-		«10/12/99; 2:22:13 PM by PBS
-			«Create user.html.prefs.addToChangedPages. If true, then automatic adding to changed pages occurs. If false, then changed pages are not automatically added to the changed pages outline.
+//New: Sat, Nov 23, 1996 at 12:28:00 PM by DW
+	//Changes:
+		//10/12/99; 2:22:13 PM by PBS
+			//Create user.html.prefs.addToChangedPages. If true, then automatic adding to changed pages occurs. If false, then changed pages are not automatically added to the changed pages outline.
 
 if not defined (user.html) {
 	new (tabletype, @user.html)};
@@ -29,12 +29,12 @@ if not defined (user.html.prefs.imgFileCreator) {
 	user.html.prefs.imgFileCreator = 'MOSS'};
 if not defined (user.html.prefs.textFileCreator) {
 	user.html.prefs.textFileCreator = 'MOSS'};
-if not defined (user.html.images) { «Tue, Dec 10, 1996 at 5:58:58 AM by DW
+if not defined (user.html.images) { //Tue, Dec 10, 1996 at 5:58:58 AM by DW
 	new (tabletype, @user.html.images)};
-if not defined (user.html.prefs.defaultFileName) { «Sun, Dec 15, 1996 at 6:28:18 AM by DW
+if not defined (user.html.prefs.defaultFileName) { //Sun, Dec 15, 1996 at 6:28:18 AM by DW
 	user.html.prefs.defaultFileName = "index";
-	};«Index is far more common than default. PBS 1/27/97
-if not defined (user.html.prefs.charset) { «Mon, Dec 30, 1996 at 2:34:03 PM by DW
+	};//Index is far more common than default. PBS 1/27/97
+if not defined (user.html.prefs.charset) { //Mon, Dec 30, 1996 at 2:34:03 PM by DW
 	user.html.prefs.charset = "iso-8859-1"};
 if not defined (user.html.prefs.addLineFeeds) { //Tuesday, January 27, 1998 at 10:53:13 AM by PBS
 	case sys.os () {
@@ -49,7 +49,7 @@ if not defined (user.html.prefs.imageFolderName) { //Fri, May 15, 1998 at 11:56:
 	user.html.prefs.imageFolderName = "images"};
 if not defined (user.html.prefs.imageFolderSubtables) {
 	user.html.prefs.imageFolderSubtables = false};
-if not defined (user.html.prefs.includeMetaCharset) { «Wed, Feb 26, 1997 at 7:40:31 AM by DW
+if not defined (user.html.prefs.includeMetaCharset) { //Wed, Feb 26, 1997 at 7:40:31 AM by DW
 	user.html.prefs.includeMetaCharset = false};
 if not defined (user.html.prefs.useImageCache) { //Sunday, January 18, 1998 at 12:02:59 AM by PBS
 	user.html.prefs.useImageCache = false};

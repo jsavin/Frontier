@@ -1,17 +1,17 @@
 on getMessageTable (cookie, adrtable) {
-	«Sat, Dec 6, 1997 at 2:01:37 AM by PBS
-		«Fixed toys reference.
+	//Sat, Dec 6, 1997 at 2:01:37 AM by PBS
+		//Fixed toys reference.
 	local (s);
 	with objectmodel, eudora, eventinfo {
 		s = get (cookie);
-		};«toys.newtextobject (s, @scratchpad.s) «for debugging
+		};//toys.newtextobject (s, @scratchpad.s) //for debugging
 	on getline () {
 		local (linestring = string.nthfield (s, cr, 1));
 		s = string.delete (s, 1, sizeof (linestring) + 1);
 		local (label, value);
 		label = string.lower (string.nthfield (linestring, ":", 1));
 		value = string.delete (linestring, 1, sizeof (label) + 2);
-		bundle { «special code that finds the text of the message
+		bundle { //special code that finds the text of the message
 			if (sizeof (label) == 0) or (label contains cr) {
 				adrtable^.text = s;
 				return (false)}};

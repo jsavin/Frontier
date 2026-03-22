@@ -1,11 +1,11 @@
 on renderWholeSite (adrManilaSite, adrStaticSite=nil) {
-	«Changes
-		«11/4/06; 5:49:12 PM by LL
-			«Commented out the call to render the RSS feed since it's automatically handled in manilaSuite.staticRendering.renderPage.
-		«11/11/03; 2:05:11 AM by JES
-			«When rendering the entire site, also render the site's RSS feed.
-		«03/07/00; 1:27:11 PM by PBS
-			«Render an entire site -- home page, archived home pages, and site structure.
+	//Changes
+		//11/4/06; 5:49:12 PM by LL
+			//Commented out the call to render the RSS feed since it's automatically handled in manilaSuite.staticRendering.renderPage.
+		//11/11/03; 2:05:11 AM by JES
+			//When rendering the entire site, also render the site's RSS feed.
+		//03/07/00; 1:27:11 PM by PBS
+			//Render an entire site -- home page, archived home pages, and site structure.
 	
 	local (oldPta = html.getPageTableAddress ());
 	manilaSuite.staticRendering.startRenderSession (adrManilaSite, true);
@@ -26,11 +26,11 @@ on renderWholeSite (adrManilaSite, adrStaticSite=nil) {
 	bundle { //render calendar, site structure, RSS feed, and home page
 		try { //home page
 			manilaSuite.staticRendering.renderPage ("/", adrManilaSite, adrStaticSite)}; //home page
-		«try //rss feed
-			«if manilaSuite.getNewsSitePref ("flSyndicate", adrManilaSite, true)
-				«new (tableType, @pt)
-				«setUpPageTable (@pt, "xml/rss.xml")
-				«manilaSuite.staticRendering.renderBuiltinPage ("xml/rss.xml", adrManilaSite)
+		//try //rss feed
+			//if manilaSuite.getNewsSitePref ("flSyndicate", adrManilaSite, true)
+				//new (tableType, @pt)
+				//setUpPageTable (@pt, "xml/rss.xml")
+				//manilaSuite.staticRendering.renderBuiltinPage ("xml/rss.xml", adrManilaSite)
 		try { //home page archives
 			manilaSuite.staticRendering.utilities.renderWholeCalendar (adrManilaSite, adrStaticSite)};
 		try { //site structure
@@ -39,6 +39,6 @@ on renderWholeSite (adrManilaSite, adrStaticSite=nil) {
 	local (t);
 	t = manilaSuite.staticRendering.endRenderSession (adrManilaSite);
 	return (t)};
-«bundle //test code
-	«html.setPageTableAddress (@workspace.pt)
-	«renderWholeSite (@testManilaWebsite)
+//bundle //test code
+	//html.setPageTableAddress (@workspace.pt)
+	//renderWholeSite (@testManilaWebsite)

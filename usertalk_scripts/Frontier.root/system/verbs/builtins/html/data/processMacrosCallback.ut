@@ -1,10 +1,10 @@
-on dosc (s) { «runs a macro, for the html suite
+on dosc (s) { //runs a macro, for the html suite
 	local (adrPageTable = html.getPageTableAddress ());
-	if html.getPref ("processMacros", adrPageTable) { «new pref in 4.1
+	if html.getPref ("processMacros", adrPageTable) { //new pref in 4.1
 		local (toolTableAdr, nilTable);
 		if defined (adrPageTable^.tools) {
 			toolTableAdr = adrPageTable^.tools}
-		else { «'with' wants a table
+		else { //'with' wants a table
 			new (tableType, @nilTable);
 			toolTableAdr = @nilTable};
 		try {
@@ -39,9 +39,9 @@ on dosc (s) { «runs a macro, for the html suite
 			scriptError (errorString)}}
 	else {
 		return ("{" + s + "}")}};
-on refg (name) { «turn a glossary entry name into a string for insertion into HTML text
+on refg (name) { //turn a glossary entry name into a string for insertion into HTML text
 	local (adrPageTable = html.getPageTableAddress ());
 	if html.getPref ("expandGlossaryItems", adrPageTable) {
 		return (html.refGlossary (name))}
 	else {
-		scriptError ("glossary expansion off")}} «tell macroprocessor to ignore
+		scriptError ("glossary expansion off")}} //tell macroprocessor to ignore

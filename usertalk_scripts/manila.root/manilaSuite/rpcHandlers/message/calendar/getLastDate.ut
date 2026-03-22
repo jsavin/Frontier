@@ -1,5 +1,5 @@
 on getLastDate (username, password, siteName) {
-	«Get the last date in the message calendar.
+	//Get the last date in the message calendar.
 	
 	bundle { //make sure this user has access to the discussion group
 		local (beginningErrorString = "Can't get the last date in the message calendar because ");

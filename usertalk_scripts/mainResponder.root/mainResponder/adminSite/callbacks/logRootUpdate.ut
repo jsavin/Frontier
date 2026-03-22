@@ -1,7 +1,7 @@
 on logRootUpdate (adrpart, changenote) {
-	«Changes
-		«8/28/02; 11:11:26 PM by JES
-			«Created.
+	//Changes
+		//8/28/02; 11:11:26 PM by JES
+			//Created.
 	if not config.mainResponder.prefs.flLogRootUpdates { //do nothing
 		return (true)};
 	local (partname = string.popFileFromAddress (adrpart) );
@@ -9,5 +9,5 @@ on logRootUpdate (adrpart, changenote) {
 	adritem^.adr = adrpart;
 	adritem^.changenote = changenote;
 	return (true)};
-«bundle //test code
-	«logRootUpdate ("foo", "change notes")
+//bundle //test code
+	//logRootUpdate ("foo", "change notes")

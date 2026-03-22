@@ -1,8 +1,8 @@
 on initUserStats (userNum, adrData=nil) {
-	«24/09/04; 11:39:31 AM by PR
-		«set to use only one whenLastModified for both trackback and comments
-	«03/09/04; 10:13:43 AM by PR
-		«Initialize the user stats tables and set whenLastModified for a given usernum, we can accept both a zero padded string or a number, we assume that radioHosting has bee enabled
+	//24/09/04; 11:39:31 AM by PR
+		//set to use only one whenLastModified for both trackback and comments
+	//03/09/04; 10:13:43 AM by PR
+		//Initialize the user stats tables and set whenLastModified for a given usernum, we can accept both a zero padded string or a number, we assume that radioHosting has bee enabled
 	if adrData == nil {
 		adrdata = manilaSuite.radioHosting.init ()};
 	
@@ -21,8 +21,8 @@ on initUserStats (userNum, adrData=nil) {
 	adrStats^.whenLastModified = clock.now ();
 	
 	return (adrStats)};
-«bundle // test code
-	«local (adrData = @commentTestManilaWebsite.["#newsSite"].radioHosting)
-	«initUserStats (2, adrData)
-	«initUserStats ("3", adrData)
-	«initUserStats ("0000004", adrData)
+//bundle // test code
+	//local (adrData = @commentTestManilaWebsite.["#newsSite"].radioHosting)
+	//initUserStats (2, adrData)
+	//initUserStats ("3", adrData)
+	//initUserStats ("0000004", adrData)

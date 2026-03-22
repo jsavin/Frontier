@@ -9,5 +9,5 @@ on neuterOutline (adroutline) { //delete #directives in the outline
 			if not op.go (up, 1) {
 				break}}};
 	target.set (oldtarget)};
-«bundle //test code
-	«neuterOutline (@system.temp.editorialOutline)
+//bundle //test code
+	//neuterOutline (@system.temp.editorialOutline)

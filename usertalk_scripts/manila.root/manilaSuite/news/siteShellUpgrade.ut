@@ -1,12 +1,12 @@
 on siteShellUpgrade (adrSite) {
-	«Add news items support to a site.
-		«04/25/00; 1:47:58 PM by PBS
+	//Add news items support to a site.
+		//04/25/00; 1:47:58 PM by PBS
 	
-	«Add the newsItems table.
+	//Add the newsItems table.
 	if not defined (adrSite^.newsItems) {
 		adrSite^.newsItems = manilaData.newSiteTemplate.newsItems};
 	
-	«Add three new legal (XML) tags.
+	//Add three new legal (XML) tags.
 	if not defined (adrSite^.["#newsSite"].legalTags.url) {
 		adrSite^.["#newsSite"].legalTags.url = true};
 	if not defined (adrSite^.["#newsSite"].legalTags.department) {
@@ -16,7 +16,7 @@ on siteShellUpgrade (adrSite) {
 	if not defined (adrSite^.["#newsSite"].legalTags.newsItem) {
 		adrSite^.["#newsSite"].legalTags.newsItem = true};
 	
-	«Add newsItems URLs.
+	//Add newsItems URLs.
 	local (siteUrl = adrSite^.["#ftpSite"].url);
 	local (adrUrls = @adrSite^.["#urls"]);
 	if not defined (adrUrls^.editorialNewsItems) {

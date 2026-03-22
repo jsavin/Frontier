@@ -1,5 +1,5 @@
-«Send email if the person who posted the message this is in reply to requested it.
-	«04/05/00; 2:49:53 PM by PBS
+//Send email if the person who posted the message this is in reply to requested it.
+	//04/05/00; 2:49:53 PM by PBS
 
 manilaSuite.emailNotification.emailResponse (adrMsg, adrSite, url, adrMember, language);
 

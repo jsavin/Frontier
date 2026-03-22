@@ -1,7 +1,7 @@
 on call (method, params) {
-	«Changes
-		«9/9/02; 9:20:10 PM by JES
-			«Created. Call one of the Amazon API methods using SOAP.
+	//Changes
+		//9/9/02; 9:20:10 PM by JES
+			//Created. Call one of the Amazon API methods using SOAP.
 	local (fldebug = false); //set to true to get wiredumps in scratchpad
 	bundle { //add standard params
 		params.tag = amazon.data.tag;

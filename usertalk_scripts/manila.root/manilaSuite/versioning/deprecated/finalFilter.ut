@@ -1,7 +1,7 @@
 on finalFilter (pta) {
-	«manilaFixer.versioning.finalFilter : 02/04/11, 18:07:37 by DAB
-		«adds to the new story form
-		«adds to the change story form
+	//manilaFixer.versioning.finalFilter : 02/04/11, 18:07:37 by DAB
+		//adds to the new story form
+		//adds to the change story form
 	local (adrSite = manilasuite.getSiteAddress(pta));
 	local (adrStorage = manilaSuite.plugins.getStorageAddress("manilaFixer", adrSite));
 	
@@ -26,8 +26,8 @@ on finalFilter (pta) {
 			return false}};
 	
 	local(flISO8859encoding = html.getPref("isoFilter", pta)); //02/04/25, 12:13:44 by DAB
-	«local (maxFilesOpened = config.manilaFixer.versioning.maxLogs)
-	«local (maxVersions = config.manilaFixer.versioning.maxVersions)
+	//local (maxFilesOpened = config.manilaFixer.versioning.maxLogs)
+	//local (maxVersions = config.manilaFixer.versioning.maxVersions)
 	local (maxFilesOpened, maxVersions); //04/05/18, 21:50:36 by DAB
 	manilaSuite.versioning.getConfiguration(@maxFilesOpened, @maxVersions); //04/05/18, 21:50:07 by DAB
 	local (rollbackForm = "");
@@ -82,10 +82,10 @@ on finalFilter (pta) {
 				add("\r\t\t<td>\r\t\t\t<select name = 'rollbackTo'>");
 				add("\r\t\t\t\t<option value = '' selected>" + manilaFixer.getString("versioning.ETPRollbackMenuDefault", pta:pta)  + "</option>")};
 			
-			«add("\r\t\t\t\t<option value = '" + adrLinkTbl^.logentry + "'>" + string(adrLinkTbl^.timeStamp) + "</option>")
+			//add("\r\t\t\t\t<option value = '" + adrLinkTbl^.logentry + "'>" + string(adrLinkTbl^.timeStamp) + "</option>")
 			add("\r\t\t\t\t<option value = '" + string(adrLinkTbl^.timeStamp) + "'>" + string(adrLinkTbl^.timeStamp));
 			if adrMsg^.subject != currentMsgSubject {
-				«add("[" + string.ellipsize(adrMsg^.subject, 20) + "]")
+				//add("[" + string.ellipsize(adrMsg^.subject, 20) + "]")
 				local (subject = string.ellipsize(adrMsg^.subject, 20)); //02/04/25, 12:12:11 by DAB
 				if flISO8859encoding { //02/04/25, 12:12:22 by DAB
 					subject = bayly.iso8859encode(subject)};
@@ -104,7 +104,7 @@ on finalFilter (pta) {
 		add("\r\t</tr>\r\t</table>\r</form>")};
 	
 	local (theText = pta^.renderedText);
-	«
+	//
 	on checkThisForm(adrStr, thisForm, matchOffset, matchLength) {
 		local (formtag = tagExtractionKit.getoneTag(thisForm, "form", ""));
 		local (formname = tagExtractionKit.getAttributeValue(formtag, "name"));
@@ -122,7 +122,7 @@ on finalFilter (pta) {
 					local (hiddentag = tagExtractionKit.getoneTag(thisForm, "input", {"type=hidden","name=msgNum", "value=" + currentmsgNum}));
 					if hiddenTag == "" {
 						return true}; //look for next
-					}};«msg(hiddentag)
+					}};//msg(hiddentag)
 			defined(pta^.addedValues.manilaETPform) and (pta^.addedValues.manilaETPform == formName); //03/08/10, 13:18:16 by DAB
 			string.lower(formname)  == "editmessageform" { //WYSIWYG form 02/03/04, 17:08:43 by DAB
 				}}
@@ -135,7 +135,7 @@ on finalFilter (pta) {
 		pta^.renderedText = firstpart + rollbackForm + lastpart;
 		
 		return true};
-	«
+	//
 	tagExtractionKit.containerVisit(theText, "form", "", @checkthisForm); //02/03/06, 14:29:42 by DAB
 	
 	return true};

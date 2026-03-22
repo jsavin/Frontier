@@ -1,10 +1,10 @@
 on renderYear (adrTable, category=nil) {
-	«Render a stories list for an entire year. Formatting is like DaveNet stories lists.
-		«Changes:
-			«07/01/02; 1:55:52 AM by JES
-				«Localized month names.
-			«03/28/00; 12:43:32 AM by PBS
-				«Support for static rendering.
+	//Render a stories list for an entire year. Formatting is like DaveNet stories lists.
+		//Changes:
+			//07/01/02; 1:55:52 AM by JES
+				//Localized month names.
+			//03/28/00; 12:43:32 AM by PBS
+				//Support for static rendering.
 	
 	local (pta = html.getPageTableAddress ());
 	local (adrRoot = mainResponder.discuss.openRoot ());
@@ -52,8 +52,8 @@ on renderYear (adrTable, category=nil) {
 				if manilaSuite.staticRendering.isStaticRendering () {
 					url = baseUrl + yearName + "/" + month + "/" + nameOf (adrDay^) + "/";
 					name = manilaSuite.staticRendering.convertFileName (name);
-					«if sizeOf (name) > 26
-						«name = string.mid (name, 1, 26)
+					//if sizeOf (name) > 26
+						//name = string.mid (name, 1, 26)
 					url = url + name};
 				local (link = html.getLink (title, url));
 				add ("<b>" + link + "</b><p>")}};

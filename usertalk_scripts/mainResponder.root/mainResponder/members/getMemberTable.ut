@@ -1,12 +1,12 @@
 on getMemberTable (groupName, memberKey, adrMembers=nil) {
-	«Get the address of a member's table, given the name of the group and the member's identifier.
-		«Changes:
-			«8/8/02; 3:01:37 PM by JES
-				«Support for passwords stored as binaries instead of as clear-text strings. If the password is defined, and is a string, convert to a binary.
-			«9/26/01; 6:15:10 PM by PBS
-				«New optional parameter -- adrMembers. Performance improvement. If we can avoid calling mainResponder.members.getMembershipTable, that helps performance.
-			«06/01/00; 5:38:39 PM by PBS
-				«The parameter to the callback was mailAddress -- which wasn't defined, so it always failed. It should have been memberKey, which it now is. Now callbacks work.
+	//Get the address of a member's table, given the name of the group and the member's identifier.
+		//Changes:
+			//8/8/02; 3:01:37 PM by JES
+				//Support for passwords stored as binaries instead of as clear-text strings. If the password is defined, and is a string, convert to a binary.
+			//9/26/01; 6:15:10 PM by PBS
+				//New optional parameter -- adrMembers. Performance improvement. If we can avoid calling mainResponder.members.getMembershipTable, that helps performance.
+			//06/01/00; 5:38:39 PM by PBS
+				//The parameter to the callback was mailAddress -- which wasn't defined, so it always failed. It should have been memberKey, which it now is. Now callbacks work.
 	
 	if adrMembers == nil { //PBS 09/26/01: adrMembers is now an optional parameter
 		adrMembers = mainResponder.members.getMembershipTable (groupName)};

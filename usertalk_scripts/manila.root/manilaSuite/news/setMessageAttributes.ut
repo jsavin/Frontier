@@ -1,6 +1,6 @@
 on setMessageAttributes (adrMsgTable, adrAtts) {
-	«Set the newsItem atts for a message.
-		«04/20/00; 1:21:46 AM by PBS
+	//Set the newsItem atts for a message.
+		//04/20/00; 1:21:46 AM by PBS
 	
 	if not defined (adrMsgTable^.newsItem) {
 		new (tableType, @adrMsgTable^.newsItem)};

@@ -1,6 +1,6 @@
 on getDisplayName (pta, sectionName) {
-	«manilaSuite.sitePrefs.utility.getDisplayName : 04/05/13, 21:29:04 by DAB
-		«factored from manilaSuite.sitePrefs.advancedPage
+	//manilaSuite.sitePrefs.utility.getDisplayName : 04/05/13, 21:29:04 by DAB
+		//factored from manilaSuite.sitePrefs.advancedPage
 	try {
 		return (manilaSuite.getString ("admin." + string.innerCaseName (sectionName) + "SectionName", pta: pta))}
 	else {

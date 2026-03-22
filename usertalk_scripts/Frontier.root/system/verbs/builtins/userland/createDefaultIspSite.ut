@@ -1,8 +1,8 @@
 on createDefaultIspSite (siteName="createASiteManilaWebsite", password=nil, serverName=nil, displaySiteName=nil, tagline=nil, theme=nil) {
-	«Create the default Manila site if it doesn't already exist.
-		«Return true if it gets created, return false if it already exists and thus doesn't get created.
-		«This is a wrapper for manilaSuite.clone. It's called from userland.finishInstall, when the user has elected to turn on the webserver.
-		«10/26/99; 6:22:28 PM by PBS
+	//Create the default Manila site if it doesn't already exist.
+		//Return true if it gets created, return false if it already exists and thus doesn't get created.
+		//This is a wrapper for manilaSuite.clone. It's called from userland.finishInstall, when the user has elected to turn on the webserver.
+		//10/26/99; 6:22:28 PM by PBS
 	bundle { //set up ISP prefs in config.root
 		if not defined (config.manila.hosting) {
 			new (tableType, @config.manila.hosting)};
@@ -27,7 +27,7 @@ on createDefaultIspSite (siteName="createASiteManilaWebsite", password=nil, serv
 		else {
 			fileMenu.new (gdbPath);
 			window.hide (@[gdbPath]);
-			}};«fileMenu.save (gdbPath)
+			}};//fileMenu.save (gdbPath)
 	
 	bundle { //add hosting gdb to user.databases
 		local (adrTable = @user.databases.[gdbName]);
@@ -71,8 +71,8 @@ on createDefaultIspSite (siteName="createASiteManilaWebsite", password=nil, serv
 		theme = "ISP"};
 	local (siteInfo);
 	siteInfo = manilaSuite.clone (siteName, groupName, dgName, sysopEmail, sysopPassword, sysopName, siteUrl, false, true, true, gdbName, siteName, theme, false); //JES 4/12/02: Pass in siteName instead of "createASiteManilaWebsite" for the canonicalSiteName parameter
-	«siteInfo.adrSite^.["#newsSite"].siteName = "Home"
-	«siteInfo.adrSite^.["#newsSite"].flFirstTimeVisitAfterInstall = true
+	//siteInfo.adrSite^.["#newsSite"].siteName = "Home"
+	//siteInfo.adrSite^.["#newsSite"].flFirstTimeVisitAfterInstall = true
 	delete (@siteInfo.adrSite^.["#navigator"].structure);
 	
 	bundle { //tag line, siteName, dg access
@@ -86,32 +86,32 @@ on createDefaultIspSite (siteName="createASiteManilaWebsite", password=nil, serv
 		try {delete (@adrSite^.discuss.edit.["#members"])};
 		adrSite^.discuss.["#members"] = adrSite^.["#prefs"].defaultMembershipGroup};
 	
-	«bundle //set up an It Worked! message
-		«local (adrSite = siteInfo.adrSite)
-		«local (adrNewsSite = @adrSite^.["#newsSite"])
-		«local (dgName = adrSite^.["#prefs"].discussionRoot)
-		«local (homePageMsgNum = adrNewsSite^.discussLinks.homePageMsgNum)
-		«local (adrRoot = [system.temp.mainResponder.discussRootFile].[dgName])
-		«
-		«Home page.
-		«local (adrMsgTable = mainResponder.discuss.getMessageTable (homePageMsgNum, adrRoot:adrRoot))
-		«adrMsgTable^.subject = userland.defaultPages.homeTitle
-		«adrMsgTable^.body = string (userland.defaultPages.home)
-		«
-		«FAQ page.
-		«local (faqMsgNum = adrNewsSite^.discussLinks.faqMsgNum)
-		«adrMsgTable = mainResponder.discuss.getMessageTable (faqMsgNum, adrRoot:adrRoot)
-		«adrMsgTable^.subject = userland.defaultPages.faqTitle
-		«adrMsgTable^.body = string (userland.defaultPages.faq)
-		«
-		«Feedback page.
-		«local (emailMsgNum = adrNewsSite^.discussLinks.emailMsgNum)
-		«adrMsgTable = mainResponder.discuss.getMessageTable (emailMsgNum, adrRoot:adrRoot)
-		«adrMsgTable^.subject = userland.defaultPages.feedbackTitle
-		«adrMsgTable^.body = string (userland.defaultPages.feedback)
-		«
-		«Make sure the managing editor gets the cookie in a minute.
-		«adrNewsSite^.flFirstTimeVisitAfterInstall = true
+	//bundle //set up an It Worked! message
+		//local (adrSite = siteInfo.adrSite)
+		//local (adrNewsSite = @adrSite^.["#newsSite"])
+		//local (dgName = adrSite^.["#prefs"].discussionRoot)
+		//local (homePageMsgNum = adrNewsSite^.discussLinks.homePageMsgNum)
+		//local (adrRoot = [system.temp.mainResponder.discussRootFile].[dgName])
+		//
+		//Home page.
+		//local (adrMsgTable = mainResponder.discuss.getMessageTable (homePageMsgNum, adrRoot:adrRoot))
+		//adrMsgTable^.subject = userland.defaultPages.homeTitle
+		//adrMsgTable^.body = string (userland.defaultPages.home)
+		//
+		//FAQ page.
+		//local (faqMsgNum = adrNewsSite^.discussLinks.faqMsgNum)
+		//adrMsgTable = mainResponder.discuss.getMessageTable (faqMsgNum, adrRoot:adrRoot)
+		//adrMsgTable^.subject = userland.defaultPages.faqTitle
+		//adrMsgTable^.body = string (userland.defaultPages.faq)
+		//
+		//Feedback page.
+		//local (emailMsgNum = adrNewsSite^.discussLinks.emailMsgNum)
+		//adrMsgTable = mainResponder.discuss.getMessageTable (emailMsgNum, adrRoot:adrRoot)
+		//adrMsgTable^.subject = userland.defaultPages.feedbackTitle
+		//adrMsgTable^.body = string (userland.defaultPages.feedback)
+		//
+		//Make sure the managing editor gets the cookie in a minute.
+		//adrNewsSite^.flFirstTimeVisitAfterInstall = true
 	
 	bundle { //set up the domain for this site
 		local (domainMinusPort = string.popSuffix (serverName, ':'));
@@ -126,6 +126,6 @@ on createDefaultIspSite (siteName="createASiteManilaWebsite", password=nil, serv
 	if not defined (temp.installer) {
 		new (tableType, @temp.installer)};
 	temp.installer.urlToOpen = siteInfo.adrSite^.["#ftpSite"].url;
-	«temp.installer.urlToOpen = siteInfo.adrSite^.["#ftpSite"].url + "controlPanel/" //PBS 06/23/00: Open the Control Panel, not the hosting site
+	//temp.installer.urlToOpen = siteInfo.adrSite^.["#ftpSite"].url + "controlPanel/" //PBS 06/23/00: Open the Control Panel, not the hosting site
 	
 	return (true)}

@@ -1,7 +1,7 @@
 on nothingFound (adrSearch) {
-	«Changes
-		«8/11/02; 2:39:52 AM by JES
-			«Localized.
+	//Changes
+		//8/11/02; 2:39:52 AM by JES
+			//Localized.
 	local (s = "");
 	local (pta);
 	if defined (adrSearch^.ignoredList) {
@@ -27,7 +27,7 @@ on nothingFound (adrSearch) {
 		else {
 			s = "<p>Nothing found."}};
 	
-	«Log this search.
+	//Log this search.
 	local (clientIp, url);
 	try {
 		pta = html.getPageTableAddress ();

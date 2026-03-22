@@ -1,6 +1,6 @@
 on upgradeSite (adrSite) {
-	«Upgrade an existing site to add gems support.
-		«04/15/00; 5:26:18 PM by PBS
+	//Upgrade an existing site to add gems support.
+		//04/15/00; 5:26:18 PM by PBS
 	
 	if not defined (adrSite^.gems) {
 		adrSite^.gems = manilaData.newSiteTemplate.gems};

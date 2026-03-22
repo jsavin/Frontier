@@ -1,10 +1,10 @@
 on addToPicturesList (username, password, siteName, msgNum) {
-	«Mark a message as being in the pictures list.
-		«Changes:
-			«10/09/00; 10:21:01 PM by PBS
-				«Make sure the pictures index gets updated.
-			«04/22/01; 12:51:01 AM by JES
-				«Create a shortcut when adding a message to the pictures list, if the site's pref is set.
+	//Mark a message as being in the pictures list.
+		//Changes:
+			//10/09/00; 10:21:01 PM by PBS
+				//Make sure the pictures index gets updated.
+			//04/22/01; 12:51:01 AM by JES
+				//Create a shortcut when adding a message to the pictures list, if the site's pref is set.
 	
 	bundle { //make sure this person is a managing editor of the site.
 		local (beginningErrorString = "Can't add message \"" + msgNum + "\" to the pictures list because ");

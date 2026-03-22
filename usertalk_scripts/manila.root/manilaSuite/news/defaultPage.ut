@@ -1,9 +1,9 @@
 on defaultPage (pta=nil) {
-	«Return a list of all pending news items.
-		«04/19/00; 10:20:54 PM by PBS
-	«Changes:
-		«05/04/00; 10:57:46 PM by JES
-			«localized page title
+	//Return a list of all pending news items.
+		//04/19/00; 10:20:54 PM by PBS
+	//Changes:
+		//05/04/00; 10:57:46 PM by JES
+			//localized page title
 	
 	if pta == nil {
 		pta = html.getPageTableAddress ()};

@@ -1,10 +1,10 @@
 on getRecentPosts (appkey, blogid, username, password, numberOfPosts) {
-	«8/24/01; 12:30:09 AM by JES
-		«Return an array of structs (array of tables) with information about the last n posts.
-			«http://groups.yahoo.com/group/bloggerDev/message/225
-	«Changes:
-		«8/28/01; 2:03:21 AM by JES
-			«Make sure username corresponds to a member of the site.
+	//8/24/01; 12:30:09 AM by JES
+		//Return an array of structs (array of tables) with information about the last n posts.
+			//http://groups.yahoo.com/group/bloggerDev/message/225
+	//Changes:
+		//8/28/01; 2:03:21 AM by JES
+			//Make sure username corresponds to a member of the site.
 	local (sitename = manilaSuite.rpcHandlers.getSiteName (blogid));
 	manilaSuite.rpcUtils.memberCheck (siteName, username, password, "Can't get recent posts because ");
 	local (adrsite = manilaSuite.rpcUtils.getSiteAddress (sitename));
@@ -25,7 +25,7 @@ on getRecentPosts (appkey, blogid, username, password, numberOfPosts) {
 		returnArray = returnArray + {getPost (adrmsg)}};
 	
 	return (returnArray)};
-«bundle //test code
-	«local (array = getRecentPosts ("xxx", "http://127.0.0.1/", "jake@userland.com", user.prefs.manilaPassword, 10))
-	«local (post1 = array[1])
-	«dialog.alert (post1.postid)
+//bundle //test code
+	//local (array = getRecentPosts ("xxx", "http://127.0.0.1/", "jake@userland.com", user.prefs.manilaPassword, 10))
+	//local (post1 = array[1])
+	//dialog.alert (post1.postid)

@@ -1,11 +1,11 @@
-«Changes
-	«9/23/05; 12:13:12 PM by LL
-		«Use the radio.weblogs.com changes.xml.
-	«11/11/01; 7:09:36 PM by DW
-		«Support post-corner-turn Weblogs.Com.
-		«No more temp table, store the status message in the settings table.
-	«10/25/01; 6:14:51 PM by DW
-		«Add system.temp.weblogsCom table.
+//Changes
+	//9/23/05; 12:13:12 PM by LL
+		//Use the radio.weblogs.com changes.xml.
+	//11/11/01; 7:09:36 PM by DW
+		//Support post-corner-turn Weblogs.Com.
+		//No more temp table, store the status message in the settings table.
+	//10/25/01; 6:14:51 PM by DW
+		//Add system.temp.weblogsCom table.
 local (adrdata = frontier.openDataFile ("weblogsComData"));
 if not defined (adrdata^.prefs) {
 	new (tabletype, @adrdata^.prefs)};
@@ -51,9 +51,9 @@ bundle { //make sure everyMinute script is installed, if necessary
 			if adrdata^.prefs.enabled {
 				user.scheduler.everyMinute.weblogsCom = @weblogsCom.everyMinute;
 				adrdata^.settings.flInstalled = true}}}}; //only do this once
-«bundle //add temp table
-	«if not defined (system.temp.weblogsCom)
-		«new (tabletype, @system.temp.weblogsCom)
-	«if not defined (system.temp.weblogsCom.status)
-		«system.temp.weblogsCom.status = ""
+//bundle //add temp table
+	//if not defined (system.temp.weblogsCom)
+		//new (tabletype, @system.temp.weblogsCom)
+	//if not defined (system.temp.weblogsCom.status)
+		//system.temp.weblogsCom.status = ""
 return (adrdata)

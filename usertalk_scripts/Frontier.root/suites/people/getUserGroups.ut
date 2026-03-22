@@ -1,6 +1,6 @@
 on getUserGroups (userName) {
-	«Returns all the groups a user belongs to.
-		«Returns false if the user doesn't exist.
+	//Returns all the groups a user belongs to.
+		//Returns false if the user doesn't exist.
 	local (adrUser = people.getUserTable (userName));
 	if not (people.userExists (userName, adrUser)) {
 		return (false)};

@@ -1,17 +1,17 @@
 on bodyTag (pta=nil) {
-	«This is a stripped-down body tag macro for Manila. It's faster, and it doesn't do background images -- and it doesn't have the background images bug that Manila previously had.
-		«Friday, December 17, 1999 at 10:04:00 PM by PBS
-		«Changes:
-			«12/21/99; 7:10:58 PM by PBS
-				«If the specified color is "", then use an appropriate default color.
-			«05/26/00; 12:48:49 AM by PBS
-				«Support margin attributes in the body tag was added.
-			«9/18/01; 4:13:34 PM by PBS
-				«Support for margins.
+	//This is a stripped-down body tag macro for Manila. It's faster, and it doesn't do background images -- and it doesn't have the background images bug that Manila previously had.
+		//Friday, December 17, 1999 at 10:04:00 PM by PBS
+		//Changes:
+			//12/21/99; 7:10:58 PM by PBS
+				//If the specified color is "", then use an appropriate default color.
+			//05/26/00; 12:48:49 AM by PBS
+				//Support margin attributes in the body tag was added.
+			//9/18/01; 4:13:34 PM by PBS
+				//Support for margins.
 	
 	local (htmlText, oneAtt);
 	local (attsList = {"bgcolor", "alink", "vlink", "link", "text", "topmargin", "leftmargin", "marginheight", "marginwidth", "background"});
-	«local (attsList = {"bgcolor", "alink", "vlink", "link", "text", "background"})
+	//local (attsList = {"bgcolor", "alink", "vlink", "link", "text", "background"})
 	
 	if pta == nil {
 		pta = html.getPageTableAddress ()};
@@ -19,7 +19,7 @@ on bodyTag (pta=nil) {
 	on add (s) {
 		htmlText = htmlText + s};
 	
-	«Add bgcolor, link, alink, vlink, and text attributes.
+	//Add bgcolor, link, alink, vlink, and text attributes.
 	for oneAtt in attslist {
 		if defined (pta^.[oneAtt]) {
 			local (s = pta^.[oneAtt]);

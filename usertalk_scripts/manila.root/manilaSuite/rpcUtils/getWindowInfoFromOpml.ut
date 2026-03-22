@@ -1,6 +1,6 @@
 on getWindowInfoFromOpml (s) {
-	«Return a windowInfo table derived from OPML text.
-		«12/11/00; 4:05:23 PM by PBS
+	//Return a windowInfo table derived from OPML text.
+		//12/11/00; 4:05:23 PM by PBS
 	
 	local (t);
 	new (tableType, @t);

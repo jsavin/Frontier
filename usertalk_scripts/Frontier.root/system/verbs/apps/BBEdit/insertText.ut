@@ -1,2 +1,2 @@
-on insertText (s) { «Insert literal text
+on insertText (s) { //Insert literal text
 	return (appleEvent (BBEdit.id, 'R*ch', 'Nsrt', '----', string (s)))}

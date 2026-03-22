@@ -1,7 +1,7 @@
 on isPermittedInSite (pluginName, adrSite) {
-	«Changes
-		«8/25/04; 3:14:39 PM by JES
-			«Created. Bottleneck for determining if a plugin is allowed to be enabled for a given site.
+	//Changes
+		//8/25/04; 3:14:39 PM by JES
+			//Created. Bottleneck for determining if a plugin is allowed to be enabled for a given site.
 	
 	local (adrPlugins = manilaSuite.plugins.getRegisteredPluginsAddress ());
 	local (adrPlugin = @adrPlugins^.[pluginName]);
@@ -27,5 +27,5 @@ on isPermittedInSite (pluginName, adrSite) {
 				flPermitted = false; //safest thing to do is hide the plugin if an error occurs running #security
 				log.add ("Can't run the #isVisible script for Manila plugin, " + pluginName + ", because: " + tryError, "security")}}};
 	return (flPermitted)};
-«bundle //test code
-	«isPermittedInSite ("metadata", @testManilaWebsite)
+//bundle //test code
+	//isPermittedInSite ("metadata", @testManilaWebsite)

@@ -1,6 +1,6 @@
 on buildIndex (adrSite, categoryName) {
-	«Build an index -- of stories, pictures, whatever. adrSite is the address of a site; categoryName is a name like "stories" or "pictures."
-		«10/09/00; 8:53:50 PM by PBS
+	//Build an index -- of stories, pictures, whatever. adrSite is the address of a site; categoryName is a name like "stories" or "pictures."
+		//10/09/00; 8:53:50 PM by PBS
 	
 	local (adrIndex = manilaSuite.discuss.getIndexAddress (adrSite, categoryName));
 	local (t);
@@ -21,7 +21,7 @@ on buildIndex (adrSite, categoryName) {
 		if manilaSuite.discuss.isInCategory (adrMsg, listedIn) { //is it in this category?
 			local (itemName = string.padWithZeros (adrMsg^.msgNum, 7));
 			local (value = true);
-			«adrTable^.[itemName] = true
+			//adrTable^.[itemName] = true
 			adrTable^.[itemName] = string.lower(adrMsg^.subject)}; //03/01/21, 17:00:39 by DAB
 		
 		thread.sleepfor(0)}; //03/01/02, 18:23:22 by DAB
@@ -32,7 +32,7 @@ on buildIndex (adrSite, categoryName) {
 	local (sortedByWanted = "name");
 	if  manilaSuite.getNewssitePref("flstoriesAlphaSort", adrSite, false, true) { //03/02/12, 13:46:35 by DAB
 		sortedByWanted = "value"};
-	«table.sortby("value")
+	//table.sortby("value")
 	if sortedByWanted != sortedBy {
 		local (oldTarg = target.set(@adrIndex^.index));
 		table.sortby(sortedByWanted); //03/02/12, 13:45:53 by DAB
@@ -42,5 +42,5 @@ on buildIndex (adrSite, categoryName) {
 	adrIndex^.sortedBy = sortedByWanted; //03/02/12, 13:50:11 by DAB
 	
 	return (true)};
-«buildindex(@uniquemarketingManilawebsite, "stories")
-«buildindex(@uniquemarketingManilawebsite, "pictures")
+//buildindex(@uniquemarketingManilawebsite, "stories")
+//buildindex(@uniquemarketingManilawebsite, "pictures")

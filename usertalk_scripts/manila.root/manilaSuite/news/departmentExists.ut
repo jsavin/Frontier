@@ -1,6 +1,6 @@
 on departmentExists (departmentName, adrSite) {
-	«Return true if the department exists, false otherwise.
-		«04/26/00; 12:52:53 AM by PBS
+	//Return true if the department exists, false otherwise.
+		//04/26/00; 12:52:53 AM by PBS
 	
 	local (adrDepartments = manilaSuite.news.getDepartmentTableAddress (adrSite));
 	if defined (adrDepartments^.[departmentName]) {

@@ -1,7 +1,7 @@
 on isEditor (sitename, username) {
-	«Changes
-		«4/14/07; 8:12:18 PM by LL
-			«Created. Return true if this person is an editor.
+	//Changes
+		//4/14/07; 8:12:18 PM by LL
+			//Created. Return true if this person is an editor.
 	if manilaSuite.rpcUtils.isManagingEditor (sitename, username) {
 		return (true)};
 	if manilaSuite.rpcUtils.isContentEditor (sitename, username) {

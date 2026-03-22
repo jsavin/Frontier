@@ -1,14 +1,14 @@
 on commonLog (pta, flDailyRoll=false) {
-	«This post-filter writes a log file in Common Log format of all the hits on the server.
-		«March 04, 1998 at 6:02:36 PM by WMF
-		«Change Notes:
-			«December 11, 1999 at 12:33:49 AM by AR
-				«If user.webserver.prefs.logFile is not defined, don't attempt to coerce the return value (a boolean) of webserver.getPref to a filespec. This bug was responsible for producing a stream of postfilter error messages in the webserver error log.
-			«07/10/00; 5:44:18 PM by PBS
-				«flDailyRoll is a new optional parameter. If true, then log files are stored in Guest Databases/ops/logs/commonLog/. A new log file is created each day. The filenames are of the form 2000-07-10.txt -- yyyy-mm-dd.txt.
-				«If flDailyRoll is false or not supplied, then the script works exactly the same as it always did.
-			«12/6/01; 9:29:53 PM by PBS
-				«New prefs: user.webserver.prefs.commonLog.flUseCommonLogDateFormat, flIncludeVirtualHosts, flIncludeReferers, flIncludeUserAgents. Controls date format, virtual hosts, referers, and user agents, respectively.
+	//This post-filter writes a log file in Common Log format of all the hits on the server.
+		//March 04, 1998 at 6:02:36 PM by WMF
+		//Change Notes:
+			//December 11, 1999 at 12:33:49 AM by AR
+				//If user.webserver.prefs.logFile is not defined, don't attempt to coerce the return value (a boolean) of webserver.getPref to a filespec. This bug was responsible for producing a stream of postfilter error messages in the webserver error log.
+			//07/10/00; 5:44:18 PM by PBS
+				//flDailyRoll is a new optional parameter. If true, then log files are stored in Guest Databases/ops/logs/commonLog/. A new log file is created each day. The filenames are of the form 2000-07-10.txt -- yyyy-mm-dd.txt.
+				//If flDailyRoll is false or not supplied, then the script works exactly the same as it always did.
+			//12/6/01; 9:29:53 PM by PBS
+				//New prefs: user.webserver.prefs.commonLog.flUseCommonLogDateFormat, flIncludeVirtualHosts, flIncludeReferers, flIncludeUserAgents. Controls date format, virtual hosts, referers, and user agents, respectively.
 	local (f);
 	local (flUseCommonLogDateFormat = false);
 	local (flIncludeVirtualHosts = false);

@@ -1,7 +1,7 @@
 on channelChanged (url) {
-	«Changes
-		«1/25/01; 7:26:29 PM by DW
-			«Read the service in thread, we want to be kind to the cloud. Gotta return quickly. (It was taking over 3 seconds to read it.)
+	//Changes
+		//1/25/01; 7:26:29 PM by DW
+			//Read the service in thread, we want to be kind to the cloud. Gotta return quickly. (It was taking over 3 seconds to read it.)
 	local (adrdata = xml.aggregator.init ());
 	local (adrservice = @adrdata^.services.[url], startticks = clock.ticks ());
 	if defined (adrservice^) {
@@ -10,5 +10,5 @@ on channelChanged (url) {
 			local (link = "<a href=\"" + url + "\">" + adrservice^.compilation.channeltitle + "</a>");
 			try {radio.log.add ("Channel change", link + " changed.", startticks)}}};
 	return (true)};
-«bundle //test code
-	«channelChanged ("http://www.salon.com/feed/RDF/salon_use.rdf")
+//bundle //test code
+	//channelChanged ("http://www.salon.com/feed/RDF/salon_use.rdf")

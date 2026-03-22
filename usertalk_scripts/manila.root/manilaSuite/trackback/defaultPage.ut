@@ -1,27 +1,27 @@
 on defaultPage (flRadioHosting=false, adrtrackback=nil, flCanDeleteTrackbacks=false) {
-	«Changes
-		«3/21/07; 2:57:08 PM by LL
-			«Do not display the TrackBack page if the feature is disabled.
-		«1/31/06; 1:01:46 AM by JES
-			«Rework counter reset and whenLastModified code for flRadioHosting, when deleting trackbacks. May also fix incorrect trackback counters after one or more trackbacks are deleted in a Radio blog.
-		«1/13/06; 3:59:38 AM by JES
-			«If hosting trackback for a Radio blog, add form elements to let Radio users log in to delete trackbacks.
-		«1/20/05; 1:53:02 AM by JES
-			«Set pta^.flAnchorRelNofollow to true. Causes Manila's finalFilter to add a rel="nofollow" attribute to all <a ... > tags.
-		«10/27/04; 2:34:07 PM by DAB
-			«If an argument named link is specified in the search-args for the trackback page, use its value for the posturl (linking back to the original post), instead of the URL returned by manilaSuite.getPermalinkUrl. This makes it possible to use Manila's trackback code outside of the news items context.
-		«09/01/04; 1:52:33 PM by PR
-			«Added support for radio trackback deletion
-		«7/21/04; 4:49:21 PM by JES
-			«Added support for TrackBack deletion by managing/content editors. Added permalinks.
-		«2003
-			«7/22/03; 6:52:07 PM by JES
-				«New optional parameters, flRadioHosting -- default false, and adrtrackback -- default nil.
-				«If flRadioHosting is true and adrtrackback is specified, then we render trackbacks from the table specified by adrtrackback.
-				«Used for hosting incoming trackback pings for hosted Radio weblogs.
-				«Called by manilaSuite.radioHosting.commentsPage.
-			«7/14/03; 3:27:46 AM by JES
-				«Created. Generate a pop-up window page with incoming trackbacks.
+	//Changes
+		//3/21/07; 2:57:08 PM by LL
+			//Do not display the TrackBack page if the feature is disabled.
+		//1/31/06; 1:01:46 AM by JES
+			//Rework counter reset and whenLastModified code for flRadioHosting, when deleting trackbacks. May also fix incorrect trackback counters after one or more trackbacks are deleted in a Radio blog.
+		//1/13/06; 3:59:38 AM by JES
+			//If hosting trackback for a Radio blog, add form elements to let Radio users log in to delete trackbacks.
+		//1/20/05; 1:53:02 AM by JES
+			//Set pta^.flAnchorRelNofollow to true. Causes Manila's finalFilter to add a rel="nofollow" attribute to all <a ... > tags.
+		//10/27/04; 2:34:07 PM by DAB
+			//If an argument named link is specified in the search-args for the trackback page, use its value for the posturl (linking back to the original post), instead of the URL returned by manilaSuite.getPermalinkUrl. This makes it possible to use Manila's trackback code outside of the news items context.
+		//09/01/04; 1:52:33 PM by PR
+			//Added support for radio trackback deletion
+		//7/21/04; 4:49:21 PM by JES
+			//Added support for TrackBack deletion by managing/content editors. Added permalinks.
+		//2003
+			//7/22/03; 6:52:07 PM by JES
+				//New optional parameters, flRadioHosting -- default false, and adrtrackback -- default nil.
+				//If flRadioHosting is true and adrtrackback is specified, then we render trackbacks from the table specified by adrtrackback.
+				//Used for hosting incoming trackback pings for hosted Radio weblogs.
+				//Called by manilaSuite.radioHosting.commentsPage.
+			//7/14/03; 3:27:46 AM by JES
+				//Created. Generate a pop-up window page with incoming trackbacks.
 	local (pta = html.getPageTableAddress (), htmltext);
 	pta^.flAnchorRelNofollow = true; //JES 1/20/05: cause Manila's finalFilter to add a rel="nofollow" to all <a ... > tags
 	
@@ -75,7 +75,7 @@ on defaultPage (flRadioHosting=false, adrtrackback=nil, flCanDeleteTrackbacks=fa
 				adrtrackback = @adrmsg^.trackback;
 				adrurls = @adrtrackback^.inbound.urls;
 				trackbackurl = string.replace (manilaSuite.getSiteUrl (), "//", "/\\/") + "newsItems/trackback/ping$" + adrmsg^.msgnum;
-				«posturl = manilaSuite.getPermalinkUrl (adrsite, adrmsg)
+				//posturl = manilaSuite.getPermalinkUrl (adrsite, adrmsg)
 				if defined (args.link) { //04/10/24, 19:29:38 by DAB
 					posturl = args.link}
 				else {
@@ -105,7 +105,7 @@ on defaultPage (flRadioHosting=false, adrtrackback=nil, flCanDeleteTrackbacks=fa
 	
 	local (loginError = "");
 	on addRadioModeration () {
-		«1/13/06; 3:37:11 AM by JES: Cribbed from manilaSuite.radioHosting.commentsPage
+		//1/13/06; 3:37:11 AM by JES: Cribbed from manilaSuite.radioHosting.commentsPage
 		if flRadioHosting {
 			local (s = "");
 			if !flCanDeleteTrackbacks {
@@ -114,7 +114,7 @@ on defaultPage (flRadioHosting=false, adrtrackback=nil, flCanDeleteTrackbacks=fa
 				s = s + ("<p><hr size=\"1\" width=\"100%\"><p>" + manilaSuite.getString ("radioHosting.commentModerationPrompt") + "<br /><br /><b>Password:</b> <input name=\"password\" type=\"password\" /> <input type=\"submit\" value=\"" + manilaSuite.getString ("common.submitButton") + "\" /></p>\r");
 				s = s + "<input type=\"hidden\" name=\"c\" value=\"radioLogin\" />"}
 			else {
-				«logout message
+				//logout message
 				s = s + "<p><a target=\"_self\" href=\"" + pta^.path + "$trackback?c=radioLogout&" + pta^.searchArgs + "\">" + manilaSuite.getString ("radioHosting.disableCommentDeletion") + "</a></p>"};
 			return (s)};
 		return ""};
@@ -181,29 +181,29 @@ on defaultPage (flRadioHosting=false, adrtrackback=nil, flCanDeleteTrackbacks=fa
 			if adrurl^.title == "" {
 				itemLink = adrurl^.url};
 			s = string.replaceAll (s, "{itemLink}", "<a name=\"a" + string.hashMd5 (adrurl^.url) + "\"></a>" + itemLink, false);
-			«bundle //1/15/05 by DW -- add rel="nofollow" on all anchors
-				«s = string.replaceall (s, "<a", "<a rel=\"nofollow\"", false)
+			//bundle //1/15/05 by DW -- add rel="nofollow" on all anchors
+				//s = string.replaceall (s, "<a", "<a rel=\"nofollow\"", false)
 			add (s);
 			bundle { //flip the bgcolor
 				if bgcolor == bgcolor1 {
 					bgcolor = bgcolor2}
 				else {
 					bgcolor = bgcolor1}}}};
-	«if flCanDeleteTrackbacks //JES 7/21/04: delete button for comment deletion
-		«local (lowerTrimmedTemplate = string.lower (string.trimWhiteSpace (string (adrprefs^.templates.itemTemplate) )) )
-		«local (flAddTableTags = false)
-		«if lowerTrimmedTemplate contains "<tr"
-			«if not (lowerTrimmedTemplate contains "<table")
-				«flAddTableTags = true
-		«local (deleteButton = "<input type=\"submit\" name=\"deleteTrackbacks\" value=\"" + manilaSuite.getString ("radioHosting.deleteTrackbacksButton") + "\" />")
-		«if flAddTableTags
-			«add ("<tr bgcolor=\"" + bgcolor + "\"><td>" + deleteButton + "</td></tr>")
-		«else
-			«add ("<br /><br />" + deleteButton)
-		«add ("</form>")
+	//if flCanDeleteTrackbacks //JES 7/21/04: delete button for comment deletion
+		//local (lowerTrimmedTemplate = string.lower (string.trimWhiteSpace (string (adrprefs^.templates.itemTemplate) )) )
+		//local (flAddTableTags = false)
+		//if lowerTrimmedTemplate contains "<tr"
+			//if not (lowerTrimmedTemplate contains "<table")
+				//flAddTableTags = true
+		//local (deleteButton = "<input type=\"submit\" name=\"deleteTrackbacks\" value=\"" + manilaSuite.getString ("radioHosting.deleteTrackbacksButton") + "\" />")
+		//if flAddTableTags
+			//add ("<tr bgcolor=\"" + bgcolor + "\"><td>" + deleteButton + "</td></tr>")
+		//else
+			//add ("<br /><br />" + deleteButton)
+		//add ("</form>")
 	add (footer);
 	
 	return (htmltext)};
-«bundle //test code
-	«html.setPageTableAddress (@workspace.pt)
-	«defaultPage (true, @tbtestManilaWebsite.["#newsSite"].radioHosting.trackback.users.["0001000"].["841"].trackback)
+//bundle //test code
+	//html.setPageTableAddress (@workspace.pt)
+	//defaultPage (true, @tbtestManilaWebsite.["#newsSite"].radioHosting.trackback.users.["0001000"].["841"].trackback)

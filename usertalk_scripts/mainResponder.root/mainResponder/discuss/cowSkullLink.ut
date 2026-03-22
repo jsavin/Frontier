@@ -1,6 +1,6 @@
-«Changes
-	«Thu, 04 Mar 1999 03:04:25 GMT by AR
-		«config.mainresponder.urls is no longer referenced - we look at the page table instead
+//Changes
+	//Thu, 04 Mar 1999 03:04:25 GMT by AR
+		//config.mainresponder.urls is no longer referenced - we look at the page table instead
 on cowSkullLink (linetext, msgnum) {
 	local (picturelink = mainResponder.discuss.cowSkullImage ());
 	local (pta = html.getPageTableAddress ());
@@ -15,5 +15,5 @@ on cowSkullLink (linetext, msgnum) {
 	add ("</tr>"); indentlevel--;
 	add ("</table>"); indentlevel--;
 	return (htmltext)};
-«bundle //test code
-	«dialog.alert (cowSkullLink ("blah blah blah", 716))
+//bundle //test code
+	//dialog.alert (cowSkullLink ("blah blah blah", 716))

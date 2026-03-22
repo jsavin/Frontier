@@ -1,11 +1,11 @@
 on drawCalendar ( adrcalendar=nil, urlprefix="", colwidth=32, rowheight=22, tableborder=0, bgcolor=nil, monthYearTemplate="<font size=\"+2\" face=\"helvetica,arial\" color=\"black\"><b><center>***</center></b></font>", dayNameTemplate="<font size=\"-1\" color=\"gray\"><center>***</center></font>", dayTemplate="<font size=\"+0\" color=\"black\"><center><b>***</b></center></font>", curdate=clock.now (), urldelimiter="/", cssPrefix=nil, pta=nil) {
 	
-	«4/18/00; 2:21:10 PM by JES
-		«A wrapper for mainResponder.calendar.draw which returns a localized version of the calendar HTML
-		«Note that this script also takes pta as an optional parameter because we need it to determine the language to render in
-		«Changes:
-			«06/01/00; 7:01:12 PM by JES
-				«put the call to mainResponder.calendar.draw in a try block to avoid breakage in non-localized or non-CSS-aware versions of the Frontier application.
+	//4/18/00; 2:21:10 PM by JES
+		//A wrapper for mainResponder.calendar.draw which returns a localized version of the calendar HTML
+		//Note that this script also takes pta as an optional parameter because we need it to determine the language to render in
+		//Changes:
+			//06/01/00; 7:01:12 PM by JES
+				//put the call to mainResponder.calendar.draw in a try block to avoid breakage in non-localized or non-CSS-aware versions of the Frontier application.
 	
 	if pta == nil {
 		pta = html.getPageTableAddress ()};

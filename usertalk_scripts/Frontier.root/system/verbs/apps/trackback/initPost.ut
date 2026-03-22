@@ -1,7 +1,7 @@
 on initPost (adrpost) {
-	«Changes
-		«4/23/03; 8:29:08 PM by DW
-			«Created. Initialize a post so it has a trackback table with inbound and outbound sub-tables. A post table can be a Manila discussion group message or a Radio post.
+	//Changes
+		//4/23/03; 8:29:08 PM by DW
+			//Created. Initialize a post so it has a trackback table with inbound and outbound sub-tables. A post table can be a Manila discussion group message or a Radio post.
 	adrtrackback = @adrpost^.trackback;
 	if not defined (adrtrackback^) {
 		new (tabletype, adrtrackback)};

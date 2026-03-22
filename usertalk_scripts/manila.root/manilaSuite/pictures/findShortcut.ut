@@ -1,6 +1,6 @@
 on findShortcut (adrMsgTable, adrName) {
-	«Find the shortcut in the glossary that refers to this image. There may not be one. adrName^ gets the name of the item if it exists. Return true if found, false otherwise.
-		«01/12/00; 2:35:05 PM by PBS
+	//Find the shortcut in the glossary that refers to this image. There may not be one. adrName^ gets the name of the item if it exists. Return true if found, false otherwise.
+		//01/12/00; 2:35:05 PM by PBS
 	
 	local (pta = html.getPageTableAddress ());
 	local (adrGlossary = pta^.glossary);
@@ -12,7 +12,7 @@ on findShortcut (adrMsgTable, adrName) {
 	
 	local (shortcut);
 	
-	«First try to get it from the image subtable.
+	//First try to get it from the image subtable.
 	if manilaSuite.pictures.getShortcutFromImageTable (adrMsgTable, @shortcut) {
 		if nameIsInGlossary (shortcut) {
 			adrName^ = shortcut;
@@ -21,7 +21,7 @@ on findShortcut (adrMsgTable, adrName) {
 			return (false)}}; //the shortcut for this image has been deleted
 	
 	bundle { //it's not in the image table, find it in the glossary
-		«This is slower than just pulling it from the image subtable, which is why Manila now stores the shortcut name in the image subtable.
+		//This is slower than just pulling it from the image subtable, which is why Manila now stores the shortcut name in the image subtable.
 		
 		local (glossaryText = manilaSuite.unTaint (adrMsgTable^.subject));
 		local (imageUrl = pta^.responderAttributes.urls^.imageViewer + adrMsgTable^.msgNum);
@@ -32,14 +32,14 @@ on findShortcut (adrMsgTable, adrName) {
 			local (adrGlossaryItem = @adrGlossary^.[entryName]);
 			local (lowerItem = string.lower (adrGlossaryItem^));
 			if lowerItem beginsWith "<img src=\"" + string.lower (imageUrl) + "\"" {
-				«It's a glossary entry to the same image.
+				//It's a glossary entry to the same image.
 				return (true)};
 			return (false)};
 		if isSameGlossaryEntry (glossaryText) { //most of the time this will be true
 			adrName^ = glossaryText;
 			return (true)};
 		
-		«Worst-case scenario: the shortcut isn't in the image subtable, and it's not the subject of the dg message. Loop through the glossary.
+		//Worst-case scenario: the shortcut isn't in the image subtable, and it's not the subject of the dg message. Loop through the glossary.
 		bundle {
 			local (adrItem);
 			for adrItem in adrGlossary {
@@ -48,5 +48,5 @@ on findShortcut (adrMsgTable, adrName) {
 					adrName^ = itemName;
 					return (true)}}}};
 	
-	«No shortcut for this image exists. Return false.
+	//No shortcut for this image exists. Return false.
 	return (false)}

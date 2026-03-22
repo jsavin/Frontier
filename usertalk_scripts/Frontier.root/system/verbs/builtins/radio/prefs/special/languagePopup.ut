@@ -1,10 +1,10 @@
 on languagePopup (prompt, adrlanguage) {
-	«Changes
-		«1/21/02; 6:54:01 PM by DW
-			«Created.
+	//Changes
+		//1/21/02; 6:54:01 PM by DW
+			//Created.
 	local (pta = html.getpagetableaddress ());
 	if pta^.method == "POST" {
-		«scratchpad.args = pta^.radioresponder.postargs; edit (@scratchpad.args)
+		//scratchpad.args = pta^.radioresponder.postargs; edit (@scratchpad.args)
 		adrlanguage^ = pta^.radioresponder.postargs.language};
 	local (languagepopup);
 	bundle { //set languagePopup

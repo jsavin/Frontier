@@ -1,62 +1,62 @@
 on adminPage () {
-	«Changes:
-		«4/10/06; 4:16:54 PM by JES
-			«Fix a bug in the role pop-up on the add multiple members section.
-		«2/22/06; 7:28:15 PM by JES
-			«New bulletin option when adding multiple members. Default is plain-text bulletins.
-			«Reformatted script to match UserLand code style.
-		«2004:
-			«04/05/31, 10:17:10 by DAB
-				«complete rewrite; most fucntions moved or factored out 
-				«messages at manilaData.localization.languages.english.strings.admin
-		«2003:
-			«9/30/03; 1:04:12 PM by JES
-				«Store member passwords as binary values.
-			«5/6/03; 12:51:35 AM by JES
-				«Increased vertical spacing between various functions. Fixed rendering problem in Netscape 4.
-		«2002:
-			«9/10/02; 10:44:39 PM by JES
-				«Added a multi-user signup section.
-			«8/10/02; 8:01:43 PM by JES
-				«New field in the add new member form, Email bulletins -- you can specify none, plain text, or HTML bulletins. The default is retained after posting the form.
-				«Use the localized "Content Editor" string.
-			«1/25/02; 6:09:08 PM by PBS
-				«Performance enhancement in the local "add" routine -- add a trailing semicolon.
-		«2001:
-			«12/10/01; 6:51:46 PM by PBS
-				«When creating a new member, one may create the member as a Content Editor.
-			«07/27/01; 7:14:20 PM by JES
-				«Added two new fields to the Add a Member section: A checkbox for sending a welcome message to the new member, and a popup for choosing to add the member to the contributing or managing editors lists.
-			«03/23/01; 3:47:33 PM by PBS
-				«Lists of stories and pictures on this page now act like the Stories and Pictures pages -- they're broken up into multiple screens. This makes this page far more useable.
-				«This page used to use its own code for generating those lists -- now it calls the same routine that the Stories and Pictures pages call.
-			«03/23/01; 2:51:19 PM by PBS
-				«You can now delete members via the Members section of the Admin page.
-		«2000:
-			«02/12/00; 11:40:59 AM by PBS
-				«Add the Custody section at the bottom of the page.
-			«02/12/00; 12:37:48 PM by PBS
-				«Respect the editor's choice of separator colors.
-			«03/14/00; 3:44:56 PM by PBS
-				«Added support for static rendering -- click a button to render the entire site.
-			«04/17/00; 3:09:16 AM by JES
-				«localized static strings and dates.
-			«05/01/00; 6:29:44 PM by JES
-				«Changed getString calls to use a replacement table address instead of a lists
-			«05/09/00; 10:33:25 PM by PBS
-				«Check referer to defeat the client side trojan horse.
-			«05/11/00; 5:35:40 PM by JES
-				«merged in Brent's security fix
-			«10/09/00; 10:16:08 PM by PBS
-				«Pass adrSite to routines that promote, demote, and delete messages, so indexes can get properly updated.
-		«1999:
-			«10/28/99; 11:49:06 AM by PBS
-				«Added forms for blocking and unblocking members.
-				«Major code cleanup.
-			«10/30/99; 4:57:41 PM by PBS
-				«Untaint post args, untaint URLs.
-			«?/?/? by PBS
-				«Build the Admin page.
+	//Changes:
+		//4/10/06; 4:16:54 PM by JES
+			//Fix a bug in the role pop-up on the add multiple members section.
+		//2/22/06; 7:28:15 PM by JES
+			//New bulletin option when adding multiple members. Default is plain-text bulletins.
+			//Reformatted script to match UserLand code style.
+		//2004:
+			//04/05/31, 10:17:10 by DAB
+				//complete rewrite; most fucntions moved or factored out 
+				//messages at manilaData.localization.languages.english.strings.admin
+		//2003:
+			//9/30/03; 1:04:12 PM by JES
+				//Store member passwords as binary values.
+			//5/6/03; 12:51:35 AM by JES
+				//Increased vertical spacing between various functions. Fixed rendering problem in Netscape 4.
+		//2002:
+			//9/10/02; 10:44:39 PM by JES
+				//Added a multi-user signup section.
+			//8/10/02; 8:01:43 PM by JES
+				//New field in the add new member form, Email bulletins -- you can specify none, plain text, or HTML bulletins. The default is retained after posting the form.
+				//Use the localized "Content Editor" string.
+			//1/25/02; 6:09:08 PM by PBS
+				//Performance enhancement in the local "add" routine -- add a trailing semicolon.
+		//2001:
+			//12/10/01; 6:51:46 PM by PBS
+				//When creating a new member, one may create the member as a Content Editor.
+			//07/27/01; 7:14:20 PM by JES
+				//Added two new fields to the Add a Member section: A checkbox for sending a welcome message to the new member, and a popup for choosing to add the member to the contributing or managing editors lists.
+			//03/23/01; 3:47:33 PM by PBS
+				//Lists of stories and pictures on this page now act like the Stories and Pictures pages -- they're broken up into multiple screens. This makes this page far more useable.
+				//This page used to use its own code for generating those lists -- now it calls the same routine that the Stories and Pictures pages call.
+			//03/23/01; 2:51:19 PM by PBS
+				//You can now delete members via the Members section of the Admin page.
+		//2000:
+			//02/12/00; 11:40:59 AM by PBS
+				//Add the Custody section at the bottom of the page.
+			//02/12/00; 12:37:48 PM by PBS
+				//Respect the editor's choice of separator colors.
+			//03/14/00; 3:44:56 PM by PBS
+				//Added support for static rendering -- click a button to render the entire site.
+			//04/17/00; 3:09:16 AM by JES
+				//localized static strings and dates.
+			//05/01/00; 6:29:44 PM by JES
+				//Changed getString calls to use a replacement table address instead of a lists
+			//05/09/00; 10:33:25 PM by PBS
+				//Check referer to defeat the client side trojan horse.
+			//05/11/00; 5:35:40 PM by JES
+				//merged in Brent's security fix
+			//10/09/00; 10:16:08 PM by PBS
+				//Pass adrSite to routines that promote, demote, and delete messages, so indexes can get properly updated.
+		//1999:
+			//10/28/99; 11:49:06 AM by PBS
+				//Added forms for blocking and unblocking members.
+				//Major code cleanup.
+			//10/30/99; 4:57:41 PM by PBS
+				//Untaint post args, untaint URLs.
+			//?/?/? by PBS
+				//Build the Admin page.
 	local (pta = html.getPageTableAddress ());
 	
 	if not pta^.flManagingEditor { //managing editors only

@@ -1,5 +1,5 @@
 on buildPageTable (adrObject, adrPageTable=@websites.["#data"], templateName=nil) {
-	«Thu, Nov 28, 1996 at 6:09:18 AM by DW
+	//Thu, Nov 28, 1996 at 6:09:18 AM by DW
 	local (flPreview = false, pc = file.getPathChar ());
 	if defined (html.data.flPreview) { //See html.commands.previewPage, 5.0 11/29/97 DW
 		flPreview = html.data.flPreview;
@@ -7,11 +7,11 @@ on buildPageTable (adrObject, adrPageTable=@websites.["#data"], templateName=nil
 		try {delete (@html.data.flPreview)}};
 	
 	adrPageTable^.adrObject = adrObject;
-	adrPageTable^.indirectTemplate = true; «4.1
+	adrPageTable^.indirectTemplate = true; //4.1
 	
 	on buildTable (adrObject, adrPageTable) {
 		local (nomad = parentOf (adrObject^), subdirpath = "");
-		on addItemToPageTable (adr) { «adr points to an attribute
+		on addItemToPageTable (adr) { //adr points to an attribute
 			local (name = nameOf (adr^));
 			if name beginsWith "#" {
 				name = string.delete (name, 1, 1)};
@@ -31,17 +31,17 @@ on buildPageTable (adrObject, adrPageTable=@websites.["#data"], templateName=nil
 					adrPageTable^.[name] = string (adr^)};
 				if lowername == "ftpsite" {
 					adrPageTable^.subDirectoryPath = subdirpath;
-					adrPageTable^.adrSiteRootTable = nomad}; «4.2
-				if lowername == "template" { «4.1, 4.2
+					adrPageTable^.adrSiteRootTable = nomad}; //4.2
+				if lowername == "template" { //4.1, 4.2
 					if (objecttype == wptexttype) or (objecttype == outlinetype) {
-						«Wed, Nov 20, 1996 at 7:58:21 AM by DW -- allow outlines to be templates
+						//Wed, Nov 20, 1996 at 7:58:21 AM by DW -- allow outlines to be templates
 						adrPageTable^.indirectTemplate = false;
 						if objecttype == outlinetype {
-							«dialog.alert (name) //debugging
-							«scratchpad.adr = adr //debugging
+							//dialog.alert (name) //debugging
+							//scratchpad.adr = adr //debugging
 							adrPageTable^.[name] = adr^}}}};
 			return (true)};
-		loop { «pop out to the root looking for #directives
+		loop { //pop out to the root looking for #directives
 			local (i);
 			if nomad == nil or nomad == @root {
 				break};
@@ -61,9 +61,9 @@ on buildPageTable (adrObject, adrPageTable=@websites.["#data"], templateName=nil
 	else {
 		buildTable (adrObject, adrPageTable)};
 	
-	«Check for type of glossary and tools entries.
-		«They should be addresses pointing to tables.
-		«This is necessary because glossary and tools tables may not have a leading # character.
+	//Check for type of glossary and tools entries.
+		//They should be addresses pointing to tables.
+		//This is necessary because glossary and tools tables may not have a leading # character.
 	bundle {
 		on checkValue (name) {
 			if typeOf (adrPageTable^.[name]) == addressType {
@@ -86,11 +86,11 @@ on buildPageTable (adrObject, adrPageTable=@websites.["#data"], templateName=nil
 		checkValue ("tools");
 		checkValue ("glossary")};
 	
-	«Check if we're running inside the website framework responder.
+	//Check if we're running inside the website framework responder.
 	if html.inResponder (adrPageTable) {
 		table.assign (@adrPageTable^.fileExtension, ".wsf")};
 	
-	«make sure ftpSite, template, title etc are set to something
+	//make sure ftpSite, template, title etc are set to something
 	if not defined (adrPageTable^.ftpSite) { //must be set to something
 		try {
 			adrPageTable^.ftpSite = nameOf (user.html.sites.default)}
@@ -103,15 +103,15 @@ on buildPageTable (adrObject, adrPageTable=@websites.["#data"], templateName=nil
 	if not defined (adrPageTable^.subDirectoryPath) { //must be set to something
 		adrPageTable^.subDirectoryPath = ""};
 	
-	«Scalable content: support for named templates.
+	//Scalable content: support for named templates.
 	if templateName != nil { //was an alternate template specified?
-		«Saturday, May 30, 1998 at 4:11:52 PM by PBS
+		//Saturday, May 30, 1998 at 4:11:52 PM by PBS
 		adrPageTable^.indirectTemplate = true;
 		table.assign (@adrPageTable^.template, templateName)};
 	
 	local (adrSiteTable = html.getSiteTable (adrPageTable));
 	bundle { //add name of current file writer
-		«PBS 4/15/98
+		//PBS 4/15/98
 		local (method);
 		if flPreview {
 			method = "file"}
@@ -126,14 +126,14 @@ on buildPageTable (adrObject, adrPageTable=@websites.["#data"], templateName=nil
 		adrPageTable^.fileWriter = method};
 	
 	if not defined (adrPageTable^.fname) {
-		adrPageTable^.fname = html.getFileName (nameOf (adrObject^), adrPageTable)}; «4.0.1
+		adrPageTable^.fname = html.getFileName (nameOf (adrObject^), adrPageTable)}; //4.0.1
 	bundle { //4.2, set f
 		if not defined (adrSiteTable^) {
 			scriptError ("Site table is missing at \"" + adrSiteTable + "\".")};
 		local (folder = html.getSiteFolder (adrPageTable));
 		adrPageTable^.f = folder + adrPageTable^.subDirectoryPath + adrPageTable^.fname;
 		if not defined (adrPageTable^.requestHeaders) { //PBS 12/3/98
-			«Don't create the folders if this is a dynamic page.
+			//Don't create the folders if this is a dynamic page.
 			file.sureFilePath (adrPageTable^.f)}};
 	bundle { //set url
 		local (url = adrSiteTable^.url);

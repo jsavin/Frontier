@@ -1,2 +1,2 @@
-on start (appTable) { «start talking with the application, might launch it
+on start (appTable) { //start talking with the application, might launch it
 	return (app.startWithDocument (appTable, nil))}

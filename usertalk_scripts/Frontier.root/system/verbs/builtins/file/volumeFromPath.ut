@@ -1,5 +1,5 @@
 on volumeFromPath (path) {
-	if path == "" { «defensive driving
+	if path == "" { //defensive driving
 		return ("")};
 	path = string.nthField (path, ':', 1) + ':';
 	case sys.os () {

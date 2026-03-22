@@ -1,7 +1,7 @@
 on releaseRenderedPage (adrObject = table.getCursorAddress ()) {
-	«Changes notes:
-		«Allow binary items in any table -- images, for example -- to be published.
-		«Tue, Aug 11, 1998 at 8:50:23 PM by PBS
+	//Changes notes:
+		//Allow binary items in any table -- images, for example -- to be published.
+		//Tue, Aug 11, 1998 at 8:50:23 PM by PBS
 	local (flShiftKey = kb.shiftKey ()); //sample it before we build the page
 	local (s, adrPageTable = @websites.["#data"], url);
 	local (flDisplayEachRendering = false);
@@ -10,8 +10,8 @@ on releaseRenderedPage (adrObject = table.getCursorAddress ()) {
 		on noPageError () {
 			dialog.alert ("Can't publish \"" + nameOf (adrObject^) + "\" because it's not a page.")};
 		on checkParent (adr) {
-			«Check if this object is enclosed by a table whose name begins with #
-				«If so, this isn't a page, but a tool, glossary item, filter, or ftpSite element.
+			//Check if this object is enclosed by a table whose name begins with #
+				//If so, this isn't a page, but a tool, glossary item, filter, or ftpSite element.
 			local (nomad = adr);
 			loop {
 				if nomad == nil or nomad == @root {
@@ -30,25 +30,25 @@ on releaseRenderedPage (adrObject = table.getCursorAddress ()) {
 	
 	on buildPage (templateName=nil) {
 		local (flDisplay = true);
-		«Call file writer startup script.
-			«Tuesday, April 14, 1998 at 3:41:48 PM by PBS
+		//Call file writer startup script.
+			//Tuesday, April 14, 1998 at 3:41:48 PM by PBS
 		html.callFileWriterStartup (adrObject, adrPageTable, templateName);
 		
-		«Build the page.
+		//Build the page.
 		s = html.buildObject (adrObject, adrPageTable, templateName);
 		
-		«Write the page to disk (or upload via ftp, etc.)
+		//Write the page to disk (or upload via ftp, etc.)
 		html.ftpText (s, adrPageTable);
 		
-		«Call file writer shutdown script.
+		//Call file writer shutdown script.
 		html.callFileWriterShutdown (adrObject, adrPageTable, templateName);
 		
-		«Should this page be displayed in the browser?
+		//Should this page be displayed in the browser?
 		if templateName != nil {
 			if not flDisplayEachRendering {
 				flDisplay = false}};
 		
-		«Show in browser.
+		//Show in browser.
 		if flDisplay {
 			if (string.lower (adrPageTable^.fileWriter) == "file") and (not flShiftKey) {
 				webBrowser.openDocument (adrPageTable^.f)}
@@ -60,10 +60,10 @@ on releaseRenderedPage (adrObject = table.getCursorAddress ()) {
 	bundle { //are there additional templates that should be used?
 		local (templateList = html.getExtraTemplates (adrObject));
 		if templateList {
-			«Get the displayEachRendering pref.
+			//Get the displayEachRendering pref.
 			flDisplayEachRendering = html.getPagePref ("displayEachRendering", parentOf (adrObject^), adrPageTable);
 			
-			«Loop through list of templates.
+			//Loop through list of templates.
 			local (i);
 			for i = 1 to sizeOf (templateList) {
 				buildPage (templateList [i])}}};

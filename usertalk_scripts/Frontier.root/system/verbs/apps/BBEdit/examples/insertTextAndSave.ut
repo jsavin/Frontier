@@ -1,10 +1,10 @@
 on insertTextAndSave() {
-	«Revisions:
-		«10/31/95 ECT: changed dialog.twoWay() to dialog.confirm()
-		«08/19/95 ECT: ported from AppleScript to UserTalk
-	«Description:
-		«Short sample which allows you to select a file, then uses BBEdit to
-		«insert some text and save the result.
+	//Revisions:
+		//10/31/95 ECT: changed dialog.twoWay() to dialog.confirm()
+		//08/19/95 ECT: ported from AppleScript to UserTalk
+	//Description:
+		//Short sample which allows you to select a file, then uses BBEdit to
+		//insert some text and save the result.
 	with objectModel, BBEdit, eventInfo {
 		if (file.getFileDialog("Select a document:", @sourceFileName, 'TEXT')) {
 			openDocument(sourceFileName);

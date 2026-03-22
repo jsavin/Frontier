@@ -1,19 +1,19 @@
 on getString (stringId, replacementTableAddress = nil, languageTableAddress = nil, pta = nil) {
-	«Looks up a string in the localization table. 4/9/00; 9:49:38 PM by Jake
-		«stringId is the dot-delimited id of the string, inside the language table's strings table
-		«replacementTableAdr is the address of a table containing name/value pairs to replace in the localized string
-		«languageTableAddress is the address of a language's lookup table.
-			«If it's nil, we get the address using mainResponder.localization.getLanguageTableAddress.
-		«Changes:
-			«02/17/05; 2:03:28 AM by JES
-				«Respect the flLocalizationCache directive. This allows developers to more easily work with their own localizations. Default is to use the cache, preserving current behavior. Default value may be overwritten in #prefs, in the page table, in mainResponder directives, or in user.html.prefs.
-			«03/14/01; 6:38:19 PM by PBS
-				«Another optimization -- do caching when the replacementTableAddress is nil.
-			«03/14/01; 3:06:57 PM by PBS
-				«Optimization: look in the page table for the language table address.
-			«05/01/00; 1:45:38 PM by JES
-				«This script is now a wrapper for the new Frontier.getString verb.
-				«Changed replacement handling to use a name/value pair table, instead of a list.
+	//Looks up a string in the localization table. 4/9/00; 9:49:38 PM by Jake
+		//stringId is the dot-delimited id of the string, inside the language table's strings table
+		//replacementTableAdr is the address of a table containing name/value pairs to replace in the localized string
+		//languageTableAddress is the address of a language's lookup table.
+			//If it's nil, we get the address using mainResponder.localization.getLanguageTableAddress.
+		//Changes:
+			//02/17/05; 2:03:28 AM by JES
+				//Respect the flLocalizationCache directive. This allows developers to more easily work with their own localizations. Default is to use the cache, preserving current behavior. Default value may be overwritten in #prefs, in the page table, in mainResponder directives, or in user.html.prefs.
+			//03/14/01; 6:38:19 PM by PBS
+				//Another optimization -- do caching when the replacementTableAddress is nil.
+			//03/14/01; 3:06:57 PM by PBS
+				//Optimization: look in the page table for the language table address.
+			//05/01/00; 1:45:38 PM by JES
+				//This script is now a wrapper for the new Frontier.getString verb.
+				//Changed replacement handling to use a name/value pair table, instead of a list.
 	
 	if pta == nil {
 		pta = html.getPageTableAddress ()};

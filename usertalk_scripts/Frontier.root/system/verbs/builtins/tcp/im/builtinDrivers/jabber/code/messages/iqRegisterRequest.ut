@@ -1,10 +1,10 @@
 on iqRegisterRequest ( idTbl, connection = @system.temp.jabber.connection ) {
-	«Changes
-		«7/29/02; 11:00:25 PM by JES
-			«Send the connection's host as the to attribute on the iq element, instead of "jabber.xlogs.net".
-		«5/14/02; 1:51:34 PM by JB
-			«Changelog created.
-	«Handles when the user needs to create an account; this sends the "What info do you want?" request. See http://docs.jabber.org/jpg/html/main.html#REFIQREGISTER.
+	//Changes
+		//7/29/02; 11:00:25 PM by JES
+			//Send the connection's host as the to attribute on the iq element, instead of "jabber.xlogs.net".
+		//5/14/02; 1:51:34 PM by JB
+			//Changelog created.
+	//Handles when the user needs to create an account; this sends the "What info do you want?" request. See http://docs.jabber.org/jpg/html/main.html#REFIQREGISTER.
 	on addAtt ( XMLadr, name, value ) {
 		if not defined ( XMLadr^.["/atts"] ) {
 			new ( tableType, @XMLadr^.["/atts"] )};

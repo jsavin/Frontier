@@ -1,13 +1,13 @@
 on editStory (adrMsgTable, url, pta=nil) {
-	«Send a message to Pike: please open a window to edit this story.
-		«01/13/00; 4:08:53 PM by PBS
-		«Changes:
-			«02/05/00; 5:47:55 PM by PBS
-				«Add the windowInfo table to the storyInfo struct.
-			«04/10/00; 10:46:02 AM by PBS
-				«If this is a Mac, convert the body from Mac to Latin text, since Pike always expects Latin text.
-			«11/02/00; 9:52:09 PM by JES
-				«Add flServerAcceptsOpml to the story info struct. It's always true because we know the seerver is up-to-date if this change exists.
+	//Send a message to Pike: please open a window to edit this story.
+		//01/13/00; 4:08:53 PM by PBS
+		//Changes:
+			//02/05/00; 5:47:55 PM by PBS
+				//Add the windowInfo table to the storyInfo struct.
+			//04/10/00; 10:46:02 AM by PBS
+				//If this is a Mac, convert the body from Mac to Latin text, since Pike always expects Latin text.
+			//11/02/00; 9:52:09 PM by JES
+				//Add flServerAcceptsOpml to the story info struct. It's always true because we know the seerver is up-to-date if this change exists.
 	
 	local (pikeIp, pikePort, pikeRpcPath);
 	bundle { //get information about the machine running Pike
@@ -25,15 +25,15 @@ on editStory (adrMsgTable, url, pta=nil) {
 	local (storyInfoTable);
 	bundle { //get info about the current story
 		new (tableType, @storyInfoTable);
-		«Add these elements from the dg message table:
-			«body -- the contents as a string.
-			«subject -- the title of the story.
-			«URL -- the URL of the story.
-			«member -- the member name of the person who originally posted the story.
-			«postTime -- the date and time the story was originally posted.
-			«lastUpdate -- the date and time the story was last updated.
-			«ctReads -- the number of times the story has been read.
-			«responses -- the list of message numbers that are responses to this story.
+		//Add these elements from the dg message table:
+			//body -- the contents as a string.
+			//subject -- the title of the story.
+			//URL -- the URL of the story.
+			//member -- the member name of the person who originally posted the story.
+			//postTime -- the date and time the story was originally posted.
+			//lastUpdate -- the date and time the story was last updated.
+			//ctReads -- the number of times the story has been read.
+			//responses -- the list of message numbers that are responses to this story.
 		
 		bundle { //get the contents of this story
 			if defined (adrMsgTable^.outline) {

@@ -1,9 +1,9 @@
 on stripHomePageTitle (pta=nil) {
-	«The editor may not want a title to appear on the home page. Broken out from manilaSuite.news.renderNewsPage. This script checks the prefs, and doesn't strip the title if not desired. There's no need to check the prefs before calling this script.
-		«04/24/00; 3:17:52 PM by PBS
-		«Changes:
-			«11/25/00; 6:28:53 PM by PBS
-				«Was manilaSuite.html.stripTitleFromTemplate. This script is only called from a script rendering the home page. It calls manilaSuite.html.stripTitle, which has been broken out from this script.
+	//The editor may not want a title to appear on the home page. Broken out from manilaSuite.news.renderNewsPage. This script checks the prefs, and doesn't strip the title if not desired. There's no need to check the prefs before calling this script.
+		//04/24/00; 3:17:52 PM by PBS
+		//Changes:
+			//11/25/00; 6:28:53 PM by PBS
+				//Was manilaSuite.html.stripTitleFromTemplate. This script is only called from a script rendering the home page. It calls manilaSuite.html.stripTitle, which has been broken out from this script.
 	
 	if pta == nil {
 		pta = html.getPageTableAddress ()};

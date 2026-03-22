@@ -1,5 +1,5 @@
 on newGroup (groupName) {
-	«Create a new group. Return false if the group already exists.
+	//Create a new group. Return false if the group already exists.
 	local (adrGroup = people.getGroupTable (groupName));
 	if people.groupExists (groupName, adrGroup) {
 		return (false)};

@@ -1,10 +1,10 @@
-«Changes:
-	«3/25/07; 4:36:41 PM by LL
-		«If pta^.subject is defined, use it for the default subject of the message.
-	«Wed, May 30, 2001 at 11:24:54 PM by JES
-		«If pta^.messageBody is defined, use it for the default body text of the message.
-	«9/13/01; 2:13:32 PM by PBS
-		«Don't use a maxlength attribute in the subject field.
+//Changes:
+	//3/25/07; 4:36:41 PM by LL
+		//If pta^.subject is defined, use it for the default subject of the message.
+	//Wed, May 30, 2001 at 11:24:54 PM by JES
+		//If pta^.messageBody is defined, use it for the default body text of the message.
+	//9/13/01; 2:13:32 PM by PBS
+		//Don't use a maxlength attribute in the subject field.
 local (pta = html.getPageTableAddress ());
 pta^.title = manilaSuite.getString ("discuss.newThreadPageTitle");
 
@@ -15,7 +15,7 @@ bundle { //06/27/00 JES: only allow new threads if they're allowed by the ME
 	if not flResponseForm {
 		return ("Can't create a new topic because you don't have permission.")}};
 
-«04/19/00 at 6:21:59 PM by JES: get localized versions of the title prompt and the button text
+//04/19/00 at 6:21:59 PM by JES: get localized versions of the title prompt and the button text
 local (titlePrompt, buttonText);
 titlePrompt = manilaSuite.getString ("common.titlePrompt");
 buttonText = manilaSuite.getString ("discuss.postNewMessageButton");
@@ -27,7 +27,7 @@ local (subject = "");
 if defined (pta^.subject) {
 	subject = pta^.subject};
 
-«local (htmltext = mainResponder.discuss.newMessageForm (0, "", titlePrompt, buttonText:buttonText, bodyText:messageBody, flLimitSubjectLength:false)) //PBS 09/13/01: don't use maxlength in subject field
+//local (htmltext = mainResponder.discuss.newMessageForm (0, "", titlePrompt, buttonText:buttonText, bodyText:messageBody, flLimitSubjectLength:false)) //PBS 09/13/01: don't use maxlength in subject field
 local (adrETPbuilder = @mainResponder.discuss.newMessageForm); //04.06.22, 22:13:57 by DAB
 manilaSuite.plugins.ETPoverride.getScriptAddress("discussNewThread", @adrETPbuilder); //04.06.22, 22:14:02 by DAB
 local (htmltext = adrETPbuilder^(0, subject, titlePrompt, buttonText:buttonText, bodyText:messageBody, flLimitSubjectLength:false)); //04.06.22, 23:30:11 by DAB

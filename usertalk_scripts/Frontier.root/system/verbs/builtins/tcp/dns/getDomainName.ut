@@ -1,9 +1,9 @@
 on getDomainName (dottedid) { //turn a dotted id into a domain name
-	«9/24/98; 1:18:46 PM by DW
-		«we cache the domain names in system.temp
-		«sub-items of system.temp don't survive a restart
-	«9/30/98; 4:45:40 PM by DW
-		«If the lookup fails, we return the dotted id.
+	//9/24/98; 1:18:46 PM by DW
+		//we cache the domain names in system.temp
+		//sub-items of system.temp don't survive a restart
+	//9/30/98; 4:45:40 PM by DW
+		//If the lookup fails, we return the dotted id.
 	local (adrcache = @system.temp.ipCache);
 	if not defined (adrcache^) {
 		new (tabletype, adrcache)};
@@ -18,8 +18,8 @@ on getDomainName (dottedid) { //turn a dotted id into a domain name
 			s = dottedid};
 		adritem^ = s;
 		return (s)}};
-«bundle //test code
-	«dialog.alert (getDomainName ("208.204.52.230")) //doesn't have a DNS record
-	«for i = 1 to 100
-		«s = getDomainName ("www.news.com")
-	«dialog.alert (s)
+//bundle //test code
+	//dialog.alert (getDomainName ("208.204.52.230")) //doesn't have a DNS record
+	//for i = 1 to 100
+		//s = getDomainName ("www.news.com")
+	//dialog.alert (s)

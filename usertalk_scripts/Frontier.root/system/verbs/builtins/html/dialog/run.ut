@@ -1,10 +1,10 @@
 on run (adrWizard, dialogNum, adrPrefs=nil, flDrawCancelButton = true) {
-	«Run an HTML dialog.
-	«Changes
-		«Monday, July 24, 2000 at 4:09:02 PM by JES
-			«Added support for overriding the default JavaScript with a JavaScript object defined in the Wizard table.
-		«Wednesday, February 28, 2001 at 3:25:23 PM by JES
-			«New optional parameter, flDrawCancelButton, for specifying whether the dialog has a cancel button. Default is true.
+	//Run an HTML dialog.
+	//Changes
+		//Monday, July 24, 2000 at 4:09:02 PM by JES
+			//Added support for overriding the default JavaScript with a JavaScript object defined in the Wizard table.
+		//Wednesday, February 28, 2001 at 3:25:23 PM by JES
+			//New optional parameter, flDrawCancelButton, for specifying whether the dialog has a cancel button. Default is true.
 	
 	if not system.environment.isWindows {
 		scriptError ("HTML dialogs are only available on Windows.")};
@@ -19,7 +19,7 @@ on run (adrWizard, dialogNum, adrPrefs=nil, flDrawCancelButton = true) {
 		t.panelNum = dialogNum;
 		t.wizardPrefsAddress = adrPrefs;
 		bundle { // set #ftpSite.folder
-			«This is thread-safe, since the platform obviously will not change in the middle of rendering a page.
+			//This is thread-safe, since the platform obviously will not change in the middle of rendering a page.
 			if system.environment.isWindows {
 				html.dialog.website.["#ftpSite"].folder = file.getSpecialFolderPath ("", "temp", true) + "UserLand\\HTML Dialogs\\"}
 			else {

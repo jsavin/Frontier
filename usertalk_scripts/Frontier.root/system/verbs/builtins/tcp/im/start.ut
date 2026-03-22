@@ -1,7 +1,7 @@
 on start (driverName) {
-	«Changes
-		«5/24/02; 1:01:47 PM by JB
-			«Created, to abstract drivernames from the act of starting them.
+	//Changes
+		//5/24/02; 1:01:47 PM by JB
+			//Created, to abstract drivernames from the act of starting them.
 	tcp.im.builtinDrivers[driverName].start()};
 bundle { // test code
 	start ("jabber");

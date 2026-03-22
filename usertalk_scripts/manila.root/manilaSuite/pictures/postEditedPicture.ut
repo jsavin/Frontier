@@ -1,26 +1,26 @@
 on postEditedPicture (pta=nil) {
-	«Post an edited picture.
-		«Changes:
-			«4/25/07; 2:52:05 PM by TAC
-				«Fix picture editing bug, Mac Netscape v4.7x, it shouldn't be necessary to re- upload the picture to edit the text.
-			«1/3/00; 12:31:09 PM by PBS
-				«Make sure the attached picture is a GIF or JPEG. If not, return a meaningful error page. No more "binaryServerFolder is not defined" errors.
-			«1/12/00; 5:03:32 PM by PBS
-				«Update the shortcut at upload time, not when rendering a pictureViewer page.
-			«02/05/00; 4:17:07 PM by PBS
-				«Bug fix: to edit a picture's text, one had to re-upload the actual picture. Now you can just edit the text, you don't have to re-upload the picture.
-			«02/29/00; 11:44:39 PM by PBS
-				«Write the picture to disk, if the prefs specify.
-			«04/03/00; 11:20:38 AM by PBS
-				«Respect the time zone settings for the current site.
-			«04/21/00; 3:30:51 AM by JES
-				«localized
-			«05/01/00; 2:47:19 PM by JES
-				«Changed getString calls to use a replacement table address instead of a lists
-			«05/09/00; 10:43:00 PM by PBS
-				«Check referer to defeat the client side trojan horse.
-			«05/11/00; 8:10:52 PM by JES
-				«merged in Brent's security fix for the client side trojan horse attack.
+	//Post an edited picture.
+		//Changes:
+			//4/25/07; 2:52:05 PM by TAC
+				//Fix picture editing bug, Mac Netscape v4.7x, it shouldn't be necessary to re- upload the picture to edit the text.
+			//1/3/00; 12:31:09 PM by PBS
+				//Make sure the attached picture is a GIF or JPEG. If not, return a meaningful error page. No more "binaryServerFolder is not defined" errors.
+			//1/12/00; 5:03:32 PM by PBS
+				//Update the shortcut at upload time, not when rendering a pictureViewer page.
+			//02/05/00; 4:17:07 PM by PBS
+				//Bug fix: to edit a picture's text, one had to re-upload the actual picture. Now you can just edit the text, you don't have to re-upload the picture.
+			//02/29/00; 11:44:39 PM by PBS
+				//Write the picture to disk, if the prefs specify.
+			//04/03/00; 11:20:38 AM by PBS
+				//Respect the time zone settings for the current site.
+			//04/21/00; 3:30:51 AM by JES
+				//localized
+			//05/01/00; 2:47:19 PM by JES
+				//Changed getString calls to use a replacement table address instead of a lists
+			//05/09/00; 10:43:00 PM by PBS
+				//Check referer to defeat the client side trojan horse.
+			//05/11/00; 8:10:52 PM by JES
+				//merged in Brent's security fix for the client side trojan horse attack.
 	if pta == nil {
 		pta = html.getPageTableAddress ()};
 	local (msgNum = number (pta^.postArgs.msgNum));
@@ -28,7 +28,7 @@ on postEditedPicture (pta=nil) {
 	local (adrMember = pta^.adrMemberInfo);
 	local (adrSite = pta^.adrSiteRootTable);
 	
-	«manilaSuite.referer.checkEdit ("pictureEditInBrowser") //PBS 05/09/00: security -- check referer against client-side trojan horse
+	//manilaSuite.referer.checkEdit ("pictureEditInBrowser") //PBS 05/09/00: security -- check referer against client-side trojan horse
 	manilaSuite.referer.checkEdit ("pictureEditInBrowser", "picturePostEditedMessage"); //04.06.23, 14:58:39 by DAB
 	
 	bundle { //if the object is checked out by someone else, return an error page. 04.06.23, 13:43:01 by DAB
@@ -72,11 +72,11 @@ on postEditedPicture (pta=nil) {
 					return (manilaSuite.getString ("pictures.cantPostBecause", @replacementTable) + "\r<p>" + refererLink)}}}}; //4/21/00 JES: localized
 	local (lastUpdateTime = manilaSuite.convertTime ()); //PBS 04/03/00: get time zone converted current time
 	mainResponder.discuss.postEditedMessage (flAcceptFileUploads:flAcceptUploads, flAcceptFileDeletions:false, lastUpdateTime:lastUpdateTime); //PBS 04/03/00: respect time zone settings by passing lastUpdateTime
-	«local (msgNum = number (pta^.postArgs.msgNum))
-	«local (adrMsg = mainResponder.discuss.getMessageTable (msgNum))
+	//local (msgNum = number (pta^.postArgs.msgNum))
+	//local (adrMsg = mainResponder.discuss.getMessageTable (msgNum))
 	manilaSuite.discuss.setTimeZoneForMessage (adrMsg); //PBS 04/03/00: save time zone info in the message table
 	
-	«manilaSuite.pictures.writeToDisk (adrMsg) //PBS 02/29/00: possibly write to disk, to a static server
+	//manilaSuite.pictures.writeToDisk (adrMsg) //PBS 02/29/00: possibly write to disk, to a static server
 	if  manilaSuite.accessControl.isControlledMessage(adrMsg) { //we cannot control static urls 04/05/23, 09:00:14 by DAB
 		manilaSuite.pictures.writeToDiskUndo(adrMSg)} //make sure changes to permittedcohorts are tracked
 	else {

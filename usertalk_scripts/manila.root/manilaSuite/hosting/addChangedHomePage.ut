@@ -1,12 +1,12 @@
 on addChangedHomePage (url, siteName) {
-	«Add a changed home page to the table of changed home pages.
-		«05/06/00; 3:44:35 PM by PBS
-		«Changes:
-			«01/06/01; 6:34:11 PM by PBS
-				«Remove HTML markup from siteName.
-				«If siteName is "", give it the named Untitled.
-			«04/21/01; 8:08:31 PM by JES
-				«Rewritten to use a flat table structure, which makes it easy to limit the table's size.
+	//Add a changed home page to the table of changed home pages.
+		//05/06/00; 3:44:35 PM by PBS
+		//Changes:
+			//01/06/01; 6:34:11 PM by PBS
+				//Remove HTML markup from siteName.
+				//If siteName is "", give it the named Untitled.
+			//04/21/01; 8:08:31 PM by JES
+				//Rewritten to use a flat table structure, which makes it easy to limit the table's size.
 	
 	bundle { //get the address of the changed home pages table
 		if not defined (config.manila) {

@@ -1,6 +1,6 @@
 on link (url, linkTitle="") {
-	«Generate an img tag that displays a help icon.
-		«11/30/00; 11:36:49 AM by PBS
+	//Generate an img tag that displays a help icon.
+		//11/30/00; 11:36:49 AM by PBS
 	
 	local (adrIcon = @mainResponder.resources.userlandIcons.help);
 	local (hwList = html.getGifHeightWidth (adrIcon));

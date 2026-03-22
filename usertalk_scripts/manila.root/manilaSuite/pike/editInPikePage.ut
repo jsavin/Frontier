@@ -1,9 +1,9 @@
 on editInPikePage (pta=nil) {
-	«Send an edit story message to Pike.
-		«01/13/00; 10:39:25 PM by PBS
-	«Changes:
-		«10/09/00; 7:45:24 PM by JES
-			«If using the topics-based discussion group interface, redirect to the message in the topic, instead of to the referer, since the referer may be the top message in the topic, instead of the one you want to edit.
+	//Send an edit story message to Pike.
+		//01/13/00; 10:39:25 PM by PBS
+	//Changes:
+		//10/09/00; 7:45:24 PM by JES
+			//If using the topics-based discussion group interface, redirect to the message in the topic, instead of to the referer, since the referer may be the top message in the topic, instead of the one you want to edit.
 	
 	if pta == nil {
 		pta = html.getPageTableAddress ()};
@@ -41,7 +41,7 @@ on editInPikePage (pta=nil) {
 		local (adrSite = pta^.adrSiteRootTable);
 		
 		bundle { //make sure the member can edit this story
-			«The member probably can edit this story -- unless he goes to this page not from a Pike button link.
+			//The member probably can edit this story -- unless he goes to this page not from a Pike button link.
 			local (posterKey = adrMsgTable^.member);
 			local (lowerPosterKey = string.lower (posterKey));
 			local (memberKey = nameOf (adrMember^));

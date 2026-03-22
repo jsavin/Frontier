@@ -1,5 +1,5 @@
-on sureFilePath (f) { «make sure all the folders on the path to f exist
-	«10/31/97 at 1:23:10 PM by DW -- moved from toys.sureFilePath
+on sureFilePath (f) { //make sure all the folders on the path to f exist
+	//10/31/97 at 1:23:10 PM by DW -- moved from toys.sureFilePath
 	try { // fast exit if parent folder already exists
 		if file.isFolder (file.folderFromPath (f)) {
 			return (true)}};

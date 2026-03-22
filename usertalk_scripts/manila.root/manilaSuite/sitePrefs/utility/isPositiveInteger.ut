@@ -1,6 +1,6 @@
 on isPositiveInteger (str) {
-	«manilaSuite.sitePrefs.utility.isPositiveInteger : 04/05/16, 17:08:02 by DAB
-		«returns true if and only str is a numeric string 
+	//manilaSuite.sitePrefs.utility.isPositiveInteger : 04/05/16, 17:08:02 by DAB
+		//returns true if and only str is a numeric string 
 	local (ix, len, ch);
 	len = string.length(str);
 	if len == 0 {
@@ -12,4 +12,4 @@ on isPositiveInteger (str) {
 	return true};
 bundle {
 	manilaSuite.sitePrefs.utility.isPositiveInteger ("12345x67890")
-		«false}
+		//false}

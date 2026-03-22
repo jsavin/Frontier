@@ -1,9 +1,9 @@
 on testOne (adrTbl, adrMember) {
-	«Changes
-		«09/15/06; 2:59:06 PM by LL
-			«Bug fix: Ensure only cohort scripts are evaluated in the table and delete any editor values set in the page table.
-		«10/09/05, 13:56:13 by DAB
-			«Created. Return true if adrMember satisfies conditions of any cohort setup in adrTbl.
+	//Changes
+		//09/15/06; 2:59:06 PM by LL
+			//Bug fix: Ensure only cohort scripts are evaluated in the table and delete any editor values set in the page table.
+		//10/09/05, 13:56:13 by DAB
+			//Created. Return true if adrMember satisfies conditions of any cohort setup in adrTbl.
 	if sizeOf (adrTbl^) == 0 { //default to Eveyone
 		return (true)};
 	
@@ -15,7 +15,7 @@ on testOne (adrTbl, adrMember) {
 		delete (@adrTbl^.pageTable.flEditor)};
 	if defined (adrTbl^.pageTable.flContributingEditor) {
 		delete (@adrTbl^.pageTable.flContributingEditor)};
-	«condition "pagetble" member link 
+	//condition "pagetble" member link 
 	adrTbl^.pageTable.adrMemberInfo = adrMember;
 	local (adrScript);
 	for adrScript in adrTbl {

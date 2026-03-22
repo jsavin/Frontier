@@ -1,22 +1,22 @@
 on renderCounterJavaScript (flTrackbackReturn = false) {
-	«Changes
-		«1/31/06; 1:34:42 AM by JES
-			«Updated comment counter to handle new flPending flag.
-		«22/10/04; 4:49:56 PM by PR
-			«allow the option to return one file for trackback and one for comments, default is two files
-		«23/09/04; 8:27:07 PM by PR
-			«one return for both trackback comment counters
-				«make a double of everything and when we loop check for both trackback and comments
-		«02/09/04; 9:58:28 AM by PR
-			«added etag & last modified headers. added start post and end post support. fixed a bug in countmessages and added countTrackback
-		«7/22/03; 4:44:40 PM by JES
-			«Addd support for trackback counters.
-		«7/12/02; 4:39:43 PM by JES
-			«Upgrade comment data to the new table-based storage format.
-		«2/28/02; 4:23:17 PM by JES
-			«If there's no comments data for the user, return the empty string.
-		«2/23/02; 1:22:56 AM by JS
-			«Return some JavaScript that returns a comment count, given a postId.
+	//Changes
+		//1/31/06; 1:34:42 AM by JES
+			//Updated comment counter to handle new flPending flag.
+		//22/10/04; 4:49:56 PM by PR
+			//allow the option to return one file for trackback and one for comments, default is two files
+		//23/09/04; 8:27:07 PM by PR
+			//one return for both trackback comment counters
+				//make a double of everything and when we loop check for both trackback and comments
+		//02/09/04; 9:58:28 AM by PR
+			//added etag & last modified headers. added start post and end post support. fixed a bug in countmessages and added countTrackback
+		//7/22/03; 4:44:40 PM by JES
+			//Addd support for trackback counters.
+		//7/12/02; 4:39:43 PM by JES
+			//Upgrade comment data to the new table-based storage format.
+		//2/28/02; 4:23:17 PM by JES
+			//If there's no comments data for the user, return the empty string.
+		//2/23/02; 1:22:56 AM by JS
+			//Return some JavaScript that returns a comment count, given a postId.
 	local (pta = html.getPageTableAddress ());
 	local (adrsite = manilaSuite.getSiteAddress (pta));
 	
@@ -94,7 +94,7 @@ on renderCounterJavaScript (flTrackbackReturn = false) {
 	local (counts = "", tbCounts = "");
 	local (end = 0, tbend = 0);
 	if defined (args.sp) && defined (args.ep) { // 01/09/04; 1:24:08 PM by PR: check for start post and end post
-		«New method checks for the count variable for each post, if the count doesn't exist it is created
+		//New method checks for the count variable for each post, if the count doesn't exist it is created
 		local (startPost = args.sp);
 		local (endPost = args.ep);
 		for post = startPost to endPost {
@@ -117,12 +117,12 @@ on renderCounterJavaScript (flTrackbackReturn = false) {
 				if flTrackback {
 					if defined (adrTrackBackUser^.[post]) {
 						local (adrPost = @adrTrackBackUser^.[post]);
-						«if typeOf (adrPost^) != tableType // Jake: was trackback ever stored like this?
-							«local (n = adrPost^)
-							«new (tableType, adrPost)
-							«adrPost^.link = ""
-							«adrPost^.msgnum = n
-							«adrPost^.count = adrTrackBackUser (n)
+						//if typeOf (adrPost^) != tableType // Jake: was trackback ever stored like this?
+							//local (n = adrPost^)
+							//new (tableType, adrPost)
+							//adrPost^.link = ""
+							//adrPost^.msgnum = n
+							//adrPost^.count = adrTrackBackUser (n)
 						if !defined (adrPost^.count) {
 							if defined (adrPost^.trackback.inbound.urls) {
 								adrPost^.count = countTrackbacks (@adrPost^.trackback.inbound.urls)}
@@ -134,7 +134,7 @@ on renderCounterJavaScript (flTrackbackReturn = false) {
 		end++;
 		tbend++}
 	else { // old method
-		«24/09/04; 8:21:49 AM by PR need two loops with the old method to check all posts...
+		//24/09/04; 8:21:49 AM by PR need two loops with the old method to check all posts...
 		local (adr);
 		if flComment {
 			for adr in adrCommentUser {
@@ -155,11 +155,11 @@ on renderCounterJavaScript (flTrackbackReturn = false) {
 			end++};
 		if flTrackback {
 			for adr in adrTrackBackUser {
-				«if typeOf (adr^) != tableType // Jake: was trackback ever stored like this?
-					«local (n = adr^)
-					«new (tableType, adr)
-					«adr^.link = ""
-					«adr^.msgnum = n
+				//if typeOf (adr^) != tableType // Jake: was trackback ever stored like this?
+					//local (n = adr^)
+					//new (tableType, adr)
+					//adr^.link = ""
+					//adr^.msgnum = n
 				local (postid = nameOf (adr^));
 				local (ct = 0);
 				if !defined (adr^.count) {
@@ -177,7 +177,7 @@ on renderCounterJavaScript (flTrackbackReturn = false) {
 	counts = "[" + counts + "\"\"]";
 	tbcounts = "[" + tbcounts + "\"\"]";
 	
-	«24/09/04; 8:22:17 AM by PR build the return for comments and trackback individually
+	//24/09/04; 8:22:17 AM by PR build the return for comments and trackback individually
 	if flComment {
 		commentReturn = string (manilaSuite.radioHosting.data.counterScript);
 		bundle { // comment return 
@@ -205,6 +205,6 @@ on renderCounterJavaScript (flTrackbackReturn = false) {
 			return (trackbackReturn)}
 		else {
 			return (commentReturn)}}};
-«bundle //test code
-	«html.setPageTableAddress (@workspace.pt)
-	«renderCounterJavaScript ()
+//bundle //test code
+	//html.setPageTableAddress (@workspace.pt)
+	//renderCounterJavaScript ()

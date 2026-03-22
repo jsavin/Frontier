@@ -1,4 +1,4 @@
 on getGroupTable (groupName) {
-	«Return the address of a given group's table.
-		«This is a private verb, not to be documented.
+	//Return the address of a given group's table.
+		//This is a private verb, not to be documented.
 	return (@user.people.groups.[groupName])}

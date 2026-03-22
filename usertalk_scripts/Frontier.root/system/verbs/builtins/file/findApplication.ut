@@ -1,7 +1,7 @@
 on findApplication (creator) {
-	«Changes:
-		«05/11/01; 6:54:10 PM by JES
-			«If the kernel call fails on Windows, try to find the application by examining the registry directly (if the winRegistry verb is present).
+	//Changes:
+		//05/11/01; 6:54:10 PM by JES
+			//If the kernel call fails on Windows, try to find the application by examining the registry directly (if the winRegistry verb is present).
 	on kernelCall (creator) {
 		kernel (file.findApplication)};
 	if system.environment.isMac {
@@ -37,5 +37,5 @@ on findApplication (creator) {
 								break}}}};
 				appPath = string.replace (appPath, "%SystemRoot%", systemPath)}};
 		return (appPath)}};
-«bundle //test code
-	«findApplication ("txt")
+//bundle //test code
+	//findApplication ("txt")

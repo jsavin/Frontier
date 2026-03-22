@@ -1,2 +1,2 @@
-on cut () { «Cut an object to the clipboard
+on cut () { //Cut an object to the clipboard
 	return (appleEvent (Filemaker.id, 'misc', 'cut '))}

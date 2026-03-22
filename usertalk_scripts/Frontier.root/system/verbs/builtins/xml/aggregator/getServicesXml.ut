@@ -1,8 +1,8 @@
 on getServicesXml (adrdata=xml.aggregator.init (), adrIncludeCallback=nil) {
-	«Changes
-		«4/2/03; 11:31:56 PM by JES
-			«Created. Factored from xml.aggregator.saveServicesXml, this script generates the xml text for the services XML file.
-			«adrCallback is the optional address of a callback script. If supplied, the callback is called with the URL of each service. If the callback returns true, the service is included. If it returns false, it's not included.
+	//Changes
+		//4/2/03; 11:31:56 PM by JES
+			//Created. Factored from xml.aggregator.saveServicesXml, this script generates the xml text for the services XML file.
+			//adrCallback is the optional address of a callback script. If supplied, the callback is called with the URL of each service. If the callback returns true, the service is included. If it returns false, it's not included.
 	
 	local (mySubscriptions);
 	new (outlinetype, @mySubscriptions);
@@ -48,8 +48,8 @@ on getServicesXml (adrdata=xml.aggregator.init (), adrIncludeCallback=nil) {
 		xmltext = latinToMac.macToLatin (xmltext)};
 	
 	return (xmltext)};
-«bundle //test code
-	«on includeCallback (adr)
-		«return (nameOf (adr^) contains "userland")
-	«wp.newTextObject (getServicesXml (adrIncludeCallback:@includeCallback), @scratchpad.servicesXml)
-	«edit (@scratchpad.servicesXml)
+//bundle //test code
+	//on includeCallback (adr)
+		//return (nameOf (adr^) contains "userland")
+	//wp.newTextObject (getServicesXml (adrIncludeCallback:@includeCallback), @scratchpad.servicesXml)
+	//edit (@scratchpad.servicesXml)

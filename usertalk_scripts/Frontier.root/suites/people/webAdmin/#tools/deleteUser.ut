@@ -12,7 +12,7 @@ on deleteUser () {
 	on add (s) {
 		htmlText = htmlText + s};
 	
-	«add ("User \"" + userName + "\" has been deleted.<p>")
+	//add ("User \"" + userName + "\" has been deleted.<p>")
 	
 	html.getPageTableAddress ()^.newUrl = html.getPageTableAddress ()^.requestHeaders.referer;
 	

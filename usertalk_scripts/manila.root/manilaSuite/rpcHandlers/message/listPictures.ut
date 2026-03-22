@@ -1,12 +1,12 @@
 on listPictures (username, password, siteName) {
-	«Get a struct containing info about all the pictures.
-		«Changes:
-			«9/24/04; 3:40:38 AM by JES
-				«Yield processor time in the main loop.
-			«01/02/01; 1:39:23 AM by JES
-				«On Macs, convert the subject to Latin text.
-			«06/21/00; 2:27:31 PM by JES
-				«The script was broken because 1- it tried to create a table at a nil address, 2- the fields it looked up in the message table were incorrect.
+	//Get a struct containing info about all the pictures.
+		//Changes:
+			//9/24/04; 3:40:38 AM by JES
+				//Yield processor time in the main loop.
+			//01/02/01; 1:39:23 AM by JES
+				//On Macs, convert the subject to Latin text.
+			//06/21/00; 2:27:31 PM by JES
+				//The script was broken because 1- it tried to create a table at a nil address, 2- the fields it looked up in the message table were incorrect.
 	
 	bundle { //make sure this person is a member of the site
 		local (beginningErrorString = "Can't list pictures because ");

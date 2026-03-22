@@ -1,53 +1,53 @@
 on customRenderer (partialaddress, defaultvalue, adrxmltable) {
-	«Changes:
-		«3/7/06; 4:51:56 AM by JES
-			«Add support for feed:// urls on subscriptions page.
-		«11/12/04; 11:21:15 AM by EDS
-			«fixed "http://" comparison to improve chances for autodiscovery
-		«1/4/04; 4:09:29 PM by JES
-			«On the Subscriptions prefs page, if a url is present in the searchArgs, use it to populate the url-to-subscribe-to field.
-		«10/8/03; 1:57:39 PM by JES
-			«Added help text on the News Items page in the Departments section, which links to the department list page.
-		«9/26/03; 12:13:29 PM by JES
-			«Added Content Editors to the options for who can create and post news items.
-		«5/26/03; 7:04:15 PM by JES
-			«Added option to the Syndication prefs page for DG-RSS feeds.
-		«5/9/03; 3:44:09 PM by JES
-			«Added support for the Mail-to-Weblog prefs.
-		«5/2/03; 2:59:31 PM by EDS
-			«Added support for FTP filewriter prefs.
-		«4/11/03; 1:24:29 PM by JES
-			«Add descriptive text for the License section on the Syndication prefs page.
-		«3/17/03; 8:43:10 PM by JES
-			«Display last update time/date in the time zone for the site, and selected localization (language). Localized message displayed when no feeds are available on the subscriptions page. Added field for subscribing to an arbitrary feed, if the server manager has set the preference to allow it.
-		«3/8/03; 1:30:18 AM by JES
-			«Added support for the News Aggregator prefs page.
-		«10/1/01; 4:00:45 PM by PBS
-			«Custom renderer for separator and pref for sending home page update notices to weblogs.com.
-		«2000:
-			«12/18/00; 4:13:33 PM by PBS
-				«Edit slides template with Radio.
-			«11/26/00; 7:49:55 PM by PBS
-				«The external editor button connects to the local HTTP server, which then requests the object from the Manila server.
-			«10/27/00; 3:53:44 AM by JES
-				«Added DG theme help text and download link.
-			«06/25/00; 9:08:06 PM by JES
-				«Fixed bug with news items permissions display.
-			«05/30/00; 5:37:10 PM by JES
-				«Lanugage now defaults to server setting, or Frontier setting. If neither is defined, English is the default.
-			«05/20/00; 9:05:47 PM by JES
-				«language pref
-			«05/01/00; 5:36:28 PM by PBS
-				«Support for news items: departments, editorial access, editing the template in Pike.
-			«03/28/00; 12:34:12 AM by PBS
-				«Support for placing a link to the statically rendered site.
-			«02/12/00; 11:48:10 AM by PBS
-				«Added link to admin page under custody time out pref.
-		«1999:
-			«12/14/99; 1:54:48 PM by PBS
-				«On the Syndication panel, the pop-up menu for images included even pictures that were removed from the Pictures list. It included pictures that had been deleted from the discussion group. This has been fixed: only pictures that are in the Pictures list and have not been deleted from the discussion group are included.
-			«??/??/1999 PBS
-				«Custom renderer for the site prefs panels.
+	//Changes:
+		//3/7/06; 4:51:56 AM by JES
+			//Add support for feed:// urls on subscriptions page.
+		//11/12/04; 11:21:15 AM by EDS
+			//fixed "http://" comparison to improve chances for autodiscovery
+		//1/4/04; 4:09:29 PM by JES
+			//On the Subscriptions prefs page, if a url is present in the searchArgs, use it to populate the url-to-subscribe-to field.
+		//10/8/03; 1:57:39 PM by JES
+			//Added help text on the News Items page in the Departments section, which links to the department list page.
+		//9/26/03; 12:13:29 PM by JES
+			//Added Content Editors to the options for who can create and post news items.
+		//5/26/03; 7:04:15 PM by JES
+			//Added option to the Syndication prefs page for DG-RSS feeds.
+		//5/9/03; 3:44:09 PM by JES
+			//Added support for the Mail-to-Weblog prefs.
+		//5/2/03; 2:59:31 PM by EDS
+			//Added support for FTP filewriter prefs.
+		//4/11/03; 1:24:29 PM by JES
+			//Add descriptive text for the License section on the Syndication prefs page.
+		//3/17/03; 8:43:10 PM by JES
+			//Display last update time/date in the time zone for the site, and selected localization (language). Localized message displayed when no feeds are available on the subscriptions page. Added field for subscribing to an arbitrary feed, if the server manager has set the preference to allow it.
+		//3/8/03; 1:30:18 AM by JES
+			//Added support for the News Aggregator prefs page.
+		//10/1/01; 4:00:45 PM by PBS
+			//Custom renderer for separator and pref for sending home page update notices to weblogs.com.
+		//2000:
+			//12/18/00; 4:13:33 PM by PBS
+				//Edit slides template with Radio.
+			//11/26/00; 7:49:55 PM by PBS
+				//The external editor button connects to the local HTTP server, which then requests the object from the Manila server.
+			//10/27/00; 3:53:44 AM by JES
+				//Added DG theme help text and download link.
+			//06/25/00; 9:08:06 PM by JES
+				//Fixed bug with news items permissions display.
+			//05/30/00; 5:37:10 PM by JES
+				//Lanugage now defaults to server setting, or Frontier setting. If neither is defined, English is the default.
+			//05/20/00; 9:05:47 PM by JES
+				//language pref
+			//05/01/00; 5:36:28 PM by PBS
+				//Support for news items: departments, editorial access, editing the template in Pike.
+			//03/28/00; 12:34:12 AM by PBS
+				//Support for placing a link to the statically rendered site.
+			//02/12/00; 11:48:10 AM by PBS
+				//Added link to admin page under custody time out pref.
+		//1999:
+			//12/14/99; 1:54:48 PM by PBS
+				//On the Syndication panel, the pop-up menu for images included even pictures that were removed from the Pictures list. It included pictures that had been deleted from the discussion group. This has been fixed: only pictures that are in the Pictures list and have not been deleted from the discussion group are included.
+			//??/??/1999 PBS
+				//Custom renderer for the site prefs panels.
 	
 	local (pta = html.getpagetableaddress ());
 	local (htmltext = "", indentlevel = 0);
@@ -105,16 +105,16 @@ on customRenderer (partialaddress, defaultvalue, adrxmltable) {
 		
 		selected = string.lower(selected);
 		
-		«if the writer list doesn't contain the method we're already using  (in selected)  we _may_ need to add the current method.
-			«If there's evidence that this site is specially set up, then we add that method.
-			«If it looks like this was just initialized when the options were different and we're not really using it, then we don't.
+		//if the writer list doesn't contain the method we're already using  (in selected)  we _may_ need to add the current method.
+			//If there's evidence that this site is specially set up, then we add that method.
+			//If it looks like this was just initialized when the options were different and we're not really using it, then we don't.
 		if sizeOf(selected) and not (writerList contains selected) {
 			if  ((selected equals "file") or (selected equals "ftp")) {
 				if adrSite^.["#newsSite"].flStaticRenderingAlwaysAvailable {
-					«We're special, and now we know it. 
+					//We're special, and now we know it. 
 					writerList = selected + writerList}}
 			else {
-				«It's one we're not aware of. let it through. 
+				//It's one we're not aware of. let it through. 
 				writerList = selected + writerList}};
 		
 		for item in writerList {
@@ -124,7 +124,7 @@ on customRenderer (partialaddress, defaultvalue, adrxmltable) {
 				"ftp" {
 					addOption ("ftp", "FTP")}}
 			else {
-				«They've setup something else  Leave that option in so that submitting doesn't kill it. 
+				//They've setup something else  Leave that option in so that submitting doesn't kill it. 
 				addOption (item,item)}};
 		
 		
@@ -194,13 +194,13 @@ on customRenderer (partialaddress, defaultvalue, adrxmltable) {
 			if sizeOf (adrservices) > 0 {
 				
 				on getDateString (when, flIncludeSeconds=true) {
-					«bundle //old code cribbed from Radio
-						«local (day, month, year, hour, minute, second, nowday, nowmonth, nowyear)
-						«date.get (when, @day, @month, @year, @hour, @minute, @second)
-						«date.get (clock.now (), @nowday, @nowmonth, @nowyear, @hour, @minute, @second)
-						«if (day == nowday) and (month == nowmonth) and (year == nowyear)
-							«return (date.timestring (when, flIncludeSeconds))
-						«return (date.shortstring (when))
+					//bundle //old code cribbed from Radio
+						//local (day, month, year, hour, minute, second, nowday, nowmonth, nowyear)
+						//date.get (when, @day, @month, @year, @hour, @minute, @second)
+						//date.get (clock.now (), @nowday, @nowmonth, @nowyear, @hour, @minute, @second)
+						//if (day == nowday) and (month == nowmonth) and (year == nowyear)
+							//return (date.timestring (when, flIncludeSeconds))
+						//return (date.shortstring (when))
 					return (mainResponder.localization.shortTimeString (manilaSuite.convertTime (when, pta:pta), pta))};
 				
 				local (xmlimg);
@@ -306,7 +306,7 @@ on customRenderer (partialaddress, defaultvalue, adrxmltable) {
 			return (manilaSuite.getString ("admin.customColorsLink"))};
 		"newsRoom.custody.linkToAdminPage" {
 			local (adminUrl = manilaSuite.getUrl ("editorialAdmin", pta));
-			«local (adminLink = html.getLink ("Admin", adminUrl))
+			//local (adminLink = html.getLink ("Admin", adminUrl))
 			local (replacementTable); new (tableType, @replacementTable);
 			replacementTable.adminUrl = adminUrl;
 			return (manilaSuite.getString ("admin.listOfCheckedOutItemsLink", @replacementTable))};
@@ -319,7 +319,7 @@ on customRenderer (partialaddress, defaultvalue, adrxmltable) {
 					local (url = adrStaticSite^.["#ftpSite"].url);
 					local (replacementTable); new (tableType, @replacementTable);
 					replacementTable.url = url;
-					«local (staticSiteLink = html.getLink ("here", url))
+					//local (staticSiteLink = html.getLink ("here", url))
 					if url != "" {
 						if sizeOf (adrStaticSite^) > sizeOf (manilaData.newSiteTemplate.["#newsSite"].staticSite) {
 							return (manilaSuite.getString ("admin.staticSiteHasBeenRenderedHere", @replacementTable))};
@@ -334,7 +334,7 @@ on customRenderer (partialaddress, defaultvalue, adrxmltable) {
 					local (adrSite = manilaSuite.getManilaSiteAddress (pta));
 					local (helpDescription = "Edit your directory template in an outliner in Radio UserLand.");
 					
-					«PBS 11/21/00: new method -- the browser calls the external editor.
+					//PBS 11/21/00: new method -- the browser calls the external editor.
 					local (appendTable);
 					new (tableType, @appendTable);
 					appendTable.itemType = "directoryTemplate";
@@ -410,7 +410,7 @@ on customRenderer (partialaddress, defaultvalue, adrxmltable) {
 					local (adrSite = manilaSuite.getManilaSiteAddress (pta));
 					local (pikeHelpDescription = manilaSuite.getString ("news.editTemplateInPike"));
 					
-					«PBS 11/21/00: new method -- the browser calls the external editor
+					//PBS 11/21/00: new method -- the browser calls the external editor
 					local (appendTable);
 					new (tableType, @appendTable);
 					appendTable.itemType = "newsItemTemplate";

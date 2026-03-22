@@ -1,10 +1,10 @@
 on openWithUrl (username, password, url) {
-	«Get a message -- via its URL. The sitename and msgNum aren't known by the caller. This mirrors the manilaSuite.rpcHandlers.homePage.getCurrentContent handler.
-		«04/19/00; 6:08:03 PM by PBS
-	«Changes:
-		«11/14/00; 10:59:02 PM by JES
-			«Bug fix: on Macs, latinToMac.macToLatin was being called on storyInfoTable.body, instead of storyInfo.body. This failed because storyInfoTable is not defined.
-			«Return a table of tables instead of a list of tables, since lists of tables can't be encoded by the SOAP encoder.
+	//Get a message -- via its URL. The sitename and msgNum aren't known by the caller. This mirrors the manilaSuite.rpcHandlers.homePage.getCurrentContent handler.
+		//04/19/00; 6:08:03 PM by PBS
+	//Changes:
+		//11/14/00; 10:59:02 PM by JES
+			//Bug fix: on Macs, latinToMac.macToLatin was being called on storyInfoTable.body, instead of storyInfo.body. This failed because storyInfoTable is not defined.
+			//Return a table of tables instead of a list of tables, since lists of tables can't be encoded by the SOAP encoder.
 	
 	local (siteName);
 	siteName = manilaSuite.rpcUtils.urlToSiteName (url);

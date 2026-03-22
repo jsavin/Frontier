@@ -1,30 +1,30 @@
 on editor (itemToEdit=nil) {
-	«Changes
-		«5/8/06; 2:51:03 AM by JES
-			«Reduce input element maximum width to 45 from 55, and 340px from 400px.
-		«5/2/06; 12:52:00 AM by JES
-			«Set page title even if there's an error. Redirect back to the home page when done, instead of to the admin page.
-		«5/1/06; 3:37:10 PM by JES
-			«Add shortname attribute, even if not present. Used by manilaMacros.advancedNavigator. Add expand/collapse all links. Add tooltip and expansion state preservation to parent links in attribute editor.
-		«5/1/06; 4:48:32 AM by JES
-			«Hot up msgnum links in sub-items list when editing attributes for a category.
-		«5/1/06; 4:32:58 AM by JES
-			«Fix links to editing attributes for redirect elements. Handle special case of story with a url attribute instead of a msgNum attribute.
-		«5/1/06; 4:17:55 AM by JES
-			«Indext pixel-wise instead of by em. Default to 2 levels of expansion instead of 3.
-		«5/1/06; 3:57:18 AM by JES
-			«Hot up message numbers to link to the DG.
-		«5/1/06; 3:22:36 AM by JES
-			«Use tables instead of divs to do the layout of the top-level site structure editing, so that they flow better.
-		«4/30/06; 7:48:57 PM by JES
-			«Bug fix: Fix error working around <description> sub-elements. Cosmetic changes: For expand/collapse links, ensure link has text-decoration:none. Simplified HTML generated for outline-view of full site structure. Made HTML more readable.
-		«4/30/06; 4:24:52 PM by JES
-			«Bug fix: Skip <description> elements when gathering sub-items from a category, while editing category attributes.
-		«4/30/06; 2:38:47 PM by JES
-			«Bug fixes: Edit descriptions as sub-elements of site structure items, not as attributes. Ignore <description> elements when figuring out how to move items around within a <category>.
-		«4/27/06; 5:12:47 PM by JES
-			«Created. Full featured site structure and attribute editor.
-				«itemToEdit can be a message number, or a slash-delimited path (with leading slash) to an item in the site structure.
+	//Changes
+		//5/8/06; 2:51:03 AM by JES
+			//Reduce input element maximum width to 45 from 55, and 340px from 400px.
+		//5/2/06; 12:52:00 AM by JES
+			//Set page title even if there's an error. Redirect back to the home page when done, instead of to the admin page.
+		//5/1/06; 3:37:10 PM by JES
+			//Add shortname attribute, even if not present. Used by manilaMacros.advancedNavigator. Add expand/collapse all links. Add tooltip and expansion state preservation to parent links in attribute editor.
+		//5/1/06; 4:48:32 AM by JES
+			//Hot up msgnum links in sub-items list when editing attributes for a category.
+		//5/1/06; 4:32:58 AM by JES
+			//Fix links to editing attributes for redirect elements. Handle special case of story with a url attribute instead of a msgNum attribute.
+		//5/1/06; 4:17:55 AM by JES
+			//Indext pixel-wise instead of by em. Default to 2 levels of expansion instead of 3.
+		//5/1/06; 3:57:18 AM by JES
+			//Hot up message numbers to link to the DG.
+		//5/1/06; 3:22:36 AM by JES
+			//Use tables instead of divs to do the layout of the top-level site structure editing, so that they flow better.
+		//4/30/06; 7:48:57 PM by JES
+			//Bug fix: Fix error working around <description> sub-elements. Cosmetic changes: For expand/collapse links, ensure link has text-decoration:none. Simplified HTML generated for outline-view of full site structure. Made HTML more readable.
+		//4/30/06; 4:24:52 PM by JES
+			//Bug fix: Skip <description> elements when gathering sub-items from a category, while editing category attributes.
+		//4/30/06; 2:38:47 PM by JES
+			//Bug fixes: Edit descriptions as sub-elements of site structure items, not as attributes. Ignore <description> elements when figuring out how to move items around within a <category>.
+		//4/27/06; 5:12:47 PM by JES
+			//Created. Full featured site structure and attribute editor.
+				//itemToEdit can be a message number, or a slash-delimited path (with leading slash) to an item in the site structure.
 	
 	local (pta = html.getPageTableAddress (), htext="");
 	pta^.title = "Edit Site Structure";
@@ -81,13 +81,13 @@ on editor (itemToEdit=nil) {
 	if pta^.searchArgs {
 		redirectUrl = redirectUrl + "?" + pta^.searchArgs};
 	bundle { //set redirectUrl -- order of preference: permalink, msgReader, referer, postArg
-		«bundle //unused code to redriect to item for which we're editing attributes, or referer
-			«if adrmsg
-				«redirectUrl = manilaSuite.getPermalinkUrl (adrsite, adrmsg)
-			«else
-				«redirectUrl = siteurl + string.popLeading (itemToEdit, "/")
-			«if defined (pta^.requestHeaders.referer)
-				«redirectUrl = pta^.requestHeaders.referer
+		//bundle //unused code to redriect to item for which we're editing attributes, or referer
+			//if adrmsg
+				//redirectUrl = manilaSuite.getPermalinkUrl (adrsite, adrmsg)
+			//else
+				//redirectUrl = siteurl + string.popLeading (itemToEdit, "/")
+			//if defined (pta^.requestHeaders.referer)
+				//redirectUrl = pta^.requestHeaders.referer
 		if defined (pta^.searchArgsTable.r) {
 			redirectUrl = pta^.searchArgsTable.r};
 		if defined (pta^.postArgs.r) {
@@ -202,7 +202,7 @@ on editor (itemToEdit=nil) {
 			if msgnum {
 				sMsgnum = " - " + html.getLink ("#" + msgnum, manilaSuite.getUrl ("discussMsgReader", pta) + msgnum, whatTarget:"_new", title:"Open this discussion group message in a new window...")};
 			local (itemLink = html.getLink (name, url, whatTarget:"_new", title:"Click to open this page in a new window..."));
-			«local (editAttsLink = html.getLink ("edit", editurl, title:"Click to edit the attributes for this item..."))
+			//local (editAttsLink = html.getLink ("edit", editurl, title:"Click to edit the attributes for this item..."))
 			local (editAttsLink = html.getLink (editIcon, editurl, title:"Click to edit the attributes for this item..."));
 			local (upArrow = "\t\t\t<div><input type=\"image\" name=\"up" + itemPath + "\" src=\"" + upArrowUrl + "\"></div>");
 			local (downArrow = "\t\t\t<div style=\"padding-top:1px\"><input type=\"image\" name=\"down" + itemPath + "\" src=\"" + downArrowUrl + "\"></div>");
@@ -643,7 +643,7 @@ on editor (itemToEdit=nil) {
 			add ("</form>")}};
 	
 	return (htext)};
-«bundle //test code
-	«html.setPageTableAddress (@workspace.pt)
-	«editor ()
-	«html.deletePageTableAddress ()
+//bundle //test code
+	//html.setPageTableAddress (@workspace.pt)
+	//editor ()
+	//html.deletePageTableAddress ()

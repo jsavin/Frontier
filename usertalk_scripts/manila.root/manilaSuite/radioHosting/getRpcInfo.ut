@@ -1,7 +1,7 @@
 on getRpcInfo () {
-	«Changes
-		«9/9/03; 1:25:43 AM by JES
-			«Created. Return an XML snippet contining information needed to call this Manila site using XML-RPC.
+	//Changes
+		//9/9/03; 1:25:43 AM by JES
+			//Created. Return an XML snippet contining information needed to call this Manila site using XML-RPC.
 	local (pta = html.getPageTableAddress ());
 	local (adrsite = manilaSuite.getSiteAddress (pta));
 	local (siteurl = manilaSuite.getSiteUrl (adrsite, pta));
@@ -26,6 +26,6 @@ on getRpcInfo () {
 	add ("</rpcInfo>"); ilevel--;
 	
 	return (xtext)};
-«bundle //test code
-	«html.setPageTableAddress (@workspace.pt)
-	«wp.newtextObject (getRpcInfo (), @workspace.xtext)
+//bundle //test code
+	//html.setPageTableAddress (@workspace.pt)
+	//wp.newtextObject (getRpcInfo (), @workspace.xtext)

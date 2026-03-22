@@ -1,11 +1,11 @@
 on getTable (siteName, role, username, password) {
-	«Get info about editors in a given role. You must be an editor to access this information.
-		«11/15/00; 8:42:08 PM by JES
-			«Cribbed from manilaSuite.rpcHandlers.editors.get. This version is SOAP compatible.
-		«3/19/01; 3:18:27 PM by JES
-			«When called via SOAP, return an array of structs, specifying the Manila namespace, namespace URI, and struct type.
-		«05/23/01; 1:15:21 AM by JES
-			«Specify customStructType instead of customArrayType, which follows from a change in soap.rpc.server, based on SOAP interop work.
+	//Get info about editors in a given role. You must be an editor to access this information.
+		//11/15/00; 8:42:08 PM by JES
+			//Cribbed from manilaSuite.rpcHandlers.editors.get. This version is SOAP compatible.
+		//3/19/01; 3:18:27 PM by JES
+			//When called via SOAP, return an array of structs, specifying the Manila namespace, namespace URI, and struct type.
+		//05/23/01; 1:15:21 AM by JES
+			//Specify customStructType instead of customArrayType, which follows from a change in soap.rpc.server, based on SOAP interop work.
 	
 	bundle { //make sure this person is an editor of the site.
 		local (beginningErrorString = "Can't get the editors list because ");

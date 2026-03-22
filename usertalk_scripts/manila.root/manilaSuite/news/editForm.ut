@@ -1,43 +1,43 @@
 on editForm (pageTitle=nil, title=nil, description=nil, linkUrl=nil, departmentName=nil, adrDepartments=nil, msgNum=nil, actionUrl=nil, redirectUrl=nil, buttonText=nil, enclosure=nil, summary=nil) {
-	«Changes:
-		«10/18/05; 3:54:22 AM by JES
-			«Get the flOnHomePage flag from the newsItem sub-table instead of from the decompiled XML in the message body. Small optimization: Only set adrMsg once.
-		«10/17/05; 5:53:22 PM by JES
-			«Add Revert to Pending button if editing a posted news item.
-		«10/7/05; 4:07:13 AM by JES
-			«If multiple departments are enabled, and the site contains no departments, add a hidden field for flOnHomePage to be picked up by manilaSuite.news.postItemPage.
-		«8/23/05; 4:47:19 AM by JES
-			«Two new buttons: Send Bulletin and Delete, appear on the edit form when editing an existing item. The Send Bulletin button only appears if the news item is already posted to the home page.
-		«7/10/05; 4:17:21 AM by JES
-			«Added summary field, when prefs are set, and/or the edited news item already has a summary.
-		«7/7/05; 5:39:49 AM by JES
-			«Added support for multiple departments and home page pseudo-department.
-		«7/7/05; 4:43:54 AM by JES
-			«New option for department, when the site has departments -none-.
-		«3/11/05; 7:08:28 PM by JES
-			«Add the enclosure field if the feature is enabled in the site.
-		«9/8/03; 11:26:06 AM by JES
-			«Only add the URLs to Ping box if TrackBack is enabled in the site.
-		«8/22/03; 12:13:05 PM by JES
-			«If html.editor is not defined, use the old style editor.
-		«8/15/03; 2:46:03 PM by JES
-			«Add support for Mozilla's rich text editor.
-		«7/15/2003; 3:56:43 PM by JES
-			«Add support for maunal trackback pings.
-		«4/24/03; 5:48:17 PM by JES
-			«If the preference is enabled, display a checkbox for enabling or disabling the comment link on this item.
-		«4/17/03; 11:24:50 PM by JES
-			«Add an anchor to the top of the editing form. We redirect to this spot in the page after posting an edited news item.
-		«05/06/01; 1:12:26 AM by JES
-			«Replace quote characters with escaped quote characters in the description field, so that quotes will round-trip, whether escaped or not.
-		«10/03/00; 2:58:23 PM by PBS
-			«Support a choice of editors -- None, HTML Tags, WYSIWYG.
-		«10/02/00; 8:54:50 PM by JES
-			«Handle the WYSIWYG editor.
-		«05/04/00; 8:14:27 PM by JES
-			«localized
-		«04/19/00; 10:44:16 PM by PBS
-			«Created. Display an editing form for a news item.
+	//Changes:
+		//10/18/05; 3:54:22 AM by JES
+			//Get the flOnHomePage flag from the newsItem sub-table instead of from the decompiled XML in the message body. Small optimization: Only set adrMsg once.
+		//10/17/05; 5:53:22 PM by JES
+			//Add Revert to Pending button if editing a posted news item.
+		//10/7/05; 4:07:13 AM by JES
+			//If multiple departments are enabled, and the site contains no departments, add a hidden field for flOnHomePage to be picked up by manilaSuite.news.postItemPage.
+		//8/23/05; 4:47:19 AM by JES
+			//Two new buttons: Send Bulletin and Delete, appear on the edit form when editing an existing item. The Send Bulletin button only appears if the news item is already posted to the home page.
+		//7/10/05; 4:17:21 AM by JES
+			//Added summary field, when prefs are set, and/or the edited news item already has a summary.
+		//7/7/05; 5:39:49 AM by JES
+			//Added support for multiple departments and home page pseudo-department.
+		//7/7/05; 4:43:54 AM by JES
+			//New option for department, when the site has departments -none-.
+		//3/11/05; 7:08:28 PM by JES
+			//Add the enclosure field if the feature is enabled in the site.
+		//9/8/03; 11:26:06 AM by JES
+			//Only add the URLs to Ping box if TrackBack is enabled in the site.
+		//8/22/03; 12:13:05 PM by JES
+			//If html.editor is not defined, use the old style editor.
+		//8/15/03; 2:46:03 PM by JES
+			//Add support for Mozilla's rich text editor.
+		//7/15/2003; 3:56:43 PM by JES
+			//Add support for maunal trackback pings.
+		//4/24/03; 5:48:17 PM by JES
+			//If the preference is enabled, display a checkbox for enabling or disabling the comment link on this item.
+		//4/17/03; 11:24:50 PM by JES
+			//Add an anchor to the top of the editing form. We redirect to this spot in the page after posting an edited news item.
+		//05/06/01; 1:12:26 AM by JES
+			//Replace quote characters with escaped quote characters in the description field, so that quotes will round-trip, whether escaped or not.
+		//10/03/00; 2:58:23 PM by PBS
+			//Support a choice of editors -- None, HTML Tags, WYSIWYG.
+		//10/02/00; 8:54:50 PM by JES
+			//Handle the WYSIWYG editor.
+		//05/04/00; 8:14:27 PM by JES
+			//localized
+		//04/19/00; 10:44:16 PM by PBS
+			//Created. Display an editing form for a news item.
 	
 	local (pta = html.getPageTableAddress ());
 	local (adrSite = manilaSuite.getManilaSiteAddress (pta));
@@ -53,7 +53,7 @@ on editForm (pageTitle=nil, title=nil, description=nil, linkUrl=nil, departmentN
 		actionUrl = manilaSuite.getUrl ("newsItemPostItem")};
 	
 	on translateToEntities (s) {
-		«It's not necessary to translate everything, just ampersands, quotes, and left carets.
+		//It's not necessary to translate everything, just ampersands, quotes, and left carets.
 		s = string.replaceAll (s, "&", "&amp;");
 		s = string.replaceAll (s, "<", "&lt;"); //PBS 01/31/00: convert carets to entities
 		s = string.replaceAll (s, "\"", "&quot;"); //PBS 01/31/00: convert quotes to entities

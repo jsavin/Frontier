@@ -10,4 +10,4 @@ on getID () {
 				id = rec ['pCre'];
 				return (id)};
 			
-			return (Netscape.id)}}} «all other methods failed, punt!
+			return (Netscape.id)}}} //all other methods failed, punt!

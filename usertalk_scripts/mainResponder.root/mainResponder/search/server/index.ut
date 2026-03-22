@@ -1,11 +1,11 @@
 on index (title, url, bodyText, siteName, siteUrl, client, flShowText, lastModDate=nil, indexName=nil) {
-	«Index one page.
+	//Index one page.
 	
-	«Make sure this is a search engine server.
+	//Make sure this is a search engine server.
 	if not config.mainResponder.prefs.flSearchEngine {
 		return (false)};
 	
-	«Make sure Index.root exists and is open.
+	//Make sure Index.root exists and is open.
 	mainResponder.search.utilities.assureIndex (indexName);
 	
 	local (indexPath = mainResponder.search.utilities.getIndexPath (indexName));
@@ -15,16 +15,16 @@ on index (title, url, bodyText, siteName, siteUrl, client, flShowText, lastModDa
 	if lastModDate == nil {
 		lastModDate = clock.now ()};
 	
-	«De-index this page.
+	//De-index this page.
 	mainResponder.search.server.deIndexPage (url, indexName:indexName);
 	
-	«Build the table of info about this page.
+	//Build the table of info about this page.
 	mainResponder.search.server.buildPageInfo (bodyText, title, url, lastModDate, siteName, siteUrl, flShowText, indexName);
 	
-	«Add this page to the index.
+	//Add this page to the index.
 	mainResponder.search.server.indexOnePage (url, title, bodyText, @searchEngine.data.stopWords, indexName);
 	
-	«Log this index.
+	//Log this index.
 	mainResponder.search.server.logIndexedPage (url, title, siteName, siteUrl, client, indexName);
 	
 	msg ("");

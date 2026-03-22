@@ -1,11 +1,11 @@
 on getMostRecentDay (adrCalendar, d=clock.now ()) {
-	«Notes
-		«Thu, 11 Mar 1999 20:10:01 GMT by AR
-			«adrcalendar is the address of a valid calendar structure.
-			«d is an optional date which defaults to clock.now ().
-			«If the address corresponding to d exists, we return the date.
-			«Otherwise we walk backwards in time until we find an element and return the corresponding date.
-			«We throw a scriptError if the calendar does not contain elements corresponding to times before d or if adrcalendar does not point to a valid non-empty calendar structure.
+	//Notes
+		//Thu, 11 Mar 1999 20:10:01 GMT by AR
+			//adrcalendar is the address of a valid calendar structure.
+			//d is an optional date which defaults to clock.now ().
+			//If the address corresponding to d exists, we return the date.
+			//Otherwise we walk backwards in time until we find an element and return the corresponding date.
+			//We throw a scriptError if the calendar does not contain elements corresponding to times before d or if adrcalendar does not point to a valid non-empty calendar structure.
 	local (adrDay, dmin = mainResponder.calendar.getFirstDay (adrCalendar));
 	while (dmin <= d) {
 		try {
@@ -17,9 +17,9 @@ on getMostRecentDay (adrCalendar, d=clock.now ()) {
 				return (d)}};
 		d = date.yesterday (d)};
 	scripterror ("Can't get the most recent day in the calendar because the calendar doesn't contain any elements before " + d + ".")};
-«on getMostRecentDay (adrCalendar, d=clock.now ())
-	«Tue, May 23, 2000 at 5:45:17 PM by AR
-		«Old code
-	«kernel (mrcalendar.getmostrecentday)
-«bundle  //test code
-	«dialog.notify (getMostRecentDay (@scriptingNews))
+//on getMostRecentDay (adrCalendar, d=clock.now ())
+	//Tue, May 23, 2000 at 5:45:17 PM by AR
+		//Old code
+	//kernel (mrcalendar.getmostrecentday)
+//bundle  //test code
+	//dialog.notify (getMostRecentDay (@scriptingNews))

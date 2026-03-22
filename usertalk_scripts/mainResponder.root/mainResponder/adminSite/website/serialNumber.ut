@@ -1,10 +1,10 @@
-«Changes
-	«11/24/06; 5:28:56 PM by LL
-		«Changed some text on the page.
-	«9/20/06; 2:14:22 PM by LL
-		«Corrected Manila store link and removed Frontier references.
-	«4/8/02; 4:13:43 PM by JES
-		«Created. Cribbed from radio.macros.enterSerialNumber and radio.macros.thankYou.
+//Changes
+	//11/24/06; 5:28:56 PM by LL
+		//Changed some text on the page.
+	//9/20/06; 2:14:22 PM by LL
+		//Corrected Manila store link and removed Frontier references.
+	//4/8/02; 4:13:43 PM by JES
+		//Created. Cribbed from radio.macros.enterSerialNumber and radio.macros.thankYou.
 
 local (pta = html.getpagetableaddress ());
 local (htmltext = "", indentlevel = 0);

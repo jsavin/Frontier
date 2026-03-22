@@ -1,7 +1,7 @@
 on getNotifyList (adrnewssite) {
-	«Changes
-		«11/28/2000; 8:32:11 AM by DW
-			«Created. Return the #newsSite's notification list as a list. 
+	//Changes
+		//11/28/2000; 8:32:11 AM by DW
+			//Created. Return the #newsSite's notification list as a list. 
 	
 	try {
 		local (notifylist = adrnewssite^.notifylist, item);
@@ -22,5 +22,5 @@ on getNotifyList (adrnewssite) {
 			plainRecipients = plainRecipients + {item}}}
 	else { //error, return empty list
 		return ({})}};
-«bundle //test code
-	«dialog.alert (getnotifylist (@worldoutlineManilaWebsite.["#newsSite"]))
+//bundle //test code
+	//dialog.alert (getnotifylist (@worldoutlineManilaWebsite.["#newsSite"]))

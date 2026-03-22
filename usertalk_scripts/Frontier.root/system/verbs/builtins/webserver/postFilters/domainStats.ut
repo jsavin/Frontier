@@ -1,6 +1,6 @@
 on domainStats (pta) {
-	«Keep track of the  number of hits per domain, and number of seconds spent processing hits, by domain, and number of bytes served, by domain. 
-		«11/05/1999 at 7:29:59 PM by AR
+	//Keep track of the  number of hits per domain, and number of seconds spent processing hits, by domain, and number of bytes served, by domain. 
+		//11/05/1999 at 7:29:59 PM by AR
 	
 	if webserver.getPref ("flDomainStats") {
 		local (host = "default");

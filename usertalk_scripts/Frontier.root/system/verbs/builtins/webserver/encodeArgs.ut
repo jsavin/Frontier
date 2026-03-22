@@ -1,5 +1,5 @@
 on encodeArgs (adrTable) {
-	«Encode a table into an http args string.
+	//Encode a table into an http args string.
 	local (argString = "");
 	on add (name, value) {
 		if argstring != "" {

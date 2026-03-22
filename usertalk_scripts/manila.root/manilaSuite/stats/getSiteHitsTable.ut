@@ -1,6 +1,6 @@
 on getSiteHitsTable (adrSite, adrAdrTable) {
-	«Get the address of the table containing the hourly hits for this site. Return false if we can't get the table. (It's not a fatal error.)
-		«11/09/00; 2:02:04 PM by PBS
+	//Get the address of the table containing the hourly hits for this site. Return false if we can't get the table. (It's not a fatal error.)
+		//11/09/00; 2:02:04 PM by PBS
 	
 	try {
 		local (canonicalSiteName);

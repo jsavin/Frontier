@@ -1,8 +1,8 @@
-on readPackedCard (f) { «read a Card Editor file into the object database
-	«the data fork of a Card Editor file contains a packed card, and that's all
-		«updated 1/5/96 DW -- strips off net header, if it's present
-	«Fri, Dec 5, 1997 at 1:52:15 AM by PBS
-		«Changed call to toys.readWholeFile to file.readWholeFile.
+on readPackedCard (f) { //read a Card Editor file into the object database
+	//the data fork of a Card Editor file contains a packed card, and that's all
+		//updated 1/5/96 DW -- strips off net header, if it's present
+	//Fri, Dec 5, 1997 at 1:52:15 AM by PBS
+		//Changed call to toys.readWholeFile to file.readWholeFile.
 	
 	local (s = string (file.readWholeFile (f)));
 	local (line1 = string.nthField (s, "\r", 1));

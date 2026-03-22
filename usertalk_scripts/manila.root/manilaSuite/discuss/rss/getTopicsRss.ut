@@ -1,9 +1,9 @@
 on getTopicsRss (adrsite=nil, maxitems=50) {
-	«Changes
-		«10/11/03; 10:52:10 PM by JES
-			«Call manilaSuite.editors.restrictSiteToEditors for editors only sites instead of returning a 404 page.
-		«5/9/03; 7:39:42 PM by JES
-			«Created. Return RSS which lists recent topics in a Manila site's discussion group.
+	//Changes
+		//10/11/03; 10:52:10 PM by JES
+			//Call manilaSuite.editors.restrictSiteToEditors for editors only sites instead of returning a 404 page.
+		//5/9/03; 7:39:42 PM by JES
+			//Created. Return RSS which lists recent topics in a Manila site's discussion group.
 	on includeCallback (adrmsg) {
 		local (flInclude = (adrmsg^.inResponseTo == 0) );
 		return (flInclude)};
@@ -27,6 +27,6 @@ on getTopicsRss (adrsite=nil, maxitems=50) {
 	local (title = adrsite^.["#newsSite"].siteName + " Topics");
 	local (link = adrsite^.["#urls"].discussHomePage);
 	return (manilaSuite.discuss.rss.getRss (adrsite, @includeCallback, title:title, link:link, maxitems:maxitems))};
-«bundle //test code
-	«wp.newTextObject (getTopicsRss (@jaketest2ManilaWebsite), @workspace.rssText)
-	«edit (@workspace.rssText)
+//bundle //test code
+	//wp.newTextObject (getTopicsRss (@jaketest2ManilaWebsite), @workspace.rssText)
+	//edit (@workspace.rssText)

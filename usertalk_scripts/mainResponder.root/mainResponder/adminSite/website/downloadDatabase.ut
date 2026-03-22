@@ -1,10 +1,10 @@
 on downloadDatabase () {
-	«Changes
-		«10/28/05; 5:03:42 PM by JES
-			«Add Revert-to-saved command.
-		«7/19/05; 1:11:05 AM by JES
-			«Created. Return a page with a link to download a database, or send a downloaded database to the user.
-			«Make sure the user understands that this involves saving a copy of the database, which will lock up the server, potentially for some time if the database is large.
+	//Changes
+		//10/28/05; 5:03:42 PM by JES
+			//Add Revert-to-saved command.
+		//7/19/05; 1:11:05 AM by JES
+			//Created. Return a page with a link to download a database, or send a downloaded database to the user.
+			//Make sure the user understands that this involves saving a copy of the database, which will lock up the server, potentially for some time if the database is large.
 	local (pta = html.getPageTableAddress ());
 	local (htext);
 	on add (s) {
@@ -74,7 +74,7 @@ on downloadDatabase () {
 			else { //no copy exists -- we have to make one
 				fileToServe = makeCopy (f)};
 			bundle { //serve the copy
-				«pta^.responseHeaders.["Content-Type"] = "application/octet-stream" //may be a bit wonky on Windows
+				//pta^.responseHeaders.["Content-Type"] = "application/octet-stream" //may be a bit wonky on Windows
 				pta^.responseHeaders.["Content-Type"] = "text/table"; //gets us the right Mac file type
 				pta^.responseHeaders.["Last-Modified"] = date.netStandardString (date.netStandardString (file.modified (fileToServe)));
 				pta^.responseBody = string (file.readwholefile (fileToServe));

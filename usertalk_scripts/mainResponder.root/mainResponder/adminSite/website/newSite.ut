@@ -1,9 +1,9 @@
 on newSite () {
-	«Changes
-		«8/21/02; 1:37:52 PM by JES
-			«Added explanatory text at the top of the page.
-		«8/16/02; 4:19:17 PM by JES
-			«Created.
+	//Changes
+		//8/21/02; 1:37:52 PM by JES
+			//Added explanatory text at the top of the page.
+		//8/16/02; 4:19:17 PM by JES
+			//Created.
 	manilaSuite.init ();
 	local (pta = html.getPageTableAddress ());
 	pta^.title = "New Site";

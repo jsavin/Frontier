@@ -1,7 +1,7 @@
 on linkPanel (adroutline, ixLinkSet, flUseCache=true, switchLinkUrl="switchLinks$", flFormulas=false) {
-	«Changes:
-		«4/14/00; 6:29:29 PM by JES
-			«localized
+	//Changes:
+		//4/14/00; 6:29:29 PM by JES
+			//localized
 	on link (url, linetext, title=nil, color=nil) {
 		local (startfont = "", endfont = "");
 		if color != nil {

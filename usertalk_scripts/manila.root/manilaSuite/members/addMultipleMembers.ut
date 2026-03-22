@@ -1,19 +1,19 @@
 on addMultipleMembers (memberlist, adrsite=nil, membertype="member", flSendWelcomeEmail=true, flBulletins=nil, flHtmlBulletins=false) {
-	«Changes
-		«2/22/06; 7:12:19 PM by JES
-			«New optional params, flBulletins and flHtmlBulletins. If flBulletins is non-nil, we set up bulletin prefs for the new members accordingly.
-		«3/28/05; 2:17:02 PM by JES
-			«Call new manilaSuite.passwords.generate to get passwords for new members. Call callbacks when members are added.
-		«5/19/04; 12:46:54 AM by JES
-			«Simplified (but lengthened) the auto-generated passwords to make them easier to copy/paste from confirmation emails into the login page.
-		«9/10/02; 9:35:07 PM by JES
-			«Created. Take a list, or a whitespace-delimited string of email addresses and create new members in a Manila site.
-				«If called with adrsite supplied, then this script can be called outside of the website framework context.
-				«membertype can be one of the following: (case-insensitive)
-					«member
-					«contributingEditor
-					«contentEditor
-					«managingEditor
+	//Changes
+		//2/22/06; 7:12:19 PM by JES
+			//New optional params, flBulletins and flHtmlBulletins. If flBulletins is non-nil, we set up bulletin prefs for the new members accordingly.
+		//3/28/05; 2:17:02 PM by JES
+			//Call new manilaSuite.passwords.generate to get passwords for new members. Call callbacks when members are added.
+		//5/19/04; 12:46:54 AM by JES
+			//Simplified (but lengthened) the auto-generated passwords to make them easier to copy/paste from confirmation emails into the login page.
+		//9/10/02; 9:35:07 PM by JES
+			//Created. Take a list, or a whitespace-delimited string of email addresses and create new members in a Manila site.
+				//If called with adrsite supplied, then this script can be called outside of the website framework context.
+				//membertype can be one of the following: (case-insensitive)
+					//member
+					//contributingEditor
+					//contentEditor
+					//managingEditor
 	
 	local (pwdchars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890");
 	local (ctchars = sizeOf (pwdchars));
@@ -52,12 +52,12 @@ on addMultipleMembers (memberlist, adrsite=nil, membertype="member", flSendWelco
 		for i = 1 to ct {
 			l = l + string.nthField (s, " ", i)};
 		return (l)};
-	«on getRandomPassword (n)    «commented out 05/03/25, 11:23:06 by DAB
-		«local (s = "")
-		«local (i)
-		«for i = 1 to n
-			«s = s + pwdchars[random (1, ctchars)]
-		«return (s)
+	//on getRandomPassword (n)    //commented out 05/03/25, 11:23:06 by DAB
+		//local (s = "")
+		//local (i)
+		//for i = 1 to n
+			//s = s + pwdchars[random (1, ctchars)]
+		//return (s)
 	
 	if typeOf (memberlist) == stringType {
 		memberlist = stringToMemberlist (memberlist)};
@@ -68,7 +68,7 @@ on addMultipleMembers (memberlist, adrsite=nil, membertype="member", flSendWelco
 	local (email);
 	for email in memberlist { //create the new members
 		local (adrMember = getMemberTable (email));
-		«local (password = getRandomPassword (8))
+		//local (password = getRandomPassword (8))
 		local (password = manilaSuite.passwords.generate()); //05/03/25, 11:22:56 by DAB
 		if not defined (adrMember^) { //create the member table
 			new (tableType, adrMember);
@@ -99,5 +99,5 @@ on addMultipleMembers (memberlist, adrsite=nil, membertype="member", flSendWelco
 		manilaSuite.members.sendMemberSignupMail (adrMember, adrsite)};
 	
 	return (true)};
-«bundle //test code
-	«addMultipleMembers ("foo@braincase.net bar@braincase.net baz@braincase.net", @testManilaWebsite, "managingEditor")
+//bundle //test code
+	//addMultipleMembers ("foo@braincase.net bar@braincase.net baz@braincase.net", @testManilaWebsite, "managingEditor")

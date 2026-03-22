@@ -1,6 +1,6 @@
 on authenticateMember (siteName, username, password) {
-	«Return true if username is a member and the password is correct. Return false otherwise.
-		«01/15/00; 6:32:09 PM by PBS
+	//Return true if username is a member and the password is correct. Return false otherwise.
+		//01/15/00; 6:32:09 PM by PBS
 	
 	local (groupName = manilaSuite.rpcUtils.getMembersGroupName (siteName));
 	

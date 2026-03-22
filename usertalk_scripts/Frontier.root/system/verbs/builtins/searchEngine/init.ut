@@ -1,7 +1,7 @@
 on init (adrUserTable=@user.searchEngine) {
-	«Set up a table of preferences.
-		«When you want to set up additional preferences tables,
-		«call this script with one parameter, the address of a prefs table.
+	//Set up a table of preferences.
+		//When you want to set up additional preferences tables,
+		//call this script with one parameter, the address of a prefs table.
 	local (adrPrefs, adrStrings, adrDefaults);
 	
 	if not defined (adrUserTable^) {

@@ -1,8 +1,8 @@
 on addSuite (suiteadr) {
 	if not defined (suiteadr^) {
 		local (name);
-		bundle { «klooge to get the name part of the address
-			«new (tableType, suiteadr)
+		bundle { //klooge to get the name part of the address
+			//new (tableType, suiteadr)
 			suiteadr^ = 0;
 			name = nameOf (suiteadr^);
 			delete (suiteadr)};

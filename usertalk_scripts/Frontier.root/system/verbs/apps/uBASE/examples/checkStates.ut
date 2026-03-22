@@ -1,12 +1,12 @@
-«check the States Database to be sure it's correct
+//check the States Database to be sure it's correct
 
 local (fnum, hadError = false);
-bundle { «start up uBASE, open the file
+bundle { //start up uBASE, open the file
 	local (ubasefolder);
 	ubase.launch ();
 	ubasefolder = file.folderFromPath (ubase.appinfo.path);
 	fnum = ubase.openFile (ubasefolder + "States Database");
-	ubase.bringToFront ()}; «so we can watch the records being checked
+	ubase.bringToFront ()}; //so we can watch the records being checked
 
 on checkState (name, capital, abbrev) {
 	local (holder);
@@ -15,12 +15,12 @@ on checkState (name, capital, abbrev) {
 			scriptError (holder.capi + " should equal " + capital + " [for " + name + "].")};
 		if holder.abbr != abbrev {
 			scriptError (holder.abbr + " should equal " + abbrev + " [for " + name + "].")};
-		msg (capital)} «show capital in Frontier main window
-	else { «  Report the error
+		msg (capital)} //show capital in Frontier main window
+	else { //  Report the error
 		scriptError ("Error:  " + holder.errs)};
 	rollBeachball ()};
 
-bundle { «check 50 states, their capitals and abbreviations
+bundle { //check 50 states, their capitals and abbreviations
 	checkState ("Alabama", "Montgomery", "AL");
 	checkState ("Alaska", "Juneau", "AK");
 	checkState ("Arizona", "Phoenix", "AZ");

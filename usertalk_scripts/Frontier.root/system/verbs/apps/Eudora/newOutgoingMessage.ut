@@ -1,12 +1,12 @@
 on newOutgoingMessage (recipient, returnaddress, subject, text) {
-	«create a mail message in a single call
+	//create a mail message in a single call
 	
 	local (x);
-	Eudora.launch (); «make sure Eudora is running
+	Eudora.launch (); //make sure Eudora is running
 	x = Eudora.createMessage ();
 	Eudora.setMessageTo (x, recipient);
 	Eudora.setMessageSubject (x, subject);
 	Eudora.setMessageSender (x, returnaddress);
 	Eudora.setMessageText (x, text);
-	«Eudora.queue (x)
+	//Eudora.queue (x)
 	return (true)}

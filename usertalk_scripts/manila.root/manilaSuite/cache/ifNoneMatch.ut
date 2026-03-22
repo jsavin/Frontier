@@ -1,11 +1,11 @@
 on ifNoneMatch (etag) {
-	«Changes
-		«5/12/03; 11:50:18 AM by JES
-			«Created. Generalized implementation of ETag/If-None-Match support.
-			«Call this script at the top of any script which generates content to be served via HTTP, and it will check for the specified If-None-Match value.
-			«If found, then the script returns immediately, letting the browser serve the content from its cache.
-			«If not found, or if the value doesn't match the ETag value, then this script returns true, allowing your script to generate the content.
-			«We don't specify the etag value here -- it's specified by the caller.
+	//Changes
+		//5/12/03; 11:50:18 AM by JES
+			//Created. Generalized implementation of ETag/If-None-Match support.
+			//Call this script at the top of any script which generates content to be served via HTTP, and it will check for the specified If-None-Match value.
+			//If found, then the script returns immediately, letting the browser serve the content from its cache.
+			//If not found, or if the value doesn't match the ETag value, then this script returns true, allowing your script to generate the content.
+			//We don't specify the etag value here -- it's specified by the caller.
 	local (pta = html.getPageTableAddress ());
 	pta^.responseHeaders.["ETag"] = "\"" + etag + "\"";
 	if defined (pta^.requestHeaders.["If-None-Match"]) {

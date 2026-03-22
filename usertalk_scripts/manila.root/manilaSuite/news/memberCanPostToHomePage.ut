@@ -1,11 +1,11 @@
 on memberCanPostToHomePage (adrsite=nil, adrMember=nil) {
-	«Return true if this member is allowed to approve news items for posting to the home page.
-		«04/25/00; 2:51:50 PM by PBS
-	«Changes:
-		«9/26/03; 12:31:54 PM by JES
-			«Added support for content editor permissions.
-		«8/20/01; 12:18:27 AM by JES
-			«Added optional parameter, adrsite, which if specified makes it possible to call this script from outside the website framework context.
+	//Return true if this member is allowed to approve news items for posting to the home page.
+		//04/25/00; 2:51:50 PM by PBS
+	//Changes:
+		//9/26/03; 12:31:54 PM by JES
+			//Added support for content editor permissions.
+		//8/20/01; 12:18:27 AM by JES
+			//Added optional parameter, adrsite, which if specified makes it possible to call this script from outside the website framework context.
 	
 	local (flManagingEditor, flContentEditor, flEditor, flMember);
 	if adrsite == nil { //assume we're being called from the website framework context
@@ -30,19 +30,19 @@ on memberCanPostToHomePage (adrsite=nil, adrMember=nil) {
 	if not flMember { //you at least have to be a member to post to the home page
 		return (false)};
 	
-	«Content editors check.
+	//Content editors check.
 	if defined (adrNewsSite^.newsItems.access.flContentEditorsPost) {
 		if adrNewsSite^.newsItems.access.flContentEditorsPost {
 			if flContentEditor {
 				return (true)}}};
 	
-	«Contributing editors check.
+	//Contributing editors check.
 	if defined (adrNewsSite^.newsItems.access.flContributingEditorsPost) {
 		if adrNewsSite^.newsItems.access.flContributingEditorsPost {
 			if flEditor {
 				return (true)}}};
 	
-	«Members check.
+	//Members check.
 	if defined (adrNewsSite^.newsItems.access.flMembersPost) {
 		if adrNewsSite^.newsItems.access.flMembersPost {
 			return (true)}};

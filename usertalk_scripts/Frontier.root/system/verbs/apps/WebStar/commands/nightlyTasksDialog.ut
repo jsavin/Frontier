@@ -1,4 +1,4 @@
-«open the Nightly Tasks dialog
+//open the Nightly Tasks dialog
 webstar.commands.init ();
 on startCard () {
 	card.setObjectFlag ("startNewLogFile", user.webstar.nightlyLogRoll);

@@ -1,6 +1,6 @@
 on getShortSiteName (siteName) {
-	«Given a name like FooBarManilaWebsite, return FooBar.
-		«11/16/99; 10:06:55 PM by PBS
+	//Given a name like FooBarManilaWebsite, return FooBar.
+		//11/16/99; 10:06:55 PM by PBS
 	
 	if string.lower (siteName) endsWith "manilawebsite" {
 		local (shortSiteName);

@@ -1,10 +1,10 @@
-on remove (domain, path, account, password) { « Remove remote file.
+on remove (domain, path, account, password) { // Remove remote file.
 	case ftpClient.data.currentid {
 		Anarchie.id {
 			local (result);
-			if path[sizeOf (path)] == '/' { « Anarchie doesn't like slashes at the end of directory names.
+			if path[sizeOf (path)] == '/' { // Anarchie doesn't like slashes at the end of directory names.
 				path = string.delete (path, sizeOf (path), infinity)};
-			if ftpClient.isFolder (domain, path, account, password) { « We have to recursively go through the contents
+			if ftpClient.isFolder (domain, path, account, password) { // We have to recursively go through the contents
 				local (i);
 				for i in ftpClient.list (domain, path, account, password) {
 					ftpClient.remove (domain, path + "/" + i, account, password)}};

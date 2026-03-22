@@ -9,10 +9,10 @@ on visit (path) {
 		if path == "" {
 			break};
 		if file.isFolder (path) {
-			try {Finder.close (path)}}; «new in 4.0b9
+			try {Finder.close (path)}}; //new in 4.0b9
 		if file.isVolume (path) {
 			break};
 		popPath ()};
-	Finder.reveal (origPath); «highlight the original file, the Finder loses track of selection
-	return (true)}; «new in 4.0b9
+	Finder.reveal (origPath); //highlight the original file, the Finder loses track of selection
+	return (true)}; //new in 4.0b9
 FinderMenu.visitPaths (@visit)

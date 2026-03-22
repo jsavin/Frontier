@@ -1,6 +1,6 @@
 on useHashedCookies (pta=nil) {
-	«Return true if hashed cookies should be used. Return false otherwise. Default is false, current behavior.
-		«04/10/00; 11:57:49 AM by PBS
+	//Return true if hashed cookies should be used. Return false otherwise. Default is false, current behavior.
+		//04/10/00; 11:57:49 AM by PBS
 	
 	if not defined (string.hashMD5) { //hash verb isn't available, can't use hashed cookies
 		return (false)};
@@ -10,11 +10,11 @@ on useHashedCookies (pta=nil) {
 	
 	local (fl = false);
 	
-	«Check global.
+	//Check global.
 	if defined (config.mainResponder.prefs.flMembershipHashedCookies) {
 		fl = config.mainResponder.prefs.flMembershipHashedCookies};
 	
-	«Check local.
+	//Check local.
 	if defined (pta^.responderAttributes.flMembershipHashedCookies) {
 		fl = pta^.responderAttributes.flMembershipHashedCookies};
 	

@@ -1,7 +1,7 @@
 on parseJabberId (jabberId) {
-	«Changes
-		«5/14/02; 1:51:34 PM by JB
-			«Changelog created.
+	//Changes
+		//5/14/02; 1:51:34 PM by JB
+			//Changelog created.
 	local ( l = {} );
 	if not jabberId contains "@" {
 		scriptError ("Can't parse Jabber ID because Jabber ID \"" + jabberID + "\" is invalid; it does not have an \"@\".")};

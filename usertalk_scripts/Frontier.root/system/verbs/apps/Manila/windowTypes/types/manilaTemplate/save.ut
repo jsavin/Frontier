@@ -1,9 +1,9 @@
 on save (adr, flClosing=false) {
-	«Changes
-		«12/19/01; 2:05:52 PM by JES
-			«Fixed a bug where the site structure outline could not be saved because it was mistakenly sent as plain text, instead of as site structure XML.
-		«7/9/01; 7:32:12 PM by JES
-			«Created. Save a Manila template or advanced item.
+	//Changes
+		//12/19/01; 2:05:52 PM by JES
+			//Fixed a bug where the site structure outline could not be saved because it was mistakenly sent as plain text, instead of as site structure XML.
+		//7/9/01; 7:32:12 PM by JES
+			//Created. Save a Manila template or advanced item.
 	
 	local (atts);
 	window.attributes.getAll (@atts, adr);

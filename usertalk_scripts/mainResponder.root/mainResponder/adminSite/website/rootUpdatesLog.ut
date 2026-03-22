@@ -1,9 +1,9 @@
 on rootUpdatesLog (maxitems = infinity) {
-	«Changes
-		«9/8/02; 4:37:58 PM by JES
-			«Set the correct title -- fix a copy/paste bug.
-		«8/29/02; 12:17:23 AM by JES
-			«Created.
+	//Changes
+		//9/8/02; 4:37:58 PM by JES
+			//Set the correct title -- fix a copy/paste bug.
+		//8/29/02; 12:17:23 AM by JES
+			//Created.
 	local (pta = html.getPageTableAddress ());
 	pta^.title = "Root Updates Log";
 	local (colors = {pta^.trbg1, pta^.trbg2});

@@ -1,5 +1,5 @@
 on set (username, password, siteName, msgNum, cohortList) {
-	«manilaSuite.rpcHandlers.accesscontrol.cohorts.set : 04/05/21, 09:49:02 by DAB
-		«add list of cohortnames from cohortsList to  cohorts defined membership grioups of sitename 
-		«was manilaFixer.rpcHandlers.accesscontrol.cohorts.set
+	//manilaSuite.rpcHandlers.accesscontrol.cohorts.set : 04/05/21, 09:49:02 by DAB
+		//add list of cohortnames from cohortsList to  cohorts defined membership grioups of sitename 
+		//was manilaFixer.rpcHandlers.accesscontrol.cohorts.set
 	manilaSuite.accessControl.rpcHandlers.set(username, password, siteName, msgNum, "permittedcohorts", cohortList)}

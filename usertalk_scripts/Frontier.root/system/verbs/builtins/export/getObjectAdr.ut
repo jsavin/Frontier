@@ -1,16 +1,16 @@
-on getObjectAdr (prompt) { «prompt the user for the name of object to export
+on getObjectAdr (prompt) { //prompt the user for the name of object to export
 	local (name, tablename, objectname, quotedname);
-	on suggestobjectname () { «return an object db address for display in a dialog
+	on suggestobjectname () { //return an object db address for display in a dialog
 		local (name);
-		name = export.objectadr; «default, suggest name of last item exported
-		if !defined (name^) { «don't suggest name of object that doesn't exist
+		name = export.objectadr; //default, suggest name of last item exported
+		if !defined (name^) { //don't suggest name of object that doesn't exist
 			name = ""};
 		wfront = window.frontmost ();
-		if wfront == "" { «no window open
+		if wfront == "" { //no window open
 			return (name)};
-		if !defined (wfront^) { «window doesn't contain an addressable object
+		if !defined (wfront^) { //window doesn't contain an addressable object
 			return (name)};
-		if typeOf (wfront^) == tabletype { «for tables, suggest selected item
+		if typeOf (wfront^) == tabletype { //for tables, suggest selected item
 			name = table.getCursor ();
 			return (name)};
 		return (wfront)};

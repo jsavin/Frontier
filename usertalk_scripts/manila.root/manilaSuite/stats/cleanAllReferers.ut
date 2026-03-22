@@ -1,6 +1,6 @@
 on cleanAllReferers () {
-	«5/16/07; 11:32:06 AM by LL
-		«Created. Cleans the referers tables for all sites on the server.
+	//5/16/07; 11:32:06 AM by LL
+		//Created. Cleans the referers tables for all sites on the server.
 	local (adrTable = @config.manila.stats.referers);
 	if defined (adrTable^) {
 		local (i);

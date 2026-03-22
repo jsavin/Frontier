@@ -1,17 +1,17 @@
 on monthToString (monthnum) {
-	«Thursday, November 11, 1999 at 2:30:12 AM by AR
-		«Implemented as a kernel verb in Frontier 6.1.
-		«Old code
-			«on monthToString (monthnum) //9/12/98; 7:49:17 AM by DW
-				«if (monthnum < 1) or (monthnum > 12)
-					«scriptError ("Can't convert " + monthnum + " to a string because it is not between 1 and 12.")
-				«local (adrdatatable = @user.prefs.dates)
-				«if not defined (adrdatatable^)
-					«new (tableType, adrdatatable)
-				«local (adrlist = @adrdatatable^.monthNames)
-				«if not defined (adrlist^)
-					«adrlist^ = {"January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"}
-				«return (adrlist^ [monthnum])
+	//Thursday, November 11, 1999 at 2:30:12 AM by AR
+		//Implemented as a kernel verb in Frontier 6.1.
+		//Old code
+			//on monthToString (monthnum) //9/12/98; 7:49:17 AM by DW
+				//if (monthnum < 1) or (monthnum > 12)
+					//scriptError ("Can't convert " + monthnum + " to a string because it is not between 1 and 12.")
+				//local (adrdatatable = @user.prefs.dates)
+				//if not defined (adrdatatable^)
+					//new (tableType, adrdatatable)
+				//local (adrlist = @adrdatatable^.monthNames)
+				//if not defined (adrlist^)
+					//adrlist^ = {"January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"}
+				//return (adrlist^ [monthnum])
 	kernel (date.monthToString)};
-«bundle //test code
-	«dialog.notify (monthToString (12))
+//bundle //test code
+	//dialog.notify (monthToString (12))

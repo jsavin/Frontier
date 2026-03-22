@@ -1,5 +1,5 @@
 on attachServiceToUser (userName, serviceName) {
-	«Give a user access to a service.
+	//Give a user access to a service.
 	local (adrUserServiceTable);
 	if not (people.userExists (userName)) {
 		return (false)};

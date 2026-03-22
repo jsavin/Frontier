@@ -1,4 +1,4 @@
-on parseAnchor (s, withurl) { «Combine a base URL and a relative URL to produce a fully-specified URL
+on parseAnchor (s, withurl) { //Combine a base URL and a relative URL to produce a fully-specified URL
 	case sys.os () {
 		"MacOS" {
 			return (appleEvent (user.webBrowser.currentid, 'WWW!', 'PRSA', '----', string (s), 'RELA', string (withurl)))}}}

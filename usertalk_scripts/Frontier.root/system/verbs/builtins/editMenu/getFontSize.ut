@@ -1,2 +1,2 @@
-on getFontSize () { «new in 4.0b9
+on getFontSize () { //new in 4.0b9
 	kernel (editMenu.getFontSize)}

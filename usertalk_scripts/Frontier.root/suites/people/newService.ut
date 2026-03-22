@@ -1,5 +1,5 @@
 on newService (serviceName) {
-	«Register a service. Return false if the service already exists.
+	//Register a service. Return false if the service already exists.
 	local (adrService = people.getServiceTable (serviceName));
 	if people.serviceExists (serviceName, adrService) {
 		return (false)};

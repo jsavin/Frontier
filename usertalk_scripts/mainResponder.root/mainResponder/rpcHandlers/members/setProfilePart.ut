@@ -1,6 +1,6 @@
 on setProfilePart (groupname, username, password, partpath, struct) {
-	«local (adrtable = log.addToGuestDatabase ("setProfilePart", flHourlyRoll:false))
-	«adrtable^.memavailOnEntry = string.megabytestring (sys.memavail ())
+	//local (adrtable = log.addToGuestDatabase ("setProfilePart", flHourlyRoll:false))
+	//adrtable^.memavailOnEntry = string.megabytestring (sys.memavail ())
 	if sizeof (partpath) == 0 {
 		scriptError ("Can't set the profile part because the partial path is empty.")};
 	local (nomad = mainResponder.members.getMemberTableWithPassword (groupname, username, password));
@@ -10,5 +10,5 @@ on setProfilePart (groupname, username, password, partpath, struct) {
 		partpath = string.delete (partpath, 1, sizeof (s) + 1)}; //pop off the dot too
 	nomad^ = struct;
 	fileMenu.saveMyRoot (nomad);
-	«adrtable^.memavailOnExit = string.megabytestring (sys.memavail ())
+	//adrtable^.memavailOnExit = string.megabytestring (sys.memavail ())
 	return (true)}

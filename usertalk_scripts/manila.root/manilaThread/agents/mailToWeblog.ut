@@ -1,7 +1,7 @@
 on mailToWeblog () {
-	«Changes
-		«5/8/03; 6:15:18 PM by JES
-			«Created. The entry point for the mail-to-weblog feature.
+	//Changes
+		//5/8/03; 6:15:18 PM by JES
+			//Created. The entry point for the mail-to-weblog feature.
 	if config.manila.prefs.flMailToWeblogEnabled {
 		local (now = clock.now ());
 		if not defined (manilaThread.stats.whenLastMailToWeblogCheck) {

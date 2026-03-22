@@ -1,9 +1,9 @@
 on checkEditGem (editUrlName="gemEditInBrowser", postURLName="gemPostEditedMessage") {
-	«Changes
-		«7/14/05; 3:30:50 PM by JES
-			«Add support for referer checking pref.
-		«04.06.30, 17:44:32 by DAB
-			«Created. This script makes sure that the referer is the edit-in-browser page and that the gemNumbers match.
+	//Changes
+		//7/14/05; 3:30:50 PM by JES
+			//Add support for referer checking pref.
+		//04.06.30, 17:44:32 by DAB
+			//Created. This script makes sure that the referer is the edit-in-browser page and that the gemNumbers match.
 	
 	if not manilaSuite.referer.checkIsEnabled () {
 		return (true)};

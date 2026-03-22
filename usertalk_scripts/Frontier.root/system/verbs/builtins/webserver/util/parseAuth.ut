@@ -1,10 +1,10 @@
-«Script: system.verbs.builtins.webserver.util.parseAuth; Version 1; Date: Wed, 13 May 1998 23:41:51 GMT; ID: RAB
+//Script: system.verbs.builtins.webserver.util.parseAuth; Version 1; Date: Wed, 13 May 1998 23:41:51 GMT; ID: RAB
 on parseAuth (adrParamTable) {
-	«March 13, 1998 at 4:37:36 PM by WMF
-		«This script is adapted from the CGi framework
-		«It looks for an Authorization header and if one is present, parses it and 
-		«puts the username in adrParams^.username and the password in (surprise) adrParams^.password
-		«Returns true if there was a parseable Authorization header, false otherwise
+	//March 13, 1998 at 4:37:36 PM by WMF
+		//This script is adapted from the CGi framework
+		//It looks for an Authorization header and if one is present, parses it and 
+		//puts the username in adrParams^.username and the password in (surprise) adrParams^.password
+		//Returns true if there was a parseable Authorization header, false otherwise
 	local (s, upList);
 	
 	on decodePassword (s) {

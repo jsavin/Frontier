@@ -1,14 +1,14 @@
 on decodeString (s, flNeuterMacros=true) {
-	«Changes
-		«11/30/02; 5:33:41 PM by JES
-			«New optional parameter, flNeuterMacros. Defaults to true, preserving existing behavior.
-		«10/2/02; 9:04:47 PM by JES
-			«Don't decode entities that were already decoded by xml.compile when the channel was loaded. Fixes the double-decoding bug where sample HTML text was being displayed in the news page as actual HTML.
-		«3/15/02; 5:54:43 PM by DW
-			«Created. Factored out of xml.rss.compileService, so drivers can get at it.
-	«bundle //old code which caused double-decoding
-		«s = string.replaceAll (s, "&apos;", "'") //work around a bug in xml.entityDecode
-		«s = xml.entitydecode (s, true, true)
+	//Changes
+		//11/30/02; 5:33:41 PM by JES
+			//New optional parameter, flNeuterMacros. Defaults to true, preserving existing behavior.
+		//10/2/02; 9:04:47 PM by JES
+			//Don't decode entities that were already decoded by xml.compile when the channel was loaded. Fixes the double-decoding bug where sample HTML text was being displayed in the news page as actual HTML.
+		//3/15/02; 5:54:43 PM by DW
+			//Created. Factored out of xml.rss.compileService, so drivers can get at it.
+	//bundle //old code which caused double-decoding
+		//s = string.replaceAll (s, "&apos;", "'") //work around a bug in xml.entityDecode
+		//s = xml.entitydecode (s, true, true)
 	s = string.replaceAll (s, "&apos;", "'");
 	s = string.replaceAll (s, "&quot;", "\"");
 	s = xml.entityDecode (s, false, true); //false means we don't want to decide &amp;, &gt; and &lt; -- they've already been decoded by xml.compile.

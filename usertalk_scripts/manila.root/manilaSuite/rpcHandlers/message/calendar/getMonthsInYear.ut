@@ -1,6 +1,6 @@
 on getMonthsInYear (username, password, siteName, year) {
-	«Return a list of months in a year. Used by the Radio UserLand discussion group browser.
-		«08/22/00; 10:07:04 PM by PBS
+	//Return a list of months in a year. Used by the Radio UserLand discussion group browser.
+		//08/22/00; 10:07:04 PM by PBS
 	
 	bundle { //make sure this user has access to the discussion group
 		local (beginningErrorString = "Can't get months in " + year + " in the message calendar because ");

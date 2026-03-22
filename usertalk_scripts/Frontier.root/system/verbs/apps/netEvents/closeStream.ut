@@ -1,4 +1,4 @@
-on closeStream (stream) { «Close a stream and delete the table representing it.
+on closeStream (stream) { //Close a stream and delete the table representing it.
 	if defined (user.netEvents.listens.[stream]) {
 		delete (@user.netEvents.listens.[stream])};
 	return (appleEvent (netEvents.id, 'WAPI', 'CLOS',  '----', long (stream)))}

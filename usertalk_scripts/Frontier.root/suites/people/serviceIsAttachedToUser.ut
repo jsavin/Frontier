@@ -1,5 +1,5 @@
 on serviceIsAttachedToUser (serviceName, userName) {
-	«Does a user have access to a service?
+	//Does a user have access to a service?
 	local (adrUser = people.getUserTable (userName));
 	if not (people.userExists (userName)) {
 		return (false)};

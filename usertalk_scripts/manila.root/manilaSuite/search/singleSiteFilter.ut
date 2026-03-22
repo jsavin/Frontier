@@ -1,7 +1,7 @@
 on singleSiteFilter (adrsearch, adrsite=nil) {
-	«Changes
-		«8/11/02; 2:21:44 AM by JES
-			«Created. A search result filter which removes all hits that aren't in the specified site.
+	//Changes
+		//8/11/02; 2:21:44 AM by JES
+			//Created. A search result filter which removes all hits that aren't in the specified site.
 	if adrSite == nil {
 		adrSite = manilaSuite.getSiteAddress ()};
 	local (siteurl = manilaSuite.getSiteUrl (adrsite));

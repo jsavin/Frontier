@@ -1,6 +1,6 @@
 on getScriptPrefsFolder () {
-	«for scripts that want to store stuff in folders in the System Folder...
-		«we return a path to a folder just for browser-based scripts
+	//for scripts that want to store stuff in folders in the System Folder...
+		//we return a path to a folder just for browser-based scripts
 	
 	local (pc = file.getPathChar ());
 	local (prefsfolder = file.getSpecialFolderPath ("", "Preferences", true));

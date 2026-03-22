@@ -1,23 +1,23 @@
 on getLastNChangedHomePages (n) {
-	«Get a table of info regarding the last n changed home pages.
-		«05/06/00; 7:02:25 PM by PBS
-	«Changes:
-		«04/21/01; 11:30:44 PM by JES
-			«Rewritten to use the flat table at config.manila.updatedHomePages.
+	//Get a table of info regarding the last n changed home pages.
+		//05/06/00; 7:02:25 PM by PBS
+	//Changes:
+		//04/21/01; 11:30:44 PM by JES
+			//Rewritten to use the flat table at config.manila.updatedHomePages.
 	
 	local (changesTable);
 	new (tableType, @changesTable);
 	
 	if defined (config.manila.updatedHomePages) {
 		local (adrTable = @config.manila.updatedHomePages);
-		«local (changesList = {})
+		//local (changesList = {})
 		local (ct = 0);
 		for i = sizeOf (adrTable^) downTo 1 {
 			local (adrItem);
 			adrItem = @adrTable^ [i];
 			if typeOf (adrItem^) == tableType {
 				local (itemName = string.lower (xml.convertToDisplayName (nameOf (adrItem^))));
-				«changesList [0] = itemName
+				//changesList [0] = itemName
 				local (adrTable);
 				adrTable = xml.addTable (@changesTable, itemName);
 				adrTable^ = adrItem^;

@@ -1,8 +1,8 @@
 on discussCallback (adrMsgTable, adrSite=nil) {
-	«This is called when a dg message is new or changes, so Manila has a chance to render the page.
-		«10/22/04; 10:47:29 AM by EDS
-			«incorporated error recovery and logging from DAB
-		«03/14/00; 5:14:26 PM by PBS
+	//This is called when a dg message is new or changes, so Manila has a chance to render the page.
+		//10/22/04; 10:47:29 AM by EDS
+			//incorporated error recovery and logging from DAB
+		//03/14/00; 5:14:26 PM by PBS
 	
 	local (oldPta);
 	try {

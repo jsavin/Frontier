@@ -1,7 +1,7 @@
 on delete (idTbl, flExecuteCleanupScript = true) {
-	«Changes
-		«5/14/02; 1:51:34 PM by JB
-			«Changelog created.
+	//Changes
+		//5/14/02; 1:51:34 PM by JB
+			//Changelog created.
 	on mungeId ( idStr ) {
 		// this munges the id string into a semaphore name, this scriptlet will be copied into several places.
 		if typeOf ( idStr ) == addressType {

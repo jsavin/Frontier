@@ -1,10 +1,10 @@
 on addToUserDatabases (f=nil, flInteractive=true) {
-	«Changes
-		«9/26/05; 1:56:44 PM by JES
-			«New parameter, flInteractive. If false, and f is specified, add the database to user.databases without any interaction with the user.
-		«1999
-			«5/25/99; 9:50:04 AM by DW
-				«Created. Call this script from a menu command. When you create a new guest database that you want to open automatically when Frontier launches, choose the command. It creates a new user.databases sub-table that opens so you can change the default values it sets. I got tired of manually created user.databases sub-tables.
+	//Changes
+		//9/26/05; 1:56:44 PM by JES
+			//New parameter, flInteractive. If false, and f is specified, add the database to user.databases without any interaction with the user.
+		//1999
+			//5/25/99; 9:50:04 AM by DW
+				//Created. Call this script from a menu command. When you create a new guest database that you want to open automatically when Frontier launches, choose the command. It creates a new user.databases sub-table that opens so you can change the default values it sets. I got tired of manually created user.databases sub-tables.
 	if f == nil { //work with the frontmost window
 		if not flInteractive { //whoops!
 			scriptError ("Can't add to user.databases because no database file was specified.")};

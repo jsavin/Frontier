@@ -1,17 +1,17 @@
 on inWebsite (adrObject) {
-	«Return true if the object is in the content part of a website, false otherwise.
-		«It must not start with a # sign or have a # sign in its address.
-		«There must be an #ftpSite table above it, somewhere.
+	//Return true if the object is in the content part of a website, false otherwise.
+		//It must not start with a # sign or have a # sign in its address.
+		//There must be an #ftpSite table above it, somewhere.
 	
 	on findFtpSite (adrTable) {
-		«Find the #ftpSite for this object.
+		//Find the #ftpSite for this object.
 		
 		local (nomad = adrObject);
 		if typeOf (nomad^) != tableType {
 			nomad = parentOf (nomad^)};
 		
 		on checkTable (adrTable) {
-			«Check one table for the existence an #ftpSite table.
+			//Check one table for the existence an #ftpSite table.
 			if defined (adrTable^.["#ftpSite"]) {
 				return (true)};
 			if defined (adrTable^.["#prefs"].ftpSite) {

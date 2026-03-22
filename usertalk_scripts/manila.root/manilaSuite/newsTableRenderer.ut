@@ -1,16 +1,16 @@
 on newsTableRenderer (adrTable=nil) {
-	«Render a Frontier table as HTML.
-		«Changes:
-			«05/01/00; 5:34:41 PM by PBS
-				«Support for news items. If it's a news items day, call manilaSuite.news.renderNewsItemsPage.
+	//Render a Frontier table as HTML.
+		//Changes:
+			//05/01/00; 5:34:41 PM by PBS
+				//Support for news items. If it's a news items day, call manilaSuite.news.renderNewsItemsPage.
 	
 	if adrTable == nil {
 		adrTable = mainResponder.calendar.getMostRecentAddress (manilaSuite.getSiteAddress ())};
 	if defined (adrTable^.flNewsItems) {
 		if adrTable^.flNewsItems {
-			«It's a news items page.
+			//It's a news items page.
 			return (manilaSuite.news.renderNewsItemsPage (adrTable))}};
 	if defined (adrTable^.discussionRoot) and defined (adrTable^.msgNum) {
-		«It's a news story.
+		//It's a news story.
 		return (manilaSuite.renderNewsPage (adrTable^.msgNum))};
 	return (manilaSuite.html.renderYear (adrTable))}

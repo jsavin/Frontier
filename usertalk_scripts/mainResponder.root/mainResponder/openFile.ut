@@ -1,8 +1,8 @@
 on openFile (foldername, filename) {
-	«Open a file in the Guest Databases folder.
-		«Changes
-			«Tue, Mar 9, 1999 at 4:01:20 PM by PBS
-				«Call Frontier.getSubFolder rather than mainResponder.getFolder.
+	//Open a file in the Guest Databases folder.
+		//Changes
+			//Tue, Mar 9, 1999 at 4:01:20 PM by PBS
+				//Call Frontier.getSubFolder rather than mainResponder.getFolder.
 	local (f = Frontier.getSubFolder ("/" + foldername + "/") + filename);
 	try {
 		filemenu.open (f, hidden:true)}

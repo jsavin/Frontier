@@ -1,12 +1,12 @@
 on getSiteFolder (adrPageTable) {
-	«Return the folder path for the root of this site.
-		«If there is no folder specified, return a path in the Websites or Temporary Items folder.
-		«Thursday, May 21, 1998 at 1:31:24 AM by PBS
-		«Changes:
-			«Saturday, May 30, 1998 at 5:24:36 PM by PBS
-				«Support for ftpSite subtables named after templates.
-			«06/17/00; 7:43:14 PM by PBS
-				«If this is a dynamic page, don't create the Websites folder or a folder for this site on disk.
+	//Return the folder path for the root of this site.
+		//If there is no folder specified, return a path in the Websites or Temporary Items folder.
+		//Thursday, May 21, 1998 at 1:31:24 AM by PBS
+		//Changes:
+			//Saturday, May 30, 1998 at 5:24:36 PM by PBS
+				//Support for ftpSite subtables named after templates.
+			//06/17/00; 7:43:14 PM by PBS
+				//If this is a dynamic page, don't create the Websites folder or a folder for this site on disk.
 	
 	try {return (adrPageTable^.siteRootFolder)};
 	

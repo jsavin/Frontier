@@ -1,13 +1,13 @@
 on initStaticSite (adrSite) {
-	«Create the default static site for a Manila site.
-		«03/14/00; 2:28:26 PM by PBS
-		«Changes:
-			«04/09/00; 1:09:04 AM by PBS
-				«Bug-fix for new sites -- it may have a staticSite table, but not be initialized. In that case, initialize it.
-			«04/10/00; 11:03:53 AM by PBS
-				«In some cases the static site table was getting over-written. Fixed a typo that caused this bug, and added an additional check to make sure it won't happen.
-			«05/24/00; 8:10:54 PM by JES
-				«localized
+	//Create the default static site for a Manila site.
+		//03/14/00; 2:28:26 PM by PBS
+		//Changes:
+			//04/09/00; 1:09:04 AM by PBS
+				//Bug-fix for new sites -- it may have a staticSite table, but not be initialized. In that case, initialize it.
+			//04/10/00; 11:03:53 AM by PBS
+				//In some cases the static site table was getting over-written. Fixed a typo that caused this bug, and added an additional check to make sure it won't happen.
+			//05/24/00; 8:10:54 PM by JES
+				//localized
 	
 	local (adrNewsSite = @adrSite^.["#newsSite"]);
 	local (adrStaticSite = @adrNewsSite^.staticSite);
@@ -37,12 +37,12 @@ on initStaticSite (adrSite) {
 	bundle { //set the folder and URL in the static site's #ftpSite table
 		local (adrFtpSite = @adrStaticSite^.["#ftpSite"]);
 		
-		«Create the folder name for this site. There's an algorithm:
-			«If the site is a top-level site, like xxx.editthispage.com, create the folder name as xxx.
-				«If xxx is already taken as a folder name, use the canonical name of the site.
-			«If the site is in a "folder," as in www.mysite.com/foo/, then name the folder foo.
-				«If foo is already taken, use the canonical name of the site.
-			«This matches expectations.
+		//Create the folder name for this site. There's an algorithm:
+			//If the site is a top-level site, like xxx.editthispage.com, create the folder name as xxx.
+				//If xxx is already taken as a folder name, use the canonical name of the site.
+			//If the site is in a "folder," as in www.mysite.com/foo/, then name the folder foo.
+				//If foo is already taken, use the canonical name of the site.
+			//This matches expectations.
 		bundle {
 			local (identifier);
 			local (urlParts = string.urlSplit (adrSite^.["#ftpSite"].url));

@@ -1,11 +1,11 @@
 on memberMayCreateNewItems (pta=nil, adrSite=nil, adrMember=nil) {
-	«Return true if the member may create news items.
-		«04/25/00; 5:12:10 PM by PBS
-	«Changes:
-		«9/26/03; 12:30:45 PM by JES
-			«Added support for content editor permissions.
-		«8/20/01; 12:27:12 AM by JES
-			«Added new optional parameter, adrSite, which if specified, allows this script to be called from outside the website framework context.
+	//Return true if the member may create news items.
+		//04/25/00; 5:12:10 PM by PBS
+	//Changes:
+		//9/26/03; 12:30:45 PM by JES
+			//Added support for content editor permissions.
+		//8/20/01; 12:27:12 AM by JES
+			//Added new optional parameter, adrSite, which if specified, allows this script to be called from outside the website framework context.
 	
 	local (flManagingEditor, flContentEditor, flEditor, flMember);
 	if adrSite == nil { //assume we're being called from the website framework context (if pta == nil)
@@ -33,19 +33,19 @@ on memberMayCreateNewItems (pta=nil, adrSite=nil, adrMember=nil) {
 	if flManagingEditor { //MEs are always allowed
 		return (true)};
 	
-	«Check content editors.
+	//Check content editors.
 	if flContentEditor {
 		if defined (adrNewsSite^.newsItems.access.flContentEditorsCreate) {
 			if adrNewsSite^.newsItems.access.flContentEditorsCreate {
 				return (true)}}};
 	
-	«Check contributing editors.
+	//Check contributing editors.
 	if flEditor {
 		if defined (adrNewsSite^.newsItems.access.flContributingEditorsCreate) {
 			if adrNewsSite^.newsItems.access.flContributingEditorsCreate {
 				return (true)}}};
 	
-	«Check members.
+	//Check members.
 	if defined (adrNewsSite^.newsItems.access.flMembersCreate) {
 		if adrNewsSite^.newsItems.access.flMembersCreate {
 			return (true)}};

@@ -1,5 +1,5 @@
 on getEnvironmentVariables () {
-	«Return the environment variables as a table.
+	//Return the environment variables as a table.
 	
 	local (s = string (winShell.data.scripts.getEnvironmentVariables));
 	local (result, i = 1, varTable);

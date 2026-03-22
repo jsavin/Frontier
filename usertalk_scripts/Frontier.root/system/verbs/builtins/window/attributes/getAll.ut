@@ -8,5 +8,5 @@ on getAll (adrtable, adrwindow=nil) {
 			adrtable^ = adratts^;
 			return (true)}};
 	return (false)};
-«bundle //test code
-	«getAll (@scratchpad.atts)
+//bundle //test code
+	//getAll (@scratchpad.atts)

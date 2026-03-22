@@ -1,9 +1,9 @@
 on getCanonicalName (linetext) {
-	«Changes
-		«5/12/02; 12:14:05 AM by JES
-			«Drop all characters whose ascii value is above 127.
-		«11/6/2000; 6:12:56 PM by DW
-			«Take everything to the left of the hyphen (if present), remove all punctuation, and innerCase it. This is the string we use to refer to the directory page in a URI.
+	//Changes
+		//5/12/02; 12:14:05 AM by JES
+			//Drop all characters whose ascii value is above 127.
+		//11/6/2000; 6:12:56 PM by DW
+			//Take everything to the left of the hyphen (if present), remove all punctuation, and innerCase it. This is the string we use to refer to the directory page in a URI.
 	local (i, name = linetext);
 	for i = 1 to sizeof (name) {
 		if name [i] == '-' {
@@ -20,5 +20,5 @@ on getCanonicalName (linetext) {
 			if number (ch) > 127 {
 				name = string.delete (name, i, 1)}}};
 	return (string.innerCaseName (name))};
-«bundle //test code
-	«dialog.alert (getCanonicalName ("xml-rpc"))
+//bundle //test code
+	//dialog.alert (getCanonicalName ("xml-rpc"))

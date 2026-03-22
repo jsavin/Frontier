@@ -1,8 +1,8 @@
 on iqVersionRequest (connection = @system.temp.jabber.connection, dest = "", idTbl = nil) {
-	«Changes
-		«5/14/02; 1:51:34 PM by JB
-			«Changelog created.
-	«iqVersionRequest requests the version from the given user
+	//Changes
+		//5/14/02; 1:51:34 PM by JB
+			//Changelog created.
+	//iqVersionRequest requests the version from the given user
 	
 	on addAtt ( XMLadr, name, value ) {
 		if not defined ( XMLadr^.["/atts"] ) {

@@ -1,23 +1,23 @@
 on newTool (f) {
-	«Changes:
-		«6/12/02; 12:26:44 AM by JES
-			«Add a toolSuite.callbacks.radio table to new Tools. This table is for callback scripts which will be installed at user.radio.callbacks, when the Tool is installed.
-		«12/4/01; 1:33:29 PM by JES
-			«New Tools now have a toolSuite.statusCenterMessage script, which returns the string, "I'm a cool Tool!".
-		«11/27/01; 3:13:21 AM by JES
-			«Added a description element to the toolInfo table for new tools.
-		«09/19/01; 7:05:20 PM by JES
-			«Added initialization of the toolInfo table, which contains information about the Tool and the tool's author.
-		«06/8/01; 12:12:16 PM by JES
-			«Bug fix: The condition for the responder checked string.lower (path) against the inner-case name, which would always fail. Now it checks string.lower (path) against string.lower (toolName).
-		«07/02/01; 2:57:22 AM by JES
-			«Create an empty windowTypes table.
-		«01/11/01; 12:18:44 PM by JES
-			«Don't enable the responder for new tools.
-		«09/30/00; 11:48:06 PM by PBS
-			«Take the path to the tool as parameter, not the name of the tool.
-		«09/25/00; 11:47:56 PM by JES
-			«Create a new, empty tool database.
+	//Changes:
+		//6/12/02; 12:26:44 AM by JES
+			//Add a toolSuite.callbacks.radio table to new Tools. This table is for callback scripts which will be installed at user.radio.callbacks, when the Tool is installed.
+		//12/4/01; 1:33:29 PM by JES
+			//New Tools now have a toolSuite.statusCenterMessage script, which returns the string, "I'm a cool Tool!".
+		//11/27/01; 3:13:21 AM by JES
+			//Added a description element to the toolInfo table for new tools.
+		//09/19/01; 7:05:20 PM by JES
+			//Added initialization of the toolInfo table, which contains information about the Tool and the tool's author.
+		//06/8/01; 12:12:16 PM by JES
+			//Bug fix: The condition for the responder checked string.lower (path) against the inner-case name, which would always fail. Now it checks string.lower (path) against string.lower (toolName).
+		//07/02/01; 2:57:22 AM by JES
+			//Create an empty windowTypes table.
+		//01/11/01; 12:18:44 PM by JES
+			//Don't enable the responder for new tools.
+		//09/30/00; 11:48:06 PM by PBS
+			//Take the path to the tool as parameter, not the name of the tool.
+		//09/25/00; 11:47:56 PM by JES
+			//Create a new, empty tool database.
 	local (fname = file.fileFromPath (f));
 	local (name = Frontier.tools.cleanToolName (fname));
 	local (firstUpperName = string.upper (name[1]) + string.mid (name, 2, infinity));

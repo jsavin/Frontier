@@ -1,11 +1,11 @@
 on checkOut (adrObject, adrMember, adrSite, flMessage=false) {
-	«Changes
-		«10/3/05; 4:06:30 AM by JES
-			«If the admin login feature is enabled, check to see if adrMember corresponds to a member of the admin group. If so, then use "admin" for the group name in the checkouts sub-table. Fixes an erroneous error message in advanced prefs pages, saying that the object is being edited by someone else.
-		«05/18/04, 21:24:29 by DAB
-			«Call versioning.
-		«02/08/00; 10:35:23 PM by PBS
-			«Created. Check out an item. The only reason the object can't be checked out (in this context) is if the object is checked out by someone else. In that case, return false.
+	//Changes
+		//10/3/05; 4:06:30 AM by JES
+			//If the admin login feature is enabled, check to see if adrMember corresponds to a member of the admin group. If so, then use "admin" for the group name in the checkouts sub-table. Fixes an erroneous error message in advanced prefs pages, saying that the object is being edited by someone else.
+		//05/18/04, 21:24:29 by DAB
+			//Call versioning.
+		//02/08/00; 10:35:23 PM by PBS
+			//Created. Check out an item. The only reason the object can't be checked out (in this context) is if the object is checked out by someone else. In that case, return false.
 	
 	local (adrTable = manilaSuite.custody.getObjectsTableAddress (adrSite, flMessage));
 	local (currentDate = clock.now ());

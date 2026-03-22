@@ -1,18 +1,18 @@
 on proto (adrParamTable, adrRequestHeaders, adrResponseHeaders) {
-	«adrParamTable is the address of a table containing:
-		«client: ip address of the client as a string
-		«ready: always true
-		«refcon: always 0
-		«stream: stream ID
-		«request: full incoming HTTP request
-		«requestBody: incoming HTTP request entity (usually form data or XML)
-		«URI: incoming HTTP path
-		«----
-		«code: outgoing response code
-		«responseBody: outgoing response body (usually an HTML page)
-	«adrRequestHeaders is the address of a table containing all HTTP request headers
-		«If a header appears multiple times, its value is a list of the values
-	«adrResponseHeaders is the address of an empty table to be filled with response headers
-	«a method script should return true if it returned data through the tables
-		«otherwise, it can return a whole HTTP response for compatibility
+	//adrParamTable is the address of a table containing:
+		//client: ip address of the client as a string
+		//ready: always true
+		//refcon: always 0
+		//stream: stream ID
+		//request: full incoming HTTP request
+		//requestBody: incoming HTTP request entity (usually form data or XML)
+		//URI: incoming HTTP path
+		//----
+		//code: outgoing response code
+		//responseBody: outgoing response body (usually an HTML page)
+	//adrRequestHeaders is the address of a table containing all HTTP request headers
+		//If a header appears multiple times, its value is a list of the values
+	//adrResponseHeaders is the address of an empty table to be filled with response headers
+	//a method script should return true if it returned data through the tables
+		//otherwise, it can return a whole HTTP response for compatibility
 	return (false)}

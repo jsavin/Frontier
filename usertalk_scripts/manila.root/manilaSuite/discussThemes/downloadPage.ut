@@ -1,6 +1,6 @@
 on downloadPage (adrSite) {
-	«10/27/00; 2:21:23 AM by JES
-		«Cribbed from manilaSuite.themes.downloadPage
+	//10/27/00; 2:21:23 AM by JES
+		//Cribbed from manilaSuite.themes.downloadPage
 	local (themeTable);
 	new (tableType, @themeTable);
 	

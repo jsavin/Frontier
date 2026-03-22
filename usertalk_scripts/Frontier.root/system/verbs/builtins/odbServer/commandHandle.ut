@@ -14,5 +14,5 @@ on commandHandle (request, adrparams) {
 			return (user.odbServer.commands.[string.lower (command)] (@atts))}
 		else {
 			return ("Can't process the request because \"" + tryError + "\".")}}};
-«bundle «test code
-	«commandHandle (scratchpad.encodedCommand, @scratchpad.odbServerparams)
+//bundle //test code
+	//commandHandle (scratchpad.encodedCommand, @scratchpad.odbServerparams)

@@ -1,35 +1,35 @@
 on signUpPage (pta=nil) {
-	«Build a signup page.
-		«Changes:
-			«7/10/07; 10:53:24 PM by LL
-				«Bug fix: Correct problem with new user confirmation notifications not being sent.
-			«4/18/07; 8:37:55 AM by LL
-				«Change the default from address to the email confirmation From address.
-			«4/7/07; 1:22:26 PM by LL
-				«Include site name with member approval notification email.
-			«3/19/07; 5:56:54 PM by LL
-				«Support new member approval.
-			«11/2/05; 3:52:03 AM by JES
-				«Support for member table names which aren't email addresses -- pass in appropriate values for usernameFieldTitle and flUsernameMustBeEmail to prefsSuite.browser.
-			«3/10/05; 4:46:12 AM by JES
-				«Implement confirmation side of two-step email-confirmed new member signup.
-			«12/30/04; 4:03:54 PM by JES
-				«Ensure that the wizard has a setValue callback that calls Manila's setValue callback, if not already defined.
-			«2001
-				«02/07/01; 3:13:52 PM by PBS
-					«Fix too-short default maxLength of 25 or 40 -- make it 100. Both 25 and 40 are sometimes too short for people's long email addresses.
-			«2000
-				«10/28/00; 4:47:32 PM by PBS
-					«For sites with nested bulletins pref tables, make sure the correct sub-table name appears in the pref address.
-				«05/29/00; 2:05:29 AM by JES
-					«localized the prefs wizard
-				«04/21/00; 3:10:36 AM by JES
-					«localized
-			«1999
-				«12/21/99; 8:01:14 PM by PBS
-					«Get the separator colors by calling manilaSuite.html.getSeparatorColors, a new bottleneck script.
-				«10/30/99; 2:10:50 PM by PBS
-					«Get managing editor's preferred separator and separator text colors.
+	//Build a signup page.
+		//Changes:
+			//7/10/07; 10:53:24 PM by LL
+				//Bug fix: Correct problem with new user confirmation notifications not being sent.
+			//4/18/07; 8:37:55 AM by LL
+				//Change the default from address to the email confirmation From address.
+			//4/7/07; 1:22:26 PM by LL
+				//Include site name with member approval notification email.
+			//3/19/07; 5:56:54 PM by LL
+				//Support new member approval.
+			//11/2/05; 3:52:03 AM by JES
+				//Support for member table names which aren't email addresses -- pass in appropriate values for usernameFieldTitle and flUsernameMustBeEmail to prefsSuite.browser.
+			//3/10/05; 4:46:12 AM by JES
+				//Implement confirmation side of two-step email-confirmed new member signup.
+			//12/30/04; 4:03:54 PM by JES
+				//Ensure that the wizard has a setValue callback that calls Manila's setValue callback, if not already defined.
+			//2001
+				//02/07/01; 3:13:52 PM by PBS
+					//Fix too-short default maxLength of 25 or 40 -- make it 100. Both 25 and 40 are sometimes too short for people's long email addresses.
+			//2000
+				//10/28/00; 4:47:32 PM by PBS
+					//For sites with nested bulletins pref tables, make sure the correct sub-table name appears in the pref address.
+				//05/29/00; 2:05:29 AM by JES
+					//localized the prefs wizard
+				//04/21/00; 3:10:36 AM by JES
+					//localized
+			//1999
+				//12/21/99; 8:01:14 PM by PBS
+					//Get the separator colors by calling manilaSuite.html.getSeparatorColors, a new bottleneck script.
+				//10/30/99; 2:10:50 PM by PBS
+					//Get managing editor's preferred separator and separator text colors.
 	
 	if pta == nil {
 		pta = html.getPageTableAddress ()};
@@ -37,7 +37,7 @@ on signUpPage (pta=nil) {
 	pta^.title = manilaSuite.getString ("members.signUpPageTitle", pta: pta); // 4/21/00 JES: localized
 	local (flMember = defined (pta^.adrMemberInfo));
 	
-	«The sign up page is only displayed if membership is on.
+	//The sign up page is only displayed if membership is on.
 	if not defined (pta^.newsSite^.flMembership) or not pta^.newsSite^.flMembership {
 		scriptError (manilaSuite.getString ("members.membershipFeaturesDisabledError", pta: pta))}; // 4/21/00 JES: localized
 	
@@ -69,21 +69,21 @@ on signUpPage (pta=nil) {
 				local (adrmember = @adrgroup^.users.[email]);
 				if defined (adrmember^) { //member already exists -- error
 					error ()};
-				«Everything below here is sleight of hand to take the pending member table, move it to the users sub-table, and send confirmation email.
-					«Creation of the pending member table is handled in manilaSuite.members.signupCallback, which does its own sleight of hand.
-					«3/10/05; 4:39:49 AM by JES
+				//Everything below here is sleight of hand to take the pending member table, move it to the users sub-table, and send confirmation email.
+					//Creation of the pending member table is handled in manilaSuite.members.signupCallback, which does its own sleight of hand.
+					//3/10/05; 4:39:49 AM by JES
 				adrmember^ = adrPendingMember^;
 				delete (adrPendingMember);
 				delete (@adrmember^.whenConfirmationRequested);
 				delete (@adrmember^.confirmationCode);
 				pta^.adrMemberInfo = adrmember;
 				pta^.memberGroupName = pta^.defaultMembershipGroup;
-				«bundle //broken code
-					«pta^.method = "POST"
-					«new (tableType, @pta^.postArgs)
-					«pta^.postArgs.["personalInfo.email"] = email
-					«pta^.postArgs.scratchpassword1 = string (adrmember^.password)
-					«pta^.postArgs.scratchpassword2 = string (adrmember^.password)
+				//bundle //broken code
+					//pta^.method = "POST"
+					//new (tableType, @pta^.postArgs)
+					//pta^.postArgs.["personalInfo.email"] = email
+					//pta^.postArgs.scratchpassword1 = string (adrmember^.password)
+					//pta^.postArgs.scratchpassword2 = string (adrmember^.password)
 				return (manilaSuite.members.signupCallback (true))}};
 		if defined (args.m) and defined (args.t) {
 			local (htext);
@@ -183,7 +183,7 @@ on signUpPage (pta=nil) {
 	if defined (pta^.newsSite^.signupWizard) {
 		pta^.wizard = @pta^.newsSite^.signupWizard;
 		
-		«PBS 02/07/01: Fix default maxLength.
+		//PBS 02/07/01: Fix default maxLength.
 		if pta^.wizard^.prefs.stringDefaultMaxLength == 25 or pta^.wizard^.prefs.stringDefaultMaxLength == 40 {
 			pta^.wizard^.prefs.stringDefaultMaxLength = 100}};
 	bundle { //ensure that the wizard has a setValue callback that calls Manila's setValue callback, if not already defined
@@ -192,15 +192,15 @@ on signUpPage (pta=nil) {
 		if not defined (pta^.wizard^.callbacks.setValue) {
 			local (sScript = "on setValue (partialAddress, adrVal) {\r\treturn (manilaData.prefs.wizard.callbacks.setValue (partialAddress, adrVal))}");
 			script.newScriptObject (sScript, @pta^.wizard^.callbacks.setValue)}};
-	«if defined (pta^.newsSite^.bulletinsPrefName) //PBS 10/28/00: handle nested bulletins pref name
-		«pta^.oneShotWizard = pta^.wizard^
-		«pta^.wizard = @pta^.oneShotWizard
-		«local (adrOutline = @pta^.wizard^.outline)
-		«local (s = string (adrOutline^))
-		«local (bulletinsPrefName = pta^.newsSite^.bulletinsPrefName)
-		«s = string.replaceAll (s, "bulletins.inHtml", "bulletins." + bulletinsPrefName + ".inHtml")
-		«s = string.replaceAll (s, "bulletins.enabled", "bulletins." + bulletinsPrefName + ".enabled")
-		«op.newOutlineObject (s, adrOutline)
+	//if defined (pta^.newsSite^.bulletinsPrefName) //PBS 10/28/00: handle nested bulletins pref name
+		//pta^.oneShotWizard = pta^.wizard^
+		//pta^.wizard = @pta^.oneShotWizard
+		//local (adrOutline = @pta^.wizard^.outline)
+		//local (s = string (adrOutline^))
+		//local (bulletinsPrefName = pta^.newsSite^.bulletinsPrefName)
+		//s = string.replaceAll (s, "bulletins.inHtml", "bulletins." + bulletinsPrefName + ".inHtml")
+		//s = string.replaceAll (s, "bulletins.enabled", "bulletins." + bulletinsPrefName + ".enabled")
+		//op.newOutlineObject (s, adrOutline)
 	
 	local (separatorColor, separatorTextColor);
 	manilaSuite.html.getSeparatorColors (@separatorColor, @separatorTextColor);
@@ -219,7 +219,7 @@ on signUpPage (pta=nil) {
 		htmlText = string.replaceAll (htmlText, "value=\" Submit \"", "value=\" " + manilaSuite.getString ("common.submitButton", pta: pta) + " \"");
 		htmlText = string.replace (htmlText, "Required fields are marked with <b><font color=\"red\">*</font></b>", manilaSuite.getString ("members.requiredFieldsText", pta: pta), false)};
 	
-	«Re-set the membership box.
+	//Re-set the membership box.
 	pta^.memberShipBox = manilaSuite.html.drawMembershipBox (pta);
 	
 	htmlText = manilaSuite.unTaint (htmlText); //no curly brace macros in this text

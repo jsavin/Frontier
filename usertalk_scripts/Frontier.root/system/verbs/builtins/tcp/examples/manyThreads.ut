@@ -1,5 +1,5 @@
-«local (domain = "ws3.scripting.com")
-«local (adroutline = @system.verbs.builtins.tcp.examples.scriptingPaths)
+//local (domain = "ws3.scripting.com")
+//local (adroutline = @system.verbs.builtins.tcp.examples.scriptingPaths)
 local (domain = "www.biap.com");
 local (adroutline = @system.verbs.builtins.tcp.examples.biapPaths);
 local (adrlist = {});

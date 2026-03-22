@@ -1,17 +1,17 @@
 on folderToHTML (folder, adrparamtable) {
-	«Changes:
-		«Thu, 04 Mar 1999 02:48:30 GMT by AR
-			«Changed one occurence of config.mainResponder.urls to adrparamtable^.responderAttributes.urls^
-		«01/28/00; 12:01:48 AM by PBS
-			«Ensure that either resources.root exists, or there is an address at config.mainResponder.sites.resources that is the address of mainResponder.resources.
-		«08/31/00; 8:14:58 PM by PBS
-			«Matt's fixes for icons not appearing. See http://drmatt.userland.com/mrIntermediateStuff/walkstuff/foldertohtmlbugs.html
+	//Changes:
+		//Thu, 04 Mar 1999 02:48:30 GMT by AR
+			//Changed one occurence of config.mainResponder.urls to adrparamtable^.responderAttributes.urls^
+		//01/28/00; 12:01:48 AM by PBS
+			//Ensure that either resources.root exists, or there is an address at config.mainResponder.sites.resources that is the address of mainResponder.resources.
+		//08/31/00; 8:14:58 PM by PBS
+			//Matt's fixes for icons not appearing. See http://drmatt.userland.com/mrIntermediateStuff/walkstuff/foldertohtmlbugs.html
 	local (htmltext = "", indentlevel = 0);
 	bundle { //PBS 01/28/00: mainResponder.resources
-		«This fixes the 6.1 bug that left folder and table listings without icons, since resources.root didn't ship with Frontier anymore. Now the contents of resources.root are stored at mainResponder.root. If resources.root is not present on the system, we create a pointer in config.mainResponder.sites.resources to point to mainResponder.resources.
+		//This fixes the 6.1 bug that left folder and table listings without icons, since resources.root didn't ship with Frontier anymore. Now the contents of resources.root are stored at mainResponder.root. If resources.root is not present on the system, we create a pointer in config.mainResponder.sites.resources to point to mainResponder.resources.
 		local (pathToResourcesRoot = Frontier.getSubFolder ("www") + "resources.root");
 		if not (file.exists (pathToResourcesRoot)) {
-			«Create an entry at config.mainResponder.sites.resources that's the address of mainResponder.resources.
+			//Create an entry at config.mainResponder.sites.resources that's the address of mainResponder.resources.
 			if not defined (config.mainResponder.sites) {
 				new (tableType, @config.mainResponder.sites)};
 			if not defined (config.mainResponder.sites.resources) {
@@ -71,7 +71,7 @@ on folderToHTML (folder, adrparamtable) {
 		
 		try {
 			iconname = user.webserver.prefs.MIME2icon.[mimetype];
-			«iconlink = "<img src=\"/resources/icons/" + iconname + "\">" //PBS 08/31/00: commented out -- the line below is the replacement
+			//iconlink = "<img src=\"/resources/icons/" + iconname + "\">" //PBS 08/31/00: commented out -- the line below is the replacement
 			iconlink = "<img src=\"" + adrparamtable^.responderAttributes.urls^.icons + iconname + "\">"};
 		
 		local (itemurl = adrparamtable^.path);

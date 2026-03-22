@@ -1,13 +1,13 @@
 on checkNew (urlName="discussNewThread", postURLName="discussPostEditedMessage") {
-	«Changes:
-		«7/14/05; 3:30:50 PM by JES
-			«Add support for referer checking pref.
-		«07/16/01; 10:02:44 AM by PBS
-			«Compare without trailing slashes, since sometimes there's a missing or extra trailing slash.
-		«07/13/00; 10:51:55 AM by PBS
-			«Strip search args as well as path args.
-		«05/09/00; 6:57:09 PM by PBS
-			«Created. Make sure the referer is from a new-something page. Or the page where that posts to.
+	//Changes:
+		//7/14/05; 3:30:50 PM by JES
+			//Add support for referer checking pref.
+		//07/16/01; 10:02:44 AM by PBS
+			//Compare without trailing slashes, since sometimes there's a missing or extra trailing slash.
+		//07/13/00; 10:51:55 AM by PBS
+			//Strip search args as well as path args.
+		//05/09/00; 6:57:09 PM by PBS
+			//Created. Make sure the referer is from a new-something page. Or the page where that posts to.
 	
 	if not manilaSuite.referer.checkIsEnabled () {
 		return (true)};
@@ -20,9 +20,9 @@ on checkNew (urlName="discussNewThread", postURLName="discussPostEditedMessage")
 	local (expectedReferer = pta^.urls^.[urlName]);
 	expectedReferer = string.popSuffix (expectedReferer, '$');
 	expectedReferer = string.popTrailing (expectedReferer, '/'); //PBS 07/16/01
-	«if not (string.lower (expectedReferer) beginsWith string.lower (referer))
-		«scriptError (manilaSuite.getString ("admin.refererDoesntMatchError"))
-	«return (true)
+	//if not (string.lower (expectedReferer) beginsWith string.lower (referer))
+		//scriptError (manilaSuite.getString ("admin.refererDoesntMatchError"))
+	//return (true)
 	case string.lower(referer) { //04.06.23, 14:51:06 by DAB
 		string.lower(expectedReferer);
 		string.lower(pta^.urls^.[postURLName]) {

@@ -1,22 +1,22 @@
-«Display the Tools page in the Frontier Control Panel which allows one to turn on and off Tools. Based on the Tools page in Radio UserLand.
-	«Changes:
-		«9/5/05; 4:16:23 AM by JES
-			«Added Scan For New Tools button.
-		«6/18/02; 6:55:01 PM by JES
-			«If the Tool's info table includes a localUrl, use that URL for the Tool's name-link.
-		«1/21/02; 9:38:38 PM by PBS
-			«Fixed an errant reference to user.radio.
-			«Fixed a bug where sometimes a Tool wouldn't get enabled.
-		«12/3/01; 9:32:42 PM by PBS
-			«Created.
+//Display the Tools page in the Frontier Control Panel which allows one to turn on and off Tools. Based on the Tools page in Radio UserLand.
+	//Changes:
+		//9/5/05; 4:16:23 AM by JES
+			//Added Scan For New Tools button.
+		//6/18/02; 6:55:01 PM by JES
+			//If the Tool's info table includes a localUrl, use that URL for the Tool's name-link.
+		//1/21/02; 9:38:38 PM by PBS
+			//Fixed an errant reference to user.radio.
+			//Fixed a bug where sometimes a Tool wouldn't get enabled.
+		//12/3/01; 9:32:42 PM by PBS
+			//Created.
 Frontier.tools.init ();
 
 local (htmltext, indentlevel = 0);
 on add (s) {
 	htmltext = htmltext + string.filledstring ("\t", indentlevel) + s + "\r\n"};
 on translateToEntities (s) {
-	«Before putting some text in an input field or textarea, translating certain entities will ensure that the HTML on the page won't get messed up.
-		«01/10/01; 4:49:47 PM by PBS
+	//Before putting some text in an input field or textarea, translating certain entities will ensure that the HTML on the page won't get messed up.
+		//01/10/01; 4:49:47 PM by PBS
 	s = string.replaceAll (s, "&", "&amp;");
 	s = string.replaceAll (s, "<", "&lt;");
 	s = string.replaceAll (s, "\"", "&quot;");
@@ -72,7 +72,7 @@ bundle { //add the Tools
 		if not file.exists (f) {
 			continue};
 		bundle { //PBS 10/19/01: make sure it's actually in the Tools folder
-			«Mac filespecs may follow the Tool when it has been moved out of the Tools folder.
+			//Mac filespecs may follow the Tool when it has been moved out of the Tools folder.
 			local (folder = file.folderFromPath (f));
 			if string.lower (folder) != string.lower (toolsFolder) { //check to see if its parent is the Tools folder
 				continue}};

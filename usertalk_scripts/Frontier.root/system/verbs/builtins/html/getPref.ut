@@ -1,39 +1,39 @@
-on getPref (prefName, adrPageTable=nil) { «new in 4.1
-	«Look for a preference directive, a global pref, or return a default.
-		«New: Mon, Sep 9, 1996 at 9:45:08 AM by PH
-		«Tweaked performance: Wed, Dec 11, 1996 at 6:37:21 PM by DW
-			«Using an address and simplifying logic reduced 100 loops from 65 ticks to 21
-			«(double (21) / 100) / 60
-				«0.0035
-		«Tuesday, May 04, 1998  -- kernelized by dmb.
-	«old code:
-		«local (val)
-		«try «try to get it from pagedata
-			«val = adrpagedata^.[prefName]
-			«case val
-				«"yes"
-				«"true"
-					«return (true)
-				«"no"
-				«"false"
-					«return (false)
-			«else
-				«return (val)
-		«
-		«try «try to get it from user.html.prefs
-			«return (user.html.prefs.[prefName])
-		«
-		«case string.lower (prefName) «return a default value
-			«"fileextension"
-				«return (".html")
-			«"maxfilenamelength"
-				«return (31)
-			«"defaulttemplate"
-				«return ("normal")
-			«"defaultFileName"
-				«"default"
-		«else «unknown or default prefs are true
-			«return (true)
+on getPref (prefName, adrPageTable=nil) { //new in 4.1
+	//Look for a preference directive, a global pref, or return a default.
+		//New: Mon, Sep 9, 1996 at 9:45:08 AM by PH
+		//Tweaked performance: Wed, Dec 11, 1996 at 6:37:21 PM by DW
+			//Using an address and simplifying logic reduced 100 loops from 65 ticks to 21
+			//(double (21) / 100) / 60
+				//0.0035
+		//Tuesday, May 04, 1998  -- kernelized by dmb.
+	//old code:
+		//local (val)
+		//try //try to get it from pagedata
+			//val = adrpagedata^.[prefName]
+			//case val
+				//"yes"
+				//"true"
+					//return (true)
+				//"no"
+				//"false"
+					//return (false)
+			//else
+				//return (val)
+		//
+		//try //try to get it from user.html.prefs
+			//return (user.html.prefs.[prefName])
+		//
+		//case string.lower (prefName) //return a default value
+			//"fileextension"
+				//return (".html")
+			//"maxfilenamelength"
+				//return (31)
+			//"defaulttemplate"
+				//return ("normal")
+			//"defaultFileName"
+				//"default"
+		//else //unknown or default prefs are true
+			//return (true)
 	local (pageTable);
 	if adrPageTable == nil {
 		try {

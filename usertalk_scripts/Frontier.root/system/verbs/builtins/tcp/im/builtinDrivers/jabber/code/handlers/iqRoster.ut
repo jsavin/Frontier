@@ -1,9 +1,9 @@
 on iqRoster (connection, mesAdr, iq, query ) {
-	«Changes
-		«5/14/02; 1:51:34 PM by JB
-			«Changelog created.
-	«See http://docs.jabber.org/jpg/html/main.html#REFIQROSTER.
-		«When you first log in, you must ask for your roster, which comes back as an iq with a query xmlns of "jabber:iq:roster". This message gives you all your subscriptions. This handler takes those subscriptions and makes a note of them in the presence table of the connection.
+	//Changes
+		//5/14/02; 1:51:34 PM by JB
+			//Changelog created.
+	//See http://docs.jabber.org/jpg/html/main.html#REFIQROSTER.
+		//When you first log in, you must ask for your roster, which comes back as an iq with a query xmlns of "jabber:iq:roster". This message gives you all your subscriptions. This handler takes those subscriptions and makes a note of them in the presence table of the connection.
 	if not defined ( connection^.presence ) {
 		new ( tableType, @connection^.presence )};
 	for item in xml.getAddressList(query, "item") {

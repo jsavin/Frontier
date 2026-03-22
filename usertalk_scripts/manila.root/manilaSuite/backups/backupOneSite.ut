@@ -1,12 +1,12 @@
 on backupOneSite (adrsite, adrdata, basefolder="") {
-	«Changes
-		«12/11/06; 2:54:14 PM by LL
-			«Save any error messages that can be used to debug the error.
-		«2002
-			«6/25/02; 3:24:48 AM by JES
-				«Use Frontier.getFileType to get the file extension on MacOS. Use string.popFileFromAddress when calling export.sendobject, to make backed up objects more portable.
-			«3/4/02; 1:38:49 PM by DW
-				«Created.
+	//Changes
+		//12/11/06; 2:54:14 PM by LL
+			//Save any error messages that can be used to debug the error.
+		//2002
+			//6/25/02; 3:24:48 AM by JES
+				//Use Frontier.getFileType to get the file extension on MacOS. Use string.popFileFromAddress when calling export.sendobject, to make backed up objects more portable.
+			//3/4/02; 1:38:49 PM by DW
+				//Created.
 	
 	adrdata^.ctfiles = 0;
 	adrdata^.cterrors = 0;
@@ -49,7 +49,7 @@ on backupOneSite (adrsite, adrdata, basefolder="") {
 				if typeof (creationdate) == datetype { //not a scalar
 					file.setcreated (f, creationdate)}}}};
 	on writeSubfolder (folder, adrtable) {
-		«Each of the items in adrtable is written in its own file in the folder
+		//Each of the items in adrtable is written in its own file in the folder
 		local (adr);
 		file.surefolder (folder);
 		for adr in adrtable {
@@ -111,5 +111,5 @@ on backupOneSite (adrsite, adrdata, basefolder="") {
 						writeSubfolder (dgfolder + "messages" + pc, adrsubitem)}}
 				else {
 					writeObject (dgfolder, adrsubitem)}}}}};
-«bundle //test code
-	«backupOneWebsite (@createASiteManilaWebsite, @scratchpad.backupData)
+//bundle //test code
+	//backupOneWebsite (@createASiteManilaWebsite, @scratchpad.backupData)

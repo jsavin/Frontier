@@ -1,15 +1,15 @@
 on respondToPing (adrRespondCallback=nil) {
-	«Changes
-		«7/31/03; 2:03:10 PM by JES
-			«Bug fix: excerpt, not exceprt.
-		«5/1/03; 11:50:32 AM by JES
-			«Created. Respond to a Trackback ping.
-			«If adrRespondCallback is supplied, it's called with four parameters sent in the Trackback ping request:
-				«url -- the permalinkUrl of the post doing the ping
-				«title -- the title of the post doing the ping
-				«excerpt -- an excerpt of the post doing the ping
-				«weblogName -- the name of the weblog doing the ping
-				«Only url is required. If any of the other parameters are not supplied, the callback will be called with the empty string for the value of the missing parameter.
+	//Changes
+		//7/31/03; 2:03:10 PM by JES
+			//Bug fix: excerpt, not exceprt.
+		//5/1/03; 11:50:32 AM by JES
+			//Created. Respond to a Trackback ping.
+			//If adrRespondCallback is supplied, it's called with four parameters sent in the Trackback ping request:
+				//url -- the permalinkUrl of the post doing the ping
+				//title -- the title of the post doing the ping
+				//excerpt -- an excerpt of the post doing the ping
+				//weblogName -- the name of the weblog doing the ping
+				//Only url is required. If any of the other parameters are not supplied, the callback will be called with the empty string for the value of the missing parameter.
 	local (pta = html.getPageTableAddress ());
 	
 	bundle { //set up the pagetable to return some XML instead of HTML

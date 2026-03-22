@@ -1,13 +1,13 @@
 on editorialTest (pta=nil) {
-	«Returns true if the user is an editor of the site, an ME, CE, or Content Editor.
-		«5/19/99; 12:28:59 PM by DW
-		«Change notes:
-			«Saturday, May 29, 1999 at 7:36:52 PM by PBS
-				«Lower-case compare.
-			«03/14/01; 4:22:18 PM by PBS
-				«Minor optimizations possible -- we may have already checked to see if the person is an ME, for instance.
-			«11/26/01; 9:46:49 AM by PBS
-				«Handle Content Editors.
+	//Returns true if the user is an editor of the site, an ME, CE, or Content Editor.
+		//5/19/99; 12:28:59 PM by DW
+		//Change notes:
+			//Saturday, May 29, 1999 at 7:36:52 PM by PBS
+				//Lower-case compare.
+			//03/14/01; 4:22:18 PM by PBS
+				//Minor optimizations possible -- we may have already checked to see if the person is an ME, for instance.
+			//11/26/01; 9:46:49 AM by PBS
+				//Handle Content Editors.
 	
 	if pta == nil {
 		pta = html.getPageTableAddress ()};

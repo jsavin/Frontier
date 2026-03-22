@@ -1,8 +1,8 @@
 on isHomepage (username, password, siteName, msgNum) {
-	«Determine if a message is or was a home page.
-		«Changes:
-			«11/26/01; 11:05:15 AM by PBS
-				«Support content editors.
+	//Determine if a message is or was a home page.
+		//Changes:
+			//11/26/01; 11:05:15 AM by PBS
+				//Support content editors.
 	
 	bundle { //make sure this person is a managing or content editor of the site.
 		local (beginningErrorString = "Can't determine if message \"" + msgNum + "\" is or was a home page because ");

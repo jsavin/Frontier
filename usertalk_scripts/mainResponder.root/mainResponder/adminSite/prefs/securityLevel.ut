@@ -1,7 +1,7 @@
 on securityLevel (prompt) {
-	«Changes
-		«6/27/02; 7:59:04 PM by JES
-			«Created.
+	//Changes
+		//6/27/02; 7:59:04 PM by JES
+			//Created.
 	local (pta = html.getPageTableAddress ());
 	local (htmltext = "");
 	on add (s) {

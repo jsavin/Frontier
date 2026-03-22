@@ -1,5 +1,5 @@
 on getConfiguration (adrmaxFilesOpened, adrMaxVersions) {
-	«manilaSuite.versioning.getConfiguration : 04/05/18, 21:40:06 by DAB
+	//manilaSuite.versioning.getConfiguration : 04/05/18, 21:40:06 by DAB
 	if not defined(config.manila.prefs.versioning) {
 		new(tabletype, @config.manila.prefs.versioning);
 		config.manila.prefs.versioning.maxLogs = 7;

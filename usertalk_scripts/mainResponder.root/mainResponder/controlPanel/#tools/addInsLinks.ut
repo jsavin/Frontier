@@ -1,8 +1,8 @@
-«Changes
-	«9/27/05; 1:05:01 AM by JES
-		«Make the first character of add-in names upper-case.
-	«11/10/99; 1:56:19 AM by PBS
-		«Created. Build the links to add-ins.
+//Changes
+	//9/27/05; 1:05:01 AM by JES
+		//Make the first character of add-in names upper-case.
+	//11/10/99; 1:56:19 AM by PBS
+		//Created. Build the links to add-ins.
 
 if defined (config.mainResponder.controlPanel.wizards) {
 	local (i);

@@ -1,12 +1,12 @@
 on lookupRecord (fnum, key, adrTable) {
-	«New behavior Mon, Apr 12, 1993 at 13:43:03 by JWB
-		«More new behavior Mon, Nov 22, 1993 at 4:12:30 PM by DW
-			«changed 'LAND' to 0 in second call to complexEvent
-			«this was an old-fashioned and sometimes ineffective way of sending 
-			«a system-level event
+	//New behavior Mon, Apr 12, 1993 at 13:43:03 by JWB
+		//More new behavior Mon, Nov 22, 1993 at 4:12:30 PM by DW
+			//changed 'LAND' to 0 in second call to complexEvent
+			//this was an old-fashioned and sometimes ineffective way of sending 
+			//a system-level event
 	
 	new (tableType, adrTable);
-	if Frontier.isRuntime() { «JWB: work around a really strange problem with just Runtime
+	if Frontier.isRuntime() { //JWB: work around a really strange problem with just Runtime
 		complexEvent (adrTable, 'UBAS', 'ubas', 'look', 'fref', short (fnum), 'key ', string (key))}
 	else {
 		complexEvent (adrTable, 0, 'ubas', 'look', 'fref', short (fnum), 'key ', string (key))};

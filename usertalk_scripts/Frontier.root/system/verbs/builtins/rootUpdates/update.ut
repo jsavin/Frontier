@@ -1,51 +1,51 @@
 on update (adrInRoot = table.getcursoraddress (), flQuietMode=false, adrCtNewParts=nil) {
-	«Changes
-		«1/30/06; 3:24:19 AM by JES
-			«Ensure a sensible value for user.rootupdates.prefs.adrOutlineForUser. If its value is the empty string, then we assume the user meant to turn off outline-based logging, and set user.rootupdates.prefs.flShowUpdatesToUser to false. We also set user.rootupdates.prefs.adrOutlineForUser to @user.rootUpdates.updateOutline to prevent breakage.
-		«10/11/05; 4:05:28 PM by JES
-			«If user.rootupdates.prefs.flShowUpdatesToUser is true, set display on the outline to false while updating, and reset to true when completed. Makes installation of updates much faster when logging to an outline.
-		«9/26/05; 11:53:29 PM by JES
-			«Ensure path to new part for both guest databases and the system root.
-		«9/26/05; 11:48:11 PM by JES
-			«Use table.surePath to ensure that the tables along the path to the part about to be installed exist. Factored code for creating the update outline, usually user.rootUpdates.updateOutline. Add a heading to the outline when an error occurs installing a part, in addition to logging the error with log.add.
-		«8/31/05; 4:29:41 AM by JES
-			«Don't include the word "Changed" in the change notes under the part's name in user.rootUpdates.updateOutline.
-		«7/7/05; 2:47:47 AM by JES
-			«Pop the file part from the address of the new part when displaying messages in the About window.
-		«6/21/05; 4:24:49 PM by JES
-			«If a boolean named flIgnoreCheckpoint is defined and true, in user.rootUpdates.servers.[db], send it as a searchArg on the RPC path, so the server will send us all parts, not just ones up to the checkpoint.
-		«Changes before 2005
-			«10/4/04; 11:40:39 PM by JES
-				«When testing items in user.rootUpdates.protected, check for the address of the part in addition to the address of its parent table.
-				«Log parts that failed to install. Don't add failed parts to the root updates outline.
-				«Changes suggested by DAB.
-			«1/12/04; 12:48:36 AM by JES
-				«Changed default updates server from madrid.userland.com to updates.userland.com.
-			«8/28/02; 10:48:23 PM by JES
-				«Added support for two new callbacks:
-				«user.rootUpdates.callbacks.beforeInstallPart -- scripts in this table are called with two parameters: the address of the part, and the change note. If any script returns false, then the part is not installed. No error is generated -- it's up to the callback script to provide feedback to the user.
-				«user.rootUpdates.callbacks.afterInstallPart -- scripts in this table are called with two parameters: the address of the part, and the change note. The return value is ignored.
-			«4/16/02; 4:34:53 PM by JES
-				«Bug fix: Store the new part count in adrCtNewParts^ even if no new parts were loaded.
-			«1/21/02; 2:25:42 PM by JES
-				«Use a string comparison to determine whether we're getting updates from radioupdates.userland.com, instead of a call to tcp.equalNames, since tcp.equalNames fails for some proxy server users.
-			«1/7/02; 9:09:40 PM by PBS
-				«If getting Radio updates from radioupdates.userland.com, send your usernum as an additional parameter.
-			«8/6/01; 2:22:37 PM by PBS
-				«When updating Manila or mainResponder, send the serial number.
-			«01/21/01; 6:03:11 PM by JES
-				«Added optional parameter, adrCtNewParts. If not nil, the number of updated parts is assigned to adrCtNewParts^.
-			«08/20/00; 11:49:35 AM by PBS
-				«If the server returns a last update time, use that instead of clock.now (). This fixes problems with people missing updates due to having clocks out-of-synch with the server. This way, the server's time is always used.
-			«06/17/00; 11:16:23 PM by PBS
-				«Use new root updates timeout pref.
-			«11/16/99; 1:43:53 AM by AR
-				«Make sure backup folder exists before backing up GDBs.
-				«Added flQuietMode parameter, defaulting to false. If it's true, we suppress all server-unfriendly interaction like putting up dialogs or opening the outline of new parts, regardless of the settings in user.rootUpdates.
-			«10/7/99; 6:43:29 PM by DW
-				«New pref, user.rootupdates.prefs.flShowUpdatesToUser, defaults true, initialized in rootUpdates.init.
-				«New pref, user.rootupdates.prefs.adrOutlineForUser, defaults to @user.rootUpdates.updateOutline.
-				«if flShowUpdatesToUser is true, we create the outline if it doesn't exist and add a top-level headline with the date and time and the name of the database being updated. Each subordinate entry is the address of an object that's been updated. Underneath the address is the explanation of the change, if available.
+	//Changes
+		//1/30/06; 3:24:19 AM by JES
+			//Ensure a sensible value for user.rootupdates.prefs.adrOutlineForUser. If its value is the empty string, then we assume the user meant to turn off outline-based logging, and set user.rootupdates.prefs.flShowUpdatesToUser to false. We also set user.rootupdates.prefs.adrOutlineForUser to @user.rootUpdates.updateOutline to prevent breakage.
+		//10/11/05; 4:05:28 PM by JES
+			//If user.rootupdates.prefs.flShowUpdatesToUser is true, set display on the outline to false while updating, and reset to true when completed. Makes installation of updates much faster when logging to an outline.
+		//9/26/05; 11:53:29 PM by JES
+			//Ensure path to new part for both guest databases and the system root.
+		//9/26/05; 11:48:11 PM by JES
+			//Use table.surePath to ensure that the tables along the path to the part about to be installed exist. Factored code for creating the update outline, usually user.rootUpdates.updateOutline. Add a heading to the outline when an error occurs installing a part, in addition to logging the error with log.add.
+		//8/31/05; 4:29:41 AM by JES
+			//Don't include the word "Changed" in the change notes under the part's name in user.rootUpdates.updateOutline.
+		//7/7/05; 2:47:47 AM by JES
+			//Pop the file part from the address of the new part when displaying messages in the About window.
+		//6/21/05; 4:24:49 PM by JES
+			//If a boolean named flIgnoreCheckpoint is defined and true, in user.rootUpdates.servers.[db], send it as a searchArg on the RPC path, so the server will send us all parts, not just ones up to the checkpoint.
+		//Changes before 2005
+			//10/4/04; 11:40:39 PM by JES
+				//When testing items in user.rootUpdates.protected, check for the address of the part in addition to the address of its parent table.
+				//Log parts that failed to install. Don't add failed parts to the root updates outline.
+				//Changes suggested by DAB.
+			//1/12/04; 12:48:36 AM by JES
+				//Changed default updates server from madrid.userland.com to updates.userland.com.
+			//8/28/02; 10:48:23 PM by JES
+				//Added support for two new callbacks:
+				//user.rootUpdates.callbacks.beforeInstallPart -- scripts in this table are called with two parameters: the address of the part, and the change note. If any script returns false, then the part is not installed. No error is generated -- it's up to the callback script to provide feedback to the user.
+				//user.rootUpdates.callbacks.afterInstallPart -- scripts in this table are called with two parameters: the address of the part, and the change note. The return value is ignored.
+			//4/16/02; 4:34:53 PM by JES
+				//Bug fix: Store the new part count in adrCtNewParts^ even if no new parts were loaded.
+			//1/21/02; 2:25:42 PM by JES
+				//Use a string comparison to determine whether we're getting updates from radioupdates.userland.com, instead of a call to tcp.equalNames, since tcp.equalNames fails for some proxy server users.
+			//1/7/02; 9:09:40 PM by PBS
+				//If getting Radio updates from radioupdates.userland.com, send your usernum as an additional parameter.
+			//8/6/01; 2:22:37 PM by PBS
+				//When updating Manila or mainResponder, send the serial number.
+			//01/21/01; 6:03:11 PM by JES
+				//Added optional parameter, adrCtNewParts. If not nil, the number of updated parts is assigned to adrCtNewParts^.
+			//08/20/00; 11:49:35 AM by PBS
+				//If the server returns a last update time, use that instead of clock.now (). This fixes problems with people missing updates due to having clocks out-of-synch with the server. This way, the server's time is always used.
+			//06/17/00; 11:16:23 PM by PBS
+				//Use new root updates timeout pref.
+			//11/16/99; 1:43:53 AM by AR
+				//Make sure backup folder exists before backing up GDBs.
+				//Added flQuietMode parameter, defaulting to false. If it's true, we suppress all server-unfriendly interaction like putting up dialogs or opening the outline of new parts, regardless of the settings in user.rootUpdates.
+			//10/7/99; 6:43:29 PM by DW
+				//New pref, user.rootupdates.prefs.flShowUpdatesToUser, defaults true, initialized in rootUpdates.init.
+				//New pref, user.rootupdates.prefs.adrOutlineForUser, defaults to @user.rootUpdates.updateOutline.
+				//if flShowUpdatesToUser is true, we create the outline if it doesn't exist and add a top-level headline with the date and time and the name of the database being updated. Each subordinate entry is the address of an object that's been updated. Underneath the address is the explanation of the change, if available.
 	
 	bundle { //trial
 		if defined (userland.trialVersionCheck) {
@@ -100,12 +100,12 @@ on update (adrInRoot = table.getcursoraddress (), flQuietMode=false, adrCtNewPar
 		target.set (oldtarget);
 		return};
 	on getUpdate (serverName, adrInRoot = nil) { //an enhanced version of rootupdates.getUpdate
-		«10/18/98; 11:33:30 AM by DW
-			«Made it guest database-aware.
-			«If adrInRoot is specified, it's assumed to point into the guest db that's getting updated
-			«Added a field to the prefs record, dbname, which names the guest database that's being shared
-				«It's an index into user.mainresponder.databases on the server.
-			«The handler for this is at mainresponder.rpchandlers.subscriptions.update.
+		//10/18/98; 11:33:30 AM by DW
+			//Made it guest database-aware.
+			//If adrInRoot is specified, it's assumed to point into the guest db that's getting updated
+			//Added a field to the prefs record, dbname, which names the guest database that's being shared
+				//It's an index into user.mainresponder.databases on the server.
+			//The handler for this is at mainresponder.rpchandlers.subscriptions.update.
 		
 		local (frontierVersion = Frontier.version ());
 		local (platform = string.mid (sys.os (), 1, 3));
@@ -139,10 +139,10 @@ on update (adrInRoot = table.getcursoraddress (), flQuietMode=false, adrCtNewPar
 					return (false)}};
 			window.about ();
 			local (sn);
-			«if adrPrefs == @user.rootUpdates.servers.Frontier
-				«Only send Frontier serial number when getting Frontier.root udpate.
-					«Thu, Mar 18, 1999 at 3:21:10 PM by PBS
-				«sn = user.prefs.serialNumber
+			//if adrPrefs == @user.rootUpdates.servers.Frontier
+				//Only send Frontier serial number when getting Frontier.root udpate.
+					//Thu, Mar 18, 1999 at 3:21:10 PM by PBS
+				//sn = user.prefs.serialNumber
 			local (rpcPath = user.betty.prefs.rpcClientDefaultPath);
 			case true { //PBS 08/06/01: send serial number for Frontier, Manila, and mainResponder
 				adrPrefs == @user.rootUpdates.servers.Radio;
@@ -186,8 +186,8 @@ on update (adrInRoot = table.getcursoraddress (), flQuietMode=false, adrCtNewPar
 						rpcPath = rpcPath + "?flIgnoreCheckpoint=true"}}};
 			local (paramlist = {adrPrefs^.lastupdate, platform, sn, user.prefs.name, user.prefs.mailAddress, frontierVersion});
 			bundle { //PBS 01/07/02: send usernum to radioupdates.userland.com
-				«if tcp.equalNames (adrPrefs^.server, "radioupdates.userland.com")
-					«paramlist = paramlist + user.radio.prefs.usernum
+				//if tcp.equalNames (adrPrefs^.server, "radioupdates.userland.com")
+					//paramlist = paramlist + user.radio.prefs.usernum
 				if string.lower (adrPrefs^.server) == "radioupdates.userland.com" {
 					paramlist = paramlist + user.radio.prefs.usernum}};
 			if flguestdb {
@@ -196,8 +196,8 @@ on update (adrInRoot = table.getcursoraddress (), flQuietMode=false, adrCtNewPar
 			local (i);
 			msg ("Connecting to " + adrPrefs^.server + " to get " + serverName + " update...");
 			newpartstable = betty.rpc.client (adrPrefs^.server, adrPrefs^.port, adrPrefs^.method, @paramlist, false, rpcPath:rpcPath, ticksToTimeOut:user.rootUpdates.prefs.timeout);
-			«bundle //original call
-				«newpartstable = betty.rpc.client (adrPrefs^.server, adrPrefs^.port, adrPrefs^.method, @paramlist, false, ticksToTimeOut:user.rootUpdates.prefs.timeout)
+			//bundle //original call
+				//newpartstable = betty.rpc.client (adrPrefs^.server, adrPrefs^.port, adrPrefs^.method, @paramlist, false, ticksToTimeOut:user.rootUpdates.prefs.timeout)
 			if not defined (newPartsTable.parts) {
 				if newPartsTable beginsWith "There are no new or changed parts available." or newPartsTable beginsWith "Your root is already updated" {
 					msg ("");
@@ -311,7 +311,7 @@ on update (adrInRoot = table.getcursoraddress (), flQuietMode=false, adrCtNewPar
 								s = string.replace (s, ": ", ":\r");
 								s = string.replaceAll (s, ". ", ".\r");
 								s = string.replaceAll (s, "-- ", "--\r");
-								«s = "Changed " + s
+								//s = "Changed " + s
 								s = string.replaceAll (s, "\r\r\r\r", "\r\r");
 								s = string.replaceAll (s, "\r\r\r", "\r\r");
 								s = string.popTrailing (s, "\r")};

@@ -1,30 +1,30 @@
 on postPicture (pta=nil, flCheckReferer=true, adrAdrMessage=nil) {
-	«Post a picture.
-	«Changes:
-		«4/8/05; 3:46:05 AM by JES
-			«New optional parameters, flCheckReferer and adrAdrMessage. These make it possible to call this script from some other form. Note that the file must still be posted as a file input whose name is 'attachPicture'.
-			«To call from another form, set flCheckReferer to false.
-			«If your form needs the address of the message containing the newly created picture, set adrAdrMessage to the address of a local variable where you want the address of the new picture message to be saved.
-		«9/10/03; 2:04:56 PM by JES
-			«Commented out an erroneous line which caused error messages not to be localized when attempting to upload an invalid picture file.
-		«05/11/00; 8:13:49 PM by JES
-			«merged in Brent's security fix for the client side trojan horse attack.
-		«05/09/00; 10:43:27 PM by PBS
-			«Check referer to defeat the client side trojan horse.
-		«05/01/00; 2:41:49 PM by JES
-			«Changed getString calls to use a replacement table address instead of a lists
-		«04/21/00; 11:52:59 AM by JES
-			«localized
-		«04/03/00; 11:23:12 AM by PBS
-			«Support for Manila time zone prefs.
-		«02/29/00; 11:44:02 PM by PBS
-			«Write the shortcut to disk, if the prefs specify.
-		«1/12/00; 5:05:21 PM by PBS
-			«Update the shortcut when it's uploaded, not when the pictureViewer page is rendered.
-		«1/3/00; 12:32:10 PM by PBS
-			«Make sure the attached picture is a GIF or a JPEG. If not, return a meaningful error page -- no more "binaryServerFolder not defined" pages.
-		«12/26/99; 5:25:19 PM by PBS
-			«Commented out an unnecessary call to fileMenu.saveMyRoot. This should boost performance.
+	//Post a picture.
+	//Changes:
+		//4/8/05; 3:46:05 AM by JES
+			//New optional parameters, flCheckReferer and adrAdrMessage. These make it possible to call this script from some other form. Note that the file must still be posted as a file input whose name is 'attachPicture'.
+			//To call from another form, set flCheckReferer to false.
+			//If your form needs the address of the message containing the newly created picture, set adrAdrMessage to the address of a local variable where you want the address of the new picture message to be saved.
+		//9/10/03; 2:04:56 PM by JES
+			//Commented out an erroneous line which caused error messages not to be localized when attempting to upload an invalid picture file.
+		//05/11/00; 8:13:49 PM by JES
+			//merged in Brent's security fix for the client side trojan horse attack.
+		//05/09/00; 10:43:27 PM by PBS
+			//Check referer to defeat the client side trojan horse.
+		//05/01/00; 2:41:49 PM by JES
+			//Changed getString calls to use a replacement table address instead of a lists
+		//04/21/00; 11:52:59 AM by JES
+			//localized
+		//04/03/00; 11:23:12 AM by PBS
+			//Support for Manila time zone prefs.
+		//02/29/00; 11:44:02 PM by PBS
+			//Write the shortcut to disk, if the prefs specify.
+		//1/12/00; 5:05:21 PM by PBS
+			//Update the shortcut when it's uploaded, not when the pictureViewer page is rendered.
+		//1/3/00; 12:32:10 PM by PBS
+			//Make sure the attached picture is a GIF or a JPEG. If not, return a meaningful error page -- no more "binaryServerFolder not defined" pages.
+		//12/26/99; 5:25:19 PM by PBS
+			//Commented out an unnecessary call to fileMenu.saveMyRoot. This should boost performance.
 	
 	if pta == nil {
 		pta = html.getPageTableAddress ()};
@@ -55,7 +55,7 @@ on postPicture (pta=nil, flCheckReferer=true, adrAdrMessage=nil) {
 				pta^.title = manilaSuite.getString ("discuss.itDidntWorkPageTitle", pta: pta); // 4/21/00 JES: localized
 				local (refererLink = html.getLink (manilaSuite.getString ("pictures.goBack", pta: pta), pta^.requestHeaders.referer)); // 4/21/00 JES: localized
 				refererLink = refererLink + "...";
-				«return ("Can't post &quot;" + manilaSuite.unTaint (pta^.postArgs.subject) + "&quot; because " + errorString + ".\r<p>" + refererLink)
+				//return ("Can't post &quot;" + manilaSuite.unTaint (pta^.postArgs.subject) + "&quot; because " + errorString + ".\r<p>" + refererLink)
 				local (replacementTable); new (tableType, @replacementTable); // 05/01/00 JES: use replacement table instead of a list
 				replacementTable.picture = manilaSuite.unTaint (pta^.postArgs.subject);
 				replacementTable.error = errorString;
@@ -79,7 +79,7 @@ on postPicture (pta=nil, flCheckReferer=true, adrAdrMessage=nil) {
 	
 	try {manilaSuite.callbacks.newStoryCallback (adrTable)};
 	
-	«fileMenu.saveMyRoot (adrTable) //PBS 12/26/99: unnecessary call commented out.
+	//fileMenu.saveMyRoot (adrTable) //PBS 12/26/99: unnecessary call commented out.
 	
 	if defined (pta^.postArgs.redirect) {
 		mainResponder.redirect (pta^.postArgs.redirect + msgNum)};

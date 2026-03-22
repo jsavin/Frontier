@@ -1,11 +1,11 @@
 on getTable (username, password, siteName) {
-	«Get a struct containing info about all the shortcuts for this site. This script is SOAP compatible.
-		«11/15/00; 11:54:43 PM by JES
-	«Changes:
-		«03/19/01; 3:22:21 PM by JES
-			«When called via SOAP, return an array of structs, specifying the Manila namespace, namespace URI, and struct type.
-		«05/23/01; 1:15:21 AM by JES
-			«Specify customStructType instead of customArrayType, which follows from a change in soap.rpc.server, based on SOAP interop work.
+	//Get a struct containing info about all the shortcuts for this site. This script is SOAP compatible.
+		//11/15/00; 11:54:43 PM by JES
+	//Changes:
+		//03/19/01; 3:22:21 PM by JES
+			//When called via SOAP, return an array of structs, specifying the Manila namespace, namespace URI, and struct type.
+		//05/23/01; 1:15:21 AM by JES
+			//Specify customStructType instead of customArrayType, which follows from a change in soap.rpc.server, based on SOAP interop work.
 	
 	bundle { //make sure this person is an editor of this site
 		local (beginningErrorString = "Can't list all shortcuts because ");

@@ -1,5 +1,5 @@
 on includeItem (adr) {
-	«Changes
-		«7/14/03; 5:45:55 PM by JES
-			«Created. Wrapper for manilaData.sitePrefs.wizard.callbacks.includeItem.
+	//Changes
+		//7/14/03; 5:45:55 PM by JES
+			//Created. Wrapper for manilaData.sitePrefs.wizard.callbacks.includeItem.
 	return (manilaData.sitePrefs.wizard.callbacks.includeItem (adr))}

@@ -1,6 +1,6 @@
 on getRenderingStatus (adrSite) {
-	«Get the current static rendering status of a site. Return a table of info about the current rendering.
-		«03/14/00; 3:56:38 PM by PBS
+	//Get the current static rendering status of a site. Return a table of info about the current rendering.
+		//03/14/00; 3:56:38 PM by PBS
 	
 	local (t);
 	new (tableType, @t);

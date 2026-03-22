@@ -1,9 +1,9 @@
 on tossHomePage (pta=nil, adrSite=nil, flTossRss=true, flTossSn2=true) {
-	«Toss the home page, RSS, and scriptingNews2 caches. Pass in pta if this is a dynamic context; pass in adrSite if this is an RPC or other context.
-		«9/17/01; 10:58:09 AM by PBS
-		«Changes:
-			«9/19/01; 3:07:45 PM by PBS
-				«Two new optional parameters, defaulting to true: flTossRss and flTossSn2 specify whether or not to also toss the RSS and scriptingNews2 caches.
+	//Toss the home page, RSS, and scriptingNews2 caches. Pass in pta if this is a dynamic context; pass in adrSite if this is an RPC or other context.
+		//9/17/01; 10:58:09 AM by PBS
+		//Changes:
+			//9/19/01; 3:07:45 PM by PBS
+				//Two new optional parameters, defaulting to true: flTossRss and flTossSn2 specify whether or not to also toss the RSS and scriptingNews2 caches.
 	
 	if adrSite == nil {
 		if pta == nil {

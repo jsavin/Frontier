@@ -1,5 +1,5 @@
-«12/5/98; 9:36:01 AM by DW
-	«Return a list of lists with brief descriptions for all the top level topics
+//12/5/98; 9:36:01 AM by DW
+	//Return a list of lists with brief descriptions for all the top level topics
 
 local (adrmsgs = @[mainresponder.discuss.openfile ()].discuss.messages);
 local (topiclist = {}, i, ct = sizeof (adrmsgs^), adritem);

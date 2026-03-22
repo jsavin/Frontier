@@ -1,6 +1,6 @@
-«An interesting experiment..
-	«This script is called by an RPC handler, it returns a rendering of the current news outline so that the console can show the editor what the news page will look like, right on the console. Distributed rendering! This is interesting..
-	«2/18/99; 3:46:11 AM by DW
+//An interesting experiment..
+	//This script is called by an RPC handler, it returns a rendering of the current news outline so that the console can show the editor what the news page will look like, right on the console. Distributed rendering! This is interesting..
+	//2/18/99; 3:46:11 AM by DW
 
 local (oldpta = nil, s);
 try {

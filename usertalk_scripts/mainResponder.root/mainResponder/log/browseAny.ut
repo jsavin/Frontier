@@ -1,7 +1,7 @@
 on browseAny (logname, adrRenderItemCallback, colors={"gainsboro", "white"}, columns={}, hoursToDisplay=1, maxitems=infinity, colsToAlignRight={}, adrItemCount=nil) {
-	«Changes:
-		«8/2/02; 10:59:44 PM by JES
-			«Created. Based on mainResponder.log.browser.
+	//Changes:
+		//8/2/02; 10:59:44 PM by JES
+			//Created. Based on mainResponder.log.browser.
 	local (adrlog = log.getGuestSubTable (logname));
 	if sizeOf (adrlog^) == 0 {
 		return ("")};

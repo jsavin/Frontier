@@ -1,4 +1,4 @@
-on grow (folderpath, h, v) { « set the size of the indicated folder's window
+on grow (folderpath, h, v) { // set the size of the indicated folder's window
 	local (fwindow);
 	if not Finder.makeWindow (folderpath, 0, @fwindow) {
 		return (false)};

@@ -1,17 +1,17 @@
 on viewRssBox (url, boxTitle=nil, width=125, frameColor="#000000", titleBarTextColor="#000000", titleBarColor="#ADD8E6", boxFillColor="#FFFFFF", timeZone="PST", adrStoryArrivedCallback=nil, maxItems=infinity, timeZoneOffsetHours=0) {
-	«Changes
-		«3/15/02; 2:47:10 PM by DW
-			«Instead of initializing user.xml.rss here, call xml.rss.init, which does it for us.
-		«12/28/2000; 2:05:46 PM by DW
-			«The expiration mechanism didn't work, put in a fail-proof one, and tested it. It works.
-		«1/2/01; 1:13:01 PM by DW
-			«Set xmlUrl in the cached service table.
-		«1/6/2001; 9:56:38 AM by DW
-			«Add adrStoryArrivedCallback parameter, default nil, pass it through to xml.rss.readService.
-		«02/09/01; 6:52:41 PM by PBS
-			«New optional maxItems parameter, defaults to infinity (current behavior), allows the caller to specify the maximum number of news items that appear in the HTML rendering. This parameter is passed through to xml.rss.getHtmlRendering.
-		«05/08/01; 12:16:05 AM by JES
-			«New optional parameter, timeZoneOffsetHours, is passed to xml.rss.getHtmlRendering. Default value is 0.
+	//Changes
+		//3/15/02; 2:47:10 PM by DW
+			//Instead of initializing user.xml.rss here, call xml.rss.init, which does it for us.
+		//12/28/2000; 2:05:46 PM by DW
+			//The expiration mechanism didn't work, put in a fail-proof one, and tested it. It works.
+		//1/2/01; 1:13:01 PM by DW
+			//Set xmlUrl in the cached service table.
+		//1/6/2001; 9:56:38 AM by DW
+			//Add adrStoryArrivedCallback parameter, default nil, pass it through to xml.rss.readService.
+		//02/09/01; 6:52:41 PM by PBS
+			//New optional maxItems parameter, defaults to infinity (current behavior), allows the caller to specify the maximum number of news items that appear in the HTML rendering. This parameter is passed through to xml.rss.getHtmlRendering.
+		//05/08/01; 12:16:05 AM by JES
+			//New optional parameter, timeZoneOffsetHours, is passed to xml.rss.getHtmlRendering. Default value is 0.
 	xml.rss.init ();
 	local (adrincache = @user.xml.rss.cache.[url]);
 	local (flread = true);
@@ -25,5 +25,5 @@ on viewRssBox (url, boxTitle=nil, width=125, frameColor="#000000", titleBarTextC
 		adrincache^.timeExpires = clock.now () + (60 * 60)};
 	adrincache^.xmlUrl = url;
 	return (xml.rss.getHtmlRendering (adrincache, boxTitle, width, frameColor, titleBarTextColor, titleBarColor, boxFillColor, timeZone, maxItems, timeZoneOffsetHours))};
-«bundle //test code
-	«webbrowser.displaytext (xml.rss.viewRssBox ("http://www.ourfavoritesongs.com/users/dave@userland.com/rss/soap.xml"))
+//bundle //test code
+	//webbrowser.displaytext (xml.rss.viewRssBox ("http://www.ourfavoritesongs.com/users/dave@userland.com/rss/soap.xml"))

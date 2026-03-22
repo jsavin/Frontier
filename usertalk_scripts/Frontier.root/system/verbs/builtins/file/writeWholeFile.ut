@@ -1,14 +1,14 @@
 on writeWholeFile (f, s, type = nil, creator = nil, creationdate = nil) {
-	«Changes
-		«11/27/01; 7:58:10 AM by DW
-			«Add support for callbacks that get control after the file has been written. The callbacks are passed the file path. Their returned value is ignored.
-		«1/1/01; 12:41:27 PM by DW
-			«If the file exists prior to writing and the creation date is not specified by the caller, maintain the file's creation date.
-			«Instead of calling sys.os, use system.environment.isMac.
-		«10/31/97 at 1:41:20 PM by DW
-			«Moved from toys.writeWholeFile.
-		«Friday, July 18, 1997 at 10:22:07 AM by PBS
-			«Conditionalized for multiple platforms, with optional parameters.
+	//Changes
+		//11/27/01; 7:58:10 AM by DW
+			//Add support for callbacks that get control after the file has been written. The callbacks are passed the file path. Their returned value is ignored.
+		//1/1/01; 12:41:27 PM by DW
+			//If the file exists prior to writing and the creation date is not specified by the caller, maintain the file's creation date.
+			//Instead of calling sys.os, use system.environment.isMac.
+		//10/31/97 at 1:41:20 PM by DW
+			//Moved from toys.writeWholeFile.
+		//Friday, July 18, 1997 at 10:22:07 AM by PBS
+			//Conditionalized for multiple platforms, with optional parameters.
 	if creationdate == nil {
 		if file.exists (f) {
 			try {creationdate = file.created (f)}}};
@@ -33,5 +33,5 @@ on writeWholeFile (f, s, type = nil, creator = nil, creationdate = nil) {
 					adrscript = adrscript^};
 				adrscript^ (f)}}};
 	return (true)};
-«bundle //test code
-	«writewholefile ("c:\\tmp.html", clock.now ())
+//bundle //test code
+	//writewholefile ("c:\\tmp.html", clock.now ())

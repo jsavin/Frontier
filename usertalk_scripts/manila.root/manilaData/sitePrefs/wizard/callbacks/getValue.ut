@@ -1,150 +1,150 @@
 on getValue (partialAddress, defaultValue) {
-	«Get one value from the prefs for a Manila site.
-		«Changes:
-			«3/22/07; 1:23:50 PM by LL
-				«Add support for always display member login box and member approval preferences.
-			«1/12/07; 4:51:40 PM by LL
-				«Add support for pref to disable Suggest-A-Link on directory pages.
-			«11/26/06; 11:37:16 AM by LL
-				«Add support for pref to disable spam-free mailto links.
-			«1/31/06; 3:39:47 AM by JES
-				«Add support for comment moderation feature.
-			«2005:
-				«12/15/05; 1:12:55 AM by JES
-					«Add support for login required feature for comment pop-ups. (Pref is on News Items prefs page.)
-				«12/14/05; 1:40:02 AM by JES
-					«Add support for members only prefs -- enabled, page text and page title.
-				«7/14/05; 3:24:53 PM by JES
-					«Add pref for enabling/disabling referer checking.
-				«7/9/05; 4:45:14 AM by JES
-					«Add support for news item summary prefs.
-				«7/7/05; 5:45:35 PM by JES
-					«Add pref for enabling multiple news item departments.
-				«3/11/05; 7:16:59 PM by JES
-					«Added support for enclosure prefs for news items.
-				«3/11/05; 4:37:57 AM by JES
-					«Added support for new prefs for two-step new member signup process with email confirmation.
-				«01/20/05; 8:21:49 PM by LL
-					«Support for a new Discussion Group preference to add the nofollow attribute to all links in discussion group messages.
-			«2004 and earlier:
-				«12/21/04; 12:45:49 PM by LL
-					«Support for alternate news item date and time formats.
-				«9/30/03; 1:34:19 PM by JES
-					«Added support for webmaster Syndication pref.
-				«9/15/03; 11:30:29 PM by JES
-					«Added pref for comment notification in email.
-				«5/26/03; 7:04:07 PM by JES
-					«Added option to the Syndication prefs page for DG-RSS feeds.
-				«5/9/03; 3:44:29 PM by JES
-					«Added support for the Mail-to-Weblog prefs.
-				«5/2/03; 3:02:43 PM by EDS
-					«Added support for FTP filewriter prefs.
-				«4/24/03; 5:45:45 PM by JES
-					«Two new news items prefs: Comment links enabled/disabled by default, and whether or not to show a per-item comment link checkbox.
-				«4/17/03; 1:30:58 PM by JES
-					«In the comment link template, default to using square brackets around the counter.
-				«4/11/03; 1:26:44 PM by JES
-					«Added support for the prefs in the License section of the Syndication prefs page.
-				«2/17/03; 5:45:54 PM by JES
-					«Added support for comment link templates for news items.
-				«7/12/02; 3:11:43 PM by JES
-					«Added support for the postLink preference for Radio comments.
-				«4/4/02; 12:35:46 AM by JES
-					«Added prefs for listing stories, news items and pictures in the discussion group.
-					«Added support for new discussion group prefs.
-				«2/20/02; 4:10:34 AM by JES
-					«Get values for the Radio hosting prefs page.
-				«2001:
-					«11/26/01; 10:22:00 AM by PBS
-						«Get content editors list.
-					«9/18/01; 4:08:34 PM by PBS
-						«Support for margins.
-					«9/17/01; 2:44:44 PM by PBS
-						«Support for home page caching pref.
-					«9/13/01; 5:56:25 PM by PBS
-						«Support for plain template for prefs pages.
-					«9/13/01; 2:28:55 PM by PBS
-						«Support for home page date formats.
-					«9/12/01; 4:45:37 PM by PBS
-						«Support for flCookiesExpireAtEndOfSession.
-					«9/12/01; 2:38:23 PM by PBS
-						«Support for stories, pictures, and gems pages access.
-					«9/10/01; 5:09:27 PM by PBS
-						«Support for max news items to appear on department pages.
-					«9/10/01; 10:20:47 AM by PBS
-						«Get background picture bug fix -- it was getting the background picture from adrNewsSite^.backgroundPicture, which is bogus. It should come from adrPrefs^.background. (And now it does.)
-					«05/23/01; 5:22:57 PM by PBS
-						«Get the flRadioEditingAllowed boolean.
-				«2000:
-					«1/6/00; 2:42:10 PM by PBS
-						«flMembersListPublic controls the public display of the members list at /stats/members.
-					«1/9/00; 5:04:02 PM by PBS
-						«flHomePageDisplayTitle governs whether or not to display the title on the home page.
-					«01/26/00; 3:14:49 PM by PBS
-						«Support for editors only access.
-					«02/12/00; 11:39:19 AM by PBS
-						«Support for the custody time out preference.
-					«03/14/00; 3:00:40 PM by PBS
-						«Added support for static rendering prefs.
-					«04/03/00; 2:09:05 PM by PBS
-						«Support for time zone pref.
-					«04/09/00; 5:35:41 PM by PBS
-						«Support for turning on and off title display for archived home pages.
-					«04/15/00; 6:30:48 PM by PBS
-						«Added support for gems prefs.
-					«05/01/00; 5:37:00 PM by PBS
-						«Support for news items prefs.
-					«05/20/00; 9:01:45 PM by JES
-						«language preference
-					«06/15/00; 4:34:31 PM by PBS
-						«Support for background picture.
-					«06/15/00; 11:42:09 PM by JES
-						«Merged Brent's background picture pref.
-					«06/29/00; 10:19:05 PM by PBS
-						«If the cowskull image is a wp-text, coerce to a string.
-					«07/08/00; 1:42:46 AM by JES
-						«Support prefs for displaying n messages on the main discussion group listing page.
-					«09/30/00; 4:42:53 PM by PBS
-						«Support for number of topics in topics view.
-					«10/03/00; 3:16:39 PM by PBS
-						«Support editing tool choice.
-					«10/04/00; 10:44:44 AM by PBS
-						«Default editor is now HTML Tags.
-					«10/16/00; 6:35:49 PM by JES
-						«Added support for discussion group template prefs.
-					«10/27/00; 3:30:35 AM by JES
-						«Added DG theme preferences.
-					«10/29/00; 7:11:27 PM by JES
-						«Get the default copyright owner for scriptingNews2.xml renderings.
-					«11/20/00; 2:58:05 PM by PBS
-						«Directories prefs.
-					«11/25/00; 6:49:17 PM by PBS
-						«New pref, directory.flDisplayTitle, turns off title display for directory pages.
-					«12/18/00; 4:09:05 PM by PBS
-						«Slides prefs.
-				«1999:
-					«10/27/99; 10:02:48 PM by PBS
-						«notifySender is the from email address for email notification.
-						«Get the managing editors list from #newsSite.sysopMail.
-						«New prefs for dg and members box background colors: colors.membersBox and colors.discussListings.
-						«Syndication prefs panel support.
-					«10/30/99; 1:58:18 PM by PBS
-						«More color prefs: membersBoxHeader, membersBoxHeaderText, separator, separatorText.
-					«11/1/99; 9:51:30 AM by PBS
-						«New pref: flEditFormOnHomePage controls whether or not to have a text area on the home page.
-					«11/1/99; 11:14:42 AM by PBS
-						«newsRoom.customPreferences is the XML for the prefs page.
-						«newsRoom.flUseCustomPrefsWizard toggles using the custom prefs wizard.
-					«11/1/99; 5:03:59 PM by PBS
-						«Legal tags are site-specific prefs now.
-					«11/6/99; 4:32:39 PM by PBS
-						«If a post, then don't discard the posted custom prefs XML, even if there's an error.
-					«12/10/99; 10:17:32 AM by PBS
-						«numNewsDaysToRender is a new pref that specifies how many days to render on the home page. Default is 1 day, current behavior.
-					«12/13/99; 6:40:58 PM by PBS
-						«New prefs for Admin Box colors, which can be customized on the Appearance panel, in the Colors section.
-					«12/17/99; 11:36:06 AM by PBS
-						«New pref for the cowskull image link.
+	//Get one value from the prefs for a Manila site.
+		//Changes:
+			//3/22/07; 1:23:50 PM by LL
+				//Add support for always display member login box and member approval preferences.
+			//1/12/07; 4:51:40 PM by LL
+				//Add support for pref to disable Suggest-A-Link on directory pages.
+			//11/26/06; 11:37:16 AM by LL
+				//Add support for pref to disable spam-free mailto links.
+			//1/31/06; 3:39:47 AM by JES
+				//Add support for comment moderation feature.
+			//2005:
+				//12/15/05; 1:12:55 AM by JES
+					//Add support for login required feature for comment pop-ups. (Pref is on News Items prefs page.)
+				//12/14/05; 1:40:02 AM by JES
+					//Add support for members only prefs -- enabled, page text and page title.
+				//7/14/05; 3:24:53 PM by JES
+					//Add pref for enabling/disabling referer checking.
+				//7/9/05; 4:45:14 AM by JES
+					//Add support for news item summary prefs.
+				//7/7/05; 5:45:35 PM by JES
+					//Add pref for enabling multiple news item departments.
+				//3/11/05; 7:16:59 PM by JES
+					//Added support for enclosure prefs for news items.
+				//3/11/05; 4:37:57 AM by JES
+					//Added support for new prefs for two-step new member signup process with email confirmation.
+				//01/20/05; 8:21:49 PM by LL
+					//Support for a new Discussion Group preference to add the nofollow attribute to all links in discussion group messages.
+			//2004 and earlier:
+				//12/21/04; 12:45:49 PM by LL
+					//Support for alternate news item date and time formats.
+				//9/30/03; 1:34:19 PM by JES
+					//Added support for webmaster Syndication pref.
+				//9/15/03; 11:30:29 PM by JES
+					//Added pref for comment notification in email.
+				//5/26/03; 7:04:07 PM by JES
+					//Added option to the Syndication prefs page for DG-RSS feeds.
+				//5/9/03; 3:44:29 PM by JES
+					//Added support for the Mail-to-Weblog prefs.
+				//5/2/03; 3:02:43 PM by EDS
+					//Added support for FTP filewriter prefs.
+				//4/24/03; 5:45:45 PM by JES
+					//Two new news items prefs: Comment links enabled/disabled by default, and whether or not to show a per-item comment link checkbox.
+				//4/17/03; 1:30:58 PM by JES
+					//In the comment link template, default to using square brackets around the counter.
+				//4/11/03; 1:26:44 PM by JES
+					//Added support for the prefs in the License section of the Syndication prefs page.
+				//2/17/03; 5:45:54 PM by JES
+					//Added support for comment link templates for news items.
+				//7/12/02; 3:11:43 PM by JES
+					//Added support for the postLink preference for Radio comments.
+				//4/4/02; 12:35:46 AM by JES
+					//Added prefs for listing stories, news items and pictures in the discussion group.
+					//Added support for new discussion group prefs.
+				//2/20/02; 4:10:34 AM by JES
+					//Get values for the Radio hosting prefs page.
+				//2001:
+					//11/26/01; 10:22:00 AM by PBS
+						//Get content editors list.
+					//9/18/01; 4:08:34 PM by PBS
+						//Support for margins.
+					//9/17/01; 2:44:44 PM by PBS
+						//Support for home page caching pref.
+					//9/13/01; 5:56:25 PM by PBS
+						//Support for plain template for prefs pages.
+					//9/13/01; 2:28:55 PM by PBS
+						//Support for home page date formats.
+					//9/12/01; 4:45:37 PM by PBS
+						//Support for flCookiesExpireAtEndOfSession.
+					//9/12/01; 2:38:23 PM by PBS
+						//Support for stories, pictures, and gems pages access.
+					//9/10/01; 5:09:27 PM by PBS
+						//Support for max news items to appear on department pages.
+					//9/10/01; 10:20:47 AM by PBS
+						//Get background picture bug fix -- it was getting the background picture from adrNewsSite^.backgroundPicture, which is bogus. It should come from adrPrefs^.background. (And now it does.)
+					//05/23/01; 5:22:57 PM by PBS
+						//Get the flRadioEditingAllowed boolean.
+				//2000:
+					//1/6/00; 2:42:10 PM by PBS
+						//flMembersListPublic controls the public display of the members list at /stats/members.
+					//1/9/00; 5:04:02 PM by PBS
+						//flHomePageDisplayTitle governs whether or not to display the title on the home page.
+					//01/26/00; 3:14:49 PM by PBS
+						//Support for editors only access.
+					//02/12/00; 11:39:19 AM by PBS
+						//Support for the custody time out preference.
+					//03/14/00; 3:00:40 PM by PBS
+						//Added support for static rendering prefs.
+					//04/03/00; 2:09:05 PM by PBS
+						//Support for time zone pref.
+					//04/09/00; 5:35:41 PM by PBS
+						//Support for turning on and off title display for archived home pages.
+					//04/15/00; 6:30:48 PM by PBS
+						//Added support for gems prefs.
+					//05/01/00; 5:37:00 PM by PBS
+						//Support for news items prefs.
+					//05/20/00; 9:01:45 PM by JES
+						//language preference
+					//06/15/00; 4:34:31 PM by PBS
+						//Support for background picture.
+					//06/15/00; 11:42:09 PM by JES
+						//Merged Brent's background picture pref.
+					//06/29/00; 10:19:05 PM by PBS
+						//If the cowskull image is a wp-text, coerce to a string.
+					//07/08/00; 1:42:46 AM by JES
+						//Support prefs for displaying n messages on the main discussion group listing page.
+					//09/30/00; 4:42:53 PM by PBS
+						//Support for number of topics in topics view.
+					//10/03/00; 3:16:39 PM by PBS
+						//Support editing tool choice.
+					//10/04/00; 10:44:44 AM by PBS
+						//Default editor is now HTML Tags.
+					//10/16/00; 6:35:49 PM by JES
+						//Added support for discussion group template prefs.
+					//10/27/00; 3:30:35 AM by JES
+						//Added DG theme preferences.
+					//10/29/00; 7:11:27 PM by JES
+						//Get the default copyright owner for scriptingNews2.xml renderings.
+					//11/20/00; 2:58:05 PM by PBS
+						//Directories prefs.
+					//11/25/00; 6:49:17 PM by PBS
+						//New pref, directory.flDisplayTitle, turns off title display for directory pages.
+					//12/18/00; 4:09:05 PM by PBS
+						//Slides prefs.
+				//1999:
+					//10/27/99; 10:02:48 PM by PBS
+						//notifySender is the from email address for email notification.
+						//Get the managing editors list from #newsSite.sysopMail.
+						//New prefs for dg and members box background colors: colors.membersBox and colors.discussListings.
+						//Syndication prefs panel support.
+					//10/30/99; 1:58:18 PM by PBS
+						//More color prefs: membersBoxHeader, membersBoxHeaderText, separator, separatorText.
+					//11/1/99; 9:51:30 AM by PBS
+						//New pref: flEditFormOnHomePage controls whether or not to have a text area on the home page.
+					//11/1/99; 11:14:42 AM by PBS
+						//newsRoom.customPreferences is the XML for the prefs page.
+						//newsRoom.flUseCustomPrefsWizard toggles using the custom prefs wizard.
+					//11/1/99; 5:03:59 PM by PBS
+						//Legal tags are site-specific prefs now.
+					//11/6/99; 4:32:39 PM by PBS
+						//If a post, then don't discard the posted custom prefs XML, even if there's an error.
+					//12/10/99; 10:17:32 AM by PBS
+						//numNewsDaysToRender is a new pref that specifies how many days to render on the home page. Default is 1 day, current behavior.
+					//12/13/99; 6:40:58 PM by PBS
+						//New prefs for Admin Box colors, which can be customized on the Appearance panel, in the Colors section.
+					//12/17/99; 11:36:06 AM by PBS
+						//New pref for the cowskull image link.
 	
 	local (adrNewsSite = manilaSuite.getNewsSiteAddress ());
 	local (adrSite = manilaSuite.getSiteAddress ());
@@ -163,8 +163,8 @@ on getValue (partialAddress, defaultValue) {
 		"newsRoom.autoShortcuts" {
 			return (manilaSuite.getNewsSitePref ("autoShortcuts", default:false, flCreate:true))};
 		"newsRoom.backgroundPicture" {
-			«if defined (adrNewsSite^.backgroundPicture) //PBS 09/10/01: commented out bogus code
-				«return (string (adrNewsSite^.backgroundPicture))
+			//if defined (adrNewsSite^.backgroundPicture) //PBS 09/10/01: commented out bogus code
+				//return (string (adrNewsSite^.backgroundPicture))
 			if defined (adrPrefs^.background) {
 				return (string (adrPrefs^.background))};
 			return ("")};
@@ -440,7 +440,7 @@ on getValue (partialAddress, defaultValue) {
 		"newsRoom.flMemberSignupEmailConfirmation" {
 			return (manilaSuite.getNewsSitePref ("flMemberSignupEmailConfirmation", default:false, flCreate:true))};
 		"newsRoom.flMembersListPublic" {
-			«For existing sites, it should be true -- no breakage. For new sites it will be false, since it's false in the new site template.
+			//For existing sites, it should be true -- no breakage. For new sites it will be false, since it's false in the new site template.
 			return (manilaSuite.getNewsSitePref ("flMembersListPublic", default:true, flCreate:true))};
 		"newsRoom.flNewsItemSite" {
 			if not defined (adrNewsSite^.flNewsItemSite) {
@@ -747,11 +747,11 @@ on getValue (partialAddress, defaultValue) {
 		
 		"newsRoom.staticRenderingMethod" {
 			if not defined (adrNewsSite^.staticSite.["#ftpsite"].method) {
-				«adrNewsSite^.staticSite.["#ftpsite"].method = "file"
+				//adrNewsSite^.staticSite.["#ftpsite"].method = "file"
 				adrNewsSite^.staticSite.["#ftpsite"].method = manilaSuite.staticRendering.getDefaultWriter (adrSite)};
 			return (adrNewsSite^.staticSite.["#ftpsite"].method)};
 		"newsRoom.staticRenderingURL" {
-			«be careful here, don't want to wipe out the file version.
+			//be careful here, don't want to wipe out the file version.
 			if not defined (adrNewsSite^.staticSite.["#ftpsite"].url) {
 				return("")}
 			else {
@@ -769,7 +769,7 @@ on getValue (partialAddress, defaultValue) {
 				adrNewsSite^.staticSite.["#ftpsite"].account = ""};
 			return (adrNewsSite^.staticSite.["#ftpsite"].account)};
 		"newsRoom.staticRenderingPassword" {
-			«always return ""?
+			//always return ""?
 			if not defined (adrNewsSite^.staticSite.["#ftpsite"].password) {
 				adrNewsSite^.staticSite.["#ftpsite"].password = ""};
 			return ("")};
@@ -899,7 +899,7 @@ on getValue (partialAddress, defaultValue) {
 				return (string (adrnewssite^.yearlyArchivePageFormat))}
 			else {
 				return ("linksToMonths")}};
-		"newsRoom.flStoriesAlphaSort" { «03/02/12, 14:38:38 by DAB
+		"newsRoom.flStoriesAlphaSort" { //03/02/12, 14:38:38 by DAB
 			return (manilaSuite.getNewsSitePref ("flStoriesAlphaSort", default:false, flCreate:true))}};
 	
 	return (defaultvalue)}

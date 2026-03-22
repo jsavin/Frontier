@@ -1,2 +1,2 @@
 on preprocessor (adrparams) {
-	return ("")} «tell WebStar to handle the URL reference
+	return ("")} //tell WebStar to handle the URL reference

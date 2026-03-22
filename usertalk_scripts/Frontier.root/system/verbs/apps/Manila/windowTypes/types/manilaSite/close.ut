@@ -1,5 +1,5 @@
 on close (adr) {
-	«Close a Manila site outline, checking it in if necessary.
+	//Close a Manila site outline, checking it in if necessary.
 	
 	local (atts);
 	if not window.attributes.getAll (@atts) { //return false if no atts
@@ -18,12 +18,12 @@ on close (adr) {
 	siteInfoTable.password = password;
 	
 	try { //try to check in the outline -- NOTE: this is not foolproof; see notes below
-		«Here's the problem:
-			«If the editorial outline has never been saved, then the server will always fault when trying to check it in.
-			«We're not keeping track of whether the outline has ever been saved, because there's too much potential confusion.
-			«The correct fix is to make the server-side more friendly: Don't error if the outline doesn't exist -- but that's not always going to be there.
-			«So the situation in which this strategy is trouble is when the outline has never been saved, and there's a network error or a timeout.
-			«It's not a big problem, since a non-existant object can't be checked out, but we may need to look out for this situation in the future...
+		//Here's the problem:
+			//If the editorial outline has never been saved, then the server will always fault when trying to check it in.
+			//We're not keeping track of whether the outline has ever been saved, because there's too much potential confusion.
+			//The correct fix is to make the server-side more friendly: Don't error if the outline doesn't exist -- but that's not always going to be there.
+			//So the situation in which this strategy is trouble is when the outline has never been saved, and there's a network error or a timeout.
+			//It's not a big problem, since a non-existant object can't be checked out, but we may need to look out for this situation in the future...
 		manila.editorialOutline.checkIn (@siteInfoTable)};
 	
 	return (true)}

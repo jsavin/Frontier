@@ -1,6 +1,6 @@
 on getExtraTemplates (adrObject) {
-	«Return a list of named templates to flow a page through.
-		«Saturday, May 30, 1998 at 4:17:51 PM by PBS
+	//Return a list of named templates to flow a page through.
+		//Saturday, May 30, 1998 at 4:17:51 PM by PBS
 	local (nomad = adrObject);
 	local (directiveName = "extraTemplates");
 	if typeOf (nomad^) != tableType {

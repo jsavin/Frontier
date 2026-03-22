@@ -1,48 +1,48 @@
 on sitePrefsPage (pta = nil) {
-	«This is broken out into a separate script in case we need to add more to it -- we could update this script rather than update the wp-text in the Manila site.
-	«Changes:
-		«2/10/05; 4:25:13 AM by JS
-			«Deprecated. Now we run the prefs by a call through manilaSuite.sitePrefs.defaultPage.
-		«5/26/03; 6:57:52 PM by JES
-			«Only display the discussion group syndication pref if the option is enabled on the server.
-		«5/9/03; 6:10:18 PM by JES
-			«Don't display Mail-to-Weblog page if it's not available.
-		«4/29/03; 10:13:23 AM by EDS
-			«Added section to deal with ftp rendering preferences.
-		«2/20/02; 11:24:03 AM by PBS
-			«Use a try because the radioHosting strings haven't been localized yet.
-		«2/20/02; 4:05:47 AM by JS
-			«Don't display the radio hosting page if it's not available.
-		«2000:
-			«02/24/00; 11:17:12 AM by PBS
-				«Added the plug-ins page, where one can enable and disable plug-ins.
-			«03/14/00; 2:21:10 PM by PBS
-				«Added static rendering prefs page.
-			«04/18/00; 3:58:57 PM by JES
-				«localized
-				«added optional pta parameter to make debugging easier
-			«05/09/00; 10:35:04 PM by PBS
-				«Check the referer to defeat the client side trojan horse.
-			«05/11/00; 7:08:02 PM by JES
-				«merged in Brent's security fix for the client side trojan horse attack.
-			«05/12/00; 3:59:26 PM by JES
-				«replace "Yes" and "No" in the prefs browser with localized strings
-			«06/10/00; 6:57:49 PM by JES
-				«Added localized themes page support (merged with Brent's changes)
-			«06/17/00; 11:31:58 PM by JES
-				«support for English pathArgs, with translated panel titles
-			«10/27/00; 3:04:54 PM by JES
-				«Added discussThemes page.
-		«1999:
-			«10/28/99; 2:14:11 PM by PBS
-				«Success message now appears in green.
-				«If error, cancel the refresh after post.
-			«10/30/99; 1:41:25 PM by PBS
-				«Pick up the managing editor's preferred separator and separator text colors.
-			«11/6/99; 2:32:06 AM by PBS
-				«The legal tags page is not implemented in prefs.root, so it needs to be called specially.
-			«12/21/99; 8:06:51 PM by PBS
-				«Get the separator colors by calling manilaSuite.html.getSeparatorColors, a new bottleneck script.
+	//This is broken out into a separate script in case we need to add more to it -- we could update this script rather than update the wp-text in the Manila site.
+	//Changes:
+		//2/10/05; 4:25:13 AM by JS
+			//Deprecated. Now we run the prefs by a call through manilaSuite.sitePrefs.defaultPage.
+		//5/26/03; 6:57:52 PM by JES
+			//Only display the discussion group syndication pref if the option is enabled on the server.
+		//5/9/03; 6:10:18 PM by JES
+			//Don't display Mail-to-Weblog page if it's not available.
+		//4/29/03; 10:13:23 AM by EDS
+			//Added section to deal with ftp rendering preferences.
+		//2/20/02; 11:24:03 AM by PBS
+			//Use a try because the radioHosting strings haven't been localized yet.
+		//2/20/02; 4:05:47 AM by JS
+			//Don't display the radio hosting page if it's not available.
+		//2000:
+			//02/24/00; 11:17:12 AM by PBS
+				//Added the plug-ins page, where one can enable and disable plug-ins.
+			//03/14/00; 2:21:10 PM by PBS
+				//Added static rendering prefs page.
+			//04/18/00; 3:58:57 PM by JES
+				//localized
+				//added optional pta parameter to make debugging easier
+			//05/09/00; 10:35:04 PM by PBS
+				//Check the referer to defeat the client side trojan horse.
+			//05/11/00; 7:08:02 PM by JES
+				//merged in Brent's security fix for the client side trojan horse attack.
+			//05/12/00; 3:59:26 PM by JES
+				//replace "Yes" and "No" in the prefs browser with localized strings
+			//06/10/00; 6:57:49 PM by JES
+				//Added localized themes page support (merged with Brent's changes)
+			//06/17/00; 11:31:58 PM by JES
+				//support for English pathArgs, with translated panel titles
+			//10/27/00; 3:04:54 PM by JES
+				//Added discussThemes page.
+		//1999:
+			//10/28/99; 2:14:11 PM by PBS
+				//Success message now appears in green.
+				//If error, cancel the refresh after post.
+			//10/30/99; 1:41:25 PM by PBS
+				//Pick up the managing editor's preferred separator and separator text colors.
+			//11/6/99; 2:32:06 AM by PBS
+				//The legal tags page is not implemented in prefs.root, so it needs to be called specially.
+			//12/21/99; 8:06:51 PM by PBS
+				//Get the separator colors by calling manilaSuite.html.getSeparatorColors, a new bottleneck script.
 	
 	return (manilaSuite.sitePrefs.defaultPage ());
 	
@@ -133,26 +133,26 @@ on sitePrefsPage (pta = nil) {
 			htmlText = string.insert (s, htmlText, ix + 6)};
 		return (true)};
 	
-	«on conditionalSlicer(startString, stopString, flKeepContents)
-		«UNDONE - this doesn't get rid of the containing tr and td. EDS
-		«if flKeepContents
-			«just remove the markers
-			«htmlText = string.replace(htmlText, startString, "")
-			«htmlText = string.replace(htmlText, stopString, "")
-		«else
-			«slice and dice before and after the markers, cutting the middle part.
-			«local
-				«iStart = string.patternMatch(startString,htmlText)
-				«iStop = string.patternMatch(stopString,htmlText) + sizeOf(stopString)
-			«htmltext = string.mid(htmlText, 0, iStart - 1) + string.mid(htmltext, iStop, infinity)
-	«if lowerPathArgs == string.lower (manilaSuite.admin.getSitePrefsPanelName ("rendering", pta)) //is this the rendering page?
-		«local
-			«startString = "[[newsRoom.staticRenderFTPConditionalStart]]"
-			«stopString = "[[newsRoom.staticRenderFTPConditionalStop]]"
-		«conditionalSlicer(startString, stopString, manilaSuite.staticRendering.isFtpAvailable (pta^.adrSiteRootTable))// and manilaSuite.staticRendering.getWritingMethod(pta^.adrSiteRootTable) != "file")
+	//on conditionalSlicer(startString, stopString, flKeepContents)
+		//UNDONE - this doesn't get rid of the containing tr and td. EDS
+		//if flKeepContents
+			//just remove the markers
+			//htmlText = string.replace(htmlText, startString, "")
+			//htmlText = string.replace(htmlText, stopString, "")
+		//else
+			//slice and dice before and after the markers, cutting the middle part.
+			//local
+				//iStart = string.patternMatch(startString,htmlText)
+				//iStop = string.patternMatch(stopString,htmlText) + sizeOf(stopString)
+			//htmltext = string.mid(htmlText, 0, iStart - 1) + string.mid(htmltext, iStop, infinity)
+	//if lowerPathArgs == string.lower (manilaSuite.admin.getSitePrefsPanelName ("rendering", pta)) //is this the rendering page?
+		//local
+			//startString = "[[newsRoom.staticRenderFTPConditionalStart]]"
+			//stopString = "[[newsRoom.staticRenderFTPConditionalStop]]"
+		//conditionalSlicer(startString, stopString, manilaSuite.staticRendering.isFtpAvailable (pta^.adrSiteRootTable))// and manilaSuite.staticRendering.getWritingMethod(pta^.adrSiteRootTable) != "file")
 	
 	if defined (pta^.sitePrefsErrorMessage) {
-		«Add the error message to the HTML and cancel the refresh after post.
+		//Add the error message to the HTML and cancel the refresh after post.
 		if defined (pta^.responderAttributes.redirectUrl) {
 			delete (@pta^.responderAttributes.redirectUrl)};
 		insertAfterTitle ("<font color=\"red\">" + pta^.sitePrefsErrorMessage + "</font><p>")};

@@ -1,7 +1,7 @@
 on plistToTable (s, adrTable, adrCompiledXml=nil, flTrimToPlist=false) {
-	«Changes
-		«7/26/05; 2:35:01 AM by JES
-			«Created. Parse an XML plist into a Frontier table.
+	//Changes
+		//7/26/05; 2:35:01 AM by JES
+			//Created. Parse an XML plist into a Frontier table.
 	
 	if flTrimToPlist { //some of Apple's plist files have cruft at the top and end -- this removes it
 		local (ix = string.patternMatch ("<plist ", s));

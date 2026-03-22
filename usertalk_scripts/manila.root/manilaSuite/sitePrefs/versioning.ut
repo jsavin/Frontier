@@ -1,18 +1,18 @@
 on versioning (pta) {
-	«Changes
-		«10/7/05; 3:50:05 PM by JES
-			«Use the site display name instead of the site canonical name in the text shown to the user. (Why wasn't this done in the first place?)
-		«3/30/05; 12:56:59 AM by JES
-			«Use UserLand style tables and headers.
-			«Run dates through manilaSuite.convertDate.
-			«Use manilaSuite.members.linkToMember for member links instead of their email addresses.
-		«04/05/19, 17:17:08 by DAB
-			«Created. Configure the versioning in a site.
-				«was manilaFixer.versioning.default : 02/03/21, 21:56:52 by DAB
-				«messages at manilaData.localization.languages.english.strings.versioning
+	//Changes
+		//10/7/05; 3:50:05 PM by JES
+			//Use the site display name instead of the site canonical name in the text shown to the user. (Why wasn't this done in the first place?)
+		//3/30/05; 12:56:59 AM by JES
+			//Use UserLand style tables and headers.
+			//Run dates through manilaSuite.convertDate.
+			//Use manilaSuite.members.linkToMember for member links instead of their email addresses.
+		//04/05/19, 17:17:08 by DAB
+			//Created. Configure the versioning in a site.
+				//was manilaFixer.versioning.default : 02/03/21, 21:56:52 by DAB
+				//messages at manilaData.localization.languages.english.strings.versioning
 	local (adrSite = manilaSuite.getManilaSiteAddress(pta));
 	local (adrNewsSite = manilaSuite.getNewsSiteAddress(adrSite));
-	«local (sitename = manilaSuite.getCanonicalSitename(adrSite))
+	//local (sitename = manilaSuite.getCanonicalSitename(adrSite))
 	local (sitename = adrNewsSite^.siteName);
 	
 	local (htmltext = "");
@@ -60,9 +60,9 @@ on versioning (pta) {
 		else {
 			if not defined(adrNewsSite^.versioning) {
 				new(tabletype, @adrNewsSite^.versioning);
-				«adrNewsSite^.versioning.enabled = false
-				«if versioningState == 2
-					«adrNewsSite^.versioning.enabled = true};
+				//adrNewsSite^.versioning.enabled = false
+				//if versioningState == 2
+					//adrNewsSite^.versioning.enabled = true};
 			if not defined(adrNewsSite^.versioning.enabled) { //05/03/26, 14:50:13 by DAB
 				adrNewsSite^.versioning.enabled = false;
 				if versioningState == 2 {
@@ -83,7 +83,7 @@ on versioning (pta) {
 		local (checked = "");
 		
 		add ("\r<form method='POST' action='" + pta^.fname + "$versioning' name ='versioning'>");
-		«add ("\r<input type='hidden' name='" + shortName + "' value='true'>")
+		//add ("\r<input type='hidden' name='" + shortName + "' value='true'>")
 		add("\r\t<table>");
 		
 		if flVersioningCheckBox { //row for versioning checkbox

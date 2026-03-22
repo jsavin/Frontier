@@ -1,2 +1,2 @@
-on frontwindowrecord () { «returns the record for the front window
+on frontwindowrecord () { //returns the record for the front window
 	return (appleEvent (AnArchie.id, 'Arch', 'Afwr'))}

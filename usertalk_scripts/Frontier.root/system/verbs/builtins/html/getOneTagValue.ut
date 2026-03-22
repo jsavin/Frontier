@@ -1,8 +1,8 @@
 on getOneTagValue (htmltext, tagname) {
-	«given the html text, extract the value of a specific tag
-		«if you ask for "title" you'll get the text between <title> and </title>
-		«it handles tags that contain values, so you can use it to extract the <body> of a page
-		«Fri, Nov 29, 1996 at 12:29:12 PM by DW
+	//given the html text, extract the value of a specific tag
+		//if you ask for "title" you'll get the text between <title> and </title>
+		//it handles tags that contain values, so you can use it to extract the <body> of a page
+		//Fri, Nov 29, 1996 at 12:29:12 PM by DW
 	local (lowertext = string.lower (htmltext), tagval = htmltext);
 	tagname = string.lower (tagname);
 	
@@ -23,6 +23,6 @@ on getOneTagValue (htmltext, tagname) {
 	if ix == 0 {
 		return ("")};
 	return (string.mid (tagval, 1, ix - 1))};
-«bundle «test code
-	«dialog.alert ("*" + getOneTagValue ("xxx<Title val1 val2>hello!</title>yyy", "tiTle") + "*")
-	«dialog.alert ("*" + getOneTagValue ("<TItle>hello!</tiTle>", "tiTle") + "*")
+//bundle //test code
+	//dialog.alert ("*" + getOneTagValue ("xxx<Title val1 val2>hello!</title>yyy", "tiTle") + "*")
+	//dialog.alert ("*" + getOneTagValue ("<TItle>hello!</tiTle>", "tiTle") + "*")

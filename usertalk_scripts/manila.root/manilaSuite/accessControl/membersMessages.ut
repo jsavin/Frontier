@@ -1,10 +1,10 @@
 on membersMessages (adrSite, memberKey) {
-	«Changes
-		«1/31/06; 1:49:15 AM by JES
-			«Add support for flPending flag.
-	«manilaSuite.accessControl.membersMessages : 04/05/31, 11:49:43 by DAB
-		«prepare a report of all message visible to member
-		«was manilaFixer.accessControl.membersMessages : 03/01/12, 13:32:55 by DAB
+	//Changes
+		//1/31/06; 1:49:15 AM by JES
+			//Add support for flPending flag.
+	//manilaSuite.accessControl.membersMessages : 04/05/31, 11:49:43 by DAB
+		//prepare a report of all message visible to member
+		//was manilaFixer.accessControl.membersMessages : 03/01/12, 13:32:55 by DAB
 	local (pta = html.getPageTableAddress());
 	local (adrNewsSite = manilaSuite.getNewsSiteAddress(adrSite));
 	local (htmlText = "");
@@ -27,11 +27,11 @@ on membersMessages (adrSite, memberKey) {
 		for adrCohort in adrCohorts {
 			if defined(adrCohort^.systemDefinition) and adrCohort^.systemDefinition {
 				continue};
-			«if not defined(adrCohort^.containsTest)
-				«continue
-			«adrScript = @adrCohort^.containsTest
-			«while typeOf(adrScript^) == addressType
-				«adrScript = adrScript^
+			//if not defined(adrCohort^.containsTest)
+				//continue
+			//adrScript = @adrCohort^.containsTest
+			//while typeOf(adrScript^) == addressType
+				//adrScript = adrScript^
 			adrMemberData = @adrCohort^.memberData;
 			if defined(tbl.[string(adrMemberData)]) { // don't ask more than once
 				continue};
@@ -60,7 +60,7 @@ on membersMessages (adrSite, memberKey) {
 			add(manilaSuite.getString("accesscontrol.memberMessagesTitle",@replTbl, pta:pta));
 			add("</p>");
 			add("<p>");
-			«replTbl.cohorts = manilaFixer.utilities.listToString(memberCohorts, ", ")
+			//replTbl.cohorts = manilaFixer.utilities.listToString(memberCohorts, ", ")
 			replTbl.cohorts = manilaSuite.accessControl.listToString(memberCohorts); //04/05/31, 13:15:41 by DAB
 			add(manilaSuite.getString("accesscontrol.memberCohortsList",@replTbl, pta:pta));
 			add("</p>");

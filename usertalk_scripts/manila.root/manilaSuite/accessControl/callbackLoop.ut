@@ -1,11 +1,11 @@
 on callbackLoop (adrCallbacks, adrparamtable, adrEarlyTerminate=nil) {
-	«manilaSuite.accessControl.callbackLoop : 04/05/21, 19:58:07 by DAB
-		«01/09/04, 09:45:56 by DAB - revised version to permit string values
-			«If the table isn't defined, do nothing.
-			«Ignore objects that aren't scripts. (This should cut down on the number of "item #1" errors that come when people leave callback tables open.)
-		«02/05/08, 17:10:58 by DAB  
-			«if the earlyTerminate script exists, call it with name of the callback entry global
-		«was manilaFixer.callbackLoop 
+	//manilaSuite.accessControl.callbackLoop : 04/05/21, 19:58:07 by DAB
+		//01/09/04, 09:45:56 by DAB - revised version to permit string values
+			//If the table isn't defined, do nothing.
+			//Ignore objects that aren't scripts. (This should cut down on the number of "item #1" errors that come when people leave callback tables open.)
+		//02/05/08, 17:10:58 by DAB  
+			//if the earlyTerminate script exists, call it with name of the callback entry global
+		//was manilaFixer.callbackLoop 
 	if defined (adrCallbacks^) {
 		local (adrScript);
 		local (infoTbl); //02/05/08, 17:09:56 by DAB

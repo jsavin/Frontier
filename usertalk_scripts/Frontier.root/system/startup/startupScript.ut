@@ -1,30 +1,30 @@
-«This script runs when Frontier opens the Frontier.root file.
-	«11/10/05; 5:26:07 PM by JES
-		«Run startup tasks in StartupTasks.root affter setting up system.temp.Frontier and setting system.temp.Frontier.startingUp to true.
-	«11/10/05; 3:20:31 AM by JES
-		«Add support for StartupTasks.root.
-			«StartupTasks.root gets an opportunity to do additional startup bootstrapping, before the startup script does anything else.
-				«This gives us a chance to update the program folder location, install last-minute post-install updates, and any other installations that we may need in the future.
-			«If a file called StartupTasks.root exists in the same folder with the Frontier application, we open it up and run StartupTasksSuite.main in a try block.
-	«1999-2001
-		«06/08/01; 11:24:35 PM by JES
-			«When opening databases defined at user.databases, skip objects which aren't tables. This avoids the condition where startup wouldn't complete, if there's an item #1 in the user.databases table.
-		«06/02/01; 8:34:20 PM by PBS
-			«Do the web-based install and open the Control Panel if this is the first root run.
-		«04/28/01; 7:48:46 PM by JES
-			«Call Frontier.tools.startup in a try block, so that the startup process will finish even if Tools installation fails.
-		«04/20/01; 4:49:05 PM by JES
-			«Call tools.startup to install Tools at startup.
-		«10/7/99; 4:20:26 PM by PBS
-			«Only run the #startup script in a guest database if runStartupScript exists and is true. Previously, it would be run whether runStartupScript was true or false.
-			«http://frontier.userland.com/stories/storyReader$1760
-		«10/6/99; 10:21:35 PM by PBS
-			«Only set the taskTime for the overnight task if it's in the past. This fixes a bug when the taskTime was before midnight, but it was being set for the next day, so the overnight task wouldn't run.
-			«http://frontier.userland.com/stories/storyReader$1761
-		«8/19/99; 6:44:48 AM by DW
-			«Make sure that taskTimes in user.scheduler.tasks are in the future.
-			«We do this much more quickly than scheduler.monitor would.
-			«http://discuss.userland.com/msgReader$9658
+//This script runs when Frontier opens the Frontier.root file.
+	//11/10/05; 5:26:07 PM by JES
+		//Run startup tasks in StartupTasks.root affter setting up system.temp.Frontier and setting system.temp.Frontier.startingUp to true.
+	//11/10/05; 3:20:31 AM by JES
+		//Add support for StartupTasks.root.
+			//StartupTasks.root gets an opportunity to do additional startup bootstrapping, before the startup script does anything else.
+				//This gives us a chance to update the program folder location, install last-minute post-install updates, and any other installations that we may need in the future.
+			//If a file called StartupTasks.root exists in the same folder with the Frontier application, we open it up and run StartupTasksSuite.main in a try block.
+	//1999-2001
+		//06/08/01; 11:24:35 PM by JES
+			//When opening databases defined at user.databases, skip objects which aren't tables. This avoids the condition where startup wouldn't complete, if there's an item #1 in the user.databases table.
+		//06/02/01; 8:34:20 PM by PBS
+			//Do the web-based install and open the Control Panel if this is the first root run.
+		//04/28/01; 7:48:46 PM by JES
+			//Call Frontier.tools.startup in a try block, so that the startup process will finish even if Tools installation fails.
+		//04/20/01; 4:49:05 PM by JES
+			//Call tools.startup to install Tools at startup.
+		//10/7/99; 4:20:26 PM by PBS
+			//Only run the #startup script in a guest database if runStartupScript exists and is true. Previously, it would be run whether runStartupScript was true or false.
+			//http://frontier.userland.com/stories/storyReader$1760
+		//10/6/99; 10:21:35 PM by PBS
+			//Only set the taskTime for the overnight task if it's in the past. This fixes a bug when the taskTime was before midnight, but it was being set for the next day, so the overnight task wouldn't run.
+			//http://frontier.userland.com/stories/storyReader$1761
+		//8/19/99; 6:44:48 AM by DW
+			//Make sure that taskTimes in user.scheduler.tasks are in the future.
+			//We do this much more quickly than scheduler.monitor would.
+			//http://discuss.userland.com/msgReader$9658
 
 local (flEnableAgents = true, flOpenDatabases = true, flEnableHttpServer = true); //can be set by the external startup script
 
@@ -66,13 +66,13 @@ bundle { //6.1, be sure pre-defined scheduler tasks have reasonable times
 system.menus.data.currentsuite = ""; system.menus.data.currentmenu = 0;
 
 bundle { //open the about window if the pref says we should
-	«added 12/16/98; 6:47:28 PM by DW
+	//added 12/16/98; 6:47:28 PM by DW
 	if not defined (user.prefs.openAboutWindow) {
 		user.prefs.openAboutWindow = true};
 	if user.prefs.openAboutWindow {
 		window.about ()}};
 bundle { //initialize the log, next bit of code could add a log item
-	«added 12/16/98; 6:52:40 PM by DW
+	//added 12/16/98; 6:52:40 PM by DW
 	if defined (log.startup) {
 		log.startup ()}};
 bundle { //run the external startup script
@@ -86,7 +86,7 @@ bundle { //run the external startup script
 	Frontier.enableAgents (flEnableAgents);
 	};
 bundle { //open all the databases that have openOnStartup true
-	«added 12/16/98; 6:23:16 PM by DW
+	//added 12/16/98; 6:23:16 PM by DW
 	if defined (user.databases) {
 		if flOpenDatabases {
 			local (i, flmsg = false);
@@ -173,7 +173,7 @@ on infoDialog () { //prompt the user for name, org and initials
 			card.run (@system.cards.userInfoDialog)}};
 	return (true)};
 if user.prefs.firstRootRun { //license agreement, finish cleanup on user's machine
-	userland.firstRootRun (); «finish the job started by userland.cleanRoot
+	userland.firstRootRun (); //finish the job started by userland.cleanRoot
 	user.prefs.firstRootRun = false;
 	system.menus.buildMenuBar ();
 	fileMenu.save ();
@@ -184,12 +184,12 @@ if user.prefs.firstRootRun { //license agreement, finish cleanup on user's machi
 			if sys.os () == "MacOS" {
 				on itemhit (itemnumber) {
 					case (itemnumber) {
-						1 { «yes
+						1 { //yes
 							editLicense = true;
-							return (false)}; «stop processing the dialog
-						2 { «no
-							return (false)}}; «stop processing the dialog
-					return (true)}; «keep processing the dialog
+							return (false)}; //stop processing the dialog
+						2 { //no
+							return (false)}}; //stop processing the dialog
+					return (true)}; //keep processing the dialog
 				dialog.run (517, 1, @itemhit)}
 			else {
 				if dialog.yesNo ("Frontier is licensed software. Do you want to read the license agreement now?") {
@@ -201,7 +201,7 @@ if user.prefs.firstRootRun { //license agreement, finish cleanup on user's machi
 			if user.prefs.serialNumber != "" and not (string.lower (user.prefs.serialNumber) contains "trial") {
 				rootUpdates.init ();
 				rootUpdates.getCurrent ("Frontier")}}}};
-	fileMenu.save ()}; «save after finishInstall so user.databases entries persist
+	fileMenu.save ()}; //save after finishInstall so user.databases entries persist
 
 system.menus.buildMenuBar ();
 system.menus.buildSuitesSubmenu (); //5.0

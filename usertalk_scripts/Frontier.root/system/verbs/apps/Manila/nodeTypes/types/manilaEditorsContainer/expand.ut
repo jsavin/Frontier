@@ -1,9 +1,9 @@
-«Expand a Manila Editors container.
-	«10/27/00; 10:43:32 PM by PBS
-«Changes:
-	«12/07/00; 5:40:37 PM by JES
-		«Fixed expansion of editorsContainer node where editors were listed as editor001, editor002, etc.
-«return (playlist.manila.commands.expandManilaEditorsContainer ())
+//Expand a Manila Editors container.
+	//10/27/00; 10:43:32 PM by PBS
+//Changes:
+	//12/07/00; 5:40:37 PM by JES
+		//Fixed expansion of editorsContainer node where editors were listed as editor001, editor002, etc.
+//return (playlist.manila.commands.expandManilaEditorsContainer ())
 
 local (oldTarget = target.set (window.frontmost ()));
 local (oldDisplay = op.getDisplay ());
@@ -72,7 +72,7 @@ case type {
 		local (adrEditor);
 		for adrEditor in @editorsTable {
 			local (editorName, editorEmail);
-			«12/07/00 JES: returned value is now a table containing name and email, not a table of name/value pairs.
+			//12/07/00 JES: returned value is now a table containing name and email, not a table of name/value pairs.
 			editorName = adrEditor^.name;
 			editorEmail = adrEditor^.email;
 			addEditor (editorName, editorEmail)}}};

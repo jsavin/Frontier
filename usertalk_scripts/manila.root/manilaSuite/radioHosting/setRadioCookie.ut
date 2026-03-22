@@ -1,11 +1,11 @@
 on setRadioCookie (usernum, userPassword, flClear=false) {
-	«Changes
-		«1/13/06; 3:10:48 AM by JES
-			«Created. Factored from manilaSuite.radioHosting.commentsPage for additional use called from manilaSuite.trackback.defaultPage.
-			«Commented out debugging code.
+	//Changes
+		//1/13/06; 3:10:48 AM by JES
+			//Created. Factored from manilaSuite.radioHosting.commentsPage for additional use called from manilaSuite.trackback.defaultPage.
+			//Commented out debugging code.
 	local (pta = html.getPageTableAddress ());
-	«if flClear
-		«add ("Call made to clear Radio Cookie!!")
+	//if flClear
+		//add ("Call made to clear Radio Cookie!!")
 	local (year, day, month, hour, minute, second, t, cookieExpires, cookieValue, cookieName);
 	bundle { // get the cookie name
 		local (groupName = pta^.defaultMembershipGroup);

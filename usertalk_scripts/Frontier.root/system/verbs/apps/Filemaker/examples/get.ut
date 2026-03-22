@@ -1,32 +1,32 @@
-«Examples of syntax for the "get()" verb
-	«be sure the State Capitals database is open before running this
-		«If you do not alread have this database you can create a simple database
-		«with two fields, the first being "Name" the second "Capitol"
-	«Step through this script and use lookup to watch the value of scratchVar
-«syntax:
-	«on get (obj, as = nil) «Get the data for an object
+//Examples of syntax for the "get()" verb
+	//be sure the State Capitals database is open before running this
+		//If you do not alread have this database you can create a simple database
+		//with two fields, the first being "Name" the second "Capitol"
+	//Step through this script and use lookup to watch the value of scratchVar
+//syntax:
+	//on get (obj, as = nil) //Get the data for an object
 with objectModel, Filemaker {
 	local {
 		scratchVar};
-	bundle { «getting data
-		scratchVar=get(record[1]); «gets the record as a list
-		scratchVar=get(record[1].cell[1]); «"name" cell
-		scratchVar=get(record[1].cell["name"]); «same as last line, but with name index
-		scratchVar=get(field["name"])}; «Gets this field from all records
-	bundle { «getting properties
-		scratchVar=get(record[1].cell[2].name); «capital
-		scratchVar=get(record[1].uniqueID); «The Unique ID of the record
-		scratchVar=get(record[1].cell[2].uniqueID)}; «The Unique ID of the cell (this might be FM3 specific
-	bundle { «matches, ranges, etc
-		scratchVar=get(record[cell[1]=="California"]); «matching records
-		scratchVar=get(record[cell[1] contains "Cali"]); «matching records
-		scratchVar=get(record[1 to 5]); «range of records
-		scratchVar=get(record[1 to 5].cell[1]); «cells from range of records
-		scratchVar=get(record[1 to 5].uniqueID)}; «IDs from range of records
-	bundle { «getting data as a certain type
+	bundle { //getting data
+		scratchVar=get(record[1]); //gets the record as a list
+		scratchVar=get(record[1].cell[1]); //"name" cell
+		scratchVar=get(record[1].cell["name"]); //same as last line, but with name index
+		scratchVar=get(field["name"])}; //Gets this field from all records
+	bundle { //getting properties
+		scratchVar=get(record[1].cell[2].name); //capital
+		scratchVar=get(record[1].uniqueID); //The Unique ID of the record
+		scratchVar=get(record[1].cell[2].uniqueID)}; //The Unique ID of the cell (this might be FM3 specific
+	bundle { //matches, ranges, etc
+		scratchVar=get(record[cell[1]=="California"]); //matching records
+		scratchVar=get(record[cell[1] contains "Cali"]); //matching records
+		scratchVar=get(record[1 to 5]); //range of records
+		scratchVar=get(record[1 to 5].cell[1]); //cells from range of records
+		scratchVar=get(record[1 to 5].uniqueID)}; //IDs from range of records
+	bundle { //getting data as a certain type
 		scratchVar=get(record[1].cell[1],stringtype);
-		«Other types might be:
-			«dateType
-			«longType (number)
-			«binaryType (images etc};
-	scratchVar=0} «a step so that the last change to scratchVar can be seen in the lookup
+		//Other types might be:
+			//dateType
+			//longType (number)
+			//binaryType (images etc};
+	scratchVar=0} //a step so that the last change to scratchVar can be seen in the lookup

@@ -1,5 +1,5 @@
 on checkSearchTable (adrObject, adrTable) {
-	«Check for missing or empty items in the search prefs table. If something's missing or empty, log it, then return.
+	//Check for missing or empty items in the search prefs table. If something's missing or empty, log it, then return.
 	
 	on check (name) { //check that a field exists and is not empty
 		if not defined (adrTable^.[name]) {
@@ -13,7 +13,7 @@ on checkSearchTable (adrObject, adrTable) {
 	local (requiredFields = {"domain", "addToIndex", "indexOnCheckIn", "siteName", "siteUrl", "supportsIndexing", "port"});
 	local (i);
 	
-	«Check that required fields exist and are not empty.
+	//Check that required fields exist and are not empty.
 	for i = 1 to sizeOf (requiredFields) {
 		if not (check (requiredFields [i])) {
 			return (false)}};

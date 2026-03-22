@@ -1,12 +1,12 @@
 on validateStructure (adrTheme) {
-	«Validate the table structure of a DG theme. scriptError if there's a problem. This is a relaxed validator. It detects structural problems, but some details may escape it. One important thing it does do is ensure that there are no scripts objects in the theme.
-		«10/26/00; 10:59:20 PM by JES
-			«Cribbed from manilaSuite.themes.validateStructure
-	«Changes
-		«1/26/05; 2:45:46 PM by LL
-			«Add an exception for the new flNofollowLinkAttributeEnabled item.
-		«4/5/02; 3:03:57 AM by JES
-			«Added responseFullItemTemplate to the items allowed in the discussionGroup sub-table.
+	//Validate the table structure of a DG theme. scriptError if there's a problem. This is a relaxed validator. It detects structural problems, but some details may escape it. One important thing it does do is ensure that there are no scripts objects in the theme.
+		//10/26/00; 10:59:20 PM by JES
+			//Cribbed from manilaSuite.themes.validateStructure
+	//Changes
+		//1/26/05; 2:45:46 PM by LL
+			//Add an exception for the new flNofollowLinkAttributeEnabled item.
+		//4/5/02; 3:03:57 AM by JES
+			//Added responseFullItemTemplate to the items allowed in the discussionGroup sub-table.
 	
 	try { //enclose in a try, for a friendlier error message in the case of unknown errors
 		on checkTable (adrTable, namesList, flTopLevelTable, validTypes) {
@@ -35,7 +35,7 @@ on validateStructure (adrTheme) {
 			return (true)};
 		
 		bundle { //top level table
-			«local (namesList = {"appearance", "flEnabled", "flPublic", "Info", "Pictures"})
+			//local (namesList = {"appearance", "flEnabled", "flPublic", "Info", "Pictures"})
 			local (namesList = {"appearance", "flEnabled", "flPublic", "Info"});
 			local (validTypes = {tableType, booleanType});
 			checkTable (adrTheme, namesList, true, validTypes)};
@@ -68,5 +68,5 @@ on validateStructure (adrTheme) {
 		scriptError ("Can't validate this theme because " + tryError + ".")};
 	
 	return (true)}; //the theme validated
-«bundle //test code
-	«validateStructure (@workspace.dgTheme)
+//bundle //test code
+	//validateStructure (@workspace.dgTheme)

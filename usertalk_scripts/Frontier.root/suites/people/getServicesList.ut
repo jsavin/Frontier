@@ -1,5 +1,5 @@
 on getServicesList () {
-	«Return a list of all the services.
+	//Return a list of all the services.
 	local (adrServices = @user.people.services);
 	local (i, servicesList = {});
 	for i = 1 to sizeOf (adrServices^) {

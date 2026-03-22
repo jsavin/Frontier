@@ -1,10 +1,10 @@
 on getPathAddress (xtable, path, adrresult) {
-	«10/14/98; 7:46:15 AM by DW
-		«xtable is the address of an xml structure
-		«from the root of the table, travel from the top down the /-separated path
-		«something like "/ticket/header/title"
-		«set adrresult^ to point to the value at the end of the path and return true
-		«return false if the path is invalid
+	//10/14/98; 7:46:15 AM by DW
+		//xtable is the address of an xml structure
+		//from the root of the table, travel from the top down the /-separated path
+		//something like "/ticket/header/title"
+		//set adrresult^ to point to the value at the end of the path and return true
+		//return false if the path is invalid
 	local (nomad = xtable);
 	loop {
 		if path beginswith "/" {
@@ -19,5 +19,5 @@ on getPathAddress (xtable, path, adrresult) {
 			return (false)}};
 	adrresult^ = nomad;
 	return (true)};
-«bundle //test code
-	«dialog.alert (getpathaddress (@notepad.testing.testTable, "/ticket/header/title")^)
+//bundle //test code
+	//dialog.alert (getpathaddress (@notepad.testing.testTable, "/ticket/header/title")^)

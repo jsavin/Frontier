@@ -1,11 +1,11 @@
 on searchThisSite (buttontext="Search", flThisSiteOnly=true, thisSiteOnlyCheckText="This site only") {
-	«Changes
-		«8/21/02; 3:56:06 PM by JES
-			«New optional parameters, flThisSiteOnly and thisSiteOnlyCheckText. Used to add a "this site only" checkbox to the form.
-		«8/18/02; 7:03:26 PM by JES
-			«If this server is not a search engine server, return the empty string.
-		«8/8/02; 3:46:12 PM
-			«Created.
+	//Changes
+		//8/21/02; 3:56:06 PM by JES
+			//New optional parameters, flThisSiteOnly and thisSiteOnlyCheckText. Used to add a "this site only" checkbox to the form.
+		//8/18/02; 7:03:26 PM by JES
+			//If this server is not a search engine server, return the empty string.
+		//8/8/02; 3:46:12 PM
+			//Created.
 	if not config.mainResponder.prefs.flSearchEngine {
 		return ("")};
 	

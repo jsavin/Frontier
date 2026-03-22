@@ -1,5 +1,5 @@
 on callBrowser (browserName, cmdStr, paramStr="") {
-	«Send a command to a web browser running in Windows.
+	//Send a command to a web browser running in Windows.
 	case sys.os () {
 		"Win95";
 		"WinNT" {

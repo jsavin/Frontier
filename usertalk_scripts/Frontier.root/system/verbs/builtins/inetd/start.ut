@@ -1,4 +1,4 @@
-«start up all daemons with startup set true
+//start up all daemons with startup set true
 
 local (adrtable = @user.inetd.config);
 local (ct = sizeof (adrtable^), i, nomad);

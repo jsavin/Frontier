@@ -1,7 +1,7 @@
 on editPost (title="", link="", description="", adrstruct=nil, postId=0, username=nil, password=nil, blogId=nil, flPublish=true, adrdata=@metaWeblog.data) {
-	«Changes
-		«6/9/02; 12:01:28 PM by DW
-			«Created.
+	//Changes
+		//6/9/02; 12:01:28 PM by DW
+			//Created.
 	local (url, struct);
 	metaWeblog.init ();
 	bundle { //set defaults

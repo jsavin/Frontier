@@ -1,7 +1,7 @@
 on translateToEntities (s) {
-	«Changes
-		«01/10/01; 4:49:47 PM by PBS
-			«Before putting some text in an input field or textarea, translating certain entities will ensure that the HTML on the page won't get messed up.
+	//Changes
+		//01/10/01; 4:49:47 PM by PBS
+			//Before putting some text in an input field or textarea, translating certain entities will ensure that the HTML on the page won't get messed up.
 	s = string.replaceAll (s, "&", "&amp;");
 	s = string.replaceAll (s, "<", "&lt;");
 	s = string.replaceAll (s, "\"", "&quot;");

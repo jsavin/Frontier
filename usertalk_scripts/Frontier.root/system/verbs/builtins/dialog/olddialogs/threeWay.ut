@@ -1,5 +1,5 @@
 on threeWay (prompt, button1, button2, button3) {
-	local (userhitbutton = 2); «the default Cancel item
+	local (userhitbutton = 2); //the default Cancel item
 	on itemhit (item) {
 		case item {
 			-1 {
@@ -8,8 +8,8 @@ on threeWay (prompt, button1, button2, button3) {
 				dialog.setvalue (3, button3);
 				dialog.setvalue (4, prompt);
 				return (true)}}
-		else { «only enabled items are the buttons
+		else { //only enabled items are the buttons
 			userhitbutton = item;
-			return (false)}}; «we're done
+			return (false)}}; //we're done
 	dialog.run (264, 1, @itemhit);
 	return (userhitbutton)}

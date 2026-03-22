@@ -1,69 +1,69 @@
 on init () {
-	«Initialize mainResponder.
-	«Changes:
-		«12/30/09; 12:33:12 AM by JES
-			«Initialize data and hooks for the maintenance mode placeholder page.
-				«Initialize config.mainResponder.prefs.maintenanceMode.flEnabled to false. If true, the maintenanceMode controlAccess callback will respond to all requests on ports other than the admin port, with an error page.
-				«The title and text of the error page are initialized and can be customized at config.mainResponder.prefs.maintenanceMode.pageTitle and config.mainResponder.prefs.maintenanceMode.pageText.
-		«Changes <= 2005
-			«10/7/05; 3:57:41 PM by JES
-				«If admin group has empty cookieDomain, change it to * so it will work for all sites for a given domain name, including sub-domains. (See mainResponder.members.getCookieDomain for related changes.)
-			«9/27/05; 1:17:40 AM by JES
-				«Ensure config.mainResponder.controlPanel.wizards exists.
-			«9/22/05; 2:35:15 AM by JES
-				«Init config.mainResponder.prefs.flAdminGroupAlwaysAllowed to true.
-			«6/17/05; 8:18:16 PM by JES
-				«Call mainResponder.subscriptions.updateAllChangesTables in its own thread.
-			«10/23/04; 1:05:33 AM by JES
-				«Init config.mainResponder.prefs.flMapFirstLevelOfUrlsToManilaSites to true.
-			«3/10/03; 5:53:51 PM by JES
-				«Make sure that system.environment.isRadio is defined (and false).
-			«3/4/03; 3:19:15 PM by JES
-				«Return @config.mainResponder.
-			«9/3/02; 1:26:05 AM by JES
-				«Fixed a bonehead bug -- we were calling user.rootUpdates.init to initialize the user.rootUpdates.callbacks table. We should have called rootUpdates.init instead.
-			«8/28/02; 11:18:11 PM by JES
-				«Register admin site callbacks, and config.mainResponder.prefs.flLogRootUpdates.
-			«8/20/02; 12:38:52 AM by JES
-				«If the port 5335 listen configured at user.inetd.config.http2 is not installed, install it, based on the default http listen.
-			«8/18/02; 5:21:19 PM by JES
-				«Install the admin site pathEvaluation callback at config.mainResponder.callbacks.pathEvaluation.frontierAdminSite.
-			«8/1/02; 6:59:56 PM by JES
-				«Initialize new search engine prefs at config.mainResponder.search.prefs. No longer create config.mainResponder.data.searchQueue.
-			«06/22/00; 3:57:55 PM by PBS
-				«Set hashed cookies to true by default.
-			«06/17/00; 5:29:29 PM by PBS
-				«Now false by default: flKeepParamTable, flLog, flDiscussStatsNightly
-			«12/11/1999 at 5:29:32 AM by AR
-				«Commented out the code for hooking into the scheduler. This is now handled in mainResponder.startup.
-			«11/23/99; 4:10:06 PM by PBS
-				«Backups and discuss archiving now false by default.
-			«11/20/99; 4:29:29 PM by PBS
-				«Changed some defaults. Discuss archiving is true by default. Nightly updates are on by default; the default nightly update list contains Frontier, mainResponder, manila, and prefs.root. Save databases every minute is true by default. Logging database opens to the temp table is now false by default.
-			«11/16/99; 11:48:17 PM by PBS
-				«Set up prefs for flUpdateNightly, updateNightlyList, and securityLevel. The first two are prefs for automated nightly updates, the third is the security level for the Control Panel.
-			«10/25/99; 4:04:59 PM by PBS
-				«config.mainResponder.prefs.flControlPanel: if true, then the /controlPanel/ system website can be accessed. It's true by default.
-			«8/15/99; 9:53:42 AM by DW
-				«config.mainResponder.prefs.flLogReopenHourly, if true, we close the log file every hour. It will be re-opened by the next log.add call. In our work with the 6.1 kernel, we've determined that for busy servers this helps Frontier's memory utilization significantly, and the cost of re-opening the file once an hour is relatively small.
-			«8/15/99; 9:34:07 AM by DW
-				«Make sure that scheduler tasks are installed. This is also handled in mainResponder.install, but I don't want to ask people to run this script to go to 6.1, so we check to see if they're defined and if they're not we link them in.
-			«8/15/99; 8:26:14 AM by DW
-				«initialize config.mainResponder.prefs.flArchiveDiscuss and discussArchiveFolder.
-			«Wed, Mar 10, 1999 at 2:34:19 PM by PBS
-				«Initialize config.mainResponder.data.
-				«Initialize config.mainResponder.data.searchQueue.
-			«Wed, Mar 10, 1999 at 2:19:48 PM by PBS
-				«Initialize the config.mainResponder.search table.
-				«Set config.mainResponder.prefs.flSearchEngine to false by default.
-					«This means that this machine is not, by default, a search engine server.
-				«Set config.mainResponder.prefs.flLogMemAvail to false by default.
-			«Tue, Mar 9, 1999 at 4:12:13 PM by PBS
-				«Use Frontier.getSubFolder rather than mainResponder.getFolder.
-			«Sat, Mar 20, 1999 at 4:48:37 PM by PBS
-				«Added flConvertToMacText pref.
-					«On Macs, convert incoming latin text to Mac.
-					«On Windows the pref has no effect.
+	//Initialize mainResponder.
+	//Changes:
+		//12/30/09; 12:33:12 AM by JES
+			//Initialize data and hooks for the maintenance mode placeholder page.
+				//Initialize config.mainResponder.prefs.maintenanceMode.flEnabled to false. If true, the maintenanceMode controlAccess callback will respond to all requests on ports other than the admin port, with an error page.
+				//The title and text of the error page are initialized and can be customized at config.mainResponder.prefs.maintenanceMode.pageTitle and config.mainResponder.prefs.maintenanceMode.pageText.
+		//Changes <= 2005
+			//10/7/05; 3:57:41 PM by JES
+				//If admin group has empty cookieDomain, change it to * so it will work for all sites for a given domain name, including sub-domains. (See mainResponder.members.getCookieDomain for related changes.)
+			//9/27/05; 1:17:40 AM by JES
+				//Ensure config.mainResponder.controlPanel.wizards exists.
+			//9/22/05; 2:35:15 AM by JES
+				//Init config.mainResponder.prefs.flAdminGroupAlwaysAllowed to true.
+			//6/17/05; 8:18:16 PM by JES
+				//Call mainResponder.subscriptions.updateAllChangesTables in its own thread.
+			//10/23/04; 1:05:33 AM by JES
+				//Init config.mainResponder.prefs.flMapFirstLevelOfUrlsToManilaSites to true.
+			//3/10/03; 5:53:51 PM by JES
+				//Make sure that system.environment.isRadio is defined (and false).
+			//3/4/03; 3:19:15 PM by JES
+				//Return @config.mainResponder.
+			//9/3/02; 1:26:05 AM by JES
+				//Fixed a bonehead bug -- we were calling user.rootUpdates.init to initialize the user.rootUpdates.callbacks table. We should have called rootUpdates.init instead.
+			//8/28/02; 11:18:11 PM by JES
+				//Register admin site callbacks, and config.mainResponder.prefs.flLogRootUpdates.
+			//8/20/02; 12:38:52 AM by JES
+				//If the port 5335 listen configured at user.inetd.config.http2 is not installed, install it, based on the default http listen.
+			//8/18/02; 5:21:19 PM by JES
+				//Install the admin site pathEvaluation callback at config.mainResponder.callbacks.pathEvaluation.frontierAdminSite.
+			//8/1/02; 6:59:56 PM by JES
+				//Initialize new search engine prefs at config.mainResponder.search.prefs. No longer create config.mainResponder.data.searchQueue.
+			//06/22/00; 3:57:55 PM by PBS
+				//Set hashed cookies to true by default.
+			//06/17/00; 5:29:29 PM by PBS
+				//Now false by default: flKeepParamTable, flLog, flDiscussStatsNightly
+			//12/11/1999 at 5:29:32 AM by AR
+				//Commented out the code for hooking into the scheduler. This is now handled in mainResponder.startup.
+			//11/23/99; 4:10:06 PM by PBS
+				//Backups and discuss archiving now false by default.
+			//11/20/99; 4:29:29 PM by PBS
+				//Changed some defaults. Discuss archiving is true by default. Nightly updates are on by default; the default nightly update list contains Frontier, mainResponder, manila, and prefs.root. Save databases every minute is true by default. Logging database opens to the temp table is now false by default.
+			//11/16/99; 11:48:17 PM by PBS
+				//Set up prefs for flUpdateNightly, updateNightlyList, and securityLevel. The first two are prefs for automated nightly updates, the third is the security level for the Control Panel.
+			//10/25/99; 4:04:59 PM by PBS
+				//config.mainResponder.prefs.flControlPanel: if true, then the /controlPanel/ system website can be accessed. It's true by default.
+			//8/15/99; 9:53:42 AM by DW
+				//config.mainResponder.prefs.flLogReopenHourly, if true, we close the log file every hour. It will be re-opened by the next log.add call. In our work with the 6.1 kernel, we've determined that for busy servers this helps Frontier's memory utilization significantly, and the cost of re-opening the file once an hour is relatively small.
+			//8/15/99; 9:34:07 AM by DW
+				//Make sure that scheduler tasks are installed. This is also handled in mainResponder.install, but I don't want to ask people to run this script to go to 6.1, so we check to see if they're defined and if they're not we link them in.
+			//8/15/99; 8:26:14 AM by DW
+				//initialize config.mainResponder.prefs.flArchiveDiscuss and discussArchiveFolder.
+			//Wed, Mar 10, 1999 at 2:34:19 PM by PBS
+				//Initialize config.mainResponder.data.
+				//Initialize config.mainResponder.data.searchQueue.
+			//Wed, Mar 10, 1999 at 2:19:48 PM by PBS
+				//Initialize the config.mainResponder.search table.
+				//Set config.mainResponder.prefs.flSearchEngine to false by default.
+					//This means that this machine is not, by default, a search engine server.
+				//Set config.mainResponder.prefs.flLogMemAvail to false by default.
+			//Tue, Mar 9, 1999 at 4:12:13 PM by PBS
+				//Use Frontier.getSubFolder rather than mainResponder.getFolder.
+			//Sat, Mar 20, 1999 at 4:48:37 PM by PBS
+				//Added flConvertToMacText pref.
+					//On Macs, convert incoming latin text to Mac.
+					//On Windows the pref has no effect.
 	
 	on suretable (adrtable) {
 		if not defined (adrtable^) {
@@ -82,7 +82,7 @@ on init () {
 		if not defined (config.mainResponder.prefs.flBackupNightly) {
 			config.mainResponder.prefs.flBackupNightly = false}; //PBS 11/23/99: now false by default
 		if not defined (config.mainResponder.prefs.flDiscussStatsNightly) {
-			«config.mainResponder.prefs.flDiscussStatsNightly = true
+			//config.mainResponder.prefs.flDiscussStatsNightly = true
 			config.mainResponder.prefs.flDiscussStatsNightly = false}; //PBS 06/17/00: Now false by default for 6.2.
 		if not defined (config.mainResponder.prefs.flArchiveDiscuss) {
 			config.mainResponder.prefs.flArchiveDiscuss = false}; //PBS 11/23/99: now false by default
@@ -93,10 +93,10 @@ on init () {
 		if not defined (config.mainResponder.prefs.flDebug) {
 			config.mainResponder.prefs.flDebug = false};
 		if not defined (config.mainResponder.prefs.flKeepParamTable) {
-			«config.mainResponder.prefs.flKeepParamTable = true
+			//config.mainResponder.prefs.flKeepParamTable = true
 			config.mainResponder.prefs.flKeepParamTable = false}; //PBS 06/17/00: Now false by default in 6.2.
 		if not defined (config.mainResponder.prefs.flLog) {
-			«config.mainResponder.prefs.flLog = true
+			//config.mainResponder.prefs.flLog = true
 			config.mainResponder.prefs.flLog = false}; //PBS 06/17/00: HTTP logging now off by default in 6.2.
 		if not defined (config.mainResponder.prefs.flLogMemavail) {
 			config.mainResponder.prefs.flLogMemavail = false};
@@ -223,7 +223,7 @@ on init () {
 		suretable (@config.mainResponder.callbacks.nightlyBackup);
 		suretable (@config.mainResponder.callbacks.searchEngineSecurity); //PBS 3/9/99
 		
-		«Add search engine callbacks.
+		//Add search engine callbacks.
 		if not defined (config.mainResponder.callbacks.addMessage.index) {
 			script.newScriptObject ("mainResponder.search.client.addMessageCallback (adrNewMsg)", @config.mainResponder.callbacks.addMessage.index);
 			script.compile (@config.mainResponder.callbacks.addMessage.index)};
@@ -231,11 +231,11 @@ on init () {
 			script.newScriptObject ("mainResponder.search.client.addMessageCallback (adrEditedMsg)", @config.mainResponder.callbacks.editMessage.index);
 			script.compile (@config.mainResponder.callbacks.editMessage.index)};
 		
-		«Add security callback
+		//Add security callback
 		if not defined (config.mainResponder.callbacks.controlAccess.blockByIP) { //AR 11/04/1999
 			script.newScriptObject ("mainResponder.security.blockHttpByIP ()", @config.mainResponder.callbacks.controlAccess.blockByIP)};
 		
-		«Add pathEvaluation callback for the Admin site
+		//Add pathEvaluation callback for the Admin site
 		if not defined (config.mainResponder.callbacks.pathEvaluation) { //JES 8/18/02
 			new (tableType, @config.mainResponder.callbacks.pathEvaluation)};
 		if not defined (config.mainResponder.callbacks.pathEvaluation.frontierAdminSite) { //JES 8/18/02
@@ -245,7 +245,7 @@ on init () {
 		suretable (@config.mainResponder.controlPanel.wizards)};
 	bundle { //config.mainResponder.data
 		suretable (@config.mainResponder.data);
-		};«suretable (@config.mainResponder.data.searchQueue)
+		};//suretable (@config.mainResponder.data.searchQueue)
 	bundle { //config.mainResponder.domains
 		suretable (@config.mainResponder.domains);
 		if sizeof (config.mainResponder.domains) == 0 {
@@ -320,18 +320,18 @@ on init () {
 		if defined ([system.temp.mainResponder.membersRootFile].admin.cookieDomain) {
 			if [system.temp.mainResponder.membersRootFile].admin.cookieDomain == "" {
 				[system.temp.mainResponder.membersRootFile].admin.cookieDomain = "*"}}};
-	«bundle //hook in to user.scheduler
-		«if not defined (user.scheduler.everyMinute.nirvanaServer)
-			«user.scheduler.everyMinute.nirvanaServer = @mainresponder.background.everyminute
-		«if not defined (user.scheduler.hourly.nirvanaServer)
-			«user.scheduler.hourly.nirvanaServer = @mainresponder.background.everyHour
-		«if not defined (user.scheduler.overnight.nirvanaServer)
-			«user.scheduler.overnight.nirvanaServer = @mainresponder.background.everynight
+	//bundle //hook in to user.scheduler
+		//if not defined (user.scheduler.everyMinute.nirvanaServer)
+			//user.scheduler.everyMinute.nirvanaServer = @mainresponder.background.everyminute
+		//if not defined (user.scheduler.hourly.nirvanaServer)
+			//user.scheduler.hourly.nirvanaServer = @mainresponder.background.everyHour
+		//if not defined (user.scheduler.overnight.nirvanaServer)
+			//user.scheduler.overnight.nirvanaServer = @mainresponder.background.everynight
 	return (@config.mainResponder)};
 
-«bundle //test code
-	«local (ticks = clock.ticks ())
-	«for i = 1 to 100
-		«init ()
-	«dialog.notify ((double (clock.ticks ()) - ticks) / 60 + " secs.")
-	«
+//bundle //test code
+	//local (ticks = clock.ticks ())
+	//for i = 1 to 100
+		//init ()
+	//dialog.notify ((double (clock.ticks ()) - ticks) / 60 + " secs.")
+	//

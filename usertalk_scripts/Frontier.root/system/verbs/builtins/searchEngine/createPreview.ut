@@ -1,11 +1,11 @@
 on createPreview (s, title, url, pageID, adrPreviews, lastModified=nil) {
-	«Create a preview for a page. Return the address of the preview.
-		«s is the text of the page.
-		«title is the title of the page.
-		«url is the url of the page.
-		«pageID is the page's identifier -- odb address, url, or filespec.
-		«adrPreviews is the address of the previews table.
-		«lastModified is when the page was last modified.
+	//Create a preview for a page. Return the address of the preview.
+		//s is the text of the page.
+		//title is the title of the page.
+		//url is the url of the page.
+		//pageID is the page's identifier -- odb address, url, or filespec.
+		//adrPreviews is the address of the previews table.
+		//lastModified is when the page was last modified.
 	
 	local (preview = "");
 	

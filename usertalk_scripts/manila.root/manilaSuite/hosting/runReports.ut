@@ -1,20 +1,20 @@
 on runReports (d) {
-	«Generate the HTML and XML stats reports.
-		«05/10/00; 3:12:42 PM by PBS
-	«Changes:
-		«4/21/01; 2:09:25 AM by JES
-			«Build the most read sites yesterday report from the new storage table at config.manila.stats.sites.today.
+	//Generate the HTML and XML stats reports.
+		//05/10/00; 3:12:42 PM by PBS
+	//Changes:
+		//4/21/01; 2:09:25 AM by JES
+			//Build the most read sites yesterday report from the new storage table at config.manila.stats.sites.today.
 	
 	local (adrTable);
 	if not defined (config.manila.stats.sites.allTime) {
 		return (false)};
-	«if not defined (config.manila.stats.sites.calendar)
-		«return (false)
+	//if not defined (config.manila.stats.sites.calendar)
+		//return (false)
 	if not defined (config.manila.stats.sites.today) {
 		return (false)};
 	
 	adrTable = @config.manila.stats.sites.allTime;
-	«adrDay = mainResponder.calendar.getDayAddress (@config.manila.stats.sites.calendar, d)
+	//adrDay = mainResponder.calendar.getDayAddress (@config.manila.stats.sites.calendar, d)
 	adrDay = @config.manila.stats.sites.today;
 	
 	if not defined (config.manila.stats.reports) {

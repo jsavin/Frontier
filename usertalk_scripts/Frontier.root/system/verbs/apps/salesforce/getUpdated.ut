@@ -1,24 +1,24 @@
 on getUpdated (adrSession, objectType, startDate, endDate) {
-	«Changes
-		«4/19/06; 7:47:53 PM by JES
-			«Created. Returns a list of Id's for objects of the given type, which have been updated between startDate and endDate.
+	//Changes
+		//4/19/06; 7:47:53 PM by JES
+			//Created. Returns a list of Id's for objects of the given type, which have been updated between startDate and endDate.
 	local (retval = salesforce.callApi (adrSession, nameOf (this^), {"sObjectType":objectType, "startDate":startDate, "endDate":endDate}));
 	if sizeOf (retval) == 0 {
 		return ({})};
 	if typeOf (retval[1]) == listType {
 		return (retval[1])};
 	return ({retval[1]})};
-«bundle //test code
-	«local (adrses)
-	«bundle //set adrses
-		«if defined (temp.salesforce.sessions) and sizeOf (temp.salesforce.sessions)
-			«local (sesnum = sizeOf (temp.salesforce.sessions))
-			«adrses = @temp.salesforce.sessions[sesnum]
-		«else //log in
-			«salesforce.login (workspace.salesforcecomUsername, workspace.salesforcecomPassword, @adrses)
-	«local (endDate = clock.now ())
-	«local (startDate = endDate - (60)) //1 minute ago
-	«local (startDate = endDate - (60*60*72)) //72 hours ago
-	«local (startDate = endDate - (60*60*24*7)) //7 days ago
-	«table.assign (@workspace.retval, this^ (adrses, "Account", startDate, endDate))
-	«edit (@workspace.retval)
+//bundle //test code
+	//local (adrses)
+	//bundle //set adrses
+		//if defined (temp.salesforce.sessions) and sizeOf (temp.salesforce.sessions)
+			//local (sesnum = sizeOf (temp.salesforce.sessions))
+			//adrses = @temp.salesforce.sessions[sesnum]
+		//else //log in
+			//salesforce.login (workspace.salesforcecomUsername, workspace.salesforcecomPassword, @adrses)
+	//local (endDate = clock.now ())
+	//local (startDate = endDate - (60)) //1 minute ago
+	//local (startDate = endDate - (60*60*72)) //72 hours ago
+	//local (startDate = endDate - (60*60*24*7)) //7 days ago
+	//table.assign (@workspace.retval, this^ (adrses, "Account", startDate, endDate))
+	//edit (@workspace.retval)

@@ -1,7 +1,7 @@
 on isInCategory (adrMsgTable, category) {
-	«Is a discussion group message a member of the specified category?
-		«This script can run outside the page rendering context.
-		«10/19/99; 3:48:35 PM by PBS
+	//Is a discussion group message a member of the specified category?
+		//This script can run outside the page rendering context.
+		//10/19/99; 3:48:35 PM by PBS
 	
 	if not defined (adrMsgTable^.alsoListedIn) {
 		return (false)}; //if there's no alsoListedIn field, this message is part of no categories

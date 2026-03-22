@@ -1,2 +1,2 @@
-on open (file) { «open bookmark or folder
+on open (file) { //open bookmark or folder
 	return (appleEvent (AnArchie.id, 'aevt', 'odoc', '----', alias (file)))}

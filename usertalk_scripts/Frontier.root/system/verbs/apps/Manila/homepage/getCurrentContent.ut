@@ -1,9 +1,9 @@
 on getCurrentContent (adrSitePrefs) {
-	«Get the content of the current homepage
-		«11/14/00; 3:28:46 AM by JES
-	«Changes
-		«9/6/01; 8:06:15 PM by JES
-			«Changed params from a list to a record of named parameters, for SOAP compatibility.
+	//Get the content of the current homepage
+		//11/14/00; 3:28:46 AM by JES
+	//Changes
+		//9/6/01; 8:06:15 PM by JES
+			//Changed params from a list to a record of named parameters, for SOAP compatibility.
 	with adrSitePrefs^ {
 		local (params = {"siteName":sitename});
 		return (manila.callHandler (host, port, "manila.homepage.getCurrentContent", @params, rpcPath:rpcPath))}}

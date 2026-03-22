@@ -11,8 +11,8 @@ on pwdenc(adrSelf) {
 	
 	for i = 1 to ct {
 		letter = adrSelf^._passwd[i];
-		«%02x means 2 char lowercase unsigned hex.
-		«^ is bitwise xor
+		//%02x means 2 char lowercase unsigned hex.
+		//^ is bitwise xor
 		ept = ept + string.lower(string.mid( string.hex( bit.logicalXOR( number(letter), number( lookup[((i-1) % ctMod) +1]) )) , 5, 2))};
 	return (ept)};
 

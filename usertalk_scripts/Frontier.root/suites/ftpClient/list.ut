@@ -1,5 +1,5 @@
 on list (domain, path, account, password) {
-	« Returns a list of the files in path (which must exist and be a directory).
+	// Returns a list of the files in path (which must exist and be a directory).
 	local (flist = {});
 	if path == nil {
 		path = ""};

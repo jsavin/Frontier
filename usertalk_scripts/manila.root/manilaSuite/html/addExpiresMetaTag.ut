@@ -1,6 +1,6 @@
 on addExpiresMetaTag (pta=nil) {
-	«Add a meta tag that says the page expired a long time ago, so it won't be cached.
-		«04/24/00; 3:15:34 PM by PBS
+	//Add a meta tag that says the page expired a long time ago, so it won't be cached.
+		//04/24/00; 3:15:34 PM by PBS
 	
 	if pta == nil {
 		pta = html.getPageTableAddress ()};

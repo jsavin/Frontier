@@ -1,6 +1,6 @@
 on sureDatabaseOpen (adr) {
-	«Make sure the database containing this address is open.
-		«It could be an address in the Frontier.root or in a guest database.
+	//Make sure the database containing this address is open.
+		//It could be an address in the Frontier.root or in a guest database.
 	if defined (adr^) {
 		return (true)}; //the address is already defined
 	

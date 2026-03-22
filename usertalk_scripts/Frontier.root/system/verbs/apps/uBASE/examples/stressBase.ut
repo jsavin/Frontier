@@ -1,12 +1,12 @@
-«a script to try out all the features of uBASE as they go in
+//a script to try out all the features of uBASE as they go in
 
 local (ubasefolder, fnum);
 
-bundle { «start up uBASE, create a new file, add its fields
-	«ubase.launch ()
+bundle { //start up uBASE, create a new file, add its fields
+	//ubase.launch ()
 	ubasefolder = file.folderFromPath (ubase.appinfo.path);
 	fnum = ubase.newFile (ubasefolder + "Stress Database");
-	ubase.bringToFront (); «so we can watch the records being added
+	ubase.bringToFront (); //so we can watch the records being added
 	ubase.addField (fnum, 'bool', booleanType);
 	ubase.addField (fnum, 'long', longType);
 	ubase.addField (fnum, 'date', dateType);
@@ -26,7 +26,7 @@ on addRandomRecord () {
 	key = states.nthState (random (1, 50));
 	ubase.addRecord (fnum, key, @holder);
 	ubase.lookupRecord (fnum, key, @result);
-	bundle { «check the fields, see that everything worked
+	bundle { //check the fields, see that everything worked
 		if holder.bool != result.bool || holder.bool != uBASE.getField (fnum, key, 'bool') {
 			scriptError (holder.bool + " should equal " + result.bool + " for " + key + ".")};
 		if holder.long != result.long || holder.long != uBASE.getField (fnum, key, 'long') {
@@ -35,7 +35,7 @@ on addRandomRecord () {
 			scriptError (holder.date + " should equal " + (result.date) + " for " + key + ".")};
 		if holder.stri != result.stri || holder.stri != uBASE.getField (fnum, key, 'stri') {
 			scriptError (holder.stri + " should equal " + result.stri + " for " + key + ".")};
-		if abs (holder.doub - result.doub) > 0.0000001 { «account for imprecision in floating compares
+		if abs (holder.doub - result.doub) > 0.0000001 { //account for imprecision in floating compares
 			scriptError (holder.doub + " should equal " + result.doub + " for " + key + ".")};
 		if abs (holder.doub - uBASE.getField (fnum, key, 'doub')) > 0.0000001 {
 			scriptError (holder.doub + " should equal " + result.doub + " for " + key + ".")};

@@ -1,13 +1,13 @@
 on installSite (adrSite) {
-	«Add this site to this server.
-		«Add addresses to discuss.root and members.root
-	«Changes:
-		«5/28/05; 5:46:22 PM by JES
-			«Add installed sites to config.mainResponder.domains, with support for XML siteTree if needed.
-		«10/31/00; 6:40:40 PM by JES
-			«Set prefs.adrMsgReader in the site's #discussionGroup table, since moving sites to new Frontier installations will cause this address to break.
+	//Add this site to this server.
+		//Add addresses to discuss.root and members.root
+	//Changes:
+		//5/28/05; 5:46:22 PM by JES
+			//Add installed sites to config.mainResponder.domains, with support for XML siteTree if needed.
+		//10/31/00; 6:40:40 PM by JES
+			//Set prefs.adrMsgReader in the site's #discussionGroup table, since moving sites to new Frontier installations will cause this address to break.
 	
-	«Discussion group.
+	//Discussion group.
 	bundle {
 		local (adrDg = @adrSite^.["#discussionGroup"]);
 		if defined (adrDg^) {
@@ -24,7 +24,7 @@ on installSite (adrSite) {
 			if not defined (adrDiscussFile^.[dgName]) {
 				adrDiscussFile^.[dgName] = adrDg}}};
 	
-	«Membership group.
+	//Membership group.
 	bundle {
 		local (adrMembers = @adrSite^.["#membershipGroup"]);
 		if defined (adrMembers^) {
@@ -33,7 +33,7 @@ on installSite (adrSite) {
 			if not defined (adrMembersFile^.[groupName]) {
 				adrMembersFile^.[groupName] = adrMembers}}};
 	
-	«config.manila.sites
+	//config.manila.sites
 	bundle {
 		if not defined (config.manila) {
 			new (tableType, @config.manila)};
@@ -43,7 +43,7 @@ on installSite (adrSite) {
 		siteName = manilaSuite.getShortSiteName (siteName);
 		config.manila.sites.[siteName] = adrSite};
 	
-	«user.databases.
+	//user.databases.
 	bundle {
 		local (f);
 		f = window.getFile (table.getRootAddress (adrSite));
@@ -68,7 +68,7 @@ on installSite (adrSite) {
 				adrTable^.supportsIndexing = true;
 				fileMenu.save ()}}}; //save Frontier.root
 	
-	«config.mainResponder.domains
+	//config.mainResponder.domains
 	bundle {
 		local (siteurl = manilaSuite.getSiteUrl (adrSite));
 		local (urlparts = string.urlSplit (siteurl));

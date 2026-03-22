@@ -1,3 +1,3 @@
-on find (obj) { «Perform a FileMaker Pro Find given current requests
+on find (obj) { //Perform a FileMaker Pro Find given current requests
 	setEventInteraction (false);
 	return (appleEvent (Filemaker.id, 'FMPR', 'FIND', '----', objspec (obj)))}

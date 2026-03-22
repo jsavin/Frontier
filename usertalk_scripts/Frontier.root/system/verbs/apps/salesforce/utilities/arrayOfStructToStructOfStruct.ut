@@ -1,7 +1,7 @@
 on arrayOfStructToStructOfStruct (adrArray) {
-	«Changes
-		«4/19/06; 5:46:08 PM by JES
-			«Created. Convert an array (list) containing tables to a struct (table) containing tables.
+	//Changes
+		//4/19/06; 5:46:08 PM by JES
+			//Created. Convert an array (list) containing tables to a struct (table) containing tables.
 	local (t); new (tableType, @t);
 	local (name = nameOf (adrArray^));
 	local (i, ct = sizeOf (adrArray^));

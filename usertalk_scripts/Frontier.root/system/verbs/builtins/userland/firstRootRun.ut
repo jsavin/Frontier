@@ -1,7 +1,7 @@
-«New in 5.0, this script runs only the first time Frontier is run
-	«It makes it easy for us to move code between cleanRoot
-	«and the first time the code runs on the user's machine.
-	«New: 11/5/97 at 12:10:37 PM by DW
+//New in 5.0, this script runs only the first time Frontier is run
+	//It makes it easy for us to move code between cleanRoot
+	//and the first time the code runs on the user's machine.
+	//New: 11/5/97 at 12:10:37 PM by DW
 
 bundle { //set up user.backups
 	try {delete (@user.backups.folder)};
@@ -58,7 +58,7 @@ bundle { //set up user.prefs and its sub-tables
 				"WinNT" {
 					user.prefs.fonts.menuBarFont = defaultfont};
 				"MacOS" {
-					«Chicago with System 7, Charcoal with OS 8.
+					//Chicago with System 7, Charcoal with OS 8.
 					if system.environment.isCarbon {
 						user.prefs.fonts.menuBarFont = defaultfont}
 					else {
@@ -154,9 +154,9 @@ bundle { //intialize user.scheduler
 	user.scheduler.tasks.hourly.tasktime = date.set (day, month, year, hour, 0, 0);
 	user.scheduler.tasks.overnight.tasktime = date.set (day, month, year, 23, 59, 00);
 	
-	«Monday, March 29, 1999 at 12:51:52 AM by BS
+	//Monday, March 29, 1999 at 12:51:52 AM by BS
 	user.scheduler.prefs.keepLog = false;
-	«user.scheduler.prefs.logInGuestDatabase = true
+	//user.scheduler.prefs.logInGuestDatabase = true
 	user.scheduler.prefs.logInGuestDatabase = false; //PBS 06/24/00: no logging by default
 	user.scheduler.prefs.runThreads = true};
 bundle { //initialize logging prefs
@@ -171,7 +171,7 @@ bundle { //initialize logging prefs
 	user.log.prefs.flViewLog = false;
 	log.startup ()};
 bundle { //initialize user.webBrowser
-	«new (tableType, @user.webBrowser)
+	//new (tableType, @user.webBrowser)
 	user.webBrowser.currentid = 'NONE';
 	user.webBrowser.webPreviewSerialNumber = 1;
 	user.webBrowser.winDefaultBrowserApp = "";
@@ -213,13 +213,13 @@ bundle { //initialize betty, webserver, people, custody, root updates, webEdit
 	user.betty.prefs.rpcClientDefaultTimeout = 7200};
 
 bundle { //initialize responders
-	«user.webserver.responders.websiteFramework.data.docTree.samples = @websites.samples
-	«try
-		«delete (@user.webserver.responders.websiteFramework.data.docTree.allSites)
-	«try
-		«delete (@user.webserver.responders.websiteFramework.data.docTree.contents)
+	//user.webserver.responders.websiteFramework.data.docTree.samples = @websites.samples
+	//try
+		//delete (@user.webserver.responders.websiteFramework.data.docTree.allSites)
+	//try
+		//delete (@user.webserver.responders.websiteFramework.data.docTree.contents)
 	
-	«PBS 11/11/99: set up the default responder (mainResponder).
+	//PBS 11/11/99: set up the default responder (mainResponder).
 	local (adrResponder = @user.webserver.responders.default);
 	new (tableType, adrResponder);
 	adrResponder^.condition = "(string.lower (path) beginsWith \"mainResponder\")";
@@ -227,7 +227,7 @@ bundle { //initialize responders
 	new (tableType, @adrResponder^.methods);
 	script.newScriptObject ("on any (adrParamTable)\r\treturn (mainResponder.respond (adrParamTable))", @adrResponder^.methods.any);
 	
-	«PBS 02/10/02: worm defense responder
+	//PBS 02/10/02: worm defense responder
 	if not defined (user.webserver.responders.wormDefense) {
 		user.webserver.responders.wormDefense = @webserver.responders.wormDefense};
 	if defined (user.webserver.responders.manilaEdit) {
@@ -256,7 +256,7 @@ bundle { //misc Frontier 8 stuff
 	table.emptyTable (@scratchpad);
 	table.emptyTable (@system.deskscripts)};
 
-«Set lastUpdate time for Frontier.root.
+//Set lastUpdate time for Frontier.root.
 user.rootUpdates.servers.Frontier.lastUpdate = userland.initialLastUpdateTime;
 user.rootUpdates.servers.Frontier.url = "http://frontier.userland.com/updates/Frontier";
 user.rootUpdates.servers.Frontier.server = "updates.userland.com";

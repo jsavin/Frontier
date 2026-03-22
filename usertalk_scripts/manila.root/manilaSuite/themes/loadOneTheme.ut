@@ -1,10 +1,10 @@
 on loadOneTheme (f, adrParent=@config.manila.themes, flEnable=true, flMakePublic=true) {
-	«f is the path to the theme on disk.
-		«First import into a local, then validate the structure, then neuter macros, then copy to the config.manila.themes table. Return the address of the theme.
-		«scriptError if there's a problem.
-		«06/06/00; 5:01:32 PM by PBS
-	«Changes:
-		«Added support for DG themes.
+	//f is the path to the theme on disk.
+		//First import into a local, then validate the structure, then neuter macros, then copy to the config.manila.themes table. Return the address of the theme.
+		//scriptError if there's a problem.
+		//06/06/00; 5:01:32 PM by PBS
+	//Changes:
+		//Added support for DG themes.
 	
 	if not defined (config.manila.prefs.flLogThemesLoader) {
 		config.manila.prefs.flLogThemesLoader = true};

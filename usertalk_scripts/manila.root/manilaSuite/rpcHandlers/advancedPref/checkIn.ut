@@ -1,9 +1,9 @@
 on checkIn (username, password, siteName, itemName) {
-	«Release custody of an advanced pref item.
-		«11/17/00; 7:37:37 PM by JES
-		«Changes:
-			«10/2/01; 2:52:35 PM by PBS
-				«Print friendly template.
+	//Release custody of an advanced pref item.
+		//11/17/00; 7:37:37 PM by JES
+		//Changes:
+			//10/2/01; 2:52:35 PM by PBS
+				//Print friendly template.
 	
 	local (adrSite = manilaSuite.rpcUtils.getSiteAddress (siteName));
 	local (adrNewsSite = manilaSuite.rpcUtils.getNewsSiteAddress (siteName));

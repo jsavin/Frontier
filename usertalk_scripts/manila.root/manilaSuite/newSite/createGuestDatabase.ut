@@ -1,7 +1,7 @@
 on createGuestDatabase (adrSiteInfo) {
-	«Create a guest database for this site. When this script returns, the gdb is empty, but it exists.
-		«If specified, the gdb is added to the user.databases table.
-		«10/21/99; 11:34:32 AM by PBS
+	//Create a guest database for this site. When this script returns, the gdb is empty, but it exists.
+		//If specified, the gdb is added to the user.databases table.
+		//10/21/99; 11:34:32 AM by PBS
 	
 	bundle { //check for non-alphas in site name
 		local (i);

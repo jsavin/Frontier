@@ -1,11 +1,11 @@
 on ping (adrsite, adrmsg, adrurl) {
-	«Changes
-		«4/24/03; 7:43:34 AM by DW
-			«Created.
+	//Changes
+		//4/24/03; 7:43:34 AM by DW
+			//Created.
 	local (title = adrmsg^.newsitem.title);
 	local (permalink = manilasuite.getPermalinkUrl (adrsite, adrmsg));
 	local (excerpt = string.firstsentence (searchengine.stripmarkup (string (adrmsg^.newsitem.description))));
 	local (weblogname = adrsite^.["#newssite"].sitename);
 	trackback.ping (adrurl, title, permalink, excerpt, weblogname)};
-«bundle //test code
-	«ping (@crimson1manilawebsite, @crimson1manilawebsite.["#discussionGroup"].messages.["0000088"], @newssiteManilaWebsite.["#discussionGroup"].messages.["0000007"].trackback.urls.["http://static3.userland.com/mtweblog/archives/000056.html#000056"])
+//bundle //test code
+	//ping (@crimson1manilawebsite, @crimson1manilawebsite.["#discussionGroup"].messages.["0000088"], @newssiteManilaWebsite.["#discussionGroup"].messages.["0000007"].trackback.urls.["http://static3.userland.com/mtweblog/archives/000056.html#000056"])

@@ -1,24 +1,24 @@
 on changedPost (adrpost, flnew, posttext) {
-	«Changes
-		«7/14/03; 12:02:34 AM by JES
-			«Factored the code that adds an outbound ping URL to the trackback sub-table for a post.
-		«4/22/03; 6:57:13 PM by DW
-			«Created. The post is either new or changed. We scan the text looking for URLs, and accumulate them in a trackback sub-table.
+	//Changes
+		//7/14/03; 12:02:34 AM by JES
+			//Factored the code that adds an outbound ping URL to the trackback sub-table for a post.
+		//4/22/03; 6:57:13 PM by DW
+			//Created. The post is either new or changed. We scan the text looking for URLs, and accumulate them in a trackback sub-table.
 	
-	«bundle //debugging
-		«local (oldtarget = target.set (@scratchpad.trackbacks))
-		«op.firstsummit ()
-		«local (s)
-		«if flnew
-			«s = "New"
-		«else
-			«s = "Edit"
-		«op.insert (s + ": " + nameof (adrpost^) + " " + date.timestring (), up)
-		«target.set (oldtarget)
+	//bundle //debugging
+		//local (oldtarget = target.set (@scratchpad.trackbacks))
+		//op.firstsummit ()
+		//local (s)
+		//if flnew
+			//s = "New"
+		//else
+			//s = "Edit"
+		//op.insert (s + ": " + nameof (adrpost^) + " " + date.timestring (), up)
+		//target.set (oldtarget)
 	
 	local (adrtrackback);
 	trackback.initPost (adrpost);
-	«edit (adrpost) //debugging
+	//edit (adrpost) //debugging
 	adrtrackback = @adrpost^.trackback;
 	
 	bundle { //add to the urls table
@@ -63,13 +63,13 @@ on changedPost (adrpost, flnew, posttext) {
 				fladd = false};
 			if fladd {
 				trackback.initOutboundUrl (adrpost, url);
-				«bundle //factored code
-					«local (adrurl = @adrtrackback^.outbound.urls.[url])
-					«if not defined (adrurl^)
-						«new (tabletype, adrurl)
-						«adrurl^.flPinged = false
-						«adrurl^.flChecked = false
-						«adrurl^.flSupportsTrackback = false};
+				//bundle //factored code
+					//local (adrurl = @adrtrackback^.outbound.urls.[url])
+					//if not defined (adrurl^)
+						//new (tabletype, adrurl)
+						//adrurl^.flPinged = false
+						//adrurl^.flChecked = false
+						//adrurl^.flSupportsTrackback = false};
 			s = string.delete (s, 1, sizeof (url) + 1);
 			posttext = string.delete (posttext, 1, sizeof (url) + 1)}};
 	bundle { //loop over urls and find out if there's trackback support on the other end
@@ -78,6 +78,6 @@ on changedPost (adrpost, flnew, posttext) {
 			if not adrurl^.flChecked {
 				trackback.discoverPingInfo (adrurl);
 				adrurl^.flChecked = true}}}};
-«bundle //test code
-	«local (adrpost = @newssiteManilaWebsite.["#discussionGroup"].messages.["0000005"])
-	«changedPost (adrpost, false, string (adrpost^.newsItem.description))
+//bundle //test code
+	//local (adrpost = @newssiteManilaWebsite.["#discussionGroup"].messages.["0000005"])
+	//changedPost (adrpost, false, string (adrpost^.newsItem.description))

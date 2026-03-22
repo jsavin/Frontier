@@ -1,19 +1,19 @@
 on viewDepartment (department=nil, n=nil, d=nil) {
-	«Changes:
-		«4/11/06; 6:51:47 PM by JES
-			«Address cross-site scripting issue, where the mode searchArg was rendered verbatim into the page if there was an error that a department didn't exist. Now we entity-encode the searchArgs to make sure that they're not interpreted as HTML when rendered in the browser.
-		«9/16/05; 2:14:29 AM by JES
-			«New optional parameter, d. If specified, render the department archives for the given date.
-		«8/30/05; 1:51:27 PM by JES
-			«Call mainResponder.neuterText instead of manilaSuite.untaint. This allows legal macros to pass through unaffected.
-		«9/4/03; 11:45:19 PM by JES
-			«Add the department name to the page table at manilaNewsItemDepartment, so macros can pick it up.
-		«9/10/01; 5:11:23 PM by PBS
-			«Support for pref for max items to appear in a department page.
-		«05/04/00; 3:39:31 PM by JES
-			«localized error message
-		«04/25/00; 10:39:54 PM by PBS
-			«Created. View the last n posts in a department.
+	//Changes:
+		//4/11/06; 6:51:47 PM by JES
+			//Address cross-site scripting issue, where the mode searchArg was rendered verbatim into the page if there was an error that a department didn't exist. Now we entity-encode the searchArgs to make sure that they're not interpreted as HTML when rendered in the browser.
+		//9/16/05; 2:14:29 AM by JES
+			//New optional parameter, d. If specified, render the department archives for the given date.
+		//8/30/05; 1:51:27 PM by JES
+			//Call mainResponder.neuterText instead of manilaSuite.untaint. This allows legal macros to pass through unaffected.
+		//9/4/03; 11:45:19 PM by JES
+			//Add the department name to the page table at manilaNewsItemDepartment, so macros can pick it up.
+		//9/10/01; 5:11:23 PM by PBS
+			//Support for pref for max items to appear in a department page.
+		//05/04/00; 3:39:31 PM by JES
+			//localized error message
+		//04/25/00; 10:39:54 PM by PBS
+			//Created. View the last n posts in a department.
 	
 	local (pta = html.getPageTableAddress ());
 	local (adrSite = manilaSuite.getManilaSiteAddress (pta));

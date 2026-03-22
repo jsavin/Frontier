@@ -1,6 +1,6 @@
 on canEditContent (pta=nil) {
-	«Return true if this person is an ME or Content Editor.
-		«11/26/01; 9:42:22 AM by PBS
+	//Return true if this person is an ME or Content Editor.
+		//11/26/01; 9:42:22 AM by PBS
 	
 	if manilaSuite.editors.managingEditorTest (pta) {
 		return (true)};

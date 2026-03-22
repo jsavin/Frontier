@@ -1,14 +1,14 @@
-«Changes:
-	«1/3/02; 4:32:48 PM by DW
-		«Remove references to user.playlist, add user.radio.
-	«12/03/00; 2:58:42 PM by PBS
-		«Radio UserLand changes -- set folder to Backups folder; list of items to export is different.
-	«12/05/00; 12:33:48 PM by PBS
-		«Save user.inetd.config.http -- server prefs.
-	«12/16/00; 6:58:42 PM by JES
-		«Save user.webEdit: webEdit prefs.
-	«Sat, Nov 1, 1997 at 7:19:33 AM by DW
-		«Made it cross-platform, also created the log outline if it doesn't exist.
+//Changes:
+	//1/3/02; 4:32:48 PM by DW
+		//Remove references to user.playlist, add user.radio.
+	//12/03/00; 2:58:42 PM by PBS
+		//Radio UserLand changes -- set folder to Backups folder; list of items to export is different.
+	//12/05/00; 12:33:48 PM by PBS
+		//Save user.inetd.config.http -- server prefs.
+	//12/16/00; 6:58:42 PM by JES
+		//Save user.webEdit: webEdit prefs.
+	//Sat, Nov 1, 1997 at 7:19:33 AM by DW
+		//Made it cross-platform, also created the log outline if it doesn't exist.
 if not defined (user.batchExporter) {
 	new (tabletype, @user.batchExporter)};
 if not defined (user.batchExporter.folder) {

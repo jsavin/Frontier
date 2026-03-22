@@ -1,16 +1,16 @@
 on addToIndexes (adrSite, adrMsg, catlist={}) {
-	«Changes
-		«1/31/06; 3:31:00 AM by JES
-			«New optional parameter, catlist. If non-empty, we also add to all the listed categories.
-		«10/09/00; 9:48:30 PM by PBS
-			«Created. Make sure this message is listed in all the indexes it should be listed in.
+	//Changes
+		//1/31/06; 3:31:00 AM by JES
+			//New optional parameter, catlist. If non-empty, we also add to all the listed categories.
+		//10/09/00; 9:48:30 PM by PBS
+			//Created. Make sure this message is listed in all the indexes it should be listed in.
 	
 	local (msgNum = adrMsg^.msgNum);
 	local (itemName = string.padWithZeros (msgNum, 7));
 	
 	on addToIndex (categoryName) {
 		local (adrIndex = manilaSuite.discuss.getIndexTable (adrSite, categoryName));
-		«adrIndex^.index.[itemName] = true
+		//adrIndex^.index.[itemName] = true
 		adrIndex^.index.[itemName] = string.lower(adrMsg^.subject)}; //03/01/21, 16:59:06 by DAB
 	
 	if manilaSuite.discuss.isHomePage (adrMsg, adrSite) {

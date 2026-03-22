@@ -11,13 +11,13 @@ on makeSpace () {
 		keeper = FinderMenu.commands.backup.mostRecentBackup (outerFolder);
 		fileloop (innerFolder in outerFolder) {
 			x = FinderMenu.commands.backup.getBackupNumber (innerFolder);
-			if x != keeper { «it's the one we're keeping
+			if x != keeper { //it's the one we're keeping
 				file.deleteFolder (innerFolder);
-				}}};«msg (string.kBytes (volFreeSpace () - oldSpace) + " reclaimed.")
+				}}};//msg (string.kBytes (volFreeSpace () - oldSpace) + " reclaimed.")
 	
-	«bundle
-		«speaker.beep ()
-		«Frontier.bringToFront ()
-		«dialog.notify (string.kBytes (volFreeSpace ()) + " free on " + file.volumeFromPath (backupFolder))
-		«Finder.bringToFront ()};
+	//bundle
+		//speaker.beep ()
+		//Frontier.bringToFront ()
+		//dialog.notify (string.kBytes (volFreeSpace ()) + " free on " + file.volumeFromPath (backupFolder))
+		//Finder.bringToFront ()};
 makeSpace ()

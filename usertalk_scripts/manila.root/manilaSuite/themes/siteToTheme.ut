@@ -1,17 +1,17 @@
 on siteToTheme (adrSite, adrTheme, themeName, displayThemeName, author=nil, authorEmail=nil, siteUrl=nil, description="") {
-	«Changes:
-		«5/27/05; 2:54:32 AM by JES
-			«Added support for including pictureRef'd pictures with the theme. Any picture which is referenced in a template is included with the theme. The actual inclusion takes place in manilaSuite.themes.pictureRefCallback.
-		«4/20/03; 10:09:28 PM by JES
-			«Added support for External Style Sheet.
-		«10/8/01; 2:44:19 PM by PBS
-			«Copy directory templates and other new prefs into the theme.
-		«10/23/00; 2:34:41 AM by JES
-			«Copy ["#newsSite"].discussionGroup into the theme. Copy homepage template, and flUseHomePageTemplate into the theme.
-		«06/26/00; 3:58:58 PM by JES
-			«Fix problem with flBackIssueDisplayTitle not being defined for very old sites
-		«05/31/00; 4:19:38 PM by PBS
-			«Created. Convert a site to a theme.
+	//Changes:
+		//5/27/05; 2:54:32 AM by JES
+			//Added support for including pictureRef'd pictures with the theme. Any picture which is referenced in a template is included with the theme. The actual inclusion takes place in manilaSuite.themes.pictureRefCallback.
+		//4/20/03; 10:09:28 PM by JES
+			//Added support for External Style Sheet.
+		//10/8/01; 2:44:19 PM by PBS
+			//Copy directory templates and other new prefs into the theme.
+		//10/23/00; 2:34:41 AM by JES
+			//Copy ["#newsSite"].discussionGroup into the theme. Copy homepage template, and flUseHomePageTemplate into the theme.
+		//06/26/00; 3:58:58 PM by JES
+			//Fix problem with flBackIssueDisplayTitle not being defined for very old sites
+		//05/31/00; 4:19:38 PM by PBS
+			//Created. Convert a site to a theme.
 	
 	if adrTheme == nil {
 		adrTheme = @config.manila.themes.[themeName]};
@@ -142,25 +142,25 @@ on siteToTheme (adrSite, adrTheme, themeName, displayThemeName, author=nil, auth
 		new (tableType, adrInfo);
 		adrInfo^.CreationDate = clock.now ();
 		
-		«Author.
+		//Author.
 		adrInfo^.Author = user.prefs.name;
 		if author != nil {
 			adrInfo^.Author = author};
 		
-		«Author email.
+		//Author email.
 		adrInfo^.AuthorEmail = user.prefs.mailAddress;
 		if authorEmail != nil {
 			adrInfo^.authorEmail = authorEmail};
 		
-		«Description.
+		//Description.
 		wp.newTextObject (description, @adrInfo^.Description);
 		
-		«Originating site URL.
+		//Originating site URL.
 		adrInfo^.siteUrl = adrSite^.["#ftpSite"].url;
 		if siteUrl != nil {
 			adrInfo^.siteUrl = siteUrl};
 		
-		«Display Name
+		//Display Name
 		adrInfo^.displayName = displayThemeName};
 	
 	bundle { //security: neuter macros and validate structure

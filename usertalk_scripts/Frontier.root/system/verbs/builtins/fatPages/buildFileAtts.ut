@@ -1,14 +1,14 @@
 on buildFileAtts (w, runnable = false) {
-	«Thursday, July 17, 1997 at 12:22:23 PM by PBS
-		«w may also be an odb address.
-		«New parameter: runnable. Desktop scripts
-		«are saved with runnable set to true.
-		«Changes:
-			«Fri, Jun 13, 1997 at 5:49:06 PM by dmb
-				«w may be a window title, or a filespec, depending on whether or not
-				«the window has ever been saved.
-			«05/24/01; 10:12:48 PM by PBS
-				«Added support for file-based OPML documents.
+	//Thursday, July 17, 1997 at 12:22:23 PM by PBS
+		//w may also be an odb address.
+		//New parameter: runnable. Desktop scripts
+		//are saved with runnable set to true.
+		//Changes:
+			//Fri, Jun 13, 1997 at 5:49:06 PM by dmb
+				//w may be a window title, or a filespec, depending on whether or not
+				//the window has ever been saved.
+			//05/24/01; 10:12:48 PM by PBS
+				//Added support for file-based OPML documents.
 	local (htmltext = "");
 	on add (s) {
 		htmltext = htmltext + s};
@@ -20,18 +20,18 @@ on buildFileAtts (w, runnable = false) {
 		add ("#" + name + " " + s + "\r")};
 	addHint ("version", 1);
 	addHint ("docs", "http://www.scripting.com/fatPages/faq.html");
-	«bundle «add window rect hint
-		«local (x, y, w, h)
-		«window.getPosition (w, @x, @y)
-		«window.getSize (w, @w, @h)
-		«addHint ("windowRect", string (y) + ',' + x + ',' + (y + h) + ',' + (x + w))
+	//bundle //add window rect hint
+		//local (x, y, w, h)
+		//window.getPosition (w, @x, @y)
+		//window.getSize (w, @w, @h)
+		//addHint ("windowRect", string (y) + ',' + x + ',' + (y + h) + ',' + (x + w))
 	
 	local (data);
 	if (defined (w) && (parentOf (w^) == "" || parentOf (w^) == "system.compiler.files") && w != @root) { //It's a file-based object.
 		packWindow (w, @data);
 		if file.exists (w) {
 			if string.lower (file.type (w)) == "text" || string.lower (file.type (w)) == "txt" {
-				«Sun, Oct 19, 1997 at 12:49:51 AM by PBS
+				//Sun, Oct 19, 1997 at 12:49:51 AM by PBS
 				unpack (@data, @temp.lasttextfile);
 				htmltext = string (temp.lasttextfile);
 				htmltext = string.replaceall (htmltext, cr + lf, cr);
@@ -42,10 +42,10 @@ on buildFileAtts (w, runnable = false) {
 	else { //It's an odb object.
 		adrPageData = w;
 		data = binary (fatPages.encodePageData (adrPageData));
-		«setBinaryType (@data, getBinaryType (adrpagedata))
+		//setBinaryType (@data, getBinaryType (adrpagedata))
 		setBinaryType (@data, typeof (adrpagedata^))};
 	
-	if defined (adrPageData) { «Thu, Mar 20, 1997 at 7:24:45 AM by DW
+	if defined (adrPageData) { //Thu, Mar 20, 1997 at 7:24:45 AM by DW
 		addHint ("adrPageData", adrPageData)};
 	addHint ("objectType", "application/x-frontier-" + getbinarytype (data));
 	addHint ("runnable", string (runnable)); //Thursday, July 17, 1997 at 12:22:11 PM by PBS

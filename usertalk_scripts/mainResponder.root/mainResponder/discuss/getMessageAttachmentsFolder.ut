@@ -1,6 +1,6 @@
 on getMessageAttachmentsFolder (adrMsgTable, adrUrl=nil, pta=nil) {
-	«Get the path to the folder on disk where uploads attached to this message get stored. This is code factored out from mainResponder.discuss.editMessageForm, postAttachedFile, and postEditedMessage. adrUrl^, if not nil, will contain the url of the folder.
-		«03/15/00; 4:53:20 PM by PBS
+	//Get the path to the folder on disk where uploads attached to this message get stored. This is code factored out from mainResponder.discuss.editMessageForm, postAttachedFile, and postEditedMessage. adrUrl^, if not nil, will contain the url of the folder.
+		//03/15/00; 4:53:20 PM by PBS
 	
 	if pta == nil {
 		pta = html.getPageTableAddress ()};
@@ -10,7 +10,7 @@ on getMessageAttachmentsFolder (adrMsgTable, adrUrl=nil, pta=nil) {
 	local (groupName);
 	
 	bundle { //get the real name of the dg (it might be an address in discuss.root)
-		«Why not just use pta^.discussionRoot -- since that should be the real name? Because some static servers have case sensitive file systems. So get the name from discuss.root, so it's always the same. The same thing is done for the membership group name.
+		//Why not just use pta^.discussionRoot -- since that should be the real name? Because some static servers have case sensitive file systems. So get the name from discuss.root, so it's always the same. The same thing is done for the membership group name.
 		local (adr = @[system.temp.mainResponder.discussRootFile]);
 		if defined (adr^.[pta^.discussionRoot]) {
 			dgName = nameOf (adr^.[pta^.discussionRoot])}};

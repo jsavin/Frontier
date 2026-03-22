@@ -15,6 +15,6 @@ on ask (prompt, adr) {
 				userhitok = false;
 				return (false)}}
 		else {
-			return (true)}}; «keep going if item isn't OK or Cancel
+			return (true)}}; //keep going if item isn't OK or Cancel
 	dialog.run (262, 1, @itemhit);
 	return (userhitok)}

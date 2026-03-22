@@ -1,7 +1,7 @@
 on outlineResults (searchResults, sortList=nil, outlineAddr=nil) {
 	local (x, count, dir = right);
 	
-	bundle { «set up the outline
+	bundle { //set up the outline
 		if (outlineAddr == nil) {
 			outlineAddr = @scratchpad.searchResults};
 		if not defined (outlineAddr^) {
@@ -10,8 +10,8 @@ on outlineResults (searchResults, sortList=nil, outlineAddr=nil) {
 			editMenu.setFont ("Monaco");
 			editMenu.setFontSize (9);
 			target.clear ()};
-		edit (outlineAddr); «user can see what's going on
-		target.set (outlineAddr); «user can bring a different window to front
+		edit (outlineAddr); //user can see what's going on
+		target.set (outlineAddr); //user can bring a different window to front
 		op.fullCollapse ();
 		op.firstSummit ();
 		if op.getLineText () == "" {
@@ -27,10 +27,10 @@ on outlineResults (searchResults, sortList=nil, outlineAddr=nil) {
 			op.insert(aRec[1] + " Ä", dir)}
 		else {
 			op.insert(aRec[1], dir)};
-		dir = down; « after the first, insert down
-		«op.insert (searchResults^[x]['name'], dir)
+		dir = down; // after the first, insert down
+		//op.insert (searchResults^[x]['name'], dir)
 		
-		«do all the subfields of the record
+		//do all the subfields of the record
 		with anarchie, eventInfo {
 			op.insert("Host: "+aRec[host], right);
 			op.insert("Path: "+aRec[path], down);
@@ -40,11 +40,11 @@ on outlineResults (searchResults, sortList=nil, outlineAddr=nil) {
 		op.go(left,1);
 		op.collapse ()};
 	
-	bundle { «restore the outline
+	bundle { //restore the outline
 		op.firstSummit ();
 		if (sortList) {
 			op.go(right, 1);
 			op.sort()};
-		target.clear()}}; « just in case!
+		target.clear()}}; // just in case!
 
-«outlineResults(@people.x)
+//outlineResults(@people.x)

@@ -1,22 +1,22 @@
 on getNewsSitePref (prefName, adrSite=nil, default=nil, flCreate=false, flUnTaint=false) {
-	«Changes:
-		«10/18/05; 4:22:19 AM by JES
-			«If we have a default value and flCreate is false, don't throw an error if the parent of the pref can't be found. Instead return the default value.
-		«7/29/03; 12:26:00 PM by JES
-			«Fixed a bug which would cause an error if the pref is not defined, flCreate is false, and default is false.
-		«10/31/99; 2:24:29 PM by PBS
-			«Added optional flUnTaint parameter. False by default. If true, it ensures that there are no curly braces in the data.
-		«10/19/99; 3:23:40 PM by PBS
-			«Created. Get one #newsSite preference.
-				«If it doesn't exist, and flCreate is true, create it and populate it with the default value, then return the default value.
-				«If it doesn't exist, and flCreate is false, and default is not nil, then return the default value.
-				«A prefName can be a dotted name, as in "search.serverRpcPath," to specify an item in a subtable.
-				«This script can run outside the page rendering context if adrSite is not nil.
+	//Changes:
+		//10/18/05; 4:22:19 AM by JES
+			//If we have a default value and flCreate is false, don't throw an error if the parent of the pref can't be found. Instead return the default value.
+		//7/29/03; 12:26:00 PM by JES
+			//Fixed a bug which would cause an error if the pref is not defined, flCreate is false, and default is false.
+		//10/31/99; 2:24:29 PM by PBS
+			//Added optional flUnTaint parameter. False by default. If true, it ensures that there are no curly braces in the data.
+		//10/19/99; 3:23:40 PM by PBS
+			//Created. Get one #newsSite preference.
+				//If it doesn't exist, and flCreate is true, create it and populate it with the default value, then return the default value.
+				//If it doesn't exist, and flCreate is false, and default is not nil, then return the default value.
+				//A prefName can be a dotted name, as in "search.serverRpcPath," to specify an item in a subtable.
+				//This script can run outside the page rendering context if adrSite is not nil.
 	
-	«First get the address of the #newsSite table.
+	//First get the address of the #newsSite table.
 	local (adrNewsSite = manilaSuite.getNewsSiteAddress (adrSIte));
 	
-	«Get the full address of the preference.
+	//Get the full address of the preference.
 	on getPrefAddress (partialAddress) { //returns an address into the #newsSite table
 		local (nomad = adrNewsSite, s);
 		loop {

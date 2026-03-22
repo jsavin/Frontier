@@ -1,8 +1,8 @@
 on logIndexedPage (url, title, siteName, siteUrl, client=nil, indexName=nil) {
-	«Changes
-		«8/1/02; 7:05:47 PM by JES
-			«If config.mainresponder.search.prefs.flLogEnabled is false, don't do anything.
-		«Log one indexed page.
+	//Changes
+		//8/1/02; 7:05:47 PM by JES
+			//If config.mainresponder.search.prefs.flLogEnabled is false, don't do anything.
+		//Log one indexed page.
 	
 	if not config.mainresponder.search.prefs.flLogEnabled {
 		return (true)};

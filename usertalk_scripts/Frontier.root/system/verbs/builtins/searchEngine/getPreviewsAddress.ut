@@ -1,8 +1,8 @@
 on getPreviewsAddress (siteName) {
-	«Previews are stored inside the same guest database as the index.
-		«Return the address of the previews table for this index.
-		«Get the address of the index table from searchEngine.getIndexAddress.
-			«A side effect is that we ensure the database exists and is open.
+	//Previews are stored inside the same guest database as the index.
+		//Return the address of the previews table for this index.
+		//Get the address of the index table from searchEngine.getIndexAddress.
+			//A side effect is that we ensure the database exists and is open.
 	local (adr = searchEngine.getIndexAddress (siteName));
 	local (adrPreviews);
 	

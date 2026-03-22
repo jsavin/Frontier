@@ -1,6 +1,6 @@
 on memberCanCheckOut (username, password, adrObject, siteName, flMessage=false) {
-	«Return true if the user can check this object out. If they can check it out, they can also check it in.
-		«02/10/00; 6:24:01 PM by PBS
+	//Return true if the user can check this object out. If they can check it out, they can also check it in.
+		//02/10/00; 6:24:01 PM by PBS
 	
 	local (adrSite = config.manila.sites.[siteName]);
 	local (adrGroup = manilaSuite.rpcUtils.getMembersAddress (siteName));

@@ -1,8 +1,8 @@
 on getFirstDate (username, password, siteName) {
-	«Get the first date in the home page calendar.
-		«Changes:
-			«06/22/00; 8:36:59 PM by JES
-				«Bug fix: the call to manilaSuite.rpcUtils.memberCheck wasn't passing beginningErrorString
+	//Get the first date in the home page calendar.
+		//Changes:
+			//06/22/00; 8:36:59 PM by JES
+				//Bug fix: the call to manilaSuite.rpcUtils.memberCheck wasn't passing beginningErrorString
 	
 	bundle { //make sure the person is a member of the site
 		local (beginningErrorString = "Can't get the first date in the home page calendar because ");

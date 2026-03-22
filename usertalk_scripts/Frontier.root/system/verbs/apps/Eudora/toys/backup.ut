@@ -1,6 +1,6 @@
 local (releasefolder = "UserLand:New Releases:Eudora:");
 local (backuppointer = releasefolder + "Backup Folder", destfolder);
-bundle { «error checking on the backup folder, set destfolder
+bundle { //error checking on the backup folder, set destfolder
 	on error () {
 		scriptError ("You must have an alias named “Backup Folder”Êin the same folder as this script.")};
 	if not file.exists (backuppointer) {
@@ -10,7 +10,7 @@ bundle { «error checking on the backup folder, set destfolder
 	destfolder = file.followAlias (backuppointer);
 	if not file.isFolder (destfolder) {
 		error ()}};
-file.setmodified (backuppointer, clock.now ()); «in case we're viewing by date
+file.setmodified (backuppointer, clock.now ()); //in case we're viewing by date
 
 local (keystring = "Install Files.");
 local (maxnum = 0);
@@ -26,7 +26,7 @@ destfolder = destfolder + keystring + (maxnum + 1) + ":";
 file.sureFolder (destfolder);
 commercial.createinstallfile ("Eudora", Eudora.id, destfolder + "Eudora.Frontier");
 commercial.createinstallfile ("Netscape", Netscape.id, destfolder + "Netscape.Frontier");
-«export.sendObject (@netscape.toys, destfolder + "netscape.toys")
+//export.sendObject (@netscape.toys, destfolder + "netscape.toys")
 export.sendObject (@user.getMailAddress, destfolder + "user.getMailAddress");
 file.copy ("System:System Folder:Preferences:UserLand:Eudora:", destfolder + "Prefs Folder:");
 

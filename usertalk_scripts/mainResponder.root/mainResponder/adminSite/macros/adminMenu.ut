@@ -1,13 +1,13 @@
 on adminMenu (color = "#FFFFFF") {
-	«Changes
-		«10/10/06; 10:30:13 AM by LL
-			«Use manilaSuite.version to generate the version number in the admin menu.
-		«12/16/03; 4:07:37 AM by JES
-			«Added Updates link to the Pending Updates page.
-		«7/3/03; 3:21:42 PM by JES
-			«Don't add the admin menu if we're serving a mainResponder error page.
-		«6/6/02; 1:16:37 PM by JES
-			«Created. Cribbed from radioCommunityServerSuite.websites.macros.menu.
+	//Changes
+		//10/10/06; 10:30:13 AM by LL
+			//Use manilaSuite.version to generate the version number in the admin menu.
+		//12/16/03; 4:07:37 AM by JES
+			//Added Updates link to the Pending Updates page.
+		//7/3/03; 3:21:42 PM by JES
+			//Don't add the admin menu if we're serving a mainResponder error page.
+		//6/6/02; 1:16:37 PM by JES
+			//Created. Cribbed from radioCommunityServerSuite.websites.macros.menu.
 	local (pta = html.getPageTableAddress ());
 	if pta^.adrObject == @mainResponder.adminSite.website.errorPage {
 		return ("")};

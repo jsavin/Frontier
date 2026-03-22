@@ -1,8 +1,8 @@
 on getResponsesHeaders (adrSitePrefs, msgnum) {
-	«11/14/00; 10:32:20 PM by JES
-	«Changes
-		«9/6/01; 8:22:38 PM by JES
-			«Changed params from a list to a record of named parameters, for SOAP compatibility.
+	//11/14/00; 10:32:20 PM by JES
+	//Changes
+		//9/6/01; 8:22:38 PM by JES
+			//Changed params from a list to a record of named parameters, for SOAP compatibility.
 	with adrSitePrefs^ {
 		local (params = {"siteName":sitename, "username":username, "password":string (password), "msgnum":msgnum});
 		return (manila.callHandler (host, port, "manila.message.getResponsesHeaders", @params, rpcPath:rpcPath))}}

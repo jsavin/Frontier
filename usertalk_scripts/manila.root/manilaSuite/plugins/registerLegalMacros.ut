@@ -1,6 +1,6 @@
 on registerLegalMacros (adrLegalMacros) {
-	«Register all the legal macros for a plugin.
-		«02/23/00; 2:26:36 PM by PBS
+	//Register all the legal macros for a plugin.
+		//02/23/00; 2:26:36 PM by PBS
 	
 	local (adrItem);
 	local (adrConfigLegalMacros = @config.mainResponder.prefs.legalMacros);

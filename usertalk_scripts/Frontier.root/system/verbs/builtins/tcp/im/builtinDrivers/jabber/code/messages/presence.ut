@@ -1,8 +1,8 @@
 on presence (dest = "", type = "", status = "", show = "", priority = "", connection = @system.temp.jabber.connection) {
-	«Changes
-		«5/14/02; 1:51:34 PM by JB
-			«Changelog created.
-	«Handles sending presence messages. See http://docs.jabber.org/jpg/html/main.html#REFPRESENCE .
+	//Changes
+		//5/14/02; 1:51:34 PM by JB
+			//Changelog created.
+	//Handles sending presence messages. See http://docs.jabber.org/jpg/html/main.html#REFPRESENCE .
 	on addAtt ( XMLadr, name, value ) {
 		if not defined ( XMLadr^.["/atts"] ) {
 			new ( tableType, @XMLadr^.["/atts"] )};

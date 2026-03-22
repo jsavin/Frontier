@@ -1,2 +1,2 @@
-on abortStream (stream) { «Close a stream immediately
+on abortStream (stream) { //Close a stream immediately
 	kernel (tcp.abortStream)}

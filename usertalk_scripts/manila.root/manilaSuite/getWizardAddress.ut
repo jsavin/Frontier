@@ -1,6 +1,6 @@
 on getWizardAddress (wizardName, defaultWizardAddress=nil, pta=nil) {
-	«5/29/00; 1:21:22 AM by JES
-		«Gets the address of a localized prefs wizard
+	//5/29/00; 1:21:22 AM by JES
+		//Gets the address of a localized prefs wizard
 	
 	if pta == nil {
 		pta = html.getPageTableAddress ()};

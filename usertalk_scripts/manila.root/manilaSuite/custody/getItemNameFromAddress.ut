@@ -1,20 +1,20 @@
 on getItemNameFromAddress (adrObject, adrSite) {
-	«Changes:
-		«3/13/07; 11:04:44 AM by LL
-			«Added login box template.
-		«7/6/05; 2:35:27 AM by JES
-			«Never throw a scriptError. Return the name of the object instead. Fixes an error loading the Admin page.
-		«04/05/15, 16:30:01 by DAB
-			«added external style sheet, print-friendly template, colors, navigation appearance, calendar appearance, theme, templates
-			«allow plugins to use custory with plugin internal tables
-		«9/5/02; 4:35:28 PM by JES
-			«Added homePageTemplate to the names returned.
-		«11/20/00; 7:34:11 PM by PBS
-			«Added directory template.
-		«05/01/00; 5:26:47 PM by PBS
-			«Support for the news items template.
-		«02/12/00; 2:00:17 AM by PBS
-			«Given the address of an advanced object, return its name.
+	//Changes:
+		//3/13/07; 11:04:44 AM by LL
+			//Added login box template.
+		//7/6/05; 2:35:27 AM by JES
+			//Never throw a scriptError. Return the name of the object instead. Fixes an error loading the Admin page.
+		//04/05/15, 16:30:01 by DAB
+			//added external style sheet, print-friendly template, colors, navigation appearance, calendar appearance, theme, templates
+			//allow plugins to use custory with plugin internal tables
+		//9/5/02; 4:35:28 PM by JES
+			//Added homePageTemplate to the names returned.
+		//11/20/00; 7:34:11 PM by PBS
+			//Added directory template.
+		//05/01/00; 5:26:47 PM by PBS
+			//Support for the news items template.
+		//02/12/00; 2:00:17 AM by PBS
+			//Given the address of an advanced object, return its name.
 	
 	local (adrNewsSite = @adrSite^.["#newsSite"]);
 	
@@ -72,8 +72,8 @@ on getItemNameFromAddress (adrObject, adrSite) {
 		if defined(adrSite^.["#plugins"]) {
 			if string.popFileFromAddress(adrObject) beginsWith string.popFileFromAddress(@adrSite^.["#plugins"].data) {
 				local (remnant = string.delete(string.popFileFromAddress(adrObject), 1, string.length(string.popFileFromAddress(@adrSite^.["#plugins"].data ))));
-				«return string.replaceAll(string.popLeading(remnant, "."),  ".", " ")
+				//return string.replaceAll(string.popLeading(remnant, "."),  ".", " ")
 				return string.replaceAll(string.replaceAll(string.replaceAll(string.popLeading(remnant, "."), "[\"", ""), "\"]", ""),  ".", " ")}}};
 	
 	return (nameOf (adrObject^))
-		«scriptError ("Can't get the item name for " + adrObject + " because the address does not point to an advanced item.")}
+		//scriptError ("Can't get the item name for " + adrObject + " because the address does not point to an advanced item.")}

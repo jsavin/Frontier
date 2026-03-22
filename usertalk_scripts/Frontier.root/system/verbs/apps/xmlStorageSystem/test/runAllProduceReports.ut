@@ -1,5 +1,5 @@
-«4/8/01; 1:47:30 PM by DW
-	«Generate a table of wire dumps for all the xmlStorageSystem calls.
+//4/8/01; 1:47:30 PM by DW
+	//Generate a table of wire dumps for all the xmlStorageSystem calls.
 
 local (htmltext = "", indentlevel = 0, startticks);
 on add (s) {

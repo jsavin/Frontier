@@ -1,5 +1,5 @@
 on get (username, password, siteName, shortcutName) {
-	«Get a shortcut named shortcutName.
+	//Get a shortcut named shortcutName.
 	
 	local (beginningErrorString = "Can't get shortcut \"" + shortcutName + "\" because ");
 	bundle { //make sure this person is an editor of this site

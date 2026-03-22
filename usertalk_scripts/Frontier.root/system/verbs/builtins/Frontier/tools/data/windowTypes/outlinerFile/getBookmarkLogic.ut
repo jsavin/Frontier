@@ -1,5 +1,5 @@
 on getBookmarkLogic (adr, adrLogic, adrTitle) {
-	«This script handles bookmarking file-based outlineWindows.
+	//This script handles bookmarking file-based outlineWindows.
 	local (atts);
 	if window.attributes.getAll (@atts, adr) {
 		local (title);

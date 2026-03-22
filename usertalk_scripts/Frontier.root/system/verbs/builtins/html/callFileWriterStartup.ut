@@ -1,11 +1,11 @@
 on callFileWriterStartup (adrObject, adrPageTable, templateName=nil) {
-	«Tuesday, April 14, 1998 at 4:10:23 PM by PBS
+	//Tuesday, April 14, 1998 at 4:10:23 PM by PBS
 	local (adrStorage);
 	adrStorage = html.getFileWriterStorage ();
 	try {delete (adrStorage)};
 	new (tableType, adrStorage);
 	
-	«Call file writer startup script.
+	//Call file writer startup script.
 	on getFtpSite () {
 		local (nomad = adrObject);
 		if typeOf (nomad^) != tableType {
@@ -39,7 +39,7 @@ on callFileWriterStartup (adrObject, adrPageTable, templateName=nil) {
 			adrScript = @html.fileWriters.[method].startup}
 		else {
 			scriptError ("Can't render this page because \"" + method + "\" is not an installed file writer.")}};
-	«Store the address of the ftp site and the method in the storage table.
+	//Store the address of the ftp site and the method in the storage table.
 	adrStorage^.adrFtpSite = adrFtpSite;
 	adrStorage^.method = method;
 	if templateName != nil {

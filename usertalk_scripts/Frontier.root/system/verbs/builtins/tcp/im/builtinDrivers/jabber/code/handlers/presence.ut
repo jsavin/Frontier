@@ -1,7 +1,7 @@
 on presence ( connection, mesAdr) {
-	«Changes
-		«5/14/02; 1:51:34 PM by JB
-			«Changelog created.
+	//Changes
+		//5/14/02; 1:51:34 PM by JB
+			//Changelog created.
 	on niceCreateTable ( adr ) {
 		if not defined(adr^) {
 			new (tableType, adr)}};

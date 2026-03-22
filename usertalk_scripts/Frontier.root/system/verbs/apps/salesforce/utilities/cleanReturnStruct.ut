@@ -1,8 +1,8 @@
 on cleanReturnStruct (adrStruct) {
-	«Changes
-		«4/19/06; 6:40:35 PM by JES
-			«Created. Clean up data objects in a struct returned by a call to the Salesforce API.
-				«The main thing we address is the fact that the API returns arrays of structs, which we convert to struct of structs (table of tables) to make them more accessible to UserTalk scripts.
+	//Changes
+		//4/19/06; 6:40:35 PM by JES
+			//Created. Clean up data objects in a struct returned by a call to the Salesforce API.
+				//The main thing we address is the fact that the API returns arrays of structs, which we convert to struct of structs (table of tables) to make them more accessible to UserTalk scripts.
 	
 	on doLevel (adrtable) {
 		local (i, ct = sizeOf (adrtable^));
@@ -22,5 +22,5 @@ on cleanReturnStruct (adrStruct) {
 		doLevel (adrStruct)};
 	
 	return (true)};
-«bundle //testing
-	«cleanReturnStruct (@workspace.retval)
+//bundle //testing
+	//cleanReturnStruct (@workspace.retval)

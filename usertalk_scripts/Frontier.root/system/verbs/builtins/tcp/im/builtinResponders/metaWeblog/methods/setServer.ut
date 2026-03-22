@@ -1,7 +1,7 @@
 on setServer (driverName, screenname, message) {
-	«Changes
-		«8/13/02; 12:12:18 AM by JES
-			«Created.
+	//Changes
+		//8/13/02; 12:12:18 AM by JES
+			//Created.
 	local (serverUrl = string.nthField (message, " ", 3));
 	local (urlparts = string.urlSplit (serverUrl));
 	local (server = urlparts[2], port = 80);

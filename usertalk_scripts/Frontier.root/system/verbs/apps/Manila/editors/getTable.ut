@@ -1,9 +1,9 @@
 on getTable (adrSitePrefs, role) {
-	«Get a struct containing editors of the site. This script is compatible with SOAP, whereas system.verbs.apps.Manila.editors.get is not.
-		«11/15/00; 9:07:51 PM by JES
-	«Changes
-		«9/6/01; 8:00:59 PM by JES
-			«Changed params from a list to a record of named parameters, for SOAP compatibility.
+	//Get a struct containing editors of the site. This script is compatible with SOAP, whereas system.verbs.apps.Manila.editors.get is not.
+		//11/15/00; 9:07:51 PM by JES
+	//Changes
+		//9/6/01; 8:00:59 PM by JES
+			//Changed params from a list to a record of named parameters, for SOAP compatibility.
 	with adrSitePrefs^ {
 		local (params = {"siteName":sitename, "role":role, "username":username, "password":string (password)});
 		return (manila.callHandler (host, port, "manila.editors.getTable", @params, rpcPath:rpcPath))}}

@@ -1,5 +1,5 @@
 on delete (username, password, siteName, shortcutName) {
-	«Delete a shortcut named shortcutName.
+	//Delete a shortcut named shortcutName.
 	
 	bundle { //make sure this person is a managing editor of the site.
 		local (beginningErrorString = "Can't delete shortcut \"" + shortcutName + "\" because ");

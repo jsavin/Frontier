@@ -1,5 +1,5 @@
 on saveAs (adr) {
-	«Handle the Save As command for changing the subject of a message.
+	//Handle the Save As command for changing the subject of a message.
 	
 	local (subject);
 	if window.attributes.getOne ("subject", @subject, adr) {

@@ -1,9 +1,9 @@
 on waitForIqReply ( id, timeout = 60) {
-	«Changes
-		«5/14/02; 1:51:34 PM by JB
-			«Changelog created.
-	«This will wait for the iq message to come back, and be fully processed, before returning control to the caller
-		«See rationale in jabber.idTables.create for more info. This script is so simple because of the surrounding infrastructure.
+	//Changes
+		//5/14/02; 1:51:34 PM by JB
+			//Changelog created.
+	//This will wait for the iq message to come back, and be fully processed, before returning control to the caller
+		//See rationale in jabber.idTables.create for more info. This script is so simple because of the surrounding infrastructure.
 	on mungeId ( idStr ) {
 		// this munges the id string into a semaphore name, this scriptlet will be copied into several places.
 		if typeOf ( idStr ) == addressType {

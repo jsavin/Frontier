@@ -1,6 +1,6 @@
 on parseHeader (s) {
-	«4/4/01; 4:48:44 AM by JES
-		«Created.
+	//4/4/01; 4:48:44 AM by JES
+		//Created.
 	local (ct = string.countFields (s, ";"));
 	local (t); new (tableType, @t);
 	for i = 1 to ct {

@@ -1,8 +1,8 @@
 on writeTextFile (f, s, mimeType = nil, blockSize = nil, characterSet = nil, lineEnding = nil, creationDate = nil, type = nil, creator = nil) {
-	«Changes
-		«12/18/01; 7:57:44 PM by JES
-			«Created. Creates a new text file with the specified path, writes the contents to it with the correct line-endings and character set as specified by the input parameters, and closes the file.
-			«http://docserver.userland.com/file/writeTextFile
+	//Changes
+		//12/18/01; 7:57:44 PM by JES
+			//Created. Creates a new text file with the specified path, writes the contents to it with the correct line-endings and character set as specified by the input parameters, and closes the file.
+			//http://docserver.userland.com/file/writeTextFile
 	local (pc = file.getPathChar ());
 	local (fname = string.nthField (f, pc, string.countFields (f, pc)));
 	local (ext = string.nthField (fname, ".", string.countFields (fname, ".")));

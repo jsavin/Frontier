@@ -1,7 +1,7 @@
 on newGemCallback (adrContextTable) {
-	«manilaSuite.callbacks.newGemCallback : 04/06/30, 14:44:28 by DAB
-		«This callback runner allows the server manager to place a set of callback scripts 
-		«at config.manila.callbacks.newGem to postprocess after a gem is added
+	//manilaSuite.callbacks.newGemCallback : 04/06/30, 14:44:28 by DAB
+		//This callback runner allows the server manager to place a set of callback scripts 
+		//at config.manila.callbacks.newGem to postprocess after a gem is added
 	
 	local (adrUserCallbacks = @config.manila.callbacks.newGem);
 	

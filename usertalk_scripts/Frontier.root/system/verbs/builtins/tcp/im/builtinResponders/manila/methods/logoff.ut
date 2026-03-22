@@ -1,7 +1,7 @@
 on logoff (driverName, screenname, message) {
-	«Changes
-		«8/12/02; 3:14:22 AM by JES
-			«Created.
+	//Changes
+		//8/12/02; 3:14:22 AM by JES
+			//Created.
 	local (site = user.im.responders.manila.prefs.currentSite);
 	if site != "" {
 		local (adrinfo);

@@ -1,11 +1,11 @@
 on getLink (linetext, url, whatTarget=nil, anchor=nil, class=nil, title=nil, accesskey=nil, hreflang=nil, tabindex=nil, onmouseover="", onmouseout="", onclick="") {
-	«Changes 
-		«05/04/13, 09:59:38 by DAB
-			«Add optional paramaters for link attributes title, accesskey, hreflang, tabindex, onmouseover, onmouseout, onclick.
+	//Changes 
+		//05/04/13, 09:59:38 by DAB
+			//Add optional paramaters for link attributes title, accesskey, hreflang, tabindex, onmouseover, onmouseout, onclick.
 	if url == "" {
 		return (linetext)}
 	else {
-		«return ("<a href=\"" + url + "\">" + linetext + "</a>")
+		//return ("<a href=\"" + url + "\">" + linetext + "</a>")
 		local (htmltext="<a");
 		on add(attribute, value) {
 			htmltext = htmltext + (" " + attribute + "=\"" + value + "\"");};
@@ -33,10 +33,10 @@ on getLink (linetext, url, whatTarget=nil, anchor=nil, class=nil, title=nil, acc
 			add("onclick", onclick)};
 		
 		return (htmltext + ">" + linetext + "</a>")}};
-«bundle //test code
-	«html.getLink("Foo!", "")
-		«"Foo!"
-	«html.getLink("Foo!", "http://www.userland.com/foopage/")
-		«"<a href=\"http://www.userland.com/foopage/\">Foo!</a>"
-	«html.getLink("Foo!", "http://www.userland.com/foopage/", "_top", "middleofpage", "linkclass", "linktitle", "A", "", "4", "return processMO('Foo')", "return processMOt('Foo')", "return processMOc('Foo')")
-		«"<a href=\"http://www.userland.com/foopage/#middleofpage\" target=\"_top\" class=\"linkclass\" title=\"linktitle\" accesskey=\"A\" tabindex=\"4\" onmouseover=\"return processMO('Foo')\" onmouseout=\"return processMOt('Foo')\" onclick=\"return processM..."
+//bundle //test code
+	//html.getLink("Foo!", "")
+		//"Foo!"
+	//html.getLink("Foo!", "http://www.userland.com/foopage/")
+		//"<a href=\"http://www.userland.com/foopage/\">Foo!</a>"
+	//html.getLink("Foo!", "http://www.userland.com/foopage/", "_top", "middleofpage", "linkclass", "linktitle", "A", "", "4", "return processMO('Foo')", "return processMOt('Foo')", "return processMOc('Foo')")
+		//"<a href=\"http://www.userland.com/foopage/#middleofpage\" target=\"_top\" class=\"linkclass\" title=\"linktitle\" accesskey=\"A\" tabindex=\"4\" onmouseover=\"return processMO('Foo')\" onmouseout=\"return processMOt('Foo')\" onclick=\"return processM..."

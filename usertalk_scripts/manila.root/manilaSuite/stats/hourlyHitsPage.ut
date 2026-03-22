@@ -1,10 +1,10 @@
 on hourlyHitsPage (pta=nil) {
-	«Display the table of hits for the past 24 hours. Respect the time zone settings for this site.
-		«11/09/00; 2:36:27 PM by PBS
-		«12/11/01; 6:00:39 PM by PBS
-			«Clean the hits table before generating the list of hits. This clears out old data.
-		«1/25/02; 6:28:38 PM by PBS
-			«Performance enhancements in the local "add" routine -- add a trailing semicolon; use parentheses to get the expression in x = x + y form (which is optimized by the kernel).
+	//Display the table of hits for the past 24 hours. Respect the time zone settings for this site.
+		//11/09/00; 2:36:27 PM by PBS
+		//12/11/01; 6:00:39 PM by PBS
+			//Clean the hits table before generating the list of hits. This clears out old data.
+		//1/25/02; 6:28:38 PM by PBS
+			//Performance enhancements in the local "add" routine -- add a trailing semicolon; use parentheses to get the expression in x = x + y form (which is optimized by the kernel).
 	
 	if pta == nil {
 		pta = html.getPageTableAddress ()};
@@ -22,7 +22,7 @@ on hourlyHitsPage (pta=nil) {
 	local (aday, amonth, ayear, ahour, aminute, asecond);
 	date.get (now, @aday, @amonth, @ayear, @ahour, @aminute, @asecond);
 	local (midnight = date.set (aday, amonth, ayear, 0, 0, 0));
-	«midnight = manilaSuite.convertTime (midnight, pta:pta)
+	//midnight = manilaSuite.convertTime (midnight, pta:pta)
 	local (flFirstHour = true);
 	local (htmlText);
 	on add (s) {

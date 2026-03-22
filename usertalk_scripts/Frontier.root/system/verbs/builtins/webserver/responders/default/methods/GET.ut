@@ -1,25 +1,25 @@
-«Script: system.verbs.builtins.webserver.responders.default.methods.GET; Version 2; Date: Thu, 21 May 1998 17:45:30 GMT; ID: RAB
-	«Add the checking of form so that tables or directories taht are missing the trailing / gets redirected to include the /
-«Script: system.verbs.builtins.webserver.responders.default.methods.GET; Version 1; Date: Fri, 08 May 1998 17:44:37 GMT; ID: RAB
-	«General information
-		«This responder will serve data out of the ODB or the file system.  If a script is in the server path, the result of that script is what gets served.
-		«All elements to be served live in the default.data.docTree table.  This table may be nested if desired and 3 types exhibit "special" behavior. 
-		«If an element in the objects table is of type "address", that value will be dereferenced and URI traversal will continue from that point.
-		«If an element in the objects table is of type "filespec", that value will be used and serving will commence from the file system.
-		«If an element in the objects table is of type "script", then that script will be executed and the result returned.
-	«Options/User settings
-		«default.data.docTree is the root in which all items are served.  The Web Admin can add anthing they would like published to this table .
-		«default.data.prefs contains the options that control what is displayed
-			«default.data.prefs.fileAutoIndex:  When set true will generate an HTML page of a file directory if so requested.
-				«Note: You will never get a direcotry listing if a default file is present in the directory.
-			«default.data.prefsfileDefault:  Is a list of file names in desired order.  If the URI specifies a directory and starting from the 
-				«beginning of that list one of those files is found in the specified directory, it will be served as if that filename was 
-				«part of the URI.
-			«default.data.prefs.ODBautoIndex: When set true will generate an HTML page of a table if so reqested.
-				«Note: You will never get a table listing if a default file is present in the table
-			«default.data.prefs.ODBdefault:  Is a list of ODB names in desired order.  If the URI specifies a table and starting from the 
-				«beginning of that list one of those elements is found in the specified table, it will be served as if that element was 
-				«part of the URI.
+//Script: system.verbs.builtins.webserver.responders.default.methods.GET; Version 2; Date: Thu, 21 May 1998 17:45:30 GMT; ID: RAB
+	//Add the checking of form so that tables or directories taht are missing the trailing / gets redirected to include the /
+//Script: system.verbs.builtins.webserver.responders.default.methods.GET; Version 1; Date: Fri, 08 May 1998 17:44:37 GMT; ID: RAB
+	//General information
+		//This responder will serve data out of the ODB or the file system.  If a script is in the server path, the result of that script is what gets served.
+		//All elements to be served live in the default.data.docTree table.  This table may be nested if desired and 3 types exhibit "special" behavior. 
+		//If an element in the objects table is of type "address", that value will be dereferenced and URI traversal will continue from that point.
+		//If an element in the objects table is of type "filespec", that value will be used and serving will commence from the file system.
+		//If an element in the objects table is of type "script", then that script will be executed and the result returned.
+	//Options/User settings
+		//default.data.docTree is the root in which all items are served.  The Web Admin can add anthing they would like published to this table .
+		//default.data.prefs contains the options that control what is displayed
+			//default.data.prefs.fileAutoIndex:  When set true will generate an HTML page of a file directory if so requested.
+				//Note: You will never get a direcotry listing if a default file is present in the directory.
+			//default.data.prefsfileDefault:  Is a list of file names in desired order.  If the URI specifies a directory and starting from the 
+				//beginning of that list one of those files is found in the specified directory, it will be served as if that filename was 
+				//part of the URI.
+			//default.data.prefs.ODBautoIndex: When set true will generate an HTML page of a table if so reqested.
+				//Note: You will never get a table listing if a default file is present in the table
+			//default.data.prefs.ODBdefault:  Is a list of ODB names in desired order.  If the URI specifies a table and starting from the 
+				//beginning of that list one of those elements is found in the specified table, it will be served as if that element was 
+				//part of the URI.
 on get (adrParamTable) {
 	local (objType, mimeType); //For type info
 	local (adrRequestHeaders, adrResponseHeaders);
@@ -95,7 +95,7 @@ on get (adrParamTable) {
 		elementModTime = timeModified(name);
 		return (webserver.util.directoryDisplay.add (mimeType, hrefName, elementName, elementSize, elementModTime))};
 	on checkForm() {
-		«Check for correct form (i.e. trailing backslash) or redirect (called if a table or directory)
+		//Check for correct form (i.e. trailing backslash) or redirect (called if a table or directory)
 		if not (adrParamTable^.path endsWith "/") {
 			if sizeof(adrParamTable^.path) > 0 {
 				adrResponseHeaders^.location = adrParamTable^.URI + "/";
@@ -118,8 +118,8 @@ on get (adrParamTable) {
 			objName = string.replace (objName, "/odb", "")};
 		if objName beginswith "/file" {
 			objName = string.replace (objName, "/file", "")};
-		«The following is the main security and path processing script.  The result from this script is an error or the final
-		«file or odb specification for the responder to serve.
+		//The following is the main security and path processing script.  The result from this script is an error or the final
+		//file or odb specification for the responder to serve.
 		if ! webserver.util.pathToAddressExt (objName, docTreeTableAdr, adrParamTable) {
 			return (true)}; //The error is already set.
 		objName = adrParamTable^.resultPath}; //as returned from pathToAddressExt
@@ -130,7 +130,7 @@ on get (adrParamTable) {
 			return (true)};
 		
 		on doscript(name) {
-			«do it
+			//do it
 			adrResponseHeaders^.["Content-Type"] = "text/html";
 			adrParamTable^.code = 200;
 			adrParamTable^.responseBody = callscript (name, nil, adrParamTable);
@@ -144,14 +144,14 @@ on get (adrParamTable) {
 			adrParamTable^.code = 200;
 			return (true)};
 		
-		«Start the serving process
+		//Start the serving process
 		getODBTypeInfo(objName);
 		if objType == tableType {
 			local (i);
-			«Check for correct form (i.e. trailing backslash) or redirect
+			//Check for correct form (i.e. trailing backslash) or redirect
 			if not checkForm() {
 				return (true)};
-			«Check for the default element to render
+			//Check for the default element to render
 			for i in prefsTableAdr^.ODBdefault {
 				local (default);
 				default = @objName^.[i];
@@ -195,13 +195,13 @@ on get (adrParamTable) {
 				
 				if defined (adrRequestHeaders^.["Accept-Encoding"]) { // cool encoding magic
 					if ((adrRequestHeaders^.["Accept-Encoding"] contains "deflate") && (file.exists (name+".def"))) {
-						«the client accepts deflated files and we just happen to have one
+						//the client accepts deflated files and we just happen to have one
 						if (file.modified (name+".def") >= file.modified (name)) { // make sure it's not an old version
 							adrResponseHeaders^.["Content-Encoding"] = "deflate";
 							adrResponseHeaders^.["Vary"] = "Accept-Encoding"; // let caches know that we negotiated this response
 							name = name + ".def"}};
 					if ((adrRequestHeaders^.["Accept-Encoding"] contains "gzip") && (file.exists (name +".gz"))) {
-						«the client accepts gzipped files and we just happen to have one
+						//the client accepts gzipped files and we just happen to have one
 						if (file.modified (name+".gz") >= file.modified (name)) { // make sure it's not an old version
 							adrResponseHeaders^.["Content-Encoding"] = "gzip";
 							adrResponseHeaders^.["Vary"] = "Accept-Encoding"; // let caches know that we negotiated this response
@@ -211,19 +211,19 @@ on get (adrParamTable) {
 				adrParamTable^.responseBody = file.readWholeFile (name);
 				return (true)};
 			
-			«Start the serving process
+			//Start the serving process
 			if file.isFolder (objName) {
 				local (i);
-				«Check for correct form (i.e. trailing backslash) or redirect
+				//Check for correct form (i.e. trailing backslash) or redirect
 				if not checkForm() {
 					return (true)};
-				«Check for the default element to render
+				//Check for the default element to render
 				for i in prefsTableAdr^.fileDefault {
 					local (default);
 					default = string.popTrailing (objName, file.getPathChar()) + file.getPathChar() + i;
 					if file.exists (default) {
 						return(serve(default))}};
-				«There is no default file - serve the directory if desired
+				//There is no default file - serve the directory if desired
 				if prefsTableAdr^.fileAutoIndex {
 					local (responseText, leafName);
 					
@@ -246,13 +246,13 @@ on get (adrParamTable) {
 			adrParamTable^.code = 500;
 			adrParamTable^.responseBody = webserver.util.buildErrorPage ("500 Internal Server Error", "The type of the object " + adrParamTable^.path + " is unknown.")}};
 	return (true)};
-«bundle //Testing code
-	«local (paramTable)
-	«new (tableType, @paramTable)
-	«new (tableType, @paramTable.requestHeaders)
-	«new (tableType, @paramTable.responseHeaders)
-	«paramTable.responder = "default"
-	«paramTable.responderTableAdr = @user.webserver.responders.default
-	«paramTable.path = "/misc/foo"
-	«paramTable.URI = string.urlEncode (paramTable.path)
-	«get (@paramTable)
+//bundle //Testing code
+	//local (paramTable)
+	//new (tableType, @paramTable)
+	//new (tableType, @paramTable.requestHeaders)
+	//new (tableType, @paramTable.responseHeaders)
+	//paramTable.responder = "default"
+	//paramTable.responderTableAdr = @user.webserver.responders.default
+	//paramTable.path = "/misc/foo"
+	//paramTable.URI = string.urlEncode (paramTable.path)
+	//get (@paramTable)

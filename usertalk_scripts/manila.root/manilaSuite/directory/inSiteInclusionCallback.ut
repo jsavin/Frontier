@@ -1,10 +1,10 @@
 on inSiteInclusionCallback (pathPart, adrAdrElement, adrAdrXstruct, adrCrumbList) {
-	«Changes
-		«6/5/02; 3:01:32 PM by JES
-			«Created. Dive into an in-site inclusion. Returns true if the directory sub-element can be found, or false if not.
-				«Sets adrAdrElement^ to the address of the XML element for the included directory.
-				«Sets adrAdrXstruct^ to the address of the compiled XML of the outline.
-				«Adds the message subject to the crumb list at adrCrumbList.
+	//Changes
+		//6/5/02; 3:01:32 PM by JES
+			//Created. Dive into an in-site inclusion. Returns true if the directory sub-element can be found, or false if not.
+				//Sets adrAdrElement^ to the address of the XML element for the included directory.
+				//Sets adrAdrXstruct^ to the address of the compiled XML of the outline.
+				//Adds the message subject to the crumb list at adrCrumbList.
 	local (othermsgnum, nomad);
 	local (fladdtocrumblist = false);
 	bundle { //set othermsgnum

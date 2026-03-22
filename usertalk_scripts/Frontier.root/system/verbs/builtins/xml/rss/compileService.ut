@@ -1,91 +1,91 @@
 on compileService (adrservice, flSaveData=false, adrStoryArrivedCallback=nil) {
-	«Changes
-		«10/6/06; 3:58:08 PM by LL
-			«Store the value of dc:creator if present in the data table for RSS 2.0 feeds.
-			«Fix a bug introduced in getElementValueWithMatchingNamespace. Restore the original method to get pcdata and if that fails try the alternate method.
-		«4/7/04; 11:33:20 AM by MB
-			«Updated getElementValueWithMatchingNamespace according to Mike Alexander's fix
-			«To allow correct compilation of feeds with XML comments embedded in item's description tag.
-			«Ref: http://groups.yahoo.com/group/radio-dev/message/8025 and
-			«http://groups.yahoo.com/group/radio-dev/message/8026
-		«3/4/04; 11:03:48 AM by MB
-			«Moved call to runModules before call to  addToHistory in the items loop of RSS 0.9x/2.0
-			«So that item elements compiled by module drivers are made available to storyArrived callbacks
-		«Archives
-			«12/16/03; 2:52:12 AM by JES
-				«Added support for the RSS 2.0 pubDate element, whose value is stored in the data sub-table of each item. Also store the value of author and comments if present in the data table for RSS 2.0 feeds.
-			«9/5/03; 9:18:11 PM by DW
-				«Eric Soroos pointed out that item-level categories weren't making it through to the items in the database. A simple fix made it work, per his suggestion.
-				«http://groups.yahoo.com/group/radio-dev/message/7954
-			«3/5/03; 3:31:32 PM by JES
-				«When doing RSS auto-discovery, look also for the newer style <link> element with type="application/xml+rss" and title="RSS" attributes as well as the older style <link> with type="text/xml" and title="xml". Fixes a bug which would cause RSS autodiscovery not to work.
-				«See: http://radio.userland.com/radioMacrosHeadLinks#rss
-			«1/16/03; 5:38:55 AM by DW
-				«Per Sam Ruby's report [1], changed the code in processing categories on items to only record the category if the domain is not specified. 
-					«[1] http://www.intertwingly.net/blog/1125.html
-			«11/16/02; 11:05:27 AM by DW
-				«Cleaned up implementation of guids and permalinks. If the feed specifies the isPermaLink attribute, our code would get confused. That confusion has been eliminated. But it's even worse than it appears. If isPermaLink is false, we wouldn't use the guid at all. Added a new element to sub-elements of the items array, guid, which holds the value of the guid element if isPermaLink is false. Modified addToHistory to respect either guid or permalink element. Thanks to Roger Turner for the excellent report.
-			«11/8/02; 10:59:32 AM by DW
-				«For 0.91 and greater feeds, if it has a skipHours element, create a skipHoursList element in the compilation table, containing the hours we can skip, in the local timezone.
-			«10/30/02; 9:35:20 AM by DW
-				«Get the changes URL from the channel level <category> element, per this comment on SN:
-					«http://scriptingnews.userland.com/backissues/2002/10/29#weblogscomForRssProgress
-				«It's stored in the compilation table for each service at changesUrl.
-			«10/18/02; 11:00:20 AM by DW
-				«If RSS 2.0 set format to RSS2, but do it after all processing so there's no chance of breakage. We want Morton Fredricksen to be able to tell the diff betw 0.92 and 2.0.
-			«10/17/02; 5:11:29 PM by JES
-				«Don't add the comment link to the story text. Instead, add it to the item sub-table of the compilation table. It will be picked up by xml.aggregator.storyArrivedCallback.
-			«10/17/02; 12:48:09 AM by JES
-				«Add support for RSS 2.0 item-level comments element.
-			«10/10/02; 7:32:53 AM by DW
-				«Add support for RSS 2.0 item-level <author> element.
-			«9/29/02; 7:59:37 PM by JES
-				«Added support for moduleDrivers, which are used to implement the aggregator-side of modules in RSS 2.0.
-				«For RSS 2.0 feeds, skip <item>s and sub-elements thereof, which aren't in the default namespace.
-			«9/22/02; 9:51:55 AM by DW
-				«Release the guid-aware version.
-			«9/18/02; 1:01:07 PM by DW
-				«See addToHistory. As we transition to RSS 2.0 feeds, we have to check the history table for items that are indexed by the title and by the permalink. If we don't as soon as a feed switches over, all the items become "new" and the aggregator shows them all. Even though it's only transitional people will report it as a bug. So we check both.
-			«9/16/02; 11:05:14 AM by DW
-				«First feature derived from RSS 2.0. If a channel is RSS 2.0, for each item that has a guid that is a permalink, add it to the history table indexed by the guid, not the mashing of the title and the link. This means that items will not reappear just because the text changed. 
-			«6/1/02; 3:12:26 PM by DW
-				«Sjoerd Visscher reports: "It's a nice start, but it doesn't work on my site. Why? Because Radio tries to parse the page as xml, and if it fails, it looks for a link element. But this page is valid XML, so that doesn't work. But I'm sure Dave is already working on that." 
-				«http://w3future.com/weblog/2002/06/02.html#a108
-			«5/31/02; 4:58:09 PM by DW
-				«If the XML fails to compile, look for a <link> element, following very rigid syntax rules, and try to compile it. If it works, set adrservice^.urlChanged to the new URL. Code that calls this must watch out for it. For an example, see xml.aggregator.subscribeService.
-				«http://frontier.userland.com/aggregatorAutoDiscovery
-			«3/17/02; 4:16:05 PM by DW
-				«In looking for the name of the top-level element of an unknown type feed, don't stop on DOCTYPE.
-					«http://radio.userland.com/discuss/msgReader$12010
-			«3/15/02; 2:20:50 PM by DW
-				«Add a driver architecture to the aggregator so that new formats can be added without changing the core of the aggregator.
-				«http://radio.userland.com/aggregatorDriverArchitecture
-			«12/12/01; 5:21:54 PM by JES
-				«Pass in true for the value of flSkipMalformedEntities when calling xml.entitydecode. When adding an item to the history if sizeOf (title) > 0, don't add the item.  (See locally declared addToHistory.)
-			«2/22/01; 9:29:50 PM by JES
-				«If this is a Mac, convert to Mac text when decoding strings in the service XML.
-			«2/16/01; 12:21:35 PM by PBS
-				«Some elements weren't being decoded; now they all are.
-			«1/12/01; 6:06:29 AM by DW
-				«An important fix. In 0.92 the <source> sub-element of <item> is optional, but we didn't treat it that way, the compilation would fail if any item didn't have a <source> sub-element. 
-			«1/11/01; 6:32:59 PM by DW
-				«Add support for <enclosure>s.
-			«1/5/01; 5:20:16 PM by DW
-				«Add support for publish-and-subscribe notification.
-			«1/1/01; 11:54:32 AM by DW
-				«Hit the limit on the size of addresses that can be processed by xml.getAddressList.
-				«I could re-code all the loops over the items to work around this limit or I could do something more clever, work with a local copy of the xmlstruct table. This would probably be faster too. 
-				«In fact in earlier versions of this script it worked this way, explaining why I'm hitting the problem on some channels now. Interesting.
-			«Thursday, December 28, 2000 at 7:26:03 AM by DW
-				«Added adrStoryArrivedCallback, it's called when a new story has arrived. You can store it in a database, or whatever else you might want to do.
-			«Wednesday, December 27, 2000 at 2:27:50 PM by DW
-				«Added flSaveData boolean, if true, we remember the data behind the title in the item table. This is needed for processing RSS channels in Radio's outliner, we need the text and the link separated, unmashed together.
-			«Wednesday, December 27, 2000 at 12:17:26 PM by DW
-				«Moved into Radio.root and Frontier.root so it can be accessed by Manila and the new nodetype code in 7.0.
-			«Sunday, December 17, 2000 at 10:49:04 AM by DW
-				«Radically simplified for Radio use. Lots of ancient stuff swept away. 
-			«6/19/99; 9:34:46 PM by DW
-				«Created.
+	//Changes
+		//10/6/06; 3:58:08 PM by LL
+			//Store the value of dc:creator if present in the data table for RSS 2.0 feeds.
+			//Fix a bug introduced in getElementValueWithMatchingNamespace. Restore the original method to get pcdata and if that fails try the alternate method.
+		//4/7/04; 11:33:20 AM by MB
+			//Updated getElementValueWithMatchingNamespace according to Mike Alexander's fix
+			//To allow correct compilation of feeds with XML comments embedded in item's description tag.
+			//Ref: http://groups.yahoo.com/group/radio-dev/message/8025 and
+			//http://groups.yahoo.com/group/radio-dev/message/8026
+		//3/4/04; 11:03:48 AM by MB
+			//Moved call to runModules before call to  addToHistory in the items loop of RSS 0.9x/2.0
+			//So that item elements compiled by module drivers are made available to storyArrived callbacks
+		//Archives
+			//12/16/03; 2:52:12 AM by JES
+				//Added support for the RSS 2.0 pubDate element, whose value is stored in the data sub-table of each item. Also store the value of author and comments if present in the data table for RSS 2.0 feeds.
+			//9/5/03; 9:18:11 PM by DW
+				//Eric Soroos pointed out that item-level categories weren't making it through to the items in the database. A simple fix made it work, per his suggestion.
+				//http://groups.yahoo.com/group/radio-dev/message/7954
+			//3/5/03; 3:31:32 PM by JES
+				//When doing RSS auto-discovery, look also for the newer style <link> element with type="application/xml+rss" and title="RSS" attributes as well as the older style <link> with type="text/xml" and title="xml". Fixes a bug which would cause RSS autodiscovery not to work.
+				//See: http://radio.userland.com/radioMacrosHeadLinks#rss
+			//1/16/03; 5:38:55 AM by DW
+				//Per Sam Ruby's report [1], changed the code in processing categories on items to only record the category if the domain is not specified. 
+					//[1] http://www.intertwingly.net/blog/1125.html
+			//11/16/02; 11:05:27 AM by DW
+				//Cleaned up implementation of guids and permalinks. If the feed specifies the isPermaLink attribute, our code would get confused. That confusion has been eliminated. But it's even worse than it appears. If isPermaLink is false, we wouldn't use the guid at all. Added a new element to sub-elements of the items array, guid, which holds the value of the guid element if isPermaLink is false. Modified addToHistory to respect either guid or permalink element. Thanks to Roger Turner for the excellent report.
+			//11/8/02; 10:59:32 AM by DW
+				//For 0.91 and greater feeds, if it has a skipHours element, create a skipHoursList element in the compilation table, containing the hours we can skip, in the local timezone.
+			//10/30/02; 9:35:20 AM by DW
+				//Get the changes URL from the channel level <category> element, per this comment on SN:
+					//http://scriptingnews.userland.com/backissues/2002/10/29#weblogscomForRssProgress
+				//It's stored in the compilation table for each service at changesUrl.
+			//10/18/02; 11:00:20 AM by DW
+				//If RSS 2.0 set format to RSS2, but do it after all processing so there's no chance of breakage. We want Morton Fredricksen to be able to tell the diff betw 0.92 and 2.0.
+			//10/17/02; 5:11:29 PM by JES
+				//Don't add the comment link to the story text. Instead, add it to the item sub-table of the compilation table. It will be picked up by xml.aggregator.storyArrivedCallback.
+			//10/17/02; 12:48:09 AM by JES
+				//Add support for RSS 2.0 item-level comments element.
+			//10/10/02; 7:32:53 AM by DW
+				//Add support for RSS 2.0 item-level <author> element.
+			//9/29/02; 7:59:37 PM by JES
+				//Added support for moduleDrivers, which are used to implement the aggregator-side of modules in RSS 2.0.
+				//For RSS 2.0 feeds, skip <item>s and sub-elements thereof, which aren't in the default namespace.
+			//9/22/02; 9:51:55 AM by DW
+				//Release the guid-aware version.
+			//9/18/02; 1:01:07 PM by DW
+				//See addToHistory. As we transition to RSS 2.0 feeds, we have to check the history table for items that are indexed by the title and by the permalink. If we don't as soon as a feed switches over, all the items become "new" and the aggregator shows them all. Even though it's only transitional people will report it as a bug. So we check both.
+			//9/16/02; 11:05:14 AM by DW
+				//First feature derived from RSS 2.0. If a channel is RSS 2.0, for each item that has a guid that is a permalink, add it to the history table indexed by the guid, not the mashing of the title and the link. This means that items will not reappear just because the text changed. 
+			//6/1/02; 3:12:26 PM by DW
+				//Sjoerd Visscher reports: "It's a nice start, but it doesn't work on my site. Why? Because Radio tries to parse the page as xml, and if it fails, it looks for a link element. But this page is valid XML, so that doesn't work. But I'm sure Dave is already working on that." 
+				//http://w3future.com/weblog/2002/06/02.html#a108
+			//5/31/02; 4:58:09 PM by DW
+				//If the XML fails to compile, look for a <link> element, following very rigid syntax rules, and try to compile it. If it works, set adrservice^.urlChanged to the new URL. Code that calls this must watch out for it. For an example, see xml.aggregator.subscribeService.
+				//http://frontier.userland.com/aggregatorAutoDiscovery
+			//3/17/02; 4:16:05 PM by DW
+				//In looking for the name of the top-level element of an unknown type feed, don't stop on DOCTYPE.
+					//http://radio.userland.com/discuss/msgReader$12010
+			//3/15/02; 2:20:50 PM by DW
+				//Add a driver architecture to the aggregator so that new formats can be added without changing the core of the aggregator.
+				//http://radio.userland.com/aggregatorDriverArchitecture
+			//12/12/01; 5:21:54 PM by JES
+				//Pass in true for the value of flSkipMalformedEntities when calling xml.entitydecode. When adding an item to the history if sizeOf (title) > 0, don't add the item.  (See locally declared addToHistory.)
+			//2/22/01; 9:29:50 PM by JES
+				//If this is a Mac, convert to Mac text when decoding strings in the service XML.
+			//2/16/01; 12:21:35 PM by PBS
+				//Some elements weren't being decoded; now they all are.
+			//1/12/01; 6:06:29 AM by DW
+				//An important fix. In 0.92 the <source> sub-element of <item> is optional, but we didn't treat it that way, the compilation would fail if any item didn't have a <source> sub-element. 
+			//1/11/01; 6:32:59 PM by DW
+				//Add support for <enclosure>s.
+			//1/5/01; 5:20:16 PM by DW
+				//Add support for publish-and-subscribe notification.
+			//1/1/01; 11:54:32 AM by DW
+				//Hit the limit on the size of addresses that can be processed by xml.getAddressList.
+				//I could re-code all the loops over the items to work around this limit or I could do something more clever, work with a local copy of the xmlstruct table. This would probably be faster too. 
+				//In fact in earlier versions of this script it worked this way, explaining why I'm hitting the problem on some channels now. Interesting.
+			//Thursday, December 28, 2000 at 7:26:03 AM by DW
+				//Added adrStoryArrivedCallback, it's called when a new story has arrived. You can store it in a database, or whatever else you might want to do.
+			//Wednesday, December 27, 2000 at 2:27:50 PM by DW
+				//Added flSaveData boolean, if true, we remember the data behind the title in the item table. This is needed for processing RSS channels in Radio's outliner, we need the text and the link separated, unmashed together.
+			//Wednesday, December 27, 2000 at 12:17:26 PM by DW
+				//Moved into Radio.root and Frontier.root so it can be accessed by Manila and the new nodetype code in 7.0.
+			//Sunday, December 17, 2000 at 10:49:04 AM by DW
+				//Radically simplified for Radio use. Lots of ancient stuff swept away. 
+			//6/19/99; 9:34:46 PM by DW
+				//Created.
 	on decode (s) {
 		return (xml.rss.decodeString (s))};
 	xml.rss.init (); //set up user.xml.rss
@@ -102,18 +102,18 @@ on compileService (adrservice, flSaveData=false, adrStoryArrivedCallback=nil) {
 				if sizeof (htmllist) > 0 {
 					scriptError ("rssAutoDetect")}}}
 		else { //failed, look for a suitable <link> element
-			«5/31/02; 4:38:51 PM by DW
-				«See if we can find a suitable <link> element, fumble around with the HTML.
-					«<link rel="alternate" type="text/xml" title="XML" href="http://radio.weblogs.com/0001015/rss.xml">
-				«The pattern-match is very crude. If the attributes aren't all present, it fails. If they aren't in the correct order, it fails. Perhaps we'll get more sophisticated later, but I really don't want to add an HTML parser here. ;->
-				«If we can, then try compiling that, and inform the upper level code of what happened.
+			//5/31/02; 4:38:51 PM by DW
+				//See if we can find a suitable <link> element, fumble around with the HTML.
+					//<link rel="alternate" type="text/xml" title="XML" href="http://radio.weblogs.com/0001015/rss.xml">
+				//The pattern-match is very crude. If the attributes aren't all present, it fails. If they aren't in the correct order, it fails. Perhaps we'll get more sophisticated later, but I really don't want to add an HTML parser here. ;->
+				//If we can, then try compiling that, and inform the upper level code of what happened.
 			local (errorstring = tryError);
 			local (sourcetext = string (adrservice^.xmltext), s = string.lower (sourcetext));
 			local (pattern = "<link rel=\"alternate\" type=\"text/xml\" title=\"xml\" href=\"");
 			local (ix = string.patternmatch (pattern, s));
 			if ix == 0 { //look for the newer type="application/rss+xml" title="RSS" attribute
-				«JES 3/5/03: see: http://radio.userland.com/radioMacrosHeadLinks#rss
-					«The older format is documented here: http://radio.userland.com/aggregatorAutoDiscovery#caveatForWeblogEditors
+				//JES 3/5/03: see: http://radio.userland.com/radioMacrosHeadLinks#rss
+					//The older format is documented here: http://radio.userland.com/aggregatorAutoDiscovery#caveatForWeblogEditors
 				pattern = "<link rel=\"alternate\" type=\"application/rss+xml\" title=\"RSS\" href=\"";
 				ix = string.patternmatch (pattern, s)};
 			if ix == 0 { //re-throw the error
@@ -144,27 +144,27 @@ on compileService (adrservice, flSaveData=false, adrStoryArrivedCallback=nil) {
 			new (tabletype, adrhistory)};
 		for i = 1 to sizeof (adrhistory^) {
 			adrhistory^ [i] = false}};
-	«on addToHistory (adritem, categorylist={})
-		«bundle //if the item has a permalink, use that
-			«if defined (adritem^.permalink)
-				«local (adrinhistory = @adrhistory^.[adritem^.permalink])
-				«if not defined (adrinhistory^) //it's a new story
-					«local (flskipnew = false)
-					«if sizeof (adritem^.title) > 0
-						«try {flskipnew = defined (adrhistory^.[adritem^.title])} //a newly 2.0'd feed
-					«if not flskipnew
-						«if adrStoryArrivedCallback != nil
-							«adrStoryArrivedCallback^ (adrservice, adritem)
-				«adrinhistory^ = true //it's current
-				«return
-		«
-		«local (title = adritem^.title)
-		«if sizeOf (title) > 0
-			«local (adrinhistory = @adrhistory^.[title])
-			«if not defined (adrinhistory^) //it's a new story
-				«if adrStoryArrivedCallback != nil
-					«adrStoryArrivedCallback^ (adrservice, adritem)
-			«adrinhistory^ = true //it's current
+	//on addToHistory (adritem, categorylist={})
+		//bundle //if the item has a permalink, use that
+			//if defined (adritem^.permalink)
+				//local (adrinhistory = @adrhistory^.[adritem^.permalink])
+				//if not defined (adrinhistory^) //it's a new story
+					//local (flskipnew = false)
+					//if sizeof (adritem^.title) > 0
+						//try {flskipnew = defined (adrhistory^.[adritem^.title])} //a newly 2.0'd feed
+					//if not flskipnew
+						//if adrStoryArrivedCallback != nil
+							//adrStoryArrivedCallback^ (adrservice, adritem)
+				//adrinhistory^ = true //it's current
+				//return
+		//
+		//local (title = adritem^.title)
+		//if sizeOf (title) > 0
+			//local (adrinhistory = @adrhistory^.[title])
+			//if not defined (adrinhistory^) //it's a new story
+				//if adrStoryArrivedCallback != nil
+					//adrStoryArrivedCallback^ (adrservice, adritem)
+			//adrinhistory^ = true //it's current
 	on addToHistory (adritem, categorylist={}) {
 		bundle { //if the item has a permalink, use that
 			if defined (adritem^.permalink) or defined (adritem^.guid) {
@@ -193,15 +193,15 @@ on compileService (adrservice, flSaveData=false, adrStoryArrivedCallback=nil) {
 					adrStoryArrivedCallback^ (adrservice, adritem)}};
 			adrinhistory^ = true}}; //it's current
 	on getElementValueWithMatchingNamespace (adrtable, adrroot, name, adrvalue, nsuri="", docnsuri="") {
-		«9/29/02; 8:22:06 PM by JES
-			«Get the value of the first sub-element of adrtable (an xml table) whose namespace URI matches an expected value.
-			«Parameters:
-				«adrtable -- the address of an xml table
-				«adrroot -- the address of the root-level of the compiled xml document
-				«name -- the name of the element we want the value of
-				«adrvalue -- the address of a variable in which to store the value of the found element (pcdata)
-				«nsuri -- the namespace we're interested in
-				«docnsuri -- the default namespace URI for this XML document
+		//9/29/02; 8:22:06 PM by JES
+			//Get the value of the first sub-element of adrtable (an xml table) whose namespace URI matches an expected value.
+			//Parameters:
+				//adrtable -- the address of an xml table
+				//adrroot -- the address of the root-level of the compiled xml document
+				//name -- the name of the element we want the value of
+				//adrvalue -- the address of a variable in which to store the value of the found element (pcdata)
+				//nsuri -- the namespace we're interested in
+				//docnsuri -- the default namespace URI for this XML document
 		local (items = xml.getAddressList (adrtable, name));
 		local (adr);
 		for adr in items {
@@ -211,8 +211,8 @@ on compileService (adrservice, flSaveData=false, adrStoryArrivedCallback=nil) {
 						adrvalue^ = decode (adr^.["/pcdata"])}
 					else {
 						bundle { // 4/7/04; 11:28:08 AM by MB
-							«Process pcdata correctly, according to Mike Alexander
-							«ref: http://groups.yahoo.com/group/radio-dev/message/8026
+							//Process pcdata correctly, according to Mike Alexander
+							//ref: http://groups.yahoo.com/group/radio-dev/message/8026
 							local ( pcdataList = xml.getAddressList ( adr, "/pcdata"), pcdataItem);
 							adrvalue^ = "";
 							for pcdataItem in pcdataList {
@@ -233,29 +233,29 @@ on compileService (adrservice, flSaveData=false, adrStoryArrivedCallback=nil) {
 		initModules (@xml.rss.moduleDrivers);
 		initModules (@user.xml.rss.moduleDrivers)};
 	on runModules (adrtable, adrdoc, docnsuri, adritem=nil) {
-		«10/3/02; 10:19:44 PM by JES
-			«Run scripts in the module drivers for any sub-elements of adrtable, whose namespace URI is different from docnsuri.
-			«Module drivers have the following table-structure -- all sub-elements are optional.
-				«["http://moduledriver.com/uriOfModuleDriver/"] -- a table in user.xml.rss.moduleDrivers or xml.rss.moduleDrivers.
-					«init -- a script that's called before the channel is complied -- use this script to clear stale data
-					«any -- a script which handles any elements which aren't handled by a more specific script
-					«subElementOfItem -- a table of scripts called for sub-elements of an <item>
-						«any -- a script called for any sub-element of <item>
-						«[elementName] -- a script called for a specific sub-element of <item>, whose name is elementName
-						«Note: Scripts in this table take three parameters, adrelement, adrservice and adritem
-							«adrelement is the address of the XML table for the element
-							«adrservice is the address of the service table
-							«adritem is the address of a sub-table of adrservice^.compilation.items
-					«subElementOfChannel -- a table of scripts called for sub-elements of <channel>
-						«Same as subElementOfItem, but for sub-elements of <channel> instead.
-						«Note: Scripts in this table take two parameters: adrelement and adrservice
-							«adrelement is the address of the XML table for the element
-							«adrservice is the address of the service table
-					«subElementOfRss -- a table of scripts called for sub-elements of <rss>
-						«Same as subElementOfChannel, but for sub-elements of <rss> instead.
-						«Note: Scripts in this table take two parameters: adrelement and adrservice.
-			«If this script is called with an address specified for adritem, then adritem is passed as the third parameter to the moduleDriver script. If not, then the moduleDriver script is called with only two parameters.
-			«Note: If/when module support is added for <rdf> (RSS 1.0), drivers which have subElementOfRss scripts will need to also have subElementOfRdf scripts. They can just call the corresponding scripts in the subElementOfRss table.
+		//10/3/02; 10:19:44 PM by JES
+			//Run scripts in the module drivers for any sub-elements of adrtable, whose namespace URI is different from docnsuri.
+			//Module drivers have the following table-structure -- all sub-elements are optional.
+				//["http://moduledriver.com/uriOfModuleDriver/"] -- a table in user.xml.rss.moduleDrivers or xml.rss.moduleDrivers.
+					//init -- a script that's called before the channel is complied -- use this script to clear stale data
+					//any -- a script which handles any elements which aren't handled by a more specific script
+					//subElementOfItem -- a table of scripts called for sub-elements of an <item>
+						//any -- a script called for any sub-element of <item>
+						//[elementName] -- a script called for a specific sub-element of <item>, whose name is elementName
+						//Note: Scripts in this table take three parameters, adrelement, adrservice and adritem
+							//adrelement is the address of the XML table for the element
+							//adrservice is the address of the service table
+							//adritem is the address of a sub-table of adrservice^.compilation.items
+					//subElementOfChannel -- a table of scripts called for sub-elements of <channel>
+						//Same as subElementOfItem, but for sub-elements of <channel> instead.
+						//Note: Scripts in this table take two parameters: adrelement and adrservice
+							//adrelement is the address of the XML table for the element
+							//adrservice is the address of the service table
+					//subElementOfRss -- a table of scripts called for sub-elements of <rss>
+						//Same as subElementOfChannel, but for sub-elements of <rss> instead.
+						//Note: Scripts in this table take two parameters: adrelement and adrservice.
+			//If this script is called with an address specified for adritem, then adritem is passed as the third parameter to the moduleDriver script. If not, then the moduleDriver script is called with only two parameters.
+			//Note: If/when module support is added for <rdf> (RSS 1.0), drivers which have subElementOfRss scripts will need to also have subElementOfRdf scripts. They can just call the corresponding scripts in the subElementOfRss table.
 		local (adrelement);
 		for adrelement in adrtable {
 			local (name = xml.convertToDisplayName (nameOf (adrelement^)) );
@@ -313,25 +313,25 @@ on compileService (adrservice, flSaveData=false, adrStoryArrivedCallback=nil) {
 			local (docnsuri = xml.rss.data.nsRss1);
 			for i = sizeof (itemlist) downto 1 { //each item is the address of an item
 				item = itemlist [i];
-				«bundle //JES 9/29/02: skip <item>s which are outside the RSS 1.0 namespace if declared
-					«local (itemnsuri = xml.getNamespaceUriForElement (item, adrrdf, docnsuri))
-					«if sizeOf (itemnsuri) > 0 //make sure it's in our namespace or skip it
-						«if itemnsuri != xml.rss.data.nsRss1 //skip
-							«continue
+				//bundle //JES 9/29/02: skip <item>s which are outside the RSS 1.0 namespace if declared
+					//local (itemnsuri = xml.getNamespaceUriForElement (item, adrrdf, docnsuri))
+					//if sizeOf (itemnsuri) > 0 //make sure it's in our namespace or skip it
+						//if itemnsuri != xml.rss.data.nsRss1 //skip
+							//continue
 				adritem = @adrcompilation^.items.[string.padwithzeros (ct++, 5)];
 				new (tabletype, adritem);
 				
-				«Original code
+				//Original code
 				local (link = decode (xml.getValue (item, "link")));
 				local (title = decode (xml.getValue (item, "title")));
 				local (description = "");
 				try {description = decode (xml.getValue (item, "description"))};
 				
-				«bundle //new code that skips elements outside the RSS 1.0 namespace -- disabled for now
-					«local (link = "", title = "", description = "")
-					«getElementValueWithMatchingNamespace (item, adrrdf, "link", @link, docnsuri)
-					«getElementValueWithMatchingNamespace (item, adrrdf, "title", @title, docnsuri)
-					«getElementValueWithMatchingNamespace (item, adrrdf, "description", @description, docnsuri)
+				//bundle //new code that skips elements outside the RSS 1.0 namespace -- disabled for now
+					//local (link = "", title = "", description = "")
+					//getElementValueWithMatchingNamespace (item, adrrdf, "link", @link, docnsuri)
+					//getElementValueWithMatchingNamespace (item, adrrdf, "title", @title, docnsuri)
+					//getElementValueWithMatchingNamespace (item, adrrdf, "description", @description, docnsuri)
 				
 				if sizeOf (link) > 0 and sizeOf (title) > 0 {
 					adritem^.title = "<a href=\"" + link + "\">" + title + "</a>"};
@@ -570,8 +570,8 @@ on compileService (adrservice, flSaveData=false, adrStoryArrivedCallback=nil) {
 					adritem = @adrcompilation^.items.[string.padwithzeros (ct++, 5)];
 					new (tabletype, adritem);
 					itemtext = decode (xml.getValue (item, "text"));
-					«itemtext = string.replaceall (itemtext, "&lt;", "<")
-					«itemtext = string.replaceall (itemtext, "&gt;", ">")
+					//itemtext = string.replaceall (itemtext, "&lt;", "<")
+					//itemtext = string.replaceall (itemtext, "&gt;", ">")
 					itemtext = decode (itemtext);
 					local (linklist = xml.getAddressList (item, "link"), link);
 					for link in linklist {
@@ -587,9 +587,9 @@ on compileService (adrservice, flSaveData=false, adrStoryArrivedCallback=nil) {
 							catlist = catlist + {decode (cat^)}}};
 					addToHistory (adritem, catlist)}}};
 		"unknown" { //see if a driver can handle this format
-			«How it works -- 3/15/02; 2:35:19 PM by DW
-				«Drivers are located either in user.xml.rss.formatDrivers or xml.rss.formatDrivers; the former for user-supplied drivers, the latter for system drivers. All new formats supported by UserLand will come in the form of drivers.
-				«First we locate the driver, starting in the user table, then looking in the system table. If we don't locate one, do nothing (as before). If we do, we call the driver script, passing it enough parameters so it can do exactly what one of the internal format handlers does.
+			//How it works -- 3/15/02; 2:35:19 PM by DW
+				//Drivers are located either in user.xml.rss.formatDrivers or xml.rss.formatDrivers; the former for user-supplied drivers, the latter for system drivers. All new formats supported by UserLand will come in the form of drivers.
+				//First we locate the driver, starting in the user table, then looking in the system table. If we don't locate one, do nothing (as before). If we do, we call the driver script, passing it enough parameters so it can do exactly what one of the internal format handlers does.
 			local (adr, drivername = "", name);
 			for adr in adrxstruct {
 				name = xml.convertToDisplayName (nameof (adr^));
@@ -609,40 +609,40 @@ on compileService (adrservice, flSaveData=false, adrStoryArrivedCallback=nil) {
 		for i = sizeof (adrhistory^) downto 1 {
 			if not adrhistory^ [i] {
 				delete (@adrhistory^ [i])}}}};
-«bundle //test item-level categories
-	«compileService (@aggregatorData.services.["http://radio.weblogs.com/0001015/rss.xml"], true, @xml.aggregator.storyArrivedCallback)
-«bundle //test for Jon Udell's experiment
-	«compileService (@aggregatorData.services.["http://weblog.infoworld.com/udell/rss.xml"], true, @xml.aggregator.storyArrivedCallback)
-«bundle //test guid with isPermalink attribute present
-	«compileService (@aggregatorData.services.["http://www.raibledesigns.com/rss/rd"], true, @xml.aggregator.storyArrivedCallback)
-«bundle //test category support at top level
-	«compileService (@aggregatorData.services.["http://www.scripting.com/rss.xml"], true, @xml.aggregator.storyArrivedCallback)
-«bundle //test namespace support in RSS 2.0
-	«compileService (@aggregatorData.services.["http://www.scripting.com/rss.xml"], true, @xml.aggregator.storyArrivedCallback)
-	«compileService (@aggregatorData.services.["http://diveintomark.org/xml/rss2.xml"], true, @xml.aggregator.storyArrivedCallback)
-«bundle //test namespace support in RSS 1.0
-	«compileService (@aggregatorData.services.["http://www.infoworld.com/rss/news.rdf"], true, @xml.aggregator.storyArrivedCallback)
-	«compileService (@aggregatorData.services.["http://www.pocketsoap.com/rssTests/rss1.0withModulesNoDefNSLocalNameClash.xml"], true, @xml.aggregator.storyArrivedCallback)
-«bundle //test code
-	«compileService (@scratchpad.["http://www.teleread.org/blog/rss.xml"], true, @xml.aggregator.storyArrivedCallback)
-«bundle //test code, testing support for <link> redirection
-	«local (url = "http://w3future.com/weblog/")
-	«local (adrservice = xml.rss.initService (url, @aggregatorData.services))
-	«new (tabletype, @adrservice^.compilation)
-	«new (tabletype, @adrservice^.compilation.itemHistory)
-	«adrservice^.xmltext = tcp.httpReadUrl (url)
-	«compileService (adrservice, true, @xml.aggregator.storyArrivedCallback)
-«bundle //test code, testing formatDrivers
-	«local (url = "http://rcm.amazon.com/e/cm?t=naviseek&l=st1&search=programming&mode=books&p=102&o=1&f=xml")
-	«local (adrservice = xml.rss.initService (url, @aggregatorData.services))
-	«new (tabletype, @adrservice^.compilation)
-	«new (tabletype, @adrservice^.compilation.itemHistory)
-	«adrservice^.xmltext = tcp.httpReadUrl (url)
-	«xml.compile (adrservice^.xmltext, @adrservice^.xmlstruct)
-	«compileService (adrservice, true, @xml.aggregator.storyArrivedCallback)
-«bundle //more test code, profiling
-	«new (tableType, @temp.profileData)
-	«script.startProfile (true)
-	«compileService (@aggregatorData.services.["http://scriptingnews.userland.com/xml/scriptingNews2.xml"], true, @xml.aggregator.storyArrivedCallback)
-	«script.stopProfile (@temp.profileData)
-	«edit (@temp.profileData)
+//bundle //test item-level categories
+	//compileService (@aggregatorData.services.["http://radio.weblogs.com/0001015/rss.xml"], true, @xml.aggregator.storyArrivedCallback)
+//bundle //test for Jon Udell's experiment
+	//compileService (@aggregatorData.services.["http://weblog.infoworld.com/udell/rss.xml"], true, @xml.aggregator.storyArrivedCallback)
+//bundle //test guid with isPermalink attribute present
+	//compileService (@aggregatorData.services.["http://www.raibledesigns.com/rss/rd"], true, @xml.aggregator.storyArrivedCallback)
+//bundle //test category support at top level
+	//compileService (@aggregatorData.services.["http://www.scripting.com/rss.xml"], true, @xml.aggregator.storyArrivedCallback)
+//bundle //test namespace support in RSS 2.0
+	//compileService (@aggregatorData.services.["http://www.scripting.com/rss.xml"], true, @xml.aggregator.storyArrivedCallback)
+	//compileService (@aggregatorData.services.["http://diveintomark.org/xml/rss2.xml"], true, @xml.aggregator.storyArrivedCallback)
+//bundle //test namespace support in RSS 1.0
+	//compileService (@aggregatorData.services.["http://www.infoworld.com/rss/news.rdf"], true, @xml.aggregator.storyArrivedCallback)
+	//compileService (@aggregatorData.services.["http://www.pocketsoap.com/rssTests/rss1.0withModulesNoDefNSLocalNameClash.xml"], true, @xml.aggregator.storyArrivedCallback)
+//bundle //test code
+	//compileService (@scratchpad.["http://www.teleread.org/blog/rss.xml"], true, @xml.aggregator.storyArrivedCallback)
+//bundle //test code, testing support for <link> redirection
+	//local (url = "http://w3future.com/weblog/")
+	//local (adrservice = xml.rss.initService (url, @aggregatorData.services))
+	//new (tabletype, @adrservice^.compilation)
+	//new (tabletype, @adrservice^.compilation.itemHistory)
+	//adrservice^.xmltext = tcp.httpReadUrl (url)
+	//compileService (adrservice, true, @xml.aggregator.storyArrivedCallback)
+//bundle //test code, testing formatDrivers
+	//local (url = "http://rcm.amazon.com/e/cm?t=naviseek&l=st1&search=programming&mode=books&p=102&o=1&f=xml")
+	//local (adrservice = xml.rss.initService (url, @aggregatorData.services))
+	//new (tabletype, @adrservice^.compilation)
+	//new (tabletype, @adrservice^.compilation.itemHistory)
+	//adrservice^.xmltext = tcp.httpReadUrl (url)
+	//xml.compile (adrservice^.xmltext, @adrservice^.xmlstruct)
+	//compileService (adrservice, true, @xml.aggregator.storyArrivedCallback)
+//bundle //more test code, profiling
+	//new (tableType, @temp.profileData)
+	//script.startProfile (true)
+	//compileService (@aggregatorData.services.["http://scriptingnews.userland.com/xml/scriptingNews2.xml"], true, @xml.aggregator.storyArrivedCallback)
+	//script.stopProfile (@temp.profileData)
+	//edit (@temp.profileData)

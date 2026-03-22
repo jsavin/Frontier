@@ -1,8 +1,8 @@
 on removeFromPicturesList (username, password, siteName, msgNum) {
-	«Remove a message from the pictures list.
-		«Changes:
-			«10/09/00; 10:27:12 PM by PBS
-				«Update indexes.
+	//Remove a message from the pictures list.
+		//Changes:
+			//10/09/00; 10:27:12 PM by PBS
+				//Update indexes.
 	
 	bundle { //make sure this person is a managing editor of the site.
 		local (beginningErrorString = "Can't remove message \"" + msgNum + "\" from the pictures list because ");

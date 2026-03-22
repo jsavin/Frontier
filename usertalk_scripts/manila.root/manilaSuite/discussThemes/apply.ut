@@ -1,6 +1,6 @@
 on apply (adrSite, themeName, adrTheme=nil, objectName="") {
-	«Set the theme for a Manila site. May be used to apply an entire theme or just one item in a theme.
-		«10/26/00; 11:20:37 PM by JES
+	//Set the theme for a Manila site. May be used to apply an entire theme or just one item in a theme.
+		//10/26/00; 11:20:37 PM by JES
 	
 	if adrTheme == nil { //it normally should be nil, unless the theme isn't stored in the config.manila.themes table
 		adrTheme = @config.manila.discussionGroupThemes.[themeName]};

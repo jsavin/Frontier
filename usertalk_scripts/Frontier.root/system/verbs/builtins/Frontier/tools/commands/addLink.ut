@@ -1,25 +1,25 @@
-«Add a link to a headline.
-	«Changes:
-		«8/23/05; 5:55:56 PM by JES
-			«Add support for HTML links in text, in addition to link attributes on headings. Which you get depends on the selection.
-		«8/3/01; 10:51:07 PM by JES
-			«Allow relative links.
-		«3/18/01; 4:39:29 PM by PBS
-			«Provide a better error message when the link is in an incorrect form. Can't add link because the URL is not of the form 'http://www.server.com/hello.html.'
-		«01/08/01; 2:52:43 PM by JES
-			«Make sure that user.playlist.prefs.lastUrlToLinkTo is defined.
-		«01/04/01; 2:19:27 AM by JES
-			«If the clipboard contains a URL, make it the default URL for adding a link.
-		«10/16/00; 2:22:52 PM by JES
-			«Don't url-encode the # character
-		«Thu, Sep 21, 2000 at 12:34:09 PM by JES
-			«Don't url-encode the % character
-		«Mon, Sep 11, 2000 at 2:41:22 AM by JES
-			«Don't url-encode the + character.
-		«08/16/00; 6:47:45 PM by JES
-			«Encode the url using string.urlEncode, but not the /, ?, &, $ and = characters.
-		«08/14/00; 10:41:04 PM by PBS
-			«Turn off display, set the refcon, then turn display back on -- this causes the note icon to be drawn immediately.
+//Add a link to a headline.
+	//Changes:
+		//8/23/05; 5:55:56 PM by JES
+			//Add support for HTML links in text, in addition to link attributes on headings. Which you get depends on the selection.
+		//8/3/01; 10:51:07 PM by JES
+			//Allow relative links.
+		//3/18/01; 4:39:29 PM by PBS
+			//Provide a better error message when the link is in an incorrect form. Can't add link because the URL is not of the form 'http://www.server.com/hello.html.'
+		//01/08/01; 2:52:43 PM by JES
+			//Make sure that user.playlist.prefs.lastUrlToLinkTo is defined.
+		//01/04/01; 2:19:27 AM by JES
+			//If the clipboard contains a URL, make it the default URL for adding a link.
+		//10/16/00; 2:22:52 PM by JES
+			//Don't url-encode the # character
+		//Thu, Sep 21, 2000 at 12:34:09 PM by JES
+			//Don't url-encode the % character
+		//Mon, Sep 11, 2000 at 2:41:22 AM by JES
+			//Don't url-encode the + character.
+		//08/16/00; 6:47:45 PM by JES
+			//Encode the url using string.urlEncode, but not the /, ?, &, $ and = characters.
+		//08/14/00; 10:41:04 PM by PBS
+			//Turn off display, set the refcon, then turn display back on -- this causes the note icon to be drawn immediately.
 if not defined (user.tools.prefs.lastUrlToLinkTo) {
 	user.tools.prefs.lastUrlToLinkTo = "http://"};
 local (url = user.tools.prefs.lastUrlToLinkTo);
@@ -29,8 +29,8 @@ if string.lower (clipboardValue) beginswith "http://" {
 if op.attributes.getOne ("url", @url) {
 	user.tools.prefs.lastUrlToLinkTo = url};
 if dialog.ask ("Link \"" + op.getlinetext () + "\" to what URL?", @url) {
-	«if not (url contains "://")
-		«url = "http://" + url
+	//if not (url contains "://")
+		//url = "http://" + url
 	user.tools.prefs.lastUrlToLinkTo = url;
 	local (atts);
 	new (tabletype, @atts);

@@ -1,12 +1,12 @@
 on editPost (appkey, postid, username, password, content, publish) {
-	«Changes:
-		«7/19/04; 6:32:03 PM by JES
-			«Decode &quot; and &apos; to the " and ' characters in the title and description, since they're not decoded by xml.compile, when the RPC call comes in.
-		«8/23/01; 1:24:46 AM by JES
-			«Changed the msgNum delimiter in the postId to the # character.
+	//Changes:
+		//7/19/04; 6:32:03 PM by JES
+			//Decode &quot; and &apos; to the " and ' characters in the title and description, since they're not decoded by xml.compile, when the RPC call comes in.
+		//8/23/01; 1:24:46 AM by JES
+			//Changed the msgNum delimiter in the postId to the # character.
 	local (sitename = string.nthfield (postid, "#", 1)); //8/23/01 JES: was siteUrl, now siteName
 	local (msgnum = number (string.nthfield (postid, "#", 2)));
-	«local (sitename = manilaSuite.rpcHandlers.getSiteName (siteurl))
+	//local (sitename = manilaSuite.rpcHandlers.getSiteName (siteurl))
 	local (title = "", url = "", department = ""); //edit won't set an attribute if it's the empty string
 	bundle { //decode &quot; and &apos; in title and content
 		title = string.replaceAll (title, "&quot;", "\"");
@@ -15,5 +15,5 @@ on editPost (appkey, postid, username, password, content, publish) {
 		content = string.replaceAll (content, "&apos;", "\'")};
 	manilaSuite.rpcHandlers.newsItem.edit (username, password, sitename, msgnum, title, url, content, department, publish);
 	return (true)};
-«bundle //test code
-	«dialog.alert (editPost ("xxx", "http://127.0.0.1/blogger/$14", "jake@userland.com", user.prefs.manilaPassword, "If you see this then editPost worked buzzah..", true))
+//bundle //test code
+	//dialog.alert (editPost ("xxx", "http://127.0.0.1/blogger/$14", "jake@userland.com", user.prefs.manilaPassword, "If you see this then editPost worked buzzah..", true))

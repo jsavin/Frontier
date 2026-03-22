@@ -21,7 +21,7 @@ if dialog.ask ("Name of new website table?", @user.prefs.dialogs.lastNewSite) {
 		adrSite^ = html.data.newSiteTemplate;
 		
 		bundle { //set font and font size of new site according to user's prefs
-			«Wednesday, January 21, 1998 at 4:23:41 PM by PBS
+			//Wednesday, January 21, 1998 at 4:23:41 PM by PBS
 			local (oldTarget = target.set (adrSite));
 			editMenu.setFont (user.prefs.fonts.tableFont);
 			editMenu.setFontSize (user.prefs.fonts.tableFontSize);

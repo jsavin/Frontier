@@ -1,12 +1,12 @@
 on pageFilter () {
 	with html.data.page {
-		try { «some pages are empty, don't want to stop rendering
+		try { //some pages are empty, don't want to stop rendering
 			local (ch = string.upper (bodytext [1]));
 			if (ch >= 'A') and (ch <= 'Z') {
 				local (fonton = "<FONT SIZE=+2><b>", fontoff = "</b></FONT>");
 				bodytext = fonton + ch + fontoff + string.mid (bodytext, 2, sizeof (bodytext))}};
-		«Mon, Jan 20, 1997 at 3:13:29 PM by PH
-			«Check default file name agains pref
+		//Mon, Jan 20, 1997 at 3:13:29 PM by PH
+			//Check default file name agains pref
 		if nameof (adrobject^) != html.getPref ("defaultFileName") {
 			local (stringstrip = string (parentOf (html.data.page.filters^) + "."));
 			local (path = string (adrobject) - stringstrip);

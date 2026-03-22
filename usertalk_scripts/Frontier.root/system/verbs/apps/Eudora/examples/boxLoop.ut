@@ -1,6 +1,6 @@
 on boxLoop (boxName) {
-	«an example to show how to loop over all the messages in the In box
-		«we just display the subject of each message in Frontier's main window
+	//an example to show how to loop over all the messages in the In box
+		//we just display the subject of each message in Frontier's main window
 	
 	with objectmodel, Eudora, eventInfo {
 		local (mailboxObj = mailfolder [""].mailbox [boxName]);

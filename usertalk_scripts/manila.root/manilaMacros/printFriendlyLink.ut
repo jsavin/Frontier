@@ -1,7 +1,7 @@
 on printFriendlyLink (s="Print-Friendly Version") {
-	«Changes:
-		«12/19/01; 9:08:30 PM by PBS
-			«Works with static rendering pages now.
+	//Changes:
+		//12/19/01; 9:08:30 PM by PBS
+			//Works with static rendering pages now.
 	local (pta = html.getPageTableAddress ());
 	local (printUrl = pta^.uri);
 	if manilaSuite.staticRendering.isStaticRendering (pta) {

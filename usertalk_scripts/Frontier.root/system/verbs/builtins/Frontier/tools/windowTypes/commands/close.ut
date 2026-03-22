@@ -1,12 +1,12 @@
 on close (adr=nil) {
-	«Close a window.
-	«Changes:
-		«09/30/00; 12:51:56 PM by PBS
-			«Call callbacks.
-		«11/30/00; 12:09:26 AM by JES
-			«Dereference callback addresses in a try block in case a tool's odb is not opened
-		«07/03/01; 12:32:56 AM by JES
-			«Migrated form pike.commands.close.
+	//Close a window.
+	//Changes:
+		//09/30/00; 12:51:56 PM by PBS
+			//Call callbacks.
+		//11/30/00; 12:09:26 AM by JES
+			//Dereference callback addresses in a try block in case a tool's odb is not opened
+		//07/03/01; 12:32:56 AM by JES
+			//Migrated form pike.commands.close.
 	
 	if adr == nil { //close the frontmost window
 		adr = window.frontmost ()};

@@ -1,5 +1,5 @@
 on authenticateMember (username, password, discussRoot) {
-	«Determine whether the user has access to the DG
+	//Determine whether the user has access to the DG
 	local (adrdiscuss = mainResponder.editorial.getDiscussTableAddress (discussRoot));
 	local (membergroup = adrdiscuss^.editorialprefs.membershipgroup);
 	try {

@@ -1,13 +1,13 @@
-«List Manila sites on a server.
-	«Changes:
-		«10/25/04; 12:40:01 AM by JES
-			«Link to the site instead of to the site's discussion group.
-		«06/05/01; 11:02:37 AM by PBS
-			«When getting the ME's real name, don't generate a fatal error if there's a problem finding the membership group.
-		«01/05/01; 11:58:52 AM by PBS
-			«Moved or no longer existing sites can cause an error: the error should be non-fatal.
-		«02/23/00; 10:15:57 PM by PBS
-			«Don't list sites that aren't Manila sites. Trying to list a site that isn't a Manila site would cause an error. Non-Manila sites shouldn't be in config.manila.sites -- but sometimes they are.
+//List Manila sites on a server.
+	//Changes:
+		//10/25/04; 12:40:01 AM by JES
+			//Link to the site instead of to the site's discussion group.
+		//06/05/01; 11:02:37 AM by PBS
+			//When getting the ME's real name, don't generate a fatal error if there's a problem finding the membership group.
+		//01/05/01; 11:58:52 AM by PBS
+			//Moved or no longer existing sites can cause an error: the error should be non-fatal.
+		//02/23/00; 10:15:57 PM by PBS
+			//Don't list sites that aren't Manila sites. Trying to list a site that isn't a Manila site would cause an error. Non-Manila sites shouldn't be in config.manila.sites -- but sometimes they are.
 
 local (pta = html.getPageTableAddress ());
 local (htmlText = "");
@@ -26,7 +26,7 @@ bundle { //build an intermediate table of information about the sites
 		for i = 1 to sizeOf (adrSites^) {
 			if defined (adrSites^ [i]^) {
 				try { //PBS 01/05/01: moved sites or no longer existing sites can cause an error: the error should be non-fatal
-					«Get information about this site.
+					//Get information about this site.
 					local (adrSite = adrSites^ [i]);
 					if not (manilaSuite.isManilaSite (adrSite)) { //PBS 02/23/00: don't list sites that aren't Manila sites
 						continue};
@@ -46,11 +46,11 @@ bundle { //build an intermediate table of information about the sites
 						profilesUrl = profilesUrl + "$"};
 					local (membershipGroupName = adrSite^.["#prefs"].defaultMembershipGroup);
 					
-					«Create a new entry in the table for this site.
+					//Create a new entry in the table for this site.
 					local (adrItem = @infoTable.[siteName]);
 					new (tableType, adrItem);
 					
-					«Populate the entry in the table.
+					//Populate the entry in the table.
 					adrItem^.site = siteName;
 					adrItem^.siteUrl = siteUrl;
 					adrItem^.managingEditor = editor;
@@ -73,12 +73,12 @@ bundle { //build an intermediate table of information about the sites
 local (adrTable = html.table.new (border:0, cellspacing:5, cellpadding:3));
 bundle { //build the table that gets rendered as HTML
 	if flFoundSites {
-		«Set up the HTML table
+		//Set up the HTML table
 		html.table.addColumn (adrTable, "Site");
 		html.table.addColumn (adrTable, "Managing Editor");
 		html.table.addColumn (adrTable, "Modified");
 		
-		«Loop through the table of info about the sites on this server.
+		//Loop through the table of info about the sites on this server.
 		for i = 1 to sizeOf (infoTable) {
 			local (adrItem = @infoTable [i]);
 			

@@ -1,11 +1,11 @@
 on rpcServerBrowser (lineCount, colors) { //a macro that returns HTML for the log
-	«Render the XML-RPC Server log as HTML.
-		«10/26/99; 4:03:18 AM by AR
-		«Changes:
-			«4/14/00; 5:44:49 PM by JES
-				«localized
-			«11/6/99; 6:10:17 PM by PBS
-				«Removed the HTML caching as it's causing display glitches.
+	//Render the XML-RPC Server log as HTML.
+		//10/26/99; 4:03:18 AM by AR
+		//Changes:
+			//4/14/00; 5:44:49 PM by JES
+				//localized
+			//11/6/99; 6:10:17 PM by PBS
+				//Removed the HTML caching as it's causing display glitches.
 	
 	local (adrLog = log.getGuestSubTable ("rpcServer"));
 	lineCount = number (lineCount); //I keep getting bit by this, when called thru a macro, it's a string DW
@@ -26,7 +26,7 @@ on rpcServerBrowser (lineCount, colors) { //a macro that returns HTML for the lo
 		add (mainResponder.getString ("log.noLogEntriesToday")); // 4/14/00 JES: localizes
 		return (htmlText)};
 	add ("<table border=\"0\" cellpadding=\"5\" cellspacing=\"0\">"); indentLevel++;
-	«add ("<table width=\"92%\" border=\"0\" cellpadding=\"0\" cellspacing=\"0\">"); indentLevel++
+	//add ("<table width=\"92%\" border=\"0\" cellpadding=\"0\" cellspacing=\"0\">"); indentLevel++
 	
 	adrHourTable = @adrLog^ [sizeLog]; //generate for the most recent hour
 	sizeHourTable = sizeOf (adrHourTable^);

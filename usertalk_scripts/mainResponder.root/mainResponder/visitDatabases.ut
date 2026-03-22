@@ -1,7 +1,7 @@
 on visitDatabases (callback) { //call the routine for every open database
-	«Changes:
-		«12/8/99; 9:57:51 AM by PBS
-			«Don't visit index.root and news.root if they don't exist.
+	//Changes:
+		//12/8/99; 9:57:51 AM by PBS
+			//Don't visit index.root and news.root if they don't exist.
 	
 	on visitfile (f) {
 		if window.isopen (f) {
@@ -16,5 +16,5 @@ on visitDatabases (callback) { //call the routine for every open database
 	visitfile (system.temp.mainResponder.membersRootFile);
 	if defined (system.temp.mainResponder.newsRootFile) { //PBS 12/8/99: visit only if news.root exists
 		visitfile (system.temp.mainResponder.newsRootFile)}};
-«bundle //test code
-	«visitDatabases (@msg)
+//bundle //test code
+	//visitDatabases (@msg)

@@ -17,9 +17,9 @@ on createMessage (adrmsg, s = nil) {
 			collectIDs (@adrmsg^.elementIDs, adrdocument)}}
 	else {
 		new (tableType, adrdocument)};
-	«bundle //initialize pointers into doctree
-		«adrmsg^.envelope = false
-		«adrmsg^.header = false
-		«adrmsg^.body = false
-		«adrmsg^.fault = false
+	//bundle //initialize pointers into doctree
+		//adrmsg^.envelope = false
+		//adrmsg^.header = false
+		//adrmsg^.body = false
+		//adrmsg^.fault = false
 	return (adrdocument)}

@@ -1,13 +1,13 @@
 on getPathAttValue (attName, defaultAttValue = "", flInherit=true, flDebug = false) {
-	«manilaSuite.sitePrefs.siteStructure.getPathAttValue : 04/05/16, 17:04:29 by DAB
-		«02/07/22, 20:08:10 by DAB
-			«rewrite to use manilaFixer.siteStructure.minimiseSiteStructure
-		«00/05/13, 18:04:41 by DAB
-			«Exit gracefully if no value set for pta^.heirarchyLoc
-		«manilaextras.pathAtt : 00/04/25, 15:04:45 by DAB
-			«given an attribute name, do a walk up the hierarchy from the current page
-			«looking for a story/category with  a value for that attribute.  Use thatvalue
-			«to identify a picture (from the picture list) and return the current url.
+	//manilaSuite.sitePrefs.siteStructure.getPathAttValue : 04/05/16, 17:04:29 by DAB
+		//02/07/22, 20:08:10 by DAB
+			//rewrite to use manilaFixer.siteStructure.minimiseSiteStructure
+		//00/05/13, 18:04:41 by DAB
+			//Exit gracefully if no value set for pta^.heirarchyLoc
+		//manilaextras.pathAtt : 00/04/25, 15:04:45 by DAB
+			//given an attribute name, do a walk up the hierarchy from the current page
+			//looking for a story/category with  a value for that attribute.  Use thatvalue
+			//to identify a picture (from the picture list) and return the current url.
 	local (pta = html.getPageTableAddress());
 	
 	manilaSuite.sitePrefs.siteStructure.minimiseSiteStructure(pta);
@@ -32,7 +32,7 @@ on getPathAttValue (attName, defaultAttValue = "", flInherit=true, flDebug = fal
 		attValue =defaultAttValue};
 	
 	return attValue};
-«bundle
-	«local (tbl = temp.pta.["853"].pageFilter)
-	«html.setPageTableAddress(@tbl)
-	«msg(pathAtt("hue", "white", flDebug:true))
+//bundle
+	//local (tbl = temp.pta.["853"].pageFilter)
+	//html.setPageTableAddress(@tbl)
+	//msg(pathAtt("hue", "white", flDebug:true))

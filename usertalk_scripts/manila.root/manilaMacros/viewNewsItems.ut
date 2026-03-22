@@ -1,21 +1,21 @@
 on viewNewsItems (n=10, department=nil, newsItemTemplate=nil, flEditLinks=true, maxDate=nil, minDate=nil, flUseNewsDayTemplate=false, flSupressAnchors=false) {
-	«Changes
-		«3/25/13; 4:10:38 PM by JES
-			«New optional parameter, flSupressAnchors.
-				«Defaults false. If true, then anchor tags are supressed unless the news item template contains {permalink} or {permalinkUrl} macros.
-		«3/19/07; 2:53:34 PM by LL
-			«Bug fix: Support a new news item macro: {itemPostTime} to prevent conflicts with a macro replacement in the page filter.
-		«5/5/06; 11:23:20 PM by JES
-			«Catch up to a bunch of enclosure- and summary-related macros that are valid in news item templates.
-		«12/7/04; 7:39:43 PM by JES
-			«Fix a bug in static rendering, introduced with the last change.
-		«11/30/04; 12:38:54 PM by JES
-			«Call through manilaSuite.news.getNewsItemTemplate rather than manilaSuite.getNewsSitePref to get the default news item template. Fixes incorrect rendering when the news item template is stored as an outline or a wpText, since getNewsItemTemplate does string coercion.
-			«Fix suggested by DAB.
-		«4/10/02; 5:44:03 PM by JES
-			«Created. Give Manila users a way to create department pages, and sidebars that roll news items.
+	//Changes
+		//3/25/13; 4:10:38 PM by JES
+			//New optional parameter, flSupressAnchors.
+				//Defaults false. If true, then anchor tags are supressed unless the news item template contains {permalink} or {permalinkUrl} macros.
+		//3/19/07; 2:53:34 PM by LL
+			//Bug fix: Support a new news item macro: {itemPostTime} to prevent conflicts with a macro replacement in the page filter.
+		//5/5/06; 11:23:20 PM by JES
+			//Catch up to a bunch of enclosure- and summary-related macros that are valid in news item templates.
+		//12/7/04; 7:39:43 PM by JES
+			//Fix a bug in static rendering, introduced with the last change.
+		//11/30/04; 12:38:54 PM by JES
+			//Call through manilaSuite.news.getNewsItemTemplate rather than manilaSuite.getNewsSitePref to get the default news item template. Fixes incorrect rendering when the news item template is stored as an outline or a wpText, since getNewsItemTemplate does string coercion.
+			//Fix suggested by DAB.
+		//4/10/02; 5:44:03 PM by JES
+			//Created. Give Manila users a way to create department pages, and sidebars that roll news items.
 	if newsItemTemplate == nil { //get the default template
-		«newsItemTemplate = string (manilaSuite.getNewsSitePref ("newsItems.template"))
+		//newsItemTemplate = string (manilaSuite.getNewsSitePref ("newsItems.template"))
 		local (pta = html.getPageTableAddress ());
 		local (adrsite = manilaSuite.getManilaSiteAddress (pta));
 		newsItemTemplate =  manilaSuite.news.getNewsItemTemplate (adrSite)}

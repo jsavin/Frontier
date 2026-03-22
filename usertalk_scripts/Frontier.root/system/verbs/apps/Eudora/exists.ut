@@ -1,2 +1,2 @@
-on exists (obj) { «Verify if an object exists
+on exists (obj) { //Verify if an object exists
 	return (appleEvent (Eudora.id, 'core', 'doex', '----', objspec (obj)))}

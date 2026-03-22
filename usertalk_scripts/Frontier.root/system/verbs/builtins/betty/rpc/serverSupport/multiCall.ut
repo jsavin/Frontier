@@ -1,9 +1,9 @@
 on multiCall (callarray) {
-	«Changes
-		«4/9/01; 9:35:11 AM by DW
-			«Created. Conforms to the spec here:
-			«http://www.xmlrpc.com/discuss/msgReader$1208
-			«Called from user.betty.rpcHandlers.system.multiCall.
+	//Changes
+		//4/9/01; 9:35:11 AM by DW
+			//Created. Conforms to the spec here:
+			//http://www.xmlrpc.com/discuss/msgReader$1208
+			//Called from user.betty.rpcHandlers.system.multiCall.
 	bundle { //fault if this is a recursive call
 		try { //if we're debugging, don't fail
 			local (adrparamtable = parentof (client));

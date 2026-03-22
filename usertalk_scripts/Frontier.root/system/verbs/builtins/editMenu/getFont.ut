@@ -1,2 +1,2 @@
-on getFont () { «new in 4.0b9
+on getFont () { //new in 4.0b9
 	kernel (editMenu.getFont)}

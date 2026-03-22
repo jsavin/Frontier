@@ -1,10 +1,10 @@
 on usernameMustBeEmail (adrsite=nil, adrMembershipGroup=nil) {
-	«Changes
-		«11/1/05; 3:43:57 AM by JES
-			«Created. Return true if this site or server requires that a member's user name must be an email address, or false if not.
-				«Server-level pref is at config.manila.prefs.flUsernameMustBeEmail.
-				«Site-level pref is flUsernameMustBeEmail in the membership group table for the site.
-				«The site-level pref takes precidence over the server-level pref.
+	//Changes
+		//11/1/05; 3:43:57 AM by JES
+			//Created. Return true if this site or server requires that a member's user name must be an email address, or false if not.
+				//Server-level pref is at config.manila.prefs.flUsernameMustBeEmail.
+				//Site-level pref is flUsernameMustBeEmail in the membership group table for the site.
+				//The site-level pref takes precidence over the server-level pref.
 	if adrMembershipGroup == nil {
 		if adrsite == nil {
 			local (adrsite = manilaSuite.getSiteAddress ())};

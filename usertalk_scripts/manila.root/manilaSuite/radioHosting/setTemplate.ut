@@ -1,6 +1,6 @@
-«Changes:
-	«2/17/02; 2:05:18 AM by JS
-		«Created. Set the template for a comments popup-browser-window.
+//Changes:
+	//2/17/02; 2:05:18 AM by JS
+		//Created. Set the template for a comments popup-browser-window.
 local (pta = html.getPageTableAddress ());
 local (adrhosting = manilaSuite.radioHosting.init ());
 local (adrcomments = @adrhosting^.comments);

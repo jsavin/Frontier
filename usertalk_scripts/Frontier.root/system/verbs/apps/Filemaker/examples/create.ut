@@ -1,27 +1,27 @@
-«Examples of syntax for the "create()" verb
-	«be sure the State Capitals database is open before running this
-		«If you do not alread have this database you can create a simple database
-		«with two fields, the first being "Name" the second "Capitol"
-	«Step through this script and use lookup to watch the value of scratchVar
-«syntax:
-	«on create (new, withData = nil, withProperties = nil, at = nil) «Create a new element
+//Examples of syntax for the "create()" verb
+	//be sure the State Capitals database is open before running this
+		//If you do not alread have this database you can create a simple database
+		//with two fields, the first being "Name" the second "Capitol"
+	//Step through this script and use lookup to watch the value of scratchVar
+//syntax:
+	//on create (new, withData = nil, withProperties = nil, at = nil) //Create a new element
 
 with objectModel, Filemaker {
-	bundle { «creating records
-		create(record); «create a new blank record
-		create(record,{"Washington","Olympia"}); «record with data
-		create(record,"Washington"+tab+"Olympia"); «record with data as string
-		create(record, {"Washington","Olympia"},0,endOf(database[1])); «create a record with data at a location
-		«other locations could be: (all result in a insertionLoc object)
-			«beginningOf(obj)
-			«after(obj)
-			«before(obj)
-			«replace(obj)? Haven't tested this one};
-	bundle { «creating requests
-		create(request,{"Washington","Olympia"}); «create request with data
-		create(request,{"Washington"}); «create request with partial data (first cell)
-		create(request,"Washington"); «create request with partial data (first cell)
-		create(request, {"","Olympia"}); «create request with partial data (second cell)
-		create(request,{"Washington","Olympia"},0,endOf(database[1])); «create a request at a location
-		create(request,{"Washington","Olympia"},{omitted:true}); «create a request with omitted property
+	bundle { //creating records
+		create(record); //create a new blank record
+		create(record,{"Washington","Olympia"}); //record with data
+		create(record,"Washington"+tab+"Olympia"); //record with data as string
+		create(record, {"Washington","Olympia"},0,endOf(database[1])); //create a record with data at a location
+		//other locations could be: (all result in a insertionLoc object)
+			//beginningOf(obj)
+			//after(obj)
+			//before(obj)
+			//replace(obj)? Haven't tested this one};
+	bundle { //creating requests
+		create(request,{"Washington","Olympia"}); //create request with data
+		create(request,{"Washington"}); //create request with partial data (first cell)
+		create(request,"Washington"); //create request with partial data (first cell)
+		create(request, {"","Olympia"}); //create request with partial data (second cell)
+		create(request,{"Washington","Olympia"},0,endOf(database[1])); //create a request at a location
+		create(request,{"Washington","Olympia"},{omitted:true}); //create a request with omitted property
 		}}

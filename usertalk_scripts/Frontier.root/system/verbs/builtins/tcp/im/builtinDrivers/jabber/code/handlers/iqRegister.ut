@@ -1,8 +1,8 @@
 on iqRegister ( connection, mesAdr, iq, query ) {
-	«Changes
-		«5/14/02; 1:51:34 PM by JB
-			«Changelog created.
-	«iqRegister will respond to a registration response from the server.
+	//Changes
+		//5/14/02; 1:51:34 PM by JB
+			//Changelog created.
+	//iqRegister will respond to a registration response from the server.
 	on addAtt ( XMLadr, name, value ) {
 		if not defined ( XMLadr^.["/atts"] ) {
 			new ( tableType, @XMLadr^.["/atts"] )};
@@ -36,4 +36,4 @@ on iqRegister ( connection, mesAdr, iq, query ) {
 				xml.addValue ( q, name, connection^.registrationInfoAdr^.[name] )}}};
 	
 	tcp.im.builtinDrivers.jabber.code.writeXML (iq, connection: connection )};
-«iqRegister(@system.temp.jabber.references[1], nil, nil, nil, "temp" )
+//iqRegister(@system.temp.jabber.references[1], nil, nil, nil, "temp" )

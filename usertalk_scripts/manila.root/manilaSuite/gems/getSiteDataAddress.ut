@@ -1,6 +1,6 @@
 on getSiteDataAddress (adrSite) {
-	«Return the address of the table containing gems info for this site.
-		«04/14/00; 2:01:56 PM by PBS
+	//Return the address of the table containing gems info for this site.
+		//04/14/00; 2:01:56 PM by PBS
 	
 	local (adrTable = manilaSuite.gems.getSiteGemsAddress (adrSite));
 	local (adrData = @adrTable^.data);

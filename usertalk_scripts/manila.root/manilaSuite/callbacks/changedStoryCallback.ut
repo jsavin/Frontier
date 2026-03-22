@@ -1,6 +1,6 @@
 on changedStoryCallback (adrMsg) {
-	«This scripts exists for historical reasons: this script is called from user space. This script now simply forwards to manilaSuite.callbacks.changedMessageCallback. This script exists to avoid breakage.
-		«04/05/00; 11:18:09 AM by PBS
+	//This scripts exists for historical reasons: this script is called from user space. This script now simply forwards to manilaSuite.callbacks.changedMessageCallback. This script exists to avoid breakage.
+		//04/05/00; 11:18:09 AM by PBS
 	
 	manilaSuite.callbacks.changedMessageCallback (adrMsg);
 	

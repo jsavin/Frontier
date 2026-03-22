@@ -1,2 +1,2 @@
-on callInstallApp (path) { «this script is saved in all commercial install files
+on callInstallApp (path) { //this script is saved in all commercial install files
 	return (commercial.installApp (path))}

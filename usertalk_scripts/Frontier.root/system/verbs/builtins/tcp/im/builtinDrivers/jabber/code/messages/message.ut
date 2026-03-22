@@ -1,10 +1,10 @@
 on message ( dest, text = nil, htmlText = nil, subject = nil, type = "chat", thread = nil, connection = @system.temp.jabber.connection) {
-	«Changes
-		«10/25/02; 2:27:50 PM by JES
-			«Entity-encode the text here instead of through a call to xml.entityEncode, per recommendation from Andre Radke.
-			«Radio and Frontier's implementation of xml.entityEncode are slightly different, but changing Frontier's xml.entityEncode verb would introduce too much possibility for breakage for the problem to be addressed at that level.
-		«5/14/02; 1:51:34 PM by JB
-			«Changelog created.
+	//Changes
+		//10/25/02; 2:27:50 PM by JES
+			//Entity-encode the text here instead of through a call to xml.entityEncode, per recommendation from Andre Radke.
+			//Radio and Frontier's implementation of xml.entityEncode are slightly different, but changing Frontier's xml.entityEncode verb would introduce too much possibility for breakage for the problem to be addressed at that level.
+		//5/14/02; 1:51:34 PM by JB
+			//Changelog created.
 	on addAtt ( XMLadr, name, value ) {
 		if not defined ( XMLadr^.["/atts"] ) {
 			new ( tableType, @XMLadr^.["/atts"] )};

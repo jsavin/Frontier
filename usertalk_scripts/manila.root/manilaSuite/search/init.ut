@@ -1,7 +1,7 @@
 on init (adrsite=nil) {
-	«Changes
-		«8/3/02; 10:05:36 PM by JES
-			«Created. Init the search sub-table of a Manila site's #newsSite table.
+	//Changes
+		//8/3/02; 10:05:36 PM by JES
+			//Created. Init the search sub-table of a Manila site's #newsSite table.
 	if adrsite == nil {
 		adrsite = manilaSuite.getSiteAddress ()};
 	local (adrnewssite = manilaSuite.getNewsSiteAddress (adrsite));

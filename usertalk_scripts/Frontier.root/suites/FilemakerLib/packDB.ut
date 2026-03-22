@@ -1,6 +1,6 @@
 on packDB (dbPath, adrTable, reportError = false) {
-	«Sat, Dec 6, 1997 at 1:48:30 AM by PBS
-		«Fixed toys call.
+	//Sat, Dec 6, 1997 at 1:48:30 AM by PBS
+		//Fixed toys call.
 	on doIt () {
 		local (adrObject = @adrTable^.[file.fileFromPath (dbPath)]);
 		adrObject^ = file.readWholeFile (dbPath);

@@ -1,6 +1,6 @@
 on deleteExpiredSubscriptions (adrTable, adrStats=nil) {
-	«Delete expired subscriptions.
-		«1/15/02; 6:16:11 PM by PBS
+	//Delete expired subscriptions.
+		//1/15/02; 6:16:11 PM by PBS
 	xml.pubsub.initTable (adrTable);
 	local (i, adrurl, ctdeleted = 0, cttotal = 0);
 	for i = sizeof (adrTable^.notify) downto 1 {

@@ -1,7 +1,7 @@
 on indexDiscussionMessage (adrStorage, flSpawnThread=true) {
-	«Add a discussion group message to the search engine.
+	//Add a discussion group message to the search engine.
 	
-	«Get the address of the message reader page.
+	//Get the address of the message reader page.
 	
 	local (adrMessages = parentOf (adrStorage^));
 	local (adrRoot = parentOf (adrMessages^));
@@ -21,16 +21,16 @@ on indexDiscussionMessage (adrStorage, flSpawnThread=true) {
 		mainResponder.search.client.logNoIndex (adrStorage, "adrMsgReader, in the prefs for this discussion group, points to a page that doesn't exist.");
 		return (true)};
 	
-	«Index the msgReader-type page.
+	//Index the msgReader-type page.
 	
 	mainResponder.search.client.index (adrMsgReader, true, adrStorage);
 	
-	«Handle alsoListedIn.
+	//Handle alsoListedIn.
 	
 	if defined (adrStorage^.alsoListedIn) {
 		local (i);
 		
-		«Loop through each alsoListedIn category, and find and index each page.
+		//Loop through each alsoListedIn category, and find and index each page.
 		for i = 1 to sizeOf (adrStorage^.alsoListedIn) {
 			local (site = adrStorage^.alsoListedIn [i]);
 			local (adrStory);

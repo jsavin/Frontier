@@ -1,11 +1,11 @@
 on soap (rpcServer, procedureName, paramRecord) {
-	«Changes
-		«4/13/06; 4:11:12 AM by JES
-			«Pass flEnforceSimpleTypes as false, and flDuplicatesToArrays as true, to soap.rpc.client. Increases SCNS-Soap compatibility, especially with servers that use the 2001 Soap encoding conventions.
-		«7/14/04; 4:27:52 PM by JES
-			«Added ability to change charset declaration, using ?charset=xxx in the rpcServer URI.
-		«2/6/02; 4:48:41 PM by JES
-			«Created.
+	//Changes
+		//4/13/06; 4:11:12 AM by JES
+			//Pass flEnforceSimpleTypes as false, and flDuplicatesToArrays as true, to soap.rpc.client. Increases SCNS-Soap compatibility, especially with servers that use the 2001 Soap encoding conventions.
+		//7/14/04; 4:27:52 PM by JES
+			//Added ability to change charset declaration, using ?charset=xxx in the rpcServer URI.
+		//2/6/02; 4:48:41 PM by JES
+			//Created.
 	local (fldebug = false);
 	if defined (user.soap.prefs.flDebug) {
 		fldebug = user.soap.prefs.flDebug};

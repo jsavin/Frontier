@@ -1,16 +1,16 @@
 on sendMemberSignupMail (adrMemberInfo=nil, adrsite=nil, emailText=nil, subject=nil) {
-	«Changes:
-		«11/1/05; 4:50:47 AM by JES
-			«Only throw an error sending the welcome email if the site or server requires that members have a valid email address.
-		«10/15/05; 4:59:58 AM by JES
-			«Use personalInfo.email for recipient address, if defined.
-				«Change by DAB.
-		«3/9/05; 5:01:19 AM by JES
-			«New optional params, emailText and subject. Allows the caller to override the default message.
-		«9/10/02; 10:18:05 PM by JES
-			«New optional param, adrsite, makes it possible to call this script from outside the website framework context.
-		«7/27/01; 6:52:10 PM by JES
-			«Factored from manilaSuite.members.signupCallback. This script optionally takes the address of a member's table, to whom you want to send a welcome email.
+	//Changes:
+		//11/1/05; 4:50:47 AM by JES
+			//Only throw an error sending the welcome email if the site or server requires that members have a valid email address.
+		//10/15/05; 4:59:58 AM by JES
+			//Use personalInfo.email for recipient address, if defined.
+				//Change by DAB.
+		//3/9/05; 5:01:19 AM by JES
+			//New optional params, emailText and subject. Allows the caller to override the default message.
+		//9/10/02; 10:18:05 PM by JES
+			//New optional param, adrsite, makes it possible to call this script from outside the website framework context.
+		//7/27/01; 6:52:10 PM by JES
+			//Factored from manilaSuite.members.signupCallback. This script optionally takes the address of a member's table, to whom you want to send a welcome email.
 	
 	if adrsite == nil or adrmemberinfo == nil { //get these from the pageTable
 		local (pta = html.getPageTableAddress ());

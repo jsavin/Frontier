@@ -14,6 +14,6 @@ on editButton (discussRoot, msgnum) {
 	add ("<input type=hidden name=\"msgnum\" value=\"" + msgnum + "\">");
 	add ("<input type=hidden name=\"referer\" value=\"" + pta^.url + "\">");
 	add ("<input type=submit value=\"Edit\">");
-	«add ("<input type=button value=\"Edit\" onClick=\"window.open('" + adrcategory^.editURL + "', 'Edit " + adrcategory^.displayname + "', 'width=350,height=400,scrollbars=yes')\">")
+	//add ("<input type=button value=\"Edit\" onClick=\"window.open('" + adrcategory^.editURL + "', 'Edit " + adrcategory^.displayname + "', 'width=350,height=400,scrollbars=yes')\">")
 	add ("</form></p>"); indentLevel--;
 	return (htmltext)}

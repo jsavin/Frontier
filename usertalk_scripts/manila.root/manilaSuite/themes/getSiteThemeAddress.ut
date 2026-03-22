@@ -1,6 +1,6 @@
 on getSiteThemeAddress (adrSite) {
-	«Given the address of a site, return the address of the theme that has been applied to this site.
-		«06/06/00; 3:37:37 PM by PBS
+	//Given the address of a site, return the address of the theme that has been applied to this site.
+		//06/06/00; 3:37:37 PM by PBS
 	
 	local (themeName = "default");
 	if defined (adrSite^.["#themes"].lastThemeApplied) {

@@ -1,6 +1,6 @@
 on cleanObjectForExport (adrObject) {
-	«Sunday, November 21, 1999 at 12:06:52 AM by AR
-		«Make sure the object can be encoded as an XML-RPC response.
+	//Sunday, November 21, 1999 at 12:06:52 AM by AR
+		//Make sure the object can be encoded as an XML-RPC response.
 	on cleanObject (adrObject) {
 		case typeOf (adrObject^) {
 			binaryType;

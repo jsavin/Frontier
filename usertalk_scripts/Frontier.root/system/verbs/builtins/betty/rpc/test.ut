@@ -1,5 +1,5 @@
-«3/7/99; 11:41:05 AM by DW
-	«Test asynch RPC
+//3/7/99; 11:41:05 AM by DW
+	//Test asynch RPC
 local (adrcallback = @scratchpad.rpccallback);
 new (scripttype, adrcallback);
 target.set (adrcallback);

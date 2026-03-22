@@ -1,10 +1,10 @@
 on compile (adrservice, flSaveData=false, adrStoryArrivedCallback=nil) {
-	«Changes
-		«3/17/02; 10:39:42 AM by DW
-			«Created by Dave Babbit, debugged and tweaked by Dave Winer.
-				«http://radio.userland.com/discuss/msgReader$11985
-			«Released as the first example for a format driver.
-				«http://radio.userland.com/aggregatorDriverArchitecture#anExample
+	//Changes
+		//3/17/02; 10:39:42 AM by DW
+			//Created by Dave Babbit, debugged and tweaked by Dave Winer.
+				//http://radio.userland.com/discuss/msgReader$11985
+			//Released as the first example for a format driver.
+				//http://radio.userland.com/aggregatorDriverArchitecture#anExample
 	on decode (s) {
 		return (xml.rss.decodeString (s))};
 	on addToHistory (adritem) {
@@ -61,11 +61,11 @@ on compile (adrservice, flSaveData=false, adrStoryArrivedCallback=nil) {
 				adrdata^.author = author};
 			addToHistory (adritem)}};
 	return (true)};
-«bundle //test code
-	«local (url = "http://www.macromedia.com/desdev/resources/macromedia_resources.xml")
-	«local (adrservice = xml.rss.initService (url, @aggregatorData.services))
-	«new (tabletype, @adrservice^.compilation)
-	«new (tabletype, @adrservice^.compilation.itemHistory)
-	«adrservice^.xmltext = tcp.httpReadUrl (url)
-	«xml.compile (adrservice^.xmltext, @adrservice^.xmlstruct)
-	«compile (adrservice, true, @xml.aggregator.storyArrivedCallback)
+//bundle //test code
+	//local (url = "http://www.macromedia.com/desdev/resources/macromedia_resources.xml")
+	//local (adrservice = xml.rss.initService (url, @aggregatorData.services))
+	//new (tabletype, @adrservice^.compilation)
+	//new (tabletype, @adrservice^.compilation.itemHistory)
+	//adrservice^.xmltext = tcp.httpReadUrl (url)
+	//xml.compile (adrservice^.xmltext, @adrservice^.xmlstruct)
+	//compile (adrservice, true, @xml.aggregator.storyArrivedCallback)

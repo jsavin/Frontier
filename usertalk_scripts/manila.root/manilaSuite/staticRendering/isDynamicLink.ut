@@ -1,9 +1,9 @@
 on isDynamicLink (path) {
-	«Return true if this is a dynamic-only link, not to be filtered. Path can be a relative URL or a full URL.
-		«03/13/00; 7:04:51 PM by PBS
-		«Changes:
-			«12/19/01; 9:04:00 PM by PBS
-				«All print-friendly pages are dynamic.
+	//Return true if this is a dynamic-only link, not to be filtered. Path can be a relative URL or a full URL.
+		//03/13/00; 7:04:51 PM by PBS
+		//Changes:
+			//12/19/01; 9:04:00 PM by PBS
+				//All print-friendly pages are dynamic.
 	
 	local (pta = html.getPageTableAddress ());
 	
@@ -22,7 +22,7 @@ on isDynamicLink (path) {
 		lowerPath = string.delete (lowerPath, 1, sizeOf (serverName))};
 	
 	bundle { //strip the first part of the path that's not inside the site
-		«Path is now relative to the server. We want it relative to the site.
+		//Path is now relative to the server. We want it relative to the site.
 		local (urlParts = string.urlSplit (dynamicUrl));
 		local (dynamicUri = "/" + urlParts [3]);
 		lowerPath = string.delete (lowerPath, 1, sizeOf (dynamicUri))};

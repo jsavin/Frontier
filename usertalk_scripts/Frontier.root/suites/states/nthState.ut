@@ -1,4 +1,4 @@
-on nthState (n) { «return the name of the nth state, sorted alphabetically
+on nthState (n) { //return the name of the nth state, sorted alphabetically
 	if (n < 1) or (n > 50) {
 		return ("")}
 	else {

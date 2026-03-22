@@ -1,9 +1,9 @@
 on setContributingEditorList (s, adrNewsSite=nil) {
-	«Given a string from a sitePrefs panel, update the contributing editors list.
-		«11/11/99; 4:51:40 PM by PBS
-	«Changes
-		«9/10/02; 10:13:06 PM by JES
-			«if adrNewsSite is supplied, then this script can be called outside the website framework context.
+	//Given a string from a sitePrefs panel, update the contributing editors list.
+		//11/11/99; 4:51:40 PM by PBS
+	//Changes
+		//9/10/02; 10:13:06 PM by JES
+			//if adrNewsSite is supplied, then this script can be called outside the website framework context.
 	
 	local (ceList = manilaSuite.admin.stringToList (s));
 	if adrNewsSite == nil {

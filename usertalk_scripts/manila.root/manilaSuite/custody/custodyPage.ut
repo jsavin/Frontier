@@ -1,21 +1,21 @@
 on custodyPage (pta=nil) {
-	«Changes:
-		«10/12/05; 4:02:25 AM by JES
-			«Never throwing an error displaying a checked out item. If an error occurs displaying a checkout, delete it.
-		«2000
-			«05/11/00; 7:38:21 PM by JES
-				«merged in Brent's security fix for the client side trojan horse attack.
-			«05/09/00; 10:38:57 PM by PBS
-				«Check referer to defeat the client side trojan horse.
-			«05/01/00; 4:05:19 PM by JES
-				«Changed getString calls to use a replacement table address instead of a lists
-			«04/18/00; 7:21:10 PM by JES
-				«localized
-			«02/12/00; 12:38:58 PM by PBS
-				«Respect the editor's choice of separator colors.
-			«02/11/00; 6:23:06 PM by PBS
-				«Created. Display a page listing what's checked out, when, and by who. Give the ME the option to force a check in.
-					«There are two sections: messages and advanced items.
+	//Changes:
+		//10/12/05; 4:02:25 AM by JES
+			//Never throwing an error displaying a checked out item. If an error occurs displaying a checkout, delete it.
+		//2000
+			//05/11/00; 7:38:21 PM by JES
+				//merged in Brent's security fix for the client side trojan horse attack.
+			//05/09/00; 10:38:57 PM by PBS
+				//Check referer to defeat the client side trojan horse.
+			//05/01/00; 4:05:19 PM by JES
+				//Changed getString calls to use a replacement table address instead of a lists
+			//04/18/00; 7:21:10 PM by JES
+				//localized
+			//02/12/00; 12:38:58 PM by PBS
+				//Respect the editor's choice of separator colors.
+			//02/11/00; 6:23:06 PM by PBS
+				//Created. Display a page listing what's checked out, when, and by who. Give the ME the option to force a check in.
+					//There are two sections: messages and advanced items.
 	
 	if pta == nil {
 		pta = html.getPageTableAddress ()};
@@ -40,36 +40,36 @@ on custodyPage (pta=nil) {
 			add ("<td nowrap " + align + " valign=\"middle\" width=\"" + width + "\"><font size=\"-1\">&nbsp;&nbsp;" + s + "&nbsp;&nbsp;</font></td>")};
 		add ("\r")};
 	
-	«local (separatorColor, separatorTextColor) //commented 04/05/31, 11:31:25 by DAB 
-	«bundle //04/05/31, 11:31:57 by DAB
-		«manilaSuite.html.getSeparatorColors (@separatorColor, @separatorTextColor)
-		«on addSeparator (text)
-			«add ("<table cellpadding=\"2\" cellspacing=\"0\" width=\"100%\"><tr>")
-			«add ("<td bgcolor=\"" + separatorColor + "\"><font color=\"" + separatorTextColor + "\"><b>" + text + "</b></font></td>") //4/18/00 JES: removed colon for localization
-			«add ("</tr></table><p>")
+	//local (separatorColor, separatorTextColor) //commented 04/05/31, 11:31:25 by DAB 
+	//bundle //04/05/31, 11:31:57 by DAB
+		//manilaSuite.html.getSeparatorColors (@separatorColor, @separatorTextColor)
+		//on addSeparator (text)
+			//add ("<table cellpadding=\"2\" cellspacing=\"0\" width=\"100%\"><tr>")
+			//add ("<td bgcolor=\"" + separatorColor + "\"><font color=\"" + separatorTextColor + "\"><b>" + text + "</b></font></td>") //4/18/00 JES: removed colon for localization
+			//add ("</tr></table><p>")
 	
 	local (profilesUrl = pta^.urls^.profilesHome);
 	if not (profilesUrl endsWith "$") {
 		profilesUrl = profilesUrl + "$"};
 	on getEditorLink (memberKey, groupName) {
 		return (manilaSuite.members.linkToMember (groupName, memberKey, pta:pta, urlprefix:profilesUrl));
-		«bundle //old code
-			«on getEditorName ()
-				«local (adrMember = mainResponder.members.getMemberTable (groupName, memberKey))
-				«if defined (adrMember^.personalInfo.name)
-					«if string.trimWhiteSpace (adrMember^.personalInfo.name) != ""
-						«return (adrMember^.personalInfo.name)
-				«return (memberKey)
-			«local (editorName = getEditorName ())
-			«
-			«local (profilesUrl = pta^.urls^.profilesHome)
-			«if not (profilesUrl endsWith "$")
-				«profilesUrl = profilesUrl + "$"
-			«profilesUrl = profilesUrl + memberKey
-			«
-			«return (html.getLink (editorName, profilesUrl))};
+		//bundle //old code
+			//on getEditorName ()
+				//local (adrMember = mainResponder.members.getMemberTable (groupName, memberKey))
+				//if defined (adrMember^.personalInfo.name)
+					//if string.trimWhiteSpace (adrMember^.personalInfo.name) != ""
+						//return (adrMember^.personalInfo.name)
+				//return (memberKey)
+			//local (editorName = getEditorName ())
+			//
+			//local (profilesUrl = pta^.urls^.profilesHome)
+			//if not (profilesUrl endsWith "$")
+				//profilesUrl = profilesUrl + "$"
+			//profilesUrl = profilesUrl + memberKey
+			//
+			//return (html.getLink (editorName, profilesUrl))};
 	
-	«pta^.title = "Custody"
+	//pta^.title = "Custody"
 	
 	bundle { //handle POST commands
 		if string.lower (pta^.method) == "post" {
@@ -86,7 +86,7 @@ on custodyPage (pta=nil) {
 						local (adrMember = manilaSuite.custody.getMemberWhoHasCustody (adrMsgTable, adrSite, true));
 						manilaSuite.custody.undoCheckOut (adrMsgTable, adrMember, adrSite, true, true)}};
 				if lowerItemName beginsWith "checkinadvanceditem" {
-					«itemName = string.mid (itemName, sizeOf ("checkInAdvancedItem") + 1, infinity)
+					//itemName = string.mid (itemName, sizeOf ("checkInAdvancedItem") + 1, infinity)
 					itemName = string.urlDecode(string.mid (itemName, sizeOf ("checkInAdvancedItem") + 1, infinity)); //04/08/11, 20:21:29 by DAB
 					local (adrObject = manilaSuite.custody.getAdvancedItemAddress (itemName, adrSite));
 					try {
@@ -94,18 +94,18 @@ on custodyPage (pta=nil) {
 						manilaSuite.custody.undoCheckOut (adrObject, adrMember, adrSite, true, false)}}}}};
 	
 	bundle { //build the form
-		«addSeparator (manilaSuite.getString ("admin.custodySectionName", pta: pta)) //4/18/00 JES: localized commented 04/05/31, 11:31:06 by DAB
+		//addSeparator (manilaSuite.getString ("admin.custodySectionName", pta: pta)) //4/18/00 JES: localized commented 04/05/31, 11:31:06 by DAB
 		add (manilaSuite.getString ("admin.custodySectionDescription", pta: pta) + "<p>"); //4/18/00 JES: localized
 		local (flAnyItems = false);
 		
-		«add ("<form method=\"post\" action=\"" + pta^.fname + "\">")
+		//add ("<form method=\"post\" action=\"" + pta^.fname + "\">")
 		add ("<form method=\"post\" action=\"" + adminurl + "#custody\">"); //04/05/31, 11:28:48 by DAB
 		add ("<table cellspacing=\"3\" width=\"80%\">");
 		bundle { //column headings
 			add ("<tr>");
-			«td ("<b>Check In</b>")
+			//td ("<b>Check In</b>")
 			td ("&nbsp;");
-			«4/18/00; 8:59:18 PM by JES: localized column headers
+			//4/18/00; 8:59:18 PM by JES: localized column headers
 			td ("<b>" + manilaSuite.getString ("common.titleColumnName", pta: pta) + "</b>", width:60);
 			td ("<b>" + manilaSuite.getString ("common.editorColumnName", pta: pta) + "</b>");
 			td ("<b>" + manilaSuite.getString ("common.timeCheckedOutColumnName", pta: pta) + "</b>", "align=right");
@@ -157,7 +157,7 @@ on custodyPage (pta=nil) {
 				local (timeCheckedOut = adrItem^.checkedOutDate);
 				
 				add ("<tr>\r");
-				«td ("<input type=\"checkbox\" name=\"checkInAdvancedItem" + itemName + "\">")
+				//td ("<input type=\"checkbox\" name=\"checkInAdvancedItem" + itemName + "\">")
 				td ("<input type=\"checkbox\" name=\"checkInAdvancedItem" + string.urlencode(itemName) + "\">"); //04/08/11, 20:18:50 by DAB
 				td (itemName);
 				td (editorLink);
@@ -183,7 +183,7 @@ on custodyPage (pta=nil) {
 			local (prefsUrl = manilaSuite.admin.getSitePrefsPanelUrl ("editorial", pta));
 			local (replacementTable); new (tableType, @replacementTable); //05/01/00 JES: use replacement table instead of a list
 			replacementTable.url = prefsUrl;
-			«local (prefsLink = html.getLink ("Editorial", prefsUrl))
+			//local (prefsLink = html.getLink ("Editorial", prefsUrl))
 			add ("<p>" + manilaSuite.getString ("custody.editorialLink", @replacementTable, pta: pta))}}; //4/18/00 JES: localized
 	
 	return (manilaSuite.unTaint (htmlText))}

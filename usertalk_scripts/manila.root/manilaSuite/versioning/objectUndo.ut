@@ -1,7 +1,7 @@
 on objectUndo (pta, adrObject) {
-	«manilaSuite.versioning.objectUndo : 05/02/12, 12:22:21 by DAB
-		«perform an undo operation for advanced objects (not messages) 
-	«messages at manilaData.localization.languages.english.strings.versioning
+	//manilaSuite.versioning.objectUndo : 05/02/12, 12:22:21 by DAB
+		//perform an undo operation for advanced objects (not messages) 
+	//messages at manilaData.localization.languages.english.strings.versioning
 	local (adrSite = manilaSuite.getmanilaSiteAddress(pta));
 	local (adrNewsSite = manilaSuite.getNewsSiteAddress(adrSite)); //04/05/18, 21:10:08 by DAB
 	local (adrMember = pta^.adrMemberInfo);

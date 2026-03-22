@@ -1,2 +1,2 @@
-on get (obj, as = nil) { «Get the data for an object
+on get (obj, as = nil) { //Get the data for an object
 	return (appleEvent (Finder.id, 'core', 'getd', '----', Finder.finderSpec (obj), 'rtyp', string4 (as)))}

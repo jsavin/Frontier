@@ -1,5 +1,5 @@
-«Changes
-	«Mon, 01 Mar 1999 15:20:11 GMT by AR
-		«This script has been moved to mainResponder.calendar.pathArgsToDate
+//Changes
+	//Mon, 01 Mar 1999 15:20:11 GMT by AR
+		//This script has been moved to mainResponder.calendar.pathArgsToDate
 on pathArgsToDate (pathargs) {
 	return (mainResponder.calendar.pathArgsToDate (pathargs))}

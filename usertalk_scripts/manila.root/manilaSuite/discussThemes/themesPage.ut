@@ -1,11 +1,11 @@
 on themesPage (pta=nil) {
-	«Changes
-		«10/1/05; 2:47:21 AM by JES
-			«Fix double page title display.
-		«1/25/02; 6:22:28 PM by PBS
-			«Performance enhancements in the local "add" routine -- add a trailing semicolon; use parentheses to get the expression in x = x + y form (which is optimized by the kernel).
-		«10/27/00; 3:09:17 PM by JES
-			«Implement the discussion group themes-chooser page on a Manila site. Cribbed from manilaSuite.themes.themesPage
+	//Changes
+		//10/1/05; 2:47:21 AM by JES
+			//Fix double page title display.
+		//1/25/02; 6:22:28 PM by PBS
+			//Performance enhancements in the local "add" routine -- add a trailing semicolon; use parentheses to get the expression in x = x + y form (which is optimized by the kernel).
+		//10/27/00; 3:09:17 PM by JES
+			//Implement the discussion group themes-chooser page on a Manila site. Cribbed from manilaSuite.themes.themesPage
 	
 	if not defined (config.manila.discussionGroupThemes) {
 		manilaSuite.init ()};
@@ -52,7 +52,7 @@ on themesPage (pta=nil) {
 					manilaSuite.referer.checkSelf (); //check referer to defeat client side trojan horse
 					if defined (pta^.postArgs.yes) {
 						manilaSuite.discussThemes.apply (adrSite, themeName);
-						«Refresh page.
+						//Refresh page.
 						mainResponder.redirect (pta^.fname + "$" + pta^.pathArgs + "?refresh");
 						return ("")}}
 				else {
@@ -61,7 +61,7 @@ on themesPage (pta=nil) {
 					scriptError (manilaSuite.getString ("themes.nonexistantThemeError", @replacementTable, pta: pta))}}}};
 	
 	bundle { //add title and page description
-		«add ("<h2>" + pta^.title + "</h2>")
+		//add ("<h2>" + pta^.title + "</h2>")
 		add (manilaSuite.getString ("themes.discussThemesPageDescription", pta: pta))};
 	
 	bundle { //create the form
@@ -107,16 +107,16 @@ on themesPage (pta=nil) {
 			add ("</font>");
 			add ("</td>");
 			indentLevel--;
-			«add ("<td valign=\"top\">")
-			«indentLevel++
-			«local (url = previewLink + string.urlEncode (name))
-			«local (link)
-			«link = "<a href=\"" + url + "\" target=\"screenshot\">Screen Shot</a>"
-			«if url != ""
-				«link = "<a href=\"" + url + "\">Site</a>"
-			«add (link)
-			«add ("</td>")
-			«indentLevel--
+			//add ("<td valign=\"top\">")
+			//indentLevel++
+			//local (url = previewLink + string.urlEncode (name))
+			//local (link)
+			//link = "<a href=\"" + url + "\" target=\"screenshot\">Screen Shot</a>"
+			//if url != ""
+				//link = "<a href=\"" + url + "\">Site</a>"
+			//add (link)
+			//add ("</td>")
+			//indentLevel--
 			add ("</tr>");
 			indentLevel--};
 		

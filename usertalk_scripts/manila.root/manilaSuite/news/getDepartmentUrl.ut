@@ -1,8 +1,8 @@
 on getDepartmentUrl (adrsite, department) {
-	«Changes
-		«10/18/05; 4:40:40 AM by JES
-			«Pass adrsite to manilaSuite.getSiteUrl. Makes it possible to call this script outside the website framework.
-		«9/3/03; 12:13:12 PM by JES
-			«Created. Get the url for a given department.
+	//Changes
+		//10/18/05; 4:40:40 AM by JES
+			//Pass adrsite to manilaSuite.getSiteUrl. Makes it possible to call this script outside the website framework.
+		//9/3/03; 12:13:12 PM by JES
+			//Created. Get the url for a given department.
 	local (deptpath = manilaSuite.news.departmentNameToPath (department));
 	return (manilaSuite.getSiteUrl (adrsite) + "newsItems/departments/" + deptpath)}

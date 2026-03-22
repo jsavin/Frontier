@@ -1,48 +1,48 @@
 on trimWhiteSpace (s) {
-	«Thursday, November 11, 1999 at 2:59:11 AM by AR
-		«Implemented as a kernel verb in Frontier 6.1.
-		«Old code
-			«on trimWhiteSpace (s) //old code
-				«Strip white space from the beginning and end of a string.
-					«White space is defined as spaces, tabs, carriage returns, and line feed characters.
-					«Wed, Aug 12, 1998 at 8:10:39 PM by PBS
-				«Change notes:
-					«Mon, Feb 22, 1999 at 10:56:50 AM by PBS
-						«Completely revised: the new version, submitted by Seth Dillingham, is significantly faster than the old version, up to twice as fast.
-						«http://docserver.userland.com/string/trimWhiteSpace
-						«Old code:
-							«on trimChar (ix)
-								«if sizeOf (s) == 0
-									«return (false)
-								«case s [ix]
-									«' '
-									«'\t'
-									«'\r'
-									«'\n'
-										«delete (s [ix])
-										«return (true)
-								«return (false)
-							«loop //trim from the beginning of the string
-								«if not trimChar (1)
-									«break
-							«loop //trim from the end of the string
-								«if not trimChar (sizeOf (s))
-									«break
-							«return (s)
-				«
-				«local (i, ct = sizeOf (s), ixstart = 1, ixstop = ct )
-				«local (whiteSpaceChars = " \r\t\n") //space, carriage return, tab, line feed
-				«
-				«for i = 1 to ct //find the beginning on non-whitespace characters
-					«if (whiteSpaceChars contains s [i])
-						«ixstart++
-					«else
-						«break
-				«for i = ct downTo ixstart //find the end of non-whitespace characters
-					«if (whiteSpaceChars contains s [i])
-						«ixstop--
-					«else
-						«break
-				«
-				«return (string.mid (s, ixstart, ixstop - ixstart + 1))
+	//Thursday, November 11, 1999 at 2:59:11 AM by AR
+		//Implemented as a kernel verb in Frontier 6.1.
+		//Old code
+			//on trimWhiteSpace (s) //old code
+				//Strip white space from the beginning and end of a string.
+					//White space is defined as spaces, tabs, carriage returns, and line feed characters.
+					//Wed, Aug 12, 1998 at 8:10:39 PM by PBS
+				//Change notes:
+					//Mon, Feb 22, 1999 at 10:56:50 AM by PBS
+						//Completely revised: the new version, submitted by Seth Dillingham, is significantly faster than the old version, up to twice as fast.
+						//http://docserver.userland.com/string/trimWhiteSpace
+						//Old code:
+							//on trimChar (ix)
+								//if sizeOf (s) == 0
+									//return (false)
+								//case s [ix]
+									//' '
+									//'\t'
+									//'\r'
+									//'\n'
+										//delete (s [ix])
+										//return (true)
+								//return (false)
+							//loop //trim from the beginning of the string
+								//if not trimChar (1)
+									//break
+							//loop //trim from the end of the string
+								//if not trimChar (sizeOf (s))
+									//break
+							//return (s)
+				//
+				//local (i, ct = sizeOf (s), ixstart = 1, ixstop = ct )
+				//local (whiteSpaceChars = " \r\t\n") //space, carriage return, tab, line feed
+				//
+				//for i = 1 to ct //find the beginning on non-whitespace characters
+					//if (whiteSpaceChars contains s [i])
+						//ixstart++
+					//else
+						//break
+				//for i = ct downTo ixstart //find the end of non-whitespace characters
+					//if (whiteSpaceChars contains s [i])
+						//ixstop--
+					//else
+						//break
+				//
+				//return (string.mid (s, ixstart, ixstop - ixstart + 1))
 	kernel (string.trimwhitespace)}

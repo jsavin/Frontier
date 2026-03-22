@@ -1,7 +1,7 @@
 on attachEnclosureUrl (username, password, siteName, msgNum, url, length="", type="") {
-	«Changes
-		«3/20/05; 1:50:08 AM by JES
-			«Add an enclosure to a message. If length or type is passed in empty, then we get the headers from the server where the file lives.
+	//Changes
+		//3/20/05; 1:50:08 AM by JES
+			//Add an enclosure to a message. If length or type is passed in empty, then we get the headers from the server where the file lives.
 	
 	local (adrDiscuss = manilaSuite.rpcUtils.getDiscussAddress (siteName));
 	local (adrmsg = mainResponder.discuss.getMessageTable (msgNum, adrroot:adrDiscuss));

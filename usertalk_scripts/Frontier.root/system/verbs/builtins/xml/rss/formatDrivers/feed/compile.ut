@@ -1,17 +1,17 @@
 on compile (adrservice, flSaveData, adrStoryArrivedCallback) {
-	«Changes
-		«2/22/07; 9:50:33 PM by LL
-			«Support for atom 1.0 feeds.
-			«Specification: http://www.ietf.org/rfc/rfc4287.txt
-		«8/13/04; 3:44:16 PM by JES
-			«Created. Format driver for atom 0.3 feeds.
-				«Based on original by DW, 7/11/03
-					«7/11/03; 3:19:52 PM by DW
-						«Created.
-						«Comments here:
-							«http://scriptingnews.userland.com/2003/07/11
-				«ATOM 0.3 specification:
-					«http://www.intertwingly.net/wiki/pie/FrontPage
+	//Changes
+		//2/22/07; 9:50:33 PM by LL
+			//Support for atom 1.0 feeds.
+			//Specification: http://www.ietf.org/rfc/rfc4287.txt
+		//8/13/04; 3:44:16 PM by JES
+			//Created. Format driver for atom 0.3 feeds.
+				//Based on original by DW, 7/11/03
+					//7/11/03; 3:19:52 PM by DW
+						//Created.
+						//Comments here:
+							//http://scriptingnews.userland.com/2003/07/11
+				//ATOM 0.3 specification:
+					//http://www.intertwingly.net/wiki/pie/FrontPage
 	
 	on addToHistory (adritem, categorylist={}) {
 		bundle { //if the item has a permalink, use that
@@ -225,7 +225,7 @@ on compile (adrservice, flSaveData, adrStoryArrivedCallback) {
 				adrcomp^.channeltitle = getSubElementValue (adrfeed, "title");
 				bundle { //set adrcomp^.channellink
 					adrcomp^.channellink = ""; //it's possible that there's only one <link rel...> which we don't understand
-					«Loop over <link rel="..." ...> tags, and use the first rel="alternate" whose type="text/html" or "application/xhtml+xml"
+					//Loop over <link rel="..." ...> tags, and use the first rel="alternate" whose type="text/html" or "application/xhtml+xml"
 					local (adrlinks = xml.getAddressList (adrfeed, "link") );
 					local (adr);
 					for adr in adrlinks {
@@ -315,8 +315,8 @@ on compile (adrservice, flSaveData, adrStoryArrivedCallback) {
 											patchUrl (@adritem^.sourceChannelUrl, baseUrl)}}}};
 							if not defined (adritem^.guid) { //use permalink for guid, for item history
 								adritem^.guid = adritem^.permalink}};
-						«bundle //comments
-							«//Not supported as of the 0.3 version of the spec. As best I can tell, all you get is a link to a feed for comments, or a set of links to atom entries for individual comments, and not a link to the HTML page that displays comments for this entry.
+						//bundle //comments
+							////Not supported as of the 0.3 version of the spec. As best I can tell, all you get is a link to a feed for comments, or a set of links to atom entries for individual comments, and not a link to the HTML page that displays comments for this entry.
 						bundle { //content (a.k.a. description), and top-level title string (mashed data)
 							try { //prefer full content
 								content = getSubElementValue (adr, "content")}
@@ -374,7 +374,7 @@ on compile (adrservice, flSaveData, adrStoryArrivedCallback) {
 				adrcomp^.channeltitle = getSubElementValue (adrfeed, "title");
 				bundle { //set adrcomp^.channellink
 					adrcomp^.channellink = ""; //it's possible that there's only one <link rel...> which we don't understand
-					«Loop over <link rel="..." ...> tags, and use the first rel="alternate" whose type="text/html" or "application/xhtml+xml"
+					//Loop over <link rel="..." ...> tags, and use the first rel="alternate" whose type="text/html" or "application/xhtml+xml"
 					local (adrlinks = xml.getAddressList (adrfeed, "link") );
 					local (adr);
 					for adr in adrlinks {
@@ -465,8 +465,8 @@ on compile (adrservice, flSaveData, adrStoryArrivedCallback) {
 											patchUrl (@adritem^.sourceChannelUrl, baseUrl)}}}};
 							if not defined (adritem^.guid) { //use permalink for guid, for item history
 								adritem^.guid = adritem^.permalink}};
-						«bundle //comments
-							«//Not supported as of the 0.3 version of the spec. As best I can tell, all you get is a link to a feed for comments, or a set of links to atom entries for individual comments, and not a link to the HTML page that displays comments for this entry.
+						//bundle //comments
+							////Not supported as of the 0.3 version of the spec. As best I can tell, all you get is a link to a feed for comments, or a set of links to atom entries for individual comments, and not a link to the HTML page that displays comments for this entry.
 						bundle { //content (a.k.a. description), and top-level title string (mashed data)
 							try { //prefer full content
 								content = getSubElementValue (adr, "content")}

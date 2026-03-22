@@ -45,12 +45,12 @@ loop {
 	cardeditor.setobjectfillcolor (item, randomcolor ());
 	cardeditor.setobjectfont (item, randomfont (), randomfontsize (), randomfontstyle ());
 	cardeditor.setobjectflag (item, random (0, 1));
-	«cardeditor.setobjectseethru (item, random (0, 1))
+	//cardeditor.setobjectseethru (item, random (0, 1))
 	cardEditor.setObjectJustification (item, random (0, 2));
-	«cardEditor.setObjectType (item, random (1, 12))
+	//cardEditor.setObjectType (item, random (1, 12))
 	cardeditor.setobjectrect (item, randomrect ());
 	cardEditor.setObjectText (item, randomstate ());
 	cardeditor.cleanobject (item);
-	«cardeditor.setcardbackcolor (randomcolor ())
-	«cardeditor.updateobject (item)
+	//cardeditor.setcardbackcolor (randomcolor ())
+	//cardeditor.updateobject (item)
 	cardeditor.setobjecttext ("memavail", cardeditor.memavail ())}

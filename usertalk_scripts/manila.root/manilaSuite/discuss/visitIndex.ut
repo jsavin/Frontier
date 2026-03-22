@@ -1,13 +1,13 @@
 on visitIndex (adrSite, categoryName, adrCallback, flReverse=false, start=1, ct=infinity) {
-	«Changes:
-		«5/9/03; 7:00:42 PM by JES
-			«categoryName can now be the empty string to visit all messages in the site's discussion group.
-		«03/22/01; 4:07:11 PM by PBS
-			«start and ct are new optional parameters, which support breaking a stories or pictures page into multiple screens.
-		«03/22/01; 3:25:48 PM by PBS
-			«Small performance optimizations: don't call out to external scripts when not necessary.
-		«10/09/00; 9:03:08 PM by PBS
-			«Created. Visit all the messages in an index. Return false to stop the visit.
+	//Changes:
+		//5/9/03; 7:00:42 PM by JES
+			//categoryName can now be the empty string to visit all messages in the site's discussion group.
+		//03/22/01; 4:07:11 PM by PBS
+			//start and ct are new optional parameters, which support breaking a stories or pictures page into multiple screens.
+		//03/22/01; 3:25:48 PM by PBS
+			//Small performance optimizations: don't call out to external scripts when not necessary.
+		//10/09/00; 9:03:08 PM by PBS
+			//Created. Visit all the messages in an index. Return false to stop the visit.
 	local (adrRoot = manilaSuite.discuss.getRootFromSiteAddress (adrSite));
 	local (adrIndex, adrMessages);
 	local (listedIn = "");
@@ -51,8 +51,8 @@ on visitIndex (adrSite, categoryName, adrCallback, flReverse=false, start=1, ct=
 				else {
 					if not (string.lower (adrMsgTable^.alsoListedIn) contains lowerListedIn) {
 						flCallback = false}};
-				«if not (manilaSuite.discuss.isInCategory (adrMsgTable, listedIn)) //is it in this category?
-					«flCallCallback = false //PBS 12/20/00: was a continue statement -- which led to an infinite loop}};
+				//if not (manilaSuite.discuss.isInCategory (adrMsgTable, listedIn)) //is it in this category?
+					//flCallCallback = false //PBS 12/20/00: was a continue statement -- which led to an infinite loop}};
 		if flCallCallback {
 			if not (adrCallback^ (adrMsgTable)) {
 				return (false)}}; //false means a callback stopped the loop
@@ -65,7 +65,7 @@ on visitIndex (adrSite, categoryName, adrCallback, flReverse=false, start=1, ct=
 			if i > end {
 				break}}};
 	return (true)};
-«bundle //test code
-	«on callback (adr)
-		«msg (adr^.msgnum + ":" + adr^.subject)
-	«visitIndex (@jaketest2ManilaWebsite, "stories", @callback, true)
+//bundle //test code
+	//on callback (adr)
+		//msg (adr^.msgnum + ":" + adr^.subject)
+	//visitIndex (@jaketest2ManilaWebsite, "stories", @callback, true)

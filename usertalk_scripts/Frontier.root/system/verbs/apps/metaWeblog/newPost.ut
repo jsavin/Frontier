@@ -1,7 +1,7 @@
 on newPost (title="", link="", description="", adrstruct=nil, username=nil, password=nil, blogId=nil, flPublish=true, adrdata=@metaweblog.data) {
-	«Changes
-		«6/9/02; 11:34:06 AM by DW
-			«Created. See the server-side at radio.weblog.metaweblogapi.
+	//Changes
+		//6/9/02; 11:34:06 AM by DW
+			//Created. See the server-side at radio.weblog.metaweblogapi.
 	local (url, struct);
 	metaWeblog.init ();
 	bundle { //set defaults

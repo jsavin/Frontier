@@ -1,14 +1,14 @@
 on publishBinaryObject (adrObject, adrPageTable, templateName=nil) {
-	«This script publishes a binary object.
-		«It's called from html.buildObject.
-		«The binary can be anything -- an image, a java class, a shockwave file.
-		«The file suffix of the object is gotten in one of two ways:
-			«1) Looking at the name of the object.
-				«If the name contains a . character, then the name includes the file suffix.
-			«2) Looking at the binary type of the object.
-				«The binary type becomes the file suffix, after pre-pending a . char.
-				«Images binary types of 'GIFf' and 'JPEG' are translated to .gif and .jpg.
-		«Tue, Aug 11, 1998 at 8:02:40 PM by PBS
+	//This script publishes a binary object.
+		//It's called from html.buildObject.
+		//The binary can be anything -- an image, a java class, a shockwave file.
+		//The file suffix of the object is gotten in one of two ways:
+			//1) Looking at the name of the object.
+				//If the name contains a . character, then the name includes the file suffix.
+			//2) Looking at the binary type of the object.
+				//The binary type becomes the file suffix, after pre-pending a . char.
+				//Images binary types of 'GIFf' and 'JPEG' are translated to .gif and .jpg.
+		//Tue, Aug 11, 1998 at 8:02:40 PM by PBS
 	
 	local (binType = getBinaryType (adrObject^));
 	local (objectName = nameOf (adrObject^));
@@ -24,7 +24,7 @@ on publishBinaryObject (adrObject, adrPageTable, templateName=nil) {
 		suffix = string.nthField (suffix, ' ', 1); //remove trailing spaces
 		suffix = "." + suffix; //pre-pend a period
 		
-		«Handle 'GIFf' and 'JPEG' binary types
+		//Handle 'GIFf' and 'JPEG' binary types
 		if string.lower (suffix) == ".giff" {
 			suffix = ".gif"};
 		if string.lower (suffix) == ".jpeg" {
@@ -59,7 +59,7 @@ on publishBinaryObject (adrObject, adrPageTable, templateName=nil) {
 					if string.lower (nameOf (adrString^)) == "url" { //For URLs, the path delimiter is the forward slash
 						pathDelim = "/"};
 					
-					«Find occurence of /#images/ or \#images\ or :#images: in the path
+					//Find occurence of /#images/ or \#images\ or :#images: in the path
 					local (ix = string.patternMatch (pathDelim + folderName + pathDelim, string.lower (adrString^)));
 					if ix > 0 {
 						adrString^ = string.delete (adrString^, ix + 1, 1)}}}}; //delete the # character
@@ -68,7 +68,7 @@ on publishBinaryObject (adrObject, adrPageTable, templateName=nil) {
 		fixPath (@adrPageTable^.f); //Fix the file path
 		fixPath (@adrPageTable^.url)}; //Fix the URL
 	
-	«Write the file.
+	//Write the file.
 	html.writeFile (adrPageTable^.f, adrObject, macType, macCreator, clock.now (), adrPageTable);
 	
 	return (adrObject^)} //return the contents of the binary object to html.buildObject

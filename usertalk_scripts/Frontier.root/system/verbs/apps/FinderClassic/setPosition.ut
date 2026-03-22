@@ -1,4 +1,4 @@
-on setPosition (folderpath, h, v) { « set the position of the indicated folder's window
+on setPosition (folderpath, h, v) { // set the position of the indicated folder's window
 	local (fwindow);
 	if not Finder.makeWindow (folderpath, 0, @fwindow) {
 		return (false)};

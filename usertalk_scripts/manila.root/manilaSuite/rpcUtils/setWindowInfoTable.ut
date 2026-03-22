@@ -1,8 +1,8 @@
 on setWindowInfoTable (windowInfoTable, itemName, adrSite) {
-	«Save the window info table for later.
-		«02/06/00; 9:04:05 PM by PBS
-	«Changes:
-		«Use table.assign to set the windowInfoTable, since it might not always be a table. Promotes interop with other environments.
+	//Save the window info table for later.
+		//02/06/00; 9:04:05 PM by PBS
+	//Changes:
+		//Use table.assign to set the windowInfoTable, since it might not always be a table. Promotes interop with other environments.
 	
 	local (adrNewsSite = @adrSite^.["#newsSite"]);
 	local (adrPikePrefs = @adrNewsSite^.pike);

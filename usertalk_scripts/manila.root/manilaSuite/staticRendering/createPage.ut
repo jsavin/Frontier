@@ -1,9 +1,9 @@
 on createPage () {
-	«Create the page in the staticSite table.
-		«03/03/00; 11:00:55 PM by PBS
-		«Changes:
-			«04/01/00; 8:52:26 PM by PBS
-				«Call script.compile to prevent dialog boxes complaining of an uncompiled script.
+	//Create the page in the staticSite table.
+		//03/03/00; 11:00:55 PM by PBS
+		//Changes:
+			//04/01/00; 8:52:26 PM by PBS
+				//Call script.compile to prevent dialog boxes complaining of an uncompiled script.
 	
 	local (pta = html.getPageTableAddress ());
 	

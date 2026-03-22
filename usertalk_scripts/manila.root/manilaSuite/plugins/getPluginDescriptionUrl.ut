@@ -1,6 +1,6 @@
 on getPluginDescriptionUrl (pluginName) {
-	«Get the description URL for a plugin.
-		«02/24/00; 2:34:05 PM by PBS
+	//Get the description URL for a plugin.
+		//02/24/00; 2:34:05 PM by PBS
 	
 	local (adrPlugin = manilaSuite.plugins.getConfigAddress (pluginName));
 	if defined (adrPlugin^.descriptionUrl) {

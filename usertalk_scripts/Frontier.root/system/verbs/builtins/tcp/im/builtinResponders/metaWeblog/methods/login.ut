@@ -1,7 +1,7 @@
 on login (driverName, screenname, message) {
-	«Changes
-		«8/12/02; 11:14:20 PM by JES
-			«Created.
+	//Changes
+		//8/12/02; 11:14:20 PM by JES
+			//Created.
 	local (ct = string.countFields (message, " "));
 	if ct < 5 {
 		return ("Can't login because you have not supplied both a username and password. Send the login request in the format \"metaWeblog login blogId username password\".")};
@@ -16,7 +16,7 @@ on login (driverName, screenname, message) {
 	local (password = string.nthField (message, " ", 5));
 	
 	try {
-		«If there were a method we could call without more info, we'd call it here to make sure that the login info is good -- but there isn't.
+		//If there were a method we could call without more info, we'd call it here to make sure that the login info is good -- but there isn't.
 		user.im.responders.metaWeblog.prefs.username = username;
 		user.im.responders.metaWeblog.prefs.password = binary (password);
 		user.im.responders.metaWeblog.prefs.blogId = blogId}

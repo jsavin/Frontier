@@ -1,2 +1,2 @@
-on goForward (x = nil) { «Goes forward
+on goForward (x = nil) { //Goes forward
 	return (appleEvent (netscape.id, 'MOSS', 'fore', '----', x))}

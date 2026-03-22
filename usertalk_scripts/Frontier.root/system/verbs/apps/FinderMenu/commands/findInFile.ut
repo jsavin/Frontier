@@ -16,10 +16,10 @@ on findInFolder (folder) {
 				s = "The search string “" + searchstring + "” was found in “" + file.fileFromPath (f) + "”.";
 				s = s + " Would you like to open the file?";
 				case dialog.yesNoCancel (s) {
-					1 { «Yes
+					1 { //Yes
 						launch.anything (f);
 						openedsomething = true};
-					3 { «Cancel
+					3 { //Cancel
 						searchCancellled = true;
 						return (false)}}}}};
 	return (true)};
@@ -35,7 +35,7 @@ on visit (path) {
 	return (findInFolder (folder))};
 FinderMenu.visitPaths (@visit);
 
-msg (""); «restore Frontier's main window
+msg (""); //restore Frontier's main window
 if (not searchCancelled) and (not openedsomething) {
 	if notfound {
 		dialog.alert ("“" + searchstring + "” not found.")}

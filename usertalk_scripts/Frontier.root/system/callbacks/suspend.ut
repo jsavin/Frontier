@@ -1,9 +1,9 @@
 on suspend () {
-	«Call user's suspend scripts.
-		«For notification only.
-	«Changes:
-		«Thursday, September 28, 2000 at 7:00:45 PM by JES
-			«Allow the callback to be an address or the address of an address...
+	//Call user's suspend scripts.
+		//For notification only.
+	//Changes:
+		//Thursday, September 28, 2000 at 7:00:45 PM by JES
+			//Allow the callback to be an address or the address of an address...
 	local (i);
 	if not defined (user.callbacks.suspend) {
 		new (tabletype, @user.callbacks.suspend)};

@@ -1,7 +1,7 @@
 on initOutboundUrl (adrpost, url) {
-	«Changes
-		«7/13/03; 11:53:08 PM by JES
-			«Created. Add an outbound URL to the trackback sub-table of a post.
+	//Changes
+		//7/13/03; 11:53:08 PM by JES
+			//Created. Add an outbound URL to the trackback sub-table of a post.
 	trackback.initPost (adrpost);
 	local (adrtrackback = @adrpost^.trackback);
 	local (adrurl = @adrtrackback^.outbound.urls.[url]);

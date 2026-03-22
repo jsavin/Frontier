@@ -1,5 +1,5 @@
 on getNextDate (username, password, siteName, dt) {
-	«Get the date after dt in the message calendar.
+	//Get the date after dt in the message calendar.
 	
 	bundle { //make sure this user has access to the discussion group
 		local (beginningErrorString = "Can't get the date after \"" + dt + "\" in the message calendar because ");

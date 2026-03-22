@@ -1,5 +1,5 @@
 on indexLocalSite (adrSite, siteName, adrStopWords=@searchEngine.data.stopWords) {
-	«Index one website (or table).
+	//Index one website (or table).
 	
 	local (adrIndex = searchEngine.getIndexAddress (siteName)); //address of site index
 	local (adrPreviews = searchEngine.getPreviewsAddress (siteName)); //address of site previews
@@ -18,7 +18,7 @@ on indexLocalSite (adrSite, siteName, adrStopWords=@searchEngine.data.stopWords)
 		return (true)};
 	indexTable (adrSite);
 	
-	«Save index database.
+	//Save index database.
 	searchEngine.saveIndex (siteName, adrIndex);
 	
 	return (true)}

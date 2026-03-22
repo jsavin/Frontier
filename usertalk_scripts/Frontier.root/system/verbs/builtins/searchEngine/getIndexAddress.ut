@@ -1,6 +1,6 @@
 on getIndexAddress (indexName) {
-	«Return the path to the guest database for this index.
-		«Make sure the database exists and is open.
+	//Return the path to the guest database for this index.
+		//Make sure the database exists and is open.
 	local (f = user.searchEngine.indexesFolder);
 	local (fname = indexName);
 	local (flWasOpen = false);

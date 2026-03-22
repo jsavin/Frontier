@@ -1,18 +1,18 @@
 on suggestALinkForm () {
-	«Changes:
-		«12/19/01; 2:39:39 PM by PBS
-			«Call manilaSuite.sendMail instead of tcp.sendMail.
+	//Changes:
+		//12/19/01; 2:39:39 PM by PBS
+			//Call manilaSuite.sendMail instead of tcp.sendMail.
 	local (pta = html.getpagetableaddress ());
 	pta^.title = "Suggest a Link";
 	
-	«scratchpad.params = pta^; edit (@scratchpad.params)
+	//scratchpad.params = pta^; edit (@scratchpad.params)
 	
 	local (referer, editorname, editoremail, crumblist = {});
 	case pta^.method {
 		"GET" {
 			local (args); new (tabletype, @args);
 			webserver.parseargs (pta^.searchargs, @args);
-			«scratchpad.args = args; edit (@scratchpad.args)
+			//scratchpad.args = args; edit (@scratchpad.args)
 			local (adrlastxstruct, rules);
 			local (adritem = manilasuite.directory.walk (pta^.discussionGroup, args.msgnum, args.path, @crumblist, @adrlastxstruct, @rules));
 			
@@ -20,9 +20,9 @@ on suggestALinkForm () {
 			editorname = "Bull Mancuso";
 			editoremail = "bull@mancuso.com";
 			
-			«referer = args.referer
-			«editorname = base64.decode (args.ownername)
-			};«editoremail = base64.decode (args.owneremail)
+			//referer = args.referer
+			//editorname = base64.decode (args.ownername)
+			};//editoremail = base64.decode (args.owneremail)
 		"POST" {
 			local (recipient = base64.decode (pta^.postargs.editor));
 			local (subject = "Suggested Link: " + pta^.postargs.title);
@@ -32,7 +32,7 @@ on suggestALinkForm () {
 			s = s + "Link: " + pta^.postargs.url + "\r\n\r\n";
 			s = s + "Description: " + pta^.postargs.description + "\r\n\r\n";
 			s = s + clock.now ();
-			«tcp.sendMail (recipient, subject, s)
+			//tcp.sendMail (recipient, subject, s)
 			manilaSuite.sendMail (recipient, subject, s); //PBS 12/19/01: call manilaSuite.sendMail so user callbacks get called, so text gets converted (bug fix from David Bayly on Frontier-Server list)
 			local (args); new (tabletype, @args); args.message = "Your suggestion was sent to the editor of this page. Thanks for participating.";
 			mainresponder.redirect (pta^.postargs.referer + "?" + webserver.encodeArgs (@args));

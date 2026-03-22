@@ -1,48 +1,48 @@
 on confirmBox (pta=nil) {
-	«Add the Admin confirmation box.
-	«Changes:
-		«10/05/06; 4:07:54 PM by LL
-			«When setting a path for a message, render the page if static rendering is enabled.
-		«1/31/06; 2:37:18 AM by JES
-			«Add support for new editorial approval and revert to pending commands.
-		«9/21/05; 2:13:07 AM by JES
-			«When setting a path for a message, also add it to the stories list.
-		«9/26/03; 12:57:50 PM by JES
-			«Do referer checks after checking to see if an admin command is present in the postArgs table.
-		«9/23/03; 1:46:07 PM by JES
-			«Added the Admin box for Content Editors. Required for static rendering.
-		«5/13/03; 6:49:03 PM by JES
-			«Log events.
-		«12/16/02; 9:04:49 PM by JES
-			«Allow POSTs from storyReader pages.
-		«11/2/02; 1:07:39 AM by JES
-			«Added support for admin boxes on hierarchy and story pages.
-		«12/13/01; 9:34:55 PM by PBS
-			«When deleting a dg message, call manilaSuite.discuss.deleteFromHomePageCalendar -- there may be a day in the home page calendar to delete.
-		«9/6/01; 2:08:56 PM by PBS
-			«When setting a relative path for a story, update the shortcut.
-		«10/09/00; 9:56:54 PM by PBS
-			«Update indexes when info about a message changes.
-		«07/01/00; 12:27:45 AM by JES
-			«Localized confirmation messages for turning on or off story bylines.
-		«06/29/00; 10:12:16 PM by PBS
-			«You can turn on and off bylines for a story.
-		«05/30/00; 11:26:51 AM by JES
-			«Fixed localization bug -- permanent url of newly made homepages was wrong.
-		«05/11/00; 7:59:40 PM by JES
-			«merged in Brent's security fix for the client side trojan horse attack.
-		«05/09/00; 10:49:54 PM by PBS
-			«Check referer to defeat client side trojan horse.
-		«05/01/00; 3:12:06 PM by JES
-			«Changed getString calls to use a replacement table address instead of a lists
-		«04/25/00; 1:26:15 PM by PBS
-			«Support news items. If a news item is deleted, update the news items indexes.
-		«04/21/00; 12:58:11 AM by JES
-			«localized
-		«01/27/00; 10:58:53 AM by PBS
-			«Get the editors preferred colors for the Admin box.
-		«11/8/99; 1:47:11 PM by PBS
-			«Now you can add and remove pictures from the pictures list.
+	//Add the Admin confirmation box.
+	//Changes:
+		//10/05/06; 4:07:54 PM by LL
+			//When setting a path for a message, render the page if static rendering is enabled.
+		//1/31/06; 2:37:18 AM by JES
+			//Add support for new editorial approval and revert to pending commands.
+		//9/21/05; 2:13:07 AM by JES
+			//When setting a path for a message, also add it to the stories list.
+		//9/26/03; 12:57:50 PM by JES
+			//Do referer checks after checking to see if an admin command is present in the postArgs table.
+		//9/23/03; 1:46:07 PM by JES
+			//Added the Admin box for Content Editors. Required for static rendering.
+		//5/13/03; 6:49:03 PM by JES
+			//Log events.
+		//12/16/02; 9:04:49 PM by JES
+			//Allow POSTs from storyReader pages.
+		//11/2/02; 1:07:39 AM by JES
+			//Added support for admin boxes on hierarchy and story pages.
+		//12/13/01; 9:34:55 PM by PBS
+			//When deleting a dg message, call manilaSuite.discuss.deleteFromHomePageCalendar -- there may be a day in the home page calendar to delete.
+		//9/6/01; 2:08:56 PM by PBS
+			//When setting a relative path for a story, update the shortcut.
+		//10/09/00; 9:56:54 PM by PBS
+			//Update indexes when info about a message changes.
+		//07/01/00; 12:27:45 AM by JES
+			//Localized confirmation messages for turning on or off story bylines.
+		//06/29/00; 10:12:16 PM by PBS
+			//You can turn on and off bylines for a story.
+		//05/30/00; 11:26:51 AM by JES
+			//Fixed localization bug -- permanent url of newly made homepages was wrong.
+		//05/11/00; 7:59:40 PM by JES
+			//merged in Brent's security fix for the client side trojan horse attack.
+		//05/09/00; 10:49:54 PM by PBS
+			//Check referer to defeat client side trojan horse.
+		//05/01/00; 3:12:06 PM by JES
+			//Changed getString calls to use a replacement table address instead of a lists
+		//04/25/00; 1:26:15 PM by PBS
+			//Support news items. If a news item is deleted, update the news items indexes.
+		//04/21/00; 12:58:11 AM by JES
+			//localized
+		//01/27/00; 10:58:53 AM by PBS
+			//Get the editors preferred colors for the Admin box.
+		//11/8/99; 1:47:11 PM by PBS
+			//Now you can add and remove pictures from the pictures list.
 	
 	if pta == nil {
 		pta = html.getPageTableAddress ()};
@@ -89,7 +89,7 @@ on confirmBox (pta=nil) {
 		if action beginsWith "#objectNotFoundHandler" {
 			action = pta^.uri}
 		else {
-			«local (action = pta^.urls^.discussMsgReader)
+			//local (action = pta^.urls^.discussMsgReader)
 			if not (action endsWith "$") {
 				action = action + "$"};
 			if pta^.pathArgs != "" {
@@ -117,7 +117,7 @@ on confirmBox (pta=nil) {
 			if not (storyUrl endsWith "$") {
 				storyUrl = storyUrl + "$"};
 			storyUrl = storyUrl + adrMsgTable^.msgNum};
-		«local (storyUrl = html.getLink ("story", storyUrl))
+		//local (storyUrl = html.getLink ("story", storyUrl))
 		return (storyUrl)};
 	
 	on logEvent (eventType, startticks) {
@@ -133,7 +133,7 @@ on confirmBox (pta=nil) {
 		
 		on checkMessageOut() { //04/06/14, 22:39:48 by DAB
 			if not manilaSuite.custody.memberCanCheckOutObject (adrMsgTable, pta^.adrMemberInfo, adrSite, true) { //true because it's a message
-				«For dg messages, the checked out identifier is the address of the message table, not the address of the body or outline.
+				//For dg messages, the checked out identifier is the address of the message table, not the address of the body or outline.
 				local (title = adrMsgTable^.subject);
 				title = manilaSuite.unTaint (title);
 				
@@ -157,14 +157,14 @@ on confirmBox (pta=nil) {
 			"undelete" {
 				if checkMessageOut() { //made conditional 04/06/14, 22:26:47 by DAB
 					s = s + manilaSuite.getString ("html.messageHasBeenUndeleted", pta: pta); // 4/21/00 JES: localized
-					«bundle    //factored out 04/06/14, 21:45:00 by DAB
-						«if defined (adrMsgTable^.inResponseToOld)
-							«adrMsgTable^.inResponseTo = manilaSuite.unTaint (adrMsgTable^.inResponseToOld)
-						«if defined (adrMsgTable^.flDeleted)
-							«delete (@adrMsgTable^.flDeleted)
-						«if manilaSuite.news.isNewsItem (adrMsgTable)
-							«manilaSuite.news.updateIndexes (adrMsgTable, adrSite)
-						«manilaSuite.discuss.addToIndexes (adrSite, adrMsgTable) //PBS 10/09/00: add to indexes
+					//bundle    //factored out 04/06/14, 21:45:00 by DAB
+						//if defined (adrMsgTable^.inResponseToOld)
+							//adrMsgTable^.inResponseTo = manilaSuite.unTaint (adrMsgTable^.inResponseToOld)
+						//if defined (adrMsgTable^.flDeleted)
+							//delete (@adrMsgTable^.flDeleted)
+						//if manilaSuite.news.isNewsItem (adrMsgTable)
+							//manilaSuite.news.updateIndexes (adrMsgTable, adrSite)
+						//manilaSuite.discuss.addToIndexes (adrSite, adrMsgTable) //PBS 10/09/00: add to indexes
 					manilaSuite.discuss.changeMessageDeletion(adrMsgTable, pta^.adrMemberInfo, adrSite, false);
 					checkMessageIn();
 					logEvent ("msgUndelete", startticks)}};
@@ -229,14 +229,14 @@ on confirmBox (pta=nil) {
 					return ("")};
 				if checkMessageOut() { //made conditional 04/06/14, 22:26:47 by DAB
 					s = s + manilaSuite.getString ("html.thisPageHasBeenDeleted", pta: pta); // 4/21/00 JES: localized
-					«bundle    //factored out 04/06/14, 21:45:42 by DAB
-						«if not defined (adrMsgTable^.inResponseToOld)
-							«adrMsgTable^.inResponseToOld = adrMsgTable^.inResponseTo
-						«mainResponder.discuss.deleteMessage (adrMsgTable^.msgNum)
-						«if manilaSuite.news.isNewsItem (adrMsgTable)
-							«manilaSuite.news.updateIndexes (adrMsgTable, adrSite)
-						«manilaSuite.discuss.removeFromAllIndexes (adrSite, adrMsgTable) //PBS 10/09/00: remove from indexes
-						«manilaSuite.discuss.deleteFromHomePageCalendar (adrMsgTable, adrSite) //PBS 12/13/01: try to remove from home page calendar
+					//bundle    //factored out 04/06/14, 21:45:42 by DAB
+						//if not defined (adrMsgTable^.inResponseToOld)
+							//adrMsgTable^.inResponseToOld = adrMsgTable^.inResponseTo
+						//mainResponder.discuss.deleteMessage (adrMsgTable^.msgNum)
+						//if manilaSuite.news.isNewsItem (adrMsgTable)
+							//manilaSuite.news.updateIndexes (adrMsgTable, adrSite)
+						//manilaSuite.discuss.removeFromAllIndexes (adrSite, adrMsgTable) //PBS 10/09/00: remove from indexes
+						//manilaSuite.discuss.deleteFromHomePageCalendar (adrMsgTable, adrSite) //PBS 12/13/01: try to remove from home page calendar
 					manilaSuite.discuss.changeMessageDeletion(adrMsgTable, pta^.adrMemberInfo, adrSite, true);
 					checkMessageIn();
 					logEvent ("msgDelete", startticks);

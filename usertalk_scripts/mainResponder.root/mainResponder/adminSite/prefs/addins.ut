@@ -1,11 +1,11 @@
 on addins () {
-	«Changes
-		«9/27/05; 1:21:58 AM by JES
-			«Bug fix: If config.mainResponder.controlPanel.wizards is defined but empty, we weren't returning text saying that there are no add-ins installed on the server.
-		«9/27/05; 1:08:07 AM by JES
-			«Change URL scheme to use pathArgs instead of searchArgs for links to add-ins.
-		«05/04/05, 21:43:37 by DAB
-			«Created. Support legacy control panel add-ins, in the admin website.
+	//Changes
+		//9/27/05; 1:21:58 AM by JES
+			//Bug fix: If config.mainResponder.controlPanel.wizards is defined but empty, we weren't returning text saying that there are no add-ins installed on the server.
+		//9/27/05; 1:08:07 AM by JES
+			//Change URL scheme to use pathArgs instead of searchArgs for links to add-ins.
+		//05/04/05, 21:43:37 by DAB
+			//Created. Support legacy control panel add-ins, in the admin website.
 	local (pta = html.getPageTableAddress ());
 	local (htmltext);
 	on add (s) {
@@ -23,7 +23,7 @@ on addins () {
 		local (adr);
 		for adr in @config.mainResponder.controlPanel.wizards {
 			local (addinlink);
-			«addinlink = html.getLink (nameOf (adr^) , "addIns"  + "?command=" + nameOf (adr^))
+			//addinlink = html.getLink (nameOf (adr^) , "addIns"  + "?command=" + nameOf (adr^))
 			local (name = nameOf (adr^));
 			name = string.upper (name[1]) + string.mid (name, 2, infinity);
 			addinlink = html.getLink (name , "addIns"  + "$" + nameOf (adr^));

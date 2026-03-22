@@ -1,8 +1,8 @@
 if (dialog.ask("Enter the string to find", @searchStr)) {
-	if (Frontier.isRuntime()) { « no outlining in Runtime :(  
+	if (Frontier.isRuntime()) { // no outlining in Runtime :(  
 		if (dialog.yesNo("Runtime is unable to outline things.  Shall I simply write the results to a file?")) {
 			if (file.putFileDialog("Where do you wish to save the results?", @fName)) {
-				bundle { « prep the file
+				bundle { // prep the file
 					file.new(fName);
 					file.setType(fName, 'TEXT');;
 					file.setCreator(fName, 'ttxt')};

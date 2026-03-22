@@ -1,2 +1,2 @@
-on goBack (x = nil) { «Back arrow
+on goBack (x = nil) { //Back arrow
 	return (appleEvent (netscape.id, 'MOSS', 'back', '----', x))}

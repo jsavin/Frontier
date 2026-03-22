@@ -1,7 +1,7 @@
 on sendIm(adrSelf, user, message) {
-	«Changes
-		«7/30/02; 2:52:34 PM by JES
-			«Added a sensible error message for the case where we're not connected to the AIM server.
+	//Changes
+		//7/30/02; 2:52:34 PM by JES
+			//Added a sensible error message for the case where we're not connected to the AIM server.
 	if not defined (adrSelf^._socket) {
 		scriptError ("Can't send the message because there is no active AIM connection.")};
 	tcp.im.builtinDrivers.aim.code.core.flap_to_toc(adrSelf, 2,"toc_send_im "+ tcp.im.builtinDrivers.aim.code.util.normalize(user) +" "+ tcp.im.builtinDrivers.aim.code.util.encode(message) );

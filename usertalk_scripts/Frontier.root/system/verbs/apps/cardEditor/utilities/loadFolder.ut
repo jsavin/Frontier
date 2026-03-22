@@ -3,7 +3,7 @@ local (adrtable = @system.misc.cards);
 new (tabletype, adrtable);
 fileloop (f in folder) {
 	adrtable^.[file.filefrompath (f)] = cardEditor.readPackedCard (f)};
-bundle { «init window, make it look nice, open it
+bundle { //init window, make it look nice, open it
 	target.set (adrtable);
 	editmenu.setfont ("geneva");
 	editmenu.setfontsize (9);

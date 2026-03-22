@@ -1,25 +1,25 @@
 on getFirstAddress (adrcalendar) {
-	«Tue, May 23, 2000 at 5:42:33 PM by AR
-		«Old code
-			«on getFirstAddress (adrcalendar)
-				«Notes
-					«Thu, 11 Mar 1999 19:51:24 GMT by AR
-						«adrcalendar is the address of a valid calendar structure.
-						«We return the address of the first element in the calendar.
-						«We throw a scriptError if adrcalendar does not point to a valid non-empty calendar structure.
-				«local (adryear, adrmonth, adrday, ix)
-				«on diveinto (parent, adrsibling)
-					«for ix = 1 to sizeof (parent^)
-						«try
-							«number (nameOf (parent^[ix]))
-							«adrsibling^ = @parent^[ix]
-							«return (true)
-					«return (false)
-				«if diveinto (adrcalendar, @adryear)
-					«if diveinto (adryear, @adrmonth)
-						«if diveinto (adrmonth, @adrday)
-							«return (adrday)
-				«scripterror ("Can't get the first address in the calendar because adrcalendar doesn't point to a valid non-empty calendar structure.")
+	//Tue, May 23, 2000 at 5:42:33 PM by AR
+		//Old code
+			//on getFirstAddress (adrcalendar)
+				//Notes
+					//Thu, 11 Mar 1999 19:51:24 GMT by AR
+						//adrcalendar is the address of a valid calendar structure.
+						//We return the address of the first element in the calendar.
+						//We throw a scriptError if adrcalendar does not point to a valid non-empty calendar structure.
+				//local (adryear, adrmonth, adrday, ix)
+				//on diveinto (parent, adrsibling)
+					//for ix = 1 to sizeof (parent^)
+						//try
+							//number (nameOf (parent^[ix]))
+							//adrsibling^ = @parent^[ix]
+							//return (true)
+					//return (false)
+				//if diveinto (adrcalendar, @adryear)
+					//if diveinto (adryear, @adrmonth)
+						//if diveinto (adrmonth, @adrday)
+							//return (adrday)
+				//scripterror ("Can't get the first address in the calendar because adrcalendar doesn't point to a valid non-empty calendar structure.")
 	kernel (mrcalendar.getfirstaddress)};
-«bundle  //test code
-	«dialog.notify (getFirstAddress (@AndresFirstSiteManilaWebsite.["#discussionGroup"].calendar))
+//bundle  //test code
+	//dialog.notify (getFirstAddress (@AndresFirstSiteManilaWebsite.["#discussionGroup"].calendar))

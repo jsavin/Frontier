@@ -1,12 +1,12 @@
 on htmlToEmail (htmltext) {
-	«Changes
-		«10/4/01; 9:46:54 AM by DW
-			«When looking for the closing anchor, </a>, do a unicase search.
-		«9/6/01; 1:19:42 PM by DW
-			«If a link begins with a #, don't add it to the linkarray, and don't add a [number] next to it, just strip it out. Relative links internal to a document can't be represented in plain text email, which is what we produce. This change was precipitated by the Mail-This-Story feature in Manila.
-		«9/2/01; 9:23:21 AM by DW
-			«This verb takes HTML-formatted text and converts it to a format that's easy to read in email.
-			«http://docserver.userland.com/string/htmlToEmail
+	//Changes
+		//10/4/01; 9:46:54 AM by DW
+			//When looking for the closing anchor, </a>, do a unicase search.
+		//9/6/01; 1:19:42 PM by DW
+			//If a link begins with a #, don't add it to the linkarray, and don't add a [number] next to it, just strip it out. Relative links internal to a document can't be represented in plain text email, which is what we produce. This change was precipitated by the Mail-This-Story feature in Manila.
+		//9/2/01; 9:23:21 AM by DW
+			//This verb takes HTML-formatted text and converts it to a format that's easy to read in email.
+			//http://docserver.userland.com/string/htmlToEmail
 	local (linkarray = {});
 	bundle { //extract links
 		local (pat = "<a href=\"");
@@ -43,10 +43,10 @@ on htmlToEmail (htmltext) {
 			for link in linkarray {
 				s = s + "[" + ix++ + "] " + link + "\r\n"};
 			htmltext = htmltext + s}};
-	«bundle //add ad text at end
-		«local (adtext = manilaSuite.callbacks.getEmailNotificationAdText ())
-		«if sizeof (adtext) > 0
-			«htmltext = htmltext + "\r\n\r\n" + adtext
+	//bundle //add ad text at end
+		//local (adtext = manilaSuite.callbacks.getEmailNotificationAdText ())
+		//if sizeof (adtext) > 0
+			//htmltext = htmltext + "\r\n\r\n" + adtext
 	bundle { //convert HTML elements to email text
 		htmltext = string.replaceAll (htmltext, "<i>", "/", false);
 		htmltext = string.replaceAll (htmltext, "</i>", "/", false);
@@ -88,8 +88,8 @@ on htmlToEmail (htmltext) {
 			htmltext = string.replaceAll (htmltext, "\r\n\r\n\r\n", "\r\n\r\n")};
 		htmltext = string.trimWhitespace (htmltext)};
 	return (htmltext)};
-«bundle //test code
-	«local (s = "This is a test message. Here is some <i>italic text</i>. Here is some <b>boldface text</b>. <p>Now I would like to <a href=\"http://radiodiscuss.userland.com/itsAnOutliner\">link</a> to a story that I find interesting.<p>Oh and here's a <a href=\"http://www.scripting.com/wavs/fargo5.wav\">sound file</a> that might entertain you.\r\n \r \n \r\n \r\n \r\n \r\n", t)
-	«s = worldoutlineManilaWebsite.["#discussionGroup"].messages.["0000016"].body
-	«window.about () //so you can see messages
-	«tcp.sendmail (user.prefs.mailaddress, "Test message", string.htmlToEmail (s))
+//bundle //test code
+	//local (s = "This is a test message. Here is some <i>italic text</i>. Here is some <b>boldface text</b>. <p>Now I would like to <a href=\"http://radiodiscuss.userland.com/itsAnOutliner\">link</a> to a story that I find interesting.<p>Oh and here's a <a href=\"http://www.scripting.com/wavs/fargo5.wav\">sound file</a> that might entertain you.\r\n \r \n \r\n \r\n \r\n \r\n", t)
+	//s = worldoutlineManilaWebsite.["#discussionGroup"].messages.["0000016"].body
+	//window.about () //so you can see messages
+	//tcp.sendmail (user.prefs.mailaddress, "Test message", string.htmlToEmail (s))

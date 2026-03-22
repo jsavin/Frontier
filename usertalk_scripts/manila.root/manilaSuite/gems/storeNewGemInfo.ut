@@ -1,10 +1,10 @@
 on storeNewGemInfo (adrSite, adrData) {
-	«Create a new table in storage and save the info. Return the address of the table.
-		«04/14/00; 2:07:30 PM by PBS
+	//Create a new table in storage and save the info. Return the address of the table.
+		//04/14/00; 2:07:30 PM by PBS
 	
 	local (adrTable = manilaSuite.gems.getNewTable (adrSite));
 	
-	«Copy contents -- except for the data itself -- the gem info table.
+	//Copy contents -- except for the data itself -- the gem info table.
 	local (adrItem);
 	for adrItem in adrData {
 		local (itemName = nameOf (adrItem^));

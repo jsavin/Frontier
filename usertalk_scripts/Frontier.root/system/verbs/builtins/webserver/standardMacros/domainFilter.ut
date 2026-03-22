@@ -8,13 +8,13 @@ on domainFilter (clientAddress, matchString, returnString) {
 	else {
 		if clientAddress endsWith matchString {
 			return (returnString)}};
-	return ("")}; « return empty string if condition is not met.
+	return ("")}; // return empty string if condition is not met.
 
-«bundle
-	«dialog.notify (domainFilter ("www.info.apple.com", "apple.com", "You work at Apple"))
-	«dialog.notify (domainFilter ("www.info.apple.com", "APPLE.COM", "You work at Apple"))
-	«dialog.notify (domainFilter ("www.info.apple.com", ".com", "You work are coming from a commercial domain."))
-	«dialog.notify (domainFilter ("www.info.apple.com", "ibm.com", "You work at IBM"))
-	«dialog.notify (domainFilter ("www.info.apple.com", "bogus.org", "You work at Bogus Org"))
-	«dialog.notify (domainFilter ("www.info.apple.com", "www.info.", "You work at Apple"))
-	«dialog.notify (domainFilter ("www.info.apple.com", "apple", "You work at Apple"))
+//bundle
+	//dialog.notify (domainFilter ("www.info.apple.com", "apple.com", "You work at Apple"))
+	//dialog.notify (domainFilter ("www.info.apple.com", "APPLE.COM", "You work at Apple"))
+	//dialog.notify (domainFilter ("www.info.apple.com", ".com", "You work are coming from a commercial domain."))
+	//dialog.notify (domainFilter ("www.info.apple.com", "ibm.com", "You work at IBM"))
+	//dialog.notify (domainFilter ("www.info.apple.com", "bogus.org", "You work at Bogus Org"))
+	//dialog.notify (domainFilter ("www.info.apple.com", "www.info.", "You work at Apple"))
+	//dialog.notify (domainFilter ("www.info.apple.com", "apple", "You work at Apple"))

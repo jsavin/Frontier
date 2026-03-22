@@ -1,8 +1,8 @@
 on finalFilter (adrPageTable) {
 	local (adrResponseHeaders = @adrPageTable^.responseHeaders);
 	
-	«Make sure this page isn't cached.
-		«Web admin apps are highly dynamic, shouldn't be cached.
+	//Make sure this page isn't cached.
+		//Web admin apps are highly dynamic, shouldn't be cached.
 	adrResponseHeaders^.Expires = date.netStandardString (clock.now ());
 	
 	bundle { //do redirects

@@ -1,10 +1,10 @@
 on getRole (memberName, siteName) {
-	«Return the role of this person: not a member, member, contributing editor, managing editor. The returned value is a code:
-		«1 - managing editor
-		«2 - contributing editor
-		«3 - member
-		«4 - not a member
-		«09/21/00; 12:27:32 PM by PBS
+	//Return the role of this person: not a member, member, contributing editor, managing editor. The returned value is a code:
+		//1 - managing editor
+		//2 - contributing editor
+		//3 - member
+		//4 - not a member
+		//09/21/00; 12:27:32 PM by PBS
 	
 	if not (manilaSuite.rpcUtils.isMember (siteName, memberName)) { //is member?
 		return (4)}; //not a member

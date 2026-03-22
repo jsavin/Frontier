@@ -1,49 +1,49 @@
 on manageSite (adrinfo) {
-	«Changes
-		«3/24/08; 5:48:59 PM by LL
-			«Correct the link for the Plug-ins settings page.
-		«1/23/07; 5:34:19 PM by LL
-			«New command to modify the static rendering settings for a site.
-			«Bug fix: change URL wasn't properly updating config.mainresponder.domains entries.
-		«12/11/06; 3:11:39 PM by LL
-			«If any errors are encountered while manually backing up a Manila site, display a partial list of the backup error messages.
-		«2/22/06; 2:01:38 AM by JES
-			«Clear the mainResponder site list cache after deleting a site.
-		«2/22/06; 2:00:13 AM by JES
-			«Real fix for bug displaying tagline.
-		«2005
-			«11/11/05; 4:25:29 AM by JES
-				«New settings for whether member names are required to be email addresses or not. Either override server default, or respect it.
-			«10/7/05; 3:38:54 PM by JES
-				«Add clarification to versioning state. Change rollback commands to show/hide.
-			«10/7/05; 3:34:20 PM by JES
-				«Add options for configuring versioning.
-			«3/17/05; 3:47:28 PM by JES
-				«Make calls to tcp.equalNames in a try block, since this can fail when working with servers that aren't connected to the Internet.
-		«2002-2004
-			«8/30/04; 2:17:02 PM by JES
-				«Added commands for enabling or disabling plugins, and setting plugin availability for specific sites.
-					«Thanks to David Bayly for the idea for this feature.
-			«5/19/04; 6:34:00 PM by JES
-				«Fixed display of which plugins are enabled or disabled.
-			«4/9/04; 5:56:04 PM by JES
-				«Added the ability to move sites from one database to another.
-			«3/23/04; 1:55:17 AM by JES
-				«Added support for per-site hosting prefs configuration.
-			«12/13/03; 12:28:34 AM by JES
-				«If the discussion group doesn't specify a message reader URL, first check the site's #urls table, and if not found there, generate one.
-			«9/8/02; 5:05:08 PM by JES
-				«Added a command to toggle search indexing of discussion group messages.
-			«9/3/02; 4:13:16 AM by JES
-				«Added an access permission display to the Basic information section -- public or private (editors-only), with a command to toggle the public/private status of the site.
-			«8/29/02; 8:42:35 PM by JES
-				«Make a backup of deleted sites before deleting them.
-			«8/29/02; 3:51:49 PM by JES
-				«Added the ability to delete sites from the server. Added search engine de-indexing when a site is disabled or deleted.
-			«6/9/02; 3:54:37 PM by JES
-				«Created. Present a UI for managing a Manila site.
+	//Changes
+		//3/24/08; 5:48:59 PM by LL
+			//Correct the link for the Plug-ins settings page.
+		//1/23/07; 5:34:19 PM by LL
+			//New command to modify the static rendering settings for a site.
+			//Bug fix: change URL wasn't properly updating config.mainresponder.domains entries.
+		//12/11/06; 3:11:39 PM by LL
+			//If any errors are encountered while manually backing up a Manila site, display a partial list of the backup error messages.
+		//2/22/06; 2:01:38 AM by JES
+			//Clear the mainResponder site list cache after deleting a site.
+		//2/22/06; 2:00:13 AM by JES
+			//Real fix for bug displaying tagline.
+		//2005
+			//11/11/05; 4:25:29 AM by JES
+				//New settings for whether member names are required to be email addresses or not. Either override server default, or respect it.
+			//10/7/05; 3:38:54 PM by JES
+				//Add clarification to versioning state. Change rollback commands to show/hide.
+			//10/7/05; 3:34:20 PM by JES
+				//Add options for configuring versioning.
+			//3/17/05; 3:47:28 PM by JES
+				//Make calls to tcp.equalNames in a try block, since this can fail when working with servers that aren't connected to the Internet.
+		//2002-2004
+			//8/30/04; 2:17:02 PM by JES
+				//Added commands for enabling or disabling plugins, and setting plugin availability for specific sites.
+					//Thanks to David Bayly for the idea for this feature.
+			//5/19/04; 6:34:00 PM by JES
+				//Fixed display of which plugins are enabled or disabled.
+			//4/9/04; 5:56:04 PM by JES
+				//Added the ability to move sites from one database to another.
+			//3/23/04; 1:55:17 AM by JES
+				//Added support for per-site hosting prefs configuration.
+			//12/13/03; 12:28:34 AM by JES
+				//If the discussion group doesn't specify a message reader URL, first check the site's #urls table, and if not found there, generate one.
+			//9/8/02; 5:05:08 PM by JES
+				//Added a command to toggle search indexing of discussion group messages.
+			//9/3/02; 4:13:16 AM by JES
+				//Added an access permission display to the Basic information section -- public or private (editors-only), with a command to toggle the public/private status of the site.
+			//8/29/02; 8:42:35 PM by JES
+				//Make a backup of deleted sites before deleting them.
+			//8/29/02; 3:51:49 PM by JES
+				//Added the ability to delete sites from the server. Added search engine de-indexing when a site is disabled or deleted.
+			//6/9/02; 3:54:37 PM by JES
+				//Created. Present a UI for managing a Manila site.
 	local (pta = html.getPageTableAddress ());
-	«workspace.pt = pta^; edit (@workspace.pt) //debugging
+	//workspace.pt = pta^; edit (@workspace.pt) //debugging
 	
 	pta^.title = "Manage site: " + adrinfo^.displaySiteName;
 	local (settingsPageUrl = "http://" + pta^.host + "/settings");
@@ -627,7 +627,7 @@ on manageSite (adrinfo) {
 						on enableOrDisablePlugin (flEnable=true) {
 							local (oldAdrSiteRootTable = pta^.adrSiteRootTable, oldFilters = pta^.filters);
 							bundle { //patch up page table so plugins install stuff in the right place
-								«This is a work-around for plugins that need to do something special with the site table, or with the site's filters.
+								//This is a work-around for plugins that need to do something special with the site table, or with the site's filters.
 								pta^.adrSiteRootTable = adrsite;
 								pta^.filters = @adrsite^.["#filters"]}; //metaData plugin needs this
 							if flEnable {
@@ -1168,6 +1168,6 @@ on manageSite (adrinfo) {
 	
 	return (htmlText)};
 
-«bundle //test code
-	«html.setpagetableaddress (@workspace.pt)
-	«managesite (workspace.adrinfo)
+//bundle //test code
+	//html.setpagetableaddress (@workspace.pt)
+	//managesite (workspace.adrinfo)

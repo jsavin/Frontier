@@ -1,6 +1,6 @@
 on renderWholeWeek (adrManilaSite, adrStaticSite=nil, dateInWeek=clock.now ()) {
-	«Render one week of home pages.
-		«9/7/01; 3:58:46 PM by PBS
+	//Render one week of home pages.
+		//9/7/01; 3:58:46 PM by PBS
 	
 	local (oldPta = html.getPageTableAddress ());
 	manilaSuite.staticRendering.startRenderSession (adrManilaSite, true);

@@ -1,9 +1,9 @@
 on setContentEditorList (s, adrNewsSite=nil) {
-	«Given a string from a sitePrefs panel, update the content editors list.
-		«11/26/01; 10:24:31 AM by PBS
-	«Changes
-		«9/10/02; 10:12:13 PM by JES
-			«if adrNewsSite is supplied, then this script can be called outside the website framework context.
+	//Given a string from a sitePrefs panel, update the content editors list.
+		//11/26/01; 10:24:31 AM by PBS
+	//Changes
+		//9/10/02; 10:12:13 PM by JES
+			//if adrNewsSite is supplied, then this script can be called outside the website framework context.
 	
 	local (ceList = manilaSuite.admin.stringToList (s));
 	if adrNewsSite == nil {

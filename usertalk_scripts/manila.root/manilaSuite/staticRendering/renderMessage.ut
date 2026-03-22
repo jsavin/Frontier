@@ -1,6 +1,6 @@
 on renderMessage (adrMsgTable, adrSite) {
-	«Given a message, render it -- or not. This is part of the automatic rendering support.
-		«03/14/00; 5:19:09 PM by PBS
+	//Given a message, render it -- or not. This is part of the automatic rendering support.
+		//03/14/00; 5:19:09 PM by PBS
 	
 	if not (manilaSuite.staticRendering.isEnabled (adrSite)) {
 		return (true)};

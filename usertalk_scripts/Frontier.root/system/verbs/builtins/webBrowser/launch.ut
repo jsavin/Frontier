@@ -1,7 +1,7 @@
 on launch () {
-	«Changes:
-		«1/9/02; 12:05:13 PM by PBS
-			«Must use actual codes because on OS X the app IDs may be '    ' since apps are bundles (folders) sometimes.
+	//Changes:
+		//1/9/02; 12:05:13 PM by PBS
+			//Must use actual codes because on OS X the app IDs may be '    ' since apps are bundles (folders) sometimes.
 	local (id);
 	if webBrowser.isRunning () {
 		return (user.webBrowser.currentid )}; // a supported browser is already running.

@@ -1,6 +1,6 @@
 on getStatus (msgNum, adrSite, adrMsgTable=nil) {
-	«Get the status of a news item. It's either Editing, Released, or Posted.
-		«04/19/00; 10:28:00 PM by PBS
+	//Get the status of a news item. It's either Editing, Released, or Posted.
+		//04/19/00; 10:28:00 PM by PBS
 	
 	if adrMsgTable == nil {
 		adrMsgTable = manilaSuite.discuss.getMessageTableFromSiteAddress (adrSite, msgNum)};

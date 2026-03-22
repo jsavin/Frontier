@@ -1,2 +1,2 @@
-on print (obj) { «Print an object
+on print (obj) { //Print an object
 	return (core.print (Fetch.id, obj))}

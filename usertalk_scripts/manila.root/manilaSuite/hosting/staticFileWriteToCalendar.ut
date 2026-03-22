@@ -1,6 +1,6 @@
 on staticFileWriteToCalendar (fileText, fname, d=clock.now ()) {
-	«Write an XML file to disk in a calendar structure.
-		«05/08/00; 9:09:37 PM by PBS
+	//Write an XML file to disk in a calendar structure.
+		//05/08/00; 9:09:37 PM by PBS
 	
 	local (baseFolder);
 	local (pc = file.getPathChar ());

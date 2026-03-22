@@ -1,7 +1,7 @@
 on setOutline (siteName, username, password, opmlText) {
-	«Save a Manila site outline. Don't check it in -- that's handled elsewhere.
-		«3/8/01; 7:38:57 PM by JES
-			«Cribbed from manilaSuite.rpcHandlers.editorialOutline.set. This script does not do base64 decoding; the opml is plain text.
+	//Save a Manila site outline. Don't check it in -- that's handled elsewhere.
+		//3/8/01; 7:38:57 PM by JES
+			//Cribbed from manilaSuite.rpcHandlers.editorialOutline.set. This script does not do base64 decoding; the opml is plain text.
 	
 	bundle { //make sure this person is a managing editor of the site.
 		local (beginningErrorString = "Can't save the editorial outline because ");

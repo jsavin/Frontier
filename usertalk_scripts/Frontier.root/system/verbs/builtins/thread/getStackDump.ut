@@ -1,8 +1,8 @@
 on getStackDump (adrTable) {
-	«Changes:
-		«1/15/02; 10:52:45 AM by DB -- created
-			«Created. Get the current thread stack traceback information. Pull from the thread statistics and populate a table for easy access
-			«http://docserver.userland.com/thread/getStackDump
+	//Changes:
+		//1/15/02; 10:52:45 AM by DB -- created
+			//Created. Get the current thread stack traceback information. Pull from the thread statistics and populate a table for easy access
+			//http://docserver.userland.com/thread/getStackDump
 	local (stats);
 	if (not defined (adrTable^)) or (typeOf (adrTable^) != tableType) {
 		new (tableType, adrTable)}
@@ -17,5 +17,5 @@ on getStackDump (adrTable) {
 			name = address (name)};
 		adrTable^.["level" + level] = name};
 	return (true)};
-«bundle // test code
-	«thread.getStackDump (@scratchpad.dump)
+//bundle // test code
+	//thread.getStackDump (@scratchpad.dump)

@@ -1,6 +1,6 @@
 webBrowser.tours.flrecording = true;
 webBrowser.tours.tourname = "Tour #" + user.webBrowser.tours.nexttournumber++;
-try { «ignore any errors reported by the browser
+try { //ignore any errors reported by the browser
 	webBrowser.registerURLecho (Frontier.id)};
 webBrowser.tours.openMenu ();
 op.firstsummit ();

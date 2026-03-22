@@ -1,9 +1,9 @@
 on siteStructureSort (adrSite, relativePath, subLevelsOnly=false) {
-	«manilaSuite.sitePrefs.siteStructure.siteStructureSort : 04/05/16, 16:28:41 by DAB
-		«sort the hierarchy as if it were an outline, recursively
-		«01/08/28, 22:28:21 by DAB
-			«optional sublevelsOnly parameter, to sort only subordinate levels to where relativePath points
-		«manilaFixer.siteStructureSort : 01/03/26, 18:24:42 by DAB
+	//manilaSuite.sitePrefs.siteStructure.siteStructureSort : 04/05/16, 16:28:41 by DAB
+		//sort the hierarchy as if it were an outline, recursively
+		//01/08/28, 22:28:21 by DAB
+			//optional sublevelsOnly parameter, to sort only subordinate levels to where relativePath points
+		//manilaFixer.siteStructureSort : 01/03/26, 18:24:42 by DAB
 	
 	on sortOneLevel(adrTbl) {
 		local (nme, adr);
@@ -26,11 +26,11 @@ on siteStructureSort (adrSite, relativePath, subLevelsOnly=false) {
 			table.moveAndRename(adr^, xml.addTable(@newTbl, nme))};
 		
 		table.copyContents(@newTbl, adrTbl);
-		};«msg("here")
+		};//msg("here")
 	
 	local (adrTable = @adrSite^.["#hierarchy"]);
 	bundle { //compile the XML outline if needed
-		«The hierarchy table contains the XML outline (outline) and a compiled XML table (structure). They should be in synch. When editing, always edit the outline.
+		//The hierarchy table contains the XML outline (outline) and a compiled XML table (structure). They should be in synch. When editing, always edit the outline.
 		local (flCompile = true);
 		
 		if defined (adrTable^.structure) {
@@ -71,7 +71,7 @@ on siteStructureSort (adrSite, relativePath, subLevelsOnly=false) {
 			if manilaSuite.sitePrefs.siteStructure.isXMLInternal(adr) {
 				continue};
 			if manilaSuite.sitePrefs.siteStructure.isXMLCategory(adr) { //02/04/15, 15:39:24 by DAB
-				«window.msg("Sorting contents of category " +  xml.getAttributeValue(adr, "name"))
+				//window.msg("Sorting contents of category " +  xml.getAttributeValue(adr, "name"))
 				sortOneLevel(adr)}}}
 	else {
 		sortOneLevel(nomad)};
@@ -90,4 +90,4 @@ on siteStructureSort (adrSite, relativePath, subLevelsOnly=false) {
 		wp.newTextObject (s, @adrTable^.outline)};
 	
 	return true};
-«siteStructureSort (@zkmverlagManilawebsite, "/unterrichtsbereiche//", true)
+//siteStructureSort (@zkmverlagManilawebsite, "/unterrichtsbereiche//", true)

@@ -1,7 +1,7 @@
 on getSubItemData (adrTable) {
-	«Changes
-		«8/30/05; 6:08:52 PM by JES
-			«Created. Get information about sub-items of a table from the WebEdit server and populate the table with place-holders if necessary.
+	//Changes
+		//8/30/05; 6:08:52 PM by JES
+			//Created. Get information about sub-items of a table from the WebEdit server and populate the table with place-holders if necessary.
 	
 	local (username, password, server, port, paramList = {});
 	local (debug = false);

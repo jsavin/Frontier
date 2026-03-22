@@ -1,12 +1,12 @@
 on sendFragmentToUrl (text, url, pikeIp, pikePort) {
-	«Send a piece of text to a window that's opened for editing in Pike. The window is identified by its URL.
-		«03/24/00; 12:34:00 AM by PBS
+	//Send a piece of text to a window that's opened for editing in Pike. The window is identified by its URL.
+		//03/24/00; 12:34:00 AM by PBS
 	
-	«Here's the scoop:
-		«All we have is the following: some text, the URL of a page that's being edited, and info about the person doing the editing -- we've got their IP address and the port their copy of Pike is listening on.
-		«We shouldn't need anything else.
-		«We'll just package up the params and send them to an XML-RPC handler inside Pike.
-		«If Pike returns true, it worked. If Pike returns false, that means that window isn't open for editing. This script just returns the result to whoever called it.
+	//Here's the scoop:
+		//All we have is the following: some text, the URL of a page that's being edited, and info about the person doing the editing -- we've got their IP address and the port their copy of Pike is listening on.
+		//We shouldn't need anything else.
+		//We'll just package up the params and send them to an XML-RPC handler inside Pike.
+		//If Pike returns true, it worked. If Pike returns false, that means that window isn't open for editing. This script just returns the result to whoever called it.
 	
 	local (params = {text, url}); //simple, short
 	local (procedureName = "pike.pasteFragment");

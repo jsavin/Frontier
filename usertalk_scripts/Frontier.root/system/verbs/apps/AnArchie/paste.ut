@@ -1,2 +1,2 @@
-on paste () { «paste into selection
+on paste () { //paste into selection
 	return (appleEvent (AnArchie.id, 'core', 'past'))}

@@ -1,15 +1,15 @@
 on buildSiteInfo (pta) {
-	«Build the table of information about this site that every call from Manila to Pike must send.
-		«This table contains:
-			«host -- ip address or host name.
-			«port -- the port the server listens on.
-			«rpcPath -- the XML-RPC path on the server.
-			«siteName -- the name of the site in config.manila.sites.
-			«displaySiteName -- the name of the site from the prefs for the site itself. (This is what the user sees.)
-			«URL -- the URL of the home page of the site.
-			«username -- the member key for the person who's getting the message.
-			«password -- the password for the member who's getting the message.
-		«01/13/00; 3:52:42 PM by PBS
+	//Build the table of information about this site that every call from Manila to Pike must send.
+		//This table contains:
+			//host -- ip address or host name.
+			//port -- the port the server listens on.
+			//rpcPath -- the XML-RPC path on the server.
+			//siteName -- the name of the site in config.manila.sites.
+			//displaySiteName -- the name of the site from the prefs for the site itself. (This is what the user sees.)
+			//URL -- the URL of the home page of the site.
+			//username -- the member key for the person who's getting the message.
+			//password -- the password for the member who's getting the message.
+		//01/13/00; 3:52:42 PM by PBS
 	
 	local (siteInfoTable);
 	new (tableType, @siteInfoTable);

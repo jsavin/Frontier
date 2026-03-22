@@ -1,4 +1,4 @@
-«Build the list of okay partial addresses by walking the XML structure.
+//Build the list of okay partial addresses by walking the XML structure.
 
 local (adrStructure = @mainResponder.controlPanel.["#wizard"].structure [1]);
 

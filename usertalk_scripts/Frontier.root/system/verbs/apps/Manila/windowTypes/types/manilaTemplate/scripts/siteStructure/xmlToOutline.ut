@@ -1,21 +1,21 @@
 on xmlToOutline (xmltext, adrOutline) {
-	«Changes:
-		«2/11/04; 1:53:08 AM by JES
-			«Added support for redirects from within a Manila site structure.
-		«12/28/01; 6:23:53 PM by JES
-			«Fixed a bug where site structure outlines would not open on Windows.
-		«12/19/01; 2:27:03 PM by JES
-			«Added some msg calls, so the user has some indication that the outline is being built. This is important for large site structure outlines, like the DocServer site structure outline.
-		«7/22/01; 12:31:40 AM by JES
-			«Decode xml entities in name and description attributes.
-		«12/31/00; 5:11:47 PM by JES
-			«On Macs, convert latin opml text to Mac text.
-		«Tuesday, September 19, 2000 at 2:11:18 PM by PBS
-			«Get descriptions and add as attributes. If an item has no description, then description attribute is "".
-		«Wed, Aug 23, 2000 at 1:45:20 AM by PBS
-			«Created. Build a site structure outline. This script over-rides the plain XML that Pike gives us.
+	//Changes:
+		//2/11/04; 1:53:08 AM by JES
+			//Added support for redirects from within a Manila site structure.
+		//12/28/01; 6:23:53 PM by JES
+			//Fixed a bug where site structure outlines would not open on Windows.
+		//12/19/01; 2:27:03 PM by JES
+			//Added some msg calls, so the user has some indication that the outline is being built. This is important for large site structure outlines, like the DocServer site structure outline.
+		//7/22/01; 12:31:40 AM by JES
+			//Decode xml entities in name and description attributes.
+		//12/31/00; 5:11:47 PM by JES
+			//On Macs, convert latin opml text to Mac text.
+		//Tuesday, September 19, 2000 at 2:11:18 PM by PBS
+			//Get descriptions and add as attributes. If an item has no description, then description attribute is "".
+		//Wed, Aug 23, 2000 at 1:45:20 AM by PBS
+			//Created. Build a site structure outline. This script over-rides the plain XML that Pike gives us.
 	
-	«local (adrOutline = @adrTable^.outline) //the actual window
+	//local (adrOutline = @adrTable^.outline) //the actual window
 	
 	local (adrinfo);
 	window.attributes.getOne ("adrSiteInfo", @adrinfo, adrOutline);

@@ -1,12 +1,12 @@
 on getPendingUpdatesList (adrUpdatesTable, rssUrl, databasesToUpdate) {
-	«Changes
-		«9/16/05; 4:02:11 AM by JES
-			«Possible fix for repeated update notifications: Change to the logic for deletion of old update information: We now delete all notifications from the RSS feed which are before the date/time of the most recently updated root, instead of falling back to the earliest update date, and deleting all before the earlier date.
-				«This was needed because of a change to the server-side logic precipitated by the root updates checkpointing feature. The server now sends us the date/time of the last part sent, instead of the current server date/time. This meant that the fallback date/time could be before the date/time of the update info in the RSS feed, causing repeated notifications.
-		«8/5/04; 11:09:35 PM by JES
-			«Change initial whenLastUpdatesRead date to 8/4/04.
-		«12/17/03; 1:34:37 AM by JES
-			«Created. Read the RSS fead that lists pending root updates.
+	//Changes
+		//9/16/05; 4:02:11 AM by JES
+			//Possible fix for repeated update notifications: Change to the logic for deletion of old update information: We now delete all notifications from the RSS feed which are before the date/time of the most recently updated root, instead of falling back to the earliest update date, and deleting all before the earlier date.
+				//This was needed because of a change to the server-side logic precipitated by the root updates checkpointing feature. The server now sends us the date/time of the last part sent, instead of the current server date/time. This meant that the fallback date/time could be before the date/time of the update info in the RSS feed, causing repeated notifications.
+		//8/5/04; 11:09:35 PM by JES
+			//Change initial whenLastUpdatesRead date to 8/4/04.
+		//12/17/03; 1:34:37 AM by JES
+			//Created. Read the RSS fead that lists pending root updates.
 	local (flRead = false);
 	if not defined (adrUpdatesTable^) {
 		new (tableType, adrUpdatesTable)};

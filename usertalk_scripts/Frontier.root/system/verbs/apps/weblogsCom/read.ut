@@ -1,23 +1,23 @@
 on read () {
-	«Changes
-		«10/27/02; 8:44:13 PM by JES
-			«Ensure that each weblog's sub-table in weblogsComData.root has a dateLastChange element.
-		«10/27/02; 3:56:24 AM by JES
-			«Skip weblogs with no dateLastChange. Prevents an error which can be caused if the user quits the app while the read is in progress.
-		«8/9/02; 5:36:35 PM by JES
-			«Skip weblogs whose name or url is empty. Prevents an error, Can't create item "weblogsComData.changes." because "" is an illegal name.
-		«2/19/02; 1:08:34 PM by DW
-			«Performance tuneup. Don't keep tables for weblogs that haven't updated in three days.
-		«1/8/02; 8:39:22 PM by JES
-			«Commented out some debugging code.
-		«11/11/01; 7:09:36 PM by DW
-			«Rewrite to support post-corner-turn Weblogs.Com.
-		«10/25/01; 6:18:38 PM by DW
-			«Maintain system.temp.weblogsCom.status.
-		«2/23/01; 6:32:59 PM by PBS
-			«Untaint all the data that gets read.
-		«1/18/01; 6:22:55 PM by DW
-			«Created. 
+	//Changes
+		//10/27/02; 8:44:13 PM by JES
+			//Ensure that each weblog's sub-table in weblogsComData.root has a dateLastChange element.
+		//10/27/02; 3:56:24 AM by JES
+			//Skip weblogs with no dateLastChange. Prevents an error which can be caused if the user quits the app while the read is in progress.
+		//8/9/02; 5:36:35 PM by JES
+			//Skip weblogs whose name or url is empty. Prevents an error, Can't create item "weblogsComData.changes." because "" is an illegal name.
+		//2/19/02; 1:08:34 PM by DW
+			//Performance tuneup. Don't keep tables for weblogs that haven't updated in three days.
+		//1/8/02; 8:39:22 PM by JES
+			//Commented out some debugging code.
+		//11/11/01; 7:09:36 PM by DW
+			//Rewrite to support post-corner-turn Weblogs.Com.
+		//10/25/01; 6:18:38 PM by DW
+			//Maintain system.temp.weblogsCom.status.
+		//2/23/01; 6:32:59 PM by PBS
+			//Untaint all the data that gets read.
+		//1/18/01; 6:22:55 PM by DW
+			//Created. 
 	local (now = clock.now (), startticks = clock.ticks (), ctChangedWebLogs = 0, adrdata);
 	try {
 		adrdata = weblogsCom.init ();
@@ -37,35 +37,35 @@ on read () {
 					continue};
 				if adr^.dateLastChange < marktime {
 					delete (adr)}}};
-		«bundle //load the changes table -- pre-corner-turn version
-			«local (xstruct)
-			«xml.compile (tcp.httpreadurl (adrdata^.prefs.changesUrl), @xstruct)
-			«scratchpad.xstruct = xstruct
-			«local (adrroot = xml.getaddress (@xstruct, "weblogChangesShort"))
-			«local (loglist = xml.getaddresslist (adrroot, "log"), adrxlog)
-			«on untaint (s) //PBS 02/23/01: neuter curly braces and JavaScript
-				«s = string.replaceAll (s, "{", "&#123;")
-				«s = html.neuterJavaScript (s)
-				«return (s)
-			«for adrxlog in loglist
-				«local (url = untaint (xml.getattribute (adrxlog, "url")^))
-				«local (ownerEmail = untaint (xml.getattribute (adrxlog, "ownerEmail")^))
-				«local (name = untaint (xml.entitydecode (adrxlog^.["/pcdata"], true)))
-				«adrdata^.changes.[name] = now
-				«local (adrdata = @adrdata^.weblogs.[name])
-				«if not defined (adrdata^)
-					«new (tabletype, adrdata)
-					«adrdata^.dateFirstAppeared = now
-					«adrdata^.ctChanges = 0
-				«adrdata^.url = url
-				«adrdata^.ownerEmail = ownerEmail
-				«adrdata^.ctChanges++
-				«adrdata^.dateLastChange = now
-				«ctChangedWebLogs++
+		//bundle //load the changes table -- pre-corner-turn version
+			//local (xstruct)
+			//xml.compile (tcp.httpreadurl (adrdata^.prefs.changesUrl), @xstruct)
+			//scratchpad.xstruct = xstruct
+			//local (adrroot = xml.getaddress (@xstruct, "weblogChangesShort"))
+			//local (loglist = xml.getaddresslist (adrroot, "log"), adrxlog)
+			//on untaint (s) //PBS 02/23/01: neuter curly braces and JavaScript
+				//s = string.replaceAll (s, "{", "&#123;")
+				//s = html.neuterJavaScript (s)
+				//return (s)
+			//for adrxlog in loglist
+				//local (url = untaint (xml.getattribute (adrxlog, "url")^))
+				//local (ownerEmail = untaint (xml.getattribute (adrxlog, "ownerEmail")^))
+				//local (name = untaint (xml.entitydecode (adrxlog^.["/pcdata"], true)))
+				//adrdata^.changes.[name] = now
+				//local (adrdata = @adrdata^.weblogs.[name])
+				//if not defined (adrdata^)
+					//new (tabletype, adrdata)
+					//adrdata^.dateFirstAppeared = now
+					//adrdata^.ctChanges = 0
+				//adrdata^.url = url
+				//adrdata^.ownerEmail = ownerEmail
+				//adrdata^.ctChanges++
+				//adrdata^.dateLastChange = now
+				//ctChangedWebLogs++
 		bundle { //load the changes table
 			local (xstruct);
 			xml.compile (tcp.httpreadurl (adrdata^.prefs.changesUrl), @xstruct);
-			«scratchpad.xstruct = xstruct
+			//scratchpad.xstruct = xstruct
 			local (adrroot = xml.getaddress (@xstruct, "weblogUpdates"));
 			local (whenRootUpdated = date (xml.getattributevalue (adrroot, "updated")));
 			local (loglist = xml.getaddresslist (adrroot, "weblog"), adrxlog);

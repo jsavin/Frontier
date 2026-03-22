@@ -1,9 +1,9 @@
 on encode (procedureName, paramlist) {
-	«Changes
-		«8/27/02; 5:07:06 PM by JES
-			«Base64-encode strings which are struct members, in addition to string-parameters.
-		«5/6/02; 7:56:01 PM by DW
-			«Created. Cribbed from betty.rpc.client.
+	//Changes
+		//8/27/02; 5:07:06 PM by JES
+			//Base64-encode strings which are struct members, in addition to string-parameters.
+		//5/6/02; 7:56:01 PM by DW
+			//Created. Cribbed from betty.rpc.client.
 	local (xmltext = "");
 	on add (s) {
 		xmltext = xmltext + s};
@@ -39,7 +39,7 @@ on encode (procedureName, paramlist) {
 	add ("</params>");
 	add ("</methodCall>");
 	return (xmltext)};
-«bundle //test code
-	«wp.newtextobject (encode ("test.noOp", {user.prefs.commonStyles}), @scratchpad.rpctext)
-	«local (xstruct); xml.compile (string (scratchpad.rpctext), @xstruct); wp.newtextobject (xml.decompile (@xstruct), @scratchpad.rpctext)
-	«edit (@scratchpad.rpctext)
+//bundle //test code
+	//wp.newtextobject (encode ("test.noOp", {user.prefs.commonStyles}), @scratchpad.rpctext)
+	//local (xstruct); xml.compile (string (scratchpad.rpctext), @xstruct); wp.newtextobject (xml.decompile (@xstruct), @scratchpad.rpctext)
+	//edit (@scratchpad.rpctext)

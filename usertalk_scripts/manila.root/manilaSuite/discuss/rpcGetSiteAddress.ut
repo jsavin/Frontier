@@ -1,9 +1,9 @@
 on rpcGetSiteAddress (dgName, adrAdrSite) {
-	«Given the name of a discussion group, get the address of the site.
-		«Return true if the lookup succeeds, false otherwise.
-		«Put the address of the site in adrAdrSite^.
-		«This script runs in an XML-RPC context.
-		«10/18/99; 4:20:26 PM by PBS
+	//Given the name of a discussion group, get the address of the site.
+		//Return true if the lookup succeeds, false otherwise.
+		//Put the address of the site in adrAdrSite^.
+		//This script runs in an XML-RPC context.
+		//10/18/99; 4:20:26 PM by PBS
 	
 	local (adrRoot);
 	

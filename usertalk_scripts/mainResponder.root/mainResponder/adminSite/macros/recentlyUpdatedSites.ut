@@ -1,6 +1,6 @@
 on recentlyUpdatedSites (n) {
-	«Changes
-		«Created.
+	//Changes
+		//Created.
 	
 	if not defined (radioCommunityServerSuite) { //RCS is not installed -- return the empty string
 		return ("")};
@@ -18,31 +18,31 @@ on recentlyUpdatedSites (n) {
 		local (adrdata = radioCommunityServerSuite.weblogUpdates.init ());
 		local (adrcategory = @adrdata^.changes.none);
 		add (radioCommunityServerSuite.weblogUpdates.viewUpdatedWeblogs (adrcategory, n, true, "small"));
-		«bundle //unused code
-			«local (names, maxnamesize = 40)
-			«new (tabletype, @names)
-			«local (adrdata = radioCommunityServerSuite.weblogUpdates.init ())
-			«local (adrcategory = @adrdata^.changes.none)
-			«local (i, adr, adrchange, url, adrweblog, name, ct = 0)
-			«for i = sizeof (adrcategory^) downto 1
-				«if ct >= n
-					«break
-				«adrchange = @adrcategory^ [i]
-				«url = nameof (adrchange^)
-				«adrweblog = @adrdata^.weblogs.[url]
-				«if defined (adrweblog^)
-					«name = mainresponder.neutertext (adrweblog^.name, true, false)
-					«name = searchengine.stripmarkup (name)
-					«if sizeof (name) > maxnamesize
-						«name = string.mid (name, 1, maxnamesize - 3) + "..."
-					«local (adrname = @names.[name])
-					«if not defined (adrname^) //avoid duplicates
-						«add ("<tr>"); indentlevel++
-						«add ("<td align=\"right\">" + ct++ + ".</td>")
-						«add ("<td><a href=\"" + url + "\">" + name + "</a></td>")
-						«add ("<td align=\"right\">" + date.timestring (adrchange^, false) + "</td>")
-						«add ("</tr>"); indentlevel--
-						«adrname^ = true //it's now defined
+		//bundle //unused code
+			//local (names, maxnamesize = 40)
+			//new (tabletype, @names)
+			//local (adrdata = radioCommunityServerSuite.weblogUpdates.init ())
+			//local (adrcategory = @adrdata^.changes.none)
+			//local (i, adr, adrchange, url, adrweblog, name, ct = 0)
+			//for i = sizeof (adrcategory^) downto 1
+				//if ct >= n
+					//break
+				//adrchange = @adrcategory^ [i]
+				//url = nameof (adrchange^)
+				//adrweblog = @adrdata^.weblogs.[url]
+				//if defined (adrweblog^)
+					//name = mainresponder.neutertext (adrweblog^.name, true, false)
+					//name = searchengine.stripmarkup (name)
+					//if sizeof (name) > maxnamesize
+						//name = string.mid (name, 1, maxnamesize - 3) + "..."
+					//local (adrname = @names.[name])
+					//if not defined (adrname^) //avoid duplicates
+						//add ("<tr>"); indentlevel++
+						//add ("<td align=\"right\">" + ct++ + ".</td>")
+						//add ("<td><a href=\"" + url + "\">" + name + "</a></td>")
+						//add ("<td align=\"right\">" + date.timestring (adrchange^, false) + "</td>")
+						//add ("</tr>"); indentlevel--
+						//adrname^ = true //it's now defined
 		add ("</td></tr>"); indentlevel--};
 	
 	add ("</table><br />"); indentlevel--;

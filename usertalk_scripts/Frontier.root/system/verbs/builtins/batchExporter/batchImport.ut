@@ -1,13 +1,13 @@
 on batchImport (folder = user.batchExporter.folder) {
-	«5.0 -- 12/2/97 DW -- updated for fat page files and Windows
-		«I wanted to add items to the export log, but there was a problem...
-		«It's almost certain that we're going to import the user.export table.
-		«That's where the log is stored! Ooops.
-		«So, instead, I keep the user informed with a msg call.
-	«Changes
-		«6/13/03; 7:10:00 PM by JES
-			«On MacOS X, skip invisible files -- files whose names begin with the period character.
-				«The Finder creates invisible files like .DS_Store for folder meta-data, but these files will cause an error, preventing valid objects from being imported.
+	//5.0 -- 12/2/97 DW -- updated for fat page files and Windows
+		//I wanted to add items to the export log, but there was a problem...
+		//It's almost certain that we're going to import the user.export table.
+		//That's where the log is stored! Ooops.
+		//So, instead, I keep the user informed with a msg call.
+	//Changes
+		//6/13/03; 7:10:00 PM by JES
+			//On MacOS X, skip invisible files -- files whose names begin with the period character.
+				//The Finder creates invisible files like .DS_Store for folder meta-data, but these files will cause an error, preventing valid objects from being imported.
 	local (f, adrobject, flImported, ctImported = 0);
 	window.about ();
 	fileloop (f in folder, infinity) {
@@ -33,5 +33,5 @@ on batchImport (folder = user.batchExporter.folder) {
 	msg ("Saving the database...");
 	fileMenu.save ();
 	msg (ctImported + " objects imported.")};
-«bundle //test code
-	«batchImport ()
+//bundle //test code
+	//batchImport ()

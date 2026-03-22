@@ -1,8 +1,8 @@
 on clientMultiCall (rpcServer="localhost", rpcPort=user.inetd.config.http.port, adrCallTable=nil, fldebug=false, ticksToTimeOut=nil, flShowMessages=true, rpcPath=nil, flAsynch=false, adrCallback=nil, extraInfo=nil, adrErrorCallback=nil, username="", password="") {
-	«Changes
-		«4/9/01; 8:09:48 PM by DW
-			«Created. Interfaces to the multicall capability.
-			«http://frontier.userland.com/stories/storyReader$7394
+	//Changes
+		//4/9/01; 8:09:48 PM by DW
+			//Created. Interfaces to the multicall capability.
+			//http://frontier.userland.com/stories/storyReader$7394
 	
 	local (multicallparamlist = {}, adrsub, call);
 	for adrsub in adrCallTable {
@@ -30,13 +30,13 @@ on clientMultiCall (rpcServer="localhost", rpcPort=user.inetd.config.http.port, 
 		ixlist++};
 	return (returnedtable)};
 bundle { //test code
-	«Note
-		«For this test we use a special version of examples.getStateName that errors if the statenum is out of range.
-		«The handler follows, copy this into a new script at user.betty.rpcHandlers.examples.getStateNameWithError.
-			«on getStateNameWithError (statenum)
-				«if (statenum < 1) or (statenum > 50)
-					«scripterror ("Can't get the state name because the state num is less than 1 or greater than 50.")
-				«return (states.nthState (statenum))
+	//Note
+		//For this test we use a special version of examples.getStateName that errors if the statenum is out of range.
+		//The handler follows, copy this into a new script at user.betty.rpcHandlers.examples.getStateNameWithError.
+			//on getStateNameWithError (statenum)
+				//if (statenum < 1) or (statenum > 50)
+					//scripterror ("Can't get the state name because the state num is less than 1 or greater than 50.")
+				//return (states.nthState (statenum))
 	local (calltable, i);
 	new (tabletype, @calltable);
 	for i = 1 to 10 {

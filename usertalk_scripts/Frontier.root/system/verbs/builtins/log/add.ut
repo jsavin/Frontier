@@ -1,15 +1,15 @@
 on add (item, logname, flTextFile=user.log.prefs.flLogToTextFile, flOutline=user.log.prefs.flLogToOutline, flGuestDB=user.log.prefs.flLogToGuestDatabase, flwptext=false, flViewLog=user.log.prefs.flViewLog) {
-	«12/14/98; 7:10:21 AM by DW
-		«rewrote this to run off user.log.prefs
-			«three booleans specify whether the log is written to a text file, an outline in Frontier.root or to a guest database in ops/logs/
-			«writing to the guest database is done thru a call to log.addToGuestDatabase
-	«Fri, 12 Mar 1999 02:05:16 GMT by AR
-		«Added optional boolean parameter flViewLog.
+	//12/14/98; 7:10:21 AM by DW
+		//rewrote this to run off user.log.prefs
+			//three booleans specify whether the log is written to a text file, an outline in Frontier.root or to a guest database in ops/logs/
+			//writing to the guest database is done thru a call to log.addToGuestDatabase
+	//Fri, 12 Mar 1999 02:05:16 GMT by AR
+		//Added optional boolean parameter flViewLog.
 	local (now = clock.now ());
 	if flTextFile {
 		local (logFolder, s);
-		«logFolder = file.folderFromPath (frontier.getProgramPath ())
-		«logFolder = logFolder + "Logs" + file.getPathChar ()
+		//logFolder = file.folderFromPath (frontier.getProgramPath ())
+		//logFolder = logFolder + "Logs" + file.getPathChar ()
 		logFolder = user.log.prefs.folder; //PBS 2/28/99
 		if sizeOf (logName) > 26 {
 			logName = string.mid (logName, 1, 26)};

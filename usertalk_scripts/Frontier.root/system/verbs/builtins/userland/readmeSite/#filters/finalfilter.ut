@@ -1,4 +1,4 @@
-«fix up the bodytext so that a href's into this site are relative
+//fix up the bodytext so that a href's into this site are relative
 html.data.standardMacros.glossaryPatcher ();
 with html.data.page {
 	if defined (realFile) {

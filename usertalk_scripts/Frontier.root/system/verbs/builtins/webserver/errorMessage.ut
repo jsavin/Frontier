@@ -1,19 +1,19 @@
 on errorMessage (errMsg, dataAdr = nil) {
 	try {
-		«PBS 2/8/97: call string.iso8859encode rather than toys.cleanForExport
+		//PBS 2/8/97: call string.iso8859encode rather than toys.cleanForExport
 		errMsg = string.iso8859encode (errMsg, @html.data.iso8859.mac);
-		bundle { «log error
+		bundle { //log error
 			local {
 				fPath = file.folderFromPath (Frontier.getProgramPath ()) + "Error.log";
 				logString = string.replace (clock.now (), "; ", tab) + tab + errMsg};
-			if !file.exists (fPath) { «create file with field name in first line
+			if !file.exists (fPath) { //create file with field name in first line
 				file.new (fPath);
 				file.setType (fPath, 'TEXT');
 				file.setCreator (fPath, 'R*ch')};
 			semaphores.lock ("error.log", 3600);
 			try {
 				file.writeLine (fPath, logString);
-				if (dataAdr != nil) and (defined (dataAdr)) and (webserver.getPref ("verboseLogging")) { «verbose logging -- still testing
+				if (dataAdr != nil) and (defined (dataAdr)) and (webserver.getPref ("verboseLogging")) { //verbose logging -- still testing
 					local (i);
 					for i = 1 to sizeOf (dataAdr^) {
 						file.writeLine (fPath, nameOf (dataAdr^[i]) + ": " + dataAdr^[i])}};
@@ -21,7 +21,7 @@ on errorMessage (errMsg, dataAdr = nil) {
 			else {
 				semaphores.unlock ("error.log")}};
 		local (x);
-		if typeOf (dataAdr) != addressType { «create an address to a table
+		if typeOf (dataAdr) != addressType { //create an address to a table
 			new (tableType, @x);
 			dataAdr = @x};
 		dataAdr^.errorMessage = errMsg;

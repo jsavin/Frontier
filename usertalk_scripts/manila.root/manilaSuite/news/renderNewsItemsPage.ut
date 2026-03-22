@@ -1,15 +1,15 @@
 on renderNewsItemsPage (adrTable=nil, pta=nil) {
-	«Changes:
-		«9/28/05; 1:37:19 PM by JES
-			«Comment out reference to userlandWidgets.
-		«11/25/00; 6:30:32 PM by PBS
-			«Call manilaSuite.html.stripHomePageTitle instead of manilaSuite.html.stripTitleFromTemplate. The latter has been deprecated. (A code factoring issue.)
-		«10/26/00; 10:24:53 PM by PBS
-			«Set default last update time, so it's not prior to the creation of the site itself.
-		«05/02/00; 2:38:57 PM by PBS
-			«Support for the news items home page title preference.
-		«04/24/00; 3:12:40 PM by PBS
-			«Created. Render a news items page.
+	//Changes:
+		//9/28/05; 1:37:19 PM by JES
+			//Comment out reference to userlandWidgets.
+		//11/25/00; 6:30:32 PM by PBS
+			//Call manilaSuite.html.stripHomePageTitle instead of manilaSuite.html.stripTitleFromTemplate. The latter has been deprecated. (A code factoring issue.)
+		//10/26/00; 10:24:53 PM by PBS
+			//Set default last update time, so it's not prior to the creation of the site itself.
+		//05/02/00; 2:38:57 PM by PBS
+			//Support for the news items home page title preference.
+		//04/24/00; 3:12:40 PM by PBS
+			//Created. Render a news items page.
 	
 	if pta == nil {
 		pta = html.getPageTableAddress ()};
@@ -29,7 +29,7 @@ on renderNewsItemsPage (adrTable=nil, pta=nil) {
 		pta^.title = manilaSuite.unTaint (pta^.newsSite^.newsItemsHomePageTitle)};
 	bundle { //add expires meta tag; possibly strip the home page title
 		manilaSuite.html.addExpiresMetaTag (); //add a meta tag that prevents caching
-		«manilaSuite.html.stripTitleFromTemplate (pta) //the editor may not want a title to appear on the home page
+		//manilaSuite.html.stripTitleFromTemplate (pta) //the editor may not want a title to appear on the home page
 		manilaSuite.html.stripHomePageTitle (pta)}; //PBS 11/25/00: this script replaces manilaSuite.html.stripTitleFromTemplate
 	bundle { //display the current news items -- and calendar if turned on
 		if not flSysopPlacesCalendar {
@@ -72,9 +72,9 @@ on renderNewsItemsPage (adrTable=nil, pta=nil) {
 			bundle { //add the UserLand bookmarks
 				if defined (pta^.newsSite^.siteNavigationBox) and not flSysopPlacesCalendar { //PBS 8/10/99
 					add ("<p><center>" + string (pta^.newsSite^.siteNavigationBox) + "</center>")};
-				«else
-					«if defined (pta^.newsSite^.flNavBoxOnHomePage) and pta^.newsSite^.flNavBoxOnHomePage
-						«add ("<p><center>" + string (userlandWidgets.standardElements.navBox) + "</center>")}};
+				//else
+					//if defined (pta^.newsSite^.flNavBoxOnHomePage) and pta^.newsSite^.flNavBoxOnHomePage
+						//add ("<p><center>" + string (userlandWidgets.standardElements.navBox) + "</center>")}};
 		
 		if not flSysopPlacesCalendar {
 			add ("</td>"); indentLevel--;

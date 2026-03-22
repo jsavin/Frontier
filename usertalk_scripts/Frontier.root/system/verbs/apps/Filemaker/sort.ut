@@ -1,2 +1,2 @@
-on sort (obj, by = nil, inOrder = nil) { «Sort the records in a layout
+on sort (obj, by = nil, inOrder = nil) { //Sort the records in a layout
 	return (appleEvent (Filemaker.id, 'DATA', 'SORT', '----', objspec (obj), 'SRTE', by, 'SRTT', inOrder))}

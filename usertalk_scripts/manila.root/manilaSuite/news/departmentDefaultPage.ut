@@ -1,7 +1,7 @@
 on departmentDefaultPage () {
-	«Changes
-		«9/3/03; 11:32:30 AM by JES
-			«Created. List news item departments. If logged in as the managing editor, then we manage departments via this page.
+	//Changes
+		//9/3/03; 11:32:30 AM by JES
+			//Created. List news item departments. If logged in as the managing editor, then we manage departments via this page.
 	local (pta = html.getPageTableAddress ());
 	local (htext);
 	on add (s) {

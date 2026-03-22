@@ -1,11 +1,11 @@
 on float (cdata) {
-	«04/1/01; 3:34:57 AM by JES
-		«Created. Decode a float represented as a string.
-	«Changes:
-		«04/10/01; 7:20:46 PM by JES
-			«Fixed decoding of floats with negative exponents, 1e-5, for example.
-		«04/12/01; 1:13:43 PM by JES
-			«Properly decode "special" floating point values, INF, -INF and NaN.
+	//04/1/01; 3:34:57 AM by JES
+		//Created. Decode a float represented as a string.
+	//Changes:
+		//04/10/01; 7:20:46 PM by JES
+			//Fixed decoding of floats with negative exponents, 1e-5, for example.
+		//04/12/01; 1:13:43 PM by JES
+			//Properly decode "special" floating point values, INF, -INF and NaN.
 	case cdata {
 		"NaN" {
 			return (soap.constants.floatNaN)};

@@ -1,15 +1,15 @@
 on defaultPage () {
-	«Changes:
-		«10/17/05; 12:18:56 AM by JES
-			«Adjust vertical alignment of cohort pop-up and prompt. Use bold text for both cohorts prompt and HTML recipients check, for consistency with other form fields.
-		«10/15/05; 4:31:31 AM by JES
-			«Add cohorts popup if access controls are enabled for the site.
-				«Change from DAB.
-		«4/27/03; 1:56:00 PM by JES
-			«If a message number is specified in the url (?msgnum=xx), use the text and subject of that message for the default text of the bulletin. Don't hot up urls or email addresses.
-		«4/18/00; 8:21:04 PM by JES
-			«converted page from an outline to a script so it could be localized
-			«localized static strings
+	//Changes:
+		//10/17/05; 12:18:56 AM by JES
+			//Adjust vertical alignment of cohort pop-up and prompt. Use bold text for both cohorts prompt and HTML recipients check, for consistency with other form fields.
+		//10/15/05; 4:31:31 AM by JES
+			//Add cohorts popup if access controls are enabled for the site.
+				//Change from DAB.
+		//4/27/03; 1:56:00 PM by JES
+			//If a message number is specified in the url (?msgnum=xx), use the text and subject of that message for the default text of the bulletin. Don't hot up urls or email addresses.
+		//4/18/00; 8:21:04 PM by JES
+			//converted page from an outline to a script so it could be localized
+			//localized static strings
 	
 	local (pta = html.getPageTableAddress (), htmltext);
 	local (adrSite = manilaSuite.getManilaSiteAddress(pta)); //05/10/09, 14:23:17 by DAB

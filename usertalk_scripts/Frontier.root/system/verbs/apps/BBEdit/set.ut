@@ -1,2 +1,2 @@
-on set (obj, setTo) { «
+on set (obj, setTo) { //
 	return (appleEvent (BBEdit.id, 'core', 'setd', '----', objspec (obj), 'data', setTo))}

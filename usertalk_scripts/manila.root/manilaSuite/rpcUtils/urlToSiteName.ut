@@ -1,117 +1,117 @@
 on urlToSiteName (siteUrl) {
-	«Given the URL of a Manila site, get its canonical site name, it's site name as specified in config.manila.sites.
-		«(Most of the Manila RPC handlers expect a site name as the first parameter.)
-		«04/17/00; 1:55:41 AM by PBS
-	«Changes:
-		«3/3/05; 3:37:26 AM by JES
-			«Respect config.mainresponder.prefs.flMapFirstLevelOfUrlsToManilaSites.
-			«This pref is false by default in new installs, to prevent namespace conflicts between url parts and names in config.manila.sites. (details below)
-				«If a sub-path in a request matched the name of an item in config.manila.sites, then the lookup was being short-circuted to the site pointed at by that item. This sometimes worked, but often failed for common names of sub-sites.
-					«In the instance I was debugging, there were multiple sites who owned sub-sites named "/private", but there was also a site itself named private -- bang: namespace conflict.
-			«mainResponder.respond was respecting the pref, but this script was not, which caused the Open Manila Site command in Radio to fail (among others) when trying to open sub-sites whose name was looked up incorrectly.
-		«3/2/05; 5:40:41 PM by JES
-			«Fix error in site-tree logic, where sub-sites would not be found if the URL passed in contained upper-case characters. We now compare lower-case versions of sub-path parts.
-		«05/05/01; 5:46:54 PM by JES
-			«Fixed XML siteTree support for sites which are nested more than one level below /, ie http://myserver.com/subSite/subSubSite/.
-		«12/28/00; 4:12:09 PM by JES
-			«Properly handle the case of a top-level site when the server is running on a port other than port 80.
-		«12/23/00; 7:18:01 PM by JES
-			«Rewritten to handle sub-sub[-...]-sites, either via the siteTree XML, or by dereferencing address entries in site tables.
-			«Old code:
-				«local (urlParts = string.urlSplit (siteUrl))
-				«local (domain, path)
-				«domain = urlParts [2]
-				«path = urlParts [3]
-				«
-				«local (nomad)
-				«if defined (config.mainResponder.domains.[domain])
-					«nomad = @config.mainResponder.domains.[domain]
-				«else
-					«nomad = @config.mainResponder.domains.default
-				«
-				«on error ()
-					«scriptError ("Can't get the site name because " + siteUrl + " is the not the URL of a Manila site.")
-				«
-				«local (flFirstTimeThrough = true)
-				«
-				«if typeOf (nomad^) == tableType //XML siteTree support
-					«local (siteAddress, siteAddressList)
-					«if defined (nomad^.siteTree.directory.structure) // defined in XML?
-						«if path endsWith "/"
-							«path = string.mid (path, 1, sizeOf (path) - 1)
-						«nomad = @nomad^.siteTree.directory.structure
-						«nomad = xml.getAddress (nomad, "siteTree")
-						«if path == "" // 11/14/00 JES: handle top-level sites in a siteTree
-							«local (adrSite = xml.getAddress (nomad, "site"))
-							«local (siteName)
-							«try // it might be the default site with no name attribute
-								«siteName = xml.getAttributeValue (adrSite, "name")
-							«else // indeed it is the default site -- try the address
-								«try
-									«adrSite = xml.getAttributeValue (adrSite, "address")
-									«siteName = nameOf (config.manila.sites.[nameOf (adrSite^)])
-							«if siteName
-								«return (siteName)
-						«while (sizeOf (path) > 0)
-							«local (pathPart = string.nthField (path, '/', 1))
-							«if pathPart == ""
-								«break
-							«if flFirstTimeThrough
-								«if defined (config.manila.sites.[pathPart])
-									«nomad = config.manila.sites.[pathPart]
-									«path = string.delete (path, 1, sizeOf (pathPart)) //PBS 08/25/00: fix infinite loop
-									«path = string.popLeading (path, '/')
-									«flFirstTimeThrough = false
-									«continue
-								«nomad = xml.getAddress (nomad, "site")
-								«flFirstTimeThrough = false
-							«else
-								«if defined (nomad^.[pathPart])
-									«nomad = @nomad^.[pathPart]
-									«if typeOf (nomad^) == addressType
-										«nomad = nomad^
-									«path = string.delete (path, 1, sizeOf (pathPart)) //PBS 08/25/00: fix infinite loop
-									«path = string.popLeading (path, '/')
-									«continue
-							«path = string.delete (path, 1, sizeOf (pathPart))
-							«siteAddressList = xml.getAddressList (nomad, "site")
-							«for siteAddress in siteAddressList
-								«if string.lower (xml.getAttributeValue (siteAddress, "name")) == string.lower (pathPart)
-									«nomad = address (xml.getAttributeValue (siteAddress, "address"))
-									«break
-					«else
-						«error ()
-				«else
-					«nomad = nomad^
-					«local (ixPort = string.patternMatch (":", domain))
-					«if ixPort > 0
-						«domain = string.mid (domain, 1, ixPort - 1)
-					«while (sizeOf (path) > 0)
-						«local (pathPart = string.nthField (path, '/', 1))
-						«if pathPart == ""
-							«break
-						«path = string.delete (path, 1, sizeOf (pathPart))
-						«if flFirstTimeThrough
-							«if defined (config.manila.sites.[pathPart])
-								«nomad = config.manila.sites.[pathPart]
-								«continue
-							«flFirstTimeThrough = false
-						«if defined (nomad^.[pathPart])
-							«nomad = @nomad^.[pathPart]
-							«if typeOf (nomad^) == addressType
-								«nomad = nomad^
-				«if not (manilaSuite.isManilaSite (nomad))
-					«error ()
-				«
-				«local (siteName = manilaSuite.getCanonicalSiteName (nomad)) //nomad points to the the site now
-				«
-				«return (siteName)
-		«11/14/00; 2:53:13 AM by JES
-			«Properly handle top-level sites in siteTree structures.
-		«08/25/00; 12:19:14 PM by PBS
-			«Fix an infinite loop which could occur with certain configurations.
-		«08/24/00; 1:35:54 PM by PBS
-			«Now handles the siteTree XML structure in finding a Manila site.
+	//Given the URL of a Manila site, get its canonical site name, it's site name as specified in config.manila.sites.
+		//(Most of the Manila RPC handlers expect a site name as the first parameter.)
+		//04/17/00; 1:55:41 AM by PBS
+	//Changes:
+		//3/3/05; 3:37:26 AM by JES
+			//Respect config.mainresponder.prefs.flMapFirstLevelOfUrlsToManilaSites.
+			//This pref is false by default in new installs, to prevent namespace conflicts between url parts and names in config.manila.sites. (details below)
+				//If a sub-path in a request matched the name of an item in config.manila.sites, then the lookup was being short-circuted to the site pointed at by that item. This sometimes worked, but often failed for common names of sub-sites.
+					//In the instance I was debugging, there were multiple sites who owned sub-sites named "/private", but there was also a site itself named private -- bang: namespace conflict.
+			//mainResponder.respond was respecting the pref, but this script was not, which caused the Open Manila Site command in Radio to fail (among others) when trying to open sub-sites whose name was looked up incorrectly.
+		//3/2/05; 5:40:41 PM by JES
+			//Fix error in site-tree logic, where sub-sites would not be found if the URL passed in contained upper-case characters. We now compare lower-case versions of sub-path parts.
+		//05/05/01; 5:46:54 PM by JES
+			//Fixed XML siteTree support for sites which are nested more than one level below /, ie http://myserver.com/subSite/subSubSite/.
+		//12/28/00; 4:12:09 PM by JES
+			//Properly handle the case of a top-level site when the server is running on a port other than port 80.
+		//12/23/00; 7:18:01 PM by JES
+			//Rewritten to handle sub-sub[-...]-sites, either via the siteTree XML, or by dereferencing address entries in site tables.
+			//Old code:
+				//local (urlParts = string.urlSplit (siteUrl))
+				//local (domain, path)
+				//domain = urlParts [2]
+				//path = urlParts [3]
+				//
+				//local (nomad)
+				//if defined (config.mainResponder.domains.[domain])
+					//nomad = @config.mainResponder.domains.[domain]
+				//else
+					//nomad = @config.mainResponder.domains.default
+				//
+				//on error ()
+					//scriptError ("Can't get the site name because " + siteUrl + " is the not the URL of a Manila site.")
+				//
+				//local (flFirstTimeThrough = true)
+				//
+				//if typeOf (nomad^) == tableType //XML siteTree support
+					//local (siteAddress, siteAddressList)
+					//if defined (nomad^.siteTree.directory.structure) // defined in XML?
+						//if path endsWith "/"
+							//path = string.mid (path, 1, sizeOf (path) - 1)
+						//nomad = @nomad^.siteTree.directory.structure
+						//nomad = xml.getAddress (nomad, "siteTree")
+						//if path == "" // 11/14/00 JES: handle top-level sites in a siteTree
+							//local (adrSite = xml.getAddress (nomad, "site"))
+							//local (siteName)
+							//try // it might be the default site with no name attribute
+								//siteName = xml.getAttributeValue (adrSite, "name")
+							//else // indeed it is the default site -- try the address
+								//try
+									//adrSite = xml.getAttributeValue (adrSite, "address")
+									//siteName = nameOf (config.manila.sites.[nameOf (adrSite^)])
+							//if siteName
+								//return (siteName)
+						//while (sizeOf (path) > 0)
+							//local (pathPart = string.nthField (path, '/', 1))
+							//if pathPart == ""
+								//break
+							//if flFirstTimeThrough
+								//if defined (config.manila.sites.[pathPart])
+									//nomad = config.manila.sites.[pathPart]
+									//path = string.delete (path, 1, sizeOf (pathPart)) //PBS 08/25/00: fix infinite loop
+									//path = string.popLeading (path, '/')
+									//flFirstTimeThrough = false
+									//continue
+								//nomad = xml.getAddress (nomad, "site")
+								//flFirstTimeThrough = false
+							//else
+								//if defined (nomad^.[pathPart])
+									//nomad = @nomad^.[pathPart]
+									//if typeOf (nomad^) == addressType
+										//nomad = nomad^
+									//path = string.delete (path, 1, sizeOf (pathPart)) //PBS 08/25/00: fix infinite loop
+									//path = string.popLeading (path, '/')
+									//continue
+							//path = string.delete (path, 1, sizeOf (pathPart))
+							//siteAddressList = xml.getAddressList (nomad, "site")
+							//for siteAddress in siteAddressList
+								//if string.lower (xml.getAttributeValue (siteAddress, "name")) == string.lower (pathPart)
+									//nomad = address (xml.getAttributeValue (siteAddress, "address"))
+									//break
+					//else
+						//error ()
+				//else
+					//nomad = nomad^
+					//local (ixPort = string.patternMatch (":", domain))
+					//if ixPort > 0
+						//domain = string.mid (domain, 1, ixPort - 1)
+					//while (sizeOf (path) > 0)
+						//local (pathPart = string.nthField (path, '/', 1))
+						//if pathPart == ""
+							//break
+						//path = string.delete (path, 1, sizeOf (pathPart))
+						//if flFirstTimeThrough
+							//if defined (config.manila.sites.[pathPart])
+								//nomad = config.manila.sites.[pathPart]
+								//continue
+							//flFirstTimeThrough = false
+						//if defined (nomad^.[pathPart])
+							//nomad = @nomad^.[pathPart]
+							//if typeOf (nomad^) == addressType
+								//nomad = nomad^
+				//if not (manilaSuite.isManilaSite (nomad))
+					//error ()
+				//
+				//local (siteName = manilaSuite.getCanonicalSiteName (nomad)) //nomad points to the the site now
+				//
+				//return (siteName)
+		//11/14/00; 2:53:13 AM by JES
+			//Properly handle top-level sites in siteTree structures.
+		//08/25/00; 12:19:14 PM by PBS
+			//Fix an infinite loop which could occur with certain configurations.
+		//08/24/00; 1:35:54 PM by PBS
+			//Now handles the siteTree XML structure in finding a Manila site.
 	
 	local (urlParts = string.urlSplit (siteUrl));
 	local (domain, path);
@@ -133,66 +133,66 @@ on urlToSiteName (siteUrl) {
 	
 	if typeOf (nomad^) == tableType { //XML siteTree support //05/04/2001 JES: rewrite, based on mainResponder logic
 		if defined (nomad^.siteTree.directory.outline) { // defined in XML?
-			«bundle //old, somewhat broken XML siteTree code
-				«local (siteAddress, siteAddressList)
-				«if defined (nomad^.siteTree.directory.structure) // defined in XML?
-					«if path endsWith "/"
-						«path = string.mid (path, 1, sizeOf (path) - 1)
-					«local (adrSite)
-					«try // get the address of the top-level site
-						«local (nomad2 = @nomad^.siteTree.directory.structure)
-						«nomad2 = xml.getAddress (nomad2, "siteTree")
-						«nomad2 = xml.getAddress (nomad2, "site")
-						«adrSite = address (xml.getAttributeValue (nomad2, "address"))
-					«local (pathPart = string.nthField (path, "/", 1))
-					«if defined (adrSite^.[pathPart]) // handle address entries in top-level sites
-						«local (i = 1)
-						«while defined (adrSite^.[pathPart]) // dive into addresses in a site's table
-							«i++
-							«adrSite = @adrSite^.[pathPart]
-							«pathPart = string.nthField (path, '/', i)
-						«if pathPart == "" // set nomad to the address of the site
-							«if typeOf (adrSite^) == addressType
-								«nomad = adrSite^
-					«else
-						«nomad = @nomad^.siteTree.directory.structure
-						«nomad = xml.getAddress (nomad, "siteTree")
-						«if path == "" // 11/14/00 JES: handle top-level sites in a siteTree
-							«try
-								«nomad = xml.getAddress (nomad, "site")
-								«nomad = address (xml.getAttributeValue (nomad, "address"))
-							«else
-								«error ()
-						«
-						«while (sizeOf (path) > 0)
-							«local (pathPart = string.nthField (path, '/', 1))
-							«if pathPart == ""
-								«break
-							«bundle //12/23/00 JES: possibly dive into a site table
-								«local (i = 1)
-								«pathPart = string.nthField (path, '/', i)
-								«while defined (nomad^.[pathPart]) // dive into addresses in a site's table
-									«i++
-									«nomad = @nomad^.[pathPart]
-									«pathPart = string.nthField (path, '/', i)
-								«if pathPart == "" // set nomad to the address of the site and stop searching
-									«if typeOf (nomad^) == addressType
-										«nomad = nomad^
-									«break
-							«if defined (config.manila.sites.[pathPart])
-								«nomad = config.manila.sites.[pathPart]
-								«path = string.delete (path, 1, sizeOf (pathPart)) //PBS 08/25/00: fix infinite loop
-								«path = string.popLeading (path, '/')
-								«continue
-							«nomad = xml.getAddress (nomad, "site")
-							«path = string.delete (path, 1, sizeOf (pathPart) + 1)
-							«siteAddressList = xml.getAddressList (nomad, "site")
-							«for siteAddress in siteAddressList
-								«if string.lower (xml.getAttributeValue (siteAddress, "name")) == string.lower (pathPart)
-									«nomad = address (xml.getAttributeValue (siteAddress, "address"))
-									«break
-				«else
-					«error ()
+			//bundle //old, somewhat broken XML siteTree code
+				//local (siteAddress, siteAddressList)
+				//if defined (nomad^.siteTree.directory.structure) // defined in XML?
+					//if path endsWith "/"
+						//path = string.mid (path, 1, sizeOf (path) - 1)
+					//local (adrSite)
+					//try // get the address of the top-level site
+						//local (nomad2 = @nomad^.siteTree.directory.structure)
+						//nomad2 = xml.getAddress (nomad2, "siteTree")
+						//nomad2 = xml.getAddress (nomad2, "site")
+						//adrSite = address (xml.getAttributeValue (nomad2, "address"))
+					//local (pathPart = string.nthField (path, "/", 1))
+					//if defined (adrSite^.[pathPart]) // handle address entries in top-level sites
+						//local (i = 1)
+						//while defined (adrSite^.[pathPart]) // dive into addresses in a site's table
+							//i++
+							//adrSite = @adrSite^.[pathPart]
+							//pathPart = string.nthField (path, '/', i)
+						//if pathPart == "" // set nomad to the address of the site
+							//if typeOf (adrSite^) == addressType
+								//nomad = adrSite^
+					//else
+						//nomad = @nomad^.siteTree.directory.structure
+						//nomad = xml.getAddress (nomad, "siteTree")
+						//if path == "" // 11/14/00 JES: handle top-level sites in a siteTree
+							//try
+								//nomad = xml.getAddress (nomad, "site")
+								//nomad = address (xml.getAttributeValue (nomad, "address"))
+							//else
+								//error ()
+						//
+						//while (sizeOf (path) > 0)
+							//local (pathPart = string.nthField (path, '/', 1))
+							//if pathPart == ""
+								//break
+							//bundle //12/23/00 JES: possibly dive into a site table
+								//local (i = 1)
+								//pathPart = string.nthField (path, '/', i)
+								//while defined (nomad^.[pathPart]) // dive into addresses in a site's table
+									//i++
+									//nomad = @nomad^.[pathPart]
+									//pathPart = string.nthField (path, '/', i)
+								//if pathPart == "" // set nomad to the address of the site and stop searching
+									//if typeOf (nomad^) == addressType
+										//nomad = nomad^
+									//break
+							//if defined (config.manila.sites.[pathPart])
+								//nomad = config.manila.sites.[pathPart]
+								//path = string.delete (path, 1, sizeOf (pathPart)) //PBS 08/25/00: fix infinite loop
+								//path = string.popLeading (path, '/')
+								//continue
+							//nomad = xml.getAddress (nomad, "site")
+							//path = string.delete (path, 1, sizeOf (pathPart) + 1)
+							//siteAddressList = xml.getAddressList (nomad, "site")
+							//for siteAddress in siteAddressList
+								//if string.lower (xml.getAttributeValue (siteAddress, "name")) == string.lower (pathPart)
+									//nomad = address (xml.getAttributeValue (siteAddress, "address"))
+									//break
+				//else
+					//error ()
 			local (flMapFirstLevelToManilaSites = true);
 			if defined (config.mainResponder.prefs.flMapFirstLevelOfUrlsToManilaSites) {
 				flMapFirstLevelToManilaSites = config.mainResponder.prefs.flMapFirstLevelOfUrlsToManilaSites};
@@ -259,5 +259,5 @@ on urlToSiteName (siteUrl) {
 	
 	return (siteName)};
 
-«bundle //test code
-	«manilaSuite.rpcUtils.urlToSiteName ("http://localhost/sub/subsub/test/")
+//bundle //test code
+	//manilaSuite.rpcUtils.urlToSiteName ("http://localhost/sub/subsub/test/")

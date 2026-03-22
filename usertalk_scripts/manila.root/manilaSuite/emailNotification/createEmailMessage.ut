@@ -1,39 +1,39 @@
 on createEmailMessage (postingText, postingSubject, url, member, flNew, type, language=nil, flOutlineText=false) {
-	«Create an email message. Return a table containing two fields: subject and text.
-		«04/04/00; 10:17:44 PM by PBS
-		«Changes:
-			«04/19/00 at 7:09:45 PM by JES
-				«localized -- note that we assume that this script is always being called in the wsf context.
-			«05/01/00; 3:45:52 PM by JES
-				«Changed getString calls to use a replacement table address instead of a lists
-			«05/04/00; 9:09:02 PM by JES
-				«localized
-					«added optional language parameter -- a string which is the name of the language to use
-			«08/24/00; 5:04:44 PM by PBS
-				«Make sure that the posted text uses \r\n\r\n rather than \r\r, so blank lines in the message appear as blank lines in the email.
-			«10/31/00; 9:02:22 PM by JES
-				«Filter HTML out of the message so that messages posted with the wysiwyg editor look OK.
-			«11/05/00; 2:24:15 AM by JES
-				«Deal with <p> and <li> tags properly. Remove some extra whitespace between cr and lf characters.
-			«11/14/2000; 12:50:31 PM by DW
-				«Instead of using the bulletin sender to send emails, just strip the markup from the message. It'll be more readable, I think.
-			«11/14/2000; 6:43:11 PM by DW
-				«Allow OPML text to pass through unfiltered. 
-			«11/17/2000; 2:38:22 PM by DW
-				«Add optional parameter, flOutlineText, default false. If true, we process text without much processing, allow the outline to come through email indented like an outline.
-			«02/26/01; 8:24:17 AM by DW
-				«Indicate bold text with *bold*, italic text with /slashes/ and extract links and replace them with [numbers] and add the urls at the end of the message. 
-			«02/26/01; 8:19:58 PM by DW
-				«Call callbacks to add an ad at the end of the email message. 
-				«On UserLand servers this will (initially) add a pointer to http://manila.userland.com/.
-			«04/24/01; 12:40:50 AM by JES
-				«If the server is a Mac, convert the subject and body text to Latin before returning the mail message table.
-			«05/2/01; 11:20:41 PM by JES
-				«Small improvements to email message formatting: Replace &nbsp; with space characters. Make sure there are never more than two line-breaks in a row.
-			«12/11/01; 2:12:48 PM by PBS
-				«Fixed a case-sensitivity issue when extracting links. If a link was closed with an </A> instead of </a>, the close tag would not be found, and you'd get something like "[1]ipting News" instead of "Scripting News [1]."
-			«12/19/01; 2:37:11 PM by PBS
-				«Don't convert from Mac to Latin here, now that converting is handled in manilaSuite.sendMail.
+	//Create an email message. Return a table containing two fields: subject and text.
+		//04/04/00; 10:17:44 PM by PBS
+		//Changes:
+			//04/19/00 at 7:09:45 PM by JES
+				//localized -- note that we assume that this script is always being called in the wsf context.
+			//05/01/00; 3:45:52 PM by JES
+				//Changed getString calls to use a replacement table address instead of a lists
+			//05/04/00; 9:09:02 PM by JES
+				//localized
+					//added optional language parameter -- a string which is the name of the language to use
+			//08/24/00; 5:04:44 PM by PBS
+				//Make sure that the posted text uses \r\n\r\n rather than \r\r, so blank lines in the message appear as blank lines in the email.
+			//10/31/00; 9:02:22 PM by JES
+				//Filter HTML out of the message so that messages posted with the wysiwyg editor look OK.
+			//11/05/00; 2:24:15 AM by JES
+				//Deal with <p> and <li> tags properly. Remove some extra whitespace between cr and lf characters.
+			//11/14/2000; 12:50:31 PM by DW
+				//Instead of using the bulletin sender to send emails, just strip the markup from the message. It'll be more readable, I think.
+			//11/14/2000; 6:43:11 PM by DW
+				//Allow OPML text to pass through unfiltered. 
+			//11/17/2000; 2:38:22 PM by DW
+				//Add optional parameter, flOutlineText, default false. If true, we process text without much processing, allow the outline to come through email indented like an outline.
+			//02/26/01; 8:24:17 AM by DW
+				//Indicate bold text with *bold*, italic text with /slashes/ and extract links and replace them with [numbers] and add the urls at the end of the message. 
+			//02/26/01; 8:19:58 PM by DW
+				//Call callbacks to add an ad at the end of the email message. 
+				//On UserLand servers this will (initially) add a pointer to http://manila.userland.com/.
+			//04/24/01; 12:40:50 AM by JES
+				//If the server is a Mac, convert the subject and body text to Latin before returning the mail message table.
+			//05/2/01; 11:20:41 PM by JES
+				//Small improvements to email message formatting: Replace &nbsp; with space characters. Make sure there are never more than two line-breaks in a row.
+			//12/11/01; 2:12:48 PM by PBS
+				//Fixed a case-sensitivity issue when extracting links. If a link was closed with an </A> instead of </a>, the close tag would not be found, and you'd get something like "[1]ipting News" instead of "Scripting News [1]."
+			//12/19/01; 2:37:11 PM by PBS
+				//Don't convert from Mac to Latin here, now that converting is handled in manilaSuite.sendMail.
 	
 	local (t);
 	new (tableType, @t);
@@ -144,12 +144,12 @@ on createEmailMessage (postingText, postingSubject, url, member, flNew, type, la
 			postingText = string.replaceAll (postingText, "\r", "\r\n", false)}};
 	addLine (postingText);
 	
-	«if system.environment.isMac //04/24/2001 JES: convert mac text to Latin //PBS 12/19/01: converting is now handled in manilaSuite.sendMail.
-		«t.text = latinToMac.macToLatin (t.text)
-		«t.subject = latinToMac.macToLatin (t.subject)
+	//if system.environment.isMac //04/24/2001 JES: convert mac text to Latin //PBS 12/19/01: converting is now handled in manilaSuite.sendMail.
+		//t.text = latinToMac.macToLatin (t.text)
+		//t.subject = latinToMac.macToLatin (t.subject)
 	
 	return (t)};
-«bundle //test code
-	«local (s = "This is a test message. Here is some <i>italic text</i>. Here is some <b>boldface text</b>. <p>Now I would like to <a href=\"http://radiodiscuss.userland.com/itsAnOutliner\">link</a> to a story that I find interesting.<p>Oh and here's a <a href=\"http://www.scripting.com/wavs/fargo5.wav\">sound file</a> that might entertain you.\r\n \r \n \r\n \r\n \r\n \r\n", t)
-	«t = createEmailMessage (s, "Test", "http://someplace.url/", "bull@mancuso.com", true, "Message")
-	«tcp.sendmail (user.prefs.mailaddress, t.subject, t.text)
+//bundle //test code
+	//local (s = "This is a test message. Here is some <i>italic text</i>. Here is some <b>boldface text</b>. <p>Now I would like to <a href=\"http://radiodiscuss.userland.com/itsAnOutliner\">link</a> to a story that I find interesting.<p>Oh and here's a <a href=\"http://www.scripting.com/wavs/fargo5.wav\">sound file</a> that might entertain you.\r\n \r \n \r\n \r\n \r\n \r\n", t)
+	//t = createEmailMessage (s, "Test", "http://someplace.url/", "bull@mancuso.com", true, "Message")
+	//tcp.sendmail (user.prefs.mailaddress, t.subject, t.text)

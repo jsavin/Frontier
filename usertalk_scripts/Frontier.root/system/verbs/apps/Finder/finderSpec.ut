@@ -1,26 +1,26 @@
-on finderSpec (path) { « Generally used ONLY by other Finder.xxx () scripts.  Assumes Scriptable Finder
-	«There's a tradeoff here:  it would be more efficient to simply pass a list
-		«which contains no strings and at least one alias or file spec to Finder
-		«in a single Finder.get ().  However, that would fail if the list did
-		«contain one or more path strings.
-		«The difference could be detected in a pre-pass over the list
-		«(which could also be used to detect a list containing only object specs,)
-		«which could be returned unchanged)
+on finderSpec (path) { // Generally used ONLY by other Finder.xxx () scripts.  Assumes Scriptable Finder
+	//There's a tradeoff here:  it would be more efficient to simply pass a list
+		//which contains no strings and at least one alias or file spec to Finder
+		//in a single Finder.get ().  However, that would fail if the list did
+		//contain one or more path strings.
+		//The difference could be detected in a pre-pass over the list
+		//(which could also be used to detect a list containing only object specs,)
+		//which could be returned unchanged)
 	case typeOf (path) {
-		objSpecType { « already what is wanted
+		objSpecType { // already what is wanted
 			return (path)};
-		string4Type { « just make it an object spec, trusting caller
+		string4Type { // just make it an object spec, trusting caller
 			objSpec (path)};
-		'????' { « nil, just return it
+		'????' { // nil, just return it
 			return (path)};
-		stringType; « Fall-thru intended.  Left Finder do the hard stuff
+		stringType; // Fall-thru intended.  Left Finder do the hard stuff
 		filespecType {
 			return (appleEvent (Finder.id, 'core', 'getd', '----',  alias (path)))};
 		listType {
 			local (ix, needsFinder = false, hasObjspec = false);
 			for ix = 1 to sizeof (path) {
 				case typeOf (path[ix]) {
-					filespecType; « Fall-thru intended
+					filespecType; // Fall-thru intended
 					stringType {
 						path[ix] = alias (path[ix]);
 						needsFinder = true};
@@ -30,7 +30,7 @@ on finderSpec (path) { « Generally used ONLY by other Finder.xxx () scripts.  A
 				else {
 					needsFinder = true}};
 			if needsFinder {
-				if hasObjspec { « cannot just pass list to Finder, because of objspecs
+				if hasObjspec { // cannot just pass list to Finder, because of objspecs
 					local (result = {}, x);
 					for x in path {
 						if typeOf (x) == objspecType {
@@ -42,5 +42,5 @@ on finderSpec (path) { « Generally used ONLY by other Finder.xxx () scripts.  A
 					return (appleEvent (Finder.id, 'core', 'getd', '----', path))}}
 			else {
 				return (path)}}}
-	else { « Finder can deal with alias...others are an error
+	else { // Finder can deal with alias...others are an error
 		return (appleEvent (Finder.id, 'core', 'getd', '----',  path))}}

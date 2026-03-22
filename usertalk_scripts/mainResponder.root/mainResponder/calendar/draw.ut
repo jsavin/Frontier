@@ -1,104 +1,104 @@
 on draw (adrcalendar=nil, urlprefix="", colwidth=32, rowheight=22, tableborder=0, bgcolor=nil, monthYearTemplate="<font size=\"+2\" face=\"helvetica,arial\" color=\"black\"><b><center>***</center></b></font>", dayNameTemplate="<font size=\"-1\" color=\"gray\"><center>***</center></font>", dayTemplate="<font size=\"+0\" color=\"black\"><center><b>***</b></center></font>", curdate=clock.now (), urldelimiter="/", firstDayOfWeek=1, adrMonthNamesList=nil, adrAbbrevDayOfWeekNamesList=nil, cssPrefix=nil) {
 	
-	«Change Notes
-		«Original script-based code used before Frontier 6.1
-			«on draw ( \
-				«adrcalendar=nil, \
-				«urlprefix="", \
-				«colwidth=32, \
-				«rowheight=22, \
-				«tableborder=0, \
-				«bgcolor=nil, \
-				«monthYearTemplate="<font size=\"+2\" face=\"helvetica,arial\" color=\"black\"><b><center>***</center></b></font>", \
-				«dayNameTemplate="<font size=\"-1\" color=\"gray\"><center>***</center></font>", \
-				«dayTemplate="<font size=\"+0\" color=\"black\"><center><b>***</b></center></font>", \
-				«curdate=clock.now ())
-				«
-				«Changes
-					«10/10/98; 8:15:56 AM by DW
-						«Changed the structure of adrcalendar^
-						«Made it so that it can directly work with the structure of scriptingNews.root
-						«No need to have another data structure floating around, to maintain
-						«This will break the DaveNet-calendar demo... So what?
-						«The advantage is that we can replicate this structure in other sites.
-					«12/30/98; 6:55:16 AM by DW
-						«bgcolor param defaults to nil. if it's not specified, we don't put out a bgcolor attribute for table cells.
-					«Sun, 28 Feb 1999 00:26:18 GMT by AR
-						«Changed the addday sub-routine to handle the case correctly when curdate does not have an entry in the calendar
-					«Mon, 01 Mar 1999 12:29:32 GMT by AR
-						«The curdate parameter must always be a date type - otherwise we'll throw a scripterror!
-						«Removed some commented-out old code.
-				«
-				«local (bgcolorstring = "")
-				«if bgcolor != nil
-					«bgcolorstring = "bgcolor=\"" + bgcolor + "\""
-				«
-				«local (htmltext = "", indentlevel = 0)
-				«on add (s)
-					«htmltext = htmltext + string.filledString ("\t", indentlevel) + s + "\r"
-				«try
-					«curdate = date (curdate)
-				«else
-					«curdate = clock.now ()
-				«local (day, month, year, hour, minute, second)
-				«date.get (curdate, @day, @month, @year, @hour, @minute, @second)
-				«local (monthyear = date.monthToString (month) + " " + year)
-				«add ("<table cellspacing=\"0\" border=\"" + tableborder + "\">"); indentlevel++
-				«add ("<tr>"); indentlevel++
-				«add ("<td " + bgcolorstring + " colspan=\"7\">"); indentlevel++
-				«add (string.replaceAll (string (monthYearTemplate), "***", monthyear))
-				«add ("</td>"); indentlevel--
-				«add ("</tr>"); indentlevel--
-				«bundle //add days of week
-					«local (i)
-					«add ("<tr height=\"" + rowheight + "\">"); indentlevel++
-					«for i = 1 to 7
-						«local (dayname = string.mid (date.dayOfWeekToString (i), 1, 3))
-						«add ("<td " + bgcolorstring + " width=\"" + colwidth + "\">"); indentlevel++
-						«add (string.replaceAll (string (dayNameTemplate), "***", dayname))
-						«add ("</td>"); indentlevel--
-					«add ("</tr>"); indentlevel--
-				«
-				«bundle //add the days of the month, 1, 2, 3, etc.
-					«on addday (daynum)
-						«local (link = daynum)
-						«if daynum == day
-							«link = "<b>" + daynum + "</b>"
-						«else
-							«try
-								«local (yearstring = string (year))
-								«local (monthstring = string.padwithzeros (month, 2))
-								«local (daystring = string.padwithzeros (daynum, 2))
-								«local (adritem = @adrcalendar^.[yearstring].[monthstring].[daystring])
-								«if defined (adritem^)
-									«local (url = yearstring + "/" + monthstring + "/" + daystring)
-									«link = "<a href=\"" + urlprefix + url + "\">" + daynum + "</a>"
-						«add ("<td " + bgcolorstring + " height=\"" + rowheight + "\">" + string.replaceAll (string (dayTemplate), "***", link) + "</td>")
-					«local (startday = date.dayOfWeek (date.set (1, month, year, 0, 0, 0)), i, daynum = 1)
-					«local (daysinmonth = date.daysInMonth (curdate))
-					«add ("<tr>"); indentlevel++
-					«if startday > 1
-						«add ("<td " + bgcolorstring + " colspan=\"" + (startday - 1) + "\">&nbsp;</td>")
-					«for i = startday to 7
-						«addday (daynum++)
-					«add ("</tr>"); indentlevel--
-					«while daynum <= daysinmonth
-						«add ("<tr>"); indentlevel++
-						«for i = 1 to 7
-							«if daynum > daysinmonth
-								«add ("<td " + bgcolorstring + " colspan=\"" + (8 - i) + "\">&nbsp;</td>")
-								«break
-							«addday (daynum++)
-						«add ("</tr>"); indentlevel--
-				«add ("</table>"); indentlevel--
-				«return (htmltext)
-		«Monday, April 17, 2000 at 8:20:48 AM by AR
-			«Added three new parameters to the kernel code in Frontier 6.2b7
-			«firstDayOfWeek is an optional number between 1 and 7 (inclusive) that determines which day of week will be displayed in the first column of the calendar. The default is 1, i.e. Sunday.
-			«adrMonthNamesList is the optional address of a list of month names. The default is nil, meaning we should call date.monthToString instead of trying to access the list.
-			«adrAbbrevDayOfWeekNamesList is the optional address of a list of abbreviated names of week days. The default is nil, meaning we should call date.dayOfWeekToString instead of trying to access the list.
-		«Wed, May 24, 2000 at 1:23:22 PM by AR
-			«Added new cssPrefix to the kernel code in Frontier 6.2b15
+	//Change Notes
+		//Original script-based code used before Frontier 6.1
+			//on draw ( \
+				//adrcalendar=nil, \
+				//urlprefix="", \
+				//colwidth=32, \
+				//rowheight=22, \
+				//tableborder=0, \
+				//bgcolor=nil, \
+				//monthYearTemplate="<font size=\"+2\" face=\"helvetica,arial\" color=\"black\"><b><center>***</center></b></font>", \
+				//dayNameTemplate="<font size=\"-1\" color=\"gray\"><center>***</center></font>", \
+				//dayTemplate="<font size=\"+0\" color=\"black\"><center><b>***</b></center></font>", \
+				//curdate=clock.now ())
+				//
+				//Changes
+					//10/10/98; 8:15:56 AM by DW
+						//Changed the structure of adrcalendar^
+						//Made it so that it can directly work with the structure of scriptingNews.root
+						//No need to have another data structure floating around, to maintain
+						//This will break the DaveNet-calendar demo... So what?
+						//The advantage is that we can replicate this structure in other sites.
+					//12/30/98; 6:55:16 AM by DW
+						//bgcolor param defaults to nil. if it's not specified, we don't put out a bgcolor attribute for table cells.
+					//Sun, 28 Feb 1999 00:26:18 GMT by AR
+						//Changed the addday sub-routine to handle the case correctly when curdate does not have an entry in the calendar
+					//Mon, 01 Mar 1999 12:29:32 GMT by AR
+						//The curdate parameter must always be a date type - otherwise we'll throw a scripterror!
+						//Removed some commented-out old code.
+				//
+				//local (bgcolorstring = "")
+				//if bgcolor != nil
+					//bgcolorstring = "bgcolor=\"" + bgcolor + "\""
+				//
+				//local (htmltext = "", indentlevel = 0)
+				//on add (s)
+					//htmltext = htmltext + string.filledString ("\t", indentlevel) + s + "\r"
+				//try
+					//curdate = date (curdate)
+				//else
+					//curdate = clock.now ()
+				//local (day, month, year, hour, minute, second)
+				//date.get (curdate, @day, @month, @year, @hour, @minute, @second)
+				//local (monthyear = date.monthToString (month) + " " + year)
+				//add ("<table cellspacing=\"0\" border=\"" + tableborder + "\">"); indentlevel++
+				//add ("<tr>"); indentlevel++
+				//add ("<td " + bgcolorstring + " colspan=\"7\">"); indentlevel++
+				//add (string.replaceAll (string (monthYearTemplate), "***", monthyear))
+				//add ("</td>"); indentlevel--
+				//add ("</tr>"); indentlevel--
+				//bundle //add days of week
+					//local (i)
+					//add ("<tr height=\"" + rowheight + "\">"); indentlevel++
+					//for i = 1 to 7
+						//local (dayname = string.mid (date.dayOfWeekToString (i), 1, 3))
+						//add ("<td " + bgcolorstring + " width=\"" + colwidth + "\">"); indentlevel++
+						//add (string.replaceAll (string (dayNameTemplate), "***", dayname))
+						//add ("</td>"); indentlevel--
+					//add ("</tr>"); indentlevel--
+				//
+				//bundle //add the days of the month, 1, 2, 3, etc.
+					//on addday (daynum)
+						//local (link = daynum)
+						//if daynum == day
+							//link = "<b>" + daynum + "</b>"
+						//else
+							//try
+								//local (yearstring = string (year))
+								//local (monthstring = string.padwithzeros (month, 2))
+								//local (daystring = string.padwithzeros (daynum, 2))
+								//local (adritem = @adrcalendar^.[yearstring].[monthstring].[daystring])
+								//if defined (adritem^)
+									//local (url = yearstring + "/" + monthstring + "/" + daystring)
+									//link = "<a href=\"" + urlprefix + url + "\">" + daynum + "</a>"
+						//add ("<td " + bgcolorstring + " height=\"" + rowheight + "\">" + string.replaceAll (string (dayTemplate), "***", link) + "</td>")
+					//local (startday = date.dayOfWeek (date.set (1, month, year, 0, 0, 0)), i, daynum = 1)
+					//local (daysinmonth = date.daysInMonth (curdate))
+					//add ("<tr>"); indentlevel++
+					//if startday > 1
+						//add ("<td " + bgcolorstring + " colspan=\"" + (startday - 1) + "\">&nbsp;</td>")
+					//for i = startday to 7
+						//addday (daynum++)
+					//add ("</tr>"); indentlevel--
+					//while daynum <= daysinmonth
+						//add ("<tr>"); indentlevel++
+						//for i = 1 to 7
+							//if daynum > daysinmonth
+								//add ("<td " + bgcolorstring + " colspan=\"" + (8 - i) + "\">&nbsp;</td>")
+								//break
+							//addday (daynum++)
+						//add ("</tr>"); indentlevel--
+				//add ("</table>"); indentlevel--
+				//return (htmltext)
+		//Monday, April 17, 2000 at 8:20:48 AM by AR
+			//Added three new parameters to the kernel code in Frontier 6.2b7
+			//firstDayOfWeek is an optional number between 1 and 7 (inclusive) that determines which day of week will be displayed in the first column of the calendar. The default is 1, i.e. Sunday.
+			//adrMonthNamesList is the optional address of a list of month names. The default is nil, meaning we should call date.monthToString instead of trying to access the list.
+			//adrAbbrevDayOfWeekNamesList is the optional address of a list of abbreviated names of week days. The default is nil, meaning we should call date.dayOfWeekToString instead of trying to access the list.
+		//Wed, May 24, 2000 at 1:23:22 PM by AR
+			//Added new cssPrefix to the kernel code in Frontier 6.2b15
 	
 	on oldKernelCall (adrcalendar, urlprefix, colwidth, rowheight, tableborder, bgcolor, monthYearTemplate, dayNameTemplate, dayTemplate, curdate, urldelimiter) { //for 6.2b6 and below
 		kernel (html.drawcalendar)};
@@ -110,45 +110,45 @@ on draw (adrcalendar=nil, urlprefix="", colwidth=32, rowheight=22, tableborder=0
 	else {
 		return (kernelCall (adrcalendar, urlprefix, colwidth, rowheight, tableborder, bgcolor, monthYearTemplate, dayNameTemplate, dayTemplate, curdate, urldelimiter, firstDayOfWeek, adrMonthNamesList, adrAbbrevDayOfWeekNamesList, cssPrefix))}};
 
-«bundle //test code
-	«bundle //call once
-		«local (s, ix, adr = @scratchpad.testtext, ct = clock.ticks ())
-		«s = draw (@spicyNoodlesManilaWebsite, bgcolor:"white", tableborder:10, dayTemplate:"<font color=\"black\"><center>***</center></font>", urlprefix:"/")
-		«s = draw (@spicyNoodlesManilaWebsite, bgcolor:"white", tableborder:10, dayTemplate:"<font color=\"black\"><center>***</center></font>", urlprefix:"/", cssprefix:"spicy")
-		«msg (clock.ticks () - ct)
-		«wp.newTextObject (s, adr)
-		«edit (adr)
-	«bundle //call once
-		«local (s, adr = @scratchpad.testtext)
-		«s = draw ( \
-		«@spicyNoodlesManilaWebsite, \
-		«"", \
-		«32, \
-		«22, \
-		«0, \
-		«nil, \
-		«"<font size=\"+2\" face=\"helvetica,arial\" color=\"black\"><b><center>***</center></b></font>", \
-		«"<font size=\"-1\" color=\"gray\"><center>***</center></font>", \
-		«"<font size=\"+0\" color=\"black\"><center><b>***</b></center></font>", \
-		«clock.now (), \
-		«"/")
-		«wp.newTextObject (s, adr)
-		«edit (adr)
-	«bundle //loop (memory leaks)
-		«local (ix, s, adr = @scratchpad.testtext)
-		«local (startmem = memAvail ())
-		«for ix = 1 to 1000
-			«s = draw (@spicyNoodlesManilaWebsite, urlprefix:"-")
-			«msg (ix + " - " + memAvail ())
-		«local (memlost = double (startmem - memAvail ()) / 1000.0)
-		«wp.newTextObject (s, adr)
-		«edit (adr)
-		«dialog.notify (memlost + " bytes lost per iteration.")
-	«bundle //loop (timing)
-		«local (ix, max=1000, s, adr = @scratchpad.testtext, ct = clock.ticks ())
-		«for ix = 1 to max
-			«s = draw (@spicyNoodlesManilaWebsite, urlprefix:"-")
-		«msg (double (clock.ticks () - ct) / double (max)+ " ticks")
-		«wp.newTextObject (s, adr)
-		«edit (adr)
-	«webbrowser.displaytext (draw (adrcalendar:@spicyNoodlesManilaWebsite, urlprefix:"http://spicynoodles.com/", curdate: clock.now (), cssprefix:"spicy"))
+//bundle //test code
+	//bundle //call once
+		//local (s, ix, adr = @scratchpad.testtext, ct = clock.ticks ())
+		//s = draw (@spicyNoodlesManilaWebsite, bgcolor:"white", tableborder:10, dayTemplate:"<font color=\"black\"><center>***</center></font>", urlprefix:"/")
+		//s = draw (@spicyNoodlesManilaWebsite, bgcolor:"white", tableborder:10, dayTemplate:"<font color=\"black\"><center>***</center></font>", urlprefix:"/", cssprefix:"spicy")
+		//msg (clock.ticks () - ct)
+		//wp.newTextObject (s, adr)
+		//edit (adr)
+	//bundle //call once
+		//local (s, adr = @scratchpad.testtext)
+		//s = draw ( \
+		//@spicyNoodlesManilaWebsite, \
+		//"", \
+		//32, \
+		//22, \
+		//0, \
+		//nil, \
+		//"<font size=\"+2\" face=\"helvetica,arial\" color=\"black\"><b><center>***</center></b></font>", \
+		//"<font size=\"-1\" color=\"gray\"><center>***</center></font>", \
+		//"<font size=\"+0\" color=\"black\"><center><b>***</b></center></font>", \
+		//clock.now (), \
+		//"/")
+		//wp.newTextObject (s, adr)
+		//edit (adr)
+	//bundle //loop (memory leaks)
+		//local (ix, s, adr = @scratchpad.testtext)
+		//local (startmem = memAvail ())
+		//for ix = 1 to 1000
+			//s = draw (@spicyNoodlesManilaWebsite, urlprefix:"-")
+			//msg (ix + " - " + memAvail ())
+		//local (memlost = double (startmem - memAvail ()) / 1000.0)
+		//wp.newTextObject (s, adr)
+		//edit (adr)
+		//dialog.notify (memlost + " bytes lost per iteration.")
+	//bundle //loop (timing)
+		//local (ix, max=1000, s, adr = @scratchpad.testtext, ct = clock.ticks ())
+		//for ix = 1 to max
+			//s = draw (@spicyNoodlesManilaWebsite, urlprefix:"-")
+		//msg (double (clock.ticks () - ct) / double (max)+ " ticks")
+		//wp.newTextObject (s, adr)
+		//edit (adr)
+	//webbrowser.displaytext (draw (adrcalendar:@spicyNoodlesManilaWebsite, urlprefix:"http://spicynoodles.com/", curdate: clock.now (), cssprefix:"spicy"))

@@ -1,20 +1,20 @@
-on makeWindow (path, wtype, adrwindow) { «build a FinderWindowType parameter from the path
-	«For compatibility.  Not used directly in most scripts...used indirectly with old scripts or
-		«scripts not using the Scriptable Finder
-	«make one of these:
-		«finderWindowRec = RECORD
-			«windowType : LongInt;
-			«aliasType : DescType; { set to typeAlias }
-			«aliasLength : LongInt;  { set to length of alias record }
-			«alias : aliasRecord;
-			«END;
+on makeWindow (path, wtype, adrwindow) { //build a FinderWindowType parameter from the path
+	//For compatibility.  Not used directly in most scripts...used indirectly with old scripts or
+		//scripts not using the Scriptable Finder
+	//make one of these:
+		//finderWindowRec = RECORD
+			//windowType : LongInt;
+			//aliasType : DescType; { set to typeAlias }
+			//aliasLength : LongInt;  { set to length of alias record }
+			//alias : aliasRecord;
+			//END;
 	local (file, wdata);
-	if wtype == 0 { «zero is main window; path must be to a folder
-		if not file.isfolder (path) { «non-folders can't have their own window
+	if wtype == 0 { //zero is main window; path must be to a folder
+		if not file.isfolder (path) { //non-folders can't have their own window
 			scripterror ("This verb operates on a Finder window; the path must be to a folder");
 			return (false)}};
 	file = alias (path);
-	wdata = binary (wtype); «zero is main window for folder; 11 is Info; 13 is Sharing
+	wdata = binary (wtype); //zero is main window for folder; 11 is Info; 13 is Sharing
 	wdata = wdata + typeOf (file) + sizeof (file);
 	adrwindow^ = wdata + file;
 	setbinarytype (adrwindow, 'fwin');

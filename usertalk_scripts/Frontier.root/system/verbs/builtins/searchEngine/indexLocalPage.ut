@@ -1,5 +1,5 @@
 on indexLocalPage (adrPage, siteName, adrIndex=nil, adrPreviews=nil, adrStopWords=nil) {
-	«Index a page in a Frontier website.
+	//Index a page in a Frontier website.
 	local (url, title, pageText);
 	local (fileExtension, pageTable);
 	local (flDynamic = false);
@@ -21,9 +21,9 @@ on indexLocalPage (adrPage, siteName, adrIndex=nil, adrPreviews=nil, adrStopWord
 		else {
 			return (false)}; //don't index this page
 		
-		«Set the indexThisPage directive to false to skip a page.
+		//Set the indexThisPage directive to false to skip a page.
 		if not (html.getPagePref ("indexThisPage", adrPage)) {
-			«Remove this page from the index, in case it was previously indexed.
+			//Remove this page from the index, in case it was previously indexed.
 			searchEngine.deIndexPage (adrPage, adrIndex);
 			return (false)}}; //don't index this page
 	
@@ -33,8 +33,8 @@ on indexLocalPage (adrPage, siteName, adrIndex=nil, adrPreviews=nil, adrStopWord
 		adrStopWords = @searchEngine.data.stopWords};
 	
 	if flDynamic == false { //find out if we need to build the page first
-		«Set the #regularIndex directive to false to force
-			«largely dynamic pages to get built before being indexed.
+		//Set the #regularIndex directive to false to force
+			//largely dynamic pages to get built before being indexed.
 		if not (html.getPagePref ("regularIndex", adrPage)) {
 			flDynamic = true}};
 	
@@ -57,12 +57,12 @@ on indexLocalPage (adrPage, siteName, adrIndex=nil, adrPreviews=nil, adrStopWord
 	
 	msg ("Search Engine: Indexing: " + adrPage);
 	
-	«Create a preview for this page.
-		«This should always be done before adding a page to the index.
+	//Create a preview for this page.
+		//This should always be done before adding a page to the index.
 	searchEngine.createPreview (pageText, title, url, adrPage, adrPreviews);
 	
-	«Add the page to the index.
-		«It's okay to call this verb if the page has been indexed before.
+	//Add the page to the index.
+		//It's okay to call this verb if the page has been indexed before.
 	searchEngine.indexPage (adrPage, url, title, pageText, adrIndex, adrStopWords);
 	
 	return (true)}

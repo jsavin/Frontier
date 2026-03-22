@@ -1,6 +1,6 @@
-«7/5/01; 2:36:18 PM by JES
-	«Initialize Manila site editing windowTypes, copying info from user.playlist.manila if it exists.
-	«All Manila site editing functionality is now implemented in nodeTypes and windowTypes.
+//7/5/01; 2:36:18 PM by JES
+	//Initialize Manila site editing windowTypes, copying info from user.playlist.manila if it exists.
+	//All Manila site editing functionality is now implemented in nodeTypes and windowTypes.
 bundle { //init user.manila
 	if not defined (user.manila) {
 		new (tableType, @user.manila)};

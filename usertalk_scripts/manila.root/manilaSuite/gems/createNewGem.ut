@@ -1,28 +1,28 @@
 on createNewGem (adrSite, adrDataTable, flDoNotWrite=false) { //03/01/02, 18:26:13 by DAB
-	«This is the bottleneck script for creating a new gem. Call it from any context. It writes the file to disk and stores info about the gem in the site. If there's an error -- like the limit is reached or gems aren't enabled for this site -- it generates a scriptError. Returns the address of info about this gem stored in the site.
-		«Params:
-			«adrSite -- address of the Manila site.
-			«adrDataTable is the address of a table containing:
-				«title -- the title to give the gem.
-				«data -- the actual bits.
-				«Content-Type -- the MIME type.
-				«filename -- the filename to give the gem.
-				«member -- the memberKey of the person who's posting the gem.
-				«postTime -- the time of the posting.
-				«timeZone -- the time zone setting for this site. (nil if server setting.)
-		«04/14/00; 4:02:01 PM by PBS
-		«Changes:
-			«04/20/00; 7:41:07 PM by JES
-				«localized error messages
-					«this required building a fake page table when not running in wsf context
-			«05/01/00; 3:33:32 PM by JES
-				«Changed getString calls to use a replacement table address instead of a lists
-			«07/02/00; 6:06:48 PM by PBS
-				«When a new Gem is uploaded, make sure any old Gems with the same path on disk are marked as deleted. Uploading a new Gem with the same file name as the old Gem is equivalent to over-writing an old Gem.
-				«Call manilaSuite.gems.deleteReplacedGems to do the checking and deleting.
-	«Changes
-		«10/13/04; 2:24:57 AM by JES
-			«New optional parameter, flDoNotWrite. If true, gems are not written to disk. Defaults to false, preserving current behavior.
+	//This is the bottleneck script for creating a new gem. Call it from any context. It writes the file to disk and stores info about the gem in the site. If there's an error -- like the limit is reached or gems aren't enabled for this site -- it generates a scriptError. Returns the address of info about this gem stored in the site.
+		//Params:
+			//adrSite -- address of the Manila site.
+			//adrDataTable is the address of a table containing:
+				//title -- the title to give the gem.
+				//data -- the actual bits.
+				//Content-Type -- the MIME type.
+				//filename -- the filename to give the gem.
+				//member -- the memberKey of the person who's posting the gem.
+				//postTime -- the time of the posting.
+				//timeZone -- the time zone setting for this site. (nil if server setting.)
+		//04/14/00; 4:02:01 PM by PBS
+		//Changes:
+			//04/20/00; 7:41:07 PM by JES
+				//localized error messages
+					//this required building a fake page table when not running in wsf context
+			//05/01/00; 3:33:32 PM by JES
+				//Changed getString calls to use a replacement table address instead of a lists
+			//07/02/00; 6:06:48 PM by PBS
+				//When a new Gem is uploaded, make sure any old Gems with the same path on disk are marked as deleted. Uploading a new Gem with the same file name as the old Gem is equivalent to over-writing an old Gem.
+				//Call manilaSuite.gems.deleteReplacedGems to do the checking and deleting.
+	//Changes
+		//10/13/04; 2:24:57 AM by JES
+			//New optional parameter, flDoNotWrite. If true, gems are not written to disk. Defaults to false, preserving current behavior.
 	
 	local (title = adrDataTable^.title);
 	

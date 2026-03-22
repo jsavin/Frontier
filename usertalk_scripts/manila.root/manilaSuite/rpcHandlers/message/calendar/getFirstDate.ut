@@ -1,5 +1,5 @@
 on getFirstDate (username, password, siteName) {
-	«Get the first date in the message storage calendar.
+	//Get the first date in the message storage calendar.
 	
 	bundle { //make sure this user has access to the discussion group
 		local (beginningErrorString = "Can't get the first date in the message calendar because ");

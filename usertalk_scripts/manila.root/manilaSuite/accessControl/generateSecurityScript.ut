@@ -1,8 +1,8 @@
 on generateSecurityScript (adrTable, adrPermittedCohorts) {
-	«manilaSuite.accessControl.generateSecurityScript : 05/05/16, 00:22:06 by DAB
-		«generate a security script for the table AdrTable
-	«Changes
-	«generate a security script based on a list of cohorts
+	//manilaSuite.accessControl.generateSecurityScript : 05/05/16, 00:22:06 by DAB
+		//generate a security script for the table AdrTable
+	//Changes
+	//generate a security script based on a list of cohorts
 	local (secScript = string(manilaData.accessControl.["#security"]));
 	secScript = string.replaceAll (secScript, "[[cohorts]]", string.popFileFromAddress(adrPermittedCohorts));
 	script.newScriptObject (secScript, @adrTable^.["#security"]);

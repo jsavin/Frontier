@@ -1,6 +1,6 @@
 on set (siteName, username, password, binaryOpmlText) {
-	«Save a Manila site outline. Don't check it in -- that's handled elsewhere.
-		«10/12/00; 9:36:25 PM by PBS
+	//Save a Manila site outline. Don't check it in -- that's handled elsewhere.
+		//10/12/00; 9:36:25 PM by PBS
 	
 	bundle { //make sure this person is a managing editor of the site.
 		local (beginningErrorString = "Can't save the editorial outline because ");

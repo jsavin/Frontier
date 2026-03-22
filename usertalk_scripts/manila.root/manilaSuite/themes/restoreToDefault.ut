@@ -1,6 +1,6 @@
 on restoreToDefault (adrSite, objectName, adrTheme=nil) {
-	«Do a restore-to-default of an Advanced Page item.
-		«06/06/00; 3:36:38 PM by PBS
+	//Do a restore-to-default of an Advanced Page item.
+		//06/06/00; 3:36:38 PM by PBS
 	
 	if adrTheme == nil {
 		adrTheme = manilaSuite.themes.getSiteThemeAddress (adrSite)};

@@ -1,7 +1,7 @@
 on create (adrSession, objectType, adrDataTable) {
-	«Changes
-		«4/20/06; 3:02:54 AM by JES
-			«Created. Create an object of the given objectType, with field values as specified by name/value pairs in the table referenced by adrDataTable.
+	//Changes
+		//4/20/06; 3:02:54 AM by JES
+			//Created. Create an object of the given objectType, with field values as specified by name/value pairs in the table referenced by adrDataTable.
 	local (t); new (tableType, @t);
 	local (adr);
 	for adr in adrDataTable {
@@ -11,15 +11,15 @@ on create (adrSession, objectType, adrDataTable) {
 		return (retval.id)}
 	else { //throw the error
 		scriptError ("Can't create the object because the server returned an error: " + retval.errors.message)}};
-«bundle //testing
-	«local (adrses)
-	«bundle //set adrses
-		«if defined (temp.salesforce.sessions) and sizeOf (temp.salesforce.sessions)
-			«local (sesnum = sizeOf (temp.salesforce.sessions))
-			«adrses = @temp.salesforce.sessions[sesnum]
-		«else //log in
-			«salesforce.login (workspace.salesforcecomUsername, workspace.salesforcecomPassword, @adrses)
-	«local (t); new (tableType, @t)
-	«t.Name = "Bull Mancuso"
-	«table.assign (@workspace.retval, this^ (adrses, "Account", @t) )
-	«edit (@workspace.retval)
+//bundle //testing
+	//local (adrses)
+	//bundle //set adrses
+		//if defined (temp.salesforce.sessions) and sizeOf (temp.salesforce.sessions)
+			//local (sesnum = sizeOf (temp.salesforce.sessions))
+			//adrses = @temp.salesforce.sessions[sesnum]
+		//else //log in
+			//salesforce.login (workspace.salesforcecomUsername, workspace.salesforcecomPassword, @adrses)
+	//local (t); new (tableType, @t)
+	//t.Name = "Bull Mancuso"
+	//table.assign (@workspace.retval, this^ (adrses, "Account", @t) )
+	//edit (@workspace.retval)

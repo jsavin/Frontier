@@ -1,5 +1,5 @@
 on successMessage (pta, messageID, adrReplTbl) {
-	«manilaSuite.sitePrefs.utility.successMessage : 04/05/14, 20:47:30 by DAB
+	//manilaSuite.sitePrefs.utility.successMessage : 04/05/14, 20:47:30 by DAB
 	local (htmlText = "");
 	on add (s) {
 		htmlText = htmlText + s;};

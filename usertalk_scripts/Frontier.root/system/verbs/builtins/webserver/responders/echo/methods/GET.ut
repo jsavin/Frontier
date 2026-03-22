@@ -1,8 +1,8 @@
-«Script: system.verbs.builtins.webserver.responders.echo.methods.GET; Version 1; Date: Wed, 13 May 1998 06:21:43 GMT; ID: RAB
+//Script: system.verbs.builtins.webserver.responders.echo.methods.GET; Version 1; Date: Wed, 13 May 1998 06:21:43 GMT; ID: RAB
 on get (adrParamTable) {
-	«March 03, 1998 at 9:36:20 PM by WMF
-		«This is a debugging responder that echos all the parameters that are available to a responder 
-		«It is similar to the samples.tellParams CGI
+	//March 03, 1998 at 9:36:20 PM by WMF
+		//This is a debugging responder that echos all the parameters that are available to a responder 
+		//It is similar to the samples.tellParams CGI
 	
 	local (response, i);
 	on add (s) {

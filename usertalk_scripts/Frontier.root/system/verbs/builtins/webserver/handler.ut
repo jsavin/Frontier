@@ -1,53 +1,53 @@
 on handler (adrparams) {
-	«Change notes:
-		«March 05, 1998 at 8:40:09 PM by WMF
-			«Now doesn't call webstar.sendPartial when using Frontier's Web server
-		«Thu, Dec 18, 1997 at 3:52:23 PM by PBS
-			«Added callbacks structure.
-				«user.webserver.callbacks.filterRequest.
-					«This is a table of scripts that receive one parameter, 
-					«the address of the cgi params table.
-					«Every script has a shot at altering this table.
-					«Returned values are ignored.
-				«user.webserver.callbacks.handleRequest
-					«This is a table of scripts that receive one parameter, 
-					«the address of the cgi params table.
-					«If a script returns anything other than ""
-					«then the returned value will be returned to the server,
-					«thus over-riding the default CGI Framework behavior.
-				«user.webserver.callbacks.filterPage
-					«This is a table of scripts that receives two parameters,
-					«the address of the cgi params table and the address of the htmltext to be returned.
-					«Every script has a shot at altering the returned page
-					«or the cgi params (though there's little point in the second).
-					«Returned values are ignored.
-			«"Grandfathered-in" suites.webserverScripts and webserver.actions tables.
-		«Mon, Dec 8, 1997 at 12:27:02 PM by PBS
-			«Fixed preferences.
-			«Made changes appropriate to new user table structure.
-		«PBS 9/19/97: Now takes a table address as parameter.
-			«The cgi params table is now created in the trap script.
-		«PBS Jan-Feb 97
-			«New parameters:
-				«appID: the four-character signature of the server application
-				«serverPath: the path to the server application
-				«websiteFolder: the path to the website folder
-					«For many servers, you can use file.folderFromPath (serverPath)
-					«to get the path to the website folder. For personal web servers
-					«the server may not be in the web site folder, so this parameter
-					«is useful.
-			«Changed calls to sendPartial to use the name of the server
-				«application instead of the application signature.
-				«This way one can distinguish between two servers of the same
-				«type, as long as their names are different in the Finder.
-			«Outlines can now be returned. These are evaluated exactly
-				«the same way as wp-text objects.
-			«New preference: user.webserver.chunkSize allows one to
-				«change the size of the data returned in send-partial calls.
-			«Return File Not Found error instead of error message page
-				«when the object cannot be found.
-		«DW 12/9/95: added support for partial returns in WebStar
-			«see local routine "buildReturn"
+	//Change notes:
+		//March 05, 1998 at 8:40:09 PM by WMF
+			//Now doesn't call webstar.sendPartial when using Frontier's Web server
+		//Thu, Dec 18, 1997 at 3:52:23 PM by PBS
+			//Added callbacks structure.
+				//user.webserver.callbacks.filterRequest.
+					//This is a table of scripts that receive one parameter, 
+					//the address of the cgi params table.
+					//Every script has a shot at altering this table.
+					//Returned values are ignored.
+				//user.webserver.callbacks.handleRequest
+					//This is a table of scripts that receive one parameter, 
+					//the address of the cgi params table.
+					//If a script returns anything other than ""
+					//then the returned value will be returned to the server,
+					//thus over-riding the default CGI Framework behavior.
+				//user.webserver.callbacks.filterPage
+					//This is a table of scripts that receives two parameters,
+					//the address of the cgi params table and the address of the htmltext to be returned.
+					//Every script has a shot at altering the returned page
+					//or the cgi params (though there's little point in the second).
+					//Returned values are ignored.
+			//"Grandfathered-in" suites.webserverScripts and webserver.actions tables.
+		//Mon, Dec 8, 1997 at 12:27:02 PM by PBS
+			//Fixed preferences.
+			//Made changes appropriate to new user table structure.
+		//PBS 9/19/97: Now takes a table address as parameter.
+			//The cgi params table is now created in the trap script.
+		//PBS Jan-Feb 97
+			//New parameters:
+				//appID: the four-character signature of the server application
+				//serverPath: the path to the server application
+				//websiteFolder: the path to the website folder
+					//For many servers, you can use file.folderFromPath (serverPath)
+					//to get the path to the website folder. For personal web servers
+					//the server may not be in the web site folder, so this parameter
+					//is useful.
+			//Changed calls to sendPartial to use the name of the server
+				//application instead of the application signature.
+				//This way one can distinguish between two servers of the same
+				//type, as long as their names are different in the Finder.
+			//Outlines can now be returned. These are evaluated exactly
+				//the same way as wp-text objects.
+			//New preference: user.webserver.chunkSize allows one to
+				//change the size of the data returned in send-partial calls.
+			//Return File Not Found error instead of error message page
+				//when the object cannot be found.
+		//DW 12/9/95: added support for partial returns in WebStar
+			//see local routine "buildReturn"
 	local (adrscript = false, i);
 	local (callbackText = "");
 	
@@ -55,34 +55,34 @@ on handler (adrparams) {
 	local (adrHandlers = @user.webserver.callbacks.handleRequest);
 	local (adrPageFilters = @user.webserver.callbacks.filterPage);
 	
-	«If debugging is on, make a copy of the paramtable.
+	//If debugging is on, make a copy of the paramtable.
 	if webserver.getPref ("fldebug") {
 		temp.cgiParams = adrparams^};
 	
-	on buildReturn (data) { «DW 12/9/95 -- added
+	on buildReturn (data) { //DW 12/9/95 -- added
 		data = string (data);
 		if data == "" {
 			return (data)};
 		if not (data beginswith "HTTP/") {
-			«Add header.
+			//Add header.
 			data = webserver.httpHeader () + data};
-		«First call the filterPage callbacks.
+		//First call the filterPage callbacks.
 		for i = 1 to sizeOf (adrPageFilters^) {
 			try {
 				adrPageFilters^ [i] (adrparams, @data)}};
 		
-		«all fcgi calls should use the sendpartial event if the size > 24K
-			«by putting it here, we catch *all* outgoing text, so none of
-			«the webserverscripts need to worry about it. this is the right
-			«place to put it. DW
-			«...unless you're using Frontier's Web server. WMF
+		//all fcgi calls should use the sendpartial event if the size > 24K
+			//by putting it here, we catch *all* outgoing text, so none of
+			//the webserverscripts need to worry about it. this is the right
+			//place to put it. DW
+			//...unless you're using Frontier's Web server. WMF
 		local(theOS = sys.os());
 		if theOS contains "Mac" || adrParams^.appName == file.fileFromPath (Frontier.getProgramPath()) {
 			return (data)};
 		local (maxchunksize = 24 * 1024);
-		if defined (user.webserver.prefs.chunkSize) { «PBS 2/8/97: configurable chunk size
+		if defined (user.webserver.prefs.chunkSize) { //PBS 2/8/97: configurable chunk size
 			maxchunksize = user.webserver.prefs.chunkSize * 1024};
-		if maxchunksize == 0 || sizeof (data) < maxchunksize { «no problem, AE Manager won't barf
+		if maxchunksize == 0 || sizeof (data) < maxchunksize { //no problem, AE Manager won't barf
 			return (data)};
 		loop {
 			if sizeof (data) <= maxchunksize {
@@ -93,72 +93,72 @@ on handler (adrparams) {
 			webserver.sendPartial (string (chunk), adrparams, true);
 			sys.systemTask ()}};
 	
-	«Call the filterRequest scripts.
+	//Call the filterRequest scripts.
 	for i = 1 to sizeOf (adrFilters^) {
 		try {
 			adrFilters^ [i] (adrparams)}};
 	
-	«Call the handleRequest scripts.
+	//Call the handleRequest scripts.
 	for i = 1 to sizeOf (adrHandlers^) {
 		try {
 			callbackText = adrHandlers^ [i] (adrparams);
 			if callbackText != "" {
 				break}}};
 	
-	«Get the address of the script.
-		«Skip this if one of the handleRequest scripts will handle the request.
+	//Get the address of the script.
+		//Skip this if one of the handleRequest scripts will handle the request.
 	if callbackText == "" {
-		bundle { «Is it an action script?
-			«Look in user.webserver.actions.
+		bundle { //Is it an action script?
+			//Look in user.webserver.actions.
 			if defined (user.webserver.actions.[adrparams^.action]) {
 				adrscript = @user.webserver.actions.[adrparams^.action]}
 			else {
-				«Grandfathered-in: look in webserver.actions table.
+				//Grandfathered-in: look in webserver.actions table.
 				if defined (webserver.actions.[adrparams^.action]) {
 					adrscript = @webserver.actions.[adrparams^.action]}}};
-		if !adrscript { «It's not an action. Build the address of the script.
+		if !adrscript { //It's not an action. Build the address of the script.
 			local (addressString = adrparams^.scriptName);
-			bundle { «clean up the address string
-				«on entry, the string looks like this: /sub/samples.tellTime.fcgi
+			bundle { //clean up the address string
+				//on entry, the string looks like this: /sub/samples.tellTime.fcgi
 				addressString = string.nthField (addressString, '/', string.countFields (addressString, '/'));
 				addressString = string.popSuffix (addressString)};
-			bundle { «build the address of the script
+			bundle { //build the address of the script
 				adrscript = "user.webserver.cgis." + addressString;
-				if not defined (adrscript^) { «Script not defined.
-					«Grandfathered-in: look in suites.webserverScripts.
+				if not defined (adrscript^) { //Script not defined.
+					//Grandfathered-in: look in suites.webserverScripts.
 					adrscript = "suites.webserverScripts." + addressString;
 					if not defined (adrscript^) {
 						return (webserver.fileNotFoundError (adrparams))}}}}};
 	
-	«Run the script and build the return.
+	//Run the script and build the return.
 	try {
 		if callbackText != "" {
 			return (buildReturn (callbackText))};
-		«Default behavior.
+		//Default behavior.
 		case typeOf (adrscript^) {
-			scriptType { « run script
+			scriptType { // run script
 				case sys.os {
 					"WinNT";
 					"Win95" {
-						return (buildReturn (adrscript^ (adrparams)))}}; «call the CGI script, return the result
+						return (buildReturn (adrscript^ (adrparams)))}}; //call the CGI script, return the result
 				case script.getLanguage (adrscript) {
 					"AppleScript" {
 						with adrparams^ {
 							return (buildReturn (adrscript^ (pathArgs, httpSearchArgs, username, password, fromUser, clientAddress, serverName, serverPort, scriptName, contentType, referer, userAgent, action, actionPath, postArgs, method, clientIP, fullRequest)))}};
 					"UserTalk" {
-						return (buildReturn (adrscript^ (adrparams)))}}}; «call the CGI script, return the result
-			codeType { « run script
-				return (buildReturn (adrscript^ (adrparams)))}; «call the CGI script, return the result
-			outlineType; «return text or html
-			stringType; « return text or html
-			wpTextType { « return text or html
+						return (buildReturn (adrscript^ (adrparams)))}}}; //call the CGI script, return the result
+			codeType { // run script
+				return (buildReturn (adrscript^ (adrparams)))}; //call the CGI script, return the result
+			outlineType; //return text or html
+			stringType; // return text or html
+			wpTextType { // return text or html
 				local (holder = string (adrscript^));
 				holder = webServer.processMacros (holder, adrparams);
 				if string.patternMatch ("<html>", string.lower (holder)) > 0 {
 					return (buildReturn (webserver.httpHeader () + holder))}
 				else {
 					return (buildReturn (webserver.httpHeader ("200 OK", "text/plain") + holder))}};
-			binaryType { «determine mime-type and return
+			binaryType { //determine mime-type and return
 				local (typeTest = getBinaryType (adrscript^));
 				if defined (user.webServer.prefs.mimeTypes.[typeTest]) {
 					with user.webServer.prefs.mimeTypes {

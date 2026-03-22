@@ -1,8 +1,8 @@
 on checkMemberCohortsFromGroup (pta, permittedCohorts, adrGroup) {
-	«manilaSuite.accessControl.checkMemberCohortsFromGroup : 05/05/14, 17:28:28 by DAB
-	«In the context of the page table, does the member belong to any
-	«cohorts  in the provided list?
-	«was manilaFixer.accessControl.checkMemberCohorts : 02/02/21, 17:54:49 by DAB
+	//manilaSuite.accessControl.checkMemberCohortsFromGroup : 05/05/14, 17:28:28 by DAB
+	//In the context of the page table, does the member belong to any
+	//cohorts  in the provided list?
+	//was manilaFixer.accessControl.checkMemberCohorts : 02/02/21, 17:54:49 by DAB
 	local (adrCohorts = @adrGroup^.cohorts);
 	
 	local (itm, adrCohort, adrScript,  tbl);

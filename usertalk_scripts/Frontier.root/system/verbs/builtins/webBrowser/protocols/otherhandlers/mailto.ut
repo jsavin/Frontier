@@ -1,7 +1,7 @@
 on mailto (url) {
 	local (protocolstring = string.nthField (url, ':', 1));
 	url = string.delete (url, 1, sizeof (protocolstring) + 1);
-	if Eudora.launch () { «a scriptable version of Eudora is now running
+	if Eudora.launch () { //a scriptable version of Eudora is now running
 		local (x);
 		Eudora.bringtofront ();
 		x = Eudora.createMessage ();

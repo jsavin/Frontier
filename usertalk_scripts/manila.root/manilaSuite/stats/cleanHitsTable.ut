@@ -1,6 +1,6 @@
 on cleanHitsTable (adrTable) {
-	«Make sure the hits table doesn't have stale data.
-		«11/09/00; 7:18:40 PM by PBS
+	//Make sure the hits table doesn't have stale data.
+		//11/09/00; 7:18:40 PM by PBS
 	
 	local (day, month, year, hour, minute, second);
 	date.get (clock.now (), @day, @month, @year, @hour, @minute, @second);

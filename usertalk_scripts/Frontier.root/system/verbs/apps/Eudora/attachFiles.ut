@@ -1,4 +1,4 @@
-on attachFiles (msgObj, documents, spooling = nil) { «Attach documents to a message
+on attachFiles (msgObj, documents, spooling = nil) { //Attach documents to a message
 	
 	local(fList);
 	if (typeof(documents)  != listType) {

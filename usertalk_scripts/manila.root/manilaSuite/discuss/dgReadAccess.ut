@@ -1,5 +1,5 @@
 on dgReadAccess (pta=nil) {
-	«Return true if this person can read the dg. This person may or may not be a member, a CE or ME.
+	//Return true if this person can read the dg. This person may or may not be a member, a CE or ME.
 	
 	if pta == nil {
 		pta = html.getPageTableAddress ()};
@@ -7,7 +7,7 @@ on dgReadAccess (pta=nil) {
 	if defined (pta^.flDgReadAccess) {
 		return (pta^.flDgReadAccess)};
 	
-	«Editors can always read the dg.
+	//Editors can always read the dg.
 	if manilaSuite.editors.editorialTest (pta) {
 		pta^.flDgReadAccess = true;
 		return (true)};
@@ -16,8 +16,8 @@ on dgReadAccess (pta=nil) {
 	if defined (pta^.adrMemberInfo) {
 		flMember = true};
 	
-	«To see if there is completely public read access, check for the presence of a #members directive in the discuss table.
-		«If there is no #members directive there, it must be in the edit table. Which means the entire public, members and non-members, can read the dg.
+	//To see if there is completely public read access, check for the presence of a #members directive in the discuss table.
+		//If there is no #members directive there, it must be in the edit table. Which means the entire public, members and non-members, can read the dg.
 	local (adrDiscussTable = @pta^.adrSiteRootTable^.discuss);
 	if not (defined (adrDiscussTable^.["#members"])) {
 		pta^.flDgReadAccess = true;
@@ -26,7 +26,7 @@ on dgReadAccess (pta=nil) {
 	if not defined (pta^.newsSite^.flPublicMembersDgAccess) { //this flag determines whether all members can access the dg
 		pta^.newsSite^.flPublicMembersDgAccess = false};
 	
-	«If this is a member and all members can access the dg, then return true.
+	//If this is a member and all members can access the dg, then return true.
 	if flMember and pta^.newsSite^.flPublicMembersDgAccess {
 		pta^.flDgReadAccess = true;
 		return (true)};

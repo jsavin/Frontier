@@ -1,12 +1,12 @@
 on editDepartmentPage () {
-	«Changes
-		«10/8/03; 12:46:04 PM by JES
-			«Added support for per-department language pref, and picture association.
-		«9/3/03; 12:42:51 PM by JES
-			«Created. UI for editing or creating a department.
+	//Changes
+		//10/8/03; 12:46:04 PM by JES
+			//Added support for per-department language pref, and picture association.
+		//9/3/03; 12:42:51 PM by JES
+			//Created. UI for editing or creating a department.
 	
 	local (pta = html.getPageTableAddress ());
-	«workspace.pt = pta^
+	//workspace.pt = pta^
 	
 	bundle { //editorial check
 		if not manilaSuite.editors.managingEditorTest (pta) {
@@ -168,6 +168,6 @@ on editDepartmentPage () {
 	
 	return (htext)};
 
-«bundle //test code
-	«html.setPageTableAddress (@workspace.pt)
-	«editDepartmentPage ()
+//bundle //test code
+	//html.setPageTableAddress (@workspace.pt)
+	//editDepartmentPage ()

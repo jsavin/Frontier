@@ -1,7 +1,7 @@
 on initSite (adrsite) {
-	«Changes
-		«5/8/03; 5:42:05 PM by JES
-			«Created. Initialize prefs for mail-to-weblog for a given site.
+	//Changes
+		//5/8/03; 5:42:05 PM by JES
+			//Created. Initialize prefs for mail-to-weblog for a given site.
 	local (adrdata = @adrsite^.["#newsSite"].mailToWeblog);
 	if not defined (adrdata^) {
 		new (tableType, adrdata)};

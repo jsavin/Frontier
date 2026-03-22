@@ -1,7 +1,7 @@
 on anything (path) {
-	«Changes:
-		«05/11/01; 6:55:14 PM by JES
-			«Implemented for Windows in script, using file.findApplication to find the app, and launch.appWithDocument to open the file. Executible files (.exe, .com, and .bat) are launched using launch.application.
+	//Changes:
+		//05/11/01; 6:55:14 PM by JES
+			//Implemented for Windows in script, using file.findApplication to find the app, and launch.appWithDocument to open the file. Executible files (.exe, .com, and .bat) are launched using launch.application.
 	on kernelCall (path) {
 		kernel (launch.anything)};
 	case true {
@@ -19,5 +19,5 @@ on anything (path) {
 						return (launch.application (path))}}
 				else {
 					return (launch.appWithDocument (file.findApplication (extension), path))}}}}};
-«bundle //test code
-	«launch.anything ("C:\\test.txt")
+//bundle //test code
+	//launch.anything ("C:\\test.txt")

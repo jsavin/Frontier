@@ -1,7 +1,7 @@
 on getDownloadUrl (adrSite) {
-	«Given the address of a site, return the URL for downloading the DG theme from the site.
-		«10/27/00; 2:58:45 AM by JES
-			«Cribbed from manilaSuite.themes.getDownloadUrl
+	//Given the address of a site, return the URL for downloading the DG theme from the site.
+		//10/27/00; 2:58:45 AM by JES
+			//Cribbed from manilaSuite.themes.getDownloadUrl
 	
 	local (url);
 	local (baseUrl = adrSite^.["#ftpSite"].url);

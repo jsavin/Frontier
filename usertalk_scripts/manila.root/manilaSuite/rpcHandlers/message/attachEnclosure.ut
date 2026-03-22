@@ -1,5 +1,5 @@
 on attachEnclosure (username, password, siteName, msgNum, enclosureType, enclosureBits, enclosureAddress) {
-	«Attach an enclosure to a message.
+	//Attach an enclosure to a message.
 	
 	bundle { //make sure this user has access to the discussion group
 		local (beginningErrorString = "Can't attach enclosure to message \"" + msgNum + "\" because ");

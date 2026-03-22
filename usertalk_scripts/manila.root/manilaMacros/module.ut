@@ -1,6 +1,6 @@
 on module (moduleName) {
-	«Include a named dg message.
-		«11/13/00; 3:17:11 PM by PBS
+	//Include a named dg message.
+		//11/13/00; 3:17:11 PM by PBS
 	
 	local (pta = html.getPageTableAddress ());
 	local (msgNum);

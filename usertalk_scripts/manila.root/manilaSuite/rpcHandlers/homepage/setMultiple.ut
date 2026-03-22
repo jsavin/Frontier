@@ -1,30 +1,30 @@
 on setMultiple (username, password, siteName, dateList, homePageTextList) {
-	«01/24/01; 10:00:17 PM by JES
-		«Set the text of multiple homePages, given dates and text of the pages.
-			«The dateList and homePageTextList correspond to homePage dates and text, in reverse chronological order.
-		«Returns a list of homePage message numbers, or errors.
-			«If no homePage exists for a given date, there are two possible actions:
-				«1) If no messages exist for any day after the given date, a new message will be created for the given date.
-					«When a new message is created, the subject of the message is the date for the home page.
-				«2) If messages exist for any day after the given date, the returned list element will contain 0, signifying that the homePage for the given date could not be created.
-			«If the homePage for a given date is a deleted message, the message will be undeleted.
-	«Changes:
-		«1/30/04; 5:00:51 PM by JES
-			«When creating new home page messages, add them to the home page index.
-		«5/14/03; 1:17:51 PM by JES
-			«Only add the client IP address to the messages if it's defined.
-		«4/8/03; 11:40:30 PM by JES
-			«Add the client's IP address to the message table of the new home page.
-		«12/10/01; 6:06:33 PM by PBS
-			«Toss the home page cache.
-		«11/26/01; 11:00:13 AM by PBS
-			«Support content editors.
-		«05/02/01; 7:24:15 PM by JES
-			«Call mainResponder callbacks, so that email notification will be sent for new and changed home pages.
-		«01/29/01; 11:49:21 AM by JES
-			«Set message text with a call to mainResponder.discuss.setMessageText.
-		«01/26/01; 4:59:05 PM by JES
-			«Make sure the homepage postTime is between the next and previous messages postTime. Set the homepage's lastUpdate to the date specified by the caller.
+	//01/24/01; 10:00:17 PM by JES
+		//Set the text of multiple homePages, given dates and text of the pages.
+			//The dateList and homePageTextList correspond to homePage dates and text, in reverse chronological order.
+		//Returns a list of homePage message numbers, or errors.
+			//If no homePage exists for a given date, there are two possible actions:
+				//1) If no messages exist for any day after the given date, a new message will be created for the given date.
+					//When a new message is created, the subject of the message is the date for the home page.
+				//2) If messages exist for any day after the given date, the returned list element will contain 0, signifying that the homePage for the given date could not be created.
+			//If the homePage for a given date is a deleted message, the message will be undeleted.
+	//Changes:
+		//1/30/04; 5:00:51 PM by JES
+			//When creating new home page messages, add them to the home page index.
+		//5/14/03; 1:17:51 PM by JES
+			//Only add the client IP address to the messages if it's defined.
+		//4/8/03; 11:40:30 PM by JES
+			//Add the client's IP address to the message table of the new home page.
+		//12/10/01; 6:06:33 PM by PBS
+			//Toss the home page cache.
+		//11/26/01; 11:00:13 AM by PBS
+			//Support content editors.
+		//05/02/01; 7:24:15 PM by JES
+			//Call mainResponder callbacks, so that email notification will be sent for new and changed home pages.
+		//01/29/01; 11:49:21 AM by JES
+			//Set message text with a call to mainResponder.discuss.setMessageText.
+		//01/26/01; 4:59:05 PM by JES
+			//Make sure the homepage postTime is between the next and previous messages postTime. Set the homepage's lastUpdate to the date specified by the caller.
 	
 	bundle { //make sure this person is a managing editor or content editor of the site.
 		local (beginningErrorString = "Can't set the home pages because ");
@@ -51,7 +51,7 @@ on setMultiple (username, password, siteName, dateList, homePageTextList) {
 			if adrMsg^.postTime > adrNextMessage^.postTime {
 				adrMsg^.postTime = adrNextMessage^.postTime}}};
 	on sureHomePageMessage (d) {
-		«Find a homePage message number, creating a new homePage if required, or returning 0 if not
+		//Find a homePage message number, creating a new homePage if required, or returning 0 if not
 		local (adrDay, msgNum, adrMsg);
 		try { //if there's already a homepage for the given day, return its msgNum
 			adrDay = mainResponder.calendar.getDayAddress (adrSite, d, false);
@@ -78,13 +78,13 @@ on setMultiple (username, password, siteName, dateList, homePageTextList) {
 				manilaSuite.discuss.addCategoryToMessage (adrMsg, homepagesCategory, adrSite)}};
 		return (msgNum)};
 	on setHomePageText (msgNum, s, lastUpdate) {
-		«Set the text for a single homePage
+		//Set the text for a single homePage
 		local (adrMsg = manilaSuite.discuss.getMessageTable (msgNum, adrSite));
 		local (flDoCallbacks = false, flNewMessage = false);
 		if system.environment.isMac { //convert to Mac text
 			s = latinToMac.convert (s)};
 		bundle { //set the message text, neutering macros and tags
-			«mainResponder.neuterText demands a page table, so create one.
+			//mainResponder.neuterText demands a page table, so create one.
 			local (pt);
 			new (tableType, @pt);
 			pt.enableSafeMacros = true;

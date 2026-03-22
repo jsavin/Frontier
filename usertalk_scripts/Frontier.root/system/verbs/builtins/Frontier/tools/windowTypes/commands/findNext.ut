@@ -1,4 +1,4 @@
 on findNext () {
-	«Run the Find Next command.
-		«09/29/00; 5:56:49 PM by PBS
+	//Run the Find Next command.
+		//09/29/00; 5:56:49 PM by PBS
 	system.menus.scripts.findNextCommand ()}

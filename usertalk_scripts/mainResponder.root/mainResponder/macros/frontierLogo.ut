@@ -1,8 +1,8 @@
-«Notes
-	«12/12/98; 10:49:03 AM by DW
-		«a customized version of this standard macro
-	«Thu, 04 Mar 1999 03:12:30 GMT by AR
-		«Changed one occurence of config.mainresponder.urls to pta^.responderattributes.urls^
+//Notes
+	//12/12/98; 10:49:03 AM by DW
+		//a customized version of this standard macro
+	//Thu, 04 Mar 1999 03:12:30 GMT by AR
+		//Changed one occurence of config.mainresponder.urls to pta^.responderattributes.urls^
 
 local (fname = "logo" + sys.os () + ".gif");
 local (pta = html.getpagetableaddress ());

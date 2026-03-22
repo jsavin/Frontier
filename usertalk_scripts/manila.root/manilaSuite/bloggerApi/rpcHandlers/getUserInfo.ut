@@ -1,6 +1,6 @@
 on getUserInfo (appKey, username, password) {
-	«Monday, July 20, 2009 at 12:25:52 AM by JES
-		«Created.
+	//Monday, July 20, 2009 at 12:25:52 AM by JES
+		//Created.
 	password = string (password); //safety check type
 	local (theHost = "default");
 	if defined (host) {

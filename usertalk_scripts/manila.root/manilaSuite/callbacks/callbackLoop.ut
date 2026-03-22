@@ -1,11 +1,11 @@
 on callbackLoop (adrCallbacks, adrUserCallbacks, adrMsg, adrSite, url, adrMember, text=nil) {
-	«Call internal and user callbacks. Each callback has adrMsg, adrSite, url, adrMember, text, and language in its context table. Callbacks are called via mainResponder.callbackLoop.
-		«04/04/00; 9:45:01 PM by PBS
-		«Changes:
-			«05/19/00; 8:53:17 PM by JES
-				«Localization support. Language is an additional context item. It may be nil.
-			«9/17/01; 2:31:21 PM by PBS
-				«Clear the home page cache.
+	//Call internal and user callbacks. Each callback has adrMsg, adrSite, url, adrMember, text, and language in its context table. Callbacks are called via mainResponder.callbackLoop.
+		//04/04/00; 9:45:01 PM by PBS
+		//Changes:
+			//05/19/00; 8:53:17 PM by JES
+				//Localization support. Language is an additional context item. It may be nil.
+			//9/17/01; 2:31:21 PM by PBS
+				//Clear the home page cache.
 	
 	local (params);
 	bundle { //set up context table

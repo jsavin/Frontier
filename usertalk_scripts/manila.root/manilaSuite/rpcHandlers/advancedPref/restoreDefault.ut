@@ -1,9 +1,9 @@
 on restoreDefault (username, password, siteName, itemName) {
-	«Restore an advanced pref item to the default.
-		«11/17/00; 8:56:09 PM by JES
-		«Changes:
-			«10/2/01; 2:55:39 PM by PBS
-				«Print friendly template.
+	//Restore an advanced pref item to the default.
+		//11/17/00; 8:56:09 PM by JES
+		//Changes:
+			//10/2/01; 2:55:39 PM by PBS
+				//Print friendly template.
 	
 	local (adrSite = manilaSuite.rpcUtils.getSiteAddress (siteName));
 	local (adrNewsSite = manilaSuite.rpcUtils.getNewsSiteAddress (siteName));
@@ -82,7 +82,7 @@ on restoreDefault (username, password, siteName, itemName) {
 	
 	local (text);
 	if adrObjectAsString { // kludge for kernel bug (expand for details)
-		«If the parent table of an object whose address is stored in a local is deleted, the address value is hosed. The fix is to keep the address around as a string when necessary, and use the string to find the object, instead of an address.
+		//If the parent table of an object whose address is stored in a local is deleted, the address value is hosed. The fix is to keep the address around as a string when necessary, and use the string to find the object, instead of an address.
 		text = string (adrObjectAsString^)}
 	else {
 		text = string (adrObject^)};

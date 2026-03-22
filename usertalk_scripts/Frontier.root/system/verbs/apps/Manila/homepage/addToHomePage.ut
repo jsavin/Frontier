@@ -1,12 +1,12 @@
 on addToHomePage (username, password, siteUrl, text) {
-	«Add text to the top of a home page. This verb is different than the others: instead of the address of a prefs table, it takes the username, password, and URL of the site directly.
-		«02/19/00; 6:54:14 PM by PBS
-	«Changes
-		«06/22/00; 8:08:37 PM by JES
-			«Fixed error with manilaSiteUrl not being defined.
-		«9/6/01; 8:03:04 PM by JES
-			«Changed params from a list to a record of named parameters, for SOAP compatibility.
-			«If this is a mac, convert text from Mac to Latin text before sending.
+	//Add text to the top of a home page. This verb is different than the others: instead of the address of a prefs table, it takes the username, password, and URL of the site directly.
+		//02/19/00; 6:54:14 PM by PBS
+	//Changes
+		//06/22/00; 8:08:37 PM by JES
+			//Fixed error with manilaSiteUrl not being defined.
+		//9/6/01; 8:03:04 PM by JES
+			//Changed params from a list to a record of named parameters, for SOAP compatibility.
+			//If this is a mac, convert text from Mac to Latin text before sending.
 	
 	local (method = "manila.homePage.addToHomePage");
 	

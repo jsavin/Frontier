@@ -1,12 +1,12 @@
 on initSiteListCacheForSite (adrsite, adrcache, canonicalSiteName, shortSiteName, flPlaceholder=false) {
-	«Changes
-		«3/4/07; 3:34:31 PM by LL
-			«Correct the site name if it includes an @ character since it breaks the links to the manage site page.
-			«Also, remove any markup included in the site name.
-		«2/22/06; 2:03:39 AM by JES
-			«Fix error caching the tagline.
-		«11/10/05; 5:54:36 AM by JES
-			«Created. Factored from mainResponder.adminSite.macros.initSiteListCache, for use when navigating directly to the admin page for a site. Added some defensive-driving code for edge-case sites.
+	//Changes
+		//3/4/07; 3:34:31 PM by LL
+			//Correct the site name if it includes an @ character since it breaks the links to the manage site page.
+			//Also, remove any markup included in the site name.
+		//2/22/06; 2:03:39 AM by JES
+			//Fix error caching the tagline.
+		//11/10/05; 5:54:36 AM by JES
+			//Created. Factored from mainResponder.adminSite.macros.initSiteListCache, for use when navigating directly to the admin page for a site. Added some defensive-driving code for edge-case sites.
 	
 	new (tableType, adrcache);
 	
@@ -19,7 +19,7 @@ on initSiteListCacheForSite (adrsite, adrcache, canonicalSiteName, shortSiteName
 	
 	adrcache^.adrsite = adrSite;
 	
-	«Get information about this site.
+	//Get information about this site.
 	try { //the list should never fail to build, even if there's an abberant site out there
 		local (displaySiteName = manilaSuite.getNewsSitePref ("siteName", adrsite, shortSiteName));
 		if displaySiteName contains "@" {
@@ -40,7 +40,7 @@ on initSiteListCacheForSite (adrsite, adrcache, canonicalSiteName, shortSiteName
 			profilesUrl = profilesUrl + "$"};
 		local (membershipGroupName = adrSite^.["#prefs"].defaultMembershipGroup);
 		
-		«Populate the entry in the table.
+		//Populate the entry in the table.
 		adrcache^.flInstalled = flInstalled;
 		adrcache^.site = shortSiteName;
 		adrcache^.canonicalSiteName = canonicalSiteName;
@@ -94,6 +94,6 @@ on initSiteListCacheForSite (adrsite, adrcache, canonicalSiteName, shortSiteName
 				else {
 					adrcache^.hitsToday = 0}}}}
 	else { //garbage collection
-		«scriptError (tryError)
+		//scriptError (tryError)
 		delete (adrcache)};
 	return (true)}

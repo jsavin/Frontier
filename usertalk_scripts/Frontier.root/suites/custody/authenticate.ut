@@ -1,6 +1,6 @@
 on authenticate (userName, password, adrObject, checkOut=true) {
-	«Make sure this user has access to the Custody service.
-		«Wed, Jun 10, 1998 at 7:51:37 PM by PBS
+	//Make sure this user has access to the Custody service.
+		//Wed, Jun 10, 1998 at 7:51:37 PM by PBS
 	if people.authenticateUser (userName, password, "Custody") {
 		return (true)};
 	

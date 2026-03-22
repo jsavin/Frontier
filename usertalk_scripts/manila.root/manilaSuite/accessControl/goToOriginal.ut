@@ -1,13 +1,13 @@
 on goToOriginal (pta, adrMsg) {
-	«manilaSuite.AccessControl.goToOriginal : 04/05/20, 17:06:47 by DAB
-		«return the adress of the message that contains the access controls
-		«was manilaFixer.accessControl.goToOriginal : 02/05/06, 17:30:24 by DAB
+	//manilaSuite.AccessControl.goToOriginal : 04/05/20, 17:06:47 by DAB
+		//return the adress of the message that contains the access controls
+		//was manilaFixer.accessControl.goToOriginal : 02/05/06, 17:30:24 by DAB
 	local (adrRoot = mainResponder.discuss.openRoot (pta));
 	local (parentMsgNum);
 	loop {
 		if not defined(adrMsg^.inResponseTo) {
 			break};
-		«parentMsgNum = adrMsg^.inResponseTo
+		//parentMsgNum = adrMsg^.inResponseTo
 		case true { //handle deleted messages 04/09/24, 12:06:59 by DAB
 			defined(adrMsg^.flDeleted) { //manila sets InresposneTo to -2 thus delinking
 				if not defined(adrMsg^.inResponseToOld) { //but sometimes saves here
@@ -17,7 +17,7 @@ on goToOriginal (pta, adrMsg) {
 				parentMsgNum = adrMsg^.inResponseTo}}
 		else {
 			break};
-		«if parentMsgNum == 0
+		//if parentMsgNum == 0
 		if parentMsgNum <= 0 { //04/09/24, 12:06:59 by DAB
 			break};
 		adrMsg = mainResponder.discuss.getMessageTable (parentMsgNum, adrRoot:adrRoot)};

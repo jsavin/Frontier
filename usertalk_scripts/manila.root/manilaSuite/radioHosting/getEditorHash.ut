@@ -1,6 +1,6 @@
 on getEditorHash (pta, usernum, password) {
-	«23/08/04; 11:21:53 AM by PR
-		«Get the hash for the radio editor
+	//23/08/04; 11:21:53 AM by PR
+		//Get the hash for the radio editor
 	local (groupName, hash);
 	bundle { // set the group name
 		if defined (pta^.responderAttributes.defaultMembershipGroup) {

@@ -1,4 +1,4 @@
-«Display a sitePrefs popup window.
+//Display a sitePrefs popup window.
 
 local (pta = html.getPageTableAddress ());
 

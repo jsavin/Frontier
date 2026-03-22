@@ -1,18 +1,18 @@
 on toggleState (bool) {
-	«manilaSuite.versioning.toggleState : 04/05/18, 21:19:49 by DAB
-		«Change the state of versioning. 
-		«manilaFixer.versioning.toggleState : 02/03/26, 19:47:39 by DAB
+	//manilaSuite.versioning.toggleState : 04/05/18, 21:19:49 by DAB
+		//Change the state of versioning. 
+		//manilaFixer.versioning.toggleState : 02/03/26, 19:47:39 by DAB
 	local (pta = html.getPageTableAddress());
 	local (adrSite = manilaSuite.getManilaSiteAddress(pta));
-	«local (adrStorage = manilaSuite.plugins.getStorageAddress("manilaFixer", adrSite))
+	//local (adrStorage = manilaSuite.plugins.getStorageAddress("manilaFixer", adrSite))
 	local (adrStorage = manilaSuite.getNewsSiteAddress(adrSite)); //04/05/18, 21:10:08 by DAB
 	
 	adrStorage^.versioning.enabled = bool;
 	
-	«bundle    //install finalFilter patch    //moved to default page form 02/04/25, 11:40:09 by DAB 
-		«manilaFixer.utilities.installFilterPatch("finalFilterMF", "manilaFixer.versioning.finalFilter(pta)", asComment:not bool, adrSite:adrSite)
+	//bundle    //install finalFilter patch    //moved to default page form 02/04/25, 11:40:09 by DAB 
+		//manilaFixer.utilities.installFilterPatch("finalFilterMF", "manilaFixer.versioning.finalFilter(pta)", asComment:not bool, adrSite:adrSite)
 	
-	«bundle    //install fix to /admin/siteprefs/default
-		«manilaFixer.versioning.admin.sitePrefsFixup (adrSite, bool)
+	//bundle    //install fix to /admin/siteprefs/default
+		//manilaFixer.versioning.admin.sitePrefsFixup (adrSite, bool)
 	
 	return bool}

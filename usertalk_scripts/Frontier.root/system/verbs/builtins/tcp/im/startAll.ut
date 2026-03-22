@@ -1,7 +1,7 @@
 on startAll () {
-	«Changes
-		«8/16/02; 4:54:03 PM by JES
-			«Created.
+	//Changes
+		//8/16/02; 4:54:03 PM by JES
+			//Created.
 	local (driverNames = {});
 	on getDriversFromTable (adrtable) {
 		local (adr);

@@ -1,11 +1,11 @@
 on embedStyleSheet (sheetName="default", adrPageTable=nil) {
-	«Embed a style sheet in the <head> of a page.
-		«Call this macro from within your #pageHeader attribute.
-		«This macro renders the style sheet and returns the text.
-		«Style sheets are stored in a #styleSheets table.
-		«You can have multiple, named style sheets.
-		«The #styleSheets are searched hierarchically.
-		«Thu, May 14, 1998 at 4:08:22 PM by PBS
+	//Embed a style sheet in the <head> of a page.
+		//Call this macro from within your #pageHeader attribute.
+		//This macro renders the style sheet and returns the text.
+		//Style sheets are stored in a #styleSheets table.
+		//You can have multiple, named style sheets.
+		//The #styleSheets are searched hierarchically.
+		//Thu, May 14, 1998 at 4:08:22 PM by PBS
 	
 	local (nomad, adrStyleSheet, s);
 	
@@ -34,7 +34,7 @@ on embedStyleSheet (sheetName="default", adrPageTable=nil) {
 	bundle { //render the style sheet object
 		case typeOf (adrStyleSheet^) {
 			outlineType {
-				«We cache rendered sheets based on modification dates.
+				//We cache rendered sheets based on modification dates.
 				local (adrCache = @temp.renderedStyleSheets);
 				local (adrCachedSheet);
 				if not defined (adrCache^) {
@@ -53,7 +53,7 @@ on embedStyleSheet (sheetName="default", adrPageTable=nil) {
 		else {
 			s = string (adrStyleSheet^)}};
 	
-	«Build the html.
+	//Build the html.
 	s = "<style type=\"text/css\">\r<!--\r" + s + "\r-->\r</style>";
 	s = string.replaceAll (s, "\r", "\r\t");
 	

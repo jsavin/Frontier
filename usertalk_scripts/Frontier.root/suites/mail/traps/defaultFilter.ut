@@ -1,16 +1,16 @@
 on defaultFilter (mailerappname, whatEvent, theList) {
-	«this is the default mail filter script
-		«it just displays the message counter in Frontier's main window
-		«we'll leave it to later (and others) to provide cool mail filters
-	«whatEvent can take on the following values:
-		«wHCn - hasConnected
-		«wArv - mailArrives
-		«wSnt - mailSent
-		«wFil - opensFilters
-		«wWcn - willConnect
+	//this is the default mail filter script
+		//it just displays the message counter in Frontier's main window
+		//we'll leave it to later (and others) to provide cool mail filters
+	//whatEvent can take on the following values:
+		//wHCn - hasConnected
+		//wArv - mailArrives
+		//wSnt - mailSent
+		//wFil - opensFilters
+		//wWcn - willConnect
 	
 	local (directionstring);
-	case whatEvent { «we only handle in and out events
+	case whatEvent { //we only handle in and out events
 		'wHCn';
 		'wFil';
 		'wWcn' {
@@ -19,7 +19,7 @@ on defaultFilter (mailerappname, whatEvent, theList) {
 			directionstring = "in"};
 		'wSnt' {
 			directionstring = "out"}};
-	if sizeof (thelist) > 0 { «for debugging, if there's a problem we can repeat it in debugger
+	if sizeof (thelist) > 0 { //for debugging, if there's a problem we can repeat it in debugger
 		scratchpad.enotlist = theList};
 	local (i, mailmsg);
 	mail.otherRoot.open ();

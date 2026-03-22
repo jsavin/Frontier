@@ -1,16 +1,16 @@
 on checkOut (adrCheckoutInfo, adrObject, adrSite, flMessage=false) {
-	«manilaSuite.versioning.checkout : 04/05/18, 21:15:22 by DAB
-		«Called from manilaSuite.custody.checkOut
-		«must NOT require a page table as its called from rpchandlers
-		«was manilaFixer.versioning.checkout : 02/03/26, 20:44:35 by DAB
-	«local (adrStorage = manilaSuite.plugins.getStorageAddress("manilaFixer", adrSite))
+	//manilaSuite.versioning.checkout : 04/05/18, 21:15:22 by DAB
+		//Called from manilaSuite.custody.checkOut
+		//must NOT require a page table as its called from rpchandlers
+		//was manilaFixer.versioning.checkout : 02/03/26, 20:44:35 by DAB
+	//local (adrStorage = manilaSuite.plugins.getStorageAddress("manilaFixer", adrSite))
 	local (adrStorage = manilaSuite.getNewsSiteAddress(adrSite)); //04/05/18, 21:10:08 by DAB
 	if not defined(adrStorage^.versioning) {
 		new(tabletype, @adrStorage^.versioning)};
 	
 	if defined(adrStorage^.versioning.enabled ) and adrStorage^.versioning.enabled {
 		if flMessage {
-			«easy case. message has backlinks in plugininfo, so just copy whole message
+			//easy case. message has backlinks in plugininfo, so just copy whole message
 			adrCheckoutInfo^.beforeImage = adrObject^}
 		else {
 			local (objectId = manilaSuite.custody.getObjectIdentifier (adrObject, false));
@@ -20,7 +20,7 @@ on checkOut (adrCheckoutInfo, adrObject, adrSite, flMessage=false) {
 			bundle { //insert existing backlink table for this object. This forms a chain
 				try {
 					table.copyContents(@adrStorage^.versioning.[objectId], adr)};
-				«else
-					«window.msg(tryError)}}};
+				//else
+					//window.msg(tryError)}}};
 	
 	return true}

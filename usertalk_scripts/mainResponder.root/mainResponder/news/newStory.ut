@@ -1,11 +1,11 @@
 on newStory (username, password, sitename, storytitle, storytext) {
-	«Changes:
-		«Wed, 26 May 1999 11:56:04 GMT by AR
-			«Added groupname parameter to call to mainresponder.discuss.addmessage. 
-		«05/01/00; 6:46:33 PM by JES
-			«Changed getString calls to use a replacement table address instead of a lists
-		«06/29/00; 1:28:38 AM by JES
-			«After adrdiscusstable is initially set, take account the possibility that it may be an address, or a string coercible to an address.
+	//Changes:
+		//Wed, 26 May 1999 11:56:04 GMT by AR
+			//Added groupname parameter to call to mainresponder.discuss.addmessage. 
+		//05/01/00; 6:46:33 PM by JES
+			//Changed getString calls to use a replacement table address instead of a lists
+		//06/29/00; 1:28:38 AM by JES
+			//After adrdiscusstable is initially set, take account the possibility that it may be an address, or a string coercible to an address.
 	local (now = clock.now ());
 	local (adrnewstable = mainResponder.news.openRoot (sitename));
 	local (adrprefs = @adrnewstable^.["#newsSite"]);
@@ -48,7 +48,7 @@ on newStory (username, password, sitename, storytitle, storytext) {
 		pathToStory = date.year () + "/" + string.padwithzeros (date.month (), 2) + "/" + tablename};
 	msgnum = mainResponder.discuss.addMessage (storytitle, username, 0, storytext, true, false, now, adrdiscusstable, flcallback:false, groupname:adrprefs^.sysopMemberOfGroup);
 	adrmsg = mainresponder.news.getmessagetable (adrprefs^.discussionRoot, msgnum);
-	«adrmsg^.inNewsSite = sitename //if this is set then the static page will be rebuilt when it's edited, we don't want this 3/9/99 DW
+	//adrmsg^.inNewsSite = sitename //if this is set then the static page will be rebuilt when it's edited, we don't want this 3/9/99 DW
 	adrmsg^.alsoListedIn = {adrprefs^.storiesListedIn};
 	fileMenu.saveMyRoot (adrmsg);
 	new (tabletype, adrstory);

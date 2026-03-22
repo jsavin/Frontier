@@ -1,13 +1,13 @@
 on easyCheckIn (adrObject, serverName=user.webEdit.prefs.currentServer, flDebug=false) {
-	«A simple routine for checking in an object.
-		«This uses the new webEdit.modernCheckIn XML-RPC handler in WebEditServer 2.0.1.
-		«Params:
-			«adrObject is the address of the object to check in.
-			«serverName is the name of the server, the name of a table at user.webEdit.serevrs.
-			«flDebug, an optional boolean, defaults to false. If true, then the HTTP request text is saved to scratchpad.httpCommand and opened, and the HTTP result text is saved to scratchpad.httpResult and opened.
-		«Returns:
-			«The script returns true if the check-in was successful, or generates a scriptError if the check-in wasn't successful.
-		«9/24/99; 2:42:06 PM by PBS
+	//A simple routine for checking in an object.
+		//This uses the new webEdit.modernCheckIn XML-RPC handler in WebEditServer 2.0.1.
+		//Params:
+			//adrObject is the address of the object to check in.
+			//serverName is the name of the server, the name of a table at user.webEdit.serevrs.
+			//flDebug, an optional boolean, defaults to false. If true, then the HTTP request text is saved to scratchpad.httpCommand and opened, and the HTTP result text is saved to scratchpad.httpResult and opened.
+		//Returns:
+			//The script returns true if the check-in was successful, or generates a scriptError if the check-in wasn't successful.
+		//9/24/99; 2:42:06 PM by PBS
 	
 	with user.webEdit.servers.[serverName] {
 		local (data = fatPages.encodePageData (adrObject));

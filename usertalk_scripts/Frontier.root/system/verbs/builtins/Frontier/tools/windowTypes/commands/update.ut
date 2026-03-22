@@ -1,19 +1,19 @@
-«Changes
-	«1/7/02; 9:33:34 PM by JES
-		«Use rootUpdates.threadedUpdate, instead of rootUpdates.update.
-	«12/15/01; 4:51:30 AM by JES
-		«Use thread.callScript instead of thread.easyCall.
-	«12/2/01; 12:59:37 AM by JES
-		«Update the menubar after updating Radio.root.
-	«07/27/00; 3:39:53 PM by PBS
-		«Update Radio.root. This command is now called from the File menu.
+//Changes
+	//1/7/02; 9:33:34 PM by JES
+		//Use rootUpdates.threadedUpdate, instead of rootUpdates.update.
+	//12/15/01; 4:51:30 AM by JES
+		//Use thread.callScript instead of thread.easyCall.
+	//12/2/01; 12:59:37 AM by JES
+		//Update the menubar after updating Radio.root.
+	//07/27/00; 3:39:53 PM by PBS
+		//Update Radio.root. This command is now called from the File menu.
 
-«on rootUpdate (adrInRoot)
-	«rootUpdates.update (@root)
-	«menu.noSuite ()
-	«delete (this)
+//on rootUpdate (adrInRoot)
+	//rootUpdates.update (@root)
+	//menu.noSuite ()
+	//delete (this)
 
-«rootUpdates.threadedUpdate (@root) //update the system database
+//rootUpdates.threadedUpdate (@root) //update the system database
 local (adrscript = @temp.rootUpdateScript);
 script.newScriptObject ("rootUpdates.threadedUpdate (@root); menu.noSuite (); delete (this)", adrscript);
 thread.callScript (adrscript, {});

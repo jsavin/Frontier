@@ -24,15 +24,15 @@ on copyToSystemFolder (path) {
 			if creator == 'MACS' {
 				return (copytofolder ("Apple Menu Items"))}};
 		'fext' {
-			if creator == 'user' { «special case for Network Extension
+			if creator == 'user' { //special case for Network Extension
 				return (copytofolder ("Extensions"))}};
 		'ADRS' {
-			if creator == 'GEOL' { «special case for AppleLink Addresses
+			if creator == 'GEOL' { //special case for AppleLink Addresses
 				return (copytofolder ("AppleLink Out Basket"))}};
 		'help' {
-			if creator == 'MACS' { «special case for Finder Help
+			if creator == 'MACS' { //special case for Finder Help
 				return (copytofolder ("Extensions"))}};
 		'APPL' {
-			if creator == 'prmt' { «special case for PrintMonitor
+			if creator == 'prmt' { //special case for PrintMonitor
 				return (copytofolder ("Extensions"))}}};
-	return (copytofolder ("System"))} «not a special type, copy it to the top level of the System Folder
+	return (copytofolder ("System"))} //not a special type, copy it to the top level of the System Folder

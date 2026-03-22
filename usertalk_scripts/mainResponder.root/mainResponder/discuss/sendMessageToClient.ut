@@ -6,5 +6,5 @@ on sendMessageToClient (msgnum, client, port) {
 	local (cookie = mainResponder.discuss.getchecksum (msgnum, adrmemberinfo));
 	local (params = {base64.encode (mainResponder.discuss.tableToXml (adrtable, cookie), infinity)});
 	return (betty.rpc.client (client, port, "editorial.receiveMessage", @params))};
-«bundle //test code
-	«sendMessageToClient (800, "pebbles.userland.com")
+//bundle //test code
+	//sendMessageToClient (800, "pebbles.userland.com")

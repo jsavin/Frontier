@@ -5,7 +5,7 @@ on siteInButton (rect, buttonname, buttontext, webaddress) {
 	atts.rect = rect;
 	atts.lang = 'NURL';
 	atts.enab = true;
-	atts.flag = false; «it's not the default button
+	atts.flag = false; //it's not the default button
 	atts.font = "geneva";
 	atts.size = 9;
 	atts.styl = 0;

@@ -1,5 +1,5 @@
 on getGroupsList () {
-	«Return a list of all the groups.
+	//Return a list of all the groups.
 	local (adrGroups = @user.people.groups);
 	local (i, groupsList = {});
 	for i = 1 to sizeOf (adrGroups^) {

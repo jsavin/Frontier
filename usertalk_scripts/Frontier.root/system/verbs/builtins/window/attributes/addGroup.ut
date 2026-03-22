@@ -1,7 +1,7 @@
 on addGroup (adrtable, adrwindow=nil) {
-	«Changes:
-		«7/7/01; 9:52:19 PM by JES
-			«Fixed a bug where attributes could not be added if the window did not already have an /atts table.
+	//Changes:
+		//7/7/01; 9:52:19 PM by JES
+			//Fixed a bug where attributes could not be added if the window did not already have an /atts table.
 	if adrwindow == nil {
 		adrwindow = window.frontmost ()};
 	
@@ -16,7 +16,7 @@ on addGroup (adrtable, adrwindow=nil) {
 		for adrnewitem in adrtable {
 			table.assign (@adratts^.[nameof (adrnewitem^)], adrnewitem^)}};
 	return (true)};
-«bundle //testing
-	«local (t); new (tableType, @t)
-	«t.foo = "bar"
-	«addGroup (@t)
+//bundle //testing
+	//local (t); new (tableType, @t)
+	//t.foo = "bar"
+	//addGroup (@t)

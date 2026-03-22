@@ -1,26 +1,26 @@
 on setDirectives (pta=nil) {
-	«manilaSuite.sitePrefs.siteStructure.setDirectives : 04/05/16, 16:58:16 by DAB
-		«Set pta^.[xxx] from selected path attributes  
-		«manilafixer.setDirectives : 02/08/13, 17:25:43 by DAB
+	//manilaSuite.sitePrefs.siteStructure.setDirectives : 04/05/16, 16:58:16 by DAB
+		//Set pta^.[xxx] from selected path attributes  
+		//manilafixer.setDirectives : 02/08/13, 17:25:43 by DAB
 	if manilaSuite.sitePrefs.utility.isAdminPage(pta) {
 		return false};
 	
 	local (adrSite = manilaSuite.getSiteAddress(pta));
-	«local (adrStorage = manilaSuite. plugins.getStorageAddress ("manilaFixer", adrSite))
+	//local (adrStorage = manilaSuite. plugins.getStorageAddress ("manilaFixer", adrSite))
 	local (adrStorage = @adrSite^.["hierarchy"]);
 	local (directives = {});
-	«try {directives = adrStorage^.siteStructure.directives}
+	//try {directives = adrStorage^.siteStructure.directives}
 	try {directives = adrStorage^.directives};
 	local (directive, defaultAttValue, val); //02/09/08, 14:03:09 by DAB
 	for directive in directives {
-		«try {pta^.[directive]  =  ManilaExtras.pathAtt (directive, defaultAttValue, true)}
+		//try {pta^.[directive]  =  ManilaExtras.pathAtt (directive, defaultAttValue, true)}
 		try { //02/09/08, 14:03:15 by DAB
 			defaultAttValue = -1;
 			val =  manilaSuite.sitePrefs.siteStructure.getPathAttValue (directive, defaultAttValue, true);
 			pta^.[directive]   =  val}};
 	
 	return false};
-«bundle
-	«local (tbl = temp.pta.["337"].pageFilter)
-	«html.setPageTableAddress(@tbl)
-	«setDirectives()
+//bundle
+	//local (tbl = temp.pta.["337"].pageFilter)
+	//html.setPageTableAddress(@tbl)
+	//setDirectives()

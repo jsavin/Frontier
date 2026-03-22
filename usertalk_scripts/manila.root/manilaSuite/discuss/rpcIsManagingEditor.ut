@@ -1,14 +1,14 @@
 on rpcIsManagingEditor (dgName, username, password) {
-	«Return true if this is the Managing Editor of the Manila site whose dg is specified.
-		«This script runs in an XML-RPC context.
-		«10/18/99; 4:23:30 PM by PBS
+	//Return true if this is the Managing Editor of the Manila site whose dg is specified.
+		//This script runs in an XML-RPC context.
+		//10/18/99; 4:23:30 PM by PBS
 	
-	«Get the name of the membership group.
+	//Get the name of the membership group.
 	local (groupName);
 	if not (manilaSuite.discuss.rpcGetMembershipGroup (dgName, @groupName)) {
 		return (false)}; //can't get the name of the membership group
 	
-	«Check the username and password.
+	//Check the username and password.
 	bundle { //check the username and password
 		try {
 			mainResponder.members.getMemberTableWithPassword (groupName, username, password)}

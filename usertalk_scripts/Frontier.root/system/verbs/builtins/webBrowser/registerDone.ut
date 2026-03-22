@@ -1,4 +1,4 @@
-on registerdone (n) { «Signals that all processing initiated by the RegisteNow event associated by TransactionID has finished.
+on registerdone (n) { //Signals that all processing initiated by the RegisteNow event associated by TransactionID has finished.
 	case sys.os () {
 		"MacOS" {
 			return (appleEvent (user.webBrowser.currentid, 'WWW!', 'RGDN', '----', long (n)))}}}

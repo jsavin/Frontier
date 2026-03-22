@@ -1,7 +1,7 @@
 on customRenderer (partialAddress, defaultValue, adrXmlTable) {
-	«Changes:
-		«1/21/02; 9:05:24 PM by PBS
-			«Deal with the bloggerApi.root Tool.
+	//Changes:
+		//1/21/02; 9:05:24 PM by PBS
+			//Deal with the bloggerApi.root Tool.
 	local (pta = html.getPageTableAddress ());
 	local (htmlText = "", indentLevel = 0);
 	

@@ -1,14 +1,14 @@
 on getTodaysMsgTable (sitename, now = clock.now ()) {
-	«Changes:
-		«Wed, 26 May 1999 11:53:19 GMT by AR
-			«Added groupname parameter to call to mainresponder.discuss.addmessage. 
-		«04/16/00; 12:10:43 AM by JES
-			«localized
-			«added optional now parameter which defaults to clock.now ()
-		«05/01/00; 6:48:42 PM by JES
-			«Changed getString calls to use a replacement table address instead of a lists
-		«06/29/00; 1:24:36 AM by JES
-			«After adrdiscusstable is initially set, take account the possibility that it may be an address, or a string coercible to an address.
+	//Changes:
+		//Wed, 26 May 1999 11:53:19 GMT by AR
+			//Added groupname parameter to call to mainresponder.discuss.addmessage. 
+		//04/16/00; 12:10:43 AM by JES
+			//localized
+			//added optional now parameter which defaults to clock.now ()
+		//05/01/00; 6:48:42 PM by JES
+			//Changed getString calls to use a replacement table address instead of a lists
+		//06/29/00; 1:24:36 AM by JES
+			//After adrdiscusstable is initially set, take account the possibility that it may be an address, or a string coercible to an address.
 	local (adrnewstable = mainResponder.news.openRoot (sitename));
 	local (adrprefs = @adrnewstable^.["#newsSite"]);
 	local (adrdiscusstable = @[system.temp.mainResponder.discussRootFile].[adrprefs^.discussionRoot]);

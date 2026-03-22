@@ -1,6 +1,6 @@
-«Changes
-	«3/17/05; 3:54:57 PM by JES
-		«Make calls to tcp.equalNames in a try block, since it can fail on servers which aren't connected to the Internet.
+//Changes
+	//3/17/05; 3:54:57 PM by JES
+		//Make calls to tcp.equalNames in a try block, since it can fail on servers which aren't connected to the Internet.
 if defined (system.temp.Frontier.setupFrontier) { //possibly allow access to the setup page from the local machine
 	if defined (system.temp.Frontier.setupFrontier.flAllowLocalAccessToSetupPage) {
 		if system.temp.Frontier.setupFrontier.flAllowLocalAccessToSetupPage {

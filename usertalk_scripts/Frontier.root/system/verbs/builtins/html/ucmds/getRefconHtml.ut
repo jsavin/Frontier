@@ -1,9 +1,9 @@
 on getRefconHtml (outlineadr, s) {
-	«the main bbs outline has a refcon handle linked into each headline
-		«it contains the HTML text used to represent the headline
-		«this call into the UCMD builds an indented HTML outline of the refcon text of each head
-		«it replaces occurrences of %A5 in the refcon text with the 2nd param, a string
+	//the main bbs outline has a refcon handle linked into each headline
+		//it contains the HTML text used to represent the headline
+		//this call into the UCMD builds an indented HTML outline of the refcon text of each head
+		//it replaces occurrences of %A5 in the refcon text with the 2nd param, a string
 	local (data);
 	pack (outlineadr^, @data);
 	return (appleEvent (@html.ucmds.outlineops, 'ucmd', 'html', '----', data, 'mail', string (s)));
-	}«return (appleEvent ('OUTS', 'outs', 'html', '----', data, 'mail', string (mailaddress)))
+	}//return (appleEvent ('OUTS', 'outs', 'html', '----', data, 'mail', string (mailaddress)))

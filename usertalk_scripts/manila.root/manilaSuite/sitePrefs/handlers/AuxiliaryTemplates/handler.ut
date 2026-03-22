@@ -1,12 +1,12 @@
 on handler (pta, adrTemplates) {
-	«Changes
-		«29/06/05; 3:35:21 PM by PR
-			«Only show aux templates that don't contain a hyphen in the aux template box
-			«Throw an error if the user tries to add a new aux template that includes a hyphen
-				«Any aux template with a hyphen is considered read-only, we do this for content-only and other reserved template names
-	«manilaSuite.sitePrefs.handlers.AuxiliaryTemplates.handler : 04/05/16, 18:26:19 by DAB
-		«based loosely on manilafixer.templates; handles #templates in site
-		«messages at manilaData.localization.languages.english.strings.admin
+	//Changes
+		//29/06/05; 3:35:21 PM by PR
+			//Only show aux templates that don't contain a hyphen in the aux template box
+			//Throw an error if the user tries to add a new aux template that includes a hyphen
+				//Any aux template with a hyphen is considered read-only, we do this for content-only and other reserved template names
+	//manilaSuite.sitePrefs.handlers.AuxiliaryTemplates.handler : 04/05/16, 18:26:19 by DAB
+		//based loosely on manilafixer.templates; handles #templates in site
+		//messages at manilaData.localization.languages.english.strings.admin
 	local (advancedPageName = pta^.pathArgs);
 	local (adrSite= manilaSuite.getManilaSiteAddress(pta));
 	local (flMemberHasPike = manilaSuite.pike.memberHasPike (pta));
@@ -35,8 +35,8 @@ on handler (pta, adrTemplates) {
 	bundle { //set up replacement table
 		new (tableType, @replTbl);
 		replacementTable.displayName = displayName;
-		«replTbl.structuremapLink  =  html.getLink("Structure Map", baseFragmentUrl + "structuremap")
-		};«replTbl.staticsetupLink  =  html.getLink("Static Site Setup", baseFragmentUrl + "staticSetup")
+		//replTbl.structuremapLink  =  html.getLink("Structure Map", baseFragmentUrl + "structuremap")
+		};//replTbl.staticsetupLink  =  html.getLink("Static Site Setup", baseFragmentUrl + "staticSetup")
 	
 	on  separator(msgID) {
 		add("\r\t<tr>");
@@ -219,16 +219,16 @@ on handler (pta, adrTemplates) {
 					else { //04/01/17, 12:00:10 by DAB
 						editForm(currrentTemplate,  templateStr)}}}}};
 	
-	«if pta^.searchArgs != ""
-		«local (argTable)
-		«new (tableType, @argTable)
-		«webserver.parseArgs (searchArgs, @argTable)
-		«if defined (argTable.[shortName]) //search args are used to signify a success message through a refresh/redirect
-			«case argTable.[shortName]
-				«"1"
-					«add(manilaSuite.sitePrefs.utility.successMessage(pta, "admin.templateHasBeenRestoredToDefault", @replacementTable))
-				«"2"
-					«add(manilaSuite.sitePrefs.utility.successMessage(pta, "admin.templateUpdateSuccess", @replacementTable))
+	//if pta^.searchArgs != ""
+		//local (argTable)
+		//new (tableType, @argTable)
+		//webserver.parseArgs (searchArgs, @argTable)
+		//if defined (argTable.[shortName]) //search args are used to signify a success message through a refresh/redirect
+			//case argTable.[shortName]
+				//"1"
+					//add(manilaSuite.sitePrefs.utility.successMessage(pta, "admin.templateHasBeenRestoredToDefault", @replacementTable))
+				//"2"
+					//add(manilaSuite.sitePrefs.utility.successMessage(pta, "admin.templateUpdateSuccess", @replacementTable))
 	
 	add ("\r<form method='POST' action='" + pta^.fname + "$" + advancedPageName + "' name ='" + advancedPageName + "'>");
 	add ("\r<input type='hidden' name='" + shortName + "' value='true'>");
@@ -321,7 +321,7 @@ on handler (pta, adrTemplates) {
 			replTbl.defaultTemplate = pta^.newsSite^.defaultAuxTemplate;
 			if defined(adrTemplates^.[pta^.newsSite^.defaultAuxTemplate]) {
 				add(manilaSuite.getString("admin.auxtemplates.currentDefaultTemplateOK", @replTbl, pta:pta)) //05/02/13, 20:59:50 by DAB
-					«add(manilaSuite.getString("admin.auxtemplatescurrentDefaultTemplateOK", @replTbl, pta:pta))}}
+					//add(manilaSuite.getString("admin.auxtemplatescurrentDefaultTemplateOK", @replTbl, pta:pta))}}
 			else {
 				add(manilaSuite.getString("admin.auxtemplatescurrentDefaultTemplateError", @replTbl, pta:pta))};
 			add("</th>");

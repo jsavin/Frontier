@@ -1,16 +1,16 @@
-«Changes
-	«2/8/99; 6:05:38 PM by DW
-		«Turn a string like 1999/02/08 to a date
-		«On Windows you can use the date verb to do this, but on Mac it doesn't work
-		«This method works on both systems
-	«Mon, 01 Mar 1999 13:10:46 GMT by AR
-		«Copied to this place from mainResponder.discuss.pathArgsToDate.
-		«Use mainResponder.calendar.dateToPathArgs as the reverse function.
+//Changes
+	//2/8/99; 6:05:38 PM by DW
+		//Turn a string like 1999/02/08 to a date
+		//On Windows you can use the date verb to do this, but on Mac it doesn't work
+		//This method works on both systems
+	//Mon, 01 Mar 1999 13:10:46 GMT by AR
+		//Copied to this place from mainResponder.discuss.pathArgsToDate.
+		//Use mainResponder.calendar.dateToPathArgs as the reverse function.
 on pathArgsToDate (pathargs) {
 	local (day, month, year);
 	year = number (string.nthField (pathargs, '/', 1));
 	month = number (string.nthField (pathargs, '/', 2));
 	day = number (string.nthField (pathargs, '/', 3));
 	return (date.set (day, month, year, 0, 0, 0))};
-«bundle //test code
-	«dialog.alert (pathArgsToDate ("1999/02/08"))
+//bundle //test code
+	//dialog.alert (pathArgsToDate ("1999/02/08"))

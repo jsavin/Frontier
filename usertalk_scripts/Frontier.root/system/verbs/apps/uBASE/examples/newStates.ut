@@ -1,12 +1,12 @@
-«add 50 states and their capitals to the (new) States database
+//add 50 states and their capitals to the (new) States database
 
 local (ubasefolder, fnum);
 
-bundle { «start up uBASE, create the new file, add its fields
+bundle { //start up uBASE, create the new file, add its fields
 	ubase.launch ();
 	ubasefolder = file.folderFromPath (ubase.appinfo.path);
 	fnum = ubase.newFile (ubasefolder + "States Database");
-	ubase.bringToFront (); «so we can watch the records being added
+	ubase.bringToFront (); //so we can watch the records being added
 	ubase.addField (fnum, 'capi', stringType);
 	ubase.addField (fnum, 'abbr', stringType)};
 
@@ -19,7 +19,7 @@ on addState (name, capital, abbrev) {
 	msg ("Added " + capital + ", " + name + ".");
 	rollBeachball ()};
 
-bundle { «add 50 states, their capitals and abbreviations
+bundle { //add 50 states, their capitals and abbreviations
 	addState ("Alabama", "Montgomery", "AL");
 	addState ("Alaska", "Juneau", "AK");
 	addState ("Arizona", "Phoenix", "AZ");

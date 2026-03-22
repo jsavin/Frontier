@@ -1,15 +1,15 @@
 on refGlossary (name) {
-	«Changes:
-		«3/22/06; 1:08:16 AM by JES
-			«Add callback support at user.html.callbacks.refGlossary. Scripts in this table are called in turn, with the glossary string as passed to html.refGlossary -- the enquoted string -- and the first one which returns a string overrides the default behavior with its return value. Non-string return values are ignored.
-				«Unlike a refGlossaryCallback defined in the page table, these callbacks can do virtual lookups on strings which look to the website framework like glossary references, even if there's no item in the site's #glossary table with a matching name.
-				«Sub-items of user.html.callbacks.refGlossary may be addresses of scripts, in which case they're automatically followed.
-				«This change supports a new inherited shortcuts feature for Manila, which is not yet released. Manila's inherited shortcuts feature will enable references to shortcuts in parent- or sub-sites, if the server manager has enabled the feature.
-		«03/28/00; 2:16:58 PM by PBS
-			«Added the refGlossary callback. If an script in the page table named refGlossaryCallback exists, call it when the glossary item is found. The callback script takes the address of the glossary entry that was found and the address of a variable in which to place text. If the callback returns true, the text it placed in glossaryText is returned, otherwise the normal expansion takes place.
-		«10/19/98; 6:51:19 AM by DW
-			«When generating a link to an object by its name (see the last case) we now won't generate links to tables.
-			«It was always generating an incorrect link in previous versions, so this can't break websites.
+	//Changes:
+		//3/22/06; 1:08:16 AM by JES
+			//Add callback support at user.html.callbacks.refGlossary. Scripts in this table are called in turn, with the glossary string as passed to html.refGlossary -- the enquoted string -- and the first one which returns a string overrides the default behavior with its return value. Non-string return values are ignored.
+				//Unlike a refGlossaryCallback defined in the page table, these callbacks can do virtual lookups on strings which look to the website framework like glossary references, even if there's no item in the site's #glossary table with a matching name.
+				//Sub-items of user.html.callbacks.refGlossary may be addresses of scripts, in which case they're automatically followed.
+				//This change supports a new inherited shortcuts feature for Manila, which is not yet released. Manila's inherited shortcuts feature will enable references to shortcuts in parent- or sub-sites, if the server manager has enabled the feature.
+		//03/28/00; 2:16:58 PM by PBS
+			//Added the refGlossary callback. If an script in the page table named refGlossaryCallback exists, call it when the glossary item is found. The callback script takes the address of the glossary entry that was found and the address of a variable in which to place text. If the callback returns true, the text it placed in glossaryText is returned, otherwise the normal expansion takes place.
+		//10/19/98; 6:51:19 AM by DW
+			//When generating a link to an object by its name (see the last case) we now won't generate links to tables.
+			//It was always generating an incorrect link in previous versions, so this can't break websites.
 	
 	bundle { //JES 3/21/06: user.html.callbacks.refGlossary support
 		if defined (user.html.callbacks) {
@@ -49,7 +49,7 @@ on refGlossary (name) {
 				return (html.processMacros (s, false, adrPageTable))}
 			else {
 				if html.inResponder (adrPageTable) and string (adr^) beginsWith "[[#glossPatch " {
-					«Substitute .wsf extension.
+					//Substitute .wsf extension.
 					local (path = string.popSuffix (string.nthField (s, '|', 2)) + ".wsf");
 					s = string.nthField (s, '|', 1) + "|" + path + "|]]";
 					return (s)}

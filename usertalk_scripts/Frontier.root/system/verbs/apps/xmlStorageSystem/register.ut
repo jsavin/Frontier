@@ -1,20 +1,20 @@
 on register (email, password, name, adrgreeting = nil, adrdata = @xmlStorageSystem.data, adrresponse = nil) {
-	«Changes
-		«6/23/05; 9:23:08 PM by MB
-			«Updated version number inclusion in useragent for Radio
-		«10/6/01; 2:10:07 AM by JES
-			«Commented out debugging code.
-		«10/6/01; 1:55:51 AM by JES
-			«Send the serial number as a parameter in the RPC request.
-			«New optional parameter, adrresponse. If not nil, the entire response struct will be copied to adrresponse. This is required in order to get usernums back from an xmlStorageSystem server.
-		«7/23/01; 9:45:30 PM by JES
-			«The data table now supports both xmlRpcPath, and the more general rpcPath, used for both XML-RPC and for SOAP. This is for support for SOAP-based xmlStorageSystem implementations which have a request URI which is different from the value of the SOAPAction header.
-		«4/2/01; 7:58:22 AM by DW
-			«Created. Send a registerUser message to the cloud, returning true if the user is registered, false if there was a failure.
-			«email is an email address, it could be fictitious, it identifies the user. 
-			«We send an MD5 hash of the password to the server.
-			«The user's name is displayed in various lists, it's nice to know people's real name. You may lie if you want.
-			«adrgreeting points to a string that will receive the English-language message from the server, but it's optional. 
+	//Changes
+		//6/23/05; 9:23:08 PM by MB
+			//Updated version number inclusion in useragent for Radio
+		//10/6/01; 2:10:07 AM by JES
+			//Commented out debugging code.
+		//10/6/01; 1:55:51 AM by JES
+			//Send the serial number as a parameter in the RPC request.
+			//New optional parameter, adrresponse. If not nil, the entire response struct will be copied to adrresponse. This is required in order to get usernums back from an xmlStorageSystem server.
+		//7/23/01; 9:45:30 PM by JES
+			//The data table now supports both xmlRpcPath, and the more general rpcPath, used for both XML-RPC and for SOAP. This is for support for SOAP-based xmlStorageSystem implementations which have a request URI which is different from the value of the SOAPAction header.
+		//4/2/01; 7:58:22 AM by DW
+			//Created. Send a registerUser message to the cloud, returning true if the user is registered, false if there was a failure.
+			//email is an email address, it could be fictitious, it identifies the user. 
+			//We send an MD5 hash of the password to the server.
+			//The user's name is displayed in various lists, it's nice to know people's real name. You may lie if you want.
+			//adrgreeting points to a string that will receive the English-language message from the server, but it's optional. 
 	local (useragent);
 	local (version = Frontier.version ());
 	bundle { //set useragent
@@ -41,18 +41,18 @@ on register (email, password, name, adrgreeting = nil, adrdata = @xmlStorageSyst
 		if adrresponse != nil {
 			adrresponse^ = result};
 		return (not result.flerror)}};
-«bundle //test code
-	«local (greeting)
-	«local (data); new (tableType, @data)
-	«bundle //init data table
-		«data.fldebug = false
-		«data.port = 80
-		«data.protocol = "xml-rpc"
-		«data.server = "xmlstoragesystem.com"
-		«data.xmlRpcPath = "/RPC2"
-		«data.soapAction = "/xmlStorageSystem"
-		«data.serialNumber = user.prefs.serialNumber
-	«xmlStorageSystem.init ()
-	«with user.xmlStorageSystem
-		«register (email, password, name, @greeting, @data)
-	«dialog.alert (greeting)
+//bundle //test code
+	//local (greeting)
+	//local (data); new (tableType, @data)
+	//bundle //init data table
+		//data.fldebug = false
+		//data.port = 80
+		//data.protocol = "xml-rpc"
+		//data.server = "xmlstoragesystem.com"
+		//data.xmlRpcPath = "/RPC2"
+		//data.soapAction = "/xmlStorageSystem"
+		//data.serialNumber = user.prefs.serialNumber
+	//xmlStorageSystem.init ()
+	//with user.xmlStorageSystem
+		//register (email, password, name, @greeting, @data)
+	//dialog.alert (greeting)

@@ -1,9 +1,9 @@
-«Tue, Feb 11, 1997 at 3:33:08 AM by DW
-	«There isn't enough stack space in the Finder to run a complex reconcile
-	«So I changed the command to do the reconciling in a separate Frontier thread.
-	«Let's look for other places where FinderMenu might recurse very deeply.
-«Fri, Dec 5, 1997 at 1:41:58 AM by PBS
-	«Changed call to toys.threadCall to thread.easyCall.
+//Tue, Feb 11, 1997 at 3:33:08 AM by DW
+	//There isn't enough stack space in the Finder to run a complex reconcile
+	//So I changed the command to do the reconciling in a separate Frontier thread.
+	//Let's look for other places where FinderMenu might recurse very deeply.
+//Fri, Dec 5, 1997 at 1:41:58 AM by PBS
+	//Changed call to toys.threadCall to thread.easyCall.
 local (sourcepath, destpath);
 on getfolders () {
 	local (sellist = FinderMenu.getSelectionList ());
@@ -23,7 +23,7 @@ getfolders ();
 
 local (dlogResource = findermenu.commands.reconcileDialog.copyToResourceFork ());
 on doDialog () {
-	local { «names of the fields of the dialog
+	local { //names of the fields of the dialog
 		okitem = 1;
 		cancelitem = 2;
 		switchitem = 3;
@@ -69,7 +69,7 @@ on doDialog () {
 				dialog.setvalue (sourceitem, s2);
 				dialog.setvalue (destitem, s1)}}
 		else {
-			return (true)}}; «keep going if item isn't OK or Cancel
+			return (true)}}; //keep going if item isn't OK or Cancel
 	
 	dialog.run (dlogResource, okitem, @itemhit);
 	return (not cancelled)};

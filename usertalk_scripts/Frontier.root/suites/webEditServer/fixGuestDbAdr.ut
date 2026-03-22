@@ -1,7 +1,7 @@
 on fixGuestDbAdr (adrObject) { //possibly convert for guest database
-	« 9/29/98; 2:43:24 PM by DW
-		«Turn something like: (websites\guest2.root).["#enhancedState"]
-		«Into: ["C:\\Palm Springs\\Websites\\guest2.root"].["#enhancedState"]
+	// 9/29/98; 2:43:24 PM by DW
+		//Turn something like: (websites\guest2.root).["#enhancedState"]
+		//Into: ["C:\\Palm Springs\\Websites\\guest2.root"].["#enhancedState"]
 	local (s = string (adrObject));
 	local (pc = file.getPathChar ());
 	
@@ -14,10 +14,10 @@ on fixGuestDbAdr (adrObject) { //possibly convert for guest database
 		
 		local (f = Frontier.pathString + relativePath);
 		if not (file.exists (f)) {
-			«Translate Nirvana Server to Guest Databases (and vice versa) as needed, but only if user.prefs.flNirvanaTester is true.
-				«Wed, Mar 3, 1999 at 5:48:38 PM by PBS
+			//Translate Nirvana Server to Guest Databases (and vice versa) as needed, but only if user.prefs.flNirvanaTester is true.
+				//Wed, Mar 3, 1999 at 5:48:38 PM by PBS
 			if defined (user.prefs.flNirvanaTester) and user.prefs.flNirvanaTester {
-				«Translate Nirvana Server to Guest Databases.
+				//Translate Nirvana Server to Guest Databases.
 				if (string.lower (relativePath) beginsWith "nirvana server") and not (file.exists (Frontier.pathString + "Nirvana Server" + pc)) {
 					f = frontier.pathString + "Guest Databases" + string.delete (relativePath, 1, sizeOf ("Nirvana Server"))}
 				else { //translate Guest Databases to Nirvana Server

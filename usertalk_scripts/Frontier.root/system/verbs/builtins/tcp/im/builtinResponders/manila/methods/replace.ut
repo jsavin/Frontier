@@ -1,7 +1,7 @@
 on replace (driverName, screenname, message) {
-	«Changes
-		«8/12/02; 4:00:07 AM by JES
-			«Rewrite for simplified architecture.
+	//Changes
+		//8/12/02; 4:00:07 AM by JES
+			//Rewrite for simplified architecture.
 	local (text = string.delete (message, 1, 15)); //pop off "manila replace "
 	text = string.trimWhiteSpace (text) + "\r\n\r\n";
 	

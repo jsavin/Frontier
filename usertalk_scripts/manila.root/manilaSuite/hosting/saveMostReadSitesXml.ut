@@ -1,6 +1,6 @@
 on saveMostReadSitesXml (adrSitesTable, n, d, fname) {
-	«Generate an XML report listing the n most read sites.
-		«05/08/00; 9:03:49 PM by PBS
+	//Generate an XML report listing the n most read sites.
+		//05/08/00; 9:03:49 PM by PBS
 	
 	local (xmlText = "", indentLevel = 0);
 	on add (s) {

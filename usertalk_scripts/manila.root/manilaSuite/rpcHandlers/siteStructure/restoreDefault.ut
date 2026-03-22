@@ -1,5 +1,5 @@
 on restoreDefault (username, password, siteName) {
-	«Restore the site structure to the default.
+	//Restore the site structure to the default.
 	
 	bundle { //make sure this person is a managing editor of the site.
 		local (beginningErrorString = "Can't restore the site structure to the default because ");

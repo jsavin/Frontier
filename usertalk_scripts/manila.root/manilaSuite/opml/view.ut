@@ -1,6 +1,6 @@
 on view (url) {
-	«Include an OPML document. It will be rendered as if it's part of the current site. Any OPML documents it includes via a link nodeType will also be included.
-		«12/30/01; 2:45:52 PM by PBS
+	//Include an OPML document. It will be rendered as if it's part of the current site. Any OPML documents it includes via a link nodeType will also be included.
+		//12/30/01; 2:45:52 PM by PBS
 	
 	local (pta = html.getPageTableAddress ());
 	local (flUseCache = true); //should be true except when debugging
@@ -39,7 +39,7 @@ on view (url) {
 			op.xmlToOutline (opmlText, @localOutline);
 			local (oldTarget = target.set (@localOutline));
 			bundle { //deal with inclusions
-				«Find included OPML documents and expand them.
+				//Find included OPML documents and expand them.
 				op.firstSummit ();
 				loop {
 					local (atts);

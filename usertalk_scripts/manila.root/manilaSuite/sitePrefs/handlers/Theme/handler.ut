@@ -1,10 +1,10 @@
 on handler (pta, adrObject) {
-	«Changes
-		«10/1/05; 2:38:55 AM by JES
-			«Removed commented out code. Re-formatted to UserLand style.
-		«04/05/16, 11:38:48 by DAB
-			«Created. Factored from manilaSuite.admin.advancedPage.
-				«messages at manilaData.localization.languages.english.strings.admin
+	//Changes
+		//10/1/05; 2:38:55 AM by JES
+			//Removed commented out code. Re-formatted to UserLand style.
+		//04/05/16, 11:38:48 by DAB
+			//Created. Factored from manilaSuite.admin.advancedPage.
+				//messages at manilaData.localization.languages.english.strings.admin
 	local (advancedPageName = pta^.pathArgs);
 	local (adrSite= manilaSuite.getManilaSiteAddress (pta));
 	local (flMemberHasPike = manilaSuite.pike.memberHasPike (pta));

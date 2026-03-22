@@ -1,20 +1,20 @@
 on getStoriesHeaders (siteName, username, password) {
-	«Return the message headers for the stories list, the same messages you would see on a site's /stories/ page.
-		«10/09/00; 11:47:56 AM by PBS
-	«Changes:
-		«01/02/01; 1:25:38 AM by JES
-			«On Macs, convert the subject to Latin text.
-		«02/13/01; 2:04:44 PM by JES
-			«Prepend "msg" to the numerical name of the returned items. Fixes a bug when using SOAP where elements with invalid names would be generated.
-		«03/19/01; 3:21:38 PM by JES
-			«When called via SOAP, return an array of structs, specifying the Manila namespace, namespace URI, and struct type.
-		«05/23/01; 1:15:21 AM by JES
-			«Specify customStructType instead of customArrayType, which follows from a change in soap.rpc.server, based on SOAP interop work.
+	//Return the message headers for the stories list, the same messages you would see on a site's /stories/ page.
+		//10/09/00; 11:47:56 AM by PBS
+	//Changes:
+		//01/02/01; 1:25:38 AM by JES
+			//On Macs, convert the subject to Latin text.
+		//02/13/01; 2:04:44 PM by JES
+			//Prepend "msg" to the numerical name of the returned items. Fixes a bug when using SOAP where elements with invalid names would be generated.
+		//03/19/01; 3:21:38 PM by JES
+			//When called via SOAP, return an array of structs, specifying the Manila namespace, namespace URI, and struct type.
+		//05/23/01; 1:15:21 AM by JES
+			//Specify customStructType instead of customArrayType, which follows from a change in soap.rpc.server, based on SOAP interop work.
 	
 	manilaSuite.rpcUtils.dgAccessCheck (siteName, username, password, "Can't get stories list because ");
 	
-	«local (adrDiscuss = manilaSuite.rpcUtils.getDiscussAddress (siteName))
-	«local (adrMsgs = @adrDiscuss^.messages)
+	//local (adrDiscuss = manilaSuite.rpcUtils.getDiscussAddress (siteName))
+	//local (adrMsgs = @adrDiscuss^.messages)
 	local (groupName = manilaSuite.rpcUtils.getMembersGroupName (siteName));
 	local (adrSite = config.manila.sites.[siteName]);
 	local (storyReaderUrl = adrSite^.["#urls"].storyReader);
@@ -58,10 +58,10 @@ on getStoriesHeaders (siteName, username, password) {
 		return (true)};
 	
 	manilaSuite.discuss.visitIndex (adrSite, "stories", @addMessage);
-	«local (adr)
-	«for adr in adrMsgs
-		«if not (manilaSuite.discuss.isStory (adr, adrSite)) //if not a story, skip it
-			«continue
-		«addMessage (adr)
+	//local (adr)
+	//for adr in adrMsgs
+		//if not (manilaSuite.discuss.isStory (adr, adrSite)) //if not a story, skip it
+			//continue
+		//addMessage (adr)
 	
 	return (messageHeaders)}

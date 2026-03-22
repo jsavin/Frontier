@@ -1,21 +1,21 @@
 on visitFolder (path, level, callback) {
 	local(theOS = sys.os());
-	on traverse (path) { «local handler -- actually does the traversing
+	on traverse (path) { //local handler -- actually does the traversing
 		if currentlevel > level {
 			return (true)};
 		
-		sys.systemTask (); «give the Finder a shot at updating windows
+		sys.systemTask (); //give the Finder a shot at updating windows
 		rollBeachBall ();
 		
 		local (f);
 		fileloop (f in path) {
 			if file.isFolder (f) {
 				currentlevel++;
-				if not traverse (f) { «recurse
-					return (false)}; «unwind recursion on error
+				if not traverse (f) { //recurse
+					return (false)}; //unwind recursion on error
 				currentlevel--};
-			if not callback^ (f) { «call the caller-supplied callback routine
-				return (false)}}}; «unwind recursion, callback says we're done
+			if not callback^ (f) { //call the caller-supplied callback routine
+				return (false)}}}; //unwind recursion, callback says we're done
 	
 	local (currentlevel = 1);
 	return (traverse (path))}

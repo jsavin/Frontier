@@ -1,7 +1,7 @@
 on recentEvents (n) {
-	«Changes
-		«6/6/02; 12:59:22 PM by JES
-			«Created.
+	//Changes
+		//6/6/02; 12:59:22 PM by JES
+			//Created.
 	
 	if not defined (radioCommunityServerSuite) { //RCS is not installed -- return the empty string
 		return ("")};

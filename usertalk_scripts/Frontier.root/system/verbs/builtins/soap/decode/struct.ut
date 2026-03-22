@@ -1,13 +1,13 @@
 on struct (adrmsg, adrelement, flEnforceSimpleTypes=true, flDuplicatesToArrays=false) {
-	«Changes:
-		«4/13/06; 4:07:48 AM by JES
-			«Pass flDuplicatesToArrays to soap.decode.main.
-		«4/13/06; 3:38:27 AM by JES
-			«New optional parameter, flDuplicatesToArrays. If true, duplicate scalars are converted to arrays of scalars. Default is false, preserving existing behavior.
-			«If true, we increase compatibility with servers that return arrays encoded using the 2001 schema (where the array type is not specifically declared).
-			«Passed in by soap.decode.main.
-		«04/06/01; 12:44:43 PM by JES
-			«New optional parameter, flEnforceSimpleTypes, specifies whether to fault on elements whose type is not specified. This is passed to soap.decode.main.
+	//Changes:
+		//4/13/06; 4:07:48 AM by JES
+			//Pass flDuplicatesToArrays to soap.decode.main.
+		//4/13/06; 3:38:27 AM by JES
+			//New optional parameter, flDuplicatesToArrays. If true, duplicate scalars are converted to arrays of scalars. Default is false, preserving existing behavior.
+			//If true, we increase compatibility with servers that return arrays encoded using the 2001 schema (where the array type is not specifically declared).
+			//Passed in by soap.decode.main.
+		//04/06/01; 12:44:43 PM by JES
+			//New optional parameter, flEnforceSimpleTypes, specifies whether to fault on elements whose type is not specified. This is passed to soap.decode.main.
 	local (resulttable);
 	new (tableType, @resulttable);
 	local (nomad = soap.xmlutils.getFirstChildElement (adrelement));

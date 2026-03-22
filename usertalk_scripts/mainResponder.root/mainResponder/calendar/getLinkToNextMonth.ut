@@ -1,6 +1,6 @@
 on getLinkToNextMonth (adrcal, d, url) {
-	«Get a link to the next month in the calendar.
-		«03/20/01; 3:19:06 PM by PBS
+	//Get a link to the next month in the calendar.
+		//03/20/01; 3:19:06 PM by PBS
 	
 	local (lastDay = mainResponder.calendar.getLastDay (adrCal));
 	if lastDay <= date.lastOfMonth (d) {

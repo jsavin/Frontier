@@ -1,26 +1,26 @@
 on htmlSearch (adrPageTable, fname, flShowSiteNames=true, altColor="#F5F5DC", feedback=true, indexName=nil, adrFilterCallback=nil) {
-	«Create a search request, call the search script, and return the results.
-		«The searchRequest table should contain:
-			«origSearchString
-			«start
-			«maxHitsPerPage
-			«adrMemberInfo
-				«May be null.
-				«Otherwise, the membership info address for this user.
-			«sitesList
-				«The list of sites to search.
-	«Changes
-		«8/11/02; 2:14:52 AM by JES
-			«New optional parameter, adrFilterCallback, which is the address of a search result filter callback. Passed to mainResponder.search.server.doSearch.
+	//Create a search request, call the search script, and return the results.
+		//The searchRequest table should contain:
+			//origSearchString
+			//start
+			//maxHitsPerPage
+			//adrMemberInfo
+				//May be null.
+				//Otherwise, the membership info address for this user.
+			//sitesList
+				//The list of sites to search.
+	//Changes
+		//8/11/02; 2:14:52 AM by JES
+			//New optional parameter, adrFilterCallback, which is the address of a search result filter callback. Passed to mainResponder.search.server.doSearch.
 	local (searchRequest, argTable);
 	
 	new (tableType, @searchRequest);
 	new (tableType, @argTable);
 	
-	«Parse the search args into a table.
+	//Parse the search args into a table.
 	webserver.parseArgs (adrPageTable^.searchArgs, @argTable);
 	
-	«Populate the searchRequest table.
+	//Populate the searchRequest table.
 	bundle { //get the search string
 		searchRequest.searchString = argTable.q};
 	
@@ -53,7 +53,7 @@ on htmlSearch (adrPageTable, fname, flShowSiteNames=true, altColor="#F5F5DC", fe
 		try {
 			searchRequest.adrMemberInfo = adrPageTable^.adrMemberInfo}};
 	
-	«Add info to the page table.
+	//Add info to the page table.
 	adrPageTable^.searchString = searchRequest.searchString;
 	
 	if indexName != nil {
@@ -64,5 +64,5 @@ on htmlSearch (adrPageTable, fname, flShowSiteNames=true, altColor="#F5F5DC", fe
 	local (s = mainResponder.search.server.doSearch (@searchRequest, adrFilterCallback));
 	
 	return (s)};
-«bundle //test code
-	«htmlSearch (@temp.p, "google")
+//bundle //test code
+	//htmlSearch (@temp.p, "google")

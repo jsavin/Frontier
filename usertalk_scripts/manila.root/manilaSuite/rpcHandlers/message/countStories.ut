@@ -1,8 +1,8 @@
 on countStories (username, password, siteName) {
-	«Get the number of stories in message storage.
-		«Changes:
-			«11/26/01; 11:03:12 AM by PBS
-				«Support content editors.
+	//Get the number of stories in message storage.
+		//Changes:
+			//11/26/01; 11:03:12 AM by PBS
+				//Support content editors.
 	
 	bundle { //make sure this person is a managing or content editor of the site.
 		local (beginningErrorString = "Can't count pictures because ");

@@ -1,5 +1,5 @@
 on addColumn (adrTable, title="", type="string", align="left", size="", link="", flLink=false) {
-	«Add a column to the Frontier table.
+	//Add a column to the Frontier table.
 	local (adrColumn = @adrTable^.columns.[string.padWithZeros (sizeOf (adrTable^.columns) + 1, 5)]);
 	new (tableType, adrColumn);
 	adrColumn^.title = title;

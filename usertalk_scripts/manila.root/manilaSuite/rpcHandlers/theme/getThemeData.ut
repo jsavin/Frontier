@@ -1,7 +1,7 @@
 on getThemeData (siteUrl, themeName="", themeAuthor="", themeAuthorEmail="", themeDescription="") {
-	«Changes
-		«6/28/05; 2:25:36 AM by JES
-			«Created. Given a site URL, return a Theme table based on the site.
+	//Changes
+		//6/28/05; 2:25:36 AM by JES
+			//Created. Given a site URL, return a Theme table based on the site.
 	local (sitename = manilaSuite.rpcUtils.urlToSiteName (siteUrl));
 	local (adrsite = manilaSuite.rpcUtils.getSiteAddress (sitename));
 	

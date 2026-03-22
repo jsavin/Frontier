@@ -1,110 +1,110 @@
-«Initialize Manila.
-	«Changes:
-		«2/14/11; 10:40:34 AM by JES
-			«Update the "This Is A Manila Site" macro to use the image from UserLand, not the one from scripting.com.
-				«Takes traffic off of Dave's server, and prevents Manila sites from getting slow if Dave is down.
-		«6/10/07; 12:58:08 PM by LL
-			«Support a new server level preference to override the URL used for the Help link in the Editors Only menu.
-		«4/12/07; 3:55:11 PM by LL
-			«Support a new server level preference for the legal tags for members feature.
-		«2/21/07; 11:28:30 AM by LL
-			«Create config.manila.callbacks.messageSubmit.
-		«11/22/06; 3:01:47 PM by LL
-			«Init config.manila.prefs.flLogReferersEnabled to true.
-		«9/19/06; 12:29:05 PM by LL
-			«Clear beta rootupdate checkpoints when new Manila versions are released.
-		«3/22/06; 1:32:47 AM by JES
-			«Init prefs for shortcut lookups in sub-sites, parent sites, and the "global glossary". Default is to preserve existing behavior in all cases.
-			«Register Manila's refGlossary callback at user.html.callbacks.refGlossary.manila.
-		«3/7/06; 1:58:58 AM by JES
-			«Set config.manila.prefs.flRobotsTxtRecursive to true.
-		«2/19/06; 3:51:32 AM by JES
-			«Create config.manila.callbacks.isThemeAvailable.
-		«2005
-			«11/1/05; 4:04:49 AM by JES
-				«Init config.manila.prefs.flUsernameMustBeEmail to true.
-			«10/26/05; 1:58:44 AM by JES
-				«Create filter callback tables at config.manila.callbacks.filters.
-			«10/11/05; 5:03:48 AM by JES
-				«Change default gems storage limit to 100MB.
-			«10/11/05; 4:12:48 AM by JES
-				«Init config.manila.prefs.flManagingEditorCanSetPassword to false. If true, then managing editors get a password field in the add user form on Manila's Admin page.
-			«9/22/05; 2:05:45 AM by JES
-				«Delete config.manila.prefs.flAdminSuperUser if defined.
-			«8/1/05; 7:08:25 PM by JES
-				«Create system.temp.manila if not defined.
-			«1/28/05; 12:35:27 AM by JES
-				«Delete manilaData.newSiteTemplate.["#newsSite"].discussionGroup.nofollowLinkAttributeEnabled if defined. The pref was supposed to be called flNofollowLinkAttributeEnabled, (note the added "fl").
-			«21/01/05; 3:52:35 PM by LL
-				«Initialize a new local variable flNewInstall that gets set to true if this is a new Manila install.
-				«Initialize config.manila.prefs.flNofollowLinkAttributeEnabled.
-		«2004
-			«11/23/04; 1:28:45 PM by JES
-				«Initialize config.manila.callbacks.commentSubmit.
-			«10/31/04; 2:40:48 PM by EDS
-				«incorporating
-					«6/23/04, 05:16:28 by DAB
-						«delteMessage callback
-			«10/25/04; 6:47:11 AM by EDS
-				«added preference default for maxRecipientsPerMessage
-			«9/9/04; 1:37:13 AM by JES
-				«Ensure that config.manila.plugins and config.manila.plugins.registered exist before attempting to initialize sub-items of these tables.
-			«8/25/04; 12:57:25 PM by JES
-				«Initialize config.manila.prefs.flPluginsVisibleByDefault to true.
-			«3/18/04; 3:06:05 PM by JES
-				«Radio hosting now defaults to enabled, so news items sites have less configuration to do, to support comments.
-		«Changes before 1/1/2004
-			«8/25/03; 7:21:55 AM by DW
-				«Initialize config.manila.callbacks.commentPost.
-			«5/13/03; 6:07:36 PM by JES
-				«Initialize config.manila.prefs.flEventsLoggingEnabled to false.
-			«5/12/03; 12:22:28 PM by JES
-				«Initialize config.manila.prefs.flDiscussRssEnabled to false.
-			«5/8/03; 6:17:41 PM by JES
-				«Initialize config.manila.prefs.flMailToWeblogEnabled and config.manila.prefs.mailToWeblogSecsBetwChecks.
-			«5/8/03; 1:19:59 PM by JES
-				«Initialize config.manila.callbacks.addReferer.
-			«5/2/03; 3:04:28 PM by EDS
-				«Initialize server-level prefs for FTP filewriter for static rendering.
-			«5/1/03; 2:57:41 PM by JES
-				«Initialize config.manila.prefs.flTrackbackEnabled to false.
-			«4/28/03; 7:57:50 PM by JES
-				«Initialize config.manila.prefs.gemsLimit, if not defined.
-			«3/15/03; 4:51:59 PM by JES
-				«Set config.manila.prefs.flAggregatorAllowAnyRssUrl and config.manila.prefs.flAggregatorSubAllSitesOnServer to false if not defined.
-			«9/5/02; 11:31:41 PM by JES
-				«Initialize config.manila.prefs.flSendUpdateNoticesToUserLand.
-			«8/13/02; 4:17:00 PM by JES
-				«If RCS is installed, register Manila's believeWithoutChecking callback for weblog updates.
-			«8/3/02; 10:53:29 PM by JES
-				«Init config.manila.prefs.flRestartSearchEngineIndexSessions to false.
-			«6/26/02; 6:59:13 PM by JES
-				«Init config.manila.backups.
-			«2/19/02; 11:10:11 PM by JES
-				«Initialize config.manila.prefs.flRadioHostingEnabled to false.
-			«12/11/01; 2:31:21 PM by PBS
-				«Added max file name length prefs for gems and static rendering.
-			«2/26/01; 8:34:03 PM by DW
-				«Initialize config.manila.callbacks.getEmailNotificationAdText.
-			«02/06/01; 1:51:20 AM by JES
-				«Initialize site download preferences.
-			«02/06/01; 10:32:19 AM by PBS
-				«Create the table of callbacks at config.manila.callbacks.finalFilter, config.manila.callbacks.applyTheme, config.manila.callbacks.releasedNewsItem, config.manila.callbacks.postedNewsItem.
-			«10/27/00; 3:11:42 PM by JES
-				«Copy DG themes to Copy themes to config.manila.themes.
-			«06/22/00; 4:11:33 PM by PBS
-				«Initialize hosting preferences.
-			«06/07/00; 5:33:32 PM by PBS
-				«Copy themes to config.manila.themes.
-			«05/11/00; 4:56:39 PM by PBS
-				«Init config.manila.stats.
-				«Install Manila postFilter.
-				«Install Manila thread.
-				«Make Manila macros safe.
-			«04/05/00; 10:16:18 AM by PBS
-				«Initialize the new config.manila.callbacks.homePageUpdate table. Scripts in this table are called when a home page is updated.
-				«Initialize the new Manila new and changed message callbacks. These are called when a message is new or changed.
-				«Also initialize prefs for static pictures and static rendering.
+//Initialize Manila.
+	//Changes:
+		//2/14/11; 10:40:34 AM by JES
+			//Update the "This Is A Manila Site" macro to use the image from UserLand, not the one from scripting.com.
+				//Takes traffic off of Dave's server, and prevents Manila sites from getting slow if Dave is down.
+		//6/10/07; 12:58:08 PM by LL
+			//Support a new server level preference to override the URL used for the Help link in the Editors Only menu.
+		//4/12/07; 3:55:11 PM by LL
+			//Support a new server level preference for the legal tags for members feature.
+		//2/21/07; 11:28:30 AM by LL
+			//Create config.manila.callbacks.messageSubmit.
+		//11/22/06; 3:01:47 PM by LL
+			//Init config.manila.prefs.flLogReferersEnabled to true.
+		//9/19/06; 12:29:05 PM by LL
+			//Clear beta rootupdate checkpoints when new Manila versions are released.
+		//3/22/06; 1:32:47 AM by JES
+			//Init prefs for shortcut lookups in sub-sites, parent sites, and the "global glossary". Default is to preserve existing behavior in all cases.
+			//Register Manila's refGlossary callback at user.html.callbacks.refGlossary.manila.
+		//3/7/06; 1:58:58 AM by JES
+			//Set config.manila.prefs.flRobotsTxtRecursive to true.
+		//2/19/06; 3:51:32 AM by JES
+			//Create config.manila.callbacks.isThemeAvailable.
+		//2005
+			//11/1/05; 4:04:49 AM by JES
+				//Init config.manila.prefs.flUsernameMustBeEmail to true.
+			//10/26/05; 1:58:44 AM by JES
+				//Create filter callback tables at config.manila.callbacks.filters.
+			//10/11/05; 5:03:48 AM by JES
+				//Change default gems storage limit to 100MB.
+			//10/11/05; 4:12:48 AM by JES
+				//Init config.manila.prefs.flManagingEditorCanSetPassword to false. If true, then managing editors get a password field in the add user form on Manila's Admin page.
+			//9/22/05; 2:05:45 AM by JES
+				//Delete config.manila.prefs.flAdminSuperUser if defined.
+			//8/1/05; 7:08:25 PM by JES
+				//Create system.temp.manila if not defined.
+			//1/28/05; 12:35:27 AM by JES
+				//Delete manilaData.newSiteTemplate.["#newsSite"].discussionGroup.nofollowLinkAttributeEnabled if defined. The pref was supposed to be called flNofollowLinkAttributeEnabled, (note the added "fl").
+			//21/01/05; 3:52:35 PM by LL
+				//Initialize a new local variable flNewInstall that gets set to true if this is a new Manila install.
+				//Initialize config.manila.prefs.flNofollowLinkAttributeEnabled.
+		//2004
+			//11/23/04; 1:28:45 PM by JES
+				//Initialize config.manila.callbacks.commentSubmit.
+			//10/31/04; 2:40:48 PM by EDS
+				//incorporating
+					//6/23/04, 05:16:28 by DAB
+						//delteMessage callback
+			//10/25/04; 6:47:11 AM by EDS
+				//added preference default for maxRecipientsPerMessage
+			//9/9/04; 1:37:13 AM by JES
+				//Ensure that config.manila.plugins and config.manila.plugins.registered exist before attempting to initialize sub-items of these tables.
+			//8/25/04; 12:57:25 PM by JES
+				//Initialize config.manila.prefs.flPluginsVisibleByDefault to true.
+			//3/18/04; 3:06:05 PM by JES
+				//Radio hosting now defaults to enabled, so news items sites have less configuration to do, to support comments.
+		//Changes before 1/1/2004
+			//8/25/03; 7:21:55 AM by DW
+				//Initialize config.manila.callbacks.commentPost.
+			//5/13/03; 6:07:36 PM by JES
+				//Initialize config.manila.prefs.flEventsLoggingEnabled to false.
+			//5/12/03; 12:22:28 PM by JES
+				//Initialize config.manila.prefs.flDiscussRssEnabled to false.
+			//5/8/03; 6:17:41 PM by JES
+				//Initialize config.manila.prefs.flMailToWeblogEnabled and config.manila.prefs.mailToWeblogSecsBetwChecks.
+			//5/8/03; 1:19:59 PM by JES
+				//Initialize config.manila.callbacks.addReferer.
+			//5/2/03; 3:04:28 PM by EDS
+				//Initialize server-level prefs for FTP filewriter for static rendering.
+			//5/1/03; 2:57:41 PM by JES
+				//Initialize config.manila.prefs.flTrackbackEnabled to false.
+			//4/28/03; 7:57:50 PM by JES
+				//Initialize config.manila.prefs.gemsLimit, if not defined.
+			//3/15/03; 4:51:59 PM by JES
+				//Set config.manila.prefs.flAggregatorAllowAnyRssUrl and config.manila.prefs.flAggregatorSubAllSitesOnServer to false if not defined.
+			//9/5/02; 11:31:41 PM by JES
+				//Initialize config.manila.prefs.flSendUpdateNoticesToUserLand.
+			//8/13/02; 4:17:00 PM by JES
+				//If RCS is installed, register Manila's believeWithoutChecking callback for weblog updates.
+			//8/3/02; 10:53:29 PM by JES
+				//Init config.manila.prefs.flRestartSearchEngineIndexSessions to false.
+			//6/26/02; 6:59:13 PM by JES
+				//Init config.manila.backups.
+			//2/19/02; 11:10:11 PM by JES
+				//Initialize config.manila.prefs.flRadioHostingEnabled to false.
+			//12/11/01; 2:31:21 PM by PBS
+				//Added max file name length prefs for gems and static rendering.
+			//2/26/01; 8:34:03 PM by DW
+				//Initialize config.manila.callbacks.getEmailNotificationAdText.
+			//02/06/01; 1:51:20 AM by JES
+				//Initialize site download preferences.
+			//02/06/01; 10:32:19 AM by PBS
+				//Create the table of callbacks at config.manila.callbacks.finalFilter, config.manila.callbacks.applyTheme, config.manila.callbacks.releasedNewsItem, config.manila.callbacks.postedNewsItem.
+			//10/27/00; 3:11:42 PM by JES
+				//Copy DG themes to Copy themes to config.manila.themes.
+			//06/22/00; 4:11:33 PM by PBS
+				//Initialize hosting preferences.
+			//06/07/00; 5:33:32 PM by PBS
+				//Copy themes to config.manila.themes.
+			//05/11/00; 4:56:39 PM by PBS
+				//Init config.manila.stats.
+				//Install Manila postFilter.
+				//Install Manila thread.
+				//Make Manila macros safe.
+			//04/05/00; 10:16:18 AM by PBS
+				//Initialize the new config.manila.callbacks.homePageUpdate table. Scripts in this table are called when a home page is updated.
+				//Initialize the new Manila new and changed message callbacks. These are called when a message is new or changed.
+				//Also initialize prefs for static pictures and static rendering.
 
 local (flNewInstall = false);
 bundle { //config.manila
@@ -177,10 +177,10 @@ bundle { //config.manila.callbacks
 		new (tableType, @config.manila.callbacks.messageSubmit)}};
 
 bundle { //config.manila.sites
-	«This table is the central registry of Manila sites on this server.
-		«The name of each item in this table is the name of a Manila site.
-		«Its address is the address of the site.
-		«Given a site name, you can find out everything about the site because you can look up its address in config.manila.sites.
+	//This table is the central registry of Manila sites on this server.
+		//The name of each item in this table is the name of a Manila site.
+		//Its address is the address of the site.
+		//Given a site name, you can find out everything about the site because you can look up its address in config.manila.sites.
 	if not defined (config.manila.sites) {
 		new (tableType, @config.manila.sites)}};
 
@@ -367,7 +367,7 @@ bundle { //copy themes to config.manila.themes
 		if not defined (config.manila.themes.[itemName]) {
 			config.manila.themes.[itemName] = adrItem^}};
 	
-	«Write themes to disk first time.
+	//Write themes to disk first time.
 	if not defined (config.manila.flThemesInitialized) {
 		config.manila.flThemesInitialized = false};
 	if not config.manila.flThemesInitialized {
@@ -392,7 +392,7 @@ bundle { //copy DG themes to config.manila.discussionGroupThemes
 		if not defined (config.manila.discussionGroupThemes.[itemName]) {
 			config.manila.discussionGroupThemes.[itemName] = adrItem^}};
 	
-	«Write themes to disk first time.
+	//Write themes to disk first time.
 	if not defined (config.manila.flDiscussThemesInitialized) {
 		config.manila.flDiscussThemesInitialized = false};
 	if not config.manila.flDiscussThemesInitialized {

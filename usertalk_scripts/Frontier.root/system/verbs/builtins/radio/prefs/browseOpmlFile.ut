@@ -1,9 +1,9 @@
 on browseOpmlFile (f) {
-	«Changes
-		«2/5/02; 11:48:22 AM by PBS
-			«Creates system.temp.radio if necessary in Frontier.
-		«11/23/01; 12:00:35 PM by DW
-			«Created.
+	//Changes
+		//2/5/02; 11:48:22 AM by PBS
+			//Creates system.temp.radio if necessary in Frontier.
+		//11/23/01; 12:00:35 PM by DW
+			//Created.
 	local (flread = true, adrincache);
 	bundle { //set flread, adrincache
 		if not defined (system.temp.radio) { //PBS 02/05/02: this table may not exist in Frontier
@@ -20,5 +20,5 @@ on browseOpmlFile (f) {
 		op.xmltooutline (xmltext, adrincache);
 		settimemodified (adrincache, file.modified (f))};
 	return (radio.prefs.browser (adrincache))};
-«bundle //test code
-	«browseOpmlFile ("C:\\Program Files\\Radio UserLand\\www\\userland\\todolist.opml")
+//bundle //test code
+	//browseOpmlFile ("C:\\Program Files\\Radio UserLand\\www\\userland\\todolist.opml")

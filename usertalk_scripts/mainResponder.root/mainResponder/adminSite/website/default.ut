@@ -1,9 +1,9 @@
 on default () {
-	«Changes
-		«11/11/05; 3:37:30 AM by JES
-			«When rendering the admin page for a single site, only collect data needed to manage the site, not data for all the sites on the server. (mainResponder.adminSite.macros.initSiteListCacheForSite)
-		«6/6/02; 12:05:18 PM by JES
-			«Created.
+	//Changes
+		//11/11/05; 3:37:30 AM by JES
+			//When rendering the admin page for a single site, only collect data needed to manage the site, not data for all the sites on the server. (mainResponder.adminSite.macros.initSiteListCacheForSite)
+		//6/6/02; 12:05:18 PM by JES
+			//Created.
 	local (pta = html.getPageTableAddress ());
 	pta^.title = "Sites on this server";
 	
@@ -12,9 +12,9 @@ on default () {
 		htmltext = htmltext + (string.filledString ("\t", indentlevel) + s + "\r\n");};
 	
 	if defined (pta^.searchArgTable.site) { //manage one site
-		«local (adrcache = mainResponder.adminSite.macros.initSiteListCache ())
-		«local (adrinfo = @adrcache^.sites.[pta^.searchArgTable.site])
-		«add (mainResponder.adminSite.macros.manageSite (adrinfo))
+		//local (adrcache = mainResponder.adminSite.macros.initSiteListCache ())
+		//local (adrinfo = @adrcache^.sites.[pta^.searchArgTable.site])
+		//add (mainResponder.adminSite.macros.manageSite (adrinfo))
 		
 		local (adrsite);
 		try {
@@ -39,6 +39,6 @@ on default () {
 	
 	return (htmltext)};
 
-«bundle //test code
-	«html.setpagetableaddress (@workspace.pt)
-	«default ()
+//bundle //test code
+	//html.setpagetableaddress (@workspace.pt)
+	//default ()

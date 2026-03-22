@@ -1,7 +1,7 @@
 on signupForm () { //a macro, call it from your logon page
-	«Changes:
-		«4/14/00; 9:23:32 PM by JES
-			«localized prompts
+	//Changes:
+		//4/14/00; 9:23:32 PM by JES
+			//localized prompts
 	local (pta = html.getPageTableAddress ());
 	local (formaction = pta^.path); //send the message back to the same place
 	formaction = formaction + "$" + nameof (this^); //add the name of the macro that generated the form to the request

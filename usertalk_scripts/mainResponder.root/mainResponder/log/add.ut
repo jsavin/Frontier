@@ -1,7 +1,7 @@
 on add (adrparamtable) {
-	«Changes
-		«8/14/02; 8:31:51 PM by JES
-			«If the membership group name is present in the pagetable, add it to the log table for this hit.
+	//Changes
+		//8/14/02; 8:31:51 PM by JES
+			//If the membership group name is present in the pagetable, add it to the log table for this hit.
 	local (adrhittable = log.addToGuestDatabase ("mainResponder", adrparamtable^.client, true));
 	adrhittable^.time = clock.now ();
 	adrhittable^.threads = Frontier.countThreads ();
@@ -23,5 +23,5 @@ on add (adrparamtable) {
 	
 	adrhittable^.ticks = clock.ticks () - adrParamTable^.stats.requestProcessingStarted;
 	return (adrhittable)};
-«bundle //test code
-	«dialog.alert (add (@scratchpad.paramtable))
+//bundle //test code
+	//dialog.alert (add (@scratchpad.paramtable))

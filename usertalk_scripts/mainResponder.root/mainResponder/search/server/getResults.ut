@@ -1,16 +1,16 @@
 on getResults (adrSearch, adrSearchRequest=nil) {
-	«Get the raw search results.
-		«Changes:
-			«8/8/02; 12:16:45 AM by JES
-				«Respect config.mainResponder.search.prefs.hoursToCacheSearchResults.
-			«10/29/99; 10:51:48 PM by PBS
-				«Get the page table address in a try. It's possible that this script is running outside the rendering context.
-			«10/1/99; 1:48:35 PM by PBS
-				«Support for multiple sites. Instead of searching one site or all sites, you can search a specified set of sites.
-			«9/13/99; 11:00:16 AM by PBS
-				«Drop not just trailing s but also trailing S from keywords.
-			«8/20/99; 12:01:36 PM by PBS
-				«Don't ignore keywords of less than 3 characters: only ignore keywords in the stop words list.
+	//Get the raw search results.
+		//Changes:
+			//8/8/02; 12:16:45 AM by JES
+				//Respect config.mainResponder.search.prefs.hoursToCacheSearchResults.
+			//10/29/99; 10:51:48 PM by PBS
+				//Get the page table address in a try. It's possible that this script is running outside the rendering context.
+			//10/1/99; 1:48:35 PM by PBS
+				//Support for multiple sites. Instead of searching one site or all sites, you can search a specified set of sites.
+			//9/13/99; 11:00:16 AM by PBS
+				//Drop not just trailing s but also trailing S from keywords.
+			//8/20/99; 12:01:36 PM by PBS
+				//Don't ignore keywords of less than 3 characters: only ignore keywords in the stop words list.
 	
 	local (i, j);
 	local (ctIgnored = 0);
@@ -50,9 +50,9 @@ on getResults (adrSearch, adrSearchRequest=nil) {
 		local (sizeResults = sizeOf (adrResults^));
 		if sizeOf (adrTables^) > 0 {
 			if sizeResults > sizeOf (adrTables^ [1]) { //switch tables: performance enhancement
-				«Switch the main table with the second term table.
-					«This is a quick way to get a performance boost when the first term
-					«is a super-common word like "Frontier."
+				//Switch the main table with the second term table.
+					//This is a quick way to get a performance boost when the first term
+					//is a super-common word like "Frontier."
 				local (tempTable = adrResults^);
 				adrResults^ = adrTables^ [1];
 				adrTables^ [1] = tempTable;
@@ -76,11 +76,11 @@ on getResults (adrSearch, adrSearchRequest=nil) {
 		local (keyword = string.nthField (adrSearch^.filteredSearchString, ' ', i));
 		local (origkeyword = keyword);
 		
-		«PBS 8/20/99: don't ignore keywords of less than 3 characters.
-		«if sizeOf (keyWord) < 3
-			«ctIgnored++
-			«adrSearch^.ignoredList [0] = origkeyword
-			«continue
+		//PBS 8/20/99: don't ignore keywords of less than 3 characters.
+		//if sizeOf (keyWord) < 3
+			//ctIgnored++
+			//adrSearch^.ignoredList [0] = origkeyword
+			//continue
 		
 		keyword = string.dropNonAlphas (keyword);
 		keyword = string.popTrailing (keyword, 's');
@@ -133,8 +133,8 @@ on getResults (adrSearch, adrSearchRequest=nil) {
 	
 	bundle { //filter the results by siteName if needed
 		if not defined (adrCache^) {
-			«Filter the results based on a site name.
-				«Also set adrScreen^.totalHits to the number of hits.
+			//Filter the results based on a site name.
+				//Also set adrScreen^.totalHits to the number of hits.
 			if defined (adrSearchRequest^.site) and (adrSearchRequest^.site != "") and (string.lower (adrSearchRequest^.site) != "all") {
 				local (sitesList = adrSearchRequest^.site); //PBS 10/1/99: search multiple sites
 				local (flAll = false);
@@ -178,10 +178,10 @@ on getResults (adrSearch, adrSearchRequest=nil) {
 		else {
 			adrSearch^.rawResults = adrCache^}};
 	
-	«Get the minimum relevancy ranking for AND searches.
+	//Get the minimum relevancy ranking for AND searches.
 	adrSearch^.min = ((adrSearch^.countKeywords - ctIgnored) - 1)  * 4000;
 	
-	«Get the total number of raw hits.
+	//Get the total number of raw hits.
 	adrSearch^.totalHits = sizeOf (adrSearch^.rawResults);
 	
 	bundle { //handle quoted items
@@ -225,7 +225,7 @@ on getResults (adrSearch, adrSearchRequest=nil) {
 							break};
 						local (j);
 						local (pageID = nameOf (adrSearch^.rawResults [i]));
-						«local (adrPageInfo = mainResponder.search.getPageInfoAddress (pageID, adrSearch^.indicesFolder))
+						//local (adrPageInfo = mainResponder.search.getPageInfoAddress (pageID, adrSearch^.indicesFolder))
 						local (adrPageInfo);
 						
 						adrPageInfo = @[indexPath].pageInfo.[pageID];

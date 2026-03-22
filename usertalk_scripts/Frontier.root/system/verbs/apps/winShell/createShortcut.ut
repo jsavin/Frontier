@@ -1,8 +1,8 @@
 on createShortcut (path, targetPath) {
-	«Create a shortcut.
-		«It's the responsibility of the caller to add a .lnk suffix to the end of path.
-		«targetPath is the path of the object the shortcut links to.
-		«Saturday, December 19, 1998 at 11:44:32 AM by PBS
+	//Create a shortcut.
+		//It's the responsibility of the caller to add a .lnk suffix to the end of path.
+		//targetPath is the path of the object the shortcut links to.
+		//Saturday, December 19, 1998 at 11:44:32 AM by PBS
 	
 	local (s = string (winShell.data.scripts.createShortcut));
 	

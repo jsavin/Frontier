@@ -1,6 +1,6 @@
 on validateStructure (adrTheme) {
-	«Validate the table structure of a theme. scriptError if there's a problem. This is a relaxed validator. It detects structural problems, but some details may escape it. One important thing it does do is ensure that there are no scripts objects in the theme.
-		«06/06/00; 12:19:47 AM by PBS
+	//Validate the table structure of a theme. scriptError if there's a problem. This is a relaxed validator. It detects structural problems, but some details may escape it. One important thing it does do is ensure that there are no scripts objects in the theme.
+		//06/06/00; 12:19:47 AM by PBS
 	
 	try { //enclose in a try, for a friendlier error message in the case of unknown errors
 		on checkTable (adrTable, namesList, flTopLevelTable, validTypes) {
@@ -28,7 +28,7 @@ on validateStructure (adrTheme) {
 			return (true)};
 		
 		bundle { //top level table
-			«local (namesList = {"appearance", "flEnabled", "flPublic", "Info", "Pictures"})
+			//local (namesList = {"appearance", "flEnabled", "flPublic", "Info", "Pictures"})
 			local (namesList = {"appearance", "flEnabled", "flPublic", "Info"});
 			local (validTypes = {tableType, booleanType});
 			checkTable (adrTheme, namesList, true, validTypes)};
@@ -74,7 +74,7 @@ on validateStructure (adrTheme) {
 	
 	return (true)}; //the theme validated
 bundle { //test code
-	«local (adrItem)
-	«for adrItem in @config.manila.themes
-		«validateStructure (adrItem)
+	//local (adrItem)
+	//for adrItem in @config.manila.themes
+		//validateStructure (adrItem)
 	validateStructure (@config.manila.themes.boxes)}

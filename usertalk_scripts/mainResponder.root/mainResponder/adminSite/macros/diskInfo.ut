@@ -1,7 +1,7 @@
 on diskInfo () {
-	«Changes
-		«8/14/02; 3:34:39 PM by JES
-			«Created.
+	//Changes
+		//8/14/02; 3:34:39 PM by JES
+			//Created.
 	local (htmltext);
 	on add (s) {
 		htmltext = htmltext + (s + "\r");};

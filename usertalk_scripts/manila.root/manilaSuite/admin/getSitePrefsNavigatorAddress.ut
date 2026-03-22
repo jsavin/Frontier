@@ -1,7 +1,7 @@
 on getSitePrefsNavigatorAddress (pta=nil) {
-	«5/12/00; 3:47:01 PM by JES
-		«Gets the address of the (localized) site prefs navigator
-			«Note: The wizard and the navigator must have the same names for panels, or prefsSuite.browser won't work.
+	//5/12/00; 3:47:01 PM by JES
+		//Gets the address of the (localized) site prefs navigator
+			//Note: The wizard and the navigator must have the same names for panels, or prefsSuite.browser won't work.
 	
 	if pta == nil {
 		pta = html.getPageTableAddress ()};

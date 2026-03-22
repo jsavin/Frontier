@@ -1,28 +1,28 @@
 on getMessageContent (siteName, msgNum, flEncodeAmpersands = false) {
-	«Get the text and info about a message.
-		«Changes:
-			«1/31/06; 3:01:56 AM by JES
-				«Add support for flPending messages.
-			«09/22/02; 11:37:16 PM by JES
-				«If the message has a site structure path, return that for its url instead of the storyReader or msgReader url. Makes Radio's View In Browser command load the page from its canonical (site-structure-defined) location.
-			«05/26/01; 2:54:22 AM by JES
-				«If the page is a story, return the storyReader URL, instead of the msgReader URL.
-			«03/15/01; 9:36:49 PM by JES
-				«If windowInfo is present in the returnTable, but it's not a table, delete it.
-			«01/02/01; 1:19:08 AM by JES
-				«On Macs, convert the subject to Latin text.
-			«12/22/00; 2:55:30 PM by JES
-				«If the message is an outline, add the opml representation of the outline to the returned struct.
-			«11/20/00; 6:30:08 PM by JES
-				«Added new optional parameter, flEncodeAmpersands, which causes & to be converted to &amp;. This is required for SOAP support, since there are two decodings of entities - one when the SOAP message is decoded, and another when the opml is converted to an outline.
-			«11/04/00; 6:58:56 PM by JES
-				«Send the flServerAcceptsOpml if running Frontier 7.0b21 or later.
-			«08/22/00; 5:09:01 PM by PBS
-				«Return the name of the member in the memberName field.
-			«03/24/00; 6:57:11 PM by PBS
-				«The rendererInfo code added yesterday had a typo -- now it's fixed.
-			«03/23/00; 7:26:37 PM by PBS
-				«Return a rendererInfo struct. See http://www.xmlrpc.com/stories/storyReader$769
+	//Get the text and info about a message.
+		//Changes:
+			//1/31/06; 3:01:56 AM by JES
+				//Add support for flPending messages.
+			//09/22/02; 11:37:16 PM by JES
+				//If the message has a site structure path, return that for its url instead of the storyReader or msgReader url. Makes Radio's View In Browser command load the page from its canonical (site-structure-defined) location.
+			//05/26/01; 2:54:22 AM by JES
+				//If the page is a story, return the storyReader URL, instead of the msgReader URL.
+			//03/15/01; 9:36:49 PM by JES
+				//If windowInfo is present in the returnTable, but it's not a table, delete it.
+			//01/02/01; 1:19:08 AM by JES
+				//On Macs, convert the subject to Latin text.
+			//12/22/00; 2:55:30 PM by JES
+				//If the message is an outline, add the opml representation of the outline to the returned struct.
+			//11/20/00; 6:30:08 PM by JES
+				//Added new optional parameter, flEncodeAmpersands, which causes & to be converted to &amp;. This is required for SOAP support, since there are two decodings of entities - one when the SOAP message is decoded, and another when the opml is converted to an outline.
+			//11/04/00; 6:58:56 PM by JES
+				//Send the flServerAcceptsOpml if running Frontier 7.0b21 or later.
+			//08/22/00; 5:09:01 PM by PBS
+				//Return the name of the member in the memberName field.
+			//03/24/00; 6:57:11 PM by PBS
+				//The rendererInfo code added yesterday had a typo -- now it's fixed.
+			//03/23/00; 7:26:37 PM by PBS
+				//Return a rendererInfo struct. See http://www.xmlrpc.com/stories/storyReader$769
 	
 	local (adrDiscuss = manilaSuite.rpcUtils.getDiscussAddress (siteName));
 	local (adrSite = manilaSuite.rpcUtils.getSiteAddress (siteName));

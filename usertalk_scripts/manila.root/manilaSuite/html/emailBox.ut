@@ -1,12 +1,12 @@
 on emailBox (adrMsgTable, pta=nil) {
-	«Draw the email box, which allows you to subscribe to responses to a message.
-		«This script assumes that the browser is a member, the message hasn't been deleted, and that email subscriptions are allowed -- check those things before calling this script. (See manilaSuite.discuss.msgReader.)
-		«04/07/00; 3:41:40 PM by PBS
-	«Changes:
-		«1/31/06; 3:14:01 AM by JES
-			«Change width of email box from 300 to 350 pixels.
-		«04/21/00; 2:21:16 AM by JES
-			«localized
+	//Draw the email box, which allows you to subscribe to responses to a message.
+		//This script assumes that the browser is a member, the message hasn't been deleted, and that email subscriptions are allowed -- check those things before calling this script. (See manilaSuite.discuss.msgReader.)
+		//04/07/00; 3:41:40 PM by PBS
+	//Changes:
+		//1/31/06; 3:14:01 AM by JES
+			//Change width of email box from 300 to 350 pixels.
+		//04/21/00; 2:21:16 AM by JES
+			//localized
 	
 	if pta == nil {
 		pta = html.getPageTableAddress ()};

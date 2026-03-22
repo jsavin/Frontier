@@ -1,10 +1,10 @@
 on newScriptObject (s, adr) {
-	«Sun, 07 Mar 1999 11:01:36 GMT by AR
-		«New verb for 6.0, creates a new script object at the specified address.
-		«This is a clone of op.newOutlineObject.
-		«Changes:
-			«04/09/00; 12:02:58 PM by PBS
-				«(Try to) compile the script that's been created. This prevents unwanted compile-changes dialogs from showing up.
+	//Sun, 07 Mar 1999 11:01:36 GMT by AR
+		//New verb for 6.0, creates a new script object at the specified address.
+		//This is a clone of op.newOutlineObject.
+		//Changes:
+			//04/09/00; 12:02:58 PM by PBS
+				//(Try to) compile the script that's been created. This prevents unwanted compile-changes dialogs from showing up.
 	
 	if not defined (adr^) {
 		new (scriptType, adr)}

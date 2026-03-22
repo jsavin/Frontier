@@ -1,9 +1,9 @@
 on stripMarkup (s) {
-	«Changes
-		«11/14/2000; 12:44:13 PM by DW
-			«Created. Removes all HTML <tags> from the string.
-		«05/1/01; 3:19:00 AM by JES
-			«Fixed infinite looping bug, which would occur for any string which contains a > character before a < character.
+	//Changes
+		//11/14/2000; 12:44:13 PM by DW
+			//Created. Removes all HTML <tags> from the string.
+		//05/1/01; 3:19:00 AM by JES
+			//Fixed infinite looping bug, which would occur for any string which contains a > character before a < character.
 	local (ixopen, ixclose);
 	loop {
 		ixopen = string.patternmatch ("<", s);
@@ -17,5 +17,5 @@ on stripMarkup (s) {
 			break};
 		s = string.delete (s, ixopen, ixclose - ixopen + 1)};
 	return (s)};
-«bundle //test code
-	«dialog.alert (stripMarkup ("O<u>h</u> <b>the</b> buzzing of the bees and the sycamore <i>trees.</i>"))
+//bundle //test code
+	//dialog.alert (stripMarkup ("O<u>h</u> <b>the</b> buzzing of the bees and the sycamore <i>trees.</i>"))

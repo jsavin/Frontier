@@ -1,4 +1,4 @@
-on visitSite (url) { «called from the scripts we generate
+on visitSite (url) { //called from the scripts we generate
 	webBrowser.openURL (url);
 	webBrowser.bringToFront ();
 	return (true)}

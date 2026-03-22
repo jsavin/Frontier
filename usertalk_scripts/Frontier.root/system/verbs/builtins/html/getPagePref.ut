@@ -1,8 +1,8 @@
-on getPagePref (prefName, adrPage, adrPageTable=@websites.["#data"]) { «new in 5.0
-	«Similar to html.getPref, except that it retrieves a pref from a remote page.
-		«Whenever you need to find an attribute of a page other than
-		«the one that's being rendered, call this script.
-		«Friday, January 02, 1998 at 10:44:23 PM by PBS
+on getPagePref (prefName, adrPage, adrPageTable=@websites.["#data"]) { //new in 5.0
+	//Similar to html.getPref, except that it retrieves a pref from a remote page.
+		//Whenever you need to find an attribute of a page other than
+		//the one that's being rendered, call this script.
+		//Friday, January 02, 1998 at 10:44:23 PM by PBS
 	
 	on coerceVal (value) { //Coerce "on" to true, "off" to false, and so on
 		case value {

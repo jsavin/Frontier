@@ -1,9 +1,9 @@
 on modeFlipPage () {
-	«Handle a mode flip from static to dynamic.
-		«03/17/00; 7:28:49 PM by PBS
-		«Changes:
-			«05/24/00; 8:25:21 PM by JES
-				«localized
+	//Handle a mode flip from static to dynamic.
+		//03/17/00; 7:28:49 PM by PBS
+		//Changes:
+			//05/24/00; 8:25:21 PM by JES
+				//localized
 	
 	local (pta = html.getPageTableAddress ());
 	local (flPost = string.lower (pta^.method) == "post");
@@ -29,7 +29,7 @@ on modeFlipPage () {
 	if flPost { //handle a posted form
 		manilaSuite.discuss.postEditedMsg ();
 		
-		«Render the page if auto-rendering is on.
+		//Render the page if auto-rendering is on.
 		local (staticUrl = pta^.postArgs.referer);
 		relativeUrl = staticToRelative (staticUrl);
 		
@@ -49,7 +49,7 @@ on modeFlipPage () {
 		relativeUrl = staticToRelative (pta^.searchArgs);
 		
 		if flDisplayEditor and defined (pta^.adrMemberInfo) {
-			«Get the msgNum, then display an edit form for this page.
+			//Get the msgNum, then display an edit form for this page.
 			local (msgNum);
 			
 			on error () {
@@ -80,7 +80,7 @@ on modeFlipPage () {
 				pta^.activeUrls = false;
 				pta^.autoParagraphs = false;
 				pta^.addLineFeeds = false;
-				«Display the editing form only if this person can edit this message.
+				//Display the editing form only if this person can edit this message.
 				
 				local (adrMsg = mainResponder.discuss.getMessageTable (msgNum, pta:pta));
 				if not (mainResponder.discuss.memberCanEdit (adrMsg, pta^.adrMemberInfo)) { //PBS 6/9/99

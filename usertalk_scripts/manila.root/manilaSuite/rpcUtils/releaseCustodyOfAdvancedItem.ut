@@ -1,6 +1,6 @@
 on releaseCustodyOfAdvancedItem (username, password, siteName, adrObject, itemName) {
-	«Release custody of an advanced item.
-		«02/11/00; 11:08:14 AM by PBS
+	//Release custody of an advanced item.
+		//02/11/00; 11:08:14 AM by PBS
 	
 	bundle { //make sure this person is a managing editor of the site.
 		local (beginningErrorString = "Can't release custody of the " + itemName + " because ");

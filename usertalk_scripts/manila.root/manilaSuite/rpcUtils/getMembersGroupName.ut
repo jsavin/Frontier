@@ -1,5 +1,5 @@
 on getMembersGroupName (sitename) {
-	«Get the name of the membership group for this site.
+	//Get the name of the membership group for this site.
 	
 	local (adrSite = manilaSuite.rpcUtils.getSiteAddress (sitename));
 	local (groupName = adrSite^.["#prefs"].defaultMembershipGroup);

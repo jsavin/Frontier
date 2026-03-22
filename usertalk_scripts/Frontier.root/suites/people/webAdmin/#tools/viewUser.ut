@@ -53,8 +53,8 @@ on viewUser () {
 	encodedUserName = string.urlEncode (userName);
 	
 	bundle { //add username and password
-		«hr ()
-		«add ("<h3>User Information:</h3>\r")
+		//hr ()
+		//add ("<h3>User Information:</h3>\r")
 		add ("<form method=post action=\"viewUser.wsf?" + encodedUserName + "\">");
 		i = 1;
 		add ("<table border=0 cellpadding=8 cellspacing=0>");
@@ -89,8 +89,8 @@ on viewUser () {
 		td ();
 		if emailAddress == nil {
 			emailAddress = people.getUserEmailAddress (userName)};
-		«local (emailLink = "<a href=\"mailto:" + emailAddress + "\">" + emailAddress + "</a>")
-		«add (emailLink)
+		//local (emailLink = "<a href=\"mailto:" + emailAddress + "\">" + emailAddress + "</a>")
+		//add (emailLink)
 		add ("<input size=30 name=emailAddress value=\"" + emailAddress + "\">");
 		closetd ();
 		closetr ();
@@ -153,19 +153,19 @@ on viewUser () {
 				add ("<input type=\"hidden\" value=\"" + encodedUserName + "\" name=\"userName\">");
 				add ("<p>\r<input type=\"submit\" value=\"Add To Group\"></form>")}}};
 	
-	«bundle //remove user from a group dialog
-		«if sizeUserGroupsList > 0
-			«hr ()
-			«add ("<h3>Remove " + userName + " from a group:</h3>")
-			«add ("<b>Choose a group:</b><p>\r")
-			«add ("<form method=get action=\"removeUserFromGroup.wsf\">\r")
-			«add ("<select name=groupName>\r")
-			«for i = 1 to sizeUserGroupsList
-				«local (oneUserGroup = userGroupsList [i])
-				«add ("<option value=\"" + string.urlEncode (oneUserGroup) + "\">" + oneUserGroup + "\r")
-			«add ("</select>\r")
-			«add ("<input type=\"hidden\" value=\"" + encodedUserName + "\" name=\"userName\">")
-			«add ("<p>\r<input type=\"submit\" value=\"Remove From Group\"></form>")
+	//bundle //remove user from a group dialog
+		//if sizeUserGroupsList > 0
+			//hr ()
+			//add ("<h3>Remove " + userName + " from a group:</h3>")
+			//add ("<b>Choose a group:</b><p>\r")
+			//add ("<form method=get action=\"removeUserFromGroup.wsf\">\r")
+			//add ("<select name=groupName>\r")
+			//for i = 1 to sizeUserGroupsList
+				//local (oneUserGroup = userGroupsList [i])
+				//add ("<option value=\"" + string.urlEncode (oneUserGroup) + "\">" + oneUserGroup + "\r")
+			//add ("</select>\r")
+			//add ("<input type=\"hidden\" value=\"" + encodedUserName + "\" name=\"userName\">")
+			//add ("<p>\r<input type=\"submit\" value=\"Remove From Group\"></form>")
 	
 	servicesList = people.getUserServices (userName);
 	if servicesList == false {
@@ -226,6 +226,6 @@ on viewUser () {
 				add ("<input type=\"hidden\" value=\"" + encodedUserName + "\" name=\"userName\">");
 				add ("<p>\r<input type=\"submit\" value=\"Attach Service\"></form>")}}};
 	
-	«hr ()
+	//hr ()
 	
 	return (htmlText)}

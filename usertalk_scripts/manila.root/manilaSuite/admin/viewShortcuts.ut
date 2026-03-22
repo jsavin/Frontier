@@ -1,36 +1,36 @@
 on viewShortcuts (pta=nil) {
-	«Display the shortcuts page.
-		«The shortcuts page allows the managing editor to view and edit the glossary.
-	«Changes:
-		«2/18/05; 5:18:26 AM by JES
-			«Moved the alphabetical links to more shortcut pages from below the shortcuts list to above it.
-		«11/7/2004; 12:32:47 by DAB
-			«Added support for link targets.
-		«8/12/04; 2:54:38 AM by JES
-			«Removed 200 character restriction on length of URLs for shortcuts.
-		«9/23/03; 4:48:54 PM by JES
-			«Content editors can create/delete shortcuts, in addition to managing editors.
-		«1/25/02; 6:17:38 PM by PBS
-			«Performance enhancements in the local "add" routine -- add a trailing semicolon; use parentheses to get the expression in x = x + y form (which is optimized by the kernel).
-		«9/6/01; 4:00:04 PM by PBS
-			«Add the alphabet links to the bottom of the list, so you can jump straight to any letter of the alphabet. This makes large shortcuts lists more usable. http://discuss.2020hindsight.org/pictures/viewer$2240
-		«05/30/01; 2:27:25 PM by JES
-			«Bug fix: when there are no shortcuts, the script was calling mainResponder.getString, instead of manilaSuite.getString, which resulted in an error page.
-			«Bug and fix reported by Steve Hooker.
-		«05/11/00; 7:14:21 PM by JES
-			«merged in Brent's security fix for the client side trojan horse attack.
-		«05/09/00; 10:35:30 PM by PBS
-			«Check the referer to defeat the client side trojan horse.
-		«05/01/00; 4:09:14 PM by JES
-			«Changed getString calls to use a replacement table address instead of a lists
-		«04/18/00; 4:32:36 PM by JES
-			«localized
-		«04/16/00; 11:36:56 AM by PBS
-			«Support for Gems. Gems have a special type of shortcut.
-		«10/31/99; 1:29:47 PM by PBS
-			«Minor cleanups, enhanced security.
-		«9/4/99; 5:23:14 PM by PBS
-			«Save the gdb containing the glossary when changes are made.
+	//Display the shortcuts page.
+		//The shortcuts page allows the managing editor to view and edit the glossary.
+	//Changes:
+		//2/18/05; 5:18:26 AM by JES
+			//Moved the alphabetical links to more shortcut pages from below the shortcuts list to above it.
+		//11/7/2004; 12:32:47 by DAB
+			//Added support for link targets.
+		//8/12/04; 2:54:38 AM by JES
+			//Removed 200 character restriction on length of URLs for shortcuts.
+		//9/23/03; 4:48:54 PM by JES
+			//Content editors can create/delete shortcuts, in addition to managing editors.
+		//1/25/02; 6:17:38 PM by PBS
+			//Performance enhancements in the local "add" routine -- add a trailing semicolon; use parentheses to get the expression in x = x + y form (which is optimized by the kernel).
+		//9/6/01; 4:00:04 PM by PBS
+			//Add the alphabet links to the bottom of the list, so you can jump straight to any letter of the alphabet. This makes large shortcuts lists more usable. http://discuss.2020hindsight.org/pictures/viewer$2240
+		//05/30/01; 2:27:25 PM by JES
+			//Bug fix: when there are no shortcuts, the script was calling mainResponder.getString, instead of manilaSuite.getString, which resulted in an error page.
+			//Bug and fix reported by Steve Hooker.
+		//05/11/00; 7:14:21 PM by JES
+			//merged in Brent's security fix for the client side trojan horse attack.
+		//05/09/00; 10:35:30 PM by PBS
+			//Check the referer to defeat the client side trojan horse.
+		//05/01/00; 4:09:14 PM by JES
+			//Changed getString calls to use a replacement table address instead of a lists
+		//04/18/00; 4:32:36 PM by JES
+			//localized
+		//04/16/00; 11:36:56 AM by PBS
+			//Support for Gems. Gems have a special type of shortcut.
+		//10/31/99; 1:29:47 PM by PBS
+			//Minor cleanups, enhanced security.
+		//9/4/99; 5:23:14 PM by PBS
+			//Save the gdb containing the glossary when changes are made.
 	
 	if pta == nil {
 		pta = html.getPageTableAddress ()};
@@ -77,7 +77,7 @@ on viewShortcuts (pta=nil) {
 		
 		case pta^.postArgs.cmd {
 			"add" {
-				«local (name, url)
+				//local (name, url)
 				local (name, url, linkTarget); //04/11/07, 12:30:14 by DAB
 				name = string.trimWhiteSpace (pta^.postArgs.name);
 				url = string.trimWhiteSpace (pta^.postArgs.url);
@@ -92,10 +92,10 @@ on viewShortcuts (pta=nil) {
 				else {
 					if defined (adrGlossary^.[name]) {
 						delete (@adrGlossary^.[name])};
-					«adrGlossary^.[name] = "<a href=\"" + url + "\">" + name + "</a>"
+					//adrGlossary^.[name] = "<a href=\"" + url + "\">" + name + "</a>"
 					adrGlossary^.[name] = "<a href=\"" + url + "\"" + linkTarget + ">" + name + "</a>"}}; //04/11/07, 12:06:19 by DAB
 			"delete" {
-				«delete items that were checked off when the button was clicked
+				//delete items that were checked off when the button was clicked
 				if defined (pta^.postArgs) {
 					local (i, ct = sizeOf (pta^.postArgs), adrArg);
 					for i = ct downto 1 {
@@ -117,7 +117,7 @@ on viewShortcuts (pta=nil) {
 		add ("<table><tr><td valign=\"top\">"); indentLevel++;
 		
 		bundle { //form: Add Glossary Item
-			«local (defaultUrl = "http://", defaultTitle = "")
+			//local (defaultUrl = "http://", defaultTitle = "")
 			local (defaultUrl = "http://", defaultTitle = "", defaultTarget = ""); //04/11/07, 12:32:47 by DAB
 			
 			if defined (pta^.requestHeaders.referer) { //added check: Wed, 26 May 1999 21:50:54 GMT by AR
@@ -140,7 +140,7 @@ on viewShortcuts (pta=nil) {
 			add ("<tr><td>" + manilaSuite.getString ("admin.shortcutNamePrompt", pta: pta) + "&nbsp;</td>");
 			add ("<td><input size=\"40\" maxlength=\"200\" name=\"name\" value=\"" + defaultTitle + "\"></td></tr>");
 			add ("<tr><td>" + manilaSuite.getString ("admin.shortcutUrlPrompt", pta: pta) + "&nbsp;</td>");
-			«add ("<td><input size=\"40\" maxlength=\"200\" name=\"url\" value=\"" + defaultUrl + "\"></td></tr>")
+			//add ("<td><input size=\"40\" maxlength=\"200\" name=\"url\" value=\"" + defaultUrl + "\"></td></tr>")
 			add ("<td><input size=\"40\" name=\"url\" value=\"" + defaultUrl + "\"></td></tr>"); //JES 8/12/04: don't restrict length of URL for shortcut
 			add ("<tr><td>Target:&nbsp;</td>"); //04/11/07, 12:08:06 by DAB
 			add ("<td><input size=\"40\"  name=\"target\" value=\"" + defaultTarget + "\"></td></tr>"); //04/11/07, 12:04:20 by DAB

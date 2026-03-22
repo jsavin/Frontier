@@ -1,7 +1,7 @@
-«Script: system.verbs.builtins.webserver.data.responders.CGI.methods.any; Version 1; Date: Wed, 20 May 1998 00:33:42 GMT; ID: RAB
-	«removed call to webserver.init
+//Script: system.verbs.builtins.webserver.data.responders.CGI.methods.any; Version 1; Date: Wed, 20 May 1998 00:33:42 GMT; ID: RAB
+	//removed call to webserver.init
 on any (adrParams) {
-	«we're using compatibility mode for speed
+	//we're using compatibility mode for speed
 	
 	local {
 		adrHeaderTable = @adrParams^.requestHeaders};
@@ -30,36 +30,36 @@ on any (adrParams) {
 		else {
 			return ({"",""})}};
 	bundle { // Set up cgi parameters table.
-		«March 05, 1998 at 8:38:22 PM by WMF
-			«This script needs to do less work because the server does more work
-		«on getField (fieldName)
-			«local (ix, x)
-			«fieldName = string.lower (fieldName + ":")
-			«ix = string.patternMatch (fieldName, lowerRequest)
-			«if ix < 1
-				«return ("")
-			«x = string.mid (request, ix, infinity)
-			«x = string.nthField (x, cr, 1)
-			«x = string.delete (x, 1, sizeOf (fieldName) + 1)
-			«x = string.popLeading (x, ' ')
-			«return (x)
+		//March 05, 1998 at 8:38:22 PM by WMF
+			//This script needs to do less work because the server does more work
+		//on getField (fieldName)
+			//local (ix, x)
+			//fieldName = string.lower (fieldName + ":")
+			//ix = string.patternMatch (fieldName, lowerRequest)
+			//if ix < 1
+				//return ("")
+			//x = string.mid (request, ix, infinity)
+			//x = string.nthField (x, cr, 1)
+			//x = string.delete (x, 1, sizeOf (fieldName) + 1)
+			//x = string.popLeading (x, ' ')
+			//return (x)
 		on getField (fieldName) { // March 05, 1998 at 8:29:07 PM by WMF
 			if defined (adrParams^.requestHeaders.[fieldName]) {
 				return (adrParams^.requestHeaders.[fieldName])}
 			else {
 				return ("")}};
 		
-		«paramTable.scriptName = string.nthField (request, cr, 1)
-		«paramTable.scriptName = string.nthField (paramTable.scriptName, ' ', 2)
+		//paramTable.scriptName = string.nthField (request, cr, 1)
+		//paramTable.scriptName = string.nthField (paramTable.scriptName, ' ', 2)
 		paramTable.scriptName = adrParams^.path;
 		paramTable.scriptName = string.urlDecode (paramTable.scriptName);
-		«if paramTable.scriptName contains "?"
-			«paramTable.httpSearchArgs = string.nthField (paramTable.scriptName, "?", 2)
-			«paramTable.scriptName = string.nthField (paramTable.scriptName, "?", 1)
+		//if paramTable.scriptName contains "?"
+			//paramTable.httpSearchArgs = string.nthField (paramTable.scriptName, "?", 2)
+			//paramTable.scriptName = string.nthField (paramTable.scriptName, "?", 1)
 		paramTable.httpSearchArgs = adrParams^.searchArgs;
-		«if paramTable.scriptName contains "$"
-			«paramTable.pathArgs = string.nthField (paramTable.scriptName, "$", 2)
-			«paramTable.scriptName = string.nthField (paramTable.scriptName, "$", 1)
+		//if paramTable.scriptName contains "$"
+			//paramTable.pathArgs = string.nthField (paramTable.scriptName, "$", 2)
+			//paramTable.scriptName = string.nthField (paramTable.scriptName, "$", 1)
 		paramTable.pathArgs = adrParams^.pathArgs;
 		
 		paramTable.accept = getField ("accept");
@@ -75,11 +75,11 @@ on any (adrParams) {
 		paramTable.host = getField ("host");
 		paramTable.method = adrParams^.method;
 		
-		«paramTable.postArgs = ""
-		«paramTable.postArgs = string.popTrailing (string.delete (request, 1, string.patternMatch ("\r\r", request) +1), cr)
+		//paramTable.postArgs = ""
+		//paramTable.postArgs = string.popTrailing (string.delete (request, 1, string.patternMatch ("\r\r", request) +1), cr)
 		paramTable.postArgs = adrparams^.requestBody;
-		«theoretically, we should only parse the POST args if the content-type says that it's form data
-			«however, this would probably be too strict and break a bunch of stuff
+		//theoretically, we should only parse the POST args if the content-type says that it's form data
+			//however, this would probably be too strict and break a bunch of stuff
 		if paramTable.postArgs != "" { // parse post arguments into a table.
 			new (tableType, @paramTable.argTable);
 			webserver.parseArgs (paramTable.postArgs, @paramTable.argTable)};
@@ -87,7 +87,7 @@ on any (adrParams) {
 		paramTable.referer = getField ("referer");
 		paramTable.serverName = tcp.addressDecode (tcp.myAddress());
 		paramTable.serverPath = frontierPath;
-		«paramTable.serverPort = parentof (this^)^.port
+		//paramTable.serverPort = parentof (this^)^.port
 		paramTable.serverPort = adrParams^.port;
 		paramTable.userAgent = getField ("user-agent");
 		

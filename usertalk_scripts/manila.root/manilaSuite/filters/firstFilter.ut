@@ -1,199 +1,199 @@
 on firstFilter (pta) {
-	«Changes:
-		«3/28/07; 2:42:03 PM by LL
-			«Site shell upgrade: Delete messages page.
-		«3/19/07; 5:53:25 PM by LL
-			«Site shell upgrade: Setup pending members page.
-		«3/9/07; 11:01:50 AM by LL
-			«Setup login members box template.
-		«2006:
-			«11/16/06; 12:46:28 PM by LL
-				«Site shell upgrade: new legal tags, fieldset and legend.
-			«9/15/06; 7:02:18 PM by LL
-				«Bug fix: Updated conditions to set flHtml to true when requesting from a sub-site. Also, added a new condition to set flHtml to false when requesting the external style sheet.
-			«5/7/06; 3:09:33 PM by JES
-				«Site shell upgrade: new legal tags, noscript and nobr.
-			«4/29/06; 4:20:55 AM by JES
-				«Site shell upgrade: site structure editor
-			«3/24/06; 3:31:58 AM by JES
-				«Add ability to specify member info in search args, mem=member, pwd=password.
-			«1/31/06; 5:07:13 PM by JES
-				«Site shell upgrade: pending posts admin page.
-		«2005:
-			«12/14/05; 1:52:12 AM by JES
-				«Add support for Members Only feature.
-			«10/26/05; 1:53:20 AM by JES
-				«Added support for firstFilter callback at config.manila.callbacks.filters.firstFilter.
-					«Scripts in the firstFilter callbacks table are called in turn, and return values are ignored.
-			«10/17/05; 12:30:07 AM by JES
-				«Update the site's help URL -- #["urls"].editorialHelp -- based on whether it has a stale value, and we know what the new value should be.
-			«10/5/05; 7:38:59 PM by JES
-				«Re-enable older site shell upgrades. Upgrade to 9.55 site shell version, to re-instate now missing DG prefs.
-			«10/3/05; 3:45:19 AM by JES
-				«Install new version of adrsite^.admin.sitePrefs.default, which only calls manilaSuite.sitePrefs.setTemplate if defined.
-			«7/31/05; 2:57:45 AM by JES
-				«Fix error in new sites exposed with last change: summaryTemplate not defined.
-			«7/11/05; 3:22:30 PM by JES
-				«Install adrsite^.newsItems.viewFullItem, if defined.
-			«6/30/05; 3:08:28 AM by JES
-				«Fix bug introduced with last change, which caused advanced prefs to render improperly.
-			«29/06/05; 2:28:17 PM by PR
-				«rolled back the previous change as it was done to fix the processMacros bug
-			«6/23/05; 1:44:34 AM by JES
-				«Change back to calling manilaSuite.admin.sitePrefsPage from adrsite^.admin.sitePrefs.default. The change to calling manilaSuite.sitePrefs.defaultPage broke site prefs if a site was moved from a 9.5 server to a pre 9.5 server.
-			«17/05/05; 7:43:54 PM by PR
-				«run flNineFiveSiteShell block rebuild default cohorts
-			«17/05/05; 11:39:45 AM by PR
-				«in flNineFiveSiteShell block check to make sure #templates is defined
-			«12/05/05; 3:02:09 PM by PR
-				«9.5 siteshell upgrades:
-					«add content-only template
-					«convert path permissions
-					«add new sitepref default script
-			«3/11/05; 4:47:34 AM by JES
-				«Update site shell version to 9.1, and only run 9.1 site shell upgrades once per site.
-			«3/10/05; 4:47:06 AM by JES
-				«Site shell upgrade: two-step member sign-up with email-based confirmation.
-			«2/17/05; 2:13:50 PM by JES
-				«New legal tag: caption.
-			«2/16/05; 3:09:20 AM by JES
-				«Site shell upgrade: Update the site prefs default page to use the new script version, which is capable of setting the page template.
-			«2/16/05; 3:00:21 AM by JES
-				«Moved manilaData.originalDirectoryTemplate to manilaData.legacyObjects.originalDirectoryTemplate.
-		«2004:
-			«12/30/04; 4:13:37 AM by JES
-				«Added support for content-only rendering. If the request has a search arg, content-only=true, then we use a content-only template, which is hard-coded to {bodytext}.
-			«4/2/04; 11:10:32 AM by JES
-				«New legal tag: strike
-		«2003:
-			«10/11/03; 4:04:51 AM by JES
-				«Check for editors only access before checking home page caching. Prevents us from serving content improperly after the site has switched to editors only mode.
-			«9/3/03; 6:46:39 PM by JES
-				«New legal tags: abbr and acronym.
-			«5/21/03; 5:55:10 PM by JES
-				«Site shell upgrade: path-permissions.
-			«5/20/03; 3:41:57 PM by JES
-				«Site shell upgrade: robots.txt.
-			«5/13/03; 6:23:38 PM by JES
-				«Site shell upgrade: events page.
-			«5/12/03; 1:08:13 PM by JES
-				«Site shell upgrade -- discussion group and department RSS feeds.
-			«4/22/03; 11:51:06 PM by JES
-				«Site shell upgrade: news item summaries.
-			«4/21/03; 4:09:07 PM by JES
-				«Site shell upgrade: blogroll editor.
-			«4/20/03; 11:00:37 PM by JES
-				«Site Shell upgrade: spam-free mailto page.
-			«4/20/03; 4:37:03 PM by JES
-				«Site Shell upgrade: external style sheet.
-			«4/8/03; 12:32:36 PM by JES
-				«Only add the mySubscriptions.opml object to the site's gems sub-table if it has a gems sub-table.
-			«4/3/03; 6:13:48 PM by JES
-				«Site shell upgrade -- mySubscriptions.opml.
-			«4/1/03; 3:44:47 PM by JES
-				«Call manilaSuite.discuss.ensureValidHomePageCalendar to fix up the calendar structure if it's been broken, for example the last remaining home page had been deleted.
-			«3/13/03; 2:07:30 AM by JES
-				«Call manilaSuite.aggregator.init only if xml.aggregator is defined. Some very old Frontier installations don't have the xml.aggregator sub-table, which causes manilaSuite.aggregator.init to fail, breaking older Manila installations.
-			«2/25/03; 6:34:40 AM by DW
-				«Initialize manilaSuite.aggregator.
-			«2/21/03; 6:43:36 PM by JES
-				«Don't bother putting any HTML in the page table unless we're serving an object that's actually HTML: performance enhancement for RSS, RSD, scriptingNews2, pictures and comment counter JavaScripts.
-				«Also set pta^.flHtml, so that the other filters know whether to bother doing HTML-ish stuff.
-		«2002:
-			«12/13/02; 1:51:48 PM by JES
-				«Site shell upgrade -- install adrsite^.xml.["rsd.xml"], which calls manilaSuite.xml.getRsdXml.
-			«10/26/02; 10:23:32 AM by JES
-				«If returning only headers for an ETag/If-None-Match request, don't count referers.
-			«10/24/02; 12:03:57 PM by JES
-				«Implement ETag support for Manila RSS and scriptingNews2 feeds.
-			«9/3/02; 2:36:07 AM by JES
-				«Site shell upgrade -- add the change password page to the site.
-			«8/3/02; 10:01:40 PM by JES
-				«Site shell upgrade -- add the search sub-table to the site.
-				«Init the search.indexQueue sub-table of the #newsSite table. This sub-table contains information about a full-site indexing session in progress. Since it's saved along with the Manila site, indexing sessions can be re-started after a crash, and we can also display information about a session in progress, in the admin site.
-				«All this is accomplished through a call to manilaSuite.search.init, which is new.
-			«7/12/02; 3:20:08 PM by JES
-				«Make sure comment preferences are defined.
-			«4/3/02; 11:54:16 PM by JES
-				«Site shell upgrade: Discussion group -- adrNewsSite^.discussionGroup.listNewsItems, adrNewsSite^.discussionGroup.listPictures and adrNewsSite^.discussionGroup.listStories.
-			«2/18/02; 1:52:59 AM by JES
-				«Site shell upgrade: Comments page.
-			«2/8/02; 2:43:06 PM by PBS
-				«Don't run 8.0 site shell upgrades if this is an 8.0 site. Minor performance boost.
-		«2001:
-			«9/6/01; 2:48:54 PM by PBS
-				«Add mail table to a Manila site -- part of the mail-story feature.
-			«9/10/01; 1:42:16 PM by PBS
-				«Site shell upgrade -- /stats/ default page.
-			«9/17/01; 10:37:10 AM by PBS
-				«Support for home page caching.
-			«9/17/01; 2:28:10 PM by PBS
-				«Toss the home page cache whenever there's a post.
-			«9/19/01; 3:15:37 PM by PBS
-				«Support for RSS and scriptingNews2 feed caching.
-			«9/25/01; 4:14:14 PM by PBS
-				«Home page caching bug fix -- the read count for the home page wasn't being updated when it's a cache hit. Fixed.
-			«9/28/01; 11:27:45 AM by PBS
-				«Check to see if the print-friendly template is desired.
-			«12/14/01; 2:26:53 PM by PBS
-				«Site shell upgrade -- custom prefs wizard callbacks
-		«2000:
-			«1/1/2000; 2:11:03 PM by PBS
-				«If there's an empty 1999 table at the top level of the site, delete it.
-			«01/26/00; 3:12:30 PM by PBS
-				«Support for editors-only sites.
-			«02/15/00; 11:57:08 AM by PBS
-				«Added u (underline) as legal tag.
-			«02/28/00; 10:00:11 AM by PBS
-				«If a picture is being requested, skip all the extra processing.
-			«04/07/00; 12:10:15 PM by PBS
-				«Add /xml/rss.xml page -- it builds the RSS syndication file for a site.
-			«04/12/00; 8:42:47 PM by PBS
-				«Site shell upgrade -- add emergency restore template to default page.
-			«04/16/00; 11:37:30 AM by PBS
-				«Site shell upgrade -- gems.
-			«04/25/00; 1:55:59 PM by PBS
-				«Site shell upgade for news items support.
-			«05/14/00; 11:06:39 PM by JES
-				«site shell upgrade for localized flip home page page
-			«06/11/00; 3:58:50 AM by JES
-				«Merged Brent's themes site shell upgrade
-			«06/20/00; 10:19:26 PM by PBS
-				«Only do the site shell upgrade if the site shell version doesn't exist.
-			«06/22/00; 4:56:44 PM by PBS
-				«Slight change of wording in the initial mail to the sysop -- state that the password is for the initial hosting site, not for your new Manila site.
-			«09/11/00; 10:41:02 PM by PBS
-				«Site shell upgrade -- add externalEditorInfo.xml for external editors like Radio UserLand.
-			«10/03/00; 4:46:04 PM by PBS
-				«New legal tags -- thead and tbody.
-			«10/06/00; 11:08:27 PM by PBS
-				«Add the OPML reader.
-			«10/27/00; 3:52:47 AM by JES
-				«Site shell upgrade for downloading DG themes.
-			«11/02/00; 2:56:29 PM by PBS
-				«Site shell upgrade -- add referers page.
-			«11/09/00; 3:21:46 PM by PBS
-				«Site shell upgrade -- hourly hits page.
-			«11/22/00; 10:40:24 AM by PBS
-				«Site shell upgrade -- the new directories feature.
-			«11/26/00; 12:08:51 AM by PBS
-				«Site shell upgrade -- fix default directory template. If a site hasn't changed from the default template, fix the bad HTML in that template. If the site has edited the directory template, don't touch it.
-			«12/19/00; 10:39:32 AM by PBS
-				«Site shell upgrade -- slides.
-			«12/22/00; 9:20:18 PM by JES
-				«Site shell upgrade -- Pike prefs becomes Radio UserLand prefs; newStoryInPike becomes newStoryInRadio
-		«1999:
-			«10/27/99; 3:53:41 PM by PBS
-				«Get color prefs from the template.
-				«Add the address of rssInfo to the page table: it may be in the #newsSite table, and so wouldn't get automatically added.
-			«11/3/99; 10:00:38 AM by PBS
-				«Set up pta^.legalTags so each Manila site can have its own set of legal tags.
-			«12/11/99; 4:06:17 PM by PBS
-				«Create the new /stats/members page if it doesn't exist in the site shell.
-			«12/17/99; 12:32:09 AM by PBS
-				«Add custom cowskull to the page table, so people can set their preferred cowskull graphic.
-			«?/?/99 PBS
-				«Created. A Manila site's first filter.
+	//Changes:
+		//3/28/07; 2:42:03 PM by LL
+			//Site shell upgrade: Delete messages page.
+		//3/19/07; 5:53:25 PM by LL
+			//Site shell upgrade: Setup pending members page.
+		//3/9/07; 11:01:50 AM by LL
+			//Setup login members box template.
+		//2006:
+			//11/16/06; 12:46:28 PM by LL
+				//Site shell upgrade: new legal tags, fieldset and legend.
+			//9/15/06; 7:02:18 PM by LL
+				//Bug fix: Updated conditions to set flHtml to true when requesting from a sub-site. Also, added a new condition to set flHtml to false when requesting the external style sheet.
+			//5/7/06; 3:09:33 PM by JES
+				//Site shell upgrade: new legal tags, noscript and nobr.
+			//4/29/06; 4:20:55 AM by JES
+				//Site shell upgrade: site structure editor
+			//3/24/06; 3:31:58 AM by JES
+				//Add ability to specify member info in search args, mem=member, pwd=password.
+			//1/31/06; 5:07:13 PM by JES
+				//Site shell upgrade: pending posts admin page.
+		//2005:
+			//12/14/05; 1:52:12 AM by JES
+				//Add support for Members Only feature.
+			//10/26/05; 1:53:20 AM by JES
+				//Added support for firstFilter callback at config.manila.callbacks.filters.firstFilter.
+					//Scripts in the firstFilter callbacks table are called in turn, and return values are ignored.
+			//10/17/05; 12:30:07 AM by JES
+				//Update the site's help URL -- #["urls"].editorialHelp -- based on whether it has a stale value, and we know what the new value should be.
+			//10/5/05; 7:38:59 PM by JES
+				//Re-enable older site shell upgrades. Upgrade to 9.55 site shell version, to re-instate now missing DG prefs.
+			//10/3/05; 3:45:19 AM by JES
+				//Install new version of adrsite^.admin.sitePrefs.default, which only calls manilaSuite.sitePrefs.setTemplate if defined.
+			//7/31/05; 2:57:45 AM by JES
+				//Fix error in new sites exposed with last change: summaryTemplate not defined.
+			//7/11/05; 3:22:30 PM by JES
+				//Install adrsite^.newsItems.viewFullItem, if defined.
+			//6/30/05; 3:08:28 AM by JES
+				//Fix bug introduced with last change, which caused advanced prefs to render improperly.
+			//29/06/05; 2:28:17 PM by PR
+				//rolled back the previous change as it was done to fix the processMacros bug
+			//6/23/05; 1:44:34 AM by JES
+				//Change back to calling manilaSuite.admin.sitePrefsPage from adrsite^.admin.sitePrefs.default. The change to calling manilaSuite.sitePrefs.defaultPage broke site prefs if a site was moved from a 9.5 server to a pre 9.5 server.
+			//17/05/05; 7:43:54 PM by PR
+				//run flNineFiveSiteShell block rebuild default cohorts
+			//17/05/05; 11:39:45 AM by PR
+				//in flNineFiveSiteShell block check to make sure #templates is defined
+			//12/05/05; 3:02:09 PM by PR
+				//9.5 siteshell upgrades:
+					//add content-only template
+					//convert path permissions
+					//add new sitepref default script
+			//3/11/05; 4:47:34 AM by JES
+				//Update site shell version to 9.1, and only run 9.1 site shell upgrades once per site.
+			//3/10/05; 4:47:06 AM by JES
+				//Site shell upgrade: two-step member sign-up with email-based confirmation.
+			//2/17/05; 2:13:50 PM by JES
+				//New legal tag: caption.
+			//2/16/05; 3:09:20 AM by JES
+				//Site shell upgrade: Update the site prefs default page to use the new script version, which is capable of setting the page template.
+			//2/16/05; 3:00:21 AM by JES
+				//Moved manilaData.originalDirectoryTemplate to manilaData.legacyObjects.originalDirectoryTemplate.
+		//2004:
+			//12/30/04; 4:13:37 AM by JES
+				//Added support for content-only rendering. If the request has a search arg, content-only=true, then we use a content-only template, which is hard-coded to {bodytext}.
+			//4/2/04; 11:10:32 AM by JES
+				//New legal tag: strike
+		//2003:
+			//10/11/03; 4:04:51 AM by JES
+				//Check for editors only access before checking home page caching. Prevents us from serving content improperly after the site has switched to editors only mode.
+			//9/3/03; 6:46:39 PM by JES
+				//New legal tags: abbr and acronym.
+			//5/21/03; 5:55:10 PM by JES
+				//Site shell upgrade: path-permissions.
+			//5/20/03; 3:41:57 PM by JES
+				//Site shell upgrade: robots.txt.
+			//5/13/03; 6:23:38 PM by JES
+				//Site shell upgrade: events page.
+			//5/12/03; 1:08:13 PM by JES
+				//Site shell upgrade -- discussion group and department RSS feeds.
+			//4/22/03; 11:51:06 PM by JES
+				//Site shell upgrade: news item summaries.
+			//4/21/03; 4:09:07 PM by JES
+				//Site shell upgrade: blogroll editor.
+			//4/20/03; 11:00:37 PM by JES
+				//Site Shell upgrade: spam-free mailto page.
+			//4/20/03; 4:37:03 PM by JES
+				//Site Shell upgrade: external style sheet.
+			//4/8/03; 12:32:36 PM by JES
+				//Only add the mySubscriptions.opml object to the site's gems sub-table if it has a gems sub-table.
+			//4/3/03; 6:13:48 PM by JES
+				//Site shell upgrade -- mySubscriptions.opml.
+			//4/1/03; 3:44:47 PM by JES
+				//Call manilaSuite.discuss.ensureValidHomePageCalendar to fix up the calendar structure if it's been broken, for example the last remaining home page had been deleted.
+			//3/13/03; 2:07:30 AM by JES
+				//Call manilaSuite.aggregator.init only if xml.aggregator is defined. Some very old Frontier installations don't have the xml.aggregator sub-table, which causes manilaSuite.aggregator.init to fail, breaking older Manila installations.
+			//2/25/03; 6:34:40 AM by DW
+				//Initialize manilaSuite.aggregator.
+			//2/21/03; 6:43:36 PM by JES
+				//Don't bother putting any HTML in the page table unless we're serving an object that's actually HTML: performance enhancement for RSS, RSD, scriptingNews2, pictures and comment counter JavaScripts.
+				//Also set pta^.flHtml, so that the other filters know whether to bother doing HTML-ish stuff.
+		//2002:
+			//12/13/02; 1:51:48 PM by JES
+				//Site shell upgrade -- install adrsite^.xml.["rsd.xml"], which calls manilaSuite.xml.getRsdXml.
+			//10/26/02; 10:23:32 AM by JES
+				//If returning only headers for an ETag/If-None-Match request, don't count referers.
+			//10/24/02; 12:03:57 PM by JES
+				//Implement ETag support for Manila RSS and scriptingNews2 feeds.
+			//9/3/02; 2:36:07 AM by JES
+				//Site shell upgrade -- add the change password page to the site.
+			//8/3/02; 10:01:40 PM by JES
+				//Site shell upgrade -- add the search sub-table to the site.
+				//Init the search.indexQueue sub-table of the #newsSite table. This sub-table contains information about a full-site indexing session in progress. Since it's saved along with the Manila site, indexing sessions can be re-started after a crash, and we can also display information about a session in progress, in the admin site.
+				//All this is accomplished through a call to manilaSuite.search.init, which is new.
+			//7/12/02; 3:20:08 PM by JES
+				//Make sure comment preferences are defined.
+			//4/3/02; 11:54:16 PM by JES
+				//Site shell upgrade: Discussion group -- adrNewsSite^.discussionGroup.listNewsItems, adrNewsSite^.discussionGroup.listPictures and adrNewsSite^.discussionGroup.listStories.
+			//2/18/02; 1:52:59 AM by JES
+				//Site shell upgrade: Comments page.
+			//2/8/02; 2:43:06 PM by PBS
+				//Don't run 8.0 site shell upgrades if this is an 8.0 site. Minor performance boost.
+		//2001:
+			//9/6/01; 2:48:54 PM by PBS
+				//Add mail table to a Manila site -- part of the mail-story feature.
+			//9/10/01; 1:42:16 PM by PBS
+				//Site shell upgrade -- /stats/ default page.
+			//9/17/01; 10:37:10 AM by PBS
+				//Support for home page caching.
+			//9/17/01; 2:28:10 PM by PBS
+				//Toss the home page cache whenever there's a post.
+			//9/19/01; 3:15:37 PM by PBS
+				//Support for RSS and scriptingNews2 feed caching.
+			//9/25/01; 4:14:14 PM by PBS
+				//Home page caching bug fix -- the read count for the home page wasn't being updated when it's a cache hit. Fixed.
+			//9/28/01; 11:27:45 AM by PBS
+				//Check to see if the print-friendly template is desired.
+			//12/14/01; 2:26:53 PM by PBS
+				//Site shell upgrade -- custom prefs wizard callbacks
+		//2000:
+			//1/1/2000; 2:11:03 PM by PBS
+				//If there's an empty 1999 table at the top level of the site, delete it.
+			//01/26/00; 3:12:30 PM by PBS
+				//Support for editors-only sites.
+			//02/15/00; 11:57:08 AM by PBS
+				//Added u (underline) as legal tag.
+			//02/28/00; 10:00:11 AM by PBS
+				//If a picture is being requested, skip all the extra processing.
+			//04/07/00; 12:10:15 PM by PBS
+				//Add /xml/rss.xml page -- it builds the RSS syndication file for a site.
+			//04/12/00; 8:42:47 PM by PBS
+				//Site shell upgrade -- add emergency restore template to default page.
+			//04/16/00; 11:37:30 AM by PBS
+				//Site shell upgrade -- gems.
+			//04/25/00; 1:55:59 PM by PBS
+				//Site shell upgade for news items support.
+			//05/14/00; 11:06:39 PM by JES
+				//site shell upgrade for localized flip home page page
+			//06/11/00; 3:58:50 AM by JES
+				//Merged Brent's themes site shell upgrade
+			//06/20/00; 10:19:26 PM by PBS
+				//Only do the site shell upgrade if the site shell version doesn't exist.
+			//06/22/00; 4:56:44 PM by PBS
+				//Slight change of wording in the initial mail to the sysop -- state that the password is for the initial hosting site, not for your new Manila site.
+			//09/11/00; 10:41:02 PM by PBS
+				//Site shell upgrade -- add externalEditorInfo.xml for external editors like Radio UserLand.
+			//10/03/00; 4:46:04 PM by PBS
+				//New legal tags -- thead and tbody.
+			//10/06/00; 11:08:27 PM by PBS
+				//Add the OPML reader.
+			//10/27/00; 3:52:47 AM by JES
+				//Site shell upgrade for downloading DG themes.
+			//11/02/00; 2:56:29 PM by PBS
+				//Site shell upgrade -- add referers page.
+			//11/09/00; 3:21:46 PM by PBS
+				//Site shell upgrade -- hourly hits page.
+			//11/22/00; 10:40:24 AM by PBS
+				//Site shell upgrade -- the new directories feature.
+			//11/26/00; 12:08:51 AM by PBS
+				//Site shell upgrade -- fix default directory template. If a site hasn't changed from the default template, fix the bad HTML in that template. If the site has edited the directory template, don't touch it.
+			//12/19/00; 10:39:32 AM by PBS
+				//Site shell upgrade -- slides.
+			//12/22/00; 9:20:18 PM by JES
+				//Site shell upgrade -- Pike prefs becomes Radio UserLand prefs; newStoryInPike becomes newStoryInRadio
+		//1999:
+			//10/27/99; 3:53:41 PM by PBS
+				//Get color prefs from the template.
+				//Add the address of rssInfo to the page table: it may be in the #newsSite table, and so wouldn't get automatically added.
+			//11/3/99; 10:00:38 AM by PBS
+				//Set up pta^.legalTags so each Manila site can have its own set of legal tags.
+			//12/11/99; 4:06:17 PM by PBS
+				//Create the new /stats/members page if it doesn't exist in the site shell.
+			//12/17/99; 12:32:09 AM by PBS
+				//Add custom cowskull to the page table, so people can set their preferred cowskull graphic.
+			//?/?/99 PBS
+				//Created. A Manila site's first filter.
 	
 	bundle { //call firstFilter callbacks
 		if defined (config.manila.callbacks.filters.firstFilter) {
@@ -210,8 +210,8 @@ on firstFilter (pta) {
 	local (adrSite = manilaSuite.getManilaSiteAddress (pta));
 	local (adrNewsSite = pta^.newsSite);
 	
-	«if defined (manilaSuite.pathPermissions) //JES 5/21/03: check access permissions // 11/05/05; 11:25:25 AM by PR
-		«manilaSuite.pathPermissions.checkPermissions (pta)
+	//if defined (manilaSuite.pathPermissions) //JES 5/21/03: check access permissions // 11/05/05; 11:25:25 AM by PR
+		//manilaSuite.pathPermissions.checkPermissions (pta)
 	
 	try {manilaSuite.discuss.ensureValidHomePageCalendar (adrSite)}; //JES 4/1/03: fix up the calendar if the user managed to break it
 	
@@ -363,11 +363,11 @@ on firstFilter (pta) {
 			if string.lower (imageViewerUrl) == string.lower (pta^.url) {
 				return (true)}}};
 	
-	«Handle security for the discussion group. It may be limited to MEs and CEs.
+	//Handle security for the discussion group. It may be limited to MEs and CEs.
 	manilaSuite.discuss.security (pta);
 	
 	bundle { //add cookie if first-time visit and site was created by install process.
-		«This way the managing editor who's just installed Frontier doesn't have to login -- he or she is logged in already.
+		//This way the managing editor who's just installed Frontier doesn't have to login -- he or she is logged in already.
 		if defined (adrNewsSite^.flFirstTimeVisitAfterInstall) {
 			if adrNewsSite^.flFirstTimeVisitAfterInstall {
 				delete (@adrNewsSite^.flFirstTimeVisitAfterInstall);
@@ -380,7 +380,7 @@ on firstFilter (pta) {
 					pta^.memberGroupName = pta^.defaultMembershipGroup;
 					mainResponder.members.setCookie (sysop, password);
 					
-					«Email the password to the sysop.
+					//Email the password to the sysop.
 					bundle {
 						local (subject = "Your new Manila site");
 						local (message = "Your password for your Manila hosting site is " + password);
@@ -475,7 +475,7 @@ on firstFilter (pta) {
 		bundle { //PBS 04/25/00: site shell upgrade -- news items support
 			manilaSuite.news.siteShellUpgrade (adrSite)};
 		bundle { //JES 05/14/00: site shell upgrade -- localize /admin/flipHomePage, /stories, /pictures, /pictures/edit/newPicture, /bulletins, /member/signOutConfirm
-			«local (adrSite = manilaSuite.getManilaSiteAddress (pta))
+			//local (adrSite = manilaSuite.getManilaSiteAddress (pta))
 			on upgradePageInSite (adrPage, adrOriginalObject, adrReplacementObject) {
 				if string.trimWhiteSpace (string (adrPage^)) == string.trimWhiteSpace (string (adrOriginalObject^)) {
 					table.assign (adrPage, adrReplacementObject^)}};
@@ -618,18 +618,18 @@ on firstFilter (pta) {
 				if defined (adrSite^.newsItems) {
 					if not defined (adrSite^.newsItems.viewFullItem) {
 						adrSite^.newsItems.viewFullItem = manilaData.newSiteTemplate.newsItems.viewFullItem}};
-				«if defined (adrNewsSite^.newsItems)
-					«if not defined (adrNewsSite^.newsItems.summaryTemplate)
-						«if defined (manilaData.newSiteTemplate.["#newsSite"].newsItems.summaryTemplate)
-							«adrNewsSite^.newsItems.summaryTemplate = manilaData.newSiteTemplate.["#newsSite"].newsItems.summaryTemplate
-					«if not defined (adrNewsSite^.newsItems.fullTextTemplate)
-						«if defined (manilaData.newSiteTemplate.["#newsSite"].newsItems.fullTextTemplate)
-							«adrNewsSite^.newsItems.fullTextTemplate = manilaData.newSiteTemplate.["#newsSite"].newsItems.fullTextTemplate
-					«if not defined (adrNewsSite^.newsItems.prefs)
-						«if defined (manilaData.newSiteTemplate.["#newsSite"].newsItems.prefs)
-							«adrNewsSite^.newsItems.prefs = manilaData.newSiteTemplate.["#newsSite"].newsItems.prefs
-							«if defined (adrNewsSite^.newsItems.flCommentsCheckOnEditPage)
-								«adrNewsSite^.newsItems.prefs.flCommentOptionsEnabled = true};
+				//if defined (adrNewsSite^.newsItems)
+					//if not defined (adrNewsSite^.newsItems.summaryTemplate)
+						//if defined (manilaData.newSiteTemplate.["#newsSite"].newsItems.summaryTemplate)
+							//adrNewsSite^.newsItems.summaryTemplate = manilaData.newSiteTemplate.["#newsSite"].newsItems.summaryTemplate
+					//if not defined (adrNewsSite^.newsItems.fullTextTemplate)
+						//if defined (manilaData.newSiteTemplate.["#newsSite"].newsItems.fullTextTemplate)
+							//adrNewsSite^.newsItems.fullTextTemplate = manilaData.newSiteTemplate.["#newsSite"].newsItems.fullTextTemplate
+					//if not defined (adrNewsSite^.newsItems.prefs)
+						//if defined (manilaData.newSiteTemplate.["#newsSite"].newsItems.prefs)
+							//adrNewsSite^.newsItems.prefs = manilaData.newSiteTemplate.["#newsSite"].newsItems.prefs
+							//if defined (adrNewsSite^.newsItems.flCommentsCheckOnEditPage)
+								//adrNewsSite^.newsItems.prefs.flCommentOptionsEnabled = true};
 			if not defined (adrSite^.["#urls"].newsItemViewFullItem) {
 				local (baseUrl = string.popSuffix (adrSite^.["#urls"].newsItemViewDepartment, "/") + "/");
 				adrSite^.["#urls"].newsItemViewFullItem = baseUrl + "viewFullItem"}};
@@ -660,9 +660,9 @@ on firstFilter (pta) {
 					adrsite^.admin.events = manilaData.newSiteTemplate.admin.events}}};
 		bundle { //JES 5/20/03: site shell upgrade: robots.txt.
 			manilaSuite.robots.init (adrsite)};
-		«bundle //JES 5/20/03: site shell upgrade: path-permissions //28/04/05; 11:42:34 AM by PR no longer required
-			«if defined (manilaSuite.pathPermissions)
-				«manilaSuite.pathPermissions.init (adrsite)
+		//bundle //JES 5/20/03: site shell upgrade: path-permissions //28/04/05; 11:42:34 AM by PR no longer required
+			//if defined (manilaSuite.pathPermissions)
+				//manilaSuite.pathPermissions.init (adrsite)
 		bundle { //JES 9/3/03: new legal tags: abbr, acronym and strike
 			if defined (adrNewsSite^.legalTags) {
 				if not defined (adrNewsSite^.legalTags.abbr) {
@@ -689,10 +689,10 @@ on firstFilter (pta) {
 			if not defined(adrSite^.["#urls"].discussPostStory) {
 				adrSite^.["#urls"].discussPostStory = string.replace(maniladata.newSiteTemplate.["#urls"].discussPostStory, "[[siteRootUrl]]", adrSite^.["#urls"].newsHome)}};
 		bundle { //JES 2/16/05: site shell upgrade -- site prefs default page
-			«This has to be done here, because if we do it in any script called by the default page, the browser will just time out.
+			//This has to be done here, because if we do it in any script called by the default page, the browser will just time out.
 			if defined (adrsite^.admin.sitePrefs.default) {
 				if typeOf (adrsite^.admin.sitePrefs.default) == wptextType {
-					«table.assign (@adrsite^.admin.sitePrefs.default, manilaData.newSiteTemplate.admin.sitePrefs.default)
+					//table.assign (@adrsite^.admin.sitePrefs.default, manilaData.newSiteTemplate.admin.sitePrefs.default)
 					manilaSuite.sitePrefs.shellScript (adrsite)}}};
 		bundle { //JES 3/9/05: site shell upgrade -- two-step member sign-up
 			if not defined (adrnewssite^.confirmationRequiredPage) {
@@ -740,8 +740,8 @@ on firstFilter (pta) {
 			table.assign (@adrsite^.admin.siteprefs.default, manilaData.newSiteTemplate.admin.siteprefs.default)};
 		pta^.newsSite^.siteShellVersion = 9.54};
 	if not flNineFiveFiveSiteShell { //10/5/05; 7:36:34 PM by JES
-		«Re-implementation of JES 4/3/02: site shell upgrade
-			«New discussion group prefs for listing stories, pictures and news items, and expanding responses.
+		//Re-implementation of JES 4/3/02: site shell upgrade
+			//New discussion group prefs for listing stories, pictures and news items, and expanding responses.
 		if not defined (adrNewsSite^.discussionGroup.listStories) {
 			adrNewsSite^.discussionGroup.listStories = true};
 		if not defined (adrNewsSite^.discussionGroup.listPictures) {

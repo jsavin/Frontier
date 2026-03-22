@@ -1,11 +1,11 @@
 on messageCohorts (delimiter=",", flReadOnly= false) {
-	«Changes
-		«05/04/10, 14:28:32 by DAB
-			«Imported into Manila. Was ManilaExtras.messagecohorts : 02/03/16, 16:36:45 by DAB
-		«02/09/28, 14:01:59 by DAB
-			« incorporate site structure cohorts 
-			«flReadOnly optional parameter returns read only cohort list 
-			«treat systemdefinition cohorts as exclusive
+	//Changes
+		//05/04/10, 14:28:32 by DAB
+			//Imported into Manila. Was ManilaExtras.messagecohorts : 02/03/16, 16:36:45 by DAB
+		//02/09/28, 14:01:59 by DAB
+			// incorporate site structure cohorts 
+			//flReadOnly optional parameter returns read only cohort list 
+			//treat systemdefinition cohorts as exclusive
 	local (pta = html.getPageTableAddress());
 	local (adrSite = manilaSuite.getManilaSiteAddress(pta));
 	local (adrGroup = manilaSuite.members.getGroupFromSiteAddress(adrSite));
@@ -14,8 +14,8 @@ on messageCohorts (delimiter=",", flReadOnly= false) {
 	on getMessageCohorts(cohortListID, ifEmptyValue={}) {
 		local (adrMsgTable);
 		bundle {
-			«based on mainResponder.discuss.getMessageTable
-				«but works with new messages
+			//based on mainResponder.discuss.getMessageTable
+				//but works with new messages
 			case true {
 				defined (pta^.adrMsgTable) {
 					adrMsgTable = pta^.adrMsgTable};

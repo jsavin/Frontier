@@ -1,7 +1,7 @@
 on get (username, password, siteName, msgNum, attr) {
-	«manilaSuite.accessControl.rpcHandlers.get : 04/05/21, 09:41:54 by DAB
-		«get <attr> for <msgnum> 
-		«was manilaFixer.accessControl.rpcHandlers.get : 02/02/27, 14:44:50 by DAB
+	//manilaSuite.accessControl.rpcHandlers.get : 04/05/21, 09:41:54 by DAB
+		//get <attr> for <msgnum> 
+		//was manilaFixer.accessControl.rpcHandlers.get : 02/02/27, 14:44:50 by DAB
 	
 	manilaSuite.rpcUtils.dgAccessCheck (siteName, username, password, "Can't get " + attr + " for message #" + msgNum + " because ");
 	
@@ -20,7 +20,7 @@ on get (username, password, siteName, msgNum, attr) {
 		return 0};
 	
 	return adrMsg^.accesscontrol.[attr]};
-«bundle    //test logic
-	«window.msg(manilaFixer.accessControl.rpcHandlers.get ("dbayly@dab.dot", "noway", "myfirstSite", 129, "releasedate"))
-	«window.msg(manilaFixer.accessControl.rpcHandlers.get ("dbayly@dab.dot", "noway", "myfirstSite", 129, "expirydate"))
-	«window.msg(manilaFixer.accessControl.rpcHandlers.get ("dbayly@dab.dot", "noway", "myfirstSite", 129, "cohorts"))
+//bundle    //test logic
+	//window.msg(manilaFixer.accessControl.rpcHandlers.get ("dbayly@dab.dot", "noway", "myfirstSite", 129, "releasedate"))
+	//window.msg(manilaFixer.accessControl.rpcHandlers.get ("dbayly@dab.dot", "noway", "myfirstSite", 129, "expirydate"))
+	//window.msg(manilaFixer.accessControl.rpcHandlers.get ("dbayly@dab.dot", "noway", "myfirstSite", 129, "cohorts"))

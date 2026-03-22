@@ -1,9 +1,9 @@
 on visit (adrdomain, adrvisitproc) {
-	«Changes
-		«8/13/02; 3:50:52 PM by JES
-			«Compile the siteTree XML if needed, before doing any visiting.
-		«8/6/02; 1:33:35 AM by JES
-			«Created.
+	//Changes
+		//8/13/02; 3:50:52 PM by JES
+			//Compile the siteTree XML if needed, before doing any visiting.
+		//8/6/02; 1:33:35 AM by JES
+			//Created.
 	mainResponder.siteTree.compileIfDirty (adrdomain);
 	
 	local (adrtree = @adrdomain^.siteTree);
@@ -28,12 +28,12 @@ on visit (adrdomain, adrvisitproc) {
 	
 	return (doLevel (adrsite))};
 
-«bundle //test code
-	«on visitproc (adr)
-		«if defined (adr^.["/atts"].name)
-			«if adr^.["/atts"].name != ""
-				«msg (adr^.["/atts"].name)
-				«return (true)
-		«msg ("[none]")
-		«return (true)
-	«visit (@config.mainResponder.domains.default, @visitproc)
+//bundle //test code
+	//on visitproc (adr)
+		//if defined (adr^.["/atts"].name)
+			//if adr^.["/atts"].name != ""
+				//msg (adr^.["/atts"].name)
+				//return (true)
+		//msg ("[none]")
+		//return (true)
+	//visit (@config.mainResponder.domains.default, @visitproc)

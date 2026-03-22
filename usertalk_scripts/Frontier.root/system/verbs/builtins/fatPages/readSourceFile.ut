@@ -1,7 +1,7 @@
 on readSourceFile (path) {
-	«This is a bottleneck script for reading a source file from disk.
-		«If we ever need to do additional translating aside from \r\n translating,
-		«this is the place to make the change.
+	//This is a bottleneck script for reading a source file from disk.
+		//If we ever need to do additional translating aside from \r\n translating,
+		//this is the place to make the change.
 	local (pageSource);
 	pageSource = string (file.readWholeFile (path));
 	pageSource = string.replaceAll (pageSource, cr + lf, cr);

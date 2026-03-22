@@ -1,9 +1,9 @@
 on getPostTime (adrMsgTable, adrSite) {
-	«Changes
-		«7/8/05; 1:59:11 PM by JES
-			«Ensure that postTime is defined.
-		«04/20/00; 3:22:36 PM by PBS
-			«Created. Get the time at which the news item was posted to the home page.
+	//Changes
+		//7/8/05; 1:59:11 PM by JES
+			//Ensure that postTime is defined.
+		//04/20/00; 3:22:36 PM by PBS
+			//Created. Get the time at which the news item was posted to the home page.
 	if not defined (adrMsgTable^.newsItem.postTime) {
 		adrMsgTable^.newsItem.postTime = adrMsgTable^.postTime};
 	return (adrMsgTable^.newsItem.postTime)}

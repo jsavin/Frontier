@@ -1,5 +1,5 @@
-on windowVerb (verbid, windowpath) { «common code for FinderWindow verbs
-	«Not used directly by many scripts.  For compatibility
+on windowVerb (verbid, windowpath) { //common code for FinderWindow verbs
+	//Not used directly by many scripts.  For compatibility
 	local (fwindow);
 	if not Finder.makeWindow (windowpath, 0, @fwindow) {
 		return (false)};

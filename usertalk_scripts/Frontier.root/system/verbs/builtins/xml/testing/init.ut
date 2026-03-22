@@ -1,5 +1,5 @@
-«You must run this script when you change one of the existing examples, or add a new one
-	«3/27/98; 6:03:16 AM by DW
+//You must run this script when you change one of the existing examples, or add a new one
+	//3/27/98; 6:03:16 AM by DW
 
 window.about ();
 local (adrdata = @parentof (this^)^.data);

@@ -1,19 +1,19 @@
 on write (adrData, path, type, creator, creationDate, adrPageTable, adrStorage) {
-	«This script is called whenever a file needs to be written somewhere.
-		«Parameters:
-			«adrData: this is the address of data the file should contain.
-			«path: path is a relative, /-delimited path.
-				«It's relative to the ftpSite^.folder.
-			«type: the file type.
-			«creator: the file creator.
-			«creationDate: should be the creation data of the file.
-			«adrPageTable: the address of the current page data table.
-		«This script doesn't have to write the file immediately --
-			«it could defer writing until the shutdown script is called.
-		«Changes:
-			«Thu, Jun 3, 1999 at 10:21:35 PM by PBS
-				«Put brackets around elements in path, so table names like 1999 would become ["1999"].
-				«Reworked the bundle that gets odbAddress from the ftpSite to avoid using try statements.
+	//This script is called whenever a file needs to be written somewhere.
+		//Parameters:
+			//adrData: this is the address of data the file should contain.
+			//path: path is a relative, /-delimited path.
+				//It's relative to the ftpSite^.folder.
+			//type: the file type.
+			//creator: the file creator.
+			//creationDate: should be the creation data of the file.
+			//adrPageTable: the address of the current page data table.
+		//This script doesn't have to write the file immediately --
+			//it could defer writing until the shutdown script is called.
+		//Changes:
+			//Thu, Jun 3, 1999 at 10:21:35 PM by PBS
+				//Put brackets around elements in path, so table names like 1999 would become ["1999"].
+				//Reworked the bundle that gets odbAddress from the ftpSite to avoid using try statements.
 	
 	local (adrFtpSite);
 	local (objectName, adrItem);
@@ -59,7 +59,7 @@ on write (adrData, path, type, creator, creationDate, adrPageTable, adrStorage) 
 	if path contains "/" {
 		path = string.popSuffix (path, '/');
 		
-		«Make brackets out of fields in path. PBS 6/3/99
+		//Make brackets out of fields in path. PBS 6/3/99
 		local (ct = 1);
 		local (oldPath = path);
 		path = "";

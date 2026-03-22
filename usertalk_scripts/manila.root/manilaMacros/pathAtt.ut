@@ -1,12 +1,12 @@
 on pathAtt (attName, defaultAttValue = "", flInherit=true, flDebug = false) {
-	«Changes
-		«05/04/10, 14:39:49 by DAB
-			«Created. Given an attribute name, do a walk up the hierarchy from the current page looking for a story/category with a value for that attribute. Use that value to identify a picture (from the picture list) and return the current url.
-				«was manialextras.pathAtt : 00/04/25, 15:04:45 by DAB
-				«00/05/13, 18:04:41 by DAB
-					«Exit gracefully if no value set for pta^.heirarchyLoc
-				«02/07/22, 20:08:10 by DAB
-					«rewrite to use manilaSuite.siteStructure.minimiseSiteStructure
+	//Changes
+		//05/04/10, 14:39:49 by DAB
+			//Created. Given an attribute name, do a walk up the hierarchy from the current page looking for a story/category with a value for that attribute. Use that value to identify a picture (from the picture list) and return the current url.
+				//was manialextras.pathAtt : 00/04/25, 15:04:45 by DAB
+				//00/05/13, 18:04:41 by DAB
+					//Exit gracefully if no value set for pta^.heirarchyLoc
+				//02/07/22, 20:08:10 by DAB
+					//rewrite to use manilaSuite.siteStructure.minimiseSiteStructure
 	local (pta = html.getPageTableAddress());
 	
 	manilaSuite.sitePrefs.siteStructure.minimiseSiteStructure(pta);

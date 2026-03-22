@@ -1,11 +1,11 @@
 on sendOneMessage (adrmsgstring) {
-	«Change Notes
-		«11/11/99; 5:53:09 AM by DW
-			«Called from betty.rpc.agent, it runs in its own thread, allowing asynchronous RPC messages to be sent in parallel. This makes for faster updating of all our servers for My.UserLand story flow, and for preferences flow.
-		«8/20/00; 2:29:47 PM by AR
-			«Added optional username and password parameters for HTTP Basic Authentication.
-		«8/27/00; 11:18:07 AM by AR
-			«Ignore scripterrors thrown by log.addToGuestDatabase.
+	//Change Notes
+		//11/11/99; 5:53:09 AM by DW
+			//Called from betty.rpc.agent, it runs in its own thread, allowing asynchronous RPC messages to be sent in parallel. This makes for faster updating of all our servers for My.UserLand story flow, and for preferences flow.
+		//8/20/00; 2:29:47 PM by AR
+			//Added optional username and password parameters for HTTP Basic Authentication.
+		//8/27/00; 11:18:07 AM by AR
+			//Ignore scripterrors thrown by log.addToGuestDatabase.
 	local (flsave = false);
 	local (adrmsg = address (adrmsgstring)); //thread.easyCall only supports string params
 	try {

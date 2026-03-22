@@ -1,32 +1,32 @@
 on getLinks (adrCal, theDate, url, startTime=mainResponder.calendar.getFirstDay (adrCal), maxDate=nil) {
-	«Get next month and prev month links for a calendar for this day
-		«Changes:
-			«Mon, 01 Mar 1999 13:01:37 GMT by AR
-				«Changed startTime parameter to default to mainResponder.calendar.getFirstDay(adrCal) instead of date("4/1/97")
-			«02/08/00; 10:59:25 AM by PBS
-				«When building the link to the next month, start at the end of the next month, and work backward in time until a day is found.
-			«04/03/00; 10:39:29 AM by PBS
-				«maxDate is a new optional parameter, needed to support time zones in Manila. If maxDate is not supplied, the default is clock.now ().
-			«03/20/01; 5:01:38 PM by PBS
-				«Use the new routines for getting links to prev and next months. These routines avoid looping, and skip empty months.
+	//Get next month and prev month links for a calendar for this day
+		//Changes:
+			//Mon, 01 Mar 1999 13:01:37 GMT by AR
+				//Changed startTime parameter to default to mainResponder.calendar.getFirstDay(adrCal) instead of date("4/1/97")
+			//02/08/00; 10:59:25 AM by PBS
+				//When building the link to the next month, start at the end of the next month, and work backward in time until a day is found.
+			//04/03/00; 10:39:29 AM by PBS
+				//maxDate is a new optional parameter, needed to support time zones in Manila. If maxDate is not supplied, the default is clock.now ().
+			//03/20/01; 5:01:38 PM by PBS
+				//Use the new routines for getting links to prev and next months. These routines avoid looping, and skip empty months.
 	
-	«on getLink (d, flForwardInTime)
-		«if maxDate == nil //PBS 04/02/00: maxDate is a new optional parameter needed for time zone support in Manila
-			«maxDate == clock.now ()
-		«if d > maxDate
-			«d = maxDate
-		«
-		«return (mainResponder.calendar.getLink (adrCal, d, url, flForwardInTime, startTime, maxDate))
+	//on getLink (d, flForwardInTime)
+		//if maxDate == nil //PBS 04/02/00: maxDate is a new optional parameter needed for time zone support in Manila
+			//maxDate == clock.now ()
+		//if d > maxDate
+			//d = maxDate
+		//
+		//return (mainResponder.calendar.getLink (adrCal, d, url, flForwardInTime, startTime, maxDate))
 	
 	local (htmlText = "", indentLevel = 0);
 	on add (s) {
 		htmlText = htmlText + string.filledString ("\t", indentLevel) + s + "\r"};
 	
 	add ("<center><font size=\"-2\"><b>"); indentLevel++;
-	«add (getLink (date.lastOfMonth (date.prevMonth (theDate)), false))
+	//add (getLink (date.lastOfMonth (date.prevMonth (theDate)), false))
 	add (mainResponder.calendar.getLinkToPrevMonth (adrCal, theDate, url)); //PBS 03/20/01: faster script for getting link to next month -- plus it skips months as needed
 	add ("&nbsp;");
-	«add (getLink (date.lastOfMonth (date.nextMonth (theDate)), false)) //PBS 02/08/00: start at the end of the next month and work backward in time.
+	//add (getLink (date.lastOfMonth (date.nextMonth (theDate)), false)) //PBS 02/08/00: start at the end of the next month and work backward in time.
 	add (mainResponder.calendar.getLinkToNextMonth (adrCal, theDate, url)); //PBS 03/20/01: faster script for getting link to next month -- plus it skips months as needed
 	add ("</b></font></center>"); indentLevel--;
 	

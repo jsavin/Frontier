@@ -1,63 +1,63 @@
 on advancedNavigator (start=0, depth=1, itemTemplate=nil, currentItemTemplate=nil, itemSeparator=nil, levelStart=nil, levelEnd=nil, levelSeparator=nil, levelOffset=0, levelMultiplier=1, flThisSiteOnly=true, flIncludeCategories=true, flIncludeTopCategory=false, flIncludeRedirects=false, flIncludeItemsWithoutTitles=true, flIncludeItemsWithoutDescriptions=true, countTemplate=nil, descriptionTemplate=nil, header=nil, footer=nil, headerNextItemTemplate=nil, headerPrevItemTemplate=nil, headerCurrentItemTemplate=nil, headerParentItemTemplate=nil, flSiteStructurePagesOnly=true, flAlwaysIncludeCurrentPage=false, flUseShortTitle=false, titleMaxChars=infinity, descriptionMaxChars=infinity, depthBelowCurrent=0, flEditButton=true) {
-	«Changes
-		«5/7/06; 2:17:24 AM by JES
-			«Bug fix: If flNavigator is present, use its value correctly.
-		«5/1/06; 7:06:45 PM by JES
-			«New param, flEditButton. If true, we add an Edit button that goes to /admin/editSiteStructure, after our HTML.
-		«3/28/06; 1:20:25 AM by JES
-			«New optional parameter, depthBelowCurrent. If non-zero, we always render at least this many levels below the current category, if they exist.
-		«3/28/06; 12:39:46 AM by JES
-			«New paramters: flUseShortTitle, titleMaxChars and descriptionMaxChars. flUseShortTitle uses the value of the shortname attribute of stories and categories instead of name. The other two cause truncation of {title} and {description} when rendering items. For the full title or full description, sans truncation, use {fullTitle} and {fullDescription} in item templates.
-		«3/27/06; 5:41:54 PM by JES
-			«Replace spaces with non-breaking spaces in {title}s when rendering links.
-		«3/27/06; 5:01:30 AM by JES
-			«Bug fix: Don't convert parent links to all lower-case.
-		«3/27/06; 3:52:29 AM by JES
-			«Add flSiteStructurePagesOnly parameter. Fix bug finding the start node given an offset from the current page for start (a number, instead of a path or URL). Fix various bugs generating next/prev/current/parent URLs for header and footer.
-		«3/27/06; 3:04:59 AM by JES
-			«Added flIncludeTopCategory parameter. Fixed a bug finding sub-sites in config.mainResponder.domains site trees.
-		«3/24/06; 4:01:38 AM by JES
-			«Created. High-powered macro for rendering multi-level site structure-based navigators.
-				«Parameters
-					«start -- a relative path within the site, a number, or a URL in some site on the server -- if a relative path, we start from that path's category; if a number, we pop up [start] levels from the current page; if a URL, we start from the corresponding node in the site
-					«depth -- the depth to render the navigator (zero-based)
-					«itemTemplate -- the template for items -- individual links
-					«currentItemTemplate -- the template for items which correspond to the current page
-					«itemSeparator -- included between items
-					«levelStart -- template for starting a level of links
-					«levelEnd -- template for ending a level of links
-					«levelSeparator -- included between levels
-					«levelOffset, levelMultiplier -- used when rendering {level} within an item -- offset is applied first
-					«flThisSiteOnly -- if true, we follow links across between other sites on this server
-					«flIncludeCategories -- if true, categories are rendered as items, or if false, they're not -- categories are always rendered using levelStart/levelEnd -- to eliminate them entirely, leave these templates blank
-					«flIncludeTopCategory -- if true, the top-level category (the starting point) is included
-					«flIncludeRedirects -- if true, redirects are rendered, and if false, they're skipped; if a redirect is into another site on the same server, we render that site's hierarchy starting at the redirect URL
-					«flIncludeItemsWithoutTitles -- if false, we skip items which have no title (name attribute) or whose title is identical to the path (case-sensitive)
-					«flIncludeItemsWithoutDescriptions -- if false, we skip items whose description is missing or empty
-					«countTemplate -- the template for the counters next to categories
-					«descriptionTemplate -- the template for the description when present and non-empty
-					«header, footer -- included before and after the levels and links
-					«headerNextItemTemplate, headerPrevItemTemplate, headerCurrentItemTemplate, headerParentItemTemplate -- item templates used for {nextItem}, {prevItem} and {currentItem} in header and footer
-				«Macros
-					«The following macros are valid in itemTemplate, currentItemTemplate, levelStart levelEnd, header and footer:
-						«{url} -- the URL of the page or category
-						«{title} -- the title of the page or category, or the pathname if there is no title
-						«{link} -- the title as a link to the page
-						«{description} -- the description of the page or category, or the empty string if there is no URL
-						«{count} -- the count if sub-items of a category rendered through the countTemplate, or the empty string if there are no sub-items
-						«{level} -- the current level being rendered, plus levelOffset, and then multiplied by levelMultiplier
-					«In header and footer, the macros listed above correspond to the category at the current level. Additional macros which are valid in the header and footer are:
-						«{prevItem} -- the previous sibling to the current page, rendered through the itemTemplate, or the empty string if there is no previous sibling
-						«{nextItem} -- the subsequent sibling to the current page, rendered through the itemTemplate, or the empty string if there is no subsequent sibling
-						«{currentItem} -- the item for the current page, rendered through the currentItemTemplate
-						«{parentItem} -- the item for the current page, rendered through the currentItemTemplate
-					«The countTemplate has a single macro, {count} which is replaced with the count itself.
-					«There are no macros for itemSeparator, and levelSeparator.
-				«Notes
-					«Any story, category or redirect may have an attribute named flNavigator. If its value is false, the item is not included.
+	//Changes
+		//5/7/06; 2:17:24 AM by JES
+			//Bug fix: If flNavigator is present, use its value correctly.
+		//5/1/06; 7:06:45 PM by JES
+			//New param, flEditButton. If true, we add an Edit button that goes to /admin/editSiteStructure, after our HTML.
+		//3/28/06; 1:20:25 AM by JES
+			//New optional parameter, depthBelowCurrent. If non-zero, we always render at least this many levels below the current category, if they exist.
+		//3/28/06; 12:39:46 AM by JES
+			//New paramters: flUseShortTitle, titleMaxChars and descriptionMaxChars. flUseShortTitle uses the value of the shortname attribute of stories and categories instead of name. The other two cause truncation of {title} and {description} when rendering items. For the full title or full description, sans truncation, use {fullTitle} and {fullDescription} in item templates.
+		//3/27/06; 5:41:54 PM by JES
+			//Replace spaces with non-breaking spaces in {title}s when rendering links.
+		//3/27/06; 5:01:30 AM by JES
+			//Bug fix: Don't convert parent links to all lower-case.
+		//3/27/06; 3:52:29 AM by JES
+			//Add flSiteStructurePagesOnly parameter. Fix bug finding the start node given an offset from the current page for start (a number, instead of a path or URL). Fix various bugs generating next/prev/current/parent URLs for header and footer.
+		//3/27/06; 3:04:59 AM by JES
+			//Added flIncludeTopCategory parameter. Fixed a bug finding sub-sites in config.mainResponder.domains site trees.
+		//3/24/06; 4:01:38 AM by JES
+			//Created. High-powered macro for rendering multi-level site structure-based navigators.
+				//Parameters
+					//start -- a relative path within the site, a number, or a URL in some site on the server -- if a relative path, we start from that path's category; if a number, we pop up [start] levels from the current page; if a URL, we start from the corresponding node in the site
+					//depth -- the depth to render the navigator (zero-based)
+					//itemTemplate -- the template for items -- individual links
+					//currentItemTemplate -- the template for items which correspond to the current page
+					//itemSeparator -- included between items
+					//levelStart -- template for starting a level of links
+					//levelEnd -- template for ending a level of links
+					//levelSeparator -- included between levels
+					//levelOffset, levelMultiplier -- used when rendering {level} within an item -- offset is applied first
+					//flThisSiteOnly -- if true, we follow links across between other sites on this server
+					//flIncludeCategories -- if true, categories are rendered as items, or if false, they're not -- categories are always rendered using levelStart/levelEnd -- to eliminate them entirely, leave these templates blank
+					//flIncludeTopCategory -- if true, the top-level category (the starting point) is included
+					//flIncludeRedirects -- if true, redirects are rendered, and if false, they're skipped; if a redirect is into another site on the same server, we render that site's hierarchy starting at the redirect URL
+					//flIncludeItemsWithoutTitles -- if false, we skip items which have no title (name attribute) or whose title is identical to the path (case-sensitive)
+					//flIncludeItemsWithoutDescriptions -- if false, we skip items whose description is missing or empty
+					//countTemplate -- the template for the counters next to categories
+					//descriptionTemplate -- the template for the description when present and non-empty
+					//header, footer -- included before and after the levels and links
+					//headerNextItemTemplate, headerPrevItemTemplate, headerCurrentItemTemplate, headerParentItemTemplate -- item templates used for {nextItem}, {prevItem} and {currentItem} in header and footer
+				//Macros
+					//The following macros are valid in itemTemplate, currentItemTemplate, levelStart levelEnd, header and footer:
+						//{url} -- the URL of the page or category
+						//{title} -- the title of the page or category, or the pathname if there is no title
+						//{link} -- the title as a link to the page
+						//{description} -- the description of the page or category, or the empty string if there is no URL
+						//{count} -- the count if sub-items of a category rendered through the countTemplate, or the empty string if there are no sub-items
+						//{level} -- the current level being rendered, plus levelOffset, and then multiplied by levelMultiplier
+					//In header and footer, the macros listed above correspond to the category at the current level. Additional macros which are valid in the header and footer are:
+						//{prevItem} -- the previous sibling to the current page, rendered through the itemTemplate, or the empty string if there is no previous sibling
+						//{nextItem} -- the subsequent sibling to the current page, rendered through the itemTemplate, or the empty string if there is no subsequent sibling
+						//{currentItem} -- the item for the current page, rendered through the currentItemTemplate
+						//{parentItem} -- the item for the current page, rendered through the currentItemTemplate
+					//The countTemplate has a single macro, {count} which is replaced with the count itself.
+					//There are no macros for itemSeparator, and levelSeparator.
+				//Notes
+					//Any story, category or redirect may have an attribute named flNavigator. If its value is false, the item is not included.
 	
 	local (pta = html.getPageTableAddress ());
-	«workspace.pt = pta^
+	//workspace.pt = pta^
 	
 	if flSiteStructurePagesOnly {
 		if not defined (pta^.remainingPath) {
@@ -466,6 +466,6 @@ on advancedNavigator (start=0, depth=1, itemTemplate=nil, currentItemTemplate=ni
 		add ("<input type=\"button\" onclick=\"window.location='" + siteurl + "admin/editSiteStructure';\" value=\"" + manilaSuite.getString ("common.editButton") + "\" />")};
 	
 	return (htext)};
-«bundle //testing
-	«html.setPageTableAddress (@workspace.pt)
-	«advancedNavigator ("http://jsavin.dyndns.org/about", levelStart:"", levelEnd:"", header:"{prevItem} {currentItem} {nextItem}", footer:"", flThisSiteOnly:false)
+//bundle //testing
+	//html.setPageTableAddress (@workspace.pt)
+	//advancedNavigator ("http://jsavin.dyndns.org/about", levelStart:"", levelEnd:"", header:"{prevItem} {currentItem} {nextItem}", footer:"", flThisSiteOnly:false)

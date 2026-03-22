@@ -1,10 +1,10 @@
 on editorsOnly () {
-	«Call this script from a #security script when you want to ensure that only the managing editor and contributing editors have access.
-	«Changes:
-		«9/8/03; 4:39:28 PM by JES
-			«Content Editors are also editors. This script was missed when the Content Editor was added to Manila.
-		«04/10/00; 2:45:54 PM by PBS
-			«Updated to handle the hashed cookies format. Also: call the new bottleneck script at manilaSuite.editors.prefsSecurity.
+	//Call this script from a #security script when you want to ensure that only the managing editor and contributing editors have access.
+	//Changes:
+		//9/8/03; 4:39:28 PM by JES
+			//Content Editors are also editors. This script was missed when the Content Editor was added to Manila.
+		//04/10/00; 2:45:54 PM by PBS
+			//Updated to handle the hashed cookies format. Also: call the new bottleneck script at manilaSuite.editors.prefsSecurity.
 	
 	local (adrNewsSite = responderAttributes.newsSite);
 	local (editorsList = adrNewsSite^.sysopMail);

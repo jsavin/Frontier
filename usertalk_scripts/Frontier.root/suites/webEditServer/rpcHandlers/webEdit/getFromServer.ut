@@ -1,8 +1,8 @@
 on getFromServer (userName, password, adrObject) {
-	«Get an object from the server.
-	«Changes
-		«7/6/05; 7:43:34 PM by JES
-			«Remove file-part from address in error messages.
+	//Get an object from the server.
+	//Changes
+		//7/6/05; 7:43:34 PM by JES
+			//Remove file-part from address in error messages.
 	
 	local (adrPreCallback = @user.webEditServer.callbacks.preGetFromServer);
 	local (adrCallback = @user.webEditServer.callbacks.getFromServer);

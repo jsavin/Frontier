@@ -1,5 +1,5 @@
-«I run this script after virginizing a root, to restore it to my work system
-	«11/17/97 at 5:55:34 AM by DW
+//I run this script after virginizing a root, to restore it to my work system
+	//11/17/97 at 5:55:34 AM by DW
 
 user.prefs.initials = "DW";
 user.prefs.name = "Dave Winer";

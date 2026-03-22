@@ -1,17 +1,17 @@
 on getFileMimeType (f) { //get the MIME type of a file (not a folder)
-	«Get the MIME type of a file.
-		«Changes:
-			«9/24/04; 3:10:28 AM by JES
-				«On MacOS, if the file name has an extension, use the extension in preference to the Mac file type to determine the mime-type.
-			«12/7/01; 2:11:26 PM by PBS
-				«Don't do caching. Caching defeats the ability of the webmaster to configure MIME settings.
-				«On Macs, check the file extension if there's no match on the file type.
-	«local (adrCache = @system.temp.mainResponder.mimeTypeCache)
+	//Get the MIME type of a file.
+		//Changes:
+			//9/24/04; 3:10:28 AM by JES
+				//On MacOS, if the file name has an extension, use the extension in preference to the Mac file type to determine the mime-type.
+			//12/7/01; 2:11:26 PM by PBS
+				//Don't do caching. Caching defeats the ability of the webmaster to configure MIME settings.
+				//On Macs, check the file extension if there's no match on the file type.
+	//local (adrCache = @system.temp.mainResponder.mimeTypeCache)
 	
-	«if not defined (adrCache^) //PBS 12/07/01: don't do caching
-		«new (tableType, adrCache)
-	«else
-		«try {return (adrCache^.[f])} //the mime type may be cached
+	//if not defined (adrCache^) //PBS 12/07/01: don't do caching
+		//new (tableType, adrCache)
+	//else
+		//try {return (adrCache^.[f])} //the mime type may be cached
 	
 	local (mimeType = "text/html");
 	local (objectType = file.type (f));
@@ -30,6 +30,6 @@ on getFileMimeType (f) { //get the MIME type of a file (not a folder)
 			if defined (user.webserver.prefs.ext2MIME.[extension]) {
 				mimeType = user.webserver.prefs.ext2MIME.[extension]}}};
 	
-	«adrCache^.[f] = mimeType //cache the mime type //PBS 12/07/01: don't do caching
+	//adrCache^.[f] = mimeType //cache the mime type //PBS 12/07/01: don't do caching
 	
 	return (mimeType)}

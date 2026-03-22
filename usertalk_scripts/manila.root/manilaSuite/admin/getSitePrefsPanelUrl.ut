@@ -1,6 +1,6 @@
 on getSitePrefsPanelUrl (panelId, pta=nil) {
-	«5/12/00; 3:45:30 PM by JES
-		«Gets the url of a site prefs panel -- needed for localization
+	//5/12/00; 3:45:30 PM by JES
+		//Gets the url of a site prefs panel -- needed for localization
 	
 	if pta == nil {
 		pta = html.getPageTableAddress ()};
@@ -8,7 +8,7 @@ on getSitePrefsPanelUrl (panelId, pta=nil) {
 	local (sitePrefsDir = string.popSuffix (pta^.urls^.editorialPrefs, '/') + "/");
 	local (adrNavigator = manilaSuite.admin.getSitePrefsNavigatorAddress (pta));
 	
-	«compile XML if dirty
+	//compile XML if dirty
 	if (not (defined (adrNavigator^.structure))) or (timeModified (@adrNavigator^.outline) > timeModified (@adrNavigator^.structure)) {
 		xml.compile (string (adrNavigator^.outline), @adrNavigator^.structure)};
 	

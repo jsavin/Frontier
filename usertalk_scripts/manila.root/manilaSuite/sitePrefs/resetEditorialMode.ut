@@ -1,9 +1,9 @@
 on resetEditorialMode (adrSite, editorialMode) {
-	«Changes
-		«3/19/07; 6:37:48 PM by LL
-			«Added another editorial mode for sites that require email confirmation and editor approval for new members.
-		«3/14/07; 11:47:16 PM by LL
-			«Created.
+	//Changes
+		//3/19/07; 6:37:48 PM by LL
+			//Added another editorial mode for sites that require email confirmation and editor approval for new members.
+		//3/14/07; 11:47:16 PM by LL
+			//Created.
 	if editorialMode == "none" {
 		return (true)};
 	case editorialMode {

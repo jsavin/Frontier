@@ -1,7 +1,7 @@
 on getGemAddressFromFilename (adrSite, fileName) {
-	«Changes
-		«3/19/05; 11:16:14 PM by JES
-			«Created. Given the address of a site and the fileName of a gem, find (the most recent) gem table corresponding to the given fileName.
+	//Changes
+		//3/19/05; 11:16:14 PM by JES
+			//Created. Given the address of a site and the fileName of a gem, find (the most recent) gem table corresponding to the given fileName.
 	local (lowerFileName = string.lower (fileName));
 	local (adrData = manilaSuite.gems.getSiteDataAddress (adrSite));
 	local (sizeData = sizeOf (adrData^));
@@ -16,7 +16,7 @@ on getGemAddressFromFilename (adrSite, fileName) {
 		if string.lower (adrItem^.origFileName) == lowerFileName {
 			return (adrItem)}};
 	scriptError ("Couldn't determine the address of the gem named \"" + fileName + "\" because no non-deleted gem with that file name exists in the site.")};
-«bundle //test code
-	«local (adrsite = @revivalbandprivateManilaWebsite)
-	«local (fname = "tboneshuffle.mp3")
-	«dialog.alert (string.popFileFromAddress (getGemAddressFromFilename (adrsite, fname)))
+//bundle //test code
+	//local (adrsite = @revivalbandprivateManilaWebsite)
+	//local (fname = "tboneshuffle.mp3")
+	//dialog.alert (string.popFileFromAddress (getGemAddressFromFilename (adrsite, fname)))

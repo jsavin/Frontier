@@ -1,14 +1,14 @@
-«Expand a manilaMessageReadOnly nodeType.
-	«Insert the text of the message into the outline.
-«Changes
-	«Tue, Aug 22, 2000 at 11:31:52 AM by PBS
-		«Created. Display a Manila discussion group message in-line.
-	«Saturday, September 30, 2000 at 4:09:26 PM by DW
-		«When expanding a message add the responses after the message body.
-	«11/03/00; 1:11:02 AM by JES
-		«If the message contains an opml document, use that to build the outline.
-	«12/31/00; 5:06:20 PM by JES
-		«On Macs, convert opml text to Mac text before converting to an outline.
+//Expand a manilaMessageReadOnly nodeType.
+	//Insert the text of the message into the outline.
+//Changes
+	//Tue, Aug 22, 2000 at 11:31:52 AM by PBS
+		//Created. Display a Manila discussion group message in-line.
+	//Saturday, September 30, 2000 at 4:09:26 PM by DW
+		//When expanding a message add the responses after the message body.
+	//11/03/00; 1:11:02 AM by JES
+		//If the message contains an opml document, use that to build the outline.
+	//12/31/00; 5:06:20 PM by JES
+		//On Macs, convert opml text to Mac text before converting to an outline.
 
 local (oldTarget = target.set (window.frontmost ()));
 local (oldDisplay = op.getDisplay ());
@@ -50,7 +50,7 @@ local (s);
 local (posted = messageTable.postTime);
 local (author = messageTable.memberName);
 if author != messageTable.member {
-	«JES: changed parens to carets becuase they can be pasted into email programs -- it's a sendmail standard format
+	//JES: changed parens to carets becuase they can be pasted into email programs -- it's a sendmail standard format
 	author = author + " <" + messageTable.member + ">"};
 if system.environment.isMac { //convert author to Mac text
 	author = string.latinToMac (author)};

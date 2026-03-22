@@ -1,6 +1,6 @@
 on getSortedReferersTable (adrSite) {
-	«Return a sorted table containing the last 24 hours worth of referers. Table is sorted by frequency (value).
-		«11/02/00; 2:38:52 PM by WM
+	//Return a sorted table containing the last 24 hours worth of referers. Table is sorted by frequency (value).
+		//11/02/00; 2:38:52 PM by WM
 	
 	local (adrTable = manilaSuite.stats.getReferersTableAddress (adrSite));
 	local (t);

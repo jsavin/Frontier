@@ -1,13 +1,13 @@
 on openGuestDatabase (f, topLevelName="", flHidden=true) {
-	«Changes
-		«1/13/01; 9:21:46 AM by DW
-			«Created. Foolproof way to open a guest database, or create it if it doesn't exist. 
-			«topLevelName is a string, providing the name of the top level item in the database. If it's empty, don't create a top-level item.
-			«If the file is already open, ignore flHidden. If we have to create a new file, pass it down to fileMenu.new.
-			«Return true if the file is open, false if we were unable to open or create it.
-			«http://docserver.userland.com/fileMenu/openGuestDatabase
-		«1/13/01; 5:55:05 PM by DW
-			«When opening a file respect the flHidden param.
+	//Changes
+		//1/13/01; 9:21:46 AM by DW
+			//Created. Foolproof way to open a guest database, or create it if it doesn't exist. 
+			//topLevelName is a string, providing the name of the top level item in the database. If it's empty, don't create a top-level item.
+			//If the file is already open, ignore flHidden. If we have to create a new file, pass it down to fileMenu.new.
+			//Return true if the file is open, false if we were unable to open or create it.
+			//http://docserver.userland.com/fileMenu/openGuestDatabase
+		//1/13/01; 5:55:05 PM by DW
+			//When opening a file respect the flHidden param.
 	file.sureFilePath (f);
 	if file.exists (f) {
 		if window.isOpen (f) {
@@ -26,5 +26,5 @@ on openGuestDatabase (f, topLevelName="", flHidden=true) {
 		target.set (oldtarget)};
 	fileMenu.save (f);
 	return (true)};
-«bundle //test code
-	«openGuestDatabase ("c:\\program files\\radio userland\\backups\\test.root", "testStuff", false)
+//bundle //test code
+	//openGuestDatabase ("c:\\program files\\radio userland\\backups\\test.root", "testStuff", false)

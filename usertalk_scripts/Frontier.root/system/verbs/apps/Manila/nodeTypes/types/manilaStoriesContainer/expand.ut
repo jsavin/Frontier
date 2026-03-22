@@ -1,5 +1,5 @@
-«Expand the Stories list.
-	«10/09/00; 11:41:37 AM by PBS
+//Expand the Stories list.
+	//10/09/00; 11:41:37 AM by PBS
 
 local (oldTarget = target.set (window.frontmost ()));
 local (oldDisplay = op.getDisplay ());

@@ -1,19 +1,19 @@
 on callScript (scriptCode, language, mainRoutine, parameters) {
-	«Run an Active Scripting Engine script.
-		«Parameters:
-			«scriptCode is the actual script.
-				«This script should be composed of subroutines and functions.
-			«language is the script's language.
-				«Examples: VBScript, JScript, PerlScript
-			«mainRoutine
-				«The name of the function or subroutine in the script to call.
-			«parameters
-				«A list, the parameters to pass to the script that's called.
-		«Note: the Microsoft Script Control is required.
-			«See http://msdn.microsoft.com/scripting/
+	//Run an Active Scripting Engine script.
+		//Parameters:
+			//scriptCode is the actual script.
+				//This script should be composed of subroutines and functions.
+			//language is the script's language.
+				//Examples: VBScript, JScript, PerlScript
+			//mainRoutine
+				//The name of the function or subroutine in the script to call.
+			//parameters
+				//A list, the parameters to pass to the script that's called.
+		//Note: the Microsoft Script Control is required.
+			//See http://msdn.microsoft.com/scripting/
 	
 	local (dllPath = frontier.pathString + "DLLs\\ScriptControlDLL.dll");
-	«local (dllPath = "D:\\Projects\\ScriptControlDLL\\Debug\\ScriptControlDLL.dll")
+	//local (dllPath = "D:\\Projects\\ScriptControlDLL\\Debug\\ScriptControlDLL.dll")
 	local (methodName = "callscript");
 	local (result);
 	local (flDebug = false);
@@ -46,8 +46,8 @@ on callScript (scriptCode, language, mainRoutine, parameters) {
 		window.zoom (@temp.scriptControlDllTrace)};
 	
 	return (result)};
-«bundle //test code
-	«local (s = "Function MyMainRoutine (a, b)\r\nMsgBox (a)\r\nMyMainRoutine = b * 3\r\nEnd Function")
-	«local (x)
-	«x = com.callScript (s, "VBScript", "MyMainRoutine", {"Scripting is fun!", 3})
-	«dialog.notify ("The returned value is " + x + ".")
+//bundle //test code
+	//local (s = "Function MyMainRoutine (a, b)\r\nMsgBox (a)\r\nMyMainRoutine = b * 3\r\nEnd Function")
+	//local (x)
+	//x = com.callScript (s, "VBScript", "MyMainRoutine", {"Scripting is fun!", 3})
+	//dialog.notify ("The returned value is " + x + ".")

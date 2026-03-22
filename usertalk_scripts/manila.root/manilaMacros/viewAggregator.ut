@@ -1,13 +1,13 @@
 on viewAggregator (maxitems=100, flPostButtons=false) {
-	«Changes
-		«5/15/06; 2:37:46 PM by LL
-			«Bug fix: Fix an error message when trying to get the link for a story.  When adrstory^.data.link was defined, it was trying to use adrstory^.permalink.
-		«9/20/05; 5:46:59 PM by JES
-			«Small cosmetic imporvement: Only add leading space before channel title if not the first channel listed.
-		«6/11/03; 10:32:29 PM by JES
-			«Added support for post link and permalinks.
-		«2/25/03; 6:28:58 PM by DW
-			«Created. Render aggregator news items for feeds to which this Manila site is subscribed.
+	//Changes
+		//5/15/06; 2:37:46 PM by LL
+			//Bug fix: Fix an error message when trying to get the link for a story.  When adrstory^.data.link was defined, it was trying to use adrstory^.permalink.
+		//9/20/05; 5:46:59 PM by JES
+			//Small cosmetic imporvement: Only add leading space before channel title if not the first channel listed.
+		//6/11/03; 10:32:29 PM by JES
+			//Added support for post link and permalinks.
+		//2/25/03; 6:28:58 PM by DW
+			//Created. Render aggregator news items for feeds to which this Manila site is subscribed.
 	local (htmltext = "", indentlevel = 0);
 	on add (s) {
 		htmltext = htmltext + string.filledstring ("\t", indentlevel) + s + "\r"};

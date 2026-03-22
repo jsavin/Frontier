@@ -1,5 +1,5 @@
 on getNextMonth (adrmonth, adryear) {
-	«10/31/97 at 8:26:50 AM by DW -- moved from toys.getNextMonth
+	//10/31/97 at 8:26:50 AM by DW -- moved from toys.getNextMonth
 	case adrmonth^ {
 		"January" {
 			adrmonth^ = "February"};
@@ -26,7 +26,7 @@ on getNextMonth (adrmonth, adryear) {
 		"December" {
 			adrmonth^ = "January";
 			adryear^ = adryear^ + 1}}};
-«bundle
-	«local (month = "December", year = 1997)
-	«getNextMonth (@month, @year)
-	«dialog.alert (month + " " + year)
+//bundle
+	//local (month = "December", year = 1997)
+	//getNextMonth (@month, @year)
+	//dialog.alert (month + " " + year)

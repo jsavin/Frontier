@@ -1,7 +1,7 @@
-«Changes
-	«3/31/05; 2:59:36 AM by JES
-		«When checking for the presence of user.log.prefs.folder, use if not defined, instead of (erroneously) using if not file.exists.
-		«Store the address of today's log table in system.temp.log. We use this in log.getGuestSubTable instead of looking up by index. Should (once and for all) prevent "item #1 not defined" errors.
+//Changes
+	//3/31/05; 2:59:36 AM by JES
+		//When checking for the presence of user.log.prefs.folder, use if not defined, instead of (erroneously) using if not file.exists.
+		//Store the address of today's log table in system.temp.log. We use this in log.getGuestSubTable instead of looking up by index. Should (once and for all) prevent "item #1 not defined" errors.
 local (now = clock.now ());
 if date.day (now) == system.temp.log.dayLastLogAdd {
 	if window.isopen (system.temp.log.lastLogFile) {
@@ -22,9 +22,9 @@ bundle { //set f to the new file
 	date.get (now, @day, @month, @year, @hour, @minute, @second);
 	local (datefname = year + "-" + string.padwithzeros (month, 2) + "-" + string.padwithzeros (day, 2));
 	
-	«Get the logs folder. It's stored at user.log.prefs.folder.
-		«Make sure the pref exists and it points to an existing folder.
-		«Sun, Feb 28, 1999 at 5:15:05 PM by PBS
+	//Get the logs folder. It's stored at user.log.prefs.folder.
+		//Make sure the pref exists and it points to an existing folder.
+		//Sun, Feb 28, 1999 at 5:15:05 PM by PBS
 	if not defined (user.log.prefs.folder) {
 		try {
 			user.log.prefs.folder = Frontier.getSubFolder ("ops/logs/")}

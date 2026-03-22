@@ -1,6 +1,6 @@
-«8/15/99; 9:38:34 AM by DW
-	«This script runs once an hour. 
-	«If config.mainresponder.prefs.flLogReopenHourly is true, we close the current log file.
+//8/15/99; 9:38:34 AM by DW
+	//This script runs once an hour. 
+	//If config.mainresponder.prefs.flLogReopenHourly is true, we close the current log file.
 
 if config.mainresponder.prefs.flLogReopenHourly {
 	local (day, month, year, hour, minute, second);

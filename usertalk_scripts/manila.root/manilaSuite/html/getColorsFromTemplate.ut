@@ -1,6 +1,6 @@
-«Get the appearance colors from the template.
-	«This script finds the body tag, then compiles it as XML, then gets the attributes. Much slicker than doing lots of pattern matching.
-	«10/27/99; 12:52:41 PM by PBS
+//Get the appearance colors from the template.
+	//This script finds the body tag, then compiles it as XML, then gets the attributes. Much slicker than doing lots of pattern matching.
+	//10/27/99; 12:52:41 PM by PBS
 
 local (pta = html.getPageTableAddress ());
 local (s);

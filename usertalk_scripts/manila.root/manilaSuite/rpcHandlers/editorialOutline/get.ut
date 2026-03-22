@@ -1,15 +1,15 @@
 on get (siteName, username, password) {
-	«An external editor wants to open the editorial site outline.
-		«Return a struct with:
-			«siteOutline -- binary of site outline OPML document.
-			«flCheckedOut -- true if someone else has it checked out
-			«editorialRole -- ME, CE, member, unknown
-			«flAcceptsOpml -- a flag which tells editorial clients whether they can save messages as opml
-		«10/12/00; 5:33:13 PM by PBS
-		«11/02/00; 9:41:42 PM by JES
-			«Added flAcceptsOpml flag to the returned struct. flAcceptsOpml is always true because the server is up-to-date if this change exists.
-		«07/13/01; 1:30:19 PM by JES
-			«Added displaySiteName to the returned table.
+	//An external editor wants to open the editorial site outline.
+		//Return a struct with:
+			//siteOutline -- binary of site outline OPML document.
+			//flCheckedOut -- true if someone else has it checked out
+			//editorialRole -- ME, CE, member, unknown
+			//flAcceptsOpml -- a flag which tells editorial clients whether they can save messages as opml
+		//10/12/00; 5:33:13 PM by PBS
+		//11/02/00; 9:41:42 PM by JES
+			//Added flAcceptsOpml flag to the returned struct. flAcceptsOpml is always true because the server is up-to-date if this change exists.
+		//07/13/01; 1:30:19 PM by JES
+			//Added displaySiteName to the returned table.
 	
 	local (editorialRole, flCheckedOut, binarySiteOutline);
 	local (flCanCheckOut = false);

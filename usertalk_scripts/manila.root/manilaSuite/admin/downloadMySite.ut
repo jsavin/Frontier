@@ -1,7 +1,7 @@
 on downloadMySite (adrSite) {
-	«Changes:
-		«02/06/01; 2:34:31 PM by JES
-			«Return a page with a link to the download, instead of the download itself.
+	//Changes:
+		//02/06/01; 2:34:31 PM by JES
+			//Return a page with a link to the download, instead of the download itself.
 	local (htmltext);
 	on add (s) {
 		htmltext = htmltext + s + cr};

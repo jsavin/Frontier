@@ -1,6 +1,6 @@
 on getCascadingStyleSheet (siteName) {
-	«Get the text of the cascading style sheet. If a cascading style sheet does not exist, create it in the site and return the 
-		«01/15/00; 6:48:03 PM by PBS
+	//Get the text of the cascading style sheet. If a cascading style sheet does not exist, create it in the site and return the 
+		//01/15/00; 6:48:03 PM by PBS
 	
 	local (adrNewsSite = manilaSuite.rpcUtils.getNewsSiteAddress (sitename));
 	local (adrObject = @adrNewsSite^.cascadingStyleSheet);

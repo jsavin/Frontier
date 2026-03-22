@@ -1,8 +1,8 @@
-«Changes
-	«6/6/02; 4:15:27 PM by JES
-		«If running on MacOS X, use sys.unixShellCommand to get the RAM usage values from the ps command.
-	«4/11/02; 1:05:46 AM by JES
-		«Removed "out of a possible" connection limit text. Added support for actual RAM and VRAM usage on M
+//Changes
+	//6/6/02; 4:15:27 PM by JES
+		//If running on MacOS X, use sys.unixShellCommand to get the RAM usage values from the ps command.
+	//4/11/02; 1:05:46 AM by JES
+		//Removed "out of a possible" connection limit text. Added support for actual RAM and VRAM usage on M
 local (htmltext = "");
 on add (s) {
 	htmltext = htmltext + s};

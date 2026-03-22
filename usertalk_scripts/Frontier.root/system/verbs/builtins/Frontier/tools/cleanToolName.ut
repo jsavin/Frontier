@@ -1,6 +1,6 @@
 on cleanToolName (s) {
-	«Clean a tool name -- drop .root suffix, inner-case, drop non alphas.
-		«09/30/00; 11:56:43 PM by PBS
+	//Clean a tool name -- drop .root suffix, inner-case, drop non alphas.
+		//09/30/00; 11:56:43 PM by PBS
 	if string.lower (s) endsWith ".root" { //remove .root suffix
 		s = string.popSuffix (s)};
 	if s contains " " {

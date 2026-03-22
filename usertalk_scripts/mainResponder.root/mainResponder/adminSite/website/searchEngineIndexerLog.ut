@@ -1,7 +1,7 @@
 on searchEngineIndexerLog (maxitems=200) {
-	«Changes
-		«8/2/02; 3:07:05 AM by JES
-			«Created.
+	//Changes
+		//8/2/02; 3:07:05 AM by JES
+			//Created.
 	local (pta = html.getPageTableAddress ());
 	pta^.title = "Search Engine Indexing Log";
 	local (colors = {pta^.trbg1, pta^.trbg2});
@@ -38,4 +38,4 @@ on searchEngineIndexerLog (maxitems=200) {
 		return (logtext)}
 	else {
 		return (logtext + "<p>There are no items to list at this time.</p>")};
-	}«return (mainResponder.search.server.logBrowserIndexer (maxitems, colors, 3, "smallAlignTop", false))
+	}//return (mainResponder.search.server.logBrowserIndexer (maxitems, colors, 3, "smallAlignTop", false))

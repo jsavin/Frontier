@@ -1,9 +1,9 @@
 on isMessageInDiscussionGroup (adrmsg, adrsite=nil) {
-	«Changes
-		«2/28/07; 4:06:10 PM by LL
-			«Don't list pending news items.
-		«4/4/02; 12:06:29 AM by JES
-			«Created. Return true if the message should appear in the DG interface, or false if not.
+	//Changes
+		//2/28/07; 4:06:10 PM by LL
+			//Don't list pending news items.
+		//4/4/02; 12:06:29 AM by JES
+			//Created. Return true if the message should appear in the DG interface, or false if not.
 	if adrsite == nil {
 		adrsite = manilaSuite.getSiteAddress ()};
 	local (adrnewssite = manilaSuite.getNewsSiteAddress (adrsite));

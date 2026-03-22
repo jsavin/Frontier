@@ -1,6 +1,6 @@
 on isNewsItem (adrMsgTable) {
-	«Return true if this is a news item, false otherwise.
-		«04/25/00; 1:19:37 PM by PBS
+	//Return true if this is a news item, false otherwise.
+		//04/25/00; 1:19:37 PM by PBS
 	
 	if defined (adrMsgTable^.newsItem) {
 		return (true)};

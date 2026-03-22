@@ -1,18 +1,18 @@
 on compile (adrservice, flSaveData, adrStoryArrivedCallback) {
-	«Changes
-		«10/20/02; 9:07:01 AM by DW
-			«Created. Handle a <redirect> element, per the specification:
-				«http://backend.userland.com/redirectRss
+	//Changes
+		//10/20/02; 9:07:01 AM by DW
+			//Created. Handle a <redirect> element, per the specification:
+				//http://backend.userland.com/redirectRss
 	local (adrxstruct = @adrservice^.xmlstruct);
 	local (adrredirect = xml.getAddress (adrxstruct, "redirect"));
 	local (redirecturl = xml.getValue (adrredirect, "newLocation"));
 	adrservice^.urlChanged = redirecturl;
 	return (true)};
-«bundle //test code
-	«local (url = "http://127.0.0.1/test/hell.xml")
-	«xml.aggregator.readservice (url, @aggregatorData.services)
-	«
-	«local (adrservice = xml.rss.initService (url, @aggregatorData.services))
-	«adrservice^.xmltext = tcp.httpReadUrl (url)
-	«xml.compile (adrservice^.xmltext, @adrservice^.xmlstruct)
-	«compile (adrservice, true, @xml.aggregator.storyArrivedCallback)
+//bundle //test code
+	//local (url = "http://127.0.0.1/test/hell.xml")
+	//xml.aggregator.readservice (url, @aggregatorData.services)
+	//
+	//local (adrservice = xml.rss.initService (url, @aggregatorData.services))
+	//adrservice^.xmltext = tcp.httpReadUrl (url)
+	//xml.compile (adrservice^.xmltext, @adrservice^.xmlstruct)
+	//compile (adrservice, true, @xml.aggregator.storyArrivedCallback)

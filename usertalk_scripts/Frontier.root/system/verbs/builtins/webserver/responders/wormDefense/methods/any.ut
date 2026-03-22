@@ -1,6 +1,6 @@
 on any (adrParamTable) {
-	«Filters out worm hits so they don't go through mainresponder. A slightly modified version of Eric Soroos' codeRed4 responder, renamed so we can defend against other worms if and when they appear.
-		«9/19/01; 12:56:35 PM by PBS
+	//Filters out worm hits so they don't go through mainresponder. A slightly modified version of Eric Soroos' codeRed4 responder, renamed so we can defend against other worms if and when they appear.
+		//9/19/01; 12:56:35 PM by PBS
 	adrParamTable^.code = 500;
 	adrParamTable^.responseHeaders.["Content-Type"] = "text/html";
 	adrParamTable^.responseBody = "<html><body>Go away!/body></html>";

@@ -1,10 +1,10 @@
 on getStoryTitle () {
-	«Get the title of a message.
-		«Changes:
-			«10/27/00; 1:17:56 AM by PBS
-				«Check for empty pathArgs and use 1 as msgNum.
-			«1/14/02; 3:25:35 PM by PBS
-				«Strip possible .opml from pathArgs.
+	//Get the title of a message.
+		//Changes:
+			//10/27/00; 1:17:56 AM by PBS
+				//Check for empty pathArgs and use 1 as msgNum.
+			//1/14/02; 3:25:35 PM by PBS
+				//Strip possible .opml from pathArgs.
 	local (pta = html.getPageTableAddress ());
 	local (msgNum = pta^.pathArgs);
 	if string.lower (msgNum) endsWith ".opml" {

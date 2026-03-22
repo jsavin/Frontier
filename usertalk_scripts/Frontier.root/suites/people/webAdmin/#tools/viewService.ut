@@ -12,7 +12,7 @@ on viewService () {
 		if serviceName == "" or serviceName == false {
 			return ("Can't view a service because no service name was specified.")}};
 	
-	«hr ()
+	//hr ()
 	
 	add ("<h3>" + serviceName + " Users:</h3>\r");
 	add (html.getPageTableAddress ()^.tools^.displayServiceUsers (serviceName));
@@ -22,6 +22,6 @@ on viewService () {
 	add ("<h3>" + serviceName + " Groups:</h3>\r");
 	add (html.getPageTableAddress ()^.tools^.displayServiceGroups (serviceName));
 	
-	«hr ()
+	//hr ()
 	
 	return (htmlText)}

@@ -1,6 +1,6 @@
 on getRelativePathToMessage (msgNum, adrSite) {
-	«Get the relative path to a message.
-		«03/03/00; 5:53:41 PM by PBS
+	//Get the relative path to a message.
+		//03/03/00; 5:53:41 PM by PBS
 	
 	manilaSuite.siteStructure.compileIfDirty (adrSite); //compile the site structure XML if needed
 	

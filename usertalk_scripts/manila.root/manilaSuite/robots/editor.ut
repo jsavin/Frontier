@@ -1,9 +1,9 @@
 on editor (flSetTitle=true, action="") {
-	«Changes
-		«7/23/03; 10:52:48 AM by JES
-			«Respect flSetTitle.
-		«7/8/03; 1:36:03 PM by JES
-			«Created. Admin interface for editing the robots.txt file.
+	//Changes
+		//7/23/03; 10:52:48 AM by JES
+			//Respect flSetTitle.
+		//7/8/03; 1:36:03 PM by JES
+			//Created. Admin interface for editing the robots.txt file.
 	
 	local (pta = html.getPageTableAddress ());
 	local (adrsite = manilaSuite.getSiteAddress (pta));

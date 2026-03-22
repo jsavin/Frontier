@@ -1,2 +1,2 @@
-on isPunctuation (ch) { «new in 4.0b7
+on isPunctuation (ch) { //new in 4.0b7
 	kernel (string.isPunctuation)}

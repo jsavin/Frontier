@@ -1,15 +1,15 @@
 on simpleType (adrmsg, val, adrparent, name, fladdtype=true, flEntityEncodeHighAscii=false) {
-	«Changes:
-		«03/27/01; 5:44:21 PM by JES
-			«Serialize doubles as type "xsd:float", instead of "xsd:double", since float means 32-bit floating point number, and double means 64-bit floating point number. In Frontier, a doubleType is 32-bits.
-		«04/01/01; 3:30:28 AM by JES
-			«Encode booleans as 1/0, instead of true/false.
-		«04/03/01; 7:40:52 PM by JES
-			«New optional parameter, flEntityEncodeHighAscii, specifies whether to entity-encode high-ascii characters when encoding strings. Default is false.
-		«04/11/01; 3:25:28 PM by JES
-			«Encode floats by calling soap.encode.float.
-		«04/27/01; 6:57:55 PM by JES
-			«Specify SOAP-ENC:base64 for base64-encoded binary types.
+	//Changes:
+		//03/27/01; 5:44:21 PM by JES
+			//Serialize doubles as type "xsd:float", instead of "xsd:double", since float means 32-bit floating point number, and double means 64-bit floating point number. In Frontier, a doubleType is 32-bits.
+		//04/01/01; 3:30:28 AM by JES
+			//Encode booleans as 1/0, instead of true/false.
+		//04/03/01; 7:40:52 PM by JES
+			//New optional parameter, flEntityEncodeHighAscii, specifies whether to entity-encode high-ascii characters when encoding strings. Default is false.
+		//04/11/01; 3:25:28 PM by JES
+			//Encode floats by calling soap.encode.float.
+		//04/27/01; 6:57:55 PM by JES
+			//Specify SOAP-ENC:base64 for base64-encoded binary types.
 	local (type);
 	case typeof (val) {
 		binaryType {

@@ -1,8 +1,8 @@
 on removeMenuItems() {
 	with objectModel, FileMaker {
-		«I would prefer to count the menu items, but FileMaker prefers the following
+		//I would prefer to count the menu items, but FileMaker prefers the following
 		try {
-			loop { « the try terminates the loop, when there is no menuItem[1]
+			loop { // the try terminates the loop, when there is no menuItem[1]
 				delete(menuItem[1]);
 				rollBeachBall ()}}}};
 removeMenuItems()

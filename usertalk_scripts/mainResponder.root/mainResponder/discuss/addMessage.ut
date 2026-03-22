@@ -1,29 +1,29 @@
 on addMessage (subject, member, inResponseTo, body, flNeuterMacros=true, flNeuterTags=true, postTime=clock.now (), adrroot=nil, flcallback=true, groupname="", flEmptyBodyOk=false, adrdata=nil, flEmptySubjectOk=false) {
-	«Changes
-		«11/8/06; 8:01:41 AM by LL
-			«Bug fix: If the body of a new story was empty the error message wasn't properly displayed to the user.
-		«5/26/03; 6:30:19 PM by JES
-			«New optional parameter, flEmptySubjectOk. Defaults to false, preserving current behavior.
-		«4/8/03; 2:45:24 PM by JES
-			«New optional parameter, adrdata. adrdata is the address of a table. If non-nil, then all sub-elements of the table at adrdata are copied into the msgtable. Use this parameter if your application needs to store additional information in the message.
-			«mainResponder.discuss.postMessage uses this parameter to add the IP address of the client POST-ing a new message.
-		«5/30/01; 11:17:16 JES
-			«If the subject is empty, put the body of the message in the page table, so the WYSIWYG editor has a chance to give the user another shot at creating the message.
-		«8/19/99; 3:30:57 PM by DW
-			«New optional param, flEmptyBodyOk, defaults false.
-			«If true, body can be the empty string.
-			«It was ridiculous to make an XML-RPC call supply a body, when the user hasn't edited the copy yet.
-		«7/16/99; 11:36:10 GMT by AR
-			«Closed a security hole: The subject is now run thru mainResponder.neuterText.
-		«5/26/99; 01:54:34 GMT by AR
-			«Added new optional parameter, groupname. If it's the empty string (the default), we assume config.mainResponder.globals.defaultMembershipGroup.
-		«2/11/99; 11:37:21 AM by DW
-			«if html.getPageTableAddress doesn't work, we create our own table
-				«any callback should only depend on pta^.adrNewMsg being set
-			«new optional parameter, adrroot, if nil, we should find the discussion root ourselves, otherwise the caller supplied it
-			«new optional parameter, flcallback, if true we call the callbacks, otherwise not
-		«4/10/00; 2:48:59 PM by JES
-			«changed string constants to lookups in the localization table with mainResponder.getString
+	//Changes
+		//11/8/06; 8:01:41 AM by LL
+			//Bug fix: If the body of a new story was empty the error message wasn't properly displayed to the user.
+		//5/26/03; 6:30:19 PM by JES
+			//New optional parameter, flEmptySubjectOk. Defaults to false, preserving current behavior.
+		//4/8/03; 2:45:24 PM by JES
+			//New optional parameter, adrdata. adrdata is the address of a table. If non-nil, then all sub-elements of the table at adrdata are copied into the msgtable. Use this parameter if your application needs to store additional information in the message.
+			//mainResponder.discuss.postMessage uses this parameter to add the IP address of the client POST-ing a new message.
+		//5/30/01; 11:17:16 JES
+			//If the subject is empty, put the body of the message in the page table, so the WYSIWYG editor has a chance to give the user another shot at creating the message.
+		//8/19/99; 3:30:57 PM by DW
+			//New optional param, flEmptyBodyOk, defaults false.
+			//If true, body can be the empty string.
+			//It was ridiculous to make an XML-RPC call supply a body, when the user hasn't edited the copy yet.
+		//7/16/99; 11:36:10 GMT by AR
+			//Closed a security hole: The subject is now run thru mainResponder.neuterText.
+		//5/26/99; 01:54:34 GMT by AR
+			//Added new optional parameter, groupname. If it's the empty string (the default), we assume config.mainResponder.globals.defaultMembershipGroup.
+		//2/11/99; 11:37:21 AM by DW
+			//if html.getPageTableAddress doesn't work, we create our own table
+				//any callback should only depend on pta^.adrNewMsg being set
+			//new optional parameter, adrroot, if nil, we should find the discussion root ourselves, otherwise the caller supplied it
+			//new optional parameter, flcallback, if true we call the callbacks, otherwise not
+		//4/10/00; 2:48:59 PM by JES
+			//changed string constants to lookups in the localization table with mainResponder.getString
 	bundle { //clean up subject and messagetext
 		subject = string.trimWhitespace (subject);
 		if subject == "" {

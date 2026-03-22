@@ -1,11 +1,11 @@
 on importFolder (folder) {
-	«Monday, February 23, 1998 at 10:58:34 AM by DW
-		«This script had never been updated for Frontier 5 or Windows. 
-		«It could only read from the resource fork. Oops.
-		«Removed the first parameter, the address of the table we're going to import into.
-		«This never worked, because it depended on the folder name being the same as the table name.
-		«This can't be true due to limits in the file systems.
-		«Instead, we use the address that's stored in each of the files.
+	//Monday, February 23, 1998 at 10:58:34 AM by DW
+		//This script had never been updated for Frontier 5 or Windows. 
+		//It could only read from the resource fork. Oops.
+		//Removed the first parameter, the address of the table we're going to import into.
+		//This never worked, because it depended on the folder name being the same as the table name.
+		//This can't be true due to limits in the file systems.
+		//Instead, we use the address that's stored in each of the files.
 	local (f, flgotfile, flmac = sys.os () beginsWith "Mac");
 	fileloop (f in folder, infinity) {
 		flgotfile = false;
@@ -19,7 +19,7 @@ on importFolder (folder) {
 				table.moveAndRename (@resdata, adr);
 				flgotfile = true}};
 		if not flgotfile { //not Mac or not resource-based file
-			«ugly -- we have to crib code because fatPages.importFatFile doesn't do a table.surePath
+			//ugly -- we have to crib code because fatPages.importFatFile doesn't do a table.surePath
 			local (pageSource = string (file.readwholeFile (f)), atts);
 			pageSource = string.replaceAll (pageSource, cr + lf, cr);
 			pageSource = string.replaceAll (pageSource, lf, cr);
@@ -38,7 +38,7 @@ on importFolder (folder) {
 			unpack (@data, atts.adrPageData);
 			msg (atts.adrPageData)}}};
 
-«bundle «test code
-	«local (folder = "d:\\test\\")
-	«importfolder (folder)
-	«filemenu.save ()
+//bundle //test code
+	//local (folder = "d:\\test\\")
+	//importfolder (folder)
+	//filemenu.save ()

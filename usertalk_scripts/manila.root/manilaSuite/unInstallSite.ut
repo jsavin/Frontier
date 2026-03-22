@@ -1,21 +1,21 @@
 on unInstallSite (adrSite) {
-	«Changes:
-		«2/15/07; 1:25:37 PM by LL
-			«Try to remove the site from the aggregator subscriptions list.
-		«6/28/06; 3:27:45 PM by LL
-			«Fix to check if the default domain is defined when removing sub-site from config.mainresponder.domains table.
-		«7/12/05; 1:16:03 PM by JES
-			«Fix a typo.
-		«5/28/05; 5:52:12 PM by JES
-			«Remove sites from config.mainResponder.domains when uninstalled, if appropriate.
-		«01/31/00; 5:32:56 PM by PBS
-			«Don't remove tables from discuss.root and members.root -- because if it's a table then it's a shared discussion group or membership group.
-			«Delete the gdb from user.databases only if it contains just one table. Otherwise, it probably contains other Manila sites, and should not be deleted from user.databases.
-		«10/22/99; 1:37:10 AM by PBS
-			«Remove a site from this server.
-				«Remove addresses from discuss.root and members.root.
+	//Changes:
+		//2/15/07; 1:25:37 PM by LL
+			//Try to remove the site from the aggregator subscriptions list.
+		//6/28/06; 3:27:45 PM by LL
+			//Fix to check if the default domain is defined when removing sub-site from config.mainresponder.domains table.
+		//7/12/05; 1:16:03 PM by JES
+			//Fix a typo.
+		//5/28/05; 5:52:12 PM by JES
+			//Remove sites from config.mainResponder.domains when uninstalled, if appropriate.
+		//01/31/00; 5:32:56 PM by PBS
+			//Don't remove tables from discuss.root and members.root -- because if it's a table then it's a shared discussion group or membership group.
+			//Delete the gdb from user.databases only if it contains just one table. Otherwise, it probably contains other Manila sites, and should not be deleted from user.databases.
+		//10/22/99; 1:37:10 AM by PBS
+			//Remove a site from this server.
+				//Remove addresses from discuss.root and members.root.
 	
-	«Discussion group.
+	//Discussion group.
 	local (adrDg = @adrSite^.["#discussionGroup"]);
 	if defined (adrDg^) {
 		local (dgName = adrSite^.["#prefs"].discussionRoot);
@@ -24,7 +24,7 @@ on unInstallSite (adrSite) {
 			if typeOf (adrDiscussFile^.[dgName]) != tableType { //PBS 01/31/00: don't delete tables, because if it's a table it's a shared discussion group.
 				delete (@adrDiscussFile^.[dgName])}}};
 	
-	«Membership group.
+	//Membership group.
 	local (adrMembers = @adrSite^.["#membershipGroup"]);
 	if defined (adrMembers^) {
 		local (groupName = adrSite^.["#prefs"].defaultMembershipGroup);
@@ -33,7 +33,7 @@ on unInstallSite (adrSite) {
 			if typeOf (adrMembersFile^.[groupName]) != tableType { //PBS 01/31/00: don't delete tables, because it it's a table it's a shared membership group.
 				delete (@adrMembersFile^.[groupName])}}};
 	
-	«config.manila.sites.
+	//config.manila.sites.
 	if defined (config.manila.sites) {
 		local (i);
 		for i = sizeOf (config.manila.sites) downTo 1 {
@@ -42,10 +42,10 @@ on unInstallSite (adrSite) {
 				if adrItem^ == adrSite {
 					delete (adrItem)}}}};
 	
-	«user.databases.
+	//user.databases.
 	local (f);
 	f = window.getFile (table.getRootAddress (adrSite));
-	«PBS 01/31/00: Delete from user.databases only if this gdb contains just one site. Otherwise, there may be other sites in this gdb, and the entry in user.databases should not be deleted.
+	//PBS 01/31/00: Delete from user.databases only if this gdb contains just one site. Otherwise, there may be other sites in this gdb, and the entry in user.databases should not be deleted.
 	if sizeOf ([f]) < 2 {
 		local (lowerF = string.lower (f));
 		local (i);
@@ -55,7 +55,7 @@ on unInstallSite (adrSite) {
 				if string.lower (adrItem^.f) == lowerF {
 					delete (adrItem)}}}};
 	
-	«config.mainResponder.domains
+	//config.mainResponder.domains
 	bundle {
 		local (siteurl = manilaSuite.getSiteUrl (adrSite));
 		local (urlparts = string.urlSplit (siteurl));
@@ -71,7 +71,7 @@ on unInstallSite (adrSite) {
 				try {
 					mainResponder.siteTree.removeSiteFromTree (urlparts[2], "/" + urlparts[3])}}}};
 	
-	«aggregator.services
+	//aggregator.services
 	bundle {
 		local (siteurl = adrsite^.["#ftpSite"].url);
 		if not (siteurl endswith "/") {

@@ -1,7 +1,7 @@
 on compileIfDirty (adroutline, identifier, adrdirectoryinfo, ownername=user.prefs.name, owneremail=user.prefs.mailAddress) {
-	«Changes
-		«5/10/02; 1:56:16 PM by JES
-			«Created. Cribbed from manilaSuite.directory.initMessageTable.
+	//Changes
+		//5/10/02; 1:56:16 PM by JES
+			//Created. Cribbed from manilaSuite.directory.initMessageTable.
 	on clearcache () {
 		new (tabletype, @adrdirectoryinfo^.cache);
 		html.directory.initDirectoryTable (identifier, parentOf (parentOf (adrdirectoryinfo^)^))};

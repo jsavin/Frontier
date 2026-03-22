@@ -1,16 +1,16 @@
 on describeTabs (adrSession) {
-	«Changes
-		«4/13/06; 2:46:27 AM by JES
-			«Created. Retrieve a list of all objects.
-				«Once you have a list of objects, you can iterate through the list using describeObject to get metadata for each object type.
+	//Changes
+		//4/13/06; 2:46:27 AM by JES
+			//Created. Retrieve a list of all objects.
+				//Once you have a list of objects, you can iterate through the list using describeObject to get metadata for each object type.
 	return (salesforce.callApi (adrSession, nameOf (this^)))};
-«bundle //test code
-	«local (adrses)
-	«bundle //set adrses
-		«if defined (temp.salesforce.sessions) and sizeOf (temp.salesforce.sessions)
-			«local (sesnum = sizeOf (temp.salesforce.sessions))
-			«adrses = @temp.salesforce.sessions[sesnum]
-		«else //log in
-			«salesforce.login (workspace.salesforcecomUsername, workspace.salesforcecomPassword, @adrses)
-	«table.assign (@workspace.retval, this^ (adrses))
-	«edit (@workspace.retval)
+//bundle //test code
+	//local (adrses)
+	//bundle //set adrses
+		//if defined (temp.salesforce.sessions) and sizeOf (temp.salesforce.sessions)
+			//local (sesnum = sizeOf (temp.salesforce.sessions))
+			//adrses = @temp.salesforce.sessions[sesnum]
+		//else //log in
+			//salesforce.login (workspace.salesforcecomUsername, workspace.salesforcecomPassword, @adrses)
+	//table.assign (@workspace.retval, this^ (adrses))
+	//edit (@workspace.retval)

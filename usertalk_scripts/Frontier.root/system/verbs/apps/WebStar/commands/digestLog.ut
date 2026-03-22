@@ -5,7 +5,7 @@ on digestLog (f) {
 		s = file.readline (f);
 		if s beginswith "!!" {
 			if s beginswith "!!LOG_FORMAT" {
-				«!!LOG_FORMAT DATE TIME RESULT HOSTNAME URL BYTES_SENT
+				//!!LOG_FORMAT DATE TIME RESULT HOSTNAME URL BYTES_SENT
 				local (ct = string.countfields (s, ' '), i);
 				for i = 2 to ct {
 					local (name = string.nthfield (s, ' ', i));
@@ -15,10 +15,10 @@ on digestLog (f) {
 					if name == "URL" {
 						ixurl = i - 1}}}}
 		else {
-			bundle { «gather information about URLs
+			bundle { //gather information about URLs
 				local (url);
 				url = string.nthfield (s, '\t', ixurl);
-				if not (string.lower (url) endsWith ".html") { «we only count page-reads
+				if not (string.lower (url) endsWith ".html") { //we only count page-reads
 					continue};
 				local (adr = @user.webstar.urls.[url]);
 				if defined (adr^) {
@@ -26,32 +26,32 @@ on digestLog (f) {
 				else {
 					adr^ = 1};
 				msg (url)};
-			«bundle «gather information about hosts
-				«on gatherHostInfo ()
-					«local (host)
-					«host = string.nthfield (s, '\t', ixhost)
-					«host = string.delete (host, sizeof (host), 1) «pop off period at end of host name
-					«local (ctfields = string.countFields (host, '.'))
-					«msg (host)
-					«bundle «eliminate all-numeric IP addresses
-						«if ctfields == 4
-							«local (i, flnumeric = true)
-							«for i = 1 to 4
-								«try
-									«number (string.nthField (host, '.', i))
-								«else «didn't coerce to a number, must contain non-numeric chars
-									«flnumeric = false
-									«break
-							«if flnumeric
-								«return
-					«adr = @user.webstar.hosts.[host]
-					«if defined (adr^)
-						«adr^++
-					«else
-						«adr^ = 1
-				«gatherHostInfo ()}};
+			//bundle //gather information about hosts
+				//on gatherHostInfo ()
+					//local (host)
+					//host = string.nthfield (s, '\t', ixhost)
+					//host = string.delete (host, sizeof (host), 1) //pop off period at end of host name
+					//local (ctfields = string.countFields (host, '.'))
+					//msg (host)
+					//bundle //eliminate all-numeric IP addresses
+						//if ctfields == 4
+							//local (i, flnumeric = true)
+							//for i = 1 to 4
+								//try
+									//number (string.nthField (host, '.', i))
+								//else //didn't coerce to a number, must contain non-numeric chars
+									//flnumeric = false
+									//break
+							//if flnumeric
+								//return
+					//adr = @user.webstar.hosts.[host]
+					//if defined (adr^)
+						//adr^++
+					//else
+						//adr^ = 1
+				//gatherHostInfo ()}};
 	file.close (f);
-	bundle { «sort the tables
+	bundle { //sort the tables
 		msg ("Sorting user.webstar.urls");
 		target.set (@user.webstar.urls);
 		table.sortby ("Value");
@@ -61,5 +61,5 @@ on digestLog (f) {
 		table.sortby ("Value")};
 	
 	msg ("Log analysis complete at " + clock.now () + ".")};
-bundle { «test code
+bundle { //test code
 	digestLog ("Jaz Disk 1:WebSTAR.log.1/13/97")}

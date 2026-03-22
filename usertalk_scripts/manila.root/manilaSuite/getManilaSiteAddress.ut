@@ -1,6 +1,6 @@
 on getManilaSiteAddress (pta=nil) {
-	«Return the address of the Manila site -- even if this is a static rendering context.
-		«04/15/00; 5:10:24 PM by PBS
+	//Return the address of the Manila site -- even if this is a static rendering context.
+		//04/15/00; 5:10:24 PM by PBS
 	
 	if pta == nil {
 		pta = html.getPageTableAddress ()};

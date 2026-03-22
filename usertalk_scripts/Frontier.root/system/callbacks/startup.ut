@@ -1,7 +1,7 @@
-«Call user's startup scripts
-«Changes:
-	«Thursday, September 28, 2000 at 7:00:15 PM by JES
-		«Allow the callback to be an address or the address of an address...
+//Call user's startup scripts
+//Changes:
+	//Thursday, September 28, 2000 at 7:00:15 PM by JES
+		//Allow the callback to be an address or the address of an address...
 if not defined (user.callbacks) {
 	new (tabletype, @user.callbacks)};
 if not defined (user.callbacks.startup) {

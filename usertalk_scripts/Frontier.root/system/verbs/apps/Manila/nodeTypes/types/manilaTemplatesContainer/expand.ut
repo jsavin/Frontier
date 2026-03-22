@@ -1,5 +1,5 @@
-«Make sure there's a Home Page Template node.
-	«10/14/00; 4:06:46 PM by PBS
+//Make sure there's a Home Page Template node.
+	//10/14/00; 4:06:46 PM by PBS
 local (origCursor = op.getCursor ());
 local (siteUrl);
 op.attributes.getOne ("siteUrl", @siteUrl);

@@ -1,5 +1,5 @@
 on newUser (userName, password, emailAddress) {
-	«Create a new user. Return false if the user already exists.
+	//Create a new user. Return false if the user already exists.
 	local (adrUser = people.getUserTable (userName));
 	if people.userExists (userName, adrUser) {
 		return (false)};

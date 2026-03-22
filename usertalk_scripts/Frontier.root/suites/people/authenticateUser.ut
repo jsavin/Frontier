@@ -1,10 +1,10 @@
 on authenticateUser (userName, password, serviceName) {
-	«Is this a valid user?
-	«User is authenticated if...
-		«1) The passwords match,
-		«2) The service exists, and
-		«3) The service is enabled for this user or this user's group.
-	«Return the address of the data table if authentic, false otherwise.
+	//Is this a valid user?
+	//User is authenticated if...
+		//1) The passwords match,
+		//2) The service exists, and
+		//3) The service is enabled for this user or this user's group.
+	//Return the address of the data table if authentic, false otherwise.
 	if not (people.checkPassword (userName, password)) {
 		return (false)};
 	if not (people.serviceExists (serviceName)) {

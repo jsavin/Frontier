@@ -1,56 +1,56 @@
 on profileReader (pta=nil) {
-	«View one profile.
-	«Changes:
-		«3/30/07; 1:02:07 PM by LL
-			«Added Delete button to the profile reader page.
-		«2006
-			«11/9/06; 2:34:07 PM by LL
-				«Add site-level preference to disable the spam-free mailto links.
-			«1/31/06; 2:42:08 AM by JES
-				«Add support for pending message status.
-		«2005
-			«8/4/05; 4:02:36 AM by JES
-				«Managing editors always see the next/prev links, regardless of whether the members list is public or not.
-			«8/4/05; 3:29:31 AM by JES
-				«If the wizard's structure table is not defined, create it by compiling the outline XML.
-			«7/6/05; 8:27:05 PM by JES
-				«Added support for checkboxArray type items in custom prefs.
-			«6/6/05; 6:27:20 PM by JES
-				«When getting a usersMapKey from a member key, call through mainResponder.members.getUsersMapKey instead of generating it here. (Restoring old, but as yet unreleased code.)
-			«30/06/05; 8:38:00 AM by PR
-				«updated the code to find the usernum in the spam free mail to
-		«1999-2004
-			«8/13/04; 6:05:45 PM by JES
-				«Added ability to block or unblock members from the profile reader page.
-			«9/11/03; 5:53:55 PM by JES
-				«If logged in as managing editor, display the email address next to the member's name.
-			«9/3/03; 10:45:28 AM by JES
-				«Added support for shared membership groups. Thanks to Erin Clerico for the fix.
-			«9/2/03; 12:14:04 PM by JES
-				«When logged in as the managing editor, display blocked members with the word "blocked" next to their names.
-				«When not logged in as the managing editor, blocked members are not linked to, and their profile page will return an appropriate error message.
-				«If a member or member-map key is not defined, or a member-map key maps to a deleted member, display an appropriate error message.
-			«4/21/03; 10:06:56 PM by JES
-				«If the member's table doesn't have a name, don't display their email address in the title of the page.
-			«4/21/03; 11:31:17 AM by JES
-				«Add the mailto link with a prompt after the custom prefs items. This way you don't have to have personalInfo.name as one of your custom prefs, to get a mailto link.
-			«4/20/03; 11:19:28 PM by JES
-				«Added spam-free mailto links.
-			«4/18/03; 5:21:22 PM by JES
-				«Use the new numeric mapped member keys for next/prev member links instead of older style links which include the member's email address.
-			«10/27/00; 11:57:49 AM by PBS
-				«Previous and Next member links appear only if the members list is public or a Managing Editor is viewing the page.
-			«05/01/00; 3:00:03 PM by JES
-				«Changed getString calls to use a replacement table address instead of a lists
-			«04/21/00; 3:06:25 AM by JES
-				«localized
-			«11/6/99; 4:36:19 PM by PBS
-				«If a pref ends with a question mark, don't add a colon.
-			«11/1/99; 2:43:39 PM by PBS
-				«View custom prefs info if defined by the managing editor.
-				«Previous and Next member links.
-				«If no memberKey is specified: view your own profile if you're a logged-in member, otherwise view the profile of the managing editor.
-				«Use manilaSuite.unTaint when appropriate rather than mainResponder.neuterText.
+	//View one profile.
+	//Changes:
+		//3/30/07; 1:02:07 PM by LL
+			//Added Delete button to the profile reader page.
+		//2006
+			//11/9/06; 2:34:07 PM by LL
+				//Add site-level preference to disable the spam-free mailto links.
+			//1/31/06; 2:42:08 AM by JES
+				//Add support for pending message status.
+		//2005
+			//8/4/05; 4:02:36 AM by JES
+				//Managing editors always see the next/prev links, regardless of whether the members list is public or not.
+			//8/4/05; 3:29:31 AM by JES
+				//If the wizard's structure table is not defined, create it by compiling the outline XML.
+			//7/6/05; 8:27:05 PM by JES
+				//Added support for checkboxArray type items in custom prefs.
+			//6/6/05; 6:27:20 PM by JES
+				//When getting a usersMapKey from a member key, call through mainResponder.members.getUsersMapKey instead of generating it here. (Restoring old, but as yet unreleased code.)
+			//30/06/05; 8:38:00 AM by PR
+				//updated the code to find the usernum in the spam free mail to
+		//1999-2004
+			//8/13/04; 6:05:45 PM by JES
+				//Added ability to block or unblock members from the profile reader page.
+			//9/11/03; 5:53:55 PM by JES
+				//If logged in as managing editor, display the email address next to the member's name.
+			//9/3/03; 10:45:28 AM by JES
+				//Added support for shared membership groups. Thanks to Erin Clerico for the fix.
+			//9/2/03; 12:14:04 PM by JES
+				//When logged in as the managing editor, display blocked members with the word "blocked" next to their names.
+				//When not logged in as the managing editor, blocked members are not linked to, and their profile page will return an appropriate error message.
+				//If a member or member-map key is not defined, or a member-map key maps to a deleted member, display an appropriate error message.
+			//4/21/03; 10:06:56 PM by JES
+				//If the member's table doesn't have a name, don't display their email address in the title of the page.
+			//4/21/03; 11:31:17 AM by JES
+				//Add the mailto link with a prompt after the custom prefs items. This way you don't have to have personalInfo.name as one of your custom prefs, to get a mailto link.
+			//4/20/03; 11:19:28 PM by JES
+				//Added spam-free mailto links.
+			//4/18/03; 5:21:22 PM by JES
+				//Use the new numeric mapped member keys for next/prev member links instead of older style links which include the member's email address.
+			//10/27/00; 11:57:49 AM by PBS
+				//Previous and Next member links appear only if the members list is public or a Managing Editor is viewing the page.
+			//05/01/00; 3:00:03 PM by JES
+				//Changed getString calls to use a replacement table address instead of a lists
+			//04/21/00; 3:06:25 AM by JES
+				//localized
+			//11/6/99; 4:36:19 PM by PBS
+				//If a pref ends with a question mark, don't add a colon.
+			//11/1/99; 2:43:39 PM by PBS
+				//View custom prefs info if defined by the managing editor.
+				//Previous and Next member links.
+				//If no memberKey is specified: view your own profile if you're a logged-in member, otherwise view the profile of the managing editor.
+				//Use manilaSuite.unTaint when appropriate rather than mainResponder.neuterText.
 	
 	if pta == nil {
 		pta = html.getPageTableAddress ()};
@@ -314,7 +314,7 @@ on profileReader (pta=nil) {
 				else {
 					add (manilaSuite.getString ("members.noProfileInfoFor", @replacementTable, pta: pta) + "<p>")}}}; // 4/21/00 JES: localized
 		
-		«Previous and Next member links.
+		//Previous and Next member links.
 		local (adrMember = mainResponder.members.getMemberTable (groupName, memberKey));
 		if defined (adrMember^) {
 			local (flPublic = manilaSuite.getNewsSitePref ("flMembersListPublic", default:false, flCreate:true));
@@ -340,13 +340,13 @@ on profileReader (pta=nil) {
 						ixPrev--;
 						if ixPrev < 1 {
 							break}};
-					«loop
-						«prevMemberKey = nameOf (adrMembers^ [ixPrev])
-						«if prevMemberKey contains "@" //must be a real member, not the Admin member or similar
-							«break
-						«ixPrev--
-						«if ixPrev < 1
-							«break
+					//loop
+						//prevMemberKey = nameOf (adrMembers^ [ixPrev])
+						//if prevMemberKey contains "@" //must be a real member, not the Admin member or similar
+							//break
+						//ixPrev--
+						//if ixPrev < 1
+							//break
 					
 					if ixPrev > 0 {
 						local (prevUrl);
@@ -369,13 +369,13 @@ on profileReader (pta=nil) {
 						ixNext++;
 						if ixNext >= ctMembers {
 							break}};
-					«loop
-						«nextMemberKey = nameOf (adrMembers^ [ixNext])
-						«if nextMemberKey contains "@" //must be a real member, not the Admin member or similar
-							«break
-						«ixNext++
-						«if ixNext >= ctMembers
-							«break
+					//loop
+						//nextMemberKey = nameOf (adrMembers^ [ixNext])
+						//if nextMemberKey contains "@" //must be a real member, not the Admin member or similar
+							//break
+						//ixNext++
+						//if ixNext >= ctMembers
+							//break
 					
 					if ixNext <= ctMembers {
 						local (nextUrl);
@@ -384,7 +384,7 @@ on profileReader (pta=nil) {
 					else {
 						nextLink = manilaSuite.getString ("members.nextMember", pta: pta)}}; // 4/21/00 JES: localized
 				
-				«Add the previous and next member links.
+				//Add the previous and next member links.
 				add ("<p>");
 				add (prevLink + " | " + nextLink)}};
 		

@@ -1,8 +1,8 @@
-«Changes:
-	«04/14/00; 7:40:44 PM by JES
-		«localized
-	«05/01/00; 7:11:47 PM by JES
-		«Changed getString calls to use a replacement table address instead of a lists
+//Changes:
+	//04/14/00; 7:40:44 PM by JES
+		//localized
+	//05/01/00; 7:11:47 PM by JES
+		//Changed getString calls to use a replacement table address instead of a lists
 local (htmltext = "");
 on add (s) {
 	htmltext = htmltext + s};

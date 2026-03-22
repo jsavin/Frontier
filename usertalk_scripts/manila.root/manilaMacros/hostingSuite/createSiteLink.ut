@@ -1,7 +1,7 @@
 on createSiteLink (linktext = "Create a Site", className = "") {
-	«Changes
-		«Fri, Mar 12, 2004 at 3:57:23 PM by JS
-			«Created. Generate a link to the default Create a Site site. Used in the default home site for the create site link in the navigation.
+	//Changes
+		//Fri, Mar 12, 2004 at 3:57:23 PM by JS
+			//Created. Generate a link to the default Create a Site site. Used in the default home site for the create site link in the navigation.
 	try {
 		local (class = "");
 		if className != "" {

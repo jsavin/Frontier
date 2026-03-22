@@ -1,19 +1,19 @@
 on parseMultipart (adrparamtable) {
-	«Changes
-		«9/16/04; 1:46:27 AM by JES
-			«If running on MacOS, convert argument names to mac characters.
-		«Changes before 2004
-			«08/28/01; 12:31:27 AM by JES
-				«Added support for <select multiple> form elements, per feedback from Seth Dillingham.
-			«12/02/1999; 5:18:51 PM by AR
-				«Disabled debugging code: No longer write to scratchpad.headers.
-			«1/17/99; 1:39:20 PM by DW
-				«Thanks to Kurt Egger for prodding me to do this code, and to Jeff Willden for a great example to work with. I rewrote the code to make better use of Frontier, to perform better and have a flatter interface for the application. 
-				«Our goal is to fill the postArgs table with info from the request
+	//Changes
+		//9/16/04; 1:46:27 AM by JES
+			//If running on MacOS, convert argument names to mac characters.
+		//Changes before 2004
+			//08/28/01; 12:31:27 AM by JES
+				//Added support for <select multiple> form elements, per feedback from Seth Dillingham.
+			//12/02/1999; 5:18:51 PM by AR
+				//Disabled debugging code: No longer write to scratchpad.headers.
+			//1/17/99; 1:39:20 PM by DW
+				//Thanks to Kurt Egger for prodding me to do this code, and to Jeff Willden for a great example to work with. I rewrote the code to make better use of Frontier, to perform better and have a flatter interface for the application. 
+				//Our goal is to fill the postArgs table with info from the request
 	local (boundaryString);
 	bundle { //get the boundary string that separates each form element
 		local (s = adrparamtable^.requestHeaders.["Content-Type"]);
-		«multipart/form-data; boundary=---------------------------7cf1873b3e070a
+		//multipart/form-data; boundary=---------------------------7cf1873b3e070a
 		boundaryString = string.popLeading (string.nthField (s, '=', 2), '-')};
 	
 	local (body);
@@ -40,7 +40,7 @@ on parseMultipart (adrparamtable) {
 			headers.data = elementBody;
 			contentDisposition = headers.["Content-Disposition"];
 			delete (@headers.["Content-Disposition"]);
-			«name="file"; filename="D:\frontierStartupCommands.txt"
+			//name="file"; filename="D:\frontierStartupCommands.txt"
 			loop {
 				s = string.nthField (contentDisposition, ';', 1);
 				if s == "" {
@@ -55,15 +55,15 @@ on parseMultipart (adrparamtable) {
 						if system.environment.isMac { //JES 9/16/04: convert argname to mac characters
 							argname = latinToMac.convert (argname)}}
 					else {
-						«bundle //08/28/01 JES: original code
-							«headers.[name] = value
+						//bundle //08/28/01 JES: original code
+							//headers.[name] = value
 						if defined (headers.[name]) { //08/28/01 JES: support <select multiple> form elements
 							if typeOf (headers.[name]) != listType {
 								headers.[name] = {headers.[name]}};
 							headers.[name] = headers.[name] + {value}}
 						else {
 							headers.[name] = value}}}};
-			«scratchpad.headers = headers
+			//scratchpad.headers = headers
 			if sizeof (headers) == 1 {
 				if defined (adrtable^.[argName]) { //08/28/01 JES: support <select multiple> form elements
 					if typeOf (adrtable^.[argName]) != listType {
@@ -75,5 +75,5 @@ on parseMultipart (adrparamtable) {
 				adrtable^.[argName] = headers}};
 		body = string.delete (body, 1, ix + sizeof (boundaryString));
 		body = string.popLeading (body, '\n')}};
-«bundle //test code
-	«parseMultipart (@scratchpad.multipartparamtable)
+//bundle //test code
+	//parseMultipart (@scratchpad.multipartparamtable)

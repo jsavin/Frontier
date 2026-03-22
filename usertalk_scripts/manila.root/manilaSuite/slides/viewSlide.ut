@@ -1,12 +1,12 @@
 on viewSlide () {
-	«Find and display a slide.
-		«Changes:
-			«12/18/00; 2:52:35 PM by PBS
-				«The slides template is the template for the entire page.
-				«If the member can edit the slide, add an Edit with Radio button.
-			«12/20/00; 3:44:48 PM by PBS
-				«Fix for sub-sites -- the next, previous, and home links didn't work. Now they're relative to the current page, rather than of the form /slides/xxx/yyy.
-				«Because of caching, we have to make those relative URLs always the same. But that doesn't work when /msgNum, /msgNum/, /msgNum/1 get you the same page. So: redirect when the URL isn't of the form /msgNum/1.
+	//Find and display a slide.
+		//Changes:
+			//12/18/00; 2:52:35 PM by PBS
+				//The slides template is the template for the entire page.
+				//If the member can edit the slide, add an Edit with Radio button.
+			//12/20/00; 3:44:48 PM by PBS
+				//Fix for sub-sites -- the next, previous, and home links didn't work. Now they're relative to the current page, rather than of the form /slides/xxx/yyy.
+				//Because of caching, we have to make those relative URLs always the same. But that doesn't work when /msgNum, /msgNum/, /msgNum/1 get you the same page. So: redirect when the URL isn't of the form /msgNum/1.
 	local (flUseCache = true);
 	local (pta = html.getPageTableAddress ());
 	local (adrPrefs = @pta^.newsSite^.slides);
@@ -139,7 +139,7 @@ on viewSlide () {
 		doLevel (nomad);
 		slideBody = htmlText;
 		
-		«Add macro for edit button.
+		//Add macro for edit button.
 		slideBody = slideBody + "{editInRadioButton}"};
 	
 	local (htmlText = string (adrPrefs^.template));

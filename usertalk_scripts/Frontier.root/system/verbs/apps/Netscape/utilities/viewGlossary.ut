@@ -5,7 +5,7 @@ on viewGlossary () {
 	s =  s + "<body bgcolor=\"#FFFFFF\" text=\"#000000\" link=\"#880000\" vlink=\"#000099\">";
 	s = s + "<center><h1>" + "user.html.glossary" + "</h1></center>";
 	s = s + "<p>" + Netscape.utilities.getGlossaryHTML ();
-	bundle { «do sysop info
+	bundle { //do sysop info
 		local (sysopinfo = "<p>");
 		sysopinfo = sysopinfo + "<b>Folder:</b> " + file.folderFromPath (f) +  "<br>";
 		sysopinfo = sysopinfo + "<b>File:</b> " + file.fileFromPath (f) +  "<br>";

@@ -1,9 +1,9 @@
 on getRsdXml () {
-	«Changes
-		«12/18/02; 9:23:44 AM by JES
-			«RSD 0.6 -> 1.0. (The version attribute of rsd changed from 0.6, rpcLink changed to apiLink, and default namespace declaration is fixed.)
-		«12/13/02; 3:48:16 PM by JES
-			«Generate an rsd.xml file.
+	//Changes
+		//12/18/02; 9:23:44 AM by JES
+			//RSD 0.6 -> 1.0. (The version attribute of rsd changed from 0.6, rpcLink changed to apiLink, and default namespace declaration is fixed.)
+		//12/13/02; 3:48:16 PM by JES
+			//Generate an rsd.xml file.
 	local (pta = html.getPageTableAddress ());
 	local (adrsite = manilaSuite.getSiteAddress (pta));
 	local (blogid = manilaSuite.getCanonicalSiteName (adrsite));

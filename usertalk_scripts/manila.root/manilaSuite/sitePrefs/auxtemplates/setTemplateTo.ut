@@ -1,11 +1,11 @@
 on setTemplateTo (pta, templ) {
-	«Changes
-		«8/31/05; 2:44:11 AM by JES
-			«Set template directly (pta^.indirectTemplate = false), because the indirect template method caused <title> to be treated the same as {title}.
-				«This was grandfathered in for perpetuity, according to a comment I saw in a script somewhere. Manila knows how to work around it, but only if pta^.template is the actual template, and not a reference to a template somewhere else.
-		«04/05/16, 18:42:04 by DAB
-			«Created. Set page table template.
-			«manilaFixer.templates.setTemplateTo : 02/06/07, 22:42:24 by DAB
+	//Changes
+		//8/31/05; 2:44:11 AM by JES
+			//Set template directly (pta^.indirectTemplate = false), because the indirect template method caused <title> to be treated the same as {title}.
+				//This was grandfathered in for perpetuity, according to a comment I saw in a script somewhere. Manila knows how to work around it, but only if pta^.template is the actual template, and not a reference to a template somewhere else.
+		//04/05/16, 18:42:04 by DAB
+			//Created. Set page table template.
+			//manilaFixer.templates.setTemplateTo : 02/06/07, 22:42:24 by DAB
 	 if manilaSuite.staticRendering.isStaticRendering() {
 		local (adrNewsSite = parentOf (pta^.adrSiteRootTable^));
 		local (adrManilaSite = parentOf (adrNewsSite^));

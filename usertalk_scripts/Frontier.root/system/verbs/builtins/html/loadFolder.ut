@@ -10,7 +10,7 @@ on loadFolder (folder, adrtable) {
 			html.loadFolder (f, adrsubtable)} //recurse
 		else {
 			html.loadTextFile (f, adrtable)}}};
-«bundle «test code
-	«local (folder = "C:\\Frontier 5\\Websites\\samples\\davenet\\")
-	«local (adrtable = @websites.test)
-	«loadFolder (folder, adrtable)
+//bundle //test code
+	//local (folder = "C:\\Frontier 5\\Websites\\samples\\davenet\\")
+	//local (adrtable = @websites.test)
+	//loadFolder (folder, adrtable)

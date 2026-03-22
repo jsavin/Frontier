@@ -1,5 +1,5 @@
 on set (username, password, siteName, msgNum, timestamp) {
-	«manilaSuite.rpcHandlers.accesscontrol.releaseDate.set : 04/05/21, 10:01:53 by DAB
-		«get releaseDate 02/02/27, 14:41:26 by DAB
-		«manilaFixer.rpcHandlers.accesscontrol.releaseDate.set : 02/02/27, 14:41:26 by DAB
+	//manilaSuite.rpcHandlers.accesscontrol.releaseDate.set : 04/05/21, 10:01:53 by DAB
+		//get releaseDate 02/02/27, 14:41:26 by DAB
+		//manilaFixer.rpcHandlers.accesscontrol.releaseDate.set : 02/02/27, 14:41:26 by DAB
 	manilaSuite.accessControl.rpcHandlers.set(username, password, siteName, msgNum, "releasedate", timestamp)}

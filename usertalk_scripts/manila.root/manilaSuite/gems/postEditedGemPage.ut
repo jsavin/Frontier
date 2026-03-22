@@ -1,7 +1,7 @@
 on postEditedGemPage (pta=nil) {
-	«manilaSuite.gems.postEditedGemPage : 04/06/30, 15:23:14 by DAB
-		«Post changes to a gem. Sicne Manila itself doesn't edit gems, we only see if there's
-		«an override in force for this URLTable entry.
+	//manilaSuite.gems.postEditedGemPage : 04/06/30, 15:23:14 by DAB
+		//Post changes to a gem. Sicne Manila itself doesn't edit gems, we only see if there's
+		//an override in force for this URLTable entry.
 	
 	if pta == nil {
 		pta = html.getPageTableAddress ()};
@@ -17,7 +17,7 @@ on postEditedGemPage (pta=nil) {
 				return htmltext}}};
 	
 	local(gemNum = pta^.postargs.gemNumber);
-	«Create the new gem: write to disk, store info in site, possibly create shortcut.
+	//Create the new gem: write to disk, store info in site, possibly create shortcut.
 	local (adrSite = manilaSuite.getManilaSiteAddress (pta));
 	local (adrGemTable=manilaSuite.gems.getGemAddress(adrSite, gemNum));
 	try { // edit the gem

@@ -1,11 +1,11 @@
 on init () {
-	«Changes
-		«8/9/02; 3:19:27 PM by JES
-			«Call the init scripts for all of the drivers.
-		«7/30/02; 3:11:50 PM by JES
-			«Initialize user.im.prefs.flConnectAtStartup to false.
-		«5/6/02; 8:06:00 PM by DW
-			«Created.
+	//Changes
+		//8/9/02; 3:19:27 PM by JES
+			//Call the init scripts for all of the drivers.
+		//7/30/02; 3:11:50 PM by JES
+			//Initialize user.im.prefs.flConnectAtStartup to false.
+		//5/6/02; 8:06:00 PM by DW
+			//Created.
 	if not defined (user.im) {
 		new (tabletype, @user.im)};
 	bundle { //prefs

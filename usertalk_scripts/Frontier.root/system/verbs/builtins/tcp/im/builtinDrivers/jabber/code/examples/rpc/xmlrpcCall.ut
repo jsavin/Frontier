@@ -1,8 +1,8 @@
 on xmlrpcCall ( connection, mesAdr,  iq, query ) {
-	«Changes
-		«5/14/02; 1:51:34 PM by JB
-			«Changelog created.
-	«xmlrpcCall handles an incoming RPC call
+	//Changes
+		//5/14/02; 1:51:34 PM by JB
+			//Changelog created.
+	//xmlrpcCall handles an incoming RPC call
 	on addAtt ( XMLadr, name, value ) {
 		if not defined ( XMLadr^.["/atts"] ) {
 			new ( tableType, @XMLadr^.["/atts"] )};
@@ -26,8 +26,8 @@ on xmlrpcCall ( connection, mesAdr,  iq, query ) {
 		queryTag = xml.addTable ( iqTag, "query" )};
 	
 	bundle { // handle the call
-		«there's an inefficiency here; the xml text goes through two compile/decompile phases
-			«I'd like to have a version of betty.rpc.server that takes a XML table directly, and also doesn't try an IP check (meaningless with Jabber), but I hesitate to spawn my own version, and get out of sync with betty.rpc.server.
+		//there's an inefficiency here; the xml text goes through two compile/decompile phases
+			//I'd like to have a version of betty.rpc.server that takes a XML table directly, and also doesn't try an IP check (meaningless with Jabber), but I hesitate to spawn my own version, and get out of sync with betty.rpc.server.
 		methodTag = xml.getAddress(query, "methodCall" );
 		xmlstr = noDirectiveXmlDecompile(methodTag);
 		local ( params ); new ( tableType, @params );

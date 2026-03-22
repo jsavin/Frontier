@@ -2,27 +2,27 @@ on processMacros (text, adrVar = nil) {
 	try {
 		with webServer.standardMacros {
 			local (tag = "<!--#");
-			if defined (adrVar^) { « evaluate macro with optional table of params
-				with adrVar^ { «items in adrvar table override items in macros table
+			if defined (adrVar^) { // evaluate macro with optional table of params
+				with adrVar^ { //items in adrvar table override items in macros table
 					if string.patternMatch (tag , text ) < 1 {
-						return (text)}; «no macros
+						return (text)}; //no macros
 					local (i, z, workCopy);
-					workCopy = string.replaceAll (text, tag, "Æ"); « change to one char for string.nthField
+					workCopy = string.replaceAll (text, tag, "Æ"); // change to one char for string.nthField
 					for i = 2 to string.countFields (workCopy, "Æ") {
 						local (tempString = string.nthField (workCopy, "Æ", i), macroString = "");
-						tempString = string.replaceAll (tempString, "\\\"", "Æ"); «replace escaped quotes
-						for z = 1 to string.countFields (tempString, "\"") { «build macrostring, ignoring things between quotes
+						tempString = string.replaceAll (tempString, "\\\"", "Æ"); //replace escaped quotes
+						for z = 1 to string.countFields (tempString, "\"") { //build macrostring, ignoring things between quotes
 							local (testString = string.nthField (tempString, "\"", z));
-							if (mod (z, 2)) > 0 { « test even/odd
+							if (mod (z, 2)) > 0 { // test even/odd
 								if string.patternMatch ("-->", testString) > 0 {
 									testString = string.delete (testString, string.patternMatch ("-->", testString), sizeOf (testString));
 									macroString = macroString + testString;
-									break}; «loop ends when we get to a > outside of quotes
+									break}; //loop ends when we get to a > outside of quotes
 								macroString = macroString + testString + "\""}
 							else {
 								macroString = macroString + testString + "\""}};
-						macroString = string.replaceAll (macroString , "Æ", "\\\""); «put escaped quotes back
-						if string.patternMatch ("(", macroString) < 1 { « no parentheses, not a script 
+						macroString = string.replaceAll (macroString , "Æ", "\\\""); //put escaped quotes back
+						if string.patternMatch ("(", macroString) < 1 { // no parentheses, not a script 
 							if defined (macroString^) {
 								case typeOf (macroString^) {
 									stringType {
@@ -31,30 +31,30 @@ on processMacros (text, adrVar = nil) {
 										text = string.replaceAll (text, tag + macroString + "-->", string (macroString^))}}}
 							else {
 								text = string.replaceAll (text, tag + macroString + "-->", "")}}
-						else { « it has parentheses and will be dealt with like a script
+						else { // it has parentheses and will be dealt with like a script
 							try {
 								local (evaluationString = string (evaluate (macroString)));
 								text = string.replace (text, tag + macroString + "-->", evaluationString)}
 							else {
 								text = string.replaceAll (text, tag + macroString + "-->", "")}}}}}
-			else { « same thing without optional table of params
+			else { // same thing without optional table of params
 				if string.patternMatch (tag , text ) < 1 {
-					return (text)}; «no macros
+					return (text)}; //no macros
 				local (i, z, workCopy);
-				workCopy = string.replaceAll (text, tag, "Æ"); « change to one char for string.nthField
+				workCopy = string.replaceAll (text, tag, "Æ"); // change to one char for string.nthField
 				for i = 2 to string.countFields (workCopy, "Æ") {
 					local (tempString = string.nthField (workCopy, "Æ", i), macroString = "");
-					for z = 1 to string.countFields (tempString, "\"") { «build macrostring, ignoring things between quotes
+					for z = 1 to string.countFields (tempString, "\"") { //build macrostring, ignoring things between quotes
 						local (testString = string.nthField (tempString, "\"", z));
-						if (mod (z, 2)) > 0 { « test even/odd
+						if (mod (z, 2)) > 0 { // test even/odd
 							if string.patternMatch ("-->", testString) > 0 {
 								testString = string.delete (testString, string.patternMatch ("-->", testString), sizeOf (testString));
 								macroString = macroString + testString;
-								break}; «loop ends when we get to a > outside of quotes
+								break}; //loop ends when we get to a > outside of quotes
 							macroString = macroString + testString + "\""}
 						else {
 							macroString = macroString + testString + "\""}};
-					if string.patternMatch ("(", macroString) < 1 { « no parentheses, not a script 
+					if string.patternMatch ("(", macroString) < 1 { // no parentheses, not a script 
 						if defined (macroString^) {
 							case typeOf (macroString^) {
 								stringType {
@@ -63,7 +63,7 @@ on processMacros (text, adrVar = nil) {
 									text = string.replaceAll (text, tag + macroString + "-->", string (macroString^))}}}
 						else {
 							text = string.replaceAll (text, tag + macroString + "-->", "")}}
-					else { « it has parentheses and will be dealt with like a script
+					else { // it has parentheses and will be dealt with like a script
 						try {
 							local (transform = string (evaluate (macroString)));
 							text = string.replace (text, tag + macroString + "-->", transform)}

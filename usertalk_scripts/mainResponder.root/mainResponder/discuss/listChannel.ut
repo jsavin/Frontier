@@ -1,6 +1,6 @@
 on listChannel (channelname) {
-	«4/12/00; 2:50:21 AM by JES
-		«Localised using mainResponder.getString
+	//4/12/00; 2:50:21 AM by JES
+		//Localised using mainResponder.getString
 	local (htmltext = "", indentlevel = 0);
 	on add (s) {
 		htmltext = htmltext + string.filledString ("\t", indentlevel) + s + "\r"};

@@ -1,10 +1,10 @@
 on visitPagesWithin (adrSite, relativePath, adrCallback) {
-	«manilaSuite.sitePrefs.siteStructure.visitPagesWithin : 04/05/16, 17:28:48 by DAB
-		«walk the site structure of Manila site at adrSite and invoke 
-		«adrCallback for each story and category whose path is within /relPath/
-		«manilaFixer.utilityvisitPagesWithin : 01/03/06, 23:32:16 by DAB
+	//manilaSuite.sitePrefs.siteStructure.visitPagesWithin : 04/05/16, 17:28:48 by DAB
+		//walk the site structure of Manila site at adrSite and invoke 
+		//adrCallback for each story and category whose path is within /relPath/
+		//manilaFixer.utilityvisitPagesWithin : 01/03/06, 23:32:16 by DAB
 	
-	«compile the XML outline if needed
+	//compile the XML outline if needed
 	manilaSuite.siteStructure.compileIfDirty (adrSite);
 	
 	local (adrStructure = @adrSite^.["#hierarchy"].structure[1]);
@@ -27,7 +27,7 @@ on visitPagesWithin (adrSite, relativePath, adrCallback) {
 					flFoundNode = true;
 					break}};
 			if not flFoundNode {
-				«scripterror("Invalid  path " + startPath + " at " + nodename)
+				//scripterror("Invalid  path " + startPath + " at " + nodename)
 				scripterror("Invalid  path " + relativePath + " at " + nodename)}; //01/08/12, 16:20:01 by DAB
 			nomad = adrItem}};
 	

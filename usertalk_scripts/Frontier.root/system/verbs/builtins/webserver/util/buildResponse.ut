@@ -1,43 +1,43 @@
 on buildResponse (code, adrHeaderTable=nil, responseBody=nil) {
-	«Thursday, November 11, 1999 at 3:05:16 AM by AR
-		«Implemented as a kernel verb in Frontier 6.1.
-		«Old code
-			«on buildResponse (code, adrHeaderTable=nil, responseBody=nil)
-				«Responders should not need to use this script, since they are not supposed to return headers or write to the stream,
-				«the dispatcher takes care of calling this script.
-				«local (response, i)
-				«
-				«on add (s)
-					«response = response + s + "\r\n"
-				«
-				«response = ""
-				«if defined (webserver.data.responses.[code])
-					«add ("HTTP/1.1 " + code + " " + webserver.data.responses.[code])
-				«else
-					«add ("HTTP/1.1 " + code + " Unknown")
-				«
-				«if (adrHeaderTable == nil) // the user doesn't need to set any specific headers
-					«new (tableType, @headerTable)
-					«adrHeaderTable = @headerTable
-				«
-				«adrHeaderTable^.Connection = "close" // make sure to tell the client we're closing the connection
-				«
-				«adrHeaderTable^.Date = date.netStandardString (clock.now ()) // set the server's date
-				«
-				«adrHeaderTable^.Server = webserver.util.getServerString() // set the server
-				«
-				«if (responseBody != "" && responseBody != nil)
-					«adrHeaderTable^.["Content-Length"] = sizeOf(responseBody) // set the Content-Length header
-				«
-				«this script doesn't clean up header names for you; maybe there should be another util script for that
-				«for i = 1 to sizeOf (adrHeaderTable^) // convert the response headers to text
-					«this might need to be changed to allow duplicate response headers
-					«add (nameOf (adrHeaderTable^[i]) + ": " + adrHeaderTable^[i])
-				«
-				«add ("") // end the headers
-				«
-				«if (responseBody != "" && responseBody != nil)
-					«response = response + responseBody // add the body
-				«
-				«return (response)
+	//Thursday, November 11, 1999 at 3:05:16 AM by AR
+		//Implemented as a kernel verb in Frontier 6.1.
+		//Old code
+			//on buildResponse (code, adrHeaderTable=nil, responseBody=nil)
+				//Responders should not need to use this script, since they are not supposed to return headers or write to the stream,
+				//the dispatcher takes care of calling this script.
+				//local (response, i)
+				//
+				//on add (s)
+					//response = response + s + "\r\n"
+				//
+				//response = ""
+				//if defined (webserver.data.responses.[code])
+					//add ("HTTP/1.1 " + code + " " + webserver.data.responses.[code])
+				//else
+					//add ("HTTP/1.1 " + code + " Unknown")
+				//
+				//if (adrHeaderTable == nil) // the user doesn't need to set any specific headers
+					//new (tableType, @headerTable)
+					//adrHeaderTable = @headerTable
+				//
+				//adrHeaderTable^.Connection = "close" // make sure to tell the client we're closing the connection
+				//
+				//adrHeaderTable^.Date = date.netStandardString (clock.now ()) // set the server's date
+				//
+				//adrHeaderTable^.Server = webserver.util.getServerString() // set the server
+				//
+				//if (responseBody != "" && responseBody != nil)
+					//adrHeaderTable^.["Content-Length"] = sizeOf(responseBody) // set the Content-Length header
+				//
+				//this script doesn't clean up header names for you; maybe there should be another util script for that
+				//for i = 1 to sizeOf (adrHeaderTable^) // convert the response headers to text
+					//this might need to be changed to allow duplicate response headers
+					//add (nameOf (adrHeaderTable^[i]) + ": " + adrHeaderTable^[i])
+				//
+				//add ("") // end the headers
+				//
+				//if (responseBody != "" && responseBody != nil)
+					//response = response + responseBody // add the body
+				//
+				//return (response)
 	kernel (webserver.buildResponse)}

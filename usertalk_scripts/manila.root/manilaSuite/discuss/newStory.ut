@@ -1,9 +1,9 @@
 on newStory () {
-	«Changes:
-		«Wed, May 30, 2001 at 11:24:54 PM by JES
-			«If pta^.messageBody is defined, use it for the default body text of the message.
-		«9/13/01; 2:09:17 PM by PBS
-			«Don't use a maxlength attribute for the subject field.
+	//Changes:
+		//Wed, May 30, 2001 at 11:24:54 PM by JES
+			//If pta^.messageBody is defined, use it for the default body text of the message.
+		//9/13/01; 2:09:17 PM by PBS
+			//Don't use a maxlength attribute for the subject field.
 	local (pta = html.getPageTableAddress ());
 	pta^.title = manilaSuite.getString ("discuss.newStoryPageTitle");
 	local (storyReaderUrl = manilaSuite.getUrl ("storyReader", pta));
@@ -12,7 +12,7 @@ on newStory () {
 		if not manilaSuite.editors.editorialTest () {
 			return ("Can't create a new story because you don't have permission.")}};
 	
-	«04/19/00 at 6:19:11 PM by JES: get localized strings for the form
+	//04/19/00 at 6:19:11 PM by JES: get localized strings for the form
 	local (titlePrompt, buttonText);
 	titlePrompt = manilaSuite.getString ("common.titlePrompt");
 	buttonText = manilaSuite.getString ("discuss.postNewStoryButton");
@@ -21,7 +21,7 @@ on newStory () {
 	if defined (pta^.messageBody) {
 		messageBody = pta^.messageBody};
 	
-	«local (htmltext = mainResponder.discuss.newMessageForm (0, "", titlePrompt, buttonText, redirectUrl:storyReaderUrl, actionURL: "postStory", bodyText:messageBody, flLimitSubjectLength:false))
+	//local (htmltext = mainResponder.discuss.newMessageForm (0, "", titlePrompt, buttonText, redirectUrl:storyReaderUrl, actionURL: "postStory", bodyText:messageBody, flLimitSubjectLength:false))
 	local (actionURL = manilaSuite.getURL("discussPostStory", pta)); //04.08.21, 09:43:22 by DAB
 	local (adrETPbuilder = @mainResponder.discuss.newMessageForm); //04.06.22, 22:13:57 by DAB
 	manilaSuite.plugins.ETPoverride.getScriptAddress("editorialNewStory", @adrETPbuilder); //04.06.22, 22:14:02 by DAB

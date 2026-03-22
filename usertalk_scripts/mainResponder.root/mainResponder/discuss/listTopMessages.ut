@@ -1,7 +1,7 @@
 on listTopMessages (ctToList=10, url=nil, groupName="default") {
-	«Changes
-		«4/20/03; 1:00:22 PM by JES
-			«New optional parameter, groupName. This lets us show the user's real name instead of just an email address, when displaying most read message pages in a Manila site.
+	//Changes
+		//4/20/03; 1:00:22 PM by JES
+			//New optional parameter, groupName. This lets us show the user's real name instead of just an email address, when displaying most read message pages in a Manila site.
 	local (pta = html.getPageTableAddress ());
 	if url == nil {
 		url = pta^.responderattributes.urls^.discussMsgReader};

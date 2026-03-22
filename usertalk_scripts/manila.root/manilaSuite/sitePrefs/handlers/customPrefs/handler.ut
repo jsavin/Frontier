@@ -1,7 +1,7 @@
 on handler (pta, adrObject) {
-	«manilaSuite.sitePrefs.handlers.customPrefs.handler : 04/05/15, 17:36:04 by DAB
-		«factored out of manilaSuite.admin.advancedPage (with extreme prejudice) 
-	«messages at manilaData.localization.languages.english.strings.admin
+	//manilaSuite.sitePrefs.handlers.customPrefs.handler : 04/05/15, 17:36:04 by DAB
+		//factored out of manilaSuite.admin.advancedPage (with extreme prejudice) 
+	//messages at manilaData.localization.languages.english.strings.admin
 	local (advancedPageName = pta^.pathArgs);
 	local (adrSite= manilaSuite.getManilaSiteAddress(pta));
 	local (adrNewsSite = manilaSuite.getNewsSiteAddress ());
@@ -57,7 +57,7 @@ on handler (pta, adrObject) {
 				wp.newTextObject (s, adrObject);
 				xml.compile (s, @adrNewsSite^.prefsWizard.structure);
 				manilaSuite.custody.checkInAndOut(adrObject, pta^.adrMemberInfo, pta^.adrSiteRootTable, false);
-				«add(manilaSuite.sitePrefs.utility.successMessage (pta, "admin.updatedSuccessPlural", @replacementTable))
+				//add(manilaSuite.sitePrefs.utility.successMessage (pta, "admin.updatedSuccessPlural", @replacementTable))
 				value = manilaSuite.sitePrefs.utility.exportOutline(string (adrObject^));
 				
 				bundle { //PBS 07/22/00: localization bug fix -- the custom sign up wizard wasn't being created

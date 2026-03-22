@@ -1,2 +1,2 @@
-on paste () { «Paste an object from the clipboard
+on paste () { //Paste an object from the clipboard
 	return (appleEvent (Filemaker.id, 'misc', 'past'))}

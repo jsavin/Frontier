@@ -1,5 +1,5 @@
 on readableXML (s) { //call this from a web page to produce readable XML
-	«I needed this for the docs on the XML verbs. DW 3/20/98
+	//I needed this for the docs on the XML verbs. DW 3/20/98
 	s = string.replaceAll (s, "<", "&lt;");
 	s = string.replaceAll (s, "\n", "");
 	s = string.poptrailing (s, "\r");

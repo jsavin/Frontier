@@ -1,2 +1,2 @@
-on shift (x) { «Shift the selected text left or right, optionally by one space.
+on shift (x) { //Shift the selected text left or right, optionally by one space.
 	return (appleEvent (BBEdit.id, 'R*ch', 'Shft', '----', x))}

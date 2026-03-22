@@ -1,20 +1,20 @@
 on getCurrentThreads (siteName, username, password) {
-	«Changes
-		«1/31/06; 2:59:42 AM by JES
-			«Add support for flPending messages.
-		«05/23/01; 1:15:21 AM by JES
-			«Specify customStructType instead of customArrayType, which follows from a change in soap.rpc.server, based on SOAP interop work.
-		«03/19/01; 3:20:27 PM by JES
-			«When called via SOAP, return an array of structs, specifying the Manila namespace, namespace URI, and struct type.
-		«02/13/01; 2:04:44 PM by JES
-			«Prepend "msg" to the numerical name of the returned items. Fixes a bug when using SOAP where elements with invalid names would be generated.
-		«01/02/01; 1:25:38 AM by JES
-			«On Macs, convert the subject to Latin text.
-		«Saturday, September 30, 2000 at 4:59:47 PM by PBS
-			«Use new Manila pref for number of topics in a topics listing.
-		«Saturday, September 30, 2000 at 11:25:37 AM by DW
-			«Forked from manilaSuite.rpcHandlers.message.getCurrentHeaders. 
-			«Return information about the most recent top-level messages.
+	//Changes
+		//1/31/06; 2:59:42 AM by JES
+			//Add support for flPending messages.
+		//05/23/01; 1:15:21 AM by JES
+			//Specify customStructType instead of customArrayType, which follows from a change in soap.rpc.server, based on SOAP interop work.
+		//03/19/01; 3:20:27 PM by JES
+			//When called via SOAP, return an array of structs, specifying the Manila namespace, namespace URI, and struct type.
+		//02/13/01; 2:04:44 PM by JES
+			//Prepend "msg" to the numerical name of the returned items. Fixes a bug when using SOAP where elements with invalid names would be generated.
+		//01/02/01; 1:25:38 AM by JES
+			//On Macs, convert the subject to Latin text.
+		//Saturday, September 30, 2000 at 4:59:47 PM by PBS
+			//Use new Manila pref for number of topics in a topics listing.
+		//Saturday, September 30, 2000 at 11:25:37 AM by DW
+			//Forked from manilaSuite.rpcHandlers.message.getCurrentHeaders. 
+			//Return information about the most recent top-level messages.
 	
 	manilaSuite.rpcUtils.dgAccessCheck (siteName, username, password, "Can't get message headers because ");
 	
@@ -24,7 +24,7 @@ on getCurrentThreads (siteName, username, password) {
 	local (adrCal = @adrDiscuss^.calendar);
 	local (adrSite = config.manila.sites.[siteName]);
 	local (msgReaderUrl = adrSite^.["#urls"].discussMsgReader);
-	«local (numMessages = manilaSuite.getNewsSitePref ("numMessagesInDiscussListing", default:50, flCreate:true, adrSite:adrSite))
+	//local (numMessages = manilaSuite.getNewsSitePref ("numMessagesInDiscussListing", default:50, flCreate:true, adrSite:adrSite))
 	local (numMessages = manilaSuite.getNewsSitePref ("numMessagesInDiscussTopicsListing", default:10, flCreate:true, adrSite:adrSite)); //PBS 09/30/00: new pref for number of topics in topics list
 	
 	local (theDay);

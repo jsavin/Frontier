@@ -1,89 +1,89 @@
 on advancedPage (pta=nil) {
-	«Display the Advanced sitePrefs page and handle commands.
-		«This page allows you to edit:
-			«Navigation
-			«Template
-			«Cascading Style Sheets
-			«JavaScript
-			«Colors
-			«Custom Prefs
-		«11/8/99; 3:48:32 PM by PBS
-	«Changes:
-		«6/30/05; 2:59:37 AM by JES
-			«Removed the action attribute from the <form> tag. We're always POSTing to ourselves, so it was unnecessary. Also, with the new iframe-based advanced prefs page, this was causing the page loaded from a POST to use the incorrect template.
-		«3/2/04; 1:47:03 PM by JES
-			«Added template for current navigation item, in the navigation appearance section.
-		«7/10/03; 5:18:21 PM by JES
-			«Added robots.txt editor.
-		«4/28/03; 1:17:12 PM by JES
-			«Added checkbox for displaying an Edit button next to the site's navigation links: Defaults to checked.
-			«Localized prompt for Use Home Page Template.
-		«4/20/03; 4:38:56 PM by JES
-			«Added External Style Sheet section.
-		«2002:
-			«1/25/02; 6:10:51 PM by PBS
-				«Performance enhancements in the local "add" routine -- add a trailing semicolon; use parentheses to get the expression in x = x + y form (which is optimized by the kernel).
-		«2001:
-			«10/2/01; 1:05:13 PM by PBS
-				«Allow the user to edit the print-friendly template.
-			«9/6/01; 3:23:15 PM by PBS
-				«The area for editing Navigation Appearance was too small for complex designs.
-			«03/23/01; 6:07:03 PM by PBS
-				«HTML errors in the Navigation Appearance section were fixed. There was a missing tr tag, and the type attribute was missing from the input fields.
-			«03/20/01; 6:30:23 PM by PBS
-				«When there's XML an error in the navigation, site structure, or custom prefs, and when the page returned with an error, the text inside the textarea for that item was messed up. Quotes appeared as &quot;, for instance. This has been fixed.
-		«2000:
-			«01/17/00; 5:15:28 PM by PBS
-				«Preliminary support for editing in Pike.
-			«02/11/00; 3:20:40 PM by PBS
-				«Custody support: don't allow objects to be edited if they're being edited in Pike.
-			«03/27/00; 5:07:24 PM by PBS
-				«Allow the newsArchiveLink macro in the news day template.
-			«04/09/00; 5:31:56 PM by PBS
-				«Add help text to the news day template section regarding the newsArchiveLink macro.
-			«05/09/00; 12:36:51 PM by JES
-				«second attempt at localization
-			«05/22/00; 7:16:32 PM by JES
-				«various small bug fixes related to confirm boxes
-			«05/29/00; 9:09:19 PM by JES
-				«fixed problem where new member signup page would revert the top section to English on non-english sites
-			«06/05/00; 3:52:46 PM by PBS
-				«New block of prefs: Themes. You can make your site cloneable and choose name for your theme.
-			«06/11/00; 3:28:48 AM by JES
-				«Merged Brent's theme prefs code.
-				«Localized Themes panel.
-			«07/22/00; 4:04:51 PM by PBS
-				«Localization bug fix -- the custom sign up wizard wasn't being created in the site when the custom prefs changed.
-			«10/14/00; 12:56:36 PM by PBS
-				«New Home Page Template allows one to use an alternate template for just the home page.
-			«10/25/00; 7:07:41 PM by PBS
-				«Don't enforce navigator links macro for home page template.
-			«10/31/00; 5:58:15 PM by JES
-				«basicXmlPost passes in the manilaLanguageTableAddress as part of the site attributes when restoring an item to the default.
-			«11/26/00; 7:48:24 PM by PBS
-				«The external editor button connects to the local HTTP server, which then requests the object from the Manila server.
-		«1999:
-			«12/10/99; 10:40:52 AM by PBS
-				«The News Day Template allows you to edit the mini-templates for each day of news when rendering more than one day of news on the home page.
-			«12/12/99; 5:55:26 PM by PBS
-				«Navigation Appearance is a new section. You can edit the appearance of your navigation. Two items are editable: the item format, which is the format of each item, and separator format, which is the HTML that separates each item. With this feature you can create horizontal navigation, or add characters of some kind (like the | character) between items, or do <br> separators, or whatever.
-			«12/13/99; 5:40:31 PM by PBS
-				«Confirm boxes respect the editor's choice of colors.
-			«12/13/99; 10:17:37 PM by PBS
-				«Fixed bug when restoring the template to the default: you might get a siteName not defined message. Now you won't.
-			«12/14/99; 2:54:47 PM by PBS
-				«The calendar formatting can now be customized via the Advanced page.
-			«12/15/99; 3:00:29 PM by PBS
-				«Both states of the Members box are now editable templates.
-			«12/21/99; 8:03:56 PM by PBS
-				«Get the separator colors by calling manilaSuite.html.getSeparatorColors, a new bottleneck script.
+	//Display the Advanced sitePrefs page and handle commands.
+		//This page allows you to edit:
+			//Navigation
+			//Template
+			//Cascading Style Sheets
+			//JavaScript
+			//Colors
+			//Custom Prefs
+		//11/8/99; 3:48:32 PM by PBS
+	//Changes:
+		//6/30/05; 2:59:37 AM by JES
+			//Removed the action attribute from the <form> tag. We're always POSTing to ourselves, so it was unnecessary. Also, with the new iframe-based advanced prefs page, this was causing the page loaded from a POST to use the incorrect template.
+		//3/2/04; 1:47:03 PM by JES
+			//Added template for current navigation item, in the navigation appearance section.
+		//7/10/03; 5:18:21 PM by JES
+			//Added robots.txt editor.
+		//4/28/03; 1:17:12 PM by JES
+			//Added checkbox for displaying an Edit button next to the site's navigation links: Defaults to checked.
+			//Localized prompt for Use Home Page Template.
+		//4/20/03; 4:38:56 PM by JES
+			//Added External Style Sheet section.
+		//2002:
+			//1/25/02; 6:10:51 PM by PBS
+				//Performance enhancements in the local "add" routine -- add a trailing semicolon; use parentheses to get the expression in x = x + y form (which is optimized by the kernel).
+		//2001:
+			//10/2/01; 1:05:13 PM by PBS
+				//Allow the user to edit the print-friendly template.
+			//9/6/01; 3:23:15 PM by PBS
+				//The area for editing Navigation Appearance was too small for complex designs.
+			//03/23/01; 6:07:03 PM by PBS
+				//HTML errors in the Navigation Appearance section were fixed. There was a missing tr tag, and the type attribute was missing from the input fields.
+			//03/20/01; 6:30:23 PM by PBS
+				//When there's XML an error in the navigation, site structure, or custom prefs, and when the page returned with an error, the text inside the textarea for that item was messed up. Quotes appeared as &quot;, for instance. This has been fixed.
+		//2000:
+			//01/17/00; 5:15:28 PM by PBS
+				//Preliminary support for editing in Pike.
+			//02/11/00; 3:20:40 PM by PBS
+				//Custody support: don't allow objects to be edited if they're being edited in Pike.
+			//03/27/00; 5:07:24 PM by PBS
+				//Allow the newsArchiveLink macro in the news day template.
+			//04/09/00; 5:31:56 PM by PBS
+				//Add help text to the news day template section regarding the newsArchiveLink macro.
+			//05/09/00; 12:36:51 PM by JES
+				//second attempt at localization
+			//05/22/00; 7:16:32 PM by JES
+				//various small bug fixes related to confirm boxes
+			//05/29/00; 9:09:19 PM by JES
+				//fixed problem where new member signup page would revert the top section to English on non-english sites
+			//06/05/00; 3:52:46 PM by PBS
+				//New block of prefs: Themes. You can make your site cloneable and choose name for your theme.
+			//06/11/00; 3:28:48 AM by JES
+				//Merged Brent's theme prefs code.
+				//Localized Themes panel.
+			//07/22/00; 4:04:51 PM by PBS
+				//Localization bug fix -- the custom sign up wizard wasn't being created in the site when the custom prefs changed.
+			//10/14/00; 12:56:36 PM by PBS
+				//New Home Page Template allows one to use an alternate template for just the home page.
+			//10/25/00; 7:07:41 PM by PBS
+				//Don't enforce navigator links macro for home page template.
+			//10/31/00; 5:58:15 PM by JES
+				//basicXmlPost passes in the manilaLanguageTableAddress as part of the site attributes when restoring an item to the default.
+			//11/26/00; 7:48:24 PM by PBS
+				//The external editor button connects to the local HTTP server, which then requests the object from the Manila server.
+		//1999:
+			//12/10/99; 10:40:52 AM by PBS
+				//The News Day Template allows you to edit the mini-templates for each day of news when rendering more than one day of news on the home page.
+			//12/12/99; 5:55:26 PM by PBS
+				//Navigation Appearance is a new section. You can edit the appearance of your navigation. Two items are editable: the item format, which is the format of each item, and separator format, which is the HTML that separates each item. With this feature you can create horizontal navigation, or add characters of some kind (like the | character) between items, or do <br> separators, or whatever.
+			//12/13/99; 5:40:31 PM by PBS
+				//Confirm boxes respect the editor's choice of colors.
+			//12/13/99; 10:17:37 PM by PBS
+				//Fixed bug when restoring the template to the default: you might get a siteName not defined message. Now you won't.
+			//12/14/99; 2:54:47 PM by PBS
+				//The calendar formatting can now be customized via the Advanced page.
+			//12/15/99; 3:00:29 PM by PBS
+				//Both states of the Members box are now editable templates.
+			//12/21/99; 8:03:56 PM by PBS
+				//Get the separator colors by calling manilaSuite.html.getSeparatorColors, a new bottleneck script.
 	
 	if pta == nil {
 		pta = html.getPageTableAddress ()};
 	pta^.title = manilaSuite.getString ("admin.advancedPageTitle", pta: pta);
 	
-	«05/10/00 JES: get the localized version of the page's name in the URL
-	«local (advancedPageName = string.lower (string.innerCaseName (pta^.title)))
+	//05/10/00 JES: get the localized version of the page's name in the URL
+	//local (advancedPageName = string.lower (string.innerCaseName (pta^.title)))
 	local (advancedPageName = pta^.pathArgs);
 	
 	local (separatorColor, separatorTextColor);
@@ -148,7 +148,7 @@ on advancedPage (pta=nil) {
 	on addFormStart () {
 		local (formName = getShortSectionName ());
 		indentLevel++;
-		«add ("<form method=\"POST\" action=\"" + pta^.fname + "$" + advancedPageName + "#" + formName + "\">")
+		//add ("<form method=\"POST\" action=\"" + pta^.fname + "$" + advancedPageName + "#" + formName + "\">")
 		add ("<form method=\"POST\">");
 		return (true)};
 	on endSection () {
@@ -249,7 +249,7 @@ on advancedPage (pta=nil) {
 			return (true)}; //true because a confirm box was added
 		return (false)}; //didn't need to add a confirm box
 	on basicPost (displayName, shortName, adrObject, adrCreateScript, flPost) {
-		«CSS, JavaScript.
+		//CSS, JavaScript.
 		local (replacementTable); new (tableType, @replacementTable);
 		replacementTable.displayName = displayName;
 		if flPost { //handle the command
@@ -267,7 +267,7 @@ on advancedPage (pta=nil) {
 						local (s = string (pta^.postArgs.[shortName]));
 						s = string.replaceAll (s, lf, "");
 						wp.newTextObject (s, adrObject);
-						«Refresh the page.
+						//Refresh the page.
 						mainResponder.redirect (pta^.fname + "$" + advancedPageName + "?" + shortName + "=2#" + shortName)}}}};
 		
 		if defined (argTable.[shortName]) { //search args are used to signify a success message through a refresh/redirect
@@ -286,7 +286,7 @@ on advancedPage (pta=nil) {
 		
 		return (true)};
 	on basicXmlPost (displayName, shortName, adrObject, adrCreateScript, flPost, adrVal, adrStructure=nil) {
-		«Navigation, custom prefs, hierarchy.
+		//Navigation, custom prefs, hierarchy.
 		if flPost { //handle the command
 			local (replacementTable); new (tableType, @replacementTable);
 			replacementTable.displayName = displayName;
@@ -331,7 +331,7 @@ on advancedPage (pta=nil) {
 		return (true)};
 	
 	bundle { //add a meta tag
-		«This page should expire immediately, it should never be cached. For this to work, the template should include the {meta} safe macro.
+		//This page should expire immediately, it should never be cached. For this to work, the template should include the {meta} safe macro.
 		
 		local (s = "<META HTTP-EQUIV=\"Expires\" CONTENT=\"Mon, 01 Jan 1990 01:00:00 GMT\">");
 		
@@ -418,7 +418,7 @@ on advancedPage (pta=nil) {
 							new (tableType, @siteInfo);
 							siteInfo.adrSite = adrSite;
 							siteInfo.siteName = nameOf (adrSite^); //PBS 12/13/99: fix for siteName not defined error
-							«manilaSuite.newSite.createTemplate (@siteInfo)
+							//manilaSuite.newSite.createTemplate (@siteInfo)
 							manilaSuite.themes.restoreTemplate (@siteInfo);
 							local (successMessage = manilaSuite.getString ("admin.templateHasBeenRestoredToDefault", pta: pta));
 							mainResponder.redirect (pta^.fname + "$" + advancedPageName + "?" + shortName + "=1#" + shortName)}
@@ -429,7 +429,7 @@ on advancedPage (pta=nil) {
 							if manilaSuite.admin.isGoodTemplate (s, @errorString) {
 								s = mainResponder.neuterText (s, true, false);
 								wp.newTextObject (s, adrObject);
-								«Refresh the page.
+								//Refresh the page.
 								local (successMessage = manilaSuite.getString ("admin.templateUpdateSuccess", pta: pta));
 								mainResponder.redirect (pta^.fname + "$" + advancedPageName + "?" + shortName + "=2#" + shortName)}
 							else {
@@ -483,10 +483,10 @@ on advancedPage (pta=nil) {
 							if manilaSuite.admin.isGoodTemplate (s, @errorString, flCheckNavigatorLinks:false) { //PBS 10/25/00: don't enforce navigator links macro
 								s = mainResponder.neuterText (s, true, false);
 								wp.newTextObject (s, adrObject);
-								«Refresh the page.
+								//Refresh the page.
 								local (successMessage = manilaSuite.getString ("admin.homePageTemplateUpdateSuccess", pta: pta));
 								mainResponder.redirect (pta^.fname + "$" + advancedPageName + "?" + shortName + "=2#" + shortName);
-								«Update use home page template flag.
+								//Update use home page template flag.
 								if not defined (pta^.postArgs.flUseHomePageTemplate) {
 									pta^.newsSite^.flUseHomePageTemplate = false}
 								else {
@@ -562,19 +562,19 @@ on advancedPage (pta=nil) {
 							local (errorString);
 							s = mainResponder.neuterText (s, true, false);
 							wp.newTextObject (s, adrObject);
-							«Refresh the page.
+							//Refresh the page.
 							local (successMessage = manilaSuite.getString ("admin.homePageTemplateUpdateSuccess", pta: pta));
 							mainResponder.redirect (pta^.fname + "$" + advancedPageName + "?" + shortName + "=2#" + shortName)}}}};
 			
 			if defined (argTable.[shortName]) { //search args are used to signify a success message through a refresh/redirect
 				case argTable.[shortName] {
 					"1" {
-						«addSuccessMessage (manilaSuite.getString ("admin.restoredDefaultSuccessSingular", @replacementTable, pta: pta))
+						//addSuccessMessage (manilaSuite.getString ("admin.restoredDefaultSuccessSingular", @replacementTable, pta: pta))
 						addSuccessMessage ("The " + sectionName + " has been restored to the default.")};
 					"2" {
 						addSuccessMessage (manilaSuite.getString ("admin.updatedSuccessSingular", @replacementTable, pta: pta))}}};
 			
-			«addDescription (manilaSuite.getString ("admin.homePageTemplateSectionDescription", pta: pta))
+			//addDescription (manilaSuite.getString ("admin.homePageTemplateSectionDescription", pta: pta))
 			addDescription ("You can edit the template that's used for the print-friendly version of your site. This template should remain simple so that it looks good when printed.");
 			addFormStart ();
 			addTable ();
@@ -583,7 +583,7 @@ on advancedPage (pta=nil) {
 			indentLevel++;
 			textArea (value:value, rows:20);
 			add ("</tr>");
-			«indentLevel--
+			//indentLevel--
 			
 			addButtons (adrObject, true, manilaSuite.getString ("admin.editTemplateWithPike", pta: pta));
 			
@@ -675,95 +675,95 @@ on advancedPage (pta=nil) {
 			addButtons (adrObject, true, manilaSuite.getString ("admin.editJavaScriptWithPike", pta: pta));
 			
 			endSection ()};
-		«bundle //Colors
-			«sectionName = "Colors"
-			«local (shortName = getShortSectionName ())
-			«if not defined (adrNewsSite^.colors)
-				«local (siteInfo)
-				«new (tableType, @siteInfo)
-				«siteInfo^.adrSite = adrSite
-				«manilaSuite.newSite.createCustomColors (@siteInfo)
-			«local (flPost = wasThisFormPosted ())
-			«addSeparator ()
-			«
-			«if flPost
-				«if not (addConfirmBox ("Are you sure you want to restore these colors to the default?"))
-					«if defined (pta^.postArgs.doRestoreDefault) //restore to default
-						«local (siteInfo)
-						«new (tableType, @siteInfo)
-						«siteInfo.adrSite = adrSite
-						«manilaSuite.newSite.createCustomColors (@siteInfo)
-						«mainResponder.redirect (pta^.fname + "$" + advancedPageName + "?" + shortName + "=1#" + shortName)
-					«else //update
-						«local (adrColors = @adrNewsSite^.colors)
-						«adrColors^.membersBoxHeader = pta^.postArgs.["colors.membersBoxHeader"]
-						«adrColors^.membersBoxHeaderText = pta^.postArgs.["colors.membersBoxHeaderText"]
-						«adrColors^.membersBox = pta^.postArgs.["colors.membersBox"]
-						«adrColors^.separator = pta^.postArgs.["colors.separator"]
-						«adrColors^.separatorText = pta^.postArgs.["colors.separatorText"]
-						«adrColors^.discussListings = pta^.postArgs.["colors.discussListings"]
-						«Refresh the page.
-						«mainResponder.redirect (pta^.fname + "$" + advancedPageName + "?" + shortName + "=2#" + shortName)
-			«if defined (argTable.[shortName]) //search args are used to signify a success message through a refresh/redirect
-				«case argTable.[shortName]
-					«"1"
-						«addSuccessMessage ("The custom colors have been restored to the default.")
-					«"2"
-						«addSuccessMessage ("The custom colors have been updated.")
-			«
-			«addDescription ("You can change the colors of elements that can't be edited through the template.")
-			«addFormStart ()
-			«add ("<input type=\"hidden\" name=\"" + shortName + "\" value=\"true\">")
-			«addTable ()
-			«
-			«bundle //members box header color
-				«add ("<tr>")
-				«indentLevel++
-				«tdLabel ("Header color for Members box")
-				«tdValue ("colors.membersBoxHeader", "black")
-				«add ("</tr>")
-				«indentLevel--
-			«bundle //members box header text color
-				«add ("<tr>")
-				«indentLevel++
-				«tdLabel ("Color for text in Members box header")
-				«tdValue ("colors.membersBoxHeaderText", "ivory")
-				«add ("</tr>")
-				«indentLevel--
-			«bundle //members box bgcolor
-				«add ("<tr>")
-				«indentLevel++
-				«tdLabel ("Background color for Members box")
-				«tdValue ("colors.membersBox", "ivory")
-				«add ("</tr>")
-				«indentLevel--
-			«bundle //separator color
-				«add ("<tr>")
-				«indentLevel++
-				«tdLabel ("Separator color")
-				«tdValue ("colors.separator", "black")
-				«add ("</tr>")
-				«indentLevel--
-			«bundle //separator text color
-				«add ("<tr>")
-				«indentLevel++
-				«tdLabel ("Separator text color")
-				«tdValue ("colors.separatorText", "ivory")
-				«add ("</tr>")
-				«indentLevel--
-			«bundle //dg listings color
-				«add ("<tr>")
-				«indentLevel++
-				«tdLabel ("Background color for discussion group listings")
-				«tdValue ("colors.discussListings", "beige")
-				«add ("</tr>")
-				«indentLevel--
-			«
-			«add ("</table>")
-			«addTable ()
-			«addButtons ()
-			«
-			«endSection ()
+		//bundle //Colors
+			//sectionName = "Colors"
+			//local (shortName = getShortSectionName ())
+			//if not defined (adrNewsSite^.colors)
+				//local (siteInfo)
+				//new (tableType, @siteInfo)
+				//siteInfo^.adrSite = adrSite
+				//manilaSuite.newSite.createCustomColors (@siteInfo)
+			//local (flPost = wasThisFormPosted ())
+			//addSeparator ()
+			//
+			//if flPost
+				//if not (addConfirmBox ("Are you sure you want to restore these colors to the default?"))
+					//if defined (pta^.postArgs.doRestoreDefault) //restore to default
+						//local (siteInfo)
+						//new (tableType, @siteInfo)
+						//siteInfo.adrSite = adrSite
+						//manilaSuite.newSite.createCustomColors (@siteInfo)
+						//mainResponder.redirect (pta^.fname + "$" + advancedPageName + "?" + shortName + "=1#" + shortName)
+					//else //update
+						//local (adrColors = @adrNewsSite^.colors)
+						//adrColors^.membersBoxHeader = pta^.postArgs.["colors.membersBoxHeader"]
+						//adrColors^.membersBoxHeaderText = pta^.postArgs.["colors.membersBoxHeaderText"]
+						//adrColors^.membersBox = pta^.postArgs.["colors.membersBox"]
+						//adrColors^.separator = pta^.postArgs.["colors.separator"]
+						//adrColors^.separatorText = pta^.postArgs.["colors.separatorText"]
+						//adrColors^.discussListings = pta^.postArgs.["colors.discussListings"]
+						//Refresh the page.
+						//mainResponder.redirect (pta^.fname + "$" + advancedPageName + "?" + shortName + "=2#" + shortName)
+			//if defined (argTable.[shortName]) //search args are used to signify a success message through a refresh/redirect
+				//case argTable.[shortName]
+					//"1"
+						//addSuccessMessage ("The custom colors have been restored to the default.")
+					//"2"
+						//addSuccessMessage ("The custom colors have been updated.")
+			//
+			//addDescription ("You can change the colors of elements that can't be edited through the template.")
+			//addFormStart ()
+			//add ("<input type=\"hidden\" name=\"" + shortName + "\" value=\"true\">")
+			//addTable ()
+			//
+			//bundle //members box header color
+				//add ("<tr>")
+				//indentLevel++
+				//tdLabel ("Header color for Members box")
+				//tdValue ("colors.membersBoxHeader", "black")
+				//add ("</tr>")
+				//indentLevel--
+			//bundle //members box header text color
+				//add ("<tr>")
+				//indentLevel++
+				//tdLabel ("Color for text in Members box header")
+				//tdValue ("colors.membersBoxHeaderText", "ivory")
+				//add ("</tr>")
+				//indentLevel--
+			//bundle //members box bgcolor
+				//add ("<tr>")
+				//indentLevel++
+				//tdLabel ("Background color for Members box")
+				//tdValue ("colors.membersBox", "ivory")
+				//add ("</tr>")
+				//indentLevel--
+			//bundle //separator color
+				//add ("<tr>")
+				//indentLevel++
+				//tdLabel ("Separator color")
+				//tdValue ("colors.separator", "black")
+				//add ("</tr>")
+				//indentLevel--
+			//bundle //separator text color
+				//add ("<tr>")
+				//indentLevel++
+				//tdLabel ("Separator text color")
+				//tdValue ("colors.separatorText", "ivory")
+				//add ("</tr>")
+				//indentLevel--
+			//bundle //dg listings color
+				//add ("<tr>")
+				//indentLevel++
+				//tdLabel ("Background color for discussion group listings")
+				//tdValue ("colors.discussListings", "beige")
+				//add ("</tr>")
+				//indentLevel--
+			//
+			//add ("</table>")
+			//addTable ()
+			//addButtons ()
+			//
+			//endSection ()
 		bundle { //Site Structure
 			sectionName = "Site Structure";
 			local (shortName = getShortSectionName ());
@@ -806,13 +806,13 @@ on advancedPage (pta=nil) {
 			
 			basicXmlPost (getDisplayName (), shortName, adrObject, @manilaSuite.newSite.createCustomPrefsWizard, flPost, @value, adrStructure);
 			if flPost { //PBS 07/22/00: localization bug fix -- the custom sign up wizard wasn't being created
-				«local (adrSignupWizard = manilaSuite.getWizardAddress ("signup", @adrNewsSite^.signupWizard, pta))
+				//local (adrSignupWizard = manilaSuite.getWizardAddress ("signup", @adrNewsSite^.signupWizard, pta))
 				local (adrSignUpWizard = @adrNewsSite^.signupWizard);
 				if not defined (adrSignupWizard^) {
 					adrSignupWizard^ = adrNewsSite^.prefsWizard};
-				«if not defined (adrSignupWizard^)
-					«adrSignupWizard^ = prefsSuite.signupWizard
-					«setTimeModified (@adrSignUpWizard^.outline, 0)
+				//if not defined (adrSignupWizard^)
+					//adrSignupWizard^ = prefsSuite.signupWizard
+					//setTimeModified (@adrSignUpWizard^.outline, 0)
 				local (adrRequiredStructure = manilaSuite.getWizardAddress ("signUpPanelStructure", @manilaData.SignUpPanelStructure, pta));
 				manilaSuite.prefs.buildSignUpStructure (@adrNewsSite^.prefsWizard, @adrSignUpWizard^.structure, adrRequiredStructure)};
 			
@@ -872,7 +872,7 @@ on advancedPage (pta=nil) {
 			local (flPost = wasThisFormPosted ());
 			addSeparator ();
 			local (itemFormat, separatorFormat);
-			«temp.pt = pta^
+			//temp.pt = pta^
 			bundle { //get the current item and separator format
 				itemFormat = manilaSuite.getNewsSitePref ("navigation.itemFormat", default:"<b>{item}</b>", flCreate:true);
 				currentItemFormat = manilaSuite.getNewsSitePref ("navigation.currentItemFormat", default:itemFormat, flCreate:true);
@@ -885,8 +885,8 @@ on advancedPage (pta=nil) {
 						new (tableType, @siteInfo);
 						siteInfo.adrSite = adrSite;
 						manilaSuite.themes.restoreNavigationAppearance (@siteInfo); //PBS 06/06/00: restore to default via themes
-						«pta^.newsSite^.navigation.itemFormat = "<b>{item}</b>"
-						«pta^.newsSite^.navigation.separatorFormat = "<p>"
+						//pta^.newsSite^.navigation.itemFormat = "<b>{item}</b>"
+						//pta^.newsSite^.navigation.separatorFormat = "<p>"
 						local (successMessage = manilaSuite.getString ("admin.navAppearanceRestoreCompleted", pta: pta));
 						mainResponder.redirect (pta^.fname + "$" + advancedPageName + "?" + shortName + "=1#" + shortName)}
 					else {
@@ -969,7 +969,7 @@ on advancedPage (pta=nil) {
 			if flPost {
 				if not (addConfirmBox (manilaSuite.getString ("admin.calAppearanceRestoreConfirm", pta: pta))) {
 					if defined (pta^.postArgs.doRestoreDefault) { //restore to default
-						«pta^.newsSite^.calendarTemplates = manilaData.newSiteTemplate.["#newsSite"].calendarTemplates
+						//pta^.newsSite^.calendarTemplates = manilaData.newSiteTemplate.["#newsSite"].calendarTemplates
 						bundle { //PBS 06/06/00: call themes restore script
 							local (siteInfo);
 							new (tableType, @siteInfo);
@@ -1056,7 +1056,7 @@ on advancedPage (pta=nil) {
 				else {
 					if not (addConfirmBox (manilaSuite.getString ("admin.joinNowMembersBoxRestoreConfirm", pta: pta))) {
 						if defined (pta^.postArgs.doRestoreDefault) { //restore to default
-							«pta^.newsSite^.membersBoxTemplates.signInBox = manilaData.newSiteTemplate.["#newsSite"].membersBoxTemplates.signInBox
+							//pta^.newsSite^.membersBoxTemplates.signInBox = manilaData.newSiteTemplate.["#newsSite"].membersBoxTemplates.signInBox
 							bundle { //PBS 06/06/00: call themes restore script
 								local (siteInfo);
 								new (tableType, @siteInfo);
@@ -1117,7 +1117,7 @@ on advancedPage (pta=nil) {
 				else {
 					if not (addConfirmBox (manilaSuite.getString ("admin.signOutMembersBoxRestoreConfirm", pta: pta))) {
 						if defined (pta^.postArgs.doRestoreDefault) { //restore to default
-							«pta^.newsSite^.membersBoxTemplates.signOutBox = manilaData.newSiteTemplate.["#newsSite"].membersBoxTemplates.signOutBox
+							//pta^.newsSite^.membersBoxTemplates.signOutBox = manilaData.newSiteTemplate.["#newsSite"].membersBoxTemplates.signOutBox
 							bundle { //PBS 06/06/00: call themes restore script
 								local (siteInfo);
 								new (tableType, @siteInfo);
@@ -1202,7 +1202,7 @@ on advancedPage (pta=nil) {
 					local (downloadUrl = manilaSuite.themes.getDownloadUrl (adrSite));
 					local (replacementTable); new (tableType, @replacementTable);
 					replacementTable.downloadUrl = downloadUrl;
-					«local (downloadLink = html.getLink ("here", downloadUrl))
+					//local (downloadLink = html.getLink ("here", downloadUrl))
 					add (manilaSuite.getString ("admin.themeDownloadLink", @replacementTable, pta: pta))}};
 			
 			addFormStart ();

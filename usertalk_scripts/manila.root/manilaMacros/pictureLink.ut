@@ -1,11 +1,11 @@
 on pictureLink (lineText, shortcutName, style="", onmouseover="", onmouseout="", target="") {
-	«Changes:
-		«05/04/10, 14:55:54 by DAB
-			«Add optional parameter, target.
-		«11/02/00; 6:34:46 PM by PBS
-			«A variable named "path" was being referenced. It should not have been.
-		«10/27/00; 2:24:14 PM by PBS
-			«Created. Link to a picture, don't embed it. Similar to homePageLink and relativeLink, but also similar to pictureRef.
+	//Changes:
+		//05/04/10, 14:55:54 by DAB
+			//Add optional parameter, target.
+		//11/02/00; 6:34:46 PM by PBS
+			//A variable named "path" was being referenced. It should not have been.
+		//10/27/00; 2:24:14 PM by PBS
+			//Created. Link to a picture, don't embed it. Similar to homePageLink and relativeLink, but also similar to pictureRef.
 	
 	on error (message) { //prepend friendly "Can't do xxx" text
 		message = "Can't link to \"" + shortcutname + "\" because " + message;
@@ -22,7 +22,7 @@ on pictureLink (lineText, shortcutName, style="", onmouseover="", onmouseout="",
 					scriptError ("it doesn't exist in the list of shortcuts for this site.")}};
 			
 			bundle { //get URL, height, width, and alt text from glossary entry
-				«<img src="http://static2.userland.com/pictures/itworkedcom/lightGrayBg.gif" height="40" width="22" border="0" alt="lightGrayBg.gif: ">
+				//<img src="http://static2.userland.com/pictures/itworkedcom/lightGrayBg.gif" height="40" width="22" border="0" alt="lightGrayBg.gif: ">
 				local (xmlText = glossaryImageTag);
 				xmlText = string.insert ("/", xmlText, sizeOf (xmlText)); //add closing slash so it can be compiled
 				
@@ -39,7 +39,7 @@ on pictureLink (lineText, shortcutName, style="", onmouseover="", onmouseout="",
 		getImageTable (shortcutName, @imageTable);
 		
 		local (link);
-		«path = string.popLeading (path, '/') //PBS 11/2/00: erroneous reference
+		//path = string.popLeading (path, '/') //PBS 11/2/00: erroneous reference
 		link = "<a href=\"" + imageTable.src + "\"";
 		if style != "" {
 			link = link + " style=\"" + style + "\""};

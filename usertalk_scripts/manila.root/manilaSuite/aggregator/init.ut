@@ -1,20 +1,20 @@
 on init (adrsite=nil) {
-	«Changes
-		«3/18/06; 4:18:11 AM by JES
-			«If we attempt to subscribe to a feed and get an error, don't attempt again (delete from the site's subscriptions), and clean up any stale data that might have been created.
-		«5/28/03; 4:47:01 PM by JES
-			«New optional parameter, adrsite. Allows this script to be called outside the website framework context.
-		«3/8/03; 1:58:41 AM by JES
-			«Add the aggregator sub-table to the site's table if not present.
-		«2/25/03; 6:07:55 AM by DW
-			«Created. The beginning of a mini-aggregator for Manila. The idea is that a group of people have a common set of interests, and many of them don't have the incentive to run an aggregator on their desktop. So we put one in Manila. The managing editors of the site can add new feeds to the mix, or remove stale ones.  All the Manila sites on the server share the pool of feeds, so if two sites subscribe to the same feed, there's only one entry in the services table in aggregator.root. It's kind of efficient that way. Let's see how it goes.
-			«Here's a list of other places that need to be updated when this is released
-				«manilaSuite.filters.firstFilter
-					«This routine is called from manilaSuite.filters.firstFilter. It's the one link into the outside world to get things started. When and if this is released beyond just a test installation, you must also release manilaSuite.filters.firstFilter. 
-				«manilaData.legalMacros.viewAggregator
-					«The macro that lets you view the contents of the aggregator for this site.
-				«manilaMacros.viewAggregator
-					«The script that is called to view the aggregator.
+	//Changes
+		//3/18/06; 4:18:11 AM by JES
+			//If we attempt to subscribe to a feed and get an error, don't attempt again (delete from the site's subscriptions), and clean up any stale data that might have been created.
+		//5/28/03; 4:47:01 PM by JES
+			//New optional parameter, adrsite. Allows this script to be called outside the website framework context.
+		//3/8/03; 1:58:41 AM by JES
+			//Add the aggregator sub-table to the site's table if not present.
+		//2/25/03; 6:07:55 AM by DW
+			//Created. The beginning of a mini-aggregator for Manila. The idea is that a group of people have a common set of interests, and many of them don't have the incentive to run an aggregator on their desktop. So we put one in Manila. The managing editors of the site can add new feeds to the mix, or remove stale ones.  All the Manila sites on the server share the pool of feeds, so if two sites subscribe to the same feed, there's only one entry in the services table in aggregator.root. It's kind of efficient that way. Let's see how it goes.
+			//Here's a list of other places that need to be updated when this is released
+				//manilaSuite.filters.firstFilter
+					//This routine is called from manilaSuite.filters.firstFilter. It's the one link into the outside world to get things started. When and if this is released beyond just a test installation, you must also release manilaSuite.filters.firstFilter. 
+				//manilaData.legalMacros.viewAggregator
+					//The macro that lets you view the contents of the aggregator for this site.
+				//manilaMacros.viewAggregator
+					//The script that is called to view the aggregator.
 	if adrsite == nil {
 		local (pta = html.getpagetableaddress ());
 		adrsite = pta^.adrSiteRootTable};

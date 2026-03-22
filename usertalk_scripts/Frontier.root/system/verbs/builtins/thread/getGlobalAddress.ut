@@ -1,17 +1,17 @@
 on getGlobalAddress (name) {
-	«Return the address of a variable that's global to the current thread. (Actually, it returns a string that can be coerced transparently to an address.)
-		«Changes:
-			«6/30/01; 12:05:15 PM by DW
-				«Created. Even I didn't know about this trick that Doug put in the kernel, but Brent knew about it when I called to ask "How about finally doing thread-level globals?"
-				«Here's the trick. If a name begins with two underscores and ends with two underscores it's stored in a table at the top level of the stack for the thread. 
-				«Why this is useful? Well, in programming a web server app we often write code that accesses the website framework's "page table" through html.getpagetableaddress -- the infamous "pta" you see in all kinds of scripts. pta stands for page table address.
-				«Sometimes you want to write code that has pagetable-like behavior, but isn't part of a website framework rendering. Now you can. Just call this routine and we'll return you the address of something in your thread's global table. You don't have to put the snarky underscores in your script code. I wouldn't want to!
-			«7/2/01; 2:10:17 PM by PBS
-				«One underscore, not two, is needed on either side of the name.
-			«7/3/01; 10:45:44 AM by PBS
-				«There was a problem with returning an address -- so instead a string is returned. The string can be coerced transparently to an address, there's no need to update any scripts.
+	//Return the address of a variable that's global to the current thread. (Actually, it returns a string that can be coerced transparently to an address.)
+		//Changes:
+			//6/30/01; 12:05:15 PM by DW
+				//Created. Even I didn't know about this trick that Doug put in the kernel, but Brent knew about it when I called to ask "How about finally doing thread-level globals?"
+				//Here's the trick. If a name begins with two underscores and ends with two underscores it's stored in a table at the top level of the stack for the thread. 
+				//Why this is useful? Well, in programming a web server app we often write code that accesses the website framework's "page table" through html.getpagetableaddress -- the infamous "pta" you see in all kinds of scripts. pta stands for page table address.
+				//Sometimes you want to write code that has pagetable-like behavior, but isn't part of a website framework rendering. Now you can. Just call this routine and we'll return you the address of something in your thread's global table. You don't have to put the snarky underscores in your script code. I wouldn't want to!
+			//7/2/01; 2:10:17 PM by PBS
+				//One underscore, not two, is needed on either side of the name.
+			//7/3/01; 10:45:44 AM by PBS
+				//There was a problem with returning an address -- so instead a string is returned. The string can be coerced transparently to an address, there's no need to update any scripts.
 	return ("_" + name + "_")};
-«bundle //test code
-	«adr = getGlobalAddress ("hello")
-	«adr^ = clock.now ()
-	«dialog.notify (adr^)
+//bundle //test code
+	//adr = getGlobalAddress ("hello")
+	//adr^ = clock.now ()
+	//dialog.notify (adr^)

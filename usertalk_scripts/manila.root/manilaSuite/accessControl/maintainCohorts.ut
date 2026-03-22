@@ -1,11 +1,11 @@
 on maintainCohorts (adrflChangedCohorts) { //03/08/11, 13:38:39 by DAB
-	«Changes
-		«2/22/06; 7:39:59 PM by JES
-			«Reformat HTML to match the rest of the admin page.
-		«04/05/20, 17:32:08 by DAB
-			«create and process data for cohort mainteance 
-			«was manilaFixer.accessControl.maintainCohorts : 02/02/21, 17:04:03 by DAB
-			«messages at manilaSuite.data.localisation.English.strings.accessControl
+	//Changes
+		//2/22/06; 7:39:59 PM by JES
+			//Reformat HTML to match the rest of the admin page.
+		//04/05/20, 17:32:08 by DAB
+			//create and process data for cohort mainteance 
+			//was manilaFixer.accessControl.maintainCohorts : 02/02/21, 17:04:03 by DAB
+			//messages at manilaSuite.data.localisation.English.strings.accessControl
 	local (pta = html.getPageTableAddress());
 	local (adrSite = manilaSuite.getManilaSiteAddress(pta));
 	local (adrNewsSite = manilaSuite.getNewsSiteAddress(adrSite));
@@ -140,9 +140,9 @@ on maintainCohorts (adrflChangedCohorts) { //03/08/11, 13:38:39 by DAB
 						local (member, cnt=0);
 						for member in members {
 							if not defined (adrCohorts^.[cohort].memberdata.[member]) {
-								«replttbl.member = string.replace(member, "@", "\\@")    //02/08/03, 18:48:38 by DAB
-								repltTbl.member =  string.replace(member, "@", "\\@") «05/04/28, 13:59:37 by DAB
-									«replttbl.member = member;
+								//replttbl.member = string.replace(member, "@", "\\@")    //02/08/03, 18:48:38 by DAB
+								repltTbl.member =  string.replace(member, "@", "\\@") //05/04/28, 13:59:37 by DAB
+									//replttbl.member = member;
 								errorReport("errModifyNoMember")}
 							else {
 								delete(@adrCohorts^.[cohort].memberdata.[member]);
@@ -335,7 +335,7 @@ on maintainCohorts (adrflChangedCohorts) { //03/08/11, 13:38:39 by DAB
 				for adr in @adrCohorts^.[targetCohort].memberdata {
 					selex = "";
 					itm = nameof(adr^);
-					«nme = string.replace(itm, "@", "\\@")
+					//nme = string.replace(itm, "@", "\\@")
 					nme = itm;
 					add("\r\t\t\t<option value='" + itm + "'" + selex + ">" + nme + "</option>")};
 				add("\r\t\t</select>");

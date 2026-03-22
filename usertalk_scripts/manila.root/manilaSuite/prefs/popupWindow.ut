@@ -1,15 +1,15 @@
 on popupWindow (adrWizard=nil, popupWindowTitle=nil, template=nil, flFormatting=true) {
-	«Display a sitePrefs popup window.
-	«Changes:
-		«4/24/05; 1:38:39 AM by JES
-			«New optional parameters, popupWindowTitle and template, allow caller to override the look of the popup page, and its title.
-			«New optional parameter: flFormatting. Determines whether to use blockquote and font size +1 as a wrapper for the body of the popup window.
-		«04/18/00; 3:58:57 PM by JES
-			«localized
-		«12/22/00; 7:11:55 PM by JES
-			«Redirect to /prefs/radio/popupWindow if the url is /prefs/pike/popupWindow
-		«9/26/01; 1:42:51 PM by PBS
-			«If the site has a background picture or odd colors, the pop-up window may be unreadable. So use plain colors and no background picture.
+	//Display a sitePrefs popup window.
+	//Changes:
+		//4/24/05; 1:38:39 AM by JES
+			//New optional parameters, popupWindowTitle and template, allow caller to override the look of the popup page, and its title.
+			//New optional parameter: flFormatting. Determines whether to use blockquote and font size +1 as a wrapper for the body of the popup window.
+		//04/18/00; 3:58:57 PM by JES
+			//localized
+		//12/22/00; 7:11:55 PM by JES
+			//Redirect to /prefs/radio/popupWindow if the url is /prefs/pike/popupWindow
+		//9/26/01; 1:42:51 PM by PBS
+			//If the site has a background picture or odd colors, the pop-up window may be unreadable. So use plain colors and no background picture.
 	
 	local (pta = html.getPageTableAddress ());
 	
@@ -51,7 +51,7 @@ on popupWindow (adrWizard=nil, popupWindowTitle=nil, template=nil, flFormatting=
 	pta^.wizard = adrWizard;
 	
 	on findPanel () {
-		«Return the address of the specified panel.
+		//Return the address of the specified panel.
 		local (i, ixPanel = 0);
 		local (adrStructure = @adrWizard^.structure [1]);
 		for i = 1 to sizeOf (adrStructure^) {

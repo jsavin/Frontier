@@ -1,9 +1,9 @@
 on setValue (partialAddress, adrVal) {
-	«Changes
-		«12/30/04; 3:33:23 PM by JES
-			«Untaint all strings which enter through the member prefs system.
-		«12/14/01; 1:38:32 PM by PBS
-			«Created. Set a value in a member's prefs. Handle the issue with bulletins prefs not specifying the subtable. (Each site gets a subtable in the member's bulletins table, this way multiple sites can share a membership group.)
+	//Changes
+		//12/30/04; 3:33:23 PM by JES
+			//Untaint all strings which enter through the member prefs system.
+		//12/14/01; 1:38:32 PM by PBS
+			//Created. Set a value in a member's prefs. Handle the issue with bulletins prefs not specifying the subtable. (Each site gets a subtable in the member's bulletins table, this way multiple sites can share a membership group.)
 	
 	local (adrNewsSite = manilaSuite.getNewsSiteAddress ());
 	local (adrSite = manilaSuite.getSiteAddress ());

@@ -1,10 +1,10 @@
 on indexOnePage (url, title, pageText, adrStopWords=nil, indexName=nil) {
-	«Index one page.
-		«Changes:
-			«8/20/99; 11:41:41 AM by PBS
-				«Index all words that are not in the stop words table. Don't ignore numbers. Don't ignore words that are shorter than 3 characters.
-			«07/18/00; 10:46:01 PM by PBS
-				«Instead of using string.nthField, just keep deleting from the leading edge of the text, and index the first word. Performance optimization.
+	//Index one page.
+		//Changes:
+			//8/20/99; 11:41:41 AM by PBS
+				//Index all words that are not in the stop words table. Don't ignore numbers. Don't ignore words that are shorter than 3 characters.
+			//07/18/00; 10:46:01 PM by PBS
+				//Instead of using string.nthField, just keep deleting from the leading edge of the text, and index the first word. Performance optimization.
 	
 	local (lowerTitle = string.lower (title));
 	local (pageName);
@@ -39,69 +39,69 @@ on indexOnePage (url, title, pageText, adrStopWords=nil, indexName=nil) {
 	bundle { //clean the text before indexing
 		pageText = searchEngine.cleanText (pageText)};
 	
-	«numFields = string.countFields (pageText,  ' ') //count potential words
+	//numFields = string.countFields (pageText,  ' ') //count potential words
 	local (ct = 0);
-	«for i = 1 to numFields //loop through every potential word
-		«local (oneWord = string.nthField (pageText, ' ', i))
-		«
-		«if oneWord beginsWith '#'
-			«continue //it's a directive
-		«
-		«oneWord = string.dropNonAlphas (oneWord)
-		«oneWord = string.lower (oneWord)
-		«oneWord = string.popTrailing (oneWord, 's') //pop off trailing s's
-		«oneWord = string.trimWhiteSpace (oneWord)
-		«if oneWord == ""
-			«continue
-		«
-		«PBS 8/20/99: commented this out -- we now index all words that are not in the stop words table.
-		«if sizeOf (oneWord) < 3 //we don't index very short words, except for "op" and "wp"
-			«if oneWord != "op" and oneWord != "wp" and oneWord != "ii"
-				«continue
-		«
-		«if not (searchEngine.checkStopWords (oneWord, adrStopWords)) //check if this is on the list of words not to index
-			«continue //don't index
-		«
-		«sys.systemTask ()
-		«doMessage (oneWord)
-		«
-		«local (firstLetter = string.mid (oneWord, 1, 1))
-		«
-		«PBS 8/20/99: a word can start with a number. At this point we have letters and numbers only, so this check can be eliminated.
-		«if char (firstLetter) < 'a' or char (firstLetter) > 'z'
-			«continue
-		«
-		«local (adrLetter = @adrIndex^.[firstLetter]) //address of this letter's table in the index
-		«if not defined (adrLetter^)
-			«new (tableType, adrLetter)
-		«
-		«local (adrWord = @adrLetter^.[oneWord]) //address of this word in the index
-		«if not defined (adrWord^)
-			«new (tableType, adrWord)
-		«
-		«local (adrPageCount = @adrWord^.[url]) //address of the count for this page in this word
-		«if defined (adrPageCount^)
-			«adrPageCount^ = adrPageCount^ + 1 //this is a frequency count (plus the relevancy ranking, see below)
-		«else
-			«adrPageCount^ = 1 //first occurence of this word in the page
-		«
-		«bundle //do relevancy ranking
-			«if lowerAdr contains oneWord //if the address of the page contains the word, add 100
-				«if adrPageCount^ < 100
-					«adrPageCount^ = adrPageCount^ + 100
-			«if string.lower (pageName) contains oneWord //if the name of the page contains the word, add 500
-				«if adrPageCount^ < 500
-					«adrPageCount^ = adrPageCount^ + 500
-			«if lowerParent == oneWord //if the name of the parent table equals the word and this is the default page, add 1000
-				«if pageName contains "default" or pageName contains "index"
-					«if adrPageCount^ < 1000
-						«adrPageCount^ = adrPageCount^ + 1000
-			«if lowerTitle contains oneWord //if the title of the page contains the word, add 2000
-				«if adrPageCount^ < 2000
-					«adrPageCount^ = adrPageCount^ + 2000
-		«
-		«sys.systemTask ()
-		«doMessage ("Indexing: " + url + ": " + oneWord)
+	//for i = 1 to numFields //loop through every potential word
+		//local (oneWord = string.nthField (pageText, ' ', i))
+		//
+		//if oneWord beginsWith '#'
+			//continue //it's a directive
+		//
+		//oneWord = string.dropNonAlphas (oneWord)
+		//oneWord = string.lower (oneWord)
+		//oneWord = string.popTrailing (oneWord, 's') //pop off trailing s's
+		//oneWord = string.trimWhiteSpace (oneWord)
+		//if oneWord == ""
+			//continue
+		//
+		//PBS 8/20/99: commented this out -- we now index all words that are not in the stop words table.
+		//if sizeOf (oneWord) < 3 //we don't index very short words, except for "op" and "wp"
+			//if oneWord != "op" and oneWord != "wp" and oneWord != "ii"
+				//continue
+		//
+		//if not (searchEngine.checkStopWords (oneWord, adrStopWords)) //check if this is on the list of words not to index
+			//continue //don't index
+		//
+		//sys.systemTask ()
+		//doMessage (oneWord)
+		//
+		//local (firstLetter = string.mid (oneWord, 1, 1))
+		//
+		//PBS 8/20/99: a word can start with a number. At this point we have letters and numbers only, so this check can be eliminated.
+		//if char (firstLetter) < 'a' or char (firstLetter) > 'z'
+			//continue
+		//
+		//local (adrLetter = @adrIndex^.[firstLetter]) //address of this letter's table in the index
+		//if not defined (adrLetter^)
+			//new (tableType, adrLetter)
+		//
+		//local (adrWord = @adrLetter^.[oneWord]) //address of this word in the index
+		//if not defined (adrWord^)
+			//new (tableType, adrWord)
+		//
+		//local (adrPageCount = @adrWord^.[url]) //address of the count for this page in this word
+		//if defined (adrPageCount^)
+			//adrPageCount^ = adrPageCount^ + 1 //this is a frequency count (plus the relevancy ranking, see below)
+		//else
+			//adrPageCount^ = 1 //first occurence of this word in the page
+		//
+		//bundle //do relevancy ranking
+			//if lowerAdr contains oneWord //if the address of the page contains the word, add 100
+				//if adrPageCount^ < 100
+					//adrPageCount^ = adrPageCount^ + 100
+			//if string.lower (pageName) contains oneWord //if the name of the page contains the word, add 500
+				//if adrPageCount^ < 500
+					//adrPageCount^ = adrPageCount^ + 500
+			//if lowerParent == oneWord //if the name of the parent table equals the word and this is the default page, add 1000
+				//if pageName contains "default" or pageName contains "index"
+					//if adrPageCount^ < 1000
+						//adrPageCount^ = adrPageCount^ + 1000
+			//if lowerTitle contains oneWord //if the title of the page contains the word, add 2000
+				//if adrPageCount^ < 2000
+					//adrPageCount^ = adrPageCount^ + 2000
+		//
+		//sys.systemTask ()
+		//doMessage ("Indexing: " + url + ": " + oneWord)
 	while sizeOf (pageText) > 0 { //PBS 07/18/00: loop through every potential word
 		pageText = string.trimWhiteSpace (pageText);
 		local (oneWord = string.nthField (pageText, ' ', 1));
@@ -156,10 +156,10 @@ on indexOnePage (url, title, pageText, adrStopWords=nil, indexName=nil) {
 		
 		pageText = string.delete (pageText, 1, wordSize);
 		
-		«ct++
-		«if ct > 500 //relax on occassion
-			«thread.sleepFor (0)
-			«ct = 0};
+		//ct++
+		//if ct > 500 //relax on occassion
+			//thread.sleepFor (0)
+			//ct = 0};
 	
 	msg ("");
 	

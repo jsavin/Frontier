@@ -1,7 +1,7 @@
 on departmentNameToPath (s) {
-	«Changes
-		«9/3/03; 12:18:41 PM by JES
-			«Created. Convert a department name to a suitable sub-path for a URL.
+	//Changes
+		//9/3/03; 12:18:41 PM by JES
+			//Created. Convert a department name to a suitable sub-path for a URL.
 	local (ct = sizeOf (s), i);
 	for i = 1 to ct {
 		if number (s[i]) < 128 {

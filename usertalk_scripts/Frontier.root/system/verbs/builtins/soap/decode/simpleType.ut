@@ -1,23 +1,23 @@
 on simpleType (adrmsg, adrelement, typeattrib) {
-	«Changes:
-		«04/01/01; 3:36:00 AM by JES
-			«When decoding floating point numbers, call soap.decode.float, instead of using double (cdata).
-		«04/02/01; 5:40:16 PM by JES
-			«Fixed a bug where decoding a false boolean represented as "0" would return true.
-		«04/03/01; 1:39:38 AM by JES
-			«Added base64Binary as a synonym for base64, and dateTime as a synonym for timeInstant, as support for decoding SOAP messages which are encoded according to the 2001 XML schema.
-		«04/03/01; 7:43:37 PM by JES
-			«When decoding strings, use xml.entityDecode, instead of soap.xmlutils.decodeAmpersands, so that entity-encoded high-ascii characters will be decoded.
-		«04/05/01; 2:24:40 AM by JES
-			«Validate namespace against URIs in subtables of soap.constants.schemaVersions.
-		«04/10/01; 7:03:45 PM by JES
-			«Fixed a bug where &quot; and &apos; would not be decoded to ' and " when decoding strings.
-		«04/10/01; 11:42:38 PM by JES
-			«Check bounding for integer values. Return a binaryType when decoding binaries, instead of a stringType.
-		«04/12/01; 11:45:22 PM by JES
-			«Fixed a bug in integer bounds-checking, which would cause an error for very large negative numbers.
-		«04/27/01; 6:56:59 PM by JES
-			«Added SOAP-ENC to the supported namespaces list, to fix a bug decoding base64-encoded binaries.
+	//Changes:
+		//04/01/01; 3:36:00 AM by JES
+			//When decoding floating point numbers, call soap.decode.float, instead of using double (cdata).
+		//04/02/01; 5:40:16 PM by JES
+			//Fixed a bug where decoding a false boolean represented as "0" would return true.
+		//04/03/01; 1:39:38 AM by JES
+			//Added base64Binary as a synonym for base64, and dateTime as a synonym for timeInstant, as support for decoding SOAP messages which are encoded according to the 2001 XML schema.
+		//04/03/01; 7:43:37 PM by JES
+			//When decoding strings, use xml.entityDecode, instead of soap.xmlutils.decodeAmpersands, so that entity-encoded high-ascii characters will be decoded.
+		//04/05/01; 2:24:40 AM by JES
+			//Validate namespace against URIs in subtables of soap.constants.schemaVersions.
+		//04/10/01; 7:03:45 PM by JES
+			//Fixed a bug where &quot; and &apos; would not be decoded to ' and " when decoding strings.
+		//04/10/01; 11:42:38 PM by JES
+			//Check bounding for integer values. Return a binaryType when decoding binaries, instead of a stringType.
+		//04/12/01; 11:45:22 PM by JES
+			//Fixed a bug in integer bounds-checking, which would cause an error for very large negative numbers.
+		//04/27/01; 6:56:59 PM by JES
+			//Added SOAP-ENC to the supported namespaces list, to fix a bug decoding base64-encoded binaries.
 	local (value, typerec = soap.xmlutils.getQualifiedName (adrmsg, typeattrib));
 	local (supportedNamespaceURIs = {});
 	bundle { //fill in supported schema namespaces list

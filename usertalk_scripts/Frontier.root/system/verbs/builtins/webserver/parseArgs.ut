@@ -1,10 +1,10 @@
 on parseArgs (argstring, adrtable) {
-	«Changes
-		«9/16/04; 1:49:40 AM by JES
-			«If running on MacOS, convert argument names to mac characters.
-		«8/18/98; 9:41:51 AM by DW
-			«Site of a major security hole in Frontier. Closed.
-				«It goes all the way back to June 1995
+	//Changes
+		//9/16/04; 1:49:40 AM by JES
+			//If running on MacOS, convert argument names to mac characters.
+		//8/18/98; 9:41:51 AM by DW
+			//Site of a major security hole in Frontier. Closed.
+				//It goes all the way back to June 1995
 	local (argslist = string.parseHttpArgs (argstring));
 	local (i, name, value, adritem);
 	loop (i = 1; i <= sizeof (argslist); i = i + 2) {

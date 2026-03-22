@@ -1,2 +1,2 @@
-on callimporter (path) { «this script is saved with all exported objects
+on callimporter (path) { //this script is saved with all exported objects
 	return (export.importer (path))}

@@ -1,8 +1,8 @@
 on getProfilePart (groupname, username, password, partpath) {
-	«2/18/99; 10:12:20 PM by DW
-		«partpath is a partial path to the part of the user's profile that you want to retrieve
-		«the elements of the path are dot-separated, the navigation starts at the top level of the user's profile
-		«if you want the whole thing set partpath to the empty string
+	//2/18/99; 10:12:20 PM by DW
+		//partpath is a partial path to the part of the user's profile that you want to retrieve
+		//the elements of the path are dot-separated, the navigation starts at the top level of the user's profile
+		//if you want the whole thing set partpath to the empty string
 	if string.lower (partpath) == "randomnumber" {
 		scriptError ("Can't get the part because that information must remain only on the server.")};
 	local (nomad = mainResponder.members.getMemberTableWithPassword (groupname, username, password));

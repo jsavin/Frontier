@@ -1,19 +1,19 @@
 on themes () {
-	«Changes
-		«3/13/07; 2:25:42 PM by LL
-			«Add new button to scan theme folder so we can disable the thread to scan the Themes folder.
-		«5/7/06; 10:44:54 PM by JES
-			«Remember theme creation params, in case we're itterating.
-		«9/23/05; 2:54:08 AM by JES
-			«Better troubleshooting text on method not defined error when requesting a Theme form a remote server.
-		«9/23/05; 2:41:20 AM by JES
-			«Add Import Theme form to import a theme from any Manila 9.6 server.
-		«7/27/05; 5:20:17 AM by JES
-			«Added a link below the themes to the Add File page.
-		«9/5/02; 2:51:46 PM by JES
-			«Instead of putting explanatory text next to each list, display a simple header -- the explanatory text is in the prefs outline.
-		«8/20/02; 10:22:28 PM by JES
-			«Created.
+	//Changes
+		//3/13/07; 2:25:42 PM by LL
+			//Add new button to scan theme folder so we can disable the thread to scan the Themes folder.
+		//5/7/06; 10:44:54 PM by JES
+			//Remember theme creation params, in case we're itterating.
+		//9/23/05; 2:54:08 AM by JES
+			//Better troubleshooting text on method not defined error when requesting a Theme form a remote server.
+		//9/23/05; 2:41:20 AM by JES
+			//Add Import Theme form to import a theme from any Manila 9.6 server.
+		//7/27/05; 5:20:17 AM by JES
+			//Added a link below the themes to the Add File page.
+		//9/5/02; 2:51:46 PM by JES
+			//Instead of putting explanatory text next to each list, display a simple header -- the explanatory text is in the prefs outline.
+		//8/20/02; 10:22:28 PM by JES
+			//Created.
 	local (pta = html.getPageTableAddress ());
 	local (bgcolors = {pta^.trbg2, pta^.trbg1});
 	local (htmltext);

@@ -1,6 +1,6 @@
 on getMemberPrefAddress (adrMemberInfo, prefName, defaultValue=nil) {
-	«manilaSuite.members.getMemberPrefAddress : 04/05/16, 13:53:31 by DAB
-		«return the address of the desired part of the member table, if possible
+	//manilaSuite.members.getMemberPrefAddress : 04/05/16, 13:53:31 by DAB
+		//return the address of the desired part of the member table, if possible
 	if not defined(adrMemberInfo^) {
 		return nil};
 	

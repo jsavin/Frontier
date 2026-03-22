@@ -1,15 +1,15 @@
 on editPost (postid, username, password, struct, publish) {
-	«Changes:
-		«10/17/05; 4:56:22 AM by JES
-			«Bug fix: Removing department validation had broken department support. Fixed.
-		«10/17/05; 3:25:15 AM by JES
-			«Add support for multiple categories.
-		«7/19/04; 6:32:03 PM by JES
-			«Decode &quot; and &apos; to the " and ' characters in the title and description, since they're not decoded by xml.compile, when the RPC call comes in.
-		«7/4/02; 8:27:03 PM by JES
-			«Added support for News Item departments.
-		«Tue, Jul 2, 2002 at 02:19:16 by JTC
-			«Created. Cobbled from bloggerAPI.
+	//Changes:
+		//10/17/05; 4:56:22 AM by JES
+			//Bug fix: Removing department validation had broken department support. Fixed.
+		//10/17/05; 3:25:15 AM by JES
+			//Add support for multiple categories.
+		//7/19/04; 6:32:03 PM by JES
+			//Decode &quot; and &apos; to the " and ' characters in the title and description, since they're not decoded by xml.compile, when the RPC call comes in.
+		//7/4/02; 8:27:03 PM by JES
+			//Added support for News Item departments.
+		//Tue, Jul 2, 2002 at 02:19:16 by JTC
+			//Created. Cobbled from bloggerAPI.
 	local (sitename = string.nthfield (postid, "#", 1));
 	local (msgnum = number (string.nthfield (postid, "#", 2)));
 	local (title = "", url = "", department = "", content = ""); //edit won't set an attribute if it's the empty string
@@ -30,25 +30,25 @@ on editPost (postid, username, password, struct, publish) {
 				department = struct.category}
 			else {
 				if defined (struct.categories) {
-					«bundle //old code -- single category
-						«Assume the first category, even if there are more than one
-						«dept = struct.categories[1]
+					//bundle //old code -- single category
+						//Assume the first category, even if there are more than one
+						//dept = struct.categories[1]
 					local (cat);
 					department = {};
 					for cat in struct.categories {
 						department = department + cat}}};
-			«if dept != "" //JES 10/17/05: don't validate departments
-				«try //if any part of this block fails, don't set the department
-					«local (adrnewssite = manilaSuite.rpcUtils.getNewsSiteAddress (sitename))
-					«local (adrdepts = address (string (adrnewssite + "." + "newsItems.departments")))
-					«if defined (adrdepts^.[dept])
-						«department = dept}};
+			//if dept != "" //JES 10/17/05: don't validate departments
+				//try //if any part of this block fails, don't set the department
+					//local (adrnewssite = manilaSuite.rpcUtils.getNewsSiteAddress (sitename))
+					//local (adrdepts = address (string (adrnewssite + "." + "newsItems.departments")))
+					//if defined (adrdepts^.[dept])
+						//department = dept}};
 	return (manilaSuite.rpcHandlers.newsItem.edit (username, password, sitename, msgnum, title, url, content, department, publish))};
-«bundle //test code
-	«local (postID = user.prefs.manila.siteName + "#4")
-	«local (struct)
-	«new (tableType, @struct)
-	«struct.link = "http://radio.weblogs.com/0001018/"
-	«struct.title = "Edited metaWeblog News Item"
-	«struct.description = "If you see this...Then it must have worked! ;-) "
-	«dialog.alert (editPost ("xxx", postID, user.prefs.manila.username, user.prefs.manila.password, struct, true))
+//bundle //test code
+	//local (postID = user.prefs.manila.siteName + "#4")
+	//local (struct)
+	//new (tableType, @struct)
+	//struct.link = "http://radio.weblogs.com/0001018/"
+	//struct.title = "Edited metaWeblog News Item"
+	//struct.description = "If you see this...Then it must have worked! ;-) "
+	//dialog.alert (editPost ("xxx", postID, user.prefs.manila.username, user.prefs.manila.password, struct, true))

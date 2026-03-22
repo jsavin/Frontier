@@ -1,14 +1,14 @@
 on fullExpand () {
-	local (displayon = op.getDisplay ()); «remember current display status
-	local (origcursor= op.getCursor ()); «save the cursor position, to be restored calling op.setCursor
-	local (returnedvalue = false); «default, we didn't collapse anything
+	local (displayon = op.getDisplay ()); //remember current display status
+	local (origcursor= op.getCursor ()); //save the cursor position, to be restored calling op.setCursor
+	local (returnedvalue = false); //default, we didn't collapse anything
 	
-	op.setDisplay (false); «disable the outline display, hide jumpy cursor motion
-	op.firstSummit (); «move bar cursor to first summit
-	loop { «expand each summit, one at a time
-		if op.expand (infinity) { «something was actually expanded
+	op.setDisplay (false); //disable the outline display, hide jumpy cursor motion
+	op.firstSummit (); //move bar cursor to first summit
+	loop { //expand each summit, one at a time
+		if op.expand (infinity) { //something was actually expanded
 			returnedvalue = true};
 		if not op.go (down, 1) {
-			op.setCursor (origcursor); «restore the cursor
-			op.setDisplay (displayon); «turn the outline display back on
+			op.setCursor (origcursor); //restore the cursor
+			op.setDisplay (displayon); //turn the outline display back on
 			return (returnedvalue)}}}

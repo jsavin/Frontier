@@ -1,7 +1,7 @@
 on pictureRefCallback () {
-	«Changes
-		«5/27/05; 2:10:38 AM by JES
-			«Created. Copy pictures referenced in templates in a Manila site into the site's theme table when creating the theme.
+	//Changes
+		//5/27/05; 2:10:38 AM by JES
+			//Created. Copy pictures referenced in templates in a Manila site into the site's theme table when creating the theme.
 	
 	local (adrpics = @adrTheme^.pictures);
 	if not defined (adrpics^) {

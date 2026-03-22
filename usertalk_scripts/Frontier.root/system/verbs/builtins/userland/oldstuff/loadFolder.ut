@@ -14,8 +14,8 @@ on loadfolder (folder) {
 			dialog.alert (objectadr)};
 		op.insert (objectadr, dir);
 		dir = down;
-		«file.rename (f, objectadr)
-		bundle { «double-unpack the data into the object database
+		//file.rename (f, objectadr)
+		bundle { //double-unpack the data into the object database
 			msg (objectadr);
 			unpack (@resdata, @resdata);
 			unpack (@resdata, @resdata);

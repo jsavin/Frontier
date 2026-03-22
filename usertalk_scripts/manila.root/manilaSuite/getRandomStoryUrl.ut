@@ -1,5 +1,5 @@
 on getRandomStoryUrl (adrSite=nil) {
-	«Get the URL for a random story.
+	//Get the URL for a random story.
 	
 	local (storyList = manilaSuite.discuss.getStoriesList (adrSite:adrSite));
 	local (adrDiscussionGroup = manilaSuite.discuss.getDiscussionGroupAddress (adrSite));

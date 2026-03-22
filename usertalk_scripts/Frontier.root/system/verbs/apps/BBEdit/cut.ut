@@ -1,2 +1,2 @@
-on cut (obj) { «Cut an object to the clipboard
+on cut (obj) { //Cut an object to the clipboard
 	return (appleEvent (BBEdit.id, 'misc', 'cut ', '----', objspec (obj)))}

@@ -1,4 +1,4 @@
-on make (new, at = nil, withProperties = nil, aliasTo = nil) { «Make a new element.  aliasTo only used when making an aliasFile
+on make (new, at = nil, withProperties = nil, aliasTo = nil) { //Make a new element.  aliasTo only used when making an aliasFile
 	if typeOf (aliasTo) != '????' {
 		aliasTo = Finder.finderSpec (aliasTo)};
 	if typeOf (at) != '????' {

@@ -1,9 +1,9 @@
 on dbToUpdateCheck (dbname) {
-	«Changes
-		«2/28/05; 2:09:11 AM by JES
-			«Fix error if no databases are checked on the Update Notification page.
-		«6/26/02; 10:46:48 PM by JES
-			«Created.
+	//Changes
+		//2/28/05; 2:09:11 AM by JES
+			//Fix error if no databases are checked on the Update Notification page.
+		//6/26/02; 10:46:48 PM by JES
+			//Created.
 	local (pta = html.getpagetableaddress ());
 	if pta^.method == "POST" {
 		if not defined (pta^.postArgs.updateNow) {

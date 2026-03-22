@@ -1,17 +1,17 @@
-«the backup goes into a "backups" folder in the Frontier folder
-	«first we create the backups folder if it doesn't already exist.
-	«then we copy the file
-	«then check to see that it exists and is the right size (pays to be paranoid!)
-	«then increment the backup serial number and save the root file (again paranoia)
-	«and finally report the success of the backup operation
+//the backup goes into a "backups" folder in the Frontier folder
+	//first we create the backups folder if it doesn't already exist.
+	//then we copy the file
+	//then check to see that it exists and is the right size (pays to be paranoid!)
+	//then increment the backup serial number and save the root file (again paranoia)
+	//and finally report the success of the backup operation
 
 backups.init ();
-fileMenu.save (); «make sure all changes are on disk
+fileMenu.save (); //make sure all changes are on disk
 try {
 	file.sureFolder (user.backups.folder)}
 else {
-	«Frontier must have been moved or its folder re-named.
-		«Friday, January 02, 1998 at 10:21:09 PM by PBS
+	//Frontier must have been moved or its folder re-named.
+		//Friday, January 02, 1998 at 10:21:09 PM by PBS
 	user.backups.folder = Frontier.pathstring + "backups" + file.getPathChar ()};
 
 local (source = Frontier.getFilePath (), dest);
@@ -28,16 +28,16 @@ msg ("Copying...");
 file.copy (source, dest);
 msg ("");
 
-bundle { «check to see if the backup file exists and is the right size
+bundle { //check to see if the backup file exists and is the right size
 	local (f = file.fileFromPath (dest));
-	if not file.exists (dest) { «user wants to know if ANYTHING went wrong
+	if not file.exists (dest) { //user wants to know if ANYTHING went wrong
 		scriptError (f + " wasn't created.")};
 	local (diff = file.size (dest) - file.size (source));
-	if diff != 0 { «the user wants to know...
+	if diff != 0 { //the user wants to know...
 		scriptError (f + " isn't the correct size, difference = " + diff)}};
 
-user.backups.nextBackup++; «everything went as planned, the backup is cool
-fileMenu.save (); «be sure backups.nextbackup is correct on disk
+user.backups.nextBackup++; //everything went as planned, the backup is cool
+fileMenu.save (); //be sure backups.nextbackup is correct on disk
 
 bundle { //11/28/97 DW -- call the custom backup script if it's there
 	try {

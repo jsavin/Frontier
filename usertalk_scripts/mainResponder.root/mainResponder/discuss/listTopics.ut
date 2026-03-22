@@ -1,20 +1,20 @@
 on listTopics (channelname="", url=nil) {
-	«Changes
-		«2/14/07; 11:48:40 AM by LL
-			«Don't display pending news items.
-		«2000 and earlier
-			«05/22/00; 5:01:30 PM by JES
-				«work around problem with cached table rows -- when you change the language, they needed to be re-rendered.
-			«04/12/00; 12:56:00 PM by JES
-				«Localized using mainResponder.getString
-				«Localized date display
-			«Mon, 01 Mar 1999 15:15:05 GMT by AR
-				«Minor optimizations in the for loop for the flonemonth==true case
-				«Also changed valign=center to valign=middle
-			«Wed, 26 May 1999 01:22:21 GMT by AR
-				«Real names of message authors are now looked up in the membership group specified thru pta^.responderAttributes.defaultMembershipGroup instead of formerly config.mainresponder.globals.defaultMembershipGroup, allowing greater flexibility while retaining backwards-compatibility.
-			«Saturday, August 21, 1999 at 9:14:02 PM by PBS
-				«Undeclared local variable adrStorage now declared.
+	//Changes
+		//2/14/07; 11:48:40 AM by LL
+			//Don't display pending news items.
+		//2000 and earlier
+			//05/22/00; 5:01:30 PM by JES
+				//work around problem with cached table rows -- when you change the language, they needed to be re-rendered.
+			//04/12/00; 12:56:00 PM by JES
+				//Localized using mainResponder.getString
+				//Localized date display
+			//Mon, 01 Mar 1999 15:15:05 GMT by AR
+				//Minor optimizations in the for loop for the flonemonth==true case
+				//Also changed valign=center to valign=middle
+			//Wed, 26 May 1999 01:22:21 GMT by AR
+				//Real names of message authors are now looked up in the membership group specified thru pta^.responderAttributes.defaultMembershipGroup instead of formerly config.mainresponder.globals.defaultMembershipGroup, allowing greater flexibility while retaining backwards-compatibility.
+			//Saturday, August 21, 1999 at 9:14:02 PM by PBS
+				//Undeclared local variable adrStorage now declared.
 	local (pta = html.getPageTableAddress ());
 	if url == nil {
 		url = pta^.responderattributes.urls^.discussMsgReader};

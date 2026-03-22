@@ -1,13 +1,13 @@
 on getCategories (blogid, username, password) {
-	«Changes
-		«10/18/05; 4:10:47 AM by JES
-			«Change "HomePage" category to "Home Page".
-		«10/17/05; 2:44:12 AM by JES
-			«Bug fix: set adrsite to the address of the site, not the address of the site's #newsSite table.
-		«10/17/05; 2:41:25 AM by JES
-			«Add support for Home Page category if support for multiple departments is enabled.
-		«7/3/02; 12:02:06 AM by JES
-			«Created.
+	//Changes
+		//10/18/05; 4:10:47 AM by JES
+			//Change "HomePage" category to "Home Page".
+		//10/17/05; 2:44:12 AM by JES
+			//Bug fix: set adrsite to the address of the site, not the address of the site's #newsSite table.
+		//10/17/05; 2:41:25 AM by JES
+			//Add support for Home Page category if support for multiple departments is enabled.
+		//7/3/02; 12:02:06 AM by JES
+			//Created.
 	local (siteurl = blogid);
 	local (sitename = manilaSuite.rpcHandlers.getSiteName (siteurl));
 	local (returnedcats);
@@ -31,5 +31,5 @@ on getCategories (blogid, username, password) {
 			adrreturnedcat^.htmlUrl = siteUrl + "newsItems/viewDepartment$" + string.urlEncode (nameOf (adr^));
 			adrreturnedcat^.rssUrl = ""}};
 	return (returnedcats)};
-«bundle //testing
-	«getCategories ("http://127.0.0.1/blogger/", "jake@userland.com", "boldnoti")
+//bundle //testing
+	//getCategories ("http://127.0.0.1/blogger/", "jake@userland.com", "boldnoti")

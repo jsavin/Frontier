@@ -1,15 +1,15 @@
 on doSearch (sites, urlThisPage, adrCaller, args = "", adrPrefs=@user.searchEngine.prefs) {
-	«Run the search. From a .wsf page, call searchEngine.searchMacro instead of this script.
-		«If you're running from inside an .fcgi, you can call this script directly.
-		«Parameters:
-			«The sites parameter is a list of site names.
-			«urlThisPage is the URL of the calling page.
-			«adrCaller is the Frontier address of the calling page or CGI script.
-			«args is the arg string.
-			«The optional adrPrefs parameter lets you use multiple prefs tables for different searches.
-				«You can duplicate and modify the table at user.searchEngine.prefs.
-				«To create a new prefs table, call searchEngine.init with the address of a new prefs table.
-		«This script returns HTML text.
+	//Run the search. From a .wsf page, call searchEngine.searchMacro instead of this script.
+		//If you're running from inside an .fcgi, you can call this script directly.
+		//Parameters:
+			//The sites parameter is a list of site names.
+			//urlThisPage is the URL of the calling page.
+			//adrCaller is the Frontier address of the calling page or CGI script.
+			//args is the arg string.
+			//The optional adrPrefs parameter lets you use multiple prefs tables for different searches.
+				//You can duplicate and modify the table at user.searchEngine.prefs.
+				//To create a new prefs table, call searchEngine.init with the address of a new prefs table.
+		//This script returns HTML text.
 	
 	local (searchString, searchType);
 	local (filteredSearchString);
@@ -247,8 +247,8 @@ on doSearch (sites, urlThisPage, adrCaller, args = "", adrPrefs=@user.searchEngi
 		for i = 1 to sizeOf (sites) {
 			indexesList [i] = searchEngine.getIndexAddress (sites [i]);
 			
-			«Get the address of the previews table.
-				«For the sake of speed, don't call searchEngine.getPreviewsAddress.
+			//Get the address of the previews table.
+				//For the sake of speed, don't call searchEngine.getPreviewsAddress.
 			local (adr = indexesList [i]);
 			adr = parentOf (adr^);
 			adr = @adr^.previews;
@@ -286,8 +286,8 @@ on doSearch (sites, urlThisPage, adrCaller, args = "", adrPrefs=@user.searchEngi
 					totalScreens = number (totalScreens);
 					if totalScreens == 1 {
 						return (false)};
-					«if mod (totalHits, maxHitsPerPage) == 0
-						«totalScreens = totalScreens - 1
+					//if mod (totalHits, maxHitsPerPage) == 0
+						//totalScreens = totalScreens - 1
 					local (thisScreen = number (start / maxHitsPerPage));
 					local (i);
 					add ("<p>\r" + adrStrings^.moreMatches + "<p>\r");

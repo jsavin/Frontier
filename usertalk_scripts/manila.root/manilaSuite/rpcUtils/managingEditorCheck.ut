@@ -1,7 +1,7 @@
 on managingEditorCheck (sitename, username, password, beginningErrorString) {
-	«Make sure this person is a managing editor. If not, generate the appropriate script error.
-		«beginningErrorString should be a string like "Can't do xxx because " -- this script fills in the reason, then calls scriptError.
-		«This way we avoid generic error messages such as "Can't complete this operation because..." which are no good.
+	//Make sure this person is a managing editor. If not, generate the appropriate script error.
+		//beginningErrorString should be a string like "Can't do xxx because " -- this script fills in the reason, then calls scriptError.
+		//This way we avoid generic error messages such as "Can't complete this operation because..." which are no good.
 	
 	if not (manilaSuite.rpcUtils.isMember (siteName, username)) {
 		scriptError (beginningErrorString + "\"" + username + "\" is not a member.")};

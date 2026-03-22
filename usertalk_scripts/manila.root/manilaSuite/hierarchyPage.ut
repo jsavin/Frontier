@@ -1,70 +1,70 @@
 on hierarchyPage (pta=nil, flNotFoundPages=true) {
-	«Changes:
-		«5/1/06; 6:45:15 PM by JES
-			«When generating next/prev links, revert to using pathname for the link text, if name is not present.
-		«5/1/06; 1:22:09 PM by JES
-			«When calling manilaSuite.siteStructure.dive, use pta^.remainingPath, not pta^.path.
-		«4/27/06; 6:44:53 PM by JES
-			«Factored code that dives into the hierarchy into manilaSuite.siteStructure.dive and manilaSuite.siteStructure.getItemAddress.
-		«1/24/06; 5:09:48 PM by JES
-			«Fixed a bug generating next/prev links when the category contains story elements which have a url attribute instead of a pathname attribute.
-		«1/7/06; 1:18:17 AM by JES
-			«Add support for <story> with url attributes instead of pathname attributes, which link to pages outside this site.
-			«Don't URL-encode links to external sites.
-		«6/28/05; 1:41:08 AM by JES
-			«Throw redirects back up the call stack in addition to !return pseudo-errors.
-		«5/29/05; 3:20:06 AM by JES
-			«New optional parameter, flNotFoundPage. If true (as is the default), then Manila generates its 404 Not Found Page. Otherwise, we just return false, and let the caller (usually mainResponder.respond) do its thing.
-		«4/4/05; 3:34:19 AM by JES
-			«Added callback support. Plug-ins and Tools can now extend hierarchy behavior, without having to install anything in the site.
-		«2004
-			«10/22/04; 9:57:15 AM by EDS
-				«incorporating patches by DAB
-					«Use valid html  ul, li when listing stories in a hierarchy based directory
-					«Restore preference for hiding the admin box
-			«2/16/04; 5:29:01 PM by JES
-				«When listing sub-categories, if the sub-category has a description, add it to the item.
-			«2/10/04; 5:35:12 PM by JES
-				«Added support for redirects. Redirects take the following format:
-				«Redirect to external site:
-					«<redirect pathname="path" url="http://www.example.com/" />
-				«Redirect within this site
-					«<redirect pathname="path" url="/pathInSite" />
-		«2003
-			«4/25/03; 3:44:44 PM by JES
-				«Hierarchy pages always get the Admin box.
-		«2002
-			«8/10/02; 6:59:58 PM by JES
-				«Hierearchy pages now get an admin box if the pref is set. Default is false.
-			«1/14/02; 3:42:22 PM by PBS
-				«If a request ends with .opml, return the page as OPML.
-		«2001
-			«10/15/01; 9:21:16 PM by PBS
-				«Generate a 404 Not Found when the page can't be found.
-			«9/28/01; 2:37:46 PM by PBS
-				«Support for print friendly templates.
-			«06/12/01; 8:08:28 AM by JES
-				«Backed out the last change.
-			«06/11/01; 6:43:07 PM by JES
-				«Fixed two bugs: 1) pages would appear at multiple unintended locations. 2) If you had a page at a path like discuss/foo, it wouldn't be found.
-					«Fix based on a fix from Eric Soros, with an addition. See: http://manilanewbies.userland.com/discuss/msgReader$5684?mode=topic
-			«04/24/01; 8:48:00 PM by JES
-				«Call string.urlEncode on the link URLs, to fix problems with high-ascii characters. Add onmouseover and onmouseout handlers to the links so that the window's status bar will display the un-encoded URL.
-		«2000
-			«03/03/00; 6:13:12 PM by PBS
-				«Call manilaSuite.siteStructure.compileIfDirty, a new bottleneck script for compiling the site structure.
-			«03/28/00; 9:44:38 PM by PBS
-				«Automatic links to category pages should have a trailing slash.
-			«04/20/00; 8:29:55 PM by JES
-				«localized
-			«05/01/00; 3:15:30 PM by JES
-				«Changed getString calls to use a replacement table address instead of a lists
-			«05/01/00; 5:28:06 PM by PBS
-				«Support for news items -- supply the adrGetBodyCallback to mainResponder.discuss.readMessage, on the chance that someone has made a news item a hierarchy page. This way the news item will be formatted correctly in HTML rather than XML.
-			«05/09/00; 5:45:14 PM by JES
-				«added optional pta parameter
-			«?/?/00 by PBS
-				«Dive into the XML #hierarchy structure and find and build a page
+	//Changes:
+		//5/1/06; 6:45:15 PM by JES
+			//When generating next/prev links, revert to using pathname for the link text, if name is not present.
+		//5/1/06; 1:22:09 PM by JES
+			//When calling manilaSuite.siteStructure.dive, use pta^.remainingPath, not pta^.path.
+		//4/27/06; 6:44:53 PM by JES
+			//Factored code that dives into the hierarchy into manilaSuite.siteStructure.dive and manilaSuite.siteStructure.getItemAddress.
+		//1/24/06; 5:09:48 PM by JES
+			//Fixed a bug generating next/prev links when the category contains story elements which have a url attribute instead of a pathname attribute.
+		//1/7/06; 1:18:17 AM by JES
+			//Add support for <story> with url attributes instead of pathname attributes, which link to pages outside this site.
+			//Don't URL-encode links to external sites.
+		//6/28/05; 1:41:08 AM by JES
+			//Throw redirects back up the call stack in addition to !return pseudo-errors.
+		//5/29/05; 3:20:06 AM by JES
+			//New optional parameter, flNotFoundPage. If true (as is the default), then Manila generates its 404 Not Found Page. Otherwise, we just return false, and let the caller (usually mainResponder.respond) do its thing.
+		//4/4/05; 3:34:19 AM by JES
+			//Added callback support. Plug-ins and Tools can now extend hierarchy behavior, without having to install anything in the site.
+		//2004
+			//10/22/04; 9:57:15 AM by EDS
+				//incorporating patches by DAB
+					//Use valid html  ul, li when listing stories in a hierarchy based directory
+					//Restore preference for hiding the admin box
+			//2/16/04; 5:29:01 PM by JES
+				//When listing sub-categories, if the sub-category has a description, add it to the item.
+			//2/10/04; 5:35:12 PM by JES
+				//Added support for redirects. Redirects take the following format:
+				//Redirect to external site:
+					//<redirect pathname="path" url="http://www.example.com/" />
+				//Redirect within this site
+					//<redirect pathname="path" url="/pathInSite" />
+		//2003
+			//4/25/03; 3:44:44 PM by JES
+				//Hierarchy pages always get the Admin box.
+		//2002
+			//8/10/02; 6:59:58 PM by JES
+				//Hierearchy pages now get an admin box if the pref is set. Default is false.
+			//1/14/02; 3:42:22 PM by PBS
+				//If a request ends with .opml, return the page as OPML.
+		//2001
+			//10/15/01; 9:21:16 PM by PBS
+				//Generate a 404 Not Found when the page can't be found.
+			//9/28/01; 2:37:46 PM by PBS
+				//Support for print friendly templates.
+			//06/12/01; 8:08:28 AM by JES
+				//Backed out the last change.
+			//06/11/01; 6:43:07 PM by JES
+				//Fixed two bugs: 1) pages would appear at multiple unintended locations. 2) If you had a page at a path like discuss/foo, it wouldn't be found.
+					//Fix based on a fix from Eric Soros, with an addition. See: http://manilanewbies.userland.com/discuss/msgReader$5684?mode=topic
+			//04/24/01; 8:48:00 PM by JES
+				//Call string.urlEncode on the link URLs, to fix problems with high-ascii characters. Add onmouseover and onmouseout handlers to the links so that the window's status bar will display the un-encoded URL.
+		//2000
+			//03/03/00; 6:13:12 PM by PBS
+				//Call manilaSuite.siteStructure.compileIfDirty, a new bottleneck script for compiling the site structure.
+			//03/28/00; 9:44:38 PM by PBS
+				//Automatic links to category pages should have a trailing slash.
+			//04/20/00; 8:29:55 PM by JES
+				//localized
+			//05/01/00; 3:15:30 PM by JES
+				//Changed getString calls to use a replacement table address instead of a lists
+			//05/01/00; 5:28:06 PM by PBS
+				//Support for news items -- supply the adrGetBodyCallback to mainResponder.discuss.readMessage, on the chance that someone has made a news item a hierarchy page. This way the news item will be formatted correctly in HTML rather than XML.
+			//05/09/00; 5:45:14 PM by JES
+				//added optional pta parameter
+			//?/?/00 by PBS
+				//Dive into the XML #hierarchy structure and find and build a page
 	
 	local (adrsite = manilaSuite.getSiteAddress (pta));
 	
@@ -86,8 +86,8 @@ on hierarchyPage (pta=nil, flNotFoundPages=true) {
 	
 	if pta == nil { // 05/08/00 JES: pta is now an optional parameter (useful for debugging)
 		pta = html.getPageTableAddress ()};
-	«if not (pta^.path endswith ".ico")
-		«workspace.pt = pta^
+	//if not (pta^.path endswith ".ico")
+		//workspace.pt = pta^
 	
 	local (adrHierarchy = pta^.hierarchy);
 	local (path = pta^.remainingPath);
@@ -126,10 +126,10 @@ on hierarchyPage (pta=nil, flNotFoundPages=true) {
 		else {
 			return (false)}};
 	bundle { //handle index pages (category pages) -- redirect if necessary
-		«If this is a category, make sure there's a trailing slash, unless the end of the path ends with a default directory item name.
+		//If this is a category, make sure there's a trailing slash, unless the end of the path ends with a default directory item name.
 		if string.lower (string.nthField (nameOf (nomad^), '\t', 2)) == "category" {
 			if not (pta^.remainingPath endsWith "/") {
-				«PBS 10/13/99: Handle default directory items.
+				//PBS 10/13/99: Handle default directory items.
 				local (lowerLastPathPart = string.lower (string.nthField (pta^.path, '/', string.countFields (pta^.path, '/'))));
 				local (i, flDefault = false);
 				for i = 1 to sizeOf (pta^.responderAttributes.defaultDirectoryItems) {
@@ -144,7 +144,7 @@ on hierarchyPage (pta=nil, flNotFoundPages=true) {
 	
 	local (type);
 	type = string.lower (string.nthField (nameOf (nomad^), '\t', 2));
-	if type == "" { «made conditional
+	if type == "" { //made conditional
 		type = "category"};
 	
 	local (htmlText);
@@ -160,13 +160,13 @@ on hierarchyPage (pta=nil, flNotFoundPages=true) {
 		
 		local (flAdminBox = false);
 		if not manilaSuite.staticRendering.isStaticRendering (pta) {
-			«Fri, Oct 22, 2004 at 9:53:12 AM by EDS incorporating DAB
-				«restoring earlier pref.
+			//Fri, Oct 22, 2004 at 9:53:12 AM by EDS incorporating DAB
+				//restoring earlier pref.
 			flAdminBox = manilaSuite.getNewsSitePref ("flAdminBoxOnHierarchyPages", adrsite, true, true)};
 		if flAdminBox {
 			add (manilaSuite.html.confirmBox (pta))};
 		
-		«Do we display bylines for stories?
+		//Do we display bylines for stories?
 		local (flByline);
 		flByline = boolean (manilaSuite.getNewsSitePref ("flBylinesOnStories", default:true, flCreate:true));
 		
@@ -246,7 +246,7 @@ on hierarchyPage (pta=nil, flNotFoundPages=true) {
 										url = string.urlEncode (url);
 										url = string.replaceAll (url, "%2F", "/");
 										url = string.replaceAll (url, "%25", "%")}};
-								«add (html.getLink (linetext, url))
+								//add (html.getLink (linetext, url))
 								add ("<a href=\"" + url + "\" " + mouseover + ">" + linetext + "</a>");
 								if ct != nil {
 									add (ct)};
@@ -281,7 +281,7 @@ on hierarchyPage (pta=nil, flNotFoundPages=true) {
 				mainResponder.redirect (url);
 				scripterror ("!redirect " + url)}}};
 	
-	«Build hierarchy path.
+	//Build hierarchy path.
 	bundle {
 		local (pathText);
 		local (adrTable = nomad);
@@ -290,10 +290,10 @@ on hierarchyPage (pta=nil, flNotFoundPages=true) {
 		local (flHierarchyPath = true);
 		
 		bundle { //get hierarchy path prefs
-			«if defined (adrHierarchy^.prefs.bgcolor)
-				«pathBgColor = adrHierarchy^.prefs.bgcolor
-			«else
-				«pathBgColor = pta^.bgColor
+			//if defined (adrHierarchy^.prefs.bgcolor)
+				//pathBgColor = adrHierarchy^.prefs.bgcolor
+			//else
+				//pathBgColor = pta^.bgColor
 			if defined (pta^.bgColor) {
 				pathBgColor = pta^.bgColor};
 			
@@ -342,7 +342,7 @@ on hierarchyPage (pta=nil, flNotFoundPages=true) {
 					url = string.urlEncode (url);
 					url = string.replaceAll (url, "%2F", "/");
 					url = string.replaceAll (url, "%25", "%")};
-				«add (html.getLink (lineText, url))
+				//add (html.getLink (lineText, url))
 				add ("<a href=\"" + url + "\" " + mouseover + ">" + linetext + "</a>");
 				ctPops++;
 				if ctPops == 2 and not flHierarchyPath {
@@ -454,6 +454,6 @@ on hierarchyPage (pta=nil, flNotFoundPages=true) {
 		add (manilaSuite.staticRendering.displayRenderButton (pta))};
 	
 	return (htmlText)};
-«bundle //test code
-	«html.setPageTableAddress (@workspace.pt)
-	«hierarchyPage ()
+//bundle //test code
+	//html.setPageTableAddress (@workspace.pt)
+	//hierarchyPage ()

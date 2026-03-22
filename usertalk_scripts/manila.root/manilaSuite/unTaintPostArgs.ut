@@ -1,7 +1,7 @@
 on unTaintPostArgs () {
-	«Untaint all the post args, except for file uploads.
-		«This script isn't appropriate when some of the post args should go through mainResponder.neuterText. It is appropriate at many other times.
-		«10/30/99; 4:43:44 PM by PBS
+	//Untaint all the post args, except for file uploads.
+		//This script isn't appropriate when some of the post args should go through mainResponder.neuterText. It is appropriate at many other times.
+		//10/30/99; 4:43:44 PM by PBS
 	
 	local (i);
 	local (pta = html.getPageTableAddress ());

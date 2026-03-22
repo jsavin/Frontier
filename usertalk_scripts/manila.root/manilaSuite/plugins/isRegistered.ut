@@ -1,6 +1,6 @@
 on isRegistered (pluginName) {
-	«Changes
-		«3/8/06; 12:05:22 AM by JES
-			«Created. Return true if a plug-in is registered or false if not.
+	//Changes
+		//3/8/06; 12:05:22 AM by JES
+			//Created. Return true if a plug-in is registered or false if not.
 	local (adrConfig = manilaSuite.plugins.getConfigAddress (pluginName));
 	return (defined (adrConfig^))}

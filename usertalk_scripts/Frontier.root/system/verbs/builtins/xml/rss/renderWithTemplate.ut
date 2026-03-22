@@ -1,25 +1,25 @@
 on renderWithTemplate (adrService, template, itemTemplate, serviceTitle=nil, maxItems=infinity, timeZone="PST") {
-	«Changes:
-		«12/23/01; 10:18:39 PM by JES
-			«Add itemText as a synonym for item.
-		«6/28/01; 2:58:23 PM by JES
-			«Restore the page table address, before exiting, when called in the context of the website framework.
-		«1/8/01; 11:54:00 AM by JES
-			«Render a service, given the address of the service, and two templates as strings.
-				«The templates are:
-					«template
-						«Macros:
-						«{title ()} -- The name of the channel.
-						«{updateTime ()} -- The time the channel was last updated.
-						«{items ()} -- The items as rendered through #rssItemTemplate.
-						«{channelLink (linetext, title=nil)} -- Generate a link to the URL specified by channelLink.
-						«{channelDescription ()} -- The description of the channel.
-						«{image (imageUrl=nil)} -- The channel's image if defined, or the empty string.
-					«itemTemplate
-						«Macros:
-						«{itemText ()} -- The text of a single item.
-						«{sourceTitle ()} -- The name of the source channel if defined, or this channel if not defined.
-						«{sourceLink (linetext, title=nil)} -- The URL of the source channel if defined, or this channel if not defined.
+	//Changes:
+		//12/23/01; 10:18:39 PM by JES
+			//Add itemText as a synonym for item.
+		//6/28/01; 2:58:23 PM by JES
+			//Restore the page table address, before exiting, when called in the context of the website framework.
+		//1/8/01; 11:54:00 AM by JES
+			//Render a service, given the address of the service, and two templates as strings.
+				//The templates are:
+					//template
+						//Macros:
+						//{title ()} -- The name of the channel.
+						//{updateTime ()} -- The time the channel was last updated.
+						//{items ()} -- The items as rendered through #rssItemTemplate.
+						//{channelLink (linetext, title=nil)} -- Generate a link to the URL specified by channelLink.
+						//{channelDescription ()} -- The description of the channel.
+						//{image (imageUrl=nil)} -- The channel's image if defined, or the empty string.
+					//itemTemplate
+						//Macros:
+						//{itemText ()} -- The text of a single item.
+						//{sourceTitle ()} -- The name of the source channel if defined, or this channel if not defined.
+						//{sourceLink (linetext, title=nil)} -- The URL of the source channel if defined, or this channel if not defined.
 	local (adrTable = @adrService^.compilation);
 	local (htmltext, adrItem);
 	local (pageTable);
@@ -116,8 +116,8 @@ on renderWithTemplate (adrService, template, itemTemplate, serviceTitle=nil, max
 			html.setPageTableAddress (oldPta)}};
 	
 	return (htmltext)};
-«bundle //test code
-	«local (adrService = @myUserLandData.services.["http://www.ourfavoritesongs.com/users/dave@userland.com/rss/mindBombs.xml"])
-	«local (template = string (myUserLandData.prefs.templates.serviceTemplate))
-	«local (itemTemplate = string (myUserLandData.prefs.templates.serviceItemTemplate))
-	«webbrowser.displaytext (renderWithTemplate (adrService, template, itemTemplate))
+//bundle //test code
+	//local (adrService = @myUserLandData.services.["http://www.ourfavoritesongs.com/users/dave@userland.com/rss/mindBombs.xml"])
+	//local (template = string (myUserLandData.prefs.templates.serviceTemplate))
+	//local (itemTemplate = string (myUserLandData.prefs.templates.serviceItemTemplate))
+	//webbrowser.displaytext (renderWithTemplate (adrService, template, itemTemplate))

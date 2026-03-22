@@ -1,4 +1,4 @@
-on zoomWindow (windowpath, zoomIn) { « zoom the indicated folder's window in or out
+on zoomWindow (windowpath, zoomIn) { // zoom the indicated folder's window in or out
 	local (zoomcode, fwindow);
 	if not Finder.makeWindow (windowpath, 0, @fwindow) {
 		return (false)};

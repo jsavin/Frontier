@@ -1,6 +1,6 @@
 on iso8859Decode (s) {
-	«Does the reverse of string.iso8859Encode ().
-		«Converts HTML entities to ASCII chars in your machine's charset.
+	//Does the reverse of string.iso8859Encode ().
+		//Converts HTML entities to ASCII chars in your machine's charset.
 	
 	on hexEncode (s) {
 		local (result = "", i);

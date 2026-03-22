@@ -1,9 +1,9 @@
 on getAdminBoxColors (adrHeaderColor, adrHeaderTextColor, adrBackgroundColor, adrBackgroundTextColor) {
-	«Get the editor's preferences for the Admin box colors.
-		«12/13/99; 5:29:58 PM by PBS
-		«Changes:
-			«12/21/99; 7:25:19 PM by PBS
-				«If a specified color is "", then use an appropriate default.
+	//Get the editor's preferences for the Admin box colors.
+		//12/13/99; 5:29:58 PM by PBS
+		//Changes:
+			//12/21/99; 7:25:19 PM by PBS
+				//If a specified color is "", then use an appropriate default.
 	
 	local (adrDefaultColors = @manilaData.newSiteTemplate.["#newsSite"].colors);
 	
@@ -12,7 +12,7 @@ on getAdminBoxColors (adrHeaderColor, adrHeaderTextColor, adrBackgroundColor, ad
 	adrBackgroundColor^ = manilaSuite.getNewsSitePref ("colors.adminBoxBackground", default:adrDefaultColors^.adminBoxBackground, flCreate:true);
 	adrBackgroundTextColor^ = manilaSuite.getNewsSitePref ("colors.adminBoxBackgroundText", default:adrDefaultColors^.adminBoxBackgroundText, flCreate:true);
 	
-	«PBS 12/21/99: if a specified color is "", then use an appropriate default.
+	//PBS 12/21/99: if a specified color is "", then use an appropriate default.
 	if string.trimWhiteSpace (adrHeaderColor^) == "" {
 		adrHeaderColor^ = adrDefaultColors^.adminBoxHeader};
 	if string.trimWhiteSpace (adrHeaderTextColor^) == "" {

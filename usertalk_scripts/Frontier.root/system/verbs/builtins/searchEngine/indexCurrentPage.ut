@@ -1,7 +1,7 @@
 on indexCurrentPage (adrPageTable, siteName, adrStopWords=nil) {
-	«Call this script from your finalFilter.
-		«This will keep your site's index up-to-date.
-		«Whenever you build a page, the index is updated.
+	//Call this script from your finalFilter.
+		//This will keep your site's index up-to-date.
+		//Whenever you build a page, the index is updated.
 	
 	if defined (adrPageTable^.requestHeaders) { //is this a dynamic page?
 		return (false)}; //only index when writing to disk, not during dynamic generation
@@ -29,7 +29,7 @@ on indexCurrentPage (adrPageTable, siteName, adrStopWords=nil) {
 		if not (html.getPagePref ("regularIndex", adrPage)) {
 			flDynamic = true}};
 	
-	«Set the indexThisPage directive to false to skip a page.
+	//Set the indexThisPage directive to false to skip a page.
 	if not (html.getPref ("indexThisPage", adrPageTable)) {
 		return (false)}; //don't index this page
 	
@@ -45,15 +45,15 @@ on indexCurrentPage (adrPageTable, siteName, adrStopWords=nil) {
 	
 	msg ("Search Engine: Indexing: " + adrPage);
 	
-	«Create a preview for this page.
-		«This should always be done before adding a page to the index.
+	//Create a preview for this page.
+		//This should always be done before adding a page to the index.
 	searchEngine.createPreview (pageText, title, url, adrPage, adrPreviews, clock.now ());
 	
-	«Add the page to the index.
-		«It's okay to call this verb if the page has been indexed before.
+	//Add the page to the index.
+		//It's okay to call this verb if the page has been indexed before.
 	searchEngine.indexPage (adrPage, url, title, pageText, adrIndex, adrStopWords);
 	
-	«Save the guest database containing the index.
+	//Save the guest database containing the index.
 	searchEngine.saveIndex (siteName, adrIndex);
 	
 	return (true)}

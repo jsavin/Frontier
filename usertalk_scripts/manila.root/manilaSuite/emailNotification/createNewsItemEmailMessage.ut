@@ -1,9 +1,9 @@
 on createNewsItemEmailMessage (adrMsgTable, url, member, flNew, status="", language = nil) {
-	«Create an email message regarding a news item. Return a table containing two fields: subject and text.
-		«04/04/00; 10:17:44 PM by PBS
-		«Changes:
-			«05/20/00; 9:29:31 PM by JES
-				«localized
+	//Create an email message regarding a news item. Return a table containing two fields: subject and text.
+		//04/04/00; 10:17:44 PM by PBS
+		//Changes:
+			//05/20/00; 9:29:31 PM by JES
+				//localized
 	
 	local (tempTable); // 05/04/00 JES: a dummy page table for getString -- needed because we might be running in an RPC handler.
 	bundle { // figure out what language to use in the email
@@ -58,7 +58,7 @@ on createNewsItemEmailMessage (adrMsgTable, url, member, flNew, status="", langu
 			t.subject = manilaSuite.getString ("emailNotification." + stringName + "Subject", @replacementTable, pta: @tempTable);
 			addLine (manilaSuite.getString ("emailNotification." + stringName + "Body", pta: @tempTable))}};
 	
-	«t.subject = t.subject + type + ": " + adrMsgTable^.subject // 05/04/00 JES: subject is now inserted by manilaSuite.getString
+	//t.subject = t.subject + type + ": " + adrMsgTable^.subject // 05/04/00 JES: subject is now inserted by manilaSuite.getString
 	
 	replacementTable.url = url;
 	replacementTable.member = member;

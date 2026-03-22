@@ -1,7 +1,7 @@
 on pleaseNotify (url, adrcallback, adrdata = @xmlStorageSystem.data) {
-	«Changes:
-		«7/23/01; 9:45:30 PM by JES
-			«The data table now supports both xmlRpcPath, and the more general rpcPath, used for both XML-RPC and for SOAP. This is for support for SOAP-based xmlStorageSystem implementations which have a request URI which is different from the value of the SOAPAction header.
+	//Changes:
+		//7/23/01; 9:45:30 PM by JES
+			//The data table now supports both xmlRpcPath, and the more general rpcPath, used for both XML-RPC and for SOAP. This is for support for SOAP-based xmlStorageSystem implementations which have a request URI which is different from the value of the SOAPAction header.
 	xmlStorageSystem.init ();
 	local (params = {"notifyProcedure":"xmlStorageSystemClient.resourceChanged", "port":user.inetd.config.http.port, "path":"/RPC2", "protocol":"xml-rpc", "urllist":{url}});
 	local (rpcPath);

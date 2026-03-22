@@ -1,12 +1,12 @@
 on edit (adrobject) {
-	bundle { «make sure that the user table is set up
+	bundle { //make sure that the user table is set up
 		if not defined (user.odbEditors) {
 			new (tabletype, @user.odbEditors)};
-		«if not defined (user.odbEditors.data)
-			«new (tabletype, @user.odbEditors.data)};
+		//if not defined (user.odbEditors.data)
+			//new (tabletype, @user.odbEditors.data)};
 	
 	local (adreditor = nil);
-	with odbEditor { «find an editor for this object
+	with odbEditor { //find an editor for this object
 		for i = 1 to sizeof (editors) {
 			if editors [i].canEdit (adrobject) {
 				adreditor = @editors [i];
@@ -16,11 +16,11 @@ on edit (adrobject) {
 		return};
 	
 	local (type = nameOf (adreditor^));
-	bundle { «locate an editor for this object
+	bundle { //locate an editor for this object
 		adreditorapp = @user.odbEditors.[type + "Editor"];
 		if defined (adreditorapp^) and not file.exists (adreditorapp^) {
 			delete (adreditorapp)};
-		if not defined (adreditorapp^) { «look for compatible app
+		if not defined (adreditorapp^) { //look for compatible app
 			local (app);
 			for app in adreditor^.apps {
 				f = file.findapplication (app);
@@ -33,7 +33,7 @@ on edit (adrobject) {
 	
 	local (ideditorapp = file.creator (adreditorapp^));
 	if not sys.appIsRunning (ideditorapp) {
-		launch.application (adreditorapp^)}; «make sure the editor is running
+		launch.application (adreditorapp^)}; //make sure the editor is running
 	sys.bringAppToFront (ideditorapp);
 	
 	adreditor^.edit (adrobject)}

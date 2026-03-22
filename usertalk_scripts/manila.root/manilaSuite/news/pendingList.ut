@@ -1,21 +1,21 @@
 on pendingList (flCreateLink=true) {
-	«Changes:
-		«12/22/04; 12:04:34 PM by LL
-			«Localize the dates used for pending news items.
-		«10/8/03; 2:09:01 PM by JES
-			«Add department column if the site has one or more departments.
-		«8/30/03; 1:24:34 PM by JES
-			«If the news item has no title, substitute "(untitled)" so we can render a link to the item.
-		«4/19/03; 8:07:45 PM by JES
-			«Add #edit anchor to the edit links, to scroll directly to the editing form.
-		«05/11/00; 8:04:39 PM by JES
-			«merged in Brent's security fix for the client side trojan horse attack.
-		«05/09/00; 10:42:03 PM by PBS
-			«Check referer to defeat the client side trojan horse.
-		«05/04/00; 5:40:07 PM by JES
-			«localized
-		«04/19/00; 10:22:10 PM by PBS
-			«Created. Build an HTML table displaying all the pending news items.
+	//Changes:
+		//12/22/04; 12:04:34 PM by LL
+			//Localize the dates used for pending news items.
+		//10/8/03; 2:09:01 PM by JES
+			//Add department column if the site has one or more departments.
+		//8/30/03; 1:24:34 PM by JES
+			//If the news item has no title, substitute "(untitled)" so we can render a link to the item.
+		//4/19/03; 8:07:45 PM by JES
+			//Add #edit anchor to the edit links, to scroll directly to the editing form.
+		//05/11/00; 8:04:39 PM by JES
+			//merged in Brent's security fix for the client side trojan horse attack.
+		//05/09/00; 10:42:03 PM by PBS
+			//Check referer to defeat the client side trojan horse.
+		//05/04/00; 5:40:07 PM by JES
+			//localized
+		//04/19/00; 10:22:10 PM by PBS
+			//Created. Build an HTML table displaying all the pending news items.
 	
 	local (pta = html.getPageTableAddress ());
 	local (flEditor = manilaSuite.editors.editorialTest ());
@@ -43,7 +43,7 @@ on pendingList (flCreateLink=true) {
 		manilaSuite.referer.checkSelf (); //PBS 05/09/00: check referer to defeat client side trojan horse
 		if flManagingEditor { //managing editors only may delete from a list
 			if defined (pta^.postArgs.delete) {
-				«if string.lower (pta^.postArgs.delete) == "delete" // 05/19/00 JES: test fails if localized
+				//if string.lower (pta^.postArgs.delete) == "delete" // 05/19/00 JES: test fails if localized
 				local (lowerCategory = "newsitem");
 				local (adrItem);
 				for adrItem in @pta^.postArgs {

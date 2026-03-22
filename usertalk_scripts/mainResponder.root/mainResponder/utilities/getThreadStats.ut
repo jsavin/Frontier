@@ -1,21 +1,21 @@
 on getThreadStats (flIncludeHeader=true) {
-	«This script generates a human-readable report from the output of thread.getStats.
-		«10/25/01; 4:34:32 PM by PBS
-		«Changes:
-			«10/31/01; 11:27:37 AM by PBS
-				«flIncludeHeader, a new optional parameter, specifies whether or not to include general info about this copy of Radio. Set it to false when you're concatenating multiple reports into one.
+	//This script generates a human-readable report from the output of thread.getStats.
+		//10/25/01; 4:34:32 PM by PBS
+		//Changes:
+			//10/31/01; 11:27:37 AM by PBS
+				//flIncludeHeader, a new optional parameter, specifies whether or not to include general info about this copy of Radio. Set it to false when you're concatenating multiple reports into one.
 	
 	local (text, indentlevel = 0);
 	local (fldebug = false); //set this to false when not debugging
 	on add (s) {
 		text = text + string.filledString ('\t', indentlevel) + s + "\n"};
-	«on isAgentsThread (id)
-		«local (adr)
-		«for adr in @system.compiler.threads
-			«if adr^ == id
-				«if nameOf (adr^) == "agents"
-					«return (true)
-		«return (false)
+	//on isAgentsThread (id)
+		//local (adr)
+		//for adr in @system.compiler.threads
+			//if adr^ == id
+				//if nameOf (adr^) == "agents"
+					//return (true)
+		//return (false)
 	on getName (id, adrName) {
 		local (adr);
 		for adr in @system.compiler.threads {
@@ -54,8 +54,8 @@ on getThreadStats (flIncludeHeader=true) {
 		local (idThread = number (string.nthField (stats, ',', 1)));
 		add ("id: " + idThread);
 		indentlevel++;
-		«if isAgentsThread (idThread)
-			«add ("Agents thread")
+		//if isAgentsThread (idThread)
+			//add ("Agents thread")
 		local (name);
 		if getName (idThread, @name) {
 			add ("Name: " + name)};
@@ -69,10 +69,10 @@ on getThreadStats (flIncludeHeader=true) {
 				add (label + ": " + val)};
 			doField (2, "Time Started (ticks)");
 			doField (3, "Time To Wake (ticks)");
-			«doField (6, "Time to Wake", flDate:true)
+			//doField (6, "Time to Wake", flDate:true)
 			doField (4, "Time Last Got Control (ticks)");
 			doField (5, "Time Slice (ticks)");
-			«doField (7, "Obsolete Boolean", true)
+			//doField (7, "Obsolete Boolean", true)
 			doField (8, "Scheduled for execution", true);
 			doField (9, "One shot", true);
 			doField (10, "In control of processor", true);

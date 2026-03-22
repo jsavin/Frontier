@@ -1,8 +1,8 @@
 on openManilaSite (siteurl=nil, adradrwindow=nil) {
 	
-	«If there were any callbacks for this command, they'd be called here.
-		«Since there were never any user.pike.commandCallbacks scripts, we'd only need to call callbacks at user.tools.commandCallbacks.openManilaSite.
-		«But there aren't any, so we just look for a windowType which defines a script to handle this command.
+	//If there were any callbacks for this command, they'd be called here.
+		//Since there were never any user.pike.commandCallbacks scripts, we'd only need to call callbacks at user.tools.commandCallbacks.openManilaSite.
+		//But there aren't any, so we just look for a windowType which defines a script to handle this command.
 	
 	local (flConfirmUrl=false);
 	if siteurl == nil { //default to the site to which the front window belongs
@@ -53,8 +53,8 @@ on openManilaSite (siteurl=nil, adradrwindow=nil) {
 	
 	return (false); //command not handled
 	
-	«bundle //old code
-		«return (playlist.manila.commands.openManilaSite ())};
+	//bundle //old code
+		//return (playlist.manila.commands.openManilaSite ())};
 
-«bundle //testing
-	«openManilaSite ()
+//bundle //testing
+	//openManilaSite ()

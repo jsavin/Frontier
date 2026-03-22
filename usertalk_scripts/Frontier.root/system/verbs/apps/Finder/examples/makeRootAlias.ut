@@ -1,4 +1,4 @@
-on makeRootAlias () { « Make a Finder alias of the root file, putting it on the DeskTop, with a specified label
+on makeRootAlias () { // Make a Finder alias of the root file, putting it on the DeskTop, with a specified label
 	local (f = frontier.getFilePath ());
 	with objectModel, Finder {
 		make (aliasFile, withData: finderSpec (f), at: objSpec (desktop), withProperties: { labelIndex: 3 })}}

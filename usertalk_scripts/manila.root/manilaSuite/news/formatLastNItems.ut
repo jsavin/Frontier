@@ -1,24 +1,24 @@
 on formatLastNItems (n=10, department=nil, newsItemTemplate=nil, flEditLinks=false, maxDate=nil, minDate=nil, flUseNewsDayTemplate=false, flSupressAnchors=false) {
-	«Changes:
-		«3/25/13; 4:08:49 PM by JES
-			«New optional, flSupressAnchors.
-				«Defaults false. Passed to manilaSuite.news.formatNewsItem.
-				«If true, then anchor links are added only if the template has {permalink} or {permalinkUrl} macros.
-		«12/4/06; 4:27:59 PM by LL
-			«Bug fix: Correct an issue when using the news day template with the pta parameter not being passed correctly.
-		«10/18/05; 5:00:45 AM by JES
-			«Pass department to manilaSuite.news.formatNewsItem.
-		«2003 and earlier
-			«10/14/03; 1:20:36 AM by JES
-				«If the news item has a non-empty department, replace pta^.tagline with the department description.
-			«05/02/00; 10:23:03 PM by PBS
-				«Support for rendering through the news day template.
-			«05/11/00; 11:59:59 PM by PBS
-				«Fixed a bug where sometimes a News Item rendered through a news day template would have the wrong date in the news day template.
-			«09/01/00; 9:20:07 PM by PBS
-				«Fix for last update time on News Items sites.
-			«04/20/00; 4:12:03 PM by PBS
-				«Format the last n items as HTML text.
+	//Changes:
+		//3/25/13; 4:08:49 PM by JES
+			//New optional, flSupressAnchors.
+				//Defaults false. Passed to manilaSuite.news.formatNewsItem.
+				//If true, then anchor links are added only if the template has {permalink} or {permalinkUrl} macros.
+		//12/4/06; 4:27:59 PM by LL
+			//Bug fix: Correct an issue when using the news day template with the pta parameter not being passed correctly.
+		//10/18/05; 5:00:45 AM by JES
+			//Pass department to manilaSuite.news.formatNewsItem.
+		//2003 and earlier
+			//10/14/03; 1:20:36 AM by JES
+				//If the news item has a non-empty department, replace pta^.tagline with the department description.
+			//05/02/00; 10:23:03 PM by PBS
+				//Support for rendering through the news day template.
+			//05/11/00; 11:59:59 PM by PBS
+				//Fixed a bug where sometimes a News Item rendered through a news day template would have the wrong date in the news day template.
+			//09/01/00; 9:20:07 PM by PBS
+				//Fix for last update time on News Items sites.
+			//04/20/00; 4:12:03 PM by PBS
+				//Format the last n items as HTML text.
 	
 	local (pta = html.getPageTableAddress ());
 	local (adrsite = manilaSuite.getSiteAddress (pta));

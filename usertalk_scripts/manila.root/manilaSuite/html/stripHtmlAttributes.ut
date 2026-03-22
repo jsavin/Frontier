@@ -1,9 +1,9 @@
 on stripHtmlAttributes (text) {
-	«Changes
-		«4/19/07; 3:17:38 PM by LL
-			«If any errors encountered by re.extract, try recompiling the regex pattern.
-		«4/10/07; 7:17:11 PM by LL
-			«Created. Check attributes for a and img tags for any restricted attributes. Any restricted attributes are stripped from the tag.
+	//Changes
+		//4/19/07; 3:17:38 PM by LL
+			//If any errors encountered by re.extract, try recompiling the regex pattern.
+		//4/10/07; 7:17:11 PM by LL
+			//Created. Check attributes for a and img tags for any restricted attributes. Any restricted attributes are stripped from the tag.
 	on getHtmlTags (htmltext) {
 		local (markupList = {});
 		local (aPattern = manilaData.stripHtmlAttributes.patterns.aPattern);
@@ -66,4 +66,4 @@ on stripHtmlAttributes (text) {
 		text = manilaSuite.untaint (text)};
 	
 	return (text)};
-«stripHtmlAttributes (string (scratchpad.test))
+//stripHtmlAttributes (string (scratchpad.test))

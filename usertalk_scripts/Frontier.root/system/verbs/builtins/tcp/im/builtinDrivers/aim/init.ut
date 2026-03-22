@@ -1,9 +1,9 @@
 on init() {
-	«Changes
-		«7/30/02; 3:13:40 PM by JES
-			«Initialize user.im.aim.flConnectAtStartup to false.
-		«7/30/02; 12:19:01 AM by JES
-			«Initialize user.im.aim, and system.temp.im.aim (not "temp.im.aim").
+	//Changes
+		//7/30/02; 3:13:40 PM by JES
+			//Initialize user.im.aim.flConnectAtStartup to false.
+		//7/30/02; 12:19:01 AM by JES
+			//Initialize user.im.aim, and system.temp.im.aim (not "temp.im.aim").
 	if not defined (user.im) {
 		new (tableType, @user.im)};
 	if not defined (user.im.aim) {

@@ -1,9 +1,9 @@
 on set (adrSitePrefs, itemName, s, windowInfoTable) {
-	«Set the text of a template on the server.
-		«Monday, November 20, 2000 at 5:00:27 PM by PBS
-	«Changes
-		«9/6/01; 7:50:47 PM by JES
-			«Changed params from a list to a record of named parameters, for SOAP compatibility.
+	//Set the text of a template on the server.
+		//Monday, November 20, 2000 at 5:00:27 PM by PBS
+	//Changes
+		//9/6/01; 7:50:47 PM by JES
+			//Changed params from a list to a record of named parameters, for SOAP compatibility.
 	
 	itemName = string.dropNonAlphas (itemName);
 	

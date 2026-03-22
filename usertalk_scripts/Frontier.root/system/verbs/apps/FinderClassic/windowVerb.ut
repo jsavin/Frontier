@@ -1,4 +1,4 @@
-on windowVerb (verbid, windowpath) { «common code for FinderWindow verbs
+on windowVerb (verbid, windowpath) { //common code for FinderWindow verbs
 	local (fwindow);
 	if not Finder.makeWindow (windowpath, 0, @fwindow) {
 		return (false)};

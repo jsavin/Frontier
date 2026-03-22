@@ -1,16 +1,16 @@
 on clone (siteName, membershipGroupName, discussionGroupName, sysopEmail, sysopPassword, sysopName, siteUrl, flAddToDomains, flAddToUserDatabases, flUseExistingGdb=false, existingGdbName=nil, canonicalSiteName=nil, theme="default", flAddThemeLink=false) {
-	«This is the master script. Call it to build a new site.
-		«Changes:
-			«10/21/99; 11:29:25 AM by PBS
-				«Create self-contained Manila sites by default.
-			«10/27/99; 10:31:55 PM by PBS
-				«Call the createRssInfo script to initialize the syndication prefs.
-			«11/18/99; 12:50:37 PM by PBS
-				«New optional parameters: flUseExistingGdb and existingGdbName. If the first is true, please provide a name in the second. This way you can put more than one Manila site in a single guest database.
-			«03/02/00; 10:13:24 PM by PBS
-				«New parameter: canonicalSiteName. This is the site name that's stored in config.manila.sites. The reason this can now be specified is so the caller can implement multiple name-spaces if hosting multiple domains like EditThisPage.Com on a single server.
-			«06/07/00; 5:26:10 PM by PBS
-				«New theme optional parameter, specifies the theme to use. Also: call manilaSuite.init, to make sure themes and legal macros are initialized.
+	//This is the master script. Call it to build a new site.
+		//Changes:
+			//10/21/99; 11:29:25 AM by PBS
+				//Create self-contained Manila sites by default.
+			//10/27/99; 10:31:55 PM by PBS
+				//Call the createRssInfo script to initialize the syndication prefs.
+			//11/18/99; 12:50:37 PM by PBS
+				//New optional parameters: flUseExistingGdb and existingGdbName. If the first is true, please provide a name in the second. This way you can put more than one Manila site in a single guest database.
+			//03/02/00; 10:13:24 PM by PBS
+				//New parameter: canonicalSiteName. This is the site name that's stored in config.manila.sites. The reason this can now be specified is so the caller can implement multiple name-spaces if hosting multiple domains like EditThisPage.Com on a single server.
+			//06/07/00; 5:26:10 PM by PBS
+				//New theme optional parameter, specifies the theme to use. Also: call manilaSuite.init, to make sure themes and legal macros are initialized.
 	
 	manilaSuite.init (); //PBS 06/07/00: make sure themes and legal macros are initialized
 	
@@ -18,7 +18,7 @@ on clone (siteName, membershipGroupName, discussionGroupName, sysopEmail, sysopP
 	new (tableType, @siteInfo);
 	
 	bundle { //copy params into siteInfoTable
-		«Other scripts will add more info about the site.
+		//Other scripts will add more info about the site.
 		siteInfo.siteName = manilaSuite.unTaint (siteName);
 		siteInfo.membershipGroupName = manilaSuite.unTaint (membershipGroupName);
 		siteInfo.discussionGroupName = manilaSuite.unTaint (discussionGroupName);

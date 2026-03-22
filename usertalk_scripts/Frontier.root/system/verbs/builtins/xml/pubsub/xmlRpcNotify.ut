@@ -1,6 +1,6 @@
 on xmlRpcNotify (adrsub, url) {
-	«Designed to be launched in its own thread. Send notification to a subscriber, in xml-rpc.
-		«1/15/02; 5:13:57 PM by PBS
+	//Designed to be launched in its own thread. Send notification to a subscriber, in xml-rpc.
+		//1/15/02; 5:13:57 PM by PBS
 	try {
 		with adrsub^ {
 			local (params = {url});

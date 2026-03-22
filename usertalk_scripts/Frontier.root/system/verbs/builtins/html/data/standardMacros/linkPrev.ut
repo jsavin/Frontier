@@ -1,5 +1,5 @@
-on linkPrev (linetext) { «4.2 -- Mon, Dec 16, 1996 at 7:19:51 AM by DW
-	«generate a link to the "prev" page from this page using the nextPrev outline
+on linkPrev (linetext) { //4.2 -- Mon, Dec 16, 1996 at 7:19:51 AM by DW
+	//generate a link to the "prev" page from this page using the nextPrev outline
 	local (adrPageTable = html.getPageTableAddress ());
 	local (adroutline = adrPageTable^.nextPrevs);
 	local (oldtarget);

@@ -3,28 +3,28 @@ local (backupFolder = user.finderMenu.finderBackupFolder);
 local (somethingDone = false);
 local (count = 0);
 
-«on backupVisit (sourcePath)
-	«if file.isFolder (sourcePath) «we only backup folders
-		«local (destPath = backupFolder + file.fileFromPath (sourcePath))
-		«file.sureFolder (destPath) «make sure the folder exists
-		«
-		«local (lastbackup = FinderMenu.commands.backup.mostRecentBackup (destPath))
-		«local (backupname = "backup #" + (lastbackup + 1))
-		«local (newFolder = destPath + backupname + ":")
-		«file.newFolder (newFolder)
-		«
-		«fileloop (f in sourcePath) «copy the files into the backup folder
-			«if FinderMenu.commands.backup.getBackupNumber (f) == 0 «don't copy a backup folder
-				«local (fname = file.fileFromPath (f))
-				«msg (backupname + ":" + fname)
-				«file.copy (f, newFolder + fname)
-				«count++
-		«somethingDone = true
-	«return (true)
+//on backupVisit (sourcePath)
+	//if file.isFolder (sourcePath) //we only backup folders
+		//local (destPath = backupFolder + file.fileFromPath (sourcePath))
+		//file.sureFolder (destPath) //make sure the folder exists
+		//
+		//local (lastbackup = FinderMenu.commands.backup.mostRecentBackup (destPath))
+		//local (backupname = "backup #" + (lastbackup + 1))
+		//local (newFolder = destPath + backupname + ":")
+		//file.newFolder (newFolder)
+		//
+		//fileloop (f in sourcePath) //copy the files into the backup folder
+			//if FinderMenu.commands.backup.getBackupNumber (f) == 0 //don't copy a backup folder
+				//local (fname = file.fileFromPath (f))
+				//msg (backupname + ":" + fname)
+				//file.copy (f, newFolder + fname)
+				//count++
+		//somethingDone = true
+	//return (true)
 
 if (backupFolder == "") or (not file.exists (backupFolder)) {
 	scriptError ("Use the Set Backup Path command to set your backup folder.")};
-file.sureFolder (backupFolder); «make sure it exists
+file.sureFolder (backupFolder); //make sure it exists
 
 local (sourcePath, flfolder, destPath, lastbackup, backupname, newFolder);
 for sourcePath in FinderMenu.getSelectionList () {
@@ -32,7 +32,7 @@ for sourcePath in FinderMenu.getSelectionList () {
 	destPath = backupFolder + file.fileFromPath (sourcePath);
 	if not flfolder {
 		destPath = destPath + ":"};
-	file.sureFolder (destPath); «make sure the folder exists
+	file.sureFolder (destPath); //make sure the folder exists
 	
 	lastbackup = FinderMenu.commands.backup.mostRecentBackup (destPath);
 	backupname = "backup #" + (lastbackup + 1);
@@ -45,8 +45,8 @@ for sourcePath in FinderMenu.getSelectionList () {
 		file.copy (f, newFolder + fname);
 		count++};
 	if flfolder {
-		fileloop (f in sourcePath) { «copy the files into the backup folder
-			if FinderMenu.commands.backup.getBackupNumber (f) == 0 { «don't copy a backup folder
+		fileloop (f in sourcePath) { //copy the files into the backup folder
+			if FinderMenu.commands.backup.getBackupNumber (f) == 0 { //don't copy a backup folder
 				dofile (f)}}}
 	else {
 		dofile (sourcepath)};

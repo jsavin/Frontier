@@ -1,6 +1,6 @@
-on getPrivilege (path) { «open the Sharing window for the indicated file
-	«For compatibility.  Given the scriptable Finder, suggest
-		«Finder.open (disk["foo"]....file["bar"].sharingWindow)
+on getPrivilege (path) { //open the Sharing window for the indicated file
+	//For compatibility.  Given the scriptable Finder, suggest
+		//Finder.open (disk["foo"]....file["bar"].sharingWindow)
 	if not Finder.folderVerb ('sprv', path) {
 		return (false)};
 	return (Finder.bringToFront ())}

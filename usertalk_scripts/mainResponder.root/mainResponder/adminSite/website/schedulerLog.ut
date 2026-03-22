@@ -1,7 +1,7 @@
 on schedulerLog (maxitems=200) {
-	«Changes
-		«8/3/02; 12:48:59 AM by JES
-			«Created.
+	//Changes
+		//8/3/02; 12:48:59 AM by JES
+			//Created.
 	local (pta = html.getPageTableAddress ());
 	pta^.title = "Scheduler Log";
 	local (colors = {pta^.trbg1, pta^.trbg2});
@@ -25,4 +25,4 @@ on schedulerLog (maxitems=200) {
 		return (logtext)}
 	else {
 		return (logtext + "<p>There are no items to list at this time.</p>")};
-	}«return (mainResponder.search.server.logBrowserIndexer (maxitems, colors, 3, "smallAlignTop", false))
+	}//return (mainResponder.search.server.logBrowserIndexer (maxitems, colors, 3, "smallAlignTop", false))

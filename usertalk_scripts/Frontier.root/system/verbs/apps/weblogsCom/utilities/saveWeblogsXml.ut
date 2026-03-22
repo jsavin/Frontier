@@ -1,6 +1,6 @@
-«Changes
-	«11/3/01; 9:29:30 AM by DW
-		«Created. Saves an XML representation of the weblogs table.
+//Changes
+	//11/3/01; 9:29:30 AM by DW
+		//Created. Saves an XML representation of the weblogs table.
 
 window.about ();
 msg ("Copying table..");

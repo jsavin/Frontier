@@ -1,24 +1,24 @@
 on referersPage () {
-	«Changes:
-		«3/4/07; 3:01:04 PM by LL
-			«Restrict the referers page to Editors of the site.
-		«2006 and earlier
-			«2/22/06; 2:10:55 PM by JES
-				«Encode the " and ' characters as HTML entities.
-			«1/15/05; 7:06:19 PM by DW
-				«Add rel="nofollow" on all anchors
-			«5/5/03; 12:02:38 PM by JES
-				«Fixed missing closing italic tag.
-			«1/29/02; 1:26:29 PM by PBS
-				«Make sure no HTML is present in the referer URLs -- translate < to &lt;.
-			«1/25/02; 6:29:37 PM by PBS
-				«Performance enhancements in the local "add" routine -- add a trailing semicolon; use parentheses to get the expression in x = x + y form (which is optimized by the kernel).
-			«11/13/00; 6:20:18 PM by PBS
-				«https URLs weren't getting truncated -- truncate them also.
-			«11/04/00; 2:52:58 PM by PBS
-				«Hit count is now right-aligned.
-			«11/02/00; 2:43:39 PM by PBS
-				«Created. Return a page listing referers in the last 24 hours.
+	//Changes:
+		//3/4/07; 3:01:04 PM by LL
+			//Restrict the referers page to Editors of the site.
+		//2006 and earlier
+			//2/22/06; 2:10:55 PM by JES
+				//Encode the " and ' characters as HTML entities.
+			//1/15/05; 7:06:19 PM by DW
+				//Add rel="nofollow" on all anchors
+			//5/5/03; 12:02:38 PM by JES
+				//Fixed missing closing italic tag.
+			//1/29/02; 1:26:29 PM by PBS
+				//Make sure no HTML is present in the referer URLs -- translate < to &lt;.
+			//1/25/02; 6:29:37 PM by PBS
+				//Performance enhancements in the local "add" routine -- add a trailing semicolon; use parentheses to get the expression in x = x + y form (which is optimized by the kernel).
+			//11/13/00; 6:20:18 PM by PBS
+				//https URLs weren't getting truncated -- truncate them also.
+			//11/04/00; 2:52:58 PM by PBS
+				//Hit count is now right-aligned.
+			//11/02/00; 2:43:39 PM by PBS
+				//Created. Return a page listing referers in the last 24 hours.
 	
 	local (pta = html.getPageTableAddress ());
 	pta^.title = "Referers";
@@ -45,20 +45,20 @@ on referersPage () {
 		url = string.replaceAll (url, "\"", "&quot;");
 		url = string.replaceAll (url, "\'", "&apos;");
 		local (shortUrl = string.ellipsize (url, 50));
-		«local (shortUrl = url)
+		//local (shortUrl = url)
 		shortUrl = string.replace (shortUrl, "http://", "http:\\//"); //activeUrls doubles links; escape
 		local (link);
 		if string.lower (url) beginsWith "http" {
 			if sizeOf (url) > sizeOf (shortUrl - "...") { //add link title
 				link = "<a href=\"" + url + "\" title=\"" + url + "\" rel=\"nofollow\">" + shortUrl + "</a>"}
 			else {
-				«link = html.getLink (shortUrl, url)
+				//link = html.getLink (shortUrl, url)
 				link = "<a href=\"" + url + "\" rel=\"nofollow\">" + shortUrl + "</a>"}}
 		else {
 			link = url};
 		local (hits = adrItem^);
 		add ("<tr><td>" + link + "</td><td align=\"right\">" + hits + "</td></tr>");
-		};«add (link + ": " + hits + "<br>")
+		};//add (link + ": " + hits + "<br>")
 	add ("</table>");
 	local (now = clock.now ());
 	add ("<p><i>Rankings compiled on " + now + ".</i></p>");

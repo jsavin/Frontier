@@ -1,15 +1,15 @@
 on tableToXml (adrTable) {
-	«Changes:
-		«7/6/05; 3:39:16 AM by JES
-			«Handle multiple departments defined as a list. (Preliminary support for multiple departments.)
-		«4/24/03; 5:00:02 PM by JES
-			«Add all sub-elements of the newsItem table -- not just the ones that we knew about in advance.
-		«10/26/00; 11:33:55 PM by PBS
-			«Escape ampersands in the URL -- so the page can be validated.
-		«05/02/00; 11:11:03 AM by PBS
-			«Remove whitespace from around the value: make it <tag>value</tag>.
-		«04/20/00; 1:10:26 AM by PBS
-			«Created. Convert a table to XML.
+	//Changes:
+		//7/6/05; 3:39:16 AM by JES
+			//Handle multiple departments defined as a list. (Preliminary support for multiple departments.)
+		//4/24/03; 5:00:02 PM by JES
+			//Add all sub-elements of the newsItem table -- not just the ones that we knew about in advance.
+		//10/26/00; 11:33:55 PM by PBS
+			//Escape ampersands in the URL -- so the page can be validated.
+		//05/02/00; 11:11:03 AM by PBS
+			//Remove whitespace from around the value: make it <tag>value</tag>.
+		//04/20/00; 1:10:26 AM by PBS
+			//Created. Convert a table to XML.
 	
 	local (xmlText = "");
 	

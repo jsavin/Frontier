@@ -1,2 +1,2 @@
-on quit (saving = nil) { «Perform tasks before termination, then terminate
+on quit (saving = nil) { //Perform tasks before termination, then terminate
 	return (core.quit (Fetch.id, saving))}

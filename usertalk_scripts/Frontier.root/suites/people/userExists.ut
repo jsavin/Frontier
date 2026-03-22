@@ -1,5 +1,5 @@
 on userExists (userName, adrUser=nil) {
-	«Does this user exist?
+	//Does this user exist?
 	if adrUser == nil {
 		adrUser = people.getUserTable (userName)};
 	if defined (adrUser^) and adrUser^.enabled {

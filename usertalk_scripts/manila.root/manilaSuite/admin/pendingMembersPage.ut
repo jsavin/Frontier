@@ -1,8 +1,8 @@
 on pendingMembersPage () {
-	«Changes
-		«3/16/07; 9:48:51 PM by LL
-			«Created. List pending members, with radio buttons to approve or delete.
-			«Only managing editors are allowed.
+	//Changes
+		//3/16/07; 9:48:51 PM by LL
+			//Created. List pending members, with radio buttons to approve or delete.
+			//Only managing editors are allowed.
 	local (pta = html.getpagetableaddress ());
 	bundle { //managing editor test
 		if not manilaSuite.editors.managingEditorTest () {
@@ -32,7 +32,7 @@ on pendingMembersPage () {
 			for adr in adrargs {
 				case adr^[1] {
 					'a' { //approve
-						«Move the pending user table to the correct table
+						//Move the pending user table to the correct table
 						local (email = string.delete (adr^, 1, 1));
 						local (adrPendingMember = @adrPendingMembers^.[email]);
 						local (adrmember = @adrgroup^.users.[email]);
@@ -49,7 +49,7 @@ on pendingMembersPage () {
 								manilaSuite.log.addEvent ("newMember", startticks, @t)}};
 						ctApproved++};
 					'd' { //delete
-						«Just delete the pending user table
+						//Just delete the pending user table
 						local (email = string.delete (adr^, 1, 1));
 						local (adrPendingMember = @adrPendingMembers^.[email]);
 						try {
@@ -131,6 +131,6 @@ on pendingMembersPage () {
 	htext = manilaSuite.untaint (htext);
 	
 	return (htext)};
-«bundle //test code
-	«html.setPageTableAddress (@workspace.pt)
-	«pendingMembersPage ()
+//bundle //test code
+	//html.setPageTableAddress (@workspace.pt)
+	//pendingMembersPage ()

@@ -1,8 +1,8 @@
-on megabyteString (size) { «display size in megabytes, the next step after string.kBytes
-	«New verb: 11/9/97 at 8:40:40 AM by DW
-		«Change notes:
-			«Tue, Jul 28, 1998 at 10:03:23 AM by PBS
-				«Fixed small math bug.
+on megabyteString (size) { //display size in megabytes, the next step after string.kBytes
+	//New verb: 11/9/97 at 8:40:40 AM by DW
+		//Change notes:
+			//Tue, Jul 28, 1998 at 10:03:23 AM by PBS
+				//Fixed small math bug.
 	
 	local (onemeg = 1024 * 1024);
 	if size <= onemeg {

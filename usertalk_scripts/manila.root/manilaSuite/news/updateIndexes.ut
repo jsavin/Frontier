@@ -1,6 +1,6 @@
 on updateIndexes (adrMsgTable, adrSite) {
-	«Update the news item indexes.
-		«04/20/00; 1:26:02 AM by PBS
+	//Update the news item indexes.
+		//04/20/00; 1:26:02 AM by PBS
 	
 	manilaSuite.news.updateAllList (adrMsgTable, adrSite);
 	manilaSuite.news.updateReleasedList (adrMsgTable, adrSite);

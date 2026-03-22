@@ -3,35 +3,35 @@ on sdoc (pathArgs, kfor="", user="", pass="", frmu="", addr="", svpt="",  svnm="
 	local (paramtable, appID, appName, websiteFolderPath, serverPath);
 	new (tableType, @paramtable);
 	
-	«The binaryID should be used in send-partial commands
-		«in place of the appID or appName. The binaryID specifies
-		«the application that sent the CGI sdoc event
-		«specifically. This way you can have two copies of WebSTAR
-		«(for instance) running at the same time.
-		«Example:
-			«webstar.sendpartial (myData, adrparams^.connectionID, true, adrparams^.binaryID)
-		«[Technically: the binaryID is always either a ProcessSerialNumber or a Target ID Record
-			«('psn ' or 'targ'), but you don't need to know that to use it.]
+	//The binaryID should be used in send-partial commands
+		//in place of the appID or appName. The binaryID specifies
+		//the application that sent the CGI sdoc event
+		//specifically. This way you can have two copies of WebSTAR
+		//(for instance) running at the same time.
+		//Example:
+			//webstar.sendpartial (myData, adrparams^.connectionID, true, adrparams^.binaryID)
+		//[Technically: the binaryID is always either a ProcessSerialNumber or a Target ID Record
+			//('psn ' or 'targ'), but you don't need to know that to use it.]
 	local (binaryID = getEventSender ());
 	
-	«Get info about the server app.
+	//Get info about the server app.
 	bundle {
-		«Get the website folder path.
-		if DIRE != "" { «DIRE is the website folder parameter
+		//Get the website folder path.
+		if DIRE != "" { //DIRE is the website folder parameter
 			websiteFolderPath = DIRE}
 		else {
 			websiteFolderPath = webserver.getPref ("websiteFolderPath")};
 		
-		«Get the server app path and name
+		//Get the server app path and name
 		serverPath = webserver.getPref ("serverPath");
 		try {
 			appName = file.fileFromPath (serverPath)};
 		
-		«Get the server appID
+		//Get the server appID
 		try {
 			appID = file.creator (serverPath)}};
 	
-	bundle { «Set up CGI params table
+	bundle { //Set up CGI params table
 		paramtable.action = Kact;
 		paramtable.actionPath = Kapt;
 		paramtable.appID = appID;
@@ -56,7 +56,7 @@ on sdoc (pathArgs, kfor="", user="", pass="", frmu="", addr="", svpt="",  svnm="
 		paramtable.userAgent = Agnt;
 		paramtable.username = user;
 		paramtable.websiteFolder = websiteFolderPath;
-		«Parse the post args, if they exist.
+		//Parse the post args, if they exist.
 		if paramtable.postargs != "" {
 			new (tabletype, @paramtable.argtable);
 			webserver.parseArgs (post, @paramtable.argtable)}};

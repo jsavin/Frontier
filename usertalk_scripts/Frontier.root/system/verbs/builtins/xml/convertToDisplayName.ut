@@ -1,13 +1,13 @@
 on convertToDisplayName (name) {
-	«Thursday, November 11, 1999 at 3:10:01 AM by AR
-		«Implemented as a kernel script in Frontier 6.1.
-		«Old code
-			«on convertToDisplayName (name)
-				«if sizeof (string (name)) > 5
-					«if name [5] == tab
-						«return (string.delete (name, 1, 5))
-				«if sizeOf (name) > 9
-					«if name [9] == tab
-						«return (string.delete (name, 1, 9))
-				«return (name)
+	//Thursday, November 11, 1999 at 3:10:01 AM by AR
+		//Implemented as a kernel script in Frontier 6.1.
+		//Old code
+			//on convertToDisplayName (name)
+				//if sizeof (string (name)) > 5
+					//if name [5] == tab
+						//return (string.delete (name, 1, 5))
+				//if sizeOf (name) > 9
+					//if name [9] == tab
+						//return (string.delete (name, 1, 9))
+				//return (name)
 	kernel (xml.convertToDisplayName)}

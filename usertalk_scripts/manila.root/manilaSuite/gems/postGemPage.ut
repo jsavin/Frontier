@@ -1,31 +1,31 @@
 on postGemPage (pta=nil, attachmentFieldName="attachFile", flIgnoreTitle=false, flIgnoreReferer=false, adrAdrGem=nil) {
-	«Post a gem. This is the website framework context wrapper for posting a new gem.
-		«04/13/00; 1:07:51 AM by PBS
-		«Changes:
-			«3/13/05; 6:11:41 PM by JES
-				«New optional parameter, attachmentFieldName -- corresponds to the name of the form element where the file was attached. This makes it possible to call postGemPage from your own forms, using an arbitrary field name for the file attachment.
-					«Used in this case to handle enclosures in news items, as called by manilaSuite.news.postItemPage.
-				«New optional parameter, flIgnoreTitle. If true, we ignore the title field returned by the form post, and just use the filename for the title of the gem.
-					«Needed to support enclosures in news items as posted gems -- we don't want to use the title of the news item, and the form doesn't provide a place for users to specify separately, the title of the gem.
-				«New optional parameter, flIgnoreReferer. If true we don't do referer checks. Needed to be called from another form handler.
-				«New optional parameter, adrAdrGem. If non-nil, adrAdrGem^ will be set to the address of the new gem table in the site, after the gem is created, and after callbacks get a shot at the data.
-			«08/09/02; 12:47:25 AM by JES
-				«Save adrGemTable in the pageTable, so that the finalFilter can get access. This allows the metadata plugin, for example, to react to the creation of a new gem.
-			«12/10/01; 5:02:01 PM by PBS
-				«The title, when not given, is supposed to be the filename -- but it was sometimes calculated incorrectly. Now it uses the same code that calculates the filename, which works.
-			«05/11/00; 7:57:04 PM by JES
-				«merged in Brent's security fix for the client side trojan horse attack.
-			«05/09/00; 10:41:04 PM by PBS
-				«Check the referer to defeat the client side trojan horse.
-			«04/20/00; 8:17:28 PM by JES
-				«localized
+	//Post a gem. This is the website framework context wrapper for posting a new gem.
+		//04/13/00; 1:07:51 AM by PBS
+		//Changes:
+			//3/13/05; 6:11:41 PM by JES
+				//New optional parameter, attachmentFieldName -- corresponds to the name of the form element where the file was attached. This makes it possible to call postGemPage from your own forms, using an arbitrary field name for the file attachment.
+					//Used in this case to handle enclosures in news items, as called by manilaSuite.news.postItemPage.
+				//New optional parameter, flIgnoreTitle. If true, we ignore the title field returned by the form post, and just use the filename for the title of the gem.
+					//Needed to support enclosures in news items as posted gems -- we don't want to use the title of the news item, and the form doesn't provide a place for users to specify separately, the title of the gem.
+				//New optional parameter, flIgnoreReferer. If true we don't do referer checks. Needed to be called from another form handler.
+				//New optional parameter, adrAdrGem. If non-nil, adrAdrGem^ will be set to the address of the new gem table in the site, after the gem is created, and after callbacks get a shot at the data.
+			//08/09/02; 12:47:25 AM by JES
+				//Save adrGemTable in the pageTable, so that the finalFilter can get access. This allows the metadata plugin, for example, to react to the creation of a new gem.
+			//12/10/01; 5:02:01 PM by PBS
+				//The title, when not given, is supposed to be the filename -- but it was sometimes calculated incorrectly. Now it uses the same code that calculates the filename, which works.
+			//05/11/00; 7:57:04 PM by JES
+				//merged in Brent's security fix for the client side trojan horse attack.
+			//05/09/00; 10:41:04 PM by PBS
+				//Check the referer to defeat the client side trojan horse.
+			//04/20/00; 8:17:28 PM by JES
+				//localized
 	
 	if pta == nil {
 		pta = html.getPageTableAddress ()};
 	pta^.title = manilaSuite.getString ("gems.postGemPageTitle", pta: pta); // 4/20/00 JES: localized
 	
 	bundle { //PBS 05/09/00: check referer to defeat client side trojan horse
-		«manilaSuite.referer.checkNew ("gemNewMessage")
+		//manilaSuite.referer.checkNew ("gemNewMessage")
 		if not flIgnoreReferer {
 			manilaSuite.referer.checkNew ("gemNewMessage", "gemPostMessage")}}; //04.06.23, 14:59:43 by DAB
 	
@@ -80,7 +80,7 @@ on postGemPage (pta=nil, attachmentFieldName="attachFile", flIgnoreTitle=false, 
 	bundle { //add size to data table
 		dataTable.sizeBytes = sizeOf (dataTable.data)};
 	
-	«Create the new gem: write to disk, store info in site, possibly create shortcut.
+	//Create the new gem: write to disk, store info in site, possibly create shortcut.
 	local (adrSite = manilaSuite.getManilaSiteAddress (pta));
 	local (adrGemTable);
 	try { // create the gem

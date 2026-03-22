@@ -1,4 +1,4 @@
-on cleanUp (obj, by = nil) { «Arrange items in window nicely
+on cleanUp (obj, by = nil) { //Arrange items in window nicely
 	if typeOf (by) == longType {
 		try {
 			if by < 2 {

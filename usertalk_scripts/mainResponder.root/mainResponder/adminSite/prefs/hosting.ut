@@ -1,23 +1,23 @@
 on hosting (adrsite=nil, flWithinExistingForm=false) {
-	«Changes
-		«3/15/07; 2:53:25 PM by LL
-			«Added support for an editorial mode hosting pref to set default editorial preferences when creating a site.
-		«3/25/04; 12:24:14 PM by JES
-			«Complete re-write, adding support for per-site hosting preferences.
-		«10/9/03; 12:54:18 PM by JES
-			«Fixed a bug which would cause a macro error if the hosting prefs page is loaded before the Admin site home page.
-		«3/14/03; 3:28:21 PM by JES
-			«Add a preference for whether new sites are news-items sites. Add a preference for the default text of the first news item.
-		«3/13/03; 2:42:56 AM by JES
-			«Fixed the default home page text preference. It is now respected when creating a new site.
-		«9/6/02; 2:25:08 PM by JES
-			«Added a popup menu pref for the default editing tool for new sites -- WYSIWYG, HTML Tags, or None.
-		«8/21/02; 9:39:41 PM by JES
-			«Make sure config.manila.hosting.sites.default.flUseHostingSiteMembershipGroup is defined.
-		«8/20/02; 11:28:17 PM by JES
-			«Created.
+	//Changes
+		//3/15/07; 2:53:25 PM by LL
+			//Added support for an editorial mode hosting pref to set default editorial preferences when creating a site.
+		//3/25/04; 12:24:14 PM by JES
+			//Complete re-write, adding support for per-site hosting preferences.
+		//10/9/03; 12:54:18 PM by JES
+			//Fixed a bug which would cause a macro error if the hosting prefs page is loaded before the Admin site home page.
+		//3/14/03; 3:28:21 PM by JES
+			//Add a preference for whether new sites are news-items sites. Add a preference for the default text of the first news item.
+		//3/13/03; 2:42:56 AM by JES
+			//Fixed the default home page text preference. It is now respected when creating a new site.
+		//9/6/02; 2:25:08 PM by JES
+			//Added a popup menu pref for the default editing tool for new sites -- WYSIWYG, HTML Tags, or None.
+		//8/21/02; 9:39:41 PM by JES
+			//Make sure config.manila.hosting.sites.default.flUseHostingSiteMembershipGroup is defined.
+		//8/20/02; 11:28:17 PM by JES
+			//Created.
 	local (pta = html.getPageTableAddress ());
-	«workspace.pt = pta^
+	//workspace.pt = pta^
 	pta^.activeUrls = false;
 	pta^.autoParagraphs = false;
 	pta^.clayCompatibility = false;
@@ -30,70 +30,70 @@ on hosting (adrsite=nil, flWithinExistingForm=false) {
 	if not defined (system.temp.mainResponder.misc) {
 		new (tableType, @system.temp.mainResponder.misc)};
 	
-	«bundle //old code
-		«local (adrprefs = @system.temp.mainResponder.misc.hostingPrefs)
-		«
-		«if pta^.method == "POST"
-			«local (adrargs = @pta^.postArgs)
-			«config.manila.hosting.sites.default.flSubSites = boolean (adrargs^.["system.temp.mainResponder.misc.hostingPrefs.flSubSites"])
-			«config.manila.hosting.sites.default.flEditorsOnlyCreateSites = boolean (adrargs^.["system.temp.mainResponder.misc.hostingPrefs.flEditorsOnlyCreateSites"])
-			«manilaData.newSiteTemplate.["#prefs"].language = (adrargs^.["system.temp.mainResponder.misc.hostingPrefs.language"])
-			«if defined (config.manila.themes.Default.Pages.Home.text)
-				«table.assign (@config.manila.themes.Default.Pages.Home.text, adrargs^.["manilaData.defaultText.home"])
-			«else
-				«table.assign (@manilaData.defaultText.home, adrargs^.["manilaData.defaultText.home"])
-			«local (basedomain = adrargs^.["system.temp.mainResponder.misc.hostingPrefs.baseDomain"])
-			«if config.manila.hosting.sites.default.flSubSites
-				«config.manila.hosting.sites.default.baseDomain = string.popLeading (basedomain, ".")
-			«else
-				«if not (basedomain beginsWith ".")
-					«config.manila.hosting.sites.default.baseDomain = "." + basedomain
-			«mainResponder.redirect (pta^.uri + "?" + pta^.searchArgs)
-		«
-		«bundle //set up temp table
-			«if not defined (adrprefs^)
-				«new (tableType, adrprefs)
-			«adrprefs^.baseDomain = config.manila.hosting.sites.default.baseDomain
-			«adrprefs^.flSubSites = string (config.manila.hosting.sites.default.flSubSites)
-			«adrprefs^.flEditorsOnlyCreateSites = string (config.manila.hosting.sites.default.flEditorsOnlyCreateSites)
-			«adrprefs^.language = "english"
-			«if defined (manilaData.newSiteTemplate.["#prefs"].language)
-				«adrprefs^.language = manilaData.newSiteTemplate.["#prefs"].language
-		«
-		«bundle //hosting prefs form fields
-			«add (radio.prefs.popupMenuPref ("Who can create new sites?", @adrprefs^.flEditorsOnlyCreateSites, {"false", "true"}, {"Anyone", "Editors Only"}))
-			«add (radio.prefs.popupMenuPref ("<nobr>Create top-level sites or sub-sites</nobr>?", @adrprefs^.flSubSites, {"true", "false"}, {"Sub-sites", "Top-level Sites"}))
-			«add (radio.prefs.stringPref ("Base domain for new sites", @adrprefs^.baseDomain, size:35))
-			«if not defined (config.manila.hosting.sites.default.flUseHostingSiteMembershipGroup)
-				«config.manila.hosting.sites.default.flUseHostingSiteMembershipGroup = false
-			«add (radio.prefs.checkboxPref ("Check this box if you want new sites to share their membership group with the hosting site", @config.manila.hosting.sites.default.flUseHostingSiteMembershipGroup))
-			«add (radio.prefs.stringPref ("<nobr>Create new sites in a database named</nobr>", @config.manila.prefs.hostingGdbName))
-			«bundle //lanugage popup
-				«local (languages = {}, languagenames = {})
-				«local (adrlang)
-				«for adrlang in @manilaData.localization.languages
-					«local (lang = nameOf (adrlang^))
-					«local (dispname = string.upper (lang[1]) + string.mid (lang, 2, infinity))
-					«try {dispname = mainResponder.getString ("languages." + lang)}
-					«languages = languages + lang
-					«languagenames = languagenames + dispname
-				«add (radio.prefs.popupMenuPref ("Language", @adrprefs^.language, languages, languagenames))
-			«bundle //editing tool popup
-				«if not defined (manilaData.newSiteTemplate.["#prefs"].editingToolName)
-					«manilaData.newSiteTemplate.["#prefs"].editingToolName = "HTML Tags"
-				«add (radio.prefs.popupMenuPref ("Editing tool (MSIE/Windows)", @manilaData.newSiteTemplate.["#prefs"].editingToolName, {"WYSIWYG", "HTML Tags", "None"}, {"WYSIWYG", "HTML Tags", "None"}))
-			«bundle //home page text
-				«local (s)
-				«if defined (config.manila.themes.Default.Pages.Home.text)
-					«table.assign (@manilaData.defaultText.home, config.manila.themes.Default.Pages.Home.text)
-				«add (string.replaceAll (radio.prefs.textAreaPref ("Default home page text", @manilaData.defaultText.home, rows:20), "//", "\\//"))
-			«bundle //news item site prefs
-				«add ("<tr><td colspan=\"2\"><br /><br /><b>News Items sites:</b></td></tr>")
-				«local (adrNewsSiteBool = @manilaData.newSiteTemplate.["#newsSite"].flNewsItemSite)
-				«if not defined (adrNewsSiteBool^)
-					«adrNewsSiteBool^ = false
-				«add (radio.prefs.checkboxPref ("Check this box for all new Manila sites to have news items enabled by default.", adrNewsSiteBool))
-				«add (string.replaceAll (radio.prefs.textAreaPref ("Default text for first news item", @manilaData.defaultText.firstNewsItem, rows:20), "//", "\\//"))
+	//bundle //old code
+		//local (adrprefs = @system.temp.mainResponder.misc.hostingPrefs)
+		//
+		//if pta^.method == "POST"
+			//local (adrargs = @pta^.postArgs)
+			//config.manila.hosting.sites.default.flSubSites = boolean (adrargs^.["system.temp.mainResponder.misc.hostingPrefs.flSubSites"])
+			//config.manila.hosting.sites.default.flEditorsOnlyCreateSites = boolean (adrargs^.["system.temp.mainResponder.misc.hostingPrefs.flEditorsOnlyCreateSites"])
+			//manilaData.newSiteTemplate.["#prefs"].language = (adrargs^.["system.temp.mainResponder.misc.hostingPrefs.language"])
+			//if defined (config.manila.themes.Default.Pages.Home.text)
+				//table.assign (@config.manila.themes.Default.Pages.Home.text, adrargs^.["manilaData.defaultText.home"])
+			//else
+				//table.assign (@manilaData.defaultText.home, adrargs^.["manilaData.defaultText.home"])
+			//local (basedomain = adrargs^.["system.temp.mainResponder.misc.hostingPrefs.baseDomain"])
+			//if config.manila.hosting.sites.default.flSubSites
+				//config.manila.hosting.sites.default.baseDomain = string.popLeading (basedomain, ".")
+			//else
+				//if not (basedomain beginsWith ".")
+					//config.manila.hosting.sites.default.baseDomain = "." + basedomain
+			//mainResponder.redirect (pta^.uri + "?" + pta^.searchArgs)
+		//
+		//bundle //set up temp table
+			//if not defined (adrprefs^)
+				//new (tableType, adrprefs)
+			//adrprefs^.baseDomain = config.manila.hosting.sites.default.baseDomain
+			//adrprefs^.flSubSites = string (config.manila.hosting.sites.default.flSubSites)
+			//adrprefs^.flEditorsOnlyCreateSites = string (config.manila.hosting.sites.default.flEditorsOnlyCreateSites)
+			//adrprefs^.language = "english"
+			//if defined (manilaData.newSiteTemplate.["#prefs"].language)
+				//adrprefs^.language = manilaData.newSiteTemplate.["#prefs"].language
+		//
+		//bundle //hosting prefs form fields
+			//add (radio.prefs.popupMenuPref ("Who can create new sites?", @adrprefs^.flEditorsOnlyCreateSites, {"false", "true"}, {"Anyone", "Editors Only"}))
+			//add (radio.prefs.popupMenuPref ("<nobr>Create top-level sites or sub-sites</nobr>?", @adrprefs^.flSubSites, {"true", "false"}, {"Sub-sites", "Top-level Sites"}))
+			//add (radio.prefs.stringPref ("Base domain for new sites", @adrprefs^.baseDomain, size:35))
+			//if not defined (config.manila.hosting.sites.default.flUseHostingSiteMembershipGroup)
+				//config.manila.hosting.sites.default.flUseHostingSiteMembershipGroup = false
+			//add (radio.prefs.checkboxPref ("Check this box if you want new sites to share their membership group with the hosting site", @config.manila.hosting.sites.default.flUseHostingSiteMembershipGroup))
+			//add (radio.prefs.stringPref ("<nobr>Create new sites in a database named</nobr>", @config.manila.prefs.hostingGdbName))
+			//bundle //lanugage popup
+				//local (languages = {}, languagenames = {})
+				//local (adrlang)
+				//for adrlang in @manilaData.localization.languages
+					//local (lang = nameOf (adrlang^))
+					//local (dispname = string.upper (lang[1]) + string.mid (lang, 2, infinity))
+					//try {dispname = mainResponder.getString ("languages." + lang)}
+					//languages = languages + lang
+					//languagenames = languagenames + dispname
+				//add (radio.prefs.popupMenuPref ("Language", @adrprefs^.language, languages, languagenames))
+			//bundle //editing tool popup
+				//if not defined (manilaData.newSiteTemplate.["#prefs"].editingToolName)
+					//manilaData.newSiteTemplate.["#prefs"].editingToolName = "HTML Tags"
+				//add (radio.prefs.popupMenuPref ("Editing tool (MSIE/Windows)", @manilaData.newSiteTemplate.["#prefs"].editingToolName, {"WYSIWYG", "HTML Tags", "None"}, {"WYSIWYG", "HTML Tags", "None"}))
+			//bundle //home page text
+				//local (s)
+				//if defined (config.manila.themes.Default.Pages.Home.text)
+					//table.assign (@manilaData.defaultText.home, config.manila.themes.Default.Pages.Home.text)
+				//add (string.replaceAll (radio.prefs.textAreaPref ("Default home page text", @manilaData.defaultText.home, rows:20), "//", "\\//"))
+			//bundle //news item site prefs
+				//add ("<tr><td colspan=\"2\"><br /><br /><b>News Items sites:</b></td></tr>")
+				//local (adrNewsSiteBool = @manilaData.newSiteTemplate.["#newsSite"].flNewsItemSite)
+				//if not defined (adrNewsSiteBool^)
+					//adrNewsSiteBool^ = false
+				//add (radio.prefs.checkboxPref ("Check this box for all new Manila sites to have news items enabled by default.", adrNewsSiteBool))
+				//add (string.replaceAll (radio.prefs.textAreaPref ("Default text for first news item", @manilaData.defaultText.firstNewsItem, rows:20), "//", "\\//"))
 	
 	local (flDefaultPrefs = false);
 	if adrsite == nil {
@@ -242,25 +242,25 @@ on hosting (adrsite=nil, flWithinExistingForm=false) {
 	bundle { //editorial mode
 		add ("<tr><td colspan=\"2\"><br><b>Editorial Mode:</b></td></tr>");
 		add (radio.prefs.popupMenuPref ("Select the default editorial mode to the site?", @adrprefs^.editorialMode, {"none", "public", "publicmoderated", "publicrestricted", "intranet", "membersonly", "editorsonly"}, {"None", "Public", "Public, Moderated membership", "Public, No comments/discussion group", "Intranet", "Members only", "Editors Only"}));
-		«bundle //language pop-up
-			«local (languages = {}, languageNames = {})
-			«local (adrlang)
-			«for adrlang in @manilaData.localization.languages
-				«languages = languages + nameOf (adrlang^)
-			«local (language)
-			«for language in languages
-				«if defined (mainResponder.localization.languages.[language].strings.languages.[language])
-					«languageNames = languageNames + mainResponder.localization.languages.[language].strings.languages.[language]
-				«else
-					«if defined (mainResponder.localization.languages.english.strings.languages.[language])
-						«languageNames = languageNames + mainResponder.localization.languages.english.strings.languages.[language]
-					«else
-						«local (languageName = string.upper (language[1]) + string.delete (language, 1, 1))
-						«languageNames = languageNames + languageName
-			«add (radio.prefs.popupMenuPref ("Default language for new sites", @adrprefs^.defaultLanguage, languages, languageNames))
-		«bundle //editing tool
-			«local (editorNames = {"WYSIWYG", "HTML Tags", "None"})
-			«add (radio.prefs.popupMenuPref ("Default editing tool for new sites", @adrprefs^.defaultEditor, editorNames, editorNames))};
+		//bundle //language pop-up
+			//local (languages = {}, languageNames = {})
+			//local (adrlang)
+			//for adrlang in @manilaData.localization.languages
+				//languages = languages + nameOf (adrlang^)
+			//local (language)
+			//for language in languages
+				//if defined (mainResponder.localization.languages.[language].strings.languages.[language])
+					//languageNames = languageNames + mainResponder.localization.languages.[language].strings.languages.[language]
+				//else
+					//if defined (mainResponder.localization.languages.english.strings.languages.[language])
+						//languageNames = languageNames + mainResponder.localization.languages.english.strings.languages.[language]
+					//else
+						//local (languageName = string.upper (language[1]) + string.delete (language, 1, 1))
+						//languageNames = languageNames + languageName
+			//add (radio.prefs.popupMenuPref ("Default language for new sites", @adrprefs^.defaultLanguage, languages, languageNames))
+		//bundle //editing tool
+			//local (editorNames = {"WYSIWYG", "HTML Tags", "None"})
+			//add (radio.prefs.popupMenuPref ("Default editing tool for new sites", @adrprefs^.defaultEditor, editorNames, editorNames))};
 	bundle { //appearance (language, editing tool)
 		add ("<tr><td colspan=\"2\"><br><b>Appearance:</b></td></tr>");
 		bundle { //language pop-up
@@ -322,6 +322,6 @@ on hosting (adrsite=nil, flWithinExistingForm=false) {
 		adrprefs^.flEditorsOnlyCreateSites = boolean (adrprefs^.flEditorsOnlyCreateSites)};
 	
 	return (htmltext)};
-«bundle //test code
-	«html.setPageTableAddress (@workspace.pt)
-	«hosting ()
+//bundle //test code
+	//html.setPageTableAddress (@workspace.pt)
+	//hosting ()

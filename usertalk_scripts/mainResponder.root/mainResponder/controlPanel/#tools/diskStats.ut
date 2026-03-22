@@ -1,6 +1,6 @@
-«11/9/99; 5:22:34 AM by DW
-	«Recoded to use new double verbs in 6.1b16. The verbs are file.freeSpaceOnVolumeDouble, file.volumeSizeDouble and file.bytesOnVolumeDouble.
-on gigabyteString (size) { «display size in gigabytes, the next step after string.kBytes
+//11/9/99; 5:22:34 AM by DW
+	//Recoded to use new double verbs in 6.1b16. The verbs are file.freeSpaceOnVolumeDouble, file.volumeSizeDouble and file.bytesOnVolumeDouble.
+on gigabyteString (size) { //display size in gigabytes, the next step after string.kBytes
 	local (onegig = 1024 * 1024 * 1024);
 	if size <= onegig {
 		return (string.megabyteString (number (size)))};

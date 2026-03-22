@@ -1,7 +1,7 @@
-on rename (domain, old, new, account, password) { « Rename remote file.
+on rename (domain, old, new, account, password) { // Rename remote file.
 	case ftpClient.data.currentid {
 		Anarchie.id {
-			bundle { « Anarchie doesn't like slashes at the end of directory names.
+			bundle { // Anarchie doesn't like slashes at the end of directory names.
 				if old[sizeOf (old)] == '/' {
 					old = string.delete (old, sizeOf (old), infinity)};
 				if new[sizeOf (new)] == '/' {

@@ -1,15 +1,15 @@
 on opmlReader (msgNum=nil) {
-	«Changes:
-		«1/31/06; 2:18:36 AM by JES
-			«Add support for pending messages.
-		«5/24/02; 12:46:02 PM by JES
-			«Fixed a bug where the <title> element in the returned OPML would be "localOutline" instead of the correct title. If the message is the current home page, <title> is the siteName.
-		«1/5/02; 11:13:08 PM by PBS
-			«msgNum is now an optional parameter so other pages (other than /discuss/reader) can return OPML.
-		«12/05/00; 4:30:27 PM by PBS
-			«Since we're not storing OPML directly anymore, convert from the outline object to OPML and return that.
-		«10/06/00; 6:18:17 PM by PBS
-			«Convert a Manila message to OPML and return the OPML as text/x-opml. What's tricky is that messages are not stored in OPML format. We need to convert. Sometimes we have window info, sometimes not. So we create an outline and pass it to op.outlineToXml.
+	//Changes:
+		//1/31/06; 2:18:36 AM by JES
+			//Add support for pending messages.
+		//5/24/02; 12:46:02 PM by JES
+			//Fixed a bug where the <title> element in the returned OPML would be "localOutline" instead of the correct title. If the message is the current home page, <title> is the siteName.
+		//1/5/02; 11:13:08 PM by PBS
+			//msgNum is now an optional parameter so other pages (other than /discuss/reader) can return OPML.
+		//12/05/00; 4:30:27 PM by PBS
+			//Since we're not storing OPML directly anymore, convert from the outline object to OPML and return that.
+		//10/06/00; 6:18:17 PM by PBS
+			//Convert a Manila message to OPML and return the OPML as text/x-opml. What's tricky is that messages are not stored in OPML format. We need to convert. Sometimes we have window info, sometimes not. So we create an outline and pass it to op.outlineToXml.
 	
 	local (pta = html.getPageTableAddress ());
 	pta^.responseHeaders.["Content-Type"] = "text/x-opml"; //MIME type

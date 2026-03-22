@@ -1,4 +1,4 @@
-on cSourceFile (f) { «an html macro includes a C source file with clean formatting
+on cSourceFile (f) { //an html macro includes a C source file with clean formatting
 	local (s = string (file.readwholefile (f)));
 	s = string.popleading (s, cr);
 	s = string.replaceall (s, "<", "&lt;");

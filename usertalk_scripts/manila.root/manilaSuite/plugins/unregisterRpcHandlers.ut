@@ -1,7 +1,7 @@
 on unregisterRpcHandlers (pluginName, adrRpcHandlers) {
-	«Changes
-		«3/9/06; 2:31:09 AM by JES
-			«Created. Converse of manilaSuite.plugins.registerRpcHandlers.
+	//Changes
+		//3/9/06; 2:31:09 AM by JES
+			//Created. Converse of manilaSuite.plugins.registerRpcHandlers.
 	
 	local (adrConfigTable = @config.manila.plugins.rpcHandlers);
 	if not defined (adrConfigTable^) {

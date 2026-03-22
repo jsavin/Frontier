@@ -1,31 +1,31 @@
 on createArchive (sitfile, filelist, flbinhex) {
 	on SITEnginePresent () {
 		return (file.exists (file.getSpecialFolderPath ("", "Extensions", false) + "StuffIt Engine™"))};
-	if SITEnginePresent () { «use the StuffIt Engine
-		try {file.delete (sitfile)}; «Wed, Jan 22, 1997 at 5:46:24 AM by DW
+	if SITEnginePresent () { //use the StuffIt Engine
+		try {file.delete (sitfile)}; //Wed, Jan 22, 1997 at 5:46:24 AM by DW
 		StuffitCMD.stuff (filelist, sitfile, false, false, false, flbinhex)}
-	else { «use StuffIt Deluxe/Lite
+	else { //use StuffIt Deluxe/Lite
 		app.start ("stuff");
-		app.bringToFront (); «4.0.2
-		bundle { «create a new archive file
+		app.bringToFront (); //4.0.2
+		bundle { //create a new archive file
 			try {file.delete (sitfile)};
-			on make (new, at = nil, withData = nil, withProperties = nil) { «Make a new element
+			on make (new, at = nil, withData = nil, withProperties = nil) { //Make a new element
 				return (appleEvent (stuff.id, 'core', 'crel', 'kocl', string4 (new), 'insh', at, 'data', withData, 'prdt', withProperties))};
 			with objectModel {
 				make ('Arc ', withProperties: {'fPth':string (sitfile)})}};
-		bundle { «add the files in the list to the archive
+		bundle { //add the files in the list to the archive
 			local (ct = sizeof (filelist), i);
 			for i = 1 to ct {
 				local (into = nil, encryption = nil, compression = nil, deletingOriginals = nil);
 				local (replaceDuplicates = nil, matchCriteria = nil);
 				appleEvent (stuff.id, 'SIT!', 'STUF', '----', alias (filelist [i]), 'dest', objspec (into), 'encr', boolean (encryption), 'comp', boolean (compression), 'dele', boolean (deletingOriginals),  'repl', boolean (replaceDuplicates), 'matc', boolean (matchCriteria))}};
-		bundle { «close the archive
+		bundle { //close the archive
 			with objectmodel {
 				appleEvent (stuff.id, 'core', 'clos', '----', objspec (window [file.filefrompath (sitfile)]))}};
-		if flbinhex { «create the BinHex file
+		if flbinhex { //create the BinHex file
 			appleevent (stuff.id, 'SIT!', 'TRAN', '----', alias (sitfile), 'trnm', "BinHex4", 'encd', true);
 			file.delete (sitfile)}}};
-«bundle «test code
-	«local (sitfile = "Jaz Disk 1:testfile.sit")
-	«local (filelist = {"Jaz Disk 1:Picture 1", "Jaz Disk 1:tmp.html"})
-	«createArchive (sitfile, filelist, true)
+//bundle //test code
+	//local (sitfile = "Jaz Disk 1:testfile.sit")
+	//local (filelist = {"Jaz Disk 1:Picture 1", "Jaz Disk 1:tmp.html"})
+	//createArchive (sitfile, filelist, true)

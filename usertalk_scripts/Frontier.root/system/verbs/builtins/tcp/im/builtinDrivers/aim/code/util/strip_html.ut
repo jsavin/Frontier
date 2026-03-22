@@ -1,5 +1,5 @@
 on strip_html ( htmltext) {
-	«from string.htmlToEmail, cause I don't want to use regex.
+	//from string.htmlToEmail, cause I don't want to use regex.
 	bundle { //strip all remaining markup
 		local (ixopen, ixclose);
 		loop {

@@ -1,7 +1,7 @@
 on messageUndoForm (pta, adrMsg) {
-	«manilaSuite.versioning.messageUndoForm : 04/05/19, 14:29:40 by DAB
-		«create a form to display availbale versions
-	«messages at manilaData.localization.languages.english.strings.versioning
+	//manilaSuite.versioning.messageUndoForm : 04/05/19, 14:29:40 by DAB
+		//create a form to display availbale versions
+	//messages at manilaData.localization.languages.english.strings.versioning
 	
 	local (adrSite = manilasuite.getSiteAddress(pta));
 	if not manilaSuite.getNewsSitePref("versioning.flRestoreWanted", adrSite, false, true) {
@@ -13,23 +13,23 @@ on messageUndoForm (pta, adrMsg) {
 	if action beginsWith "#objectNotFoundHandler" {
 		action = pta^.uri}
 	else {
-		«local (action = pta^.urls^.discussMsgReader)
+		//local (action = pta^.urls^.discussMsgReader)
 		if not (action endsWith "$") {
 			action = action + "$"};
 		if pta^.pathArgs != "" {
 			action = action + pta^.pathArgs}
 		else {
 			action = action + adrMsg^.msgNum //04/06/20, 15:16:07 by DAB
-				«action = action + adrMsgTable^.msgNum}};
+				//action = action + adrMsgTable^.msgNum}};
 	action = manilaSuite.unTaint (action);
 	
 	local (htmltext = "");
 	on add(s) {
 		htmltext = htmltext + s;};
 	
-	if pta^.method == "POST" { «05/02/12, 12:21:36 by DAB 
+	if pta^.method == "POST" { //05/02/12, 12:21:36 by DAB 
 		if defined(pta^.postargs.versioning) and (defined(pta^.postargs.msgnum) and (pta^.postargs.msgnum == adrMsg^.msgnum)) {
-			add(manilaSuite.versioning.messageUndo(pta, adrMsg)); «typically null string
+			add(manilaSuite.versioning.messageUndo(pta, adrMsg)); //typically null string
 			if defined(pta^.postargs.referer) {
 				pta^.requestheaders.referer = pta^.postargs.referer}}};
 	
@@ -89,10 +89,10 @@ on messageUndoForm (pta, adrMsg) {
 		
 		add("\r\t\t\t\t<option value = '" + string(adrLinkTbl^.timeStamp) + "'>" + string(adrLinkTbl^.timeStamp));
 		if adrMsg^.subject != currentMsgSubject {
-			«add("[" + string.ellipsize(adrMsg^.subject, 20) + "]")
+			//add("[" + string.ellipsize(adrMsg^.subject, 20) + "]")
 			local (subject = string.ellipsize(adrMsg^.subject, 20)); //02/04/25, 12:12:11 by DAB
-			«if flISO8859encoding    //02/04/25, 12:12:22 by DAB
-				«subject = bayly.iso8859encode(subject)
+			//if flISO8859encoding    //02/04/25, 12:12:22 by DAB
+				//subject = bayly.iso8859encode(subject)
 			add(" [" + subject + "]"); //02/04/25, 12:09:03 by DAB
 			currentMsgSubject = adrMsg^.subject}; //02/04/18, 23:38:00 by DAB
 		add("</option>");

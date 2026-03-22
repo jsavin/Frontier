@@ -1,6 +1,6 @@
 on setCachedReferersPage (htmlText, pta=nil) {
-	«Put the htmlText in the cache.
-		«11/02/00; 5:14:28 PM by PBS
+	//Put the htmlText in the cache.
+		//11/02/00; 5:14:28 PM by PBS
 	if pta == nil {
 		pta = html.getPageTableAddress ()};
 	local (adrSite = manilaSuite.getManilaSiteAddress (pta));

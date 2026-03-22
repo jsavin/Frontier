@@ -1,4 +1,4 @@
-on buildOnePage (adrPage, adrPageTable = @websites.["#data"]) { «4.2
+on buildOnePage (adrPage, adrPageTable = @websites.["#data"]) { //4.2
 	html.callFileWriterStartup (adrPage, adrPageTable); //PBS 4/14/98
 	local (s = html.buildObject (adrPage, adrPageTable));
 	adrPageTable^.fname = html.getFileName (nameOf (adrPage^), adrPageTable);

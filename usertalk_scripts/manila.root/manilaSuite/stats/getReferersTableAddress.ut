@@ -1,9 +1,9 @@
 on getReferersTableAddress (adrSite) {
-	«Return the address of the referers table. Create it if it doesn't exist.
-		«11/02/00; 2:36:34 PM by WM
-		«Changes:
-			«11/22/00; 5:57:44 PM by PBS
-				«Now store referers in config.root, so we don't have to save other databases so often. Should improve performance.
+	//Return the address of the referers table. Create it if it doesn't exist.
+		//11/02/00; 2:36:34 PM by WM
+		//Changes:
+			//11/22/00; 5:57:44 PM by PBS
+				//Now store referers in config.root, so we don't have to save other databases so often. Should improve performance.
 	
 	if not defined (config.manila.stats) {
 		new (tableType, @config.manila.stats)};
@@ -21,11 +21,11 @@ on getReferersTableAddress (adrSite) {
 		else {
 			new (tableType, adrReferers)}};
 	
-	«local (adrStats = @adrSite^.["#newsSite"].stats)
-	«if not defined (adrStats^)
-		«new (tableType, adrStats)
-	«local (adrReferers = @adrStats^.referers)
-	«if not defined (adrReferers^)
-		«new (tableType, adrReferers)
+	//local (adrStats = @adrSite^.["#newsSite"].stats)
+	//if not defined (adrStats^)
+		//new (tableType, adrStats)
+	//local (adrReferers = @adrStats^.referers)
+	//if not defined (adrReferers^)
+		//new (tableType, adrReferers)
 	
 	return (adrReferers)}

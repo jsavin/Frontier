@@ -1,2 +1,2 @@
-on save (obj, saveIn = nil, as = nil) { «Save an object
+on save (obj, saveIn = nil, as = nil) { //Save an object
 	return (core.save (Fetch.id, obj, saveIn, as))}

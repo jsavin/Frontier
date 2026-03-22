@@ -1,7 +1,7 @@
 on memberMonitor (adrSite, adrGroup, adrMember, language) {
-	«manilaSuite.members.memberMonitor : 05/03/24, 23:37:17 by DAB
-		« an example membership group callback that handles any and all of 
-		«the callback types, by logging the operation under the category memberMonitor
+	//manilaSuite.members.memberMonitor : 05/03/24, 23:37:17 by DAB
+		// an example membership group callback that handles any and all of 
+		//the callback types, by logging the operation under the category memberMonitor
 	local (adrLogentry = log. addToGuestDatabase ("memberMonitor"));
 	
 	adrLogentry^.adrsite = string.popFilefromAddress(adrsite);

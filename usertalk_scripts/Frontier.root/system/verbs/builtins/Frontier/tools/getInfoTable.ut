@@ -1,10 +1,10 @@
 on getInfoTable () {
-	«Return a table containing info about the Tools in the Tools folder. Each Tool gets a sub-table whose name is the filename of the Tool. Each sub-table contains:
-		«f -- the path on disk
-		«flEnabled -- whether it's enabled or not
-		«flInstalled -- whether it's installed or not
-		«flOpen -- whether the gdb is open or not
-		«01/08/01; 1:15:30 PM by PBS
+	//Return a table containing info about the Tools in the Tools folder. Each Tool gets a sub-table whose name is the filename of the Tool. Each sub-table contains:
+		//f -- the path on disk
+		//flEnabled -- whether it's enabled or not
+		//flInstalled -- whether it's installed or not
+		//flOpen -- whether the gdb is open or not
+		//01/08/01; 1:15:30 PM by PBS
 	
 	local (f, folder = Frontier.tools.getToolsFolderPath ());
 	local (infoTable);

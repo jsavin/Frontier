@@ -1,10 +1,10 @@
-on getFrontWindowSource () { «4.2.3
+on getFrontWindowSource () { //4.2.3
 	case sys.os () {
 		"MacOS" {
-			«Thu, May 1, 1997 at 5:27:25 PM by DW
-				«More general way of working with non-MSIE 3.0.1 browsers
-				«Wed, Apr 9, 1997 at 6:13:56 PM by DW
-					«Now works with Netscape
+			//Thu, May 1, 1997 at 5:27:25 PM by DW
+				//More general way of working with non-MSIE 3.0.1 browsers
+				//Wed, Apr 9, 1997 at 6:13:56 PM by DW
+					//Now works with Netscape
 			try {
 				return (appleevent ('MSIE', 'MSIE', 'SORC'))}
 			else {
@@ -17,11 +17,11 @@ on getFrontWindowSource () { «4.2.3
 					local (domainName = partsList [2]);
 					local (path = partsList [3]);
 					local (s);
-					«if not (netEvents.launch ())
-						«return (false)
-					«return (netEvents.examples.httpGet (domainName, path, 80))
+					//if not (netEvents.launch ())
+						//return (false)
+					//return (netEvents.examples.httpGet (domainName, path, 80))
 					s = tcp.httpClient (server:domainName, path:path);
-					«Strip off the header.
+					//Strip off the header.
 					s = string.mid (s, string.patternMatch ("\r\n\r\n", s) + 4, infinity);
 					return (s)};
 				return (httpGetSource (url))}}}}

@@ -1,8 +1,8 @@
 on newMediaObject (blogid, username, password, struct) {
-	«Changes
-		«3/20/05; 12:08:51 AM by JES
-			«Created. Implement metaWeblog.newMediaObject.
-				«http://www.xmlrpc.com/metaWeblogApi#metaweblognewmediaobject
+	//Changes
+		//3/20/05; 12:08:51 AM by JES
+			//Created. Implement metaWeblog.newMediaObject.
+				//http://www.xmlrpc.com/metaWeblogApi#metaweblognewmediaobject
 	local (siteurl = blogid); //these are synonymous for Manila sites
 	local (sitename = manilaSuite.rpcHandlers.getSiteName (siteurl));
 	local (adrsite = manilaSuite.rpcUtils.getSiteAddress (sitename));

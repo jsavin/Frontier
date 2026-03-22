@@ -1,5 +1,5 @@
 on turnNotificationOn (appPath=nil, whatEvent=nil) {
 	if (appPath == nil) {
-		appPath = Frontier.getProgramPath()}; « use Frontier
+		appPath = Frontier.getProgramPath()}; // use Frontier
 	with Eudora, eventInfo {
 		return (appleEvent (id, kEudoraSuite, kEuStartNotifying, '----', alias (appPath), when, whatEvent))}}

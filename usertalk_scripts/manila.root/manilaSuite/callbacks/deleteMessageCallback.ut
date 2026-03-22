@@ -1,7 +1,7 @@
 on deleteMessageCallback (adrContextTable) {
-	«manilaSuite.callbacks.deleteMessageCallback : 04/06/14, 21:13:37 by DAB
-		«This callback runner allows the server manager to place a set of callback scripts 
-		«at config.manila.callbacks.deleteMessage to handle deleting and undeleting messages
+	//manilaSuite.callbacks.deleteMessageCallback : 04/06/14, 21:13:37 by DAB
+		//This callback runner allows the server manager to place a set of callback scripts 
+		//at config.manila.callbacks.deleteMessage to handle deleting and undeleting messages
 	
 	local (adrUserCallbacks = @config.manila.callbacks.deleteMessage);
 	

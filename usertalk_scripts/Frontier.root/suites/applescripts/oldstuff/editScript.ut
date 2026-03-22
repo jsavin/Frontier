@@ -1,17 +1,17 @@
 on editScript (adrobject) {
-	local (ideditorapp); «creator id of the script editor
-	bundle { «make sure that the user table is set up
+	local (ideditorapp); //creator id of the script editor
+	bundle { //make sure that the user table is set up
 		if not defined (user.odbAppleScriptEditor) {
 			new (tabletype, @user.odbAppleScriptEditor)};
 		if not defined (user.odbAppleScriptEditor.editorApp) {
 			if not file.getFileDialog ("Choose a compatible AppleScript editor", @user.odbAppleScriptEditor.editorApp, 'APPL') {
 				return}}};
-	bundle { «make sure that the editor app is running
+	bundle { //make sure that the editor app is running
 		ideditorapp = file.creator (user.odbAppleScriptEditor.editorApp);
 		if not sys.appIsRunning (ideditorapp) {
-			launch.application (user.odbAppleScriptEditor.editorApp)}; «make sure the editor is running
+			launch.application (user.odbAppleScriptEditor.editorApp)}; //make sure the editor is running
 		sys.bringAppToFront (ideditorapp)};
-	bundle { «set up the Apple Event handlers in system.verbs.traps
+	bundle { //set up the Apple Event handlers in system.verbs.traps
 		local (adrtraptable = @system.verbs.traps.[ideditorapp]);
 		if not defined (adrtraptable^) {
 			new (tabletype, adrtraptable)};
@@ -26,7 +26,7 @@ on editScript (adrobject) {
 	local (readOnly = false);
 	local (scriptdata);
 	osa.compile (adrobject, false, @scriptdata);
-	bundle { «send the apple event, it's a long line
+	bundle { //send the apple event, it's a long line
 		appleEvent (ideditorapp, 'edit', 'EDIT', '----', scriptdata, 'ASwt', wtitle, 'ASid', id, 'ASnc', requestCloseEvents, 'ASct', clientContext, 'ASna', editorComeToFront, 'ASro', readOnly)}};
-bundle { «test code
+bundle { //test code
 	editScript (@user.applescripts.MakeNewFileBookmarks)}

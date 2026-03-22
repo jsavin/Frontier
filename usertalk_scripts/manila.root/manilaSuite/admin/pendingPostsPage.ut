@@ -1,11 +1,11 @@
 on pendingPostsPage () {
-	«Changes
-		«1/31/06; 4:24:43 PM by JES
-			«Created. List pending posts, with radio buttons to approve or delete.
-			«Only managing editors and content editors are allowed.
+	//Changes
+		//1/31/06; 4:24:43 PM by JES
+			//Created. List pending posts, with radio buttons to approve or delete.
+			//Only managing editors and content editors are allowed.
 	local (pta = html.getpagetableaddress ());
-	«bundle //testing
-		«workspace.pt = pta^; edit (@workspace.pt)
+	//bundle //testing
+		//workspace.pt = pta^; edit (@workspace.pt)
 	bundle { //managing/content editor test
 		if not manilaSuite.editors.managingEditorTest () {
 			if not manilaSuite.editors.contentEditorTest () {
@@ -27,8 +27,8 @@ on pendingPostsPage () {
 			delete (@adrargs^.submit);
 			local (adr, ctApproved=0, ctDeleted=0);
 			for adr in adrargs {
-				«bundle //testing
-					«add (nameOf (adr^) + "=" + adr^ + "<br/>")
+				//bundle //testing
+					//add (nameOf (adr^) + "=" + adr^ + "<br/>")
 				case adr^[1] {
 					'a' { //approve
 						local (msgnum = number (string.delete (adr^, 1, 1)));
@@ -55,8 +55,8 @@ on pendingPostsPage () {
 	
 	add ("<table cellpadding=\"8\" cellspacing=\"0\" border=\"0\">");
 	
-	«bundle //JavaScript to handle approve/delete all
-		«add ("<script language=\"javascript\">function toggle(s, v) {objs = document.getElementsByName(s); for(var i in objs) {objs[i].checked = v;}}</script>")
+	//bundle //JavaScript to handle approve/delete all
+		//add ("<script language=\"javascript\">function toggle(s, v) {objs = document.getElementsByName(s); for(var i in objs) {objs[i].checked = v;}}</script>")
 	
 	bundle { //column headers
 		add ("<tr><td colspan=\"2\" align=\"center\"><b>" + manilaSuite.getString ("admin.approveDeleteHeader") + "</b></td><td><b>" + manilaSuite.getString ("admin.contentHeader") + "</b></td><td><b>" + manilaSuite.getString ("common.typeColumnName") + "</b></td></tr>")};
@@ -68,11 +68,11 @@ on pendingPostsPage () {
 		cmd = cmd + msgnum;
 		return ("<nobr><input type=\"radio\" name=\"" + msgnum + "\" id=\"" + cmd + "\" value=\"" + cmd + "\" + onclick>&nbsp;<label for=\"" + cmd + "\">" + label + "</label></nobr>")};
 	
-	«bundle //approve/delete all radio buttons
-		«add ("<tr>")
-		«add ("<td>" + radioButton ("_a", 0, "(all)", "toggle('a',true);toggle('d',false)") + "</td>")
-		«add ("<td>" + radioButton ("_d", 0, "(all)", "toggle('d',true);toggle('a',false)") + "</td>")
-		«add ("</tr>")
+	//bundle //approve/delete all radio buttons
+		//add ("<tr>")
+		//add ("<td>" + radioButton ("_a", 0, "(all)", "toggle('a',true);toggle('d',false)") + "</td>")
+		//add ("<td>" + radioButton ("_d", 0, "(all)", "toggle('d',true);toggle('a',false)") + "</td>")
+		//add ("</tr>")
 	
 	on renderOnePost (adrmsg) {
 		add ("<tr>");
@@ -80,7 +80,7 @@ on pendingPostsPage () {
 		local (msgnum = adrmsg^.msgnum);
 		add ("<td valign=\"top\">" + radioButton ("a", msgnum, manilaSuite.getString ("common.approveButton")) + "</td>");
 		add ("<td valign=\"top\">" + radioButton ("d", msgnum, manilaSuite.getString ("common.deleteButton")) + "</td>");
-		«add ("</td>")
+		//add ("</td>")
 		
 		add ("<td valign=\"top\">");
 		local (tooltip = manilaSuite.getString ("discuss.permalinkToMessage"));
@@ -108,6 +108,6 @@ on pendingPostsPage () {
 	add ("</form>");
 	
 	return (htext)};
-«bundle //test code
-	«html.setPageTableAddress (@workspace.pt)
-	«pendingPostsPage ()
+//bundle //test code
+	//html.setPageTableAddress (@workspace.pt)
+	//pendingPostsPage ()

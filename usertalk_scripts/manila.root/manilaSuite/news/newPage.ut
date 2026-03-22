@@ -1,17 +1,17 @@
 on newPage () {
-	«Changes
-		«9/20/05; 4:57:21 PM by JES
-			«If an aggregator story doesn't have a title, try to extract a link, or default title to the channel title.
-		«9/20/05; 4:41:07 PM by JES
-			«Set autoParagraphs, clayCompatibility and activeUrls to false.
-		«9/20/05; 4:35:32 PM by JES
-			«Improved readability when editing raw HTML text for news items posted from the aggregator.
-		«9/20/05; 4:33:18 PM by JES
-			«Add support for aggregator post links.
-		«9/6/05; 6:54:02 PM by JES
-			«Add support for ETP callback, newsNewItem.
-		«04/19/00; 10:39:57 PM by PBS
-			«Created. This is the page that displays a form for creating a new news item.
+	//Changes
+		//9/20/05; 4:57:21 PM by JES
+			//If an aggregator story doesn't have a title, try to extract a link, or default title to the channel title.
+		//9/20/05; 4:41:07 PM by JES
+			//Set autoParagraphs, clayCompatibility and activeUrls to false.
+		//9/20/05; 4:35:32 PM by JES
+			//Improved readability when editing raw HTML text for news items posted from the aggregator.
+		//9/20/05; 4:33:18 PM by JES
+			//Add support for aggregator post links.
+		//9/6/05; 6:54:02 PM by JES
+			//Add support for ETP callback, newsNewItem.
+		//04/19/00; 10:39:57 PM by PBS
+			//Created. This is the page that displays a form for creating a new news item.
 	
 	local (pta = html.getPageTableAddress ());
 	pta^.autoParagraphs = false;

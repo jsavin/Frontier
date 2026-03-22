@@ -1,6 +1,6 @@
 on exportSiteForDownload (siteUrl, username, password) {
-	«3/20/01; 8:25:48 PM by JES
-		«Does the same thing that the [site]/downloadMySite/mySite.root page does -- export the site to a guest database, and return the download URL for the exported database.
+	//3/20/01; 8:25:48 PM by JES
+		//Does the same thing that the [site]/downloadMySite/mySite.root page does -- export the site to a guest database, and return the download URL for the exported database.
 	
 	local (siteName = manilaSuite.rpcUtils.urlToSiteName (siteUrl));
 	local (adrSite = manilaSuite.rpcUtils.getSiteAddress (siteName));

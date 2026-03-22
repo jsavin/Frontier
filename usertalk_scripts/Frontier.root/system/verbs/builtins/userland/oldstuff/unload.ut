@@ -1,4 +1,4 @@
-«unloads all the DW-specific objects from the root before shipping
+//unloads all the DW-specific objects from the root before shipping
 local (folder = "Macintosh HD:New Releases:Frontier Workshop:DW Objects:");
 
 target.set (@userland.unloadlist);

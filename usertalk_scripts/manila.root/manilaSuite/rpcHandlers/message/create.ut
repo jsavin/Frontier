@@ -1,47 +1,47 @@
 on create (username, password, siteName, subject, body, bodyType, inResponseTo, windowInfo, rendererInfo) {
-	«Create a new message in message storage.
-	«Changes:
-		«4/14/07; 10:02:22 PM by LL
-			«Support a new preference to filter text from members for any restricted HTML.
-		«5/14/03; 1:19:30 PM by JES
-			«Only add the client IP address to the message if defined.
-		«4/8/03; 11:41:31 PM by JES
-			«Add the client's IP address to the new message table.
-		«03/19/01; 3:19:20 PM by JES
-			«Only set windowInfo if the windowInfo passed in is a table.
-		«01/02/01; 1:16:22 AM by JES
-			«On Macs, convert the subject to Mac text.
-		«12/31/00; 6:18:13 PM by JES
-			«On Macs, don't convert the body to Mac text if the type is text/x-opml, since opml is always stored as Latin text.
-		«12/11/00; 3:45:19 PM by PBS
-			«If windowInfo == 0, and it's an OPML document, get windowInfo from the OPML document.
-			«If rendererInfo is not defined, use the default renderer (pikeRenderer, in this case).
-			«Don't store raw OPML as outline; this was superfluous.
-		«11/07/00; 4:27:07 PM by JES
-			«Fixed a bug where macros would be neutered if the message type is text/x-opml.
-		«11/03/00; 1:00:14 AM by JES
-			«Handle processing of incoming opml documents.
-		«09/30/00; 5:17:18 PM by PBS
-			«Use the discuss/msgReader$ URL, not the stories/storyReader$ URL.
-		«05/20/00; 9:31:23 PM by JES
-			«added language to context table for localization support
-		«04/09/00; 3:42:48 PM by PBS
-			«If the server is a Mac, convert to Mac text. Pike always sends latin text, even when running on a Mac workstation.
-		«04/04/00; 9:26:51 PM by PBS
-			«Add siteName and adrSite to the context table that's in scope when calling the rpcNewMessage callbacks.
-		«04/03/00; 11:29:55 AM by PBS
-			«Support for time zone prefs.
-		«03/30/00; 10:21:20 AM by PBS
-			«Set up the context correctly so that legal macros aren't neutered on entry.
-		«03/28/00; 1:47:53 PM by PBS
-			«The rpcSaveMessage callbacks were being called -- but it should be the rpcNewMessage callbacks. And now it is.
-		«03/23/00; 3:46:35 PM by PBS
-			«New parameter: rendererInfo. It's a table (an XML-RPC struct) containing information about what renderer to use and when to use it. Two elements: name and flRenderOnEntry. name is the name of the renderer to use; flRenderOnEntry is a boolean specifying whether or not to render on entry into the system. Currently, Manila ignores the second parameter, and always renders everything on entry.
-			«Also: save the rendererInfo table in the discussion group message table.
-		«02/25/00; 10:21:03 PM by PBS
-			«This RPC handler was missing the windowInfo parameter. It's been added.
-		«01/31/00; 9:47:43 PM by PBS
-			«Return the storyReader$ URL, not the dg URL.
+	//Create a new message in message storage.
+	//Changes:
+		//4/14/07; 10:02:22 PM by LL
+			//Support a new preference to filter text from members for any restricted HTML.
+		//5/14/03; 1:19:30 PM by JES
+			//Only add the client IP address to the message if defined.
+		//4/8/03; 11:41:31 PM by JES
+			//Add the client's IP address to the new message table.
+		//03/19/01; 3:19:20 PM by JES
+			//Only set windowInfo if the windowInfo passed in is a table.
+		//01/02/01; 1:16:22 AM by JES
+			//On Macs, convert the subject to Mac text.
+		//12/31/00; 6:18:13 PM by JES
+			//On Macs, don't convert the body to Mac text if the type is text/x-opml, since opml is always stored as Latin text.
+		//12/11/00; 3:45:19 PM by PBS
+			//If windowInfo == 0, and it's an OPML document, get windowInfo from the OPML document.
+			//If rendererInfo is not defined, use the default renderer (pikeRenderer, in this case).
+			//Don't store raw OPML as outline; this was superfluous.
+		//11/07/00; 4:27:07 PM by JES
+			//Fixed a bug where macros would be neutered if the message type is text/x-opml.
+		//11/03/00; 1:00:14 AM by JES
+			//Handle processing of incoming opml documents.
+		//09/30/00; 5:17:18 PM by PBS
+			//Use the discuss/msgReader$ URL, not the stories/storyReader$ URL.
+		//05/20/00; 9:31:23 PM by JES
+			//added language to context table for localization support
+		//04/09/00; 3:42:48 PM by PBS
+			//If the server is a Mac, convert to Mac text. Pike always sends latin text, even when running on a Mac workstation.
+		//04/04/00; 9:26:51 PM by PBS
+			//Add siteName and adrSite to the context table that's in scope when calling the rpcNewMessage callbacks.
+		//04/03/00; 11:29:55 AM by PBS
+			//Support for time zone prefs.
+		//03/30/00; 10:21:20 AM by PBS
+			//Set up the context correctly so that legal macros aren't neutered on entry.
+		//03/28/00; 1:47:53 PM by PBS
+			//The rpcSaveMessage callbacks were being called -- but it should be the rpcNewMessage callbacks. And now it is.
+		//03/23/00; 3:46:35 PM by PBS
+			//New parameter: rendererInfo. It's a table (an XML-RPC struct) containing information about what renderer to use and when to use it. Two elements: name and flRenderOnEntry. name is the name of the renderer to use; flRenderOnEntry is a boolean specifying whether or not to render on entry into the system. Currently, Manila ignores the second parameter, and always renders everything on entry.
+			//Also: save the rendererInfo table in the discussion group message table.
+		//02/25/00; 10:21:03 PM by PBS
+			//This RPC handler was missing the windowInfo parameter. It's been added.
+		//01/31/00; 9:47:43 PM by PBS
+			//Return the storyReader$ URL, not the dg URL.
 	bundle { //make sure this user has access to the discussion group
 		local (beginningErrorString = "Can't create a new message because ");
 		manilaSuite.rpcUtils.dgAccessCheck (siteName, username, password, beginningErrorString)};
@@ -64,7 +64,7 @@ on create (username, password, siteName, subject, body, bodyType, inResponseTo, 
 			subject = "Re: " + string.trimWhiteSpace (subject)}};
 	local (msgNum);
 	bundle { //PBS 03/30/00: make sure legal macros aren't neutered
-		«mainResponder.neuterText demands a page table, so create one.
+		//mainResponder.neuterText demands a page table, so create one.
 		local (pt);
 		new (tableType, @pt);
 		pt.enableSafeMacros = true;
@@ -141,12 +141,12 @@ on create (username, password, siteName, subject, body, bodyType, inResponseTo, 
 		delete (@returnTable.outline)};
 	returnTable.msgNum = msgNum;
 	returnTable.url = string (adrDiscuss^.prefs.msgReaderUrl) + msgNum; //PBS 09/30/00: uncommented
-	«bundle //get the storyReader$ URL for this page //PBS 09/30/00: commented out
-		«local (adrSite = config.manila.sites.[siteName])
-		«local (storyReaderUrl = adrSite^.["#urls"].storyReader)
-		«if not (storyReaderUrl endsWith "$")
-			«storyReaderUrl = storyReaderUrl + "$"
-		«returntable.url = storyReaderUrl + msgNum
+	//bundle //get the storyReader$ URL for this page //PBS 09/30/00: commented out
+		//local (adrSite = config.manila.sites.[siteName])
+		//local (storyReaderUrl = adrSite^.["#urls"].storyReader)
+		//if not (storyReaderUrl endsWith "$")
+			//storyReaderUrl = storyReaderUrl + "$"
+		//returntable.url = storyReaderUrl + msgNum
 	
 	manilaSuite.rpcUtils.cleanMessageTableForExport (@returntable);
 	

@@ -1,30 +1,30 @@
 on postFlip () {
-	«Flip the home page.
-		«Changes:
-			«1/30/04; 5:14:02 PM by JES
-				«Add the new home page to the home page index.
-			«5/16/03; 12:16:18 PM by JES
-				«Log the event.
-			«4/8/03; 11:36:47 PM by JES
-				«Add the client's IP address to the message table of the new home page.
-			«9/10/01; 11:29:14 AM by PBS
-				«Expand referer check -- it's okay if the referer is the news page.
-			«05/11/00; 6:58:08 PM by JES
-				«merged in Brent's security fix for client side trojan horse
-			«05/09/00; 10:33:58 PM by PBS
-				«Check the referer to defeat the client side trojan horse.
-			«04/18/00; 3:22:58 PM by JES
-				«localized
-			«04/04/00; 10:53:10 AM by PBS
-				«Don't send out email notification when flipping the home page -- since the title may be incorrect and the body text is empty, allow the system to wait until the home page is no longer empty before sending out email notification.
-			«04/03/00; 11:00:36 AM by PBS
-				«Support for time zones in Manila.
-			«12/26/99; 2:26:37 PM by PBS
-				«Allow for empty subjects -- it's okay if the home page has an empty title.
-				«The website gdb was being saved 3 times -- now it's just saved once. The other saves were redundant and costly.
-			«10/31/99; 1:02:25 PM by PBS
-				«Only a managing editor can flip the home page.
-				«Minor code clean-up.
+	//Flip the home page.
+		//Changes:
+			//1/30/04; 5:14:02 PM by JES
+				//Add the new home page to the home page index.
+			//5/16/03; 12:16:18 PM by JES
+				//Log the event.
+			//4/8/03; 11:36:47 PM by JES
+				//Add the client's IP address to the message table of the new home page.
+			//9/10/01; 11:29:14 AM by PBS
+				//Expand referer check -- it's okay if the referer is the news page.
+			//05/11/00; 6:58:08 PM by JES
+				//merged in Brent's security fix for client side trojan horse
+			//05/09/00; 10:33:58 PM by PBS
+				//Check the referer to defeat the client side trojan horse.
+			//04/18/00; 3:22:58 PM by JES
+				//localized
+			//04/04/00; 10:53:10 AM by PBS
+				//Don't send out email notification when flipping the home page -- since the title may be incorrect and the body text is empty, allow the system to wait until the home page is no longer empty before sending out email notification.
+			//04/03/00; 11:00:36 AM by PBS
+				//Support for time zones in Manila.
+			//12/26/99; 2:26:37 PM by PBS
+				//Allow for empty subjects -- it's okay if the home page has an empty title.
+				//The website gdb was being saved 3 times -- now it's just saved once. The other saves were redundant and costly.
+			//10/31/99; 1:02:25 PM by PBS
+				//Only a managing editor can flip the home page.
+				//Minor code clean-up.
 	
 	local (pta = html.getPageTableAddress ());
 	pta^.title = manilaSuite.getString ("admin.messageReceiver"); // 4/18/00 JES: localized

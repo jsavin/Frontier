@@ -1,17 +1,17 @@
 on getPermalinkUrl (adrsite, adrmsg, department=nil) {
-	«Changes
-		«2/3/06; 3:54:05 PM by JES
-			«Bug fix: For stories with no path, we sometimes incorrectly returned true. Now always return the storyReader URL for stories which have no site structure path.
-		«1/31/06; 5:25:28 PM by JES
-			«Permalinks to deleted or pending messages are always the DG reader page.
-		«10/18/05; 4:38:16 AM by JES
-			«New optional parameter, department. If we're getting the permalink for a news item, and department is specified, return the permalink for the news item on its department archive page, instead of in the home page archives.
-		«10/19/04; 3:22:05 PM by JES
-			«Bug fix: Call string.iso8859encode, not html.iso8859encode. When running on MacOS, use the mac iso8859 table, not the windows one.
-		«7/29/03; 2:32:05 PM by JES
-			«Added support for traditional non-news-item home pages, stories and DG messages.
-		«4/24/03; 8:13:46 AM by DW
-			«Created. This functionality is replicated all over the place. I needed it in manilaSuite.trackback.ping, and couldn't bear the thought of replicating it yet another time.
+	//Changes
+		//2/3/06; 3:54:05 PM by JES
+			//Bug fix: For stories with no path, we sometimes incorrectly returned true. Now always return the storyReader URL for stories which have no site structure path.
+		//1/31/06; 5:25:28 PM by JES
+			//Permalinks to deleted or pending messages are always the DG reader page.
+		//10/18/05; 4:38:16 AM by JES
+			//New optional parameter, department. If we're getting the permalink for a news item, and department is specified, return the permalink for the news item on its department archive page, instead of in the home page archives.
+		//10/19/04; 3:22:05 PM by JES
+			//Bug fix: Call string.iso8859encode, not html.iso8859encode. When running on MacOS, use the mac iso8859 table, not the windows one.
+		//7/29/03; 2:32:05 PM by JES
+			//Added support for traditional non-news-item home pages, stories and DG messages.
+		//4/24/03; 8:13:46 AM by DW
+			//Created. This functionality is replicated all over the place. I needed it in manilaSuite.trackback.ping, and couldn't bear the thought of replicating it yet another time.
 	on encodeWithAmpersands (s) {
 		s = string.replaceall (s, "&", "&amp;");
 		s = string.replaceall (s, "<", "&lt;");
@@ -70,6 +70,6 @@ on getPermalinkUrl (adrsite, adrmsg, department=nil) {
 				if not (discussurl endswith "$") {
 					discussurl = discussurl + "$"};
 				return (encodeWithAmpersands (discussUrl + adrmsg^.msgnum))}}}};
-«bundle //test code
-	«local (adrsite = @homeManilaWebsite)
-	«dialog.alert (getPermalinkUrl (adrsite, @adrsite^.["#discussionGroup"].messages[33], "Dept 2"))
+//bundle //test code
+	//local (adrsite = @homeManilaWebsite)
+	//dialog.alert (getPermalinkUrl (adrsite, @adrsite^.["#discussionGroup"].messages[33], "Dept 2"))

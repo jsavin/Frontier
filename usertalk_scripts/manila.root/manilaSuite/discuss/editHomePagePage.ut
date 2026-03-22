@@ -1,15 +1,15 @@
 on editHomePagePage (pta=nil) {
-	«A page that always displays an edit form for the current home page. Very useful with static rendering -- just bookmark this page.
-		«03/19/00; 12:41:57 PM by PBS
-		«Changes:
-			«03/20/00; 2:25:06 PM by PBS
-				«Add a meta tag that makes sure the page is never cached.
-			«4/19/00 at 3:22:07 PM by JES
-				«localized
-			«05/09/00; 10:39:35 PM by PBS
-				«Check the referer to defeat the client side trojan horse.
-			«05/11/00; 7:49:38 PM by JES
-				«merged in Brent's security fix for the client side trojan horse attack.
+	//A page that always displays an edit form for the current home page. Very useful with static rendering -- just bookmark this page.
+		//03/19/00; 12:41:57 PM by PBS
+		//Changes:
+			//03/20/00; 2:25:06 PM by PBS
+				//Add a meta tag that makes sure the page is never cached.
+			//4/19/00 at 3:22:07 PM by JES
+				//localized
+			//05/09/00; 10:39:35 PM by PBS
+				//Check the referer to defeat the client side trojan horse.
+			//05/11/00; 7:49:38 PM by JES
+				//merged in Brent's security fix for the client side trojan horse attack.
 	
 	if pta == nil {
 		pta = html.getPageTableAddress ()};
@@ -25,7 +25,7 @@ on editHomePagePage (pta=nil) {
 		htmlText = htmlText + s};
 	
 	bundle { //add a meta tag
-		«This is an editing page, so it should expire immediately, it should never be cached. For this to work, the template should include the {meta} safe macro.
+		//This is an editing page, so it should expire immediately, it should never be cached. For this to work, the template should include the {meta} safe macro.
 		
 		local (s = "<META HTTP-EQUIV=\"Expires\" CONTENT=\"Mon, 01 Jan 1990 01:00:00 GMT\">");
 		
@@ -43,13 +43,13 @@ on editHomePagePage (pta=nil) {
 		pta^.postArgs.referer = pta^.ftpSite^.url;
 		manilaSuite.discuss.postEditedMsg (); //bottleneck script that does pretty much everything
 		
-		«Redirect. If auto-rendering, redirect to static home page. Else redirect to editorial home page.
+		//Redirect. If auto-rendering, redirect to static home page. Else redirect to editorial home page.
 		local (adrSite = pta^.adrSiteRootTable);
 		if manilaSuite.staticRendering.isEnabled (adrSite) {
 			if manilaSuite.staticRendering.isAutoRenderingEnabled (adrSite) {
 				scriptError ("!redirect " + pta^.newsSite^.staticSite.["#ftpSite"].url)}};
 		
-		«Redirect to the editorial home page.
+		//Redirect to the editorial home page.
 		scriptError ("!redirect " + pta^.ftpSite^.url)}
 	else { //display the edit form
 		pta^.activeUrls = false;

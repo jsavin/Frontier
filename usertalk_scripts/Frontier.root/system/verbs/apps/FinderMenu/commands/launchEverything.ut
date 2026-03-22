@@ -1,7 +1,7 @@
-«this allows you to implement "Tiles-like" functionality using the Finder
-	«create a nested hierarchy of projects, each containing all the files you need to do a job
-	«put your cursor on one of the folders and select the Launch Everything command
-	«after a confirmation dialog, everything in the folder is launched
+//this allows you to implement "Tiles-like" functionality using the Finder
+	//create a nested hierarchy of projects, each containing all the files you need to do a job
+	//put your cursor on one of the folders and select the Launch Everything command
+	//after a confirmation dialog, everything in the folder is launched
 
 on visit (path) {
 	if file.isAlias (path) {
@@ -11,7 +11,7 @@ on visit (path) {
 	if not file.isFolder (path) {
 		path = file.folderFromPath (path)};
 	case dialog.yesNoCancel (“Launch every app & doc in "” + file.fileFromPath (path) + “"?”) {
-		1 { «yes
+		1 { //yes
 			on launchFolder (folder) {
 				local (f);
 				fileloop (f in folder) {
@@ -22,7 +22,7 @@ on visit (path) {
 					else {
 						launch.anything (f)}}};
 			launchFolder (path)};
-		3 { «cancel
+		3 { //cancel
 			return (false)}};
 	return (true)};
 

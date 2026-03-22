@@ -1,14 +1,14 @@
 on systemTrayIconRightClick () {
-	«Changes
-		«9/10/02; 5:42:26 PM by JES
-			«Added trial version checks.
-		«6/27/02; 2:36:56 PM by JES
-			«Changed Frontier's Control Panel command to Open Admin Site.
-		«12/24/01; 12:58:55 AM by JES
-			«Merged the Frontier and Radio systemTrayIconRightClick scripts.
-		«11/8/01; 4:42:21 PM by BS
-			«This script is called when the user right-clicks on the system tray icon. In turn it calls all the scripts in user.callbacks.systemTrayIconRightClick. 
-			«The first callback that returns a menu consumes the event, and we return the address they return to us.
+	//Changes
+		//9/10/02; 5:42:26 PM by JES
+			//Added trial version checks.
+		//6/27/02; 2:36:56 PM by JES
+			//Changed Frontier's Control Panel command to Open Admin Site.
+		//12/24/01; 12:58:55 AM by JES
+			//Merged the Frontier and Radio systemTrayIconRightClick scripts.
+		//11/8/01; 4:42:21 PM by BS
+			//This script is called when the user right-clicks on the system tray icon. In turn it calls all the scripts in user.callbacks.systemTrayIconRightClick. 
+			//The first callback that returns a menu consumes the event, and we return the address they return to us.
 	bundle { //run callbacks -- if a callback generates the menu, return it
 		local (adrscript, adrmenu = nil);
 		if not defined (user.callbacks.systemTrayIconRightClick) {
@@ -50,12 +50,12 @@ on systemTrayIconRightClick () {
 					addCommand ("Enter Serial Number", "webBrowser.openUrl (\"http://127.0.0.1/controlPanel/serialNumber\");webBrowser.bringToFront ()")}}
 			else { //open admin site command
 				addCommand ("Open Admin Site", "webBrowser.openUrl (\"http://127.0.0.1:" + user.inetd.config.http2.port + "/\");webBrowser.bringToFront ()")}};
-		«local (controlPanelUrl = "http://127.0.0.1")
-		«if not system.environment.isRadio
-			«if user.inetd.config.http.port != 80
-				«controlPanelUrl = controlPanelUrl + ":" + user.inetd.config.http.port
-			«controlPanelUrl = controlPanelUrl + "/controlPanel/"
-			«addCommand ("Control Panel", "webBrowser.openUrl (\"" + controlPanelUrl + "\");webBrowser.bringToFront ()")
+		//local (controlPanelUrl = "http://127.0.0.1")
+		//if not system.environment.isRadio
+			//if user.inetd.config.http.port != 80
+				//controlPanelUrl = controlPanelUrl + ":" + user.inetd.config.http.port
+			//controlPanelUrl = controlPanelUrl + "/controlPanel/"
+			//addCommand ("Control Panel", "webBrowser.openUrl (\"" + controlPanelUrl + "\");webBrowser.bringToFront ()")
 		if system.environment.isWindows {
 			addSeparator ();
 			addCommand ("Exit and Shut Down " + appName, "fileMenu.quit ()")};
@@ -63,17 +63,17 @@ on systemTrayIconRightClick () {
 		try {target.set (oldTarget)};
 		
 		return (adrMenu)}};
-«on systemTrayIconRightClick ()
-	«11/8/01; 4:42:21 PM by BS
-		«This script is called when the user right-clicks on the system tray icon. In turn it calls all the scripts in user.callbacks.systemTrayIconRightClick. 
-		«The first callback that returns a menu consumes the event, and we return the address they return to us.
-	«local (adrscript, adrmenu = nil)
-	«if not defined (user.callbacks.systemTrayIconRightClick)
-		«new (tableType, @user.callbacks.systemTrayIconRightClick)
-	«for adrscript in @user.callbacks.systemTrayIconRightClick
-		«try
-			«while typeOf (adrScript^) == addressType
-				«adrScript = adrScript^
-			«adrscript^ (@adrmenu)
-			«if adrmenu != nil
-				«return (adrmenu)
+//on systemTrayIconRightClick ()
+	//11/8/01; 4:42:21 PM by BS
+		//This script is called when the user right-clicks on the system tray icon. In turn it calls all the scripts in user.callbacks.systemTrayIconRightClick. 
+		//The first callback that returns a menu consumes the event, and we return the address they return to us.
+	//local (adrscript, adrmenu = nil)
+	//if not defined (user.callbacks.systemTrayIconRightClick)
+		//new (tableType, @user.callbacks.systemTrayIconRightClick)
+	//for adrscript in @user.callbacks.systemTrayIconRightClick
+		//try
+			//while typeOf (adrScript^) == addressType
+				//adrScript = adrScript^
+			//adrscript^ (@adrmenu)
+			//if adrmenu != nil
+				//return (adrmenu)

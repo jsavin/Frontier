@@ -1,13 +1,13 @@
 on getTrackbackUrl (adrmsgtable, permalinkUrl="") {
-	«Changes
-		«10/27/04; 2:30:36 PM by DAB
-			«New optional parameter, permalinkUrl. If specified, this is the URL used for the link argument in the trackback URL. If not specified, we get the link URL from a call to manilaSuite.getPermalinkUrl, preserving existing behavior.
-		«5/1/03; 3:30:54 PM by JES
-			«Created. Generate a URL for a trackback link.
+	//Changes
+		//10/27/04; 2:30:36 PM by DAB
+			//New optional parameter, permalinkUrl. If specified, this is the URL used for the link argument in the trackback URL. If not specified, we get the link URL from a call to manilaSuite.getPermalinkUrl, preserving existing behavior.
+		//5/1/03; 3:30:54 PM by JES
+			//Created. Generate a URL for a trackback link.
 	
 	local (adrsite = manilaSuite.getSiteAddress ());
 	local (baseurl = manilaSuite.getSiteUrl () + "newsItems/trackback/");
-	«local (permalinkUrl = manilaSuite.getPermalinkUrl (adrsite, adrmsgtable))
+	//local (permalinkUrl = manilaSuite.getPermalinkUrl (adrsite, adrmsgtable))
 	if permalinkUrl == "" { //04/10/24, 19:21:14 by DAB
 		permalinkUrl = manilaSuite.getPermalinkUrl (adrsite, adrmsgtable)};
 	local (linkarg = "&amp;link=" + string.urlEncode (permalinkUrl));

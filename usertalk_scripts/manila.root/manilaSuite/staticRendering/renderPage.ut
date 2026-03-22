@@ -1,14 +1,14 @@
 on renderPage (relativePath, adrManilaSite, adrStaticSite=nil) {
-	«Render one page to a static server. relativePath is the path to the page relative to the site, as in /2000/03/10 or /resources/linux/programming. Returns a copy of the page table.
-		«Pages that are render-able: the home page, previous home pages, and pages in the site structure.
-		«03/13/00; 2:07:13 PM by PBS
-	«Changes:
-		«11/11/03; 2:09:17 AM by JES
-			«Only render the site's RSS feed if syndication is enabled.
-		«11/3/03; 11:25:30 AM by JES
-			«Added support for syndication -- when rendering the home page, also render the RSS file.
-		«03/28/00; 10:18:55 PM by PBS
-			«Misc. fixes -- double slashes when rendering the current archive page fixed; rendering the current archive page too often fixed.
+	//Render one page to a static server. relativePath is the path to the page relative to the site, as in /2000/03/10 or /resources/linux/programming. Returns a copy of the page table.
+		//Pages that are render-able: the home page, previous home pages, and pages in the site structure.
+		//03/13/00; 2:07:13 PM by PBS
+	//Changes:
+		//11/11/03; 2:09:17 AM by JES
+			//Only render the site's RSS feed if syndication is enabled.
+		//11/3/03; 11:25:30 AM by JES
+			//Added support for syndication -- when rendering the home page, also render the RSS file.
+		//03/28/00; 10:18:55 PM by PBS
+			//Misc. fixes -- double slashes when rendering the current archive page fixed; rendering the current archive page too often fixed.
 	
 	relativePath = string.popLeading (relativePath, '/'); //the leading / is optional
 	
@@ -39,7 +39,7 @@ on renderPage (relativePath, adrManilaSite, adrStaticSite=nil) {
 			manilaSuite.staticRendering.renderHomePage ();
 			flHomePage = true;
 			bundle { //also render the most recent calendar page
-				«try
+				//try
 				local (adrDay = mainResponder.calendar.getMostRecentAddress (adrManilaSite));
 				local (year, month, day);
 				day = nameOf (adrDay^);

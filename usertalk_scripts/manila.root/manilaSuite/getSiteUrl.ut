@@ -1,7 +1,7 @@
 on getSiteUrl (adrSite=nil, pta=nil) {
-	«Get the current base URL of this site.
-		«This script can run outside the rendering context if adrSite is not nil.
-		«10/31/99; 4:56:45 PM by PBS
+	//Get the current base URL of this site.
+		//This script can run outside the rendering context if adrSite is not nil.
+		//10/31/99; 4:56:45 PM by PBS
 	
 	local (siteUrl);
 	

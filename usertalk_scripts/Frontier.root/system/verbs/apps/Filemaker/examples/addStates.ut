@@ -1,18 +1,18 @@
-«add 50 states and their capitals to the Test Database
-	«be sure the State Capitals database is open before running this
-		«If you do not alread have this database you can create a simple database
-		«with two fields, the first being "Name" the second "Capitol"
-	«If a record for a state exists and has the wrong capital, it will still have
-	«the wrong capital after running this script.  Repairing that is left as
-	«an exercise.
+//add 50 states and their capitals to the Test Database
+	//be sure the State Capitals database is open before running this
+		//If you do not alread have this database you can create a simple database
+		//with two fields, the first being "Name" the second "Capitol"
+	//If a record for a state exists and has the wrong capital, it will still have
+	//the wrong capital after running this script.  Repairing that is left as
+	//an exercise.
 
 on addState (stateName, stateCapital) {
 	with objectModel, FileMaker {
 		if not exists (record[cell["Name"] == stateName]) {
 			create (record, {stateName,stateCapital});
-			«Other forms of create:
-				«create (record, {stateName,stateCapital}, 0, endOf(database["State Capitols"])
-			msg (stateName)} «show name in Frontier main window
+			//Other forms of create:
+				//create (record, {stateName,stateCapital}, 0, endOf(database["State Capitols"])
+			msg (stateName)} //show name in Frontier main window
 		else {
 			msg (stateName + " already exists!")}};
 	rollBeachball ()};

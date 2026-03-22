@@ -1,2 +1,2 @@
-on save (obj, saveTo) { «Save a windowÕs contents in text format.
+on save (obj, saveTo) { //Save a windowÕs contents in text format.
 	return (appleEvent (BBEdit.id, 'core', 'save', '----', objspec (obj), 'kfil', alias (saveTo)))}

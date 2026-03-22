@@ -1,13 +1,13 @@
 on bgImageRef (imageSpec="", pageTable=nil) {
-	«Friday, January 02, 1998 at 2:17:05 AM by PBS
-		«Returns the url of the specified image.
-		«Use this in your #pageheader attribute.
-		«Example:
-			«{"<body " + bgImageRef () + " alink=\"#008000\" bgcolor=\"#FFFFFF\" text=\"#000000\" link=\"#00008B\" vlink=\"#800080\">"}
-		«By default, the image is specified by the #background directive.
-		«Example:
-			«#background -> "myBackgroundImage"
-		«If the specified image is the empty string, return an empty string.
+	//Friday, January 02, 1998 at 2:17:05 AM by PBS
+		//Returns the url of the specified image.
+		//Use this in your #pageheader attribute.
+		//Example:
+			//{"<body " + bgImageRef () + " alink=\"#008000\" bgcolor=\"#FFFFFF\" text=\"#000000\" link=\"#00008B\" vlink=\"#800080\">"}
+		//By default, the image is specified by the #background directive.
+		//Example:
+			//#background -> "myBackgroundImage"
+		//If the specified image is the empty string, return an empty string.
 	
 	local (imageTable);
 	if pageTable == nil {
@@ -26,6 +26,6 @@ on bgImageRef (imageSpec="", pageTable=nil) {
 		if (lowerspec endsWith ".gif") or (lowerspec endsWith ".jpg") {
 			return ("background=\"" + imageSpec + "\"")}};
 	
-	«Get image data table for this image.
+	//Get image data table for this image.
 	imageTable = html.getImageData (imageSpec, pageTable);
 	return ("background=\"" + imageTable.url + "\"")}

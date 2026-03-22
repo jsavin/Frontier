@@ -1,5 +1,5 @@
 on membersOnly (pta) {
-	«manilaSuite.AccessControl.membersOnly : 04/05/20, 17:58:43 by DAB
-		«return true if viewer is logged on member
-		«was manilaFixer.accessControl.membersOnly : 02/02/21, 16:00:28 by DAB
+	//manilaSuite.AccessControl.membersOnly : 04/05/20, 17:58:43 by DAB
+		//return true if viewer is logged on member
+		//was manilaFixer.accessControl.membersOnly : 02/02/21, 16:00:28 by DAB
 	return defined(pta^.adrmemberinfo)}

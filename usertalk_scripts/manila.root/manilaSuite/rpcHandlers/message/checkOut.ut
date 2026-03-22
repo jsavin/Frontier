@@ -1,9 +1,9 @@
 on checkOut (username, password, siteName, msgNum) {
-	«Check out a message prior to editing it.
-		«10/07/00; 1:41:03 PM by PBS
-	«Changes:
-		«12/17/00; 5:23:04 PM by JES
-			«Fixed bug where subject was not defined when checking custody of the message.
+	//Check out a message prior to editing it.
+		//10/07/00; 1:41:03 PM by PBS
+	//Changes:
+		//12/17/00; 5:23:04 PM by JES
+			//Fixed bug where subject was not defined when checking custody of the message.
 	
 	bundle { //make sure this user has access to the discussion group
 		local (beginningErrorString = "Can't checkout message \"" + msgNum + "\" because ");

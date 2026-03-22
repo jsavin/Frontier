@@ -1,7 +1,7 @@
-«Changes
-	«2/26/01; 8:25:53 PM by DW
-		«Created. 
-		«The scripts in config.manila.callbacks.getEmailNotificationAdText get a chance to set "adtext" which we return. This text is appended to email notifications that a message has been created or modified.
+//Changes
+	//2/26/01; 8:25:53 PM by DW
+		//Created. 
+		//The scripts in config.manila.callbacks.getEmailNotificationAdText get a chance to set "adtext" which we return. This text is appended to email notifications that a message has been created or modified.
 
 local (params);
 new (tabletype, @params);

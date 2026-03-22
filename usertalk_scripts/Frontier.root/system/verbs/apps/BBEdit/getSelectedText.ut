@@ -1,9 +1,9 @@
-on getSelectedText () { «4.2.3
+on getSelectedText () { //4.2.3
 	local (s);
 	with objectModel, BBEdit, eventInfo {
 		try {
 			s = get (window [1].selectedText)}
 		else {
 			scriptError ("There are no windows open in BBEdit.")}}};
-«bundle «test code
-	«dialog.alert (getSelectedText ())
+//bundle //test code
+	//dialog.alert (getSelectedText ())

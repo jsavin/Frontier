@@ -1,7 +1,7 @@
 on objectUndoForm (pta, adrObject, actionURL) {
-	«manilaSuite.versioning.objectUndoForm : 04/05/19, 14:29:40 by DAB
-		«create a form to display available versions of an advanced entity
-	«messages at manilaData.localization.languages.english.strings.versioning
+	//manilaSuite.versioning.objectUndoForm : 04/05/19, 14:29:40 by DAB
+		//create a form to display available versions of an advanced entity
+	//messages at manilaData.localization.languages.english.strings.versioning
 	local (adrSite = manilasuite.getSiteAddress(pta));
 	if not manilaSuite.getNewsSitePref("versioning.flRestoreWanted", adrSite, false, true) {
 		return ""};

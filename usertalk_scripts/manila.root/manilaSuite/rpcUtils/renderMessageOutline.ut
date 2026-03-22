@@ -1,36 +1,36 @@
 on renderMessageOutline (siteName, adrMsg, renderer=nil, flFilterHtmlTags = false) {
-	«Render an outline before storing it in the discussion group.
-		«Changes:
-			«03/23/00; 3:40:49 PM by PBS
-				«renderer is a new optional parameter, needed because Pike specifies a renderer when saving a message. The renderer specified by the site may not be the renderer to use. If no renderer is specified, then use the renderer specified by the site.
-			«11/16/00; 3:17:25 PM by PBS
-				«Paranoia: neuter macros again even though they've been neutered.
-			«4/14/07; 10:00:50 PM by LL
-				«Support a new parameter to filter text for restricted HTML tags.
+	//Render an outline before storing it in the discussion group.
+		//Changes:
+			//03/23/00; 3:40:49 PM by PBS
+				//renderer is a new optional parameter, needed because Pike specifies a renderer when saving a message. The renderer specified by the site may not be the renderer to use. If no renderer is specified, then use the renderer specified by the site.
+			//11/16/00; 3:17:25 PM by PBS
+				//Paranoia: neuter macros again even though they've been neutered.
+			//4/14/07; 10:00:50 PM by LL
+				//Support a new parameter to filter text for restricted HTML tags.
 	
 	local (adrDiscuss = manilaSuite.rpcUtils.getDiscussAddress (siteName));
 	
-	«Get the current page table, if any, and save it to be restored later.
+	//Get the current page table, if any, and save it to be restored later.
 	local (pageTable, pta = @pageTable, oldPta);
 	new (tableType, pta);
 	try {oldPta = html.getPageTableAddress ()};
 	html.setPageTableAddress (pta);
 	html.buildPageTable (adrDiscuss^.prefs.adrMsgReader, pta);
 	
-	«Figure out the name of the renderer to use.
+	//Figure out the name of the renderer to use.
 	if renderer == nil { //was the renderer specified?
 		if defined (pta^.renderDiscussOutlinesWith) {
 			pta^.renderOutlineWith = pta^.renderDiscussOutlinesWith}}
 	else { //use the specified renderer
 		pta^.renderOutlineWith = renderer};
-	«Render the outline and store it in discussion group storage.
+	//Render the outline and store it in discussion group storage.
 	local (s = html.tenderRender (@adrMsg^.outline));
 	s = html.neuterMacros (s, @config.mainResponder.prefs.legalMacros); //PBS 11/16/00: paranoia: neuter macros again
 	if flFilterHtmlTags {
 		s = manilaSuite.html.stripHtmlAttributes (s)};
 	table.assign (@adrMsg^.body, s);
 	
-	«Restore the page table if needed.
+	//Restore the page table if needed.
 	if oldPta != nil {
 		html.setPageTableAddress (oldPta)}
 	else {

@@ -1,23 +1,23 @@
 on buildSiteMenu (adrsitetable, adrmenubar, callback=nil) {
-	«New: Tue, Nov 26, 1996 at 4:23:03 AM by DW
-		«Builds a menubar from a website table structure.
-		«New #directive -- #menuTitle
-			«If the #title of a page is too long, do a #menuTitle containing the name of the menu item
-			«Tables can and should have #menuTitles if you want to build menus for them.
-		«The callback routine allows you to write the script that's linked into each menu item.
-		«IMPORTANT: This script uses the clipboard. It does not preserve the clipboard contents.
+	//New: Tue, Nov 26, 1996 at 4:23:03 AM by DW
+		//Builds a menubar from a website table structure.
+		//New #directive -- #menuTitle
+			//If the #title of a page is too long, do a #menuTitle containing the name of the menu item
+			//Tables can and should have #menuTitles if you want to build menus for them.
+		//The callback routine allows you to write the script that's linked into each menu item.
+		//IMPORTANT: This script uses the clipboard. It does not preserve the clipboard contents.
 	local (level = 0);
 	new (menubarType, adrmenubar);
 	target.set (adrmenubar);
 	edit (adrmenubar);
 	editmenu.setfont ("geneva"); editmenu.setfontsize (9);
-	bundle { «set the main head for the menu
+	bundle { //set the main head for the menu
 		local (linetext = nameOf (adrsitetable^));
 		local (adrmenutitle = @adrsitetable^.["#menuTitle"]);
 		if defined (adrmenutitle^) {
 			linetext = adrmenutitle^};
 		op.setLineText (linetext)};
-	local (dir = right); «first headline inserted to the right
+	local (dir = right); //first headline inserted to the right
 	on traverse (adr, url) {
 		local (adrsubitem, i, name, flsubtables = false);
 		if op.countsubs (1) > 0 {
@@ -29,7 +29,7 @@ on buildSiteMenu (adrsitetable, adrmenubar, callback=nil) {
 			adrsubitem = @adr^ [i];
 			fltable = typeOf (adrsubitem^) == tableType;
 			name = nameof (adrsubitem^);
-			bundle { «we ignore some objects...
+			bundle { //we ignore some objects...
 				if name beginswith "#" {
 					continue};
 				case name {
@@ -44,7 +44,7 @@ on buildSiteMenu (adrsitetable, adrmenubar, callback=nil) {
 					@user.websites.frontier.homepage;
 					@user.websites.frontier.outline {
 						continue}}};
-			bundle { «insert the head, very simple
+			bundle { //insert the head, very simple
 				local (head = name, title, subtext, link = "", s);
 				if fltable {
 					local (adrmenutitle = @adrsubitem^.["#menuTitle"]);
@@ -60,7 +60,7 @@ on buildSiteMenu (adrsitetable, adrmenubar, callback=nil) {
 					if title != "" {
 						head = title}};
 				op.insert (head, dir);
-				if link != "" { «link a script into the menu command
+				if link != "" { //link a script into the menu command
 					local (localscript, oldtarget = target.get (), scripttext);
 					scripttext = "webBrowser.openURL (\"" + link + "\")";
 					if callback != nil {
@@ -74,14 +74,14 @@ on buildSiteMenu (adrsitetable, adrmenubar, callback=nil) {
 			if fltable and (sizeof (adrsubitem^) > 0) {
 				dir = right;
 				level++;
-				traverse (adrsubitem, url + name + "/"); «recurse
+				traverse (adrsubitem, url + name + "/"); //recurse
 				level--;
 				flsubtables = true;
-				if dir != right { «at least one item added from the table
+				if dir != right { //at least one item added from the table
 					op.go (left, 1)}};
 			dir = down;
 			rollBeachBall ()};
-		bundle { «sort the level before returning
+		bundle { //sort the level before returning
 			op.sort ();
 			if flsubtables {
 				local (oldtarget = target.get ());
@@ -89,7 +89,7 @@ on buildSiteMenu (adrsitetable, adrmenubar, callback=nil) {
 				new (menubartype, @tempmenu);
 				op.go (up, infinity);
 				loop {
-					if op.countsubs (1) == 0 { «it has no subheads
+					if op.countsubs (1) == 0 { //it has no subheads
 						editMenu.cut ();
 						target.set (@tempmenu);
 						editMenu.paste ();
@@ -111,8 +111,8 @@ on buildSiteMenu (adrsitetable, adrmenubar, callback=nil) {
 	traverse (adrsitetable, "http://" + adrsitetable^.["#ftpsite"].url);
 	op.firstSummit ();
 	return (true)};
-«bundle «test code
-	«on callback (link)
-		«return ("webBrowser.openURL (\"" + link + "\")")
-	«buildSiteMenu (@user.websites.frontier, @scratchpad.sitemenu, @callback)
-	«edit (@scratchpad.sitemenu)
+//bundle //test code
+	//on callback (link)
+		//return ("webBrowser.openURL (\"" + link + "\")")
+	//buildSiteMenu (@user.websites.frontier, @scratchpad.sitemenu, @callback)
+	//edit (@scratchpad.sitemenu)

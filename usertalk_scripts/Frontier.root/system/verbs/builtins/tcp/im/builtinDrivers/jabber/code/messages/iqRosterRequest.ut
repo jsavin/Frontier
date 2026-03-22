@@ -1,8 +1,8 @@
 on iqRosterRequest (connection = @system.temp.jabber.connection, idTbl = nil) {
-	«Changes
-		«5/14/02; 1:51:34 PM by JB
-			«Changelog created.
-	«iqRosterRequest requests the roster from the server; it's part of the login sequence. See http://docs.jabber.org/jpg/html/main.html#REFIQROSTER.
+	//Changes
+		//5/14/02; 1:51:34 PM by JB
+			//Changelog created.
+	//iqRosterRequest requests the roster from the server; it's part of the login sequence. See http://docs.jabber.org/jpg/html/main.html#REFIQROSTER.
 	
 	on addAtt ( XMLadr, name, value ) {
 		if not defined ( XMLadr^.["/atts"] ) {

@@ -1,5 +1,5 @@
 on getStorageAddress (adrSite) {
-	«manilaSuite.AccessControl.getStorageAddress : 04/05/20, 16:55:15 by DAB
-		«return address of master table for accessControl in a site
+	//manilaSuite.AccessControl.getStorageAddress : 04/05/20, 16:55:15 by DAB
+		//return address of master table for accessControl in a site
 	local (adrNewsSite = manilaSuite.getNewsSiteAddress(adrSite));
 	return @adrNewsSite^.accesscontrol}

@@ -1,98 +1,98 @@
 on getValue (partialAddress, defaultValue) {
-	«Get one value from the prefs for a Manila site.
-		«Changes:
-			«1999:
-				«10/27/99; 10:02:48 PM by PBS
-					«notifySender is the from email address for email notification.
-					«Get the managing editors list from #newsSite.sysopMail.
-					«New prefs for dg and members box background colors: colors.membersBox and colors.discussListings.
-					«Syndication prefs panel support.
-				«10/30/99; 1:58:18 PM by PBS
-					«More color prefs: membersBoxHeader, membersBoxHeaderText, separator, separatorText.
-				«11/1/99; 9:51:30 AM by PBS
-					«New pref: flEditFormOnHomePage controls whether or not to have a text area on the home page.
-				«11/1/99; 11:14:42 AM by PBS
-					«newsRoom.customPreferences is the XML for the prefs page.
-					«newsRoom.flUseCustomPrefsWizard toggles using the custom prefs wizard.
-				«11/1/99; 5:03:59 PM by PBS
-					«Legal tags are site-specific prefs now.
-				«11/6/99; 4:32:39 PM by PBS
-					«If a post, then don't discard the posted custom prefs XML, even if there's an error.
-				«12/10/99; 10:17:32 AM by PBS
-					«numNewsDaysToRender is a new pref that specifies how many days to render on the home page. Default is 1 day, current behavior.
-				«12/13/99; 6:40:58 PM by PBS
-					«New prefs for Admin Box colors, which can be customized on the Appearance panel, in the Colors section.
-				«12/17/99; 11:36:06 AM by PBS
-					«New pref for the cowskull image link.
-			«2000:
-				«1/6/00; 2:42:10 PM by PBS
-					«flMembersListPublic controls the public display of the members list at /stats/members.
-				«1/9/00; 5:04:02 PM by PBS
-					«flHomePageDisplayTitle governs whether or not to display the title on the home page.
-				«01/26/00; 3:14:49 PM by PBS
-					«Support for editors only access.
-				«02/12/00; 11:39:19 AM by PBS
-					«Support for the custody time out preference.
-				«03/14/00; 3:00:40 PM by PBS
-					«Added support for static rendering prefs.
-				«04/03/00; 2:09:05 PM by PBS
-					«Support for time zone pref.
-				«04/09/00; 5:35:41 PM by PBS
-					«Support for turning on and off title display for archived home pages.
-				«04/15/00; 6:30:48 PM by PBS
-					«Added support for gems prefs.
-				«05/01/00; 5:37:00 PM by PBS
-					«Support for news items prefs.
-				«05/20/00; 9:01:45 PM by JES
-					«language preference
-				«06/15/00; 4:34:31 PM by PBS
-					«Support for background picture.
-				«06/15/00; 11:42:09 PM by JES
-					«Merged Brent's background picture pref.
-				«06/29/00; 10:19:05 PM by PBS
-					«If the cowskull image is a wp-text, coerce to a string.
-				«07/08/00; 1:42:46 AM by JES
-					«Support prefs for displaying n messages on the main discussion group listing page.
-				«09/30/00; 4:42:53 PM by PBS
-					«Support for number of topics in topics view.
-				«10/03/00; 3:16:39 PM by PBS
-					«Support editing tool choice.
-				«10/04/00; 10:44:44 AM by PBS
-					«Default editor is now HTML Tags.
-				«10/16/00; 6:35:49 PM by JES
-					«Added support for discussion group template prefs.
-				«10/27/00; 3:30:35 AM by JES
-					«Added DG theme preferences.
-				«10/29/00; 7:11:27 PM by JES
-					«Get the default copyright owner for scriptingNews2.xml renderings.
-				«11/20/00; 2:58:05 PM by PBS
-					«Directories prefs.
-				«11/25/00; 6:49:17 PM by PBS
-					«New pref, directory.flDisplayTitle, turns off title display for directory pages.
-				«12/18/00; 4:09:05 PM by PBS
-					«Slides prefs.
-			«05/23/01; 5:22:57 PM by PBS
-				«Get the flRadioEditingAllowed boolean.
-			«9/10/01; 10:20:47 AM by PBS
-				«Get background picture bug fix -- it was getting the background picture from adrNewsSite^.backgroundPicture, which is bogus. It should come from adrPrefs^.background. (And now it does.)
-			«9/10/01; 5:09:27 PM by PBS
-				«Support for max news items to appear on department pages.
-			«9/12/01; 2:38:23 PM by PBS
-				«Support for stories, pictures, and gems pages access.
-			«9/12/01; 4:45:37 PM by PBS
-				«Support for flCookiesExpireAtEndOfSession.
-			«9/13/01; 2:28:55 PM by PBS
-				«Support for home page date formats.
-			«9/13/01; 5:56:25 PM by PBS
-				«Support for plain template for prefs pages.
-			«9/17/01; 2:44:44 PM by PBS
-				«Support for home page caching pref.
-			«9/18/01; 4:08:34 PM by PBS
-				«Support for margins.
-			«11/26/01; 10:22:00 AM by PBS
-				«Get content editors list.
-			«2/20/02; 4:10:34 AM by JS
-				«Get values for the Radio hosting prefs page.
+	//Get one value from the prefs for a Manila site.
+		//Changes:
+			//1999:
+				//10/27/99; 10:02:48 PM by PBS
+					//notifySender is the from email address for email notification.
+					//Get the managing editors list from #newsSite.sysopMail.
+					//New prefs for dg and members box background colors: colors.membersBox and colors.discussListings.
+					//Syndication prefs panel support.
+				//10/30/99; 1:58:18 PM by PBS
+					//More color prefs: membersBoxHeader, membersBoxHeaderText, separator, separatorText.
+				//11/1/99; 9:51:30 AM by PBS
+					//New pref: flEditFormOnHomePage controls whether or not to have a text area on the home page.
+				//11/1/99; 11:14:42 AM by PBS
+					//newsRoom.customPreferences is the XML for the prefs page.
+					//newsRoom.flUseCustomPrefsWizard toggles using the custom prefs wizard.
+				//11/1/99; 5:03:59 PM by PBS
+					//Legal tags are site-specific prefs now.
+				//11/6/99; 4:32:39 PM by PBS
+					//If a post, then don't discard the posted custom prefs XML, even if there's an error.
+				//12/10/99; 10:17:32 AM by PBS
+					//numNewsDaysToRender is a new pref that specifies how many days to render on the home page. Default is 1 day, current behavior.
+				//12/13/99; 6:40:58 PM by PBS
+					//New prefs for Admin Box colors, which can be customized on the Appearance panel, in the Colors section.
+				//12/17/99; 11:36:06 AM by PBS
+					//New pref for the cowskull image link.
+			//2000:
+				//1/6/00; 2:42:10 PM by PBS
+					//flMembersListPublic controls the public display of the members list at /stats/members.
+				//1/9/00; 5:04:02 PM by PBS
+					//flHomePageDisplayTitle governs whether or not to display the title on the home page.
+				//01/26/00; 3:14:49 PM by PBS
+					//Support for editors only access.
+				//02/12/00; 11:39:19 AM by PBS
+					//Support for the custody time out preference.
+				//03/14/00; 3:00:40 PM by PBS
+					//Added support for static rendering prefs.
+				//04/03/00; 2:09:05 PM by PBS
+					//Support for time zone pref.
+				//04/09/00; 5:35:41 PM by PBS
+					//Support for turning on and off title display for archived home pages.
+				//04/15/00; 6:30:48 PM by PBS
+					//Added support for gems prefs.
+				//05/01/00; 5:37:00 PM by PBS
+					//Support for news items prefs.
+				//05/20/00; 9:01:45 PM by JES
+					//language preference
+				//06/15/00; 4:34:31 PM by PBS
+					//Support for background picture.
+				//06/15/00; 11:42:09 PM by JES
+					//Merged Brent's background picture pref.
+				//06/29/00; 10:19:05 PM by PBS
+					//If the cowskull image is a wp-text, coerce to a string.
+				//07/08/00; 1:42:46 AM by JES
+					//Support prefs for displaying n messages on the main discussion group listing page.
+				//09/30/00; 4:42:53 PM by PBS
+					//Support for number of topics in topics view.
+				//10/03/00; 3:16:39 PM by PBS
+					//Support editing tool choice.
+				//10/04/00; 10:44:44 AM by PBS
+					//Default editor is now HTML Tags.
+				//10/16/00; 6:35:49 PM by JES
+					//Added support for discussion group template prefs.
+				//10/27/00; 3:30:35 AM by JES
+					//Added DG theme preferences.
+				//10/29/00; 7:11:27 PM by JES
+					//Get the default copyright owner for scriptingNews2.xml renderings.
+				//11/20/00; 2:58:05 PM by PBS
+					//Directories prefs.
+				//11/25/00; 6:49:17 PM by PBS
+					//New pref, directory.flDisplayTitle, turns off title display for directory pages.
+				//12/18/00; 4:09:05 PM by PBS
+					//Slides prefs.
+			//05/23/01; 5:22:57 PM by PBS
+				//Get the flRadioEditingAllowed boolean.
+			//9/10/01; 10:20:47 AM by PBS
+				//Get background picture bug fix -- it was getting the background picture from adrNewsSite^.backgroundPicture, which is bogus. It should come from adrPrefs^.background. (And now it does.)
+			//9/10/01; 5:09:27 PM by PBS
+				//Support for max news items to appear on department pages.
+			//9/12/01; 2:38:23 PM by PBS
+				//Support for stories, pictures, and gems pages access.
+			//9/12/01; 4:45:37 PM by PBS
+				//Support for flCookiesExpireAtEndOfSession.
+			//9/13/01; 2:28:55 PM by PBS
+				//Support for home page date formats.
+			//9/13/01; 5:56:25 PM by PBS
+				//Support for plain template for prefs pages.
+			//9/17/01; 2:44:44 PM by PBS
+				//Support for home page caching pref.
+			//9/18/01; 4:08:34 PM by PBS
+				//Support for margins.
+			//11/26/01; 10:22:00 AM by PBS
+				//Get content editors list.
+			//2/20/02; 4:10:34 AM by JS
+				//Get values for the Radio hosting prefs page.
 	
 	local (adrNewsSite = manilaSuite.getNewsSiteAddress ());
 	local (adrSite = manilaSuite.getSiteAddress ());
@@ -111,8 +111,8 @@ on getValue (partialAddress, defaultValue) {
 		"newsRoom.autoShortcuts" {
 			return (manilaSuite.getNewsSitePref ("autoShortcuts", default:false, flCreate:true))};
 		"newsRoom.backgroundPicture" {
-			«if defined (adrNewsSite^.backgroundPicture) //PBS 09/10/01: commented out bogus code
-				«return (string (adrNewsSite^.backgroundPicture))
+			//if defined (adrNewsSite^.backgroundPicture) //PBS 09/10/01: commented out bogus code
+				//return (string (adrNewsSite^.backgroundPicture))
 			if defined (adrPrefs^.background) {
 				return (string (adrPrefs^.background))};
 			return ("")};
@@ -341,7 +341,7 @@ on getValue (partialAddress, defaultValue) {
 		"newsRoom.flMembership" {
 			return (manilaSuite.getNewsSitePref ("flMembership", default:false, flCreate:true))};
 		"newsRoom.flMembersListPublic" {
-			«For existing sites, it should be true -- no breakage. For new sites it will be false, since it's false in the new site template.
+			//For existing sites, it should be true -- no breakage. For new sites it will be false, since it's false in the new site template.
 			return (manilaSuite.getNewsSitePref ("flMembersListPublic", default:true, flCreate:true))};
 		"newsRoom.flNewsItemSite" {
 			if not defined (adrNewsSite^.flNewsItemSite) {

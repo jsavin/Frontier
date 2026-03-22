@@ -1,6 +1,6 @@
 on mimeTypes () {
-	«Configure MIME types for serving files from disk.
-		«12/7/01; 2:42:24 PM by PBS
+	//Configure MIME types for serving files from disk.
+		//12/7/01; 2:42:24 PM by PBS
 	
 	local (pta = html.getPageTableAddress ());
 	local (adrTable = @user.webserver.prefs.ext2Mime);
@@ -37,7 +37,7 @@ on mimeTypes () {
 					name = string.popLeading (name, '.'); //be forgiving
 					local (type = string.trimWhiteSpace (pta^.postArgs.type));
 					adrTable^.[name] = type;
-					}}}};«add ("<font color=\"blue\">." + name + " has been set to " + type + ".</font><p>")
+					}}}};//add ("<font color=\"blue\">." + name + " has been set to " + type + ".</font><p>")
 	
 	bundle { //editing?
 		if not flPost {
@@ -110,7 +110,7 @@ on mimeTypes () {
 			
 			add ("<tr>"); indentLevel++;
 			
-			«Delete checkbox.
+			//Delete checkbox.
 			add ("<td><input type=\"checkbox\" name=\"" + extension+ "\" value=\"delete\"></td>");
 			
 			if not flDidSpacers {

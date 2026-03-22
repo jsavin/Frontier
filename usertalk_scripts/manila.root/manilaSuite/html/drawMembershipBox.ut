@@ -1,24 +1,24 @@
 on drawMembershipBox (pta=nil) {
-	«Draw the Members box.
-		«Changes:
-			«3/12/07; 2:16:35 PM by LL
-				«Support the new login box template.
-			«10/27/99; 9:37:30 PM by PBS
-				«Get the background color from #newsSite.colors.membersBox.
-			«10/30/99; 1:44:29 PM by PBS
-				«Get the managing editor's preferred members box header and header text colors.
-				«Code clean-up: removed some duplicated code.
-			«12/15/99; 2:40:15 PM by PBS
-				«Use the editor's membership box templates when drawing the membership box.
-			«12/21/99; 7:20:17 PM by PBS
-				«If a specified color is "", then use an appopriate default.
+	//Draw the Members box.
+		//Changes:
+			//3/12/07; 2:16:35 PM by LL
+				//Support the new login box template.
+			//10/27/99; 9:37:30 PM by PBS
+				//Get the background color from #newsSite.colors.membersBox.
+			//10/30/99; 1:44:29 PM by PBS
+				//Get the managing editor's preferred members box header and header text colors.
+				//Code clean-up: removed some duplicated code.
+			//12/15/99; 2:40:15 PM by PBS
+				//Use the editor's membership box templates when drawing the membership box.
+			//12/21/99; 7:20:17 PM by PBS
+				//If a specified color is "", then use an appopriate default.
 	
 	if pta == nil {
 		pta = html.getPageTableAddress ()};
 	
-	«bundle //don't draw if membership is not turned on
-		«if not defined (pta^.newsSite^.flMembership) or not pta^.newsSite^.flMembership
-			«return ("")
+	//bundle //don't draw if membership is not turned on
+		//if not defined (pta^.newsSite^.flMembership) or not pta^.newsSite^.flMembership
+			//return ("")
 	
 	local (templateName);
 	bundle { //choose which Members box to display
@@ -60,7 +60,7 @@ on drawMembershipBox (pta=nil) {
 		local (headerColor = manilaSuite.getNewsSitePref ("colors.membersBoxHeader", default:"black", flCreate:true, flUnTaint:true));
 		local (headerTextColor = manilaSuite.getNewsSitePref ("colors.membersBoxHeaderText", default:bgcolor, flCreate:true, flUnTaint:true));
 		
-		«PBS 12/21/99: get default colors if the specified color is "".
+		//PBS 12/21/99: get default colors if the specified color is "".
 		if string.trimWhiteSpace (bgcolor) == "" {
 			bgcolor = manilaData.newSiteTemplate.["#newsSite"].colors.membersBox};
 		if string.trimWhiteSpace (headerColor) == "" {

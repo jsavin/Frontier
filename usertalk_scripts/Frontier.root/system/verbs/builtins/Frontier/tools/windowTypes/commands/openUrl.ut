@@ -1,62 +1,62 @@
 on openUrl (url=nil, flOpenInPlace=false, adroutline=nil) {
-	«Changes:
-		«10/14/05; 5:01:10 PM by JES
-			«If the clipboard contains a URL, use it for the default value for the Open URL dialog.
-			«If a window already exists for the given URL, bring it to the front instead of opening a new window with the URL.
-			«Open new outline windows as read only. Disables the Save command and editing (but leaves the Save As command enabled).
-			«Improved algorithms for determining when to get data from the server. Respect the server's Content-Type header, if available. Store HTTP response headers in the window attributes table as httpResponseHeaders.
-			«Store the address of the cache table in the windowType table, so scripts can look into the cache if needed. Don't delete XML text or compiled XML from the temp table, since it's already allocated the RAM we're using, and someone might want to get at without having to hit the server again.
-		«2000-2002
-			«6/4/02; 3:58:23 PM by JES
-				«When opening an OPML file, save the ownerName and ownerEmail from the head in the cache, and set corresponding windowType attributes.
-			«6/1/02; 7:31:55 PM by JES
-				«Changed the requirement that the URL's extension represents a type that can be opened in the outliner, so that if a key string like rss or opml is present anywhere in the URL, Radio will get a shot at opening the URL in the outliner. Fixes opening of Moreover's RSS feeds in Radio's outliner, for example.
-			«5/15/02; 6:09:24 PM by JES
-				«If an address is passed in for adroutline, and the object specified by url cannot be converted to an outline, throw an error.
-			«4/18/02; 4:27:35 PM by JES
-				«When opening an RSS file, create the new window as read-only.
-			«3/31/02; 7:36:52 PM by JES
-				«Fixed a bug which would cause an error opening an outline: flAcceptOpml has already been given a value.
-			«3/31/02; 6:27:06 PM by JES
-				«Call tcp.httpClient with flAcceptOpml true.
-			«3/26/02; 11:02:59 PM by JES
-				«For opml and rss, if there's a cloud element, add it and the adrCloud attributes to the window.
-			«3/24/02; 5:50:17 PM by JES
-				«If xmltext is defined in the cache table, use that text instead of reading the URL, and then delete the cached text.
-			«3/24/02; 12:58:27 AM by JES
-				«New optional parameter, adroutline, specifies the address of the object to load the outline into.
-			«3/23/02; 3:40:14 PM by JES
-				«Optimization: Cache the type, so we don't have to store xmltext or xstruct in the cache table.
-			«3/23/02; 2:30:20 PM by JES
-				«Implement size-based caching of RSS and OPML outlines. If the file's size is different from the size of the cached copy, we reload it. Size is determined by requesting only the HTTP headers from the server, if possible.
-			«12/1/01; 5:16:14 PM by JES
-				«When inserting sub-outlines, temporarily set outline display to false, so screen updates will be smoother.
-			«11/5/01; 4:37:01 PM by JES
-				«Fixed a bug opening urls like http://www.scripting.com/. They have no extension, so we have to read the url to determine the docType.
-			«10/28/01; 6:12:44 PM by JES
-				«Only read the url if the extension matches one of the extensionsToOpenInRadio: xml, opml, rss and rdf. (More may be added later.)
-			«10/22/01; 5:04:48 PM by JES
-				«Follow redirects when opening the URL.
-			«10/22/01; 4:55:58 PM by JES
-				«Fix bug when adding Manila site node: the port and server attributes were reversed in the call to playlist.manila.commands.addManilaSiteNode.
-			«08/10/01; 8:43:47 PM by JES
-				«New optional parameter, flOpenInPlace. If true, outline type windows are inserted as a sub-heading of the frontmost outline window.
-			«12/31/00; 5:32:12 PM by JES
-				«On Macs, convert opml to Mac text when converting to an outline.
-			«11/30/00; 12:16:04 AM by JES
-				«Dereference callback addresses in a try block in case a tool's odb is not opened
-			«09/30/00; 12:37:16 PM by PBS
-				«Call callbacks at user.pike.commandCallbacks.openUrl.
-			«09/22/00; 4:57:55 PM by PBS
-				«Check offline status.
-			«09/20/00; 2:04:28 PM by PBS
-				«Call playlist.httpClient rather than tcp.httpClient.
-			«09/16/00; 11:20:13 AM by PBS
-				«Open HTML files in the Web browser.
-			«09/16/00; 3:42:06 PM by PBS
-				«Open OPML documents the same way outlineDocuments are opened.
-			«8/30/00 at 9:15:27 PM by PBS
-				«Called when the user chooses Open URL... from the File menu. Handle RSS, outlineDocuments, and .xml. (Have to handle .xml because we can't differentiate it from outlineDocuments based on URL alone.)
+	//Changes:
+		//10/14/05; 5:01:10 PM by JES
+			//If the clipboard contains a URL, use it for the default value for the Open URL dialog.
+			//If a window already exists for the given URL, bring it to the front instead of opening a new window with the URL.
+			//Open new outline windows as read only. Disables the Save command and editing (but leaves the Save As command enabled).
+			//Improved algorithms for determining when to get data from the server. Respect the server's Content-Type header, if available. Store HTTP response headers in the window attributes table as httpResponseHeaders.
+			//Store the address of the cache table in the windowType table, so scripts can look into the cache if needed. Don't delete XML text or compiled XML from the temp table, since it's already allocated the RAM we're using, and someone might want to get at without having to hit the server again.
+		//2000-2002
+			//6/4/02; 3:58:23 PM by JES
+				//When opening an OPML file, save the ownerName and ownerEmail from the head in the cache, and set corresponding windowType attributes.
+			//6/1/02; 7:31:55 PM by JES
+				//Changed the requirement that the URL's extension represents a type that can be opened in the outliner, so that if a key string like rss or opml is present anywhere in the URL, Radio will get a shot at opening the URL in the outliner. Fixes opening of Moreover's RSS feeds in Radio's outliner, for example.
+			//5/15/02; 6:09:24 PM by JES
+				//If an address is passed in for adroutline, and the object specified by url cannot be converted to an outline, throw an error.
+			//4/18/02; 4:27:35 PM by JES
+				//When opening an RSS file, create the new window as read-only.
+			//3/31/02; 7:36:52 PM by JES
+				//Fixed a bug which would cause an error opening an outline: flAcceptOpml has already been given a value.
+			//3/31/02; 6:27:06 PM by JES
+				//Call tcp.httpClient with flAcceptOpml true.
+			//3/26/02; 11:02:59 PM by JES
+				//For opml and rss, if there's a cloud element, add it and the adrCloud attributes to the window.
+			//3/24/02; 5:50:17 PM by JES
+				//If xmltext is defined in the cache table, use that text instead of reading the URL, and then delete the cached text.
+			//3/24/02; 12:58:27 AM by JES
+				//New optional parameter, adroutline, specifies the address of the object to load the outline into.
+			//3/23/02; 3:40:14 PM by JES
+				//Optimization: Cache the type, so we don't have to store xmltext or xstruct in the cache table.
+			//3/23/02; 2:30:20 PM by JES
+				//Implement size-based caching of RSS and OPML outlines. If the file's size is different from the size of the cached copy, we reload it. Size is determined by requesting only the HTTP headers from the server, if possible.
+			//12/1/01; 5:16:14 PM by JES
+				//When inserting sub-outlines, temporarily set outline display to false, so screen updates will be smoother.
+			//11/5/01; 4:37:01 PM by JES
+				//Fixed a bug opening urls like http://www.scripting.com/. They have no extension, so we have to read the url to determine the docType.
+			//10/28/01; 6:12:44 PM by JES
+				//Only read the url if the extension matches one of the extensionsToOpenInRadio: xml, opml, rss and rdf. (More may be added later.)
+			//10/22/01; 5:04:48 PM by JES
+				//Follow redirects when opening the URL.
+			//10/22/01; 4:55:58 PM by JES
+				//Fix bug when adding Manila site node: the port and server attributes were reversed in the call to playlist.manila.commands.addManilaSiteNode.
+			//08/10/01; 8:43:47 PM by JES
+				//New optional parameter, flOpenInPlace. If true, outline type windows are inserted as a sub-heading of the frontmost outline window.
+			//12/31/00; 5:32:12 PM by JES
+				//On Macs, convert opml to Mac text when converting to an outline.
+			//11/30/00; 12:16:04 AM by JES
+				//Dereference callback addresses in a try block in case a tool's odb is not opened
+			//09/30/00; 12:37:16 PM by PBS
+				//Call callbacks at user.pike.commandCallbacks.openUrl.
+			//09/22/00; 4:57:55 PM by PBS
+				//Check offline status.
+			//09/20/00; 2:04:28 PM by PBS
+				//Call playlist.httpClient rather than tcp.httpClient.
+			//09/16/00; 11:20:13 AM by PBS
+				//Open HTML files in the Web browser.
+			//09/16/00; 3:42:06 PM by PBS
+				//Open OPML documents the same way outlineDocuments are opened.
+			//8/30/00 at 9:15:27 PM by PBS
+				//Called when the user chooses Open URL... from the File menu. Handle RSS, outlineDocuments, and .xml. (Have to handle .xml because we can't differentiate it from outlineDocuments based on URL alone.)
 	
 	local (flOnline = true);
 	if defined (tcp.isOffline) {
@@ -116,7 +116,7 @@ on openUrl (url=nil, flOpenInPlace=false, adroutline=nil) {
 			return (true)}};
 	
 	local (urllist = string.urlsplit (url));
-	«local (extension = string.lower (string.nthField (urllist[3], ".", string.countFields (urllist[3], "."))))
+	//local (extension = string.lower (string.nthField (urllist[3], ".", string.countFields (urllist[3], "."))))
 	local (extensionsToOpenInRadio = {"xml", "opml", "rss", "rdf"});
 	
 	
@@ -194,17 +194,17 @@ on openUrl (url=nil, flOpenInPlace=false, adroutline=nil) {
 			
 			local (urllist = string.urlsplit (url));
 			local (s = "", flgotsizefastway = false, sizexmltext);
-			«bundle //old code for validating cache
-				«if defined (adrincache^.xmltext)
-					«sizexmltext = sizeOf (adrincache^.xmltext)
-					«flgotsizefastway = true
-				«else
-					«getHeaders ()
-					«adrincache^.httpResponseHeaders = resultheaders
-					«if defined (resultheaders.["Content-Length"])
-						«try
-							«sizexmltext = number (resultheaders.["Content-Length"])
-							«flgotsizefastway = true
+			//bundle //old code for validating cache
+				//if defined (adrincache^.xmltext)
+					//sizexmltext = sizeOf (adrincache^.xmltext)
+					//flgotsizefastway = true
+				//else
+					//getHeaders ()
+					//adrincache^.httpResponseHeaders = resultheaders
+					//if defined (resultheaders.["Content-Length"])
+						//try
+							//sizexmltext = number (resultheaders.["Content-Length"])
+							//flgotsizefastway = true
 			getHeaders ();
 			adrincache^.httpResponseHeaders = resultheaders;
 			if defined (resultheaders.["Content-Length"]) {
@@ -248,15 +248,15 @@ on openUrl (url=nil, flOpenInPlace=false, adroutline=nil) {
 						try { //try to compile the text
 							if not defined (adrincache^.xstruct) {
 								xml.compile (s, @adrincache^.xstruct)};
-							«local (nomad = @adrincache^.xstruct)
-							«nomad = xml.getAddress (nomad, "opml")
-							«nomad = xml.getAddress (nomad, "head")
-							«try {adrincache^.ownerName = xml.getValue (nomad, "ownerName") }
-							}}};«try {adrincache^.ownerEmail = xml.getValue (nomad, "ownerEmail") }
+							//local (nomad = @adrincache^.xstruct)
+							//nomad = xml.getAddress (nomad, "opml")
+							//nomad = xml.getAddress (nomad, "head")
+							//try {adrincache^.ownerName = xml.getValue (nomad, "ownerName") }
+							}}};//try {adrincache^.ownerEmail = xml.getValue (nomad, "ownerEmail") }
 				adrincache^.ctXmlBytes = sizexmltext;
-				};«return (s)
-			«else
-				«return (adrincache^.xmltext)};
+				};//return (s)
+			//else
+				//return (adrincache^.xmltext)};
 		on insertInOutline (adr) {
 			local (oldTarget = target.get ());
 			target.set (frontWindow);
@@ -295,7 +295,7 @@ on openUrl (url=nil, flOpenInPlace=false, adroutline=nil) {
 				else {
 					op.xmltooutline (adrincache^.xmltext, adr)};
 				adrincache^.outline = adr^;
-				};«delete (@adrincache^.xmltext)
+				};//delete (@adrincache^.xmltext)
 			
 			if adroutline == nil { // set window attributes
 				setCloudAttribute ();
@@ -332,7 +332,7 @@ on openUrl (url=nil, flOpenInPlace=false, adroutline=nil) {
 			else {
 				op.rsstooutline (adrincache^.xmltext, adr, url);
 				adrincache^.outline = adr^;
-				};«delete (@adrincache^.xmltext)
+				};//delete (@adrincache^.xmltext)
 			
 			local (oldTarget = target.set (adr));
 			local (title = op.getlinetext ());
@@ -385,13 +385,13 @@ on openUrl (url=nil, flOpenInPlace=false, adroutline=nil) {
 	
 	return (true)};
 
-«bundle //testing
-	«bundle //add to existing outline
-		«openUrl ("http://radio.weblogs.com/0001000/rss.xml", true)
-		«openUrl ("http://radio.weblogs.com/0001000/gems/blogroll.opml", true)
-		«openUrl ("http://jake.editthispage.com/xml/externalEditorInfo.xml", true)
-	«bundle //open in new window
-		«openUrl ("http://p.moreover.com/cgi-local/page?c=CRM%20news&o=rss")
-		«openUrl ("http://radio.weblogs.com/0001000/gems/publications.opml")
-		«openUrl ("http://blog.userland.com/xml/rss.xml")
-		«openUrl ("http://blog.userland.com/about.opml")
+//bundle //testing
+	//bundle //add to existing outline
+		//openUrl ("http://radio.weblogs.com/0001000/rss.xml", true)
+		//openUrl ("http://radio.weblogs.com/0001000/gems/blogroll.opml", true)
+		//openUrl ("http://jake.editthispage.com/xml/externalEditorInfo.xml", true)
+	//bundle //open in new window
+		//openUrl ("http://p.moreover.com/cgi-local/page?c=CRM%20news&o=rss")
+		//openUrl ("http://radio.weblogs.com/0001000/gems/publications.opml")
+		//openUrl ("http://blog.userland.com/xml/rss.xml")
+		//openUrl ("http://blog.userland.com/about.opml")

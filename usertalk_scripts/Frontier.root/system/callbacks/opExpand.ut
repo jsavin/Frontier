@@ -1,10 +1,10 @@
 on opExpand () {
-	«Created, Thu, Jul 13, 2000 at 11:18:23 PM by AR
-		«This script is called when the user expands a headline in an outline. It loops over scripts in user.callbacks.opExpand.
-		«Add your callback scripts to user.callbacks.opExpand. Return true if you "consume" the event, return false if you want other callback scripts to get a shot at it.
-	«Changes:
-		«Thursday, September 28, 2000 at 6:12:13 PM by JES
-			«Allow callbacks to be addresses or addresses of addresses...
+	//Created, Thu, Jul 13, 2000 at 11:18:23 PM by AR
+		//This script is called when the user expands a headline in an outline. It loops over scripts in user.callbacks.opExpand.
+		//Add your callback scripts to user.callbacks.opExpand. Return true if you "consume" the event, return false if you want other callback scripts to get a shot at it.
+	//Changes:
+		//Thursday, September 28, 2000 at 6:12:13 PM by JES
+			//Allow callbacks to be addresses or addresses of addresses...
 	local (adrscript);
 	if not defined (user.callbacks.opExpand) {
 		new (tableType, @user.callbacks.opExpand)};

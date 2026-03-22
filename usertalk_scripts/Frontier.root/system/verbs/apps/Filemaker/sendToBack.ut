@@ -1,4 +1,4 @@
-on sendToBack () { «Hide Filemaker in the background
+on sendToBack () { //Hide Filemaker in the background
 	local {
 		processName = file.fileFromPath (filemaker.appInfo.path)};
 	if !(filemaker.isRunning ()) {

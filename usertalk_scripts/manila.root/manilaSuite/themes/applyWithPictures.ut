@@ -1,6 +1,6 @@
 on apply (adrSite, themeName, flDefaultPages=false, adrTheme=nil, flNewSite=false) {
-	«Set the theme for a Manila site.
-		«05/24/00; 2:42:50 PM by PBS
+	//Set the theme for a Manila site.
+		//05/24/00; 2:42:50 PM by PBS
 	if adrTheme == nil { //it normally should be nil, unless the theme isn't stored in the config.manila.themes table
 		adrTheme = @config.manila.themes.[themeName]};
 	local (adrTable = @adrTheme^.appearance);
@@ -152,7 +152,7 @@ on apply (adrSite, themeName, flDefaultPages=false, adrTheme=nil, flNewSite=fals
 						local (msgNum);
 						msgNum = mainResponder.discuss.addMessage (subject, memberKey, 0, "", postTime:postTime, flcallback:false, adrRoot:adrDg, groupName:groupName, flEmptyBodyOk:true);
 						
-						«Make it a story and possibly a home page.
+						//Make it a story and possibly a home page.
 						local (adrMsgTable = @adrMessages^.[string.padWithZeros (msgNum, 7)]);
 						manilaSuite.discuss.setTimeZoneForMessage (adrMsgTable, timeZone);
 						local (storiesCategory, homePagesCategory);

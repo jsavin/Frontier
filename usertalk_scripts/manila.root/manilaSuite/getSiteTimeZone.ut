@@ -1,6 +1,6 @@
 on getSiteTimeZone (adrSite, adrZone) {
-	«Return true if the site has a time zone setting, false otherwise. False means it's using the server setting, whatever it is. adrZone^ gets the time zone setting of the site if present.
-		«04/14/00; 2:22:50 PM by PBS
+	//Return true if the site has a time zone setting, false otherwise. False means it's using the server setting, whatever it is. adrZone^ gets the time zone setting of the site if present.
+		//04/14/00; 2:22:50 PM by PBS
 	
 	if defined (adrSite^.["#newsSite"].timeZone.zone) {
 		adrZone^ = adrSite^.["#newsSite"].timeZone.zone;

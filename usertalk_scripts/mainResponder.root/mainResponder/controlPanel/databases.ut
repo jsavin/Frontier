@@ -12,16 +12,16 @@ for i = 1 to sizeof (system.compiler.files) { //build an intermediate table of i
 	local (f);
 	f = nameOf (system.compiler.files [i]);
 	if file.exists (f) { //avoid listing Untitled windows
-		«Get the path, folder, and file name of this database.
+		//Get the path, folder, and file name of this database.
 		local (folder = file.folderFromPath (f));
 		local (folderName = file.fileFromPath (folder));
 		local (fname = file.fileFromPath (f));
 		
-		«Create a new entry for this database.
+		//Create a new entry for this database.
 		local (adrItem = @infoTable.[fname]);
 		new (tableType, adrItem);
 		
-		«Populate the table entry for this database.
+		//Populate the table entry for this database.
 		adrItem^.name = fname;
 		adrItem^.size = file.size (f);
 		adrItem^.modified = file.modified (f);

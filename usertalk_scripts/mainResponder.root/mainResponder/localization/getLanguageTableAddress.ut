@@ -1,9 +1,9 @@
 on getLanguageTableAddress (pta = nil) {
-	«4/9/00; 10:31:25 PM by JES
-	«Returns the address of the language table corresponding to the language specified in the page table.
-		«If the page table specifies languageTableAddress, return that address
-		«If the page table does not specify languageTableAddress, return the address to the table corresponding to the language in the page table
-		«If the page table does not specify a language or if there's no translation table for the specified language, return the default address, the address of the English language table
+	//4/9/00; 10:31:25 PM by JES
+	//Returns the address of the language table corresponding to the language specified in the page table.
+		//If the page table specifies languageTableAddress, return that address
+		//If the page table does not specify languageTableAddress, return the address to the table corresponding to the language in the page table
+		//If the page table does not specify a language or if there's no translation table for the specified language, return the default address, the address of the English language table
 	
 	if pta == nil {
 		pta = html.getPageTableAddress ()};
@@ -22,5 +22,5 @@ on getLanguageTableAddress (pta = nil) {
 	pta^.languageTableAddress = @mainResponder.localization.languages.english;
 	return (@mainResponder.localization.languages.english)}; // couldn't find the language table -- default to English
 
-«bundle // debugging code
-	«mainResponder.localization.getLanguageTableAddress ()
+//bundle // debugging code
+	//mainResponder.localization.getLanguageTableAddress ()

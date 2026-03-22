@@ -1,2 +1,2 @@
-on quit () { «Perform tasks before termination, then terminate
+on quit () { //Perform tasks before termination, then terminate
 	return (appleEvent (Filemaker.id, 'aevt', 'quit'))}

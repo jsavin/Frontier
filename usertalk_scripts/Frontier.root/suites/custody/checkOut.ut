@@ -1,6 +1,6 @@
 on checkOut (userName, password, adrObject, timeOutMinutes=nil) {
-	«Check out an item.
-		«Wed, Jun 10, 1998 at 5:46:27 PM by PBS
+	//Check out an item.
+		//Wed, Jun 10, 1998 at 5:46:27 PM by PBS
 	
 	custody.authenticate (userName, password, adrObject, true);
 	

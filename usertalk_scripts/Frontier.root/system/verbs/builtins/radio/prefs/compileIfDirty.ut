@@ -1,18 +1,18 @@
 on compileIfDirty (adroutline) {
-	«Changes
-		«9/27/05; 12:39:31 AM by JES
-			«When running in mainResponder, preserve pathArgs, if present and non-empty.
-		«9/24/02; 12:51:45 AM by JES
-			«Decode ampersand entities in category and topic names. Needed for localization.
-		«3/6/02; 1:25:40 PM by JES
-			«Decode XML entities in explanatory text, so that HTML will render properly in the browser.
-		«3/6/02; 12:13:09 PM by JES
-			«When getting the base-url for the prefs page in Radio, first check to see if a corresponding entry exists in radio.data.systemUrls, and if not, then get the base-url from pta^.uri. Insert the text of headings with no subheadings, in place in the prefs home page.
-		«2/5/02; 11:50:13 AM by PBS
-			«Conditionalized to work in Frontier.
-		«1/9/02; 3:33:19 PM by JES
-			«Created.
-			«Check to see if the outline has changed, and update the cache, next/prev links and page titles if necessary. Returns the address of the cache table in system.temp.radio.prefsCache.
+	//Changes
+		//9/27/05; 12:39:31 AM by JES
+			//When running in mainResponder, preserve pathArgs, if present and non-empty.
+		//9/24/02; 12:51:45 AM by JES
+			//Decode ampersand entities in category and topic names. Needed for localization.
+		//3/6/02; 1:25:40 PM by JES
+			//Decode XML entities in explanatory text, so that HTML will render properly in the browser.
+		//3/6/02; 12:13:09 PM by JES
+			//When getting the base-url for the prefs page in Radio, first check to see if a corresponding entry exists in radio.data.systemUrls, and if not, then get the base-url from pta^.uri. Insert the text of headings with no subheadings, in place in the prefs home page.
+		//2/5/02; 11:50:13 AM by PBS
+			//Conditionalized to work in Frontier.
+		//1/9/02; 3:33:19 PM by JES
+			//Created.
+			//Check to see if the outline has changed, and update the cache, next/prev links and page titles if necessary. Returns the address of the cache table in system.temp.radio.prefsCache.
 	local (pta = html.getPageTableAddress ());
 	
 	local (adrcache);

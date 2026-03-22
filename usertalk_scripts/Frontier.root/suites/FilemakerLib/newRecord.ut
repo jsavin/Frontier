@@ -1,5 +1,5 @@
 on newRecord (db, dataList = {}, theLayout = 0, adrID = nil, reportError = false) {
-	«Make a new record at the end of the database.
+	//Make a new record at the end of the database.
 	local (x);
 	on doIt () {
 		with objectModel, filemaker {

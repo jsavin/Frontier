@@ -1,20 +1,20 @@
 on getFirstDay (adrcalendar) {
-	«Notes
-		«Thu, 11 Mar 1999 19:53:12 GMT by AR
-			«adrcalendar is the address of a valid calendar structure.
-			«We return the date corresponding to the address of the first element in the calendar.
-			«We throw a scriptError if adrcalendar does not point to a valid non-empty calendar structure.
-			«We call mainResponder.calendar.getFirstAddress to do the actual work.
-			«This script is called from mainResponder.calendar.getMostRecentAddress and mainResponder.calendar.getMostRecentDay to perform bounds checking.
+	//Notes
+		//Thu, 11 Mar 1999 19:53:12 GMT by AR
+			//adrcalendar is the address of a valid calendar structure.
+			//We return the date corresponding to the address of the first element in the calendar.
+			//We throw a scriptError if adrcalendar does not point to a valid non-empty calendar structure.
+			//We call mainResponder.calendar.getFirstAddress to do the actual work.
+			//This script is called from mainResponder.calendar.getMostRecentAddress and mainResponder.calendar.getMostRecentDay to perform bounds checking.
 	local (adrday);
 	try {
 		adrday = mainResponder.calendar.getFirstAddress (adrcalendar);
 		return (mainResponder.calendar.getAddressDay (adrday))}
 	else {
 		scripterror ("Can't get the first day in the calendar because adrcalendar doesn't point to a valid non-empty calendar structure.")}};
-«on getFirstDay (adrcalendar)
-	«Tue, May 23, 2000 at 5:43:24 PM by AR
-		«Old code
-	«kernel (mrcalendar.getfirstday)
-«bundle  //test code
-	«dialog.notify (getFirstDay (@AndresFirstSiteManilaWebsite.["#discussionGroup"].calendar))
+//on getFirstDay (adrcalendar)
+	//Tue, May 23, 2000 at 5:43:24 PM by AR
+		//Old code
+	//kernel (mrcalendar.getfirstday)
+//bundle  //test code
+	//dialog.notify (getFirstDay (@AndresFirstSiteManilaWebsite.["#discussionGroup"].calendar))

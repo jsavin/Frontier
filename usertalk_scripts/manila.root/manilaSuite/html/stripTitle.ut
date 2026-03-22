@@ -1,7 +1,7 @@
 on stripTitle (pta=nil) {
-	«Strip the title so it doesn't appear in the text of a page. It will still appear in the window title.
-		«Broken out from manilaSuite.html.stripTitleFromTemplate
-		«04/24/00; 3:17:52 PM by PBS
+	//Strip the title so it doesn't appear in the text of a page. It will still appear in the window title.
+		//Broken out from manilaSuite.html.stripTitleFromTemplate
+		//04/24/00; 3:17:52 PM by PBS
 	
 	if pta == nil {
 		pta = html.getPageTableAddress ()};

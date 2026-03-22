@@ -1,18 +1,18 @@
 on getOneDirective (directiveName, s) { //new in 4.0.1
-	«Get one directive, usually from a page other than the one being rendered.
-		«PBS 5/15/98:
-			«Call into kernel verbs now kernelized,
-				«html.runOutlineDirectives and html.runDirectives.
-			«This improves the accuracy of this script without affecting performance,
-			«and it removes some duplicate code from the website framework.
-		«Old code
-			«local (ix = string.patternMatch (string.lower (directivename), string.lower (s)))
-			«if ix > 0
-				«s = string.delete (s, 1, ix + sizeof (directivename))
-				«s = string.delete (s, string.patternmatch (cr, s), infinity)
-				«return (evaluate (s))
-			«else
-				«return ("")
+	//Get one directive, usually from a page other than the one being rendered.
+		//PBS 5/15/98:
+			//Call into kernel verbs now kernelized,
+				//html.runOutlineDirectives and html.runDirectives.
+			//This improves the accuracy of this script without affecting performance,
+			//and it removes some duplicate code from the website framework.
+		//Old code
+			//local (ix = string.patternMatch (string.lower (directivename), string.lower (s)))
+			//if ix > 0
+				//s = string.delete (s, 1, ix + sizeof (directivename))
+				//s = string.delete (s, string.patternmatch (cr, s), infinity)
+				//return (evaluate (s))
+			//else
+				//return ("")
 	local (directivesTable);
 	new (tableType, @directivesTable);
 	
@@ -25,8 +25,8 @@ on getOneDirective (directiveName, s) { //new in 4.0.1
 	else {
 		try {html.runDirectives (string (s), @directivesTable)}};
 	
-	«if defined (directivesTable.[directiveName])
-		«return (evaluate ("\"" + directivesTable.[directiveName] + "\""))
+	//if defined (directivesTable.[directiveName])
+		//return (evaluate ("\"" + directivesTable.[directiveName] + "\""))
 	try {return (directivesTable.[directiveName])};
 	
 	return ("")}

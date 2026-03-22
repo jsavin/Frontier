@@ -1,5 +1,5 @@
 on convertclaysite (f, adrtable) {
-	«f is the path to a clay basket outline file, adrtable is the table it is loaded into
+	//f is the path to a clay basket outline file, adrtable is the table it is loaded into
 	local (mediafolder = file.folderfrompath (f) + "Media Objects:" );
 	local (inputfolder = file.folderfrompath (f) + "Input Folder:");
 	local (gifurl = "http://www.scripting.com/gifs/");
@@ -10,7 +10,7 @@ on convertclaysite (f, adrtable) {
 	editmenu.setfont ("geneva");
 	editmenu.setfontsize (12);
 	local (adroutline = @adrtable^.default);
-	bundle { «create the outline
+	bundle { //create the outline
 		new (outlinetype, adroutline);
 		target.set (adroutline);
 		edit (adroutline);
@@ -28,7 +28,7 @@ on convertclaysite (f, adrtable) {
 			target.set (adroutline);
 			op.insert (linetext, dir);
 			dir = down;
-			bundle { «if it has a linked text file, do the text file thing
+			bundle { //if it has a linked text file, do the text file thing
 				local (url = clay.web.geturl ());
 				if sizeof (url) > 0 {
 					op.setlinetext ('"' + linetext + '"');
@@ -37,18 +37,18 @@ on convertclaysite (f, adrtable) {
 					clay.website.getpageinfo (@info);
 					
 					local (cellname = "");
-					bundle { «figure out what the cellname is
-						local (maxlen = user.html.prefs.maxFileNameLength - sizeof (user.html.prefs.fileExtension)); «new in 4.0.1
+					bundle { //figure out what the cellname is
+						local (maxlen = user.html.prefs.maxFileNameLength - sizeof (user.html.prefs.fileExtension)); //new in 4.0.1
 						local (i, ch);
 						for i = 1 to sizeof (linetext) {
-							if sizeof (cellname) >= maxlen { «new in 4.0.1
+							if sizeof (cellname) >= maxlen { //new in 4.0.1
 								break};
 							ch = linetext [i];
 							if string.isAlpha (ch) or string.isNumeric (ch) {
 								cellname = cellname + string.lower (ch)}}};
 					
 					local (adrtext = @adrtable^.[cellname]);
-					bundle { «get the file text
+					bundle { //get the file text
 						local (filetext = "");
 						local (url = clay.web.geturl (), textfile);
 						if url beginswith "sitefile:///" {
@@ -61,7 +61,7 @@ on convertclaysite (f, adrtable) {
 						wp.go (up, infinity);
 						wp.go (left, infinity);
 						window.close (adrtext)};
-					bundle { «scan the text for mediaobject macros
+					bundle { //scan the text for mediaobject macros
 						local (s = string (adrtext^), lowers = string.lower (s), ix);
 						loop {
 							ix = string.patternmatch ("{mediaobject", lowers);
@@ -96,14 +96,14 @@ on convertclaysite (f, adrtable) {
 									target.set (adrtext);
 									wp.settext (s);
 									target.clear ()}}}};
-					bundle { «add #directives
+					bundle { //add #directives
 						local (s = "");
 						s = s + "#title \"" + linetext + "\"" + cr;
 						s = s + "#author \"" + info. author + "\"" + cr;
 						s = s + "#bgcolor \"" + info. backcolor + "\"" + cr;
 						s = s + "#link \"" + info. linkcolor + "\"" + cr;
 						s = s + "#posttime \"" + info.posttime + "\"" + cr;
-						«s = s + "#template \"" + info. templatename + "\"" + cr
+						//s = s + "#template \"" + info. templatename + "\"" + cr
 						s = s + "#text \"" + info. textcolor + "\"" + cr;
 						s = s + "#vlink \"" + info. visitedlinkcolor + "\"" + cr;
 						s = s + string (adrtext^);
@@ -124,7 +124,7 @@ on convertclaysite (f, adrtable) {
 	op.expand (1);
 	window.zoom (adroutline)};
 
-bundle { «test code
+bundle { //test code
 	local (f = "Macintosh HD:Websites:MacBird:macbird outline");
 	local (adrtable = @user.websites.macbird);
 	convertclaysite (f, adrtable)}

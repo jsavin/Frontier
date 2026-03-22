@@ -1,5 +1,5 @@
 on disable () {
-	«Changes
-		«6/26/02; 8:01:07 PM by JES
-			«Created.
+	//Changes
+		//6/26/02; 8:01:07 PM by JES
+			//Created.
 	config.manila.backups.flEnabled = false}

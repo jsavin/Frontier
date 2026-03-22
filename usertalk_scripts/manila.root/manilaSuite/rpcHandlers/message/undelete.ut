@@ -1,8 +1,8 @@
 on undelete (username, password, siteName, msgNum) {
-	«Undelete a message.
-		«Changes:
-			«06/22/00; 11:10:35 PM by JES
-				«Bug fix - the call to delete was passing an boolean, adrmsg^.flDeleted, not an address, @adrmsg^.flDeleted, so it failed, but silently since it's in a try block.
+	//Undelete a message.
+		//Changes:
+			//06/22/00; 11:10:35 PM by JES
+				//Bug fix - the call to delete was passing an boolean, adrmsg^.flDeleted, not an address, @adrmsg^.flDeleted, so it failed, but silently since it's in a try block.
 	
 	bundle { //make sure this person is a managing editor of the site.
 		local (beginningErrorString = "Can't undelete message \"" + msgNum + "\" because ");

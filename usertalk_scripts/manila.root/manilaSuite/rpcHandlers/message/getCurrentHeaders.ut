@@ -1,17 +1,17 @@
 on getCurrentHeaders (siteName, username, password) {
-	«Changes:
-		«1/31/06; 2:59:04 AM by JES
-			«Add support for flPending messages.
-		«05/23/01; 1:15:21 AM by JES
-			«Specify customStructType instead of customArrayType, which follows from a change in soap.rpc.server, based on SOAP interop work.
-		«03/19/01; 3:20:10 PM by JES
-			«When called via SOAP, return an array of structs, specifying the Manila namespace, namespace URI, and struct type.
-		«02/13/01; 2:04:44 PM by JES
-			«Prepend "msg" to the numerical name of the returned items. Fixes a bug when using SOAP where elements with invalid names would be generated.
-		«01/02/01; 1:25:38 AM by JES
-			«On Macs, convert the subject to Latin text.
-		«08/21/00; 10:55:24 PM by PBS
-			«Created. Return the message headers for the current day, the same messages you would see on a site's /discuss/ page.
+	//Changes:
+		//1/31/06; 2:59:04 AM by JES
+			//Add support for flPending messages.
+		//05/23/01; 1:15:21 AM by JES
+			//Specify customStructType instead of customArrayType, which follows from a change in soap.rpc.server, based on SOAP interop work.
+		//03/19/01; 3:20:10 PM by JES
+			//When called via SOAP, return an array of structs, specifying the Manila namespace, namespace URI, and struct type.
+		//02/13/01; 2:04:44 PM by JES
+			//Prepend "msg" to the numerical name of the returned items. Fixes a bug when using SOAP where elements with invalid names would be generated.
+		//01/02/01; 1:25:38 AM by JES
+			//On Macs, convert the subject to Latin text.
+		//08/21/00; 10:55:24 PM by PBS
+			//Created. Return the message headers for the current day, the same messages you would see on a site's /discuss/ page.
 	
 	manilaSuite.rpcUtils.dgAccessCheck (siteName, username, password, "Can't get message headers because ");
 	
@@ -42,7 +42,7 @@ on getCurrentHeaders (siteName, username, password) {
 	on addMessage (adrItem) {
 		bundle { //was this message deleted? If so, skip it.
 			if defined (adrItem^.flDeleted) {
-				«The flDeleted flag may not exist: it's necessary to test for existence before testing whether it's true or false.
+				//The flDeleted flag may not exist: it's necessary to test for existence before testing whether it's true or false.
 				if adrItem^.flDeleted {
 					return (false)}}; // this message was deleted
 			if defined (adrItem^.flPending) and adrItem^.flPending {

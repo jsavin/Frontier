@@ -1,5 +1,5 @@
-«Prompt the user for location and name of the new tool gdb.
-	«09/30/00; 11:51:33 PM by PBS
+//Prompt the user for location and name of the new tool gdb.
+	//09/30/00; 11:51:33 PM by PBS
 local (f);
 local (toolsFolder = Frontier.tools.getToolsFolderPath ());
 f = toolsFolder + "untitled.root";

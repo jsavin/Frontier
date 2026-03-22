@@ -1,8 +1,8 @@
 on editGemPage () {
-	«manilaSuite.gems.editGemPage : 04.06.24, 21:36:10 by DAB
-		«Display a page showing details of a gem;  hithertoo not editable
-		«but allows ETP override to return a form to edit other attributes
-	«messages at manilaData.localization.languages.english.strings.gems
+	//manilaSuite.gems.editGemPage : 04.06.24, 21:36:10 by DAB
+		//Display a page showing details of a gem;  hithertoo not editable
+		//but allows ETP override to return a form to edit other attributes
+	//messages at manilaData.localization.languages.english.strings.gems
 	local (pta = html.getPageTableAddress ());
 	local (adrSite = manilaSuite.getManilaSiteAddress(pta));
 	local (gemNumber = pta^.pathargs);

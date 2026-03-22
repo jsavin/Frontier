@@ -1,7 +1,7 @@
-«Script: user.webserver.postFilters.debug; Version 1; Date: Thu, 14 May 1998 16:46:25 GMT; ID: RAB
+//Script: user.webserver.postFilters.debug; Version 1; Date: Thu, 14 May 1998 16:46:25 GMT; ID: RAB
 on debug (adrParamTable) {
-	«March 03, 1998 at 9:53:50 PM by WMF
-		«This is a sample pre-filter that captures debugging information
+	//March 03, 1998 at 9:53:50 PM by WMF
+		//This is a sample pre-filter that captures debugging information
 	
 	if webserver.getPref ("fldebug") {
 		local (debugTableAdr);

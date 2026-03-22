@@ -1,2 +1,2 @@
-on beginTransaction () { «Begin a transaction
+on beginTransaction () { //Begin a transaction
 	return (misc.beginTransaction (BBEdit.id))}

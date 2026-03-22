@@ -1,8 +1,8 @@
 on getPrefsSubfolder (foldername) {
-	«10/31/97 at 8:42:40 AM by DW -- moved to file.getPrefsSubfolder
-		«For Windows, I created a Preferences folder in the same folder as Frontier.root, if it doesn't exist.
-		«Can't do it in the same folder as the Frontier app because frontier.getProgramPath isn't working.
-		«Not sure of Windows culture on this, feedback is welcome.
+	//10/31/97 at 8:42:40 AM by DW -- moved to file.getPrefsSubfolder
+		//For Windows, I created a Preferences folder in the same folder as Frontier.root, if it doesn't exist.
+		//Can't do it in the same folder as the Frontier app because frontier.getProgramPath isn't working.
+		//Not sure of Windows culture on this, feedback is welcome.
 	local (pathchar = file.getPathChar ());
 	case sys.os () {
 		"MacOS" {
@@ -12,12 +12,12 @@ on getPrefsSubfolder (foldername) {
 			local (subfolder = userlandfolder + foldername + pathchar);
 			file.sureFolder (subfolder);
 			return (subfolder)}}
-	else { «an OS with no preferences folder culture
+	else { //an OS with no preferences folder culture
 		local (prefsfolder, subfolder);
 		prefsfolder = file.folderFromPath (frontier.getFilePath ()) + "Preferences" + pathchar;
 		file.sureFolder (prefsfolder);
 		if string.lower (foldername) == "preferences" { // caller doesn't want a sub-folder
-			«Monday, January 19, 1998 at 5:32:55 PM by PBS
+			//Monday, January 19, 1998 at 5:32:55 PM by PBS
 			return (prefsfolder)};
 		subfolder = prefsfolder + foldername + pathchar;
 		file.sureFolder (subfolder);

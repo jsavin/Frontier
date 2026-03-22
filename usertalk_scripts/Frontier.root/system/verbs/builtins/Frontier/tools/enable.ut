@@ -1,9 +1,9 @@
 on enable (f, flEnabled) {
-	«Enable or disable a tool. At the top level of a gdb is a boolean named #enabled.
-		«01/05/01; 5:16:47 PM by PBS
-	«Changes
-		«10/7/01; 8:33:33 PM by JES
-			«Store an flEnabled flag in the tool's user table, when enabling or disabling a tool.
+	//Enable or disable a tool. At the top level of a gdb is a boolean named #enabled.
+		//01/05/01; 5:16:47 PM by PBS
+	//Changes
+		//10/7/01; 8:33:33 PM by JES
+			//Store an flEnabled flag in the tool's user table, when enabling or disabling a tool.
 	
 	on setBoolean () {
 		local (toolName = Frontier.tools.cleanToolName (file.fileFromPath (f)));

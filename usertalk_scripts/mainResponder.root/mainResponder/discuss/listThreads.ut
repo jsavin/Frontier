@@ -1,23 +1,23 @@
 on listThreads (d, bgColor="ivory", otherColor="beige", tableWidth=425, pta=nil, headerColor="black", headerTextColor=nil, cssPrefix="", threadAliveDays=5, threadActiveDays=1, adrTemplate=nil, adrItemTemplate=nil, adrTemplateHeader=nil, adrTemplateFooter=nil, activeThreadIcon=nil, inactiveThreadIcon=nil, userIcon=nil, adrInDgCallback=nil, flUseMappedMemberKeys=false) {
-	«List current discussion threads
-		«10/09/00; 7:59:29 PM by JES
-	«Changes:
-		«9/24/04; 3:27:18 AM by JES
-			«Call string.ellipsize instead of the locally declared shortenString. Shorten subjects to 60 characters instead of to 35 characters.
-		«4/18/03; 5:26:51 PM by JES
-			«New optional parameter, flUseMappedMemberKeys -- if true, we use the newer style numeric member keys instead of the older email address style member keys.
-		«10/3/02; 2:33:49 AM by JES
-			«Added preliminary support for the {fullSubject} psuedo-macro.
-		«4/4/02; 12:55:24 AM by JES
-			«New optional paramter, adrInDgCallback. Passed to mainResponder.discuss.getThreadData.
-		«1/25/02; 6:04:26 PM by PBS
-			«Performance enhancement in the local "add" routine -- add a trailing semicolon; use parentheses to get the expression in x = x + y form (which is optimized by the kernel).
-		«10/17/01; 10:43:48 AM by PBS
-			«Don't use IP address when constructing the URL to a built-in icon. This fixes a bug with servers that have multiple IP addresses.
-		«9/26/01; 6:32:45 PM by PBS
-			«Pass adrMembers to mainResponder.members routines for performance enhancement.
-		«??? by JES
-			«Added template support.
+	//List current discussion threads
+		//10/09/00; 7:59:29 PM by JES
+	//Changes:
+		//9/24/04; 3:27:18 AM by JES
+			//Call string.ellipsize instead of the locally declared shortenString. Shorten subjects to 60 characters instead of to 35 characters.
+		//4/18/03; 5:26:51 PM by JES
+			//New optional parameter, flUseMappedMemberKeys -- if true, we use the newer style numeric member keys instead of the older email address style member keys.
+		//10/3/02; 2:33:49 AM by JES
+			//Added preliminary support for the {fullSubject} psuedo-macro.
+		//4/4/02; 12:55:24 AM by JES
+			//New optional paramter, adrInDgCallback. Passed to mainResponder.discuss.getThreadData.
+		//1/25/02; 6:04:26 PM by PBS
+			//Performance enhancement in the local "add" routine -- add a trailing semicolon; use parentheses to get the expression in x = x + y form (which is optimized by the kernel).
+		//10/17/01; 10:43:48 AM by PBS
+			//Don't use IP address when constructing the URL to a built-in icon. This fixes a bug with servers that have multiple IP addresses.
+		//9/26/01; 6:32:45 PM by PBS
+			//Pass adrMembers to mainResponder.members routines for performance enhancement.
+		//??? by JES
+			//Added template support.
 	
 	if pta == nil {
 		pta = html.getPageTableAddress ()};
@@ -56,23 +56,23 @@ on listThreads (d, bgColor="ivory", otherColor="beige", tableWidth=425, pta=nil,
 			bgcolor = " " + bgcolor};
 		add ("<td nowrap" + align + " valign=\"middle\"" + class + height + bgcolor + "><font size=\"-1\"" + fontClass + fontColor + ">&nbsp;&nbsp;" + s + "&nbsp;&nbsp;</font></td>")};
 	
-	«on shortenString (s, maxLen=35)
-		«if defined (string.ellipsize)
-			«return (string.ellipsize (s, maxLen))
-		«if sizeOf (s) > maxLen
-			«return (string.mid (s, 1, maxLen - 3) + "...")
-		«return (s)
+	//on shortenString (s, maxLen=35)
+		//if defined (string.ellipsize)
+			//return (string.ellipsize (s, maxLen))
+		//if sizeOf (s) > maxLen
+			//return (string.mid (s, 1, maxLen - 3) + "...")
+		//return (s)
 	
 	local (activeThreadImgUrl, inactiveThreadImgUrl, threadStatusIconWidth = 17, threadStatusIconHeight = 14);
 	local (userIconUrl, userIconHeight = 16, userIconWidth = 16);
 	bundle { // build image data for topic status icons and dailyLink icon
-		«local (myDottedId = tcp.myDottedId ())
-		«local (myDottedId = tcp.dns.getMyDottedId ()) //PBS 09/26/01: 
-		«local (myPort = user.inetd.config.http.port)
-		«local (portString = "")
-		«if myPort != 80
-			«portString = ":" + myPort
-		«local (resourcesUrl = "http://" + myDottedId + portString + "/mainResponderResources/")
+		//local (myDottedId = tcp.myDottedId ())
+		//local (myDottedId = tcp.dns.getMyDottedId ()) //PBS 09/26/01: 
+		//local (myPort = user.inetd.config.http.port)
+		//local (portString = "")
+		//if myPort != 80
+			//portString = ":" + myPort
+		//local (resourcesUrl = "http://" + myDottedId + portString + "/mainResponderResources/")
 		local (resourcesUrl = "/mainResponderResources/"); //PBS 10/16/01: don't use IP address
 		activeThreadImgUrl = resourcesUrl + "icons/folder.open2";
 		inactiveThreadImgUrl = resourcesUrl + "icons/folder2";
@@ -208,7 +208,7 @@ on listThreads (d, bgColor="ivory", otherColor="beige", tableWidth=425, pta=nil,
 		bundle { // replace authorIcon
 			s = string.replaceAll (s, "{authorIcon}", userIcon, false)};
 		bundle { // replace subject
-			«s = string.replaceAll (s, "{subject}", shortenString (adrMsgData^.adrThread^.subject), false)
+			//s = string.replaceAll (s, "{subject}", shortenString (adrMsgData^.adrThread^.subject), false)
 			s = string.replaceAll (s, "{subject}", string.ellipsize (adrMsgData^.adrThread^.subject, 60), false)};
 		bundle { // replace fullSubject
 			s = string.replaceAll (s, "{fullSubject}", string.replaceAll (adrMsgData^.adrThread^.subject, "\"", "&quot;"))};
@@ -244,6 +244,6 @@ on listThreads (d, bgColor="ivory", otherColor="beige", tableWidth=425, pta=nil,
 		bundle { // replace messageList
 			htmlText = string.replaceAll (htmlText, "{messageList}", listHtml, false)}};
 	
-	«add (templateFooter)
+	//add (templateFooter)
 	
 	return (htmlText)}

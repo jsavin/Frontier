@@ -1,13 +1,13 @@
-«8/12/99; 4:50:09 PM by DW
-	«loop over all the discussion groups, building a table of statistics for them
-	«there's a new sub-table for each discussion group, called stats
-	«inside that table is a table called rankings
-	«the name of each item in the table is the id of a message
-	«the value is the number of reads for the message
-	«the table is sorted in inverse order, the last item in the table is the most read
-	«Changes:
-		«10/2/99; 11:11:08 PM by PBS
-			«An item in discuss.root may be an address or a string that can be coerced to an address. This address may point to discussion group storage outside of discuss.root.
+//8/12/99; 4:50:09 PM by DW
+	//loop over all the discussion groups, building a table of statistics for them
+	//there's a new sub-table for each discussion group, called stats
+	//inside that table is a table called rankings
+	//the name of each item in the table is the id of a message
+	//the value is the number of reads for the message
+	//the table is sorted in inverse order, the last item in the table is the most read
+	//Changes:
+		//10/2/99; 11:11:08 PM by PBS
+			//An item in discuss.root may be an address or a string that can be coerced to an address. This address may point to discussion group storage outside of discuss.root.
 
 local (adrroot = @[system.temp.mainresponder.discussrootfile], ct = sizeof (adrroot^), i, adrgroup);
 for i = 1 to ct {

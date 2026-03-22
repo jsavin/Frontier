@@ -1,20 +1,20 @@
 on maintainUsers () {
-	«Changes
-		«2/22/06; 7:29:07 PM by JES
-			«Change default bulletin setting for new members from none to plain-text.
-		«11/11/05; 4:00:16 AM by JES
-			«Support for member table names which aren't email addresses, if enabled for the site/server.
-		«10/11/05; 4:08:55 AM by JES
-			«Respect server setting, config.manila.prefs.flManagingEditorCanSetPassword. Site can override either way.
-			«Localized row headers for lastVisit and hitCount in Member Definition section.
-		«3/31/05; 3:56:41 AM by JES
-			«Call callbacks when members are blocked, unblocked, signed up or deleted.
-		«3/28/05; 2:57:09 PM by JES
-			«Allow managing editors to change editorial status of members.
-		«5/28/04, 18:07:21 by DAB
-			«Created. Add users with cohorts.
-				«was manilafixer.accesscontrol.maintainUsers : 02/09/27, 13:36:31 by DAB
-				«strings at manilaData.localization.languages.english.strings.accessControl
+	//Changes
+		//2/22/06; 7:29:07 PM by JES
+			//Change default bulletin setting for new members from none to plain-text.
+		//11/11/05; 4:00:16 AM by JES
+			//Support for member table names which aren't email addresses, if enabled for the site/server.
+		//10/11/05; 4:08:55 AM by JES
+			//Respect server setting, config.manila.prefs.flManagingEditorCanSetPassword. Site can override either way.
+			//Localized row headers for lastVisit and hitCount in Member Definition section.
+		//3/31/05; 3:56:41 AM by JES
+			//Call callbacks when members are blocked, unblocked, signed up or deleted.
+		//3/28/05; 2:57:09 PM by JES
+			//Allow managing editors to change editorial status of members.
+		//5/28/04, 18:07:21 by DAB
+			//Created. Add users with cohorts.
+				//was manilafixer.accesscontrol.maintainUsers : 02/09/27, 13:36:31 by DAB
+				//strings at manilaData.localization.languages.english.strings.accessControl
 	local (pta = html.getPageTableAddress ());
 	local (adrSite = manilaSuite.getManilaSiteAddress (pta));
 	local (flUsernameMustBeEmail = manilaSuite.members.usernameMustBeEmail (pta^.adrSiteRootTable));
@@ -33,9 +33,9 @@ on maintainUsers () {
 	if defined (adrNewsSite^.accessControl.flAddUserFormPassword) {
 		flAdminSetsPassword = adrNewsSite^.accessControl.flAddUserFormPassword};
 	
-	«local (separatorColor, separatorTextColor)
-	«manilaSuite.html.getSeparatorColors (@separatorColor, @separatorTextColor)
-	«
+	//local (separatorColor, separatorTextColor)
+	//manilaSuite.html.getSeparatorColors (@separatorColor, @separatorTextColor)
+	//
 	local (htmltext = "");
 	on add (s) {
 		htmltext = htmltext + s;};
@@ -58,7 +58,7 @@ on maintainUsers () {
 		return true};
 	
 	on confirmBox (deleteWhatMessage, itemList) {
-		«build confirm box modelled loosely on manilaSuite.html.confirmBox
+		//build confirm box modelled loosely on manilaSuite.html.confirmBox
 		local (headerColor, headerTextColor, backgroundColor, backgroundTextColor);
 		manilaSuite.html.getAdminBoxColors (@headerColor, @headerTextColor, @backgroundColor, @backgroundTextColor);
 		local (itm);
@@ -98,7 +98,7 @@ on maintainUsers () {
 	if pta^.method == "POST" {
 		on batchOperation (cmd) {
 			local (cnt=0);
-			«local (selectedKeys = pta^.postargs.memberkeys)
+			//local (selectedKeys = pta^.postargs.memberkeys)
 			local (selectedKeys); //05/02/13, 13:23:41 by DAB
 			try { //05/02/13, 13:23:37 by DAB
 				 selectedKeys = pta^.postargs.memberkeys}
@@ -194,7 +194,7 @@ on maintainUsers () {
 					selectedMembers = {memberKey}; //05/02/13, 13:42:50 by DAB
 					if not flEditingMember {
 						new (tableType, adrMember)};
-					«setting the password or not; and where from is messy 05/02/13, 12:33:19 by DAB
+					//setting the password or not; and where from is messy 05/02/13, 12:33:19 by DAB
 					if flEditingMember {
 						if flAdminSetsPassword and (password != "") {
 							adrMember^.password = password}}
@@ -421,7 +421,7 @@ on maintainUsers () {
 					adrNewsSite^.contentEditors contains val {
 						add (manilaSuite.getString ("admin.contentEditor"))}}
 				else {
-					«add (manilaSuite.getString ("admin.member"))
+					//add (manilaSuite.getString ("admin.member"))
 					flNeedMenu = true}}; //allow ME to change status of ordinary members
 			if flNeedMenu { //was else 05/03/10, 21:10:29 by DAB
 				add ("\r\t\t<select name=\"memberType\">");
@@ -471,8 +471,8 @@ on maintainUsers () {
 						if adr^.systemdefinition {
 							continue};
 						selected = "";
-						«if adrMemberInView and adr^ (
-							«selected = " selected"
+						//if adrMemberInView and adr^ (
+							//selected = " selected"
 						add ("\r\t\t\t<option value=\"" + nameof (adr^) + "\"" + selected + ">" + adr^.name + "</option>")};
 					add ("\r\t\t</select>");
 					add ("</td>");
@@ -489,8 +489,8 @@ on maintainUsers () {
 						if adr^.systemdefinition {
 							continue};
 						selected = "";
-						«if adrMemberInView and adr^ (
-							«selected = " selected"
+						//if adrMemberInView and adr^ (
+							//selected = " selected"
 						add ("\r\t\t\t<option value=\"" + nameof (adr^) + "\"" + selected + ">" + adr^.name + "</option>")};
 					add ("\r\t\t</select>");
 					add ("</td>");
@@ -665,8 +665,8 @@ on maintainUsers () {
 		add ("\r</form>")};
 	
 	return htmltext};
-«bundle //test code
-	«local (tbl = temp.pta.["414"].firstFilter)
-	«html.setPageTableAddress (@tbl)
-	«wp.newTextObject (maintainCohorts (), @temp.maintainCohorts)
-	«edit (@temp.maintainCohorts)
+//bundle //test code
+	//local (tbl = temp.pta.["414"].firstFilter)
+	//html.setPageTableAddress (@tbl)
+	//wp.newTextObject (maintainCohorts (), @temp.maintainCohorts)
+	//edit (@temp.maintainCohorts)

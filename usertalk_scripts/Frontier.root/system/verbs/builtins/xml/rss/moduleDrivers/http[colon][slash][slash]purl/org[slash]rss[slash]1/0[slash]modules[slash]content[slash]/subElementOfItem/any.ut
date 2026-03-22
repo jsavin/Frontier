@@ -1,8 +1,8 @@
 on any (adrelement, adrservice, adritem) {
-	«Changes
-		«10/8/02; 4:41:47 PM by JES
-			«Created. Implement the RDF Site Summary Content module.
-			«http://web.resource.org/rss/1.0/modules/content/
+	//Changes
+		//10/8/02; 4:41:47 PM by JES
+			//Created. Implement the RDF Site Summary Content module.
+			//http://web.resource.org/rss/1.0/modules/content/
 	local (value);
 	if typeOf (adrelement^) == stringType {
 		value = adrelement^}

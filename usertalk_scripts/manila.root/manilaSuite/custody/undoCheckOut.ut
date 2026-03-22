@@ -1,6 +1,6 @@
 on undoCheckOut (adrObject, adrMember, adrSite, flForce=false, flMessage=false) {
-	«Undo a checkout. Return false if the object has been checked out by another person. If flForce is true, remove the lock no matter what.
-		«02/08/00; 10:57:54 PM by PBS
+	//Undo a checkout. Return false if the object has been checked out by another person. If flForce is true, remove the lock no matter what.
+		//02/08/00; 10:57:54 PM by PBS
 	
 	local (adrTable = manilaSuite.custody.getObjectsTableAddress (adrSite, flMessage));
 	local (objectIdentifier = manilaSuite.custody.getObjectIdentifier (adrObject, flMessage));

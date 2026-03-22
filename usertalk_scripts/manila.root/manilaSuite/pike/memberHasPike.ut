@@ -1,6 +1,6 @@
 on memberHasPike (pta=nil) {
-	«Return true if the member is a Pike user, false otherwise. In the member record, there's a Pike subtable. It contains a boolean, flEnabled. If true, the user has Pike. Otherwise not.
-		«01/13/00; 6:53:49 PM by PBS
+	//Return true if the member is a Pike user, false otherwise. In the member record, there's a Pike subtable. It contains a boolean, flEnabled. If true, the user has Pike. Otherwise not.
+		//01/13/00; 6:53:49 PM by PBS
 	
 	if pta == nil {
 		pta = html.getPageTableAddress ()};

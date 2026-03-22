@@ -1,7 +1,7 @@
 on search () {
-	«Changes:
-		«8/7/02; 6:53:42 PM by JES
-			«Created.
+	//Changes:
+		//8/7/02; 6:53:42 PM by JES
+			//Created.
 	local (pta = html.getPageTableAddress ());
 	pta^.title = "Search";
 	

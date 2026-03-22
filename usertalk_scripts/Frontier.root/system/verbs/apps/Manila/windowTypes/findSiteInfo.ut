@@ -1,5 +1,5 @@
 on findSiteInfo (siteurl, adradrinfo, adrcreatecallback=nil, adrtable=@user.manila.data.sites) {
-	«Find a siteinfo table, based on its URL. Call adrcreatecallback^ if the siteinfo table doesn't exist.
+	//Find a siteinfo table, based on its URL. Call adrcreatecallback^ if the siteinfo table doesn't exist.
 	bundle { //make sure the siteUrl includes the port
 		local (parts = string.urlSplit (siteUrl));
 		if not (parts[2] contains ":") {
@@ -19,9 +19,9 @@ on findSiteInfo (siteurl, adradrinfo, adrcreatecallback=nil, adrtable=@user.mani
 			try {delete (adrinfo)}}};
 	return (false)};
 
-«bundle //testing
-	«local (adr)
-	«if findSiteInfo ("http://jake.soapware.org/", @adr)
-		«dialog.notify (adr)
-	«else
-		«speaker.beep ()
+//bundle //testing
+	//local (adr)
+	//if findSiteInfo ("http://jake.soapware.org/", @adr)
+		//dialog.notify (adr)
+	//else
+		//speaker.beep ()

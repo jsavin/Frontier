@@ -1,4 +1,4 @@
-«Script: system.verbs.builtins.betty.responders.RPC2.methods.POST; Version 1; Date: Wed, 13 May 1998 16:28:54 GMT; ID: RAB
+//Script: system.verbs.builtins.betty.responders.RPC2.methods.POST; Version 1; Date: Wed, 13 May 1998 16:28:54 GMT; ID: RAB
 on POST (adrParamTable) {
 	adrParamTable^.responseBody = betty.rpc.server (adrParamTable^.requestBody, adrParamTable);
 	adrParamTable^.responseHeaders.["Content-Type"] = "text/xml";

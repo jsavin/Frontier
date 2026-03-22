@@ -1,4 +1,4 @@
 on findNext (searchstring, wholewords=false) {
-	«10/31/97 at 12:18:55 PM by DW -- moved from toys.opFindNext
-	«11/24/98 at 10:07:37 AM by dmb -- we can now call op.find directly
+	//10/31/97 at 12:18:55 PM by DW -- moved from toys.opFindNext
+	//11/24/98 at 10:07:37 AM by dmb -- we can now call op.find directly
 	return (op.find (searchstring, wholewords, false))}

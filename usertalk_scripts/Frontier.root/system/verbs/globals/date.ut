@@ -1,11 +1,11 @@
 on date (val, flErrorOnInvalidDate=false) {
-	«Changes:
-		«09/16/04; 12:56:38 PM by JES
-			«Ignore the value of flErrorOnInvalidDate. It's better to get an error if the date format is not valid.
-		«05/28/03; 2:40:16 PM by JES
-			«New optional parameter, flErrorOnInvalidDate. If true, an invalid date value will cause an error. Default is false, preserving existing behavior.
-		«03/26/01; 12:12:02 PM by PBS
-			«If the kernel can't coerce the value to a date, this may be an international system and the value may be a string in GMT, the output of date.netStandardString. In that case, try to turn that string into a date.
+	//Changes:
+		//09/16/04; 12:56:38 PM by JES
+			//Ignore the value of flErrorOnInvalidDate. It's better to get an error if the date format is not valid.
+		//05/28/03; 2:40:16 PM by JES
+			//New optional parameter, flErrorOnInvalidDate. If true, an invalid date value will cause an error. Default is false, preserving existing behavior.
+		//03/26/01; 12:12:02 PM by PBS
+			//If the kernel can't coerce the value to a date, this may be an international system and the value may be a string in GMT, the output of date.netStandardString. In that case, try to turn that string into a date.
 	on kernelcall (val) {
 		kernel (lang.date)};
 	try {
@@ -52,7 +52,7 @@ on date (val, flErrorOnInvalidDate=false) {
 				theDate = theDate + date.getCurrentTimeZone (); //adjust for time zone
 				return (theDate)}
 			else { //JES 5/28/03: re-throw the error
-				«if flErrorOnInvalidDate //JES 9/16/04: ignore parameter. it's better to get the error
+				//if flErrorOnInvalidDate //JES 9/16/04: ignore parameter. it's better to get the error
 				scriptError (kernelError)}}
 		else {
 			scriptError (kernelError)}}}

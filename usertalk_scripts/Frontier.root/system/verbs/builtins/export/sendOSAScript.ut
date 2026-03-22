@@ -1,15 +1,15 @@
-on sendOSAScript (adr, fname) { «create a script that can be double-clicked in the Finder
-	«the contents of an OSA script:
-		«a 'STR ' resource:
-			«130 -- the object db address of the script that was exported
-		«one 'scpt' resource:
-			«the script that's run when the file is double-clicked on
-		«see Frontier.clickers.typeosas for the other side of this script
+on sendOSAScript (adr, fname) { //create a script that can be double-clicked in the Finder
+	//the contents of an OSA script:
+		//a 'STR ' resource:
+			//130 -- the object db address of the script that was exported
+		//one 'scpt' resource:
+			//the script that's run when the file is double-clicked on
+		//see Frontier.clickers.typeosas for the other side of this script
 	
-	if not defined (adr^) { «can't export something that doesn't exist
+	if not defined (adr^) { //can't export something that doesn't exist
 		scriptError ("Can't export because there's no object named " + adr + ".")};
 	
-	bundle { «create the file, save the packed script
+	bundle { //create the file, save the packed script
 		local (resdata);
 		local (type = typeOf (adr^));
 		file.new (fname);
@@ -17,6 +17,6 @@ on sendOSAScript (adr, fname) { «create a script that can be double-clicked in 
 		file.setCreator (fname, 'ToyS');
 		osa.compile (adr, false, @resdata);
 		rez.putresource (fname, 'scpt', 128, @resdata);
-		rez.putstringresource (fname, 130, adr)}; «address of object is a STR resource
+		rez.putstringresource (fname, 130, adr)}; //address of object is a STR resource
 	
 	return (true)}

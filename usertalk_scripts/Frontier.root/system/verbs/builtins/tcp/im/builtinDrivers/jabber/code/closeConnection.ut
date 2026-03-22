@@ -1,10 +1,10 @@
 on closeConnection ( connection = nil, calledByThread = false ) {
-	«Changes:
-		«5/13/02; 11:03:29 PM by JB
-			«Changelog started.
-			«closeConnection ends the Jabber session
-				«Undocumented parameter "calledByThread" controls whether or not the act of closing the stream also turns off the everyMinute script, which maintains the stream for the default connection. If the connection is not the default connection (@system.temp.jabber.connection), it does nothing, otherwise, if it is false, it removes everyMinute from the scheduler. If it did not do this, everyMinute would re-establish the stream when it runs, which is exactly the behavior we want when the thread runs this command.
-				«Upon further thought, this is a buglet; everyMinute needs to be broken into two pieces, one maintaining a connection and one doing the id table cleanup. Thought is required on how to do that in the simplest way possible. In the meantime, tcp.im doesn't notice the difference.
+	//Changes:
+		//5/13/02; 11:03:29 PM by JB
+			//Changelog started.
+			//closeConnection ends the Jabber session
+				//Undocumented parameter "calledByThread" controls whether or not the act of closing the stream also turns off the everyMinute script, which maintains the stream for the default connection. If the connection is not the default connection (@system.temp.jabber.connection), it does nothing, otherwise, if it is false, it removes everyMinute from the scheduler. If it did not do this, everyMinute would re-establish the stream when it runs, which is exactly the behavior we want when the thread runs this command.
+				//Upon further thought, this is a buglet; everyMinute needs to be broken into two pieces, one maintaining a connection and one doing the id table cleanup. Thought is required on how to do that in the simplest way possible. In the meantime, tcp.im doesn't notice the difference.
 	if connection == nil {
 		connection = @system.temp.jabber.connection};
 	if not defined ( connection^ ) {

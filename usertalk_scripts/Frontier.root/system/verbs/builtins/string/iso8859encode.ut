@@ -1,7 +1,7 @@
 on iso8859encode (s, adrtable=nil) {
-	«Changes
-		«10/19/04; 3:15:38 PM by JES
-			«The adrtable parameter is now optional. If not specified, we use the table for the platform we're running on as the default.
+	//Changes
+		//10/19/04; 3:15:38 PM by JES
+			//The adrtable parameter is now optional. If not specified, we use the table for the platform we're running on as the default.
 	if adrtable == nil { //get default for this platform
 		try {
 			if system.environment.isMac {
@@ -13,6 +13,6 @@ on iso8859encode (s, adrtable=nil) {
 	on kernelCall (s, adrtable) {
 		kernel (string.iso8859encode)};
 	kernelCall (s, adrtable)};
-«bundle //test code
-	«dialog.alert (iso8859encode ("© Copyright 1996-" + date.year () + " UserLand Software", @html.data.iso8859.mac))
-	«dialog.alert (iso8859encode ("© Copyright 1996-" + date.year () + " UserLand Software"))
+//bundle //test code
+	//dialog.alert (iso8859encode ("© Copyright 1996-" + date.year () + " UserLand Software", @html.data.iso8859.mac))
+	//dialog.alert (iso8859encode ("© Copyright 1996-" + date.year () + " UserLand Software"))

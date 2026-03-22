@@ -1,24 +1,24 @@
 on renderOneMessage (adrMsgTable, adrTemplate, flShowAuthor=true, flShowPostTime=true, flShowReadCount=true, flShowResponseCount=true, flShowEnclosures=true, flShowResponseForm=true, flShowCowSkullLink=false, editPageUrl="", adrData=nil, bgColor="ivory", otherColor="beige", headerColor="black", headerTextColor="ivory", adrGetBodyCallback=nil, adrGetTimeCallback=nil, cssPrefix="", y=nil, m=nil, d=nil, defaultMode="day", responseItemTemplate=nil, responseListHeader=nil, responseListFooter=nil, responseIndentTemplate=nil, responseSubThreadStartTemplate=nil, responseSubThreadEndTemplate=nil, pta=nil, userIcon=nil, adrInDgCallback=nil, depthToExpandResponses=0, flResponsesInChronologicalOrder=false, responseFullItemTemplate=nil, flUseMappedMemberKeys=false) {
-	«Changes:
-		«4/11/06; 6:45:59 PM by JES
-			«Address cross-site scripting issue, where the mode searchArg was rendered verbatim into the page. Now we restrict to valid values, either "topic" or "day".
-		«4/8/03; 11:43:18 PM by JES
-			«Added support for the {ipAddress} pseudo-macro in the template.
-		«4/4/02; 1:07:05 AM by JES
-			«New optional parameter, adrInDgCallback, is the address of a callback which determines whether a message should be included in the rendering. If the callback returns true, add the message. If it returns false, don't add the message.
-			«More new optional params: depthToExpandResponses, flResponsesInChronologicalOrder and responseFullItemTemplate, used for displaying the full text of responses in the response list. These support the Slashdot-style discussion group renderings.
-		«10/18/01; 11:11:11 AM by PBS
-			«Don't use IP address when constructing URLs to built-in icons. Fixes a bug with machines with multiple IP addresses.
-		«11/21/00; 6:04:09 PM by PBS
-			«Use new bottleneck for displaying edit message in Pike button.
-		«10/18/00; 10:48:50 PM by JES
-			«Commented out code that adds the Edit in Frontier button.
-		«10/14/00; 2:29:42 PM by JES
-			«Added 'in response to xxx' to the msg number when rendered in a template.
-		«10/13/00; 12:05:00 AM by JES
-			«Added support for template-based rendering.
-		«10/11/00; 10:30:27 PM by JES
-			«Created. Render a single message in a thread, flowing through a template if specified.
+	//Changes:
+		//4/11/06; 6:45:59 PM by JES
+			//Address cross-site scripting issue, where the mode searchArg was rendered verbatim into the page. Now we restrict to valid values, either "topic" or "day".
+		//4/8/03; 11:43:18 PM by JES
+			//Added support for the {ipAddress} pseudo-macro in the template.
+		//4/4/02; 1:07:05 AM by JES
+			//New optional parameter, adrInDgCallback, is the address of a callback which determines whether a message should be included in the rendering. If the callback returns true, add the message. If it returns false, don't add the message.
+			//More new optional params: depthToExpandResponses, flResponsesInChronologicalOrder and responseFullItemTemplate, used for displaying the full text of responses in the response list. These support the Slashdot-style discussion group renderings.
+		//10/18/01; 11:11:11 AM by PBS
+			//Don't use IP address when constructing URLs to built-in icons. Fixes a bug with machines with multiple IP addresses.
+		//11/21/00; 6:04:09 PM by PBS
+			//Use new bottleneck for displaying edit message in Pike button.
+		//10/18/00; 10:48:50 PM by JES
+			//Commented out code that adds the Edit in Frontier button.
+		//10/14/00; 2:29:42 PM by JES
+			//Added 'in response to xxx' to the msg number when rendered in a template.
+		//10/13/00; 12:05:00 AM by JES
+			//Added support for template-based rendering.
+		//10/11/00; 10:30:27 PM by JES
+			//Created. Render a single message in a thread, flowing through a template if specified.
 	
 	bundle { // get pta, adrData, y, m and d
 		if pta == nil {
@@ -94,22 +94,22 @@ on renderOneMessage (adrMsgTable, adrTemplate, flShowAuthor=true, flShowPostTime
 	local (userIconUrl, userIconHeight = 16, userIconWidth = 16);
 	local (internalLinkImgUrl, internalLinkImgWidth = 11, internalLinkImgHeight = 9, internalLinkUrl);
 	bundle { // build image data for internal link arrows and message status icons
-		«local (myDottedId = tcp.myDottedId ())
-		«local (myPort = user.inetd.config.http.port)
-		«local (portString = "")
-		«if myPort != 80
-			«portString = ":" + myPort
-		«local (resourcesUrl = "http://" + myDottedId + portString + "/mainResponderResources/")
+		//local (myDottedId = tcp.myDottedId ())
+		//local (myPort = user.inetd.config.http.port)
+		//local (portString = "")
+		//if myPort != 80
+			//portString = ":" + myPort
+		//local (resourcesUrl = "http://" + myDottedId + portString + "/mainResponderResources/")
 		local (resourcesUrl = "/mainResponderResources/");
 		
 		internalLinkImgUrl = resourcesUrl + "icons/leftArrow";
 		internalLinkUrl = pta^.responderAttributes.urls^.discussMsgReader;
 		if not (internalLinkUrl endsWith '$') {
 			internalLinkUrl = internalLinkUrl + "$"};
-		«internalLinkUrl = internalLinkUrl + msgNum + "#"
+		//internalLinkUrl = internalLinkUrl + msgNum + "#"
 		userIconUrl = resourcesUrl + "icons/user";
 		
-		«msgIconUrl = resourcesUrl + "icons/message"
+		//msgIconUrl = resourcesUrl + "icons/message"
 		if userIcon == nil {
 			userIcon = "<img src=\"" + userIconUrl + "\" height=\"" + userIconHeight + "\" width=\"" + userIconWidth + "\" border=\"0\" alt=\"user\">"}};
 	
@@ -133,13 +133,13 @@ on renderOneMessage (adrMsgTable, adrTemplate, flShowAuthor=true, flShowPostTime
 		if adrGetBodyCallback != nil {
 			body = adrGetBodyCallback^ (adrMsgTable);
 			if body != "" {
-				«add (body)
+				//add (body)
 				flCallbackReturnedBody = true}};
 		if not flCallbackReturnedBody {
 			bundle { //PBS 10/20/99: if an image is attached to this message, display it above the body
 				if defined (adrMsgTable^.image) {
 					if defined (pta^.responderAttributes.urls^.imageViewer) { //must be defined: it's the link to the imageViewer script
-						«The imageViewer script takes a msgNum as pathArgs and displays the picture attached to that dg message.
+						//The imageViewer script takes a msgNum as pathArgs and displays the picture attached to that dg message.
 						body = body + mainResponder.discuss.buildImageTag (adrMsgTable^.msgNum);
 						body = body + "<p>"}}};
 			if typeOf (adrMsgTable^.body) == outlineType { //outlines get passed through an outline renderer
@@ -173,24 +173,24 @@ on renderOneMessage (adrMsgTable, adrTemplate, flShowAuthor=true, flShowPostTime
 	on getEditButtons () { //add Edit button (or buttons) to the page
 		local (s, editableInFrontier = false);
 		
-		«s = s + "<table cellpadding=\"5\" cellspacing=\"0\" border=\"0\" bgcolor=\"white\"><tr>"
-		«if defined (pta^.adrMemberInfo^.isFrontierSixAlpha) //edit in Frontier button
-			«local (url = pta^.responderAttributes.urls^.discussEditInFrontier + msgNum)
-			«
-			«Build the Edit in Frontier button.
-			«s = s + "<td valign=\"baseline\">"
-			«s = s + "<form method=\"POST\" action=\"" + url + "\">"
-			«s = s + "<input name=\"msgnum\" type=\"hidden\" value=\"" + msgNum + "\">"
-			«s = s + "&nbsp;<input type=\"submit\" value=\"" + mainResponder.getString ("discuss.editInFrontier") + "\">"
-			«s = s + "</form>"
-			«s = s + "</td>"
-			«
-			«editableInFrontier = true
+		//s = s + "<table cellpadding=\"5\" cellspacing=\"0\" border=\"0\" bgcolor=\"white\"><tr>"
+		//if defined (pta^.adrMemberInfo^.isFrontierSixAlpha) //edit in Frontier button
+			//local (url = pta^.responderAttributes.urls^.discussEditInFrontier + msgNum)
+			//
+			//Build the Edit in Frontier button.
+			//s = s + "<td valign=\"baseline\">"
+			//s = s + "<form method=\"POST\" action=\"" + url + "\">"
+			//s = s + "<input name=\"msgnum\" type=\"hidden\" value=\"" + msgNum + "\">"
+			//s = s + "&nbsp;<input type=\"submit\" value=\"" + mainResponder.getString ("discuss.editInFrontier") + "\">"
+			//s = s + "</form>"
+			//s = s + "</td>"
+			//
+			//editableInFrontier = true
 		bundle { //edit in web browser button
 			if editPageURL == "" {
 				editPageURL = pta^.responderAttributes.urls^.discussEditInBrowser};
 			
-			«s = s + "<td valign=\"baseline\">"
+			//s = s + "<td valign=\"baseline\">"
 			
 			s = s + "<form method=\"POST\" action=\"" + editPageURL + msgNum + "\">";
 			s = s + "<input name=\"msgnum\" type=\"hidden\" value=\"" + msgNum + "\">";
@@ -203,29 +203,29 @@ on renderOneMessage (adrMsgTable, adrTemplate, flShowAuthor=true, flShowPostTime
 			s = s + "&nbsp;<input type=\"submit\" value=\"" + buttonValue + "\">";
 			s = s + "</form>";
 			
-			};«s = s + "</td>"
+			};//s = s + "</td>"
 		bundle { //PBS 01/13/00: Add the Edit in Pike button
-			«if defined (pta^.responderAttributes.urls^.editInPike)
-				«Pike support is a feature not of mainResponder but of Manila. However, this script, which displays the discussion group messages and the Edit this Page button, needs to be Pike-aware enough to display the Pike button.
-				«if manilaSuite.pike.memberHasPike (pta)
-					«local (editInPikeUrl = pta^.responderAttributes.urls^.editInPike)
-					«if not (editInPikeUrl endsWith "$")
-						«editInPikeUrl = editInPikeUrl + "$"
-					«editInPikeUrl = editInPikeUrl + msgNum
-					«local (adrSite = pta^.adrSiteRootTable)
-					«local (adrMember = pta^.adrMemberInfo)
-					«
-					«s = s + "<td valign=\"baseline\">"
-					«s = s + "&nbsp;" + manilaSuite.pike.pikeButton (editInPikeUrl, adrMsgTable, adrMember, adrSite, true, mainResponder.getString ("discuss.editThisStoryInPikeOutline"), pta) //true because this is a message
-					«s = s + "</td>"
+			//if defined (pta^.responderAttributes.urls^.editInPike)
+				//Pike support is a feature not of mainResponder but of Manila. However, this script, which displays the discussion group messages and the Edit this Page button, needs to be Pike-aware enough to display the Pike button.
+				//if manilaSuite.pike.memberHasPike (pta)
+					//local (editInPikeUrl = pta^.responderAttributes.urls^.editInPike)
+					//if not (editInPikeUrl endsWith "$")
+						//editInPikeUrl = editInPikeUrl + "$"
+					//editInPikeUrl = editInPikeUrl + msgNum
+					//local (adrSite = pta^.adrSiteRootTable)
+					//local (adrMember = pta^.adrMemberInfo)
+					//
+					//s = s + "<td valign=\"baseline\">"
+					//s = s + "&nbsp;" + manilaSuite.pike.pikeButton (editInPikeUrl, adrMsgTable, adrMember, adrSite, true, mainResponder.getString ("discuss.editThisStoryInPikeOutline"), pta) //true because this is a message
+					//s = s + "</td>"
 			s = s + "&nbsp;" + manilaSuite.pike.editMessageButton (adrMsgTable, pta:pta)}; //PBS 11/21/00: use new bottleneck for displaying edit message in Pike button
-		«s = s + "</tr></table>"
+		//s = s + "</tr></table>"
 		
 		return (s)};
 	on getTopicMsgTable () {
 		local (nomad = adrMsgTable);
 		while nomad^.inResponseTo > 0 {
-			«nomad = @adrData^.messages.[string.padWithZeros (nomad^.inResponseTo, 7)]
+			//nomad = @adrData^.messages.[string.padWithZeros (nomad^.inResponseTo, 7)]
 			nomad = mainResponder.discuss.getMessageTable (nomad^.inResponseTo, pta, adrData)};
 		return (nomad)};
 	on getNextMsgNum () {
@@ -326,7 +326,7 @@ on renderOneMessage (adrMsgTable, adrTemplate, flShowAuthor=true, flShowPostTime
 			
 			add ("</td></tr>");
 			
-			};«add ("</font></td></tr>")
+			};//add ("</font></td></tr>")
 		bundle { //add the body of the message
 			if flCss { // the row and cell containing the body of the message
 				add ("<tr bgcolor=\"white\" class=\"" + cssPrefix + "BodyRow\">");
@@ -343,7 +343,7 @@ on renderOneMessage (adrMsgTable, adrTemplate, flShowAuthor=true, flShowPostTime
 					add (getEditButtons ())};
 				
 				if flShowCowSkullLink { //add cowskull link to standard msgReader page
-					«The cowskull link is a link to the discussion group interface version of this page.
+					//The cowskull link is a link to the discussion group interface version of this page.
 					add ("<p>" + cowskullLink + "</p>")};
 				
 				add ("</td></tr></table>")};
@@ -432,7 +432,7 @@ on renderOneMessage (adrMsgTable, adrTemplate, flShowAuthor=true, flShowPostTime
 				local (responseList = "");
 				if flShowResponses {
 					bundle { // set default templates, headers, etc.
-						«It's not ideal, but we check to see if the value of mini-templates equals nil, and also that the type == typeOf (nil). That way we can tell the difference between the empty string and not having passed in a value. This is because the empty string equals nil, but its type is stringType, not typeOf (nil)
+						//It's not ideal, but we check to see if the value of mini-templates equals nil, and also that the type == typeOf (nil). That way we can tell the difference between the empty string and not having passed in a value. This is because the empty string equals nil, but its type is stringType, not typeOf (nil)
 						if responseListHeader == nil and typeOf (responseListHeader) == typeOf (nil) {
 							responseListHeader = "<p><hr><b>" + mainResponder.getString ("discuss.thereAreResponsesToThisMsg") + "</b></p>"};
 						if responseSubThreadStartTemplate == nil and typeOf (responseSubThreadStartTemplate) == typeOf (nil) {
@@ -461,9 +461,9 @@ on renderOneMessage (adrMsgTable, adrTemplate, flShowAuthor=true, flShowPostTime
 								continue};
 							
 							local (flAddMessage = not mainResponder.discuss.isMessageDeleted (msgNum, adrTable, pta) );
-							«if flAddMessage
-								«if adrInDgCallback != nil
-									«flAddMessage = adrInDgCallback^ (adrTable)
+							//if flAddMessage
+								//if adrInDgCallback != nil
+									//flAddMessage = adrInDgCallback^ (adrTable)
 							if flAddMessage {
 								responseMember = mainResponder.members.getMemberName (membershipGroup, adrTable^.member);
 								
@@ -539,8 +539,8 @@ on renderOneMessage (adrMsgTable, adrTemplate, flShowAuthor=true, flShowPostTime
 		add (s)};
 	
 	bundle { //set member info
-		«For every member, store the highest message read for the current discussion group.
-			«First make sure the discussionGroupInfo table exists for this member, then make sure there's a table for this dg, then set highestMessageRead for this dg for this member.
+		//For every member, store the highest message read for the current discussion group.
+			//First make sure the discussionGroupInfo table exists for this member, then make sure there's a table for this dg, then set highestMessageRead for this dg for this member.
 		if flMember { //is this a member?
 			local (adrMember = pta^.adrMemberInfo);
 			

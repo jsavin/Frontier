@@ -1,10 +1,10 @@
-«Changes
-	«3/18/04; 3:21:05 PM by JES
-		«Pop the file-part from the address before exporting. Improves portability of exported objects.
+//Changes
+	//3/18/04; 3:21:05 PM by JES
+		//Pop the file-part from the address before exporting. Improves portability of exported objects.
 local (lastkind, lastlocation, lastcompression);
-bundle { «Sat, Sep 21, 1996 at 8:07:58 AM by DW, made it smarter for user
+bundle { //Sat, Sep 21, 1996 at 8:07:58 AM by DW, made it smarter for user
 	local (adr = user.export.lastaddress);
-	lastkind = "Packed object"; «default
+	lastkind = "Packed object"; //default
 	if typeOf (adr^) == scriptType {
 		if parentOf (adr^) == @system.deskscripts {
 			lastkind = "Desktop script"}
@@ -13,10 +13,10 @@ bundle { «Sat, Sep 21, 1996 at 8:07:58 AM by DW, made it smarter for user
 				lastkind = "Script Editor format"}}};
 	lastlocation = "File";
 	lastcompression = "None";
-	«lastkind = user.export.lastkind
-	«lastlocation = user.export.lastlocation
-	};«lastcompression = user.export.lastcompression
-bundle { «set up the Kind popup
+	//lastkind = user.export.lastkind
+	//lastlocation = user.export.lastlocation
+	};//lastcompression = user.export.lastcompression
+bundle { //set up the Kind popup
 	local (s, checkeditem);
 	s = "Packed object;Desktop script;Folder;Script Editor format;";
 	card.popup.setmenu ("kind", s);
@@ -27,7 +27,7 @@ bundle { «set up the Kind popup
 			checkeditem = i;
 			break}};
 	card.popup.setcheckeditem ("kind", checkeditem)};
-bundle { «set up the Location popup
+bundle { //set up the Location popup
 	local (s, checkeditem);
 	s = "File;Eudora attachment;";
 	card.popup.setmenu ("location", s);
@@ -38,7 +38,7 @@ bundle { «set up the Location popup
 			checkeditem = i;
 			break}};
 	card.popup.setcheckeditem ("location", checkeditem)};
-bundle { «set the compression radio button
+bundle { //set the compression radio button
 	local (s = lastcompression);
 	card.setobjectflag ("none", s == "None");
 	card.setobjectflag ("sit", s == ".sit");

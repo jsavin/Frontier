@@ -1,21 +1,21 @@
 on listSites (flSearchable=true, sitesPerPage=25, start=1, actionUrl="", searchString="") {
-	«List the sites on this server. The list may be searchable. When you do a search, you're matching against site name, site URL, ME name, ME email address.
-		«07/17/00; 6:44:44 PM by PBS
-		«Changes:
-			«Fixed bug where sitesPerPage-1 sites were listed on each page, meaning that between pages one site was missed for each page break.
-			«06/05/01; 11:07:23 AM by PBS
-				«Don't generate a fatal error if there's a problem getting info about an ME.
-			«1/25/02; 6:25:04 PM by PBS
-				«Performance enhancement in the local "add" routine -- add a trailing semicolon.
+	//List the sites on this server. The list may be searchable. When you do a search, you're matching against site name, site URL, ME name, ME email address.
+		//07/17/00; 6:44:44 PM by PBS
+		//Changes:
+			//Fixed bug where sitesPerPage-1 sites were listed on each page, meaning that between pages one site was missed for each page break.
+			//06/05/01; 11:07:23 AM by PBS
+				//Don't generate a fatal error if there's a problem getting info about an ME.
+			//1/25/02; 6:25:04 PM by PBS
+				//Performance enhancement in the local "add" routine -- add a trailing semicolon.
 	
-	«local (pta = html.getPageTableAddress ())
+	//local (pta = html.getPageTableAddress ())
 	
 	local (htmlText);
 	on add (s) {
 		htmlText = htmlText + s;};
 	
 	on getSiteUrls (adrSite) {
-		«Return the dynamic and static URLs as a list, as {dynamicUrl, staticUrl}. If staticUrl doesn't exist, just make it "".
+		//Return the dynamic and static URLs as a list, as {dynamicUrl, staticUrl}. If staticUrl doesn't exist, just make it "".
 		local (url = adrSite^.["#ftpSite"].url);
 		local (staticUrl = "");
 		if manilaSuite.staticRendering.isEnabled (adrSite) {
@@ -23,17 +23,17 @@ on listSites (flSearchable=true, sitesPerPage=25, start=1, actionUrl="", searchS
 				staticUrl = adrSite^.["#newsSite"].staticSite.["#ftpSite"].url}};
 		return ({url, staticUrl})};
 	on getSiteName (adrSite) {
-		«Get the name of the site.
+		//Get the name of the site.
 		if defined (adrSite^.["#newsSite"].siteName) {
 			return (string (adrSite^.["#newsSite"].siteName))};
 		return ("Untitled")};
 	on getManagingEditorInfo (adrSite) {
-		«Return info about the ME as a list, {name, email}. If no name, then name is "".
+		//Return info about the ME as a list, {name, email}. If no name, then name is "".
 		local (meList = adrSite^.["#newsSite"].sysopMail);
 		if typeOf (meList) != listType {
 			meList = {meList}};
 		local (editor = meList [1]);
-		«Get adrMember.
+		//Get adrMember.
 		try { //PBS /06/05/01: don't generate fatal error if there's an error here
 			local (groupName = adrSite^.["#prefs"].defaultMembershipGroup);
 			local (adrMember = mainResponder.members.getMemberTable (groupName, editor));
@@ -45,8 +45,8 @@ on listSites (flSearchable=true, sitesPerPage=25, start=1, actionUrl="", searchS
 		else {
 			return ({"", editor})}};
 	on getAllMeInfo (adrSite) {
-		«Get all the managing editor's names and email addresses in a big string.
-			«This routine was originally called getAllManagingEditorNamesAndEmailAddressesInABigString, but that was a bit long.
+		//Get all the managing editor's names and email addresses in a big string.
+			//This routine was originally called getAllManagingEditorNamesAndEmailAddressesInABigString, but that was a bit long.
 		local (meList = adrSite^.["#newsSite"].sysopMail);
 		if typeOf (meList) != listType {
 			meList = {meList}};
@@ -62,7 +62,7 @@ on listSites (flSearchable=true, sitesPerPage=25, start=1, actionUrl="", searchS
 			s = s + " " + nameOf (adrMember^)};
 		return (s)};
 	on getLastModDate (adrSite) {
-		«Get the date the last time someone added a message.
+		//Get the date the last time someone added a message.
 		local (dgName = adrSite^.["#prefs"].discussionRoot);
 		local (adrDiscuss);
 		manilaSuite.discuss.rpcGetGroupAddress (dgName, @adrDiscuss);
@@ -73,13 +73,13 @@ on listSites (flSearchable=true, sitesPerPage=25, start=1, actionUrl="", searchS
 		return (lastModDate)};
 	
 	on buildOneSiteEntry (adrItem, ct) {
-		«Build an HTML entry for one site. It's just a link.
+		//Build an HTML entry for one site. It's just a link.
 		
 		local (url = adrItem^.url);
 		local (siteName = adrItem^.siteName);
 		local (displaySiteName = string.ellipsize (siteName, 50));
 		local (s = "\r<tr>");
-		«s = s + "<td align=\"right\">" + ct + ".&nbsp;</td>"
+		//s = s + "<td align=\"right\">" + ct + ".&nbsp;</td>"
 		s = s + "<td>" + html.getLink (displaySiteName, url) + "</td>";
 		local (meName = adrItem^.editorName);
 		if string.trimWhiteSpace (meName) == "" {
@@ -92,7 +92,7 @@ on listSites (flSearchable=true, sitesPerPage=25, start=1, actionUrl="", searchS
 	
 	local (totalSitesMeetingCriteria = 0);
 	on getSearchResults (adrTable, min, max, searchString) {
-		«Create a table of info about the sites.
+		//Create a table of info about the sites.
 		local (ct = 0);
 		local (adrItem);
 		local (adrSites = @config.manila.sites);
@@ -163,9 +163,9 @@ on listSites (flSearchable=true, sitesPerPage=25, start=1, actionUrl="", searchS
 			else {
 				s = s + " found sites."};
 			add (s)};
-		«add ("<p>[[screens]]")
+		//add ("<p>[[screens]]")
 		add ("<table border=\"0\" cellpadding=\"3\" cellspacing=\"3\"\r>");
-		«add ("<tr><td>&nbsp;</td><td><b>Site</b><td><b>Managing Editor</b><td><b>Modified</b></td></tr>")
+		//add ("<tr><td>&nbsp;</td><td><b>Site</b><td><b>Managing Editor</b><td><b>Modified</b></td></tr>")
 		add ("<tr><td><b>Site</b><td><b>Managing Editor</b><td><b>Modified</b></td></tr>");
 		bundle { //format search results
 			local (adrItem);

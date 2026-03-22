@@ -1,7 +1,7 @@
 on objects () {
-	«Changes
-		«8/3/02; 1:09:18 AM by JES
-			«Created.
+	//Changes
+		//8/3/02; 1:09:18 AM by JES
+			//Created.
 	local (pta = html.getPageTableAddress ());
 	pta^.title = "Objects Checked Out With WebEdit";
 	

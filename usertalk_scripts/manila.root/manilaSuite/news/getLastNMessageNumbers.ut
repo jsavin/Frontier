@@ -1,26 +1,26 @@
 on getLastNMessageNumbers (n, department=nil, maxDate=nil, minDate=nil, adrSite=nil, flIncludePendingItems=false) {
-	«Changes:
-		«1/31/06; 2:43:57 AM by JES
-			«Respect flPending flag in top level of msg table.
-		«10/17/05; 3:53:28 AM by JES
-			«If flIncludePendingItems is true skip the department check.
-		«10/17/05; 2:24:13 AM by JES
-			«Set msgNum for the item based on the value of flIncludePendingItems. If true, we get msgNum from the name of the item in the index. If false, meaning we're using the postOrder index, we use the value of the item in the index.
-		«10/17/05; 2:16:34 AM by JES
-			«Set adrIndex based on the value of flIncludePendingItems. If true, we use the 'all' index. If false, we use the 'postOrder' index.
-		«10/17/05; 2:10:00 AM by JES
-			«New optional parameter, flIncludePendingItems. Defaults to false. If true, we return both posted and pending news item message numbers.
-			«Needed for support in the metaWeblog API for pending posts.
-		«7/7/05; 7:04:18 PM by JES
-			«Add support for flOnHomePage flag -- Home Page pseudo-department, part of multiple departments support.
-		«04/05/21, 12:10:26 by DAB
-			«accesscontrol check on individual news items
-		«9/3/03; 3:02:42 PM by JES
-			«Rewrote department handling code to support multiple departments.
-		«10/26/00; 11:44:51 PM by PBS
-			«An XML error in a news item should not be a fatal error for the page.
-		«04/20/00; 4:15:57 PM by PBS
-			«Created. Get the last n message numbers in a department. If department is nil, get from all departments. May return less than n items, if there are less than n items.
+	//Changes:
+		//1/31/06; 2:43:57 AM by JES
+			//Respect flPending flag in top level of msg table.
+		//10/17/05; 3:53:28 AM by JES
+			//If flIncludePendingItems is true skip the department check.
+		//10/17/05; 2:24:13 AM by JES
+			//Set msgNum for the item based on the value of flIncludePendingItems. If true, we get msgNum from the name of the item in the index. If false, meaning we're using the postOrder index, we use the value of the item in the index.
+		//10/17/05; 2:16:34 AM by JES
+			//Set adrIndex based on the value of flIncludePendingItems. If true, we use the 'all' index. If false, we use the 'postOrder' index.
+		//10/17/05; 2:10:00 AM by JES
+			//New optional parameter, flIncludePendingItems. Defaults to false. If true, we return both posted and pending news item message numbers.
+			//Needed for support in the metaWeblog API for pending posts.
+		//7/7/05; 7:04:18 PM by JES
+			//Add support for flOnHomePage flag -- Home Page pseudo-department, part of multiple departments support.
+		//04/05/21, 12:10:26 by DAB
+			//accesscontrol check on individual news items
+		//9/3/03; 3:02:42 PM by JES
+			//Rewrote department handling code to support multiple departments.
+		//10/26/00; 11:44:51 PM by PBS
+			//An XML error in a news item should not be a fatal error for the page.
+		//04/20/00; 4:15:57 PM by PBS
+			//Created. Get the last n message numbers in a department. If department is nil, get from all departments. May return less than n items, if there are less than n items.
 	
 	local (pta);
 	if adrSite == nil {
@@ -78,10 +78,10 @@ on getLastNMessageNumbers (n, department=nil, maxDate=nil, minDate=nil, adrSite=
 						if not adrMsgTable^.newsItem.flOnHomePage {
 							continue}}}
 				else { //department specified -- check it
-					«try //PBS 10/26/00: an XML error in a news item should not be a fatal error for the page.
-						«local (t = manilaSuite.news.xmlToTable (string (adrMsgTable^.body)))
-						«if string.lower (t.department) != lowerDepartment
-							«continue
+					//try //PBS 10/26/00: an XML error in a news item should not be a fatal error for the page.
+						//local (t = manilaSuite.news.xmlToTable (string (adrMsgTable^.body)))
+						//if string.lower (t.department) != lowerDepartment
+							//continue
 					if not defined (adrMsgTable^.newsItem.department) {
 						continue};
 					if typeOf (adrMsgTable^.newsItem.department) == listType { //new style, multiple dept's

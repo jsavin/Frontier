@@ -1,7 +1,7 @@
 on addHit (pta) {
-	«Record this hit in the hourly table.
-		«Hits are stored in config.root. Why? Because with this feature every hit is a write operation. We'd be saving pretty much every gdb every minute. Better to limit the writing to config.root. (Since it's already being written to with each hit.)
-		«11/09/00; 2:00:38 PM by PBS
+	//Record this hit in the hourly table.
+		//Hits are stored in config.root. Why? Because with this feature every hit is a write operation. We'd be saving pretty much every gdb every minute. Better to limit the writing to config.root. (Since it's already being written to with each hit.)
+		//11/09/00; 2:00:38 PM by PBS
 	
 	local (adrSite = manilaSuite.getManilaSiteAddress (pta));
 	local (adrTable);

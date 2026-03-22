@@ -1,5 +1,5 @@
 on count (username, password, siteName) {
-	«Count the number of members a site has.
+	//Count the number of members a site has.
 	
 	bundle { //make sure this person is a managing editor of the site.
 		local (beginningErrorString = "Can't count the numbers of members because ");

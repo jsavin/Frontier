@@ -1,31 +1,31 @@
 on isFolder (domain, path, account, password) {
-	«This script assumes that the path actually exists.  If not, the script will return false.
-	«It's difficult to accurately tell whether a file is a directory or not via the clients' scripting mechanism...
-		«...so we try to set it as the working directory. If the command fails, we know it's not a directory
+	//This script assumes that the path actually exists.  If not, the script will return false.
+	//It's difficult to accurately tell whether a file is a directory or not via the clients' scripting mechanism...
+		//...so we try to set it as the working directory. If the command fails, we know it's not a directory
 	if path == "" or path == "/" {
 		return (true)};
 	case ftpClient.data.currentid {
 		Anarchie.id {
 			local (cmdResult);
-			Anarchie.sendcommand (domain, "CWD", account, password, nil); « Make sure we're in the base directory.
+			Anarchie.sendcommand (domain, "CWD", account, password, nil); // Make sure we're in the base directory.
 			cmdResult = Anarchie.sendcommand (domain, "CWD " + path, account, password, nil);
 			if cmdResult == 0 {
 				return (true)}
 			else {
 				Anarchie.close ();
-				if (cmdResult == -550) { « path either doesn't exist, or is a file.
+				if (cmdResult == -550) { // path either doesn't exist, or is a file.
 					return (false)}
-				else { « Oops, some other problem!
+				else { // Oops, some other problem!
 					scriptError ("FTP Error: " + cmdResult + ".")}}};
 		Fetch.id {
 			try {
 				Fetch.list (nil, domain, path, account, password);
-				return (true)} « If it gets this far, path must be a directory
+				return (true)} // If it gets this far, path must be a directory
 			else {
 				if tryError == "“Fetch” reported the following error:  “Error: that file or directory is unavailable or non-existent.”." {
-					«path either doesn't exist, or is a file.
+					//path either doesn't exist, or is a file.
 					return (false)}
-				else { « Oops, some other problem!
+				else { // Oops, some other problem!
 					scriptError (tryError)}}}}
 	else {
 		scriptError ("The app whose ID is '" + ftpclient.data.currentid + "' is not a supported FTP client.")}}

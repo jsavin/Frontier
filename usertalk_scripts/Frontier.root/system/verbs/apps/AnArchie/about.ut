@@ -1,2 +1,2 @@
-on about () { «open the about box
+on about () { //open the about box
 	return (appleEvent (AnArchie.id, 'core', 'abou'))}

@@ -1,8 +1,8 @@
 on block (username, password, siteName, memberKey) {
-	«Block a member.
-	«Changes
-		«3/31/05; 3:57:51 AM by JES
-			«Call callbacks when a member is blocked.
+	//Block a member.
+	//Changes
+		//3/31/05; 3:57:51 AM by JES
+			//Call callbacks when a member is blocked.
 	
 	bundle { //make sure this person is a managing editor of the site.
 		local (beginningErrorString = "Can't block member \"" + memberKey + "\" because ");

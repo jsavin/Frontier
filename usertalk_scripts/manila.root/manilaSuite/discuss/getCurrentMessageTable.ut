@@ -1,6 +1,6 @@
 on getCurrentMessageTable (msgNum=nil, pta=nil) {
-	«Get the address of the current message table.
-		«Check to see if it's already been calculated and cached in the page table.
+	//Get the address of the current message table.
+		//Check to see if it's already been calculated and cached in the page table.
 	
 	if pta == nil {
 		pta = html.getPageTableAddress ()};

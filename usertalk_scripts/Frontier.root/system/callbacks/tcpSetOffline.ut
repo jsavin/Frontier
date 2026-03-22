@@ -1,7 +1,7 @@
 on tcpSetOffline (flOffline) {
-	«Changes
-		«10/16/01; 12:49:13 PM by DW
-			«Created. Called from tcp.setOffline.
+	//Changes
+		//10/16/01; 12:49:13 PM by DW
+			//Created. Called from tcp.setOffline.
 	local (adrscript);
 	if not defined (user.callbacks.tcpSetOffline) {
 		new (tableType, @user.callbacks.tcpSetOffline)};

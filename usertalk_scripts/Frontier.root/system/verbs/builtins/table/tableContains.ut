@@ -1,23 +1,23 @@
 on tableContains (adrTable, adrItem) { //4.2
-	«Change Notes:
-		«10/4/04; 7:08:23 PM by JES
-			«Properly handle objects inside sub-tables which are not defined, rather than cause an error. Change suggested by DAB.
-		«5/18/98 PBS
-			«Use parentOf instead of string manipulation.
-			«More reliable, will work with guest databases.
-			«Old code:
-				«if string.lower (adrTable) beginsWith "root."
-					«adrTable = string.mid (adrTable, 6, infinity)
-				«if string.lower (adrItem) beginsWith "root."
-					«adrTable = string.mid (adrItem, 6, infinity)
-				«return (string.lower (adrItem) beginsWith string.lower (adrTable))
-		«4/6/98 PBS
-			«Compare with string.lower.
-		«2/12/98 at 3:14:52 PM by PBS
-			«Sometimes the addresses begin with "root.", sometimes not.
-			«Take that into account.
-		«10/31/97 at 1:25:00 PM by DW -- moved from toys.tableContains
-			«return true if adritem points to something contained within the table
+	//Change Notes:
+		//10/4/04; 7:08:23 PM by JES
+			//Properly handle objects inside sub-tables which are not defined, rather than cause an error. Change suggested by DAB.
+		//5/18/98 PBS
+			//Use parentOf instead of string manipulation.
+			//More reliable, will work with guest databases.
+			//Old code:
+				//if string.lower (adrTable) beginsWith "root."
+					//adrTable = string.mid (adrTable, 6, infinity)
+				//if string.lower (adrItem) beginsWith "root."
+					//adrTable = string.mid (adrItem, 6, infinity)
+				//return (string.lower (adrItem) beginsWith string.lower (adrTable))
+		//4/6/98 PBS
+			//Compare with string.lower.
+		//2/12/98 at 3:14:52 PM by PBS
+			//Sometimes the addresses begin with "root.", sometimes not.
+			//Take that into account.
+		//10/31/97 at 1:25:00 PM by DW -- moved from toys.tableContains
+			//return true if adritem points to something contained within the table
 	adrTable = address (adrTable);
 	local (nomad = adrItem);
 	if not defined (nomad^) or typeOf (nomad^) != tableType { //01/03/23, 14:22:48 by DAB
@@ -28,4 +28,4 @@ on tableContains (adrTable, adrItem) { //4.2
 		nomad = parentOf (nomad^);
 		if nomad == nil {
 			return (false)}}};
-«tablecontains(@scratchpad, @mainresponder.nosuchaddress)
+//tablecontains(@scratchpad, @mainresponder.nosuchaddress)

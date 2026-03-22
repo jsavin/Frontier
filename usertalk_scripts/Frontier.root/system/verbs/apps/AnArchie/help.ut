@@ -1,2 +1,2 @@
-on help () { «open the help window
+on help () { //open the help window
 	return (appleEvent (AnArchie.id, 'core', 'help'))}

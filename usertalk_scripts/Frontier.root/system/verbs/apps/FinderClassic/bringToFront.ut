@@ -1,2 +1,2 @@
-on bringToFront () { «make the Finder the active application
+on bringToFront () { //make the Finder the active application
 	return (sys.bringAppToFront (Finder.appInfo.name))}

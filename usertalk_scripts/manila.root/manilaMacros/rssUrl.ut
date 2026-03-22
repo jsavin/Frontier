@@ -1,15 +1,15 @@
 on rssUrl (pta=nil) {
-	«Changes
-		«2/13/13; 11:06:15 AM by JES
-			«Get the RSS URL - don't return HTML for an image.
-				«Useful if you want to style the link differently from rssLink().
-				«Code from rssLink, which is updated to call this macro to get the URL.
-		«7/6/05; 2:28:09 AM by JES
-			«Added preliminary support for static rendering.
-		«5/12/03; 1:36:04 PM by JES
-			«When rendering a department page, the RSS link is a link to the per-department RSS feed.
-		«02/07/01; 2:51:59 PM by JES
-			«Created. Generate a link to a Manila site's rss channel.
+	//Changes
+		//2/13/13; 11:06:15 AM by JES
+			//Get the RSS URL - don't return HTML for an image.
+				//Useful if you want to style the link differently from rssLink().
+				//Code from rssLink, which is updated to call this macro to get the URL.
+		//7/6/05; 2:28:09 AM by JES
+			//Added preliminary support for static rendering.
+		//5/12/03; 1:36:04 PM by JES
+			//When rendering a department page, the RSS link is a link to the per-department RSS feed.
+		//02/07/01; 2:51:59 PM by JES
+			//Created. Generate a link to a Manila site's rss channel.
 	if pta == nil {
 		pta = html.getPageTableAddress ()};
 	local (adrSite = manilaSuite.getSiteAddress (pta));
@@ -25,8 +25,8 @@ on rssUrl (pta=nil) {
 	local (linkUrl = siteUrl + "xml/rss.xml");
 	try { //department/DG RSS links
 		local (viewDepartmentUrl = manilaSuite.getUrl ("editorialNewsItems") + "departments/");
-		«if string.lower (pta^.url) beginsWith string.lower (viewDepartmentUrl)
-			«linkUrl = viewDepartmentUrl + pta^.remainingPath + ".xml"
+		//if string.lower (pta^.url) beginsWith string.lower (viewDepartmentUrl)
+			//linkUrl = viewDepartmentUrl + pta^.remainingPath + ".xml"
 		if defined (pta^.manilaNewsItemDepartment) {
 			linkUrl = viewDepartmentUrl + manilaSuite.news.departmentNameToPath (pta^.manilaNewsItemDepartment) + ".xml"}
 		else { //discussion group RSS?
@@ -38,6 +38,6 @@ on rssUrl (pta=nil) {
 	local (linkText = "");
 	
 	return (linkUrl)};
-«bundle //test code
-	«html.setPageTableAddress (@workspace.pt)
-	«rssLink ()
+//bundle //test code
+	//html.setPageTableAddress (@workspace.pt)
+	//rssLink ()

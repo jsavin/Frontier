@@ -1,4 +1,4 @@
-bundle { «method 1, using a table
+bundle { //method 1, using a table
 	local (name = "Bernie Dekoven", ct = 0);
 	ticks = clock.ticks ();
 	for i = 1 to 1000 {
@@ -6,12 +6,12 @@ bundle { «method 1, using a table
 		if defined (adrsubtable^) {
 			ct++}};
 	dialog.alert (clock.ticks () - ticks)};
-«bundle «method 2, using an outline
-	«local (name = "Bernie Dekoven", ct = 0)
-	«ticks = clock.ticks ()
-	«for i = 1 to 100
-		«target.set (@user.html.glossaryoutline)
-		«op.firstsummit ()
-		«op.findNext (name)
-		«target.clear ()
-	«dialog.alert (clock.ticks () - ticks)
+//bundle //method 2, using an outline
+	//local (name = "Bernie Dekoven", ct = 0)
+	//ticks = clock.ticks ()
+	//for i = 1 to 100
+		//target.set (@user.html.glossaryoutline)
+		//op.firstsummit ()
+		//op.findNext (name)
+		//target.clear ()
+	//dialog.alert (clock.ticks () - ticks)

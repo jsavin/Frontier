@@ -1,4 +1,4 @@
-on changeView (windowpath, view) { « set the view of the indicated folder's window
+on changeView (windowpath, view) { // set the view of the indicated folder's window
 	local (fwindow);
 	if not Finder.makeWindow (windowpath, 0, @fwindow) {
 		return (false)};

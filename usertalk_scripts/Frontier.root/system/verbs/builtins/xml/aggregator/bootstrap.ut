@@ -1,12 +1,12 @@
 on bootstrap (url) {
-	«Changes
-		«11/25/01; 8:51:03 AM by DW
-			«Takes a parameter, the url is no long hard-coded.
-			«Don't create the service table if it's already defined. (Don't want to wipe out stats or history, otherwise the user will get repeats of stories that have already appeared.)
-		«11/8/01; 9:44:25 AM by DW
-			«Created.
-			«The aggregator is being launched for the first time.
-			«Read the virgin services list, and do a scan.
+	//Changes
+		//11/25/01; 8:51:03 AM by DW
+			//Takes a parameter, the url is no long hard-coded.
+			//Don't create the service table if it's already defined. (Don't want to wipe out stats or history, otherwise the user will get repeats of stories that have already appeared.)
+		//11/8/01; 9:44:25 AM by DW
+			//Created.
+			//The aggregator is being launched for the first time.
+			//Read the virgin services list, and do a scan.
 	
 	local (adrdata = xml.aggregator.init ());
 	
@@ -23,5 +23,5 @@ on bootstrap (url) {
 		if not defined (adrservice^) {
 			new (tabletype, adrservice)}};
 	xml.aggregator.readAllServices ()};
-«bundle //test code
-	«bootstrap (radio.data.cloudUrls.aggregatorBootstrap)
+//bundle //test code
+	//bootstrap (radio.data.cloudUrls.aggregatorBootstrap)

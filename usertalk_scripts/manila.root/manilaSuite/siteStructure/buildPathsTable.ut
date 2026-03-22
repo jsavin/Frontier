@@ -1,11 +1,11 @@
 on buildPathsTable (adrSite) {
-	«Changes
-		«9/16/04; 2:27:50 AM by JES
-			«Fix bugs related to high-ascii characters in paths, and cross-platform encoding issues.
-		«04/05/31, 12:10:28 by DAB
-			«overcome design flaw; build table that handles msgnums with  multiple paths in site structure
-		«03/03/00; 6:09:19 PM; PBS
-			«Created. Build the paths table for a site.
+	//Changes
+		//9/16/04; 2:27:50 AM by JES
+			//Fix bugs related to high-ascii characters in paths, and cross-platform encoding issues.
+		//04/05/31, 12:10:28 by DAB
+			//overcome design flaw; build table that handles msgnums with  multiple paths in site structure
+		//03/03/00; 6:09:19 PM; PBS
+			//Created. Build the paths table for a site.
 	
 	local (adrHierarchy = @adrSite^.["#hierarchy"]);
 	local (adrPaths = @adrHierarchy^.paths);

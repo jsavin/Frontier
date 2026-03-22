@@ -1,9 +1,9 @@
 on renderBuiltinPage (relativePath, adrSite) {
-	«Changes
-		«11/4/06; 5:51:56 PM by LL
-			«Updated to add the relativePath of the page to the URL so the report displays the actual page published and just not the base URL of the site.
-		«11/4/03; 12:14:50 AM by JES
-			«Created. Render any page in a Manila site which actually has an object in the site table, i.e. not a calendar or hierarchy page.
+	//Changes
+		//11/4/06; 5:51:56 PM by LL
+			//Updated to add the relativePath of the page to the URL so the report displays the actual page published and just not the base URL of the site.
+		//11/4/03; 12:14:50 AM by JES
+			//Created. Render any page in a Manila site which actually has an object in the site table, i.e. not a calendar or hierarchy page.
 	
 	local (pta = html.getPageTableAddress ());
 	

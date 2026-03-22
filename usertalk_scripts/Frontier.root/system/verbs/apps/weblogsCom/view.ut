@@ -1,18 +1,18 @@
 on view (cellBgColor=radio.data.htmlColors.cellBgColor, frameColor=radio.data.htmlColors.frameColor) {
-	«Changes:
-		«1/6/02; 4:42:14 AM by JES
-			«Added table css classes.
-		«11/24/01; 4:03:36 PM by DW
-			«Linked into help system.
-		«11/12/01; 5:34:50 AM by DW
-			«Rewrite for post-corner-turn Weblogs.Com.
-		«11/8/01; 1:34:58 AM by JES
-			«If no favorite weblogs have been updated since the last scan, insert a message saying so. If you have not chosen any favorites, insert a message saying so. Only show the Disfavor button when there are favorites in the list to disfavor.
-		«10/11/01; 6:22:37 PM by PBS
-			«New optional parameters for framecolor and bgcolor. This removes references to myUserLandData.
+	//Changes:
+		//1/6/02; 4:42:14 AM by JES
+			//Added table css classes.
+		//11/24/01; 4:03:36 PM by DW
+			//Linked into help system.
+		//11/12/01; 5:34:50 AM by DW
+			//Rewrite for post-corner-turn Weblogs.Com.
+		//11/8/01; 1:34:58 AM by JES
+			//If no favorite weblogs have been updated since the last scan, insert a message saying so. If you have not chosen any favorites, insert a message saying so. Only show the Disfavor button when there are favorites in the list to disfavor.
+		//10/11/01; 6:22:37 PM by PBS
+			//New optional parameters for framecolor and bgcolor. This removes references to myUserLandData.
 	local (pta = html.getpagetableaddress ());
 	pta^.title = radio.string.getlocalizedstring ("weblogsCom.title");
-	«scratchpad.params = pta^
+	//scratchpad.params = pta^
 	local (adrdata = weblogsCom.init ());
 	if sizeof (adrdata^.changes) == 0 { //fresh install
 		weblogsCom.read ()}
@@ -38,7 +38,7 @@ on view (cellBgColor=radio.data.htmlColors.cellBgColor, frameColor=radio.data.ht
 	if pta^.method == "POST" {
 		new (tabletype, @args);
 		webserver.parseargs (pta^.requestBody, @args);
-		«scratchpad.args = args; edit (@scratchpad.args)
+		//scratchpad.args = args; edit (@scratchpad.args)
 		if defined (args.addToFavorites) {
 			delete (@args.addToFavorites);
 			for adr in @args {
@@ -119,6 +119,6 @@ on view (cellBgColor=radio.data.htmlColors.cellBgColor, frameColor=radio.data.ht
 	add ("</td>"); indentlevel--;
 	add ("</tr></table>"); indentlevel--;
 	return (htmltext)};
-«bundle //test code
-	«html.setpagetableaddress (@scratchpad.params)
-	«view ()
+//bundle //test code
+	//html.setpagetableaddress (@scratchpad.params)
+	//view ()

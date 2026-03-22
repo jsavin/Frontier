@@ -1,8 +1,8 @@
 on listMessageEnclosure (msgNum) {
-	«List a message enclosure.
-		«Changes:
-			«03/15/00; 2:50:23 PM by PBS
-				«The call to user.html.macros.nestedTableDisplayer was wrong -- it's at html.data.standardMacros.nestedTableDisplayer.
+	//List a message enclosure.
+		//Changes:
+			//03/15/00; 2:50:23 PM by PBS
+				//The call to user.html.macros.nestedTableDisplayer was wrong -- it's at html.data.standardMacros.nestedTableDisplayer.
 	
 	local (adrMsg = mainResponder.discuss.getMessageTable (msgNum));
 	

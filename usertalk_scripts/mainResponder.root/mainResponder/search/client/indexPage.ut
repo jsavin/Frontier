@@ -1,9 +1,9 @@
 on indexPage (adrObject, adrPageTable, flMsgReader=false, adrDgMsg=nil, adrSiteTable=nil) {
-	«This script is called from the high-level mainResponder.search.client.index verb. It should not be called from anywhere else.
-		«This script indexes a web page in a website table.
-		«Changes:
-			«10/15/99; 12:29:17 PM by PBS
-				«Get the proper created and modified dates for dg messages.
+	//This script is called from the high-level mainResponder.search.client.index verb. It should not be called from anywhere else.
+		//This script indexes a web page in a website table.
+		//Changes:
+			//10/15/99; 12:29:17 PM by PBS
+				//Get the proper created and modified dates for dg messages.
 	
 	local (objType = typeOf (adrObject^));
 	local (pageText, title, url);
@@ -17,7 +17,7 @@ on indexPage (adrObject, adrPageTable, flMsgReader=false, adrDgMsg=nil, adrSiteT
 		html.buildObject (adrPage, adrPageTable); //build the page
 		return (true)};
 	
-	«Once this script is called, there's no question that adrObject points to a valid web page. However, the search engine only knows how to index outlines, wp-text, tables, and scripts. Anything else is not indexed. So first check the type of adrObject to be sure it's valid.
+	//Once this script is called, there's no question that adrObject points to a valid web page. However, the search engine only knows how to index outlines, wp-text, tables, and scripts. Anything else is not indexed. So first check the type of adrObject to be sure it's valid.
 	bundle { //check the type
 		local (flValidType = false);
 		case objType {
@@ -53,7 +53,7 @@ on indexPage (adrObject, adrPageTable, flMsgReader=false, adrDgMsg=nil, adrSiteT
 		searchTable.server = searchTable.domain;
 		searchTable.procedure = searchTable.addToIndex};
 	
-	«Call the script in the #search table that gets the title and page text.
+	//Call the script in the #search table that gets the title and page text.
 	bundle {
 		local (adrScript);
 		if defined (searchTable.getContent) {
@@ -63,10 +63,10 @@ on indexPage (adrObject, adrPageTable, flMsgReader=false, adrDgMsg=nil, adrSiteT
 			try {adrScript^ (@searchTable)}}};
 	
 	if searchTable.title == nil or searchTable.bodyText == nil {
-		«wp-text and outline objects are indexed one way, scripts another, and tables yet another way.
+		//wp-text and outline objects are indexed one way, scripts another, and tables yet another way.
 		if (objType == wpTextType) or (objType == outlineType) {
 			if not flMsgReader {
-				«These types are coerced to a string.
+				//These types are coerced to a string.
 				pageText = string (adrObject^);
 				if searchTable.title == nil {
 					searchTable.title = html.getOneDirective ("title", pageText)}}
@@ -76,19 +76,19 @@ on indexPage (adrObject, adrPageTable, flMsgReader=false, adrDgMsg=nil, adrSiteT
 				pageText = string (adrDgMsg^.body)}};
 		
 		if objType == tableType {
-			«If there's a msgNum, find the discussion root and get the text of the message.
-				«Otherwise, use html.buildObject to get the text of the page that way.
+			//If there's a msgNum, find the discussion root and get the text of the message.
+				//Otherwise, use html.buildObject to get the text of the page that way.
 			if defined (adrObject^.msgNum) and defined (adrObject^.discussionRoot) { //there's a discussion group message to get
 				local (adrMsg = mainResponder.news.getMessageTable (adrObject^.discussionRoot, adrObject^.msgNum));
 				if searchTable.title == nil {
 					searchTable.title = adrMsg^.subject};
 				pageText = string (adrMsg^.body)}
 			else {
-				«Use html.buildObject to get the text of the page.
+				//Use html.buildObject to get the text of the page.
 				pageText = getRenderedPageText (adrObject)}};
 		
 		if objType == scriptType {
-			«Use html.buildObject to get the text of the page.
+			//Use html.buildObject to get the text of the page.
 			getRenderedPageText (adrObject);
 			pageText = adrPageTable^.renderedText};
 		
@@ -97,7 +97,7 @@ on indexPage (adrObject, adrPageTable, flMsgReader=false, adrDgMsg=nil, adrSiteT
 		if searchTable.title == nil {
 			searchTable.title = adrPageTable^.title}};
 	
-	«It's possible that there's no bodyText or title, even at this point. (Particularly if the page is an address, and the getContent callback didn't fill in those values.) If so, don't index the page, log the failure.
+	//It's possible that there's no bodyText or title, even at this point. (Particularly if the page is an address, and the getContent callback didn't fill in those values.) If so, don't index the page, log the failure.
 	if searchTable.bodyText == nil {
 		mainResponder.search.client.logNoIndex (adrObject, "the body text of the page can't be retrieved.");
 		return (true)};
@@ -109,7 +109,7 @@ on indexPage (adrObject, adrPageTable, flMsgReader=false, adrDgMsg=nil, adrSiteT
 		local (msgNum = number (nameOf (adrDgMsg^)));
 		searchTable.url = searchTable.url + "$" + msgNum;
 		
-		«PBS 10/15/99: get the proper created and mod dates for this dg message.
+		//PBS 10/15/99: get the proper created and mod dates for this dg message.
 		searchTable.createdDate = adrDgMsg^.postTime;
 		if defined (adrDgMsg^.lastUpdate) {
 			searchTable.lastModDate = adrDgMsg^.lastUpdate}
@@ -118,7 +118,7 @@ on indexPage (adrObject, adrPageTable, flMsgReader=false, adrDgMsg=nil, adrSiteT
 	
 	mainResponder.search.client.sendPageToServer (@searchTable);
 	
-	«Log the fact that we sent this to the server.
+	//Log the fact that we sent this to the server.
 	mainResponder.search.client.log ("Sent " + adrObject + " to the server for indexing.", adrObject);
 	
 	return (true)}

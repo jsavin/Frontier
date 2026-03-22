@@ -1,5 +1,5 @@
-on insertionSpec (insSpec) { « Generally used ONLY by other Finder.xxx () scripts.  Assumes Scriptable Finder
-	«Convert insSpec to a form which can be used with Finder.duplicate () and Finder.move ()
+on insertionSpec (insSpec) { // Generally used ONLY by other Finder.xxx () scripts.  Assumes Scriptable Finder
+	//Convert insSpec to a form which can be used with Finder.duplicate () and Finder.move ()
 	case typeOf (insSpec) {
 		listType {
 			local (x, newList = {});

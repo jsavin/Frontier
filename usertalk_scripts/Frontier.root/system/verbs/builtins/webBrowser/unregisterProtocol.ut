@@ -1,4 +1,4 @@
-on unregisterProtocol (x, forProtocol = nil) { «reverses the effects of “register protocol”
+on unregisterProtocol (x, forProtocol = nil) { //reverses the effects of “register protocol”
 	case sys.os () {
 		"MacOS" {
 			pack (x, @x);

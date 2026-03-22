@@ -1,15 +1,15 @@
 on thread ( connection ) {
-	«Changes
-		«5/14/02; 1:51:34 PM by JB
-			«Changelog created.
-	«Thread processes the incoming XML stream, breaking apart the XML document's parent elements and calling the handler functions.
-		«This function definately assumes that all incoming XML is valid.  Invalid XML will kill this dead, which can not be avoided.
-		«If anybody is using CDATA with Jabber, this routine may need some work.
+	//Changes
+		//5/14/02; 1:51:34 PM by JB
+			//Changelog created.
+	//Thread processes the incoming XML stream, breaking apart the XML document's parent elements and calling the handler functions.
+		//This function definately assumes that all incoming XML is valid.  Invalid XML will kill this dead, which can not be avoided.
+		//If anybody is using CDATA with Jabber, this routine may need some work.
 	local (status, bytes, log, buffer = "", tcpStream = connection^.tcpStream, x, lastNOP = date(0) );
 	local ( i = 0, chunk, nextTag );
 	
 	on firstTag ( string ) {
-		«extracts the first tag in the string
+		//extracts the first tag in the string
 		local ( tag, tagBegin, tagEnd );
 		tagBegin = string.patternMatch ( "<", string );
 		tagEnd = string.patternMatch ( ">", string );
@@ -18,7 +18,7 @@ on thread ( connection ) {
 		tag = string.mid ( string, tagBegin, tagEnd - tagBegin + 1);
 		return tag};
 	on getTagName ( string ) {
-		«Given a tag, gives the name of the tag, including namespace.
+		//Given a tag, gives the name of the tag, including namespace.
 		local ( tag, tagBegin, tagEnd );
 		tagBegin = string.patternMatch ( "<", string );
 		tagEnd = string.patternMatch ( ">", string );
@@ -27,13 +27,13 @@ on thread ( connection ) {
 			tag = string.mid ( tag, 1, string.patternMatch ( " ", tag ) - 1 )};
 		return tag};
 	on tagSelfClosed ( tag ) {
-		«return true if the tag is self-closing (for example, "<img />"), false otherwise. I'm fairly certain this test works correctly in all cases.... all ">"'s should be encoded as &gt;.
+		//return true if the tag is self-closing (for example, "<img />"), false otherwise. I'm fairly certain this test works correctly in all cases.... all ">"'s should be encoded as &gt;.
 		return tag contains "/>"};
 	on getFirstTag ( strAdr ) {
-		«Given the string address, this function returns the first tag, complete with contents, and removes it from the original string. If there's no complete tag, this function does nothing to strAdr, and returns "". This function is the magic bridge between parse-as-you-go and parse-all-at-once.
-			«SPECIAL CASE: Because I don't really care about the initial stream:stream tag, this function will automatically *throw it away*. It's dirty here but it really simplifies the main loop.
-			«SPECIAL CASE: XML directives are simply and silently tossed out. <? ?> (Did I see somewhere the Jabber server does this too?)
-			«ASSUMPTION: I'm pretty sure that no tag is capable of containing itself according to the Jabber spec. Thus, to find the end of any given tag name "TAG", we can look for the *first* "/TAG" and be correct. Start slinging around <iq> tags with <iq> elements, or <message> tags with embedded <message> elements, and the stream will die. This is theoretically possible, but it should be a while before anyone does it. (This is fixable, but requires creating a tag stack, which will make for some ugly parsing and calls to regex.)
+		//Given the string address, this function returns the first tag, complete with contents, and removes it from the original string. If there's no complete tag, this function does nothing to strAdr, and returns "". This function is the magic bridge between parse-as-you-go and parse-all-at-once.
+			//SPECIAL CASE: Because I don't really care about the initial stream:stream tag, this function will automatically *throw it away*. It's dirty here but it really simplifies the main loop.
+			//SPECIAL CASE: XML directives are simply and silently tossed out. <? ?> (Did I see somewhere the Jabber server does this too?)
+			//ASSUMPTION: I'm pretty sure that no tag is capable of containing itself according to the Jabber spec. Thus, to find the end of any given tag name "TAG", we can look for the *first* "/TAG" and be correct. Start slinging around <iq> tags with <iq> elements, or <message> tags with embedded <message> elements, and the stream will die. This is theoretically possible, but it should be a while before anyone does it. (This is fixable, but requires creating a tag stack, which will make for some ugly parsing and calls to regex.)
 		
 		//common case: Nothing in the stream
 		if string.patternMatch ( "<", strAdr^ ) == 0 {
@@ -86,10 +86,10 @@ on thread ( connection ) {
 				while nextTag != "" {
 					new ( tableType, @x );
 					try {
-						«local ( context ); new ( tableType, @context )
+						//local ( context ); new ( tableType, @context )
 						xml.compile ( nextTag, @x );
-						«context.x = x
-						«thread.callScript("tcp.im.builtinDrivers.jabber.code.handleMessage", {connection, @x}, @context)
+						//context.x = x
+						//thread.callScript("tcp.im.builtinDrivers.jabber.code.handleMessage", {connection, @x}, @context)
 						tcp.im.builtinDrivers.jabber.code.handleMessage ( connection, @x )} // non-thread version of thread call
 					else {
 						scriptError ( "Can't continue processing Jabber events because " + tryerror)};

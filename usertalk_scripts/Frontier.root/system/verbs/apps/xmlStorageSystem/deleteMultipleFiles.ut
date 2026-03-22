@@ -1,7 +1,7 @@
 on deleteMultipleFiles (email, password, relativepathlist, adrresponse, adrdata = @xmlStorageSystem.data, flShowMessages = true) {
-	«Changes
-		«12/11/01; 3:25:34 PM by DW
-			«Created.
+	//Changes
+		//12/11/01; 3:25:34 PM by DW
+			//Created.
 	local (params = {"email":email, "password":string.hashmd5 (password), "relativePathList":relativepathlist});
 	local (rpcPath);
 	if defined (adrdata^.xmlRpcPath) {
@@ -11,8 +11,8 @@ on deleteMultipleFiles (email, password, relativepathlist, adrresponse, adrdata 
 	with adrdata^ {
 		adrresponse^ = xml.rpc (server, port, "xmlStorageSystem.deleteMultipleFiles", @params, rpcPath:rpcPath, fldebug:fldebug, flShowMessages:flShowMessages, protocol:protocol, soapAction:soapAction);
 		return (not adrresponse^.flerror)}};
-«bundle //test code
-	«local (relativepathlist = {"/userland/testRadio71/New Mexico/03.txt", "/userland/testRadio71/New Hampshire/"})
-	«with user.xmlStorageSystem
-		«deleteMultipleFiles (user.radio.prefs.usernum, user.radio.prefs.passwords.default, relativepathlist, @scratchpad.response)
-	«edit (@scratchpad.response)
+//bundle //test code
+	//local (relativepathlist = {"/userland/testRadio71/New Mexico/03.txt", "/userland/testRadio71/New Hampshire/"})
+	//with user.xmlStorageSystem
+		//deleteMultipleFiles (user.radio.prefs.usernum, user.radio.prefs.passwords.default, relativepathlist, @scratchpad.response)
+	//edit (@scratchpad.response)

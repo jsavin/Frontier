@@ -1,7 +1,7 @@
 on removeDirectory (adrconnectiontable, path) {
-	«Changes
-		«12/13/01; 11:28:34 AM by JES
-			«Created. Remove a directory a file via FTP. The directory must already be empty, or most servers will report an error.
+	//Changes
+		//12/13/01; 11:28:34 AM by JES
+			//Created. Remove a directory a file via FTP. The directory must already be empty, or most servers will report an error.
 	on setDirectory (directory) {
 		if directory == adrconnectiontable^.currentHostDirectory { //we're already there
 			return (true)};

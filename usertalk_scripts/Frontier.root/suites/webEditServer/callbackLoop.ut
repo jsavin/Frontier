@@ -1,9 +1,9 @@
 on callBackLoop (adrCallbacks, adrObject, username, time, extraCallbackInfo) {
-	«Loop over a table of callbacks.
-		«Mon, Mar 8, 1999 at 12:55:44 AM by PBS
-		«Changes:
-			«10/5/99; 12:52:01 PM by PBS
-				«Fix for external Mac web servers: get the address of the param table by doing a parentOf (postArgs). Get the client by looking at clientIp.
+	//Loop over a table of callbacks.
+		//Mon, Mar 8, 1999 at 12:55:44 AM by PBS
+		//Changes:
+			//10/5/99; 12:52:01 PM by PBS
+				//Fix for external Mac web servers: get the address of the param table by doing a parentOf (postArgs). Get the client by looking at clientIp.
 	
 	local (adrParamTable);
 	local (paramList = {}, i);
@@ -13,20 +13,20 @@ on callBackLoop (adrCallbacks, adrObject, username, time, extraCallbackInfo) {
 		if defined (postArgs) {
 			adrParamTable = parentOf (postArgs)}};
 	
-	«PBS 10/5/99: many WebEditServer callbacks look for a client item, but with external Mac servers it may not exist.
-		«Behind an external Mac web server, that will be the clientIp item. So add a client item that's a copy of clientIp.
+	//PBS 10/5/99: many WebEditServer callbacks look for a client item, but with external Mac servers it may not exist.
+		//Behind an external Mac web server, that will be the clientIp item. So add a client item that's a copy of clientIp.
 	if not defined (client) { //does it not exist?
 		if defined (clientIp) and adrParamTable != nil { //does clientIp exist?
 			adrParamTable^.client = clientIp}}; //add a client item
 	
-	«Set up the paramList.
+	//Set up the paramList.
 	paramList [1] = adrObject;
 	paramList [2] = username;
 	paramList [3] = time;
 	paramList [4] = extraCallbackInfo;
 	
-	«Loop over a table of callbacks, calling each script.
-		«Any callback can generate a scriptError to prevent whatever would normally happen next.
+	//Loop over a table of callbacks, calling each script.
+		//Any callback can generate a scriptError to prevent whatever would normally happen next.
 	for i = 1 to sizeOf (adrCallbacks^) {
 		local (adrScript = @adrCallbacks^ [i]);
 		if typeOf (adrScript^) == addressType {

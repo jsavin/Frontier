@@ -6,7 +6,7 @@ local {
 tt = clock.ticks();
 bundle { //kernel-based
 	theList = re.extract (re.compile (complexLinkPat), s, {1})};
-«bundle //DLL-based
-	«regex.extract (complexLinkPat, @s, @theList, {1})
+//bundle //DLL-based
+	//regex.extract (complexLinkPat, @s, @theList, {1})
 tt = clock.ticks() - tt;
 dialog.notify ( tt + " ticks; " + sizeof (theList) + " elements")

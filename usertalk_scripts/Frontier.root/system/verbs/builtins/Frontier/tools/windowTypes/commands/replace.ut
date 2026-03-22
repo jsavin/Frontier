@@ -1,4 +1,4 @@
 on replace () {
-	«Run the Replace command.
-		«09/29/00; 6:00:06 PM by PBS
+	//Run the Replace command.
+		//09/29/00; 6:00:06 PM by PBS
 	search.replace ()}

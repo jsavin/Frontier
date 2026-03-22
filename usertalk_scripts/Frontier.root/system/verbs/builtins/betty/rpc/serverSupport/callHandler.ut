@@ -1,7 +1,7 @@
 on callHandler (procedureName, adrparams, adrerrorflag) {
-	«Changes
-		«4/9/01; 12:38:32 PM by DW
-			«Created. Code cribbed from betty.server. Call the indicated handler with the params.
+	//Changes
+		//4/9/01; 12:38:32 PM by DW
+			//Created. Code cribbed from betty.server. Call the indicated handler with the params.
 	
 	local (response);
 	on rpcFault (errorstring, errornum) {

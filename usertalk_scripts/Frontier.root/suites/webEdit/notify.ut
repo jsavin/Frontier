@@ -1,5 +1,5 @@
 on notify (s) {
-	«Present a message -- either in a dialog box or the About Window.
+	//Present a message -- either in a dialog box or the About Window.
 	if user.webEdit.prefs.flDialogs {
 		dialog.notify (s)}
 	else {

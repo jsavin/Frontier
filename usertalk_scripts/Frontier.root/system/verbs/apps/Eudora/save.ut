@@ -1,2 +1,2 @@
-on save (obj) { «Save an object
+on save (obj) { //Save an object
 	return (appleEvent (Eudora.id, 'core', 'save', '----', objspec (obj)))}

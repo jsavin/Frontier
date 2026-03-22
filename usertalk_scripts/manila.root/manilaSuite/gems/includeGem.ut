@@ -1,11 +1,11 @@
 on includeGem (num, adrSite=nil) {
-	«Changes:
-		«3/22/06; 1:53:41 AM by JES
-			«New optional parameter, adrsite -- makes it possible to call this for sites other than the one being rendered.
-		«04/20/00; 8:07:09 PM by JES
-			«localized error message
-		«04/13/00; 4:19:34 PM by PBS
-			«This is called from the glossary entry and possible other places. It includes a gem link in a page. The actual shortcut text is stored in the gem table.
+	//Changes:
+		//3/22/06; 1:53:41 AM by JES
+			//New optional parameter, adrsite -- makes it possible to call this for sites other than the one being rendered.
+		//04/20/00; 8:07:09 PM by JES
+			//localized error message
+		//04/13/00; 4:19:34 PM by PBS
+			//This is called from the glossary entry and possible other places. It includes a gem link in a page. The actual shortcut text is stored in the gem table.
 	
 	if adrSite == nil {
 		local (pta = html.getPageTableAddress ());

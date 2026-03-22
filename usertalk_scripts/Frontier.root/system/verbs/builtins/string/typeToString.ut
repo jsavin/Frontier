@@ -1,9 +1,9 @@
 on typeToString (type) {
-	«9/29/98; 7:21:56 PM by DW
-		«Give me a type and I'll return a string suitable for display
-		«I needed this for a web-based object database browser
-		«It may come in handy in other similar applications
-		«It's an inverted system.compiler.language.constants.
+	//9/29/98; 7:21:56 PM by DW
+		//Give me a type and I'll return a string suitable for display
+		//I needed this for a web-based object database browser
+		//It may come in handy in other similar applications
+		//It's an inverted system.compiler.language.constants.
 	
 	local (adrcache = @system.temp.typeStringCache);
 	if not defined (adrcache^) {
@@ -20,5 +20,5 @@ on typeToString (type) {
 	
 	return ("unknownType")};
 
-«bundle //test code
-	«dialog.alert (typeToString (scriptType))
+//bundle //test code
+	//dialog.alert (typeToString (scriptType))

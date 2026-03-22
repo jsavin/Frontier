@@ -1,4 +1,4 @@
-«This script makes sure that the scratchpad.manilaRpcSettings table required by all the other scripts in the manila.examples table is properly set up.
+//This script makes sure that the scratchpad.manilaRpcSettings table required by all the other scripts in the manila.examples table is properly set up.
 
 local (adrtable = @scratchpad.manilaRpcSettings);
 if not defined (adrtable^) {

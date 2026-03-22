@@ -1,6 +1,6 @@
 on loadFile (f, adrtable, flconfirmations) {
-	«Sat, Dec 6, 1997 at 12:36:06 AM by PBS
-		«Fixed toys reference.
+	//Sat, Dec 6, 1997 at 12:36:06 AM by PBS
+		//Fixed toys reference.
 	applescripts.init ();
 	local (name = applescripts.normalName (file.fileFromPath (f)));
 	local (adr = @adrtable^.[name]);
@@ -16,7 +16,7 @@ on loadFile (f, adrtable, flconfirmations) {
 	case file.type (f) {
 		'APPL';
 		'osas' {
-			«an AppleScript Script Editor file containing an OSA script
+			//an AppleScript Script Editor file containing an OSA script
 			local (resdata);
 			if not rez.getResource (f, 'scpt', 128, @resdata) {
 				scriptError ("CanÕt open script in file “" + file.fileFromPath (f) + "”.")};
@@ -27,40 +27,40 @@ on loadFile (f, adrtable, flconfirmations) {
 			window.zoom (adr);
 			return (adr)};
 		'TEXT' {
-			«a text file containing an AppleScript
+			//a text file containing an AppleScript
 			local (s = string (file.readWholeFile (f)));
-			«bundle «patch up lines that are >255 chars -- turned off DW 9/14/96 -- doesn't work
-				«local (ct, line1, scripttext = "")
-				«loop
-					«if s == ""
-						«break
-					«line1 = string.nthField (s, cr, 1)
-					«ct = sizeof (line1)
-					«msg (line1)
-					«if sizeof (line1) > 255
-						«we depend on there being commas in the line, if they aren't there, this won't work
-							«it also won't work for lines that contain long quoted strings
-							«primarily designed for handling the "on" headers on AppleScript CGI handlers
-							«they have hugely long parameter lists
-						«local (i, linebuf = "", word1, newlen, ct)
-						«loop
-							«if line1 == ""
-								«if linebuf [sizeof (linebuf)] == ','
-									«linebuf = string.delete (linebuf, sizeof (linebuf), 1)
-								«scripttext = scripttext + linebuf + cr
-								«break
-							«word1 = string.nthField (line1, ',', 1)
-							«ct = sizeof (word1)
-							«newlen = sizeof (linebuf) + 1 + sizeof (word1)
-							«if newlen > 200
-								«scripttext = scripttext + linebuf + "Â" + cr
-								«linebuf = ""
-							«linebuf = linebuf + word1 + ","
-							«line1 = string.delete (line1, 1, ct + 1)
-					«else
-						«scripttext = scripttext + line1 + cr
-					«s = string.delete (s, 1, ct + 1)
-				«s = scripttext
+			//bundle //patch up lines that are >255 chars -- turned off DW 9/14/96 -- doesn't work
+				//local (ct, line1, scripttext = "")
+				//loop
+					//if s == ""
+						//break
+					//line1 = string.nthField (s, cr, 1)
+					//ct = sizeof (line1)
+					//msg (line1)
+					//if sizeof (line1) > 255
+						//we depend on there being commas in the line, if they aren't there, this won't work
+							//it also won't work for lines that contain long quoted strings
+							//primarily designed for handling the "on" headers on AppleScript CGI handlers
+							//they have hugely long parameter lists
+						//local (i, linebuf = "", word1, newlen, ct)
+						//loop
+							//if line1 == ""
+								//if linebuf [sizeof (linebuf)] == ','
+									//linebuf = string.delete (linebuf, sizeof (linebuf), 1)
+								//scripttext = scripttext + linebuf + cr
+								//break
+							//word1 = string.nthField (line1, ',', 1)
+							//ct = sizeof (word1)
+							//newlen = sizeof (linebuf) + 1 + sizeof (word1)
+							//if newlen > 200
+								//scripttext = scripttext + linebuf + "Â" + cr
+								//linebuf = ""
+							//linebuf = linebuf + word1 + ","
+							//line1 = string.delete (line1, 1, ct + 1)
+					//else
+						//scripttext = scripttext + line1 + cr
+					//s = string.delete (s, 1, ct + 1)
+				//s = scripttext
 			new (scriptType, adr);
 			target.set (adr);
 			op.insert (s, down);

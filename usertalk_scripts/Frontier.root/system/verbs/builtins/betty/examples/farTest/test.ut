@@ -9,7 +9,7 @@ for i = 1 to 10 {
 	if s != adrtable^.correctResponse {
 		scriptError ("Oooops, you got an incorrect response.")}};
 dialog.alert (s);
-«save off debugging info
+//save off debugging info
 
 wp.newTextObject (params [1], @adrtable^.rpcRequest);
 try {delete (@adrtable^.rpcReturn)};

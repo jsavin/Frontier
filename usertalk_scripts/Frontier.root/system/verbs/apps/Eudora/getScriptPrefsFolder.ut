@@ -1,6 +1,6 @@
 on getScriptPrefsFolder () {
-	«for scripts that want to store stuff in folders in the System Folder...
-		«we return a path to a folder just for Eudora-based scripts
+	//for scripts that want to store stuff in folders in the System Folder...
+		//we return a path to a folder just for Eudora-based scripts
 	
 	local (prefsfolder = file.getSpecialFolderPath ("", "Preferences", true));
 	local (userlandfolder = prefsfolder + "UserLand:");

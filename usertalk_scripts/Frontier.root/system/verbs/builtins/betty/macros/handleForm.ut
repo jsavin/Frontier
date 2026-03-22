@@ -1,4 +1,4 @@
-«http://www.scripting.com/frontier5/betty/apps/remoteAdmin.html
+//http://www.scripting.com/frontier5/betty/apps/remoteAdmin.html
 
 local (htmltext = "");
 on add (s) {

@@ -1,8 +1,8 @@
 on metaTags (pageTable = nil) {
-	«Add meta tags to the page header.
-		«Tuesday, January 27, 1998 at 12:53:14 AM by PBS
-		«6/23/05; 9:46:18 PM by MB
-			«Use Frontier.getProgramName instead of "Radio UserLand " + Frontier.version () in generator meta tag
+	//Add meta tags to the page header.
+		//Tuesday, January 27, 1998 at 12:53:14 AM by PBS
+		//6/23/05; 9:46:18 PM by MB
+			//Use Frontier.getProgramName instead of "Radio UserLand " + Frontier.version () in generator meta tag
 	
 	local (htmlText = "", i);
 	
@@ -15,8 +15,8 @@ on metaTags (pageTable = nil) {
 	if defined (pageTable^.meta) {
 		add ("\r" + pageTable^.meta)};
 	
-	«General meta tags framework.
-		«From Jim Correia and Jeb Bateman.
+	//General meta tags framework.
+		//From Jim Correia and Jeb Bateman.
 	for i = 1 to sizeof (pageTable^) {
 		local (adrSubItem = @pageTable^ [i]);
 		local (itemName = string.lower (nameOf (adrSubItem^)));
@@ -40,8 +40,8 @@ on metaTags (pageTable = nil) {
 				continue};
 			add ("\r<meta "+ type +"=\""+ metaName +"\" content=\""+ s +"\">")}};
 	
-	«add our own meta tags -- Sat, Nov 30, 1996 at 6:26:59 AM by DW
-		«updated Sun, Sep 28, 1997 at 4:06:28 PM by DW -- correct version number and platform
+	//add our own meta tags -- Sat, Nov 30, 1996 at 6:26:59 AM by DW
+		//updated Sun, Sep 28, 1997 at 4:06:28 PM by DW -- correct version number and platform
 	if html.getPref ("includeMetaGenerator", pageTable) { //5.0
 		local (gen = Frontier.getProgramName () + " " + sys.os ());
 		add ("\r<meta name=\"generator\" content=\"" + gen + "\">")};

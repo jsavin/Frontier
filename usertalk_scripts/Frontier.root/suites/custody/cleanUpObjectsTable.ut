@@ -1,6 +1,6 @@
 on cleanUpObjectsTable () {
-	«Remove objects that have timed out; note it in the log.
-		«A semaphore should be locked on this table before calling this script.
+	//Remove objects that have timed out; note it in the log.
+		//A semaphore should be locked on this table before calling this script.
 	
 	custody.init ();
 	

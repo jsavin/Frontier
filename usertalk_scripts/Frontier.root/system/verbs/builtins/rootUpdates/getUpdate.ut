@@ -1,6 +1,6 @@
 on getUpdate (serverName) {
-	«This script is now obsolete: use rootUpdates.update instead.
-		«Mon, Feb 22, 1999 at 5:44:28 PM by PBS
+	//This script is now obsolete: use rootUpdates.update instead.
+		//Mon, Feb 22, 1999 at 5:44:28 PM by PBS
 	local (frontierVersion = Frontier.version ());
 	local (platform = string.mid (sys.os (), 1, 3));
 	local (ctnewparts = 0, adrPrefs);

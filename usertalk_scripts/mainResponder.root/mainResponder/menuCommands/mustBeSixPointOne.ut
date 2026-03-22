@@ -1,5 +1,5 @@
-«This script is called from other scripts in the mainResponder Server menu. If a command requires 6.1 or greater, and the user is running a version less than 6.0, this script presents a dialog box explaining that 6.1 or greater is required and tells the user what version he or she currently has.
-	«11/20/99; 5:34:57 PM by PBS
+//This script is called from other scripts in the mainResponder Server menu. If a command requires 6.1 or greater, and the user is running a version less than 6.0, this script presents a dialog box explaining that 6.1 or greater is required and tells the user what version he or she currently has.
+	//11/20/99; 5:34:57 PM by PBS
 
 try {
 	Frontier.versionRequired ("6.1b16");

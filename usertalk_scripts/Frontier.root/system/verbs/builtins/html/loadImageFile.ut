@@ -1,10 +1,10 @@
 on loadImageFile (f, adrtable, name=nil) {
-	«load a file of any type as a cell in the indicated table
-		«It can be a GIF, JPEG, Shockwave movie, whatever type you like.
-		«It's loaded into user.html.images. You can move it anywhere you like.
-		«The gifRef macro will understand if the 1st param is an address.
-		«12/30/98 Added name as an optional parameter for custom naming
-	«local (name = file.fileFromPath (f))
+	//load a file of any type as a cell in the indicated table
+		//It can be a GIF, JPEG, Shockwave movie, whatever type you like.
+		//It's loaded into user.html.images. You can move it anywhere you like.
+		//The gifRef macro will understand if the 1st param is an address.
+		//12/30/98 Added name as an optional parameter for custom naming
+	//local (name = file.fileFromPath (f))
 	if name == nil {
 		name = file.fileFromPath (f);
 		name = string.popSuffix (name)};
@@ -26,5 +26,5 @@ on loadImageFile (f, adrtable, name=nil) {
 		adrtable^.[name] = file.readWholeFile (f);
 		setBinaryType (@adrtable^.[name], type)};
 	return (@adrtable^.[name])};
-«bundle «test code
-	«dialog.alert (loadimagefile ("Macintosh HD:Desktop Folder:WINDOWS.GIF", @user.html.images))
+//bundle //test code
+	//dialog.alert (loadimagefile ("Macintosh HD:Desktop Folder:WINDOWS.GIF", @user.html.images))

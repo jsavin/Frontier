@@ -1,5 +1,5 @@
 on get (username, password, siteName, prefName) {
-	«Get the contents of one site pref.
+	//Get the contents of one site pref.
 	
 	bundle { //make sure this person is a managing editor of the site.
 		local (beginningErrorString = "Can't get the site pref \"" + prefName + "\" because ");

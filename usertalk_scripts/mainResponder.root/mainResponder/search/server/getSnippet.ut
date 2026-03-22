@@ -1,7 +1,7 @@
 on getSnippet (htmltext, words, flHtmlSnippets=true) {
-	«Changes
-		«8/7/02; 7:15:42 PM by JES
-			«Created. Take some html text and search terms and return a snippet of sample text from the page which contains the search terms, ala Google's snippets.
+	//Changes
+		//8/7/02; 7:15:42 PM by JES
+			//Created. Take some html text and search terms and return a snippet of sample text from the page which contains the search terms, ala Google's snippets.
 	words = string.replaceAll (words, "\"", "");
 	htmltext = string.replaceAll (htmltext, "&nbsp;", " ");
 	local (lowertext = string.lower (htmltext));
@@ -74,18 +74,18 @@ on getSnippet (htmltext, words, flHtmlSnippets=true) {
 	if flHtmlSnippets { //make ellipses more visible
 		snippets = string.replaceAll (snippets + " ", "... ", "<b>...</b> ")}; //make ellipses more visible
 	return (string.popTrailing (snippets, " "))};
-«bundle //test code
-	«bundle //show snippet
-		«local (url = "http://127.0.0.1:8080/users/0000003/2002/07/11.html")
-		«local (snippet = getSnippet (pageinfo.[url].text, "john"))
-		«dialog.notify (snippet)
-	«local (folder = file.folderFromPath (frontier.getProgramPath ()))
-	«local (s = file.readWholeFile (folder + "Guest Databases:www:users:0000003:index.html"))
-	«bundle //show snippet
-		«local (snippet = getSnippet (s, "radio copyright"))
-		«dialog.notify (snippet)
-	«bundle //benchmark
-		«local (ticks = clock.ticks ())
-		«for i = 1 to 10
-			«getSnippet (s, "radio copyright")
-		«dialog.notify ((clock.ticks () - ticks) / 60.0)
+//bundle //test code
+	//bundle //show snippet
+		//local (url = "http://127.0.0.1:8080/users/0000003/2002/07/11.html")
+		//local (snippet = getSnippet (pageinfo.[url].text, "john"))
+		//dialog.notify (snippet)
+	//local (folder = file.folderFromPath (frontier.getProgramPath ()))
+	//local (s = file.readWholeFile (folder + "Guest Databases:www:users:0000003:index.html"))
+	//bundle //show snippet
+		//local (snippet = getSnippet (s, "radio copyright"))
+		//dialog.notify (snippet)
+	//bundle //benchmark
+		//local (ticks = clock.ticks ())
+		//for i = 1 to 10
+			//getSnippet (s, "radio copyright")
+		//dialog.notify ((clock.ticks () - ticks) / 60.0)

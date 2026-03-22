@@ -1,13 +1,13 @@
 on createShell (adrSiteInfo) {
-	«Create the website shell.
-		«If the shell table already exists, its an error. This is to avoid accidentally over-writing an existing site.
-		«After the shell is created, fill in prefs, #members directives, and so on based on the preferences.
-		«10/21/99; 11:48:28 AM by PBS
-		«Changes:
-			«10/27/99; 11:02:50 AM by PBS
-				«New #newsSite pref: notifySender is by default the email address of the managing editor. This is the from address for email notifications from this site.
-			«10/27/99; 11:07:00 AM by PBS
-				«Don't create the notify list as a Frontier list.
+	//Create the website shell.
+		//If the shell table already exists, its an error. This is to avoid accidentally over-writing an existing site.
+		//After the shell is created, fill in prefs, #members directives, and so on based on the preferences.
+		//10/21/99; 11:48:28 AM by PBS
+		//Changes:
+			//10/27/99; 11:02:50 AM by PBS
+				//New #newsSite pref: notifySender is by default the email address of the managing editor. This is the from address for email notifications from this site.
+			//10/27/99; 11:07:00 AM by PBS
+				//Don't create the notify list as a Frontier list.
 	
 	if defined (adrSiteInfo^.adrSite^) {
 		scriptError ("Can't create the website for \"" + adrSiteInfo^.shortSiteName + "\" because it already exists.")};

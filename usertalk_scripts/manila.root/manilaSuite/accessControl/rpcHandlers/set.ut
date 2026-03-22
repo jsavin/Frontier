@@ -1,7 +1,7 @@
 on set (username, password, siteName, msgNum, attr, val) {
-	«manilaFixer.accessControl.rpcHandlers.set : 04/05/21, 09:45:24 by DAB
-		«set <attr> for <msgnum> to val 
-		«was manilaFixer.accessControl.rpcHandlers.set : 02/02/27, 14:44:50 by DAB
+	//manilaFixer.accessControl.rpcHandlers.set : 04/05/21, 09:45:24 by DAB
+		//set <attr> for <msgnum> to val 
+		//was manilaFixer.accessControl.rpcHandlers.set : 02/02/27, 14:44:50 by DAB
 	
 	manilaSuite.rpcUtils.dgAccessCheck (siteName, username, password, "Can't set " + attr + " for message #" + msgNum + " because ");
 	
@@ -55,6 +55,6 @@ on set (username, password, siteName, msgNum, attr, val) {
 		scriptError ("Can't set " + attr + " for message #" + msgNum + " because " + attr + " is an invalid name.")};
 	
 	return true};
-«bundle    //test logic
-	«window.msg(manilaFixer.accessControl.rpcHandlers.set ("dbayly@dab.dot", "noway", "myfirstSite", 129, "expiryDate", date.netStandardString(clock.now() + 60)))
-	«window.msg(manilaFixer.accessControl.rpcHandlers.set ("dbayly@dab.dot", "noway", "myfirstSite", 129, "releasedate", clock.now()))
+//bundle    //test logic
+	//window.msg(manilaFixer.accessControl.rpcHandlers.set ("dbayly@dab.dot", "noway", "myfirstSite", 129, "expiryDate", date.netStandardString(clock.now() + 60)))
+	//window.msg(manilaFixer.accessControl.rpcHandlers.set ("dbayly@dab.dot", "noway", "myfirstSite", 129, "releasedate", clock.now()))

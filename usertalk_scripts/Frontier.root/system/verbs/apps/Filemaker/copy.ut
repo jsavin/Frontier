@@ -1,2 +1,2 @@
-on copy () { «Copy an object to the clipboard
+on copy () { //Copy an object to the clipboard
 	return (appleEvent (Filemaker.id, 'misc', 'copy'))}

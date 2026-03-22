@@ -1,7 +1,7 @@
 on buildErrorPage (short, verbose) {
-	«Thursday, November 11, 1999 at 3:04:28 AM by AR
-		«Implemented as a kernel verb in Frontier 6.1.
-		«Old code
-			«on buildErrorPage (short, verbose)
-				«return ("<HTML><HEAD><TITLE>" + short + "</TITLE></HEAD><BODY><H1>" + short + "</H1><P>" + verbose + "</P></BODY></HTML>")
+	//Thursday, November 11, 1999 at 3:04:28 AM by AR
+		//Implemented as a kernel verb in Frontier 6.1.
+		//Old code
+			//on buildErrorPage (short, verbose)
+				//return ("<HTML><HEAD><TITLE>" + short + "</TITLE></HEAD><BODY><H1>" + short + "</H1><P>" + verbose + "</P></BODY></HTML>")
 	kernel (webserver.buildErrorPage)}

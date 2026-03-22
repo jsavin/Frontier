@@ -1,5 +1,5 @@
 on getUsersList () {
-	«Return a list of all users.
+	//Return a list of all users.
 	local (i, usersList = {});
 	local (adrUsersTable = @user.people.users);
 	for i = 1 to sizeOf (adrUsersTable^) {

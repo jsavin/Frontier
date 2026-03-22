@@ -1,8 +1,8 @@
 on any (adrelement, adrservice) {
-	«Changes
-		«10/8/02; 5:10:05 PM by JES
-			«Created. Implement the MetaVocab module defined by Aaron Swartz.
-			«MetaVocab: http://webns.net/mvcb/
+	//Changes
+		//10/8/02; 5:10:05 PM by JES
+			//Created. Implement the MetaVocab module defined by Aaron Swartz.
+			//MetaVocab: http://webns.net/mvcb/
 	local (adrdata = @adrservice^.compilation.mvcb);
 	if not defined (adrdata^) {
 		new (tabletype, adrdata)};

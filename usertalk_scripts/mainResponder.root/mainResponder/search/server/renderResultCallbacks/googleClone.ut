@@ -1,7 +1,7 @@
 on googleClone (adrinfo, ranking) {
-	«Changes
-		«8/11/02; 2:05:13 AM by JES
-			«Created. A clone of the Google search result look/feel.
+	//Changes
+		//8/11/02; 2:05:13 AM by JES
+			//Created. A clone of the Google search result look/feel.
 	local (pta = html.getPageTableAddress ());
 	local (flIncludeSiteName = true);
 	if defined (pta^.flIncludeSiteNameInSearchResults) {

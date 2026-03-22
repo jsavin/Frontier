@@ -10,5 +10,5 @@ on fullCollapse () {
 		if not op.go (down, 1) { //just collapsed the last summit, move cursor, restore display, return
 			op.firstSummit ();
 			op.setDisplay (displayon);
-			«window.update (target.get ())
+			//window.update (target.get ())
 			return (returnedvalue)}}}

@@ -1,6 +1,6 @@
 on newMessage (siteUrl, title, inResponseTo=0, flPromoteToStory=true) {
-	«Create a new message in a window.
-		«Mon, Aug 21, 2000 at 3:35:46 PM by PBS
+	//Create a new message in a window.
+		//Mon, Aug 21, 2000 at 3:35:46 PM by PBS
 	
 	local (adrinfo, username, password);
 	on createInfoCallback (adrinfo) {
@@ -26,23 +26,23 @@ on newMessage (siteUrl, title, inResponseTo=0, flPromoteToStory=true) {
 	
 	return (true);
 	
-	«bundle //old code
-		«local (siteInfo, storyInfo)
-		«siteInfo = playlist.manila.buildSiteInfo (siteUrl)
-		«new (tableType, @storyInfo)
-		«storyInfo.subject = title
-		«storyInfo.flAddToStoriesList = flPromoteToStory
-		«if inResponseTo != nil
-			«storyInfo.inResponseTo = inResponseTo
-		«
-		«pike.init ()
-		«
-		«pike.checkSiteInfoTable (@siteInfo, "create story")
-		«
-		«local (adrStoryTable = pike.getNewStoryTableAddress (@siteInfo))
-		«adrStoryTable^.siteInfo = siteInfo
-		«adrStoryTable^.storyInfo = storyInfo
-		«
-		«thread.callScript (@pike.commands.newStory, {adrStoryTable})
-		«
-		«return (true)}
+	//bundle //old code
+		//local (siteInfo, storyInfo)
+		//siteInfo = playlist.manila.buildSiteInfo (siteUrl)
+		//new (tableType, @storyInfo)
+		//storyInfo.subject = title
+		//storyInfo.flAddToStoriesList = flPromoteToStory
+		//if inResponseTo != nil
+			//storyInfo.inResponseTo = inResponseTo
+		//
+		//pike.init ()
+		//
+		//pike.checkSiteInfoTable (@siteInfo, "create story")
+		//
+		//local (adrStoryTable = pike.getNewStoryTableAddress (@siteInfo))
+		//adrStoryTable^.siteInfo = siteInfo
+		//adrStoryTable^.storyInfo = storyInfo
+		//
+		//thread.callScript (@pike.commands.newStory, {adrStoryTable})
+		//
+		//return (true)}

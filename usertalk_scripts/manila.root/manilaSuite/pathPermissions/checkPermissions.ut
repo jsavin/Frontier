@@ -1,10 +1,10 @@
 on checkPermissions (pta=nil) {
-	«Changes
-		«11/3/04; 6:18:11 PM by JES
-			«Respect the flEnabled flag in the site's pathPermissions sub-table of #newsSite.
-		«5/21/03; 3:26:03 PM by JES
-			«Created. Check permissions on a page request to see if the member has permission to view the page.
-			«If permission is denied, we throw an error.
+	//Changes
+		//11/3/04; 6:18:11 PM by JES
+			//Respect the flEnabled flag in the site's pathPermissions sub-table of #newsSite.
+		//5/21/03; 3:26:03 PM by JES
+			//Created. Check permissions on a page request to see if the member has permission to view the page.
+			//If permission is denied, we throw an error.
 	
 	return (true); // 11/05/05; 10:46:47 AM by PR wired off
 	

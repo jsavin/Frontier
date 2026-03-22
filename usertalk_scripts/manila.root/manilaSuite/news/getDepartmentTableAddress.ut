@@ -1,6 +1,6 @@
 on getDepartmentTableAddress (adrSite) {
-	«Get the address of the table containing info about the departments.
-		«04/19/00; 10:45:47 PM by PBS
+	//Get the address of the table containing info about the departments.
+		//04/19/00; 10:45:47 PM by PBS
 	
 	local (adrTable = manilaSuite.news.getNewsItemsTable (adrSite));
 	if not defined (adrTable^.departments) {

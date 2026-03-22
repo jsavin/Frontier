@@ -1,7 +1,7 @@
 on login (driverName, screenname, message) {
-	«Changes
-		«8/12/02; 2:39:19 AM by JES
-			«Rewrite for simplified architecture.
+	//Changes
+		//8/12/02; 2:39:19 AM by JES
+			//Rewrite for simplified architecture.
 	local (ct = string.countFields (message, " "));
 	if ct < 5 {
 		return ("Can't login because you have not supplied both a username and password. Send the login request in the format \"blogger login blogId username password\".")};
@@ -27,5 +27,5 @@ on login (driverName, screenname, message) {
 	
 	return ("Login successful.")};
 
-«bundle //test code
-	«login ("", "", "blogger login 767753 jake@jspace.org guessme")
+//bundle //test code
+	//login ("", "", "blogger login 767753 jake@jspace.org guessme")

@@ -1,61 +1,61 @@
 on getPath (adrSource, adrDest, adrPageTable=nil) {
-	«Revised for performance Sat, May 16, 1998 at 12:16:06 AM by PBS
-		«Old code:
-			«on getPath (adrSource, adrDest, pageTable=nil) //5.0.1. Generate a URL for an odb page.
-				«local (nomad, commonTable)
-				«local (url = "", url2 = "")
-				«
-				«if pageTable == nil
-					«try
-						«pageTable = html.data.adrPageTable
-					«else
-						«pageTable = @websites.["#data"]
-				«if typeOf (adrDest) == tableType //it's an error if it's a table.
-					«scriptError ("Can't calculate path to \"" + adrDest + "\" because it's a table.")
-				«if typeOf (adrSource^) != tableType
-					«adrSource = parentOf (adrSource^)
-				«
-				«Find the common table.
-				«commonTable = adrSource
-				«loop //walk backwards, looking for a common table.
-					«if table.tableContains (commonTable, adrDest)
-						«break //found it
-					«commonTable = parentOf (commonTable^)
-					«url = "../" + url
-					«if commonTable == @root or commonTable == nil
-						«break
-				«
-				«Walk back from the destination to the common table.
-				«nomad = parentOf (adrDest^)
-				«loop
-					«if nomad == commonTable
-						«break
-					«bundle //check for an #ftpSite table.
-						«try
-							«url2 = nomad^.["#ftpSite"].url + url2
-							«break
-						«try
-							«url2 = nomad^.["#prefs"].["#ftpSite"].url + url2
-							«break
-						«try
-							«url2 = nomad^.["#prefs"].["ftpSite"].url + url2
-							«break
-					«url2 = nameOf (nomad^) + "/" + url2
-					«nomad = parentOf (nomad^)
-				«
-				«url2 = url2 + html.normalizeName (nameOf (adrDest^), pageTable, adrDest)
-				«local (fileExtension)
-				«if string.lower (html.getPref ("responder")) == "websiteframework"
-					«fileExtension = ".wsf"
-				«else
-					«fileExtension = html.getPagePref ("fileExtension", adrDest)
-				«url2 = url2 + fileExtension
-				«if (url2 beginsWith "http://") or (url2 beginsWith "file:///") //it's a fully-qualified URL.
-					«url = url2
-				«else //it's a relative URL.
-					«url = url + url2
-				«
-				«return (url)
+	//Revised for performance Sat, May 16, 1998 at 12:16:06 AM by PBS
+		//Old code:
+			//on getPath (adrSource, adrDest, pageTable=nil) //5.0.1. Generate a URL for an odb page.
+				//local (nomad, commonTable)
+				//local (url = "", url2 = "")
+				//
+				//if pageTable == nil
+					//try
+						//pageTable = html.data.adrPageTable
+					//else
+						//pageTable = @websites.["#data"]
+				//if typeOf (adrDest) == tableType //it's an error if it's a table.
+					//scriptError ("Can't calculate path to \"" + adrDest + "\" because it's a table.")
+				//if typeOf (adrSource^) != tableType
+					//adrSource = parentOf (adrSource^)
+				//
+				//Find the common table.
+				//commonTable = adrSource
+				//loop //walk backwards, looking for a common table.
+					//if table.tableContains (commonTable, adrDest)
+						//break //found it
+					//commonTable = parentOf (commonTable^)
+					//url = "../" + url
+					//if commonTable == @root or commonTable == nil
+						//break
+				//
+				//Walk back from the destination to the common table.
+				//nomad = parentOf (adrDest^)
+				//loop
+					//if nomad == commonTable
+						//break
+					//bundle //check for an #ftpSite table.
+						//try
+							//url2 = nomad^.["#ftpSite"].url + url2
+							//break
+						//try
+							//url2 = nomad^.["#prefs"].["#ftpSite"].url + url2
+							//break
+						//try
+							//url2 = nomad^.["#prefs"].["ftpSite"].url + url2
+							//break
+					//url2 = nameOf (nomad^) + "/" + url2
+					//nomad = parentOf (nomad^)
+				//
+				//url2 = url2 + html.normalizeName (nameOf (adrDest^), pageTable, adrDest)
+				//local (fileExtension)
+				//if string.lower (html.getPref ("responder")) == "websiteframework"
+					//fileExtension = ".wsf"
+				//else
+					//fileExtension = html.getPagePref ("fileExtension", adrDest)
+				//url2 = url2 + fileExtension
+				//if (url2 beginsWith "http://") or (url2 beginsWith "file:///") //it's a fully-qualified URL.
+					//url = url2
+				//else //it's a relative URL.
+					//url = url + url2
+				//
+				//return (url)
 	local (flSameWebsite = false);
 	local (urlPrefix = "", path = "", fileExtension = "");
 	local (adrSourceRoot, adrDestRoot);

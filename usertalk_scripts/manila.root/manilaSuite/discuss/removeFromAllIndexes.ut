@@ -1,6 +1,6 @@
 on removeFromAllIndexes (adrSite, adrMsg) {
-	«Remove from all indexes. Needed especially when a message has been deleted.
-		«10/09/00; 10:06:32 PM by PBS
+	//Remove from all indexes. Needed especially when a message has been deleted.
+		//10/09/00; 10:06:32 PM by PBS
 	
 	local (msgNum = adrMsg^.msgNum);
 	local (itemName = string.padWithZeros (msgNum, 7));

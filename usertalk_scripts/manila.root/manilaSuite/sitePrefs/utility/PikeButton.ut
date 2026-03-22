@@ -1,7 +1,7 @@
 on PikeButton (pta, adrObject, sectionName) {
-	«manilaSuite.sitePrefs.utility.PikeButton : 04/05/16, 14:27:58 by DAB
-		«factored from manilaSuite.sitePrefs.advancedPage
-	«messages at manilaData.localization.languages.english.strings.admin
+	//manilaSuite.sitePrefs.utility.PikeButton : 04/05/16, 14:27:58 by DAB
+		//factored from manilaSuite.sitePrefs.advancedPage
+	//messages at manilaData.localization.languages.english.strings.admin
 	local (editInPikeUrl = "editInPike?" + string.urlEncode (sectionName));
 	local (appendTable);
 	new (tableType, @appendTable);

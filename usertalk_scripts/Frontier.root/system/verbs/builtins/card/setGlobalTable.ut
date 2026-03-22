@@ -1,35 +1,35 @@
 on setGlobalTable (adrTable, majorswitch) {
-	«the table becomes the current table
-		«we smash the address at system.misc.paths.cardPath to point at it
-			«its contents become globals
-		«if flmajorswitch is true we install the embedded menubar
-			«this should be set true on activate events in Card Runner
-		«Tue, Sep 3, 1996 at 6:15:11 PM by dmb
-			«New runtime code for running cards inside of Frontier
-		«Thu, Sep 26, 1996 at 4:44:50 PM by dmb
-			«no longer set misc.paths.cardPath
+	//the table becomes the current table
+		//we smash the address at system.misc.paths.cardPath to point at it
+			//its contents become globals
+		//if flmajorswitch is true we install the embedded menubar
+			//this should be set true on activate events in Card Runner
+		//Tue, Sep 3, 1996 at 6:15:11 PM by dmb
+			//New runtime code for running cards inside of Frontier
+		//Thu, Sep 26, 1996 at 4:44:50 PM by dmb
+			//no longer set misc.paths.cardPath
 	
-	local (cardInFrontier); «running inside of Frontier?
+	local (cardInFrontier); //running inside of Frontier?
 	local (destAdr);
 	
 	if majorswitch {
-		if defined (system.compiler.cards.activeCard^.menubar) { «remove old menubar
+		if defined (system.compiler.cards.activeCard^.menubar) { //remove old menubar
 			cardInFrontier = (sys.frontmostApp() == file.fileFromPath (Frontier.getProgramPath ()));
 			if cardInFrontier {
 				menu.remove (@system.compiler.cards.activeCard^.menubar)};
-			«else
-				«destAdr = @system.menubars.[file.creator (sys.frontmostApp())]
-				«menu.deletesubMenu
-				«if defined (destAdr^)
-					«delete (destAdr)};
+			//else
+				//destAdr = @system.menubars.[file.creator (sys.frontmostApp())]
+				//menu.deletesubMenu
+				//if defined (destAdr^)
+					//delete (destAdr)};
 		
 		system.compiler.cards.activeCard = adrTable;
 		
-		if defined (adrTable^.menubar) { «install new menubar, if present
+		if defined (adrTable^.menubar) { //install new menubar, if present
 			cardInFrontier = (sys.frontmostApp() == file.fileFromPath (Frontier.getProgramPath ()));
 			if cardInFrontier {
 				menu.install (@adrTable^.menubar)};
-			«else
-				«system.menubars.DRPb = adrTable^.menubar}};
+			//else
+				//system.menubars.DRPb = adrTable^.menubar}};
 	
 	return (true)}

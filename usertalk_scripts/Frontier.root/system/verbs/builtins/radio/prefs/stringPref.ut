@@ -1,24 +1,24 @@
 on stringPref (prompt, adrstring, type="text", size=50, maxlength=100, textToRight="", colspan=1, flCheckRepeatedPassword=true) {
-	«Changes
-		«8/24/04; 2:51:23 AM by JES
-			«When running in Frontier, don't do latin-to-mac character set conversion, since mainResponder does this for us already.
-		«8/3/02; 8:43:10 PM by JES
-			«Addresses which contained quote characters were mangling the HTML for the form element, so now addresses are url-encoded when generating the form element. When processing a POST, we look for the url-encoded field in the postArgs table.
-		«6/10/02; 6:29:40 PM by DW
-			«Fixed breakage. If the passwords weren't equal, the password would be deleted. I'm surprised we haven't gotten a bunch of bug reports on this. It made the Mail-to-Blog prefs page quite fragile.
-		«2/5/02; 11:39:37 AM by PBS
-			«Conditionalized to work in Frontier.
-		«1/28/02; 6:31:12 PM by JES
-			«If this is MacOS, convert POSTed strings to Mac text, before storing the value.
-		«12/20/01; 12:23:29 AM by JES
-			«New optional parameter: flCheckRepeatedPassword. If true, verify the password against the repeated password stored at system.temp.radio.repeatedPassword. Default is true.
-		«12/4/01; 12:54:41 AM by JES
-			«If type is "password", store the value as a binary-type.
-		«11/20/01; 5:06:08 PM by DW
-			«Lawrence wrote:
-				«Name and Email address are only written out to user.prefs. A previous work around wrote out them to the weblogData.prefs as well.
-					«weblogData.prefs.authorName
-					«weblogData.prefs.authorMailAddress
+	//Changes
+		//8/24/04; 2:51:23 AM by JES
+			//When running in Frontier, don't do latin-to-mac character set conversion, since mainResponder does this for us already.
+		//8/3/02; 8:43:10 PM by JES
+			//Addresses which contained quote characters were mangling the HTML for the form element, so now addresses are url-encoded when generating the form element. When processing a POST, we look for the url-encoded field in the postArgs table.
+		//6/10/02; 6:29:40 PM by DW
+			//Fixed breakage. If the passwords weren't equal, the password would be deleted. I'm surprised we haven't gotten a bunch of bug reports on this. It made the Mail-to-Blog prefs page quite fragile.
+		//2/5/02; 11:39:37 AM by PBS
+			//Conditionalized to work in Frontier.
+		//1/28/02; 6:31:12 PM by JES
+			//If this is MacOS, convert POSTed strings to Mac text, before storing the value.
+		//12/20/01; 12:23:29 AM by JES
+			//New optional parameter: flCheckRepeatedPassword. If true, verify the password against the repeated password stored at system.temp.radio.repeatedPassword. Default is true.
+		//12/4/01; 12:54:41 AM by JES
+			//If type is "password", store the value as a binary-type.
+		//11/20/01; 5:06:08 PM by DW
+			//Lawrence wrote:
+				//Name and Email address are only written out to user.prefs. A previous work around wrote out them to the weblogData.prefs as well.
+					//weblogData.prefs.authorName
+					//weblogData.prefs.authorMailAddress
 	local (pta = html.getpagetableaddress ());
 	local (error = "");
 	if pta^.method == "POST" {
@@ -49,6 +49,6 @@ on stringPref (prompt, adrstring, type="text", size=50, maxlength=100, textToRig
 				if adr == @user.prefs.mailAddress {
 					weblogData.prefs.authorMailAddress = value}}}};
 	return (error + "<tr><td align=\"left\">" + prompt + ":</td><td valign=\"top\" width=\"70%\" colspan=\"" + colspan + "\"><input type=\"" + type + "\" name=\"" + string.urlEncode (string.popFileFromAddress (adrstring)) + "\" size=\"" + size + "\" maxlength=\"" + maxlength + "\" value=\"" + string (adrstring^) + "\">" + textToRight + "</td></tr>")};
-«bundle //test code
-	«html.setpagetableaddress (@scratchpad.params)
-	«stringpref ("Mail server", @user.prefs.mailHost)
+//bundle //test code
+	//html.setpagetableaddress (@scratchpad.params)
+	//stringpref ("Mail server", @user.prefs.mailHost)

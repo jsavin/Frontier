@@ -1,6 +1,6 @@
-on zoomWindow (windowpath, zoomIn) { « zoom the indicated folder's window in or out
-	«For compatibility.  For Scriptable Finder, suggest
-		«set (windowReference.zoomed, true | false)
+on zoomWindow (windowpath, zoomIn) { // zoom the indicated folder's window in or out
+	//For compatibility.  For Scriptable Finder, suggest
+		//set (windowReference.zoomed, true | false)
 	local (zoomcode, fwindow);
 	if not Finder.makeWindow (windowpath, 0, @fwindow) {
 		return (false)};

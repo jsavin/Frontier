@@ -1,8 +1,8 @@
 on storyListPage () {
-	«05/22/00; 5:31:38 PM by JES -- the localized version of the list Stories page
-		«Changes:
-			«9/12/01; 2:44:57 PM by PBS
-				«The story list may have access privileges. Call the bottleneck script at manilaSuite.editors.editorialPageAccess.
+	//05/22/00; 5:31:38 PM by JES -- the localized version of the list Stories page
+		//Changes:
+			//9/12/01; 2:44:57 PM by PBS
+				//The story list may have access privileges. Call the bottleneck script at manilaSuite.editors.editorialPageAccess.
 	
 	local (htmltext, indentlevel = 0, pta = html.getPageTableAddress ());
 	
@@ -55,11 +55,11 @@ on storyListPage () {
 		replacementTable.editorialPrefs= string.popSuffix(pta^.urls^.editorialPrefs, "$")};
 	add (manilaSuite.getString ("discuss.listStoriesPageDescription", @replacementTable, pta:pta) + "\r");
 	
-	«add (manilaSuite.storyList ("stories", flUseSiteStructurePaths:true)) //PBS 09/06/01: use site structure paths, when available, when linking to stories
+	//add (manilaSuite.storyList ("stories", flUseSiteStructurePaths:true)) //PBS 09/06/01: use site structure paths, when available, when linking to stories
 	add ("<form method='POST' action='" + manilaSuite.getUrl ("editorialStories", pta) + "'>");
 	add (manilaSuite.storyList("stories", true,  20, flIncludeCheckBox:true,  boxPrefix:"delete", flUseSiteStructurePaths:true)); //04/05/27, 16:35:45 by DAB
 	if pta^.flEditor { //add to pictures list form 04/05/28, 07:58:39 by DAB //add to stories list form
-		«add ("<b>" + manilaSuite.getString ("admin.addDGMessageToStoriesList") + "</b><p>") // 4/17/00 JES: localized
+		//add ("<b>" + manilaSuite.getString ("admin.addDGMessageToStoriesList") + "</b><p>") // 4/17/00 JES: localized
 		add (manilaSuite.getString ("admin.addDGMessageNumber")); // 4/17/00 JES: localized
 		add ("<input name='msgNumStory' value='' size='10'>");
 		add ("<input type='submit' name = 'promoteStory' value='" + manilaSuite.getString ("admin.addDGMessageToStoriesList") + "'>")}; // 4/17/00 JES: localized

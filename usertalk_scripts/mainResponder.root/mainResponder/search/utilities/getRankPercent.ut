@@ -1,7 +1,7 @@
 on getRankPercent (rank, min=0) {
-	«Changes
-		«8/7/02; 3:56:03 PM by JES
-			«Created. Factored from mainResponder.search.server.buildHtml.
+	//Changes
+		//8/7/02; 3:56:03 PM by JES
+			//Created. Factored from mainResponder.search.server.buildHtml.
 	rank = rank - min;
 	case true {
 		rank > 2615 {

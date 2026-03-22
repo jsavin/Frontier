@@ -1,12 +1,12 @@
 on linkStyleSheet (sheetName="default", sheetTitle="", adrPageTable=nil) {
-	«Create a link to an external style sheet of the form:
-		«<link rel=stylesheet href="../defaultStyleSheet.css" type="text/css">
-		«Call this macro from within your #pageHeader attribute.
-		«Style sheets are stored in a #styleSheets table.
-		«You can have multiple, named style sheets.
-		«The #styleSheets are searched hierarchically.
-		«This macro also renders the style sheet and writes it to disk.
-		«Thu, May 14, 1998 at 3:35:12 PM by PBS
+	//Create a link to an external style sheet of the form:
+		//<link rel=stylesheet href="../defaultStyleSheet.css" type="text/css">
+		//Call this macro from within your #pageHeader attribute.
+		//Style sheets are stored in a #styleSheets table.
+		//You can have multiple, named style sheets.
+		//The #styleSheets are searched hierarchically.
+		//This macro also renders the style sheet and writes it to disk.
+		//Thu, May 14, 1998 at 3:35:12 PM by PBS
 	
 	local (nomad, s, urlPrefix, adrStyleSheet);
 	local (folder, styleSheetText, fname);
@@ -15,8 +15,8 @@ on linkStyleSheet (sheetName="default", sheetTitle="", adrPageTable=nil) {
 	if adrPageTable == nil {
 		adrPageTable = html.getPageTableAddress ()};
 	
-	«Are we using an alternate template?
-		«Saturday, May 30, 1998 at 5:04:32 PM by PBS
+	//Are we using an alternate template?
+		//Saturday, May 30, 1998 at 5:04:32 PM by PBS
 	try {
 		if adrPageTable^.indirectTemplate {
 			templateName = html.getPref ("template", adrPageTable)}};
@@ -72,7 +72,7 @@ on linkStyleSheet (sheetName="default", sheetTitle="", adrPageTable=nil) {
 	bundle { //render the style sheet object
 		case typeOf (adrStyleSheet^) {
 			outlineType {
-				«We cache rendered sheets based on modification dates.
+				//We cache rendered sheets based on modification dates.
 				local (adrCache = @temp.renderedStyleSheets);
 				local (adrCachedSheet);
 				if not defined (adrCache^) {

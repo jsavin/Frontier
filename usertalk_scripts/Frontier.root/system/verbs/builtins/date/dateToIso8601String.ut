@@ -1,10 +1,10 @@
 on dateToIso8601String (d) {
-	«Changes
-		«2/12/03; 6:17:57 PM by JES
-			«Created. Return the given date as an ISO 8601 formatted string.
-			«Example: 1994-11-05T08:15:30-05:00
-			«Spec: http://www.w3.org/TR/NOTE-datetime
-			«Cribbed from code written by Andre Radke at soap.encode.simpleType.
+	//Changes
+		//2/12/03; 6:17:57 PM by JES
+			//Created. Return the given date as an ISO 8601 formatted string.
+			//Example: 1994-11-05T08:15:30-05:00
+			//Spec: http://www.w3.org/TR/NOTE-datetime
+			//Cribbed from code written by Andre Radke at soap.encode.simpleType.
 	local (s, day, month, year, hour, minute, second);
 	date.get (d, @day, @month, @year, @hour, @minute, @second);
 	s = string (year) + "-";
@@ -22,6 +22,6 @@ on dateToIso8601String (d) {
 	local (tzhours = tzoffset / 60);
 	local (tzminutes = tzoffset % 60);
 	return (s + tzsign + string.padWithZeros (tzhours, 2) + ":"  + string.padWithZeros (tzminutes, 2))};
-«bundle //test code
-	«date.dateToIso8601String (clock.now ())
-		«"2003-02-12T18:25:38-08:00"
+//bundle //test code
+	//date.dateToIso8601String (clock.now ())
+		//"2003-02-12T18:25:38-08:00"

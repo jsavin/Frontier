@@ -1,17 +1,17 @@
 on array (adrmsg, adrelement, arraytype, flEnforceSimpleTypes=true, flDuplicatesToArrays=false) {
-	«Changes:
-		«4/13/06; 4:07:48 AM by JES
-			«New optional parameter, flDuplicatesToArrays. If true, duplicate scalars are converted to arrays of scalars. Default is false, preserving existing behavior. Also passed in calls to soap.decode.main.
-		«03/19/01; 3:23:07 PM by JES
-			«Added support for decoding arrays of structs.
-		«03/25/01; 10:01:48 PM by JES
-			«Fixed a problem with decoding simple arrays, which was caused by changes for decoding arrays of structs.
-		«04/05/01; 6:53:36 PM by JES
-			«When decoding an array of structs, decode using soap.decode.main, instead of soap.decode.struct. Allows elements to be decoded by reference, as well as in-place. New optional parameter, flEnforceSimpleTypes, specifies whether to fault on elements whose type is not specified. This is passed to soap.decode.main.
-		«04/10/01; 5:27:24 PM by JES
-			«Bug fix: one of the calls to soap.decode.simpleType was passing in too many parameters.
-		«04/30/01; 5:16:19 PM by JES
-			«Fixed a bug decoding mixed-type arrays, where the type of the array is specified as ur-type or anyType.
+	//Changes:
+		//4/13/06; 4:07:48 AM by JES
+			//New optional parameter, flDuplicatesToArrays. If true, duplicate scalars are converted to arrays of scalars. Default is false, preserving existing behavior. Also passed in calls to soap.decode.main.
+		//03/19/01; 3:23:07 PM by JES
+			//Added support for decoding arrays of structs.
+		//03/25/01; 10:01:48 PM by JES
+			//Fixed a problem with decoding simple arrays, which was caused by changes for decoding arrays of structs.
+		//04/05/01; 6:53:36 PM by JES
+			//When decoding an array of structs, decode using soap.decode.main, instead of soap.decode.struct. Allows elements to be decoded by reference, as well as in-place. New optional parameter, flEnforceSimpleTypes, specifies whether to fault on elements whose type is not specified. This is passed to soap.decode.main.
+		//04/10/01; 5:27:24 PM by JES
+			//Bug fix: one of the calls to soap.decode.simpleType was passing in too many parameters.
+		//04/30/01; 5:16:19 PM by JES
+			//Fixed a bug decoding mixed-type arrays, where the type of the array is specified as ur-type or anyType.
 	local (rank = 1, size, flsizeknown = false, fltypeknown = true, resultlist = {});
 	bundle { //extract size
 		local (ix = string.length (arraytype));
@@ -70,15 +70,15 @@ on array (adrmsg, adrelement, arraytype, flEnforceSimpleTypes=true, flDuplicates
 						resultlist[position] = soap.decode.main (adrmsg, adrarrayelement, flEnforceSimpleTypes, flDuplicatesToArrays)}}
 				else { //call soap.decode.simpleType, for single-type arrays
 					resultlist[position] = soap.decode.simpleType (adrmsg, adrarrayelement, arraytype)}};
-			«bundle //old code for dealing with arrays of structs
-				«try //simple type
-					«resultlist[position] = soap.decode.simpleType (adrmsg, adrarrayelement, arraytype)
-				«else //03/25/2001 JES: simple-type decoding failed -- assume it's an array of structs
-					«if typeOf (resultlist) == listType
-						«new (tableType, @resultlist)
-					«local (name = string.nthField (arrayType, ":", 2) + string.padWithZeros (position, 7))
-					«resultlist.[name] = soap.decode.struct (adrmsg, adrarrayelement, flEnforceSimpleTypes)
-					«resultlist.[name] = soap.decode.main (adrmsg, adrarrayelement, flEnforceSimpleTypes)}
+			//bundle //old code for dealing with arrays of structs
+				//try //simple type
+					//resultlist[position] = soap.decode.simpleType (adrmsg, adrarrayelement, arraytype)
+				//else //03/25/2001 JES: simple-type decoding failed -- assume it's an array of structs
+					//if typeOf (resultlist) == listType
+						//new (tableType, @resultlist)
+					//local (name = string.nthField (arrayType, ":", 2) + string.padWithZeros (position, 7))
+					//resultlist.[name] = soap.decode.struct (adrmsg, adrarrayelement, flEnforceSimpleTypes)
+					//resultlist.[name] = soap.decode.main (adrmsg, adrarrayelement, flEnforceSimpleTypes)}
 		else {
 			local (type = soap.xmlutils.getAttributeValue (adrarrayelement, soap.xmlutils.setQualifiedName (adrmsg, "type", soap.constants.nsSchemaURI)));
 			if type {

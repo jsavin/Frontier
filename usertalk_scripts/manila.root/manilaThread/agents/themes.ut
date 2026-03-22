@@ -1,6 +1,6 @@
-«Scan for new and changed themes.
-	«1/15/02; 6:06:28 PM by PBS
-	«3/13/07; 2:47:23 PM by LL
-		«No longer use the thread to scan for new or changed themes.
-«manilaSuite.themes.scanFolder () //PBS 06/06/00: load any new or updated themes
-«manilaSuite.themes.scanFolder (Frontier.getSubFolder ("ops/discussion group themes/"), @config.manila.discussionGroupThemes) //JES 10/26/00: load any new or updated themes
+//Scan for new and changed themes.
+	//1/15/02; 6:06:28 PM by PBS
+	//3/13/07; 2:47:23 PM by LL
+		//No longer use the thread to scan for new or changed themes.
+//manilaSuite.themes.scanFolder () //PBS 06/06/00: load any new or updated themes
+//manilaSuite.themes.scanFolder (Frontier.getSubFolder ("ops/discussion group themes/"), @config.manila.discussionGroupThemes) //JES 10/26/00: load any new or updated themes

@@ -1,16 +1,16 @@
 on save (adr, flClosing=false) {
-	«Changes:
-		«10/14/05; 10:06:03 PM by JES
-			«Call op.outlineToXml with flDehoist as true.
-		«6/25/02; 1:06:47 AM by JES
-			«Set the title attribute of the window after it's been saved. The title attribute is used when creating bookmarks for disk-based outline files.
-		«3/26/02; 6:30:59 PM by JES
-			«If the window has an adrCloud attribute, add a <cloud> element to the OPML file.
-			«We make a local copy of the cloudData table, rename server to domain.
-			«If the window has a requestNotificationProcedure attribute, use its value for the registerProcedure cloudData sub-element.
-		«8/9/01; 1:11:41 AM by JES
-			«Preserve line endings for non-OPML files.
-			«On MacOS X, default to LF for the line ending.
+	//Changes:
+		//10/14/05; 10:06:03 PM by JES
+			//Call op.outlineToXml with flDehoist as true.
+		//6/25/02; 1:06:47 AM by JES
+			//Set the title attribute of the window after it's been saved. The title attribute is used when creating bookmarks for disk-based outline files.
+		//3/26/02; 6:30:59 PM by JES
+			//If the window has an adrCloud attribute, add a <cloud> element to the OPML file.
+			//We make a local copy of the cloudData table, rename server to domain.
+			//If the window has a requestNotificationProcedure attribute, use its value for the registerProcedure cloudData sub-element.
+		//8/9/01; 1:11:41 AM by JES
+			//Preserve line endings for non-OPML files.
+			//On MacOS X, default to LF for the line ending.
 	local (atts);
 	window.attributes.getAll (@atts, adr);
 	local (f = window.getTitle (adr));
@@ -96,5 +96,5 @@ on save (adr, flClosing=false) {
 	
 	return (true)};
 
-«bundle //debugging
-	«save (window.frontMost (), false)
+//bundle //debugging
+	//save (window.frontMost (), false)

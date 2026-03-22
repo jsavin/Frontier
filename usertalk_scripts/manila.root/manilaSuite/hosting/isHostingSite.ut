@@ -1,6 +1,6 @@
 on isHostingSite (adrSite) {
-	«Return true if this is a hosting site, false otherwise.
-		«07/18/00; 3:53:29 PM by PBS
+	//Return true if this is a hosting site, false otherwise.
+		//07/18/00; 3:53:29 PM by PBS
 	
 	local (adrPrefs);
 	if manilaSuite.hosting.getPrefsAddressForSite (adrSite, @adrPrefs) { //if it's possible to get the prefs address, it's a hosting site

@@ -1,10 +1,10 @@
 on newItemChecks (pta,  adrMsg) {
-	«Changes
-		«11/8/05; 5:22:28 AM by JES
-			«Bug fix: pass adrMsg^.accessControl.permittedCohorts to checkMemberCohorts, instead of adrMsg^.accessControl.
-		«05/20/04, 17:59:54 by DAB
-			«Created. Return true or false depending on whether the pagetable grants access to a newsItem message
-				«was manilaFixer.accessControl.newItemChecks : 02/08/24, 11:10:03 by DAB
+	//Changes
+		//11/8/05; 5:22:28 AM by JES
+			//Bug fix: pass adrMsg^.accessControl.permittedCohorts to checkMemberCohorts, instead of adrMsg^.accessControl.
+		//05/20/04, 17:59:54 by DAB
+			//Created. Return true or false depending on whether the pagetable grants access to a newsItem message
+				//was manilaFixer.accessControl.newItemChecks : 02/08/24, 11:10:03 by DAB
 	local (adrSite = manilaSuite.getManilaSiteAddress(pta));
 	if defined (pta^.adrMemberInfo) and mainResponder.discuss.memberCanEdit(adrMsg, pta^.adrMemberInfo, pta) {
 		return true}; // you can always see your editable messages
@@ -32,8 +32,8 @@ on newItemChecks (pta,  adrMsg) {
 	if not dateChecks() {
 		return false};
 	
-	«if not manilaSuite.accessControl.checkMemberCohorts(pta, @adrMsg^.accessControl)
-		«return false
+	//if not manilaSuite.accessControl.checkMemberCohorts(pta, @adrMsg^.accessControl)
+		//return false
 	case true { //04/06/04, 14:45:55 by DAB
 		not defined(adrMsg^.accessControl.permittedCohorts);
 		adrMsg^.accessControl.permittedCohorts == {} { //{} == everyone has access
@@ -42,7 +42,7 @@ on newItemChecks (pta,  adrMsg) {
 			return false}};
 	
 	return true};
-«bundle
-	«local (tbl = temp.pta.["374"].firstFilter)
-	«html.setPageTableAddress(@tbl)
-	«checks()
+//bundle
+	//local (tbl = temp.pta.["374"].firstFilter)
+	//html.setPageTableAddress(@tbl)
+	//checks()

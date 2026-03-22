@@ -1,11 +1,11 @@
 on newStory (subject, pta=nil) {
-	«Send a message to Pike: please open up a new, untitled story window.
-		«01/13/00; 3:44:04 PM by PBS
-		«Changes:
-			«03/23/00; 5:26:20 PM by PBS
-				«Send default rendererInfo table as part of storyInfoTable. This table contains the name of the preferred renderer and a boolean stating that the content should be rendered on entry.
-			«11/14/00; 10:54:26 AM by PBS
-				«If the server accepts OPML, let the editor know.
+	//Send a message to Pike: please open up a new, untitled story window.
+		//01/13/00; 3:44:04 PM by PBS
+		//Changes:
+			//03/23/00; 5:26:20 PM by PBS
+				//Send default rendererInfo table as part of storyInfoTable. This table contains the name of the preferred renderer and a boolean stating that the content should be rendered on entry.
+			//11/14/00; 10:54:26 AM by PBS
+				//If the server accepts OPML, let the editor know.
 	
 	local (pikeIp, pikePort, pikeRpcPath);
 	bundle { //get information about the machine running Pike

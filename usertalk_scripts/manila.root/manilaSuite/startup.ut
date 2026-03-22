@@ -1,9 +1,9 @@
-«This script is called when Frontier starts up, to get Manila ready for another session.
-«Changes:
-	«12/13/05; 4:20:22 AM by JES
-		«Ensure that all default mime types from webserver.data.prefs.ext2MIME are defined in user.webserver.prefs.ext2MIME.
-	«04/05/00; 10:11:08 AM by PBS
-		«The RPC new message and save message callback scripts have changed: they now call scripts in the manilaSuite.callbacks table.
+//This script is called when Frontier starts up, to get Manila ready for another session.
+//Changes:
+	//12/13/05; 4:20:22 AM by JES
+		//Ensure that all default mime types from webserver.data.prefs.ext2MIME are defined in user.webserver.prefs.ext2MIME.
+	//04/05/00; 10:11:08 AM by PBS
+		//The RPC new message and save message callback scripts have changed: they now call scripts in the manilaSuite.callbacks table.
 
 on startupMsg (s) {
 	msg ("manilaSuite.startup: " + s)};

@@ -1,5 +1,5 @@
 on close (adr) {
-	«Close a manila message, checking it in if necessary.
+	//Close a manila message, checking it in if necessary.
 	
 	local (atts);
 	if not window.attributes.getAll (@atts) { //return false if no atts

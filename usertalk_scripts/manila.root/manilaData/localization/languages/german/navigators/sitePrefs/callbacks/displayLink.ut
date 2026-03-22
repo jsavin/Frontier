@@ -1,10 +1,10 @@
 on displayLink (name) {
-	«Callback that can specify whether or not to display a link.
-		«03/14/00; 12:25:26 AM by PBS
-		«Changes:
-			«05/08/00; 7:08:08 PM by JES
-				«localized
-			«05/29/00; 6:02:06 PM by JES
-				«now a wrapper for manilaData.sitePrefs.navigator.callbacks.displayLink
+	//Callback that can specify whether or not to display a link.
+		//03/14/00; 12:25:26 AM by PBS
+		//Changes:
+			//05/08/00; 7:08:08 PM by JES
+				//localized
+			//05/29/00; 6:02:06 PM by JES
+				//now a wrapper for manilaData.sitePrefs.navigator.callbacks.displayLink
 	
 	return (manilaData.sitePrefs.navigator.callbacks.displayLink (name))}

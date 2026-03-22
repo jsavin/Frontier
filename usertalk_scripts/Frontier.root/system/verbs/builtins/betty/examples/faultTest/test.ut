@@ -1,4 +1,4 @@
-«Test the fault reporting facility
-	«3/28/98; 7:00:12 PM by DW
+//Test the fault reporting facility
+	//3/28/98; 7:00:12 PM by DW
 
 dialog.alert (betty.rpc.client (procedureName:"wildBeatnikPie"))

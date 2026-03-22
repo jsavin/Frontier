@@ -1,6 +1,6 @@
 on registerRpcHandlers (pluginName, adrRpcHandlers) {
-	«Register the RPC handlers for a plugin.
-		«02/23/00; 3:52:24 PM by PBS
+	//Register the RPC handlers for a plugin.
+		//02/23/00; 3:52:24 PM by PBS
 	
 	local (adrConfigTable = @config.manila.plugins.rpcHandlers);
 	if not defined (adrConfigTable^) {

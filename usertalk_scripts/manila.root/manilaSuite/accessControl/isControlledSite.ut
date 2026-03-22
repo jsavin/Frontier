@@ -1,7 +1,7 @@
 on isControlledSite (adrSite) {
-	«manilaSuite.AccessControl.isControlledSite : 04/05/20, 17:27:39 by DAB
-		«returns true if  accesscontrol is enabled in this site
-		«was manilaFixer.accessControl.isControlledSite : 03/08/10, 09:12:41 by DAB
+	//manilaSuite.AccessControl.isControlledSite : 04/05/20, 17:27:39 by DAB
+		//returns true if  accesscontrol is enabled in this site
+		//was manilaFixer.accessControl.isControlledSite : 03/08/10, 09:12:41 by DAB
 	local (adrNewsSite = manilaSuite.getNewsSiteAddress(adrSite));
 	if not defined(adrNewsSite^.accessControl) {
 		return false};

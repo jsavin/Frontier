@@ -1,6 +1,6 @@
 on themesPopup (label, buttonText) {
-	«Build an HTML list of themes on the site. Include links, descriptions, and authors optionally. (Default is to include all.) List themes that are public and enabled.
-		«06/15/00; 5:49:00 PM by PBS
+	//Build an HTML list of themes on the site. Include links, descriptions, and authors optionally. (Default is to include all.) List themes that are public and enabled.
+		//06/15/00; 5:49:00 PM by PBS
 	
 	local (pta = html.getPageTableAddress ());
 	

@@ -1,10 +1,10 @@
 on getCommentData (siteName, blogId) {
-	«Changes
-		«10/6/02; 8:35:52 PM by JES
-			«Created. Returns an array of structs for all the comments in a site. Each struct has the following members:
-			«msgnum -- the message number for the top message in the comment thread
-			«postid -- the postId of the post in the Radio weblog for which the comments are a response
-			«count -- the number of messages in thee comment thread
+	//Changes
+		//10/6/02; 8:35:52 PM by JES
+			//Created. Returns an array of structs for all the comments in a site. Each struct has the following members:
+			//msgnum -- the message number for the top message in the comment thread
+			//postid -- the postId of the post in the Radio weblog for which the comments are a response
+			//count -- the number of messages in thee comment thread
 	local (adrsite = manilaSuite.rpcUtils.getSiteAddress (siteName));
 	local (adrdata = manilaSuite.radioHosting.init (adrsite));
 	if (not config.manila.prefs.flRadioHostingEnabled) or (not adrdata^.flEnabled) { //error

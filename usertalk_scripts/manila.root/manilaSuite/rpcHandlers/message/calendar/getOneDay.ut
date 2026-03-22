@@ -1,8 +1,8 @@
 on getOneDay (username, password, siteName, dt) {
-	«Get the msgNums for one day in the message calendar.
-		«Changes:
-			«06/22/00; 10:44:57 PM by JES
-				«Bug fix - the call to mainResponder.calendar.getDayAddress was passing the calendar, not the address of the calendar
+	//Get the msgNums for one day in the message calendar.
+		//Changes:
+			//06/22/00; 10:44:57 PM by JES
+				//Bug fix - the call to mainResponder.calendar.getDayAddress was passing the calendar, not the address of the calendar
 	
 	bundle { //make sure this user has access to the discussion group
 		local (beginningErrorString = "Can't get day \"" + dt + "\" in the message calendar because ");

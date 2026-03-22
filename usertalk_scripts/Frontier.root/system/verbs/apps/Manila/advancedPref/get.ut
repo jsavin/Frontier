@@ -1,9 +1,9 @@
 on get (adrSitePrefs, itemName) {
-	«Get an advanced pref item.
-		«11/17/00; 9:34:34 PM by JES
-	«Changes
-		«9/6/01; 7:49:28 PM by JES
-			«Changed params from a list to a record of named parameters, for SOAP compatibility.
+	//Get an advanced pref item.
+		//11/17/00; 9:34:34 PM by JES
+	//Changes
+		//9/6/01; 7:49:28 PM by JES
+			//Changed params from a list to a record of named parameters, for SOAP compatibility.
 	
 	itemName = string.dropNonAlphas (itemName);
 	

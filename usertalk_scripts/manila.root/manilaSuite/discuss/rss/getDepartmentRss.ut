@@ -1,13 +1,13 @@
 on getDepartmentRss (department="", adrsite=nil, maxitems=50) {
-	«Changes
-		«10/11/03; 10:51:52 PM by JES
-			«Call manilaSuite.editors.restrictSiteToEditors for editors only sites instead of returning a 404 page.
-		«10/8/03; 12:42:40 PM by JES
-			«Added support for per-department language specification.
-		«9/4/03; 4:32:51 PM by JES
-			«If syndication is not enabled on the site or if the site is editors only, return a 404 page.
-		«5/9/03; 10:10:22 PM by JES
-			«Created. Return RSS for a given news item department.
+	//Changes
+		//10/11/03; 10:51:52 PM by JES
+			//Call manilaSuite.editors.restrictSiteToEditors for editors only sites instead of returning a 404 page.
+		//10/8/03; 12:42:40 PM by JES
+			//Added support for per-department language specification.
+		//9/4/03; 4:32:51 PM by JES
+			//If syndication is not enabled on the site or if the site is editors only, return a 404 page.
+		//5/9/03; 10:10:22 PM by JES
+			//Created. Return RSS for a given news item department.
 	local (pta = html.getPageTableAddress ());
 	on includeCallback (adrmsg) {
 		local (flInclude = false);
@@ -44,6 +44,6 @@ on getDepartmentRss (department="", adrsite=nil, maxitems=50) {
 		if adrdepts^.[department].language != "" {
 			language = adrdepts^.[department].language}};
 	return (manilaSuite.discuss.rss.getRss (adrsite, @includeCallback, title:title, maxitems:maxitems, link:link, description:description, language:language))};
-«bundle //test code
-	«wp.newTextObject (getDepartmentRss ("Manila", @jaketest2ManilaWebsite), @workspace.rssText)
-	«edit (@workspace.rssText)
+//bundle //test code
+	//wp.newTextObject (getDepartmentRss ("Manila", @jaketest2ManilaWebsite), @workspace.rssText)
+	//edit (@workspace.rssText)

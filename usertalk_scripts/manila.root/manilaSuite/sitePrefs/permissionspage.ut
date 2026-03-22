@@ -1,10 +1,10 @@
 on permissionsPage (pta) {
-	«Changes
-		«10/1/05; 3:00:12 AM by JES
-			«Address HTML issues. Reformatted script to UserLand style.
-		«05/05/15, 20:21:22 by DAB
-			«Created. Handle the Permissions prefs page.
-				«messages at manilaData.localization.languages.english.strings.permissions
+	//Changes
+		//10/1/05; 3:00:12 AM by JES
+			//Address HTML issues. Reformatted script to UserLand style.
+		//05/05/15, 20:21:22 by DAB
+			//Created. Handle the Permissions prefs page.
+				//messages at manilaData.localization.languages.english.strings.permissions
 	local (adrSite = manilaSuite.getManilaSiteAddress (pta));
 	local (sitename = manilaSuite.getCanonicalSitename (adrSite));
 	local (adrGroup = manilaSuite.members.getGroupFromSiteAddress (adrSite));
@@ -39,7 +39,7 @@ on permissionsPage (pta) {
 		return true};
 	
 	pta^.title = manilaSuite.getString ("permissions.pageTitle", @replTbl, pta:pta);
-	«add ("<h2>" + pta^.title + "</h2>") //17/05/05; 3:57:47 PM by PR
+	//add ("<h2>" + pta^.title + "</h2>") //17/05/05; 3:57:47 PM by PR
 	add (manilaSuite.getString ("permissions.helptext", @replTbl, pta:pta)); //
 	
 	on report (errID, hue="red") {
@@ -50,19 +50,19 @@ on permissionsPage (pta) {
 	
 	separator ("panelTitleHardPaths", "hardPaths");
 	
-	«how this works
-		«You can manipulate only manila standard paths which in the table of hard wired paths at 
-		«manilaData.accesscontrol.controlledPaths. Its too dangerous to control path access willy nilly.
-		«Any paths that are modified are stored in #newsSite.accessControl.controlledPaths
-			«entries there are copied of the entry from manilaData.accesscontrol.controlledPaths
-			«with additional table entry cohorts (a list)
-			«there's unused capability (no API) for plugins to add paths to #newsSite.accessControl.controlledPaths.
-			«but these paths must be restricted the plugin website fragment only
-		«Anyone can potentially visit this page, but they only see paths that they are permitted to access
-		«and the cohorts they can assign to are the ones that contain their member key. This simple mechansim, allows
-		«delegation down an authorisation hierarchy, but not up. In other words, if you have access you can assign it
-		«to other cohorts you belong to. One exception is that the entry has a flag to specify whether being a 
-		«member is a requirement or not. All cohorts except Eveyone contains only members. 
+	//how this works
+		//You can manipulate only manila standard paths which in the table of hard wired paths at 
+		//manilaData.accesscontrol.controlledPaths. Its too dangerous to control path access willy nilly.
+		//Any paths that are modified are stored in #newsSite.accessControl.controlledPaths
+			//entries there are copied of the entry from manilaData.accesscontrol.controlledPaths
+			//with additional table entry cohorts (a list)
+			//there's unused capability (no API) for plugins to add paths to #newsSite.accessControl.controlledPaths.
+			//but these paths must be restricted the plugin website fragment only
+		//Anyone can potentially visit this page, but they only see paths that they are permitted to access
+		//and the cohorts they can assign to are the ones that contain their member key. This simple mechansim, allows
+		//delegation down an authorisation hierarchy, but not up. In other words, if you have access you can assign it
+		//to other cohorts you belong to. One exception is that the entry has a flag to specify whether being a 
+		//member is a requirement or not. All cohorts except Eveyone contains only members. 
 	bundle { //form for hardwired paths
 		local (adrPath, namePath, current, exceptions);
 		

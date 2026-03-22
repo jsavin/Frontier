@@ -1,6 +1,6 @@
 on isMember (sitename, username) {
-	«Return true if username is a member of the specified site, false otherwise.
-		«01/15/00; 6:16:25 PM by PBS
+	//Return true if username is a member of the specified site, false otherwise.
+		//01/15/00; 6:16:25 PM by PBS
 	
 	local (groupName = manilaSuite.rpcUtils.getMembersGroupName (siteName));
 	
@@ -8,7 +8,7 @@ on isMember (sitename, username) {
 	adrMemberTable = mainResponder.members.getMemberTable (groupName, username);
 	
 	if defined (adrMemberTable^) { //if the membership table, exists, this person is a member
-		«Make sure the member isn't blocked.
+		//Make sure the member isn't blocked.
 		if defined (adrMemberTable^.blocked) {
 			if adrMemberTable^.blocked {
 				return (false)}};

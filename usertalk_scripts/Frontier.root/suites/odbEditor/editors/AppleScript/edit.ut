@@ -1,7 +1,7 @@
 on edit (adrobject) {
-	local (ideditorapp); «creator id of the script editor
+	local (ideditorapp); //creator id of the script editor
 	ideditorapp = file.creator (user.odbEditors.AppleScriptEditor);
-	bundle { «set up the Apple Event handlers in system.verbs.traps
+	bundle { //set up the Apple Event handlers in system.verbs.traps
 		local (adrtraptable = @system.verbs.traps.[ideditorapp]);
 		if not defined (adrtraptable^) {
 			new (tabletype, adrtraptable)};
@@ -16,7 +16,7 @@ on edit (adrobject) {
 	local (readOnly = false);
 	local (scriptdata);
 	osa.compile (adrobject, false, @scriptdata);
-	bundle { «send the apple event, it's a long line
+	bundle { //send the apple event, it's a long line
 		appleEvent (ideditorapp, 'edit', 'EDIT', '----', scriptdata, 'ASwt', wtitle, 'ASid', id, 'ASnc', requestCloseEvents, 'ASct', clientContext, 'ASna', editorComeToFront, 'ASro', readOnly)}};
-«bundle «test code
-	«edit (@suites.samples.applescript.script2)
+//bundle //test code
+	//edit (@suites.samples.applescript.script2)

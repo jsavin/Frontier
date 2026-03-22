@@ -1,19 +1,19 @@
 on neuterAllObjects (adrTheme) {
-	«Make sure all the objects in the theme have been neutered. No harmful macros are allowed.
-		«06/06/00; 1:39:14 AM by PBS
-	«Changes:
-		«3/30/04; 11:20:39 AM by JES
-			«Added support for the navigation appearance currentItemFormat preference, in which {item} needs to be legal.
-		«4/21/03; 1:04:25 PM by JES
-			«Don't neuter macros in the External Style Sheet.
-		«4/5/02; 3:01:47 AM by JES
-			«Added responseitemfulltemplate to the legal object names.
-		«10/8/01; 3:24:25 PM by PBS
-			«Support some slides and directory templates that were missing.
-		«10/27/00; 9:04:47 PM by JES
-			«Fixed problem where macros would be neutered in responseItemTemplate-s.
-		«10/25/00; 9:21:29 PM by JES
-			«Allow for lightweight macros in discussion group templates.
+	//Make sure all the objects in the theme have been neutered. No harmful macros are allowed.
+		//06/06/00; 1:39:14 AM by PBS
+	//Changes:
+		//3/30/04; 11:20:39 AM by JES
+			//Added support for the navigation appearance currentItemFormat preference, in which {item} needs to be legal.
+		//4/21/03; 1:04:25 PM by JES
+			//Don't neuter macros in the External Style Sheet.
+		//4/5/02; 3:01:47 AM by JES
+			//Added responseitemfulltemplate to the legal object names.
+		//10/8/01; 3:24:25 PM by PBS
+			//Support some slides and directory templates that were missing.
+		//10/27/00; 9:04:47 PM by JES
+			//Fixed problem where macros would be neutered in responseItemTemplate-s.
+		//10/25/00; 9:21:29 PM by JES
+			//Allow for lightweight macros in discussion group templates.
 	
 	on neuterObject (adrItem) {
 		local (itemName = nameOf (adrItem^));

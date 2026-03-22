@@ -1,9 +1,9 @@
 on handleMessage (connection, mesAdr) {
-	«Changes
-		«5/14/02; 1:51:34 PM by JB
-			«Changelog created.
-	«Given a jabber message, extract the information contained in the message and pass it off to the proper handler. mesAdr is an address pointing to xml.compile'd XML.
-		«Messages relating to being logged in are handled synchronously; all others will be handled asynchronously, so a long <message> or an rpc call won't jam up Jabber for everyone else.
+	//Changes
+		//5/14/02; 1:51:34 PM by JB
+			//Changelog created.
+	//Given a jabber message, extract the information contained in the message and pass it off to the proper handler. mesAdr is an address pointing to xml.compile'd XML.
+		//Messages relating to being logged in are handled synchronously; all others will be handled asynchronously, so a long <message> or an rpc call won't jam up Jabber for everyone else.
 	on mungeId ( idStr ) {
 		// this munges the id string into a semaphore name, this scriptlet will be copied into several places.
 		if typeOf ( idStr ) == addressType {

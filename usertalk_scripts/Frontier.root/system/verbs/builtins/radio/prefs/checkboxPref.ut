@@ -1,11 +1,11 @@
 on checkboxPref (prompt, adrboolean) {
-	«Changes:
-		«10/11/05; 4:58:12 AM by JES
-			«Add clickable label around prompt text. (Works on IE, Opera and Firefox, but not Safari.)
-		«8/3/02; 8:43:10 PM by JES
-			«Quote characters in addresses were mangling the HTML, so now addresses are url-encoded when generating the form element. When processing a POST, we look for the url-encoded field in the postArgs table.
-		«2/5/02; 11:31:20 AM by PBS
-			«Conditionalized to work in Frontier.
+	//Changes:
+		//10/11/05; 4:58:12 AM by JES
+			//Add clickable label around prompt text. (Works on IE, Opera and Firefox, but not Safari.)
+		//8/3/02; 8:43:10 PM by JES
+			//Quote characters in addresses were mangling the HTML, so now addresses are url-encoded when generating the form element. When processing a POST, we look for the url-encoded field in the postArgs table.
+		//2/5/02; 11:31:20 AM by PBS
+			//Conditionalized to work in Frontier.
 	local (pta = html.getpagetableaddress ());
 	if pta^.method == "POST" {
 		local (adr = address (string.popFileFromAddress (adrboolean)));

@@ -1,6 +1,6 @@
 local (searchRequest);
 new (tableType, @searchRequest);
-«local (flProfile = true)
+//local (flProfile = true)
 local (flProfile = false);
 
 if flProfile {

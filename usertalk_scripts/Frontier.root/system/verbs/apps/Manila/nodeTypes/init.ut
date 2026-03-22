@@ -1,6 +1,6 @@
-«7/5/01; 2:33:17 PM by JES
-	«Initialize Manila site editing nodeTypes.
-	«All Manila site editing functionality is now implemented in nodeTypes and windowTypes.
+//7/5/01; 2:33:17 PM by JES
+	//Initialize Manila site editing nodeTypes.
+	//All Manila site editing functionality is now implemented in nodeTypes and windowTypes.
 bundle { //install nodeTypes
 	local (adrcode = @system.verbs.apps.manila.nodeTypes.types);
 	local (adrtable = @Frontier.tools.data.nodeTypes);

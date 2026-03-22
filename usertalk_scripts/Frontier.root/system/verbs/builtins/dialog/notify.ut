@@ -1,7 +1,7 @@
 on notify (s) {
-	«Changes:
-		«05/30/01; 10:20:54 PM by PBS
-			«Run the card only if this is Mac Classic; otherwise call the kernel.
+	//Changes:
+		//05/30/01; 10:20:54 PM by PBS
+			//Run the card only if this is Mac Classic; otherwise call the kernel.
 	local (flRunCard = false);
 	if system.environment.isMac {
 		if not (defined (system.environment.isCarbon)) {
@@ -17,5 +17,5 @@ on notify (s) {
 	else { //Windows or OS X
 		kernelCall (s)};
 	return (true)};
-«bundle //test code
-	«notify ("Hello")
+//bundle //test code
+	//notify ("Hello")

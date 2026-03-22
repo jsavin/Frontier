@@ -1,7 +1,7 @@
 on serverMonitor () {
-	«Changes
-		«8/15/02; 12:02:40 AM by JES
-			«Created. Call serverMonitorSuite.macros.viewServerStatus with flEditable as true.
+	//Changes
+		//8/15/02; 12:02:40 AM by JES
+			//Created. Call serverMonitorSuite.macros.viewServerStatus with flEditable as true.
 	local (pta = html.getpagetableaddress ());
 	pta^.title = "Server Monitor";
 	return (serverMonitorSuite.macros.viewServerStatus (true))}

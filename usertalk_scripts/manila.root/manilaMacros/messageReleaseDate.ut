@@ -1,11 +1,11 @@
 on messageReleaseDate () {
-	«05/04/10, 14:34:47 by DAB
-		«Created.
+	//05/04/10, 14:34:47 by DAB
+		//Created.
 	local (pta = html.getPageTableAddress());
 	local (adrMsgTable);
 	bundle {
-		«based on mainResponder.discuss.getMessageTable
-			«but works with new messages
+		//based on mainResponder.discuss.getMessageTable
+			//but works with new messages
 		case true {
 			defined (pta^.adrMsgTable) {
 				adrMsgTable = pta^.adrMsgTable};
@@ -19,7 +19,7 @@ on messageReleaseDate () {
 				msgNum = pta^.msgNum}
 			else {
 				if pta^.pathArgs != "" {
-					«msgNum = number (pta^.pathArgs)
+					//msgNum = number (pta^.pathArgs)
 					try {msgNum = number (pta^.pathArgs)}}}; // 14/05/05; 9:18:26 AM by PR pathArg could be a non-coerceable string, such as 'advanced_template'
 			if msgnum != 0 {
 				adrMsgTable = mainResponder.discuss.getMessageTable (msgNum)}}};

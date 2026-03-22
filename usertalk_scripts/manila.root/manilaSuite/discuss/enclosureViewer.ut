@@ -1,9 +1,9 @@
-«Note: This script runs outside the context of the website framework.
-«Changes:
-	«04/19/00 at 6:09:29 PM by JES
-		«localized
-	«05/01/00; 3:48:06 PM by JES
-		«Changed getString calls to use a replacement table address instead of a lists
+//Note: This script runs outside the context of the website framework.
+//Changes:
+	//04/19/00 at 6:09:29 PM by JES
+		//localized
+	//05/01/00; 3:48:06 PM by JES
+		//Changed getString calls to use a replacement table address instead of a lists
 
 local (msgNum = number (pathArgs));
 local (discussRoot = config.mainResponder.prefs.defaultDiscussRoot);

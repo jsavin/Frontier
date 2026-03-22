@@ -32,13 +32,13 @@ on buildHierarchyPage () {
 						local (itemType = string.lower (string.nthField (nameOf (adr^), '\t', 2)));
 						if itemType == "link" {
 							local (url = xml.getValue (adr, "url"));
-							«add ("<b>" + html.getLink (linetext, url) + "</b>")
+							//add ("<b>" + html.getLink (linetext, url) + "</b>")
 							add ("<li>");
 							add (html.getLink (linetext, url));
 							try {
 								description = xml.getValue (adr, "description")};
 							if description != nil {
-								«add ("<br>" + description)
+								//add ("<br>" + description)
 								add (" - " + description)};
 							add ("<p>")};
 						if itemType == "story" or itemType == "category" {
@@ -54,10 +54,10 @@ on buildHierarchyPage () {
 								ct = ct + sizeOf (xml.getAddressList (adr, "link"));
 								ct = ct + sizeOf (xml.getAddressList (adr, "story"));
 								ct = " (" + ct + ")"};
-							«if itemType == "category"
-								«add ("<b>" + html.getLink (linetext, url) + "</b>")
-							«else
-								«add (html.getLink (linetext, url))
+							//if itemType == "category"
+								//add ("<b>" + html.getLink (linetext, url) + "</b>")
+							//else
+								//add (html.getLink (linetext, url))
 							add (html.getLink (linetext, url));
 							if ct != nil {
 								add (ct)};
@@ -65,84 +65,84 @@ on buildHierarchyPage () {
 								try {
 									description = xml.getValue (adr, "description")};
 								if description != nil {
-									«add ("<br>" + description)
+									//add ("<br>" + description)
 									add (" - " + description)}};
 							add ("<p>")}}}};
-			«Do categories, then stories, then links.
-			«local (categoryList = xml.getAddressList (adrTable, "category"))
-			«local (storyList = xml.getAddressList (adrTable, "story"))
-			«local (linksList = xml.getAddressList (adrTable, "link"))
-			«
-			«local (adr)
-			«local (ix = 0)
-			«for adr in categoryList
-				«ix++
-				«if ix == 1
-					«add ("<table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" width=\"75%\">")
-				«if mod (ix, 2) == 1
-					«add ("<tr>")
-				«if ix == sizeOf (categoryList) and mod (ix, 2) == 1
-					«add ("<td colspan=\"3\" align=\"left\" valign=\"top\">")
-				«else
-					«add ("<td align=\"left\" valign=\"top\">")
-				«local (lineText)
-				«try {lineText = xml.getValue (adr, "linetext")}
-				«local (description)
-				«local (url = pta^.url)
-				«local (name = xml.getAttributeValue (adr, "name"))
-				«url = pta^.path + name
-				«add ("<b>" + html.getLink (linetext, url) + "</b>")
-				«
-				«bundle //get count
-					«local (ct = sizeOf (xml.getAddressList (adr, "category")))
-					«ct = ct + sizeOf (xml.getAddressList (adr, "link"))
-					«ct = ct + sizeOf (xml.getAddressList (adr, "story"))
-					«add (" (" + ct + ")")
-				«add ("<br>&nbsp;")
-				«if mod (ix, 2) == 0 and not (ix == sizeOf (categoryList))
-					«add ("<td>&nbsp;&nbsp;&nbsp;</td>")
-				«if mod (ix, 2) == 1
-					«add ("</tr>")
-					«add ("</tr><tr><td colspan=\"3\">&nbsp;</td></tr>")
-				«else
-					«if ix == sizeOf (categoryList)
-						«add ("</tr>")
-						«add ("</tr><tr><td colspan=\"3\">&nbsp;</td></tr>")
-				«add ("<p>")
-			«if ix > 0
-				«add ("</table>")
-			«if categoryList != nil and (linksList != nil or storyList != nil)
-				«add ("<hr noshade size=\"1\"><br>")
-			«
-			«for adr in storyList
-				«local (lineText = xml.getValue (adr, "linetext"))
-				«local (description)
-				«local (url = pta^.url)
-				«local (name = xml.getAttributeValue (adr, "name"))
-				«url = pta^.path + name
-				«add (html.getLink (linetext, url))
-				«try
-					«description = xml.getValue (adr, "description")
-				«if description != nil
-					«add ("<br>" + description)
-					«add (" - " + description)
-				«add ("<p>")
-			«if storyList != nil
-				«add ("<hr noshade size=\"1\">")
-			«
-			«for adr in linksList
-				«local (lineText = xml.getValue (adr, "linetext"))
-				«local (description)
-				«local (itemType = string.lower (string.nthField (nameOf (adr^), '\t', 2)))
-				«local (url = xml.getValue (adr, "url"))
-				«add ("<b>" + html.getLink (linetext, url) + "</b>")
-				«add (html.getLink (linetext, url))
-				«try
-					«description = xml.getValue (adr, "description")
-				«if description != nil
-					«add ("<br>" + description)
-					«add (" - " + description)
-				«add ("<p>")
+			//Do categories, then stories, then links.
+			//local (categoryList = xml.getAddressList (adrTable, "category"))
+			//local (storyList = xml.getAddressList (adrTable, "story"))
+			//local (linksList = xml.getAddressList (adrTable, "link"))
+			//
+			//local (adr)
+			//local (ix = 0)
+			//for adr in categoryList
+				//ix++
+				//if ix == 1
+					//add ("<table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" width=\"75%\">")
+				//if mod (ix, 2) == 1
+					//add ("<tr>")
+				//if ix == sizeOf (categoryList) and mod (ix, 2) == 1
+					//add ("<td colspan=\"3\" align=\"left\" valign=\"top\">")
+				//else
+					//add ("<td align=\"left\" valign=\"top\">")
+				//local (lineText)
+				//try {lineText = xml.getValue (adr, "linetext")}
+				//local (description)
+				//local (url = pta^.url)
+				//local (name = xml.getAttributeValue (adr, "name"))
+				//url = pta^.path + name
+				//add ("<b>" + html.getLink (linetext, url) + "</b>")
+				//
+				//bundle //get count
+					//local (ct = sizeOf (xml.getAddressList (adr, "category")))
+					//ct = ct + sizeOf (xml.getAddressList (adr, "link"))
+					//ct = ct + sizeOf (xml.getAddressList (adr, "story"))
+					//add (" (" + ct + ")")
+				//add ("<br>&nbsp;")
+				//if mod (ix, 2) == 0 and not (ix == sizeOf (categoryList))
+					//add ("<td>&nbsp;&nbsp;&nbsp;</td>")
+				//if mod (ix, 2) == 1
+					//add ("</tr>")
+					//add ("</tr><tr><td colspan=\"3\">&nbsp;</td></tr>")
+				//else
+					//if ix == sizeOf (categoryList)
+						//add ("</tr>")
+						//add ("</tr><tr><td colspan=\"3\">&nbsp;</td></tr>")
+				//add ("<p>")
+			//if ix > 0
+				//add ("</table>")
+			//if categoryList != nil and (linksList != nil or storyList != nil)
+				//add ("<hr noshade size=\"1\"><br>")
+			//
+			//for adr in storyList
+				//local (lineText = xml.getValue (adr, "linetext"))
+				//local (description)
+				//local (url = pta^.url)
+				//local (name = xml.getAttributeValue (adr, "name"))
+				//url = pta^.path + name
+				//add (html.getLink (linetext, url))
+				//try
+					//description = xml.getValue (adr, "description")
+				//if description != nil
+					//add ("<br>" + description)
+					//add (" - " + description)
+				//add ("<p>")
+			//if storyList != nil
+				//add ("<hr noshade size=\"1\">")
+			//
+			//for adr in linksList
+				//local (lineText = xml.getValue (adr, "linetext"))
+				//local (description)
+				//local (itemType = string.lower (string.nthField (nameOf (adr^), '\t', 2)))
+				//local (url = xml.getValue (adr, "url"))
+				//add ("<b>" + html.getLink (linetext, url) + "</b>")
+				//add (html.getLink (linetext, url))
+				//try
+					//description = xml.getValue (adr, "description")
+				//if description != nil
+					//add ("<br>" + description)
+					//add (" - " + description)
+				//add ("<p>")
 			
 			local (title);
 			try {title = xml.getValue (adrTable, "linetext")};
@@ -161,16 +161,16 @@ on buildHierarchyPage () {
 			pta^.adrMsgTable = adrMsgTable;
 			pta^.msgNum = msgNum}};
 	
-	«Build hierarchy path.
+	//Build hierarchy path.
 	bundle {
 		local (pathText);
 		
 		on add (s) {
 			pathText = s + pathText};
 		
-		«local (currentItemName)
-		«try {currentItemName = xml.getValue (adrTable, "linetext")}
-		«add (currentItemName)
+		//local (currentItemName)
+		//try {currentItemName = xml.getValue (adrTable, "linetext")}
+		//add (currentItemName)
 		local (nomad = adrTable);
 		local (ctPops = 0);
 		loop {
@@ -196,7 +196,7 @@ on buildHierarchyPage () {
 		bundle { //was: if ctPops > 0
 			if ctPops == 0 {
 				pathText = ""};
-			«pta^.hierarchyPath = "<b>" + pathText + "</b>"
+			//pta^.hierarchyPath = "<b>" + pathText + "</b>"
 			local (nextPrevLinks = "Prev | Next");
 			
 			local (ix = 0);
@@ -253,7 +253,7 @@ on buildHierarchyPage () {
 				return ("Prev")};
 			
 			nextPrevLinks = getPrevLink () + " | " + getNextLink ();
-			«nextPrevLinks = "Prev | Next"
+			//nextPrevLinks = "Prev | Next"
 			
 			bundle { //try to get the URL of the contents page
 				local (adrHierarchy = parentOf (pta^.adrObject^));
@@ -264,7 +264,7 @@ on buildHierarchyPage () {
 					if defined (adrHierarchy^.contentsLinkTitle) {
 						linkTitle = adrHierarchy^.contentsLinkTitle};
 					nextPrevLinks = "<a href=\"" + adrHierarchy^.contentsUrl + "\" title=\"" + linkTitle + "\">" + linetext + "</a> | " + nextPrevLinks;
-					}};«nextPrevLinks = html.getLink ("Contents", adrHierarchy^.contentsUrl) + " | " + nextPrevLinks
+					}};//nextPrevLinks = html.getLink ("Contents", adrHierarchy^.contentsUrl) + " | " + nextPrevLinks
 			
 			pathText = "<table border=\"0\" cellpadding=\"2\" cellspacing=\"0\" bgcolor=\"#999999\" width=\"100%\"><tr><td bgcolor=\"beige\" align=\"left\"><font size=\"-1\">" + pathText + "</font></td><td align=\"right\" bgcolor=\"beige\"><font size=\"-1\">" + nextPrevLinks + "</font></td></tr></table>";
 			

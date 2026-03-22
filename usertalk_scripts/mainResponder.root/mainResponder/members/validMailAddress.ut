@@ -1,11 +1,11 @@
 on validMailAddress (mailaddress) { //scriptErrors if invalid
-	«Changes:
-		«10/15/04; 5:52:19 PM by JES
-			«Call through string.isValidEmailAddress, if present.
-		«05/01/00; 6:55:12 PM by JES
-			«Changed getString calls to use a replacement table address instead of a lists
-		«04/14/00; 9:22:21 PM by JES
-			«localized error messages
+	//Changes:
+		//10/15/04; 5:52:19 PM by JES
+			//Call through string.isValidEmailAddress, if present.
+		//05/01/00; 6:55:12 PM by JES
+			//Changed getString calls to use a replacement table address instead of a lists
+		//04/14/00; 9:22:21 PM by JES
+			//localized error messages
 	if defined (string.isValidEmailAddress) { //03/01/27, 13:37:37 by DAB
 		try {
 			string.isValidEmailAddress (mailaddress);

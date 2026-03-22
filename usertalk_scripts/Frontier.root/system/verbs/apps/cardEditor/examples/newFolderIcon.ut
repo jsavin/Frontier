@@ -7,7 +7,7 @@ on newFolderIcon (folder, iconresource) {
 	cardEditor.newObject (card.types.iconType, objectname, iconlabel, script);
 	cardEditor.cleanObject (objectname);
 	
-	bundle { «set up attributes of new object
+	bundle { //set up attributes of new object
 		local (atts);
 		new (tableType, @atts);
 		atts.rsnm = short (iconresource);

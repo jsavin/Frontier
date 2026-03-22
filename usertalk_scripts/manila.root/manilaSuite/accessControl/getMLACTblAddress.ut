@@ -1,7 +1,7 @@
 on getMLACTblAddress (adrMsg) {
-	«manilaSuite.AccessControl.getMLACTblAddress : 04/05/20, 17:05:18 by DAB
-		«return address of access table for msg, if it exists
-		«was manilaFixer.accessControl.getMLACTblAddress : 02/05/21, 23:00:25 by DAB
+	//manilaSuite.AccessControl.getMLACTblAddress : 04/05/20, 17:05:18 by DAB
+		//return address of access table for msg, if it exists
+		//was manilaFixer.accessControl.getMLACTblAddress : 02/05/21, 23:00:25 by DAB
 	if not defined(adrMsg^) {
 		return false};
 	if not defined(adrMsg^.accessControl) {

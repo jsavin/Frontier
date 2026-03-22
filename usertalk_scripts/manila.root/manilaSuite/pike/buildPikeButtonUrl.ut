@@ -1,11 +1,11 @@
 on buildPikeButtonUrl (adrObject, command, adrAppendTable=nil, pta=nil, flUsePathArgs=false) {
-	«Build a URL to the local editor. Aka "Piking behind firewalls." Caller can supply additional info by passing the address of a table as adrAppendTable.
-		«11/21/00; 11:39:01 AM by PBS
-		«Changes:
-			«11/28/00; 12:43:26 PM by PBS
-				«We have to send the redirectUrl, since clients don't always send a referer to RU.
-			«1/14/02; 6:16:53 PM by PBS
-				«Don't add the port to the URL if the port is already part of the URL.
+	//Build a URL to the local editor. Aka "Piking behind firewalls." Caller can supply additional info by passing the address of a table as adrAppendTable.
+		//11/21/00; 11:39:01 AM by PBS
+		//Changes:
+			//11/28/00; 12:43:26 PM by PBS
+				//We have to send the redirectUrl, since clients don't always send a referer to RU.
+			//1/14/02; 6:16:53 PM by PBS
+				//Don't add the port to the URL if the port is already part of the URL.
 	
 	bundle { //don't bother unless Manila RPC is enabled and the user is a Pike user
 		if not (manilaSuite.pike.pikeIsEnabled ()) {
@@ -22,19 +22,19 @@ on buildPikeButtonUrl (adrObject, command, adrAppendTable=nil, pta=nil, flUsePat
 	local (url);
 	
 	bundle { //build search args
-		«t.host = pta^.host //PBS 11/27/00: client gets it from referer
+		//t.host = pta^.host //PBS 11/27/00: client gets it from referer
 		
 		local (port = user.inetd.config.http.port);
 		if port != 80 { //PBS 11/27/00: client assumes port 80 unless specified otherwise
 			t.port = port};
-		«t.rpcPath = user.betty.prefs.rpcClientDefaultPath //PBS 11/27/00: client assumes /RPC2 unless specified otherwise
+		//t.rpcPath = user.betty.prefs.rpcClientDefaultPath //PBS 11/27/00: client assumes /RPC2 unless specified otherwise
 		
 		local (adrSite = manilaSuite.getManilaSiteAddress (pta));
-		«t.s = manilaSuite.getCanonicalSiteName (adrSite) //s is short name
+		//t.s = manilaSuite.getCanonicalSiteName (adrSite) //s is short name
 		
 		t.d = string (pta^.newsSite^.siteName); //d is short name
-		«t.u = base64.encode (nameOf (pta^.adrMemberInfo^), 0)
-		«t.p = base64.encode (pta^.adrMemberInfo^.password, 0)
+		//t.u = base64.encode (nameOf (pta^.adrMemberInfo^), 0)
+		//t.p = base64.encode (pta^.adrMemberInfo^.password, 0)
 		
 		local (host = pta^.host);
 		host = string.popSuffix (host, ":"); //PBS 1/14/02: pop port
@@ -51,8 +51,8 @@ on buildPikeButtonUrl (adrObject, command, adrAppendTable=nil, pta=nil, flUsePat
 		
 		t.url = pta^.ftpSite^.url; //PBS 11/27/00: it should be the site URL
 		
-		«if not (date.versionLessThan (Frontier.version (), "7.0b26"))
-			«t.flAcceptsOpml = true
+		//if not (date.versionLessThan (Frontier.version (), "7.0b26"))
+			//t.flAcceptsOpml = true
 		
 		if adrAppendTable != nil { //caller can supply additional info
 			table.copyContents (adrAppendTable, @t)};
@@ -60,7 +60,7 @@ on buildPikeButtonUrl (adrObject, command, adrAppendTable=nil, pta=nil, flUsePat
 		searchArgs = webserver.encodeArgs (@t)};
 	
 	bundle { //build path
-		«url = "http://" + tcp.addressToName (tcp.getPeerAddress (pta^.stream))
+		//url = "http://" + tcp.addressToName (tcp.getPeerAddress (pta^.stream))
 		url = "http://127.0.0.1";
 		local (port = pta^.adrMemberInfo^.pike.port);
 		if port != 80 {

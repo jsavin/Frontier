@@ -1,8 +1,8 @@
-«Changes
-	«3/17/03; 2:27:09 PM by JES
-		«Created.
-			«If the aggregator is enabled, and config.manila.prefs.flAggregatorSubAllSitesOnServer is true, subscribe the aggregator to the RSS feeds for all sites which have syndication enabled and are not editors only sites.
-			«Runs once per hour.
+//Changes
+	//3/17/03; 2:27:09 PM by JES
+		//Created.
+			//If the aggregator is enabled, and config.manila.prefs.flAggregatorSubAllSitesOnServer is true, subscribe the aggregator to the RSS feeds for all sites which have syndication enabled and are not editors only sites.
+			//Runs once per hour.
 if defined (aggregatorData) {
 	if aggregatorData.prefs.enabled {
 		if not defined (manilaThread.stats.whenSubscribeLocalSites) {
@@ -34,5 +34,5 @@ if defined (aggregatorData) {
 						else {
 							if defined (aggregatorData.services.[rssurl]) {
 								xml.aggregator.unsubscribeService (rssurl)}}};
-					«else //debugging code
-						«msg (tryerror)}}}}}
+					//else //debugging code
+						//msg (tryerror)}}}}}

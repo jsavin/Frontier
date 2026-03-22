@@ -1,8 +1,8 @@
 on getJpegHeightWidth (f) {
-	«Get the height and width in pixels of a JPEG.
-		«Changes:
-			«10/20/99; at 2:57:07 PM by PBS
-				«Like html.getGifHeightWidth, it now supports addresses. It does still write the file out to disk, but in a temporary location, in Guest Databases/ops/Temporary Items/. After writing out the file, it deletes it.
+	//Get the height and width in pixels of a JPEG.
+		//Changes:
+			//10/20/99; at 2:57:07 PM by PBS
+				//Like html.getGifHeightWidth, it now supports addresses. It does still write the file out to disk, but in a temporary location, in Guest Databases/ops/Temporary Items/. After writing out the file, it deletes it.
 	on kernelcall (f) {
 		kernel (string.getJpegHeightWidth)};
 	if typeOf (f) == addressType { //write the file to disk in a temporary location
@@ -16,7 +16,7 @@ on getJpegHeightWidth (f) {
 		file.delete (tempFilePath);
 		return (hwList)};
 	return (kernelcall (f))};
-«bundle //test code
-	«dialog.alert (getJpegHeightWidth (@websites.samples.["#images"].wozJobs)) //test addresses
-	«dialog.alert (getJpegHeightWidth ("C:\\Frontier\\Websites\\samples\\images\\wozjobs.jpg")) //test files on Windows
-	«dialog.alert (getJpegHeightWidth ("Power HD:Frontier:Websites:samples:images:wozJobs.jpg")) //test files on Mac
+//bundle //test code
+	//dialog.alert (getJpegHeightWidth (@websites.samples.["#images"].wozJobs)) //test addresses
+	//dialog.alert (getJpegHeightWidth ("C:\\Frontier\\Websites\\samples\\images\\wozjobs.jpg")) //test files on Windows
+	//dialog.alert (getJpegHeightWidth ("Power HD:Frontier:Websites:samples:images:wozJobs.jpg")) //test files on Mac

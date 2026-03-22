@@ -1,5 +1,5 @@
 on process_loop(adrSelf) {
-	«# the "main" loop
+	//# the "main" loop
 	local {
 		event;
 		ind;
@@ -23,8 +23,8 @@ on process_loop(adrSelf) {
 		
 		tcp.im.builtinDrivers.aim.code.core.derror(adrSelf, "RECV :"+ string(event) );
 		
-		«#else, fig out what to do with it
-		«#special case-- login
+		//#else, fig out what to do with it
+		//#special case-- login
 		if event[1] == 1 {
 			tcp.im.builtinDrivers.aim.code.core.start_log_in(adrSelf);
 			continue};
@@ -36,7 +36,7 @@ on process_loop(adrSelf) {
 			id = string.upper(string.mid(event[2], 0, ind-1));
 			data = string.mid(event[2], ind+1, infinity)};
 		
-		«#handle manually now
+		//#handle manually now
 		case id {
 			"SIGN_ON" {
 				tcp.im.builtinDrivers.aim.code.core.c_SIGN_ON(adrSelf, id,data)};

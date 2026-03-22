@@ -1,11 +1,11 @@
 on indexBy (adrSite, fieldID, adrIndex) {
-	«Changes
-		«1/31/06; 1:48:30 AM by JES
-			«Add support for flPending flag.
-	«manilaSuite.AccessControl.indexBy : 04/05/20, 17:08:05 by DAB
-		«builds an index of the accesscontrol fields called [fieldID] for all messages in the DG
-		«which are not deleted or response messages
-		«was manilaFixer.accessControl.indexBy : 02/05/07, 15:56:22 by DAB
+	//Changes
+		//1/31/06; 1:48:30 AM by JES
+			//Add support for flPending flag.
+	//manilaSuite.AccessControl.indexBy : 04/05/20, 17:08:05 by DAB
+		//builds an index of the accesscontrol fields called [fieldID] for all messages in the DG
+		//which are not deleted or response messages
+		//was manilaFixer.accessControl.indexBy : 02/05/07, 15:56:22 by DAB
 	local (adrDiscuss = manilaSuite.discuss.getRootFromSiteAddress (adrSite));
 	local (maxMsgNum = adrDiscuss^.prefs.nextMsgNum-1);
 	local (msgNum);

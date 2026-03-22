@@ -1,24 +1,24 @@
 on surePath (s) {
-	if nameOf (s^) != "" { «it's already a good path; don't need to do anything
+	if nameOf (s^) != "" { //it's already a good path; don't need to do anything
 		return (0)};
 	
 	local (field, len, adr = @root, ctnewtables = 0);
 	
-	«while true // old code
-		«if s beginswith '['
-			«len = string.patternMatch ("].", s)
-			«if len == 0 «matching bracket is at end of string
-				«break
-			«field = string.mid (s, 1,  len)
-		«else
-			«field = string.nthField (s, '.', 1)
-			«if field == s «last dotted field in string
-				«break
-		«s = string.delete (s, 1, string.length (field)+1)
-		«adr = adr + "." + field
-		«if not defined (adr^)
-			«new (tableType, adr)
-			«ctnewtables++
+	//while true // old code
+		//if s beginswith '['
+			//len = string.patternMatch ("].", s)
+			//if len == 0 //matching bracket is at end of string
+				//break
+			//field = string.mid (s, 1,  len)
+		//else
+			//field = string.nthField (s, '.', 1)
+			//if field == s //last dotted field in string
+				//break
+		//s = string.delete (s, 1, string.length (field)+1)
+		//adr = adr + "." + field
+		//if not defined (adr^)
+			//new (tableType, adr)
+			//ctnewtables++
 	try {
 		local (ixstart, namelist = string.parseAddress (s));
 		adr = @[namelist [1]];

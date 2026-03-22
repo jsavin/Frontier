@@ -1,38 +1,38 @@
 on tenderRender (adr) { //turn an object into HTML
-	«This does the low-level object rendering that html.buildObject needs.
-		«This code used to be in html.data.standardMacros.renderObject, which calls this routine.
-		«And then passes the resulting text thru html.processMacros.
-		«Changes:
-			«Tue, Apr 23, 1996 at 7:48:33 AM by DW
-				«implement #directives, sets fields of html.data table
-					«#title sets adrPageTable^.title
-					«#ftpSite sets adrPageTable^.ftpsite
-					«#template sets adrPageTable^.template
-				«work with a local copy of the object
-					«we will modify the object before rendering it if it contains #directives
-			«Thu, Dec 12, 1996 at 5:28:51 PM by DW
-				«Allow outline renderers to run from the tools table
-			«10/12/98; 7:47:08 PM by DW
-				«implement #renderTableWith
-					«it can reference either a script or an outline
-					«does the same kind of thing as #renderOutlineWith
-				«we used to copy the object into a local before rendering it
-					«but near as I can tell, only the outline renderers care
-					«it would be wasteful to do this for tables, and for other large-ish types
-					«I'm going to try using it without making the copy and see if it hurts
-			«9/13/99; 2:33:10 PM by PBS
-				«Bug fix: you can use outlines as renderers when rendering tables via #renderTableWith.
-				«The locateRenderer subroutine now takes an optional parameter, flOutlinesOkay, which is false by default, but true when rendering a table via #renderTableWith.
-				«If flOutlinesOkay is true, then the locateRenderer subroutine will correctly locate renderers that are outlines.
-			«9/20/99; 12:07:14 PM by PBS
-				«Table renderers can be wp-text objects also. The locateRenderer routine now takes an additional optional parameter -- flWpTextOkay -- if true then the renderer can be a wp-text object. When rendering tables, this is true, otherwise it's false (by default).
+	//This does the low-level object rendering that html.buildObject needs.
+		//This code used to be in html.data.standardMacros.renderObject, which calls this routine.
+		//And then passes the resulting text thru html.processMacros.
+		//Changes:
+			//Tue, Apr 23, 1996 at 7:48:33 AM by DW
+				//implement #directives, sets fields of html.data table
+					//#title sets adrPageTable^.title
+					//#ftpSite sets adrPageTable^.ftpsite
+					//#template sets adrPageTable^.template
+				//work with a local copy of the object
+					//we will modify the object before rendering it if it contains #directives
+			//Thu, Dec 12, 1996 at 5:28:51 PM by DW
+				//Allow outline renderers to run from the tools table
+			//10/12/98; 7:47:08 PM by DW
+				//implement #renderTableWith
+					//it can reference either a script or an outline
+					//does the same kind of thing as #renderOutlineWith
+				//we used to copy the object into a local before rendering it
+					//but near as I can tell, only the outline renderers care
+					//it would be wasteful to do this for tables, and for other large-ish types
+					//I'm going to try using it without making the copy and see if it hurts
+			//9/13/99; 2:33:10 PM by PBS
+				//Bug fix: you can use outlines as renderers when rendering tables via #renderTableWith.
+				//The locateRenderer subroutine now takes an optional parameter, flOutlinesOkay, which is false by default, but true when rendering a table via #renderTableWith.
+				//If flOutlinesOkay is true, then the locateRenderer subroutine will correctly locate renderers that are outlines.
+			//9/20/99; 12:07:14 PM by PBS
+				//Table renderers can be wp-text objects also. The locateRenderer routine now takes an additional optional parameter -- flWpTextOkay -- if true then the renderer can be a wp-text object. When rendering tables, this is true, otherwise it's false (by default).
 	
 	on locateRenderer (name, flOutlinesOkay=false, flWpTextOkay=false) { //returns the address of the renderer
 		local (adr);
 		
 		on isValidRenderer () {
-			«PBS 9/13/99: bottleneck script for determining if an address points to a valid renderer.
-				«Renderers must be a script -- unless this is a table rendered via #renderTableWith, in which case a renderer may be an outline.
+			//PBS 9/13/99: bottleneck script for determining if an address points to a valid renderer.
+				//Renderers must be a script -- unless this is a table rendered via #renderTableWith, in which case a renderer may be an outline.
 			
 			if not defined (adr^) { //if it's not defined, it's not a valid renderer
 				return (false)};
@@ -94,23 +94,23 @@ on tenderRender (adr) { //turn an object into HTML
 					local (namestring, typestring, valuestring);
 					
 					s = s + "<tr>";
-					«namestring = "<a href=\"aretha.www.getpage.fcgi$" + string.urlEncode (string (itemaddress)) + "\">" + itemname + "</a>"
+					//namestring = "<a href=\"aretha.www.getpage.fcgi$" + string.urlEncode (string (itemaddress)) + "\">" + itemname + "</a>"
 					namestring = itemname;
 					valuestring = "---";
 					case itemtype {
-						directionType { «added 4/27/96 DW
+						directionType { //added 4/27/96 DW
 							valuestring = string (itemaddress^);
 							typestring = "direction"};
-						rgbType { «added 4/27/96 DW
+						rgbType { //added 4/27/96 DW
 							valuestring = string (itemaddress^);
 							typestring = "rgb"};
-						pointType { «added 4/27/96 DW
+						pointType { //added 4/27/96 DW
 							valuestring = string (itemaddress^);
 							typestring = "point"};
-						rectType { «added 4/27/96 DW
+						rectType { //added 4/27/96 DW
 							valuestring = string (itemaddress^);
 							typestring = "rect"};
-						filespecType { «added 4/27/96 DW
+						filespecType { //added 4/27/96 DW
 							valuestring = string (itemaddress^);
 							typestring = "filespec"};
 						aliastype {
@@ -125,10 +125,10 @@ on tenderRender (adr) { //turn an object into HTML
 						chartype {
 							valuestring = itemaddress^;
 							typestring = "character"};
-						datetype { «added 12/11/95 DW
+						datetype { //added 12/11/95 DW
 							valuestring = string (itemaddress^);
 							typestring = "date"};
-						addresstype { «added 12/11/95 DW
+						addresstype { //added 12/11/95 DW
 							valuestring = string (itemaddress^);
 							typestring = "address"};
 						listtype {
@@ -155,7 +155,7 @@ on tenderRender (adr) { //turn an object into HTML
 						stringtype {
 							valuestring = itemaddress^;
 							typestring = "string [" + sizeof (valuestring) + "]";
-							};«flnowrapvalue = false «let the browser client wrap this cell
+							};//flnowrapvalue = false //let the browser client wrap this cell
 						tabletype {
 							local (itemcount = itemsize);
 							if defined (itemaddress^.["{aretha stats}"]) {
@@ -168,7 +168,7 @@ on tenderRender (adr) { //turn an object into HTML
 						wptexttype {
 							valuestring = itemsize + " chars";
 							typestring = "wptext";
-							};«flnowrapvalue = false «let the browser client wrap this cell
+							};//flnowrapvalue = false //let the browser client wrap this cell
 						picturetype {
 							valuestring =  itemsize + " bytes";
 							typestring = "picture"}};
@@ -185,10 +185,10 @@ on tenderRender (adr) { //turn an object into HTML
 						s = s + ">" + itemtext + "</td>";
 						return (s)};
 					
-					«valuestring = string.replaceAll (valuestring, "<", "&lt;") «make sure HTML codes are readable
+					//valuestring = string.replaceAll (valuestring, "<", "&lt;") //make sure HTML codes are readable
 					
 					s = s + td (true, namestring);
-					«s = s + td (flnowrapvalue, html.cleanforexport (valuestring))
+					//s = s + td (flnowrapvalue, html.cleanforexport (valuestring))
 					if sizeof (valuestring) == 0 {
 						valuestring = "."};
 					s = s + td (flnowrapvalue, valuestring);

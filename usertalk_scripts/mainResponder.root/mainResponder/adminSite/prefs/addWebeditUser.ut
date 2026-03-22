@@ -1,7 +1,7 @@
 on addWebeditUser () {
-	«Changes
-		«9/4/02; 5:05:05 AM by JES
-			«Created.
+	//Changes
+		//9/4/02; 5:05:05 AM by JES
+			//Created.
 	local (pta = html.getPageTableAddress ());
 	local (htmltext);
 	on add (s) {

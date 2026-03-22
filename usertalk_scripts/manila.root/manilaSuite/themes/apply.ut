@@ -1,29 +1,29 @@
 on apply (adrSite, themeName, flDefaultPages=false, adrTheme=nil, flNewSite=false, objectName=nil, flAddThemeLink=false, flAddPictures=true) {
-	«Changes:
-		«7/22/05; 3:00:08 PM by JES
-			«Fix a bug which caused sites to break when certain, older discussion group themes were applied.
-		«5/27/05; 3:09:29 AM by JES
-			«New parameter, flAddPictures. If true, then we add a DG message for all the items in the theme's pictures sub-table. We only add pictures that don't yet have a shortcut in the site. (They're referenced by shortcut name in {pictureRef} calls anyway, so let's not over-think -- theme designers should use relatively unique names to be safe.)
-		«9/12/03; 12:41:11 PM by JES
-			«If flDefaultPages is true and the default theme doesn't have a pages sub-table, use the one in manilaData.themes.default.
-		«3/31/03; 3:55:45 PM by JES
-			«If this is a new site, and news items are enabled, patch the templates to include message #3 for the about text instead of message #2. New news items sites have one more DG message in them for the initial news item, before the about page is created, which was causing an off-by-one bug in some themes.
-		«3/29/03; 1:49:51 PM by JES
-			«Work around a bug in the themes that shipped with Frontier 9.0 -- un-neuter the {permaLink} and {commentLink} psuedo-macros in the news items template.
-		«06/14/00; 4:49:48 PM by PBS
-			«Under some cases we don't want the cowskull specified in the theme, we want the calculated version. When the cowskull image is named /cowskull or /cowskull.gif assume what's wanted is the default cowskull image.
-			«When looking for a themeLink macro, we were checking for {themeLink () -- but sometimes people type {themeLink(). This caused double theme links at times. So now just look for {themeLink.
-			«objectName is a new optional parameter. If specified, set up only that object, not all objects. This supports the Restore to Default feature of the Advanced page and the emergency template restoration page.
-		«06/20/00; 10:14:39 PM by PBS
-			«For new sites, this was creating a second home page. Rather, it should just set the text and subject of the existing home page.
-		«10/23/00; 2:30:49 AM by JES
-			«Apply discussion group templates. Apply homepage template, making sure to set the pref for using the homepage template to false for themes that don't specify the pref.
-		«10/27/00; 3:51:49 AM by JES
-			«Only save theme application info if applying the entire theme.
-		«11/16/00; 3:28:02 PM by PBS
-			«Apply modules defined by the theme, if any.
-		«05/24/00; 2:42:50 PM by PBS
-			«Created. Set the theme for a Manila site. May be used to apply an entire theme or just one item in a theme.
+	//Changes:
+		//7/22/05; 3:00:08 PM by JES
+			//Fix a bug which caused sites to break when certain, older discussion group themes were applied.
+		//5/27/05; 3:09:29 AM by JES
+			//New parameter, flAddPictures. If true, then we add a DG message for all the items in the theme's pictures sub-table. We only add pictures that don't yet have a shortcut in the site. (They're referenced by shortcut name in {pictureRef} calls anyway, so let's not over-think -- theme designers should use relatively unique names to be safe.)
+		//9/12/03; 12:41:11 PM by JES
+			//If flDefaultPages is true and the default theme doesn't have a pages sub-table, use the one in manilaData.themes.default.
+		//3/31/03; 3:55:45 PM by JES
+			//If this is a new site, and news items are enabled, patch the templates to include message #3 for the about text instead of message #2. New news items sites have one more DG message in them for the initial news item, before the about page is created, which was causing an off-by-one bug in some themes.
+		//3/29/03; 1:49:51 PM by JES
+			//Work around a bug in the themes that shipped with Frontier 9.0 -- un-neuter the {permaLink} and {commentLink} psuedo-macros in the news items template.
+		//06/14/00; 4:49:48 PM by PBS
+			//Under some cases we don't want the cowskull specified in the theme, we want the calculated version. When the cowskull image is named /cowskull or /cowskull.gif assume what's wanted is the default cowskull image.
+			//When looking for a themeLink macro, we were checking for {themeLink () -- but sometimes people type {themeLink(). This caused double theme links at times. So now just look for {themeLink.
+			//objectName is a new optional parameter. If specified, set up only that object, not all objects. This supports the Restore to Default feature of the Advanced page and the emergency template restoration page.
+		//06/20/00; 10:14:39 PM by PBS
+			//For new sites, this was creating a second home page. Rather, it should just set the text and subject of the existing home page.
+		//10/23/00; 2:30:49 AM by JES
+			//Apply discussion group templates. Apply homepage template, making sure to set the pref for using the homepage template to false for themes that don't specify the pref.
+		//10/27/00; 3:51:49 AM by JES
+			//Only save theme application info if applying the entire theme.
+		//11/16/00; 3:28:02 PM by PBS
+			//Apply modules defined by the theme, if any.
+		//05/24/00; 2:42:50 PM by PBS
+			//Created. Set the theme for a Manila site. May be used to apply an entire theme or just one item in a theme.
 	
 	if not defined (config.manila.themes) { //make sure themes are initialized
 		manilaSuite.init ()};
@@ -189,7 +189,7 @@ on apply (adrSite, themeName, flDefaultPages=false, adrTheme=nil, flNewSite=fals
 						else {
 							msgNum = mainResponder.discuss.addMessage (subject, memberKey, 0, "", postTime:postTime, flcallback:false, adrRoot:adrDg, groupName:groupName, flEmptyBodyOk:true);
 							
-							«Make it a story and possibly a home page.
+							//Make it a story and possibly a home page.
 							local (adrMsgTable = @adrMessages^.[string.padWithZeros (msgNum, 7)]);
 							manilaSuite.discuss.setTimeZoneForMessage (adrMsgTable, timeZone);
 							local (storiesCategory, homePagesCategory);

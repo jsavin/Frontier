@@ -1,15 +1,15 @@
 on doSearch (adrSearchRequest, adrFilterCallback=nil) {
-	«adrSearchRequest is the address of a table containing info about this request.
-		«See mainResponder.search.server.htmlSearch for an example caller script.
-		«This script doesn't make any assumptions about its context.
-		«It could be running from within the website framework,
-		«or it may be called by an XML-RPC handler, etc.
-		«It will return HTML text.
-	«Changes
-		«8/11/02; 2:08:49 AM by JES
-			«New optional parameter adrFilterCallback. Called with the address of the search table, and has the opportunity to modify anything about the search result. See for example the rawResults sub-table of the search table.
+	//adrSearchRequest is the address of a table containing info about this request.
+		//See mainResponder.search.server.htmlSearch for an example caller script.
+		//This script doesn't make any assumptions about its context.
+		//It could be running from within the website framework,
+		//or it may be called by an XML-RPC handler, etc.
+		//It will return HTML text.
+	//Changes
+		//8/11/02; 2:08:49 AM by JES
+			//New optional parameter adrFilterCallback. Called with the address of the search table, and has the opportunity to modify anything about the search result. See for example the rawResults sub-table of the search table.
 	
-	«Is this machine a search engine server?
+	//Is this machine a search engine server?
 	if not config.mainResponder.prefs.flSearchEngine {
 		return ("Can't run a search because this server is not a search engine server.")};
 	
@@ -26,21 +26,21 @@ on doSearch (adrSearchRequest, adrFilterCallback=nil) {
 	add ("<<replaceNumHits>>");
 	
 	bundle { //create a new search table and get the raw results
-		«The search table will include:
-			«searchString
-			«origSearchString
-			«filteredSearchString
-			«totalAndHits
-			«totalOrHits
-			«countKeywords
-			«index
-			«rawResults
-			«min
-				«The minimum relevancy rank for AND hits.
+		//The search table will include:
+			//searchString
+			//origSearchString
+			//filteredSearchString
+			//totalAndHits
+			//totalOrHits
+			//countKeywords
+			//index
+			//rawResults
+			//min
+				//The minimum relevancy rank for AND hits.
 		
 		new (tableType, @search); //create a new search table
 		
-		«Make sure there is a search request.
+		//Make sure there is a search request.
 		if string.trimWhiteSpace (adrSearchRequest^.searchString) == "" {
 			return (mainResponder.search.server.nothingFound (@search))};
 		
@@ -59,30 +59,30 @@ on doSearch (adrSearchRequest, adrFilterCallback=nil) {
 	
 	local (adrResults = @search.rawResults);
 	
-	«bundle //filter the results
-		«Filter the results based on a site name.
-			«Also set adrScreen^.totalHits to the number of hits.
-		«if defined (adrSearchRequest^.site) and (adrSearchRequest^.site != "") and (string.lower (adrSearchRequest^.site) != "all")
-			«local (lowerSiteName = string.lower (adrSearchRequest^.site))
-			«local (i)
-			«local (indexName = adrSearchRequest^.indexName)
-			«local (indexPath = frontier.pathString + "Nirvana Server" + pc + "ops" + pc + indexName)
-			«local (indexPath = Frontier.getSubFolder ("/ops/") + indexName)
-			«
-			«for i = sizeOf (search.rawResults) downTo 1
-				«local (adrPageInfo, url, pageID)
-				«
-				«pageID = nameOf (search.rawResults [i])
-				«url = string.nthField (pageID, '@', 1)
-				«
-				«adrPageInfo = @[indexPath].pageInfo.[pageID]
-				«local (lowerPageSite = string.lower (adrPageInfo^.siteName))
-				«
-				«if lowerPageSite != lowerSiteName
-					«delete (@search.rawResults [i])
-			«
-			«if sizeOf (search.rawResults) < 1
-				«return (mainResponder.search.server.nothingFound (@search))
+	//bundle //filter the results
+		//Filter the results based on a site name.
+			//Also set adrScreen^.totalHits to the number of hits.
+		//if defined (adrSearchRequest^.site) and (adrSearchRequest^.site != "") and (string.lower (adrSearchRequest^.site) != "all")
+			//local (lowerSiteName = string.lower (adrSearchRequest^.site))
+			//local (i)
+			//local (indexName = adrSearchRequest^.indexName)
+			//local (indexPath = frontier.pathString + "Nirvana Server" + pc + "ops" + pc + indexName)
+			//local (indexPath = Frontier.getSubFolder ("/ops/") + indexName)
+			//
+			//for i = sizeOf (search.rawResults) downTo 1
+				//local (adrPageInfo, url, pageID)
+				//
+				//pageID = nameOf (search.rawResults [i])
+				//url = string.nthField (pageID, '@', 1)
+				//
+				//adrPageInfo = @[indexPath].pageInfo.[pageID]
+				//local (lowerPageSite = string.lower (adrPageInfo^.siteName))
+				//
+				//if lowerPageSite != lowerSiteName
+					//delete (@search.rawResults [i])
+			//
+			//if sizeOf (search.rawResults) < 1
+				//return (mainResponder.search.server.nothingFound (@search))
 	if adrFilterCallback != nil {
 		try {
 			while typeOf (adrFilterCallback^) == addressType {
@@ -92,19 +92,19 @@ on doSearch (adrSearchRequest, adrFilterCallback=nil) {
 	if sizeOf (search.rawResults) == 0 {
 		return (mainResponder.search.server.nothingFound (@search))};
 	
-	«Build the HTML results.
+	//Build the HTML results.
 	local (s = mainResponder.search.server.buildHtml (@search, @screen, adrSearchRequest));
 	if s == false {
 		return (mainResponder.search.server.nothingFound (@search))};
 	add (s);
 	
-	«Build links to more screens.
-		«If the searchRequest asks for screens links,
-		«and the type of returned text is HTML,
-		«then build links to additional screens, if any.
+	//Build links to more screens.
+		//If the searchRequest asks for screens links,
+		//and the type of returned text is HTML,
+		//then build links to additional screens, if any.
 	mainResponder.search.server.buildScreenLinks (@search, @screen, adrSearchRequest);
 	
-	«Log this search.
+	//Log this search.
 	bundle {
 		local (url);
 		local (clientIp);

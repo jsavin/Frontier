@@ -1,9 +1,9 @@
 on setupFrontier () {
-	«Changes
-		«8/21/02; 7:17:33 PM by JES
-			«Fixed a bug which would prevent the setup from succeeding on Windows and MacOS Classic.
-		«4/11/02; 10:27:06 PM by JES
-			«Created. Cribbed from radio.html.setupFrontier.
+	//Changes
+		//8/21/02; 7:17:33 PM by JES
+			//Fixed a bug which would prevent the setup from succeeding on Windows and MacOS Classic.
+		//4/11/02; 10:27:06 PM by JES
+			//Created. Cribbed from radio.html.setupFrontier.
 	
 	local (flOpenAdminSite = true); //set to false to open the first Manila site instead.
 	
@@ -20,7 +20,7 @@ on setupFrontier () {
 	
 	local (errorMessage = "", confirmMessage = "", postedSection = "", flError = false, flConfirmPage = false, flPortForwardPage = false);
 	if pta^.method == "POST" {
-		«workspace.pt = pta^; edit (@workspace.pt)
+		//workspace.pt = pta^; edit (@workspace.pt)
 		local (adrargs = @pta^.postArgs);
 		
 		on getInitials (s) {
@@ -155,8 +155,8 @@ on setupFrontier () {
 			userland.completeSetup (urlparts[2], password, user.prefs.portForwardingAdminPassword, flRememberAdminPassword);
 			flConfirmPage = true;
 			system.temp.Frontier.setupFrontier.flAllowLocalAccessToSetupPage = false}; //require login from now on
-		«if defined (adrargs^.confirmSetup) //redirect to the Control Panel home page
-			«mainResponder.redirect ("http://" + pta^.host + "/")
+		//if defined (adrargs^.confirmSetup) //redirect to the Control Panel home page
+			//mainResponder.redirect ("http://" + pta^.host + "/")
 		bundle { //if redirecting, set messages in the temp table, and don't bother to finish rendering
 			if defined (pta^.responderAttributes.redirectUrl) {
 				temp.frontier.postedSection = postedSection;
@@ -183,15 +183,15 @@ on setupFrontier () {
 			local (myManilaServerSiteUrl = manilaSuite.getSiteUrl (@myManilaServerManilaWebsite));
 			mainResponder.redirect (myManilaServerSiteUrl)};
 		return ("");
-		«Confirmation page wired off for now.
-			«pta^.title = "Congratulations!"
-			«local (t); new (tableType, @t)
-			«t.myManilaServerSiteUrl = myManilaServerSiteUrl
-			«add (mainResponder.getString ("setupFrontier.newUserConfirmMessage", @t))
-			«bundle //add the Continue button
-				«add ("<form method=\"POST\" action=\"http://" + myManilaServerSiteUrl + "/\">")
-				«add ("<input type=\"submit\" value=\"Continue\">")
-				«add ("</form>")}
+		//Confirmation page wired off for now.
+			//pta^.title = "Congratulations!"
+			//local (t); new (tableType, @t)
+			//t.myManilaServerSiteUrl = myManilaServerSiteUrl
+			//add (mainResponder.getString ("setupFrontier.newUserConfirmMessage", @t))
+			//bundle //add the Continue button
+				//add ("<form method=\"POST\" action=\"http://" + myManilaServerSiteUrl + "/\">")
+				//add ("<input type=\"submit\" value=\"Continue\">")
+				//add ("</form>")}
 	else { //render the welcome/setup form
 		bundle { //change the template to the setup template, which doesn't have navigation links to the rest of the control panel
 			table.assign (@pta^.template, "setup");
@@ -251,9 +251,9 @@ on setupFrontier () {
 				add (mainResponder.getString ("setupFrontier.main", @t))}}};
 	
 	return (htmltext)};
-«bundle //testing
-	«local (pagetable); new (tableType, @pagetable)
-	«pagetable.method = "GET"
-	«html.setPageTableAddress (@pagetable)
-	«setupFrontier ()
-	«html.deletePageTableAddress ()
+//bundle //testing
+	//local (pagetable); new (tableType, @pagetable)
+	//pagetable.method = "GET"
+	//html.setPageTableAddress (@pagetable)
+	//setupFrontier ()
+	//html.deletePageTableAddress ()

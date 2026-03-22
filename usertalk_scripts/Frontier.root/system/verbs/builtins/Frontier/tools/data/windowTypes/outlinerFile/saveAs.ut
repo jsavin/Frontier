@@ -1,8 +1,8 @@
 on saveAs (adr, adradrwindow=nil) {
-	«Handle the Save As command for outliner files.
-	«Changes:
-		«8/14/01; 8:36:22 PM by JES
-			«Don't doubly append the .opml extension onto the default filename.
+	//Handle the Save As command for outliner files.
+	//Changes:
+		//8/14/01; 8:36:22 PM by JES
+			//Don't doubly append the .opml extension onto the default filename.
 	
 	on getFilePathFromUser (adrPath, defaultExtension) {
 		local (f, folder, fname);

@@ -1,12 +1,12 @@
-«Changes:
-	«9/6/01; 3:05:15 PM by PBS
-		«Make sure the referer is the current page when it's a POST.
-	«9/7/01; 9:13:47 AM by DW
-		«The message now makes it clear that we don't know for a fact who sent the message, and we also include the sender's IP address, which makes it less likely this feature will be used in an abusive way.
-	«10/1/01; 3:09:29 PM by PBS
-		«Expand macros and glossary items in the text for both the excerpt and the email message.
-	«12/19/01; 2:43:52 PM by PBS
-		«Call manilaSuite.sendMail instead of tcp.sendMail so user callbacks get called and text gets converted (bug fix from David Bayly on Frontier-Server list).
+//Changes:
+	//9/6/01; 3:05:15 PM by PBS
+		//Make sure the referer is the current page when it's a POST.
+	//9/7/01; 9:13:47 AM by DW
+		//The message now makes it clear that we don't know for a fact who sent the message, and we also include the sender's IP address, which makes it less likely this feature will be used in an abusive way.
+	//10/1/01; 3:09:29 PM by PBS
+		//Expand macros and glossary items in the text for both the excerpt and the email message.
+	//12/19/01; 2:43:52 PM by PBS
+		//Call manilaSuite.sendMail instead of tcp.sendMail so user callbacks get called and text gets converted (bug fix from David Bayly on Frontier-Server list).
 local (pta = html.getpagetableaddress ());
 pta^.title = "Mail a Story";
 
@@ -20,7 +20,7 @@ on add (s) {
 	htmltext = htmltext + string.filledString ("\t", indentlevel) + s + "\r"};
 if pta^.method == "POST" {
 	manilaSuite.referer.checkSelf (); //PBS 09/06/01: make sure the referer is this page
-	«scratchpad.postargs = pta^.postargs; edit (@scratchpad.postargs)
+	//scratchpad.postargs = pta^.postargs; edit (@scratchpad.postargs)
 	local (adrmsg = mainResponder.discuss.getMessageTable (number (pta^.postargs.msgnum)));
 	local (membername = mainResponder.members.getMemberName (pta^.defaultMembershipGroup, adrmsg^.member));
 	local (dashes = string.filledString ("-- ", 25));
@@ -36,12 +36,12 @@ if pta^.method == "POST" {
 	s = s + storytext + "." + lineend + lineend;
 	s = s + dashes + lineend;
 	s = s + "This is a Manila site: http://manila.userland.com/.";
-	«tcp.sendMail (pta^.postargs.recipient, "[" + pta^.sitename + "] " + adrmsg^.subject, s, sender:pta^.postargs.sender)
+	//tcp.sendMail (pta^.postargs.recipient, "[" + pta^.sitename + "] " + adrmsg^.subject, s, sender:pta^.postargs.sender)
 	manilaSuite.sendMail (pta^.postargs.recipient, "[" + pta^.sitename + "] " + adrmsg^.subject, s, sender:pta^.postargs.sender); //PBS 12/19/01: call manilaSuite.sendMail so user callbacks get called and text gets converted (bug fix from David Bayly on Frontier-Server list)
 	add ("Mail message sent to \"" + pta^.postargs.recipient + "\" at " + string.timestring () + ".")}
 else {
 	local (adrmsg = mainResponder.discuss.getMessageTable (number (pta^.pathargs)));
-	«edit (adrmsg) //debugging
+	//edit (adrmsg) //debugging
 	bundle { //add story excerpt
 		add ("<table width=\"100%\" cellpadding=\"5\">"); indentlevel++;
 		add ("<tr bgcolor=\"whitesmoke\">"); indentlevel++;

@@ -1,6 +1,6 @@
 on getExternalEditorInfoXml () {
-	«Build an XML page that contains info needed by external editors such as Radio UserLand.
-		«09/11/00; 10:14:03 PM by PBS
+	//Build an XML page that contains info needed by external editors such as Radio UserLand.
+		//09/11/00; 10:14:03 PM by PBS
 	
 	local (pta = html.getPageTableAddress ());
 	local (adrSite = manilaSuite.getManilaSiteAddress (pta));

@@ -1,5 +1,5 @@
 on set (username, password, siteName, msgNum, timestamp) {
-	«manilaSuite.rpcHandlers.accesscontrol.expiryDate.set : 04/05/21, 09:59:09 by DAB
-		«sets expiry date of message msgnum in site sitname to value in teimstamp
-		«was manilaFixer.rpcHandlers.accesscontrol.expiryDate.set : 02/02/27, 14:41:26 by DAB
+	//manilaSuite.rpcHandlers.accesscontrol.expiryDate.set : 04/05/21, 09:59:09 by DAB
+		//sets expiry date of message msgnum in site sitname to value in teimstamp
+		//was manilaFixer.rpcHandlers.accesscontrol.expiryDate.set : 02/02/27, 14:41:26 by DAB
 	manilaSuite.accessControl.rpcHandlers.set(username, password, siteName, msgNum, "expiryDate", timestamp)}

@@ -1,13 +1,13 @@
 on getPrefsFromManilaSite () {
-	«Copy the prefs from the Manila site.
-		«03/06/00; 9:30:14 PM by PBS
+	//Copy the prefs from the Manila site.
+		//03/06/00; 9:30:14 PM by PBS
 	
 	local (pta = html.getPageTableAddress ());
 	local (adrManilaSite = manilaSuite.staticRendering.getManilaSiteAddress ());
 	local (adrPrefs = @adrManilaSite^.["#prefs"]);
 	if not defined (pta^.responderAttributes) {
 		pta^.responderAttributes = config.mainresponder.globals;
-		};«new (tableType, @pta^.responderAttributes)
+		};//new (tableType, @pta^.responderAttributes)
 	
 	local (adrItem);
 	for adrItem in adrPrefs {
