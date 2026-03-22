@@ -17,6 +17,7 @@
 #include <stdint.h>
 #include <time.h>
 #include <ctype.h>
+#include <errno.h>
 #if !defined(_WIN32)
 #include <sys/types.h>
 #endif
@@ -62,7 +63,7 @@ static _Thread_local boolean g_db_format_runtime_initialized = false;
 #if !defined(FRONTIER_PORTABLE)
 static boolean g_db_format_runtime_headless = false;
 #endif
-static char last_backup_path[1024];
+static char last_migration_output_path[1024];
 static boolean g_legacy_adapter_active = false;
 static boolean g_legacy_adapter_force_repack = false;
 static boolean g_legacy_adapter_mode_locked = false; /* Prevents v7->v6 downgrades during migration */
@@ -1405,7 +1406,7 @@ boolean create_root_backup(const char *original_path) {
     if (original_path == NULL)
         return false;
 
-    last_backup_path[0] = '\0';
+    last_migration_output_path[0] = '\0';
 
     char backup_path[1024];
     time_t now = time(NULL);
@@ -1447,8 +1448,8 @@ boolean create_root_backup(const char *original_path) {
 
     fclose(src);
     fclose(dst);
-    strncpy(last_backup_path, backup_path, sizeof last_backup_path);
-    last_backup_path[sizeof last_backup_path - 1] = '\0';
+    strncpy(last_migration_output_path, backup_path, sizeof last_migration_output_path);
+    last_migration_output_path[sizeof last_migration_output_path - 1] = '\0';
     return true;
 }
 
@@ -1825,7 +1826,7 @@ static void cleanup_migration_database(db_context *dest_context, boolean have_de
     /* else: databasedata already nil (normal success path), nothing to do */
 }
 
-static boolean migrate_internal(const char *db_path, boolean drop_cancoon) {
+static boolean migrate_internal(const char *db_path, boolean drop_cancoon, const char *explicit_output) {
     if (db_path == NULL || db_path[0] == '\0')
         return false;
 
@@ -1892,26 +1893,36 @@ static boolean migrate_internal(const char *db_path, boolean drop_cancoon) {
         db_format_trace_database_path(db_path);
 
     /* Derive output path and v6 backup path.
-     * The v7 output goes to the original .root path; the v6 original is
-     * renamed to .v6.root as a backup before the v7 file is put in place.
      *
-     * Pattern: Frontier.root (v6) -> Frontier.v6.root (backup) + Frontier.root (v7 output)
-     * Safety: write v7 to temp first, THEN rename v6, THEN rename temp to final. */
-    const char *ext = strrchr(db_path, '.');
-    if (ext && strcmp(ext, ".root") == 0) {
-        /* Input has .root extension: backup = .v6.root, output = original path */
-        size_t base_len = (size_t)(ext - db_path);
-        snprintf(backup_path, sizeof backup_path, "%.*s.v6.root", (int) base_len, db_path);
-        snprintf(output_path, sizeof output_path, "%s", db_path);
+     * When explicit_output is given (--output flag), the v6 input is never
+     * modified — v7 output is written to a temp file next to the explicit
+     * output path and renamed into place.  backup_path stays empty so the
+     * rename-v6-to-backup step is skipped.
+     *
+     * Default (in-place) pattern:
+     *   Frontier.root (v6) -> Frontier.v6.root (backup) + Frontier.root (v7)
+     * Safety: write v7 to temp first, THEN rename v6, THEN rename temp. */
+    if (explicit_output != NULL) {
+        /* Explicit output: no backup, write directly to caller's path */
+        snprintf(output_path, sizeof output_path, "%s", explicit_output);
+        backup_path[0] = '\0';  /* no v6 backup needed */
     } else {
-        /* No .root extension: backup = <path>.v6, output = <path>.root */
-        snprintf(backup_path, sizeof backup_path, "%s.v6", db_path);
-        snprintf(output_path, sizeof output_path, "%s.root", db_path);
+        const char *ext = strrchr(db_path, '.');
+        if (ext && strcmp(ext, ".root") == 0) {
+            /* Input has .root extension: backup = .v6.root, output = original path */
+            size_t base_len = (size_t)(ext - db_path);
+            snprintf(backup_path, sizeof backup_path, "%.*s.v6.root", (int) base_len, db_path);
+            snprintf(output_path, sizeof output_path, "%s", db_path);
+        } else {
+            /* No .root extension: backup = <path>.v6, output = <path>.root */
+            snprintf(backup_path, sizeof backup_path, "%s.v6", db_path);
+            snprintf(output_path, sizeof output_path, "%s.root", db_path);
+        }
     }
 
-    strncpy(last_backup_path, output_path, sizeof last_backup_path);
-    if (sizeof last_backup_path > 0)
-        last_backup_path[sizeof last_backup_path - 1] = '\0';
+    strncpy(last_migration_output_path, output_path, sizeof last_migration_output_path);
+    if (sizeof last_migration_output_path > 0)
+        last_migration_output_path[sizeof last_migration_output_path - 1] = '\0';
 
     snprintf(temp_path, sizeof temp_path, "%s.v7.tmp", output_path);
 
@@ -2314,11 +2325,15 @@ cleanup:
 }
 
 boolean migrate_32bit_to_64bit(const char *db_path) {
-    return migrate_internal(db_path, true);
+    return migrate_internal(db_path, true, NULL);
 }
 
 boolean migrate_32bit_to_64bit_drop_cancoon(const char *db_path) {
-    return migrate_internal(db_path, true);
+    return migrate_internal(db_path, true, NULL);
+}
+
+boolean migrate_32bit_to_64bit_to_output(const char *db_path, const char *output) {
+    return migrate_internal(db_path, true, output);
 }
 
 boolean ensure_database_v7(const char *db_path, boolean *migrated, char *output_path, size_t output_path_size) {
@@ -2366,7 +2381,26 @@ boolean ensure_database_v7(const char *db_path, boolean *migrated, char *output_
                 return true;
             }
         }
-        /* .root is not valid v7 -- fall through to migration path */
+        /* .root is missing or not valid v7 — restore v6 backup so
+         * the migration path below can read the original v6 data.
+         * This handles crash recovery: if the process died between
+         * renaming v6->backup and placing the v7 temp file, the
+         * .root file may be absent or truncated. */
+        if (rename(v6_backup_path, db_path) == 0) {
+#if defined(FRONTIER_HEADLESS)
+            log_info(LOG_COMP_DB,
+                "ensure_database_v7: restored v6 backup %s to %s after incomplete migration",
+                v6_backup_path, db_path);
+#endif
+            /* Fall through to re-migrate below */
+        } else {
+#if defined(FRONTIER_HEADLESS)
+            log_error(LOG_COMP_DB,
+                "ensure_database_v7: cannot restore v6 backup %s: %s",
+                v6_backup_path, strerror(errno));
+#endif
+            return false;
+        }
     }
 
     /* Transitional fallback: check for legacy .root7 file from previous migration.
@@ -2427,12 +2461,12 @@ boolean ensure_database_v7(const char *db_path, boolean *migrated, char *output_
         return true;
     }
 
-    if (!migrate_internal(db_path, true))
+    if (!migrate_internal(db_path, true, NULL))
         return false;
 
     /* Migration succeeded; return path to new v7 file */
     if (output_path && output_path_size > 0) {
-        if (!db_format_last_backup_path(output_path, output_path_size))
+        if (!db_format_last_migration_output_path(output_path, output_path_size))
             return false;
     }
 
@@ -2442,21 +2476,21 @@ boolean ensure_database_v7(const char *db_path, boolean *migrated, char *output_
     return true;
 }
 
-boolean db_format_last_backup_path(char *buffer, size_t length) {
+boolean db_format_last_migration_output_path(char *buffer, size_t length) {
     if (buffer == NULL || length == 0)
         return false;
-    if (last_backup_path[0] == '\0') {
+    if (last_migration_output_path[0] == '\0') {
         buffer[0] = '\0';
         return false;
     }
-    strncpy(buffer, last_backup_path, length);
+    strncpy(buffer, last_migration_output_path, length);
     if (length > 0)
         buffer[length - 1] = '\0';
     return true;
 }
 
-void db_format_clear_last_backup_path(void) {
-    last_backup_path[0] = '\0';
+void db_format_clear_last_migration_output_path(void) {
+    last_migration_output_path[0] = '\0';
 }
 
 void db_format_force_strict_v7_reader(void) {

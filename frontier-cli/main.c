@@ -220,92 +220,44 @@ int main(int argc, char* argv[]) {
             return 1;
         }
 
-        /* Perform the migration.
-         * ensure_database_v7 will:
-         * - Detect format, skip if already v7
-         * - Rename v6 original to .v6.root (backup)
-         * - Write v7 output to the original .root path
-         * - Return the v7 output path in migration_output */
-        if (!ensure_database_v7(input, &migrated, migration_output, sizeof(migration_output))) {
-            fprintf(stderr, "Error: Migration failed for: %s\n", input);
-            return 1;
-        }
+        if (g_cli_options.output_path != NULL) {
+            /* --output mode: write v7 directly to the specified path.
+             * The v6 input file is never modified. */
 
-        if (!migrated) {
-            printf("Already v7 format: %s\n", input);
-            return 0;
-        }
-
-        /* If --output specified and differs from default migration output, copy there
-         * and restore the v6 original to its original path. */
-        if (g_cli_options.output_path != NULL && strcmp(g_cli_options.output_path, migration_output) != 0) {
-            #define FILE_COPY_BUFFER_SIZE 8192
-
-            /* Copy the migrated v7 file to the specified output path */
-            FILE *src = fopen(migration_output, "rb");
-            if (!src) {
-                fprintf(stderr, "Error: Cannot read migrated file: %s\n", migration_output);
-                return 1;
-            }
-
-            FILE *dst = fopen(g_cli_options.output_path, "wb");
-            if (!dst) {
-                fclose(src);
-                fprintf(stderr, "Error: Cannot create output file: %s\n", g_cli_options.output_path);
-                return 1;
-            }
-
-            char buf[FILE_COPY_BUFFER_SIZE];
-            size_t n;
-            boolean copy_failed = false;
-
-            while ((n = fread(buf, 1, sizeof(buf), src)) > 0) {
-                if (fwrite(buf, 1, n, dst) != n) {
-                    copy_failed = true;
-                    break;
-                }
-            }
-
-            if (!copy_failed && (ferror(src) || ferror(dst))) {
-                copy_failed = true;
-            }
-
-            fclose(src);
-            fclose(dst);
-
-            if (copy_failed) {
-                remove(g_cli_options.output_path);
-                fprintf(stderr, "Error: File copy failed\n");
-                return 1;
-            }
-
-            /* With --output, restore the v6 original: remove v7 at original path,
-             * rename .v6.root backup back to original path. */
+            /* Check if already v7 before attempting migration */
             {
-                char v6_backup[CLI_MAX_PATH_LENGTH + 16];
-                const char *dot = strrchr(input, '.');
-                if (dot && strcasecmp(dot, ".root") == 0) {
-                    size_t base_len = (size_t)(dot - input);
-                    snprintf(v6_backup, sizeof(v6_backup), "%.*s.v6.root", (int)base_len, input);
-                } else {
-                    snprintf(v6_backup, sizeof(v6_backup), "%s.v6", input);
-                }
-                /* Remove the v7 file that overwrote the original */
-                if (remove(migration_output) != 0) {
-                    fprintf(stderr, "Error: Cannot remove migrated file '%s': %s\n", migration_output, strerror(errno));
+                FILE *fp_check = fopen(input, "rb");
+                if (!fp_check) {
+                    fprintf(stderr, "Error: Cannot open input file: %s\n", input);
                     return 1;
                 }
-                /* Restore the v6 backup to the original path */
-                if (rename(v6_backup, input) != 0) {
-                    fprintf(stderr, "Error: Cannot restore v6 backup '%s' to '%s': %s\n", v6_backup, input, strerror(errno));
-                    return 1;
+                tydatabaserecord hdr;
+                boolean hdr_ok = fread(&hdr, sizeof hdr, 1, fp_check) == 1;
+                fclose(fp_check);
+                if (hdr_ok && hdr.versionnumber >= 7) {
+                    printf("Already v7 format: %s\n", input);
+                    return 0;
                 }
             }
 
+            if (!migrate_32bit_to_64bit_to_output(input, g_cli_options.output_path)) {
+                fprintf(stderr, "Error: Migration failed for: %s\n", input);
+                return 1;
+            }
             printf("Migrated: %s -> %s\n", input, g_cli_options.output_path);
-
-            #undef FILE_COPY_BUFFER_SIZE
         } else {
+            /* In-place mode: ensure_database_v7 renames v6 to .v6.root backup
+             * and writes v7 to the original .root path. */
+            if (!ensure_database_v7(input, &migrated, migration_output, sizeof(migration_output))) {
+                fprintf(stderr, "Error: Migration failed for: %s\n", input);
+                return 1;
+            }
+
+            if (!migrated) {
+                printf("Already v7 format: %s\n", input);
+                return 0;
+            }
+
             printf("Migrated: %s -> %s\n", input, migration_output);
             /* Derive backup path for informational message */
             {

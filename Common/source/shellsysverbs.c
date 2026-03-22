@@ -858,6 +858,9 @@ static boolean sysfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord
 				pid_t pid = fork ();
 
 				if (pid == 0) { /* first child */
+					/* Handle hurl is intentionally not freed in the child process —
+					 * _exit() tears down the address space immediately, making
+					 * explicit cleanup unnecessary and potentially unsafe. */
 					pid_t pid2 = fork ();
 
 					if (pid2 == 0) { /* grandchild — runs the command */

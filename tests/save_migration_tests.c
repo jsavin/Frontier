@@ -199,7 +199,7 @@ int main(void) {
 
     // Verify header is now v7 (migrator writes a new file, preserves source)
     char migrated_path[1024];
-    if (!db_format_last_backup_path(migrated_path, sizeof migrated_path)) {
+    if (!db_format_last_migration_output_path(migrated_path, sizeof migrated_path)) {
         snprintf(migrated_path, sizeof migrated_path, "%s/test_save_migration-v7.root", migration_dir);
     }
 

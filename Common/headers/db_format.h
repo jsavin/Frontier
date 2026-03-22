@@ -119,9 +119,10 @@ boolean db_format_is_legacy_db(hdldatabaserecord hdb);
 boolean create_root_backup(const char *original_path);
 boolean migrate_32bit_to_64bit(const char *db_path);
 boolean migrate_32bit_to_64bit_drop_cancoon(const char *db_path);
+boolean migrate_32bit_to_64bit_to_output(const char *db_path, const char *output);
 boolean ensure_database_v7(const char *db_path, boolean *migrated, char *output_path, size_t output_path_size);
-boolean db_format_last_backup_path(char *buffer, size_t length);
-void db_format_clear_last_backup_path(void);
+boolean db_format_last_migration_output_path(char *buffer, size_t length);
+void db_format_clear_last_migration_output_path(void);
 void db_format_force_strict_v7_reader(void);
 /* Scoped mode helpers (thread-local) to avoid global races. */
 void db_format_mode_push(const db_format_mode *mode);

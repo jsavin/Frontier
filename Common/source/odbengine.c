@@ -510,7 +510,7 @@ pascal boolean odbOpenFile (hdlfilenum fnum, odbref *odb, boolean flreadonly) {
 						if (!migrate_32bit_to_64bit(path))
 							return (false);
 						char migrated_path[1024];
-						if (!db_format_last_backup_path(migrated_path, sizeof migrated_path))
+						if (!db_format_last_migration_output_path(migrated_path, sizeof migrated_path))
 							return (false);
 						if (!headless_reopen_fnum(fnum, migrated_path, flreadonly))
 							return (false);
