@@ -64,6 +64,10 @@
 #include "db_format.h" /* 2025-11-23 Codex: BE helper for sys verbs */
 #include "byteorder.h"	/* 2006-04-08 aradke: endianness conversion macros */
 
+#if defined(__APPLE__) || defined(__linux__)
+#include <unistd.h>	/* 2026-03-21 JES: for fork, execlp, _exit in sys.openUrl */
+#endif
+
 #define systemevents (osMask | activMask)
 
 boolean frontierversion (tyvaluerecord *v); /* 2002-10-13 AR: also used in langhtml.c */
@@ -109,6 +113,8 @@ typedef enum tysystoken { /*verbs that are processed by sys*/
 	unixshellcommandfunc,
 
 	winshellcommandfunc,
+
+	openurlfunc,
 
 	ctsysverbs
 	} tysystoken;
@@ -817,11 +823,69 @@ static boolean sysfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord
 			return (false);
 			}
 
+		case openurlfunc: {
+			/*
+			3/21/26 JES: Open a URL in the default browser without shell interpolation.
+			Uses fork/execlp to avoid command injection vulnerabilities.
+			macOS: execlp("open", ...), Linux: execlp("xdg-open", ...).
+			*/
 
+			Handle hurl;
 
-			
-		
-		
+			flnextparamislast = true;
+
+			if (!getexempttextvalue (hparam1, 1, &hurl))
+				return (false);
+
+			if (!enlargehandle (hurl, 1, "\0")) {
+				disposehandle (hurl);
+				return (false);
+			}
+
+			lockhandle (hurl);
+
+			{
+				const char *url = (const char *) *hurl;
+
+#if defined(__APPLE__) || defined(__linux__)
+				pid_t pid = fork ();
+
+				if (pid == 0) { /* child */
+#ifdef __APPLE__
+					execlp ("open", "open", url, NULL);
+#else
+					execlp ("xdg-open", "xdg-open", url, NULL);
+#endif
+					_exit (1); /* execlp failed */
+				}
+
+				unlockhandle (hurl);
+				disposehandle (hurl);
+
+				if (pid < 0) { /* fork failed */
+					return (setbooleanvalue (false, v));
+				}
+
+				/* Don't wait for child — fire and forget */
+				return (setbooleanvalue (true, v));
+#elif defined(_WIN32)
+				/* ShellExecuteA returns > 32 on success */
+				boolean fl = ((int)(intptr_t) ShellExecuteA (NULL, "open", url, NULL, NULL, SW_SHOWNORMAL)) > 32;
+
+				unlockhandle (hurl);
+				disposehandle (hurl);
+
+				return (setbooleanvalue (fl, v));
+#else
+				unlockhandle (hurl);
+				disposehandle (hurl);
+
+				copystring (BIGSTRING("\psys.openUrl is not supported on this platform"), bserror);
+				return (false);
+#endif
+			}
+		}
+
 		default:
 			break;
 		}

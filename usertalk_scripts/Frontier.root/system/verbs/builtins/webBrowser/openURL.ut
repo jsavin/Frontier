@@ -9,14 +9,9 @@ on openURL (s, openURLIn=nil) {
 	if system.environment.isHeadless {
 		if not string.isValidUrl (s) {
 			scriptError ("Can't open the URL because it isn't a valid URL.")};
-		if system.environment.isMac {
-			try {
-				sys.unixShellCommand ("open \"" + s + "\"");
-				return (true)}};
-		if system.environment.isLinux {
-			try {
-				sys.unixShellCommand ("xdg-open \"" + s + "\"");
-				return (true)}};
+		try {
+			sys.openUrl (s);
+			return (true)};
 		msg ("Open this URL in your browser: " + s);
 		return (false)};
 	local (id = webBrowser.launch ());

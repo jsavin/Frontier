@@ -1,4 +1,6 @@
 //This script runs when Frontier opens the Frontier.root file.
+	//3/21/26 by JES
+		//Wrapped browser-open and trialVersionCheck in try blocks for headless/CLI compatibility.
 	//11/10/05; 5:26:07 PM by JES
 		//Run startup tasks in StartupTasks.root affter setting up system.temp.Frontier and setting system.temp.Frontier.startingUp to true.
 	//11/10/05; 3:20:31 AM by JES
@@ -228,8 +230,6 @@ if flEnableHttpServer { //6.0, daemons don't start up until all the startup code
 	inetd.start ()}; //start up all daemons with startup set true
 
 bundle { //PBS 06/02/01: open the Control Panel the first time
-	//3/21/26 by JES
-		//Wrapped in try blocks for headless/CLI compatibility.
 	if defined (system.temp.installer.urlToOpen) {
 		window.update ("About Frontier");
 		try {

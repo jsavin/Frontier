@@ -855,7 +855,8 @@ resource 'EFP#' (idsysverbs, "sys") {
 		"getenvironmentvariable",
 		"setenvironmentvariable",
 		"unixshellcommand",
-		"winshellcommand"		/* 2006-03-09 aradke */
+		"winshellcommand",		/* 2006-03-09 aradke */
+		"openUrl"			/* 2026-03-21 JES: open URL without shell interpolation */
 		}
 	}
 };
