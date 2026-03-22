@@ -66,6 +66,7 @@
 
 #if defined(__APPLE__) || defined(__linux__)
 #include <unistd.h>	/* 2026-03-21 JES: for fork, execlp, _exit in sys.openUrl */
+#include <sys/wait.h>	/* 2026-03-21 JES: for waitpid in sys.openUrl */
 #endif
 
 #define systemevents (osMask | activMask)
@@ -848,15 +849,27 @@ static boolean sysfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord
 				const char *url = (const char *) *hurl;
 
 #if defined(__APPLE__) || defined(__linux__)
+				/*
+				Double-fork to avoid zombie processes: first child forks again
+				then exits immediately. The grandchild is reparented to init/launchd
+				and reaped automatically. Parent waits only for the short-lived
+				first child.
+				*/
 				pid_t pid = fork ();
 
-				if (pid == 0) { /* child */
+				if (pid == 0) { /* first child */
+					pid_t pid2 = fork ();
+
+					if (pid2 == 0) { /* grandchild — runs the command */
 #ifdef __APPLE__
-					execlp ("open", "open", url, NULL);
+						execlp ("open", "open", url, NULL);
 #else
-					execlp ("xdg-open", "xdg-open", url, NULL);
+						execlp ("xdg-open", "xdg-open", url, NULL);
 #endif
-					_exit (1); /* execlp failed */
+						_exit (1); /* execlp failed */
+					}
+
+					_exit (0); /* first child exits immediately */
 				}
 
 				unlockhandle (hurl);
@@ -866,7 +879,8 @@ static boolean sysfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord
 					return (setbooleanvalue (false, v));
 				}
 
-				/* Don't wait for child — fire and forget */
+				waitpid (pid, NULL, 0); /* reap first child (returns instantly) */
+
 				return (setbooleanvalue (true, v));
 #elif defined(_WIN32)
 				/* ShellExecuteA returns > 32 on success */
