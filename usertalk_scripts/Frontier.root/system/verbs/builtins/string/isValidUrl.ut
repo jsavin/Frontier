@@ -4,6 +4,8 @@ on isValidUrl (s) {
 		//Rejects javascript:, data:, and other potentially dangerous schemes.
 	if sizeof (s) == 0 {
 		return (false)};
+	if s contains "\"" {
+		return (false)};
 	local (ix = string.patternMatch ("://", s));
 	if ix == 0 {
 		return (false)};

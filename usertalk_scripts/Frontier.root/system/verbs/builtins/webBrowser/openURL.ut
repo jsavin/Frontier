@@ -15,7 +15,8 @@ on openURL (s, openURLIn=nil) {
 				return (true)}};
 		if system.environment.isLinux {
 			try {
-				return (sys.unixShellCommand ("xdg-open \"" + s + "\""))}};
+				sys.unixShellCommand ("xdg-open \"" + s + "\"");
+				return (true)}};
 		msg ("Open this URL in your browser: " + s);
 		return (false)};
 	local (id = webBrowser.launch ());
