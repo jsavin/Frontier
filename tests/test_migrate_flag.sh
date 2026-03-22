@@ -15,7 +15,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 CLI="$PROJECT_DIR/frontier-cli/frontier-cli"
 TMP_DIR="$PROJECT_DIR/tests/tmp/migrate_tests"
-V6_SOURCE="$PROJECT_DIR/databases/Frontier.root"
+V6_SOURCE="$PROJECT_DIR/tests/fixtures/v6/Frontier.root"
 
 # Colors for output
 RED='\033[0;31m'

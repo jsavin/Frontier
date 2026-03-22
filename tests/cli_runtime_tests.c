@@ -337,7 +337,7 @@ static void test_cli_clock_now_on_migrated_root(void) {
     assert(get_repo_root(root, sizeof root));
 
     char migrated_path[PATH_MAX];
-    if (snprintf(migrated_path, sizeof migrated_path, "%s/databases/Frontier.root7", root) >= (int)sizeof migrated_path) {
+    if (snprintf(migrated_path, sizeof migrated_path, "%s/databases/Frontier.root", root) >= (int)sizeof migrated_path) {
         fprintf(stderr, "migrated_path buffer too small\n");
         exit(1);
     }
@@ -362,7 +362,7 @@ static void test_kernel_verb_clock_ticks(void) {
     assert(get_repo_root(root, sizeof root));
 
     char migrated_path[PATH_MAX];
-    if (snprintf(migrated_path, sizeof migrated_path, "%s/databases/Frontier.root7", root) >= (int)sizeof migrated_path) {
+    if (snprintf(migrated_path, sizeof migrated_path, "%s/databases/Frontier.root", root) >= (int)sizeof migrated_path) {
         fprintf(stderr, "migrated_path buffer too small\n");
         exit(1);
     }
@@ -389,7 +389,7 @@ static void test_kernel_verb_typeof(void) {
     assert(get_repo_root(root, sizeof root));
 
     char migrated_path[PATH_MAX];
-    if (snprintf(migrated_path, sizeof migrated_path, "%s/databases/Frontier.root7", root) >= (int)sizeof migrated_path) {
+    if (snprintf(migrated_path, sizeof migrated_path, "%s/databases/Frontier.root", root) >= (int)sizeof migrated_path) {
         fprintf(stderr, "migrated_path buffer too small\n");
         exit(1);
     }
@@ -416,7 +416,7 @@ static void test_kernel_verb_lang_operations(void) {
     assert(get_repo_root(root, sizeof root));
 
     char migrated_path[PATH_MAX];
-    if (snprintf(migrated_path, sizeof migrated_path, "%s/databases/Frontier.root7", root) >= (int)sizeof migrated_path) {
+    if (snprintf(migrated_path, sizeof migrated_path, "%s/databases/Frontier.root", root) >= (int)sizeof migrated_path) {
         fprintf(stderr, "migrated_path buffer too small\n");
         exit(1);
     }
@@ -467,7 +467,7 @@ static void test_kernel_verb_string_length(void) {
     assert(get_repo_root(root, sizeof root));
 
     char migrated_path[PATH_MAX];
-    if (snprintf(migrated_path, sizeof migrated_path, "%s/databases/Frontier.root7", root) >= (int)sizeof migrated_path) {
+    if (snprintf(migrated_path, sizeof migrated_path, "%s/databases/Frontier.root", root) >= (int)sizeof migrated_path) {
         fprintf(stderr, "migrated_path buffer too small\n");
         exit(1);
     }
@@ -493,7 +493,7 @@ static void test_kernel_verb_string_upper(void) {
     assert(get_repo_root(root, sizeof root));
 
     char migrated_path[PATH_MAX];
-    if (snprintf(migrated_path, sizeof migrated_path, "%s/databases/Frontier.root7", root) >= (int)sizeof migrated_path) {
+    if (snprintf(migrated_path, sizeof migrated_path, "%s/databases/Frontier.root", root) >= (int)sizeof migrated_path) {
         fprintf(stderr, "migrated_path buffer too small\n");
         exit(1);
     }
@@ -518,7 +518,7 @@ static void test_kernel_verb_math_random(void) {
     assert(get_repo_root(root, sizeof root));
 
     char migrated_path[PATH_MAX];
-    if (snprintf(migrated_path, sizeof migrated_path, "%s/databases/Frontier.root7", root) >= (int)sizeof migrated_path) {
+    if (snprintf(migrated_path, sizeof migrated_path, "%s/databases/Frontier.root", root) >= (int)sizeof migrated_path) {
         fprintf(stderr, "migrated_path buffer too small\n");
         exit(1);
     }

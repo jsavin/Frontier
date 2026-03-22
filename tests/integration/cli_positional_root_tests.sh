@@ -16,7 +16,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 CLI="$PROJECT_ROOT/frontier-cli/frontier-cli"
 TEST_DB="$PROJECT_ROOT/databases/test.root"
-FRONTIER_DB="$PROJECT_ROOT/databases/Frontier.root7"
+FRONTIER_DB="$PROJECT_ROOT/databases/Frontier.root"
 
 PASS=0
 FAIL=0

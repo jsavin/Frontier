@@ -146,11 +146,11 @@ int main(void) {
     assert(inittablestructure());
     assert(langinitverbs());
 
-    // Pick a legacy database to migrate
-    const char *src = "databases/Frontier.root";
+    // Pick a legacy v6 database to migrate (from test fixtures)
+    const char *src = "tests/fixtures/v6/Frontier.root";
     FILE *in = fopen(src, "rb");
     if (!in) {
-        src = "../databases/Frontier.root"; // when running from tests/
+        src = "../tests/fixtures/v6/Frontier.root"; // when running from tests/
         in = fopen(src, "rb");
     }
     assert(in != NULL);
