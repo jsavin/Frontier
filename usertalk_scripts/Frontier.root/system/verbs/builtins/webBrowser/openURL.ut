@@ -7,8 +7,8 @@ on openURL (s, openURLIn=nil) {
 	//2/15/26; 12:40:28 AM by JES
 		//Added Linux and headless macOS support.
 	if system.environment.isHeadless {
-		if not (string.lower (s) beginsWith "http") {
-			scriptError ("Can't open URL: must begin with http")};
+		if not string.isValidUrl (s) {
+			scriptError ("Can't open the URL because it isn't a valid URL.")};
 		if system.environment.isMac {
 			try {
 				sys.unixShellCommand ("open \"" + s + "\"");
