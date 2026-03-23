@@ -757,7 +757,14 @@ static boolean dbopenverb (hdltreenode hparam1, tyvaluerecord *vreturned) {
 			}
 		}
 		else {
-			log_warn(LOG_COMP_DB, "dbopenverb: ensure_database_v7 failed for %s, attempting to open as-is", cpath);
+			log_error(LOG_COMP_DB, "dbopenverb: migration failed for %s", cpath);
+
+			bigstring bserr;
+			char errmsg[512];
+			snprintf(errmsg, sizeof(errmsg), "Can't open the database because migration to v7 failed: %s", cpath);
+			copyctopstring(errmsg, bserr);
+			langerrormessage(bserr);
+			return (false);
 		}
 	}
 

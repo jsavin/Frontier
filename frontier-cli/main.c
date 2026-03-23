@@ -195,7 +195,6 @@ int main(int argc, char* argv[]) {
     /* Handle --migrate mode: migrate database to v7 and exit */
     if (g_cli_options.migrate_database != NULL) {
         boolean migrated = false;
-        char migration_output[CLI_MAX_PATH_LENGTH + 16];  /* Buffer for migration output path */
         const char *input = g_cli_options.migrate_database;
         size_t input_len = strlen(input);
 
@@ -224,7 +223,9 @@ int main(int argc, char* argv[]) {
             /* --output mode: write v7 directly to the specified path.
              * The v6 input file is never modified. */
 
-            /* Check if already v7 before attempting migration */
+            /* Check if already v7 before attempting migration.
+             * Use detect_database_format + db_format_mode_apply to handle
+             * endianness correctly, matching the ensure_database_v7 pattern. */
             {
                 FILE *fp_check = fopen(input, "rb");
                 if (!fp_check) {
@@ -234,7 +235,13 @@ int main(int argc, char* argv[]) {
                 tydatabaserecord hdr;
                 boolean hdr_ok = fread(&hdr, sizeof hdr, 1, fp_check) == 1;
                 fclose(fp_check);
-                if (hdr_ok && hdr.versionnumber >= 7) {
+                if (!hdr_ok || !detect_database_format(&hdr)) {
+                    fprintf(stderr, "Error: Cannot read database header: %s\n", input);
+                    return 1;
+                }
+                db_format_mode detected = {hdr.versionnumber >= 7, false};
+                db_format_mode_apply(&detected);
+                if (db_format_mode_current().use_64bit_format) {
                     printf("Already v7 format: %s\n", input);
                     return 0;
                 }
@@ -248,7 +255,7 @@ int main(int argc, char* argv[]) {
         } else {
             /* In-place mode: ensure_database_v7 renames v6 to .v6.root backup
              * and writes v7 to the original .root path. */
-            if (!ensure_database_v7(input, &migrated, migration_output, sizeof(migration_output))) {
+            if (!ensure_database_v7(input, &migrated, NULL, 0)) {
                 fprintf(stderr, "Error: Migration failed for: %s\n", input);
                 return 1;
             }

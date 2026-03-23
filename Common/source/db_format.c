@@ -2321,9 +2321,8 @@ boolean ensure_database_v7(const char *db_path, boolean *migrated, char *output_
      * If "Frontier.v6.root" exists alongside "Frontier.root", the .root file
      * is already v7 from a prior migration -- use it directly. */
     char v6_backup_path[1024];
-    /* Conservative check: reserves 9 bytes for ".v6.root\0" (the longest
-     * suffix we append).  For non-.root inputs we only append ".v6" (4 bytes
-     * including NUL), so this over-reserves slightly — harmless. */
+    /* Conservative guard: .v6.root suffix is 8 chars; we reserve 9 bytes
+     * (suffix + null terminator) to prevent snprintf truncation. */
     if (strlen(db_path) >= sizeof(v6_backup_path) - 9) {
         return false;  /* Path too long */
     }
@@ -2389,8 +2388,10 @@ boolean ensure_database_v7(const char *db_path, boolean *migrated, char *output_
                     } else {
 #if defined(FRONTIER_HEADLESS)
                         log_error(LOG_COMP_DB,
-                            "ensure_database_v7: cannot restore v6 backup %s: %s",
-                            v6_backup_path, strerror(errno));
+                            "ensure_database_v7: cannot restore v6 backup %s to %s: %s. "
+                            "To recover manually, rename %s to %s",
+                            v6_backup_path, db_path, strerror(errno),
+                            v6_backup_path, db_path);
 #endif
                         return false;
                     }
