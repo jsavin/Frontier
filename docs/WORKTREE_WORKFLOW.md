@@ -109,7 +109,7 @@ Before starting major work in any session:
 **Fix:** Each session rebuilds its own binary, or remove old one: `rm frontier-cli/frontier-cli`
 
 ### Gotcha 2: Database corruption from parallel test runs
-**Problem:** Session 1 runs migration test, updates Frontier-v6.root7. Session 2 runs test at same time, expects old database state.
+**Problem:** Session 1 runs migration test, updates Frontier.root. Session 2 runs test at same time, expects old database state.
 
 **Fix:** Don't run tests in parallel; use `git checkout` to reset databases between test runs
 

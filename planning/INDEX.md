@@ -78,6 +78,7 @@ Change Log
 - ✅ v6→v7 migration complete
 - ✅ Database context refactoring complete
 - [ODB Engine V7 Migration Plan](phase3/ODB_ENGINE_V7_MIGRATION_PLAN.md)
+- [.root7 Extension Retirement](root7_retirement_plan.md) — Migration naming, runtime cleanup, doc updates
 
 ### Phase 6: CRDT & Collaborative ODB (Future)
 

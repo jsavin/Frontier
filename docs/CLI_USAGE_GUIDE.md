@@ -30,7 +30,7 @@
 - **Inline Script Execution**: Run UserTalk code directly from the command line
 - **Script File Execution**: Execute `.usertalk` script files
 - **Database Support**: Load and interact with Frontier database files (`.root`)
-- **Database Migration**: Automatically upgrade v6 databases to v7 format
+- **Database Migration**: Upgrade v6 databases to v7 format (in-place with `.v6.root` backup)
 - **Configurable Logging**: Control verbosity and debug output via environment variables
 - **Exit Codes**: Returns 0 on success, 1 on failure for shell scripting integration
 
@@ -71,7 +71,7 @@ To run `frontier-cli` from any directory, either:
 |--------|-----------|----------|-------------|
 | `-e` | `--execute` | `SCRIPT` | Execute inline UserTalk script |
 | | `--system-root` | `PATH` | Load system root database before executing scripts |
-| | `--migrate` | `PATH` | Migrate v6 database to v7 format and exit |
+| | `--migrate` | `PATH` | Migrate v6 database to v7 format in-place and exit |
 | | `--output` | `PATH` | Output path for migrated database (use with `--migrate`) |
 | `-f` | `--force` | | Force overwrite if output file exists (use with `--migrate`) |
 | `-b` | `--batch` | | Batch mode (disable interactive prompts) |
@@ -113,7 +113,7 @@ Load a Frontier database file before executing scripts. This makes all tables an
 
 **Usage:**
 ```bash
-./frontier-cli/frontier-cli --system-root databases/Frontier.root7 -e "sizeOf(system)"
+./frontier-cli/frontier-cli --system-root databases/Frontier.root -e "sizeOf(system)"
 ```
 
 **Positional Database Loading:**
@@ -121,17 +121,17 @@ Load a Frontier database file before executing scripts. This makes all tables an
 You can also load a database by passing it as a positional argument (without the `--system-root` flag):
 
 ```bash
-./frontier-cli/frontier-cli databases/Frontier.root7 -e "sizeOf(system)"
+./frontier-cli/frontier-cli databases/Frontier.root -e "sizeOf(system)"
 ```
 
-Files ending in `.root` or `.root7` are automatically treated as system root databases. You cannot use both a positional database argument and the `--system-root` flag in the same command.
+Files ending in `.root` are automatically treated as system root databases. (`.root7` is also recognized for backward compatibility but is deprecated.) You cannot use both a positional database argument and the `--system-root` flag in the same command.
 
 **Automatic Migration:**
 
-If you specify a v6 database, the CLI will automatically migrate it to v7 format and use the migrated version:
+If you specify a v6 database, the CLI will automatically migrate it to v7 format in-place (backing up the v6 file to `.v6.root`):
 
 ```bash
-# This will create Frontier.root7 if it doesn't exist
+# This will migrate Frontier.root in-place if it's v6
 ./frontier-cli/frontier-cli --system-root databases/Frontier.root -e "1"
 
 # Same behavior with positional argument
@@ -142,28 +142,29 @@ If you specify a v6 database, the CLI will automatically migrate it to v7 format
 
 Migrate a v6 database to v7 format and exit. This is a standalone operation that doesn't load the system root or execute any scripts.
 
-**Basic Usage** (creates `<input>.root7` alongside original):
+**Basic Usage** (in-place: renames v6 to `.v6.root`, writes v7 to the original `.root` path):
 ```bash
 ./frontier-cli/frontier-cli --migrate databases/Frontier.root
 ```
 
 **Output:**
 ```
-Migrated: databases/Frontier.root -> databases/Frontier.root7
+Migrated: databases/Frontier.root (v6 backed up to databases/Frontier.v6.root)
 ```
 
-**With Custom Output Path:**
+**With Custom Output Path** (leaves v6 untouched, writes v7 to PATH):
 ```bash
 ./frontier-cli/frontier-cli --migrate legacy/Frontier.root --output databases/Frontier.root
 ```
 
 **Force Overwrite Existing File:**
 ```bash
-./frontier-cli/frontier-cli --migrate Frontier.root --output Frontier.root7 -f
+./frontier-cli/frontier-cli --migrate Frontier.root --output /tmp/Frontier.root -f
 ```
 
 **Notes:**
-- The original v6 file is never modified
+- Without `--output`: v6 is renamed to `.v6.root` backup, v7 is written to the original `.root` path
+- With `--output`: v6 file is left untouched, v7 is written to the specified path
 - If the input is already v7 format, prints "Already v7 format" and exits
 - Exit code 0 on success, 1 on error
 - Use `--force` (`-f`) to overwrite an existing output file
@@ -284,27 +285,27 @@ Load a Frontier database and execute scripts that interact with its contents.
 
 **Using --system-root flag:**
 ```bash
-./frontier-cli/frontier-cli --system-root databases/Frontier.root7 -e "sizeOf(system.verbs)"
+./frontier-cli/frontier-cli --system-root databases/Frontier.root -e "sizeOf(system.verbs)"
 ```
 
 **Using positional argument:**
 ```bash
 # Database before -e flag
-./frontier-cli/frontier-cli databases/Frontier.root7 -e "sizeOf(system.verbs)"
+./frontier-cli/frontier-cli databases/Frontier.root -e "sizeOf(system.verbs)"
 
 # Database after -e flag (argument order is flexible)
-./frontier-cli/frontier-cli -e "sizeOf(system.verbs)" databases/Frontier.root7
+./frontier-cli/frontier-cli -e "sizeOf(system.verbs)" databases/Frontier.root
 ```
 
 The CLI displays which database was loaded at startup:
 ```
-[startup-INFO] Loaded system root: databases/Frontier.root7
+[startup-INFO] Loaded system root: databases/Frontier.root
 16
 ```
 
 If a v6 database is migrated automatically, you'll see:
 ```
-[startup-INFO] Loaded system root: databases/Frontier.root7 (migrated from v6 to v7)
+[startup-INFO] Loaded system root: databases/Frontier.root (migrated from v6 to v7)
 ```
 
 ---
@@ -334,7 +335,7 @@ Filter logs to show only specific components.
 **Example:**
 ```bash
 export FRONTIER_LOG_COMPONENT=DB
-./frontier-cli/frontier-cli --system-root databases/Frontier.root7 -e "1"
+./frontier-cli/frontier-cli --system-root databases/Frontier.root -e "1"
 ```
 
 **Multiple Components:**
@@ -365,17 +366,17 @@ To skip startup scripts, use the `--skip-startup` CLI flag or set `FRONTIER_HEAD
 **Skip startup scripts:**
 ```bash
 # Using CLI flag (recommended)
-./frontier-cli/frontier-cli --skip-startup --system-root databases/Frontier.root7 -e "1"
+./frontier-cli/frontier-cli --skip-startup --system-root databases/Frontier.root -e "1"
 
 # Or using environment variable
 export FRONTIER_HEADLESS_RUN_STARTUP=0
-./frontier-cli/frontier-cli --system-root databases/Frontier.root7 -e "1"
+./frontier-cli/frontier-cli --system-root databases/Frontier.root -e "1"
 ```
 
 **Default behavior (startup scripts run):**
 ```bash
 # Startup scripts execute automatically - matches legacy Frontier
-./frontier-cli/frontier-cli --system-root databases/Frontier.root7 -e "1"
+./frontier-cli/frontier-cli --system-root databases/Frontier.root -e "1"
 ```
 
 > **Note:** Prior to v1.0.0-alpha.5, startup scripts were skipped by default. The default was changed to match legacy Frontier behavior where `system.startup` scripts always run on launch.
@@ -398,7 +399,7 @@ The CLI **only loads v7 databases** but will automatically migrate v6 databases 
 Use the `--system-root` option to load a database:
 
 ```bash
-./frontier-cli/frontier-cli --system-root databases/Frontier.root7 -e "defined(system)"
+./frontier-cli/frontier-cli --system-root databases/Frontier.root -e "defined(system)"
 ```
 
 ### Automatic Migration
@@ -406,16 +407,16 @@ Use the `--system-root` option to load a database:
 When you specify a v6 database, the CLI automatically:
 
 1. Detects the database format
-2. Creates a migrated v7 copy (e.g., `Frontier.root` → `Frontier.root7`)
-3. Loads the v7 database
-4. Leaves the v6 database untouched
+2. Renames the v6 file to `.v6.root` (backup)
+3. Writes the migrated v7 database to the original `.root` path
+4. Loads the v7 database
 
 **Example:**
 ```bash
-# First run: migrates Frontier.root → Frontier.root7
+# First run: migrates in-place, v6 backed up to Frontier.v6.root
 ./frontier-cli/frontier-cli --system-root databases/Frontier.root -e "1"
 
-# Subsequent runs: uses existing Frontier.root7
+# Subsequent runs: uses existing v7 Frontier.root directly
 ./frontier-cli/frontier-cli --system-root databases/Frontier.root -e "1"
 ```
 
@@ -429,7 +430,7 @@ To migrate a database without executing scripts:
 
 **Output:**
 ```
-Migrated: databases/Frontier.root -> databases/Frontier.root7
+Migrated: databases/Frontier.root (v6 backed up to databases/Frontier.v6.root)
 ```
 
 ### Accessing Database Contents
@@ -438,13 +439,13 @@ Once a database is loaded, you can access its tables and scripts:
 
 ```bash
 # Check if system table exists
-./frontier-cli/frontier-cli --system-root databases/Frontier.root7 -e "defined(system)"
+./frontier-cli/frontier-cli --system-root databases/Frontier.root -e "defined(system)"
 
 # Get size of system.verbs table
-./frontier-cli/frontier-cli --system-root databases/Frontier.root7 -e "sizeOf(system.verbs)"
+./frontier-cli/frontier-cli --system-root databases/Frontier.root -e "sizeOf(system.verbs)"
 
 # List top-level tables
-./frontier-cli/frontier-cli --system-root databases/Frontier.root7 -e "getTableNames()"
+./frontier-cli/frontier-cli --system-root databases/Frontier.root -e "getTableNames()"
 ```
 
 ---
@@ -500,9 +501,9 @@ You can load a database by passing it as a positional argument:
 
 ```bash
 # Basic usage
-./frontier-cli/frontier-cli databases/Frontier.root7 -e "sizeOf(system)"
+./frontier-cli/frontier-cli databases/Frontier.root -e "sizeOf(system)"
 # Output:
-# [startup-INFO] Loaded system root: databases/Frontier.root7
+# [startup-INFO] Loaded system root: databases/Frontier.root
 # 16
 ```
 
@@ -512,20 +513,20 @@ The database can appear before or after the `-e` flag:
 
 ```bash
 # Database before -e
-./frontier-cli/frontier-cli databases/Frontier.root7 -e "1+1"
+./frontier-cli/frontier-cli databases/Frontier.root -e "1+1"
 
 # Database after -e
-./frontier-cli/frontier-cli -e "1+1" databases/Frontier.root7
+./frontier-cli/frontier-cli -e "1+1" databases/Frontier.root
 ```
 
 **Auto-Migration from v6 to v7:**
 
-When loading a v6 database, automatic migration occurs and is indicated in the output:
+When loading a v6 database, automatic migration occurs in-place and is indicated in the output:
 
 ```bash
 ./frontier-cli/frontier-cli databases/Frontier.root -e "1+1"
 # Output:
-# [startup-INFO] Loaded system root: databases/Frontier.root7 (migrated from v6 to v7)
+# [startup-INFO] Loaded system root: databases/Frontier.root (migrated from v6 to v7)
 # 2
 ```
 
@@ -534,17 +535,17 @@ When loading a v6 database, automatic migration occurs and is indicated in the o
 The traditional flag syntax still works:
 
 ```bash
-./frontier-cli/frontier-cli --system-root databases/Frontier.root7 -e "sizeOf(system)"
+./frontier-cli/frontier-cli --system-root databases/Frontier.root -e "sizeOf(system)"
 ```
 
 ### Database Queries
 
 ```bash
 # Check system table size (positional argument)
-./frontier-cli/frontier-cli databases/Frontier.root7 -e "sizeOf(system)"
+./frontier-cli/frontier-cli databases/Frontier.root -e "sizeOf(system)"
 
 # List system.verbs subtables (traditional flag)
-./frontier-cli/frontier-cli --system-root databases/Frontier.root7 -e "sizeOf(system.verbs)"
+./frontier-cli/frontier-cli --system-root databases/Frontier.root -e "sizeOf(system.verbs)"
 ```
 
 ### Script Files
@@ -574,7 +575,7 @@ return result
 ./frontier-cli/frontier-cli --migrate databases/Frontier.root
 
 # Use the migrated database
-./frontier-cli/frontier-cli --system-root databases/Frontier.root7 -e "defined(system)"
+./frontier-cli/frontier-cli --system-root databases/Frontier.root -e "defined(system)"
 ```
 
 ### Interactive Mode
@@ -651,10 +652,10 @@ return result
 **Solution:** Use only one method to specify the database:
 ```bash
 # Use positional argument only
-./frontier-cli/frontier-cli databases/Frontier.root7 -e "1+1"
+./frontier-cli/frontier-cli databases/Frontier.root -e "1+1"
 
 # OR use --system-root flag only
-./frontier-cli/frontier-cli --system-root databases/Frontier.root7 -e "1+1"
+./frontier-cli/frontier-cli --system-root databases/Frontier.root -e "1+1"
 
 # NOT both (this will error)
 ./frontier-cli/frontier-cli --system-root databases/A.root databases/B.root -e "1"
@@ -689,7 +690,7 @@ Enable detailed logging to diagnose issues:
 FRONTIER_LOG_LEVEL=DEBUG ./frontier-cli/frontier-cli -e "1 + 1"
 
 # Show only database-related messages
-FRONTIER_LOG_COMPONENT=DB FRONTIER_LOG_LEVEL=DEBUG ./frontier-cli/frontier-cli --system-root databases/Frontier.root7 -e "1"
+FRONTIER_LOG_COMPONENT=DB FRONTIER_LOG_LEVEL=DEBUG ./frontier-cli/frontier-cli --system-root databases/Frontier.root -e "1"
 
 # Trace-level logging (very verbose)
 FRONTIER_LOG_LEVEL=TRACE ./frontier-cli/frontier-cli -e "1 + 1"
@@ -748,7 +749,7 @@ else
     export FRONTIER_LOG_LEVEL=WARN
 fi
 
-./frontier-cli/frontier-cli --system-root databases/Frontier.root7 -e "sizeOf(system)"
+./frontier-cli/frontier-cli --system-root databases/Frontier.root -e "sizeOf(system)"
 ```
 
 ### Database Testing
@@ -759,13 +760,13 @@ Test database integrity:
 #!/bin/bash
 
 # Test that system table exists
-if ! ./frontier-cli/frontier-cli --system-root databases/Frontier.root7 -e "defined(system)" > /dev/null; then
+if ! ./frontier-cli/frontier-cli --system-root databases/Frontier.root -e "defined(system)" > /dev/null; then
     echo "ERROR: System table not found in database"
     exit 1
 fi
 
 # Test that system.verbs exists
-if ! ./frontier-cli/frontier-cli --system-root databases/Frontier.root7 -e "defined(system.verbs)" > /dev/null; then
+if ! ./frontier-cli/frontier-cli --system-root databases/Frontier.root -e "defined(system.verbs)" > /dev/null; then
     echo "ERROR: system.verbs table not found"
     exit 1
 fi
@@ -821,7 +822,7 @@ time ./frontier-cli/frontier-cli -e "local(i); for i = 1 to 1000 {i * 2}"
 
 ### 1.1.0 (2026-01-25)
 
-- Added positional database argument support (`.root` and `.root7` files)
+- Added positional database argument support (`.root` files)
 - Flexible argument ordering (database can appear before or after `-e` flag)
 - Output messages showing which database was loaded and if migration occurred
 - Conflict detection between positional and `--system-root` arguments

@@ -83,17 +83,17 @@ Split `run_test()` into mode-specific executors:
 ### Run REPL Tests Only
 ```bash
 cd tests/integration
-python3 runner.py test_cases/repl_*.yaml --system-root ../../databases/Frontier.root7
+python3 runner.py test_cases/repl_*.yaml --system-root ../../databases/Frontier.root
 ```
 
 ### Run Mixed Batch + REPL Tests
 ```bash
-python3 runner.py test_cases/*.yaml --system-root ../../databases/Frontier.root7
+python3 runner.py test_cases/*.yaml --system-root ../../databases/Frontier.root
 ```
 
 ### Verbose Output
 ```bash
-python3 runner.py test_cases/repl_commands.yaml --system-root ../../databases/Frontier.root7 --verbose
+python3 runner.py test_cases/repl_commands.yaml --system-root ../../databases/Frontier.root --verbose
 ```
 
 ## Test Results

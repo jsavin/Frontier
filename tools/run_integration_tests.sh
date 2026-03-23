@@ -11,7 +11,6 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 RUNNER="$PROJECT_ROOT/tests/integration/runner.py"
 CLI_PATH="$PROJECT_ROOT/frontier-cli/frontier-cli"
 SYSTEM_ROOT="$PROJECT_ROOT/databases/Frontier.root"
-SYSTEM_ROOT7="$PROJECT_ROOT/databases/Frontier.root7"
 TEST_CASES_DIR="$PROJECT_ROOT/tests/integration/test_cases"
 
 # Colors for output
@@ -134,28 +133,15 @@ fi
 echo "Running ${#TEST_FILES[@]} test file(s)..."
 echo
 
-# Remove stale .root7 and force fresh migration from v6 root on each run.
-# This prevents tests from being bitten by stale migrated data.
-if [ -f "$SYSTEM_ROOT7" ]; then
-    echo "Removing stale $SYSTEM_ROOT7 to force fresh migration..."
-    rm -f "$SYSTEM_ROOT7"
-fi
-echo "Migrating $SYSTEM_ROOT -> $SYSTEM_ROOT7 ..."
-"$CLI_PATH" --system-root "$SYSTEM_ROOT" -e "1" > /dev/null 2>&1
-if [ ! -f "$SYSTEM_ROOT7" ]; then
-    echo -e "${RED}Error: Migration failed - $SYSTEM_ROOT7 not created${NC}"
-    exit 1
-fi
-
 # Record pre-test database checksum for integrity verification
-CHECKSUM_BEFORE=$(md5 -q "$SYSTEM_ROOT7" 2>/dev/null || md5sum "$SYSTEM_ROOT7" | cut -d' ' -f1)
+CHECKSUM_BEFORE=$(md5 -q "$SYSTEM_ROOT" 2>/dev/null || md5sum "$SYSTEM_ROOT" | cut -d' ' -f1)
 
-# Run the tests (using the freshly migrated .root7)
-"$RUNNER" $VERBOSE $BATCH_FLAG $WORKERS_FLAG --cli "$CLI_PATH" --system-root "$SYSTEM_ROOT7" "${TEST_FILES[@]}"
+# Run the tests (using v7 source database directly)
+"$RUNNER" $VERBOSE $BATCH_FLAG $WORKERS_FLAG --cli "$CLI_PATH" --system-root "$SYSTEM_ROOT" "${TEST_FILES[@]}"
 EXIT_CODE=$?
 
 # Verify database integrity after tests
-CHECKSUM_AFTER=$(md5 -q "$SYSTEM_ROOT7" 2>/dev/null || md5sum "$SYSTEM_ROOT7" | cut -d' ' -f1)
+CHECKSUM_AFTER=$(md5 -q "$SYSTEM_ROOT" 2>/dev/null || md5sum "$SYSTEM_ROOT" | cut -d' ' -f1)
 if [ "$CHECKSUM_BEFORE" != "$CHECKSUM_AFTER" ]; then
     echo -e "${YELLOW}WARNING: System root was modified during tests${NC}"
     echo "  Before: $CHECKSUM_BEFORE"

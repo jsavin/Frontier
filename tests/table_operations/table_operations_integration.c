@@ -84,11 +84,11 @@ static void eval_cli(const char *script, char *output, size_t output_size) {
 	}
 
 	char db_path[PATH_MAX];
-	snprintf(db_path, sizeof(db_path), "%s/databases/Frontier.root7", root);
+	snprintf(db_path, sizeof(db_path), "%s/databases/Frontier.root", root);
 
 	if (access(db_path, R_OK) != 0) {
 		log_error(LOG_COMP_GENERAL, "ERROR: Database not found: %s", db_path);
-		log_error(LOG_COMP_GENERAL, "Ensure Frontier.root7 exists by running CLI once with Frontier.root");
+		log_error(LOG_COMP_GENERAL, "Ensure databases/Frontier.root exists (v7 format)");
 		assert(0);
 	}
 
@@ -113,7 +113,7 @@ static void eval_cli(const char *script, char *output, size_t output_size) {
 	escaped_script[dst_idx] = '\0';
 
 	char cmd[16384];
-	snprintf(cmd, sizeof(cmd), "cd \"%s\" && %s --skip-startup --system-root \"%s/databases/Frontier.root7\" -e \"%s\" 2>&1", root, cli_path, root, escaped_script);
+	snprintf(cmd, sizeof(cmd), "cd \"%s\" && %s --skip-startup --system-root \"%s/databases/Frontier.root\" -e \"%s\" 2>&1", root, cli_path, root, escaped_script);
 
 	FILE *fp = popen(cmd, "r");
 	if (!fp) {
@@ -802,7 +802,7 @@ int main(int argc, char **argv) {
 	TR_INIT("table_operations_integration");
 
 	printf("[table_operations_integration] Starting comprehensive table operation tests...\n");
-	printf("[table_operations_integration] Tests run via frontier-cli with Frontier.root7\n");
+	printf("[table_operations_integration] Tests run via frontier-cli with Frontier.root\n");
 	printf("[table_operations_integration] Total: 45 tests across 6 categories\n");
 	printf("\n");
 	fflush(stdout);

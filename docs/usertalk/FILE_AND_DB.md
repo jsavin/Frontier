@@ -102,7 +102,7 @@ const char *scratch_path = "/tmp/my_test_scratch.db";
 **System root** - The main Frontier database:
 ```bash
 # Load system root when starting CLI
-./frontier-cli/frontier-cli --system-root databases/Frontier.root7
+./frontier-cli/frontier-cli --system-root databases/Frontier.root
 ```
 
 Loading the system root:
@@ -264,7 +264,7 @@ For integration tests, use {FRONTIER_TEST_TMP_DIR} template in YAML files.
 
 ### "No such table" errors in guest databases
 - **Cause:** System root not loaded
-- **Fix:** Start CLI with `--system-root databases/Frontier.root7`
+- **Fix:** Start CLI with `--system-root databases/Frontier.root`
 
 ### Path construction issues
 - **Cause:** Missing system.paths or wrong separator

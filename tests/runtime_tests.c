@@ -603,7 +603,7 @@ int main(void) {
             return 1;
         }
         char migrated_path[1024];
-        if (db_format_last_backup_path(migrated_path, sizeof migrated_path) && migrated_path[0] != '\0')
+        if (db_format_last_migration_output_path(migrated_path, sizeof migrated_path) && migrated_path[0] != '\0')
             printf("[rt] migration complete: %s\n", migrated_path);
         else
             printf("[rt] migration complete\n");

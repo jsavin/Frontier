@@ -320,7 +320,8 @@ check-paige-cache:
 		fi; \
 	fi
 
-# Distribution target - creates legacy Frontier 9.5 directory structure with v7 databases
+# Distribution target - creates legacy Frontier 9.5 directory structure
+# Source databases are v7 format — copy directly (no migration needed)
 DIST_DIR = ../dist
 DATABASES_DIR = ../databases
 
@@ -343,18 +344,15 @@ dist: $(TARGET)
 	@mkdir -p "$(DIST_DIR)/Guest Databases/ops/themes"
 	@mkdir -p "$(DIST_DIR)/Guest Databases/ops/discussion group themes"
 	@mkdir -p "$(DIST_DIR)/Guest Databases/www"
-	@# Migrate databases to v7 format (fail fast on any error)
-	@echo "Migrating databases to v7 format..."
-	./$(TARGET) --migrate $(DATABASES_DIR)/Virgin.root --output $(DIST_DIR)/Frontier.root7 || exit 1
-	./$(TARGET) --migrate "$(DATABASES_DIR)/Guest Databases/apps/mainResponder.root" --output "$(DIST_DIR)/Guest Databases/apps/mainResponder.root7" || exit 1
-	./$(TARGET) --migrate "$(DATABASES_DIR)/Guest Databases/apps/manila.root" --output "$(DIST_DIR)/Guest Databases/apps/manila.root7" || exit 1
-	./$(TARGET) --migrate "$(DATABASES_DIR)/Guest Databases/apps/Tools/radioCommunityServer.root" --output "$(DIST_DIR)/Guest Databases/apps/Tools/radioCommunityServer.root7" || exit 1
-	./$(TARGET) --migrate "$(DATABASES_DIR)/Guest Databases/apps/Tools/serverMonitor.root" --output "$(DIST_DIR)/Guest Databases/apps/Tools/serverMonitor.root7" || exit 1
-	./$(TARGET) --migrate "$(DATABASES_DIR)/Guest Databases/apps/Tools/TheXmlFiles.root" --output "$(DIST_DIR)/Guest Databases/apps/Tools/TheXmlFiles.root7" || exit 1
-	./$(TARGET) --migrate "$(DATABASES_DIR)/Guest Databases/www/prefs.root" --output "$(DIST_DIR)/Guest Databases/www/prefs.root7" || exit 1
-	@# Rename .root7 to .root so UserTalk bootstrapping code can find them
-	@echo "Renaming v7 databases to .root extension..."
-	@find $(DIST_DIR) -name '*.root7' -exec sh -c 'mv "$$1" "$${1%.root7}.root"' _ {} \;
+	@# Copy v7 databases (Virgin.root becomes Frontier.root in dist)
+	@echo "Copying v7 databases to dist..."
+	cp $(DATABASES_DIR)/Virgin.root $(DIST_DIR)/Frontier.root
+	cp "$(DATABASES_DIR)/Guest Databases/apps/mainResponder.root" "$(DIST_DIR)/Guest Databases/apps/mainResponder.root"
+	cp "$(DATABASES_DIR)/Guest Databases/apps/manila.root" "$(DIST_DIR)/Guest Databases/apps/manila.root"
+	cp "$(DATABASES_DIR)/Guest Databases/apps/Tools/radioCommunityServer.root" "$(DIST_DIR)/Guest Databases/apps/Tools/radioCommunityServer.root"
+	cp "$(DATABASES_DIR)/Guest Databases/apps/Tools/serverMonitor.root" "$(DIST_DIR)/Guest Databases/apps/Tools/serverMonitor.root"
+	cp "$(DATABASES_DIR)/Guest Databases/apps/Tools/TheXmlFiles.root" "$(DIST_DIR)/Guest Databases/apps/Tools/TheXmlFiles.root"
+	cp "$(DATABASES_DIR)/Guest Databases/www/prefs.root" "$(DIST_DIR)/Guest Databases/www/prefs.root"
 	@echo ""
 	@echo "Distribution created in $(DIST_DIR)/"
 	@echo "Run with: ./dist/frontier-cli --system-root dist/Frontier.root"

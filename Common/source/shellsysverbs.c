@@ -825,11 +825,13 @@ static boolean sysfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord
 			}
 
 		case openurlfunc: {
-			/*
-			3/21/26 JES: Open a URL in the default browser without shell interpolation.
-			Uses fork/execlp to avoid command injection vulnerabilities.
-			macOS: execlp("open", ...), Linux: execlp("xdg-open", ...).
-			*/
+			/* Kernel verb name is "openUrl" (camelCase per Frontier.root glue convention).
+			 * C enum uses lowercase per C convention.
+			 *
+			 * 3/21/26 JES: Open a URL in the default browser without shell interpolation.
+			 * Uses fork/execlp to avoid command injection vulnerabilities.
+			 * macOS: execlp("open", ...), Linux: execlp("xdg-open", ...).
+			 */
 
 			Handle hurl;
 
@@ -858,6 +860,9 @@ static boolean sysfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord
 				pid_t pid = fork ();
 
 				if (pid == 0) { /* first child */
+					/* Handle hurl is intentionally not freed in the child process —
+					 * _exit() tears down the address space immediately, making
+					 * explicit cleanup unnecessary and potentially unsafe. */
 					pid_t pid2 = fork ();
 
 					if (pid2 == 0) { /* grandchild — runs the command */
@@ -872,6 +877,9 @@ static boolean sysfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord
 					_exit (0); /* first child exits immediately */
 				}
 
+				/* These run unconditionally in the parent process (the child has
+				 * already _exit'd by this point). The fork-failure check below
+				 * is safe because hurl has already been cleaned up. */
 				unlockhandle (hurl);
 				disposehandle (hurl);
 

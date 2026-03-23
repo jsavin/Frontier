@@ -20,7 +20,7 @@ static void init_valuerecord(tyvaluerecord *v, tyvaluetype t) {
 }
 
 static void setup_mode_modern(void) {
-    db_format_mode mode = { true, false, false };
+    db_format_mode mode = { true, false };
     db_format_mode_push(&mode);
 }
 

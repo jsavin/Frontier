@@ -137,25 +137,32 @@ int main(void) {
     assert(inittablestructure());
     assert(langinitverbs());
 
-    // Pick a legacy database to test with
-    const char *src = "databases/Frontier.root";
+    // Pick a legacy v6 database to test with (from test fixtures)
+    const char *src = "tests/fixtures/v6/Frontier.root";
     FILE *in = fopen(src, "rb");
     if (!in) {
-        src = "../databases/Frontier.root"; // when running from tests/
+        src = "../tests/fixtures/v6/Frontier.root"; // when running from tests/
         in = fopen(src, "rb");
     }
     assert(in != NULL);
 
-    // Construct test database path
+    // Construct test database paths:
+    // test_v6_db: the input path (v6 goes here, then gets renamed to v6_backup after migration)
+    // test_v7_db: after migration, v7 output goes to the original path
+    // test_v6_backup: after migration, v6 original is backed up here
     char test_v6_db[1280];
     snprintf(test_v6_db, sizeof test_v6_db, "%s/test_readonly_v6.root", unit_dir);
 
     char test_v7_db[1280];
-    snprintf(test_v7_db, sizeof test_v7_db, "%s/test_readonly_v6.root7", unit_dir);
+    snprintf(test_v7_db, sizeof test_v7_db, "%s/test_readonly_v6.root", unit_dir);
+
+    char test_v6_backup[1280];
+    snprintf(test_v6_backup, sizeof test_v6_backup, "%s/test_readonly_v6.v6.root", unit_dir);
 
     // Remove any existing test databases
     unlink(test_v6_db);
     unlink(test_v7_db);
+    unlink(test_v6_backup);
 
     // Copy source to test location
     FILE *out = fopen(test_v6_db, "wb");
@@ -202,30 +209,31 @@ int main(void) {
     READONLY_TEST_PASS("Migration completed successfully");
 
     // =============================================================================
-    // Test 3: Calculate MD5 hash of v6 source AFTER migration
+    // Test 3: Calculate MD5 hash of v6 backup AFTER migration
+    // Migration renames v6 original to .v6.root and writes v7 to original path.
     // =============================================================================
     test_count++;
-    log_info(LOG_COMP_DB, "Test 3: Calculate MD5 hash of v6 source AFTER migration");
+    log_info(LOG_COMP_DB, "Test 3: Calculate MD5 hash of v6 backup after migration");
 
     unsigned char md5_after[CC_MD5_DIGEST_LENGTH];
-    if (!calculate_md5(test_v6_db, md5_after)) {
-        log_error(LOG_COMP_DB, "Failed to calculate MD5 of v6 source after migration");
+    if (!calculate_md5(test_v6_backup, md5_after)) {
+        log_error(LOG_COMP_DB, "Failed to calculate MD5 of v6 backup: %s", test_v6_backup);
         return 1;
     }
 
     md5_to_string(md5_after, md5_str, sizeof md5_str);
-    log_info(LOG_COMP_DB, "v6 MD5 after migration:  %s", md5_str);
+    log_info(LOG_COMP_DB, "v6 backup MD5 after migration:  %s", md5_str);
 
     // =============================================================================
-    // Test 4: Verify v6 MD5 hash UNCHANGED (critical PR #310 verification)
+    // Test 4: Verify v6 backup MD5 matches original (data preserved)
     // =============================================================================
     test_count++;
-    log_info(LOG_COMP_DB, "Test 4: Verify v6 MD5 hash UNCHANGED");
+    log_info(LOG_COMP_DB, "Test 4: Verify v6 backup MD5 matches original");
 
     if (md5_equal(md5_before, md5_after)) {
-        READONLY_TEST_PASS("v6 source MD5 unchanged (PR #310 fix verified)");
+        READONLY_TEST_PASS("v6 backup MD5 matches original (data preserved)");
     } else {
-        READONLY_TEST_FAIL("v6 source MD5 CHANGED (PR #310 fix broken)");
+        READONLY_TEST_FAIL("v6 backup MD5 does NOT match original (data corruption)");
         log_error(LOG_COMP_DB, "  Before: %s", md5_str);
         char md5_before_str[33];
         md5_to_string(md5_before, md5_before_str, sizeof md5_before_str);
