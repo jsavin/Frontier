@@ -126,11 +126,10 @@ frontier-cli -e "db.new('/tmp/test.root')"
 If no `--system-root` argument is provided, Frontier CLI searches for the system root database in this order:
 
 1. `$FRONTIER_ROOT` environment variable
-2. `~/Library/Application Support/Frontier/Frontier.root`
-3. `~/.frontier/Frontier.root`
-4. `databases/Frontier.root` (current working directory)
-
-Note: `.root7` paths are also checked for backward compatibility but are deprecated.
+2. `./Frontier.root` (current working directory)
+3. Executable directory (`<exe_dir>/Frontier.root`)
+4. `~/Library/Application Support/Frontier/Frontier.root`
+5. `~/.frontier/Frontier.root` (Linux convention)
 
 ## Uninstallation
 

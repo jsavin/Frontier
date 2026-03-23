@@ -2214,6 +2214,21 @@ static boolean migrate_internal(const char *db_path, const char *explicit_output
      * rename fails we leave the .v6.root backup so nothing is lost. */
     fail_step = "rename(v6->backup)";
     if (backup_path[0] != '\0' && strcmp(output_path, db_path) == 0) {
+        /* Check if backup already exists — refuse to overwrite a valid v6 original */
+        FILE *fp_existing = fopen(backup_path, "rb");
+        if (fp_existing) {
+            tydatabaserecord existing_hdr;
+            boolean hdr_ok = fread(&existing_hdr, sizeof existing_hdr, 1, fp_existing) == 1;
+            fclose(fp_existing);
+            if (hdr_ok && existing_hdr.versionnumber < 7) {
+                log_error(LOG_COMP_DB, "migrate_internal: refusing to overwrite existing v6 backup: %s", backup_path);
+                fail_step = "backup already exists";
+                ok = false;
+                goto cleanup;
+            }
+            /* If existing backup is v7 or unreadable, overwrite is safe */
+            log_info(LOG_COMP_DB, "migrate_internal: overwriting non-v6 backup: %s", backup_path);
+        }
         /* Only rename original when output overwrites input */
         if (rename(db_path, backup_path) != 0)
             goto cleanup;

@@ -86,7 +86,7 @@ extern hdlthreadglobals hthreadglobals;
 #define DEFAULT_SYSTEM_ROOT "databases/Frontier.root"
 
 // System root search paths (for auto-discovery)
-#define MAX_SEARCH_PATHS 4
+#define MAX_SEARCH_PATHS 5
 
 // Global variables
 static cli_options_t g_cli_options = {0};
@@ -255,6 +255,9 @@ int main(int argc, char* argv[]) {
         } else {
             /* In-place mode: ensure_database_v7 renames v6 to .v6.root backup
              * and writes v7 to the original .root path. */
+            if (g_cli_options.force_overwrite) {
+                fprintf(stderr, "Note: --force has no effect in in-place migration mode (no --output specified)\n");
+            }
             if (!ensure_database_v7(input, &migrated, NULL, 0)) {
                 fprintf(stderr, "Error: Migration failed for: %s\n", input);
                 return 1;
@@ -480,6 +483,13 @@ static int get_system_root_search_paths(char paths[][CLI_MAX_PATH_LENGTH + 1], i
         count++;
     }
 
+    // 5. ~/.frontier/Frontier.root (Linux convention)
+    if (home != NULL && count < max_paths) {
+        snprintf(paths[count], CLI_MAX_PATH_LENGTH + 1,
+                 "%s/.frontier/Frontier.root", home);
+        count++;
+    }
+
     return count;
 }
 
@@ -583,7 +593,7 @@ static void print_usage(const char* program_name) {
     printf("  --non-interactive        Alias for --batch\n");
     printf("  --migrate PATH           Migrate v6 database to v7 format and exit\n");
     printf("  --output PATH            Output path for migrated database (default: in-place, v6 backed up)\n");
-    printf("  -f, --force              Force overwrite if output file exists\n");
+    printf("  -f, --force              Overwrite existing output file (only applies with --output)\n");
     printf("  --skip-startup           Skip system.startup scripts (they run by default)\n");
     printf("  --output-json            Output results in JSON format\n");
     printf("  -v, --verbose            Verbose output\n");
@@ -620,8 +630,8 @@ static void print_usage(const char* program_name) {
     printf("  # Migrate with explicit output path\n");
     printf("  %s --migrate legacy/Frontier.root --output databases/Frontier.root\n", program_name);
     printf("\n");
-    printf("  # Force overwrite existing v7 file\n");
-    printf("  %s --migrate Frontier.root -f\n", program_name);
+    printf("  # Force overwrite existing output file\n");
+    printf("  %s --migrate Frontier.root --output Frontier-v7.root -f\n", program_name);
     printf("\n");
     printf("  # Execute with JSON output (for automation/testing)\n");
     printf("  %s --output-json -e \"1+1\"\n", program_name);
