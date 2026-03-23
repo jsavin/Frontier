@@ -9,6 +9,7 @@
 #define CLI_UTILS_H
 
 #include "../Common/headers/frontier.h"
+#include "cli_parser.h"
 #include <stdarg.h>
 #include <stddef.h>
 
@@ -61,7 +62,6 @@ void cli_init_interactive_mode(boolean batch_mode_flag);
 boolean isInteractiveMode(void);
 
 // CLI options accessor (for system.environment.args)
-#include "cli_parser.h"
 const cli_options_t* cli_get_options(void);
 
 #endif /* CLI_UTILS_H */

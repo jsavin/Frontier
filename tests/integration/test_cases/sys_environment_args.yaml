@@ -4,6 +4,12 @@
 # The args subtable is populated from CLI options at startup.
 # Only flags actually passed on the command line appear in the table.
 # Absence of a key means the flag was not passed.
+#
+# Test coverage gap: The integration runner uses --protocol --skip-startup
+# --system-root, so only those flags (plus absence checks) can be tested
+# here. The following keys are only exercisable via manual smoke tests:
+#   batch, force, output, log, migrate, hydrate, outputJson, wsPort (as present)
+# Manual: frontier-cli --verbose --system-root databases/Frontier.root -e 'system.environment.args.verbose'
 
 tests:
   # system.environment.args subtable exists
