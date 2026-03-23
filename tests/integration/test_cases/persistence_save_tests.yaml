@@ -10,12 +10,12 @@
 # Tests use a mix of protocol_ops (for protocol-layer coverage) and
 # script mode (for multi-step UserTalk sequences).
 #
-# Test filenames: Each test uses static .root7 filenames (e.g., persist_lifecycle.root7).
+# Test filenames: Each test uses static .root filenames (e.g., persist_lifecycle.root).
 # The test framework provides a fresh FRONTIER_TEST_TMP_DIR per worker per run,
 # so filename collisions across runs are not a concern.
 #
 # Test framework isolation: Each parallel worker runs its own frontier-cli
-# process with a private .root7 copy. fileMenu.closeall() only affects the
+# process with a private .root copy. fileMenu.closeall() only affects the
 # current worker's process — no cross-worker interference.
 
 tests:
@@ -92,7 +92,7 @@ tests:
       persisted across the close/reopen cycle.
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(dbPath = tmpDir + "/" + "persist_lifecycle.root7");
+      local(dbPath = tmpDir + "/" + "persist_lifecycle.root");
       db.new(dbPath);
       fileMenu.open(dbPath);
       db.setvalue(dbPath, "roundTripKey", "roundTripValue");
@@ -111,7 +111,7 @@ tests:
       close, reopen, and verify all values survived.
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(dbPath = tmpDir + "/" + "persist_multi_values.root7");
+      local(dbPath = tmpDir + "/" + "persist_multi_values.root");
       db.new(dbPath);
       fileMenu.open(dbPath);
       db.setvalue(dbPath, "strVal", "hello");
@@ -134,7 +134,7 @@ tests:
       and verify the table structure and values survived.
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(dbPath = tmpDir + "/" + "persist_nested.root7");
+      local(dbPath = tmpDir + "/" + "persist_nested.root");
       db.new(dbPath);
       fileMenu.open(dbPath);
       db.newtable(dbPath, "myTable");
@@ -166,7 +166,7 @@ tests:
     script: |
       try {delete(@system.temp.persist_dual_db)} else {1};
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(dbPath = tmpDir + "/" + "persist_dual_db.root7");
+      local(dbPath = tmpDir + "/" + "persist_dual_db.root");
       system.temp.persist_dual_db = "dual_db_sysroot_value";
       db.new(dbPath);
       fileMenu.open(dbPath);
@@ -192,7 +192,7 @@ tests:
     script: |
       try {delete(@system.temp.persist_interleaved)} else {1};
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(dbPath = tmpDir + "/" + "persist_interleaved.root7");
+      local(dbPath = tmpDir + "/" + "persist_interleaved.root");
       db.new(dbPath);
       fileMenu.open(dbPath);
       system.temp.persist_interleaved = "interleaved_sys_1";
@@ -222,7 +222,7 @@ tests:
   # these changes exist only in memory and would not survive a restart.
   #
   # NOTE: The integration test framework gives each test worker a fresh
-  # .root7 copy, so we cannot verify non-persistence across restarts.
+  # .root copy, so we cannot verify non-persistence across restarts.
   # Instead, we verify the in-memory contract and document the expectation.
   # ========================================================================
 
@@ -314,7 +314,7 @@ tests:
       Verify the data persists by reopening after close.
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(dbPath = tmpDir + "/" + "persist_shutdown_flush.root7");
+      local(dbPath = tmpDir + "/" + "persist_shutdown_flush.root");
       db.new(dbPath);
       fileMenu.open(dbPath);
       db.setvalue(dbPath, "shutdownKey", "shutdownValue");
@@ -334,8 +334,8 @@ tests:
       On clean shutdown, all guest DBs should be saved before closing.
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(dbPath1 = tmpDir + "/" + "persist_shutdown_multi1.root7");
-      local(dbPath2 = tmpDir + "/" + "persist_shutdown_multi2.root7");
+      local(dbPath1 = tmpDir + "/" + "persist_shutdown_multi1.root");
+      local(dbPath2 = tmpDir + "/" + "persist_shutdown_multi2.root");
       db.new(dbPath1);
       db.new(dbPath2);
       fileMenu.open(dbPath1);
@@ -362,7 +362,7 @@ tests:
     script: |
       try {delete(@system.temp.persist_full_shutdown)} else {1};
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(dbPath = tmpDir + "/" + "persist_full_shutdown.root7");
+      local(dbPath = tmpDir + "/" + "persist_full_shutdown.root");
       system.temp.persist_full_shutdown = "shutdown_sysroot";
       db.new(dbPath);
       fileMenu.open(dbPath);

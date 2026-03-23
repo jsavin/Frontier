@@ -448,10 +448,10 @@ tests:
   # Test 18: Test with v7 database format
   # ========================================================================
   - name: "db.new - create v7 database"
-    description: "Create new database with v7 format (if .root7 extension triggers v7)"
+    description: "Create new database with v7 format"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(dbPath = tmpDir + "/" + "test_db_v7.root7");
+      local(dbPath = tmpDir + "/" + "test_db_v7.root");
       local(ok = db.new(dbPath));
       return ok
     expected_success: true
@@ -461,7 +461,7 @@ tests:
     description: "Create and open v7 database (self-contained)"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(dbPath = tmpDir + "/" + "test_open_v7.root7");
+      local(dbPath = tmpDir + "/" + "test_open_v7.root");
       db.new(dbPath);
       local(ok = db.open(dbPath, false));
       return ok
@@ -472,7 +472,7 @@ tests:
     description: "Create v7 DB and set value (self-contained)"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(dbPath = tmpDir + "/" + "test_setvalue_v7.root7");
+      local(dbPath = tmpDir + "/" + "test_setvalue_v7.root");
       db.new(dbPath);
       db.open(dbPath, false);
       local(ok = db.setvalue(dbPath, "v7test", "V7 works!"));
@@ -484,7 +484,7 @@ tests:
     description: "Create v7 DB, write value, read it back (self-contained)"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(dbPath = tmpDir + "/" + "test_v7_getvalue.root7");
+      local(dbPath = tmpDir + "/" + "test_v7_getvalue.root");
       db.new(dbPath);
       db.open(dbPath, false);
       db.setvalue(dbPath, "v7test", "V7 works!");
@@ -497,7 +497,7 @@ tests:
     description: "Create v7 DB, open it, close it (self-contained)"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(dbPath = tmpDir + "/" + "test_close_v7.root7");
+      local(dbPath = tmpDir + "/" + "test_close_v7.root");
       db.new(dbPath);
       db.open(dbPath, false);
       local(ok = db.close(dbPath));

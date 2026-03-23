@@ -71,6 +71,9 @@ However, **migration of legacy v6 databases remains valuable** -- users may stil
 
 ### Category 1: Runtime Code (main.c)
 
+> **Superseded:** The code examples below describe the original `.v7.root` plan.
+> The actual implementation uses `.v6.root` backup + in-place v7 at `.root`.
+
 #### 1A. Remove `DEFAULT_SYSTEM_ROOT_V7` constant
 
 **File:** `frontier-cli/main.c`
@@ -192,6 +195,9 @@ printf("  # Migrate v6 database to v7 format (creates .v7.root alongside origina
 
 ### Category 2: Runtime Code (db_format.c)
 
+> **Superseded:** The code examples below describe the original `.v7.root` plan.
+> The actual implementation uses `.v6.root` backup + in-place v7 at `.root`.
+
 #### 2A. Change migration output path derivation
 
 **File:** `Common/source/db_format.c`
@@ -256,6 +262,9 @@ Update the surrounding comment accordingly.
 ---
 
 ### Category 3: Runtime Code (dbverbs.c)
+
+> **Superseded:** The code examples below describe the original `.v7.root` plan.
+> The actual implementation uses `.v6.root` backup + in-place v7 at `.root`.
 
 #### 3A. Remove `ROOT7_EXTENSION_LEN` constant
 
@@ -402,6 +411,9 @@ Update the comment referencing `.root7`. This is a documentation-only change.
 
 ### Category 5: Test Code
 
+> **Superseded:** The code examples below describe the original `.v7.root` plan.
+> The actual implementation uses `.v6.root` backup + in-place v7 at `.root`.
+
 #### 5A. `test_efp_augmentation.c`
 
 **File:** `tests/test_efp_augmentation.c`
@@ -485,6 +497,9 @@ Change all `databases/Frontier.root7` references to `databases/Frontier.root`.
 
 ## Transitional Compatibility (Optional)
 
+> **Superseded:** The code examples below describe the original `.v7.root` plan.
+> The actual implementation uses `.v6.root` backup + in-place v7 at `.root`.
+
 For a smoother transition, `ensure_database_v7` could check for both legacy `.root7` and new `.v7.root` siblings:
 
 ```c
@@ -543,6 +558,9 @@ These are the foundation -- all other migration-dependent code flows through her
 ---
 
 ## Testing Verification
+
+> **Superseded:** The code examples below describe the original `.v7.root` plan.
+> The actual implementation uses `.v6.root` backup + in-place v7 at `.root`.
 
 After implementation, run these verification steps:
 
@@ -639,6 +657,9 @@ grep -rn "root7" --include="*.c" --include="*.h" --include="*.sh" --include="*.p
 ---
 
 ## Files Modified (Summary)
+
+> **Superseded:** The code examples below describe the original `.v7.root` plan.
+> The actual implementation uses `.v6.root` backup + in-place v7 at `.root`.
 
 | File | Type | Changes |
 |------|------|---------|

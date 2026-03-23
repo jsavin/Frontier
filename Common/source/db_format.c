@@ -75,7 +75,11 @@ static _Thread_local char last_migration_output_path[1024];
 
 /* Thread-local buffer holding the path to the most recent backup file.
  * Written ONLY by create_root_backup() — stores the timestamped backup path.
- * Callers should read it immediately after create_root_backup(). */
+ * Callers should read it immediately after create_root_backup().
+ *
+ * _Thread_local: safe under the GIL threading model (ADR-014) where
+ * create_root_backup() callers read this value immediately in the same
+ * call stack. See last_migration_output_path comment for details. */
 static _Thread_local char last_backup_output_path[1024];
 static boolean g_legacy_adapter_active = false;
 static boolean g_legacy_adapter_force_repack = false;
@@ -1221,7 +1225,7 @@ boolean db_format_load_v7_reader(const tydatabaserecord *decoded_header, boolean
     long header_len = 0;
     if (decoded_header == NULL)
         return false;
-    if (decoded_header->versionnumber < 7)
+    if (db_format_is_v6_header(decoded_header))
         return false;
 
     header_len = decoded_header->headerLength;
@@ -2237,11 +2241,7 @@ static boolean migrate_internal(const char *db_path, const char *explicit_output
             tydatabaserecord existing_hdr;
             boolean hdr_ok = fread(&existing_hdr, sizeof existing_hdr, 1, fp_existing) == 1;
             fclose(fp_existing);
-            /* versionnumber is at offset 0 in the header struct. v6 stores it
-             * as little-endian 0x0006, which reads as 6 on LE hosts. v7 stores
-             * big-endian 0x0007, which reads as 0x0700 (1792) on LE hosts.
-             * So "< 7" correctly identifies v6 on little-endian (macOS/Linux). */
-            if (hdr_ok && existing_hdr.versionnumber < 7) {
+            if (hdr_ok && db_format_is_v6_header(&existing_hdr)) {
                 log_error(LOG_COMP_DB, "migrate_internal: refusing to overwrite existing v6 backup: %s", backup_path);
                 fail_step = "backup already exists";
                 ok = false;
@@ -2404,7 +2404,7 @@ boolean ensure_database_v7(const char *db_path, boolean *migrated, char *output_
             tydatabaserecord header_check;
             boolean header_ok = fread(&header_check, sizeof header_check, 1, fp_check) == 1;
             fclose(fp_check);
-            if (header_ok && header_check.versionnumber >= 7) {
+            if (header_ok && !db_format_is_v6_header(&header_check)) {
                 /* Confirmed v7 -- return db_path as the output */
                 if (output_path && output_path_size > 0) {
                     strncpy(output_path, db_path, output_path_size);
@@ -2421,7 +2421,7 @@ boolean ensure_database_v7(const char *db_path, boolean *migrated, char *output_
          * between renaming v6->backup and placing the v7 temp file, the .root
          * file may be absent or truncated.
          * Uses backup_header read above to avoid reopening the file. */
-        if (!backup_hdr_ok || backup_header.versionnumber >= 7) {
+        if (!backup_hdr_ok || !db_format_is_v6_header(&backup_header)) {
             /* Backup is not a valid v6 database — don't restore, just fall through */
 #if defined(FRONTIER_HEADLESS)
             log_warn(LOG_COMP_DB,
@@ -2466,7 +2466,7 @@ boolean ensure_database_v7(const char *db_path, boolean *migrated, char *output_
             tydatabaserecord header_v7;
             boolean header_ok = fread(&header_v7, sizeof header_v7, 1, fp_legacy) == 1;
             fclose(fp_legacy);
-            if (header_ok && header_v7.versionnumber >= 7) {
+            if (header_ok && !db_format_is_v6_header(&header_v7)) {
                 /* Legacy .root7 file exists and is valid v7 */
 #if defined(FRONTIER_HEADLESS)
                 log_info(LOG_COMP_DB,
@@ -2500,7 +2500,7 @@ boolean ensure_database_v7(const char *db_path, boolean *migrated, char *output_
         return false;
 
     /* Seed format mode from the on-disk header so we don't remigrate already-v7 roots. */
-    db_format_mode detected_mode = {header.versionnumber >= 7, false};
+    db_format_mode detected_mode = {!db_format_is_v6_header(&header), false};
     db_format_mode_apply(&detected_mode);
 
     if (db_format_mode_current().use_64bit_format) {

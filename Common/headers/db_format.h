@@ -96,6 +96,14 @@ static inline void db_format_write_dbaddress64(void *ptr, dbaddress value) {
     db_format_write_be64(ptr, (uint64_t) value);
 }
 
+/* Returns true if the header represents a v6 (or earlier) database.
+ * LE-specific: v6 stores versionnumber as LE 0x0006 (reads as 6).
+ * v7 stores it as BE 0x0007 (reads as 0x0700 = 1792 on LE hosts).
+ * So "< 7" correctly identifies v6 on little-endian platforms. */
+static inline boolean db_format_is_v6_header(const tydatabaserecord *hdr) {
+    return hdr->versionnumber < 7;
+}
+
 boolean db_format_prepare_runtime(void);
 boolean detect_database_format(const tydatabaserecord *header);
 boolean convert_32bit_header_to_64bit(const unsigned char *legacy_header, tydatabaserecord_64 *new_header);

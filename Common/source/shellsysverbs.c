@@ -917,6 +917,8 @@ static boolean sysfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord
 				unlockhandle (hurl);
 				disposehandle (hurl);
 
+				/* Set bserror without langerrormessage — consistent with other
+				 * platform stubs (winshellcommand). The caller reads bserror. */
 				copystring (BIGSTRING("\psys.openUrl is not supported on this platform"), bserror);
 				return (false);
 #endif

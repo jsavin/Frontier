@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>Sys Processor Tests (sys_processor_tests) - 52 tests: 48 pass (92%) 4 skip (7%)</title>
-    <dateCreated>Mon, 23 Mar 2026 03:29:36 GMT</dateCreated>
+    <dateCreated>Mon, 23 Mar 2026 17:40:56 GMT</dateCreated>
   </head>
   <body>
     <outline text="sys.osversion - returns OS version string - Get OS version - returns distribution on Linux, sw_vers on macOS">
@@ -401,12 +401,12 @@
         <outline text="typeof(sys.openUrl(&quot;https://example.com&quot;))"/>
       </outline>
     </outline>
-    <outline text="sys.openUrl - empty string returns boolean - Empty URL string should not crash, should return boolean">
+    <outline text="sys.openUrl - empty string triggers scriptError - openUrl rejects empty string with a scriptError (invalid input)">
       <outline text="Metadata">
-        <outline text="expected_result: bool"/>
+        <outline text="expected_success: False"/>
       </outline>
       <outline text="Script">
-        <outline text="typeof(sys.openUrl(&quot;&quot;))"/>
+        <outline text="sys.openUrl(&quot;&quot;)"/>
       </outline>
     </outline>
     <outline text="sys.openUrl - wrong argument type errors - Passing a number instead of a string should error">
