@@ -850,6 +850,12 @@ static boolean sysfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord
 			{
 				const char *url = (const char *) *hurl;
 
+				if (GetHandleSize(hurl) == 0 || url[0] == '\0') {
+					unlockhandle (hurl);
+					disposehandle (hurl);
+					return (setbooleanvalue (false, v));
+				}
+
 #if defined(__APPLE__) || defined(__linux__)
 				/*
 				Double-fork to avoid zombie processes: first child forks again
@@ -899,6 +905,7 @@ static boolean sysfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord
 
 				return (setbooleanvalue (fl, v));
 #else
+				/* Handle cleanup before returning — no leak on unsupported platforms */
 				unlockhandle (hurl);
 				disposehandle (hurl);
 

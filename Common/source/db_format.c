@@ -2246,7 +2246,7 @@ static boolean migrate_internal(const char *db_path, const char *explicit_output
                 goto cleanup;
             }
             /* Existing backup is v7 — safe to overwrite */
-            log_info(LOG_COMP_DB, "migrate_internal: overwriting non-v6 backup: %s", backup_path);
+            log_warn(LOG_COMP_DB, "migrate_internal: overwriting non-v6 backup: %s", backup_path);
         }
         /* Only rename original when output overwrites input */
         if (rename(db_path, backup_path) != 0) {

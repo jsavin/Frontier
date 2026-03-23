@@ -2,7 +2,7 @@
 
 **Date:** 2026-03-22
 **Branch:** feature/setup-frontier-startup
-**Status:** Implemented (PR #487)
+**Status:** Implemented (PR #487, merged into PR #486)
 
 **Note:** The implementation uses a different naming convention than originally planned.
 The plan described `.v7.root` output naming; the actual implementation renames v6 to `.v6.root`

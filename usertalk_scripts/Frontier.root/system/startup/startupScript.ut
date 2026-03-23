@@ -231,6 +231,7 @@ if flEnableHttpServer { //6.0, daemons don't start up until all the startup code
 
 bundle { //PBS 06/02/01: open the Control Panel the first time
 	if defined (system.temp.installer.urlToOpen) {
+		//TODO: Include window.update in try block when applying ODB edit (throws in headless mode)
 		window.update ("About Frontier");
 		try {
 			webBrowser.openUrl (system.temp.installer.urlToOpen);
