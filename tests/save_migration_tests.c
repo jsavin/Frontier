@@ -159,6 +159,11 @@ int main(void) {
     char working_db[1280];
     snprintf(working_db, sizeof working_db, "%s/test_save_migration.root", migration_dir);
 
+    // Clean up any leftover v6 backup from a previous run
+    char v6_backup[1280];
+    snprintf(v6_backup, sizeof v6_backup, "%s/test_save_migration.v6.root", migration_dir);
+    unlink(v6_backup);
+
     // Copy source to working database
     FILE *out = fopen(working_db, "wb");
     assert(out != NULL);

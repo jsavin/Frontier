@@ -1,54 +1,54 @@
 <?xml version="1.0" ?>
 <opml version="2.0">
   <head>
-    <title>Table Operations Integration (table_operations_integration) - 45 tests: 1 pass (2%) 44 fail (97%)</title>
-    <dateCreated>Sun, 22 Mar 2026 07:09:33 GMT</dateCreated>
+    <title>Table Operations Integration (table_operations_integration) - 45 tests: 45 pass (100%)</title>
+    <dateCreated>Mon, 23 Mar 2026 17:55:57 GMT</dateCreated>
   </head>
   <body>
-    <outline text="✗ test_table_assign_basic"/>
-    <outline text="✗ test_table_assign_multiple_types"/>
-    <outline text="✗ test_table_assign_overwrite"/>
-    <outline text="✗ test_table_assign_size"/>
-    <outline text="✗ test_table_assign_empty_string"/>
-    <outline text="✗ test_table_assign_zero"/>
-    <outline text="✗ test_table_assign_negative"/>
-    <outline text="✗ test_table_assign_large"/>
-    <outline text="✗ test_table_copy_basic"/>
-    <outline text="✗ test_table_copy_source_unchanged"/>
-    <outline text="✗ test_table_copy_numeric"/>
-    <outline text="✗ test_table_copy_boolean"/>
-    <outline text="✗ test_table_copy_with_existing"/>
-    <outline text="✗ test_table_copy_multiple"/>
-    <outline text="✗ test_table_copy_key_name"/>
-    <outline text="✗ test_table_move_basic"/>
-    <outline text="✗ test_table_move_source_removed"/>
-    <outline text="✗ test_table_move_multiple_sequential"/>
-    <outline text="✗ test_table_move_prepopulated_dest"/>
-    <outline text="✗ test_table_move_string"/>
-    <outline text="✗ test_table_move_boolean"/>
-    <outline text="✗ test_table_rename_basic"/>
-    <outline text="✗ test_table_rename_new_key_value"/>
-    <outline text="✗ test_table_rename_size_unchanged"/>
-    <outline text="✗ test_table_rename_with_multiple"/>
-    <outline text="✗ test_table_rename_numeric"/>
-    <outline text="✗ test_table_rename_special_chars"/>
-    <outline text="✗ test_table_emptytable_single"/>
-    <outline text="✗ test_table_emptytable_count"/>
-    <outline text="✗ test_table_emptytable_all_removed"/>
-    <outline text="✗ test_table_emptytable_repopulate"/>
+    <outline text="✓ test_table_assign_basic"/>
+    <outline text="✓ test_table_assign_multiple_types"/>
+    <outline text="✓ test_table_assign_overwrite"/>
+    <outline text="✓ test_table_assign_size"/>
+    <outline text="✓ test_table_assign_empty_string"/>
+    <outline text="✓ test_table_assign_zero"/>
+    <outline text="✓ test_table_assign_negative"/>
+    <outline text="✓ test_table_assign_large"/>
+    <outline text="✓ test_table_copy_basic"/>
+    <outline text="✓ test_table_copy_source_unchanged"/>
+    <outline text="✓ test_table_copy_numeric"/>
+    <outline text="✓ test_table_copy_boolean"/>
+    <outline text="✓ test_table_copy_with_existing"/>
+    <outline text="✓ test_table_copy_multiple"/>
+    <outline text="✓ test_table_copy_key_name"/>
+    <outline text="✓ test_table_move_basic"/>
+    <outline text="✓ test_table_move_source_removed"/>
+    <outline text="✓ test_table_move_multiple_sequential"/>
+    <outline text="✓ test_table_move_prepopulated_dest"/>
+    <outline text="✓ test_table_move_string"/>
+    <outline text="✓ test_table_move_boolean"/>
+    <outline text="✓ test_table_rename_basic"/>
+    <outline text="✓ test_table_rename_new_key_value"/>
+    <outline text="✓ test_table_rename_size_unchanged"/>
+    <outline text="✓ test_table_rename_with_multiple"/>
+    <outline text="✓ test_table_rename_numeric"/>
+    <outline text="✓ test_table_rename_special_chars"/>
+    <outline text="✓ test_table_emptytable_single"/>
+    <outline text="✓ test_table_emptytable_count"/>
+    <outline text="✓ test_table_emptytable_all_removed"/>
+    <outline text="✓ test_table_emptytable_repopulate"/>
     <outline text="✓ test_table_emptytable_empty_table"/>
-    <outline text="✗ test_table_moveandrename_basic"/>
-    <outline text="✗ test_table_moveandrename_new_name"/>
-    <outline text="✗ test_table_moveandrename_value_preserved"/>
-    <outline text="✗ test_table_moveandrename_source_reduced"/>
-    <outline text="✗ test_table_moveandrename_dest_increased"/>
-    <outline text="✗ test_table_moveandrename_multiple_sequential"/>
-    <outline text="✗ test_complex_combined_operations"/>
-    <outline text="✗ test_type_preservation"/>
-    <outline text="✗ test_large_string_values"/>
-    <outline text="✗ test_stress_many_entries"/>
-    <outline text="✗ test_rename_chain"/>
-    <outline text="✗ test_empty_string_handling"/>
-    <outline text="✗ test_false_zero_distinction"/>
+    <outline text="✓ test_table_moveandrename_basic"/>
+    <outline text="✓ test_table_moveandrename_new_name"/>
+    <outline text="✓ test_table_moveandrename_value_preserved"/>
+    <outline text="✓ test_table_moveandrename_source_reduced"/>
+    <outline text="✓ test_table_moveandrename_dest_increased"/>
+    <outline text="✓ test_table_moveandrename_multiple_sequential"/>
+    <outline text="✓ test_complex_combined_operations"/>
+    <outline text="✓ test_type_preservation"/>
+    <outline text="✓ test_large_string_values"/>
+    <outline text="✓ test_stress_many_entries"/>
+    <outline text="✓ test_rename_chain"/>
+    <outline text="✓ test_empty_string_handling"/>
+    <outline text="✓ test_false_zero_distinction"/>
   </body>
 </opml>
