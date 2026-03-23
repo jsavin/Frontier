@@ -2237,6 +2237,10 @@ static boolean migrate_internal(const char *db_path, const char *explicit_output
             tydatabaserecord existing_hdr;
             boolean hdr_ok = fread(&existing_hdr, sizeof existing_hdr, 1, fp_existing) == 1;
             fclose(fp_existing);
+            /* versionnumber is at offset 0 in the header struct. v6 stores it
+             * as little-endian 0x0006, which reads as 6 on LE hosts. v7 stores
+             * big-endian 0x0007, which reads as 0x0700 (1792) on LE hosts.
+             * So "< 7" correctly identifies v6 on little-endian (macOS/Linux). */
             if (hdr_ok && existing_hdr.versionnumber < 7) {
                 log_error(LOG_COMP_DB, "migrate_internal: refusing to overwrite existing v6 backup: %s", backup_path);
                 fail_step = "backup already exists";
@@ -2370,6 +2374,12 @@ boolean ensure_database_v7(const char *db_path, boolean *migrated, char *output_
         *migrated = false;
     if (db_path == NULL || db_path[0] == '\0')
         return false;
+
+    /* Endianness note for raw versionnumber comparisons in this function:
+     * v6 headers store versionnumber as LE 0x0006 (reads as 6 on LE hosts).
+     * v7 headers store it as BE 0x0007 (reads as 0x0700 = 1792 on LE hosts).
+     * So ">= 7" correctly identifies v7, and "< 7" correctly identifies v6,
+     * on little-endian platforms (macOS, Linux). Same pattern as migrate_internal. */
 
     /* Check if a .v6.root backup exists from a previous migration.
      * If "Frontier.v6.root" exists alongside "Frontier.root", the .root file

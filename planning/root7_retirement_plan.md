@@ -4,9 +4,16 @@
 **Branch:** feature/setup-frontier-startup
 **Status:** Implemented (PR #487, merged into PR #486)
 
-**Note:** The implementation uses a different naming convention than originally planned.
-The plan described `.v7.root` output naming; the actual implementation renames v6 to `.v6.root`
-and places v7 at the original `.root` path. See the PR commits for the final design.
+**SUPERSEDED — Read this before using any code examples below.**
+This plan was written before the final design was chosen. The code examples throughout
+describe a `.v7.root` output naming convention that was **not implemented**. The actual
+implementation (PR #487, squash-merged into PR #486) uses a different approach:
+- v6 original is renamed to `.v6.root` (backup)
+- v7 output is written to the original `.root` path (in-place replacement)
+- `--output PATH` writes v7 to the explicit path without touching the input
+
+The design decisions (Q1–Q5) and file lists remain accurate references.
+For the canonical implementation, see the PR diff and the code itself.
 
 ## Executive Summary
 

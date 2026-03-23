@@ -850,10 +850,11 @@ static boolean sysfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord
 			{
 				const char *url = (const char *) *hurl;
 
-				if (url[0] == '\0') {  /* empty URL — return false without forking */
+				if (url[0] == '\0') {  /* empty URL — scriptError, don't fork */
 					unlockhandle (hurl);
 					disposehandle (hurl);
-					return (setbooleanvalue (false, v));
+					langerrormessage (BIGSTRING ("\x3eCan't open the URL because it is an empty string."));
+					return (false);
 				}
 
 #if defined(__APPLE__) || defined(__linux__)
@@ -880,7 +881,9 @@ static boolean sysfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord
 						_exit (1); /* execlp failed */
 					}
 
-					_exit (0); /* first child exits immediately */
+					/* If second fork failed, exit non-zero so parent can detect it.
+					 * If grandchild was spawned, exit 0 (grandchild runs independently). */
+					_exit (pid2 < 0 ? 1 : 0);
 				}
 
 				/* These run unconditionally in the parent process (the child has
@@ -893,9 +896,14 @@ static boolean sysfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord
 					return (setbooleanvalue (false, v));
 				}
 
-				waitpid (pid, NULL, 0); /* reap first child (returns instantly) */
+				int status = 0;
+				waitpid (pid, &status, 0); /* reap first child (returns instantly) */
 
-				return (setbooleanvalue (true, v));
+				/* First child exits 0 if grandchild was spawned, 1 if second fork failed.
+				 * Return false on failure so the caller knows the URL wasn't opened. */
+				boolean launched = WIFEXITED (status) && WEXITSTATUS (status) == 0;
+
+				return (setbooleanvalue (launched, v));
 #elif defined(_WIN32)
 				/* ShellExecuteA returns > 32 on success */
 				boolean fl = ((int)(intptr_t) ShellExecuteA (NULL, "open", url, NULL, NULL, SW_SHOWNORMAL)) > 32;

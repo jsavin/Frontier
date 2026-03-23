@@ -395,11 +395,10 @@ tests:
     expected_success: true
     expected_result: "bool"
 
-  - name: "sys.openUrl - empty string returns false"
-    description: "openUrl rejects empty string without forking"
+  - name: "sys.openUrl - empty string triggers scriptError"
+    description: "openUrl rejects empty string with a scriptError (invalid input)"
     script: 'sys.openUrl("")'
-    expected_success: true
-    expected_result: "false"
+    expected_success: false
 
   - name: "sys.openUrl - wrong argument type errors"
     description: "Passing a number instead of a string should error"
