@@ -118,10 +118,6 @@ boolean cli_should_skip_startup(void) {
     return g_cli_options.skip_startup;
 }
 
-const cli_options_t* cli_get_options(void) {
-    return &g_cli_options;
-}
-
 /*
  * system.environment.args key names (camelCase from CLI flags).
  *
@@ -204,34 +200,52 @@ static boolean populate_environment_args (hdlhashtable htargs) {
 
     /* Boolean flags — only add when true */
 
-    if (opts->verbose)
-        langassignbooleanvalue (htargs, str_verbose, true);
+    if (opts->verbose) {
+        if (!langassignbooleanvalue (htargs, str_verbose, true))
+            return (false);
+    }
 
-    if (opts->debug)
-        langassignbooleanvalue (htargs, str_debug, true);
+    if (opts->debug) {
+        if (!langassignbooleanvalue (htargs, str_debug, true))
+            return (false);
+    }
 
-    if (opts->output_json)
-        langassignbooleanvalue (htargs, str_outputJson, true);
+    if (opts->output_json) {
+        if (!langassignbooleanvalue (htargs, str_outputJson, true))
+            return (false);
+    }
 
-    if (opts->batch_mode)
-        langassignbooleanvalue (htargs, str_batch, true);
+    if (opts->batch_mode) {
+        if (!langassignbooleanvalue (htargs, str_batch, true))
+            return (false);
+    }
 
-    if (opts->protocol_mode)
-        langassignbooleanvalue (htargs, str_protocol, true);
+    if (opts->protocol_mode) {
+        if (!langassignbooleanvalue (htargs, str_protocol, true))
+            return (false);
+    }
 
-    if (opts->skip_startup)
-        langassignbooleanvalue (htargs, str_skipStartup, true);
+    if (opts->skip_startup) {
+        if (!langassignbooleanvalue (htargs, str_skipStartup, true))
+            return (false);
+    }
 
-    if (opts->force_overwrite)
-        langassignbooleanvalue (htargs, str_force, true);
+    if (opts->force_overwrite) {
+        if (!langassignbooleanvalue (htargs, str_force, true))
+            return (false);
+    }
 
-    if (opts->hydrate_system_root)
-        langassignbooleanvalue (htargs, str_hydrate, true);
+    if (opts->hydrate_system_root) {
+        if (!langassignbooleanvalue (htargs, str_hydrate, true))
+            return (false);
+    }
 
     /* Integer fields — only add when non-zero */
 
-    if (opts->ws_port > 0)
-        langassignlongvalue (htargs, str_wsPort, (long) opts->ws_port);
+    if (opts->ws_port > 0) {
+        if (!langassignlongvalue (htargs, str_wsPort, (long) opts->ws_port))
+            return (false);
+    }
 
     return (true);
 } /*populate_environment_args*/

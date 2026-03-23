@@ -61,7 +61,4 @@ void cli_clear_error(void);
 void cli_init_interactive_mode(boolean batch_mode_flag);
 boolean isInteractiveMode(void);
 
-// CLI options accessor (for system.environment.args)
-const cli_options_t* cli_get_options(void);
-
 #endif /* CLI_UTILS_H */
