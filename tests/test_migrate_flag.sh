@@ -210,19 +210,19 @@ echo "Test 8: Original v6 file preserved as backup"
 cp "$V6_SOURCE" "$TMP_DIR/source_test8.root"
 rm -f "$TMP_DIR/source_test8.v6.root"
 if command -v md5sum >/dev/null 2>&1; then
-    src_hash_before=$(md5sum "$TMP_DIR/source_test8.root" | cut -d' ' -f1)
+    original_hash=$(md5sum "$TMP_DIR/source_test8.root" | cut -d' ' -f1)
 else
-    src_hash_before=$(md5 -q "$TMP_DIR/source_test8.root")
+    original_hash=$(md5 -q "$TMP_DIR/source_test8.root")
 fi
 "$CLI" --migrate "$TMP_DIR/source_test8.root" >/dev/null 2>&1
 # After migration, v6 backup is at .v6.root -- check its hash matches the original
 if command -v md5sum >/dev/null 2>&1; then
-    src_hash_after=$(md5sum "$TMP_DIR/source_test8.v6.root" | cut -d' ' -f1)
+    backup_hash=$(md5sum "$TMP_DIR/source_test8.v6.root" | cut -d' ' -f1)
 else
-    src_hash_after=$(md5 -q "$TMP_DIR/source_test8.v6.root")
+    backup_hash=$(md5 -q "$TMP_DIR/source_test8.v6.root")
 fi
 TESTS_RUN=$((TESTS_RUN + 1))
-if [ "$src_hash_before" = "$src_hash_after" ]; then
+if [ "$original_hash" = "$backup_hash" ]; then
     echo -e "${GREEN}PASS${NC}: v6 backup matches original (data preserved)"
     TESTS_PASSED=$((TESTS_PASSED + 1))
 else

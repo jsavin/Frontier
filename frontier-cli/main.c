@@ -86,7 +86,7 @@ extern hdlthreadglobals hthreadglobals;
 #define DEFAULT_SYSTEM_ROOT "databases/Frontier.root"
 
 // System root search paths (for auto-discovery)
-#define MAX_SEARCH_PATHS 5
+#define MAX_SEARCH_PATHS 4
 
 // Global variables
 static cli_options_t g_cli_options = {0};
@@ -969,7 +969,7 @@ static boolean hydrate_system_root_database(const char* path) {
      * Also skip if no optional tables were created - v7 databases are already complete. */
     if ((!migrated && created_optional)) {
         boolean repack_scope = false;
-        db_format_mode mode = {true, true, false};  /* 64-bit, adapter_repack, no drop_cancoon */
+        db_format_mode mode = {true, true};  /* 64-bit, adapter_repack */
         db_format_mode_push(&mode);
         repack_scope = true;
         if (!tablesavesystemtable(hrootvariable, &adr)) {
@@ -1277,7 +1277,7 @@ static void save_system_root_on_exit(void) {
 
     /* Save the root table using v7 format */
     {
-        db_format_mode mode = {true, false, false};  /* 64-bit, no adapter_repack, no drop_cancoon */
+        db_format_mode mode = {true, false};  /* 64-bit, no adapter_repack */
         db_format_mode_push(&mode);
 
         if (!tablesavesystemtable(rootvariable, &root_adr)) {

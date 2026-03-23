@@ -767,7 +767,7 @@ pascal boolean odbSaveFile (odbref odb) {
 		/* Save the root table (use global rootvariable, which is always current) */
 		{
 			boolean repack_scope = false;
-			db_format_mode mode = {true, true, false};  /* 64-bit, adapter_repack, no drop_cancoon */
+			db_format_mode mode = {true, true};  /* 64-bit, adapter_repack */
 			db_format_mode_push(&mode);
 			repack_scope = true;
 			if (!tablesavesystemtable(rootvariable, &root_adr)) {
@@ -818,7 +818,7 @@ pascal boolean odbSaveFile (odbref odb) {
 
     {
         boolean repack_scope = false;
-        db_format_mode mode = {true, true, false};  /* 64-bit, adapter_repack, no drop_cancoon */
+        db_format_mode mode = {true, true};  /* 64-bit, adapter_repack */
         db_format_mode_push(&mode);
         repack_scope = true;
         if (!tablesavesystemtable((**hc).hrootvariable, &info.adrroottable)) {
@@ -840,7 +840,7 @@ pascal boolean odbSaveFile (odbref odb) {
 
     {
         boolean repack_scope = false;
-        db_format_mode mode = {true, true, false};  /* 64-bit, adapter_repack, no drop_cancoon */
+        db_format_mode mode = {true, true};  /* 64-bit, adapter_repack */
         db_format_mode_push(&mode);
         repack_scope = true;
         if (!dbassign(&adr, sizeof (info), &info)) {

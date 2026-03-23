@@ -307,7 +307,7 @@ boolean tableverbpack_legacy (hdlexternalvariable h, Handle *hpacked, boolean *f
 	boolean flmustsave = false;
 	hdlwindowinfo hinfo;
 	const boolean adapter_repack = db_format_adapter_force_repack();
-	db_format_mode legacy_mode = {false, adapter_repack, false};
+	db_format_mode legacy_mode = {false, adapter_repack};
 	db_context ctx;
 	db_format_mode_push(&legacy_mode);
 

@@ -23,7 +23,6 @@ extern "C" {
 typedef struct db_format_mode {
     boolean use_64bit_format;
     boolean adapter_repack;
-    boolean drop_cancoon;
 } db_format_mode;
 
 typedef struct db_saveas_state {

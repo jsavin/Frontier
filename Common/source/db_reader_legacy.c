@@ -51,7 +51,7 @@ boolean db_read_legacy(const unsigned char *rawheader, size_t raw_len, tydatabas
     }
 #endif
 
-    db_format_mode mode = {false, false, false};  /* 32-bit legacy format */
+    db_format_mode mode = {false, false};  /* 32-bit legacy format */
     db_format_mode_push(&mode);
     return true;
 }
