@@ -818,7 +818,7 @@
 			"setenvironmentvariable\0",
 			"unixshellcommand\0",
 			"winshellcommand\0",	/* 2006-03-09 aradke */
-			"openUrl\0"		/* 2026-03-21 JES */
+			"openUrl\0"		/* 2026-03-21 JES — camelCase matches Frontier.root glue convention */
 	END
 
 1014 /*idlaunchverbs*/	EFP		DISCARDABLE

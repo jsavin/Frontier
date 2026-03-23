@@ -825,11 +825,13 @@ static boolean sysfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord
 			}
 
 		case openurlfunc: {
-			/*
-			3/21/26 JES: Open a URL in the default browser without shell interpolation.
-			Uses fork/execlp to avoid command injection vulnerabilities.
-			macOS: execlp("open", ...), Linux: execlp("xdg-open", ...).
-			*/
+			/* Kernel verb name is "openUrl" (camelCase per Frontier.root glue convention).
+			 * C enum uses lowercase per C convention.
+			 *
+			 * 3/21/26 JES: Open a URL in the default browser without shell interpolation.
+			 * Uses fork/execlp to avoid command injection vulnerabilities.
+			 * macOS: execlp("open", ...), Linux: execlp("xdg-open", ...).
+			 */
 
 			Handle hurl;
 

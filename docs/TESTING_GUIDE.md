@@ -433,19 +433,22 @@ Old migrated databases may be corrupted artifacts from earlier broken migrations
 
 ### Quick Migration Command
 
-```bash
-# Clean migration workflow (ALWAYS do this before testing):
-./frontier-cli/frontier-cli --migrate databases/Frontier.root
+**Note:** `databases/Frontier.root` is already v7 format in the repository. To test migration, use the v6 fixture:
 
-# Output: v6 backed up to databases/Frontier.v6.root, v7 written to databases/Frontier.root
+```bash
+# Migrate the v6 test fixture (in-place — v6 backed up to .v6.root):
+./frontier-cli/frontier-cli --migrate tests/fixtures/v6/Frontier.root
+
+# Migrate with explicit output path (v6 source left untouched):
+./frontier-cli/frontier-cli --migrate tests/fixtures/v6/Frontier.root --output /tmp/Frontier-v7.root
 ```
 
 ### What Happens During Migration
 
-1. CLI opens `databases/Frontier.root` and detects v6 format
-2. Original v6 file is renamed to `databases/Frontier.v6.root` (backup)
-3. Migrated v7 database is written to the original `databases/Frontier.root` path
-4. With `--output PATH`: v6 is left untouched, v7 is written to PATH
+1. CLI opens the source file and detects v6 format
+2. In-place mode: original v6 file is renamed to `.v6.root` (backup), v7 written to original path
+3. With `--output PATH`: v6 source is left untouched, v7 is written to PATH
+4. If the file is already v7, the command prints "Already v7 format" and exits
 
 ### Verification
 

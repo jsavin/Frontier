@@ -380,6 +380,9 @@ tests:
 
   # ============================================================================
   # sys.openUrl Tests (smoke tests for headless mode)
+  # These tests validate the verb exists and returns the expected type in
+  # headless mode. No skip flags — the verb is always callable (fork succeeds
+  # even without a display server).
   # ============================================================================
 
   # sys.openUrl - Opens a URL via fork/execlp. In headless CI the fork succeeds

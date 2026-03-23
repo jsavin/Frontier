@@ -258,18 +258,11 @@ int main(int argc, char* argv[]) {
                 return 0;
             }
 
-            printf("Migrated: %s -> %s\n", input, migration_output);
-            /* Derive backup path for informational message */
             {
                 char v6_backup[CLI_MAX_PATH_LENGTH + 16];
-                const char *dot = strrchr(input, '.');
-                if (dot && strcasecmp(dot, ".root") == 0) {
-                    size_t base_len = (size_t)(dot - input);
-                    snprintf(v6_backup, sizeof(v6_backup), "%.*s.v6.root", (int)base_len, input);
-                } else {
-                    snprintf(v6_backup, sizeof(v6_backup), "%s.v6", input);
-                }
-                printf("  v6 original backed up to: %s\n", v6_backup);
+                db_format_derive_v6_backup_path(input, v6_backup, sizeof(v6_backup));
+                printf("Migrated in-place: %s\n", input);
+                printf("  v6 backed up to: %s\n", v6_backup);
             }
         }
         return 0;

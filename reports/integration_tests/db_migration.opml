@@ -2,10 +2,10 @@
 <opml version="2.0">
   <head>
     <title>Db Migration (db_migration) - 7 tests: 3 pass (42%) 4 skip (57%)</title>
-    <dateCreated>Mon, 16 Feb 2026 18:41:35 GMT</dateCreated>
+    <dateCreated>Mon, 23 Mar 2026 03:29:36 GMT</dateCreated>
   </head>
   <body>
-    <outline text="Database migration - source file unchanged - Migration should not modify v6 source database file">
+    <outline text="Database migration - v6 source renamed to backup - Migration should rename v6 source to .v6.root backup">
       <outline text="Metadata">
         <outline text="expected_result: true"/>
         <outline text="skip: True"/>
@@ -13,7 +13,7 @@
       </outline>
       <outline text="Script">
         <outline text="local(src = &quot;{FRONTIER_TEST_TMP_DIR}/test_v6.root&quot;)"/>
-        <outline text="local(dst = &quot;{FRONTIER_TEST_TMP_DIR}/test_v6.root7&quot;)"/>
+        <outline text="local(dst = &quot;{FRONTIER_TEST_TMP_DIR}/test_v6.v6.root&quot;)"/>
         <outline text="local(src_hash = &quot;&quot;)"/>
         <outline text="local(src_hash_after = &quot;&quot;)"/>
         <outline text="// Copy original system root as test source"/>
@@ -25,14 +25,14 @@
         <outline text="return file.exists(src)"/>
       </outline>
     </outline>
-    <outline text="Database migration - creates v7 destination - Migration should create valid v7 destination file">
+    <outline text="Database migration - v7 placed at original .root path - Migration should place v7 database at original .root path">
       <outline text="Metadata">
         <outline text="expected_result: true"/>
         <outline text="skip: True"/>
         <outline text="reason: Requires external CLI invocation to test migration - use system test instead"/>
       </outline>
       <outline text="Script">
-        <outline text="local(dst = &quot;{FRONTIER_TEST_TMP_DIR}/migrated.root7&quot;)"/>
+        <outline text="local(dst = &quot;{FRONTIER_TEST_TMP_DIR}/migrated.root&quot;)"/>
         <outline text="// Verify file doesn't exist yet"/>
         <outline text="if file.exists(dst)">
           <outline text="file.delete(dst)"/>

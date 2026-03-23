@@ -1907,15 +1907,15 @@ static boolean migrate_internal(const char *db_path, boolean drop_cancoon, const
         snprintf(output_path, sizeof output_path, "%s", explicit_output);
         backup_path[0] = '\0';  /* no v6 backup needed */
     } else {
+        /* In-place migration: derive backup path via shared helper */
+        db_format_derive_v6_backup_path(db_path, backup_path, sizeof backup_path);
+
         const char *ext = strrchr(db_path, '.');
         if (ext && strcmp(ext, ".root") == 0) {
-            /* Input has .root extension: backup = .v6.root, output = original path */
-            size_t base_len = (size_t)(ext - db_path);
-            snprintf(backup_path, sizeof backup_path, "%.*s.v6.root", (int) base_len, db_path);
+            /* Input has .root extension: output = original path */
             snprintf(output_path, sizeof output_path, "%s", db_path);
         } else {
-            /* No .root extension: backup = <path>.v6, output = <path>.root */
-            snprintf(backup_path, sizeof backup_path, "%s.v6", db_path);
+            /* No .root extension: output = <path>.root */
             snprintf(output_path, sizeof output_path, "%s.root", db_path);
         }
     }
@@ -2404,7 +2404,8 @@ boolean ensure_database_v7(const char *db_path, boolean *migrated, char *output_
 
     /* Transitional fallback: check for legacy .root7 file from previous migration.
      * TODO (2026-03-22): Remove this fallback once all users have migrated away from .root7.
-     * If found, log an advisory message encouraging rename to the new convention. */
+     * Note: advisory log only fires in headless builds; non-headless users get no warning.
+     * When adding GUI support, surface this via the GUI notification channel. */
     {
         char legacy_root7_path[1024];
         snprintf(legacy_root7_path, sizeof legacy_root7_path, "%s7", db_path);
@@ -2490,6 +2491,28 @@ boolean db_format_last_migration_output_path(char *buffer, size_t length) {
 
 void db_format_clear_last_migration_output_path(void) {
     last_migration_output_path[0] = '\0';
+}
+
+boolean db_format_derive_v6_backup_path(const char *db_path, char *backup, size_t backup_size) {
+    /*
+     * Derive the .v6.root backup path for a given database path.
+     * If db_path ends with .root, replaces it with .v6.root.
+     * Otherwise appends .v6.
+     *
+     * This is the single source of truth for backup naming — used by
+     * migrate_internal() and the CLI --migrate output message.
+     */
+    if (db_path == NULL || backup == NULL || backup_size == 0)
+        return false;
+
+    const char *ext = strrchr(db_path, '.');
+    if (ext && strcmp(ext, ".root") == 0) {
+        size_t base_len = (size_t)(ext - db_path);
+        snprintf(backup, backup_size, "%.*s.v6.root", (int)base_len, db_path);
+    } else {
+        snprintf(backup, backup_size, "%s.v6", db_path);
+    }
+    return true;
 }
 
 void db_format_force_strict_v7_reader(void) {
