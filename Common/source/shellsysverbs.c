@@ -850,7 +850,7 @@ static boolean sysfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord
 			{
 				const char *url = (const char *) *hurl;
 
-				if (GetHandleSize(hurl) == 0 || url[0] == '\0') {
+				if (url[0] == '\0') {  /* empty URL — return false without forking */
 					unlockhandle (hurl);
 					disposehandle (hurl);
 					return (setbooleanvalue (false, v));

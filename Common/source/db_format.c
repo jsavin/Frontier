@@ -1921,7 +1921,11 @@ static boolean migrate_internal(const char *db_path, const char *explicit_output
         backup_path[0] = '\0';  /* no v6 backup needed */
     } else {
         /* In-place migration: derive backup path via shared helper */
-        db_format_derive_v6_backup_path(db_path, backup_path, sizeof backup_path);
+        if (!db_format_derive_v6_backup_path(db_path, backup_path, sizeof backup_path)) {
+            fail_step = "backup path derivation (path too long)";
+            ok = false;
+            goto cleanup;
+        }
 
         const char *ext = strrchr(db_path, '.');
         if (ext && strcmp(ext, ".root") == 0) {
