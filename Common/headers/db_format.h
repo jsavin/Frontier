@@ -118,7 +118,6 @@ void db_format_set_legacy_source_db(hdldatabaserecord hdb);
 boolean db_format_is_legacy_db(hdldatabaserecord hdb);
 boolean create_root_backup(const char *original_path);
 boolean migrate_32bit_to_64bit(const char *db_path);
-boolean migrate_32bit_to_64bit_drop_cancoon(const char *db_path);
 boolean migrate_32bit_to_64bit_to_output(const char *db_path, const char *output);
 boolean ensure_database_v7(const char *db_path, boolean *migrated, char *output_path, size_t output_path_size);
 boolean db_format_last_migration_output_path(char *buffer, size_t length);

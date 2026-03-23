@@ -875,6 +875,9 @@ static boolean sysfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord
 					_exit (0); /* first child exits immediately */
 				}
 
+				/* These run unconditionally in the parent process (the child has
+				 * already _exit'd by this point). The fork-failure check below
+				 * is safe because hurl has already been cleaned up. */
 				unlockhandle (hurl);
 				disposehandle (hurl);
 

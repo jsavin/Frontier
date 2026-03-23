@@ -379,6 +379,31 @@ tests:
     expected_result: "true"
 
   # ============================================================================
+  # sys.openUrl Tests (smoke tests for headless mode)
+  # ============================================================================
+
+  # sys.openUrl - Opens a URL via fork/execlp. In headless CI the fork succeeds
+  # even if the platform launcher (open/xdg-open) isn't available, so we only
+  # verify the verb is callable and returns a boolean.
+
+  - name: "sys.openUrl - returns boolean type"
+    description: "openUrl should return a boolean regardless of fork outcome"
+    script: 'typeof(sys.openUrl("https://example.com"))'
+    expected_success: true
+    expected_result: "bool"
+
+  - name: "sys.openUrl - empty string returns boolean"
+    description: "Empty URL string should not crash, should return boolean"
+    script: 'typeof(sys.openUrl(""))'
+    expected_success: true
+    expected_result: "bool"
+
+  - name: "sys.openUrl - wrong argument type errors"
+    description: "Passing a number instead of a string should error"
+    script: 'sys.openUrl(12345)'
+    expected_success: false
+
+  # ============================================================================
   # sys.unixshellcommand Tests (4 parameter variants)
   # ============================================================================
 

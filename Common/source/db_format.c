@@ -2328,10 +2328,6 @@ boolean migrate_32bit_to_64bit(const char *db_path) {
     return migrate_internal(db_path, true, NULL);
 }
 
-boolean migrate_32bit_to_64bit_drop_cancoon(const char *db_path) {
-    return migrate_internal(db_path, true, NULL);
-}
-
 boolean migrate_32bit_to_64bit_to_output(const char *db_path, const char *output) {
     return migrate_internal(db_path, true, output);
 }
@@ -2346,7 +2342,10 @@ boolean ensure_database_v7(const char *db_path, boolean *migrated, char *output_
      * If "Frontier.v6.root" exists alongside "Frontier.root", the .root file
      * is already v7 from a prior migration -- use it directly. */
     char v6_backup_path[1024];
-    if (strlen(db_path) >= sizeof(v6_backup_path) - 9) { /* 8 chars for ".v6.root" + 1 for null terminator */
+    /* Conservative check: reserves 9 bytes for ".v6.root\0" (the longest
+     * suffix we append).  For non-.root inputs we only append ".v6" (4 bytes
+     * including NUL), so this over-reserves slightly — harmless. */
+    if (strlen(db_path) >= sizeof(v6_backup_path) - 9) {
         return false;  /* Path too long */
     }
     {

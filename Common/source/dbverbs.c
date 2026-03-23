@@ -756,7 +756,9 @@ static boolean dbopenverb (hdltreenode hparam1, tyvaluerecord *vreturned) {
 				log_debug(LOG_COMP_DB, "dbopenverb: using migrated path %s", output_path);
 			}
 		}
-		/* If ensure_database_v7 fails, fall through and try to open the original */
+		else {
+			log_warn(LOG_COMP_DB, "dbopenverb: ensure_database_v7 failed for %s, attempting to open as-is", cpath);
+		}
 	}
 
 	w = shellfindfilewindow ( &odbrec.fs );
