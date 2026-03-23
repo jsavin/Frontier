@@ -82,8 +82,8 @@ extern hdlthreadglobals hthreadglobals;
 #endif
 #define FRONTIER_CLI_BUILD_DATE __DATE__
 
-// Default system root path
-#define DEFAULT_SYSTEM_ROOT "databases/Frontier.root"
+// System root filename (used in search path construction)
+#define SYSTEM_ROOT_FILENAME "Frontier.root"
 
 // System root search paths (for auto-discovery)
 #define MAX_SEARCH_PATHS 5
@@ -465,13 +465,13 @@ static int get_system_root_search_paths(char paths[][CLI_MAX_PATH_LENGTH + 1], i
 
     // 2. Current working directory
     if (count < max_paths && cwd[0] != '\0') {
-        snprintf(paths[count], CLI_MAX_PATH_LENGTH + 1, "%s/Frontier.root", cwd);
+        snprintf(paths[count], CLI_MAX_PATH_LENGTH + 1, "%s/" SYSTEM_ROOT_FILENAME, cwd);
         count++;
     }
 
     // 3. Executable directory
     if (count < max_paths && exe_dir[0] != '\0') {
-        snprintf(paths[count], CLI_MAX_PATH_LENGTH + 1, "%s/Frontier.root", exe_dir);
+        snprintf(paths[count], CLI_MAX_PATH_LENGTH + 1, "%s/" SYSTEM_ROOT_FILENAME, exe_dir);
         count++;
     }
 
@@ -479,14 +479,14 @@ static int get_system_root_search_paths(char paths[][CLI_MAX_PATH_LENGTH + 1], i
     const char *home = getenv("HOME");
     if (home != NULL && count < max_paths) {
         snprintf(paths[count], CLI_MAX_PATH_LENGTH + 1,
-                 "%s/Library/Application Support/Frontier/Frontier.root", home);
+                 "%s/Library/Application Support/Frontier/" SYSTEM_ROOT_FILENAME, home);
         count++;
     }
 
     // 5. ~/.frontier/Frontier.root (Linux convention)
     if (home != NULL && count < max_paths) {
         snprintf(paths[count], CLI_MAX_PATH_LENGTH + 1,
-                 "%s/.frontier/Frontier.root", home);
+                 "%s/.frontier/" SYSTEM_ROOT_FILENAME, home);
         count++;
     }
 

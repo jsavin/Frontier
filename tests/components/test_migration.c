@@ -151,14 +151,14 @@ static bool test_backup_creation(void) {
     TEST_ASSERT(create_root_backup(test_legacy_db), "Should create timestamped backup");
 
     char backup_path[1024];
-    TEST_ASSERT(db_format_last_migration_output_path(backup_path, sizeof backup_path), "Backup path should be recorded");
+    TEST_ASSERT(db_format_last_backup_output_path(backup_path, sizeof backup_path), "Backup path should be recorded");
     FILE *backup = fopen(backup_path, "rb");
     TEST_ASSERT(backup != NULL, "Backup file should exist");
     if (backup)
         fclose(backup);
 
     remove_if_exists(backup_path);
-    db_format_clear_last_migration_output_path();
+    db_format_clear_last_backup_output_path();
     return true;
 }
 
@@ -389,11 +389,15 @@ static bool test_fixture_migration(void) {
 
 static bool test_cleanup(void) {
     remove_if_exists(test_legacy_db);
-    char backup_path[1024];
+    char path[1024];
     const char *keep_artifacts = getenv("KEEP_MIGRATION_ARTIFACTS");
-    if (db_format_last_migration_output_path(backup_path, sizeof backup_path) && !(keep_artifacts && keep_artifacts[0] != '\0')) {
-        remove_if_exists(backup_path);
+    if (db_format_last_migration_output_path(path, sizeof path) && !(keep_artifacts && keep_artifacts[0] != '\0')) {
+        remove_if_exists(path);
         db_format_clear_last_migration_output_path();
+    }
+    if (db_format_last_backup_output_path(path, sizeof path) && !(keep_artifacts && keep_artifacts[0] != '\0')) {
+        remove_if_exists(path);
+        db_format_clear_last_backup_output_path();
     }
     return true;
 }

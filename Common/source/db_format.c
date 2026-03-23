@@ -68,10 +68,15 @@ static boolean g_db_format_runtime_headless = false;
  * If migration is ever performed on a worker thread with the result read on
  * another thread, this would need to change to a shared global with locking.
  *
- * Note: both create_root_backup() and migrate_internal() write to this variable.
- * create_root_backup stores the backup path; migrate_internal stores the v7 output path.
- * Callers should read it immediately after the operation that set it. */
+ * Written ONLY by migrate_internal() — stores the v7 output path.
+ * Callers should read it immediately after migrate_32bit_to_64bit() or
+ * ensure_database_v7(). */
 static _Thread_local char last_migration_output_path[1024];
+
+/* Thread-local buffer holding the path to the most recent backup file.
+ * Written ONLY by create_root_backup() — stores the timestamped backup path.
+ * Callers should read it immediately after create_root_backup(). */
+static _Thread_local char last_backup_output_path[1024];
 static boolean g_legacy_adapter_active = false;
 static boolean g_legacy_adapter_force_repack = false;
 static boolean g_legacy_adapter_mode_locked = false; /* Prevents v7->v6 downgrades during migration */
@@ -1414,7 +1419,7 @@ boolean create_root_backup(const char *original_path) {
     if (original_path == NULL)
         return false;
 
-    last_migration_output_path[0] = '\0';
+    last_backup_output_path[0] = '\0';
 
     char backup_path[1024];
     time_t now = time(NULL);
@@ -1456,8 +1461,8 @@ boolean create_root_backup(const char *original_path) {
 
     fclose(src);
     fclose(dst);
-    strncpy(last_migration_output_path, backup_path, sizeof last_migration_output_path);
-    last_migration_output_path[sizeof last_migration_output_path - 1] = '\0';
+    strncpy(last_backup_output_path, backup_path, sizeof last_backup_output_path);
+    last_backup_output_path[sizeof last_backup_output_path - 1] = '\0';
     return true;
 }
 
@@ -2234,7 +2239,13 @@ static boolean migrate_internal(const char *db_path, const char *explicit_output
                 ok = false;
                 goto cleanup;
             }
-            /* If existing backup is v7 or unreadable, overwrite is safe */
+            if (!hdr_ok) {
+                log_error(LOG_COMP_DB, "migrate_internal: cannot read header of existing backup %s — refusing to overwrite (may contain valid v6 data)", backup_path);
+                fail_step = "backup header unreadable";
+                ok = false;
+                goto cleanup;
+            }
+            /* Existing backup is v7 — safe to overwrite */
             log_info(LOG_COMP_DB, "migrate_internal: overwriting non-v6 backup: %s", backup_path);
         }
         /* Only rename original when output overwrites input */
@@ -2430,11 +2441,10 @@ boolean ensure_database_v7(const char *db_path, boolean *migrated, char *output_
     /* Skip .root7 fallback after crash recovery — we just restored the v6
      * original and need to re-migrate, not use a stale .root7 file. */
     if (!did_crash_recovery) {
-    /* Transitional fallback: check for legacy .root7 file from previous migration.
-     * TODO (2026-03-22): Remove this fallback once all users have migrated away from .root7.
-     * Note: advisory log only fires in headless builds; non-headless users get no warning.
-     * When adding GUI support, surface this via the GUI notification channel. */
-    {
+        /* Transitional fallback: check for legacy .root7 file from previous migration.
+         * TODO (2026-03-22): Remove this fallback once all users have migrated away from .root7.
+         * Note: advisory log only fires in headless builds; non-headless users get no warning.
+         * When adding GUI support, surface this via the GUI notification channel. */
         char legacy_root7_path[1024];
         snprintf(legacy_root7_path, sizeof legacy_root7_path, "%s7", db_path);
         FILE *fp_legacy = fopen(legacy_root7_path, "rb");
@@ -2460,7 +2470,6 @@ boolean ensure_database_v7(const char *db_path, boolean *migrated, char *output_
                 return true;
             }
         }
-    }
     } /* !did_crash_recovery */
 
     FILE *fp = fopen(db_path, "rb");
@@ -2520,6 +2529,23 @@ boolean db_format_last_migration_output_path(char *buffer, size_t length) {
 
 void db_format_clear_last_migration_output_path(void) {
     last_migration_output_path[0] = '\0';
+}
+
+boolean db_format_last_backup_output_path(char *buffer, size_t length) {
+    if (buffer == NULL || length == 0)
+        return false;
+    if (last_backup_output_path[0] == '\0') {
+        buffer[0] = '\0';
+        return false;
+    }
+    strncpy(buffer, last_backup_output_path, length);
+    if (length > 0)
+        buffer[length - 1] = '\0';
+    return true;
+}
+
+void db_format_clear_last_backup_output_path(void) {
+    last_backup_output_path[0] = '\0';
 }
 
 boolean db_format_derive_v6_backup_path(const char *db_path, char *backup, size_t backup_size) {

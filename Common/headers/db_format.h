@@ -165,8 +165,10 @@ boolean migrate_32bit_to_64bit_to_output(const char *db_path, const char *output
  */
 boolean ensure_database_v7(const char *db_path, boolean *migrated, char *output_path, size_t output_path_size);
 boolean db_format_last_migration_output_path(char *buffer, size_t length);
-boolean db_format_derive_v6_backup_path(const char *db_path, char *backup, size_t backup_size);
 void db_format_clear_last_migration_output_path(void);
+boolean db_format_last_backup_output_path(char *buffer, size_t length);
+void db_format_clear_last_backup_output_path(void);
+boolean db_format_derive_v6_backup_path(const char *db_path, char *backup, size_t backup_size);
 void db_format_force_strict_v7_reader(void);
 /* Scoped mode helpers (thread-local) to avoid global races. */
 void db_format_mode_push(const db_format_mode *mode);
