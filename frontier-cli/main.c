@@ -143,6 +143,7 @@ boolean cli_should_skip_startup(void) {
 /*
  * Helper: assign a C string to a hash table entry using a Handle.
  * Handles arbitrarily long strings (unlike copyctopstring which truncates at 255).
+ * langassigntextvalue takes ownership of h on success; we only dispose on failure.
  */
 static boolean assign_cstring_value (hdlhashtable ht, const bigstring bskey, const char *cstr) {
 
@@ -152,7 +153,8 @@ static boolean assign_cstring_value (hdlhashtable ht, const bigstring bskey, con
     if (!newhandle (len, &h))
         return (false);
 
-    memmove (*h, cstr, (size_t) len);
+    if (len > 0)
+        memcpy (*h, cstr, (size_t) len);
 
     if (!langassigntextvalue (ht, bskey, h)) {
         disposehandle (h);

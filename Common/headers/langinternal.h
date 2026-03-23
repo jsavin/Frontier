@@ -612,9 +612,13 @@ extern boolean langrunscriptcode (hdlhashtable htable, bigstring bsverb, hdltree
 
 // langstartup.c — environment args callback (dependency inversion for CLI layer)
 
+#ifdef FRONTIER_HEADLESS
+
 typedef boolean (*env_args_populate_callback) (hdlhashtable htargs);
 
 extern void langenvironment_set_args_callback (env_args_populate_callback cb);
+
+#endif
 
 
 #endif /*langinternalinclude*/
