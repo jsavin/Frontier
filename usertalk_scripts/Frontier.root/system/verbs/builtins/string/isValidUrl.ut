@@ -1,0 +1,16 @@
+on isValidUrl (s) {
+	//3/21/26 by JES
+		//Validates that s is a well-formed URL with an allowed scheme.
+		//Rejects javascript:, data:, and other potentially dangerous schemes.
+		//file:// is allowed for opening local HTML files and documents.
+	if sizeof (s) == 0 {
+		return (false)};
+	if s contains "\"" {
+		return (false)};
+	local (ix = string.patternMatch ("://", s));
+	if ix == 0 {
+		return (false)};
+	local (scheme = string.lower (string.mid (s, 1, ix - 1)));
+	if scheme == "http" or scheme == "https" or scheme == "ftp" or scheme == "ftps" or scheme == "file" {
+		return (true)};
+	return (false)}

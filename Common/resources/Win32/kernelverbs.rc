@@ -801,7 +801,7 @@
 	1,					//Number of "blocks" in this resource
 		"sys\0",			//Function Processor Name
 		false,			//Window required
-			16,			//Count of verbs
+			17,			//Count of verbs
 			"osversion\0", /*sys*/
 			"systemtask\0",
 			"browsenetwork\0",
@@ -810,14 +810,15 @@
 			"bringapptofront\0",
 			"countapps\0",
 			"getnthapp\0",
-			"getapppath\0",	
+			"getapppath\0",
 			"memavail\0",
 			"machine\0",
 			"os\0",
 			"getenvironmentvariable\0",
 			"setenvironmentvariable\0",
 			"unixshellcommand\0",
-			"winshellcommand\0"	/* 2006-03-09 aradke */
+			"winshellcommand\0",	/* 2006-03-09 aradke */
+			"openUrl\0"		/* 2026-03-21 JES — camelCase matches Frontier.root glue convention */
 	END
 
 1014 /*idlaunchverbs*/	EFP		DISCARDABLE

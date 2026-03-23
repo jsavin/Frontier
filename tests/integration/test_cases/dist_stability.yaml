@@ -49,7 +49,7 @@ tests:
     description: "Open a guest database, then save the system root. Verifies that guest db mount points under system.compiler.files (marked fldontsave) don't corrupt the system root during save."
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(dbPath = tmpDir + "/" + "dist_guest_save_test.root7");
+      local(dbPath = tmpDir + "/" + "dist_guest_save_test.root");
       db.new(dbPath);
       fileMenu.open(dbPath);
       fileMenu.save();
@@ -62,7 +62,7 @@ tests:
     description: "Full lifecycle: open guest db, write data, save both guest and system root, close, reopen, verify data. This is the pattern that Frontier.tools.install() exercises."
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(dbPath = tmpDir + "/" + "dist_lifecycle.root7");
+      local(dbPath = tmpDir + "/" + "dist_lifecycle.root");
       db.new(dbPath);
       fileMenu.open(dbPath);
       db.setvalue(dbPath, "toolData", "installed");
@@ -80,8 +80,8 @@ tests:
     description: "Open two guest databases, write to both, save both, close all, reopen and verify. Tests that hdatabase context is maintained per-database."
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(db1 = tmpDir + "/" + "dist_multi_db1.root7");
-      local(db2 = tmpDir + "/" + "dist_multi_db2.root7");
+      local(db1 = tmpDir + "/" + "dist_multi_db1.root");
+      local(db2 = tmpDir + "/" + "dist_multi_db2.root");
       db.new(db1);
       db.new(db2);
       fileMenu.open(db1);

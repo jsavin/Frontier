@@ -1,0 +1,5 @@
+on openUrl (s) {
+	//3/21/26 by JES
+		//Open a URL in the default browser without shell interpolation.
+		//Uses fork/execlp on macOS and Linux to avoid command injection.
+	kernel (sys.openUrl)}

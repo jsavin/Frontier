@@ -23,7 +23,6 @@ extern "C" {
 typedef struct db_format_mode {
     boolean use_64bit_format;
     boolean adapter_repack;
-    boolean drop_cancoon;
 } db_format_mode;
 
 typedef struct db_saveas_state {
@@ -97,6 +96,14 @@ static inline void db_format_write_dbaddress64(void *ptr, dbaddress value) {
     db_format_write_be64(ptr, (uint64_t) value);
 }
 
+/* Returns true if the header represents a v6 (or earlier) database.
+ * LE-specific: v6 stores versionnumber as LE 0x0006 (reads as 6).
+ * v7 stores it as BE 0x0007 (reads as 0x0700 = 1792 on LE hosts).
+ * So "< 7" correctly identifies v6 on little-endian platforms. */
+static inline boolean db_format_is_v6_header(const tydatabaserecord *hdr) {
+    return hdr->versionnumber < 7;
+}
+
 boolean db_format_prepare_runtime(void);
 boolean detect_database_format(const tydatabaserecord *header);
 boolean convert_32bit_header_to_64bit(const unsigned char *legacy_header, tydatabaserecord_64 *new_header);
@@ -117,11 +124,59 @@ void db_format_adapter_reset(void);
 void db_format_set_legacy_source_db(hdldatabaserecord hdb);
 boolean db_format_is_legacy_db(hdldatabaserecord hdb);
 boolean create_root_backup(const char *original_path);
+
+/*
+ * migrate_32bit_to_64bit - Migrate a v6 database to v7 format IN-PLACE.
+ *
+ * DESTRUCTIVE: Renames the v6 input to .v6.root (backup) and writes the
+ * v7 database to the original .root path. The .v6.root backup is preserved
+ * for manual rollback.
+ *
+ * Rollback strategy: Per-file. If migration fails mid-way, the function
+ * attempts to restore the .v6.root backup to the original path. The .v6.root
+ * backup persists after successful migration for manual recovery if needed.
+ * In multi-database sessions (e.g., guest databases opened sequentially),
+ * each migration is independent — a failure on one database does not affect
+ * previously migrated databases. The next startup re-attempts any failed
+ * migrations automatically via ensure_database_v7().
+ *
+ * Returns true on success, false on failure (with best-effort rollback).
+ */
 boolean migrate_32bit_to_64bit(const char *db_path);
-boolean migrate_32bit_to_64bit_drop_cancoon(const char *db_path);
+
+/*
+ * migrate_32bit_to_64bit_to_output - Migrate a v6 database to v7 at an
+ * explicit output path.
+ *
+ * NON-DESTRUCTIVE to the input: the v6 source file is left unchanged.
+ * The v7 database is written to a temp file next to output_path and
+ * atomically renamed into place.
+ *
+ * Returns true on success, false on failure.
+ */
+boolean migrate_32bit_to_64bit_to_output(const char *db_path, const char *output);
+
+/*
+ * ensure_database_v7 - Verify or migrate a database to v7 format.
+ *
+ * If db_path is already v7, returns true immediately. If v6, performs
+ * in-place migration (see migrate_32bit_to_64bit). Handles crash recovery
+ * if a previous migration was interrupted.
+ *
+ * On success, *migrated indicates whether a fresh migration occurred.
+ * If output_path is non-NULL, it receives the path to the v7 database
+ * (which may equal db_path for in-place migration or a legacy .root7 path
+ * during the transitional period).
+ *
+ * Returns true on success, false on failure (unreadable header, permission
+ * error, or migration failure).
+ */
 boolean ensure_database_v7(const char *db_path, boolean *migrated, char *output_path, size_t output_path_size);
-boolean db_format_last_backup_path(char *buffer, size_t length);
-void db_format_clear_last_backup_path(void);
+boolean db_format_last_migration_output_path(char *buffer, size_t length);
+void db_format_clear_last_migration_output_path(void);
+boolean db_format_last_backup_output_path(char *buffer, size_t length);
+void db_format_clear_last_backup_output_path(void);
+boolean db_format_derive_v6_backup_path(const char *db_path, char *backup, size_t backup_size);
 void db_format_force_strict_v7_reader(void);
 /* Scoped mode helpers (thread-local) to avoid global races. */
 void db_format_mode_push(const db_format_mode *mode);

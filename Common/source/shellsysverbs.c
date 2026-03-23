@@ -64,6 +64,11 @@
 #include "db_format.h" /* 2025-11-23 Codex: BE helper for sys verbs */
 #include "byteorder.h"	/* 2006-04-08 aradke: endianness conversion macros */
 
+#if defined(__APPLE__) || defined(__linux__)
+#include <unistd.h>	/* 2026-03-21 JES: for fork, execlp, _exit in sys.openUrl */
+#include <sys/wait.h>	/* 2026-03-21 JES: for waitpid in sys.openUrl */
+#endif
+
 #define systemevents (osMask | activMask)
 
 boolean frontierversion (tyvaluerecord *v); /* 2002-10-13 AR: also used in langhtml.c */
@@ -109,6 +114,8 @@ typedef enum tysystoken { /*verbs that are processed by sys*/
 	unixshellcommandfunc,
 
 	winshellcommandfunc,
+
+	openurlfunc,
 
 	ctsysverbs
 	} tysystoken;
@@ -817,11 +824,107 @@ static boolean sysfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord
 			return (false);
 			}
 
+		case openurlfunc: {
+			/* Kernel verb name is "openUrl" (camelCase per Frontier.root glue convention).
+			 * C enum uses lowercase per C convention.
+			 *
+			 * 3/21/26 JES: Open a URL in the default browser without shell interpolation.
+			 * Uses fork/execlp to avoid command injection vulnerabilities.
+			 * macOS: execlp("open", ...), Linux: execlp("xdg-open", ...).
+			 */
 
+			Handle hurl;
 
-			
-		
-		
+			flnextparamislast = true;
+
+			if (!getexempttextvalue (hparam1, 1, &hurl))
+				return (false);
+
+			if (!enlargehandle (hurl, 1, "\0")) {
+				disposehandle (hurl);
+				return (false);
+			}
+
+			lockhandle (hurl);
+
+			{
+				const char *url = (const char *) *hurl;
+
+				if (url[0] == '\0') {  /* empty URL — scriptError, don't fork */
+					unlockhandle (hurl);
+					disposehandle (hurl);
+					langerrormessage (BIGSTRING ("\x3eCan't open the URL because it is an empty string."));
+					return (false);
+				}
+
+#if defined(__APPLE__) || defined(__linux__)
+				/*
+				Double-fork to avoid zombie processes: first child forks again
+				then exits immediately. The grandchild is reparented to init/launchd
+				and reaped automatically. Parent waits only for the short-lived
+				first child.
+				*/
+				pid_t pid = fork ();
+
+				if (pid == 0) { /* first child */
+					/* Handle hurl is intentionally not freed in the child process —
+					 * _exit() tears down the address space immediately, making
+					 * explicit cleanup unnecessary and potentially unsafe. */
+					pid_t pid2 = fork ();
+
+					if (pid2 == 0) { /* grandchild — runs the command */
+#ifdef __APPLE__
+						execlp ("open", "open", url, NULL);
+#else
+						execlp ("xdg-open", "xdg-open", url, NULL);
+#endif
+						_exit (1); /* execlp failed */
+					}
+
+					/* If second fork failed, exit non-zero so parent can detect it.
+					 * If grandchild was spawned, exit 0 (grandchild runs independently). */
+					_exit (pid2 < 0 ? 1 : 0);
+				}
+
+				/* These run unconditionally in the parent process (the child has
+				 * already _exit'd by this point). The fork-failure check below
+				 * is safe because hurl has already been cleaned up. */
+				unlockhandle (hurl);
+				disposehandle (hurl);
+
+				if (pid < 0) { /* fork failed */
+					return (setbooleanvalue (false, v));
+				}
+
+				int status = 0;
+				waitpid (pid, &status, 0); /* reap first child (returns instantly) */
+
+				/* First child exits 0 if grandchild was spawned, 1 if second fork failed.
+				 * Return false on failure so the caller knows the URL wasn't opened. */
+				boolean launched = WIFEXITED (status) && WEXITSTATUS (status) == 0;
+
+				return (setbooleanvalue (launched, v));
+#elif defined(_WIN32)
+				/* ShellExecuteA returns > 32 on success */
+				boolean fl = ((int)(intptr_t) ShellExecuteA (NULL, "open", url, NULL, NULL, SW_SHOWNORMAL)) > 32;
+
+				unlockhandle (hurl);
+				disposehandle (hurl);
+
+				return (setbooleanvalue (fl, v));
+#else
+				/* Handle cleanup before returning — no leak on unsupported platforms */
+				unlockhandle (hurl);
+				disposehandle (hurl);
+
+				/* Set bserror without langerrormessage — consistent with other
+				 * platform stubs (winshellcommand). The caller reads bserror. */
+				copystring (BIGSTRING("\psys.openUrl is not supported on this platform"), bserror);
+				return (false);
+#endif
+			}
+		}
+
 		default:
 			break;
 		}

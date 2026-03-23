@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>Table Operations Integration (table_operations_integration) - 45 tests: 45 pass (100%)</title>
-    <dateCreated>Wed, 18 Feb 2026 21:49:56 GMT</dateCreated>
+    <dateCreated>Mon, 23 Mar 2026 17:55:57 GMT</dateCreated>
   </head>
   <body>
     <outline text="✓ test_table_assign_basic"/>

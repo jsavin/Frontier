@@ -1,0 +1,65 @@
+# Integration tests for string.isValidUrl
+# Validates URL scheme allowlisting and rejection of dangerous schemes.
+
+tests:
+  # Valid URLs - should return true
+  - name: "string.isValidUrl - http URL"
+    script: 'string.isValidUrl("http://example.com")'
+    expected_success: true
+    expected_result: "true"
+
+  - name: "string.isValidUrl - https URL"
+    script: 'string.isValidUrl("https://example.com/path?q=1")'
+    expected_success: true
+    expected_result: "true"
+
+  - name: "string.isValidUrl - file URL"
+    script: 'string.isValidUrl("file:///tmp/test.html")'
+    expected_success: true
+    expected_result: "true"
+
+  - name: "string.isValidUrl - ftp URL"
+    script: 'string.isValidUrl("ftp://server/file")'
+    expected_success: true
+    expected_result: "true"
+
+  - name: "string.isValidUrl - uppercase scheme"
+    script: 'string.isValidUrl("HTTP://EXAMPLE.COM")'
+    expected_success: true
+    expected_result: "true"
+
+  # Invalid URLs - should return false
+  - name: "string.isValidUrl - empty string"
+    script: 'string.isValidUrl("")'
+    expected_success: true
+    expected_result: "false"
+
+  - name: "string.isValidUrl - no scheme separator"
+    script: 'string.isValidUrl("not a url")'
+    expected_success: true
+    expected_result: "false"
+
+  - name: "string.isValidUrl - javascript scheme"
+    script: 'string.isValidUrl("javascript:alert(1)")'
+    expected_success: true
+    expected_result: "false"
+
+  - name: "string.isValidUrl - data scheme"
+    script: 'string.isValidUrl("data:text/html,hi")'
+    expected_success: true
+    expected_result: "false"
+
+  - name: "string.isValidUrl - contains double quote"
+    script: "string.isValidUrl(\"http://x\" + quote + \"injected\")"
+    expected_success: true
+    expected_result: "false"
+
+  - name: "string.isValidUrl - unknown scheme"
+    script: 'string.isValidUrl("slack://open")'
+    expected_success: true
+    expected_result: "false"
+
+  - name: "string.isValidUrl - mailto scheme"
+    script: 'string.isValidUrl("mailto:user@example.com")'
+    expected_success: true
+    expected_result: "false"

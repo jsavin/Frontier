@@ -13,7 +13,7 @@
 # planning/FIX_TESTS_2026_02_16.md B2. Tests that need to catch fileMenu errors
 # are skipped with this reason.
 #
-# Guest DB files: Tests use static .root7 filenames. Defensive file.delete()
+# Guest DB files: Tests use static .root filenames. Defensive file.delete()
 # at test start handles leftover files from prior crashed runs.
 
 description: "Error Recovery & Concurrency Integration Tests (Gaps #6, #7, #8)"
@@ -93,7 +93,7 @@ tests:
       does not execute due to scriptError. Database remains consistent.
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(dbPath = tmpDir + "/" + "error_midtxn_db.root7");
+      local(dbPath = tmpDir + "/" + "error_midtxn_db.root");
       try {file.delete(dbPath)} else {1};
       db.new(dbPath);
       fileMenu.open(dbPath);
@@ -122,7 +122,7 @@ tests:
       the database is still fully usable (read and write).
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(dbPath = tmpDir + "/" + "error_db_recovery.root7");
+      local(dbPath = tmpDir + "/" + "error_db_recovery.root");
       try {file.delete(dbPath)} else {1};
       db.new(dbPath);
       fileMenu.open(dbPath);
@@ -181,7 +181,7 @@ tests:
     repl_mode: true
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(dbPath = tmpDir + "/" + "thread_save_guest.root7");
+      local(dbPath = tmpDir + "/" + "thread_save_guest.root");
       try {file.delete(dbPath)} else {1};
       db.new(dbPath);
       fileMenu.open(dbPath);
@@ -228,9 +228,9 @@ tests:
       and verify it returns true.
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(db1 = tmpDir + "/" + "closeall_verify1.root7");
-      local(db2 = tmpDir + "/" + "closeall_verify2.root7");
-      local(db3 = tmpDir + "/" + "closeall_verify3.root7");
+      local(db1 = tmpDir + "/" + "closeall_verify1.root");
+      local(db2 = tmpDir + "/" + "closeall_verify2.root");
+      local(db3 = tmpDir + "/" + "closeall_verify3.root");
       try {file.delete(db1)} else {1};
       try {file.delete(db2)} else {1};
       try {file.delete(db3)} else {1};
@@ -258,7 +258,7 @@ tests:
       verb errors which bypass try/else — see planning/FIX_TESTS_2026_02_16.md).
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(dbPath = tmpDir + "/" + "closeall_access_fail.root7");
+      local(dbPath = tmpDir + "/" + "closeall_access_fail.root");
       try {file.delete(dbPath)} else {1};
       db.new(dbPath);
       db.open(dbPath, false);
@@ -275,7 +275,7 @@ tests:
       should succeed, confirming no lingering file locks.
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(dbPath = tmpDir + "/" + "closeall_reopen.root7");
+      local(dbPath = tmpDir + "/" + "closeall_reopen.root");
       try {file.delete(dbPath)} else {1};
       db.new(dbPath);
       fileMenu.open(dbPath);
@@ -296,8 +296,8 @@ tests:
       Verifies closeall works correctly across multiple cycles.
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(db1 = tmpDir + "/" + "closeall_cycle1.root7");
-      local(db2 = tmpDir + "/" + "closeall_cycle2.root7");
+      local(db1 = tmpDir + "/" + "closeall_cycle1.root");
+      local(db2 = tmpDir + "/" + "closeall_cycle2.root");
       try {file.delete(db1)} else {1};
       try {file.delete(db2)} else {1};
       db.new(db1);
@@ -319,7 +319,7 @@ tests:
       root. Verify system.temp is still accessible after closeall.
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(dbPath = tmpDir + "/" + "closeall_sysroot.root7");
+      local(dbPath = tmpDir + "/" + "closeall_sysroot.root");
       try {file.delete(dbPath)} else {1};
       db.new(dbPath);
       fileMenu.open(dbPath);

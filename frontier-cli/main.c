@@ -28,6 +28,7 @@
 #include <unistd.h>
 #include <getopt.h>
 #include <stdint.h>
+#include <errno.h>
 #include <pthread.h>
 
 #ifdef __APPLE__
@@ -81,12 +82,11 @@ extern hdlthreadglobals hthreadglobals;
 #endif
 #define FRONTIER_CLI_BUILD_DATE __DATE__
 
-// Default system root paths (v7 = modern format, v6 = legacy format)
-#define DEFAULT_SYSTEM_ROOT_V7 "databases/Frontier.root7"
-#define DEFAULT_SYSTEM_ROOT_V6 "databases/Frontier.root"
+// System root filename (used in search path construction)
+#define SYSTEM_ROOT_FILENAME "Frontier.root"
 
 // System root search paths (for auto-discovery)
-#define MAX_SEARCH_PATHS 8
+#define MAX_SEARCH_PATHS 5
 
 // Global variables
 static cli_options_t g_cli_options = {0};
@@ -195,34 +195,22 @@ int main(int argc, char* argv[]) {
     /* Handle --migrate mode: migrate database to v7 and exit */
     if (g_cli_options.migrate_database != NULL) {
         boolean migrated = false;
-        char default_output[CLI_MAX_PATH_LENGTH + 8];  /* Extra space for ".root7" suffix */
-        const char *final_output_path = g_cli_options.output_path;
         const char *input = g_cli_options.migrate_database;
         size_t input_len = strlen(input);
 
-        /* If no output path specified, create default: <input>.root7 or <input>7 */
-        if (final_output_path == NULL) {
-            /* Validate path length before constructing output path */
-            if (input_len >= CLI_MAX_PATH_LENGTH) {
-                fprintf(stderr, "Error: Input path too long for default output naming\n");
-                return 1;
-            }
-
-            /* Check if input ends with .root */
-            if (input_len >= 5 && strcasecmp(input + input_len - 5, ".root") == 0) {
-                snprintf(default_output, sizeof(default_output), "%s7", input);
-            } else {
-                /* Append .root7 for other extensions */
-                snprintf(default_output, sizeof(default_output), "%s.root7", input);
-            }
-            final_output_path = default_output;
+        /* Validate path length */
+        if (input_len >= CLI_MAX_PATH_LENGTH) {
+            fprintf(stderr, "Error: Input path too long\n");
+            return 1;
         }
 
-        /* Check if output file exists and --force not specified */
-        if (access(final_output_path, F_OK) == 0 && !g_cli_options.force_overwrite) {
-            fprintf(stderr, "Error: Output file already exists: %s\n", final_output_path);
-            fprintf(stderr, "Use --force (-f) to overwrite.\n");
-            return 1;
+        /* Check --output target BEFORE migration to avoid side effects on failure */
+        if (g_cli_options.output_path != NULL) {
+            if (access(g_cli_options.output_path, F_OK) == 0 && !g_cli_options.force_overwrite) {
+                fprintf(stderr, "Error: Output file already exists: %s\n", g_cli_options.output_path);
+                fprintf(stderr, "Use --force (-f) to overwrite.\n");
+                return 1;
+            }
         }
 
         /* Initialize minimal runtime for migration */
@@ -231,70 +219,61 @@ int main(int argc, char* argv[]) {
             return 1;
         }
 
-        /* Perform the migration */
-        if (!ensure_database_v7(input, &migrated, default_output, sizeof(default_output))) {
-            fprintf(stderr, "Error: Migration failed for: %s\n", input);
-            /* Clean up partial migration output if it exists */
-            if (default_output[0] != '\0') {
-                remove(default_output);
-            }
-            return 1;
-        }
+        if (g_cli_options.output_path != NULL) {
+            /* --output mode: write v7 directly to the specified path.
+             * The v6 input file is never modified. */
 
-        /* If custom output path specified and differs from what ensure_database_v7 produced, copy/rename */
-        if (g_cli_options.output_path != NULL && strcmp(g_cli_options.output_path, default_output) != 0) {
-            #define FILE_COPY_BUFFER_SIZE 8192
-
-            /* Copy the migrated file to the specified output path */
-            FILE *src = fopen(default_output, "rb");
-            if (!src) {
-                fprintf(stderr, "Error: Cannot read migrated file: %s\n", default_output);
-                return 1;
-            }
-            FILE *dst = fopen(g_cli_options.output_path, "wb");
-            if (!dst) {
-                fclose(src);
-                remove(default_output);  /* Clean up intermediate file */
-                fprintf(stderr, "Error: Cannot create output file: %s\n", g_cli_options.output_path);
-                return 1;
-            }
-
-            char buf[FILE_COPY_BUFFER_SIZE];
-            size_t n;
-            boolean copy_failed = false;
-
-            while ((n = fread(buf, 1, sizeof(buf), src)) > 0) {
-                if (fwrite(buf, 1, n, dst) != n) {
-                    copy_failed = true;
-                    break;
+            /* Check if already v7 before attempting migration.
+             * Use detect_database_format + db_format_mode_apply to handle
+             * endianness correctly, matching the ensure_database_v7 pattern. */
+            {
+                FILE *fp_check = fopen(input, "rb");
+                if (!fp_check) {
+                    fprintf(stderr, "Error: Cannot open input file: %s\n", input);
+                    return 1;
+                }
+                tydatabaserecord hdr;
+                boolean hdr_ok = fread(&hdr, sizeof hdr, 1, fp_check) == 1;
+                fclose(fp_check);
+                if (!hdr_ok || !detect_database_format(&hdr)) {
+                    fprintf(stderr, "Error: Cannot read database header: %s\n", input);
+                    return 1;
+                }
+                db_format_mode detected = {hdr.versionnumber >= 7, false};
+                db_format_mode_apply(&detected);
+                if (db_format_mode_current().use_64bit_format) {
+                    printf("Already v7 format: %s\n", input);
+                    return 0;
                 }
             }
 
-            /* Check for read/write errors (fread returns 0 on both EOF and error) */
-            if (!copy_failed && (ferror(src) || ferror(dst))) {
-                copy_failed = true;
+            if (!migrate_32bit_to_64bit_to_output(input, g_cli_options.output_path)) {
+                fprintf(stderr, "Error: Migration failed for: %s\n", input);
+                return 1;
             }
-
-            fclose(src);
-            fclose(dst);
-
-            if (copy_failed) {
-                /* Clean up both the failed output and intermediate file */
-                remove(g_cli_options.output_path);
-                remove(default_output);
-                fprintf(stderr, "Error: File copy failed\n");
+            printf("Migrated: %s -> %s\n", input, g_cli_options.output_path);
+        } else {
+            /* In-place mode: ensure_database_v7 renames v6 to .v6.root backup
+             * and writes v7 to the original .root path. */
+            if (g_cli_options.force_overwrite) {
+                printf("Note: --force has no effect in in-place migration mode (no --output specified)\n");
+            }
+            if (!ensure_database_v7(input, &migrated, NULL, 0)) {
+                fprintf(stderr, "Error: Migration failed for: %s\n", input);
                 return 1;
             }
 
-            /* Remove the intermediate .root7 file */
-            remove(default_output);
-            printf("Migrated: %s -> %s\n", input, g_cli_options.output_path);
+            if (!migrated) {
+                printf("Already v7 format: %s\n", input);
+                return 0;
+            }
 
-            #undef FILE_COPY_BUFFER_SIZE
-        } else if (migrated) {
-            printf("Migrated: %s -> %s\n", input, default_output);
-        } else {
-            printf("Already v7 format: %s\n", input);
+            {
+                char v6_backup[CLI_MAX_PATH_LENGTH + 16];
+                db_format_derive_v6_backup_path(input, v6_backup, sizeof(v6_backup));
+                printf("Migrated in-place: %s\n", input);
+                printf("  v6 backed up to: %s\n", v6_backup);
+            }
         }
         return 0;
     }
@@ -484,44 +463,31 @@ static int get_system_root_search_paths(char paths[][CLI_MAX_PATH_LENGTH + 1], i
         }
     }
 
-    // 2. Current working directory - Frontier.root7 (v7 preferred)
+    // 2. Current working directory
     if (count < max_paths && cwd[0] != '\0') {
-        snprintf(paths[count], CLI_MAX_PATH_LENGTH + 1, "%s/Frontier.root7", cwd);
+        snprintf(paths[count], CLI_MAX_PATH_LENGTH + 1, "%s/" SYSTEM_ROOT_FILENAME, cwd);
         count++;
     }
 
-    // 3. Current working directory - Frontier.root (v6)
-    if (count < max_paths && cwd[0] != '\0') {
-        snprintf(paths[count], CLI_MAX_PATH_LENGTH + 1, "%s/Frontier.root", cwd);
-        count++;
-    }
-
-    // 4. Executable directory - Frontier.root7 (fallback)
+    // 3. Executable directory
     if (count < max_paths && exe_dir[0] != '\0') {
-        snprintf(paths[count], CLI_MAX_PATH_LENGTH + 1, "%s/Frontier.root7", exe_dir);
+        snprintf(paths[count], CLI_MAX_PATH_LENGTH + 1, "%s/" SYSTEM_ROOT_FILENAME, exe_dir);
         count++;
     }
 
-    // 5. Executable directory - Frontier.root (v6 fallback)
-    if (count < max_paths && exe_dir[0] != '\0') {
-        snprintf(paths[count], CLI_MAX_PATH_LENGTH + 1, "%s/Frontier.root", exe_dir);
-        count++;
-    }
-
-    // 6. Legacy paths for backward compatibility
+    // 4. User Application Support directory
     const char *home = getenv("HOME");
     if (home != NULL && count < max_paths) {
-        // ~/Library/Application Support/Frontier/Frontier.root7
         snprintf(paths[count], CLI_MAX_PATH_LENGTH + 1,
-                 "%s/Library/Application Support/Frontier/Frontier.root7", home);
+                 "%s/Library/Application Support/Frontier/" SYSTEM_ROOT_FILENAME, home);
         count++;
+    }
 
-        if (count < max_paths) {
-            // ~/Library/Application Support/Frontier/Frontier.root (v6)
-            snprintf(paths[count], CLI_MAX_PATH_LENGTH + 1,
-                     "%s/Library/Application Support/Frontier/Frontier.root", home);
-            count++;
-        }
+    // 5. ~/.frontier/Frontier.root (Linux convention)
+    if (home != NULL && count < max_paths) {
+        snprintf(paths[count], CLI_MAX_PATH_LENGTH + 1,
+                 "%s/.frontier/" SYSTEM_ROOT_FILENAME, home);
+        count++;
     }
 
     return count;
@@ -626,8 +592,8 @@ static void print_usage(const char* program_name) {
     printf("  -b, --batch              Batch mode (disable interactive prompts)\n");
     printf("  --non-interactive        Alias for --batch\n");
     printf("  --migrate PATH           Migrate v6 database to v7 format and exit\n");
-    printf("  --output PATH            Output path for migrated database (default: <input>.root7)\n");
-    printf("  -f, --force              Force overwrite if output file exists\n");
+    printf("  --output PATH            Output path for migrated database (default: in-place, v6 backed up)\n");
+    printf("  -f, --force              Overwrite existing output file (only applies with --output)\n");
     printf("  --skip-startup           Skip system.startup scripts (they run by default)\n");
     printf("  --output-json            Output results in JSON format\n");
     printf("  -v, --verbose            Verbose output\n");
@@ -656,16 +622,16 @@ static void print_usage(const char* program_name) {
     printf("  %s myscript.usertalk\n", program_name);
     printf("\n");
     printf("  # Execute with system root database\n");
-    printf("  %s --system-root databases/Frontier.root7 -e \"sizeOf(system)\"\n", program_name);
+    printf("  %s --system-root databases/Frontier.root -e \"sizeOf(system)\"\n", program_name);
     printf("\n");
-    printf("  # Migrate v6 database to v7 format (creates .root7 alongside original)\n");
+    printf("  # Migrate v6 database to v7 format (v6 backed up to .v6.root)\n");
     printf("  %s --migrate Frontier.root\n", program_name);
     printf("\n");
     printf("  # Migrate with explicit output path\n");
     printf("  %s --migrate legacy/Frontier.root --output databases/Frontier.root\n", program_name);
     printf("\n");
-    printf("  # Force overwrite existing v7 file\n");
-    printf("  %s --migrate Frontier.root -f\n", program_name);
+    printf("  # Force overwrite existing output file\n");
+    printf("  %s --migrate Frontier.root --output Frontier-v7.root -f\n", program_name);
     printf("\n");
     printf("  # Execute with JSON output (for automation/testing)\n");
     printf("  %s --output-json -e \"1+1\"\n", program_name);
@@ -861,7 +827,7 @@ static boolean hydrate_system_root_database(const char* path) {
     }
 
     /* After ensure_database_v7, we always have a v7 database (either the original if already v7,
-     * or a newly migrated .root7 file if the source was v6). v6 source files remain untouched.
+     * or the original path now containing the migrated v7 data, with v6 backed up to .v6.root).
      *
      * v7 databases are opened read-write by default to allow startup scripts and system table
      * updates. Use FRONTIER_OPEN_READONLY=1 environment variable to force read-only mode. */
@@ -1020,7 +986,7 @@ static boolean hydrate_system_root_database(const char* path) {
      * Also skip if no optional tables were created - v7 databases are already complete. */
     if ((!migrated && created_optional)) {
         boolean repack_scope = false;
-        db_format_mode mode = {true, true, false};  /* 64-bit, adapter_repack, no drop_cancoon */
+        db_format_mode mode = {true, true};  /* 64-bit, adapter_repack */
         db_format_mode_push(&mode);
         repack_scope = true;
         if (!tablesavesystemtable(hrootvariable, &adr)) {
@@ -1328,7 +1294,7 @@ static void save_system_root_on_exit(void) {
 
     /* Save the root table using v7 format */
     {
-        db_format_mode mode = {true, false, false};  /* 64-bit, no adapter_repack, no drop_cancoon */
+        db_format_mode mode = {true, false};  /* 64-bit, no adapter_repack */
         db_format_mode_push(&mode);
 
         if (!tablesavesystemtable(rootvariable, &root_adr)) {

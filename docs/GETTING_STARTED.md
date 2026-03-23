@@ -317,16 +317,16 @@ For comprehensive testing documentation, see [TESTING_GUIDE.md](TESTING_GUIDE.md
 
 ## Working with Databases
 
-Frontier uses Object Database (ODB) files with `.root` (v6) or `.root7` (v7) extensions.
+Frontier uses Object Database (ODB) files with `.root` extension. Both v6 (legacy) and v7 (modern) databases use `.root`.
 
 ### Loading a Database
 
 ```bash
 # Load system database and run code
-./frontier-cli/frontier-cli --system-root databases/Frontier.root7 -e "sizeOf(system)"
+./frontier-cli/frontier-cli --system-root databases/Frontier.root -e "sizeOf(system)"
 
 # Shorthand: pass database as positional argument
-./frontier-cli/frontier-cli databases/Frontier.root7 -e "sizeOf(system)"
+./frontier-cli/frontier-cli databases/Frontier.root -e "sizeOf(system)"
 ```
 
 ### Database Migration
@@ -334,7 +334,7 @@ Frontier uses Object Database (ODB) files with `.root` (v6) or `.root7` (v7) ext
 The CLI automatically migrates v6 databases to v7 format:
 
 ```bash
-# This creates Frontier.root7 if it doesn't exist
+# Migrates v6 in-place (v6 backed up to .v6.root)
 ./frontier-cli/frontier-cli --system-root databases/Frontier.root -e "1"
 ```
 
@@ -342,7 +342,7 @@ The CLI automatically migrates v6 databases to v7 format:
 
 ```bash
 ./frontier-cli/frontier-cli --migrate databases/Frontier.root
-# Output: Migrated: databases/Frontier.root -> databases/Frontier.root7
+# Output: Migrated: databases/Frontier.root (v6 backed up to databases/Frontier.v6.root)
 ```
 
 ---

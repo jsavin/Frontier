@@ -431,7 +431,7 @@ pascal boolean odbNewFile (hdlfilenum fnum) {
 	4.1b5 dmb: new routine. minimal db creation. does not leave it open
 
 	2026-01-07 Codex: Updated for v7 format - creates minimal database instead of Cancoon record.
-	Phase 1: Creates .root7 files with no Cancoon record, empty database.
+	Creates .root files with no Cancoon record, empty database.
 	*/
 
 	boolean fl;
@@ -510,7 +510,7 @@ pascal boolean odbOpenFile (hdlfilenum fnum, odbref *odb, boolean flreadonly) {
 						if (!migrate_32bit_to_64bit(path))
 							return (false);
 						char migrated_path[1024];
-						if (!db_format_last_backup_path(migrated_path, sizeof migrated_path))
+						if (!db_format_last_migration_output_path(migrated_path, sizeof migrated_path))
 							return (false);
 						if (!headless_reopen_fnum(fnum, migrated_path, flreadonly))
 							return (false);
@@ -767,7 +767,7 @@ pascal boolean odbSaveFile (odbref odb) {
 		/* Save the root table (use global rootvariable, which is always current) */
 		{
 			boolean repack_scope = false;
-			db_format_mode mode = {true, true, false};  /* 64-bit, adapter_repack, no drop_cancoon */
+			db_format_mode mode = {true, true};  /* 64-bit, adapter_repack */
 			db_format_mode_push(&mode);
 			repack_scope = true;
 			if (!tablesavesystemtable(rootvariable, &root_adr)) {
@@ -818,7 +818,7 @@ pascal boolean odbSaveFile (odbref odb) {
 
     {
         boolean repack_scope = false;
-        db_format_mode mode = {true, true, false};  /* 64-bit, adapter_repack, no drop_cancoon */
+        db_format_mode mode = {true, true};  /* 64-bit, adapter_repack */
         db_format_mode_push(&mode);
         repack_scope = true;
         if (!tablesavesystemtable((**hc).hrootvariable, &info.adrroottable)) {
@@ -840,7 +840,7 @@ pascal boolean odbSaveFile (odbref odb) {
 
     {
         boolean repack_scope = false;
-        db_format_mode mode = {true, true, false};  /* 64-bit, adapter_repack, no drop_cancoon */
+        db_format_mode mode = {true, true};  /* 64-bit, adapter_repack */
         db_format_mode_push(&mode);
         repack_scope = true;
         if (!dbassign(&adr, sizeof (info), &info)) {

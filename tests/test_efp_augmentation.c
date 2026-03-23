@@ -46,7 +46,7 @@ int main(void) {
     assert(langinitverbs());
 
     // Use the migrated v7 database from save_migration_tests
-    const char *db_path = "tmp/migration/test_save_migration.root7";
+    const char *db_path = "tmp/migration/test_save_migration.root";
     FILE *check = fopen(db_path, "rb");
     if (!check) {
         log_error(LOG_COMP_DB, "Test database not found: %s", db_path);

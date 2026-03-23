@@ -2,19 +2,18 @@
 #
 # Tests for v6 → v7 database migration via CLI
 # Verifies that migration:
-# 1. Creates v7 destination file correctly
-# 2. Does NOT modify v6 source file
-# 3. Handles hydration after migration without corruption
+# 1. Renames v6 source to .v6.root backup, places v7 at original .root path
+# 2. Handles hydration after migration without corruption
 #
 # Reference: Issue - Database migration modifies v6 source file
 #
 
 tests:
-  - name: "Database migration - source file unchanged"
-    description: "Migration should not modify v6 source database file"
+  - name: "Database migration - v6 source renamed to backup"
+    description: "Migration should rename v6 source to .v6.root backup"
     script: |
       local(src = "{FRONTIER_TEST_TMP_DIR}/test_v6.root");
-      local(dst = "{FRONTIER_TEST_TMP_DIR}/test_v6.root7");
+      local(dst = "{FRONTIER_TEST_TMP_DIR}/test_v6.v6.root");
       local(src_hash = "");
       local(src_hash_after = "");
 
@@ -32,10 +31,10 @@ tests:
     skip: true
     reason: "Requires external CLI invocation to test migration - use system test instead"
 
-  - name: "Database migration - creates v7 destination"
-    description: "Migration should create valid v7 destination file"
+  - name: "Database migration - v7 placed at original .root path"
+    description: "Migration should place v7 database at original .root path"
     script: |
-      local(dst = "{FRONTIER_TEST_TMP_DIR}/migrated.root7");
+      local(dst = "{FRONTIER_TEST_TMP_DIR}/migrated.root");
 
       // Verify file doesn't exist yet
       if file.exists(dst) {
@@ -112,18 +111,18 @@ tests:
 
 # System-level tests (run via external CLI testing):
 #
-# test-migrate-source-unchanged:
-#   - Copy Frontier.root.v6 to temp directory
+# test-migrate-v6-renamed:
+#   - Copy Frontier.root.v6 to temp directory as test.root
 #   - Record MD5 hash of original
 #   - Run: ./frontier-cli/frontier-cli --system-root temp/test.root -e "1"
-#   - Record MD5 hash after CLI invocation
-#   - Verify hashes match (source unchanged)
-#   - Verify temp/test.root7 was created
+#   - Verify temp/test.v6.root was created (v6 backup)
+#   - Verify temp/test.root is now v7 format
+#   - Verify MD5 of test.v6.root matches original hash
 #
 # test-migrate-idempotent:
-#   - Copy Frontier.root.v6 to temp directory
+#   - Copy Frontier.root.v6 to temp directory as test.root
 #   - Run migration first time
-#   - Delete v7 file
-#   - Run migration second time
-#   - Verify both migrations complete without segfault
-#   - Verify source file still matches original hash
+#   - Verify test.root is v7, test.v6.root is v6 backup
+#   - Run migration second time (should detect v7, no-op)
+#   - Verify both runs complete without segfault
+#   - Verify test.v6.root still matches original hash

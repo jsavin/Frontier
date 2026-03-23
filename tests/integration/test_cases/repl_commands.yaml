@@ -900,7 +900,7 @@ tests:
     skip: true
     skip_reason: "Requires fileMenu.open which needs startup scripts; --skip-startup mode cannot open guest databases. Verified manually."
     repl_mode: true
-    stdin_input: "db.new(\"{FRONTIER_TEST_TMP_DIR}/repl_guest_list.root7\")\nfileMenu.open(\"{FRONTIER_TEST_TMP_DIR}/repl_guest_list.root7\")\ndb.newtable(\"{FRONTIER_TEST_TMP_DIR}/repl_guest_list.root7\", \"guestTestSuite\")\n/list guestTestSuite\nfileMenu.closeall()\n/exit\n"
+    stdin_input: "db.new(\"{FRONTIER_TEST_TMP_DIR}/repl_guest_list.root\")\nfileMenu.open(\"{FRONTIER_TEST_TMP_DIR}/repl_guest_list.root\")\ndb.newtable(\"{FRONTIER_TEST_TMP_DIR}/repl_guest_list.root\", \"guestTestSuite\")\n/list guestTestSuite\nfileMenu.closeall()\n/exit\n"
     expected_output_contains:
       - "guestTestSuite:"
     expected_output_not_contains:
@@ -912,7 +912,7 @@ tests:
     skip: true
     skip_reason: "Requires fileMenu.open which needs startup scripts; --skip-startup mode cannot open guest databases. Verified manually."
     repl_mode: true
-    stdin_input: "db.new(\"{FRONTIER_TEST_TMP_DIR}/repl_guest_jump.root7\")\nfileMenu.open(\"{FRONTIER_TEST_TMP_DIR}/repl_guest_jump.root7\")\ndb.newtable(\"{FRONTIER_TEST_TMP_DIR}/repl_guest_jump.root7\", \"guestJumpSuite\")\n/jump guestJumpSuite\n/exit\n"
+    stdin_input: "db.new(\"{FRONTIER_TEST_TMP_DIR}/repl_guest_jump.root\")\nfileMenu.open(\"{FRONTIER_TEST_TMP_DIR}/repl_guest_jump.root\")\ndb.newtable(\"{FRONTIER_TEST_TMP_DIR}/repl_guest_jump.root\", \"guestJumpSuite\")\n/jump guestJumpSuite\n/exit\n"
     expected_output_contains:
       - "guestJumpSuite"
     expected_output_not_contains:

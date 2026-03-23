@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>Error Recovery Concurrency Tests (error_recovery_concurrency_tests) - 13 tests: 13 pass (100%)</title>
-    <dateCreated>Sat, 21 Mar 2026 04:19:13 GMT</dateCreated>
+    <dateCreated>Mon, 23 Mar 2026 03:29:36 GMT</dateCreated>
   </head>
   <body>
     <outline text="error mid-transaction - first setvalue persists, second does not - Verify that when scriptError fires between two db.setvalue calls inside&#10;a try block, the first setvalue's effect persists but the second never&#10;executes. Uses system.temp as scratchpad.&#10;">
@@ -222,7 +222,7 @@
         <outline text="return result"/>
       </outline>
     </outline>
-    <outline text="closeall - access after close fails - After fileMenu.closeall(), attempting to read from a closed guest&#10;database should fail, confirming the handles are released.&#10;">
+    <outline text="closeall - access after close fails - After db.close(), attempting to read from a closed guest database&#10;should fail, confirming the handle is released. Uses db.open/db.close&#10;instead of fileMenu verbs to avoid uncatchable fileMenu errors.&#10;Note: db.getvalue errors ARE catchable via try/else (unlike fileMenu&#10;verb errors which bypass try/else — see planning/FIX_TESTS_2026_02_16.md).&#10;">
       <outline text="Metadata">
         <outline text="expected_result: correctly_failed"/>
         <outline text="timeout: 5"/>
@@ -232,16 +232,10 @@
         <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;closeall_access_fail.root7&quot;)"/>
         <outline text="try {file.delete(dbPath)} else {1}"/>
         <outline text="db.new(dbPath)"/>
-        <outline text="fileMenu.open(dbPath)"/>
+        <outline text="db.open(dbPath, false)"/>
         <outline text="db.setvalue(dbPath, &quot;testKey&quot;, &quot;testVal&quot;)"/>
-        <outline text="fileMenu.closeall()"/>
-        <outline text="try { «db.getvalue errors ARE catchable via try/else (unlike fileMenu verb errors)»">
-          <outline text="local(val = db.getvalue(dbPath, &quot;testKey&quot;))"/>
-          <outline text="return &quot;should_have_failed&quot;}"/>
-        </outline>
-        <outline text="else">
-          <outline text="return &quot;correctly_failed&quot;}"/>
-        </outline>
+        <outline text="db.close(dbPath)"/>
+        <outline text="try {local(val = db.getvalue(dbPath, &quot;testKey&quot;)); return &quot;should_have_failed&quot;} else {return &quot;correctly_failed&quot;}"/>
       </outline>
     </outline>
     <outline text="closeall - reopen after close succeeds - After fileMenu.closeall(), reopening a previously closed database&#10;should succeed, confirming no lingering file locks.&#10;">

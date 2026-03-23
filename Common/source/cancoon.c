@@ -564,8 +564,8 @@ void setcancoonglobals (hdlcancoonrecord hcancoon) {
 		if (databasedata != nil) {
 
 			/* Fetch current mode and update only use_64bit_format.
-			   Other fields (adapter_repack, drop_cancoon, mode lock
-			   state) are intentionally preserved. */
+			   Other fields (adapter_repack, mode lock state) are
+			   intentionally preserved. */
 			db_format_mode mode = db_format_mode_current();
 
 			mode.use_64bit_format = db_is_v7(databasedata);

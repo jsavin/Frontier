@@ -14,7 +14,7 @@
 #     (as opposed to the system root database loaded at startup)
 #   - Guest databases are tracked in the hodblist linked list
 #   - fileMenu.open also mounts the root table into system.compiler.files
-#     for bracket-syntax access (e.g., ["/path/to/db.root7"].table.value)
+#     for bracket-syntax access (e.g., ["/path/to/db.root"].table.value)
 #   - fileMenu.close operates on the current target (set via target.set)
 #
 # Test Strategy:
@@ -34,7 +34,7 @@ tests:
     description: "fileMenu.new creates a new empty ODB database and opens it"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(dbPath = tmpDir + "/" + "filemenu_new_basic.root7");
+      local(dbPath = tmpDir + "/" + "filemenu_new_basic.root");
       local(result = fileMenu.new(dbPath));
       fileMenu.closeall();
       return result
@@ -47,7 +47,7 @@ tests:
     skip_reason: "fileMenu verb errors are uncatchable (bypass try/else) — see planning/FIX_TESTS_2026_02_16.md B2"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(dbPath = tmpDir + "/" + "filemenu_new_exists.root7");
+      local(dbPath = tmpDir + "/" + "filemenu_new_exists.root");
       fileMenu.new(dbPath);
       fileMenu.closeall();
       try {
@@ -63,7 +63,7 @@ tests:
     description: "fileMenu.new accepts optional hidden parameter (ignored in headless)"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(dbPath = tmpDir + "/" + "filemenu_new_hidden.root7");
+      local(dbPath = tmpDir + "/" + "filemenu_new_hidden.root");
       local(result = fileMenu.new(dbPath, true));
       fileMenu.closeall();
       return result
@@ -74,7 +74,7 @@ tests:
     description: "fileMenu.new accepts named hidden:true parameter syntax"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(dbPath = tmpDir + "/" + "filemenu_new_named_hidden.root7");
+      local(dbPath = tmpDir + "/" + "filemenu_new_named_hidden.root");
       local(result = fileMenu.new(dbPath, hidden:true));
       fileMenu.closeall();
       return result
@@ -85,7 +85,7 @@ tests:
     description: "A database created with fileMenu.new can be written to and read from"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(dbPath = tmpDir + "/" + "filemenu_new_usable.root7");
+      local(dbPath = tmpDir + "/" + "filemenu_new_usable.root");
       fileMenu.new(dbPath);
       db.setvalue(dbPath, "testKey", "testValue");
       local(val = db.getvalue(dbPath, "testKey"));
@@ -189,7 +189,7 @@ tests:
     description: "Create a database with db.new, then open it with fileMenu.open"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(dbPath = tmpDir + "/" + "filemenu_guest.root7");
+      local(dbPath = tmpDir + "/" + "filemenu_guest.root");
       db.new(dbPath);
       local(result = fileMenu.open(dbPath));
       fileMenu.closeall();
@@ -201,7 +201,7 @@ tests:
     description: "Opening an already-open guest database should return true (idempotent)"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(dbPath = tmpDir + "/" + "filemenu_double_open.root7");
+      local(dbPath = tmpDir + "/" + "filemenu_double_open.root");
       db.new(dbPath);
       fileMenu.open(dbPath);
       local(result = fileMenu.open(dbPath));
@@ -214,7 +214,7 @@ tests:
     description: "Opening with optional hidden parameter (ignored in headless) should succeed"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(dbPath = tmpDir + "/" + "filemenu_hidden.root7");
+      local(dbPath = tmpDir + "/" + "filemenu_hidden.root");
       db.new(dbPath);
       local(result = fileMenu.open(dbPath, true));
       fileMenu.closeall();
@@ -226,7 +226,7 @@ tests:
     description: "Opening with named hidden:true parameter syntax should succeed"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(dbPath = tmpDir + "/" + "filemenu_open_named_hidden.root7");
+      local(dbPath = tmpDir + "/" + "filemenu_open_named_hidden.root");
       db.new(dbPath);
       local(result = fileMenu.open(dbPath, hidden:true));
       fileMenu.closeall();
@@ -242,7 +242,7 @@ tests:
     description: "Open a guest database, set it as target, then close it"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(dbPath = tmpDir + "/" + "filemenu_close_target.root7");
+      local(dbPath = tmpDir + "/" + "filemenu_close_target.root");
       db.new(dbPath);
       fileMenu.open(dbPath);
       target.set(@[dbPath]);
@@ -260,7 +260,7 @@ tests:
     description: "Open one guest database then close all"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(dbPath = tmpDir + "/" + "filemenu_closeall_single.root7");
+      local(dbPath = tmpDir + "/" + "filemenu_closeall_single.root");
       db.new(dbPath);
       fileMenu.open(dbPath);
       local(result = fileMenu.closeall());
@@ -272,8 +272,8 @@ tests:
     description: "Open two guest databases then close all"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(dbPath1 = tmpDir + "/" + "filemenu_closeall_multi1.root7");
-      local(dbPath2 = tmpDir + "/" + "filemenu_closeall_multi2.root7");
+      local(dbPath1 = tmpDir + "/" + "filemenu_closeall_multi1.root");
+      local(dbPath2 = tmpDir + "/" + "filemenu_closeall_multi2.root");
       db.new(dbPath1);
       db.new(dbPath2);
       fileMenu.open(dbPath1);
@@ -287,7 +287,7 @@ tests:
     description: "Calling closeall twice should succeed both times"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(dbPath = tmpDir + "/" + "filemenu_closeall_twice.root7");
+      local(dbPath = tmpDir + "/" + "filemenu_closeall_twice.root");
       db.new(dbPath);
       fileMenu.open(dbPath);
       fileMenu.closeall();
@@ -316,7 +316,7 @@ tests:
       valid only in the system root).
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(dbPath = tmpDir + "/" + "filemenu_save_regression.root7");
+      local(dbPath = tmpDir + "/" + "filemenu_save_regression.root");
       db.new(dbPath);
       fileMenu.open(dbPath);
       local(result = fileMenu.save());
@@ -333,7 +333,7 @@ tests:
     description: "Open a guest database, write a value, then save it by path"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(dbPath = tmpDir + "/" + "filemenu_save_guest.root7");
+      local(dbPath = tmpDir + "/" + "filemenu_save_guest.root");
       db.new(dbPath);
       fileMenu.open(dbPath);
       db.setvalue(dbPath, "testKey", "testValue");
@@ -363,7 +363,7 @@ tests:
     description: "Full lifecycle test: create database, open with fileMenu, write data, save, close all, reopen with db.open, and verify persisted data"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(dbPath = tmpDir + "/" + "filemenu_lifecycle.root7");
+      local(dbPath = tmpDir + "/" + "filemenu_lifecycle.root");
       db.new(dbPath);
       fileMenu.open(dbPath);
       db.setvalue(dbPath, "lifecycleKey", "lifecycleValue");
@@ -384,7 +384,7 @@ tests:
     description: "Guest database opened via fileMenu.open is accessible via db.* verbs"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(dbPath = tmpDir + "/" + "filemenu_db_interop.root7");
+      local(dbPath = tmpDir + "/" + "filemenu_db_interop.root");
       db.new(dbPath);
       fileMenu.open(dbPath);
       db.setvalue(dbPath, "interopTest", 42);
@@ -398,7 +398,7 @@ tests:
     description: "Can create tables in guest database opened via fileMenu.open"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(dbPath = tmpDir + "/" + "filemenu_db_table.root7");
+      local(dbPath = tmpDir + "/" + "filemenu_db_table.root");
       db.new(dbPath);
       fileMenu.open(dbPath);
       db.newtable(dbPath, "myTable");
@@ -413,7 +413,7 @@ tests:
     description: "db.defined works on guest database opened via fileMenu.open"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(dbPath = tmpDir + "/" + "filemenu_db_defined.root7");
+      local(dbPath = tmpDir + "/" + "filemenu_db_defined.root");
       db.new(dbPath);
       fileMenu.open(dbPath);
       db.setvalue(dbPath, "existsTest", "yes");
@@ -432,7 +432,7 @@ tests:
     description: "saveCopy creates a copy of the system root database"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(destPath = tmpDir + "/" + "savecopy_sysroot.root7");
+      local(destPath = tmpDir + "/" + "savecopy_sysroot.root");
       fileMenu.saveCopy(destPath);
       return file.exists(destPath)
     expected_success: true
@@ -442,7 +442,7 @@ tests:
     description: "After saveCopy, the system root is still fully usable"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(destPath = tmpDir + "/" + "savecopy_unchanged.root7");
+      local(destPath = tmpDir + "/" + "savecopy_unchanged.root");
       fileMenu.saveCopy(destPath);
       return defined(system.compiler)
     expected_success: true
@@ -452,7 +452,7 @@ tests:
     description: "The copied database can be opened and contains system table"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(destPath = tmpDir + "/" + "savecopy_openable.root7");
+      local(destPath = tmpDir + "/" + "savecopy_openable.root");
       fileMenu.saveCopy(destPath);
       fileMenu.open(destPath);
       local(hasSys = db.defined(destPath, "system"));
@@ -465,7 +465,7 @@ tests:
     description: "saveAs and saveCopy are interchangeable"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(destPath = tmpDir + "/" + "saveas_alias.root7");
+      local(destPath = tmpDir + "/" + "saveas_alias.root");
       fileMenu.saveAs(destPath);
       return file.exists(destPath)
     expected_success: true
@@ -475,8 +475,8 @@ tests:
     description: "saveCopy can copy a guest database when targeted via target.set"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
-      local(srcPath = tmpDir + "/" + "savecopy_guest_src.root7");
-      local(destPath = tmpDir + "/" + "savecopy_guest_dest.root7");
+      local(srcPath = tmpDir + "/" + "savecopy_guest_src.root");
+      local(destPath = tmpDir + "/" + "savecopy_guest_dest.root");
       db.new(srcPath);
       fileMenu.open(srcPath);
       db.setvalue(srcPath, "testData", "hello_savecopy");

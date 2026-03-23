@@ -41,14 +41,12 @@ if ! file frontier-cli | grep -q "executable"; then
     exit 1
 fi
 
-# Check for database file (try .root7 first, then .root)
+# Check for database file
 DATABASE=""
-if [ -f "Frontier.root7" ]; then
-    DATABASE="Frontier.root7"
-elif [ -f "Frontier.root" ]; then
+if [ -f "Frontier.root" ]; then
     DATABASE="Frontier.root"
 else
-    print_error "System root database not found (looking for Frontier.root7 or Frontier.root)"
+    print_error "System root database not found (looking for Frontier.root)"
     exit 1
 fi
 

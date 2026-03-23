@@ -55,7 +55,7 @@ make
 # Or install manually
 sudo cp frontier-cli /usr/local/bin/
 mkdir -p ~/Library/Application\ Support/Frontier
-cp ../databases/Frontier.root ~/Library/Application\ Support/Frontier/Frontier.root7
+cp ../databases/Frontier.root ~/Library/Application\ Support/Frontier/Frontier.root
 ```
 
 ## Verification
@@ -90,7 +90,7 @@ After installation, files are located at:
 ~/.local/bin/frontier-cli                 # Binary (if installed without sudo)
 
 ~/Library/Application Support/Frontier/   # Data directory
-├── Frontier.root7                        # System root database
+├── Frontier.root                         # System root database (v7 format)
 └── databases/                            # User databases (created as needed)
 ```
 
@@ -103,7 +103,7 @@ Frontier CLI recognizes the following environment variables:
 Override the system root database location:
 
 ```bash
-export FRONTIER_ROOT="$HOME/custom/location/Frontier.root7"
+export FRONTIER_ROOT="$HOME/custom/location/Frontier.root"
 frontier-cli
 ```
 
@@ -126,12 +126,10 @@ frontier-cli -e "db.new('/tmp/test.root')"
 If no `--system-root` argument is provided, Frontier CLI searches for the system root database in this order:
 
 1. `$FRONTIER_ROOT` environment variable
-2. `~/Library/Application Support/Frontier/Frontier.root7`
-3. `~/Library/Application Support/Frontier/Frontier.root` (v6, auto-migrates to v7)
-4. `~/.frontier/Frontier.root7`
-5. `~/.frontier/Frontier.root` (v6, auto-migrates to v7)
-6. `databases/Frontier.root7` (current working directory)
-7. `databases/Frontier.root` (current working directory, v6)
+2. `./Frontier.root` (current working directory)
+3. Executable directory (`<exe_dir>/Frontier.root`)
+4. `~/Library/Application Support/Frontier/Frontier.root`
+5. `~/.frontier/Frontier.root` (Linux convention)
 
 ## Uninstallation
 
@@ -190,7 +188,7 @@ Frontier CLI can't find the system database. Check:
 
 ```bash
 # Verify database exists
-ls -lh ~/Library/Application\ Support/Frontier/Frontier.root7
+ls -lh ~/Library/Application\ Support/Frontier/Frontier.root
 
 # If missing, reinstall or specify location
 frontier-cli --system-root /path/to/Frontier.root

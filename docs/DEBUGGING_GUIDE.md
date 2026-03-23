@@ -42,7 +42,7 @@ commands
 end
 
 # Run program
-r --system-root databases/Frontier.root7 -e "test expression"
+r --system-root databases/Frontier.root -e "test expression"
 EOF
 ```
 
@@ -82,7 +82,7 @@ if [ ! -f frontier-cli/frontier-cli ]; then
 fi
 
 # PROJECT-SPECIFIC: Force fresh database migration
-rm -f databases/Frontier.root7
+./frontier-cli/frontier-cli --migrate databases/Frontier.root 2>/dev/null
 
 # Test the behavior
 OUTPUT=$(./frontier-cli/frontier-cli --system-root databases/Frontier.root -e "test" 2>&1)
@@ -146,10 +146,10 @@ git diff <breaking-commit>^ <breaking-commit>
 
 **Symptom**: Works with pre-migrated database, fails with fresh migration
 
-**Solution**: Always delete `.root7` and re-migrate during testing
+**Solution**: Always force a fresh migration during testing
 
 ```bash
-rm -f databases/Frontier.root7
+./frontier-cli/frontier-cli --migrate databases/Frontier.root
 ./frontier-cli/frontier-cli --system-root databases/Frontier.root -e "test"
 ```
 

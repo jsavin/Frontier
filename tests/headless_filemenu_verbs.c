@@ -123,7 +123,7 @@ static boolean filemenu_save_systemroot(void) {
     /* Save the root table using v7 format */
     {
         boolean repack_scope = false;
-        db_format_mode mode = {true, false, false};  /* 64-bit, no adapter_repack, no drop_cancoon */
+        db_format_mode mode = {true, false};  /* 64-bit, no adapter_repack */
         db_format_mode_push(&mode);
         repack_scope = true;
 

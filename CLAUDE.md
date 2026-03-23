@@ -31,9 +31,11 @@ cd tests && make test-integration
 # Run all tests (unit + integration)
 cd tests && make test-all
 
-# Database migration (v6 → v7)
-rm -f databases/Frontier.root7
-./frontier-cli/frontier-cli --system-root databases/Frontier.root -e "1"
+# Database migration (v6 → v7, in-place with .v6.root backup)
+./frontier-cli/frontier-cli --migrate databases/Frontier.root
+
+# v7 databases use .root extension (same as v6)
+# .root7 is recognized for backward compatibility but deprecated
 
 # Verb coverage analysis
 cd tools/kernelverbs_parser && python3 cli.py report

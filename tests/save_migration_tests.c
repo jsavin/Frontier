@@ -146,11 +146,11 @@ int main(void) {
     assert(inittablestructure());
     assert(langinitverbs());
 
-    // Pick a legacy database to migrate
-    const char *src = "databases/Frontier.root";
+    // Pick a legacy v6 database to migrate (from test fixtures)
+    const char *src = "tests/fixtures/v6/Frontier.root";
     FILE *in = fopen(src, "rb");
     if (!in) {
-        src = "../databases/Frontier.root"; // when running from tests/
+        src = "../tests/fixtures/v6/Frontier.root"; // when running from tests/
         in = fopen(src, "rb");
     }
     assert(in != NULL);
@@ -158,6 +158,11 @@ int main(void) {
     // Construct working database path in migration directory
     char working_db[1280];
     snprintf(working_db, sizeof working_db, "%s/test_save_migration.root", migration_dir);
+
+    // Clean up any leftover v6 backup from a previous run
+    char v6_backup[1280];
+    snprintf(v6_backup, sizeof v6_backup, "%s/test_save_migration.v6.root", migration_dir);
+    unlink(v6_backup);
 
     // Copy source to working database
     FILE *out = fopen(working_db, "wb");
@@ -199,7 +204,7 @@ int main(void) {
 
     // Verify header is now v7 (migrator writes a new file, preserves source)
     char migrated_path[1024];
-    if (!db_format_last_backup_path(migrated_path, sizeof migrated_path)) {
+    if (!db_format_last_migration_output_path(migrated_path, sizeof migrated_path)) {
         snprintf(migrated_path, sizeof migrated_path, "%s/test_save_migration-v7.root", migration_dir);
     }
 

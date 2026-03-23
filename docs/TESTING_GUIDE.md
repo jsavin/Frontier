@@ -27,7 +27,7 @@ The frontier-cli executable must be run from the project root directory (NOT fro
 ./frontier-cli/frontier-cli -e "1+1"
 
 # Execute with system root database loaded:
-./frontier-cli/frontier-cli --system-root databases/Frontier.root7 -e "sizeOf(system)"
+./frontier-cli/frontier-cli --system-root databases/Frontier.root -e "sizeOf(system)"
 
 # Run startup scripts (rarely needed - slows down CLI, default skips them):
 FRONTIER_HEADLESS_RUN_STARTUP=1 ./frontier-cli/frontier-cli -e "1+1"
@@ -433,29 +433,28 @@ Old migrated databases may be corrupted artifacts from earlier broken migrations
 
 ### Quick Migration Command
 
+**Note:** `databases/Frontier.root` is already v7 format in the repository. To test migration, use the v6 fixture:
+
 ```bash
-# Clean migration workflow (ALWAYS do this before testing):
-rm -f databases/Frontier.root7
+# Migrate the v6 test fixture (in-place — v6 backed up to .v6.root):
+./frontier-cli/frontier-cli --migrate tests/fixtures/v6/Frontier.root
 
-# Run CLI with v6 database - creates v7 output file automatically
-./frontier-cli/frontier-cli \
-  --system-root databases/Frontier.root -e "1"
-
-# Output: databases/Frontier.root7 (new file created by migration)
+# Migrate with explicit output path (v6 source left untouched):
+./frontier-cli/frontier-cli --migrate tests/fixtures/v6/Frontier.root --output /tmp/Frontier-v7.root
 ```
 
 ### What Happens During Migration
 
-1. CLI opens `databases/Frontier.root` and detects v6 format
-2. Migration creates NEW output file: `databases/Frontier.root7`
-3. Original `databases/Frontier.root` is **never modified** (preserved)
-4. Pattern: Version suffix is stripped, then `-v7` added: `Frontier.root` → `Frontier.root7`
+1. CLI opens the source file and detects v6 format
+2. In-place mode: original v6 file is renamed to `.v6.root` (backup), v7 written to original path
+3. With `--output PATH`: v6 source is left untouched, v7 is written to PATH
+4. If the file is already v7, the command prints "Already v7 format" and exits
 
 ### Verification
 
 ```bash
 # Check database version (first 2 bytes should be 0007 for v7)
-xxd -l 2 databases/Frontier.root7
+xxd -l 2 databases/Frontier.root
 # Expected output: 00000000: 0007  ..
 ```
 
@@ -530,7 +529,7 @@ python3 cli.py report -o -
 ./frontier-cli/frontier-cli -e "string.upper(\"test\")"
 
 # Test with database loaded:
-./frontier-cli/frontier-cli --system-root databases/Frontier.root7 -e "sizeOf(system)"
+./frontier-cli/frontier-cli --system-root databases/Frontier.root -e "sizeOf(system)"
 
 # Test table operations:
 ./frontier-cli/frontier-cli -e "lang.new(tableType, @t); t.a = 1; return sizeOf(t)"

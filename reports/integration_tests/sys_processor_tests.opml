@@ -1,8 +1,8 @@
 <?xml version="1.0" ?>
 <opml version="2.0">
   <head>
-    <title>Sys Processor Tests (sys_processor_tests) - 49 tests: 45 pass (91%) 4 skip (8%)</title>
-    <dateCreated>Wed, 25 Feb 2026 06:50:06 GMT</dateCreated>
+    <title>Sys Processor Tests (sys_processor_tests) - 52 tests: 48 pass (92%) 4 skip (7%)</title>
+    <dateCreated>Mon, 23 Mar 2026 17:40:56 GMT</dateCreated>
   </head>
   <body>
     <outline text="sys.osversion - returns OS version string - Get OS version - returns distribution on Linux, sw_vers on macOS">
@@ -391,6 +391,30 @@
           <outline text="(typeof(sys.appisrunning(&quot;test&quot;)) == booleanType) and"/>
           <outline text="(typeof(sys.bringapptofront(&quot;test&quot;)) == booleanType)"/>
         </outline>
+      </outline>
+    </outline>
+    <outline text="sys.openUrl - returns boolean type - openUrl should return a boolean regardless of fork outcome">
+      <outline text="Metadata">
+        <outline text="expected_result: bool"/>
+      </outline>
+      <outline text="Script">
+        <outline text="typeof(sys.openUrl(&quot;https://example.com&quot;))"/>
+      </outline>
+    </outline>
+    <outline text="sys.openUrl - empty string triggers scriptError - openUrl rejects empty string with a scriptError (invalid input)">
+      <outline text="Metadata">
+        <outline text="expected_success: False"/>
+      </outline>
+      <outline text="Script">
+        <outline text="sys.openUrl(&quot;&quot;)"/>
+      </outline>
+    </outline>
+    <outline text="sys.openUrl - wrong argument type errors - Passing a number instead of a string should error">
+      <outline text="Metadata">
+        <outline text="expected_success: False"/>
+      </outline>
+      <outline text="Script">
+        <outline text="sys.openUrl(12345)"/>
       </outline>
     </outline>
     <outline text="sys.unixshellcommand - 1 param (command only) - Execute command and return stdout output">
