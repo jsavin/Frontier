@@ -58,6 +58,10 @@ However, **migration of legacy v6 databases remains valuable** -- users may stil
 
 ## Changes by Category
 
+> **Implementation note:** The code examples in this section describe the original `.v7.root`
+> naming plan. The actual implementation (PR #487) uses `.v6.root` for the v6 backup and
+> writes v7 to the original `.root` path. The examples are preserved for historical context.
+
 ### Category 1: Runtime Code (main.c)
 
 #### 1A. Remove `DEFAULT_SYSTEM_ROOT_V7` constant

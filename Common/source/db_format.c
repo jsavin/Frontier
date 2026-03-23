@@ -66,7 +66,11 @@ static boolean g_db_format_runtime_headless = false;
 /* _Thread_local: safe under the GIL threading model (ADR-014) where all
  * callers read this value immediately after migrating in the same call stack.
  * If migration is ever performed on a worker thread with the result read on
- * another thread, this would need to change to a shared global with locking. */
+ * another thread, this would need to change to a shared global with locking.
+ *
+ * Note: both create_root_backup() and migrate_internal() write to this variable.
+ * create_root_backup stores the backup path; migrate_internal stores the v7 output path.
+ * Callers should read it immediately after the operation that set it. */
 static _Thread_local char last_migration_output_path[1024];
 static boolean g_legacy_adapter_active = false;
 static boolean g_legacy_adapter_force_repack = false;
@@ -2248,9 +2252,12 @@ static boolean migrate_internal(const char *db_path, const char *explicit_output
         /* Try to restore the v6 original if the final rename fails */
         if (backup_path[0] != '\0' && strcmp(output_path, db_path) == 0) {
             if (rename(backup_path, db_path) != 0) {
+                /* Both the temp→final rename AND the best-effort v6 restore
+                 * failed.  The goto cleanup below will call remove(temp_path)
+                 * (line ~2296), so the temp file is still cleaned up. */
                 log_error(LOG_COMP_DB,
                     "migrate_internal: CRITICAL — could not restore v6 backup. "
-                    "v6 data is at: %s, v7 data is at: %s. "
+                    "v6 data is at: %s, v7 temp data is at: %s. "
                     "To recover: rename %s to %s",
                     backup_path, temp_path, backup_path, db_path);
             }
@@ -2342,6 +2349,8 @@ boolean migrate_32bit_to_64bit_to_output(const char *db_path, const char *output
 }
 
 boolean ensure_database_v7(const char *db_path, boolean *migrated, char *output_path, size_t output_path_size) {
+    boolean did_crash_recovery = false;
+
     if (migrated)
         *migrated = false;
     if (db_path == NULL || db_path[0] == '\0')
@@ -2403,6 +2412,7 @@ boolean ensure_database_v7(const char *db_path, boolean *migrated, char *output_
                     "ensure_database_v7: restored v6 backup %s to %s after incomplete migration",
                     v6_backup_path, db_path);
 #endif
+                did_crash_recovery = true;
                 /* Fall through to re-migrate below */
             } else {
 #if defined(FRONTIER_HEADLESS)
@@ -2417,6 +2427,9 @@ boolean ensure_database_v7(const char *db_path, boolean *migrated, char *output_
         }
     }
 
+    /* Skip .root7 fallback after crash recovery — we just restored the v6
+     * original and need to re-migrate, not use a stale .root7 file. */
+    if (!did_crash_recovery) {
     /* Transitional fallback: check for legacy .root7 file from previous migration.
      * TODO (2026-03-22): Remove this fallback once all users have migrated away from .root7.
      * Note: advisory log only fires in headless builds; non-headless users get no warning.
@@ -2448,6 +2461,7 @@ boolean ensure_database_v7(const char *db_path, boolean *migrated, char *output_
             }
         }
     }
+    } /* !did_crash_recovery */
 
     FILE *fp = fopen(db_path, "rb");
     if (!fp)
@@ -2520,12 +2534,17 @@ boolean db_format_derive_v6_backup_path(const char *db_path, char *backup, size_
     if (db_path == NULL || backup == NULL || backup_size == 0)
         return false;
 
+    int written;
     const char *ext = strrchr(db_path, '.');
     if (ext && strcmp(ext, ".root") == 0) {
         size_t base_len = (size_t)(ext - db_path);
-        snprintf(backup, backup_size, "%.*s.v6.root", (int)base_len, db_path);
+        written = snprintf(backup, backup_size, "%.*s.v6.root", (int)base_len, db_path);
     } else {
-        snprintf(backup, backup_size, "%s.v6", db_path);
+        written = snprintf(backup, backup_size, "%s.v6", db_path);
+    }
+    if (written < 0 || (size_t)written >= backup_size) {
+        log_error(LOG_COMP_DB, "db_format_derive_v6_backup_path: path too long for buffer");
+        return false;
     }
     return true;
 }

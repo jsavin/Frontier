@@ -256,7 +256,7 @@ int main(int argc, char* argv[]) {
             /* In-place mode: ensure_database_v7 renames v6 to .v6.root backup
              * and writes v7 to the original .root path. */
             if (g_cli_options.force_overwrite) {
-                fprintf(stderr, "Note: --force has no effect in in-place migration mode (no --output specified)\n");
+                printf("Note: --force has no effect in in-place migration mode (no --output specified)\n");
             }
             if (!ensure_database_v7(input, &migrated, NULL, 0)) {
                 fprintf(stderr, "Error: Migration failed for: %s\n", input);

@@ -761,7 +761,7 @@ static boolean dbopenverb (hdltreenode hparam1, tyvaluerecord *vreturned) {
 
 			bigstring bserr;
 			char errmsg[512];
-			snprintf(errmsg, sizeof(errmsg), "Can't open the database because migration to v7 failed: %s", cpath);
+			snprintf(errmsg, sizeof(errmsg), "Can't open the database because it could not be verified as v7 format: %s", cpath);
 			copyctopstring(errmsg, bserr);
 			langerrormessage(bserr);
 			return (false);
