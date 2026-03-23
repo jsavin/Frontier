@@ -63,6 +63,10 @@ static _Thread_local boolean g_db_format_runtime_initialized = false;
 #if !defined(FRONTIER_PORTABLE)
 static boolean g_db_format_runtime_headless = false;
 #endif
+/* _Thread_local: safe under the GIL threading model (ADR-014) where all
+ * callers read this value immediately after migrating in the same call stack.
+ * If migration is ever performed on a worker thread with the result read on
+ * another thread, this would need to change to a shared global with locking. */
 static _Thread_local char last_migration_output_path[1024];
 static boolean g_legacy_adapter_active = false;
 static boolean g_legacy_adapter_force_repack = false;
@@ -2230,15 +2234,26 @@ static boolean migrate_internal(const char *db_path, const char *explicit_output
             log_info(LOG_COMP_DB, "migrate_internal: overwriting non-v6 backup: %s", backup_path);
         }
         /* Only rename original when output overwrites input */
-        if (rename(db_path, backup_path) != 0)
+        if (rename(db_path, backup_path) != 0) {
+            log_error(LOG_COMP_DB, "migrate_internal: rename v6 to backup failed: %s -> %s: %s",
+                      db_path, backup_path, strerror(errno));
+            fail_step = "rename(v6->backup)";
+            ok = false;
             goto cleanup;
+        }
     }
 
     fail_step = "rename(tmp->final)";
     if (rename(temp_path, output_path) != 0) {
         /* Try to restore the v6 original if the final rename fails */
         if (backup_path[0] != '\0' && strcmp(output_path, db_path) == 0) {
-            rename(backup_path, db_path);  /* best-effort restore */
+            if (rename(backup_path, db_path) != 0) {
+                log_error(LOG_COMP_DB,
+                    "migrate_internal: CRITICAL — could not restore v6 backup. "
+                    "v6 data is at: %s, v7 data is at: %s. "
+                    "To recover: rename %s to %s",
+                    backup_path, temp_path, backup_path, db_path);
+            }
         }
         goto cleanup;
     }
@@ -2336,23 +2351,17 @@ boolean ensure_database_v7(const char *db_path, boolean *migrated, char *output_
      * If "Frontier.v6.root" exists alongside "Frontier.root", the .root file
      * is already v7 from a prior migration -- use it directly. */
     char v6_backup_path[1024];
-    /* Conservative guard: .v6.root suffix is 8 chars; we reserve 9 bytes
-     * (suffix + null terminator) to prevent snprintf truncation. */
-    if (strlen(db_path) >= sizeof(v6_backup_path) - 9) {
-        return false;  /* Path too long */
-    }
-    {
-        const char *dot = strrchr(db_path, '.');
-        if (dot && strcmp(dot, ".root") == 0) {
-            size_t base_len = (size_t)(dot - db_path);
-            snprintf(v6_backup_path, sizeof v6_backup_path, "%.*s.v6.root", (int)base_len, db_path);
-        } else {
-            snprintf(v6_backup_path, sizeof v6_backup_path, "%s.v6", db_path);
-        }
-    }
+    if (!db_format_derive_v6_backup_path(db_path, v6_backup_path, sizeof v6_backup_path))
+        return false;
+
     FILE *fp_v6_backup = fopen(v6_backup_path, "rb");
     if (fp_v6_backup) {
+        /* Read the backup header now — we need it for crash recovery below,
+         * and this eliminates a redundant second fopen of the same file. */
+        tydatabaserecord backup_header;
+        boolean backup_hdr_ok = fread(&backup_header, sizeof backup_header, 1, fp_v6_backup) == 1;
         fclose(fp_v6_backup);
+
         /* .v6.root backup exists -- verify .root actually contains valid v7 data.
          * A crash between the v6 rename and temp-to-final rename could leave
          * .root as v6 or missing; in that case, fall through to re-migrate. */
@@ -2376,41 +2385,34 @@ boolean ensure_database_v7(const char *db_path, boolean *migrated, char *output_
         /* .root is missing or not valid v7 — verify the backup is actually v6
          * before restoring it.  This handles crash recovery: if the process died
          * between renaming v6->backup and placing the v7 temp file, the .root
-         * file may be absent or truncated. */
-        {
-            FILE *fp_backup = fopen(v6_backup_path, "rb");
-            if (fp_backup) {
-                tydatabaserecord backup_header;
-                boolean backup_ok = fread(&backup_header, sizeof backup_header, 1, fp_backup) == 1;
-                fclose(fp_backup);
-                if (!backup_ok || backup_header.versionnumber >= 7) {
-                    /* Backup is not a valid v6 database — don't restore, just fall through */
+         * file may be absent or truncated.
+         * Uses backup_header read above to avoid reopening the file. */
+        if (!backup_hdr_ok || backup_header.versionnumber >= 7) {
+            /* Backup is not a valid v6 database — don't restore, just fall through */
 #if defined(FRONTIER_HEADLESS)
-                    log_warn(LOG_COMP_DB,
-                        "ensure_database_v7: .v6.root backup is not v6 (version=%d), skipping restore",
-                        backup_ok ? (int)backup_header.versionnumber : -1);
+            log_warn(LOG_COMP_DB,
+                "ensure_database_v7: .v6.root backup is not v6 (version=%d), skipping restore",
+                backup_hdr_ok ? (int)backup_header.versionnumber : -1);
 #endif
-                    /* Fall through to migration which will fail gracefully */
-                } else {
-                    /* Backup is valid v6 — restore it */
-                    if (rename(v6_backup_path, db_path) == 0) {
+            /* Fall through to migration which will fail gracefully */
+        } else {
+            /* Backup is valid v6 — restore it */
+            if (rename(v6_backup_path, db_path) == 0) {
 #if defined(FRONTIER_HEADLESS)
-                        log_info(LOG_COMP_DB,
-                            "ensure_database_v7: restored v6 backup %s to %s after incomplete migration",
-                            v6_backup_path, db_path);
+                log_info(LOG_COMP_DB,
+                    "ensure_database_v7: restored v6 backup %s to %s after incomplete migration",
+                    v6_backup_path, db_path);
 #endif
-                        /* Fall through to re-migrate below */
-                    } else {
+                /* Fall through to re-migrate below */
+            } else {
 #if defined(FRONTIER_HEADLESS)
-                        log_error(LOG_COMP_DB,
-                            "ensure_database_v7: cannot restore v6 backup %s to %s: %s. "
-                            "To recover manually, rename %s to %s",
-                            v6_backup_path, db_path, strerror(errno),
-                            v6_backup_path, db_path);
+                log_error(LOG_COMP_DB,
+                    "ensure_database_v7: cannot restore v6 backup %s to %s: %s. "
+                    "To recover manually, rename %s to %s",
+                    v6_backup_path, db_path, strerror(errno),
+                    v6_backup_path, db_path);
 #endif
-                        return false;
-                    }
-                }
+                return false;
             }
         }
     }
