@@ -117,6 +117,10 @@ boolean cli_should_skip_startup(void) {
     return g_cli_options.skip_startup;
 }
 
+const cli_options_t* cli_get_options(void) {
+    return &g_cli_options;
+}
+
 // Function prototypes
 static void print_usage(const char* program_name);
 static void print_version(void);

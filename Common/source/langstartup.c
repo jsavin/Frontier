@@ -110,6 +110,23 @@ static boolean cb_false_event(EventRecord* e) { (void)e; return false; }
 #define str_isLinux					BIGSTRING ("\x07" "isLinux")
 #define str_maxTcpConnections		BIGSTRING ("\x11" "maxTcpConnections")
 
+/* CLI args subtable key names (camelCase from CLI flags) */
+#define str_args					BIGSTRING ("\x04" "args")
+#define str_systemRoot				BIGSTRING ("\x0a" "systemRoot")
+#define str_skipStartup				BIGSTRING ("\x0b" "skipStartup")
+#define str_execute					BIGSTRING ("\x07" "execute")
+#define str_output					BIGSTRING ("\x06" "output")
+#define str_verbose					BIGSTRING ("\x07" "verbose")
+#define str_debug					BIGSTRING ("\x05" "debug")
+#define str_outputJson				BIGSTRING ("\x0a" "outputJson")
+#define str_batch					BIGSTRING ("\x05" "batch")
+#define str_protocol				BIGSTRING ("\x08" "protocol")
+#define str_wsPort					BIGSTRING ("\x06" "wsPort")
+#define str_log						BIGSTRING ("\x03" "log")
+#define str_force					BIGSTRING ("\x05" "force")
+#define str_migrate					BIGSTRING ("\x07" "migrate")
+#define str_hydrate					BIGSTRING ("\x07" "hydrate")
+
 
 void initsegment (void) {
 	
@@ -210,6 +227,104 @@ boolean loadfunctionprocessor (short id, langvaluecallback valuecallback) {
 
 
 #ifdef FRONTIER_HEADLESS
+
+#include "../../frontier-cli/cli_parser.h"
+
+/*
+ * cli_get_options is defined in frontier-cli/main.c.
+ * Declared weak so unit tests (which don't link main.c) resolve to NULL
+ * instead of a linker error. initenvironment_args checks for NULL.
+ */
+extern const cli_options_t* cli_get_options (void) __attribute__((weak));
+
+static boolean initenvironment_args (hdlhashtable htenvironment) {
+
+	/*
+	 * Populate system.environment.args subtable from CLI options.
+	 * Only flags that were explicitly set on the command line appear;
+	 * absence means the flag was not passed.
+	 */
+
+	if (cli_get_options == NULL)
+		return (true); /* unit test build — function not linked */
+
+	const cli_options_t *opts = cli_get_options ();
+
+	if (opts == NULL)
+		return (true); /* no CLI options available — skip silently */
+
+	hdlhashtable htargs;
+
+	if (!tablenewsystemtable (htenvironment, str_args, &htargs))
+		return (false);
+
+	/* String fields — only add when non-NULL */
+
+	if (opts->system_root != NULL) {
+		bigstring bs;
+		copyctopstring (opts->system_root, bs);
+		langassignstringvalue (htargs, str_systemRoot, bs);
+	}
+
+	if (opts->inline_script != NULL) {
+		bigstring bs;
+		copyctopstring (opts->inline_script, bs);
+		langassignstringvalue (htargs, str_execute, bs);
+	}
+
+	if (opts->output_path != NULL) {
+		bigstring bs;
+		copyctopstring (opts->output_path, bs);
+		langassignstringvalue (htargs, str_output, bs);
+	}
+
+	if (opts->log_spec != NULL) {
+		bigstring bs;
+		copyctopstring (opts->log_spec, bs);
+		langassignstringvalue (htargs, str_log, bs);
+	}
+
+	if (opts->migrate_database != NULL) {
+		bigstring bs;
+		copyctopstring (opts->migrate_database, bs);
+		langassignstringvalue (htargs, str_migrate, bs);
+	}
+
+	/* Boolean flags — only add when true */
+
+	if (opts->verbose)
+		langassignbooleanvalue (htargs, str_verbose, true);
+
+	if (opts->debug)
+		langassignbooleanvalue (htargs, str_debug, true);
+
+	if (opts->output_json)
+		langassignbooleanvalue (htargs, str_outputJson, true);
+
+	if (opts->batch_mode)
+		langassignbooleanvalue (htargs, str_batch, true);
+
+	if (opts->protocol_mode)
+		langassignbooleanvalue (htargs, str_protocol, true);
+
+	if (opts->skip_startup)
+		langassignbooleanvalue (htargs, str_skipStartup, true);
+
+	if (opts->force_overwrite)
+		langassignbooleanvalue (htargs, str_force, true);
+
+	if (opts->hydrate_system_root)
+		langassignbooleanvalue (htargs, str_hydrate, true);
+
+	/* Integer fields — only add when non-zero */
+
+	if (opts->ws_port > 0)
+		langassignlongvalue (htargs, str_wsPort, (long) opts->ws_port);
+
+	return (true);
+} /*initenvironment_args*/
+
+
 static boolean initenvironment (hdlhashtable ht) {
 
 	/*
@@ -403,6 +518,11 @@ static boolean initenvironment (hdlhashtable ht) {
 	langassignstringvalue (ht, str_winServicePackNumber, bs);
 
 	langassignlongvalue (ht, str_maxTcpConnections, 0);
+
+	/* Populate system.environment.args from CLI options */
+
+	if (!initenvironment_args (ht))
+		return (false);
 
 	return (true);
 }

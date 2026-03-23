@@ -1,0 +1,88 @@
+# Integration tests for system.environment.args
+# Tests CLI argument exposure via system.environment.args subtable
+#
+# The args subtable is populated from CLI options at startup.
+# Only flags actually passed on the command line appear in the table.
+# Absence of a key means the flag was not passed.
+
+tests:
+  # system.environment.args subtable exists
+  - name: "args subtable exists"
+    description: "system.environment.args should be defined"
+    script: |
+      return defined(system.environment.args)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "args subtable is a table type"
+    description: "system.environment.args should have table type"
+    script: |
+      return typeof(system.environment.args) == 'tabl'
+    expected_success: true
+    expected_result: "true"
+
+  # system.environment.args.systemRoot - always present in integration tests
+  - name: "args.systemRoot - present"
+    description: "systemRoot should be defined (integration tests always pass --system-root)"
+    script: |
+      return defined(system.environment.args.systemRoot)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "args.systemRoot - is a string"
+    description: "systemRoot should be a string value"
+    script: |
+      return typeof(system.environment.args.systemRoot) == 'TEXT'
+    expected_success: true
+    expected_result: "true"
+
+  - name: "args.systemRoot - contains Frontier.root"
+    description: "systemRoot path should reference the system root database"
+    script: |
+      return system.environment.args.systemRoot contains "Frontier.root"
+    expected_success: true
+    expected_result: "true"
+
+  # Integration tests run with --protocol --skip-startup, so these should be set
+  - name: "args.skipStartup - present in integration tests"
+    description: "skipStartup should be true (integration tests pass --skip-startup)"
+    script: |
+      return system.environment.args.skipStartup
+    expected_success: true
+    expected_result: "true"
+
+  - name: "args.protocol - present in integration tests"
+    description: "protocol should be true (integration tests run in --protocol mode)"
+    script: |
+      return system.environment.args.protocol
+    expected_success: true
+    expected_result: "true"
+
+  # Flags NOT passed by integration tests should be absent
+  - name: "args.wsPort - absent when not passed"
+    description: "wsPort should not be defined when --ws-port is not passed"
+    script: |
+      return !defined(system.environment.args.wsPort)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "args.verbose - absent when not passed"
+    description: "verbose should not be defined when --verbose is not passed"
+    script: |
+      return !defined(system.environment.args.verbose)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "args.debug - absent when not passed"
+    description: "debug should not be defined when --debug is not passed"
+    script: |
+      return !defined(system.environment.args.debug)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "args.execute - absent in protocol mode"
+    description: "execute should not be defined (integration tests use --protocol, not -e)"
+    script: |
+      return !defined(system.environment.args.execute)
+    expected_success: true
+    expected_result: "true"
