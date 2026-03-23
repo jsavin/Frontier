@@ -239,7 +239,7 @@ int main(int argc, char* argv[]) {
                     fprintf(stderr, "Error: Cannot read database header: %s\n", input);
                     return 1;
                 }
-                db_format_mode detected = {hdr.versionnumber >= 7, false};
+                db_format_mode detected = {!db_format_is_v6_header(&hdr), false};
                 db_format_mode_apply(&detected);
                 if (db_format_mode_current().use_64bit_format) {
                     printf("Already v7 format: %s\n", input);
