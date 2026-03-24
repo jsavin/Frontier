@@ -187,16 +187,14 @@ static boolean filemenu_save_systemroot(void) {
  *
  * Returns: true on success, false on failure (with error message set)
  */
+
 /*
  * Compare two filespecs by resolving to canonical (realpath) form.
- * Falls back to filename-only comparison, then equalfilespecs.
+ * Falls back to equalfilespecs if realpath fails.
  *
- * This handles two scenarios:
- *   1. Same file accessed via different paths (symlinks, relative vs absolute)
- *   2. Different copies of the same database (dev/databases/ vs dist/)
- *      where the startup opens one copy but the user wants to save the
- *      database by its filename. In Frontier, database filenames are
- *      unique within an installation, so filename matching is safe.
+ * This handles paths that refer to the same file via different routes
+ * (symlinks, ../, etc.). It does NOT match different files that happen
+ * to share a filename — that would cause silent data misdirection.
  */
 static boolean equalfilespecs_canonical(const ptrfilespec fs1, const ptrfilespec fs2) {
 
@@ -209,22 +207,13 @@ static boolean equalfilespecs_canonical(const ptrfilespec fs1, const ptrfilespec
     filespectopath(fs2, bs2);
     safenullterminate(bs2);
 
-    /* Try canonical path comparison first (handles symlinks, ../, etc.) */
+    /* Try canonical path comparison (handles symlinks, .., etc.) */
     if (realpath((const char *)stringbaseaddress(bs1), resolved1) != NULL &&
         realpath((const char *)stringbaseaddress(bs2), resolved2) != NULL) {
-        if (strcmp(resolved1, resolved2) == 0)
-            return true;
+        return (strcmp(resolved1, resolved2) == 0);
     }
 
-    /* Fallback: compare filenames only (last path component).
-     * Database filenames are unique within a Frontier installation,
-     * so this is safe and handles the dev-vs-dist path mismatch. */
-    const char *name1 = strrchr((const char *)stringbaseaddress(bs1), '/');
-    const char *name2 = strrchr((const char *)stringbaseaddress(bs2), '/');
-    if (name1 != NULL && name2 != NULL && strcmp(name1, name2) == 0)
-        return true;
-
-    /* Last resort: original equalfilespecs */
+    /* Fallback: original equalfilespecs (compares FSRef + name) */
     return equalfilespecs(fs1, fs2);
 }
 
@@ -348,7 +337,7 @@ static boolean filemenu_open(hdltreenode hparam1, tyvaluerecord *vreturned) {
     if (hodblist != nil) {
         hdlodbrecord h;
         for (h = (**hodblist).hnext; h != nil; h = (**h).hnext) {
-            if (equalfilespecs(&(**h).fs, &odbrec.fs)) {
+            if (equalfilespecs_canonical(&(**h).fs, &odbrec.fs)) {
                 log_debug(LOG_COMP_DB, "filemenu_open: database already open");
                 return setbooleanvalue(true, vreturned);
             }
