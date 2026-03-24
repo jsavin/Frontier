@@ -1,4 +1,6 @@
 on newOutlineObject (s, adr) {
+	//3/24/26 by JES
+		//Trim trailing whitespace to prevent outline structure errors.
 	//3/21/26 by JES
 		//Normalize line endings (CRLF, LF) to CR for cross-platform compatibility.
 	//8/16/98; 11:40:55 AM by DW
@@ -8,6 +10,7 @@ on newOutlineObject (s, adr) {
 			//Parallel to wp.newTextObject.
 	s = string.replaceAll (s, "\r\n", "\r");
 	s = string.replaceAll (s, "\n", "\r");
+	s = string.trimWhiteSpace (s);
 	if not defined (adr^) {
 		new (outlinetype, adr)}
 	else {

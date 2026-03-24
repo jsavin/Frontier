@@ -1,4 +1,6 @@
 on newScriptObject (s, adr) {
+	//3/24/26 by JES
+	//Trim trailing whitespace to prevent compilation errors.
 	//3/21/26 by JES
 	//Normalize line endings (CRLF, LF) to CR for cross-platform compatibility.
 	//Sun, 07 Mar 1999 11:01:36 GMT by AR
@@ -9,6 +11,7 @@ on newScriptObject (s, adr) {
 			//(Try to) compile the script that's been created. This prevents unwanted compile-changes dialogs from showing up.
 	s = string.replaceAll (s, "\r\n", "\r");
 	s = string.replaceAll (s, "\n", "\r");
+	s = string.trimWhiteSpace (s);
 	if not defined (adr^) {
 		new (scriptType, adr)}
 	else {
