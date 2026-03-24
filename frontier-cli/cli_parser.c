@@ -273,7 +273,10 @@ boolean cli_parse_arguments(int argc, char* argv[], cli_options_t* options) {
             const char *flag_name = arg + 2;
 
             /* For known-flag check, strip =value if present
-             * (getopt_long handles --flag=value natively for known flags) */
+             * (getopt_long handles --flag=value natively for known flags).
+             * If the flag name exceeds 255 chars, known_check_name keeps the
+             * full flag=value string, which won't match any known option —
+             * so it falls through to the unknown-flag branch correctly. */
             const char *known_eq = strchr(flag_name, '=');
             char known_name_buf[256];
             const char *known_check_name = flag_name;

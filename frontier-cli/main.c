@@ -351,6 +351,7 @@ int main(int argc, char* argv[]) {
     if (!cli_parse_arguments(argc, argv, &g_cli_options)) {
         log_error(LOG_COMP_GENERAL, "Error: Invalid command line arguments");
         print_usage(argv[0]);
+        cli_free_options(&g_cli_options); /* honor parse-failure cleanup contract */
         return 1;
     }
 

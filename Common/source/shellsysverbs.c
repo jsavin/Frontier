@@ -869,6 +869,8 @@ static boolean sysfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord
 				 * If "agent-browser", use that command. If "default" or absent,
 				 * fall through to the platform default (open/xdg-open).
 				 */
+				/* Always false in non-headless (GUI) builds — the ifdef below
+				 * only sets it to true in headless mode. */
 				boolean use_agent_browser = false;
 
 #ifdef FRONTIER_HEADLESS
@@ -893,10 +895,10 @@ static boolean sysfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord
 								if (hashtablelookup (htargs, bsbrowser, &vbrowser, &hbnode)) {
 									if (vbrowser.valuetype == stringvaluetype && vbrowser.data.stringvalue != nil) {
 										long len = gethandlesize (vbrowser.data.stringvalue);
-										if (len == 13 && memcmp (*vbrowser.data.stringvalue, "agent-browser", 13) == 0) {
+										if (len == (long)(sizeof ("agent-browser") - 1) && memcmp (*vbrowser.data.stringvalue, "agent-browser", sizeof ("agent-browser") - 1) == 0) {
 											use_agent_browser = true;
 										}
-										else if (len != 7 || memcmp (*vbrowser.data.stringvalue, "default", 7) != 0) {
+										else if (len != (long)(sizeof ("default") - 1) || memcmp (*vbrowser.data.stringvalue, "default", sizeof ("default") - 1) != 0) {
 											/* Unknown browser value — reject for security */
 											unlockhandle (hurl);
 											disposehandle (hurl);
