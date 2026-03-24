@@ -21,6 +21,10 @@
 #include "frontier.h"
 #include "standard.h"
 
+#include <limits.h>   /* PATH_MAX */
+#include <stdlib.h>   /* realpath */
+#include <string.h>   /* strcmp, strrchr */
+
 #include "memory.h"
 #include "strings.h"
 #include "lang.h"
@@ -183,6 +187,47 @@ static boolean filemenu_save_systemroot(void) {
  *
  * Returns: true on success, false on failure (with error message set)
  */
+/*
+ * Compare two filespecs by resolving to canonical (realpath) form.
+ * Falls back to filename-only comparison, then equalfilespecs.
+ *
+ * This handles two scenarios:
+ *   1. Same file accessed via different paths (symlinks, relative vs absolute)
+ *   2. Different copies of the same database (dev/databases/ vs dist/)
+ *      where the startup opens one copy but the user wants to save the
+ *      database by its filename. In Frontier, database filenames are
+ *      unique within an installation, so filename matching is safe.
+ */
+static boolean equalfilespecs_canonical(const ptrfilespec fs1, const ptrfilespec fs2) {
+
+    bigstring bs1, bs2;
+    char resolved1[PATH_MAX], resolved2[PATH_MAX];
+
+    filespectopath(fs1, bs1);
+    safenullterminate(bs1);
+
+    filespectopath(fs2, bs2);
+    safenullterminate(bs2);
+
+    /* Try canonical path comparison first (handles symlinks, ../, etc.) */
+    if (realpath((const char *)stringbaseaddress(bs1), resolved1) != NULL &&
+        realpath((const char *)stringbaseaddress(bs2), resolved2) != NULL) {
+        if (strcmp(resolved1, resolved2) == 0)
+            return true;
+    }
+
+    /* Fallback: compare filenames only (last path component).
+     * Database filenames are unique within a Frontier installation,
+     * so this is safe and handles the dev-vs-dist path mismatch. */
+    const char *name1 = strrchr((const char *)stringbaseaddress(bs1), '/');
+    const char *name2 = strrchr((const char *)stringbaseaddress(bs2), '/');
+    if (name1 != NULL && name2 != NULL && strcmp(name1, name2) == 0)
+        return true;
+
+    /* Last resort: original equalfilespecs */
+    return equalfilespecs(fs1, fs2);
+}
+
 static boolean filemenu_save_guestdb(hdltreenode hparam1) {
     tyfilespec fs;
     hdlodbrecord hodb;
@@ -213,7 +258,7 @@ static boolean filemenu_save_guestdb(hdltreenode hparam1) {
             log_warn(LOG_COMP_DB, "filemenu_save_guestdb: found nil entry in hodblist");
             continue;
         }
-        if (equalfilespecs(&(**hodb).fs, &fs)) {
+        if (equalfilespecs_canonical(&(**hodb).fs, &fs)) {
             /* Found it - check if read-only */
             if ((**hodb).flreadonly) {
                 log_verb_error(LOG_COMP_DB, "filemenu_save_guestdb: database is read-only");
