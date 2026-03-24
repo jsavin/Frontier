@@ -633,6 +633,10 @@ static boolean sys_valueproc(short token, hdltreenode hparam1,
              * See shellsysverbs.c openurlfunc for the equivalent classic implementation.
              */
 
+            /* No URL scheme validation — any non-empty string is passed through
+             * to the platform launcher. This matches classic Frontier behavior
+             * and the permissive type system (numbers coerce to strings). */
+
             Handle hurl;
 
             flnextparamislast = true;
@@ -649,6 +653,8 @@ static boolean sys_valueproc(short token, hdltreenode hparam1,
 
             {
                 const char *url = (const char *) *hurl;
+
+                log_debug (LOG_COMP_GENERAL, "sys.openUrl: url=%s", url);
 
                 if (url[0] == '\0') {
                     unlockhandle (hurl);
@@ -673,9 +679,8 @@ static boolean sys_valueproc(short token, hdltreenode hparam1,
 
                         if (vargs.valuetype == externalvaluetype) {
                             hdlhashtable htargs;
-                            hdlexternalvariable hv = (hdlexternalvariable) vargs.data.externalvalue;
 
-                            if (hv != nil && langexternalvaltotable (vargs, &htargs, hnode)) {
+                            if (vargs.data.externalvalue != nil && langexternalvaltotable (vargs, &htargs, hnode)) {
 
                                 tyvaluerecord vbrowser;
                                 hdlhashnode hbnode;
@@ -727,12 +732,19 @@ static boolean sys_valueproc(short token, hdltreenode hparam1,
                 unlockhandle (hurl);
                 disposehandle (hurl);
 
-                if (pid < 0)
+                if (pid < 0) {
+                    log_warn (LOG_COMP_GENERAL, "sys.openUrl: fork failed");
                     return (setbooleanvalue (false, vreturned));
+                }
 
                 int status = 0;
                 waitpid (pid, &status, 0);
 
+                /* Note: launched only means child1 successfully forked child2.
+                 * It does NOT confirm the browser binary was found or the URL
+                 * was actually opened. If execlp fails (e.g. binary not in PATH),
+                 * child2 exits non-zero but child1 already exited 0. This is
+                 * the same limitation as the classic shellsysverbs.c impl. */
                 boolean launched = WIFEXITED (status) && WEXITSTATUS (status) == 0;
 
                 return (setbooleanvalue (launched, vreturned));

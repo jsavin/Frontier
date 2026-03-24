@@ -402,6 +402,8 @@ tests:
     script: 'sys.openUrl("")'
     expected_success: false
 
+  # getexempttextvalue coerces numbers to strings — standard Frontier behavior.
+  # The verb accepts any non-empty string (no URL scheme validation).
   - name: "sys.openUrl - number coerced to string succeeds"
     description: "Passing a number coerces to string; fork succeeds even for non-URL"
     script: 'typeof(sys.openUrl(12345))'
