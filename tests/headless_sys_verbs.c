@@ -653,7 +653,7 @@ static boolean sys_valueproc(short token, hdltreenode hparam1,
                 if (url[0] == '\0') {
                     unlockhandle (hurl);
                     disposehandle (hurl);
-                    langerrormessage (BIGSTRING ("\x3e" "Can't open the URL because it is an empty string."));
+                    langerrormessage (PSTRING ("\x31", "Can't open the URL because it is an empty string."));
                     return (false);
                 }
 
@@ -689,7 +689,7 @@ static boolean sys_valueproc(short token, hdltreenode hparam1,
                                         else if (len != (long)(sizeof ("default") - 1) || memcmp (*vbrowser.data.stringvalue, "default", sizeof ("default") - 1) != 0) {
                                             unlockhandle (hurl);
                                             disposehandle (hurl);
-                                            langerrormessage (BIGSTRING ("\x45" "Can't open URL: --browser must be \"default\" or \"agent-browser\"."));
+                                            langerrormessage (PSTRING ("\x3f", "Can't open URL: --browser must be \"default\" or \"agent-browser\"."));
                                             return (false);
                                         }
                                     }
@@ -739,7 +739,7 @@ static boolean sys_valueproc(short token, hdltreenode hparam1,
 #else
                 unlockhandle (hurl);
                 disposehandle (hurl);
-                copystring (BIGSTRING("\x2e" "sys.openUrl is not supported on this platform"), bserror);
+                langerrormessage (PSTRING ("\x2d", "sys.openUrl is not supported on this platform"));
                 return (false);
 #endif
             }

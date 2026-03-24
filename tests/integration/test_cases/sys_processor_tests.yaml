@@ -388,6 +388,8 @@ tests:
   # sys.openUrl - Opens a URL via fork/execlp. In headless CI the fork succeeds
   # even if the platform launcher (open/xdg-open) isn't available, so we only
   # verify the verb is callable and returns a boolean.
+  # Note: These tests cannot verify actual browser launch — only that the
+  # verb compiles, dispatches, and returns the expected type.
 
   - name: "sys.openUrl - returns boolean type"
     description: "openUrl should return a boolean regardless of fork outcome"
