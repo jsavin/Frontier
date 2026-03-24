@@ -92,8 +92,11 @@ cd tests && make test-integration
 # Verbose output:
 cd tests && make test-integration-verbose
 
-# Run all tests (unit + integration):
+# Run all tests (unit + integration + custom args):
 cd tests && make test-all
+
+# Run custom CLI args tests only (shell-based, uses -e mode):
+cd tests && make test-custom-args
 
 # Direct method - via shell wrapper:
 ./tools/run_integration_tests.sh
@@ -102,6 +105,41 @@ cd tests && make test-all
 # Run specific test file:
 ./tools/run_integration_tests.sh tests/integration/test_cases/string_verbs.yaml
 ```
+
+### Custom CLI Arguments
+
+Any unknown `--flag` is accepted and exposed to UserTalk scripts via `system.environment.args`:
+
+```bash
+# Custom flag with value (kebab-case → camelCase):
+./frontier-cli/frontier-cli --system-root databases/Frontier.root --my-flag hello \
+  -e 'system.environment.args.myFlag'
+# → "hello"
+
+# Boolean flag (no value):
+./frontier-cli/frontier-cli --system-root databases/Frontier.root --dry-run \
+  -e 'system.environment.args.dryRun'
+# → true
+
+# Inline --flag=value syntax also works:
+./frontier-cli/frontier-cli --system-root databases/Frontier.root --browser=agent-browser \
+  -e 'system.environment.args.browser'
+# → "agent-browser"
+```
+
+**Built-in custom flag: `--browser`**
+
+Controls which browser `sys.openUrl()` uses:
+
+```bash
+# Use agent-browser (AI-driven browser automation):
+./frontier-cli/frontier-cli --system-root databases/Frontier.root --browser agent-browser
+
+# Use system default browser (same as omitting --browser):
+./frontier-cli/frontier-cli --system-root databases/Frontier.root --browser default
+```
+
+Tests for custom args are in `tests/custom_cli_args_test.sh` (run via `make test-custom-args`).
 
 ### JSON Output Mode
 
