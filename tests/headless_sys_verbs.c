@@ -738,7 +738,7 @@ static boolean sys_valueproc(short token, hdltreenode hparam1,
                 }
 
                 int status = 0;
-                waitpid (pid, &status, 0);
+                waitpid (pid, &status, 0); /* blocks GIL, but child1 exits in microseconds */
 
                 /* Note: launched only means child1 successfully forked child2.
                  * It does NOT confirm the browser binary was found or the URL
