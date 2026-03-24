@@ -270,46 +270,81 @@ boolean cli_parse_arguments(int argc, char* argv[], cli_options_t* options) {
             /* Long flag: check if known */
             const char *flag_name = arg + 2;
 
-            if (is_known_long_option(flag_name, long_options)) {
-                /* Known flag — pass through to getopt */
+            /* For known-flag check, strip =value if present
+             * (getopt_long handles --flag=value natively for known flags) */
+            const char *known_eq = strchr(flag_name, '=');
+            char known_name_buf[256];
+            const char *known_check_name = flag_name;
+            if (known_eq != NULL) {
+                size_t klen = (size_t)(known_eq - flag_name);
+                if (klen < sizeof(known_name_buf)) {
+                    memcpy(known_name_buf, flag_name, klen);
+                    known_name_buf[klen] = '\0';
+                    known_check_name = known_name_buf;
+                }
+            }
+
+            if (is_known_long_option(known_check_name, long_options)) {
+                /* Known flag — pass through to getopt (handles =value internally) */
                 filtered_argv[filtered_argc++] = argv[i];
 
-                /* If it takes an argument, pass that through too */
-                for (int k = 0; long_options[k].name != NULL; k++) {
-                    if (strcmp(long_options[k].name, flag_name) == 0) {
-                        if (long_options[k].has_arg == required_argument && i + 1 < argc) {
-                            i++;
-                            filtered_argv[filtered_argc++] = argv[i];
+                /* If it takes a separate argument (no = present), pass that through too */
+                if (known_eq == NULL) {
+                    for (int k = 0; long_options[k].name != NULL; k++) {
+                        if (strcmp(long_options[k].name, known_check_name) == 0) {
+                            if (long_options[k].has_arg == required_argument && i + 1 < argc) {
+                                i++;
+                                filtered_argv[filtered_argc++] = argv[i];
+                            }
+                            break;
                         }
-                        break;
                     }
                 }
             }
             else {
-                /* Unknown flag — extract into extra_args */
-                char *camel = kebab_to_camel(flag_name);
+                /* Unknown flag — extract into extra_args.
+                 * Handle --flag=value syntax: split on first '=' if present. */
+                const char *eq = strchr(flag_name, '=');
+                const char *key_part = flag_name;
+                const char *inline_value = NULL;
+                char *key_buf = NULL;
+
+                if (eq != NULL) {
+                    /* --flag=value: key is everything before '=', value after */
+                    size_t key_len = (size_t)(eq - flag_name);
+                    key_buf = malloc(key_len + 1);
+                    if (key_buf == NULL)
+                        continue;
+                    memcpy(key_buf, flag_name, key_len);
+                    key_buf[key_len] = '\0';
+                    key_part = key_buf;
+                    inline_value = eq + 1;
+                }
+
+                char *camel = kebab_to_camel(key_part);
+                free(key_buf); /* safe if NULL */
                 if (camel == NULL)
                     continue;
 
                 /* Reject keys longer than 255 chars (bigstring limit) */
                 if (strlen(camel) > 255) {
-                    log_error(LOG_COMP_GENERAL, "Warning: Custom flag name too long, skipping: --%s", flag_name);
+                    log_warn(LOG_COMP_GENERAL, "Custom flag name too long, skipping: --%s", key_part);
                     free(camel);
                     continue;
                 }
 
-                /* Next arg is the value if it doesn't start with '-'.
-                 * Note: this means --threshold -5 treats -5 as a flag,
-                 * not a negative number value. This is a known limitation;
-                 * use --threshold=-5 or pass negative values via other means. */
-                const char *value = NULL;
-                if (i + 1 < argc && argv[i + 1][0] != '-') {
+                /* Determine the value: inline (--flag=val) takes priority,
+                 * otherwise next arg if it doesn't start with '-'.
+                 * Note: --threshold -5 treats -5 as a flag, not a negative
+                 * number value. This is a known limitation. */
+                const char *value = inline_value;
+                if (value == NULL && i + 1 < argc && argv[i + 1][0] != '-') {
                     value = argv[i + 1];
                     i++; /* consume the value */
                 }
 
                 if (!cli_add_extra_arg(options, camel, value)) {
-                    log_error(LOG_COMP_GENERAL, "Error: Memory allocation failed for custom flag: --%s", flag_name);
+                    log_error(LOG_COMP_GENERAL, "Memory allocation failed for custom flag: --%s", key_part);
                     free(camel);
                     free(filtered_argv);
                     return false;
@@ -323,9 +358,19 @@ boolean cli_parse_arguments(int argc, char* argv[], cli_options_t* options) {
                 first_positional_seen = true;
                 filtered_argv[filtered_argc++] = argv[i];
             }
-            else if (arg[0] == '-') {
-                /* Short flag — pass through, including its value if applicable */
+            else if (arg[0] == '-' && arg[1] != '\0') {
+                /* Short flag — pass through */
                 filtered_argv[filtered_argc++] = argv[i];
+
+                /* Consume required argument for known short flags.
+                 * Short options with required_argument: e, R, m, o, L
+                 * (from optstring "e:R:m:o:fbHJvDPW::ShV" — colon = required) */
+                static const char short_with_arg[] = "eRmoL";
+                char flag_char = arg[1];
+                if (strchr(short_with_arg, flag_char) != NULL && i + 1 < argc) {
+                    i++;
+                    filtered_argv[filtered_argc++] = argv[i];
+                }
             }
             else {
                 /* Extra positional arg */
