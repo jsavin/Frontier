@@ -9,6 +9,7 @@
 #define CLI_UTILS_H
 
 #include "../Common/headers/frontier.h"
+#include "cli_parser.h"
 #include <stdarg.h>
 #include <stddef.h>
 

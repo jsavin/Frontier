@@ -64,6 +64,7 @@
 #include "cli_parser.h"
 #include "cli_executor.h"
 #include "cli_utils.h"
+#include "../Common/headers/langinternal.h"
 #include "repl.h"
 #include "protocol_handler.h"
 #include "ws_server.h"
@@ -116,6 +117,140 @@ const char* cli_get_system_root_path(void) {
 boolean cli_should_skip_startup(void) {
     return g_cli_options.skip_startup;
 }
+
+/*
+ * system.environment.args key names (camelCase from CLI flags).
+ *
+ * Note: script_file (positional arg) is intentionally not exposed here.
+ * It is not a named flag; scripts that need their own path can use
+ * frontier.getProgramPath() or receive it as a parameter.
+ */
+#define str_systemRoot      BIGSTRING ("\x0a" "systemRoot")
+#define str_skipStartup     BIGSTRING ("\x0b" "skipStartup")
+#define str_execute         BIGSTRING ("\x07" "execute")
+#define str_output          BIGSTRING ("\x06" "output")
+#define str_verbose         BIGSTRING ("\x07" "verbose")
+#define str_debug           BIGSTRING ("\x05" "debug")
+#define str_outputJson      BIGSTRING ("\x0a" "outputJson")
+#define str_batch           BIGSTRING ("\x05" "batch")
+#define str_protocol        BIGSTRING ("\x08" "protocol")
+#define str_wsPort          BIGSTRING ("\x06" "wsPort")
+#define str_log             BIGSTRING ("\x03" "log")
+#define str_force           BIGSTRING ("\x05" "force")
+#define str_migrate         BIGSTRING ("\x07" "migrate")
+#define str_hydrate         BIGSTRING ("\x07" "hydrate")
+
+/*
+ * Helper: assign a C string to a hash table entry using a Handle.
+ * Handles arbitrarily long strings (unlike copyctopstring which truncates at 255).
+ * langassigntextvalue takes ownership of h on success; we only dispose on failure.
+ */
+static boolean assign_cstring_value (hdlhashtable ht, const bigstring bskey, const char *cstr) {
+
+    long len = (long) strlen (cstr);
+    Handle h;
+
+    if (!newhandle (len, &h))
+        return (false);
+
+    if (len > 0)
+        memcpy (*h, cstr, (size_t) len);
+
+    if (!langassigntextvalue (ht, bskey, h)) {
+        disposehandle (h);
+        return (false);
+    }
+
+    return (true);
+} /*assign_cstring_value*/
+
+/*
+ * Callback registered with langenvironment_set_args_callback().
+ * Populates system.environment.args subtable from g_cli_options.
+ * Only flags actually set on the command line appear; absence = not set.
+ */
+static boolean populate_environment_args (hdlhashtable htargs) {
+
+    const cli_options_t *opts = &g_cli_options;
+
+    /* String fields — only add when non-NULL */
+
+    if (opts->system_root != NULL) {
+        if (!assign_cstring_value (htargs, str_systemRoot, opts->system_root))
+            return (false);
+    }
+
+    if (opts->inline_script != NULL) {
+        if (!assign_cstring_value (htargs, str_execute, opts->inline_script))
+            return (false);
+    }
+
+    if (opts->output_path != NULL) {
+        if (!assign_cstring_value (htargs, str_output, opts->output_path))
+            return (false);
+    }
+
+    if (opts->log_spec != NULL) {
+        if (!assign_cstring_value (htargs, str_log, opts->log_spec))
+            return (false);
+    }
+
+    if (opts->migrate_database != NULL) {
+        if (!assign_cstring_value (htargs, str_migrate, opts->migrate_database))
+            return (false);
+    }
+
+    /* Boolean flags — only add when true */
+
+    if (opts->verbose) {
+        if (!langassignbooleanvalue (htargs, str_verbose, true))
+            return (false);
+    }
+
+    if (opts->debug) {
+        if (!langassignbooleanvalue (htargs, str_debug, true))
+            return (false);
+    }
+
+    if (opts->output_json) {
+        if (!langassignbooleanvalue (htargs, str_outputJson, true))
+            return (false);
+    }
+
+    if (opts->batch_mode) {
+        if (!langassignbooleanvalue (htargs, str_batch, true))
+            return (false);
+    }
+
+    if (opts->protocol_mode) {
+        if (!langassignbooleanvalue (htargs, str_protocol, true))
+            return (false);
+    }
+
+    if (opts->skip_startup) {
+        if (!langassignbooleanvalue (htargs, str_skipStartup, true))
+            return (false);
+    }
+
+    if (opts->force_overwrite) {
+        if (!langassignbooleanvalue (htargs, str_force, true))
+            return (false);
+    }
+
+    if (opts->hydrate_system_root) {
+        if (!langassignbooleanvalue (htargs, str_hydrate, true))
+            return (false);
+    }
+
+    /* Integer fields — only add when non-zero */
+
+    if (opts->ws_port > 0) {
+        if (!langassignlongvalue (htargs, str_wsPort, (long) opts->ws_port))
+            return (false);
+    }
+
+    return (true);
+} /*populate_environment_args*/
 
 // Function prototypes
 static void print_usage(const char* program_name);
@@ -659,6 +794,9 @@ static boolean initialize_frontier_runtime(void) {
         log_error(LOG_COMP_GENERAL, "Error: Failed to initialize logging");
         return false;
     }
+
+    /* Register CLI args callback before inittablestructure runs */
+    langenvironment_set_args_callback (populate_environment_args);
 
     if (!db_format_prepare_runtime()) {
         log_error(LOG_COMP_GENERAL, "Error: Failed to initialize Frontier runtime core");

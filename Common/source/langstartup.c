@@ -110,6 +110,9 @@ static boolean cb_false_event(EventRecord* e) { (void)e; return false; }
 #define str_isLinux					BIGSTRING ("\x07" "isLinux")
 #define str_maxTcpConnections		BIGSTRING ("\x11" "maxTcpConnections")
 
+/* CLI args subtable name */
+#define str_args					BIGSTRING ("\x04" "args")
+
 
 void initsegment (void) {
 	
@@ -210,6 +213,40 @@ boolean loadfunctionprocessor (short id, langvaluecallback valuecallback) {
 
 
 #ifdef FRONTIER_HEADLESS
+
+/*
+ * Environment args callback — registered by the CLI layer via
+ * langenvironment_set_args_callback(). Common never sees cli_options_t;
+ * the callback knows how to populate the args subtable.
+ */
+static env_args_populate_callback g_env_args_callback = NULL;
+
+void langenvironment_set_args_callback (env_args_populate_callback cb) {
+
+	g_env_args_callback = cb;
+} /*langenvironment_set_args_callback*/
+
+static boolean initenvironment_args (hdlhashtable htenvironment) {
+
+	/*
+	 * Create system.environment.args subtable and delegate population
+	 * to the registered callback (if any). When no callback is registered
+	 * (e.g. unit tests), we still create the empty subtable so scripts
+	 * can safely call defined(system.environment.args).
+	 */
+
+	hdlhashtable htargs;
+
+	if (!tablenewsystemtable (htenvironment, str_args, &htargs))
+		return (false);
+
+	if (g_env_args_callback != NULL)
+		return ((*g_env_args_callback) (htargs));
+
+	return (true);
+} /*initenvironment_args*/
+
+
 static boolean initenvironment (hdlhashtable ht) {
 
 	/*
@@ -403,6 +440,11 @@ static boolean initenvironment (hdlhashtable ht) {
 	langassignstringvalue (ht, str_winServicePackNumber, bs);
 
 	langassignlongvalue (ht, str_maxTcpConnections, 0);
+
+	/* Populate system.environment.args from CLI options */
+
+	if (!initenvironment_args (ht))
+		return (false);
 
 	return (true);
 }
