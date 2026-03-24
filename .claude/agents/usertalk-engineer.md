@@ -262,7 +262,7 @@ else {
    - Local vars: camelCase (myVariable)
    - Table paths: match database structure (system.verbs.myCategory)
 
-3. **Layout:** Use indentation/outline structure intentionally—it's a feature, not just formatting
+3. **Layout:** Use indentation/outline structure intentionally—it's a feature, not just formatting. Each line's indentation can differ from the line above by at most one level. Sub-indented comments (one level deeper) are valid Frontier convention for change logs. Never skip levels (+2 or more) — this creates malformed outline structure.
 
 4. **Comments:** Explain the "why", not the "what"—code structure is already clear from outline
 

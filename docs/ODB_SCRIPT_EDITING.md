@@ -94,23 +94,38 @@ The ODB stores CR internally. If you see `\n` in a `string()` readback, the scri
 
 ### Indentation
 
-Scripts use tab indentation. The indentation level of any line can differ from adjacent lines by at most one level:
+Scripts use tab indentation. Each line's indentation can differ from the line above by **at most one level** (same, +1, or -1). Never skip levels.
+
+**Basic code indentation:**
 
 ```
 on myVerb (s)                    // level 0
-    //comment                    // level 1 (ok: +1 from above)
-    local (x = s)                // level 1 (ok: same as above)
-    if x == ""                   // level 1
-        return false             // level 2 (ok: +1 from above)
-    return true                  // level 1 (ok: -1 from above)
+    local (x = s)                // level 1 (ok: +1)
+    if x == ""                   // level 1 (ok: same)
+        return false             // level 2 (ok: +1)
+    return true                  // level 1 (ok: -1)
 ```
 
-**Never skip levels** — jumping from level 0 to level 2 will cause outline structure errors:
+**Sub-indented comments are valid** — this is a historical Frontier convention for change logs and documentation. Each comment block indents one level under its parent:
 
 ```
 on myVerb (s)                    // level 0
-        //double-indented        // level 2 — WRONG: +2 from above
+    //3/24/26 by JES             // level 1 (ok: +1)
+        //Added new feature.     // level 2 (ok: +1 from comment above)
+    //8/16/98 by DW              // level 1 (ok: -1, new comment block)
+        //Original implementation // level 2 (ok: +1)
+            //Detail about impl  // level 3 (ok: +1)
+    local (x = s)                // level 1 (ok: back to code)
 ```
+
+**Never skip levels** — jumping +2 or more from the line above causes outline structure errors:
+
+```
+on myVerb (s)                    // level 0
+        //double-indented        // level 2 — WRONG: +2 from level 0
+```
+
+**Why this matters:** Scripts are stored as outlines. Each indentation change creates a parent-child relationship in the outline hierarchy. Skipping levels creates malformed outline structure, and when stringified for compilation, extra `{` and `}` get inserted at the wrong places.
 
 ### Braces and Semicolons
 
@@ -127,7 +142,7 @@ When writing outline content (for `op.insert` or `op.newOutlineObject`), **omit*
    - Check `kernelverbs.r` has the verb name
 
 2. **Write the glue script** (`.ut` file first, as reference):
-   - Single-indented comments under the eponymous handler
+   - Comments under the eponymous handler: one level deeper per sub-block (never skip levels)
    - No trailing newline after closing `}`
    - Use `PSTRING` (not `BIGSTRING`) for all string literals in C kernel code — compile-time length validation
 
