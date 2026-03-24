@@ -97,16 +97,11 @@ static boolean cli_add_extra_arg(cli_options_t *options, const char *key, const 
     return true;
 }
 
-/* Returns true if flag is a known long option name (without --). */
-static boolean is_known_long_option(const char *name) {
-    static const char *known[] = {
-        "execute", "system-root", "migrate", "output", "force",
-        "batch", "non-interactive", "hydrate-system-root", "output-json",
-        "verbose", "debug", "log", "skip-startup", "protocol",
-        "ws-port", "help", "version", NULL
-    };
-    for (int i = 0; known[i] != NULL; i++) {
-        if (strcmp(name, known[i]) == 0)
+/* Returns true if flag is a known long option name (without --).
+ * Derives the known set from long_options[] to avoid duplication. */
+static boolean is_known_long_option(const char *name, const struct option *long_options) {
+    for (int k = 0; long_options[k].name != NULL; k++) {
+        if (strcmp(long_options[k].name, name) == 0)
             return true;
     }
     return false;
@@ -275,7 +270,7 @@ boolean cli_parse_arguments(int argc, char* argv[], cli_options_t* options) {
             /* Long flag: check if known */
             const char *flag_name = arg + 2;
 
-            if (is_known_long_option(flag_name)) {
+            if (is_known_long_option(flag_name, long_options)) {
                 /* Known flag — pass through to getopt */
                 filtered_argv[filtered_argc++] = argv[i];
 
@@ -296,14 +291,29 @@ boolean cli_parse_arguments(int argc, char* argv[], cli_options_t* options) {
                 if (camel == NULL)
                     continue;
 
-                /* Next arg is the value if it doesn't start with '-' */
+                /* Reject keys longer than 255 chars (bigstring limit) */
+                if (strlen(camel) > 255) {
+                    log_error(LOG_COMP_GENERAL, "Warning: Custom flag name too long, skipping: --%s", flag_name);
+                    free(camel);
+                    continue;
+                }
+
+                /* Next arg is the value if it doesn't start with '-'.
+                 * Note: this means --threshold -5 treats -5 as a flag,
+                 * not a negative number value. This is a known limitation;
+                 * use --threshold=-5 or pass negative values via other means. */
                 const char *value = NULL;
                 if (i + 1 < argc && argv[i + 1][0] != '-') {
                     value = argv[i + 1];
                     i++; /* consume the value */
                 }
 
-                cli_add_extra_arg(options, camel, value);
+                if (!cli_add_extra_arg(options, camel, value)) {
+                    log_error(LOG_COMP_GENERAL, "Error: Memory allocation failed for custom flag: --%s", flag_name);
+                    free(camel);
+                    free(filtered_argv);
+                    return false;
+                }
                 free(camel);
             }
         }
@@ -321,11 +331,20 @@ boolean cli_parse_arguments(int argc, char* argv[], cli_options_t* options) {
                 /* Extra positional arg */
                 int n = options->positional_count;
                 char **new_arr = realloc(options->positional_args, (size_t)(n + 1) * sizeof(char *));
-                if (new_arr != NULL) {
-                    new_arr[n] = strdup(arg);
-                    options->positional_args = new_arr;
-                    options->positional_count = n + 1;
+                if (new_arr == NULL) {
+                    log_error(LOG_COMP_GENERAL, "Error: Memory allocation failed for positional arg");
+                    free(filtered_argv);
+                    return false;
                 }
+                new_arr[n] = strdup(arg);
+                if (new_arr[n] == NULL) {
+                    log_error(LOG_COMP_GENERAL, "Error: Memory allocation failed for positional arg");
+                    options->positional_args = new_arr;
+                    free(filtered_argv);
+                    return false;
+                }
+                options->positional_args = new_arr;
+                options->positional_count = n + 1;
             }
         }
     }
@@ -506,6 +525,11 @@ boolean cli_parse_arguments(int argc, char* argv[], cli_options_t* options) {
                 return false;
             }
             options->system_root = strdup(arg);
+            if (options->system_root == NULL) {
+                log_error(LOG_COMP_GENERAL, "Error: Memory allocation failed");
+                free(filtered_argv);
+                return false;
+            }
         } else {
             if (options->script_file != NULL) {
                 log_error(LOG_COMP_GENERAL, "Error: Multiple script files not allowed");
@@ -513,6 +537,11 @@ boolean cli_parse_arguments(int argc, char* argv[], cli_options_t* options) {
                 return false;
             }
             options->script_file = strdup(arg);
+            if (options->script_file == NULL) {
+                log_error(LOG_COMP_GENERAL, "Error: Memory allocation failed");
+                free(filtered_argv);
+                return false;
+            }
         }
     }
 

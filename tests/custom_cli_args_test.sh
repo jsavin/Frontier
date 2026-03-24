@@ -6,12 +6,19 @@
 # These tests use -e mode (not --protocol) because the protocol runner
 # cannot pass arbitrary unknown flags to the frontier-cli subprocess.
 
-set -e
-
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 CLI="$PROJECT_ROOT/frontier-cli/frontier-cli"
 DB="$PROJECT_ROOT/databases/Frontier.root"
+
+if [ ! -x "$CLI" ]; then
+    echo "Error: frontier-cli not found at $CLI" >&2
+    exit 1
+fi
+if [ ! -f "$DB" ]; then
+    echo "Error: database not found at $DB" >&2
+    exit 1
+fi
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
