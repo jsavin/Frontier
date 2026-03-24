@@ -377,8 +377,12 @@ boolean cli_parse_arguments(int argc, char* argv[], cli_options_t* options) {
 
                 /* Consume required argument for known short flags (separate arg only).
                  * Only when flag is exactly "-X" (not "-Xvalue" inline form).
-                 * Derived from optstring "e:R:m:o:fbHJvDPW::ShV" — colon = required.
-                 * Must stay in sync with the optstring above. */
+                 *
+                 * SYNC WARNING: This list must match the required_argument short flags
+                 * from optstring "e:R:m:o:fbHJvDPW::ShV". A colon after a letter
+                 * means required_argument. W:: is optional_argument — intentionally
+                 * excluded because optional args must use --ws-port=VALUE syntax
+                 * (getopt does not consume a separate next-arg for optional). */
                 static const char short_with_arg[] = "eRmo";
                 char flag_char = arg[1];
                 if (arg[2] == '\0' && strchr(short_with_arg, flag_char) != NULL && i + 1 < argc) {

@@ -32,7 +32,8 @@ run_test() {
     local expected="$2"
     shift 2
     local actual
-    actual=$("$CLI" "$@" 2>/dev/null) || true
+    local exit_code=0
+    actual=$("$CLI" "$@" 2>/dev/null) || exit_code=$?
 
     if [ "$actual" = "$expected" ]; then
         echo -e "  ${GREEN}✓ PASS${NC}: $name"
@@ -41,6 +42,9 @@ run_test() {
         echo -e "  ${RED}✗ FAIL${NC}: $name"
         echo "    Expected: '$expected'"
         echo "    Got:      '$actual'"
+        if [ "$exit_code" -ne 0 ]; then
+            echo "    CLI exit code: $exit_code"
+        fi
         FAILED=$((FAILED + 1))
     fi
 }
