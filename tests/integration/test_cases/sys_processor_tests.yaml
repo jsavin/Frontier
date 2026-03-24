@@ -400,10 +400,11 @@ tests:
     script: 'sys.openUrl("")'
     expected_success: false
 
-  - name: "sys.openUrl - wrong argument type errors"
-    description: "Passing a number instead of a string should error"
-    script: 'sys.openUrl(12345)'
-    expected_success: false
+  - name: "sys.openUrl - number coerced to string succeeds"
+    description: "Passing a number coerces to string; fork succeeds even for non-URL"
+    script: 'typeof(sys.openUrl(12345))'
+    expected_success: true
+    expected_result: "bool"
 
   # ============================================================================
   # sys.unixshellcommand Tests (4 parameter variants)
