@@ -309,7 +309,19 @@ global (userConfig)  // Available as global variable
 
 ---
 
+**ODB Script Editing (MANDATORY — read `docs/ODB_SCRIPT_EDITING.md` before modifying scripts):**
+
+1. **Always use `--protocol` mode** for ODB edits, never `-e`
+2. **Always use `script.newScriptObject`** to install scripts (handles line ending normalization)
+3. **Always call `string.trimWhiteSpace`** on script source before installing (trailing whitespace breaks compilation)
+4. **Always verify compilation** after installing — read back with `string()`, then call the verb
+5. **Always keep `.ut` files in sync** with ODB changes
+6. **Always write integration tests** for new/modified verbs
+7. For kernel verbs: **verify the verb is registered in the headless build** before writing glue
+8. **Use `PSTRING` not `BIGSTRING`** for string literals in C kernel code (compile-time length validation)
+
 **Reference Resources:**
+- `docs/ODB_SCRIPT_EDITING.md` - Complete ODB script editing workflow and checklist
 - `docs/usertalk/docserver/` - Source markup exported from docserver.userland.com CMS (verb reference for 75+ categories)
 - `usertalk_scripts/Frontier.root/` - Complete export of Frontier system root scripts (glue scripts connecting UserTalk runtime to kernel C implementations)
 - `docs/usertalk/` - Language guide and PDF documentation

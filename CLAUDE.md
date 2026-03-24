@@ -70,6 +70,7 @@ For test scratch files, `/tmp` or `tests/tmp/` both work.
 
 **Implementation & Testing**:
 - **[Verb Implementation Guide](docs/VERB_IMPLEMENTATION_GUIDE.md)** - Implementing kernel verbs in C
+- **[ODB Script Editing Guide](docs/ODB_SCRIPT_EDITING.md)** - Protocol workflow, script installation, verification
 - **[Testing Guide](docs/TESTING_GUIDE.md)** - CLI usage, testing patterns, database migration
 - **[Logging Standards](docs/LOGGING_STANDARDS.md)** - Structured logging requirements
 
@@ -198,6 +199,23 @@ Agents must verify fixes work end-to-end, not just fix one piece. Test the compl
 - Selecting which agent to use for a specific phase
 - Parallelizing agent work
 - Working on kernel verbs, database changes, or UserTalk features
+
+---
+
+## ODB Script Editing Rules
+
+**Always use `--protocol` mode for ODB edits, never `-e`.** Protocol supports multi-step operations without shell escaping issues.
+
+**Always use `script.newScriptObject` / `op.newOutlineObject`** to install scripts — never raw `op.insert`. These verbs handle line ending normalization (LF/CRLF → CR).
+
+**Quality gates for every script edit:**
+1. Trim whitespace: `string.trimWhiteSpace(s)` before installing
+2. Verify compilation: read back with `string()`, then call the verb
+3. Write integration tests for new/modified verbs
+4. Keep `.ut` files in sync with ODB changes
+5. For kernel verbs: verify verb is registered in headless build before writing glue
+
+**📖 Read `docs/ODB_SCRIPT_EDITING.md` for:** Full protocol workflow, indentation rules, braces/semicolons in outline vs string format, the complete verb addition checklist.
 
 ---
 
