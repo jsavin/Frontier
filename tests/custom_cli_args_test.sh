@@ -96,6 +96,26 @@ run_test "systemRoot with unknown flag" "true" \
     -e 'system.environment.args.systemRoot contains "Frontier.root"'
 
 echo
+echo "--- Inline --flag=value syntax ---"
+run_test "inline equals syntax with value" "hello" \
+    --skip-startup --system-root "$DB" --my-flag=hello \
+    -e 'system.environment.args.myFlag'
+
+run_test "inline equals syntax with kebab-case" "world" \
+    --skip-startup --system-root "$DB" --my-long-flag=world \
+    -e 'system.environment.args.myLongFlag'
+
+run_test "inline browser=agent-browser" "agent-browser" \
+    --skip-startup --system-root "$DB" --browser=agent-browser \
+    -e 'system.environment.args.browser'
+
+echo
+echo "--- Duplicate unknown flags (last wins) ---"
+run_test "duplicate flag last value wins" "second" \
+    --skip-startup --system-root "$DB" --foo first --foo second \
+    -e 'system.environment.args.foo'
+
+echo
 echo "--- Absent unknown flags ---"
 run_test "undefined unknown flag" "false" \
     --skip-startup --system-root "$DB" \

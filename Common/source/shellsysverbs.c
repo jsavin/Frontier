@@ -836,6 +836,8 @@ static boolean sysfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord
 			 * Allowed values: "default" (system browser) or "agent-browser".
 			 * Note: Scripts can also set system.environment.args.browser directly;
 			 * this is intentional — scripts are trusted code within the ODB.
+			 * The browser check is guarded by FRONTIER_HEADLESS; GUI builds
+			 * always use the system default browser (no --browser flag).
 			 */
 
 			Handle hurl;

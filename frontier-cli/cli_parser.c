@@ -315,8 +315,10 @@ boolean cli_parse_arguments(int argc, char* argv[], cli_options_t* options) {
                     /* --flag=value: key is everything before '=', value after */
                     size_t key_len = (size_t)(eq - flag_name);
                     key_buf = malloc(key_len + 1);
-                    if (key_buf == NULL)
+                    if (key_buf == NULL) {
+                        log_warn(LOG_COMP_GENERAL, "Memory allocation failed, skipping flag: %s", arg);
                         continue;
+                    }
                     memcpy(key_buf, flag_name, key_len);
                     key_buf[key_len] = '\0';
                     key_part = key_buf;
@@ -357,7 +359,11 @@ boolean cli_parse_arguments(int argc, char* argv[], cli_options_t* options) {
             }
         }
         else {
-            /* Short flag or positional — pass through */
+            /* Short flag or positional — pass through.
+             * Note: first_positional_seen tracks whether we've passed the
+             * script file / .root positional to filtered_argv. Short flag
+             * values (e.g. the 'expr' in -e expr) are consumed by the
+             * short-flag branch above and won't trigger this flag. */
             if (arg[0] != '-' && !first_positional_seen) {
                 first_positional_seen = true;
                 filtered_argv[filtered_argc++] = argv[i];
@@ -409,14 +415,13 @@ boolean cli_parse_arguments(int argc, char* argv[], cli_options_t* options) {
     while ((opt = getopt_long(filtered_argc, filtered_argv, "e:R:m:o:fbHJvDPW::ShV", long_options, &option_index)) != -1) {
         switch (opt) {
             case 'e':
-                // Inline script execution
                 if (options->inline_script != NULL) {
                     log_error(LOG_COMP_GENERAL, "Error: Multiple --execute options not allowed");
-                    return false;
+                    goto parse_error;
                 }
                 if (strlen(optarg) > CLI_MAX_SCRIPT_LENGTH) {
                     log_error(LOG_COMP_GENERAL, "Error: Inline script too long (max %d characters)", CLI_MAX_SCRIPT_LENGTH);
-                    return false;
+                    goto parse_error;
                 }
                 options->inline_script = strdup(optarg);
                 break;
@@ -424,80 +429,59 @@ boolean cli_parse_arguments(int argc, char* argv[], cli_options_t* options) {
             case 'R':
                 if (options->system_root != NULL) {
                     log_error(LOG_COMP_GENERAL, "Error: Multiple --system-root options not allowed");
-                    return false;
+                    goto parse_error;
                 }
                 if (strlen(optarg) > CLI_MAX_PATH_LENGTH) {
                     log_error(LOG_COMP_GENERAL, "Error: System root path too long (max %d characters)", CLI_MAX_PATH_LENGTH);
-                    return false;
+                    goto parse_error;
                 }
                 options->system_root = strdup(optarg);
                 break;
 
             case 'm':
-                // Migrate database to v7 format
                 if (options->migrate_database != NULL) {
                     log_error(LOG_COMP_GENERAL, "Error: Multiple --migrate options not allowed");
-                    return false;
+                    goto parse_error;
                 }
                 if (strlen(optarg) > CLI_MAX_PATH_LENGTH) {
                     log_error(LOG_COMP_GENERAL, "Error: Migrate path too long (max %d characters)", CLI_MAX_PATH_LENGTH);
-                    return false;
+                    goto parse_error;
                 }
                 options->migrate_database = strdup(optarg);
                 break;
 
             case 'o':
-                // Output path for migration
                 if (options->output_path != NULL) {
                     log_error(LOG_COMP_GENERAL, "Error: Multiple --output options not allowed");
-                    return false;
+                    goto parse_error;
                 }
                 if (strlen(optarg) > CLI_MAX_PATH_LENGTH) {
                     log_error(LOG_COMP_GENERAL, "Error: Output path too long (max %d characters)", CLI_MAX_PATH_LENGTH);
-                    return false;
+                    goto parse_error;
                 }
                 options->output_path = strdup(optarg);
                 break;
 
-            case 'f':
-                // Force overwrite existing output file
-                options->force_overwrite = true;
-                break;
-
-            case 'b':
-                // Batch mode (no interactive prompts)
-                options->batch_mode = true;
-                break;
-
-            case 'H':
-                options->hydrate_system_root = true;
-                break;
-
-            case 'J':
-                // JSON output mode
-                options->output_json = true;
-                break;
-
-            case 'v':
-                // Verbose mode
-                options->verbose = true;
-                break;
-
-            case 'D':
-                // Debug mode
-                options->debug = true;
-                break;
+            case 'f':  options->force_overwrite = true; break;
+            case 'b':  options->batch_mode = true; break;
+            case 'H':  options->hydrate_system_root = true; break;
+            case 'J':  options->output_json = true; break;
+            case 'v':  options->verbose = true; break;
+            case 'D':  options->debug = true; break;
+            case 'S':  options->skip_startup = true; break;
+            case 'P':  options->protocol_mode = true; break;
+            case 'h':  options->show_help = true; break;
+            case 'V':  options->show_version = true; break;
 
             case 'L':
                 // Log spec (--log comp:level,...)
                 if (options->log_spec != NULL) {
-                    // Multiple --log args: concatenate with commas
                     size_t old_len = strlen(options->log_spec);
                     size_t new_len = strlen(optarg);
                     char *combined = malloc(old_len + 1 + new_len + 1);
                     if (combined == NULL) {
                         log_error(LOG_COMP_GENERAL, "Error: Memory allocation failed for --log");
-                        return false;
+                        goto parse_error;
                     }
                     memcpy(combined, options->log_spec, old_len);
                     combined[old_len] = ',';
@@ -508,29 +492,21 @@ boolean cli_parse_arguments(int argc, char* argv[], cli_options_t* options) {
                     options->log_spec = strdup(optarg);
                     if (options->log_spec == NULL) {
                         log_error(LOG_COMP_GENERAL, "Error: Memory allocation failed for --log");
-                        return false;
+                        goto parse_error;
                     }
                 }
                 break;
 
-            case 'S':
-                // Skip startup scripts
-                options->skip_startup = true;
-                break;
-
-            case 'P':
-                // NDJSON protocol mode (structured JSON over stdin/stdout)
-                options->protocol_mode = true;
-                break;
-
             case 'W':
-                // WebSocket server port (default: 5337, Frontier admin is on 5336)
+                /* --ws-port uses optional_argument: value must be inline (--ws-port=5337)
+                 * or omitted (uses default). Pass 1 intentionally does NOT consume a
+                 * separate next-arg for 'W' since optional_argument requires = syntax. */
                 if (optarg != NULL && optarg[0] != '\0') {
                     char *endptr;
                     long port = strtol(optarg, &endptr, 10);
                     if (*endptr != '\0' || port < 1 || port > 65535) {
                         log_error(LOG_COMP_GENERAL, "Error: Invalid WebSocket port: %s", optarg);
-                        return false;
+                        goto parse_error;
                     }
                     options->ws_port = (int)port;
                 } else {
@@ -538,20 +514,8 @@ boolean cli_parse_arguments(int argc, char* argv[], cli_options_t* options) {
                 }
                 break;
 
-            case 'h':
-                // Help
-                options->show_help = true;
-                break;
-
-            case 'V':
-                // Version
-                options->show_version = true;
-                break;
-
             case '?':
-                // Should not happen — unknown flags were filtered in pass 1
-                free(filtered_argv);
-                return false;
+                goto parse_error;
 
             default:
                 break;
@@ -596,9 +560,13 @@ boolean cli_parse_arguments(int argc, char* argv[], cli_options_t* options) {
     }
 
     free(filtered_argv);
-    
+
     // Validate the parsed options
     return cli_validate_options(options);
+
+parse_error:
+    free(filtered_argv);
+    return false;
 }
 
 /* Frees dynamically allocated strings in the options structure. */
