@@ -50,6 +50,31 @@ Read back and check it compiles:
 
 ---
 
+## Editing Guest Databases
+
+Guest databases (`databases/Guest Databases/apps/*.root`) ship with the dist build. To edit them, load the system root first (so system verbs like `script.newScriptObject` are available), then open the guest DB as a secondary database:
+
+```bash
+frontier-cli --protocol --skip-startup --system-root databases/Virgin.root
+```
+
+```json
+{"op":"script/eval","id":1,"params":{"expression":"db.open(\"databases/Guest Databases/apps/mainResponder.root\", false); return true"}}
+{"op":"script/eval","id":2,"params":{"expression":"local (s = string.trimWhiteSpace(file.readWholeFile(\"/tmp/myscript.txt\"))); script.newScriptObject(s, @mainResponder.someVerb); return true"}}
+{"op":"script/eval","id":3,"params":{"expression":"db.save(\"databases/Guest Databases/apps/mainResponder.root\"); return true"}}
+{"op":"script/eval","id":4,"params":{"expression":"db.close(\"databases/Guest Databases/apps/mainResponder.root\"); return true"}}
+```
+
+Key points:
+- Use `--skip-startup` to avoid spinning up unnecessary services
+- The guest DB path is relative to the working directory (project root)
+- `db.open(path, false)` opens for read-write (`false` = not read-only)
+- Save the guest DB explicitly with `db.save` — `fileMenu.save()` only saves the system root
+- Close the guest DB when done to release the file handle
+- The source copies under `databases/Guest Databases/` are what `make dist` copies to `dist/`
+
+---
+
 ## Script Source Format
 
 ### Line Endings
