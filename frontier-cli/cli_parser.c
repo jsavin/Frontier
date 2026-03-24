@@ -212,7 +212,9 @@ boolean cli_validate_options(const cli_options_t* options) {
     return true;
 }
 
-/* Parses command-line arguments and populates the options structure. */
+/* Parses command-line arguments and populates the options structure.
+ * On failure, the caller must still call cli_free_options() to release
+ * any partially-allocated fields (extra_args, positional_args, etc.). */
 boolean cli_parse_arguments(int argc, char* argv[], cli_options_t* options) {
     int opt;
     int option_index = 0;
@@ -322,13 +324,15 @@ boolean cli_parse_arguments(int argc, char* argv[], cli_options_t* options) {
                 }
 
                 char *camel = kebab_to_camel(key_part);
-                free(key_buf); /* safe if NULL */
+                free(key_buf); /* safe if NULL; key_part is now dangling if eq != NULL */
+                key_part = NULL; /* prevent accidental use-after-free */
+                key_buf = NULL;
                 if (camel == NULL)
                     continue;
 
                 /* Reject keys longer than 255 chars (bigstring limit) */
                 if (strlen(camel) > 255) {
-                    log_warn(LOG_COMP_GENERAL, "Custom flag name too long, skipping: --%s", key_part);
+                    log_warn(LOG_COMP_GENERAL, "Custom flag name too long, skipping: %s", camel);
                     free(camel);
                     continue;
                 }
@@ -344,7 +348,7 @@ boolean cli_parse_arguments(int argc, char* argv[], cli_options_t* options) {
                 }
 
                 if (!cli_add_extra_arg(options, camel, value)) {
-                    log_error(LOG_COMP_GENERAL, "Memory allocation failed for custom flag: --%s", key_part);
+                    log_error(LOG_COMP_GENERAL, "Memory allocation failed for custom flag: %s", camel);
                     free(camel);
                     free(filtered_argv);
                     return false;
@@ -362,12 +366,13 @@ boolean cli_parse_arguments(int argc, char* argv[], cli_options_t* options) {
                 /* Short flag — pass through */
                 filtered_argv[filtered_argc++] = argv[i];
 
-                /* Consume required argument for known short flags.
-                 * Short options with required_argument: e, R, m, o, L
-                 * (from optstring "e:R:m:o:fbHJvDPW::ShV" — colon = required) */
-                static const char short_with_arg[] = "eRmoL";
+                /* Consume required argument for known short flags (separate arg only).
+                 * Only when flag is exactly "-X" (not "-Xvalue" inline form).
+                 * Derived from optstring "e:R:m:o:fbHJvDPW::ShV" — colon = required.
+                 * Must stay in sync with the optstring above. */
+                static const char short_with_arg[] = "eRmo";
                 char flag_char = arg[1];
-                if (strchr(short_with_arg, flag_char) != NULL && i + 1 < argc) {
+                if (arg[2] == '\0' && strchr(short_with_arg, flag_char) != NULL && i + 1 < argc) {
                     i++;
                     filtered_argv[filtered_argc++] = argv[i];
                 }

@@ -834,6 +834,8 @@ static boolean sysfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord
 			 *
 			 * 3/23/26 JES: Respect --browser CLI arg via system.environment.args.browser.
 			 * Allowed values: "default" (system browser) or "agent-browser".
+			 * Note: Scripts can also set system.environment.args.browser directly;
+			 * this is intentional — scripts are trusted code within the ODB.
 			 */
 
 			Handle hurl;
