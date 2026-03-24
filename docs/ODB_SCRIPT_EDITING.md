@@ -6,11 +6,12 @@ How to safely create, modify, and verify UserTalk scripts in the Frontier object
 
 ## Golden Rules
 
-1. **Always use `--protocol` mode** for ODB edits — never `-e`. Protocol mode supports multi-step operations (set, compile, save) without shell escaping issues.
-2. **Always use `script.newScriptObject` or `op.newOutlineObject`** to install scripts/outlines — never raw `op.insert`. These verbs handle line ending normalization automatically.
-3. **Always keep `.ut` files in sync** with ODB changes so the PR review bot can see the diff.
-4. **Always verify scripts compile** after installing them.
-5. **Always write integration tests** for new or modified verbs.
+1. **Edit `databases/Virgin.root`** for changes that should persist in builds. `Virgin.root` is the source of truth — `make dist` copies it to `dist/Frontier.root`. Edits to `databases/Frontier.root` are local only and will be overwritten by the next dist build.
+2. **Always use `--protocol` mode** for ODB edits — never `-e`. Protocol mode supports multi-step operations (set, compile, save) without shell escaping issues.
+3. **Always use `script.newScriptObject` or `op.newOutlineObject`** to install scripts/outlines — never raw `op.insert`. These verbs handle line ending normalization automatically.
+4. **Always keep `.ut` files in sync** with ODB changes so the PR review bot can see the diff.
+5. **Always verify scripts compile** after installing them.
+6. **Always write integration tests** for new or modified verbs.
 
 ---
 
