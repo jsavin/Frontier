@@ -22,6 +22,96 @@
 #include "cli_utils.h"
 #include "../Common/headers/logging.h"
 
+/*
+ * Convert a kebab-case flag name to camelCase.
+ * Strips leading dashes, then splits on '-' and capitalizes each word after the first.
+ * Caller must free the returned string.
+ */
+static char *kebab_to_camel(const char *flag) {
+    const char *p = flag;
+
+    /* Strip leading dashes */
+    while (*p == '-')
+        p++;
+
+    size_t len = strlen(p);
+    char *result = malloc(len + 1);
+    if (result == NULL)
+        return NULL;
+
+    size_t j = 0;
+    boolean capitalize_next = false;
+
+    for (size_t i = 0; i < len; i++) {
+        if (p[i] == '-') {
+            capitalize_next = true;
+        } else {
+            if (capitalize_next && p[i] >= 'a' && p[i] <= 'z') {
+                result[j++] = (char)(p[i] - 'a' + 'A');
+            } else {
+                result[j++] = p[i];
+            }
+            capitalize_next = false;
+        }
+    }
+
+    result[j] = '\0';
+    return result;
+}
+
+/*
+ * Append an extra argument to the linked list.
+ * key is the camelCase name, value is the string value (or NULL for boolean).
+ * Both are strdup'd internally.
+ */
+static boolean cli_add_extra_arg(cli_options_t *options, const char *key, const char *value) {
+    cli_extra_arg_t *node = calloc(1, sizeof(cli_extra_arg_t));
+    if (node == NULL)
+        return false;
+
+    node->key = strdup(key);
+    if (node->key == NULL) {
+        free(node);
+        return false;
+    }
+
+    if (value != NULL) {
+        node->value = strdup(value);
+        if (node->value == NULL) {
+            free(node->key);
+            free(node);
+            return false;
+        }
+    }
+
+    /* Append to end of list to preserve command-line order */
+    if (options->extra_args == NULL) {
+        options->extra_args = node;
+    } else {
+        cli_extra_arg_t *tail = options->extra_args;
+        while (tail->next != NULL)
+            tail = tail->next;
+        tail->next = node;
+    }
+
+    return true;
+}
+
+/* Returns true if flag is a known long option name (without --). */
+static boolean is_known_long_option(const char *name) {
+    static const char *known[] = {
+        "execute", "system-root", "migrate", "output", "force",
+        "batch", "non-interactive", "hydrate-system-root", "output-json",
+        "verbose", "debug", "log", "skip-startup", "protocol",
+        "ws-port", "help", "version", NULL
+    };
+    for (int i = 0; known[i] != NULL; i++) {
+        if (strcmp(name, known[i]) == 0)
+            return true;
+    }
+    return false;
+}
+
 /* Checks if a path ends with .root or .root7 (case-insensitive). */
 static boolean cli_is_root_file(const char* path) {
     if (path == NULL) {
@@ -131,10 +221,10 @@ boolean cli_validate_options(const cli_options_t* options) {
 boolean cli_parse_arguments(int argc, char* argv[], cli_options_t* options) {
     int opt;
     int option_index = 0;
-    
+
     // Initialize options with defaults
     cli_init_options(options);
-    
+
     // Define long options
     static struct option long_options[] = {
         {"execute", required_argument, 0, 'e'},
@@ -157,8 +247,97 @@ boolean cli_parse_arguments(int argc, char* argv[], cli_options_t* options) {
         {0, 0, 0, 0}
     };
 
-    // Parse command line arguments
-    while ((opt = getopt_long(argc, argv, "e:R:m:o:fbHJvDPW::ShV", long_options, &option_index)) != -1) {
+    /*
+     * Two-pass parsing:
+     *   Pass 1 — Extract unknown --flags (and their values) from argv,
+     *            building a filtered argv for getopt_long.
+     *   Pass 2 — Run getopt_long on the filtered argv (known flags only).
+     *
+     * This avoids getopt_long's inability to skip unknown long options
+     * that take values (it would misinterpret the value as a positional).
+     */
+
+    /* Pass 1: Build filtered argv, extract unknown --flags into extra_args */
+
+    char **filtered_argv = malloc((size_t)(argc + 1) * sizeof(char *));
+    if (filtered_argv == NULL)
+        return false;
+
+    int filtered_argc = 0;
+    boolean first_positional_seen = false;
+
+    filtered_argv[filtered_argc++] = argv[0]; /* program name */
+
+    for (int i = 1; i < argc; i++) {
+        const char *arg = argv[i];
+
+        if (arg[0] == '-' && arg[1] == '-' && arg[2] != '\0') {
+            /* Long flag: check if known */
+            const char *flag_name = arg + 2;
+
+            if (is_known_long_option(flag_name)) {
+                /* Known flag — pass through to getopt */
+                filtered_argv[filtered_argc++] = argv[i];
+
+                /* If it takes an argument, pass that through too */
+                for (int k = 0; long_options[k].name != NULL; k++) {
+                    if (strcmp(long_options[k].name, flag_name) == 0) {
+                        if (long_options[k].has_arg == required_argument && i + 1 < argc) {
+                            i++;
+                            filtered_argv[filtered_argc++] = argv[i];
+                        }
+                        break;
+                    }
+                }
+            }
+            else {
+                /* Unknown flag — extract into extra_args */
+                char *camel = kebab_to_camel(flag_name);
+                if (camel == NULL)
+                    continue;
+
+                /* Next arg is the value if it doesn't start with '-' */
+                const char *value = NULL;
+                if (i + 1 < argc && argv[i + 1][0] != '-') {
+                    value = argv[i + 1];
+                    i++; /* consume the value */
+                }
+
+                cli_add_extra_arg(options, camel, value);
+                free(camel);
+            }
+        }
+        else {
+            /* Short flag or positional — pass through */
+            if (arg[0] != '-' && !first_positional_seen) {
+                first_positional_seen = true;
+                filtered_argv[filtered_argc++] = argv[i];
+            }
+            else if (arg[0] == '-') {
+                /* Short flag — pass through, including its value if applicable */
+                filtered_argv[filtered_argc++] = argv[i];
+            }
+            else {
+                /* Extra positional arg */
+                int n = options->positional_count;
+                char **new_arr = realloc(options->positional_args, (size_t)(n + 1) * sizeof(char *));
+                if (new_arr != NULL) {
+                    new_arr[n] = strdup(arg);
+                    options->positional_args = new_arr;
+                    options->positional_count = n + 1;
+                }
+            }
+        }
+    }
+
+    filtered_argv[filtered_argc] = NULL;
+
+    /* Pass 2: Run getopt_long on filtered argv (known flags only) */
+
+    optind = 1; /* reset getopt state */
+    opterr = 1; /* re-enable error messages for truly bad syntax */
+
+    while ((opt = getopt_long(filtered_argc, filtered_argv, "e:R:m:o:fbHJvDPW::ShV", long_options, &option_index)) != -1) {
         switch (opt) {
             case 'e':
                 // Inline script execution
@@ -301,60 +480,43 @@ boolean cli_parse_arguments(int argc, char* argv[], cli_options_t* options) {
                 break;
 
             case '?':
-                // Unknown option
+                // Should not happen — unknown flags were filtered in pass 1
+                free(filtered_argv);
                 return false;
 
             default:
-                log_error(LOG_COMP_GENERAL, "Error: Unknown option");
-                return false;
+                break;
         }
     }
 
-    // Handle non-option arguments (script files or database roots)
-    if (optind < argc) {
-        const char* arg = argv[optind];
+    // Handle the first non-option argument from filtered argv
+    if (optind < filtered_argc) {
+        const char* arg = filtered_argv[optind];
 
         if (strlen(arg) > CLI_MAX_PATH_LENGTH) {
             log_error(LOG_COMP_GENERAL, "Error: Path too long (max %d characters)", CLI_MAX_PATH_LENGTH);
+            free(filtered_argv);
             return false;
         }
 
-        // Detect if this is a .root or .root7 file
         if (cli_is_root_file(arg)) {
-            // Positional argument is a database root
             if (options->system_root != NULL) {
                 log_error(LOG_COMP_GENERAL, "Error: System root already specified via --system-root");
+                free(filtered_argv);
                 return false;
             }
             options->system_root = strdup(arg);
-            if (options->system_root == NULL) {
-                log_error(LOG_COMP_GENERAL, "Error: Memory allocation failed");
-                return false;
-            }
         } else {
-            // Positional argument is a script file
             if (options->script_file != NULL) {
                 log_error(LOG_COMP_GENERAL, "Error: Multiple script files not allowed");
+                free(filtered_argv);
                 return false;
             }
             options->script_file = strdup(arg);
-            if (options->script_file == NULL) {
-                log_error(LOG_COMP_GENERAL, "Error: Memory allocation failed");
-                return false;
-            }
-        }
-
-        // Check for additional arguments
-        if (optind + 1 < argc) {
-            const char* next_arg = argv[optind + 1];
-            if (cli_is_root_file(next_arg)) {
-                log_error(LOG_COMP_GENERAL, "Error: Multiple .root files not allowed");
-            } else {
-                log_error(LOG_COMP_GENERAL, "Error: Unexpected argument '%s'", next_arg);
-            }
-            return false;
         }
     }
+
+    free(filtered_argv);
     
     // Validate the parsed options
     return cli_validate_options(options);
@@ -396,6 +558,27 @@ void cli_free_options(cli_options_t* options) {
         free(options->log_spec);
         options->log_spec = NULL;
     }
+
+    /* Free extra args linked list */
+    {
+        cli_extra_arg_t *node = options->extra_args;
+        while (node != NULL) {
+            cli_extra_arg_t *next = node->next;
+            free(node->key);
+            free(node->value);
+            free(node);
+            node = next;
+        }
+        options->extra_args = NULL;
+    }
+
+    /* Free positional args array */
+    for (int i = 0; i < options->positional_count; i++) {
+        free(options->positional_args[i]);
+    }
+    free(options->positional_args);
+    options->positional_args = NULL;
+    options->positional_count = 0;
 }
 
 /* Prints parsed options for debugging purposes. */

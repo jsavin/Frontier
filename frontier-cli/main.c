@@ -118,13 +118,7 @@ boolean cli_should_skip_startup(void) {
     return g_cli_options.skip_startup;
 }
 
-/*
- * system.environment.args key names (camelCase from CLI flags).
- *
- * Note: script_file (positional arg) is intentionally not exposed here.
- * It is not a named flag; scripts that need their own path can use
- * frontier.getProgramPath() or receive it as a parameter.
- */
+/* system.environment.args key names (camelCase from CLI flags). */
 #define str_systemRoot      BIGSTRING ("\x0a" "systemRoot")
 #define str_skipStartup     BIGSTRING ("\x0b" "skipStartup")
 #define str_execute         BIGSTRING ("\x07" "execute")
@@ -246,6 +240,55 @@ static boolean populate_environment_args (hdlhashtable htargs) {
 
     if (opts->ws_port > 0) {
         if (!langassignlongvalue (htargs, str_wsPort, (long) opts->ws_port))
+            return (false);
+    }
+
+    /* Extra (unknown) flags — these come from the second-pass parser */
+
+    {
+        const cli_extra_arg_t *node = opts->extra_args;
+
+        while (node != NULL) {
+
+            bigstring bskey;
+
+            copyctopstring (node->key, bskey);
+
+            if (node->value != NULL) {
+                if (!assign_cstring_value (htargs, bskey, node->value))
+                    return (false);
+            }
+            else {
+                if (!langassignbooleanvalue (htargs, bskey, true))
+                    return (false);
+            }
+
+            node = node->next;
+        }
+    }
+
+    /* Positional arguments — stored as _1, _2, etc. (1-based index) */
+
+    for (int i = 0; i < opts->positional_count; i++) {
+
+        bigstring bskey;
+        char ckey[16];
+
+        snprintf (ckey, sizeof (ckey), "_%d", i + 1);
+        copyctopstring (ckey, bskey);
+
+        if (!assign_cstring_value (htargs, bskey, opts->positional_args[i]))
+            return (false);
+    }
+
+    /* script_file — exposed as "scriptFile" when present */
+
+    if (opts->script_file != NULL) {
+
+        bigstring bskey;
+        copyctopstring ("scriptFile", bskey);
+
+        if (!assign_cstring_value (htargs, bskey, opts->script_file))
             return (false);
     }
 
@@ -739,6 +782,18 @@ static void print_usage(const char* program_name) {
     printf("                           can access the ODB while the server is running.\n");
     printf("  -h, --help               Show this help message\n");
     printf("  --version                Show version information\n");
+    printf("\n");
+
+    printf("Custom Arguments:\n");
+    printf("  --KEY VALUE              Any unknown flag is passed to UserTalk scripts\n");
+    printf("  --KEY                    Boolean flag (no value) is set to true\n");
+    printf("                           Access in UserTalk via system.environment.args.KEY\n");
+    printf("                           Flag names are converted to camelCase:\n");
+    printf("                             --my-flag value  ->  system.environment.args.myFlag\n");
+    printf("\n");
+    printf("  Built-in custom flags:\n");
+    printf("  --browser MODE           Set browser for sys.openUrl (default: system default)\n");
+    printf("                           MODE: \"default\" or \"agent-browser\"\n");
     printf("\n");
 
     printf("Environment Variables:\n");

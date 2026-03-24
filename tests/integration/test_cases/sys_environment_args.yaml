@@ -9,6 +9,8 @@
 # --system-root, so only those flags (plus absence checks) can be tested
 # here. The following keys are only exercisable via manual smoke tests:
 #   batch, force, output, log, migrate, hydrate, outputJson, wsPort (as present)
+# Custom/unknown args (--browser, --my-flag, etc.) are tested separately
+# in test_custom_cli_args.sh since the protocol runner can't pass them.
 # Manual: frontier-cli --verbose --system-root databases/Frontier.root -e 'system.environment.args.verbose'
 
 tests:

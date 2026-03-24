@@ -20,6 +20,13 @@
 typedef unsigned char boolean;
 #endif
 
+// Extra (unknown) CLI argument — linked list node
+typedef struct cli_extra_arg {
+    char *key;                      // camelCase key (stripped of -- prefix)
+    char *value;                    // value string, or NULL for boolean flags
+    struct cli_extra_arg *next;
+} cli_extra_arg_t;
+
 // CLI options structure
 typedef struct {
     char* script_file;          // Script file path
@@ -39,6 +46,9 @@ typedef struct {
     int ws_port;                // WebSocket server port (--ws-port), 0 = disabled
     boolean show_help;          // Show help flag
     boolean show_version;       // Show version flag
+    cli_extra_arg_t *extra_args;    // Linked list of unknown --flags
+    int positional_count;           // Number of extra positional args
+    char **positional_args;         // Array of extra positional args (after script/root)
 } cli_options_t;
 
 // Argument parsing functions

@@ -831,6 +831,9 @@ static boolean sysfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord
 			 * 3/21/26 JES: Open a URL in the default browser without shell interpolation.
 			 * Uses fork/execlp to avoid command injection vulnerabilities.
 			 * macOS: execlp("open", ...), Linux: execlp("xdg-open", ...).
+			 *
+			 * 3/23/26 JES: Respect --browser CLI arg via system.environment.args.browser.
+			 * Allowed values: "default" (system browser) or "agent-browser".
 			 */
 
 			Handle hurl;
@@ -857,6 +860,53 @@ static boolean sysfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord
 					return (false);
 				}
 
+				/*
+				 * Check --browser arg: look up system.environment.args.browser.
+				 * If "agent-browser", use that command. If "default" or absent,
+				 * fall through to the platform default (open/xdg-open).
+				 */
+				boolean use_agent_browser = false;
+
+#ifdef FRONTIER_HEADLESS
+				{
+					hdlhashnode hnode;
+					tyvaluerecord vargs;
+					bigstring bsargs = BIGSTRING ("\x04" "args");
+					bigstring bsbrowser = BIGSTRING ("\x07" "browser");
+
+					if (environmenttable != nil &&
+						hashtablelookup (environmenttable, bsargs, &vargs, &hnode)) {
+
+						if (vargs.valuetype == externalvaluetype) {
+							hdlhashtable htargs;
+							hdlexternalvariable hv = (hdlexternalvariable) vargs.data.externalvalue;
+
+							if (hv != nil && langexternalvaltotable (vargs, &htargs, hnode)) {
+
+								tyvaluerecord vbrowser;
+								hdlhashnode hbnode;
+
+								if (hashtablelookup (htargs, bsbrowser, &vbrowser, &hbnode)) {
+									if (vbrowser.valuetype == stringvaluetype && vbrowser.data.stringvalue != nil) {
+										long len = gethandlesize (vbrowser.data.stringvalue);
+										if (len == 13 && memcmp (*vbrowser.data.stringvalue, "agent-browser", 13) == 0) {
+											use_agent_browser = true;
+										}
+										else if (len != 7 || memcmp (*vbrowser.data.stringvalue, "default", 7) != 0) {
+											/* Unknown browser value — reject for security */
+											unlockhandle (hurl);
+											disposehandle (hurl);
+											langerrormessage (BIGSTRING ("\x45" "Can't open URL: --browser must be \"default\" or \"agent-browser\"."));
+											return (false);
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+#endif
+
 #if defined(__APPLE__) || defined(__linux__)
 				/*
 				Double-fork to avoid zombie processes: first child forks again
@@ -873,11 +923,16 @@ static boolean sysfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord
 					pid_t pid2 = fork ();
 
 					if (pid2 == 0) { /* grandchild — runs the command */
+						if (use_agent_browser) {
+							execlp ("agent-browser", "agent-browser", url, NULL);
+						}
+						else {
 #ifdef __APPLE__
-						execlp ("open", "open", url, NULL);
+							execlp ("open", "open", url, NULL);
 #else
-						execlp ("xdg-open", "xdg-open", url, NULL);
+							execlp ("xdg-open", "xdg-open", url, NULL);
 #endif
+						}
 						_exit (1); /* execlp failed */
 					}
 
