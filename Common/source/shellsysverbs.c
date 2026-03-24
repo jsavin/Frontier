@@ -932,7 +932,7 @@ static boolean sysfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord
 						 * All execlp calls rely on a trusted PATH, which is the
 						 * same assumption made by open(1) and xdg-open(1). */
 						if (use_agent_browser) {
-							execlp ("agent-browser", "agent-browser", url, NULL);
+							execlp ("agent-browser", "agent-browser", "open", url, NULL);
 						}
 						else {
 #ifdef __APPLE__
