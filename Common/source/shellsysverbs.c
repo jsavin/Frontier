@@ -928,7 +928,9 @@ static boolean sysfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord
 					 * explicit cleanup unnecessary and potentially unsafe. */
 					pid_t pid2 = fork ();
 
-					if (pid2 == 0) { /* grandchild — runs the command */
+					if (pid2 == 0) { /* grandchild — runs the command.
+						 * All execlp calls rely on a trusted PATH, which is the
+						 * same assumption made by open(1) and xdg-open(1). */
 						if (use_agent_browser) {
 							execlp ("agent-browser", "agent-browser", url, NULL);
 						}
