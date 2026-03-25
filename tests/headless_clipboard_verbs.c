@@ -27,13 +27,9 @@ static boolean clipboard_valueproc(short token, hdltreenode hparam1,
     (void)hparam1;
     (void)vreturned;
     switch(token) {
-        case cliv_get: {
+        case cliv_get:
             /* Headless: no clipboard, return empty string */
-            Handle h;
-            if (!newhandle(0, &h))
-                return false;
-            return setstringvalue(h, vreturned);
-        }
+            return setstringvalue(emptystring, vreturned);
         case cliv_put:
             /* Headless: no clipboard, silently discard */
             return setbooleanvalue(true, vreturned);
