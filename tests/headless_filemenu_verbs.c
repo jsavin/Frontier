@@ -21,6 +21,10 @@
 #include "frontier.h"
 #include "standard.h"
 
+#include <limits.h>   /* PATH_MAX */
+#include <stdlib.h>   /* realpath */
+#include <string.h>   /* strcmp */
+
 #include "memory.h"
 #include "strings.h"
 #include "lang.h"
@@ -150,7 +154,7 @@ static boolean filemenu_save_systemroot(void) {
     /* Flush to disk - required for changes to persist */
     if (!dbclose()) {
         log_verb_error(LOG_COMP_DB, "filemenu_save_systemroot: dbclose failed");
-        langerrormessage(BIGSTRING("\x1d" "Can't save: disk flush failed"));
+        langerrormessage(PSTRING("\x1d", "Can't save: disk flush failed"));
         return false;
     }
 
@@ -183,6 +187,46 @@ static boolean filemenu_save_systemroot(void) {
  *
  * Returns: true on success, false on failure (with error message set)
  */
+
+/*
+ * Compare two filespecs by resolving to canonical (realpath) form.
+ * Falls back to equalfilespecs if realpath fails.
+ *
+ * This handles paths that refer to the same file via different routes
+ * (symlinks, ../, etc.). It does NOT match different files that happen
+ * to share a filename — that would cause silent data misdirection.
+ */
+static boolean equalfilespecs_canonical(const ptrfilespec fs1, const ptrfilespec fs2) {
+
+    bigstring bs1, bs2;
+    char resolved1[PATH_MAX], resolved2[PATH_MAX];
+
+    /* Note: bigstring is limited to 255 bytes. Paths exceeding this are
+     * silently truncated by filespectopath. In practice, Frontier database
+     * paths are well under this limit. If paths ever approach 255 bytes,
+     * this function should be revisited to use a larger buffer. */
+    filespectopath(fs1, bs1);
+    safenullterminate(bs1);
+
+    filespectopath(fs2, bs2);
+    safenullterminate(bs2);
+
+    /* Try canonical path comparison (handles symlinks, .., etc.) */
+    if (realpath((const char *)stringbaseaddress(bs1), resolved1) != NULL &&
+        realpath((const char *)stringbaseaddress(bs2), resolved2) != NULL) {
+        return (strcmp(resolved1, resolved2) == 0);
+    }
+
+    /* Fallback: original equalfilespecs (compares FSRef + name).
+     * realpath can fail for many reasons: file not on disk, broken symlink,
+     * permission denied, path overflow, etc. Note: the portable equalfilespecs
+     * compares only the filename component, not the full path — two files with
+     * the same name in different directories would match. This is acceptable
+     * for Frontier's database naming conventions but not universally safe. */
+    log_debug(LOG_COMP_DB, "equalfilespecs_canonical: realpath unavailable, falling back to equalfilespecs");
+    return equalfilespecs(fs1, fs2);
+}
+
 static boolean filemenu_save_guestdb(hdltreenode hparam1) {
     tyfilespec fs;
     hdlodbrecord hodb;
@@ -200,7 +244,8 @@ static boolean filemenu_save_guestdb(hdltreenode hparam1) {
     log_debug(LOG_COMP_DB, "filemenu_save_guestdb: looking for database at path=%s",
               stringbaseaddress(bspath));
 
-    /* Search hodblist for the database (skip sentinel at hodblist itself) */
+    /* Search hodblist for the database. hodblist is a circular linked list
+     * with a sentinel head node; h != hodblist terminates the loop. */
     if (hodblist == nil) {
         log_verb_error(LOG_COMP_DB, "filemenu_save_guestdb: hodblist not initialized");
         langerrormessage(PSTRING("\031", "db: no databases are open"));
@@ -213,7 +258,7 @@ static boolean filemenu_save_guestdb(hdltreenode hparam1) {
             log_warn(LOG_COMP_DB, "filemenu_save_guestdb: found nil entry in hodblist");
             continue;
         }
-        if (equalfilespecs(&(**hodb).fs, &fs)) {
+        if (equalfilespecs_canonical(&(**hodb).fs, &fs)) {
             /* Found it - check if read-only */
             if ((**hodb).flreadonly) {
                 log_verb_error(LOG_COMP_DB, "filemenu_save_guestdb: database is read-only");
@@ -245,7 +290,7 @@ static boolean filemenu_save_guestdb(hdltreenode hparam1) {
 
     /* Database not found in open list */
     log_verb_error(LOG_COMP_DB, "filemenu_save_guestdb: database not found in open list");
-    lang2paramerror(dbnotopenederror, BIGSTRING("\x0dfileMenu.save"), bspath);
+    lang2paramerror(dbnotopenederror, PSTRING("\x0d", "fileMenu.save"), bspath);
     return false;
 }
 
@@ -290,7 +335,7 @@ static boolean filemenu_open(hdltreenode hparam1, tyvaluerecord *vreturned) {
     ctpositional = ctconsumed;
     setbooleanvalue(false, &vhidden);
 
-    if (!getoptionalparamvalue(hparam1, &ctconsumed, &ctpositional, BIGSTRING("\x06" "hidden"), &vhidden))
+    if (!getoptionalparamvalue(hparam1, &ctconsumed, &ctpositional, PSTRING("\x06", "hidden"), &vhidden))
         return false;
 
     flhidden = vhidden.data.flvalue;
@@ -302,8 +347,9 @@ static boolean filemenu_open(hdltreenode hparam1, tyvaluerecord *vreturned) {
     /* Check if already open in hodblist */
     if (hodblist != nil) {
         hdlodbrecord h;
-        for (h = (**hodblist).hnext; h != nil; h = (**h).hnext) {
-            if (equalfilespecs(&(**h).fs, &odbrec.fs)) {
+        for (h = (**hodblist).hnext; h != nil && h != hodblist; h = (**h).hnext) {
+            if (*h == nil) continue; /* defensive: skip corrupted entries */
+            if (equalfilespecs_canonical(&(**h).fs, &odbrec.fs)) {
                 log_debug(LOG_COMP_DB, "filemenu_open: database already open");
                 return setbooleanvalue(true, vreturned);
             }
@@ -313,7 +359,7 @@ static boolean filemenu_open(hdltreenode hparam1, tyvaluerecord *vreturned) {
     /* Open the OS file */
     if (!openfile(&odbrec.fs, &odbrec.fref, odbrec.flreadonly)) {
         log_verb_error(LOG_COMP_DB, "filemenu_open: openfile failed for %s", stringbaseaddress(bspath));
-        langerrormessage(BIGSTRING("\x1f" "Can't open: file does not exist"));
+        langerrormessage(PSTRING("\x1f", "Can't open: file does not exist"));
         return false;
     }
 
@@ -327,7 +373,7 @@ static boolean filemenu_open(hdltreenode hparam1, tyvaluerecord *vreturned) {
             odb_guard_exit(&guard);
             log_verb_error(LOG_COMP_DB, "filemenu_open: odbOpenFile failed");
             closefile(odbrec.fref);
-            langerrormessage(BIGSTRING("\x22" "Can't open: invalid database file"));
+            langerrormessage(PSTRING("\x21", "Can't open: invalid database file"));
             return false;
         }
 
@@ -566,7 +612,7 @@ static boolean filemenu_saveas(hdltreenode hparam1, tyvaluerecord *vreturned) {
     ctparams = langgetparamcount(hparam1);
 
     if (ctparams != 1) {
-        langerrormessage(BIGSTRING("\x33" "fileMenu.saveAs requires exactly 1 parameter (path)"));
+        langerrormessage(PSTRING("\x33", "fileMenu.saveAs requires exactly 1 parameter (path)"));
         return false;
     }
 
@@ -596,7 +642,7 @@ static boolean filemenu_saveas(hdltreenode hparam1, tyvaluerecord *vreturned) {
 
             /* Find the guest DB in hodblist */
             if (hodblist == nil) {
-                langerrormessage(BIGSTRING("\x1d" "Can't save: no databases open"));
+                langerrormessage(PSTRING("\x1d", "Can't save: no databases open"));
                 return false;
             }
 
@@ -611,7 +657,7 @@ static boolean filemenu_saveas(hdltreenode hparam1, tyvaluerecord *vreturned) {
             }
 
             if (!fl_is_guest) {
-                langerrormessage(BIGSTRING("\x25" "Can't save: target database not found"));
+                langerrormessage(PSTRING("\x25", "Can't save: target database not found"));
                 return false;
             }
         }
@@ -644,7 +690,7 @@ static boolean filemenu_saveas(hdltreenode hparam1, tyvaluerecord *vreturned) {
 
             /* Get source file path from the database file number */
             if (databasedata == nil) {
-                langerrormessage(BIGSTRING("\x1c" "Can't save: no database open"));
+                langerrormessage(PSTRING("\x1c", "Can't save: no database open"));
                 return false;
             }
 
@@ -654,7 +700,7 @@ static boolean filemenu_saveas(hdltreenode hparam1, tyvaluerecord *vreturned) {
 
                 if (srcpath == nil) {
                     log_verb_error(LOG_COMP_DB, "filemenu_saveas: can't resolve system root file path");
-                    langerrormessage(BIGSTRING("\x27" "Can't save: can't find source file path"));
+                    langerrormessage(PSTRING("\x27", "Can't save: can't find source file path"));
                     return false;
                 }
 
@@ -684,7 +730,7 @@ static boolean filemenu_saveas(hdltreenode hparam1, tyvaluerecord *vreturned) {
 
         if (fin == NULL) {
             log_verb_error(LOG_COMP_DB, "filemenu_saveas: can't open source %s", stringbaseaddress(bssource));
-            langerrormessage(BIGSTRING("\x22" "Can't save: can't read source file"));
+            langerrormessage(PSTRING("\x22", "Can't save: can't read source file"));
             return false;
         }
 
@@ -693,7 +739,7 @@ static boolean filemenu_saveas(hdltreenode hparam1, tyvaluerecord *vreturned) {
         if (fout == NULL) {
             fclose(fin);
             log_verb_error(LOG_COMP_DB, "filemenu_saveas: can't create destination %s", stringbaseaddress(bsdest));
-            langerrormessage(BIGSTRING("\x21" "Can't save: can't create new file"));
+            langerrormessage(PSTRING("\x21", "Can't save: can't create new file"));
             return false;
         }
 
@@ -703,7 +749,7 @@ static boolean filemenu_saveas(hdltreenode hparam1, tyvaluerecord *vreturned) {
                 fclose(fout);
                 remove(stringbaseaddress(bsdest));
                 log_verb_error(LOG_COMP_DB, "filemenu_saveas: write error");
-                langerrormessage(BIGSTRING("\x1c" "Can't save: file write error"));
+                langerrormessage(PSTRING("\x1c", "Can't save: file write error"));
                 return false;
             }
         }
@@ -713,7 +759,7 @@ static boolean filemenu_saveas(hdltreenode hparam1, tyvaluerecord *vreturned) {
             fclose(fout);
             remove(stringbaseaddress(bsdest));
             log_verb_error(LOG_COMP_DB, "filemenu_saveas: read error");
-            langerrormessage(BIGSTRING("\x1b" "Can't save: file read error"));
+            langerrormessage(PSTRING("\x1b", "Can't save: file read error"));
             return false;
         }
 
@@ -768,7 +814,7 @@ static boolean filemenu_new(hdltreenode hparam1, tyvaluerecord *vreturned) {
     ctpositional = ctconsumed;
     setbooleanvalue(false, &vhidden);
 
-    if (!getoptionalparamvalue(hparam1, &ctconsumed, &ctpositional, BIGSTRING("\x06" "hidden"), &vhidden))
+    if (!getoptionalparamvalue(hparam1, &ctconsumed, &ctpositional, PSTRING("\x06", "hidden"), &vhidden))
         return false;
 
     flhidden = vhidden.data.flvalue;
@@ -784,7 +830,7 @@ static boolean filemenu_new(hdltreenode hparam1, tyvaluerecord *vreturned) {
         boolean flfolder = false;
         if (fileexists(&fs, &flfolder)) {
             log_verb_error(LOG_COMP_DB, "filemenu_new: file already exists at %s", stringbaseaddress(bspath));
-            langerrormessage(BIGSTRING("\x27" "Can't create: file already exists at path"));
+            langerrormessage(PSTRING("\x29", "Can't create: file already exists at path"));
             return false;
         }
     }
@@ -792,7 +838,7 @@ static boolean filemenu_new(hdltreenode hparam1, tyvaluerecord *vreturned) {
     /* Create the new file */
     if (!opennewfile(&fs, 'LAND', 'ROOT', &fnum)) {
         log_verb_error(LOG_COMP_DB, "filemenu_new: opennewfile failed for %s", stringbaseaddress(bspath));
-        langerrormessage(BIGSTRING("\x24" "Can't create: failed to create new file"));
+        langerrormessage(PSTRING("\x27", "Can't create: failed to create new file"));
         return false;
     }
 
@@ -808,7 +854,7 @@ static boolean filemenu_new(hdltreenode hparam1, tyvaluerecord *vreturned) {
         if (!fl) {
             log_verb_error(LOG_COMP_DB, "filemenu_new: odbNewFile failed");
             closefile(fnum);
-            langerrormessage(BIGSTRING("\x29" "Can't create: failed to initialize database"));
+            langerrormessage(PSTRING("\x2b", "Can't create: failed to initialize database"));
             return false;
         }
     }
@@ -863,7 +909,7 @@ static boolean filemenu_valueproc(short token, hdltreenode hparam1,
                 short ctparams = langgetparamcount(hparam1);
 
                 if (ctparams > 1) {
-                    langerrormessage(BIGSTRING("\x2c" "fileMenu.save requires 0 or 1 parameters (path)"));
+                    langerrormessage(PSTRING("\x2f", "fileMenu.save requires 0 or 1 parameters (path)"));
                     return false;
                 }
 
@@ -887,15 +933,15 @@ static boolean filemenu_valueproc(short token, hdltreenode hparam1,
             return filemenu_saveas(hparam1, vreturned);
         case filv_revert:
             /* Verb #6: filemenu.revert - not yet implemented */
-            langerrormessage(BIGSTRING("\x0fnot implemented"));
+            langerrormessage(PSTRING("\x0f", "not implemented"));
             return false;
         case filv_print:
             /* Verb #7: filemenu.print - not yet implemented */
-            langerrormessage(BIGSTRING("\x0fnot implemented"));
+            langerrormessage(PSTRING("\x0f", "not implemented"));
             return false;
         case filv_quit:
             /* Verb #8: filemenu.quit - not yet implemented */
-            langerrormessage(BIGSTRING("\x0fnot implemented"));
+            langerrormessage(PSTRING("\x0f", "not implemented"));
             return false;
         case filv_saveas:
             return filemenu_saveas(hparam1, vreturned);

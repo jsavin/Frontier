@@ -304,9 +304,8 @@ static boolean window_valueproc(short token, hdltreenode hparam1,
             return setbooleanvalue(true, vreturned);
         }
         case winv_close:
-            /* Verb: window.close - not yet implemented */
-            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
-            return false;
+            /* Headless: no windows to close, silent no-op. */
+            return setbooleanvalue(true, vreturned);
         case winv_update:
             /* window.update - no-op in headless mode (no GUI to update) */
             setbooleanvalue(true, vreturned);
@@ -417,9 +416,8 @@ static boolean window_valueproc(short token, hdltreenode hparam1,
                 copystring(PSTRING("\104", "Can't use window verbs because GUI is not available in headless mode"), bserror);
             return false;
         case winv_quickscript:
-            /* Verb: window.quickscript - not yet implemented */
-            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
-            return false;
+            /* Headless: no QuickScript window, silent no-op. */
+            return setbooleanvalue(true, vreturned);
         case winv_ismodified:
             /* Verb: window.ismodified - not yet implemented */
             if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
