@@ -43,71 +43,28 @@ static boolean editmenu_valueproc(short token, hdltreenode hparam1,
                                      bigstring bserror) {
     (void)hparam1;
     (void)vreturned;
+    /* Headless: all edit menu verbs are GUI no-ops. Return true
+     * (operation silently skipped) so scripts like userland.cleanRoot
+     * that use clipboard/edit operations don't error out. */
+    (void)bserror;
     switch(token) {
         case ediv_undo:
-            /* Verb #0: editmenu.undo - not yet implemented */
-            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
-            return false;
         case ediv_cut:
-            /* Verb #1: editmenu.cut - not yet implemented */
-            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
-            return false;
         case ediv_copy:
-            /* Verb #2: editmenu.copy - not yet implemented */
-            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
-            return false;
         case ediv_paste:
-            /* Verb #3: editmenu.paste - not yet implemented */
-            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
-            return false;
         case ediv_clear:
-            /* Verb #4: editmenu.clear - not yet implemented */
-            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
-            return false;
         case ediv_selectall:
-            /* Verb #5: editmenu.selectall - not yet implemented */
-            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
-            return false;
         case ediv_getfont:
-            /* Verb #6: editmenu.getfont - not yet implemented */
-            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
-            return false;
         case ediv_getfontsize:
-            /* Verb #7: editmenu.getfontsize - not yet implemented */
-            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
-            return false;
         case ediv_setfont:
-            /* Verb #8: editmenu.setfont - not yet implemented */
-            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
-            return false;
         case ediv_setfontsize:
-            /* Verb #9: editmenu.setfontsize - not yet implemented */
-            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
-            return false;
         case ediv_plaintext:
-            /* Verb #10: editmenu.plaintext - not yet implemented */
-            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
-            return false;
         case ediv_setbold:
-            /* Verb #11: editmenu.setbold - not yet implemented */
-            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
-            return false;
         case ediv_setitalic:
-            /* Verb #12: editmenu.setitalic - not yet implemented */
-            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
-            return false;
         case ediv_setunderline:
-            /* Verb #13: editmenu.setunderline - not yet implemented */
-            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
-            return false;
         case ediv_setoutline:
-            /* Verb #14: editmenu.setoutline - not yet implemented */
-            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
-            return false;
         case ediv_setshadow:
-            /* Verb #15: editmenu.setshadow - not yet implemented */
-            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
-            return false;
+            return setbooleanvalue(true, vreturned);
         default:
             return false;
     }

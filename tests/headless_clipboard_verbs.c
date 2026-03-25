@@ -31,13 +31,11 @@ static boolean clipboard_valueproc(short token, hdltreenode hparam1,
     (void)vreturned;
     switch(token) {
         case cliv_get:
-            /* Verb #0: clipboard.get - not yet implemented */
-            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
-            return false;
+            /* Headless: no clipboard, return empty string */
+            return setbooleanvalue(false, vreturned);
         case cliv_put:
-            /* Verb #1: clipboard.put - not yet implemented */
-            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
-            return false;
+            /* Headless: no clipboard, silently discard */
+            return setbooleanvalue(true, vreturned);
         default:
             return false;
     }
