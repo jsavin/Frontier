@@ -304,8 +304,8 @@ static boolean window_valueproc(short token, hdltreenode hparam1,
             return setbooleanvalue(true, vreturned);
         }
         case winv_close:
-            /* Headless: no windows to close, return false (no window closed). */
-            return setbooleanvalue(false, vreturned);
+            /* Headless: no windows to close, silent no-op. */
+            return setbooleanvalue(true, vreturned);
         case winv_update:
             /* window.update - no-op in headless mode (no GUI to update) */
             setbooleanvalue(true, vreturned);

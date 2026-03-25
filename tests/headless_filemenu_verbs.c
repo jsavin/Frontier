@@ -213,7 +213,9 @@ static boolean equalfilespecs_canonical(const ptrfilespec fs1, const ptrfilespec
         return (strcmp(resolved1, resolved2) == 0);
     }
 
-    /* Fallback: original equalfilespecs (compares FSRef + name) */
+    /* Fallback: original equalfilespecs (compares FSRef + name).
+     * This path is hit when realpath fails (file doesn't exist on disk). */
+    log_debug(LOG_COMP_DB, "equalfilespecs_canonical: realpath unavailable, falling back to equalfilespecs");
     return equalfilespecs(fs1, fs2);
 }
 
@@ -336,7 +338,8 @@ static boolean filemenu_open(hdltreenode hparam1, tyvaluerecord *vreturned) {
     /* Check if already open in hodblist */
     if (hodblist != nil) {
         hdlodbrecord h;
-        for (h = (**hodblist).hnext; h != nil; h = (**h).hnext) {
+        for (h = (**hodblist).hnext; h != nil && h != hodblist; h = (**h).hnext) {
+            if (*h == nil) continue; /* defensive: skip corrupted entries */
             if (equalfilespecs_canonical(&(**h).fs, &odbrec.fs)) {
                 log_debug(LOG_COMP_DB, "filemenu_open: database already open");
                 return setbooleanvalue(true, vreturned);
