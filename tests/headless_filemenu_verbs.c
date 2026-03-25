@@ -201,6 +201,10 @@ static boolean equalfilespecs_canonical(const ptrfilespec fs1, const ptrfilespec
     bigstring bs1, bs2;
     char resolved1[PATH_MAX], resolved2[PATH_MAX];
 
+    /* Note: bigstring is limited to 255 bytes. Paths exceeding this are
+     * silently truncated by filespectopath. In practice, Frontier database
+     * paths are well under this limit. If paths ever approach 255 bytes,
+     * this function should be revisited to use a larger buffer. */
     filespectopath(fs1, bs1);
     safenullterminate(bs1);
 
