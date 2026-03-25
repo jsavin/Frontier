@@ -201,19 +201,19 @@ static boolean window_valueproc(short token, hdltreenode hparam1,
                     copyctopstring(inputpath, bsinputpath);
 
                     if (saved_errno == ENOENT) {
-                        copystring(BIGSTRING("\x14" "Can't check window \""), bserrmsg);
+                        copystring(PSTRING("\x14", "Can't check window \""), bserrmsg);
                         pushstring(bsinputpath, bserrmsg);
-                        pushstring(BIGSTRING("\x16" "\": file does not exist"), bserrmsg);
+                        pushstring(PSTRING("\x16", "\": file does not exist"), bserrmsg);
                     }
                     else if (saved_errno == EACCES) {
-                        copystring(BIGSTRING("\x14" "Can't check window \""), bserrmsg);
+                        copystring(PSTRING("\x14", "Can't check window \""), bserrmsg);
                         pushstring(bsinputpath, bserrmsg);
-                        pushstring(BIGSTRING("\x14" "\": permission denied"), bserrmsg);
+                        pushstring(PSTRING("\x14", "\": permission denied"), bserrmsg);
                     }
                     else {
-                        copystring(BIGSTRING("\x14" "Can't check window \""), bserrmsg);
+                        copystring(PSTRING("\x14", "Can't check window \""), bserrmsg);
                         pushstring(bsinputpath, bserrmsg);
-                        pushstring(BIGSTRING("\x19" "\": path resolution failed"), bserrmsg);
+                        pushstring(PSTRING("\x19", "\": path resolution failed"), bserrmsg);
                     }
 
                     langerrormessage(bserrmsg);

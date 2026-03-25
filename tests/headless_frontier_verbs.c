@@ -275,9 +275,9 @@ boolean frontierversion(tyvaluerecord *v) {
  */
 boolean sysos(tyvaluerecord *v) {
     #ifdef __APPLE__
-    return setstringvalue(BIGSTRING("\x05" "MacOS"), v);
+    return setstringvalue(PSTRING("\x05", "MacOS"), v);
     #else
-    return setstringvalue(BIGSTRING("\x05" "Linux"), v);
+    return setstringvalue(PSTRING("\x05", "Linux"), v);
     #endif
 }
 

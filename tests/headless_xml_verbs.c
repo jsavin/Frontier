@@ -68,19 +68,19 @@ static boolean xmldecodeentities_headless(Handle htext) {
     */
 
     /* Decode &quot; -> " */
-    if (!replaceallinhandle(BIGSTRING("\x06" "&quot;"), BIGSTRING("\x01" "\""), htext))
+    if (!replaceallinhandle(PSTRING("\x06", "&quot;"), PSTRING("\x01", "\""), htext))
         return false;
 
     /* Decode &lt; -> < */
-    if (!replaceallinhandle(BIGSTRING("\x04" "&lt;"), BIGSTRING("\x01" "<"), htext))
+    if (!replaceallinhandle(PSTRING("\x04", "&lt;"), PSTRING("\x01", "<"), htext))
         return false;
 
     /* Decode &gt; -> > */
-    if (!replaceallinhandle(BIGSTRING("\x04" "&gt;"), BIGSTRING("\x01" ">"), htext))
+    if (!replaceallinhandle(PSTRING("\x04", "&gt;"), PSTRING("\x01", ">"), htext))
         return false;
 
     /* Decode &amp; -> & (MUST be last to avoid partial decoding) */
-    if (!replaceallinhandle(BIGSTRING("\x05" "&amp;"), BIGSTRING("\x01" "&"), htext))
+    if (!replaceallinhandle(PSTRING("\x05", "&amp;"), PSTRING("\x01", "&"), htext))
         return false;
 
     return true;
@@ -566,8 +566,8 @@ static boolean xml_valueproc(short token, hdltreenode hparam1,
             /* If value is a table, try to get /pcdata or /contents (GUI: langxml.c:3305-3307) */
             if (langexternalvaltotable(val, &ht, hnode)) {
                 log_trace(LOG_COMP_LANG, "xml.getvalue: value is table, checking for /pcdata or /contents");
-                if (!hashtablelookup(ht, BIGSTRING("\x07/pcdata"), &val, &hnode))
-                    hashtablelookup(ht, BIGSTRING("\x09/contents"), &val, &hnode);
+                if (!hashtablelookup(ht, PSTRING("\x07", "/pcdata"), &val, &hnode))
+                    hashtablelookup(ht, PSTRING("\x09", "/contents"), &val, &hnode);
             }
 
             log_trace(LOG_COMP_LANG, "xml.getvalue: exit (success)");
