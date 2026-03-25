@@ -46,14 +46,22 @@ static boolean editmenu_valueproc(short token, hdltreenode hparam1,
      * that use clipboard/edit operations don't error out. */
     (void)bserror;
     switch(token) {
+        case ediv_getfont: {
+            /* Headless: return empty string (callers expect font name) */
+            Handle h;
+            if (!newhandle(0, &h))
+                return false;
+            return setstringvalue(h, vreturned);
+        }
+        case ediv_getfontsize:
+            /* Headless: return 0 (callers expect numeric size) */
+            return setlongvalue(0, vreturned);
         case ediv_undo:
         case ediv_cut:
         case ediv_copy:
         case ediv_paste:
         case ediv_clear:
         case ediv_selectall:
-        case ediv_getfont:
-        case ediv_getfontsize:
         case ediv_setfont:
         case ediv_setfontsize:
         case ediv_plaintext:

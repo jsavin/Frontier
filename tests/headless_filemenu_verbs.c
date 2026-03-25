@@ -23,7 +23,7 @@
 
 #include <limits.h>   /* PATH_MAX */
 #include <stdlib.h>   /* realpath */
-#include <string.h>   /* strcmp, strrchr */
+#include <string.h>   /* strcmp */
 
 #include "memory.h"
 #include "strings.h"

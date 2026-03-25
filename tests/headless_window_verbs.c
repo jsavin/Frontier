@@ -416,8 +416,8 @@ static boolean window_valueproc(short token, hdltreenode hparam1,
                 copystring(PSTRING("\104", "Can't use window verbs because GUI is not available in headless mode"), bserror);
             return false;
         case winv_quickscript:
-            /* Headless: QuickScript window can't be opened, return false (no error). */
-            return setbooleanvalue(false, vreturned);
+            /* Headless: no QuickScript window, silent no-op. */
+            return setbooleanvalue(true, vreturned);
         case winv_ismodified:
             /* Verb: window.ismodified - not yet implemented */
             if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
