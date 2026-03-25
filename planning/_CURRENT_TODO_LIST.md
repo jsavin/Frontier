@@ -1,36 +1,49 @@
 # Frontier - Current TODO List
 
-Status: In Progress (Updated 2026-03-08)
+Status: In Progress (Updated 2026-03-25)
 
 ## Recently Completed Milestones
 
-### EFP Fast-Path Regression Fix - MERGED (Mar 8)
-**Resolution**: PR #469 merged
-- Removed stale headless EFP fast-path in `langgethandlercode()` that violated verb resolution search order
-- The fast-path checked `efptable` BEFORE `system.paths`, blocking database scripts under EFP-named tables
-- Broke `inetd.startOne`, `inetd.isDaemonRunning`, and other UserTalk scripts under inetd/tcp/file tables
-- Added 7 regression tests covering inetd + tcp namespaces (positive and negative cases)
+### CLI-to-UserTalk Argument Bridge - MERGED (Mar 23)
+**Resolution**: PRs #488, #489 merged
+- Any CLI flag accessible from UserTalk via `system.environment.args` (callback pattern, no Common->CLI dependency)
+- Two-pass argument parser with kebab-to-camelCase conversion for user-defined flags
+- `--browser agent-browser` routes `sys.openUrl` to AI browser agent
 
-### Integration Test Reliability — 19 Fixes + Protocol Resilience - MERGED (Mar 8)
-**Resolution**: PR #468 merged
-- Fixed 19 consistently-failing integration tests
-- Corrupt handle guards for pack-on-exit (`kMinValidPointer`, `hashpackguard_corrupt_handle()`)
-- Protocol executor: restart-on-failure, per-process fallback retry, stderr capture
-- Hardened `getaddressparts` NULL guards, error context in `resolve_indexed_node`
+### sys.openUrl Kernel Verb - MERGED (Mar 23)
+**Resolution**: PR #490 merged
+- Registered `sys.openUrl` as kernel verb in headless build (previously glue script only)
 
-### CLI State Persistence - MERGED (Mar 1-2)
-**Resolution**: PRs #462, #464 merged
-- Save system root database on CLI exit for state persistence
-- Always save on exit (dbdirtymask was unreliable)
+### Clean Distribution Workflow - MERGED (Mar 24-25)
+**Resolution**: PRs #491, #493 merged
+- `userland.cleanRoot` works in headless mode with `realpath`-based path comparison
+- Virgin.root cleaned: removed hardcoded `user.databases` paths, GUI verb no-ops added
+- `make clean-root` target reproduces pre-release cleanup in one command
 
-### GIL & Threading Fixes - MERGED (Mar 1-4)
-**Resolution**: PRs #463, #467 merged
-- Resolve GIL deadlock preventing HTTP callback dispatch
-- Enable GIL yielding in blocking REPL mode
+### BIGSTRING-to-PSTRING Audit - MERGED (Mar 24)
+**Resolution**: PR #492 merged
+- 37 hex-prefix literals converted to PSTRING with compile-time length validation
+- Caught 5+3 pre-existing wrong length bytes in verb registration names
 
-### File Path Fix - MERGED (Mar 2)
-**Resolution**: PR #466 merged
-- Handle trailing path separators in `portable_filefrompath`
+### Headless Startup Modernization - MERGED (Mar 23)
+**Resolution**: PR #486 merged
+- Modernized startup flow for headless/CLI compatibility
+- Fixed `window.update` try-block placement, `--output v7` format detection
+
+### ODB Script Editing Workflow - MERGED (Mar 24)
+- `script.newScriptObject` and `op.newOutlineObject` trim whitespace/normalize line endings
+- Fixed trailing newline and double-indented comments in glue scripts
+- Established Virgin.root as source-of-truth, documented indentation rules
+
+### Integration Test Expansion - MERGED (Mar 19-20)
+**Resolution**: PRs #481, #483-#485 merged
+- +66 new integration tests: protocol ODB, persistence/save, webserver HTTP, error recovery, concurrency
+
+### HTTP Server & mainResponder End-to-End - MERGED (Mar 13)
+**Resolution**: PRs #462-#480 merged
+- Full HTTP request pipeline working: TCP accept -> GIL callback -> mainResponder.respond -> serve page
+- 10 distinct bugs fixed across GIL, persistence, verb resolution, thread context, error propagation
+- 19 integration test failures resolved via workspace isolation
 
 ### databasedata Global Elimination — Phases 1-10 - COMPLETE (Feb 18-27)
 **Resolution**: PRs #447-#461 merged
@@ -201,33 +214,32 @@ These require design/planning before implementation can proceed.
 
 Reference: `reports/coverage/verb-binding/2026-01-27-01.md`
 
-### Integration Tests: 1,920 total — 0 failures
-- 1,713 passed, 189 skipped, **0 failed** (8-worker parallel batch mode, ~37s)
+### Integration Tests: 2,017 total — 0 failures
+- 1,827 passed, 190 skipped, **0 failed** (8-worker parallel batch mode, ~37s)
+- +66 tests added Mar 13-25 (PRs #481, #483-#485): protocol ODB, persistence, webserver, error recovery, concurrency
 - Fixed from 755 failures (single-worker) via PRs #428-#433, #468
-- Root causes: `langerrordisable` leak, per-worker DB isolation, corrupt handle guards, protocol executor resilience
 
 ---
 
 ## Next Milestones
 
-### 1. Startup Flow Stabilization — mainResponder & Manila (IMMEDIATE NEXT)
-**Status**: Startup bootstrap partially stabilized; first-run flow not yet verified end-to-end
-**Goal**: Full first-run experience from clean dist build
-**Key deliverables**:
-- StartupTasks.root loads and patches
-- `finishInstall()` succeeds
-- mainResponder.root installs
-- manila.root installs
-- HTTP server starts
-- Browser opens setupFrontier page
+### 1. Integration Test Gap Investigation (IMMEDIATE)
+**Status**: 66 pre-existing test failures identified during test gap analysis
+**Goal**: Triage and prioritize the 66 failing tests
+- These are tests for functionality that was previously untested or known-broken
+- Need investigation to determine root causes vs expected limitations
 
-**Approach**: Diagnostic-first — run from dist, identify failures, fix iteratively
-**Reference**: [`planning/phase4/STARTUP_STABILIZATION_PLAN.md`](planning/phase4/STARTUP_STABILIZATION_PLAN.md)
+### 2. CI/CD Integration for clean-root (IMMEDIATE)
+**Status**: `make clean-root` target exists; not yet in automated pipeline
+**Goal**: Integrate pre-release cleanup into CI/CD
+- Add clean-root step to pre-release build workflow
+- Verify clean Virgin.root is used in distribution builds
 
-### 2. Guest Database Save Verification (IMMEDIATE)
-**Goal**: Verify save works end-to-end for system root AND guest databases
-- Confirm databasedata elimination (Phases 1-10) hasn't broken any save paths
-- Test cycle: open guest DB -> modify -> save -> reopen -> verify changes persist
+### 3. Manila Guest Database Testing (SHORT-TERM)
+**Goal**: Full Manila installation and serving end-to-end
+- Install Manila guest database via startup flow
+- Verify HTTP serving through mainResponder
+- Test guest database save round-trip
 
 ### 3. GUI Application Prototype (After startup works)
 **Status**: Planning complete - ready for implementation
@@ -464,10 +476,10 @@ See planning/_STATUS_ARCHIVE.md for:
 ## Notes
 
 ### Strategic Context
-- **Current focus**: Startup flow stabilization (mainResponder/Manila), guest DB save verification, GUI prototype
+- **Current focus**: CLI extensibility, distribution workflow, test gap coverage, Manila testing
 - **Planning complete**: Full GUI specs documented (architecture, protocol, all editors)
 - **Verb coverage**: 68% (482/710) - all core processors complete
-- **Test health**: 1,920 integration tests — **0 failures** (8-worker parallel, ~37s)
+- **Test health**: 2,017 integration tests — **0 failures** (8-worker parallel, ~37s)
 - **Latest release**: v1.0.0-alpha.7 (February 16, 2026)
 - **Compiler warnings**: Zero (fully eliminated)
 
@@ -478,6 +490,9 @@ See planning/_STATUS_ARCHIVE.md for:
 - **Dist Mode**: STABLE - Multi-run stability, cross-database assignment fixed
 - **Menu System**: STABILIZED - Migration, headless access, value copying, integration tests
 - **GUI Planning**: COMPLETE - Full specs ready for implementation
+- **CLI Extensibility**: WORKING - CLI args bridge to UserTalk, --browser flag, two-pass parser
+- **Distribution**: IMPROVED - Clean Virgin.root, `make clean-root`, PSTRING audit
+- **ODB Editing**: ESTABLISHED - Protocol-based workflow, whitespace normalization, documented
 - **Webserver**: WORKING - Full web application layer functional
 - **REPL**: TRANSFORMED - Persistent variables, navigation, event loop
 - **TCP Networking**: 100% COMPLETE (23/23 verbs)

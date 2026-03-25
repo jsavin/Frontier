@@ -1,28 +1,28 @@
 # Planning Index
 
-**Status**: Phase 4 Active (TCP Phase 2 Next, P0a Queued)
-**Last Updated**: 2026-01-25
+**Status**: Phase 4 Active — CLI Extensibility, Distribution Workflow, Test Coverage
+**Last Updated**: 2026-03-25
 **Entry Point**: This document provides navigation to all active planning docs.
 
 **Keep This Synced With**: `_CURRENT_STATUS.md` and `_CURRENT_TODO_LIST.md`
 
-## Current Focus (Jan 2026)
+## Current Focus (Mar 2026)
 
-**TCP Networking Phase 2** (🚀 STARTING)
-- Phase 1A/1B/3 complete (13 verbs implemented, PRs #327, #329, #330)
-- Phase 2: Buffered I/O (4 verbs) - HTTP client milestone
-- Reference: `planning/phase4/networking/INDEX.md`
+**CLI Extensibility & Distribution** (ACTIVE)
+- CLI arguments bridge to UserTalk via `system.environment.args` (PRs #488, #489)
+- `--browser` flag for AI-driven web testing via `sys.openUrl` (PR #490)
+- Clean Virgin.root and `make clean-root` target (PRs #491, #493)
+- PSTRING compile-time validation (PR #492)
+- ODB script editing workflow via protocol
 
-**Phase 4 Global State Elimination** (⏸️ QUEUED for weeks 7-9)
-- Thread registry complete (PR #317)
-- Deterministic thread testing foundation complete (PR #318)
-- P0a (Hash table context migration) queued after TCP Phase 2
+**HTTP Server & mainResponder** (WORKING)
+- Full HTTP request pipeline operational (PRs #462-#480)
+- TCP accept -> GIL callback -> mainResponder.respond -> serve page
+
+**Phase 4 Global State Elimination** (QUEUED)
+- databasedata elimination complete (Phases 1-10)
+- P0a (Hash table context migration) queued
 - Reference: `planning/phase4/INDEX.md`
-
-**Database & Path Resolution** (✅ COMPLETE)
-- System.paths migration fixes (PR #336)
-- Path entry name matching fixes (PR #337)
-- Builtins priority fixes (PR #342)
 
 Purpose
 - Provide a single entry point to the phase directories and the most relevant planning documents.
@@ -160,25 +160,21 @@ The archive holds completed/retired material for historical reference.
 
 ## Next Steps (High Level)
 
-### Immediate (Weeks 5-6)
-1. **TCP Networking Phase 2**: Buffered I/O (4 verbs) → HTTP client milestone
-   - Reference: `planning/phase4/networking/IMPLEMENTATION_PLAN.md`
+### Immediate
+1. **Integration Test Gap Investigation**: Triage 66 pre-existing test failures identified during gap analysis
+2. **CI/CD for clean-root**: Integrate `make clean-root` into pre-release pipeline
+3. **Manila Guest Database Testing**: Full installation and serving end-to-end
 
-### Short-Term (Weeks 7-9)
-2. **Phase 4 P0a**: Hash Table Context Migration (launch blocking)
-   - Migrate hash table operations from global state to thread-local
+### Short-Term
+4. **GUI Application Prototype**: Protocol layer + table browser (planning complete)
+   - Reference: `planning/gui/ARCHITECTURE.md`, `planning/gui/PROTOCOL.md`
+
+### Medium-Term
+5. **Phase 4 P0a**: Hash Table Context Migration (launch blocking)
    - Reference: `planning/phase4/p0a-critical-thread-safety/README.md`
 
-### Medium-Term (Weeks 10-12)
-3. **Phase 4 P0b**: Continue Global State Elimination
-   - Outline context migration
-   - External object processing audit
-   - Reference: `planning/phase4/INDEX.md`
-
 ### Ongoing
-4. **Verb Implementation Coverage**: Continue porting verbs to headless runtime
-   - Current: 37% (264/710 verbs)
-   - Priority: Lang verbs, string verbs, table verbs
+6. **Verb Implementation Coverage**: 68% (482/710 verbs) — all core processors complete
    - Reference: `planning/phase3/verb_implementations/`
 
 ## Navigation Tips

@@ -1,41 +1,59 @@
 # Current Status
 
-Last Updated: 2026-03-08
+Last Updated: 2026-03-25
 
-## Current Focus: Startup Flow Stabilization -- mainResponder, Manila, Web Setup
+## Current Focus: CLI Extensibility, Distribution Workflow & Test Gap Coverage
 
-**Status**: Integration tests at **0 failures** (1,920 tests, 8-worker parallel execution in ~37s). 302 unit tests. databasedata global elimination complete (Phases 1-10). Startup bootstrap partially stabilized. System root saves on exit. Webserver startup attempted but blocked by inetd.startOne script dependencies.
+**Status**: Integration tests at **0 failures** (2,017 tests, 8-worker parallel execution in ~37s). 302 unit tests. CLI arguments bridge to UserTalk via `system.environment.args`. Clean Virgin.root with `make clean-root` target. PSTRING compile-time validation active. ODB script editing workflow established via protocol.
 
 **Latest Release**: **v1.0.0-alpha.7** (February 16, 2026)
 
 **Verb Coverage**: **68% (482/710 verbs)** - TCP at 100%, all core processors complete. fileMenu verbs: 7/10 implemented (open, close, closeall, save, saveAs, saveCopy, new).
 
-## Recent Achievements (February 28 - March 8, 2026)
+## Recent Achievements (March 13-25, 2026)
 
-### EFP Fast-Path Regression Fix (PR #469) - MERGED
-- Removed stale headless EFP fast-path in `langgethandlercode()` that checked `efptable` BEFORE `system.paths` for dotted verbs, violating the documented search order
-- The fast-path (added Oct 2025 as a "temporary shim") returned success with `hnode=nil` for UserTalk scripts under EFP-named tables, blocking database fallback
-- Broke `inetd.startOne`, `inetd.isDaemonRunning`, and other UserTalk scripts under EFP-named tables
-- Added 7 regression tests (inetd + tcp namespaces, positive and negative cases)
+### CLI-to-UserTalk Argument Bridge (PRs #488, #489) - MERGED
+- Any CLI flag now accessible from UserTalk scripts via `system.environment.args`
+- Callback pattern preserves layering (Common does not depend on CLI)
+- Two-pass argument parser: known flags separated from user-defined passthrough args
+- `--browser agent-browser` routes `sys.openUrl` to AI browser agent for web testing
+
+### sys.openUrl Kernel Verb (PR #490) - MERGED
+- Registered `sys.openUrl` as kernel verb in headless build (previously only a glue script)
+- Available before startup script runs for early-boot browser automation
+
+### Clean Distribution Workflow (PRs #491, #493) - MERGED
+- `userland.cleanRoot` works in headless mode with `realpath`-based path comparison
+- Discovered and fixed: Virgin.root polluted with `user.databases` containing hardcoded absolute paths
+- GUI verb no-ops for headless compatibility (clipboard, editmenu, window.quickScript, window.close)
+- `make clean-root` target reproduces pre-release cleanup in one command
+
+### BIGSTRING-to-PSTRING Audit (PR #492) - MERGED
+- 37 hex-prefix string literals converted to PSTRING with compile-time length validation
+- Caught 5 pre-existing wrong length bytes plus 3 additional during review
+
+### Headless Startup Modernization (PR #486) - MERGED
+- Modernized startup script flow for headless/CLI compatibility
+- Moved `window.update` calls inside try blocks, fixed `--output v7` format detection
+
+### ODB Script Editing Workflow - MERGED
+- `script.newScriptObject` and `op.newOutlineObject` trim whitespace and normalize line endings
+- Fixed trailing newline and double-indented comments in glue scripts
+- Established Virgin.root as source-of-truth for ODB edits
+
+### Integration Test Expansion (PRs #481, #483-#485) - MERGED
+- +66 new integration tests: protocol ODB ops, persistence/save, webserver HTTP round-trip, error recovery, concurrency
+
+## Earlier Achievements (February 28 - March 13, 2026)
+
+### HTTP Server & mainResponder End-to-End (PRs #462-#480) - MERGED
+- HTTP server starts via `inetd.startOne`, dispatches through GIL, serves pages via mainResponder
+- Fixed GIL deadlock, database persistence, path handling, verb resolution, thread context corruption
+- 10 distinct bugs across different subsystems fixed to complete first HTTP request pipeline
 
 ### Integration Test Reliability (PR #468) - MERGED
 - Fixed 19 consistently-failing integration tests
-- Root causes: corrupt handle guards for pack-on-exit (SIGSEGV), protocol executor process death without recovery
-- Added `kMinValidPointer` constant, `hashpackguard_corrupt_handle()` shared helper
-- Protocol executor: restart-on-failure in `reset()`, per-process fallback retry, stderr capture to temp file
-- Hardened `getaddressparts` NULL guards, `fldontsave` skip logging, `resolve_indexed_node` error context
-
-### CLI State Persistence (PRs #462, #464) - MERGED
-- **PR #462**: Save system root database on CLI exit for state persistence
-- **PR #464**: Always save system root on exit instead of checking dbdirtymask (the mask was unreliable)
-- In-memory changes now persist across CLI sessions
-
-### GIL & Threading Fixes (PRs #463, #467) - MERGED
-- **PR #463**: Resolve GIL deadlock preventing HTTP callback dispatch (TCP accept handler was blocking without yielding)
-- **PR #467**: Enable GIL yielding in blocking REPL mode (readline blocks without yielding, starving background threads)
-
-### File Path Fix (PR #466) - MERGED
-- Handle trailing path separators in `portable_filefrompath` (was returning empty filename for paths like `/foo/bar/`)
+- Workspace isolation across 12 test files (`workspace.*` migrated to `system.temp.*`)
 
 ## Earlier Achievements (February 16-27, 2026)
 
@@ -180,9 +198,9 @@ Last Updated: 2026-03-08
 Reference: `reports/coverage/verb-binding/2026-01-27-01.md`
 
 ### Integration Test Status
-- **Current**: 1,920 tests total
-- **Passed**: 1,713 (was 1,704)
-- **Skipped**: 189
+- **Current**: 2,017 tests total
+- **Passed**: 1,827 (was 1,761)
+- **Skipped**: 190
 - **Failed**: **0**
 - Execution: 8 workers, parallel batch mode, ~37 seconds
 - NDJSON protocol mode eliminates ~210ms startup cost per test
@@ -292,9 +310,9 @@ Before resuming major infrastructure work, need decisions on:
 - **ADR-013**: REPL Event Loop Architecture
 
 ### Progress Reports
-- **Latest**: reports/progress/2026-02-27-databasedata-elimination-and-startup-stabilization.md (covers Feb 16-27)
-- **Previous**: reports/progress/2026-02-16-threading-protocol-and-test-reliability.md (covers Feb 5-16)
-- **Earlier**: reports/progress/2026-02-05-startup-scripts-menus-and-gui-planning.md (covers Feb 1-5)
+- **Latest**: reports/progress/2026-03-25-cli-extensibility-and-dist-workflow.md (covers Mar 13-25)
+- **Previous**: reports/progress/2026-03-13-mainresponder-startup-and-http-serving.md (covers Feb 28-Mar 13)
+- **Earlier**: reports/progress/2026-02-27-databasedata-elimination-and-startup-stabilization.md (covers Feb 16-27)
 
 ### Historical Context
 - **Status Archive**: planning/_STATUS_ARCHIVE.md (entries before 2026-01-27)
