@@ -1485,7 +1485,7 @@ static boolean op_valueproc(short token, hdltreenode hparam1,
             setbooleanvalue(true, &vindent);
 
             flnextparamislast = true;
-            if (!getoptionalparamvalue(hparam1, &ctconsumed, &ctpositional, BIGSTRING("\x08" "flindent"), &vindent))
+            if (!getoptionalparamvalue(hparam1, &ctconsumed, &ctpositional, PSTRING("\x08", "flindent"), &vindent))
                 return false;
 
             oppushoutline(ho);
