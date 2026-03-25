@@ -366,10 +366,15 @@ clean-root: dist
 	@echo "Running userland.cleanRoot on dist/Frontier.root..."
 	@echo '{"op":"script/eval","id":1,"params":{"expression":"userland.cleanRoot()"}}' \
 		| $(DIST_DIR)/frontier-cli --protocol --system-root $(DIST_DIR)/Frontier.root 2>&1 \
-		| tee /tmp/frontier-cleanroot.log \
-		| grep -q '"success":true' \
-		&& echo "cleanRoot completed successfully." \
-		|| (echo "ERROR: cleanRoot failed. Output:" && cat /tmp/frontier-cleanroot.log && exit 1)
+		| tee $(DIST_DIR)/cleanroot.log > /dev/null; \
+	if grep -q '"success":true' $(DIST_DIR)/cleanroot.log; then \
+		echo "cleanRoot completed successfully."; \
+		rm -f $(DIST_DIR)/cleanroot.log; \
+	else \
+		echo "ERROR: cleanRoot failed. Output:"; \
+		cat $(DIST_DIR)/cleanroot.log; \
+		exit 1; \
+	fi
 
 dist-clean:
 	rm -rf $(DIST_DIR)
