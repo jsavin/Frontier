@@ -215,7 +215,10 @@ static boolean equalfilespecs_canonical(const ptrfilespec fs1, const ptrfilespec
 
     /* Fallback: original equalfilespecs (compares FSRef + name).
      * realpath can fail for many reasons: file not on disk, broken symlink,
-     * permission denied, path overflow, etc. Fallback is safe in all cases. */
+     * permission denied, path overflow, etc. Note: the portable equalfilespecs
+     * compares only the filename component, not the full path — two files with
+     * the same name in different directories would match. This is acceptable
+     * for Frontier's database naming conventions but not universally safe. */
     log_debug(LOG_COMP_DB, "equalfilespecs_canonical: realpath unavailable, falling back to equalfilespecs");
     return equalfilespecs(fs1, fs2);
 }

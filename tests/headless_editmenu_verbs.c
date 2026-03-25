@@ -40,11 +40,10 @@ static boolean editmenu_valueproc(short token, hdltreenode hparam1,
                                      tyvaluerecord *vreturned,
                                      bigstring bserror) {
     (void)hparam1;
-    (void)vreturned;
+    (void)bserror;
     /* Headless: all edit menu verbs are GUI no-ops. Return true
      * (operation silently skipped) so scripts like userland.cleanRoot
      * that use clipboard/edit operations don't error out. */
-    (void)bserror;
     switch(token) {
         case ediv_getfont:
             /* Headless: return empty string (callers expect font name) */
