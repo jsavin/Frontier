@@ -357,7 +357,26 @@ dist: $(TARGET)
 	@echo "Distribution created in $(DIST_DIR)/"
 	@echo "Run with: ./dist/frontier-cli --system-root dist/Frontier.root"
 
+# Run userland.cleanRoot against the dist copy of Frontier.root.
+# This strips runtime state (user.databases, scheduler tasks, serial numbers, etc.)
+# while preserving all scripts and verbs. The source databases/Virgin.root is NOT modified.
+# Note: cleanRoot also produces dist/Virgin.root as a side artifact (via FileMenu.saveCopy).
+# Use before shipping: make dist && make clean-root
+clean-root: dist
+	@echo "Running userland.cleanRoot on dist/Frontier.root..."
+	@echo '{"op":"script/eval","id":1,"params":{"expression":"userland.cleanRoot()"}}' \
+		| $(DIST_DIR)/frontier-cli --protocol --system-root $(DIST_DIR)/Frontier.root 2>&1 \
+		| tee $(DIST_DIR)/cleanroot.log > /dev/null; \
+	if grep -q '"success":true' $(DIST_DIR)/cleanroot.log; then \
+		echo "cleanRoot completed successfully."; \
+		rm -f $(DIST_DIR)/cleanroot.log; \
+	else \
+		echo "ERROR: cleanRoot failed. Output:"; \
+		cat $(DIST_DIR)/cleanroot.log; \
+		exit 1; \
+	fi
+
 dist-clean:
 	rm -rf $(DIST_DIR)
 
-.PHONY: all build clean strings_generated kernel_verbs_generated check-paige-cache dist dist-clean validate-bigstrings
+.PHONY: all build clean strings_generated kernel_verbs_generated check-paige-cache dist dist-clean clean-root validate-bigstrings
