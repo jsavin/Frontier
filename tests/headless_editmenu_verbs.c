@@ -52,10 +52,10 @@ static boolean editmenu_valueproc(short token, hdltreenode hparam1,
         case ediv_getfontsize:
             /* Headless: return 0 (callers expect numeric size) */
             return setlongvalue(0, vreturned);
-        case ediv_undo:
-        case ediv_cut:
-        case ediv_copy:
-        case ediv_paste:
+        case ediv_undo:      /* All remaining verbs are GUI no-ops: */
+        case ediv_cut:       /* grouped intentionally (no executable */
+        case ediv_copy:      /* code between cases, so no fallthrough */
+        case ediv_paste:     /* warning applies). */
         case ediv_clear:
         case ediv_selectall:
         case ediv_setfont:
