@@ -103,6 +103,39 @@ Each thread's debug state is independent:
 - Notifications include `threadId` so the client knows which thread is paused
 - Multiple threads can be simultaneously paused at breakpoints
 
+### Session Model
+
+The REPL and protocol are the first two "sessions" — separate entry points that can run concurrently:
+
+| Session | Entry Point | Description |
+|---------|------------|-------------|
+| 0 | Internal | System/startup threads (no owner) |
+| 1 | REPL | Local interactive user |
+| 2 | Protocol (stdio) | AI agent or automation |
+| 3+ | WebSocket connections | Future: additional users/agents |
+
+Each session has "root access" — full read/write to the ODB. Session identity is tracked via `tythreadglobals.sessionId` on every thread. For now this is informational; later it becomes an access control hook for multi-user isolation.
+
+Threads spawned by a session inherit its `sessionId`. This means:
+- REPL commands execute on session 1 threads
+- Protocol `script/eval` and `debug/eval` spawn session 2 threads
+- Each WebSocket connection gets its own session ID
+
+### Per-Thread Stack Frames
+
+The legacy `system.compiler.stack` uses flat naming (`"level 01"`, `"level 02"`) — only one thread can have stack frames at a time. For multi-thread debugging, we scope frames under per-thread subtables:
+
+```
+system.compiler.stack
+    thread_3
+        level 01  →  {locals for frame 1}
+        level 02  →  {locals for frame 2}
+    thread_5
+        level 01  →  {locals for frame 1}
+```
+
+This requires modifying `scriptpushtable()`/`scriptpoptable()` to create/destroy frames under a thread-specific subtable. Single-thread execution still works (just one subtable). Scripts that read `system.compiler.stack` see the same data, one level deeper.
+
 ---
 
 ## Protocol Operations
@@ -115,7 +148,13 @@ Each thread's debug state is independent:
 }}
 ```
 
-Like `script/eval` but enables debug mode on the executing thread. Returns when the script completes (or is killed).
+Non-blocking: spawns the script on a new thread with debug mode enabled. Returns immediately with a thread ID. The script runs until it hits a breakpoint, completes, or is killed.
+
+```json
+{"id":1,"result":{"threadId":3,"status":"running"}}
+```
+
+The client receives `debug/suspended` notifications when the script pauses.
 
 ### debug/step — Step Execution
 
@@ -258,19 +297,41 @@ Sent when a thread pauses (breakpoint hit, step completed, or error).
 | `frontier-cli/op_handler.c` | Route debug/* ops to debug_handler |
 | `Common/source/langstartup.c` | Replace `cb_noop_treenode` with protocol callback |
 | `Common/source/scripts.c` | Reference: existing debugger logic to replicate |
-| `Common/headers/processinternal.h` | May need debug state fields in `tythreadglobals` |
+| `Common/headers/processinternal.h` | Add `sessionId` + debug state fields to `tythreadglobals` |
+| `Common/source/scripts.c` | Modify `scriptpushtable`/`scriptpoptable` for per-thread stack subtables |
+
+---
+
+## Security Considerations (Multi-User Future)
+
+### Current State: Trusted Sessions
+
+Both the REPL and protocol sessions have full access to the ODB and all threads. This is appropriate for the current single-developer use case.
+
+### Design for Future Isolation
+
+`tythreadglobals.sessionId` tracks which session spawned each thread. This is a general-purpose field — not debug-specific — that applies to all threads (script execution, background tasks, debug sessions).
+
+When multi-user support is needed, `sessionId` becomes the enforcement hook:
+- **Thread access control:** Debug/kill/inspect commands restricted to threads owned by the requesting session
+- **Session-scoped breakpoints:** Ephemeral breakpoints that only trigger for the owning session's threads (avoid "my breakpoint affects your execution")
+- **ODB access control:** Future concern — would require per-table or per-path ACLs, which is a much larger architectural change
+
+### Principle
+
+Design the data model now (sessionId on every thread), enforce access control later. All sessions are "root" for now.
 
 ---
 
 ## Open Questions
 
-1. **Should `debug/eval` block the protocol channel?** If so, the client can't send step/continue commands. Alternative: `debug/eval` returns immediately with a thread ID, and the script runs on a spawned thread.
+1. ~~**Should `debug/eval` block the protocol channel?**~~ **Resolved:** Non-blocking. Returns immediately with thread ID; script runs on spawned thread.
 
-2. **Breakpoint storage vs. protocol-only breakpoints:** The legacy model stores breakpoints in the ODB (persistent). Should we also support ephemeral breakpoints that don't modify the database?
+2. **Breakpoint storage vs. session-scoped breakpoints:** The legacy model stores breakpoints in the ODB (persistent, visible to all sessions). Should we also support ephemeral breakpoints that only exist for the current session? This avoids one user's breakpoints affecting another's execution.
 
-3. **Error breakpoints:** Should we support "break on error" mode? The infrastructure exists (`fllangerror` flag).
+3. **Error breakpoints:** Should we support "break on error" mode? The infrastructure exists (`fllangerror` flag). Would be valuable for AI debugging — pause at the first error instead of adding try/catch everywhere.
 
-4. **Conditional breakpoints:** Not in the legacy debugger, but would be valuable for AI agents. Could evaluate a UserTalk expression at each breakpoint.
+4. **Conditional breakpoints:** Not in the legacy debugger, but would be valuable for AI agents. Could evaluate a UserTalk expression at each breakpoint and only suspend if it returns true.
 
 ---
 
