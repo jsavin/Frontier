@@ -2,7 +2,23 @@
  * headless_threading.h - Shared declarations for headless threading infrastructure
  *
  * Exports GIL, thread globals management, and thread registration functions
- * from headless_thread_verbs.c for use by other modules (debug_handler.c, etc.).
+ * from headless_thread_verbs.c for use by other modules (debug_handler.c,
+ * protocol_handler.c, main.c).
+ *
+ * These were originally static in headless_thread_verbs.c but were promoted
+ * to support the protocol-based debugger, which needs to:
+ *   - Acquire/release the GIL around I/O waits
+ *   - Save/restore thread globals across GIL yields
+ *   - Spawn and register debug threads
+ *   - Unregister threads on completion
+ *
+ * Callers MUST hold the GIL before calling any function that accesses
+ * C globals (headless_restore_threadglobals, headless_register_thread, etc.).
+ * The GIL is a cooperative lock — yield via unlock/sleep/lock sequences
+ * to let other threads run.
+ *
+ * Note: headless_thread_verbs.c lives in tests/ for historical reasons
+ * but is compiled into the production frontier-cli binary via the Makefile.
  */
 
 #ifndef HEADLESS_THREADING_H

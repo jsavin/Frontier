@@ -16,6 +16,7 @@
 
 #include "debug_handler.h"
 
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -155,10 +156,11 @@ void debug_kill_all_threads(void) {
  * Notifications
  * ======================================================================== */
 
-/* Note: reason is interpolated without JSON escaping. Currently only internal
- * constant strings ("entry", "interrupted", "breakpoint", "step") are passed.
- * If future callers pass user-supplied content, add JSON string escaping. */
+/* reason MUST be a compile-time constant string (no user-supplied content).
+ * It is interpolated without JSON escaping. See issue #497 for enum proposal. */
 void debug_send_suspended(transport_t *transport, long threadid, long line, const char *reason) {
+
+    assert(reason != NULL && strlen(reason) < 64);
 
     char json[512];
     snprintf(json, sizeof(json),
@@ -244,6 +246,12 @@ static boolean protocol_debugger_callback(hdltreenode hnode) {
         pthread_mutex_lock(&frontier_gil);
         headless_restore_threadglobals(hthreadglobals);
     }
+
+    /* Check kill flag after loop exit — handle_debug_kill sets flkill=true
+     * and flsuspended=false simultaneously, so we may exit the loop without
+     * seeing the kill flag inside it. */
+    if (atomic_load(&state->flkill))
+        return false;
 
     return true;
 }

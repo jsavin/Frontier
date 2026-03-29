@@ -25,9 +25,6 @@ export DEBUG_TEST_DB="$DB"
 python3 << 'PYEOF'
 import subprocess, json, sys, time, os
 
-CLI = os.environ.get("CLI", sys.argv[1] if len(sys.argv) > 1 else "")
-DB = os.environ.get("DB", sys.argv[2] if len(sys.argv) > 2 else "")
-
 CLI = os.environ["DEBUG_TEST_CLI"]
 DB = os.environ["DEBUG_TEST_DB"]
 
@@ -57,18 +54,20 @@ def run_debug_session(commands_fn, timeout=15):
         commands_fn(send)
         send({"op": "shutdown", "id": 999})
         time.sleep(1)
+    except BrokenPipeError:
+        print(f"  [debug] BrokenPipeError during session", file=sys.stderr)
     except Exception as e:
         print(f"  Session error: {e}", file=sys.stderr)
 
-    # Close stdin so the process exits
-    proc.stdin.close()
-
     # Read all output
     try:
-        stdout, _ = proc.communicate(timeout=5)
+        proc.stdin.close()
+        stdout, _ = proc.communicate(timeout=15)
     except subprocess.TimeoutExpired:
         proc.kill()
         stdout, _ = proc.communicate()
+    except BrokenPipeError:
+        stdout = ""
 
     messages = []
     for line in stdout.strip().split("\n"):
