@@ -175,24 +175,73 @@ Directions: `"over"` (next line, same depth), `"into"` (descend into calls), `"o
 
 Clears stepping mode. Script runs freely until next breakpoint or completion.
 
+### debug/pause — Interrupt a Running Thread
+
+```json
+{"op":"debug/pause","id":4,"params":{"threadId":3}}
+```
+
+Interrupts a running thread (debug mode or not) and suspends it at the next statement. Sets an interrupt flag that the debugger callback checks. Useful for debugging infinite loops or long-running scripts. The thread suspends at the next `langdebuggercall` hook point and sends a `debug/suspended` notification with `"reason":"interrupted"`.
+
+If the thread is not in debug mode, `debug/pause` promotes it to debug mode before suspending.
+
 ### debug/kill — Kill Script
 
 ```json
-{"op":"debug/kill","id":4,"params":{"threadId":3}}
+{"op":"debug/kill","id":5,"params":{"threadId":3}}
 ```
 
 Sets `flscriptkilled = true`. Script aborts at next yield point.
 
-### debug/setBreakpoint — Toggle Breakpoint
+### debug/setBreakpoint — Set or Clear Breakpoint
 
 ```json
 {"op":"debug/setBreakpoint","id":5,"params":{
-  "script":"@system.verbs.builtins.sys.openUrl",
-  "line":3
+  "script":"@mainResponder.respond",
+  "line":5,
+  "persistent":false
 }}
 ```
 
-Toggles `flbreakpoint` on the outline node at the specified line. Breakpoint persists with the script (saved to ODB).
+Two types of breakpoints:
+
+- **Session-scoped** (`"persistent":false`, the default): Stored in the session's breakpoint list in memory. Only triggers for threads in this session. Disappears when the session ends. Does not modify the ODB.
+- **Persistent** (`"persistent":true`): Stored on the outline node's `flbreakpoint` flag in the ODB. Survives across sessions. Visible to all sessions. Modifies the database.
+
+**Persistent breakpoints in the ODB are ignored by the headless debugger** unless explicitly loaded into the session via `debug/loadBreakpoints`. This prevents agents from hitting legacy breakpoints left over from years ago.
+
+### debug/listBreakpoints — List All Breakpoints
+
+```json
+{"op":"debug/listBreakpoints","id":6,"params":{}}
+```
+
+Returns both session and persistent breakpoints, distinguished by type.
+
+### debug/getSource — View Script with Line Numbers
+
+```json
+{"op":"debug/getSource","id":7,"params":{
+  "script":"@mainResponder.respond",
+  "threadId":3
+}}
+```
+
+Returns script source with line numbers, breakpoint markers, and (if `threadId` specified and the thread is suspended) the current execution line. Works both inside and outside debug sessions.
+
+```json
+{"id":7,"result":{
+  "script":"@mainResponder.respond",
+  "currentLine":3,
+  "lines":[
+    {"num":1,"text":"on respond (adrParamTable)","breakpoint":false},
+    {"num":2,"text":"\tlocal (method = adrParamTable^.method)","breakpoint":false},
+    {"num":3,"text":"\tlocal (path = adrParamTable^.path)","breakpoint":false,"current":true},
+    {"num":4,"text":"\tlocal (adrpage)","breakpoint":false},
+    {"num":5,"text":"\tif not mainResponder.dispatch(method, path, @adrpage)","breakpoint":true}
+  ]
+}}
+```
 
 ### debug/getLocals — Inspect Local Variables
 
@@ -227,14 +276,6 @@ Response:
 ]}}
 ```
 
-### debug/getSource — Get Script Source with Current Line
-
-```json
-{"op":"debug/getSource","id":8,"params":{"threadId":3}}
-```
-
-Response includes script text and the current line number for display.
-
 ### Unsolicited Notification: debug/suspended
 
 ```json
@@ -247,6 +288,93 @@ Response includes script text and the current line number for display.
 ```
 
 Sent when a thread pauses (breakpoint hit, step completed, or error).
+
+---
+
+## REPL Commands
+
+The REPL provides the same capabilities as the protocol, with human-friendly commands. The REPL prompt changes when a debug session is active.
+
+### Source Viewing
+
+```
+[root]> /source @mainResponder.respond
+  1: on respond (adrParamTable) {
+  2:     local (method = adrParamTable^.method)
+  3:     local (path = adrParamTable^.path)
+  4:     local (adrpage)
+● 5:     if not mainResponder.dispatch(method, path, @adrpage) {
+  6:         return mainResponder.notFound(path)}
+  7:     return mainResponder.renderPage(adrpage)}
+```
+
+`/source` works both inside and outside debug mode. Shows line numbers and breakpoint markers (`●`). In debug mode, shows current execution line (`>`).
+
+### Breakpoints
+
+```
+/break @mainResponder.respond 5              # set session-scoped breakpoint
+/break @mainResponder.respond 5 --save       # set persistent breakpoint (saved to ODB)
+/break @mainResponder.respond 5              # toggle: clears if already set
+/breaks                                      # list all breakpoints
+/break clear                                 # clear all session breakpoints
+```
+
+`/breaks` output distinguishes session vs persistent:
+
+```
+[root]> /breaks
+  @mainResponder.respond line 5   (session)
+  @mainResponder.respond line 12  (persistent)
+  @mainResponder.dispatch line 3  (session)
+```
+
+### Debug Session
+
+```
+[root]> /debug mainResponder.respond("GET / HTTP/1.1")
+[debug thread 3] Suspended at @mainResponder.respond line 5 (breakpoint)
+[debug 3]> /step                              # step over
+[debug thread 3] line 6: return mainResponder.notFound(path)
+[debug 3]> /step into                         # step into function call
+[debug thread 3] Suspended at @mainResponder.notFound line 1
+[debug 3]> /step out                          # step out to caller
+[debug thread 3] Suspended at @mainResponder.respond line 6
+[debug 3]> /locals                            # inspect local variables
+  method = "GET"
+  path = "/"
+  adrpage = @websites.default.index
+[debug 3]> /stack                             # view call stack
+  1: @mainResponder.respond line 6
+[debug 3]> path                               # evaluate expression in debug context
+"/"
+[debug 3]> /go                                # continue to next breakpoint or completion
+```
+
+### Interrupting a Running Thread
+
+```
+[root]> /pause 3                              # interrupt thread 3, suspend at next statement
+[debug thread 3] Suspended at @worker.process line 47 (interrupted)
+[debug 3]> /source
+> 47:     loop                                # infinite loop found!
+  48:         x = x + 1
+[debug 3]> /kill                              # kill the runaway thread
+[debug thread 3] Completed: true
+[root]>
+```
+
+### Multiple Debug Threads
+
+```
+[debug 3]> /debug thread.callScript(@worker.process)
+[debug thread 5] Running...
+[debug 3]> /switch 5                          # switch to thread 5
+[debug 5]> /locals
+  ...
+[debug 5]> /switch 3                          # switch back
+[debug 3]>
+```
 
 ---
 
