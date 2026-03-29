@@ -23,7 +23,7 @@
 #include "ws_server.h"
 
 #include "../Common/headers/logging.h"
-#include "../tests/headless_threading.h"
+#include "headless_threading.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>

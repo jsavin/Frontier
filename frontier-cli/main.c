@@ -70,7 +70,7 @@
 #include "protocol_handler.h"
 #include "debug_handler.h"
 #include "ws_server.h"
-#include "../tests/headless_threading.h"
+#include "headless_threading.h"
 
 extern long grabthreadglobals(void);
 extern long releasethreadglobals(void);
@@ -906,18 +906,8 @@ static void cleanup_frontier_runtime(void) {
     
     cli_log_info("Cleaning up Frontier runtime");
 
-    /* Allow spawned threads (debug, TCP callbacks) to finish cleanup.
-     * Release GIL briefly so any threads blocked on it can complete,
-     * then reacquire and restore main thread globals before shutdown. */
-    {
-        hdlthreadglobals saved = hthreadglobals;
-        headless_save_threadglobals(saved);
-        pthread_mutex_unlock(&frontier_gil);
-        struct timespec ts = {0, 250000000}; /* 250ms — enough for debug threads to finish cleanup */
-        nanosleep(&ts, NULL);
-        pthread_mutex_lock(&frontier_gil);
-        headless_restore_threadglobals(saved);
-    }
+    /* Kill any active debug threads so they exit cleanly before shutdown. */
+    debug_kill_all_threads();
 
     /* Wait for all spawned threads to finish BEFORE unloading databases.
      * Spawned threads may still be running (blocked on GIL) and need roottable

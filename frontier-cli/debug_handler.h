@@ -31,15 +31,17 @@
  * the debug thread. The GIL provides ordering at yield boundaries,
  * but _Atomic prevents register-caching between yields.
  *
- * Ownership invariant: the debug thread owns this struct and frees it
- * only after sending the debug/completed notification. Protocol handlers
- * must not access the struct after receiving debug/completed.
+ * Thread safety: refcount protects against use-after-free. Protocol
+ * handlers increment refcount via debug_get_state_for_thread (under
+ * g_debug_mutex), use the pointer, then call debug_release_state.
+ * The debug thread frees the struct only when refcount drops to 0.
  */
 typedef struct tydebugstate {
     boolean fldebugmode;             /* is this thread in debug mode? (set once at creation) */
     atomic_bool flsuspended;         /* is this thread paused? */
     atomic_bool flinterrupt;         /* pause at next statement (debug/pause) */
     atomic_bool flkill;              /* kill the script */
+    atomic_int refcount;             /* reference count (1 = debug thread only) */
     transport_t *transport;          /* for sending notifications back to client */
     long threadid;                   /* this thread's ID */
 } tydebugstate, *ptrdebugstate;
@@ -58,6 +60,17 @@ void handle_debug_run(int id, const char *json_line, transport_t *transport);
 void handle_debug_continue(int id, const char *json_line, transport_t *transport);
 void handle_debug_kill(int id, const char *json_line, transport_t *transport);
 void handle_debug_pause(int id, const char *json_line, transport_t *transport);
+
+/*
+ * Release a reference to a debug state obtained from debug_get_state_for_thread.
+ * Frees the struct if refcount drops to 0.
+ */
+void debug_release_state(tydebugstate *state);
+
+/*
+ * Kill all active debug threads. Called during shutdown.
+ */
+void debug_kill_all_threads(void);
 
 /*
  * Send an unsolicited debug/suspended notification to the client.

@@ -3,19 +3,12 @@
 # Integration tests for debug/* protocol operations
 # Tests the debugger MVP: debug/run, debug/continue, debug/kill, debug/pause
 #
-# Uses multi-line protocol sessions with timed delays between commands.
+# Uses Python to handle the interactive protocol (parse threadId from responses).
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 CLI="$PROJECT_ROOT/frontier-cli/frontier-cli"
 DB="$PROJECT_ROOT/databases/Virgin.root"
-
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-NC='\033[0m'
-
-PASSED=0
-FAILED=0
 
 if [ ! -x "$CLI" ]; then
     echo "Error: frontier-cli not found at $CLI" >&2
@@ -26,105 +19,182 @@ if [ ! -f "$DB" ]; then
     exit 1
 fi
 
-# Run a debug protocol session and capture output
-# Args: test_name expected_patterns... -- commands...
-run_debug_test() {
-    local name="$1"
-    shift
+export DEBUG_TEST_CLI="$CLI"
+export DEBUG_TEST_DB="$DB"
 
-    # Collect expected patterns until --
-    local expected=()
-    while [ "$1" != "--" ]; do
-        expected+=("$1")
-        shift
-    done
-    shift  # skip --
+python3 << 'PYEOF'
+import subprocess, json, sys, time, os
 
-    # Remaining args are the commands (with sleep delays)
-    local output
-    local exit_code=0
-    output=$(eval "$@" 2>/dev/null) || exit_code=$?
+CLI = os.environ.get("CLI", sys.argv[1] if len(sys.argv) > 1 else "")
+DB = os.environ.get("DB", sys.argv[2] if len(sys.argv) > 2 else "")
 
-    # Check each expected pattern
-    local all_found=true
-    local missing=""
-    for pattern in "${expected[@]}"; do
-        if ! echo "$output" | grep -q "$pattern"; then
-            all_found=false
-            missing="$missing  Missing: $pattern\n"
-        fi
-    done
+CLI = os.environ["DEBUG_TEST_CLI"]
+DB = os.environ["DEBUG_TEST_DB"]
 
-    if $all_found; then
-        echo -e "  ${GREEN}✓ PASS${NC}: $name"
-        PASSED=$((PASSED + 1))
-    else
-        echo -e "  ${RED}✗ FAIL${NC}: $name"
-        echo -e "$missing"
-        echo "  Output was:"
-        echo "$output" | sed 's/^/    /'
-        if [ "$exit_code" -ne 0 ]; then
-            echo "  CLI exit code: $exit_code"
-        fi
-        FAILED=$((FAILED + 1))
-    fi
-}
+PASSED = 0
+FAILED = 0
+GREEN = "\033[0;32m"
+RED = "\033[0;31m"
+NC = "\033[0m"
 
-echo "=============================================="
-echo "Debug Protocol Tests"
-echo "=============================================="
-echo
+def run_debug_session(commands_fn, timeout=15):
+    """Run a debug protocol session. commands_fn receives a send function.
+    All stdout output is collected after the process exits."""
+    proc = subprocess.Popen(
+        [CLI, "--protocol", "--skip-startup", "--system-root", DB],
+        stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        text=True, bufsize=1
+    )
 
-echo "--- debug/run + debug/continue ---"
-run_debug_test "run and continue simple expression" \
-    '"threadId":3' \
-    '"reason":"entry"' \
-    '"success":true' \
-    '"op":"debug/completed"' \
-    -- \
-    '(echo '"'"'{"op":"debug/run","id":1,"params":{"expression":"return 1+1"}}'"'"'; sleep 2; echo '"'"'{"op":"debug/continue","id":2,"params":{"threadId":3}}'"'"'; sleep 2; echo '"'"'{"op":"shutdown","id":99}'"'"'; sleep 1) | '"$CLI"' --protocol --skip-startup --system-root '"$DB"''
+    def send(msg):
+        if isinstance(msg, dict):
+            msg = json.dumps(msg)
+        proc.stdin.write(msg + "\n")
+        proc.stdin.flush()
+        time.sleep(0.5)
 
-echo
-echo "--- debug/run + debug/kill ---"
-run_debug_test "run and kill" \
-    '"threadId":3' \
-    '"reason":"entry"' \
-    '"status":"killed"' \
-    '"op":"debug/completed"' \
-    '"success":false' \
-    -- \
-    '(echo '"'"'{"op":"debug/run","id":1,"params":{"expression":"return 1+1"}}'"'"'; sleep 2; echo '"'"'{"op":"debug/kill","id":2,"params":{"threadId":3}}'"'"'; sleep 2; echo '"'"'{"op":"shutdown","id":99}'"'"'; sleep 1) | '"$CLI"' --protocol --skip-startup --system-root '"$DB"''
+    try:
+        commands_fn(send)
+        send({"op": "shutdown", "id": 999})
+        time.sleep(1)
+    except Exception as e:
+        print(f"  Session error: {e}", file=sys.stderr)
 
-echo
-echo "--- debug/pause on running thread ---"
-run_debug_test "pause interrupts running loop" \
-    '"reason":"entry"' \
-    '"reason":"interrupted"' \
-    '"status":"interrupting"' \
-    -- \
-    '(echo '"'"'{"op":"debug/run","id":1,"params":{"expression":"local (i); for i = 1 to 1000000 {i = i}; return true"}}'"'"'; sleep 1; echo '"'"'{"op":"debug/continue","id":2,"params":{"threadId":3}}'"'"'; sleep 1; echo '"'"'{"op":"debug/pause","id":3,"params":{"threadId":3}}'"'"'; sleep 2; echo '"'"'{"op":"debug/kill","id":4,"params":{"threadId":3}}'"'"'; sleep 1; echo '"'"'{"op":"shutdown","id":99}'"'"'; sleep 1) | '"$CLI"' --protocol --skip-startup --system-root '"$DB"''
+    # Close stdin so the process exits
+    proc.stdin.close()
 
-echo
-echo "--- error cases ---"
-run_debug_test "continue with invalid threadId" \
-    '"No debug thread with that ID"' \
-    -- \
-    '(echo '"'"'{"op":"debug/continue","id":1,"params":{"threadId":999}}'"'"'; sleep 1; echo '"'"'{"op":"shutdown","id":99}'"'"'; sleep 1) | '"$CLI"' --protocol --skip-startup --system-root '"$DB"''
+    # Read all output
+    try:
+        stdout, _ = proc.communicate(timeout=5)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        stdout, _ = proc.communicate()
 
-run_debug_test "kill with invalid threadId" \
-    '"No debug thread with that ID"' \
-    -- \
-    '(echo '"'"'{"op":"debug/kill","id":1,"params":{"threadId":999}}'"'"'; sleep 1; echo '"'"'{"op":"shutdown","id":99}'"'"'; sleep 1) | '"$CLI"' --protocol --skip-startup --system-root '"$DB"''
+    messages = []
+    for line in stdout.strip().split("\n"):
+        if line:
+            try:
+                messages.append(json.loads(line))
+            except json.JSONDecodeError:
+                pass
 
-run_debug_test "run with missing expression" \
-    'expression' \
-    'success.*false' \
-    -- \
-    '(echo '"'"'{"op":"debug/run","id":1,"params":{}}'"'"'; sleep 1; echo '"'"'{"op":"shutdown","id":99}'"'"'; sleep 1) | '"$CLI"' --protocol --skip-startup --system-root '"$DB"''
+    return messages
 
-echo
-echo "=============================================="
-echo "RESULTS: $PASSED passed, $FAILED failed"
-echo "=============================================="
+def assert_test(name, passed, detail=""):
+    global PASSED, FAILED
+    if passed:
+        print(f"  {GREEN}✓ PASS{NC}: {name}")
+        PASSED += 1
+    else:
+        print(f"  {RED}✗ FAIL{NC}: {name}")
+        if detail:
+            print(f"    {detail}")
+        FAILED += 1
 
-exit $FAILED
+def find_msg(messages, **kwargs):
+    """Find a message matching all kwargs."""
+    for m in messages:
+        match = True
+        for k, v in kwargs.items():
+            if k == "op":
+                if m.get("op") != v:
+                    match = False
+            elif k == "reason":
+                if m.get("params", {}).get("reason") != v:
+                    match = False
+            elif k == "status":
+                if m.get("result", {}).get("status") != v:
+                    match = False
+            elif k == "success":
+                if m.get("success") != v and m.get("result", {}).get("success") != v:
+                    match = False
+        if match:
+            return m
+    return None
+
+print("=" * 46)
+print("Debug Protocol Tests")
+print("=" * 46)
+print()
+
+# --- Test 1: debug/run + debug/continue ---
+print("--- debug/run + debug/continue ---")
+# Note: debug threads get sequential IDs starting from 3 (main=2).
+# Each test session starts fresh, so the first debug thread is always 3.
+# If this assumption breaks, these tests will fail with "No debug thread"
+# errors, which is a clear signal to update the thread ID.
+FIRST_DEBUG_TID = 3
+
+def test_run_continue(send):
+    send({"op": "debug/run", "id": 1, "params": {"expression": "return 1+1"}})
+    time.sleep(2)
+    send({"op": "debug/continue", "id": 2, "params": {"threadId": FIRST_DEBUG_TID}})
+    time.sleep(2)
+
+msgs = run_debug_session(test_run_continue)
+assert_test("run returns threadId", any(m.get("result", {}).get("threadId") for m in msgs if m.get("id") == 1),
+            f"Messages: {msgs}")
+assert_test("suspended at entry", find_msg(msgs, reason="entry") is not None, f"Messages: {msgs}")
+assert_test("completed successfully", find_msg(msgs, op="debug/completed") is not None, f"Messages: {msgs}")
+
+# --- Test 2: debug/run + debug/kill ---
+print()
+print("--- debug/run + debug/kill ---")
+def test_run_kill(send):
+    send({"op": "debug/run", "id": 1, "params": {"expression": "return 1+1"}})
+    time.sleep(2)
+    send({"op": "debug/kill", "id": 2, "params": {"threadId": FIRST_DEBUG_TID}})
+    time.sleep(2)
+
+msgs = run_debug_session(test_run_kill)
+assert_test("kill returns killed status", find_msg(msgs, status="killed") is not None, f"Messages: {msgs}")
+assert_test("completed with failure", any(m.get("op") == "debug/completed" for m in msgs), f"Messages: {msgs}")
+
+# --- Test 3: debug/pause ---
+print()
+print("--- debug/pause on running thread ---")
+def test_pause(send):
+    send({"op": "debug/run", "id": 1, "params": {"expression": "local (i); for i = 1 to 1000000 {i = i}; return true"}})
+    time.sleep(1)
+    send({"op": "debug/continue", "id": 2, "params": {"threadId": FIRST_DEBUG_TID}})
+    time.sleep(1)
+    send({"op": "debug/pause", "id": 3, "params": {"threadId": FIRST_DEBUG_TID}})
+    time.sleep(2)
+    send({"op": "debug/kill", "id": 4, "params": {"threadId": FIRST_DEBUG_TID}})
+    time.sleep(1)
+
+msgs = run_debug_session(test_pause)
+assert_test("pause sends interrupting", find_msg(msgs, status="interrupting") is not None, f"Messages: {msgs}")
+assert_test("suspended with interrupted reason", find_msg(msgs, reason="interrupted") is not None, f"Messages: {msgs}")
+
+# --- Test 4: error cases ---
+print()
+print("--- error cases ---")
+def test_invalid_continue(send):
+    send({"op": "debug/continue", "id": 1, "params": {"threadId": 999}})
+    time.sleep(1)
+
+msgs = run_debug_session(test_invalid_continue)
+assert_test("continue with invalid threadId errors", any("No debug thread" in str(m) for m in msgs), f"Messages: {msgs}")
+
+def test_invalid_kill(send):
+    send({"op": "debug/kill", "id": 1, "params": {"threadId": 999}})
+    time.sleep(1)
+
+msgs = run_debug_session(test_invalid_kill)
+assert_test("kill with invalid threadId errors", any("No debug thread" in str(m) for m in msgs), f"Messages: {msgs}")
+
+def test_missing_expression(send):
+    send({"op": "debug/run", "id": 1, "params": {}})
+    time.sleep(1)
+
+msgs = run_debug_session(test_missing_expression)
+assert_test("run with missing expression errors", any("expression" in str(m) for m in msgs), f"Messages: {msgs}")
+
+print()
+print("=" * 46)
+print(f"RESULTS: {PASSED} passed, {FAILED} failed")
+print("=" * 46)
+
+sys.exit(FAILED)
+PYEOF

@@ -29,7 +29,7 @@
 #include "logging.h"
 #include "processinternal.h"
 #include "threadregistry.h"
-#include "../tests/headless_threading.h"
+#include "headless_threading.h"
 #include "../third_party/cJSON/cJSON.h"
 
 /* Global: current hashtable and table stack (thread globals) */
@@ -63,8 +63,10 @@ static tydebugstate *debug_get_state_for_thread(long threadid) {
 
     for (int i = 0; i < MAX_DEBUG_THREADS; i++) {
         if (g_debug_threads[i] != NULL && g_debug_threads[i]->threadid == threadid) {
+            tydebugstate *state = g_debug_threads[i];
+            atomic_fetch_add(&state->refcount, 1); /* caller borrows a reference */
             pthread_mutex_unlock(&g_debug_mutex);
-            return g_debug_threads[i];
+            return state;
         }
     }
 
@@ -82,6 +84,7 @@ static tydebugstate *debug_register_thread(long threadid, transport_t *transport
     atomic_store(&state->flsuspended, false);
     atomic_store(&state->flinterrupt, false);
     atomic_store(&state->flkill, false);
+    atomic_store(&state->refcount, 1); /* debug thread owns initial reference */
     state->transport = transport;
     state->threadid = threadid;
 
@@ -102,13 +105,46 @@ static tydebugstate *debug_register_thread(long threadid, transport_t *transport
 
 static void debug_unregister_thread(long threadid) {
 
+    tydebugstate *state = NULL;
+
     pthread_mutex_lock(&g_debug_mutex);
 
     for (int i = 0; i < MAX_DEBUG_THREADS; i++) {
         if (g_debug_threads[i] != NULL && g_debug_threads[i]->threadid == threadid) {
-            free(g_debug_threads[i]);
-            g_debug_threads[i] = NULL;
+            state = g_debug_threads[i];
+            g_debug_threads[i] = NULL; /* remove from registry */
             break;
+        }
+    }
+
+    pthread_mutex_unlock(&g_debug_mutex);
+
+    /* Release the debug thread's reference. If a protocol handler also holds
+     * a reference (from debug_get_state_for_thread), the struct stays alive
+     * until they call debug_release_state. */
+    if (state != NULL)
+        debug_release_state(state);
+}
+
+void debug_release_state(tydebugstate *state) {
+
+    if (state == NULL)
+        return;
+
+    if (atomic_fetch_sub(&state->refcount, 1) == 1) {
+        /* Last reference — safe to free */
+        free(state);
+    }
+}
+
+void debug_kill_all_threads(void) {
+
+    pthread_mutex_lock(&g_debug_mutex);
+
+    for (int i = 0; i < MAX_DEBUG_THREADS; i++) {
+        if (g_debug_threads[i] != NULL) {
+            atomic_store(&g_debug_threads[i]->flkill, true);
+            atomic_store(&g_debug_threads[i]->flsuspended, false); /* wake suspended threads */
         }
     }
 
@@ -497,6 +533,7 @@ void handle_debug_continue(int id, const char *json_line, transport_t *transport
     }
 
     atomic_store(&state->flsuspended, false);
+    debug_release_state(state);
 
     char resp[128];
     snprintf(resp, sizeof(resp), "{\"id\":%d,\"result\":{\"threadId\":%ld,\"status\":\"running\"},\"success\":true}", id, threadid);
@@ -532,6 +569,7 @@ void handle_debug_kill(int id, const char *json_line, transport_t *transport) {
 
     atomic_store(&state->flkill, true);
     atomic_store(&state->flsuspended, false); /* wake it up so it can die */
+    debug_release_state(state);
 
     char resp[128];
     snprintf(resp, sizeof(resp), "{\"id\":%d,\"result\":{\"threadId\":%ld,\"status\":\"killed\"},\"success\":true}", id, threadid);
@@ -567,6 +605,7 @@ void handle_debug_pause(int id, const char *json_line, transport_t *transport) {
 
     /* Set interrupt flag — callback will suspend at next statement */
     atomic_store(&state->flinterrupt, true);
+    debug_release_state(state);
 
     char resp[128];
     snprintf(resp, sizeof(resp), "{\"id\":%d,\"result\":{\"threadId\":%ld,\"status\":\"interrupting\"},\"success\":true}", id, threadid);
