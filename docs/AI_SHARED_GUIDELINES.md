@@ -73,6 +73,16 @@ Minimum expectations:
 - Cleanup of `system.temp` objects is unnecessary (the table is non-persistent and recreated fresh each run), but acceptable for clarity.
 - **NEVER use `new(tableType, @workspace)` or `new(tableType, @workspace.something)`** — this creates persistent tables in workspace that pollute the database across test runs and cause flaky tests. Always use `new(tableType, @system.temp.something)` instead.
 
+## ODB Script Editing
+
+When modifying UserTalk scripts in `.root` databases, follow `docs/ODB_SCRIPT_EDITING.md`. Key rules:
+
+- Edit `databases/Virgin.root` for changes that should persist in builds (source of truth)
+- Always use `--protocol` mode, never `-e`
+- Always use `script.newScriptObject` to install scripts (handles line endings + whitespace)
+- Commit both the `.ut` file AND the `.root` binary together in PRs
+- See the SOP section in `ODB_SCRIPT_EDITING.md` for the full PR workflow
+
 ## Migration and Data-Safety Invariants
 
 - During v6 -> v7 migrations, only `binaryType`, `PICT`, and `CARD` may be copied verbatim.

@@ -165,6 +165,72 @@ When writing outline content (for `op.insert` or `op.newOutlineObject`), **omit*
 
 ---
 
+## SOP: Script Edits in a PR
+
+When a PR involves changes to UserTalk scripts in `.root` databases, follow this procedure:
+
+### 1. Create feature branch
+
+```bash
+git checkout -b feature/my-script-change
+```
+
+### 2. Edit the `.ut` file
+
+Make your changes in the `.ut` file under `usertalk_scripts/`. This is the human-readable form that the PR review bot will diff.
+
+- No trailing newline after closing `}`
+- Comments indented one level per sub-block (never skip levels)
+- Use tab indentation
+
+### 3. Install in Virgin.root via protocol
+
+```bash
+frontier-cli --protocol --skip-startup --system-root databases/Virgin.root
+```
+
+```json
+{"op":"script/eval","id":1,"params":{"expression":"local (s = string.trimWhiteSpace(file.readWholeFile(\"/path/to/.ut/file\"))); script.newScriptObject(s, @system.verbs.builtins.category.verbName); return true"}}
+{"op":"script/eval","id":2,"params":{"expression":"fileMenu.save(); return true"}}
+```
+
+For guest databases, open them explicitly first:
+
+```json
+{"op":"script/eval","id":1,"params":{"expression":"fileMenu.open(\"/path/to/guest.root\", false); return true"}}
+{"op":"script/eval","id":2,"params":{"expression":"local (s = ...); script.newScriptObject(s, @guestDbRoot.verbName); return true"}}
+{"op":"script/eval","id":3,"params":{"expression":"fileMenu.save(\"/path/to/guest.root\"); return true"}}
+```
+
+### 4. Verify
+
+```json
+{"op":"script/eval","id":3,"params":{"expression":"string(category.verbName)"}}
+{"op":"script/eval","id":4,"params":{"expression":"category.verbName(\"test input\")"}}
+```
+
+- Read back with `string()` — confirm CR line endings, no trailing whitespace
+- Call the verb — confirm it compiles and returns expected result
+
+### 5. Commit both files
+
+```bash
+git add usertalk_scripts/.../verbName.ut databases/Virgin.root
+git commit -m "feat: Add/modify verbName"
+```
+
+Both the `.ut` file (reviewable diff) and the binary `.root` file (actual ODB change) must be committed together. The PR review bot reviews the `.ut` diff; the `.root` binary carries the change into builds.
+
+### 6. Write integration tests
+
+Add tests to the appropriate YAML file under `tests/integration/test_cases/`.
+
+### 7. Push and create PR
+
+The standard `/doit` workflow applies from here.
+
+---
+
 ## Why Not `-e` Mode?
 
 The `-e` flag runs a single expression in a fresh process. Problems:
