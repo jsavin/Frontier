@@ -364,6 +364,24 @@ The REPL provides the same capabilities as the protocol, with human-friendly com
 [root]>
 ```
 
+### Watchpoints
+
+```
+[debug 3]> /source
+  1: on respond (adrParamTable) {
+  2:     local (path = adrParamTable^.path)
+  3:     local (adrpage)
+  4:     if mainResponder.dispatch(path, @adrpage) {
+  5:         path = adrpage^.redirect
+
+[debug 3]> /watch 5 path
+Watching: path at line 5
+[debug 3]> /go
+[debug thread 3] Suspended at line 5: path changed ("/" → "/index.html")
+[debug 3]> /watches
+  @mainResponder.respond line 5: path
+```
+
 ### Multiple Debug Threads
 
 ```
@@ -413,6 +431,36 @@ The REPL provides the same capabilities as the protocol, with human-friendly com
 1. Per-thread debug state management
 2. Thread-scoped protocol commands
 3. Test: two threads debugging simultaneously
+
+### Phase 6: Watchpoints
+
+Watchpoints break when a variable's value changes at a specific line. Data stored on the outline node's refcon as a `_watchpoints` subtable (variable names as keys).
+
+1. Add `_watchpoints` table to outline node refcon infrastructure
+2. Debugger callback: at watched lines, snapshot values before execution, compare after
+3. If any watched variable changed, suspend with `"reason":"watchpoint"` and report old/new values
+4. Protocol: `debug/setWatchpoint` and `debug/listWatchpoints`
+5. REPL: `/watch <line> <varname>`, `/watches`
+6. Test: set watchpoint, run script, verify suspension on value change
+
+**Data model:**
+```
+line 5 refcon:
+    _watchpoints
+        path      →  (presence = watched)
+        adrpage   →  (presence = watched)
+```
+
+The debugger callback hits line 5, sees `_watchpoints` in the refcon, snapshots the named values, executes the line, compares. If any changed, suspend and report the old/new values in the `debug/suspended` notification.
+
+### Phase 7: Conditional Breakpoints
+
+Conditional breakpoints evaluate a UserTalk expression and only suspend if it returns true. Can share refcon infrastructure with watchpoints.
+
+1. Store condition expression in refcon `_condition` key
+2. Debugger callback evaluates condition at breakpoint; skip if false
+3. Protocol: `debug/setBreakpoint` with `"condition":"string.length(path) > 10"`
+4. REPL: `/break @script 5 --if "string.length(path) > 10"`
 
 ---
 
