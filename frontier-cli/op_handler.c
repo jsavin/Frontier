@@ -20,6 +20,7 @@
 
 #include "op_handler.h"
 #include "odb_ops.h"
+#include "debug_handler.h"
 #include "cli_json_output.h"
 #include "repl_variables.h"
 #include "repl.h"
@@ -638,6 +639,14 @@ int op_dispatch(const char *json_line, size_t len, transport_t *transport) {
         handle_odb_list(id, json_line, transport);
     } else if (strcmp(op, "odb/delete") == 0) {
         handle_odb_delete(id, json_line, transport);
+    } else if (strcmp(op, "debug/run") == 0) {
+        handle_debug_run(id, json_line, transport);
+    } else if (strcmp(op, "debug/continue") == 0) {
+        handle_debug_continue(id, json_line, transport);
+    } else if (strcmp(op, "debug/kill") == 0) {
+        handle_debug_kill(id, json_line, transport);
+    } else if (strcmp(op, "debug/pause") == 0) {
+        handle_debug_pause(id, json_line, transport);
     } else if (strcmp(op, "shutdown") == 0) {
         send_ack(id, transport);
         free(op);

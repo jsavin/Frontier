@@ -84,8 +84,8 @@ extern void headless_restore_threadglobals(hdlthreadglobals hg);
  * gil_available is broadcast whenever the GIL is released, so threads blocked
  * on acquisition can wake up and try to lock it.
  */
-static pthread_mutex_t frontier_gil = PTHREAD_MUTEX_INITIALIZER;
-static pthread_cond_t gil_available = PTHREAD_COND_INITIALIZER;
+pthread_mutex_t frontier_gil = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t gil_available = PTHREAD_COND_INITIALIZER;
 
 /*
  * Yield synchronization for headless_backgroundtask().
@@ -210,7 +210,7 @@ void headless_threading_shutdown(void) {
 }
 
 /* Forward declarations for static functions used by thread_entry_point */
-static boolean headless_unregister_thread(long idthread);
+boolean headless_unregister_thread(long idthread);
 
 /*
  * Thread launch parameters - passed from spawning thread to new POSIX thread
@@ -481,7 +481,7 @@ boolean headless_spawn_callback_thread(hdltreenode hcode, long stream_id) {
  * Adds an entry mapping the thread name to its ID. Handles name collisions
  * by appending -1, -2, etc. (matching process.c:2152-2173).
  */
-static boolean headless_register_thread(bigstring bsname, long idthread) {
+boolean headless_register_thread(bigstring bsname, long idthread) {
     tyvaluerecord val;
     bigstring bs;
 
@@ -527,7 +527,7 @@ static boolean findthreadbyidvisit(bigstring bsname, hdlhashnode hnode, tyvaluer
 /*
  * headless_unregister_thread - Remove thread from system.compiler.threads table
  */
-static boolean headless_unregister_thread(long idthread) {
+boolean headless_unregister_thread(long idthread) {
     bigstring bsname;
 
     if (threadtable == nil)

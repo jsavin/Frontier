@@ -23,8 +23,20 @@
 #include "ws_server.h"
 
 #include "../Common/headers/logging.h"
+#include "../Common/headers/processinternal.h"
 
+#include <pthread.h>
 #include <stdio.h>
+
+/* GIL from headless_thread_verbs.c — yield during poll() so debug threads can run */
+extern pthread_mutex_t frontier_gil;
+extern pthread_cond_t gil_available;
+
+/* Thread globals save/restore — needed around GIL yields since spawned threads
+ * overwrite hthreadglobals while they hold the GIL. */
+extern hdlthreadglobals hthreadglobals;
+extern void headless_save_threadglobals(hdlthreadglobals hg);
+extern void headless_restore_threadglobals(hdlthreadglobals hg);
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
@@ -174,7 +186,14 @@ int protocol_main(cli_options_t *options, ws_server_t *ws_server) {
             int ws_start = nfds;
             nfds += ws_server_pollfds(ws_server, pfds, ws_start);
 
+            /* Yield GIL during poll wait so debug/spawned threads can run.
+             * Save/restore globals because spawned threads overwrite hthreadglobals. */
+            hdlthreadglobals saved_globals = hthreadglobals;
+            headless_save_threadglobals(saved_globals);
+            pthread_mutex_unlock(&frontier_gil);
             int ready = poll(pfds, (nfds_t)nfds, PROTOCOL_POLL_TIMEOUT_MS);
+            pthread_mutex_lock(&frontier_gil);
+            headless_restore_threadglobals(saved_globals);
 
             if (ready < 0) {
                 if (errno == EINTR) continue;
@@ -283,8 +302,20 @@ int protocol_main(cli_options_t *options, ws_server_t *ws_server) {
         }
 
     } else {
-        /* Simple blocking fgets loop (no WS server) */
-        while (fgets(line_buf, PROTOCOL_LINE_MAX, stdin) != NULL) {
+        /* Simple blocking fgets loop (no WS server).
+         * Yield GIL during fgets so debug/spawned threads can run.
+         * Save/restore globals because spawned threads overwrite hthreadglobals. */
+        hdlthreadglobals main_globals = hthreadglobals;
+        for (;;) {
+            headless_save_threadglobals(main_globals);
+            pthread_mutex_unlock(&frontier_gil);
+            char *result = fgets(line_buf, PROTOCOL_LINE_MAX, stdin);
+            pthread_mutex_lock(&frontier_gil);
+            headless_restore_threadglobals(main_globals);
+
+            if (result == NULL)
+                break;
+
             size_t len = strlen(line_buf);
             if (process_line(line_buf, len, &transport)) {
                 break;

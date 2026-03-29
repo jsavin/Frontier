@@ -80,6 +80,7 @@ CLI_SOURCES = \
     cli_json_output.c \
     protocol_handler.c \
     op_handler.c \
+    debug_handler.c \
     odb_ops.c \
     ws_server.c \
     ws_frame.c \

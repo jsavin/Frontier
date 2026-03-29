@@ -30,6 +30,9 @@
 #include <stdint.h>
 #include <errno.h>
 #include <pthread.h>
+#include <time.h>
+
+extern pthread_mutex_t frontier_gil;
 
 #ifdef __APPLE__
 #include <mach-o/dyld.h>  /* for _NSGetExecutablePath */
@@ -67,6 +70,7 @@
 #include "../Common/headers/langinternal.h"
 #include "repl.h"
 #include "protocol_handler.h"
+#include "debug_handler.h"
 #include "ws_server.h"
 
 extern long grabthreadglobals(void);
@@ -75,6 +79,8 @@ extern long releasethreadglobals(void);
 /* hthreadglobals is defined in headless_threadglobals.c, declared in processinternal.h.
  * We use the hdlthreadglobals typedef from threadregistry.h to avoid header conflicts. */
 extern hdlthreadglobals hthreadglobals;
+extern void headless_save_threadglobals(hdlthreadglobals hg);
+extern void headless_restore_threadglobals(hdlthreadglobals hg);
 
 // Version information
 // FRONTIER_CLI_VERSION_STRING is defined at compile time from git tags via Makefile
@@ -860,6 +866,9 @@ static boolean initialize_frontier_runtime(void) {
         return false;
     }
 
+    /* Install protocol-aware debugger callback (replaces no-op from langstartup.c) */
+    debug_init();
+
     /* Initialize thread registry and register main thread with idapplicationthread (2) */
     if (!init_thread_registry()) {
         log_error(LOG_COMP_GENERAL, "Error: Failed to initialize thread registry");
@@ -903,6 +912,19 @@ static void cleanup_frontier_runtime(void) {
     }
     
     cli_log_info("Cleaning up Frontier runtime");
+
+    /* Allow spawned threads (debug, TCP callbacks) to finish cleanup.
+     * Release GIL briefly so any threads blocked on it can complete,
+     * then reacquire and restore main thread globals before shutdown. */
+    {
+        hdlthreadglobals saved = hthreadglobals;
+        headless_save_threadglobals(saved);
+        pthread_mutex_unlock(&frontier_gil);
+        struct timespec ts = {0, 250000000}; /* 250ms — enough for debug threads to finish cleanup */
+        nanosleep(&ts, NULL);
+        pthread_mutex_lock(&frontier_gil);
+        headless_restore_threadglobals(saved);
+    }
 
     /* Wait for all spawned threads to finish BEFORE unloading databases.
      * Spawned threads may still be running (blocked on GIL) and need roottable
