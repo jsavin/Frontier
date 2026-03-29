@@ -130,6 +130,7 @@ State changes and UI commands are broadcast to connected clients as JSON message
 | ODB mutations | `odb.created`, `odb.updated`, `odb.deleted`, `odb.moved` | Object database changes |
 | UI commands | `editor.open`, `dialog.show`, `quickscript.run` | Runtime requests GUI action |
 | Execution | `script.started`, `script.completed`, `script.error` | Script lifecycle |
+| Debug | `debug/suspended`, `debug/completed` | Debugger thread state changes |
 | System | `session.authenticated`, `server.shutdown` | Connection/server state |
 
 Clients receive all events and filter locally for relevance. Subscription-based filtering may be added later if bandwidth becomes a concern.

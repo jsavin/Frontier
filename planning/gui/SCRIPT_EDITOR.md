@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 0.2.0 |
+| **Version** | 0.3.0 |
 | **Status** | Draft |
 | **Last Updated** | 2026-02-04 |
 
@@ -10,6 +10,7 @@
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
+| 0.3.0 | 2026-03-28 | Jake Savin, Claude | Reconcile debug protocol with USERTALK_DEBUGGER_PLAN.md: rename script/debug/* → debug/*, add watchpoints, conditional breakpoints, session-scoped breakpoints, debug/pause, debug/getSource |
 | 0.2.0 | 2026-02-04 | Jake Savin, Claude | Added Autocomplete/Suggestions section; simplified Unified Console to reference CONSOLE.md |
 | 0.1.0 | 2026-02-04 | Jake Savin, Claude | Initial draft |
 
@@ -37,7 +38,7 @@ Scripts are stored as outline externals in the ODB. The editor compiles scripts 
 +-------------------------------------------------------------+
 |  workspace.scratchpad.myScript                        _ [] X |
 +-------------------------------------------------------------+
-| [Run] [Debug] [Step] [In] [Out] [Follow] [Go] [Locals]      |
+| [Run] [Debug] [Step] [In] [Out] [Follow] [Go] [Locals] [Watches] |
 +-------------------------------------------------------------+
 |  1 | on myScript()                                          |
 |  2 |    local (x = 10, y = 20)                              |
@@ -56,7 +57,7 @@ Scripts are stored as outline externals in the ODB. The editor compiles scripts 
 ### Components
 
 - **Title bar:** Shows the dot-path to the script being edited (e.g., `workspace.scratchpad.myScript`)
-- **Toolbar:** Debug controls (Run, Debug, Step, In, Out, Follow, Go, Locals)
+- **Toolbar:** Debug controls (Run, Debug, Step, In, Out, Follow, Go, Locals, Watches)
 - **Line numbers:** Gutter showing line numbers
 - **Bar cursor:** Highlighted line (line 3 in example, shown with `>>`) indicating current debug position
 - **Code area:** Scrollable, outline-based editor with syntax highlighting
@@ -68,7 +69,9 @@ Scripts are stored as outline externals in the ODB. The editor compiles scripts 
 |---------|-------|------------|
 | Line | Normal | Default text color |
 | Line | Bar cursor | Highlighted background (debug position) |
-| Line | Breakpoint | Red dot in gutter |
+| Line | Breakpoint (session) | Red dot in gutter |
+| Line | Breakpoint (persistent) | Red dot with outline/ring in gutter |
+| Line | Watchpoint | Eye icon in gutter |
 | Line | Error | Red underline or highlight |
 | Toolbar button | Active | Highlighted/pressed appearance |
 | Toolbar button | Disabled | Grayed out |
@@ -279,31 +282,32 @@ Common snippets that expand to full code templates:
 | **Out** | Arrow up | Step out to caller | Shift+F11 |
 | **Follow** | Eye | Continuous highlight without stopping | Cmd+F11 |
 | **Go** | Continue | Run to next breakpoint or completion | F5 |
-| **Stop** | Pause | Pause execution (shown during running) | Cmd+. |
+| **Pause** | Pause | Suspend at next statement (shown during running) | Cmd+. |
 | **Kill** | X | Terminate immediately | Cmd+Shift+. |
 | **Locals** | Table | Open variable inspector | Cmd+L |
+| **Watches** | Eye | Open watchpoint panel | Cmd+Shift+W |
 
 ### Button States
 
 **Normal mode (not debugging):**
 - Run, Debug: Enabled
-- Step, In, Out, Follow, Go, Stop, Kill: Disabled
-- Locals: Disabled
+- Step, In, Out, Follow, Go, Pause, Kill: Disabled
+- Locals, Watches: Disabled
 
 **Debug mode (paused at line):**
 - Run: Disabled
 - Debug: Disabled (already in debug mode)
 - Step, In, Out, Follow, Go: Enabled
-- Stop: Disabled (already stopped)
+- Pause: Disabled (already paused)
 - Kill: Enabled
-- Locals: Enabled
+- Locals, Watches: Enabled
 
 **Running (executing):**
 - Run, Debug: Disabled
 - Step, In, Out, Follow: Disabled
-- Go: Changes to Stop (enabled)
+- Go: Changes to Pause (enabled)
 - Kill: Enabled
-- Locals: Enabled
+- Locals, Watches: Enabled
 
 ---
 
@@ -328,46 +332,105 @@ Common snippets that expand to full code templates:
 - Locals button opens table browser with thread state
 - Call stack inspection (nested local tables)
 - Follow mode (continuous highlight)
-- Watch expressions
+
+**Phase 4: Watchpoints and Conditional Breakpoints**
+- Watchpoints: break when a variable's value changes at a specific line
+- Watches panel shows watched variables with current/previous values
+- Conditional breakpoints: only suspend when a UserTalk expression evaluates to true
+- Right-click breakpoint to add/edit condition
 
 ### Debug Session Lifecycle
 
 ```
 1. User clicks Debug
-   -> GUI sends script/debug/start
-   -> Server compiles script, enters debug mode
-   -> Server sends script/debug/paused event with line number
+   -> GUI sends debug/eval
+   -> Server compiles script, enters debug mode on a new thread
+   -> Server sends debug/suspended notification with threadId + line number
 
 2. Bar cursor moves to indicated line
    -> Toolbar updates to debug state
    -> User can inspect locals, step, etc.
 
 3. User clicks Step
-   -> GUI sends script/debug/step
+   -> GUI sends debug/step with threadId
    -> Server executes one line
-   -> Server sends script/debug/paused event with new line
+   -> Server sends debug/suspended notification with new line
 
 4. User clicks Go
-   -> GUI sends script/debug/continue
-   -> Server runs until breakpoint or completion
-   -> Server sends script/debug/paused or script/completed event
+   -> GUI sends debug/continue with threadId
+   -> Server runs until breakpoint, watchpoint, or completion
+   -> Server sends debug/suspended or debug/completed notification
 
-5. User clicks Kill (or script completes)
-   -> GUI sends script/debug/kill (if user-initiated)
-   -> Server terminates execution
-   -> Server sends script/completed event
+5. User clicks Pause (during running execution)
+   -> GUI sends debug/pause with threadId
+   -> Server suspends thread at next statement
+   -> Server sends debug/suspended notification with reason "interrupted"
+   -> This is non-destructive: execution can resume with Step or Go
+
+6. User clicks Kill (or script completes)
+   -> GUI sends debug/kill with threadId (if user-initiated)
+   -> Server terminates execution immediately
+   -> Server sends debug/completed notification
    -> Bar cursor clears, toolbar returns to normal state
 ```
 
 ### Breakpoints
 
-- **Set breakpoint:** Click line number gutter, or F9
+- **Set breakpoint:** Click line number gutter, or F9 (creates session-scoped breakpoint by default)
 - **Clear breakpoint:** Click existing breakpoint, or F9 on breakpoint line
-- **Clear all:** Cmd+Shift+F9
-- **Visual:** Red dot in gutter
-- **Conditional breakpoints:** Future enhancement (Phase 3+)
+- **Clear all session breakpoints:** Cmd+Shift+F9
+- **Visual:** Red dot in gutter (session-scoped), red dot with outline/ring (persistent)
 
-Breakpoints persist across editor sessions (stored with script metadata).
+**Session-scoped vs persistent breakpoints:**
+
+| Type | Lifetime | Scope | ODB Modified |
+|------|----------|-------|-------------|
+| **Session** (default) | Disappears when session ends | Only triggers for this session's threads | No |
+| **Persistent** | Survives across sessions | Visible to all sessions (must be loaded explicitly) | Yes |
+
+- **F9** sets a session-scoped breakpoint (default for debugging workflows)
+- **Shift+F9** or right-click → "Save to ODB" promotes to persistent
+- Persistent breakpoints stored in ODB are **not auto-loaded** — use `debug/loadBreakpoints` or right-click → "Load ODB Breakpoints" to activate them. This prevents agents from hitting legacy breakpoints left over from old sessions.
+
+**Conditional breakpoints:**
+
+- Right-click a breakpoint → "Add Condition..."
+- Enter a UserTalk expression (e.g., `string.length(path) > 10`)
+- Breakpoint only suspends when the condition evaluates to true
+- Visual: Small `?` badge on the breakpoint dot
+- Conditions work with both session and persistent breakpoints
+
+### Watchpoints
+
+Watchpoints break when a watched variable's value changes at a specific line.
+
+- **Set watchpoint:** Right-click a line in debug mode → "Watch Variable..." → enter variable name
+- **Alternative:** In the Watches panel, click "+" and specify script, line, and variable name
+- **Visual:** Eye icon in gutter on watched lines
+- **Clear watchpoint:** Right-click the eye icon, or remove from Watches panel
+
+**When a watchpoint fires:**
+- Execution suspends with reason `"watchpoint"`
+- The `debug/suspended` notification includes old and new values
+- The Watches panel highlights the changed variable
+- A brief toast shows: `path changed ("/" → "/index.html")`
+
+**Watches panel** (opened via Watches toolbar button or Cmd+Shift+W):
+
+```
++---------------------------------------------+
+|  Watches                             _ [] X  |
++---------------------------------------------+
+|  Variable  | Line | Value    | Previous     |
++---------------------------------------------+
+|  path      | 5    | "/index" | "/"          |
+|  adrpage   | 5    | @idx     | nil          |
++---------------------------------------------+
+| [+] Add Watch                                |
++---------------------------------------------+
+```
+
+Multiple variables can be watched on the same line. Watchpoints are session-scoped (not persisted to ODB).
 
 ### Bar Cursor
 
@@ -662,19 +725,19 @@ Compiles a script without executing.
 
 ### Debug Session Management
 
-#### script/debug/start - Start Debug Session
+> **Protocol alignment:** These operations mirror the NDJSON protocol ops defined in `planning/phase6/USERTALK_DEBUGGER_PLAN.md`. The WebSocket GUI protocol uses the same `debug/*` namespace. All debug commands include `threadId` to support multi-thread debugging.
 
-Enters debug mode, pausing at the first line.
+#### debug/eval - Start Debug Session
+
+Starts a script in debug mode. Non-blocking: spawns the script on a new thread and returns immediately with a thread ID. The script runs until it hits a breakpoint, completes, or is killed.
 
 **WebSocket:**
 ```json
 {
-  "op": "script/debug/start",
+  "op": "debug/eval",
   "id": 3,
   "params": {
-    "path": "workspace.scratchpad.myScript",
-    "args": [],
-    "breakpoints": [5, 10, 15]
+    "expression": "workspace.scratchpad.myScript()"
   }
 }
 ```
@@ -683,234 +746,33 @@ Enters debug mode, pausing at the first line.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `path` | string | Yes | Dot-path to script |
-| `args` | array | No | Arguments to pass |
-| `breakpoints` | array | No | Initial breakpoint lines |
+| `expression` | string | Yes | UserTalk expression to execute in debug mode |
 
 **Response:**
 ```json
 {
   "id": 3,
   "result": {
-    "sessionId": "debug_xyz789",
-    "status": "paused",
-    "line": 1
+    "threadId": 3,
+    "status": "running"
   }
 }
 ```
 
-#### script/debug/step - Step Execution
+The client receives `debug/suspended` notifications when the script pauses.
 
-Executes one line and pauses.
+#### debug/step - Step Execution
+
+Executes one line and pauses. Supports three step directions.
 
 **WebSocket:**
 ```json
 {
-  "op": "script/debug/step",
+  "op": "debug/step",
   "id": 4,
   "params": {
-    "sessionId": "debug_xyz789"
-  }
-}
-```
-
-**Response:**
-```json
-{
-  "id": 4,
-  "result": {
-    "status": "paused",
-    "line": 2
-  }
-}
-```
-
-#### script/debug/stepIn - Step Into
-
-Steps into a called script.
-
-**WebSocket:**
-```json
-{
-  "op": "script/debug/stepIn",
-  "id": 5,
-  "params": {
-    "sessionId": "debug_xyz789"
-  }
-}
-```
-
-**Response:**
-```json
-{
-  "id": 5,
-  "result": {
-    "status": "paused",
-    "path": "workspace.helpers.utilityScript",
-    "line": 1
-  }
-}
-```
-
-#### script/debug/stepOut - Step Out
-
-Runs until returning to the caller.
-
-**WebSocket:**
-```json
-{
-  "op": "script/debug/stepOut",
-  "id": 6,
-  "params": {
-    "sessionId": "debug_xyz789"
-  }
-}
-```
-
-#### script/debug/continue - Continue Execution
-
-Runs until the next breakpoint or completion.
-
-**WebSocket:**
-```json
-{
-  "op": "script/debug/continue",
-  "id": 7,
-  "params": {
-    "sessionId": "debug_xyz789"
-  }
-}
-```
-
-#### script/debug/stop - Pause Execution
-
-Pauses a running script.
-
-**WebSocket:**
-```json
-{
-  "op": "script/debug/stop",
-  "id": 8,
-  "params": {
-    "sessionId": "debug_xyz789"
-  }
-}
-```
-
-#### script/debug/kill - Terminate Execution
-
-Terminates execution immediately.
-
-**WebSocket:**
-```json
-{
-  "op": "script/debug/kill",
-  "id": 9,
-  "params": {
-    "sessionId": "debug_xyz789"
-  }
-}
-```
-
-### Breakpoint Management
-
-#### script/breakpoints/set - Set Breakpoints
-
-Sets breakpoints for a script.
-
-**WebSocket:**
-```json
-{
-  "op": "script/breakpoints/set",
-  "id": 10,
-  "params": {
-    "path": "workspace.scratchpad.myScript",
-    "lines": [5, 10, 15]
-  }
-}
-```
-
-**Response:**
-```json
-{
-  "id": 10,
-  "result": {
-    "path": "workspace.scratchpad.myScript",
-    "breakpoints": [5, 10, 15]
-  }
-}
-```
-
-#### script/breakpoints/clear - Clear Breakpoints
-
-Clears specified or all breakpoints.
-
-**WebSocket:**
-```json
-{
-  "op": "script/breakpoints/clear",
-  "id": 11,
-  "params": {
-    "path": "workspace.scratchpad.myScript",
-    "lines": [5]
-  }
-}
-```
-
-To clear all:
-```json
-{
-  "op": "script/breakpoints/clear",
-  "id": 11,
-  "params": {
-    "path": "workspace.scratchpad.myScript",
-    "all": true
-  }
-}
-```
-
-#### script/breakpoints/list - List Breakpoints
-
-Lists breakpoints for a script or all scripts.
-
-**WebSocket:**
-```json
-{
-  "op": "script/breakpoints/list",
-  "id": 12,
-  "params": {
-    "path": "workspace.scratchpad.myScript"
-  }
-}
-```
-
-**Response:**
-```json
-{
-  "id": 12,
-  "result": {
-    "breakpoints": [
-      {"path": "workspace.scratchpad.myScript", "line": 5},
-      {"path": "workspace.scratchpad.myScript", "line": 10}
-    ]
-  }
-}
-```
-
-### Variable Inspection
-
-#### script/debug/locals - Get Local Variables
-
-Gets the local variables for the current or specified stack frame.
-
-**WebSocket:**
-```json
-{
-  "op": "script/debug/locals",
-  "id": 13,
-  "params": {
-    "sessionId": "debug_xyz789",
-    "frameIndex": 0
+    "threadId": 3,
+    "direction": "over"
   }
 }
 ```
@@ -919,37 +781,281 @@ Gets the local variables for the current or specified stack frame.
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
-| `sessionId` | string | Yes | - | Debug session ID |
-| `frameIndex` | integer | No | 0 | Stack frame (0 = current, 1 = caller, etc.) |
+| `threadId` | integer | Yes | - | Thread to step |
+| `direction` | string | No | `"over"` | `"over"` (next line), `"into"` (descend into calls), `"out"` (return to caller) |
+
+**Response:**
+```json
+{
+  "id": 4,
+  "result": {
+    "status": "stepping"
+  }
+}
+```
+
+The actual new position is delivered via a `debug/suspended` notification.
+
+#### debug/continue - Continue Execution
+
+Clears stepping mode. Script runs freely until next breakpoint, watchpoint, or completion.
+
+**WebSocket:**
+```json
+{
+  "op": "debug/continue",
+  "id": 5,
+  "params": {"threadId": 3}
+}
+```
+
+#### debug/pause - Suspend a Running Thread
+
+Interrupts a running thread and suspends it at the next statement. This is non-destructive — execution can be resumed with `debug/step` or `debug/continue`. If the thread is not in debug mode, `debug/pause` promotes it to debug mode before suspending.
+
+**WebSocket:**
+```json
+{
+  "op": "debug/pause",
+  "id": 6,
+  "params": {"threadId": 3}
+}
+```
+
+The thread suspends at the next interpreter hook point and sends a `debug/suspended` notification with `"reason":"interrupted"`.
+
+#### debug/kill - Terminate Execution
+
+Terminates execution immediately. Sets `flscriptkilled = true`; script aborts at next yield point.
+
+**WebSocket:**
+```json
+{
+  "op": "debug/kill",
+  "id": 7,
+  "params": {"threadId": 3}
+}
+```
+
+#### debug/getSource - View Script Source
+
+Returns script source with line numbers, breakpoint/watchpoint markers, and (if a thread is suspended) the current execution line. Useful when stepping into a script not currently open in an editor.
+
+**WebSocket:**
+```json
+{
+  "op": "debug/getSource",
+  "id": 8,
+  "params": {
+    "script": "@workspace.scratchpad.myScript",
+    "threadId": 3
+  }
+}
+```
+
+**Parameters:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `script` | string | Yes | Absolute ODB path to script |
+| `threadId` | integer | No | If provided and suspended, includes current execution line |
+
+**Response:**
+```json
+{
+  "id": 8,
+  "result": {
+    "script": "@workspace.scratchpad.myScript",
+    "currentLine": 3,
+    "lines": [
+      {"num": 1, "text": "on myScript()", "breakpoint": false},
+      {"num": 2, "text": "\tlocal (x = 10)", "breakpoint": false},
+      {"num": 3, "text": "\tdialog.alert(x)", "breakpoint": false, "current": true},
+      {"num": 4, "text": "\treturn (x)", "breakpoint": false}
+    ]
+  }
+}
+```
+
+### Breakpoint Management
+
+#### debug/setBreakpoint - Set or Clear Breakpoint
+
+Toggles a breakpoint on a specific line. Supports session-scoped (default) and persistent breakpoints, with optional conditions.
+
+**WebSocket:**
+```json
+{
+  "op": "debug/setBreakpoint",
+  "id": 10,
+  "params": {
+    "script": "@workspace.scratchpad.myScript",
+    "line": 5,
+    "persistent": false
+  }
+}
+```
+
+**Parameters:**
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `script` | string | Yes | - | Absolute ODB path to script |
+| `line` | integer | Yes | - | Line number |
+| `persistent` | boolean | No | `false` | If true, stored in ODB; if false, session-scoped |
+| `condition` | string | No | - | UserTalk expression; only suspend if it evaluates to true |
+
+**Response:**
+```json
+{
+  "id": 10,
+  "result": {
+    "script": "@workspace.scratchpad.myScript",
+    "line": 5,
+    "type": "session",
+    "active": true
+  }
+}
+```
+
+Calling again on the same line toggles the breakpoint off (`"active": false`).
+
+#### debug/listBreakpoints - List All Breakpoints
+
+Returns both session and persistent breakpoints, distinguished by type.
+
+**WebSocket:**
+```json
+{
+  "op": "debug/listBreakpoints",
+  "id": 11,
+  "params": {}
+}
+```
+
+**Response:**
+```json
+{
+  "id": 11,
+  "result": {
+    "breakpoints": [
+      {"script": "@workspace.scratchpad.myScript", "line": 5, "type": "session"},
+      {"script": "@workspace.scratchpad.myScript", "line": 10, "type": "persistent"},
+      {"script": "@workspace.scratchpad.myScript", "line": 15, "type": "session", "condition": "x > 10"}
+    ]
+  }
+}
+```
+
+### Watchpoint Management
+
+#### debug/setWatchpoint - Set or Clear Watchpoint
+
+Sets a watchpoint on a variable at a specific line. When execution reaches that line, the debugger snapshots the named variable before execution, compares after, and suspends if the value changed.
+
+**WebSocket:**
+```json
+{
+  "op": "debug/setWatchpoint",
+  "id": 12,
+  "params": {
+    "script": "@workspace.scratchpad.myScript",
+    "line": 5,
+    "variable": "path"
+  }
+}
+```
+
+**Parameters:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `script` | string | Yes | Absolute ODB path to script |
+| `line` | integer | Yes | Line number to watch |
+| `variable` | string | Yes | Variable name to watch |
+
+**Response:**
+```json
+{
+  "id": 12,
+  "result": {
+    "script": "@workspace.scratchpad.myScript",
+    "line": 5,
+    "variable": "path",
+    "active": true
+  }
+}
+```
+
+#### debug/listWatchpoints - List All Watchpoints
+
+**WebSocket:**
+```json
+{
+  "op": "debug/listWatchpoints",
+  "id": 13,
+  "params": {}
+}
+```
 
 **Response:**
 ```json
 {
   "id": 13,
   "result": {
-    "frameIndex": 0,
-    "script": "workspace.scratchpad.myScript",
-    "line": 5,
-    "locals": [
-      {"name": "x", "type": "long", "value": 10},
-      {"name": "y", "type": "long", "value": 20},
-      {"name": "result", "type": "string", "value": "hello"}
+    "watchpoints": [
+      {"script": "@workspace.scratchpad.myScript", "line": 5, "variable": "path"},
+      {"script": "@workspace.scratchpad.myScript", "line": 5, "variable": "adrpage"}
     ]
   }
 }
 ```
 
-#### script/debug/callstack - Get Call Stack
+### Variable Inspection
 
-Gets the full call stack.
+#### debug/getLocals - Get Local Variables
+
+Gets the local variables for the current stack frame of a suspended thread.
 
 **WebSocket:**
 ```json
 {
-  "op": "script/debug/callstack",
+  "op": "debug/getLocals",
   "id": 14,
   "params": {
-    "sessionId": "debug_xyz789"
+    "threadId": 3
+  }
+}
+```
+
+**Parameters:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `threadId` | integer | Yes | Thread to inspect (must be suspended) |
+
+**Response:**
+```json
+{
+  "id": 14,
+  "result": {
+    "locals": {"x": 10, "y": 20, "result": "hello"},
+    "level": 2
+  }
+}
+```
+
+#### debug/getStack - Get Call Stack
+
+Gets the full call stack for a suspended thread.
+
+**WebSocket:**
+```json
+{
+  "op": "debug/getStack",
+  "id": 15,
+  "params": {
+    "threadId": 3
   }
 }
 ```
@@ -957,12 +1063,12 @@ Gets the full call stack.
 **Response:**
 ```json
 {
-  "id": 14,
+  "id": 15,
   "result": {
     "frames": [
-      {"index": 0, "script": "workspace.scratchpad.myScript", "line": 5},
-      {"index": 1, "script": "workspace.helpers.caller", "line": 12},
-      {"index": 2, "script": "workspace.main", "line": 3}
+      {"level": 1, "script": "@workspace.scratchpad.myScript", "line": 5},
+      {"level": 2, "script": "@workspace.helpers.caller", "line": 12},
+      {"level": 3, "script": "@workspace.main", "line": 3}
     ]
   }
 }
@@ -1055,23 +1161,44 @@ Script execution finished (success or error).
 }
 ```
 
-#### script/debug/paused - Debug Paused
+#### debug/suspended - Thread Suspended
 
-Execution paused at a line (breakpoint, step, or user stop).
+Unsolicited notification sent when a thread pauses (breakpoint hit, step completed, watchpoint triggered, interrupted, or error).
 
 ```json
 {
-  "event": "script/debug/paused",
-  "data": {
-    "sessionId": "debug_xyz789",
-    "reason": "breakpoint",
-    "path": "workspace.scratchpad.myScript",
-    "line": 5
+  "id": null,
+  "op": "debug/suspended",
+  "params": {
+    "threadId": 3,
+    "script": "@workspace.scratchpad.myScript",
+    "line": 5,
+    "reason": "breakpoint"
   }
 }
 ```
 
-**Reason values:** `"breakpoint"`, `"step"`, `"stepIn"`, `"stepOut"`, `"stop"`, `"entry"` (first line)
+**Reason values:** `"breakpoint"`, `"step"`, `"watchpoint"`, `"interrupted"`, `"entry"` (first line), `"error"`
+
+**Watchpoint suspension** includes old/new values:
+
+```json
+{
+  "id": null,
+  "op": "debug/suspended",
+  "params": {
+    "threadId": 3,
+    "script": "@workspace.scratchpad.myScript",
+    "line": 5,
+    "reason": "watchpoint",
+    "watchpoint": {
+      "variable": "path",
+      "oldValue": "/",
+      "newValue": "/index.html"
+    }
+  }
+}
+```
 
 ---
 
@@ -1115,12 +1242,14 @@ Execution paused at a line (breakpoint, step, or user stop).
 | Step In | F11 | F11 |
 | Step Out | Shift+F11 | Shift+F11 |
 | Continue | F5 | F5 |
-| Stop | Cmd+. | Ctrl+Break |
+| Pause | Cmd+. | Ctrl+Break |
 | Kill | Cmd+Shift+. | Ctrl+Shift+Break |
 | Follow | Cmd+F11 | Ctrl+F11 |
-| Toggle Breakpoint | F9 | F9 |
-| Clear All Breakpoints | Cmd+Shift+F9 | Ctrl+Shift+F9 |
+| Toggle Breakpoint (session) | F9 | F9 |
+| Toggle Breakpoint (persistent) | Shift+F9 | Shift+F9 |
+| Clear All Session Breakpoints | Cmd+Shift+F9 | Ctrl+Shift+F9 |
 | Locals Window | Cmd+L | Ctrl+L |
+| Watches Panel | Cmd+Shift+W | Ctrl+Shift+W |
 
 ### Console
 
@@ -1139,16 +1268,23 @@ Execution paused at a line (breakpoint, step, or user stop).
 
 ## Open Questions
 
-1. **Breakpoint persistence:** Store breakpoints with script metadata in ODB, or client-side only?
-2. **Conditional breakpoints:** Syntax for "break when x > 10"? Phase 3+?
-3. **Watch expressions:** Separate panel or integrated into Locals window?
+### Resolved
+
+1. ~~**Breakpoint persistence:**~~ **Resolved.** Both: session-scoped (default, in-memory only) and persistent (opt-in, stored in ODB). Persistent breakpoints must be explicitly loaded into a session.
+2. ~~**Conditional breakpoints:**~~ **Resolved.** Phase 4. Condition is a UserTalk expression passed via `"condition"` parameter on `debug/setBreakpoint`.
+3. ~~**Watch expressions:**~~ **Resolved.** Separate Watches panel (not integrated into Locals). Watchpoints are line+variable scoped, with old/new value reporting.
+5. ~~**Remote debugging:**~~ **Resolved.** Session model supports it — each WebSocket connection gets its own session ID (session 3+). Thread commands include `threadId` for targeting.
+
+### Open
+
 4. **Multi-script debugging:** How to handle stepping into scripts in different databases?
-5. **Remote debugging:** Can a GUI connect to a running script started by another client?
 6. **Outline sync:** If script source is edited externally, how to preserve outline structure?
 7. **Collaborative editing:** If two users edit the same script, how to handle conflicts?
 8. **Console history:** How much history to retain? Across sessions? Searchable?
 9. **Syntax theme:** User-customizable colors? Dark mode?
 10. **Large scripts:** Performance for scripts with 1000+ lines? Virtualized rendering needed?
+11. **Thread picker UI:** When multiple threads are paused simultaneously, how does the user switch between them? Dropdown in toolbar? Separate panel?
+12. **Watchpoint UX for non-debug mode:** Can watchpoints be set before starting a debug session, or only while paused?
 
 ---
 
@@ -1158,5 +1294,6 @@ Execution paused at a line (breakpoint, step, or user stop).
 - [`CONSOLE.md`](./CONSOLE.md) - Unified console specification (REPL and QuickScript)
 - [`TABLE_BROWSER.md`](./TABLE_BROWSER.md) - Table browser specification (used for Locals window)
 - [`PROTOCOL.md`](./PROTOCOL.md) - JSON protocol specification (will be updated with script operations)
+- [`../phase6/USERTALK_DEBUGGER_PLAN.md`](../phase6/USERTALK_DEBUGGER_PLAN.md) - Protocol-based debugger implementation plan (authoritative for debug protocol ops)
 - `docs/usertalk/SYNTAX.md` - UserTalk syntax reference
 - `docs/VERB_IMPLEMENTATION_GUIDE.md` - How verbs are implemented (relevant for debugging)
