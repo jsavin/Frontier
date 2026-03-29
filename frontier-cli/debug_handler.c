@@ -29,22 +29,8 @@
 #include "logging.h"
 #include "processinternal.h"
 #include "threadregistry.h"
+#include "../tests/headless_threading.h"
 #include "../third_party/cJSON/cJSON.h"
-
-/* External thread infrastructure from headless_thread_verbs.c */
-extern hdlthreadglobals headless_new_threadglobals(void);
-extern void headless_dispose_threadglobals(hdlthreadglobals hg);
-extern void headless_save_threadglobals(hdlthreadglobals hg);
-extern void headless_restore_threadglobals(hdlthreadglobals hg);
-extern frontier_pthread_record *allocate_thread_record(void);
-extern void free_thread_record(frontier_pthread_record *rec);
-extern boolean headless_register_thread(bigstring bsname, long idthread);
-extern boolean headless_unregister_thread(long idthread);
-extern void headless_clear_last_lang_error(void);
-
-/* GIL from headless_thread_verbs.c */
-extern pthread_mutex_t frontier_gil;
-extern pthread_cond_t gil_available;
 
 /* Global: current hashtable and table stack (thread globals) */
 extern hdlhashtable currenthashtable;
@@ -62,6 +48,15 @@ static pthread_mutex_t g_debug_mutex = PTHREAD_MUTEX_INITIALIZER;
  * Debug state management
  * ======================================================================== */
 
+/*
+ * Look up debug state by thread ID.
+ *
+ * Ownership invariant: the debug thread owns its tydebugstate and frees it
+ * only after sending the debug/completed notification and unregistering.
+ * Protocol handlers must not access the returned pointer after receiving
+ * debug/completed for that thread. The atomic flags provide safe cross-thread
+ * communication while the struct is alive.
+ */
 static tydebugstate *debug_get_state_for_thread(long threadid) {
 
     pthread_mutex_lock(&g_debug_mutex);
@@ -84,9 +79,9 @@ static tydebugstate *debug_register_thread(long threadid, transport_t *transport
         return NULL;
 
     state->fldebugmode = true;
-    state->flsuspended = false;
-    state->flinterrupt = false;
-    state->flkill = false;
+    atomic_store(&state->flsuspended, false);
+    atomic_store(&state->flinterrupt, false);
+    atomic_store(&state->flkill, false);
     state->transport = transport;
     state->threadid = threadid;
 
@@ -124,6 +119,9 @@ static void debug_unregister_thread(long threadid) {
  * Notifications
  * ======================================================================== */
 
+/* Note: reason is interpolated without JSON escaping. Currently only internal
+ * constant strings ("entry", "interrupted", "breakpoint", "step") are passed.
+ * If future callers pass user-supplied content, add JSON string escaping. */
 void debug_send_suspended(transport_t *transport, long threadid, long line, const char *reason) {
 
     char json[512];
@@ -174,15 +172,15 @@ static boolean protocol_debugger_callback(hdltreenode hnode) {
         return true; /* not debugging this thread */
 
     /* Check kill flag */
-    if (state->flkill) {
+    if (atomic_load(&state->flkill)) {
         log_debug(LOG_COMP_LANG, "debug: thread %ld killed", state->threadid);
         return false; /* signal interpreter to stop */
     }
 
     /* Check interrupt flag (debug/pause) */
-    if (state->flinterrupt) {
-        state->flinterrupt = false;
-        state->flsuspended = true;
+    if (atomic_load(&state->flinterrupt)) {
+        atomic_store(&state->flinterrupt, false);
+        atomic_store(&state->flsuspended, true);
 
         /* Get line number from the current node */
         long line = 0;
@@ -194,9 +192,9 @@ static boolean protocol_debugger_callback(hdltreenode hnode) {
     }
 
     /* Suspension loop — yields GIL so protocol handler can process commands */
-    while (state->flsuspended) {
+    while (atomic_load(&state->flsuspended)) {
 
-        if (state->flkill)
+        if (atomic_load(&state->flkill))
             return false;
 
         /* Save thread globals, release GIL, sleep, reacquire, restore */
@@ -260,13 +258,13 @@ static void *debug_thread_entry(void *arg) {
     (**params->hglobals).param_reserved[0] = (void *)params->debugstate;
 
     /* Initial suspension — pause before first statement so client can set breakpoints */
-    params->debugstate->flsuspended = true;
+    atomic_store(&params->debugstate->flsuspended, true);
     debug_send_suspended(params->debugstate->transport, params->debugstate->threadid, 0, "entry");
 
     /* Suspension loop (same pattern as in the callback) */
-    while (params->debugstate->flsuspended) {
+    while (atomic_load(&params->debugstate->flsuspended)) {
 
-        if (params->debugstate->flkill) {
+        if (atomic_load(&params->debugstate->flkill)) {
             debug_send_completed(params->debugstate->transport, params->debugstate->threadid, false);
             goto cleanup;
         }
@@ -498,7 +496,7 @@ void handle_debug_continue(int id, const char *json_line, transport_t *transport
         return;
     }
 
-    state->flsuspended = false;
+    atomic_store(&state->flsuspended, false);
 
     char resp[128];
     snprintf(resp, sizeof(resp), "{\"id\":%d,\"result\":{\"threadId\":%ld,\"status\":\"running\"},\"success\":true}", id, threadid);
@@ -532,8 +530,8 @@ void handle_debug_kill(int id, const char *json_line, transport_t *transport) {
         return;
     }
 
-    state->flkill = true;
-    state->flsuspended = false; /* wake it up so it can die */
+    atomic_store(&state->flkill, true);
+    atomic_store(&state->flsuspended, false); /* wake it up so it can die */
 
     char resp[128];
     snprintf(resp, sizeof(resp), "{\"id\":%d,\"result\":{\"threadId\":%ld,\"status\":\"killed\"},\"success\":true}", id, threadid);
@@ -568,7 +566,7 @@ void handle_debug_pause(int id, const char *json_line, transport_t *transport) {
     }
 
     /* Set interrupt flag — callback will suspend at next statement */
-    state->flinterrupt = true;
+    atomic_store(&state->flinterrupt, true);
 
     char resp[128];
     snprintf(resp, sizeof(resp), "{\"id\":%d,\"result\":{\"threadId\":%ld,\"status\":\"interrupting\"},\"success\":true}", id, threadid);

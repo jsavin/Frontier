@@ -23,20 +23,7 @@
 #include "ws_server.h"
 
 #include "../Common/headers/logging.h"
-#include "../Common/headers/processinternal.h"
-
-#include <pthread.h>
-#include <stdio.h>
-
-/* GIL from headless_thread_verbs.c — yield during poll() so debug threads can run */
-extern pthread_mutex_t frontier_gil;
-extern pthread_cond_t gil_available;
-
-/* Thread globals save/restore — needed around GIL yields since spawned threads
- * overwrite hthreadglobals while they hold the GIL. */
-extern hdlthreadglobals hthreadglobals;
-extern void headless_save_threadglobals(hdlthreadglobals hg);
-extern void headless_restore_threadglobals(hdlthreadglobals hg);
+#include "../tests/headless_threading.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>

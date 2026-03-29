@@ -32,8 +32,6 @@
 #include <pthread.h>
 #include <time.h>
 
-extern pthread_mutex_t frontier_gil;
-
 #ifdef __APPLE__
 #include <mach-o/dyld.h>  /* for _NSGetExecutablePath */
 #endif
@@ -72,15 +70,10 @@ extern pthread_mutex_t frontier_gil;
 #include "protocol_handler.h"
 #include "debug_handler.h"
 #include "ws_server.h"
+#include "../tests/headless_threading.h"
 
 extern long grabthreadglobals(void);
 extern long releasethreadglobals(void);
-
-/* hthreadglobals is defined in headless_threadglobals.c, declared in processinternal.h.
- * We use the hdlthreadglobals typedef from threadregistry.h to avoid header conflicts. */
-extern hdlthreadglobals hthreadglobals;
-extern void headless_save_threadglobals(hdlthreadglobals hg);
-extern void headless_restore_threadglobals(hdlthreadglobals hg);
 
 // Version information
 // FRONTIER_CLI_VERSION_STRING is defined at compile time from git tags via Makefile

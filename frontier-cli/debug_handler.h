@@ -16,6 +16,8 @@
 #ifndef DEBUG_HANDLER_H
 #define DEBUG_HANDLER_H
 
+#include <stdatomic.h>
+
 #include "op_handler.h"
 #include "../Common/headers/frontier.h"
 #include "../Common/headers/lang.h"
@@ -23,14 +25,23 @@
 /*
  * Per-thread debug state. Stored in tythreadglobals.param_reserved[0].
  * Allocated when a thread enters debug mode, freed on thread exit.
+ *
+ * Cross-thread flags (flsuspended, flinterrupt, flkill) use _Atomic
+ * because they are written by the protocol handler thread and read by
+ * the debug thread. The GIL provides ordering at yield boundaries,
+ * but _Atomic prevents register-caching between yields.
+ *
+ * Ownership invariant: the debug thread owns this struct and frees it
+ * only after sending the debug/completed notification. Protocol handlers
+ * must not access the struct after receiving debug/completed.
  */
 typedef struct tydebugstate {
-    boolean fldebugmode;         /* is this thread in debug mode? */
-    boolean flsuspended;         /* is this thread paused? */
-    boolean flinterrupt;         /* pause at next statement (debug/pause) */
-    boolean flkill;              /* kill the script */
-    transport_t *transport;      /* for sending notifications back to client */
-    long threadid;               /* this thread's ID */
+    boolean fldebugmode;             /* is this thread in debug mode? (set once at creation) */
+    atomic_bool flsuspended;         /* is this thread paused? */
+    atomic_bool flinterrupt;         /* pause at next statement (debug/pause) */
+    atomic_bool flkill;              /* kill the script */
+    transport_t *transport;          /* for sending notifications back to client */
+    long threadid;                   /* this thread's ID */
 } tydebugstate, *ptrdebugstate;
 
 /*

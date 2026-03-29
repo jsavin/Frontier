@@ -100,10 +100,22 @@ void cleanup_thread_registry(void) {
             pthread_mutex_unlock(&thread_records[i].refcount_mutex);
 
             if (current_refcount != 0) {
-                log_warn(LOG_COMP_THREAD,
-                         "Thread registry cleanup: record %d still has refcount=%d (thread may be finishing cleanup)",
-                         i, current_refcount);
-                continue;  /* Skip this record — thread is still cleaning up */
+                /* Thread is still cleaning up. Give it a moment to finish,
+                 * then recheck. If it's still active, warn and skip rather
+                 * than aborting — the process is shutting down anyway. */
+                struct timespec ts = {0, 50000000}; /* 50ms */
+                nanosleep(&ts, NULL);
+
+                pthread_mutex_lock(&thread_records[i].refcount_mutex);
+                current_refcount = thread_records[i].refcount;
+                pthread_mutex_unlock(&thread_records[i].refcount_mutex);
+
+                if (current_refcount != 0) {
+                    log_warn(LOG_COMP_THREAD,
+                             "Thread registry cleanup: record %d still has refcount=%d after wait — skipping",
+                             i, current_refcount);
+                    continue;
+                }
             }
 
             /* Safe to destroy now that refcount is verified to be 0 */
