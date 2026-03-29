@@ -2,14 +2,15 @@
 
 | | |
 |---|---|
-| **Version** | 1.0.1 |
+| **Version** | 2.0.0 |
 | **Status** | Draft |
-| **Last Updated** | 2026-02-04 |
+| **Last Updated** | 2026-03-29 |
 
 ## Change History
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
+| 2.0.0 | 2026-03-29 | Jake Savin, Claude | Added script execution, debug, outline, and menu operation domains; consolidated events and error codes; added shutdown operation |
 | 1.0.1 | 2026-02-04 | Jake Savin, Claude | Added odb/move and odb/copy operations |
 | 1.0.0 | 2026-02-04 | Jake Savin, Claude | Initial specification |
 
@@ -29,21 +30,30 @@ This document specifies the JSON-based protocol for communication between GUI cl
 
 ### 1.2 Scope
 
-**Version 1.0 (this document):**
+**Version 1.0:**
 - Session/capabilities
 - ODB read operations (get, children)
 - ODB write operations (create, setValue, delete, rename, move, copy)
 - Event subscriptions
 
-**Future versions:**
-- Context menus
-- Script execution
-- Editor-specific protocols
+**Version 2.0 additions:**
+- Script execution and REPL operations
+- Debug operations (breakpoints, stepping, watchpoints)
+- Outline editor operations
+- Menu editor operations
+- Consolidated event types
+- Complete error code registry
+- System operations (shutdown)
 
 ### 1.3 Related Documents
 
 - [`ARCHITECTURE.md`](./ARCHITECTURE.md) - Overall GUI architecture and multi-user model
 - [`TABLE_BROWSER.md`](./TABLE_BROWSER.md) - Table browser specification and UI requirements
+- [`SCRIPT_EDITOR.md`](./SCRIPT_EDITOR.md) - Script editor UI specification
+- [`CONSOLE.md`](./CONSOLE.md) - Unified console specification
+- [`OUTLINE_EDITOR.md`](./OUTLINE_EDITOR.md) - Outline editor specification
+- [`MENU_EDITOR.md`](./MENU_EDITOR.md) - Menu editor specification
+- [`../phase6/USERTALK_DEBUGGER_PLAN.md`](../phase6/USERTALK_DEBUGGER_PLAN.md) - Debugger implementation plan
 
 ---
 
@@ -837,20 +847,1571 @@ If the result count exceeds `maxResults`, the response includes `"truncated": tr
 
 ---
 
-## 7. Event Subscription System
+## 7. Script Execution Operations
 
-### 7.1 Overview
+Operations for evaluating UserTalk expressions, running scripts, and managing REPL contexts. See [`CONSOLE.md`](./CONSOLE.md) for console UI integration and [`SCRIPT_EDITOR.md`](./SCRIPT_EDITOR.md) for script editor UI integration.
+
+### 7.1 script/eval - Evaluate UserTalk Expression
+
+Evaluates a UserTalk expression and returns the result.
+
+**WebSocket:**
+```json
+{
+  "op": "script/eval",
+  "id": 10,
+  "params": {
+    "expression": "clock.now()",
+    "contextId": "ctx_abc123",
+    "oneShot": false
+  }
+}
+```
+
+**Parameters:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `expression` | string | Yes | UserTalk expression to evaluate |
+| `contextId` | string | No | Persistent REPL context ID (from `script/eval/createContext`) |
+| `oneShot` | boolean | No | If true, do not retain variables in context |
+
+**Response:**
+```json
+{
+  "id": 10,
+  "result": {
+    "value": "3/29/2026; 10:15:00 AM",
+    "type": "date",
+    "display": "3/29/2026; 10:15:00 AM"
+  }
+}
+```
+
+**Errors:**
+- `5001` - Syntax error
+- `5002` - Runtime error
+- `5006` - Context not found
+
+### 7.2 script/eval/createContext - Create Persistent REPL Context
+
+Creates a persistent evaluation context that retains variables across `script/eval` calls.
+
+**WebSocket:**
+```json
+{
+  "op": "script/eval/createContext",
+  "id": 11,
+  "params": {}
+}
+```
+
+**Parameters:** None.
+
+**Response:**
+```json
+{
+  "id": 11,
+  "result": {
+    "contextId": "ctx_abc123"
+  }
+}
+```
+
+### 7.3 script/eval/clearContext - Clear REPL Context
+
+Clears all variables from a persistent REPL context.
+
+**WebSocket:**
+```json
+{
+  "op": "script/eval/clearContext",
+  "id": 12,
+  "params": {
+    "contextId": "ctx_abc123"
+  }
+}
+```
+
+**Parameters:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `contextId` | string | Yes | Context ID to clear |
+
+**Response:**
+```json
+{
+  "id": 12,
+  "result": {
+    "contextId": "ctx_abc123",
+    "cleared": true
+  }
+}
+```
+
+**Errors:**
+- `5006` - Context not found
+
+### 7.4 script/run - Execute Script to Completion
+
+Starts a script running asynchronously. Output and completion are delivered via events (`script/output` and `script/completed`).
+
+**WebSocket:**
+```json
+{
+  "op": "script/run",
+  "id": 13,
+  "params": {
+    "path": "workspace.scripts.buildSite",
+    "args": ["--verbose"]
+  }
+}
+```
+
+**Parameters:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `path` | string | Yes | ODB path to script |
+| `args` | array | No | Arguments to pass to script |
+
+**Response:**
+```json
+{
+  "id": 13,
+  "result": {
+    "executionId": "exec_xyz789",
+    "status": "started"
+  }
+}
+```
+
+Output and completion are delivered via `script/output` and `script/completed` events (see section 11).
+
+**Errors:**
+- `2001` - Object not found
+- `5001` - Syntax error
+- `5005` - Compilation failed
+
+### 7.5 script/get - Get Script as Outline Tree
+
+Retrieves a script's source code as a hierarchical outline tree. The server converts the stored form (with braces and semicolons) to displayed form (outline tree without braces). See [`SCRIPT_EDITOR.md`](./SCRIPT_EDITOR.md) "Script Wire Format" section for details on this conversion.
+
+**WebSocket:**
+```json
+{
+  "op": "script/get",
+  "id": 14,
+  "params": {
+    "path": "workspace.scripts.hello"
+  }
+}
+```
+
+**Parameters:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `path` | string | Yes | ODB path to script |
+
+**Response:**
+```json
+{
+  "id": 14,
+  "result": {
+    "path": "workspace.scripts.hello",
+    "items": [
+      {
+        "id": "n1",
+        "text": "on hello(name)",
+        "expanded": true,
+        "attributes": {},
+        "children": [
+          {
+            "id": "n2",
+            "text": "local (greeting = \"Hello, \" + name)",
+            "expanded": false,
+            "attributes": {},
+            "children": []
+          },
+          {
+            "id": "n3",
+            "text": "return greeting",
+            "expanded": false,
+            "attributes": {"breakpoint": true, "_condition": "name == \"world\""},
+            "children": []
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+**Errors:**
+- `2001` - Object not found
+- `2002` - Type mismatch (not a script)
+
+### 7.6 script/update - Update Script from Outline Tree
+
+Updates a script from a hierarchical outline tree. The server re-inserts braces and semicolons and compiles the script.
+
+**WebSocket:**
+```json
+{
+  "op": "script/update",
+  "id": 15,
+  "params": {
+    "path": "workspace.scripts.hello",
+    "items": [
+      {
+        "id": "n1",
+        "text": "on hello(name)",
+        "children": [
+          {"id": "n2", "text": "return \"Hello, \" + name", "children": []}
+        ]
+      }
+    ]
+  }
+}
+```
+
+**Parameters:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `path` | string | Yes | ODB path to script |
+| `items` | array | Yes | Outline tree of script lines |
+
+**Response:**
+```json
+{
+  "id": 15,
+  "result": {
+    "path": "workspace.scripts.hello",
+    "compiled": true,
+    "lineCount": 3
+  }
+}
+```
+
+**Errors:**
+- `2001` - Object not found
+- `5001` - Syntax error
+- `5005` - Compilation failed
+
+### 7.7 script/compile - Compile Script Without Executing
+
+Compiles a script to check for errors without running it.
+
+**WebSocket:**
+```json
+{
+  "op": "script/compile",
+  "id": 16,
+  "params": {
+    "path": "workspace.scripts.hello"
+  }
+}
+```
+
+**Parameters:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `path` | string | Yes | ODB path to script |
+
+**Response:**
+```json
+{
+  "id": 16,
+  "result": {
+    "path": "workspace.scripts.hello",
+    "compiled": true,
+    "lineCount": 3
+  }
+}
+```
+
+**Errors:**
+- `2001` - Object not found
+- `5001` - Syntax error
+- `5005` - Compilation failed
+
+### 7.8 script/complete - Get Code Completion Suggestions
+
+Returns code completion suggestions for a given cursor position in a script.
+
+**WebSocket:**
+```json
+{
+  "op": "script/complete",
+  "id": 17,
+  "params": {
+    "path": "workspace.scripts.hello",
+    "line": 3,
+    "column": 12,
+    "prefix": "string.mid"
+  }
+}
+```
+
+**Parameters:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `path` | string | Yes | ODB path to script |
+| `line` | integer | Yes | Line number (1-based) |
+| `column` | integer | Yes | Column number (1-based) |
+| `prefix` | string | No | Partial identifier for filtering |
+
+**Response:**
+```json
+{
+  "id": 17,
+  "result": {
+    "suggestions": [
+      {
+        "label": "string.mid",
+        "kind": "function",
+        "signature": "string.mid(s, ix, ct)",
+        "doc": "Returns ct characters from s starting at position ix"
+      },
+      {
+        "label": "string.midToEnd",
+        "kind": "function",
+        "signature": "string.midToEnd(s, ix)",
+        "doc": "Returns characters from s starting at position ix to end"
+      }
+    ]
+  }
+}
+```
+
+**Errors:**
+- `2001` - Object not found
+
+### 7.9 shutdown - Shut Down the Server
+
+Initiates a clean shutdown of the frontier-cli server.
+
+**WebSocket:**
+```json
+{
+  "op": "shutdown",
+  "id": 18,
+  "params": {}
+}
+```
+
+**Parameters:** None.
+
+**Response:**
+```json
+{
+  "id": 18,
+  "result": {
+    "status": "shutting_down"
+  }
+}
+```
+
+---
+
+## 8. Debug Operations
+
+Operations for debugging UserTalk scripts, including breakpoints, stepping, watchpoints, and stack inspection. See [`../phase6/USERTALK_DEBUGGER_PLAN.md`](../phase6/USERTALK_DEBUGGER_PLAN.md) for implementation details and [`SCRIPT_EDITOR.md`](./SCRIPT_EDITOR.md) for GUI integration.
+
+### 8.1 debug/eval - Start Debug Session
+
+Starts evaluating an expression in debug mode. Execution is non-blocking; use `debug/suspended` events to track when the thread hits a breakpoint or step boundary.
+
+**WebSocket:**
+```json
+{
+  "op": "debug/eval",
+  "id": 20,
+  "params": {
+    "expression": "workspace.scripts.buildSite()"
+  }
+}
+```
+
+**Parameters:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `expression` | string | Yes | UserTalk expression to evaluate in debug mode |
+
+**Response:**
+```json
+{
+  "id": 20,
+  "result": {
+    "threadId": 3,
+    "status": "running"
+  }
+}
+```
+
+**Errors:**
+- `5001` - Syntax error
+- `5002` - Runtime error
+
+### 8.2 debug/step - Step Execution
+
+Steps the execution of a suspended debug thread.
+
+**WebSocket:**
+```json
+{
+  "op": "debug/step",
+  "id": 21,
+  "params": {
+    "threadId": 3,
+    "direction": "over"
+  }
+}
+```
+
+**Parameters:**
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `threadId` | integer | Yes | - | Thread to step |
+| `direction` | string | No | `"over"` | Step direction: `"over"`, `"into"`, or `"out"` |
+
+**Response:**
+```json
+{
+  "id": 21,
+  "result": {
+    "status": "stepping"
+  }
+}
+```
+
+The actual position after stepping is delivered via a `debug/suspended` event.
+
+**Errors:**
+- `5003` - Thread not found
+- `5004` - Thread not suspended
+
+### 8.3 debug/continue - Resume Execution
+
+Resumes execution of a suspended debug thread.
+
+**WebSocket:**
+```json
+{
+  "op": "debug/continue",
+  "id": 22,
+  "params": {
+    "threadId": 3
+  }
+}
+```
+
+**Parameters:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `threadId` | integer | Yes | Thread to resume |
+
+**Response:**
+```json
+{
+  "id": 22,
+  "result": {
+    "status": "running"
+  }
+}
+```
+
+**Errors:**
+- `5003` - Thread not found
+- `5004` - Thread not suspended
+
+### 8.4 debug/pause - Suspend Running Thread
+
+Requests that a running thread suspend at its next statement boundary. This is non-destructive and promotes the thread to debug mode if needed.
+
+**WebSocket:**
+```json
+{
+  "op": "debug/pause",
+  "id": 23,
+  "params": {
+    "threadId": 3
+  }
+}
+```
+
+**Parameters:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `threadId` | integer | Yes | Thread to pause |
+
+**Response:**
+```json
+{
+  "id": 23,
+  "result": {
+    "status": "pausing"
+  }
+}
+```
+
+**Errors:**
+- `5003` - Thread not found
+
+### 8.5 debug/kill - Terminate Thread
+
+Terminates a debug thread immediately.
+
+**WebSocket:**
+```json
+{
+  "op": "debug/kill",
+  "id": 24,
+  "params": {
+    "threadId": 3
+  }
+}
+```
+
+**Parameters:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `threadId` | integer | Yes | Thread to terminate |
+
+**Response:**
+```json
+{
+  "id": 24,
+  "result": {
+    "status": "killed"
+  }
+}
+```
+
+**Errors:**
+- `5003` - Thread not found
+
+### 8.6 debug/setBreakpoint - Toggle Breakpoint
+
+Sets or clears a breakpoint on a script line. If a breakpoint already exists at the specified location, it is removed (toggle behavior).
+
+**WebSocket:**
+```json
+{
+  "op": "debug/setBreakpoint",
+  "id": 25,
+  "params": {
+    "script": "workspace.scripts.buildSite",
+    "line": 12,
+    "persistent": true,
+    "condition": "ct > 100"
+  }
+}
+```
+
+**Parameters:**
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `script` | string | Yes | - | ODB path to script |
+| `line` | integer | Yes | - | Line number (1-based) |
+| `persistent` | boolean | No | `false` | If true, breakpoint survives session restart |
+| `condition` | string | No | - | UserTalk expression; break only when truthy |
+
+**Response:**
+```json
+{
+  "id": 25,
+  "result": {
+    "script": "workspace.scripts.buildSite",
+    "line": 12,
+    "type": "persistent",
+    "active": true
+  }
+}
+```
+
+**Errors:**
+- `2001` - Object not found (script path)
+
+### 8.7 debug/listBreakpoints - List All Breakpoints
+
+Returns all active breakpoints across all scripts.
+
+**WebSocket:**
+```json
+{
+  "op": "debug/listBreakpoints",
+  "id": 26,
+  "params": {}
+}
+```
+
+**Parameters:** None.
+
+**Response:**
+```json
+{
+  "id": 26,
+  "result": {
+    "breakpoints": [
+      {"script": "workspace.scripts.buildSite", "line": 12, "type": "persistent", "condition": "ct > 100"},
+      {"script": "workspace.scripts.respond", "line": 5, "type": "session"}
+    ]
+  }
+}
+```
+
+### 8.8 debug/setWatchpoint - Set Variable Watchpoint
+
+Sets a watchpoint on a variable. The debugger will suspend execution when the variable's value changes.
+
+**WebSocket:**
+```json
+{
+  "op": "debug/setWatchpoint",
+  "id": 27,
+  "params": {
+    "script": "workspace.scripts.respond",
+    "line": 3,
+    "variable": "path"
+  }
+}
+```
+
+**Parameters:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `script` | string | Yes | ODB path to script |
+| `line` | integer | Yes | Line number where variable is defined |
+| `variable` | string | Yes | Variable name to watch |
+
+**Response:**
+```json
+{
+  "id": 27,
+  "result": {
+    "script": "workspace.scripts.respond",
+    "line": 3,
+    "variable": "path",
+    "active": true
+  }
+}
+```
+
+**Errors:**
+- `2001` - Object not found (script path)
+
+### 8.9 debug/listWatchpoints - List All Watchpoints
+
+Returns all active watchpoints.
+
+**WebSocket:**
+```json
+{
+  "op": "debug/listWatchpoints",
+  "id": 28,
+  "params": {}
+}
+```
+
+**Parameters:** None.
+
+**Response:**
+```json
+{
+  "id": 28,
+  "result": {
+    "watchpoints": [
+      {"script": "workspace.scripts.respond", "line": 3, "variable": "path"}
+    ]
+  }
+}
+```
+
+### 8.10 debug/getLocals - Get Local Variables
+
+Returns the local variables and their values for a suspended debug thread.
+
+**WebSocket:**
+```json
+{
+  "op": "debug/getLocals",
+  "id": 29,
+  "params": {
+    "threadId": 3
+  }
+}
+```
+
+**Parameters:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `threadId` | integer | Yes | Suspended thread ID |
+
+**Response:**
+```json
+{
+  "id": 29,
+  "result": {
+    "locals": {
+      "path": "/index.html",
+      "ct": 42,
+      "flFound": true
+    },
+    "level": 0
+  }
+}
+```
+
+**Errors:**
+- `5003` - Thread not found
+- `5004` - Thread not suspended
+
+### 8.11 debug/getStack - Get Call Stack
+
+Returns the call stack frames for a suspended debug thread.
+
+**WebSocket:**
+```json
+{
+  "op": "debug/getStack",
+  "id": 30,
+  "params": {
+    "threadId": 3
+  }
+}
+```
+
+**Parameters:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `threadId` | integer | Yes | Suspended thread ID |
+
+**Response:**
+```json
+{
+  "id": 30,
+  "result": {
+    "frames": [
+      {"level": 0, "script": "workspace.scripts.respond", "line": 5},
+      {"level": 1, "script": "workspace.scripts.dispatch", "line": 22},
+      {"level": 2, "script": "workspace.scripts.main", "line": 8}
+    ]
+  }
+}
+```
+
+**Errors:**
+- `5003` - Thread not found
+- `5004` - Thread not suspended
+
+### 8.12 debug/getSource - Get Script Source with Markers
+
+Returns the source of a script with breakpoint and current-line markers, suitable for rendering in a debug view.
+
+**WebSocket:**
+```json
+{
+  "op": "debug/getSource",
+  "id": 31,
+  "params": {
+    "script": "workspace.scripts.respond",
+    "threadId": 3
+  }
+}
+```
+
+**Parameters:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `script` | string | Yes | ODB path to script |
+| `threadId` | integer | No | If provided, marks current execution line |
+
+**Response:**
+```json
+{
+  "id": 31,
+  "result": {
+    "script": "workspace.scripts.respond",
+    "currentLine": 5,
+    "lines": [
+      {"num": 1, "text": "on respond()", "breakpoint": false},
+      {"num": 2, "text": "\tlocal (path = request.path)", "breakpoint": false},
+      {"num": 3, "text": "\tlocal (ct = 0)", "breakpoint": false},
+      {"num": 4, "text": "\tct = string.length(path)", "breakpoint": false},
+      {"num": 5, "text": "\treturn ct > 0", "breakpoint": true, "current": true}
+    ]
+  }
+}
+```
+
+**Errors:**
+- `2001` - Object not found (script path)
+- `5003` - Thread not found
+
+### 8.13 debug/loadBreakpoints - Load Persistent Breakpoints from ODB
+
+Loads persistent breakpoints that were previously saved. Can load breakpoints for a specific script or all scripts.
+
+**WebSocket:**
+```json
+{
+  "op": "debug/loadBreakpoints",
+  "id": 32,
+  "params": {
+    "script": "workspace.scripts.buildSite"
+  }
+}
+```
+
+**Parameters:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `script` | string | No | ODB path to script; if omitted, loads all persistent breakpoints |
+
+**Response:**
+```json
+{
+  "id": 32,
+  "result": {
+    "loaded": [
+      {"script": "workspace.scripts.buildSite", "line": 12}
+    ]
+  }
+}
+```
+
+---
+
+## 9. Outline Operations
+
+Operations for reading and editing outline documents. See [`OUTLINE_EDITOR.md`](./OUTLINE_EDITOR.md) for the outline editor UI specification.
+
+### 9.1 outline/get - Get Outline Content as Tree
+
+Retrieves the content of an outline as a hierarchical tree of items.
+
+**WebSocket:**
+```json
+{
+  "op": "outline/get",
+  "id": 40,
+  "params": {
+    "path": "workspace.docs.readme",
+    "includeMetadata": true
+  }
+}
+```
+
+**Parameters:**
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `path` | string | Yes | - | ODB path to outline |
+| `includeMetadata` | boolean | No | `true` | Include outline metadata in response |
+
+**Response:**
+```json
+{
+  "id": 40,
+  "result": {
+    "path": "workspace.docs.readme",
+    "items": [
+      {
+        "id": "n1",
+        "text": "Introduction",
+        "expanded": true,
+        "attributes": {},
+        "children": [
+          {
+            "id": "n2",
+            "text": "Welcome to Frontier",
+            "expanded": false,
+            "attributes": {"comment": true},
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": "n3",
+        "text": "Getting Started",
+        "expanded": false,
+        "attributes": {},
+        "children": []
+      }
+    ],
+    "metadata": {
+      "defaultRenderMode": "plain",
+      "hoistPath": null,
+      "modified": "2026-03-15T09:00:00Z"
+    }
+  }
+}
+```
+
+**Notes:**
+- The `attributes` field contains the unpacked refcon table for each node. An empty refcon produces `{}`. See [`OUTLINE_EDITOR.md`](./OUTLINE_EDITOR.md) "Attribute Type Mapping" for type conversions.
+
+**Errors:**
+- `2001` - Object not found
+- `2002` - Type mismatch (not an outline)
+
+### 9.2 outline/update - Update Outline Content
+
+Replaces the outline content, metadata, or both.
+
+**WebSocket:**
+```json
+{
+  "op": "outline/update",
+  "id": 41,
+  "params": {
+    "path": "workspace.docs.readme",
+    "items": [
+      {
+        "id": "n1",
+        "text": "Introduction (revised)",
+        "expanded": true,
+        "children": []
+      }
+    ],
+    "metadata": {
+      "defaultRenderMode": "headlines"
+    }
+  }
+}
+```
+
+**Parameters:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `path` | string | Yes | ODB path to outline |
+| `items` | array | No | New outline tree (replaces existing content) |
+| `metadata` | object | No | Metadata fields to update |
+
+**Response:**
+```json
+{
+  "id": 41,
+  "result": {
+    "path": "workspace.docs.readme",
+    "modified": "2026-03-29T10:30:00Z"
+  }
+}
+```
+
+**Errors:**
+- `2001` - Object not found
+- `4001` - Item not found (invalid item reference)
+
+### 9.3 outline/updateItem - Update Single Item
+
+Updates a single item within an outline without replacing the entire tree.
+
+**WebSocket:**
+```json
+{
+  "op": "outline/updateItem",
+  "id": 42,
+  "params": {
+    "path": "workspace.docs.readme",
+    "itemId": "n2",
+    "text": "Welcome to Frontier (updated)",
+    "expanded": true
+  }
+}
+```
+
+**Parameters:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `path` | string | Yes | ODB path to outline |
+| `itemId` | string | Yes | ID of item to update |
+| `text` | string | No | New text for item |
+| `expanded` | boolean | No | New expanded state |
+
+**Response:**
+```json
+{
+  "id": 42,
+  "result": {
+    "path": "workspace.docs.readme",
+    "itemId": "n2",
+    "modified": "2026-03-29T10:31:00Z"
+  }
+}
+```
+
+**Errors:**
+- `2001` - Object not found
+- `4001` - Item not found
+
+### 9.4 outline/moveItem - Move/Reorder Item
+
+Moves an item to a new position within the outline.
+
+**WebSocket:**
+```json
+{
+  "op": "outline/moveItem",
+  "id": 43,
+  "params": {
+    "path": "workspace.docs.readme",
+    "itemId": "n3",
+    "targetId": "n1",
+    "position": "before"
+  }
+}
+```
+
+**Parameters:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `path` | string | Yes | ODB path to outline |
+| `itemId` | string | Yes | ID of item to move |
+| `targetId` | string | Yes | ID of target reference item |
+| `position` | string | Yes | Placement relative to target: `"before"`, `"after"`, or `"child"` |
+
+**Response:**
+```json
+{
+  "id": 43,
+  "result": {
+    "path": "workspace.docs.readme",
+    "itemId": "n3",
+    "modified": "2026-03-29T10:32:00Z"
+  }
+}
+```
+
+**Errors:**
+- `2001` - Object not found
+- `4001` - Item not found
+- `4002` - Invalid move target
+
+### 9.5 outline/getNodeAttributes - Get Node Attributes
+
+Retrieves the attributes (unpacked refcon) of a specific outline node.
+
+**WebSocket:**
+```json
+{
+  "op": "outline/getNodeAttributes",
+  "id": 44,
+  "params": {
+    "path": "workspace.docs.readme",
+    "itemId": "n2"
+  }
+}
+```
+
+**Parameters:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `path` | string | Yes | ODB path to outline |
+| `itemId` | string | Yes | ID of item |
+
+**Response:**
+```json
+{
+  "id": 44,
+  "result": {
+    "attributes": {
+      "comment": true
+    }
+  }
+}
+```
+
+**Errors:**
+- `2001` - Object not found
+- `4001` - Item not found
+
+### 9.6 outline/setNodeAttributes - Set Node Attributes
+
+Sets or updates attributes on a specific outline node.
+
+**WebSocket:**
+```json
+{
+  "op": "outline/setNodeAttributes",
+  "id": 45,
+  "params": {
+    "path": "workspace.docs.readme",
+    "itemId": "n2",
+    "attributes": {
+      "comment": true,
+      "priority": "high"
+    }
+  }
+}
+```
+
+**Parameters:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `path` | string | Yes | ODB path to outline |
+| `itemId` | string | Yes | ID of item |
+| `attributes` | object | Yes | Key-value pairs to set on the node's refcon |
+
+**Response:**
+```json
+{
+  "id": 45,
+  "result": {
+    "path": "workspace.docs.readme",
+    "itemId": "n2",
+    "modified": "2026-03-29T10:33:00Z"
+  }
+}
+```
+
+**Errors:**
+- `2001` - Object not found
+- `4001` - Item not found
+- `4003` - Attribute pack error
+
+### 9.7 outline/setRenderMode - Change Default Render Mode
+
+Changes the default render mode for the outline.
+
+**WebSocket:**
+```json
+{
+  "op": "outline/setRenderMode",
+  "id": 46,
+  "params": {
+    "path": "workspace.docs.readme",
+    "mode": "headlines"
+  }
+}
+```
+
+**Parameters:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `path` | string | Yes | ODB path to outline |
+| `mode` | string | Yes | Render mode: `"plain"` or `"headlines"` |
+
+**Response:**
+```json
+{
+  "id": 46,
+  "result": {
+    "path": "workspace.docs.readme",
+    "mode": "headlines",
+    "modified": "2026-03-29T10:34:00Z"
+  }
+}
+```
+
+**Errors:**
+- `2001` - Object not found
+
+---
+
+## 10. Menu Operations
+
+Operations for reading and editing menu definitions. See [`MENU_EDITOR.md`](./MENU_EDITOR.md) for the menu editor UI specification. Menu items use a `refcon` field (structured with a fixed schema) rather than `attributes` (freeform) because menu refcons have a fixed schema for key bindings, modifiers, and handler scripts.
+
+### 10.1 menu/get - Get Menu Definition
+
+Retrieves a menu definition as a tree of items with their refcon data.
+
+**WebSocket:**
+```json
+{
+  "op": "menu/get",
+  "id": 50,
+  "params": {
+    "path": "user.menus.myMenu",
+    "includeMetadata": true
+  }
+}
+```
+
+**Parameters:**
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `path` | string | Yes | - | ODB path to menu |
+| `includeMetadata` | boolean | No | `true` | Include menu metadata in response |
+
+**Response:**
+```json
+{
+  "id": 50,
+  "result": {
+    "path": "user.menus.myMenu",
+    "items": [
+      {
+        "id": "m1",
+        "text": "Build Site",
+        "expanded": false,
+        "refcon": {
+          "keyBinding": "B",
+          "modifiers": {"shift": false, "control": false, "option": false, "command": true},
+          "handlerScript": "workspace.scripts.buildSite"
+        },
+        "children": []
+      },
+      {
+        "id": "m2",
+        "text": "-",
+        "expanded": false,
+        "refcon": {},
+        "children": []
+      },
+      {
+        "id": "m3",
+        "text": "Preferences...",
+        "expanded": false,
+        "refcon": {
+          "handlerScript": "workspace.scripts.showPrefs"
+        },
+        "children": []
+      }
+    ],
+    "metadata": {
+      "installed": true,
+      "menuBarPosition": 5,
+      "modified": "2026-03-20T14:00:00Z"
+    }
+  }
+}
+```
+
+**Errors:**
+- `2001` - Object not found
+- `2002` - Type mismatch (not a menu)
+
+### 10.2 menu/update - Update Menu Structure
+
+Replaces the menu structure with a new tree of items.
+
+**WebSocket:**
+```json
+{
+  "op": "menu/update",
+  "id": 51,
+  "params": {
+    "path": "user.menus.myMenu",
+    "items": [
+      {
+        "id": "m1",
+        "text": "Build Site",
+        "refcon": {"handlerScript": "workspace.scripts.buildSite"},
+        "children": []
+      }
+    ]
+  }
+}
+```
+
+**Parameters:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `path` | string | Yes | ODB path to menu |
+| `items` | array | No | New menu item tree |
+
+**Response:**
+```json
+{
+  "id": 51,
+  "result": {
+    "path": "user.menus.myMenu",
+    "modified": "2026-03-29T10:40:00Z"
+  }
+}
+```
+
+**Errors:**
+- `2001` - Object not found
+- `3001` - Menu item not found
+
+### 10.3 menu/updateItem - Update Single Menu Item
+
+Updates a single menu item's text or refcon.
+
+**WebSocket:**
+```json
+{
+  "op": "menu/updateItem",
+  "id": 52,
+  "params": {
+    "path": "user.menus.myMenu",
+    "itemId": "m1",
+    "text": "Build Entire Site",
+    "refcon": {
+      "keyBinding": "B",
+      "modifiers": {"shift": true, "command": true}
+    }
+  }
+}
+```
+
+**Parameters:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `path` | string | Yes | ODB path to menu |
+| `itemId` | string | Yes | ID of item to update |
+| `text` | string | No | New item text |
+| `refcon` | object | No | New refcon values (merged with existing) |
+
+**Response:**
+```json
+{
+  "id": 52,
+  "result": {
+    "path": "user.menus.myMenu",
+    "itemId": "m1",
+    "modified": "2026-03-29T10:41:00Z"
+  }
+}
+```
+
+**Errors:**
+- `2001` - Object not found
+- `3001` - Menu item not found
+
+### 10.4 menu/setItemScript - Set Script for Menu Item
+
+Sets the handler script for a menu item. The script can be an ODB address or inline UserTalk.
+
+**WebSocket:**
+```json
+{
+  "op": "menu/setItemScript",
+  "id": 53,
+  "params": {
+    "path": "user.menus.myMenu",
+    "itemId": "m1",
+    "script": "workspace.scripts.buildSite"
+  }
+}
+```
+
+**Parameters:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `path` | string | Yes | ODB path to menu |
+| `itemId` | string | Yes | ID of item |
+| `script` | string | Yes | ODB address of handler script, or inline UserTalk |
+
+**Response:**
+```json
+{
+  "id": 53,
+  "result": {
+    "path": "user.menus.myMenu",
+    "itemId": "m1",
+    "modified": "2026-03-29T10:42:00Z"
+  }
+}
+```
+
+**Errors:**
+- `2001` - Object not found
+- `3001` - Menu item not found
+- `3002` - Script not found (if ODB address does not resolve)
+
+### 10.5 menu/setItemShortcut - Assign Keyboard Shortcut
+
+Assigns a keyboard shortcut to a menu item.
+
+**WebSocket:**
+```json
+{
+  "op": "menu/setItemShortcut",
+  "id": 54,
+  "params": {
+    "path": "user.menus.myMenu",
+    "itemId": "m1",
+    "keyBinding": "B",
+    "modifiers": {"shift": true, "control": false, "option": false, "command": true}
+  }
+}
+```
+
+**Parameters:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `path` | string | Yes | ODB path to menu |
+| `itemId` | string | Yes | ID of item |
+| `keyBinding` | string | Yes | Key character (e.g., `"B"`, `"F5"`) |
+| `modifiers` | object | Yes | Modifier keys: `{shift, control, option, command}` (all boolean) |
+
+**Response:**
+```json
+{
+  "id": 54,
+  "result": {
+    "path": "user.menus.myMenu",
+    "itemId": "m1",
+    "modified": "2026-03-29T10:43:00Z"
+  }
+}
+```
+
+**Errors:**
+- `2001` - Object not found
+- `3001` - Menu item not found
+- `3003` - Invalid shortcut key
+
+### 10.6 menu/install - Install Menu to Menu Bar
+
+Installs a menu definition into the application's menu bar.
+
+**WebSocket:**
+```json
+{
+  "op": "menu/install",
+  "id": 55,
+  "params": {
+    "path": "user.menus.myMenu"
+  }
+}
+```
+
+**Parameters:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `path` | string | Yes | ODB path to menu |
+
+**Response:**
+```json
+{
+  "id": 55,
+  "result": {
+    "path": "user.menus.myMenu",
+    "installed": true,
+    "menuBarPosition": 5
+  }
+}
+```
+
+**Errors:**
+- `2001` - Object not found
+- `3005` - Menu already installed
+
+### 10.7 menu/uninstall - Remove Menu from Menu Bar
+
+Removes a menu from the application's menu bar.
+
+**WebSocket:**
+```json
+{
+  "op": "menu/uninstall",
+  "id": 56,
+  "params": {
+    "path": "user.menus.myMenu"
+  }
+}
+```
+
+**Parameters:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `path` | string | Yes | ODB path to menu |
+
+**Response:**
+```json
+{
+  "id": 56,
+  "result": {
+    "path": "user.menus.myMenu",
+    "installed": false
+  }
+}
+```
+
+**Errors:**
+- `2001` - Object not found
+- `3004` - Menu not installed
+
+### 10.8 menu/test - Test Menu as Popup
+
+Displays a menu as a popup for testing purposes.
+
+**WebSocket:**
+```json
+{
+  "op": "menu/test",
+  "id": 57,
+  "params": {
+    "path": "user.menus.myMenu"
+  }
+}
+```
+
+**Parameters:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `path` | string | Yes | ODB path to menu |
+
+**Response:**
+```json
+{
+  "id": 57,
+  "result": {
+    "path": "user.menus.myMenu",
+    "status": "displayed"
+  }
+}
+```
+
+**Errors:**
+- `2001` - Object not found
+
+---
+
+## 11. Event Subscription System
+
+### 11.1 Overview
 
 Subscriptions enable clients to receive real-time notifications about changes. Subscriptions are explicit (opt-in) and auto-expire after a timeout.
 
-### 7.2 Subscription Channels
+### 11.2 Subscription Channels
 
 | Channel | Description | Path Required |
 |---------|-------------|---------------|
 | `odb` | Object database changes | Yes |
 | `system` | Global events (About Window, shutdown, etc.) | No |
+| `script` | Script execution output and completion | No |
+| `debug` | Debug thread state changes | No |
+| `outline` | Outline content changes | Yes |
+| `menu` | Menu content and selection changes | Yes |
 
-### 7.3 subscribe - Create Subscription
+### 11.3 subscribe - Create Subscription
 
 **HTTP:**
 ```http
@@ -882,7 +2443,7 @@ POST /api/subscribe
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
 | `channel` | string | Yes | - | Subscription channel |
-| `path` | string | Conditional | - | Required for `odb` channel |
+| `path` | string | Conditional | - | Required for `odb`, `outline`, and `menu` channels |
 | `depth` | integer | No | 1 | How deep to watch: 0=exact path only, 1=direct children, -1=all descendants |
 | `events` | array | No | all | Event types to receive |
 
@@ -896,6 +2457,21 @@ POST /api/subscribe
 - `aboutWindow` - About Window triggered
 - `shutdown` - Server shutting down
 - `configChanged` - Server configuration changed
+
+**Script event types:**
+- `output` - Streamed output from running script
+- `completed` - Script execution finished
+
+**Debug event types:**
+- `suspended` - Thread suspended (breakpoint, step, watchpoint, interrupted)
+- `completed` - Debug thread completed
+
+**Outline event types:**
+- `updated` - Outline content changed
+
+**Menu event types:**
+- `updated` - Menu content changed
+- `itemSelected` - Menu item selected by user
 
 **Response:**
 ```json
@@ -915,7 +2491,7 @@ POST /api/subscribe
 - `expires` indicates when subscription auto-expires (typically 1 hour)
 - Clients should renew subscriptions before expiry
 
-### 7.4 unsubscribe - Remove Subscription
+### 11.4 unsubscribe - Remove Subscription
 
 **HTTP:**
 ```http
@@ -942,7 +2518,7 @@ POST /api/unsubscribe
 }
 ```
 
-### 7.5 Event Delivery
+### 11.5 Event Delivery
 
 Events are delivered over WebSocket only. HTTP clients must poll or use WebSocket for events.
 
@@ -1000,7 +2576,112 @@ Events are delivered over WebSocket only. HTTP clients must poll or use WebSocke
 }
 ```
 
-### 7.6 Subscription Renewal
+**Script output event:**
+```json
+{
+  "event": "script/output",
+  "data": {
+    "executionId": "exec_xyz789",
+    "text": "Building page 3 of 50...\n",
+    "stream": "stdout"
+  }
+}
+```
+
+**Script completed event:**
+```json
+{
+  "event": "script/completed",
+  "data": {
+    "executionId": "exec_xyz789",
+    "status": "success",
+    "value": true,
+    "type": "boolean",
+    "duration": 1250
+  }
+}
+```
+
+**Debug suspended event (breakpoint):**
+```json
+{
+  "event": "debug/suspended",
+  "data": {
+    "threadId": 3,
+    "script": "workspace.scripts.buildSite",
+    "line": 12,
+    "reason": "breakpoint"
+  }
+}
+```
+
+**Debug suspended event (watchpoint):**
+```json
+{
+  "event": "debug/suspended",
+  "data": {
+    "threadId": 3,
+    "script": "@mainResponder.respond",
+    "line": 5,
+    "reason": "watchpoint",
+    "watchpoint": {"variable": "path", "oldValue": "/", "newValue": "/index.html"}
+  }
+}
+```
+
+**Debug completed event:**
+```json
+{
+  "event": "debug/completed",
+  "data": {
+    "threadId": 3,
+    "status": "success",
+    "value": true,
+    "type": "boolean"
+  }
+}
+```
+
+**Outline updated event:**
+```json
+{
+  "event": "outline/updated",
+  "subscriptionId": "sub_def456",
+  "data": {
+    "path": "workspace.docs.readme",
+    "changedBy": "user:alice",
+    "modified": "2026-03-29T10:35:00Z"
+  }
+}
+```
+
+**Menu updated event:**
+```json
+{
+  "event": "menu/updated",
+  "subscriptionId": "sub_ghi789",
+  "data": {
+    "path": "user.menus.myMenu",
+    "changedBy": "user:alice",
+    "modified": "2026-03-29T10:45:00Z"
+  }
+}
+```
+
+**Menu item selected event:**
+```json
+{
+  "event": "menu/itemSelected",
+  "subscriptionId": "sub_ghi789",
+  "data": {
+    "path": "user.menus.myMenu",
+    "itemId": "m1",
+    "text": "Build Site"
+  }
+}
+```
+
+### 11.6 Subscription Renewal
 
 To prevent expiry, clients should renew subscriptions:
 
@@ -1023,7 +2704,7 @@ To prevent expiry, clients should renew subscriptions:
 }
 ```
 
-### 7.7 Subscription Limits
+### 11.7 Subscription Limits
 
 - Maximum subscriptions per connection: 100 (configurable)
 - Maximum depth: 10 levels
@@ -1031,9 +2712,9 @@ To prevent expiry, clients should renew subscriptions:
 
 ---
 
-## 8. Error Codes and Handling
+## 12. Error Codes and Handling
 
-### 8.1 Error Response Format
+### 12.1 Error Response Format
 
 ```json
 {
@@ -1048,56 +2729,57 @@ To prevent expiry, clients should renew subscriptions:
 }
 ```
 
-### 8.2 Error Code Ranges
+### 12.2 Error Code Ranges
 
 | Range | Category | Description |
 |-------|----------|-------------|
-| 1000-1999 | Session/Auth | Authentication and session errors |
-| 2000-2999 | ODB | Object database errors |
-| 3000-3999 | Editor | Editor-specific errors (future) |
-| 4000-4999 | Subscription | Event subscription errors |
-| 5000-5999 | Script | Script execution errors (future) |
+| 1000-1999 | protocol | Protocol and authentication errors |
+| 2000-2999 | odb | Object database errors |
+| 3000-3999 | menu | Menu editor errors |
+| 4000-4999 | outline | Outline editor and subscription errors |
+| 5000-5999 | script | Script execution and debug errors |
 
-### 8.3 Session/Auth Errors (1000-1999)
+### 12.3 Complete Error Code Registry
 
-| Code | Message | Description |
-|------|---------|-------------|
-| 1001 | Authentication required | No credentials provided |
-| 1002 | Invalid credentials | Username/password incorrect |
-| 1003 | Token expired | Session token has expired |
-| 1004 | Token invalid | Malformed or revoked token |
-| 1005 | Session not found | Session ID unknown |
-| 1010 | Rate limited | Too many requests |
+| Code | Category | Description |
+|------|----------|-------------|
+| 1001 | protocol | Malformed JSON |
+| 1002 | protocol | Unknown operation |
+| 1003 | protocol | Missing required parameter |
+| 1004 | protocol | Invalid parameter type |
+| 1005 | protocol | Session not found |
+| 1010 | protocol | Rate limited |
+| 2001 | odb | Object not found |
+| 2002 | odb | Type mismatch |
+| 2003 | odb | Permission denied |
+| 2004 | odb | Object already exists |
+| 2005 | odb | Parent not found |
+| 2006 | odb | Invalid path syntax |
+| 2007 | odb | Object is read-only |
+| 2008 | odb | Not a table |
+| 2009 | odb | Database locked |
+| 2010 | odb | Permission denied |
+| 2011 | odb | Cannot modify system object |
+| 2012 | odb | Circular reference |
+| 3001 | menu | Menu item not found |
+| 3002 | menu | Script not found |
+| 3003 | menu | Invalid shortcut key |
+| 3004 | menu | Menu not installed |
+| 3005 | menu | Menu already installed |
+| 4001 | outline | Item not found |
+| 4002 | outline | Invalid move target |
+| 4003 | outline | Attribute pack error |
+| 4004 | outline | Invalid subscription channel |
+| 4005 | outline | Path required for channel |
+| 4006 | outline | Depth exceeds limit |
+| 5001 | script | Syntax error |
+| 5002 | script | Runtime error |
+| 5003 | script | Thread not found |
+| 5004 | script | Thread not suspended |
+| 5005 | script | Compilation failed |
+| 5006 | script | Context not found |
 
-### 8.4 ODB Errors (2000-2999)
-
-| Code | Message | Description |
-|------|---------|-------------|
-| 2001 | Object not found | Path does not exist |
-| 2002 | Parent not found | Parent table does not exist |
-| 2003 | Name already exists | Duplicate name in table |
-| 2004 | Invalid type | Unknown or unsupported type code |
-| 2005 | Type mismatch | Value incompatible with object type |
-| 2006 | Table not empty | Cannot delete non-empty table |
-| 2007 | Invalid name | Name is empty or contains invalid chars |
-| 2008 | Invalid path | Malformed path syntax |
-| 2009 | Database locked | Database is read-only or locked |
-| 2010 | Permission denied | User lacks required permission |
-| 2011 | Cannot modify system object | Protected system area |
-| 2012 | Circular reference | Operation would create cycle |
-
-### 8.5 Subscription Errors (4000-4999)
-
-| Code | Message | Description |
-|------|---------|-------------|
-| 4001 | Subscription not found | Unknown subscription ID |
-| 4002 | Subscription expired | Subscription timed out |
-| 4003 | Too many subscriptions | Limit exceeded |
-| 4004 | Invalid channel | Unknown subscription channel |
-| 4005 | Path required | Channel requires path parameter |
-| 4006 | Depth exceeds limit | Requested depth too deep |
-
-### 8.6 Graceful Degradation
+### 12.4 Graceful Degradation
 
 Clients should:
 1. Check `code` field for programmatic handling
@@ -1109,9 +2791,9 @@ Unknown error codes in a category should be treated as generic errors in that ca
 
 ---
 
-## 9. Extensibility
+## 13. Extensibility
 
-### 9.1 Unknown Field Handling
+### 13.1 Unknown Field Handling
 
 **Rule:** Ignore unknown fields; preserve them on round-trip.
 
@@ -1129,14 +2811,14 @@ Unknown error codes in a category should be treated as generic errors in that ca
 // Server ignores futureOption, processes normally
 ```
 
-### 9.2 Adding New Operations
+### 13.2 Adding New Operations
 
 New operations can be added without breaking existing clients:
 - Use new `op` names (e.g., `odb/move`)
 - Old clients simply don't call them
 - Capability discovery helps clients know what's available
 
-### 9.3 Adding New Event Types
+### 13.3 Adding New Event Types
 
 New event types can be added to existing channels:
 - Clients that don't recognize an event type ignore it
@@ -1144,9 +2826,9 @@ New event types can be added to existing channels:
 
 ---
 
-## 10. Security Considerations
+## 14. Security Considerations
 
-### 10.1 Transport Security
+### 14.1 Transport Security
 
 **Production deployments MUST use:**
 - HTTPS instead of HTTP
@@ -1154,7 +2836,7 @@ New event types can be added to existing channels:
 
 **Development/local:** Plain HTTP/WS acceptable for localhost only.
 
-### 10.2 Authentication
+### 14.2 Authentication
 
 Authentication details are specified in [`ARCHITECTURE.md`](./ARCHITECTURE.md).
 
@@ -1164,14 +2846,14 @@ Authentication details are specified in [`ARCHITECTURE.md`](./ARCHITECTURE.md).
 - Tokens have expiration
 - Failed auth returns 1001-1004 errors
 
-### 10.3 Authorization
+### 14.3 Authorization
 
 All operations check user permissions against the target path:
 - System areas require admin privileges
 - User data areas require ownership or explicit grant
 - Permission denied returns error 2010
 
-### 10.4 Input Validation
+### 14.4 Input Validation
 
 Servers MUST validate:
 - Path syntax (no path traversal attacks)
@@ -1179,14 +2861,14 @@ Servers MUST validate:
 - Name uniqueness
 - Size limits (value size, name length)
 
-### 10.5 Rate Limiting
+### 14.5 Rate Limiting
 
 Servers SHOULD implement rate limiting:
 - Per-connection request limits
 - Per-user subscription limits
 - Error 1010 when limits exceeded
 
-### 10.6 No Version in URLs
+### 14.6 No Version in URLs
 
 URL paths do not contain version numbers:
 - Prevents probing for old, vulnerable versions
@@ -1194,9 +2876,9 @@ URL paths do not contain version numbers:
 
 ---
 
-## 11. Implementation Notes
+## 15. Implementation Notes
 
-### 11.1 Client Implementation Checklist
+### 15.1 Client Implementation Checklist
 
 1. **Connection setup**
    - Support both HTTP and WebSocket transports
@@ -1224,7 +2906,7 @@ URL paths do not contain version numbers:
    - Ignore unknown fields in responses
    - Ignore unknown event types
 
-### 11.2 Server Implementation Checklist
+### 15.2 Server Implementation Checklist
 
 1. **Transport**
    - HTTP endpoint at `/api/*`
@@ -1271,6 +2953,43 @@ URL paths do not contain version numbers:
 | POST | `/api/odb/move` | Move object |
 | POST | `/api/odb/copy` | Copy object |
 | POST | `/api/odb/list` | List table children |
+| POST | `/api/script/eval` | Evaluate expression |
+| POST | `/api/script/eval/createContext` | Create REPL context |
+| POST | `/api/script/eval/clearContext` | Clear REPL context |
+| POST | `/api/script/run` | Execute script |
+| POST | `/api/script/get` | Get script as outline tree |
+| POST | `/api/script/update` | Update script from outline tree |
+| POST | `/api/script/compile` | Compile script |
+| POST | `/api/script/complete` | Code completion |
+| POST | `/api/shutdown` | Shut down server |
+| POST | `/api/debug/eval` | Start debug session |
+| POST | `/api/debug/step` | Step execution |
+| POST | `/api/debug/continue` | Resume execution |
+| POST | `/api/debug/pause` | Pause thread |
+| POST | `/api/debug/kill` | Terminate thread |
+| POST | `/api/debug/setBreakpoint` | Toggle breakpoint |
+| POST | `/api/debug/listBreakpoints` | List breakpoints |
+| POST | `/api/debug/setWatchpoint` | Set watchpoint |
+| POST | `/api/debug/listWatchpoints` | List watchpoints |
+| POST | `/api/debug/getLocals` | Get local variables |
+| POST | `/api/debug/getStack` | Get call stack |
+| POST | `/api/debug/getSource` | Get source with markers |
+| POST | `/api/debug/loadBreakpoints` | Load persistent breakpoints |
+| POST | `/api/outline/get` | Get outline content |
+| POST | `/api/outline/update` | Update outline |
+| POST | `/api/outline/updateItem` | Update single item |
+| POST | `/api/outline/moveItem` | Move/reorder item |
+| POST | `/api/outline/getNodeAttributes` | Get node attributes |
+| POST | `/api/outline/setNodeAttributes` | Set node attributes |
+| POST | `/api/outline/setRenderMode` | Change render mode |
+| POST | `/api/menu/get` | Get menu definition |
+| POST | `/api/menu/update` | Update menu |
+| POST | `/api/menu/updateItem` | Update single item |
+| POST | `/api/menu/setItemScript` | Set item handler script |
+| POST | `/api/menu/setItemShortcut` | Assign keyboard shortcut |
+| POST | `/api/menu/install` | Install menu to menu bar |
+| POST | `/api/menu/uninstall` | Remove menu from menu bar |
+| POST | `/api/menu/test` | Test menu as popup |
 | POST | `/api/subscribe` | Create subscription |
 | POST | `/api/unsubscribe` | Remove subscription |
 
@@ -1288,6 +3007,43 @@ URL paths do not contain version numbers:
 | `odb/move` | Move object |
 | `odb/copy` | Copy object |
 | `odb/list` | List table children |
+| `script/eval` | Evaluate expression |
+| `script/eval/createContext` | Create REPL context |
+| `script/eval/clearContext` | Clear REPL context |
+| `script/run` | Execute script (non-blocking) |
+| `script/get` | Get script as outline tree |
+| `script/update` | Update script from outline tree |
+| `script/compile` | Compile script |
+| `script/complete` | Code completion suggestions |
+| `shutdown` | Shut down server |
+| `debug/eval` | Start debug session |
+| `debug/step` | Step execution |
+| `debug/continue` | Resume execution |
+| `debug/pause` | Pause running thread |
+| `debug/kill` | Terminate thread |
+| `debug/setBreakpoint` | Toggle breakpoint |
+| `debug/listBreakpoints` | List all breakpoints |
+| `debug/setWatchpoint` | Set variable watchpoint |
+| `debug/listWatchpoints` | List all watchpoints |
+| `debug/getLocals` | Get local variables |
+| `debug/getStack` | Get call stack |
+| `debug/getSource` | Get source with markers |
+| `debug/loadBreakpoints` | Load persistent breakpoints |
+| `outline/get` | Get outline content |
+| `outline/update` | Update outline content |
+| `outline/updateItem` | Update single item |
+| `outline/moveItem` | Move/reorder item |
+| `outline/getNodeAttributes` | Get node attributes |
+| `outline/setNodeAttributes` | Set node attributes |
+| `outline/setRenderMode` | Change render mode |
+| `menu/get` | Get menu definition |
+| `menu/update` | Update menu structure |
+| `menu/updateItem` | Update single menu item |
+| `menu/setItemScript` | Set item handler script |
+| `menu/setItemShortcut` | Assign keyboard shortcut |
+| `menu/install` | Install menu to menu bar |
+| `menu/uninstall` | Remove from menu bar |
+| `menu/test` | Test menu as popup |
 | `subscribe` | Create subscription |
 | `subscribe/renew` | Renew subscription |
 | `unsubscribe` | Remove subscription |
@@ -1302,6 +3058,13 @@ URL paths do not contain version numbers:
 | `odb/moved` | odb | Object moved/renamed (future) |
 | `system/shutdown` | system | Server shutting down |
 | `system/aboutWindow` | system | About Window triggered |
+| `script/output` | script | Streamed output from running script |
+| `script/completed` | script | Script execution finished |
+| `debug/suspended` | debug | Thread suspended (breakpoint, step, watchpoint, interrupted) |
+| `debug/completed` | debug | Debug thread completed |
+| `outline/updated` | outline | Outline content changed |
+| `menu/updated` | menu | Menu content changed |
+| `menu/itemSelected` | menu | Menu item selected by user |
 
 ---
 
@@ -1365,5 +3128,6 @@ X-Frontier-Protocol-Version: 1.0
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 2.0.0 | 2026-03-29 | Added script execution, debug, outline, and menu operation domains; consolidated events and error codes; added shutdown operation |
 | 1.0.1 | 2026-02-04 | Added odb/move and odb/copy operations |
 | 1.0.0 | 2026-02-04 | Initial specification |

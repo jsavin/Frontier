@@ -2,14 +2,15 @@
 
 | | |
 |---|---|
-| **Version** | 0.2.0 |
+| **Version** | 0.3.0 |
 | **Status** | Draft |
-| **Last Updated** | 2026-02-04 |
+| **Last Updated** | 2026-03-29 |
 
 ## Change History
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
+| 0.3.0 | 2026-03-29 | Jake Savin, Claude | Added Node Identity and Attribute Type Mapping subsections to Node Attributes |
 | 0.2.0 | 2026-02-04 | Jake Savin, Claude | Corrected refcon/attributes architecture; added phasing; multi-line headlines; inline HTML notes |
 | 0.1.0 | 2026-02-04 | Jake Savin, Claude | Initial draft |
 
@@ -309,6 +310,35 @@ Outline Node
 2. `op.attributes.getAll()` / `op.attributes.setOne()` - Unpack/pack the attribute table
 3. **Freeform schema** - Attributes are arbitrary key-value pairs, no predefined schema
 4. **Renderer interprets known attributes** - The renderer looks for recognized attributes (e.g., `checkbox`) and applies visual treatment; unknown attributes pass through unchanged
+
+### Node Identity
+
+Node IDs in protocol responses are server-generated sequential identifiers (e.g., `"n1"`, `"n2"`, `"n3"`). They are assigned as the server walks the outline tree to build the response.
+
+**Stability guarantees:**
+- IDs are stable **within a single response** — a given node always has the same ID within that response's `items` tree
+- IDs are **NOT guaranteed stable across separate `outline/get` calls** — the server re-generates them each time
+- When sending updates back (`outline/update`, `outline/updateItem`), the client uses the IDs from the most recent `outline/get` response
+
+**Future: durable node identity.** Node UUIDs are planned for v7.5. The `tyheadrecord` structure has a 16-byte reserved field that is currently zeroed; this will hold a UUID for each node, enabling stable identity across sessions, undo history, and collaborative editing.
+
+### Attribute Type Mapping
+
+The protocol maps UserTalk types to JSON types as follows:
+
+| UserTalk Type | JSON Type | Notes |
+|---|---|---|
+| string | string | Direct mapping |
+| long/int | number | Direct mapping |
+| boolean | boolean | Direct mapping |
+| date | string | ISO 8601 format (e.g., `"2026-02-04T12:00:00Z"`) |
+| address | string | With `@` prefix (e.g., `"@workspace.foo"`) |
+| binary | string | Base64-encoded with `"base64:"` prefix |
+| nil | null | Direct mapping |
+
+**Empty attributes:** Nodes without a refcon have `"attributes": {}` (empty object). The `attributes` field is never omitted from protocol responses.
+
+**Round-trip fidelity:** Attributes sent back via `outline/update` are packed to binary refcon format using the reverse of these mappings. Unknown JSON types are rejected with an error.
 
 ### Built-in Attribute Types
 

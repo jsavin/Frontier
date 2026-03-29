@@ -147,23 +147,25 @@ The editor operates in **outline mode** by default, where:
 
 ### Hidden Syntax Elements
 
-The editor automatically hides certain syntax elements that are implied by outline structure:
+The server handles this conversion. The protocol delivers text in displayed form (no braces/semicolons). The editor does not need to strip or insert syntax elements. See [Script Wire Format](#script-wire-format) below for details on how the protocol represents scripts.
 
-| Element | Storage | Display |
-|---------|---------|---------|
-| Opening brace `{` | Present in source | Hidden |
-| Closing brace `}` | Present in source | Hidden |
-| Semicolons `;` | Present in source | Hidden |
-| Line comment prefix `//` | Present in source | Hidden (comment text shown dimmed) |
+For reference, these syntax elements are implied by outline structure and are not present in protocol responses:
 
-**Example - Stored form:**
+| Element | Internal (outline) | Protocol (JSON) |
+|---------|---------------------|-----------------|
+| Opening brace `{` | Implied by children | Not present |
+| Closing brace `}` | Implied by children | Not present |
+| Semicolons `;` | Implied by leaf status | Not present |
+| Line comment prefix `//` | `comment` attribute | Not present (see `comment` attribute) |
+
+**Example - Internal stored form:**
 ```
 if x > 5 {
    dialog.alert("big");
    }
 ```
 
-**Example - Displayed form:**
+**Example - Protocol/displayed form:**
 ```
 if x > 5
    dialog.alert("big")
@@ -171,11 +173,13 @@ if x > 5
 
 ### Automatic Insertion
 
-When saving or compiling, the editor automatically inserts:
+When saving or compiling, the **server** automatically re-inserts:
 - Opening braces after control statements
 - Closing braces at the end of indented blocks
 - Semicolons at the end of statements
 - Comment prefixes for comment lines
+
+The stored-to-displayed conversion is entirely the server's responsibility. See [Script Wire Format](#script-wire-format) for the full protocol contract.
 
 ### Syntax Highlighting
 
@@ -188,6 +192,99 @@ When saving or compiling, the editor automatically inserts:
 | Identifiers | Default text |
 | Operators | Default text |
 | Built-in verbs | Purple |
+
+---
+
+## Script Wire Format
+
+Scripts are outlines internally, so the protocol represents them using the same hierarchical node structure as `outline/get`. The server handles all conversion between the outline tree and the brace/semicolon source form.
+
+### Decision
+
+The **server converts**. The protocol returns scripts as outline-format JSON trees (no braces, no semicolons). The server handles brace/semicolon re-insertion on save. Because scripts are outlines internally, `script/get` reuses the same hierarchical node structure as `outline/get`.
+
+### How It Works
+
+- `script/get` returns an `items` array with the same structure as `outline/get`: each node has `id`, `text`, `expanded`, `attributes`, and `children`
+- Node text does **NOT** include braces, semicolons, or comment prefixes — these are implied by outline structure
+- When the GUI saves back via `script/update`, the server automatically inserts braces/semicolons based on outline structure before compiling
+- The GUI displays node text as-is — no client-side syntax stripping or insertion is needed
+
+### Script-Specific Node Attributes
+
+In addition to the standard outline node fields, script nodes may include the following in the `attributes` field:
+
+| Attribute | Type | Description |
+|-----------|------|-------------|
+| `breakpoint` | boolean | Persistent breakpoint on this line (from `flbreakpoint` flag) |
+| `_condition` | string | Conditional breakpoint expression (only present if conditional) |
+| `comment` | boolean | Whether this node is a comment line (from `flcomment` flag) |
+
+**Note:** Watchpoints are NOT stored in node attributes — they are session-scoped and managed via `debug/setWatchpoint`. See the Debug Protocol section for details.
+
+### Example
+
+**Request:**
+```json
+{
+  "op": "script/get",
+  "id": 1,
+  "params": {
+    "path": "workspace.scratchpad.myScript"
+  }
+}
+```
+
+**Response:**
+```json
+{
+  "id": 1,
+  "result": {
+    "path": "workspace.scratchpad.myScript",
+    "items": [
+      {
+        "id": "n1",
+        "text": "on myScript()",
+        "expanded": true,
+        "attributes": {},
+        "children": [
+          {
+            "id": "n2",
+            "text": "local (x = 10, y = 20)",
+            "expanded": false,
+            "attributes": {},
+            "children": []
+          },
+          {
+            "id": "n3",
+            "text": "if x > 5",
+            "expanded": true,
+            "attributes": {"breakpoint": true},
+            "children": [
+              {
+                "id": "n4",
+                "text": "dialog.alert(\"x is big: \" + x)",
+                "expanded": false,
+                "attributes": {},
+                "children": []
+              }
+            ]
+          },
+          {
+            "id": "n5",
+            "text": "return (x + y)",
+            "expanded": false,
+            "attributes": {},
+            "children": []
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+In this example, node `n3` (`if x > 5`) has a persistent breakpoint. The text contains no braces or semicolons — the server will re-insert them when `script/update` saves the script back.
 
 ---
 
