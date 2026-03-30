@@ -32,6 +32,26 @@ git worktree add ../Frontier-<feature-name> -b feature/<feature-name>
 cd ../Frontier-<feature-name>
 ```
 
+## Autonomous Work Rules
+
+These rules apply when working with high autonomy (e.g., iterating on PR feedback without user involvement).
+
+### Debugging crashes
+- **LLDB first.** Every crash gets an LLDB backtrace before any code changes. No "let me try adding a sleep" or timeout tweaks. Get the exact frame, then fix.
+- **Two attempts max.** If an approach fails twice, stop and rethink. Don't iterate on variations of the same broken idea.
+- **Don't ship known crashes.** If a test scenario crashes, either fix it or explicitly block the merge. Don't push with "known issue" in the commit message and hope it resolves.
+
+### Threading and GIL
+- **Trace GIL ownership on paper before coding.** For any code that acquires/releases the GIL, spawns threads, or modifies `hthreadglobals`: trace which thread holds the GIL at each step. Write it down. The GIL model is cooperative — every yield point is a potential context switch.
+- **Save/restore thread globals around every GIL yield.** Spawned threads overwrite `hthreadglobals` when they run. The yielding thread must save its globals before unlocking and restore after relocking.
+
+### Test infrastructure
+- **Design the test harness once.** Don't start with the cheapest approach and iterate 4 times. For protocol tests, use Python (handles JSON natively, subprocess management). For shell tests, keep quoting simple.
+- **Write tests FIRST.** Before implementation, not after. If tests are written after, they validate assumptions rather than driving design.
+
+### File organization
+- **Production code in production locations.** Headers used by `frontier-cli/` code belong in `frontier-cli/`, not `tests/`. Think about the dependency direction before creating files.
+
 ## Required Test and Validation Policy
 
 Run relevant tests before opening or updating a PR. For runtime/verb/database work, prefer full validation:
