@@ -102,11 +102,11 @@ void debug_join_all_threads(void);
 boolean debug_has_active_threads(void);
 
 /*
- * Returns true if any debug thread ran during this session. Once set, stays
- * true for the lifetime of the process. Used to skip save-on-exit since
+ * Returns true when it is safe to save the database on exit (no debug threads
+ * ran during this session). Returns false if any debug thread ran, because
  * killed debug threads leave hash tables in an inconsistent state.
  */
-boolean debug_threads_were_used(void);
+boolean debug_is_safe_to_save(void);
 
 /*
  * Send an unsolicited debug/suspended notification to the client.

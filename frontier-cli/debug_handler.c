@@ -150,7 +150,9 @@ void debug_release_state(tydebugstate *state) {
     if (state == NULL)
         return;
 
-    if (atomic_fetch_sub(&state->refcount, 1) == 1) {
+    int old = atomic_fetch_sub(&state->refcount, 1);
+    assert(old > 0); /* refcount underflow */
+    if (old == 1) {
         /* Last reference — safe to free */
         free(state);
     }
@@ -162,8 +164,8 @@ void debug_release_state(tydebugstate *state) {
 static pthread_t g_killed_threads[MAX_DEBUG_THREADS];
 static int g_killed_thread_count = 0;
 
-boolean debug_threads_were_used(void) {
-    return g_debug_threads_were_active;
+boolean debug_is_safe_to_save(void) {
+    return !g_debug_threads_were_active;
 }
 
 boolean debug_has_active_threads(void) {
@@ -193,8 +195,8 @@ void debug_kill_all_threads(void) {
         if (g_debug_threads[i] != NULL) {
             /* Capture pthread_t before the thread can unregister and free state */
             g_killed_threads[g_killed_thread_count++] = g_debug_threads[i]->pthread_id;
-            atomic_store(&g_debug_threads[i]->flkill, true);
-            atomic_store(&g_debug_threads[i]->flsuspended, false); /* wake suspended threads */
+            atomic_store_explicit(&g_debug_threads[i]->flkill, true, memory_order_seq_cst);
+            atomic_store_explicit(&g_debug_threads[i]->flsuspended, false, memory_order_seq_cst); /* wake suspended threads */
         }
     }
 
@@ -282,8 +284,8 @@ static boolean protocol_debugger_callback(hdltreenode hnode) {
 
     /* Check interrupt flag (debug/pause) */
     if (atomic_load(&state->flinterrupt)) {
-        atomic_store(&state->flinterrupt, false);
-        atomic_store(&state->flsuspended, true);
+        atomic_store_explicit(&state->flinterrupt, false, memory_order_seq_cst);
+        atomic_store_explicit(&state->flsuspended, true, memory_order_seq_cst);
 
         /* Get line number from the current node */
         long line = 0;
@@ -378,6 +380,8 @@ static void *debug_thread_entry(void *arg) {
     /* Store debug state in thread globals for the callback to find */
     (**params->hglobals).param_reserved[0] = (void *)params->debugstate;
 
+    boolean fl_ran = false;
+
     /* Initial suspension — pause before first statement so client can set breakpoints */
     atomic_store(&params->debugstate->flsuspended, true);
     debug_send_suspended(params->debugstate->transport, params->debugstate->threadid, 0, DEBUG_REASON_ENTRY);
@@ -401,6 +405,7 @@ static void *debug_thread_entry(void *arg) {
     }
 
     /* Execute the script */
+    fl_ran = true;
     initvalue(&result, novaluetype);
 
     boolean fl = langruncode(params->hcode, nil, &result);
@@ -408,15 +413,9 @@ static void *debug_thread_entry(void *arg) {
     /* Send completion notification */
     debug_send_completed(params->debugstate->transport, params->debugstate->threadid, fl);
 
-    disposevaluerecord(result, false);
-
 cleanup:
-    /* Note: if we got here via early-kill (goto cleanup from the initial
-     * suspension loop), 'result' was never initialized via initvalue().
-     * disposevaluerecord is above the cleanup label, not below it, so
-     * it's only called on the normal execution path. Don't move initvalue
-     * above the suspension loop without also moving disposevaluerecord
-     * into the cleanup section. */
+    if (fl_ran)
+        disposevaluerecord(result, false);
 
     /* Save globals while we still hold GIL */
     headless_save_threadglobals(params->hglobals);
@@ -485,19 +484,30 @@ void handle_debug_run(int id, const char *json_line, transport_t *transport) {
     if (!langcompiletext(htext, false, &hcode)) {
         extern const unsigned char *headless_get_last_lang_error(void);
         const unsigned char *errmsg = headless_get_last_lang_error();
-        char err[512];
+
+        cJSON *resp = cJSON_CreateObject();
+        cJSON_AddNumberToObject(resp, "id", id);
+        cJSON *errobj = cJSON_CreateObject();
         if (errmsg != NULL && errmsg[0] > 0) {
-            /* Pascal string: first byte is length */
             int msglen = (int)errmsg[0];
             char msgbuf[256];
             if (msglen > 255) msglen = 255;
             memcpy(msgbuf, errmsg + 1, (size_t)msglen);
             msgbuf[msglen] = '\0';
-            snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Compilation failed: %s\"},\"success\":false}", id, msgbuf);
+            char full_msg[512];
+            snprintf(full_msg, sizeof(full_msg), "Compilation failed: %s", msgbuf);
+            cJSON_AddStringToObject(errobj, "message", full_msg);
         } else {
-            snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Compilation failed\"},\"success\":false}", id);
+            cJSON_AddStringToObject(errobj, "message", "Compilation failed");
         }
-        transport->write_line(transport->ctx, err, strlen(err));
+        cJSON_AddItemToObject(resp, "error", errobj);
+        cJSON_AddBoolToObject(resp, "success", 0);
+        char *json_str = cJSON_PrintUnformatted(resp);
+        if (json_str) {
+            transport->write_line(transport->ctx, json_str, strlen(json_str));
+            free(json_str);
+        }
+        cJSON_Delete(resp);
         cJSON_Delete(root);
         return;
     }
@@ -672,8 +682,8 @@ void handle_debug_kill(int id, const char *json_line, transport_t *transport) {
         return;
     }
 
-    atomic_store(&state->flkill, true);
-    atomic_store(&state->flsuspended, false); /* wake it up so it can die */
+    atomic_store_explicit(&state->flkill, true, memory_order_seq_cst);
+    atomic_store_explicit(&state->flsuspended, false, memory_order_seq_cst); /* wake it up so it can die */
     debug_release_state(state);
 
     char resp[128];

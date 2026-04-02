@@ -292,8 +292,8 @@ int protocol_main(cli_options_t *options, ws_server_t *ws_server) {
         /* Simple blocking fgets loop (no WS server).
          * Yield GIL during fgets so debug/spawned threads can run.
          * Save/restore globals because spawned threads overwrite hthreadglobals. */
-        hdlthreadglobals main_globals = hthreadglobals;
         for (;;) {
+            hdlthreadglobals main_globals = hthreadglobals;
             headless_save_threadglobals(main_globals);
             pthread_mutex_unlock(&frontier_gil);
             char *result = fgets(line_buf, PROTOCOL_LINE_MAX, stdin);

@@ -922,7 +922,7 @@ static void cleanup_frontier_runtime(void) {
      * Killed debug threads leave pushed hash table scopes in the chain,
      * making hashpack traversal crash on stale pointers. This is a
      * fundamental limitation of killing scripts mid-execution. */
-    if (g_system_root_loaded && !debug_threads_were_used()) {
+    if (g_system_root_loaded && debug_is_safe_to_save()) {
         save_system_root_on_exit();
     }
 
@@ -1563,7 +1563,7 @@ static void unload_system_root_database(void) {
 
     /* Skip table unlink if debug threads ran — hash table chain may be
      * corrupt from killed scripts. The process is exiting anyway. */
-    if (systemtable != nil && !debug_threads_were_used()) {
+    if (systemtable != nil && debug_is_safe_to_save()) {
         if (!unlinksystemtablestructure()) {
             cli_log_warn("Failed to unlink system table structure during unload");
         }
