@@ -101,10 +101,12 @@ void cleanup_thread_registry(void) {
 
             if (current_refcount != 0) {
                 /* Thread is still cleaning up. This invariant was relaxed
-                 * (from abort to warn-and-skip) for PTHREAD_CREATE_DETACHED
-                 * debug threads, which cannot be joined and may still be in
-                 * cleanup at shutdown. debug_kill_all_threads + GIL yield
-                 * reduces the window but cannot eliminate it. Give 50ms. */
+                 * (from abort to warn-and-skip) for debug threads that may
+                 * still be finishing cleanup at shutdown despite
+                 * debug_kill_all_threads + pthread_join. The join should
+                 * ensure threads are done, but the registry cleanup runs
+                 * later and may race with thread record deallocation. Give
+                 * 50ms for any stragglers. */
                 struct timespec ts = {0, 50000000}; /* 50ms */
                 nanosleep(&ts, NULL);
 

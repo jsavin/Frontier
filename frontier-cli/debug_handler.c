@@ -44,7 +44,7 @@ extern hdltablestack hashtablestack;
 #define MAX_DEBUG_THREADS 16
 static tydebugstate *g_debug_threads[MAX_DEBUG_THREADS] = {0};
 static pthread_mutex_t g_debug_mutex = PTHREAD_MUTEX_INITIALIZER;
-static boolean g_debug_thread_was_killed = false; /* set when a debug thread is killed mid-execution */
+static atomic_bool g_debug_thread_was_killed = false; /* set when a debug thread is killed mid-execution */
 
 /* ========================================================================
  * Reason string conversion
@@ -169,7 +169,7 @@ static pthread_t g_killed_threads[MAX_DEBUG_THREADS];
 static int g_killed_thread_count = 0;
 
 boolean debug_is_safe_to_save(void) {
-    return !g_debug_thread_was_killed;
+    return !atomic_load(&g_debug_thread_was_killed);
 }
 
 boolean debug_has_active_threads(void) {
@@ -199,7 +199,7 @@ void debug_kill_all_threads(void) {
         if (g_debug_threads[i] != NULL) {
             /* Killing a thread mid-execution corrupts hash table state.
              * Mark as unsafe so save-on-exit is skipped. */
-            g_debug_thread_was_killed = true;
+            atomic_store(&g_debug_thread_was_killed, true);
 
             /* Capture pthread_t before the thread can unregister and free state */
             g_killed_threads[g_killed_thread_count++] = g_debug_threads[i]->pthread_id;
@@ -697,7 +697,7 @@ void handle_debug_kill(int id, const char *json_line, transport_t *transport) {
     }
 
     /* Mark as killed — hash tables will be inconsistent after this */
-    g_debug_thread_was_killed = true;
+    atomic_store(&g_debug_thread_was_killed, true);
 
     atomic_store_explicit(&state->flkill, true, memory_order_seq_cst);
     atomic_store_explicit(&state->flsuspended, false, memory_order_seq_cst); /* wake it up so it can die */

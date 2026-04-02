@@ -1567,6 +1567,8 @@ static void unload_system_root_database(void) {
         if (!unlinksystemtablestructure()) {
             cli_log_warn("Failed to unlink system table structure during unload");
         }
+    } else if (systemtable != nil) {
+        log_warn(LOG_COMP_DB, "Skipping unlinksystemtablestructure: debug thread was killed (hash tables may be inconsistent)");
     }
 
     cleartablestructureglobals();
