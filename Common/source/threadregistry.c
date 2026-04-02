@@ -113,8 +113,14 @@ void cleanup_thread_registry(void) {
                 pthread_mutex_unlock(&thread_records[i].refcount_mutex);
 
                 if (current_refcount != 0) {
+                    /* Skip this record. The detached debug thread is still
+                     * cleaning up. This leaks pthread_mutex_destroy and
+                     * pthread_cond_destroy for this record — acceptable since
+                     * the process is exiting and the OS reclaims all resources.
+                     * The 50ms nanosleep above does NOT hold refcount_mutex
+                     * (it was unlocked at line 100). */
                     log_warn(LOG_COMP_THREAD,
-                             "Thread registry cleanup: record %d still has refcount=%d after wait — skipping",
+                             "Thread registry cleanup: skipping record %d (refcount=%d, detached debug thread still cleaning up)",
                              i, current_refcount);
                     continue;
                 }

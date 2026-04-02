@@ -2009,7 +2009,7 @@ boolean evaluatelist (hdltreenode hfirst, tyvaluerecord *val) {
 	
 	if (hlocals != currenthashtable) { /*should never happen in normal execution*/
 
-		#ifdef FRONTIER_HEADLESS
+#ifdef FRONTIER_HEADLESS
 		/* When a thread is killed mid-execution (e.g., debug/kill), the debugger
 		 * callback returns false which exits the while loop without unwinding
 		 * pushed hash table scopes (for/with/local blocks). The mismatch is
@@ -2022,7 +2022,7 @@ boolean evaluatelist (hdltreenode hfirst, tyvaluerecord *val) {
 			fl = false;
 		}
 		else
-		#endif
+#endif
 		{
 			assert (hlocals == currenthashtable); /*context change in background destroyed our state*/
 
