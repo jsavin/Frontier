@@ -46,6 +46,21 @@ static tydebugstate *g_debug_threads[MAX_DEBUG_THREADS] = {0};
 static pthread_mutex_t g_debug_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /* ========================================================================
+ * Reason string conversion
+ * ======================================================================== */
+
+const char *debug_reason_string(debug_suspend_reason_t reason) {
+    switch (reason) {
+        case DEBUG_REASON_ENTRY:       return "entry";
+        case DEBUG_REASON_INTERRUPTED: return "interrupted";
+        case DEBUG_REASON_BREAKPOINT:  return "breakpoint";
+        case DEBUG_REASON_STEP:        return "step";
+        case DEBUG_REASON_ERROR:       return "error";
+        default:                       return "unknown";
+    }
+}
+
+/* ========================================================================
  * Debug state management
  * ======================================================================== */
 
@@ -152,24 +167,35 @@ void debug_kill_all_threads(void) {
     pthread_mutex_unlock(&g_debug_mutex);
 }
 
+void debug_join_all_threads(void) {
+
+    pthread_mutex_lock(&g_debug_mutex);
+
+    for (int i = 0; i < MAX_DEBUG_THREADS; i++) {
+        if (g_debug_threads[i] != NULL) {
+            pthread_t tid = g_debug_threads[i]->pthread_id;
+            pthread_mutex_unlock(&g_debug_mutex);
+            pthread_join(tid, NULL);
+            pthread_mutex_lock(&g_debug_mutex);
+        }
+    }
+
+    pthread_mutex_unlock(&g_debug_mutex);
+}
+
 /* ========================================================================
  * Notifications
  * ======================================================================== */
 
-/* reason MUST be a compile-time constant string (no user-supplied content).
- * It is interpolated without JSON escaping. See issue #497 for enum proposal. */
-void debug_send_suspended(transport_t *transport, long threadid, long line, const char *reason) {
-
-    if (reason == NULL || strlen(reason) >= 64) {
-        log_error(LOG_COMP_LANG, "debug_send_suspended: invalid reason string");
-        return;
-    }
+/* Send a debug/suspended notification with a type-safe reason enum.
+ * The enum is converted to a JSON-safe string via debug_reason_string(). */
+void debug_send_suspended(transport_t *transport, long threadid, long line, debug_suspend_reason_t reason) {
 
     char json[512];
     snprintf(json, sizeof(json),
              "{\"id\":null,\"op\":\"debug/suspended\",\"params\":"
              "{\"threadId\":%ld,\"line\":%ld,\"reason\":\"%s\"}}",
-             threadid, line, reason);
+             threadid, line, debug_reason_string(reason));
 
     transport->write_line(transport->ctx, json, strlen(json));
 }
@@ -235,7 +261,7 @@ static boolean protocol_debugger_callback(hdltreenode hnode) {
         if (hnode != nil)
             line = (long)(**hnode).lnum;
 
-        debug_send_suspended(state->transport, state->threadid, line, "interrupted");
+        debug_send_suspended(state->transport, state->threadid, line, DEBUG_REASON_INTERRUPTED);
         log_debug(LOG_COMP_LANG, "debug: thread %ld interrupted at line %ld", state->threadid, line);
     }
 
@@ -325,7 +351,7 @@ static void *debug_thread_entry(void *arg) {
 
     /* Initial suspension — pause before first statement so client can set breakpoints */
     atomic_store(&params->debugstate->flsuspended, true);
-    debug_send_suspended(params->debugstate->transport, params->debugstate->threadid, 0, "entry");
+    debug_send_suspended(params->debugstate->transport, params->debugstate->threadid, 0, DEBUG_REASON_ENTRY);
 
     /* Suspension loop (same pattern as in the callback) */
     while (atomic_load(&params->debugstate->flsuspended)) {
@@ -395,7 +421,7 @@ void handle_debug_run(int id, const char *json_line, transport_t *transport) {
     /* Parse the expression from params */
     cJSON *root = cJSON_Parse(json_line);
     if (root == NULL) {
-        char err[128];
+        char err[512];
         snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Invalid JSON\"},\"success\":false}", id);
         transport->write_line(transport->ctx, err, strlen(err));
         return;
@@ -405,7 +431,7 @@ void handle_debug_run(int id, const char *json_line, transport_t *transport) {
     cJSON *expr_json = params ? cJSON_GetObjectItemCaseSensitive(params, "expression") : NULL;
 
     if (!cJSON_IsString(expr_json) || expr_json->valuestring == NULL) {
-        char err[128];
+        char err[512];
         snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Missing 'expression' in params\"},\"success\":false}", id);
         transport->write_line(transport->ctx, err, strlen(err));
         cJSON_Delete(root);
@@ -419,7 +445,7 @@ void handle_debug_run(int id, const char *json_line, transport_t *transport) {
     hdltreenode hcode;
 
     if (!newfilledhandle((void *)expression, strlen(expression), &htext)) {
-        char err[128];
+        char err[512];
         snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Memory allocation failed\"},\"success\":false}", id);
         transport->write_line(transport->ctx, err, strlen(err));
         cJSON_Delete(root);
@@ -451,7 +477,7 @@ void handle_debug_run(int id, const char *json_line, transport_t *transport) {
     frontier_pthread_record *rec = allocate_thread_record();
     if (rec == NULL) {
         langdisposetree(hcode);
-        char err[128];
+        char err[512];
         snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Failed to allocate thread\"},\"success\":false}", id);
         transport->write_line(transport->ctx, err, strlen(err));
         cJSON_Delete(root);
@@ -463,7 +489,7 @@ void handle_debug_run(int id, const char *json_line, transport_t *transport) {
     if (new_hglobals == nil) {
         langdisposetree(hcode);
         free_thread_record(rec);
-        char err[128];
+        char err[512];
         snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Failed to allocate thread globals\"},\"success\":false}", id);
         transport->write_line(transport->ctx, err, strlen(err));
         cJSON_Delete(root);
@@ -481,7 +507,7 @@ void handle_debug_run(int id, const char *json_line, transport_t *transport) {
             langdisposetree(hcode);
             headless_dispose_threadglobals(new_hglobals);
             free_thread_record(rec);
-            char err[128];
+            char err[512];
             snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Failed to copy table stack\"},\"success\":false}", id);
             transport->write_line(transport->ctx, err, strlen(err));
             cJSON_Delete(root);
@@ -497,7 +523,7 @@ void handle_debug_run(int id, const char *json_line, transport_t *transport) {
         langdisposetree(hcode);
         headless_dispose_threadglobals(new_hglobals);
         free_thread_record(rec);
-        char err[128];
+        char err[512];
         snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Too many debug threads\"},\"success\":false}", id);
         transport->write_line(transport->ctx, err, strlen(err));
         cJSON_Delete(root);
@@ -511,7 +537,7 @@ void handle_debug_run(int id, const char *json_line, transport_t *transport) {
         headless_dispose_threadglobals(new_hglobals);
         free_thread_record(rec);
         debug_unregister_thread(threadid);
-        char err[128];
+        char err[512];
         snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Memory allocation failed\"},\"success\":false}", id);
         transport->write_line(transport->ctx, err, strlen(err));
         cJSON_Delete(root);
@@ -527,7 +553,7 @@ void handle_debug_run(int id, const char *json_line, transport_t *transport) {
     pthread_t tid;
     pthread_attr_t attr;
     pthread_attr_init(&attr);
-    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 
     if (pthread_create(&tid, &attr, debug_thread_entry, dparams) != 0) {
         pthread_attr_destroy(&attr);
@@ -536,7 +562,7 @@ void handle_debug_run(int id, const char *json_line, transport_t *transport) {
         free_thread_record(rec);
         debug_unregister_thread(threadid);
         free(dparams);
-        char err[128];
+        char err[512];
         snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Failed to spawn debug thread\"},\"success\":false}", id);
         transport->write_line(transport->ctx, err, strlen(err));
         cJSON_Delete(root);
@@ -545,11 +571,12 @@ void handle_debug_run(int id, const char *json_line, transport_t *transport) {
 
     pthread_attr_destroy(&attr);
     rec->pthread_id = tid;
+    debugstate->pthread_id = tid;
 
     /* Return immediately with thread ID */
     char resp[128];
     snprintf(resp, sizeof(resp),
-             "{\"id\":%d,\"result\":{\"threadId\":%ld,\"status\":\"running\"},\"success\":true}",
+             "{\"id\":%d,\"result\":{\"threadId\":%ld,\"status\":\"started\"},\"success\":true}",
              id, threadid);
     transport->write_line(transport->ctx, resp, strlen(resp));
 
@@ -563,7 +590,7 @@ void handle_debug_continue(int id, const char *json_line, transport_t *transport
     cJSON *tid_json = params ? cJSON_GetObjectItemCaseSensitive(params, "threadId") : NULL;
 
     if (!cJSON_IsNumber(tid_json)) {
-        char err[128];
+        char err[512];
         snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Missing 'threadId' in params\"},\"success\":false}", id);
         transport->write_line(transport->ctx, err, strlen(err));
         cJSON_Delete(root);
@@ -574,7 +601,7 @@ void handle_debug_continue(int id, const char *json_line, transport_t *transport
     tydebugstate *state = debug_get_state_for_thread(threadid);
 
     if (state == NULL) {
-        char err[128];
+        char err[512];
         snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"No debug thread with that ID\"},\"success\":false}", id);
         transport->write_line(transport->ctx, err, strlen(err));
         cJSON_Delete(root);
@@ -598,7 +625,7 @@ void handle_debug_kill(int id, const char *json_line, transport_t *transport) {
     cJSON *tid_json = params ? cJSON_GetObjectItemCaseSensitive(params, "threadId") : NULL;
 
     if (!cJSON_IsNumber(tid_json)) {
-        char err[128];
+        char err[512];
         snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Missing 'threadId' in params\"},\"success\":false}", id);
         transport->write_line(transport->ctx, err, strlen(err));
         cJSON_Delete(root);
@@ -609,7 +636,7 @@ void handle_debug_kill(int id, const char *json_line, transport_t *transport) {
     tydebugstate *state = debug_get_state_for_thread(threadid);
 
     if (state == NULL) {
-        char err[128];
+        char err[512];
         snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"No debug thread with that ID\"},\"success\":false}", id);
         transport->write_line(transport->ctx, err, strlen(err));
         cJSON_Delete(root);
@@ -634,7 +661,7 @@ void handle_debug_pause(int id, const char *json_line, transport_t *transport) {
     cJSON *tid_json = params ? cJSON_GetObjectItemCaseSensitive(params, "threadId") : NULL;
 
     if (!cJSON_IsNumber(tid_json)) {
-        char err[128];
+        char err[512];
         snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Missing 'threadId' in params\"},\"success\":false}", id);
         transport->write_line(transport->ctx, err, strlen(err));
         cJSON_Delete(root);
@@ -645,8 +672,18 @@ void handle_debug_pause(int id, const char *json_line, transport_t *transport) {
     tydebugstate *state = debug_get_state_for_thread(threadid);
 
     if (state == NULL) {
-        char err[128];
+        char err[512];
         snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"No debug thread with that ID\"},\"success\":false}", id);
+        transport->write_line(transport->ctx, err, strlen(err));
+        cJSON_Delete(root);
+        return;
+    }
+
+    /* Already suspended — return error instead of setting interrupt flag */
+    if (atomic_load(&state->flsuspended)) {
+        debug_release_state(state);
+        char err[256];
+        snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Thread %ld is already suspended\"},\"success\":false}", id, threadid);
         transport->write_line(transport->ctx, err, strlen(err));
         cJSON_Delete(root);
         return;

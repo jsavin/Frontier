@@ -910,23 +910,18 @@ static void cleanup_frontier_runtime(void) {
     cli_log_info("Cleaning up Frontier runtime");
 
     /* Kill any active debug threads so they exit cleanly before shutdown.
-     * Debug threads are PTHREAD_CREATE_DETACHED (no join), so we can't wait
-     * for them directly. Instead we set their kill flags and let them exit
-     * at the next langdebuggercall hook or suspension-loop iteration.
-     * headless_threading_shutdown below kills remaining non-debug threads.
-     * If a debug thread hasn't finished cleanup by cleanup_thread_registry,
-     * the warn-and-skip path in threadregistry.c handles it gracefully. */
+     * Threads are PTHREAD_CREATE_JOINABLE, so we join them after setting
+     * kill flags. This replaces the old 200ms sleep with a deterministic wait. */
     debug_kill_all_threads();
 
-    /* Yield GIL briefly to let killed debug threads finish cleanup.
+    /* Release GIL so killed debug threads can finish cleanup, then join them.
      * Save/restore main thread globals since debug threads overwrite
      * hthreadglobals when they run. */
     {
         hdlthreadglobals saved = hthreadglobals;
         headless_save_threadglobals(saved);
         pthread_mutex_unlock(&frontier_gil);
-        struct timespec ts = {0, 200000000}; /* 200ms */
-        nanosleep(&ts, NULL);
+        debug_join_all_threads();
         pthread_mutex_lock(&frontier_gil);
         headless_restore_threadglobals(saved);
     }
