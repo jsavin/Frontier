@@ -97,6 +97,18 @@ void debug_kill_all_threads(void);
 void debug_join_all_threads(void);
 
 /*
+ * Returns true if any debug threads are active (registered in g_debug_threads).
+ */
+boolean debug_has_active_threads(void);
+
+/*
+ * Returns true if any debug thread ran during this session. Once set, stays
+ * true for the lifetime of the process. Used to skip save-on-exit since
+ * killed debug threads leave hash tables in an inconsistent state.
+ */
+boolean debug_threads_were_used(void);
+
+/*
  * Send an unsolicited debug/suspended notification to the client.
  */
 void debug_send_suspended(transport_t *transport, long threadid, long line, debug_suspend_reason_t reason);

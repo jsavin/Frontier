@@ -44,6 +44,7 @@ extern hdltablestack hashtablestack;
 #define MAX_DEBUG_THREADS 16
 static tydebugstate *g_debug_threads[MAX_DEBUG_THREADS] = {0};
 static pthread_mutex_t g_debug_mutex = PTHREAD_MUTEX_INITIALIZER;
+static boolean g_debug_threads_were_active = false; /* set when any debug thread runs */
 
 /* ========================================================================
  * Reason string conversion
@@ -106,6 +107,8 @@ static tydebugstate *debug_register_thread(long threadid, transport_t *transport
 
     pthread_mutex_lock(&g_debug_mutex);
 
+    g_debug_threads_were_active = true; /* persistent flag for shutdown safety */
+
     for (int i = 0; i < MAX_DEBUG_THREADS; i++) {
         if (g_debug_threads[i] == NULL) {
             g_debug_threads[i] = state;
@@ -153,12 +156,43 @@ void debug_release_state(tydebugstate *state) {
     }
 }
 
-void debug_kill_all_threads(void) {
+/* Thread IDs captured during kill, joined during shutdown.
+ * Needed because debug_unregister_thread NULLs the g_debug_threads
+ * entry before debug_join_all_threads can read it. */
+static pthread_t g_killed_threads[MAX_DEBUG_THREADS];
+static int g_killed_thread_count = 0;
+
+boolean debug_threads_were_used(void) {
+    return g_debug_threads_were_active;
+}
+
+boolean debug_has_active_threads(void) {
+
+    boolean active = false;
 
     pthread_mutex_lock(&g_debug_mutex);
 
     for (int i = 0; i < MAX_DEBUG_THREADS; i++) {
         if (g_debug_threads[i] != NULL) {
+            active = true;
+            break;
+        }
+    }
+
+    pthread_mutex_unlock(&g_debug_mutex);
+    return active;
+}
+
+void debug_kill_all_threads(void) {
+
+    pthread_mutex_lock(&g_debug_mutex);
+
+    g_killed_thread_count = 0;
+
+    for (int i = 0; i < MAX_DEBUG_THREADS; i++) {
+        if (g_debug_threads[i] != NULL) {
+            /* Capture pthread_t before the thread can unregister and free state */
+            g_killed_threads[g_killed_thread_count++] = g_debug_threads[i]->pthread_id;
             atomic_store(&g_debug_threads[i]->flkill, true);
             atomic_store(&g_debug_threads[i]->flsuspended, false); /* wake suspended threads */
         }
@@ -169,18 +203,13 @@ void debug_kill_all_threads(void) {
 
 void debug_join_all_threads(void) {
 
-    pthread_mutex_lock(&g_debug_mutex);
-
-    for (int i = 0; i < MAX_DEBUG_THREADS; i++) {
-        if (g_debug_threads[i] != NULL) {
-            pthread_t tid = g_debug_threads[i]->pthread_id;
-            pthread_mutex_unlock(&g_debug_mutex);
-            pthread_join(tid, NULL);
-            pthread_mutex_lock(&g_debug_mutex);
-        }
+    /* Join threads captured by debug_kill_all_threads. Must be called
+     * with GIL released so threads can acquire it to finish cleanup. */
+    for (int i = 0; i < g_killed_thread_count; i++) {
+        pthread_join(g_killed_threads[i], NULL);
     }
 
-    pthread_mutex_unlock(&g_debug_mutex);
+    g_killed_thread_count = 0;
 }
 
 /* ========================================================================

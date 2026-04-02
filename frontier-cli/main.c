@@ -302,6 +302,7 @@ static void cleanup_frontier_runtime(void);
 static boolean execute_script_mode(void);
 static boolean load_system_root_database(const char* path);
 static void unload_system_root_database(void);
+static void save_system_root_on_exit(void);
 static boolean ensure_named_subtable(hdlhashtable parent, const unsigned char *name, hdlhashtable *out, boolean mark_dont_save);
 static boolean hydrate_system_root_database(const char* path);
 static boolean read_root_table_address(const char *path, dbaddress *adr_out, short *version_out);
@@ -318,6 +319,7 @@ static int get_system_root_search_paths(char paths[][CLI_MAX_PATH_LENGTH + 1], i
 
 /* Main entry point: initializes runtime, loads database, and dispatches to execution mode. */
 int main(int argc, char* argv[]) {
+
     // Initialize logging system (reads FRONTIER_LOG_LEVEL, FRONTIER_LOG_COMPONENT, FRONTIER_LOG_FORMAT env vars)
     log_init();
 
@@ -912,6 +914,18 @@ static void cleanup_frontier_runtime(void) {
     /* Kill any active debug threads so they exit cleanly before shutdown.
      * Threads are PTHREAD_CREATE_JOINABLE, so we join them after setting
      * kill flags. This replaces the old 200ms sleep with a deterministic wait. */
+    /* Save system root only if no debug threads are active. Active debug
+     * threads may have pushed hash table scopes that make packing unsafe.
+     * Killing them doesn't help — the unwind leaves tables inconsistent.
+     * In practice, debug sessions are for development, not production data. */
+    /* Save system root only if no debug threads ran during this session.
+     * Killed debug threads leave pushed hash table scopes in the chain,
+     * making hashpack traversal crash on stale pointers. This is a
+     * fundamental limitation of killing scripts mid-execution. */
+    if (g_system_root_loaded && !debug_threads_were_used()) {
+        save_system_root_on_exit();
+    }
+
     debug_kill_all_threads();
 
     /* Release GIL so killed debug threads can finish cleanup, then join them.
@@ -1544,10 +1558,12 @@ static void unload_system_root_database(void) {
     const char* path = (g_system_root_path[0] != '\0') ? g_system_root_path : "(unknown)";
     cli_log_info("Unloading system root database: %s", path);
 
-    /* Save any changes made during this session before tearing down */
-    save_system_root_on_exit();
+    /* Save already done in cleanup_frontier_runtime before debug thread kill.
+     * Don't save again — hash table state may be inconsistent after kill. */
 
-    if (systemtable != nil) {
+    /* Skip table unlink if debug threads ran — hash table chain may be
+     * corrupt from killed scripts. The process is exiting anyway. */
+    if (systemtable != nil && !debug_threads_were_used()) {
         if (!unlinksystemtablestructure()) {
             cli_log_warn("Failed to unlink system table structure during unload");
         }
