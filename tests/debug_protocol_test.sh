@@ -116,13 +116,40 @@ print("Debug Protocol Tests")
 print("=" * 46)
 print()
 
-# --- Test 1: debug/run + debug/continue ---
-print("--- debug/run + debug/continue ---")
-# Note: debug threads get sequential IDs starting from 3 (main=2).
+# Debug threads get sequential IDs starting from 3 (main=2).
 # Each test session starts fresh, so the first debug thread is always 3.
-# If this assumption breaks, these tests will fail with "No debug thread"
-# errors, which is a clear signal to update the thread ID.
+# We validate this assumption explicitly in the first test.
 FIRST_DEBUG_TID = 3
+
+def get_actual_tid(msgs):
+    """Extract actual threadId from debug/run response."""
+    for m in msgs:
+        if m.get("id") == 1 and m.get("result", {}).get("threadId"):
+            return m["result"]["threadId"]
+    return None
+
+# --- Test 0: verify thread ID assumption ---
+print("--- thread ID validation ---")
+def test_tid_check(send):
+    send({"op": "debug/run", "id": 1, "params": {"expression": "return 1"}})
+    time.sleep(1)
+    send({"op": "debug/kill", "id": 2, "params": {"threadId": FIRST_DEBUG_TID}})
+    time.sleep(1)
+
+msgs = run_debug_session(test_tid_check)
+actual_tid = get_actual_tid(msgs)
+assert_test(
+    f"first debug thread gets ID {FIRST_DEBUG_TID}",
+    actual_tid == FIRST_DEBUG_TID,
+    f"Expected threadId={FIRST_DEBUG_TID}, got {actual_tid}. Update FIRST_DEBUG_TID."
+)
+if actual_tid is not None and actual_tid != FIRST_DEBUG_TID:
+    print(f"  FATAL: Thread ID assumption broken. Updating to {actual_tid}.")
+    FIRST_DEBUG_TID = actual_tid
+
+# --- Test 1: debug/run + debug/continue ---
+print()
+print("--- debug/run + debug/continue ---")
 
 def test_run_continue(send):
     send({"op": "debug/run", "id": 1, "params": {"expression": "return 1+1"}})

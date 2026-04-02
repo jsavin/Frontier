@@ -160,7 +160,10 @@ void debug_kill_all_threads(void) {
  * It is interpolated without JSON escaping. See issue #497 for enum proposal. */
 void debug_send_suspended(transport_t *transport, long threadid, long line, const char *reason) {
 
-    assert(reason != NULL && strlen(reason) < 64);
+    if (reason == NULL || strlen(reason) >= 64) {
+        log_error(LOG_COMP_LANG, "debug_send_suspended: invalid reason string");
+        return;
+    }
 
     char json[512];
     snprintf(json, sizeof(json),
@@ -200,7 +203,10 @@ static boolean protocol_debugger_callback(hdltreenode hnode) {
 
     (void)hnode;
 
-    /* Get debug state from thread globals */
+    /* Get debug state from thread globals. param_reserved[0] is set to a
+     * tydebugstate* by debug_thread_entry. For non-debug threads it's NULL
+     * (calloc-initialized). The cast is safe as long as only debug_handler.c
+     * writes to param_reserved[0]. */
     if (hthreadglobals == nil)
         return true;
 
@@ -209,7 +215,11 @@ static boolean protocol_debugger_callback(hdltreenode hnode) {
     if (state == NULL || !state->fldebugmode)
         return true; /* not debugging this thread */
 
-    /* Check kill flag */
+    /* Check kill flag. Note: kill only takes effect at langdebuggercall
+     * boundaries (called at every UserTalk statement). Scripts with long-
+     * running native verbs between statements won't stop promptly. This is
+     * a known Phase 1 limitation — Phase 2 may add a secondary kill via
+     * flthreadkilled which is checked at yield points. */
     if (atomic_load(&state->flkill)) {
         log_debug(LOG_COMP_LANG, "debug: thread %ld killed", state->threadid);
         return false; /* signal interpreter to stop */
@@ -341,6 +351,13 @@ static void *debug_thread_entry(void *arg) {
     disposevaluerecord(result, false);
 
 cleanup:
+    /* Note: if we got here via early-kill (goto cleanup from the initial
+     * suspension loop), 'result' was never initialized via initvalue().
+     * disposevaluerecord is above the cleanup label, not below it, so
+     * it's only called on the normal execution path. Don't move initvalue
+     * above the suspension loop without also moving disposevaluerecord
+     * into the cleanup section. */
+
     /* Save globals while we still hold GIL */
     headless_save_threadglobals(params->hglobals);
 

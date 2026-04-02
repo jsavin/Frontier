@@ -100,9 +100,11 @@ void cleanup_thread_registry(void) {
             pthread_mutex_unlock(&thread_records[i].refcount_mutex);
 
             if (current_refcount != 0) {
-                /* Thread is still cleaning up. Give it a moment to finish,
-                 * then recheck. If it's still active, warn and skip rather
-                 * than aborting — the process is shutting down anyway. */
+                /* Thread is still cleaning up. This invariant was relaxed
+                 * (from abort to warn-and-skip) for PTHREAD_CREATE_DETACHED
+                 * debug threads, which cannot be joined and may still be in
+                 * cleanup at shutdown. debug_kill_all_threads + GIL yield
+                 * reduces the window but cannot eliminate it. Give 50ms. */
                 struct timespec ts = {0, 50000000}; /* 50ms */
                 nanosleep(&ts, NULL);
 
