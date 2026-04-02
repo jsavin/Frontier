@@ -859,8 +859,11 @@ static boolean initialize_frontier_runtime(void) {
         return false;
     }
 
-    /* Install protocol-aware debugger callback (replaces no-op from langstartup.c) */
+#ifdef FRONTIER_HEADLESS
+    /* Install protocol-aware debugger callback (replaces no-op from langstartup.c).
+     * Only in headless builds — GUI builds use the classic script editor debugger. */
     debug_init();
+#endif
 
     /* Initialize thread registry and register main thread with idapplicationthread (2) */
     if (!init_thread_registry()) {

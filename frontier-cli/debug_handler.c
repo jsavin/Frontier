@@ -263,7 +263,12 @@ static boolean protocol_debugger_callback(hdltreenode hnode) {
     /* Check kill flag after loop exit — handle_debug_kill sets flkill=true
      * and flsuspended=false simultaneously, so we may exit the loop without
      * seeing the kill flag inside it. Set flthreadkilled so the interpreter
-     * (evaluatelist) knows this is a kill, not a bug. */
+     * (evaluatelist) knows this is a kill, not a bug.
+     *
+     * Notification flow for kill-after-continue: this callback returns false,
+     * langruncode returns false, debug_thread_entry sends debug/completed
+     * with success=false, then cleans up. The callback does NOT send
+     * debug/completed — that's always the thread entry's responsibility. */
     if (atomic_load(&state->flkill)) {
         if (hthreadglobals != nil)
             (**hthreadglobals).flthreadkilled = true;
@@ -423,8 +428,20 @@ void handle_debug_run(int id, const char *json_line, transport_t *transport) {
 
     /* langcompiletext always disposes htext (both success and failure) */
     if (!langcompiletext(htext, false, &hcode)) {
-        char err[128];
-        snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Compilation failed\"},\"success\":false}", id);
+        extern const unsigned char *headless_get_last_lang_error(void);
+        const unsigned char *errmsg = headless_get_last_lang_error();
+        char err[512];
+        if (errmsg != NULL && errmsg[0] > 0) {
+            /* Pascal string: first byte is length */
+            int msglen = (int)errmsg[0];
+            char msgbuf[256];
+            if (msglen > 255) msglen = 255;
+            memcpy(msgbuf, errmsg + 1, (size_t)msglen);
+            msgbuf[msglen] = '\0';
+            snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Compilation failed: %s\"},\"success\":false}", id, msgbuf);
+        } else {
+            snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Compilation failed\"},\"success\":false}", id);
+        }
         transport->write_line(transport->ctx, err, strlen(err));
         cJSON_Delete(root);
         return;

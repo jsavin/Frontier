@@ -37,7 +37,8 @@
  * The debug thread frees the struct only when refcount drops to 0.
  */
 typedef struct tydebugstate {
-    boolean fldebugmode;             /* is this thread in debug mode? (set once at creation) */
+    boolean fldebugmode;             /* not atomic: set once at registration (under GIL) before
+                                      * thread starts, only read after. GIL provides ordering. */
     atomic_bool flsuspended;         /* is this thread paused? */
     atomic_bool flinterrupt;         /* pause at next statement (debug/pause) */
     atomic_bool flkill;              /* kill the script */
