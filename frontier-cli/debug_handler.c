@@ -232,8 +232,11 @@ static boolean protocol_debugger_callback(hdltreenode hnode) {
     /* Suspension loop — yields GIL so protocol handler can process commands */
     while (atomic_load(&state->flsuspended)) {
 
-        if (atomic_load(&state->flkill))
+        if (atomic_load(&state->flkill)) {
+            if (hthreadglobals != nil)
+                (**hthreadglobals).flthreadkilled = true;
             return false;
+        }
 
         /* Save thread globals, release GIL, sleep, reacquire, restore */
         headless_save_threadglobals(hthreadglobals);
@@ -249,9 +252,13 @@ static boolean protocol_debugger_callback(hdltreenode hnode) {
 
     /* Check kill flag after loop exit — handle_debug_kill sets flkill=true
      * and flsuspended=false simultaneously, so we may exit the loop without
-     * seeing the kill flag inside it. */
-    if (atomic_load(&state->flkill))
+     * seeing the kill flag inside it. Set flthreadkilled so the interpreter
+     * (evaluatelist) knows this is a kill, not a bug. */
+    if (atomic_load(&state->flkill)) {
+        if (hthreadglobals != nil)
+            (**hthreadglobals).flthreadkilled = true;
         return false;
+    }
 
     return true;
 }
