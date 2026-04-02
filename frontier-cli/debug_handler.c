@@ -44,7 +44,7 @@ extern hdltablestack hashtablestack;
 #define MAX_DEBUG_THREADS 16
 static tydebugstate *g_debug_threads[MAX_DEBUG_THREADS] = {0};
 static pthread_mutex_t g_debug_mutex = PTHREAD_MUTEX_INITIALIZER;
-static boolean g_debug_threads_were_active = false; /* set when any debug thread runs */
+static boolean g_debug_thread_was_killed = false; /* set when a debug thread is killed mid-execution */
 
 /* ========================================================================
  * Reason string conversion
@@ -107,7 +107,8 @@ static tydebugstate *debug_register_thread(long threadid, transport_t *transport
 
     pthread_mutex_lock(&g_debug_mutex);
 
-    g_debug_threads_were_active = true; /* persistent flag for shutdown safety */
+    /* Note: g_debug_thread_was_killed is set in debug_kill_all_threads,
+     * not here — a debug thread that completes normally is safe. */
 
     for (int i = 0; i < MAX_DEBUG_THREADS; i++) {
         if (g_debug_threads[i] == NULL) {
@@ -160,12 +161,15 @@ void debug_release_state(tydebugstate *state) {
 
 /* Thread IDs captured during kill, joined during shutdown.
  * Needed because debug_unregister_thread NULLs the g_debug_threads
- * entry before debug_join_all_threads can read it. */
+ * entry before debug_join_all_threads can read it.
+ * Synchronization: written under g_debug_mutex in debug_kill_all_threads,
+ * read without lock in debug_join_all_threads. Safe because these are
+ * called sequentially during shutdown (kill first, then join). */
 static pthread_t g_killed_threads[MAX_DEBUG_THREADS];
 static int g_killed_thread_count = 0;
 
 boolean debug_is_safe_to_save(void) {
-    return !g_debug_threads_were_active;
+    return !g_debug_thread_was_killed;
 }
 
 boolean debug_has_active_threads(void) {
@@ -193,6 +197,10 @@ void debug_kill_all_threads(void) {
 
     for (int i = 0; i < MAX_DEBUG_THREADS; i++) {
         if (g_debug_threads[i] != NULL) {
+            /* Killing a thread mid-execution corrupts hash table state.
+             * Mark as unsafe so save-on-exit is skipped. */
+            g_debug_thread_was_killed = true;
+
             /* Capture pthread_t before the thread can unregister and free state */
             g_killed_threads[g_killed_thread_count++] = g_debug_threads[i]->pthread_id;
             atomic_store_explicit(&g_debug_threads[i]->flkill, true, memory_order_seq_cst);
@@ -610,7 +618,13 @@ void handle_debug_run(int id, const char *json_line, transport_t *transport) {
 
     pthread_attr_destroy(&attr);
     rec->pthread_id = tid;
+
+    /* Set pthread_id immediately after create — debug_kill_all_threads reads
+     * this field under g_debug_mutex, so set it before any code that could
+     * trigger shutdown (the response write below). */
+    pthread_mutex_lock(&g_debug_mutex);
     debugstate->pthread_id = tid;
+    pthread_mutex_unlock(&g_debug_mutex);
 
     /* Return immediately with thread ID */
     char resp[128];
@@ -681,6 +695,9 @@ void handle_debug_kill(int id, const char *json_line, transport_t *transport) {
         cJSON_Delete(root);
         return;
     }
+
+    /* Mark as killed — hash tables will be inconsistent after this */
+    g_debug_thread_was_killed = true;
 
     atomic_store_explicit(&state->flkill, true, memory_order_seq_cst);
     atomic_store_explicit(&state->flsuspended, false, memory_order_seq_cst); /* wake it up so it can die */
