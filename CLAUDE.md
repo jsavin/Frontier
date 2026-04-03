@@ -272,6 +272,7 @@ For Frontier-specific test patterns and command details, also see `docs/TESTING_
 - Investigating verb resolution bugs
 - Seeing "loadfromhandle fail" errors (false alarms - format detection logging)
 - Debugging database-related crashes
+- Using the protocol-based UserTalk debugger (debug/run, debug/continue, debug/kill, debug/pause)
 
 **📖 Read `docs/VERB_RESOLUTION_ARCHITECTURE.md` when:**
 - Debugging verb lookup issues

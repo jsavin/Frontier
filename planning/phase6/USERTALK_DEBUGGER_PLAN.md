@@ -1,5 +1,7 @@
 # Plan: Protocol-Based UserTalk Debugger
 
+**For agents:** See `docs/DEBUGGING_GUIDE.md` for the operational reference. This document is the design spec.
+
 **Status:** Planning
 **Author:** Claude + Jake
 **Date:** 2026-03-28
