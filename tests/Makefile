@@ -533,8 +533,13 @@ test-custom-args:
 	@echo "Running custom CLI args tests..."
 	@./custom_cli_args_test.sh
 
-# Run all tests (unit + integration + CLI migration + custom args)
-test-all: test test-integration test-migrate-flag test-custom-args
+# Run debug protocol tests (Python-based, uses --protocol mode)
+test-debug:
+	@echo "Running debug protocol tests..."
+	@./debug_protocol_test.sh
+
+# Run all tests (unit + integration + CLI migration + custom args + debug)
+test-all: test test-integration test-migrate-flag test-custom-args test-debug
 	@echo "All test suites completed"
 
 $(STRINGS_COMPILER):
@@ -637,7 +642,7 @@ verify-errors:
 	@echo "Verifying error message coverage..."
 	@../tools/verify_error_coverage.sh
 
-.PHONY: all test test-report test-integration test-integration-verbose test-migrate-flag test-custom-args test-all clean install uninstall help results strings_generated kernel_verbs_generated verify-errors validate-bigstrings check-python-deps
+.PHONY: all test test-report test-integration test-integration-verbose test-migrate-flag test-custom-args test-debug test-all clean install uninstall help results strings_generated kernel_verbs_generated verify-errors validate-bigstrings check-python-deps
 
 check_v6_tables: check_v6_tables.c $(LANG_RUNTIME_SOURCES) ../Common/source/odbengine.c headless_shell.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -DHEADLESS_TEST_PORTABLE_FILE -DHEADLESS_LINKS_REAL_DB -I../Common/headers -I../Common/SystemHeaders -I../portable check_v6_tables.c \

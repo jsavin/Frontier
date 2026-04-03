@@ -2007,15 +2007,34 @@ boolean evaluatelist (hdltreenode hfirst, tyvaluerecord *val) {
 	5.0b18 dmb: if this does trigger, make some attempt to exit cleanly
 	*/
 	
-	if (hlocals != currenthashtable) { /*should never happen*/
+	if (hlocals != currenthashtable) { /*should never happen in normal execution*/
 
-		assert (hlocals == currenthashtable); /*context change in background destroyed our state*/
-		
-		langerror (undefinederror);
-		
-		currenthashtable = hlocals;
-		
-		fl = false;
+#ifdef FRONTIER_HEADLESS
+		/* Headless-only: the GUI debugger unwinds hash table scopes normally
+		 * via the event loop, so a mismatch there IS a real bug (assert).
+		 * In headless mode, debug/kill forces an exit without unwinding. */
+		/* When a thread is killed mid-execution (e.g., debug/kill), the debugger
+		 * callback returns false which exits the while loop without unwinding
+		 * pushed hash table scopes (for/with/local blocks). The mismatch is
+		 * expected — just restore currenthashtable and continue. Don't call
+		 * langerror since thread state may be partially torn down. */
+		if (hthreadglobals != nil && (**hthreadglobals).flthreadkilled) {
+
+			currenthashtable = hlocals;
+
+			fl = false;
+		}
+		else
+#endif
+		{
+			assert (hlocals == currenthashtable); /*context change in background destroyed our state*/
+
+			langerror (undefinederror);
+
+			currenthashtable = hlocals;
+
+			fl = false;
+		}
 		}
 	
 	/*finished processing list, either natural termination, a break, return or error*/

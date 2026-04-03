@@ -30,6 +30,7 @@
 #include <stdint.h>
 #include <errno.h>
 #include <pthread.h>
+#include <time.h>
 
 #ifdef __APPLE__
 #include <mach-o/dyld.h>  /* for _NSGetExecutablePath */
@@ -67,14 +68,12 @@
 #include "../Common/headers/langinternal.h"
 #include "repl.h"
 #include "protocol_handler.h"
+#include "debug_handler.h"
 #include "ws_server.h"
+#include "headless_threading.h"
 
 extern long grabthreadglobals(void);
 extern long releasethreadglobals(void);
-
-/* hthreadglobals is defined in headless_threadglobals.c, declared in processinternal.h.
- * We use the hdlthreadglobals typedef from threadregistry.h to avoid header conflicts. */
-extern hdlthreadglobals hthreadglobals;
 
 // Version information
 // FRONTIER_CLI_VERSION_STRING is defined at compile time from git tags via Makefile
@@ -303,6 +302,7 @@ static void cleanup_frontier_runtime(void);
 static boolean execute_script_mode(void);
 static boolean load_system_root_database(const char* path);
 static void unload_system_root_database(void);
+static void save_system_root_on_exit(void);
 static boolean ensure_named_subtable(hdlhashtable parent, const unsigned char *name, hdlhashtable *out, boolean mark_dont_save);
 static boolean hydrate_system_root_database(const char* path);
 static boolean read_root_table_address(const char *path, dbaddress *adr_out, short *version_out);
@@ -319,6 +319,7 @@ static int get_system_root_search_paths(char paths[][CLI_MAX_PATH_LENGTH + 1], i
 
 /* Main entry point: initializes runtime, loads database, and dispatches to execution mode. */
 int main(int argc, char* argv[]) {
+
     // Initialize logging system (reads FRONTIER_LOG_LEVEL, FRONTIER_LOG_COMPONENT, FRONTIER_LOG_FORMAT env vars)
     log_init();
 
@@ -860,6 +861,12 @@ static boolean initialize_frontier_runtime(void) {
         return false;
     }
 
+#ifdef FRONTIER_HEADLESS
+    /* Install protocol-aware debugger callback (replaces no-op from langstartup.c).
+     * Only in headless builds — GUI builds use the classic script editor debugger. */
+    debug_init();
+#endif
+
     /* Initialize thread registry and register main thread with idapplicationthread (2) */
     if (!init_thread_registry()) {
         log_error(LOG_COMP_GENERAL, "Error: Failed to initialize thread registry");
@@ -903,6 +910,35 @@ static void cleanup_frontier_runtime(void) {
     }
     
     cli_log_info("Cleaning up Frontier runtime");
+
+    /* Kill any active debug threads so they exit cleanly before shutdown.
+     * Threads are PTHREAD_CREATE_JOINABLE, so we join them after setting
+     * kill flags. This replaces the old 200ms sleep with a deterministic wait. */
+    /* Save system root only if no debug threads are active. Active debug
+     * threads may have pushed hash table scopes that make packing unsafe.
+     * Killing them doesn't help — the unwind leaves tables inconsistent.
+     * In practice, debug sessions are for development, not production data. */
+    /* Save system root only if no debug threads ran during this session.
+     * Killed debug threads leave pushed hash table scopes in the chain,
+     * making hashpack traversal crash on stale pointers. This is a
+     * fundamental limitation of killing scripts mid-execution. */
+    if (g_system_root_loaded && debug_is_safe_to_save()) {
+        save_system_root_on_exit();
+    }
+
+    debug_kill_all_threads();
+
+    /* Release GIL so killed debug threads can finish cleanup, then join them.
+     * Save/restore main thread globals since debug threads overwrite
+     * hthreadglobals when they run. */
+    {
+        hdlthreadglobals saved = hthreadglobals;
+        headless_save_threadglobals(saved);
+        pthread_mutex_unlock(&frontier_gil);
+        debug_join_all_threads();
+        pthread_mutex_lock(&frontier_gil);
+        headless_restore_threadglobals(saved);
+    }
 
     /* Wait for all spawned threads to finish BEFORE unloading databases.
      * Spawned threads may still be running (blocked on GIL) and need roottable
@@ -1522,13 +1558,17 @@ static void unload_system_root_database(void) {
     const char* path = (g_system_root_path[0] != '\0') ? g_system_root_path : "(unknown)";
     cli_log_info("Unloading system root database: %s", path);
 
-    /* Save any changes made during this session before tearing down */
-    save_system_root_on_exit();
+    /* Save already done in cleanup_frontier_runtime before debug thread kill.
+     * Don't save again — hash table state may be inconsistent after kill. */
 
-    if (systemtable != nil) {
+    /* Skip table unlink if debug threads ran — hash table chain may be
+     * corrupt from killed scripts. The process is exiting anyway. */
+    if (systemtable != nil && debug_is_safe_to_save()) {
         if (!unlinksystemtablestructure()) {
             cli_log_warn("Failed to unlink system table structure during unload");
         }
+    } else if (systemtable != nil) {
+        log_warn(LOG_COMP_DB, "Skipping unlinksystemtablestructure: debug thread was killed (hash tables may be inconsistent)");
     }
 
     cleartablestructureglobals();

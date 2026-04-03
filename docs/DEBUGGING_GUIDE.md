@@ -343,6 +343,74 @@ python3 -c "import struct; print([chr(b) if 32 <= b < 127 else f'\\x{b:02x}' for
 
 ---
 
+## UserTalk Debugging via Protocol
+
+The protocol-based UserTalk debugger lets agents run scripts in debug mode, suspend them, and control execution without dropping to LLDB or adding `msg()` calls.
+
+### When to Use Which Tool
+
+| Tool | Use When |
+|------|----------|
+| **Protocol debugger** (`debug/run`) | Runtime behavior questions: "What value does this variable have at line 12?", "Does this branch execute?", "Why does this script return false?" |
+| **`msg()` calls** | Quick one-off checks during development, or when you need output from a non-debug run |
+| **LLDB** | C-level crashes, segfaults, memory corruption, or when the interpreter itself is broken |
+
+### Protocol Operations
+
+Connect to the debugger via protocol mode:
+
+```bash
+frontier-cli --protocol --skip-startup --system-root databases/Virgin.root
+```
+
+Four core operations:
+
+| Operation | Purpose |
+|-----------|---------|
+| `debug/run` | Start a script in debug mode (non-blocking, returns threadId) |
+| `debug/continue` | Resume a suspended thread |
+| `debug/kill` | Kill a running or suspended thread |
+| `debug/pause` | Interrupt a running thread and suspend it at the next statement |
+
+### Notification Flow
+
+The debugger sends unsolicited notifications when thread state changes:
+
+- **`debug/suspended`** -- Thread has paused. Includes `threadId`, `line`, and `reason` (`"entry"` or `"interrupted"`).
+- **`debug/completed`** -- Thread has finished. Includes `threadId` and `success` (true/false).
+
+### Example Session
+
+```
+→ {"op":"debug/run","id":1,"params":{"expression":"myScript()"}}
+← {"id":1,"result":{"threadId":3,"status":"started"}}
+← {"op":"debug/suspended","params":{"threadId":3,"line":1,"reason":"entry"}}
+
+→ {"op":"debug/continue","id":2,"params":{"threadId":3}}
+← {"id":2,"result":{"ok":true}}
+← {"op":"debug/completed","params":{"threadId":3,"success":true}}
+```
+
+To interrupt a long-running script:
+
+```
+→ {"op":"debug/pause","id":3,"params":{"threadId":3}}
+← {"op":"debug/suspended","params":{"threadId":3,"line":47,"reason":"interrupted"}}
+
+→ {"op":"debug/kill","id":4,"params":{"threadId":3}}
+← {"id":4,"result":{"ok":true}}
+← {"op":"debug/completed","params":{"threadId":3,"success":false}}
+```
+
+### Notes
+
+- The operation is `debug/run` (not `debug/eval`) in the protocol.
+- `debug/run` is non-blocking: it returns immediately with a `threadId`, then the thread suspends at entry and sends a `debug/suspended` notification.
+- The thread yields the GIL while suspended, so other protocol commands continue to work.
+- See `planning/phase6/USERTALK_DEBUGGER_PLAN.md` for the full design spec (stepping, breakpoints, inspection, watchpoints).
+
+---
+
 ## Update History
 
 - 2026-01-25: Initial version created during Issue #344 investigation

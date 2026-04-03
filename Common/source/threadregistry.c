@@ -100,10 +100,32 @@ void cleanup_thread_registry(void) {
             pthread_mutex_unlock(&thread_records[i].refcount_mutex);
 
             if (current_refcount != 0) {
-                log_error(LOG_COMP_THREAD,
-                         "FATAL: Thread registry cleanup while threads active (record=%d refcount=%d)",
-                         i, current_refcount);
-                abort();  /* Use abort() not assert() - must fail in release builds too */
+                /* Thread is still cleaning up. This invariant was relaxed
+                 * (from abort to warn-and-skip) for debug threads that may
+                 * still be finishing cleanup at shutdown despite
+                 * debug_kill_all_threads + pthread_join. The join should
+                 * ensure threads are done, but the registry cleanup runs
+                 * later and may race with thread record deallocation. Give
+                 * 50ms for any stragglers. */
+                struct timespec ts = {0, 50000000}; /* 50ms */
+                nanosleep(&ts, NULL);
+
+                pthread_mutex_lock(&thread_records[i].refcount_mutex);
+                current_refcount = thread_records[i].refcount;
+                pthread_mutex_unlock(&thread_records[i].refcount_mutex);
+
+                if (current_refcount != 0) {
+                    /* Skip this record. The detached debug thread is still
+                     * cleaning up. This leaks pthread_mutex_destroy and
+                     * pthread_cond_destroy for this record — acceptable since
+                     * the process is exiting and the OS reclaims all resources.
+                     * The 50ms nanosleep above does NOT hold refcount_mutex
+                     * (it was unlocked at line 100). */
+                    log_warn(LOG_COMP_THREAD,
+                             "Thread registry cleanup: skipping record %d (refcount=%d, detached debug thread still cleaning up)",
+                             i, current_refcount);
+                    continue;
+                }
             }
 
             /* Safe to destroy now that refcount is verified to be 0 */

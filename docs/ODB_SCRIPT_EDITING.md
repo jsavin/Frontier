@@ -163,6 +163,8 @@ When writing outline content (for `op.insert` or `op.newOutlineObject`), **omit*
    - Error cases (empty input, wrong type)
    - End-to-end if applicable
 
+7. **Debug if needed** — use `debug/run` via protocol to step through and verify script behavior (see `docs/DEBUGGING_GUIDE.md` for the UserTalk debugger reference)
+
 ---
 
 ## SOP: Script Edits in a PR

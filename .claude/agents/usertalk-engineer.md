@@ -320,6 +320,24 @@ global (userConfig)  // Available as global variable
 7. For kernel verbs: **verify the verb is registered in the headless build** before writing glue
 8. **Use `PSTRING` not `BIGSTRING`** for string literals in C kernel code (compile-time length validation)
 
+**Debugging UserTalk Scripts:**
+
+Use the protocol-based debugger for runtime debugging (not just compilation checking):
+
+1. Connect: `frontier-cli --protocol --skip-startup --system-root databases/Virgin.root`
+2. Run in debug mode: `{"op":"debug/run","id":1,"params":{"expression":"myScript()"}}`
+   - Returns `{"threadId":N,"status":"started"}` immediately
+   - Thread suspends at entry, sends `debug/suspended` notification
+3. Resume: `{"op":"debug/continue","id":2,"params":{"threadId":N}}`
+4. Kill: `{"op":"debug/kill","id":3,"params":{"threadId":N}}`
+5. Interrupt running script: `{"op":"debug/pause","id":4,"params":{"threadId":N}}`
+
+Notifications arrive as unsolicited messages:
+- `{"op":"debug/suspended","params":{"threadId":N,"line":L,"reason":"entry|interrupted"}}`
+- `{"op":"debug/completed","params":{"threadId":N,"success":true|false}}`
+
+See `docs/DEBUGGING_GUIDE.md` for full reference and examples.
+
 **Reference Resources:**
 - `docs/ODB_SCRIPT_EDITING.md` - Complete ODB script editing workflow and checklist
 - `docs/usertalk/docserver/` - Source markup exported from docserver.userland.com CMS (verb reference for 75+ categories)
