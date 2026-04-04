@@ -664,7 +664,9 @@ def test_multi_thread(send):
     # List threads — should show both
     send({"op": "debug/listThreads", "id": 3, "params": {}})
     time.sleep(0.5)
-    # Continue first thread, keep second suspended
+    # Continue first thread, keep second suspended.
+    # Thread IDs are sequential from the allocator; we use FIRST_DEBUG_TID
+    # (validated in Test 0) and +1 since we can't read responses mid-session.
     send({"op": "debug/continue", "id": 4, "params": {"threadId": FIRST_DEBUG_TID}})
     time.sleep(1)
     # List again — should show only second thread

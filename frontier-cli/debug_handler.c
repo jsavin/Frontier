@@ -1778,6 +1778,10 @@ void handle_debug_listthreads(int id, const char *json_line, transport_t *transp
     cJSON *result = cJSON_CreateObject();
     cJSON *threads = cJSON_CreateArray();
 
+    /* We hold g_debug_mutex for the entire loop, so no debug thread can
+     * unregister (debug_unregister_thread NULLs the slot under this mutex)
+     * or be freed (refcount drop to 0 requires unregistration first).
+     * This makes direct pointer access safe without incrementing refcount. */
     pthread_mutex_lock(&g_debug_mutex);
 
     for (int i = 0; i < MAX_DEBUG_THREADS; i++) {
