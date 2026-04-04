@@ -455,7 +455,10 @@ static boolean protocol_debugger_callback(hdltreenode hnode) {
     /* Skip breakpoint check when stepping from the same line at the same depth —
      * the step should advance past the current breakpoint, not re-trigger it.
      * A recursive call at the same lnum but greater calldepth is NOT skipped,
-     * since the breakpoint should fire on re-entry at a different call level. */
+     * since the breakpoint should fire on re-entry at a different call level.
+     *
+     * The multiple atomic_load calls form a consistent snapshot because the
+     * callback runs with the GIL held — no other thread can modify these fields. */
     boolean flskipbreakpoint = (atomic_load(&state->flstepping) &&
                                 lnum == atomic_load(&state->lastlnum) &&
                                 atomic_load(&state->calldepth) == atomic_load(&state->steplevel));
@@ -1297,7 +1300,7 @@ void handle_debug_listbreakpoints(int id, const char *json_line, transport_t *tr
  */
 void handle_debug_clearbreakpoints(int id, const char *json_line, transport_t *transport) {
 
-    (void)json_line;
+    (void)json_line; /* no params to validate */
 
     int cleared = 0;
 
