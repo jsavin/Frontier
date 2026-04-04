@@ -242,6 +242,43 @@ if step_suspend:
                 step_line == 3,
                 f"Expected line 3, got {step_line}")
 
+# Step-over with calldepth: verify step-over skips into function calls
+def test_step_over_calldepth(send):
+    # Create a helper function and a caller that invokes it
+    send({"op": "script/eval", "id": 1, "params": {
+        "expression": 'new(scriptType, @system.temp.depthHelper); script.newScriptObject("return 99", @system.temp.depthHelper)'
+    }})
+    time.sleep(0.5)
+    send({"op": "script/eval", "id": 2, "params": {
+        "expression": 'new(scriptType, @system.temp.depthCaller); script.newScriptObject("local (a = system.temp.depthHelper())\\rreturn a", @system.temp.depthCaller)'
+    }})
+    time.sleep(0.5)
+    # Set breakpoint on line 1 of caller (the function call line)
+    send({"op": "debug/setBreakpoint", "id": 3, "params": {"script": "system.temp.depthCaller", "line": 1}})
+    time.sleep(0.3)
+    send({"op": "debug/run", "id": 4, "params": {"expression": "system.temp.depthCaller()"}})
+    time.sleep(2)
+    # Continue past entry
+    send({"op": "debug/continue", "id": 5, "params": {"threadId": FIRST_DEBUG_TID}})
+    time.sleep(2)
+    # Now at breakpoint on line 1 — step over should skip INTO depthHelper
+    # and stop at line 2 (return a) of depthCaller
+    send({"op": "debug/step", "id": 6, "params": {"threadId": FIRST_DEBUG_TID, "direction": "over"}})
+    time.sleep(3)
+    send({"op": "debug/kill", "id": 7, "params": {"threadId": FIRST_DEBUG_TID}})
+    time.sleep(1)
+
+msgs = run_debug_session(test_step_over_calldepth, timeout=25)
+step_suspend = find_msg(msgs, reason="step")
+assert_test("step-over with calldepth skips function call",
+            step_suspend is not None,
+            f"Messages: {[m for m in msgs if m.get('op') == 'debug/suspended']}")
+if step_suspend:
+    step_line = step_suspend.get("params", {}).get("line")
+    assert_test("step-over returns to caller line 2",
+                step_line == 2,
+                f"Expected line 2, got {step_line}")
+
 def test_step_error_not_suspended(send):
     send({"op": "debug/run", "id": 1, "params": {"expression": "return 1"}})
     time.sleep(1)
