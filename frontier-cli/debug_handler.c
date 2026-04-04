@@ -20,6 +20,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>  /* strcasecmp */
 #include <pthread.h>
 
 #include "../Common/headers/frontier.h"
@@ -311,9 +312,10 @@ static boolean debug_push_sourcecode(hdlhashtable htable, hdlhashnode hnode, big
 
     /* Build full dotted path from table + name */
     bigstring bspath;
-    hdlwindowinfo hroot;
+    hdlwindowinfo hroot = NULL;
 
     if (langexternalgetfullpath(htable, bsname, bspath, &hroot)) {
+        (void)hroot; /* used only by langexternalgetfullpath, not needed here */
         /* Convert Pascal string to C string, store in debug state.
          * Path is like "mainResponder.respond" (no leading @). */
         int len = bspath[0];
@@ -437,7 +439,7 @@ static boolean protocol_debugger_callback(hdltreenode hnode) {
         for (int i = 0; i < MAX_BREAKPOINTS; i++) {
             if (g_breakpoints[i].active &&
                 g_breakpoints[i].line == lnum &&
-                strcmp(g_breakpoints[i].script, state->current_script) == 0) {
+                strcasecmp(g_breakpoints[i].script, state->current_script) == 0) {
                 flbreakpoint = true;
                 break;
             }
@@ -1143,7 +1145,7 @@ void handle_debug_setbreakpoint(int id, const char *json_line, transport_t *tran
     for (int i = 0; i < MAX_BREAKPOINTS; i++) {
         if (g_breakpoints[i].active &&
             g_breakpoints[i].line == line &&
-            strcmp(g_breakpoints[i].script, script) == 0) {
+            strcasecmp(g_breakpoints[i].script, script) == 0) {
             g_breakpoints[i].active = false;
             cleared = true;
             break;

@@ -103,7 +103,7 @@ typedef struct tydebugstate {
     char current_script[DEBUG_SCRIPT_PATH_MAX]; /* current script dotted path */
     char script_stack[DEBUG_SCRIPT_STACK_MAX][DEBUG_SCRIPT_PATH_MAX]; /* saved caller paths */
     short script_stack_depth;                   /* stack pointer (0 = empty) */
-    short script_stack_overflow;                /* push/pop balance when stack overflows */
+    int script_stack_overflow;                  /* push/pop balance when stack overflows */
 } tydebugstate, *ptrdebugstate;
 
 /*
