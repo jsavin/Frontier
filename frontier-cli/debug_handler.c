@@ -376,8 +376,10 @@ static boolean debug_pop_sourcecode(void) {
         state->current_script[0] = '\0';
     }
 
-    /* Decrement call depth (balanced with increment in push) */
-    atomic_fetch_sub(&state->calldepth, 1);
+    /* Decrement call depth (balanced with increment in push).
+     * Guard against underflow from unbalanced interpreter error paths. */
+    if (atomic_load(&state->calldepth) > 0)
+        atomic_fetch_sub(&state->calldepth, 1);
 
     return true;
 }
