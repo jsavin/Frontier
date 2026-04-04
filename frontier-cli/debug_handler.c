@@ -41,9 +41,11 @@ extern hdlhashtable currenthashtable;
 extern hdltablestack hashtablestack;
 extern hdlhashtable roottable;
 
-/* Forward declarations for functions not in headers */
-extern boolean opgetlangtext(hdloutlinerecord, boolean, Handle *);
-extern boolean langfastaddresstotable(hdlhashtable, bigstring, hdlhashtable *);
+/* Forward declarations — these functions exist in Common/source but have no
+ * header declaration. Used by debug/getSource for script path resolution
+ * and outline-to-text conversion. */
+extern boolean opgetlangtext(hdloutlinerecord, boolean, Handle *);  /* oplangtext.c */
+extern boolean langfastaddresstotable(hdlhashtable, bigstring, hdlhashtable *);  /* langops.c */
 
 /*
  * Maximum number of concurrent debug threads.
@@ -1568,21 +1570,20 @@ void handle_debug_getsource(int id, const char *json_line, transport_t *transpor
         return;
     }
 
-    /* Get the script text via opgetlangtext or string coercion.
-     * For script values, coerce to string gives the source text. */
-    bigstring bsval;
+    /* Get the script text via opgetlangtext. The protocol handler holds the GIL
+     * (acquired before dispatch in protocol_handler.c), so ODB operations are safe. */
     Handle htext = nil;
 
     if (val.valuetype == externalvaluetype) {
-        /* Try opgetlangtext for external (script/outline) values */
         hdlexternalvariable hv = (hdlexternalvariable)val.data.externalvalue;
 
-        /* Ensure the external is in memory */
+        /* Scripts must be in memory to extract source. Compiled/run scripts are
+         * always loaded. Scripts never accessed in this session may still be on
+         * disk — loading requires db context work deferred to a follow-up. */
         if (!(**hv).flinmemory) {
-            /* Need to load from database — use langexternalcopyvalue approach */
-            /* For now, report that the script is not loaded */
             char err[512];
-            snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Script not loaded in memory\"},\"success\":false}", id);
+            snprintf(err, sizeof(err),
+                     "{\"id\":%d,\"error\":{\"message\":\"Script not loaded in memory (try running it first)\"},\"success\":false}", id);
             transport->write_line(transport->ctx, err, strlen(err));
             cJSON_Delete(root);
             return;
@@ -1631,6 +1632,18 @@ void handle_debug_getsource(int id, const char *json_line, transport_t *transpor
     if (current_line > 0)
         cJSON_AddNumberToObject(result_obj, "currentLine", (double)current_line);
 
+    /* Pre-scan breakpoints for this script to avoid O(lines * MAX_BREAKPOINTS) */
+    unsigned long bp_lines[MAX_BREAKPOINTS];
+    int bp_count = 0;
+    pthread_mutex_lock(&g_debug_mutex);
+    for (int b = 0; b < MAX_BREAKPOINTS; b++) {
+        if (g_breakpoints[b].active &&
+            strcasecmp(g_breakpoints[b].script, script_path) == 0) {
+            bp_lines[bp_count++] = g_breakpoints[b].line;
+        }
+    }
+    pthread_mutex_unlock(&g_debug_mutex);
+
     cJSON *lines = cJSON_CreateArray();
     long linenum = 1;
     long linestart = 0;
@@ -1651,16 +1664,12 @@ void handle_debug_getsource(int id, const char *json_line, transport_t *transpor
 
             /* Check if this line has a breakpoint */
             boolean hasbp = false;
-            pthread_mutex_lock(&g_debug_mutex);
-            for (int b = 0; b < MAX_BREAKPOINTS; b++) {
-                if (g_breakpoints[b].active &&
-                    g_breakpoints[b].line == (unsigned long)linenum &&
-                    strcasecmp(g_breakpoints[b].script, script_path) == 0) {
+            for (int b = 0; b < bp_count; b++) {
+                if (bp_lines[b] == (unsigned long)linenum) {
                     hasbp = true;
                     break;
                 }
             }
-            pthread_mutex_unlock(&g_debug_mutex);
             cJSON_AddBoolToObject(lineobj, "breakpoint", hasbp);
 
             if (linenum == current_line)
