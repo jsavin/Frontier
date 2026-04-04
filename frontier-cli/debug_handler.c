@@ -50,6 +50,12 @@ extern boolean langfastaddresstotable(hdlhashtable, bigstring, hdlhashtable *); 
 /*
  * Maximum number of concurrent debug threads.
  * Each slot holds a pointer to a debug state; NULL = unused.
+ *
+ * Lock ordering invariant: GIL → g_debug_mutex. All protocol handlers
+ * hold the GIL (acquired by protocol_handler.c before dispatch) and may
+ * then acquire g_debug_mutex. Never acquire the GIL while holding
+ * g_debug_mutex — this would deadlock. The debugger callback runs with
+ * the GIL held and acquires g_debug_mutex for breakpoint checks.
  */
 #define MAX_DEBUG_THREADS 16
 static tydebugstate *g_debug_threads[MAX_DEBUG_THREADS] = {0};
@@ -338,6 +344,12 @@ static boolean debug_push_sourcecode(hdlhashtable htable, hdlhashnode hnode, big
         state->current_script[0] = '\0';
     }
 
+    /* Track call depth for step-over/step-out.
+     * Incremented on every function call entry, decremented on return.
+     * Used by the stepping logic: step-over stops when depth returns to
+     * the same level, step-out stops when depth decreases. */
+    atomic_fetch_add(&state->calldepth, 1);
+
     return true;
 }
 
@@ -363,6 +375,9 @@ static boolean debug_pop_sourcecode(void) {
     } else {
         state->current_script[0] = '\0';
     }
+
+    /* Decrement call depth (balanced with increment in push) */
+    atomic_fetch_sub(&state->calldepth, 1);
 
     return true;
 }
@@ -484,7 +499,7 @@ static boolean protocol_debugger_callback(hdltreenode hnode) {
      * Step-out:  suspend when call depth decreases below step level */
     if (atomic_load(&state->flstepping) && flsteppable && !atomic_load(&state->flsuspended)) {
 
-        short diff = atomic_load(&state->calldepth) - atomic_load(&state->steplevel); /* calldepth always 0 — diff always 0 until call depth tracking is added */
+        short diff = atomic_load(&state->calldepth) - atomic_load(&state->steplevel);
         boolean flstop = false;
 
         switch (atomic_load(&state->stepdir)) {
@@ -1273,6 +1288,36 @@ void handle_debug_listbreakpoints(int id, const char *json_line, transport_t *tr
         free(json_str);
     }
     cJSON_Delete(resp);
+}
+
+/*
+ * debug/clearBreakpoints — Clear all session breakpoints.
+ */
+void handle_debug_clearbreakpoints(int id, const char *json_line, transport_t *transport) {
+
+    (void)json_line;
+
+    int cleared = 0;
+
+    pthread_mutex_lock(&g_debug_mutex);
+
+    for (int i = 0; i < MAX_BREAKPOINTS; i++) {
+        if (g_breakpoints[i].active) {
+            g_breakpoints[i].active = false;
+            cleared++;
+        }
+    }
+
+    atomic_store(&g_has_breakpoints, false);
+
+    pthread_mutex_unlock(&g_debug_mutex);
+
+    char resp[128];
+    snprintf(resp, sizeof(resp),
+             "{\"id\":%d,\"result\":{\"cleared\":%d},\"success\":true}", id, cleared);
+    transport->write_line(transport->ctx, resp, strlen(resp));
+
+    log_info(LOG_COMP_LANG, "debug: cleared %d breakpoints", cleared);
 }
 
 /* ========================================================================
