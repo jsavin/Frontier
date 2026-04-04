@@ -420,6 +420,120 @@ assert_test("setBreakpoint without line errors",
             any("line" in str(m).lower() for m in msgs if not m.get("success", True)),
             f"Messages: {msgs}")
 
+# --- Test 11: debug/getLocals + debug/getStack + debug/getSource ---
+print()
+print("--- debug/getLocals + debug/getStack + debug/getSource ---")
+
+def test_inspection(send):
+    # Create a test function with locals
+    send({"op": "script/eval", "id": 1, "params": {
+        "expression": 'new(scriptType, @system.temp.inspectTest); script.newScriptObject("local (x = 42)\\rlocal (msg = \\"hello\\")\\rreturn (x)", @system.temp.inspectTest)'
+    }})
+    time.sleep(1)
+    # Set breakpoint on line 3
+    send({"op": "debug/setBreakpoint", "id": 2, "params": {"script": "system.temp.inspectTest", "line": 3}})
+    time.sleep(0.5)
+    # Run in debug mode
+    send({"op": "debug/run", "id": 3, "params": {"expression": "system.temp.inspectTest()"}})
+    time.sleep(2)
+    # Continue past entry
+    send({"op": "debug/continue", "id": 4, "params": {"threadId": FIRST_DEBUG_TID}})
+    time.sleep(2)
+    # Now suspended at breakpoint — test inspection
+    send({"op": "debug/getLocals", "id": 5, "params": {"threadId": FIRST_DEBUG_TID}})
+    time.sleep(1)
+    send({"op": "debug/getStack", "id": 6, "params": {"threadId": FIRST_DEBUG_TID}})
+    time.sleep(1)
+    send({"op": "debug/getSource", "id": 7, "params": {"script": "system.temp.inspectTest", "threadId": FIRST_DEBUG_TID}})
+    time.sleep(1)
+    # Kill to clean up
+    send({"op": "debug/kill", "id": 8, "params": {"threadId": FIRST_DEBUG_TID}})
+    time.sleep(1)
+
+msgs = run_debug_session(test_inspection, timeout=25)
+
+# Check getLocals
+locals_msg = None
+for m in msgs:
+    if m.get("id") == 5 and m.get("result", {}).get("locals") is not None:
+        locals_msg = m
+        break
+assert_test("getLocals returns locals array",
+            locals_msg is not None,
+            f"Messages: {[m for m in msgs if m.get('id') == 5]}")
+
+if locals_msg:
+    locals_list = locals_msg["result"]["locals"]
+    local_names = [l["name"] for l in locals_list]
+    assert_test("getLocals contains x",
+                "x" in local_names,
+                f"Names: {local_names}")
+    assert_test("getLocals contains msg",
+                "msg" in local_names,
+                f"Names: {local_names}")
+    # Check x value
+    x_local = next((l for l in locals_list if l["name"] == "x"), None)
+    assert_test("getLocals x=42",
+                x_local is not None and x_local.get("value") == "42",
+                f"x_local: {x_local}")
+
+# Check getStack
+stack_msg = None
+for m in msgs:
+    if m.get("id") == 6 and m.get("result", {}).get("frames") is not None:
+        stack_msg = m
+        break
+assert_test("getStack returns frames",
+            stack_msg is not None and len(stack_msg["result"]["frames"]) > 0,
+            f"Messages: {[m for m in msgs if m.get('id') == 6]}")
+
+if stack_msg:
+    frames = stack_msg["result"]["frames"]
+    assert_test("getStack has inspectTest frame",
+                any("inspectTest" in f.get("script", "") for f in frames),
+                f"Frames: {frames}")
+
+# Check getSource
+source_msg = None
+for m in msgs:
+    if m.get("id") == 7 and m.get("result", {}).get("lines") is not None:
+        source_msg = m
+        break
+assert_test("getSource returns lines",
+            source_msg is not None and len(source_msg["result"]["lines"]) >= 3,
+            f"Messages: {[m for m in msgs if m.get('id') == 7]}")
+
+if source_msg:
+    lines = source_msg["result"]["lines"]
+    assert_test("getSource line 3 is current",
+                any(l.get("current") for l in lines if l.get("num") == 3),
+                f"Lines: {lines}")
+    assert_test("getSource line 3 has breakpoint",
+                any(l.get("breakpoint") for l in lines if l.get("num") == 3),
+                f"Lines: {lines}")
+
+# --- Test 12: inspection error cases ---
+print()
+print("--- inspection error cases ---")
+
+def test_getlocals_not_suspended(send):
+    send({"op": "debug/getLocals", "id": 1, "params": {"threadId": 999}})
+    time.sleep(0.5)
+
+msgs = run_debug_session(test_getlocals_not_suspended)
+assert_test("getLocals with invalid threadId errors",
+            any("No debug thread" in str(m) for m in msgs),
+            f"Messages: {msgs}")
+
+def test_getsource_missing_script(send):
+    send({"op": "debug/getSource", "id": 1, "params": {}})
+    time.sleep(0.5)
+
+msgs = run_debug_session(test_getsource_missing_script)
+assert_test("getSource without script errors",
+            any("script" in str(m).lower() for m in msgs if not m.get("success", True)),
+            f"Messages: {msgs}")
+
 print()
 print("=" * 46)
 print(f"RESULTS: {PASSED} passed, {FAILED} failed")

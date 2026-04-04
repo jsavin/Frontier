@@ -33,11 +33,19 @@
 #include "threadregistry.h"
 #include "headless_threading.h"
 #include "langexternal.h"
+#include "op.h"
 #include "../third_party/cJSON/cJSON.h"
 
 /* Global: current hashtable and table stack (thread globals) */
 extern hdlhashtable currenthashtable;
 extern hdltablestack hashtablestack;
+extern hdlhashtable roottable;
+
+/* Forward declarations — these functions exist in Common/source but have no
+ * header declaration. Used by debug/getSource for script path resolution
+ * and outline-to-text conversion. */
+extern boolean opgetlangtext(hdloutlinerecord, boolean, Handle *);  /* oplangtext.c */
+extern boolean langfastaddresstotable(hdlhashtable, bigstring, hdlhashtable *);  /* langops.c */
 
 /*
  * Maximum number of concurrent debug threads.
@@ -600,8 +608,11 @@ static void *debug_thread_entry(void *arg) {
         headless_register_thread(bsname, params->debugstate->threadid);
     }
 
-    /* Store debug state in thread globals for the callback to find */
+    /* Store debug state in thread globals for the callback to find,
+     * and store thread globals in debug state for protocol handlers to
+     * access the suspended thread's hash tables (debug/getLocals). */
     (**params->hglobals).param_reserved[0] = (void *)params->debugstate;
+    params->debugstate->hglobals = (void *)params->hglobals;
 
     boolean fl_ran = false;
 
@@ -1248,4 +1259,439 @@ void handle_debug_listbreakpoints(int id, const char *json_line, transport_t *tr
         free(json_str);
     }
     cJSON_Delete(resp);
+}
+
+/* ========================================================================
+ * Inspection protocol handlers (Phase 4)
+ * ======================================================================== */
+
+/*
+ * Helper: parse threadId from JSON params and look up the debug state.
+ * Returns the state (with refcount incremented) or NULL on error.
+ * Sends an error response and cleans up root on failure.
+ */
+static tydebugstate *parse_thread_param(int id, const char *json_line,
+                                         transport_t *transport, cJSON **out_root) {
+
+    cJSON *root = cJSON_Parse(json_line);
+
+    if (root == NULL) {
+        char err[512];
+        snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Invalid JSON\"},\"success\":false}", id);
+        transport->write_line(transport->ctx, err, strlen(err));
+        *out_root = NULL;
+        return NULL;
+    }
+
+    *out_root = root;
+
+    cJSON *params = cJSON_GetObjectItemCaseSensitive(root, "params");
+    cJSON *tid_json = params ? cJSON_GetObjectItemCaseSensitive(params, "threadId") : NULL;
+
+    if (!cJSON_IsNumber(tid_json)) {
+        char err[512];
+        snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Missing 'threadId' in params\"},\"success\":false}", id);
+        transport->write_line(transport->ctx, err, strlen(err));
+        cJSON_Delete(root);
+        *out_root = NULL;
+        return NULL;
+    }
+
+    long threadid = (long)tid_json->valuedouble;
+    tydebugstate *state = debug_get_state_for_thread(threadid);
+
+    if (state == NULL) {
+        char err[512];
+        snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"No debug thread with that ID\"},\"success\":false}", id);
+        transport->write_line(transport->ctx, err, strlen(err));
+        cJSON_Delete(root);
+        *out_root = NULL;
+        return NULL;
+    }
+
+    if (!atomic_load(&state->flsuspended)) {
+        debug_release_state(state);
+        char err[512];
+        snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Thread %ld is not suspended\"},\"success\":false}", id, threadid);
+        transport->write_line(transport->ctx, err, strlen(err));
+        cJSON_Delete(root);
+        *out_root = NULL;
+        return NULL;
+    }
+
+    return state;
+}
+
+/*
+ * debug/getLocals — Inspect local variables of a suspended debug thread.
+ *
+ * When a debug thread is suspended, its thread globals contain the current
+ * hash table context. The local variables are in the hash table chain —
+ * specifically, tables with fllocaltable set.
+ *
+ * Returns an array of {name, value, type} objects.
+ */
+void handle_debug_getlocals(int id, const char *json_line, transport_t *transport) {
+
+    cJSON *root = NULL;
+    tydebugstate *state = parse_thread_param(id, json_line, transport, &root);
+
+    if (state == NULL)
+        return;
+
+    /* Access the suspended thread's hash table context.
+     * Safe because the debug thread is in nanosleep and not touching globals. */
+    hdlthreadglobals hg = (hdlthreadglobals)state->hglobals;
+    hdlhashtable htable = (hg != nil) ? (**hg).hcurrenthashtable : nil;
+
+    cJSON *resp = cJSON_CreateObject();
+    cJSON_AddNumberToObject(resp, "id", id);
+    cJSON *result = cJSON_CreateObject();
+    cJSON *locals = cJSON_CreateArray();
+
+    /* Walk the hash table chain looking for local tables */
+    while (htable != nil) {
+        if ((**htable).fllocaltable) {
+            /* Enumerate entries in this local table via sorted list */
+            hdlhashnode hnode = (**htable).hfirstsort;
+
+            while (hnode != nil) {
+                cJSON *entry = cJSON_CreateObject();
+
+                /* Name: Pascal string in hashkey */
+                bigstring bsname;
+                copystring((**hnode).hashkey, bsname);
+                char cname[256];
+                int nlen = bsname[0];
+                if (nlen >= (int)sizeof(cname)) nlen = (int)sizeof(cname) - 1;
+                memcpy(cname, bsname + 1, (size_t)nlen);
+                cname[nlen] = '\0';
+                cJSON_AddStringToObject(entry, "name", cname);
+
+                /* Value: convert to display string */
+                bigstring bsval;
+                if (hashgetvaluestring((**hnode).val, bsval)) {
+                    char cval[256];
+                    int vlen = bsval[0];
+                    if (vlen >= (int)sizeof(cval)) vlen = (int)sizeof(cval) - 1;
+                    memcpy(cval, bsval + 1, (size_t)vlen);
+                    cval[vlen] = '\0';
+                    cJSON_AddStringToObject(entry, "value", cval);
+                } else {
+                    cJSON_AddStringToObject(entry, "value", "(unknown)");
+                }
+
+                /* Type */
+                bigstring bstype;
+                if (langgettypestring((**hnode).val.valuetype, bstype)) {
+                    char ctype[64];
+                    int tlen = bstype[0];
+                    if (tlen >= (int)sizeof(ctype)) tlen = (int)sizeof(ctype) - 1;
+                    memcpy(ctype, bstype + 1, (size_t)tlen);
+                    ctype[tlen] = '\0';
+                    cJSON_AddStringToObject(entry, "type", ctype);
+                }
+
+                cJSON_AddItemToArray(locals, entry);
+                hnode = (**hnode).sortedlink;
+            }
+            break; /* only enumerate the innermost local table */
+        }
+        htable = (**htable).prevhashtable;
+    }
+
+    cJSON_AddItemToObject(result, "locals", locals);
+    if (state->current_script[0] != '\0')
+        cJSON_AddStringToObject(result, "script", state->current_script);
+    cJSON_AddNumberToObject(result, "line", (double)atomic_load(&state->lastlnum));
+    cJSON_AddItemToObject(resp, "result", result);
+    cJSON_AddBoolToObject(resp, "success", 1);
+
+    char *json_str = cJSON_PrintUnformatted(resp);
+    if (json_str) {
+        transport->write_line(transport->ctx, json_str, strlen(json_str));
+        free(json_str);
+    }
+    cJSON_Delete(resp);
+
+    debug_release_state(state);
+    cJSON_Delete(root);
+}
+
+/*
+ * debug/getStack — View call stack of a suspended debug thread.
+ *
+ * Uses the script_stack from the push/pop sourcecode callbacks to
+ * reconstruct the call chain.
+ *
+ * Returns an array of frames from outermost to innermost.
+ */
+void handle_debug_getstack(int id, const char *json_line, transport_t *transport) {
+
+    cJSON *root = NULL;
+    tydebugstate *state = parse_thread_param(id, json_line, transport, &root);
+
+    if (state == NULL)
+        return;
+
+    cJSON *resp = cJSON_CreateObject();
+    cJSON_AddNumberToObject(resp, "id", id);
+    cJSON *result = cJSON_CreateObject();
+    cJSON *frames = cJSON_CreateArray();
+
+    /* Build stack from the script_stack (outermost to innermost).
+     * script_stack[0] is the outermost caller, current_script is the
+     * innermost (currently executing) script. */
+    for (short i = 0; i < state->script_stack_depth; i++) {
+        if (state->script_stack[i][0] != '\0') {
+            cJSON *frame = cJSON_CreateObject();
+            cJSON_AddNumberToObject(frame, "level", i + 1);
+            cJSON_AddStringToObject(frame, "script", state->script_stack[i]);
+            cJSON_AddItemToArray(frames, frame);
+        }
+    }
+
+    /* Add current frame (innermost) */
+    if (state->current_script[0] != '\0') {
+        cJSON *frame = cJSON_CreateObject();
+        cJSON_AddNumberToObject(frame, "level", state->script_stack_depth + 1);
+        cJSON_AddStringToObject(frame, "script", state->current_script);
+        cJSON_AddNumberToObject(frame, "line", (double)atomic_load(&state->lastlnum));
+        cJSON_AddItemToArray(frames, frame);
+    }
+
+    cJSON_AddItemToObject(result, "frames", frames);
+    cJSON_AddItemToObject(resp, "result", result);
+    cJSON_AddBoolToObject(resp, "success", 1);
+
+    char *json_str = cJSON_PrintUnformatted(resp);
+    if (json_str) {
+        transport->write_line(transport->ctx, json_str, strlen(json_str));
+        free(json_str);
+    }
+    cJSON_Delete(resp);
+
+    debug_release_state(state);
+    cJSON_Delete(root);
+}
+
+/*
+ * debug/getSource — View script source with line numbers.
+ *
+ * Resolves a script path in the ODB, extracts the outline text,
+ * and returns line-by-line source with breakpoint and current-line markers.
+ *
+ * Does not require a suspended thread — can be called anytime.
+ * If threadId is provided and the thread is suspended in this script,
+ * the current execution line is marked.
+ */
+void handle_debug_getsource(int id, const char *json_line, transport_t *transport) {
+
+    cJSON *root = cJSON_Parse(json_line);
+
+    if (root == NULL) {
+        char err[512];
+        snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Invalid JSON\"},\"success\":false}", id);
+        transport->write_line(transport->ctx, err, strlen(err));
+        return;
+    }
+
+    cJSON *params = cJSON_GetObjectItemCaseSensitive(root, "params");
+    cJSON *script_json = params ? cJSON_GetObjectItemCaseSensitive(params, "script") : NULL;
+    cJSON *tid_json = params ? cJSON_GetObjectItemCaseSensitive(params, "threadId") : NULL;
+
+    if (!cJSON_IsString(script_json) || script_json->valuestring == NULL) {
+        char err[512];
+        snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Missing 'script' in params\"},\"success\":false}", id);
+        transport->write_line(transport->ctx, err, strlen(err));
+        cJSON_Delete(root);
+        return;
+    }
+
+    const char *script_path = script_json->valuestring;
+    if (script_path[0] == '@')
+        script_path++;
+
+    /* Resolve the script path.
+     * Use script/eval to evaluate string(scriptAddress) — simpler than
+     * navigating the ODB directly and handles all edge cases. */
+
+    /* Parse the dotted path to find the containing table and leaf name */
+    bigstring bsfullpath;
+    int pathlen = (int)strlen(script_path);
+    if (pathlen > 255) pathlen = 255;
+    bsfullpath[0] = (unsigned char)pathlen;
+    memcpy(bsfullpath + 1, script_path, (size_t)pathlen);
+
+    /* Find the last dot to split into table path + name */
+    int lastdot = -1;
+    for (int i = pathlen; i > 0; i--) {
+        if (bsfullpath[i] == '.') {
+            lastdot = i;
+            break;
+        }
+    }
+
+    if (lastdot < 0) {
+        char err[512];
+        snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Script path must be fully qualified (e.g. system.temp.myFunc)\"},\"success\":false}", id);
+        transport->write_line(transport->ctx, err, strlen(err));
+        cJSON_Delete(root);
+        return;
+    }
+
+    /* Split: table path is bsfullpath[1..lastdot-1], name is bsfullpath[lastdot+1..] */
+    bigstring bstablepath, bsname;
+    bstablepath[0] = (unsigned char)(lastdot - 1);
+    memcpy(bstablepath + 1, bsfullpath + 1, (size_t)(lastdot - 1));
+
+    int namelen = pathlen - lastdot;
+    bsname[0] = (unsigned char)namelen;
+    memcpy(bsname + 1, bsfullpath + lastdot + 1, (size_t)namelen);
+
+    /* Navigate to the table */
+    hdlhashtable htable;
+    if (!langfastaddresstotable(roottable, bstablepath, &htable)) {
+        char err[512];
+        snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Table not found in path\"},\"success\":false}", id);
+        transport->write_line(transport->ctx, err, strlen(err));
+        cJSON_Delete(root);
+        return;
+    }
+
+    /* Look up the script */
+    tyvaluerecord val;
+    hdlhashnode hnode;
+    if (!hashtablelookup(htable, bsname, &val, &hnode)) {
+        char err[512];
+        snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Script not found\"},\"success\":false}", id);
+        transport->write_line(transport->ctx, err, strlen(err));
+        cJSON_Delete(root);
+        return;
+    }
+
+    /* Get the script text via opgetlangtext. The protocol handler holds the GIL
+     * (acquired before dispatch in protocol_handler.c), so ODB operations are safe. */
+    Handle htext = nil;
+
+    if (val.valuetype == externalvaluetype) {
+        hdlexternalvariable hv = (hdlexternalvariable)val.data.externalvalue;
+
+        /* Scripts must be in memory to extract source. Compiled/run scripts are
+         * always loaded. Scripts never accessed in this session may still be on
+         * disk — loading requires db context work deferred to a follow-up. */
+        if (!(**hv).flinmemory) {
+            char err[512];
+            snprintf(err, sizeof(err),
+                     "{\"id\":%d,\"error\":{\"message\":\"Script not loaded in memory (try running it first)\"},\"success\":false}", id);
+            transport->write_line(transport->ctx, err, strlen(err));
+            cJSON_Delete(root);
+            return;
+        }
+
+        hdloutlinerecord houtline = (hdloutlinerecord)(**hv).variabledata;
+
+        if (houtline != nil) {
+            oppushoutline(houtline);
+            opgetlangtext(houtline, false, &htext);
+            oppopoutline();
+        }
+    }
+
+    if (htext == nil) {
+        char err[512];
+        snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Could not get script source\"},\"success\":false}", id);
+        transport->write_line(transport->ctx, err, strlen(err));
+        cJSON_Delete(root);
+        return;
+    }
+
+    /* Determine current line if threadId is provided */
+    long current_line = -1;
+    if (cJSON_IsNumber(tid_json)) {
+        long threadid = (long)tid_json->valuedouble;
+        tydebugstate *dbgstate = debug_get_state_for_thread(threadid);
+        if (dbgstate != NULL) {
+            if (atomic_load(&dbgstate->flsuspended) &&
+                strcasecmp(dbgstate->current_script, script_path) == 0) {
+                current_line = (long)atomic_load(&dbgstate->lastlnum);
+            }
+            debug_release_state(dbgstate);
+        }
+    }
+
+    /* Build line-by-line response.
+     * opgetlangtext uses CR (\r) as line separator. */
+    long textlen = GetHandleSize(htext);
+    char *text = *htext;
+
+    cJSON *resp = cJSON_CreateObject();
+    cJSON_AddNumberToObject(resp, "id", id);
+    cJSON *result_obj = cJSON_CreateObject();
+    cJSON_AddStringToObject(result_obj, "script", script_path);
+    if (current_line > 0)
+        cJSON_AddNumberToObject(result_obj, "currentLine", (double)current_line);
+
+    /* Pre-scan breakpoints for this script to avoid O(lines * MAX_BREAKPOINTS) */
+    unsigned long bp_lines[MAX_BREAKPOINTS];
+    int bp_count = 0;
+    pthread_mutex_lock(&g_debug_mutex);
+    for (int b = 0; b < MAX_BREAKPOINTS; b++) {
+        if (g_breakpoints[b].active &&
+            strcasecmp(g_breakpoints[b].script, script_path) == 0) {
+            bp_lines[bp_count++] = g_breakpoints[b].line;
+        }
+    }
+    pthread_mutex_unlock(&g_debug_mutex);
+
+    cJSON *lines = cJSON_CreateArray();
+    long linenum = 1;
+    long linestart = 0;
+
+    for (long i = 0; i <= textlen; i++) {
+        if (i == textlen || text[i] == '\r' || text[i] == '\n') {
+            /* Extract this line */
+            long linelen = i - linestart;
+            char linebuf[4096];
+            if (linelen >= (long)sizeof(linebuf))
+                linelen = (long)sizeof(linebuf) - 1;
+            memcpy(linebuf, text + linestart, (size_t)linelen);
+            linebuf[linelen] = '\0';
+
+            cJSON *lineobj = cJSON_CreateObject();
+            cJSON_AddNumberToObject(lineobj, "num", (double)linenum);
+            cJSON_AddStringToObject(lineobj, "text", linebuf);
+
+            /* Check if this line has a breakpoint */
+            boolean hasbp = false;
+            for (int b = 0; b < bp_count; b++) {
+                if (bp_lines[b] == (unsigned long)linenum) {
+                    hasbp = true;
+                    break;
+                }
+            }
+            cJSON_AddBoolToObject(lineobj, "breakpoint", hasbp);
+
+            if (linenum == current_line)
+                cJSON_AddBoolToObject(lineobj, "current", 1);
+
+            cJSON_AddItemToArray(lines, lineobj);
+            linenum++;
+            linestart = i + 1;
+        }
+    }
+
+    disposehandle(htext);
+
+    cJSON_AddItemToObject(result_obj, "lines", lines);
+    cJSON_AddItemToObject(resp, "result", result_obj);
+    cJSON_AddBoolToObject(resp, "success", 1);
+
+    char *json_str = cJSON_PrintUnformatted(resp);
+    if (json_str) {
+        transport->write_line(transport->ctx, json_str, strlen(json_str));
+        free(json_str);
+    }
+    cJSON_Delete(resp);
+    cJSON_Delete(root);
 }
