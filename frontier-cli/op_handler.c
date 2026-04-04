@@ -641,6 +641,8 @@ int op_dispatch(const char *json_line, size_t len, transport_t *transport) {
         handle_odb_delete(id, json_line, transport);
     } else if (strcmp(op, "debug/run") == 0) {
         handle_debug_run(id, json_line, transport);
+    } else if (strcmp(op, "debug/step") == 0) {
+        handle_debug_step(id, json_line, transport);
     } else if (strcmp(op, "debug/continue") == 0) {
         handle_debug_continue(id, json_line, transport);
     } else if (strcmp(op, "debug/kill") == 0) {

@@ -39,6 +39,16 @@ typedef enum {
 const char *debug_reason_string(debug_suspend_reason_t reason);
 
 /*
+ * Step directions — matches legacy tydirection values from standard.h.
+ */
+typedef enum {
+    DEBUG_STEP_NONE = 0,    /* not stepping */
+    DEBUG_STEP_OVER = 2,    /* next line at same call depth (legacy: down) */
+    DEBUG_STEP_OUT  = 3,    /* return to caller (legacy: left) */
+    DEBUG_STEP_INTO = 4     /* next statement regardless of depth (legacy: right) */
+} debug_step_direction_t;
+
+/*
  * Per-thread debug state. Stored in tythreadglobals.param_reserved[0].
  * Allocated when a thread enters debug mode, freed on thread exit.
  *
@@ -62,6 +72,21 @@ typedef struct tydebugstate {
     transport_t *transport;          /* for sending notifications back to client */
     long threadid;                   /* this thread's ID */
     pthread_t pthread_id;            /* POSIX thread ID for pthread_join */
+
+    /* Stepping state (Phase 2) — written by handle_debug_step on main thread,
+     * read by protocol_debugger_callback on debug thread. Access is GIL-ordered
+     * (step command runs while debug thread is suspended, thread resumes after).
+     * All fields use C11 atomic types for consistency with other cross-thread
+     * flags. atomic_short/atomic_ulong are standard C11 convenience typedefs
+     * (§7.17.6) supported by clang, GCC, and MSVC 2022+. */
+    atomic_bool flstepping;          /* stepping mode active */
+    atomic_int stepdir;              /* current step direction (debug_step_direction_t) */
+    atomic_ulong lastlnum;           /* line number at last suspension */
+    atomic_short steplevel;          /* call depth when step was initiated */
+    atomic_short calldepth;          /* current call depth — NOT YET IMPLEMENTED (#505).
+                                      * Stays 0, making step-over line-based only and
+                                      * step-out non-functional. Needs hook into function
+                                      * call entry/exit in the interpreter. */
 } tydebugstate, *ptrdebugstate;
 
 /*
@@ -75,6 +100,7 @@ void debug_init(void);
  * Called from op_dispatch() in op_handler.c.
  */
 void handle_debug_run(int id, const char *json_line, transport_t *transport);
+void handle_debug_step(int id, const char *json_line, transport_t *transport);
 void handle_debug_continue(int id, const char *json_line, transport_t *transport);
 void handle_debug_kill(int id, const char *json_line, transport_t *transport);
 void handle_debug_pause(int id, const char *json_line, transport_t *transport);
@@ -102,9 +128,10 @@ void debug_join_all_threads(void);
 boolean debug_has_active_threads(void);
 
 /*
- * Returns true when it is safe to save the database on exit (no debug threads
- * ran during this session). Returns false if any debug thread ran, because
- * killed debug threads leave hash tables in an inconsistent state.
+ * Returns true when it is safe to save the database on exit. Returns false
+ * only if a debug thread was killed mid-execution — killing interrupts
+ * hash table scope unwinding, leaving tables inconsistent for packing.
+ * Debug threads that complete normally (via continue) are safe to save after.
  */
 boolean debug_is_safe_to_save(void);
 

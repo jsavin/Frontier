@@ -107,9 +107,6 @@ static tydebugstate *debug_register_thread(long threadid, transport_t *transport
 
     pthread_mutex_lock(&g_debug_mutex);
 
-    /* Note: g_debug_thread_was_killed is set in debug_kill_all_threads,
-     * not here — a debug thread that completes normally is safe. */
-
     for (int i = 0; i < MAX_DEBUG_THREADS; i++) {
         if (g_debug_threads[i] == NULL) {
             g_debug_threads[i] = state;
@@ -266,8 +263,6 @@ static void debug_send_completed(transport_t *transport, long threadid, boolean 
  */
 static boolean protocol_debugger_callback(hdltreenode hnode) {
 
-    (void)hnode;
-
     /* Get debug state from thread globals. param_reserved[0] is set to a
      * tydebugstate* by debug_thread_entry. For non-debug threads it's NULL
      * (calloc-initialized). The cast is safe as long as only debug_handler.c
@@ -280,28 +275,91 @@ static boolean protocol_debugger_callback(hdltreenode hnode) {
     if (state == NULL || !state->fldebugmode)
         return true; /* not debugging this thread */
 
-    /* Check kill flag. Note: kill only takes effect at langdebuggercall
-     * boundaries (called at every UserTalk statement). Scripts with long-
-     * running native verbs between statements won't stop promptly. This is
-     * a known Phase 1 limitation — Phase 2 may add a secondary kill via
-     * flthreadkilled which is checked at yield points. */
+    /* Check kill flag */
     if (atomic_load(&state->flkill)) {
         log_debug(LOG_COMP_LANG, "debug: thread %ld killed", state->threadid);
-        return false; /* signal interpreter to stop */
+        return false;
     }
 
-    /* Check interrupt flag (debug/pause) */
-    if (atomic_load(&state->flinterrupt)) {
+    /* Get current line number */
+    unsigned long lnum = (hnode != nil) ? (**hnode).lnum : 0;
+
+    /* Determine if this is a "steppable" node. Infrastructure nodes (module,
+     * noop, bundle, local, assignlocal) should execute normally but not
+     * trigger stepping suspensions — they're not meaningful "lines" to
+     * stop on. The callback still returns true (continue executing). */
+    boolean flsteppable = true;
+    if (hnode != nil) {
+        short op = (**hnode).nodetype;
+        if (op == moduleop || op == noop || op == bundleop || op == localop || op == assignlocalop)
+            flsteppable = false;
+    }
+
+    /* Check interrupt flag (debug/pause) — only on steppable nodes */
+    if (flsteppable && atomic_load(&state->flinterrupt)) {
         atomic_store_explicit(&state->flinterrupt, false, memory_order_seq_cst);
         atomic_store_explicit(&state->flsuspended, true, memory_order_seq_cst);
 
-        /* Get line number from the current node */
-        long line = 0;
-        if (hnode != nil)
-            line = (long)(**hnode).lnum;
+        atomic_store(&state->lastlnum, lnum);
 
-        debug_send_suspended(state->transport, state->threadid, line, DEBUG_REASON_INTERRUPTED);
-        log_debug(LOG_COMP_LANG, "debug: thread %ld interrupted at line %ld", state->threadid, line);
+        debug_send_suspended(state->transport, state->threadid, (long)lnum, DEBUG_REASON_INTERRUPTED);
+        log_debug(LOG_COMP_LANG, "debug: thread %ld interrupted at line %ld", state->threadid, (long)lnum);
+    }
+
+    /* Stepping logic — check if we should suspend based on step direction.
+     * Uses simplified call depth model: calldepth tracks nesting relative
+     * to the depth when stepping was initiated (steplevel).
+     *
+     * Step-into: suspend at the very next statement
+     * Step-over: suspend when line changes at same or shallower call depth
+     * Step-out:  suspend when call depth decreases below step level */
+    if (atomic_load(&state->flstepping) && flsteppable && !atomic_load(&state->flsuspended)) {
+
+        short diff = atomic_load(&state->calldepth) - atomic_load(&state->steplevel); /* calldepth always 0 in Phase 2 (#505) — diff always 0 */
+        boolean flstop = false;
+
+        switch (atomic_load(&state->stepdir)) {
+
+            case DEBUG_STEP_INTO:
+                /* Stop at the very next statement */
+                flstop = true;
+                break;
+
+            case DEBUG_STEP_OVER:
+                if (diff == 0) {
+                    /* Same call depth: stop when line changes.
+                     * lastlnum is safe to read here — it was set while
+                     * the debug thread was suspended, and the GIL
+                     * happens-before guarantees visibility. */
+                    flstop = (lnum != atomic_load(&state->lastlnum));
+                } else if (diff < 0) {
+                    /* Returned to shallower depth: stop */
+                    flstop = true;
+                }
+                /* diff > 0: inside a function call, keep going */
+                break;
+
+            case DEBUG_STEP_OUT:
+                /* Stop only when we return to a shallower depth */
+                flstop = (diff < 0);
+                break;
+
+            default:
+                break;
+        }
+
+        if (flstop) {
+            atomic_store(&state->flstepping, false);
+            atomic_store(&state->stepdir, DEBUG_STEP_NONE);
+            atomic_store(&state->lastlnum, lnum);
+
+            /* Set suspended BEFORE notifying — ensures the thread is in the
+             * suspended state before a fast client can react to the notification
+             * and send a continue/step command. */
+            atomic_store_explicit(&state->flsuspended, true, memory_order_seq_cst);
+            debug_send_suspended(state->transport, state->threadid, (long)lnum, DEBUG_REASON_STEP);
+            log_debug(LOG_COMP_LANG, "debug: thread %ld step completed at line %ld", state->threadid, (long)lnum);
+        }
     }
 
     /* Suspension loop — yields GIL so protocol handler can process commands */
@@ -661,11 +719,101 @@ void handle_debug_continue(int id, const char *json_line, transport_t *transport
         return;
     }
 
+    /* Clear any stepping state — continue means run freely */
+    atomic_store(&state->flstepping, false);
+    atomic_store(&state->stepdir, DEBUG_STEP_NONE);
+
     atomic_store(&state->flsuspended, false);
     debug_release_state(state);
 
     char resp[128];
     snprintf(resp, sizeof(resp), "{\"id\":%d,\"result\":{\"threadId\":%ld,\"status\":\"running\"},\"success\":true}", id, threadid);
+    transport->write_line(transport->ctx, resp, strlen(resp));
+
+    cJSON_Delete(root);
+}
+
+void handle_debug_step(int id, const char *json_line, transport_t *transport) {
+
+    cJSON *root = cJSON_Parse(json_line);
+
+    if (root == NULL) {
+        char err[512];
+        snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Invalid JSON\"},\"success\":false}", id);
+        transport->write_line(transport->ctx, err, strlen(err));
+        return;
+    }
+
+    cJSON *params = cJSON_GetObjectItemCaseSensitive(root, "params");
+    cJSON *tid_json = params ? cJSON_GetObjectItemCaseSensitive(params, "threadId") : NULL;
+    cJSON *dir_json = params ? cJSON_GetObjectItemCaseSensitive(params, "direction") : NULL;
+
+    if (!cJSON_IsNumber(tid_json)) {
+        char err[512];
+        snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Missing 'threadId' in params\"},\"success\":false}", id);
+        transport->write_line(transport->ctx, err, strlen(err));
+        cJSON_Delete(root);
+        return;
+    }
+
+    long threadid = (long)tid_json->valuedouble;
+    tydebugstate *state = debug_get_state_for_thread(threadid);
+
+    if (state == NULL) {
+        char err[512];
+        snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"No debug thread with that ID\"},\"success\":false}", id);
+        transport->write_line(transport->ctx, err, strlen(err));
+        cJSON_Delete(root);
+        return;
+    }
+
+    /* Note: flsuspended check is not under g_debug_mutex. In the current
+     * single-client model this is safe (only one protocol handler thread).
+     * Phase 5 (multi-session) will need to hold the lock across the
+     * check-and-modify sequence to prevent concurrent continue/kill races. */
+    if (!atomic_load(&state->flsuspended)) {
+        debug_release_state(state);
+        char err[512];
+        snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Thread %ld is not suspended\"},\"success\":false}", id, threadid);
+        transport->write_line(transport->ctx, err, strlen(err));
+        cJSON_Delete(root);
+        return;
+    }
+
+    /* Parse direction: "over", "into", "out" */
+    debug_step_direction_t dir = DEBUG_STEP_OVER; /* default */
+    if (cJSON_IsString(dir_json)) {
+        const char *d = dir_json->valuestring;
+        if (strcmp(d, "into") == 0)
+            dir = DEBUG_STEP_INTO;
+        else if (strcmp(d, "out") == 0)
+            dir = DEBUG_STEP_OUT;
+        else if (strcmp(d, "over") == 0)
+            dir = DEBUG_STEP_OVER;
+        else {
+            debug_release_state(state);
+            char err[512];
+            snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Unknown step direction (use 'over', 'into', or 'out')\"},\"success\":false}", id);
+            transport->write_line(transport->ctx, err, strlen(err));
+            cJSON_Delete(root);
+            return;
+        }
+    }
+
+    /* Set stepping state. These writes are safe because the debug thread is
+     * suspended (flsuspended=true) and won't read stepping fields until we
+     * clear flsuspended below. GIL ordering guarantees the writes are visible. */
+    atomic_store(&state->flstepping, true);
+    atomic_store(&state->stepdir, (int)dir);
+    atomic_store(&state->steplevel, atomic_load(&state->calldepth));
+    /* lastlnum already set from the last suspension point */
+
+    /* Resume the thread — it will execute until the stepping condition is met */
+    atomic_store_explicit(&state->flsuspended, false, memory_order_seq_cst);
+    debug_release_state(state);
+
+    char resp[128];
+    snprintf(resp, sizeof(resp), "{\"id\":%d,\"result\":{\"threadId\":%ld,\"status\":\"stepping\"},\"success\":true}", id, threadid);
     transport->write_line(transport->ctx, resp, strlen(resp));
 
     cJSON_Delete(root);
