@@ -39,6 +39,16 @@ typedef enum {
 const char *debug_reason_string(debug_suspend_reason_t reason);
 
 /*
+ * Step directions — matches legacy tydirection values from standard.h.
+ */
+typedef enum {
+    DEBUG_STEP_NONE = 0,    /* not stepping */
+    DEBUG_STEP_OVER = 2,    /* next line at same call depth (legacy: down) */
+    DEBUG_STEP_OUT  = 3,    /* return to caller (legacy: left) */
+    DEBUG_STEP_INTO = 4     /* next statement regardless of depth (legacy: right) */
+} debug_step_direction_t;
+
+/*
  * Per-thread debug state. Stored in tythreadglobals.param_reserved[0].
  * Allocated when a thread enters debug mode, freed on thread exit.
  *
@@ -52,16 +62,6 @@ const char *debug_reason_string(debug_suspend_reason_t reason);
  * g_debug_mutex), use the pointer, then call debug_release_state.
  * The debug thread frees the struct only when refcount drops to 0.
  */
-/*
- * Step directions — matches legacy tydirection values from standard.h.
- */
-typedef enum {
-    DEBUG_STEP_NONE = 0,    /* not stepping */
-    DEBUG_STEP_OVER = 2,    /* next line at same call depth (legacy: down) */
-    DEBUG_STEP_OUT  = 3,    /* return to caller (legacy: left) */
-    DEBUG_STEP_INTO = 4     /* next statement regardless of depth (legacy: right) */
-} debug_step_direction_t;
-
 typedef struct tydebugstate {
     boolean fldebugmode;             /* not atomic: set once at registration (under GIL) before
                                       * thread starts, only read after. GIL provides ordering. */

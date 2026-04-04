@@ -315,7 +315,7 @@ static boolean protocol_debugger_callback(hdltreenode hnode) {
      * Step-out:  suspend when call depth decreases below step level */
     if (atomic_load(&state->flstepping) && flsteppable && !atomic_load(&state->flsuspended)) {
 
-        short diff = state->calldepth - atomic_load(&state->steplevel);
+        short diff = state->calldepth - atomic_load(&state->steplevel); /* calldepth always 0 in Phase 2 (#505) — diff always 0 */
         boolean flstop = false;
 
         switch (atomic_load(&state->stepdir)) {
@@ -754,6 +754,10 @@ void handle_debug_step(int id, const char *json_line, transport_t *transport) {
         return;
     }
 
+    /* Note: flsuspended check is not under g_debug_mutex. In the current
+     * single-client model this is safe (only one protocol handler thread).
+     * Phase 5 (multi-session) will need to hold the lock across the
+     * check-and-modify sequence to prevent concurrent continue/kill races. */
     if (!atomic_load(&state->flsuspended)) {
         debug_release_state(state);
         char err[512];
