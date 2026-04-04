@@ -209,11 +209,38 @@ assert_test("step into suspends at next statement",
             find_msg(msgs, reason="step") is not None,
             f"Messages: {msgs}")
 
-# Note: step-over and step-out have a known issue where the GIL yield in the
-# suspension loop corrupts runtime state, causing an abort after resume.
-# Step-into works because it stops at the very next callback without yielding.
-# Step-over/out are implemented in the protocol but need a fix to the
-# suspension-loop save/restore pattern. See issue filed for tracking.
+# Step-over test — previously crashed due to #505 (hthreadglobals overwrite
+# during GIL yield). Fixed by capturing hthreadglobals in a local variable.
+def test_step_over(send):
+    send({"op": "script/eval", "id": 1, "params": {
+        "expression": 'new(scriptType, @system.temp.stepOverTest); script.newScriptObject("local (x = 1)\\rlocal (y = 2)\\rreturn (x + y)", @system.temp.stepOverTest)'
+    }})
+    time.sleep(1)
+    send({"op": "debug/setBreakpoint", "id": 2, "params": {"script": "system.temp.stepOverTest", "line": 1}})
+    time.sleep(0.5)
+    send({"op": "debug/run", "id": 3, "params": {"expression": "system.temp.stepOverTest()"}})
+    time.sleep(2)
+    # Continue past entry
+    send({"op": "debug/continue", "id": 4, "params": {"threadId": FIRST_DEBUG_TID}})
+    time.sleep(2)
+    # Suspended at breakpoint on line 1 — step over to next steppable line (line 3)
+    send({"op": "debug/step", "id": 5, "params": {"threadId": FIRST_DEBUG_TID, "direction": "over"}})
+    time.sleep(2)
+    # Kill to clean up
+    send({"op": "debug/kill", "id": 6, "params": {"threadId": FIRST_DEBUG_TID}})
+    time.sleep(1)
+
+msgs = run_debug_session(test_step_over, timeout=20)
+step_suspend = find_msg(msgs, reason="step")
+assert_test("step-over suspends at next line",
+            step_suspend is not None,
+            f"Messages: {[m for m in msgs if m.get('op') == 'debug/suspended']}")
+if step_suspend:
+    step_line = step_suspend.get("params", {}).get("line")
+    # Line 2 is a local declaration (non-steppable), so step-over advances to line 3
+    assert_test("step-over advances past locals to line 3",
+                step_line == 3,
+                f"Expected line 3, got {step_line}")
 
 def test_step_error_not_suspended(send):
     send({"op": "debug/run", "id": 1, "params": {"expression": "return 1"}})

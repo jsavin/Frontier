@@ -437,7 +437,13 @@ static boolean protocol_debugger_callback(hdltreenode hnode) {
      *
      * Fast-path: g_has_breakpoints is checked with relaxed ordering to skip
      * the mutex entirely when no breakpoints are set (common case). */
-    if (atomic_load_explicit(&g_has_breakpoints, memory_order_relaxed) &&
+    /* Skip breakpoint check when stepping from the same line — the step should
+     * advance past the current breakpoint, not immediately re-trigger it.
+     * TODO: revisit when calldepth tracking is added — recursive calls could
+     * have the same lnum at a different depth, and the breakpoint should fire. */
+    boolean flskipbreakpoint = (atomic_load(&state->flstepping) && lnum == atomic_load(&state->lastlnum));
+
+    if (!flskipbreakpoint && atomic_load_explicit(&g_has_breakpoints, memory_order_relaxed) &&
         lnum > 0 && !atomic_load(&state->flsuspended) && state->current_script[0] != '\0') {
 
         boolean flbreakpoint = false;
@@ -478,7 +484,7 @@ static boolean protocol_debugger_callback(hdltreenode hnode) {
      * Step-out:  suspend when call depth decreases below step level */
     if (atomic_load(&state->flstepping) && flsteppable && !atomic_load(&state->flsuspended)) {
 
-        short diff = atomic_load(&state->calldepth) - atomic_load(&state->steplevel); /* calldepth always 0 in Phase 2 (#505) — diff always 0 */
+        short diff = atomic_load(&state->calldepth) - atomic_load(&state->steplevel); /* calldepth always 0 — diff always 0 until call depth tracking is added */
         boolean flstop = false;
 
         switch (atomic_load(&state->stepdir)) {
@@ -525,17 +531,25 @@ static boolean protocol_debugger_callback(hdltreenode hnode) {
         }
     }
 
+    /* Capture the thread globals handle in a local variable BEFORE releasing
+     * the GIL. The global `hthreadglobals` is shared — other threads overwrite
+     * it when they restore their own context. Using the global after reacquiring
+     * the GIL would restore the WRONG thread's state (e.g., the main thread's
+     * currenthashtable instead of this debug thread's), causing the
+     * hlocals != currenthashtable assertion in evaluatelist. (#505) */
+    hdlthreadglobals my_hglobals = hthreadglobals;
+
     /* Suspension loop — yields GIL so protocol handler can process commands */
     while (atomic_load(&state->flsuspended)) {
 
         if (atomic_load(&state->flkill)) {
-            if (hthreadglobals != nil)
-                (**hthreadglobals).flthreadkilled = true;
+            if (my_hglobals != nil)
+                (**my_hglobals).flthreadkilled = true;
             return false;
         }
 
         /* Save thread globals, release GIL, sleep, reacquire, restore */
-        headless_save_threadglobals(hthreadglobals);
+        headless_save_threadglobals(my_hglobals);
         pthread_mutex_unlock(&frontier_gil);
 
         /* Sleep 10ms — other threads (including protocol handler) can run */
@@ -543,7 +557,7 @@ static boolean protocol_debugger_callback(hdltreenode hnode) {
         nanosleep(&ts, NULL);
 
         pthread_mutex_lock(&frontier_gil);
-        headless_restore_threadglobals(hthreadglobals);
+        headless_restore_threadglobals(my_hglobals);
     }
 
     /* Check kill flag after loop exit — handle_debug_kill sets flkill=true
@@ -556,8 +570,8 @@ static boolean protocol_debugger_callback(hdltreenode hnode) {
      * with success=false, then cleans up. The callback does NOT send
      * debug/completed — that's always the thread entry's responsibility. */
     if (atomic_load(&state->flkill)) {
-        if (hthreadglobals != nil)
-            (**hthreadglobals).flthreadkilled = true;
+        if (my_hglobals != nil)
+            (**my_hglobals).flthreadkilled = true;
         return false;
     }
 
