@@ -412,9 +412,13 @@ static boolean protocol_debugger_callback(hdltreenode hnode) {
     }
 
     /* Breakpoint check (Phase 3) — if not already suspended, check if there's
-     * a session breakpoint matching the current script and line number. Unlike
-     * stepping (which skips infrastructure nodes), breakpoints fire on any line
-     * including local declarations. Uses g_debug_mutex for thread safety. */
+     * a breakpoint matching the current script and line number. Unlike stepping
+     * (which skips infrastructure nodes), breakpoints fire on any line including
+     * local declarations.
+     *
+     * current_script is thread-local to the debug thread (written only by push/pop
+     * callbacks on this same thread) — no lock needed. g_debug_mutex protects only
+     * the shared g_breakpoints array. */
     if (lnum > 0 && !atomic_load(&state->flsuspended) && state->current_script[0] != '\0') {
 
         boolean flbreakpoint = false;
@@ -1098,7 +1102,7 @@ void handle_debug_setbreakpoint(int id, const char *json_line, transport_t *tran
     const char *script = script_json->valuestring;
     double line_raw = line_json->valuedouble;
 
-    if (line_raw < 1.0 || line_raw != (double)(unsigned long)line_raw) {
+    if (line_raw < 1.0 || line_raw > 1000000.0 || line_raw != (double)(unsigned long)line_raw) {
         char err[512];
         snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Line must be a positive integer\"},\"success\":false}", id);
         transport->write_line(transport->ctx, err, strlen(err));
@@ -1141,8 +1145,8 @@ void handle_debug_setbreakpoint(int id, const char *json_line, transport_t *tran
     if (!cleared) {
         for (int i = 0; i < MAX_BREAKPOINTS; i++) {
             if (!g_breakpoints[i].active) {
-                strncpy(g_breakpoints[i].script, script, sizeof(g_breakpoints[i].script) - 1);
-                g_breakpoints[i].script[sizeof(g_breakpoints[i].script) - 1] = '\0';
+                /* strlen(script) < DEBUG_SCRIPT_PATH_MAX is guaranteed by the guard above */
+                memcpy(g_breakpoints[i].script, script, strlen(script) + 1);
                 g_breakpoints[i].line = line;
                 g_breakpoints[i].active = true;
                 set = true;
