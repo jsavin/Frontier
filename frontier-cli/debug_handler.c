@@ -315,7 +315,7 @@ static boolean protocol_debugger_callback(hdltreenode hnode) {
      * Step-out:  suspend when call depth decreases below step level */
     if (atomic_load(&state->flstepping) && flsteppable && !atomic_load(&state->flsuspended)) {
 
-        short diff = state->calldepth - atomic_load(&state->steplevel); /* calldepth always 0 in Phase 2 (#505) — diff always 0 */
+        short diff = atomic_load(&state->calldepth) - atomic_load(&state->steplevel); /* calldepth always 0 in Phase 2 (#505) — diff always 0 */
         boolean flstop = false;
 
         switch (atomic_load(&state->stepdir)) {
@@ -350,11 +350,12 @@ static boolean protocol_debugger_callback(hdltreenode hnode) {
             atomic_store(&state->stepdir, DEBUG_STEP_NONE);
             atomic_store(&state->lastlnum, lnum);
 
-            /* Send notification BEFORE suspending so it arrives immediately */
+            /* Set suspended BEFORE notifying — ensures the thread is in the
+             * suspended state before a fast client can react to the notification
+             * and send a continue/step command. */
+            atomic_store_explicit(&state->flsuspended, true, memory_order_seq_cst);
             debug_send_suspended(state->transport, state->threadid, (long)lnum, DEBUG_REASON_STEP);
             log_debug(LOG_COMP_LANG, "debug: thread %ld step completed at line %ld", state->threadid, (long)lnum);
-
-            atomic_store_explicit(&state->flsuspended, true, memory_order_seq_cst);
         }
     }
 
@@ -792,8 +793,8 @@ void handle_debug_step(int id, const char *json_line, transport_t *transport) {
      * suspended (flsuspended=true) and won't read stepping fields until we
      * clear flsuspended below. GIL ordering guarantees the writes are visible. */
     atomic_store(&state->flstepping, true);
-    atomic_store(&state->stepdir, dir);
-    atomic_store(&state->steplevel, state->calldepth);
+    atomic_store(&state->stepdir, (int)dir);
+    atomic_store(&state->steplevel, atomic_load(&state->calldepth));
     /* lastlnum already set from the last suspension point */
 
     /* Resume the thread — it will execute until the stepping condition is met */

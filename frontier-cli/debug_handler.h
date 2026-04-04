@@ -81,7 +81,7 @@ typedef struct tydebugstate {
     atomic_int stepdir;              /* current step direction (debug_step_direction_t) */
     atomic_ulong lastlnum;           /* line number at last suspension */
     atomic_short steplevel;          /* call depth when step was initiated */
-    short calldepth;                 /* current call depth — NOT YET IMPLEMENTED (#505).
+    atomic_short calldepth;          /* current call depth — NOT YET IMPLEMENTED (#505).
                                       * Stays 0, making step-over line-based only and
                                       * step-out non-functional. Needs hook into function
                                       * call entry/exit in the interpreter. */
