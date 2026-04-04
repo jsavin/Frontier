@@ -8,6 +8,9 @@
  *   debug/pause           — Interrupt a running thread
  *   debug/setBreakpoint   — Set or clear a breakpoint (Phase 3)
  *   debug/listBreakpoints — List all breakpoints (Phase 3)
+ *   debug/getLocals       — Inspect local variables of suspended thread (Phase 4)
+ *   debug/getSource       — View script source with line numbers (Phase 4)
+ *   debug/getStack        — View call stack of suspended thread (Phase 4)
  *
  * The debugger replaces the headless no-op callback with a protocol-aware
  * callback that can suspend execution and wait for client commands.
@@ -79,6 +82,12 @@ typedef struct tydebugstate {
     transport_t *transport;          /* for sending notifications back to client */
     long threadid;                   /* this thread's ID */
     pthread_t pthread_id;            /* POSIX thread ID for pthread_join */
+    void *hglobals;                  /* hdlthreadglobals — thread globals handle.
+                                      * Safe to read when thread is suspended (not
+                                      * touching globals while in nanosleep). Used by
+                                      * debug/getLocals to access the suspended
+                                      * thread's hash tables. Cast to hdlthreadglobals
+                                      * in debug_handler.c. */
 
     /* Stepping state (Phase 2) — written by handle_debug_step on main thread,
      * read by protocol_debugger_callback on debug thread. Access is GIL-ordered
@@ -123,6 +132,9 @@ void handle_debug_kill(int id, const char *json_line, transport_t *transport);
 void handle_debug_pause(int id, const char *json_line, transport_t *transport);
 void handle_debug_setbreakpoint(int id, const char *json_line, transport_t *transport);
 void handle_debug_listbreakpoints(int id, const char *json_line, transport_t *transport);
+void handle_debug_getlocals(int id, const char *json_line, transport_t *transport);
+void handle_debug_getsource(int id, const char *json_line, transport_t *transport);
+void handle_debug_getstack(int id, const char *json_line, transport_t *transport);
 
 /*
  * Release a reference to a debug state obtained from debug_get_state_for_thread.

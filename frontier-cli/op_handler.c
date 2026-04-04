@@ -653,6 +653,12 @@ int op_dispatch(const char *json_line, size_t len, transport_t *transport) {
         handle_debug_setbreakpoint(id, json_line, transport);
     } else if (strcmp(op, "debug/listBreakpoints") == 0) {
         handle_debug_listbreakpoints(id, json_line, transport);
+    } else if (strcmp(op, "debug/getLocals") == 0) {
+        handle_debug_getlocals(id, json_line, transport);
+    } else if (strcmp(op, "debug/getSource") == 0) {
+        handle_debug_getsource(id, json_line, transport);
+    } else if (strcmp(op, "debug/getStack") == 0) {
+        handle_debug_getstack(id, json_line, transport);
     } else if (strcmp(op, "shutdown") == 0) {
         send_ack(id, transport);
         free(op);
