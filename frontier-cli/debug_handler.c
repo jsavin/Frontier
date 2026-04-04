@@ -295,6 +295,9 @@ static boolean debug_push_sourcecode(hdlhashtable htable, hdlhashnode hnode, big
         memcpy(state->script_stack[state->script_stack_depth],
                state->current_script, DEBUG_SCRIPT_PATH_MAX);
         state->script_stack_depth++;
+    } else {
+        /* Stack overflow — track the imbalance so pop skips the corresponding restore */
+        state->script_stack_overflow++;
     }
 
     /* Build full dotted path from table + name */
@@ -329,8 +332,12 @@ static boolean debug_pop_sourcecode(void) {
     if (state == NULL || !state->fldebugmode)
         return true;
 
-    /* Restore caller's script path from the stack */
-    if (state->script_stack_depth > 0) {
+    /* Restore caller's script path from the stack.
+     * If we overflowed on push, consume the overflow counter instead
+     * of restoring — the saved path was never recorded. */
+    if (state->script_stack_overflow > 0) {
+        state->script_stack_overflow--;
+    } else if (state->script_stack_depth > 0) {
         state->script_stack_depth--;
         memcpy(state->current_script,
                state->script_stack[state->script_stack_depth], DEBUG_SCRIPT_PATH_MAX);
@@ -402,10 +409,8 @@ static boolean protocol_debugger_callback(hdltreenode hnode) {
 
     /* Breakpoint check (Phase 3) — if not already suspended, check if there's
      * a session breakpoint matching the current script and line number. Unlike
-     * stepping (which skips infrastructure nodes), breakpoints can be set on any
-     * line including local declarations. Uses g_debug_mutex for thread safety. */
-    /* Breakpoint check applies to ALL nodes (not just steppable ones) — a user
-     * can set a breakpoint on any line including local declarations. */
+     * stepping (which skips infrastructure nodes), breakpoints fire on any line
+     * including local declarations. Uses g_debug_mutex for thread safety. */
     if (lnum > 0 && !atomic_load(&state->flsuspended) && state->current_script[0] != '\0') {
 
         boolean flbreakpoint = false;
@@ -1088,6 +1093,14 @@ void handle_debug_setbreakpoint(int id, const char *json_line, transport_t *tran
 
     const char *script = script_json->valuestring;
     unsigned long line = (unsigned long)line_json->valuedouble;
+
+    if (line == 0) {
+        char err[512];
+        snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Line must be >= 1\"},\"success\":false}", id);
+        transport->write_line(transport->ctx, err, strlen(err));
+        cJSON_Delete(root);
+        return;
+    }
 
     /* Strip leading "@" if present — normalize to dotted path */
     if (script[0] == '@')
