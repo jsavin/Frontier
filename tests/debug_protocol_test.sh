@@ -664,7 +664,7 @@ def test_multi_thread(send):
     # List threads — should show both
     send({"op": "debug/listThreads", "id": 3, "params": {}})
     time.sleep(0.5)
-    # Continue first thread (ID 3), keep second (ID 4) suspended
+    # Continue first thread, keep second suspended
     send({"op": "debug/continue", "id": 4, "params": {"threadId": FIRST_DEBUG_TID}})
     time.sleep(1)
     # List again — should show only second thread
@@ -676,12 +676,18 @@ def test_multi_thread(send):
 
 msgs = run_debug_session(test_multi_thread, timeout=20)
 
-# Both threads should have started
-t1_start = any(m.get("id") == 1 and m.get("result", {}).get("threadId") == FIRST_DEBUG_TID for m in msgs)
-t2_start = any(m.get("id") == 2 and m.get("result", {}).get("threadId") == FIRST_DEBUG_TID + 1 for m in msgs)
+# Extract actual thread IDs from responses (don't assume FIRST_DEBUG_TID + 1)
+t1_tid = None
+t2_tid = None
+for m in msgs:
+    if m.get("id") == 1 and m.get("result", {}).get("threadId"):
+        t1_tid = m["result"]["threadId"]
+    if m.get("id") == 2 and m.get("result", {}).get("threadId"):
+        t2_tid = m["result"]["threadId"]
+
 assert_test("two threads started with different IDs",
-            t1_start and t2_start,
-            f"Messages: {[m for m in msgs if m.get('id') in (1, 2)]}")
+            t1_tid is not None and t2_tid is not None and t1_tid != t2_tid,
+            f"t1={t1_tid}, t2={t2_tid}")
 
 # Both should have entry suspensions
 entry_suspensions = [m for m in msgs if m.get("op") == "debug/suspended" and m.get("params", {}).get("reason") == "entry"]
@@ -698,6 +704,16 @@ for m in msgs:
 assert_test("listThreads shows 2 threads",
             list1 is not None and len(list1["result"]["threads"]) == 2,
             f"Messages: {[m for m in msgs if m.get('id') == 3]}")
+
+# After first thread completes, listThreads should show 1 thread
+list2 = None
+for m in msgs:
+    if m.get("id") == 5 and m.get("result", {}).get("threads") is not None:
+        list2 = m
+        break
+assert_test("listThreads shows 1 thread after first completes",
+            list2 is not None and len(list2["result"]["threads"]) == 1,
+            f"Messages: {[m for m in msgs if m.get('id') == 5]}")
 
 # Both should have completed
 completions = [m for m in msgs if m.get("op") == "debug/completed"]

@@ -1785,11 +1785,16 @@ void handle_debug_listthreads(int id, const char *json_line, transport_t *transp
             tydebugstate *state = g_debug_threads[i];
             cJSON *thread = cJSON_CreateObject();
             cJSON_AddNumberToObject(thread, "threadId", (double)state->threadid);
-            cJSON_AddBoolToObject(thread, "suspended", atomic_load(&state->flsuspended));
-            if (state->current_script[0] != '\0')
-                cJSON_AddStringToObject(thread, "script", state->current_script);
-            if (atomic_load(&state->flsuspended))
+            boolean suspended = atomic_load(&state->flsuspended);
+            cJSON_AddBoolToObject(thread, "suspended", suspended);
+            /* Only read current_script and lastlnum when suspended — a running
+             * thread may be writing these fields concurrently via the push/pop
+             * sourcecode callbacks under the GIL (not g_debug_mutex). */
+            if (suspended) {
+                if (state->current_script[0] != '\0')
+                    cJSON_AddStringToObject(thread, "script", state->current_script);
                 cJSON_AddNumberToObject(thread, "line", (double)atomic_load(&state->lastlnum));
+            }
             cJSON_AddItemToArray(threads, thread);
         }
     }
