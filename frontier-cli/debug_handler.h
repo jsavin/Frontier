@@ -75,12 +75,16 @@ typedef struct tydebugstate {
 
     /* Stepping state (Phase 2) — written by handle_debug_step on main thread,
      * read by protocol_debugger_callback on debug thread. Access is GIL-ordered
-     * (step command runs while debug thread is suspended, thread resumes after). */
-    boolean flstepping;              /* stepping mode active */
+     * (step command runs while debug thread is suspended, thread resumes after).
+     * Using atomic_bool for consistency with other cross-thread flags. */
+    atomic_bool flstepping;          /* stepping mode active */
     debug_step_direction_t stepdir;  /* current step direction */
     unsigned long lastlnum;          /* line number at last suspension */
     short steplevel;                 /* call depth when step was initiated */
-    short calldepth;                 /* current call depth (incremented by script entry) */
+    short calldepth;                 /* current call depth — NOT YET IMPLEMENTED (#505).
+                                      * Stays 0, making step-over line-based only and
+                                      * step-out non-functional. Needs hook into function
+                                      * call entry/exit in the interpreter. */
 } tydebugstate, *ptrdebugstate;
 
 /*

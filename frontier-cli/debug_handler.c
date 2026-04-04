@@ -315,7 +315,7 @@ static boolean protocol_debugger_callback(hdltreenode hnode) {
      * Step-into: suspend at the very next statement
      * Step-over: suspend when line changes at same or shallower call depth
      * Step-out:  suspend when call depth decreases below step level */
-    if (state->flstepping && flsteppable && !atomic_load(&state->flsuspended)) {
+    if (atomic_load(&state->flstepping) && flsteppable && !atomic_load(&state->flsuspended)) {
 
         short diff = state->calldepth - state->steplevel;
         boolean flstop = false;
@@ -348,7 +348,7 @@ static boolean protocol_debugger_callback(hdltreenode hnode) {
         }
 
         if (flstop) {
-            state->flstepping = false;
+            atomic_store(&state->flstepping, false);
             state->lastlnum = lnum;
 
             /* Send notification BEFORE suspending so it arrives immediately */
@@ -716,6 +716,10 @@ void handle_debug_continue(int id, const char *json_line, transport_t *transport
         return;
     }
 
+    /* Clear any stepping state — continue means run freely */
+    atomic_store(&state->flstepping, false);
+    state->stepdir = DEBUG_STEP_NONE;
+
     atomic_store(&state->flsuspended, false);
     debug_release_state(state);
 
@@ -774,7 +778,7 @@ void handle_debug_step(int id, const char *json_line, transport_t *transport) {
         else {
             debug_release_state(state);
             char err[512];
-            snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Unknown step direction: %s (use 'over', 'into', or 'out')\"},\"success\":false}", id, d);
+            snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Unknown step direction (use 'over', 'into', or 'out')\"},\"success\":false}", id);
             transport->write_line(transport->ctx, err, strlen(err));
             cJSON_Delete(root);
             return;
@@ -784,7 +788,7 @@ void handle_debug_step(int id, const char *json_line, transport_t *transport) {
     /* Set stepping state. These writes are safe because the debug thread is
      * suspended (flsuspended=true) and won't read stepping fields until we
      * clear flsuspended below. GIL ordering guarantees the writes are visible. */
-    state->flstepping = true;
+    atomic_store(&state->flstepping, true);
     state->stepdir = dir;
     state->steplevel = state->calldepth;
     /* lastlnum already set from the last suspension point */
