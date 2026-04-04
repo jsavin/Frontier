@@ -649,6 +649,10 @@ int op_dispatch(const char *json_line, size_t len, transport_t *transport) {
         handle_debug_kill(id, json_line, transport);
     } else if (strcmp(op, "debug/pause") == 0) {
         handle_debug_pause(id, json_line, transport);
+    } else if (strcmp(op, "debug/setBreakpoint") == 0) {
+        handle_debug_setbreakpoint(id, json_line, transport);
+    } else if (strcmp(op, "debug/listBreakpoints") == 0) {
+        handle_debug_listbreakpoints(id, json_line, transport);
     } else if (strcmp(op, "shutdown") == 0) {
         send_ack(id, transport);
         free(op);

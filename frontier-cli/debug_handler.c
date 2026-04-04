@@ -20,6 +20,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>  /* strcasecmp */
 #include <pthread.h>
 
 #include "../Common/headers/frontier.h"
@@ -31,6 +32,7 @@
 #include "processinternal.h"
 #include "threadregistry.h"
 #include "headless_threading.h"
+#include "langexternal.h"
 #include "../third_party/cJSON/cJSON.h"
 
 /* Global: current hashtable and table stack (thread globals) */
@@ -45,6 +47,33 @@ extern hdltablestack hashtablestack;
 static tydebugstate *g_debug_threads[MAX_DEBUG_THREADS] = {0};
 static pthread_mutex_t g_debug_mutex = PTHREAD_MUTEX_INITIALIZER;
 static atomic_bool g_debug_thread_was_killed = false; /* set when a debug thread is killed mid-execution */
+
+/* ========================================================================
+ * Breakpoints (Phase 3)
+ *
+ * Stored as (script_path, line) pairs in a global array. Protected by
+ * g_debug_mutex. The debugger callback checks this list at each statement
+ * to determine if execution should suspend.
+ *
+ * Breakpoints persist for the lifetime of the process. They survive across
+ * multiple debug/run invocations and are only cleared by toggling them off
+ * via debug/setBreakpoint or when the process exits.
+ *
+ * Script paths use dotted notation without leading "@", e.g.
+ * "mainResponder.respond". The path is matched against the current
+ * script tracked via the push/pop sourcecode callbacks.
+ * ======================================================================== */
+
+#define MAX_BREAKPOINTS 256
+
+typedef struct {
+    char script[DEBUG_SCRIPT_PATH_MAX]; /* dotted script path, e.g. "mainResponder.respond" */
+    unsigned long line;                 /* 1-based line number */
+    boolean active;                     /* is this slot in use? */
+} debug_breakpoint_t;
+
+static debug_breakpoint_t g_breakpoints[MAX_BREAKPOINTS] = {0};
+static atomic_bool g_has_breakpoints = false; /* fast-path: skip mutex when no breakpoints set */
 
 /* ========================================================================
  * Reason string conversion
@@ -248,6 +277,89 @@ static void debug_send_completed(transport_t *transport, long threadid, boolean 
 }
 
 /* ========================================================================
+ * Source tracking callbacks (Phase 3)
+ *
+ * Installed by debug_init() to replace the no-op sourcecode callbacks.
+ * These track the current script path in each debug thread's state,
+ * enabling breakpoint matching in the debugger callback.
+ * ======================================================================== */
+
+static boolean debug_push_sourcecode(hdlhashtable htable, hdlhashnode hnode, bigstring bsname) {
+
+    (void)hnode;
+
+    if (hthreadglobals == nil)
+        return true;
+
+    tydebugstate *state = (tydebugstate *)((**hthreadglobals).param_reserved[0]);
+
+    if (state == NULL || !state->fldebugmode)
+        return true;
+
+    /* Save current script path on the stack before overwriting */
+    if (state->script_stack_depth < DEBUG_SCRIPT_STACK_MAX) {
+        memcpy(state->script_stack[state->script_stack_depth],
+               state->current_script, DEBUG_SCRIPT_PATH_MAX);
+        state->script_stack_depth++;
+    } else {
+        /* Stack overflow — track the imbalance so pop skips the corresponding restore.
+         * Clear current_script to avoid false breakpoint matches: we can't save the
+         * caller's path, so it's safer to match nothing than to leave a stale path
+         * that persists into the caller after this frame returns. */
+        state->script_stack_overflow++;
+        state->current_script[0] = '\0';
+    }
+
+    /* Build full dotted path from table + name */
+    bigstring bspath;
+    hdlwindowinfo hroot = NULL;
+
+    if (langexternalgetfullpath(htable, bsname, bspath, &hroot)) {
+        (void)hroot; /* used only by langexternalgetfullpath, not needed here */
+        /* Convert Pascal string to C string, store in debug state.
+         * Path is like "mainResponder.respond" (no leading @). */
+        int len = bspath[0];
+        if (len >= DEBUG_SCRIPT_PATH_MAX)
+            len = DEBUG_SCRIPT_PATH_MAX - 1;
+        memcpy(state->current_script, bspath + 1, (size_t)len);
+        state->current_script[len] = '\0';
+
+        log_debug(LOG_COMP_LANG, "debug: push source '%s' for thread %ld", state->current_script, state->threadid);
+    } else {
+        /* Path resolution failed — clear to avoid false breakpoint matches */
+        state->current_script[0] = '\0';
+    }
+
+    return true;
+}
+
+static boolean debug_pop_sourcecode(void) {
+
+    if (hthreadglobals == nil)
+        return true;
+
+    tydebugstate *state = (tydebugstate *)((**hthreadglobals).param_reserved[0]);
+
+    if (state == NULL || !state->fldebugmode)
+        return true;
+
+    /* Restore caller's script path from the stack.
+     * If we overflowed on push, consume the overflow counter instead
+     * of restoring — the saved path was never recorded. */
+    if (state->script_stack_overflow > 0) {
+        state->script_stack_overflow--;
+    } else if (state->script_stack_depth > 0) {
+        state->script_stack_depth--;
+        memcpy(state->current_script,
+               state->script_stack[state->script_stack_depth], DEBUG_SCRIPT_PATH_MAX);
+    } else {
+        state->current_script[0] = '\0';
+    }
+
+    return true;
+}
+
+/* ========================================================================
  * Debugger callback — replaces cb_noop_treenode
  * ======================================================================== */
 
@@ -304,6 +416,49 @@ static boolean protocol_debugger_callback(hdltreenode hnode) {
 
         debug_send_suspended(state->transport, state->threadid, (long)lnum, DEBUG_REASON_INTERRUPTED);
         log_debug(LOG_COMP_LANG, "debug: thread %ld interrupted at line %ld", state->threadid, (long)lnum);
+    }
+
+    /* Breakpoint check (Phase 3) — if not already suspended, check if there's
+     * a breakpoint matching the current script and line number. Unlike stepping
+     * (which skips infrastructure nodes), breakpoints fire on any line including
+     * local declarations.
+     *
+     * current_script is thread-local to the debug thread (written only by push/pop
+     * callbacks on this same thread) — no lock needed. g_debug_mutex protects only
+     * the shared g_breakpoints array.
+     *
+     * Fast-path: g_has_breakpoints is checked with relaxed ordering to skip
+     * the mutex entirely when no breakpoints are set (common case). */
+    if (atomic_load_explicit(&g_has_breakpoints, memory_order_relaxed) &&
+        lnum > 0 && !atomic_load(&state->flsuspended) && state->current_script[0] != '\0') {
+
+        boolean flbreakpoint = false;
+
+        pthread_mutex_lock(&g_debug_mutex);
+
+        for (int i = 0; i < MAX_BREAKPOINTS; i++) {
+            if (g_breakpoints[i].active &&
+                g_breakpoints[i].line == lnum &&
+                strcasecmp(g_breakpoints[i].script, state->current_script) == 0) {
+                flbreakpoint = true;
+                break;
+            }
+        }
+
+        pthread_mutex_unlock(&g_debug_mutex);
+
+        if (flbreakpoint) {
+            atomic_store(&state->lastlnum, lnum);
+
+            /* Clear stepping state if we were stepping — breakpoint takes priority */
+            atomic_store(&state->flstepping, false);
+            atomic_store(&state->stepdir, DEBUG_STEP_NONE);
+
+            atomic_store_explicit(&state->flsuspended, true, memory_order_seq_cst);
+            debug_send_suspended(state->transport, state->threadid, (long)lnum, DEBUG_REASON_BREAKPOINT);
+            log_debug(LOG_COMP_LANG, "debug: thread %ld hit breakpoint at %s line %ld",
+                      state->threadid, state->current_script, (long)lnum);
+        }
     }
 
     /* Stepping logic — check if we should suspend based on step direction.
@@ -408,6 +563,8 @@ static boolean protocol_debugger_callback(hdltreenode hnode) {
 void debug_init(void) {
 
     langcallbacks.debuggercallback = &protocol_debugger_callback;
+    langcallbacks.pushsourcecodecallback = &debug_push_sourcecode;
+    langcallbacks.popsourcecodecallback = &debug_pop_sourcecode;
     log_info(LOG_COMP_GENERAL, "Protocol debugger initialized");
 }
 
@@ -902,4 +1059,193 @@ void handle_debug_pause(int id, const char *json_line, transport_t *transport) {
     transport->write_line(transport->ctx, resp, strlen(resp));
 
     cJSON_Delete(root);
+}
+
+/* ========================================================================
+ * Breakpoint protocol handlers (Phase 3)
+ * ======================================================================== */
+
+/*
+ * debug/setBreakpoint — Set or clear a session breakpoint.
+ *
+ * Toggle behavior: if a breakpoint already exists at the given script+line,
+ * it is cleared. Otherwise, a new breakpoint is set.
+ *
+ * Params:
+ *   script: dotted path (e.g. "mainResponder.respond") — no leading "@"
+ *   line:   1-based line number
+ *
+ * Returns:
+ *   action: "set" or "cleared"
+ *   script, line: echo back the breakpoint location
+ */
+void handle_debug_setbreakpoint(int id, const char *json_line, transport_t *transport) {
+
+    cJSON *root = cJSON_Parse(json_line);
+
+    if (root == NULL) {
+        char err[512];
+        snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Invalid JSON\"},\"success\":false}", id);
+        transport->write_line(transport->ctx, err, strlen(err));
+        return;
+    }
+
+    cJSON *params = cJSON_GetObjectItemCaseSensitive(root, "params");
+    cJSON *script_json = params ? cJSON_GetObjectItemCaseSensitive(params, "script") : NULL;
+    cJSON *line_json = params ? cJSON_GetObjectItemCaseSensitive(params, "line") : NULL;
+
+    if (!cJSON_IsString(script_json) || script_json->valuestring == NULL) {
+        char err[512];
+        snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Missing 'script' in params\"},\"success\":false}", id);
+        transport->write_line(transport->ctx, err, strlen(err));
+        cJSON_Delete(root);
+        return;
+    }
+
+    if (!cJSON_IsNumber(line_json)) {
+        char err[512];
+        snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Missing 'line' in params\"},\"success\":false}", id);
+        transport->write_line(transport->ctx, err, strlen(err));
+        cJSON_Delete(root);
+        return;
+    }
+
+    const char *script = script_json->valuestring;
+    double line_raw = line_json->valuedouble;
+
+    if (line_raw < 1.0 || line_raw > 1000000.0 || line_raw != (double)(unsigned long)line_raw) {
+        char err[512];
+        snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Line must be a positive integer\"},\"success\":false}", id);
+        transport->write_line(transport->ctx, err, strlen(err));
+        cJSON_Delete(root);
+        return;
+    }
+
+    unsigned long line = (unsigned long)line_raw;
+
+    /* Strip leading "@" if present — normalize to dotted path */
+    if (script[0] == '@')
+        script++;
+
+    if (strlen(script) >= DEBUG_SCRIPT_PATH_MAX) {
+        char err[512];
+        snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Script path too long\"},\"success\":false}", id);
+        transport->write_line(transport->ctx, err, strlen(err));
+        cJSON_Delete(root);
+        return;
+    }
+
+    /* Toggle: check if breakpoint already exists */
+    boolean cleared = false;
+    boolean set = false;
+
+    pthread_mutex_lock(&g_debug_mutex);
+
+    /* First pass: check for existing breakpoint to toggle off */
+    for (int i = 0; i < MAX_BREAKPOINTS; i++) {
+        if (g_breakpoints[i].active &&
+            g_breakpoints[i].line == line &&
+            strcasecmp(g_breakpoints[i].script, script) == 0) {
+            g_breakpoints[i].active = false;
+            cleared = true;
+            break;
+        }
+    }
+
+    /* Second pass: if not clearing, find an empty slot to set */
+    if (!cleared) {
+        for (int i = 0; i < MAX_BREAKPOINTS; i++) {
+            if (!g_breakpoints[i].active) {
+                /* strlen(script) < DEBUG_SCRIPT_PATH_MAX is guaranteed by the guard above */
+                memcpy(g_breakpoints[i].script, script, strlen(script) + 1);
+                g_breakpoints[i].line = line;
+                g_breakpoints[i].active = true;
+                set = true;
+                break;
+            }
+        }
+    }
+
+    /* Update fast-path flag: check if any breakpoints remain active */
+    boolean any_active = false;
+    for (int i = 0; i < MAX_BREAKPOINTS; i++) {
+        if (g_breakpoints[i].active) {
+            any_active = true;
+            break;
+        }
+    }
+    atomic_store(&g_has_breakpoints, any_active);
+
+    pthread_mutex_unlock(&g_debug_mutex);
+
+    if (!cleared && !set) {
+        char err[512];
+        snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Too many breakpoints (max %d)\"},\"success\":false}", id, MAX_BREAKPOINTS);
+        transport->write_line(transport->ctx, err, strlen(err));
+        cJSON_Delete(root);
+        return;
+    }
+
+    /* Build response using cJSON to safely escape the script path */
+    cJSON *resp = cJSON_CreateObject();
+    cJSON_AddNumberToObject(resp, "id", id);
+    cJSON *result = cJSON_CreateObject();
+    cJSON_AddStringToObject(result, "action", cleared ? "cleared" : "set");
+    cJSON_AddStringToObject(result, "script", script);
+    cJSON_AddNumberToObject(result, "line", (double)line);
+    cJSON_AddItemToObject(resp, "result", result);
+    cJSON_AddBoolToObject(resp, "success", 1);
+
+    char *json_str = cJSON_PrintUnformatted(resp);
+    if (json_str) {
+        transport->write_line(transport->ctx, json_str, strlen(json_str));
+        free(json_str);
+    }
+    cJSON_Delete(resp);
+
+    log_info(LOG_COMP_LANG, "debug: breakpoint %s at %s line %ld",
+             cleared ? "cleared" : "set", script, line);
+
+    cJSON_Delete(root);
+}
+
+/*
+ * debug/listBreakpoints — List all session breakpoints.
+ *
+ * Returns an array of {script, line} objects.
+ */
+void handle_debug_listbreakpoints(int id, const char *json_line, transport_t *transport) {
+
+    (void)json_line; /* no params needed */
+
+    cJSON *resp = cJSON_CreateObject();
+    cJSON_AddNumberToObject(resp, "id", id);
+
+    cJSON *result = cJSON_CreateObject();
+    cJSON *bparray = cJSON_CreateArray();
+
+    pthread_mutex_lock(&g_debug_mutex);
+
+    for (int i = 0; i < MAX_BREAKPOINTS; i++) {
+        if (g_breakpoints[i].active) {
+            cJSON *bp = cJSON_CreateObject();
+            cJSON_AddStringToObject(bp, "script", g_breakpoints[i].script);
+            cJSON_AddNumberToObject(bp, "line", (double)g_breakpoints[i].line);
+            cJSON_AddStringToObject(bp, "type", "session");
+            cJSON_AddItemToArray(bparray, bp);
+        }
+    }
+
+    pthread_mutex_unlock(&g_debug_mutex);
+
+    cJSON_AddItemToObject(result, "breakpoints", bparray);
+    cJSON_AddItemToObject(resp, "result", result);
+    cJSON_AddBoolToObject(resp, "success", 1);
+
+    char *json_str = cJSON_PrintUnformatted(resp);
+    if (json_str) {
+        transport->write_line(transport->ctx, json_str, strlen(json_str));
+        free(json_str);
+    }
+    cJSON_Delete(resp);
 }

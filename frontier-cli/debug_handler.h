@@ -2,10 +2,12 @@
  * debug_handler.h - Protocol-based UserTalk debugger
  *
  * Provides debug/* protocol operations for headless script debugging:
- *   debug/run        — Run script in debug mode (non-blocking, spawns thread)
- *   debug/continue   — Resume suspended thread
- *   debug/kill       — Kill a debug thread
- *   debug/pause      — Interrupt a running thread
+ *   debug/run             — Run script in debug mode (non-blocking, spawns thread)
+ *   debug/continue        — Resume suspended thread
+ *   debug/kill            — Kill a debug thread
+ *   debug/pause           — Interrupt a running thread
+ *   debug/setBreakpoint   — Set or clear a breakpoint (Phase 3)
+ *   debug/listBreakpoints — List all breakpoints (Phase 3)
  *
  * The debugger replaces the headless no-op callback with a protocol-aware
  * callback that can suspend execution and wait for client commands.
@@ -62,6 +64,11 @@ typedef enum {
  * g_debug_mutex), use the pointer, then call debug_release_state.
  * The debug thread frees the struct only when refcount drops to 0.
  */
+
+/* Source tracking constants (used by tydebugstate and debug_breakpoint_t) */
+#define DEBUG_SCRIPT_PATH_MAX 256
+#define DEBUG_SCRIPT_STACK_MAX 32
+
 typedef struct tydebugstate {
     boolean fldebugmode;             /* not atomic: set once at registration (under GIL) before
                                       * thread starts, only read after. GIL provides ordering. */
@@ -87,6 +94,16 @@ typedef struct tydebugstate {
                                       * Stays 0, making step-over line-based only and
                                       * step-out non-functional. Needs hook into function
                                       * call entry/exit in the interpreter. */
+
+    /* Source tracking (Phase 3) — tracks which script is currently executing.
+     * Updated by the push/pop sourcecode callbacks installed in debug_init().
+     * The callback reads current_script to match breakpoints.
+     * Script path stack handles nested calls (A calls B): push saves path,
+     * pop restores caller's path so breakpoints in A still fire after B returns. */
+    char current_script[DEBUG_SCRIPT_PATH_MAX]; /* current script dotted path */
+    char script_stack[DEBUG_SCRIPT_STACK_MAX][DEBUG_SCRIPT_PATH_MAX]; /* saved caller paths */
+    short script_stack_depth;                   /* stack pointer (0 = empty) */
+    int script_stack_overflow;                  /* push/pop balance when stack overflows */
 } tydebugstate, *ptrdebugstate;
 
 /*
@@ -104,6 +121,8 @@ void handle_debug_step(int id, const char *json_line, transport_t *transport);
 void handle_debug_continue(int id, const char *json_line, transport_t *transport);
 void handle_debug_kill(int id, const char *json_line, transport_t *transport);
 void handle_debug_pause(int id, const char *json_line, transport_t *transport);
+void handle_debug_setbreakpoint(int id, const char *json_line, transport_t *transport);
+void handle_debug_listbreakpoints(int id, const char *json_line, transport_t *transport);
 
 /*
  * Release a reference to a debug state obtained from debug_get_state_for_thread.
