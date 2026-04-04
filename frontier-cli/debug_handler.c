@@ -48,11 +48,15 @@ static pthread_mutex_t g_debug_mutex = PTHREAD_MUTEX_INITIALIZER;
 static atomic_bool g_debug_thread_was_killed = false; /* set when a debug thread is killed mid-execution */
 
 /* ========================================================================
- * Session breakpoints (Phase 3)
+ * Breakpoints (Phase 3)
  *
  * Stored as (script_path, line) pairs in a global array. Protected by
- * g_debug_mutex. The debugger callback checks this list at each steppable
- * statement to determine if execution should suspend.
+ * g_debug_mutex. The debugger callback checks this list at each statement
+ * to determine if execution should suspend.
+ *
+ * Breakpoints persist for the lifetime of the process. They survive across
+ * multiple debug/run invocations and are only cleared by toggling them off
+ * via debug/setBreakpoint or when the process exits.
  *
  * Script paths use dotted notation without leading "@", e.g.
  * "mainResponder.respond". The path is matched against the current
@@ -1092,15 +1096,17 @@ void handle_debug_setbreakpoint(int id, const char *json_line, transport_t *tran
     }
 
     const char *script = script_json->valuestring;
-    unsigned long line = (unsigned long)line_json->valuedouble;
+    double line_raw = line_json->valuedouble;
 
-    if (line == 0) {
+    if (line_raw < 1.0 || line_raw != (double)(unsigned long)line_raw) {
         char err[512];
-        snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Line must be >= 1\"},\"success\":false}", id);
+        snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Line must be a positive integer\"},\"success\":false}", id);
         transport->write_line(transport->ctx, err, strlen(err));
         cJSON_Delete(root);
         return;
     }
+
+    unsigned long line = (unsigned long)line_raw;
 
     /* Strip leading "@" if present — normalize to dotted path */
     if (script[0] == '@')
