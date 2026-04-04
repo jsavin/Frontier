@@ -52,6 +52,16 @@ const char *debug_reason_string(debug_suspend_reason_t reason);
  * g_debug_mutex), use the pointer, then call debug_release_state.
  * The debug thread frees the struct only when refcount drops to 0.
  */
+/*
+ * Step directions — matches legacy tydirection values from standard.h.
+ */
+typedef enum {
+    DEBUG_STEP_NONE = 0,    /* not stepping */
+    DEBUG_STEP_OVER = 2,    /* next line at same call depth (legacy: down) */
+    DEBUG_STEP_OUT  = 3,    /* return to caller (legacy: left) */
+    DEBUG_STEP_INTO = 4     /* next statement regardless of depth (legacy: right) */
+} debug_step_direction_t;
+
 typedef struct tydebugstate {
     boolean fldebugmode;             /* not atomic: set once at registration (under GIL) before
                                       * thread starts, only read after. GIL provides ordering. */
@@ -62,6 +72,15 @@ typedef struct tydebugstate {
     transport_t *transport;          /* for sending notifications back to client */
     long threadid;                   /* this thread's ID */
     pthread_t pthread_id;            /* POSIX thread ID for pthread_join */
+
+    /* Stepping state (Phase 2) — written by handle_debug_step on main thread,
+     * read by protocol_debugger_callback on debug thread. Access is GIL-ordered
+     * (step command runs while debug thread is suspended, thread resumes after). */
+    boolean flstepping;              /* stepping mode active */
+    debug_step_direction_t stepdir;  /* current step direction */
+    unsigned long lastlnum;          /* line number at last suspension */
+    short steplevel;                 /* call depth when step was initiated */
+    short calldepth;                 /* current call depth (incremented by script entry) */
 } tydebugstate, *ptrdebugstate;
 
 /*
@@ -75,6 +94,7 @@ void debug_init(void);
  * Called from op_dispatch() in op_handler.c.
  */
 void handle_debug_run(int id, const char *json_line, transport_t *transport);
+void handle_debug_step(int id, const char *json_line, transport_t *transport);
 void handle_debug_continue(int id, const char *json_line, transport_t *transport);
 void handle_debug_kill(int id, const char *json_line, transport_t *transport);
 void handle_debug_pause(int id, const char *json_line, transport_t *transport);
@@ -102,9 +122,9 @@ void debug_join_all_threads(void);
 boolean debug_has_active_threads(void);
 
 /*
- * Returns true when it is safe to save the database on exit (no debug threads
- * ran during this session). Returns false if any debug thread ran, because
- * killed debug threads leave hash tables in an inconsistent state.
+ * Returns true when it is safe to save the database on exit. Returns false
+ * if any debug thread ran during this session — stepping and GIL yields
+ * can leave hash table state inconsistent for packing.
  */
 boolean debug_is_safe_to_save(void);
 

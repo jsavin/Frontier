@@ -193,7 +193,44 @@ msgs = run_debug_session(test_pause)
 assert_test("pause sends interrupting", find_msg(msgs, status="interrupting") is not None, f"Messages: {msgs}")
 assert_test("suspended with interrupted reason", find_msg(msgs, reason="interrupted") is not None, f"Messages: {msgs}")
 
-# --- Test 4: error cases ---
+# --- Test 4: debug/step ---
+print()
+print("--- debug/step ---")
+def test_step_into(send):
+    # Simple expression — step into from entry should stop at the return statement
+    send({"op": "debug/run", "id": 1, "params": {"expression": "return 42"}})
+    time.sleep(1)
+    # Suspended at entry — step into (should stop at first steppable statement)
+    send({"op": "debug/step", "id": 2, "params": {"threadId": FIRST_DEBUG_TID, "direction": "into"}})
+    time.sleep(2)
+
+msgs = run_debug_session(test_step_into)
+assert_test("step into suspends at next statement",
+            find_msg(msgs, reason="step") is not None,
+            f"Messages: {msgs}")
+
+# Note: step-over and step-out have a known issue where the GIL yield in the
+# suspension loop corrupts runtime state, causing an abort after resume.
+# Step-into works because it stops at the very next callback without yielding.
+# Step-over/out are implemented in the protocol but need a fix to the
+# suspension-loop save/restore pattern. See issue filed for tracking.
+
+def test_step_error_not_suspended(send):
+    send({"op": "debug/run", "id": 1, "params": {"expression": "return 1"}})
+    time.sleep(1)
+    # Continue first (thread is now running)
+    send({"op": "debug/continue", "id": 2, "params": {"threadId": FIRST_DEBUG_TID}})
+    time.sleep(2)
+    # Try to step — should fail because thread completed
+    send({"op": "debug/step", "id": 3, "params": {"threadId": FIRST_DEBUG_TID, "direction": "over"}})
+    time.sleep(1)
+
+msgs = run_debug_session(test_step_error_not_suspended)
+assert_test("step on non-suspended thread errors",
+            any("not suspended" in str(m) or "No debug thread" in str(m) for m in msgs),
+            f"Messages: {msgs}")
+
+# --- Test 5: error cases ---
 print()
 print("--- error cases ---")
 def test_invalid_continue(send):
