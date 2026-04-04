@@ -72,6 +72,7 @@ typedef struct {
 } debug_breakpoint_t;
 
 static debug_breakpoint_t g_breakpoints[MAX_BREAKPOINTS] = {0};
+static atomic_bool g_has_breakpoints = false; /* fast-path: skip mutex when no breakpoints set */
 
 /* ========================================================================
  * Reason string conversion
@@ -300,8 +301,12 @@ static boolean debug_push_sourcecode(hdlhashtable htable, hdlhashnode hnode, big
                state->current_script, DEBUG_SCRIPT_PATH_MAX);
         state->script_stack_depth++;
     } else {
-        /* Stack overflow — track the imbalance so pop skips the corresponding restore */
+        /* Stack overflow — track the imbalance so pop skips the corresponding restore.
+         * Clear current_script to avoid false breakpoint matches: we can't save the
+         * caller's path, so it's safer to match nothing than to leave a stale path
+         * that persists into the caller after this frame returns. */
         state->script_stack_overflow++;
+        state->current_script[0] = '\0';
     }
 
     /* Build full dotted path from table + name */
@@ -418,8 +423,12 @@ static boolean protocol_debugger_callback(hdltreenode hnode) {
      *
      * current_script is thread-local to the debug thread (written only by push/pop
      * callbacks on this same thread) — no lock needed. g_debug_mutex protects only
-     * the shared g_breakpoints array. */
-    if (lnum > 0 && !atomic_load(&state->flsuspended) && state->current_script[0] != '\0') {
+     * the shared g_breakpoints array.
+     *
+     * Fast-path: g_has_breakpoints is checked with relaxed ordering to skip
+     * the mutex entirely when no breakpoints are set (common case). */
+    if (atomic_load_explicit(&g_has_breakpoints, memory_order_relaxed) &&
+        lnum > 0 && !atomic_load(&state->flsuspended) && state->current_script[0] != '\0') {
 
         boolean flbreakpoint = false;
 
@@ -1154,6 +1163,16 @@ void handle_debug_setbreakpoint(int id, const char *json_line, transport_t *tran
             }
         }
     }
+
+    /* Update fast-path flag: check if any breakpoints remain active */
+    boolean any_active = false;
+    for (int i = 0; i < MAX_BREAKPOINTS; i++) {
+        if (g_breakpoints[i].active) {
+            any_active = true;
+            break;
+        }
+    }
+    atomic_store(&g_has_breakpoints, any_active);
 
     pthread_mutex_unlock(&g_debug_mutex);
 
