@@ -651,6 +651,60 @@ assert_test("getSource without script errors",
             any("script" in str(m).lower() for m in msgs if not m.get("success", True)),
             f"Messages: {msgs}")
 
+# --- Test 14: multi-thread debugging (Phase 5) ---
+print()
+print("--- multi-thread debugging ---")
+
+def test_multi_thread(send):
+    # Launch two debug threads
+    send({"op": "debug/run", "id": 1, "params": {"expression": "return 1+1"}})
+    time.sleep(1)
+    send({"op": "debug/run", "id": 2, "params": {"expression": "return 2+2"}})
+    time.sleep(1)
+    # List threads — should show both
+    send({"op": "debug/listThreads", "id": 3, "params": {}})
+    time.sleep(0.5)
+    # Continue first thread (ID 3), keep second (ID 4) suspended
+    send({"op": "debug/continue", "id": 4, "params": {"threadId": FIRST_DEBUG_TID}})
+    time.sleep(1)
+    # List again — should show only second thread
+    send({"op": "debug/listThreads", "id": 5, "params": {}})
+    time.sleep(0.5)
+    # Continue second thread
+    send({"op": "debug/continue", "id": 6, "params": {"threadId": FIRST_DEBUG_TID + 1}})
+    time.sleep(1)
+
+msgs = run_debug_session(test_multi_thread, timeout=20)
+
+# Both threads should have started
+t1_start = any(m.get("id") == 1 and m.get("result", {}).get("threadId") == FIRST_DEBUG_TID for m in msgs)
+t2_start = any(m.get("id") == 2 and m.get("result", {}).get("threadId") == FIRST_DEBUG_TID + 1 for m in msgs)
+assert_test("two threads started with different IDs",
+            t1_start and t2_start,
+            f"Messages: {[m for m in msgs if m.get('id') in (1, 2)]}")
+
+# Both should have entry suspensions
+entry_suspensions = [m for m in msgs if m.get("op") == "debug/suspended" and m.get("params", {}).get("reason") == "entry"]
+assert_test("both threads suspended at entry",
+            len(entry_suspensions) >= 2,
+            f"Entry suspensions: {entry_suspensions}")
+
+# listThreads should have shown 2 threads initially
+list1 = None
+for m in msgs:
+    if m.get("id") == 3 and m.get("result", {}).get("threads") is not None:
+        list1 = m
+        break
+assert_test("listThreads shows 2 threads",
+            list1 is not None and len(list1["result"]["threads"]) == 2,
+            f"Messages: {[m for m in msgs if m.get('id') == 3]}")
+
+# Both should have completed
+completions = [m for m in msgs if m.get("op") == "debug/completed"]
+assert_test("both threads completed",
+            len(completions) >= 2,
+            f"Completions: {completions}")
+
 print()
 print("=" * 46)
 print(f"RESULTS: {PASSED} passed, {FAILED} failed")

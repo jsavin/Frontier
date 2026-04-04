@@ -661,6 +661,8 @@ int op_dispatch(const char *json_line, size_t len, transport_t *transport) {
         handle_debug_getsource(id, json_line, transport);
     } else if (strcmp(op, "debug/getStack") == 0) {
         handle_debug_getstack(id, json_line, transport);
+    } else if (strcmp(op, "debug/listThreads") == 0) {
+        handle_debug_listthreads(id, json_line, transport);
     } else if (strcmp(op, "shutdown") == 0) {
         send_ack(id, transport);
         free(op);

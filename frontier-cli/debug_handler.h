@@ -136,6 +136,7 @@ void handle_debug_listbreakpoints(int id, const char *json_line, transport_t *tr
 void handle_debug_getlocals(int id, const char *json_line, transport_t *transport);
 void handle_debug_getsource(int id, const char *json_line, transport_t *transport);
 void handle_debug_getstack(int id, const char *json_line, transport_t *transport);
+void handle_debug_listthreads(int id, const char *json_line, transport_t *transport);
 
 /*
  * Release a reference to a debug state obtained from debug_get_state_for_thread.

@@ -1761,3 +1761,49 @@ void handle_debug_getsource(int id, const char *json_line, transport_t *transpor
     cJSON_Delete(resp);
     cJSON_Delete(root);
 }
+
+/*
+ * debug/listThreads — List all active debug threads (Phase 5).
+ *
+ * Returns an array of {threadId, suspended, script, line} objects
+ * for all currently registered debug threads.
+ */
+void handle_debug_listthreads(int id, const char *json_line, transport_t *transport) {
+
+    (void)json_line; /* no params to validate */
+
+    cJSON *resp = cJSON_CreateObject();
+    cJSON_AddNumberToObject(resp, "id", id);
+
+    cJSON *result = cJSON_CreateObject();
+    cJSON *threads = cJSON_CreateArray();
+
+    pthread_mutex_lock(&g_debug_mutex);
+
+    for (int i = 0; i < MAX_DEBUG_THREADS; i++) {
+        if (g_debug_threads[i] != NULL) {
+            tydebugstate *state = g_debug_threads[i];
+            cJSON *thread = cJSON_CreateObject();
+            cJSON_AddNumberToObject(thread, "threadId", (double)state->threadid);
+            cJSON_AddBoolToObject(thread, "suspended", atomic_load(&state->flsuspended));
+            if (state->current_script[0] != '\0')
+                cJSON_AddStringToObject(thread, "script", state->current_script);
+            if (atomic_load(&state->flsuspended))
+                cJSON_AddNumberToObject(thread, "line", (double)atomic_load(&state->lastlnum));
+            cJSON_AddItemToArray(threads, thread);
+        }
+    }
+
+    pthread_mutex_unlock(&g_debug_mutex);
+
+    cJSON_AddItemToObject(result, "threads", threads);
+    cJSON_AddItemToObject(resp, "result", result);
+    cJSON_AddBoolToObject(resp, "success", 1);
+
+    char *json_str = cJSON_PrintUnformatted(resp);
+    if (json_str) {
+        transport->write_line(transport->ctx, json_str, strlen(json_str));
+        free(json_str);
+    }
+    cJSON_Delete(resp);
+}
