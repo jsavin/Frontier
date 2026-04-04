@@ -76,7 +76,9 @@ typedef struct tydebugstate {
     /* Stepping state (Phase 2) — written by handle_debug_step on main thread,
      * read by protocol_debugger_callback on debug thread. Access is GIL-ordered
      * (step command runs while debug thread is suspended, thread resumes after).
-     * Using atomic_bool for consistency with other cross-thread flags. */
+     * All fields use C11 atomic types for consistency with other cross-thread
+     * flags. atomic_short/atomic_ulong are standard C11 convenience typedefs
+     * (§7.17.6) supported by clang, GCC, and MSVC 2022+. */
     atomic_bool flstepping;          /* stepping mode active */
     atomic_int stepdir;              /* current step direction (debug_step_direction_t) */
     atomic_ulong lastlnum;           /* line number at last suspension */

@@ -327,7 +327,10 @@ static boolean protocol_debugger_callback(hdltreenode hnode) {
 
             case DEBUG_STEP_OVER:
                 if (diff == 0) {
-                    /* Same call depth: stop when line changes */
+                    /* Same call depth: stop when line changes.
+                     * lastlnum is safe to read here — it was set while
+                     * the debug thread was suspended, and the GIL
+                     * happens-before guarantees visibility. */
                     flstop = (lnum != atomic_load(&state->lastlnum));
                 } else if (diff < 0) {
                     /* Returned to shallower depth: stop */
@@ -733,7 +736,15 @@ void handle_debug_continue(int id, const char *json_line, transport_t *transport
 void handle_debug_step(int id, const char *json_line, transport_t *transport) {
 
     cJSON *root = cJSON_Parse(json_line);
-    cJSON *params = root ? cJSON_GetObjectItemCaseSensitive(root, "params") : NULL;
+
+    if (root == NULL) {
+        char err[512];
+        snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Invalid JSON\"},\"success\":false}", id);
+        transport->write_line(transport->ctx, err, strlen(err));
+        return;
+    }
+
+    cJSON *params = cJSON_GetObjectItemCaseSensitive(root, "params");
     cJSON *tid_json = params ? cJSON_GetObjectItemCaseSensitive(params, "threadId") : NULL;
     cJSON *dir_json = params ? cJSON_GetObjectItemCaseSensitive(params, "direction") : NULL;
 
