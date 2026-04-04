@@ -223,7 +223,7 @@ def test_step_over(send):
     # Continue past entry
     send({"op": "debug/continue", "id": 4, "params": {"threadId": FIRST_DEBUG_TID}})
     time.sleep(2)
-    # Suspended at breakpoint on line 1 — step over to line 2
+    # Suspended at breakpoint on line 1 — step over to next steppable line (line 3)
     send({"op": "debug/step", "id": 5, "params": {"threadId": FIRST_DEBUG_TID, "direction": "over"}})
     time.sleep(2)
     # Kill to clean up
