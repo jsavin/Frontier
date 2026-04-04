@@ -92,8 +92,14 @@ typedef struct tydebugstate {
 
     /* Source tracking (Phase 3) — tracks which script is currently executing.
      * Updated by the push/pop sourcecode callbacks installed in debug_init().
-     * The callback reads this to match breakpoints against the current script. */
-    char current_script[256];        /* full dotted path, e.g. "mainResponder.respond" */
+     * The callback reads current_script to match breakpoints.
+     * Script path stack handles nested calls (A calls B): push saves path,
+     * pop restores caller's path so breakpoints in A still fire after B returns. */
+    #define DEBUG_SCRIPT_PATH_MAX 256
+    #define DEBUG_SCRIPT_STACK_MAX 32
+    char current_script[DEBUG_SCRIPT_PATH_MAX]; /* current script dotted path */
+    char script_stack[DEBUG_SCRIPT_STACK_MAX][DEBUG_SCRIPT_PATH_MAX]; /* saved caller paths */
+    short script_stack_depth;                   /* stack pointer (0 = empty) */
 } tydebugstate, *ptrdebugstate;
 
 /*

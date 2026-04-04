@@ -31,14 +31,12 @@
 #include "processinternal.h"
 #include "threadregistry.h"
 #include "headless_threading.h"
+#include "langexternal.h"
 #include "../third_party/cJSON/cJSON.h"
 
 /* Global: current hashtable and table stack (thread globals) */
 extern hdlhashtable currenthashtable;
 extern hdltablestack hashtablestack;
-
-/* Needed for langexternalgetfullpath */
-#include "langexternal.h"
 
 /*
  * Maximum number of concurrent debug threads.
@@ -64,9 +62,9 @@ static atomic_bool g_debug_thread_was_killed = false; /* set when a debug thread
 #define MAX_BREAKPOINTS 256
 
 typedef struct {
-    char script[256];       /* dotted script path, e.g. "mainResponder.respond" */
-    unsigned long line;     /* 1-based line number */
-    boolean active;         /* is this slot in use? */
+    char script[DEBUG_SCRIPT_PATH_MAX]; /* dotted script path, e.g. "mainResponder.respond" */
+    unsigned long line;                 /* 1-based line number */
+    boolean active;                     /* is this slot in use? */
 } debug_breakpoint_t;
 
 static debug_breakpoint_t g_breakpoints[MAX_BREAKPOINTS] = {0};
@@ -292,6 +290,13 @@ static boolean debug_push_sourcecode(hdlhashtable htable, hdlhashnode hnode, big
     if (state == NULL || !state->fldebugmode)
         return true;
 
+    /* Save current script path on the stack before overwriting */
+    if (state->script_stack_depth < DEBUG_SCRIPT_STACK_MAX) {
+        memcpy(state->script_stack[state->script_stack_depth],
+               state->current_script, DEBUG_SCRIPT_PATH_MAX);
+        state->script_stack_depth++;
+    }
+
     /* Build full dotted path from table + name */
     bigstring bspath;
     hdlwindowinfo hroot;
@@ -300,12 +305,15 @@ static boolean debug_push_sourcecode(hdlhashtable htable, hdlhashnode hnode, big
         /* Convert Pascal string to C string, store in debug state.
          * Path is like "mainResponder.respond" (no leading @). */
         int len = bspath[0];
-        if (len >= (int)sizeof(state->current_script))
-            len = (int)sizeof(state->current_script) - 1;
+        if (len >= DEBUG_SCRIPT_PATH_MAX)
+            len = DEBUG_SCRIPT_PATH_MAX - 1;
         memcpy(state->current_script, bspath + 1, (size_t)len);
         state->current_script[len] = '\0';
 
         log_debug(LOG_COMP_LANG, "debug: push source '%s' for thread %ld", state->current_script, state->threadid);
+    } else {
+        /* Path resolution failed — clear to avoid false breakpoint matches */
+        state->current_script[0] = '\0';
     }
 
     return true;
@@ -321,9 +329,14 @@ static boolean debug_pop_sourcecode(void) {
     if (state == NULL || !state->fldebugmode)
         return true;
 
-    /* Clear current script — we're returning to the caller.
-     * The parent script's path will be restored by the next push. */
-    state->current_script[0] = '\0';
+    /* Restore caller's script path from the stack */
+    if (state->script_stack_depth > 0) {
+        state->script_stack_depth--;
+        memcpy(state->current_script,
+               state->script_stack[state->script_stack_depth], DEBUG_SCRIPT_PATH_MAX);
+    } else {
+        state->current_script[0] = '\0';
+    }
 
     return true;
 }
@@ -1080,7 +1093,7 @@ void handle_debug_setbreakpoint(int id, const char *json_line, transport_t *tran
     if (script[0] == '@')
         script++;
 
-    if (strlen(script) >= 256) {
+    if (strlen(script) >= DEBUG_SCRIPT_PATH_MAX) {
         char err[512];
         snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Script path too long\"},\"success\":false}", id);
         transport->write_line(transport->ctx, err, strlen(err));
