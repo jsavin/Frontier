@@ -44,7 +44,7 @@ extern hdltablestack hashtablestack;
 #define MAX_DEBUG_THREADS 16
 static tydebugstate *g_debug_threads[MAX_DEBUG_THREADS] = {0};
 static pthread_mutex_t g_debug_mutex = PTHREAD_MUTEX_INITIALIZER;
-static atomic_bool g_debug_thread_was_used = false; /* set when any debug thread runs */
+static atomic_bool g_debug_thread_was_killed = false; /* set when a debug thread is killed mid-execution */
 
 /* ========================================================================
  * Reason string conversion
@@ -107,8 +107,6 @@ static tydebugstate *debug_register_thread(long threadid, transport_t *transport
 
     pthread_mutex_lock(&g_debug_mutex);
 
-    atomic_store(&g_debug_thread_was_used, true);
-
     for (int i = 0; i < MAX_DEBUG_THREADS; i++) {
         if (g_debug_threads[i] == NULL) {
             g_debug_threads[i] = state;
@@ -168,7 +166,7 @@ static pthread_t g_killed_threads[MAX_DEBUG_THREADS];
 static int g_killed_thread_count = 0;
 
 boolean debug_is_safe_to_save(void) {
-    return !atomic_load(&g_debug_thread_was_used);
+    return !atomic_load(&g_debug_thread_was_killed);
 }
 
 boolean debug_has_active_threads(void) {
@@ -198,7 +196,7 @@ void debug_kill_all_threads(void) {
         if (g_debug_threads[i] != NULL) {
             /* Killing a thread mid-execution corrupts hash table state.
              * Mark as unsafe so save-on-exit is skipped. */
-            atomic_store(&g_debug_thread_was_used, true);
+            atomic_store(&g_debug_thread_was_killed, true);
 
             /* Capture pthread_t before the thread can unregister and free state */
             g_killed_threads[g_killed_thread_count++] = g_debug_threads[i]->pthread_id;
@@ -302,7 +300,7 @@ static boolean protocol_debugger_callback(hdltreenode hnode) {
         atomic_store_explicit(&state->flinterrupt, false, memory_order_seq_cst);
         atomic_store_explicit(&state->flsuspended, true, memory_order_seq_cst);
 
-        state->lastlnum = lnum;
+        atomic_store(&state->lastlnum, lnum);
 
         debug_send_suspended(state->transport, state->threadid, (long)lnum, DEBUG_REASON_INTERRUPTED);
         log_debug(LOG_COMP_LANG, "debug: thread %ld interrupted at line %ld", state->threadid, (long)lnum);
@@ -317,10 +315,10 @@ static boolean protocol_debugger_callback(hdltreenode hnode) {
      * Step-out:  suspend when call depth decreases below step level */
     if (atomic_load(&state->flstepping) && flsteppable && !atomic_load(&state->flsuspended)) {
 
-        short diff = state->calldepth - state->steplevel;
+        short diff = state->calldepth - atomic_load(&state->steplevel);
         boolean flstop = false;
 
-        switch (state->stepdir) {
+        switch (atomic_load(&state->stepdir)) {
 
             case DEBUG_STEP_INTO:
                 /* Stop at the very next statement */
@@ -330,7 +328,7 @@ static boolean protocol_debugger_callback(hdltreenode hnode) {
             case DEBUG_STEP_OVER:
                 if (diff == 0) {
                     /* Same call depth: stop when line changes */
-                    flstop = (lnum != state->lastlnum);
+                    flstop = (lnum != atomic_load(&state->lastlnum));
                 } else if (diff < 0) {
                     /* Returned to shallower depth: stop */
                     flstop = true;
@@ -349,7 +347,7 @@ static boolean protocol_debugger_callback(hdltreenode hnode) {
 
         if (flstop) {
             atomic_store(&state->flstepping, false);
-            state->lastlnum = lnum;
+            atomic_store(&state->lastlnum, lnum);
 
             /* Send notification BEFORE suspending so it arrives immediately */
             debug_send_suspended(state->transport, state->threadid, (long)lnum, DEBUG_REASON_STEP);
@@ -718,7 +716,7 @@ void handle_debug_continue(int id, const char *json_line, transport_t *transport
 
     /* Clear any stepping state — continue means run freely */
     atomic_store(&state->flstepping, false);
-    state->stepdir = DEBUG_STEP_NONE;
+    atomic_store(&state->stepdir, DEBUG_STEP_NONE);
 
     atomic_store(&state->flsuspended, false);
     debug_release_state(state);
@@ -789,8 +787,8 @@ void handle_debug_step(int id, const char *json_line, transport_t *transport) {
      * suspended (flsuspended=true) and won't read stepping fields until we
      * clear flsuspended below. GIL ordering guarantees the writes are visible. */
     atomic_store(&state->flstepping, true);
-    state->stepdir = dir;
-    state->steplevel = state->calldepth;
+    atomic_store(&state->stepdir, dir);
+    atomic_store(&state->steplevel, state->calldepth);
     /* lastlnum already set from the last suspension point */
 
     /* Resume the thread — it will execute until the stepping condition is met */
@@ -830,7 +828,7 @@ void handle_debug_kill(int id, const char *json_line, transport_t *transport) {
     }
 
     /* Mark as killed — hash tables will be inconsistent after this */
-    atomic_store(&g_debug_thread_was_used, true);
+    atomic_store(&g_debug_thread_was_killed, true);
 
     atomic_store_explicit(&state->flkill, true, memory_order_seq_cst);
     atomic_store_explicit(&state->flsuspended, false, memory_order_seq_cst); /* wake it up so it can die */

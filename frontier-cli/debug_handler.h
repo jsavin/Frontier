@@ -78,9 +78,9 @@ typedef struct tydebugstate {
      * (step command runs while debug thread is suspended, thread resumes after).
      * Using atomic_bool for consistency with other cross-thread flags. */
     atomic_bool flstepping;          /* stepping mode active */
-    debug_step_direction_t stepdir;  /* current step direction */
-    unsigned long lastlnum;          /* line number at last suspension */
-    short steplevel;                 /* call depth when step was initiated */
+    atomic_int stepdir;              /* current step direction (debug_step_direction_t) */
+    atomic_ulong lastlnum;           /* line number at last suspension */
+    atomic_short steplevel;          /* call depth when step was initiated */
     short calldepth;                 /* current call depth — NOT YET IMPLEMENTED (#505).
                                       * Stays 0, making step-over line-based only and
                                       * step-out non-functional. Needs hook into function
@@ -127,8 +127,9 @@ boolean debug_has_active_threads(void);
 
 /*
  * Returns true when it is safe to save the database on exit. Returns false
- * if any debug thread ran during this session — stepping and GIL yields
- * can leave hash table state inconsistent for packing.
+ * only if a debug thread was killed mid-execution — killing interrupts
+ * hash table scope unwinding, leaving tables inconsistent for packing.
+ * Debug threads that complete normally (via continue) are safe to save after.
  */
 boolean debug_is_safe_to_save(void);
 
