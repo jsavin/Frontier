@@ -431,9 +431,9 @@ static boolean protocol_debugger_callback(hdltreenode hnode) {
      * the mutex entirely when no breakpoints are set (common case). */
     /* Skip breakpoint check when stepping from the same line — the step should
      * advance past the current breakpoint, not immediately re-trigger it. */
-    boolean flskip_bp = (atomic_load(&state->flstepping) && lnum == atomic_load(&state->lastlnum));
+    boolean flskipbreakpoint = (atomic_load(&state->flstepping) && lnum == atomic_load(&state->lastlnum));
 
-    if (!flskip_bp && atomic_load_explicit(&g_has_breakpoints, memory_order_relaxed) &&
+    if (!flskipbreakpoint && atomic_load_explicit(&g_has_breakpoints, memory_order_relaxed) &&
         lnum > 0 && !atomic_load(&state->flsuspended) && state->current_script[0] != '\0') {
 
         boolean flbreakpoint = false;
@@ -474,7 +474,7 @@ static boolean protocol_debugger_callback(hdltreenode hnode) {
      * Step-out:  suspend when call depth decreases below step level */
     if (atomic_load(&state->flstepping) && flsteppable && !atomic_load(&state->flsuspended)) {
 
-        short diff = atomic_load(&state->calldepth) - atomic_load(&state->steplevel); /* calldepth always 0 in Phase 2 (#505) — diff always 0 */
+        short diff = atomic_load(&state->calldepth) - atomic_load(&state->steplevel); /* calldepth always 0 — diff always 0 until call depth tracking is added */
         boolean flstop = false;
 
         switch (atomic_load(&state->stepdir)) {
