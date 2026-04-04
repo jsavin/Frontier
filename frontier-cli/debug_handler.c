@@ -452,11 +452,13 @@ static boolean protocol_debugger_callback(hdltreenode hnode) {
      *
      * Fast-path: g_has_breakpoints is checked with relaxed ordering to skip
      * the mutex entirely when no breakpoints are set (common case). */
-    /* Skip breakpoint check when stepping from the same line — the step should
-     * advance past the current breakpoint, not immediately re-trigger it.
-     * TODO: revisit when calldepth tracking is added — recursive calls could
-     * have the same lnum at a different depth, and the breakpoint should fire. */
-    boolean flskipbreakpoint = (atomic_load(&state->flstepping) && lnum == atomic_load(&state->lastlnum));
+    /* Skip breakpoint check when stepping from the same line at the same depth —
+     * the step should advance past the current breakpoint, not re-trigger it.
+     * A recursive call at the same lnum but greater calldepth is NOT skipped,
+     * since the breakpoint should fire on re-entry at a different call level. */
+    boolean flskipbreakpoint = (atomic_load(&state->flstepping) &&
+                                lnum == atomic_load(&state->lastlnum) &&
+                                atomic_load(&state->calldepth) == atomic_load(&state->steplevel));
 
     if (!flskipbreakpoint && atomic_load_explicit(&g_has_breakpoints, memory_order_relaxed) &&
         lnum > 0 && !atomic_load(&state->flsuspended) && state->current_script[0] != '\0') {

@@ -447,7 +447,60 @@ assert_test("setBreakpoint without line errors",
             any("line" in str(m).lower() for m in msgs if not m.get("success", True)),
             f"Messages: {msgs}")
 
-# --- Test 11: debug/getLocals + debug/getStack + debug/getSource ---
+# --- Test 11: debug/clearBreakpoints ---
+print()
+print("--- debug/clearBreakpoints ---")
+
+def test_clear_breakpoints(send):
+    # Set two breakpoints
+    send({"op": "debug/setBreakpoint", "id": 1, "params": {"script": "foo.bar", "line": 1}})
+    time.sleep(0.3)
+    send({"op": "debug/setBreakpoint", "id": 2, "params": {"script": "foo.bar", "line": 2}})
+    time.sleep(0.3)
+    # Clear all
+    send({"op": "debug/clearBreakpoints", "id": 3, "params": {}})
+    time.sleep(0.3)
+    # List should be empty
+    send({"op": "debug/listBreakpoints", "id": 4, "params": {}})
+    time.sleep(0.3)
+
+msgs = run_debug_session(test_clear_breakpoints)
+
+# Check clear returns count
+clear_msg = None
+for m in msgs:
+    if m.get("id") == 3 and m.get("result", {}).get("cleared") is not None:
+        clear_msg = m
+        break
+assert_test("clearBreakpoints returns count",
+            clear_msg is not None and clear_msg["result"]["cleared"] == 2,
+            f"Messages: {[m for m in msgs if m.get('id') == 3]}")
+
+# Check list is empty after clear
+list_msg = None
+for m in msgs:
+    if m.get("id") == 4 and m.get("result", {}).get("breakpoints") is not None:
+        list_msg = m
+        break
+assert_test("list empty after clearBreakpoints",
+            list_msg is not None and len(list_msg["result"]["breakpoints"]) == 0,
+            f"Messages: {[m for m in msgs if m.get('id') == 4]}")
+
+def test_clear_empty(send):
+    send({"op": "debug/clearBreakpoints", "id": 1, "params": {}})
+    time.sleep(0.3)
+
+msgs = run_debug_session(test_clear_empty)
+clear_msg = None
+for m in msgs:
+    if m.get("id") == 1 and m.get("result", {}).get("cleared") is not None:
+        clear_msg = m
+        break
+assert_test("clearBreakpoints with no breakpoints returns 0",
+            clear_msg is not None and clear_msg["result"]["cleared"] == 0,
+            f"Messages: {msgs}")
+
+# --- Test 12: debug/getLocals + debug/getStack + debug/getSource ---
 print()
 print("--- debug/getLocals + debug/getStack + debug/getSource ---")
 
