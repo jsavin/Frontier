@@ -304,6 +304,8 @@ static boolean debug_push_sourcecode(hdlhashtable htable, hdlhashnode hnode, big
             len = (int)sizeof(state->current_script) - 1;
         memcpy(state->current_script, bspath + 1, (size_t)len);
         state->current_script[len] = '\0';
+
+        log_debug(LOG_COMP_LANG, "debug: push source '%s' for thread %ld", state->current_script, state->threadid);
     }
 
     return true;
@@ -385,10 +387,13 @@ static boolean protocol_debugger_callback(hdltreenode hnode) {
         log_debug(LOG_COMP_LANG, "debug: thread %ld interrupted at line %ld", state->threadid, (long)lnum);
     }
 
-    /* Breakpoint check (Phase 3) — if not already suspended and on a steppable
-     * node, check if there's a session breakpoint matching the current script
-     * and line number. Uses g_debug_mutex for thread safety. */
-    if (flsteppable && lnum > 0 && !atomic_load(&state->flsuspended) && state->current_script[0] != '\0') {
+    /* Breakpoint check (Phase 3) — if not already suspended, check if there's
+     * a session breakpoint matching the current script and line number. Unlike
+     * stepping (which skips infrastructure nodes), breakpoints can be set on any
+     * line including local declarations. Uses g_debug_mutex for thread safety. */
+    /* Breakpoint check applies to ALL nodes (not just steppable ones) — a user
+     * can set a breakpoint on any line including local declarations. */
+    if (lnum > 0 && !atomic_load(&state->flsuspended) && state->current_script[0] != '\0') {
 
         boolean flbreakpoint = false;
 

@@ -254,7 +254,49 @@ def test_missing_expression(send):
 msgs = run_debug_session(test_missing_expression)
 assert_test("run with missing expression errors", any("expression" in str(m) for m in msgs), f"Messages: {msgs}")
 
-# --- Test 6: debug/setBreakpoint + debug/listBreakpoints ---
+# --- Test 6: breakpoint hit during execution ---
+print()
+print("--- breakpoint hit during execution ---")
+
+def test_breakpoint_hit(send):
+    # Step 1: Create a test function in system.temp via script/eval
+    send({"op": "script/eval", "id": 1, "params": {
+        "expression": 'new(scriptType, @system.temp.bpTestFunc); script.newScriptObject("local (x = 1)\\rlocal (y = 2)\\rreturn (x + y)", @system.temp.bpTestFunc)'
+    }})
+    time.sleep(1)
+    # Step 2: Set a breakpoint on line 2 of bpTestFunc
+    send({"op": "debug/setBreakpoint", "id": 2, "params": {
+        "script": "system.temp.bpTestFunc", "line": 2
+    }})
+    time.sleep(0.5)
+    # Step 3: Run an expression that calls the function
+    send({"op": "debug/run", "id": 3, "params": {
+        "expression": "system.temp.bpTestFunc()"
+    }})
+    time.sleep(2)
+    # Step 4: Continue past initial entry suspension
+    send({"op": "debug/continue", "id": 4, "params": {"threadId": FIRST_DEBUG_TID}})
+    time.sleep(3)
+    # Step 5: At this point, should be suspended at breakpoint on line 2
+    # Kill to clean up
+    send({"op": "debug/kill", "id": 5, "params": {"threadId": FIRST_DEBUG_TID}})
+    time.sleep(1)
+
+msgs = run_debug_session(test_breakpoint_hit, timeout=20)
+# Check that we got a breakpoint suspension
+bp_suspend = find_msg(msgs, reason="breakpoint")
+assert_test("breakpoint hit suspends thread",
+            bp_suspend is not None,
+            f"Messages: {[m for m in msgs if m.get('op') == 'debug/suspended' or m.get('result', {}).get('action')]}")
+
+# If breakpoint was hit, verify it's on the right line
+if bp_suspend:
+    bp_line = bp_suspend.get("params", {}).get("line")
+    assert_test("breakpoint hit on correct line",
+                bp_line == 2,
+                f"Expected line 2, got {bp_line}")
+
+# --- Test 7: debug/setBreakpoint + debug/listBreakpoints ---
 print()
 print("--- debug/setBreakpoint + debug/listBreakpoints ---")
 
