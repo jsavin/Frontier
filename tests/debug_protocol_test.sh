@@ -254,6 +254,130 @@ def test_missing_expression(send):
 msgs = run_debug_session(test_missing_expression)
 assert_test("run with missing expression errors", any("expression" in str(m) for m in msgs), f"Messages: {msgs}")
 
+# --- Test 6: debug/setBreakpoint + debug/listBreakpoints ---
+print()
+print("--- debug/setBreakpoint + debug/listBreakpoints ---")
+
+def test_set_breakpoint(send):
+    send({"op": "debug/setBreakpoint", "id": 1, "params": {"script": "mainResponder.respond", "line": 5}})
+    time.sleep(0.5)
+    send({"op": "debug/listBreakpoints", "id": 2, "params": {}})
+    time.sleep(0.5)
+
+msgs = run_debug_session(test_set_breakpoint)
+# Check setBreakpoint response
+set_msg = None
+for m in msgs:
+    if m.get("id") == 1 and m.get("result", {}).get("action") == "set":
+        set_msg = m
+        break
+assert_test("setBreakpoint returns action=set", set_msg is not None, f"Messages: {msgs}")
+
+# Check listBreakpoints response
+list_msg = None
+for m in msgs:
+    if m.get("id") == 2 and m.get("result", {}).get("breakpoints") is not None:
+        list_msg = m
+        break
+assert_test("listBreakpoints returns breakpoint array",
+            list_msg is not None and len(list_msg["result"]["breakpoints"]) > 0,
+            f"Messages: {msgs}")
+if list_msg:
+    bp = list_msg["result"]["breakpoints"][0]
+    assert_test("listed breakpoint has correct script",
+                bp.get("script") == "mainResponder.respond",
+                f"Breakpoint: {bp}")
+    assert_test("listed breakpoint has correct line",
+                bp.get("line") == 5,
+                f"Breakpoint: {bp}")
+
+# --- Test 7: breakpoint toggle (clear) ---
+print()
+print("--- breakpoint toggle (clear) ---")
+
+def test_toggle_breakpoint(send):
+    # Set a breakpoint
+    send({"op": "debug/setBreakpoint", "id": 1, "params": {"script": "test.script", "line": 3}})
+    time.sleep(0.5)
+    # Set again to toggle off
+    send({"op": "debug/setBreakpoint", "id": 2, "params": {"script": "test.script", "line": 3}})
+    time.sleep(0.5)
+    # List should be empty
+    send({"op": "debug/listBreakpoints", "id": 3, "params": {}})
+    time.sleep(0.5)
+
+msgs = run_debug_session(test_toggle_breakpoint)
+# Check first set
+set_msg = None
+for m in msgs:
+    if m.get("id") == 1 and m.get("result", {}).get("action") == "set":
+        set_msg = m
+        break
+assert_test("first set returns action=set", set_msg is not None, f"Messages: {msgs}")
+
+# Check toggle clears
+clear_msg = None
+for m in msgs:
+    if m.get("id") == 2 and m.get("result", {}).get("action") == "cleared":
+        clear_msg = m
+        break
+assert_test("second set returns action=cleared", clear_msg is not None, f"Messages: {msgs}")
+
+# Check list is empty
+list_msg = None
+for m in msgs:
+    if m.get("id") == 3 and m.get("result", {}).get("breakpoints") is not None:
+        list_msg = m
+        break
+assert_test("list after toggle is empty",
+            list_msg is not None and len(list_msg["result"]["breakpoints"]) == 0,
+            f"Messages: {msgs}")
+
+# --- Test 8: breakpoint with leading @ stripped ---
+print()
+print("--- breakpoint @ prefix handling ---")
+
+def test_breakpoint_at_prefix(send):
+    send({"op": "debug/setBreakpoint", "id": 1, "params": {"script": "@system.compiler.start", "line": 1}})
+    time.sleep(0.5)
+    send({"op": "debug/listBreakpoints", "id": 2, "params": {}})
+    time.sleep(0.5)
+
+msgs = run_debug_session(test_breakpoint_at_prefix)
+list_msg = None
+for m in msgs:
+    if m.get("id") == 2 and m.get("result", {}).get("breakpoints") is not None:
+        list_msg = m
+        break
+if list_msg and len(list_msg["result"]["breakpoints"]) > 0:
+    assert_test("@ prefix stripped from script path",
+                list_msg["result"]["breakpoints"][0].get("script") == "system.compiler.start",
+                f"Breakpoint: {list_msg['result']['breakpoints'][0]}")
+else:
+    assert_test("@ prefix stripped from script path", False, f"Messages: {msgs}")
+
+# --- Test 9: breakpoint error cases ---
+print()
+print("--- breakpoint error cases ---")
+
+def test_breakpoint_missing_script(send):
+    send({"op": "debug/setBreakpoint", "id": 1, "params": {"line": 5}})
+    time.sleep(0.5)
+
+msgs = run_debug_session(test_breakpoint_missing_script)
+assert_test("setBreakpoint without script errors",
+            any("script" in str(m).lower() for m in msgs if not m.get("success", True)),
+            f"Messages: {msgs}")
+
+def test_breakpoint_missing_line(send):
+    send({"op": "debug/setBreakpoint", "id": 1, "params": {"script": "foo.bar"}})
+    time.sleep(0.5)
+
+msgs = run_debug_session(test_breakpoint_missing_line)
+assert_test("setBreakpoint without line errors",
+            any("line" in str(m).lower() for m in msgs if not m.get("success", True)),
+            f"Messages: {msgs}")
+
 print()
 print("=" * 46)
 print(f"RESULTS: {PASSED} passed, {FAILED} failed")

@@ -2,10 +2,12 @@
  * debug_handler.h - Protocol-based UserTalk debugger
  *
  * Provides debug/* protocol operations for headless script debugging:
- *   debug/run        — Run script in debug mode (non-blocking, spawns thread)
- *   debug/continue   — Resume suspended thread
- *   debug/kill       — Kill a debug thread
- *   debug/pause      — Interrupt a running thread
+ *   debug/run             — Run script in debug mode (non-blocking, spawns thread)
+ *   debug/continue        — Resume suspended thread
+ *   debug/kill            — Kill a debug thread
+ *   debug/pause           — Interrupt a running thread
+ *   debug/setBreakpoint   — Set or clear a breakpoint (Phase 3)
+ *   debug/listBreakpoints — List all breakpoints (Phase 3)
  *
  * The debugger replaces the headless no-op callback with a protocol-aware
  * callback that can suspend execution and wait for client commands.
@@ -87,6 +89,11 @@ typedef struct tydebugstate {
                                       * Stays 0, making step-over line-based only and
                                       * step-out non-functional. Needs hook into function
                                       * call entry/exit in the interpreter. */
+
+    /* Source tracking (Phase 3) — tracks which script is currently executing.
+     * Updated by the push/pop sourcecode callbacks installed in debug_init().
+     * The callback reads this to match breakpoints against the current script. */
+    char current_script[256];        /* full dotted path, e.g. "mainResponder.respond" */
 } tydebugstate, *ptrdebugstate;
 
 /*
@@ -104,6 +111,8 @@ void handle_debug_step(int id, const char *json_line, transport_t *transport);
 void handle_debug_continue(int id, const char *json_line, transport_t *transport);
 void handle_debug_kill(int id, const char *json_line, transport_t *transport);
 void handle_debug_pause(int id, const char *json_line, transport_t *transport);
+void handle_debug_setbreakpoint(int id, const char *json_line, transport_t *transport);
+void handle_debug_listbreakpoints(int id, const char *json_line, transport_t *transport);
 
 /*
  * Release a reference to a debug state obtained from debug_get_state_for_thread.
