@@ -653,6 +653,8 @@ int op_dispatch(const char *json_line, size_t len, transport_t *transport) {
         handle_debug_setbreakpoint(id, json_line, transport);
     } else if (strcmp(op, "debug/listBreakpoints") == 0) {
         handle_debug_listbreakpoints(id, json_line, transport);
+    } else if (strcmp(op, "debug/clearBreakpoints") == 0) {
+        handle_debug_clearbreakpoints(id, json_line, transport);
     } else if (strcmp(op, "debug/getLocals") == 0) {
         handle_debug_getlocals(id, json_line, transport);
     } else if (strcmp(op, "debug/getSource") == 0) {

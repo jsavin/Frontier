@@ -99,10 +99,10 @@ typedef struct tydebugstate {
     atomic_int stepdir;              /* current step direction (debug_step_direction_t) */
     atomic_ulong lastlnum;           /* line number at last suspension */
     atomic_short steplevel;          /* call depth when step was initiated */
-    atomic_short calldepth;          /* current call depth — NOT YET IMPLEMENTED (#505).
-                                      * Stays 0, making step-over line-based only and
-                                      * step-out non-functional. Needs hook into function
-                                      * call entry/exit in the interpreter. */
+    atomic_short calldepth;          /* current call depth — 0 at top-level expression,
+                                      * incremented on function entry (push sourcecode),
+                                      * decremented on return (pop sourcecode). Used by
+                                      * step-over (same depth) and step-out (shallower). */
 
     /* Source tracking (Phase 3) — tracks which script is currently executing.
      * Updated by the push/pop sourcecode callbacks installed in debug_init().
@@ -131,6 +131,7 @@ void handle_debug_continue(int id, const char *json_line, transport_t *transport
 void handle_debug_kill(int id, const char *json_line, transport_t *transport);
 void handle_debug_pause(int id, const char *json_line, transport_t *transport);
 void handle_debug_setbreakpoint(int id, const char *json_line, transport_t *transport);
+void handle_debug_clearbreakpoints(int id, const char *json_line, transport_t *transport);
 void handle_debug_listbreakpoints(int id, const char *json_line, transport_t *transport);
 void handle_debug_getlocals(int id, const char *json_line, transport_t *transport);
 void handle_debug_getsource(int id, const char *json_line, transport_t *transport);
