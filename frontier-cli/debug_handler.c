@@ -286,7 +286,7 @@ static void debug_send_completed(transport_t *transport, long threadid, boolean 
 
 static boolean debug_push_sourcecode(hdlhashtable htable, hdlhashnode hnode, bigstring bsname) {
 
-    #pragma unused(hnode)
+    (void)hnode;
 
     if (hthreadglobals == nil)
         return true;

@@ -333,7 +333,7 @@ if list_msg:
                 bp.get("line") == 5,
                 f"Breakpoint: {bp}")
 
-# --- Test 7: breakpoint toggle (clear) ---
+# --- Test 8: breakpoint toggle (clear) ---
 print()
 print("--- breakpoint toggle (clear) ---")
 
@@ -375,7 +375,7 @@ assert_test("list after toggle is empty",
             list_msg is not None and len(list_msg["result"]["breakpoints"]) == 0,
             f"Messages: {msgs}")
 
-# --- Test 8: breakpoint with leading @ stripped ---
+# --- Test 9: breakpoint with leading @ stripped ---
 print()
 print("--- breakpoint @ prefix handling ---")
 
@@ -398,7 +398,7 @@ if list_msg and len(list_msg["result"]["breakpoints"]) > 0:
 else:
     assert_test("@ prefix stripped from script path", False, f"Messages: {msgs}")
 
-# --- Test 9: breakpoint error cases ---
+# --- Test 10: breakpoint error cases ---
 print()
 print("--- breakpoint error cases ---")
 
