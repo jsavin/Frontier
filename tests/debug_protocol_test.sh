@@ -261,8 +261,8 @@ def test_step_over_calldepth(send):
     # Continue past entry
     send({"op": "debug/continue", "id": 5, "params": {"threadId": FIRST_DEBUG_TID}})
     time.sleep(2)
-    # Now at breakpoint on line 1 — step over should skip INTO depthHelper
-    # and stop at line 2 (return a) of depthCaller
+    # Now at breakpoint on line 1 — step over should NOT enter depthHelper
+    # and should stop at line 2 (return a) of depthCaller
     send({"op": "debug/step", "id": 6, "params": {"threadId": FIRST_DEBUG_TID, "direction": "over"}})
     time.sleep(3)
     send({"op": "debug/kill", "id": 7, "params": {"threadId": FIRST_DEBUG_TID}})
