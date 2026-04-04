@@ -347,6 +347,7 @@ static boolean protocol_debugger_callback(hdltreenode hnode) {
 
         if (flstop) {
             atomic_store(&state->flstepping, false);
+            atomic_store(&state->stepdir, DEBUG_STEP_NONE);
             atomic_store(&state->lastlnum, lnum);
 
             /* Send notification BEFORE suspending so it arrives immediately */
