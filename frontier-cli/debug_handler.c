@@ -617,6 +617,9 @@ static boolean protocol_debugger_callback(hdltreenode hnode) {
                         double da = strtod(actual, &endp1);
                         double de = strtod(expected, &endp2);
                         if (*endp1 == '\0' && *endp2 == '\0') {
+                            /* Exact floating-point comparison — appropriate for
+                             * integer values stored as doubles (the common case).
+                             * Use string comparison for epsilon-sensitive floats. */
                             switch (op_type) {
                                 case OP_EQ: cond_met = (da == de); break;
                                 case OP_NE: cond_met = (da != de); break;
@@ -1610,10 +1613,18 @@ void handle_debug_clearbreakpoints(int id, const char *json_line, transport_t *t
 
     pthread_mutex_unlock(&g_debug_mutex);
 
-    char resp[128];
-    snprintf(resp, sizeof(resp),
-             "{\"id\":%d,\"result\":{\"cleared\":%d},\"success\":true}", id, cleared);
-    transport->write_line(transport->ctx, resp, strlen(resp));
+    cJSON *resp = cJSON_CreateObject();
+    cJSON_AddNumberToObject(resp, "id", id);
+    cJSON *result = cJSON_CreateObject();
+    cJSON_AddNumberToObject(result, "cleared", cleared);
+    cJSON_AddItemToObject(resp, "result", result);
+    cJSON_AddBoolToObject(resp, "success", 1);
+    char *json_str = cJSON_PrintUnformatted(resp);
+    if (json_str) {
+        transport->write_line(transport->ctx, json_str, strlen(json_str));
+        free(json_str);
+    }
+    cJSON_Delete(resp);
 
     log_info(LOG_COMP_LANG, "debug: cleared %d breakpoints", cleared);
 }
@@ -2286,8 +2297,16 @@ void handle_debug_clearwatchpoints(int id, const char *json_line, transport_t *t
 
     pthread_mutex_unlock(&g_debug_mutex);
 
-    char resp[128];
-    snprintf(resp, sizeof(resp),
-             "{\"id\":%d,\"result\":{\"cleared\":%d},\"success\":true}", id, cleared_count);
-    transport->write_line(transport->ctx, resp, strlen(resp));
+    cJSON *resp = cJSON_CreateObject();
+    cJSON_AddNumberToObject(resp, "id", id);
+    cJSON *result = cJSON_CreateObject();
+    cJSON_AddNumberToObject(result, "cleared", cleared_count);
+    cJSON_AddItemToObject(resp, "result", result);
+    cJSON_AddBoolToObject(resp, "success", 1);
+    char *json_str = cJSON_PrintUnformatted(resp);
+    if (json_str) {
+        transport->write_line(transport->ctx, json_str, strlen(json_str));
+        free(json_str);
+    }
+    cJSON_Delete(resp);
 }

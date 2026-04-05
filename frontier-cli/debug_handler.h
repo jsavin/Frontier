@@ -83,12 +83,10 @@ typedef struct tydebugstate {
     transport_t *transport;          /* for sending notifications back to client */
     long threadid;                   /* this thread's ID */
     pthread_t pthread_id;            /* POSIX thread ID for pthread_join */
-    void *hglobals;                  /* hdlthreadglobals — thread globals handle.
-                                      * Safe to read when thread is suspended (not
-                                      * touching globals while in nanosleep). Used by
-                                      * debug/getLocals to access the suspended
-                                      * thread's hash tables. Cast to hdlthreadglobals
-                                      * in debug_handler.c. */
+    void *hglobals;                  /* hdlthreadglobals (processinternal.h) — void* to
+                                      * avoid pulling that header into this one. Cast to
+                                      * hdlthreadglobals in debug_handler.c. Safe to read
+                                      * when thread is suspended (in nanosleep). */
 
     /* Stepping state (Phase 2) — written by handle_debug_step on main thread,
      * read by protocol_debugger_callback on debug thread. Access is GIL-ordered
