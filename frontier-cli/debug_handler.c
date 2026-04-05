@@ -623,8 +623,11 @@ static boolean protocol_debugger_callback(hdltreenode hnode) {
                 }
             }
 
-            if (!cond_met)
-                flbreakpoint = false; /* condition not met — skip */
+            if (!cond_met) {
+                log_debug(LOG_COMP_LANG, "debug: conditional breakpoint at line %ld skipped (condition '%s' not met)",
+                          (long)lnum, bp_condition);
+                flbreakpoint = false;
+            }
         }
 
         if (flbreakpoint) {
