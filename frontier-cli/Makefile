@@ -400,10 +400,10 @@ lint-all:
 
 lint-python:
 	@command -v ruff >/dev/null 2>&1 || { echo "ruff not installed. Run: pip install ruff"; exit 1; }
-	-ruff check ..
+	-cd .. && ruff check .
 
 lint-shell:
 	@command -v shellcheck >/dev/null 2>&1 || { echo "shellcheck not installed. Run: brew install shellcheck"; exit 1; }
-	-shellcheck ../tools/*.sh ../tests/*.sh ../tests/integration/*.sh ../tests/system/*.sh ../scripts/*.sh
+	-find .. -name '*.sh' -not -path '../tests/tmp/*' -not -path '../third_party/*' -not -path '../tests/vendor/*' | xargs shellcheck
 
 .PHONY: all build clean strings_generated kernel_verbs_generated check-paige-cache dist dist-clean clean-root validate-bigstrings lint lint-all lint-python lint-shell
