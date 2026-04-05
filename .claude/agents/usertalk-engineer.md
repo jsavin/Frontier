@@ -322,21 +322,28 @@ global (userConfig)  // Available as global variable
 
 **Debugging UserTalk Scripts:**
 
-Use the protocol-based debugger for runtime debugging (not just compilation checking):
+Use the protocol-based debugger (15 operations) for runtime debugging:
 
 1. Connect: `frontier-cli --protocol --skip-startup --system-root databases/Virgin.root`
-2. Run in debug mode: `{"op":"debug/run","id":1,"params":{"expression":"myScript()"}}`
-   - Returns `{"threadId":N,"status":"started"}` immediately
-   - Thread suspends at entry, sends `debug/suspended` notification
-3. Resume: `{"op":"debug/continue","id":2,"params":{"threadId":N}}`
-4. Kill: `{"op":"debug/kill","id":3,"params":{"threadId":N}}`
-5. Interrupt running script: `{"op":"debug/pause","id":4,"params":{"threadId":N}}`
+2. Set breakpoints: `{"op":"debug/setBreakpoint","id":1,"params":{"script":"system.temp.myFunc","line":5}}`
+3. Run in debug mode: `{"op":"debug/run","id":2,"params":{"expression":"system.temp.myFunc()"}}`
+   - Returns `threadId` immediately, thread suspends at entry
+4. Continue past entry: `{"op":"debug/continue","id":3,"params":{"threadId":3}}`
+   - Thread runs until breakpoint, step, or watchpoint fires
+5. Inspect state when suspended:
+   - Locals: `{"op":"debug/getLocals","id":4,"params":{"threadId":3}}`
+   - Source: `{"op":"debug/getSource","id":5,"params":{"script":"system.temp.myFunc","threadId":3}}`
+   - Stack: `{"op":"debug/getStack","id":6,"params":{"threadId":3}}`
+6. Step: `{"op":"debug/step","id":7,"params":{"threadId":3,"direction":"over"}}` (into/over/out)
+7. Watch variables: `{"op":"debug/setWatchpoint","id":8,"params":{"variable":"x"}}`
+   - Fires when value changes, reports old/new values
+8. Conditional breakpoints: `{"op":"debug/setBreakpoint","id":9,"params":{"script":"...","line":5,"condition":"x > 10"}}`
+9. Kill: `{"op":"debug/kill","id":10,"params":{"threadId":3}}`
+10. List threads: `{"op":"debug/listThreads","id":11,"params":{}}`
 
-Notifications arrive as unsolicited messages:
-- `{"op":"debug/suspended","params":{"threadId":N,"line":L,"reason":"entry|interrupted"}}`
-- `{"op":"debug/completed","params":{"threadId":N,"success":true|false}}`
+Suspension reasons: `"entry"`, `"breakpoint"`, `"step"`, `"interrupted"`, `"watchpoint"`.
 
-See `docs/DEBUGGING_GUIDE.md` for full reference and examples.
+See `docs/DEBUGGING_GUIDE.md` for the complete protocol reference with examples.
 
 **Reference Resources:**
 - `docs/ODB_SCRIPT_EDITING.md` - Complete ODB script editing workflow and checklist

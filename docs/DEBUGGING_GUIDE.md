@@ -345,69 +345,120 @@ python3 -c "import struct; print([chr(b) if 32 <= b < 127 else f'\\x{b:02x}' for
 
 ## UserTalk Debugging via Protocol
 
-The protocol-based UserTalk debugger lets agents run scripts in debug mode, suspend them, and control execution without dropping to LLDB or adding `msg()` calls.
+The protocol-based UserTalk debugger provides 15 operations for running scripts in debug mode, setting breakpoints, stepping through code, inspecting variables, and monitoring value changes — all via the NDJSON protocol.
 
 ### When to Use Which Tool
 
 | Tool | Use When |
 |------|----------|
-| **Protocol debugger** (`debug/run`) | Runtime behavior questions: "What value does this variable have at line 12?", "Does this branch execute?", "Why does this script return false?" |
-| **`msg()` calls** | Quick one-off checks during development, or when you need output from a non-debug run |
+| **Protocol debugger** (`debug/*`) | Runtime behavior: "What value does x have at line 12?", "Does this branch execute?", "Why does this return false?" |
+| **`msg()` calls** | Quick one-off checks, or when you need output from a non-debug run |
 | **LLDB** | C-level crashes, segfaults, memory corruption, or when the interpreter itself is broken |
 
-### Protocol Operations
-
-Connect to the debugger via protocol mode:
+### Connection
 
 ```bash
 frontier-cli --protocol --skip-startup --system-root databases/Virgin.root
 ```
 
-Four core operations:
+All commands are JSON objects sent as single lines to stdin. Responses and notifications come back on stdout.
 
-| Operation | Purpose |
-|-----------|---------|
-| `debug/run` | Start a script in debug mode (non-blocking, returns threadId) |
-| `debug/continue` | Resume a suspended thread |
-| `debug/kill` | Kill a running or suspended thread |
-| `debug/pause` | Interrupt a running thread and suspend it at the next statement |
+### All Protocol Operations
 
-### Notification Flow
+| Operation | Params | Purpose |
+|-----------|--------|---------|
+| `debug/run` | `expression` | Run script in debug mode. Returns `threadId`. Thread suspends at entry. |
+| `debug/continue` | `threadId` | Resume a suspended thread. |
+| `debug/kill` | `threadId` | Kill a debug thread. |
+| `debug/pause` | `threadId` | Interrupt a running thread at next statement. |
+| `debug/step` | `threadId`, `direction` (`"into"`, `"over"`, `"out"`) | Step execution. |
+| `debug/setBreakpoint` | `script`, `line`, optional `condition` | Set/toggle breakpoint. Toggle: set again to clear. |
+| `debug/listBreakpoints` | — | List all active breakpoints. |
+| `debug/clearBreakpoints` | — | Clear all breakpoints. |
+| `debug/setWatchpoint` | `variable` | Watch a variable for value changes. Toggle: set again to clear. |
+| `debug/listWatchpoints` | — | List all active watchpoints. |
+| `debug/clearWatchpoints` | — | Clear all watchpoints. |
+| `debug/getLocals` | `threadId` | Get local variables of a suspended thread. |
+| `debug/getStack` | `threadId` | Get call stack frames of a suspended thread. |
+| `debug/getSource` | `script`, optional `threadId` | Get script source with line numbers, breakpoint/current markers. |
+| `debug/listThreads` | — | List all active debug threads. |
+
+### Notifications
 
 The debugger sends unsolicited notifications when thread state changes:
 
-- **`debug/suspended`** -- Thread has paused. Includes `threadId`, `line`, and `reason` (`"entry"` or `"interrupted"`).
-- **`debug/completed`** -- Thread has finished. Includes `threadId` and `success` (true/false).
+- **`debug/suspended`** — Thread paused. Includes `threadId`, `line`, `reason`. Reasons: `"entry"`, `"interrupted"`, `"breakpoint"`, `"step"`, `"watchpoint"`.
+- **`debug/completed`** — Thread finished. Includes `threadId`, `success`.
 
-### Example Session
+Watchpoint suspensions include extra fields: `variable`, `oldValue`, `newValue`.
+
+### Typical Debugging Workflow
 
 ```
-→ {"op":"debug/run","id":1,"params":{"expression":"myScript()"}}
-← {"id":1,"result":{"threadId":3,"status":"started"}}
-← {"op":"debug/suspended","params":{"threadId":3,"line":1,"reason":"entry"}}
+# 1. Create or identify the script to debug
+→ {"op":"script/eval","id":1,"params":{"expression":"..."}}
 
-→ {"op":"debug/continue","id":2,"params":{"threadId":3}}
-← {"id":2,"result":{"ok":true}}
+# 2. Set breakpoints
+→ {"op":"debug/setBreakpoint","id":2,"params":{"script":"system.temp.myFunc","line":5}}
+
+# 3. Run in debug mode
+→ {"op":"debug/run","id":3,"params":{"expression":"system.temp.myFunc()"}}
+← {"id":3,"result":{"threadId":3,"status":"started"}}
+← {"op":"debug/suspended","params":{"threadId":3,"line":0,"reason":"entry"}}
+
+# 4. Continue past entry
+→ {"op":"debug/continue","id":4,"params":{"threadId":3}}
+← {"op":"debug/suspended","params":{"threadId":3,"line":5,"reason":"breakpoint"}}
+
+# 5. Inspect state
+→ {"op":"debug/getLocals","id":5,"params":{"threadId":3}}
+← {"id":5,"result":{"locals":[{"name":"x","value":"42","type":"long"}],...}}
+
+→ {"op":"debug/getSource","id":6,"params":{"script":"system.temp.myFunc","threadId":3}}
+← {"id":6,"result":{"lines":[{"num":1,"text":"local (x = 42);"},...]}}
+
+# 6. Step through code
+→ {"op":"debug/step","id":7,"params":{"threadId":3,"direction":"over"}}
+← {"op":"debug/suspended","params":{"threadId":3,"line":6,"reason":"step"}}
+
+# 7. Continue to completion or kill
+→ {"op":"debug/continue","id":8,"params":{"threadId":3}}
 ← {"op":"debug/completed","params":{"threadId":3,"success":true}}
 ```
 
-To interrupt a long-running script:
+### Conditional Breakpoints
 
 ```
-→ {"op":"debug/pause","id":3,"params":{"threadId":3}}
-← {"op":"debug/suspended","params":{"threadId":3,"line":47,"reason":"interrupted"}}
-
-→ {"op":"debug/kill","id":4,"params":{"threadId":3}}
-← {"id":4,"result":{"ok":true}}
-← {"op":"debug/completed","params":{"threadId":3,"success":false}}
+→ {"op":"debug/setBreakpoint","id":1,"params":{
+    "script":"system.temp.myFunc","line":5,"condition":"x > 10"
+  }}
 ```
+
+Condition format: `varname op value` where op is `==`, `!=`, `>`, `<`, `>=`, `<=`. Numeric comparison when both sides are numbers; string comparison otherwise.
+
+### Watchpoints
+
+```
+→ {"op":"debug/setWatchpoint","id":1,"params":{"variable":"x"}}
+→ {"op":"debug/continue","id":2,"params":{"threadId":3}}
+← {"op":"debug/suspended","params":{
+    "threadId":3,"line":7,"reason":"watchpoint",
+    "variable":"x","oldValue":"1","newValue":"11"
+  }}
+```
+
+### Multi-Thread Debugging
+
+Multiple `debug/run` calls create independent threads. Use `debug/listThreads` to see all active threads, and address each by `threadId`.
 
 ### Notes
 
-- The operation is `debug/run` (not `debug/eval`) in the protocol.
-- `debug/run` is non-blocking: it returns immediately with a `threadId`, then the thread suspends at entry and sends a `debug/suspended` notification.
-- The thread yields the GIL while suspended, so other protocol commands continue to work.
-- See `planning/phase6/USERTALK_DEBUGGER_PLAN.md` for the full design spec (stepping, breakpoints, inspection, watchpoints).
+- `debug/run` is non-blocking: returns immediately with `threadId`, then suspends at entry.
+- The thread yields the GIL while suspended, so other protocol commands work normally.
+- Script paths use dotted notation (e.g., `system.temp.myFunc`). Leading `@` is stripped automatically.
+- Breakpoints and watchpoints persist for the process lifetime. Use `debug/clearBreakpoints` / `debug/clearWatchpoints` for a clean slate.
+- Variable lookups (getLocals, conditions, watchpoints) search the full scope chain: locals → enclosing scopes → globals.
+- `debug/getSource` loads scripts from disk on demand if not yet in memory.
 
 ---
 
