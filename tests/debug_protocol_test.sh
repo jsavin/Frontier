@@ -901,6 +901,67 @@ assert_test("setBreakpoint response includes condition",
             set_with_cond is not None and set_with_cond["result"]["condition"] == "x > 5",
             f"Messages: {[m for m in msgs if m.get('id') == 2]}")
 
+# --- Test 18: listBreakpoints includes condition ---
+print()
+print("--- listBreakpoints condition field ---")
+
+def test_list_bp_condition(send):
+    send({"op": "debug/setBreakpoint", "id": 1, "params": {
+        "script": "test.cond", "line": 1, "condition": "y == 0"
+    }})
+    time.sleep(0.3)
+    send({"op": "debug/listBreakpoints", "id": 2, "params": {}})
+    time.sleep(0.3)
+
+msgs = run_debug_session(test_list_bp_condition)
+list_msg = None
+for m in msgs:
+    if m.get("id") == 2 and m.get("result", {}).get("breakpoints"):
+        list_msg = m
+        break
+if list_msg and len(list_msg["result"]["breakpoints"]) > 0:
+    assert_test("listBreakpoints includes condition",
+                list_msg["result"]["breakpoints"][0].get("condition") == "y == 0",
+                f"Breakpoints: {list_msg['result']['breakpoints']}")
+else:
+    assert_test("listBreakpoints includes condition", False, f"Messages: {msgs}")
+
+# --- Test 19: breakpoint fires on each function re-entry ---
+print()
+print("--- breakpoint re-entry ---")
+
+def test_reentry_bp(send):
+    # inner function called twice by outer — breakpoint should fire both times
+    send({"op": "script/eval", "id": 1, "params": {
+        "expression": 'new(scriptType, @system.temp.bpInner); script.newScriptObject("return true", @system.temp.bpInner)'
+    }})
+    time.sleep(0.5)
+    send({"op": "script/eval", "id": 2, "params": {
+        "expression": 'new(scriptType, @system.temp.bpOuter); script.newScriptObject("local (a = system.temp.bpInner())\\rlocal (b = system.temp.bpInner())\\rreturn (a and b)", @system.temp.bpOuter)'
+    }})
+    time.sleep(0.5)
+    send({"op": "debug/setBreakpoint", "id": 3, "params": {"script": "system.temp.bpInner", "line": 1}})
+    time.sleep(0.3)
+    send({"op": "debug/run", "id": 4, "params": {"expression": "system.temp.bpOuter()"}})
+    time.sleep(2)
+    # Continue past entry
+    send({"op": "debug/continue", "id": 5, "params": {"threadId": FIRST_DEBUG_TID}})
+    time.sleep(1)
+    # Should hit breakpoint on first call to bpInner
+    send({"op": "debug/continue", "id": 6, "params": {"threadId": FIRST_DEBUG_TID}})
+    time.sleep(1)
+    # Should hit breakpoint on second call to bpInner
+    send({"op": "debug/continue", "id": 7, "params": {"threadId": FIRST_DEBUG_TID}})
+    time.sleep(2)
+    send({"op": "debug/kill", "id": 8, "params": {"threadId": FIRST_DEBUG_TID}})
+    time.sleep(1)
+
+msgs = run_debug_session(test_reentry_bp, timeout=25)
+bp_hits = [m for m in msgs if m.get("op") == "debug/suspended" and m.get("params", {}).get("reason") == "breakpoint"]
+assert_test("breakpoint fires on each function entry",
+            len(bp_hits) >= 2,
+            f"Breakpoint hits: {len(bp_hits)}, Messages: {bp_hits}")
+
 print()
 print("=" * 46)
 print(f"RESULTS: {PASSED} passed, {FAILED} failed")

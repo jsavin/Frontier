@@ -346,6 +346,7 @@ static boolean debug_push_sourcecode(hdlhashtable htable, hdlhashnode hnode, big
     if (state->script_stack_depth < DEBUG_SCRIPT_STACK_MAX) {
         memcpy(state->script_stack[state->script_stack_depth],
                state->current_script, DEBUG_SCRIPT_PATH_MAX);
+        state->script_stack_lines[state->script_stack_depth] = atomic_load(&state->lastlnum);
         state->script_stack_depth++;
     } else {
         /* Stack overflow — track the imbalance so pop skips the corresponding restore.
@@ -556,13 +557,18 @@ static boolean protocol_debugger_callback(hdltreenode hnode) {
                 char *varname = bp_condition;
                 char *expected = op_pos + op_len;
 
-                /* Trim whitespace */
+                /* Trim whitespace (guard against op at position 0) */
                 while (*varname == ' ') varname++;
-                char *vend = op_pos - 1;
-                while (vend > varname && *vend == ' ') *vend-- = '\0';
+                if (op_pos > bp_condition) {
+                    char *vend = op_pos - 1;
+                    while (vend > varname && *vend == ' ') *vend-- = '\0';
+                }
                 while (*expected == ' ') expected++;
-                char *eend = expected + strlen(expected) - 1;
-                while (eend > expected && *eend == ' ') *eend-- = '\0';
+                size_t explen = strlen(expected);
+                if (explen > 0) {
+                    char *eend = expected + explen - 1;
+                    while (eend > expected && *eend == ' ') *eend-- = '\0';
+                }
 
                 /* Strip quotes from expected value */
                 size_t elen = strlen(expected);
@@ -571,63 +577,63 @@ static boolean protocol_debugger_callback(hdltreenode hnode) {
                     expected++;
                 }
 
-                /* Look up variable in locals */
-                hdlhashtable hlocals_cond = nil;
+                /* Look up variable — walk the full hash table chain (locals,
+                 * enclosing scopes, globals) not just innermost local. */
+                bigstring bsname;
+                int nlen = (int)strlen(varname);
+                if (nlen > 255) nlen = 255;
+                bsname[0] = (unsigned char)nlen;
+                memcpy(bsname + 1, varname, (size_t)nlen);
+
+                tyvaluerecord cond_val;
+                hdlhashnode hn_cond = nil;
+                boolean found_var = false;
+
                 hdlhashtable hwalk_cond = currenthashtable;
                 while (hwalk_cond != nil) {
-                    if ((**hwalk_cond).fllocaltable) { hlocals_cond = hwalk_cond; break; }
+                    if (hashtablelookup(hwalk_cond, bsname, &cond_val, &hn_cond)) {
+                        found_var = true;
+                        break;
+                    }
                     hwalk_cond = (**hwalk_cond).prevhashtable;
                 }
 
-                if (hlocals_cond == nil) {
-                    log_warn(LOG_COMP_LANG, "debug: no local scope for condition '%s' at line %ld",
-                             bp_condition_orig, (long)lnum);
+                if (!found_var) {
+                    log_warn(LOG_COMP_LANG, "debug: condition variable '%s' not found at line %ld",
+                             varname, (long)lnum);
                 } else {
-                    bigstring bsname;
-                    int nlen = (int)strlen(varname);
-                    if (nlen > 255) nlen = 255;
-                    bsname[0] = (unsigned char)nlen;
-                    memcpy(bsname + 1, varname, (size_t)nlen);
+                    bigstring bsval;
+                    if (hashgetvaluestring(cond_val, bsval)) {
+                        char actual[DEBUG_VALUE_MAX];
+                        int avlen = bsval[0];
+                        if (avlen >= DEBUG_VALUE_MAX) avlen = DEBUG_VALUE_MAX - 1;
+                        memcpy(actual, bsval + 1, (size_t)avlen);
+                        actual[avlen] = '\0';
 
-                    tyvaluerecord cond_val;
-                    hdlhashnode hn_cond = nil;
-                    if (!hashtablelookup(hlocals_cond, bsname, &cond_val, &hn_cond)) {
-                        log_warn(LOG_COMP_LANG, "debug: condition variable '%s' not found in locals at line %ld",
-                                 varname, (long)lnum);
-                    } else {
-                        bigstring bsval;
-                        if (hashgetvaluestring(cond_val, bsval)) {
-                            char actual[DEBUG_VALUE_MAX];
-                            int avlen = bsval[0];
-                            if (avlen >= DEBUG_VALUE_MAX) avlen = DEBUG_VALUE_MAX - 1;
-                            memcpy(actual, bsval + 1, (size_t)avlen);
-                            actual[avlen] = '\0';
+                        cond_evaluated = true;
 
-                            cond_evaluated = true;
-
-                            /* Try numeric comparison first */
-                            char *endp1, *endp2;
-                            double da = strtod(actual, &endp1);
-                            double de = strtod(expected, &endp2);
-                            if (*endp1 == '\0' && *endp2 == '\0') {
-                                switch (op_type) {
-                                    case OP_EQ: cond_met = (da == de); break;
-                                    case OP_NE: cond_met = (da != de); break;
-                                    case OP_GE: cond_met = (da >= de); break;
-                                    case OP_LE: cond_met = (da <= de); break;
-                                    case OP_GT: cond_met = (da > de); break;
-                                    case OP_LT: cond_met = (da < de); break;
-                                }
-                            } else {
-                                int cmp = strcmp(actual, expected);
-                                switch (op_type) {
-                                    case OP_EQ: cond_met = (cmp == 0); break;
-                                    case OP_NE: cond_met = (cmp != 0); break;
-                                    case OP_GE: cond_met = (cmp >= 0); break;
-                                    case OP_LE: cond_met = (cmp <= 0); break;
-                                    case OP_GT: cond_met = (cmp > 0); break;
-                                    case OP_LT: cond_met = (cmp < 0); break;
-                                }
+                        /* Try numeric comparison first */
+                        char *endp1, *endp2;
+                        double da = strtod(actual, &endp1);
+                        double de = strtod(expected, &endp2);
+                        if (*endp1 == '\0' && *endp2 == '\0') {
+                            switch (op_type) {
+                                case OP_EQ: cond_met = (da == de); break;
+                                case OP_NE: cond_met = (da != de); break;
+                                case OP_GE: cond_met = (da >= de); break;
+                                case OP_LE: cond_met = (da <= de); break;
+                                case OP_GT: cond_met = (da > de); break;
+                                case OP_LT: cond_met = (da < de); break;
+                            }
+                        } else {
+                            int cmp = strcmp(actual, expected);
+                            switch (op_type) {
+                                case OP_EQ: cond_met = (cmp == 0); break;
+                                case OP_NE: cond_met = (cmp != 0); break;
+                                case OP_GE: cond_met = (cmp >= 0); break;
+                                case OP_LE: cond_met = (cmp <= 0); break;
+                                case OP_GT: cond_met = (cmp > 0); break;
+                                case OP_LT: cond_met = (cmp < 0); break;
                             }
                         }
                     }
@@ -669,30 +675,17 @@ static boolean protocol_debugger_callback(hdltreenode hnode) {
     if (atomic_load_explicit(&g_has_watchpoints, memory_order_relaxed) &&
         flsteppable && !atomic_load(&state->flsuspended)) {
 
-        /* Get current local hash table — use the global currenthashtable
-         * (which is correct since we hold the GIL and own this thread's
-         * restored context) rather than reading from hglobals. */
-        hdlhashtable htable = currenthashtable;
-
-        /* Find the innermost local table */
-        hdlhashtable hlocals = nil;
-        hdlhashtable hwalk = htable;
-        while (hwalk != nil) {
-            if ((**hwalk).fllocaltable) {
-                hlocals = hwalk;
-                break;
-            }
-            hwalk = (**hwalk).prevhashtable;
-        }
-
-        if (hlocals != nil) {
+        /* Use currenthashtable (correct under GIL) as starting point.
+         * Walk the full chain (locals, enclosing scopes, globals) for
+         * each watched variable — not just the innermost local table. */
+        if (currenthashtable != nil) {
             pthread_mutex_lock(&g_debug_mutex);
 
             for (int w = 0; w < MAX_WATCHPOINTS; w++) {
                 if (!g_watchpoints[w].active)
                     continue;
 
-                /* Look up the variable by name */
+                /* Look up the variable by name — walk full scope chain */
                 bigstring bsname;
                 int nlen = (int)strlen(g_watchpoints[w].varname);
                 if (nlen > 255) nlen = 255;
@@ -701,7 +694,16 @@ static boolean protocol_debugger_callback(hdltreenode hnode) {
 
                 tyvaluerecord val;
                 hdlhashnode hn = nil;
-                if (!hashtablelookup(hlocals, bsname, &val, &hn))  /* hn unused — API requires it */
+                boolean found_wp_var = false;
+                hdlhashtable hwalk = currenthashtable;
+                while (hwalk != nil) {
+                    if (hashtablelookup(hwalk, bsname, &val, &hn)) {
+                        found_wp_var = true;
+                        break;
+                    }
+                    hwalk = (**hwalk).prevhashtable;
+                }
+                if (!found_wp_var)
                     continue;
 
                 /* Get current value as string */
@@ -1802,6 +1804,8 @@ void handle_debug_getstack(int id, const char *json_line, transport_t *transport
             cJSON *frame = cJSON_CreateObject();
             cJSON_AddNumberToObject(frame, "level", i + 1);
             cJSON_AddStringToObject(frame, "script", state->script_stack[i]);
+            if (state->script_stack_lines[i] > 0)
+                cJSON_AddNumberToObject(frame, "line", (double)state->script_stack_lines[i]);
             cJSON_AddItemToArray(frames, frame);
         }
     }
