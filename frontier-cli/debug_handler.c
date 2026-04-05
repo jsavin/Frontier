@@ -587,7 +587,10 @@ static boolean protocol_debugger_callback(hdltreenode hnode) {
 
                     tyvaluerecord cond_val;
                     hdlhashnode hn_cond = nil;
-                    if (hashtablelookup(hlocals_cond, bsname, &cond_val, &hn_cond)) {
+                    if (!hashtablelookup(hlocals_cond, bsname, &cond_val, &hn_cond)) {
+                        log_warn(LOG_COMP_LANG, "debug: condition variable '%s' not found in locals at line %ld",
+                                 varname, (long)lnum);
+                    } else {
                         bigstring bsval;
                         if (hashgetvaluestring(cond_val, bsval)) {
                             char actual[DEBUG_VALUE_MAX];
