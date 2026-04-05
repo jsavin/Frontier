@@ -380,4 +380,18 @@ clean-root: dist
 dist-clean:
 	rm -rf $(DIST_DIR)
 
-.PHONY: all build clean strings_generated kernel_verbs_generated check-paige-cache dist dist-clean clean-root validate-bigstrings
+# Static analysis via clang-tidy (requires compile_commands.json in project root)
+# Generate it with: bear -- make -C frontier-cli
+# Usage: make lint           (frontier-cli sources only)
+#        make lint-all       (all project sources, slower)
+lint:
+	@if [ ! -f ../compile_commands.json ]; then \
+		echo "Error: compile_commands.json not found. Run: bear -- make -C frontier-cli"; \
+		exit 1; \
+	fi
+	-clang-tidy $(CLI_SOURCES) -p ..
+
+lint-all:
+	-clang-tidy $(CLI_SOURCES) $(FRONTIER_SOURCES) -p ..
+
+.PHONY: all build clean strings_generated kernel_verbs_generated check-paige-cache dist dist-clean clean-root validate-bigstrings lint lint-all

@@ -1,0 +1,28 @@
+# Clang-Tidy configuration for Frontier
+# Focus: bug-finding checks only. No style enforcement on legacy C code.
+#
+# Run: make -C frontier-cli lint
+# Requires: compile_commands.json (generate with: bear -- make -C frontier-cli)
+
+Checks: >
+  -*,
+  bugprone-*,
+  clang-analyzer-*,
+  -bugprone-easily-swappable-parameters,
+  -bugprone-macro-parentheses,
+  -bugprone-narrowing-conversions,
+  -bugprone-reserved-identifier,
+  -bugprone-assignment-in-if-condition,
+  -bugprone-switch-missing-default-case,
+  -bugprone-implicit-widening-of-multiplication-result,
+  -bugprone-multi-level-implicit-pointer-conversion,
+  -bugprone-not-null-terminated-result,
+  -bugprone-unsafe-functions,
+  -clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling,
+  -clang-analyzer-security.insecureAPI.strcpy,
+
+HeaderFilterRegex: '(Common|portable|frontier-cli)/.*\.h$'
+
+WarningsAsErrors: ''
+
+FormatStyle: none
