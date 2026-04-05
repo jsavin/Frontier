@@ -724,6 +724,12 @@ static boolean protocol_debugger_callback(hdltreenode hnode) {
                 if (vlen >= DEBUG_VALUE_MAX) vlen = DEBUG_VALUE_MAX - 1;
                 memcpy(cval, bsval + 1, (size_t)vlen);
                 cval[vlen] = '\0';
+                if (bsval[0] >= 255) {
+                    /* Value was likely truncated by bigstring limit */
+                    if (vlen >= 4) {
+                        cval[vlen-3] = '.'; cval[vlen-2] = '.'; cval[vlen-1] = '.';
+                    }
+                }
 
                 if (!g_watchpoints[w].has_snapshot) {
                     /* First encounter — save snapshot, don't trigger */
@@ -750,6 +756,11 @@ static boolean protocol_debugger_callback(hdltreenode hnode) {
 
                     /* Send watchpoint notification with old/new values */
                     cJSON *notif = cJSON_CreateObject();
+                    if (notif == NULL) {
+                        atomic_store_explicit(&state->flsuspended, true, memory_order_seq_cst);
+                        log_warn(LOG_COMP_LANG, "debug: cJSON_CreateObject failed (OOM) for watchpoint notification");
+                        goto after_stepping;
+                    }
                     cJSON_AddNullToObject(notif, "id");
                     cJSON_AddStringToObject(notif, "op", "debug/suspended");
                     cJSON *wp_params = cJSON_CreateObject();
@@ -761,11 +772,15 @@ static boolean protocol_debugger_callback(hdltreenode hnode) {
                     cJSON_AddStringToObject(wp_params, "newValue", cval);
                     cJSON_AddItemToObject(notif, "params", wp_params);
 
+                    /* Always suspend — even if notification serialization fails */
+                    atomic_store_explicit(&state->flsuspended, true, memory_order_seq_cst);
+
                     char *json_str = cJSON_PrintUnformatted(notif);
                     if (json_str) {
-                        atomic_store_explicit(&state->flsuspended, true, memory_order_seq_cst);
                         state->transport->write_line(state->transport->ctx, json_str, strlen(json_str));
                         free(json_str);
+                    } else {
+                        log_warn(LOG_COMP_LANG, "debug: cJSON_PrintUnformatted failed (OOM) for watchpoint notification");
                     }
                     cJSON_Delete(notif);
 
@@ -1061,6 +1076,8 @@ void handle_debug_run(int id, const char *json_line, transport_t *transport) {
         if (json_str) {
             transport->write_line(transport->ctx, json_str, strlen(json_str));
             free(json_str);
+        } else {
+            log_warn(LOG_COMP_LANG, "debug: cJSON_PrintUnformatted failed (OOM)");
         }
         cJSON_Delete(resp);
         cJSON_Delete(root);
@@ -1544,6 +1561,8 @@ void handle_debug_setbreakpoint(int id, const char *json_line, transport_t *tran
     if (json_str) {
         transport->write_line(transport->ctx, json_str, strlen(json_str));
         free(json_str);
+    } else {
+        log_warn(LOG_COMP_LANG, "debug: cJSON_PrintUnformatted failed (OOM)");
     }
     cJSON_Delete(resp);
 
@@ -1563,6 +1582,12 @@ void handle_debug_listbreakpoints(int id, const char *json_line, transport_t *tr
     (void)json_line; /* no params needed */
 
     cJSON *resp = cJSON_CreateObject();
+    if (resp == NULL) {
+        char err[128];
+        snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Memory allocation failed\"},\"success\":false}", id);
+        transport->write_line(transport->ctx, err, strlen(err));
+        return;
+    }
     cJSON_AddNumberToObject(resp, "id", id);
 
     cJSON *result = cJSON_CreateObject();
@@ -1592,6 +1617,8 @@ void handle_debug_listbreakpoints(int id, const char *json_line, transport_t *tr
     if (json_str) {
         transport->write_line(transport->ctx, json_str, strlen(json_str));
         free(json_str);
+    } else {
+        log_warn(LOG_COMP_LANG, "debug: cJSON_PrintUnformatted failed (OOM)");
     }
     cJSON_Delete(resp);
 }
@@ -1618,18 +1645,26 @@ void handle_debug_clearbreakpoints(int id, const char *json_line, transport_t *t
 
     pthread_mutex_unlock(&g_debug_mutex);
 
-    cJSON *resp = cJSON_CreateObject();
-    cJSON_AddNumberToObject(resp, "id", id);
-    cJSON *result = cJSON_CreateObject();
-    cJSON_AddNumberToObject(result, "cleared", cleared);
-    cJSON_AddItemToObject(resp, "result", result);
-    cJSON_AddBoolToObject(resp, "success", 1);
-    char *json_str = cJSON_PrintUnformatted(resp);
+    cJSON *resp_bp = cJSON_CreateObject();
+    if (resp_bp == NULL) {
+        char err[128];
+        snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Memory allocation failed\"},\"success\":false}", id);
+        transport->write_line(transport->ctx, err, strlen(err));
+        return;
+    }
+    cJSON_AddNumberToObject(resp_bp, "id", id);
+    cJSON *result_bp = cJSON_CreateObject();
+    cJSON_AddNumberToObject(result_bp, "cleared", cleared);
+    cJSON_AddItemToObject(resp_bp, "result", result_bp);
+    cJSON_AddBoolToObject(resp_bp, "success", 1);
+    char *json_str = cJSON_PrintUnformatted(resp_bp);
     if (json_str) {
         transport->write_line(transport->ctx, json_str, strlen(json_str));
         free(json_str);
+    } else {
+        log_warn(LOG_COMP_LANG, "debug: cJSON_PrintUnformatted failed (OOM)");
     }
-    cJSON_Delete(resp);
+    cJSON_Delete(resp_bp);
 
     log_info(LOG_COMP_LANG, "debug: cleared %d breakpoints", cleared);
 }
@@ -1718,6 +1753,14 @@ void handle_debug_getlocals(int id, const char *json_line, transport_t *transpor
     hdlhashtable htable = (hg != nil) ? (**hg).hcurrenthashtable : nil;
 
     cJSON *resp = cJSON_CreateObject();
+    if (resp == NULL) {
+        char err[128];
+        snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Memory allocation failed\"},\"success\":false}", id);
+        transport->write_line(transport->ctx, err, strlen(err));
+        debug_release_state(state);
+        cJSON_Delete(root);
+        return;
+    }
     cJSON_AddNumberToObject(resp, "id", id);
     cJSON *result = cJSON_CreateObject();
     cJSON *locals = cJSON_CreateArray();
@@ -1749,6 +1792,12 @@ void handle_debug_getlocals(int id, const char *json_line, transport_t *transpor
                     if (vlen >= (int)sizeof(cval)) vlen = (int)sizeof(cval) - 1;
                     memcpy(cval, bsval + 1, (size_t)vlen);
                     cval[vlen] = '\0';
+                    if (bsval[0] >= 255) {
+                        /* Value was likely truncated by bigstring limit */
+                        if (vlen >= 4) {
+                            cval[vlen-3] = '.'; cval[vlen-2] = '.'; cval[vlen-1] = '.';
+                        }
+                    }
                     cJSON_AddStringToObject(entry, "value", cval);
                 } else {
                     cJSON_AddStringToObject(entry, "value", "(unknown)");
@@ -1784,6 +1833,8 @@ void handle_debug_getlocals(int id, const char *json_line, transport_t *transpor
     if (json_str) {
         transport->write_line(transport->ctx, json_str, strlen(json_str));
         free(json_str);
+    } else {
+        log_warn(LOG_COMP_LANG, "debug: cJSON_PrintUnformatted failed (OOM)");
     }
     cJSON_Delete(resp);
 
@@ -1808,6 +1859,14 @@ void handle_debug_getstack(int id, const char *json_line, transport_t *transport
         return;
 
     cJSON *resp = cJSON_CreateObject();
+    if (resp == NULL) {
+        char err[128];
+        snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Memory allocation failed\"},\"success\":false}", id);
+        transport->write_line(transport->ctx, err, strlen(err));
+        debug_release_state(state);
+        cJSON_Delete(root);
+        return;
+    }
     cJSON_AddNumberToObject(resp, "id", id);
     cJSON *result = cJSON_CreateObject();
     cJSON *frames = cJSON_CreateArray();
@@ -1843,6 +1902,8 @@ void handle_debug_getstack(int id, const char *json_line, transport_t *transport
     if (json_str) {
         transport->write_line(transport->ctx, json_str, strlen(json_str));
         free(json_str);
+    } else {
+        log_warn(LOG_COMP_LANG, "debug: cJSON_PrintUnformatted failed (OOM)");
     }
     cJSON_Delete(resp);
 
@@ -2010,6 +2071,14 @@ void handle_debug_getsource(int id, const char *json_line, transport_t *transpor
     char *text = *htext;
 
     cJSON *resp = cJSON_CreateObject();
+    if (resp == NULL) {
+        char err[128];
+        snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Memory allocation failed\"},\"success\":false}", id);
+        transport->write_line(transport->ctx, err, strlen(err));
+        disposehandle(htext);
+        cJSON_Delete(root);
+        return;
+    }
     cJSON_AddNumberToObject(resp, "id", id);
     cJSON *result_obj = cJSON_CreateObject();
     cJSON_AddStringToObject(result_obj, "script", script_path);
@@ -2075,6 +2144,8 @@ void handle_debug_getsource(int id, const char *json_line, transport_t *transpor
     if (json_str) {
         transport->write_line(transport->ctx, json_str, strlen(json_str));
         free(json_str);
+    } else {
+        log_warn(LOG_COMP_LANG, "debug: cJSON_PrintUnformatted failed (OOM)");
     }
     cJSON_Delete(resp);
     cJSON_Delete(root);
@@ -2091,6 +2162,12 @@ void handle_debug_listthreads(int id, const char *json_line, transport_t *transp
     (void)json_line; /* no params to validate */
 
     cJSON *resp = cJSON_CreateObject();
+    if (resp == NULL) {
+        char err[128];
+        snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Memory allocation failed\"},\"success\":false}", id);
+        transport->write_line(transport->ctx, err, strlen(err));
+        return;
+    }
     cJSON_AddNumberToObject(resp, "id", id);
 
     cJSON *result = cJSON_CreateObject();
@@ -2131,6 +2208,8 @@ void handle_debug_listthreads(int id, const char *json_line, transport_t *transp
     if (json_str) {
         transport->write_line(transport->ctx, json_str, strlen(json_str));
         free(json_str);
+    } else {
+        log_warn(LOG_COMP_LANG, "debug: cJSON_PrintUnformatted failed (OOM)");
     }
     cJSON_Delete(resp);
 }
@@ -2241,6 +2320,8 @@ void handle_debug_setwatchpoint(int id, const char *json_line, transport_t *tran
     if (json_str) {
         transport->write_line(transport->ctx, json_str, strlen(json_str));
         free(json_str);
+    } else {
+        log_warn(LOG_COMP_LANG, "debug: cJSON_PrintUnformatted failed (OOM)");
     }
     cJSON_Delete(resp);
 
@@ -2258,6 +2339,12 @@ void handle_debug_listwatchpoints(int id, const char *json_line, transport_t *tr
     (void)json_line; /* no params to validate */
 
     cJSON *resp = cJSON_CreateObject();
+    if (resp == NULL) {
+        char err[128];
+        snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Memory allocation failed\"},\"success\":false}", id);
+        transport->write_line(transport->ctx, err, strlen(err));
+        return;
+    }
     cJSON_AddNumberToObject(resp, "id", id);
 
     cJSON *result = cJSON_CreateObject();
@@ -2285,6 +2372,8 @@ void handle_debug_listwatchpoints(int id, const char *json_line, transport_t *tr
     if (json_str) {
         transport->write_line(transport->ctx, json_str, strlen(json_str));
         free(json_str);
+    } else {
+        log_warn(LOG_COMP_LANG, "debug: cJSON_PrintUnformatted failed (OOM)");
     }
     cJSON_Delete(resp);
 }
@@ -2311,16 +2400,26 @@ void handle_debug_clearwatchpoints(int id, const char *json_line, transport_t *t
 
     pthread_mutex_unlock(&g_debug_mutex);
 
-    cJSON *resp = cJSON_CreateObject();
-    cJSON_AddNumberToObject(resp, "id", id);
-    cJSON *result = cJSON_CreateObject();
-    cJSON_AddNumberToObject(result, "cleared", cleared_count);
-    cJSON_AddItemToObject(resp, "result", result);
-    cJSON_AddBoolToObject(resp, "success", 1);
-    char *json_str = cJSON_PrintUnformatted(resp);
+    cJSON *resp_wp = cJSON_CreateObject();
+    if (resp_wp == NULL) {
+        char err[128];
+        snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Memory allocation failed\"},\"success\":false}", id);
+        transport->write_line(transport->ctx, err, strlen(err));
+        return;
+    }
+    cJSON_AddNumberToObject(resp_wp, "id", id);
+    cJSON *result_wp = cJSON_CreateObject();
+    cJSON_AddNumberToObject(result_wp, "cleared", cleared_count);
+    cJSON_AddItemToObject(resp_wp, "result", result_wp);
+    cJSON_AddBoolToObject(resp_wp, "success", 1);
+    char *json_str = cJSON_PrintUnformatted(resp_wp);
     if (json_str) {
         transport->write_line(transport->ctx, json_str, strlen(json_str));
         free(json_str);
+    } else {
+        log_warn(LOG_COMP_LANG, "debug: cJSON_PrintUnformatted failed (OOM)");
     }
-    cJSON_Delete(resp);
+    cJSON_Delete(resp_wp);
+
+    log_info(LOG_COMP_LANG, "debug: cleared %d watchpoints", cleared_count);
 }
