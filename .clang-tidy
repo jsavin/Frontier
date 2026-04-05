@@ -24,7 +24,7 @@ Checks: >
   -bugprone-not-null-terminated-result,
   -bugprone-unsafe-functions,
   -clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling,
-  -clang-analyzer-security.insecureAPI.strcpy,
+  -clang-analyzer-security.insecureAPI.strcpy
 
 HeaderFilterRegex: '(Common|portable|frontier-cli)/.*\.h$'
 
