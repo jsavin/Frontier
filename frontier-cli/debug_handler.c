@@ -90,6 +90,32 @@ static debug_breakpoint_t g_breakpoints[MAX_BREAKPOINTS] = {0};
 static atomic_bool g_has_breakpoints = false; /* fast-path: skip mutex when no breakpoints set */
 
 /* ========================================================================
+ * Watchpoints (Phase 6)
+ *
+ * Watchpoints monitor a named variable and suspend when its value changes.
+ * The callback snapshots the variable's string representation on first
+ * encounter and compares on each subsequent callback. If the value differs,
+ * the thread suspends with reason "watchpoint" and reports old/new values.
+ *
+ * Like breakpoints, watchpoints persist for the lifetime of the process
+ * and are protected by g_debug_mutex.
+ * ======================================================================== */
+
+#define MAX_WATCHPOINTS 64
+#define DEBUG_VARNAME_MAX 64
+#define DEBUG_VALUE_MAX 256
+
+typedef struct {
+    char varname[DEBUG_VARNAME_MAX];    /* variable name to watch */
+    char last_value[DEBUG_VALUE_MAX];   /* last known value (string repr) */
+    boolean has_snapshot;               /* have we taken an initial snapshot? */
+    boolean active;                     /* is this slot in use? */
+} debug_watchpoint_t;
+
+static debug_watchpoint_t g_watchpoints[MAX_WATCHPOINTS] = {0};
+static atomic_bool g_has_watchpoints = false; /* fast-path */
+
+/* ========================================================================
  * Reason string conversion
  * ======================================================================== */
 
@@ -99,6 +125,7 @@ const char *debug_reason_string(debug_suspend_reason_t reason) {
         case DEBUG_REASON_INTERRUPTED: return "interrupted";
         case DEBUG_REASON_BREAKPOINT:  return "breakpoint";
         case DEBUG_REASON_STEP:        return "step";
+        case DEBUG_REASON_WATCHPOINT:  return "watchpoint";
         case DEBUG_REASON_ERROR:       return "error";
         default:                       return "unknown";
     }
@@ -461,9 +488,13 @@ static boolean protocol_debugger_callback(hdltreenode hnode) {
      *
      * The multiple atomic_load calls form a consistent snapshot because the
      * callback runs with the GIL held — no other thread can modify these fields. */
-    boolean flskipbreakpoint = (atomic_load(&state->flstepping) &&
-                                lnum == atomic_load(&state->lastlnum) &&
-                                atomic_load(&state->calldepth) == atomic_load(&state->steplevel));
+    /* Skip breakpoint re-trigger on the same line we just suspended at.
+     * After any suspension (breakpoint, step, watchpoint), lastlnum records
+     * the suspension line. The callback may fire again for the same lnum
+     * (multiple AST nodes per source line) before advancing. Without this
+     * guard, the thread would immediately re-hit the same breakpoint.
+     * Once lnum changes (next source line), breakpoints fire normally again. */
+    boolean flskipbreakpoint = (lnum > 0 && lnum == atomic_load(&state->lastlnum));
 
     if (!flskipbreakpoint && atomic_load_explicit(&g_has_breakpoints, memory_order_relaxed) &&
         lnum > 0 && !atomic_load(&state->flsuspended) && state->current_script[0] != '\0') {
@@ -494,6 +525,115 @@ static boolean protocol_debugger_callback(hdltreenode hnode) {
             debug_send_suspended(state->transport, state->threadid, (long)lnum, DEBUG_REASON_BREAKPOINT);
             log_debug(LOG_COMP_LANG, "debug: thread %ld hit breakpoint at %s line %ld",
                       state->threadid, state->current_script, (long)lnum);
+        }
+    }
+
+    /* Watchpoint check (Phase 6) — if not already suspended and watchpoints
+     * exist, check if any watched variable has changed value since last check.
+     * Uses string representation comparison (hashgetvaluestring) to avoid
+     * the dispose-both-inputs issue with EQvalue.
+     *
+     * Watchpoints fire on steppable nodes only (meaningful lines where values
+     * could have changed). */
+    if (atomic_load_explicit(&g_has_watchpoints, memory_order_relaxed) &&
+        flsteppable && !atomic_load(&state->flsuspended)) {
+
+        /* Get current local hash table — use the global currenthashtable
+         * (which is correct since we hold the GIL and own this thread's
+         * restored context) rather than reading from hglobals. */
+        hdlhashtable htable = currenthashtable;
+
+        /* Find the innermost local table */
+        hdlhashtable hlocals = nil;
+        hdlhashtable hwalk = htable;
+        while (hwalk != nil) {
+            if ((**hwalk).fllocaltable) {
+                hlocals = hwalk;
+                break;
+            }
+            hwalk = (**hwalk).prevhashtable;
+        }
+
+        if (hlocals != nil) {
+            pthread_mutex_lock(&g_debug_mutex);
+
+            for (int w = 0; w < MAX_WATCHPOINTS; w++) {
+                if (!g_watchpoints[w].active)
+                    continue;
+
+                /* Look up the variable by name */
+                bigstring bsname;
+                int nlen = (int)strlen(g_watchpoints[w].varname);
+                if (nlen > 255) nlen = 255;
+                bsname[0] = (unsigned char)nlen;
+                memcpy(bsname + 1, g_watchpoints[w].varname, (size_t)nlen);
+
+                tyvaluerecord val;
+                hdlhashnode hnode;
+                if (!hashtablelookup(hlocals, bsname, &val, &hnode))
+                    continue;
+
+                /* Get current value as string */
+                bigstring bsval;
+                if (!hashgetvaluestring(val, bsval))
+                    continue;
+
+                char cval[DEBUG_VALUE_MAX];
+                int vlen = bsval[0];
+                if (vlen >= DEBUG_VALUE_MAX) vlen = DEBUG_VALUE_MAX - 1;
+                memcpy(cval, bsval + 1, (size_t)vlen);
+                cval[vlen] = '\0';
+
+                if (!g_watchpoints[w].has_snapshot) {
+                    /* First encounter — save snapshot, don't trigger */
+                    memcpy(g_watchpoints[w].last_value, cval, (size_t)(vlen + 1));
+                    g_watchpoints[w].has_snapshot = true;
+                    continue;
+                }
+
+                /* Compare with last known value */
+                if (strcmp(g_watchpoints[w].last_value, cval) != 0) {
+                    /* Value changed! */
+                    char old_value[DEBUG_VALUE_MAX];
+                    memcpy(old_value, g_watchpoints[w].last_value, DEBUG_VALUE_MAX);
+                    memcpy(g_watchpoints[w].last_value, cval, (size_t)(vlen + 1));
+
+                    pthread_mutex_unlock(&g_debug_mutex);
+
+                    /* Clear stepping state — watchpoint takes priority */
+                    atomic_store(&state->flstepping, false);
+                    atomic_store(&state->stepdir, DEBUG_STEP_NONE);
+                    atomic_store(&state->lastlnum, lnum);
+
+                    /* Send watchpoint notification with old/new values */
+                    cJSON *notif = cJSON_CreateObject();
+                    cJSON_AddNullToObject(notif, "id");
+                    cJSON_AddStringToObject(notif, "op", "debug/suspended");
+                    cJSON *params = cJSON_CreateObject();
+                    cJSON_AddNumberToObject(params, "threadId", (double)state->threadid);
+                    cJSON_AddNumberToObject(params, "line", (double)lnum);
+                    cJSON_AddStringToObject(params, "reason", "watchpoint");
+                    cJSON_AddStringToObject(params, "variable", g_watchpoints[w].varname);
+                    cJSON_AddStringToObject(params, "oldValue", old_value);
+                    cJSON_AddStringToObject(params, "newValue", cval);
+                    cJSON_AddItemToObject(notif, "params", params);
+
+                    char *json_str = cJSON_PrintUnformatted(notif);
+                    if (json_str) {
+                        atomic_store_explicit(&state->flsuspended, true, memory_order_seq_cst);
+                        state->transport->write_line(state->transport->ctx, json_str, strlen(json_str));
+                        free(json_str);
+                    }
+                    cJSON_Delete(notif);
+
+                    log_debug(LOG_COMP_LANG, "debug: thread %ld watchpoint '%s' changed: '%s' -> '%s' at line %ld",
+                              state->threadid, g_watchpoints[w].varname, old_value, cval, (long)lnum);
+
+                    goto after_stepping; /* skip stepping logic, already suspended */
+                }
+            }
+
+            pthread_mutex_unlock(&g_debug_mutex);
         }
     }
 
@@ -552,6 +692,8 @@ static boolean protocol_debugger_callback(hdltreenode hnode) {
             log_debug(LOG_COMP_LANG, "debug: thread %ld step completed at line %ld", state->threadid, (long)lnum);
         }
     }
+
+after_stepping: /* label for watchpoint goto — skips stepping when watchpoint fires */
 
     /* Capture the thread globals handle in a local variable BEFORE releasing
      * the GIL. The global `hthreadglobals` is shared — other threads overwrite
@@ -1815,4 +1957,186 @@ void handle_debug_listthreads(int id, const char *json_line, transport_t *transp
         free(json_str);
     }
     cJSON_Delete(resp);
+}
+
+/* ========================================================================
+ * Watchpoint protocol handlers (Phase 6)
+ * ======================================================================== */
+
+/*
+ * debug/setWatchpoint — Set or clear a watchpoint on a variable.
+ *
+ * Toggle behavior: if a watchpoint already exists for the variable,
+ * it is cleared. Otherwise, a new watchpoint is set.
+ *
+ * Params:
+ *   variable: name of the variable to watch (e.g. "x", "msg")
+ */
+void handle_debug_setwatchpoint(int id, const char *json_line, transport_t *transport) {
+
+    cJSON *root = cJSON_Parse(json_line);
+
+    if (root == NULL) {
+        char err[512];
+        snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Invalid JSON\"},\"success\":false}", id);
+        transport->write_line(transport->ctx, err, strlen(err));
+        return;
+    }
+
+    cJSON *params_json = cJSON_GetObjectItemCaseSensitive(root, "params");
+    cJSON *var_json = params_json ? cJSON_GetObjectItemCaseSensitive(params_json, "variable") : NULL;
+
+    if (!cJSON_IsString(var_json) || var_json->valuestring == NULL) {
+        char err[512];
+        snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Missing 'variable' in params\"},\"success\":false}", id);
+        transport->write_line(transport->ctx, err, strlen(err));
+        cJSON_Delete(root);
+        return;
+    }
+
+    const char *varname = var_json->valuestring;
+
+    if (strlen(varname) >= DEBUG_VARNAME_MAX) {
+        char err[512];
+        snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Variable name too long\"},\"success\":false}", id);
+        transport->write_line(transport->ctx, err, strlen(err));
+        cJSON_Delete(root);
+        return;
+    }
+
+    boolean cleared = false;
+    boolean set = false;
+
+    pthread_mutex_lock(&g_debug_mutex);
+
+    /* First pass: check for existing watchpoint to toggle off */
+    for (int i = 0; i < MAX_WATCHPOINTS; i++) {
+        if (g_watchpoints[i].active &&
+            strcmp(g_watchpoints[i].varname, varname) == 0) {
+            g_watchpoints[i].active = false;
+            cleared = true;
+            break;
+        }
+    }
+
+    /* Second pass: if not clearing, find an empty slot */
+    if (!cleared) {
+        for (int i = 0; i < MAX_WATCHPOINTS; i++) {
+            if (!g_watchpoints[i].active) {
+                memcpy(g_watchpoints[i].varname, varname, strlen(varname) + 1);
+                g_watchpoints[i].has_snapshot = false;
+                g_watchpoints[i].last_value[0] = '\0';
+                g_watchpoints[i].active = true;
+                set = true;
+                break;
+            }
+        }
+    }
+
+    /* Update fast-path flag */
+    boolean any_active = false;
+    for (int i = 0; i < MAX_WATCHPOINTS; i++) {
+        if (g_watchpoints[i].active) {
+            any_active = true;
+            break;
+        }
+    }
+    atomic_store(&g_has_watchpoints, any_active);
+
+    pthread_mutex_unlock(&g_debug_mutex);
+
+    if (!cleared && !set) {
+        char err[512];
+        snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Too many watchpoints (max %d)\"},\"success\":false}", id, MAX_WATCHPOINTS);
+        transport->write_line(transport->ctx, err, strlen(err));
+        cJSON_Delete(root);
+        return;
+    }
+
+    cJSON *resp = cJSON_CreateObject();
+    cJSON_AddNumberToObject(resp, "id", id);
+    cJSON *result = cJSON_CreateObject();
+    cJSON_AddStringToObject(result, "action", cleared ? "cleared" : "set");
+    cJSON_AddStringToObject(result, "variable", varname);
+    cJSON_AddItemToObject(resp, "result", result);
+    cJSON_AddBoolToObject(resp, "success", 1);
+
+    char *json_str = cJSON_PrintUnformatted(resp);
+    if (json_str) {
+        transport->write_line(transport->ctx, json_str, strlen(json_str));
+        free(json_str);
+    }
+    cJSON_Delete(resp);
+
+    log_info(LOG_COMP_LANG, "debug: watchpoint %s on '%s'",
+             cleared ? "cleared" : "set", varname);
+
+    cJSON_Delete(root);
+}
+
+/*
+ * debug/listWatchpoints — List all active watchpoints.
+ */
+void handle_debug_listwatchpoints(int id, const char *json_line, transport_t *transport) {
+
+    (void)json_line; /* no params to validate */
+
+    cJSON *resp = cJSON_CreateObject();
+    cJSON_AddNumberToObject(resp, "id", id);
+
+    cJSON *result = cJSON_CreateObject();
+    cJSON *wparray = cJSON_CreateArray();
+
+    pthread_mutex_lock(&g_debug_mutex);
+
+    for (int i = 0; i < MAX_WATCHPOINTS; i++) {
+        if (g_watchpoints[i].active) {
+            cJSON *wp = cJSON_CreateObject();
+            cJSON_AddStringToObject(wp, "variable", g_watchpoints[i].varname);
+            if (g_watchpoints[i].has_snapshot)
+                cJSON_AddStringToObject(wp, "lastValue", g_watchpoints[i].last_value);
+            cJSON_AddItemToArray(wparray, wp);
+        }
+    }
+
+    pthread_mutex_unlock(&g_debug_mutex);
+
+    cJSON_AddItemToObject(result, "watchpoints", wparray);
+    cJSON_AddItemToObject(resp, "result", result);
+    cJSON_AddBoolToObject(resp, "success", 1);
+
+    char *json_str = cJSON_PrintUnformatted(resp);
+    if (json_str) {
+        transport->write_line(transport->ctx, json_str, strlen(json_str));
+        free(json_str);
+    }
+    cJSON_Delete(resp);
+}
+
+/*
+ * debug/clearWatchpoints — Clear all watchpoints.
+ */
+void handle_debug_clearwatchpoints(int id, const char *json_line, transport_t *transport) {
+
+    (void)json_line; /* no params to validate */
+
+    int cleared_count = 0;
+
+    pthread_mutex_lock(&g_debug_mutex);
+
+    for (int i = 0; i < MAX_WATCHPOINTS; i++) {
+        if (g_watchpoints[i].active) {
+            g_watchpoints[i].active = false;
+            cleared_count++;
+        }
+    }
+
+    atomic_store(&g_has_watchpoints, false);
+
+    pthread_mutex_unlock(&g_debug_mutex);
+
+    char resp[128];
+    snprintf(resp, sizeof(resp),
+             "{\"id\":%d,\"result\":{\"cleared\":%d},\"success\":true}", id, cleared_count);
+    transport->write_line(transport->ctx, resp, strlen(resp));
 }

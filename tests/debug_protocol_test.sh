@@ -723,6 +723,104 @@ assert_test("both threads completed",
             len(completions) >= 2,
             f"Completions: {completions}")
 
+# --- Test 15: watchpoint set/list/clear ---
+print()
+print("--- watchpoint set/list/clear ---")
+
+def test_watchpoint_ops(send):
+    send({"op": "debug/setWatchpoint", "id": 1, "params": {"variable": "x"}})
+    time.sleep(0.3)
+    send({"op": "debug/setWatchpoint", "id": 2, "params": {"variable": "y"}})
+    time.sleep(0.3)
+    send({"op": "debug/listWatchpoints", "id": 3, "params": {}})
+    time.sleep(0.3)
+    # Toggle x off
+    send({"op": "debug/setWatchpoint", "id": 4, "params": {"variable": "x"}})
+    time.sleep(0.3)
+    send({"op": "debug/listWatchpoints", "id": 5, "params": {}})
+    time.sleep(0.3)
+    # Clear all
+    send({"op": "debug/clearWatchpoints", "id": 6, "params": {}})
+    time.sleep(0.3)
+
+msgs = run_debug_session(test_watchpoint_ops)
+
+set_msg = None
+for m in msgs:
+    if m.get("id") == 1 and m.get("result", {}).get("action") == "set":
+        set_msg = m
+        break
+assert_test("setWatchpoint returns action=set", set_msg is not None, f"Messages: {msgs}")
+
+list1 = None
+for m in msgs:
+    if m.get("id") == 3 and m.get("result", {}).get("watchpoints") is not None:
+        list1 = m
+        break
+assert_test("listWatchpoints shows 2 watchpoints",
+            list1 is not None and len(list1["result"]["watchpoints"]) == 2,
+            f"Messages: {[m for m in msgs if m.get('id') == 3]}")
+
+toggle_msg = None
+for m in msgs:
+    if m.get("id") == 4 and m.get("result", {}).get("action") == "cleared":
+        toggle_msg = m
+        break
+assert_test("setWatchpoint toggle clears", toggle_msg is not None, f"Messages: {msgs}")
+
+list2 = None
+for m in msgs:
+    if m.get("id") == 5 and m.get("result", {}).get("watchpoints") is not None:
+        list2 = m
+        break
+assert_test("listWatchpoints shows 1 after toggle",
+            list2 is not None and len(list2["result"]["watchpoints"]) == 1,
+            f"Messages: {[m for m in msgs if m.get('id') == 5]}")
+
+clear_msg = None
+for m in msgs:
+    if m.get("id") == 6 and m.get("result", {}).get("cleared") is not None:
+        clear_msg = m
+        break
+assert_test("clearWatchpoints returns count",
+            clear_msg is not None and clear_msg["result"]["cleared"] == 1,
+            f"Messages: {[m for m in msgs if m.get('id') == 6]}")
+
+# --- Test 16: watchpoint fires on value change ---
+print()
+print("--- watchpoint fires on value change ---")
+
+def test_watchpoint_fire(send):
+    send({"op": "debug/setWatchpoint", "id": 1, "params": {"variable": "x"}})
+    time.sleep(0.3)
+    send({"op": "debug/run", "id": 2, "params": {"expression": "local (x = 1); x = x + 10; return x"}})
+    time.sleep(2)
+    # Continue past entry — watchpoint should fire when x changes
+    send({"op": "debug/continue", "id": 3, "params": {"threadId": FIRST_DEBUG_TID}})
+    time.sleep(3)
+    # Kill
+    send({"op": "debug/kill", "id": 4, "params": {"threadId": FIRST_DEBUG_TID}})
+    time.sleep(1)
+
+msgs = run_debug_session(test_watchpoint_fire, timeout=20)
+
+wp_suspend = find_msg(msgs, reason="watchpoint")
+assert_test("watchpoint fires on value change",
+            wp_suspend is not None,
+            f"Messages: {[m for m in msgs if m.get('op') == 'debug/suspended']}")
+
+if wp_suspend:
+    params = wp_suspend.get("params", {})
+    assert_test("watchpoint reports variable name",
+                params.get("variable") == "x",
+                f"Params: {params}")
+    assert_test("watchpoint reports old value",
+                params.get("oldValue") == "1",
+                f"Params: {params}")
+    assert_test("watchpoint reports new value",
+                params.get("newValue") == "11",
+                f"Params: {params}")
+
 print()
 print("=" * 46)
 print(f"RESULTS: {PASSED} passed, {FAILED} failed")
