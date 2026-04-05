@@ -99,6 +99,8 @@ typedef struct tydebugstate {
     atomic_bool flstepping;          /* stepping mode active */
     atomic_int stepdir;              /* current step direction (debug_step_direction_t) */
     atomic_ulong lastlnum;           /* line number at last suspension */
+    boolean flskipaliasline;         /* skip breakpoints at lastlnum until line changes;
+                                      * set on resume, cleared when lnum != lastlnum */
     atomic_short steplevel;          /* call depth when step was initiated */
     atomic_short calldepth;          /* current call depth — 0 at top-level expression,
                                       * incremented on function entry (push sourcecode),

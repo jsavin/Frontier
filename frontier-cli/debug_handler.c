@@ -488,13 +488,19 @@ static boolean protocol_debugger_callback(hdltreenode hnode) {
      *
      * The multiple atomic_load calls form a consistent snapshot because the
      * callback runs with the GIL held — no other thread can modify these fields. */
-    /* Skip breakpoint re-trigger on the same line we just suspended at.
-     * After any suspension (breakpoint, step, watchpoint), lastlnum records
-     * the suspension line. The callback may fire again for the same lnum
-     * (multiple AST nodes per source line) before advancing. Without this
-     * guard, the thread would immediately re-hit the same breakpoint.
-     * Once lnum changes (next source line), breakpoints fire normally again. */
-    boolean flskipbreakpoint = (lnum > 0 && lnum == atomic_load(&state->lastlnum));
+    /* Skip breakpoint re-trigger on the same line we just resumed from.
+     * After any suspension, flskipaliasline is set. While true, breakpoints
+     * at lastlnum are skipped (multiple AST nodes per source line). Once the
+     * line number changes (next source line), the flag is cleared and
+     * breakpoints fire normally — including if a loop returns to lastlnum. */
+    boolean flskipbreakpoint = false;
+    if (state->flskipaliasline && lnum > 0) {
+        if (lnum == atomic_load(&state->lastlnum)) {
+            flskipbreakpoint = true;
+        } else {
+            state->flskipaliasline = false; /* line changed — re-enable breakpoints */
+        }
+    }
 
     if (!flskipbreakpoint && atomic_load_explicit(&g_has_breakpoints, memory_order_relaxed) &&
         lnum > 0 && !atomic_load(&state->flsuspended) && state->current_script[0] != '\0') {
@@ -569,8 +575,8 @@ static boolean protocol_debugger_callback(hdltreenode hnode) {
                 memcpy(bsname + 1, g_watchpoints[w].varname, (size_t)nlen);
 
                 tyvaluerecord val;
-                hdlhashnode hnode;
-                if (!hashtablelookup(hlocals, bsname, &val, &hnode))
+                hdlhashnode hn;
+                if (!hashtablelookup(hlocals, bsname, &val, &hn))
                     continue;
 
                 /* Get current value as string */
@@ -593,9 +599,11 @@ static boolean protocol_debugger_callback(hdltreenode hnode) {
 
                 /* Compare with last known value */
                 if (strcmp(g_watchpoints[w].last_value, cval) != 0) {
-                    /* Value changed! */
+                    /* Value changed! Copy all needed data before releasing mutex */
                     char old_value[DEBUG_VALUE_MAX];
+                    char fired_varname[DEBUG_VARNAME_MAX];
                     memcpy(old_value, g_watchpoints[w].last_value, DEBUG_VALUE_MAX);
+                    memcpy(fired_varname, g_watchpoints[w].varname, DEBUG_VARNAME_MAX);
                     memcpy(g_watchpoints[w].last_value, cval, (size_t)(vlen + 1));
 
                     pthread_mutex_unlock(&g_debug_mutex);
@@ -609,14 +617,14 @@ static boolean protocol_debugger_callback(hdltreenode hnode) {
                     cJSON *notif = cJSON_CreateObject();
                     cJSON_AddNullToObject(notif, "id");
                     cJSON_AddStringToObject(notif, "op", "debug/suspended");
-                    cJSON *params = cJSON_CreateObject();
-                    cJSON_AddNumberToObject(params, "threadId", (double)state->threadid);
-                    cJSON_AddNumberToObject(params, "line", (double)lnum);
-                    cJSON_AddStringToObject(params, "reason", "watchpoint");
-                    cJSON_AddStringToObject(params, "variable", g_watchpoints[w].varname);
-                    cJSON_AddStringToObject(params, "oldValue", old_value);
-                    cJSON_AddStringToObject(params, "newValue", cval);
-                    cJSON_AddItemToObject(notif, "params", params);
+                    cJSON *wp_params = cJSON_CreateObject();
+                    cJSON_AddNumberToObject(wp_params, "threadId", (double)state->threadid);
+                    cJSON_AddNumberToObject(wp_params, "line", (double)lnum);
+                    cJSON_AddStringToObject(wp_params, "reason", "watchpoint");
+                    cJSON_AddStringToObject(wp_params, "variable", fired_varname);
+                    cJSON_AddStringToObject(wp_params, "oldValue", old_value);
+                    cJSON_AddStringToObject(wp_params, "newValue", cval);
+                    cJSON_AddItemToObject(notif, "params", wp_params);
 
                     char *json_str = cJSON_PrintUnformatted(notif);
                     if (json_str) {
@@ -627,7 +635,7 @@ static boolean protocol_debugger_callback(hdltreenode hnode) {
                     cJSON_Delete(notif);
 
                     log_debug(LOG_COMP_LANG, "debug: thread %ld watchpoint '%s' changed: '%s' -> '%s' at line %ld",
-                              state->threadid, g_watchpoints[w].varname, old_value, cval, (long)lnum);
+                              state->threadid, fired_varname, old_value, cval, (long)lnum);
 
                     goto after_stepping; /* skip stepping logic, already suspended */
                 }
@@ -1068,6 +1076,7 @@ void handle_debug_continue(int id, const char *json_line, transport_t *transport
     /* Clear any stepping state — continue means run freely */
     atomic_store(&state->flstepping, false);
     atomic_store(&state->stepdir, DEBUG_STEP_NONE);
+    state->flskipaliasline = true; /* skip re-trigger at same line on resume */
 
     atomic_store(&state->flsuspended, false);
     debug_release_state(state);
@@ -1153,6 +1162,7 @@ void handle_debug_step(int id, const char *json_line, transport_t *transport) {
     atomic_store(&state->stepdir, (int)dir);
     atomic_store(&state->steplevel, atomic_load(&state->calldepth));
     /* lastlnum already set from the last suspension point */
+    state->flskipaliasline = true; /* skip re-trigger at same line on resume */
 
     /* Resume the thread — it will execute until the stepping condition is met */
     atomic_store_explicit(&state->flsuspended, false, memory_order_seq_cst);
