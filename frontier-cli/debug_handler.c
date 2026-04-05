@@ -535,6 +535,7 @@ static boolean protocol_debugger_callback(hdltreenode hnode) {
          * Numeric comparison used when both sides parse as numbers. */
         if (flbreakpoint && bp_condition[0] != '\0') {
             boolean cond_met = false;
+            boolean cond_evaluated = false; /* did we actually evaluate the condition? */
             char bp_condition_orig[DEBUG_VALUE_MAX]; /* preserve for logging before parse mutates */
             memcpy(bp_condition_orig, bp_condition, DEBUG_VALUE_MAX);
 
@@ -599,6 +600,8 @@ static boolean protocol_debugger_callback(hdltreenode hnode) {
                             memcpy(actual, bsval + 1, (size_t)avlen);
                             actual[avlen] = '\0';
 
+                            cond_evaluated = true;
+
                             /* Try numeric comparison first */
                             char *endp1, *endp2;
                             double da = strtod(actual, &endp1);
@@ -626,11 +629,15 @@ static boolean protocol_debugger_callback(hdltreenode hnode) {
                         }
                     }
                 }
+            } else {
+                log_warn(LOG_COMP_LANG, "debug: unparseable condition '%s' at line %ld (expected: varname op value)",
+                         bp_condition_orig, (long)lnum);
             }
 
             if (!cond_met) {
-                log_debug(LOG_COMP_LANG, "debug: conditional breakpoint at line %ld skipped (condition '%s' not met)",
-                          (long)lnum, bp_condition_orig);
+                if (cond_evaluated)
+                    log_debug(LOG_COMP_LANG, "debug: conditional breakpoint at line %ld skipped (condition '%s' evaluated to false)",
+                              (long)lnum, bp_condition_orig);
                 flbreakpoint = false;
             }
         }
