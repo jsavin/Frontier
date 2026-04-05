@@ -575,8 +575,8 @@ static boolean protocol_debugger_callback(hdltreenode hnode) {
                 memcpy(bsname + 1, g_watchpoints[w].varname, (size_t)nlen);
 
                 tyvaluerecord val;
-                hdlhashnode hn;
-                if (!hashtablelookup(hlocals, bsname, &val, &hn))
+                hdlhashnode hn = nil;
+                if (!hashtablelookup(hlocals, bsname, &val, &hn))  /* hn unused — API requires it */
                     continue;
 
                 /* Get current value as string */
