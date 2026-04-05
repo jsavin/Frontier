@@ -392,6 +392,16 @@ lint:
 	-clang-tidy $(CLI_SOURCES) -p ..
 
 lint-all:
+	@if [ ! -f ../compile_commands.json ]; then \
+		echo "Error: compile_commands.json not found. Run: bear -- make -C frontier-cli"; \
+		exit 1; \
+	fi
 	-clang-tidy $(CLI_SOURCES) $(FRONTIER_SOURCES) -p ..
 
-.PHONY: all build clean strings_generated kernel_verbs_generated check-paige-cache dist dist-clean clean-root validate-bigstrings lint lint-all
+lint-python:
+	-ruff check ..
+
+lint-shell:
+	-shellcheck ../tools/*.sh ../tests/*.sh ../tests/integration/*.sh ../tests/system/*.sh ../scripts/*.sh
+
+.PHONY: all build clean strings_generated kernel_verbs_generated check-paige-cache dist dist-clean clean-root validate-bigstrings lint lint-all lint-python lint-shell

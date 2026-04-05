@@ -3,6 +3,11 @@
 #
 # Run: make -C frontier-cli lint
 # Requires: compile_commands.json (generate with: bear -- make -C frontier-cli)
+#
+# Security checks disabled (strcpy, DeprecatedOrUnsafeBufferHandling, etc.):
+# Legacy C uses strcpy/sprintf/memcpy pervasively. Manual concatenation
+# patterns are correct but trigger false positives. Re-enable when
+# modernizing string handling.
 
 Checks: >
   -*,
