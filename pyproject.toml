@@ -1,0 +1,22 @@
+[tool.ruff]
+target-version = "py310"
+exclude = [
+    "tests/vendor/**",
+    "third_party/**",
+    "tests/tmp/**",
+]
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "F",    # pyflakes
+    "W",    # pycodestyle warnings
+    "B",    # flake8-bugbear (likely bugs)
+    "SIM",  # flake8-simplify
+]
+ignore = [
+    "E741",   # ambiguous variable name — legacy code uses short names
+    "E501",   # line too long — not enforcing yet
+    "SIM105", # suppressible-exception — contextlib.suppress is less clear in scripts
+    "SIM108", # if-else-block-instead-of-if-exp — ternary not always clearer
+]

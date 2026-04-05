@@ -1,0 +1,3 @@
+# Shellcheck configuration for Frontier
+# All scripts are bash
+shell=bash
