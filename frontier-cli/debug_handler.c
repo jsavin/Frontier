@@ -535,6 +535,8 @@ static boolean protocol_debugger_callback(hdltreenode hnode) {
          * Numeric comparison used when both sides parse as numbers. */
         if (flbreakpoint && bp_condition[0] != '\0') {
             boolean cond_met = false;
+            char bp_condition_orig[DEBUG_VALUE_MAX]; /* preserve for logging before parse mutates */
+            memcpy(bp_condition_orig, bp_condition, DEBUG_VALUE_MAX);
 
             /* Parse: find operator (check two-char ops before one-char) */
             char *op_pos = NULL;
@@ -625,7 +627,7 @@ static boolean protocol_debugger_callback(hdltreenode hnode) {
 
             if (!cond_met) {
                 log_debug(LOG_COMP_LANG, "debug: conditional breakpoint at line %ld skipped (condition '%s' not met)",
-                          (long)lnum, bp_condition);
+                          (long)lnum, bp_condition_orig);
                 flbreakpoint = false;
             }
         }
