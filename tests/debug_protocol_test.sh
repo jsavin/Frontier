@@ -279,6 +279,38 @@ if step_suspend:
                 step_line == 2,
                 f"Expected line 2, got {step_line}")
 
+# Step-out: step into a function, then step-out to return to caller
+def test_step_out(send):
+    # Reuse depthHelper and depthCaller from earlier test (or create fresh)
+    send({"op": "script/eval", "id": 1, "params": {
+        "expression": 'new(scriptType, @system.temp.outHelper); script.newScriptObject("local (r = 77)\\rreturn r", @system.temp.outHelper)'
+    }})
+    time.sleep(0.5)
+    send({"op": "script/eval", "id": 2, "params": {
+        "expression": 'new(scriptType, @system.temp.outCaller); script.newScriptObject("local (a = system.temp.outHelper())\\rreturn a", @system.temp.outCaller)'
+    }})
+    time.sleep(0.5)
+    # Set breakpoint inside outHelper (line 1: local r = 77)
+    send({"op": "debug/setBreakpoint", "id": 3, "params": {"script": "system.temp.outHelper", "line": 1}})
+    time.sleep(0.3)
+    send({"op": "debug/run", "id": 4, "params": {"expression": "system.temp.outCaller()"}})
+    time.sleep(2)
+    # Continue past entry
+    send({"op": "debug/continue", "id": 5, "params": {"threadId": FIRST_DEBUG_TID}})
+    time.sleep(2)
+    # Now suspended inside outHelper at line 1 — step out to return to outCaller
+    send({"op": "debug/step", "id": 6, "params": {"threadId": FIRST_DEBUG_TID, "direction": "out"}})
+    time.sleep(3)
+    # Should be suspended back in outCaller
+    send({"op": "debug/kill", "id": 7, "params": {"threadId": FIRST_DEBUG_TID}})
+    time.sleep(1)
+
+msgs = run_debug_session(test_step_out, timeout=25)
+step_suspend = find_msg(msgs, reason="step")
+assert_test("step-out returns to caller",
+            step_suspend is not None,
+            f"Messages: {[m for m in msgs if m.get('op') == 'debug/suspended']}")
+
 def test_step_error_not_suspended(send):
     send({"op": "debug/run", "id": 1, "params": {"expression": "return 1"}})
     time.sleep(1)
