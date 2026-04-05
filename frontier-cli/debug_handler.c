@@ -79,11 +79,17 @@ static atomic_bool g_debug_thread_was_killed = false; /* set when a debug thread
  * ======================================================================== */
 
 #define MAX_BREAKPOINTS 256
+#define DEBUG_VALUE_MAX 256  /* shared: breakpoint conditions + watchpoint values */
 
 typedef struct {
     char script[DEBUG_SCRIPT_PATH_MAX]; /* dotted script path, e.g. "mainResponder.respond" */
     unsigned long line;                 /* 1-based line number */
     boolean active;                     /* is this slot in use? */
+    char condition[DEBUG_VALUE_MAX];    /* optional condition expression (Phase 7).
+                                         * Empty string = unconditional breakpoint.
+                                         * Simple format: "varname op value" where op is
+                                         * ==, !=, >, <, >=, <=. Evaluated against locals
+                                         * when breakpoint line is reached. */
 } debug_breakpoint_t;
 
 static debug_breakpoint_t g_breakpoints[MAX_BREAKPOINTS] = {0};
@@ -103,7 +109,6 @@ static atomic_bool g_has_breakpoints = false; /* fast-path: skip mutex when no b
 
 #define MAX_WATCHPOINTS 64
 #define DEBUG_VARNAME_MAX 64
-#define DEBUG_VALUE_MAX 256
 
 typedef struct {
     char varname[DEBUG_VARNAME_MAX];    /* variable name to watch */
@@ -509,16 +514,118 @@ static boolean protocol_debugger_callback(hdltreenode hnode) {
 
         pthread_mutex_lock(&g_debug_mutex);
 
+        /* Find matching breakpoint and copy its condition (if any) */
+        char bp_condition[DEBUG_VALUE_MAX] = {0};
+
         for (int i = 0; i < MAX_BREAKPOINTS; i++) {
             if (g_breakpoints[i].active &&
                 g_breakpoints[i].line == lnum &&
                 strcasecmp(g_breakpoints[i].script, state->current_script) == 0) {
                 flbreakpoint = true;
+                memcpy(bp_condition, g_breakpoints[i].condition, DEBUG_VALUE_MAX);
                 break;
             }
         }
 
         pthread_mutex_unlock(&g_debug_mutex);
+
+        /* Evaluate condition if present (Phase 7).
+         * Simple format: "varname op value" where op is ==, !=, >, <, >=, <=.
+         * Compares string representation of the variable against expected value.
+         * Numeric comparison used when both sides parse as numbers. */
+        if (flbreakpoint && bp_condition[0] != '\0') {
+            boolean cond_met = false;
+
+            /* Parse: find operator (check two-char ops before one-char) */
+            char *op_pos = NULL;
+            int op_len = 0;
+            enum { OP_EQ, OP_NE, OP_GE, OP_LE, OP_GT, OP_LT } op_type = OP_EQ;
+
+            if ((op_pos = strstr(bp_condition, "==")) != NULL) { op_len = 2; op_type = OP_EQ; }
+            else if ((op_pos = strstr(bp_condition, "!=")) != NULL) { op_len = 2; op_type = OP_NE; }
+            else if ((op_pos = strstr(bp_condition, ">=")) != NULL) { op_len = 2; op_type = OP_GE; }
+            else if ((op_pos = strstr(bp_condition, "<=")) != NULL) { op_len = 2; op_type = OP_LE; }
+            else if ((op_pos = strstr(bp_condition, ">")) != NULL) { op_len = 1; op_type = OP_GT; }
+            else if ((op_pos = strstr(bp_condition, "<")) != NULL) { op_len = 1; op_type = OP_LT; }
+
+            if (op_pos != NULL) {
+                *op_pos = '\0';
+                char *varname = bp_condition;
+                char *expected = op_pos + op_len;
+
+                /* Trim whitespace */
+                while (*varname == ' ') varname++;
+                char *vend = op_pos - 1;
+                while (vend > varname && *vend == ' ') *vend-- = '\0';
+                while (*expected == ' ') expected++;
+                char *eend = expected + strlen(expected) - 1;
+                while (eend > expected && *eend == ' ') *eend-- = '\0';
+
+                /* Strip quotes from expected value */
+                size_t elen = strlen(expected);
+                if (elen >= 2 && expected[0] == '"' && expected[elen-1] == '"') {
+                    expected[elen-1] = '\0';
+                    expected++;
+                }
+
+                /* Look up variable in locals */
+                hdlhashtable hlocals_cond = nil;
+                hdlhashtable hwalk_cond = currenthashtable;
+                while (hwalk_cond != nil) {
+                    if ((**hwalk_cond).fllocaltable) { hlocals_cond = hwalk_cond; break; }
+                    hwalk_cond = (**hwalk_cond).prevhashtable;
+                }
+
+                if (hlocals_cond != nil) {
+                    bigstring bsname;
+                    int nlen = (int)strlen(varname);
+                    if (nlen > 255) nlen = 255;
+                    bsname[0] = (unsigned char)nlen;
+                    memcpy(bsname + 1, varname, (size_t)nlen);
+
+                    tyvaluerecord cond_val;
+                    hdlhashnode hn_cond = nil;
+                    if (hashtablelookup(hlocals_cond, bsname, &cond_val, &hn_cond)) {
+                        bigstring bsval;
+                        if (hashgetvaluestring(cond_val, bsval)) {
+                            char actual[DEBUG_VALUE_MAX];
+                            int avlen = bsval[0];
+                            if (avlen >= DEBUG_VALUE_MAX) avlen = DEBUG_VALUE_MAX - 1;
+                            memcpy(actual, bsval + 1, (size_t)avlen);
+                            actual[avlen] = '\0';
+
+                            /* Try numeric comparison first */
+                            char *endp1, *endp2;
+                            double da = strtod(actual, &endp1);
+                            double de = strtod(expected, &endp2);
+                            if (*endp1 == '\0' && *endp2 == '\0') {
+                                switch (op_type) {
+                                    case OP_EQ: cond_met = (da == de); break;
+                                    case OP_NE: cond_met = (da != de); break;
+                                    case OP_GE: cond_met = (da >= de); break;
+                                    case OP_LE: cond_met = (da <= de); break;
+                                    case OP_GT: cond_met = (da > de); break;
+                                    case OP_LT: cond_met = (da < de); break;
+                                }
+                            } else {
+                                int cmp = strcmp(actual, expected);
+                                switch (op_type) {
+                                    case OP_EQ: cond_met = (cmp == 0); break;
+                                    case OP_NE: cond_met = (cmp != 0); break;
+                                    case OP_GE: cond_met = (cmp >= 0); break;
+                                    case OP_LE: cond_met = (cmp <= 0); break;
+                                    case OP_GT: cond_met = (cmp > 0); break;
+                                    case OP_LT: cond_met = (cmp < 0); break;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (!cond_met)
+                flbreakpoint = false; /* condition not met — skip */
+        }
 
         if (flbreakpoint) {
             atomic_store(&state->lastlnum, lnum);
@@ -1292,6 +1399,7 @@ void handle_debug_setbreakpoint(int id, const char *json_line, transport_t *tran
     cJSON *params = cJSON_GetObjectItemCaseSensitive(root, "params");
     cJSON *script_json = params ? cJSON_GetObjectItemCaseSensitive(params, "script") : NULL;
     cJSON *line_json = params ? cJSON_GetObjectItemCaseSensitive(params, "line") : NULL;
+    cJSON *cond_json = params ? cJSON_GetObjectItemCaseSensitive(params, "condition") : NULL;
 
     if (!cJSON_IsString(script_json) || script_json->valuestring == NULL) {
         char err[512];
@@ -1358,6 +1466,13 @@ void handle_debug_setbreakpoint(int id, const char *json_line, transport_t *tran
                 /* strlen(script) < DEBUG_SCRIPT_PATH_MAX is guaranteed by the guard above */
                 memcpy(g_breakpoints[i].script, script, strlen(script) + 1);
                 g_breakpoints[i].line = line;
+                g_breakpoints[i].condition[0] = '\0'; /* default: unconditional */
+                if (cJSON_IsString(cond_json) && cond_json->valuestring != NULL) {
+                    size_t clen = strlen(cond_json->valuestring);
+                    if (clen >= DEBUG_VALUE_MAX) clen = DEBUG_VALUE_MAX - 1;
+                    memcpy(g_breakpoints[i].condition, cond_json->valuestring, clen);
+                    g_breakpoints[i].condition[clen] = '\0';
+                }
                 g_breakpoints[i].active = true;
                 set = true;
                 break;
@@ -1392,6 +1507,8 @@ void handle_debug_setbreakpoint(int id, const char *json_line, transport_t *tran
     cJSON_AddStringToObject(result, "action", cleared ? "cleared" : "set");
     cJSON_AddStringToObject(result, "script", script);
     cJSON_AddNumberToObject(result, "line", (double)line);
+    if (!cleared && cJSON_IsString(cond_json) && cond_json->valuestring != NULL)
+        cJSON_AddStringToObject(result, "condition", cond_json->valuestring);
     cJSON_AddItemToObject(resp, "result", result);
     cJSON_AddBoolToObject(resp, "success", 1);
 
@@ -1431,6 +1548,8 @@ void handle_debug_listbreakpoints(int id, const char *json_line, transport_t *tr
             cJSON_AddStringToObject(bp, "script", g_breakpoints[i].script);
             cJSON_AddNumberToObject(bp, "line", (double)g_breakpoints[i].line);
             cJSON_AddStringToObject(bp, "type", "session");
+            if (g_breakpoints[i].condition[0] != '\0')
+                cJSON_AddStringToObject(bp, "condition", g_breakpoints[i].condition);
             cJSON_AddItemToArray(bparray, bp);
         }
     }

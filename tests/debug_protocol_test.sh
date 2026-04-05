@@ -821,6 +821,54 @@ if wp_suspend:
                 params.get("newValue") == "11",
                 f"Params: {params}")
 
+# --- Test 17: conditional breakpoints (Phase 7) ---
+print()
+print("--- conditional breakpoints ---")
+
+def test_conditional_bp(send):
+    send({"op": "script/eval", "id": 1, "params": {
+        "expression": 'new(scriptType, @system.temp.condTest); script.newScriptObject("local (x = 1)\\rx = x + 10\\rreturn x", @system.temp.condTest)'
+    }})
+    time.sleep(1)
+    # Conditional breakpoint on line 1: x > 5 (won't fire, x=1)
+    send({"op": "debug/setBreakpoint", "id": 2, "params": {
+        "script": "system.temp.condTest", "line": 1, "condition": "x > 5"
+    }})
+    time.sleep(0.3)
+    # Conditional breakpoint on line 3: x > 5 (will fire, x=11)
+    send({"op": "debug/setBreakpoint", "id": 3, "params": {
+        "script": "system.temp.condTest", "line": 3, "condition": "x > 5"
+    }})
+    time.sleep(0.3)
+    send({"op": "debug/run", "id": 4, "params": {"expression": "system.temp.condTest()"}})
+    time.sleep(2)
+    send({"op": "debug/continue", "id": 5, "params": {"threadId": FIRST_DEBUG_TID}})
+    time.sleep(3)
+    send({"op": "debug/kill", "id": 6, "params": {"threadId": FIRST_DEBUG_TID}})
+    time.sleep(1)
+
+msgs = run_debug_session(test_conditional_bp, timeout=20)
+
+# Should have suspended at line 3 (condition met), not line 1
+bp_suspensions = [m for m in msgs if m.get("op") == "debug/suspended" and m.get("params", {}).get("reason") == "breakpoint"]
+assert_test("conditional breakpoint fires only when condition met",
+            len(bp_suspensions) == 1,
+            f"Breakpoint suspensions: {bp_suspensions}")
+if bp_suspensions:
+    assert_test("conditional breakpoint fires at correct line",
+                bp_suspensions[0].get("params", {}).get("line") == 3,
+                f"Line: {bp_suspensions[0].get('params', {}).get('line')}")
+
+# Verify condition in setBreakpoint response
+set_with_cond = None
+for m in msgs:
+    if m.get("id") == 2 and m.get("result", {}).get("condition"):
+        set_with_cond = m
+        break
+assert_test("setBreakpoint response includes condition",
+            set_with_cond is not None and set_with_cond["result"]["condition"] == "x > 5",
+            f"Messages: {[m for m in msgs if m.get('id') == 2]}")
+
 print()
 print("=" * 46)
 print(f"RESULTS: {PASSED} passed, {FAILED} failed")
