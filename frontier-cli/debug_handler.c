@@ -579,7 +579,10 @@ static boolean protocol_debugger_callback(hdltreenode hnode) {
                     hwalk_cond = (**hwalk_cond).prevhashtable;
                 }
 
-                if (hlocals_cond != nil) {
+                if (hlocals_cond == nil) {
+                    log_warn(LOG_COMP_LANG, "debug: no local scope for condition '%s' at line %ld",
+                             bp_condition_orig, (long)lnum);
+                } else {
                     bigstring bsname;
                     int nlen = (int)strlen(varname);
                     if (nlen > 255) nlen = 255;
