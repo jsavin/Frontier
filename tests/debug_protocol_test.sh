@@ -621,9 +621,9 @@ print("--- multi-thread debugging ---")
 with DebugSession(timeout=20) as s:
     # Launch two debug threads
     resp1 = s.send_and_wait({"op": "debug/run", "id": 1, "params": {"expression": "return 1+1"}})
-    entry1 = s.wait_for_notification(reason="entry")
+    entry1 = s.wait_for_notification(reason="entry")  # sync: wait for thread 1 to suspend
     resp2 = s.send_and_wait({"op": "debug/run", "id": 2, "params": {"expression": "return 2+2"}})
-    entry2 = s.wait_for_notification(reason="entry")
+    entry2 = s.wait_for_notification(reason="entry")  # sync: wait for thread 2 to suspend
 
     # Extract actual thread IDs from responses
     t1_tid = resp1.get("result", {}).get("threadId") if resp1 else None

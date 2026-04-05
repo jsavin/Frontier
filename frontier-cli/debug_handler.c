@@ -48,6 +48,8 @@ extern hdlhashtable roottable;
 extern boolean opgetlangtext(hdloutlinerecord, boolean, Handle *);  /* oplangtext.c */
 extern boolean opverbinmemory(const struct db_context *, hdlexternalvariable);  /* opverbs.c */
 extern void db_context_init(struct db_context *);  /* db_format.c */
+extern void db_context_init_legacy_read(struct db_context *, hdldatabaserecord);  /* db_format.c */
+extern boolean db_format_is_legacy_db(hdldatabaserecord);  /* db_format.c */
 extern boolean langfastaddresstotable(hdlhashtable, bigstring, hdlhashtable *);  /* langops.c */
 
 /*
@@ -1950,12 +1952,17 @@ void handle_debug_getsource(int id, const char *json_line, transport_t *transpor
     if (val.valuetype == externalvaluetype) {
         hdlexternalvariable hv = (hdlexternalvariable)val.data.externalvalue;
 
-        /* Load from database if not yet in memory */
+        /* Load from database if not yet in memory.
+         * Use format-aware context to handle both v6 and v7 databases. */
         if (!(**hv).flinmemory) {
             db_context ctx;
-            db_context_init(&ctx);
-            if ((**hv).hdatabase != nil)
-                ctx.database = (**hv).hdatabase;
+            if ((**hv).hdatabase != nil && db_format_is_legacy_db((**hv).hdatabase)) {
+                db_context_init_legacy_read(&ctx, (**hv).hdatabase);
+            } else {
+                db_context_init(&ctx);
+                if ((**hv).hdatabase != nil)
+                    ctx.database = (**hv).hdatabase;
+            }
             if (!opverbinmemory(&ctx, hv)) {
                 char err[512];
                 snprintf(err, sizeof(err),
