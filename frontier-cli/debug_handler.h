@@ -37,6 +37,7 @@ typedef enum {
     DEBUG_REASON_INTERRUPTED,  /* suspended via debug/pause */
     DEBUG_REASON_BREAKPOINT,   /* suspended at breakpoint (Phase 3) */
     DEBUG_REASON_STEP,         /* suspended after step (Phase 2) */
+    DEBUG_REASON_WATCHPOINT,   /* suspended on watchpoint value change (Phase 6) */
     DEBUG_REASON_ERROR         /* suspended on error (future) */
 } debug_suspend_reason_t;
 
@@ -98,6 +99,11 @@ typedef struct tydebugstate {
     atomic_bool flstepping;          /* stepping mode active */
     atomic_int stepdir;              /* current step direction (debug_step_direction_t) */
     atomic_ulong lastlnum;           /* line number at last suspension */
+    boolean flskipaliasline;         /* skip breakpoints at lastlnum until line changes;
+                                      * set on resume, cleared when lnum != lastlnum.
+                                      * Not atomic: written by protocol handler (under GIL)
+                                      * and read by debug thread callback (under GIL).
+                                      * Safe because only one thread holds the GIL at a time. */
     atomic_short steplevel;          /* call depth when step was initiated */
     atomic_short calldepth;          /* current call depth — 0 at top-level expression,
                                       * incremented on function entry (push sourcecode),
@@ -137,6 +143,9 @@ void handle_debug_getlocals(int id, const char *json_line, transport_t *transpor
 void handle_debug_getsource(int id, const char *json_line, transport_t *transport);
 void handle_debug_getstack(int id, const char *json_line, transport_t *transport);
 void handle_debug_listthreads(int id, const char *json_line, transport_t *transport);
+void handle_debug_setwatchpoint(int id, const char *json_line, transport_t *transport);
+void handle_debug_listwatchpoints(int id, const char *json_line, transport_t *transport);
+void handle_debug_clearwatchpoints(int id, const char *json_line, transport_t *transport);
 
 /*
  * Release a reference to a debug state obtained from debug_get_state_for_thread.

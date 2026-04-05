@@ -663,6 +663,12 @@ int op_dispatch(const char *json_line, size_t len, transport_t *transport) {
         handle_debug_getstack(id, json_line, transport);
     } else if (strcmp(op, "debug/listThreads") == 0) {
         handle_debug_listthreads(id, json_line, transport);
+    } else if (strcmp(op, "debug/setWatchpoint") == 0) {
+        handle_debug_setwatchpoint(id, json_line, transport);
+    } else if (strcmp(op, "debug/listWatchpoints") == 0) {
+        handle_debug_listwatchpoints(id, json_line, transport);
+    } else if (strcmp(op, "debug/clearWatchpoints") == 0) {
+        handle_debug_clearwatchpoints(id, json_line, transport);
     } else if (strcmp(op, "shutdown") == 0) {
         send_ack(id, transport);
         free(op);
