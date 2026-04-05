@@ -34,6 +34,7 @@
 #include "headless_threading.h"
 #include "langexternal.h"
 #include "op.h"
+#include "db_format.h"
 #include "../third_party/cJSON/cJSON.h"
 
 /* Global: current hashtable and table stack (thread globals) */
@@ -45,6 +46,8 @@ extern hdlhashtable roottable;
  * header declaration. Used by debug/getSource for script path resolution
  * and outline-to-text conversion. */
 extern boolean opgetlangtext(hdloutlinerecord, boolean, Handle *);  /* oplangtext.c */
+extern boolean opverbinmemory(const struct db_context *, hdlexternalvariable);  /* opverbs.c */
+extern void db_context_init(struct db_context *);  /* db_format.c */
 extern boolean langfastaddresstotable(hdlhashtable, bigstring, hdlhashtable *);  /* langops.c */
 
 /*
@@ -1947,16 +1950,20 @@ void handle_debug_getsource(int id, const char *json_line, transport_t *transpor
     if (val.valuetype == externalvaluetype) {
         hdlexternalvariable hv = (hdlexternalvariable)val.data.externalvalue;
 
-        /* Scripts must be in memory to extract source. Compiled/run scripts are
-         * always loaded. Scripts never accessed in this session may still be on
-         * disk — loading requires db context work deferred to a follow-up. */
+        /* Load from database if not yet in memory */
         if (!(**hv).flinmemory) {
-            char err[512];
-            snprintf(err, sizeof(err),
-                     "{\"id\":%d,\"error\":{\"message\":\"Script not loaded in memory (try running it first)\"},\"success\":false}", id);
-            transport->write_line(transport->ctx, err, strlen(err));
-            cJSON_Delete(root);
-            return;
+            db_context ctx;
+            db_context_init(&ctx);
+            if ((**hv).hdatabase != nil)
+                ctx.database = (**hv).hdatabase;
+            if (!opverbinmemory(&ctx, hv)) {
+                char err[512];
+                snprintf(err, sizeof(err),
+                         "{\"id\":%d,\"error\":{\"message\":\"Failed to load script from database\"},\"success\":false}", id);
+                transport->write_line(transport->ctx, err, strlen(err));
+                cJSON_Delete(root);
+                return;
+            }
         }
 
         hdloutlinerecord houtline = (hdloutlinerecord)(**hv).variabledata;
