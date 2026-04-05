@@ -213,6 +213,11 @@ if actual_tid is not None and actual_tid != FIRST_DEBUG_TID:
     print(f"  FATAL: Thread ID assumption broken. Updating to {actual_tid}.")
     FIRST_DEBUG_TID = actual_tid
 
+# Clean slate for breakpoints/watchpoints between test runs
+with DebugSession() as s:
+    s.send_and_wait({"op": "debug/clearBreakpoints", "id": 1})
+    s.send_and_wait({"op": "debug/clearWatchpoints", "id": 2})
+
 # --- Test 1: debug/run + debug/continue ---
 print()
 print("--- debug/run + debug/continue ---")
