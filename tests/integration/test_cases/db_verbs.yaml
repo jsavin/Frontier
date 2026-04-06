@@ -538,3 +538,64 @@ tests:
       return ok and v7Exists and rootExists
     expected_success: true
     expected_result: "true"
+
+  # ========================================================================
+  # Regression test for Issue #264: db.close() + db.open() in same script
+  # ========================================================================
+
+  - name: "Issue #264 - close and reopen in same script"
+    description: "db.new/open/close/reopen must not segfault (Issue #264)"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(dbPath = tmpDir + "/" + "test_issue264.root");
+      if file.exists(dbPath) {file.delete(dbPath)};
+      db.new(dbPath);
+      db.open(dbPath, false);
+      db.close(dbPath);
+      local(ok = db.open(dbPath, false));
+      db.close(dbPath);
+      file.delete(dbPath);
+      return ok
+    expected_success: true
+    expected_result: "true"
+
+  - name: "Issue #264 - multiple close/reopen cycles with data persistence"
+    description: "Data persists across multiple close/reopen cycles in same script"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(dbPath = tmpDir + "/" + "test_issue264_persist.root");
+      if file.exists(dbPath) {file.delete(dbPath)};
+      db.new(dbPath);
+      db.open(dbPath, false);
+      db.setvalue(dbPath, "testkey", "hello264");
+      db.save(dbPath);
+      db.close(dbPath);
+      db.open(dbPath, false);
+      local(v = db.getvalue(dbPath, "testkey"));
+      db.close(dbPath);
+      db.open(dbPath, false);
+      db.close(dbPath);
+      file.delete(dbPath);
+      return v
+    expected_success: true
+    expected_result: "hello264"
+
+  - name: "Issue #270 - duplicate open returns error"
+    description: "Opening an already-open database returns an error instead of creating a second handle"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(dbPath = tmpDir + "/" + "test_issue270_dupopen.root");
+      if file.exists(dbPath) {file.delete(dbPath)};
+      db.new(dbPath);
+      db.open(dbPath, false);
+      try {
+        db.open(dbPath, false);
+        db.close(dbPath);
+        file.delete(dbPath);
+        return false};
+      else {
+        db.close(dbPath);
+        file.delete(dbPath);
+        return true}
+    expected_success: true
+    expected_result: "true"

@@ -209,6 +209,7 @@
 #define sqliteopenerror 163 // 2006-03-17 gewirtz
 #define sqlitedberror 164 // 2006-03-17 gewirtz
 #define sqlitecompileerror 165 // 2007-10-11 creedon
+#define dbalreadyopenederror 166 // 2026-04-03 JES: #270 prevent duplicate db opens
 
 
 #define langstacklist 137
