@@ -8,9 +8,19 @@ This document organizes all 132 open GitHub issues by category and priority. Wor
 
 ---
 
+## Data-Loss Risks (Do First)
+
+These can corrupt or destroy user data. Fix before all other work.
+
+- [ ] #264: db.close() + db.open() in same script causes segfault
+- [ ] #270: Prevent duplicate database opens (concurrent write corruption risk)
+- [ ] #271: TOCTOU race condition in auto-migration allows concurrent database corruption
+
+---
+
 ## Quick Wins (< 30 minutes each)
 
-These are trivial fixes that can be batched into a single session:
+Trivial fixes that can be batched into a single session:
 
 - [ ] #471: Frontier.isPowerPC() returns true on ARM — fix return value
 - [ ] #473: system.environment.isCarbon returns true on headless CLI — fix return value
@@ -23,13 +33,10 @@ These are trivial fixes that can be batched into a single session:
 
 ---
 
-## P0: Security & Data Integrity
+## P0: Security & Data Integrity (Remaining)
 
-Must-fix before any production use. These protect user data.
+Other security and stability issues. Fix after data-loss risks and quick wins.
 
-- [ ] #270: Prevent duplicate database opens (concurrent write corruption risk)
-- [ ] #271: TOCTOU race condition in auto-migration allows concurrent database corruption
-- [ ] #264: db.close() + db.open() in same script causes segfault
 - [ ] #365: Fix callers that ignore grabthreadglobals() return value (crash risk)
 - [ ] #228: Document security model and threat context in docs/SECURITY.md
 - [ ] #88: Networking architecture & security (strategic tracker)
@@ -235,7 +242,8 @@ These are epic-level tracking issues that span multiple phases. Update periodica
 
 ## Recommended Next Actions
 
-1. **Batch the Quick Wins** — single session, commit directly to develop
-2. **Fix P0 security issues** (#270, #271, #264) — these protect user data
-3. **Fix P1 runtime bugs** (#184, #465, #397) — these affect script execution
-4. **Strategic architecture** (#296, #274, #262) — plan before implementing
+1. **Fix data-loss risks** (#264, #270, #271) — protect user data first
+2. **Batch the Quick Wins** — single session, commit directly to develop
+3. **Consolidation** (#482, #367, #179) — cleaner codebase benefits all subsequent work
+4. **Fix P1 runtime bugs** (#184, #465, #397) — these affect script execution
+5. **Strategic architecture** (#296, #274, #262) — plan before implementing
