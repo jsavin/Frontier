@@ -2401,10 +2401,13 @@ boolean ensure_database_v7(const char *db_path, boolean *migrated, char *output_
          * .root as v6 or missing; in that case, fall through to re-migrate. */
         FILE *fp_check = fopen(db_path, "rb");
         if (fp_check) {
+            /* Read with byte-count to handle v7 files smaller than sizeof(tydatabaserecord).
+             * Issue #264: v7 databases may be only 90 bytes (sizeof(tydatabaserecord_64)). */
             tydatabaserecord header_check;
-            boolean header_ok = fread(&header_check, sizeof header_check, 1, fp_check) == 1;
+            memset(&header_check, 0, sizeof header_check);
+            size_t check_bytes = fread(&header_check, 1, sizeof header_check, fp_check);
             fclose(fp_check);
-            if (header_ok && !db_format_is_v6_header(&header_check)) {
+            if (check_bytes >= sizeof(tydatabaserecord_64) && !db_format_is_v6_header(&header_check)) {
                 /* Confirmed v7 -- return db_path as the output */
                 if (output_path && output_path_size > 0) {
                     strncpy(output_path, db_path, output_path_size);
@@ -2463,10 +2466,13 @@ boolean ensure_database_v7(const char *db_path, boolean *migrated, char *output_
         snprintf(legacy_root7_path, sizeof legacy_root7_path, "%s7", db_path);
         FILE *fp_legacy = fopen(legacy_root7_path, "rb");
         if (fp_legacy) {
+            /* Read with byte-count to handle v7 files smaller than sizeof(tydatabaserecord).
+             * Issue #264: v7 databases may be only 90 bytes (sizeof(tydatabaserecord_64)). */
             tydatabaserecord header_v7;
-            boolean header_ok = fread(&header_v7, sizeof header_v7, 1, fp_legacy) == 1;
+            memset(&header_v7, 0, sizeof header_v7);
+            size_t legacy_bytes = fread(&header_v7, 1, sizeof header_v7, fp_legacy);
             fclose(fp_legacy);
-            if (header_ok && !db_format_is_v6_header(&header_v7)) {
+            if (legacy_bytes >= sizeof(tydatabaserecord_64) && !db_format_is_v6_header(&header_v7)) {
                 /* Legacy .root7 file exists and is valid v7 */
 #if defined(FRONTIER_HEADLESS)
                 log_info(LOG_COMP_DB,
@@ -2490,11 +2496,17 @@ boolean ensure_database_v7(const char *db_path, boolean *migrated, char *output_
     if (!fp)
         return false;
 
+    /* Read the header using a union that covers both v6 (118 bytes) and v7 (90 bytes).
+     * v7 databases created by db.new() may be only 90 bytes on disk, so reading
+     * sizeof(tydatabaserecord) = 118 bytes as a single fread item would fail.
+     * Instead, read byte-by-byte up to the larger size and accept partial reads
+     * as long as we got at least the v7 header size (90 bytes). Issue #264. */
     tydatabaserecord header;
-    boolean ok = fread(&header, sizeof header, 1, fp) == 1;
+    memset(&header, 0, sizeof header);
+    size_t bytes_read = fread(&header, 1, sizeof header, fp);
     fclose(fp);
-    if (!ok)
-        return false;
+    if (bytes_read < sizeof(tydatabaserecord_64))
+        return false;  /* Too small for even the v7 header */
 
     if (!detect_database_format(&header))
         return false;
