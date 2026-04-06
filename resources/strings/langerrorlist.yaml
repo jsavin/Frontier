@@ -494,6 +494,9 @@ langerrorlist:
   - id: sqlitecompileerror
     index: 165
     text: "Can't compile query ^0."
+  - id: dbalreadyopenederror
+    index: 166
+    text: "Can't call ^0 because the database ^1 is already open."
 
 tablestringlist:
   - id: system_table_type

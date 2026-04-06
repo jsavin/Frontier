@@ -20,6 +20,9 @@
 #include <errno.h>
 #if !defined(_WIN32)
 #include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
 #endif
 
 #include "logging.h"  /* Phase 2D: fprintf migration */
@@ -2359,6 +2362,100 @@ cleanup:
     return ok;
 }
 
+/* ---- Migration lock file helpers (issue #271: TOCTOU race prevention) ---- */
+
+#if !defined(_WIN32)
+
+#define MIGRATION_LOCK_SUFFIX ".migrating"
+#define MIGRATION_LOCK_STALE_SECONDS (5 * 60)  /* 5 minutes */
+#define MIGRATION_LOCK_POLL_MS 500
+#define MIGRATION_LOCK_TIMEOUT_MS 30000
+
+/*  migration_lock_acquire -- atomically create lock file for migration.
+ *
+ *  Returns the fd (>= 0) on success.
+ *  Returns -1 if another process holds the lock (caller should wait/retry).
+ *  Returns -2 on unexpected error. */
+
+static int migration_lock_acquire(const char *db_path, char *lock_path, size_t lock_path_size) {
+
+    snprintf(lock_path, lock_path_size, "%s%s", db_path, MIGRATION_LOCK_SUFFIX);
+
+    /* Try atomic creation. */
+    int fd = open(lock_path, O_CREAT | O_EXCL | O_WRONLY, 0600);
+
+    if (fd >= 0)
+        return fd;  /* Lock acquired. */
+
+    if (errno != EEXIST)
+        return -2;  /* Unexpected error. */
+
+    /* Lock file exists -- check if it is stale (older than 5 minutes). */
+    struct stat st;
+
+    if (stat(lock_path, &st) == 0) {
+        time_t now = time(NULL);
+
+        if (now - st.st_mtime > MIGRATION_LOCK_STALE_SECONDS) {
+#if defined(FRONTIER_HEADLESS)
+            log_warn(LOG_COMP_DB,
+                "migration_lock_acquire: removing stale lock file %s (age %ld seconds)",
+                lock_path, (long)(now - st.st_mtime));
+#endif
+            unlink(lock_path);
+
+            /* Retry once after removing stale lock. */
+            fd = open(lock_path, O_CREAT | O_EXCL | O_WRONLY, 0600);
+
+            if (fd >= 0)
+                return fd;
+
+            if (errno != EEXIST)
+                return -2;
+        }
+    }
+
+    return -1;  /* Another process holds the lock. */
+}
+
+/*  migration_lock_release -- remove the lock file and close the fd. */
+
+static void migration_lock_release(int fd, const char *lock_path) {
+
+    if (fd >= 0)
+        close(fd);
+
+    if (lock_path && lock_path[0] != '\0')
+        unlink(lock_path);
+}
+
+/*  migration_lock_wait -- wait for another process to finish migration.
+ *
+ *  Polls every 500ms for up to 30 seconds.
+ *  Returns true if the lock was released within the timeout. */
+
+static boolean migration_lock_wait(const char *lock_path) {
+
+    int elapsed_ms = 0;
+
+    while (elapsed_ms < MIGRATION_LOCK_TIMEOUT_MS) {
+        struct timespec ts;
+        ts.tv_sec = 0;
+        ts.tv_nsec = MIGRATION_LOCK_POLL_MS * 1000000L;
+        nanosleep(&ts, NULL);
+
+        elapsed_ms += MIGRATION_LOCK_POLL_MS;
+
+        /* Check if the lock file has been removed. */
+        if (access(lock_path, F_OK) != 0)
+            return true;  /* Lock released -- migration completed. */
+    }
+
+    return false;  /* Timeout. */
+}
+
+#endif /* !_WIN32 */
+
 boolean migrate_32bit_to_64bit(const char *db_path) {
     return migrate_internal(db_path, NULL);
 }
@@ -2525,8 +2622,94 @@ boolean ensure_database_v7(const char *db_path, boolean *migrated, char *output_
         return true;
     }
 
+    /* Issue #271: TOCTOU race prevention — acquire a lock file before migrating
+     * so that concurrent processes cannot both attempt migration simultaneously. */
+
+#if !defined(_WIN32)
+    {
+        char lock_path[1024];
+        int lock_fd = migration_lock_acquire(db_path, lock_path, sizeof lock_path);
+
+        if (lock_fd == -2) {
+            /* Unexpected error creating lock file. */
+#if defined(FRONTIER_HEADLESS)
+            log_error(LOG_COMP_DB,
+                "ensure_database_v7: cannot create migration lock file %s: %s",
+                lock_path, strerror(errno));
+#endif
+            return false;
+        }
+
+        if (lock_fd == -1) {
+            /* Another process is migrating — wait for it to finish. */
+#if defined(FRONTIER_HEADLESS)
+            log_info(LOG_COMP_DB,
+                "ensure_database_v7: migration in progress by another process, waiting...");
+#endif
+
+            if (!migration_lock_wait(lock_path)) {
+#if defined(FRONTIER_HEADLESS)
+                log_error(LOG_COMP_DB,
+                    "ensure_database_v7: timed out waiting for migration lock %s", lock_path);
+#endif
+                return false;
+            }
+
+            /* Other process finished — re-read the header to see if it migrated. */
+            FILE *fp_recheck = fopen(db_path, "rb");
+
+            if (!fp_recheck)
+                return false;
+
+            tydatabaserecord recheck_header;
+            memset(&recheck_header, 0, sizeof recheck_header);
+            size_t recheck_bytes = fread(&recheck_header, 1, sizeof recheck_header, fp_recheck);
+            fclose(fp_recheck);
+
+            if (recheck_bytes >= sizeof(tydatabaserecord_64) && !db_format_is_v6_header(&recheck_header)) {
+                /* Other process completed migration successfully. */
+                db_format_mode recheck_mode = {true, false};
+                db_format_mode_apply(&recheck_mode);
+
+                if (output_path && output_path_size > 0) {
+                    strncpy(output_path, db_path, output_path_size);
+                    if (output_path_size > 0)
+                        output_path[output_path_size - 1] = '\0';
+                }
+
+                if (migrated)
+                    *migrated = true;
+
+                return true;
+            }
+
+            /* Other process did not leave a valid v7 file — fall through to migrate ourselves.
+             * We need to acquire the lock first. */
+            lock_fd = migration_lock_acquire(db_path, lock_path, sizeof lock_path);
+
+            if (lock_fd < 0) {
+#if defined(FRONTIER_HEADLESS)
+                log_error(LOG_COMP_DB,
+                    "ensure_database_v7: cannot acquire migration lock after wait: %s",
+                    strerror(errno));
+#endif
+                return false;
+            }
+        }
+
+        /* We hold the lock — perform migration. */
+        boolean migrate_ok = migrate_internal(db_path, NULL);
+
+        migration_lock_release(lock_fd, lock_path);
+
+        if (!migrate_ok)
+            return false;
+    }
+#else
+    /* Windows: no lock file support yet — migrate without locking. */
     if (!migrate_internal(db_path, NULL))
         return false;
+#endif
 
     /* Migration succeeded; return path to new v7 file */
     if (output_path && output_path_size > 0) {

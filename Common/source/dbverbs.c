@@ -768,6 +768,23 @@ static boolean dbopenverb (hdltreenode hparam1, tyvaluerecord *vreturned) {
 		}
 	}
 
+	/* #270: Check if database is already in the open database list.
+	 * Opening the same file twice causes concurrent write corruption. */
+	{
+		hdlodbrecord h;
+
+		for (h = (**hodblist).hnext; h != nil; h = (**h).hnext) {
+			if (equalfilespecs (&(**h).fs, &odbrec.fs)) {
+				bigstring bs;
+
+				getfsfile (&odbrec.fs, bs);
+				log_warn(LOG_COMP_DB, "dbopenverb: database already open: %s", stringbaseaddress(bs));
+				lang2paramerror (dbalreadyopenederror, bsfunctionname, bs);
+				return (false);
+			}
+		}
+	}
+
 	w = shellfindfilewindow ( &odbrec.fs );
 
 	if (w != nil) {
