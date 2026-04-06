@@ -2669,10 +2669,10 @@ boolean ensure_database_v7(const char *db_path, boolean *migrated, char *output_
             fclose(fp_recheck);
 
             if (recheck_bytes >= sizeof(tydatabaserecord_64) && !db_format_is_v6_header(&recheck_header)) {
-                /* Other process completed migration successfully. */
-                db_format_mode recheck_mode = {true, false};
-                db_format_mode_apply(&recheck_mode);
-
+                /* Other process completed migration successfully.
+                 * Don't call db_format_mode_apply here — consistent with the
+                 * existing fast-return path at line 2509 which also skips it.
+                 * The caller (dbopenverb) handles mode setup after open. */
                 if (output_path && output_path_size > 0) {
                     strncpy(output_path, db_path, output_path_size);
                     if (output_path_size > 0)
