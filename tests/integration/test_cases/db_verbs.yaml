@@ -579,3 +579,23 @@ tests:
       return v
     expected_success: true
     expected_result: "hello264"
+
+  - name: "Issue #270 - duplicate open returns error"
+    description: "Opening an already-open database returns an error instead of creating a second handle"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(dbPath = tmpDir + "/" + "test_issue270_dupopen.root");
+      if file.exists(dbPath) {file.delete(dbPath)};
+      db.new(dbPath);
+      db.open(dbPath, false);
+      try {
+        db.open(dbPath, false);
+        db.close(dbPath);
+        file.delete(dbPath);
+        return false};
+      else {
+        db.close(dbPath);
+        file.delete(dbPath);
+        return true}
+    expected_success: true
+    expected_result: "true"

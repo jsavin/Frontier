@@ -2379,7 +2379,9 @@ cleanup:
 
 static int migration_lock_acquire(const char *db_path, char *lock_path, size_t lock_path_size) {
 
-    snprintf(lock_path, lock_path_size, "%s%s", db_path, MIGRATION_LOCK_SUFFIX);
+    int n = snprintf(lock_path, lock_path_size, "%s%s", db_path, MIGRATION_LOCK_SUFFIX);
+    if (n < 0 || (size_t)n >= lock_path_size)
+        return -2; /* path too long */
 
     /* Try atomic creation. */
     int fd = open(lock_path, O_CREAT | O_EXCL | O_WRONLY, 0600);
