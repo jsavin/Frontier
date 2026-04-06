@@ -2434,7 +2434,13 @@ static void migration_lock_release(int fd, const char *lock_path) {
 /*  migration_lock_wait -- wait for another process to finish migration.
  *
  *  Polls every 500ms for up to 30 seconds.
- *  Returns true if the lock was released within the timeout. */
+ *  Returns true if the lock was released within the timeout.
+ *
+ *  GIL note: this may block while holding the GIL, but it only runs
+ *  during db.open() (not during script evaluation). In the headless
+ *  build, db.open is typically called during startup before any
+ *  concurrent scripts are running. The inter-process race this guards
+ *  against (two processes migrating the same file) is rare. */
 
 static boolean migration_lock_wait(const char *lock_path) {
 
