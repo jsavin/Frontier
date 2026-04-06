@@ -93,8 +93,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Webserver Hello World endpoint** and TCP migration to portable sockets
 - **Intel Mac (x86_64) compatibility fixes**
 
+### Changed
+
+- **Database file extension** - Distribution builds now use `.root` extension instead of `.root7`. The v7 format is detected by header magic, not file extension.
+
 ### Fixed
 
+- **Critical: Fix dist startup crashes** - Three independent root causes: restored `langexternalsetdatabase()` for cross-database assignment, fixed menu external handling in `getoutlinefromtarget()`, added NULL `param1` guard in `langfunctioncall()`
+- **NULL safety in outline traversal** - All 8 traversal functions in `opvisit.c` now check for NULL link pointers
+- **Pack logging noise** - Moved PACK diagnostics after dirty check and downgraded to trace level, eliminating ~6,800 log lines per save
 - **Nested parentOf() resolution** - Fixed incorrect results for chained parentOf() calls
 - **REPL word navigation** - Corrected cursor movement behavior
 - **HTTP verb handling** - Fixed request processing issues

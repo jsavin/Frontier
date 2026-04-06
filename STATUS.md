@@ -31,7 +31,7 @@
 | TCP verbs          |   ✅    | Phase 1A/1B/3 complete (11/23); client sockets, server listen, address operations       |
 | Thread verbs       |   ✅    | GIL-based cooperative threading with real POSIX threads; 11/17 verbs operational        |
 | UserTalk debugger  |   ✅    | Full protocol-based debugger: breakpoints, stepping, watchpoints, variable inspection   |
-| Overall coverage   |   🚧    | 68% complete (482/710); 22 processors at 100%                                          |
+| Overall coverage   |   🚧    | 68% complete (482/710); 22 fully implemented processors (TCP, thread partial)           |
 | Tests (unit)       |   ✅    | 302 unit tests passing; full SANITIZE=1 support; Y2038-safe                             |
 | Tests (integration)|   ✅    | 1,920 integration tests; YAML-based framework; 8-worker parallel (~37s); 0 failures    |
 | REPL interactive   |   ✅    | Read-eval-print loop; dialog prompts; file dialogs; batch mode; word navigation         |
@@ -75,7 +75,7 @@ Full-featured debugger for UserTalk scripts, accessible through the NDJSON proto
 
 ### Foundation (carried forward)
 
-- **Comprehensive kernel verb implementation** -- **68% coverage (482/710 verbs)** with 22 processors at 100%. All implementations tested via YAML-based integration framework (2,222 tests passing).
+- **Comprehensive kernel verb implementation** -- **68% coverage (482/710 verbs)** with 22 fully implemented processors (TCP and thread partial). All implementations tested via YAML-based integration framework (2,222 tests passing).
 - **GIL-based cooperative threading** -- Real POSIX threads serialized by a single mutex. Yield points at langbackgroundtask() and thread.sleepTicks(). Thread registry with deterministic test infrastructure.
 - **Complete ODB Engine API (db.* verbs 13/13)** -- Guest database operations fully functional with transparent v6->v7 auto-migration, 64-bit timestamp handling (Y2038-safe), and context guard pattern for safe concurrent system root + guest database use.
 - **64-bit/ARM + big-endian v7** -- Universal binary (arm64+x86_64); v7 headers/trailers and table addresses write big-endian for cross-arch parity.
