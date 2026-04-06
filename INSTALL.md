@@ -16,7 +16,7 @@ Download the latest release from GitHub:
 
 ```bash
 # Download latest release
-VERSION="v1.0.0-alpha.1"  # Replace with desired version
+VERSION="v1.0.0-alpha.7"  # Replace with desired version
 curl -L https://github.com/jsavin/Frontier/releases/download/$VERSION/frontier-cli-${VERSION#v}-macos.zip -o frontier-cli.zip
 
 # Extract
@@ -43,7 +43,7 @@ git clone https://github.com/jsavin/Frontier.git
 cd Frontier
 
 # Checkout desired version (or use develop branch)
-git checkout v1.0.0-alpha.1
+git checkout v1.0.0-alpha.7
 
 # Build CLI
 cd frontier-cli
@@ -75,7 +75,7 @@ frontier-cli
 
 Expected output:
 ```
-Frontier CLI v1.0.0-alpha.1 (Jan 15 2026)
+Frontier CLI v1.0.0-alpha.7 (Apr 03 2026)
 Copyright (C) 1992-2026 UserLand Software, Inc. and Contributors
 This is free software; see the source for copying conditions.
 ```
@@ -158,9 +158,9 @@ To upgrade to a new version:
 
 ```bash
 # Download new version
-curl -L https://github.com/jsavin/Frontier/releases/download/v1.0.0-alpha.2/frontier-cli-1.0.0-alpha.2-macos.zip -o frontier-cli.zip
+curl -L https://github.com/jsavin/Frontier/releases/download/v1.0.0-alpha.7/frontier-cli-1.0.0-alpha.7-macos.zip -o frontier-cli.zip
 unzip frontier-cli.zip
-cd frontier-cli-1.0.0-alpha.2-macos
+cd frontier-cli-1.0.0-alpha.7-macos
 ./install.sh
 
 # Verify upgrade
@@ -207,7 +207,7 @@ If you see database version errors, try migrating:
 
 ```bash
 # Migrate v6 to v7 explicitly
-frontier-cli --system-root ~/path/to/Frontier.root --upgrade-system-root
+frontier-cli --migrate /path/to/Frontier.root
 ```
 
 ## Getting Help

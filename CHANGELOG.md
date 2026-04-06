@@ -7,18 +7,97 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Fixed
+### Added
 
-- **Critical: Fix dist startup crashes** - Second run from dist directory no longer segfaults. Three independent root causes fixed:
-  - Restored `langexternalsetdatabase()` for cross-database assignment (disabled by commit 23b893dd)
-  - Fixed menu external handling in `getoutlinefromtarget()` — uses `menuverbinmemory_context()` instead of `opverbinmemory()` for `idmenuprocessor` types
-  - Added NULL `param1` guard in `langfunctioncall()` for corrupt/partial code trees
-- **NULL safety in outline traversal** - All 8 traversal functions in `opvisit.c` now check for NULL link pointers, matching the existing `opsiblingvisiter` guard from 1988
-- **Pack logging noise** - Moved PACK diagnostics after dirty check and downgraded to trace level, eliminating ~6,800 log lines per save
+- **Protocol-based UserTalk debugger** - Full debugging support across 7 phases: breakpoints, step into/over/out, watchpoints, multi-thread debugging, conditional breakpoints, and variable inspection
+- **system.environment.args** - CLI argument access from UserTalk scripts
+- **sys.openUrl kernel verb** - Open URLs from UserTalk
+- **Lint infrastructure** - Added clang-tidy, ruff, and shellcheck to CI pipeline
 
 ### Changed
 
-- **Database file extension**: Distribution builds now use `.root` extension instead of `.root7`. The v7 format is detected by header magic, not file extension. Users upgrading from earlier pre-releases who have `.root7` files can simply rename them to `.root` — the contents are identical.
+- **databasedata global elimination (Phases 1-10)** - Zero runtime mutation of the databasedata global, removing a major source of shared mutable state
+
+### Fixed
+
+- **Data-loss risk mitigations** - Duplicate open guard, fread size validation, and migration lock prevent corruption scenarios
+- **19 consistently-failing integration tests** - Resolved long-standing test failures
+- **GIL deadlock blocking HTTP callback dispatch** - Fixed deadlock where HTTP callbacks could not acquire the GIL
+
+## [1.0.0-alpha.7] - 2026-02-16
+
+### Added
+
+- **Per-worker database isolation** for parallel test execution
+- **Per-component logging** via `FRONTIER_LOG=comp:level` environment variable
+
+### Changed
+
+- **Integration test failures 23 to 0** - All 1,881 integration tests passing
+- **Verb processor consolidation** and WP headless support
+
+### Fixed
+
+- **Script path error logging** - Improved error messages for script resolution failures
+- **Concurrent access patterns** - Fixed race conditions in shared state access
+
+## [1.0.0-alpha.6] - 2026-02-11
+
+### Added
+
+- **NDJSON protocol mode** - `--protocol` flag enables structured subprocess communication
+- **8-worker parallel test execution** - Test suite runs in ~40s, down from 5+ minutes
+- **PTY harness** for interactive integration tests
+- **Ranger-style file browser** for `file.getFileDialog`
+
+### Changed
+
+- **Integration test failures 755 to 23** - Massive reduction in test failures through systematic fixes
+- **Concurrent debugging infrastructure** and platform detection improvements
+
+## [1.0.0-alpha.5] - 2026-02-07
+
+### Added
+
+- **GIL-based cooperative threading** with real POSIX threads
+- **Guest database navigation** and REPL index syntax
+- **Callback infrastructure** for async operations
+
+### Fixed
+
+- **Startup segfault** - Fixed crash on application launch
+- **Thread registry** - Corrected thread lifecycle management
+- **stringerrorlist YAML resource migration** - Moved from compiled-in data to external resource
+
+## [1.0.0-alpha.4] - 2026-01-31
+
+### Added
+
+- **CLI state persistence** - System root saves on exit
+- **Guest database support** - Open, navigate, and close external databases
+
+### Changed
+
+- **Compiler warnings reduced 154 to 24** - Major cleanup of build warnings
+
+### Fixed
+
+- **Startup stabilization** - Resolved intermittent startup failures
+- **Menu loading** - Fixed menu system initialization
+- **Integration test hardening** - Improved test reliability
+
+## [1.0.0-alpha.3] - 2026-01-27
+
+### Added
+
+- **Webserver Hello World endpoint** and TCP migration to portable sockets
+- **Intel Mac (x86_64) compatibility fixes**
+
+### Fixed
+
+- **Nested parentOf() resolution** - Fixed incorrect results for chained parentOf() calls
+- **REPL word navigation** - Corrected cursor movement behavior
+- **HTTP verb handling** - Fixed request processing issues
 
 ## [1.0.0-alpha.2] - 2026-01-15
 
@@ -71,34 +150,11 @@ For developers upgrading from local builds:
 
 ---
 
-## Version History Template
-
-For future releases, use this template:
-
-```markdown
-## [X.Y.Z] - YYYY-MM-DD
-
-### Added
-- New features
-
-### Changed
-- Changes to existing functionality
-
-### Deprecated
-- Soon-to-be removed features
-
-### Removed
-- Removed features
-
-### Fixed
-- Bug fixes
-
-### Security
-- Security vulnerability fixes
-```
-
----
-
-[Unreleased]: https://github.com/jsavin/Frontier/compare/v1.0.0-alpha.2...HEAD
+[Unreleased]: https://github.com/jsavin/Frontier/compare/v1.0.0-alpha.7...HEAD
+[1.0.0-alpha.7]: https://github.com/jsavin/Frontier/compare/v1.0.0-alpha.6...v1.0.0-alpha.7
+[1.0.0-alpha.6]: https://github.com/jsavin/Frontier/compare/v1.0.0-alpha.5...v1.0.0-alpha.6
+[1.0.0-alpha.5]: https://github.com/jsavin/Frontier/compare/v1.0.0-alpha.4...v1.0.0-alpha.5
+[1.0.0-alpha.4]: https://github.com/jsavin/Frontier/compare/v1.0.0-alpha.3...v1.0.0-alpha.4
+[1.0.0-alpha.3]: https://github.com/jsavin/Frontier/compare/v1.0.0-alpha.2...v1.0.0-alpha.3
 [1.0.0-alpha.2]: https://github.com/jsavin/Frontier/compare/v1.0.0-alpha.1...v1.0.0-alpha.2
 [1.0.0-alpha.1]: https://github.com/jsavin/Frontier/releases/tag/v1.0.0-alpha.1
