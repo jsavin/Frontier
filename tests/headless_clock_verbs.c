@@ -23,6 +23,12 @@
 #include "tablestructure.h"
 #include "timedate.h"
 #include "time_portable.h"
+#include "logging.h"
+
+/* Maximum sleep duration: 24 hours in seconds. Fix: #112 */
+#define MAX_SLEEP_SECONDS 86400L
+/* Maximum sleep duration in sixtieths: 24 hours * 60 seconds * 60 ticks */
+#define MAX_SLEEP_SIXTIETHS (MAX_SLEEP_SECONDS * 60L)
 
 /* Token enum for all verbs in the clock processor */
 enum {
@@ -69,6 +75,12 @@ static boolean clock_valueproc(short token, hdltreenode hparam1,
                 return false;
             }
 
+            /* Clamp to 24-hour maximum (#112) */
+            if (ctseconds > MAX_SLEEP_SECONDS) {
+                log_warn(LOG_COMP_GENERAL, "clock.sleepfor: duration %ld seconds exceeds 24-hour max, clamping to %ld", ctseconds, MAX_SLEEP_SECONDS);
+                ctseconds = MAX_SLEEP_SECONDS;
+            }
+
             /* Sleep for the specified number of seconds */
             if (ctseconds > 0)
                 frontier_time_sleep_millis((uint32_t)(ctseconds * 1000));
@@ -104,6 +116,12 @@ static boolean clock_valueproc(short token, hdltreenode hparam1,
                 return false;
             }
 
+            /* Clamp to 24-hour maximum (#112) */
+            if (ctseconds > MAX_SLEEP_SECONDS) {
+                log_warn(LOG_COMP_GENERAL, "clock.waitseconds: duration %ld seconds exceeds 24-hour max, clamping to %ld", ctseconds, MAX_SLEEP_SECONDS);
+                ctseconds = MAX_SLEEP_SECONDS;
+            }
+
             /* Sleep for the specified number of seconds */
             if (ctseconds > 0)
                 frontier_time_sleep_millis((uint32_t)(ctseconds * 1000));
@@ -126,6 +144,12 @@ static boolean clock_valueproc(short token, hdltreenode hparam1,
             if (ctsixtieths < 0) {
                 if (bserror) copystring(PSTRING("\057", "Can't wait because negative duration is invalid"), bserror);
                 return false;
+            }
+
+            /* Clamp to 24-hour maximum (#112) */
+            if (ctsixtieths > MAX_SLEEP_SIXTIETHS) {
+                log_warn(LOG_COMP_GENERAL, "clock.waitsixtieths: duration %ld sixtieths exceeds 24-hour max, clamping to %ld", ctsixtieths, MAX_SLEEP_SIXTIETHS);
+                ctsixtieths = MAX_SLEEP_SIXTIETHS;
             }
 
             if (ctsixtieths > 0) {

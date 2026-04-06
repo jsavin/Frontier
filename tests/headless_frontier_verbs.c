@@ -43,7 +43,9 @@ enum {
     frov_hideapplication = 11,
     frov_isvalidserialnumber = 12,
     frov_showapplication = 13,
-    frov_cliversion = 14
+    frov_cliversion = 14,
+    frov_isarm = 15,
+    frov_isapplesilicon = 16
 };
 
 /* Forward declaration — defined below, also called directly by langhtml.c */
@@ -174,14 +176,39 @@ static boolean frontier_valueproc(short token, hdltreenode hparam1,
                 return false;
             return setlongvalue(processthreadcount(), vreturned);
         case frov_ispowerpc:
-            /* Verb #6: frontier.ispowerpc - return true to suppress legacy 68k workarounds.
+            /* Verb #6: frontier.ispowerpc - true only on PowerPC.
              * Historical context: In 2000-era Frontier, "not isPowerPC" meant 68k Mac which
              * needed extra listener sockets because its TCP stack couldn't handle concurrent
-             * connections. Modern systems don't need this workaround, so returning true
-             * prevents inetd.startOne from creating duplicate listeners on the same port. */
+             * connections. Modern systems don't need this workaround — inetd.startOne scripts
+             * that check isPowerPC should see false on ARM/x86 and skip legacy 68k paths.
+             * Fix: #471 */
             if (!langcheckparamcount(hparam1, 0))
                 return false;
+            #if defined(__ppc__) || defined(__powerpc__) || defined(__PPC__)
             setbooleanvalue(true, vreturned);
+            #else
+            setbooleanvalue(false, vreturned);
+            #endif
+            return true;
+        case frov_isarm:
+            /* Verb #15: frontier.isarm - true on ARM architecture. Fix: #472 */
+            if (!langcheckparamcount(hparam1, 0))
+                return false;
+            #if defined(__aarch64__) || defined(__arm64__) || defined(__ARM_ARCH)
+            setbooleanvalue(true, vreturned);
+            #else
+            setbooleanvalue(false, vreturned);
+            #endif
+            return true;
+        case frov_isapplesilicon:
+            /* Verb #16: frontier.isapplesilicon - true on Apple Silicon (ARM + Apple). Fix: #472 */
+            if (!langcheckparamcount(hparam1, 0))
+                return false;
+            #if defined(__APPLE__) && (defined(__aarch64__) || defined(__arm64__))
+            setbooleanvalue(true, vreturned);
+            #else
+            setbooleanvalue(false, vreturned);
+            #endif
             return true;
         case frov_reclaimmemory:
             /* Verb #7: frontier.reclaimmemory - no-op, modern OS handles memory.
@@ -316,6 +343,8 @@ boolean frontierinitverbs(void) {
     ADD_VERB(PSTRING("\023", "isvalidserialnumber"), frov_isvalidserialnumber);
     ADD_VERB(PSTRING("\017", "showapplication"), frov_showapplication);
     ADD_VERB(PSTRING("\012", "cliversion"), frov_cliversion);
+    ADD_VERB(PSTRING("\005", "isarm"), frov_isarm);
+    ADD_VERB(PSTRING("\016", "isapplesilicon"), frov_isapplesilicon);
 
     #undef ADD_VERB
 
