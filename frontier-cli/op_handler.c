@@ -21,7 +21,6 @@
 #include "op_handler.h"
 #include "odb_ops.h"
 #include "debug_handler.h"
-#include "cli_json_output.h"
 #include "repl_variables.h"
 #include "repl.h"
 
@@ -29,7 +28,6 @@
 #include "../Common/headers/lang.h"
 #include "../Common/headers/langexternal.h"
 #include "../Common/headers/memory.h"
-#include "../Common/headers/logging.h"
 #include "../Common/headers/langinternal.h"
 
 #include <stdio.h>
@@ -46,8 +44,12 @@
 #define OP_BATCH_ERR "Batch too large (max " STRINGIFY(OP_MAX_BATCH_SIZE) " items)"
 
 /* ========================================================================
- * Response helpers — build JSON response string, send via transport
+ * Response helpers — build JSON via cJSON, send via transport
  * ======================================================================== */
+
+/* Static fallback for OOM conditions where cJSON_CreateObject() returns NULL.
+ * Ensures the client always gets a response and doesn't hang. */
+static const char *OOM_FALLBACK = "{\"id\":0,\"success\":false,\"error\":{\"message\":\"Server out of memory\"}}";
 
 /*
  * Send a pre-formatted JSON string via the transport.
@@ -57,91 +59,64 @@ static void transport_send(transport_t *transport, const char *json) {
 }
 
 /*
- * Format and send a response. Uses a static buffer for small responses
- * and falls back to malloc for larger ones.
- *
- * TODO(#482): Consolidate to cJSON as the single JSON-building mechanism.
- * Three mechanisms currently coexist: vsnprintf (this function),
- * open_memstream (send_error/send_eval_success), and cJSON (ODB handlers).
- * The vsnprintf path is a latent injection risk if future callers pass
- * user-controlled strings through %s format specifiers.
+ * Send a cJSON object as a response and clean up.
+ * Prints the object as unformatted JSON, sends it via transport,
+ * then frees both the printed string and the cJSON object.
+ * On print failure, sends the OOM fallback.
  */
-static void send_response(transport_t *transport, long id, const char *fmt, ...)
-    __attribute__((format(printf, 3, 4)));
-
-static void send_response(transport_t *transport, long id, const char *fmt, ...) {
-    char buf[4096];
-    va_list args;
-
-    va_start(args, fmt);
-    int n = vsnprintf(buf, sizeof(buf), fmt, args);
-    va_end(args);
-
-    if (n >= 0 && (size_t)n < sizeof(buf)) {
-        transport->write_line(transport->ctx, buf, (size_t)n);
-    } else if (n >= 0) {
-        size_t needed = (size_t)n + 1;
-        char *heap = malloc(needed);
-        if (heap != NULL) {
-            va_start(args, fmt);
-            vsnprintf(heap, needed, fmt, args);
-            va_end(args);
-            transport->write_line(transport->ctx, heap, (size_t)n);
-            free(heap);
-        } else {
-            log_error(LOG_COMP_GENERAL, "op_handler: failed to allocate response buffer (%zu bytes)", needed);
-            /* Send minimal error so client doesn't hang */
-            char fallback[128];
-            int fb = snprintf(fallback, sizeof(fallback),
-                              "{\"id\":%ld,\"success\":false,\"error\":{\"message\":\"Server out of memory\"}}", id);
-            if (fb > 0 && (size_t)fb < sizeof(fallback)) {
-                transport->write_line(transport->ctx, fallback, (size_t)fb);
-            }
-        }
+static void send_cjson_response(transport_t *transport, cJSON *response) {
+    char *json_out = cJSON_PrintUnformatted(response);
+    if (json_out != NULL) {
+        transport_send(transport, json_out);
+        cJSON_free(json_out);
+    } else {
+        transport_send(transport, OOM_FALLBACK);
     }
+    cJSON_Delete(response);
 }
 
 /*
  * Send a simple success ack.
  */
 static void send_ack(long id, transport_t *transport) {
-    send_response(transport, id, "{\"id\":%ld,\"success\":true}", id);
+    cJSON *response = cJSON_CreateObject();
+    if (response == NULL) {
+        transport_send(transport, OOM_FALLBACK);
+        return;
+    }
+    cJSON_AddNumberToObject(response, "id", id);
+    cJSON_AddBoolToObject(response, "success", 1);
+    send_cjson_response(transport, response);
 }
 
 /*
- * Send an error response.
+ * Send an error response. cJSON_AddStringToObject handles JSON escaping
+ * of the message string automatically.
  */
 static void send_error(long id, const char *message, transport_t *transport) {
-    /* Build the response with properly escaped error message.
-     * We use a FILE* buffer via open_memstream for JSON escaping.
-     * Note: open_memstream requires POSIX.1-2008 / macOS 10.13+. */
-    char *buf = NULL;
-    size_t buf_len = 0;
-    FILE *f = open_memstream(&buf, &buf_len);
-    if (f == NULL) {
-        /* Fallback: send minimal error so client doesn't hang */
-        char fallback[256];
-        int fb = snprintf(fallback, sizeof(fallback),
-                          "{\"id\":%ld,\"success\":false,\"error\":{\"message\":\"Internal error\"}}", id);
-        if (fb > 0 && (size_t)fb < sizeof(fallback)) {
-            transport->write_line(transport->ctx, fallback, (size_t)fb);
-        }
+    cJSON *response = cJSON_CreateObject();
+    if (response == NULL) {
+        transport_send(transport, OOM_FALLBACK);
         return;
     }
+    cJSON_AddNumberToObject(response, "id", id);
 
-    fprintf(f, "{\"id\":%ld,\"error\":{\"message\":", id);
-    cli_json_write_escaped_string(f, message);
-    fprintf(f, "},\"success\":false}");
-    fclose(f);
-
-    if (buf != NULL) {
-        transport->write_line(transport->ctx, buf, buf_len);
-        free(buf);
+    cJSON *error_obj = cJSON_CreateObject();
+    if (error_obj == NULL) {
+        /* Degrade gracefully: flat error string instead of nested object */
+        cJSON_AddStringToObject(response, "error", message);
+    } else {
+        cJSON_AddStringToObject(error_obj, "message", message);
+        cJSON_AddItemToObject(response, "error", error_obj);
     }
+
+    cJSON_AddBoolToObject(response, "success", 0);
+    send_cjson_response(transport, response);
 }
 
 /*
  * Send a success response with a script eval result value.
+ * Uses cJSON for all JSON construction including string escaping.
  */
 static void send_eval_success(long id, tyvaluerecord *val, transport_t *transport) {
     const char *type_name = odb_type_name_str(val->valuetype);
@@ -149,18 +124,40 @@ static void send_eval_success(long id, tyvaluerecord *val, transport_t *transpor
     tyvaluerecord coerced = *val;
 
     if (coerced.valuetype == novaluetype) {
-        send_response(transport, id,
-            "{\"id\":%ld,\"result\":{\"value\":null,\"type\":\"none\"},\"success\":true}",
-            id);
+        cJSON *response = cJSON_CreateObject();
+        if (response == NULL) {
+            transport_send(transport, OOM_FALLBACK);
+            return;
+        }
+        cJSON_AddNumberToObject(response, "id", id);
+        cJSON *result = cJSON_CreateObject();
+        if (result != NULL) {
+            cJSON_AddNullToObject(result, "value");
+            cJSON_AddStringToObject(result, "type", "none");
+            cJSON_AddItemToObject(response, "result", result);
+        }
+        cJSON_AddBoolToObject(response, "success", 1);
+        send_cjson_response(transport, response);
         return;
     }
 
     if (coerced.valuetype == externalvaluetype) {
         hdlexternalvariable hv = (hdlexternalvariable)coerced.data.externalvalue;
         if (hv != nil && (**hv).id == idtableprocessor) {
-            send_response(transport, id,
-                "{\"id\":%ld,\"result\":{\"value\":\"[table]\",\"type\":\"table\"},\"success\":true}",
-                id);
+            cJSON *response = cJSON_CreateObject();
+            if (response == NULL) {
+                transport_send(transport, OOM_FALLBACK);
+                return;
+            }
+            cJSON_AddNumberToObject(response, "id", id);
+            cJSON *result = cJSON_CreateObject();
+            if (result != NULL) {
+                cJSON_AddStringToObject(result, "value", "[table]");
+                cJSON_AddStringToObject(result, "type", "table");
+                cJSON_AddItemToObject(response, "result", result);
+            }
+            cJSON_AddBoolToObject(response, "success", 1);
+            send_cjson_response(transport, response);
             return;
         }
     }
@@ -171,33 +168,54 @@ static void send_eval_success(long id, tyvaluerecord *val, transport_t *transpor
     boolean coerced_allocated = (coerced.valuetype != stringvaluetype);
 
     if (!coercetostring(&coerced)) {
-        send_response(transport, id,
-            "{\"id\":%ld,\"result\":{\"value\":null,\"type\":\"%s\"},\"success\":true}",
-            id, type_name);
+        cJSON *response = cJSON_CreateObject();
+        if (response == NULL) {
+            transport_send(transport, OOM_FALLBACK);
+            return;
+        }
+        cJSON_AddNumberToObject(response, "id", id);
+        cJSON *result = cJSON_CreateObject();
+        if (result != NULL) {
+            cJSON_AddNullToObject(result, "value");
+            cJSON_AddStringToObject(result, "type", type_name);
+            cJSON_AddItemToObject(response, "result", result);
+        }
+        cJSON_AddBoolToObject(response, "success", 1);
+        send_cjson_response(transport, response);
         return;
     }
 
     Handle hstring = coerced.data.stringvalue;
     long slen = gethandlesize(hstring);
 
-    /* Build response with properly escaped value string */
-    char *buf = NULL;
-    size_t buf_len = 0;
-    FILE *f = open_memstream(&buf, &buf_len);
-    if (f == NULL) {
+    /* Build response with cJSON — it handles all JSON string escaping.
+     * The handle data may not be null-terminated, so we create a
+     * temporary null-terminated copy for cJSON_AddStringToObject. */
+    cJSON *response = cJSON_CreateObject();
+    if (response == NULL) {
         if (coerced_allocated) disposevaluerecord(coerced, false);
+        transport_send(transport, OOM_FALLBACK);
         return;
     }
+    cJSON_AddNumberToObject(response, "id", id);
 
-    fprintf(f, "{\"id\":%ld,\"result\":{\"value\":", id);
-    cli_json_write_escaped_buffer(f, (const char *)*hstring, slen);
-    fprintf(f, ",\"type\":\"%s\"},\"success\":true}", type_name);
-    fclose(f);
-
-    if (buf != NULL) {
-        transport->write_line(transport->ctx, buf, buf_len);
-        free(buf);
+    cJSON *result_obj = cJSON_CreateObject();
+    if (result_obj != NULL) {
+        /* Create null-terminated string from handle data for cJSON */
+        char *str_value = malloc((size_t)slen + 1);
+        if (str_value != NULL) {
+            memcpy(str_value, *hstring, (size_t)slen);
+            str_value[slen] = '\0';
+            cJSON_AddStringToObject(result_obj, "value", str_value);
+            free(str_value);
+        } else {
+            cJSON_AddNullToObject(result_obj, "value");
+        }
+        cJSON_AddStringToObject(result_obj, "type", type_name);
+        cJSON_AddItemToObject(response, "result", result_obj);
     }
+    cJSON_AddBoolToObject(response, "success", 1);
+    send_cjson_response(transport, response);
 
     /* Dispose the coerced value only if coercion allocated a new handle.
      * String values pass through coercetostring() as a no-op, sharing the
@@ -674,6 +692,8 @@ int op_dispatch(const char *json_line, size_t len, transport_t *transport) {
         free(op);
         return 1;  /* signal shutdown */
     } else {
+        /* Build error message. cJSON (via send_error) handles escaping
+         * the op string, so no injection risk from crafted op names. */
         char err[256];
         snprintf(err, sizeof(err), "Unknown operation: %s", op);
         send_error(id, err, transport);
