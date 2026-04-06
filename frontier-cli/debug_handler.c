@@ -1163,8 +1163,33 @@ void handle_debug_run(int id, const char *json_line, transport_t *transport) {
     /* Spawn debug thread */
     pthread_t tid;
     pthread_attr_t attr;
-    pthread_attr_init(&attr);
-    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
+
+    if (pthread_attr_init(&attr) != 0) {
+        langdisposetree(hcode);
+        headless_dispose_threadglobals(new_hglobals);
+        free_thread_record(rec);
+        debug_unregister_thread(threadid);
+        free(dparams);
+        char err[512];
+        snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"pthread_attr_init failed\"},\"success\":false}", id);
+        transport->write_line(transport->ctx, err, strlen(err));
+        cJSON_Delete(root);
+        return;
+    }
+
+    if (pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE) != 0) {
+        pthread_attr_destroy(&attr);
+        langdisposetree(hcode);
+        headless_dispose_threadglobals(new_hglobals);
+        free_thread_record(rec);
+        debug_unregister_thread(threadid);
+        free(dparams);
+        char err[512];
+        snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"pthread_attr_setdetachstate failed\"},\"success\":false}", id);
+        transport->write_line(transport->ctx, err, strlen(err));
+        cJSON_Delete(root);
+        return;
+    }
 
     if (pthread_create(&tid, &attr, debug_thread_entry, dparams) != 0) {
         pthread_attr_destroy(&attr);
