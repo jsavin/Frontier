@@ -7,7 +7,7 @@
 #   - frontier.version() - Returns version string
 #   - frontier.enableAgents() - No-op in headless (returns true)
 #   - frontier.isValidSerialNumber() - Always returns true in headless
-#   - frontier.isPowerPC() - Returns true (suppresses legacy 68k workarounds)
+#   - frontier.isPowerPC() - Returns true only on PowerPC, false otherwise
 #   - frontier.isRuntime() - Returns false (CLI is not runtime-only)
 #   - frontier.countThreads() - Returns active thread count
 #   - frontier.reclaimMemory() - No-op, returns true
@@ -137,12 +137,8 @@ tests:
   # ==========================================================================
   # frontier.isPowerPC tests
   # ==========================================================================
-  # Returns true in headless mode to suppress legacy 68k Mac workarounds.
-  # Historical context: In 2000-era Frontier, "not isPowerPC" meant 68k Mac
-  # which needed extra listener sockets because its TCP stack couldn't handle
-  # concurrent connections. inetd.startOne() calls tcp.listenStream's UserTalk
-  # wrapper which checks isPowerPC() — returning true prevents the wrapper from
-  # creating duplicate listeners on the same port.
+  # Returns true only on actual PowerPC hardware (#ifdef __ppc__).
+  # On ARM/x86, returns false — reflecting the actual architecture.
 
   - name: "frontier.isPowerPC - returns boolean"
     description: "isPowerPC must return a boolean value"
@@ -150,13 +146,11 @@ tests:
     expected_success: true
     expected_result: "true"
 
-  - name: "frontier.isPowerPC - returns true in headless mode"
-    description: |
-      Returns true to suppress legacy 68k Mac TCP workarounds.
-      Modern systems don't need extra listener sockets.
+  - name: "frontier.isPowerPC - returns false on non-PPC"
+    description: "Returns false on ARM and x86 platforms (not PowerPC)"
     script: "Frontier.isPowerPC()"
     expected_success: true
-    expected_result: "true"
+    expected_result: "false"
 
   # ==========================================================================
   # frontier.isRuntime tests
