@@ -1,8 +1,8 @@
 # Frontier Refactoring Project (develop branch status)
 
-**Last updated:** 2026-03-08
+**Last updated:** 2026-04-07
 
-Frontier is being brought back to life. This project is modernizing the classic UserTalk scripting environment and object database into a contemporary cross-platform tool. The headless CLI is now fully functional—you can explore databases, write scripts, and serve web applications, all from the command line. Recent work has fixed GIL deadlocks blocking HTTP callbacks, added state persistence on CLI exit, and hardened the integration test infrastructure for zero flaky failures. A native GUI application with a documented API is being planned, and any developer will be able to connect their own apps and user interfaces to Frontier. The goal: preserve everything that made Frontier powerful while making it accessible to a new generation of developers, tinkerers, bloggers, writers, podcasters, and product builders.
+Frontier is being brought back to life. This project is modernizing the classic UserTalk scripting environment and object database into a contemporary cross-platform tool. The headless CLI is now fully functional—you can explore databases, write scripts, debug UserTalk programs, and serve web applications, all from the command line. Recent work has shipped a full protocol-based debugger (breakpoints, stepping, watchpoints, variable inspection), hardened data integrity, and eliminated global mutable state from the database layer. A native GUI application with a documented API is being planned, and any developer will be able to connect their own apps and user interfaces to Frontier. The goal: preserve everything that made Frontier powerful while making it accessible to a new generation of developers, tinkerers, bloggers, writers, podcasters, and product builders.
 
 ## Latest Release: v1.0.0-alpha.7 (Feb 16, 2026)
 
@@ -25,20 +25,20 @@ Frontier is being brought back to life. This project is modernizing the classic 
 # Visit http://localhost:8080/helloworld in your browser
 ```
 
-**Overall Progress:** 68% verb coverage (482/710 verbs), 22 processors at 100%, 1,713 integration tests passing, 302 unit tests passing.
+**Overall Progress:** 68% verb coverage (482/710 verbs), 22 processors fully implemented, 302 unit tests + 1,920 integration tests — 0 failures.
 
 For comprehensive status details, see [STATUS.md](STATUS.md). For release details, see the [v1.0.0-alpha.7 release notes](https://github.com/jsavin/Frontier/releases/tag/v1.0.0-alpha.7).
 
-### Development Progress (Feb 16 - Mar 8, 2026)
+### Development Progress (Feb 16 - Apr 7, 2026)
 
-Since the last release, 35 PRs have been merged:
+Since the last release, 74 PRs have been merged:
 
-- **CLI State Persistence** — System root database saves on CLI exit; in-memory changes persist across sessions
-- **GIL & Threading Fixes** — Resolved deadlock blocking HTTP callback dispatch; GIL yielding in blocking REPL mode
-- **Integration Test Hardening** — Fixed 19 consistently-failing tests (corrupt handle guards, protocol executor resilience)
-- **EFP Fast-Path Regression Fix** — Removed stale headless fast-path that violated verb resolution search order, blocking UserTalk scripts under EFP-named tables
-- **Startup Stabilization** — Fixed guest DB script execution, WP text extraction, database context for cross-database externals, heap corruption in startup path, Pascal string prefixes, TCP callback infrastructure
-- **databasedata Global Elimination (Phases 1-10)** — All runtime save/swap/restore of the `databasedata` global eliminated from pack/unpack/save/load paths. Explicit DB handle threading throughout the wrapper layer.
+- **Protocol-Based UserTalk Debugger (7 phases)** — Full debugger accessible via the NDJSON protocol: set/clear/list breakpoints, step into/over/out, watchpoints with fire-on-change, conditional breakpoints with UserTalk expressions, multi-thread debugging with thread listing, and variable inspection at any scope. Enables any GUI or IDE to provide a debugging experience.
+- **Data-Loss Risk Hardening** — Duplicate open guards prevent concurrent modification of the same database file, fread size validation catches truncated reads, migration locking prevents partial writes during v6→v7 conversion.
+- **databasedata Global Elimination (Phases 1-10)** — All runtime save/swap/restore of the `databasedata` global eliminated from pack/unpack/save/load paths. Explicit DB handle threading throughout the wrapper layer. Zero runtime mutation achieved.
+- **Startup & Threading Fixes** — GIL deadlock blocking HTTP callbacks resolved, 19 consistently-failing integration tests fixed, guest DB script execution stabilized.
+- **CLI Enhancements** — `system.environment.args` exposes CLI arguments to scripts, `sys.openUrl` kernel verb, `--browser` flag for automation tools.
+- **Lint Infrastructure** — clang-tidy (bug-finding checks), ruff (Python), shellcheck (bash) configs with Makefile targets.
 
 **Current Test Status:** 302 unit tests + 1,920 integration tests — **0 failures** (8-worker parallel, ~37s)
 
@@ -122,17 +122,12 @@ Frontier/
 
 ## Planning & Documentation (Read These First)
 
-- `planning/INDEX.md` – roadmap + ownership
-- `planning/DECISIONS.md` – current decisions/TBDs
-- `planning/EFP_HEADLESS_NOTES.md` – headless shim, success criteria, removal plan
-- `planning/adr/ADR-0010-headless-efp-routing.md` – decision record for dotted call routing
+- `planning/INDEX.md` – roadmap, active workstreams, ownership
+- `planning/phase_overview.md` – overview of all phases
+- `planning/architectural_decision_records/` – ADRs for key technical decisions
 - `planning/Frontier_Refactoring_Plan.md` – original modernisation plan
-- `planning/phase3/headless_daemon_vision.md` – target architecture for the headless daemon/service core
-- `planning/phase3/kernel_verb_porting/` – kernel verb porting guides and automatic binding architecture
-- `planning/big_endian_portability_audit.md` – current BE v7 portability audit/tasks
-- `codex_sessions/README.md` – how to fetch/view Codex transcript logs
 
-For in-flight work/status, see `planning/_CURRENT_STATUS.md`. Historical session context lives in `planning/progress_reports/README.md`. Latest progress report: `reports/progress/2026-02-27-databasedata-elimination-and-startup-stabilization.md`.
+For in-flight work/status, see [STATUS.md](STATUS.md). Historical session context lives in `planning/progress_reports/README.md`.
 
 ---
 
@@ -165,28 +160,16 @@ For detailed workflow guidance, see `docs/WORKTREE_WORKFLOW.md` and `docs/PR_MON
 
 ### Key Development Principles
 
-From recent progress (Jan 16-25):
-
 **Security and Testing:**
-- Security hardening built in from start (SSRF protection, DNS rebinding protection for TCP networking)
-- Comprehensive test coverage (0 failures, 1,920 tests, 8-worker parallel execution)
+- Security hardening built in from start (SSRF protection, DNS rebinding, data-loss guards)
+- 2,222 tests (302 unit + 1,920 integration), 0 failures, 8-worker parallel execution
 - Integration tests required for all verb implementations
 
-**Thread Safety:**
-- Thread-local storage pattern established (ADR-005)
-- Deterministic testing infrastructure for concurrent operations
-- Global mutable state elimination roadmap documented (ADR-010)
-
-**Database Integrity:**
-- v6→v7 migration validated with extensive testing
-- Y2038-safe 64-bit timestamps throughout
+**Thread Safety and Database Integrity:**
+- GIL-based cooperative threading with real POSIX threads
+- databasedata global elimination complete — zero runtime mutation
+- v6→v7 migration validated, Y2038-safe 64-bit timestamps throughout
 - Context guard pattern for safe concurrent database operations
-- databasedata global elimination complete — zero runtime mutation in pack/unpack layer
-
-**Documentation:**
-- ADRs document architectural decisions
-- Progress reports capture strategic context
-- Planning docs updated alongside code changes
 
 For comprehensive status details, verb coverage, and milestone snapshots, see [STATUS.md](STATUS.md).
 
