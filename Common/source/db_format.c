@@ -257,6 +257,11 @@ typedef off_t db_trace_off_t;
 #define DB_TRACE_PATH_MAX 512
 #define DB_TRACE_EXTERNAL_TABLE_ID 3  /* tyexternalid order: outline, wp, head, table */
 
+/* Path buffer size for database file paths (matches dbverbs.c) */
+#ifndef DB_PATH_MAX
+#define DB_PATH_MAX 1024
+#endif
+
 typedef struct db_trace_context db_trace_context;
 
 /* Forward declarations for helper routines used by the tracing instrumentation */
@@ -2436,11 +2441,8 @@ static void migration_lock_release(int fd, const char *lock_path) {
  *  Polls every 500ms for up to 30 seconds.
  *  Returns true if the lock was released within the timeout.
  *
- *  GIL note: this may block while holding the GIL, but it only runs
- *  during db.open() (not during script evaluation). In the headless
- *  build, db.open is typically called during startup before any
- *  concurrent scripts are running. The inter-process race this guards
- *  against (two processes migrating the same file) is rare. */
+ *  Yields the GIL via langbackgroundtask() between polls so other
+ *  UserTalk threads can run during the wait. */
 
 static boolean migration_lock_wait(const char *lock_path) {
 
@@ -2450,9 +2452,13 @@ static boolean migration_lock_wait(const char *lock_path) {
         struct timespec ts;
         ts.tv_sec = 0;
         ts.tv_nsec = MIGRATION_LOCK_POLL_MS * 1000000L;
-        nanosleep(&ts, NULL);
+
+        while (nanosleep(&ts, &ts) != 0 && errno == EINTR)
+            ;  /* Retry on signal interruption. */
 
         elapsed_ms += MIGRATION_LOCK_POLL_MS;
+
+        langbackgroundtask(false);  /* Yield GIL to other threads. */
 
         /* Check if the lock file has been removed. */
         if (access(lock_path, F_OK) != 0)
@@ -2624,8 +2630,7 @@ boolean ensure_database_v7(const char *db_path, boolean *migrated, char *output_
         /* Already v7 - return original path */
         if (output_path && output_path_size > 0) {
             strncpy(output_path, db_path, output_path_size);
-            if (output_path_size > 0)
-                output_path[output_path_size - 1] = '\0';
+            output_path[output_path_size - 1] = '\0';
         }
         return true;
     }
@@ -2635,7 +2640,7 @@ boolean ensure_database_v7(const char *db_path, boolean *migrated, char *output_
 
 #if !defined(_WIN32)
     {
-        char lock_path[1024];
+        char lock_path[DB_PATH_MAX];
         int lock_fd = migration_lock_acquire(db_path, lock_path, sizeof lock_path);
 
         if (lock_fd == -2) {
@@ -2681,8 +2686,7 @@ boolean ensure_database_v7(const char *db_path, boolean *migrated, char *output_
                  * The caller (dbopenverb) handles mode setup after open. */
                 if (output_path && output_path_size > 0) {
                     strncpy(output_path, db_path, output_path_size);
-                    if (output_path_size > 0)
-                        output_path[output_path_size - 1] = '\0';
+                    output_path[output_path_size - 1] = '\0';
                 }
 
                 if (migrated)
@@ -2692,7 +2696,9 @@ boolean ensure_database_v7(const char *db_path, boolean *migrated, char *output_
             }
 
             /* Other process did not leave a valid v7 file — fall through to migrate ourselves.
-             * We need to acquire the lock first. */
+             * We need to acquire the lock first. No second wait if this fails — the
+             * race-within-a-race (two processes both waited, both try to acquire) is
+             * extremely unlikely, and failing fast is safer than infinite retry. */
             lock_fd = migration_lock_acquire(db_path, lock_path, sizeof lock_path);
 
             if (lock_fd < 0) {

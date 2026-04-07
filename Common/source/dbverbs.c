@@ -778,7 +778,7 @@ static boolean dbopenverb (hdltreenode hparam1, tyvaluerecord *vreturned) {
 				bigstring bs;
 
 				getfsfile (&odbrec.fs, bs);
-				log_warn(LOG_COMP_DB, "dbopenverb: database already open: %s", stringbaseaddress(bs));
+				log_error(LOG_COMP_DB, "dbopenverb: database already open: %s", stringbaseaddress(bs));
 				lang2paramerror (dbalreadyopenederror, bsfunctionname, bs);
 				return (false);
 			}
