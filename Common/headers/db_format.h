@@ -16,6 +16,11 @@
 #include "db.h"
 #include "lang.h" /* for hdlhashtable */
 
+/* Path buffer size for database file paths (lock files, backup paths, etc.) */
+#ifndef DB_PATH_MAX
+#define DB_PATH_MAX 1024
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif

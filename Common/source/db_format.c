@@ -74,7 +74,7 @@ static boolean g_db_format_runtime_headless = false;
  * Written ONLY by migrate_internal() — stores the v7 output path.
  * Callers should read it immediately after migrate_32bit_to_64bit() or
  * ensure_database_v7(). */
-static _Thread_local char last_migration_output_path[1024];
+static _Thread_local char last_migration_output_path[DB_PATH_MAX];
 
 /* Thread-local buffer holding the path to the most recent backup file.
  * Written ONLY by create_root_backup() — stores the timestamped backup path.
@@ -83,7 +83,7 @@ static _Thread_local char last_migration_output_path[1024];
  * _Thread_local: safe under the GIL threading model (ADR-014) where
  * create_root_backup() callers read this value immediately in the same
  * call stack. See last_migration_output_path comment for details. */
-static _Thread_local char last_backup_output_path[1024];
+static _Thread_local char last_backup_output_path[DB_PATH_MAX];
 static boolean g_legacy_adapter_active = false;
 static boolean g_legacy_adapter_force_repack = false;
 static boolean g_legacy_adapter_mode_locked = false; /* Prevents v7->v6 downgrades during migration */
@@ -257,10 +257,7 @@ typedef off_t db_trace_off_t;
 #define DB_TRACE_PATH_MAX 512
 #define DB_TRACE_EXTERNAL_TABLE_ID 3  /* tyexternalid order: outline, wp, head, table */
 
-/* Path buffer size for database file paths (matches dbverbs.c) */
-#ifndef DB_PATH_MAX
-#define DB_PATH_MAX 1024
-#endif
+/* DB_PATH_MAX is defined in db_format.h */
 
 typedef struct db_trace_context db_trace_context;
 
@@ -1433,7 +1430,7 @@ boolean create_root_backup(const char *original_path) {
 
     last_backup_output_path[0] = '\0';
 
-    char backup_path[1024];
+    char backup_path[DB_PATH_MAX];
     time_t now = time(NULL);
     struct tm *tm_info = localtime(&now);
 
@@ -1885,9 +1882,9 @@ static boolean migrate_internal(const char *db_path, const char *explicit_output
     uint16_t cancoon_flags = 0;
     uint16_t cancoon_primary = 0;
     db_format_mode entry_mode = db_format_mode_current();
-    char output_path[1024];
-    char backup_path[1024];  /* v6 backup: e.g., Frontier.v6.root */
-    char temp_path[1024];
+    char output_path[DB_PATH_MAX];
+    char backup_path[DB_PATH_MAX];  /* v6 backup: e.g., Frontier.v6.root */
+    char temp_path[DB_PATH_MAX];
     temp_path[0] = '\0';
     backup_path[0] = '\0';
     bigstring bspath;
@@ -2496,7 +2493,7 @@ boolean ensure_database_v7(const char *db_path, boolean *migrated, char *output_
     /* Check if a .v6.root backup exists from a previous migration.
      * If "Frontier.v6.root" exists alongside "Frontier.root", the .root file
      * is already v7 from a prior migration -- use it directly. */
-    char v6_backup_path[1024];
+    char v6_backup_path[DB_PATH_MAX];
     if (!db_format_derive_v6_backup_path(db_path, v6_backup_path, sizeof v6_backup_path))
         return false;
 
@@ -2574,7 +2571,7 @@ boolean ensure_database_v7(const char *db_path, boolean *migrated, char *output_
          * TODO (2026-03-22): Remove this fallback once all users have migrated away from .root7.
          * Note: advisory log only fires in headless builds; non-headless users get no warning.
          * When adding GUI support, surface this via the GUI notification channel. */
-        char legacy_root7_path[1024];
+        char legacy_root7_path[DB_PATH_MAX];
         snprintf(legacy_root7_path, sizeof legacy_root7_path, "%s7", db_path);
         FILE *fp_legacy = fopen(legacy_root7_path, "rb");
         if (fp_legacy) {

@@ -61,10 +61,7 @@
 #include "db_format.h" /* migration helpers */
 #include "db.h" /* odb_context_guard */
 
-/* Path buffer size - macOS typically supports up to 1024 byte paths */
-#ifndef DB_PATH_MAX
-#define DB_PATH_MAX 1024
-#endif
+/* DB_PATH_MAX is defined in db_format.h */
 
 /* Database file extension length */
 #define ROOT_EXTENSION_LEN 5   /* ".root" */
