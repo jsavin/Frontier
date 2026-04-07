@@ -74,7 +74,7 @@ static boolean g_db_format_runtime_headless = false;
  * Written ONLY by migrate_internal() — stores the v7 output path.
  * Callers should read it immediately after migrate_32bit_to_64bit() or
  * ensure_database_v7(). */
-static _Thread_local char last_migration_output_path[1024];
+static _Thread_local char last_migration_output_path[DB_PATH_MAX];
 
 /* Thread-local buffer holding the path to the most recent backup file.
  * Written ONLY by create_root_backup() — stores the timestamped backup path.
@@ -83,7 +83,7 @@ static _Thread_local char last_migration_output_path[1024];
  * _Thread_local: safe under the GIL threading model (ADR-014) where
  * create_root_backup() callers read this value immediately in the same
  * call stack. See last_migration_output_path comment for details. */
-static _Thread_local char last_backup_output_path[1024];
+static _Thread_local char last_backup_output_path[DB_PATH_MAX];
 static boolean g_legacy_adapter_active = false;
 static boolean g_legacy_adapter_force_repack = false;
 static boolean g_legacy_adapter_mode_locked = false; /* Prevents v7->v6 downgrades during migration */
@@ -256,6 +256,8 @@ typedef off_t db_trace_off_t;
 #define DB_TRACE_MAX_PAYLOAD (8 * 1024 * 1024UL)
 #define DB_TRACE_PATH_MAX 512
 #define DB_TRACE_EXTERNAL_TABLE_ID 3  /* tyexternalid order: outline, wp, head, table */
+
+/* DB_PATH_MAX is defined in db_format.h */
 
 typedef struct db_trace_context db_trace_context;
 
@@ -1428,7 +1430,7 @@ boolean create_root_backup(const char *original_path) {
 
     last_backup_output_path[0] = '\0';
 
-    char backup_path[1024];
+    char backup_path[DB_PATH_MAX];
     time_t now = time(NULL);
     struct tm *tm_info = localtime(&now);
 
@@ -1880,9 +1882,9 @@ static boolean migrate_internal(const char *db_path, const char *explicit_output
     uint16_t cancoon_flags = 0;
     uint16_t cancoon_primary = 0;
     db_format_mode entry_mode = db_format_mode_current();
-    char output_path[1024];
-    char backup_path[1024];  /* v6 backup: e.g., Frontier.v6.root */
-    char temp_path[1024];
+    char output_path[DB_PATH_MAX];
+    char backup_path[DB_PATH_MAX];  /* v6 backup: e.g., Frontier.v6.root */
+    char temp_path[DB_PATH_MAX];
     temp_path[0] = '\0';
     backup_path[0] = '\0';
     bigstring bspath;
@@ -2436,11 +2438,8 @@ static void migration_lock_release(int fd, const char *lock_path) {
  *  Polls every 500ms for up to 30 seconds.
  *  Returns true if the lock was released within the timeout.
  *
- *  GIL note: this may block while holding the GIL, but it only runs
- *  during db.open() (not during script evaluation). In the headless
- *  build, db.open is typically called during startup before any
- *  concurrent scripts are running. The inter-process race this guards
- *  against (two processes migrating the same file) is rare. */
+ *  Yields the GIL via langbackgroundtask() between polls so other
+ *  UserTalk threads can run during the wait. */
 
 static boolean migration_lock_wait(const char *lock_path) {
 
@@ -2450,9 +2449,14 @@ static boolean migration_lock_wait(const char *lock_path) {
         struct timespec ts;
         ts.tv_sec = 0;
         ts.tv_nsec = MIGRATION_LOCK_POLL_MS * 1000000L;
-        nanosleep(&ts, NULL);
+
+        while (nanosleep(&ts, &ts) != 0 && errno == EINTR)
+            ;  /* Retry on signal interruption. */
 
         elapsed_ms += MIGRATION_LOCK_POLL_MS;
+
+        if (!langbackgroundtask(false))  /* Yield GIL; honor abort/cancel. */
+            return false;
 
         /* Check if the lock file has been removed. */
         if (access(lock_path, F_OK) != 0)
@@ -2489,7 +2493,7 @@ boolean ensure_database_v7(const char *db_path, boolean *migrated, char *output_
     /* Check if a .v6.root backup exists from a previous migration.
      * If "Frontier.v6.root" exists alongside "Frontier.root", the .root file
      * is already v7 from a prior migration -- use it directly. */
-    char v6_backup_path[1024];
+    char v6_backup_path[DB_PATH_MAX];
     if (!db_format_derive_v6_backup_path(db_path, v6_backup_path, sizeof v6_backup_path))
         return false;
 
@@ -2567,7 +2571,7 @@ boolean ensure_database_v7(const char *db_path, boolean *migrated, char *output_
          * TODO (2026-03-22): Remove this fallback once all users have migrated away from .root7.
          * Note: advisory log only fires in headless builds; non-headless users get no warning.
          * When adding GUI support, surface this via the GUI notification channel. */
-        char legacy_root7_path[1024];
+        char legacy_root7_path[DB_PATH_MAX];
         snprintf(legacy_root7_path, sizeof legacy_root7_path, "%s7", db_path);
         FILE *fp_legacy = fopen(legacy_root7_path, "rb");
         if (fp_legacy) {
@@ -2624,8 +2628,7 @@ boolean ensure_database_v7(const char *db_path, boolean *migrated, char *output_
         /* Already v7 - return original path */
         if (output_path && output_path_size > 0) {
             strncpy(output_path, db_path, output_path_size);
-            if (output_path_size > 0)
-                output_path[output_path_size - 1] = '\0';
+            output_path[output_path_size - 1] = '\0';
         }
         return true;
     }
@@ -2635,7 +2638,7 @@ boolean ensure_database_v7(const char *db_path, boolean *migrated, char *output_
 
 #if !defined(_WIN32)
     {
-        char lock_path[1024];
+        char lock_path[DB_PATH_MAX];
         int lock_fd = migration_lock_acquire(db_path, lock_path, sizeof lock_path);
 
         if (lock_fd == -2) {
@@ -2658,7 +2661,7 @@ boolean ensure_database_v7(const char *db_path, boolean *migrated, char *output_
             if (!migration_lock_wait(lock_path)) {
 #if defined(FRONTIER_HEADLESS)
                 log_error(LOG_COMP_DB,
-                    "ensure_database_v7: timed out waiting for migration lock %s", lock_path);
+                    "ensure_database_v7: migration lock wait failed (timeout or abort) %s", lock_path);
 #endif
                 return false;
             }
@@ -2681,8 +2684,7 @@ boolean ensure_database_v7(const char *db_path, boolean *migrated, char *output_
                  * The caller (dbopenverb) handles mode setup after open. */
                 if (output_path && output_path_size > 0) {
                     strncpy(output_path, db_path, output_path_size);
-                    if (output_path_size > 0)
-                        output_path[output_path_size - 1] = '\0';
+                    output_path[output_path_size - 1] = '\0';
                 }
 
                 if (migrated)
@@ -2692,7 +2694,9 @@ boolean ensure_database_v7(const char *db_path, boolean *migrated, char *output_
             }
 
             /* Other process did not leave a valid v7 file — fall through to migrate ourselves.
-             * We need to acquire the lock first. */
+             * We need to acquire the lock first. No second wait if this fails — the
+             * race-within-a-race (two processes both waited, both try to acquire) is
+             * extremely unlikely, and failing fast is safer than infinite retry. */
             lock_fd = migration_lock_acquire(db_path, lock_path, sizeof lock_path);
 
             if (lock_fd < 0) {
