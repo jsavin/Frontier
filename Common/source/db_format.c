@@ -2664,7 +2664,7 @@ boolean ensure_database_v7(const char *db_path, boolean *migrated, char *output_
             if (!migration_lock_wait(lock_path)) {
 #if defined(FRONTIER_HEADLESS)
                 log_error(LOG_COMP_DB,
-                    "ensure_database_v7: timed out waiting for migration lock %s", lock_path);
+                    "ensure_database_v7: migration lock wait failed (timeout or abort) %s", lock_path);
 #endif
                 return false;
             }
