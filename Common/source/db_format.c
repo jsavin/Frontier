@@ -2458,7 +2458,8 @@ static boolean migration_lock_wait(const char *lock_path) {
 
         elapsed_ms += MIGRATION_LOCK_POLL_MS;
 
-        langbackgroundtask(false);  /* Yield GIL to other threads. */
+        if (!langbackgroundtask(false))  /* Yield GIL; honor abort/cancel. */
+            return false;
 
         /* Check if the lock file has been removed. */
         if (access(lock_path, F_OK) != 0)
