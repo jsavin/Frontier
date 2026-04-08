@@ -1369,7 +1369,7 @@ boolean langruncallbackwithparams (
 	/* Thread-safety wrapper - ENTRY */
 	if (!grabthreadglobals()) {
 		log_warn(LOG_COMP_LANG, "grabthreadglobals failed in langruncallbackwithparams");
-		return (false);
+		return (false); /* oppushoutline not yet called; skip cleanup */
 	}
 	oppushoutline(op_get_outlinedata());
 
