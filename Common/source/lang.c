@@ -1221,7 +1221,10 @@ boolean langopruncallbackscripts (short idscript) {
 
 	if (getsystemtablescript (idscript, bsscript)) {
 
-		grabthreadglobals ();
+		if (!grabthreadglobals ()) {
+			log_warn(LOG_COMP_LANG, "grabthreadglobals failed in langopruncallbackscripts");
+			return (false);
+		}
 
 		oppushoutline (op_get_outlinedata()); /*7.0b10 PBS: make sure the current outline gets saved.*/
 
@@ -1364,7 +1367,10 @@ boolean langruncallbackwithparams (
 	initvalue(&vresult, novaluetype);
 
 	/* Thread-safety wrapper - ENTRY */
-	grabthreadglobals();
+	if (!grabthreadglobals()) {
+		log_warn(LOG_COMP_LANG, "grabthreadglobals failed in langruncallbackwithparams");
+		return (false); /* oppushoutline not yet called; skip cleanup */
+	}
 	oppushoutline(op_get_outlinedata());
 
 	/* Input validation - AFTER thread setup to ensure cleanup is called */
@@ -1498,8 +1504,11 @@ boolean langzoomobject (const bigstring bsobject) {
 	if (fl) {
 		
 		parsedialogstring (bsscript, (ptrstring) bsobject, nil, nil, nil, bsscript);
-		
-		grabthreadglobals ();
+
+		if (!grabthreadglobals ()) {
+			log_warn(LOG_COMP_LANG, "grabthreadglobals failed in langzoomobject");
+			return (false);
+		}
 
 		fl = langrunstringnoerror (bsscript, bsresult);
 

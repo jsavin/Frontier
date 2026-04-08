@@ -91,7 +91,7 @@ long getoserror(void);
 void *getstringlist(void);
 void *getsystemerrorstring(long error);
 void *getsystemtablescript(const char *name);
-void grabthreadglobals(void);
+long grabthreadglobals(void);
 void hashassign(void *table, const char *key, void *value);
 void hashdelete(void *table, const char *key);
 void *hashgetiteminfo(void *table, const char *key);
