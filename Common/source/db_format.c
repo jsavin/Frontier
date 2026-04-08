@@ -378,7 +378,10 @@ boolean db_format_prepare_runtime(void) {
     log_trace(LOG_COMP_STARTUP, "db_format_prepare_runtime: dbinitverbs completed successfully");
 #endif
 
-    grabthreadglobals();
+    if (!grabthreadglobals()) {
+        log_warn(LOG_COMP_STARTUP, "db_format_prepare_runtime: grabthreadglobals failed");
+        return false;
+    }
 
     g_db_format_runtime_initialized = true;
     return true;

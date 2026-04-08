@@ -206,7 +206,11 @@ int tcp_process_callbacks(void) {
          * Thread globals needed for setaddressvalue/pushfunctionreference
          * which access ODB structures. */
 
-        grabthreadglobals();
+        if (!grabthreadglobals()) {
+            log_warn(LOG_COMP_LANG, "tcp_process_callbacks: grabthreadglobals failed for stream_id=%ld", item.stream_id);
+            processed++;
+            continue;
+        }
 
         /* Build callback address → function reference */
         tyvaluerecord addrval;

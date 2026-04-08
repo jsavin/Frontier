@@ -500,12 +500,13 @@ void *getstringlist(void) {
     return NULL;
 }
 
-void grabthreadglobals(void) {
+long grabthreadglobals(void) {
     /*
      * Grab thread globals
      */
     // TODO: Implement proper thread globals grabbing when we have the full structure
-    // For now, this is a minimal implementation
+    // For now, this is a minimal implementation returning success
+    return 1;
 }
 
 int iscurrentapplication(void) {
