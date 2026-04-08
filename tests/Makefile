@@ -108,7 +108,7 @@ FRONTIER_SOURCES = \
 # Migration tests use the same headless runtime slice as runtime_tests to avoid test-only forks.
 MIGRATION_SOURCES = \
     $(LANG_RUNTIME_SOURCES) \
-    headless_shell.c \
+    ../frontier-cli/stubs/headless_shell.c \
     components/test_migration_portable.c
 
 # Note: ophoist.c is required because opverbnew() calls oppopallhoists() defined there.
@@ -194,18 +194,18 @@ LANG_RUNTIME_SOURCES = \
     ../Common/source/headless_stubs.c \
     ../portable/file_portable.c \
     ../portable/fileloop_portable.c \
-    headless_lang_runtime_more_stubs.c \
-    headless_shellhooks.c \
-    headless_table_stubs.c \
+    ../frontier-cli/stubs/headless_lang_runtime_more_stubs.c \
+    ../frontier-cli/stubs/headless_shellhooks.c \
+    ../frontier-cli/stubs/headless_table_stubs.c \
     ../portable/wptext_runtime.c \
     ../portable/paige_text_extractor.c \
-    headless_pict_stubs.c \
-    headless_menu_stubs.c \
-    headless_menu_globals.c \
-    headless_search_stubs.c \
-    headless_mac_compat.c \
-    headless_langregexp_stub.c \
-    headless_langipc_stub.c
+    ../frontier-cli/stubs/headless_pict_stubs.c \
+    ../frontier-cli/stubs/headless_menu_stubs.c \
+    ../frontier-cli/stubs/headless_menu_globals.c \
+    ../frontier-cli/stubs/headless_search_stubs.c \
+    ../frontier-cli/stubs/headless_mac_compat.c \
+    ../frontier-cli/stubs/headless_langregexp_stub.c \
+    ../frontier-cli/stubs/headless_langipc_stub.c
 LANG_RUNTIME_SOURCES += \
     ../portable/classic_handle.c \
     ../portable/appleevent_portable.c \
@@ -272,8 +272,8 @@ all: $(PAIGE_LIB) strings_generated kernel_verbs_generated $(RUN_BUILDABLE)
 $(RUN_BUILDABLE): $(PAIGE_LIB)
 
 # Headless smoke test
-core_tests: core_tests.c ../Common/source/shell_api.c ../Common/source/shell_api_headless.c ../Common/source/logging.c headless_shell.c
-	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable core_tests.c ../Common/source/shell_api.c ../Common/source/shell_api_headless.c ../Common/source/logging.c headless_shell.c -o $@ $(LINK_LIBS)
+core_tests: core_tests.c ../Common/source/shell_api.c ../Common/source/shell_api_headless.c ../Common/source/logging.c ../frontier-cli/stubs/headless_shell.c
+	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable core_tests.c ../Common/source/shell_api.c ../Common/source/shell_api_headless.c ../Common/source/logging.c ../frontier-cli/stubs/headless_shell.c -o $@ $(LINK_LIBS)
 
 op_context_tests: op_context_tests.c ../Common/source/op_context.c ../Common/source/logging.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable op_context_tests.c ../Common/source/op_context.c ../Common/source/logging.c -o $@ $(LINK_LIBS)
@@ -281,37 +281,37 @@ op_context_tests: op_context_tests.c ../Common/source/op_context.c ../Common/sou
 table_context_tests: table_context/table_context_tests.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../portable table_context/table_context_tests.c -o $@ $(LINK_LIBS)
 
-time_portability_test: time_portability_test.c $(LANG_RUNTIME_SOURCES) headless_shell.c
-	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable time_portability_test.c $(LANG_RUNTIME_SOURCES) headless_shell.c -o $@ $(LINK_LIBS)
+time_portability_test: time_portability_test.c $(LANG_RUNTIME_SOURCES) ../frontier-cli/stubs/headless_shell.c
+	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable time_portability_test.c $(LANG_RUNTIME_SOURCES) ../frontier-cli/stubs/headless_shell.c -o $@ $(LINK_LIBS)
 
 test_sys_shell_command_verbs: test_sys_shell_command_verbs.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable \
-		test_sys_shell_command_verbs.c $(LANG_RUNTIME_SOURCES) headless_shell.c \
+		test_sys_shell_command_verbs.c $(LANG_RUNTIME_SOURCES) ../frontier-cli/stubs/headless_shell.c \
 		-o $@ $(LINK_LIBS)
 
-headless_selection_tests: headless_selection_tests.c ../Common/source/headless_selection.c $(LANG_RUNTIME_SOURCES) headless_shell.c
+headless_selection_tests: headless_selection_tests.c ../Common/source/headless_selection.c $(LANG_RUNTIME_SOURCES) ../frontier-cli/stubs/headless_shell.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable \
-		headless_selection_tests.c ../Common/source/headless_selection.c $(LANG_RUNTIME_SOURCES) headless_shell.c -o $@ $(LINK_LIBS)
+		headless_selection_tests.c ../Common/source/headless_selection.c $(LANG_RUNTIME_SOURCES) ../frontier-cli/stubs/headless_shell.c -o $@ $(LINK_LIBS)
 
 db_format_tests: db_format_tests.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable \
-		db_format_tests.c $(LANG_RUNTIME_SOURCES) headless_shell.c -o $@ $(LINK_LIBS)
+		db_format_tests.c $(LANG_RUNTIME_SOURCES) ../frontier-cli/stubs/headless_shell.c -o $@ $(LINK_LIBS)
 
 oppack_tests: oppack_tests.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable \
-		oppack_tests.c $(LANG_RUNTIME_SOURCES) headless_shell.c -o $@ $(LINK_LIBS)
+		oppack_tests.c $(LANG_RUNTIME_SOURCES) ../frontier-cli/stubs/headless_shell.c -o $@ $(LINK_LIBS)
 
 hashpack_modern_tests: hashpack_modern_tests.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable \
-		hashpack_modern_tests.c $(LANG_RUNTIME_SOURCES) headless_shell.c -o $@ $(LINK_LIBS)
+		hashpack_modern_tests.c $(LANG_RUNTIME_SOURCES) ../frontier-cli/stubs/headless_shell.c -o $@ $(LINK_LIBS)
 
 hash_corruption_tests: hash_corruption_tests.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable \
-		hash_corruption_tests.c $(LANG_RUNTIME_SOURCES) headless_shell.c -o $@ $(LINK_LIBS)
+		hash_corruption_tests.c $(LANG_RUNTIME_SOURCES) ../frontier-cli/stubs/headless_shell.c -o $@ $(LINK_LIBS)
 
 langvalue_64_tests: langvalue_64_tests.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable \
-		langvalue_64_tests.c $(LANG_RUNTIME_SOURCES) headless_shell.c -o $@ $(LINK_LIBS)
+		langvalue_64_tests.c $(LANG_RUNTIME_SOURCES) ../frontier-cli/stubs/headless_shell.c -o $@ $(LINK_LIBS)
 
 table_verb_tests: table_operations/table_verb_tests.c
 	$(CC) -std=c99 -Wall -Wextra -g -O0 table_operations/table_verb_tests.c -o $@
@@ -322,14 +322,14 @@ table_operations_integration: table_operations/table_operations_integration.c
 
 refcon_tests: refcon_tests.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable \
-		refcon_tests.c $(LANG_RUNTIME_SOURCES) headless_shell.c -o $@ $(LINK_LIBS)
+		refcon_tests.c $(LANG_RUNTIME_SOURCES) ../frontier-cli/stubs/headless_shell.c -o $@ $(LINK_LIBS)
 
 refcon_phase2_tests: refcon_cli_tests/phase2_serialization.c
 	$(CC) -std=c99 -Wall -Wextra -g -O0 refcon_cli_tests/phase2_serialization.c -o $@
 
-opattributes_stub_tests: opattributes_stub_tests.c $(LANG_RUNTIME_SOURCES) headless_shell.c
+opattributes_stub_tests: opattributes_stub_tests.c $(LANG_RUNTIME_SOURCES) ../frontier-cli/stubs/headless_shell.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable \
-		opattributes_stub_tests.c $(LANG_RUNTIME_SOURCES) headless_shell.c -o $@ $(LINK_LIBS)
+		opattributes_stub_tests.c $(LANG_RUNTIME_SOURCES) ../frontier-cli/stubs/headless_shell.c -o $@ $(LINK_LIBS)
 
 # Thread safety Layer 1 tests - standalone, no full runtime needed
 headless_thread_registry_tests: headless_thread_registry_tests.c ../Common/source/threadregistry.c ../Common/source/logging.c
@@ -337,50 +337,50 @@ headless_thread_registry_tests: headless_thread_registry_tests.c ../Common/sourc
 		headless_thread_registry_tests.c ../Common/source/threadregistry.c ../Common/source/logging.c -o $@ -lpthread
 
 # P0a: Parameterized callback infrastructure tests
-test_callback_infrastructure: test_callback_infrastructure.c $(LANG_RUNTIME_SOURCES) headless_shell.c
+test_callback_infrastructure: test_callback_infrastructure.c $(LANG_RUNTIME_SOURCES) ../frontier-cli/stubs/headless_shell.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable \
-		test_callback_infrastructure.c $(LANG_RUNTIME_SOURCES) headless_shell.c -o $@ $(LINK_LIBS)
+		test_callback_infrastructure.c $(LANG_RUNTIME_SOURCES) ../frontier-cli/stubs/headless_shell.c -o $@ $(LINK_LIBS)
 
 # TCP Phase 1A unit tests - internal logic validation (no network required)
-tcp_phase1a_unit_tests: tcp_phase1a_unit_tests.c $(LANG_RUNTIME_SOURCES) headless_shell.c
+tcp_phase1a_unit_tests: tcp_phase1a_unit_tests.c $(LANG_RUNTIME_SOURCES) ../frontier-cli/stubs/headless_shell.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable \
-		tcp_phase1a_unit_tests.c $(LANG_RUNTIME_SOURCES) headless_shell.c -o $@ $(LINK_LIBS)
+		tcp_phase1a_unit_tests.c $(LANG_RUNTIME_SOURCES) ../frontier-cli/stubs/headless_shell.c -o $@ $(LINK_LIBS)
 
 # Menu v7 refcon table format tests - validates mecreaterefcontable_v7/meunpackrefcontable_v7
-menu_v7_refcon_tests: menu_v7_refcon_tests.c $(LANG_RUNTIME_SOURCES) ../Common/source/menupack.c headless_shell.c
+menu_v7_refcon_tests: menu_v7_refcon_tests.c $(LANG_RUNTIME_SOURCES) ../Common/source/menupack.c ../frontier-cli/stubs/headless_shell.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable \
-		menu_v7_refcon_tests.c $(LANG_RUNTIME_SOURCES) ../Common/source/menupack.c headless_shell.c -o $@ $(LINK_LIBS)
+		menu_v7_refcon_tests.c $(LANG_RUNTIME_SOURCES) ../Common/source/menupack.c ../frontier-cli/stubs/headless_shell.c -o $@ $(LINK_LIBS)
 
-runtime_tests: runtime_tests.c $(LANG_RUNTIME_SOURCES) headless_shell.c
-	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable runtime_tests.c $(LANG_RUNTIME_SOURCES) headless_shell.c -o $@ $(LINK_LIBS)
+runtime_tests: runtime_tests.c $(LANG_RUNTIME_SOURCES) ../frontier-cli/stubs/headless_shell.c
+	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable runtime_tests.c $(LANG_RUNTIME_SOURCES) ../frontier-cli/stubs/headless_shell.c -o $@ $(LINK_LIBS)
 
-parser_tests: parser_tests.c $(LANG_RUNTIME_SOURCES) headless_shell.c
-	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable parser_tests.c $(LANG_RUNTIME_SOURCES) headless_shell.c -o $@ $(LINK_LIBS)
+parser_tests: parser_tests.c $(LANG_RUNTIME_SOURCES) ../frontier-cli/stubs/headless_shell.c
+	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable parser_tests.c $(LANG_RUNTIME_SOURCES) ../frontier-cli/stubs/headless_shell.c -o $@ $(LINK_LIBS)
 
-save_migration_tests: save_migration_tests.c $(LANG_RUNTIME_SOURCES) ../Common/source/odbengine.c headless_shell.c
+save_migration_tests: save_migration_tests.c $(LANG_RUNTIME_SOURCES) ../Common/source/odbengine.c ../frontier-cli/stubs/headless_shell.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -DHEADLESS_TEST_PORTABLE_FILE -DHEADLESS_LINKS_REAL_DB -I../Common/headers -I../Common/SystemHeaders -I../portable save_migration_tests.c \
-		$(LANG_RUNTIME_SOURCES) ../Common/source/odbengine.c headless_shell.c -o $@ $(LINK_LIBS)
+		$(LANG_RUNTIME_SOURCES) ../Common/source/odbengine.c ../frontier-cli/stubs/headless_shell.c -o $@ $(LINK_LIBS)
 
-refcon_migration_64bit_test: refcon_migration_64bit_test.c $(LANG_RUNTIME_SOURCES) ../Common/source/odbengine.c headless_shell.c
+refcon_migration_64bit_test: refcon_migration_64bit_test.c $(LANG_RUNTIME_SOURCES) ../Common/source/odbengine.c ../frontier-cli/stubs/headless_shell.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -DHEADLESS_TEST_PORTABLE_FILE -DHEADLESS_LINKS_REAL_DB -I../Common/headers -I../Common/SystemHeaders -I../portable refcon_migration_64bit_test.c \
-		$(LANG_RUNTIME_SOURCES) ../Common/source/odbengine.c headless_shell.c -o $@ $(LINK_LIBS)
+		$(LANG_RUNTIME_SOURCES) ../Common/source/odbengine.c ../frontier-cli/stubs/headless_shell.c -o $@ $(LINK_LIBS)
 
-test_efp_augmentation: test_efp_augmentation.c $(LANG_RUNTIME_SOURCES) ../Common/source/odbengine.c headless_shell.c
+test_efp_augmentation: test_efp_augmentation.c $(LANG_RUNTIME_SOURCES) ../Common/source/odbengine.c ../frontier-cli/stubs/headless_shell.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -DHEADLESS_TEST_PORTABLE_FILE -DHEADLESS_LINKS_REAL_DB -I../Common/headers -I../Common/SystemHeaders -I../portable test_efp_augmentation.c \
-		$(LANG_RUNTIME_SOURCES) ../Common/source/odbengine.c headless_shell.c -o $@ $(LINK_LIBS)
+		$(LANG_RUNTIME_SOURCES) ../Common/source/odbengine.c ../frontier-cli/stubs/headless_shell.c -o $@ $(LINK_LIBS)
 
-test_dump_system_paths: test_dump_system_paths.c $(LANG_RUNTIME_SOURCES) ../Common/source/odbengine.c headless_shell.c
+test_dump_system_paths: test_dump_system_paths.c $(LANG_RUNTIME_SOURCES) ../Common/source/odbengine.c ../frontier-cli/stubs/headless_shell.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -DHEADLESS_TEST_PORTABLE_FILE -DHEADLESS_LINKS_REAL_DB -I../Common/headers -I../Common/SystemHeaders -I../portable test_dump_system_paths.c \
-		$(LANG_RUNTIME_SOURCES) ../Common/source/odbengine.c headless_shell.c -o $@ $(LINK_LIBS)
+		$(LANG_RUNTIME_SOURCES) ../Common/source/odbengine.c ../frontier-cli/stubs/headless_shell.c -o $@ $(LINK_LIBS)
 
-file_portable_tests: file_portable_tests.c ../portable/file_portable.c headless_shell.c ../Common/source/portable_handles.c ../Common/source/strings.c ../Common/source/logging.c
-	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -DHEADLESS_TEST_PORTABLE_FILE -I../Common/headers -I../Common/SystemHeaders -I../portable file_portable_tests.c ../portable/file_portable.c headless_shell.c ../Common/source/portable_handles.c ../Common/source/strings.c ../Common/source/logging.c -o $@ $(LINK_LIBS)
+file_portable_tests: file_portable_tests.c ../portable/file_portable.c ../frontier-cli/stubs/headless_shell.c ../Common/source/portable_handles.c ../Common/source/strings.c ../Common/source/logging.c
+	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -DHEADLESS_TEST_PORTABLE_FILE -I../Common/headers -I../Common/SystemHeaders -I../portable file_portable_tests.c ../portable/file_portable.c ../frontier-cli/stubs/headless_shell.c ../Common/source/portable_handles.c ../Common/source/strings.c ../Common/source/logging.c -o $@ $(LINK_LIBS)
 
-file_readline_tests: file_readline_tests.c ../portable/file_portable.c headless_shell.c ../Common/source/portable_handles.c ../Common/source/strings.c ../Common/source/logging.c
-	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -DHEADLESS_TEST_PORTABLE_FILE -I../Common/headers -I../Common/SystemHeaders -I../portable file_readline_tests.c ../portable/file_portable.c headless_shell.c ../Common/source/portable_handles.c ../Common/source/strings.c ../Common/source/logging.c -o $@ $(LINK_LIBS)
+file_readline_tests: file_readline_tests.c ../portable/file_portable.c ../frontier-cli/stubs/headless_shell.c ../Common/source/portable_handles.c ../Common/source/strings.c ../Common/source/logging.c
+	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -DHEADLESS_TEST_PORTABLE_FILE -I../Common/headers -I../Common/SystemHeaders -I../portable file_readline_tests.c ../portable/file_portable.c ../frontier-cli/stubs/headless_shell.c ../Common/source/portable_handles.c ../Common/source/strings.c ../Common/source/logging.c -o $@ $(LINK_LIBS)
 
-file_verb_tests: file_verb_tests.c $(LANG_RUNTIME_SOURCES) ../Common/source/findinfile.c headless_shell.c
-	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -DHEADLESS_TEST_PORTABLE_FILE -I../Common/headers -I../Common/SystemHeaders -I../portable file_verb_tests.c $(LANG_RUNTIME_SOURCES) ../Common/source/findinfile.c headless_shell.c -o $@ $(LINK_LIBS)
+file_verb_tests: file_verb_tests.c $(LANG_RUNTIME_SOURCES) ../Common/source/findinfile.c ../frontier-cli/stubs/headless_shell.c
+	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -DHEADLESS_TEST_PORTABLE_FILE -I../Common/headers -I../Common/SystemHeaders -I../portable file_verb_tests.c $(LANG_RUNTIME_SOURCES) ../Common/source/findinfile.c ../frontier-cli/stubs/headless_shell.c -o $@ $(LINK_LIBS)
 
 handle_tests: handle_tests.c ../Common/source/portable_handles.c ../portable/classic_handle.c
 	$(CC) $(CFLAGS) -DFRONTIER_USE_PORTABLE_HANDLES -I../Common/headers -I../Common/SystemHeaders -I../portable \
@@ -389,9 +389,9 @@ handle_tests: handle_tests.c ../Common/source/portable_handles.c ../portable/cla
 test_logging: test_logging.c ../Common/source/logging.c
 	$(CC) $(CFLAGS) -I../Common/headers -I../Common/SystemHeaders test_logging.c ../Common/source/logging.c -o $@
 
-test_error_messages: test_error_messages.c ../Common/source/logging.c ../Common/source/strings.c headless_lang_runtime_more_stubs.c ../generated/strings_tables.c
+test_error_messages: test_error_messages.c ../Common/source/logging.c ../Common/source/strings.c ../frontier-cli/stubs/headless_lang_runtime_more_stubs.c ../generated/strings_tables.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable -I../generated \
-		test_error_messages.c ../Common/source/logging.c ../Common/source/strings.c headless_lang_runtime_more_stubs.c ../generated/strings_tables.c -o $@
+		test_error_messages.c ../Common/source/logging.c ../Common/source/strings.c ../frontier-cli/stubs/headless_lang_runtime_more_stubs.c ../generated/strings_tables.c -o $@
 
 cli_runtime_tests: cli_runtime_tests.c $(CLI_BIN)
 	$(CC) $(CFLAGS) -I../Common/headers -I../Common/SystemHeaders cli_runtime_tests.c -o $@ $(LINK_LIBS)
@@ -428,9 +428,9 @@ test_dbnew: components/test_dbnew.c $(TEST_FRAMEWORK) $(FRONTIER_SOURCES)
 paige_text_tests: components/paige_text_tests.c $(TEST_FRAMEWORK) components/macromantoutf8_stub.c components/newclearhandle_stub.c ../Common/source/portable_handles.c ../portable/classic_handle.c ../portable/paige_text_extractor.c ../Common/source/logging.c
 	$(CC) $(CFLAGS) -I../Common/headers -I../portable components/paige_text_tests.c framework/test_framework.c components/macromantoutf8_stub.c components/newclearhandle_stub.c ../Common/source/portable_handles.c ../portable/classic_handle.c ../portable/paige_text_extractor.c ../Common/source/logging.c -DFRONTIER_PORTABLE -o $@ $(LDFLAGS)
 
-test_stringerrorlist: test_stringerrorlist.c $(TEST_FRAMEWORK) headless_lang_runtime_more_stubs.c $(STRINGS_C) ../Common/source/logging.c ../portable/classic_handle.c ../Common/source/portable_handles.c
+test_stringerrorlist: test_stringerrorlist.c $(TEST_FRAMEWORK) ../frontier-cli/stubs/headless_lang_runtime_more_stubs.c $(STRINGS_C) ../Common/source/logging.c ../portable/classic_handle.c ../Common/source/portable_handles.c
 	$(CC) $(CFLAGS) -I../Common/headers -I../Common/SystemHeaders -I../portable -I../generated \
-		test_stringerrorlist.c framework/test_framework.c headless_lang_runtime_more_stubs.c $(STRINGS_C) ../Common/source/logging.c ../portable/classic_handle.c ../Common/source/portable_handles.c -o $@ $(LDFLAGS)
+		test_stringerrorlist.c framework/test_framework.c ../frontier-cli/stubs/headless_lang_runtime_more_stubs.c $(STRINGS_C) ../Common/source/logging.c ../portable/classic_handle.c ../Common/source/portable_handles.c -o $@ $(LDFLAGS)
 
 # UserTalk object test executables
 test_usertalk_runner: components/usertalk_objects/test_usertalk_objects.c components/usertalk_objects/test_runner.c $(TEST_FRAMEWORK) $(FRONTIER_SOURCES) $(CLI_SOURCES)
@@ -448,8 +448,8 @@ test_complex_objects: components/usertalk_objects/test_complex_objects.c $(TEST_
 test_database_persistence: components/usertalk_objects/test_database_persistence.c $(TEST_FRAMEWORK) $(FRONTIER_SOURCES) $(CLI_SOURCES)
 	$(CC) $(CFLAGS) -DFRONTIER_PORTABLE -I../portable -I../Common/SystemHeaders -I$(HEADERDIR) -I../portable -I$(FRONTIER_CLI_DIR) $^ -o $@ $(LINK_LIBS)
 
-test_table_sorting: components/usertalk_objects/test_table_sorting.c $(TEST_FRAMEWORK) $(LANG_RUNTIME_SOURCES) ../portable/cli_executor.c headless_shell.c
-	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable components/usertalk_objects/test_table_sorting.c $(TEST_FRAMEWORK) $(LANG_RUNTIME_SOURCES) ../portable/cli_executor.c headless_shell.c -o $@ $(LINK_LIBS)
+test_table_sorting: components/usertalk_objects/test_table_sorting.c $(TEST_FRAMEWORK) $(LANG_RUNTIME_SOURCES) ../portable/cli_executor.c ../frontier-cli/stubs/headless_shell.c
+	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable components/usertalk_objects/test_table_sorting.c $(TEST_FRAMEWORK) $(LANG_RUNTIME_SOURCES) ../portable/cli_executor.c ../frontier-cli/stubs/headless_shell.c -o $@ $(LINK_LIBS)
 
 
 # Test targets
@@ -644,6 +644,6 @@ verify-errors:
 
 .PHONY: all test test-report test-integration test-integration-verbose test-migrate-flag test-custom-args test-debug test-all clean install uninstall help results strings_generated kernel_verbs_generated verify-errors validate-bigstrings check-python-deps
 
-check_v6_tables: check_v6_tables.c $(LANG_RUNTIME_SOURCES) ../Common/source/odbengine.c headless_shell.c
+check_v6_tables: check_v6_tables.c $(LANG_RUNTIME_SOURCES) ../Common/source/odbengine.c ../frontier-cli/stubs/headless_shell.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -DHEADLESS_TEST_PORTABLE_FILE -DHEADLESS_LINKS_REAL_DB -I../Common/headers -I../Common/SystemHeaders -I../portable check_v6_tables.c \
-		$(LANG_RUNTIME_SOURCES) ../Common/source/odbengine.c headless_shell.c -o $@ $(LINK_LIBS)
+		$(LANG_RUNTIME_SOURCES) ../Common/source/odbengine.c ../frontier-cli/stubs/headless_shell.c -o $@ $(LINK_LIBS)
