@@ -2,8 +2,9 @@
 # This file ensures both Makefiles stay in sync when headless verb files are added/removed.
 #
 # Usage:
-#   frontier-cli/Makefile: Uses $(TESTSDIR)/$(file) for each file
+#   frontier-cli/Makefile: Uses $(TESTSDIR)/$(file) for each file (verb files remain in tests/)
 #   tests/Makefile: Uses $(file) directly (files are in same directory)
+# Note: Runtime stubs (headless_*_stubs.c) have moved to frontier-cli/stubs/.
 #
 # When adding new headless verb files:
 #   1. Add the filename to HEADLESS_VERBS_SOURCES below

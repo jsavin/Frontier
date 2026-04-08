@@ -38,6 +38,7 @@ HEADERDIR = ../Common/headers
 SYSTEMHEADERDIR = ../Common/SystemHeaders
 PORTABLEDIR = ../portable
 TESTSDIR = ../tests
+STUBSDIR = ./stubs
 
 # Include shared headless verb file list
 include $(TESTSDIR)/headless_verbs.mk
@@ -173,21 +174,21 @@ RUNTIME_SOURCES = \
     ../Common/source/menuverbs.c \
     ../Common/source/threadregistry.c
 
-# Headless adapters mirrored from tests/
+# Headless runtime stubs (owned by frontier-cli)
 HEADLESS_STUBS = \
-    $(TESTSDIR)/headless_shell.c \
-    $(TESTSDIR)/headless_shellhooks.c \
-    $(TESTSDIR)/headless_table_stubs.c \
+    $(STUBSDIR)/headless_shell.c \
+    $(STUBSDIR)/headless_shellhooks.c \
+    $(STUBSDIR)/headless_table_stubs.c \
     ../portable/wptext_runtime.c \
     ../portable/paige_text_extractor.c \
-    $(TESTSDIR)/headless_pict_stubs.c \
-    $(TESTSDIR)/headless_menu_stubs.c \
-    $(TESTSDIR)/headless_menu_globals.c \
-    $(TESTSDIR)/headless_search_stubs.c \
-    $(TESTSDIR)/headless_mac_compat.c \
-    $(TESTSDIR)/headless_langregexp_stub.c \
-    $(TESTSDIR)/headless_langipc_stub.c \
-    $(TESTSDIR)/headless_lang_runtime_more_stubs.c \
+    $(STUBSDIR)/headless_pict_stubs.c \
+    $(STUBSDIR)/headless_menu_stubs.c \
+    $(STUBSDIR)/headless_menu_globals.c \
+    $(STUBSDIR)/headless_search_stubs.c \
+    $(STUBSDIR)/headless_mac_compat.c \
+    $(STUBSDIR)/headless_langregexp_stub.c \
+    $(STUBSDIR)/headless_langipc_stub.c \
+    $(STUBSDIR)/headless_lang_runtime_more_stubs.c \
     ../portable/file_portable.c \
     ../portable/file_working_dir.c \
     ../portable/fileverbs_portable.c \

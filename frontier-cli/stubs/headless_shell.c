@@ -5,7 +5,7 @@
 #include "shell.h"
 
 #if !defined(FRONTIER_HEADLESS)
-#error "tests/headless_shell.c should only be compiled in headless mode"
+#error "frontier-cli/stubs/headless_shell.c should only be compiled in headless mode"
 #endif
 
 static void bigstring_to_cstring(const bigstring bs, char *out, size_t out_size) {
