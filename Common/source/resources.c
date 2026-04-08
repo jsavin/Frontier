@@ -40,7 +40,7 @@
 
 
 #ifndef FRONTIER_HEADLESS
-/* Headless mode provides its own getstringlist() in tests/headless_lang_runtime_more_stubs.c
+/* Headless mode provides its own getstringlist() in frontier-cli/stubs/headless_lang_runtime_more_stubs.c
  * which loads strings from generated YAML tables instead of macOS bundles. */
 
 boolean getstringlist (short listnum, short id, bigstring bs) {
