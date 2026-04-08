@@ -44,7 +44,7 @@ Security is a top design priority for Frontier ("security and privacy by design"
 - `PATH_MAX`: POSIX file operations (`portable/file_portable.c`)
 - `TMPFILE_PATH_MAX`: temporary files (`Common/source/sysshellcall.c`)
 
-**Bigstring length guards** -- Bigstrings (Pascal-style strings, max 255 bytes) include overflow checks before copy operations. Paths that exceed the limit are truncated with logging rather than silently overflowing.
+**Bigstring length guards** -- Bigstrings (Pascal-style strings, max 255 bytes) include overflow checks before copy operations. Paths that exceed the limit are rejected with a `langerrormessage` error rather than silently overflowing or truncating.
 
 - File: `Common/source/shellsysverbs.c`, `Common/source/langcallbacks.c`
 
@@ -52,12 +52,12 @@ Security is a top design priority for Frontier ("security and privacy by design"
 
 **Localhost-only binding** -- The WebSocket server binds exclusively to `127.0.0.1`. No remote connections are accepted. The NDJSON protocol handler reads from stdin (no network exposure).
 
-- File: `frontier-cli/ws_server.h`, `frontier-cli/protocol_handler.h`
+- File: `frontier-cli/ws_server.c` (bind call), `frontier-cli/protocol_handler.c` (stdin)
 
 **Origin header validation** -- WebSocket handshakes validate the `Origin` header against a localhost allowlist (`http://localhost`, `https://localhost`, `http://127.0.0.1`, `https://127.0.0.1`, `http://[::1]`, `https://[::1]`). A suffix check prevents prefix-match bypasses (e.g., `http://localhost.attacker.com`).
 
 - Verifies the character after the hostname is `:`, `/`, or `\0`
-- Non-browser clients (no Origin header) are permitted -- accepted risk for a localhost-only tool
+- Non-browser clients (no Origin header) are permitted -- any process that can connect to the loopback interface already has equivalent local access, so Origin validation adds no security for non-browser clients
 - File: `frontier-cli/ws_frame.c` (`ws_handshake()`)
 
 **Connection limits** -- `WS_MAX_CLIENTS` caps concurrent WebSocket connections at 8, preventing resource exhaustion from runaway or malicious clients.
@@ -67,7 +67,8 @@ Security is a top design priority for Frontier ("security and privacy by design"
 **Frame size limits** -- `WS_MAX_FRAME_PAYLOAD` (256 KB) caps individual WebSocket frame payloads. Frames exceeding this limit are rejected during decode, preventing memory exhaustion.
 
 - Includes overflow check: `header_len + payload_len < header_len` guards against integer wraparound
-- File: `frontier-cli/ws_frame.c` (`ws_frame_decode()`)
+- Constant defined in: `frontier-cli/ws_frame.h`
+- Enforcement: `frontier-cli/ws_frame.c` (`ws_frame_decode()`)
 
 ### Database Security
 
@@ -93,7 +94,7 @@ Security is a top design priority for Frontier ("security and privacy by design"
 - Documented at top of file with enforcement throughout
 - File: `frontier-cli/debug_handler.c`
 
-**Reference-counted debug state** -- Debug state uses atomic reference counting (`refcount`) to prevent use-after-free. Callers acquire a reference via `debug_acquire_state()` (under `g_debug_mutex`) and release via `debug_release_state()`. State is freed only when the last reference is dropped.
+**Reference-counted debug state** -- Debug state uses atomic reference counting (`refcount`) to prevent use-after-free. Callers acquire a reference via `debug_get_state_for_thread()` (under `g_debug_mutex`) and release via `debug_release_state()`. State is freed only when the last reference is dropped.
 
 - `atomic_fetch_add` / `atomic_fetch_sub` for thread-safe counting
 - Assert on refcount underflow
