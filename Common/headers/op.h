@@ -453,6 +453,8 @@ typedef struct tyoutlinerecord {
 	
 	boolean fldisposewhenpopped: 1; //true if an attempt was made to dispose outline while pushed
 
+	boolean flcallbacksinited: 1; //true after opinitcallbacks has run; prevents re-initialization
+
 	boolean flhtml; /*7.0b28 PBS: true if outline is in WYSIWYG HTML mode.*/
 	
 	unsigned long timevisi; /*the time for the next scheduled visi check*/

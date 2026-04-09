@@ -342,7 +342,7 @@ static boolean filemenu_open(hdltreenode hparam1, tyvaluerecord *vreturned) {
 
     filespectopath(&odbrec.fs, bspath);
     safenullterminate(bspath);
-    log_debug(LOG_COMP_DB, "filemenu_open: opening %s", stringbaseaddress(bspath));
+    log_debug(LOG_COMP_DB, "filemenu_open: opening %.*s", (int)bspath[0], (const char *)(bspath + 1));
 
     /* Check if already open in hodblist */
     if (hodblist != nil) {
@@ -358,7 +358,7 @@ static boolean filemenu_open(hdltreenode hparam1, tyvaluerecord *vreturned) {
 
     /* Open the OS file */
     if (!openfile(&odbrec.fs, &odbrec.fref, odbrec.flreadonly)) {
-        log_verb_error(LOG_COMP_DB, "filemenu_open: openfile failed for %s", stringbaseaddress(bspath));
+        log_verb_error(LOG_COMP_DB, "filemenu_open: openfile failed for %.*s", (int)bspath[0], (const char *)(bspath + 1));
         langerrormessage(PSTRING("\x1f", "Can't open: file does not exist"));
         return false;
     }
@@ -418,7 +418,7 @@ static boolean filemenu_open(hdltreenode hparam1, tyvaluerecord *vreturned) {
         Handle hrootvar = odbGetRootVariable(odbrec.odb);
 
         if (hrootvar == nil) {
-            log_debug(LOG_COMP_DB, "filemenu_open: odbGetRootVariable returned nil for %s", stringbaseaddress(bspath));
+            log_debug(LOG_COMP_DB, "filemenu_open: odbGetRootVariable returned nil for %.*s", (int)bspath[0], (const char *)(bspath + 1));
         }
 
         if (hrootvar != nil) {
@@ -431,8 +431,8 @@ static boolean filemenu_open(hdltreenode hparam1, tyvaluerecord *vreturned) {
                 /* Non-fatal: database is still open in hodblist */
             }
             else {
-                log_debug(LOG_COMP_DB, "filemenu_open: mounted in system.compiler.files as '%s'",
-                          stringbaseaddress(bspath));
+                log_debug(LOG_COMP_DB, "filemenu_open: mounted in system.compiler.files as '%.*s'",
+                          (int)bspath[0], (const char *)(bspath + 1));
             }
         }
     }
@@ -456,7 +456,7 @@ static boolean filemenu_close_guestdb(hdlodbrecord hodb) {
 
     filespectopath(&(**hodb).fs, bspath);
     safenullterminate(bspath);
-    log_debug(LOG_COMP_DB, "filemenu_close_guestdb: closing %s", stringbaseaddress(bspath));
+    log_debug(LOG_COMP_DB, "filemenu_close_guestdb: closing %.*s", (int)bspath[0], (const char *)(bspath + 1));
 
     /* Close the ODB file first — use context guard to protect system root globals */
     {
@@ -512,7 +512,7 @@ static boolean filemenu_close(tyvaluerecord *vreturned) {
         return true;  /* No target set - nothing to close */
     }
 
-    log_debug(LOG_COMP_DB, "filemenu_close: target='%s'", stringbaseaddress(bstargetname));
+    log_debug(LOG_COMP_DB, "filemenu_close: target='%.*s'", (int)bstargetname[0], (const char *)(bstargetname + 1));
 
     /* Check if target is in system.compiler.files (i.e., it's a guest database) */
     if (filewindowtable == nil || htargettable != filewindowtable) {
@@ -624,7 +624,7 @@ static boolean filemenu_saveas(hdltreenode hparam1, tyvaluerecord *vreturned) {
 
     filespectopath(&fsdest, bsdest);
     safenullterminate(bsdest);
-    log_debug(LOG_COMP_DB, "filemenu_saveas: destination=%s", stringbaseaddress(bsdest));
+    log_debug(LOG_COMP_DB, "filemenu_saveas: destination=%.*s", (int)bsdest[0], (const char *)(bsdest + 1));
 
     /* Determine source database: check current target */
     {
@@ -638,7 +638,7 @@ static boolean filemenu_saveas(hdltreenode hparam1, tyvaluerecord *vreturned) {
             htargettable == filewindowtable) {
 
             /* Target is in system.compiler.files → guest database */
-            log_debug(LOG_COMP_DB, "filemenu_saveas: target is guest db '%s'", stringbaseaddress(bstargetname));
+            log_debug(LOG_COMP_DB, "filemenu_saveas: target is guest db '%.*s'", (int)bstargetname[0], (const char *)(bstargetname + 1));
 
             /* Find the guest DB in hodblist */
             if (hodblist == nil) {
@@ -729,7 +729,7 @@ static boolean filemenu_saveas(hdltreenode hparam1, tyvaluerecord *vreturned) {
         fin = fopen(stringbaseaddress(bssource), "rb");
 
         if (fin == NULL) {
-            log_verb_error(LOG_COMP_DB, "filemenu_saveas: can't open source %s", stringbaseaddress(bssource));
+            log_verb_error(LOG_COMP_DB, "filemenu_saveas: can't open source %.*s", (int)bssource[0], (const char *)(bssource + 1));
             langerrormessage(PSTRING("\x22", "Can't save: can't read source file"));
             return false;
         }
@@ -738,7 +738,7 @@ static boolean filemenu_saveas(hdltreenode hparam1, tyvaluerecord *vreturned) {
 
         if (fout == NULL) {
             fclose(fin);
-            log_verb_error(LOG_COMP_DB, "filemenu_saveas: can't create destination %s", stringbaseaddress(bsdest));
+            log_verb_error(LOG_COMP_DB, "filemenu_saveas: can't create destination %.*s", (int)bsdest[0], (const char *)(bsdest + 1));
             langerrormessage(PSTRING("\x21", "Can't save: can't create new file"));
             return false;
         }
@@ -767,7 +767,7 @@ static boolean filemenu_saveas(hdltreenode hparam1, tyvaluerecord *vreturned) {
         fclose(fout);
     }
 
-    log_debug(LOG_COMP_DB, "filemenu_saveas: successfully copied to %s", stringbaseaddress(bsdest));
+    log_debug(LOG_COMP_DB, "filemenu_saveas: successfully copied to %.*s", (int)bsdest[0], (const char *)(bsdest + 1));
 
     return setbooleanvalue(true, vreturned);
 }
@@ -821,7 +821,7 @@ static boolean filemenu_new(hdltreenode hparam1, tyvaluerecord *vreturned) {
 
     filespectopath(&fs, bspath);
     safenullterminate(bspath);
-    log_debug(LOG_COMP_DB, "filemenu_new: creating new database at %s", stringbaseaddress(bspath));
+    log_debug(LOG_COMP_DB, "filemenu_new: creating new database at %.*s", (int)bspath[0], (const char *)(bspath + 1));
 
     /* Check if file already exists - don't overwrite.
      * fileexists() returns true if the file exists, false otherwise.
@@ -829,7 +829,7 @@ static boolean filemenu_new(hdltreenode hparam1, tyvaluerecord *vreturned) {
     {
         boolean flfolder = false;
         if (fileexists(&fs, &flfolder)) {
-            log_verb_error(LOG_COMP_DB, "filemenu_new: file already exists at %s", stringbaseaddress(bspath));
+            log_verb_error(LOG_COMP_DB, "filemenu_new: file already exists at %.*s", (int)bspath[0], (const char *)(bspath + 1));
             langerrormessage(PSTRING("\x29", "Can't create: file already exists at path"));
             return false;
         }
@@ -837,7 +837,7 @@ static boolean filemenu_new(hdltreenode hparam1, tyvaluerecord *vreturned) {
 
     /* Create the new file */
     if (!opennewfile(&fs, 'LAND', 'ROOT', &fnum)) {
-        log_verb_error(LOG_COMP_DB, "filemenu_new: opennewfile failed for %s", stringbaseaddress(bspath));
+        log_verb_error(LOG_COMP_DB, "filemenu_new: opennewfile failed for %.*s", (int)bspath[0], (const char *)(bspath + 1));
         langerrormessage(PSTRING("\x27", "Can't create: failed to create new file"));
         return false;
     }

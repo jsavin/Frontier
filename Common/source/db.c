@@ -416,7 +416,7 @@ static void debug_dberror (short errnum, int line, boolean flthrow) {
 
 	DBTRACKERGETFILENAME (bsfile);
 	
-	sprintf (str, "%s | %s [db.c,%ld]", stringbaseaddress (bsfile), stringbaseaddress (bs), line);
+	sprintf (str, "%.*s | %.*s [db.c,%ld]", (int)bsfile[0], (const char *)(bsfile + 1), (int)bs[0], (const char *)(bs + 1), line);
 
 	DB_MSG_1 (str);
 
@@ -440,7 +440,7 @@ static boolean debug_dbseteof (long eof, long line) {
 			
 			DBTRACKERGETFILENAME (bsfile);
 			
-			sprintf (str, "%s | WARNING -- Growing database from %ld to %ld bytes. [db.c,%ld]", stringbaseaddress (bsfile), oldeof, eof, line);
+			sprintf (str, "%.*s | WARNING -- Growing database from %ld to %ld bytes. [db.c,%ld]", (int)bsfile[0], (const char *)(bsfile + 1), oldeof, eof, line);
 
 			DB_MSG_1 (str);
 			}
@@ -4304,7 +4304,7 @@ static boolean dbflushreleasestack_impl (void) {
 
 				texthandletostring (info.file, bsfile);
 
-				sprintf (str, "dbrelease failed for address %ld, type %ld, line %ld in %s.", info.adr, info.id, info.line, stringbaseaddress (bsfile));
+				sprintf (str, "dbrelease failed for address %ld, type %ld, line %ld in %.*s.", info.adr, info.id, info.line, (int)bsfile[0], (const char *)(bsfile + 1));
 				
 				DB_MSG_2 (str);
 				}

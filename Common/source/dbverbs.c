@@ -415,7 +415,7 @@ static boolean odberror (boolean flresult) {
 
 	odbgeterror (bserror);
 
-	log_error(LOG_COMP_DB, "odberror: ODB engine error: %s", stringbaseaddress(bserror));
+	log_error(LOG_COMP_DB, "odberror: ODB engine error: %.*s", (int)bserror[0], (const char *)(bserror + 1));
 
 	langerrormessage (bserror);
 
@@ -705,7 +705,7 @@ static boolean dbopenverb (hdltreenode hparam1, tyvaluerecord *vreturned) {
 	}
 
 	filespectopath(&odbrec.fs, bspath);
-	log_debug(LOG_COMP_DB, "dbopenverb: path=%s", stringbaseaddress(bspath));
+	log_debug(LOG_COMP_DB, "dbopenverb: path=%.*s", (int)bspath[0], (const char *)(bspath + 1));
 
 	flnextparamislast = true;
 
@@ -775,7 +775,7 @@ static boolean dbopenverb (hdltreenode hparam1, tyvaluerecord *vreturned) {
 				bigstring bs;
 
 				getfsfile (&odbrec.fs, bs);
-				log_error(LOG_COMP_DB, "dbopenverb: database already open: %s", stringbaseaddress(bs));
+				log_error(LOG_COMP_DB, "dbopenverb: database already open: %.*s", (int)bs[0], (const char *)(bs + 1));
 				lang2paramerror (dbalreadyopenederror, bsfunctionname, bs);
 				return (false);
 			}

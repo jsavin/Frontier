@@ -2152,7 +2152,7 @@ static boolean hashresolvevalue_context (const db_context *ctx, hdlhashtable hta
 #if defined(FRONTIER_HEADLESS)
 			bigstring bspathtemp;
 			copyheapstring ((hdlstring) (**hn).val.data.addressvalue, bspathtemp);
-			log_debug(LOG_COMP_HASH, "hashresolvevalue: failed to encode path entry %s", stringbaseaddress (bspathtemp));
+			log_debug(LOG_COMP_HASH, "hashresolvevalue: failed to encode path entry %.*s", (int)bspathtemp[0], (const char *)(bspathtemp + 1));
 #endif
 			return (false);
         }
@@ -2161,7 +2161,7 @@ static boolean hashresolvevalue_context (const db_context *ctx, hdlhashtable hta
 			bigstring bspathtemp;
 			hdlhashtable hresolved = nil;
 			if (getaddressvalue ((**hn).val, &hresolved, bspathtemp)) {
-				log_debug(LOG_COMP_HASH, "hashresolvevalue: resolved %s -> table=%p", stringbaseaddress (bspathtemp), (void *) hresolved);
+				log_debug(LOG_COMP_HASH, "hashresolvevalue: resolved %.*s -> table=%p", (int)bspathtemp[0], (const char *)(bspathtemp + 1), (void *) hresolved);
 			}
 		}
 #endif
