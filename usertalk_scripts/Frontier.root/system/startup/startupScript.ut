@@ -202,7 +202,7 @@ if user.prefs.firstRootRun { //license agreement, finish cleanup on user's machi
 			proxyInit ();
 			if user.prefs.serialNumber != "" and not (string.lower (user.prefs.serialNumber) contains "trial") {
 				rootUpdates.init ();
-				rootUpdates.getCurrent ("Frontier")}}}};
+				rootUpdates.getCurrent ("Frontier")}}};
 	fileMenu.save ()}; //save after finishInstall so user.databases entries persist
 
 system.menus.buildMenuBar ();

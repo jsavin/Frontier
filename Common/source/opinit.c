@@ -191,18 +191,25 @@ void opinitcallbacks (hdloutlinerecord houtline) {
 	
 	/*
 	5.0a25 dmb: default cmdclickcallback needs to return false now
-	
+
 	5.0.2b16 dmb: default postfontchangecallback is opseteditbufferrect
-	
+
 	5.1.5 dmb: ...now, it's oppostfontchange
+
+	2026-04-03 JES: idempotency guard — skip if callbacks already initialized.
+	Calling this on an outline with specialized callbacks (menu, script)
+	silently replaces them, leading to segfaults. See issue #397.
 	*/
-	
+
 #if !fljustpacking
 
 		register hdloutlinerecord ho = houtline;
 
+		if ((**ho).flcallbacksinited) /*already initialized — don't overwrite specialized callbacks*/
+			return;
 
-		
+		(**ho).flcallbacksinited = true;
+
 		(**ho).setscrollbarsroutine = &opdefaultsetscrollbars;
 		
 		// (**ho).getlinedisplayinfocallback = (opgetlineinfocallback) &truenoop;
