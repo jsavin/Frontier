@@ -348,7 +348,7 @@ static boolean opvisitall_callback(hdlheadrecord hnode, ptrvoid refcon) {
     /* Call the callback script */
     if (!langrunscript(ctx->scriptname, NULL, NULL, &vreturned)) {
         /* Log callback failure to help with debugging */
-        log_warn(LOG_COMP_OP, "op.visitall callback script failed: %s", stringbaseaddress(ctx->scriptname));
+        log_warn(LOG_COMP_OP, "op.visitall callback script failed: %.*s", (int)ctx->scriptname[0], (const char *)(ctx->scriptname + 1));
         oppopoutline();
         return false;
     }

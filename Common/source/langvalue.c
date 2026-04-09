@@ -4676,10 +4676,12 @@ boolean evaluatereadonlyparam (hdltreenode hparam, tyvaluerecord *vparam) {
 			
 			if (!getaddressvalue (val, &htable, bs))
 				return (false);
-			
+
+			disposevaluerecord (val, false); /*#355: val was a temporary from evaluatetree; dispose now that address is extracted*/
+
 			if (htable == nil)
 				langsearchpathlookup (bs, &htable);
-			
+
 			break;
 		
 		default:

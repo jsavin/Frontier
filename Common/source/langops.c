@@ -413,7 +413,7 @@ boolean langfindsymbol (const bigstring bs, hdlhashtable *htable, hdlhashnode *h
 
 				*htable = h;
 
-				log_trace(LOG_COMP_EVAL, "langfindsymbol hit %s table=%p node=%p", stringbaseaddress(bs), (void *)h, (void *)*hnode);
+				log_trace(LOG_COMP_EVAL, "langfindsymbol hit %.*s table=%p node=%p", (int)bs[0], (const char *)(bs + 1), (void *)h, (void *)*hnode);
 				return (true);
 				}
 			
@@ -433,7 +433,7 @@ boolean langfindsymbol (const bigstring bs, hdlhashtable *htable, hdlhashnode *h
 					return (false);
 
 #if defined(FRONTIER_HEADLESS)
-				log_trace(LOG_COMP_EVAL, "langfindsymbol with slot=%d table=%p name=%s", (int)n, (void *)hwith, stringbaseaddress(bswith));
+				log_trace(LOG_COMP_EVAL, "langfindsymbol with slot=%d table=%p name=%.*s", (int)n, (void *)hwith, (int)bswith[0], (const char *)(bswith + 1));
 #endif
 				
 				if (!isemptystring (bswith)) { // not encoded as expected
@@ -450,7 +450,7 @@ boolean langfindsymbol (const bigstring bs, hdlhashtable *htable, hdlhashnode *h
 					*htable = hwith;
 					
 #if defined(FRONTIER_HEADLESS)
-					log_trace(LOG_COMP_EVAL, "langfindsymbol with hit %s table=%p node=%p", stringbaseaddress(bs), (void *)hwith, (void *)*hnode);
+					log_trace(LOG_COMP_EVAL, "langfindsymbol with hit %.*s table=%p node=%p", (int)bs[0], (const char *)(bs + 1), (void *)hwith, (void *)*hnode);
 #endif
 					return (true);
 					}
