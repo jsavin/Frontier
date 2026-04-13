@@ -55,7 +55,7 @@ typedef enum {
 } debug_step_direction_t;
 
 /*
- * Per-thread debug state. Stored in tythreadglobals.param_reserved[0].
+ * Per-thread debug state. Stored in tythreadglobals.debugstate.
  * Allocated when a thread enters debug mode, freed on thread exit.
  *
  * Cross-thread flags (flsuspended, flinterrupt, flkill) use _Atomic

@@ -17,8 +17,8 @@
  * The GIL is a cooperative lock — yield via unlock/sleep/lock sequences
  * to let other threads run.
  *
- * Note: headless_thread_verbs.c lives in tests/ for historical reasons
- * but is compiled into the production frontier-cli binary via the Makefile.
+ * Note: headless_thread_verbs.c lives in frontier-cli/ (moved from tests/
+ * in #502) as it is production code compiled into the frontier-cli binary.
  */
 
 #ifndef HEADLESS_THREADING_H
