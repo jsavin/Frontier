@@ -342,7 +342,7 @@ static boolean debug_push_sourcecode(hdlhashtable htable, hdlhashnode hnode, big
     if (hthreadglobals == nil)
         return true;
 
-    tydebugstate *state = (tydebugstate *)((**hthreadglobals).param_reserved[0]);
+    tydebugstate *state = (tydebugstate *)((**hthreadglobals).debugstate);
 
     if (state == NULL || !state->fldebugmode)
         return true;
@@ -396,7 +396,7 @@ static boolean debug_pop_sourcecode(void) {
     if (hthreadglobals == nil)
         return true;
 
-    tydebugstate *state = (tydebugstate *)((**hthreadglobals).param_reserved[0]);
+    tydebugstate *state = (tydebugstate *)((**hthreadglobals).debugstate);
 
     if (state == NULL || !state->fldebugmode)
         return true;
@@ -438,14 +438,14 @@ static boolean debug_pop_sourcecode(void) {
  */
 static boolean protocol_debugger_callback(hdltreenode hnode) {
 
-    /* Get debug state from thread globals. param_reserved[0] is set to a
+    /* Get debug state from thread globals. debugstate is set to a
      * tydebugstate* by debug_thread_entry. For non-debug threads it's NULL
      * (calloc-initialized). The cast is safe as long as only debug_handler.c
-     * writes to param_reserved[0]. */
+     * writes to debugstate. */
     if (hthreadglobals == nil)
         return true;
 
-    tydebugstate *state = (tydebugstate *)((**hthreadglobals).param_reserved[0]);
+    tydebugstate *state = (tydebugstate *)((**hthreadglobals).debugstate);
 
     if (state == NULL || !state->fldebugmode)
         return true; /* not debugging this thread */
@@ -947,7 +947,7 @@ static void *debug_thread_entry(void *arg) {
     /* Store debug state in thread globals for the callback to find,
      * and store thread globals in debug state for protocol handlers to
      * access the suspended thread's hash tables (debug/getLocals). */
-    (**params->hglobals).param_reserved[0] = (void *)params->debugstate;
+    (**params->hglobals).debugstate = (void *)params->debugstate;
     params->debugstate->hglobals = (void *)params->hglobals;
 
     boolean fl_ran = false;

@@ -24,7 +24,7 @@
 #include <time.h>
 
 /* Maximum concurrent WebSocket clients */
-#define WS_MAX_CLIENTS 8
+#define WS_MAX_CLIENTS 32
 
 /* Total pollfd slots needed: 1 listen socket + WS_MAX_CLIENTS client slots */
 #define WS_POLL_FDS_COUNT (1 + WS_MAX_CLIENTS)

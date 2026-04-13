@@ -199,7 +199,8 @@ HEADLESS_STUBS = \
     ../portable/classic_handle.c \
     ../portable/script_portable.c \
     ../portable/wptext_portable.c \
-    $(addprefix $(TESTSDIR)/,$(HEADLESS_VERBS_SOURCES))
+    $(addprefix $(TESTSDIR)/,$(HEADLESS_VERBS_SOURCES)) \
+    ./headless_thread_verbs.c
 
 # Database and file runtime sources required for Frontier.root access
 DATABASE_SOURCES = \

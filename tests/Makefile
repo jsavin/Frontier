@@ -176,6 +176,7 @@ LANG_RUNTIME_SOURCES = \
     ../Common/source/opxml.c \
     ../Common/source/langxml.c \
     $(HEADLESS_VERBS_SOURCES) \
+    ../frontier-cli/headless_thread_verbs.c \
     ../Common/source/tableops.c \
     ../Common/source/tableexternal.c \
     ../Common/source/tableexternal_common.c \

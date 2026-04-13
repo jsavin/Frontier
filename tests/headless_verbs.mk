@@ -60,7 +60,6 @@ HEADLESS_VERBS_SOURCES = \
     headless_editmenu_verbs.c \
     headless_launch_verbs.c \
     headless_clipboard_verbs.c \
-    headless_thread_verbs.c \
     headless_mainwindow_verbs.c \
     headless_searchengine_verbs.c \
     headless_mrcalendar_verbs.c \

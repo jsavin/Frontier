@@ -246,6 +246,9 @@ typedef struct tythreadglobals {
 	long wp_sel_start;
 	long wp_sel_end;
 
+	/* Debugger callback state — set by debug_handler.c (tydebugstate*) */
+	void *debugstate;
+
 	/* Reserved for future parameter state (Phase 6+) */
 	void *param_reserved[4];
 
