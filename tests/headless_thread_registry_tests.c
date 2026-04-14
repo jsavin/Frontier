@@ -447,20 +447,20 @@ TEST(lookup_after_free) {
 }
 
 /*
- * Test 15: MAX_THREADS boundary - allocate all 64 slots, then fail on 65th
+ * Test 15: MAX_THREADS boundary - allocate all 256 slots, then fail on 257th
  */
 TEST(max_threads_boundary) {
     init_thread_registry();
 
-    /* Allocate all 64 allowed slots */
-    frontier_pthread_record *records[64];
+    /* Allocate all 256 allowed slots */
+    frontier_pthread_record *records[256];
     int i;
-    for (i = 0; i < 64; i++) {
+    for (i = 0; i < 256; i++) {
         records[i] = allocate_thread_record();
         ASSERT_NOT_NULL(records[i]);
     }
 
-    /* Verify we can't allocate the 65th */
+    /* Verify we can't allocate the 257th */
     frontier_pthread_record *overflow = allocate_thread_record();
     ASSERT_NULL(overflow);
 
@@ -470,7 +470,7 @@ TEST(max_threads_boundary) {
     ASSERT_NOT_NULL(new_rec);
 
     /* Clean up all remaining records */
-    for (i = 1; i < 64; i++) {
+    for (i = 1; i < 256; i++) {
         free_thread_record(records[i]);
     }
     free_thread_record(new_rec);

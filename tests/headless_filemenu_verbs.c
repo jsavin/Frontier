@@ -14,8 +14,10 @@
  *   - fileMenu.new(path, hidden=false) - Creates new empty ODB database, opens and mounts it
  *   - fileMenu.saveAs(path) / fileMenu.saveCopy(path) - Saves copy of current target database
  *
- * Stub implementations (return "not implemented"):
- *   - fileMenu.revert, print, quit
+ * No-op stubs (return true, nothing to do in headless mode):
+ *   - fileMenu.revert - No GUI document state to revert
+ *   - fileMenu.print  - No printing in headless mode
+ *   - fileMenu.quit   - CLI shutdown handled by process exit
  */
 
 #include "frontier.h"
@@ -932,17 +934,22 @@ static boolean filemenu_valueproc(short token, hdltreenode hparam1,
         case filv_savecopy:
             return filemenu_saveas(hparam1, vreturned);
         case filv_revert:
-            /* Verb #6: filemenu.revert - not yet implemented */
-            langerrormessage(PSTRING("\x0f", "not implemented"));
-            return false;
+            /* Verb #6: filemenu.revert - no-op in headless mode.
+             * In GUI mode this reloads the document from disk, discarding
+             * unsaved changes. In headless mode there is no GUI document
+             * state to revert — scripts that need to re-read from disk
+             * should use fileMenu.close() + fileMenu.open(). */
+            return setbooleanvalue(true, vreturned);
         case filv_print:
-            /* Verb #7: filemenu.print - not yet implemented */
-            langerrormessage(PSTRING("\x0f", "not implemented"));
-            return false;
+            /* Verb #7: filemenu.print - no-op in headless mode.
+             * Printing is not supported without a GUI. Returns true so
+             * scripts that call fileMenu.print() don't fail. */
+            return setbooleanvalue(true, vreturned);
         case filv_quit:
-            /* Verb #8: filemenu.quit - not yet implemented */
-            langerrormessage(PSTRING("\x0f", "not implemented"));
-            return false;
+            /* Verb #8: filemenu.quit - no-op in headless mode.
+             * CLI shutdown is handled by process exit or SIGTERM, not by
+             * a menu verb. Returns true so scripts don't fail. */
+            return setbooleanvalue(true, vreturned);
         case filv_saveas:
             return filemenu_saveas(hparam1, vreturned);
         default:

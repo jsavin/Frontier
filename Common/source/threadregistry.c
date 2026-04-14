@@ -10,7 +10,7 @@
  * (mutexes, condition variables) are only destroyed when refcount reaches zero.
  *
  * Implementation Details:
- * - Fixed array of MAX_THREADS (64) thread records
+ * - Fixed array of MAX_THREADS (256) thread records
  * - Linear search for slot allocation and lookup
  * - Monotonically increasing thread IDs (wrapped on overflow)
  * - Per-record mutex/condvar for sleep/wake operations
@@ -41,7 +41,7 @@
 /*
  * Registry configuration
  */
-#define MAX_THREADS 64  /* Maximum concurrent threads */
+#define MAX_THREADS 256  /* Maximum concurrent threads */
 
 /*
  * Internal state

@@ -1,17 +1,41 @@
 <?xml version="1.0" ?>
 <opml version="2.0">
   <head>
-    <title>Filemenu Verbs (filemenu_verbs) - 34 tests: 31 pass (91%) 3 skip (8%)</title>
-    <dateCreated>Thu, 05 Mar 2026 19:10:44 GMT</dateCreated>
+    <title>Filemenu Verbs (filemenu_verbs) - 35 tests: 34 pass (97%) 1 skip (2%)</title>
+    <dateCreated>Tue, 14 Apr 2026 07:45:49 GMT</dateCreated>
   </head>
   <body>
+    <outline text="fileMenu.revert - no-op in headless mode - fileMenu.revert returns true (no GUI document state to revert)">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="return fileMenu.revert()"/>
+      </outline>
+    </outline>
+    <outline text="fileMenu.print - no-op in headless mode - fileMenu.print returns true (no printing in headless mode)">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="return fileMenu.print()"/>
+      </outline>
+    </outline>
+    <outline text="fileMenu.quit - no-op in headless mode - fileMenu.quit returns true (CLI shutdown handled by process exit)">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="return fileMenu.quit()"/>
+      </outline>
+    </outline>
     <outline text="fileMenu.new - create new database - fileMenu.new creates a new empty ODB database and opens it">
       <outline text="Metadata">
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
         <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;filemenu_new_basic.root7&quot;)"/>
+        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;filemenu_new_basic.root&quot;)"/>
         <outline text="local(result = fileMenu.new(dbPath))"/>
         <outline text="fileMenu.closeall()"/>
         <outline text="return result"/>
@@ -25,7 +49,7 @@
       </outline>
       <outline text="Script">
         <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;filemenu_new_exists.root7&quot;)"/>
+        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;filemenu_new_exists.root&quot;)"/>
         <outline text="fileMenu.new(dbPath)"/>
         <outline text="fileMenu.closeall()"/>
         <outline text="try">
@@ -43,7 +67,7 @@
       </outline>
       <outline text="Script">
         <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;filemenu_new_hidden.root7&quot;)"/>
+        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;filemenu_new_hidden.root&quot;)"/>
         <outline text="local(result = fileMenu.new(dbPath, true))"/>
         <outline text="fileMenu.closeall()"/>
         <outline text="return result"/>
@@ -55,7 +79,7 @@
       </outline>
       <outline text="Script">
         <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;filemenu_new_named_hidden.root7&quot;)"/>
+        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;filemenu_new_named_hidden.root&quot;)"/>
         <outline text="local(result = fileMenu.new(dbPath, hidden:true))"/>
         <outline text="fileMenu.closeall()"/>
         <outline text="return result"/>
@@ -67,7 +91,7 @@
       </outline>
       <outline text="Script">
         <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;filemenu_new_usable.root7&quot;)"/>
+        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;filemenu_new_usable.root&quot;)"/>
         <outline text="fileMenu.new(dbPath)"/>
         <outline text="db.setvalue(dbPath, &quot;testKey&quot;, &quot;testValue&quot;)"/>
         <outline text="local(val = db.getvalue(dbPath, &quot;testKey&quot;))"/>
@@ -87,34 +111,6 @@
         <outline text="} else">
           <outline text="return &quot;error_caught&quot;"/>
         </outline>
-      </outline>
-    </outline>
-    <outline text="fileMenu.revert - returns not implemented - fileMenu.revert is a stub verb that returns 'not implemented' error">
-      <outline text="Metadata">
-        <outline text="skip: True"/>
-        <outline text="skip_reason: fileMenu.revert not implemented; errors are uncatchable (bypass try/else) — see planning/FIX_TESTS_2026_02_16.md B2"/>
-        <outline text="expected_result: error_caught"/>
-      </outline>
-      <outline text="Script">
-        <outline text="try">
-          <outline text="fileMenu.revert()"/>
-          <outline text="return &quot;should_have_failed&quot;"/>
-        </outline>
-        <outline text="} else">
-          <outline text="return &quot;error_caught&quot;"/>
-        </outline>
-      </outline>
-    </outline>
-    <outline text="fileMenu stub verbs - revert returns not implemented - Verify that revert returns error">
-      <outline text="Metadata">
-        <outline text="skip: True"/>
-        <outline text="skip_reason: fileMenu.revert not implemented; errors are uncatchable (bypass try/else) — see planning/FIX_TESTS_2026_02_16.md B2"/>
-        <outline text="expected_result: 1"/>
-      </outline>
-      <outline text="Script">
-        <outline text="local(caught = 0)"/>
-        <outline text="try { fileMenu.revert() } else { caught = caught + 1 }"/>
-        <outline text="return caught"/>
       </outline>
     </outline>
     <outline text="fileMenu.closeall - no databases open - closeall with no guest databases open should succeed (no-op)">
@@ -166,7 +162,7 @@
       </outline>
       <outline text="Script">
         <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;filemenu_guest.root7&quot;)"/>
+        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;filemenu_guest.root&quot;)"/>
         <outline text="db.new(dbPath)"/>
         <outline text="local(result = fileMenu.open(dbPath))"/>
         <outline text="fileMenu.closeall()"/>
@@ -179,7 +175,7 @@
       </outline>
       <outline text="Script">
         <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;filemenu_double_open.root7&quot;)"/>
+        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;filemenu_double_open.root&quot;)"/>
         <outline text="db.new(dbPath)"/>
         <outline text="fileMenu.open(dbPath)"/>
         <outline text="local(result = fileMenu.open(dbPath))"/>
@@ -193,7 +189,7 @@
       </outline>
       <outline text="Script">
         <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;filemenu_hidden.root7&quot;)"/>
+        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;filemenu_hidden.root&quot;)"/>
         <outline text="db.new(dbPath)"/>
         <outline text="local(result = fileMenu.open(dbPath, true))"/>
         <outline text="fileMenu.closeall()"/>
@@ -206,7 +202,7 @@
       </outline>
       <outline text="Script">
         <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;filemenu_open_named_hidden.root7&quot;)"/>
+        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;filemenu_open_named_hidden.root&quot;)"/>
         <outline text="db.new(dbPath)"/>
         <outline text="local(result = fileMenu.open(dbPath, hidden:true))"/>
         <outline text="fileMenu.closeall()"/>
@@ -219,7 +215,7 @@
       </outline>
       <outline text="Script">
         <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;filemenu_close_target.root7&quot;)"/>
+        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;filemenu_close_target.root&quot;)"/>
         <outline text="db.new(dbPath)"/>
         <outline text="fileMenu.open(dbPath)"/>
         <outline text="target.set(@[dbPath])"/>
@@ -234,7 +230,7 @@
       </outline>
       <outline text="Script">
         <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;filemenu_closeall_single.root7&quot;)"/>
+        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;filemenu_closeall_single.root&quot;)"/>
         <outline text="db.new(dbPath)"/>
         <outline text="fileMenu.open(dbPath)"/>
         <outline text="local(result = fileMenu.closeall())"/>
@@ -247,8 +243,8 @@
       </outline>
       <outline text="Script">
         <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-        <outline text="local(dbPath1 = tmpDir + &quot;/&quot; + &quot;filemenu_closeall_multi1.root7&quot;)"/>
-        <outline text="local(dbPath2 = tmpDir + &quot;/&quot; + &quot;filemenu_closeall_multi2.root7&quot;)"/>
+        <outline text="local(dbPath1 = tmpDir + &quot;/&quot; + &quot;filemenu_closeall_multi1.root&quot;)"/>
+        <outline text="local(dbPath2 = tmpDir + &quot;/&quot; + &quot;filemenu_closeall_multi2.root&quot;)"/>
         <outline text="db.new(dbPath1)"/>
         <outline text="db.new(dbPath2)"/>
         <outline text="fileMenu.open(dbPath1)"/>
@@ -263,7 +259,7 @@
       </outline>
       <outline text="Script">
         <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;filemenu_closeall_twice.root7&quot;)"/>
+        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;filemenu_closeall_twice.root&quot;)"/>
         <outline text="db.new(dbPath)"/>
         <outline text="fileMenu.open(dbPath)"/>
         <outline text="fileMenu.closeall()"/>
@@ -285,7 +281,7 @@
       </outline>
       <outline text="Script">
         <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;filemenu_save_regression.root7&quot;)"/>
+        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;filemenu_save_regression.root&quot;)"/>
         <outline text="db.new(dbPath)"/>
         <outline text="fileMenu.open(dbPath)"/>
         <outline text="local(result = fileMenu.save())"/>
@@ -299,7 +295,7 @@
       </outline>
       <outline text="Script">
         <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;filemenu_save_guest.root7&quot;)"/>
+        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;filemenu_save_guest.root&quot;)"/>
         <outline text="db.new(dbPath)"/>
         <outline text="fileMenu.open(dbPath)"/>
         <outline text="db.setvalue(dbPath, &quot;testKey&quot;, &quot;testValue&quot;)"/>
@@ -328,7 +324,7 @@
       </outline>
       <outline text="Script">
         <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;filemenu_lifecycle.root7&quot;)"/>
+        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;filemenu_lifecycle.root&quot;)"/>
         <outline text="db.new(dbPath)"/>
         <outline text="fileMenu.open(dbPath)"/>
         <outline text="db.setvalue(dbPath, &quot;lifecycleKey&quot;, &quot;lifecycleValue&quot;)"/>
@@ -346,7 +342,7 @@
       </outline>
       <outline text="Script">
         <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;filemenu_db_interop.root7&quot;)"/>
+        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;filemenu_db_interop.root&quot;)"/>
         <outline text="db.new(dbPath)"/>
         <outline text="fileMenu.open(dbPath)"/>
         <outline text="db.setvalue(dbPath, &quot;interopTest&quot;, 42)"/>
@@ -361,7 +357,7 @@
       </outline>
       <outline text="Script">
         <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;filemenu_db_table.root7&quot;)"/>
+        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;filemenu_db_table.root&quot;)"/>
         <outline text="db.new(dbPath)"/>
         <outline text="fileMenu.open(dbPath)"/>
         <outline text="db.newtable(dbPath, &quot;myTable&quot;)"/>
@@ -377,7 +373,7 @@
       </outline>
       <outline text="Script">
         <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;filemenu_db_defined.root7&quot;)"/>
+        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;filemenu_db_defined.root&quot;)"/>
         <outline text="db.new(dbPath)"/>
         <outline text="fileMenu.open(dbPath)"/>
         <outline text="db.setvalue(dbPath, &quot;existsTest&quot;, &quot;yes&quot;)"/>
@@ -393,7 +389,7 @@
       </outline>
       <outline text="Script">
         <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-        <outline text="local(destPath = tmpDir + &quot;/&quot; + &quot;savecopy_sysroot.root7&quot;)"/>
+        <outline text="local(destPath = tmpDir + &quot;/&quot; + &quot;savecopy_sysroot.root&quot;)"/>
         <outline text="fileMenu.saveCopy(destPath)"/>
         <outline text="return file.exists(destPath)"/>
       </outline>
@@ -404,7 +400,7 @@
       </outline>
       <outline text="Script">
         <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-        <outline text="local(destPath = tmpDir + &quot;/&quot; + &quot;savecopy_unchanged.root7&quot;)"/>
+        <outline text="local(destPath = tmpDir + &quot;/&quot; + &quot;savecopy_unchanged.root&quot;)"/>
         <outline text="fileMenu.saveCopy(destPath)"/>
         <outline text="return defined(system.compiler)"/>
       </outline>
@@ -415,7 +411,7 @@
       </outline>
       <outline text="Script">
         <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-        <outline text="local(destPath = tmpDir + &quot;/&quot; + &quot;savecopy_openable.root7&quot;)"/>
+        <outline text="local(destPath = tmpDir + &quot;/&quot; + &quot;savecopy_openable.root&quot;)"/>
         <outline text="fileMenu.saveCopy(destPath)"/>
         <outline text="fileMenu.open(destPath)"/>
         <outline text="local(hasSys = db.defined(destPath, &quot;system&quot;))"/>
@@ -429,7 +425,7 @@
       </outline>
       <outline text="Script">
         <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-        <outline text="local(destPath = tmpDir + &quot;/&quot; + &quot;saveas_alias.root7&quot;)"/>
+        <outline text="local(destPath = tmpDir + &quot;/&quot; + &quot;saveas_alias.root&quot;)"/>
         <outline text="fileMenu.saveAs(destPath)"/>
         <outline text="return file.exists(destPath)"/>
       </outline>
@@ -440,8 +436,8 @@
       </outline>
       <outline text="Script">
         <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-        <outline text="local(srcPath = tmpDir + &quot;/&quot; + &quot;savecopy_guest_src.root7&quot;)"/>
-        <outline text="local(destPath = tmpDir + &quot;/&quot; + &quot;savecopy_guest_dest.root7&quot;)"/>
+        <outline text="local(srcPath = tmpDir + &quot;/&quot; + &quot;savecopy_guest_src.root&quot;)"/>
+        <outline text="local(destPath = tmpDir + &quot;/&quot; + &quot;savecopy_guest_dest.root&quot;)"/>
         <outline text="db.new(srcPath)"/>
         <outline text="fileMenu.open(srcPath)"/>
         <outline text="db.setvalue(srcPath, &quot;testData&quot;, &quot;hello_savecopy&quot;)"/>

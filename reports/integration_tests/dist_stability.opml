@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>Dist Stability (dist_stability) - 7 tests: 7 pass (100%)</title>
-    <dateCreated>Tue, 10 Feb 2026 05:47:11 GMT</dateCreated>
+    <dateCreated>Tue, 14 Apr 2026 07:45:49 GMT</dateCreated>
   </head>
   <body>
     <outline text="cross-db assign - write to system root table, save, verify - Assign a value into a system root table from script context, save, and verify it persists. This exercises the langexternalsetdatabase path that sets hdatabase on new in-memory objects.">
@@ -36,7 +36,7 @@
       </outline>
       <outline text="Script">
         <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;dist_guest_save_test.root7&quot;)"/>
+        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;dist_guest_save_test.root&quot;)"/>
         <outline text="db.new(dbPath)"/>
         <outline text="fileMenu.open(dbPath)"/>
         <outline text="fileMenu.save()"/>
@@ -50,7 +50,7 @@
       </outline>
       <outline text="Script">
         <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;dist_lifecycle.root7&quot;)"/>
+        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;dist_lifecycle.root&quot;)"/>
         <outline text="db.new(dbPath)"/>
         <outline text="fileMenu.open(dbPath)"/>
         <outline text="db.setvalue(dbPath, &quot;toolData&quot;, &quot;installed&quot;)"/>
@@ -69,8 +69,8 @@
       </outline>
       <outline text="Script">
         <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-        <outline text="local(db1 = tmpDir + &quot;/&quot; + &quot;dist_multi_db1.root7&quot;)"/>
-        <outline text="local(db2 = tmpDir + &quot;/&quot; + &quot;dist_multi_db2.root7&quot;)"/>
+        <outline text="local(db1 = tmpDir + &quot;/&quot; + &quot;dist_multi_db1.root&quot;)"/>
+        <outline text="local(db2 = tmpDir + &quot;/&quot; + &quot;dist_multi_db2.root&quot;)"/>
         <outline text="db.new(db1)"/>
         <outline text="db.new(db2)"/>
         <outline text="fileMenu.open(db1)"/>
