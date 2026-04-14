@@ -773,23 +773,23 @@ boolean filegetdefaultpath(ptrfilespec fs) {
     bigstring bspath;
 
     if (!fs) {
-        log_error(LOG_COMP_GENERAL, "filegetdefaultpath: NULL fs parameter");
+        log_error(LOG_COMP_FILE, "filegetdefaultpath: NULL fs parameter");
         return false;
     }
 
     /* Get thread-local working directory */
     if (!get_thread_working_dir(bspath)) {
-        log_error(LOG_COMP_GENERAL, "filegetdefaultpath: get_thread_working_dir failed");
+        log_error(LOG_COMP_FILE, "filegetdefaultpath: get_thread_working_dir failed");
         return false;
     }
 
     /* Convert bigstring path to filespec */
     if (!pathtofilespec(bspath, fs)) {
-        log_error(LOG_COMP_GENERAL, "filegetdefaultpath: pathtofilespec failed for path len=%d", (int)bspath[0]);
+        log_error(LOG_COMP_FILE, "filegetdefaultpath: pathtofilespec failed for path len=%d", (int)bspath[0]);
         return false;
     }
 
-    log_debug(LOG_COMP_GENERAL, "filegetdefaultpath: SUCCESS path len=%d", (int)bspath[0]);
+    log_debug(LOG_COMP_FILE, "filegetdefaultpath: SUCCESS path len=%d", (int)bspath[0]);
     return true;
 }
 
@@ -803,23 +803,23 @@ boolean filesetdefaultpath(const ptrfilespec fs) {
     bigstring bspath;
 
     if (!fs) {
-        log_error(LOG_COMP_GENERAL, "filesetdefaultpath: NULL fs parameter");
+        log_error(LOG_COMP_FILE, "filesetdefaultpath: NULL fs parameter");
         return false;
     }
 
     /* Convert filespec to bigstring path */
     if (!filespectopath(fs, bspath)) {
-        log_error(LOG_COMP_GENERAL, "filesetdefaultpath: filespectopath failed");
+        log_error(LOG_COMP_FILE, "filesetdefaultpath: filespectopath failed");
         return false;
     }
 
     /* Set thread-local working directory */
     if (!set_thread_working_dir(bspath)) {
-        log_error(LOG_COMP_GENERAL, "filesetdefaultpath: set_thread_working_dir failed for path len=%d", (int)bspath[0]);
+        log_error(LOG_COMP_FILE, "filesetdefaultpath: set_thread_working_dir failed for path len=%d", (int)bspath[0]);
         return false;
     }
 
-    log_debug(LOG_COMP_GENERAL, "filesetdefaultpath: SUCCESS path len=%d", (int)bspath[0]);
+    log_debug(LOG_COMP_FILE, "filesetdefaultpath: SUCCESS path len=%d", (int)bspath[0]);
     return true;
 }
 
@@ -837,19 +837,19 @@ boolean setfilemodified(const ptrfilespec fs, const long when) {
     struct stat st;
 
     if (!fs) {
-        log_error(LOG_COMP_GENERAL, "setfilemodified: NULL fs parameter");
+        log_error(LOG_COMP_FILE, "setfilemodified: NULL fs parameter");
         return false;
     }
 
     /* Convert filespec to path */
     if (!path_from_filespec(fs, path, sizeof(path))) {
-        log_error(LOG_COMP_GENERAL, "setfilemodified: path_from_filespec failed");
+        log_error(LOG_COMP_FILE, "setfilemodified: path_from_filespec failed");
         return false;
     }
 
     /* Get current file times first (to preserve access time) */
     if (stat(path, &st) != 0) {
-        log_error(LOG_COMP_GENERAL, "setfilemodified: stat failed for %s: %s", path, strerror(errno));
+        log_error(LOG_COMP_FILE, "setfilemodified: stat failed for %s: %s", path, strerror(errno));
         return false;
     }
 
@@ -867,11 +867,11 @@ boolean setfilemodified(const ptrfilespec fs, const long when) {
 
     /* Use utimensat with AT_FDCWD to operate on path */
     if (utimensat(AT_FDCWD, path, times, 0) != 0) {
-        log_error(LOG_COMP_GENERAL, "setfilemodified: utimensat failed for %s: %s", path, strerror(errno));
+        log_error(LOG_COMP_FILE, "setfilemodified: utimensat failed for %s: %s", path, strerror(errno));
         return false;
     }
 
-    log_debug(LOG_COMP_GENERAL, "setfilemodified: SUCCESS for %s, time=%ld", path, when);
+    log_debug(LOG_COMP_FILE, "setfilemodified: SUCCESS for %s, time=%ld", path, when);
     return true;
 }
 
@@ -891,13 +891,13 @@ boolean setfilecreated(const ptrfilespec fs, const long when) {
     char path[4096];
 
     if (!fs) {
-        log_error(LOG_COMP_GENERAL, "setfilecreated: NULL fs parameter");
+        log_error(LOG_COMP_FILE, "setfilecreated: NULL fs parameter");
         return false;
     }
 
     /* Convert filespec to path */
     if (!path_from_filespec(fs, path, sizeof(path))) {
-        log_error(LOG_COMP_GENERAL, "setfilecreated: path_from_filespec failed");
+        log_error(LOG_COMP_FILE, "setfilecreated: path_from_filespec failed");
         return false;
     }
 
@@ -921,16 +921,16 @@ boolean setfilecreated(const ptrfilespec fs, const long when) {
     attrBuf.creationTime.tv_nsec = 0;
 
     if (setattrlist(path, &attrList, &attrBuf, sizeof(attrBuf), 0) != 0) {
-        log_error(LOG_COMP_GENERAL, "setfilecreated: setattrlist failed for %s: %s", path, strerror(errno));
+        log_error(LOG_COMP_FILE, "setfilecreated: setattrlist failed for %s: %s", path, strerror(errno));
         return false;
     }
 
-    log_debug(LOG_COMP_GENERAL, "setfilecreated: SUCCESS for %s, time=%ld", path, when);
+    log_debug(LOG_COMP_FILE, "setfilecreated: SUCCESS for %s, time=%ld", path, when);
     return true;
 
 #else
     /* Linux/other platforms: Setting creation time is not supported on most filesystems */
-    log_warn(LOG_COMP_GENERAL, "setfilecreated: Not supported on this platform (%s)", path);
+    log_warn(LOG_COMP_FILE, "setfilecreated: Not supported on this platform (%s)", path);
 
     /* Return false to indicate operation not supported
      * This matches the behavior of Mac Frontier when operations aren't available

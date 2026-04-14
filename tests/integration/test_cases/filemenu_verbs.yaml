@@ -6,7 +6,7 @@
 #   - fileMenu.closeall() - Close all guest databases
 #   - fileMenu.save([path]) - Save system root or guest database (implemented in prior PR)
 #
-# Stub implementations (return "not implemented"):
+# No-op stubs (return true in headless mode):
 #   - fileMenu.revert, print, quit
 #
 # Guest Database Concepts:
@@ -18,7 +18,7 @@
 #   - fileMenu.close operates on the current target (set via target.set)
 #
 # Test Strategy:
-#   1. Verify stub verbs return "not implemented" errors
+#   1. Verify no-op verbs (revert, print, quit) return true
 #   2. Test no-op/empty cases (close/closeall with nothing open)
 #   3. Test error cases (open nonexistent file)
 #   4. Test open/close lifecycle with real database files
@@ -27,7 +27,32 @@
 
 tests:
   # ========================================================================
-  # Stub Verbs - Not Yet Implemented
+  # No-Op Verbs (headless mode)
+  # ========================================================================
+
+  - name: "fileMenu.revert - no-op in headless mode"
+    description: "fileMenu.revert returns true (no GUI document state to revert)"
+    script: |
+      return fileMenu.revert()
+    expected_success: true
+    expected_result: "true"
+
+  - name: "fileMenu.print - no-op in headless mode"
+    description: "fileMenu.print returns true (no printing in headless mode)"
+    script: |
+      return fileMenu.print()
+    expected_success: true
+    expected_result: "true"
+
+  - name: "fileMenu.quit - no-op in headless mode"
+    description: "fileMenu.quit returns true (CLI shutdown handled by process exit)"
+    script: |
+      return fileMenu.quit()
+    expected_success: true
+    expected_result: "true"
+
+  # ========================================================================
+  # fileMenu.new
   # ========================================================================
 
   - name: "fileMenu.new - create new database"
@@ -105,31 +130,6 @@ tests:
       }
     expected_success: true
     expected_result: "error_caught"
-
-  - name: "fileMenu.revert - returns not implemented"
-    description: "fileMenu.revert is a stub verb that returns 'not implemented' error"
-    skip: true
-    skip_reason: "fileMenu.revert not implemented; errors are uncatchable (bypass try/else) — see planning/FIX_TESTS_2026_02_16.md B2"
-    script: |
-      try {
-        fileMenu.revert();
-        return "should_have_failed"
-      } else {
-        return "error_caught"
-      }
-    expected_success: true
-    expected_result: "error_caught"
-
-  - name: "fileMenu stub verbs - revert returns not implemented"
-    description: "Verify that revert returns error"
-    skip: true
-    skip_reason: "fileMenu.revert not implemented; errors are uncatchable (bypass try/else) — see planning/FIX_TESTS_2026_02_16.md B2"
-    script: |
-      local(caught = 0);
-      try { fileMenu.revert() } else { caught = caught + 1 };
-      return caught
-    expected_success: true
-    expected_result: "1"
 
   # ========================================================================
   # fileMenu.closeall - Empty/No-Op Cases

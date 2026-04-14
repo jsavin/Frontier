@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>Repl Commands (repl_commands) - 81 tests: 61 pass (75%) 20 skip (24%)</title>
-    <dateCreated>Thu, 12 Feb 2026 00:58:53 GMT</dateCreated>
+    <dateCreated>Tue, 14 Apr 2026 07:45:49 GMT</dateCreated>
   </head>
   <body>
     <outline text="REPL /help - displays available commands - /help should list all available commands">
@@ -601,7 +601,7 @@
         <outline text="skip: True"/>
         <outline text="skip_reason: Requires fileMenu.open which needs startup scripts; --skip-startup mode cannot open guest databases. Verified manually."/>
         <outline text="repl_mode: True"/>
-        <outline text="stdin_input: db.new(&quot;{FRONTIER_TEST_TMP_DIR}/repl_guest_list.root7&quot;)&#10;fileMenu.open(&quot;{FRONTIER_TEST_TMP_DIR}/repl_guest_list.root7&quot;)&#10;db.newtable(&quot;{FRONTIER_TEST_TMP_DIR}/repl_guest_list.root7&quot;, &quot;guestTestSuite&quot;)&#10;/list guestTestSuite&#10;fileMenu.closeall()&#10;/exit&#10;"/>
+        <outline text="stdin_input: db.new(&quot;{FRONTIER_TEST_TMP_DIR}/repl_guest_list.root&quot;)&#10;fileMenu.open(&quot;{FRONTIER_TEST_TMP_DIR}/repl_guest_list.root&quot;)&#10;db.newtable(&quot;{FRONTIER_TEST_TMP_DIR}/repl_guest_list.root&quot;, &quot;guestTestSuite&quot;)&#10;/list guestTestSuite&#10;fileMenu.closeall()&#10;/exit&#10;"/>
         <outline text="expected_output_contains: ['guestTestSuite:']"/>
         <outline text="expected_output_not_contains: ['not a valid table path']"/>
       </outline>
@@ -611,7 +611,7 @@
         <outline text="skip: True"/>
         <outline text="skip_reason: Requires fileMenu.open which needs startup scripts; --skip-startup mode cannot open guest databases. Verified manually."/>
         <outline text="repl_mode: True"/>
-        <outline text="stdin_input: db.new(&quot;{FRONTIER_TEST_TMP_DIR}/repl_guest_jump.root7&quot;)&#10;fileMenu.open(&quot;{FRONTIER_TEST_TMP_DIR}/repl_guest_jump.root7&quot;)&#10;db.newtable(&quot;{FRONTIER_TEST_TMP_DIR}/repl_guest_jump.root7&quot;, &quot;guestJumpSuite&quot;)&#10;/jump guestJumpSuite&#10;/exit&#10;"/>
+        <outline text="stdin_input: db.new(&quot;{FRONTIER_TEST_TMP_DIR}/repl_guest_jump.root&quot;)&#10;fileMenu.open(&quot;{FRONTIER_TEST_TMP_DIR}/repl_guest_jump.root&quot;)&#10;db.newtable(&quot;{FRONTIER_TEST_TMP_DIR}/repl_guest_jump.root&quot;, &quot;guestJumpSuite&quot;)&#10;/jump guestJumpSuite&#10;/exit&#10;"/>
         <outline text="expected_output_contains: ['guestJumpSuite']"/>
         <outline text="expected_output_not_contains: ['not a valid table path']"/>
       </outline>

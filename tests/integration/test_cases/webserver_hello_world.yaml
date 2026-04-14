@@ -268,7 +268,7 @@ tests:
     requires_system_root: true
     timeout: 15
     skip: true
-    skip_reason: "Thread cleanup race condition causes try/else error handling to fail - core functionality verified by other tests"
+    skip_reason: "Webserver infrastructure (webserver.init) not yet available in headless test environment — thread race (#364) fixed via pthread_join in tcp_close_listen"
     script: |
       webserver.init();
       user.inetd.config.http.port = 8087;

@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>Sys Processor Tests (sys_processor_tests) - 52 tests: 48 pass (92%) 4 skip (7%)</title>
-    <dateCreated>Mon, 23 Mar 2026 17:40:56 GMT</dateCreated>
+    <dateCreated>Tue, 14 Apr 2026 07:45:49 GMT</dateCreated>
   </head>
   <body>
     <outline text="sys.osversion - returns OS version string - Get OS version - returns distribution on Linux, sw_vers on macOS">
@@ -409,12 +409,12 @@
         <outline text="sys.openUrl(&quot;&quot;)"/>
       </outline>
     </outline>
-    <outline text="sys.openUrl - wrong argument type errors - Passing a number instead of a string should error">
+    <outline text="sys.openUrl - number coerced to string succeeds - Passing a number coerces to string; fork succeeds even for non-URL">
       <outline text="Metadata">
-        <outline text="expected_success: False"/>
+        <outline text="expected_result: bool"/>
       </outline>
       <outline text="Script">
-        <outline text="sys.openUrl(12345)"/>
+        <outline text="typeof(sys.openUrl(12345))"/>
       </outline>
     </outline>
     <outline text="sys.unixshellcommand - 1 param (command only) - Execute command and return stdout output">

@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>Frontier Verbs (frontier_verbs) - 23 tests: 23 pass (100%)</title>
-    <dateCreated>Wed, 11 Mar 2026 07:05:59 GMT</dateCreated>
+    <dateCreated>Tue, 14 Apr 2026 07:45:49 GMT</dateCreated>
   </head>
   <body>
     <outline text="frontier.getProgramPath - returns string - getProgramPath should return a string value">
@@ -143,9 +143,9 @@
         <outline text="typeOf(Frontier.isPowerPC()) == &quot;bool&quot;"/>
       </outline>
     </outline>
-    <outline text="frontier.isPowerPC - returns true in headless mode - Returns true to suppress legacy 68k Mac TCP workarounds.&#10;Modern systems don't need extra listener sockets.&#10;">
+    <outline text="frontier.isPowerPC - returns false on non-PPC - Returns false on ARM and x86 platforms (not PowerPC)">
       <outline text="Metadata">
-        <outline text="expected_result: true"/>
+        <outline text="expected_result: false"/>
       </outline>
       <outline text="Script">
         <outline text="Frontier.isPowerPC()"/>

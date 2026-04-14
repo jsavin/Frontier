@@ -1,8 +1,8 @@
 <?xml version="1.0" ?>
 <opml version="2.0">
   <head>
-    <title>Db Verbs (db_verbs) - 32 tests: 32 pass (100%)</title>
-    <dateCreated>Tue, 17 Feb 2026 01:05:41 GMT</dateCreated>
+    <title>Db Verbs (db_verbs) - 35 tests: 35 pass (100%)</title>
+    <dateCreated>Tue, 14 Apr 2026 07:45:49 GMT</dateCreated>
   </head>
   <body>
     <outline text="db.new - create new database file - Create a new ODB database file">
@@ -388,13 +388,13 @@
         <outline text="return ok"/>
       </outline>
     </outline>
-    <outline text="db.new - create v7 database - Create new database with v7 format (if .root7 extension triggers v7)">
+    <outline text="db.new - create v7 database - Create new database with v7 format">
       <outline text="Metadata">
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
         <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;test_db_v7.root7&quot;)"/>
+        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;test_db_v7.root&quot;)"/>
         <outline text="local(ok = db.new(dbPath))"/>
         <outline text="return ok"/>
       </outline>
@@ -405,7 +405,7 @@
       </outline>
       <outline text="Script">
         <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;test_open_v7.root7&quot;)"/>
+        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;test_open_v7.root&quot;)"/>
         <outline text="db.new(dbPath)"/>
         <outline text="local(ok = db.open(dbPath, false))"/>
         <outline text="return ok"/>
@@ -417,7 +417,7 @@
       </outline>
       <outline text="Script">
         <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;test_setvalue_v7.root7&quot;)"/>
+        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;test_setvalue_v7.root&quot;)"/>
         <outline text="db.new(dbPath)"/>
         <outline text="db.open(dbPath, false)"/>
         <outline text="local(ok = db.setvalue(dbPath, &quot;v7test&quot;, &quot;V7 works!&quot;))"/>
@@ -430,7 +430,7 @@
       </outline>
       <outline text="Script">
         <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;test_v7_getvalue.root7&quot;)"/>
+        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;test_v7_getvalue.root&quot;)"/>
         <outline text="db.new(dbPath)"/>
         <outline text="db.open(dbPath, false)"/>
         <outline text="db.setvalue(dbPath, &quot;v7test&quot;, &quot;V7 works!&quot;)"/>
@@ -444,7 +444,7 @@
       </outline>
       <outline text="Script">
         <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;test_close_v7.root7&quot;)"/>
+        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;test_close_v7.root&quot;)"/>
         <outline text="db.new(dbPath)"/>
         <outline text="db.open(dbPath, false)"/>
         <outline text="local(ok = db.close(dbPath))"/>
@@ -474,6 +474,68 @@
           <outline text="file.delete(v7Path)"/>
         </outline>
         <outline text="return ok and v7Exists and rootExists"/>
+      </outline>
+    </outline>
+    <outline text="Issue #264 - close and reopen in same script - db.new/open/close/reopen must not segfault (Issue #264)">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;test_issue264.root&quot;)"/>
+        <outline text="if file.exists(dbPath) {file.delete(dbPath)}"/>
+        <outline text="db.new(dbPath)"/>
+        <outline text="db.open(dbPath, false)"/>
+        <outline text="db.close(dbPath)"/>
+        <outline text="local(ok = db.open(dbPath, false))"/>
+        <outline text="db.close(dbPath)"/>
+        <outline text="file.delete(dbPath)"/>
+        <outline text="return ok"/>
+      </outline>
+    </outline>
+    <outline text="Issue #264 - multiple close/reopen cycles with data persistence - Data persists across multiple close/reopen cycles in same script">
+      <outline text="Metadata">
+        <outline text="expected_result: hello264"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;test_issue264_persist.root&quot;)"/>
+        <outline text="if file.exists(dbPath) {file.delete(dbPath)}"/>
+        <outline text="db.new(dbPath)"/>
+        <outline text="db.open(dbPath, false)"/>
+        <outline text="db.setvalue(dbPath, &quot;testkey&quot;, &quot;hello264&quot;)"/>
+        <outline text="db.save(dbPath)"/>
+        <outline text="db.close(dbPath)"/>
+        <outline text="db.open(dbPath, false)"/>
+        <outline text="local(v = db.getvalue(dbPath, &quot;testkey&quot;))"/>
+        <outline text="db.close(dbPath)"/>
+        <outline text="db.open(dbPath, false)"/>
+        <outline text="db.close(dbPath)"/>
+        <outline text="file.delete(dbPath)"/>
+        <outline text="return v"/>
+      </outline>
+    </outline>
+    <outline text="Issue #270 - duplicate open returns error - Opening an already-open database returns an error instead of creating a second handle">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;test_issue270_dupopen.root&quot;)"/>
+        <outline text="if file.exists(dbPath) {file.delete(dbPath)}"/>
+        <outline text="db.new(dbPath)"/>
+        <outline text="db.open(dbPath, false)"/>
+        <outline text="try">
+          <outline text="db.open(dbPath, false)"/>
+          <outline text="db.close(dbPath)"/>
+          <outline text="file.delete(dbPath)"/>
+          <outline text="return false}"/>
+        </outline>
+        <outline text="else">
+          <outline text="db.close(dbPath)"/>
+          <outline text="file.delete(dbPath)"/>
+          <outline text="return true}"/>
+        </outline>
       </outline>
     </outline>
   </body>

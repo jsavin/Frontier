@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>Error Recovery Concurrency Tests (error_recovery_concurrency_tests) - 13 tests: 13 pass (100%)</title>
-    <dateCreated>Mon, 23 Mar 2026 03:29:36 GMT</dateCreated>
+    <dateCreated>Tue, 14 Apr 2026 07:45:49 GMT</dateCreated>
   </head>
   <body>
     <outline text="error mid-transaction - first setvalue persists, second does not - Verify that when scriptError fires between two db.setvalue calls inside&#10;a try block, the first setvalue's effect persists but the second never&#10;executes. Uses system.temp as scratchpad.&#10;">
@@ -78,7 +78,7 @@
       </outline>
       <outline text="Script">
         <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;error_midtxn_db.root7&quot;)"/>
+        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;error_midtxn_db.root&quot;)"/>
         <outline text="try {file.delete(dbPath)} else {1}"/>
         <outline text="db.new(dbPath)"/>
         <outline text="fileMenu.open(dbPath)"/>
@@ -110,7 +110,7 @@
       </outline>
       <outline text="Script">
         <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;error_db_recovery.root7&quot;)"/>
+        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;error_db_recovery.root&quot;)"/>
         <outline text="try {file.delete(dbPath)} else {1}"/>
         <outline text="db.new(dbPath)"/>
         <outline text="fileMenu.open(dbPath)"/>
@@ -162,7 +162,7 @@
       </outline>
       <outline text="Script">
         <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;thread_save_guest.root7&quot;)"/>
+        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;thread_save_guest.root&quot;)"/>
         <outline text="try {file.delete(dbPath)} else {1}"/>
         <outline text="db.new(dbPath)"/>
         <outline text="fileMenu.open(dbPath)"/>
@@ -203,9 +203,9 @@
       </outline>
       <outline text="Script">
         <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-        <outline text="local(db1 = tmpDir + &quot;/&quot; + &quot;closeall_verify1.root7&quot;)"/>
-        <outline text="local(db2 = tmpDir + &quot;/&quot; + &quot;closeall_verify2.root7&quot;)"/>
-        <outline text="local(db3 = tmpDir + &quot;/&quot; + &quot;closeall_verify3.root7&quot;)"/>
+        <outline text="local(db1 = tmpDir + &quot;/&quot; + &quot;closeall_verify1.root&quot;)"/>
+        <outline text="local(db2 = tmpDir + &quot;/&quot; + &quot;closeall_verify2.root&quot;)"/>
+        <outline text="local(db3 = tmpDir + &quot;/&quot; + &quot;closeall_verify3.root&quot;)"/>
         <outline text="try {file.delete(db1)} else {1}"/>
         <outline text="try {file.delete(db2)} else {1}"/>
         <outline text="try {file.delete(db3)} else {1}"/>
@@ -229,7 +229,7 @@
       </outline>
       <outline text="Script">
         <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;closeall_access_fail.root7&quot;)"/>
+        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;closeall_access_fail.root&quot;)"/>
         <outline text="try {file.delete(dbPath)} else {1}"/>
         <outline text="db.new(dbPath)"/>
         <outline text="db.open(dbPath, false)"/>
@@ -245,7 +245,7 @@
       </outline>
       <outline text="Script">
         <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;closeall_reopen.root7&quot;)"/>
+        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;closeall_reopen.root&quot;)"/>
         <outline text="try {file.delete(dbPath)} else {1}"/>
         <outline text="db.new(dbPath)"/>
         <outline text="fileMenu.open(dbPath)"/>
@@ -265,8 +265,8 @@
       </outline>
       <outline text="Script">
         <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-        <outline text="local(db1 = tmpDir + &quot;/&quot; + &quot;closeall_cycle1.root7&quot;)"/>
-        <outline text="local(db2 = tmpDir + &quot;/&quot; + &quot;closeall_cycle2.root7&quot;)"/>
+        <outline text="local(db1 = tmpDir + &quot;/&quot; + &quot;closeall_cycle1.root&quot;)"/>
+        <outline text="local(db2 = tmpDir + &quot;/&quot; + &quot;closeall_cycle2.root&quot;)"/>
         <outline text="try {file.delete(db1)} else {1}"/>
         <outline text="try {file.delete(db2)} else {1}"/>
         <outline text="db.new(db1)"/>
@@ -287,7 +287,7 @@
       </outline>
       <outline text="Script">
         <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
-        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;closeall_sysroot.root7&quot;)"/>
+        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;closeall_sysroot.root&quot;)"/>
         <outline text="try {file.delete(dbPath)} else {1}"/>
         <outline text="db.new(dbPath)"/>
         <outline text="fileMenu.open(dbPath)"/>

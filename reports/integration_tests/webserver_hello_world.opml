@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>Webserver Hello World (webserver_hello_world) - 11 tests: 6 pass (54%) 5 skip (45%)</title>
-    <dateCreated>Mon, 16 Feb 2026 18:41:35 GMT</dateCreated>
+    <dateCreated>Tue, 14 Apr 2026 07:45:49 GMT</dateCreated>
   </head>
   <body>
     <outline text="webserver.init - initialize webserver tables - Verify webserver.init() creates required table structures">
@@ -208,7 +208,7 @@
         <outline text="requires_system_root: True"/>
         <outline text="timeout: 15"/>
         <outline text="skip: True"/>
-        <outline text="skip_reason: Thread cleanup race condition causes try/else error handling to fail - core functionality verified by other tests"/>
+        <outline text="skip_reason: Webserver infrastructure (webserver.init) not yet available in headless test environment — thread race (#364) fixed via pthread_join in tcp_close_listen"/>
         <outline text="expected_result: true"/>
         <outline text="notes: Connection should be refused after listener is stopped"/>
       </outline>

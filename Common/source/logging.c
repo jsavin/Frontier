@@ -49,6 +49,7 @@ static const char *component_names[] = {
     [LOG_COMP_STARTUP]      = "startup",
     [LOG_COMP_THREAD]       = "thread",
     [LOG_COMP_MIGRATION]    = "migration",
+    [LOG_COMP_FILE]         = "file",
     [LOG_COMP_GENERAL]      = "general"
 };
 
