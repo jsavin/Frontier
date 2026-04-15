@@ -484,26 +484,25 @@ boolean tableverbinmemory_common(const db_context *ctx, hdlexternalvariable hvar
         return false;
     }
 
-    (**hv).flinmemory = true;
-
-    (**hv).variabledata = (long) htable; /* link into variable structure */
-
     /* During migration/repack, clear oldaddress to force new allocation. */
     {
     db_format_mode current_mode = db_format_mode_current();
+    dbaddress effective_adr = adr;
+
     log_debug(LOG_COMP_TABLE, "tableverbinmemory before address assignment: adapter_repack=%d use_64bit=%d database=%p adr=0x%llx",
             (int)current_mode.adapter_repack, (int)current_mode.use_64bit_format,
             (void*)hdb, (unsigned long long)adr);
 
     if (current_mode.adapter_repack && hdb != nil) {
-        (**hv).oldaddress = nildbaddress;
-        log_debug(LOG_COMP_TABLE, "tableverbinmemory CLEARED oldaddress (adapter_repack) adr=0x%llx variabledata=0x%llx flinmemory=%d",
-                (unsigned long long)adr, (unsigned long long)(**hv).variabledata, (int)(**hv).flinmemory);
-    } else {
-        (**hv).oldaddress = adr; /* last place this table was stored */
-        log_debug(LOG_COMP_TABLE, "tableverbinmemory SET oldaddress=0x%llx variabledata=0x%llx flinmemory=%d",
-                (unsigned long long)adr, (unsigned long long)(**hv).variabledata, (int)(**hv).flinmemory);
+        effective_adr = nildbaddress;
+        log_debug(LOG_COMP_TABLE, "tableverbinmemory CLEARED oldaddress (adapter_repack) adr=0x%llx",
+                (unsigned long long)adr);
     }
+
+    external_set_inmemory ((hdlexternalvariable) hv, (Handle) htable, effective_adr);
+
+    log_debug(LOG_COMP_TABLE, "tableverbinmemory SET oldaddress=0x%llx variabledata=0x%llx flinmemory=%d",
+            (unsigned long long)(**hv).oldaddress, (unsigned long long)(**hv).variabledata, (int)(**hv).flinmemory);
     }
 
     if (log_enabled(LOG_LEVEL_TRACE, LOG_COMP_TABLE)) {

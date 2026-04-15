@@ -729,11 +729,7 @@ boolean opverbinmemory (const db_context *ctx, hdlexternalvariable hvariable) {
 	if (!fl)
 		return (false);
 
-	(**hv).flinmemory = true;
-
-	(**hv).variabledata = (long) ho; /*link into variable structure*/
-
-	(**hv).oldaddress = adr; /*last place this outline was stored*/
+	external_set_inmemory ((hdlexternalvariable) hv, (Handle) ho, adr);
 
 	opverbsetupoutline (ho, hv);
 

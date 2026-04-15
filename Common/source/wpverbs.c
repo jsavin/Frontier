@@ -807,15 +807,13 @@ boolean wpverbinmemory (const db_context *ctx, hdlexternalvariable h) {
 	if (!fl)
 		return (false);
 	
-	(**hv).flinmemory = true;
-	
+	external_set_inmemory ((hdlexternalvariable) hv, (Handle) hwp, adr);
+
 	(**hv).flpacked = false;
-	
-	(**hv).oldaddress = adr; /*last place this wp was stored*/
-	
+
 	(**hwp).fldirty = fldirty;
-	
-	wpverblinkvariable (hwp, hv); /*set up pointers to each other*/
+
+	(**hwp).wprefcon = (long) hv; /*set up pointer from wp rec to variable rec*/
 	
 	return (true);
 	} /*wpverbinmemory*/
