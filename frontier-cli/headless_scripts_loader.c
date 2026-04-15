@@ -49,7 +49,7 @@ extern boolean scriptbuildtree (Handle htext, long signature, hdltreenode *hcode
 extern boolean langruncode (hdltreenode htree, hdlhashtable hcontext, tyvaluerecord *vreturned);
 extern boolean pushhashtable (hdlhashtable);
 extern boolean pophashtable (void);
-extern hdlhashtable currenthashtable;
+/* currenthashtable is now a macro in processinternal.h (ADR-005) */
 extern hdlhashtable roottable;
 
 /* External declaration for langrunhandletraperror - runs scripts like REPL does */

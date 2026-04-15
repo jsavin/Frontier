@@ -290,6 +290,9 @@ typedef struct tythreadglobals {
 #define fllanghashassignprotect ((**hthreadglobals).fllanghashassignprotect)
 #define fllangexternalvalueprotect ((**hthreadglobals).fllangexternalvalueprotect)
 
+/* ADR-005: Current hash table (Phase 3 migration — replaces C global in langhash.c) */
+#define currenthashtable ((**hthreadglobals).hcurrenthashtable)
+
 /* WP selection state (thread-local via GIL, matching ADR-005 macro pattern) */
 #define wp_sel_start ((**hthreadglobals).wp_sel_start)
 #define wp_sel_end ((**hthreadglobals).wp_sel_end)

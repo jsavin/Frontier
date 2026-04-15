@@ -6,6 +6,7 @@
 #include "memory.h"
 #include "strings.h"
 #include "lang.h"
+#include "processinternal.h"  /* currenthashtable macro (ADR-005) */
 #include "tablestructure.h"
 #include "langexternal.h"
 #include "kernelverbs.h"
