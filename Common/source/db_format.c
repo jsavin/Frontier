@@ -31,6 +31,7 @@
 #include "memory.h"
 #include "strings.h"
 #include "lang.h"
+#include "processinternal.h"  /* currenthashtable macro (ADR-005) */
 #include "tablestructure.h"
 #include "kernelverbs.h"  /* For targetinitverbs() declaration */
 #include "tableinternal.h"

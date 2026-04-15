@@ -720,7 +720,7 @@ extern byte bstrue [];
 
 extern byte bsfalse [];
 
-extern hdlhashtable currenthashtable; /*langhash.c*/
+/* currenthashtable is now a thread-local macro defined in processinternal.h (ADR-005) */
 
 extern hdltablestack hashtablestack;
 

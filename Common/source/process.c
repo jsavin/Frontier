@@ -1485,7 +1485,7 @@ void copythreadglobals (hdlthreadglobals hglobals) {
 		
 		(**hg).hprocess = currentprocess;
 		
-		(**hg).htable = currenthashtable;
+		(**hg).hcurrenthashtable = (**hthreadglobals).hcurrenthashtable;
 		
 		(**hg).flthreadkilled = flthreadkilled;
 		
@@ -1635,7 +1635,7 @@ void swapinthreadglobals (hdlthreadglobals hglobals) {
 	
 	processstack = (**hg).processstack;
 	
-	currenthashtable = (**hg).htable;
+	(**hthreadglobals).hcurrenthashtable = (**hg).hcurrenthashtable;
 	
 	langcallbacks = (**hg).langcallbacks;
 		

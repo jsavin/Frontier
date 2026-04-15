@@ -767,7 +767,7 @@ static void diskvalue_to_value_v7(const tydiskvaluedata_v7 *disk, tyvaluerecord 
 	}
 }
 
-hdlhashtable currenthashtable = nil;
+/* currenthashtable is now a thread-local macro defined in processinternal.h (ADR-005) */
 
 /* ADR-009: Thread-local hash table stack migration (Phase 3A)
  * Field added to tythreadglobals, saved/restored in copythreadglobals/swapinthreadglobals.

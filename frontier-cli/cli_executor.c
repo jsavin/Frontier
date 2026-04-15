@@ -9,6 +9,7 @@
 #include "cli_executor.h"
 #include "cli_json_output.h"
 #include "repl_output.h"  /* For kMacRomanHighToUnicode, putc_utf8 */
+#include "../Common/headers/processinternal.h"  /* currenthashtable macro (ADR-005) */
 
 /* 2025-12-08 Codex: Route long inline CLI scripts through langrunhandle so compiled evals return results without bogus empty verb names. */
 
@@ -107,7 +108,6 @@ boolean cli_execute_compiled_script(usertalk_execution_t* execution) {
     size_t len = strlen(execution->script_source);
 
 #if defined(FRONTIER_HEADLESS)
-    extern hdlhashtable currenthashtable;
     cli_log_debug("before execute currenthashtable=%p", (void *)currenthashtable);
 #endif
 

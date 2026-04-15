@@ -37,8 +37,7 @@
 #include "db_format.h"
 #include "../third_party/cJSON/cJSON.h"
 
-/* Global: current hashtable and table stack (thread globals) */
-extern hdlhashtable currenthashtable;
+/* Global: table stack (thread globals) — currenthashtable is now a macro in processinternal.h */
 extern hdltablestack hashtablestack;
 extern hdlhashtable roottable;
 
