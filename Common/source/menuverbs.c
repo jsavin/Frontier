@@ -197,11 +197,7 @@ boolean menuverbinmemory_context (const db_context *ctx, hdlexternalvariable hva
 		return (false);
 	}
 
-	(**hv).variabledata = (long) hmenurecord;
-
-	(**hv).oldaddress = adr;
-
-	(**hv).flinmemory = true;
+	external_set_inmemory ((hdlexternalvariable) hv, (Handle) hmenurecord, adr);
 
 	(**hmenurecord).menurefcon = (long) hv; /*we can get from menu rec to variable rec*/
 

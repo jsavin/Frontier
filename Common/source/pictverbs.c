@@ -260,11 +260,7 @@ boolean pictverbinmemory (const db_context *ctx, hdlexternalvariable hv) {
 	if (!fl)
 		return (false);
 
-	(**hv).flinmemory = true;
-
-	(**hv).variabledata = (long) hpict; /*link into variable structure*/
-
-	(**hv).oldaddress = adr; /*last place this pict was stored*/
+	external_set_inmemory ((hdlexternalvariable) hv, (Handle) hpict, adr);
 
 	(**hpict).pictrefcon = (long) hv; /*we can get from pict rec to variable rec*/
 
