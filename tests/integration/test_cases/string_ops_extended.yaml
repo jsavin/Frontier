@@ -1,0 +1,260 @@
+# Extended integration tests for string operations
+# Issue #172: Additional string verb coverage beyond string_verbs.yaml
+#
+# string_verbs.yaml already covers: length, upper, lower, nthCharacter,
+# concatenation (+), equality (==), mid, patternMatch, trimWhitespace,
+# numberToString, innerCaseName, macRomanToUtf8, utf8ToMacRoman.
+#
+# This file adds: replaceAll, nthField, countFields, insert, delete,
+# contains, inequality (!=), and additional edge cases.
+
+tests:
+  # ========================================================================
+  # string.replaceAll
+  # ========================================================================
+
+  - name: "string.replaceAll - basic replacement"
+    description: "Replace all occurrences of a substring"
+    script: 'string.replaceAll("hello world hello", "hello", "hi")'
+    expected_success: true
+    expected_result: "hi world hi"
+
+  - name: "string.replaceAll - no match"
+    description: "replaceAll with no matching substring returns original"
+    script: 'string.replaceAll("hello world", "xyz", "abc")'
+    expected_success: true
+    expected_result: "hello world"
+
+  - name: "string.replaceAll - replace with empty"
+    description: "Replace substring with empty string (deletion)"
+    script: 'string.replaceAll("hello world", " world", "")'
+    expected_success: true
+    expected_result: "hello"
+
+  # ========================================================================
+  # string.nthField
+  # ========================================================================
+
+  - name: "string.nthField - comma separated first"
+    description: "Extract first field from comma-separated string"
+    script: 'string.nthField("apple,banana,cherry", ",", 1)'
+    expected_success: true
+    expected_result: "apple"
+
+  - name: "string.nthField - comma separated middle"
+    description: "Extract middle field"
+    script: 'string.nthField("apple,banana,cherry", ",", 2)'
+    expected_success: true
+    expected_result: "banana"
+
+  - name: "string.nthField - comma separated last"
+    description: "Extract last field"
+    script: 'string.nthField("apple,banana,cherry", ",", 3)'
+    expected_success: true
+    expected_result: "cherry"
+
+  - name: "string.nthField - space delimiter"
+    description: "Extract field using space delimiter"
+    script: 'string.nthField("one two three", " ", 2)'
+    expected_success: true
+    expected_result: "two"
+
+  # ========================================================================
+  # string.countFields
+  # ========================================================================
+
+  - name: "string.countFields - comma separated"
+    description: "Count comma-separated fields"
+    script: 'string.countFields("a,b,c,d", ",")'
+    expected_success: true
+    expected_result: "4"
+
+  - name: "string.countFields - single field"
+    description: "String with no delimiter has one field"
+    script: 'string.countFields("hello", ",")'
+    expected_success: true
+    expected_result: "1"
+
+  - name: "string.countFields - empty string"
+    description: "Empty string has one field (the empty string itself)"
+    script: 'string.countFields("", ",")'
+    expected_success: true
+    expected_result: "1"
+
+  # ========================================================================
+  # string.insert
+  # ========================================================================
+
+  - name: "string.insert - at beginning"
+    description: "Insert string at beginning (position 0)"
+    script: 'string.insert("hello ", "world", 0)'
+    expected_success: true
+    expected_result: "hello world"
+
+  - name: "string.insert - in middle"
+    description: "Insert character in the middle"
+    script: 'string.insert("l", "helo", 3)'
+    expected_success: true
+    expected_result: "hello"
+
+  # ========================================================================
+  # string.delete
+  # ========================================================================
+
+  - name: "string.delete - from middle"
+    description: "Delete characters from middle of string"
+    script: 'string.delete("hello world", 6, 6)'
+    expected_success: true
+    expected_result: "hello"
+
+  - name: "string.delete - from beginning"
+    description: "Delete characters from beginning"
+    script: 'string.delete("hello", 1, 2)'
+    expected_success: true
+    expected_result: "llo"
+
+  # ========================================================================
+  # contains operator (verb-style tests)
+  # ========================================================================
+
+  - name: "contains - substring found"
+    description: "String contains substring via operator"
+    script: '"hello world" contains "world"'
+    expected_success: true
+    expected_result: "true"
+
+  - name: "contains - substring not found"
+    description: "String does not contain substring"
+    script: '"hello world" contains "xyz"'
+    expected_success: true
+    expected_result: "false"
+
+  - name: "contains - empty substring"
+    description: "Empty substring not found by contains operator"
+    script: '"hello" contains ""'
+    expected_success: true
+    expected_result: "false"
+
+  # ========================================================================
+  # String inequality (!=)
+  # ========================================================================
+
+  - name: "string inequality - different strings"
+    description: "Different strings are not equal"
+    script: '"hello" != "world"'
+    expected_success: true
+    expected_result: "true"
+
+  - name: "string inequality - same strings"
+    description: "Same strings are equal, != returns false"
+    script: '"hello" != "hello"'
+    expected_success: true
+    expected_result: "false"
+
+  # ========================================================================
+  # Concatenation edge cases
+  # ========================================================================
+
+  - name: "concatenation - string and number"
+    description: "Concatenating string with number coerces to string"
+    script: '"count: " + 42'
+    expected_success: true
+    expected_result: "count: 42"
+
+  - name: "concatenation - empty strings"
+    description: "Concatenating empty strings"
+    script: '"" + "" + "hello" + ""'
+    expected_success: true
+    expected_result: "hello"
+
+  - name: "concatenation - multi-step"
+    description: "Building a string incrementally"
+    script: |
+      local (s = "");
+      for i = 1 to 3 {
+        s = s + lang.string(i)};
+      return s
+    expected_success: true
+    expected_result: "123"
+
+  # ========================================================================
+  # Empty string handling
+  # ========================================================================
+
+  - name: "empty string - length"
+    description: "Empty string has length 0"
+    script: 'string.length("")'
+    expected_success: true
+    expected_result: "0"
+
+  - name: "empty string - upper"
+    description: "Upper of empty string is empty"
+    script: 'string.upper("")'
+    expected_success: true
+    expected_result: ""
+
+  - name: "empty string - equality"
+    description: "Two empty strings are equal"
+    script: '"" == ""'
+    expected_success: true
+    expected_result: "true"
+
+  # ========================================================================
+  # string.upper / string.lower extended
+  # ========================================================================
+
+  - name: "string.upper - mixed case"
+    description: "Upper on mixed case string"
+    script: 'string.upper("Hello World")'
+    expected_success: true
+    expected_result: "HELLO WORLD"
+
+  - name: "string.lower - mixed case"
+    description: "Lower on mixed case string"
+    script: 'string.lower("Hello World")'
+    expected_success: true
+    expected_result: "hello world"
+
+  - name: "string.upper - already uppercase"
+    description: "Upper on already uppercase string"
+    script: 'string.upper("HELLO")'
+    expected_success: true
+    expected_result: "HELLO"
+
+  - name: "string.lower - already lowercase"
+    description: "Lower on already lowercase string"
+    script: 'string.lower("hello")'
+    expected_success: true
+    expected_result: "hello"
+
+  # ========================================================================
+  # string.mid extended
+  # ========================================================================
+
+  - name: "string.mid - single character"
+    description: "Extract single character via mid"
+    script: 'string.mid("hello", 3, 1)'
+    expected_success: true
+    expected_result: "l"
+
+  - name: "string.mid - entire string"
+    description: "Extract entire string via mid"
+    script: 'string.mid("hello", 1, 5)'
+    expected_success: true
+    expected_result: "hello"
+
+  # ========================================================================
+  # string.patternMatch extended
+  # ========================================================================
+
+  - name: "string.patternMatch - at beginning"
+    description: "Pattern found at beginning returns 1"
+    script: 'string.patternMatch("hello", "hello world")'
+    expected_success: true
+    expected_result: "1"
+
+  - name: "string.patternMatch - empty pattern"
+    description: "Empty pattern match returns 0 (no match)"
+    script: 'string.patternMatch("", "hello")'
+    expected_success: true
+    expected_result: "0"

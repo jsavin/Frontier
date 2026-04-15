@@ -1,0 +1,358 @@
+# Integration tests for UserTalk control flow constructs
+# Issue #174: Verify if/else, for, while, loop/break, case, nested loops,
+# return from loops, and try/else error handling flow.
+
+tests:
+  # ========================================================================
+  # if/else basic branching
+  # ========================================================================
+
+  - name: "if - true branch"
+    description: "if with true condition executes body"
+    script: |
+      if true {
+        return "yes"}
+    expected_success: true
+    expected_result: "yes"
+
+  - name: "if/else - false takes else branch"
+    description: "if with false condition executes else body"
+    script: |
+      if false {
+        return "yes"}
+      else {
+        return "no"}
+    expected_success: true
+    expected_result: "no"
+
+  - name: "if/else - numeric comparison"
+    description: "if with numeric comparison"
+    script: |
+      local (x = 10);
+      if x > 5 {
+        return "big"}
+      else {
+        return "small"}
+    expected_success: true
+    expected_result: "big"
+
+  # ========================================================================
+  # if/else/if chains
+  # ========================================================================
+
+  - name: "if/else/if - first branch"
+    description: "Nested if/else takes first matching branch"
+    script: |
+      local (x = 1);
+      if x == 1 {
+        return "one"}
+      else {
+        if x == 2 {
+          return "two"}
+        else {
+          return "other"}}
+    expected_success: true
+    expected_result: "one"
+
+  - name: "if/else/if - middle branch"
+    description: "Nested if/else takes second branch"
+    script: |
+      local (x = 2);
+      if x == 1 {
+        return "one"}
+      else {
+        if x == 2 {
+          return "two"}
+        else {
+          return "other"}}
+    expected_success: true
+    expected_result: "two"
+
+  - name: "if/else/if - fallthrough to else"
+    description: "Nested if/else falls to final else"
+    script: |
+      local (x = 99);
+      if x == 1 {
+        return "one"}
+      else {
+        if x == 2 {
+          return "two"}
+        else {
+          return "other"}}
+    expected_success: true
+    expected_result: "other"
+
+  # ========================================================================
+  # for loop (counting)
+  # ========================================================================
+
+  - name: "for - count to 5"
+    description: "for i = 1 to 5 accumulates sum"
+    script: |
+      local (sum = 0);
+      for i = 1 to 5 {
+        sum = sum + i};
+      return sum
+    expected_success: true
+    expected_result: "15"
+
+  - name: "for - single iteration"
+    description: "for i = 1 to 1 executes exactly once"
+    script: |
+      local (count = 0);
+      for i = 1 to 1 {
+        count = count + 1};
+      return count
+    expected_success: true
+    expected_result: "1"
+
+  - name: "for - zero iterations when start > end"
+    description: "for i = 5 to 1 executes zero times"
+    script: |
+      local (count = 0);
+      for i = 5 to 1 {
+        count = count + 1};
+      return count
+    expected_success: true
+    expected_result: "0"
+
+  # ========================================================================
+  # for..in loop (iterating table items)
+  # ========================================================================
+
+  - name: "for..in - iterate table items"
+    description: "for..in iterates over address items in a table"
+    script: |
+      local (t); new(tableType, @t);
+      t.a = 1; t.b = 2; t.c = 3;
+      local (sum = 0);
+      local (adr);
+      for adr in @t {
+        sum = sum + adr^};
+      return sum
+    expected_success: true
+    expected_result: "6"
+
+  # ========================================================================
+  # while loop
+  # ========================================================================
+
+  - name: "while - count to 5"
+    description: "while loop counting to 5"
+    script: |
+      local (i = 0);
+      while i < 5 {
+        i = i + 1};
+      return i
+    expected_success: true
+    expected_result: "5"
+
+  - name: "while - false condition never executes"
+    description: "while with initially false condition"
+    script: |
+      local (x = 0);
+      while false {
+        x = 99};
+      return x
+    expected_success: true
+    expected_result: "0"
+
+  # ========================================================================
+  # loop/break
+  # ========================================================================
+
+  - name: "loop/break - exit on condition"
+    description: "loop with conditional break"
+    script: |
+      local (i = 0);
+      loop {
+        i = i + 1;
+        if i == 3 {
+          break}};
+      return i
+    expected_success: true
+    expected_result: "3"
+
+  - name: "loop/break - immediate break"
+    description: "loop that breaks immediately"
+    script: |
+      local (x = 0);
+      loop {
+        break};
+      return x
+    expected_success: true
+    expected_result: "0"
+
+  # ========================================================================
+  # case statement
+  # ========================================================================
+
+  - name: "case - match first"
+    description: "case matches first value"
+    script: |
+      local (x = "apple");
+      case x {
+        "apple" {
+          return "fruit"};
+        "carrot" {
+          return "vegetable"}}
+    expected_success: true
+    expected_result: "fruit"
+
+  - name: "case - match second"
+    description: "case matches second value"
+    script: |
+      local (x = "carrot");
+      case x {
+        "apple" {
+          return "fruit"};
+        "carrot" {
+          return "vegetable"}}
+    expected_success: true
+    expected_result: "vegetable"
+
+  - name: "case - numeric values"
+    description: "case with numeric matching"
+    script: |
+      local (x = 2);
+      case x {
+        1 {
+          return "one"};
+        2 {
+          return "two"};
+        3 {
+          return "three"}}
+    expected_success: true
+    expected_result: "two"
+
+  # ========================================================================
+  # nested loops
+  # ========================================================================
+
+  - name: "nested for loops"
+    description: "Nested for loops multiply iterations"
+    script: |
+      local (count = 0);
+      for i = 1 to 3 {
+        for j = 1 to 4 {
+          count = count + 1}};
+      return count
+    expected_success: true
+    expected_result: "12"
+
+  - name: "nested while loops"
+    description: "Nested while loops"
+    script: |
+      local (sum = 0);
+      local (i = 0);
+      while i < 3 {
+        local (j = 0);
+        while j < 2 {
+          sum = sum + 1;
+          j = j + 1};
+        i = i + 1};
+      return sum
+    expected_success: true
+    expected_result: "6"
+
+  # ========================================================================
+  # return from within a loop
+  # ========================================================================
+
+  - name: "return from for loop"
+    description: "return inside a for loop exits immediately"
+    script: |
+      for i = 1 to 10 {
+        if i == 3 {
+          return "found " + i}};
+      return "not found"
+    expected_success: true
+    expected_result: "found 3"
+
+  - name: "return from while loop"
+    description: "return inside a while loop exits immediately"
+    script: |
+      local (i = 0);
+      while true {
+        i = i + 1;
+        if i == 5 {
+          return i}};
+      return 0
+    expected_success: true
+    expected_result: "5"
+
+  # ========================================================================
+  # try/else error handling flow (complements try_error.yaml)
+  # ========================================================================
+
+  - name: "try/else - no error passes through"
+    description: "try block with no error skips else"
+    script: |
+      local (result = "ok");
+      try {
+        local (x = 1 + 1)}
+      else {
+        result = "error"};
+      return result
+    expected_success: true
+    expected_result: "ok"
+
+  - name: "try/else - error caught and recovered"
+    description: "try/else catches error and allows recovery"
+    script: |
+      local (result = "");
+      try {
+        scriptError("boom")}
+      else {
+        result = "caught"};
+      return result
+    expected_success: true
+    expected_result: "caught"
+
+  - name: "try/else - in loop continues after catch"
+    description: "try/else inside a loop allows iteration to continue"
+    script: |
+      local (errors = 0);
+      for i = 1 to 5 {
+        try {
+          if (i == 3) or (i == 5) {
+            scriptError("bad")}}
+        else {
+          errors = errors + 1}};
+      return errors
+    expected_success: true
+    expected_result: "2"
+
+  # ========================================================================
+  # Boolean logic in conditions
+  # ========================================================================
+
+  - name: "if - and condition"
+    description: "if with and operator"
+    script: |
+      local (x = 5);
+      if (x > 3) and (x < 10) {
+        return "in range"}
+      else {
+        return "out of range"}
+    expected_success: true
+    expected_result: "in range"
+
+  - name: "if - or condition"
+    description: "if with or operator"
+    script: |
+      local (x = 1);
+      if (x == 1) or (x == 2) {
+        return "match"}
+      else {
+        return "no match"}
+    expected_success: true
+    expected_result: "match"
+
+  - name: "if - not condition"
+    description: "if with not operator"
+    script: |
+      if not false {
+        return "negated"}
+    expected_success: true
+    expected_result: "negated"

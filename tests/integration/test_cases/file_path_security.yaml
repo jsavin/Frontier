@@ -1,0 +1,402 @@
+# Security-focused file verb path validation tests
+# Issue #226: Verify safe handling of adversarial and edge-case file paths
+#
+# Covers:
+#   - Path traversal attempts (../)
+#   - Empty path handling (known crashes — marked skip)
+#   - Very long path handling
+#   - Paths with special characters
+#   - file.exists on non-existent paths (should return false, not error)
+#   - Absolute path handling
+#   - Restricted path write protection
+#   - file.fileFromPath / file.folderFromPath with adversarial inputs
+#
+# All file operations use {FRONTIER_TEST_TMP_DIR} or /tmp — never persistent paths.
+#
+# NOTE: Empty string paths cause process-level crashes (not catchable by try/else).
+# These are marked with skip until the underlying bug is fixed.
+
+tests:
+  # ========================================================================
+  # Path traversal handling
+  # ========================================================================
+
+  - name: "path traversal - file.exists with ../ is safe"
+    description: "file.exists on path with ../ should not crash or expose info"
+    script: |
+      local (tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local (path = tmpDir + "/../../../etc/passwd");
+      return typeOf(file.exists(path)) == booleanType
+    expected_success: true
+    expected_result: "true"
+
+  - name: "path traversal - multiple ../ segments"
+    description: "Path with many ../ segments handled safely"
+    script: |
+      local (path = "/tmp/a/b/c/../../../../etc/shadow");
+      return typeOf(file.exists(path)) == booleanType
+    expected_success: true
+    expected_result: "true"
+
+  - name: "path traversal - ../ in middle of path"
+    description: "Embedded ../ in path is handled safely"
+    script: |
+      local (tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local (path = tmpDir + "/subdir/../testfile_traversal.txt");
+      try {
+        file.writeWholeFile(path, "test");
+        local (exists = file.exists(path));
+        file.delete(path);
+        return "handled"}
+      else {
+        return "handled"}
+    expected_success: true
+
+  - name: "path traversal - file.new with ../ parent escape"
+    description: "Creating file via ../ traversal handled safely"
+    script: |
+      local (tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local (path = tmpDir + "/../traversal_test_security.txt");
+      try {
+        file.new(path);
+        if file.exists(path) {
+          file.delete(path)};
+        return "created"}
+      else {
+        return "rejected"}
+    expected_success: true
+
+  # ========================================================================
+  # Empty path handling
+  # NOTE: Empty paths cause process-level crashes (not UserTalk errors).
+  # These are skipped until the bug is fixed — they document the desired behavior.
+  # ========================================================================
+
+  - name: "empty path - file.exists should handle safely"
+    description: "Empty string path should return false or error, not crash"
+    skip: "BUG: Empty path causes process crash — not catchable by try/else"
+    script: |
+      try {
+        return file.exists("")}
+      else {
+        return "error caught"}
+    expected_success: true
+
+  - name: "empty path - file.new should reject"
+    description: "Creating file with empty path should fail safely"
+    skip: "BUG: Empty path causes process crash — not catchable by try/else"
+    script: |
+      try {
+        file.new("")}
+      else {
+        return "rejected"}
+    expected_success: true
+    expected_result: "rejected"
+
+  - name: "empty path - file.readWholeFile should reject"
+    description: "Reading file with empty path should fail safely"
+    skip: "BUG: Empty path causes process crash — not catchable by try/else"
+    script: |
+      try {
+        file.readWholeFile("")}
+      else {
+        return "rejected"}
+    expected_success: true
+    expected_result: "rejected"
+
+  - name: "empty path - file.writeWholeFile should reject"
+    description: "Writing file with empty path should fail safely"
+    skip: "BUG: Empty path causes process crash — not catchable by try/else"
+    script: |
+      try {
+        file.writeWholeFile("", "data")}
+      else {
+        return "rejected"}
+    expected_success: true
+    expected_result: "rejected"
+
+  - name: "empty path - file.delete should reject"
+    description: "Deleting with empty path should fail safely"
+    skip: "BUG: Empty path causes process crash — not catchable by try/else"
+    script: |
+      try {
+        file.delete("")}
+      else {
+        return "rejected"}
+    expected_success: true
+    expected_result: "rejected"
+
+  # ========================================================================
+  # Very long path handling
+  # ========================================================================
+
+  - name: "long path - 900 char filename"
+    description: "Very long filename (900 chars) — tests OS limits"
+    script: |
+      local (tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local (longName = string.filledString("a", 900));
+      local (path = tmpDir + "/" + longName + ".txt");
+      try {
+        file.new(path);
+        local (exists = file.exists(path));
+        if exists {
+          file.delete(path)};
+        return "handled"}
+      else {
+        return "handled"}
+    expected_success: true
+
+  - name: "long path - deeply nested directories"
+    description: "Path with many directory levels should fail gracefully"
+    script: |
+      local (path = "/tmp");
+      local (i);
+      for i = 1 to 50 {
+        path = path + "/dir" + i};
+      path = path + "/file.txt";
+      try {
+        return file.exists(path)}
+      else {
+        return "error handled"}
+    expected_success: true
+
+  # ========================================================================
+  # Paths with special characters
+  # ========================================================================
+
+  - name: "special chars - spaces in filename"
+    description: "File operations with spaces in paths"
+    skip: "BUG: Spaces in filenames cause process crash in headless mode"
+    script: |
+      local (tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local (path = tmpDir + "/file with spaces.txt");
+      file.writeWholeFile(path, "content");
+      local (data = file.readWholeFile(path));
+      file.delete(path);
+      return string(data)
+    expected_success: true
+    expected_result: "content"
+
+  - name: "special chars - dots in filename"
+    description: "Multiple dots in filename handled correctly"
+    script: |
+      local (tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local (path = tmpDir + "/file.name.with.dots.txt");
+      file.writeWholeFile(path, "dots");
+      local (exists = file.exists(path));
+      file.delete(path);
+      return exists
+    expected_success: true
+    expected_result: "true"
+
+  - name: "special chars - hyphen and underscore"
+    description: "Hyphens and underscores in paths work correctly"
+    script: |
+      local (tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local (path = tmpDir + "/test-file_name-2.txt");
+      file.writeWholeFile(path, "test");
+      local (exists = file.exists(path));
+      file.delete(path);
+      return exists
+    expected_success: true
+    expected_result: "true"
+
+  - name: "special chars - single dot path is safe"
+    description: "Single dot path handled safely (refers to current directory)"
+    script: |
+      try {
+        return typeOf(file.exists(".")) == booleanType}
+      else {
+        return "error handled"}
+    expected_success: true
+
+  - name: "special chars - double dot path is safe"
+    description: "Double dot path handled safely (refers to parent directory)"
+    script: |
+      try {
+        return typeOf(file.exists("..")) == booleanType}
+      else {
+        return "error handled"}
+    expected_success: true
+
+  - name: "special chars - numeric filename"
+    description: "All-numeric filename works correctly"
+    script: |
+      local (tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local (path = tmpDir + "/12345");
+      file.writeWholeFile(path, "numeric");
+      local (exists = file.exists(path));
+      file.delete(path);
+      return exists
+    expected_success: true
+    expected_result: "true"
+
+  - name: "special chars - leading dot (hidden file)"
+    description: "Leading dot (hidden file) works correctly"
+    script: |
+      local (tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local (path = tmpDir + "/.hidden_test_file");
+      file.writeWholeFile(path, "hidden");
+      local (exists = file.exists(path));
+      file.delete(path);
+      return exists
+    expected_success: true
+    expected_result: "true"
+
+  # ========================================================================
+  # file.exists on non-existent paths
+  # ========================================================================
+
+  - name: "file.exists - non-existent file returns false"
+    description: "file.exists should return false for missing files, not error"
+    script: |
+      local (tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      return file.exists(tmpDir + "/absolutely_does_not_exist_xyz123.txt")
+    expected_success: true
+    expected_result: "false"
+
+  - name: "file.exists - non-existent deep path returns false"
+    description: "file.exists on path with missing parent dirs returns false"
+    script: |
+      return file.exists("/tmp/nonexistent_dir_xyz/subdir/file.txt")
+    expected_success: true
+    expected_result: "false"
+
+  - name: "file.exists - non-existent volume returns false"
+    description: "file.exists on path starting with non-existent mount point returns false"
+    script: |
+      return file.exists("/nonexistent_volume_xyz/test.txt")
+    expected_success: true
+    expected_result: "false"
+
+  - name: "file.exists - very long nonexistent path returns false"
+    description: "file.exists on long nonexistent path returns false safely"
+    script: |
+      local (path = "/tmp/" + string.filledString("x", 200) + "/file.txt");
+      return file.exists(path)
+    expected_success: true
+    expected_result: "false"
+
+  # ========================================================================
+  # Absolute path handling
+  # ========================================================================
+
+  - name: "absolute path - root path exists"
+    description: "Root filesystem path should exist"
+    script: |
+      return file.exists("/")
+    expected_success: true
+    expected_result: "true"
+
+  - name: "absolute path - /tmp exists"
+    description: "/tmp directory should exist on all POSIX systems"
+    script: |
+      return file.exists("/tmp")
+    expected_success: true
+    expected_result: "true"
+
+  - name: "absolute path - write and verify existence"
+    description: "Full absolute path write creates file that exists"
+    script: |
+      local (tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local (path = tmpDir + "/absolute_path_test.txt");
+      file.writeWholeFile(path, "absolute");
+      local (exists = file.exists(path));
+      file.delete(path);
+      return exists
+    expected_success: true
+    expected_result: "true"
+
+  # ========================================================================
+  # file.fileFromPath and file.folderFromPath with adversarial inputs
+  # ========================================================================
+
+  - name: "fileFromPath - path with ../ segments"
+    description: "fileFromPath handles ../ in path without crashing"
+    script: |
+      return file.fileFromPath("/tmp/../etc/passwd")
+    expected_success: true
+    expected_result: "passwd"
+
+  - name: "folderFromPath - path with ../ segments"
+    description: "folderFromPath handles ../ in path without crashing"
+    script: |
+      return file.folderFromPath("/tmp/../etc/passwd")
+    expected_success: true
+    expected_result: "/tmp/../etc/"
+
+  - name: "fileFromPath - empty string is safe"
+    description: "fileFromPath with empty string should not crash"
+    script: |
+      try {
+        return file.fileFromPath("")}
+      else {
+        return "error handled"}
+    expected_success: true
+
+  - name: "folderFromPath - empty string is safe"
+    description: "folderFromPath with empty string should not crash"
+    script: |
+      try {
+        return file.folderFromPath("")}
+      else {
+        return "error handled"}
+    expected_success: true
+
+  - name: "fileFromPath - just a slash"
+    description: "fileFromPath on root slash returns slash"
+    script: |
+      return file.fileFromPath("/")
+    expected_success: true
+    expected_result: "/"
+
+  - name: "folderFromPath - just a slash"
+    description: "folderFromPath on root slash returns root"
+    script: |
+      return file.folderFromPath("/")
+    expected_success: true
+    expected_result: "/"
+
+  # ========================================================================
+  # Restricted path write protection
+  # ========================================================================
+
+  - name: "restricted path - cannot write to root"
+    description: "Writing to / should fail with permission error"
+    script: |
+      try {
+        file.writeWholeFile("/test_security_write.txt", "data")}
+      else {
+        return "rejected"}
+    expected_success: true
+    expected_result: "rejected"
+
+  - name: "restricted path - cannot delete system files"
+    description: "Deleting system paths should fail safely"
+    script: |
+      try {
+        file.delete("/etc/hosts")}
+      else {
+        return "rejected"}
+    expected_success: true
+    expected_result: "rejected"
+
+  - name: "restricted path - cannot create file in /etc"
+    description: "Creating files in system directories should fail"
+    script: |
+      try {
+        file.new("/etc/frontier_security_test.txt")}
+      else {
+        return "rejected"}
+    expected_success: true
+    expected_result: "rejected"
+
+  - name: "restricted path - cannot overwrite system file"
+    description: "Overwriting system file should fail"
+    script: |
+      try {
+        file.writeWholeFile("/etc/hosts", "malicious data")}
+      else {
+        return "rejected"}
+    expected_success: true
+    expected_result: "rejected"
