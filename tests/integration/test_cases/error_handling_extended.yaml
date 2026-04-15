@@ -1,0 +1,450 @@
+# Extended error handling integration tests
+# Issue #175: Tests beyond basic try/else and tryError (see try_error.yaml)
+#
+# Covers:
+#   - lang.scriptError() with custom messages
+#   - try/else with error message capture via tryError
+#   - Nested try/else blocks (multi-level)
+#   - Error propagation through built-in operations
+#   - Error recovery — code continues after try/else
+#   - Division by zero handling
+#   - Type coercion errors
+#   - Undefined variable access
+#
+# NOTE: In headless mode, scriptError is accessed as lang.scriptError().
+# Workspace script assignment (workspace.foo = {code}) is not supported in
+# headless mode, so error propagation tests use built-in error triggers instead.
+
+tests:
+  # ========================================================================
+  # lang.scriptError() — custom error messages
+  # ========================================================================
+
+  - name: "lang.scriptError - custom message is thrown"
+    description: "lang.scriptError() should cause script failure with custom message"
+    script: |
+      lang.scriptError("custom failure message")
+    expected_success: false
+
+  - name: "lang.scriptError - empty string message"
+    description: "lang.scriptError with empty string still triggers error"
+    script: |
+      lang.scriptError("")
+    expected_success: false
+
+  - name: "lang.scriptError - message with special characters"
+    description: "lang.scriptError preserves special characters in message"
+    script: |
+      try {
+        lang.scriptError("error: value=42, path=/foo/bar")}
+      else {
+        return tryError}
+    expected_success: true
+    expected_result: "error: value=42, path=/foo/bar"
+
+  - name: "lang.scriptError - long message preserved"
+    description: "lang.scriptError preserves longer messages through tryError"
+    script: |
+      local (msg = "This is a longer error message that tests whether the full text is preserved through the try/else mechanism");
+      try {
+        lang.scriptError(msg)}
+      else {
+        return tryError == msg}
+    expected_success: true
+    expected_result: "true"
+
+  # ========================================================================
+  # try/else with error message capture
+  # ========================================================================
+
+  - name: "try/else - tryError captures lang.scriptError message"
+    description: "tryError in else block contains the lang.scriptError string"
+    script: |
+      try {
+        lang.scriptError("captured message")}
+      else {
+        return tryError}
+    expected_success: true
+    expected_result: "captured message"
+
+  - name: "try/else - tryError type is string"
+    description: "tryError should be a string value"
+    script: |
+      try {
+        lang.scriptError("test")}
+      else {
+        return typeOf(tryError) == stringType}
+    expected_success: true
+    expected_result: "true"
+
+  - name: "try/else - else block can use tryError in expressions"
+    description: "tryError can be used in string operations within else block"
+    script: |
+      try {
+        lang.scriptError("the error")}
+      else {
+        return "caught: " + tryError}
+    expected_success: true
+    expected_result: "caught: the error"
+
+  - name: "try/else - tryError with contains operator"
+    description: "tryError can be tested with contains operator"
+    script: |
+      try {
+        lang.scriptError("file not found: /tmp/test.txt")}
+      else {
+        return tryError contains "not found"}
+    expected_success: true
+    expected_result: "true"
+
+  # ========================================================================
+  # Nested try/else blocks
+  # ========================================================================
+
+  - name: "nested try - inner catches, outer succeeds"
+    description: "Inner try/else handles error, outer try sees no error"
+    script: |
+      local (result = "none");
+      try {
+        try {
+          lang.scriptError("inner error")}
+        else {
+          result = "inner caught"}}
+      else {
+        result = "outer caught"};
+      return result
+    expected_success: true
+    expected_result: "inner caught"
+
+  - name: "nested try - inner rethrows to outer"
+    description: "Inner else can rethrow via lang.scriptError to outer try"
+    script: |
+      try {
+        try {
+          lang.scriptError("original")}
+        else {
+          lang.scriptError("rethrown: " + tryError)}}
+      else {
+        return tryError}
+    expected_success: true
+    expected_result: "rethrown: original"
+
+  - name: "nested try - three levels deep"
+    description: "Three levels of try/else nesting work correctly"
+    script: |
+      try {
+        try {
+          try {
+            lang.scriptError("level 3")}
+          else {
+            lang.scriptError("level 2: " + tryError)}}
+        else {
+          lang.scriptError("level 1: " + tryError)}}
+      else {
+        return tryError}
+    expected_success: true
+    expected_result: "level 1: level 2: level 3"
+
+  - name: "nested try - inner succeeds, outer catches different error"
+    description: "Inner try succeeds, error after inner try caught by outer"
+    script: |
+      try {
+        try {
+          local (x = 1 + 1)}
+        else {
+          return "should not reach"};
+        lang.scriptError("after inner")}
+      else {
+        return tryError}
+    expected_success: true
+    expected_result: "after inner"
+
+  - name: "nested try - each level has independent tryError"
+    description: "Each else block gets its own tryError value"
+    script: |
+      local (innerMsg = "");
+      try {
+        try {
+          lang.scriptError("inner msg")}
+        else {
+          innerMsg = tryError;
+          lang.scriptError("outer msg")}}
+      else {
+        return innerMsg + "|" + tryError}
+    expected_success: true
+    expected_result: "inner msg|outer msg"
+
+  # ========================================================================
+  # Error propagation through built-in operations
+  # ========================================================================
+
+  - name: "error propagation - division by zero propagates through expression"
+    description: "Division by zero in sub-expression propagates to enclosing try"
+    script: |
+      try {
+        local (a = 5);
+        local (b = 0);
+        local (c = a + (10 / b))}
+      else {
+        return tryError contains "divide"}
+    expected_success: true
+    expected_result: "true"
+
+  - name: "error propagation - undefined name propagates"
+    description: "Undefined name error propagates through nested expression"
+    script: |
+      try {
+        local (x = 1 + noSuchThing)}
+      else {
+        return tryError contains "noSuchThing"}
+    expected_success: true
+    expected_result: "true"
+
+  - name: "error propagation - lang.scriptError in conditional"
+    description: "Error thrown inside conditional branch propagates to try/else"
+    script: |
+      try {
+        local (x = 5);
+        if x > 3 {
+          lang.scriptError("conditional error")}}
+      else {
+        return tryError}
+    expected_success: true
+    expected_result: "conditional error"
+
+  # ========================================================================
+  # Error recovery — code continues after try/else
+  # ========================================================================
+
+  - name: "error recovery - code after try/else executes"
+    description: "Execution continues normally after a try/else block"
+    script: |
+      local (x = "before");
+      try {
+        lang.scriptError("oops")}
+      else {
+        x = "caught"};
+      local (y = x + " and after");
+      return y
+    expected_success: true
+    expected_result: "caught and after"
+
+  - name: "error recovery - multiple try/else blocks in sequence"
+    description: "Multiple sequential try/else blocks each handle independently"
+    script: |
+      local (log = "");
+      try {
+        lang.scriptError("first")}
+      else {
+        log = log + "1"};
+      try {
+        lang.scriptError("second")}
+      else {
+        log = log + "2"};
+      try {
+        local (x = 1)}
+      else {
+        log = log + "3"};
+      return log
+    expected_success: true
+    expected_result: "12"
+
+  - name: "error recovery - loop continues after try/else"
+    description: "Loop iteration continues after error is caught"
+    script: |
+      local (count = 0);
+      local (i);
+      for i = 1 to 5 {
+        try {
+          if i == 3 {
+            lang.scriptError("skip 3")}}
+        else {
+          count = count + 1}};
+      return count
+    expected_success: true
+    expected_result: "1"
+
+  - name: "error recovery - variable assignment in else persists"
+    description: "Variables modified in else block retain their values"
+    script: |
+      local (status = "ok");
+      try {
+        lang.scriptError("fail")}
+      else {
+        status = "error: " + tryError};
+      return status
+    expected_success: true
+    expected_result: "error: fail"
+
+  - name: "error recovery - accumulate results across errors"
+    description: "Can accumulate results across multiple try/else in a loop"
+    script: |
+      local (errors = 0);
+      local (successes = 0);
+      local (i);
+      for i = 1 to 4 {
+        try {
+          if (i % 2) == 0 {
+            lang.scriptError("even")};
+          successes = successes + 1}
+        else {
+          errors = errors + 1}};
+      return successes + "|" + errors
+    expected_success: true
+    expected_result: "2|2"
+
+  # ========================================================================
+  # Division by zero handling
+  # ========================================================================
+
+  - name: "division by zero - integer"
+    description: "Integer division by zero is caught by try/else"
+    script: |
+      try {
+        local (x = 10 / 0)}
+      else {
+        return tryError contains "divide"}
+    expected_success: true
+    expected_result: "true"
+
+  - name: "division by zero - uncaught causes failure"
+    description: "Division by zero without try/else causes script failure"
+    script: |
+      local (x = 1 / 0)
+    expected_success: false
+
+  - name: "division by zero - in expression"
+    description: "Division by zero in complex expression is caught"
+    script: |
+      try {
+        local (x = (10 + 5) / (3 - 3))}
+      else {
+        return "caught"}
+    expected_success: true
+    expected_result: "caught"
+
+  - name: "division by zero - modulo by zero"
+    description: "Modulo by zero triggers error"
+    script: |
+      try {
+        local (x = 10 % 0)}
+      else {
+        return "caught"}
+    expected_success: true
+    expected_result: "caught"
+
+  # ========================================================================
+  # Type coercion behaviors
+  # ========================================================================
+
+  - name: "type coercion - string plus boolean coerces"
+    description: "UserTalk coerces boolean to string for concatenation"
+    script: |
+      return "hello" + true
+    expected_success: true
+    expected_result: "hellotrue"
+
+  - name: "type coercion - string multiply errors"
+    description: "Multiplying string by number triggers error (no coercion path)"
+    script: |
+      try {
+        local (x = "abc" * 2)}
+      else {
+        return "caught"}
+    expected_success: true
+    expected_result: "caught"
+
+  - name: "type coercion - string minus coerces silently"
+    description: "UserTalk string minus number does not error (unusual coercion)"
+    script: |
+      local (x = "abc" - 1);
+      return x
+    expected_success: true
+    expected_result: "abc"
+
+  - name: "type coercion - boolean multiply is logical"
+    description: "Boolean multiplication acts as logical AND in UserTalk"
+    script: |
+      return true * false
+    expected_success: true
+    expected_result: "false"
+
+  - name: "type coercion - numeric string concatenation"
+    description: "Adding two numeric strings concatenates (string context wins)"
+    script: |
+      return "3" + "4"
+    expected_success: true
+    expected_result: "34"
+
+  # ========================================================================
+  # Undefined variable access
+  # ========================================================================
+
+  - name: "undefined variable - access causes error"
+    description: "Referencing undefined variable causes script failure"
+    script: |
+      return undefinedVariable
+    expected_success: false
+
+  - name: "undefined variable - caught by try/else"
+    description: "Undefined variable access caught in try/else"
+    script: |
+      try {
+        local (x = noSuchVariable)}
+      else {
+        return "caught"}
+    expected_success: true
+    expected_result: "caught"
+
+  - name: "undefined variable - defined() returns false"
+    description: "defined() properly reports undefined variables"
+    script: |
+      return defined(neverDefinedVar)
+    expected_success: true
+    expected_result: "false"
+
+  - name: "undefined variable - defined() returns true for local"
+    description: "defined() properly reports defined local variables"
+    script: |
+      local (myVar = 42);
+      return defined(myVar)
+    expected_success: true
+    expected_result: "true"
+
+  # ========================================================================
+  # Edge cases
+  # ========================================================================
+
+  - name: "try with no error - else not executed"
+    description: "When try body succeeds, else is skipped entirely"
+    script: |
+      local (entered = false);
+      try {
+        local (x = 42)}
+      else {
+        entered = true};
+      return entered
+    expected_success: true
+    expected_result: "false"
+
+  - name: "try/else - return from else exits function"
+    description: "Return statement in else block exits the enclosing scope"
+    script: |
+      try {
+        lang.scriptError("test")}
+      else {
+        return "from else"};
+      return "after try"
+    expected_success: true
+    expected_result: "from else"
+
+  - name: "try/else - return from try body exits function"
+    description: "Return from successful try body exits the enclosing scope"
+    script: |
+      try {
+        return "from try"}
+      else {
+        return "from else"};
+      return "after try"
+    expected_success: true
+    expected_result: "from try"
