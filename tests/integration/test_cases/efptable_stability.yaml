@@ -1,0 +1,169 @@
+# Integration tests for efptable stability across database operations
+#
+# CONTEXT: Issue #292 — efptable refactored from extern global to module-private
+# static with accessor functions. These tests verify that processor verb dispatch
+# continues to work correctly after database loading operations, which historically
+# could clobber the efptable global with stale tokenvaluetype entries.
+#
+# The key scenario: open a guest database, then verify that kernel verbs
+# (file.*, string.*, clock.*, etc.) still dispatch correctly via their
+# valueroutine callbacks.
+#
+# These tests complement efp_introspection.yaml (which tests parentOf/typeOf/
+# defined resolution) by focusing specifically on verb DISPATCH after database
+# state changes.
+
+tests:
+  # ========================================================================
+  # SECTION 1: Processor dispatch after guest database open
+  # ========================================================================
+  # Open a guest database and verify processor verbs still work.
+  # This catches the historical bug where database loading overwrites
+  # efptable with tokenvaluetype entries (no valueroutine callbacks).
+
+  - name: "efptable stability - file.exists works after guest db open"
+    description: |
+      Open StartupTasks.root as a guest database, then verify file.exists()
+      still dispatches correctly. If efptable were clobbered by database
+      loading, this would fail with a nil valueroutine.
+    script: |
+      local (sysdir = file.folderFromPath(Frontier.getFilePath()));
+      local (guestpath = sysdir + "StartupTasks.root");
+      if not file.exists(guestpath) {
+        return "skip"};
+      fileMenu.open(guestpath, true);
+      return file.exists("/tmp")
+    expected_success: true
+    expected_result: "true"
+
+  - name: "efptable stability - string.mid works after guest db open"
+    description: |
+      Verify string processor dispatch after opening a guest database.
+    script: |
+      local (sysdir = file.folderFromPath(Frontier.getFilePath()));
+      local (guestpath = sysdir + "StartupTasks.root");
+      if not file.exists(guestpath) {
+        return "skip"};
+      fileMenu.open(guestpath, true);
+      return string.mid("hello world", 7, 5)
+    expected_success: true
+    expected_result: "world"
+
+  - name: "efptable stability - string.length works after guest db open"
+    description: |
+      Verify string.length() dispatch after database loading.
+    script: |
+      local (sysdir = file.folderFromPath(Frontier.getFilePath()));
+      local (guestpath = sysdir + "StartupTasks.root");
+      if not file.exists(guestpath) {
+        return "skip"};
+      fileMenu.open(guestpath, true);
+      return string.length("test")
+    expected_success: true
+    expected_result: "4"
+
+  - name: "efptable stability - clock.now works after guest db open"
+    description: |
+      Verify clock processor dispatch after database loading.
+      clock.now() returns a date; we verify it's defined (non-nil).
+    script: |
+      local (sysdir = file.folderFromPath(Frontier.getFilePath()));
+      local (guestpath = sysdir + "StartupTasks.root");
+      if not file.exists(guestpath) {
+        return "skip"};
+      fileMenu.open(guestpath, true);
+      return defined(clock.now())
+    expected_success: true
+    expected_result: "true"
+
+  # ========================================================================
+  # SECTION 2: Processor dispatch after db.new (fresh database creation)
+  # ========================================================================
+  # Creating a new database exercises a different code path than opening
+  # an existing one. Verify processor dispatch is unaffected.
+
+  - name: "efptable stability - file.exists works after db.new"
+    description: |
+      Create a fresh database via db.new(), then verify file processor
+      dispatch still works. No db.close() — the process exits after each
+      test and the harness cleans up tmp files.
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(dbPath = tmpDir + "/" + "test_efp_stability.root");
+      if file.exists(dbPath) {
+        file.delete(dbPath)};
+      db.new(dbPath);
+      return file.exists("/tmp")
+    expected_success: true
+    expected_result: "true"
+
+  - name: "efptable stability - string.mid works after db.new"
+    description: |
+      Create a fresh database via db.new(), then verify string processor
+      dispatch still works.
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(dbPath = tmpDir + "/" + "test_efp_stability2.root");
+      if file.exists(dbPath) {
+        file.delete(dbPath)};
+      db.new(dbPath);
+      return string.mid("abcdef", 3, 2)
+    expected_success: true
+    expected_result: "cd"
+
+  # ========================================================================
+  # SECTION 3: Introspection stability after database operations
+  # ========================================================================
+  # parentOf() and defined() also depend on efptable resolution.
+  # Verify they work correctly after database state changes.
+
+  - name: "efptable stability - parentOf(string.mid) after guest db open"
+    description: |
+      Verify that parentOf() introspection returns database path (not
+      EFP internal path) after opening a guest database.
+    script: |
+      local (sysdir = file.folderFromPath(Frontier.getFilePath()));
+      local (guestpath = sysdir + "StartupTasks.root");
+      if not file.exists(guestpath) {
+        return "skip"};
+      fileMenu.open(guestpath, true);
+      return parentOf(string.mid)
+    expected_success: true
+    expected_result: "system.verbs.builtins.string"
+
+  - name: "efptable stability - defined(file.exists) after guest db open"
+    description: |
+      Verify defined() still resolves processor verbs after database loading.
+    script: |
+      local (sysdir = file.folderFromPath(Frontier.getFilePath()));
+      local (guestpath = sysdir + "StartupTasks.root");
+      if not file.exists(guestpath) {
+        return "skip"};
+      fileMenu.open(guestpath, true);
+      return defined(file.exists)
+    expected_success: true
+    expected_result: "true"
+
+  # ========================================================================
+  # SECTION 4: Multiple database operations in sequence
+  # ========================================================================
+  # Open multiple databases in sequence and verify dispatch survives all of them.
+
+  - name: "efptable stability - dispatch survives multiple guest db opens"
+    description: |
+      Open two different guest databases in sequence, then verify
+      processor dispatch still works. Tests that repeated database
+      lifecycle operations don't degrade efptable state.
+    script: |
+      local (sysdir = file.folderFromPath(Frontier.getFilePath()));
+      local (guestpath1 = sysdir + "StartupTasks.root");
+      local (guestpath2 = sysdir + "test.root");
+      if not file.exists(guestpath1) {
+        return "skip"};
+      if not file.exists(guestpath2) {
+        return "skip"};
+      fileMenu.open(guestpath1, true);
+      fileMenu.open(guestpath2, true);
+      return string.length("cycle test")
+    expected_success: true
+    expected_result: "10"

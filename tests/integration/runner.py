@@ -664,14 +664,20 @@ def _run_file_worker(args: tuple) -> dict:
         shutil.copy2(system_root, worker_db_path)
         worker_system_root = worker_db_path
 
-        # Copy guest databases only for tests that need them (avoids
-        # unnecessary I/O overhead for the majority of test workers).
-        if os.path.basename(yaml_path) == 'guest_db_externals.yaml':
+        # Copy sibling .root files and Guest Databases/ for tests that
+        # open guest databases. Files that use fileMenu.open() or reference
+        # paths relative to Frontier.getFilePath() need these alongside the
+        # copied system root.
+        NEEDS_GUEST_DBS = {'guest_db_externals.yaml', 'efptable_stability.yaml'}
+        if os.path.basename(yaml_path) in NEEDS_GUEST_DBS:
             src_dir = os.path.dirname(system_root)
-            for guest_file in ['StartupTasks.root']:
-                guest_src = os.path.join(src_dir, guest_file)
-                if os.path.isfile(guest_src):
-                    shutil.copy2(guest_src, os.path.join(worker_tmp, guest_file))
+            # Copy sibling .root files (StartupTasks.root, test.root, etc.)
+            for sibling in os.listdir(src_dir):
+                if sibling.endswith('.root') and sibling != os.path.basename(system_root):
+                    sibling_src = os.path.join(src_dir, sibling)
+                    if os.path.isfile(sibling_src):
+                        shutil.copy2(sibling_src, os.path.join(worker_tmp, sibling))
+            # Copy Guest Databases/ directory tree
             guest_db_dir = os.path.join(src_dir, 'Guest Databases')
             if os.path.isdir(guest_db_dir):
                 worker_guest_dir = os.path.join(worker_tmp, 'Guest Databases')
