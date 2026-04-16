@@ -1,0 +1,140 @@
+<?xml version="1.0" ?>
+<opml version="2.0">
+  <head>
+    <title>Efptable Stability (efptable_stability) - 9 tests: 9 pass (100%)</title>
+    <dateCreated>Thu, 16 Apr 2026 06:57:16 GMT</dateCreated>
+  </head>
+  <body>
+    <outline text="efptable stability - file.exists works after guest db open - Open StartupTasks.root as a guest database, then verify file.exists()&#10;still dispatches correctly. If efptable were clobbered by database&#10;loading, this would fail with a nil valueroutine.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local (sysdir = file.folderFromPath(Frontier.getFilePath()))"/>
+        <outline text="local (guestpath = sysdir + &quot;StartupTasks.root&quot;)"/>
+        <outline text="if not file.exists(guestpath)">
+          <outline text="return &quot;skip&quot;}"/>
+        </outline>
+        <outline text="fileMenu.open(guestpath, true)"/>
+        <outline text="return file.exists(&quot;/tmp&quot;)"/>
+      </outline>
+    </outline>
+    <outline text="efptable stability - string.mid works after guest db open - Verify string processor dispatch after opening a guest database.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: world"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local (sysdir = file.folderFromPath(Frontier.getFilePath()))"/>
+        <outline text="local (guestpath = sysdir + &quot;StartupTasks.root&quot;)"/>
+        <outline text="if not file.exists(guestpath)">
+          <outline text="return &quot;skip&quot;}"/>
+        </outline>
+        <outline text="fileMenu.open(guestpath, true)"/>
+        <outline text="return string.mid(&quot;hello world&quot;, 7, 5)"/>
+      </outline>
+    </outline>
+    <outline text="efptable stability - string.length works after guest db open - Verify string.length() dispatch after database loading.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: 4"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local (sysdir = file.folderFromPath(Frontier.getFilePath()))"/>
+        <outline text="local (guestpath = sysdir + &quot;StartupTasks.root&quot;)"/>
+        <outline text="if not file.exists(guestpath)">
+          <outline text="return &quot;skip&quot;}"/>
+        </outline>
+        <outline text="fileMenu.open(guestpath, true)"/>
+        <outline text="return string.length(&quot;test&quot;)"/>
+      </outline>
+    </outline>
+    <outline text="efptable stability - clock.now works after guest db open - Verify clock processor dispatch after database loading.&#10;clock.now() returns a date; we verify it's defined (non-nil).&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local (sysdir = file.folderFromPath(Frontier.getFilePath()))"/>
+        <outline text="local (guestpath = sysdir + &quot;StartupTasks.root&quot;)"/>
+        <outline text="if not file.exists(guestpath)">
+          <outline text="return &quot;skip&quot;}"/>
+        </outline>
+        <outline text="fileMenu.open(guestpath, true)"/>
+        <outline text="return defined(clock.now())"/>
+      </outline>
+    </outline>
+    <outline text="efptable stability - file.exists works after db.new - Create a fresh database via db.new(), then verify file processor&#10;dispatch still works. No db.close() — the process exits after each&#10;test and the harness cleans up tmp files.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;test_efp_stability.root&quot;)"/>
+        <outline text="if file.exists(dbPath)">
+          <outline text="file.delete(dbPath)}"/>
+        </outline>
+        <outline text="db.new(dbPath)"/>
+        <outline text="return file.exists(&quot;/tmp&quot;)"/>
+      </outline>
+    </outline>
+    <outline text="efptable stability - string.mid works after db.new - Create a fresh database via db.new(), then verify string processor&#10;dispatch still works.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: cd"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local(dbPath = tmpDir + &quot;/&quot; + &quot;test_efp_stability2.root&quot;)"/>
+        <outline text="if file.exists(dbPath)">
+          <outline text="file.delete(dbPath)}"/>
+        </outline>
+        <outline text="db.new(dbPath)"/>
+        <outline text="return string.mid(&quot;abcdef&quot;, 3, 2)"/>
+      </outline>
+    </outline>
+    <outline text="efptable stability - parentOf(string.mid) after guest db open - Verify that parentOf() introspection returns database path (not&#10;EFP internal path) after opening a guest database.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: system.verbs.builtins.string"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local (sysdir = file.folderFromPath(Frontier.getFilePath()))"/>
+        <outline text="local (guestpath = sysdir + &quot;StartupTasks.root&quot;)"/>
+        <outline text="if not file.exists(guestpath)">
+          <outline text="return &quot;skip&quot;}"/>
+        </outline>
+        <outline text="fileMenu.open(guestpath, true)"/>
+        <outline text="return parentOf(string.mid)"/>
+      </outline>
+    </outline>
+    <outline text="efptable stability - defined(file.exists) after guest db open - Verify defined() still resolves processor verbs after database loading.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local (sysdir = file.folderFromPath(Frontier.getFilePath()))"/>
+        <outline text="local (guestpath = sysdir + &quot;StartupTasks.root&quot;)"/>
+        <outline text="if not file.exists(guestpath)">
+          <outline text="return &quot;skip&quot;}"/>
+        </outline>
+        <outline text="fileMenu.open(guestpath, true)"/>
+        <outline text="return defined(file.exists)"/>
+      </outline>
+    </outline>
+    <outline text="efptable stability - dispatch survives multiple guest db opens - Open two different guest databases in sequence, then verify&#10;processor dispatch still works. Tests that repeated database&#10;lifecycle operations don't degrade efptable state.&#10;">
+      <outline text="Metadata">
+        <outline text="expected_result: 10"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local (sysdir = file.folderFromPath(Frontier.getFilePath()))"/>
+        <outline text="local (guestpath1 = sysdir + &quot;StartupTasks.root&quot;)"/>
+        <outline text="local (guestpath2 = sysdir + &quot;test.root&quot;)"/>
+        <outline text="if not file.exists(guestpath1)">
+          <outline text="return &quot;skip&quot;}"/>
+        </outline>
+        <outline text="if not file.exists(guestpath2)">
+          <outline text="return &quot;skip&quot;}"/>
+        </outline>
+        <outline text="fileMenu.open(guestpath1, true)"/>
+        <outline text="fileMenu.open(guestpath2, true)"/>
+        <outline text="return string.length(&quot;cycle test&quot;)"/>
+      </outline>
+    </outline>
+  </body>
+</opml>

@@ -1,0 +1,415 @@
+<?xml version="1.0" ?>
+<opml version="2.0">
+  <head>
+    <title>File Path Security (file_path_security) - 35 tests: 29 pass (82%) 6 skip (17%)</title>
+    <dateCreated>Thu, 16 Apr 2026 06:57:16 GMT</dateCreated>
+  </head>
+  <body>
+    <outline text="path traversal - file.exists with ../ is safe - file.exists on path with ../ should not crash or expose info">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local (tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local (path = tmpDir + &quot;/../../../etc/passwd&quot;)"/>
+        <outline text="return typeOf(file.exists(path)) == booleanType"/>
+      </outline>
+    </outline>
+    <outline text="path traversal - multiple ../ segments - Path with many ../ segments handled safely">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local (path = &quot;/tmp/a/b/c/../../../../etc/shadow&quot;)"/>
+        <outline text="return typeOf(file.exists(path)) == booleanType"/>
+      </outline>
+    </outline>
+    <outline text="path traversal - ../ in middle of path - Embedded ../ in path is handled safely">
+      <outline text="Script">
+        <outline text="local (tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local (path = tmpDir + &quot;/subdir/../testfile_traversal.txt&quot;)"/>
+        <outline text="try">
+          <outline text="file.writeWholeFile(path, &quot;test&quot;)"/>
+          <outline text="local (exists = file.exists(path))"/>
+          <outline text="file.delete(path)"/>
+          <outline text="return &quot;handled&quot;}"/>
+        </outline>
+        <outline text="else">
+          <outline text="return &quot;handled&quot;}"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="path traversal - file.new with ../ parent escape - Creating file via ../ traversal handled safely">
+      <outline text="Script">
+        <outline text="local (tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local (path = tmpDir + &quot;/../traversal_test_security.txt&quot;)"/>
+        <outline text="try">
+          <outline text="file.new(path)"/>
+          <outline text="if file.exists(path)">
+            <outline text="file.delete(path)}"/>
+          </outline>
+          <outline text="return &quot;created&quot;}"/>
+        </outline>
+        <outline text="else">
+          <outline text="return &quot;rejected&quot;}"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="empty path - file.exists should handle safely - Empty string path should return false or error, not crash">
+      <outline text="Metadata">
+        <outline text="skip: BUG: Empty path causes process crash — not catchable by try/else"/>
+      </outline>
+      <outline text="Script">
+        <outline text="try">
+          <outline text="return file.exists(&quot;&quot;)}"/>
+        </outline>
+        <outline text="else">
+          <outline text="return &quot;error caught&quot;}"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="empty path - file.new should reject - Creating file with empty path should fail safely">
+      <outline text="Metadata">
+        <outline text="skip: BUG: Empty path causes process crash — not catchable by try/else"/>
+        <outline text="expected_result: rejected"/>
+      </outline>
+      <outline text="Script">
+        <outline text="try">
+          <outline text="file.new(&quot;&quot;)}"/>
+        </outline>
+        <outline text="else">
+          <outline text="return &quot;rejected&quot;}"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="empty path - file.readWholeFile should reject - Reading file with empty path should fail safely">
+      <outline text="Metadata">
+        <outline text="skip: BUG: Empty path causes process crash — not catchable by try/else"/>
+        <outline text="expected_result: rejected"/>
+      </outline>
+      <outline text="Script">
+        <outline text="try">
+          <outline text="file.readWholeFile(&quot;&quot;)}"/>
+        </outline>
+        <outline text="else">
+          <outline text="return &quot;rejected&quot;}"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="empty path - file.writeWholeFile should reject - Writing file with empty path should fail safely">
+      <outline text="Metadata">
+        <outline text="skip: BUG: Empty path causes process crash — not catchable by try/else"/>
+        <outline text="expected_result: rejected"/>
+      </outline>
+      <outline text="Script">
+        <outline text="try">
+          <outline text="file.writeWholeFile(&quot;&quot;, &quot;data&quot;)}"/>
+        </outline>
+        <outline text="else">
+          <outline text="return &quot;rejected&quot;}"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="empty path - file.delete should reject - Deleting with empty path should fail safely">
+      <outline text="Metadata">
+        <outline text="skip: BUG: Empty path causes process crash — not catchable by try/else"/>
+        <outline text="expected_result: rejected"/>
+      </outline>
+      <outline text="Script">
+        <outline text="try">
+          <outline text="file.delete(&quot;&quot;)}"/>
+        </outline>
+        <outline text="else">
+          <outline text="return &quot;rejected&quot;}"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="long path - 900 char filename - Very long filename (900 chars) — tests OS limits">
+      <outline text="Script">
+        <outline text="local (tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local (longName = string.filledString(&quot;a&quot;, 900))"/>
+        <outline text="local (path = tmpDir + &quot;/&quot; + longName + &quot;.txt&quot;)"/>
+        <outline text="try">
+          <outline text="file.new(path)"/>
+          <outline text="local (exists = file.exists(path))"/>
+          <outline text="if exists">
+            <outline text="file.delete(path)}"/>
+          </outline>
+          <outline text="return &quot;handled&quot;}"/>
+        </outline>
+        <outline text="else">
+          <outline text="return &quot;handled&quot;}"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="long path - deeply nested directories - Path with many directory levels should fail gracefully">
+      <outline text="Script">
+        <outline text="local (path = &quot;/tmp&quot;)"/>
+        <outline text="local (i)"/>
+        <outline text="for i = 1 to 50">
+          <outline text="path = path + &quot;/dir&quot; + i}"/>
+        </outline>
+        <outline text="path = path + &quot;/file.txt&quot;"/>
+        <outline text="try">
+          <outline text="return file.exists(path)}"/>
+        </outline>
+        <outline text="else">
+          <outline text="return &quot;error handled&quot;}"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="special chars - spaces in filename - File operations with spaces in paths">
+      <outline text="Metadata">
+        <outline text="skip: BUG: Spaces in filenames cause process crash in headless mode"/>
+        <outline text="expected_result: content"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local (tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local (path = tmpDir + &quot;/file with spaces.txt&quot;)"/>
+        <outline text="file.writeWholeFile(path, &quot;content&quot;)"/>
+        <outline text="local (data = file.readWholeFile(path))"/>
+        <outline text="file.delete(path)"/>
+        <outline text="return string(data)"/>
+      </outline>
+    </outline>
+    <outline text="special chars - dots in filename - Multiple dots in filename handled correctly">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local (tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local (path = tmpDir + &quot;/file.name.with.dots.txt&quot;)"/>
+        <outline text="file.writeWholeFile(path, &quot;dots&quot;)"/>
+        <outline text="local (exists = file.exists(path))"/>
+        <outline text="file.delete(path)"/>
+        <outline text="return exists"/>
+      </outline>
+    </outline>
+    <outline text="special chars - hyphen and underscore - Hyphens and underscores in paths work correctly">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local (tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local (path = tmpDir + &quot;/test-file_name-2.txt&quot;)"/>
+        <outline text="file.writeWholeFile(path, &quot;test&quot;)"/>
+        <outline text="local (exists = file.exists(path))"/>
+        <outline text="file.delete(path)"/>
+        <outline text="return exists"/>
+      </outline>
+    </outline>
+    <outline text="special chars - single dot path is safe - Single dot path handled safely (refers to current directory)">
+      <outline text="Script">
+        <outline text="try">
+          <outline text="return typeOf(file.exists(&quot;.&quot;)) == booleanType}"/>
+        </outline>
+        <outline text="else">
+          <outline text="return &quot;error handled&quot;}"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="special chars - double dot path is safe - Double dot path handled safely (refers to parent directory)">
+      <outline text="Script">
+        <outline text="try">
+          <outline text="return typeOf(file.exists(&quot;..&quot;)) == booleanType}"/>
+        </outline>
+        <outline text="else">
+          <outline text="return &quot;error handled&quot;}"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="special chars - numeric filename - All-numeric filename works correctly">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local (tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local (path = tmpDir + &quot;/12345&quot;)"/>
+        <outline text="file.writeWholeFile(path, &quot;numeric&quot;)"/>
+        <outline text="local (exists = file.exists(path))"/>
+        <outline text="file.delete(path)"/>
+        <outline text="return exists"/>
+      </outline>
+    </outline>
+    <outline text="special chars - leading dot (hidden file) - Leading dot (hidden file) works correctly">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local (tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local (path = tmpDir + &quot;/.hidden_test_file&quot;)"/>
+        <outline text="file.writeWholeFile(path, &quot;hidden&quot;)"/>
+        <outline text="local (exists = file.exists(path))"/>
+        <outline text="file.delete(path)"/>
+        <outline text="return exists"/>
+      </outline>
+    </outline>
+    <outline text="file.exists - non-existent file returns false - file.exists should return false for missing files, not error">
+      <outline text="Metadata">
+        <outline text="expected_result: false"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local (tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="return file.exists(tmpDir + &quot;/absolutely_does_not_exist_xyz123.txt&quot;)"/>
+      </outline>
+    </outline>
+    <outline text="file.exists - non-existent deep path returns false - file.exists on path with missing parent dirs returns false">
+      <outline text="Metadata">
+        <outline text="expected_result: false"/>
+      </outline>
+      <outline text="Script">
+        <outline text="return file.exists(&quot;/tmp/nonexistent_dir_xyz/subdir/file.txt&quot;)"/>
+      </outline>
+    </outline>
+    <outline text="file.exists - non-existent volume returns false - file.exists on path starting with non-existent mount point returns false">
+      <outline text="Metadata">
+        <outline text="expected_result: false"/>
+      </outline>
+      <outline text="Script">
+        <outline text="return file.exists(&quot;/nonexistent_volume_xyz/test.txt&quot;)"/>
+      </outline>
+    </outline>
+    <outline text="file.exists - very long nonexistent path returns false - file.exists on long nonexistent path returns false safely">
+      <outline text="Metadata">
+        <outline text="expected_result: false"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local (path = &quot;/tmp/&quot; + string.filledString(&quot;x&quot;, 200) + &quot;/file.txt&quot;)"/>
+        <outline text="return file.exists(path)"/>
+      </outline>
+    </outline>
+    <outline text="absolute path - root path exists - Root filesystem path should exist">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="return file.exists(&quot;/&quot;)"/>
+      </outline>
+    </outline>
+    <outline text="absolute path - /tmp exists - /tmp directory should exist on all POSIX systems">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="return file.exists(&quot;/tmp&quot;)"/>
+      </outline>
+    </outline>
+    <outline text="absolute path - write and verify existence - Full absolute path write creates file that exists">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local (tmpDir = &quot;{FRONTIER_TEST_TMP_DIR}&quot;)"/>
+        <outline text="local (path = tmpDir + &quot;/absolute_path_test.txt&quot;)"/>
+        <outline text="file.writeWholeFile(path, &quot;absolute&quot;)"/>
+        <outline text="local (exists = file.exists(path))"/>
+        <outline text="file.delete(path)"/>
+        <outline text="return exists"/>
+      </outline>
+    </outline>
+    <outline text="fileFromPath - path with ../ segments - fileFromPath handles ../ in path without crashing">
+      <outline text="Metadata">
+        <outline text="expected_result: passwd"/>
+      </outline>
+      <outline text="Script">
+        <outline text="return file.fileFromPath(&quot;/tmp/../etc/passwd&quot;)"/>
+      </outline>
+    </outline>
+    <outline text="folderFromPath - path with ../ segments - folderFromPath handles ../ in path without crashing">
+      <outline text="Metadata">
+        <outline text="expected_result: /tmp/../etc/"/>
+      </outline>
+      <outline text="Script">
+        <outline text="return file.folderFromPath(&quot;/tmp/../etc/passwd&quot;)"/>
+      </outline>
+    </outline>
+    <outline text="fileFromPath - empty string is safe - fileFromPath with empty string should not crash">
+      <outline text="Script">
+        <outline text="try">
+          <outline text="return file.fileFromPath(&quot;&quot;)}"/>
+        </outline>
+        <outline text="else">
+          <outline text="return &quot;error handled&quot;}"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="folderFromPath - empty string is safe - folderFromPath with empty string should not crash">
+      <outline text="Script">
+        <outline text="try">
+          <outline text="return file.folderFromPath(&quot;&quot;)}"/>
+        </outline>
+        <outline text="else">
+          <outline text="return &quot;error handled&quot;}"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="fileFromPath - just a slash - fileFromPath on root slash returns slash">
+      <outline text="Metadata">
+        <outline text="expected_result: /"/>
+      </outline>
+      <outline text="Script">
+        <outline text="return file.fileFromPath(&quot;/&quot;)"/>
+      </outline>
+    </outline>
+    <outline text="folderFromPath - just a slash - folderFromPath on root slash returns root">
+      <outline text="Metadata">
+        <outline text="expected_result: /"/>
+      </outline>
+      <outline text="Script">
+        <outline text="return file.folderFromPath(&quot;/&quot;)"/>
+      </outline>
+    </outline>
+    <outline text="restricted path - cannot write to root - Writing to / should fail with permission error">
+      <outline text="Metadata">
+        <outline text="expected_result: rejected"/>
+      </outline>
+      <outline text="Script">
+        <outline text="try">
+          <outline text="file.writeWholeFile(&quot;/test_security_write.txt&quot;, &quot;data&quot;)}"/>
+        </outline>
+        <outline text="else">
+          <outline text="return &quot;rejected&quot;}"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="restricted path - cannot delete system files - Deleting system paths should fail safely">
+      <outline text="Metadata">
+        <outline text="expected_result: rejected"/>
+      </outline>
+      <outline text="Script">
+        <outline text="try">
+          <outline text="file.delete(&quot;/etc/hosts&quot;)}"/>
+        </outline>
+        <outline text="else">
+          <outline text="return &quot;rejected&quot;}"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="restricted path - cannot create file in /etc - Creating files in system directories should fail">
+      <outline text="Metadata">
+        <outline text="expected_result: rejected"/>
+      </outline>
+      <outline text="Script">
+        <outline text="try">
+          <outline text="file.new(&quot;/etc/frontier_security_test.txt&quot;)}"/>
+        </outline>
+        <outline text="else">
+          <outline text="return &quot;rejected&quot;}"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="restricted path - cannot overwrite system file - Overwriting system file should fail">
+      <outline text="Metadata">
+        <outline text="expected_result: rejected"/>
+      </outline>
+      <outline text="Script">
+        <outline text="try">
+          <outline text="file.writeWholeFile(&quot;/etc/hosts&quot;, &quot;malicious data&quot;)}"/>
+        </outline>
+        <outline text="else">
+          <outline text="return &quot;rejected&quot;}"/>
+        </outline>
+      </outline>
+    </outline>
+  </body>
+</opml>

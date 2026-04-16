@@ -1,0 +1,277 @@
+<?xml version="1.0" ?>
+<opml version="2.0">
+  <head>
+    <title>String Ops Extended (string_ops_extended) - 33 tests: 33 pass (100%)</title>
+    <dateCreated>Thu, 16 Apr 2026 06:57:16 GMT</dateCreated>
+  </head>
+  <body>
+    <outline text="string.replaceAll - basic replacement - Replace all occurrences of a substring">
+      <outline text="Metadata">
+        <outline text="expected_result: hi world hi"/>
+      </outline>
+      <outline text="Script">
+        <outline text="string.replaceAll(&quot;hello world hello&quot;, &quot;hello&quot;, &quot;hi&quot;)"/>
+      </outline>
+    </outline>
+    <outline text="string.replaceAll - no match - replaceAll with no matching substring returns original">
+      <outline text="Metadata">
+        <outline text="expected_result: hello world"/>
+      </outline>
+      <outline text="Script">
+        <outline text="string.replaceAll(&quot;hello world&quot;, &quot;xyz&quot;, &quot;abc&quot;)"/>
+      </outline>
+    </outline>
+    <outline text="string.replaceAll - replace with empty - Replace substring with empty string (deletion)">
+      <outline text="Metadata">
+        <outline text="expected_result: hello"/>
+      </outline>
+      <outline text="Script">
+        <outline text="string.replaceAll(&quot;hello world&quot;, &quot; world&quot;, &quot;&quot;)"/>
+      </outline>
+    </outline>
+    <outline text="string.nthField - comma separated first - Extract first field from comma-separated string">
+      <outline text="Metadata">
+        <outline text="expected_result: apple"/>
+      </outline>
+      <outline text="Script">
+        <outline text="string.nthField(&quot;apple,banana,cherry&quot;, &quot;,&quot;, 1)"/>
+      </outline>
+    </outline>
+    <outline text="string.nthField - comma separated middle - Extract middle field">
+      <outline text="Metadata">
+        <outline text="expected_result: banana"/>
+      </outline>
+      <outline text="Script">
+        <outline text="string.nthField(&quot;apple,banana,cherry&quot;, &quot;,&quot;, 2)"/>
+      </outline>
+    </outline>
+    <outline text="string.nthField - comma separated last - Extract last field">
+      <outline text="Metadata">
+        <outline text="expected_result: cherry"/>
+      </outline>
+      <outline text="Script">
+        <outline text="string.nthField(&quot;apple,banana,cherry&quot;, &quot;,&quot;, 3)"/>
+      </outline>
+    </outline>
+    <outline text="string.nthField - space delimiter - Extract field using space delimiter">
+      <outline text="Metadata">
+        <outline text="expected_result: two"/>
+      </outline>
+      <outline text="Script">
+        <outline text="string.nthField(&quot;one two three&quot;, &quot; &quot;, 2)"/>
+      </outline>
+    </outline>
+    <outline text="string.countFields - comma separated - Count comma-separated fields">
+      <outline text="Metadata">
+        <outline text="expected_result: 4"/>
+      </outline>
+      <outline text="Script">
+        <outline text="string.countFields(&quot;a,b,c,d&quot;, &quot;,&quot;)"/>
+      </outline>
+    </outline>
+    <outline text="string.countFields - single field - String with no delimiter has one field">
+      <outline text="Metadata">
+        <outline text="expected_result: 1"/>
+      </outline>
+      <outline text="Script">
+        <outline text="string.countFields(&quot;hello&quot;, &quot;,&quot;)"/>
+      </outline>
+    </outline>
+    <outline text="string.countFields - empty string - Empty string has one field (the empty string itself)">
+      <outline text="Metadata">
+        <outline text="expected_result: 1"/>
+      </outline>
+      <outline text="Script">
+        <outline text="string.countFields(&quot;&quot;, &quot;,&quot;)"/>
+      </outline>
+    </outline>
+    <outline text="string.insert - at beginning - Insert string at beginning (position 0)">
+      <outline text="Metadata">
+        <outline text="expected_result: hello world"/>
+      </outline>
+      <outline text="Script">
+        <outline text="string.insert(&quot;hello &quot;, &quot;world&quot;, 0)"/>
+      </outline>
+    </outline>
+    <outline text="string.insert - in middle - Insert character in the middle">
+      <outline text="Metadata">
+        <outline text="expected_result: hello"/>
+      </outline>
+      <outline text="Script">
+        <outline text="string.insert(&quot;l&quot;, &quot;helo&quot;, 3)"/>
+      </outline>
+    </outline>
+    <outline text="string.delete - from middle - Delete characters from middle of string">
+      <outline text="Metadata">
+        <outline text="expected_result: hello"/>
+      </outline>
+      <outline text="Script">
+        <outline text="string.delete(&quot;hello world&quot;, 6, 6)"/>
+      </outline>
+    </outline>
+    <outline text="string.delete - from beginning - Delete characters from beginning">
+      <outline text="Metadata">
+        <outline text="expected_result: llo"/>
+      </outline>
+      <outline text="Script">
+        <outline text="string.delete(&quot;hello&quot;, 1, 2)"/>
+      </outline>
+    </outline>
+    <outline text="contains - substring found - String contains substring via operator">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="&quot;hello world&quot; contains &quot;world&quot;"/>
+      </outline>
+    </outline>
+    <outline text="contains - substring not found - String does not contain substring">
+      <outline text="Metadata">
+        <outline text="expected_result: false"/>
+      </outline>
+      <outline text="Script">
+        <outline text="&quot;hello world&quot; contains &quot;xyz&quot;"/>
+      </outline>
+    </outline>
+    <outline text="contains - empty substring - Empty substring not found by contains operator">
+      <outline text="Metadata">
+        <outline text="expected_result: false"/>
+      </outline>
+      <outline text="Script">
+        <outline text="&quot;hello&quot; contains &quot;&quot;"/>
+      </outline>
+    </outline>
+    <outline text="string inequality - different strings - Different strings are not equal">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="&quot;hello&quot; != &quot;world&quot;"/>
+      </outline>
+    </outline>
+    <outline text="string inequality - same strings - Same strings are equal, != returns false">
+      <outline text="Metadata">
+        <outline text="expected_result: false"/>
+      </outline>
+      <outline text="Script">
+        <outline text="&quot;hello&quot; != &quot;hello&quot;"/>
+      </outline>
+    </outline>
+    <outline text="concatenation - string and number - Concatenating string with number coerces to string">
+      <outline text="Metadata">
+        <outline text="expected_result: count: 42"/>
+      </outline>
+      <outline text="Script">
+        <outline text="&quot;count: &quot; + 42"/>
+      </outline>
+    </outline>
+    <outline text="concatenation - empty strings - Concatenating empty strings">
+      <outline text="Metadata">
+        <outline text="expected_result: hello"/>
+      </outline>
+      <outline text="Script">
+        <outline text="&quot;&quot; + &quot;&quot; + &quot;hello&quot; + &quot;&quot;"/>
+      </outline>
+    </outline>
+    <outline text="concatenation - multi-step - Building a string incrementally">
+      <outline text="Metadata">
+        <outline text="expected_result: 123"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local (s = &quot;&quot;)"/>
+        <outline text="for i = 1 to 3">
+          <outline text="s = s + lang.string(i)}"/>
+        </outline>
+        <outline text="return s"/>
+      </outline>
+    </outline>
+    <outline text="empty string - length - Empty string has length 0">
+      <outline text="Metadata">
+        <outline text="expected_result: 0"/>
+      </outline>
+      <outline text="Script">
+        <outline text="string.length(&quot;&quot;)"/>
+      </outline>
+    </outline>
+    <outline text="empty string - upper - Upper of empty string is empty">
+      <outline text="Metadata">
+        <outline text="expected_result: "/>
+      </outline>
+      <outline text="Script">
+        <outline text="string.upper(&quot;&quot;)"/>
+      </outline>
+    </outline>
+    <outline text="empty string - equality - Two empty strings are equal">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="&quot;&quot; == &quot;&quot;"/>
+      </outline>
+    </outline>
+    <outline text="string.upper - mixed case - Upper on mixed case string">
+      <outline text="Metadata">
+        <outline text="expected_result: HELLO WORLD"/>
+      </outline>
+      <outline text="Script">
+        <outline text="string.upper(&quot;Hello World&quot;)"/>
+      </outline>
+    </outline>
+    <outline text="string.lower - mixed case - Lower on mixed case string">
+      <outline text="Metadata">
+        <outline text="expected_result: hello world"/>
+      </outline>
+      <outline text="Script">
+        <outline text="string.lower(&quot;Hello World&quot;)"/>
+      </outline>
+    </outline>
+    <outline text="string.upper - already uppercase - Upper on already uppercase string">
+      <outline text="Metadata">
+        <outline text="expected_result: HELLO"/>
+      </outline>
+      <outline text="Script">
+        <outline text="string.upper(&quot;HELLO&quot;)"/>
+      </outline>
+    </outline>
+    <outline text="string.lower - already lowercase - Lower on already lowercase string">
+      <outline text="Metadata">
+        <outline text="expected_result: hello"/>
+      </outline>
+      <outline text="Script">
+        <outline text="string.lower(&quot;hello&quot;)"/>
+      </outline>
+    </outline>
+    <outline text="string.mid - single character - Extract single character via mid">
+      <outline text="Metadata">
+        <outline text="expected_result: l"/>
+      </outline>
+      <outline text="Script">
+        <outline text="string.mid(&quot;hello&quot;, 3, 1)"/>
+      </outline>
+    </outline>
+    <outline text="string.mid - entire string - Extract entire string via mid">
+      <outline text="Metadata">
+        <outline text="expected_result: hello"/>
+      </outline>
+      <outline text="Script">
+        <outline text="string.mid(&quot;hello&quot;, 1, 5)"/>
+      </outline>
+    </outline>
+    <outline text="string.patternMatch - at beginning - Pattern found at beginning returns 1">
+      <outline text="Metadata">
+        <outline text="expected_result: 1"/>
+      </outline>
+      <outline text="Script">
+        <outline text="string.patternMatch(&quot;hello&quot;, &quot;hello world&quot;)"/>
+      </outline>
+    </outline>
+    <outline text="string.patternMatch - empty pattern - Empty pattern match returns 0 (no match)">
+      <outline text="Metadata">
+        <outline text="expected_result: 0"/>
+      </outline>
+      <outline text="Script">
+        <outline text="string.patternMatch(&quot;&quot;, &quot;hello&quot;)"/>
+      </outline>
+    </outline>
+  </body>
+</opml>

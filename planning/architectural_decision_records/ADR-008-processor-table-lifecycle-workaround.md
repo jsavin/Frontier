@@ -1,10 +1,10 @@
 # ADR-008: Processor Table Lifecycle Workaround
 
-**Status**: `[IMPLEMENTED]` - Temporary workaround in place (proper fix deferred to Phase 6+, PR #291)
-**Date**: 2026-01-12
+**Status**: `[SUPERSEDED]` - Workaround removed. Global efptable eliminated via static isolation with accessor functions (Issue #292).
+**Date**: 2026-01-12 (superseded 2026-04-15)
 **Author**: System Architect
 **Relates to**: Issue #135 (Collaborative ODB), ADR-005 (Thread-Safety)
-**Note**: TEMPORARY SOLUTION - will be replaced with explicit processor context in Phase 6+
+**Superseded by**: Issue #292 — efptable converted from extern global to module-private static with `get_efptable()`/`set_efptable()` accessor functions and backward-compatible `#define efptable (get_efptable())` macro. The `save_headless_efptable()`/`get_headless_efptable()` workaround was dead code (caller removed in Issue #352) and has been deleted.
 
 ## Executive Summary
 
