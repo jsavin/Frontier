@@ -1,3 +1,5 @@
+needs_guest_dbs: true  # Opens StartupTasks.root, test.root via fileMenu.open
+
 # Integration tests for efptable stability across database operations
 #
 # CONTEXT: Issue #292 — efptable refactored from extern global to module-private

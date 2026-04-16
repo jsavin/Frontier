@@ -1,3 +1,5 @@
+protocol_mode: false  # Window verbs may block waiting for UI interaction
+
 # Integration tests for window.isOpen() in headless mode
 #
 # window.isOpen(x) checks if a database "window" is open. In headless mode,

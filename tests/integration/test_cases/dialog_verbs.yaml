@@ -1,3 +1,5 @@
+sequential: true  # REPL stdin piping is fragile under parallel workers
+
 # Dialog Verb Integration Tests
 #
 # Tests for dialog verbs in both interactive (PTY) and batch modes.

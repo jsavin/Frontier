@@ -1,3 +1,5 @@
+needs_guest_dbs: true  # Opens mainResponder.root, StartupTasks.root via fileMenu.open
+
 # Integration tests for guest database external loading
 #
 # These tests verify that non-table external types (scripts, outlines, WP text)

@@ -238,6 +238,8 @@ Use those rules as mandatory baseline guidance.
 Cross-agent test requirements (including integration test expectations for verb changes) now live in `docs/AI_SHARED_GUIDELINES.md`.
 For Frontier-specific test patterns and command details, also see `docs/TESTING_GUIDE.md`.
 
+**Integration test file metadata**: New test files that open guest databases must set `needs_guest_dbs: true` at the YAML root level. Tests with port conflicts or REPL dependencies must set `sequential: true`. See `docs/TESTING_GUIDE.md` "File-Level Metadata" for details.
+
 ---
 
 ## Architectural Anti-Patterns

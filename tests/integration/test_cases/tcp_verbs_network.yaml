@@ -1,3 +1,5 @@
+sequential: true  # Port conflicts between parallel workers
+
 # Integration tests for TCP Phase 1A - Client Networking Verbs
 # All tests are self-contained using localhost (tcp.listenStream + tcp.openStream/openAddrStream)
 # No external network dependencies.
