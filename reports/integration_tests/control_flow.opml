@@ -1,0 +1,403 @@
+<?xml version="1.0" ?>
+<opml version="2.0">
+  <head>
+    <title>Control Flow (control_flow) - 27 tests: 27 pass (100%)</title>
+    <dateCreated>Thu, 16 Apr 2026 06:57:16 GMT</dateCreated>
+  </head>
+  <body>
+    <outline text="if - true branch - if with true condition executes body">
+      <outline text="Metadata">
+        <outline text="expected_result: yes"/>
+      </outline>
+      <outline text="Script">
+        <outline text="if true">
+          <outline text="return &quot;yes&quot;}"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="if/else - false takes else branch - if with false condition executes else body">
+      <outline text="Metadata">
+        <outline text="expected_result: no"/>
+      </outline>
+      <outline text="Script">
+        <outline text="if false">
+          <outline text="return &quot;yes&quot;}"/>
+        </outline>
+        <outline text="else">
+          <outline text="return &quot;no&quot;}"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="if/else - numeric comparison - if with numeric comparison">
+      <outline text="Metadata">
+        <outline text="expected_result: big"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local (x = 10)"/>
+        <outline text="if x &gt; 5">
+          <outline text="return &quot;big&quot;}"/>
+        </outline>
+        <outline text="else">
+          <outline text="return &quot;small&quot;}"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="if/else/if - first branch - Nested if/else takes first matching branch">
+      <outline text="Metadata">
+        <outline text="expected_result: one"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local (x = 1)"/>
+        <outline text="if x == 1">
+          <outline text="return &quot;one&quot;}"/>
+        </outline>
+        <outline text="else">
+          <outline text="if x == 2">
+            <outline text="return &quot;two&quot;}"/>
+          </outline>
+          <outline text="else">
+            <outline text="return &quot;other&quot;}}"/>
+          </outline>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="if/else/if - middle branch - Nested if/else takes second branch">
+      <outline text="Metadata">
+        <outline text="expected_result: two"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local (x = 2)"/>
+        <outline text="if x == 1">
+          <outline text="return &quot;one&quot;}"/>
+        </outline>
+        <outline text="else">
+          <outline text="if x == 2">
+            <outline text="return &quot;two&quot;}"/>
+          </outline>
+          <outline text="else">
+            <outline text="return &quot;other&quot;}}"/>
+          </outline>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="if/else/if - fallthrough to else - Nested if/else falls to final else">
+      <outline text="Metadata">
+        <outline text="expected_result: other"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local (x = 99)"/>
+        <outline text="if x == 1">
+          <outline text="return &quot;one&quot;}"/>
+        </outline>
+        <outline text="else">
+          <outline text="if x == 2">
+            <outline text="return &quot;two&quot;}"/>
+          </outline>
+          <outline text="else">
+            <outline text="return &quot;other&quot;}}"/>
+          </outline>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="for - count to 5 - for i = 1 to 5 accumulates sum">
+      <outline text="Metadata">
+        <outline text="expected_result: 15"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local (sum = 0)"/>
+        <outline text="for i = 1 to 5">
+          <outline text="sum = sum + i}"/>
+        </outline>
+        <outline text="return sum"/>
+      </outline>
+    </outline>
+    <outline text="for - single iteration - for i = 1 to 1 executes exactly once">
+      <outline text="Metadata">
+        <outline text="expected_result: 1"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local (count = 0)"/>
+        <outline text="for i = 1 to 1">
+          <outline text="count = count + 1}"/>
+        </outline>
+        <outline text="return count"/>
+      </outline>
+    </outline>
+    <outline text="for - zero iterations when start &gt; end - for i = 5 to 1 executes zero times">
+      <outline text="Metadata">
+        <outline text="expected_result: 0"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local (count = 0)"/>
+        <outline text="for i = 5 to 1">
+          <outline text="count = count + 1}"/>
+        </outline>
+        <outline text="return count"/>
+      </outline>
+    </outline>
+    <outline text="for..in - iterate table items - for..in iterates over address items in a table">
+      <outline text="Metadata">
+        <outline text="expected_result: 6"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local (t); new(tableType, @t)"/>
+        <outline text="t.a = 1; t.b = 2; t.c = 3"/>
+        <outline text="local (sum = 0)"/>
+        <outline text="local (adr)"/>
+        <outline text="for adr in @t">
+          <outline text="sum = sum + adr^}"/>
+        </outline>
+        <outline text="return sum"/>
+      </outline>
+    </outline>
+    <outline text="while - count to 5 - while loop counting to 5">
+      <outline text="Metadata">
+        <outline text="expected_result: 5"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local (i = 0)"/>
+        <outline text="while i &lt; 5">
+          <outline text="i = i + 1}"/>
+        </outline>
+        <outline text="return i"/>
+      </outline>
+    </outline>
+    <outline text="while - false condition never executes - while with initially false condition">
+      <outline text="Metadata">
+        <outline text="expected_result: 0"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local (x = 0)"/>
+        <outline text="while false">
+          <outline text="x = 99}"/>
+        </outline>
+        <outline text="return x"/>
+      </outline>
+    </outline>
+    <outline text="loop/break - exit on condition - loop with conditional break">
+      <outline text="Metadata">
+        <outline text="expected_result: 3"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local (i = 0)"/>
+        <outline text="loop">
+          <outline text="i = i + 1"/>
+          <outline text="if i == 3">
+            <outline text="break}}"/>
+          </outline>
+        </outline>
+        <outline text="return i"/>
+      </outline>
+    </outline>
+    <outline text="loop/break - immediate break - loop that breaks immediately">
+      <outline text="Metadata">
+        <outline text="expected_result: 0"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local (x = 0)"/>
+        <outline text="loop">
+          <outline text="break}"/>
+        </outline>
+        <outline text="return x"/>
+      </outline>
+    </outline>
+    <outline text="case - match first - case matches first value">
+      <outline text="Metadata">
+        <outline text="expected_result: fruit"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local (x = &quot;apple&quot;)"/>
+        <outline text="case x">
+          <outline text="&quot;apple&quot;">
+            <outline text="return &quot;fruit&quot;}"/>
+          </outline>
+          <outline text="&quot;carrot&quot;">
+            <outline text="return &quot;vegetable&quot;}}"/>
+          </outline>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="case - match second - case matches second value">
+      <outline text="Metadata">
+        <outline text="expected_result: vegetable"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local (x = &quot;carrot&quot;)"/>
+        <outline text="case x">
+          <outline text="&quot;apple&quot;">
+            <outline text="return &quot;fruit&quot;}"/>
+          </outline>
+          <outline text="&quot;carrot&quot;">
+            <outline text="return &quot;vegetable&quot;}}"/>
+          </outline>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="case - numeric values - case with numeric matching">
+      <outline text="Metadata">
+        <outline text="expected_result: two"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local (x = 2)"/>
+        <outline text="case x">
+          <outline text="1">
+            <outline text="return &quot;one&quot;}"/>
+          </outline>
+          <outline text="2">
+            <outline text="return &quot;two&quot;}"/>
+          </outline>
+          <outline text="3">
+            <outline text="return &quot;three&quot;}}"/>
+          </outline>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="nested for loops - Nested for loops multiply iterations">
+      <outline text="Metadata">
+        <outline text="expected_result: 12"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local (count = 0)"/>
+        <outline text="for i = 1 to 3">
+          <outline text="for j = 1 to 4">
+            <outline text="count = count + 1}}"/>
+          </outline>
+        </outline>
+        <outline text="return count"/>
+      </outline>
+    </outline>
+    <outline text="nested while loops - Nested while loops">
+      <outline text="Metadata">
+        <outline text="expected_result: 6"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local (sum = 0)"/>
+        <outline text="local (i = 0)"/>
+        <outline text="while i &lt; 3">
+          <outline text="local (j = 0)"/>
+          <outline text="while j &lt; 2">
+            <outline text="sum = sum + 1"/>
+            <outline text="j = j + 1}"/>
+          </outline>
+          <outline text="i = i + 1}"/>
+        </outline>
+        <outline text="return sum"/>
+      </outline>
+    </outline>
+    <outline text="return from for loop - return inside a for loop exits immediately">
+      <outline text="Metadata">
+        <outline text="expected_result: found 3"/>
+      </outline>
+      <outline text="Script">
+        <outline text="for i = 1 to 10">
+          <outline text="if i == 3">
+            <outline text="return &quot;found &quot; + i}}"/>
+          </outline>
+        </outline>
+        <outline text="return &quot;not found&quot;"/>
+      </outline>
+    </outline>
+    <outline text="return from while loop - return inside a while loop exits immediately">
+      <outline text="Metadata">
+        <outline text="expected_result: 5"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local (i = 0)"/>
+        <outline text="while true">
+          <outline text="i = i + 1"/>
+          <outline text="if i == 5">
+            <outline text="return i}}"/>
+          </outline>
+        </outline>
+        <outline text="return 0"/>
+      </outline>
+    </outline>
+    <outline text="try/else - no error passes through - try block with no error skips else">
+      <outline text="Metadata">
+        <outline text="expected_result: ok"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local (result = &quot;ok&quot;)"/>
+        <outline text="try">
+          <outline text="local (x = 1 + 1)}"/>
+        </outline>
+        <outline text="else">
+          <outline text="result = &quot;error&quot;}"/>
+        </outline>
+        <outline text="return result"/>
+      </outline>
+    </outline>
+    <outline text="try/else - error caught and recovered - try/else catches error and allows recovery">
+      <outline text="Metadata">
+        <outline text="expected_result: caught"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local (result = &quot;&quot;)"/>
+        <outline text="try">
+          <outline text="scriptError(&quot;boom&quot;)}"/>
+        </outline>
+        <outline text="else">
+          <outline text="result = &quot;caught&quot;}"/>
+        </outline>
+        <outline text="return result"/>
+      </outline>
+    </outline>
+    <outline text="try/else - in loop continues after catch - try/else inside a loop allows iteration to continue">
+      <outline text="Metadata">
+        <outline text="expected_result: 2"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local (errors = 0)"/>
+        <outline text="for i = 1 to 5">
+          <outline text="try">
+            <outline text="if (i == 3) or (i == 5)">
+              <outline text="scriptError(&quot;bad&quot;)}}"/>
+            </outline>
+          </outline>
+          <outline text="else">
+            <outline text="errors = errors + 1}}"/>
+          </outline>
+        </outline>
+        <outline text="return errors"/>
+      </outline>
+    </outline>
+    <outline text="if - and condition - if with and operator">
+      <outline text="Metadata">
+        <outline text="expected_result: in range"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local (x = 5)"/>
+        <outline text="if (x &gt; 3) and (x &lt; 10)">
+          <outline text="return &quot;in range&quot;}"/>
+        </outline>
+        <outline text="else">
+          <outline text="return &quot;out of range&quot;}"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="if - or condition - if with or operator">
+      <outline text="Metadata">
+        <outline text="expected_result: match"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local (x = 1)"/>
+        <outline text="if (x == 1) or (x == 2)">
+          <outline text="return &quot;match&quot;}"/>
+        </outline>
+        <outline text="else">
+          <outline text="return &quot;no match&quot;}"/>
+        </outline>
+      </outline>
+    </outline>
+    <outline text="if - not condition - if with not operator">
+      <outline text="Metadata">
+        <outline text="expected_result: negated"/>
+      </outline>
+      <outline text="Script">
+        <outline text="if not false">
+          <outline text="return &quot;negated&quot;}"/>
+        </outline>
+      </outline>
+    </outline>
+  </body>
+</opml>
