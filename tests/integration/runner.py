@@ -587,9 +587,11 @@ class ProtocolExecutor:
 # These sets are kept as fallback for files that haven't been updated yet.
 SEQUENTIAL_TEST_FILES = {
     'tcp_verbs_network.yaml',
-    'webserver_verbs.yaml',
     'dialog_verbs.yaml',
     'file_dialog_verbs.yaml',
+    # Note: webserver_verbs.yaml was listed here but never existed.
+    # webserver_hello_world.yaml and webserver_http_roundtrip_tests.yaml
+    # now use the sequential: true YAML flag instead.
 }
 
 NON_PROTOCOL_TEST_FILES = {
@@ -612,7 +614,7 @@ def load_file_metadata(yaml_path: str) -> dict:
       protocol_mode: bool   - Use NDJSON protocol executor (default: true)
     """
     try:
-        with open(yaml_path) as f:
+        with open(yaml_path, encoding='utf-8') as f:
             data = yaml.safe_load(f)
         if not isinstance(data, dict):
             return {}
@@ -621,7 +623,9 @@ def load_file_metadata(yaml_path: str) -> dict:
             'needs_guest_dbs': data.get('needs_guest_dbs', False),
             'protocol_mode': data.get('protocol_mode', True),
         }
-    except Exception:
+    except yaml.YAMLError as e:
+        print(f"Warning: failed to parse YAML metadata from {yaml_path}: {e}",
+              file=sys.stderr)
         return {}
 
 
