@@ -1,8 +1,8 @@
 <?xml version="1.0" ?>
 <opml version="2.0">
   <head>
-    <title>Sys Processor Tests (sys_processor_tests) - 52 tests: 48 pass (92%) 4 skip (7%)</title>
-    <dateCreated>Tue, 14 Apr 2026 07:45:49 GMT</dateCreated>
+    <title>Sys Processor Tests (sys_processor_tests) - 52 tests: 46 pass (88%) 6 skip (11%)</title>
+    <dateCreated>Thu, 16 Apr 2026 07:48:18 GMT</dateCreated>
   </head>
   <body>
     <outline text="sys.osversion - returns OS version string - Get OS version - returns distribution on Linux, sw_vers on macOS">
@@ -395,6 +395,7 @@
     </outline>
     <outline text="sys.openUrl - returns boolean type - openUrl should return a boolean regardless of fork outcome">
       <outline text="Metadata">
+        <outline text="skip: sys.openUrl not implemented"/>
         <outline text="expected_result: bool"/>
       </outline>
       <outline text="Script">
@@ -411,6 +412,7 @@
     </outline>
     <outline text="sys.openUrl - number coerced to string succeeds - Passing a number coerces to string; fork succeeds even for non-URL">
       <outline text="Metadata">
+        <outline text="skip: sys.openUrl not implemented"/>
         <outline text="expected_result: bool"/>
       </outline>
       <outline text="Script">

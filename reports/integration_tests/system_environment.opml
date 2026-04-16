@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>System Environment (system_environment) - 12 tests: 12 pass (100%)</title>
-    <dateCreated>Sun, 15 Feb 2026 09:46:41 GMT</dateCreated>
+    <dateCreated>Thu, 16 Apr 2026 07:48:18 GMT</dateCreated>
   </head>
   <body>
     <outline text="system.environment.isMac - matches sys.os - isMac should be true when sys.os() returns MacOS">
@@ -65,17 +65,12 @@
         </outline>
       </outline>
     </outline>
-    <outline text="system.environment.isCarbon - true on macOS - isCarbon should be true on macOS for backward compat with legacy scripts">
+    <outline text="system.environment.isCarbon - false in headless mode - isCarbon is false in headless mode (Carbon APIs not used in CLI build)">
       <outline text="Metadata">
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
-        <outline text="if sys.os() == &quot;MacOS&quot;">
-          <outline text="return system.environment.isCarbon}"/>
-        </outline>
-        <outline text="else">
-          <outline text="return not system.environment.isCarbon}"/>
-        </outline>
+        <outline text="return not system.environment.isCarbon"/>
       </outline>
     </outline>
     <outline text="system.environment.isFrontier - always true - isFrontier should always be true">

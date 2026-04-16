@@ -1,8 +1,8 @@
 <?xml version="1.0" ?>
 <opml version="2.0">
   <head>
-    <title>Error Recovery Concurrency Tests (error_recovery_concurrency_tests) - 13 tests: 13 pass (100%)</title>
-    <dateCreated>Tue, 14 Apr 2026 07:45:49 GMT</dateCreated>
+    <title>Error Recovery Concurrency Tests (error_recovery_concurrency_tests) - 13 tests: 12 pass (92%) 1 skip (7%)</title>
+    <dateCreated>Thu, 16 Apr 2026 07:48:17 GMT</dateCreated>
   </head>
   <body>
     <outline text="error mid-transaction - first setvalue persists, second does not - Verify that when scriptError fires between two db.setvalue calls inside&#10;a try block, the first setvalue's effect persists but the second never&#10;executes. Uses system.temp as scratchpad.&#10;">
@@ -29,6 +29,7 @@
     </outline>
     <outline text="error mid-transaction - error in nested function call - Verify partial state consistency when error occurs inside a nested call.&#10;The outer script sets val1, calls a helper that errors, val2 never set.&#10;">
       <outline text="Metadata">
+        <outline text="skip: script.newScriptObject glue not implemented (#298)"/>
         <outline text="expected_result: true"/>
         <outline text="timeout: 5"/>
       </outline>
