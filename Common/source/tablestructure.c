@@ -116,23 +116,19 @@ hdlhashtable systemtable = nil;
 
 hdlhashtable internaltable = nil;
 
-hdlhashtable efptable = nil;
+/* Issue #292: efptable is module-private static with accessor functions.
+   Processor table is shared, read-only state (created once at startup).
+   The compatibility macro in tablestructure.h (#define efptable (get_efptable()))
+   means all read sites work unchanged. Only write sites use set_efptable(). */
+static hdlhashtable s_efptable = nil;
 
-#if defined(FRONTIER_HEADLESS)
-/* 2026-01-12 Codex: Save reference to headless-created efptable before database loading.
-   When database is loaded, efptable gets overwritten with tokenvaluetype entries from database.
-   We need to preserve the original headless-created table with working valueroutines. */
-static hdlhashtable headless_efptable_original = nil;
-
-void save_headless_efptable(void) {
-    headless_efptable_original = efptable;
-    log_debug(LOG_COMP_LANG, "save_headless_efptable: saved efptable=%p", (void*)efptable);
+hdlhashtable get_efptable(void) {
+    return s_efptable;
 }
 
-hdlhashtable get_headless_efptable(void) {
-    return headless_efptable_original;
+void set_efptable(hdlhashtable ht) {
+    s_efptable = ht;
 }
-#endif
 
 hdlhashtable langtable = nil;
 

@@ -719,8 +719,12 @@ boolean inittablestructure (void) {
 	if (!tablenewsystemtable (htable, nameinternaltable, &internaltable))
 		goto error;
 	
-	if (!tablenewsystemtable (internaltable, nameefptable, &efptable))
-		goto error;
+	{
+		hdlhashtable hefp;
+		if (!tablenewsystemtable (internaltable, nameefptable, &hefp))
+			goto error;
+		set_efptable (hefp);
+	}
 	
 	if (!tablenewsystemtable (internaltable, namelangtable, &langtable))
 		goto error;
@@ -762,7 +766,8 @@ boolean inittablestructure (void) {
 	
 	disposehashtable (htable, false);
 	
-	internaltable = efptable = langtable = runtimestacktable = semaphoretable = threadtable = filewindowtable = environmenttable = nil;
+	internaltable = langtable = runtimestacktable = semaphoretable = threadtable = filewindowtable = environmenttable = nil;
+	set_efptable (nil);
 	
 	return (false);
 	} /*inittablestructure*/

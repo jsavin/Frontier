@@ -148,7 +148,12 @@ extern hdlhashtable internaltable;
 
 extern hdlhashtable systemtable;
 
-extern hdlhashtable efptable;
+/* Issue #292: efptable is module-private in tablestructure.c.
+   Use get_efptable()/set_efptable() for access. The macro below
+   provides backward compatibility for read sites. */
+extern hdlhashtable get_efptable(void);
+extern void set_efptable(hdlhashtable);
+#define efptable (get_efptable())
 
 extern hdlhashtable langtable;
 
