@@ -126,6 +126,7 @@ hdlhashtable get_efptable(void) {
     return s_efptable;
 }
 
+/* Should only be called during startup initialization (inittablestructure). */
 void set_efptable(hdlhashtable ht) {
     s_efptable = ht;
 }
@@ -1208,7 +1209,7 @@ boolean cleartablestructureglobals (void) {
 	
 	internaltable = nil;
 	
-	efptable = nil;
+	set_efptable (nil);
 	
 	langtable = nil;
 	
