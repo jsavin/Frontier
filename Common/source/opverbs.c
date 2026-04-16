@@ -65,7 +65,7 @@
 #include "opbuttons.h"
 #include "file.h" // 2006-09-17 creedon
 #include "db_format.h"
-#include "dbinternal.h"  /* 2026-01-29: For sizeheader in payload offset calculation */
+#include "dbinternal.h"  /* 2026-01-29: For db_hdb_header_size in payload offset calculation */
 #include "logging.h"
 #include "op_context.h"
 
@@ -619,39 +619,26 @@ boolean opverbinmemory (const db_context *ctx, hdlexternalvariable hvariable) {
 	 * We need to normalize to block start for dbrefhandle, then trim the leading
 	 * bytes after reading. Pattern copied from tableexternal_common.c:351-388.
 	 *
-	 * 2026-02-17: Only normalize when the context database matches the global
-	 * databasedata. dbnormalizeaddress scans the global's block structure — if the
-	 * context targets a guest database while the global points to the system root,
-	 * normalization remaps the address against the wrong file, producing garbage reads.
+	 * 2026-04-03: Use dbnormalizeaddress_hdb with ctx->database directly.
+	 * This eliminates the legacy dbnormalizeaddress call and the ctx_matches_global
+	 * check against the databasedata global. Same pattern as tableverbinmemory_common.
 	 */
 	long payload_offset = 0;
+#if defined(FRONTIER_HEADLESS)
 	{
-		boolean ctx_matches_global = (ctx == NULL || ctx->database == nil || ctx->database == databasedata);
-
-		if (ctx_matches_global) {
-			dbaddress normalized = adr;
-			if (dbnormalizeaddress(&normalized)) {
-				if (normalized != adr) {
-					dbaddress data_start = normalized + sizeheader;
-					if (adr > data_start)
-						payload_offset = (long) (adr - data_start);
-					adr = normalized;
-				}
+		hdldatabaserecord hdb = (ctx != NULL) ? ctx->database : nil;
+		dbaddress normalized = adr;
+		if (dbnormalizeaddress_hdb(&normalized, hdb)) { /* returns false for nil hdb */
+			if (normalized != adr) {
+				long hs = db_hdb_header_size(hdb);
+				dbaddress data_start = normalized + hs;
+				if (adr > data_start)
+					payload_offset = (long) (adr - data_start);
+				adr = normalized;
 			}
 		}
-		else {
-			/*
-			Guest database externals do not use interior addresses. External
-			addresses in the ODB always point to block headers (the start of
-			an allocated block), not to offsets within a block's data area.
-			Interior addresses only arise from dbnormalizeaddress remapping,
-			which we intentionally skip here. If a future format stores
-			interior addresses directly, a dbnormalizeaddress_fnum that scans
-			the correct file would be needed.
-			*/
-			log_trace(LOG_COMP_DB, "opverbinmemory: skipping dbnormalizeaddress for guest database (ctx->database != databasedata)");
-		}
 	}
+#endif /* FRONTIER_HEADLESS */
 
 	/* Read with explicit context - NO global state changes */
 	fl = dbrefhandle_context (ctx, adr, &hpackedoutline);

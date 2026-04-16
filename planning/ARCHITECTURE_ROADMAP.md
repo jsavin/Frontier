@@ -156,22 +156,22 @@ operation -- a fragile save/swap/restore pattern that breaks on error paths and
 at GIL yield points.
 
 Phases 1-7 of the `databasedata` elimination roadmap (PRs #448, #451, #452,
-#453) already removed all save/swap/restore from the wrapper layer. Remaining
-work is in Tiers 1-2 of `planning/phase4/DATABASEDATA_ELIMINATION_ROADMAP.md`.
+#453) already removed all save/swap/restore from the wrapper layer. Tiers 1-2
+are now complete; remaining work is 3C (globals migration) and 3D (deferred).
 
 ### Approach
 
 The existing execution plan (`planning/phase3/DB_CONTEXT_REFACTORING_EXECUTION_PLAN.md`, 1850+ lines) lays out four sub-phases. Given the progress already made, the remaining work maps to:
 
-**3A: Finish db.c leaf functions (Tier 1)**
-- Create `dbflushheader_hdb()` so `dbclearshadowavaillist_hdb` stops swapping `databasedata`.
-- Create `dbnormalizeaddress_hdb()` threading `hdb` through to existing `_fnum` variants.
-- Add runtime guard (`log_error` + early return) in `db_context_fnum()`.
+**3A: Finish db.c leaf functions (Tier 1)** -- COMPLETE
+- ~~Create `dbflushheader_hdb()` so `dbclearshadowavaillist_hdb` stops swapping `databasedata`.~~
+- ~~Create `dbnormalizeaddress_hdb()` threading `hdb` through to existing `_fnum` variants.~~
+- ~~Add runtime guard (`log_error` + early return) in `db_context_fnum()`.~~
 
-**3B: Eliminate runtime save/swap/restore (Tier 2)**
-- `tableverbinmemory_common` -- replace inline swap with `dbnormalizeaddress_hdb`.
-- `langexternaldisposevalue` / `externaldispose` -- thread `hdb` through disposal chain.
-- `opverbinmemory` -- use `dbnormalizeaddress_hdb` for clean path.
+**3B: Eliminate runtime save/swap/restore (Tier 2)** -- COMPLETE
+- ~~`tableverbinmemory_common` -- replace inline swap with `dbnormalizeaddress_hdb`.~~
+- ~~`langexternaldisposevalue` / `externaldispose` -- thread `hdb` through disposal chain.~~
+- ~~`opverbinmemory` -- use `dbnormalizeaddress_hdb` for clean path.~~ (2026-04-03)
 
 **3C: Migrate remaining globals to thread-local or explicit context**
 - `rootvariable` and `roottable` -- add to `tythreadglobals` or embed in `odb_runtime_context`.
@@ -200,11 +200,11 @@ The existing execution plan (`planning/phase3/DB_CONTEXT_REFACTORING_EXECUTION_P
 
 ### Estimated Effort
 
-- Tiers 1-2 (3A + 3B): 8-16 hours
+- ~~Tiers 1-2 (3A + 3B): 8-16 hours~~ COMPLETE
 - 3C (rootvariable/roottable migration): 8-16 hours
 - 3D (full elimination, deferred): 16-40 hours
 
-Total: 40-80 hours as estimated in #274, but front-loaded work (3A+3B) delivers the most safety value.
+Total: 40-80 hours as estimated in #274, but front-loaded work (3A+3B) is complete. Remaining: 3C+3D.
 
 ## Phase 4: Processor Table (`efptable`) Lifecycle (#292)
 
