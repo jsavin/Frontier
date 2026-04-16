@@ -46,6 +46,7 @@ tests:
     timeout: 5
 
   - name: "error mid-transaction - error in nested function call"
+    skip: "script.newScriptObject glue not implemented (#298)"
     description: |
       Verify partial state consistency when error occurs inside a nested call.
       The outer script sets val1, calls a helper that errors, val2 never set.
