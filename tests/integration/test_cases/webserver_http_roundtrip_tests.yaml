@@ -1,3 +1,5 @@
+sequential: true  # Binds to TCP port — conflicts between parallel workers
+
 # Integration tests for Webserver HTTP Round-Trip (Gap #9)
 #
 # Tests the HTTP request -> server dispatch -> responder -> HTTP response path.

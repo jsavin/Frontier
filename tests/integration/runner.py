@@ -582,18 +582,51 @@ class ProtocolExecutor:
         return self._proc is not None and self._proc.poll() is None
 
 
-# Test files that must run sequentially (port conflicts or shared resources)
+# Deprecated: Hardcoded per-file behavior sets.
+# Prefer YAML-level metadata flags (sequential, needs_guest_dbs, protocol_mode).
+# These sets are kept as fallback for files that haven't been updated yet.
 SEQUENTIAL_TEST_FILES = {
     'tcp_verbs_network.yaml',
-    'webserver_verbs.yaml',
-    'dialog_verbs.yaml',        # REPL stdin piping is fragile under parallel workers
-    'file_dialog_verbs.yaml',   # REPL stdin piping is fragile under parallel workers
+    'dialog_verbs.yaml',
+    'file_dialog_verbs.yaml',
+    # Note: webserver_verbs.yaml was listed here but never existed.
+    # webserver_hello_world.yaml and webserver_http_roundtrip_tests.yaml
+    # now use the sequential: true YAML flag instead.
 }
 
-# Test files that should NOT use protocol mode (they hang or need special process behavior)
 NON_PROTOCOL_TEST_FILES = {
-    'window_verbs.yaml',      # window verbs may block waiting for UI interaction
+    'window_verbs.yaml',
 }
+
+# Legacy set — replaced by needs_guest_dbs YAML flag.
+NEEDS_GUEST_DBS = {
+    'guest_db_externals.yaml',
+    'efptable_stability.yaml',
+}
+
+
+def load_file_metadata(yaml_path: str) -> dict:
+    """Read file-level metadata from a YAML test file.
+
+    Supported keys (all optional):
+      sequential: bool      - Run in main process, not parallel worker (default: false)
+      needs_guest_dbs: bool - Copy sibling .root files + Guest Databases/ to worker (default: false)
+      protocol_mode: bool   - Use NDJSON protocol executor (default: true)
+    """
+    try:
+        with open(yaml_path, encoding='utf-8') as f:
+            data = yaml.safe_load(f)
+        if not isinstance(data, dict):
+            return {}
+        return {
+            'sequential': data.get('sequential', False),
+            'needs_guest_dbs': data.get('needs_guest_dbs', False),
+            'protocol_mode': data.get('protocol_mode', True),
+        }
+    except yaml.YAMLError as e:
+        print(f"Warning: failed to parse YAML metadata from {yaml_path}: {e}",
+              file=sys.stderr)
+        return {}
 
 
 def _is_protocol_compatible(test: 'TestCase') -> bool:
@@ -651,6 +684,9 @@ def _run_file_worker(args: tuple) -> dict:
     """
     yaml_path, cli_path, system_root, test_root_dir, protocol_batch, verbose, worker_id = args
 
+    # Load file-level metadata (sequential, needs_guest_dbs, protocol_mode)
+    meta = load_file_metadata(yaml_path)
+
     # Set up per-worker temp dir
     worker_tmp = os.path.join(test_root_dir, 'tmp', 'integration', f'worker_{worker_id}')
     os.makedirs(worker_tmp, exist_ok=True)
@@ -665,11 +701,9 @@ def _run_file_worker(args: tuple) -> dict:
         worker_system_root = worker_db_path
 
         # Copy sibling .root files and Guest Databases/ for tests that
-        # open guest databases. Files that use fileMenu.open() or reference
-        # paths relative to Frontier.getFilePath() need these alongside the
-        # copied system root.
-        NEEDS_GUEST_DBS = {'guest_db_externals.yaml', 'efptable_stability.yaml'}
-        if os.path.basename(yaml_path) in NEEDS_GUEST_DBS:
+        # open guest databases. Controlled by needs_guest_dbs YAML flag
+        # (with hardcoded NEEDS_GUEST_DBS set as deprecated fallback).
+        if meta.get('needs_guest_dbs', False) or os.path.basename(yaml_path) in NEEDS_GUEST_DBS:
             src_dir = os.path.dirname(system_root)
             # Copy sibling .root files (StartupTasks.root, test.root, etc.)
             for sibling in os.listdir(src_dir):
@@ -690,7 +724,8 @@ def _run_file_worker(args: tuple) -> dict:
     try:
         file_name = Path(yaml_path).name
         executor = None
-        if protocol_batch and file_name not in NON_PROTOCOL_TEST_FILES:
+        use_protocol = meta.get('protocol_mode', True) and file_name not in NON_PROTOCOL_TEST_FILES
+        if protocol_batch and use_protocol:
             executor = ProtocolExecutor(cli_path, worker_system_root)
             try:
                 executor.start()
@@ -1508,7 +1543,8 @@ def main():
     parallel_files = []
     for f in valid_files:
         basename = Path(f).name
-        if basename in SEQUENTIAL_TEST_FILES:
+        meta = load_file_metadata(f)
+        if meta.get('sequential', False) or basename in SEQUENTIAL_TEST_FILES:
             sequential_files.append(f)
         else:
             parallel_files.append(f)

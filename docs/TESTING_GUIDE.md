@@ -220,6 +220,25 @@ tests:
 - `timeout`: Per-test timeout in seconds (default: 10)
 - `description`: Human-readable test description
 
+### File-Level Metadata
+
+Test YAML files support optional top-level keys that control how the runner executes them. These go at the root of the YAML file, before the `tests:` array:
+
+```yaml
+sequential: true       # Run in main process, not parallel worker
+needs_guest_dbs: true  # Copy sibling .root files + Guest Databases/ to worker
+
+tests:
+  - name: "my test"
+    script: '...'
+```
+
+| Key | Default | Effect |
+|-----|---------|--------|
+| `sequential` | `false` | When `true`, file runs in the main process sequentially (not in a parallel worker). Use for tests with port conflicts, shared resources, or REPL stdin dependencies. |
+| `needs_guest_dbs` | `false` | When `true`, the runner copies sibling `.root` files and `Guest Databases/` into the worker's temp directory. Use for tests that call `fileMenu.open()` or reference paths relative to `Frontier.getFilePath()`. |
+| `protocol_mode` | `true` | When `false`, the runner skips the NDJSON protocol executor and spawns a new process per test. Use for tests that block or need special process behavior. |
+
 ### Test Path Placeholders
 
 For portable file path handling in test scripts, use the `{FRONTIER_TEST_TMP_DIR}` placeholder instead of hardcoded paths:

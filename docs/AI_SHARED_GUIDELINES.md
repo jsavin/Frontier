@@ -93,6 +93,16 @@ Minimum expectations:
 - Cleanup of `system.temp` objects is unnecessary (the table is non-persistent and recreated fresh each run), but acceptable for clarity.
 - **NEVER use `new(tableType, @workspace)` or `new(tableType, @workspace.something)`** — this creates persistent tables in workspace that pollute the database across test runs and cause flaky tests. Always use `new(tableType, @system.temp.something)` instead.
 
+### Integration test parallel/sequential rules
+
+The test runner executes YAML files across parallel workers by default. Some tests need special treatment — use file-level YAML metadata flags:
+
+- **`sequential: true`** — Required when tests bind to TCP/UDP ports, use REPL stdin (`interactive_steps`), or depend on process-level side effects between tests in the same file.
+- **`needs_guest_dbs: true`** — Required when tests call `fileMenu.open()` to open guest databases, or reference sibling `.root` files relative to `Frontier.getFilePath()`.
+- **`protocol_mode: false`** — Required when tests may block waiting for UI interaction or need a fresh process per test case.
+
+See `docs/TESTING_GUIDE.md` "File-Level Metadata" for full documentation.
+
 ## ODB Script Editing
 
 When modifying UserTalk scripts in `.root` databases, follow `docs/ODB_SCRIPT_EDITING.md`. Key rules:
