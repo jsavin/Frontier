@@ -63,13 +63,10 @@ tests:
     expected_result: "true"
 
   # Legacy compatibility flags
-  - name: "system.environment.isCarbon - true on macOS"
-    description: "isCarbon should be true on macOS for backward compat with legacy scripts"
+  - name: "system.environment.isCarbon - false in headless mode"
+    description: "isCarbon is false in headless mode (Carbon APIs not used in CLI build)"
     script: |
-      if sys.os() == "MacOS" {
-        return system.environment.isCarbon}
-      else {
-        return not system.environment.isCarbon}
+      return not system.environment.isCarbon
     expected_success: true
     expected_result: "true"
 

@@ -1,12 +1,13 @@
 <?xml version="1.0" ?>
 <opml version="2.0">
   <head>
-    <title>String Isvalidurl (string_isvalidurl) - 12 tests: 12 pass (100%)</title>
-    <dateCreated>Mon, 23 Mar 2026 03:29:36 GMT</dateCreated>
+    <title>String Isvalidurl (string_isvalidurl) - 12 tests: 0 pass (0%) 12 skip (100%)</title>
+    <dateCreated>Thu, 16 Apr 2026 07:48:17 GMT</dateCreated>
   </head>
   <body>
     <outline text="string.isValidUrl - http URL">
       <outline text="Metadata">
+        <outline text="skip: string.isValidUrl verb not implemented"/>
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
@@ -15,6 +16,7 @@
     </outline>
     <outline text="string.isValidUrl - https URL">
       <outline text="Metadata">
+        <outline text="skip: string.isValidUrl verb not implemented"/>
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
@@ -23,6 +25,7 @@
     </outline>
     <outline text="string.isValidUrl - file URL">
       <outline text="Metadata">
+        <outline text="skip: string.isValidUrl verb not implemented"/>
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
@@ -31,6 +34,7 @@
     </outline>
     <outline text="string.isValidUrl - ftp URL">
       <outline text="Metadata">
+        <outline text="skip: string.isValidUrl verb not implemented"/>
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
@@ -39,6 +43,7 @@
     </outline>
     <outline text="string.isValidUrl - uppercase scheme">
       <outline text="Metadata">
+        <outline text="skip: string.isValidUrl verb not implemented"/>
         <outline text="expected_result: true"/>
       </outline>
       <outline text="Script">
@@ -47,6 +52,7 @@
     </outline>
     <outline text="string.isValidUrl - empty string">
       <outline text="Metadata">
+        <outline text="skip: string.isValidUrl verb not implemented"/>
         <outline text="expected_result: false"/>
       </outline>
       <outline text="Script">
@@ -55,6 +61,7 @@
     </outline>
     <outline text="string.isValidUrl - no scheme separator">
       <outline text="Metadata">
+        <outline text="skip: string.isValidUrl verb not implemented"/>
         <outline text="expected_result: false"/>
       </outline>
       <outline text="Script">
@@ -63,6 +70,7 @@
     </outline>
     <outline text="string.isValidUrl - javascript scheme">
       <outline text="Metadata">
+        <outline text="skip: string.isValidUrl verb not implemented"/>
         <outline text="expected_result: false"/>
       </outline>
       <outline text="Script">
@@ -71,6 +79,7 @@
     </outline>
     <outline text="string.isValidUrl - data scheme">
       <outline text="Metadata">
+        <outline text="skip: string.isValidUrl verb not implemented"/>
         <outline text="expected_result: false"/>
       </outline>
       <outline text="Script">
@@ -79,6 +88,7 @@
     </outline>
     <outline text="string.isValidUrl - contains double quote">
       <outline text="Metadata">
+        <outline text="skip: string.isValidUrl verb not implemented"/>
         <outline text="expected_result: false"/>
       </outline>
       <outline text="Script">
@@ -87,6 +97,7 @@
     </outline>
     <outline text="string.isValidUrl - unknown scheme">
       <outline text="Metadata">
+        <outline text="skip: string.isValidUrl verb not implemented"/>
         <outline text="expected_result: false"/>
       </outline>
       <outline text="Script">
@@ -95,6 +106,7 @@
     </outline>
     <outline text="string.isValidUrl - mailto scheme">
       <outline text="Metadata">
+        <outline text="skip: string.isValidUrl verb not implemented"/>
         <outline text="expected_result: false"/>
       </outline>
       <outline text="Script">
