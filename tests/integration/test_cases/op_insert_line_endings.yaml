@@ -166,6 +166,24 @@ tests:
     expected_result: "true"
 
   # ========================================================================
+  # Trailing CRLF - symmetric to trailing LF. CRLF normalizes to CR, then
+  # the trailing CR behaves like any other trailing separator.
+  # ========================================================================
+
+  - name: "op.insert line endings - trailing CRLF does not create empty node"
+    description: "Input ending with CRLF must behave the same as trailing LF and trailing CR — no spurious empty trailing node"
+    script: |
+      lang.new (outlineType, @system.temp.trailingcrlf);
+      target.set (@system.temp.trailingcrlf);
+      op.insert ("line1\r\nline2\r\n", down);
+      op.firstSummit ();
+      op.deleteLine ();
+      local (summits = op.countSummits ());
+      return (summits == 2)
+    expected_success: true
+    expected_result: "true"
+
+  # ========================================================================
   # Consecutive LFs - blank lines must be preserved as empty nodes.
   # Guards against a subtle CRLF-detection bug: if the algorithm checks
   # the OUTPUT buffer (p[dst-1]) rather than tracking the previous SOURCE
