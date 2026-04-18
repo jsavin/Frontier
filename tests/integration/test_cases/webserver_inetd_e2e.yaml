@@ -125,7 +125,7 @@ tests:
         @user.webserver.responders.helloE2E.methods.GET);
 
       inetd.startOne (@user.inetd.config.http);
-      thread.sleepFor (50);
+      thread.sleepFor (50);  // 50 ticks to ensure the accept socket is ready before we connect
 
       local(hasStatus200 = false);
       local(hasBody = false);
@@ -149,7 +149,9 @@ tests:
 
         tcp.closeStream (stream);
 
-        hasStatus200 = response contains "200";
+        // Match the HTTP status line precisely, not just any "200" in headers/body.
+        // "HTTP/1. 200" covers both HTTP/1.0 and HTTP/1.1 response lines.
+        hasStatus200 = response contains "HTTP/1. 200";
         hasBody = response contains "hello E2E"
       }
       else {
@@ -201,7 +203,7 @@ tests:
         @user.webserver.responders.helloE2E.methods.GET);
 
       inetd.startOne (@user.inetd.config.http);
-      thread.sleepFor (50);
+      thread.sleepFor (50);  // 50 ticks to ensure the accept socket is ready before we connect
 
       local(successCount = 0);
 
@@ -224,7 +226,7 @@ tests:
 
           tcp.closeStream (stream);
 
-          if (response contains "200") and (response contains "hello E2E") {
+          if (response contains "HTTP/1. 200") and (response contains "hello E2E") {
             successCount = successCount + 1
           }
         }
@@ -279,7 +281,7 @@ tests:
         @user.webserver.responders.helloE2E.methods.GET);
 
       inetd.startOne (@user.inetd.config.http);
-      thread.sleepFor (50);
+      thread.sleepFor (50);  // 50 ticks to ensure the accept socket is ready before we connect
 
       local(isError = false);
       local(hasHttpLine = false);
@@ -303,11 +305,11 @@ tests:
         tcp.closeStream (stream);
 
         hasHttpLine = response contains "HTTP/1.";
-        // Accept any 4xx response (404 Not Found, 403 Forbidden, etc.) OR
-        // the fallback "Not Found" error page text.  The default responder may
-        // return 403/404 depending on path resolution; either is a correct
-        // "unknown path" signal.
-        isError = (response contains "404") or (response contains "403") or
+        // Match status line precisely to avoid false matches against body/header content.
+        // Accept any 4xx response (404 Not Found, 403 Forbidden, etc.) OR the fallback
+        // error page text. The default responder may return 403/404 depending on path
+        // resolution; either is a correct "unknown path" signal.
+        isError = (response contains "HTTP/1. 404") or (response contains "HTTP/1. 403") or
                   (response contains "Not Found") or (response contains "Forbidden")
       }
       else {
