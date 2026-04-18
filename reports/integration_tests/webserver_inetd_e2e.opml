@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>Webserver Inetd E2E (webserver_inetd_e2e) - 4 tests: 4 pass (100%)</title>
-    <dateCreated>Sat, 18 Apr 2026 22:30:59 GMT</dateCreated>
+    <dateCreated>Sat, 18 Apr 2026 22:36:32 GMT</dateCreated>
   </head>
   <body>
     <outline text="inetd E2E - listener lifecycle with custom helloE2E responder - Register a custom responder, start a listener, verify tracking, stop cleanly">
@@ -14,7 +14,7 @@
       </outline>
       <outline text="Script">
         <outline text="webserver.init()"/>
-        <outline text="local(port = 49210)"/>
+        <outline text="local(port = 9210)"/>
         <outline text="user.inetd.config.http.port = port"/>
         <outline text="// Install a trivial custom responder at user.webserver.responders.helloE2E."/>
         <outline text="// Using script.newScriptObject so the GET method is installed with proper"/>
@@ -63,7 +63,7 @@
       </outline>
       <outline text="Script">
         <outline text="webserver.init()"/>
-        <outline text="local(port = 49211)"/>
+        <outline text="local(port = 9211)"/>
         <outline text="user.inetd.config.http.port = port"/>
         <outline text="// Install a custom responder whose GET returns &quot;hello E2E&quot;"/>
         <outline text="if not defined (user.webserver.responders.helloE2E)">
@@ -153,7 +153,7 @@
       </outline>
       <outline text="Script">
         <outline text="webserver.init()"/>
-        <outline text="local(port = 49212)"/>
+        <outline text="local(port = 9212)"/>
         <outline text="user.inetd.config.http.port = port"/>
         <outline text="if not defined (user.webserver.responders.helloE2E)">
           <outline text="new (tableType, @user.webserver.responders.helloE2E)"/>
@@ -242,7 +242,7 @@
       </outline>
       <outline text="Script">
         <outline text="webserver.init()"/>
-        <outline text="local(port = 49213)"/>
+        <outline text="local(port = 9213)"/>
         <outline text="user.inetd.config.http.port = port"/>
         <outline text="// Install helloE2E responder that only matches /helloE2E paths"/>
         <outline text="if not defined (user.webserver.responders.helloE2E)">

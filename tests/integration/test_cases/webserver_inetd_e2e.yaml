@@ -45,6 +45,9 @@ tests:
       webserver.init();
 
       local(port = 9210);
+      // Capture original port so we can restore it on exit — keeps system-root
+      // port mutation local to the test, matches Tests 2–4.
+      local(originalPort = user.inetd.config.http.port);
       user.inetd.config.http.port = port;
 
       // Install a trivial custom responder at user.webserver.responders.helloE2E.
@@ -69,8 +72,13 @@ tests:
         tab + "return (true)}",
         @user.webserver.responders.helloE2E.methods.GET);
 
-      // Start the listener
-      local(started = inetd.startOne (@user.inetd.config.http));
+      // Start the listener. Guard against bind failure with an early scriptError
+      // so the root cause is obvious (matches Tests 2–4).
+      if not inetd.startOne (@user.inetd.config.http) {
+        delete (@user.webserver.responders.helloE2E);
+        user.inetd.config.http.port = originalPort;
+        scriptError ("inetd.startOne failed for port " + port)
+      };
       thread.sleepFor (30);
 
       // Verify listener is tracked
@@ -85,8 +93,9 @@ tests:
 
       // Clean up the custom responder so later tests start fresh
       delete (@user.webserver.responders.helloE2E);
+      user.inetd.config.http.port = originalPort;
 
-      return started and tracked and removed
+      return tracked and removed
     expected_success: true
     expected_result: "true"
     notes: "Validates listener startup, registration in user.inetd.listens, and clean shutdown"
@@ -102,6 +111,9 @@ tests:
       webserver.init();
 
       local(port = 9211);
+      // Capture original port so we can restore it on exit — keeps system-root
+      // port mutation local to the test.
+      local(originalPort = user.inetd.config.http.port);
       user.inetd.config.http.port = port;
 
       // Install a custom responder whose GET returns "hello E2E"
@@ -128,6 +140,7 @@ tests:
       // error instead of a later connection-refused.
       if not inetd.startOne (@user.inetd.config.http) {
         delete (@user.webserver.responders.helloE2E);
+        user.inetd.config.http.port = originalPort;
         scriptError ("inetd.startOne failed for port " + port)
       };
       thread.sleepFor (50);  // 50 ticks to ensure the accept socket is ready before we connect
@@ -180,12 +193,14 @@ tests:
         inetd.stopOne (@user.inetd.config.http);
         thread.sleepFor (30);
         delete (@user.webserver.responders.helloE2E);
+        user.inetd.config.http.port = originalPort;
         scriptError (tryError)
       };
 
       inetd.stopOne (@user.inetd.config.http);
       thread.sleepFor (30);  // #364 workaround
       delete (@user.webserver.responders.helloE2E);
+      user.inetd.config.http.port = originalPort;
 
       return hasStatus200 and hasBody
     expected_success: true
@@ -203,6 +218,9 @@ tests:
       webserver.init();
 
       local(port = 9212);
+      // Capture original port so we can restore it on exit — keeps system-root
+      // port mutation local to the test.
+      local(originalPort = user.inetd.config.http.port);
       user.inetd.config.http.port = port;
 
       if not defined (user.webserver.responders.helloE2E) {
@@ -228,6 +246,7 @@ tests:
       // error instead of a later connection-refused.
       if not inetd.startOne (@user.inetd.config.http) {
         delete (@user.webserver.responders.helloE2E);
+        user.inetd.config.http.port = originalPort;
         scriptError ("inetd.startOne failed for port " + port)
       };
       thread.sleepFor (50);  // 50 ticks to ensure the accept socket is ready before we connect
@@ -279,12 +298,14 @@ tests:
         inetd.stopOne (@user.inetd.config.http);
         thread.sleepFor (30);
         delete (@user.webserver.responders.helloE2E);
+        user.inetd.config.http.port = originalPort;
         scriptError (tryError)
       };
 
       inetd.stopOne (@user.inetd.config.http);
       thread.sleepFor (30);  // #364 workaround
       delete (@user.webserver.responders.helloE2E);
+      user.inetd.config.http.port = originalPort;
 
       return successCount == 2
     expected_success: true
@@ -302,6 +323,9 @@ tests:
       webserver.init();
 
       local(port = 9213);
+      // Capture original port so we can restore it on exit — keeps system-root
+      // port mutation local to the test.
+      local(originalPort = user.inetd.config.http.port);
       user.inetd.config.http.port = port;
 
       // Install helloE2E responder that only matches /helloE2E paths
@@ -328,6 +352,7 @@ tests:
       // error instead of a later connection-refused.
       if not inetd.startOne (@user.inetd.config.http) {
         delete (@user.webserver.responders.helloE2E);
+        user.inetd.config.http.port = originalPort;
         scriptError ("inetd.startOne failed for port " + port)
       };
       thread.sleepFor (50);  // 50 ticks to ensure the accept socket is ready before we connect
@@ -382,12 +407,14 @@ tests:
         inetd.stopOne (@user.inetd.config.http);
         thread.sleepFor (30);
         delete (@user.webserver.responders.helloE2E);
+        user.inetd.config.http.port = originalPort;
         scriptError (tryError)
       };
 
       inetd.stopOne (@user.inetd.config.http);
       thread.sleepFor (30);  // #364 workaround
       delete (@user.webserver.responders.helloE2E);
+      user.inetd.config.http.port = originalPort;
 
       return hasHttpLine and isError
     expected_success: true
