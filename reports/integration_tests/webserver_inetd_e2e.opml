@@ -1,0 +1,263 @@
+<?xml version="1.0" ?>
+<opml version="2.0">
+  <head>
+    <title>Webserver Inetd E2E (webserver_inetd_e2e) - 4 tests: 4 pass (100%)</title>
+    <dateCreated>Sat, 18 Apr 2026 05:55:19 GMT</dateCreated>
+  </head>
+  <body>
+    <outline text="inetd E2E - listener lifecycle with custom helloResponder - Register a custom responder, start a listener, verify tracking, stop cleanly">
+      <outline text="Metadata">
+        <outline text="requires_system_root: True"/>
+        <outline text="timeout: 20"/>
+        <outline text="expected_result: true"/>
+        <outline text="notes: Validates listener startup, registration in user.inetd.listens, and clean shutdown"/>
+      </outline>
+      <outline text="Script">
+        <outline text="webserver.init()"/>
+        <outline text="local(port = 49210)"/>
+        <outline text="user.inetd.config.http.port = port"/>
+        <outline text="// Install a trivial custom responder at user.webserver.responders.helloE2E."/>
+        <outline text="// Using script.newScriptObject so the GET method is installed with proper"/>
+        <outline text="// line-ending normalization."/>
+        <outline text="if not defined (user.webserver.responders.helloE2E)">
+          <outline text="new (tableType, @user.webserver.responders.helloE2E)"/>
+        </outline>
+        <outline text="user.webserver.responders.helloE2E.enabled = true"/>
+        <outline text="script.newScriptObject (">
+          <outline text="&quot;on condition (adrParamTable) {&quot; + cr +"/>
+          <outline text="tab + &quot;return (adrParamTable^.path beginsWith \&quot;/helloE2E\&quot;)}&quot;,"/>
+          <outline text="@user.webserver.responders.helloE2E.condition)"/>
+        </outline>
+        <outline text="if not defined (user.webserver.responders.helloE2E.methods)">
+          <outline text="new (tableType, @user.webserver.responders.helloE2E.methods)"/>
+        </outline>
+        <outline text="script.newScriptObject (">
+          <outline text="&quot;on GET (adrParamTable) {&quot; + cr +"/>
+          <outline text="tab + &quot;adrParamTable^.code = 200;&quot; + cr +"/>
+          <outline text="tab + &quot;adrParamTable^.responseHeaders.[\&quot;Content-Type\&quot;] = \&quot;text/plain\&quot;;&quot; + cr +"/>
+          <outline text="tab + &quot;adrParamTable^.responseBody = \&quot;hello E2E\&quot;;&quot; + cr +"/>
+          <outline text="tab + &quot;return (true)}&quot;,"/>
+          <outline text="@user.webserver.responders.helloE2E.methods.GET)"/>
+        </outline>
+        <outline text="// Start the listener"/>
+        <outline text="local(started = inetd.startOne (@user.inetd.config.http))"/>
+        <outline text="thread.sleepFor (30)"/>
+        <outline text="// Verify listener is tracked"/>
+        <outline text="local(tracked = defined (user.inetd.listens.[port]))"/>
+        <outline text="// Stop cleanly"/>
+        <outline text="inetd.stopOne (@user.inetd.config.http)"/>
+        <outline text="thread.sleepFor (30);  // Workaround for issue #364 (listener shutdown race)"/>
+        <outline text="// Verify listener is no longer tracked"/>
+        <outline text="local(removed = not defined (user.inetd.listens.[port]))"/>
+        <outline text="// Clean up the custom responder so later tests start fresh"/>
+        <outline text="delete (@user.webserver.responders.helloE2E)"/>
+        <outline text="return started and tracked and removed"/>
+      </outline>
+    </outline>
+    <outline text="inetd E2E - HTTP GET round trip to custom responder - Start listener, send HTTP GET, assert 200 status + custom body">
+      <outline text="Metadata">
+        <outline text="requires_system_root: True"/>
+        <outline text="timeout: 30"/>
+        <outline text="expected_result: true"/>
+        <outline text="notes: Full stack: tcp.openAddrStream -&gt; inetd.supervisor -&gt; webserver.server -&gt; webserver.dispatch -&gt; helloE2E.GET"/>
+      </outline>
+      <outline text="Script">
+        <outline text="webserver.init()"/>
+        <outline text="local(port = 49211)"/>
+        <outline text="user.inetd.config.http.port = port"/>
+        <outline text="// Install a custom responder whose GET returns &quot;hello E2E&quot;"/>
+        <outline text="if not defined (user.webserver.responders.helloE2E)">
+          <outline text="new (tableType, @user.webserver.responders.helloE2E)"/>
+        </outline>
+        <outline text="user.webserver.responders.helloE2E.enabled = true"/>
+        <outline text="script.newScriptObject (">
+          <outline text="&quot;on condition (adrParamTable) {&quot; + cr +"/>
+          <outline text="tab + &quot;return (adrParamTable^.path beginsWith \&quot;/helloE2E\&quot;)}&quot;,"/>
+          <outline text="@user.webserver.responders.helloE2E.condition)"/>
+        </outline>
+        <outline text="if not defined (user.webserver.responders.helloE2E.methods)">
+          <outline text="new (tableType, @user.webserver.responders.helloE2E.methods)"/>
+        </outline>
+        <outline text="script.newScriptObject (">
+          <outline text="&quot;on GET (adrParamTable) {&quot; + cr +"/>
+          <outline text="tab + &quot;adrParamTable^.code = 200;&quot; + cr +"/>
+          <outline text="tab + &quot;adrParamTable^.responseHeaders.[\&quot;Content-Type\&quot;] = \&quot;text/plain\&quot;;&quot; + cr +"/>
+          <outline text="tab + &quot;adrParamTable^.responseBody = \&quot;hello E2E\&quot;;&quot; + cr +"/>
+          <outline text="tab + &quot;return (true)}&quot;,"/>
+          <outline text="@user.webserver.responders.helloE2E.methods.GET)"/>
+        </outline>
+        <outline text="inetd.startOne (@user.inetd.config.http)"/>
+        <outline text="thread.sleepFor (50)"/>
+        <outline text="local(hasStatus200 = false)"/>
+        <outline text="local(hasBody = false)"/>
+        <outline text="try">
+          <outline text="local(stream = tcp.openAddrStream (tcp.addressEncode (&quot;127.0.0.1&quot;), port))"/>
+          <outline text="// HTTP/1.0 with Connection: close — simplest possible request"/>
+          <outline text="local(request = &quot;GET /helloE2E HTTP/1.0\r\nHost: localhost\r\nConnection: close\r\n\r\n&quot;)"/>
+          <outline text="tcp.writeStream (stream, request)"/>
+          <outline text="local(response = &quot;&quot;)"/>
+          <outline text="local(startTicks = clock.ticks ())"/>
+          <outline text="while ((sizeOf (response) == 0) or (not (response contains &quot;\r\n\r\n&quot;))) and ((clock.ticks () - startTicks) &lt; 300)">
+            <outline text="local(chunk = tcp.readStream (stream, 4096))"/>
+            <outline text="if sizeOf (chunk) &gt; 0">
+              <outline text="response = response + chunk"/>
+            </outline>
+            <outline text="thread.sleepFor (10)"/>
+          </outline>
+          <outline text="tcp.closeStream (stream)"/>
+          <outline text="hasStatus200 = response contains &quot;200&quot;"/>
+          <outline text="hasBody = response contains &quot;hello E2E&quot;"/>
+        </outline>
+        <outline text="else">
+          <outline text="inetd.stopOne (@user.inetd.config.http)"/>
+          <outline text="thread.sleepFor (30)"/>
+          <outline text="delete (@user.webserver.responders.helloE2E)"/>
+          <outline text="scriptError (tryError)"/>
+        </outline>
+        <outline text="inetd.stopOne (@user.inetd.config.http)"/>
+        <outline text="thread.sleepFor (30);  // #364 workaround"/>
+        <outline text="delete (@user.webserver.responders.helloE2E)"/>
+        <outline text="return hasStatus200 and hasBody"/>
+      </outline>
+    </outline>
+    <outline text="inetd E2E - multiple sequential GETs on same listener - Send two HTTP GETs back-to-back, both should succeed">
+      <outline text="Metadata">
+        <outline text="requires_system_root: True"/>
+        <outline text="timeout: 40"/>
+        <outline text="expected_result: true"/>
+        <outline text="notes: Validates the listener handles multiple sequential HTTP connections correctly"/>
+      </outline>
+      <outline text="Script">
+        <outline text="webserver.init()"/>
+        <outline text="local(port = 49212)"/>
+        <outline text="user.inetd.config.http.port = port"/>
+        <outline text="if not defined (user.webserver.responders.helloE2E)">
+          <outline text="new (tableType, @user.webserver.responders.helloE2E)"/>
+        </outline>
+        <outline text="user.webserver.responders.helloE2E.enabled = true"/>
+        <outline text="script.newScriptObject (">
+          <outline text="&quot;on condition (adrParamTable) {&quot; + cr +"/>
+          <outline text="tab + &quot;return (adrParamTable^.path beginsWith \&quot;/helloE2E\&quot;)}&quot;,"/>
+          <outline text="@user.webserver.responders.helloE2E.condition)"/>
+        </outline>
+        <outline text="if not defined (user.webserver.responders.helloE2E.methods)">
+          <outline text="new (tableType, @user.webserver.responders.helloE2E.methods)"/>
+        </outline>
+        <outline text="script.newScriptObject (">
+          <outline text="&quot;on GET (adrParamTable) {&quot; + cr +"/>
+          <outline text="tab + &quot;adrParamTable^.code = 200;&quot; + cr +"/>
+          <outline text="tab + &quot;adrParamTable^.responseHeaders.[\&quot;Content-Type\&quot;] = \&quot;text/plain\&quot;;&quot; + cr +"/>
+          <outline text="tab + &quot;adrParamTable^.responseBody = \&quot;hello E2E\&quot;;&quot; + cr +"/>
+          <outline text="tab + &quot;return (true)}&quot;,"/>
+          <outline text="@user.webserver.responders.helloE2E.methods.GET)"/>
+        </outline>
+        <outline text="inetd.startOne (@user.inetd.config.http)"/>
+        <outline text="thread.sleepFor (50)"/>
+        <outline text="local(successCount = 0)"/>
+        <outline text="try">
+          <outline text="local(i)"/>
+          <outline text="for i = 1 to 2">
+            <outline text="local(stream = tcp.openAddrStream (tcp.addressEncode (&quot;127.0.0.1&quot;), port))"/>
+            <outline text="local(request = &quot;GET /helloE2E HTTP/1.0\r\nHost: localhost\r\nConnection: close\r\n\r\n&quot;)"/>
+            <outline text="tcp.writeStream (stream, request)"/>
+            <outline text="local(response = &quot;&quot;)"/>
+            <outline text="local(startTicks = clock.ticks ())"/>
+            <outline text="while ((sizeOf (response) == 0) or (not (response contains &quot;\r\n\r\n&quot;))) and ((clock.ticks () - startTicks) &lt; 300)">
+              <outline text="local(chunk = tcp.readStream (stream, 4096))"/>
+              <outline text="if sizeOf (chunk) &gt; 0">
+                <outline text="response = response + chunk"/>
+              </outline>
+              <outline text="thread.sleepFor (10)"/>
+            </outline>
+            <outline text="tcp.closeStream (stream)"/>
+            <outline text="if (response contains &quot;200&quot;) and (response contains &quot;hello E2E&quot;)">
+              <outline text="successCount = successCount + 1"/>
+            </outline>
+          </outline>
+        </outline>
+        <outline text="else">
+          <outline text="inetd.stopOne (@user.inetd.config.http)"/>
+          <outline text="thread.sleepFor (30)"/>
+          <outline text="delete (@user.webserver.responders.helloE2E)"/>
+          <outline text="scriptError (tryError)"/>
+        </outline>
+        <outline text="inetd.stopOne (@user.inetd.config.http)"/>
+        <outline text="thread.sleepFor (30);  // #364 workaround"/>
+        <outline text="delete (@user.webserver.responders.helloE2E)"/>
+        <outline text="return successCount == 2"/>
+      </outline>
+    </outline>
+    <outline text="inetd E2E - unknown path falls through to default responder error - GET to a path no custom responder matches returns an HTTP error (4xx/5xx)">
+      <outline text="Metadata">
+        <outline text="requires_system_root: True"/>
+        <outline text="timeout: 30"/>
+        <outline text="expected_result: true"/>
+        <outline text="notes: When no custom responder matches, webserver.dispatch falls back to the default&#10;responder which returns 404 for unknown paths (or 403 for forbidden ones).&#10;This validates that the dispatch path works correctly when the custom responder's&#10;condition does not match.&#10;"/>
+      </outline>
+      <outline text="Script">
+        <outline text="webserver.init()"/>
+        <outline text="local(port = 49213)"/>
+        <outline text="user.inetd.config.http.port = port"/>
+        <outline text="// Install helloE2E responder that only matches /helloE2E paths"/>
+        <outline text="if not defined (user.webserver.responders.helloE2E)">
+          <outline text="new (tableType, @user.webserver.responders.helloE2E)"/>
+        </outline>
+        <outline text="user.webserver.responders.helloE2E.enabled = true"/>
+        <outline text="script.newScriptObject (">
+          <outline text="&quot;on condition (adrParamTable) {&quot; + cr +"/>
+          <outline text="tab + &quot;return (adrParamTable^.path beginsWith \&quot;/helloE2E\&quot;)}&quot;,"/>
+          <outline text="@user.webserver.responders.helloE2E.condition)"/>
+        </outline>
+        <outline text="if not defined (user.webserver.responders.helloE2E.methods)">
+          <outline text="new (tableType, @user.webserver.responders.helloE2E.methods)"/>
+        </outline>
+        <outline text="script.newScriptObject (">
+          <outline text="&quot;on GET (adrParamTable) {&quot; + cr +"/>
+          <outline text="tab + &quot;adrParamTable^.code = 200;&quot; + cr +"/>
+          <outline text="tab + &quot;adrParamTable^.responseHeaders.[\&quot;Content-Type\&quot;] = \&quot;text/plain\&quot;;&quot; + cr +"/>
+          <outline text="tab + &quot;adrParamTable^.responseBody = \&quot;hello E2E\&quot;;&quot; + cr +"/>
+          <outline text="tab + &quot;return (true)}&quot;,"/>
+          <outline text="@user.webserver.responders.helloE2E.methods.GET)"/>
+        </outline>
+        <outline text="inetd.startOne (@user.inetd.config.http)"/>
+        <outline text="thread.sleepFor (50)"/>
+        <outline text="local(isError = false)"/>
+        <outline text="local(hasHttpLine = false)"/>
+        <outline text="try">
+          <outline text="local(stream = tcp.openAddrStream (tcp.addressEncode (&quot;127.0.0.1&quot;), port))"/>
+          <outline text="// Request a path that neither helloE2E nor the default file/ODB tree resolves to."/>
+          <outline text="local(request = &quot;GET /definitely/not/a/real/path/xyz HTTP/1.0\r\nHost: localhost\r\nConnection: close\r\n\r\n&quot;)"/>
+          <outline text="tcp.writeStream (stream, request)"/>
+          <outline text="local(response = &quot;&quot;)"/>
+          <outline text="local(startTicks = clock.ticks ())"/>
+          <outline text="while ((sizeOf (response) == 0) or (not (response contains &quot;\r\n\r\n&quot;))) and ((clock.ticks () - startTicks) &lt; 300)">
+            <outline text="local(chunk = tcp.readStream (stream, 4096))"/>
+            <outline text="if sizeOf (chunk) &gt; 0">
+              <outline text="response = response + chunk"/>
+            </outline>
+            <outline text="thread.sleepFor (10)"/>
+          </outline>
+          <outline text="tcp.closeStream (stream)"/>
+          <outline text="hasHttpLine = response contains &quot;HTTP/1.&quot;"/>
+          <outline text="// Accept any 4xx response (404 Not Found, 403 Forbidden, etc.) OR"/>
+          <outline text="// the fallback &quot;Not Found&quot; error page text.  The default responder may"/>
+          <outline text="// return 403/404 depending on path resolution; either is a correct"/>
+          <outline text="// &quot;unknown path&quot; signal."/>
+          <outline text="isError = (response contains &quot;404&quot;) or (response contains &quot;403&quot;) or">
+            <outline text="(response contains &quot;Not Found&quot;) or (response contains &quot;Forbidden&quot;)"/>
+          </outline>
+        </outline>
+        <outline text="else">
+          <outline text="inetd.stopOne (@user.inetd.config.http)"/>
+          <outline text="thread.sleepFor (30)"/>
+          <outline text="delete (@user.webserver.responders.helloE2E)"/>
+          <outline text="scriptError (tryError)"/>
+        </outline>
+        <outline text="inetd.stopOne (@user.inetd.config.http)"/>
+        <outline text="thread.sleepFor (30);  // #364 workaround"/>
+        <outline text="delete (@user.webserver.responders.helloE2E)"/>
+        <outline text="return hasHttpLine and isError"/>
+      </outline>
+    </outline>
+  </body>
+</opml>
