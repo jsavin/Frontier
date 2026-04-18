@@ -2,11 +2,11 @@
 <opml version="2.0">
   <head>
     <title>Frontier Integration Tests - 2242 tests: 2008 pass (89%) 234 skip (10%)</title>
-    <dateCreated>Sat, 18 Apr 2026 22:36:32 GMT</dateCreated>
+    <dateCreated>Sat, 18 Apr 2026 22:43:01 GMT</dateCreated>
   </head>
   <body>
     <outline text="Last Test Run">
-      <outline text="Run: 2026-04-18 at 22:36 UTC"/>
+      <outline text="Run: 2026-04-18 at 22:42 UTC"/>
       <outline text="Results: 4 passed (100%), 0 skipped (0%), 0 failed (0%)"/>
       <outline text="Duration: 0.2s (8 workers, batch mode)"/>
       <outline text="YAML-defined: 2242 tests (2008 active, 234 marked skip) across 68 categories"/>

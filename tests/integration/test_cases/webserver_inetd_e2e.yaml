@@ -19,7 +19,12 @@ protocol_mode: true      # Default; stated explicitly for clarity
 #   Uses fixed high ports (9210–9213) because kernel verbs do not expose a way to read
 #   back an OS-assigned ephemeral port after bind.  Each test uses a dedicated port to
 #   avoid interference between tests.  sequential: true above ensures no parallel-worker
-#   collisions.
+#   collisions.  Ports are chosen below the Linux ephemeral range (32768–60999) to avoid
+#   OS outbound-connection collisions.
+#
+#   If a test fails with "inetd.startOne failed for port NNNN", another process on the
+#   host is bound to that port — change the four `local(port = 92xx)` constants to any
+#   other free range in 1024–32767 (e.g. 8810–8813).
 #
 # Listener-shutdown race workaround (issue #364):
 #   After calling inetd.stopOne() we insert a short thread.sleepFor() to let the accept
@@ -397,11 +402,11 @@ tests:
         // matches "HTTP/1.0" and "HTTP/1.1" — this is intentional, not a typo.
         hasHttpLine = response contains "HTTP/1.";
         // Match status line precisely to avoid false matches against body/header content.
-        // Accept any 4xx response (404 Not Found, 403 Forbidden, etc.) OR the fallback
-        // error page text. The default responder may return 403/404 depending on path
-        // resolution; either is a correct "unknown path" signal.
-        isError = (response contains "HTTP/1. 404") or (response contains "HTTP/1. 403") or
-                  (response contains "Not Found") or (response contains "Forbidden")
+        // "HTTP/1. 4" matches any 4xx status line (404 Not Found, 403 Forbidden, 410 Gone,
+        // etc.) — all correct "unknown path" signals from the default responder.
+        // We intentionally do NOT fall back to body-text matches like "Not Found" because
+        // that could mask a 200 response whose body happens to contain the word.
+        isError = response contains "HTTP/1. 4"
       }
       else {
         inetd.stopOne (@user.inetd.config.http);
