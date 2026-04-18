@@ -124,7 +124,12 @@ tests:
         tab + "return (true)}",
         @user.webserver.responders.helloE2E.methods.GET);
 
-      inetd.startOne (@user.inetd.config.http);
+      // Capture the startOne return so a listener-bind failure surfaces as a clear
+      // error instead of a later connection-refused.
+      if not inetd.startOne (@user.inetd.config.http) {
+        delete (@user.webserver.responders.helloE2E);
+        scriptError ("inetd.startOne failed for port " + port)
+      };
       thread.sleepFor (50);  // 50 ticks to ensure the accept socket is ready before we connect
 
       local(hasStatus200 = false);
@@ -137,12 +142,27 @@ tests:
         local(request = "GET /helloE2E HTTP/1.0\r\nHost: localhost\r\nConnection: close\r\n\r\n");
         tcp.writeStream (stream, request);
 
+        // Two-phase read: (1) accumulate until we see end-of-headers, then
+        // (2) keep reading until the server closes the connection so we
+        // capture the full body (HTTP/1.0 + Connection: close).  Guarded by
+        // a ticks-based timeout to prevent hangs.
         local(response = "");
         local(startTicks = clock.ticks ());
-        while ((sizeOf (response) == 0) or (not (response contains "\r\n\r\n"))) and ((clock.ticks () - startTicks) < 300) {
+        local(headersComplete = false);
+        local(connectionClosed = false);
+        while (not connectionClosed) and ((clock.ticks () - startTicks) < 300) {
           local(chunk = tcp.readStream (stream, 4096));
           if sizeOf (chunk) > 0 {
             response = response + chunk
+          }
+          else {
+            // Empty read after some data means the server closed the connection
+            if headersComplete {
+              connectionClosed = true
+            }
+          };
+          if (not headersComplete) and (response contains "\r\n\r\n") {
+            headersComplete = true
           };
           thread.sleepFor (10)
         };
@@ -202,7 +222,12 @@ tests:
         tab + "return (true)}",
         @user.webserver.responders.helloE2E.methods.GET);
 
-      inetd.startOne (@user.inetd.config.http);
+      // Capture the startOne return so a listener-bind failure surfaces as a clear
+      // error instead of a later connection-refused.
+      if not inetd.startOne (@user.inetd.config.http) {
+        delete (@user.webserver.responders.helloE2E);
+        scriptError ("inetd.startOne failed for port " + port)
+      };
       thread.sleepFor (50);  // 50 ticks to ensure the accept socket is ready before we connect
 
       local(successCount = 0);
@@ -280,7 +305,12 @@ tests:
         tab + "return (true)}",
         @user.webserver.responders.helloE2E.methods.GET);
 
-      inetd.startOne (@user.inetd.config.http);
+      // Capture the startOne return so a listener-bind failure surfaces as a clear
+      // error instead of a later connection-refused.
+      if not inetd.startOne (@user.inetd.config.http) {
+        delete (@user.webserver.responders.helloE2E);
+        scriptError ("inetd.startOne failed for port " + port)
+      };
       thread.sleepFor (50);  // 50 ticks to ensure the accept socket is ready before we connect
 
       local(isError = false);
@@ -292,12 +322,27 @@ tests:
         local(request = "GET /definitely/not/a/real/path/xyz HTTP/1.0\r\nHost: localhost\r\nConnection: close\r\n\r\n");
         tcp.writeStream (stream, request);
 
+        // Two-phase read: (1) accumulate until we see end-of-headers, then
+        // (2) keep reading until the server closes the connection so we
+        // capture the full body (HTTP/1.0 + Connection: close).  Guarded by
+        // a ticks-based timeout to prevent hangs.
         local(response = "");
         local(startTicks = clock.ticks ());
-        while ((sizeOf (response) == 0) or (not (response contains "\r\n\r\n"))) and ((clock.ticks () - startTicks) < 300) {
+        local(headersComplete = false);
+        local(connectionClosed = false);
+        while (not connectionClosed) and ((clock.ticks () - startTicks) < 300) {
           local(chunk = tcp.readStream (stream, 4096));
           if sizeOf (chunk) > 0 {
             response = response + chunk
+          }
+          else {
+            // Empty read after some data means the server closed the connection
+            if headersComplete {
+              connectionClosed = true
+            }
+          };
+          if (not headersComplete) and (response contains "\r\n\r\n") {
+            headersComplete = true
           };
           thread.sleepFor (10)
         };
