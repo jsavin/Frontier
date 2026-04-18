@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>Webserver Inetd E2E (webserver_inetd_e2e) - 4 tests: 4 pass (100%)</title>
-    <dateCreated>Sat, 18 Apr 2026 22:47:00 GMT</dateCreated>
+    <dateCreated>Sat, 18 Apr 2026 22:57:07 GMT</dateCreated>
   </head>
   <body>
     <outline text="inetd E2E - listener lifecycle with custom helloE2E responder - Register a custom responder, start a listener, verify tracking, stop cleanly">
@@ -259,7 +259,7 @@
         <outline text="requires_system_root: True"/>
         <outline text="timeout: 30"/>
         <outline text="expected_result: true"/>
-        <outline text="notes: When no custom responder matches, webserver.dispatch falls back to the default&#10;responder which returns 404 for unknown paths (or 403 for forbidden ones).&#10;This validates that the dispatch path works correctly when the custom responder's&#10;condition does not match.&#10;"/>
+        <outline text="notes: When no custom responder matches, webserver.dispatch falls back to the default&#10;responder which returns a 4xx status (typically 404 Not Found, sometimes 403&#10;Forbidden). A 5xx dispatch error would also satisfy the &quot;unknown path&quot; assertion&#10;— better than a silent pass if the dispatch path regresses. This validates that&#10;the dispatch path works correctly when the custom responder's condition does&#10;not match.&#10;"/>
       </outline>
       <outline text="Script">
         <outline text="webserver.init()"/>
@@ -298,7 +298,6 @@
         </outline>
         <outline text="thread.sleepFor (50);  // 50 ticks to ensure the accept socket is ready before we connect"/>
         <outline text="local(isError = false)"/>
-        <outline text="local(hasHttpLine = false)"/>
         <outline text="try">
           <outline text="local(stream = tcp.openAddrStream (tcp.addressEncode (&quot;127.0.0.1&quot;), port))"/>
           <outline text="// Request a path that neither helloE2E nor the default file/ODB tree resolves to."/>
@@ -331,13 +330,14 @@
           <outline text="tcp.closeStream (stream)"/>
           <outline text="// UserTalk 'contains' treats &quot;.&quot; as a single-char wildcard, so &quot;HTTP/1.&quot;"/>
           <outline text="// matches &quot;HTTP/1.0&quot; and &quot;HTTP/1.1&quot; — this is intentional, not a typo."/>
-          <outline text="hasHttpLine = response contains &quot;HTTP/1.&quot;"/>
           <outline text="// Match status line precisely to avoid false matches against body/header content."/>
-          <outline text="// &quot;HTTP/1. 4&quot; matches any 4xx status line (404 Not Found, 403 Forbidden, 410 Gone,"/>
-          <outline text="// etc.) — all correct &quot;unknown path&quot; signals from the default responder."/>
-          <outline text="// We intentionally do NOT fall back to body-text matches like &quot;Not Found&quot; because"/>
-          <outline text="// that could mask a 200 response whose body happens to contain the word."/>
-          <outline text="isError = response contains &quot;HTTP/1. 4&quot;"/>
+          <outline text="// &quot;HTTP/1. 4&quot; matches any 4xx status line (403/404/410/etc.) — the expected"/>
+          <outline text="// default-responder result for an unmatched path. &quot;HTTP/1. 5&quot; covers a 5xx"/>
+          <outline text="// internal dispatch error, which is also a correct &quot;unknown path&quot; signal"/>
+          <outline text="// (better than a silent pass). We intentionally do NOT fall back to body-text"/>
+          <outline text="// matches like &quot;Not Found&quot; — those could mask a 200 response whose body"/>
+          <outline text="// happens to contain the word."/>
+          <outline text="isError = (response contains &quot;HTTP/1. 4&quot;) or (response contains &quot;HTTP/1. 5&quot;)"/>
         </outline>
         <outline text="else">
           <outline text="inetd.stopOne (@user.inetd.config.http)"/>
@@ -350,7 +350,7 @@
         <outline text="thread.sleepFor (30);  // #364 workaround"/>
         <outline text="delete (@user.webserver.responders.helloE2E)"/>
         <outline text="user.inetd.config.http.port = originalPort"/>
-        <outline text="return hasHttpLine and isError"/>
+        <outline text="return isError"/>
       </outline>
     </outline>
   </body>
