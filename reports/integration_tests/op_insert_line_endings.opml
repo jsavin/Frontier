@@ -1,8 +1,8 @@
 <?xml version="1.0" ?>
 <opml version="2.0">
   <head>
-    <title>Op Insert Line Endings (op_insert_line_endings) - 10 tests: 10 pass (100%)</title>
-    <dateCreated>Sat, 18 Apr 2026 08:28:15 GMT</dateCreated>
+    <title>Op Insert Line Endings (op_insert_line_endings) - 11 tests: 11 pass (100%)</title>
+    <dateCreated>Sat, 18 Apr 2026 08:52:59 GMT</dateCreated>
   </head>
   <body>
     <outline text="op.insert line endings - CR splits into multiple nodes (baseline) - CR is the canonical node separator and must produce a multi-node outline">
@@ -126,6 +126,20 @@
         <outline text="lang.new (outlineType, @system.temp.trailing)"/>
         <outline text="target.set (@system.temp.trailing)"/>
         <outline text="op.insert (&quot;line1\nline2\n&quot;, down)"/>
+        <outline text="op.firstSummit ()"/>
+        <outline text="op.deleteLine ()"/>
+        <outline text="local (summits = op.countSummits ())"/>
+        <outline text="return (summits == 2)"/>
+      </outline>
+    </outline>
+    <outline text="op.insert line endings - trailing CRLF does not create empty node - Input ending with CRLF must behave the same as trailing LF and trailing CR — no spurious empty trailing node">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="lang.new (outlineType, @system.temp.trailingcrlf)"/>
+        <outline text="target.set (@system.temp.trailingcrlf)"/>
+        <outline text="op.insert (&quot;line1\r\nline2\r\n&quot;, down)"/>
         <outline text="op.firstSummit ()"/>
         <outline text="op.deleteLine ()"/>
         <outline text="local (summits = op.countSummits ())"/>
