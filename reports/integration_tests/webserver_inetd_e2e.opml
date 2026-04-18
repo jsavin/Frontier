@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>Webserver Inetd E2E (webserver_inetd_e2e) - 4 tests: 4 pass (100%)</title>
-    <dateCreated>Sat, 18 Apr 2026 22:57:07 GMT</dateCreated>
+    <dateCreated>Sat, 18 Apr 2026 23:06:17 GMT</dateCreated>
   </head>
   <body>
     <outline text="inetd E2E - listener lifecycle with custom helloE2E responder - Register a custom responder, start a listener, verify tracking, stop cleanly">
@@ -77,7 +77,11 @@
         <outline text="// port mutation local to the test."/>
         <outline text="local(originalPort = user.inetd.config.http.port)"/>
         <outline text="user.inetd.config.http.port = port"/>
-        <outline text="// Install a custom responder whose GET returns &quot;hello E2E&quot;"/>
+        <outline text="// Install a custom responder whose GET returns &quot;hello E2E&quot;."/>
+        <outline text="// NOTE: The 4 tests in this file each install helloE2E locally rather than"/>
+        <outline text="// sharing a setup block — the YAML integration-test framework has no"/>
+        <outline text="// setup/teardown mechanism, and per-test isolation is more important here"/>
+        <outline text="// than DRY. If the responder shape changes, update all 4 tests in parallel."/>
         <outline text="if not defined (user.webserver.responders.helloE2E)">
           <outline text="new (tableType, @user.webserver.responders.helloE2E)"/>
         </outline>
@@ -108,15 +112,20 @@
         <outline text="thread.sleepFor (50);  // 50 ticks to ensure the accept socket is ready before we connect"/>
         <outline text="local(hasStatus200 = false)"/>
         <outline text="local(hasBody = false)"/>
+        <outline text="// Stream is declared at outer scope so the try/else can close it even if"/>
+        <outline text="// an exception fires before the try-block's explicit tcp.closeStream."/>
+        <outline text="local(stream = 0)"/>
         <outline text="try">
-          <outline text="local(stream = tcp.openAddrStream (tcp.addressEncode (&quot;127.0.0.1&quot;), port))"/>
+          <outline text="stream = tcp.openAddrStream (tcp.addressEncode (&quot;127.0.0.1&quot;), port)"/>
           <outline text="// HTTP/1.0 with Connection: close — simplest possible request"/>
           <outline text="local(request = &quot;GET /helloE2E HTTP/1.0\r\nHost: localhost\r\nConnection: close\r\n\r\n&quot;)"/>
           <outline text="tcp.writeStream (stream, request)"/>
           <outline text="// Two-phase read: (1) accumulate until we see end-of-headers, then"/>
           <outline text="// (2) keep reading until the server closes the connection so we"/>
           <outline text="// capture the full body (HTTP/1.0 + Connection: close).  Guarded by"/>
-          <outline text="// a ticks-based timeout to prevent hangs."/>
+          <outline text="// a ticks-based timeout.  If we exit the loop with connectionClosed"/>
+          <outline text="// still false, the timeout fired — scriptError below so CI logs"/>
+          <outline text="// distinguish &quot;server never closed&quot; from &quot;server returned wrong data&quot;."/>
           <outline text="local(response = &quot;&quot;)"/>
           <outline text="local(startTicks = clock.ticks ())"/>
           <outline text="local(headersComplete = false)"/>
@@ -138,6 +147,10 @@
             <outline text="thread.sleepFor (10)"/>
           </outline>
           <outline text="tcp.closeStream (stream)"/>
+          <outline text="stream = 0"/>
+          <outline text="if not connectionClosed">
+            <outline text="scriptError (&quot;read loop timed out — server never closed connection on port &quot; + port)"/>
+          </outline>
           <outline text="// Match the HTTP status line precisely, not just any &quot;200&quot; in headers/body."/>
           <outline text="// &quot;HTTP/1. 200&quot; covers both HTTP/1.0 and HTTP/1.1 response lines."/>
           <outline text="// UserTalk 'contains' treats &quot;.&quot; as a single-char wildcard, so &quot;HTTP/1. 200&quot;"/>
@@ -146,6 +159,11 @@
           <outline text="hasBody = response contains &quot;hello E2E&quot;"/>
         </outline>
         <outline text="else">
+          <outline text="// Ensure the stream is closed even if an exception fired mid-body."/>
+          <outline text="if stream != 0">
+            <outline text="tcp.closeStream (stream)"/>
+            <outline text="stream = 0"/>
+          </outline>
           <outline text="inetd.stopOne (@user.inetd.config.http)"/>
           <outline text="thread.sleepFor (30)"/>
           <outline text="delete (@user.webserver.responders.helloE2E)"/>
@@ -202,10 +220,13 @@
         </outline>
         <outline text="thread.sleepFor (50);  // 50 ticks to ensure the accept socket is ready before we connect"/>
         <outline text="local(successCount = 0)"/>
+        <outline text="// Stream is declared at outer scope so the try/else can close it even if"/>
+        <outline text="// an exception fires before the try-block's explicit tcp.closeStream."/>
+        <outline text="local(stream = 0)"/>
         <outline text="try">
           <outline text="local(i)"/>
           <outline text="for i = 1 to 2">
-            <outline text="local(stream = tcp.openAddrStream (tcp.addressEncode (&quot;127.0.0.1&quot;), port))"/>
+            <outline text="stream = tcp.openAddrStream (tcp.addressEncode (&quot;127.0.0.1&quot;), port)"/>
             <outline text="local(request = &quot;GET /helloE2E HTTP/1.0\r\nHost: localhost\r\nConnection: close\r\n\r\n&quot;)"/>
             <outline text="tcp.writeStream (stream, request)"/>
             <outline text="// Two-phase read (matches Test 2 / Test 4): (1) accumulate until end-of-headers,"/>
@@ -232,6 +253,10 @@
               <outline text="thread.sleepFor (10)"/>
             </outline>
             <outline text="tcp.closeStream (stream)"/>
+            <outline text="stream = 0"/>
+            <outline text="if not connectionClosed">
+              <outline text="scriptError (&quot;read loop timed out on iteration &quot; + i + &quot; — server never closed connection on port &quot; + port)"/>
+            </outline>
             <outline text="// &quot;HTTP/1. 200&quot; covers both HTTP/1.0 and HTTP/1.1 status lines."/>
             <outline text="// UserTalk 'contains' treats &quot;.&quot; as a single-char wildcard, so this matches"/>
             <outline text="// &quot;HTTP/1.0 200&quot; and &quot;HTTP/1.1 200&quot; without a false match on &quot;Content-Length: 200&quot;."/>
@@ -241,6 +266,11 @@
           </outline>
         </outline>
         <outline text="else">
+          <outline text="// Ensure the stream is closed even if an exception fired mid-iteration."/>
+          <outline text="if stream != 0">
+            <outline text="tcp.closeStream (stream)"/>
+            <outline text="stream = 0"/>
+          </outline>
           <outline text="inetd.stopOne (@user.inetd.config.http)"/>
           <outline text="thread.sleepFor (30)"/>
           <outline text="delete (@user.webserver.responders.helloE2E)"/>
@@ -268,7 +298,10 @@
         <outline text="// port mutation local to the test."/>
         <outline text="local(originalPort = user.inetd.config.http.port)"/>
         <outline text="user.inetd.config.http.port = port"/>
-        <outline text="// Install helloE2E responder that only matches /helloE2E paths"/>
+        <outline text="// Install helloE2E responder that only matches /helloE2E paths.  The GET"/>
+        <outline text="// handler is intentionally omitted — this test never matches the condition,"/>
+        <outline text="// so the handler would be dead code.  The goal is to verify dispatch falls"/>
+        <outline text="// through to the default responder when no custom condition matches."/>
         <outline text="if not defined (user.webserver.responders.helloE2E)">
           <outline text="new (tableType, @user.webserver.responders.helloE2E)"/>
         </outline>
@@ -277,17 +310,6 @@
           <outline text="&quot;on condition (adrParamTable) {&quot; + cr +"/>
           <outline text="tab + &quot;return (adrParamTable^.path beginsWith \&quot;/helloE2E\&quot;)}&quot;,"/>
           <outline text="@user.webserver.responders.helloE2E.condition)"/>
-        </outline>
-        <outline text="if not defined (user.webserver.responders.helloE2E.methods)">
-          <outline text="new (tableType, @user.webserver.responders.helloE2E.methods)"/>
-        </outline>
-        <outline text="script.newScriptObject (">
-          <outline text="&quot;on GET (adrParamTable) {&quot; + cr +"/>
-          <outline text="tab + &quot;adrParamTable^.code = 200;&quot; + cr +"/>
-          <outline text="tab + &quot;adrParamTable^.responseHeaders.[\&quot;Content-Type\&quot;] = \&quot;text/plain\&quot;;&quot; + cr +"/>
-          <outline text="tab + &quot;adrParamTable^.responseBody = \&quot;hello E2E\&quot;;&quot; + cr +"/>
-          <outline text="tab + &quot;return (true)}&quot;,"/>
-          <outline text="@user.webserver.responders.helloE2E.methods.GET)"/>
         </outline>
         <outline text="// Capture the startOne return so a listener-bind failure surfaces as a clear"/>
         <outline text="// error instead of a later connection-refused."/>
@@ -298,15 +320,20 @@
         </outline>
         <outline text="thread.sleepFor (50);  // 50 ticks to ensure the accept socket is ready before we connect"/>
         <outline text="local(isError = false)"/>
+        <outline text="// Stream is declared at outer scope so the try/else can close it even if"/>
+        <outline text="// an exception fires before the try-block's explicit tcp.closeStream."/>
+        <outline text="local(stream = 0)"/>
         <outline text="try">
-          <outline text="local(stream = tcp.openAddrStream (tcp.addressEncode (&quot;127.0.0.1&quot;), port))"/>
+          <outline text="stream = tcp.openAddrStream (tcp.addressEncode (&quot;127.0.0.1&quot;), port)"/>
           <outline text="// Request a path that neither helloE2E nor the default file/ODB tree resolves to."/>
           <outline text="local(request = &quot;GET /definitely/not/a/real/path/xyz HTTP/1.0\r\nHost: localhost\r\nConnection: close\r\n\r\n&quot;)"/>
           <outline text="tcp.writeStream (stream, request)"/>
           <outline text="// Two-phase read: (1) accumulate until we see end-of-headers, then"/>
           <outline text="// (2) keep reading until the server closes the connection so we"/>
           <outline text="// capture the full body (HTTP/1.0 + Connection: close).  Guarded by"/>
-          <outline text="// a ticks-based timeout to prevent hangs."/>
+          <outline text="// a ticks-based timeout.  If we exit the loop with connectionClosed"/>
+          <outline text="// still false, the timeout fired — scriptError below so CI logs"/>
+          <outline text="// distinguish &quot;server never closed&quot; from &quot;server returned wrong data&quot;."/>
           <outline text="local(response = &quot;&quot;)"/>
           <outline text="local(startTicks = clock.ticks ())"/>
           <outline text="local(headersComplete = false)"/>
@@ -328,6 +355,10 @@
             <outline text="thread.sleepFor (10)"/>
           </outline>
           <outline text="tcp.closeStream (stream)"/>
+          <outline text="stream = 0"/>
+          <outline text="if not connectionClosed">
+            <outline text="scriptError (&quot;read loop timed out — server never closed connection on port &quot; + port)"/>
+          </outline>
           <outline text="// UserTalk 'contains' treats &quot;.&quot; as a single-char wildcard, so &quot;HTTP/1.&quot;"/>
           <outline text="// matches &quot;HTTP/1.0&quot; and &quot;HTTP/1.1&quot; — this is intentional, not a typo."/>
           <outline text="// Match status line precisely to avoid false matches against body/header content."/>
@@ -340,6 +371,11 @@
           <outline text="isError = (response contains &quot;HTTP/1. 4&quot;) or (response contains &quot;HTTP/1. 5&quot;)"/>
         </outline>
         <outline text="else">
+          <outline text="// Ensure the stream is closed even if an exception fired mid-body."/>
+          <outline text="if stream != 0">
+            <outline text="tcp.closeStream (stream)"/>
+            <outline text="stream = 0"/>
+          </outline>
           <outline text="inetd.stopOne (@user.inetd.config.http)"/>
           <outline text="thread.sleepFor (30)"/>
           <outline text="delete (@user.webserver.responders.helloE2E)"/>

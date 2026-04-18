@@ -121,7 +121,11 @@ tests:
       local(originalPort = user.inetd.config.http.port);
       user.inetd.config.http.port = port;
 
-      // Install a custom responder whose GET returns "hello E2E"
+      // Install a custom responder whose GET returns "hello E2E".
+      // NOTE: The 4 tests in this file each install helloE2E locally rather than
+      // sharing a setup block — the YAML integration-test framework has no
+      // setup/teardown mechanism, and per-test isolation is more important here
+      // than DRY. If the responder shape changes, update all 4 tests in parallel.
       if not defined (user.webserver.responders.helloE2E) {
         new (tableType, @user.webserver.responders.helloE2E)
       };
@@ -152,9 +156,12 @@ tests:
 
       local(hasStatus200 = false);
       local(hasBody = false);
+      // Stream is declared at outer scope so the try/else can close it even if
+      // an exception fires before the try-block's explicit tcp.closeStream.
+      local(stream = 0);
 
       try {
-        local(stream = tcp.openAddrStream (tcp.addressEncode ("127.0.0.1"), port));
+        stream = tcp.openAddrStream (tcp.addressEncode ("127.0.0.1"), port);
 
         // HTTP/1.0 with Connection: close — simplest possible request
         local(request = "GET /helloE2E HTTP/1.0\r\nHost: localhost\r\nConnection: close\r\n\r\n");
@@ -163,7 +170,9 @@ tests:
         // Two-phase read: (1) accumulate until we see end-of-headers, then
         // (2) keep reading until the server closes the connection so we
         // capture the full body (HTTP/1.0 + Connection: close).  Guarded by
-        // a ticks-based timeout to prevent hangs.
+        // a ticks-based timeout.  If we exit the loop with connectionClosed
+        // still false, the timeout fired — scriptError below so CI logs
+        // distinguish "server never closed" from "server returned wrong data".
         local(response = "");
         local(startTicks = clock.ticks ());
         local(headersComplete = false);
@@ -186,6 +195,11 @@ tests:
         };
 
         tcp.closeStream (stream);
+        stream = 0;
+
+        if not connectionClosed {
+          scriptError ("read loop timed out — server never closed connection on port " + port)
+        };
 
         // Match the HTTP status line precisely, not just any "200" in headers/body.
         // "HTTP/1. 200" covers both HTTP/1.0 and HTTP/1.1 response lines.
@@ -195,6 +209,11 @@ tests:
         hasBody = response contains "hello E2E"
       }
       else {
+        // Ensure the stream is closed even if an exception fired mid-body.
+        if stream != 0 {
+          tcp.closeStream (stream);
+          stream = 0
+        };
         inetd.stopOne (@user.inetd.config.http);
         thread.sleepFor (30);
         delete (@user.webserver.responders.helloE2E);
@@ -257,11 +276,14 @@ tests:
       thread.sleepFor (50);  // 50 ticks to ensure the accept socket is ready before we connect
 
       local(successCount = 0);
+      // Stream is declared at outer scope so the try/else can close it even if
+      // an exception fires before the try-block's explicit tcp.closeStream.
+      local(stream = 0);
 
       try {
         local(i);
         for i = 1 to 2 {
-          local(stream = tcp.openAddrStream (tcp.addressEncode ("127.0.0.1"), port));
+          stream = tcp.openAddrStream (tcp.addressEncode ("127.0.0.1"), port);
           local(request = "GET /helloE2E HTTP/1.0\r\nHost: localhost\r\nConnection: close\r\n\r\n");
           tcp.writeStream (stream, request);
 
@@ -290,6 +312,11 @@ tests:
           };
 
           tcp.closeStream (stream);
+          stream = 0;
+
+          if not connectionClosed {
+            scriptError ("read loop timed out on iteration " + i + " — server never closed connection on port " + port)
+          };
 
           // "HTTP/1. 200" covers both HTTP/1.0 and HTTP/1.1 status lines.
           // UserTalk 'contains' treats "." as a single-char wildcard, so this matches
@@ -300,6 +327,11 @@ tests:
         }
       }
       else {
+        // Ensure the stream is closed even if an exception fired mid-iteration.
+        if stream != 0 {
+          tcp.closeStream (stream);
+          stream = 0
+        };
         inetd.stopOne (@user.inetd.config.http);
         thread.sleepFor (30);
         delete (@user.webserver.responders.helloE2E);
@@ -333,7 +365,10 @@ tests:
       local(originalPort = user.inetd.config.http.port);
       user.inetd.config.http.port = port;
 
-      // Install helloE2E responder that only matches /helloE2E paths
+      // Install helloE2E responder that only matches /helloE2E paths.  The GET
+      // handler is intentionally omitted — this test never matches the condition,
+      // so the handler would be dead code.  The goal is to verify dispatch falls
+      // through to the default responder when no custom condition matches.
       if not defined (user.webserver.responders.helloE2E) {
         new (tableType, @user.webserver.responders.helloE2E)
       };
@@ -342,16 +377,6 @@ tests:
         "on condition (adrParamTable) {" + cr +
         tab + "return (adrParamTable^.path beginsWith \"/helloE2E\")}",
         @user.webserver.responders.helloE2E.condition);
-      if not defined (user.webserver.responders.helloE2E.methods) {
-        new (tableType, @user.webserver.responders.helloE2E.methods)
-      };
-      script.newScriptObject (
-        "on GET (adrParamTable) {" + cr +
-        tab + "adrParamTable^.code = 200;" + cr +
-        tab + "adrParamTable^.responseHeaders.[\"Content-Type\"] = \"text/plain\";" + cr +
-        tab + "adrParamTable^.responseBody = \"hello E2E\";" + cr +
-        tab + "return (true)}",
-        @user.webserver.responders.helloE2E.methods.GET);
 
       // Capture the startOne return so a listener-bind failure surfaces as a clear
       // error instead of a later connection-refused.
@@ -363,9 +388,12 @@ tests:
       thread.sleepFor (50);  // 50 ticks to ensure the accept socket is ready before we connect
 
       local(isError = false);
+      // Stream is declared at outer scope so the try/else can close it even if
+      // an exception fires before the try-block's explicit tcp.closeStream.
+      local(stream = 0);
 
       try {
-        local(stream = tcp.openAddrStream (tcp.addressEncode ("127.0.0.1"), port));
+        stream = tcp.openAddrStream (tcp.addressEncode ("127.0.0.1"), port);
         // Request a path that neither helloE2E nor the default file/ODB tree resolves to.
         local(request = "GET /definitely/not/a/real/path/xyz HTTP/1.0\r\nHost: localhost\r\nConnection: close\r\n\r\n");
         tcp.writeStream (stream, request);
@@ -373,7 +401,9 @@ tests:
         // Two-phase read: (1) accumulate until we see end-of-headers, then
         // (2) keep reading until the server closes the connection so we
         // capture the full body (HTTP/1.0 + Connection: close).  Guarded by
-        // a ticks-based timeout to prevent hangs.
+        // a ticks-based timeout.  If we exit the loop with connectionClosed
+        // still false, the timeout fired — scriptError below so CI logs
+        // distinguish "server never closed" from "server returned wrong data".
         local(response = "");
         local(startTicks = clock.ticks ());
         local(headersComplete = false);
@@ -396,6 +426,11 @@ tests:
         };
 
         tcp.closeStream (stream);
+        stream = 0;
+
+        if not connectionClosed {
+          scriptError ("read loop timed out — server never closed connection on port " + port)
+        };
 
         // UserTalk 'contains' treats "." as a single-char wildcard, so "HTTP/1."
         // matches "HTTP/1.0" and "HTTP/1.1" — this is intentional, not a typo.
@@ -409,6 +444,11 @@ tests:
         isError = (response contains "HTTP/1. 4") or (response contains "HTTP/1. 5")
       }
       else {
+        // Ensure the stream is closed even if an exception fired mid-body.
+        if stream != 0 {
+          tcp.closeStream (stream);
+          stream = 0
+        };
         inetd.stopOne (@user.inetd.config.http);
         thread.sleepFor (30);
         delete (@user.webserver.responders.helloE2E);
