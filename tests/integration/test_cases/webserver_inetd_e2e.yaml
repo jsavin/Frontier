@@ -171,6 +171,8 @@ tests:
 
         // Match the HTTP status line precisely, not just any "200" in headers/body.
         // "HTTP/1. 200" covers both HTTP/1.0 and HTTP/1.1 response lines.
+        // UserTalk 'contains' treats "." as a single-char wildcard, so "HTTP/1. 200"
+        // matches "HTTP/1.0 200" and "HTTP/1.1 200" — this is intentional, not a typo.
         hasStatus200 = response contains "HTTP/1. 200";
         hasBody = response contains "hello E2E"
       }
@@ -239,18 +241,35 @@ tests:
           local(request = "GET /helloE2E HTTP/1.0\r\nHost: localhost\r\nConnection: close\r\n\r\n");
           tcp.writeStream (stream, request);
 
+          // Two-phase read (matches Test 2 / Test 4): (1) accumulate until end-of-headers,
+          // (2) keep reading until the server closes the connection so we capture the full
+          // body (HTTP/1.0 + Connection: close). Guarded by a ticks-based timeout.
           local(response = "");
           local(startTicks = clock.ticks ());
-          while ((sizeOf (response) == 0) or (not (response contains "\r\n\r\n"))) and ((clock.ticks () - startTicks) < 300) {
+          local(headersComplete = false);
+          local(connectionClosed = false);
+          while (not connectionClosed) and ((clock.ticks () - startTicks) < 300) {
             local(chunk = tcp.readStream (stream, 4096));
             if sizeOf (chunk) > 0 {
               response = response + chunk
+            }
+            else {
+              // Empty read after some data means the server closed the connection
+              if headersComplete {
+                connectionClosed = true
+              }
+            };
+            if (not headersComplete) and (response contains "\r\n\r\n") {
+              headersComplete = true
             };
             thread.sleepFor (10)
           };
 
           tcp.closeStream (stream);
 
+          // "HTTP/1. 200" covers both HTTP/1.0 and HTTP/1.1 status lines.
+          // UserTalk 'contains' treats "." as a single-char wildcard, so this matches
+          // "HTTP/1.0 200" and "HTTP/1.1 200" without a false match on "Content-Length: 200".
           if (response contains "HTTP/1. 200") and (response contains "hello E2E") {
             successCount = successCount + 1
           }
@@ -349,6 +368,8 @@ tests:
 
         tcp.closeStream (stream);
 
+        // UserTalk 'contains' treats "." as a single-char wildcard, so "HTTP/1."
+        // matches "HTTP/1.0" and "HTTP/1.1" — this is intentional, not a typo.
         hasHttpLine = response contains "HTTP/1.";
         // Match status line precisely to avoid false matches against body/header content.
         // Accept any 4xx response (404 Not Found, 403 Forbidden, etc.) OR the fallback
