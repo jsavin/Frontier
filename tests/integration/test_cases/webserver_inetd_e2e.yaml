@@ -37,7 +37,7 @@ tests:
   # =============================================================================
   # TEST 1 — Listener lifecycle with a custom responder
   # =============================================================================
-  - name: "inetd E2E - listener lifecycle with custom helloResponder"
+  - name: "inetd E2E - listener lifecycle with custom helloE2E responder"
     description: "Register a custom responder, start a listener, verify tracking, stop cleanly"
     requires_system_root: true
     timeout: 20
