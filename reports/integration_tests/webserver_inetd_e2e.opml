@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>Webserver Inetd E2E (webserver_inetd_e2e) - 4 tests: 4 pass (100%)</title>
-    <dateCreated>Sat, 18 Apr 2026 22:43:01 GMT</dateCreated>
+    <dateCreated>Sat, 18 Apr 2026 22:47:00 GMT</dateCreated>
   </head>
   <body>
     <outline text="inetd E2E - listener lifecycle with custom helloE2E responder - Register a custom responder, start a listener, verify tracking, stop cleanly">
@@ -333,12 +333,11 @@
           <outline text="// matches &quot;HTTP/1.0&quot; and &quot;HTTP/1.1&quot; — this is intentional, not a typo."/>
           <outline text="hasHttpLine = response contains &quot;HTTP/1.&quot;"/>
           <outline text="// Match status line precisely to avoid false matches against body/header content."/>
-          <outline text="// Accept any 4xx response (404 Not Found, 403 Forbidden, etc.) OR the fallback"/>
-          <outline text="// error page text. The default responder may return 403/404 depending on path"/>
-          <outline text="// resolution; either is a correct &quot;unknown path&quot; signal."/>
-          <outline text="isError = (response contains &quot;HTTP/1. 404&quot;) or (response contains &quot;HTTP/1. 403&quot;) or">
-            <outline text="(response contains &quot;Not Found&quot;) or (response contains &quot;Forbidden&quot;)"/>
-          </outline>
+          <outline text="// &quot;HTTP/1. 4&quot; matches any 4xx status line (404 Not Found, 403 Forbidden, 410 Gone,"/>
+          <outline text="// etc.) — all correct &quot;unknown path&quot; signals from the default responder."/>
+          <outline text="// We intentionally do NOT fall back to body-text matches like &quot;Not Found&quot; because"/>
+          <outline text="// that could mask a 200 response whose body happens to contain the word."/>
+          <outline text="isError = response contains &quot;HTTP/1. 4&quot;"/>
         </outline>
         <outline text="else">
           <outline text="inetd.stopOne (@user.inetd.config.http)"/>

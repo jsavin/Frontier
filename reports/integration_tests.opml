@@ -2,13 +2,13 @@
 <opml version="2.0">
   <head>
     <title>Frontier Integration Tests - 2242 tests: 2008 pass (89%) 234 skip (10%)</title>
-    <dateCreated>Sat, 18 Apr 2026 22:43:01 GMT</dateCreated>
+    <dateCreated>Sat, 18 Apr 2026 22:51:58 GMT</dateCreated>
   </head>
   <body>
     <outline text="Last Test Run">
-      <outline text="Run: 2026-04-18 at 22:42 UTC"/>
-      <outline text="Results: 4 passed (100%), 0 skipped (0%), 0 failed (0%)"/>
-      <outline text="Duration: 0.2s (8 workers, batch mode)"/>
+      <outline text="Run: 2026-04-18 at 22:51 UTC"/>
+      <outline text="Results: 1971 passed (89%), 234 skipped (11%), 19 failed (1%)"/>
+      <outline text="Duration: 30.3s (8 workers, batch mode)"/>
       <outline text="YAML-defined: 2242 tests (2008 active, 234 marked skip) across 68 categories"/>
     </outline>
     <outline text="Bigstring Boundary Tests (bigstring_boundary_tests) - 28 tests: 28 pass (100%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests/bigstring_boundary_tests.opml"/>
