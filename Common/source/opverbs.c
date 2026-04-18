@@ -1770,6 +1770,7 @@ boolean opinserthandle_ctx (op_context_t *ctx, Handle htext, tydirection dir) {
 	register boolean fl;
 	hdlheadrecord hnode;
 	boolean floutline;
+	Handle hnorm; /*owned local copy of htext with normalized line endings*/
 
 	hbarcursor = (**ho).hbarcursor; /*copy into register*/
 
@@ -1785,11 +1786,30 @@ boolean opinserthandle_ctx (op_context_t *ctx, Handle htext, tydirection dir) {
 		dir = down;
 		}
 
+	/*
+	Normalize line endings on an owned local copy BEFORE isoutlinetext
+	decides the path. Input htext is borrowed — never mutate it.
+	CRLF and bare LF both converge to CR so the outline splitter works
+	correctly for .ut files read with file.readWholeFile (modern LF-only
+	endings). See opnormalizelineendings_cr in opstructure.c.
+	*/
+	if (!copyhandle (htext, &hnorm))
+		return (false);
+
+	if (!opnormalizelineendings_cr (hnorm)) {
+		disposehandle (hnorm);
+		return (false);
+		}
+
+	htext = hnorm; /*shadow the parameter; caller's handle untouched*/
+
 	floutline = isoutlinetext (htext);
 
 	if (floutline)
-		if (!optexttooutline (ho, htext, &hnode))
+		if (!optexttooutline (ho, htext, &hnode)) {
+			disposehandle (hnorm);
 			return (false);
+			}
 
 	if (dir == right) { /*maybe we need to expand?*/
 
@@ -1803,10 +1823,19 @@ boolean opinserthandle_ctx (op_context_t *ctx, Handle htext, tydirection dir) {
 
 		if (!fl)
 			opdisposestructure (hnode, false);
+
+		disposehandle (hnorm); /*optexttooutline copied data out; free normalized buffer*/
 		}
 	else {
 
+		/*
+		Flat-text path: opinsertheadline consumes its handle. Copy the
+		normalized buffer and hand the copy to opinsertheadline; dispose
+		our normalized intermediate either way.
+		*/
 		fl = copyhandle (htext, &htext);
+
+		disposehandle (hnorm); /*free normalized intermediate*/
 
 		if (fl)
 			fl = opinsertheadline (htext, dir, false);

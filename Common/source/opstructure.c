@@ -2604,12 +2604,89 @@ boolean opcut (void) {
 
 
 
-boolean isoutlinetext (Handle htext) {
-	
+boolean opnormalizelineendings_cr (Handle htext) {
+
 	/*
-	return true if the text represents a multiple headline 
+	Normalize line endings in htext IN PLACE to CR-only:
+	  CRLF (\r\n)  -> CR (\r)
+	  bare LF (\n) -> CR (\r)
+	  bare CR (\r) unchanged
+
+	op.insert uses CR as the canonical outline node separator, so input
+	with modern (LF-only) or Windows (CRLF) endings must be converged to
+	CR before isoutlinetext() decides whether to split.
+
+	Callers MUST pass a handle they own (copy the input first if it was
+	borrowed — see opinserthandle_ctx).
+
+	Returns false only if the final sethandlesize() fails; the in-place
+	byte rewrite itself cannot fail.
+
+	This is the outline-side analogue of wpnormalizelineendings (wpengine.c),
+	which normalizes to CRLF for the WP/paige engine.
+	*/
+
+	long srclen = gethandlesize (htext);
+	long src, dst = 0;
+	byte chlast = 0; /*previous SOURCE byte — NOT previous output byte*/
+	byte *p;
+
+	if (srclen == 0)
+		return (true);
+
+	p = (byte *) *htext;
+
+	for (src = 0; src < srclen; ++src) {
+
+		byte ch = p [src];
+
+		if (ch == chlinefeed) {
+
+			/*
+			LF after CR in the SOURCE (CRLF pair): drop the LF — the
+			CR has already been written at dst-1.
+
+			Bare LF (including LF after a previously-normalized LF
+			such as "\n\n"): rewrite as CR.
+
+			IMPORTANT: track the previous SOURCE byte via chlast, not
+			the previous OUTPUT byte via p[dst-1]. After we rewrite a
+			bare LF to CR, p[dst-1] will equal chreturn, and using
+			that to gate the "is this a CRLF tail?" check would
+			incorrectly drop subsequent bare LFs (e.g. blank lines
+			represented as consecutive LFs in Unix source files).
+
+			This mirrors wpnormalizelineendings in wpengine.c, which
+			uses the same chlast-on-source pattern.
+			*/
+
+			if (chlast == chreturn) {
+				chlast = ch;
+				continue; /*drop LF; preserve source-level chlast*/
+				}
+
+			p [dst++] = chreturn;
+			chlast = ch;
+			continue;
+			}
+
+		p [dst++] = ch;
+		chlast = ch;
+		}
+
+	if (dst < srclen)
+		return (sethandlesize (htext, dst));
+
+	return (true);
+	} /*opnormalizelineendings_cr*/
+
+
+boolean isoutlinetext (Handle htext) {
+
+	/*
+	return true if the text represents a multiple headline
 	outline, false if it is just flat text
-	
+
 	2.1b9 dmb: broke out this snippet so it can be shared
 
 	6.0a1 dmb: fat headlines can be > lenbigstring
