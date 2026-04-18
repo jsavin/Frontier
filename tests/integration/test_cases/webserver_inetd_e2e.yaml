@@ -1,0 +1,331 @@
+sequential: true         # inetd listeners bind TCP ports — conflicts between parallel workers
+needs_guest_dbs: false   # Self-contained: only uses system root + user.webserver/inetd
+protocol_mode: true      # Default; stated explicitly for clarity
+
+# Integration tests for the full inetd → webserver.server → webserver.dispatch → responder flow
+# (Phase A of planning/MANILA_MAINRESPONDER_E2E.md).
+#
+# Purpose:
+#   Exercise the complete HTTP request lifecycle in a single test process, with a custom
+#   responder registered in user.webserver.responders.  This complements
+#   webserver_hello_world.yaml (which uses the built-in helloWorld responder) and
+#   webserver_http_roundtrip_tests.yaml (which only tests the TCP transport layer with
+#   tcp.listenStream callbacks, not the webserver dispatch path).
+#
+#   These tests are the foundation for Phase B (mainResponder dispatch smoke test) and
+#   Phase C (inetd + mainResponder integration).
+#
+# Port strategy:
+#   Uses fixed high ports (49210–49213) because kernel verbs do not expose a way to read
+#   back an OS-assigned ephemeral port after bind.  Each test uses a dedicated port to
+#   avoid interference between tests.  sequential: true above ensures no parallel-worker
+#   collisions.
+#
+# Listener-shutdown race workaround (issue #364):
+#   After calling inetd.stopOne() we insert a short thread.sleepFor() to let the accept
+#   thread observe the closed socket and exit before the next test starts a new listener.
+#   We are NOT attempting to fix #364 here — see planning/MANILA_MAINRESPONDER_E2E.md.
+#
+# References:
+#   - planning/MANILA_MAINRESPONDER_E2E.md (Phase A)
+#   - tests/integration/test_cases/webserver_hello_world.yaml (built-in helloWorld tests)
+#   - tests/integration/test_cases/webserver_http_roundtrip_tests.yaml (TCP-layer tests)
+#   - usertalk_scripts/Frontier.root/system/verbs/builtins/inetd/startOne.ut
+#   - usertalk_scripts/Frontier.root/system/verbs/builtins/webserver/dispatch.ut
+
+tests:
+  # =============================================================================
+  # TEST 1 — Listener lifecycle with a custom responder
+  # =============================================================================
+  - name: "inetd E2E - listener lifecycle with custom helloResponder"
+    description: "Register a custom responder, start a listener, verify tracking, stop cleanly"
+    requires_system_root: true
+    timeout: 20
+    script: |
+      webserver.init();
+
+      local(port = 49210);
+      user.inetd.config.http.port = port;
+
+      // Install a trivial custom responder at user.webserver.responders.helloE2E.
+      // Using script.newScriptObject so the GET method is installed with proper
+      // line-ending normalization.
+      if not defined (user.webserver.responders.helloE2E) {
+        new (tableType, @user.webserver.responders.helloE2E)
+      };
+      user.webserver.responders.helloE2E.enabled = true;
+      script.newScriptObject (
+        "on condition (adrParamTable) {" + cr +
+        tab + "return (adrParamTable^.path beginsWith \"/helloE2E\")}",
+        @user.webserver.responders.helloE2E.condition);
+      if not defined (user.webserver.responders.helloE2E.methods) {
+        new (tableType, @user.webserver.responders.helloE2E.methods)
+      };
+      script.newScriptObject (
+        "on GET (adrParamTable) {" + cr +
+        tab + "adrParamTable^.code = 200;" + cr +
+        tab + "adrParamTable^.responseHeaders.[\"Content-Type\"] = \"text/plain\";" + cr +
+        tab + "adrParamTable^.responseBody = \"hello E2E\";" + cr +
+        tab + "return (true)}",
+        @user.webserver.responders.helloE2E.methods.GET);
+
+      // Start the listener
+      local(started = inetd.startOne (@user.inetd.config.http));
+      thread.sleepFor (30);
+
+      // Verify listener is tracked
+      local(tracked = defined (user.inetd.listens.[port]));
+
+      // Stop cleanly
+      inetd.stopOne (@user.inetd.config.http);
+      thread.sleepFor (30);  // Workaround for issue #364 (listener shutdown race)
+
+      // Verify listener is no longer tracked
+      local(removed = not defined (user.inetd.listens.[port]));
+
+      // Clean up the custom responder so later tests start fresh
+      delete (@user.webserver.responders.helloE2E);
+
+      return started and tracked and removed
+    expected_success: true
+    expected_result: "true"
+    notes: "Validates listener startup, registration in user.inetd.listens, and clean shutdown"
+
+  # =============================================================================
+  # TEST 2 — Full HTTP GET round trip via the webserver dispatch path
+  # =============================================================================
+  - name: "inetd E2E - HTTP GET round trip to custom responder"
+    description: "Start listener, send HTTP GET, assert 200 status + custom body"
+    requires_system_root: true
+    timeout: 30
+    script: |
+      webserver.init();
+
+      local(port = 49211);
+      user.inetd.config.http.port = port;
+
+      // Install a custom responder whose GET returns "hello E2E"
+      if not defined (user.webserver.responders.helloE2E) {
+        new (tableType, @user.webserver.responders.helloE2E)
+      };
+      user.webserver.responders.helloE2E.enabled = true;
+      script.newScriptObject (
+        "on condition (adrParamTable) {" + cr +
+        tab + "return (adrParamTable^.path beginsWith \"/helloE2E\")}",
+        @user.webserver.responders.helloE2E.condition);
+      if not defined (user.webserver.responders.helloE2E.methods) {
+        new (tableType, @user.webserver.responders.helloE2E.methods)
+      };
+      script.newScriptObject (
+        "on GET (adrParamTable) {" + cr +
+        tab + "adrParamTable^.code = 200;" + cr +
+        tab + "adrParamTable^.responseHeaders.[\"Content-Type\"] = \"text/plain\";" + cr +
+        tab + "adrParamTable^.responseBody = \"hello E2E\";" + cr +
+        tab + "return (true)}",
+        @user.webserver.responders.helloE2E.methods.GET);
+
+      inetd.startOne (@user.inetd.config.http);
+      thread.sleepFor (50);
+
+      local(hasStatus200 = false);
+      local(hasBody = false);
+
+      try {
+        local(stream = tcp.openAddrStream (tcp.addressEncode ("127.0.0.1"), port));
+
+        // HTTP/1.0 with Connection: close — simplest possible request
+        local(request = "GET /helloE2E HTTP/1.0\r\nHost: localhost\r\nConnection: close\r\n\r\n");
+        tcp.writeStream (stream, request);
+
+        local(response = "");
+        local(startTicks = clock.ticks ());
+        while ((sizeOf (response) == 0) or (not (response contains "\r\n\r\n"))) and ((clock.ticks () - startTicks) < 300) {
+          local(chunk = tcp.readStream (stream, 4096));
+          if sizeOf (chunk) > 0 {
+            response = response + chunk
+          };
+          thread.sleepFor (10)
+        };
+
+        tcp.closeStream (stream);
+
+        hasStatus200 = response contains "200";
+        hasBody = response contains "hello E2E"
+      }
+      else {
+        inetd.stopOne (@user.inetd.config.http);
+        thread.sleepFor (30);
+        delete (@user.webserver.responders.helloE2E);
+        scriptError (tryError)
+      };
+
+      inetd.stopOne (@user.inetd.config.http);
+      thread.sleepFor (30);  // #364 workaround
+      delete (@user.webserver.responders.helloE2E);
+
+      return hasStatus200 and hasBody
+    expected_success: true
+    expected_result: "true"
+    notes: "Full stack: tcp.openAddrStream -> inetd.supervisor -> webserver.server -> webserver.dispatch -> helloE2E.GET"
+
+  # =============================================================================
+  # TEST 3 — Multiple sequential requests on the same listener
+  # =============================================================================
+  - name: "inetd E2E - multiple sequential GETs on same listener"
+    description: "Send two HTTP GETs back-to-back, both should succeed"
+    requires_system_root: true
+    timeout: 40
+    script: |
+      webserver.init();
+
+      local(port = 49212);
+      user.inetd.config.http.port = port;
+
+      if not defined (user.webserver.responders.helloE2E) {
+        new (tableType, @user.webserver.responders.helloE2E)
+      };
+      user.webserver.responders.helloE2E.enabled = true;
+      script.newScriptObject (
+        "on condition (adrParamTable) {" + cr +
+        tab + "return (adrParamTable^.path beginsWith \"/helloE2E\")}",
+        @user.webserver.responders.helloE2E.condition);
+      if not defined (user.webserver.responders.helloE2E.methods) {
+        new (tableType, @user.webserver.responders.helloE2E.methods)
+      };
+      script.newScriptObject (
+        "on GET (adrParamTable) {" + cr +
+        tab + "adrParamTable^.code = 200;" + cr +
+        tab + "adrParamTable^.responseHeaders.[\"Content-Type\"] = \"text/plain\";" + cr +
+        tab + "adrParamTable^.responseBody = \"hello E2E\";" + cr +
+        tab + "return (true)}",
+        @user.webserver.responders.helloE2E.methods.GET);
+
+      inetd.startOne (@user.inetd.config.http);
+      thread.sleepFor (50);
+
+      local(successCount = 0);
+
+      try {
+        local(i);
+        for i = 1 to 2 {
+          local(stream = tcp.openAddrStream (tcp.addressEncode ("127.0.0.1"), port));
+          local(request = "GET /helloE2E HTTP/1.0\r\nHost: localhost\r\nConnection: close\r\n\r\n");
+          tcp.writeStream (stream, request);
+
+          local(response = "");
+          local(startTicks = clock.ticks ());
+          while ((sizeOf (response) == 0) or (not (response contains "\r\n\r\n"))) and ((clock.ticks () - startTicks) < 300) {
+            local(chunk = tcp.readStream (stream, 4096));
+            if sizeOf (chunk) > 0 {
+              response = response + chunk
+            };
+            thread.sleepFor (10)
+          };
+
+          tcp.closeStream (stream);
+
+          if (response contains "200") and (response contains "hello E2E") {
+            successCount = successCount + 1
+          }
+        }
+      }
+      else {
+        inetd.stopOne (@user.inetd.config.http);
+        thread.sleepFor (30);
+        delete (@user.webserver.responders.helloE2E);
+        scriptError (tryError)
+      };
+
+      inetd.stopOne (@user.inetd.config.http);
+      thread.sleepFor (30);  // #364 workaround
+      delete (@user.webserver.responders.helloE2E);
+
+      return successCount == 2
+    expected_success: true
+    expected_result: "true"
+    notes: "Validates the listener handles multiple sequential HTTP connections correctly"
+
+  # =============================================================================
+  # TEST 4 — 404 / error response for unknown path (no matching responder condition)
+  # =============================================================================
+  - name: "inetd E2E - unknown path falls through to default responder error"
+    description: "GET to a path no custom responder matches returns an HTTP error (4xx/5xx)"
+    requires_system_root: true
+    timeout: 30
+    script: |
+      webserver.init();
+
+      local(port = 49213);
+      user.inetd.config.http.port = port;
+
+      // Install helloE2E responder that only matches /helloE2E paths
+      if not defined (user.webserver.responders.helloE2E) {
+        new (tableType, @user.webserver.responders.helloE2E)
+      };
+      user.webserver.responders.helloE2E.enabled = true;
+      script.newScriptObject (
+        "on condition (adrParamTable) {" + cr +
+        tab + "return (adrParamTable^.path beginsWith \"/helloE2E\")}",
+        @user.webserver.responders.helloE2E.condition);
+      if not defined (user.webserver.responders.helloE2E.methods) {
+        new (tableType, @user.webserver.responders.helloE2E.methods)
+      };
+      script.newScriptObject (
+        "on GET (adrParamTable) {" + cr +
+        tab + "adrParamTable^.code = 200;" + cr +
+        tab + "adrParamTable^.responseHeaders.[\"Content-Type\"] = \"text/plain\";" + cr +
+        tab + "adrParamTable^.responseBody = \"hello E2E\";" + cr +
+        tab + "return (true)}",
+        @user.webserver.responders.helloE2E.methods.GET);
+
+      inetd.startOne (@user.inetd.config.http);
+      thread.sleepFor (50);
+
+      local(isError = false);
+      local(hasHttpLine = false);
+
+      try {
+        local(stream = tcp.openAddrStream (tcp.addressEncode ("127.0.0.1"), port));
+        // Request a path that neither helloE2E nor the default file/ODB tree resolves to.
+        local(request = "GET /definitely/not/a/real/path/xyz HTTP/1.0\r\nHost: localhost\r\nConnection: close\r\n\r\n");
+        tcp.writeStream (stream, request);
+
+        local(response = "");
+        local(startTicks = clock.ticks ());
+        while ((sizeOf (response) == 0) or (not (response contains "\r\n\r\n"))) and ((clock.ticks () - startTicks) < 300) {
+          local(chunk = tcp.readStream (stream, 4096));
+          if sizeOf (chunk) > 0 {
+            response = response + chunk
+          };
+          thread.sleepFor (10)
+        };
+
+        tcp.closeStream (stream);
+
+        hasHttpLine = response contains "HTTP/1.";
+        // Accept any 4xx response (404 Not Found, 403 Forbidden, etc.) OR
+        // the fallback "Not Found" error page text.  The default responder may
+        // return 403/404 depending on path resolution; either is a correct
+        // "unknown path" signal.
+        isError = (response contains "404") or (response contains "403") or
+                  (response contains "Not Found") or (response contains "Forbidden")
+      }
+      else {
+        inetd.stopOne (@user.inetd.config.http);
+        thread.sleepFor (30);
+        delete (@user.webserver.responders.helloE2E);
+        scriptError (tryError)
+      };
+
+      inetd.stopOne (@user.inetd.config.http);
+      thread.sleepFor (30);  // #364 workaround
+      delete (@user.webserver.responders.helloE2E);
+
+      return hasHttpLine and isError
+    expected_success: true
+    expected_result: "true"
+    notes: |
+      When no custom responder matches, webserver.dispatch falls back to the default
+      responder which returns 404 for unknown paths (or 403 for forbidden ones).
+      This validates that the dispatch path works correctly when the custom responder's
+      condition does not match.
