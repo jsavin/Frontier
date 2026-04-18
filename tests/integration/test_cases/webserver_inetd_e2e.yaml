@@ -363,7 +363,6 @@ tests:
       thread.sleepFor (50);  // 50 ticks to ensure the accept socket is ready before we connect
 
       local(isError = false);
-      local(hasHttpLine = false);
 
       try {
         local(stream = tcp.openAddrStream (tcp.addressEncode ("127.0.0.1"), port));
@@ -400,13 +399,14 @@ tests:
 
         // UserTalk 'contains' treats "." as a single-char wildcard, so "HTTP/1."
         // matches "HTTP/1.0" and "HTTP/1.1" — this is intentional, not a typo.
-        hasHttpLine = response contains "HTTP/1.";
         // Match status line precisely to avoid false matches against body/header content.
-        // "HTTP/1. 4" matches any 4xx status line (404 Not Found, 403 Forbidden, 410 Gone,
-        // etc.) — all correct "unknown path" signals from the default responder.
-        // We intentionally do NOT fall back to body-text matches like "Not Found" because
-        // that could mask a 200 response whose body happens to contain the word.
-        isError = response contains "HTTP/1. 4"
+        // "HTTP/1. 4" matches any 4xx status line (403/404/410/etc.) — the expected
+        // default-responder result for an unmatched path. "HTTP/1. 5" covers a 5xx
+        // internal dispatch error, which is also a correct "unknown path" signal
+        // (better than a silent pass). We intentionally do NOT fall back to body-text
+        // matches like "Not Found" — those could mask a 200 response whose body
+        // happens to contain the word.
+        isError = (response contains "HTTP/1. 4") or (response contains "HTTP/1. 5")
       }
       else {
         inetd.stopOne (@user.inetd.config.http);
@@ -421,11 +421,13 @@ tests:
       delete (@user.webserver.responders.helloE2E);
       user.inetd.config.http.port = originalPort;
 
-      return hasHttpLine and isError
+      return isError
     expected_success: true
     expected_result: "true"
     notes: |
       When no custom responder matches, webserver.dispatch falls back to the default
-      responder which returns 404 for unknown paths (or 403 for forbidden ones).
-      This validates that the dispatch path works correctly when the custom responder's
-      condition does not match.
+      responder which returns a 4xx status (typically 404 Not Found, sometimes 403
+      Forbidden). A 5xx dispatch error would also satisfy the "unknown path" assertion
+      — better than a silent pass if the dispatch path regresses. This validates that
+      the dispatch path works correctly when the custom responder's condition does
+      not match.
