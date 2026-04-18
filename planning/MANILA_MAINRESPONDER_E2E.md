@@ -21,7 +21,7 @@ Related Docs
 
 Change Log
 - 2026-04-17: Initial document created after /plan session. Baseline: 2209 integration tests, 0 failures; PRs #538/#539/#540 merged.
-- 2026-04-17: Phase A — added `tests/integration/test_cases/webserver_inetd_e2e.yaml` (4 tests, all passing) exercising full inetd → webserver.server → webserver.dispatch → custom responder flow. Integration suite: 2213 total, 0 failures. Unit suite: 302 passed. PR opened against develop.
+- 2026-04-17: Phase A — added `tests/integration/test_cases/webserver_inetd_e2e.yaml` (4 tests, all passing) exercising full inetd → webserver.server → webserver.dispatch → custom responder flow. Integration suite: 2213 total, 0 failures. Unit suite: 302 passed. PR #541 opened against develop.
 
 ---
 
@@ -31,7 +31,7 @@ Update this table after every session. Keep phases in order — don't start N+1 
 
 | Phase | Title | State | PR | Notes |
 |-------|-------|-------|----|----|
-| A | inetd E2E Foundation | In review | TBD | 4 tests passing; 2213 total, 0 failures |
+| A | inetd E2E Foundation | In review | #541 | 4 tests passing; 2213 total, 0 failures |
 | B | mainResponder Dispatch Smoke Test | Not started | — | Depends on A |
 | C | inetd + mainResponder Integration | Not started | — | Depends on B |
 | D | Manila Installation + First Page | Not started | — | Human-led |
