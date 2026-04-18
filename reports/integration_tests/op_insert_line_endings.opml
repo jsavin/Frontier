@@ -1,0 +1,196 @@
+<?xml version="1.0" ?>
+<opml version="2.0">
+  <head>
+    <title>Op Insert Line Endings (op_insert_line_endings) - 10 tests: 10 pass (100%)</title>
+    <dateCreated>Sat, 18 Apr 2026 08:28:15 GMT</dateCreated>
+  </head>
+  <body>
+    <outline text="op.insert line endings - CR splits into multiple nodes (baseline) - CR is the canonical node separator and must produce a multi-node outline">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="lang.new (outlineType, @system.temp.cr_baseline)"/>
+        <outline text="target.set (@system.temp.cr_baseline)"/>
+        <outline text="op.insert (&quot;line1\rline2\rline3&quot;, down)"/>
+        <outline text="op.firstSummit ()"/>
+        <outline text="op.deleteLine ()"/>
+        <outline text="local (summits = op.countSummits ())"/>
+        <outline text="op.firstSummit ()"/>
+        <outline text="local (n1 = op.getLineText ())"/>
+        <outline text="op.go (down, 1)"/>
+        <outline text="local (n2 = op.getLineText ())"/>
+        <outline text="op.go (down, 1)"/>
+        <outline text="local (n3 = op.getLineText ())"/>
+        <outline text="return (summits == 3) and (n1 == &quot;line1&quot;) and (n2 == &quot;line2&quot;) and (n3 == &quot;line3&quot;)"/>
+      </outline>
+    </outline>
+    <outline text="op.insert line endings - LF-only splits into multiple nodes - LF-only input (Unix line endings) must be normalized to CR and split into separate nodes, not collapsed into a single flat node with literal LF bytes">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="lang.new (outlineType, @system.temp.lf_only)"/>
+        <outline text="target.set (@system.temp.lf_only)"/>
+        <outline text="op.insert (&quot;line1\nline2\nline3&quot;, down)"/>
+        <outline text="op.firstSummit ()"/>
+        <outline text="op.deleteLine ()"/>
+        <outline text="local (summits = op.countSummits ())"/>
+        <outline text="op.firstSummit ()"/>
+        <outline text="local (n1 = op.getLineText ())"/>
+        <outline text="op.go (down, 1)"/>
+        <outline text="local (n2 = op.getLineText ())"/>
+        <outline text="op.go (down, 1)"/>
+        <outline text="local (n3 = op.getLineText ())"/>
+        <outline text="return (summits == 3) and (n1 == &quot;line1&quot;) and (n2 == &quot;line2&quot;) and (n3 == &quot;line3&quot;)"/>
+      </outline>
+    </outline>
+    <outline text="op.insert line endings - CRLF splits into multiple nodes - CRLF input (Windows line endings) must be normalized to CR and split into separate nodes; the LF after CR must not appear as a literal byte">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="lang.new (outlineType, @system.temp.crlf)"/>
+        <outline text="target.set (@system.temp.crlf)"/>
+        <outline text="op.insert (&quot;line1\r\nline2\r\nline3&quot;, down)"/>
+        <outline text="op.firstSummit ()"/>
+        <outline text="op.deleteLine ()"/>
+        <outline text="local (summits = op.countSummits ())"/>
+        <outline text="op.firstSummit ()"/>
+        <outline text="local (n1 = op.getLineText ())"/>
+        <outline text="op.go (down, 1)"/>
+        <outline text="local (n2 = op.getLineText ())"/>
+        <outline text="op.go (down, 1)"/>
+        <outline text="local (n3 = op.getLineText ())"/>
+        <outline text="return (summits == 3) and (n1 == &quot;line1&quot;) and (n2 == &quot;line2&quot;) and (n3 == &quot;line3&quot;)"/>
+      </outline>
+    </outline>
+    <outline text="op.insert line endings - mixed CR/LF/CRLF splits cleanly - Text with a mix of CR, LF, and CRLF separators must all be normalized to single-CR boundaries">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="lang.new (outlineType, @system.temp.mixed)"/>
+        <outline text="target.set (@system.temp.mixed)"/>
+        <outline text="op.insert (&quot;a\rb\nc\r\nd&quot;, down)"/>
+        <outline text="op.firstSummit ()"/>
+        <outline text="op.deleteLine ()"/>
+        <outline text="local (summits = op.countSummits ())"/>
+        <outline text="op.firstSummit ()"/>
+        <outline text="local (n1 = op.getLineText ())"/>
+        <outline text="op.go (down, 1)"/>
+        <outline text="local (n2 = op.getLineText ())"/>
+        <outline text="op.go (down, 1)"/>
+        <outline text="local (n3 = op.getLineText ())"/>
+        <outline text="op.go (down, 1)"/>
+        <outline text="local (n4 = op.getLineText ())"/>
+        <outline text="return (summits == 4) and (n1 == &quot;a&quot;) and (n2 == &quot;b&quot;) and (n3 == &quot;c&quot;) and (n4 == &quot;d&quot;)"/>
+      </outline>
+    </outline>
+    <outline text="op.insert line endings - single line with no separator is one node - Flat text with no line-ending characters must still insert as a single node (behavior unchanged by the fix)">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="lang.new (outlineType, @system.temp.flat)"/>
+        <outline text="target.set (@system.temp.flat)"/>
+        <outline text="op.insert (&quot;just one line&quot;, down)"/>
+        <outline text="op.firstSummit ()"/>
+        <outline text="op.deleteLine ()"/>
+        <outline text="local (summits = op.countSummits ())"/>
+        <outline text="op.firstSummit ()"/>
+        <outline text="local (n1 = op.getLineText ())"/>
+        <outline text="return (summits == 1) and (n1 == &quot;just one line&quot;)"/>
+      </outline>
+    </outline>
+    <outline text="op.insert line endings - LF-only produces clean nodes with no embedded LF bytes - After LF-only insert, the resulting node text must NOT contain literal LF bytes - the whole point of the fix. sizeOf of first node must be exactly 5 (length of 'hello').">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="lang.new (outlineType, @system.temp.noleak)"/>
+        <outline text="target.set (@system.temp.noleak)"/>
+        <outline text="op.insert (&quot;hello\nworld&quot;, down)"/>
+        <outline text="op.firstSummit ()"/>
+        <outline text="op.deleteLine ()"/>
+        <outline text="op.firstSummit ()"/>
+        <outline text="local (n1 = op.getLineText ())"/>
+        <outline text="return (sizeOf (n1) == 5) and (n1 == &quot;hello&quot;)"/>
+      </outline>
+    </outline>
+    <outline text="op.insert line endings - trailing LF does not create empty node - Input ending with LF must not produce a trailing empty node (the final line terminator is consumed, not turned into an empty line)">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="lang.new (outlineType, @system.temp.trailing)"/>
+        <outline text="target.set (@system.temp.trailing)"/>
+        <outline text="op.insert (&quot;line1\nline2\n&quot;, down)"/>
+        <outline text="op.firstSummit ()"/>
+        <outline text="op.deleteLine ()"/>
+        <outline text="local (summits = op.countSummits ())"/>
+        <outline text="return (summits == 2)"/>
+      </outline>
+    </outline>
+    <outline text="op.insert line endings - consecutive LFs preserve blank nodes - Two consecutive bare LFs (Unix blank line) must produce an empty node between them, not collapse into a single separator">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="lang.new (outlineType, @system.temp.blanklf)"/>
+        <outline text="target.set (@system.temp.blanklf)"/>
+        <outline text="op.insert (&quot;a\n\nb&quot;, down)"/>
+        <outline text="op.firstSummit ()"/>
+        <outline text="op.deleteLine ()"/>
+        <outline text="local (summits = op.countSummits ())"/>
+        <outline text="op.firstSummit ()"/>
+        <outline text="local (n1 = op.getLineText ())"/>
+        <outline text="op.go (down, 1)"/>
+        <outline text="local (n2 = op.getLineText ())"/>
+        <outline text="op.go (down, 1)"/>
+        <outline text="local (n3 = op.getLineText ())"/>
+        <outline text="return (summits == 3) and (n1 == &quot;a&quot;) and (n2 == &quot;&quot;) and (n3 == &quot;b&quot;)"/>
+      </outline>
+    </outline>
+    <outline text="op.insert line endings - CRLF followed by bare LF preserves blank - a\r\n\nb must produce 3 nodes — CRLF ends first line, bare LF starts an empty second line, b begins the third">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="lang.new (outlineType, @system.temp.crlflf)"/>
+        <outline text="target.set (@system.temp.crlflf)"/>
+        <outline text="op.insert (&quot;a\r\n\nb&quot;, down)"/>
+        <outline text="op.firstSummit ()"/>
+        <outline text="op.deleteLine ()"/>
+        <outline text="local (summits = op.countSummits ())"/>
+        <outline text="op.firstSummit ()"/>
+        <outline text="local (n1 = op.getLineText ())"/>
+        <outline text="op.go (down, 1)"/>
+        <outline text="local (n2 = op.getLineText ())"/>
+        <outline text="op.go (down, 1)"/>
+        <outline text="local (n3 = op.getLineText ())"/>
+        <outline text="return (summits == 3) and (n1 == &quot;a&quot;) and (n2 == &quot;&quot;) and (n3 == &quot;b&quot;)"/>
+      </outline>
+    </outline>
+    <outline text="op.insert line endings - simulated .ut-file install via raw op.insert - Simulates the scenario that originally surfaced the bug: read a source file containing LF-only newlines and pass it straight to op.insert. Tab-indented lines become child nodes (standard outliner behavior). Pre-fix this produced a single flat node with literal \n bytes.">
+      <outline text="Metadata">
+        <outline text="expected_result: true"/>
+      </outline>
+      <outline text="Script">
+        <outline text="lang.new (outlineType, @system.temp.utsim)"/>
+        <outline text="target.set (@system.temp.utsim)"/>
+        <outline text="local (src = &quot;on greet () {\n\treturn (\&quot;hi\&quot;)}&quot;)"/>
+        <outline text="op.insert (src, down)"/>
+        <outline text="op.firstSummit ()"/>
+        <outline text="op.deleteLine ()"/>
+        <outline text="local (summits = op.countSummits ())"/>
+        <outline text="op.firstSummit ()"/>
+        <outline text="local (n1 = op.getLineText ())"/>
+        <outline text="op.expand (infinity)"/>
+        <outline text="op.go (right, 1)"/>
+        <outline text="local (child1 = op.getLineText ())"/>
+        <outline text="return (summits == 1) and (n1 == &quot;on greet () {&quot;) and (child1 == &quot;return (\&quot;hi\&quot;)}&quot;)"/>
+      </outline>
+    </outline>
+  </body>
+</opml>
