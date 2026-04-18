@@ -259,6 +259,8 @@ extern void opdisposeoutline (hdloutlinerecord, boolean);
 
 extern boolean optexttooutline (hdloutlinerecord, Handle, hdlheadrecord *);
 
+extern boolean opnormalizelineendings_cr (Handle htext); /*CRLF and bare LF -> CR; caller must own htext*/
+
 extern boolean opemptysummit (hdlheadrecord);
 
 extern boolean opemptyoutlinerecord (hdloutlinerecord);

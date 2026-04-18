@@ -1,0 +1,259 @@
+# Integration tests for op.insert line-ending normalization
+#
+# BUG: op.insert did not normalize LF (Unix) or CRLF (Windows) line endings
+# to CR (the canonical outline node separator). Text read from modern-editor-
+# written files (LF-only) or Windows-written files (CRLF) was inserted as a
+# single flat node with literal \n bytes instead of being split into multiple
+# nodes. This broke UserTalk verbs that read .ut source files and installed
+# them via op.insert (e.g., script.newScriptObject from file.readWholeFile).
+#
+# FIX: opinserthandle_ctx now normalizes CRLF -> CR and bare LF -> CR on a
+# local copy of the input handle BEFORE isoutlinetext() is checked. Callers'
+# handles are never modified.
+#
+# UserTalk note: there is no char() builtin; we use the \r and \n escape
+# sequences directly in string literals (both work inside double-quoted
+# strings). \r == CR == ASCII 13, \n == LF == ASCII 10.
+
+tests:
+  # ========================================================================
+  # Baseline: CR-only (the canonical format - must still work unchanged)
+  # ========================================================================
+
+  - name: "op.insert line endings - CR splits into multiple nodes (baseline)"
+    description: "CR is the canonical node separator and must produce a multi-node outline"
+    script: |
+      lang.new (outlineType, @system.temp.cr_baseline);
+      target.set (@system.temp.cr_baseline);
+      op.insert ("line1\rline2\rline3", down);
+      op.firstSummit ();
+      op.deleteLine ();
+      local (summits = op.countSummits ());
+      op.firstSummit ();
+      local (n1 = op.getLineText ());
+      op.go (down, 1);
+      local (n2 = op.getLineText ());
+      op.go (down, 1);
+      local (n3 = op.getLineText ());
+      return (summits == 3) and (n1 == "line1") and (n2 == "line2") and (n3 == "line3")
+    expected_success: true
+    expected_result: "true"
+
+  # ========================================================================
+  # LF-only (Unix / modern editors) - the primary bug case
+  # ========================================================================
+
+  - name: "op.insert line endings - LF-only splits into multiple nodes"
+    description: "LF-only input (Unix line endings) must be normalized to CR and split into separate nodes, not collapsed into a single flat node with literal LF bytes"
+    script: |
+      lang.new (outlineType, @system.temp.lf_only);
+      target.set (@system.temp.lf_only);
+      op.insert ("line1\nline2\nline3", down);
+      op.firstSummit ();
+      op.deleteLine ();
+      local (summits = op.countSummits ());
+      op.firstSummit ();
+      local (n1 = op.getLineText ());
+      op.go (down, 1);
+      local (n2 = op.getLineText ());
+      op.go (down, 1);
+      local (n3 = op.getLineText ());
+      return (summits == 3) and (n1 == "line1") and (n2 == "line2") and (n3 == "line3")
+    expected_success: true
+    expected_result: "true"
+
+  # ========================================================================
+  # CRLF (Windows) - the secondary bug case
+  # ========================================================================
+
+  - name: "op.insert line endings - CRLF splits into multiple nodes"
+    description: "CRLF input (Windows line endings) must be normalized to CR and split into separate nodes; the LF after CR must not appear as a literal byte"
+    script: |
+      lang.new (outlineType, @system.temp.crlf);
+      target.set (@system.temp.crlf);
+      op.insert ("line1\r\nline2\r\nline3", down);
+      op.firstSummit ();
+      op.deleteLine ();
+      local (summits = op.countSummits ());
+      op.firstSummit ();
+      local (n1 = op.getLineText ());
+      op.go (down, 1);
+      local (n2 = op.getLineText ());
+      op.go (down, 1);
+      local (n3 = op.getLineText ());
+      return (summits == 3) and (n1 == "line1") and (n2 == "line2") and (n3 == "line3")
+    expected_success: true
+    expected_result: "true"
+
+  # ========================================================================
+  # Mixed line endings - pathological but must not corrupt
+  # Test body uses CR, then LF, then CRLF between four fields.
+  # ========================================================================
+
+  - name: "op.insert line endings - mixed CR/LF/CRLF splits cleanly"
+    description: "Text with a mix of CR, LF, and CRLF separators must all be normalized to single-CR boundaries"
+    script: |
+      lang.new (outlineType, @system.temp.mixed);
+      target.set (@system.temp.mixed);
+      op.insert ("a\rb\nc\r\nd", down);
+      op.firstSummit ();
+      op.deleteLine ();
+      local (summits = op.countSummits ());
+      op.firstSummit ();
+      local (n1 = op.getLineText ());
+      op.go (down, 1);
+      local (n2 = op.getLineText ());
+      op.go (down, 1);
+      local (n3 = op.getLineText ());
+      op.go (down, 1);
+      local (n4 = op.getLineText ());
+      return (summits == 4) and (n1 == "a") and (n2 == "b") and (n3 == "c") and (n4 == "d")
+    expected_success: true
+    expected_result: "true"
+
+  # ========================================================================
+  # No line endings - single insert must still be single node (unchanged)
+  # ========================================================================
+
+  - name: "op.insert line endings - single line with no separator is one node"
+    description: "Flat text with no line-ending characters must still insert as a single node (behavior unchanged by the fix)"
+    script: |
+      lang.new (outlineType, @system.temp.flat);
+      target.set (@system.temp.flat);
+      op.insert ("just one line", down);
+      op.firstSummit ();
+      op.deleteLine ();
+      local (summits = op.countSummits ());
+      op.firstSummit ();
+      local (n1 = op.getLineText ());
+      return (summits == 1) and (n1 == "just one line")
+    expected_success: true
+    expected_result: "true"
+
+  # ========================================================================
+  # Node bytes - verify no LF bytes leak into node text
+  # ========================================================================
+
+  - name: "op.insert line endings - LF-only produces clean nodes with no embedded LF bytes"
+    description: "After LF-only insert, the resulting node text must NOT contain literal LF bytes - the whole point of the fix. sizeOf of first node must be exactly 5 (length of 'hello')."
+    script: |
+      lang.new (outlineType, @system.temp.noleak);
+      target.set (@system.temp.noleak);
+      op.insert ("hello\nworld", down);
+      op.firstSummit ();
+      op.deleteLine ();
+      op.firstSummit ();
+      local (n1 = op.getLineText ());
+      return (sizeOf (n1) == 5) and (n1 == "hello")
+    expected_success: true
+    expected_result: "true"
+
+  # ========================================================================
+  # Trailing LF - must not produce a spurious empty trailing node
+  # ========================================================================
+
+  - name: "op.insert line endings - trailing LF does not create empty node"
+    description: "Input ending with LF must not produce a trailing empty node (the final line terminator is consumed, not turned into an empty line)"
+    script: |
+      lang.new (outlineType, @system.temp.trailing);
+      target.set (@system.temp.trailing);
+      op.insert ("line1\nline2\n", down);
+      op.firstSummit ();
+      op.deleteLine ();
+      local (summits = op.countSummits ());
+      return (summits == 2)
+    expected_success: true
+    expected_result: "true"
+
+  # ========================================================================
+  # Trailing CRLF - symmetric to trailing LF. CRLF normalizes to CR, then
+  # the trailing CR behaves like any other trailing separator.
+  # ========================================================================
+
+  - name: "op.insert line endings - trailing CRLF does not create empty node"
+    description: "Input ending with CRLF must behave the same as trailing LF and trailing CR — no spurious empty trailing node"
+    script: |
+      lang.new (outlineType, @system.temp.trailingcrlf);
+      target.set (@system.temp.trailingcrlf);
+      op.insert ("line1\r\nline2\r\n", down);
+      op.firstSummit ();
+      op.deleteLine ();
+      local (summits = op.countSummits ());
+      return (summits == 2)
+    expected_success: true
+    expected_result: "true"
+
+  # ========================================================================
+  # Consecutive LFs - blank lines must be preserved as empty nodes.
+  # Guards against a subtle CRLF-detection bug: if the algorithm checks
+  # the OUTPUT buffer (p[dst-1]) rather than tracking the previous SOURCE
+  # byte, the second LF in "a\n\nb" gets incorrectly dropped because
+  # dst-1 holds a freshly-written CR from the first LF's rewrite.
+  # ========================================================================
+
+  - name: "op.insert line endings - consecutive LFs preserve blank nodes"
+    description: "Two consecutive bare LFs (Unix blank line) must produce an empty node between them, not collapse into a single separator"
+    script: |
+      lang.new (outlineType, @system.temp.blanklf);
+      target.set (@system.temp.blanklf);
+      op.insert ("a\n\nb", down);
+      op.firstSummit ();
+      op.deleteLine ();
+      local (summits = op.countSummits ());
+      op.firstSummit ();
+      local (n1 = op.getLineText ());
+      op.go (down, 1);
+      local (n2 = op.getLineText ());
+      op.go (down, 1);
+      local (n3 = op.getLineText ());
+      return (summits == 3) and (n1 == "a") and (n2 == "") and (n3 == "b")
+    expected_success: true
+    expected_result: "true"
+
+  # ========================================================================
+  # CRLF followed by bare LF - another guard against the same bug class.
+  # The CRLF tail must be dropped but the subsequent bare LF must still
+  # produce a blank node — not get dropped because p[dst-1] is still CR.
+  # ========================================================================
+
+  - name: "op.insert line endings - CRLF followed by bare LF preserves blank"
+    description: "a\\r\\n\\nb must produce 3 nodes — CRLF ends first line, bare LF starts an empty second line, b begins the third"
+    script: |
+      lang.new (outlineType, @system.temp.crlflf);
+      target.set (@system.temp.crlflf);
+      op.insert ("a\r\n\nb", down);
+      op.firstSummit ();
+      op.deleteLine ();
+      local (summits = op.countSummits ());
+      op.firstSummit ();
+      local (n1 = op.getLineText ());
+      op.go (down, 1);
+      local (n2 = op.getLineText ());
+      op.go (down, 1);
+      local (n3 = op.getLineText ());
+      return (summits == 3) and (n1 == "a") and (n2 == "") and (n3 == "b")
+    expected_success: true
+    expected_result: "true"
+
+  # ========================================================================
+  # Real-world scenario: simulate reading a .ut file with LF endings
+  # ========================================================================
+
+  - name: "op.insert line endings - simulated .ut-file install via raw op.insert"
+    description: "Simulates the scenario that originally surfaced the bug: read a source file containing LF-only newlines and pass it straight to op.insert. Tab-indented lines become child nodes (standard outliner behavior). Pre-fix this produced a single flat node with literal \\n bytes."
+    script: |
+      lang.new (outlineType, @system.temp.utsim);
+      target.set (@system.temp.utsim);
+      local (src = "on greet () {\n\treturn (\"hi\")}");
+      op.insert (src, down);
+      op.firstSummit ();
+      op.deleteLine ();
+      local (summits = op.countSummits ());
+      op.firstSummit ();
+      local (n1 = op.getLineText ());
+      op.expand (infinity);
+      op.go (right, 1);
+      local (child1 = op.getLineText ());
+      return (summits == 1) and (n1 == "on greet () {") and (child1 == "return (\"hi\")}")
+    expected_success: true
+    expected_result: "true"

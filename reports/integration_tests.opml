@@ -1,15 +1,15 @@
 <?xml version="1.0" ?>
 <opml version="2.0">
   <head>
-    <title>Frontier Integration Tests - 2227 tests: 1993 pass (89%) 234 skip (10%)</title>
-    <dateCreated>Thu, 16 Apr 2026 07:48:18 GMT</dateCreated>
+    <title>Frontier Integration Tests - 2238 tests: 2004 pass (89%) 234 skip (10%)</title>
+    <dateCreated>Sat, 18 Apr 2026 09:03:07 GMT</dateCreated>
   </head>
   <body>
     <outline text="Last Test Run">
-      <outline text="Run: 2026-04-16 at 07:44 UTC"/>
-      <outline text="Results: 1975 passed (89%), 234 skipped (11%), 0 failed (0%)"/>
-      <outline text="Duration: 34.8s (8 workers, batch mode)"/>
-      <outline text="YAML-defined: 2227 tests (1993 active, 234 marked skip) across 66 categories"/>
+      <outline text="Run: 2026-04-18 at 09:03 UTC"/>
+      <outline text="Results: 1967 passed (89%), 234 skipped (11%), 19 failed (1%)"/>
+      <outline text="Duration: 31.5s (8 workers, batch mode)"/>
+      <outline text="YAML-defined: 2238 tests (2004 active, 234 marked skip) across 67 categories"/>
     </outline>
     <outline text="Bigstring Boundary Tests (bigstring_boundary_tests) - 28 tests: 28 pass (100%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests/bigstring_boundary_tests.opml"/>
     <outline text="Builtins Priority (builtins_priority) - 24 tests: 24 pass (100%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests/builtins_priority.opml"/>
@@ -39,6 +39,7 @@
     <outline text="Menu Value Copy (menu_value_copy) - 5 tests: 4 pass (80%) 1 skip (20%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests/menu_value_copy.opml"/>
     <outline text="Migration Externals (migration_externals) - 19 tests: 16 pass (84%) 3 skip (15%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests/migration_externals.opml"/>
     <outline text="Nested Parentof (nested_parentof) - 18 tests: 13 pass (72%) 5 skip (27%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests/nested_parentof.opml"/>
+    <outline text="Op Insert Line Endings (op_insert_line_endings) - 11 tests: 11 pass (100%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests/op_insert_line_endings.opml"/>
     <outline text="Op Outlinetoxml Headless (op_outlinetoxml_headless) - 15 tests: 15 pass (100%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests/op_outlinetoxml_headless.opml"/>
     <outline text="Op Verbs (op_verbs) - 266 tests: 254 pass (95%) 12 skip (4%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests/op_verbs.opml"/>
     <outline text="Opattributes Verbs (opattributes_verbs) - 7 tests: 0 pass (0%) 7 skip (100%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests/opattributes_verbs.opml"/>
