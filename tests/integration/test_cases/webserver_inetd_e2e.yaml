@@ -16,7 +16,7 @@ protocol_mode: true      # Default; stated explicitly for clarity
 #   Phase C (inetd + mainResponder integration).
 #
 # Port strategy:
-#   Uses fixed high ports (49210–49213) because kernel verbs do not expose a way to read
+#   Uses fixed high ports (9210–9213) because kernel verbs do not expose a way to read
 #   back an OS-assigned ephemeral port after bind.  Each test uses a dedicated port to
 #   avoid interference between tests.  sequential: true above ensures no parallel-worker
 #   collisions.
@@ -44,7 +44,7 @@ tests:
     script: |
       webserver.init();
 
-      local(port = 49210);
+      local(port = 9210);
       user.inetd.config.http.port = port;
 
       // Install a trivial custom responder at user.webserver.responders.helloE2E.
@@ -101,7 +101,7 @@ tests:
     script: |
       webserver.init();
 
-      local(port = 49211);
+      local(port = 9211);
       user.inetd.config.http.port = port;
 
       // Install a custom responder whose GET returns "hello E2E"
@@ -202,7 +202,7 @@ tests:
     script: |
       webserver.init();
 
-      local(port = 49212);
+      local(port = 9212);
       user.inetd.config.http.port = port;
 
       if not defined (user.webserver.responders.helloE2E) {
@@ -301,7 +301,7 @@ tests:
     script: |
       webserver.init();
 
-      local(port = 49213);
+      local(port = 9213);
       user.inetd.config.http.port = port;
 
       // Install helloE2E responder that only matches /helloE2E paths
