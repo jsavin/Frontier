@@ -1,0 +1,473 @@
+sequential: true         # inetd listeners bind TCP ports — conflicts between parallel workers
+needs_guest_dbs: false   # Self-contained: only uses system root + user.webserver/inetd
+protocol_mode: true      # Default; stated explicitly for clarity
+
+# Integration tests for the full inetd → webserver.server → webserver.dispatch → responder flow
+# (Phase A of planning/MANILA_MAINRESPONDER_E2E.md).
+#
+# Purpose:
+#   Exercise the complete HTTP request lifecycle in a single test process, with a custom
+#   responder registered in user.webserver.responders.  This complements
+#   webserver_hello_world.yaml (which uses the built-in helloWorld responder) and
+#   webserver_http_roundtrip_tests.yaml (which only tests the TCP transport layer with
+#   tcp.listenStream callbacks, not the webserver dispatch path).
+#
+#   These tests are the foundation for Phase B (mainResponder dispatch smoke test) and
+#   Phase C (inetd + mainResponder integration).
+#
+# Port strategy:
+#   Uses fixed high ports (9210–9213) because kernel verbs do not expose a way to read
+#   back an OS-assigned ephemeral port after bind.  Each test uses a dedicated port to
+#   avoid interference between tests.  sequential: true above ensures no parallel-worker
+#   collisions.  Ports are chosen below the Linux ephemeral range (32768–60999) to avoid
+#   OS outbound-connection collisions.
+#
+#   If a test fails with "inetd.startOne failed for port NNNN", another process on the
+#   host is bound to that port — change the four `local(port = 92xx)` constants to any
+#   other free range in 1024–32767 (e.g. 8810–8813).
+#
+# Listener-shutdown race workaround (issue #364):
+#   After calling inetd.stopOne() we insert a short thread.sleepFor() to let the accept
+#   thread observe the closed socket and exit before the next test starts a new listener.
+#   We are NOT attempting to fix #364 here — see planning/MANILA_MAINRESPONDER_E2E.md.
+#
+# References:
+#   - planning/MANILA_MAINRESPONDER_E2E.md (Phase A)
+#   - tests/integration/test_cases/webserver_hello_world.yaml (built-in helloWorld tests)
+#   - tests/integration/test_cases/webserver_http_roundtrip_tests.yaml (TCP-layer tests)
+#   - usertalk_scripts/Frontier.root/system/verbs/builtins/inetd/startOne.ut
+#   - usertalk_scripts/Frontier.root/system/verbs/builtins/webserver/dispatch.ut
+
+tests:
+  # =============================================================================
+  # TEST 1 — Listener lifecycle with a custom responder
+  # =============================================================================
+  - name: "inetd E2E - listener lifecycle with custom helloE2E responder"
+    description: "Register a custom responder, start a listener, verify tracking, stop cleanly"
+    requires_system_root: true
+    timeout: 20
+    script: |
+      webserver.init();
+
+      local(port = 9210);
+      // Capture original port so we can restore it on exit — keeps system-root
+      // port mutation local to the test, matches Tests 2–4.
+      local(originalPort = user.inetd.config.http.port);
+      user.inetd.config.http.port = port;
+
+      // Install a trivial custom responder at user.webserver.responders.helloE2E.
+      // Using script.newScriptObject so the GET method is installed with proper
+      // line-ending normalization.
+      if not defined (user.webserver.responders.helloE2E) {
+        new (tableType, @user.webserver.responders.helloE2E)
+      };
+      user.webserver.responders.helloE2E.enabled = true;
+      script.newScriptObject (
+        "on condition (adrParamTable) {" + cr +
+        tab + "return (adrParamTable^.path beginsWith \"/helloE2E\")}",
+        @user.webserver.responders.helloE2E.condition);
+      if not defined (user.webserver.responders.helloE2E.methods) {
+        new (tableType, @user.webserver.responders.helloE2E.methods)
+      };
+      script.newScriptObject (
+        "on GET (adrParamTable) {" + cr +
+        tab + "adrParamTable^.code = 200;" + cr +
+        tab + "adrParamTable^.responseHeaders.[\"Content-Type\"] = \"text/plain\";" + cr +
+        tab + "adrParamTable^.responseBody = \"hello E2E\";" + cr +
+        tab + "return (true)}",
+        @user.webserver.responders.helloE2E.methods.GET);
+
+      // Start the listener. Guard against bind failure with an early scriptError
+      // so the root cause is obvious (matches Tests 2–4).
+      if not inetd.startOne (@user.inetd.config.http) {
+        delete (@user.webserver.responders.helloE2E);
+        user.inetd.config.http.port = originalPort;
+        scriptError ("inetd.startOne failed for port " + port)
+      };
+      thread.sleepFor (30);
+
+      // Verify listener is tracked
+      local(tracked = defined (user.inetd.listens.[port]));
+
+      // Stop cleanly
+      inetd.stopOne (@user.inetd.config.http);
+      thread.sleepFor (30);  // Workaround for issue #364 (listener shutdown race)
+
+      // Verify listener is no longer tracked
+      local(removed = not defined (user.inetd.listens.[port]));
+
+      // Clean up the custom responder so later tests start fresh
+      delete (@user.webserver.responders.helloE2E);
+      user.inetd.config.http.port = originalPort;
+
+      return tracked and removed
+    expected_success: true
+    expected_result: "true"
+    notes: "Validates listener startup, registration in user.inetd.listens, and clean shutdown"
+
+  # =============================================================================
+  # TEST 2 — Full HTTP GET round trip via the webserver dispatch path
+  # =============================================================================
+  - name: "inetd E2E - HTTP GET round trip to custom responder"
+    description: "Start listener, send HTTP GET, assert 200 status + custom body"
+    requires_system_root: true
+    timeout: 30
+    script: |
+      webserver.init();
+
+      local(port = 9211);
+      // Capture original port so we can restore it on exit — keeps system-root
+      // port mutation local to the test.
+      local(originalPort = user.inetd.config.http.port);
+      user.inetd.config.http.port = port;
+
+      // Install a custom responder whose GET returns "hello E2E".
+      // NOTE: The 4 tests in this file each install helloE2E locally rather than
+      // sharing a setup block — the YAML integration-test framework has no
+      // setup/teardown mechanism, and per-test isolation is more important here
+      // than DRY. If the responder shape changes, update all 4 tests in parallel.
+      if not defined (user.webserver.responders.helloE2E) {
+        new (tableType, @user.webserver.responders.helloE2E)
+      };
+      user.webserver.responders.helloE2E.enabled = true;
+      script.newScriptObject (
+        "on condition (adrParamTable) {" + cr +
+        tab + "return (adrParamTable^.path beginsWith \"/helloE2E\")}",
+        @user.webserver.responders.helloE2E.condition);
+      if not defined (user.webserver.responders.helloE2E.methods) {
+        new (tableType, @user.webserver.responders.helloE2E.methods)
+      };
+      script.newScriptObject (
+        "on GET (adrParamTable) {" + cr +
+        tab + "adrParamTable^.code = 200;" + cr +
+        tab + "adrParamTable^.responseHeaders.[\"Content-Type\"] = \"text/plain\";" + cr +
+        tab + "adrParamTable^.responseBody = \"hello E2E\";" + cr +
+        tab + "return (true)}",
+        @user.webserver.responders.helloE2E.methods.GET);
+
+      // Capture the startOne return so a listener-bind failure surfaces as a clear
+      // error instead of a later connection-refused.
+      if not inetd.startOne (@user.inetd.config.http) {
+        delete (@user.webserver.responders.helloE2E);
+        user.inetd.config.http.port = originalPort;
+        scriptError ("inetd.startOne failed for port " + port)
+      };
+      thread.sleepFor (50);  // 50 ticks to ensure the accept socket is ready before we connect
+
+      local(hasStatus200 = false);
+      local(hasBody = false);
+      // Stream is declared at outer scope so the try/else can close it even if
+      // an exception fires before the try-block's explicit tcp.closeStream.
+      local(stream = 0);
+
+      try {
+        stream = tcp.openAddrStream (tcp.addressEncode ("127.0.0.1"), port);
+
+        // HTTP/1.0 with Connection: close — simplest possible request
+        local(request = "GET /helloE2E HTTP/1.0\r\nHost: localhost\r\nConnection: close\r\n\r\n");
+        tcp.writeStream (stream, request);
+
+        // Two-phase read: (1) accumulate until we see end-of-headers, then
+        // (2) keep reading until the server closes the connection so we
+        // capture the full body (HTTP/1.0 + Connection: close).  Guarded by
+        // a ticks-based timeout.  If we exit the loop with connectionClosed
+        // still false, the timeout fired — scriptError below so CI logs
+        // distinguish "server never closed" from "server returned wrong data".
+        local(response = "");
+        local(startTicks = clock.ticks ());
+        local(headersComplete = false);
+        local(connectionClosed = false);
+        while (not connectionClosed) and ((clock.ticks () - startTicks) < 300) {
+          local(chunk = tcp.readStream (stream, 4096));
+          if sizeOf (chunk) > 0 {
+            response = response + chunk
+          }
+          else {
+            // Empty read after some data means the server closed the connection
+            if headersComplete {
+              connectionClosed = true
+            }
+          };
+          if (not headersComplete) and (response contains "\r\n\r\n") {
+            headersComplete = true
+          };
+          thread.sleepFor (10)
+        };
+
+        tcp.closeStream (stream);
+        stream = 0;
+
+        if not connectionClosed {
+          scriptError ("read loop timed out — server never closed connection on port " + port)
+        };
+
+        // Match the HTTP status line precisely, not just any "200" in headers/body.
+        // "HTTP/1. 200" covers both HTTP/1.0 and HTTP/1.1 response lines.
+        // UserTalk 'contains' treats "." as a single-char wildcard, so "HTTP/1. 200"
+        // matches "HTTP/1.0 200" and "HTTP/1.1 200" — this is intentional, not a typo.
+        hasStatus200 = response contains "HTTP/1. 200";
+        hasBody = response contains "hello E2E"
+      }
+      else {
+        // Ensure the stream is closed even if an exception fired mid-body.
+        if stream != 0 {
+          tcp.closeStream (stream);
+          stream = 0
+        };
+        inetd.stopOne (@user.inetd.config.http);
+        thread.sleepFor (30);
+        delete (@user.webserver.responders.helloE2E);
+        user.inetd.config.http.port = originalPort;
+        scriptError (tryError)
+      };
+
+      inetd.stopOne (@user.inetd.config.http);
+      thread.sleepFor (30);  // #364 workaround
+      delete (@user.webserver.responders.helloE2E);
+      user.inetd.config.http.port = originalPort;
+
+      return hasStatus200 and hasBody
+    expected_success: true
+    expected_result: "true"
+    notes: "Full stack: tcp.openAddrStream -> inetd.supervisor -> webserver.server -> webserver.dispatch -> helloE2E.GET"
+
+  # =============================================================================
+  # TEST 3 — Multiple sequential requests on the same listener
+  # =============================================================================
+  - name: "inetd E2E - multiple sequential GETs on same listener"
+    description: "Send two HTTP GETs back-to-back, both should succeed"
+    requires_system_root: true
+    timeout: 40
+    script: |
+      webserver.init();
+
+      local(port = 9212);
+      // Capture original port so we can restore it on exit — keeps system-root
+      // port mutation local to the test.
+      local(originalPort = user.inetd.config.http.port);
+      user.inetd.config.http.port = port;
+
+      if not defined (user.webserver.responders.helloE2E) {
+        new (tableType, @user.webserver.responders.helloE2E)
+      };
+      user.webserver.responders.helloE2E.enabled = true;
+      script.newScriptObject (
+        "on condition (adrParamTable) {" + cr +
+        tab + "return (adrParamTable^.path beginsWith \"/helloE2E\")}",
+        @user.webserver.responders.helloE2E.condition);
+      if not defined (user.webserver.responders.helloE2E.methods) {
+        new (tableType, @user.webserver.responders.helloE2E.methods)
+      };
+      script.newScriptObject (
+        "on GET (adrParamTable) {" + cr +
+        tab + "adrParamTable^.code = 200;" + cr +
+        tab + "adrParamTable^.responseHeaders.[\"Content-Type\"] = \"text/plain\";" + cr +
+        tab + "adrParamTable^.responseBody = \"hello E2E\";" + cr +
+        tab + "return (true)}",
+        @user.webserver.responders.helloE2E.methods.GET);
+
+      // Capture the startOne return so a listener-bind failure surfaces as a clear
+      // error instead of a later connection-refused.
+      if not inetd.startOne (@user.inetd.config.http) {
+        delete (@user.webserver.responders.helloE2E);
+        user.inetd.config.http.port = originalPort;
+        scriptError ("inetd.startOne failed for port " + port)
+      };
+      thread.sleepFor (50);  // 50 ticks to ensure the accept socket is ready before we connect
+
+      local(successCount = 0);
+      // Stream is declared at outer scope so the try/else can close it even if
+      // an exception fires before the try-block's explicit tcp.closeStream.
+      local(stream = 0);
+
+      try {
+        local(i);
+        for i = 1 to 2 {
+          stream = tcp.openAddrStream (tcp.addressEncode ("127.0.0.1"), port);
+          local(request = "GET /helloE2E HTTP/1.0\r\nHost: localhost\r\nConnection: close\r\n\r\n");
+          tcp.writeStream (stream, request);
+
+          // Two-phase read (matches Test 2 / Test 4): (1) accumulate until end-of-headers,
+          // (2) keep reading until the server closes the connection so we capture the full
+          // body (HTTP/1.0 + Connection: close). Guarded by a ticks-based timeout.
+          local(response = "");
+          local(startTicks = clock.ticks ());
+          local(headersComplete = false);
+          local(connectionClosed = false);
+          while (not connectionClosed) and ((clock.ticks () - startTicks) < 300) {
+            local(chunk = tcp.readStream (stream, 4096));
+            if sizeOf (chunk) > 0 {
+              response = response + chunk
+            }
+            else {
+              // Empty read after some data means the server closed the connection
+              if headersComplete {
+                connectionClosed = true
+              }
+            };
+            if (not headersComplete) and (response contains "\r\n\r\n") {
+              headersComplete = true
+            };
+            thread.sleepFor (10)
+          };
+
+          tcp.closeStream (stream);
+          stream = 0;
+
+          if not connectionClosed {
+            scriptError ("read loop timed out on iteration " + i + " — server never closed connection on port " + port)
+          };
+
+          // "HTTP/1. 200" covers both HTTP/1.0 and HTTP/1.1 status lines.
+          // UserTalk 'contains' treats "." as a single-char wildcard, so this matches
+          // "HTTP/1.0 200" and "HTTP/1.1 200" without a false match on "Content-Length: 200".
+          if (response contains "HTTP/1. 200") and (response contains "hello E2E") {
+            successCount = successCount + 1
+          }
+        }
+      }
+      else {
+        // Ensure the stream is closed even if an exception fired mid-iteration.
+        if stream != 0 {
+          tcp.closeStream (stream);
+          stream = 0
+        };
+        inetd.stopOne (@user.inetd.config.http);
+        thread.sleepFor (30);
+        delete (@user.webserver.responders.helloE2E);
+        user.inetd.config.http.port = originalPort;
+        scriptError (tryError)
+      };
+
+      inetd.stopOne (@user.inetd.config.http);
+      thread.sleepFor (30);  // #364 workaround
+      delete (@user.webserver.responders.helloE2E);
+      user.inetd.config.http.port = originalPort;
+
+      return successCount == 2
+    expected_success: true
+    expected_result: "true"
+    notes: "Validates the listener handles multiple sequential HTTP connections correctly"
+
+  # =============================================================================
+  # TEST 4 — 404 / error response for unknown path (no matching responder condition)
+  # =============================================================================
+  - name: "inetd E2E - unknown path falls through to default responder error"
+    description: "GET to a path no custom responder matches returns an HTTP error (4xx/5xx)"
+    requires_system_root: true
+    timeout: 30
+    script: |
+      webserver.init();
+
+      local(port = 9213);
+      // Capture original port so we can restore it on exit — keeps system-root
+      // port mutation local to the test.
+      local(originalPort = user.inetd.config.http.port);
+      user.inetd.config.http.port = port;
+
+      // Install helloE2E responder that only matches /helloE2E paths.  The GET
+      // handler is intentionally omitted — this test never matches the condition,
+      // so the handler would be dead code.  The goal is to verify dispatch falls
+      // through to the default responder when no custom condition matches.
+      if not defined (user.webserver.responders.helloE2E) {
+        new (tableType, @user.webserver.responders.helloE2E)
+      };
+      user.webserver.responders.helloE2E.enabled = true;
+      script.newScriptObject (
+        "on condition (adrParamTable) {" + cr +
+        tab + "return (adrParamTable^.path beginsWith \"/helloE2E\")}",
+        @user.webserver.responders.helloE2E.condition);
+
+      // Capture the startOne return so a listener-bind failure surfaces as a clear
+      // error instead of a later connection-refused.
+      if not inetd.startOne (@user.inetd.config.http) {
+        delete (@user.webserver.responders.helloE2E);
+        user.inetd.config.http.port = originalPort;
+        scriptError ("inetd.startOne failed for port " + port)
+      };
+      thread.sleepFor (50);  // 50 ticks to ensure the accept socket is ready before we connect
+
+      local(isError = false);
+      // Stream is declared at outer scope so the try/else can close it even if
+      // an exception fires before the try-block's explicit tcp.closeStream.
+      local(stream = 0);
+
+      try {
+        stream = tcp.openAddrStream (tcp.addressEncode ("127.0.0.1"), port);
+        // Request a path that neither helloE2E nor the default file/ODB tree resolves to.
+        local(request = "GET /definitely/not/a/real/path/xyz HTTP/1.0\r\nHost: localhost\r\nConnection: close\r\n\r\n");
+        tcp.writeStream (stream, request);
+
+        // Two-phase read: (1) accumulate until we see end-of-headers, then
+        // (2) keep reading until the server closes the connection so we
+        // capture the full body (HTTP/1.0 + Connection: close).  Guarded by
+        // a ticks-based timeout.  If we exit the loop with connectionClosed
+        // still false, the timeout fired — scriptError below so CI logs
+        // distinguish "server never closed" from "server returned wrong data".
+        local(response = "");
+        local(startTicks = clock.ticks ());
+        local(headersComplete = false);
+        local(connectionClosed = false);
+        while (not connectionClosed) and ((clock.ticks () - startTicks) < 300) {
+          local(chunk = tcp.readStream (stream, 4096));
+          if sizeOf (chunk) > 0 {
+            response = response + chunk
+          }
+          else {
+            // Empty read after some data means the server closed the connection
+            if headersComplete {
+              connectionClosed = true
+            }
+          };
+          if (not headersComplete) and (response contains "\r\n\r\n") {
+            headersComplete = true
+          };
+          thread.sleepFor (10)
+        };
+
+        tcp.closeStream (stream);
+        stream = 0;
+
+        if not connectionClosed {
+          scriptError ("read loop timed out — server never closed connection on port " + port)
+        };
+
+        // UserTalk 'contains' treats "." as a single-char wildcard, so "HTTP/1."
+        // matches "HTTP/1.0" and "HTTP/1.1" — this is intentional, not a typo.
+        // Match status line precisely to avoid false matches against body/header content.
+        // "HTTP/1. 4" matches any 4xx status line (403/404/410/etc.) — the expected
+        // default-responder result for an unmatched path. "HTTP/1. 5" covers a 5xx
+        // internal dispatch error, which is also a correct "unknown path" signal
+        // (better than a silent pass). We intentionally do NOT fall back to body-text
+        // matches like "Not Found" — those could mask a 200 response whose body
+        // happens to contain the word.
+        isError = (response contains "HTTP/1. 4") or (response contains "HTTP/1. 5")
+      }
+      else {
+        // Ensure the stream is closed even if an exception fired mid-body.
+        if stream != 0 {
+          tcp.closeStream (stream);
+          stream = 0
+        };
+        inetd.stopOne (@user.inetd.config.http);
+        thread.sleepFor (30);
+        delete (@user.webserver.responders.helloE2E);
+        user.inetd.config.http.port = originalPort;
+        scriptError (tryError)
+      };
+
+      inetd.stopOne (@user.inetd.config.http);
+      thread.sleepFor (30);  // #364 workaround
+      delete (@user.webserver.responders.helloE2E);
+      user.inetd.config.http.port = originalPort;
+
+      return isError
+    expected_success: true
+    expected_result: "true"
+    notes: |
+      When no custom responder matches, webserver.dispatch falls back to the default
+      responder which returns a 4xx status (typically 404 Not Found, sometimes 403
+      Forbidden). A 5xx dispatch error would also satisfy the "unknown path" assertion
+      — better than a silent pass if the dispatch path regresses. This validates that
+      the dispatch path works correctly when the custom responder's condition does
+      not match.
