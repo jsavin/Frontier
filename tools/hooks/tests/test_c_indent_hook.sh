@@ -12,6 +12,10 @@
 # in isolation from a temp repo, so OPML/doc/verb branches in the hook are
 # inert (their file-type guards do not match our *.c/*.h fixtures).
 
+# Intentionally no `set -e` — hook invocations are expected to exit non-zero
+# on FAIL fixtures and that is captured in HOOK_EXIT. `set -e` would abort
+# the suite on the first failing hook call. `set -u` is fine and catches
+# typo bugs in the harness without affecting hook exit handling.
 set -u
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -75,7 +79,13 @@ make_repo() {
 
 # cleanup_repo — remove the current scratch repo and its stderr capture file
 # between tests. on_exit handles the same cleanup if the script aborts.
+#
+# Restores cwd to SCRIPT_DIR before removing the scratch repo so that any
+# code running between cleanup_repo and the next make_repo (e.g. a future
+# helper that does fs work) does not run with $PWD pointing at a deleted
+# directory.
 cleanup_repo() {
+    cd "$SCRIPT_DIR" || true
     if [ -n "$REPO" ] && [ -d "$REPO" ]; then
         rm -rf "$REPO"
         REPO=""
