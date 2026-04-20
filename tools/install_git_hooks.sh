@@ -29,7 +29,16 @@ if [ -f "$PRE_COMMIT_DST" ]; then
     SRC_VERSION=$(grep -E '^HOOK_VERSION=' "$PRE_COMMIT_SRC" 2>/dev/null | head -1 | cut -d= -f2)
     DST_VERSION=$(grep -E '^HOOK_VERSION=' "$PRE_COMMIT_DST" 2>/dev/null | head -1 | cut -d= -f2)
 
-    if [ -n "$SRC_VERSION" ] && [ "$SRC_VERSION" = "$DST_VERSION" ]; then
+    # Defensive guard: a source file missing HOOK_VERSION= would produce
+    # misleading "upgraded to version ''" messages and defeat the detection.
+    if [ -z "$SRC_VERSION" ]; then
+        echo -e "${RED}ERROR: HOOK_VERSION= marker missing in $PRE_COMMIT_SRC${NC}" >&2
+        echo "The hook source file is corrupted or pre-dates versioning." >&2
+        echo "Cannot auto-upgrade safely. Restore the source file and retry." >&2
+        exit 1
+    fi
+
+    if [ "$SRC_VERSION" = "$DST_VERSION" ]; then
         echo -e "${YELLOW}Pre-commit hook already installed (HOOK_VERSION=$DST_VERSION, up to date)${NC}"
     elif [ -n "$DST_VERSION" ] || grep -q -E "pre-commit-integration-tests|Block commits to develop" "$PRE_COMMIT_DST" 2>/dev/null; then
         # Either a versioned hook at a different version, or an older unversioned hook — upgrade.

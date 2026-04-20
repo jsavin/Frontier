@@ -17,7 +17,7 @@
 # install_git_hooks.sh uses this value to detect stale installations and
 # reinstall automatically. Keep the assignment on its own line so the
 # installer can parse it with a simple grep.
-HOOK_VERSION=3
+HOOK_VERSION=4
 
 set -e
 
@@ -174,11 +174,11 @@ if [ -n "$C_FILES_CHANGED" ]; then
         [ -n "$f" ] || continue
         # Skip deleted files (diff-filter already excludes D, but be safe)
         [ -f "$f" ] || continue
-        # Note on the awk regex below: `\t` inside a character class is
-        # recognized by gawk and BSD awk (macOS default) but is not
-        # strictly POSIX. The repo targets macOS and Linux, both of
-        # which ship awks that support this, so it is safe in practice.
+        # The regex uses [[:blank:]] (POSIX) which matches tab and space on
+        # any awk implementation, avoiding portability concerns with \t
+        # inside a character class (gawk/BSD-only).
         VIOLATIONS=$(git diff --cached -U0 -- "$f" | awk '
+            BEGIN { lineno = 0 }
             /^@@/ {
                 # Extract the starting line number after "+"
                 if (match($0, /\+[0-9]+/)) {
@@ -198,27 +198,26 @@ if [ -n "$C_FILES_CHANGED" ]; then
                 #     *ptr = value;
                 #     **argv;
                 # so the exclusion matches only lines where the leading run
-                # of whitespace is followed by one of:
-                #   - "/*"   (start of block comment)
-                #   - "*/"   (end of block comment)
-                #   - "* "   (comment continuation with text)
-                #   - "**"   (but "**/"-style close falls under "*/" above;
-                #             bare "**something" as a pointer deref in C is
-                #             rare enough at indent column that flagging it
-                #             is preferable to a broad exclusion — we leave
-                #             "**" un-excluded so pointer code gets caught)
-                is_comment_cont = ($0 ~ /^\+[ \t]*\/\*/ || \
-                                   $0 ~ /^\+[ \t]*\*\// || \
-                                   $0 ~ /^\+[ \t]*\* /  || \
-                                   $0 ~ /^\+[ \t]*\*$/)
+                # of blanks is followed by one of:
+                #   - "/*"     (start of block comment)
+                #   - "*/"     (end of block comment)
+                #   - "* text" (comment continuation with content)
+                #   - bare "*" (blank continuation line)
+                is_comment_cont = ($0 ~ /^\+[[:blank:]]*\/\*/ || \
+                                   $0 ~ /^\+[[:blank:]]*\*\// || \
+                                   $0 ~ /^\+[[:blank:]]*\* /  || \
+                                   $0 ~ /^\+[[:blank:]]*\*$/)
                 if (substr($0, 2, 1) == " " && !is_comment_cont) {
                     print lineno ": " $0
                 }
                 lineno++
                 next
             }
-            # Context lines (with -U0 there should be none) and deletions:
+            # Context lines (with -U0 there should be none):
             /^ / { lineno++ }
+            # Deletion lines (/^-/) are intentionally unhandled: they do not
+            # exist in the new file and therefore do not advance the new-file
+            # line counter.
         ' || true)
         if [ -n "$VIOLATIONS" ]; then
             INDENT_VIOLATIONS="${INDENT_VIOLATIONS}${f}:\n${VIOLATIONS}\n"
