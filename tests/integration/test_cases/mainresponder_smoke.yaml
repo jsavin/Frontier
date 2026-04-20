@@ -49,7 +49,6 @@ tests:
     description: "Smoke test: does mainResponder.respond() run and return a response table?"
     timeout: 30
     script: |
-      local(succeeded = false);
       local(guestpath);
 
       // Locate mainResponder.root relative to the Frontier binary
@@ -106,9 +105,7 @@ tests:
         // string would indicate it bailed out silently.
         if string.length(system.temp.mrSmoke.req.responseBody) == 0 {
           scriptError("mainResponder.respond returned an empty responseBody")
-        };
-
-        succeeded = true
+        }
       }
       else {
         local(err = tryError);
@@ -119,11 +116,12 @@ tests:
         // add a snapshot variable above, both cleanup blocks must gain a
         // matching conditional delete.
         //
-        // Yield briefly to let the background thread spawned by init()
+        // Yield briefly (6 ticks ≈ 100 ms, 60 ticks/sec) to let the
+        // background thread spawned by init()
         // (mainResponder.subscriptions.updateAllChangesTables) drain before
         // we delete the paths it may touch.  This reduces — but does not
-        // eliminate — the race window.  Sequential test ordering keeps the
-        // remainder of the risk bounded.
+        // eliminate — the race window.  A heavily loaded CI host may need
+        // more, but sequential test ordering bounds the residual risk.
         try { thread.sleepTicks(6) };
         try { fileMenu.close(guestpath) };
         if not preConfigMainResponder { try { delete(@config.mainResponder) } };
@@ -144,8 +142,8 @@ tests:
       // pre-test snapshot above.  KEEP IN SYNC with exception-path cleanup
       // in the else branch above.
       //
-      // Yield briefly to let init()'s background thread drain (see note in
-      // the else branch).
+      // Yield briefly (6 ticks ≈ 100 ms) to let init()'s background thread
+      // drain before deletes — see the longer note in the else branch.
       try { thread.sleepTicks(6) };
       try { fileMenu.close(guestpath) };
       if not preConfigMainResponder { try { delete(@config.mainResponder) } };
@@ -157,8 +155,9 @@ tests:
       if not preRootUpdatesCallbacks { try { delete(@user.rootUpdates.callbacks) } };
       try { delete(@system.temp.mrSmoke) };
 
-      return succeeded
-    expected_success: true
+      // Reached only on the success path — the else branch above always
+      // calls scriptError() which does not return.
+      return true
     expected_result: "true"
     notes: |
       Smoke test — passed on first run (2026-04-19), confirming that
