@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>Mainresponder Smoke (mainresponder_smoke) - 1 tests: 1 pass (100%)</title>
-    <dateCreated>Mon, 20 Apr 2026 06:28:55 GMT</dateCreated>
+    <dateCreated>Mon, 20 Apr 2026 06:35:20 GMT</dateCreated>
   </head>
   <body>
     <outline text="mainresponder_respond_smoke - Smoke test: does mainResponder.respond() run and return a response table?">
@@ -24,10 +24,17 @@
         <outline text="// may create.  We'll only delete paths that didn't already exist, so"/>
         <outline text="// the test leaves the sysroot exactly as it found it and is idempotent"/>
         <outline text="// across repeated runs in the shared protocol-mode process."/>
+        <outline text="//"/>
+        <outline text="// Snapshots are checked against BOTH the leaf and every intermediate"/>
+        <outline text="// table so that if init() created a brand-new branch (e.g. the whole"/>
+        <outline text="// user.rootUpdates.callbacks.afterInstallPart subtree) we can delete"/>
+        <outline text="// the branch at its root rather than leaving empty parent tables."/>
         <outline text="local(preConfigMainResponder = defined(@config.mainResponder))"/>
         <outline text="local(preIsRadio = defined(@system.environment.isRadio))"/>
+        <outline text="local(preInetdConfig = defined(@user.inetd.config))"/>
         <outline text="local(preHttp2 = defined(@user.inetd.config.http2))"/>
         <outline text="local(preRootUpdatesCallbacks = defined(@user.rootUpdates.callbacks))"/>
+        <outline text="local(preAfterInstallPart = defined(@user.rootUpdates.callbacks.afterInstallPart))"/>
         <outline text="local(preAfterInstall = defined(@user.rootUpdates.callbacks.afterInstallPart.mainResponder))"/>
         <outline text="// Prepare the param table BEFORE try — so else branch can clean it up"/>
         <outline text="new(tableType, @system.temp.mrSmoke)"/>
@@ -62,11 +69,23 @@
           <outline text="// Cleanup runs here on exception; success-path cleanup is after the"/>
           <outline text="// try/else block.  The duplication is intentional — scriptError()"/>
           <outline text="// below does not return, so we cannot consolidate into a finally."/>
+          <outline text="// KEEP IN SYNC with success-path cleanup after the try/else.  If you"/>
+          <outline text="// add a snapshot variable above, both cleanup blocks must gain a"/>
+          <outline text="// matching conditional delete."/>
+          <outline text="//"/>
+          <outline text="// Yield briefly to let the background thread spawned by init()"/>
+          <outline text="// (mainResponder.subscriptions.updateAllChangesTables) drain before"/>
+          <outline text="// we delete the paths it may touch.  This reduces — but does not"/>
+          <outline text="// eliminate — the race window.  Sequential test ordering keeps the"/>
+          <outline text="// remainder of the risk bounded."/>
+          <outline text="try { thread.sleepTicks(6) }"/>
           <outline text="try { fileMenu.close(guestpath) }"/>
           <outline text="if not preConfigMainResponder { try { delete(@config.mainResponder) } }"/>
           <outline text="if not preIsRadio { try { delete(@system.environment.isRadio) } }"/>
           <outline text="if not preHttp2 { try { delete(@user.inetd.config.http2) } }"/>
+          <outline text="if not preInetdConfig { try { delete(@user.inetd.config) } }"/>
           <outline text="if not preAfterInstall { try { delete(@user.rootUpdates.callbacks.afterInstallPart.mainResponder) } }"/>
+          <outline text="if not preAfterInstallPart { try { delete(@user.rootUpdates.callbacks.afterInstallPart) } }"/>
           <outline text="if not preRootUpdatesCallbacks { try { delete(@user.rootUpdates.callbacks) } }"/>
           <outline text="try { delete(@system.temp.mrSmoke) }"/>
           <outline text="scriptError(&quot;mainResponder.respond smoke failed: &quot; + err)"/>
@@ -75,12 +94,19 @@
         <outline text="// mode runner shares one CLI process across tests and only resets REPL"/>
         <outline text="// variables via script/clearContext, which does not close open DBs."/>
         <outline text="// Conditional deletes restore only what we created, based on the"/>
-        <outline text="// pre-test snapshot above."/>
+        <outline text="// pre-test snapshot above.  KEEP IN SYNC with exception-path cleanup"/>
+        <outline text="// in the else branch above."/>
+        <outline text="//"/>
+        <outline text="// Yield briefly to let init()'s background thread drain (see note in"/>
+        <outline text="// the else branch)."/>
+        <outline text="try { thread.sleepTicks(6) }"/>
         <outline text="try { fileMenu.close(guestpath) }"/>
         <outline text="if not preConfigMainResponder { try { delete(@config.mainResponder) } }"/>
         <outline text="if not preIsRadio { try { delete(@system.environment.isRadio) } }"/>
         <outline text="if not preHttp2 { try { delete(@user.inetd.config.http2) } }"/>
+        <outline text="if not preInetdConfig { try { delete(@user.inetd.config) } }"/>
         <outline text="if not preAfterInstall { try { delete(@user.rootUpdates.callbacks.afterInstallPart.mainResponder) } }"/>
+        <outline text="if not preAfterInstallPart { try { delete(@user.rootUpdates.callbacks.afterInstallPart) } }"/>
         <outline text="if not preRootUpdatesCallbacks { try { delete(@user.rootUpdates.callbacks) } }"/>
         <outline text="try { delete(@system.temp.mrSmoke) }"/>
         <outline text="return succeeded"/>
