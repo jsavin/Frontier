@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>Mainresponder Smoke (mainresponder_smoke) - 1 tests: 1 pass (100%)</title>
-    <dateCreated>Mon, 20 Apr 2026 06:41:28 GMT</dateCreated>
+    <dateCreated>Mon, 20 Apr 2026 06:49:13 GMT</dateCreated>
   </head>
   <body>
     <outline text="mainresponder_respond_smoke - Smoke test: does mainResponder.respond() run and return a response table?">
@@ -71,13 +71,13 @@
           <outline text="// add a snapshot variable above, both cleanup blocks must gain a"/>
           <outline text="// matching conditional delete."/>
           <outline text="//"/>
-          <outline text="// Yield briefly (6 ticks ≈ 100 ms, 60 ticks/sec) to let the"/>
-          <outline text="// background thread spawned by init()"/>
+          <outline text="// Yield (12 ticks ≈ 200 ms, 60 ticks/sec) to let the background"/>
+          <outline text="// thread spawned by init()"/>
           <outline text="// (mainResponder.subscriptions.updateAllChangesTables) drain before"/>
           <outline text="// we delete the paths it may touch.  This reduces — but does not"/>
-          <outline text="// eliminate — the race window.  A heavily loaded CI host may need"/>
-          <outline text="// more, but sequential test ordering bounds the residual risk."/>
-          <outline text="try { thread.sleepTicks(6) }"/>
+          <outline text="// eliminate — the race window.  Sequential test ordering bounds"/>
+          <outline text="// the residual risk."/>
+          <outline text="try { thread.sleepTicks(12) }"/>
           <outline text="try { fileMenu.close(guestpath) }"/>
           <outline text="if not preConfigMainResponder { try { delete(@config.mainResponder) } }"/>
           <outline text="if not preIsRadio { try { delete(@system.environment.isRadio) } }"/>
@@ -96,9 +96,9 @@
         <outline text="// pre-test snapshot above.  KEEP IN SYNC with exception-path cleanup"/>
         <outline text="// in the else branch above."/>
         <outline text="//"/>
-        <outline text="// Yield briefly (6 ticks ≈ 100 ms) to let init()'s background thread"/>
+        <outline text="// Yield (12 ticks ≈ 200 ms) to let init()'s background thread"/>
         <outline text="// drain before deletes — see the longer note in the else branch."/>
-        <outline text="try { thread.sleepTicks(6) }"/>
+        <outline text="try { thread.sleepTicks(12) }"/>
         <outline text="try { fileMenu.close(guestpath) }"/>
         <outline text="if not preConfigMainResponder { try { delete(@config.mainResponder) } }"/>
         <outline text="if not preIsRadio { try { delete(@system.environment.isRadio) } }"/>
