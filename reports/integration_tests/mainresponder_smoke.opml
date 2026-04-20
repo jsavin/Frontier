@@ -1,0 +1,54 @@
+<?xml version="1.0" ?>
+<opml version="2.0">
+  <head>
+    <title>Mainresponder Smoke (mainresponder_smoke) - 1 tests: 1 pass (100%)</title>
+    <dateCreated>Mon, 20 Apr 2026 06:07:05 GMT</dateCreated>
+  </head>
+  <body>
+    <outline text="mainresponder_respond_smoke - Smoke test: does mainResponder.respond() run and return a response table?">
+      <outline text="Metadata">
+        <outline text="timeout: 30"/>
+        <outline text="expected_result: true"/>
+        <outline text="notes: Smoke test — passed on first run (2026-04-19), confirming that&#10;mainResponder.respond() executes end-to-end in the headless runtime&#10;with no missing verbs or globals.  Assertions verify responseBody is&#10;a string; body content is not checked because it depends on&#10;config.mainResponder.domains.default pointing to a www folder, which&#10;is environment-specific.&#10;"/>
+      </outline>
+      <outline text="Script">
+        <outline text="local(succeeded = false)"/>
+        <outline text="local(guestpath)"/>
+        <outline text="// Locate mainResponder.root relative to the Frontier binary"/>
+        <outline text="guestpath = file.folderFromPath(Frontier.getFilePath()) + &quot;Guest Databases/apps/mainResponder.root&quot;"/>
+        <outline text="// Skip if guest DB not available"/>
+        <outline text="if not file.exists(guestpath)">
+          <outline text="return &quot;skip&quot;"/>
+        </outline>
+        <outline text="// Prepare the param table BEFORE try — so else branch can clean it up"/>
+        <outline text="new(tableType, @system.temp.mrSmoke)"/>
+        <outline text="new(tableType, @system.temp.mrSmoke.req)"/>
+        <outline text="system.temp.mrSmoke.req.method = &quot;GET&quot;"/>
+        <outline text="system.temp.mrSmoke.req.path = &quot;/&quot;"/>
+        <outline text="system.temp.mrSmoke.req.host = &quot;localhost&quot;"/>
+        <outline text="system.temp.mrSmoke.req.firstLine = &quot;GET / HTTP/1.0&quot;"/>
+        <outline text="system.temp.mrSmoke.req.client = &quot;127.0.0.1&quot;"/>
+        <outline text="new(tableType, @system.temp.mrSmoke.req.requestHeaders)"/>
+        <outline text="system.temp.mrSmoke.req.requestHeaders.[&quot;User-Agent&quot;] = &quot;Testing in Debugger&quot;"/>
+        <outline text="try">
+          <outline text="fileMenu.open(guestpath, true)"/>
+          <outline text="mainResponder.init()"/>
+          <outline text="mainResponder.respond(@system.temp.mrSmoke.req)"/>
+          <outline text="if typeof(system.temp.mrSmoke.req.responseBody) != 'TEXT'">
+            <outline text="scriptError(&quot;mainResponder.respond returned no responseBody (or non-string)&quot;)"/>
+          </outline>
+          <outline text="succeeded = true"/>
+        </outline>
+        <outline text="else">
+          <outline text="local(err = tryError)"/>
+          <outline text="try { delete(@config.mainResponder) }"/>
+          <outline text="try { delete(@system.temp.mrSmoke) }"/>
+          <outline text="scriptError(&quot;mainResponder.respond smoke failed: &quot; + err)"/>
+        </outline>
+        <outline text="try { delete(@config.mainResponder) }"/>
+        <outline text="try { delete(@system.temp.mrSmoke) }"/>
+        <outline text="return succeeded"/>
+      </outline>
+    </outline>
+  </body>
+</opml>
