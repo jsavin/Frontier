@@ -17,7 +17,10 @@ trim_trailing_whitespace = true
 indent_style = tab
 # For tab indentation, indent_size is a display-width hint only (it becomes
 # tab_width); the actual indentation character is always a hard tab.
+# tab_width is set explicitly so editors (notably VS Code) that interpret
+# indent_size as a soft-tab-stop still treat Tab keypresses as hard tabs.
 indent_size = 4
+tab_width = 4
 
 [*.{py,sh,bash}]
 indent_style = space

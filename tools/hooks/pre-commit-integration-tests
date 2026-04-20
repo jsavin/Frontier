@@ -17,6 +17,20 @@
 # install_git_hooks.sh uses this value to detect stale installations and
 # reinstall automatically. Keep the assignment on its own line so the
 # installer can parse it with a simple grep.
+#
+# Version history:
+#   v1: initial — OPML export + develop-branch guard + doc validation.
+#   v2: added HOOK_VERSION marker (prior unversioned hooks detected via
+#       legacy string match).
+#   v3: added C-indent check; line numbers reconstructed from @@ hunks.
+#   v4: C-indent regex tightened so `*ptr = x` is no longer falsely
+#       excluded by the block-comment carve-out.
+#   v5: POSIX [[:blank:]]; defensive lineno=0 init; error message
+#       reworded to disallow --no-verify and mention multi-line macros.
+#   v6: detect mixed tab+space indent (`\t    foo`); --diff-filter=ACMR
+#       so renamed-and-modified files are also checked.
+#   v7: error message lists alignment-space function-call continuation
+#       as a known false-positive with recommended fix.
 HOOK_VERSION=7
 
 set -e
