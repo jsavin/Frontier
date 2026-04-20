@@ -17,7 +17,7 @@
 # install_git_hooks.sh uses this value to detect stale installations and
 # reinstall automatically. Keep the assignment on its own line so the
 # installer can parse it with a simple grep.
-HOOK_VERSION=5
+HOOK_VERSION=6
 
 set -e
 
@@ -155,7 +155,7 @@ fi
 # won't block unrelated commits until they're touched.
 # ──────────────────────────────────────────────────────────────
 
-C_FILES_CHANGED=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(c|h)$' || true)
+C_FILES_CHANGED=$(git diff --cached --name-only --diff-filter=ACMR | grep -E '\.(c|h)$' || true)
 
 if [ -n "$C_FILES_CHANGED" ]; then
     # Examine only the added/changed lines in the staged diff. A leading-space
@@ -193,8 +193,10 @@ if [ -n "$C_FILES_CHANGED" ]; then
             }
             /^\+\+\+/ { next }
             /^\+/ {
-                # Flag if the added line starts with a space-indent, BUT skip
-                # legitimate block-comment continuation lines:
+                # Flag if the added line has ANY space in its leading
+                # whitespace run (pure-space indent, OR mixed tab+space
+                # like "\t    foo"), BUT skip legitimate block-comment
+                # continuation lines:
                 #     /* first
                 #      * continuation   <-- valid C style
                 #      */
@@ -212,7 +214,19 @@ if [ -n "$C_FILES_CHANGED" ]; then
                                    $0 ~ /^\+[[:blank:]]*\*\// || \
                                    $0 ~ /^\+[[:blank:]]*\* /  || \
                                    $0 ~ /^\+[[:blank:]]*\*$/)
-                if (substr($0, 2, 1) == " " && !is_comment_cont) {
+                # Extract the leading blank run (after the "+" diff marker)
+                # and check whether it contains any space character. This
+                # catches pure-space indent AND mixed indentation like
+                # a tab followed by spaces, or spaces followed by a tab —
+                # both of which break the outline editor tab translation.
+                has_space_in_indent = 0
+                if (match($0, /^\+[[:blank:]]*/)) {
+                    indent = substr($0, 2, RLENGTH - 1)
+                    if (index(indent, " ") > 0) {
+                        has_space_in_indent = 1
+                    }
+                }
+                if (has_space_in_indent && !is_comment_cont) {
                     print lineno ": " $0
                 }
                 lineno++
