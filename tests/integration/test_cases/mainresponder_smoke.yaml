@@ -1,0 +1,88 @@
+sequential: true
+needs_guest_dbs: true
+protocol_mode: true
+
+# Phase B discovery test for the mainResponder.respond() verb.
+#
+# Purpose:
+#   Verify that mainResponder.respond() runs end-to-end in the headless
+#   runtime against a freshly-initialized param table.  This was designed as
+#   a discovery probe expected to fail on first run — but it PASSED on first
+#   run, confirming that the legacy UserTalk dispatcher (~1000 lines) works
+#   headlessly without any verb stubs or workarounds.  Keep the test in the
+#   suite as a regression guard for Phases C–F.
+#
+# Known false-positive drift warning:
+#   The integration test runner's MD5-based sysroot drift check flags this
+#   file as mutating the system root.  Investigation (2026-04-19) confirmed
+#   the test cleanup is logically complete — no paths leak after delete.
+#   The MD5 drift is caused by save-path non-determinism in the ODB file
+#   format (timestamps / block allocation order), and reproduces for a pure
+#   no-op CLI invocation.  Tracked for runner fix in a follow-up PR; not a
+#   bug in this test.
+#
+# Reference:
+#   - planning/MANILA_MAINRESPONDER_E2E.md (Phase B)
+#   - usertalk_scripts/mainResponder.root/mainResponder/respond.ut
+#   - usertalk_scripts/mainResponder.root/mainResponder/init.ut
+#   - tests/integration/test_cases/guest_db_externals.yaml (guest DB pattern)
+#   - tests/integration/test_cases/webserver_inetd_e2e.yaml (structural template)
+
+tests:
+  - name: "mainresponder_respond_smoke"
+    description: "Smoke test: does mainResponder.respond() run and return a response table?"
+    timeout: 30
+    script: |
+      local(succeeded = false);
+      local(guestpath);
+
+      // Locate mainResponder.root relative to the Frontier binary
+      guestpath = file.folderFromPath(Frontier.getFilePath()) + "Guest Databases/apps/mainResponder.root";
+
+      // Skip if guest DB not available
+      if not file.exists(guestpath) {
+        return "skip"
+      };
+
+      // Prepare the param table BEFORE try — so else branch can clean it up
+      new(tableType, @system.temp.mrSmoke);
+      new(tableType, @system.temp.mrSmoke.req);
+      system.temp.mrSmoke.req.method = "GET";
+      system.temp.mrSmoke.req.path = "/";
+      system.temp.mrSmoke.req.host = "localhost";
+      system.temp.mrSmoke.req.firstLine = "GET / HTTP/1.0";
+      system.temp.mrSmoke.req.client = "127.0.0.1";
+      new(tableType, @system.temp.mrSmoke.req.requestHeaders);
+      system.temp.mrSmoke.req.requestHeaders.["User-Agent"] = "Testing in Debugger";
+
+      try {
+        fileMenu.open(guestpath, true);
+        mainResponder.init();
+        mainResponder.respond(@system.temp.mrSmoke.req);
+
+        if typeof(system.temp.mrSmoke.req.responseBody) != 'TEXT' {
+          scriptError("mainResponder.respond returned no responseBody (or non-string)")
+        };
+
+        succeeded = true
+      }
+      else {
+        local(err = tryError);
+        try { delete(@config.mainResponder) };
+        try { delete(@system.temp.mrSmoke) };
+        scriptError("mainResponder.respond smoke failed: " + err)
+      };
+
+      try { delete(@config.mainResponder) };
+      try { delete(@system.temp.mrSmoke) };
+
+      return succeeded
+    expected_success: true
+    expected_result: "true"
+    notes: |
+      Smoke test — passed on first run (2026-04-19), confirming that
+      mainResponder.respond() executes end-to-end in the headless runtime
+      with no missing verbs or globals.  Assertions verify responseBody is
+      a string; body content is not checked because it depends on
+      config.mainResponder.domains.default pointing to a www folder, which
+      is environment-specific.
