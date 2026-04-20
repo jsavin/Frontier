@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>Mainresponder Smoke (mainresponder_smoke) - 1 tests: 1 pass (100%)</title>
-    <dateCreated>Mon, 20 Apr 2026 06:14:32 GMT</dateCreated>
+    <dateCreated>Mon, 20 Apr 2026 06:21:13 GMT</dateCreated>
   </head>
   <body>
     <outline text="mainresponder_respond_smoke - Smoke test: does mainResponder.respond() run and return a response table?">
@@ -33,9 +33,18 @@
         <outline text="try">
           <outline text="fileMenu.open(guestpath, true)"/>
           <outline text="mainResponder.init()"/>
+          <outline text="// mainResponder.respond() writes responseBody back into the param"/>
+          <outline text="// table rather than returning a separate response object.  Pass the"/>
+          <outline text="// address so the callee can mutate our table in place."/>
           <outline text="mainResponder.respond(@system.temp.mrSmoke.req)"/>
           <outline text="if typeof(system.temp.mrSmoke.req.responseBody) != 'TEXT'">
             <outline text="scriptError(&quot;mainResponder.respond returned no responseBody (or non-string)&quot;)"/>
+          </outline>
+          <outline text="// Even in a headless environment without a real www folder, respond()"/>
+          <outline text="// should produce a non-empty body (error page, 404, etc.).  An empty"/>
+          <outline text="// string would indicate it bailed out silently."/>
+          <outline text="if string.length(system.temp.mrSmoke.req.responseBody) == 0">
+            <outline text="scriptError(&quot;mainResponder.respond returned an empty responseBody&quot;)"/>
           </outline>
           <outline text="succeeded = true"/>
         </outline>
