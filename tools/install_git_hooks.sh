@@ -23,14 +23,32 @@ PRE_COMMIT_SRC="$TOOLS_HOOKS_DIR/pre-commit-integration-tests"
 PRE_COMMIT_DST="$HOOKS_DIR/pre-commit"
 
 if [ -f "$PRE_COMMIT_DST" ]; then
-    # Existing pre-commit hook - check if it's ours
-    if grep -q "Block commits to develop" "$PRE_COMMIT_DST" 2>/dev/null; then
-        echo -e "${YELLOW}Pre-commit hook already installed (up to date)${NC}"
-    elif grep -q "pre-commit-integration-tests" "$PRE_COMMIT_DST" 2>/dev/null; then
-        # Older version without develop guard — upgrade it
+    # Existing pre-commit hook - check if it's ours.
+    # Version detection: compare HOOK_VERSION in source vs installed copy.
+    # Older hooks without HOOK_VERSION are detected via legacy markers.
+    SRC_VERSION=$(grep -E '^HOOK_VERSION=' "$PRE_COMMIT_SRC" 2>/dev/null | head -1 | cut -d= -f2)
+    DST_VERSION=$(grep -E '^HOOK_VERSION=' "$PRE_COMMIT_DST" 2>/dev/null | head -1 | cut -d= -f2)
+
+    # Defensive guard: a source file missing HOOK_VERSION= would produce
+    # misleading "upgraded to version ''" messages and defeat the detection.
+    if [ -z "$SRC_VERSION" ]; then
+        echo -e "${RED}ERROR: HOOK_VERSION= marker missing in $PRE_COMMIT_SRC${NC}" >&2
+        echo "The hook source file is corrupted or pre-dates versioning." >&2
+        echo "Cannot auto-upgrade safely. Restore the source file and retry." >&2
+        exit 1
+    fi
+
+    if [ "$SRC_VERSION" = "$DST_VERSION" ]; then
+        echo -e "${YELLOW}Pre-commit hook already installed (HOOK_VERSION=$DST_VERSION, up to date)${NC}"
+    elif [ -n "$DST_VERSION" ] || grep -q -E "pre-commit-integration-tests|Block commits to develop" "$PRE_COMMIT_DST" 2>/dev/null; then
+        # Either a versioned hook at a different version, or an older unversioned hook — upgrade.
         cp "$PRE_COMMIT_SRC" "$PRE_COMMIT_DST"
         chmod +x "$PRE_COMMIT_DST"
-        echo -e "${GREEN}✓ Upgraded pre-commit hook (added develop branch guard)${NC}"
+        if [ -n "$DST_VERSION" ]; then
+            echo -e "${GREEN}✓ Upgraded pre-commit hook (HOOK_VERSION $DST_VERSION → $SRC_VERSION)${NC}"
+        else
+            echo -e "${GREEN}✓ Upgraded pre-commit hook (unversioned → HOOK_VERSION=$SRC_VERSION)${NC}"
+        fi
     else
         echo -e "${YELLOW}Warning: Existing pre-commit hook found${NC}"
         echo "You have an existing pre-commit hook. To use both hooks:"
@@ -53,6 +71,9 @@ echo "What this does:"
 echo "  • Blocks commits to 'develop' in the main worktree"
 echo "    - Use feature branches in worktrees instead"
 echo "    - Bypass with: git commit --no-verify"
+echo "  • Rejects staged *.c/*.h files with leading-space indentation"
+echo "    - Frontier requires tabs for C code (outline editor compatibility)"
+echo "    - Only checks staged files; pre-existing files are not affected"
 echo "  • When you commit changes to tests/integration/test_cases/*.yaml"
 echo "    - The hook automatically regenerates reports/integration_tests.opml"
 echo "    - The updated OPML is added to your commit"

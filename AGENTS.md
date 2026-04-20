@@ -50,11 +50,20 @@ This document is a concise contributor guide for Frontier’s C/C toolchain and 
 - Static analysis: Not configured; optional local runs via `scan-build` or `clang-tidy` are encouraged.
 
 ## Coding Style & Naming Conventions
-- Language: C (tests `-std=c99`), CLI `-std=c17`.
-- Indentation: 4 spaces, no tabs; 100‑column soft limit.
-- Braces: K&R style (same line), consistent include order: system, project, local.
-- Filenames: C sources `snake_case.c/h`; tests use `test_*.c` or `*_tests.c`.
-- Warnings: Keep `-Wall -Wextra` clean; prefer small, focused functions.
+
+- **Language**: C — tests use `-std=c99`, CLI uses `-std=c17`.
+- **Indentation**: **Tabs** for all C code. No spaces for indentation in `*.c`/`*.h`.
+  - **Why**: Frontier's outline editor translates between plaintext and outlines using tab-based indentation. Spaces-indented C code breaks that workflow.
+  - Enforced by `.editorconfig` (editor-on-save) and the pre-commit hook (rejects staged C files with leading-space indentation).
+  - A mass retab of pre-existing spaces-indented files happens in a separate PR; until then, the hook only checks staged files.
+- **Column width**: 100-column soft limit.
+- **Braces**: K&R style — opening brace on the same line.
+- **Include order**: system headers first, then project headers, then local.
+- **Filenames**:
+  - New C sources: `snake_case.c/h`.
+  - Legacy CamelCase/dot-compound filenames (e.g., `CallMachOFrameWork.c`, `FSCopyObject.c`, `memory.track.c`) are retained as-is to preserve history.
+  - Tests: `test_*.c` or `*_tests.c`.
+- **Warnings**: Keep `-Wall -Wextra` clean; prefer small, focused functions.
 
 ## Testing Guidelines
 - Add unit/integration tests under `tests/components/` or `tests/examples/`.

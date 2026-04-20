@@ -3,10 +3,37 @@
 #
 # Checks:
 #   1. Block commits to develop in the main worktree (use feature branches)
-#   2. Auto-regenerate OPML export when integration tests change
-#   3. Validate documentation references when docs change
+#   2. Reject staged *.c/*.h files with leading-space indentation
+#   3. Auto-regenerate OPML export when integration tests change
+#   4. Validate documentation references when docs change
 #
 # Install: Run tools/install_git_hooks.sh
+#
+# HOOK_VERSION — bump for any change that would cause existing installations
+# to behave differently from the source of truth. Concretely: new checks,
+# changed exit codes, changed error-message format, changed detection regex.
+# Pure comment/whitespace edits do not require a bump.
+#
+# install_git_hooks.sh uses this value to detect stale installations and
+# reinstall automatically. Keep the assignment on its own line so the
+# installer can parse it with a simple grep.
+#
+# Version history:
+#   v1: initial — OPML export + develop-branch guard + doc validation.
+#   v2: added HOOK_VERSION marker (prior unversioned hooks detected via
+#       legacy string match).
+#   v3: added C-indent check; line numbers reconstructed from @@ hunks.
+#   v4: C-indent regex tightened so `*ptr = x` is no longer falsely
+#       excluded by the block-comment carve-out.
+#   v5: POSIX [[:blank:]]; defensive lineno=0 init; error message
+#       reworded to disallow --no-verify and mention multi-line macros.
+#   v6: detect mixed tab+space indent (`\t    foo`); --diff-filter=ACMR
+#       so renamed-and-modified files are also checked.
+#   v7: error message lists alignment-space function-call continuation
+#       as a known false-positive with recommended fix.
+#   v8: violation output strips the diff "+" prefix (cosmetic; line
+#       numbers unchanged).
+HOOK_VERSION=8
 
 set -e
 
@@ -131,6 +158,133 @@ if [ -n "$DOC_FILES_CHANGED" ]; then
     fi
 
     echo -e "${GREEN}✓ Documentation validation passed${NC}"
+fi
+
+# ──────────────────────────────────────────────────────────────
+# C indentation: Reject staged *.c/*.h with leading-space indent
+#
+# Frontier's outline editor translates between plaintext and outlines using
+# tab-based indentation. Spaces-indented C code breaks that workflow, so
+# ALL C code must use tabs for indentation.
+#
+# This check only inspects STAGED files, so existing spaces-indented files
+# won't block unrelated commits until they're touched.
+# ──────────────────────────────────────────────────────────────
+
+C_FILES_CHANGED=$(git diff --cached --name-only --diff-filter=ACMR | grep -E '\.(c|h)$' || true)
+
+if [ -n "$C_FILES_CHANGED" ]; then
+    # Examine only the added/changed lines in the staged diff. A leading-space
+    # indent in an added line means this commit would introduce (or keep)
+    # space-based indentation in a C source file.
+    #
+    # Line numbers are reconstructed from the @@ hunk headers so they map to
+    # the SOURCE file, not the diff output. Hunk header format is:
+    #     @@ -old,len +new,len @@
+    # We track the "+new" line counter, incrementing it on each added ('+') or
+    # context (' ') line, and emit file:lineno when an added line starts with
+    # a space.
+    INDENT_VIOLATIONS=""
+    NL=$'\n'
+    # Read filenames line-by-line so paths with spaces are handled safely.
+    while IFS= read -r f; do
+        [ -n "$f" ] || continue
+        # Skip deleted files (diff-filter already excludes D, but be safe)
+        [ -f "$f" ] || continue
+        # The regex uses [[:blank:]] (POSIX) which matches tab and space on
+        # any awk implementation, avoiding portability concerns with \t
+        # inside a character class (gawk/BSD-only).
+        #
+        # With -U0, no context lines are emitted, and deletion lines
+        # (/^-/) do not exist in the new file — so only @@ headers and
+        # added lines (/^+/) need handling.
+        VIOLATIONS=$(git diff --cached -U0 -- "$f" | awk '
+            BEGIN { lineno = 0 }
+            /^@@/ {
+                # Extract the starting line number after "+"
+                if (match($0, /\+[0-9]+/)) {
+                    lineno = substr($0, RSTART + 1, RLENGTH - 1) + 0
+                }
+                next
+            }
+            /^\+\+\+/ { next }
+            /^\+/ {
+                # Flag if the added line has ANY space in its leading
+                # whitespace run (pure-space indent, OR mixed tab+space
+                # like "\t    foo"), BUT skip legitimate block-comment
+                # continuation lines:
+                #     /* first
+                #      * continuation   <-- valid C style
+                #      */
+                #
+                # We must NOT exclude space-indented pointer code like:
+                #     *ptr = value;
+                #     **argv;
+                # so the exclusion matches only lines where the leading run
+                # of blanks is followed by one of:
+                #   - "/*"     (start of block comment)
+                #   - "*/"     (end of block comment)
+                #   - "* text" (comment continuation with content)
+                #   - bare "*" (blank continuation line)
+                is_comment_cont = ($0 ~ /^\+[[:blank:]]*\/\*/ || \
+                                   $0 ~ /^\+[[:blank:]]*\*\// || \
+                                   $0 ~ /^\+[[:blank:]]*\* /  || \
+                                   $0 ~ /^\+[[:blank:]]*\*$/)
+                # Extract the leading blank run (after the "+" diff marker)
+                # and check whether it contains any space character. This
+                # catches pure-space indent AND mixed indentation like
+                # a tab followed by spaces, or spaces followed by a tab —
+                # both of which break the outline editor tab translation.
+                has_space_in_indent = 0
+                if (match($0, /^\+[[:blank:]]*/)) {
+                    indent = substr($0, 2, RLENGTH - 1)
+                    if (index(indent, " ") > 0) {
+                        has_space_in_indent = 1
+                    }
+                }
+                if (has_space_in_indent && !is_comment_cont) {
+                    # Strip the leading "+" diff marker so the printed line
+                    # looks like source, not diff output.
+                    print lineno ": " substr($0, 2)
+                }
+                lineno++
+            }
+        ')
+        if [ -n "$VIOLATIONS" ]; then
+            INDENT_VIOLATIONS="${INDENT_VIOLATIONS}${f}:${NL}${VIOLATIONS}${NL}"
+        fi
+    done <<< "$C_FILES_CHANGED"
+
+    if [ -n "$INDENT_VIOLATIONS" ]; then
+        echo -e "${RED}ERROR: Staged C files use spaces for indentation. Frontier requires tabs.${NC}" >&2
+        echo "" >&2
+        echo "Rationale: Frontier's outline editor translates between plaintext and" >&2
+        echo "outlines using tab-based indentation. Spaces-indented C code breaks" >&2
+        echo "that workflow." >&2
+        echo "" >&2
+        echo "Offending files and source line numbers:" >&2
+        echo -e "$INDENT_VIOLATIONS" | sed 's/^/  /' >&2
+        echo "" >&2
+        echo "Fix: Re-indent the file with tabs (one tab per indentation level)." >&2
+        echo "" >&2
+        echo "Rare cases:" >&2
+        echo "  - Multi-line function call with arguments column-aligned" >&2
+        echo "    under the open paren (tab + spaces): use tab-only" >&2
+        echo "    indent on continuation lines, e.g." >&2
+        echo "        foo(arg1," >&2
+        echo "            arg2);  // tab-indent, do not space-align" >&2
+        echo "  - Multi-line string literal whose continuation lines are" >&2
+        echo "    space-aligned for visual readability: reformat to start" >&2
+        echo "    continuation lines at column 0 (or tab-indent them)." >&2
+        echo "  - Multi-line macro with backslash continuation: use tab" >&2
+        echo "    indentation on continuation lines, not spaces." >&2
+        echo "  - Block comment continuation lines starting with '*' or" >&2
+        echo "    '/' are already excluded from this check." >&2
+        echo "" >&2
+        echo "Agents: do not use --no-verify to bypass this hook. Surface the" >&2
+        echo "failure to the user and ask how to proceed." >&2
+        exit 1
+    fi
 fi
 
 # ──────────────────────────────────────────────────────────────

@@ -233,6 +233,25 @@ Use those rules as mandatory baseline guidance.
 
 ---
 
+## C Coding Style & Naming Conventions
+
+- **Language**: C — tests use `-std=c99`, CLI uses `-std=c17`.
+- **Indentation**: **Tabs** for all C code. No spaces for indentation in `*.c`/`*.h`.
+  - **Why**: Frontier's outline editor translates between plaintext and outlines using tab-based indentation. Spaces-indented C source is hostile to that workflow, so tabs are mandatory project-wide.
+  - Enforced by `.editorconfig` (editors auto-use tabs on save) and the pre-commit hook (rejects staged C files whose added lines use leading-space indentation).
+  - A mass retab of pre-existing spaces-indented files is tracked as a separate PR; until then, the hook only checks staged files, so unrelated commits aren't blocked.
+  - **Agents: do NOT use `--no-verify` to bypass this hook.** Per the global Git Safety Protocol, hook skipping requires explicit user authorization. If the hook fires unexpectedly (e.g., comment/string continuation-line alignment), stop and surface the failure to the user rather than bypassing.
+- **Column width**: 100-column soft limit.
+- **Braces**: K&R style — opening brace on the same line.
+- **Include order**: system headers first, then project headers, then local.
+- **Filenames**:
+  - New C sources: `snake_case.c/h`.
+  - Legacy CamelCase/dot-compound filenames (e.g., `CallMachOFrameWork.c`, `FSCopyObject.c`, `memory.track.c`) are retained as-is to preserve history.
+  - Tests: `test_*.c` or `*_tests.c`.
+- **Warnings**: Keep `-Wall -Wextra` clean; prefer small, focused functions.
+
+---
+
 ## Critical Testing Constraints
 
 Cross-agent test requirements (including integration test expectations for verb changes) now live in `docs/AI_SHARED_GUIDELINES.md`.
