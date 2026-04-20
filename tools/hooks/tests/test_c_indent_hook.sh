@@ -27,6 +27,10 @@ FAIL_COUNT=0
 FAILED_TESTS=()
 REPO=""
 STDERR_FILE=""
+# Sentinel — surfaces an obvious failure mode if expect_pass/expect_fail is
+# ever called without a prior run_hook (set -u would otherwise abort with a
+# less-helpful "unbound variable" error).
+HOOK_EXIT=-1
 
 # ──────────────────────────────────────────────────────────────
 # Cleanup on any exit (success, failure, or Ctrl-C) so we don't
@@ -49,7 +53,11 @@ trap on_exit EXIT INT TERM
 # make_repo — create a fresh scratch git repo, cd into it, install the hook.
 # Sets REPO global to the path so cleanup_repo / on_exit can remove it.
 make_repo() {
-    REPO=$(mktemp -d -t frontier-hook-test.XXXXXX)
+    # Guard mktemp explicitly: if it fails (e.g. low disk), REPO would be
+    # empty, "cd ''" would silently land in $HOME, and the subsequent
+    # `git init` would corrupt the user's home directory.
+    REPO=$(mktemp -d -t frontier-hook-test.XXXXXX) \
+        || { echo "ERROR: mktemp -d failed" >&2; exit 1; }
     cd "$REPO" || { echo "ERROR: cannot cd to $REPO" >&2; exit 1; }
     git init -q -b main
     git config user.email "test@example.com"
@@ -81,8 +89,16 @@ cleanup_repo() {
 # run_hook — invoke the installed hook directly (not via `git commit`, to
 # avoid coupling test outcomes to commit-time messages or editors). Sets
 # HOOK_EXIT to the hook exit code; captures stderr to $STDERR_FILE.
+#
+# Cleans up any prior STDERR_FILE before allocating a new one so that a
+# future fixture which calls run_hook twice does not leak the first temp
+# file until on_exit.
 run_hook() {
-    STDERR_FILE=$(mktemp)
+    if [ -n "$STDERR_FILE" ] && [ -f "$STDERR_FILE" ]; then
+        rm -f "$STDERR_FILE"
+    fi
+    STDERR_FILE=$(mktemp) \
+        || { echo "ERROR: mktemp for STDERR_FILE failed" >&2; exit 1; }
     .git/hooks/pre-commit 2>"$STDERR_FILE"
     HOOK_EXIT=$?
     return 0
@@ -109,12 +125,32 @@ expect_pass() {
 expect_fail() {
     local name="$1"
     shift
+    expect_fail_with "$name" "" "$@"
+}
+
+# expect_fail_with NAME EXPECTED_PATH [LINE...] — like expect_fail but ALSO
+# asserts that EXPECTED_PATH appears literally in stderr. Pass "" to skip
+# the path assertion. Used by fixtures that want to verify the hook reports
+# the correct filename (e.g. paths containing spaces).
+expect_fail_with() {
+    local name="$1"
+    local expected_path="$2"
+    shift 2
     local expected_lines=("$@")
 
     if [ "$HOOK_EXIT" -eq 0 ]; then
         FAIL_COUNT=$((FAIL_COUNT + 1))
         FAILED_TESTS+=("$name")
         echo "  FAIL: $name (expected non-zero exit, got 0)"
+        return
+    fi
+
+    if [ -n "$expected_path" ] && ! grep -qF "$expected_path" "$STDERR_FILE"; then
+        FAIL_COUNT=$((FAIL_COUNT + 1))
+        FAILED_TESTS+=("$name")
+        echo "  FAIL: $name (path '$expected_path' not in stderr)"
+        echo "    stderr:"
+        sed 's/^/      /' "$STDERR_FILE"
         return
     fi
 
@@ -245,8 +281,11 @@ test_delete_only_changes_pass() {
     # pass the hook normally — we are isolating the delete-only behavior,
     # not testing whether existing space-indent triggers on delete.
     printf 'int main(void) {\n\tint a = 1;\n\tint to_delete_1 = 10;\n\tint to_delete_2 = 20;\n\treturn a;\n}\n' > legacy.c
+    # core.hooksPath=/dev/null disables the hook for this seed step (we are
+    # creating the baseline, not testing it). --no-verify is omitted because
+    # the hooks-path override already covers all hook types.
     git -c core.hooksPath=/dev/null add legacy.c
-    git -c core.hooksPath=/dev/null commit -q -m "seed" --no-verify
+    git -c core.hooksPath=/dev/null commit -q -m "seed"
     # Remove the two contiguous lines. The minimal -U0 diff for a pure
     # contiguous deletion is "-" lines only.
     printf 'int main(void) {\n\tint a = 1;\n\treturn a;\n}\n' > legacy.c
@@ -303,11 +342,12 @@ test_new_file_space_indent_fails() {
 test_midfile_insertion_reports_source_lineno() {
     echo "Test: midfile_insertion_reports_source_lineno"
     make_repo
-    # Seed a tab-indented file. Use --no-verify so the seed itself is not
-    # subject to the hook (it would pass anyway, but be explicit).
+    # Seed a tab-indented file with the hook disabled. The seed would pass
+    # the hook anyway, but disabling it keeps the test self-contained even
+    # if the hook gains future seed-incompatible checks.
     printf 'int main(void) {\n\tint a = 1;\n\tint b = 2;\n\tint c = 3;\n\tint d = 4;\n\tint e = 5;\n\treturn a + b + c + d + e;\n}\n' > insert.c
     git -c core.hooksPath=/dev/null add insert.c
-    git -c core.hooksPath=/dev/null commit -q -m "seed" --no-verify
+    git -c core.hooksPath=/dev/null commit -q -m "seed"
     # Insert a space-indented line between line 4 (int c) and line 5 (int d).
     # In source line numbering the new line becomes line 5.
     printf 'int main(void) {\n\tint a = 1;\n\tint b = 2;\n\tint c = 3;\n    int extra = 99;\n\tint d = 4;\n\tint e = 5;\n\treturn a + b + c + d + e;\n}\n' > insert.c
@@ -344,24 +384,7 @@ test_path_with_spaces_space_indent_fails() {
     printf 'int main(void) {\n    return 0;\n}\n' > "my dir/bad.c"
     git add "my dir/bad.c"
     run_hook
-    if [ "$HOOK_EXIT" -eq 0 ]; then
-        FAIL_COUNT=$((FAIL_COUNT + 1))
-        FAILED_TESTS+=("path_with_spaces_space_indent_fails")
-        echo "  FAIL: path_with_spaces_space_indent_fails (expected non-zero exit)"
-    elif ! grep -qF "my dir/bad.c" "$STDERR_FILE"; then
-        FAIL_COUNT=$((FAIL_COUNT + 1))
-        FAILED_TESTS+=("path_with_spaces_space_indent_fails")
-        echo "  FAIL: path_with_spaces_space_indent_fails (path 'my dir/bad.c' not in stderr)"
-        echo "    stderr:"
-        sed 's/^/      /' "$STDERR_FILE"
-    elif ! grep -qE "^[[:space:]]+2:" "$STDERR_FILE"; then
-        FAIL_COUNT=$((FAIL_COUNT + 1))
-        FAILED_TESTS+=("path_with_spaces_space_indent_fails")
-        echo "  FAIL: path_with_spaces_space_indent_fails (line 2 not flagged)"
-    else
-        PASS_COUNT=$((PASS_COUNT + 1))
-        echo "  PASS: path_with_spaces_space_indent_fails"
-    fi
+    expect_fail_with "path_with_spaces_space_indent_fails" "my dir/bad.c" 2
     cleanup_repo
 }
 
@@ -377,6 +400,21 @@ test_no_c_files_staged_passes() {
     git add note.txt
     run_hook
     expect_pass "no_c_files_staged_passes"
+    cleanup_repo
+}
+
+# ──────────────────────────────────────────────────────────────
+# Test 14: Header file (.h) with space indent → FAIL
+# Test 8 covered the .h-passes case; this confirms the `*.c|*.h` filter
+# is symmetric and that `.h` violations are flagged the same way as `.c`.
+# ──────────────────────────────────────────────────────────────
+test_header_file_space_indent_fails() {
+    echo "Test: header_file_space_indent_fails"
+    make_repo
+    printf 'struct s {\n    int x;\n    int y;\n};\n' > types.h
+    git add types.h
+    run_hook
+    expect_fail "header_file_space_indent_fails" 2 3
     cleanup_repo
 }
 
@@ -397,6 +435,7 @@ test_midfile_insertion_reports_source_lineno
 test_path_with_spaces_tab_indent_passes
 test_path_with_spaces_space_indent_fails
 test_no_c_files_staged_passes
+test_header_file_space_indent_fails
 
 echo ""
 echo "─────────────────────────────────────────"
