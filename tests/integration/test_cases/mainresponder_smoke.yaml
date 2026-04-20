@@ -68,11 +68,19 @@ tests:
       }
       else {
         local(err = tryError);
+        // Cleanup runs here on exception; success-path cleanup is after the
+        // try/else block.  The duplication is intentional — scriptError()
+        // below does not return, so we cannot consolidate into a finally.
+        try { fileMenu.close(guestpath) };
         try { delete(@config.mainResponder) };
         try { delete(@system.temp.mrSmoke) };
         scriptError("mainResponder.respond smoke failed: " + err)
       };
 
+      // Success-path cleanup.  Close the guest DB explicitly — the protocol-
+      // mode runner shares one CLI process across tests and only resets REPL
+      // variables via script/clearContext, which does not close open DBs.
+      try { fileMenu.close(guestpath) };
       try { delete(@config.mainResponder) };
       try { delete(@system.temp.mrSmoke) };
 
