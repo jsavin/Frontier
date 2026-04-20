@@ -17,7 +17,7 @@
 # install_git_hooks.sh uses this value to detect stale installations and
 # reinstall automatically. Keep the assignment on its own line so the
 # installer can parse it with a simple grep.
-HOOK_VERSION=6
+HOOK_VERSION=7
 
 set -e
 
@@ -250,6 +250,11 @@ if [ -n "$C_FILES_CHANGED" ]; then
         echo "Fix: Re-indent the file with tabs (one tab per indentation level)." >&2
         echo "" >&2
         echo "Rare cases:" >&2
+        echo "  - Multi-line function call with arguments column-aligned" >&2
+        echo "    under the open paren (tab + spaces): use tab-only" >&2
+        echo "    indent on continuation lines, e.g." >&2
+        echo "        foo(arg1," >&2
+        echo "            arg2);  // tab-indent, do not space-align" >&2
         echo "  - Multi-line string literal whose continuation lines are" >&2
         echo "    space-aligned for visual readability: reformat to start" >&2
         echo "    continuation lines at column 0 (or tab-indent them)." >&2
