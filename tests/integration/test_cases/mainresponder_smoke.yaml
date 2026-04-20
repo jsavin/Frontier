@@ -23,9 +23,12 @@ protocol_mode: true
 #
 #   NOTE: init() also spawns a background thread via thread.callScript()
 #   to run mainResponder.subscriptions.updateAllChangesTables.  That
-#   thread is unbounded and cannot be cleanly joined from the test; it
-#   exits on its own once no DB updates are pending.  Documented as a
-#   known limitation of legacy UserTalk for this smoke test.
+#   thread is unbounded and cannot be cleanly joined from the test.  The
+#   cleanup block yields via thread.sleepTicks(6) (~100 ms) before any
+#   delete, which lets the thread drain in practice — the thread exits
+#   almost immediately in the headless environment because there are no
+#   pending DB updates to process.  Sequential test ordering bounds the
+#   residual risk.
 #
 # Known false-positive drift warning:
 #   Even with full conditional cleanup, the runner's MD5-based sysroot
@@ -61,10 +64,17 @@ tests:
       // may create.  We'll only delete paths that didn't already exist, so
       // the test leaves the sysroot exactly as it found it and is idempotent
       // across repeated runs in the shared protocol-mode process.
+      //
+      // Snapshots are checked against BOTH the leaf and every intermediate
+      // table so that if init() created a brand-new branch (e.g. the whole
+      // user.rootUpdates.callbacks.afterInstallPart subtree) we can delete
+      // the branch at its root rather than leaving empty parent tables.
       local(preConfigMainResponder = defined(@config.mainResponder));
       local(preIsRadio = defined(@system.environment.isRadio));
+      local(preInetdConfig = defined(@user.inetd.config));
       local(preHttp2 = defined(@user.inetd.config.http2));
       local(preRootUpdatesCallbacks = defined(@user.rootUpdates.callbacks));
+      local(preAfterInstallPart = defined(@user.rootUpdates.callbacks.afterInstallPart));
       local(preAfterInstall = defined(@user.rootUpdates.callbacks.afterInstallPart.mainResponder));
 
       // Prepare the param table BEFORE try — so else branch can clean it up
@@ -105,11 +115,23 @@ tests:
         // Cleanup runs here on exception; success-path cleanup is after the
         // try/else block.  The duplication is intentional — scriptError()
         // below does not return, so we cannot consolidate into a finally.
+        // KEEP IN SYNC with success-path cleanup after the try/else.  If you
+        // add a snapshot variable above, both cleanup blocks must gain a
+        // matching conditional delete.
+        //
+        // Yield briefly to let the background thread spawned by init()
+        // (mainResponder.subscriptions.updateAllChangesTables) drain before
+        // we delete the paths it may touch.  This reduces — but does not
+        // eliminate — the race window.  Sequential test ordering keeps the
+        // remainder of the risk bounded.
+        try { thread.sleepTicks(6) };
         try { fileMenu.close(guestpath) };
         if not preConfigMainResponder { try { delete(@config.mainResponder) } };
         if not preIsRadio { try { delete(@system.environment.isRadio) } };
         if not preHttp2 { try { delete(@user.inetd.config.http2) } };
+        if not preInetdConfig { try { delete(@user.inetd.config) } };
         if not preAfterInstall { try { delete(@user.rootUpdates.callbacks.afterInstallPart.mainResponder) } };
+        if not preAfterInstallPart { try { delete(@user.rootUpdates.callbacks.afterInstallPart) } };
         if not preRootUpdatesCallbacks { try { delete(@user.rootUpdates.callbacks) } };
         try { delete(@system.temp.mrSmoke) };
         scriptError("mainResponder.respond smoke failed: " + err)
@@ -119,12 +141,19 @@ tests:
       // mode runner shares one CLI process across tests and only resets REPL
       // variables via script/clearContext, which does not close open DBs.
       // Conditional deletes restore only what we created, based on the
-      // pre-test snapshot above.
+      // pre-test snapshot above.  KEEP IN SYNC with exception-path cleanup
+      // in the else branch above.
+      //
+      // Yield briefly to let init()'s background thread drain (see note in
+      // the else branch).
+      try { thread.sleepTicks(6) };
       try { fileMenu.close(guestpath) };
       if not preConfigMainResponder { try { delete(@config.mainResponder) } };
       if not preIsRadio { try { delete(@system.environment.isRadio) } };
       if not preHttp2 { try { delete(@user.inetd.config.http2) } };
+      if not preInetdConfig { try { delete(@user.inetd.config) } };
       if not preAfterInstall { try { delete(@user.rootUpdates.callbacks.afterInstallPart.mainResponder) } };
+      if not preAfterInstallPart { try { delete(@user.rootUpdates.callbacks.afterInstallPart) } };
       if not preRootUpdatesCallbacks { try { delete(@user.rootUpdates.callbacks) } };
       try { delete(@system.temp.mrSmoke) };
 
