@@ -1,0 +1,34 @@
+# EditorConfig (https://editorconfig.org) — Frontier repo
+#
+# Tabs are MANDATORY for C sources. Frontier's outline editor translates
+# between plaintext and outlines using tab-based indentation; spaces-indented
+# C code is actively hostile to that workflow. The pre-commit hook enforces
+# this for staged files; this file ensures editors do the right thing on save.
+
+root = true
+
+[*]
+end_of_line = lf
+insert_final_newline = true
+charset = utf-8
+trim_trailing_whitespace = true
+
+[*.{c,h}]
+indent_style = tab
+indent_size = 4
+
+[*.{py,sh,bash}]
+indent_style = space
+indent_size = 4
+
+[*.{yml,yaml,json}]
+indent_style = space
+indent_size = 2
+
+[*.md]
+indent_style = space
+indent_size = 2
+trim_trailing_whitespace = false
+
+[Makefile]
+indent_style = tab

@@ -134,6 +134,52 @@ if [ -n "$DOC_FILES_CHANGED" ]; then
 fi
 
 # ──────────────────────────────────────────────────────────────
+# C indentation: Reject staged *.c/*.h with leading-space indent
+#
+# Frontier's outline editor translates between plaintext and outlines using
+# tab-based indentation. Spaces-indented C code breaks that workflow, so
+# ALL C code must use tabs for indentation.
+#
+# This check only inspects STAGED files, so existing spaces-indented files
+# won't block unrelated commits until they're touched.
+# ──────────────────────────────────────────────────────────────
+
+C_FILES_CHANGED=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(c|h)$' || true)
+
+if [ -n "$C_FILES_CHANGED" ]; then
+    # Examine only the added/changed lines in the staged diff. A leading-space
+    # indent in an added line means this commit would introduce (or keep)
+    # space-based indentation in a C source file.
+    INDENT_VIOLATIONS=""
+    for f in $C_FILES_CHANGED; do
+        # Skip deleted files (diff-filter already excludes D, but be safe)
+        [ -f "$f" ] || continue
+        # `git diff --cached -U0` shows added lines prefixed with '+' (not '+++').
+        # A violation is an added line whose first character is a space.
+        VIOLATIONS=$(git diff --cached -U0 -- "$f" | grep -nE '^\+ ' | grep -vE '^\+\+\+' || true)
+        if [ -n "$VIOLATIONS" ]; then
+            INDENT_VIOLATIONS="${INDENT_VIOLATIONS}${f}:\n${VIOLATIONS}\n"
+        fi
+    done
+
+    if [ -n "$INDENT_VIOLATIONS" ]; then
+        echo -e "${RED}ERROR: Staged C files use spaces for indentation. Frontier requires tabs.${NC}" >&2
+        echo "" >&2
+        echo "Rationale: Frontier's outline editor translates between plaintext and" >&2
+        echo "outlines using tab-based indentation. Spaces-indented C code breaks" >&2
+        echo "that workflow." >&2
+        echo "" >&2
+        echo "Offending files and added lines:" >&2
+        echo -e "$INDENT_VIOLATIONS" | sed 's/^/  /' >&2
+        echo "" >&2
+        echo "Fix: Re-indent the file with tabs (one tab per indentation level)." >&2
+        echo "" >&2
+        echo "To bypass (rare, e.g., importing vendored code): git commit --no-verify" >&2
+        exit 1
+    fi
+fi
+
+# ──────────────────────────────────────────────────────────────
 # Verb registration: Check for broken \p prefixes and wrong lengths
 # ──────────────────────────────────────────────────────────────
 

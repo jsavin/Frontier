@@ -24,13 +24,14 @@ PRE_COMMIT_DST="$HOOKS_DIR/pre-commit"
 
 if [ -f "$PRE_COMMIT_DST" ]; then
     # Existing pre-commit hook - check if it's ours
-    if grep -q "Block commits to develop" "$PRE_COMMIT_DST" 2>/dev/null; then
+    # Marker string lives in the latest hook so older installations get upgraded.
+    if grep -q "C indentation: Reject staged" "$PRE_COMMIT_DST" 2>/dev/null; then
         echo -e "${YELLOW}Pre-commit hook already installed (up to date)${NC}"
-    elif grep -q "pre-commit-integration-tests" "$PRE_COMMIT_DST" 2>/dev/null; then
-        # Older version without develop guard — upgrade it
+    elif grep -q -E "pre-commit-integration-tests|Block commits to develop" "$PRE_COMMIT_DST" 2>/dev/null; then
+        # Older version without latest guards — upgrade it
         cp "$PRE_COMMIT_SRC" "$PRE_COMMIT_DST"
         chmod +x "$PRE_COMMIT_DST"
-        echo -e "${GREEN}✓ Upgraded pre-commit hook (added develop branch guard)${NC}"
+        echo -e "${GREEN}✓ Upgraded pre-commit hook (added C tab-indent guard)${NC}"
     else
         echo -e "${YELLOW}Warning: Existing pre-commit hook found${NC}"
         echo "You have an existing pre-commit hook. To use both hooks:"
@@ -53,6 +54,9 @@ echo "What this does:"
 echo "  • Blocks commits to 'develop' in the main worktree"
 echo "    - Use feature branches in worktrees instead"
 echo "    - Bypass with: git commit --no-verify"
+echo "  • Rejects staged *.c/*.h files with leading-space indentation"
+echo "    - Frontier requires tabs for C code (outline editor compatibility)"
+echo "    - Only checks staged files; pre-existing files are not affected"
 echo "  • When you commit changes to tests/integration/test_cases/*.yaml"
 echo "    - The hook automatically regenerates reports/integration_tests.opml"
 echo "    - The updated OPML is added to your commit"
