@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>Mainresponder Smoke (mainresponder_smoke) - 1 tests: 1 pass (100%)</title>
-    <dateCreated>Mon, 20 Apr 2026 06:35:20 GMT</dateCreated>
+    <dateCreated>Mon, 20 Apr 2026 06:41:28 GMT</dateCreated>
   </head>
   <body>
     <outline text="mainresponder_respond_smoke - Smoke test: does mainResponder.respond() run and return a response table?">
@@ -12,7 +12,6 @@
         <outline text="notes: Smoke test — passed on first run (2026-04-19), confirming that&#10;mainResponder.respond() executes end-to-end in the headless runtime&#10;with no missing verbs or globals.  Assertions verify responseBody is&#10;a string and non-empty; body content is not checked because it&#10;depends on config.mainResponder.domains.default pointing to a www&#10;folder, which is environment-specific.&#10;&#10;Cleanup uses conditional delete based on pre-test defined() snapshot&#10;so the test is idempotent across repeated runs and does not leak&#10;sysroot state into subsequent tests.&#10;"/>
       </outline>
       <outline text="Script">
-        <outline text="local(succeeded = false)"/>
         <outline text="local(guestpath)"/>
         <outline text="// Locate mainResponder.root relative to the Frontier binary"/>
         <outline text="guestpath = file.folderFromPath(Frontier.getFilePath()) + &quot;Guest Databases/apps/mainResponder.root&quot;"/>
@@ -62,7 +61,6 @@
           <outline text="if string.length(system.temp.mrSmoke.req.responseBody) == 0">
             <outline text="scriptError(&quot;mainResponder.respond returned an empty responseBody&quot;)"/>
           </outline>
-          <outline text="succeeded = true"/>
         </outline>
         <outline text="else">
           <outline text="local(err = tryError)"/>
@@ -73,11 +71,12 @@
           <outline text="// add a snapshot variable above, both cleanup blocks must gain a"/>
           <outline text="// matching conditional delete."/>
           <outline text="//"/>
-          <outline text="// Yield briefly to let the background thread spawned by init()"/>
+          <outline text="// Yield briefly (6 ticks ≈ 100 ms, 60 ticks/sec) to let the"/>
+          <outline text="// background thread spawned by init()"/>
           <outline text="// (mainResponder.subscriptions.updateAllChangesTables) drain before"/>
           <outline text="// we delete the paths it may touch.  This reduces — but does not"/>
-          <outline text="// eliminate — the race window.  Sequential test ordering keeps the"/>
-          <outline text="// remainder of the risk bounded."/>
+          <outline text="// eliminate — the race window.  A heavily loaded CI host may need"/>
+          <outline text="// more, but sequential test ordering bounds the residual risk."/>
           <outline text="try { thread.sleepTicks(6) }"/>
           <outline text="try { fileMenu.close(guestpath) }"/>
           <outline text="if not preConfigMainResponder { try { delete(@config.mainResponder) } }"/>
@@ -97,8 +96,8 @@
         <outline text="// pre-test snapshot above.  KEEP IN SYNC with exception-path cleanup"/>
         <outline text="// in the else branch above."/>
         <outline text="//"/>
-        <outline text="// Yield briefly to let init()'s background thread drain (see note in"/>
-        <outline text="// the else branch)."/>
+        <outline text="// Yield briefly (6 ticks ≈ 100 ms) to let init()'s background thread"/>
+        <outline text="// drain before deletes — see the longer note in the else branch."/>
         <outline text="try { thread.sleepTicks(6) }"/>
         <outline text="try { fileMenu.close(guestpath) }"/>
         <outline text="if not preConfigMainResponder { try { delete(@config.mainResponder) } }"/>
@@ -109,7 +108,9 @@
         <outline text="if not preAfterInstallPart { try { delete(@user.rootUpdates.callbacks.afterInstallPart) } }"/>
         <outline text="if not preRootUpdatesCallbacks { try { delete(@user.rootUpdates.callbacks) } }"/>
         <outline text="try { delete(@system.temp.mrSmoke) }"/>
-        <outline text="return succeeded"/>
+        <outline text="// Reached only on the success path — the else branch above always"/>
+        <outline text="// calls scriptError() which does not return."/>
+        <outline text="return true"/>
       </outline>
     </outline>
   </body>
