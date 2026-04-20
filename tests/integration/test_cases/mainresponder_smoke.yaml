@@ -1,0 +1,172 @@
+sequential: true
+needs_guest_dbs: true
+protocol_mode: true
+
+# Phase B discovery test for the mainResponder.respond() verb.
+#
+# Purpose:
+#   Verify that mainResponder.respond() runs end-to-end in the headless
+#   runtime against a freshly-initialized param table.  This was designed as
+#   a discovery probe expected to fail on first run — but it PASSED on first
+#   run, confirming that the legacy UserTalk dispatcher (~1000 lines) works
+#   headlessly without any verb stubs or workarounds.  Keep the test in the
+#   suite as a regression guard for Phases C–F.
+#
+# Sysroot cleanup strategy:
+#   mainResponder.init() writes several system-root tables beyond
+#   config.mainResponder — notably system.environment.isRadio,
+#   user.inetd.config.http2 (port 5336 listener), and
+#   user.rootUpdates.callbacks.  The cleanup below snapshots defined() for
+#   each of these *before* init() and conditionally deletes only the
+#   paths that didn't already exist, so repeated runs are idempotent and
+#   the sysroot is restored to its pre-test state.
+#
+#   NOTE: init() also spawns a background thread via thread.callScript()
+#   to run mainResponder.subscriptions.updateAllChangesTables.  That
+#   thread is unbounded and cannot be cleanly joined from the test.  The
+#   cleanup block yields via thread.sleepTicks(12) (~200 ms) before any
+#   delete, which lets the thread drain in practice — the thread exits
+#   almost immediately in the headless environment because there are no
+#   pending DB updates to process.  Sequential test ordering bounds the
+#   residual risk.
+#
+# Known false-positive drift warning:
+#   Even with full conditional cleanup, the runner's MD5-based sysroot
+#   drift check will flag the file as mutated, because the ODB save path
+#   is non-deterministic at the byte level (timestamps / block allocation
+#   order).  This reproduces for a pure no-op CLI invocation.  Tracked in
+#   #545 for runner-side fix.
+#
+# Reference:
+#   - planning/MANILA_MAINRESPONDER_E2E.md (Phase B)
+#   - usertalk_scripts/mainResponder.root/mainResponder/respond.ut
+#   - usertalk_scripts/mainResponder.root/mainResponder/init.ut
+#   - tests/integration/test_cases/guest_db_externals.yaml (guest DB pattern)
+#   - tests/integration/test_cases/webserver_inetd_e2e.yaml (structural template)
+
+tests:
+  - name: "mainresponder_respond_smoke"
+    description: "Smoke test: does mainResponder.respond() run and return a response table?"
+    timeout: 30
+    script: |
+      local(guestpath);
+
+      // Locate mainResponder.root relative to the Frontier binary
+      guestpath = file.folderFromPath(Frontier.getFilePath()) + "Guest Databases/apps/mainResponder.root";
+
+      // Skip if guest DB not available
+      if not file.exists(guestpath) {
+        return "skip"
+      };
+
+      // Snapshot pre-test state for sysroot paths that mainResponder.init()
+      // may create.  We'll only delete paths that didn't already exist, so
+      // the test leaves the sysroot exactly as it found it and is idempotent
+      // across repeated runs in the shared protocol-mode process.
+      //
+      // Snapshots are checked against BOTH the leaf and every intermediate
+      // table so that if init() created a brand-new branch (e.g. the whole
+      // user.rootUpdates.callbacks.afterInstallPart subtree) we can delete
+      // the branch at its root rather than leaving empty parent tables.
+      local(preConfigMainResponder = defined(@config.mainResponder));
+      local(preIsRadio = defined(@system.environment.isRadio));
+      local(preInetdConfig = defined(@user.inetd.config));
+      local(preHttp2 = defined(@user.inetd.config.http2));
+      local(preRootUpdatesCallbacks = defined(@user.rootUpdates.callbacks));
+      local(preAfterInstallPart = defined(@user.rootUpdates.callbacks.afterInstallPart));
+      local(preAfterInstall = defined(@user.rootUpdates.callbacks.afterInstallPart.mainResponder));
+
+      // Prepare the param table BEFORE try — so else branch can clean it up
+      new(tableType, @system.temp.mrSmoke);
+      new(tableType, @system.temp.mrSmoke.req);
+      system.temp.mrSmoke.req.method = "GET";
+      system.temp.mrSmoke.req.path = "/";
+      system.temp.mrSmoke.req.host = "localhost";
+      system.temp.mrSmoke.req.firstLine = "GET / HTTP/1.0";
+      system.temp.mrSmoke.req.client = "127.0.0.1";
+      new(tableType, @system.temp.mrSmoke.req.requestHeaders);
+      system.temp.mrSmoke.req.requestHeaders.["User-Agent"] = "Testing in Debugger";
+
+      try {
+        fileMenu.open(guestpath, true);
+        mainResponder.init();
+
+        // mainResponder.respond() writes responseBody back into the param
+        // table rather than returning a separate response object.  Pass the
+        // address so the callee can mutate our table in place.
+        mainResponder.respond(@system.temp.mrSmoke.req);
+
+        if typeof(system.temp.mrSmoke.req.responseBody) != 'TEXT' {
+          scriptError("mainResponder.respond returned no responseBody (or non-string)")
+        };
+
+        // Even in a headless environment without a real www folder, respond()
+        // should produce a non-empty body (error page, 404, etc.).  An empty
+        // string would indicate it bailed out silently.
+        if string.length(system.temp.mrSmoke.req.responseBody) == 0 {
+          scriptError("mainResponder.respond returned an empty responseBody")
+        }
+      }
+      else {
+        local(err = tryError);
+        // Cleanup runs here on exception; success-path cleanup is after the
+        // try/else block.  The duplication is intentional — scriptError()
+        // below does not return, so we cannot consolidate into a finally.
+        // KEEP IN SYNC with success-path cleanup after the try/else.  If you
+        // add a snapshot variable above, both cleanup blocks must gain a
+        // matching conditional delete.
+        //
+        // Yield (12 ticks ≈ 200 ms, 60 ticks/sec) to let the background
+        // thread spawned by init()
+        // (mainResponder.subscriptions.updateAllChangesTables) drain before
+        // we delete the paths it may touch.  This reduces — but does not
+        // eliminate — the race window.  Sequential test ordering bounds
+        // the residual risk.
+        try { thread.sleepTicks(12) };
+        try { fileMenu.close(guestpath) };
+        if not preConfigMainResponder { try { delete(@config.mainResponder) } };
+        if not preIsRadio { try { delete(@system.environment.isRadio) } };
+        if not preHttp2 { try { delete(@user.inetd.config.http2) } };
+        if not preInetdConfig { try { delete(@user.inetd.config) } };
+        if not preAfterInstall { try { delete(@user.rootUpdates.callbacks.afterInstallPart.mainResponder) } };
+        if not preAfterInstallPart { try { delete(@user.rootUpdates.callbacks.afterInstallPart) } };
+        if not preRootUpdatesCallbacks { try { delete(@user.rootUpdates.callbacks) } };
+        try { delete(@system.temp.mrSmoke) };
+        scriptError("mainResponder.respond smoke failed: " + err)
+      };
+
+      // Success-path cleanup.  Close the guest DB explicitly — the protocol-
+      // mode runner shares one CLI process across tests and only resets REPL
+      // variables via script/clearContext, which does not close open DBs.
+      // Conditional deletes restore only what we created, based on the
+      // pre-test snapshot above.  KEEP IN SYNC with exception-path cleanup
+      // in the else branch above.
+      //
+      // Yield (12 ticks ≈ 200 ms) to let init()'s background thread
+      // drain before deletes — see the longer note in the else branch.
+      try { thread.sleepTicks(12) };
+      try { fileMenu.close(guestpath) };
+      if not preConfigMainResponder { try { delete(@config.mainResponder) } };
+      if not preIsRadio { try { delete(@system.environment.isRadio) } };
+      if not preHttp2 { try { delete(@user.inetd.config.http2) } };
+      if not preInetdConfig { try { delete(@user.inetd.config) } };
+      if not preAfterInstall { try { delete(@user.rootUpdates.callbacks.afterInstallPart.mainResponder) } };
+      if not preAfterInstallPart { try { delete(@user.rootUpdates.callbacks.afterInstallPart) } };
+      if not preRootUpdatesCallbacks { try { delete(@user.rootUpdates.callbacks) } };
+      try { delete(@system.temp.mrSmoke) };
+
+      // Reached only on the success path — the else branch above always
+      // calls scriptError() which does not return.
+      return true
+    expected_result: "true"
+    notes: |
+      Smoke test — passed on first run (2026-04-19), confirming that
+      mainResponder.respond() executes end-to-end in the headless runtime
+      with no missing verbs or globals.  Assertions verify responseBody is
+      a string and non-empty; body content is not checked because it
+      depends on config.mainResponder.domains.default pointing to a www
+      folder, which is environment-specific.
+
+      Cleanup uses conditional delete based on pre-test defined() snapshot
+      so the test is idempotent across repeated runs and does not leak
+      sysroot state into subsequent tests.

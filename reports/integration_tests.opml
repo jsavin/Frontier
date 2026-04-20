@@ -1,15 +1,15 @@
 <?xml version="1.0" ?>
 <opml version="2.0">
   <head>
-    <title>Frontier Integration Tests - 2242 tests: 2008 pass (89%) 234 skip (10%)</title>
-    <dateCreated>Sat, 18 Apr 2026 23:06:17 GMT</dateCreated>
+    <title>Frontier Integration Tests - 2243 tests: 2009 pass (89%) 234 skip (10%)</title>
+    <dateCreated>Mon, 20 Apr 2026 06:49:14 GMT</dateCreated>
   </head>
   <body>
     <outline text="Last Test Run">
-      <outline text="Run: 2026-04-18 at 23:06 UTC"/>
-      <outline text="Results: 1971 passed (89%), 234 skipped (11%), 19 failed (1%)"/>
-      <outline text="Duration: 30.5s (8 workers, batch mode)"/>
-      <outline text="YAML-defined: 2242 tests (2008 active, 234 marked skip) across 68 categories"/>
+      <outline text="Run: 2026-04-20 at 06:46 UTC"/>
+      <outline text="Results: 1991 passed (89%), 234 skipped (11%), 0 failed (0%)"/>
+      <outline text="Duration: 37.0s (8 workers, batch mode)"/>
+      <outline text="YAML-defined: 2243 tests (2009 active, 234 marked skip) across 69 categories"/>
     </outline>
     <outline text="Bigstring Boundary Tests (bigstring_boundary_tests) - 28 tests: 28 pass (100%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests/bigstring_boundary_tests.opml"/>
     <outline text="Builtins Priority (builtins_priority) - 24 tests: 24 pass (100%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests/builtins_priority.opml"/>
@@ -35,6 +35,7 @@
     <outline text="Html Image Tests (html_image_tests) - 19 tests: 1 pass (5%) 18 skip (94%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests/html_image_tests.opml"/>
     <outline text="Html Text Processing Phase2 Tests (html_text_processing_phase2_tests) - 30 tests: 24 pass (80%) 6 skip (20%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests/html_text_processing_phase2_tests.opml"/>
     <outline text="Lang Verbs (lang_verbs) - 156 tests: 141 pass (90%) 15 skip (9%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests/lang_verbs.opml"/>
+    <outline text="Mainresponder Smoke (mainresponder_smoke) - 1 tests: 1 pass (100%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests/mainresponder_smoke.opml"/>
     <outline text="Menu Data Verbs (menu_data_verbs) - 49 tests: 29 pass (59%) 20 skip (40%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests/menu_data_verbs.opml"/>
     <outline text="Menu Value Copy (menu_value_copy) - 5 tests: 4 pass (80%) 1 skip (20%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests/menu_value_copy.opml"/>
     <outline text="Migration Externals (migration_externals) - 19 tests: 16 pass (84%) 3 skip (15%)" type="link" url="https://raw.githubusercontent.com/jsavin/Frontier/develop/reports/integration_tests/migration_externals.opml"/>
