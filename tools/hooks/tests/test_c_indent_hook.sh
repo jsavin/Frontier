@@ -130,7 +130,9 @@ expect_pass() {
 
 # expect_fail NAME [LINE...] — assert the hook just exited non-zero AND that
 # each LINE number appears in stderr formatted as "N:" (the hook's violation
-# output format).
+# output format). Pass no LINE args to check the exit code only — current
+# fixtures all assert at least one line, so a no-line call is likely a
+# mistake; if you really want exit-code-only, document it at the call site.
 expect_fail() {
     local name="$1"
     shift
@@ -271,6 +273,10 @@ test_rename_with_space_indent_fails() {
     git add old.c
     git commit -q -m "add old.c"
     # Rename and add a space-indented line in the same staged change.
+    # `git mv` only stages the rename; the printf below overwrites the
+    # working-copy file and `git add new.c` then stages the modified
+    # content on top of the rename, producing a single rename+modify
+    # diff entry that --diff-filter=ACMR catches via the R bit.
     git mv old.c new.c
     printf 'int main(void) {\n\treturn 0;\n    int extra = 1;\n}\n' > new.c
     git add new.c
