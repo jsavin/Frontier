@@ -111,7 +111,6 @@ run_hook() {
         || { echo "ERROR: mktemp for STDERR_FILE failed" >&2; exit 1; }
     .git/hooks/pre-commit 2>"$STDERR_FILE"
     HOOK_EXIT=$?
-    return 0
 }
 
 # expect_pass NAME — assert the hook just exited 0.
@@ -225,19 +224,23 @@ test_mixed_tab_space_indent_fails() {
 }
 
 # ──────────────────────────────────────────────────────────────
-# Test 4: Block-comment continuation lines → PASS
-# Lines starting with whitespace then "/*", " * text", " *", or " */" are
-# the carve-out from rounds 2 and 4.
+# Test 4: Tab-indented block-comment continuation → PASS
+# Exercises the round-2/4 carve-out. The leading-whitespace run of a
+# "\t * continuation" line is "\t " (tab + space-before-*) per the
+# greedy [[:blank:]]* match in the hook's awk regex, so the line WOULD
+# fail the indent check without the carve-out for "* "/"*/"/"/*"/"*"
+# patterns. Verified by patching the hook to disable the carve-out:
+# this fixture flips to FAIL, confirming it exercises the carve-out.
+# Test 15 covers the same path with a more visually obvious
+# space-then-* continuation.
 # ──────────────────────────────────────────────────────────────
-test_block_comment_continuation_passes() {
-    echo "Test: block_comment_continuation_passes"
+test_tab_indented_block_comment_passes() {
+    echo "Test: tab_indented_block_comment_passes"
     make_repo
-    # Tab-indented function body containing a tab-indented block comment
-    # whose continuation lines are " * ..." (tab then space-star-space).
     printf 'int main(void) {\n\t/* opening line\n\t * continuation with content\n\t *\n\t */\n\treturn 0;\n}\n' > comments.c
     git add comments.c
     run_hook
-    expect_pass "block_comment_continuation_passes"
+    expect_pass "tab_indented_block_comment_passes"
     cleanup_repo
 }
 
@@ -429,13 +432,37 @@ test_header_file_space_indent_fails() {
 }
 
 # ──────────────────────────────────────────────────────────────
+# Test 15: Space-containing indent on block-comment continuation → PASS
+# Genuinely exercises the round-2/4 comment carve-out: lines whose leading
+# whitespace contains spaces AND whose first non-blank char is "*" or "/"
+# (in /*, */, "* text", or bare "*") are excluded from the indent check.
+#
+# Without the carve-out, lines 3, 4, and 5 below would be flagged for
+# having spaces in their leading-whitespace run. The carve-out lets
+# them pass. The function body itself is tab-indented so the test isolates
+# the carve-out behavior.
+# ──────────────────────────────────────────────────────────────
+test_space_block_comment_continuation_passes() {
+    echo "Test: space_block_comment_continuation_passes"
+    make_repo
+    # Mix tab indent (for the function body) with a space-indented block
+    # comment whose continuation lines start with " * ..." or " */". The
+    # space-then-* pattern is what the carve-out targets.
+    printf 'int main(void) {\n\t/* opener\n  * continuation with content\n  *\n  */\n\treturn 0;\n}\n' > carveout.c
+    git add carveout.c
+    run_hook
+    expect_pass "space_block_comment_continuation_passes"
+    cleanup_repo
+}
+
+# ──────────────────────────────────────────────────────────────
 # Run all tests
 # ──────────────────────────────────────────────────────────────
 
 test_pure_tab_indent_passes
 test_pure_space_indent_fails
 test_mixed_tab_space_indent_fails
-test_block_comment_continuation_passes
+test_tab_indented_block_comment_passes
 test_space_indented_pointer_deref_fails
 test_rename_with_space_indent_fails
 test_delete_only_changes_pass
@@ -446,6 +473,7 @@ test_path_with_spaces_tab_indent_passes
 test_path_with_spaces_space_indent_fails
 test_no_c_files_staged_passes
 test_header_file_space_indent_fails
+test_space_block_comment_continuation_passes
 
 echo ""
 echo "─────────────────────────────────────────"
