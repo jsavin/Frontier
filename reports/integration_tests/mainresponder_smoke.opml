@@ -2,7 +2,7 @@
 <opml version="2.0">
   <head>
     <title>Mainresponder Smoke (mainresponder_smoke) - 1 tests: 1 pass (100%)</title>
-    <dateCreated>Mon, 20 Apr 2026 06:07:05 GMT</dateCreated>
+    <dateCreated>Mon, 20 Apr 2026 06:14:32 GMT</dateCreated>
   </head>
   <body>
     <outline text="mainresponder_respond_smoke - Smoke test: does mainResponder.respond() run and return a response table?">
@@ -41,10 +41,18 @@
         </outline>
         <outline text="else">
           <outline text="local(err = tryError)"/>
+          <outline text="// Cleanup runs here on exception; success-path cleanup is after the"/>
+          <outline text="// try/else block.  The duplication is intentional — scriptError()"/>
+          <outline text="// below does not return, so we cannot consolidate into a finally."/>
+          <outline text="try { fileMenu.close(guestpath) }"/>
           <outline text="try { delete(@config.mainResponder) }"/>
           <outline text="try { delete(@system.temp.mrSmoke) }"/>
           <outline text="scriptError(&quot;mainResponder.respond smoke failed: &quot; + err)"/>
         </outline>
+        <outline text="// Success-path cleanup.  Close the guest DB explicitly — the protocol-"/>
+        <outline text="// mode runner shares one CLI process across tests and only resets REPL"/>
+        <outline text="// variables via script/clearContext, which does not close open DBs."/>
+        <outline text="try { fileMenu.close(guestpath) }"/>
         <outline text="try { delete(@config.mainResponder) }"/>
         <outline text="try { delete(@system.temp.mrSmoke) }"/>
         <outline text="return succeeded"/>
