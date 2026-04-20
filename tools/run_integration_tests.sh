@@ -146,12 +146,21 @@ if [ ! -f "$SOURCE_ROOT" ]; then
     echo -e "${RED}Error: Source database not found: $SOURCE_ROOT${NC}"
     exit 1
 fi
+# Defensive: ensure STAGE_DIR is non-empty before rm -rf (it's derived from
+# PROJECT_ROOT so this should always hold, but guard anyway).
+if [ -z "$STAGE_DIR" ]; then
+    echo -e "${RED}Error: STAGE_DIR is empty — refusing to rm -rf${NC}"
+    exit 1
+fi
 rm -rf "$STAGE_DIR"
 mkdir -p "$STAGE_DIR"
 cp "$SOURCE_ROOT" "$SYSTEM_ROOT"
-# Link sibling files/directories from databases/ (excluding Virgin.root,
-# Frontier.root, and v6 backups) so guest-DB-dependent tests find them next
-# to the staged Frontier.root.
+# Link sibling files/directories from databases/ so guest-DB-dependent tests
+# find them next to the staged Frontier.root. Exclusions:
+#   - Virgin.root: source of truth, copied above as Frontier.root
+#   - Frontier.root: stale local copy, not used as source
+#   - *.v6.root: pre-migration v6 backups (e.g. Frontier.v6.root)
+#   - *.v6.root.*: timestamped/numbered v6 backups (e.g. Frontier.v6.root.bak)
 for entry in "$SOURCE_DB_DIR"/*; do
     name=$(basename "$entry")
     case "$name" in
