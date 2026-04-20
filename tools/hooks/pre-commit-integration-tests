@@ -31,7 +31,9 @@
 #       so renamed-and-modified files are also checked.
 #   v7: error message lists alignment-space function-call continuation
 #       as a known false-positive with recommended fix.
-HOOK_VERSION=7
+#   v8: violation output strips the diff "+" prefix (cosmetic; line
+#       numbers unchanged).
+HOOK_VERSION=8
 
 set -e
 
@@ -241,7 +243,9 @@ if [ -n "$C_FILES_CHANGED" ]; then
                     }
                 }
                 if (has_space_in_indent && !is_comment_cont) {
-                    print lineno ": " $0
+                    # Strip the leading "+" diff marker so the printed line
+                    # looks like source, not diff output.
+                    print lineno ": " substr($0, 2)
                 }
                 lineno++
             }
