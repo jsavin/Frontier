@@ -17,7 +17,7 @@
 # install_git_hooks.sh uses this value to detect stale installations and
 # reinstall automatically. Keep the assignment on its own line so the
 # installer can parse it with a simple grep.
-HOOK_VERSION=2
+HOOK_VERSION=3
 
 set -e
 
@@ -189,14 +189,29 @@ if [ -n "$C_FILES_CHANGED" ]; then
             /^\+\+\+/ { next }
             /^\+/ {
                 # Flag if the added line starts with a space-indent, BUT skip
-                # legitimate comment / docstring continuation lines whose
-                # indentation aligns the "*" of a block comment:
+                # legitimate block-comment continuation lines:
                 #     /* first
-                #      * continuation   <-- ends in " *", valid C style
+                #      * continuation   <-- valid C style
                 #      */
-                # We skip any added line whose leading whitespace is followed
-                # by "*" or "/" (catches "* comment", "*/", "/* foo").
-                if (substr($0, 2, 1) == " " && $0 !~ /^\+[ \t]*[*\/]/) {
+                #
+                # We must NOT exclude space-indented pointer code like:
+                #     *ptr = value;
+                #     **argv;
+                # so the exclusion matches only lines where the leading run
+                # of whitespace is followed by one of:
+                #   - "/*"   (start of block comment)
+                #   - "*/"   (end of block comment)
+                #   - "* "   (comment continuation with text)
+                #   - "**"   (but "**/"-style close falls under "*/" above;
+                #             bare "**something" as a pointer deref in C is
+                #             rare enough at indent column that flagging it
+                #             is preferable to a broad exclusion — we leave
+                #             "**" un-excluded so pointer code gets caught)
+                is_comment_cont = ($0 ~ /^\+[ \t]*\/\*/ || \
+                                   $0 ~ /^\+[ \t]*\*\// || \
+                                   $0 ~ /^\+[ \t]*\* /  || \
+                                   $0 ~ /^\+[ \t]*\*$/)
+                if (substr($0, 2, 1) == " " && !is_comment_cont) {
                     print lineno ": " $0
                 }
                 lineno++

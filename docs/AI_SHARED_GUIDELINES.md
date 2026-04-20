@@ -51,6 +51,7 @@ These rules apply when working with high autonomy (e.g., iterating on PR feedbac
 
 ### File organization
 - **Production code in production locations.** Headers used by `frontier-cli/` code belong in `frontier-cli/`, not `tests/`. Think about the dependency direction before creating files.
+- **C indentation uses tabs** (project-wide). Enforced via `.editorconfig` and the pre-commit hook. See the "C Coding Style & Naming Conventions" section in `AGENTS.md` / `CLAUDE.md` for the full rule and rationale (outline editor tab-translation compatibility).
 
 ## Required Test and Validation Policy
 
