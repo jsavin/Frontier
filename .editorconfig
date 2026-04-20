@@ -33,4 +33,5 @@ indent_size = 2
 trim_trailing_whitespace = false
 
 [Makefile]
+# Makefiles require hard tabs in recipe lines; inherits charset/eol/newline from [*].
 indent_style = tab

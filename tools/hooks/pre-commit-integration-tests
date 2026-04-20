@@ -9,7 +9,11 @@
 #
 # Install: Run tools/install_git_hooks.sh
 #
-# HOOK_VERSION — bump when adding or materially changing a guard.
+# HOOK_VERSION — bump for any change that would cause existing installations
+# to behave differently from the source of truth. Concretely: new checks,
+# changed exit codes, changed error-message format, changed detection regex.
+# Pure comment/whitespace edits do not require a bump.
+#
 # install_git_hooks.sh uses this value to detect stale installations and
 # reinstall automatically. Keep the assignment on its own line so the
 # installer can parse it with a simple grep.
@@ -165,9 +169,15 @@ if [ -n "$C_FILES_CHANGED" ]; then
     # context (' ') line, and emit file:lineno when an added line starts with
     # a space.
     INDENT_VIOLATIONS=""
-    for f in $C_FILES_CHANGED; do
+    # Read filenames line-by-line so paths with spaces are handled safely.
+    while IFS= read -r f; do
+        [ -n "$f" ] || continue
         # Skip deleted files (diff-filter already excludes D, but be safe)
         [ -f "$f" ] || continue
+        # Note on the awk regex below: `\t` inside a character class is
+        # recognized by gawk and BSD awk (macOS default) but is not
+        # strictly POSIX. The repo targets macOS and Linux, both of
+        # which ship awks that support this, so it is safe in practice.
         VIOLATIONS=$(git diff --cached -U0 -- "$f" | awk '
             /^@@/ {
                 # Extract the starting line number after "+"
@@ -198,7 +208,7 @@ if [ -n "$C_FILES_CHANGED" ]; then
         if [ -n "$VIOLATIONS" ]; then
             INDENT_VIOLATIONS="${INDENT_VIOLATIONS}${f}:\n${VIOLATIONS}\n"
         fi
-    done
+    done <<< "$C_FILES_CHANGED"
 
     if [ -n "$INDENT_VIOLATIONS" ]; then
         echo -e "${RED}ERROR: Staged C files use spaces for indentation. Frontier requires tabs.${NC}" >&2
