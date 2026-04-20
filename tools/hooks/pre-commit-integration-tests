@@ -17,7 +17,7 @@
 # install_git_hooks.sh uses this value to detect stale installations and
 # reinstall automatically. Keep the assignment on its own line so the
 # installer can parse it with a simple grep.
-HOOK_VERSION=4
+HOOK_VERSION=5
 
 set -e
 
@@ -169,6 +169,7 @@ if [ -n "$C_FILES_CHANGED" ]; then
     # context (' ') line, and emit file:lineno when an added line starts with
     # a space.
     INDENT_VIOLATIONS=""
+    NL=$'\n'
     # Read filenames line-by-line so paths with spaces are handled safely.
     while IFS= read -r f; do
         [ -n "$f" ] || continue
@@ -177,6 +178,10 @@ if [ -n "$C_FILES_CHANGED" ]; then
         # The regex uses [[:blank:]] (POSIX) which matches tab and space on
         # any awk implementation, avoiding portability concerns with \t
         # inside a character class (gawk/BSD-only).
+        #
+        # With -U0, no context lines are emitted, and deletion lines
+        # (/^-/) do not exist in the new file — so only @@ headers and
+        # added lines (/^+/) need handling.
         VIOLATIONS=$(git diff --cached -U0 -- "$f" | awk '
             BEGIN { lineno = 0 }
             /^@@/ {
@@ -211,16 +216,10 @@ if [ -n "$C_FILES_CHANGED" ]; then
                     print lineno ": " $0
                 }
                 lineno++
-                next
             }
-            # Context lines (with -U0 there should be none):
-            /^ / { lineno++ }
-            # Deletion lines (/^-/) are intentionally unhandled: they do not
-            # exist in the new file and therefore do not advance the new-file
-            # line counter.
-        ' || true)
+        ')
         if [ -n "$VIOLATIONS" ]; then
-            INDENT_VIOLATIONS="${INDENT_VIOLATIONS}${f}:\n${VIOLATIONS}\n"
+            INDENT_VIOLATIONS="${INDENT_VIOLATIONS}${f}:${NL}${VIOLATIONS}${NL}"
         fi
     done <<< "$C_FILES_CHANGED"
 
@@ -236,11 +235,14 @@ if [ -n "$C_FILES_CHANGED" ]; then
         echo "" >&2
         echo "Fix: Re-indent the file with tabs (one tab per indentation level)." >&2
         echo "" >&2
-        echo "Rare case: If this is a multi-line string literal whose" >&2
-        echo "continuation lines are space-aligned for visual readability," >&2
-        echo "reformat to start continuation lines at column 0 (or tab-indent" >&2
-        echo "them). Block comment continuation lines starting with '*' or" >&2
-        echo "'/' are already excluded from this check." >&2
+        echo "Rare cases:" >&2
+        echo "  - Multi-line string literal whose continuation lines are" >&2
+        echo "    space-aligned for visual readability: reformat to start" >&2
+        echo "    continuation lines at column 0 (or tab-indent them)." >&2
+        echo "  - Multi-line macro with backslash continuation: use tab" >&2
+        echo "    indentation on continuation lines, not spaces." >&2
+        echo "  - Block comment continuation lines starting with '*' or" >&2
+        echo "    '/' are already excluded from this check." >&2
         echo "" >&2
         echo "Agents: do not use --no-verify to bypass this hook. Surface the" >&2
         echo "failure to the user and ask how to proceed." >&2
