@@ -58,10 +58,21 @@ tests:
       try {
         fileMenu.open(guestpath, true);
         mainResponder.init();
+
+        // mainResponder.respond() writes responseBody back into the param
+        // table rather than returning a separate response object.  Pass the
+        // address so the callee can mutate our table in place.
         mainResponder.respond(@system.temp.mrSmoke.req);
 
         if typeof(system.temp.mrSmoke.req.responseBody) != 'TEXT' {
           scriptError("mainResponder.respond returned no responseBody (or non-string)")
+        };
+
+        // Even in a headless environment without a real www folder, respond()
+        // should produce a non-empty body (error page, 404, etc.).  An empty
+        // string would indicate it bailed out silently.
+        if string.length(system.temp.mrSmoke.req.responseBody) == 0 {
+          scriptError("mainResponder.respond returned an empty responseBody")
         };
 
         succeeded = true
