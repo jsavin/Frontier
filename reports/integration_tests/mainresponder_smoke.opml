@@ -2,14 +2,14 @@
 <opml version="2.0">
   <head>
     <title>Mainresponder Smoke (mainresponder_smoke) - 1 tests: 1 pass (100%)</title>
-    <dateCreated>Mon, 20 Apr 2026 06:21:13 GMT</dateCreated>
+    <dateCreated>Mon, 20 Apr 2026 06:28:55 GMT</dateCreated>
   </head>
   <body>
     <outline text="mainresponder_respond_smoke - Smoke test: does mainResponder.respond() run and return a response table?">
       <outline text="Metadata">
         <outline text="timeout: 30"/>
         <outline text="expected_result: true"/>
-        <outline text="notes: Smoke test — passed on first run (2026-04-19), confirming that&#10;mainResponder.respond() executes end-to-end in the headless runtime&#10;with no missing verbs or globals.  Assertions verify responseBody is&#10;a string; body content is not checked because it depends on&#10;config.mainResponder.domains.default pointing to a www folder, which&#10;is environment-specific.&#10;"/>
+        <outline text="notes: Smoke test — passed on first run (2026-04-19), confirming that&#10;mainResponder.respond() executes end-to-end in the headless runtime&#10;with no missing verbs or globals.  Assertions verify responseBody is&#10;a string and non-empty; body content is not checked because it&#10;depends on config.mainResponder.domains.default pointing to a www&#10;folder, which is environment-specific.&#10;&#10;Cleanup uses conditional delete based on pre-test defined() snapshot&#10;so the test is idempotent across repeated runs and does not leak&#10;sysroot state into subsequent tests.&#10;"/>
       </outline>
       <outline text="Script">
         <outline text="local(succeeded = false)"/>
@@ -20,6 +20,15 @@
         <outline text="if not file.exists(guestpath)">
           <outline text="return &quot;skip&quot;"/>
         </outline>
+        <outline text="// Snapshot pre-test state for sysroot paths that mainResponder.init()"/>
+        <outline text="// may create.  We'll only delete paths that didn't already exist, so"/>
+        <outline text="// the test leaves the sysroot exactly as it found it and is idempotent"/>
+        <outline text="// across repeated runs in the shared protocol-mode process."/>
+        <outline text="local(preConfigMainResponder = defined(@config.mainResponder))"/>
+        <outline text="local(preIsRadio = defined(@system.environment.isRadio))"/>
+        <outline text="local(preHttp2 = defined(@user.inetd.config.http2))"/>
+        <outline text="local(preRootUpdatesCallbacks = defined(@user.rootUpdates.callbacks))"/>
+        <outline text="local(preAfterInstall = defined(@user.rootUpdates.callbacks.afterInstallPart.mainResponder))"/>
         <outline text="// Prepare the param table BEFORE try — so else branch can clean it up"/>
         <outline text="new(tableType, @system.temp.mrSmoke)"/>
         <outline text="new(tableType, @system.temp.mrSmoke.req)"/>
@@ -54,15 +63,25 @@
           <outline text="// try/else block.  The duplication is intentional — scriptError()"/>
           <outline text="// below does not return, so we cannot consolidate into a finally."/>
           <outline text="try { fileMenu.close(guestpath) }"/>
-          <outline text="try { delete(@config.mainResponder) }"/>
+          <outline text="if not preConfigMainResponder { try { delete(@config.mainResponder) } }"/>
+          <outline text="if not preIsRadio { try { delete(@system.environment.isRadio) } }"/>
+          <outline text="if not preHttp2 { try { delete(@user.inetd.config.http2) } }"/>
+          <outline text="if not preAfterInstall { try { delete(@user.rootUpdates.callbacks.afterInstallPart.mainResponder) } }"/>
+          <outline text="if not preRootUpdatesCallbacks { try { delete(@user.rootUpdates.callbacks) } }"/>
           <outline text="try { delete(@system.temp.mrSmoke) }"/>
           <outline text="scriptError(&quot;mainResponder.respond smoke failed: &quot; + err)"/>
         </outline>
         <outline text="// Success-path cleanup.  Close the guest DB explicitly — the protocol-"/>
         <outline text="// mode runner shares one CLI process across tests and only resets REPL"/>
         <outline text="// variables via script/clearContext, which does not close open DBs."/>
+        <outline text="// Conditional deletes restore only what we created, based on the"/>
+        <outline text="// pre-test snapshot above."/>
         <outline text="try { fileMenu.close(guestpath) }"/>
-        <outline text="try { delete(@config.mainResponder) }"/>
+        <outline text="if not preConfigMainResponder { try { delete(@config.mainResponder) } }"/>
+        <outline text="if not preIsRadio { try { delete(@system.environment.isRadio) } }"/>
+        <outline text="if not preHttp2 { try { delete(@user.inetd.config.http2) } }"/>
+        <outline text="if not preAfterInstall { try { delete(@user.rootUpdates.callbacks.afterInstallPart.mainResponder) } }"/>
+        <outline text="if not preRootUpdatesCallbacks { try { delete(@user.rootUpdates.callbacks) } }"/>
         <outline text="try { delete(@system.temp.mrSmoke) }"/>
         <outline text="return succeeded"/>
       </outline>
