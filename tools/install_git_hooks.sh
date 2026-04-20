@@ -23,15 +23,23 @@ PRE_COMMIT_SRC="$TOOLS_HOOKS_DIR/pre-commit-integration-tests"
 PRE_COMMIT_DST="$HOOKS_DIR/pre-commit"
 
 if [ -f "$PRE_COMMIT_DST" ]; then
-    # Existing pre-commit hook - check if it's ours
-    # Marker string lives in the latest hook so older installations get upgraded.
-    if grep -q "C indentation: Reject staged" "$PRE_COMMIT_DST" 2>/dev/null; then
-        echo -e "${YELLOW}Pre-commit hook already installed (up to date)${NC}"
-    elif grep -q -E "pre-commit-integration-tests|Block commits to develop" "$PRE_COMMIT_DST" 2>/dev/null; then
-        # Older version without latest guards — upgrade it
+    # Existing pre-commit hook - check if it's ours.
+    # Version detection: compare HOOK_VERSION in source vs installed copy.
+    # Older hooks without HOOK_VERSION are detected via legacy markers.
+    SRC_VERSION=$(grep -E '^HOOK_VERSION=' "$PRE_COMMIT_SRC" 2>/dev/null | head -1 | cut -d= -f2)
+    DST_VERSION=$(grep -E '^HOOK_VERSION=' "$PRE_COMMIT_DST" 2>/dev/null | head -1 | cut -d= -f2)
+
+    if [ -n "$SRC_VERSION" ] && [ "$SRC_VERSION" = "$DST_VERSION" ]; then
+        echo -e "${YELLOW}Pre-commit hook already installed (HOOK_VERSION=$DST_VERSION, up to date)${NC}"
+    elif [ -n "$DST_VERSION" ] || grep -q -E "pre-commit-integration-tests|Block commits to develop" "$PRE_COMMIT_DST" 2>/dev/null; then
+        # Either a versioned hook at a different version, or an older unversioned hook — upgrade.
         cp "$PRE_COMMIT_SRC" "$PRE_COMMIT_DST"
         chmod +x "$PRE_COMMIT_DST"
-        echo -e "${GREEN}✓ Upgraded pre-commit hook (added C tab-indent guard)${NC}"
+        if [ -n "$DST_VERSION" ]; then
+            echo -e "${GREEN}✓ Upgraded pre-commit hook (HOOK_VERSION $DST_VERSION → $SRC_VERSION)${NC}"
+        else
+            echo -e "${GREEN}✓ Upgraded pre-commit hook (unversioned → HOOK_VERSION=$SRC_VERSION)${NC}"
+        fi
     else
         echo -e "${YELLOW}Warning: Existing pre-commit hook found${NC}"
         echo "You have an existing pre-commit hook. To use both hooks:"

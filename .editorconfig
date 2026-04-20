@@ -15,6 +15,8 @@ trim_trailing_whitespace = true
 
 [*.{c,h}]
 indent_style = tab
+# For tab indentation, indent_size is a display-width hint only (it becomes
+# tab_width); the actual indentation character is always a hard tab.
 indent_size = 4
 
 [*.{py,sh,bash}]

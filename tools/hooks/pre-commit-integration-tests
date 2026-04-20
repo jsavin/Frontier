@@ -3,10 +3,17 @@
 #
 # Checks:
 #   1. Block commits to develop in the main worktree (use feature branches)
-#   2. Auto-regenerate OPML export when integration tests change
-#   3. Validate documentation references when docs change
+#   2. Reject staged *.c/*.h files with leading-space indentation
+#   3. Auto-regenerate OPML export when integration tests change
+#   4. Validate documentation references when docs change
 #
 # Install: Run tools/install_git_hooks.sh
+#
+# HOOK_VERSION — bump when adding or materially changing a guard.
+# install_git_hooks.sh uses this value to detect stale installations and
+# reinstall automatically. Keep the assignment on its own line so the
+# installer can parse it with a simple grep.
+HOOK_VERSION=2
 
 set -e
 
@@ -171,7 +178,15 @@ if [ -n "$C_FILES_CHANGED" ]; then
             }
             /^\+\+\+/ { next }
             /^\+/ {
-                if (substr($0, 2, 1) == " ") {
+                # Flag if the added line starts with a space-indent, BUT skip
+                # legitimate comment / docstring continuation lines whose
+                # indentation aligns the "*" of a block comment:
+                #     /* first
+                #      * continuation   <-- ends in " *", valid C style
+                #      */
+                # We skip any added line whose leading whitespace is followed
+                # by "*" or "/" (catches "* comment", "*/", "/* foo").
+                if (substr($0, 2, 1) == " " && $0 !~ /^\+[ \t]*[*\/]/) {
                     print lineno ": " $0
                 }
                 lineno++
@@ -197,14 +212,14 @@ if [ -n "$C_FILES_CHANGED" ]; then
         echo "" >&2
         echo "Fix: Re-indent the file with tabs (one tab per indentation level)." >&2
         echo "" >&2
-        echo "Note: continuation-line alignment inside comment blocks and" >&2
-        echo "multi-line string literals can also trip this check (the second" >&2
-        echo "and later lines start with spaces for visual alignment). For" >&2
-        echo "those rare cases, 'git commit --no-verify' is the correct" >&2
-        echo "escape hatch — or reformat to start such continuation lines at" >&2
-        echo "column 0 so they are not caught." >&2
+        echo "Rare case: If this is a multi-line string literal whose" >&2
+        echo "continuation lines are space-aligned for visual readability," >&2
+        echo "reformat to start continuation lines at column 0 (or tab-indent" >&2
+        echo "them). Block comment continuation lines starting with '*' or" >&2
+        echo "'/' are already excluded from this check." >&2
         echo "" >&2
-        echo "To bypass (rare, e.g., importing vendored code): git commit --no-verify" >&2
+        echo "Agents: do not use --no-verify to bypass this hook. Surface the" >&2
+        echo "failure to the user and ask how to proceed." >&2
         exit 1
     fi
 fi
