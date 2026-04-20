@@ -240,7 +240,7 @@ Use those rules as mandatory baseline guidance.
   - **Why**: Frontier's outline editor translates between plaintext and outlines using tab-based indentation. Spaces-indented C source is hostile to that workflow, so tabs are mandatory project-wide.
   - Enforced by `.editorconfig` (editors auto-use tabs on save) and the pre-commit hook (rejects staged C files whose added lines use leading-space indentation).
   - A mass retab of pre-existing spaces-indented files is tracked as a separate PR; until then, the hook only checks staged files, so unrelated commits aren't blocked.
-  - Bypass (rare, e.g., vendored code imports): `git commit --no-verify`.
+  - **Agents: do NOT use `--no-verify` to bypass this hook.** Per the global Git Safety Protocol, hook skipping requires explicit user authorization. If the hook fires unexpectedly (e.g., comment/string continuation-line alignment), stop and surface the failure to the user rather than bypassing.
 - **Column width**: 100-column soft limit.
 - **Braces**: K&R style — opening brace on the same line.
 - **Include order**: system headers first, then project headers, then local.

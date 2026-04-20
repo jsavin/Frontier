@@ -51,8 +51,6 @@ This document is a concise contributor guide for Frontier’s C/C toolchain and 
 
 ## Coding Style & Naming Conventions
 
-<!-- 2026-04-19 Codex: Flipped indentation rule from spaces to tabs (project-wide). Reason: Frontier's outline editor translates between plaintext and outlines using tab-based indentation — spaces-indented C is hostile to that workflow. Enforced via .editorconfig and pre-commit hook. -->
-
 - **Language**: C — tests use `-std=c99`, CLI uses `-std=c17`.
 - **Indentation**: **Tabs** for all C code. No spaces for indentation in `*.c`/`*.h`.
   - **Why**: Frontier's outline editor translates between plaintext and outlines using tab-based indentation. Spaces-indented C code breaks that workflow.

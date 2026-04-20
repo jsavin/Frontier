@@ -150,13 +150,36 @@ if [ -n "$C_FILES_CHANGED" ]; then
     # Examine only the added/changed lines in the staged diff. A leading-space
     # indent in an added line means this commit would introduce (or keep)
     # space-based indentation in a C source file.
+    #
+    # Line numbers are reconstructed from the @@ hunk headers so they map to
+    # the SOURCE file, not the diff output. Hunk header format is:
+    #     @@ -old,len +new,len @@
+    # We track the "+new" line counter, incrementing it on each added ('+') or
+    # context (' ') line, and emit file:lineno when an added line starts with
+    # a space.
     INDENT_VIOLATIONS=""
     for f in $C_FILES_CHANGED; do
         # Skip deleted files (diff-filter already excludes D, but be safe)
         [ -f "$f" ] || continue
-        # `git diff --cached -U0` shows added lines prefixed with '+' (not '+++').
-        # A violation is an added line whose first character is a space.
-        VIOLATIONS=$(git diff --cached -U0 -- "$f" | grep -nE '^\+ ' | grep -vE '^\+\+\+' || true)
+        VIOLATIONS=$(git diff --cached -U0 -- "$f" | awk '
+            /^@@/ {
+                # Extract the starting line number after "+"
+                if (match($0, /\+[0-9]+/)) {
+                    lineno = substr($0, RSTART + 1, RLENGTH - 1) + 0
+                }
+                next
+            }
+            /^\+\+\+/ { next }
+            /^\+/ {
+                if (substr($0, 2, 1) == " ") {
+                    print lineno ": " $0
+                }
+                lineno++
+                next
+            }
+            # Context lines (with -U0 there should be none) and deletions:
+            /^ / { lineno++ }
+        ' || true)
         if [ -n "$VIOLATIONS" ]; then
             INDENT_VIOLATIONS="${INDENT_VIOLATIONS}${f}:\n${VIOLATIONS}\n"
         fi
@@ -169,10 +192,17 @@ if [ -n "$C_FILES_CHANGED" ]; then
         echo "outlines using tab-based indentation. Spaces-indented C code breaks" >&2
         echo "that workflow." >&2
         echo "" >&2
-        echo "Offending files and added lines:" >&2
+        echo "Offending files and source line numbers:" >&2
         echo -e "$INDENT_VIOLATIONS" | sed 's/^/  /' >&2
         echo "" >&2
         echo "Fix: Re-indent the file with tabs (one tab per indentation level)." >&2
+        echo "" >&2
+        echo "Note: continuation-line alignment inside comment blocks and" >&2
+        echo "multi-line string literals can also trip this check (the second" >&2
+        echo "and later lines start with spaces for visual alignment). For" >&2
+        echo "those rare cases, 'git commit --no-verify' is the correct" >&2
+        echo "escape hatch — or reformat to start such continuation lines at" >&2
+        echo "column 0 so they are not caught." >&2
         echo "" >&2
         echo "To bypass (rare, e.g., importing vendored code): git commit --no-verify" >&2
         exit 1
