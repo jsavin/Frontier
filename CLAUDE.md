@@ -123,7 +123,15 @@ After editing `.claude/gate.yaml`, validate with `/gate --validate` (or `python3
 
 ## /auto Test Manifest
 
-Test commands and contract used by the `/auto` skill. Status semantics: `required` = must run + must pass (blocks push and merge); `skippable` = run if infra available, else note skip in PR description; `manual-only` = do not run autonomously, list in PR for reviewer; `none` = layer does not exist in this project. See `~/.claude/skills/auto/SKILL.md` (a local Claude Code skill install — not in this repo) for the full table.
+Test commands and contract used by the `/auto` skill.
+
+Status semantics for the entries below:
+- `required` — must run and pass; blocks push and merge
+- `skippable` — run if infra is available; otherwise note skip in PR description
+- `manual-only` — do not run autonomously; list in PR for reviewer
+- `none` — this layer does not exist in this project
+
+See `~/.claude/skills/auto/SKILL.md` (a local Claude Code skill install — not in this repo) for the full table.
 
 - **Unit**: `./tools/run_headless_tests.sh` (required)
 - **Integration**: `cd tests && make test-integration` (required)
@@ -131,7 +139,7 @@ Test commands and contract used by the `/auto` skill. Status semantics: `require
 - **Smoke / Browser**: none
 - **Lint**: none (no project lint command established yet)
 - **Base branch**: `develop`
-- **Merge strategy**: `--squash` (cleanup is manual — see `/auto` skill Phase 6 for the exit-worktree-then-merge sequence; `--delete-branch` is incompatible with merging from inside a worktree)
+- **Merge strategy**: `--squash` (branch deletion is manual — see `/auto` skill Phase 6 for the exit-worktree-then-merge sequence; `--delete-branch` is incompatible with merging from inside a worktree)
 
 Both required test layers must pass before push and before merge. Frontier has no E2E/UI/Lint layers — those entries exist for cross-project portability of `/auto`.
 
