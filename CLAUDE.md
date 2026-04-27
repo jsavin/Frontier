@@ -123,7 +123,7 @@ After editing `.claude/gate.yaml`, validate with `/gate --validate` (or `python3
 
 ## /auto Test Manifest
 
-Test commands and contract used by the `/auto` skill. See `~/.claude/skills/auto/SKILL.md` for status semantics.
+Test commands and contract used by the `/auto` skill. Status semantics: `required` = must run + must pass (blocks push and merge); `skippable` = run if infra available, else note skip in PR description; `manual-only` = do not run autonomously, list in PR for reviewer; `none` = layer does not exist in this project. See `~/.claude/skills/auto/SKILL.md` (a local Claude Code skill install — not in this repo) for the full table.
 
 - **Unit**: `./tools/run_headless_tests.sh` (required)
 - **Integration**: `cd tests && make test-integration` (required)
