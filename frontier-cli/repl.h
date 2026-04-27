@@ -29,10 +29,10 @@ int repl_main(cli_options_t *options, ws_server_t *ws_server);
 /* Result from index-aware path navigation (repl_navigate_path_ex).
  * Can represent either a table or a scalar value at the end of a path. */
 typedef struct {
-		hdlhashtable htable;		/* non-nil if result is a table */
-		tyvaluerecord val;			/* the value (valid for both table and scalar results) */
-		hdlhashnode hnode;			/* the node containing the value */
-		boolean is_table;				/* true if result is a navigable table */
+	hdlhashtable htable;	/* non-nil if result is a table */
+	tyvaluerecord val;		/* the value (valid for both table and scalar results) */
+	hdlhashnode hnode;		/* the node containing the value */
+	boolean is_table;		/* true if result is a navigable table */
 } typathlookupresult;
 
 /* REPL Navigation - similar to CWD in a shell */
@@ -86,8 +86,8 @@ hdlhashtable repl_resolve_path(const char *path, char *resolved_path, size_t pat
  * operations that could mutate the ODB.
  */
 boolean repl_resolve_path_ex(const char *path, typathlookupresult *result,
-															char *resolved_path, size_t path_bufsize,
-															char *error_msg, size_t error_bufsize);
+							  char *resolved_path, size_t path_bufsize,
+							  char *error_msg, size_t error_bufsize);
 
 /* Check if REPL mode is currently active.
  * Used by msg() to add "msg: " prefix in interactive mode.
