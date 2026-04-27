@@ -227,16 +227,22 @@ done
 "$RUNNER" $VERBOSE $BATCH_FLAG $WORKERS_FLAG --cli "$CLI_PATH" --system-root "$SYSTEM_ROOT" "${TEST_FILES[@]}"
 EXIT_CODE=$?
 
-# Verify integrity of every staged database after tests
+# Verify integrity of every staged database after tests.
+#
+# Drift is reported as a warning only and does NOT fail EXIT_CODE. This
+# matches prior behavior for Frontier.root, which has a known non-
+# deterministic ODB save path (issue #545) — every test run that boots
+# the CLI re-saves the system root and trips the warning even when the
+# test made zero logical changes. Promoting drift to a hard failure
+# would make the suite red on every run until #545 is resolved.
+# Guest-DB drift will surface in this same warning channel; the operator
+# is expected to investigate any guest DB that drifts (none should).
 DRIFT_DETECTED=0
 for i in "${!STAGED_NAMES[@]}"; do
     name="${STAGED_NAMES[$i]}"
     before="${CHECKSUMS_BEFORE[$i]}"
-    if [ "$name" = "$SYSTEM_ROOT_NAME" ]; then
-        path="$SYSTEM_ROOT"
-    else
-        path="$STAGE_DIR/$name"
-    fi
+    # Both system root and guest DBs live under STAGE_DIR — same lookup.
+    path="$STAGE_DIR/$name"
     after="$(_hash_path "$path")"
     if [ "$before" != "$after" ]; then
         if [ "$DRIFT_DETECTED" -eq 0 ]; then
