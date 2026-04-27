@@ -399,10 +399,13 @@ TCP networking tests are split across multiple files; all run by default:
 - 18 tests using `tcp.listenStream` + localhost connections (ports 9100-9115)
 - The `_network.yaml` suffix is historical (these tests once hit external
   servers). They are now self-contained and run by default.
+- Tests bind ports 9100-9115 — ensure nothing else on the host is using
+  them or tests will fail with bind errors.
 - One DNS-resolution test depends on the system resolver returning NXDOMAIN
   for `this.hostname.does.not.exist.invalid`. Environments that hijack
   NXDOMAIN responses (some corporate networks, captive portals) will
-  surface that test failure as a real signal.
+  surface that test failure as a real signal. To opt out of `*_network.yaml`
+  files entirely, set `FRONTIER_SKIP_NETWORK_TESTS=1`.
 
 ### Background: Why the `_network.yaml` Naming
 

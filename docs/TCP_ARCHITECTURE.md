@@ -258,9 +258,12 @@ TCP tests are organized into separate suites based on network dependencies:
 - The `_network.yaml` suffix is historical (these tests once hit
   `example.com:80`). After the Phase 3 migration to localhost listeners,
   the tests are deterministic and run by default.
+- Tests bind ports 9100-9115 — ensure no other process on the host is
+  using them.
 - One DNS-resolution test (`tcp.openNameStream` for an invalid hostname)
   depends on the system resolver returning NXDOMAIN. Environments that
-  hijack NXDOMAIN responses will surface that as a real signal.
+  hijack NXDOMAIN responses will surface that as a real signal. Set
+  `FRONTIER_SKIP_NETWORK_TESTS=1` to opt out of `*_network.yaml` files.
 
 **Server Operation Tests** (Phase 3):
 - `tests/integration/test_cases/tcp_server_verbs.yaml` - 37 tests for server operations
