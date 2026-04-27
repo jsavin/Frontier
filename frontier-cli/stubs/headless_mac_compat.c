@@ -62,66 +62,66 @@ tyshellglobals shellglobals;
 
 #if !defined(FRONTIER_USE_PORTABLE_HANDLES)
 Handle NewHandle(long userSize) {
-    return frontierAlloc(userSize);
+	return frontierAlloc(userSize);
 }
 
 void DisposeHandle(Handle h) {
-    frontierFree(h);
+	frontierFree(h);
 }
 
 void HLock(Handle h) {
-    (void)frontierLock(h);
+	(void)frontierLock(h);
 }
 
 void HUnlock(Handle h) {
-    frontierUnlock(h);
+	frontierUnlock(h);
 }
 
 void DebugStr(const unsigned char *s) { (void)s; }
 void Debugger(void) { }
 
 unsigned long FastMilliseconds(void) {
-    struct timespec ts;
+	struct timespec ts;
 #if defined(CLOCK_MONOTONIC)
-    clock_gettime(CLOCK_MONOTONIC, &ts);
+	clock_gettime(CLOCK_MONOTONIC, &ts);
 #else
-    clock_gettime(CLOCK_REALTIME, &ts);
+	clock_gettime(CLOCK_REALTIME, &ts);
 #endif
-    return (unsigned long)(ts.tv_sec * 1000UL + ts.tv_nsec / 1000000UL);
+	return (unsigned long)(ts.tv_sec * 1000UL + ts.tv_nsec / 1000000UL);
 }
 
 long GetHandleSize(Handle h) {
-    return frontierSize(h);
+	return frontierSize(h);
 }
 
 OSErr SetHandleSize(Handle h, long userSize) {
-    return frontierReAlloc(h, userSize) ? noErr : memFullErr;
+	return frontierReAlloc(h, userSize) ? noErr : memFullErr;
 }
 #endif /* !FRONTIER_USE_PORTABLE_HANDLES */
 
 boolean shellpushglobals (WindowPtr w) {
-    (void) w;
-    return false;
+	(void) w;
+	return false;
 }
 
 boolean shellpopglobals (void) {
-    return false;
+	return false;
 }
 
 /* shellpushdefaultglobals() is now in Common/source/shell_api_headless.c (ADR-006) */
 
 void shellupdatescrollbars (hdlwindowinfo hinfo) {
-    (void) hinfo;
+	(void) hinfo;
 }
 
 void shellwindowinval (hdlwindowinfo hinfo) {
-    (void) hinfo;
+	(void) hinfo;
 }
 
 boolean windowsetchanges (WindowPtr w, boolean fldirty) {
-    (void) w;
-    (void) fldirty;
-    return false;
+	(void) w;
+	(void) fldirty;
+	return false;
 }
 
 // Process stubs
@@ -284,10 +284,10 @@ static tywindowinfo g_headless_wininfo; /* zero-initialized */
 static tywindowinfo *g_headless_wininfo_ptr = &g_headless_wininfo;
 
 boolean shellfinddatawindow (Handle h, hdlwindowinfo *hi) {
-    (void)h;
-    if (hi)
-        *hi = &g_headless_wininfo_ptr; /* return a stable handle */
-    return true;
+	(void)h;
+	if (hi)
+		*hi = &g_headless_wininfo_ptr; /* return a stable handle */
+	return true;
 }
 void shellforcecursoradjust (void) { }
 void shellouch (void) { }
@@ -302,26 +302,26 @@ OSErr macgetfsref (const ptrfilespec fs, FSRef* fsref) { (void)fs; if (fsref) me
 OSErr macmakefilespec (const FSRef *fsref, ptrfilespec fs) { (void)fsref; if (fs) memset(fs,0,sizeof(*fs)); return paramErr; }
 OSErr macgetfilespecparent (const ptrfilespec fs, ptrfilespec fsparent) { (void)fs; if (fsparent) memset(fsparent,0,sizeof(*fsparent)); return paramErr; }
 void fsnametobigstring (const tyfsnameptr fsname, bigstring bs) {
-    if (!fsname) {
-        setemptystring(bs);
-        return;
-    }
-    unsigned int len = fsname->length;
-    if (len > lenbigstring)
-        len = lenbigstring;
-    bs[0] = (unsigned char) len;
-    for (unsigned int i = 0; i < len; ++i)
-        bs[1 + i] = (unsigned char) (fsname->unicode[i] & 0xFF);
+	if (!fsname) {
+		setemptystring(bs);
+		return;
+	}
+	unsigned int len = fsname->length;
+	if (len > lenbigstring)
+		len = lenbigstring;
+	bs[0] = (unsigned char) len;
+	for (unsigned int i = 0; i < len; ++i)
+		bs[1 + i] = (unsigned char) (fsname->unicode[i] & 0xFF);
 }
 
 void bigstringtofsname (const bigstring bs, tyfsnameptr fsname) {
-    if (!fsname) return;
-    unsigned int len = bs[0];
-    if (len > 255)
-        len = 255;
-    fsname->length = (UInt16) len;
-    for (unsigned int i = 0; i < len; ++i)
-        fsname->unicode[i] = (UInt16) (unsigned char) bs[1 + i];
+	if (!fsname) return;
+	unsigned int len = bs[0];
+	if (len > 255)
+		len = 255;
+	fsname->length = (UInt16) len;
+	for (unsigned int i = 0; i < len; ++i)
+		fsname->unicode[i] = (UInt16) (unsigned char) bs[1 + i];
 }
 #endif /* !FRONTIER_PORTABLE_FILE_AVAILABLE */
 
@@ -345,8 +345,8 @@ boolean nildatahandle (AEDesc *desc) { (void)desc; return true; }
 // Note: menuwindowopen and menuverbisdirty are now provided by the real menuverbs.c
 // menuedit stub is needed because the real one is guarded by !FRONTIER_HEADLESS
 boolean menuedit (hdlexternalvariable hvariable, hdlwindowinfo hparent, ptrfilespec fs, bigstring bstitle, rectparam rzoom) {
-    (void)hvariable; (void)hparent; (void)fs; (void)bstitle; (void)rzoom;
-    return false;
+	(void)hvariable; (void)hparent; (void)fs; (void)bstitle; (void)rzoom;
+	return false;
 }
 
 // OP verbs helpers
@@ -430,551 +430,551 @@ void opscrollrect (Rect r, int64_t dh, int64_t dv) { (void)r; (void)dh; (void)dv
 
 // OSA stubs
 boolean osagetcode (Handle htext, OSType idserver, boolean fljustexecutable, tyvaluerecord *vcode) {
-    (void)htext; (void)idserver; (void)fljustexecutable; (void)vcode; return false;
+	(void)htext; (void)idserver; (void)fljustexecutable; (void)vcode; return false;
 }
 boolean osagetsource (const tyvaluerecord *osaval, OSType *idserver, tyvaluerecord *vsource) {
-    (void)osaval; (void)idserver; (void)vsource; return false;
+	(void)osaval; (void)idserver; (void)vsource; return false;
 }
 
 #if !defined(HEADLESS_USE_REAL_OPLANGTEXT)
 // oplangtext stub
 boolean opgetlangtext (hdloutlinerecord ho, boolean fl, Handle *htext) {
-    (void)ho; (void)fl; if (htext) *htext = nil; return false;
+	(void)ho; (void)fl; if (htext) *htext = nil; return false;
 }
 #endif
 
 #if !defined(FRONTIER_USE_PORTABLE_HANDLES)
 long MaxBlock(void) {
-    return 1024L * 1024L; /* arbitrary large block */
+	return 1024L * 1024L; /* arbitrary large block */
 }
 
 OSErr MemError(void) {
-    return noErr;
+	return noErr;
 }
 #endif /* !FRONTIER_USE_PORTABLE_HANDLES */
 
 short GetMBarHeight(void) {
-    return 0;
+	return 0;
 }
 
 void SysBeep(short duration) {
-    (void)duration;
+	(void)duration;
 }
 
 #if !defined(FRONTIER_PORTABLE_STRINGS)
 OSStatus TECCountAvailableTextEncodings(ItemCount *count) {
-    if (count)
-        *count = 0;
-    return noErr;
+	if (count)
+		*count = 0;
+	return noErr;
 }
 
 OSStatus TECGetAvailableTextEncodings(TextEncoding encodings[], ItemCount maxCount, ItemCount *actualCount) {
-    (void)encodings;
-    (void)maxCount;
-    if (actualCount)
-        *actualCount = 0;
-    return noErr;
+	(void)encodings;
+	(void)maxCount;
+	if (actualCount)
+		*actualCount = 0;
+	return noErr;
 }
 
 OSStatus TECGetTextEncodingFromInternetName(TextEncoding *outEncoding, const unsigned char *name) {
-    (void)name;
-    if (outEncoding)
-        *outEncoding = kTextEncodingMacRoman;
-    return noErr;
+	(void)name;
+	if (outEncoding)
+		*outEncoding = kTextEncodingMacRoman;
+	return noErr;
 }
 
 OSStatus TECGetTextEncodingInfo(TextEncoding encoding, TextEncodingBase *base, TextEncodingVariant *variant, TextEncodingFormat *format) {
-    (void)encoding;
-    if (base)
-        *base = 0;
-    if (variant)
-        *variant = 0;
-    if (format)
-        *format = 0;
-    return noErr;
+	(void)encoding;
+	if (base)
+		*base = 0;
+	if (variant)
+		*variant = 0;
+	if (format)
+		*format = 0;
+	return noErr;
 }
 
 OSStatus TECGetTextEncodingInternetName(TextEncoding encoding, unsigned char *name) {
-    (void)encoding;
-    if (name)
-        name[0] = '\0';
-    return noErr;
+	(void)encoding;
+	if (name)
+		name[0] = '\0';
+	return noErr;
 }
 
 OSStatus GetTextEncodingName(TextEncoding encoding, TextEncodingNameSelector selector, RegionCode region, TextEncoding referenceEncoding, ItemCount maxLen, unsigned long *actualLen, RegionCode *outRegion, TextEncoding *outEncoding, unsigned char *outName) {
-    (void)encoding;
-    (void)selector;
-    (void)region;
-    (void)referenceEncoding;
-    (void)maxLen;
-    if (actualLen)
-        *actualLen = 0;
-    if (outRegion)
-        *outRegion = 0;
-    if (outEncoding)
-        *outEncoding = kTextEncodingMacRoman;
-    if (outName)
-        outName[0] = '\0';
-    return noErr;
+	(void)encoding;
+	(void)selector;
+	(void)region;
+	(void)referenceEncoding;
+	(void)maxLen;
+	if (actualLen)
+		*actualLen = 0;
+	if (outRegion)
+		*outRegion = 0;
+	if (outEncoding)
+		*outEncoding = kTextEncodingMacRoman;
+	if (outName)
+		outName[0] = '\0';
+	return noErr;
 }
 
 OSStatus TECCreateConverter(TECObjectRef *converter, TextEncoding inputEncoding, TextEncoding outputEncoding) {
-    (void)inputEncoding;
-    (void)outputEncoding;
-    if (converter)
-        *converter = (TECObjectRef)0x1;
-    return noErr;
+	(void)inputEncoding;
+	(void)outputEncoding;
+	if (converter)
+		*converter = (TECObjectRef)0x1;
+	return noErr;
 }
 
 OSStatus TECDisposeConverter(TECObjectRef converter) {
-    (void)converter;
-    return noErr;
+	(void)converter;
+	return noErr;
 }
 
 OSStatus TECConvertText(TECObjectRef converter, ConstTextPtr inputBuf, ByteCount inputLen, ByteCount *inputRead, TextPtr outputBuf, ByteCount outputLen, ByteCount *outputProduced) {
-    (void)converter;
-    if (inputRead)
-        *inputRead = inputLen;
-    if (outputBuf && outputLen > 0 && inputBuf) {
-        ByteCount toCopy = inputLen < outputLen ? inputLen : outputLen;
-        memcpy(outputBuf, inputBuf, toCopy);
-        if (outputProduced)
-            *outputProduced = toCopy;
-        return (toCopy == inputLen) ? noErr : kTECPartialCharErr;
-    }
-    if (outputProduced)
-        *outputProduced = 0;
-    return noErr;
+	(void)converter;
+	if (inputRead)
+		*inputRead = inputLen;
+	if (outputBuf && outputLen > 0 && inputBuf) {
+		ByteCount toCopy = inputLen < outputLen ? inputLen : outputLen;
+		memcpy(outputBuf, inputBuf, toCopy);
+		if (outputProduced)
+			*outputProduced = toCopy;
+		return (toCopy == inputLen) ? noErr : kTECPartialCharErr;
+	}
+	if (outputProduced)
+		*outputProduced = 0;
+	return noErr;
 }
 
 OSStatus TECFlushText(TECObjectRef converter, TextPtr outputBuf, ByteCount outputLen, ByteCount *outputProduced) {
-    (void)converter;
-    (void)outputBuf;
-    (void)outputLen;
-    if (outputProduced)
-        *outputProduced = 0;
-    return noErr;
+	(void)converter;
+	(void)outputBuf;
+	(void)outputLen;
+	if (outputProduced)
+		*outputProduced = 0;
+	return noErr;
 }
 #endif /* !FRONTIER_PORTABLE_STRINGS */
 
 Boolean macfilespecisvalid(const ptrfilespec fs) {
-    if (!fs)
-        return false;
-    /*
+	if (!fs)
+		return false;
+	/*
      * Portable equivalent of the Mac implementation in fileops.m:2647 which
      * calls FSGetCatalogInfo + checks fsnamelength. In portable mode, the FSRef
      * is unused (dummy struct), so we check name length only. This is sufficient
      * because portable filespecs store the full POSIX path in the name field.
      */
-    return fs->name.length > 0;
+	return fs->name.length > 0;
 }
 
 #if !defined(FRONTIER_PORTABLE_FILE_AVAILABLE)
 Boolean filespectopath(const ptrfilespec fs, bigstring path) {
-    (void)fs;
-    setstringlength(path, 0);
-    return false;
+	(void)fs;
+	setstringlength(path, 0);
+	return false;
 }
 
 Boolean getfsfile(const ptrfilespec fs, bigstring name) {
-    (void)fs;
-    setstringlength(name, 0);
-    return false;
+	(void)fs;
+	setstringlength(name, 0);
+	return false;
 }
 #endif /* !FRONTIER_PORTABLE_FILE_AVAILABLE */
 
 void NumToString(long value, Str255 result) {
-    char buffer[256];
-    int written = snprintf(buffer, sizeof buffer, "%ld", value);
-    if (written < 0)
-        written = 0;
-    if (written > 255)
-        written = 255;
-    result[0] = (unsigned char) written;
-    for (int i = 0; i < written; ++i)
-        result[i + 1] = (unsigned char) buffer[i];
+	char buffer[256];
+	int written = snprintf(buffer, sizeof buffer, "%ld", value);
+	if (written < 0)
+		written = 0;
+	if (written > 255)
+		written = 255;
+	result[0] = (unsigned char) written;
+	for (int i = 0; i < written; ++i)
+		result[i + 1] = (unsigned char) buffer[i];
 }
 
 void StringToNum(ConstStr255Param str, long *value) {
-    char buffer[256];
-    short len = str ? str[0] : 0;
-    if (len > 255)
-        len = 255;
-    for (short i = 0; i < len; ++i)
-        buffer[i] = (char) str[i + 1];
-    buffer[len] = '\0';
-    if (value)
-        *value = (long) strtol(buffer, NULL, 10);
+	char buffer[256];
+	short len = str ? str[0] : 0;
+	if (len > 255)
+		len = 255;
+	for (short i = 0; i < len; ++i)
+		buffer[i] = (char) str[i + 1];
+	buffer[len] = '\0';
+	if (value)
+		*value = (long) strtol(buffer, NULL, 10);
 }
 
 Handle GetString(short resID) {
-    (void)resID;
-    return NULL;
+	(void)resID;
+	return NULL;
 }
 
 #if !defined(FRONTIER_PORTABLE_APPLEEVENTS)
 static void appleevent_clear_desc(AEDesc *desc) {
-    if (!desc)
-        return;
-    desc->descriptorType = typeNull;
-    desc->dataHandle = NULL;
+	if (!desc)
+		return;
+	desc->descriptorType = typeNull;
+	desc->dataHandle = NULL;
 }
 
 OSStatus AEProcessAppleEvent(const EventRecord *event) {
-    (void)event;
-    return noErr;
+	(void)event;
+	return noErr;
 }
 
 OSStatus AECoerceDesc(const AEDesc *desc, DescType typeCode, AEDesc *result) {
-    if (!result)
-        return paramErr;
-    result->descriptorType = typeCode;
-    result->dataHandle = NULL;
-    if (desc && desc->dataHandle)
-        result->dataHandle = desc->dataHandle;
-    return noErr;
+	if (!result)
+		return paramErr;
+	result->descriptorType = typeCode;
+	result->dataHandle = NULL;
+	if (desc && desc->dataHandle)
+		result->dataHandle = desc->dataHandle;
+	return noErr;
 }
 
 OSStatus AEDisposeDesc(AEDesc *desc) {
-    if (!desc)
-        return paramErr;
-    desc->descriptorType = typeNull;
-    desc->dataHandle = NULL;
-    return noErr;
+	if (!desc)
+		return paramErr;
+	desc->descriptorType = typeNull;
+	desc->dataHandle = NULL;
+	return noErr;
 }
 
 #endif /* !FRONTIER_PORTABLE_APPLEEVENTS */
 
 void dtox80(const double *value, extended80 *out) {
-    if (!value || !out)
-        return;
-    memset(out->bytes, 0, sizeof out->bytes);
-    memcpy(out->bytes, value, sizeof(double) < sizeof out->bytes ? sizeof(double) : sizeof out->bytes);
+	if (!value || !out)
+		return;
+	memset(out->bytes, 0, sizeof out->bytes);
+	memcpy(out->bytes, value, sizeof(double) < sizeof out->bytes ? sizeof(double) : sizeof out->bytes);
 }
 
 double x80tod(const extended80 *value) {
-    double out = 0.0;
-    if (!value)
-        return 0.0;
-    memcpy(&out, value->bytes, sizeof(double) < sizeof value->bytes ? sizeof(double) : sizeof value->bytes);
-    return out;
+	double out = 0.0;
+	if (!value)
+		return 0.0;
+	memcpy(&out, value->bytes, sizeof(double) < sizeof value->bytes ? sizeof(double) : sizeof value->bytes);
+	return out;
 }
 
 #if !defined(OS_PORTABLE_HAS_FIXMATH)
 short FixRound(Fixed value) {
-    return (short)((value + 0x00008000L) >> 16);
+	return (short)((value + 0x00008000L) >> 16);
 }
 
 Fixed FixRatio(long numer, long denom) {
-    if (denom == 0)
-        return 0;
-    return (Fixed)((((int64_t)numer) << 16) / denom);
+	if (denom == 0)
+		return 0;
+	return (Fixed)((((int64_t)numer) << 16) / denom);
 }
 
 Fixed FixMul(Fixed a, Fixed b) {
-    return (Fixed)(((int64_t)a * (int64_t)b) >> 16);
+	return (Fixed)(((int64_t)a * (int64_t)b) >> 16);
 }
 #endif
 
 void DebugStr(const unsigned char *pascalString) {
-    (void)pascalString;
+	(void)pascalString;
 }
 
 void Debugger(void) {
 }
 
 OSStatus FSNewAlias(const void *fromFile, const FSRef *target, AliasHandle *result) {
-    (void)fromFile;
-    (void)target;
-    if (result)
-        *result = NULL;
-    return noErr;
+	(void)fromFile;
+	(void)target;
+	if (result)
+		*result = NULL;
+	return noErr;
 }
 
 OSStatus FSNewAliasMinimal(const FSRef *target, AliasHandle *result) {
-    (void)target;
-    if (result)
-        *result = NULL;
-    return noErr;
+	(void)target;
+	if (result)
+		*result = NULL;
+	return noErr;
 }
 
 OSStatus FSNewAliasMinimalUnicode(const FSRef *target, UniCharCount nameLength, const UniChar *name, AliasHandle *result, const FSRef *base) {
-    (void)target;
-    (void)nameLength;
-    (void)name;
-    (void)result;
-    (void)base;
-    return noErr;
+	(void)target;
+	(void)nameLength;
+	(void)name;
+	(void)result;
+	(void)base;
+	return noErr;
 }
 
 OSStatus FSNewAliasUnicode(const void *fromFile, const FSRef *target, UniCharCount nameLength, const UniChar *name, AliasHandle *result, const FSRef *base) {
-    (void)fromFile;
-    (void)target;
-    (void)nameLength;
-    (void)name;
-    (void)result;
-    (void)base;
-    return noErr;
+	(void)fromFile;
+	(void)target;
+	(void)nameLength;
+	(void)name;
+	(void)result;
+	(void)base;
+	return noErr;
 }
 
 OSStatus NewAliasMinimalFromFullPath(long fullPathLength, const void *fullPath, const void *zone, const void *hints, AliasHandle *alias) {
-    (void)fullPathLength;
-    (void)fullPath;
-    (void)zone;
-    (void)hints;
-    if (alias)
-        *alias = NULL;
-    return noErr;
+	(void)fullPathLength;
+	(void)fullPath;
+	(void)zone;
+	(void)hints;
+	if (alias)
+		*alias = NULL;
+	return noErr;
 }
 
 OSStatus FSFollowFinderAlias(const void *fromFile, AliasHandle alias, Boolean logon, FSRef *target, Boolean *changed) {
-    (void)fromFile;
-    (void)alias;
-    (void)logon;
-    if (target)
-        memset(target, 0, sizeof *target);
-    if (changed)
-        *changed = false;
-    return noErr;
+	(void)fromFile;
+	(void)alias;
+	(void)logon;
+	if (target)
+		memset(target, 0, sizeof *target);
+	if (changed)
+		*changed = false;
+	return noErr;
 }
 
 OSStatus FSUpdateAlias(const void *fromFile, const FSRef *target, AliasHandle alias, Boolean *changed) {
-    (void)fromFile;
-    (void)target;
-    (void)alias;
-    if (changed)
-        *changed = false;
-    return noErr;
+	(void)fromFile;
+	(void)target;
+	(void)alias;
+	if (changed)
+		*changed = false;
+	return noErr;
 }
 
 OSStatus FSResolveAliasWithMountFlags(const void *fromFile, AliasHandle alias, FSRef *target, Boolean *changed, uint32_t mountFlags) {
-    (void)fromFile;
-    (void)alias;
-    (void)mountFlags;
-    if (target)
-        memset(target, 0, sizeof *target);
-    if (changed)
-        *changed = false;
-    return noErr;
+	(void)fromFile;
+	(void)alias;
+	(void)mountFlags;
+	if (target)
+		memset(target, 0, sizeof *target);
+	if (changed)
+		*changed = false;
+	return noErr;
 }
 
 OSStatus FSCopyAliasInfo(AliasHandle alias, HFSUniStr255 *name, HFSUniStr255 *volumeName, void *info1, FSAliasInfoBitmap *whichInfo, void *info2) {
-    (void)alias;
-    (void)info1;
-    (void)info2;
-    if (name)
-        name->length = 0;
-    if (volumeName)
-        volumeName->length = 0;
-    if (whichInfo)
-        *whichInfo = kFSAliasInfoNone;
-    return noErr;
+	(void)alias;
+	(void)info1;
+	(void)info2;
+	if (name)
+		name->length = 0;
+	if (volumeName)
+		volumeName->length = 0;
+	if (whichInfo)
+		*whichInfo = kFSAliasInfoNone;
+	return noErr;
 }
 
 OSErr GetAliasInfo(AliasHandle alias, AliasInfoType index, Str255 info) {
-    (void)alias;
-    (void)index;
-    if (info)
-        setstringlength(info, 0);
-    return noErr;
+	(void)alias;
+	(void)index;
+	if (info)
+		setstringlength(info, 0);
+	return noErr;
 }
 
 #if !defined(FRONTIER_PORTABLE_APPLEEVENTS)
 
 OSErr AEGetKeyPtr(const AppleEvent *event, AEKeyword keyword, DescType desiredType, AEKeyword *actualType, void *dataPtr, Size maximumSize, Size *actualSize) {
-    (void)event;
-    (void)keyword;
-    (void)desiredType;
-    (void)dataPtr;
-    (void)maximumSize;
-    if (actualType)
-        *actualType = typeNull;
-    if (actualSize)
-        *actualSize = 0;
-    return errAEEventNotHandled;
+	(void)event;
+	(void)keyword;
+	(void)desiredType;
+	(void)dataPtr;
+	(void)maximumSize;
+	if (actualType)
+		*actualType = typeNull;
+	if (actualSize)
+		*actualSize = 0;
+	return errAEEventNotHandled;
 }
 
 OSErr AEGetKeyDesc(const AppleEvent *event, AEKeyword keyword, DescType desiredType, AEDesc *result) {
-    (void)event;
-    (void)keyword;
-    (void)desiredType;
-    if (result) {
-        result->descriptorType = typeNull;
-        result->dataHandle = NULL;
-    }
-    return errAEEventNotHandled;
+	(void)event;
+	(void)keyword;
+	(void)desiredType;
+	if (result) {
+		result->descriptorType = typeNull;
+		result->dataHandle = NULL;
+	}
+	return errAEEventNotHandled;
 }
 
 OSErr AEDuplicateDesc(const AEDesc *src, AEDesc *dst) {
-    if (!dst)
-        return paramErr;
-    if (src) {
-        dst->descriptorType = src->descriptorType;
-        dst->dataHandle = src->dataHandle;
-    } else {
-        dst->descriptorType = typeNull;
-        dst->dataHandle = NULL;
-    }
-    return noErr;
+	if (!dst)
+		return paramErr;
+	if (src) {
+		dst->descriptorType = src->descriptorType;
+		dst->dataHandle = src->dataHandle;
+	} else {
+		dst->descriptorType = typeNull;
+		dst->dataHandle = NULL;
+	}
+	return noErr;
 }
 
 OSErr AECreateList(const void *factoringPtr, Size elementSize, Boolean isRecord, AEDesc *resultList) {
-    (void)factoringPtr;
-    (void)elementSize;
-    (void)isRecord;
-    if (resultList) {
-        resultList->descriptorType = typeAEList;
-        resultList->dataHandle = NULL;
-    }
-    return noErr;
+	(void)factoringPtr;
+	(void)elementSize;
+	(void)isRecord;
+	if (resultList) {
+		resultList->descriptorType = typeAEList;
+		resultList->dataHandle = NULL;
+	}
+	return noErr;
 }
 
 OSErr AEPutDesc(AEDesc *theAERecord, long index, const AEDesc *theAEDesc) {
-    (void)theAERecord;
-    (void)index;
-    (void)theAEDesc;
-    return noErr;
+	(void)theAERecord;
+	(void)index;
+	(void)theAEDesc;
+	return noErr;
 }
 
 OSErr CreateCompDescriptor(DescType operatorKeyword, const AEDesc *object1, const AEDesc *object2, Boolean disposeInputs, AEDesc *result) {
-    (void)operatorKeyword;
-    (void)object1;
-    (void)object2;
-    (void)disposeInputs;
-    if (result) {
-        result->descriptorType = typeCompDescriptor;
-        result->dataHandle = NULL;
-    }
-    return noErr;
+	(void)operatorKeyword;
+	(void)object1;
+	(void)object2;
+	(void)disposeInputs;
+	if (result) {
+		result->descriptorType = typeCompDescriptor;
+		result->dataHandle = NULL;
+	}
+	return noErr;
 }
 
 OSErr CreateLogicalDescriptor(const AEDescList *theList, DescType operatorKeyword, Boolean disposeInputs, AEDesc *result) {
-    (void)theList;
-    (void)operatorKeyword;
-    (void)disposeInputs;
-    if (result) {
-        result->descriptorType = typeLogicalDescriptor;
-        result->dataHandle = NULL;
-    }
-    return noErr;
+	(void)theList;
+	(void)operatorKeyword;
+	(void)disposeInputs;
+	if (result) {
+		result->descriptorType = typeLogicalDescriptor;
+		result->dataHandle = NULL;
+	}
+	return noErr;
 }
 
 OSErr CreateRangeDescriptor(const AEDesc *startDescriptor, const AEDesc *stopDescriptor, Boolean disposeInputs, AEDesc *result) {
-    (void)startDescriptor;
-    (void)stopDescriptor;
-    (void)disposeInputs;
-    if (result) {
-        result->descriptorType = typeRangeDescriptor;
-        result->dataHandle = NULL;
-    }
-    return noErr;
+	(void)startDescriptor;
+	(void)stopDescriptor;
+	(void)disposeInputs;
+	if (result) {
+		result->descriptorType = typeRangeDescriptor;
+		result->dataHandle = NULL;
+	}
+	return noErr;
 }
 
 OSStatus FSGetResourceForkName(HFSUniStr255 *name) {
-    if (name)
-        name->length = 0;
-    return noErr;
+	if (name)
+		name->length = 0;
+	return noErr;
 }
 
 OSStatus FSOpenFork(const FSRef *ref, UniCharCount nameLength, const UniChar *name, SInt8 permissions, SInt16 *forkRef) {
-    (void)ref;
-    (void)nameLength;
-    (void)name;
-    (void)permissions;
-    if (forkRef)
-        *forkRef = -1;
-    return fnfErr;
+	(void)ref;
+	(void)nameLength;
+	(void)name;
+	(void)permissions;
+	if (forkRef)
+		*forkRef = -1;
+	return fnfErr;
 }
 
 OSErr AECreateDesc(DescType typeCode, const void *dataPtr, Size dataSize, AEDesc *result) {
-    (void)dataPtr;
-    (void)dataSize;
-    if (!result)
-        return paramErr;
-    result->descriptorType = typeCode;
-    result->dataHandle = NULL;
-    return noErr;
+	(void)dataPtr;
+	(void)dataSize;
+	if (!result)
+		return paramErr;
+	result->descriptorType = typeCode;
+	result->dataHandle = NULL;
+	return noErr;
 }
 
 OSErr CreateObjSpecifier(DescType desiredClass, const AEDesc *container, DescType keyForm, const AEDesc *keyData, Boolean createIfNeeded, AEDesc *result) {
-    (void)desiredClass;
-    (void)container;
-    (void)keyForm;
-    (void)keyData;
-    (void)createIfNeeded;
-    if (!result)
-        return paramErr;
-    result->descriptorType = typeObjectSpecifier;
-    result->dataHandle = NULL;
-    return errAEEventNotHandled;
+	(void)desiredClass;
+	(void)container;
+	(void)keyForm;
+	(void)keyData;
+	(void)createIfNeeded;
+	if (!result)
+		return paramErr;
+	result->descriptorType = typeObjectSpecifier;
+	result->dataHandle = NULL;
+	return errAEEventNotHandled;
 }
 
 OSErr AECountItems(const AEDescList *list, long *count) {
-    (void)list;
-    if (count)
-        *count = 0;
-    return errAEEventNotHandled;
+	(void)list;
+	if (count)
+		*count = 0;
+	return errAEEventNotHandled;
 }
 
 OSErr AEGetNthDesc(const AEDescList *list, long index, DescType desiredType, AEKeyword *theKeyword, AEDesc *result) {
-    (void)list;
-    (void)index;
-    (void)desiredType;
-    if (theKeyword)
-        *theKeyword = typeNull;
-    if (result) {
-        result->descriptorType = typeNull;
-        result->dataHandle = NULL;
-    }
-    return errAEEventNotHandled;
+	(void)list;
+	(void)index;
+	(void)desiredType;
+	if (theKeyword)
+		*theKeyword = typeNull;
+	if (result) {
+		result->descriptorType = typeNull;
+		result->dataHandle = NULL;
+	}
+	return errAEEventNotHandled;
 }
 
 #endif /* !FRONTIER_PORTABLE_APPLEEVENTS */
 
 void Microseconds(UnsignedWide *result) {
-    // 2025-12-15 Codex: Use portable monotonic time layer
-    uint64_t us = frontier_time_monotonic_micros();
-    if (result) {
-        result->hi = (uint32_t)(us >> 32);
-        result->lo = (uint32_t)(us & 0xffffffffu);
-    }
+	// 2025-12-15 Codex: Use portable monotonic time layer
+	uint64_t us = frontier_time_monotonic_micros();
+	if (result) {
+		result->hi = (uint32_t)(us >> 32);
+		result->lo = (uint32_t)(us & 0xffffffffu);
+	}
 }
 
 UInt32 TickCount(void) {
-    // Use the portable time implementation - no test harness dependency
-    return (UInt32)frontier_time_ticks();
+	// Use the portable time implementation - no test harness dependency
+	return (UInt32)frontier_time_ticks();
 }
 
 long FreeMem(void) {
-    return 8L * 1024L * 1024L;
+	return 8L * 1024L * 1024L;
 }
 
 CGrafPtr GetWindowPort(WindowPtr window) {
-    (void)window;
-    return NULL;
+	(void)window;
+	return NULL;
 }
 
 boolean shellsetwindowchanges (hdlwindowinfo hinfo, boolean fldirty) {
-    (void) hinfo;
-    (void) fldirty;
-    return false;
+	(void) hinfo;
+	(void) fldirty;
+	return false;
 }
 
 boolean windowgetpath (WindowPtr w, bigstring bs) {
-    (void) w;
-    setemptystring (bs);
-    return false;
+	(void) w;
+	setemptystring (bs);
+	return false;
 }
 
 boolean windowgetfspec (WindowPtr w, ptrfilespec fs) {
-    (void) w;
-    if (fs)
-        memset (fs, 0, sizeof (*fs));
-    return false;
+	(void) w;
+	if (fs)
+		memset (fs, 0, sizeof (*fs));
+	return false;
 }
 
 short stringpixels (bigstring bs) {
-    return (short) (stringlength (bs));
+	return (short) (stringlength (bs));
 }
 
 /* timetodatestring and timetotimestring now in Common/source/timedate.c with portable implementations */
@@ -982,27 +982,27 @@ short stringpixels (bigstring bs) {
 /* unixshellcall stub removed - use real implementation from ../Common/source/sysshellcall.c when needed */
 #if 0
 boolean unixshellcall (Handle hcommand, Handle hreturn) {
-    (void) hcommand;
-    (void) hreturn;
-    return false;
+	(void) hcommand;
+	(void) hreturn;
+	return false;
 }
 #endif
 
 boolean statsblockinuse (dbaddress adr, bigstring bsitem) {
-    (void) adr;
-    if (bsitem)
-        setemptystring (bsitem);
-    return false;
+	(void) adr;
+	if (bsitem)
+		setemptystring (bsitem);
+	return false;
 }
 
 pg_word pgCharClassProc(paige_rec_ptr pg, pg_char_ptr the_char, short charsize,
-        style_info_ptr style, font_info_ptr font) {
-    (void)pg;
-    (void)the_char;
-    (void)charsize;
-    (void)style;
-    (void)font;
-    return 0;
+		style_info_ptr style, font_info_ptr font) {
+	(void)pg;
+	(void)the_char;
+	(void)charsize;
+	(void)style;
+	(void)font;
+	return 0;
 }
 
 typedef struct style_walk *style_walk_ptr;
@@ -1028,197 +1028,197 @@ typedef void *color_value_ptr;
 typedef void *tab_stop_ptr;
 
 extern pg_error pgScrapMemoryRead(void *data, short verb, size_t *position,
-        size_t *data_size, file_ref filemap);
+		size_t *data_size, file_ref filemap);
 extern pg_error pgScrapMemoryWrite(void *data, short verb, size_t *position,
-        size_t *data_size, file_ref filemap);
+		size_t *data_size, file_ref filemap);
 extern size_t pgUnicodeToBytes(pg_short_t *input_chars, pg_bits8_ptr output_bytes,
-        font_info_ptr font, size_t input_char_size);
+		font_info_ptr font, size_t input_char_size);
 
 long pgCharInfoProc(paige_rec_ptr pg, style_walk_ptr style_walker, pg_char_ptr data,
-        size_t block_offset, size_t offset_begin, size_t offset_end, size_t char_offset,
-        long mask_bits) {
-    (void)pg;
-    (void)style_walker;
-    (void)data;
-    (void)block_offset;
-    (void)offset_begin;
-    (void)offset_end;
-    (void)char_offset;
-    (void)mask_bits;
-    return 0;
+		size_t block_offset, size_t offset_begin, size_t offset_end, size_t char_offset,
+		long mask_bits) {
+	(void)pg;
+	(void)style_walker;
+	(void)data;
+	(void)block_offset;
+	(void)offset_begin;
+	(void)offset_end;
+	(void)char_offset;
+	(void)mask_bits;
+	return 0;
 }
 
 void pgDeleteStyleProc(paige_rec_ptr pg, pg_globals_ptr globals,
-        format_ref all_styles, style_info_ptr style) {
-    (void)pg;
-    (void)globals;
-    (void)all_styles;
-    (void)style;
+		format_ref all_styles, style_info_ptr style) {
+	(void)pg;
+	(void)globals;
+	(void)all_styles;
+	(void)style;
 }
 
 void pgSaveStyleProc(paige_rec_ptr pg, style_info_ptr style_to_save) {
-    (void)pg;
-    (void)style_to_save;
+	(void)pg;
+	(void)style_to_save;
 }
 
 #if !defined(HEADLESS_LINKS_REAL_PAIGE)
 void pgSetGrafDevice(paige_rec_ptr pg, short verb, graf_device_ptr device,
-        color_value_ptr bk_color) {
-    (void)pg;
-    (void)verb;
-    (void)device;
-    (void)bk_color;
+		color_value_ptr bk_color) {
+	(void)pg;
+	(void)verb;
+	(void)device;
+	(void)bk_color;
 }
 #endif
 
 void pgTabDrawProc(paige_rec_ptr pg, style_walk_ptr walker, tab_stop_ptr tab,
-        draw_points_ptr draw_position) {
-    (void)pg;
-    (void)walker;
-    (void)tab;
-    (void)draw_position;
+		draw_points_ptr draw_position) {
+	(void)pg;
+	(void)walker;
+	(void)tab;
+	(void)draw_position;
 }
 
 void pgDrawCursorProc(paige_rec_ptr pg, t_select_ptr select, short verb) {
-    (void)pg;
-    (void)select;
-    (void)verb;
+	(void)pg;
+	(void)select;
+	(void)verb;
 }
 
 void pgDrawHiliteProc(paige_rec_ptr pg, shape_ref rgn) {
-    (void)pg;
-    (void)rgn;
+	(void)pg;
+	(void)rgn;
 }
 
 void pgDrawProc(paige_rec_ptr pg, style_walk_ptr walker, pg_char_ptr data,
-        pg_short_t offset, pg_short_t length, draw_points_ptr draw_position,
-        long extra, short draw_mode) {
-    (void)pg;
-    (void)walker;
-    (void)data;
-    (void)offset;
-    (void)length;
-    (void)draw_position;
-    (void)extra;
-    (void)draw_mode;
+		pg_short_t offset, pg_short_t length, draw_points_ptr draw_position,
+		long extra, short draw_mode) {
+	(void)pg;
+	(void)walker;
+	(void)data;
+	(void)offset;
+	(void)length;
+	(void)draw_position;
+	(void)extra;
+	(void)draw_mode;
 }
 
 void pgDupStyleProc(paige_rec_ptr src_pg, paige_rec_ptr target_pg, short reason_verb,
-        format_ref all_styles, style_info_ptr style) {
-    (void)src_pg;
-    (void)target_pg;
-    (void)reason_verb;
-    (void)all_styles;
-    (void)style;
+		format_ref all_styles, style_info_ptr style) {
+	(void)src_pg;
+	(void)target_pg;
+	(void)reason_verb;
+	(void)all_styles;
+	(void)style;
 }
 
 void pgIdleProc(paige_rec_ptr pg, short verb) {
-    (void)pg;
-    (void)verb;
+	(void)pg;
+	(void)verb;
 }
 
 void pgInitFont(paige_rec_ptr pg, font_info_ptr info) {
-    (void)pg;
-    (void)info;
+	(void)pg;
+	(void)info;
 }
 
 void pgStyleInitProc(paige_rec_ptr pg, style_info_ptr style, font_info_ptr font) {
-    (void)pg;
-    (void)style;
-    (void)font;
+	(void)pg;
+	(void)style;
+	(void)font;
 }
 
 void pgInstallFont(paige_rec_ptr pg, style_info_ptr the_style,
-        font_info_ptr the_font, style_info_ptr composite_style,
-        short style_overlay, pg_boolean include_offscreen) {
-    (void)pg;
-    (void)the_style;
-    (void)the_font;
-    (void)composite_style;
-    (void)style_overlay;
-    (void)include_offscreen;
+		font_info_ptr the_font, style_info_ptr composite_style,
+		short style_overlay, pg_boolean include_offscreen) {
+	(void)pg;
+	(void)the_style;
+	(void)the_font;
+	(void)composite_style;
+	(void)style_overlay;
+	(void)include_offscreen;
 }
 
 void pgSpecialCharProc(paige_rec_ptr pg, style_walk_ptr walker, pg_char_ptr data,
-        pg_short_t offset, pg_short_t length, draw_points_ptr draw_position,
-        long extra, short draw_mode) {
-    (void)pg;
-    (void)walker;
-    (void)data;
-    (void)offset;
-    (void)length;
-    (void)draw_position;
-    (void)extra;
-    (void)draw_mode;
+		pg_short_t offset, pg_short_t length, draw_points_ptr draw_position,
+		long extra, short draw_mode) {
+	(void)pg;
+	(void)walker;
+	(void)data;
+	(void)offset;
+	(void)length;
+	(void)draw_position;
+	(void)extra;
+	(void)draw_mode;
 }
 
 void pgMeasureProc(paige_rec_ptr pg, style_walk_ptr walker,
-        pg_char_ptr data, size_t length, pg_short_t slop, long *positions,
-        short *types, short measure_verb, size_t current_offset, pg_boolean scale_widths,
-        short call_order) {
-    (void)pg;
-    (void)walker;
-    (void)data;
-    (void)length;
-    (void)slop;
-    (void)positions;
-    (void)types;
-    (void)measure_verb;
-    (void)current_offset;
-    (void)scale_widths;
-    (void)call_order;
+		pg_char_ptr data, size_t length, pg_short_t slop, long *positions,
+		short *types, short measure_verb, size_t current_offset, pg_boolean scale_widths,
+		short call_order) {
+	(void)pg;
+	(void)walker;
+	(void)data;
+	(void)length;
+	(void)slop;
+	(void)positions;
+	(void)types;
+	(void)measure_verb;
+	(void)current_offset;
+	(void)scale_widths;
+	(void)call_order;
 }
 
 short pgInsertQuery(paige_rec_ptr pg, pg_char_ptr the_char, short charsize) {
-    (void)pg;
-    (void)the_char;
-    (void)charsize;
-    return 0;
+	(void)pg;
+	(void)the_char;
+	(void)charsize;
+	return 0;
 }
 
 #if !defined(HEADLESS_LINKS_REAL_PAIGE)
 pg_boolean pgReadHandlerProc(paige_rec_ptr pg, pg_file_key key, memory_ref key_data,
-        long *element_info, void *aux_data, size_t *unpacked_size) {
-    (void)pg;
-    (void)key;
-    (void)key_data;
-    (void)element_info;
-    (void)aux_data;
-    (void)unpacked_size;
-    return false;
+		long *element_info, void *aux_data, size_t *unpacked_size) {
+	(void)pg;
+	(void)key;
+	(void)key_data;
+	(void)element_info;
+	(void)aux_data;
+	(void)unpacked_size;
+	return false;
 }
 
 pg_boolean pgWriteHandlerProc(paige_rec_ptr pg, pg_file_key key, memory_ref key_data,
-        long *element_info, void *aux_data, size_t *unpacked_size) {
-    (void)pg;
-    (void)key;
-    (void)key_data;
-    (void)element_info;
-    (void)aux_data;
-    (void)unpacked_size;
-    return false;
+		long *element_info, void *aux_data, size_t *unpacked_size) {
+	(void)pg;
+	(void)key;
+	(void)key_data;
+	(void)element_info;
+	(void)aux_data;
+	(void)unpacked_size;
+	return false;
 }
 
 pg_boolean pgDummyReadHandler(paige_rec_ptr pg, pg_file_key key, memory_ref key_data,
-        size_t *element_info, void *aux_data, size_t *unpacked_size) {
-    (void)pg;
-    (void)key;
-    (void)key_data;
-    (void)element_info;
-    (void)aux_data;
-    (void)unpacked_size;
-    return false;
+		size_t *element_info, void *aux_data, size_t *unpacked_size) {
+	(void)pg;
+	(void)key;
+	(void)key_data;
+	(void)element_info;
+	(void)aux_data;
+	(void)unpacked_size;
+	return false;
 }
 
 pg_boolean pgDummyWriteHandler(paige_rec_ptr pg, pg_file_key key, memory_ref key_data,
-        size_t *element_info, void *aux_data, size_t *unpacked_size) {
-    (void)pg;
-    (void)key;
-    (void)key_data;
-    (void)element_info;
-    (void)aux_data;
-    (void)unpacked_size;
-    return false;
+		size_t *element_info, void *aux_data, size_t *unpacked_size) {
+	(void)pg;
+	(void)key;
+	(void)key_data;
+	(void)element_info;
+	(void)aux_data;
+	(void)unpacked_size;
+	return false;
 }
 
 #endif /* !HEADLESS_LINKS_REAL_PAIGE */

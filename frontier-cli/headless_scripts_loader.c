@@ -64,41 +64,41 @@ extern boolean langrunhandletraperror (Handle htext, bigstring bsresult, bigstri
  * be logged even when caught.
  */
 static boolean headless_run_startup_script (void) {
-    Handle htext = nil;
-    bigstring bsresult;
-    bigstring bserror;
-    const char *script = "startup.startupScript()";
-    size_t script_len = strlen(script);
-    boolean ok;
+	Handle htext = nil;
+	bigstring bsresult;
+	bigstring bserror;
+	const char *script = "startup.startupScript()";
+	size_t script_len = strlen(script);
+	boolean ok;
 
-    log_debug(LOG_COMP_STARTUP, "run_startup_script: calling startup.startupScript()");
+	log_debug(LOG_COMP_STARTUP, "run_startup_script: calling startup.startupScript()");
 
-    /* Allocate handle for script text */
-    if (!newemptyhandle(&htext)) {
-        log_error(LOG_COMP_STARTUP, "run_startup_script: out of memory allocating script handle");
-        return false;
-    }
+	/* Allocate handle for script text */
+	if (!newemptyhandle(&htext)) {
+		log_error(LOG_COMP_STARTUP, "run_startup_script: out of memory allocating script handle");
+		return false;
+	}
 
-    if (!sethandlesize(htext, (long)script_len)) {
-        disposehandle(htext);
-        log_error(LOG_COMP_STARTUP, "run_startup_script: out of memory resizing script handle");
-        return false;
-    }
+	if (!sethandlesize(htext, (long)script_len)) {
+		disposehandle(htext);
+		log_error(LOG_COMP_STARTUP, "run_startup_script: out of memory resizing script handle");
+		return false;
+	}
 
-    HLock(htext);
-    if (*htext == NULL) {
-        disposehandle(htext);
-        log_error(LOG_COMP_STARTUP, "run_startup_script: handle lock failed");
-        return false;
-    }
-    memcpy(*htext, script, script_len);
-    HUnlock(htext);
+	HLock(htext);
+	if (*htext == NULL) {
+		disposehandle(htext);
+		log_error(LOG_COMP_STARTUP, "run_startup_script: handle lock failed");
+		return false;
+	}
+	memcpy(*htext, script, script_len);
+	HUnlock(htext);
 
-    /* Initialize result and error strings */
-    setemptystring(bsresult);
-    setemptystring(bserror);
+	/* Initialize result and error strings */
+	setemptystring(bsresult);
+	setemptystring(bserror);
 
-    /* Run using langrunhandletraperror - same path as REPL.
+	/* Run using langrunhandletraperror - same path as REPL.
      * This properly:
      * - Pushes a process context
      * - Sets up error trapping (so try blocks work correctly)
@@ -106,40 +106,40 @@ static boolean headless_run_startup_script (void) {
      *
      * Note: langrunhandletraperror consumes htext - do not access after this call.
      */
-    ok = langrunhandletraperror(htext, bsresult, bserror);
+	ok = langrunhandletraperror(htext, bsresult, bserror);
 
-    /* Release semaphores owned by the current thread after script execution.
+	/* Release semaphores owned by the current thread after script execution.
      * Any semaphore still locked after the script finishes is an orphan.
      * This prevents deadlocks when a script errors out between
      * semaphore.lock() and semaphore.unlock(). */
-    langreleasesemaphores(nil);
+	langreleasesemaphores(nil);
 
-    if (ok) {
-        log_debug(LOG_COMP_STARTUP, "run_startup_script: completed successfully");
-        if (stringlength(bsresult) > 0) {
-            char result_cstr[256];
-            copyptocstring(bsresult, result_cstr);
-            log_debug(LOG_COMP_STARTUP, "run_startup_script: result = %s", result_cstr);
-        }
-    } else {
-        /* The startup script may produce non-fatal errors from legacy code that
+	if (ok) {
+		log_debug(LOG_COMP_STARTUP, "run_startup_script: completed successfully");
+		if (stringlength(bsresult) > 0) {
+			char result_cstr[256];
+			copyptocstring(bsresult, result_cstr);
+			log_debug(LOG_COMP_STARTUP, "run_startup_script: result = %s", result_cstr);
+		}
+	} else {
+		/* The startup script may produce non-fatal errors from legacy code that
          * doesn't know about headless mode (e.g., webBrowser.launch, file dialogs).
          * The critical work (database init, guest DB opening, subsystem init) is
          * typically complete by the time these errors occur. Log the error but
          * treat startup as successful so the CLI remains operational. */
-        char error_cstr[256];
+		char error_cstr[256];
 
-        if (stringlength(bserror) > 0) {
-            copyptocstring(bserror, error_cstr);
-            log_warn(LOG_COMP_STARTUP, "run_startup_script: completed with non-fatal error: %s", error_cstr);
-        } else {
-            log_warn(LOG_COMP_STARTUP, "run_startup_script: completed with non-fatal error (no message)");
-        }
+		if (stringlength(bserror) > 0) {
+			copyptocstring(bserror, error_cstr);
+			log_warn(LOG_COMP_STARTUP, "run_startup_script: completed with non-fatal error: %s", error_cstr);
+		} else {
+			log_warn(LOG_COMP_STARTUP, "run_startup_script: completed with non-fatal error (no message)");
+		}
 
-        ok = true;  /* treat as success — critical startup work is complete */
-    }
+		ok = true;  /* treat as success — critical startup work is complete */
+	}
 
-    return ok;
+	return ok;
 }
 
 /* External accessor for CLI --skip-startup flag */
@@ -148,39 +148,39 @@ extern boolean cli_should_skip_startup(void);
 /* Initializes the headless environment and runs startup scripts by default.
  * Scripts can be skipped via --skip-startup flag or FRONTIER_HEADLESS_RUN_STARTUP=0. */
 boolean loadsystemscripts (void) {
-    const char *env_startup = getenv("FRONTIER_HEADLESS_RUN_STARTUP");
-    boolean skip_startup = false;
+	const char *env_startup = getenv("FRONTIER_HEADLESS_RUN_STARTUP");
+	boolean skip_startup = false;
 
-    if (systemtable == nil) {
-        log_error(LOG_COMP_STARTUP, "loadsystemscripts: system table is nil");
-        return false;
-    }
+	if (systemtable == nil) {
+		log_error(LOG_COMP_STARTUP, "loadsystemscripts: system table is nil");
+		return false;
+	}
 
-    /* Register headless msg() verb callback */
-    langcallbacks.msgverbcallback = &headless_msgverb;
-    log_debug(LOG_COMP_STARTUP, "loadsystemscripts: registered headless msg() verb");
+	/* Register headless msg() verb callback */
+	langcallbacks.msgverbcallback = &headless_msgverb;
+	log_debug(LOG_COMP_STARTUP, "loadsystemscripts: registered headless msg() verb");
 
-    /* Check if startup should be skipped:
+	/* Check if startup should be skipped:
      * 1. --skip-startup CLI flag
      * 2. FRONTIER_HEADLESS_RUN_STARTUP=0 environment variable */
-    if (cli_should_skip_startup()) {
-        skip_startup = true;
-        log_debug(LOG_COMP_STARTUP, "loadsystemscripts: skipping startup (--skip-startup flag)");
-    } else if (env_startup && strcmp(env_startup, "0") == 0) {
-        skip_startup = true;
-        log_debug(LOG_COMP_STARTUP, "loadsystemscripts: skipping startup (FRONTIER_HEADLESS_RUN_STARTUP=0)");
-    }
+	if (cli_should_skip_startup()) {
+		skip_startup = true;
+		log_debug(LOG_COMP_STARTUP, "loadsystemscripts: skipping startup (--skip-startup flag)");
+	} else if (env_startup && strcmp(env_startup, "0") == 0) {
+		skip_startup = true;
+		log_debug(LOG_COMP_STARTUP, "loadsystemscripts: skipping startup (FRONTIER_HEADLESS_RUN_STARTUP=0)");
+	}
 
-    if (skip_startup) {
-        return true;
-    }
+	if (skip_startup) {
+		return true;
+	}
 
-    log_debug(LOG_COMP_STARTUP, "loadsystemscripts: running startup.startupScript()");
-    if (!headless_run_startup_script ()) {
-        log_error(LOG_COMP_STARTUP, "loadsystemscripts: failed to run startup.startupScript()");
-        return false;
-    }
+	log_debug(LOG_COMP_STARTUP, "loadsystemscripts: running startup.startupScript()");
+	if (!headless_run_startup_script ()) {
+		log_error(LOG_COMP_STARTUP, "loadsystemscripts: failed to run startup.startupScript()");
+		return false;
+	}
 
-    log_debug(LOG_COMP_STARTUP, "loadsystemscripts: startup complete");
-    return true;
+	log_debug(LOG_COMP_STARTUP, "loadsystemscripts: startup complete");
+	return true;
 }
