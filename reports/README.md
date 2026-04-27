@@ -37,6 +37,8 @@ These files are **regenerated on every test run** and are **not tracked in git**
 
 **Why not tracked**: every regeneration updates embedded timestamps, producing a noisy diff for every PR that runs tests during validation. They're treated as build artifacts (like compiled binaries) and gitignored. CI publishes the artifact separately if needed.
 
+> **Note for OPML subscribers**: raw GitHub URLs to these files (e.g. `raw.githubusercontent.com/.../reports/integration_tests.opml`) are no longer valid. Regenerate locally and serve from your own location, or subscribe to a CI-published artifact if/when one is set up.
+
 **Opening**: Regenerate locally, then open `integration_tests.opml` (or `unit_tests.opml`) in Drummer or any OPML 2.0-compatible editor. Category links load inline via transclusion.
 
 ## Adding New Reports
