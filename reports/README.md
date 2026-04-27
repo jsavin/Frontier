@@ -26,23 +26,18 @@ Automatic verb binding analyzer reports showing implementation status across all
   - Markdown tables for easy review
 - **See also**: [`coverage/verb-binding/README.md`](./coverage/verb-binding/README.md)
 
-### Integration Test OPML Files
+### Test OPML Files (Build Artifacts — Not Tracked)
 
-**Hierarchical OPML structure** for browsing integration tests in outline editors like [Drummer](https://drummer.land/).
+**Hierarchical OPML structure** for browsing tests in outline editors like [Drummer](https://drummer.land/).
 
-- **Files**: 26 total (1 manifest + 25 category files)
-  - `integration_tests.opml` - Manifest with transclusion links
-  - `integration_tests_{category}.opml` - Individual category files
-- **Format**: OPML 2.0 with transclusion (`type="link"` attributes)
-- **Tests**: 1,247 integration tests across 25 categories
-- **Regenerate**: `python3 tools/export_tests_to_opml.py`
+These files are **regenerated on every test run** and are **not tracked in git** (issue #556) — anyone wanting a current snapshot regenerates them locally:
 
-**Benefits**:
-- No merge conflicts when adding tests to different categories
-- Atomic changes (only affected category file changes)
-- Scalable (category files stay ~450-3,600 lines)
+- **Integration tests** (`reports/integration_tests.opml` + `reports/integration_tests/*.opml`): regenerate with `python3 tools/export_tests_to_opml.py`. 1 manifest + per-category files, ~1,247 tests across 25 categories. OPML 2.0 with transclusion (`type="link"`).
+- **Unit tests** (`reports/unit_tests.opml` + `reports/unit_tests/*.opml`): regenerated as a side effect of `./tools/run_headless_tests.sh`.
 
-**Opening**: Open `integration_tests.opml` in Drummer or any OPML 2.0-compatible editor. Category links load inline via transclusion.
+**Why not tracked**: every regeneration updates embedded timestamps, producing a noisy diff for every PR that runs tests during validation. They're treated as build artifacts (like compiled binaries) and gitignored. CI publishes the artifact separately if needed.
+
+**Opening**: Regenerate locally, then open `integration_tests.opml` (or `unit_tests.opml`) in Drummer or any OPML 2.0-compatible editor. Category links load inline via transclusion.
 
 ## Adding New Reports
 
