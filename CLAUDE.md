@@ -21,6 +21,8 @@ Build/test/migration command reference: see `docs/QUICK_REFERENCE.md`. Key paths
 
 Test output dirs: `tests/tmp/{unit,integration,migration,results}/`. Scratch files: `/tmp` or `tests/tmp/` both work.
 
+The unit and integration commands above are also declared in the `## /auto Test Manifest` section below — keep both in sync.
+
 ### Documentation Index
 
 All docs live in `docs/`. Notable entry points:
@@ -137,7 +139,7 @@ See `~/.claude/skills/auto/SKILL.md` (a local Claude Code skill install — not 
 - **Integration**: `cd tests && make test-integration` (required)
 - **E2E / UI**: none (headless CLI project)
 - **Smoke / Browser**: none
-- **Lint**: none (no project lint command established yet)
+- **Lint**: none
 - **Base branch**: `develop`
 - **Merge strategy**: `--squash` (branch deletion is manual — see `/auto` skill Phase 6 for the exit-worktree-then-merge sequence; `--delete-branch` is incompatible with merging from inside a worktree)
 
