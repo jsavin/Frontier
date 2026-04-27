@@ -202,6 +202,20 @@ Agents must verify fixes work end-to-end, not just fix one piece. Test the compl
 
 ---
 
+## /gate Configuration
+
+Reviewer selection lives in `.claude/gate.yaml`. Schema reference: `~/.claude/skills/gate/gate-config-schema.md`. Authoring guide: `~/.claude/skills/gate/gate-config-guide.md`.
+
+Current tier summary:
+- `bar-raiser` — always
+- `security` — always (binary parsing, network protocol, CLI input — broad sensitive surface)
+- `concurrency` — auto (triggered by GIL, pthread, signal, langbackgroundtask paths/patterns)
+- `swiftui` — excluded (pure C codebase, no Swift)
+
+Threat model and trigger details are in `.claude/gate.yaml` itself.
+
+---
+
 ## ODB Script Editing Rules
 
 **Edit `databases/Virgin.root`** for changes that should persist in builds. `Virgin.root` is the source of truth — `make dist` copies it to `dist/Frontier.root`. Edits to `databases/Frontier.root` are local only and will be overwritten.

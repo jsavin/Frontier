@@ -1,0 +1,34 @@
+# /gate Configuration — Frontier
+# Schema: ~/.claude/skills/gate/gate-config-schema.md
+# Authoring guide: ~/.claude/skills/gate/gate-config-guide.md
+
+gate:
+  reviewers:
+    bar-raiser: always   # general code quality + bug detection
+    security: always     # IO, parsing, network, kernel verbs — large sensitive surface
+    concurrency: auto    # threading exists (GIL), but most PRs don't touch it
+    swiftui: excluded    # pure C codebase, no Swift
+
+  triggers:
+    concurrency:
+      paths:
+        - "src/lang/**"
+        - "src/runtime/**"
+        - "frontier-cli/**"
+      patterns:
+        - "pthread_"
+        - "dispatch_"
+        - "signal\\("
+        - "GIL"
+        - "langbackgroundtask"
+        - "thread\\.sleepTicks"
+        - "yieldcpu"
+
+  reviewer_context:
+    security: |
+      - C codebase with manual memory management — watch for use-after-free, double-free, leaks
+      - Database files (.root) parse external user-provided binary data — validate length/offset bounds
+      - Verb dispatch reads strings from databases and executes them — sandboxing is critical
+      - Network code (ws_server, ws_frame) handles untrusted client input
+      - frontier-cli is a CLI accepting user paths and command strings — path traversal, command injection
+      - Migration code (v6→v7) reads old format and writes new — corruption risk if assumptions fail
