@@ -414,7 +414,7 @@ After `tcp.listenStream()` landed (PR #330, 2026-01-24), the tests were
 migrated to localhost listeners and are now deterministic. The opt-in gate
 was removed; the filename is preserved for git history continuity.
 
-**Example future self-contained test**:
+**Example self-contained test**:
 ```yaml
 # Phase 3 pattern - test server runs within test harness
 tests:

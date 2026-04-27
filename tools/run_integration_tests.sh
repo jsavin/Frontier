@@ -64,10 +64,15 @@ if [ $# -eq 0 ]; then
     # localhost listeners and are self-contained, so they now run by default.
     # (One DNS-resolution test in tcp_verbs_network.yaml depends on the
     # system resolver returning NXDOMAIN for an invalid hostname; environments
-    # that hijack NXDOMAIN responses will surface that as a real signal rather
-    # than flake.)
+    # that hijack NXDOMAIN responses can opt out via
+    # FRONTIER_SKIP_NETWORK_TESTS=1.)
     for f in "$TEST_CASES_DIR"/*.yaml; do
         if [ -f "$f" ]; then
+            if [[ "$f" == *"_network.yaml" ]] && [ "${FRONTIER_SKIP_NETWORK_TESTS:-0}" = "1" ]; then
+                echo -e "${YELLOW}Skipping network tests: $(basename "$f")${NC}"
+                echo "  (FRONTIER_SKIP_NETWORK_TESTS=1)"
+                continue
+            fi
             TEST_FILES+=("$f")
         fi
     done
@@ -106,9 +111,15 @@ else
                 echo "will be run, including *_network.yaml files (which now use localhost"
                 echo "listeners and are self-contained)."
                 echo
+                echo "Environment Variables:"
+                echo "  FRONTIER_SKIP_NETWORK_TESTS=1    Opt out of *_network.yaml files (e.g."
+                echo "                                   for environments that hijack NXDOMAIN"
+                echo "                                   DNS responses)"
+                echo
                 echo "Examples:"
                 echo "  $0                                    # Run all tests (batch + parallel)"
                 echo "  $0 --no-batch -j 1                   # Old behavior (per-process, sequential)"
+                echo "  FRONTIER_SKIP_NETWORK_TESTS=1 $0      # Skip *_network.yaml files"
                 echo "  $0 tests/integration/test_cases/string_verbs.yaml"
                 echo "  $0 --verbose tests/integration/test_cases/*.yaml"
                 exit 0
