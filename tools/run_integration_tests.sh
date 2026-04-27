@@ -187,6 +187,16 @@ done
 # Helper: hash a path (file or directory). For directories, hashes the sorted
 # concatenation of file hashes so we get a single deterministic checksum per
 # entry. Uses md5 on macOS, md5sum on Linux.
+#
+# Note: the directory hash combines per-file *content* hashes only — file
+# paths are intentionally excluded so the result depends solely on contents.
+# That's sufficient for "did any file change?" drift detection. Two trees
+# with identical contents but different filenames would hash the same;
+# that's acceptable here because we're hashing the same staged tree before
+# and after a test run, not comparing different trees. Paths are excluded
+# rather than included so cross-platform `find` output ordering can't
+# affect the result (LC_ALL=C sort handles ordering of the resulting
+# hashes regardless of input path order).
 _hash_path() {
     local path="$1"
     if [ -d "$path" ]; then
@@ -201,13 +211,14 @@ _hash_path() {
 
 # Record pre-test checksums for integrity verification: system root + every
 # staged guest DB. Catches accidental writes to any staged database.
+SYSTEM_ROOT_NAME=$(basename "$SYSTEM_ROOT")
 declare -a STAGED_NAMES=()
 declare -a CHECKSUMS_BEFORE=()
-STAGED_NAMES+=("$(basename "$SYSTEM_ROOT")")
+STAGED_NAMES+=("$SYSTEM_ROOT_NAME")
 CHECKSUMS_BEFORE+=("$(_hash_path "$SYSTEM_ROOT")")
 for entry in "$STAGE_DIR"/*; do
     name=$(basename "$entry")
-    [ "$name" = "$(basename "$SYSTEM_ROOT")" ] && continue
+    [ "$name" = "$SYSTEM_ROOT_NAME" ] && continue
     STAGED_NAMES+=("$name")
     CHECKSUMS_BEFORE+=("$(_hash_path "$entry")")
 done
@@ -221,7 +232,7 @@ DRIFT_DETECTED=0
 for i in "${!STAGED_NAMES[@]}"; do
     name="${STAGED_NAMES[$i]}"
     before="${CHECKSUMS_BEFORE[$i]}"
-    if [ "$name" = "$(basename "$SYSTEM_ROOT")" ]; then
+    if [ "$name" = "$SYSTEM_ROOT_NAME" ]; then
         path="$SYSTEM_ROOT"
     else
         path="$STAGE_DIR/$name"
