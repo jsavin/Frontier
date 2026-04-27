@@ -27,28 +27,28 @@
  * fit in a single frame. This is intentional — our JSON protocol messages
  * are well within the 256KB frame limit and no client sends fragmented. */
 #define WS_OPCODE_CONTINUATION 0x0
-#define WS_OPCODE_TEXT         0x1
-#define WS_OPCODE_BINARY       0x2
-#define WS_OPCODE_CLOSE        0x8
-#define WS_OPCODE_PING         0x9
-#define WS_OPCODE_PONG         0xA
+#define WS_OPCODE_TEXT		   0x1
+#define WS_OPCODE_BINARY	   0x2
+#define WS_OPCODE_CLOSE		   0x8
+#define WS_OPCODE_PING		   0x9
+#define WS_OPCODE_PONG		   0xA
 
 /* Frame parsing result */
 typedef enum {
-    WS_FRAME_OK = 0,       /* Complete frame decoded */
-    WS_FRAME_INCOMPLETE,   /* Need more data */
-    WS_FRAME_ERROR,        /* Protocol error */
+	WS_FRAME_OK = 0,	   /* Complete frame decoded */
+	WS_FRAME_INCOMPLETE,   /* Need more data */
+	WS_FRAME_ERROR,		   /* Protocol error */
 } ws_frame_status_t;
 
 /* Decoded frame */
 typedef struct {
-    uint8_t  opcode;
-    bool     fin;
-    bool     masked;
-    uint8_t  mask_key[4];
-    uint8_t *payload;       /* Points into caller's buffer (after unmasking) */
-    size_t   payload_len;
-    size_t   frame_len;     /* Total bytes consumed from input */
+	uint8_t	 opcode;
+	bool	 fin;
+	bool	 masked;
+	uint8_t	 mask_key[4];
+	uint8_t *payload;		/* Points into caller's buffer (after unmasking) */
+	size_t	 payload_len;
+	size_t	 frame_len;		/* Total bytes consumed from input */
 } ws_frame_t;
 
 /*
@@ -65,7 +65,7 @@ ws_frame_status_t ws_frame_decode(uint8_t *buf, size_t len, ws_frame_t *frame);
  * Returns NULL on allocation failure.
  */
 uint8_t *ws_frame_encode(uint8_t opcode, const uint8_t *payload, size_t payload_len,
-                         size_t *out_len);
+						 size_t *out_len);
 
 /*
  * Perform the HTTP upgrade handshake.
@@ -75,6 +75,6 @@ uint8_t *ws_frame_encode(uint8_t opcode, const uint8_t *payload, size_t payload_
  * Sets *request_len to the number of bytes consumed from buf (the full HTTP request).
  */
 int ws_handshake(uint8_t *buf, size_t len, char *response, size_t response_size,
-                 size_t *request_len);
+				 size_t *request_len);
 
 #endif /* WS_FRAME_H */

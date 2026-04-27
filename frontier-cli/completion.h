@@ -44,9 +44,9 @@
  * Represents a single completion candidate.
  */
 typedef struct completion_match {
-    char name[COMPLETION_MAX_NAME_LEN];  /* Matched name */
-    tyvaluetype type;                     /* Value type (for display hints) */
-    bool is_table;                        /* True if navigable (table/external) */
+	char name[COMPLETION_MAX_NAME_LEN];	 /* Matched name */
+	tyvaluetype type;					  /* Value type (for display hints) */
+	bool is_table;						  /* True if navigable (table/external) */
 } completion_match_t;
 
 /*
@@ -54,9 +54,9 @@ typedef struct completion_match {
  * Holds all matching candidates for current completion.
  */
 typedef struct completion_matches {
-    completion_match_t items[COMPLETION_MAX_MATCHES];
-    size_t count;
-    char common_prefix[COMPLETION_MAX_NAME_LEN];  /* Longest common prefix */
+	completion_match_t items[COMPLETION_MAX_MATCHES];
+	size_t count;
+	char common_prefix[COMPLETION_MAX_NAME_LEN];  /* Longest common prefix */
 } completion_matches_t;
 
 /*
@@ -64,10 +64,10 @@ typedef struct completion_matches {
  * Determines what kind of completion to perform.
  */
 typedef enum {
-    COMPLETION_CTX_GENERAL,       /* Default: keywords + database names */
-    COMPLETION_CTX_VERB_CALL,     /* After verb processor (file., db., etc.) */
-    COMPLETION_CTX_ADDRESS,       /* After @ symbol */
-    COMPLETION_CTX_STRING,        /* Inside string literal (no completion) */
+	COMPLETION_CTX_GENERAL,		  /* Default: keywords + database names */
+	COMPLETION_CTX_VERB_CALL,	  /* After verb processor (file., db., etc.) */
+	COMPLETION_CTX_ADDRESS,		  /* After @ symbol */
+	COMPLETION_CTX_STRING,		  /* Inside string literal (no completion) */
 } completion_context_type_t;
 
 /*
@@ -75,13 +75,13 @@ typedef enum {
  * Parsed from the current line being edited.
  */
 typedef struct completion_context {
-    const char *line;             /* Full line being edited */
-    int cursor_pos;               /* Cursor position in line */
-    char token[COMPLETION_MAX_NAME_LEN];      /* Token being completed */
-    char table_path[COMPLETION_MAX_NAME_LEN]; /* Table path prefix for dotted paths */
-    char leaf_prefix[COMPLETION_MAX_NAME_LEN]; /* Leaf name prefix for dotted paths */
-    completion_context_type_t ctx_type;        /* Context type */
-    bool has_dot;                 /* True if token contains a dot */
+	const char *line;			  /* Full line being edited */
+	int cursor_pos;				  /* Cursor position in line */
+	char token[COMPLETION_MAX_NAME_LEN];	  /* Token being completed */
+	char table_path[COMPLETION_MAX_NAME_LEN]; /* Table path prefix for dotted paths */
+	char leaf_prefix[COMPLETION_MAX_NAME_LEN]; /* Leaf name prefix for dotted paths */
+	completion_context_type_t ctx_type;		   /* Context type */
+	bool has_dot;				  /* True if token contains a dot */
 } completion_context_t;
 
 /*
@@ -107,9 +107,9 @@ void completion_matches_init(completion_matches_t *matches);
  * Returns false if collection is full.
  */
 bool completion_matches_add(completion_matches_t *matches,
-                            const char *name,
-                            tyvaluetype type,
-                            bool is_table);
+							const char *name,
+							tyvaluetype type,
+							bool is_table);
 
 /*
  * Compute the common prefix of all matches.
@@ -131,8 +131,8 @@ void completion_add_keywords(completion_matches_t *matches, const char *prefix);
  * Phase 2: Add database name matches from a hash table.
  */
 void completion_add_table_entries(completion_matches_t *matches,
-                                  hdlhashtable table,
-                                  const char *prefix);
+								  hdlhashtable table,
+								  const char *prefix);
 
 /*
  * Phase 2.5: Search system.paths for a name.
@@ -147,17 +147,17 @@ hdlhashtable completion_search_paths(const char *name);
  * path (e.g., "system.verbs.builtins.fileMenu" for name "fileMenu").
  *
  * Optional guest database output parameters (pass NULL to ignore):
- *   out_guest_db_root - If match came from filewindowtable, set to the guest DB's root table
- *   out_guest_db_name - If match came from filewindowtable, filled with the DB name (e.g., "mainResponder.root")
- *   db_name_bufsize   - Size of the out_guest_db_name buffer
+ *	 out_guest_db_root - If match came from filewindowtable, set to the guest DB's root table
+ *	 out_guest_db_name - If match came from filewindowtable, filled with the DB name (e.g., "mainResponder.root")
+ *	 db_name_bufsize   - Size of the out_guest_db_name buffer
  *
  * When a match comes from a guest database:
- *   - resolved_path is set to just the entry name (not the full db.entry path)
- *   - out_guest_db_root is set to the guest DB's root table
- *   - out_guest_db_name is filled with the filewindowtable key
+ *	 - resolved_path is set to just the entry name (not the full db.entry path)
+ *	 - out_guest_db_root is set to the guest DB's root table
+ *	 - out_guest_db_name is filled with the filewindowtable key
  */
 hdlhashtable completion_search_paths_ex(const char *name, char *resolved_path, size_t path_bufsize,
-                                         hdlhashtable *out_guest_db_root, char *out_guest_db_name, size_t db_name_bufsize);
+										 hdlhashtable *out_guest_db_root, char *out_guest_db_name, size_t db_name_bufsize);
 
 /*
  * Phase 2.5: Add matching entries from all system.paths tables.

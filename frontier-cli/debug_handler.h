@@ -2,15 +2,15 @@
  * debug_handler.h - Protocol-based UserTalk debugger
  *
  * Provides debug/* protocol operations for headless script debugging:
- *   debug/run             — Run script in debug mode (non-blocking, spawns thread)
- *   debug/continue        — Resume suspended thread
- *   debug/kill            — Kill a debug thread
- *   debug/pause           — Interrupt a running thread
- *   debug/setBreakpoint   — Set or clear a breakpoint (Phase 3)
- *   debug/listBreakpoints — List all breakpoints (Phase 3)
- *   debug/getLocals       — Inspect local variables of suspended thread (Phase 4)
- *   debug/getSource       — View script source with line numbers (Phase 4)
- *   debug/getStack        — View call stack of suspended thread (Phase 4)
+ *	 debug/run			   — Run script in debug mode (non-blocking, spawns thread)
+ *	 debug/continue		   — Resume suspended thread
+ *	 debug/kill			   — Kill a debug thread
+ *	 debug/pause		   — Interrupt a running thread
+ *	 debug/setBreakpoint   — Set or clear a breakpoint (Phase 3)
+ *	 debug/listBreakpoints — List all breakpoints (Phase 3)
+ *	 debug/getLocals	   — Inspect local variables of suspended thread (Phase 4)
+ *	 debug/getSource	   — View script source with line numbers (Phase 4)
+ *	 debug/getStack		   — View call stack of suspended thread (Phase 4)
  *
  * The debugger replaces the headless no-op callback with a protocol-aware
  * callback that can suspend execution and wait for client commands.
@@ -33,12 +33,12 @@
  * Prevents JSON injection and ensures only known values are sent.
  */
 typedef enum {
-    DEBUG_REASON_ENTRY,        /* suspended at entry before first statement */
-    DEBUG_REASON_INTERRUPTED,  /* suspended via debug/pause */
-    DEBUG_REASON_BREAKPOINT,   /* suspended at breakpoint (Phase 3) */
-    DEBUG_REASON_STEP,         /* suspended after step (Phase 2) */
-    DEBUG_REASON_WATCHPOINT,   /* suspended on watchpoint value change (Phase 6) */
-    DEBUG_REASON_ERROR         /* suspended on error (future) */
+	DEBUG_REASON_ENTRY,		   /* suspended at entry before first statement */
+	DEBUG_REASON_INTERRUPTED,  /* suspended via debug/pause */
+	DEBUG_REASON_BREAKPOINT,   /* suspended at breakpoint (Phase 3) */
+	DEBUG_REASON_STEP,		   /* suspended after step (Phase 2) */
+	DEBUG_REASON_WATCHPOINT,   /* suspended on watchpoint value change (Phase 6) */
+	DEBUG_REASON_ERROR		   /* suspended on error (future) */
 } debug_suspend_reason_t;
 
 /* Returns the JSON-safe string for a reason enum value */
@@ -48,10 +48,10 @@ const char *debug_reason_string(debug_suspend_reason_t reason);
  * Step directions — matches legacy tydirection values from standard.h.
  */
 typedef enum {
-    DEBUG_STEP_NONE = 0,    /* not stepping */
-    DEBUG_STEP_OVER = 2,    /* next line at same call depth (legacy: down) */
-    DEBUG_STEP_OUT  = 3,    /* return to caller (legacy: left) */
-    DEBUG_STEP_INTO = 4     /* next statement regardless of depth (legacy: right) */
+	DEBUG_STEP_NONE = 0,	/* not stepping */
+	DEBUG_STEP_OVER = 2,	/* next line at same call depth (legacy: down) */
+	DEBUG_STEP_OUT	= 3,	/* return to caller (legacy: left) */
+	DEBUG_STEP_INTO = 4		/* next statement regardless of depth (legacy: right) */
 } debug_step_direction_t;
 
 /*
@@ -74,50 +74,50 @@ typedef enum {
 #define DEBUG_SCRIPT_STACK_MAX 32
 
 typedef struct tydebugstate {
-    boolean fldebugmode;             /* not atomic: set once at registration (under GIL) before
-                                      * thread starts, only read after. GIL provides ordering. */
-    atomic_bool flsuspended;         /* is this thread paused? */
-    atomic_bool flinterrupt;         /* pause at next statement (debug/pause) */
-    atomic_bool flkill;              /* kill the script */
-    atomic_int refcount;             /* reference count (1 = debug thread only) */
-    transport_t *transport;          /* for sending notifications back to client */
-    long threadid;                   /* this thread's ID */
-    pthread_t pthread_id;            /* POSIX thread ID for pthread_join */
-    void *hglobals;                  /* hdlthreadglobals (processinternal.h) — void* to
-                                      * avoid pulling that header into this one. Cast to
-                                      * hdlthreadglobals in debug_handler.c. Safe to read
-                                      * when thread is suspended (in nanosleep). */
+	boolean fldebugmode;			 /* not atomic: set once at registration (under GIL) before
+									  * thread starts, only read after. GIL provides ordering. */
+	atomic_bool flsuspended;		 /* is this thread paused? */
+	atomic_bool flinterrupt;		 /* pause at next statement (debug/pause) */
+	atomic_bool flkill;				 /* kill the script */
+	atomic_int refcount;			 /* reference count (1 = debug thread only) */
+	transport_t *transport;			 /* for sending notifications back to client */
+	long threadid;					 /* this thread's ID */
+	pthread_t pthread_id;			 /* POSIX thread ID for pthread_join */
+	void *hglobals;					 /* hdlthreadglobals (processinternal.h) — void* to
+									  * avoid pulling that header into this one. Cast to
+									  * hdlthreadglobals in debug_handler.c. Safe to read
+									  * when thread is suspended (in nanosleep). */
 
-    /* Stepping state (Phase 2) — written by handle_debug_step on main thread,
-     * read by protocol_debugger_callback on debug thread. Access is GIL-ordered
-     * (step command runs while debug thread is suspended, thread resumes after).
-     * All fields use C11 atomic types for consistency with other cross-thread
-     * flags. atomic_short/atomic_ulong are standard C11 convenience typedefs
-     * (§7.17.6) supported by clang, GCC, and MSVC 2022+. */
-    atomic_bool flstepping;          /* stepping mode active */
-    atomic_int stepdir;              /* current step direction (debug_step_direction_t) */
-    atomic_ulong lastlnum;           /* line number at last suspension */
-    boolean flskipaliasline;         /* skip breakpoints at lastlnum until line changes;
-                                      * set on resume, cleared when lnum != lastlnum.
-                                      * Not atomic: written by protocol handler (under GIL)
-                                      * and read by debug thread callback (under GIL).
-                                      * Safe because only one thread holds the GIL at a time. */
-    atomic_short steplevel;          /* call depth when step was initiated */
-    atomic_short calldepth;          /* current call depth — 0 at top-level expression,
-                                      * incremented on function entry (push sourcecode),
-                                      * decremented on return (pop sourcecode). Used by
-                                      * step-over (same depth) and step-out (shallower). */
+	/* Stepping state (Phase 2) — written by handle_debug_step on main thread,
+	 * read by protocol_debugger_callback on debug thread. Access is GIL-ordered
+	 * (step command runs while debug thread is suspended, thread resumes after).
+	 * All fields use C11 atomic types for consistency with other cross-thread
+	 * flags. atomic_short/atomic_ulong are standard C11 convenience typedefs
+	 * (§7.17.6) supported by clang, GCC, and MSVC 2022+. */
+	atomic_bool flstepping;			 /* stepping mode active */
+	atomic_int stepdir;				 /* current step direction (debug_step_direction_t) */
+	atomic_ulong lastlnum;			 /* line number at last suspension */
+	boolean flskipaliasline;		 /* skip breakpoints at lastlnum until line changes;
+									  * set on resume, cleared when lnum != lastlnum.
+									  * Not atomic: written by protocol handler (under GIL)
+									  * and read by debug thread callback (under GIL).
+									  * Safe because only one thread holds the GIL at a time. */
+	atomic_short steplevel;			 /* call depth when step was initiated */
+	atomic_short calldepth;			 /* current call depth — 0 at top-level expression,
+									  * incremented on function entry (push sourcecode),
+									  * decremented on return (pop sourcecode). Used by
+									  * step-over (same depth) and step-out (shallower). */
 
-    /* Source tracking (Phase 3) — tracks which script is currently executing.
-     * Updated by the push/pop sourcecode callbacks installed in debug_init().
-     * The callback reads current_script to match breakpoints.
-     * Script path stack handles nested calls (A calls B): push saves path,
-     * pop restores caller's path so breakpoints in A still fire after B returns. */
-    char current_script[DEBUG_SCRIPT_PATH_MAX]; /* current script dotted path */
-    char script_stack[DEBUG_SCRIPT_STACK_MAX][DEBUG_SCRIPT_PATH_MAX]; /* saved caller paths */
-    unsigned long script_stack_lines[DEBUG_SCRIPT_STACK_MAX]; /* saved caller line numbers */
-    short script_stack_depth;                   /* stack pointer (0 = empty) */
-    int script_stack_overflow;                  /* push/pop balance when stack overflows */
+	/* Source tracking (Phase 3) — tracks which script is currently executing.
+	 * Updated by the push/pop sourcecode callbacks installed in debug_init().
+	 * The callback reads current_script to match breakpoints.
+	 * Script path stack handles nested calls (A calls B): push saves path,
+	 * pop restores caller's path so breakpoints in A still fire after B returns. */
+	char current_script[DEBUG_SCRIPT_PATH_MAX]; /* current script dotted path */
+	char script_stack[DEBUG_SCRIPT_STACK_MAX][DEBUG_SCRIPT_PATH_MAX]; /* saved caller paths */
+	unsigned long script_stack_lines[DEBUG_SCRIPT_STACK_MAX]; /* saved caller line numbers */
+	short script_stack_depth;					/* stack pointer (0 = empty) */
+	int script_stack_overflow;					/* push/pop balance when stack overflows */
 } tydebugstate, *ptrdebugstate;
 
 /*

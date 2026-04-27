@@ -20,10 +20,10 @@
 
 // Database context structure
 typedef struct {
-    char* database_path;        // Path to database file
-    boolean flreadonly;         // Read-only flag
-    hdldatabaserecord hdatabase; // Frontier database handle
-    short fnumdatabase;         // Database file number
+	char* database_path;		// Path to database file
+	boolean flreadonly;			// Read-only flag
+	hdldatabaserecord hdatabase; // Frontier database handle
+	short fnumdatabase;			// Database file number
 } cli_database_t;
 
 // Database management functions

@@ -7,38 +7,38 @@
 tysearchparameters searchparams;
 
 void startnewsearch (boolean flwrap, boolean flreset) {
-    (void) flwrap;
-    (void) flreset;
+	(void) flwrap;
+	(void) flreset;
 }
 
 boolean startingtosearch (long refcon) {
-    (void) refcon;
-    return false;
+	(void) refcon;
+	return false;
 }
 
 boolean searchshouldwrap (long refcon) {
-    (void) refcon;
-    return false;
+	(void) refcon;
+	return false;
 }
 
 boolean searchshouldcontinue (long refcon) {
-    (void) refcon;
-    return false;
+	(void) refcon;
+	return false;
 }
 
 void endcurrentsearch (void) {
 }
 
 boolean initsearch (void) {
-    return true;
+	return true;
 }
 
 boolean getsearchparams (void) {
-    return false;
+	return false;
 }
 
 boolean setsearchparams (void) {
-    return false;
+	return false;
 }
 
 #endif /* FRONTIER_HEADLESS */

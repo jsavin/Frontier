@@ -34,9 +34,9 @@
 
 /* Connection states */
 typedef enum {
-    WS_STATE_EMPTY = 0,     /* Slot is free */
-    WS_STATE_HANDSHAKE,     /* Waiting for HTTP upgrade */
-    WS_STATE_OPEN,          /* WebSocket connection established */
+	WS_STATE_EMPTY = 0,		/* Slot is free */
+	WS_STATE_HANDSHAKE,		/* Waiting for HTTP upgrade */
+	WS_STATE_OPEN,			/* WebSocket connection established */
 } ws_conn_state_t;
 
 /* Maximum seconds a connection may remain in HANDSHAKE state before
@@ -45,18 +45,18 @@ typedef enum {
 
 /* Per-connection state */
 typedef struct {
-    int fd;
-    ws_conn_state_t state;
-    uint8_t *recv_buf;
-    size_t recv_len;
-    time_t handshake_start;  /* time(NULL) when connection entered HANDSHAKE state */
+	int fd;
+	ws_conn_state_t state;
+	uint8_t *recv_buf;
+	size_t recv_len;
+	time_t handshake_start;	 /* time(NULL) when connection entered HANDSHAKE state */
 } ws_conn_t;
 
 /* Server state */
 typedef struct {
-    int listen_fd;
-    ws_conn_t clients[WS_MAX_CLIENTS];
-    int port;
+	int listen_fd;
+	ws_conn_t clients[WS_MAX_CLIENTS];
+	int port;
 } ws_server_t;
 
 /*

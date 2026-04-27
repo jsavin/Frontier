@@ -17,7 +17,7 @@
 #include "cli_parser.h"
 #include "ws_server.h"
 #include "../Common/headers/frontier.h"
-#include "../Common/headers/lang.h"  /* For hdlhashtable */
+#include "../Common/headers/lang.h"	 /* For hdlhashtable */
 
 /* Maximum length for REPL navigation paths */
 #define REPL_PATH_MAX_LEN 512
@@ -29,10 +29,10 @@ int repl_main(cli_options_t *options, ws_server_t *ws_server);
 /* Result from index-aware path navigation (repl_navigate_path_ex).
  * Can represent either a table or a scalar value at the end of a path. */
 typedef struct {
-    hdlhashtable htable;    /* non-nil if result is a table */
-    tyvaluerecord val;      /* the value (valid for both table and scalar results) */
-    hdlhashnode hnode;      /* the node containing the value */
-    boolean is_table;       /* true if result is a navigable table */
+	hdlhashtable htable;	/* non-nil if result is a table */
+	tyvaluerecord val;		/* the value (valid for both table and scalar results) */
+	hdlhashnode hnode;		/* the node containing the value */
+	boolean is_table;		/* true if result is a navigable table */
 } typathlookupresult;
 
 /* REPL Navigation - similar to CWD in a shell */
@@ -61,11 +61,11 @@ hdlhashtable repl_resolve_path(const char *path, char *resolved_path, size_t pat
  * Supports [n] index syntax (1-based) and relative paths.
  *
  * Resolution precedence (differs from repl_resolve_path for tables-only):
- *   1. Empty path → current focused table
- *   2. Script expressions → delegated to repl_resolve_path()
- *   3. Relative to current focused table (if not at root) — tried FIRST
- *   4. Single component without index → roottable lookup, then system.paths
- *   5. Absolute path via navigate_path_with_index()
+ *	 1. Empty path → current focused table
+ *	 2. Script expressions → delegated to repl_resolve_path()
+ *	 3. Relative to current focused table (if not at root) — tried FIRST
+ *	 4. Single component without index → roottable lookup, then system.paths
+ *	 5. Absolute path via navigate_path_with_index()
  *
  * Note: repl_resolve_path() uses the same order for multi-component paths
  * but tries roottable BEFORE system.paths for single components. Both
@@ -86,8 +86,8 @@ hdlhashtable repl_resolve_path(const char *path, char *resolved_path, size_t pat
  * operations that could mutate the ODB.
  */
 boolean repl_resolve_path_ex(const char *path, typathlookupresult *result,
-                              char *resolved_path, size_t path_bufsize,
-                              char *error_msg, size_t error_bufsize);
+							  char *resolved_path, size_t path_bufsize,
+							  char *error_msg, size_t error_bufsize);
 
 /* Check if REPL mode is currently active.
  * Used by msg() to add "msg: " prefix in interactive mode.

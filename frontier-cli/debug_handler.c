@@ -44,12 +44,12 @@ extern hdlhashtable roottable;
 /* Forward declarations — these functions exist in Common/source but have no
  * header declaration. Used by debug/getSource for script path resolution
  * and outline-to-text conversion. */
-extern boolean opgetlangtext(hdloutlinerecord, boolean, Handle *);  /* oplangtext.c */
-extern boolean opverbinmemory(const struct db_context *, hdlexternalvariable);  /* opverbs.c */
+extern boolean opgetlangtext(hdloutlinerecord, boolean, Handle *);	/* oplangtext.c */
+extern boolean opverbinmemory(const struct db_context *, hdlexternalvariable);	/* opverbs.c */
 extern void db_context_init(struct db_context *);  /* db_format.c */
 extern void db_context_init_legacy_read(struct db_context *, hdldatabaserecord);  /* db_format.c */
 extern boolean db_format_is_legacy_db(hdldatabaserecord);  /* db_format.c */
-extern boolean langfastaddresstotable(hdlhashtable, bigstring, hdlhashtable *);  /* langops.c */
+extern boolean langfastaddresstotable(hdlhashtable, bigstring, hdlhashtable *);	 /* langops.c */
 
 /*
  * Maximum number of concurrent debug threads.
@@ -83,17 +83,17 @@ static atomic_bool g_debug_thread_was_killed = false; /* set when a debug thread
  * ======================================================================== */
 
 #define MAX_BREAKPOINTS 256
-#define DEBUG_VALUE_MAX 256  /* shared: breakpoint conditions + watchpoint values */
+#define DEBUG_VALUE_MAX 256	 /* shared: breakpoint conditions + watchpoint values */
 
 typedef struct {
-    char script[DEBUG_SCRIPT_PATH_MAX]; /* dotted script path, e.g. "mainResponder.respond" */
-    unsigned long line;                 /* 1-based line number */
-    boolean active;                     /* is this slot in use? */
-    char condition[DEBUG_VALUE_MAX];    /* optional condition expression (Phase 7).
-                                         * Empty string = unconditional breakpoint.
-                                         * Simple format: "varname op value" where op is
-                                         * ==, !=, >, <, >=, <=. Evaluated against locals
-                                         * when breakpoint line is reached. */
+	char script[DEBUG_SCRIPT_PATH_MAX]; /* dotted script path, e.g. "mainResponder.respond" */
+	unsigned long line;					/* 1-based line number */
+	boolean active;						/* is this slot in use? */
+	char condition[DEBUG_VALUE_MAX];	/* optional condition expression (Phase 7).
+										 * Empty string = unconditional breakpoint.
+										 * Simple format: "varname op value" where op is
+										 * ==, !=, >, <, >=, <=. Evaluated against locals
+										 * when breakpoint line is reached. */
 } debug_breakpoint_t;
 
 static debug_breakpoint_t g_breakpoints[MAX_BREAKPOINTS] = {0};
@@ -115,10 +115,10 @@ static atomic_bool g_has_breakpoints = false; /* fast-path: skip mutex when no b
 #define DEBUG_VARNAME_MAX 64
 
 typedef struct {
-    char varname[DEBUG_VARNAME_MAX];    /* variable name to watch */
-    char last_value[DEBUG_VALUE_MAX];   /* last known value (string repr) */
-    boolean has_snapshot;               /* have we taken an initial snapshot? */
-    boolean active;                     /* is this slot in use? */
+	char varname[DEBUG_VARNAME_MAX];	/* variable name to watch */
+	char last_value[DEBUG_VALUE_MAX];	/* last known value (string repr) */
+	boolean has_snapshot;				/* have we taken an initial snapshot? */
+	boolean active;						/* is this slot in use? */
 } debug_watchpoint_t;
 
 static debug_watchpoint_t g_watchpoints[MAX_WATCHPOINTS] = {0};
@@ -129,15 +129,15 @@ static atomic_bool g_has_watchpoints = false; /* fast-path */
  * ======================================================================== */
 
 const char *debug_reason_string(debug_suspend_reason_t reason) {
-    switch (reason) {
-        case DEBUG_REASON_ENTRY:       return "entry";
-        case DEBUG_REASON_INTERRUPTED: return "interrupted";
-        case DEBUG_REASON_BREAKPOINT:  return "breakpoint";
-        case DEBUG_REASON_STEP:        return "step";
-        case DEBUG_REASON_WATCHPOINT:  return "watchpoint";
-        case DEBUG_REASON_ERROR:       return "error";
-        default:                       return "unknown";
-    }
+	switch (reason) {
+		case DEBUG_REASON_ENTRY:	   return "entry";
+		case DEBUG_REASON_INTERRUPTED: return "interrupted";
+		case DEBUG_REASON_BREAKPOINT:  return "breakpoint";
+		case DEBUG_REASON_STEP:		   return "step";
+		case DEBUG_REASON_WATCHPOINT:  return "watchpoint";
+		case DEBUG_REASON_ERROR:	   return "error";
+		default:					   return "unknown";
+	}
 }
 
 /* ========================================================================
@@ -155,84 +155,84 @@ const char *debug_reason_string(debug_suspend_reason_t reason) {
  */
 static tydebugstate *debug_get_state_for_thread(long threadid) {
 
-    pthread_mutex_lock(&g_debug_mutex);
+	pthread_mutex_lock(&g_debug_mutex);
 
-    for (int i = 0; i < MAX_DEBUG_THREADS; i++) {
-        if (g_debug_threads[i] != NULL && g_debug_threads[i]->threadid == threadid) {
-            tydebugstate *state = g_debug_threads[i];
-            atomic_fetch_add(&state->refcount, 1); /* caller borrows a reference */
-            pthread_mutex_unlock(&g_debug_mutex);
-            return state;
-        }
-    }
+	for (int i = 0; i < MAX_DEBUG_THREADS; i++) {
+		if (g_debug_threads[i] != NULL && g_debug_threads[i]->threadid == threadid) {
+			tydebugstate *state = g_debug_threads[i];
+			atomic_fetch_add(&state->refcount, 1); /* caller borrows a reference */
+			pthread_mutex_unlock(&g_debug_mutex);
+			return state;
+		}
+	}
 
-    pthread_mutex_unlock(&g_debug_mutex);
-    return NULL;
+	pthread_mutex_unlock(&g_debug_mutex);
+	return NULL;
 }
 
 static tydebugstate *debug_register_thread(long threadid, transport_t *transport) {
 
-    tydebugstate *state = (tydebugstate *)calloc(1, sizeof(tydebugstate));
-    if (state == NULL)
-        return NULL;
+	tydebugstate *state = (tydebugstate *)calloc(1, sizeof(tydebugstate));
+	if (state == NULL)
+		return NULL;
 
-    state->fldebugmode = true;
-    atomic_store(&state->flsuspended, false);
-    atomic_store(&state->flinterrupt, false);
-    atomic_store(&state->flkill, false);
-    atomic_store(&state->refcount, 1); /* debug thread owns initial reference */
-    state->transport = transport;
-    state->threadid = threadid;
+	state->fldebugmode = true;
+	atomic_store(&state->flsuspended, false);
+	atomic_store(&state->flinterrupt, false);
+	atomic_store(&state->flkill, false);
+	atomic_store(&state->refcount, 1); /* debug thread owns initial reference */
+	state->transport = transport;
+	state->threadid = threadid;
 
-    pthread_mutex_lock(&g_debug_mutex);
+	pthread_mutex_lock(&g_debug_mutex);
 
-    for (int i = 0; i < MAX_DEBUG_THREADS; i++) {
-        if (g_debug_threads[i] == NULL) {
-            g_debug_threads[i] = state;
-            pthread_mutex_unlock(&g_debug_mutex);
-            return state;
-        }
-    }
+	for (int i = 0; i < MAX_DEBUG_THREADS; i++) {
+		if (g_debug_threads[i] == NULL) {
+			g_debug_threads[i] = state;
+			pthread_mutex_unlock(&g_debug_mutex);
+			return state;
+		}
+	}
 
-    pthread_mutex_unlock(&g_debug_mutex);
-    free(state);
-    return NULL; /* no slots available */
+	pthread_mutex_unlock(&g_debug_mutex);
+	free(state);
+	return NULL; /* no slots available */
 }
 
 static void debug_unregister_thread(long threadid) {
 
-    tydebugstate *state = NULL;
+	tydebugstate *state = NULL;
 
-    pthread_mutex_lock(&g_debug_mutex);
+	pthread_mutex_lock(&g_debug_mutex);
 
-    for (int i = 0; i < MAX_DEBUG_THREADS; i++) {
-        if (g_debug_threads[i] != NULL && g_debug_threads[i]->threadid == threadid) {
-            state = g_debug_threads[i];
-            g_debug_threads[i] = NULL; /* remove from registry */
-            break;
-        }
-    }
+	for (int i = 0; i < MAX_DEBUG_THREADS; i++) {
+		if (g_debug_threads[i] != NULL && g_debug_threads[i]->threadid == threadid) {
+			state = g_debug_threads[i];
+			g_debug_threads[i] = NULL; /* remove from registry */
+			break;
+		}
+	}
 
-    pthread_mutex_unlock(&g_debug_mutex);
+	pthread_mutex_unlock(&g_debug_mutex);
 
-    /* Release the debug thread's reference. If a protocol handler also holds
-     * a reference (from debug_get_state_for_thread), the struct stays alive
-     * until they call debug_release_state. */
-    if (state != NULL)
-        debug_release_state(state);
+	/* Release the debug thread's reference. If a protocol handler also holds
+	 * a reference (from debug_get_state_for_thread), the struct stays alive
+	 * until they call debug_release_state. */
+	if (state != NULL)
+		debug_release_state(state);
 }
 
 void debug_release_state(tydebugstate *state) {
 
-    if (state == NULL)
-        return;
+	if (state == NULL)
+		return;
 
-    int old = atomic_fetch_sub(&state->refcount, 1);
-    assert(old > 0); /* refcount underflow */
-    if (old == 1) {
-        /* Last reference — safe to free */
-        free(state);
-    }
+	int old = atomic_fetch_sub(&state->refcount, 1);
+	assert(old > 0); /* refcount underflow */
+	if (old == 1) {
+		/* Last reference — safe to free */
+		free(state);
+	}
 }
 
 /* Thread IDs captured during kill, joined during shutdown.
@@ -245,57 +245,57 @@ static pthread_t g_killed_threads[MAX_DEBUG_THREADS];
 static int g_killed_thread_count = 0;
 
 boolean debug_is_safe_to_save(void) {
-    return !atomic_load(&g_debug_thread_was_killed);
+	return !atomic_load(&g_debug_thread_was_killed);
 }
 
 boolean debug_has_active_threads(void) {
 
-    boolean active = false;
+	boolean active = false;
 
-    pthread_mutex_lock(&g_debug_mutex);
+	pthread_mutex_lock(&g_debug_mutex);
 
-    for (int i = 0; i < MAX_DEBUG_THREADS; i++) {
-        if (g_debug_threads[i] != NULL) {
-            active = true;
-            break;
-        }
-    }
+	for (int i = 0; i < MAX_DEBUG_THREADS; i++) {
+		if (g_debug_threads[i] != NULL) {
+			active = true;
+			break;
+		}
+	}
 
-    pthread_mutex_unlock(&g_debug_mutex);
-    return active;
+	pthread_mutex_unlock(&g_debug_mutex);
+	return active;
 }
 
 void debug_kill_all_threads(void) {
 
-    pthread_mutex_lock(&g_debug_mutex);
+	pthread_mutex_lock(&g_debug_mutex);
 
-    g_killed_thread_count = 0;
+	g_killed_thread_count = 0;
 
-    for (int i = 0; i < MAX_DEBUG_THREADS; i++) {
-        if (g_debug_threads[i] != NULL) {
-            /* Killing a thread mid-execution corrupts hash table state.
-             * Mark as unsafe so save-on-exit is skipped. */
-            atomic_store(&g_debug_thread_was_killed, true);
+	for (int i = 0; i < MAX_DEBUG_THREADS; i++) {
+		if (g_debug_threads[i] != NULL) {
+			/* Killing a thread mid-execution corrupts hash table state.
+			 * Mark as unsafe so save-on-exit is skipped. */
+			atomic_store(&g_debug_thread_was_killed, true);
 
-            /* Capture pthread_t before the thread can unregister and free state */
-            g_killed_threads[g_killed_thread_count++] = g_debug_threads[i]->pthread_id;
-            atomic_store_explicit(&g_debug_threads[i]->flkill, true, memory_order_seq_cst);
-            atomic_store_explicit(&g_debug_threads[i]->flsuspended, false, memory_order_seq_cst); /* wake suspended threads */
-        }
-    }
+			/* Capture pthread_t before the thread can unregister and free state */
+			g_killed_threads[g_killed_thread_count++] = g_debug_threads[i]->pthread_id;
+			atomic_store_explicit(&g_debug_threads[i]->flkill, true, memory_order_seq_cst);
+			atomic_store_explicit(&g_debug_threads[i]->flsuspended, false, memory_order_seq_cst); /* wake suspended threads */
+		}
+	}
 
-    pthread_mutex_unlock(&g_debug_mutex);
+	pthread_mutex_unlock(&g_debug_mutex);
 }
 
 void debug_join_all_threads(void) {
 
-    /* Join threads captured by debug_kill_all_threads. Must be called
-     * with GIL released so threads can acquire it to finish cleanup. */
-    for (int i = 0; i < g_killed_thread_count; i++) {
-        pthread_join(g_killed_threads[i], NULL);
-    }
+	/* Join threads captured by debug_kill_all_threads. Must be called
+	 * with GIL released so threads can acquire it to finish cleanup. */
+	for (int i = 0; i < g_killed_thread_count; i++) {
+		pthread_join(g_killed_threads[i], NULL);
+	}
 
-    g_killed_thread_count = 0;
+	g_killed_thread_count = 0;
 }
 
 /* ========================================================================
@@ -306,24 +306,24 @@ void debug_join_all_threads(void) {
  * The enum is converted to a JSON-safe string via debug_reason_string(). */
 void debug_send_suspended(transport_t *transport, long threadid, long line, debug_suspend_reason_t reason) {
 
-    char json[512];
-    snprintf(json, sizeof(json),
-             "{\"id\":null,\"op\":\"debug/suspended\",\"params\":"
-             "{\"threadId\":%ld,\"line\":%ld,\"reason\":\"%s\"}}",
-             threadid, line, debug_reason_string(reason));
+	char json[512];
+	snprintf(json, sizeof(json),
+			 "{\"id\":null,\"op\":\"debug/suspended\",\"params\":"
+			 "{\"threadId\":%ld,\"line\":%ld,\"reason\":\"%s\"}}",
+			 threadid, line, debug_reason_string(reason));
 
-    transport->write_line(transport->ctx, json, strlen(json));
+	transport->write_line(transport->ctx, json, strlen(json));
 }
 
 static void debug_send_completed(transport_t *transport, long threadid, boolean success) {
 
-    char json[256];
-    snprintf(json, sizeof(json),
-             "{\"id\":null,\"op\":\"debug/completed\",\"params\":"
-             "{\"threadId\":%ld,\"success\":%s}}",
-             threadid, success ? "true" : "false");
+	char json[256];
+	snprintf(json, sizeof(json),
+			 "{\"id\":null,\"op\":\"debug/completed\",\"params\":"
+			 "{\"threadId\":%ld,\"success\":%s}}",
+			 threadid, success ? "true" : "false");
 
-    transport->write_line(transport->ctx, json, strlen(json));
+	transport->write_line(transport->ctx, json, strlen(json));
 }
 
 /* ========================================================================
@@ -336,89 +336,89 @@ static void debug_send_completed(transport_t *transport, long threadid, boolean 
 
 static boolean debug_push_sourcecode(hdlhashtable htable, hdlhashnode hnode, bigstring bsname) {
 
-    (void)hnode;
+	(void)hnode;
 
-    if (hthreadglobals == nil)
-        return true;
+	if (hthreadglobals == nil)
+		return true;
 
-    tydebugstate *state = (tydebugstate *)((**hthreadglobals).debugstate);
+	tydebugstate *state = (tydebugstate *)((**hthreadglobals).debugstate);
 
-    if (state == NULL || !state->fldebugmode)
-        return true;
+	if (state == NULL || !state->fldebugmode)
+		return true;
 
-    /* Save current script path on the stack before overwriting */
-    if (state->script_stack_depth < DEBUG_SCRIPT_STACK_MAX) {
-        memcpy(state->script_stack[state->script_stack_depth],
-               state->current_script, DEBUG_SCRIPT_PATH_MAX);
-        state->script_stack_lines[state->script_stack_depth] = atomic_load(&state->lastlnum);
-        state->script_stack_depth++;
-    } else {
-        /* Stack overflow — track the imbalance so pop skips the corresponding restore.
-         * Clear current_script to avoid false breakpoint matches: we can't save the
-         * caller's path, so it's safer to match nothing than to leave a stale path
-         * that persists into the caller after this frame returns. */
-        state->script_stack_overflow++;
-        state->current_script[0] = '\0';
-    }
+	/* Save current script path on the stack before overwriting */
+	if (state->script_stack_depth < DEBUG_SCRIPT_STACK_MAX) {
+		memcpy(state->script_stack[state->script_stack_depth],
+			   state->current_script, DEBUG_SCRIPT_PATH_MAX);
+		state->script_stack_lines[state->script_stack_depth] = atomic_load(&state->lastlnum);
+		state->script_stack_depth++;
+	} else {
+		/* Stack overflow — track the imbalance so pop skips the corresponding restore.
+		 * Clear current_script to avoid false breakpoint matches: we can't save the
+		 * caller's path, so it's safer to match nothing than to leave a stale path
+		 * that persists into the caller after this frame returns. */
+		state->script_stack_overflow++;
+		state->current_script[0] = '\0';
+	}
 
-    /* Build full dotted path from table + name */
-    bigstring bspath;
-    hdlwindowinfo hroot = NULL;
+	/* Build full dotted path from table + name */
+	bigstring bspath;
+	hdlwindowinfo hroot = NULL;
 
-    if (langexternalgetfullpath(htable, bsname, bspath, &hroot)) {
-        (void)hroot; /* used only by langexternalgetfullpath, not needed here */
-        /* Convert Pascal string to C string, store in debug state.
-         * Path is like "mainResponder.respond" (no leading @). */
-        int len = bspath[0];
-        if (len >= DEBUG_SCRIPT_PATH_MAX)
-            len = DEBUG_SCRIPT_PATH_MAX - 1;
-        memcpy(state->current_script, bspath + 1, (size_t)len);
-        state->current_script[len] = '\0';
+	if (langexternalgetfullpath(htable, bsname, bspath, &hroot)) {
+		(void)hroot; /* used only by langexternalgetfullpath, not needed here */
+		/* Convert Pascal string to C string, store in debug state.
+		 * Path is like "mainResponder.respond" (no leading @). */
+		int len = bspath[0];
+		if (len >= DEBUG_SCRIPT_PATH_MAX)
+			len = DEBUG_SCRIPT_PATH_MAX - 1;
+		memcpy(state->current_script, bspath + 1, (size_t)len);
+		state->current_script[len] = '\0';
 
-        log_debug(LOG_COMP_LANG, "debug: push source '%s' for thread %ld", state->current_script, state->threadid);
-    } else {
-        /* Path resolution failed — clear to avoid false breakpoint matches */
-        state->current_script[0] = '\0';
-    }
+		log_debug(LOG_COMP_LANG, "debug: push source '%s' for thread %ld", state->current_script, state->threadid);
+	} else {
+		/* Path resolution failed — clear to avoid false breakpoint matches */
+		state->current_script[0] = '\0';
+	}
 
-    /* Track call depth for step-over/step-out.
-     * Incremented on every function call entry, decremented on return.
-     * Used by the stepping logic: step-over stops when depth returns to
-     * the same level, step-out stops when depth decreases. */
-    atomic_fetch_add(&state->calldepth, 1);
+	/* Track call depth for step-over/step-out.
+	 * Incremented on every function call entry, decremented on return.
+	 * Used by the stepping logic: step-over stops when depth returns to
+	 * the same level, step-out stops when depth decreases. */
+	atomic_fetch_add(&state->calldepth, 1);
 
-    return true;
+	return true;
 }
 
 static boolean debug_pop_sourcecode(void) {
 
-    if (hthreadglobals == nil)
-        return true;
+	if (hthreadglobals == nil)
+		return true;
 
-    tydebugstate *state = (tydebugstate *)((**hthreadglobals).debugstate);
+	tydebugstate *state = (tydebugstate *)((**hthreadglobals).debugstate);
 
-    if (state == NULL || !state->fldebugmode)
-        return true;
+	if (state == NULL || !state->fldebugmode)
+		return true;
 
-    /* Restore caller's script path from the stack.
-     * If we overflowed on push, consume the overflow counter instead
-     * of restoring — the saved path was never recorded. */
-    if (state->script_stack_overflow > 0) {
-        state->script_stack_overflow--;
-    } else if (state->script_stack_depth > 0) {
-        state->script_stack_depth--;
-        memcpy(state->current_script,
-               state->script_stack[state->script_stack_depth], DEBUG_SCRIPT_PATH_MAX);
-    } else {
-        state->current_script[0] = '\0';
-    }
+	/* Restore caller's script path from the stack.
+	 * If we overflowed on push, consume the overflow counter instead
+	 * of restoring — the saved path was never recorded. */
+	if (state->script_stack_overflow > 0) {
+		state->script_stack_overflow--;
+	} else if (state->script_stack_depth > 0) {
+		state->script_stack_depth--;
+		memcpy(state->current_script,
+			   state->script_stack[state->script_stack_depth], DEBUG_SCRIPT_PATH_MAX);
+	} else {
+		state->current_script[0] = '\0';
+	}
 
-    /* Decrement call depth (balanced with increment in push).
-     * Guard against underflow from unbalanced interpreter error paths. */
-    if (atomic_load(&state->calldepth) > 0)
-        atomic_fetch_sub(&state->calldepth, 1);
+	/* Decrement call depth (balanced with increment in push).
+	 * Guard against underflow from unbalanced interpreter error paths. */
+	if (atomic_load(&state->calldepth) > 0)
+		atomic_fetch_sub(&state->calldepth, 1);
 
-    return true;
+	return true;
 }
 
 /* ========================================================================
@@ -437,466 +437,466 @@ static boolean debug_pop_sourcecode(void) {
  */
 static boolean protocol_debugger_callback(hdltreenode hnode) {
 
-    /* Get debug state from thread globals. debugstate is set to a
-     * tydebugstate* by debug_thread_entry. For non-debug threads it's NULL
-     * (calloc-initialized). The cast is safe as long as only debug_handler.c
-     * writes to debugstate. */
-    if (hthreadglobals == nil)
-        return true;
+	/* Get debug state from thread globals. debugstate is set to a
+	 * tydebugstate* by debug_thread_entry. For non-debug threads it's NULL
+	 * (calloc-initialized). The cast is safe as long as only debug_handler.c
+	 * writes to debugstate. */
+	if (hthreadglobals == nil)
+		return true;
 
-    tydebugstate *state = (tydebugstate *)((**hthreadglobals).debugstate);
+	tydebugstate *state = (tydebugstate *)((**hthreadglobals).debugstate);
 
-    if (state == NULL || !state->fldebugmode)
-        return true; /* not debugging this thread */
+	if (state == NULL || !state->fldebugmode)
+		return true; /* not debugging this thread */
 
-    /* Check kill flag */
-    if (atomic_load(&state->flkill)) {
-        log_debug(LOG_COMP_LANG, "debug: thread %ld killed", state->threadid);
-        return false;
-    }
+	/* Check kill flag */
+	if (atomic_load(&state->flkill)) {
+		log_debug(LOG_COMP_LANG, "debug: thread %ld killed", state->threadid);
+		return false;
+	}
 
-    /* Get current line number */
-    unsigned long lnum = (hnode != nil) ? (**hnode).lnum : 0;
+	/* Get current line number */
+	unsigned long lnum = (hnode != nil) ? (**hnode).lnum : 0;
 
-    /* Determine if this is a "steppable" node. Infrastructure nodes (module,
-     * noop, bundle, local, assignlocal) should execute normally but not
-     * trigger stepping suspensions — they're not meaningful "lines" to
-     * stop on. The callback still returns true (continue executing). */
-    boolean flsteppable = true;
-    if (hnode != nil) {
-        short op = (**hnode).nodetype;
-        if (op == moduleop || op == noop || op == bundleop || op == localop || op == assignlocalop)
-            flsteppable = false;
-    }
+	/* Determine if this is a "steppable" node. Infrastructure nodes (module,
+	 * noop, bundle, local, assignlocal) should execute normally but not
+	 * trigger stepping suspensions — they're not meaningful "lines" to
+	 * stop on. The callback still returns true (continue executing). */
+	boolean flsteppable = true;
+	if (hnode != nil) {
+		short op = (**hnode).nodetype;
+		if (op == moduleop || op == noop || op == bundleop || op == localop || op == assignlocalop)
+			flsteppable = false;
+	}
 
-    /* Check interrupt flag (debug/pause) — only on steppable nodes */
-    if (flsteppable && atomic_load(&state->flinterrupt)) {
-        atomic_store_explicit(&state->flinterrupt, false, memory_order_seq_cst);
-        atomic_store_explicit(&state->flsuspended, true, memory_order_seq_cst);
+	/* Check interrupt flag (debug/pause) — only on steppable nodes */
+	if (flsteppable && atomic_load(&state->flinterrupt)) {
+		atomic_store_explicit(&state->flinterrupt, false, memory_order_seq_cst);
+		atomic_store_explicit(&state->flsuspended, true, memory_order_seq_cst);
 
-        atomic_store(&state->lastlnum, lnum);
+		atomic_store(&state->lastlnum, lnum);
 
-        debug_send_suspended(state->transport, state->threadid, (long)lnum, DEBUG_REASON_INTERRUPTED);
-        log_debug(LOG_COMP_LANG, "debug: thread %ld interrupted at line %ld", state->threadid, (long)lnum);
-    }
+		debug_send_suspended(state->transport, state->threadid, (long)lnum, DEBUG_REASON_INTERRUPTED);
+		log_debug(LOG_COMP_LANG, "debug: thread %ld interrupted at line %ld", state->threadid, (long)lnum);
+	}
 
-    /* Breakpoint check (Phase 3) — if not already suspended, check if there's
-     * a breakpoint matching the current script and line number. Unlike stepping
-     * (which skips infrastructure nodes), breakpoints fire on any line including
-     * local declarations.
-     *
-     * current_script is thread-local to the debug thread (written only by push/pop
-     * callbacks on this same thread) — no lock needed. g_debug_mutex protects only
-     * the shared g_breakpoints array.
-     *
-     * Fast-path: g_has_breakpoints is checked with relaxed ordering to skip
-     * the mutex entirely when no breakpoints are set (common case). */
-    /* Skip breakpoint check when stepping from the same line at the same depth —
-     * the step should advance past the current breakpoint, not re-trigger it.
-     * A recursive call at the same lnum but greater calldepth is NOT skipped,
-     * since the breakpoint should fire on re-entry at a different call level.
-     *
-     * The multiple atomic_load calls form a consistent snapshot because the
-     * callback runs with the GIL held — no other thread can modify these fields. */
-    /* Skip breakpoint re-trigger on the same line we just resumed from.
-     * After any suspension, flskipaliasline is set. While true, breakpoints
-     * at lastlnum are skipped (multiple AST nodes per source line). Once the
-     * line number changes (next source line), the flag is cleared and
-     * breakpoints fire normally — including if a loop returns to lastlnum. */
-    boolean flskipbreakpoint = false;
-    if (state->flskipaliasline && lnum > 0) {
-        if (lnum == atomic_load(&state->lastlnum)) {
-            flskipbreakpoint = true;
-        } else {
-            state->flskipaliasline = false; /* line changed — re-enable breakpoints */
-        }
-    }
+	/* Breakpoint check (Phase 3) — if not already suspended, check if there's
+	 * a breakpoint matching the current script and line number. Unlike stepping
+	 * (which skips infrastructure nodes), breakpoints fire on any line including
+	 * local declarations.
+	 *
+	 * current_script is thread-local to the debug thread (written only by push/pop
+	 * callbacks on this same thread) — no lock needed. g_debug_mutex protects only
+	 * the shared g_breakpoints array.
+	 *
+	 * Fast-path: g_has_breakpoints is checked with relaxed ordering to skip
+	 * the mutex entirely when no breakpoints are set (common case). */
+	/* Skip breakpoint check when stepping from the same line at the same depth —
+	 * the step should advance past the current breakpoint, not re-trigger it.
+	 * A recursive call at the same lnum but greater calldepth is NOT skipped,
+	 * since the breakpoint should fire on re-entry at a different call level.
+	 *
+	 * The multiple atomic_load calls form a consistent snapshot because the
+	 * callback runs with the GIL held — no other thread can modify these fields. */
+	/* Skip breakpoint re-trigger on the same line we just resumed from.
+	 * After any suspension, flskipaliasline is set. While true, breakpoints
+	 * at lastlnum are skipped (multiple AST nodes per source line). Once the
+	 * line number changes (next source line), the flag is cleared and
+	 * breakpoints fire normally — including if a loop returns to lastlnum. */
+	boolean flskipbreakpoint = false;
+	if (state->flskipaliasline && lnum > 0) {
+		if (lnum == atomic_load(&state->lastlnum)) {
+			flskipbreakpoint = true;
+		} else {
+			state->flskipaliasline = false; /* line changed — re-enable breakpoints */
+		}
+	}
 
-    if (!flskipbreakpoint && atomic_load_explicit(&g_has_breakpoints, memory_order_relaxed) &&
-        lnum > 0 && !atomic_load(&state->flsuspended) && state->current_script[0] != '\0') {
+	if (!flskipbreakpoint && atomic_load_explicit(&g_has_breakpoints, memory_order_relaxed) &&
+		lnum > 0 && !atomic_load(&state->flsuspended) && state->current_script[0] != '\0') {
 
-        boolean flbreakpoint = false;
+		boolean flbreakpoint = false;
 
-        pthread_mutex_lock(&g_debug_mutex);
+		pthread_mutex_lock(&g_debug_mutex);
 
-        /* Find matching breakpoint and copy its condition (if any) */
-        char bp_condition[DEBUG_VALUE_MAX] = {0};
+		/* Find matching breakpoint and copy its condition (if any) */
+		char bp_condition[DEBUG_VALUE_MAX] = {0};
 
-        for (int i = 0; i < MAX_BREAKPOINTS; i++) {
-            if (g_breakpoints[i].active &&
-                g_breakpoints[i].line == lnum &&
-                strcasecmp(g_breakpoints[i].script, state->current_script) == 0) {
-                flbreakpoint = true;
-                memcpy(bp_condition, g_breakpoints[i].condition, DEBUG_VALUE_MAX);
-                break;
-            }
-        }
+		for (int i = 0; i < MAX_BREAKPOINTS; i++) {
+			if (g_breakpoints[i].active &&
+				g_breakpoints[i].line == lnum &&
+				strcasecmp(g_breakpoints[i].script, state->current_script) == 0) {
+				flbreakpoint = true;
+				memcpy(bp_condition, g_breakpoints[i].condition, DEBUG_VALUE_MAX);
+				break;
+			}
+		}
 
-        pthread_mutex_unlock(&g_debug_mutex);
+		pthread_mutex_unlock(&g_debug_mutex);
 
-        /* Evaluate condition if present (Phase 7).
-         * Simple format: "varname op value" where op is ==, !=, >, <, >=, <=.
-         * Compares string representation of the variable against expected value.
-         * Numeric comparison used when both sides parse as numbers. */
-        if (flbreakpoint && bp_condition[0] != '\0') {
-            boolean cond_met = false;
-            boolean cond_evaluated = false; /* did we actually evaluate the condition? */
-            char bp_condition_orig[DEBUG_VALUE_MAX]; /* preserve for logging before parse mutates */
-            memcpy(bp_condition_orig, bp_condition, DEBUG_VALUE_MAX);
+		/* Evaluate condition if present (Phase 7).
+		 * Simple format: "varname op value" where op is ==, !=, >, <, >=, <=.
+		 * Compares string representation of the variable against expected value.
+		 * Numeric comparison used when both sides parse as numbers. */
+		if (flbreakpoint && bp_condition[0] != '\0') {
+			boolean cond_met = false;
+			boolean cond_evaluated = false; /* did we actually evaluate the condition? */
+			char bp_condition_orig[DEBUG_VALUE_MAX]; /* preserve for logging before parse mutates */
+			memcpy(bp_condition_orig, bp_condition, DEBUG_VALUE_MAX);
 
-            /* Parse: find operator (check two-char ops before one-char) */
-            char *op_pos = NULL;
-            int op_len = 0;
-            enum { OP_EQ, OP_NE, OP_GE, OP_LE, OP_GT, OP_LT } op_type = OP_EQ;
+			/* Parse: find operator (check two-char ops before one-char) */
+			char *op_pos = NULL;
+			int op_len = 0;
+			enum { OP_EQ, OP_NE, OP_GE, OP_LE, OP_GT, OP_LT } op_type = OP_EQ;
 
-            if ((op_pos = strstr(bp_condition, "==")) != NULL) { op_len = 2; op_type = OP_EQ; }
-            else if ((op_pos = strstr(bp_condition, "!=")) != NULL) { op_len = 2; op_type = OP_NE; }
-            else if ((op_pos = strstr(bp_condition, ">=")) != NULL) { op_len = 2; op_type = OP_GE; }
-            else if ((op_pos = strstr(bp_condition, "<=")) != NULL) { op_len = 2; op_type = OP_LE; }
-            else if ((op_pos = strstr(bp_condition, ">")) != NULL) { op_len = 1; op_type = OP_GT; }
-            else if ((op_pos = strstr(bp_condition, "<")) != NULL) { op_len = 1; op_type = OP_LT; }
+			if ((op_pos = strstr(bp_condition, "==")) != NULL) { op_len = 2; op_type = OP_EQ; }
+			else if ((op_pos = strstr(bp_condition, "!=")) != NULL) { op_len = 2; op_type = OP_NE; }
+			else if ((op_pos = strstr(bp_condition, ">=")) != NULL) { op_len = 2; op_type = OP_GE; }
+			else if ((op_pos = strstr(bp_condition, "<=")) != NULL) { op_len = 2; op_type = OP_LE; }
+			else if ((op_pos = strstr(bp_condition, ">")) != NULL) { op_len = 1; op_type = OP_GT; }
+			else if ((op_pos = strstr(bp_condition, "<")) != NULL) { op_len = 1; op_type = OP_LT; }
 
-            if (op_pos != NULL) {
-                *op_pos = '\0';
-                char *varname = bp_condition;
-                char *expected = op_pos + op_len;
+			if (op_pos != NULL) {
+				*op_pos = '\0';
+				char *varname = bp_condition;
+				char *expected = op_pos + op_len;
 
-                /* Trim whitespace (guard against op at position 0) */
-                while (*varname == ' ') varname++;
-                if (op_pos > bp_condition) {
-                    char *vend = op_pos - 1;
-                    while (vend > varname && *vend == ' ') *vend-- = '\0';
-                }
-                while (*expected == ' ') expected++;
-                size_t explen = strlen(expected);
-                if (explen > 0) {
-                    char *eend = expected + explen - 1;
-                    while (eend > expected && *eend == ' ') *eend-- = '\0';
-                }
+				/* Trim whitespace (guard against op at position 0) */
+				while (*varname == ' ') varname++;
+				if (op_pos > bp_condition) {
+					char *vend = op_pos - 1;
+					while (vend > varname && *vend == ' ') *vend-- = '\0';
+				}
+				while (*expected == ' ') expected++;
+				size_t explen = strlen(expected);
+				if (explen > 0) {
+					char *eend = expected + explen - 1;
+					while (eend > expected && *eend == ' ') *eend-- = '\0';
+				}
 
-                /* Strip quotes from expected value */
-                size_t elen = strlen(expected);
-                if (elen >= 2 && expected[0] == '"' && expected[elen-1] == '"') {
-                    expected[elen-1] = '\0';
-                    expected++;
-                }
+				/* Strip quotes from expected value */
+				size_t elen = strlen(expected);
+				if (elen >= 2 && expected[0] == '"' && expected[elen-1] == '"') {
+					expected[elen-1] = '\0';
+					expected++;
+				}
 
-                /* Look up variable — walk the full hash table chain (locals,
-                 * enclosing scopes, globals) not just innermost local. */
-                bigstring bsname;
-                int nlen = (int)strlen(varname);
-                if (nlen > 255) nlen = 255;
-                bsname[0] = (unsigned char)nlen;
-                memcpy(bsname + 1, varname, (size_t)nlen);
+				/* Look up variable — walk the full hash table chain (locals,
+				 * enclosing scopes, globals) not just innermost local. */
+				bigstring bsname;
+				int nlen = (int)strlen(varname);
+				if (nlen > 255) nlen = 255;
+				bsname[0] = (unsigned char)nlen;
+				memcpy(bsname + 1, varname, (size_t)nlen);
 
-                tyvaluerecord cond_val;
-                hdlhashnode hn_cond = nil;
-                boolean found_var = false;
+				tyvaluerecord cond_val;
+				hdlhashnode hn_cond = nil;
+				boolean found_var = false;
 
-                hdlhashtable hwalk_cond = currenthashtable;
-                while (hwalk_cond != nil) {
-                    if (hashtablelookup(hwalk_cond, bsname, &cond_val, &hn_cond)) {
-                        found_var = true;
-                        break;
-                    }
-                    hwalk_cond = (**hwalk_cond).prevhashtable;
-                }
+				hdlhashtable hwalk_cond = currenthashtable;
+				while (hwalk_cond != nil) {
+					if (hashtablelookup(hwalk_cond, bsname, &cond_val, &hn_cond)) {
+						found_var = true;
+						break;
+					}
+					hwalk_cond = (**hwalk_cond).prevhashtable;
+				}
 
-                if (!found_var) {
-                    log_warn(LOG_COMP_LANG, "debug: condition variable '%s' not found at line %ld",
-                             varname, (long)lnum);
-                } else {
-                    bigstring bsval;
-                    if (hashgetvaluestring(cond_val, bsval)) {
-                        char actual[DEBUG_VALUE_MAX];
-                        int avlen = bsval[0];
-                        if (avlen >= DEBUG_VALUE_MAX) avlen = DEBUG_VALUE_MAX - 1;
-                        memcpy(actual, bsval + 1, (size_t)avlen);
-                        actual[avlen] = '\0';
+				if (!found_var) {
+					log_warn(LOG_COMP_LANG, "debug: condition variable '%s' not found at line %ld",
+							 varname, (long)lnum);
+				} else {
+					bigstring bsval;
+					if (hashgetvaluestring(cond_val, bsval)) {
+						char actual[DEBUG_VALUE_MAX];
+						int avlen = bsval[0];
+						if (avlen >= DEBUG_VALUE_MAX) avlen = DEBUG_VALUE_MAX - 1;
+						memcpy(actual, bsval + 1, (size_t)avlen);
+						actual[avlen] = '\0';
 
-                        cond_evaluated = true;
+						cond_evaluated = true;
 
-                        /* Try numeric comparison first */
-                        char *endp1, *endp2;
-                        double da = strtod(actual, &endp1);
-                        double de = strtod(expected, &endp2);
-                        if (*endp1 == '\0' && *endp2 == '\0') {
-                            /* Exact floating-point comparison — appropriate for
-                             * integer values stored as doubles (the common case).
-                             * Use string comparison for epsilon-sensitive floats. */
-                            switch (op_type) {
-                                case OP_EQ: cond_met = (da == de); break;
-                                case OP_NE: cond_met = (da != de); break;
-                                case OP_GE: cond_met = (da >= de); break;
-                                case OP_LE: cond_met = (da <= de); break;
-                                case OP_GT: cond_met = (da > de); break;
-                                case OP_LT: cond_met = (da < de); break;
-                            }
-                        } else {
-                            int cmp = strcmp(actual, expected);
-                            switch (op_type) {
-                                case OP_EQ: cond_met = (cmp == 0); break;
-                                case OP_NE: cond_met = (cmp != 0); break;
-                                case OP_GE: cond_met = (cmp >= 0); break;
-                                case OP_LE: cond_met = (cmp <= 0); break;
-                                case OP_GT: cond_met = (cmp > 0); break;
-                                case OP_LT: cond_met = (cmp < 0); break;
-                            }
-                        }
-                    }
-                }
-            } else {
-                log_warn(LOG_COMP_LANG, "debug: unparseable condition '%s' at line %ld (expected: varname op value)",
-                         bp_condition_orig, (long)lnum);
-            }
+						/* Try numeric comparison first */
+						char *endp1, *endp2;
+						double da = strtod(actual, &endp1);
+						double de = strtod(expected, &endp2);
+						if (*endp1 == '\0' && *endp2 == '\0') {
+							/* Exact floating-point comparison — appropriate for
+							 * integer values stored as doubles (the common case).
+							 * Use string comparison for epsilon-sensitive floats. */
+							switch (op_type) {
+								case OP_EQ: cond_met = (da == de); break;
+								case OP_NE: cond_met = (da != de); break;
+								case OP_GE: cond_met = (da >= de); break;
+								case OP_LE: cond_met = (da <= de); break;
+								case OP_GT: cond_met = (da > de); break;
+								case OP_LT: cond_met = (da < de); break;
+							}
+						} else {
+							int cmp = strcmp(actual, expected);
+							switch (op_type) {
+								case OP_EQ: cond_met = (cmp == 0); break;
+								case OP_NE: cond_met = (cmp != 0); break;
+								case OP_GE: cond_met = (cmp >= 0); break;
+								case OP_LE: cond_met = (cmp <= 0); break;
+								case OP_GT: cond_met = (cmp > 0); break;
+								case OP_LT: cond_met = (cmp < 0); break;
+							}
+						}
+					}
+				}
+			} else {
+				log_warn(LOG_COMP_LANG, "debug: unparseable condition '%s' at line %ld (expected: varname op value)",
+						 bp_condition_orig, (long)lnum);
+			}
 
-            if (!cond_met) {
-                if (cond_evaluated)
-                    log_debug(LOG_COMP_LANG, "debug: conditional breakpoint at line %ld skipped (condition '%s' evaluated to false)",
-                              (long)lnum, bp_condition_orig);
-                flbreakpoint = false;
-            }
-        }
+			if (!cond_met) {
+				if (cond_evaluated)
+					log_debug(LOG_COMP_LANG, "debug: conditional breakpoint at line %ld skipped (condition '%s' evaluated to false)",
+							  (long)lnum, bp_condition_orig);
+				flbreakpoint = false;
+			}
+		}
 
-        if (flbreakpoint) {
-            atomic_store(&state->lastlnum, lnum);
+		if (flbreakpoint) {
+			atomic_store(&state->lastlnum, lnum);
 
-            /* Clear stepping state if we were stepping — breakpoint takes priority */
-            atomic_store(&state->flstepping, false);
-            atomic_store(&state->stepdir, DEBUG_STEP_NONE);
+			/* Clear stepping state if we were stepping — breakpoint takes priority */
+			atomic_store(&state->flstepping, false);
+			atomic_store(&state->stepdir, DEBUG_STEP_NONE);
 
-            atomic_store_explicit(&state->flsuspended, true, memory_order_seq_cst);
-            debug_send_suspended(state->transport, state->threadid, (long)lnum, DEBUG_REASON_BREAKPOINT);
-            log_debug(LOG_COMP_LANG, "debug: thread %ld hit breakpoint at %s line %ld",
-                      state->threadid, state->current_script, (long)lnum);
-        }
-    }
+			atomic_store_explicit(&state->flsuspended, true, memory_order_seq_cst);
+			debug_send_suspended(state->transport, state->threadid, (long)lnum, DEBUG_REASON_BREAKPOINT);
+			log_debug(LOG_COMP_LANG, "debug: thread %ld hit breakpoint at %s line %ld",
+					  state->threadid, state->current_script, (long)lnum);
+		}
+	}
 
-    /* Watchpoint check (Phase 6) — if not already suspended and watchpoints
-     * exist, check if any watched variable has changed value since last check.
-     * Uses string representation comparison (hashgetvaluestring) to avoid
-     * the dispose-both-inputs issue with EQvalue.
-     *
-     * Watchpoints fire on steppable nodes only (meaningful lines where values
-     * could have changed). */
-    if (atomic_load_explicit(&g_has_watchpoints, memory_order_relaxed) &&
-        flsteppable && !atomic_load(&state->flsuspended)) {
+	/* Watchpoint check (Phase 6) — if not already suspended and watchpoints
+	 * exist, check if any watched variable has changed value since last check.
+	 * Uses string representation comparison (hashgetvaluestring) to avoid
+	 * the dispose-both-inputs issue with EQvalue.
+	 *
+	 * Watchpoints fire on steppable nodes only (meaningful lines where values
+	 * could have changed). */
+	if (atomic_load_explicit(&g_has_watchpoints, memory_order_relaxed) &&
+		flsteppable && !atomic_load(&state->flsuspended)) {
 
-        /* Use currenthashtable (correct under GIL) as starting point.
-         * Walk the full chain (locals, enclosing scopes, globals) for
-         * each watched variable — not just the innermost local table. */
-        if (currenthashtable != nil) {
-            pthread_mutex_lock(&g_debug_mutex);
+		/* Use currenthashtable (correct under GIL) as starting point.
+		 * Walk the full chain (locals, enclosing scopes, globals) for
+		 * each watched variable — not just the innermost local table. */
+		if (currenthashtable != nil) {
+			pthread_mutex_lock(&g_debug_mutex);
 
-            for (int w = 0; w < MAX_WATCHPOINTS; w++) {
-                if (!g_watchpoints[w].active)
-                    continue;
+			for (int w = 0; w < MAX_WATCHPOINTS; w++) {
+				if (!g_watchpoints[w].active)
+					continue;
 
-                /* Look up the variable by name — walk full scope chain */
-                bigstring bsname;
-                int nlen = (int)strlen(g_watchpoints[w].varname);
-                if (nlen > 255) nlen = 255;
-                bsname[0] = (unsigned char)nlen;
-                memcpy(bsname + 1, g_watchpoints[w].varname, (size_t)nlen);
+				/* Look up the variable by name — walk full scope chain */
+				bigstring bsname;
+				int nlen = (int)strlen(g_watchpoints[w].varname);
+				if (nlen > 255) nlen = 255;
+				bsname[0] = (unsigned char)nlen;
+				memcpy(bsname + 1, g_watchpoints[w].varname, (size_t)nlen);
 
-                tyvaluerecord val;
-                hdlhashnode hn = nil;
-                boolean found_wp_var = false;
-                hdlhashtable hwalk = currenthashtable;
-                while (hwalk != nil) {
-                    if (hashtablelookup(hwalk, bsname, &val, &hn)) {
-                        found_wp_var = true;
-                        break;
-                    }
-                    hwalk = (**hwalk).prevhashtable;
-                }
-                if (!found_wp_var)
-                    continue;
+				tyvaluerecord val;
+				hdlhashnode hn = nil;
+				boolean found_wp_var = false;
+				hdlhashtable hwalk = currenthashtable;
+				while (hwalk != nil) {
+					if (hashtablelookup(hwalk, bsname, &val, &hn)) {
+						found_wp_var = true;
+						break;
+					}
+					hwalk = (**hwalk).prevhashtable;
+				}
+				if (!found_wp_var)
+					continue;
 
-                /* Get current value as string */
-                bigstring bsval;
-                if (!hashgetvaluestring(val, bsval))
-                    continue;
+				/* Get current value as string */
+				bigstring bsval;
+				if (!hashgetvaluestring(val, bsval))
+					continue;
 
-                char cval[DEBUG_VALUE_MAX];
-                int vlen = bsval[0];
-                if (vlen >= DEBUG_VALUE_MAX) vlen = DEBUG_VALUE_MAX - 1;
-                memcpy(cval, bsval + 1, (size_t)vlen);
-                cval[vlen] = '\0';
-                if (bsval[0] >= 255) {
-                    /* Value was likely truncated by bigstring limit */
-                    if (vlen >= 4) {
-                        cval[vlen-3] = '.'; cval[vlen-2] = '.'; cval[vlen-1] = '.';
-                    }
-                }
+				char cval[DEBUG_VALUE_MAX];
+				int vlen = bsval[0];
+				if (vlen >= DEBUG_VALUE_MAX) vlen = DEBUG_VALUE_MAX - 1;
+				memcpy(cval, bsval + 1, (size_t)vlen);
+				cval[vlen] = '\0';
+				if (bsval[0] >= 255) {
+					/* Value was likely truncated by bigstring limit */
+					if (vlen >= 4) {
+						cval[vlen-3] = '.'; cval[vlen-2] = '.'; cval[vlen-1] = '.';
+					}
+				}
 
-                if (!g_watchpoints[w].has_snapshot) {
-                    /* First encounter — save snapshot, don't trigger */
-                    memcpy(g_watchpoints[w].last_value, cval, (size_t)(vlen + 1));
-                    g_watchpoints[w].has_snapshot = true;
-                    continue;
-                }
+				if (!g_watchpoints[w].has_snapshot) {
+					/* First encounter — save snapshot, don't trigger */
+					memcpy(g_watchpoints[w].last_value, cval, (size_t)(vlen + 1));
+					g_watchpoints[w].has_snapshot = true;
+					continue;
+				}
 
-                /* Compare with last known value */
-                if (strcmp(g_watchpoints[w].last_value, cval) != 0) {
-                    /* Value changed! Copy all needed data before releasing mutex */
-                    char old_value[DEBUG_VALUE_MAX];
-                    char fired_varname[DEBUG_VARNAME_MAX];
-                    memcpy(old_value, g_watchpoints[w].last_value, DEBUG_VALUE_MAX);
-                    memcpy(fired_varname, g_watchpoints[w].varname, DEBUG_VARNAME_MAX);
-                    memcpy(g_watchpoints[w].last_value, cval, (size_t)(vlen + 1));
+				/* Compare with last known value */
+				if (strcmp(g_watchpoints[w].last_value, cval) != 0) {
+					/* Value changed! Copy all needed data before releasing mutex */
+					char old_value[DEBUG_VALUE_MAX];
+					char fired_varname[DEBUG_VARNAME_MAX];
+					memcpy(old_value, g_watchpoints[w].last_value, DEBUG_VALUE_MAX);
+					memcpy(fired_varname, g_watchpoints[w].varname, DEBUG_VARNAME_MAX);
+					memcpy(g_watchpoints[w].last_value, cval, (size_t)(vlen + 1));
 
-                    pthread_mutex_unlock(&g_debug_mutex);
+					pthread_mutex_unlock(&g_debug_mutex);
 
-                    /* Clear stepping state — watchpoint takes priority */
-                    atomic_store(&state->flstepping, false);
-                    atomic_store(&state->stepdir, DEBUG_STEP_NONE);
-                    atomic_store(&state->lastlnum, lnum);
+					/* Clear stepping state — watchpoint takes priority */
+					atomic_store(&state->flstepping, false);
+					atomic_store(&state->stepdir, DEBUG_STEP_NONE);
+					atomic_store(&state->lastlnum, lnum);
 
-                    /* Send watchpoint notification with old/new values */
-                    cJSON *notif = cJSON_CreateObject();
-                    if (notif == NULL) {
-                        atomic_store_explicit(&state->flsuspended, true, memory_order_seq_cst);
-                        log_warn(LOG_COMP_LANG, "debug: cJSON_CreateObject failed (OOM) for watchpoint notification");
-                        goto after_stepping;
-                    }
-                    cJSON_AddNullToObject(notif, "id");
-                    cJSON_AddStringToObject(notif, "op", "debug/suspended");
-                    cJSON *wp_params = cJSON_CreateObject();
-                    cJSON_AddNumberToObject(wp_params, "threadId", (double)state->threadid);
-                    cJSON_AddNumberToObject(wp_params, "line", (double)lnum);
-                    cJSON_AddStringToObject(wp_params, "reason", "watchpoint");
-                    cJSON_AddStringToObject(wp_params, "variable", fired_varname);
-                    cJSON_AddStringToObject(wp_params, "oldValue", old_value);
-                    cJSON_AddStringToObject(wp_params, "newValue", cval);
-                    cJSON_AddItemToObject(notif, "params", wp_params);
+					/* Send watchpoint notification with old/new values */
+					cJSON *notif = cJSON_CreateObject();
+					if (notif == NULL) {
+						atomic_store_explicit(&state->flsuspended, true, memory_order_seq_cst);
+						log_warn(LOG_COMP_LANG, "debug: cJSON_CreateObject failed (OOM) for watchpoint notification");
+						goto after_stepping;
+					}
+					cJSON_AddNullToObject(notif, "id");
+					cJSON_AddStringToObject(notif, "op", "debug/suspended");
+					cJSON *wp_params = cJSON_CreateObject();
+					cJSON_AddNumberToObject(wp_params, "threadId", (double)state->threadid);
+					cJSON_AddNumberToObject(wp_params, "line", (double)lnum);
+					cJSON_AddStringToObject(wp_params, "reason", "watchpoint");
+					cJSON_AddStringToObject(wp_params, "variable", fired_varname);
+					cJSON_AddStringToObject(wp_params, "oldValue", old_value);
+					cJSON_AddStringToObject(wp_params, "newValue", cval);
+					cJSON_AddItemToObject(notif, "params", wp_params);
 
-                    /* Always suspend — even if notification serialization fails */
-                    atomic_store_explicit(&state->flsuspended, true, memory_order_seq_cst);
+					/* Always suspend — even if notification serialization fails */
+					atomic_store_explicit(&state->flsuspended, true, memory_order_seq_cst);
 
-                    char *json_str = cJSON_PrintUnformatted(notif);
-                    if (json_str) {
-                        state->transport->write_line(state->transport->ctx, json_str, strlen(json_str));
-                        free(json_str);
-                    } else {
-                        log_warn(LOG_COMP_LANG, "debug: cJSON_PrintUnformatted failed (OOM) for watchpoint notification");
-                    }
-                    cJSON_Delete(notif);
+					char *json_str = cJSON_PrintUnformatted(notif);
+					if (json_str) {
+						state->transport->write_line(state->transport->ctx, json_str, strlen(json_str));
+						free(json_str);
+					} else {
+						log_warn(LOG_COMP_LANG, "debug: cJSON_PrintUnformatted failed (OOM) for watchpoint notification");
+					}
+					cJSON_Delete(notif);
 
-                    log_debug(LOG_COMP_LANG, "debug: thread %ld watchpoint '%s' changed: '%s' -> '%s' at line %ld",
-                              state->threadid, fired_varname, old_value, cval, (long)lnum);
+					log_debug(LOG_COMP_LANG, "debug: thread %ld watchpoint '%s' changed: '%s' -> '%s' at line %ld",
+							  state->threadid, fired_varname, old_value, cval, (long)lnum);
 
-                    goto after_stepping; /* skip stepping logic, already suspended */
-                }
-            }
+					goto after_stepping; /* skip stepping logic, already suspended */
+				}
+			}
 
-            pthread_mutex_unlock(&g_debug_mutex);
-        }
-    }
+			pthread_mutex_unlock(&g_debug_mutex);
+		}
+	}
 
-    /* Stepping logic — check if we should suspend based on step direction.
-     * Uses simplified call depth model: calldepth tracks nesting relative
-     * to the depth when stepping was initiated (steplevel).
-     *
-     * Step-into: suspend at the very next statement
-     * Step-over: suspend when line changes at same or shallower call depth
-     * Step-out:  suspend when call depth decreases below step level */
-    if (atomic_load(&state->flstepping) && flsteppable && !atomic_load(&state->flsuspended)) {
+	/* Stepping logic — check if we should suspend based on step direction.
+	 * Uses simplified call depth model: calldepth tracks nesting relative
+	 * to the depth when stepping was initiated (steplevel).
+	 *
+	 * Step-into: suspend at the very next statement
+	 * Step-over: suspend when line changes at same or shallower call depth
+	 * Step-out:  suspend when call depth decreases below step level */
+	if (atomic_load(&state->flstepping) && flsteppable && !atomic_load(&state->flsuspended)) {
 
-        short diff = atomic_load(&state->calldepth) - atomic_load(&state->steplevel);
-        boolean flstop = false;
+		short diff = atomic_load(&state->calldepth) - atomic_load(&state->steplevel);
+		boolean flstop = false;
 
-        switch (atomic_load(&state->stepdir)) {
+		switch (atomic_load(&state->stepdir)) {
 
-            case DEBUG_STEP_INTO:
-                /* Stop at the very next statement */
-                flstop = true;
-                break;
+			case DEBUG_STEP_INTO:
+				/* Stop at the very next statement */
+				flstop = true;
+				break;
 
-            case DEBUG_STEP_OVER:
-                if (diff == 0) {
-                    /* Same call depth: stop when line changes.
-                     * lastlnum is safe to read here — it was set while
-                     * the debug thread was suspended, and the GIL
-                     * happens-before guarantees visibility. */
-                    flstop = (lnum != atomic_load(&state->lastlnum));
-                } else if (diff < 0) {
-                    /* Returned to shallower depth: stop */
-                    flstop = true;
-                }
-                /* diff > 0: inside a function call, keep going */
-                break;
+			case DEBUG_STEP_OVER:
+				if (diff == 0) {
+					/* Same call depth: stop when line changes.
+					 * lastlnum is safe to read here — it was set while
+					 * the debug thread was suspended, and the GIL
+					 * happens-before guarantees visibility. */
+					flstop = (lnum != atomic_load(&state->lastlnum));
+				} else if (diff < 0) {
+					/* Returned to shallower depth: stop */
+					flstop = true;
+				}
+				/* diff > 0: inside a function call, keep going */
+				break;
 
-            case DEBUG_STEP_OUT:
-                /* Stop only when we return to a shallower depth */
-                flstop = (diff < 0);
-                break;
+			case DEBUG_STEP_OUT:
+				/* Stop only when we return to a shallower depth */
+				flstop = (diff < 0);
+				break;
 
-            default:
-                break;
-        }
+			default:
+				break;
+		}
 
-        if (flstop) {
-            atomic_store(&state->flstepping, false);
-            atomic_store(&state->stepdir, DEBUG_STEP_NONE);
-            atomic_store(&state->lastlnum, lnum);
+		if (flstop) {
+			atomic_store(&state->flstepping, false);
+			atomic_store(&state->stepdir, DEBUG_STEP_NONE);
+			atomic_store(&state->lastlnum, lnum);
 
-            /* Set suspended BEFORE notifying — ensures the thread is in the
-             * suspended state before a fast client can react to the notification
-             * and send a continue/step command. */
-            atomic_store_explicit(&state->flsuspended, true, memory_order_seq_cst);
-            debug_send_suspended(state->transport, state->threadid, (long)lnum, DEBUG_REASON_STEP);
-            log_debug(LOG_COMP_LANG, "debug: thread %ld step completed at line %ld", state->threadid, (long)lnum);
-        }
-    }
+			/* Set suspended BEFORE notifying — ensures the thread is in the
+			 * suspended state before a fast client can react to the notification
+			 * and send a continue/step command. */
+			atomic_store_explicit(&state->flsuspended, true, memory_order_seq_cst);
+			debug_send_suspended(state->transport, state->threadid, (long)lnum, DEBUG_REASON_STEP);
+			log_debug(LOG_COMP_LANG, "debug: thread %ld step completed at line %ld", state->threadid, (long)lnum);
+		}
+	}
 
 after_stepping: /* label for watchpoint goto — skips stepping when watchpoint fires */
 
-    /* Capture the thread globals handle in a local variable BEFORE releasing
-     * the GIL. The global `hthreadglobals` is shared — other threads overwrite
-     * it when they restore their own context. Using the global after reacquiring
-     * the GIL would restore the WRONG thread's state (e.g., the main thread's
-     * currenthashtable instead of this debug thread's), causing the
-     * hlocals != currenthashtable assertion in evaluatelist. (#505) */
-    hdlthreadglobals my_hglobals = hthreadglobals;
+	/* Capture the thread globals handle in a local variable BEFORE releasing
+	 * the GIL. The global `hthreadglobals` is shared — other threads overwrite
+	 * it when they restore their own context. Using the global after reacquiring
+	 * the GIL would restore the WRONG thread's state (e.g., the main thread's
+	 * currenthashtable instead of this debug thread's), causing the
+	 * hlocals != currenthashtable assertion in evaluatelist. (#505) */
+	hdlthreadglobals my_hglobals = hthreadglobals;
 
-    /* Suspension loop — yields GIL so protocol handler can process commands */
-    while (atomic_load(&state->flsuspended)) {
+	/* Suspension loop — yields GIL so protocol handler can process commands */
+	while (atomic_load(&state->flsuspended)) {
 
-        if (atomic_load(&state->flkill)) {
-            if (my_hglobals != nil)
-                (**my_hglobals).flthreadkilled = true;
-            return false;
-        }
+		if (atomic_load(&state->flkill)) {
+			if (my_hglobals != nil)
+				(**my_hglobals).flthreadkilled = true;
+			return false;
+		}
 
-        /* Save thread globals, release GIL, sleep, reacquire, restore */
-        headless_save_threadglobals(my_hglobals);
-        pthread_mutex_unlock(&frontier_gil);
+		/* Save thread globals, release GIL, sleep, reacquire, restore */
+		headless_save_threadglobals(my_hglobals);
+		pthread_mutex_unlock(&frontier_gil);
 
-        /* Sleep 10ms — other threads (including protocol handler) can run */
-        struct timespec ts = {0, 10000000}; /* 10ms */
-        nanosleep(&ts, NULL);
+		/* Sleep 10ms — other threads (including protocol handler) can run */
+		struct timespec ts = {0, 10000000}; /* 10ms */
+		nanosleep(&ts, NULL);
 
-        pthread_mutex_lock(&frontier_gil);
-        headless_restore_threadglobals(my_hglobals);
-    }
+		pthread_mutex_lock(&frontier_gil);
+		headless_restore_threadglobals(my_hglobals);
+	}
 
-    /* Check kill flag after loop exit — handle_debug_kill sets flkill=true
-     * and flsuspended=false simultaneously, so we may exit the loop without
-     * seeing the kill flag inside it. Set flthreadkilled so the interpreter
-     * (evaluatelist) knows this is a kill, not a bug.
-     *
-     * Notification flow for kill-after-continue: this callback returns false,
-     * langruncode returns false, debug_thread_entry sends debug/completed
-     * with success=false, then cleans up. The callback does NOT send
-     * debug/completed — that's always the thread entry's responsibility. */
-    if (atomic_load(&state->flkill)) {
-        if (my_hglobals != nil)
-            (**my_hglobals).flthreadkilled = true;
-        return false;
-    }
+	/* Check kill flag after loop exit — handle_debug_kill sets flkill=true
+	 * and flsuspended=false simultaneously, so we may exit the loop without
+	 * seeing the kill flag inside it. Set flthreadkilled so the interpreter
+	 * (evaluatelist) knows this is a kill, not a bug.
+	 *
+	 * Notification flow for kill-after-continue: this callback returns false,
+	 * langruncode returns false, debug_thread_entry sends debug/completed
+	 * with success=false, then cleans up. The callback does NOT send
+	 * debug/completed — that's always the thread entry's responsibility. */
+	if (atomic_load(&state->flkill)) {
+		if (my_hglobals != nil)
+			(**my_hglobals).flthreadkilled = true;
+		return false;
+	}
 
-    return true;
+	return true;
 }
 
 /* ========================================================================
@@ -905,10 +905,10 @@ after_stepping: /* label for watchpoint goto — skips stepping when watchpoint 
 
 void debug_init(void) {
 
-    langcallbacks.debuggercallback = &protocol_debugger_callback;
-    langcallbacks.pushsourcecodecallback = &debug_push_sourcecode;
-    langcallbacks.popsourcecodecallback = &debug_pop_sourcecode;
-    log_info(LOG_COMP_GENERAL, "Protocol debugger initialized");
+	langcallbacks.debuggercallback = &protocol_debugger_callback;
+	langcallbacks.pushsourcecodecallback = &debug_push_sourcecode;
+	langcallbacks.popsourcecodecallback = &debug_pop_sourcecode;
+	log_info(LOG_COMP_GENERAL, "Protocol debugger initialized");
 }
 
 /* ========================================================================
@@ -916,97 +916,97 @@ void debug_init(void) {
  * ======================================================================== */
 
 typedef struct {
-    hdltreenode hcode;
-    hdlthreadglobals hglobals;
-    frontier_pthread_record *rec;
-    tydebugstate *debugstate;
+	hdltreenode hcode;
+	hdlthreadglobals hglobals;
+	frontier_pthread_record *rec;
+	tydebugstate *debugstate;
 } debug_thread_params;
 
 static void *debug_thread_entry(void *arg) {
 
-    debug_thread_params *params = (debug_thread_params *)arg;
-    tyvaluerecord result;
+	debug_thread_params *params = (debug_thread_params *)arg;
+	tyvaluerecord result;
 
-    if (params == NULL)
-        return NULL;
+	if (params == NULL)
+		return NULL;
 
-    /* Acquire GIL */
-    pthread_mutex_lock(&frontier_gil);
+	/* Acquire GIL */
+	pthread_mutex_lock(&frontier_gil);
 
-    /* Restore this thread's globals */
-    headless_restore_threadglobals(params->hglobals);
+	/* Restore this thread's globals */
+	headless_restore_threadglobals(params->hglobals);
 
-    /* Register in system.compiler.threads */
-    {
-        bigstring bsname;
-        copyctopstring("debug", bsname);
-        headless_register_thread(bsname, params->debugstate->threadid);
-    }
+	/* Register in system.compiler.threads */
+	{
+		bigstring bsname;
+		copyctopstring("debug", bsname);
+		headless_register_thread(bsname, params->debugstate->threadid);
+	}
 
-    /* Store debug state in thread globals for the callback to find,
-     * and store thread globals in debug state for protocol handlers to
-     * access the suspended thread's hash tables (debug/getLocals). */
-    (**params->hglobals).debugstate = (void *)params->debugstate;
-    params->debugstate->hglobals = (void *)params->hglobals;
+	/* Store debug state in thread globals for the callback to find,
+	 * and store thread globals in debug state for protocol handlers to
+	 * access the suspended thread's hash tables (debug/getLocals). */
+	(**params->hglobals).debugstate = (void *)params->debugstate;
+	params->debugstate->hglobals = (void *)params->hglobals;
 
-    boolean fl_ran = false;
+	boolean fl_ran = false;
 
-    /* Initial suspension — pause before first statement so client can set breakpoints */
-    atomic_store(&params->debugstate->flsuspended, true);
-    debug_send_suspended(params->debugstate->transport, params->debugstate->threadid, 0, DEBUG_REASON_ENTRY);
+	/* Initial suspension — pause before first statement so client can set breakpoints */
+	atomic_store(&params->debugstate->flsuspended, true);
+	debug_send_suspended(params->debugstate->transport, params->debugstate->threadid, 0, DEBUG_REASON_ENTRY);
 
-    /* Suspension loop (same pattern as in the callback) */
-    while (atomic_load(&params->debugstate->flsuspended)) {
+	/* Suspension loop (same pattern as in the callback) */
+	while (atomic_load(&params->debugstate->flsuspended)) {
 
-        if (atomic_load(&params->debugstate->flkill)) {
-            debug_send_completed(params->debugstate->transport, params->debugstate->threadid, false);
-            goto cleanup;
-        }
+		if (atomic_load(&params->debugstate->flkill)) {
+			debug_send_completed(params->debugstate->transport, params->debugstate->threadid, false);
+			goto cleanup;
+		}
 
-        headless_save_threadglobals(params->hglobals);
-        pthread_mutex_unlock(&frontier_gil);
+		headless_save_threadglobals(params->hglobals);
+		pthread_mutex_unlock(&frontier_gil);
 
-        struct timespec ts = {0, 10000000};
-        nanosleep(&ts, NULL);
+		struct timespec ts = {0, 10000000};
+		nanosleep(&ts, NULL);
 
-        pthread_mutex_lock(&frontier_gil);
-        headless_restore_threadglobals(params->hglobals);
-    }
+		pthread_mutex_lock(&frontier_gil);
+		headless_restore_threadglobals(params->hglobals);
+	}
 
-    /* Execute the script */
-    fl_ran = true;
-    initvalue(&result, novaluetype);
+	/* Execute the script */
+	fl_ran = true;
+	initvalue(&result, novaluetype);
 
-    boolean fl = langruncode(params->hcode, nil, &result);
+	boolean fl = langruncode(params->hcode, nil, &result);
 
-    /* Send completion notification */
-    debug_send_completed(params->debugstate->transport, params->debugstate->threadid, fl);
+	/* Send completion notification */
+	debug_send_completed(params->debugstate->transport, params->debugstate->threadid, fl);
 
 cleanup:
-    if (fl_ran)
-        disposevaluerecord(result, false);
+	if (fl_ran)
+		disposevaluerecord(result, false);
 
-    /* Save globals while we still hold GIL */
-    headless_save_threadglobals(params->hglobals);
+	/* Save globals while we still hold GIL */
+	headless_save_threadglobals(params->hglobals);
 
-    /* Clear error state */
-    headless_clear_last_lang_error();
+	/* Clear error state */
+	headless_clear_last_lang_error();
 
-    /* Unregister from system.compiler.threads and debug registry */
-    headless_unregister_thread(params->rec->user_thread_id);
-    debug_unregister_thread(params->debugstate->threadid);
+	/* Unregister from system.compiler.threads and debug registry */
+	headless_unregister_thread(params->rec->user_thread_id);
+	debug_unregister_thread(params->debugstate->threadid);
 
-    /* Cleanup */
-    langdisposetree(params->hcode);
-    headless_dispose_threadglobals(params->hglobals);
-    free_thread_record(params->rec);
-    free(params);
+	/* Cleanup */
+	langdisposetree(params->hcode);
+	headless_dispose_threadglobals(params->hglobals);
+	free_thread_record(params->rec);
+	free(params);
 
-    /* Release GIL */
-    pthread_mutex_unlock(&frontier_gil);
-    pthread_cond_broadcast(&gil_available);
+	/* Release GIL */
+	pthread_mutex_unlock(&frontier_gil);
+	pthread_cond_broadcast(&gil_available);
 
-    return NULL;
+	return NULL;
 }
 
 /* ========================================================================
@@ -1015,425 +1015,425 @@ cleanup:
 
 void handle_debug_run(int id, const char *json_line, transport_t *transport) {
 
-    /* Parse the expression from params */
-    cJSON *root = cJSON_Parse(json_line);
-    if (root == NULL) {
-        char err[512];
-        snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Invalid JSON\"},\"success\":false}", id);
-        transport->write_line(transport->ctx, err, strlen(err));
-        return;
-    }
+	/* Parse the expression from params */
+	cJSON *root = cJSON_Parse(json_line);
+	if (root == NULL) {
+		char err[512];
+		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Invalid JSON\"},\"success\":false}", id);
+		transport->write_line(transport->ctx, err, strlen(err));
+		return;
+	}
 
-    cJSON *params = cJSON_GetObjectItemCaseSensitive(root, "params");
-    cJSON *expr_json = params ? cJSON_GetObjectItemCaseSensitive(params, "expression") : NULL;
+	cJSON *params = cJSON_GetObjectItemCaseSensitive(root, "params");
+	cJSON *expr_json = params ? cJSON_GetObjectItemCaseSensitive(params, "expression") : NULL;
 
-    if (!cJSON_IsString(expr_json) || expr_json->valuestring == NULL) {
-        char err[512];
-        snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Missing 'expression' in params\"},\"success\":false}", id);
-        transport->write_line(transport->ctx, err, strlen(err));
-        cJSON_Delete(root);
-        return;
-    }
+	if (!cJSON_IsString(expr_json) || expr_json->valuestring == NULL) {
+		char err[512];
+		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Missing 'expression' in params\"},\"success\":false}", id);
+		transport->write_line(transport->ctx, err, strlen(err));
+		cJSON_Delete(root);
+		return;
+	}
 
-    const char *expression = expr_json->valuestring;
+	const char *expression = expr_json->valuestring;
 
-    /* Compile the expression into a code tree */
-    Handle htext;
-    hdltreenode hcode;
+	/* Compile the expression into a code tree */
+	Handle htext;
+	hdltreenode hcode;
 
-    if (!newfilledhandle((void *)expression, strlen(expression), &htext)) {
-        char err[512];
-        snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Memory allocation failed\"},\"success\":false}", id);
-        transport->write_line(transport->ctx, err, strlen(err));
-        cJSON_Delete(root);
-        return;
-    }
+	if (!newfilledhandle((void *)expression, strlen(expression), &htext)) {
+		char err[512];
+		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Memory allocation failed\"},\"success\":false}", id);
+		transport->write_line(transport->ctx, err, strlen(err));
+		cJSON_Delete(root);
+		return;
+	}
 
-    /* langcompiletext always disposes htext (both success and failure) */
-    if (!langcompiletext(htext, false, &hcode)) {
-        extern const unsigned char *headless_get_last_lang_error(void);
-        const unsigned char *errmsg = headless_get_last_lang_error();
+	/* langcompiletext always disposes htext (both success and failure) */
+	if (!langcompiletext(htext, false, &hcode)) {
+		extern const unsigned char *headless_get_last_lang_error(void);
+		const unsigned char *errmsg = headless_get_last_lang_error();
 
-        cJSON *resp = cJSON_CreateObject();
-        cJSON_AddNumberToObject(resp, "id", id);
-        cJSON *errobj = cJSON_CreateObject();
-        if (errmsg != NULL && errmsg[0] > 0) {
-            int msglen = (int)errmsg[0];
-            char msgbuf[256];
-            if (msglen > 255) msglen = 255;
-            memcpy(msgbuf, errmsg + 1, (size_t)msglen);
-            msgbuf[msglen] = '\0';
-            char full_msg[512];
-            snprintf(full_msg, sizeof(full_msg), "Compilation failed: %s", msgbuf);
-            cJSON_AddStringToObject(errobj, "message", full_msg);
-        } else {
-            cJSON_AddStringToObject(errobj, "message", "Compilation failed");
-        }
-        cJSON_AddItemToObject(resp, "error", errobj);
-        cJSON_AddBoolToObject(resp, "success", 0);
-        char *json_str = cJSON_PrintUnformatted(resp);
-        if (json_str) {
-            transport->write_line(transport->ctx, json_str, strlen(json_str));
-            free(json_str);
-        } else {
-            log_warn(LOG_COMP_LANG, "debug: cJSON_PrintUnformatted failed (OOM)");
-        }
-        cJSON_Delete(resp);
-        cJSON_Delete(root);
-        return;
-    }
+		cJSON *resp = cJSON_CreateObject();
+		cJSON_AddNumberToObject(resp, "id", id);
+		cJSON *errobj = cJSON_CreateObject();
+		if (errmsg != NULL && errmsg[0] > 0) {
+			int msglen = (int)errmsg[0];
+			char msgbuf[256];
+			if (msglen > 255) msglen = 255;
+			memcpy(msgbuf, errmsg + 1, (size_t)msglen);
+			msgbuf[msglen] = '\0';
+			char full_msg[512];
+			snprintf(full_msg, sizeof(full_msg), "Compilation failed: %s", msgbuf);
+			cJSON_AddStringToObject(errobj, "message", full_msg);
+		} else {
+			cJSON_AddStringToObject(errobj, "message", "Compilation failed");
+		}
+		cJSON_AddItemToObject(resp, "error", errobj);
+		cJSON_AddBoolToObject(resp, "success", 0);
+		char *json_str = cJSON_PrintUnformatted(resp);
+		if (json_str) {
+			transport->write_line(transport->ctx, json_str, strlen(json_str));
+			free(json_str);
+		} else {
+			log_warn(LOG_COMP_LANG, "debug: cJSON_PrintUnformatted failed (OOM)");
+		}
+		cJSON_Delete(resp);
+		cJSON_Delete(root);
+		return;
+	}
 
-    /* Allocate thread record */
-    frontier_pthread_record *rec = allocate_thread_record();
-    if (rec == NULL) {
-        langdisposetree(hcode);
-        char err[512];
-        snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Failed to allocate thread\"},\"success\":false}", id);
-        transport->write_line(transport->ctx, err, strlen(err));
-        cJSON_Delete(root);
-        return;
-    }
+	/* Allocate thread record */
+	frontier_pthread_record *rec = allocate_thread_record();
+	if (rec == NULL) {
+		langdisposetree(hcode);
+		char err[512];
+		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Failed to allocate thread\"},\"success\":false}", id);
+		transport->write_line(transport->ctx, err, strlen(err));
+		cJSON_Delete(root);
+		return;
+	}
 
-    /* Allocate thread globals */
-    hdlthreadglobals new_hglobals = headless_new_threadglobals();
-    if (new_hglobals == nil) {
-        langdisposetree(hcode);
-        free_thread_record(rec);
-        char err[512];
-        snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Failed to allocate thread globals\"},\"success\":false}", id);
-        transport->write_line(transport->ctx, err, strlen(err));
-        cJSON_Delete(root);
-        return;
-    }
+	/* Allocate thread globals */
+	hdlthreadglobals new_hglobals = headless_new_threadglobals();
+	if (new_hglobals == nil) {
+		langdisposetree(hcode);
+		free_thread_record(rec);
+		char err[512];
+		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Failed to allocate thread globals\"},\"success\":false}", id);
+		transport->write_line(transport->ctx, err, strlen(err));
+		cJSON_Delete(root);
+		return;
+	}
 
-    long threadid = (long)rec->user_thread_id;
-    (**new_hglobals).idthread = (hdlthread)threadid;
-    rec->hglobals = new_hglobals;
+	long threadid = (long)rec->user_thread_id;
+	(**new_hglobals).idthread = (hdlthread)threadid;
+	rec->hglobals = new_hglobals;
 
-    /* Copy hashtable stack from current thread */
-    {
-        Handle hcopy;
-        if (!newfilledhandle((char *)(*hashtablestack), sizeof(tytablestack), &hcopy)) {
-            langdisposetree(hcode);
-            headless_dispose_threadglobals(new_hglobals);
-            free_thread_record(rec);
-            char err[512];
-            snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Failed to copy table stack\"},\"success\":false}", id);
-            transport->write_line(transport->ctx, err, strlen(err));
-            cJSON_Delete(root);
-            return;
-        }
-        (**new_hglobals).htablestack = (hdltablestack)hcopy;
-    }
-    (**new_hglobals).hcurrenthashtable = currenthashtable;
+	/* Copy hashtable stack from current thread */
+	{
+		Handle hcopy;
+		if (!newfilledhandle((char *)(*hashtablestack), sizeof(tytablestack), &hcopy)) {
+			langdisposetree(hcode);
+			headless_dispose_threadglobals(new_hglobals);
+			free_thread_record(rec);
+			char err[512];
+			snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Failed to copy table stack\"},\"success\":false}", id);
+			transport->write_line(transport->ctx, err, strlen(err));
+			cJSON_Delete(root);
+			return;
+		}
+		(**new_hglobals).htablestack = (hdltablestack)hcopy;
+	}
+	(**new_hglobals).hcurrenthashtable = currenthashtable;
 
-    /* Register debug state */
-    tydebugstate *debugstate = debug_register_thread(threadid, transport);
-    if (debugstate == NULL) {
-        langdisposetree(hcode);
-        headless_dispose_threadglobals(new_hglobals);
-        free_thread_record(rec);
-        char err[512];
-        snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Too many debug threads\"},\"success\":false}", id);
-        transport->write_line(transport->ctx, err, strlen(err));
-        cJSON_Delete(root);
-        return;
-    }
+	/* Register debug state */
+	tydebugstate *debugstate = debug_register_thread(threadid, transport);
+	if (debugstate == NULL) {
+		langdisposetree(hcode);
+		headless_dispose_threadglobals(new_hglobals);
+		free_thread_record(rec);
+		char err[512];
+		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Too many debug threads\"},\"success\":false}", id);
+		transport->write_line(transport->ctx, err, strlen(err));
+		cJSON_Delete(root);
+		return;
+	}
 
-    /* Package launch parameters */
-    debug_thread_params *dparams = (debug_thread_params *)malloc(sizeof(debug_thread_params));
-    if (dparams == NULL) {
-        langdisposetree(hcode);
-        headless_dispose_threadglobals(new_hglobals);
-        free_thread_record(rec);
-        debug_unregister_thread(threadid);
-        char err[512];
-        snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Memory allocation failed\"},\"success\":false}", id);
-        transport->write_line(transport->ctx, err, strlen(err));
-        cJSON_Delete(root);
-        return;
-    }
+	/* Package launch parameters */
+	debug_thread_params *dparams = (debug_thread_params *)malloc(sizeof(debug_thread_params));
+	if (dparams == NULL) {
+		langdisposetree(hcode);
+		headless_dispose_threadglobals(new_hglobals);
+		free_thread_record(rec);
+		debug_unregister_thread(threadid);
+		char err[512];
+		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Memory allocation failed\"},\"success\":false}", id);
+		transport->write_line(transport->ctx, err, strlen(err));
+		cJSON_Delete(root);
+		return;
+	}
 
-    dparams->hcode = hcode;
-    dparams->hglobals = new_hglobals;
-    dparams->rec = rec;
-    dparams->debugstate = debugstate;
+	dparams->hcode = hcode;
+	dparams->hglobals = new_hglobals;
+	dparams->rec = rec;
+	dparams->debugstate = debugstate;
 
-    /* Spawn debug thread */
-    pthread_t tid;
-    pthread_attr_t attr;
+	/* Spawn debug thread */
+	pthread_t tid;
+	pthread_attr_t attr;
 
-    if (pthread_attr_init(&attr) != 0) {
-        langdisposetree(hcode);
-        headless_dispose_threadglobals(new_hglobals);
-        free_thread_record(rec);
-        debug_unregister_thread(threadid);
-        free(dparams);
-        char err[512];
-        snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"pthread_attr_init failed\"},\"success\":false}", id);
-        transport->write_line(transport->ctx, err, strlen(err));
-        cJSON_Delete(root);
-        return;
-    }
+	if (pthread_attr_init(&attr) != 0) {
+		langdisposetree(hcode);
+		headless_dispose_threadglobals(new_hglobals);
+		free_thread_record(rec);
+		debug_unregister_thread(threadid);
+		free(dparams);
+		char err[512];
+		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"pthread_attr_init failed\"},\"success\":false}", id);
+		transport->write_line(transport->ctx, err, strlen(err));
+		cJSON_Delete(root);
+		return;
+	}
 
-    if (pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE) != 0) {
-        pthread_attr_destroy(&attr);
-        langdisposetree(hcode);
-        headless_dispose_threadglobals(new_hglobals);
-        free_thread_record(rec);
-        debug_unregister_thread(threadid);
-        free(dparams);
-        char err[512];
-        snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"pthread_attr_setdetachstate failed\"},\"success\":false}", id);
-        transport->write_line(transport->ctx, err, strlen(err));
-        cJSON_Delete(root);
-        return;
-    }
+	if (pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE) != 0) {
+		pthread_attr_destroy(&attr);
+		langdisposetree(hcode);
+		headless_dispose_threadglobals(new_hglobals);
+		free_thread_record(rec);
+		debug_unregister_thread(threadid);
+		free(dparams);
+		char err[512];
+		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"pthread_attr_setdetachstate failed\"},\"success\":false}", id);
+		transport->write_line(transport->ctx, err, strlen(err));
+		cJSON_Delete(root);
+		return;
+	}
 
-    if (pthread_create(&tid, &attr, debug_thread_entry, dparams) != 0) {
-        pthread_attr_destroy(&attr);
-        langdisposetree(hcode);
-        headless_dispose_threadglobals(new_hglobals);
-        free_thread_record(rec);
-        debug_unregister_thread(threadid);
-        free(dparams);
-        char err[512];
-        snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Failed to spawn debug thread\"},\"success\":false}", id);
-        transport->write_line(transport->ctx, err, strlen(err));
-        cJSON_Delete(root);
-        return;
-    }
+	if (pthread_create(&tid, &attr, debug_thread_entry, dparams) != 0) {
+		pthread_attr_destroy(&attr);
+		langdisposetree(hcode);
+		headless_dispose_threadglobals(new_hglobals);
+		free_thread_record(rec);
+		debug_unregister_thread(threadid);
+		free(dparams);
+		char err[512];
+		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Failed to spawn debug thread\"},\"success\":false}", id);
+		transport->write_line(transport->ctx, err, strlen(err));
+		cJSON_Delete(root);
+		return;
+	}
 
-    pthread_attr_destroy(&attr);
-    rec->pthread_id = tid;
+	pthread_attr_destroy(&attr);
+	rec->pthread_id = tid;
 
-    /* Set pthread_id immediately after create — debug_kill_all_threads reads
-     * this field under g_debug_mutex, so set it before any code that could
-     * trigger shutdown (the response write below). */
-    pthread_mutex_lock(&g_debug_mutex);
-    debugstate->pthread_id = tid;
-    pthread_mutex_unlock(&g_debug_mutex);
+	/* Set pthread_id immediately after create — debug_kill_all_threads reads
+	 * this field under g_debug_mutex, so set it before any code that could
+	 * trigger shutdown (the response write below). */
+	pthread_mutex_lock(&g_debug_mutex);
+	debugstate->pthread_id = tid;
+	pthread_mutex_unlock(&g_debug_mutex);
 
-    /* Return immediately with thread ID */
-    char resp[128];
-    snprintf(resp, sizeof(resp),
-             "{\"id\":%d,\"result\":{\"threadId\":%ld,\"status\":\"started\"},\"success\":true}",
-             id, threadid);
-    transport->write_line(transport->ctx, resp, strlen(resp));
+	/* Return immediately with thread ID */
+	char resp[128];
+	snprintf(resp, sizeof(resp),
+			 "{\"id\":%d,\"result\":{\"threadId\":%ld,\"status\":\"started\"},\"success\":true}",
+			 id, threadid);
+	transport->write_line(transport->ctx, resp, strlen(resp));
 
-    cJSON_Delete(root);
+	cJSON_Delete(root);
 }
 
 void handle_debug_continue(int id, const char *json_line, transport_t *transport) {
 
-    cJSON *root = cJSON_Parse(json_line);
-    cJSON *params = root ? cJSON_GetObjectItemCaseSensitive(root, "params") : NULL;
-    cJSON *tid_json = params ? cJSON_GetObjectItemCaseSensitive(params, "threadId") : NULL;
+	cJSON *root = cJSON_Parse(json_line);
+	cJSON *params = root ? cJSON_GetObjectItemCaseSensitive(root, "params") : NULL;
+	cJSON *tid_json = params ? cJSON_GetObjectItemCaseSensitive(params, "threadId") : NULL;
 
-    if (!cJSON_IsNumber(tid_json)) {
-        char err[512];
-        snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Missing 'threadId' in params\"},\"success\":false}", id);
-        transport->write_line(transport->ctx, err, strlen(err));
-        cJSON_Delete(root);
-        return;
-    }
+	if (!cJSON_IsNumber(tid_json)) {
+		char err[512];
+		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Missing 'threadId' in params\"},\"success\":false}", id);
+		transport->write_line(transport->ctx, err, strlen(err));
+		cJSON_Delete(root);
+		return;
+	}
 
-    long threadid = (long)tid_json->valuedouble;
-    tydebugstate *state = debug_get_state_for_thread(threadid);
+	long threadid = (long)tid_json->valuedouble;
+	tydebugstate *state = debug_get_state_for_thread(threadid);
 
-    if (state == NULL) {
-        char err[512];
-        snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"No debug thread with that ID\"},\"success\":false}", id);
-        transport->write_line(transport->ctx, err, strlen(err));
-        cJSON_Delete(root);
-        return;
-    }
+	if (state == NULL) {
+		char err[512];
+		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"No debug thread with that ID\"},\"success\":false}", id);
+		transport->write_line(transport->ctx, err, strlen(err));
+		cJSON_Delete(root);
+		return;
+	}
 
-    /* Clear any stepping state — continue means run freely */
-    atomic_store(&state->flstepping, false);
-    atomic_store(&state->stepdir, DEBUG_STEP_NONE);
-    state->flskipaliasline = true; /* skip re-trigger at same line on resume */
+	/* Clear any stepping state — continue means run freely */
+	atomic_store(&state->flstepping, false);
+	atomic_store(&state->stepdir, DEBUG_STEP_NONE);
+	state->flskipaliasline = true; /* skip re-trigger at same line on resume */
 
-    atomic_store(&state->flsuspended, false);
-    debug_release_state(state);
+	atomic_store(&state->flsuspended, false);
+	debug_release_state(state);
 
-    char resp[128];
-    snprintf(resp, sizeof(resp), "{\"id\":%d,\"result\":{\"threadId\":%ld,\"status\":\"running\"},\"success\":true}", id, threadid);
-    transport->write_line(transport->ctx, resp, strlen(resp));
+	char resp[128];
+	snprintf(resp, sizeof(resp), "{\"id\":%d,\"result\":{\"threadId\":%ld,\"status\":\"running\"},\"success\":true}", id, threadid);
+	transport->write_line(transport->ctx, resp, strlen(resp));
 
-    cJSON_Delete(root);
+	cJSON_Delete(root);
 }
 
 void handle_debug_step(int id, const char *json_line, transport_t *transport) {
 
-    cJSON *root = cJSON_Parse(json_line);
+	cJSON *root = cJSON_Parse(json_line);
 
-    if (root == NULL) {
-        char err[512];
-        snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Invalid JSON\"},\"success\":false}", id);
-        transport->write_line(transport->ctx, err, strlen(err));
-        return;
-    }
+	if (root == NULL) {
+		char err[512];
+		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Invalid JSON\"},\"success\":false}", id);
+		transport->write_line(transport->ctx, err, strlen(err));
+		return;
+	}
 
-    cJSON *params = cJSON_GetObjectItemCaseSensitive(root, "params");
-    cJSON *tid_json = params ? cJSON_GetObjectItemCaseSensitive(params, "threadId") : NULL;
-    cJSON *dir_json = params ? cJSON_GetObjectItemCaseSensitive(params, "direction") : NULL;
+	cJSON *params = cJSON_GetObjectItemCaseSensitive(root, "params");
+	cJSON *tid_json = params ? cJSON_GetObjectItemCaseSensitive(params, "threadId") : NULL;
+	cJSON *dir_json = params ? cJSON_GetObjectItemCaseSensitive(params, "direction") : NULL;
 
-    if (!cJSON_IsNumber(tid_json)) {
-        char err[512];
-        snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Missing 'threadId' in params\"},\"success\":false}", id);
-        transport->write_line(transport->ctx, err, strlen(err));
-        cJSON_Delete(root);
-        return;
-    }
+	if (!cJSON_IsNumber(tid_json)) {
+		char err[512];
+		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Missing 'threadId' in params\"},\"success\":false}", id);
+		transport->write_line(transport->ctx, err, strlen(err));
+		cJSON_Delete(root);
+		return;
+	}
 
-    long threadid = (long)tid_json->valuedouble;
-    tydebugstate *state = debug_get_state_for_thread(threadid);
+	long threadid = (long)tid_json->valuedouble;
+	tydebugstate *state = debug_get_state_for_thread(threadid);
 
-    if (state == NULL) {
-        char err[512];
-        snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"No debug thread with that ID\"},\"success\":false}", id);
-        transport->write_line(transport->ctx, err, strlen(err));
-        cJSON_Delete(root);
-        return;
-    }
+	if (state == NULL) {
+		char err[512];
+		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"No debug thread with that ID\"},\"success\":false}", id);
+		transport->write_line(transport->ctx, err, strlen(err));
+		cJSON_Delete(root);
+		return;
+	}
 
-    /* Note: flsuspended check is not under g_debug_mutex. In the current
-     * single-client model this is safe (only one protocol handler thread).
-     * Phase 5 (multi-session) will need to hold the lock across the
-     * check-and-modify sequence to prevent concurrent continue/kill races. */
-    if (!atomic_load(&state->flsuspended)) {
-        debug_release_state(state);
-        char err[512];
-        snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Thread %ld is not suspended\"},\"success\":false}", id, threadid);
-        transport->write_line(transport->ctx, err, strlen(err));
-        cJSON_Delete(root);
-        return;
-    }
+	/* Note: flsuspended check is not under g_debug_mutex. In the current
+	 * single-client model this is safe (only one protocol handler thread).
+	 * Phase 5 (multi-session) will need to hold the lock across the
+	 * check-and-modify sequence to prevent concurrent continue/kill races. */
+	if (!atomic_load(&state->flsuspended)) {
+		debug_release_state(state);
+		char err[512];
+		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Thread %ld is not suspended\"},\"success\":false}", id, threadid);
+		transport->write_line(transport->ctx, err, strlen(err));
+		cJSON_Delete(root);
+		return;
+	}
 
-    /* Parse direction: "over", "into", "out" */
-    debug_step_direction_t dir = DEBUG_STEP_OVER; /* default */
-    if (cJSON_IsString(dir_json)) {
-        const char *d = dir_json->valuestring;
-        if (strcmp(d, "into") == 0)
-            dir = DEBUG_STEP_INTO;
-        else if (strcmp(d, "out") == 0)
-            dir = DEBUG_STEP_OUT;
-        else if (strcmp(d, "over") == 0)
-            dir = DEBUG_STEP_OVER;
-        else {
-            debug_release_state(state);
-            char err[512];
-            snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Unknown step direction (use 'over', 'into', or 'out')\"},\"success\":false}", id);
-            transport->write_line(transport->ctx, err, strlen(err));
-            cJSON_Delete(root);
-            return;
-        }
-    }
+	/* Parse direction: "over", "into", "out" */
+	debug_step_direction_t dir = DEBUG_STEP_OVER; /* default */
+	if (cJSON_IsString(dir_json)) {
+		const char *d = dir_json->valuestring;
+		if (strcmp(d, "into") == 0)
+			dir = DEBUG_STEP_INTO;
+		else if (strcmp(d, "out") == 0)
+			dir = DEBUG_STEP_OUT;
+		else if (strcmp(d, "over") == 0)
+			dir = DEBUG_STEP_OVER;
+		else {
+			debug_release_state(state);
+			char err[512];
+			snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Unknown step direction (use 'over', 'into', or 'out')\"},\"success\":false}", id);
+			transport->write_line(transport->ctx, err, strlen(err));
+			cJSON_Delete(root);
+			return;
+		}
+	}
 
-    /* Set stepping state. These writes are safe because the debug thread is
-     * suspended (flsuspended=true) and won't read stepping fields until we
-     * clear flsuspended below. GIL ordering guarantees the writes are visible. */
-    atomic_store(&state->flstepping, true);
-    atomic_store(&state->stepdir, (int)dir);
-    atomic_store(&state->steplevel, atomic_load(&state->calldepth));
-    /* lastlnum already set from the last suspension point */
-    state->flskipaliasline = true; /* skip re-trigger at same line on resume */
+	/* Set stepping state. These writes are safe because the debug thread is
+	 * suspended (flsuspended=true) and won't read stepping fields until we
+	 * clear flsuspended below. GIL ordering guarantees the writes are visible. */
+	atomic_store(&state->flstepping, true);
+	atomic_store(&state->stepdir, (int)dir);
+	atomic_store(&state->steplevel, atomic_load(&state->calldepth));
+	/* lastlnum already set from the last suspension point */
+	state->flskipaliasline = true; /* skip re-trigger at same line on resume */
 
-    /* Resume the thread — it will execute until the stepping condition is met */
-    atomic_store_explicit(&state->flsuspended, false, memory_order_seq_cst);
-    debug_release_state(state);
+	/* Resume the thread — it will execute until the stepping condition is met */
+	atomic_store_explicit(&state->flsuspended, false, memory_order_seq_cst);
+	debug_release_state(state);
 
-    char resp[128];
-    snprintf(resp, sizeof(resp), "{\"id\":%d,\"result\":{\"threadId\":%ld,\"status\":\"stepping\"},\"success\":true}", id, threadid);
-    transport->write_line(transport->ctx, resp, strlen(resp));
+	char resp[128];
+	snprintf(resp, sizeof(resp), "{\"id\":%d,\"result\":{\"threadId\":%ld,\"status\":\"stepping\"},\"success\":true}", id, threadid);
+	transport->write_line(transport->ctx, resp, strlen(resp));
 
-    cJSON_Delete(root);
+	cJSON_Delete(root);
 }
 
 void handle_debug_kill(int id, const char *json_line, transport_t *transport) {
 
-    cJSON *root = cJSON_Parse(json_line);
-    cJSON *params = root ? cJSON_GetObjectItemCaseSensitive(root, "params") : NULL;
-    cJSON *tid_json = params ? cJSON_GetObjectItemCaseSensitive(params, "threadId") : NULL;
+	cJSON *root = cJSON_Parse(json_line);
+	cJSON *params = root ? cJSON_GetObjectItemCaseSensitive(root, "params") : NULL;
+	cJSON *tid_json = params ? cJSON_GetObjectItemCaseSensitive(params, "threadId") : NULL;
 
-    if (!cJSON_IsNumber(tid_json)) {
-        char err[512];
-        snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Missing 'threadId' in params\"},\"success\":false}", id);
-        transport->write_line(transport->ctx, err, strlen(err));
-        cJSON_Delete(root);
-        return;
-    }
+	if (!cJSON_IsNumber(tid_json)) {
+		char err[512];
+		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Missing 'threadId' in params\"},\"success\":false}", id);
+		transport->write_line(transport->ctx, err, strlen(err));
+		cJSON_Delete(root);
+		return;
+	}
 
-    long threadid = (long)tid_json->valuedouble;
-    tydebugstate *state = debug_get_state_for_thread(threadid);
+	long threadid = (long)tid_json->valuedouble;
+	tydebugstate *state = debug_get_state_for_thread(threadid);
 
-    if (state == NULL) {
-        char err[512];
-        snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"No debug thread with that ID\"},\"success\":false}", id);
-        transport->write_line(transport->ctx, err, strlen(err));
-        cJSON_Delete(root);
-        return;
-    }
+	if (state == NULL) {
+		char err[512];
+		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"No debug thread with that ID\"},\"success\":false}", id);
+		transport->write_line(transport->ctx, err, strlen(err));
+		cJSON_Delete(root);
+		return;
+	}
 
-    /* Mark as killed — hash tables will be inconsistent after this */
-    atomic_store(&g_debug_thread_was_killed, true);
+	/* Mark as killed — hash tables will be inconsistent after this */
+	atomic_store(&g_debug_thread_was_killed, true);
 
-    atomic_store_explicit(&state->flkill, true, memory_order_seq_cst);
-    atomic_store_explicit(&state->flsuspended, false, memory_order_seq_cst); /* wake it up so it can die */
-    debug_release_state(state);
+	atomic_store_explicit(&state->flkill, true, memory_order_seq_cst);
+	atomic_store_explicit(&state->flsuspended, false, memory_order_seq_cst); /* wake it up so it can die */
+	debug_release_state(state);
 
-    char resp[128];
-    snprintf(resp, sizeof(resp), "{\"id\":%d,\"result\":{\"threadId\":%ld,\"status\":\"killed\"},\"success\":true}", id, threadid);
-    transport->write_line(transport->ctx, resp, strlen(resp));
+	char resp[128];
+	snprintf(resp, sizeof(resp), "{\"id\":%d,\"result\":{\"threadId\":%ld,\"status\":\"killed\"},\"success\":true}", id, threadid);
+	transport->write_line(transport->ctx, resp, strlen(resp));
 
-    cJSON_Delete(root);
+	cJSON_Delete(root);
 }
 
 void handle_debug_pause(int id, const char *json_line, transport_t *transport) {
 
-    cJSON *root = cJSON_Parse(json_line);
-    cJSON *params = root ? cJSON_GetObjectItemCaseSensitive(root, "params") : NULL;
-    cJSON *tid_json = params ? cJSON_GetObjectItemCaseSensitive(params, "threadId") : NULL;
+	cJSON *root = cJSON_Parse(json_line);
+	cJSON *params = root ? cJSON_GetObjectItemCaseSensitive(root, "params") : NULL;
+	cJSON *tid_json = params ? cJSON_GetObjectItemCaseSensitive(params, "threadId") : NULL;
 
-    if (!cJSON_IsNumber(tid_json)) {
-        char err[512];
-        snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Missing 'threadId' in params\"},\"success\":false}", id);
-        transport->write_line(transport->ctx, err, strlen(err));
-        cJSON_Delete(root);
-        return;
-    }
+	if (!cJSON_IsNumber(tid_json)) {
+		char err[512];
+		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Missing 'threadId' in params\"},\"success\":false}", id);
+		transport->write_line(transport->ctx, err, strlen(err));
+		cJSON_Delete(root);
+		return;
+	}
 
-    long threadid = (long)tid_json->valuedouble;
-    tydebugstate *state = debug_get_state_for_thread(threadid);
+	long threadid = (long)tid_json->valuedouble;
+	tydebugstate *state = debug_get_state_for_thread(threadid);
 
-    if (state == NULL) {
-        char err[512];
-        snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"No debug thread with that ID\"},\"success\":false}", id);
-        transport->write_line(transport->ctx, err, strlen(err));
-        cJSON_Delete(root);
-        return;
-    }
+	if (state == NULL) {
+		char err[512];
+		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"No debug thread with that ID\"},\"success\":false}", id);
+		transport->write_line(transport->ctx, err, strlen(err));
+		cJSON_Delete(root);
+		return;
+	}
 
-    /* Already suspended — return error instead of setting interrupt flag */
-    if (atomic_load(&state->flsuspended)) {
-        debug_release_state(state);
-        char err[256];
-        snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Thread %ld is already suspended\"},\"success\":false}", id, threadid);
-        transport->write_line(transport->ctx, err, strlen(err));
-        cJSON_Delete(root);
-        return;
-    }
+	/* Already suspended — return error instead of setting interrupt flag */
+	if (atomic_load(&state->flsuspended)) {
+		debug_release_state(state);
+		char err[256];
+		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Thread %ld is already suspended\"},\"success\":false}", id, threadid);
+		transport->write_line(transport->ctx, err, strlen(err));
+		cJSON_Delete(root);
+		return;
+	}
 
-    /* Set interrupt flag — callback will suspend at next statement */
-    atomic_store(&state->flinterrupt, true);
-    debug_release_state(state);
+	/* Set interrupt flag — callback will suspend at next statement */
+	atomic_store(&state->flinterrupt, true);
+	debug_release_state(state);
 
-    char resp[128];
-    snprintf(resp, sizeof(resp), "{\"id\":%d,\"result\":{\"threadId\":%ld,\"status\":\"interrupting\"},\"success\":true}", id, threadid);
-    transport->write_line(transport->ctx, resp, strlen(resp));
+	char resp[128];
+	snprintf(resp, sizeof(resp), "{\"id\":%d,\"result\":{\"threadId\":%ld,\"status\":\"interrupting\"},\"success\":true}", id, threadid);
+	transport->write_line(transport->ctx, resp, strlen(resp));
 
-    cJSON_Delete(root);
+	cJSON_Delete(root);
 }
 
 /* ========================================================================
@@ -1447,153 +1447,153 @@ void handle_debug_pause(int id, const char *json_line, transport_t *transport) {
  * it is cleared. Otherwise, a new breakpoint is set.
  *
  * Params:
- *   script: dotted path (e.g. "mainResponder.respond") — no leading "@"
- *   line:   1-based line number
+ *	 script: dotted path (e.g. "mainResponder.respond") — no leading "@"
+ *	 line:	 1-based line number
  *
  * Returns:
- *   action: "set" or "cleared"
- *   script, line: echo back the breakpoint location
+ *	 action: "set" or "cleared"
+ *	 script, line: echo back the breakpoint location
  */
 void handle_debug_setbreakpoint(int id, const char *json_line, transport_t *transport) {
 
-    cJSON *root = cJSON_Parse(json_line);
+	cJSON *root = cJSON_Parse(json_line);
 
-    if (root == NULL) {
-        char err[512];
-        snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Invalid JSON\"},\"success\":false}", id);
-        transport->write_line(transport->ctx, err, strlen(err));
-        return;
-    }
+	if (root == NULL) {
+		char err[512];
+		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Invalid JSON\"},\"success\":false}", id);
+		transport->write_line(transport->ctx, err, strlen(err));
+		return;
+	}
 
-    cJSON *params = cJSON_GetObjectItemCaseSensitive(root, "params");
-    cJSON *script_json = params ? cJSON_GetObjectItemCaseSensitive(params, "script") : NULL;
-    cJSON *line_json = params ? cJSON_GetObjectItemCaseSensitive(params, "line") : NULL;
-    cJSON *cond_json = params ? cJSON_GetObjectItemCaseSensitive(params, "condition") : NULL;
+	cJSON *params = cJSON_GetObjectItemCaseSensitive(root, "params");
+	cJSON *script_json = params ? cJSON_GetObjectItemCaseSensitive(params, "script") : NULL;
+	cJSON *line_json = params ? cJSON_GetObjectItemCaseSensitive(params, "line") : NULL;
+	cJSON *cond_json = params ? cJSON_GetObjectItemCaseSensitive(params, "condition") : NULL;
 
-    if (!cJSON_IsString(script_json) || script_json->valuestring == NULL) {
-        char err[512];
-        snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Missing 'script' in params\"},\"success\":false}", id);
-        transport->write_line(transport->ctx, err, strlen(err));
-        cJSON_Delete(root);
-        return;
-    }
+	if (!cJSON_IsString(script_json) || script_json->valuestring == NULL) {
+		char err[512];
+		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Missing 'script' in params\"},\"success\":false}", id);
+		transport->write_line(transport->ctx, err, strlen(err));
+		cJSON_Delete(root);
+		return;
+	}
 
-    if (!cJSON_IsNumber(line_json)) {
-        char err[512];
-        snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Missing 'line' in params\"},\"success\":false}", id);
-        transport->write_line(transport->ctx, err, strlen(err));
-        cJSON_Delete(root);
-        return;
-    }
+	if (!cJSON_IsNumber(line_json)) {
+		char err[512];
+		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Missing 'line' in params\"},\"success\":false}", id);
+		transport->write_line(transport->ctx, err, strlen(err));
+		cJSON_Delete(root);
+		return;
+	}
 
-    const char *script = script_json->valuestring;
-    double line_raw = line_json->valuedouble;
+	const char *script = script_json->valuestring;
+	double line_raw = line_json->valuedouble;
 
-    if (line_raw < 1.0 || line_raw > 1000000.0 || line_raw != (double)(unsigned long)line_raw) {
-        char err[512];
-        snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Line must be a positive integer\"},\"success\":false}", id);
-        transport->write_line(transport->ctx, err, strlen(err));
-        cJSON_Delete(root);
-        return;
-    }
+	if (line_raw < 1.0 || line_raw > 1000000.0 || line_raw != (double)(unsigned long)line_raw) {
+		char err[512];
+		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Line must be a positive integer\"},\"success\":false}", id);
+		transport->write_line(transport->ctx, err, strlen(err));
+		cJSON_Delete(root);
+		return;
+	}
 
-    unsigned long line = (unsigned long)line_raw;
+	unsigned long line = (unsigned long)line_raw;
 
-    /* Strip leading "@" if present — normalize to dotted path */
-    if (script[0] == '@')
-        script++;
+	/* Strip leading "@" if present — normalize to dotted path */
+	if (script[0] == '@')
+		script++;
 
-    if (strlen(script) >= DEBUG_SCRIPT_PATH_MAX) {
-        char err[512];
-        snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Script path too long\"},\"success\":false}", id);
-        transport->write_line(transport->ctx, err, strlen(err));
-        cJSON_Delete(root);
-        return;
-    }
+	if (strlen(script) >= DEBUG_SCRIPT_PATH_MAX) {
+		char err[512];
+		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Script path too long\"},\"success\":false}", id);
+		transport->write_line(transport->ctx, err, strlen(err));
+		cJSON_Delete(root);
+		return;
+	}
 
-    /* Toggle: check if breakpoint already exists */
-    boolean cleared = false;
-    boolean set = false;
+	/* Toggle: check if breakpoint already exists */
+	boolean cleared = false;
+	boolean set = false;
 
-    pthread_mutex_lock(&g_debug_mutex);
+	pthread_mutex_lock(&g_debug_mutex);
 
-    /* First pass: check for existing breakpoint to toggle off */
-    for (int i = 0; i < MAX_BREAKPOINTS; i++) {
-        if (g_breakpoints[i].active &&
-            g_breakpoints[i].line == line &&
-            strcasecmp(g_breakpoints[i].script, script) == 0) {
-            g_breakpoints[i].active = false;
-            cleared = true;
-            break;
-        }
-    }
+	/* First pass: check for existing breakpoint to toggle off */
+	for (int i = 0; i < MAX_BREAKPOINTS; i++) {
+		if (g_breakpoints[i].active &&
+			g_breakpoints[i].line == line &&
+			strcasecmp(g_breakpoints[i].script, script) == 0) {
+			g_breakpoints[i].active = false;
+			cleared = true;
+			break;
+		}
+	}
 
-    /* Second pass: if not clearing, find an empty slot to set */
-    if (!cleared) {
-        for (int i = 0; i < MAX_BREAKPOINTS; i++) {
-            if (!g_breakpoints[i].active) {
-                /* strlen(script) < DEBUG_SCRIPT_PATH_MAX is guaranteed by the guard above */
-                memcpy(g_breakpoints[i].script, script, strlen(script) + 1);
-                g_breakpoints[i].line = line;
-                g_breakpoints[i].condition[0] = '\0'; /* default: unconditional */
-                if (cJSON_IsString(cond_json) && cond_json->valuestring != NULL) {
-                    size_t clen = strlen(cond_json->valuestring);
-                    if (clen >= DEBUG_VALUE_MAX) clen = DEBUG_VALUE_MAX - 1;
-                    memcpy(g_breakpoints[i].condition, cond_json->valuestring, clen);
-                    g_breakpoints[i].condition[clen] = '\0';
-                }
-                g_breakpoints[i].active = true;
-                set = true;
-                break;
-            }
-        }
-    }
+	/* Second pass: if not clearing, find an empty slot to set */
+	if (!cleared) {
+		for (int i = 0; i < MAX_BREAKPOINTS; i++) {
+			if (!g_breakpoints[i].active) {
+				/* strlen(script) < DEBUG_SCRIPT_PATH_MAX is guaranteed by the guard above */
+				memcpy(g_breakpoints[i].script, script, strlen(script) + 1);
+				g_breakpoints[i].line = line;
+				g_breakpoints[i].condition[0] = '\0'; /* default: unconditional */
+				if (cJSON_IsString(cond_json) && cond_json->valuestring != NULL) {
+					size_t clen = strlen(cond_json->valuestring);
+					if (clen >= DEBUG_VALUE_MAX) clen = DEBUG_VALUE_MAX - 1;
+					memcpy(g_breakpoints[i].condition, cond_json->valuestring, clen);
+					g_breakpoints[i].condition[clen] = '\0';
+				}
+				g_breakpoints[i].active = true;
+				set = true;
+				break;
+			}
+		}
+	}
 
-    /* Update fast-path flag: check if any breakpoints remain active */
-    boolean any_active = false;
-    for (int i = 0; i < MAX_BREAKPOINTS; i++) {
-        if (g_breakpoints[i].active) {
-            any_active = true;
-            break;
-        }
-    }
-    atomic_store(&g_has_breakpoints, any_active);
+	/* Update fast-path flag: check if any breakpoints remain active */
+	boolean any_active = false;
+	for (int i = 0; i < MAX_BREAKPOINTS; i++) {
+		if (g_breakpoints[i].active) {
+			any_active = true;
+			break;
+		}
+	}
+	atomic_store(&g_has_breakpoints, any_active);
 
-    pthread_mutex_unlock(&g_debug_mutex);
+	pthread_mutex_unlock(&g_debug_mutex);
 
-    if (!cleared && !set) {
-        char err[512];
-        snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Too many breakpoints (max %d)\"},\"success\":false}", id, MAX_BREAKPOINTS);
-        transport->write_line(transport->ctx, err, strlen(err));
-        cJSON_Delete(root);
-        return;
-    }
+	if (!cleared && !set) {
+		char err[512];
+		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Too many breakpoints (max %d)\"},\"success\":false}", id, MAX_BREAKPOINTS);
+		transport->write_line(transport->ctx, err, strlen(err));
+		cJSON_Delete(root);
+		return;
+	}
 
-    /* Build response using cJSON to safely escape the script path */
-    cJSON *resp = cJSON_CreateObject();
-    cJSON_AddNumberToObject(resp, "id", id);
-    cJSON *result = cJSON_CreateObject();
-    cJSON_AddStringToObject(result, "action", cleared ? "cleared" : "set");
-    cJSON_AddStringToObject(result, "script", script);
-    cJSON_AddNumberToObject(result, "line", (double)line);
-    if (!cleared && cJSON_IsString(cond_json) && cond_json->valuestring != NULL)
-        cJSON_AddStringToObject(result, "condition", cond_json->valuestring);
-    cJSON_AddItemToObject(resp, "result", result);
-    cJSON_AddBoolToObject(resp, "success", 1);
+	/* Build response using cJSON to safely escape the script path */
+	cJSON *resp = cJSON_CreateObject();
+	cJSON_AddNumberToObject(resp, "id", id);
+	cJSON *result = cJSON_CreateObject();
+	cJSON_AddStringToObject(result, "action", cleared ? "cleared" : "set");
+	cJSON_AddStringToObject(result, "script", script);
+	cJSON_AddNumberToObject(result, "line", (double)line);
+	if (!cleared && cJSON_IsString(cond_json) && cond_json->valuestring != NULL)
+		cJSON_AddStringToObject(result, "condition", cond_json->valuestring);
+	cJSON_AddItemToObject(resp, "result", result);
+	cJSON_AddBoolToObject(resp, "success", 1);
 
-    char *json_str = cJSON_PrintUnformatted(resp);
-    if (json_str) {
-        transport->write_line(transport->ctx, json_str, strlen(json_str));
-        free(json_str);
-    } else {
-        log_warn(LOG_COMP_LANG, "debug: cJSON_PrintUnformatted failed (OOM)");
-    }
-    cJSON_Delete(resp);
+	char *json_str = cJSON_PrintUnformatted(resp);
+	if (json_str) {
+		transport->write_line(transport->ctx, json_str, strlen(json_str));
+		free(json_str);
+	} else {
+		log_warn(LOG_COMP_LANG, "debug: cJSON_PrintUnformatted failed (OOM)");
+	}
+	cJSON_Delete(resp);
 
-    log_info(LOG_COMP_LANG, "debug: breakpoint %s at %s line %ld",
-             cleared ? "cleared" : "set", script, line);
+	log_info(LOG_COMP_LANG, "debug: breakpoint %s at %s line %ld",
+			 cleared ? "cleared" : "set", script, line);
 
-    cJSON_Delete(root);
+	cJSON_Delete(root);
 }
 
 /*
@@ -1603,48 +1603,48 @@ void handle_debug_setbreakpoint(int id, const char *json_line, transport_t *tran
  */
 void handle_debug_listbreakpoints(int id, const char *json_line, transport_t *transport) {
 
-    (void)json_line; /* no params needed */
+	(void)json_line; /* no params needed */
 
-    cJSON *resp = cJSON_CreateObject();
-    if (resp == NULL) {
-        char err[128];
-        snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Memory allocation failed\"},\"success\":false}", id);
-        transport->write_line(transport->ctx, err, strlen(err));
-        return;
-    }
-    cJSON_AddNumberToObject(resp, "id", id);
+	cJSON *resp = cJSON_CreateObject();
+	if (resp == NULL) {
+		char err[128];
+		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Memory allocation failed\"},\"success\":false}", id);
+		transport->write_line(transport->ctx, err, strlen(err));
+		return;
+	}
+	cJSON_AddNumberToObject(resp, "id", id);
 
-    cJSON *result = cJSON_CreateObject();
-    cJSON *bparray = cJSON_CreateArray();
+	cJSON *result = cJSON_CreateObject();
+	cJSON *bparray = cJSON_CreateArray();
 
-    pthread_mutex_lock(&g_debug_mutex);
+	pthread_mutex_lock(&g_debug_mutex);
 
-    for (int i = 0; i < MAX_BREAKPOINTS; i++) {
-        if (g_breakpoints[i].active) {
-            cJSON *bp = cJSON_CreateObject();
-            cJSON_AddStringToObject(bp, "script", g_breakpoints[i].script);
-            cJSON_AddNumberToObject(bp, "line", (double)g_breakpoints[i].line);
-            cJSON_AddStringToObject(bp, "type", "session");
-            if (g_breakpoints[i].condition[0] != '\0')
-                cJSON_AddStringToObject(bp, "condition", g_breakpoints[i].condition);
-            cJSON_AddItemToArray(bparray, bp);
-        }
-    }
+	for (int i = 0; i < MAX_BREAKPOINTS; i++) {
+		if (g_breakpoints[i].active) {
+			cJSON *bp = cJSON_CreateObject();
+			cJSON_AddStringToObject(bp, "script", g_breakpoints[i].script);
+			cJSON_AddNumberToObject(bp, "line", (double)g_breakpoints[i].line);
+			cJSON_AddStringToObject(bp, "type", "session");
+			if (g_breakpoints[i].condition[0] != '\0')
+				cJSON_AddStringToObject(bp, "condition", g_breakpoints[i].condition);
+			cJSON_AddItemToArray(bparray, bp);
+		}
+	}
 
-    pthread_mutex_unlock(&g_debug_mutex);
+	pthread_mutex_unlock(&g_debug_mutex);
 
-    cJSON_AddItemToObject(result, "breakpoints", bparray);
-    cJSON_AddItemToObject(resp, "result", result);
-    cJSON_AddBoolToObject(resp, "success", 1);
+	cJSON_AddItemToObject(result, "breakpoints", bparray);
+	cJSON_AddItemToObject(resp, "result", result);
+	cJSON_AddBoolToObject(resp, "success", 1);
 
-    char *json_str = cJSON_PrintUnformatted(resp);
-    if (json_str) {
-        transport->write_line(transport->ctx, json_str, strlen(json_str));
-        free(json_str);
-    } else {
-        log_warn(LOG_COMP_LANG, "debug: cJSON_PrintUnformatted failed (OOM)");
-    }
-    cJSON_Delete(resp);
+	char *json_str = cJSON_PrintUnformatted(resp);
+	if (json_str) {
+		transport->write_line(transport->ctx, json_str, strlen(json_str));
+		free(json_str);
+	} else {
+		log_warn(LOG_COMP_LANG, "debug: cJSON_PrintUnformatted failed (OOM)");
+	}
+	cJSON_Delete(resp);
 }
 
 /*
@@ -1652,45 +1652,45 @@ void handle_debug_listbreakpoints(int id, const char *json_line, transport_t *tr
  */
 void handle_debug_clearbreakpoints(int id, const char *json_line, transport_t *transport) {
 
-    (void)json_line; /* no params to validate */
+	(void)json_line; /* no params to validate */
 
-    int cleared = 0;
+	int cleared = 0;
 
-    pthread_mutex_lock(&g_debug_mutex);
+	pthread_mutex_lock(&g_debug_mutex);
 
-    for (int i = 0; i < MAX_BREAKPOINTS; i++) {
-        if (g_breakpoints[i].active) {
-            g_breakpoints[i].active = false;
-            cleared++;
-        }
-    }
+	for (int i = 0; i < MAX_BREAKPOINTS; i++) {
+		if (g_breakpoints[i].active) {
+			g_breakpoints[i].active = false;
+			cleared++;
+		}
+	}
 
-    atomic_store(&g_has_breakpoints, false);
+	atomic_store(&g_has_breakpoints, false);
 
-    pthread_mutex_unlock(&g_debug_mutex);
+	pthread_mutex_unlock(&g_debug_mutex);
 
-    cJSON *resp_bp = cJSON_CreateObject();
-    if (resp_bp == NULL) {
-        char err[128];
-        snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Memory allocation failed\"},\"success\":false}", id);
-        transport->write_line(transport->ctx, err, strlen(err));
-        return;
-    }
-    cJSON_AddNumberToObject(resp_bp, "id", id);
-    cJSON *result_bp = cJSON_CreateObject();
-    cJSON_AddNumberToObject(result_bp, "cleared", cleared);
-    cJSON_AddItemToObject(resp_bp, "result", result_bp);
-    cJSON_AddBoolToObject(resp_bp, "success", 1);
-    char *json_str = cJSON_PrintUnformatted(resp_bp);
-    if (json_str) {
-        transport->write_line(transport->ctx, json_str, strlen(json_str));
-        free(json_str);
-    } else {
-        log_warn(LOG_COMP_LANG, "debug: cJSON_PrintUnformatted failed (OOM)");
-    }
-    cJSON_Delete(resp_bp);
+	cJSON *resp_bp = cJSON_CreateObject();
+	if (resp_bp == NULL) {
+		char err[128];
+		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Memory allocation failed\"},\"success\":false}", id);
+		transport->write_line(transport->ctx, err, strlen(err));
+		return;
+	}
+	cJSON_AddNumberToObject(resp_bp, "id", id);
+	cJSON *result_bp = cJSON_CreateObject();
+	cJSON_AddNumberToObject(result_bp, "cleared", cleared);
+	cJSON_AddItemToObject(resp_bp, "result", result_bp);
+	cJSON_AddBoolToObject(resp_bp, "success", 1);
+	char *json_str = cJSON_PrintUnformatted(resp_bp);
+	if (json_str) {
+		transport->write_line(transport->ctx, json_str, strlen(json_str));
+		free(json_str);
+	} else {
+		log_warn(LOG_COMP_LANG, "debug: cJSON_PrintUnformatted failed (OOM)");
+	}
+	cJSON_Delete(resp_bp);
 
-    log_info(LOG_COMP_LANG, "debug: cleared %d breakpoints", cleared);
+	log_info(LOG_COMP_LANG, "debug: cleared %d breakpoints", cleared);
 }
 
 /* ========================================================================
@@ -1703,55 +1703,55 @@ void handle_debug_clearbreakpoints(int id, const char *json_line, transport_t *t
  * Sends an error response and cleans up root on failure.
  */
 static tydebugstate *parse_thread_param(int id, const char *json_line,
-                                         transport_t *transport, cJSON **out_root) {
+										 transport_t *transport, cJSON **out_root) {
 
-    cJSON *root = cJSON_Parse(json_line);
+	cJSON *root = cJSON_Parse(json_line);
 
-    if (root == NULL) {
-        char err[512];
-        snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Invalid JSON\"},\"success\":false}", id);
-        transport->write_line(transport->ctx, err, strlen(err));
-        *out_root = NULL;
-        return NULL;
-    }
+	if (root == NULL) {
+		char err[512];
+		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Invalid JSON\"},\"success\":false}", id);
+		transport->write_line(transport->ctx, err, strlen(err));
+		*out_root = NULL;
+		return NULL;
+	}
 
-    *out_root = root;
+	*out_root = root;
 
-    cJSON *params = cJSON_GetObjectItemCaseSensitive(root, "params");
-    cJSON *tid_json = params ? cJSON_GetObjectItemCaseSensitive(params, "threadId") : NULL;
+	cJSON *params = cJSON_GetObjectItemCaseSensitive(root, "params");
+	cJSON *tid_json = params ? cJSON_GetObjectItemCaseSensitive(params, "threadId") : NULL;
 
-    if (!cJSON_IsNumber(tid_json)) {
-        char err[512];
-        snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Missing 'threadId' in params\"},\"success\":false}", id);
-        transport->write_line(transport->ctx, err, strlen(err));
-        cJSON_Delete(root);
-        *out_root = NULL;
-        return NULL;
-    }
+	if (!cJSON_IsNumber(tid_json)) {
+		char err[512];
+		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Missing 'threadId' in params\"},\"success\":false}", id);
+		transport->write_line(transport->ctx, err, strlen(err));
+		cJSON_Delete(root);
+		*out_root = NULL;
+		return NULL;
+	}
 
-    long threadid = (long)tid_json->valuedouble;
-    tydebugstate *state = debug_get_state_for_thread(threadid);
+	long threadid = (long)tid_json->valuedouble;
+	tydebugstate *state = debug_get_state_for_thread(threadid);
 
-    if (state == NULL) {
-        char err[512];
-        snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"No debug thread with that ID\"},\"success\":false}", id);
-        transport->write_line(transport->ctx, err, strlen(err));
-        cJSON_Delete(root);
-        *out_root = NULL;
-        return NULL;
-    }
+	if (state == NULL) {
+		char err[512];
+		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"No debug thread with that ID\"},\"success\":false}", id);
+		transport->write_line(transport->ctx, err, strlen(err));
+		cJSON_Delete(root);
+		*out_root = NULL;
+		return NULL;
+	}
 
-    if (!atomic_load(&state->flsuspended)) {
-        debug_release_state(state);
-        char err[512];
-        snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Thread %ld is not suspended\"},\"success\":false}", id, threadid);
-        transport->write_line(transport->ctx, err, strlen(err));
-        cJSON_Delete(root);
-        *out_root = NULL;
-        return NULL;
-    }
+	if (!atomic_load(&state->flsuspended)) {
+		debug_release_state(state);
+		char err[512];
+		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Thread %ld is not suspended\"},\"success\":false}", id, threadid);
+		transport->write_line(transport->ctx, err, strlen(err));
+		cJSON_Delete(root);
+		*out_root = NULL;
+		return NULL;
+	}
 
-    return state;
+	return state;
 }
 
 /*
@@ -1765,105 +1765,105 @@ static tydebugstate *parse_thread_param(int id, const char *json_line,
  */
 void handle_debug_getlocals(int id, const char *json_line, transport_t *transport) {
 
-    cJSON *root = NULL;
-    tydebugstate *state = parse_thread_param(id, json_line, transport, &root);
+	cJSON *root = NULL;
+	tydebugstate *state = parse_thread_param(id, json_line, transport, &root);
 
-    if (state == NULL)
-        return;
+	if (state == NULL)
+		return;
 
-    /* Access the suspended thread's hash table context.
-     * Safe because the debug thread is in nanosleep and not touching globals. */
-    hdlthreadglobals hg = (hdlthreadglobals)state->hglobals;
-    hdlhashtable htable = (hg != nil) ? (**hg).hcurrenthashtable : nil;
+	/* Access the suspended thread's hash table context.
+	 * Safe because the debug thread is in nanosleep and not touching globals. */
+	hdlthreadglobals hg = (hdlthreadglobals)state->hglobals;
+	hdlhashtable htable = (hg != nil) ? (**hg).hcurrenthashtable : nil;
 
-    cJSON *resp = cJSON_CreateObject();
-    if (resp == NULL) {
-        char err[128];
-        snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Memory allocation failed\"},\"success\":false}", id);
-        transport->write_line(transport->ctx, err, strlen(err));
-        debug_release_state(state);
-        cJSON_Delete(root);
-        return;
-    }
-    cJSON_AddNumberToObject(resp, "id", id);
-    cJSON *result = cJSON_CreateObject();
-    cJSON *locals = cJSON_CreateArray();
+	cJSON *resp = cJSON_CreateObject();
+	if (resp == NULL) {
+		char err[128];
+		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Memory allocation failed\"},\"success\":false}", id);
+		transport->write_line(transport->ctx, err, strlen(err));
+		debug_release_state(state);
+		cJSON_Delete(root);
+		return;
+	}
+	cJSON_AddNumberToObject(resp, "id", id);
+	cJSON *result = cJSON_CreateObject();
+	cJSON *locals = cJSON_CreateArray();
 
-    /* Walk the hash table chain looking for local tables */
-    while (htable != nil) {
-        if ((**htable).fllocaltable) {
-            /* Enumerate entries in this local table via sorted list */
-            hdlhashnode hnode = (**htable).hfirstsort;
+	/* Walk the hash table chain looking for local tables */
+	while (htable != nil) {
+		if ((**htable).fllocaltable) {
+			/* Enumerate entries in this local table via sorted list */
+			hdlhashnode hnode = (**htable).hfirstsort;
 
-            while (hnode != nil) {
-                cJSON *entry = cJSON_CreateObject();
+			while (hnode != nil) {
+				cJSON *entry = cJSON_CreateObject();
 
-                /* Name: Pascal string in hashkey */
-                bigstring bsname;
-                copystring((**hnode).hashkey, bsname);
-                char cname[256];
-                int nlen = bsname[0];
-                if (nlen >= (int)sizeof(cname)) nlen = (int)sizeof(cname) - 1;
-                memcpy(cname, bsname + 1, (size_t)nlen);
-                cname[nlen] = '\0';
-                cJSON_AddStringToObject(entry, "name", cname);
+				/* Name: Pascal string in hashkey */
+				bigstring bsname;
+				copystring((**hnode).hashkey, bsname);
+				char cname[256];
+				int nlen = bsname[0];
+				if (nlen >= (int)sizeof(cname)) nlen = (int)sizeof(cname) - 1;
+				memcpy(cname, bsname + 1, (size_t)nlen);
+				cname[nlen] = '\0';
+				cJSON_AddStringToObject(entry, "name", cname);
 
-                /* Value: convert to display string */
-                bigstring bsval;
-                if (hashgetvaluestring((**hnode).val, bsval)) {
-                    char cval[256];
-                    int vlen = bsval[0];
-                    if (vlen >= (int)sizeof(cval)) vlen = (int)sizeof(cval) - 1;
-                    memcpy(cval, bsval + 1, (size_t)vlen);
-                    cval[vlen] = '\0';
-                    if (bsval[0] >= 255) {
-                        /* Value was likely truncated by bigstring limit */
-                        if (vlen >= 4) {
-                            cval[vlen-3] = '.'; cval[vlen-2] = '.'; cval[vlen-1] = '.';
-                        }
-                    }
-                    cJSON_AddStringToObject(entry, "value", cval);
-                } else {
-                    cJSON_AddStringToObject(entry, "value", "(unknown)");
-                }
+				/* Value: convert to display string */
+				bigstring bsval;
+				if (hashgetvaluestring((**hnode).val, bsval)) {
+					char cval[256];
+					int vlen = bsval[0];
+					if (vlen >= (int)sizeof(cval)) vlen = (int)sizeof(cval) - 1;
+					memcpy(cval, bsval + 1, (size_t)vlen);
+					cval[vlen] = '\0';
+					if (bsval[0] >= 255) {
+						/* Value was likely truncated by bigstring limit */
+						if (vlen >= 4) {
+							cval[vlen-3] = '.'; cval[vlen-2] = '.'; cval[vlen-1] = '.';
+						}
+					}
+					cJSON_AddStringToObject(entry, "value", cval);
+				} else {
+					cJSON_AddStringToObject(entry, "value", "(unknown)");
+				}
 
-                /* Type */
-                bigstring bstype;
-                if (langgettypestring((**hnode).val.valuetype, bstype)) {
-                    char ctype[64];
-                    int tlen = bstype[0];
-                    if (tlen >= (int)sizeof(ctype)) tlen = (int)sizeof(ctype) - 1;
-                    memcpy(ctype, bstype + 1, (size_t)tlen);
-                    ctype[tlen] = '\0';
-                    cJSON_AddStringToObject(entry, "type", ctype);
-                }
+				/* Type */
+				bigstring bstype;
+				if (langgettypestring((**hnode).val.valuetype, bstype)) {
+					char ctype[64];
+					int tlen = bstype[0];
+					if (tlen >= (int)sizeof(ctype)) tlen = (int)sizeof(ctype) - 1;
+					memcpy(ctype, bstype + 1, (size_t)tlen);
+					ctype[tlen] = '\0';
+					cJSON_AddStringToObject(entry, "type", ctype);
+				}
 
-                cJSON_AddItemToArray(locals, entry);
-                hnode = (**hnode).sortedlink;
-            }
-            break; /* only enumerate the innermost local table */
-        }
-        htable = (**htable).prevhashtable;
-    }
+				cJSON_AddItemToArray(locals, entry);
+				hnode = (**hnode).sortedlink;
+			}
+			break; /* only enumerate the innermost local table */
+		}
+		htable = (**htable).prevhashtable;
+	}
 
-    cJSON_AddItemToObject(result, "locals", locals);
-    if (state->current_script[0] != '\0')
-        cJSON_AddStringToObject(result, "script", state->current_script);
-    cJSON_AddNumberToObject(result, "line", (double)atomic_load(&state->lastlnum));
-    cJSON_AddItemToObject(resp, "result", result);
-    cJSON_AddBoolToObject(resp, "success", 1);
+	cJSON_AddItemToObject(result, "locals", locals);
+	if (state->current_script[0] != '\0')
+		cJSON_AddStringToObject(result, "script", state->current_script);
+	cJSON_AddNumberToObject(result, "line", (double)atomic_load(&state->lastlnum));
+	cJSON_AddItemToObject(resp, "result", result);
+	cJSON_AddBoolToObject(resp, "success", 1);
 
-    char *json_str = cJSON_PrintUnformatted(resp);
-    if (json_str) {
-        transport->write_line(transport->ctx, json_str, strlen(json_str));
-        free(json_str);
-    } else {
-        log_warn(LOG_COMP_LANG, "debug: cJSON_PrintUnformatted failed (OOM)");
-    }
-    cJSON_Delete(resp);
+	char *json_str = cJSON_PrintUnformatted(resp);
+	if (json_str) {
+		transport->write_line(transport->ctx, json_str, strlen(json_str));
+		free(json_str);
+	} else {
+		log_warn(LOG_COMP_LANG, "debug: cJSON_PrintUnformatted failed (OOM)");
+	}
+	cJSON_Delete(resp);
 
-    debug_release_state(state);
-    cJSON_Delete(root);
+	debug_release_state(state);
+	cJSON_Delete(root);
 }
 
 /*
@@ -1876,63 +1876,63 @@ void handle_debug_getlocals(int id, const char *json_line, transport_t *transpor
  */
 void handle_debug_getstack(int id, const char *json_line, transport_t *transport) {
 
-    cJSON *root = NULL;
-    tydebugstate *state = parse_thread_param(id, json_line, transport, &root);
+	cJSON *root = NULL;
+	tydebugstate *state = parse_thread_param(id, json_line, transport, &root);
 
-    if (state == NULL)
-        return;
+	if (state == NULL)
+		return;
 
-    cJSON *resp = cJSON_CreateObject();
-    if (resp == NULL) {
-        char err[128];
-        snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Memory allocation failed\"},\"success\":false}", id);
-        transport->write_line(transport->ctx, err, strlen(err));
-        debug_release_state(state);
-        cJSON_Delete(root);
-        return;
-    }
-    cJSON_AddNumberToObject(resp, "id", id);
-    cJSON *result = cJSON_CreateObject();
-    cJSON *frames = cJSON_CreateArray();
+	cJSON *resp = cJSON_CreateObject();
+	if (resp == NULL) {
+		char err[128];
+		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Memory allocation failed\"},\"success\":false}", id);
+		transport->write_line(transport->ctx, err, strlen(err));
+		debug_release_state(state);
+		cJSON_Delete(root);
+		return;
+	}
+	cJSON_AddNumberToObject(resp, "id", id);
+	cJSON *result = cJSON_CreateObject();
+	cJSON *frames = cJSON_CreateArray();
 
-    /* Build stack from the script_stack (outermost to innermost).
-     * script_stack[0] is the outermost caller, current_script is the
-     * innermost (currently executing) script. */
-    for (short i = 0; i < state->script_stack_depth; i++) {
-        if (state->script_stack[i][0] != '\0') {
-            cJSON *frame = cJSON_CreateObject();
-            cJSON_AddNumberToObject(frame, "level", i + 1);
-            cJSON_AddStringToObject(frame, "script", state->script_stack[i]);
-            if (state->script_stack_lines[i] > 0)
-                cJSON_AddNumberToObject(frame, "line", (double)state->script_stack_lines[i]);
-            cJSON_AddItemToArray(frames, frame);
-        }
-    }
+	/* Build stack from the script_stack (outermost to innermost).
+	 * script_stack[0] is the outermost caller, current_script is the
+	 * innermost (currently executing) script. */
+	for (short i = 0; i < state->script_stack_depth; i++) {
+		if (state->script_stack[i][0] != '\0') {
+			cJSON *frame = cJSON_CreateObject();
+			cJSON_AddNumberToObject(frame, "level", i + 1);
+			cJSON_AddStringToObject(frame, "script", state->script_stack[i]);
+			if (state->script_stack_lines[i] > 0)
+				cJSON_AddNumberToObject(frame, "line", (double)state->script_stack_lines[i]);
+			cJSON_AddItemToArray(frames, frame);
+		}
+	}
 
-    /* Add current frame (innermost) */
-    if (state->current_script[0] != '\0') {
-        cJSON *frame = cJSON_CreateObject();
-        cJSON_AddNumberToObject(frame, "level", state->script_stack_depth + 1);
-        cJSON_AddStringToObject(frame, "script", state->current_script);
-        cJSON_AddNumberToObject(frame, "line", (double)atomic_load(&state->lastlnum));
-        cJSON_AddItemToArray(frames, frame);
-    }
+	/* Add current frame (innermost) */
+	if (state->current_script[0] != '\0') {
+		cJSON *frame = cJSON_CreateObject();
+		cJSON_AddNumberToObject(frame, "level", state->script_stack_depth + 1);
+		cJSON_AddStringToObject(frame, "script", state->current_script);
+		cJSON_AddNumberToObject(frame, "line", (double)atomic_load(&state->lastlnum));
+		cJSON_AddItemToArray(frames, frame);
+	}
 
-    cJSON_AddItemToObject(result, "frames", frames);
-    cJSON_AddItemToObject(resp, "result", result);
-    cJSON_AddBoolToObject(resp, "success", 1);
+	cJSON_AddItemToObject(result, "frames", frames);
+	cJSON_AddItemToObject(resp, "result", result);
+	cJSON_AddBoolToObject(resp, "success", 1);
 
-    char *json_str = cJSON_PrintUnformatted(resp);
-    if (json_str) {
-        transport->write_line(transport->ctx, json_str, strlen(json_str));
-        free(json_str);
-    } else {
-        log_warn(LOG_COMP_LANG, "debug: cJSON_PrintUnformatted failed (OOM)");
-    }
-    cJSON_Delete(resp);
+	char *json_str = cJSON_PrintUnformatted(resp);
+	if (json_str) {
+		transport->write_line(transport->ctx, json_str, strlen(json_str));
+		free(json_str);
+	} else {
+		log_warn(LOG_COMP_LANG, "debug: cJSON_PrintUnformatted failed (OOM)");
+	}
+	cJSON_Delete(resp);
 
-    debug_release_state(state);
-    cJSON_Delete(root);
+	debug_release_state(state);
+	cJSON_Delete(root);
 }
 
 /*
@@ -1947,232 +1947,232 @@ void handle_debug_getstack(int id, const char *json_line, transport_t *transport
  */
 void handle_debug_getsource(int id, const char *json_line, transport_t *transport) {
 
-    cJSON *root = cJSON_Parse(json_line);
+	cJSON *root = cJSON_Parse(json_line);
 
-    if (root == NULL) {
-        char err[512];
-        snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Invalid JSON\"},\"success\":false}", id);
-        transport->write_line(transport->ctx, err, strlen(err));
-        return;
-    }
+	if (root == NULL) {
+		char err[512];
+		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Invalid JSON\"},\"success\":false}", id);
+		transport->write_line(transport->ctx, err, strlen(err));
+		return;
+	}
 
-    cJSON *params = cJSON_GetObjectItemCaseSensitive(root, "params");
-    cJSON *script_json = params ? cJSON_GetObjectItemCaseSensitive(params, "script") : NULL;
-    cJSON *tid_json = params ? cJSON_GetObjectItemCaseSensitive(params, "threadId") : NULL;
+	cJSON *params = cJSON_GetObjectItemCaseSensitive(root, "params");
+	cJSON *script_json = params ? cJSON_GetObjectItemCaseSensitive(params, "script") : NULL;
+	cJSON *tid_json = params ? cJSON_GetObjectItemCaseSensitive(params, "threadId") : NULL;
 
-    if (!cJSON_IsString(script_json) || script_json->valuestring == NULL) {
-        char err[512];
-        snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Missing 'script' in params\"},\"success\":false}", id);
-        transport->write_line(transport->ctx, err, strlen(err));
-        cJSON_Delete(root);
-        return;
-    }
+	if (!cJSON_IsString(script_json) || script_json->valuestring == NULL) {
+		char err[512];
+		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Missing 'script' in params\"},\"success\":false}", id);
+		transport->write_line(transport->ctx, err, strlen(err));
+		cJSON_Delete(root);
+		return;
+	}
 
-    const char *script_path = script_json->valuestring;
-    if (script_path[0] == '@')
-        script_path++;
+	const char *script_path = script_json->valuestring;
+	if (script_path[0] == '@')
+		script_path++;
 
-    /* Resolve the script path.
-     * Use script/eval to evaluate string(scriptAddress) — simpler than
-     * navigating the ODB directly and handles all edge cases. */
+	/* Resolve the script path.
+	 * Use script/eval to evaluate string(scriptAddress) — simpler than
+	 * navigating the ODB directly and handles all edge cases. */
 
-    /* Parse the dotted path to find the containing table and leaf name */
-    bigstring bsfullpath;
-    int pathlen = (int)strlen(script_path);
-    if (pathlen > 255) pathlen = 255;
-    bsfullpath[0] = (unsigned char)pathlen;
-    memcpy(bsfullpath + 1, script_path, (size_t)pathlen);
+	/* Parse the dotted path to find the containing table and leaf name */
+	bigstring bsfullpath;
+	int pathlen = (int)strlen(script_path);
+	if (pathlen > 255) pathlen = 255;
+	bsfullpath[0] = (unsigned char)pathlen;
+	memcpy(bsfullpath + 1, script_path, (size_t)pathlen);
 
-    /* Find the last dot to split into table path + name */
-    int lastdot = -1;
-    for (int i = pathlen; i > 0; i--) {
-        if (bsfullpath[i] == '.') {
-            lastdot = i;
-            break;
-        }
-    }
+	/* Find the last dot to split into table path + name */
+	int lastdot = -1;
+	for (int i = pathlen; i > 0; i--) {
+		if (bsfullpath[i] == '.') {
+			lastdot = i;
+			break;
+		}
+	}
 
-    if (lastdot < 0) {
-        char err[512];
-        snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Script path must be fully qualified (e.g. system.temp.myFunc)\"},\"success\":false}", id);
-        transport->write_line(transport->ctx, err, strlen(err));
-        cJSON_Delete(root);
-        return;
-    }
+	if (lastdot < 0) {
+		char err[512];
+		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Script path must be fully qualified (e.g. system.temp.myFunc)\"},\"success\":false}", id);
+		transport->write_line(transport->ctx, err, strlen(err));
+		cJSON_Delete(root);
+		return;
+	}
 
-    /* Split: table path is bsfullpath[1..lastdot-1], name is bsfullpath[lastdot+1..] */
-    bigstring bstablepath, bsname;
-    bstablepath[0] = (unsigned char)(lastdot - 1);
-    memcpy(bstablepath + 1, bsfullpath + 1, (size_t)(lastdot - 1));
+	/* Split: table path is bsfullpath[1..lastdot-1], name is bsfullpath[lastdot+1..] */
+	bigstring bstablepath, bsname;
+	bstablepath[0] = (unsigned char)(lastdot - 1);
+	memcpy(bstablepath + 1, bsfullpath + 1, (size_t)(lastdot - 1));
 
-    int namelen = pathlen - lastdot;
-    bsname[0] = (unsigned char)namelen;
-    memcpy(bsname + 1, bsfullpath + lastdot + 1, (size_t)namelen);
+	int namelen = pathlen - lastdot;
+	bsname[0] = (unsigned char)namelen;
+	memcpy(bsname + 1, bsfullpath + lastdot + 1, (size_t)namelen);
 
-    /* Navigate to the table */
-    hdlhashtable htable;
-    if (!langfastaddresstotable(roottable, bstablepath, &htable)) {
-        char err[512];
-        snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Table not found in path\"},\"success\":false}", id);
-        transport->write_line(transport->ctx, err, strlen(err));
-        cJSON_Delete(root);
-        return;
-    }
+	/* Navigate to the table */
+	hdlhashtable htable;
+	if (!langfastaddresstotable(roottable, bstablepath, &htable)) {
+		char err[512];
+		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Table not found in path\"},\"success\":false}", id);
+		transport->write_line(transport->ctx, err, strlen(err));
+		cJSON_Delete(root);
+		return;
+	}
 
-    /* Look up the script */
-    tyvaluerecord val;
-    hdlhashnode hnode;
-    if (!hashtablelookup(htable, bsname, &val, &hnode)) {
-        char err[512];
-        snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Script not found\"},\"success\":false}", id);
-        transport->write_line(transport->ctx, err, strlen(err));
-        cJSON_Delete(root);
-        return;
-    }
+	/* Look up the script */
+	tyvaluerecord val;
+	hdlhashnode hnode;
+	if (!hashtablelookup(htable, bsname, &val, &hnode)) {
+		char err[512];
+		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Script not found\"},\"success\":false}", id);
+		transport->write_line(transport->ctx, err, strlen(err));
+		cJSON_Delete(root);
+		return;
+	}
 
-    /* Get the script text via opgetlangtext. The protocol handler holds the GIL
-     * (acquired before dispatch in protocol_handler.c), so ODB operations are safe. */
-    Handle htext = nil;
+	/* Get the script text via opgetlangtext. The protocol handler holds the GIL
+	 * (acquired before dispatch in protocol_handler.c), so ODB operations are safe. */
+	Handle htext = nil;
 
-    if (val.valuetype == externalvaluetype) {
-        hdlexternalvariable hv = (hdlexternalvariable)val.data.externalvalue;
+	if (val.valuetype == externalvaluetype) {
+		hdlexternalvariable hv = (hdlexternalvariable)val.data.externalvalue;
 
-        /* Load from database if not yet in memory.
-         * Use format-aware context to handle both v6 and v7 databases. */
-        if (!(**hv).flinmemory) {
-            db_context ctx;
-            if ((**hv).hdatabase != nil && db_format_is_legacy_db((**hv).hdatabase)) {
-                db_context_init_legacy_read(&ctx, (**hv).hdatabase);
-            } else {
-                db_context_init(&ctx);
-                if ((**hv).hdatabase != nil)
-                    ctx.database = (**hv).hdatabase;
-            }
-            if (!opverbinmemory(&ctx, hv)) {
-                char err[512];
-                snprintf(err, sizeof(err),
-                         "{\"id\":%d,\"error\":{\"message\":\"Failed to load script from database\"},\"success\":false}", id);
-                transport->write_line(transport->ctx, err, strlen(err));
-                cJSON_Delete(root);
-                return;
-            }
-        }
+		/* Load from database if not yet in memory.
+		 * Use format-aware context to handle both v6 and v7 databases. */
+		if (!(**hv).flinmemory) {
+			db_context ctx;
+			if ((**hv).hdatabase != nil && db_format_is_legacy_db((**hv).hdatabase)) {
+				db_context_init_legacy_read(&ctx, (**hv).hdatabase);
+			} else {
+				db_context_init(&ctx);
+				if ((**hv).hdatabase != nil)
+					ctx.database = (**hv).hdatabase;
+			}
+			if (!opverbinmemory(&ctx, hv)) {
+				char err[512];
+				snprintf(err, sizeof(err),
+						 "{\"id\":%d,\"error\":{\"message\":\"Failed to load script from database\"},\"success\":false}", id);
+				transport->write_line(transport->ctx, err, strlen(err));
+				cJSON_Delete(root);
+				return;
+			}
+		}
 
-        hdloutlinerecord houtline = (hdloutlinerecord)(**hv).variabledata;
+		hdloutlinerecord houtline = (hdloutlinerecord)(**hv).variabledata;
 
-        if (houtline != nil) {
-            oppushoutline(houtline);
-            opgetlangtext(houtline, false, &htext);
-            oppopoutline();
-        }
-    }
+		if (houtline != nil) {
+			oppushoutline(houtline);
+			opgetlangtext(houtline, false, &htext);
+			oppopoutline();
+		}
+	}
 
-    if (htext == nil) {
-        char err[512];
-        snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Could not get script source\"},\"success\":false}", id);
-        transport->write_line(transport->ctx, err, strlen(err));
-        cJSON_Delete(root);
-        return;
-    }
+	if (htext == nil) {
+		char err[512];
+		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Could not get script source\"},\"success\":false}", id);
+		transport->write_line(transport->ctx, err, strlen(err));
+		cJSON_Delete(root);
+		return;
+	}
 
-    /* Determine current line if threadId is provided */
-    long current_line = -1;
-    if (cJSON_IsNumber(tid_json)) {
-        long threadid = (long)tid_json->valuedouble;
-        tydebugstate *dbgstate = debug_get_state_for_thread(threadid);
-        if (dbgstate != NULL) {
-            if (atomic_load(&dbgstate->flsuspended) &&
-                strcasecmp(dbgstate->current_script, script_path) == 0) {
-                current_line = (long)atomic_load(&dbgstate->lastlnum);
-            }
-            debug_release_state(dbgstate);
-        }
-    }
+	/* Determine current line if threadId is provided */
+	long current_line = -1;
+	if (cJSON_IsNumber(tid_json)) {
+		long threadid = (long)tid_json->valuedouble;
+		tydebugstate *dbgstate = debug_get_state_for_thread(threadid);
+		if (dbgstate != NULL) {
+			if (atomic_load(&dbgstate->flsuspended) &&
+				strcasecmp(dbgstate->current_script, script_path) == 0) {
+				current_line = (long)atomic_load(&dbgstate->lastlnum);
+			}
+			debug_release_state(dbgstate);
+		}
+	}
 
-    /* Build line-by-line response.
-     * opgetlangtext uses CR (\r) as line separator. */
-    long textlen = GetHandleSize(htext);
-    char *text = *htext;
+	/* Build line-by-line response.
+	 * opgetlangtext uses CR (\r) as line separator. */
+	long textlen = GetHandleSize(htext);
+	char *text = *htext;
 
-    cJSON *resp = cJSON_CreateObject();
-    if (resp == NULL) {
-        char err[128];
-        snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Memory allocation failed\"},\"success\":false}", id);
-        transport->write_line(transport->ctx, err, strlen(err));
-        disposehandle(htext);
-        cJSON_Delete(root);
-        return;
-    }
-    cJSON_AddNumberToObject(resp, "id", id);
-    cJSON *result_obj = cJSON_CreateObject();
-    cJSON_AddStringToObject(result_obj, "script", script_path);
-    if (current_line > 0)
-        cJSON_AddNumberToObject(result_obj, "currentLine", (double)current_line);
+	cJSON *resp = cJSON_CreateObject();
+	if (resp == NULL) {
+		char err[128];
+		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Memory allocation failed\"},\"success\":false}", id);
+		transport->write_line(transport->ctx, err, strlen(err));
+		disposehandle(htext);
+		cJSON_Delete(root);
+		return;
+	}
+	cJSON_AddNumberToObject(resp, "id", id);
+	cJSON *result_obj = cJSON_CreateObject();
+	cJSON_AddStringToObject(result_obj, "script", script_path);
+	if (current_line > 0)
+		cJSON_AddNumberToObject(result_obj, "currentLine", (double)current_line);
 
-    /* Pre-scan breakpoints for this script to avoid O(lines * MAX_BREAKPOINTS) */
-    unsigned long bp_lines[MAX_BREAKPOINTS];
-    int bp_count = 0;
-    pthread_mutex_lock(&g_debug_mutex);
-    for (int b = 0; b < MAX_BREAKPOINTS; b++) {
-        if (g_breakpoints[b].active &&
-            strcasecmp(g_breakpoints[b].script, script_path) == 0) {
-            bp_lines[bp_count++] = g_breakpoints[b].line;
-        }
-    }
-    pthread_mutex_unlock(&g_debug_mutex);
+	/* Pre-scan breakpoints for this script to avoid O(lines * MAX_BREAKPOINTS) */
+	unsigned long bp_lines[MAX_BREAKPOINTS];
+	int bp_count = 0;
+	pthread_mutex_lock(&g_debug_mutex);
+	for (int b = 0; b < MAX_BREAKPOINTS; b++) {
+		if (g_breakpoints[b].active &&
+			strcasecmp(g_breakpoints[b].script, script_path) == 0) {
+			bp_lines[bp_count++] = g_breakpoints[b].line;
+		}
+	}
+	pthread_mutex_unlock(&g_debug_mutex);
 
-    cJSON *lines = cJSON_CreateArray();
-    long linenum = 1;
-    long linestart = 0;
+	cJSON *lines = cJSON_CreateArray();
+	long linenum = 1;
+	long linestart = 0;
 
-    for (long i = 0; i <= textlen; i++) {
-        if (i == textlen || text[i] == '\r' || text[i] == '\n') {
-            /* Extract this line */
-            long linelen = i - linestart;
-            char linebuf[4096];
-            if (linelen >= (long)sizeof(linebuf))
-                linelen = (long)sizeof(linebuf) - 1;
-            memcpy(linebuf, text + linestart, (size_t)linelen);
-            linebuf[linelen] = '\0';
+	for (long i = 0; i <= textlen; i++) {
+		if (i == textlen || text[i] == '\r' || text[i] == '\n') {
+			/* Extract this line */
+			long linelen = i - linestart;
+			char linebuf[4096];
+			if (linelen >= (long)sizeof(linebuf))
+				linelen = (long)sizeof(linebuf) - 1;
+			memcpy(linebuf, text + linestart, (size_t)linelen);
+			linebuf[linelen] = '\0';
 
-            cJSON *lineobj = cJSON_CreateObject();
-            cJSON_AddNumberToObject(lineobj, "num", (double)linenum);
-            cJSON_AddStringToObject(lineobj, "text", linebuf);
+			cJSON *lineobj = cJSON_CreateObject();
+			cJSON_AddNumberToObject(lineobj, "num", (double)linenum);
+			cJSON_AddStringToObject(lineobj, "text", linebuf);
 
-            /* Check if this line has a breakpoint */
-            boolean hasbp = false;
-            for (int b = 0; b < bp_count; b++) {
-                if (bp_lines[b] == (unsigned long)linenum) {
-                    hasbp = true;
-                    break;
-                }
-            }
-            cJSON_AddBoolToObject(lineobj, "breakpoint", hasbp);
+			/* Check if this line has a breakpoint */
+			boolean hasbp = false;
+			for (int b = 0; b < bp_count; b++) {
+				if (bp_lines[b] == (unsigned long)linenum) {
+					hasbp = true;
+					break;
+				}
+			}
+			cJSON_AddBoolToObject(lineobj, "breakpoint", hasbp);
 
-            if (linenum == current_line)
-                cJSON_AddBoolToObject(lineobj, "current", 1);
+			if (linenum == current_line)
+				cJSON_AddBoolToObject(lineobj, "current", 1);
 
-            cJSON_AddItemToArray(lines, lineobj);
-            linenum++;
-            linestart = i + 1;
-        }
-    }
+			cJSON_AddItemToArray(lines, lineobj);
+			linenum++;
+			linestart = i + 1;
+		}
+	}
 
-    disposehandle(htext);
+	disposehandle(htext);
 
-    cJSON_AddItemToObject(result_obj, "lines", lines);
-    cJSON_AddItemToObject(resp, "result", result_obj);
-    cJSON_AddBoolToObject(resp, "success", 1);
+	cJSON_AddItemToObject(result_obj, "lines", lines);
+	cJSON_AddItemToObject(resp, "result", result_obj);
+	cJSON_AddBoolToObject(resp, "success", 1);
 
-    char *json_str = cJSON_PrintUnformatted(resp);
-    if (json_str) {
-        transport->write_line(transport->ctx, json_str, strlen(json_str));
-        free(json_str);
-    } else {
-        log_warn(LOG_COMP_LANG, "debug: cJSON_PrintUnformatted failed (OOM)");
-    }
-    cJSON_Delete(resp);
-    cJSON_Delete(root);
+	char *json_str = cJSON_PrintUnformatted(resp);
+	if (json_str) {
+		transport->write_line(transport->ctx, json_str, strlen(json_str));
+		free(json_str);
+	} else {
+		log_warn(LOG_COMP_LANG, "debug: cJSON_PrintUnformatted failed (OOM)");
+	}
+	cJSON_Delete(resp);
+	cJSON_Delete(root);
 }
 
 /*
@@ -2183,59 +2183,59 @@ void handle_debug_getsource(int id, const char *json_line, transport_t *transpor
  */
 void handle_debug_listthreads(int id, const char *json_line, transport_t *transport) {
 
-    (void)json_line; /* no params to validate */
+	(void)json_line; /* no params to validate */
 
-    cJSON *resp = cJSON_CreateObject();
-    if (resp == NULL) {
-        char err[128];
-        snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Memory allocation failed\"},\"success\":false}", id);
-        transport->write_line(transport->ctx, err, strlen(err));
-        return;
-    }
-    cJSON_AddNumberToObject(resp, "id", id);
+	cJSON *resp = cJSON_CreateObject();
+	if (resp == NULL) {
+		char err[128];
+		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Memory allocation failed\"},\"success\":false}", id);
+		transport->write_line(transport->ctx, err, strlen(err));
+		return;
+	}
+	cJSON_AddNumberToObject(resp, "id", id);
 
-    cJSON *result = cJSON_CreateObject();
-    cJSON *threads = cJSON_CreateArray();
+	cJSON *result = cJSON_CreateObject();
+	cJSON *threads = cJSON_CreateArray();
 
-    /* We hold g_debug_mutex for the entire loop, so no debug thread can
-     * unregister (debug_unregister_thread NULLs the slot under this mutex)
-     * or be freed (refcount drop to 0 requires unregistration first).
-     * This makes direct pointer access safe without incrementing refcount. */
-    pthread_mutex_lock(&g_debug_mutex);
+	/* We hold g_debug_mutex for the entire loop, so no debug thread can
+	 * unregister (debug_unregister_thread NULLs the slot under this mutex)
+	 * or be freed (refcount drop to 0 requires unregistration first).
+	 * This makes direct pointer access safe without incrementing refcount. */
+	pthread_mutex_lock(&g_debug_mutex);
 
-    for (int i = 0; i < MAX_DEBUG_THREADS; i++) {
-        if (g_debug_threads[i] != NULL) {
-            tydebugstate *state = g_debug_threads[i];
-            cJSON *thread = cJSON_CreateObject();
-            cJSON_AddNumberToObject(thread, "threadId", (double)state->threadid);
-            boolean suspended = atomic_load(&state->flsuspended);
-            cJSON_AddBoolToObject(thread, "suspended", suspended);
-            /* Only read current_script and lastlnum when suspended — a running
-             * thread may be writing these fields concurrently via the push/pop
-             * sourcecode callbacks under the GIL (not g_debug_mutex). */
-            if (suspended) {
-                if (state->current_script[0] != '\0')
-                    cJSON_AddStringToObject(thread, "script", state->current_script);
-                cJSON_AddNumberToObject(thread, "line", (double)atomic_load(&state->lastlnum));
-            }
-            cJSON_AddItemToArray(threads, thread);
-        }
-    }
+	for (int i = 0; i < MAX_DEBUG_THREADS; i++) {
+		if (g_debug_threads[i] != NULL) {
+			tydebugstate *state = g_debug_threads[i];
+			cJSON *thread = cJSON_CreateObject();
+			cJSON_AddNumberToObject(thread, "threadId", (double)state->threadid);
+			boolean suspended = atomic_load(&state->flsuspended);
+			cJSON_AddBoolToObject(thread, "suspended", suspended);
+			/* Only read current_script and lastlnum when suspended — a running
+			 * thread may be writing these fields concurrently via the push/pop
+			 * sourcecode callbacks under the GIL (not g_debug_mutex). */
+			if (suspended) {
+				if (state->current_script[0] != '\0')
+					cJSON_AddStringToObject(thread, "script", state->current_script);
+				cJSON_AddNumberToObject(thread, "line", (double)atomic_load(&state->lastlnum));
+			}
+			cJSON_AddItemToArray(threads, thread);
+		}
+	}
 
-    pthread_mutex_unlock(&g_debug_mutex);
+	pthread_mutex_unlock(&g_debug_mutex);
 
-    cJSON_AddItemToObject(result, "threads", threads);
-    cJSON_AddItemToObject(resp, "result", result);
-    cJSON_AddBoolToObject(resp, "success", 1);
+	cJSON_AddItemToObject(result, "threads", threads);
+	cJSON_AddItemToObject(resp, "result", result);
+	cJSON_AddBoolToObject(resp, "success", 1);
 
-    char *json_str = cJSON_PrintUnformatted(resp);
-    if (json_str) {
-        transport->write_line(transport->ctx, json_str, strlen(json_str));
-        free(json_str);
-    } else {
-        log_warn(LOG_COMP_LANG, "debug: cJSON_PrintUnformatted failed (OOM)");
-    }
-    cJSON_Delete(resp);
+	char *json_str = cJSON_PrintUnformatted(resp);
+	if (json_str) {
+		transport->write_line(transport->ctx, json_str, strlen(json_str));
+		free(json_str);
+	} else {
+		log_warn(LOG_COMP_LANG, "debug: cJSON_PrintUnformatted failed (OOM)");
+	}
+	cJSON_Delete(resp);
 }
 
 /* ========================================================================
@@ -2249,110 +2249,110 @@ void handle_debug_listthreads(int id, const char *json_line, transport_t *transp
  * it is cleared. Otherwise, a new watchpoint is set.
  *
  * Params:
- *   variable: name of the variable to watch (e.g. "x", "msg")
+ *	 variable: name of the variable to watch (e.g. "x", "msg")
  */
 void handle_debug_setwatchpoint(int id, const char *json_line, transport_t *transport) {
 
-    cJSON *root = cJSON_Parse(json_line);
+	cJSON *root = cJSON_Parse(json_line);
 
-    if (root == NULL) {
-        char err[512];
-        snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Invalid JSON\"},\"success\":false}", id);
-        transport->write_line(transport->ctx, err, strlen(err));
-        return;
-    }
+	if (root == NULL) {
+		char err[512];
+		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Invalid JSON\"},\"success\":false}", id);
+		transport->write_line(transport->ctx, err, strlen(err));
+		return;
+	}
 
-    cJSON *params_json = cJSON_GetObjectItemCaseSensitive(root, "params");
-    cJSON *var_json = params_json ? cJSON_GetObjectItemCaseSensitive(params_json, "variable") : NULL;
+	cJSON *params_json = cJSON_GetObjectItemCaseSensitive(root, "params");
+	cJSON *var_json = params_json ? cJSON_GetObjectItemCaseSensitive(params_json, "variable") : NULL;
 
-    if (!cJSON_IsString(var_json) || var_json->valuestring == NULL) {
-        char err[512];
-        snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Missing 'variable' in params\"},\"success\":false}", id);
-        transport->write_line(transport->ctx, err, strlen(err));
-        cJSON_Delete(root);
-        return;
-    }
+	if (!cJSON_IsString(var_json) || var_json->valuestring == NULL) {
+		char err[512];
+		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Missing 'variable' in params\"},\"success\":false}", id);
+		transport->write_line(transport->ctx, err, strlen(err));
+		cJSON_Delete(root);
+		return;
+	}
 
-    const char *varname = var_json->valuestring;
+	const char *varname = var_json->valuestring;
 
-    if (strlen(varname) >= DEBUG_VARNAME_MAX) {
-        char err[512];
-        snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Variable name too long\"},\"success\":false}", id);
-        transport->write_line(transport->ctx, err, strlen(err));
-        cJSON_Delete(root);
-        return;
-    }
+	if (strlen(varname) >= DEBUG_VARNAME_MAX) {
+		char err[512];
+		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Variable name too long\"},\"success\":false}", id);
+		transport->write_line(transport->ctx, err, strlen(err));
+		cJSON_Delete(root);
+		return;
+	}
 
-    boolean cleared = false;
-    boolean set = false;
+	boolean cleared = false;
+	boolean set = false;
 
-    pthread_mutex_lock(&g_debug_mutex);
+	pthread_mutex_lock(&g_debug_mutex);
 
-    /* First pass: check for existing watchpoint to toggle off */
-    for (int i = 0; i < MAX_WATCHPOINTS; i++) {
-        if (g_watchpoints[i].active &&
-            strcmp(g_watchpoints[i].varname, varname) == 0) {
-            g_watchpoints[i].active = false;
-            cleared = true;
-            break;
-        }
-    }
+	/* First pass: check for existing watchpoint to toggle off */
+	for (int i = 0; i < MAX_WATCHPOINTS; i++) {
+		if (g_watchpoints[i].active &&
+			strcmp(g_watchpoints[i].varname, varname) == 0) {
+			g_watchpoints[i].active = false;
+			cleared = true;
+			break;
+		}
+	}
 
-    /* Second pass: if not clearing, find an empty slot */
-    if (!cleared) {
-        for (int i = 0; i < MAX_WATCHPOINTS; i++) {
-            if (!g_watchpoints[i].active) {
-                memcpy(g_watchpoints[i].varname, varname, strlen(varname) + 1);
-                g_watchpoints[i].has_snapshot = false;
-                g_watchpoints[i].last_value[0] = '\0';
-                g_watchpoints[i].active = true;
-                set = true;
-                break;
-            }
-        }
-    }
+	/* Second pass: if not clearing, find an empty slot */
+	if (!cleared) {
+		for (int i = 0; i < MAX_WATCHPOINTS; i++) {
+			if (!g_watchpoints[i].active) {
+				memcpy(g_watchpoints[i].varname, varname, strlen(varname) + 1);
+				g_watchpoints[i].has_snapshot = false;
+				g_watchpoints[i].last_value[0] = '\0';
+				g_watchpoints[i].active = true;
+				set = true;
+				break;
+			}
+		}
+	}
 
-    /* Update fast-path flag */
-    boolean any_active = false;
-    for (int i = 0; i < MAX_WATCHPOINTS; i++) {
-        if (g_watchpoints[i].active) {
-            any_active = true;
-            break;
-        }
-    }
-    atomic_store(&g_has_watchpoints, any_active);
+	/* Update fast-path flag */
+	boolean any_active = false;
+	for (int i = 0; i < MAX_WATCHPOINTS; i++) {
+		if (g_watchpoints[i].active) {
+			any_active = true;
+			break;
+		}
+	}
+	atomic_store(&g_has_watchpoints, any_active);
 
-    pthread_mutex_unlock(&g_debug_mutex);
+	pthread_mutex_unlock(&g_debug_mutex);
 
-    if (!cleared && !set) {
-        char err[512];
-        snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Too many watchpoints (max %d)\"},\"success\":false}", id, MAX_WATCHPOINTS);
-        transport->write_line(transport->ctx, err, strlen(err));
-        cJSON_Delete(root);
-        return;
-    }
+	if (!cleared && !set) {
+		char err[512];
+		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Too many watchpoints (max %d)\"},\"success\":false}", id, MAX_WATCHPOINTS);
+		transport->write_line(transport->ctx, err, strlen(err));
+		cJSON_Delete(root);
+		return;
+	}
 
-    cJSON *resp = cJSON_CreateObject();
-    cJSON_AddNumberToObject(resp, "id", id);
-    cJSON *result = cJSON_CreateObject();
-    cJSON_AddStringToObject(result, "action", cleared ? "cleared" : "set");
-    cJSON_AddStringToObject(result, "variable", varname);
-    cJSON_AddItemToObject(resp, "result", result);
-    cJSON_AddBoolToObject(resp, "success", 1);
+	cJSON *resp = cJSON_CreateObject();
+	cJSON_AddNumberToObject(resp, "id", id);
+	cJSON *result = cJSON_CreateObject();
+	cJSON_AddStringToObject(result, "action", cleared ? "cleared" : "set");
+	cJSON_AddStringToObject(result, "variable", varname);
+	cJSON_AddItemToObject(resp, "result", result);
+	cJSON_AddBoolToObject(resp, "success", 1);
 
-    char *json_str = cJSON_PrintUnformatted(resp);
-    if (json_str) {
-        transport->write_line(transport->ctx, json_str, strlen(json_str));
-        free(json_str);
-    } else {
-        log_warn(LOG_COMP_LANG, "debug: cJSON_PrintUnformatted failed (OOM)");
-    }
-    cJSON_Delete(resp);
+	char *json_str = cJSON_PrintUnformatted(resp);
+	if (json_str) {
+		transport->write_line(transport->ctx, json_str, strlen(json_str));
+		free(json_str);
+	} else {
+		log_warn(LOG_COMP_LANG, "debug: cJSON_PrintUnformatted failed (OOM)");
+	}
+	cJSON_Delete(resp);
 
-    log_info(LOG_COMP_LANG, "debug: watchpoint %s on '%s'",
-             cleared ? "cleared" : "set", varname);
+	log_info(LOG_COMP_LANG, "debug: watchpoint %s on '%s'",
+			 cleared ? "cleared" : "set", varname);
 
-    cJSON_Delete(root);
+	cJSON_Delete(root);
 }
 
 /*
@@ -2360,46 +2360,46 @@ void handle_debug_setwatchpoint(int id, const char *json_line, transport_t *tran
  */
 void handle_debug_listwatchpoints(int id, const char *json_line, transport_t *transport) {
 
-    (void)json_line; /* no params to validate */
+	(void)json_line; /* no params to validate */
 
-    cJSON *resp = cJSON_CreateObject();
-    if (resp == NULL) {
-        char err[128];
-        snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Memory allocation failed\"},\"success\":false}", id);
-        transport->write_line(transport->ctx, err, strlen(err));
-        return;
-    }
-    cJSON_AddNumberToObject(resp, "id", id);
+	cJSON *resp = cJSON_CreateObject();
+	if (resp == NULL) {
+		char err[128];
+		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Memory allocation failed\"},\"success\":false}", id);
+		transport->write_line(transport->ctx, err, strlen(err));
+		return;
+	}
+	cJSON_AddNumberToObject(resp, "id", id);
 
-    cJSON *result = cJSON_CreateObject();
-    cJSON *wparray = cJSON_CreateArray();
+	cJSON *result = cJSON_CreateObject();
+	cJSON *wparray = cJSON_CreateArray();
 
-    pthread_mutex_lock(&g_debug_mutex);
+	pthread_mutex_lock(&g_debug_mutex);
 
-    for (int i = 0; i < MAX_WATCHPOINTS; i++) {
-        if (g_watchpoints[i].active) {
-            cJSON *wp = cJSON_CreateObject();
-            cJSON_AddStringToObject(wp, "variable", g_watchpoints[i].varname);
-            if (g_watchpoints[i].has_snapshot)
-                cJSON_AddStringToObject(wp, "lastValue", g_watchpoints[i].last_value);
-            cJSON_AddItemToArray(wparray, wp);
-        }
-    }
+	for (int i = 0; i < MAX_WATCHPOINTS; i++) {
+		if (g_watchpoints[i].active) {
+			cJSON *wp = cJSON_CreateObject();
+			cJSON_AddStringToObject(wp, "variable", g_watchpoints[i].varname);
+			if (g_watchpoints[i].has_snapshot)
+				cJSON_AddStringToObject(wp, "lastValue", g_watchpoints[i].last_value);
+			cJSON_AddItemToArray(wparray, wp);
+		}
+	}
 
-    pthread_mutex_unlock(&g_debug_mutex);
+	pthread_mutex_unlock(&g_debug_mutex);
 
-    cJSON_AddItemToObject(result, "watchpoints", wparray);
-    cJSON_AddItemToObject(resp, "result", result);
-    cJSON_AddBoolToObject(resp, "success", 1);
+	cJSON_AddItemToObject(result, "watchpoints", wparray);
+	cJSON_AddItemToObject(resp, "result", result);
+	cJSON_AddBoolToObject(resp, "success", 1);
 
-    char *json_str = cJSON_PrintUnformatted(resp);
-    if (json_str) {
-        transport->write_line(transport->ctx, json_str, strlen(json_str));
-        free(json_str);
-    } else {
-        log_warn(LOG_COMP_LANG, "debug: cJSON_PrintUnformatted failed (OOM)");
-    }
-    cJSON_Delete(resp);
+	char *json_str = cJSON_PrintUnformatted(resp);
+	if (json_str) {
+		transport->write_line(transport->ctx, json_str, strlen(json_str));
+		free(json_str);
+	} else {
+		log_warn(LOG_COMP_LANG, "debug: cJSON_PrintUnformatted failed (OOM)");
+	}
+	cJSON_Delete(resp);
 }
 
 /*
@@ -2407,43 +2407,43 @@ void handle_debug_listwatchpoints(int id, const char *json_line, transport_t *tr
  */
 void handle_debug_clearwatchpoints(int id, const char *json_line, transport_t *transport) {
 
-    (void)json_line; /* no params to validate */
+	(void)json_line; /* no params to validate */
 
-    int cleared_count = 0;
+	int cleared_count = 0;
 
-    pthread_mutex_lock(&g_debug_mutex);
+	pthread_mutex_lock(&g_debug_mutex);
 
-    for (int i = 0; i < MAX_WATCHPOINTS; i++) {
-        if (g_watchpoints[i].active) {
-            g_watchpoints[i].active = false;
-            cleared_count++;
-        }
-    }
+	for (int i = 0; i < MAX_WATCHPOINTS; i++) {
+		if (g_watchpoints[i].active) {
+			g_watchpoints[i].active = false;
+			cleared_count++;
+		}
+	}
 
-    atomic_store(&g_has_watchpoints, false);
+	atomic_store(&g_has_watchpoints, false);
 
-    pthread_mutex_unlock(&g_debug_mutex);
+	pthread_mutex_unlock(&g_debug_mutex);
 
-    cJSON *resp_wp = cJSON_CreateObject();
-    if (resp_wp == NULL) {
-        char err[128];
-        snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Memory allocation failed\"},\"success\":false}", id);
-        transport->write_line(transport->ctx, err, strlen(err));
-        return;
-    }
-    cJSON_AddNumberToObject(resp_wp, "id", id);
-    cJSON *result_wp = cJSON_CreateObject();
-    cJSON_AddNumberToObject(result_wp, "cleared", cleared_count);
-    cJSON_AddItemToObject(resp_wp, "result", result_wp);
-    cJSON_AddBoolToObject(resp_wp, "success", 1);
-    char *json_str = cJSON_PrintUnformatted(resp_wp);
-    if (json_str) {
-        transport->write_line(transport->ctx, json_str, strlen(json_str));
-        free(json_str);
-    } else {
-        log_warn(LOG_COMP_LANG, "debug: cJSON_PrintUnformatted failed (OOM)");
-    }
-    cJSON_Delete(resp_wp);
+	cJSON *resp_wp = cJSON_CreateObject();
+	if (resp_wp == NULL) {
+		char err[128];
+		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Memory allocation failed\"},\"success\":false}", id);
+		transport->write_line(transport->ctx, err, strlen(err));
+		return;
+	}
+	cJSON_AddNumberToObject(resp_wp, "id", id);
+	cJSON *result_wp = cJSON_CreateObject();
+	cJSON_AddNumberToObject(result_wp, "cleared", cleared_count);
+	cJSON_AddItemToObject(resp_wp, "result", result_wp);
+	cJSON_AddBoolToObject(resp_wp, "success", 1);
+	char *json_str = cJSON_PrintUnformatted(resp_wp);
+	if (json_str) {
+		transport->write_line(transport->ctx, json_str, strlen(json_str));
+		free(json_str);
+	} else {
+		log_warn(LOG_COMP_LANG, "debug: cJSON_PrintUnformatted failed (OOM)");
+	}
+	cJSON_Delete(resp_wp);
 
-    log_info(LOG_COMP_LANG, "debug: cleared %d watchpoints", cleared_count);
+	log_info(LOG_COMP_LANG, "debug: cleared %d watchpoints", cleared_count);
 }

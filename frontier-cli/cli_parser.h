@@ -22,33 +22,33 @@ typedef unsigned char boolean;
 
 // Extra (unknown) CLI argument — linked list node
 typedef struct cli_extra_arg {
-    char *key;                      // camelCase key (stripped of -- prefix)
-    char *value;                    // value string, or NULL for boolean flags
-    struct cli_extra_arg *next;
+	char *key;						// camelCase key (stripped of -- prefix)
+	char *value;					// value string, or NULL for boolean flags
+	struct cli_extra_arg *next;
 } cli_extra_arg_t;
 
 // CLI options structure
 typedef struct {
-    char* script_file;          // Script file path
-    char* inline_script;        // Inline script code
-    char* system_root;          // Path to system/root database (e.g., Frontier.root)
-    char* migrate_database;     // Path to database to migrate (--migrate)
-    char* output_path;          // Output path for migration (--output)
-    char* log_spec;             // Log spec string (--log comp:level,...)
-    boolean verbose;            // Verbose output
-    boolean debug;              // Debug output
-    boolean output_json;        // Output results as JSON
-    boolean batch_mode;         // Batch mode (no interactive prompts)
-    boolean hydrate_system_root;// Hydrate system root tables flag
-    boolean force_overwrite;    // Force overwrite existing output file (-f/--force)
-    boolean skip_startup;       // Skip startup scripts (--skip-startup)
-    boolean protocol_mode;      // NDJSON protocol mode (--protocol)
-    int ws_port;                // WebSocket server port (--ws-port), 0 = disabled
-    boolean show_help;          // Show help flag
-    boolean show_version;       // Show version flag
-    cli_extra_arg_t *extra_args;    // Linked list of unknown --flags
-    int positional_count;           // Number of extra positional args
-    char **positional_args;         // Array of extra positional args (after script/root)
+	char* script_file;			// Script file path
+	char* inline_script;		// Inline script code
+	char* system_root;			// Path to system/root database (e.g., Frontier.root)
+	char* migrate_database;		// Path to database to migrate (--migrate)
+	char* output_path;			// Output path for migration (--output)
+	char* log_spec;				// Log spec string (--log comp:level,...)
+	boolean verbose;			// Verbose output
+	boolean debug;				// Debug output
+	boolean output_json;		// Output results as JSON
+	boolean batch_mode;			// Batch mode (no interactive prompts)
+	boolean hydrate_system_root;// Hydrate system root tables flag
+	boolean force_overwrite;	// Force overwrite existing output file (-f/--force)
+	boolean skip_startup;		// Skip startup scripts (--skip-startup)
+	boolean protocol_mode;		// NDJSON protocol mode (--protocol)
+	int ws_port;				// WebSocket server port (--ws-port), 0 = disabled
+	boolean show_help;			// Show help flag
+	boolean show_version;		// Show version flag
+	cli_extra_arg_t *extra_args;	// Linked list of unknown --flags
+	int positional_count;			// Number of extra positional args
+	char **positional_args;			// Array of extra positional args (after script/root)
 } cli_options_t;
 
 // Argument parsing functions
