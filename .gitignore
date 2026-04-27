@@ -128,9 +128,12 @@ test_type.txt
 Thumbs.db
 test_tmp/
 
-# Reports - OPML files are tracked
-# Integration test OPML files use stable hierarchical structure (1 manifest + 25 categories)
-# and should be tracked in git for test documentation and subscriptions
+# Reports - OPML files are build artifacts (regenerated on every test run).
+# Tracking them caused timestamp-only diff churn in PRs (issue #556).
+# See reports/README.md and docs/TESTING_GUIDE.md for regeneration commands.
+reports/*.opml
+reports/unit_tests/*.opml
+reports/integration_tests/*.opml
 third_party/cmake-install/
 
 # Guest database build artifacts (copied/generated during dist build)

@@ -555,6 +555,19 @@ See `planning/phase3/MIGRATION_VALIDATION_REPORT.md` for detailed test procedure
 ./tools/run_headless_tests.sh
 ```
 
+### Test OPML Reports
+
+Both test runners regenerate OPML reports under `reports/` (`reports/unit_tests.opml`, `reports/integration_tests.opml`, and per-category files). These are **build artifacts** — gitignored as of issue #556 because every regeneration updates embedded timestamps and produced timestamp-only diff churn in PRs.
+
+To get a current snapshot locally:
+
+```bash
+./tools/run_headless_tests.sh           # regenerates reports/unit_tests.opml + per-test files
+python3 tools/export_tests_to_opml.py   # regenerates reports/integration_tests.opml + per-category files
+```
+
+Open the generated `.opml` files in [Drummer](https://drummer.land/) or any OPML 2.0-compatible editor.
+
 ### Verb Coverage Analysis
 
 ```bash
