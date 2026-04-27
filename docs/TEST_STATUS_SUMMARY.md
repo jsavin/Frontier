@@ -51,7 +51,7 @@ make: *** [headless_thread_registry_tests] Error 1
 | Total Tests Registered | ~1,495 |
 | Known Passing Tests | ~380-400 (estimated 25-27%) |
 | Known Failing Tests | ~400-450 (estimated 27-30%) |
-| Skipped Tests | Network tests (set FRONTIER_RUN_NETWORK_TESTS=1 to enable) |
+| Skipped Tests | YAML-level `skip:` directives only (no env-var gates) |
 
 ### Test Files & Results
 
@@ -239,8 +239,9 @@ These processors have no implementations yet:
 ### Critical Test Constraints
 
 **Network Tests:**
-- By default: Skipped (TCP network tests disabled)
-- To enable: `FRONTIER_RUN_NETWORK_TESTS=1 make test-integration`
+- TCP integration tests in `tcp_verbs_network.yaml` use localhost listeners
+  (ports 9100-9115) and run by default. The `_network.yaml` suffix is
+  historical — see `docs/TESTING_GUIDE.md` for context.
 
 ---
 

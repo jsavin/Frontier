@@ -58,17 +58,16 @@ BATCH_FLAG="--batch"
 WORKERS_FLAG="-j 0"
 
 if [ $# -eq 0 ]; then
-    # No arguments - run all tests (except network tests unless opt-in)
+    # No arguments - run all tests. Files matching *_network.yaml were
+    # historically gated on FRONTIER_RUN_NETWORK_TESTS=1 because they hit
+    # external network resources. Those tests have since been migrated to
+    # localhost listeners and are self-contained, so they now run by default.
+    # (One DNS-resolution test in tcp_verbs_network.yaml depends on the
+    # system resolver returning NXDOMAIN for an invalid hostname; environments
+    # that hijack NXDOMAIN responses will surface that as a real signal rather
+    # than flake.)
     for f in "$TEST_CASES_DIR"/*.yaml; do
         if [ -f "$f" ]; then
-            # Skip network tests unless FRONTIER_RUN_NETWORK_TESTS=1
-            if [[ "$f" == *"_network.yaml" ]]; then
-                if [ "${FRONTIER_RUN_NETWORK_TESTS:-0}" != "1" ]; then
-                    echo -e "${YELLOW}Skipping network tests: $(basename "$f")${NC}"
-                    echo "  (Set FRONTIER_RUN_NETWORK_TESTS=1 to enable)"
-                    continue
-                fi
-            fi
             TEST_FILES+=("$f")
         fi
     done
@@ -103,16 +102,13 @@ else
                 echo "  -j N               Number of parallel workers (0=auto, 1=sequential)"
                 echo "  -h, --help         Show this help"
                 echo
-                echo "If no test files are specified, all tests in tests/integration/test_cases/ will be run."
-                echo "Network tests (*_network.yaml) are skipped by default unless FRONTIER_RUN_NETWORK_TESTS=1."
-                echo
-                echo "Environment Variables:"
-                echo "  FRONTIER_RUN_NETWORK_TESTS=1    Enable network-dependent tests (default: 0)"
+                echo "If no test files are specified, all tests in tests/integration/test_cases/"
+                echo "will be run, including *_network.yaml files (which now use localhost"
+                echo "listeners and are self-contained)."
                 echo
                 echo "Examples:"
-                echo "  $0                                    # Run all local tests (batch + parallel)"
+                echo "  $0                                    # Run all tests (batch + parallel)"
                 echo "  $0 --no-batch -j 1                   # Old behavior (per-process, sequential)"
-                echo "  FRONTIER_RUN_NETWORK_TESTS=1 $0      # Run all tests including network"
                 echo "  $0 tests/integration/test_cases/string_verbs.yaml"
                 echo "  $0 --verbose tests/integration/test_cases/*.yaml"
                 exit 0

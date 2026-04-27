@@ -387,43 +387,32 @@ TESTDIR=$(./tools/get_test_temp_path.sh)
 
 ### Test Suite Organization
 
-TCP networking tests are split into two suites based on network dependencies:
+TCP networking tests are split across multiple files; all run by default:
 
-**Local Tests (Always Run)**:
+**Local TCP Tests**:
 - File: `tests/integration/test_cases/tcp_verbs.yaml`
-- 13 local-only tests (error handling, address encoding, parameter validation)
+- Local-only tests (error handling, address encoding, parameter validation)
 - No external network connectivity required
-- Run automatically in all test contexts
 
-**Network Tests (Opt-In)**:
+**Self-Contained "Network" Tests**:
 - File: `tests/integration/test_cases/tcp_verbs_network.yaml`
-- 9 network-dependent tests (connect to example.com:80)
-- Require external internet connectivity
-- Run manually via: `FRONTIER_RUN_NETWORK_TESTS=1 make test-integration`
-- Skipped by default to avoid test fragility
+- 18 tests using `tcp.listenStream` + localhost connections (ports 9100-9115)
+- The `_network.yaml` suffix is historical (these tests once hit external
+  servers). They are now self-contained and run by default.
+- One DNS-resolution test depends on the system resolver returning NXDOMAIN
+  for `this.hostname.does.not.exist.invalid`. Environments that hijack
+  NXDOMAIN responses (some corporate networks, captive portals) will
+  surface that test failure as a real signal.
 
-### Why Separate Network Tests?
+### Background: Why the `_network.yaml` Naming
 
-**Problem**: External network dependencies create test fragility
-- DNS resolution failures
-- Network timeouts and latency
-- Firewall restrictions in CI/CD
-- Tests fail for reasons unrelated to code changes
+Historically, `tcp_verbs_network.yaml` connected to external servers
+(e.g. `example.com:80`) and was opt-in via `FRONTIER_RUN_NETWORK_TESTS=1`
+to avoid CI/CD fragility from DNS, timeouts, and firewall restrictions.
 
-**Solution**: Split tests into local (always run) and network (opt-in)
-- CI/CD runs local tests only (fast, deterministic)
-- Developers run network tests manually for verification
-- Network test failures don't block PR merges
-
-### Phase 3 Self-Contained Tests (Now Available)
-
-As of PR #330 (2026-01-24), `tcp.listenStream()` is implemented, enabling **self-contained** network tests:
-- Launch Frontier-based test server within test harness
-- Tests connect to localhost instead of external servers
-- Fully deterministic with no external dependencies
-- Safe for air-gapped CI/CD environments
-
-**Status**: Infrastructure is complete. New tests can use localhost test servers for deterministic TCP testing.
+After `tcp.listenStream()` landed (PR #330, 2026-01-24), the tests were
+migrated to localhost listeners and are now deterministic. The opt-in gate
+was removed; the filename is preserved for git history continuity.
 
 **Example future self-contained test**:
 ```yaml

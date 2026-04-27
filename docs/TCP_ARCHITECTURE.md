@@ -252,12 +252,15 @@ TCP tests are organized into separate suites based on network dependencies:
 - Safe for CI/CD environments with restricted network access
 - Run automatically in all test execution contexts
 
-**Network Tests (Opt-In)**:
-- `tests/integration/test_cases/tcp_verbs_network.yaml` - 20 network-dependent tests (as of 2026-01-24)
-- Require external connectivity (connect to example.com:80)
-- Run manually via `FRONTIER_RUN_NETWORK_TESTS=1 make test-integration`
-- Validate actual TCP connectivity and protocol behavior
-- Not run by default to avoid test fragility
+**Self-Contained "Network" Tests**:
+- `tests/integration/test_cases/tcp_verbs_network.yaml` - 18 tests using
+  `tcp.listenStream` + localhost (ports 9100-9115)
+- The `_network.yaml` suffix is historical (these tests once hit
+  `example.com:80`). After the Phase 3 migration to localhost listeners,
+  the tests are deterministic and run by default.
+- One DNS-resolution test (`tcp.openNameStream` for an invalid hostname)
+  depends on the system resolver returning NXDOMAIN. Environments that
+  hijack NXDOMAIN responses will surface that as a real signal.
 
 **Server Operation Tests** (Phase 3):
 - `tests/integration/test_cases/tcp_server_verbs.yaml` - 37 tests for server operations
@@ -266,22 +269,16 @@ TCP tests are organized into separate suites based on network dependencies:
 
 ### Testing Progression (Phase 1 → Phase 3)
 
-**Phase 1A/1B (Complete)**: External dependency tests
-- Network tests connect to `example.com:80` for validation
-- Tests are opt-in and skipped by default
-- Enables manual verification of TCP implementation
-
-**Phase 2 (Planned)**: Buffered I/O with external dependencies
-- Continue pattern of separate network test suite
-- Add tests for `tcp.readStreamUntil`, `tcp.readStreamBytes`, etc.
-- Remain opt-in via `FRONTIER_RUN_NETWORK_TESTS=1`
+**Phase 1A/1B (Complete)**: Initial tests connected to `example.com:80`
+and were opt-in via `FRONTIER_RUN_NETWORK_TESTS=1` to avoid CI/CD
+fragility from DNS, timeouts, and firewall restrictions.
 
 **Phase 3 (Complete as of PR #330)**: Self-contained deterministic tests
 - `tcp.listenStream()` and `tcp.closeListen()` implemented
-- Tests can launch Frontier-based test server within integration test harness
-- Client tests can connect to localhost instead of external servers
-- Enables fully deterministic and CI/CD-friendly network tests
-- No external dependencies required for server operation testing
+- Tests now launch a Frontier-based test server within the test harness
+- Client tests connect to localhost instead of external servers
+- Fully deterministic and CI/CD-friendly
+- No external dependencies — `_network.yaml` files run by default
 
 **Example Phase 3 Self-Contained Test**:
 ```yaml
@@ -320,11 +317,8 @@ tests:
 ### Running Network Tests
 
 ```bash
-# Run all tests (local tests only, network tests skipped)
+# Run all tests, including tcp_verbs_network.yaml (uses localhost listeners)
 cd tests && make test-integration
-
-# Run with network tests enabled (manual verification)
-FRONTIER_RUN_NETWORK_TESTS=1 cd tests && make test-integration
 ```
 
 **See also**: `planning/phase4/networking/IMPLEMENTATION_PLAN.md` - Phase 2/3 testing roadmap
