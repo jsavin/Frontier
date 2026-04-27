@@ -5,35 +5,35 @@
 #include <stdio.h>
 
 typedef struct strings_entry {
-    char *id;
-    long index;
-    char *text;
-    size_t order;
+	char *id;
+	long index;
+	char *text;
+	size_t order;
 } strings_entry;
 
 typedef struct strings_table {
-    char *name;
-    strings_entry *entries;
-    size_t entry_count;
-    size_t entry_capacity;
-    long next_auto_index;
+	char *name;
+	strings_entry *entries;
+	size_t entry_count;
+	size_t entry_capacity;
+	long next_auto_index;
 } strings_table;
 
 typedef struct strings_document {
-    strings_table *tables;
-    size_t table_count;
-    size_t table_capacity;
+	strings_table *tables;
+	size_t table_count;
+	size_t table_capacity;
 } strings_document;
 
 typedef enum parsed_value_kind {
-    PVK_STRING,
-    PVK_NUMBER
+	PVK_STRING,
+	PVK_NUMBER
 } parsed_value_kind;
 
 typedef struct parsed_value {
-    parsed_value_kind kind;
-    char *string;
-    long number;
+	parsed_value_kind kind;
+	char *string;
+	long number;
 } parsed_value;
 
 extern strings_document g_document;

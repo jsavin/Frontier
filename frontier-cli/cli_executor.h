@@ -14,9 +14,9 @@
 #include "../Common/headers/memory.h"
 
 typedef struct {
-    char* script_source;
-    char* result;
-    char* error_message;
+	char* script_source;
+	char* result;
+	char* error_message;
 } usertalk_execution_t;
 
 usertalk_execution_t* cli_create_execution_context(void);

@@ -24,8 +24,8 @@
  * a WebSocket connection.
  */
 typedef struct {
-    void *ctx;
-    void (*write_line)(void *ctx, const char *json, size_t len);
+	void *ctx;
+	void (*write_line)(void *ctx, const char *json, size_t len);
 } transport_t;
 
 /*

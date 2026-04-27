@@ -49,22 +49,22 @@ hdlhashtable repl_get_variables_table(void);
  * Evaluate a script with persistent variable support.
  *
  * Wraps the user's script with:
- *   with system.temp.FrontierREPL.variables { <user code> }
+ *	 with system.temp.FrontierREPL.variables { <user code> }
  *
  * After evaluation, syncs any new/modified variables from the
  * execution frame back to system.temp.FrontierREPL.variables.
  *
  * Parameters:
- *   script     - UserTalk script to execute (null-terminated C string)
- *   result     - OUT: Result as string (bigstring)
- *   error_msg  - OUT: Error message if execution failed (bigstring)
+ *	 script		- UserTalk script to execute (null-terminated C string)
+ *	 result		- OUT: Result as string (bigstring)
+ *	 error_msg	- OUT: Error message if execution failed (bigstring)
  *
  * Returns: true if evaluation succeeded, false on error
  */
 boolean repl_eval_with_variables(
-    const char *script,
-    bigstring result,
-    bigstring error_msg
+	const char *script,
+	bigstring result,
+	bigstring error_msg
 );
 
 /*
@@ -72,16 +72,16 @@ boolean repl_eval_with_variables(
  * Unlike repl_eval_with_variables(), this does not truncate strings at 255 chars.
  *
  * Parameters:
- *   script    - IN:  The UserTalk script to execute (C string)
- *   vreturned - OUT: The result value (caller must dispose with disposevaluerecord)
- *   error_msg - OUT: Error message if execution failed (bigstring)
+ *	 script	   - IN:  The UserTalk script to execute (C string)
+ *	 vreturned - OUT: The result value (caller must dispose with disposevaluerecord)
+ *	 error_msg - OUT: Error message if execution failed (bigstring)
  *
  * Returns: true if evaluation succeeded, false on error
  */
 boolean repl_eval_with_variables_value(
-    const char *script,
-    tyvaluerecord *vreturned,
-    bigstring error_msg
+	const char *script,
+	tyvaluerecord *vreturned,
+	bigstring error_msg
 );
 
 /*
@@ -89,7 +89,7 @@ boolean repl_eval_with_variables_value(
  * Called by /jump command after successful navigation.
  *
  * Parameters:
- *   htable - The table to set as focus. If nil, sets focus to roottable.
+ *	 htable - The table to set as focus. If nil, sets focus to roottable.
  */
 void repl_set_focus(hdlhashtable htable);
 

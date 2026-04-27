@@ -45,9 +45,9 @@
  * - workspace.x (disk-scoped)
  *
  * Parameters:
- *   script     - UserTalk script to execute (null-terminated C string)
- *   result     - OUT: Result as string (bigstring)
- *   error_msg  - OUT: Error message if execution failed (bigstring)
+ *	 script		- UserTalk script to execute (null-terminated C string)
+ *	 result		- OUT: Result as string (bigstring)
+ *	 error_msg	- OUT: Error message if execution failed (bigstring)
  *
  * Returns: true if evaluation succeeded, false on error
  *
@@ -55,74 +55,74 @@
  * On error: error_msg contains error description
  */
 boolean repl_eval_script(
-    const char *script,
-    bigstring result,
-    bigstring error_msg
+	const char *script,
+	bigstring result,
+	bigstring error_msg
 ) {
-    if (script == NULL || result == NULL || error_msg == NULL) {
-        if (error_msg != NULL) {
-            copyctopstring("Invalid parameters", error_msg);
-        }
-        return false;
-    }
+	if (script == NULL || result == NULL || error_msg == NULL) {
+		if (error_msg != NULL) {
+			copyctopstring("Invalid parameters", error_msg);
+		}
+		return false;
+	}
 
-    /* Initialize result and error */
-    setemptystring(result);
-    setemptystring(error_msg);
+	/* Initialize result and error */
+	setemptystring(result);
+	setemptystring(error_msg);
 
-    /* Convert script to Handle */
-    size_t script_len = strlen(script);
-    Handle htext = nil;
+	/* Convert script to Handle */
+	size_t script_len = strlen(script);
+	Handle htext = nil;
 
-    if (!newemptyhandle(&htext)) {
-        copyctopstring("Out of memory allocating script handle", error_msg);
-        return false;
-    }
+	if (!newemptyhandle(&htext)) {
+		copyctopstring("Out of memory allocating script handle", error_msg);
+		return false;
+	}
 
-    if (!sethandlesize(htext, (long)script_len)) {
-        disposehandle(htext);
-        copyctopstring("Out of memory resizing script handle", error_msg);
-        return false;
-    }
+	if (!sethandlesize(htext, (long)script_len)) {
+		disposehandle(htext);
+		copyctopstring("Out of memory resizing script handle", error_msg);
+		return false;
+	}
 
-    HLock(htext);
-    if (*htext == NULL) {
-        disposehandle(htext);
-        copyctopstring("Handle lock failed", error_msg);
-        return false;
-    }
-    memcpy(*htext, script, script_len);
-    HUnlock(htext);
+	HLock(htext);
+	if (*htext == NULL) {
+		disposehandle(htext);
+		copyctopstring("Handle lock failed", error_msg);
+		return false;
+	}
+	memcpy(*htext, script, script_len);
+	HUnlock(htext);
 
-    /* Execute script using langrunhandletraperror
-     *
-     * QuickScript Model:
-     * - Each evaluation runs in its own thread context
-     * - pushprocess(nil)/popprocess() handle thread lifecycle
-     * - Local variables are thread-scoped and cleaned up automatically
-     * - No workspace mechanism needed - let Frontier be Frontier
-     *
-     * IMPORTANT: langrunhandletraperror() CONSUMES the text handle.
-     * It disposes htext before returning (both success and error paths).
-     * Do NOT access htext after this call.
-     *
-     * Name resolution:
-     * - Simple names (x, y) → Thread-local, cleaned up after evaluation
-     * - Dotted paths (system.temp.x, workspace.x) → Database tables (persistent)
-     *
-     * Returns: result in one param, error in another (separated cleanly)
-     */
+	/* Execute script using langrunhandletraperror
+	 *
+	 * QuickScript Model:
+	 * - Each evaluation runs in its own thread context
+	 * - pushprocess(nil)/popprocess() handle thread lifecycle
+	 * - Local variables are thread-scoped and cleaned up automatically
+	 * - No workspace mechanism needed - let Frontier be Frontier
+	 *
+	 * IMPORTANT: langrunhandletraperror() CONSUMES the text handle.
+	 * It disposes htext before returning (both success and error paths).
+	 * Do NOT access htext after this call.
+	 *
+	 * Name resolution:
+	 * - Simple names (x, y) → Thread-local, cleaned up after evaluation
+	 * - Dotted paths (system.temp.x, workspace.x) → Database tables (persistent)
+	 *
+	 * Returns: result in one param, error in another (separated cleanly)
+	 */
 
-    log_debug(LOG_COMP_GENERAL, "Evaluating script (QuickScript model - thread-local execution)");
+	log_debug(LOG_COMP_GENERAL, "Evaluating script (QuickScript model - thread-local execution)");
 
-    boolean ok = langrunhandletraperror(htext, result, error_msg);
+	boolean ok = langrunhandletraperror(htext, result, error_msg);
 
-    /* Release semaphores owned by the current thread after each REPL command.
-     * Any semaphore still locked after a command finishes cannot be released
-     * by another thread. */
-    langreleasesemaphores(nil);
+	/* Release semaphores owned by the current thread after each REPL command.
+	 * Any semaphore still locked after a command finishes cannot be released
+	 * by another thread. */
+	langreleasesemaphores(nil);
 
-    log_debug(LOG_COMP_GENERAL, "Script evaluation %s", ok ? "succeeded" : "failed");
+	log_debug(LOG_COMP_GENERAL, "Script evaluation %s", ok ? "succeeded" : "failed");
 
-    return ok;
+	return ok;
 }

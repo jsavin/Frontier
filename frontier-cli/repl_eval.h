@@ -29,9 +29,9 @@
  * - workspace.x or other root tables (disk-scoped, saved with database)
  *
  * Parameters:
- *   script     - UserTalk script to execute (null-terminated C string)
- *   result     - OUT: Result as string (bigstring)
- *   error_msg  - OUT: Error message if execution failed (bigstring)
+ *	 script		- UserTalk script to execute (null-terminated C string)
+ *	 result		- OUT: Result as string (bigstring)
+ *	 error_msg	- OUT: Error message if execution failed (bigstring)
  *
  * Returns: true if evaluation succeeded, false on error
  *
@@ -39,12 +39,12 @@
  * On error: error_msg contains error description
  *
  * Note: Uses langrunhandletraperror() for compilation and execution.
- *       Error messages come from Frontier's error system.
+ *		 Error messages come from Frontier's error system.
  */
 boolean repl_eval_script(
-    const char *script,
-    bigstring result,      /* OUT: result as string */
-    bigstring error_msg    /* OUT: error message if failed */
+	const char *script,
+	bigstring result,	   /* OUT: result as string */
+	bigstring error_msg	   /* OUT: error message if failed */
 );
 
 #endif /* REPL_EVAL_H */

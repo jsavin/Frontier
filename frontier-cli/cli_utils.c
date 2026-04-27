@@ -26,319 +26,319 @@
 
 static boolean g_cli_verbose = false;
 static boolean g_cli_debug = false;
-static boolean g_cli_json_mode = false;  /* Suppress logs in JSON mode to keep stderr clean */
+static boolean g_cli_json_mode = false;	 /* Suppress logs in JSON mode to keep stderr clean */
 
 char g_cli_error_buffer[1024] = {0};
 
 /* Routes log messages to structured logging based on level and verbosity settings. */
 static void cli_vlog(int level, const char* label, const char* format, va_list args) {
-    (void)label;
-    /* Suppress logs in JSON mode to keep stderr clean for JSON output */
-    if (g_cli_json_mode) {
-        return;
-    }
+	(void)label;
+	/* Suppress logs in JSON mode to keep stderr clean for JSON output */
+	if (g_cli_json_mode) {
+		return;
+	}
 
-    /* Use structured logging instead of fprintf(stderr) */
-    char buffer[2048];
-    vsnprintf(buffer, sizeof(buffer), format, args);
+	/* Use structured logging instead of fprintf(stderr) */
+	char buffer[2048];
+	vsnprintf(buffer, sizeof(buffer), format, args);
 
-    switch (level) {
-        case CLI_LOG_ERROR:
-            log_error(LOG_COMP_GENERAL, "%s", buffer);
-            break;
-        case CLI_LOG_WARN:
-            log_warn(LOG_COMP_GENERAL, "%s", buffer);
-            break;
-        case CLI_LOG_INFO:
-            if (g_cli_verbose) {
-                log_info(LOG_COMP_GENERAL, "%s", buffer);
-            }
-            break;
-        case CLI_LOG_DEBUG:
-            if (g_cli_debug) {
-                log_debug(LOG_COMP_GENERAL, "%s", buffer);
-            }
-            break;
-    }
+	switch (level) {
+		case CLI_LOG_ERROR:
+			log_error(LOG_COMP_GENERAL, "%s", buffer);
+			break;
+		case CLI_LOG_WARN:
+			log_warn(LOG_COMP_GENERAL, "%s", buffer);
+			break;
+		case CLI_LOG_INFO:
+			if (g_cli_verbose) {
+				log_info(LOG_COMP_GENERAL, "%s", buffer);
+			}
+			break;
+		case CLI_LOG_DEBUG:
+			if (g_cli_debug) {
+				log_debug(LOG_COMP_GENERAL, "%s", buffer);
+			}
+			break;
+	}
 }
 
 /* Initializes logging subsystem with verbosity settings from CLI flags. */
 boolean cli_init_logging(boolean verbose, boolean debug) {
-    g_cli_verbose = verbose;
-    g_cli_debug = debug;
-    return true;
+	g_cli_verbose = verbose;
+	g_cli_debug = debug;
+	return true;
 }
 
 /* Enables JSON output mode, which suppresses log messages to keep stderr clean. */
 void cli_set_json_mode(boolean json_mode) {
-    g_cli_json_mode = json_mode;
+	g_cli_json_mode = json_mode;
 }
 
 /* Resets logging state to defaults during shutdown. */
 void cli_cleanup_logging(void) {
-    g_cli_verbose = false;
-    g_cli_debug = false;
+	g_cli_verbose = false;
+	g_cli_debug = false;
 }
 
 void cli_log_error(const char* format, ...) {
-    va_list args;
-    va_start(args, format);
-    cli_vlog(CLI_LOG_ERROR, "ERROR", format, args);
-    va_end(args);
+	va_list args;
+	va_start(args, format);
+	cli_vlog(CLI_LOG_ERROR, "ERROR", format, args);
+	va_end(args);
 }
 
 void cli_log_warn(const char* format, ...) {
-    va_list args;
-    va_start(args, format);
-    cli_vlog(CLI_LOG_WARN, "WARN", format, args);
-    va_end(args);
+	va_list args;
+	va_start(args, format);
+	cli_vlog(CLI_LOG_WARN, "WARN", format, args);
+	va_end(args);
 }
 
 void cli_log_info(const char* format, ...) {
-    va_list args;
-    va_start(args, format);
-    cli_vlog(CLI_LOG_INFO, "INFO", format, args);
-    va_end(args);
+	va_list args;
+	va_start(args, format);
+	cli_vlog(CLI_LOG_INFO, "INFO", format, args);
+	va_end(args);
 }
 
 void cli_log_debug(const char* format, ...) {
-    va_list args;
-    va_start(args, format);
-    cli_vlog(CLI_LOG_DEBUG, "DEBUG", format, args);
-    va_end(args);
+	va_list args;
+	va_start(args, format);
+	cli_vlog(CLI_LOG_DEBUG, "DEBUG", format, args);
+	va_end(args);
 }
 
 /* Returns true if path exists on the filesystem. */
 boolean cli_file_exists(const char* path) {
-    if (path == NULL) {
-        return false;
-    }
-    struct stat st;
-    return stat(path, &st) == 0;
+	if (path == NULL) {
+		return false;
+	}
+	struct stat st;
+	return stat(path, &st) == 0;
 }
 
 /* Returns true if path is readable by the current process. */
 boolean cli_file_readable(const char* path) {
-    if (path == NULL) {
-        return false;
-    }
-    return access(path, R_OK) == 0;
+	if (path == NULL) {
+		return false;
+	}
+	return access(path, R_OK) == 0;
 }
 
 /* Returns true if path is writable by the current process. */
 boolean cli_file_writable(const char* path) {
-    if (path == NULL) {
-        return false;
-    }
-    return access(path, W_OK) == 0;
+	if (path == NULL) {
+		return false;
+	}
+	return access(path, W_OK) == 0;
 }
 
 /* Returns file size in bytes, or -1 on error. */
 long cli_file_size(const char* path) {
-    if (path == NULL) {
-        return -1;
-    }
-    struct stat st;
-    if (stat(path, &st) != 0) {
-        return -1;
-    }
-    return (long)st.st_size;
+	if (path == NULL) {
+		return -1;
+	}
+	struct stat st;
+	if (stat(path, &st) != 0) {
+		return -1;
+	}
+	return (long)st.st_size;
 }
 
 /* Reads entire file into a null-terminated buffer; caller must free with cli_free. */
 char* cli_read_file(const char* path, long* size) {
-    if (path == NULL || size == NULL) {
-        return NULL;
-    }
+	if (path == NULL || size == NULL) {
+		return NULL;
+	}
 
-    FILE* file = fopen(path, "rb");
-    if (file == NULL) {
-        cli_log_error("Failed to open file '%s': %s", path, strerror(errno));
-        return NULL;
-    }
+	FILE* file = fopen(path, "rb");
+	if (file == NULL) {
+		cli_log_error("Failed to open file '%s': %s", path, strerror(errno));
+		return NULL;
+	}
 
-    if (fseek(file, 0, SEEK_END) != 0) {
-        cli_log_error("Failed to seek file '%s'", path);
-        fclose(file);
-        return NULL;
-    }
+	if (fseek(file, 0, SEEK_END) != 0) {
+		cli_log_error("Failed to seek file '%s'", path);
+		fclose(file);
+		return NULL;
+	}
 
-    long length = ftell(file);
-    if (length < 0) {
-        cli_log_error("Failed to determine size for '%s'", path);
-        fclose(file);
-        return NULL;
-    }
-    rewind(file);
+	long length = ftell(file);
+	if (length < 0) {
+		cli_log_error("Failed to determine size for '%s'", path);
+		fclose(file);
+		return NULL;
+	}
+	rewind(file);
 
-    char* buffer = cli_malloc((size_t)length + 1);
-    if (buffer == NULL) {
-        fclose(file);
-        return NULL;
-    }
+	char* buffer = cli_malloc((size_t)length + 1);
+	if (buffer == NULL) {
+		fclose(file);
+		return NULL;
+	}
 
-    size_t read = fread(buffer, 1, (size_t)length, file);
-    fclose(file);
+	size_t read = fread(buffer, 1, (size_t)length, file);
+	fclose(file);
 
-    if (read != (size_t)length) {
-        cli_log_error("Failed to read file '%s': expected %ld bytes, got %zu", path, length, read);
-        cli_free(buffer);
-        return NULL;
-    }
+	if (read != (size_t)length) {
+		cli_log_error("Failed to read file '%s': expected %ld bytes, got %zu", path, length, read);
+		cli_free(buffer);
+		return NULL;
+	}
 
-    buffer[length] = '\0';
-    *size = length;
-    return buffer;
+	buffer[length] = '\0';
+	*size = length;
+	return buffer;
 }
 
 /* Writes data buffer to file, creating or overwriting as needed. */
 boolean cli_write_file(const char* path, const char* data, long size) {
-    if (path == NULL || data == NULL || size < 0) {
-        return false;
-    }
+	if (path == NULL || data == NULL || size < 0) {
+		return false;
+	}
 
-    FILE* file = fopen(path, "wb");
-    if (file == NULL) {
-        cli_log_error("Failed to open file '%s' for writing: %s", path, strerror(errno));
-        return false;
-    }
+	FILE* file = fopen(path, "wb");
+	if (file == NULL) {
+		cli_log_error("Failed to open file '%s' for writing: %s", path, strerror(errno));
+		return false;
+	}
 
-    size_t written = fwrite(data, 1, (size_t)size, file);
-    fclose(file);
-    return written == (size_t)size;
+	size_t written = fwrite(data, 1, (size_t)size, file);
+	fclose(file);
+	return written == (size_t)size;
 }
 
 /* Duplicates a string; caller must free with cli_free. */
 char* cli_strdup(const char* str) {
-    if (str == NULL) {
-        return NULL;
-    }
-    size_t len = strlen(str);
-    char* copy = cli_malloc(len + 1);
-    if (copy == NULL) {
-        return NULL;
-    }
-    memcpy(copy, str, len + 1);
-    return copy;
+	if (str == NULL) {
+		return NULL;
+	}
+	size_t len = strlen(str);
+	char* copy = cli_malloc(len + 1);
+	if (copy == NULL) {
+		return NULL;
+	}
+	memcpy(copy, str, len + 1);
+	return copy;
 }
 
 /* Concatenates two strings into a new buffer; caller must free with cli_free. */
 char* cli_concat_strings(const char* str1, const char* str2) {
-    if (str1 == NULL || str2 == NULL) {
-        return NULL;
-    }
-    size_t len1 = strlen(str1);
-    size_t len2 = strlen(str2);
-    char* result = cli_malloc(len1 + len2 + 1);
-    if (result == NULL) {
-        return NULL;
-    }
-    memcpy(result, str1, len1);
-    memcpy(result + len1, str2, len2 + 1);
-    return result;
+	if (str1 == NULL || str2 == NULL) {
+		return NULL;
+	}
+	size_t len1 = strlen(str1);
+	size_t len2 = strlen(str2);
+	char* result = cli_malloc(len1 + len2 + 1);
+	if (result == NULL) {
+		return NULL;
+	}
+	memcpy(result, str1, len1);
+	memcpy(result + len1, str2, len2 + 1);
+	return result;
 }
 
 /* Creates a formatted string using printf syntax; caller must free with cli_free. */
 char* cli_format_string(const char* format, ...) {
-    va_list args;
-    va_start(args, format);
+	va_list args;
+	va_start(args, format);
 
-    va_list args_copy;
-    va_copy(args_copy, args);
-    int needed = vsnprintf(NULL, 0, format, args_copy);
-    va_end(args_copy);
-    if (needed < 0) {
-        va_end(args);
-        return NULL;
-    }
+	va_list args_copy;
+	va_copy(args_copy, args);
+	int needed = vsnprintf(NULL, 0, format, args_copy);
+	va_end(args_copy);
+	if (needed < 0) {
+		va_end(args);
+		return NULL;
+	}
 
-    char* buffer = cli_malloc((size_t)needed + 1);
-    if (buffer == NULL) {
-        va_end(args);
-        return NULL;
-    }
+	char* buffer = cli_malloc((size_t)needed + 1);
+	if (buffer == NULL) {
+		va_end(args);
+		return NULL;
+	}
 
-    vsnprintf(buffer, (size_t)needed + 1, format, args);
-    va_end(args);
-    return buffer;
+	vsnprintf(buffer, (size_t)needed + 1, format, args);
+	va_end(args);
+	return buffer;
 }
 
 /* Frees a string allocated by cli_strdup, cli_concat_strings, or cli_format_string. */
 void cli_free_string(char* str) {
-    cli_free(str);
+	cli_free(str);
 }
 
 /* Allocates memory with error logging on failure. */
 void* cli_malloc(size_t size) {
-    void* ptr = malloc(size);
-    if (ptr == NULL && size > 0) {
-        cli_log_error("Memory allocation failed (%zu bytes)", size);
-    }
-    return ptr;
+	void* ptr = malloc(size);
+	if (ptr == NULL && size > 0) {
+		cli_log_error("Memory allocation failed (%zu bytes)", size);
+	}
+	return ptr;
 }
 
 /* Allocates zeroed memory with error logging on failure. */
 void* cli_calloc(size_t count, size_t size) {
-    void* ptr = calloc(count, size);
-    if (ptr == NULL && count > 0 && size > 0) {
-        cli_log_error("Memory allocation failed (%zu x %zu bytes)", count, size);
-    }
-    return ptr;
+	void* ptr = calloc(count, size);
+	if (ptr == NULL && count > 0 && size > 0) {
+		cli_log_error("Memory allocation failed (%zu x %zu bytes)", count, size);
+	}
+	return ptr;
 }
 
 /* Resizes an allocation with error logging on failure. */
 void* cli_realloc(void* ptr, size_t size) {
-    void* result = realloc(ptr, size);
-    if (result == NULL && size > 0) {
-        cli_log_error("Memory reallocation failed (%zu bytes)", size);
-    }
-    return result;
+	void* result = realloc(ptr, size);
+	if (result == NULL && size > 0) {
+		cli_log_error("Memory reallocation failed (%zu bytes)", size);
+	}
+	return result;
 }
 
 /* Frees memory allocated by cli_malloc, cli_calloc, or cli_realloc. */
 void cli_free(void* ptr) {
-    free(ptr);
+	free(ptr);
 }
 
 /* Returns the current error message, or empty string if none. */
 const char* cli_get_error(void) {
-    return g_cli_error_buffer;
+	return g_cli_error_buffer;
 }
 
 /* Sets the error message buffer for later retrieval. */
 void cli_set_error(const char* error) {
-    if (error == NULL) {
-        g_cli_error_buffer[0] = '\0';
-        return;
-    }
-    strncpy(g_cli_error_buffer, error, sizeof(g_cli_error_buffer) - 1);
-    g_cli_error_buffer[sizeof(g_cli_error_buffer) - 1] = '\0';
+	if (error == NULL) {
+		g_cli_error_buffer[0] = '\0';
+		return;
+	}
+	strncpy(g_cli_error_buffer, error, sizeof(g_cli_error_buffer) - 1);
+	g_cli_error_buffer[sizeof(g_cli_error_buffer) - 1] = '\0';
 }
 
 /* Clears the error message buffer. */
 void cli_clear_error(void) {
-    g_cli_error_buffer[0] = '\0';
+	g_cli_error_buffer[0] = '\0';
 }
 
 /* Initializes interactive mode detection based on TTY, CI environment, and CLI flags. */
 void cli_init_interactive_mode(boolean batch_mode_flag) {
-    /* Set batch mode from CLI flag */
-    fl_batch_mode = batch_mode_flag;
+	/* Set batch mode from CLI flag */
+	fl_batch_mode = batch_mode_flag;
 
-    /* Check CI environment (once) */
-    if (getenv("CI")) {
-        fl_batch_mode = true;
-    }
+	/* Check CI environment (once) */
+	if (getenv("CI")) {
+		fl_batch_mode = true;
+	}
 
-    /* Check for force-interactive override (testing only) */
-    boolean force_interactive = getenv("FRONTIER_FORCE_INTERACTIVE") != NULL;
+	/* Check for force-interactive override (testing only) */
+	boolean force_interactive = getenv("FRONTIER_FORCE_INTERACTIVE") != NULL;
 
-    /* Cache TTY detection (once) - both stdin AND stdout must be TTY */
-    /* FRONTIER_FORCE_INTERACTIVE=1 overrides TTY detection for integration testing */
-    fl_interactive_detected = force_interactive || (isatty(STDIN_FILENO) && isatty(STDOUT_FILENO));
+	/* Cache TTY detection (once) - both stdin AND stdout must be TTY */
+	/* FRONTIER_FORCE_INTERACTIVE=1 overrides TTY detection for integration testing */
+	fl_interactive_detected = force_interactive || (isatty(STDIN_FILENO) && isatty(STDOUT_FILENO));
 }
 
 /* Returns true if interactive prompts are allowed (TTY detected, not in batch/CI mode). */
 boolean isInteractiveMode(void) {
-    return !fl_batch_mode && fl_interactive_detected;
+	return !fl_batch_mode && fl_interactive_detected;
 }
