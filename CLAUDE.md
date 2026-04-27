@@ -21,6 +21,8 @@ Build/test/migration command reference: see `docs/QUICK_REFERENCE.md`. Key paths
 
 Test output dirs: `tests/tmp/{unit,integration,migration,results}/`. Scratch files: `/tmp` or `tests/tmp/` both work.
 
+The unit and integration commands above are also declared in the `## /auto Test Manifest` section below — keep both in sync.
+
 ### Documentation Index
 
 All docs live in `docs/`. Notable entry points:
@@ -118,6 +120,32 @@ Current tier summary:
 Threat model and trigger details are in `.claude/gate.yaml` itself.
 
 After editing `.claude/gate.yaml`, validate with `/gate --validate` (or `python3 ~/.claude/skills/gate/validate.py`).
+
+---
+
+## /auto Test Manifest
+
+Test commands and contract used by the `/auto` skill.
+
+Status semantics for the entries below:
+- `required` — must run and pass; blocks push and merge
+- `skippable` — run if infra is available; otherwise note skip in PR description
+- `manual-only` — do not run autonomously; list in PR for reviewer
+- `none` — this layer does not exist in this project
+
+See `~/.claude/skills/auto/SKILL.md` (a local Claude Code skill install — not in this repo) for the full table.
+
+- **Unit**: `./tools/run_headless_tests.sh` (required)
+- **Integration**: `cd tests && make test-integration` (required)
+- **E2E / UI**: none (headless CLI project)
+- **Smoke / Browser**: none
+- **Lint**: none
+- **Base branch**: `develop`
+- **Merge strategy**: `--squash` (branch deletion is manual — see `/auto` skill Phase 6 for the exit-worktree-then-merge sequence; `--delete-branch` is incompatible with merging from inside a worktree)
+
+Both required test layers must pass before push and before merge. Frontier has no E2E/UI/Lint layers — those entries exist for cross-project portability of `/auto`.
+
+The unit and integration commands above are also listed in the Quick Reference section near the top of this file — keep both in sync.
 
 ---
 
