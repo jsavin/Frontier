@@ -121,6 +121,22 @@ After editing `.claude/gate.yaml`, validate with `/gate --validate` (or `python3
 
 ---
 
+## /auto Test Manifest
+
+Test commands and contract used by the `/auto` skill. See `~/.claude/skills/auto/SKILL.md` for status semantics.
+
+- **Unit**: `./tools/run_headless_tests.sh` (required)
+- **Integration**: `cd tests && make test-integration` (required)
+- **E2E / UI**: none (headless CLI project)
+- **Smoke / Browser**: none
+- **Lint**: none (no project lint command established yet)
+- **Base branch**: `develop`
+- **Merge strategy**: `--squash` (cleanup is manual — see `/auto` skill Phase 6 for the exit-worktree-then-merge sequence; `--delete-branch` is incompatible with merging from inside a worktree)
+
+Both required test layers must pass before push and before merge. Frontier has no E2E/UI/Lint layers — those entries exist for cross-project portability of `/auto`.
+
+---
+
 ## ODB Script Editing Rules
 
 **Edit `databases/Virgin.root`** for changes that should persist in builds. `Virgin.root` is the source of truth — `make dist` copies it to `dist/Frontier.root`. Edits to `databases/Frontier.root` are local only and overwritten.
