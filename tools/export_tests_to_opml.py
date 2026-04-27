@@ -427,7 +427,19 @@ def generate_manifest_opml(categories, output_file, last_run=None, total_stats=N
             total_stats['skip'] += stats['skip']
             total_stats['fail'] += stats['fail']
 
-    total_summary = format_stats_summary(total_stats)
+    # Prefer actual last-run results in the title (matches body) and fall
+    # back to YAML-defined stats only if no run data is available. This keeps
+    # the title and body internally consistent.
+    if last_run is not None and last_run.get('total', 0) > 0:
+        title_stats = {
+            'total': last_run.get('total', 0),
+            'pass': last_run.get('passed', 0),
+            'skip': last_run.get('skipped', 0),
+            'fail': last_run.get('failed', 0),
+        }
+    else:
+        title_stats = total_stats
+    total_summary = format_stats_summary(title_stats)
 
     # Create OPML structure
     opml = Element('opml')

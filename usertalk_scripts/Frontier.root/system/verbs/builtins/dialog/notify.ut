@@ -1,21 +1,2 @@
 on notify (s) {
-	//Changes:
-		//05/30/01; 10:20:54 PM by PBS
-			//Run the card only if this is Mac Classic; otherwise call the kernel.
-	local (flRunCard = false);
-	if system.environment.isMac {
-		if not (defined (system.environment.isCarbon)) {
-			flRunCard = true}
-		else {
-			if not system.environment.isCarbon {
-				flRunCard = true}}};
-	on kernelCall (s) {
-		kernel (dialog.notify)};
-	if flRunCard { //Mac Classic
-		local (messagestring = s); //DW 11/23 the card expects a variable called messagestring
-		card.run (@dialog.cards.notify)}
-	else { //Windows or OS X
-		kernelCall (s)};
-	return (true)};
-//bundle //test code
-	//notify ("Hello")
+	kernel (dialog.notify)}

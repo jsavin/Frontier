@@ -10,7 +10,13 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 RUNNER="$PROJECT_ROOT/tests/integration/runner.py"
 CLI_PATH="$PROJECT_ROOT/frontier-cli/frontier-cli"
-SYSTEM_ROOT="$PROJECT_ROOT/databases/Frontier.root"
+# Virgin.root is the source of truth for system DB content. Stage it (and its
+# sibling guest DBs) into a disposable directory so test mutations never touch
+# source files.
+SOURCE_DB_DIR="$PROJECT_ROOT/databases"
+SOURCE_ROOT="$SOURCE_DB_DIR/Virgin.root"
+STAGE_DIR="$PROJECT_ROOT/tests/tmp/results/db"
+SYSTEM_ROOT="$STAGE_DIR/Frontier.root"
 TEST_CASES_DIR="$PROJECT_ROOT/tests/integration/test_cases"
 
 # Colors for output
@@ -132,6 +138,38 @@ fi
 
 echo "Running ${#TEST_FILES[@]} test file(s)..."
 echo
+
+# Stage a fresh copy of Virgin.root for the test run, with sibling guest DBs
+# symlinked next to it (read-only). Tests can mutate Frontier.root freely
+# without touching source files.
+if [ ! -f "$SOURCE_ROOT" ]; then
+    echo -e "${RED}Error: Source database not found: $SOURCE_ROOT${NC}"
+    exit 1
+fi
+# Defensive: ensure STAGE_DIR is non-empty before rm -rf (it's derived from
+# PROJECT_ROOT so this should always hold, but guard anyway).
+if [ -z "$STAGE_DIR" ]; then
+    echo -e "${RED}Error: STAGE_DIR is empty — refusing to rm -rf${NC}"
+    exit 1
+fi
+rm -rf "$STAGE_DIR"
+mkdir -p "$STAGE_DIR"
+cp "$SOURCE_ROOT" "$SYSTEM_ROOT"
+# Link sibling files/directories from databases/ so guest-DB-dependent tests
+# find them next to the staged Frontier.root. Exclusions:
+#   - Virgin.root: source of truth, copied above as Frontier.root
+#   - Frontier.root: stale local copy, not used as source
+#   - *.v6.root: pre-migration v6 backups (e.g. Frontier.v6.root)
+#   - *.v6.root.*: timestamped/numbered v6 backups (e.g. Frontier.v6.root.bak)
+for entry in "$SOURCE_DB_DIR"/*; do
+    name=$(basename "$entry")
+    case "$name" in
+        Virgin.root|Frontier.root|*.v6.root|*.v6.root.*)
+            continue
+            ;;
+    esac
+    ln -s "$entry" "$STAGE_DIR/$name"
+done
 
 # Record pre-test database checksum for integrity verification
 CHECKSUM_BEFORE=$(md5 -q "$SYSTEM_ROOT" 2>/dev/null || md5sum "$SYSTEM_ROOT" | cut -d' ' -f1)
