@@ -135,6 +135,8 @@ Test commands and contract used by the `/auto` skill. See `~/.claude/skills/auto
 
 Both required test layers must pass before push and before merge. Frontier has no E2E/UI/Lint layers — those entries exist for cross-project portability of `/auto`.
 
+The unit and integration commands above are also listed in the Quick Reference section near the top of this file — keep both in sync.
+
 ---
 
 ## ODB Script Editing Rules
