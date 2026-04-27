@@ -147,8 +147,14 @@ echo "Running ${#TEST_FILES[@]} test file(s)..."
 echo
 
 # Stage a fresh copy of Virgin.root for the test run, with sibling guest DBs
-# symlinked next to it (read-only). Tests can mutate Frontier.root freely
-# without touching source files.
+# copied next to it. Both the system root and guest DBs are disposable copies
+# so tests can freely mutate any database (e.g. via filemenu.save) without
+# writing through to the canonical files in databases/.
+#
+# History: guest DBs were previously symlinked here for speed. That created a
+# write-through risk: a test calling filemenu.save() on a guest DB would
+# silently mutate the committed source file. cp -R closes that hole at the
+# cost of ~30MB and <100ms per run.
 if [ ! -f "$SOURCE_ROOT" ]; then
     echo -e "${RED}Error: Source database not found: $SOURCE_ROOT${NC}"
     exit 1
@@ -162,7 +168,7 @@ fi
 rm -rf "$STAGE_DIR"
 mkdir -p "$STAGE_DIR"
 cp "$SOURCE_ROOT" "$SYSTEM_ROOT"
-# Link sibling files/directories from databases/ so guest-DB-dependent tests
+# Copy sibling files/directories from databases/ so guest-DB-dependent tests
 # find them next to the staged Frontier.root. Exclusions:
 #   - Virgin.root: source of truth, copied above as Frontier.root
 #   - Frontier.root: stale local copy, not used as source
@@ -175,23 +181,79 @@ for entry in "$SOURCE_DB_DIR"/*; do
             continue
             ;;
     esac
-    ln -s "$entry" "$STAGE_DIR/$name"
+    cp -R "$entry" "$STAGE_DIR/$name"
 done
 
-# Record pre-test database checksum for integrity verification
-CHECKSUM_BEFORE=$(md5 -q "$SYSTEM_ROOT" 2>/dev/null || md5sum "$SYSTEM_ROOT" | cut -d' ' -f1)
+# Helper: hash a path (file or directory). For directories, hashes the sorted
+# concatenation of file hashes so we get a single deterministic checksum per
+# entry. Uses md5 on macOS, md5sum on Linux.
+#
+# Note: the directory hash combines per-file *content* hashes only — file
+# paths are intentionally excluded so the result depends solely on contents.
+# That's sufficient for "did any file change?" drift detection. Two trees
+# with identical contents but different filenames would hash the same;
+# that's acceptable here because we're hashing the same staged tree before
+# and after a test run, not comparing different trees. Paths are excluded
+# rather than included so cross-platform `find` output ordering can't
+# affect the result (LC_ALL=C sort handles ordering of the resulting
+# hashes regardless of input path order).
+_hash_path() {
+    local path="$1"
+    if [ -d "$path" ]; then
+        # Hash files in sorted order; print only the combined hash
+        find "$path" -type f -print0 | LC_ALL=C sort -z | xargs -0 -I{} sh -c '
+            md5 -q "$1" 2>/dev/null || md5sum "$1" | cut -d" " -f1
+        ' _ {} | (md5 -q 2>/dev/null || md5sum | cut -d" " -f1)
+    elif [ -f "$path" ]; then
+        md5 -q "$path" 2>/dev/null || md5sum "$path" | cut -d' ' -f1
+    fi
+}
+
+# Record pre-test checksums for integrity verification: system root + every
+# staged guest DB. Catches accidental writes to any staged database.
+SYSTEM_ROOT_NAME=$(basename "$SYSTEM_ROOT")
+declare -a STAGED_NAMES=()
+declare -a CHECKSUMS_BEFORE=()
+STAGED_NAMES+=("$SYSTEM_ROOT_NAME")
+CHECKSUMS_BEFORE+=("$(_hash_path "$SYSTEM_ROOT")")
+for entry in "$STAGE_DIR"/*; do
+    name=$(basename "$entry")
+    [ "$name" = "$SYSTEM_ROOT_NAME" ] && continue
+    STAGED_NAMES+=("$name")
+    CHECKSUMS_BEFORE+=("$(_hash_path "$entry")")
+done
 
 # Run the tests (using v7 source database directly)
 "$RUNNER" $VERBOSE $BATCH_FLAG $WORKERS_FLAG --cli "$CLI_PATH" --system-root "$SYSTEM_ROOT" "${TEST_FILES[@]}"
 EXIT_CODE=$?
 
-# Verify database integrity after tests
-CHECKSUM_AFTER=$(md5 -q "$SYSTEM_ROOT" 2>/dev/null || md5sum "$SYSTEM_ROOT" | cut -d' ' -f1)
-if [ "$CHECKSUM_BEFORE" != "$CHECKSUM_AFTER" ]; then
-    echo -e "${YELLOW}WARNING: System root was modified during tests${NC}"
-    echo "  Before: $CHECKSUM_BEFORE"
-    echo "  After:  $CHECKSUM_AFTER"
-fi
+# Verify integrity of every staged database after tests.
+#
+# Drift is reported as a warning only and does NOT fail EXIT_CODE. This
+# matches prior behavior for Frontier.root, which has a known non-
+# deterministic ODB save path (issue #545) — every test run that boots
+# the CLI re-saves the system root and trips the warning even when the
+# test made zero logical changes. Promoting drift to a hard failure
+# would make the suite red on every run until #545 is resolved.
+# Guest-DB drift will surface in this same warning channel; the operator
+# is expected to investigate any guest DB that drifts (none should).
+DRIFT_DETECTED=0
+for i in "${!STAGED_NAMES[@]}"; do
+    name="${STAGED_NAMES[$i]}"
+    before="${CHECKSUMS_BEFORE[$i]}"
+    # Both system root and guest DBs live under STAGE_DIR — same lookup.
+    path="$STAGE_DIR/$name"
+    after="$(_hash_path "$path")"
+    if [ "$before" != "$after" ]; then
+        if [ "$DRIFT_DETECTED" -eq 0 ]; then
+            echo -e "${YELLOW}WARNING: Staged database(s) modified during tests${NC}"
+            DRIFT_DETECTED=1
+        fi
+        echo "  $name"
+        echo "    Before: $before"
+        echo "    After:  $after"
+    fi
+done
 
 echo
 if [ $EXIT_CODE -eq 0 ]; then
