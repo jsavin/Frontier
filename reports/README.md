@@ -32,7 +32,7 @@ Automatic verb binding analyzer reports showing implementation status across all
 
 These files are **regenerated on every test run** and are **not tracked in git** (issue #556) — anyone wanting a current snapshot regenerates them locally:
 
-- **Integration tests** (`reports/integration_tests.opml` + `reports/integration_tests/*.opml`): regenerate with `python3 tools/export_tests_to_opml.py`. 1 manifest + per-category files, ~1,247 tests across 25 categories. OPML 2.0 with transclusion (`type="link"`).
+- **Integration tests** (`reports/integration_tests.opml` + `reports/integration_tests/*.opml`): regenerate with `python3 tools/export_tests_to_opml.py`. 1 manifest + per-category files (currently 69 categories, 2,243 tests). OPML 2.0 with transclusion (`type="link"`).
 - **Unit tests** (`reports/unit_tests.opml` + `reports/unit_tests/*.opml`): regenerated as a side effect of `./tools/run_headless_tests.sh`.
 
 **Why not tracked**: every regeneration updates embedded timestamps, producing a noisy diff for every PR that runs tests during validation. They're treated as build artifacts (like compiled binaries) and gitignored. CI publishes the artifact separately if needed.
@@ -46,11 +46,11 @@ When adding a new report type:
 1. Create a subdirectory under `reports/` (e.g., `reports/test-results/`)
 2. Add a `README.md` explaining the report purpose and format
 3. Use the pattern `YYYY-MM-DD-<type>.md` or `YYYY-MM-DD-NN.md` (with sequential numbering) for dated reports
-4. Keep all reports in the repository (they're part of project history)
+4. Keep all reports in the repository (they're part of project history), unless they're regenerated build artifacts like the test OPMLs above — those should be gitignored.
 
 ## Guidelines
 
-- **Do not delete** old reports; they provide historical context
+- **Do not delete** old reports; they provide historical context (this applies to authored reports under `progress/`, `coverage/`, `static-analysis/`, etc. — not to regenerated build artifacts like the test OPMLs)
 - **Update READMEs** when adding new report types
 - **Link to relevant PRs, docs, or issues** within reports when helpful
 - **Keep reports concise** but comprehensive enough for stakeholders
