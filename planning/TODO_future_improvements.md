@@ -31,10 +31,9 @@ Priority Key
 - **P2 (Future / Nice-to-Have):** Valuable improvements once P0/P1 are on track.
 
 ## Dependency Cleanup
-- **P1** — [#81](https://github.com/jsavin/Frontier/issues/81) — Unvendor temporary build dependencies (CMake + Paige) once WPText Phase 3 (font tables) lands.
-  - Drop `third_party/cmake-src/` + the local installer after downstream build tooling is verified.
-  - Remove the Paige submodule/shims once our native RTF generator is fully validated.
-  - Update `_CURRENT_STATUS.md` / `docs/database_architecture.md` when Paige is fully removed so future work knows the dependency is gone.
+- **DONE** — [#81](https://github.com/jsavin/Frontier/issues/81) — Unvendor temporary build dependencies (CMake + Paige).
+  - Paige (libpaige + wpengine) removed in PR #565.
+  - Vendored CMake (`third_party/cmake-install/`, `third_party/cmake-src/`, install/rebuild scripts) removed in this commit. CMake's only consumer was Paige.
 
 ## Phase 1/2 — UserTalk Runtime: 64-bit Signed Integers as Default Type
 

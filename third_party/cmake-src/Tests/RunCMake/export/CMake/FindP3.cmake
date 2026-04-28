@@ -1,2 +1,0 @@
-add_library(l3 IMPORTED INTERFACE)
-set(P3_FOUND TRUE)

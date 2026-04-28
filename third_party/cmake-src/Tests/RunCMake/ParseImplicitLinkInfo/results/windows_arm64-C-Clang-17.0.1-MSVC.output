@@ -1,3 +1,0 @@
-libs=
-dirs=C:/DoesNotExist/LLVM/lib/clang/17/lib/windows
-linker_tool=C:/DoesNotExist/LLVM/bin/lld-link

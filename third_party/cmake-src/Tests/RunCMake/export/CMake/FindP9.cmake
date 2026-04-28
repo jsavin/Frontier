@@ -1,2 +1,0 @@
-add_library(l9 IMPORTED INTERFACE)
-set(P9_FOUND TRUE)

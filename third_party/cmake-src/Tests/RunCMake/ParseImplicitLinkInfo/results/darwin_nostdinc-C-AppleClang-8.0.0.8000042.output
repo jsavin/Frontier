@@ -1,3 +1,0 @@
-libs=
-dirs=/usr/lib;/usr/local/lib
-linker_tool=/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/ld

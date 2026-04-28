@@ -1,2 +1,0 @@
-add_library(l1 IMPORTED INTERFACE)
-set(P1_FOUND TRUE)

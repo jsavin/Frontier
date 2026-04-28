@@ -134,7 +134,6 @@ test_tmp/
 reports/*.opml
 reports/unit_tests/*.opml
 reports/integration_tests/*.opml
-third_party/cmake-install/
 
 # Guest database build artifacts (copied/generated during dist build)
 databases/Guest Databases/apps/config.root
