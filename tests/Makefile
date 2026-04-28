@@ -517,8 +517,13 @@ test-debug:
 test-hooks:
 	@../tools/hooks/tests/test_c_indent_hook.sh
 
-# Run all tests (unit + integration + CLI migration + custom args + debug + hooks)
-test-all: test test-integration test-migrate-flag test-custom-args test-debug test-hooks
+# Verify no GPL headers remain in first-party source files (post-relicensing).
+# Exits non-zero if any in-scope file still carries a GPLv2 boilerplate header.
+check-license:
+	@python3 ../tools/relicense_headers.py --check
+
+# Run all tests (unit + integration + CLI migration + custom args + debug + hooks + license check)
+test-all: test test-integration test-migrate-flag test-custom-args test-debug test-hooks check-license
 	@echo "All test suites completed"
 
 $(STRINGS_COMPILER):
