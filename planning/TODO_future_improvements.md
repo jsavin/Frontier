@@ -33,7 +33,7 @@ Priority Key
 ## Dependency Cleanup
 - **DONE** — [#81](https://github.com/jsavin/Frontier/issues/81) — Unvendor temporary build dependencies (CMake + Paige).
   - Paige (libpaige + wpengine) removed in PR #565.
-  - Vendored CMake (`third_party/cmake-install/`, `third_party/cmake-src/`, install/rebuild scripts) removed in this commit. CMake's only consumer was Paige.
+  - Vendored CMake (`third_party/cmake-install/`, `third_party/cmake-src/`, install/rebuild scripts) removed in PR #567. CMake's only consumer was Paige.
 
 ## Phase 1/2 — UserTalk Runtime: 64-bit Signed Integers as Default Type
 

@@ -204,7 +204,7 @@ def validate_file(filepath, verbose=False):
 def find_source_files(root_dir, extensions=('.c', '.h')):
     """Find all C/H source files under root_dir, skipping common non-source dirs."""
     skip_dirs = {'.git', 'build', 'build-headless', 'build-headless-debug',
-                 'cmake-install', 'node_modules', '__pycache__', 'dist'}
+                 'node_modules', '__pycache__', 'dist'}
     source_files = []
 
     for dirpath, dirnames, filenames in os.walk(root_dir):
