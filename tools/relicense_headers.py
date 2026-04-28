@@ -119,6 +119,18 @@ def find_gpl_header_block(text: str) -> Optional[Tuple[int, int]]:
     the first 16 KB) until it finds one that contains a GPL trigger phrase.
     This handles files that begin with a small "$Id$" comment followed by
     the real GPL banner block.
+
+    Search scope: the chain of leading comments must be contiguous —
+    separated only by whitespace/blank lines. As soon as any non-comment
+    source appears between blocks, the search stops and returns None.
+    This is deliberate: it prevents the script from mutating files whose
+    leading comments do not include a GPL banner. In the current codebase
+    no in-scope file has more than one leading non-GPL comment, but the
+    chain logic generalizes to that case.
+
+    Files with `//`-style headers are not detected; the project enforces
+    K&R-style /* ... */ headers, and the post-run `--check` pass would
+    surface any miss.
     """
     head_window = text[:16384]
     cursor = 0
