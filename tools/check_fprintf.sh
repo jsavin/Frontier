@@ -25,7 +25,7 @@ EXEMPT_PATTERNS=(
     "legacy"          # Legacy support code
     "logging.c"       # Logging system itself uses fprintf for bootstrap/meta-logging
     "frontier-cli/"   # CLI user-facing error messages (not diagnostic logging)
-    "third_party/"    # All third-party code (cmake, linenoise, etc.)
+    "third_party/"    # All third-party code (cJSON, libyaml, linenoise)
     "sqlite3/"        # Third-party SQLite code (in Common/sqlite3/)
     "databases/regenerate"  # One-off migration utility scripts
     "tools/"          # Standalone CLI utilities (not part of runtime)
