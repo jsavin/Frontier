@@ -2,8 +2,6 @@
 # 2025-10-27 Codex: Link db_format sources into portable component tests (needed by migration suite).
 # 2025-11-07 Codex: Add portable include path for core/db_format tests so headless
 #                   builds can find classic_handle and friends.
-# 2025-11-11 Codex: Define HEADLESS_LINKS_REAL_PAIGE so tests skip Paige stubs once the real library links.
-# 2025-11-17 Codex: Hook Paige's CMake build into this Makefile so source edits retrigger libpaige.a.
 # 2025-12-01 Codex: Link real tableexternal code for migration tests to avoid stubbed table lookups.
 # Phase 1.1: Comprehensive Testing Implementation
 
@@ -20,22 +18,18 @@ ifeq ($(SANITIZE),1)
   # export ASAN_OPTIONS=detect_leaks=0  # set in shell if desired
 endif
 
-# Enable Paige debug instrumentation + wp runtime guards when tests are built
 FRONTIER_TESTS ?= 1
-CWARNING_SUPPRESS ?= -Wno-nonportable-include-path -Wno-error=implicit-function-declaration  # Suppress Paige header case warnings (third-party code)
 CFLAGS = -Wall -Wextra -std=c99 -g -O0 -fpascal-strings -Wno-deprecated-non-prototype -fcommon \
          -DFRONTIER_USE_PORTABLE_HANDLES -DFRONTIER_HEADLESS \
          -DFRONTIER_PORTABLE_STRINGS \
          -DFRONTIER_PORTABLE_FILE_AVAILABLE -DFRONTIER_PORTABLE_DB_AVAILABLE \
          -DFRONTIER_PORTABLE_APPLEEVENTS \
-         -DHEADLESS_LINKS_REAL_PAIGE \
          -DHEADLESS_LINKS_REAL_DB \
          -DHEADLESS_USE_REAL_TABLEPACK \
          -DFRONTIER_DISABLE_DOCINFO=1 \
          -DLAND_GENERALLOG_LEVEL=LAND_LOGLEVEL_OFF -DLAND_GENERALLOG_TARGET=LAND_LOGTARGET_NONE \
          -DUNIX_COMPILE -DC_LIBRARY -DNO_OS_INLINE \
          $(SAN_FLAGS) \
-         $(CWARNING_SUPPRESS) \
          -I../generated
 STRINGS_COMPILER_DIR = ../tools/strings_compiler
 STRINGS_COMPILER = $(STRINGS_COMPILER_DIR)/strings_compiler
@@ -50,35 +44,13 @@ SYSTEMHEADERDIR = ../Common/SystemHeaders
 HEADERDIR = ../Common/headers
 FRAMEWORKS = -framework CoreFoundation -framework Carbon
 
-# Paige integration (WPText engine)
 THIRDPARTYDIR = ../third_party
-PAIGE_DIR = $(THIRDPARTYDIR)/Paige
-PAIGE_BUILD_DIR_RELEASE = $(PAIGE_DIR)/build-headless
-PAIGE_BUILD_DIR_DEBUG = $(PAIGE_DIR)/build-headless-debug
-ifeq ($(FRONTIER_TESTS),1)
-  PAIGE_BUILD_DIR = $(PAIGE_BUILD_DIR_DEBUG)
-  PAIGE_BUILD_TYPE = Debug
-  PAIGE_TESTS_FLAG = ON
-else
-  PAIGE_BUILD_DIR = $(PAIGE_BUILD_DIR_RELEASE)
-  PAIGE_BUILD_TYPE = Release
-  PAIGE_TESTS_FLAG = OFF
-endif
-PAIGE_LIB = $(PAIGE_BUILD_DIR)/libpaige.a
-# Use local cmake-install if it exists and works, otherwise fall back to system cmake
-# Check that cmake can actually run (not just executable bit set) by verifying no errors in version output
-CMAKE_BIN = $(shell if [ -x $(THIRDPARTYDIR)/cmake-install/bin/cmake ] && ! $(THIRDPARTYDIR)/cmake-install/bin/cmake --version 2>&1 | grep -q "Error"; then echo "$(THIRDPARTYDIR)/cmake-install/bin/cmake"; else echo "cmake"; fi)
-PAIGE_ARCHES = arm64;x86_64
-PAIGE_CONFIG = $(PAIGE_BUILD_DIR)/CMakeCache.txt
-PAIGE_SOURCES := $(shell find $(PAIGE_DIR) -type f \( -name '*.C' -o -name '*.CPP' -o -name '*.c' -o -name '*.cpp' -o -name '*.H' -o -name '*.h' \))
-
-CFLAGS += -I$(PAIGE_DIR)/PGHEADER
 ifeq ($(FRONTIER_TESTS),1)
   CFLAGS += -DFRONTIER_TESTS=1
 endif
-LIBS = $(PAIGE_LIB)
+LIBS =
 LDFLAGS = -Wl,-undefined,dynamic_lookup
-LINK_LIBS = $(PAIGE_LIB) $(LDFLAGS)
+LINK_LIBS = $(LDFLAGS)
 
 # Frontier core source files (minimal set suitable for CLI/testing)
 # Portable core sources (subset)
@@ -268,9 +240,7 @@ $(KERNEL_VERBS_C): $(KERNELVERBS_PARSER) $(KERNELVERBS_RC) headless_verbs.mk
 kernel_verbs_generated: $(KERNEL_VERBS_C)
 
 # Default target: build the tests we know are supported here
-all: $(PAIGE_LIB) strings_generated kernel_verbs_generated $(RUN_BUILDABLE)
-
-$(RUN_BUILDABLE): $(PAIGE_LIB)
+all: strings_generated kernel_verbs_generated $(RUN_BUILDABLE)
 
 # Headless smoke test
 core_tests: core_tests.c ../Common/source/shell_api.c ../Common/source/shell_api_headless.c ../Common/source/logging.c ../frontier-cli/stubs/headless_shell.c
@@ -567,29 +537,8 @@ clean:
 	rm -f *.root
 	rm -f test_*.root
 	rm -f $(GENERATED_STRINGS)
-	# Paige build artifacts retained under third_party/Paige/build-headless
 
 
-# Paige library build with automatic rebuild detection for worktrees
-# Rebuilds if CMakeCache.txt contains paths from a different worktree
-CURRENT_PAIGE_DIR := $(abspath $(PAIGE_BUILD_DIR))
-
-.PHONY: check-paige-cache
-check-paige-cache:
-	@if [ -f $(PAIGE_CONFIG) ]; then \
-		cached_path=$$(grep "^paige_BINARY_DIR:" $(PAIGE_CONFIG) 2>/dev/null | cut -d= -f2); \
-		if [ -n "$$cached_path" ] && [ "$$cached_path" != "$(CURRENT_PAIGE_DIR)" ]; then \
-			echo "Detected stale CMake cache from different worktree, cleaning..."; \
-			rm -rf $(PAIGE_BUILD_DIR); \
-		fi; \
-	fi
-
-$(PAIGE_CONFIG): check-paige-cache
-	@mkdir -p $(PAIGE_BUILD_DIR)
-	$(CMAKE_BIN) -S $(PAIGE_DIR) -B $(PAIGE_BUILD_DIR) -DCMAKE_BUILD_TYPE=$(PAIGE_BUILD_TYPE) -DCMAKE_OSX_ARCHITECTURES="$(PAIGE_ARCHES)" -DFRONTIER_TESTS=$(PAIGE_TESTS_FLAG) -DFRONTIER_DISABLE_DOCINFO=ON
-
-$(PAIGE_LIB): $(PAIGE_CONFIG) $(PAIGE_SOURCES)
-	$(CMAKE_BIN) --build $(PAIGE_BUILD_DIR) --target paige
 # Install target
 install: $(ALL_TESTS)
 	@echo "Installing test executables..."
