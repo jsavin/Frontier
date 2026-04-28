@@ -1,3 +1,0 @@
-libs=c\+\+;c\+\+abi;pthread;m;compiler_rt;c;compiler_rt
-dirs=/usr/lib
-linker_tool=/usr/bin/ld

@@ -1,6 +1,0 @@
-function(exit)
-  cmake_language(EXIT 9)
-  message(FATAL_ERROR "This should not be reached!")
-endfunction()
-exit()
-message(FATAL_ERROR "This should not be reached!")

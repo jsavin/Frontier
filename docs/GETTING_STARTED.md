@@ -29,7 +29,7 @@ This guide walks you through setting up Frontier from scratch, building the CLI,
 
 **Notes**:
 - frontier-cli is built as a universal binary and runs natively on both Intel and Apple Silicon Macs
-- All vendored dependencies (cmake, Paige library) are universal binaries
+- All vendored dependencies (cJSON, libyaml, linenoise) are universal binaries
 - Linux support is in progress. Windows support is planned but not yet available.
 
 ---
@@ -120,19 +120,7 @@ Frontier/
 make -C frontier-cli
 ```
 
-This builds a **universal binary** that runs natively on both Intel and Apple Silicon Macs.
-
-**First build** (fresh clone or new worktree):
-
-```
-Building Paige library (this only happens once per worktree)...
--- Configuring done
--- Building...
-[100%] Built target paige
-clang ... -o frontier-cli
-```
-
-The first build takes 2-3 minutes because it compiles the Paige text engine library. **Subsequent builds** skip this step and complete in 30-60 seconds.
+This builds a **universal binary** that runs natively on both Intel and Apple Silicon Macs. A fresh build typically completes in 30-60 seconds.
 
 ### Verify the Build
 

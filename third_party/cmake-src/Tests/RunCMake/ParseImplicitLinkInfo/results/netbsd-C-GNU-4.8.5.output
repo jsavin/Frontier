@@ -1,3 +1,0 @@
-libs=gcc;gcc_s;c;gcc;gcc_s
-dirs=
-linker_tool=ld

@@ -11,7 +11,6 @@ build/
 generated/
 tools/strings_compiler/strings_compiler
 tools/strings_compiler/*.o
-third_party/Paige/build*/
 
 *.pbxuser
 *.mode1v3
@@ -134,7 +133,6 @@ test_tmp/
 reports/*.opml
 reports/unit_tests/*.opml
 reports/integration_tests/*.opml
-third_party/cmake-install/
 
 # Guest database build artifacts (copied/generated during dist build)
 databases/Guest Databases/apps/config.root

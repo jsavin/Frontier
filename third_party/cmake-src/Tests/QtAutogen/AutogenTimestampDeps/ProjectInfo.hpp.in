@@ -1,6 +1,0 @@
-#ifndef PROJECTINFO_HPP
-#define PROJECTINFO_HPP
-
-extern int VersionMajor;
-
-#endif // PROJECTINFO_HPP

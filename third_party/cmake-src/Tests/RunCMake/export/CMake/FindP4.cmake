@@ -1,2 +1,0 @@
-add_library(l4 IMPORTED INTERFACE)
-set(P4_FOUND TRUE)

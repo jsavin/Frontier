@@ -1,2 +1,0 @@
-Test project [^
-]*/Tests/RunCMake/CTestCommandLine/TestsFromFile-exclude-missing$

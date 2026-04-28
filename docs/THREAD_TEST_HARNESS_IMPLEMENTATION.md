@@ -181,16 +181,7 @@ If Frontier gains true multi-threaded UserTalk execution, the test harness will 
 
 ### Automatic Inclusion
 
-The CMake build configuration uses `file(GLOB_RECURSE)` to automatically pick up all `.c` files:
-
-```cmake
-file(GLOB_RECURSE FRONTIER_SOURCES
-    "${CMAKE_SOURCE_DIR}/../Common/source/*.c"
-    "${CMAKE_SOURCE_DIR}/../Common/source/*.m"
-)
-```
-
-**Result:** `shellthreads_test_harness.c` is automatically compiled and linked with no build file changes needed.
+The `frontier-cli` Makefile picks up all `.c` files in `Common/source/` automatically, so `shellthreads_test_harness.c` is compiled and linked with no build file changes needed.
 
 ### Compilation Status
 
