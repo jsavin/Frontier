@@ -1,29 +1,30 @@
 
 /*	$Id$    */
 
-/******************************************************************************
+/*
+    SPDX-License-Identifier: MIT
 
-    UserLand Frontier(tm) -- High performance Web content management,
-    object database, system-level and Internet scripting environment,
-    including source code editing and debugging.
+    Copyright (c) 1992-2004 UserLand Software, Inc.
+    Copyright (c) 2025-present Frontier contributors
 
-    Copyright (C) 1992-2004 UserLand Software, Inc.
+    Permission is hereby granted, free of charge, to any person obtaining a
+    copy of this software and associated documentation files (the "Software"),
+    to deal in the Software without restriction, including without limitation
+    the rights to use, copy, modify, merge, publish, distribute, sublicense,
+    and/or sell copies of the Software, and to permit persons to whom the
+    Software is furnished to do so, subject to the following conditions:
 
-    This program is free software; you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation; either version 2 of the License, or
-    (at your option) any later version.
+    The above copyright notice and this permission notice shall be included in
+    all copies or substantial portions of the Software.
 
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program; if not, write to the Free Software
-    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-
-******************************************************************************/
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+    FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+    DEALINGS IN THE SOFTWARE.
+*/
 
 /*
 	versions.h
@@ -73,7 +74,7 @@
 	
 	#define	bs_APP_NAME				BIGSTRING ("\x05" "Radio")
 	#define	bs_APP_SLOGAN			BIGSTRING ("\x2b" "The power of Web publishing on your desktop")
-	#define	bs_APP_COPYRIGHT		BIGSTRING ("\x23" "© " APP_COPYRIGHT_FROM "-" APP_COPYRIGHT_TILL " UserLand Software, Inc.")
+	#define	bs_APP_COPYRIGHT		BIGSTRING ("\x23" "Â© " APP_COPYRIGHT_FROM "-" APP_COPYRIGHT_TILL " UserLand Software, Inc.")
 	#define	bs_APP_URL				BIGSTRING ("\x26" "http://frontierkernel.sourceforge.net/")
 
 #else
@@ -86,7 +87,7 @@
 	
 	#define	bs_APP_NAME				BIGSTRING ("\x04" "OPML")
 	#define	bs_APP_SLOGAN			BIGSTRING ("\x25" "Powerful OPML editing on your desktop")
-	#define	bs_APP_COPYRIGHT		BIGSTRING ("\x20" "© " APP_COPYRIGHT_FROM "-" APP_COPYRIGHT_TILL " Scripting News, Inc.")
+	#define	bs_APP_COPYRIGHT		BIGSTRING ("\x20" "Â© " APP_COPYRIGHT_FROM "-" APP_COPYRIGHT_TILL " Scripting News, Inc.")
 	#define	bs_APP_URL				BIGSTRING ("\x18" "http://support.opml.org/")
 		
 #endif
@@ -99,12 +100,12 @@
 	
 	#define	bs_APP_NAME				BIGSTRING ("\x08" "Frontier")
 	#define	bs_APP_SLOGAN			BIGSTRING ("\x25" "Powerful cross-platform web scripting")
-	#define	bs_APP_COPYRIGHT		BIGSTRING ("\x23" "© " APP_COPYRIGHT_FROM "-" APP_COPYRIGHT_TILL " Frontier Kernel Project")
+	#define	bs_APP_COPYRIGHT		BIGSTRING ("\x23" "Â© " APP_COPYRIGHT_FROM "-" APP_COPYRIGHT_TILL " Frontier Kernel Project")
 	#define	bs_APP_URL				BIGSTRING ("\x26" "http://frontierkernel.sourceforge.net/")
 		
 #endif
 
-#define	bs_APP_COPYRIGHT2	BIGSTRING ("\x22" "© 1992-2004 UserLand Software, Inc")
+#define	bs_APP_COPYRIGHT2	BIGSTRING ("\x22" "Â© 1992-2004 UserLand Software, Inc")
 #define	APP_COPYRIGHT		APP_COPYRIGHT_FROM "-" APP_COPYRIGHT_TILL " " APP_COPYRIGHT_HOLDER
 
 #define	APPNAME_SHORT		APPNAME	/* 2006-02-04 aradke */

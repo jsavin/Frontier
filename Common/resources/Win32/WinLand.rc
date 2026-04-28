@@ -1,29 +1,30 @@
 
 /*	$Id$    */
 
-/******************************************************************************
+/*
+    SPDX-License-Identifier: MIT
 
-    UserLand Frontier(tm) -- High performance Web content management,
-    object database, system-level and Internet scripting environment,
-    including source code editing and debugging.
+    Copyright (c) 1992-2004 UserLand Software, Inc.
+    Copyright (c) 2025-present Frontier contributors
 
-    Copyright (C) 1992-2004 UserLand Software, Inc.
+    Permission is hereby granted, free of charge, to any person obtaining a
+    copy of this software and associated documentation files (the "Software"),
+    to deal in the Software without restriction, including without limitation
+    the rights to use, copy, modify, merge, publish, distribute, sublicense,
+    and/or sell copies of the Software, and to permit persons to whom the
+    Software is furnished to do so, subject to the following conditions:
 
-    This program is free software; you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation; either version 2 of the License, or
-    (at your option) any later version.
+    The above copyright notice and this permission notice shall be included in
+    all copies or substantial portions of the Software.
 
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program; if not, write to the Free Software
-    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-
-******************************************************************************/
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+    FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+    DEALINGS IN THE SOFTWARE.
+*/
 
 #include "versions.h"
 
@@ -577,7 +578,7 @@ BEGIN
     CTEXT           "Microsoft Windows",-1,0,5,184,8
     CTEXT           "Multipad",-1,0,15,184,8
     CTEXT           "Version 3.00",-1,0,34,184,8
-    CTEXT           "Copyright © 1993-1995 Microsoft Corp.",-1,0,47,184,9
+    CTEXT           "Copyright Â© 1993-1995 Microsoft Corp.",-1,0,47,184,9
     DEFPUSHBUTTON   "OK",IDOK,76,60,32,14,WS_GROUP
     ICON            1,-1,25,14,18,20
 END
@@ -684,7 +685,7 @@ BEGIN
     LTEXT           "E-Mail:",IDC_STATIC,7,78,24,8
     CONTROL         IDB_FRONTIER_BITMAP,IDC_STATIC,"Static",SS_BITMAP |
                     SS_SUNKEN,17,5,32,32
-    CTEXT           "Please personalize your copy of Frontier™.",
+    CTEXT           "Please personalize your copy of FrontierÂ™.",
                     IDC_STATIC,74,7,101,20
 END
 
@@ -896,21 +897,21 @@ BEGIN
 #endif
             VALUE "InternalName", APPNAME "\0"
       //    VALUE "Language", "English (United States)\0"
-            VALUE "LegalCopyright", "© " APP_COPYRIGHT "\0"
+            VALUE "LegalCopyright", "Â© " APP_COPYRIGHT "\0"
 #ifdef PIKE /*7.0d8 PBS: name change*/
 #ifndef OPMLEDITOR
             VALUE "OriginalFilename", "Radio.exe\0"
             VALUE "ProductName", "Radio UserLand\0"
-            VALUE "Full Copyright", "© Copyright " APP_COPYRIGHT_HOLDER ". All rights reserved. Permission and Use is Granted Subject to the UserLand End-User License Agreement.\0"
+            VALUE "Full Copyright", "Â© Copyright " APP_COPYRIGHT_HOLDER ". All rights reserved. Permission and Use is Granted Subject to the UserLand End-User License Agreement.\0"
 #else  // OPMLEDITOR
             VALUE "OriginalFilename", "opml.exe\0"
             VALUE "ProductName", "OPML\0"
-            VALUE "Full Copyright", "© Copyright " APP_COPYRIGHT_HOLDER ". Released under the GNU General Public License.\0"
+            VALUE "Full Copyright", "Â© Copyright " APP_COPYRIGHT_HOLDER ". Released under the MIT License.\0"
 #endif // OPMLEDITOR
 #else  // !PIKE
             VALUE "OriginalFilename", "Frontier.exe\0"
             VALUE "ProductName", "Frontier\0"
-            VALUE "Full Copyright", "© Copyright " APP_COPYRIGHT_HOLDER ". Released under the GNU General Public License.\0"
+            VALUE "Full Copyright", "Â© Copyright " APP_COPYRIGHT_HOLDER ". Released under the MIT License.\0"
 #endif  // !PIKE
 #ifdef fltrialsize
             VALUE "ProductVersion", "Trial " APP_VERSION_STRING "\0"
@@ -1040,7 +1041,7 @@ END
 
 #ifdef PIKE
 #ifndef OPMLEDITOR
-	1 Defaults DISCARDABLE BEGIN "Radio UserLand®\0" END /*7.0d8 PBS*/
+	1 Defaults DISCARDABLE BEGIN "Radio UserLandÂ®\0" END /*7.0d8 PBS*/
 #else   //OPMLEDITOR
 	1 Defaults DISCARDABLE BEGIN "OPML\0" END /*7.0d8 PBS*/
 #endif  //OPMLEDITOR
@@ -1169,18 +1170,18 @@ END
 	2 System_Scripts DISCARDABLE BEGIN "edit (@root)\0" END
 	3 System_Scripts DISCARDABLE BEGIN "window.quickscript ()\0" END
 	4 System_Scripts DISCARDABLE BEGIN "system.misc.techsupport ()\0" END
-	5 System_Scripts DISCARDABLE BEGIN "Frontier.finder2click(“^0”)\0" END
+	5 System_Scripts DISCARDABLE BEGIN "Frontier.finder2click(Â“^0Â”)\0" END
 	6 System_Scripts DISCARDABLE BEGIN "Frontier.finderToFront = ^0\0" END
 	7 System_Scripts DISCARDABLE BEGIN "Frontier.clickers.typeXXXX\0" END
-	8 System_Scripts DISCARDABLE BEGIN "system.callbacks.control2click(“^0”)\0" END
-	9 System_Scripts DISCARDABLE BEGIN "if defined(system.callbacks.cmd2click){system.callbacks.cmd2click(“^0”)}else{edit(“^0”)}\0" END
-	10 System_Scripts DISCARDABLE BEGIN "system.callbacks.option2click(“^0”)\0" END
-	11 System_Scripts DISCARDABLE BEGIN "if defined(system.callbacks){system.callbacks.openWindow(“^0”);}\0" END
-	12 System_Scripts DISCARDABLE BEGIN "system.callbacks.saveWindow(“^0”,^1)\0" END
-	13 System_Scripts DISCARDABLE BEGIN "system.callbacks.closeWindow(“^0”)\0" END
-	14 System_Scripts DISCARDABLE BEGIN "system.callbacks.compileChangedScript(address(“^0”))\0" END
+	8 System_Scripts DISCARDABLE BEGIN "system.callbacks.control2click(Â“^0Â”)\0" END
+	9 System_Scripts DISCARDABLE BEGIN "if defined(system.callbacks.cmd2click){system.callbacks.cmd2click(Â“^0Â”)}else{edit(Â“^0Â”)}\0" END
+	10 System_Scripts DISCARDABLE BEGIN "system.callbacks.option2click(Â“^0Â”)\0" END
+	11 System_Scripts DISCARDABLE BEGIN "if defined(system.callbacks){system.callbacks.openWindow(Â“^0Â”);}\0" END
+	12 System_Scripts DISCARDABLE BEGIN "system.callbacks.saveWindow(Â“^0Â”,^1)\0" END
+	13 System_Scripts DISCARDABLE BEGIN "system.callbacks.closeWindow(Â“^0Â”)\0" END
+	14 System_Scripts DISCARDABLE BEGIN "system.callbacks.compileChangedScript(address(Â“^0Â”))\0" END
 	15 System_Scripts DISCARDABLE BEGIN "system.startup.firsttime||(Frontier.version()<2.1)||defined(nothreads)\0" END
-	16 System_Scripts DISCARDABLE BEGIN "webBrowser.openurl(“^0”)\0" END
+	16 System_Scripts DISCARDABLE BEGIN "webBrowser.openurl(Â“^0Â”)\0" END
 	17 System_Scripts DISCARDABLE BEGIN "user.html.prefs.iso8859map\0" END
 	18 System_Scripts DISCARDABLE BEGIN "user.prefs.fonts.^0Font\0" END
 	19 System_Scripts DISCARDABLE BEGIN "user.prefs.expertMode\0" END
@@ -1195,22 +1196,22 @@ END
 	28 System_Scripts DISCARDABLE BEGIN "user.webserver.prefs.flWaitDuringStartup\0" END
 	29 System_Scripts DISCARDABLE BEGIN "user.webserver.prefs.flStats\0" END
 	30 System_Scripts DISCARDABLE BEGIN "user.inetd.shutdown\0" END
-	31 System_Scripts DISCARDABLE BEGIN "Frontier.tools.windowTypes.isFileMenuItemEnabled(“^0”)\0" END
-	32 System_Scripts DISCARDABLE BEGIN "pike.getFileMenuItemName(“^0”)\0" END
-	33 System_Scripts DISCARDABLE BEGIN "Frontier.tools.windowTypes.runFileMenuScript(“^0”)\0" END
+	31 System_Scripts DISCARDABLE BEGIN "Frontier.tools.windowTypes.isFileMenuItemEnabled(Â“^0Â”)\0" END
+	32 System_Scripts DISCARDABLE BEGIN "pike.getFileMenuItemName(Â“^0Â”)\0" END
+	33 System_Scripts DISCARDABLE BEGIN "Frontier.tools.windowTypes.runFileMenuScript(Â“^0Â”)\0" END
 	34 System_Scripts DISCARDABLE BEGIN "if defined(system.callbacks.opStruct2Click){return(system.callbacks.opStruct2Click())}else{return(false)}\0" END
 	35 System_Scripts DISCARDABLE BEGIN "if defined(system.callbacks.opReturnKey){return(system.callbacks.opReturnKey())}else{return(false)}\0" END
 	36 System_Scripts DISCARDABLE BEGIN "if defined(system.callbacks.opExpand){return(system.callbacks.opExpand())}else{return(false)}\0" END
 	37 System_Scripts DISCARDABLE BEGIN "if defined(system.callbacks.opCollapse){return(system.callbacks.opCollapse())}else{return(false)}\0" END
 	38 System_Scripts DISCARDABLE BEGIN "if defined(system.callbacks.opCursorMoved){return(system.callbacks.opCursorMoved())}else{return(false)}\0" END /*7.0b6 PBS*/
 	39 System_Scripts DISCARDABLE BEGIN "if defined(system.callbacks.opRightClick){return(system.callbacks.opRightClick())}else{return(false)}\0" END /*7.0b11 PBS*/
-	40 System_Scripts DISCARDABLE BEGIN "Frontier.tools.windowTypes.runEditMenuScript(“^0”)\0" END
-	41 System_Scripts DISCARDABLE BEGIN "Frontier.tools.windowTypes.isFileMenuItemChecked(“^0”)\0" END
+	40 System_Scripts DISCARDABLE BEGIN "Frontier.tools.windowTypes.runEditMenuScript(Â“^0Â”)\0" END
+	41 System_Scripts DISCARDABLE BEGIN "Frontier.tools.windowTypes.isFileMenuItemChecked(Â“^0Â”)\0" END
 	42 System_Scripts DISCARDABLE BEGIN "if defined(system.callbacks.opInsert){return(system.callbacks.opInsert())}else{return(false)}\0" END
 	43 System_Scripts DISCARDABLE BEGIN "if defined(system.callbacks.systemTrayIconRightClick){return(system.callbacks.systemTrayIconRightClick())}else{return(false)}\0" END /*7.0b11 PBS*/
 	44 System_Scripts DISCARDABLE BEGIN "user.prefs.openRecentMenu.items.xxx\0" END /* 2005-09-25 creedon */
 	45 System_Scripts DISCARDABLE BEGIN "user.prefs.flReplaceDialogExpertMode\0" END /* 2005-09-25 creedon */
-	46 System_Scripts DISCARDABLE BEGIN "Frontier.tools.windowTypes.runOpenRecentMenuScript (“^0”)\0" END /* 2005-09-29 creedon */
+	46 System_Scripts DISCARDABLE BEGIN "Frontier.tools.windowTypes.runOpenRecentMenuScript (Â“^0Â”)\0" END /* 2005-09-29 creedon */
 
 	1 DB_Stats DISCARDABLE BEGIN "Database Stats\0" END
 	2 DB_Stats DISCARDABLE BEGIN "nodes in the release list\0" END
@@ -1328,7 +1329,7 @@ END
 	4 OP_UI DISCARDABLE BEGIN "^0 lines\0" END
 
 	1 interface_UI DISCARDABLE BEGIN "interface\0" END
-	2 interface_UI DISCARDABLE BEGIN "«interfaceÈ\0" END
+	2 interface_UI DISCARDABLE BEGIN "Â«interfaceÃˆ\0" END
 	3 interface_UI DISCARDABLE BEGIN "1 byte\0" END
 	4 interface_UI DISCARDABLE BEGIN "^0 bytes\0" END
 	5 interface_UI DISCARDABLE BEGIN "error\0" END
@@ -1356,7 +1357,7 @@ END
 	3 Menu_UI DISCARDABLE BEGIN "^0 items\0" END
 
 	1 Pict_UI DISCARDABLE BEGIN "picture\0" END
-	2 Pict_UI DISCARDABLE BEGIN "«pictureÈ\0" END
+	2 Pict_UI DISCARDABLE BEGIN "Â«pictureÃˆ\0" END
 	3 Pict_UI DISCARDABLE BEGIN "1 byte\0" END
 	4 Pict_UI DISCARDABLE BEGIN "^0 bytes\0" END
 	5 Pict_UI DISCARDABLE BEGIN "error\0" END
@@ -1409,7 +1410,7 @@ END
 	36 Lang_Errors DISCARDABLE BEGIN "Can't coerce the value to a binary value.\0" END
 	37 Lang_Errors DISCARDABLE BEGIN "Can't coerce a ^0 value to a ^1.\0" END
 	38 Lang_Errors DISCARDABLE BEGIN "Can't take the negative of this type of value.\0" END
-	39 Lang_Errors DISCARDABLE BEGIN "The logical Ônot´ operation is not supported with this type of value.\0" END
+	39 Lang_Errors DISCARDABLE BEGIN "The logical Ã”notÂ´ operation is not supported with this type of value.\0" END
 	40 Lang_Errors DISCARDABLE BEGIN "The \042^0\042 verb only operates on agents.  This script is not running as an agent.\0" END
 	41 Lang_Errors DISCARDABLE BEGIN "A \042direction\042 is required here.  Examples include up, down, left, right and nodirection.\0" END
 	42 Lang_Errors DISCARDABLE BEGIN "The indicated list was not a binary value of the appropriate type.\0" END
@@ -1450,7 +1451,7 @@ END
 	77 Lang_Errors DISCARDABLE BEGIN "The \042modulus\042 operation is not supported between values of this type.\0" END
 	78 Lang_Errors DISCARDABLE BEGIN "Comparison is not supported between these two values.\0" END
 	79 Lang_Errors DISCARDABLE BEGIN "Can't specify more than ^0 tables in a single with statement. Try nesting two or more with statements instead.\0" END
-	80 Lang_Errors DISCARDABLE BEGIN "Stack overflow:  ^0 stack.  If your script is recursive, make sure that it´s terminating.\0" END
+	80 Lang_Errors DISCARDABLE BEGIN "Stack overflow:  ^0 stack.  If your script is recursive, make sure that itÂ´s terminating.\0" END
 	81 Lang_Errors DISCARDABLE BEGIN "Can't send this type of value in an IAC message.\0" END
 	82 Lang_Errors DISCARDABLE BEGIN "Can't run the card \042^0\042.\0" END
 	83 Lang_Errors DISCARDABLE BEGIN "Can't coerce the binary value to this type because it isn't exactly ^0 bytes long.\0" END
@@ -1704,9 +1705,9 @@ END
 	10 recording DISCARDABLE BEGIN "	sys.bringAppToFront ('^0');\0" END
 	11 recording DISCARDABLE BEGIN "id\0" END
 	12 recording DISCARDABLE BEGIN "	appleEvent (^0, '^1', '^2'\0" END
-	13 recording DISCARDABLE BEGIN "«no verb table found for \042^0\042\0" END
-	14 recording DISCARDABLE BEGIN "There are ^0 clients connected to Frontier´s UserTalk component.  Quit anyway?\0" END
-	15 recording DISCARDABLE BEGIN "The application \042^0\042 is connected to Frontier´s UserTalk component.  Quit anyway?\0" END
+	13 recording DISCARDABLE BEGIN "Â«no verb table found for \042^0\042\0" END
+	14 recording DISCARDABLE BEGIN "There are ^0 clients connected to FrontierÂ´s UserTalk component.  Quit anyway?\0" END
+	15 recording DISCARDABLE BEGIN "The application \042^0\042 is connected to FrontierÂ´s UserTalk component.  Quit anyway?\0" END
 
 
 	// *window has horiz scrollbar?*/

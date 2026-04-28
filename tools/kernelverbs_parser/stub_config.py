@@ -77,6 +77,38 @@ STUB_CONFIGS = {
     ('sys', 'winshellcommand'): (STUB_ERROR, 'platform_windows'),
     ('file', 'mountservervolume'): (STUB_ERROR, {'template': 'platform_unsupported', 'action': 'mount server volumes'}),
 
+    # Category 1f2: MySQL verbs - GPL-licensed real implementation removed
+    # (langmysql.c) as part of GPLv2 -> MIT relicensing. Verbs remain registered
+    # so existing UserTalk scripts get a clean script error rather than "verb
+    # not found".
+    ('mysql', 'init'): (STUB_ERROR, {'template': 'platform_unsupported', 'action': 'initialize MySQL'}),
+    ('mysql', 'end'): (STUB_ERROR, {'template': 'platform_unsupported', 'action': 'shut down MySQL'}),
+    ('mysql', 'connect'): (STUB_ERROR, {'template': 'platform_unsupported', 'action': 'connect to MySQL'}),
+    ('mysql', 'compileQuery'): (STUB_ERROR, {'template': 'platform_unsupported', 'action': 'compile a MySQL query'}),
+    ('mysql', 'clearQuery'): (STUB_ERROR, {'template': 'platform_unsupported', 'action': 'clear a MySQL query'}),
+    ('mysql', 'getRow'): (STUB_ERROR, {'template': 'platform_unsupported', 'action': 'fetch a MySQL row'}),
+    ('mysql', 'getErrorNumber'): (STUB_ERROR, {'template': 'platform_unsupported', 'action': 'read the MySQL error number'}),
+    ('mysql', 'getErrorMessage'): (STUB_ERROR, {'template': 'platform_unsupported', 'action': 'read the MySQL error message'}),
+    ('mysql', 'getClientInfo'): (STUB_ERROR, {'template': 'platform_unsupported', 'action': 'read MySQL client info'}),
+    ('mysql', 'getClientVersion'): (STUB_ERROR, {'template': 'platform_unsupported', 'action': 'read the MySQL client version'}),
+    ('mysql', 'getHostInfo'): (STUB_ERROR, {'template': 'platform_unsupported', 'action': 'read MySQL host info'}),
+    ('mysql', 'getServerVersion'): (STUB_ERROR, {'template': 'platform_unsupported', 'action': 'read the MySQL server version'}),
+    ('mysql', 'getProtocolInfo'): (STUB_ERROR, {'template': 'platform_unsupported', 'action': 'read MySQL protocol info'}),
+    ('mysql', 'getServerInfo'): (STUB_ERROR, {'template': 'platform_unsupported', 'action': 'read MySQL server info'}),
+    ('mysql', 'getQueryInfo'): (STUB_ERROR, {'template': 'platform_unsupported', 'action': 'read MySQL query info'}),
+    ('mysql', 'getAffectedRowCount'): (STUB_ERROR, {'template': 'platform_unsupported', 'action': 'read the MySQL affected-row count'}),
+    ('mysql', 'getSelectedRowCount'): (STUB_ERROR, {'template': 'platform_unsupported', 'action': 'read the MySQL selected-row count'}),
+    ('mysql', 'getColumnCount'): (STUB_ERROR, {'template': 'platform_unsupported', 'action': 'read the MySQL column count'}),
+    ('mysql', 'getServerStatus'): (STUB_ERROR, {'template': 'platform_unsupported', 'action': 'read the MySQL server status'}),
+    ('mysql', 'getQueryWarningCount'): (STUB_ERROR, {'template': 'platform_unsupported', 'action': 'read the MySQL query warning count'}),
+    ('mysql', 'pingServer'): (STUB_ERROR, {'template': 'platform_unsupported', 'action': 'ping the MySQL server'}),
+    ('mysql', 'seekRow'): (STUB_ERROR, {'template': 'platform_unsupported', 'action': 'seek to a MySQL row'}),
+    ('mysql', 'selectDatabase'): (STUB_ERROR, {'template': 'platform_unsupported', 'action': 'select a MySQL database'}),
+    ('mysql', 'getSQLSTATE'): (STUB_ERROR, {'template': 'platform_unsupported', 'action': 'read the MySQL SQLSTATE'}),
+    ('mysql', 'escapeString'): (STUB_ERROR, {'template': 'platform_unsupported', 'action': 'escape a string for MySQL'}),
+    ('mysql', 'isThreadSafe'): (STUB_ERROR, {'template': 'platform_unsupported', 'action': 'query MySQL thread safety'}),
+    ('mysql', 'close'): (STUB_ERROR, {'template': 'platform_unsupported', 'action': 'close the MySQL connection'}),
+
     # Category 1g: UserTalk Layer Implementation (2 verbs)
     # These verbs should be implemented in UserTalk glue scripts, not in kernel
     ('file', 'getspecialfolderpath'): (STUB_ERROR, {'template': 'usertalk_layer', 'verb_name': 'file.getSpecialFolderPath'}),

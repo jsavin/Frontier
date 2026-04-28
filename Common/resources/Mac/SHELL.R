@@ -1,29 +1,30 @@
 
 /*	$Id$    */
 
-/******************************************************************************
+/*
+    SPDX-License-Identifier: MIT
 
-    UserLand Frontier(tm) -- High performance Web content management,
-    object database, system-level and Internet scripting environment,
-    including source code editing and debugging.
+    Copyright (c) 1992-2004 UserLand Software, Inc.
+    Copyright (c) 2025-present Frontier contributors
 
-    Copyright (C) 1992-2004 UserLand Software, Inc.
+    Permission is hereby granted, free of charge, to any person obtaining a
+    copy of this software and associated documentation files (the "Software"),
+    to deal in the Software without restriction, including without limitation
+    the rights to use, copy, modify, merge, publish, distribute, sublicense,
+    and/or sell copies of the Software, and to permit persons to whom the
+    Software is furnished to do so, subject to the following conditions:
 
-    This program is free software; you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation; either version 2 of the License, or
-    (at your option) any later version.
+    The above copyright notice and this permission notice shall be included in
+    all copies or substantial portions of the Software.
 
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program; if not, write to the Free Software
-    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-
-******************************************************************************/
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+    FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+    DEALINGS IN THE SOFTWARE.
+*/
 
 #define oldTemp
 
@@ -38,7 +39,7 @@ resource 'MENU' (1, "Apple") {
 	apple,
 	{	/* array: 2 elements */
 		/* [1] */
-		"About ^0…", noIcon, noKey, noMark, plain,
+		"About ^0√â", noIcon, noKey, noMark, plain,
 		/* [2] */
 		"-", noIcon, noKey, noMark, plain
 	}
@@ -59,11 +60,11 @@ resource 'MENU' (2, "File") {
 		/* [1] */
 		"New", noIcon, "N", noMark, plain,
 		/* [2] */
-		"Open…", noIcon, "O", noMark, plain,
+		"Open√â", noIcon, "O", noMark, plain,
 		/* [3] */
-		"Open URL…", noIcon, noKey, noMark, plain, /*7.0b17 PBS*/
+		"Open URL√â", noIcon, noKey, noMark, plain, /*7.0b17 PBS*/
 		/* [4] */
-		"Open Manila Site…", noIcon, noKey, noMark, plain, /*7.0b27 PBS*/
+		"Open Manila Site√â", noIcon, noKey, noMark, plain, /*7.0b27 PBS*/
 		/* [5] */
 		"Close", noIcon, "W", noMark, plain,
 		/* [6] */
@@ -71,11 +72,11 @@ resource 'MENU' (2, "File") {
 		/* [7] */
 		"Save", noIcon, "S", noMark, plain,
 		/* [8] */
-		"Save As…", noIcon, noKey, noMark, plain,
+		"Save As√â", noIcon, noKey, noMark, plain,
 		/* [9] */
-		"Save As HTML…", noIcon, noKey, noMark, plain,
+		"Save As HTML√â", noIcon, noKey, noMark, plain,
 		/* [10] */
-		"Save As Plain Text…", noIcon, noKey, noMark, plain,
+		"Save As Plain Text√â", noIcon, noKey, noMark, plain,
 		/* [11] */
 		"Revert", noIcon, noKey, noMark, plain,
 		/* [12] */
@@ -85,7 +86,7 @@ resource 'MENU' (2, "File") {
 		/* [14] */
 		"-", noIcon, noKey, noMark, plain,
 		/* [15] */
-		"Update Radio.root…", noIcon, noKey, noMark, plain,
+		"Update Radio.root√â", noIcon, noKey, noMark, plain,
 		/* [16] */
 		"Work Offline", noIcon, noKey, noMark, plain,
 		/* [17] */
@@ -107,11 +108,11 @@ resource 'MENU' (412, "File") {
 		/* [1] */
 		"New", noIcon, "N", noMark, plain,
 		/* [2] */
-		"Open…", noIcon, "O", noMark, plain,
+		"Open√â", noIcon, "O", noMark, plain,
 		/* [3] */
-		"Open URL…", noIcon, noKey, noMark, plain, /*7.0b17 PBS*/
+		"Open URL√â", noIcon, noKey, noMark, plain, /*7.0b17 PBS*/
 		/* [4] */
-		"Open Manila Site…", noIcon, noKey, noMark, plain, /*7.0b27 PBS*/
+		"Open Manila Site√â", noIcon, noKey, noMark, plain, /*7.0b27 PBS*/
 		/* [5] */
 		"Close", noIcon, "W", noMark, plain,
 		/* [6] */
@@ -119,11 +120,11 @@ resource 'MENU' (412, "File") {
 		/* [7] */
 		"Save", noIcon, "S", noMark, plain,
 		/* [8] */
-		"Save As…", noIcon, noKey, noMark, plain,
+		"Save As√â", noIcon, noKey, noMark, plain,
 		/* [9] */
-		"Save As HTML…", noIcon, noKey, noMark, plain,
+		"Save As HTML√â", noIcon, noKey, noMark, plain,
 		/* [10] */
-		"Save As Plain Text…", noIcon, noKey, noMark, plain,
+		"Save As Plain Text√â", noIcon, noKey, noMark, plain,
 		/* [11] */
 		"Revert", noIcon, noKey, noMark, plain,
 		/* [12] */
@@ -133,7 +134,7 @@ resource 'MENU' (412, "File") {
 		/* [14] */
 		"-", noIcon, noKey, noMark, plain,
 		/* [15] */
-		"Update Radio.root…", noIcon, noKey, noMark, plain,
+		"Update Radio.root√â", noIcon, noKey, noMark, plain,
 		/* [16] */
 		"Work Offline", noIcon, noKey, noMark, plain
 	}
@@ -150,9 +151,9 @@ resource 'MENU' (2, "File") {
 		/* [1] */
 		"New", noIcon, "N", noMark, plain,
 		/* [2] */
-		"Open…", noIcon, "O", noMark, plain,
+		"Open√â", noIcon, "O", noMark, plain,
 		/* [3] */
-		"Open URL…", noIcon, noKey, noMark, plain, /*7.0b17 PBS*/
+		"Open URL√â", noIcon, noKey, noMark, plain, /*7.0b17 PBS*/
 		
 		/* [4] */
 		"Close", noIcon, "W", noMark, plain,
@@ -161,7 +162,7 @@ resource 'MENU' (2, "File") {
 		/* [6] */
 		"Save", noIcon, "S", noMark, plain,
 		/* [7] */
-		"Save As…", noIcon, noKey, noMark, plain,
+		"Save As√â", noIcon, noKey, noMark, plain,
 		/* [9] */
 		"Revert", noIcon, noKey, noMark, plain,
 		/* [9] */
@@ -171,7 +172,7 @@ resource 'MENU' (2, "File") {
 		/* [11] */
 		"-", noIcon, noKey, noMark, plain,
 		/* [12] */
-		"Update opml.root…", noIcon, noKey, noMark, plain,
+		"Update opml.root√â", noIcon, noKey, noMark, plain,
 		/* [13] */
 		"Work Offline", noIcon, noKey, noMark, plain,
 		/* [14] */
@@ -193,9 +194,9 @@ resource 'MENU' (412, "File") {
 		/* [1] */
 		"New", noIcon, "N", noMark, plain,
 		/* [2] */
-		"Open…", noIcon, "O", noMark, plain,
+		"Open√â", noIcon, "O", noMark, plain,
 		/* [3] */
-		"Open URL…", noIcon, noKey, noMark, plain, /*7.0b17 PBS*/
+		"Open URL√â", noIcon, noKey, noMark, plain, /*7.0b17 PBS*/
 		/* [4] */
 		"Close", noIcon, "W", noMark, plain,
 		/* [5] */
@@ -203,7 +204,7 @@ resource 'MENU' (412, "File") {
 		/* [6] */
 		"Save", noIcon, "S", noMark, plain,
 		/* [7] */
-		"Save As…", noIcon, noKey, noMark, plain,
+		"Save As√â", noIcon, noKey, noMark, plain,
 		/* [8] */
 		"Revert", noIcon, noKey, noMark, plain,
 		/* [9] */
@@ -213,7 +214,7 @@ resource 'MENU' (412, "File") {
 		/* [11] */
 		"-", noIcon, noKey, noMark, plain,
 		/* [12] */
-		"Update opml.root…", noIcon, noKey, noMark, plain,
+		"Update opml.root√â", noIcon, noKey, noMark, plain,
 		/* [13] */
 		"Work Offline", noIcon, noKey, noMark, plain
 	}
@@ -231,7 +232,7 @@ resource 'MENU' (2, "File") {
 		/* [1] */
 		"New", noIcon, hierarchicalMenu, "\0d135", plain,
 		/* [2] */
-		"Open…", noIcon, "O", noMark, plain,
+		"Open√â", noIcon, "O", noMark, plain,
 		/* [3] */
 		"Open Recent", noIcon, hierarchicalMenu, "\0d137", plain,
 		/* [4] */
@@ -241,9 +242,9 @@ resource 'MENU' (2, "File") {
 		/* [6] */
 		"Save", noIcon, "S", noMark, plain,
 		/* [7] */
-		"Save as Runnable…", noIcon, noKey, noMark, plain,
+		"Save as Runnable√â", noIcon, noKey, noMark, plain,
 		/* [8] */
-		"Save As…", noIcon, noKey, noMark, plain, /* 2005-11-01 creedon */
+		"Save As√â", noIcon, noKey, noMark, plain, /* 2005-11-01 creedon */
 		/* [9] */
 		"Revert", noIcon, noKey, noMark, plain,
 		/* [10] */
@@ -255,9 +256,9 @@ resource 'MENU' (2, "File") {
 //		"-", noIcon, noKey, noMark, plain,
 
 		/* [11] */
-		"Page Setup…", noIcon, noKey, noMark, plain,
+		"Page Setup√â", noIcon, noKey, noMark, plain,
 		/* [12] */
-		"Print…", noIcon, "P", noMark, plain,
+		"Print√â", noIcon, "P", noMark, plain,
 		/* [13] */
 		"-", noIcon, noKey, noMark, plain,
 		/* [14] */
@@ -278,7 +279,7 @@ resource 'MENU' (412, "File") {
 		/* [1] */
 		"New", noIcon, hierarchicalMenu, "\0d135", plain,
 		/* [2] */
-		"Open…", noIcon, "O", noMark, plain,
+		"Open√â", noIcon, "O", noMark, plain,
 		/* [3] */
 		"Open Recent", noIcon, hierarchicalMenu, "\0d137", plain,
 		/* [4] */
@@ -288,17 +289,17 @@ resource 'MENU' (412, "File") {
 		/* [6] */
 		"Save", noIcon, "S", noMark, plain,
 		/* [7] */
-		"Save as Runnable…", noIcon, noKey, noMark, plain,
+		"Save as Runnable√â", noIcon, noKey, noMark, plain,
 		/* [8] */
-		"Save As…", noIcon, noKey, noMark, plain, /* 2005-11-01 creedon */
+		"Save As√â", noIcon, noKey, noMark, plain, /* 2005-11-01 creedon */
 		/* [9] */
 		"Revert", noIcon, noKey, noMark, plain,
 		/* [10] */
 		"-", noIcon, noKey, noMark, plain,
 		/* [11] */
-		"Page Setup…", noIcon, noKey, noMark, plain,
+		"Page Setup√â", noIcon, noKey, noMark, plain,
 		/* [12] */
-		"Print…", noIcon, "P", noMark, plain
+		"Print√â", noIcon, "P", noMark, plain
 	}
 };
 #endif
@@ -550,7 +551,7 @@ resource 'MENU' (130, "Size") {
 		/* [10] */
 		"-", noIcon, noKey, noMark, plain,
 		/* [11] */
-		"Custom…", noIcon, noKey, noMark, plain
+		"Custom√â", noIcon, noKey, noMark, plain
 	}
 };
 
@@ -578,7 +579,7 @@ resource 'MENU' (131, "Leading") {
 		/* [8] */
 		"-", noIcon, noKey, noMark, plain,
 		/* [9] */
-		"Custom…", noIcon, noKey, noMark, plain
+		"Custom√â", noIcon, noKey, noMark, plain
 	}
 };
 
@@ -609,7 +610,7 @@ resource 'MENU' (133, "Find and Replace") {
 	"Find and Replace",
 	{	/* array: 4 elements */
 		/* [1] */
-		"Find…", noIcon, "F", noMark, plain,
+		"Find√â", noIcon, "F", noMark, plain,
 		/* [2] */
 		"Replace", noIcon, noKey, noMark, plain,
 		/* [3] */
@@ -752,7 +753,7 @@ resource 'STR#' (129, "Defaults", purgeable) {
 #ifdef PIKE
 #ifndef OPMLEDITOR
 		/* [1] */
-		"Radio UserLand™", /*PBS 7.0b1: name change to Radio UserLand.*/
+		"Radio UserLand¬™", /*PBS 7.0b1: name change to Radio UserLand.*/
 #else  // OPMLEDITOR
 		"OPML",
 #endif  //OPMLEDITOR
@@ -791,11 +792,11 @@ resource 'STR#' (130, "Interface", locked, preload) {
 		/* [2] */
 		"Zoom",
 		/* [3] */
-		"Can’t access printing resources.  Make sure that a printer has been selected with the Chooser.",
+		"Can√ït access printing resources.  Make sure that a printer has been selected with the Chooser.",
 		/* [4] */
 		"Cmd",
 		/* [5] */
-		"Set Command Key…",
+		"Set Command Key√â",
 		/* [6] */
 		"Command Key:",
 		/* [7] */
@@ -805,7 +806,7 @@ resource 'STR#' (130, "Interface", locked, preload) {
 		/* [9] */
 		"Cancel",
 		/* [10] */
-		"Script for “^0”",
+		"Script for √í^0√ì",
 		/* [11] */
 		"Font Size:",
 		/* [12] */
@@ -821,9 +822,9 @@ resource 'STR#' (130, "Interface", locked, preload) {
 		/* [17] */
 		"Save Database",
 		/* [18] */
-		"Save As…",
+		"Save As√â",
 		/* [19] */
-		"Save a Copy…",
+		"Save a Copy√â",
 		/* [20] */
 		"This database was created by an older version of Frontier and must be converted. Proceed?"
 	}
@@ -868,7 +869,7 @@ resource 'STR#' (133, "QuickScript") {
 resource 'STR#' (134, "Undo") {
 	{	/* array StringArray: 14 elements */
 		/* [1] */
-		"Can’t Undo",
+		"Can√ït Undo",
 		/* [2] */
 		"Undo ",
 		/* [3] */
@@ -1037,7 +1038,7 @@ resource 'STR#' (161, "interface UI", locked, preload) {
 		/* [1] */
 		"interface",
 		/* [2] */
-		"«interface»",
+		"√áinterface√à",
 		/* [3] */
 		"1 byte",
 		/* [4] */
@@ -1105,7 +1106,7 @@ resource 'STR#' (167, "Pict UI", locked, preload) {
 		/* [1] */
 		"picture",
 		/* [2] */
-		"«picture»",
+		"√ápicture√à",
 		/* [3] */
 		"1 byte",
 		/* [4] */
@@ -1309,7 +1310,7 @@ data 'FMAT' (128) {
 	$"3B00 0006 000B 0010 0010 0006 000B 0004"            /* ;............... */
 	$"0004 0004 0000 0000 0000 0100 0100 0100"            /* ................ */
 	$"0000 0000 0000 0000 0000 0000 0F08 0606"            /* ................ */
-	$"0606 0906 0606 0608 0606 0606"                      /* ..∆......... */
+	$"0606 0906 0606 0608 0606 0606"                      /* ..√Ü......... */
 };
 
 data 'ictb' (517) {
@@ -2208,9 +2209,9 @@ resource 'itl4' (128) {
 		/* [22] */
 		"}",
 		/* [23] */
-		"«",
+		"√á",
 		/* [24] */
-		"»",
+		"√à",
 		/* [25] */
 		"+",
 		/* [26] */
@@ -2218,9 +2219,9 @@ resource 'itl4' (128) {
 		/* [27] */
 		"*",
 		/* [28] */
-		"÷",
+		"√ñ",
 		/* [29] */
-		"±",
+		"¬±",
 		/* [30] */
 		"/",
 		/* [31] */
@@ -2234,17 +2235,17 @@ resource 'itl4' (128) {
 		/* [35] */
 		"<=",
 		/* [36] */
-		"≤",
+		"¬≤",
 		/* [37] */
 		">=",
 		/* [38] */
-		"≥",
+		"¬≥",
 		/* [39] */
 		"==",
 		/* [40] */
 		":=",
 		/* [41] */
-		"≠",
+		"¬≠",
 		/* [42] */
 		"<>",
 		/* [43] */
@@ -2258,13 +2259,13 @@ resource 'itl4' (128) {
 		/* [47] */
 		".",
 		/* [48] */
-		"“",
+		"√í",
 		/* [49] */
-		"”",
+		"√ì",
 		/* [50] */
-		"‘",
+		"√î",
 		/* [51] */
-		"’",
+		"√ï",
 		/* [52] */
 		"\"",
 		/* [53] */
@@ -2286,19 +2287,19 @@ resource 'itl4' (128) {
 		/* [61] */
 		"?",
 		/* [62] */
-		"π",
+		"¬π",
 		/* [63] */
-		"√",
+		"√É",
 		/* [64] */
-		"∑",
+		"¬∑",
 		/* [65] */
-		"∫",
+		"¬∫",
 		/* [66] */
-		"µ",
+		"¬µ",
 		/* [67] */
-		"∏",
+		"¬∏",
 		/* [68] */
-		"∞",
+		"¬∞",
 		/* [69] */
 		":",
 		/* [70] */
@@ -2306,21 +2307,21 @@ resource 'itl4' (128) {
 		/* [71] */
 		"$",
 		/* [72] */
-		" ",
+		"√ä",
 		/* [73] */
-		"⁄",
+		"√ö",
 		/* [74] */
-		"€",
+		"√õ",
 		/* [75] */
-		"‹",
+		"√ú",
 		/* [76] */
-		"›",
+		"√ù",
 		/* [77] */
-		"‰",
+		"√§",
 		/* [78] */
-		"…",
+		"√â",
 		/* [79] */
-		"•"
+		"¬•"
 	},
 	1,
 	{	/* array: 31 elements */
@@ -2331,7 +2332,7 @@ resource 'itl4' (128) {
 		/* [3] */
 		0, "^",
 		/* [4] */
-		0, " ",
+		0, "√ä",
 		/* [5] */
 		0, "#",
 		/* [6] */
@@ -2507,38 +2508,38 @@ resource 'MENU' (25000) {
 };
 
 data 'scpt' (128) {
-	$"7461 626C 0001 031C 0000 04A8 0000 0014"            /* tabl.......®.... */
-	$"0000 0000 0A01 0000 0006 0000 02C8 0C01"            /* ....¬........».. */
-	$"0000 02D0 055F 636F 6465 0000 02BE 0000"            /* ...–._code...æ.. */
-	$"01F2 0000 0000 0028 0000 0000 0000 0000"            /* .Ú.....(........ */
-	$"0000 0000 2100 0000 0000 0001 00BC 2800"            /* ....!........º(. */
-	$"2100 0000 0000 0001 0040 2C80 2F00 0000"            /* !........@,Ä/... */
-	$"0000 0001 00AD 3600 2D00 0000 0000 0001"            /* .....≠6.-....... */
-	$"00E3 2C00 2200 0000 0000 0001 00CF 2C80"            /* .„,."........œ,Ä */
-	$"2200 0000 0000 0001 00C0 2C00 0600 0000"            /* "........¿,..... */
-	$"0008 0001 00BB 0000 0600 0000 0008 0001"            /* .....ª.......... */
-	$"00C0 0000 0600 0000 0012 0001 00CF 0000"            /* .¿...........œ.. */
-	$"2200 0000 0000 0001 00E1 2C00 2200 0000"            /* "........·,."... */
-	$"0000 0001 00DA 2C00 0600 0000 0008 0001"            /* .....⁄,......... */
-	$"00D5 0000 0600 0000 0008 0001 00DA 0000"            /* .’...........⁄.. */
-	$"0600 0000 000A 0001 00E1 0000 1C00 0000"            /* .....¬...·...... */
+	$"7461 626C 0001 031C 0000 04A8 0000 0014"            /* tabl.......¬®.... */
+	$"0000 0000 0A01 0000 0006 0000 02C8 0C01"            /* ....√Ç........√à.. */
+	$"0000 02D0 055F 636F 6465 0000 02BE 0000"            /* ...√ê._code...¬æ.. */
+	$"01F2 0000 0000 0028 0000 0000 0000 0000"            /* .√≤.....(........ */
+	$"0000 0000 2100 0000 0000 0001 00BC 2800"            /* ....!........¬º(. */
+	$"2100 0000 0000 0001 0040 2C80 2F00 0000"            /* !........@,¬Ä/... */
+	$"0000 0001 00AD 3600 2D00 0000 0000 0001"            /* .....¬≠6.-....... */
+	$"00E3 2C00 2200 0000 0000 0001 00CF 2C80"            /* .√£,."........√è,¬Ä */
+	$"2200 0000 0000 0001 00C0 2C00 0600 0000"            /* "........√Ä,..... */
+	$"0008 0001 00BB 0000 0600 0000 0008 0001"            /* .....¬ª.......... */
+	$"00C0 0000 0600 0000 0012 0001 00CF 0000"            /* .√Ä...........√è.. */
+	$"2200 0000 0000 0001 00E1 2C00 2200 0000"            /* "........√°,."... */
+	$"0000 0001 00DA 2C00 0600 0000 0008 0001"            /* .....√ö,......... */
+	$"00D5 0000 0600 0000 0008 0001 00DA 0000"            /* .√ï...........√ö.. */
+	$"0600 0000 000A 0001 00E1 0000 1C00 0000"            /* .....√Ç...√°...... */
 	$"0000 0001 0006 1800 0B00 0000 0000 0001"            /* ................ */
-	$"0004 2C00 0600 0000 000A 0001 00F5 0000"            /* ..,......¬...ı.. */
+	$"0004 2C00 0600 0000 000A 0001 00F5 0000"            /* ..,......√Ç...√µ.. */
 	$"0B00 0000 0000 0001 0003 2C00 0600 0000"            /* ..........,..... */
-	$"000C 0001 00FF 0000 0600 0000 0005 0001"            /* .....ˇ.......... */
+	$"000C 0001 00FF 0000 0600 0000 0005 0001"            /* .....√ø.......... */
 	$"0002 0000 0B00 0000 0000 0001 003E 2C00"            /* .............>,. */
 	$"0600 0000 000F 0001 001D 0000 0B00 0000"            /* ................ */
 	$"0000 0001 003D 2C00 2200 0000 0000 0001"            /* .....=,."....... */
 	$"0032 2C00 0600 0000 0008 0001 0023 0000"            /* .2,..........#.. */
 	$"0600 0000 0012 0001 0032 0000 0600 0000"            /* .........2...... */
 	$"000C 0001 003C 0000 1F00 0000 0000 0001"            /* .....<.......... */
-	$"0084 2C00 0600 0000 0008 0001 0080 0000"            /* .Ñ,..........Ä.. */
-	$"0600 0000 0005 0001 0083 0000 2100 0000"            /* .........É..!... */
-	$"0000 0001 00BC 2C00 1C00 0000 0000 0001"            /* .....º,......... */
-	$"00BC 1800 0B00 0000 0000 0001 00BA 2C00"            /* .º...........∫,. */
-	$"2200 0000 0000 0001 00B3 2C00 0600 0000"            /* "........≥,..... */
-	$"0008 0001 00A7 0000 0600 0000 000F 0001"            /* .....ß.......... */
-	$"00B3 0000 0600 0000 0008 0001 00B9 0000"            /* .≥...........π.. */
+	$"0084 2C00 0600 0000 0008 0001 0080 0000"            /* .¬Ñ,..........¬Ä.. */
+	$"0600 0000 0005 0001 0083 0000 2100 0000"            /* .........¬É..!... */
+	$"0000 0001 00BC 2C00 1C00 0000 0000 0001"            /* .....¬º,......... */
+	$"00BC 1800 0B00 0000 0000 0001 00BA 2C00"            /* .¬º...........¬∫,. */
+	$"2200 0000 0000 0001 00B3 2C00 0600 0000"            /* "........¬≥,..... */
+	$"0008 0001 00A7 0000 0600 0000 000F 0001"            /* .....¬ß.......... */
+	$"00B3 0000 0600 0000 0008 0001 00B9 0000"            /* .¬≥...........¬π.. */
 	$"1F00 0000 0000 0001 0050 2C00 0600 0000"            /* .........P,..... */
 	$"0008 0001 0049 0000 0600 0000 0008 0001"            /* .....I.......... */
 	$"004F 0000 5445 5854 6874 6D6C 5445 5854"            /* .O..TEXThtmlTEXT */
@@ -2554,82 +2555,82 @@ data 'scpt' (128) {
 	$"5468 746D 6C54 4558 5472 6566 476C 6F73"            /* ThtmlTEXTrefGlos */
 	$"7361 7279 5445 5854 6E61 6D65 5445 5854"            /* saryTEXTnameTEXT */
 	$"7265 6667 5445 5854 6E61 6D65 075F 736F"            /* refgTEXTname._so */
-	$"7572 6365 0000 01BC C774 6869 7320 7363"            /* urce...º«this sc */
+	$"7572 6365 0000 01BC C774 6869 7320 7363"            /* urce...¬º√áthis sc */
 	$"7269 7074 2069 7320 696E 7374 616C 6C65"            /* ript is installe */
 	$"6420 696E 2046 726F 6E74 6965 722E 726F"            /* d in Frontier.ro */
 	$"6F74 2773 2072 6573 6F75 7263 6520 666F"            /* ot's resource fo */
-	$"726B 0D09 C769 7427 7320 696E 2027 7363"            /* rk.∆«it's in 'sc */
+	$"726B 0D09 C769 7427 7320 696E 2027 7363"            /* rk.√Ü√áit's in 'sc */
 	$"7074 2720 7265 736F 7572 6365 2031 3238"            /* pt' resource 128 */
-	$"0D09 C769 7427 7320 6361 6C6C 6564 2069"            /* .∆«it's called i */
+	$"0D09 C769 7427 7320 6361 6C6C 6564 2069"            /* .√Ü√áit's called i */
 	$"6E20 6F73 6166 726F 6E74 6965 722E 630D"            /* n osafrontier.c. */
-	$"0D6F 6E20 646F 7363 2028 7329 207B 20C7"            /* .on dosc (s) { « */
+	$"0D6F 6E20 646F 7363 2028 7329 207B 20C7"            /* .on dosc (s) { √á */
 	$"7275 6E73 2061 206D 6163 726F 2C20 666F"            /* runs a macro, fo */
 	$"7220 7468 6520 6874 6D6C 2073 7569 7465"            /* r the html suite */
-	$"0D09 7472 7920 7B0D 0909 7769 7468 2068"            /* .∆try {.∆∆with h */
+	$"0D09 7472 7920 7B0D 0909 7769 7468 2068"            /* .√Ütry {.√Ü√Üwith h */
 	$"746D 6C2E 6461 7461 2E73 7461 6E64 6172"            /* tml.data.standar */
 	$"646D 6163 726F 732C 2075 7365 722E 6874"            /* dmacros, user.ht */
-	$"6D6C 2E6D 6163 726F 7320 7B0D 0909 0972"            /* ml.macros {.∆∆∆r */
+	$"6D6C 2E6D 6163 726F 7320 7B0D 0909 0972"            /* ml.macros {.√Ü√Ü√Ür */
 	$"6574 7572 6E20 2873 7472 696E 6720 2865"            /* eturn (string (e */
 	$"7661 6C75 6174 6520 2873 2929 297D 7D0D"            /* valuate (s)))}}. */
-	$"0965 6C73 6520 7B0D 0909 7363 7269 7074"            /* ∆else {.∆∆script */
+	$"0965 6C73 6520 7B0D 0909 7363 7269 7074"            /* √Üelse {.√Ü√Üscript */
 	$"4572 726F 7220 2874 6F79 732E 636C 6561"            /* Error (toys.clea */
 	$"6E66 6F72 6578 706F 7274 2028 7472 7945"            /* nforexport (tryE */
 	$"7272 6F72 2929 7D7D 3B0D 6F6E 2072 6566"            /* rror))}};.on ref */
-	$"6720 286E 616D 6529 207B 20C7 7475 726E"            /* g (name) { «turn */
+	$"6720 286E 616D 6529 207B 20C7 7475 726E"            /* g (name) { √áturn */
 	$"2061 2067 6C6F 7373 6172 7920 656E 7472"            /*  a glossary entr */
 	$"7920 6E61 6D65 2069 6E74 6F20 6120 7374"            /* y name into a st */
 	$"7269 6E67 2066 6F72 2069 6E73 6572 7469"            /* ring for inserti */
 	$"6F6E 2069 6E74 6F20 4854 4D4C 2074 6578"            /* on into HTML tex */
-	$"740D 0972 6574 7572 6E20 2868 746D 6C2E"            /* t.∆return (html. */
+	$"740D 0972 6574 7572 6E20 2868 746D 6C2E"            /* t.√Üreturn (html. */
 	$"7265 6647 6C6F 7373 6172 7920 286E 616D"            /* refGlossary (nam */
-	$"6529 297D 4C41 4E44 0001 000C FADE DEAD"            /* e))}LAND....˙ﬁﬁ≠ */
+	$"6529 297D 4C41 4E44 0001 000C FADE DEAD"            /* e))}LAND....√∫√û√û¬≠ */
 };
 
 data 'scpt' (129) {
-	$"7461 626C 0001 03F0 0000 0746 0000 0014"            /* tabl......F.... */
-	$"0000 0000 0A01 0000 0006 0000 0506 0C01"            /* ....¬........... */
-	$"0000 050E 055F 636F 6465 0000 04FC 0000"            /* ....._code...¸.. */
-	$"028E 0000 0000 0035 0000 0000 0000 0000"            /* .é.....5........ */
+	$"7461 626C 0001 03F0 0000 0746 0000 0014"            /* tabl...√∞...F.... */
+	$"0000 0000 0A01 0000 0006 0000 0506 0C01"            /* ....√Ç........... */
+	$"0000 050E 055F 636F 6465 0000 04FC 0000"            /* ....._code...√º.. */
+	$"028E 0000 0000 0035 0000 0000 0000 0000"            /* .¬é.....5........ */
 	$"0000 0000 2100 0000 0000 0001 001C 2800"            /* ....!.........(. */
 	$"2100 0000 0000 0001 001C 2C00 1C00 0000"            /* !.........,..... */
 	$"0000 0001 001C 1800 0B00 0000 0000 0001"            /* ................ */
 	$"001A 2C00 2200 0000 0000 0001 0020 2C00"            /* ..,."........ ,. */
 	$"0600 0000 000D 0001 0018 0000 0600 0000"            /* ................ */
 	$"000B 0001 0020 0000 0600 0000 000C 0001"            /* ..... .......... */
-	$"002A 0080 0600 0000 0012 0001 003A 0080"            /* .*.Ä.........:.Ä */
-	$"0600 0000 000C 0001 0044 0080 0600 0000"            /* .........D.Ä.... */
-	$"000C 0001 004E 0080 0600 0000 000C 0001"            /* .....N.Ä........ */
-	$"0058 0080 0600 0000 0011 0001 0067 0080"            /* .X.Ä.........g.Ä */
-	$"0600 0000 000E 0001 0073 0080 0600 0000"            /* .........s.Ä.... */
-	$"000E 0001 0080 0080 0600 0000 000E 0001"            /* .....Ä.Ä........ */
-	$"008C 0080 0600 0000 000F 0001 0099 0080"            /* .å.Ä.........ô.Ä */
-	$"0600 0000 000B 0001 00A2 0080 0600 0000"            /* .........¢.Ä.... */
-	$"000D 0001 00AD 0080 0600 0000 000A 0001"            /* .....≠.Ä.....¬.. */
-	$"00B5 0080 0600 0000 000E 0001 00C1 0080"            /* .µ.Ä.........¡.Ä */
-	$"0600 0000 000C 0001 00CB 0080 0600 0000"            /* .........À.Ä.... */
-	$"000A 0001 00D3 0080 0600 0000 000C 0001"            /* .¬...”.Ä........ */
-	$"00DD 0080 0600 0000 000F 0001 00EA 0080"            /* .›.Ä.........Í.Ä */
-	$"0600 0000 0010 0001 00F8 0080 0600 0000"            /* .........¯.Ä.... */
-	$"0009 0001 00FE 0080 0600 0000 000E 0001"            /* .∆...˛.Ä........ */
-	$"000A 0080 0600 0000 0011 0001 0019 0000"            /* .¬.Ä............ */
+	$"002A 0080 0600 0000 0012 0001 003A 0080"            /* .*.¬Ä.........:.¬Ä */
+	$"0600 0000 000C 0001 0044 0080 0600 0000"            /* .........D.¬Ä.... */
+	$"000C 0001 004E 0080 0600 0000 000C 0001"            /* .....N.¬Ä........ */
+	$"0058 0080 0600 0000 0011 0001 0067 0080"            /* .X.¬Ä.........g.¬Ä */
+	$"0600 0000 000E 0001 0073 0080 0600 0000"            /* .........s.¬Ä.... */
+	$"000E 0001 0080 0080 0600 0000 000E 0001"            /* .....¬Ä.¬Ä........ */
+	$"008C 0080 0600 0000 000F 0001 0099 0080"            /* .¬å.¬Ä.........¬ô.¬Ä */
+	$"0600 0000 000B 0001 00A2 0080 0600 0000"            /* .........¬¢.¬Ä.... */
+	$"000D 0001 00AD 0080 0600 0000 000A 0001"            /* .....¬≠.¬Ä.....√Ç.. */
+	$"00B5 0080 0600 0000 000E 0001 00C1 0080"            /* .¬µ.¬Ä.........√Å.¬Ä */
+	$"0600 0000 000C 0001 00CB 0080 0600 0000"            /* .........√ã.¬Ä.... */
+	$"000A 0001 00D3 0080 0600 0000 000C 0001"            /* .√Ç...√ì.¬Ä........ */
+	$"00DD 0080 0600 0000 000F 0001 00EA 0080"            /* .√ù.¬Ä.........√™.¬Ä */
+	$"0600 0000 0010 0001 00F8 0080 0600 0000"            /* .........√∏.¬Ä.... */
+	$"0009 0001 00FE 0080 0600 0000 000E 0001"            /* .√Ü...√æ.¬Ä........ */
+	$"000A 0080 0600 0000 0011 0001 0019 0000"            /* .√Ç.¬Ä............ */
 	$"1F00 0000 0000 0001 0001 2C00 0600 0000"            /* ..........,..... */
 	$"0008 0001 0007 0000 0600 0000 000C 0001"            /* ................ */
-	$"0011 0080 0600 0000 0012 0001 0021 0080"            /* ...Ä.........!.Ä */
-	$"0600 0000 000C 0001 002B 0080 0600 0000"            /* .........+.Ä.... */
-	$"000C 0001 0035 0080 0600 0000 000C 0001"            /* .....5.Ä........ */
-	$"003F 0080 0600 0000 0011 0001 004E 0080"            /* .?.Ä.........N.Ä */
-	$"0600 0000 000E 0001 005A 0080 0600 0000"            /* .........Z.Ä.... */
-	$"000E 0001 0067 0080 0600 0000 000E 0001"            /* .....g.Ä........ */
-	$"0073 0080 0600 0000 000F 0001 0080 0080"            /* .s.Ä.........Ä.Ä */
-	$"0600 0000 000B 0001 0089 0080 0600 0000"            /* .........â.Ä.... */
-	$"000D 0001 0094 0080 0600 0000 000A 0001"            /* .....î.Ä.....¬.. */
-	$"009C 0080 0600 0000 000E 0001 00A8 0080"            /* .ú.Ä.........®.Ä */
-	$"0600 0000 000C 0001 00B2 0080 0600 0000"            /* .........≤.Ä.... */
-	$"000A 0001 00BA 0080 0600 0000 000C 0001"            /* .¬...∫.Ä........ */
-	$"00C4 0080 0600 0000 000F 0001 00D1 0080"            /* .ƒ.Ä.........—.Ä */
-	$"0600 0000 0010 0001 00DF 0080 0600 0000"            /* .........ﬂ.Ä.... */
-	$"0009 0001 00E5 0080 0600 0000 000E 0001"            /* .∆...Â.Ä........ */
-	$"00F1 0080 0600 0000 0011 0001 0000 0000"            /* .Ò.Ä............ */
+	$"0011 0080 0600 0000 0012 0001 0021 0080"            /* ...¬Ä.........!.¬Ä */
+	$"0600 0000 000C 0001 002B 0080 0600 0000"            /* .........+.¬Ä.... */
+	$"000C 0001 0035 0080 0600 0000 000C 0001"            /* .....5.¬Ä........ */
+	$"003F 0080 0600 0000 0011 0001 004E 0080"            /* .?.¬Ä.........N.¬Ä */
+	$"0600 0000 000E 0001 005A 0080 0600 0000"            /* .........Z.¬Ä.... */
+	$"000E 0001 0067 0080 0600 0000 000E 0001"            /* .....g.¬Ä........ */
+	$"0073 0080 0600 0000 000F 0001 0080 0080"            /* .s.¬Ä.........¬Ä.¬Ä */
+	$"0600 0000 000B 0001 0089 0080 0600 0000"            /* .........¬â.¬Ä.... */
+	$"000D 0001 0094 0080 0600 0000 000A 0001"            /* .....¬î.¬Ä.....√Ç.. */
+	$"009C 0080 0600 0000 000E 0001 00A8 0080"            /* .¬ú.¬Ä.........¬®.¬Ä */
+	$"0600 0000 000C 0001 00B2 0080 0600 0000"            /* .........¬≤.¬Ä.... */
+	$"000A 0001 00BA 0080 0600 0000 000C 0001"            /* .√Ç...¬∫.¬Ä........ */
+	$"00C4 0080 0600 0000 000F 0001 00D1 0080"            /* .√Ñ.¬Ä.........√ë.¬Ä */
+	$"0600 0000 0010 0001 00DF 0080 0600 0000"            /* .........√ü.¬Ä.... */
+	$"0009 0001 00E5 0080 0600 0000 000E 0001"            /* .√Ü...√•.¬Ä........ */
+	$"00F1 0080 0600 0000 0011 0001 0000 0000"            /* .√±.¬Ä............ */
 	$"5445 5854 7765 6273 6572 7665 7254 4558"            /* TEXTwebserverTEX */
 	$"5468 616E 646C 6572 5445 5854 7061 7468"            /* ThandlerTEXTpath */
 	$"4172 6773 5445 5854 6874 7470 5365 6172"            /* ArgsTEXThttpSear */
@@ -2685,7 +2686,7 @@ data 'scpt' (129) {
 	$"5265 7175 6573 742C 2063 6F6E 6E65 6374"            /* Request, connect */
 	$"696F 6E49 442C 6170 7049 442C 2073 6572"            /* ionID,appID, ser */
 	$"7665 7250 6174 682C 2077 6562 7369 7465"            /* verPath, website */
-	$"466F 6C64 6572 2920 7B0D 090D 0972 6574"            /* Folder) {.∆.∆ret */
+	$"466F 6C64 6572 2920 7B0D 090D 0972 6574"            /* Folder) {.√Ü.√Üret */
 	$"7572 6E20 2877 6562 7365 7276 6572 2E68"            /* urn (webserver.h */
 	$"616E 646C 6572 2028 7061 7468 4172 6773"            /* andler (pathArgs */
 	$"2C20 6874 7470 5365 6172 6368 4172 6773"            /* , httpSearchArgs */
@@ -2703,7 +2704,7 @@ data 'scpt' (129) {
 	$"2C20 636F 6E6E 6563 7469 6F6E 4944 2C61"            /* , connectionID,a */
 	$"7070 4944 2C20 7365 7276 6572 5061 7468"            /* ppID, serverPath */
 	$"2C20 7765 6273 6974 6546 6F6C 6465 7229"            /* , websiteFolder) */
-	$"297D 4C41 4E44 0001 000C FADE DEAD"                 /* )}LAND....˙ﬁﬁ≠ */
+	$"297D 4C41 4E44 0001 000C FADE DEAD"                 /* )}LAND....√∫√û√û¬≠ */
 };
 
 resource 'STR ' (512) {
@@ -2719,7 +2720,7 @@ data 'TMPL' (128) {
 	$"6F6E 4857 5244 0646 6F72 6D61 7444 5752"            /* onHWRD.FormatDWR */
 	$"4408 5265 7365 7276 6564 4657 5244 0852"            /* D.ReservedFWRD.R */
 	$"6573 6572 7665 6446 4C4E 4706 5461 626C"            /* eservedFLNG.Tabl */
-	$"6573 4457 5244 0A4D 6170 204F 6666 7365"            /* esDWRD¬Map Offse */
+	$"6573 4457 5244 0A4D 6170 204F 6666 7365"            /* esDWRD√ÇMap Offse */
 	$"7444 4C4E 4711 5374 7269 6E67 436F 7079"            /* tDLNG.StringCopy */
 	$"204F 6666 7365 7444 4C4E 470C 4665 7463"            /*  OffsetDLNG.Fetc */
 	$"6820 4F66 6673 6574 444C 4E47 0E55 6E54"            /* h OffsetDLNG.UnT */
@@ -2748,13 +2749,13 @@ data 'TMPL' (128) {
 data 'TMPL' (129) {
 	$"052A 2A2A 2A2A 4C53 5442 135A 6F6E 6520"            /* .*****LSTB.Zone  */
 	$"4F66 6673 6574 204D 696E 7574 6573 4457"            /* Offset MinutesDW */
-	$"5244 095A 6F6E 6520 4E61 6D65 4553 5452"            /* RD∆Zone NameESTR */
+	$"5244 095A 6F6E 6520 4E61 6D65 4553 5452"            /* RD√ÜZone NameESTR */
 	$"052A 2A2A 2A2A 4C53 5445"                           /* .*****LSTE */
 };
 
 data 'wpos' (128) {
-	$"0029 0019 003E 019B 0000 0000 0000 0000"            /* .)...>.õ........ */
-	$"0000 0000 0000 0661 0000 0000 008E 0000"            /* .......a.....é.. */
+	$"0029 0019 003E 019B 0000 0000 0000 0000"            /* .)...>.¬õ........ */
+	$"0000 0000 0000 0661 0000 0000 008E 0000"            /* .......a.....¬é.. */
 	$"0000 0000 0000 0000 0000 0000 0000 0000"            /* ................ */
 	$"0000 0000 0000 0000 0000 0000 0000 0000"            /* ................ */
 	$"0000 0000 0000 0000 0000 0000 0000 0000"            /* ................ */
@@ -2763,13 +2764,13 @@ data 'wpos' (128) {
 };
 
 data 'ZON#' (128) {
-	$"FE20 0370 7374 FE5C 0370 6474 FE5C 036D"            /* ˛ .pst˛\.pdt˛\.m */
-	$"7374 FE98 036D 6474 FE98 0363 7374 FED4"            /* st˛ò.mdt˛ò.cst˛‘ */
-	$"0363 6474 FED4 0365 7374 FF10 0365 6474"            /* .cdt˛‘.estˇ..edt */
+	$"FE20 0370 7374 FE5C 0370 6474 FE5C 036D"            /* √æ .pst√æ\.pdt√æ\.m */
+	$"7374 FE98 036D 6474 FE98 0363 7374 FED4"            /* st√æ¬ò.mdt√æ¬ò.cst√æ√î */
+	$"0363 6474 FED4 0365 7374 FF10 0365 6474"            /* .cdt√æ√î.est√ø..edt */
 	$"0000 0367 6D74 0000 0275 7400 0000 0375"            /* ...gmt...ut....u */
 	$"7463 003C 036D 6574 0078 076D 6574 2064"            /* tc.<.met.x.met d */
-	$"7374 00B4 0369 6474 030C 036E 7A64 003C"            /* st.¥.idt...nzd.< */
-	$"0362 7374 01E0 0373 7374 FDA8 0368 7374"            /* .bst.‡.sst˝®.hst */
+	$"7374 00B4 0369 6474 030C 036E 7A64 003C"            /* st.¬¥.idt...nzd.< */
+	$"0362 7374 01E0 0373 7374 FDA8 0368 7374"            /* .bst.√†.sst√Ω¬®.hst */
 	$"021C 0377 7374 003C 0368 6F65 003C 036D"            /* ...wst.<.hoe.<.m */
 	$"657A 003C 0364 6E74 0258 0461 6573 7400"            /* ez.<.dnt.X.aest. */
 	$"021C 036B 7374 021C 036A 7374"                      /* ...kst...jst */
@@ -2926,7 +2927,7 @@ resource 'DITL' (256, "Save?", purgeable) { /* 2005-09-06 creedon - sizes genera
 		{15, 56, 63, 330},
 		StaticText {
 			disabled,
-			"Save “^0” before closing?"
+			"Save √í^0√ì before closing?"
 		},
 		/* [5] */
 		{8, 16, 40, 48},
@@ -2949,7 +2950,7 @@ resource 'DITL' (257, "Replace?", purgeable) {
 		{10, 61, 74, 270},
 		StaticText {
 			disabled,
-			"An item named “^0” already exists.  Replace it or create a duplicate?"
+			"An item named √í^0√ì already exists.  Replace it or create a duplicate?"
 		},
 		/* [3] */
 		{10, 16, 42, 48},
@@ -3036,7 +3037,7 @@ resource 'DITL' (269, "Revert?", purgeable) {
 		{13, 64, 69, 246},
 		StaticText {
 			disabled,
-			"Discard all changes made to “^0”?"
+			"Discard all changes made to √í^0√ì?"
 		},
 		/* [4] */
 		{13, 16, 45, 48},
@@ -3201,7 +3202,7 @@ resource 'DITL' (516, "tableinfo", purgeable) {
 		{20, 16, 39, 343},
 		StaticText {
 			enabled,
-			"Info for cell “setbarvalue”:"
+			"Info for cell √ísetbarvalue√ì:"
 		},
 		/* [3] */
 		{48, 98, 64, 340},
@@ -3231,7 +3232,7 @@ resource 'DITL' (516, "tableinfo", purgeable) {
 		{128, 98, 144, 340},
 		StaticText {
 			disabled,
-			"‘scpt’"
+			"√îscpt√ï"
 		},
 		/* [8] */
 		{48, 16, 64, 64},
@@ -3598,7 +3599,7 @@ resource 'DITL' (128, "about", purgeable) {
 		{59, 33, 91, 108},
 		StaticText {
 			disabled,
-			"UserLand\nFrontier™"
+			"UserLand\nFrontier¬™"
 		},
 		/* [3] */
 		{22, 125, 52, 328},
@@ -3610,7 +3611,7 @@ resource 'DITL' (128, "about", purgeable) {
 		{55, 125, 67, 328},
 		StaticText {
 			disabled,
-			"© 1992-2000 UserLand Software, Inc."
+			"¬© 1992-2000 UserLand Software, Inc."
 		},
 		/* [5] */
 		{67, 125, 80, 328},
@@ -4391,7 +4392,7 @@ type 'LAND' as 'STR ';
 resource 'LAND' (0, "Owner resource")
 #endif
 {
-	"Copyright © " APP_COPYRIGHT
+	"Copyright ¬© " APP_COPYRIGHT
 };
 
 
@@ -4402,7 +4403,7 @@ resource 'LAND' (0, "Owner resource")
 		APP_REVISION_LEVEL,
 		verUS,
 		APP_VERSION_STRING,
-		APP_VERSION_STRING "; © " APP_COPYRIGHT "."
+		APP_VERSION_STRING "; ¬© " APP_COPYRIGHT "."
 	};
 
 #ifdef oldTemp
@@ -4574,7 +4575,7 @@ data 'hfdr' (-5696, purgeable) {
 };
 
 resource 'STR ' (256) {
-	"Frontier™\n\nHigh performance Web content management, object database, system-level and Internet scripting environment, including source code editing and debugging"
+	"Frontier¬™\n\nHigh performance Web content management, object database, system-level and Internet scripting environment, including source code editing and debugging"
 };
 
 

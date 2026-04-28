@@ -1,22 +1,39 @@
 /*
- * Frontier CLI - WebSocket Frame Codec
- *
- * ws_frame.c - RFC 6455 WebSocket frame encoding/decoding and HTTP upgrade handshake
- *
- * Implements the minimal subset of RFC 6455 needed for a WebSocket server:
- * - Frame decode with client masking
- * - Frame encode (server, unmasked)
- * - HTTP upgrade handshake with SHA-1 + base64
- *
- * Uses the existing SHA1 implementation from the Frontier runtime (sha1dgst.c).
- * Base64 encoding for the handshake is done inline (just 28 chars of output).
- *
- * Copyright (C) 1992-2004 UserLand Software, Inc.
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- */
+    Frontier CLI - WebSocket Frame Codec
+
+    ws_frame.c - RFC 6455 WebSocket frame encoding/decoding and HTTP upgrade handshake
+
+    Implements the minimal subset of RFC 6455 needed for a WebSocket server:
+    - Frame decode with client masking
+    - Frame encode (server, unmasked)
+    - HTTP upgrade handshake with SHA-1 + base64
+
+    Uses the existing SHA1 implementation from the Frontier runtime (sha1dgst.c).
+    Base64 encoding for the handshake is done inline (just 28 chars of output).
+
+    SPDX-License-Identifier: MIT
+
+    Copyright (c) 1992-2004 UserLand Software, Inc.
+    Copyright (c) 2025-present Frontier contributors
+
+    Permission is hereby granted, free of charge, to any person obtaining a
+    copy of this software and associated documentation files (the "Software"),
+    to deal in the Software without restriction, including without limitation
+    the rights to use, copy, modify, merge, publish, distribute, sublicense,
+    and/or sell copies of the Software, and to permit persons to whom the
+    Software is furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included in
+    all copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+    FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+    DEALINGS IN THE SOFTWARE.
+*/
 
 #include "ws_frame.h"
 #include "base64_util.h"

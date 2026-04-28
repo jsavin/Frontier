@@ -1,29 +1,30 @@
 
 /*	$Id$    */
 
-/******************************************************************************
+/*
+    SPDX-License-Identifier: MIT
 
-    UserLand Frontier(tm) -- High performance Web content management,
-    object database, system-level and Internet scripting environment,
-    including source code editing and debugging.
+    Copyright (c) 1992-2004 UserLand Software, Inc.
+    Copyright (c) 2025-present Frontier contributors
 
-    Copyright (C) 1992-2004 UserLand Software, Inc.
+    Permission is hereby granted, free of charge, to any person obtaining a
+    copy of this software and associated documentation files (the "Software"),
+    to deal in the Software without restriction, including without limitation
+    the rights to use, copy, modify, merge, publish, distribute, sublicense,
+    and/or sell copies of the Software, and to permit persons to whom the
+    Software is furnished to do so, subject to the following conditions:
 
-    This program is free software; you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation; either version 2 of the License, or
-    (at your option) any later version.
+    The above copyright notice and this permission notice shall be included in
+    all copies or substantial portions of the Software.
 
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program; if not, write to the Free Software
-    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-
-******************************************************************************/
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+    FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+    DEALINGS IN THE SOFTWARE.
+*/
 
 #include "frontier.r"
 
@@ -70,13 +71,13 @@ resource 'STR#' (136, "IAC Toolkit Errors", purgeable) {
 		/* [3] */
 		"The verb is undefined",
 		/* [4] */
-		"The application isn’t set up to handle verb messages",
+		"The application isn√ït set up to handle verb messages",
 		/* [5] */
 		"Out of memory",
 		/* [6] */
 		"Operation cancelled by user",
 		/* [7] */
-		"Can’t perform operation because no file is open"
+		"Can√ït perform operation because no file is open"
 	}
 };
 
@@ -102,7 +103,7 @@ resource 'STR#' (138, "lang UI") {
 		/* [1] */
 		"  If you intended to call the script, you must include parenthesis after the script name.",
 		/* [2] */
-		"^0 on “^1”",
+		"^0 on √í^1√ì",
 		/* [3] */
 		"<unavailable>",
 		/* [4] */
@@ -120,7 +121,7 @@ resource 'STR#' (138, "lang UI") {
 		/* [10] */
 		"There are no statements in this script to ^0.",
 		/* [11] */
-		"This script has no statements in its body.  To ^0 “^1”, add a statement below the script that calls it with the appropriate parameter list.",
+		"This script has no statements in its body.  To ^0 √í^1√ì, add a statement below the script that calls it with the appropriate parameter list.",
 		/* [12] */
 		"  If you intended to take its address, use the '@' operator.",
 		/* [13] */
@@ -128,7 +129,7 @@ resource 'STR#' (138, "lang UI") {
 		/* [14] */
 		"anonymous",
 		/* [15] */
-		"apple event ['^0', '^1'] from “^2”"
+		"apple event ['^0', '^1'] from √í^2√ì"
 	}
 };
 
@@ -149,23 +150,23 @@ resource 'STR#' (139, "System Scripts", locked, preload) {
 		/* [7] */
 		"Frontier.clickers.typeXXXX",
 		/* [8] */
-		"system.callbacks.control2click(“^0”)",
+		"system.callbacks.control2click(√í^0√ì)",
 		/* [9] */
-		"if defined(system.callbacks.cmd2click){system.callbacks.cmd2click(“^0”)}else{edit(“^0”)}",
+		"if defined(system.callbacks.cmd2click){system.callbacks.cmd2click(√í^0√ì)}else{edit(√í^0√ì)}",
 		/* [10] */
-		"system.callbacks.option2click(“^0”)",
+		"system.callbacks.option2click(√í^0√ì)",
 		/* [11] */
-		"if defined(system.callbacks){system.callbacks.openWindow(“^0”);}",
+		"if defined(system.callbacks){system.callbacks.openWindow(√í^0√ì);}",
 		/* [12] */
-		"system.callbacks.saveWindow(“^0”,^1)",
+		"system.callbacks.saveWindow(√í^0√ì,^1)",
 		/* [13] */
-		"system.callbacks.closeWindow(“^0”)",
+		"system.callbacks.closeWindow(√í^0√ì)",
 		/* [14] */
-		"system.callbacks.compileChangedScript(address(“^0”))",
+		"system.callbacks.compileChangedScript(address(√í^0√ì))",
 		/* [15] */
 		"system.startup.firsttime||(Frontier.version()<2.1)||defined(nothreads)",
 		/* [16] */
-		"webBrowser.openURL(“^0”);webBrowser.bringToFront ()",
+		"webBrowser.openURL(√í^0√ì);webBrowser.bringToFront ()",
 		/* [17] */
 		"user.html.prefs.iso8859map",
 		/* [18] */
@@ -195,11 +196,11 @@ resource 'STR#' (139, "System Scripts", locked, preload) {
 		/* [30] */
 		"user.inetd.shutdown",
 		/* [31] */
-		"Frontier.tools.windowTypes.isFileMenuItemEnabled(“^0”)",
+		"Frontier.tools.windowTypes.isFileMenuItemEnabled(√í^0√ì)",
 		/* [32] */
-		"pike.getFileMenuItemName(“^0”)",
+		"pike.getFileMenuItemName(√í^0√ì)",
 		/* [33] */
-		"Frontier.tools.windowTypes.runFileMenuScript(“^0”)",
+		"Frontier.tools.windowTypes.runFileMenuScript(√í^0√ì)",
 		/* [34] */
 		"if defined(system.callbacks.opStruct2Click){return(system.callbacks.opStruct2Click())}else{return(false)}",
 		/* [35] */
@@ -213,9 +214,9 @@ resource 'STR#' (139, "System Scripts", locked, preload) {
 		/* [39] */
 		"if defined(system.callbacks.opRightClick){return(system.callbacks.opRightClick())}else{return(false)}", /*7.0b11 PBS: opRightClick callback*/
 		/* [40] */
-		"Frontier.tools.windowTypes.runEditMenuScript(“^0”)",
+		"Frontier.tools.windowTypes.runEditMenuScript(√í^0√ì)",
 		/* [41] */
-		"Frontier.tools.windowTypes.isFileMenuItemChecked(“^0”)",
+		"Frontier.tools.windowTypes.isFileMenuItemChecked(√í^0√ì)",
 		/* [42] */
 		"if defined(system.callbacks.opInsert){return(system.callbacks.opInsert())}else{return(false)}",
 		/* [43] */
@@ -372,145 +373,145 @@ resource 'STR#' (257, "Lang Errors", purgeable) {
 		/* [1] */
 		"Unknown error.",
 		/* [2] */
-		"Can’t coerce the string “^0” into a string4 because it isn’t four characters long.",
+		"Can√ït coerce the string √í^0√ì into a string4 because it isn√ït four characters long.",
 		/* [3] */
-		"Can’t call “^0” because the only script it contains is named “^1”",
+		"Can√ït call √í^0√ì because the only script it contains is named √í^1√ì",
 		/* [4] */
-		"Can’t coerce the string “^0” into a character because it isn’t exactly one character long.",
+		"Can√ït coerce the string √í^0√ì into a character because it isn√ït exactly one character long.",
 		/* [5] */
-		"Can’t coerce the string “^0” into a number because it contains non-numeric characters.",
+		"Can√ït coerce the string √í^0√ì into a number because it contains non-numeric characters.",
 		/* [6] */
-		"Can’t evaluate the expression because the name “^0” hasn’t been defined.",
+		"Can√ït evaluate the expression because the name √í^0√ì hasn√ït been defined.",
 		/* [7] */
-		"Can’t call “^0” because there aren’t enough parameters.",
+		"Can√ït call √í^0√ì because there aren√ït enough parameters.",
 		/* [8] */
 		"Internal error -- unexpected opcode encountered (^0).",
 		/* [9] */
-		"Can’t call the script because the name “^0” hasn’t been defined.",
+		"Can√ït call the script because the name √í^0√ì hasn√ït been defined.",
 		/* [10] */
-		"Can’t delete “^0” because it hasn’t been defined.",
+		"Can√ït delete √í^0√ì because it hasn√ït been defined.",
 		/* [11] */
-		"“^0” is too big a number to convert to a character.  Maximum is 255.",
+		"√í^0√ì is too big a number to convert to a character.  Maximum is 255.",
 		/* [12] */
-		"“^0” is too big a number to convert to an integer.  Maximum is 32767.",
+		"√í^0√ì is too big a number to convert to an integer.  Maximum is 32767.",
 		/* [13] */
-		"“^0” is too small a number to convert to an integer.  Minimum is -32768.",
+		"√í^0√ì is too small a number to convert to an integer.  Minimum is -32768.",
 		/* [14] */
-		"String constant isn’t correctly specified.  Must be of the form \"abcd\".",
+		"String constant isn√ït correctly specified.  Must be of the form \"abcd\".",
 		/* [15] */
-		"Character constant isn’t correctly specified.  Must be of the form 'c'.",
+		"Character constant isn√ït correctly specified.  Must be of the form 'c'.",
 		/* [16] */
-		"Can’t compile this script because “^0” is an illegal character.",
+		"Can√ït compile this script because √í^0√ì is an illegal character.",
 		/* [17] */
 		"String must be either \"true\" or \"false\".",
 		/* [18] */
-		"Can’t divide by zero.",
+		"Can√ït divide by zero.",
 		/* [19] */
-		"Can’t compile this script because of a ^0.",
+		"Can√ït compile this script because of a ^0.",
 		/* [20] */
 		"The expression is too big. Try breaking it up into several statements.",
 		/* [21] */
 		"An expression is not allowed here; a variable name is required.",
 		/* [22] */
-		"Can’t create a new local named “^0” because there is already a local with that name.",
+		"Can√ït create a new local named √í^0√ì because there is already a local with that name.",
 		/* [23] */
-		"Can’t coerce the value to a 16-bit number.",
+		"Can√ït coerce the value to a 16-bit number.",
 		/* [24] */
-		"Can’t coerce the value to an 8-bit character.",
+		"Can√ït coerce the value to an 8-bit character.",
 		/* [25] */
-		"Can’t coerce the value to a 32-bit number.",
+		"Can√ït coerce the value to a 32-bit number.",
 		/* [26] */
-		"Can’t coerce the value to a date.",
+		"Can√ït coerce the value to a date.",
 		/* [27] */
-		"Can’t coerce the value to a string.",
+		"Can√ït coerce the value to a string.",
 		/* [28] */
-		"Can’t coerce the value to a true or false “Boolean” value.",
+		"Can√ït coerce the value to a true or false √íBoolean√ì value.",
 		/* [29] */
-		"Can’t call “^0” because it isn’t a script.",
+		"Can√ït call √í^0√ì because it isn√ït a script.",
 		/* [30] */
-		"Can’t call “^0” because there are too many parameters.",
+		"Can√ït call √í^0√ì because there are too many parameters.",
 		/* [31] */
-		"Can’t do replacement because the target window is not in edit mode.",
+		"Can√ït do replacement because the target window is not in edit mode.",
 		/* [32] */
-		"Address value doesn’t refer to a valid table.",
+		"Address value doesn√ït refer to a valid table.",
 		/* [33] */
-		"“^0” reported the following error:  “^2”.",
+		"√í^0√ì reported the following error:  √í^2√ì.",
 		/* [34] */
-		"Can’t send the message because ^1“^0” isn’t running or isn’t IAC-aware.",
+		"Can√ït send the message because ^1√í^0√ì isn√ït running or isn√ït IAC-aware.",
 		/* [35] */
-		"Assignment over existing ^0 object “^1” is not allowed.  Delete the object first, or use table.assign to override protection.",
+		"Assignment over existing ^0 object √í^1√ì is not allowed.  Delete the object first, or use table.assign to override protection.",
 		/* [36] */
-		"Can’t coerce the value to a binary value.",
+		"Can√ït coerce the value to a binary value.",
 		/* [37] */
-		"Can’t coerce a ^0 value to a ^1.",
+		"Can√ït coerce a ^0 value to a ^1.",
 		/* [38] */
 		"Can't take the negative of this type of value.",
 		/* [39] */
-		"The logical ‘not’ operation is not supported with this type of value.",
+		"The logical √înot√ï operation is not supported with this type of value.",
 		/* [40] */
-		"The “^0” verb only operates on agents.  This script is not running as an agent.",
+		"The √í^0√ì verb only operates on agents.  This script is not running as an agent.",
 		/* [41] */
-		"A “direction” is required here.  Examples include up, down, left, right and nodirection.",
+		"A √ídirection√ì is required here.  Examples include up, down, left, right and nodirection.",
 		/* [42] */
 		"The indicated list was not a binary value of the appropriate type.",
 		/* [43] */
 		"A string4 keyword or a numeric index was expected here.",
 		/* [44] */
-		"“^0” is too big a number to work with.  Maximum is 2147483647.",
+		"√í^0√ì is too big a number to work with.  Maximum is 2147483647.",
 		/* [45] */
-		"Couldn’t complete the message to ^1“^0” because of the following error:  “^2”.",
+		"Couldn√ït complete the message to ^1√í^0√ì because of the following error:  √í^2√ì.",
 		/* [46] */
-		"Can’t find a sub-table named “^0”.",
+		"Can√ït find a sub-table named √í^0√ì.",
 		/* [47] */
-		"Error in kernel call.  The verb  “^0” does not exist, or isn’t set up to handle messages.",
+		"Error in kernel call.  The verb  √í^0√ì does not exist, or isn√ït set up to handle messages.",
 		/* [48] */
-		"Array references can only be applied to tables, strings, lists and records.  “^0” is a ^1.",
+		"Array references can only be applied to tables, strings, lists and records.  √í^0√ì is a ^1.",
 		/* [49] */
-		"Array index is out of range.  The ^1 “^0” doesn’t have an item #^2.",
+		"Array index is out of range.  The ^1 √í^0√ì doesn√ït have an item #^2.",
 		/* [50] */
-		"Can’t evaluate the array reference because the ^1 “^0” has no item named “^2”.",
+		"Can√ït evaluate the array reference because the ^1 √í^0√ì has no item named √í^2√ì.",
 		/* [51] */
-		"Can’t determine the size of this value.",
+		"Can√ït determine the size of this value.",
 		/* [52] */
 		"The table index is out of range.  There is no item #^0.",
 		/* [53] */
 		"A positive number was expected, but a negative number was given.",
 		/* [54] */
-		"Can’t pack this type of value.",
+		"Can√ït pack this type of value.",
 		/* [55] */
-		"Can’t unpack this type of binary value.",
+		"Can√ït unpack this type of binary value.",
 		/* [56] */
-		"Can’t unpack.  You can only unpack binary values.",
+		"Can√ït unpack.  You can only unpack binary values.",
 		/* [57] */
-		"Internal error -- can’t pack unknown type of external value.",
+		"Internal error -- can√ït pack unknown type of external value.",
 		/* [58] */
 		"Error encountered unpacking the object.",
 		/* [59] */
-		"Can’t send the message because the application “^0” isn’t running^1.",
+		"Can√ït send the message because the application √í^0√ì isn√ït running^1.",
 		/* [60] */
-		"Can’t coerce “^0” to an address because it doesn't specify a valid object in the database structure.",
+		"Can√ït coerce √í^0√ì to an address because it doesn't specify a valid object in the database structure.",
 		/* [61] */
-		"Can’t send any messages because IAC initialization failed.",
+		"Can√ït send any messages because IAC initialization failed.",
 		/* [62] */
-		"Can’t use “^0” in a with statement because it isn’t a table.",
+		"Can√ït use √í^0√ì in a with statement because it isn√ït a table.",
 		/* [63] */
-		"Can’t get the address of “^0” because it isn’t in the object database structure.",
+		"Can√ït get the address of √í^0√ì because it isn√ït in the object database structure.",
 		/* [64] */
-		"Can’t return a ^0 as the result of a script.^1",
+		"Can√ït return a ^0 as the result of a script.^1",
 		/* [65] */
-		"Can’t pass a ^0 as a parameter to a script.^1",
+		"Can√ït pass a ^0 as a parameter to a script.^1",
 		/* [66] */
 		"Assignment of a ^0 to another value is not allowed.  Use table.assign instead.^1",
 		/* [67] */
-		"The “^0” verb can only be called by a trap script handling an incoming event.  This script is not handling an event.",
+		"The √í^0√ì verb can only be called by a trap script handling an incoming event.  This script is not handling an event.",
 		/* [68] */
-		"The “^0” verb can only be called by a dialog item hit callback script.  This script is not handling a dialog item hit.",
+		"The √í^0√ì verb can only be called by a dialog item hit callback script.  This script is not handling a dialog item hit.",
 		/* [69] */
-		"Couldn’t open a dialog with that id (^0).  The DLOG or DITL resource is probably missing.",
+		"Couldn√ït open a dialog with that id (^0).  The DLOG or DITL resource is probably missing.",
 		/* [70] */
-		"Item number is out of range.  The dialog doesn’t have an item #^0.",
+		"Item number is out of range.  The dialog doesn√ït have an item #^0.",
 		/* [71] */
-		"Can’t nest more than three modal dialogs.",
+		"Can√ït nest more than three modal dialogs.",
 		/* [72] */
 		"This operation is not supported for ^0 values.^1",
 		/* [73] */
@@ -522,151 +523,151 @@ resource 'STR#' (257, "Lang Errors", purgeable) {
 		/* [76] */
 		"Division is not supported between values of this type.",
 		/* [77] */
-		"The “modulus” operation is not supported between values of this type.",
+		"The √ímodulus√ì operation is not supported between values of this type.",
 		/* [78] */
 		"Comparison is not supported between these two values.",
 		/* [79] */
-		"Can’t specify more than ^0 tables in a single with statement. Try nesting two or more with statements instead.",
+		"Can√ït specify more than ^0 tables in a single with statement. Try nesting two or more with statements instead.",
 		/* [80] */
-		"Stack overflow:  ^0 stack.  If your script is recursive, make sure that it’s terminating.",
+		"Stack overflow:  ^0 stack.  If your script is recursive, make sure that it√ïs terminating.",
 		/* [81] */
-		"Can’t send this type of value in an IAC message.",
+		"Can√ït send this type of value in an IAC message.",
 		/* [82] */
-		"Can’t run the card “^0”.",
+		"Can√ït run the card √í^0√ì.",
 		/* [83] */
-		"Can’t coerce the binary value to this type because it isn’t exactly ^0 bytes long.",
+		"Can√ït coerce the binary value to this type because it isn√ït exactly ^0 bytes long.",
 		/* [84] */
-		"Can’t coerce the string “^0” into a point because it isn’t in the form “h, v”.",
+		"Can√ït coerce the string √í^0√ì into a point because it isn√ït in the form √íh, v√ì.",
 		/* [85] */
-		"Can’t coerce the string “^0” into a rectangle because it isn’t in the form “top, left, bottom, right”.",
+		"Can√ït coerce the string √í^0√ì into a rectangle because it isn√ït in the form √ítop, left, bottom, right√ì.",
 		/* [86] */
-		"Can’t coerce the string “^0” into an RGB because it isn’t in the form “red, green, blue”.",
+		"Can√ït coerce the string √í^0√ì into an RGB because it isn√ït in the form √íred, green, blue√ì.",
 		/* [87] */
-		"Can’t coerce the string “^0” into a pattern because it isn’t in the form of an 8-byte hexidecimal number.",
+		"Can√ït coerce the string √í^0√ì into a pattern because it isn√ït in the form of an 8-byte hexidecimal number.",
 		/* [88] */
-		"The string “^0” isn’t a valid file specification.",
+		"The string √í^0√ì isn√ït a valid file specification.",
 		/* [89] */
-		"Can’t coerce the string “^0” into an alias because it isn’t a valid file system path.",
+		"Can√ït coerce the string √í^0√ì into an alias because it isn√ït a valid file system path.",
 		/* [90] */
 		"Random number lower bound is greater than the upper bound.",
 		/* [91] */
-		"Can’t operate on alias value because the system software in use does not support aliases.",
+		"Can√ït operate on alias value because the system software in use does not support aliases.",
 		/* [92] */
-		"Can’t operate on object specifier value because the system software in use does not support Apple events.",
+		"Can√ït operate on object specifier value because the system software in use does not support Apple events.",
 		/* [93] */
-		"“^0” is not a supported key format specification.  Valid formats are 'name', 'indx' and 'prop'.",
+		"√í^0√ì is not a supported key format specification.  Valid formats are 'name', 'indx' and 'prop'.",
 		/* [94] */
-		"Can’t perform the operation because the address of a binary value is required here.",
+		"Can√ït perform the operation because the address of a binary value is required here.",
 		/* [95] */
-		"Can’t coerce the string “^0” into a floating point number because it isn’t in the form “1.234”.",
+		"Can√ït coerce the string √í^0√ì into a floating point number because it isn√ït in the form √í1.234√ì.",
 		/* [96] */
-		"Can’t call “^0” as an XCMD because it isn’t a binary value with binary type 'XCMD' or 'XFCN'.",
+		"Can√ït call √í^0√ì as an XCMD because it isn√ït a binary value with binary type 'XCMD' or 'XFCN'.",
 		/* [97] */
-		"Can’t call “^0” as a UCMD because it isn’t a binary value with binary type 'UCMD'.",
+		"Can√ït call √í^0√ì as a UCMD because it isn√ït a binary value with binary type 'UCMD'.",
 		/* [98] */
-		"Can’t run “^0” as a card because it isn’t a binary value with binary type 'CARD'.",
+		"Can√ït run √í^0√ì as a card because it isn√ït a binary value with binary type 'CARD'.",
 		/* [99] */
-		"A range of items can’t be specified here.",
+		"A range of items can√ït be specified here.",
 		/* [100] */
-		"Can’t interpret this object specification.",
+		"Can√ït interpret this object specification.",
 		/* [101] */
-		"Can’t open the scripting component whose ID is '^0'.",
+		"Can√ït open the scripting component whose ID is '^0'.",
 		/* [102] */
-		"Can’t call “^0” from the background; the clipboard contents are only valid for the frontmost application.",
+		"Can√ït call √í^0√ì from the background; the clipboard contents are only valid for the frontmost application.",
 		/* [103] */
-		"Can’t coerce the list value to this type because it doesn’t contain at least ^0 items.",
+		"Can√ït coerce the list value to this type because it doesn√ït contain at least ^0 items.",
 		/* [104] */
-		"A named item can’t be specified here.",
+		"A named item can√ït be specified here.",
 		/* [105] */
-		"Can’t call the script “^0” because it doesn’t define a parameter named “^1”",
+		"Can√ït call the script √í^0√ì because it doesn√ït define a parameter named √í^1√ì",
 		/* [106] */
-		"Can’t call the script “^0” because the parameter “^1” has already been given a value.",
+		"Can√ït call the script √í^0√ì because the parameter √í^1√ì has already been given a value.",
 		/* [107] */
-		"Can’t coerce the binary value to this type because its binaryType isn’t '^0'.",
+		"Can√ït coerce the binary value to this type because its binaryType isn√ït '^0'.",
 		/* [108] */
-		"Can’t perform this operation because the Component Manager is not installed.",
+		"Can√ït perform this operation because the Component Manager is not installed.",
 		/* [109] */
 		"Bit number must be between 0 and 31.",
 		/* [110] */
-		"Can’t interpret “^0” as a network volume specification because it isn’t in the form “zone:machine:volume”.",
+		"Can√ït interpret √í^0√ì as a network volume specification because it isn√ït in the form √ízone:machine:volume√ì.",
 		/* [111] */
-		"Can’t perform the operation because no file is open.",
+		"Can√ït perform the operation because no file is open.",
 		/* [112] */
-		"Can’t coerce “^0” to a long because it isn’t in the range -2147483648 to 2147483647",
+		"Can√ït coerce √í^0√ì to a long because it isn√ït in the range -2147483648 to 2147483647",
 		/* [113] */
 		"Semaphore timer expired after ^0 sixtieths of a second.",
 		/* [114] */
 		"The thread whose ID is ^0 does not exist.",
 		/* [115] */
-		"Can’t call “^0” because the database “^1” has not been opened.",
+		"Can√ït call √í^0√ì because the database √í^1√ì has not been opened.",
 		/* [116] */
-		"Can’t call “^0” because the database “^1” was opened for reading only.",
+		"Can√ït call √í^0√ì because the database √í^1√ì was opened for reading only.",
 		/* [117] */
-		"Can’t call the verb “^0”  because it isn't implemented on this platform.",
+		"Can√ït call the verb √í^0√ì  because it isn't implemented on this platform.",
 		/* [118] */
-		"Can’t open this file because a database has not been opened.",
+		"Can√ït open this file because a database has not been opened.",
 		/* [119] */
-		"Can’t target “^0” because it doesn’t specify a window.",
+		"Can√ït target √í^0√ì because it doesn√ït specify a window.",
 		/* [120] */
-		"Can’t reference the value because a nil address was given.",
+		"Can√ït reference the value because a nil address was given.",
 		/* [121] */
-		"Can’t load the table “^0” into memory because an error was encountered: “^1”.",
+		"Can√ït load the table √í^0√ì into memory because an error was encountered: √í^1√ì.",
 		/* [122] */
-		"Can’t call “^0” because the file “^1” has not been opened.",
+		"Can√ït call √í^0√ì because the file √í^1√ì has not been opened.",
 		/* [123] */
-		"Can’t call “^0” because the library “^1” couldn’t be loaded.",
+		"Can√ït call √í^0√ì because the library √í^1√ì couldn√ït be loaded.",
 		/* [124] */
-		"Can’t call “^0” because the ProcInfo resource could not be found in library “^1”.",
+		"Can√ït call √í^0√ì because the ProcInfo resource could not be found in library √í^1√ì.",
 		/* [125] */
-		"Can’t call “^0” because that name wasn’t found in the library “^1”.",
+		"Can√ït call √í^0√ì because that name wasn√ït found in the library √í^1√ì.",
 		/* [126] */
-		"Can’t call “^0” because that name wasn’t found in the ProcInfo resource of library “^1”.",
+		"Can√ït call √í^0√ì because that name wasn√ït found in the ProcInfo resource of library √í^1√ì.",
 		/* [127] */
-		"Can’t get the “^0” attribute because the table doesn’t have a sub-table named /atts.",
+		"Can√ït get the √í^0√ì attribute because the table doesn√ït have a sub-table named /atts.",
 		/* [128] */
-		"Can’t get the “^0” attribute because the table doesn’t an attribute with that name.",
+		"Can√ït get the √í^0√ì attribute because the table doesn√ït an attribute with that name.",
 		/* [129 */
-		"Can’t get the address of “^0” because the table doesn’t have an object with that name.",
+		"Can√ït get the address of √í^0√ì because the table doesn√ït have an object with that name.",
 		/* [130] */
 		"Poorly formed XML text, ^0.",
 		/* [131] */
-		"Can’t compile the XML text; xml:namespace must have “ns” and “prefix” attributes.",
+		"Can√ït compile the XML text; xml:namespace must have √íns√ì and √íprefix√ì attributes.",
 		/* [132] */
-		"Can’t decompile XML because “^0” is not a table.",
+		"Can√ït decompile XML because √í^0√ì is not a table.",
 		/* [133] */
-		"Can’t process the request because a value of type “^0” can’t be represented in XML-Data at this time.",
+		"Can√ït process the request because a value of type √í^0√ì can√ït be represented in XML-Data at this time.",
 		/* [134] */
-		"Error packing “^0”: ^1",
+		"Error packing √í^0√ì: ^1",
 		/* [135] */
-		"Error unpacking “^0”: ^1",
+		"Error unpacking √í^0√ì: ^1",
 		/* [136] */
 		"Error evaluating #^0: ^1.",
 		/* [137] */
-		"Empty sub-outline in “^0” #define directive.",
+		"Empty sub-outline in √í^0√ì #define directive.",
 		/* [138] */
-		"Can’t create item “^0.^1” because “^1” is an illegal name.",
+		"Can√ït create item √í^0.^1√ì because √í^1√ì is an illegal name.",
 		/* [139] */
-		"Can’t save the database because there was an ^0.",
+		"Can√ït save the database because there was an ^0.",
 		/* [140] */
-		"Can’t rename “^0” as “^1” because an item with that name already exists.",
+		"Can√ït rename √í^0√ì as √í^1√ì because an item with that name already exists.",
 		/* [141] */
-		"Can’t encode “^0” as an IP address because it isn’t in the form “0.0.0.0”.",
+		"Can√ït encode √í^0√ì as an IP address because it isn√ït in the form √í0.0.0.0√ì.",
 		/* [142] */
-		"Can’t decode “^0” as an IP address.",
+		"Can√ït decode √í^0√ì as an IP address.",
 		/* [143] */
-		"Can’t ^0 the specified window because it doesn't exist.",
+		"Can√ït ^0 the specified window because it doesn't exist.",
 		/* [144] */
 		"Can't parse the address because of a syntax error.",
 		/* [145] */
 		"Can't split the URL because it is not of the form 'http://www.server.com/hello.html'.",
 		/* [146] */
-		"Can't generate the OPML text because the cloud table is incomplete. “^0” is missing or not recognized.",
+		"Can't generate the OPML text because the cloud table is incomplete. √í^0√ì is missing or not recognized.",
 		/* [147] */
 		"Can't process the outline because the XML cloud element is incomplete.",
 		/* [148] */
 		"[Bitshift error message missing.]",
 		/* [149] */
-		"Can’t load library because the ProcInfo resource could not be found in library “^0”.",
+		"Can√ït load library because the ProcInfo resource could not be found in library √í^0√ì.",
 		/* [150] */
 		"Can't compile regular expression because ^0 at character #^1.",
 		/* [151] */
@@ -690,7 +691,7 @@ resource 'STR#' (257, "Lang Errors", purgeable) {
 		/* [160] */
 		"Can't execute command because the replacement string contains a non-existant group name at character #^0.",
 		/* [161] */
-		"An item named “^0” already exists.", // Replace it or create a duplicate?", // 2005-09-26 creedon
+		"An item named √í^0√ì already exists.", // Replace it or create a duplicate?", // 2005-09-26 creedon
 		/* [162] */
 		"Can't run shell command because the shell \042^0\042 was not found.", // 2006-03-10 aradke
 		
@@ -709,39 +710,39 @@ resource 'STR#' (257, "Lang Errors", purgeable) {
 resource 'STR#' (258, "Mac Errors", purgeable) {
 	{	/* array StringArray: 92 elements */
 		/* [1] */
-		"The “^0” folder is full.",
+		"The √í^0√ì folder is full.",
 		/* [2] */
 		"The disk is full.",
 		/* [3] */
-		"Couldn’t find the disk volume.",
+		"Couldn√ït find the disk volume.",
 		/* [4] */
 		"There was a media error.",
 		/* [5] */
-		"The file name “^0” is illegal.",
+		"The file name √í^0√ì is illegal.",
 		/* [6] */
-		"The file “^0” is not open.",
+		"The file √í^0√ì is not open.",
 		/* [7] */
 		"We attempted to read beyond the end of the file.",
 		/* [8] */
 		"We tried to position to before start of file.",
 		/* [9] */
-		"Memory is full or information from the file won’t fit in memory.",
+		"Memory is full or information from the file won√ït fit in memory.",
 		/* [10] */
 		"Too many files are open.",
 		/* [11] */
-		"The file “^0” wasn’t found.",
+		"The file √í^0√ì wasn√ït found.",
 		/* [12] */
 		"The disk is write-protected.",
 		/* [13] */
-		"The file “^0” is locked.",
+		"The file √í^0√ì is locked.",
 		/* [14] */
 		"The volume is locked.",
 		/* [15] */
-		"The file “^0” is busy.",
+		"The file √í^0√ì is busy.",
 		/* [16] */
-		"A file with the name “^0” already exists.",
+		"A file with the name √í^0√ì already exists.",
 		/* [17] */
-		"The file “^0” is already open with write permission.",
+		"The file √í^0√ì is already open with write permission.",
 		/* [18] */
 		"Error in user parameter list for file system call.",
 		/* [19] */
@@ -761,7 +762,7 @@ resource 'STR#' (258, "Mac Errors", purgeable) {
 		/* [26] */
 		"The volume belongs to an external file system.",
 		/* [27] */
-		"Error renaming the file “^0”.",
+		"Error renaming the file √í^0√ì.",
 		/* [28] */
 		"Disk error, bad master directory block.",
 		/* [29] */
@@ -771,17 +772,17 @@ resource 'STR#' (258, "Mac Errors", purgeable) {
 		/* [31] */
 		"Read/write requested for an off-line drive.",
 		/* [32] */
-		"Couldn’t find 5 nibbles in 200 tries.",
+		"Couldn√ït find 5 nibbles in 200 tries.",
 		/* [33] */
-		"Couldn’t find valid address mark.",
+		"Couldn√ït find valid address mark.",
 		/* [34] */
 		"Read verify compare failed.",
 		/* [35] */
-		"Address mark checksum didn’t check.",
+		"Address mark checksum didn√ït check.",
 		/* [36] */
 		"Bad address mark bit slip nibbles.",
 		/* [37] */
-		"Couldn’t find a data mark header.",
+		"Couldn√ït find a data mark header.",
 		/* [38] */
 		"Bad data mark checksum.",
 		/* [39] */
@@ -791,7 +792,7 @@ resource 'STR#' (258, "Mac Errors", purgeable) {
 		/* [41] */
 		"Step handshake failed.",
 		/* [42] */
-		"Track 0 detect doesn’t change.",
+		"Track 0 detect doesn√ït change.",
 		/* [43] */
 		"Unable to initialize IWM.",
 		/* [44] */
@@ -803,13 +804,13 @@ resource 'STR#' (258, "Mac Errors", purgeable) {
 		/* [47] */
 		"Sector number never found on a track.",
 		/* [48] */
-		"The folder “^0” wasn’t found.",
+		"The folder √í^0√ì wasn√ït found.",
 		/* [49] */
 		"No free WDCB available.",
 		/* [50] */
 		"Move into offspring error.",
 		/* [51] */
-		"Wrong volume type, can’t work under MFS.",
+		"Wrong volume type, can√ït work under MFS.",
 		/* [52] */
 		"Resource not found.",
 		/* [53] */
@@ -823,7 +824,7 @@ resource 'STR#' (258, "Mac Errors", purgeable) {
 		/* [57] */
 		"Map does not permit operation.",
 		/* [58] */
-		"Desk scrap isn’t initialized.",
+		"Desk scrap isn√ït initialized.",
 		/* [59] */
 		"Scrap manager noTypeErr.",
 		/* [60] */
@@ -833,7 +834,7 @@ resource 'STR#' (258, "Mac Errors", purgeable) {
 		/* [62] */
 		"Internal error, attempted to operate on a free block.",
 		/* [63] */
-		"Internal error, can’t purge a locked or non-purgable block.",
+		"Internal error, can√ït purge a locked or non-purgable block.",
 		/* [64] */
 		"Internal error, memory block is locked.",
 		/* [65] */
@@ -851,31 +852,31 @@ resource 'STR#' (258, "Mac Errors", purgeable) {
 		/* [71] */
 		"Waiting was cancelled by the user.",
 		/* [72] */
-		"The application isn’t running or isn’t IAC-aware.",
+		"The application isn√ït running or isn√ït IAC-aware.",
 		/* [73] */
 		"Encountered an unexpected data type.",
 		/* [74] */
-		"The specified descriptor wasn’t found.",
+		"The specified descriptor wasn√ït found.",
 		/* [75] */
-		"Can’t interpret the object specification.",
+		"Can√ït interpret the object specification.",
 		/* [76] */
-		"The specified object wasn’t found.",
+		"The specified object wasn√ït found.",
 		/* [77] */
-		"Access to “^0” was denied.",
+		"Access to √í^0√ì was denied.",
 		/* [78] */
-		"The specified server wasn’t found on the network.",
+		"The specified server wasn√ït found on the network.",
 		/* [79] */
 		"Unknown user, or logon is disabled.",
 		/* [80] */
 		"The password was not accepted by the server.",
 		/* [81] */
-		"Can’t log on to a server that is running on the same machine.",
+		"Can√ït log on to a server that is running on the same machine.",
 		/* [82] */
 		"An error was encountered handling the event.",
 		/* [83] */
 		"The index is too large.",
 		/* [84] */
-		"Can’t accept the event because a transaction is in progress.",
+		"Can√ït accept the event because a transaction is in progress.",
 		/* [85] */
 		"That value is not modifiable.",
 		/* [86] */
@@ -885,11 +886,11 @@ resource 'STR#' (258, "Mac Errors", purgeable) {
 		/* [88] */
 		"An error occurred executing the script.",
 		/* [89] */
-		"Can’t apply this operation to objects of this type.",
+		"Can√ït apply this operation to objects of this type.",
 		/* [90] */
 		"The connection is no longer valid.",
 		/* [90] */
-		"Can’t complete the operation because user interaction is not allowed.",
+		"Can√ït complete the operation because user interaction is not allowed.",
 		/* [91] */
 		"The source code is not available.",
 		/* [92] */
@@ -901,17 +902,17 @@ resource 'STR#' (258, "Mac Errors", purgeable) {
 resource 'STR#' (259, "OP Errors", purgeable) {
 	{	/* array StringArray: 6 elements */
 		/* [1] */
-		"Can’t do “op.^0” because the target window does not contain an outline.",
+		"Can√ït do √íop.^0√ì because the target window does not contain an outline.",
 		/* [2] */
-		"Internal error running “op.^0”.",
+		"Internal error running √íop.^0√ì.",
 		/* [3] */
 		"The address of an outline was expected here.",
 		/* [4] */
 		"The address of a script was expected here.",
 		/* [5] */
-		"Can’t use “op.^0” on a menubar.  Menubars use outline links for scripts, which can be accessed with “menu.getScript” and “menu.setScript”.",
+		"Can√ït use √íop.^0√ì on a menubar.  Menubars use outline links for scripts, which can be accessed with √ímenu.getScript√ì and √ímenu.setScript√ì.",
 		/* [6] */
-		"Can’t use “op.^0” on a table. Tables use outline links to store information about the object database."
+		"Can√ït use √íop.^0√ì on a table. Tables use outline links to store information about the object database."
 	}
 };
 
@@ -919,7 +920,7 @@ resource 'STR#' (259, "OP Errors", purgeable) {
 resource 'STR#' (264, "WP Verb Errors", purgeable) {
 	{	/* array StringArray: 2 elements */
 		/* [1] */
-		"Can’t do “wp.^0” because the target window is not in edit mode, or does not contain editable text.",
+		"Can√ït do √íwp.^0√ì because the target window is not in edit mode, or does not contain editable text.",
 		/* [2] */
 		"The address of a wptext object was expected here."
 	}
@@ -928,9 +929,9 @@ resource 'STR#' (264, "WP Verb Errors", purgeable) {
 resource 'STR#' (265, "Table Verb Errors", purgeable) {
 	{	/* array StringArray: 3 elements */
 		/* [1] */
-		"Can’t do “table.^0” because the target window does not contain a table.",
+		"Can√ït do √ítable.^0√ì because the target window does not contain a table.",
 		/* [2] */
-		"Internal error running “table.^0”.",
+		"Internal error running √ítable.^0√ì.",
 		/* [3] */
 		"The address of a table was expected here."
 	}
@@ -939,7 +940,7 @@ resource 'STR#' (265, "Table Verb Errors", purgeable) {
 resource 'STR#' (266, "Menu Verb Errors", purgeable) {
 	{	/* array StringArray: 2 elements */
 		/* [1] */
-		"Can’t do “menu.^0” because the target window does not contain a menubar.",
+		"Can√ït do √ímenu.^0√ì because the target window does not contain a menubar.",
 		/* [2] */
 		"The address of a menubar was expected here."
 	}
@@ -948,7 +949,7 @@ resource 'STR#' (266, "Menu Verb Errors", purgeable) {
 resource 'STR#' (267, "PICT Errors", purgeable) {
 	{	/* array StringArray: 2 elements */
 		/* [1] */
-		"Can’t do “pict.^0” because the target window does not contain a picture.",
+		"Can√ït do √ípict.^0√ì because the target window does not contain a picture.",
 		/* [2] */
 		"The address of a picture was expected here."
 	}
@@ -958,24 +959,24 @@ resource 'STR#' (267, "PICT Errors", purgeable) {
 resource 'STR#' (262, "File Errors", purgeable) {
 	{	/* array StringArray: 1 elements */
 		/* [1] */
-		"Internal error running “file.^0”."
+		"Internal error running √ífile.^0√ì."
 	}
 };
 
 resource 'STR#' (263, "String Errors", purgeable) {
 	{	/* array StringArray: 7 elements */
 		/* [1] */
-		"Internal error running “string.^0”.",
+		"Internal error running √ístring.^0√ì.",
 		/* [2] */
 		"Can't convert character set because of an unknown error.",
 		/* [3]  - Mac OSStatus: kTextUnsupportedEncodingErr */
-		"Can't convert character set  because “^0” is not supported.",
+		"Can't convert character set  because √í^0√ì is not supported.",
 		/* [4]  - Mac OSStatus: kTextMalformedInputErr */
 		"Can't convert character set because the text contains a sequence that is not legal in the specified character set (^0).",
 		/* [5]  - Mac OSStatus: kTextUndefinedElementErr */
 		"Can't convert character set because the text contains a code point that is undefined in the specified character set (^0).",
 		/* [6]  - Mac OSStatus: kTECNoConversionPathErr */
-		"Can't convert character set because there is no way to convert from “^0” to “^1”.",
+		"Can't convert character set because there is no way to convert from √í^0√ì to √í^1√ì.",
 		/* [7]  - Mac OSStatus: kTECPartialCharErr */
 		"Can't convert character set because the text ends in the middle of a multibyte character."
 	}
@@ -984,7 +985,7 @@ resource 'STR#' (263, "String Errors", purgeable) {
 resource 'STR#' (268, "Window Errors", purgeable) {
 	{	/* array StringArray: 1 elements */
 		/* [1] */
-		"Internal error running “window.^0”."
+		"Internal error running √íwindow.^0√ì."
 	}
 };
 
@@ -1157,7 +1158,7 @@ resource 'DITL' (259, "Notify", purgeable) {
 		{13, 78, 61, 362},
 		StaticText {
 			disabled,
-			"Notification message goes here…\n2\n3"
+			"Notification message goes here√â\n2\n3"
 		}
 	}
 };
@@ -1197,7 +1198,7 @@ resource 'DITL' (261, "Alert") {
 		{13, 78, 77, 362},
 		StaticText {
 			disabled,
-			"Alert message goes here…\n2\n3\n4"
+			"Alert message goes here√â\n2\n3\n4"
 		}
 	}
 };
