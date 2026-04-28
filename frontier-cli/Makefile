@@ -45,18 +45,10 @@ include $(TESTSDIR)/headless_verbs.mk
 
 INCLUDES = -I$(HEADERDIR) -I$(SYSTEMHEADERDIR) -I$(PORTABLEDIR) -I../generated
 
-# Paige integration (WPText engine)
 THIRDPARTYDIR = ../third_party
-PAIGE_DIR = $(THIRDPARTYDIR)/Paige
-PAIGE_BUILD_DIR = $(PAIGE_DIR)/build-headless
-PAIGE_LIB = $(PAIGE_BUILD_DIR)/libpaige.a
-# Use local cmake-install if it exists and works, otherwise fall back to system cmake
-# Check that cmake can actually run (not just executable bit set) by verifying no errors in version output
-CMAKE_BIN = $(shell if [ -x $(THIRDPARTYDIR)/cmake-install/bin/cmake ] && ! $(THIRDPARTYDIR)/cmake-install/bin/cmake --version 2>&1 | grep -q "Error"; then echo "$(THIRDPARTYDIR)/cmake-install/bin/cmake"; else echo "cmake"; fi)
-PAIGE_ARCHES = arm64;x86_64
 
-INCLUDES += -I$(PAIGE_DIR)/PGHEADER -I$(THIRDPARTYDIR)/linenoise -I$(THIRDPARTYDIR)/cJSON
-LIBS = $(PAIGE_LIB)
+INCLUDES += -I$(THIRDPARTYDIR)/linenoise -I$(THIRDPARTYDIR)/cJSON
+LIBS =
 LDFLAGS = -Wl,-undefined,dynamic_lookup
 
 # Linenoise (cross-platform readline alternative)
@@ -233,7 +225,7 @@ all: build dist
 # Use 'make build' when you don't need dist/ updated
 build: strings_generated kernel_verbs_generated $(TARGET)
 
-$(TARGET): $(CLI_SOURCES) $(FRONTIER_SOURCES) $(CJSON_SOURCES) $(PAIGE_LIB) $(LINENOISE_SRC)
+$(TARGET): $(CLI_SOURCES) $(FRONTIER_SOURCES) $(CJSON_SOURCES) $(LINENOISE_SRC)
 	$(CC) $(CFLAGS) $(ARCH_FLAGS) $(INCLUDES) \
 		$(CLI_SOURCES) \
 		$(CJSON_SOURCES) \
@@ -294,34 +286,6 @@ validate-bigstrings:
 
 clean:
 	rm -f $(TARGET)
-
-# Paige library build with automatic rebuild detection
-# Rebuilds if:
-#   1. libpaige.a doesn't exist, OR
-#   2. CMakeCache.txt doesn't exist, OR
-#   3. CMakeCache.txt contains paths from a different worktree
-#
-# This ensures "make" just works in new worktrees and fresh clones.
-PAIGE_CACHE = $(PAIGE_BUILD_DIR)/CMakeCache.txt
-CURRENT_PAIGE_DIR := $(abspath $(PAIGE_BUILD_DIR))
-
-$(PAIGE_LIB): check-paige-cache
-	@if [ ! -f $(PAIGE_LIB) ]; then \
-		echo "Building Paige library (this only happens once per worktree)..."; \
-		$(CMAKE_BIN) -S $(PAIGE_DIR) -B $(PAIGE_BUILD_DIR) -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES="$(PAIGE_ARCHES)"; \
-		$(CMAKE_BIN) --build $(PAIGE_BUILD_DIR); \
-	fi
-
-# Check if CMake cache points to wrong directory (stale from another worktree)
-.PHONY: check-paige-cache
-check-paige-cache:
-	@if [ -f $(PAIGE_CACHE) ]; then \
-		cached_path=$$(grep "^paige_BINARY_DIR:" $(PAIGE_CACHE) 2>/dev/null | cut -d= -f2); \
-		if [ -n "$$cached_path" ] && [ "$$cached_path" != "$(CURRENT_PAIGE_DIR)" ]; then \
-			echo "Detected stale CMake cache from different worktree, cleaning..."; \
-			rm -rf $(PAIGE_BUILD_DIR); \
-		fi; \
-	fi
 
 # Distribution target - creates legacy Frontier 9.5 directory structure
 # Source databases are v7 format — copy directly (no migration needed)
@@ -408,4 +372,4 @@ lint-shell:
 	@command -v shellcheck >/dev/null 2>&1 || { echo "shellcheck not installed. Run: brew install shellcheck"; exit 1; }
 	-find .. -name '*.sh' -not -path '../tests/tmp/*' -not -path '../third_party/*' -not -path '../tests/vendor/*' | xargs shellcheck
 
-.PHONY: all build clean strings_generated kernel_verbs_generated check-paige-cache dist dist-clean clean-root validate-bigstrings lint lint-all lint-python lint-shell
+.PHONY: all build clean strings_generated kernel_verbs_generated dist dist-clean clean-root validate-bigstrings lint lint-all lint-python lint-shell
