@@ -241,10 +241,15 @@ def get_stub_implementation(processor: str, verb: str, token_name: str) -> list:
 
     if stub_type == STUB_ERROR:
         error_msg = get_error_message(config)
+        # Emit PSTRING("\OOO", "...") with explicit octal length prefix so the
+        # output passes the headless-verb pre-commit hook (which rejects
+        # \p shorthand in tests/headless_*_verbs.c). The hook lives at
+        # tools/hooks/pre-commit-integration-tests.
+        length_octal = f"\\{len(error_msg):03o}"
         lines.extend([
             f"            /* {processor}.{verb} - {stub_type} stub */",
             f"            if (bserror)",
-            f"                copystring(BIGSTRING(\"\\p{error_msg}\"), bserror);",
+            f"                copystring(PSTRING(\"{length_octal}\", \"{error_msg}\"), bserror);",
             f"            return false;",
         ])
     elif stub_type == STUB_NOOP:
@@ -272,7 +277,7 @@ def get_stub_implementation(processor: str, verb: str, token_name: str) -> list:
         lines.extend([
             f"            /* Verb: {processor}.{verb} - not yet implemented */",
             f"            log_warn(LOG_COMP_LANG, \"{processor}.{verb} not yet implemented\");",
-            f"            if (bserror) copystring(BIGSTRING(\"\\pnot implemented\"), bserror);",
+            f"            if (bserror) copystring(PSTRING(\"\\017\", \"not implemented\"), bserror);",
             f"            return false;",
         ])
 

@@ -222,18 +222,15 @@ def build_mit_header(preamble: str) -> str:
     return f"/*\n{indented}\n*/"
 
 
-def relicense_file(path: Path, dry_run: bool) -> bool:
+def relicense_file(path: Path, text: str, dry_run: bool) -> bool:
     """Replace the GPL header in `path` with an MIT header.
+
+    `text` must be the file's already-loaded contents (the caller has typically
+    just read it to detect a GPL block). This avoids a second read of every
+    file in main()'s loop.
 
     Returns True if the file was modified (or would be modified, in dry-run).
     """
-    try:
-        text = path.read_text(encoding="utf-8")
-    except UnicodeDecodeError:
-        # Some .r files use mac-roman; try latin-1 as a permissive fallback
-        # so we never silently skip a file that has GPL text.
-        text = path.read_text(encoding="latin-1")
-
     block_range = find_gpl_header_block(text)
     if block_range is None:
         return False
@@ -313,7 +310,7 @@ def main() -> int:
             still_gpl.append(path)
             continue
 
-        if relicense_file(path, dry_run=args.dry_run):
+        if relicense_file(path, text, dry_run=args.dry_run):
             changed.append(path)
 
     if args.check:
