@@ -222,12 +222,14 @@ def build_mit_header(preamble: str) -> str:
     return f"/*\n{indented}\n*/"
 
 
-def relicense_file(path: Path, text: str, dry_run: bool) -> bool:
+def relicense_file(path: Path, text: str, encoding: str, dry_run: bool) -> bool:
     """Replace the GPL header in `path` with an MIT header.
 
     `text` must be the file's already-loaded contents (the caller has typically
-    just read it to detect a GPL block). This avoids a second read of every
-    file in main()'s loop.
+    just read it to detect a GPL block). `encoding` is the encoding the caller
+    successfully decoded the file with — we write back using the same encoding
+    so we never silently re-encode (e.g. promoting Latin-1 0xA9 © to UTF-8
+    0xC2 0xA9, which would shift hardcoded BIGSTRING length bytes).
 
     Returns True if the file was modified (or would be modified, in dry-run).
     """
@@ -245,7 +247,7 @@ def relicense_file(path: Path, text: str, dry_run: bool) -> bool:
         return False
 
     if not dry_run:
-        path.write_text(new_text, encoding="utf-8")
+        path.write_text(new_text, encoding=encoding)
     return True
 
 
@@ -300,8 +302,14 @@ def main() -> int:
     for path in candidates:
         try:
             text = path.read_text(encoding="utf-8")
+            file_encoding = "utf-8"
         except UnicodeDecodeError:
+            # Some .r/.h files are Latin-1; fall back permissively so we
+            # never silently skip a file that has GPL text. Track the
+            # encoding so relicense_file() can write back in the same
+            # encoding instead of promoting the file to UTF-8.
             text = path.read_text(encoding="latin-1")
+            file_encoding = "latin-1"
 
         if find_gpl_header_block(text) is None:
             continue
@@ -310,7 +318,7 @@ def main() -> int:
             still_gpl.append(path)
             continue
 
-        if relicense_file(path, text, dry_run=args.dry_run):
+        if relicense_file(path, text, file_encoding, dry_run=args.dry_run):
             changed.append(path)
 
     if args.check:

@@ -161,7 +161,7 @@ static byte * aboutstrings [] = {
 	 
     /*"\x25" "Powerful cross-platform web scripting",*/
 	
-	BIGSTRING ("\x23" "Â© 1992-2000 UserLand Software, Inc."),
+	BIGSTRING ("\x23" "© 1992-2000 UserLand Software, Inc."),
 
 #ifdef PIKE
 	BIGSTRING ("\x19" "http://pike.userland.com/"),
@@ -184,11 +184,11 @@ static byte * aboutstrings [] = {
 	BIGSTRING ("\x0f" "Current Time:  "),
 	
 #ifdef PIKE
-		BIGSTRING ("\x0e" "UserLand PikeÂª"),
+		BIGSTRING ("\x0e" "UserLand Pikeª"),
 	
 	BIGSTRING ("\x0a" "About Pike"),
 #else
-		BIGSTRING ("\x12" "UserLand FrontierÂª"),
+		BIGSTRING ("\x12" "UserLand Frontierª"),
 	
 	BIGSTRING ("\x0e" "About Frontier"),
 #endif

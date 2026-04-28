@@ -16,9 +16,7 @@
  * platform_unsupported template defined in tools/kernelverbs_parser/stub_config.py:
  *   "Can't {action} because it is not implemented on this platform"
  *
- * To regenerate, fix the SyntaxError in
- * tools/kernelverbs_parser/generate_processor_stubs.py first (issue noted in
- * review) and then run: python3 generate_processor_stubs.py
+ * To regenerate: python3 tools/kernelverbs_parser/generate_processor_stubs.py
  */
 
 #include "frontier.h"

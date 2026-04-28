@@ -34,12 +34,12 @@ Windoids wdef for PowWow
 
 Variants for this wdef:
 	
-	Â¥ 0:	Has a grow zone (and drawgrowicon is implemented).  Does not have rotating states.
-	Â¥ 1:	(not used)
-	Â¥ 2:	Has no grow zone.  Has rotating states.
+	¥ 0:	Has a grow zone (and drawgrowicon is implemented).  Does not have rotating states.
+	¥ 1:	(not used)
+	¥ 2:	Has no grow zone.  Has rotating states.
 	
 
-Copyright Â©1989 Peter Winer
+Copyright ©1989 Peter Winer
 
 Peter Winer
 894 Parma Way

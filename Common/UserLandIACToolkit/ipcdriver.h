@@ -35,7 +35,7 @@
 */
 
 #ifdef GLOBALSOK
-#define	_IPCDrvrName		"\p.IPC Manager Â© 1988 UserLand"
+#define	_IPCDrvrName		"\p.IPC Manager © 1988 UserLand"
 #define	_IPCFileName		"\pIPC Manager"
 #endif
 

@@ -29,7 +29,7 @@
 /*
 Open Scripting Architecture: UserTalk Specific Interface
 
-Copyright Â© 1993 UserLand Software, Inc. All rights reserved.
+Copyright © 1993 UserLand Software, Inc. All rights reserved.
 */
 
 

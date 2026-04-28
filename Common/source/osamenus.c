@@ -39,7 +39,7 @@ reconciled later.*/
 
 
  
-/*Â© Copyright 1992-1993 UserLand Software, Inc.  All Rights Reserved.*/
+/*© Copyright 1992-1993 UserLand Software, Inc.  All Rights Reserved.*/
 
 #include <land.h>
 #include "dialogs.h"
