@@ -116,8 +116,11 @@ def find_gpl_header_block(text: str) -> Optional[Tuple[int, int]]:
     head_window = text[:16384]
     cursor = 0
     while cursor < len(head_window):
-        open_idx = text.find("/*", cursor)
-        if open_idx < 0 or open_idx >= len(head_window):
+        # Search only within the head window; the close `*/` may legitimately
+        # extend slightly past the window for a comment that opens near the
+        # window boundary, so we still scan the full text for the close.
+        open_idx = head_window.find("/*", cursor)
+        if open_idx < 0:
             return None
 
         close_idx = text.find("*/", open_idx + 2)
@@ -222,7 +225,13 @@ def build_mit_header(preamble: str) -> str:
     return f"/*\n{indented}\n*/"
 
 
-def relicense_file(path: Path, text: str, encoding: str, dry_run: bool) -> bool:
+def relicense_file(
+    path: Path,
+    text: str,
+    encoding: str,
+    block_range: Tuple[int, int],
+    dry_run: bool,
+) -> bool:
     """Replace the GPL header in `path` with an MIT header.
 
     `text` must be the file's already-loaded contents (the caller has typically
@@ -231,12 +240,11 @@ def relicense_file(path: Path, text: str, encoding: str, dry_run: bool) -> bool:
     so we never silently re-encode (e.g. promoting Latin-1 0xA9 © to UTF-8
     0xC2 0xA9, which would shift hardcoded BIGSTRING length bytes).
 
+    `block_range` is the (start, end) range returned by find_gpl_header_block,
+    passed in by the caller so we don't re-scan the file.
+
     Returns True if the file was modified (or would be modified, in dry-run).
     """
-    block_range = find_gpl_header_block(text)
-    if block_range is None:
-        return False
-
     start, end = block_range
     block = text[start:end]
     preamble = extract_descriptive_preamble(block)
@@ -311,14 +319,15 @@ def main() -> int:
             text = path.read_text(encoding="latin-1")
             file_encoding = "latin-1"
 
-        if find_gpl_header_block(text) is None:
+        block_range = find_gpl_header_block(text)
+        if block_range is None:
             continue
 
         if args.check:
             still_gpl.append(path)
             continue
 
-        if relicense_file(path, text, file_encoding, dry_run=args.dry_run):
+        if relicense_file(path, text, file_encoding, block_range, dry_run=args.dry_run):
             changed.append(path)
 
     if args.check:

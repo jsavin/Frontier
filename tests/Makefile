@@ -490,11 +490,11 @@ check-python-deps:
 	@python3 -c "import pexpect" 2>/dev/null || (echo "Installing pexpect..." && pip3 install pexpect) || true
 
 # Integration test targets (Python-based YAML tests)
-test-integration: check-python-deps
+test-integration: check-python-deps check-license
 	@echo "Running integration tests..."
 	@../tools/run_integration_tests.sh
 
-test-integration-verbose: check-python-deps
+test-integration-verbose: check-python-deps check-license
 	@echo "Running integration tests (verbose)..."
 	@../tools/run_integration_tests.sh --verbose
 
