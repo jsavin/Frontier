@@ -542,7 +542,6 @@ clean:
 	rm -f test_*.root
 	rm -f $(GENERATED_STRINGS)
 
-
 # Install target
 install: $(ALL_TESTS)
 	@echo "Installing test executables..."
