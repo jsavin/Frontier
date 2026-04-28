@@ -8,7 +8,7 @@
     Copyright (C) 1984, 1989, 1990, 2000, 2001, 2002, 2003, 2004, 2005, 2006
     Free Software Foundation, Inc. (parser skeleton)
     Copyright (c) 1992-2004 UserLand Software, Inc. (grammar and application code)
-    Copyright (c) 2025-present Frontier contributors
+    Copyright (c) 2025-2026 Frontier contributors
 
     The Bison parser skeleton is distributed with a special exception
     permitting redistribution under any license; see the special exception

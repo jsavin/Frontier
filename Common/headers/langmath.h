@@ -6,8 +6,17 @@
 
     SPDX-License-Identifier: MIT
 
+    Copyright (C) 2004 Macrobyte Resources (original file authorship)
     Copyright (c) 1992-2004 UserLand Software, Inc.
-    Copyright (c) 2025-present Frontier contributors
+    Copyright (c) 2025-2026 Frontier contributors
+
+    Note: This header originally carried a Macrobyte Resources copyright.
+    The file's substantive content is an include guard plus a placeholder
+    comment; no Macrobyte source code is present. The Macrobyte attribution
+    is retained out of respect for the original file authorship. The MIT
+    license below applies to the file as it exists in this repository; if
+    Macrobyte code is later restored to this file under a separate license,
+    update this header accordingly.
 
     Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"),
