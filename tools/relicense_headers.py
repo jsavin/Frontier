@@ -93,6 +93,13 @@ SKIP_FILES = (
     # generator will inject the MIT header when regenerating, but the existing
     # checked-in file does not contain GPL boilerplate.
     "tests/headless_mysql_verbs.c",
+    # Files with preserved third-party attributions alongside the MIT header.
+    # The current GPL-trigger phrases don't match these files' MIT-licensed
+    # headers (verified post-round-1 rewrite), but listing them explicitly
+    # protects against future trigger-phrase additions accidentally clobbering
+    # the FSF / Macrobyte attributions. See RELICENSING.md.
+    "Common/source/langparser.c",
+    "Common/headers/langmath.h",
 )
 
 # File extensions where C-style /* ... */ comments are valid.
