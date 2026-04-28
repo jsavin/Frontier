@@ -3,8 +3,8 @@
 | Library | Upstream | License | Pinned Version | Purpose | Integration Notes |
 | --- | --- | --- | --- | --- | --- |
 | libyaml | https://github.com/yaml/libyaml | MIT | 0.2.5 release | YAML parser used by `tools/strings_compiler` to load STR# replacements | Vendored source under `third_party/libyaml`; linked directly by the strings compiler; no local patches beyond build glue. |
-| Paige (HERMES fork) | https://github.com/nmatavka/HERMES-Paige | GPL-2.0 | commit `a2fe9b1` (2024-01-19) | Rich text engine powering WPText serialization/migration | Snapshot checked into `third_party/Paige` (no longer a submodule) with our headless platform file `PGPLATFO/PGUNX.C`. `CMakeLists.txt` is patched to append that file, define `UNIX_COMPILE`/`C_LIBRARY`/`NO_OS_INLINE`, and treat `PGPLATFO/PGIO.C`, `PGSCRAP.C`, and `PGOSUTL.C` as C sources (these files were originally built as C++ due to the `.C` extension, which produced mangled exports). Those three files also carry small signature fixes so `pgScrapMemoryWrite`, `pgStandardRead/Write`, `pgOSRead/Write`, and `pgUnicodeToBytes` match their headers (`size_t` parameters instead of `long`). Headless runtime links `libpaige.a` built from this tree. |
-| CMake | https://cmake.org | BSD-3-Clause | 3.29.6 | Builds Paige (system image lacks cmake) | Official pre-built universal binary (arm64 + x86_64) committed to `third_party/cmake-install/bin/` (~103 MB); Paige Makefiles call `third_party/cmake-install/bin/cmake`. Only executables are tracked; app bundle bloat (frameworks, docs) is gitignored. |
+| cJSON | https://github.com/DaveGamble/cJSON | MIT | upstream snapshot | JSON parser linked by the CLI | Vendored source under `third_party/cJSON`. |
+| linenoise | https://github.com/antirez/linenoise | BSD-2-Clause | upstream snapshot | Line-editing for the CLI REPL | Vendored source under `third_party/linenoise`. |
 | pexpect | https://github.com/pexpect/pexpect | ISC | 4.9.0 | PTY-based interactive dialog verb testing | Vendored pure-Python source under `tests/vendor/pexpect`; used by the integration test runner to drive interactive dialog prompts via expect/send pairs. Test-only dependency — not linked into the CLI binary. |
 | ptyprocess | https://github.com/pexpect/ptyprocess | ISC | 0.7.0 | PTY process management (pexpect dependency) | Vendored pure-Python source under `tests/vendor/ptyprocess`; required by pexpect for spawning and managing PTY subprocesses. Test-only dependency. |
 
@@ -17,63 +17,3 @@ Add new entries here whenever we vendor or patch third-party code so future upgr
 2. Replace `third_party/libyaml` with a fresh archive/clone of that release (preserving our build glue in `tools/strings_compiler`).
 3. Regenerate the strings compiler (`make -C tools/strings_compiler`) and rerun `make strings_generated` to ensure the new version works.
 4. Update the pinned version in the table above.
-
-### Paige (HERMES fork)
-1. Remove `third_party/Paige`, clone the upstream repo, check out the target commit, and delete its `.git` directory.
-2. Copy our headless-specific files back in (`PGPLATFO/PGUNX.C`, CMake non-Windows additions, any local docs) and reapply merges if upstream touched those areas.
-3. Rebuild the archive using the vendored cmake:  
-   `third_party/cmake-install/bin/cmake -S third_party/Paige -B third_party/Paige/build-headless -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"`  
-   `third_party/cmake-install/bin/cmake --build third_party/Paige/build-headless`
-4. Run `make -C tests runtime_tests` (or the CLI build) to confirm the new `libpaige.a` links cleanly.
-5. Update the commit hash in the table above and note any additional integration steps.
-
-### CMake
-
-**Note**: CMake binaries are committed to the repo for convenience (~103 MB). The project works immediately after cloning with no setup required.
-
-**Updating CMake** (optional):
-
-The `install_cmake_universal.sh` script is available to update cmake to a newer version:
-
-```bash
-./tools/install_cmake_universal.sh
-```
-
-This script:
-- Downloads the official universal binary from cmake.org
-- Verifies SHA256 checksum for security
-- Extracts and installs to `third_party/cmake-install/`
-- Creates convenience symlinks for `bin/` and `share/`
-
-**Manual Install** (if needed):
-
-1. Download the universal binary from https://cmake.org/download/ (look for "macOS universal" under Binary distributions)
-   ```bash
-   cd third_party
-   curl -L -O https://github.com/Kitware/CMake/releases/download/v3.29.6/cmake-3.29.6-macos-universal.tar.gz
-   ```
-
-2. Extract and install:
-   ```bash
-   rm -rf cmake-install
-   tar -xzf cmake-3.29.6-macos-universal.tar.gz
-   mv cmake-3.29.6-macos-universal cmake-install
-   cd cmake-install
-   ln -s CMake.app/Contents/bin bin
-   ln -s CMake.app/Contents/share share
-   ```
-
-3. Verify universal binary:
-   ```bash
-   lipo -info cmake-install/bin/cmake
-   # Should show: Architectures in the fat file: ... are: x86_64 arm64
-   ```
-
-4. Update the pinned version in the table above.
-
-5. Test by rebuilding Paige:
-   ```bash
-   rm -rf Paige/build-headless
-   cmake-install/bin/cmake -S Paige -B Paige/build-headless -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"
-   cmake-install/bin/cmake --build Paige/build-headless
-   ```
