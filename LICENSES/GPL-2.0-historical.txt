@@ -1,3 +1,16 @@
+HISTORICAL: GNU General Public License, Version 2
+
+This file is preserved for historical reference only. It is the GPLv2 text
+under which this project was originally released (1992-2026). Effective with
+the relicensing commit (see RELICENSING.md), the project is now distributed
+under the MIT License (see LICENSE).
+
+This file does not apply to the current project. It is retained so that
+downstream auditors and historical users can reference the prior license
+text without consulting external archives.
+
+================================================================================
+
                     GNU GENERAL PUBLIC LICENSE
                        Version 2, June 1991
 

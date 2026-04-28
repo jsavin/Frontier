@@ -118,7 +118,7 @@ def generate_processor_stub(processor: EFPProcessor, verb_names: List[str]) -> s
         f' *   3. Use STUB_FORWARD to call your wrapper functions',
         f' *   4. Regenerate this file',
         f' *',
-        f' * If you need custom logic that can\\'t be auto-generated, STOP and ask for',
+        f" * If you need custom logic that can't be auto-generated, STOP and ask for",
         f' * guidance. Do not hand-edit this file - fix the generator instead.',
         f' */',
         f'',

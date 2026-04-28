@@ -1,29 +1,30 @@
 
 /*	$Id$    */
 
-/******************************************************************************
+/*
+    SPDX-License-Identifier: MIT
 
-    UserLand Frontier(tm) -- High performance Web content management,
-    object database, system-level and Internet scripting environment,
-    including source code editing and debugging.
+    Copyright (c) 1992-2004 UserLand Software, Inc.
+    Copyright (c) 2025-2026 Frontier contributors
 
-    Copyright (C) 1992-2004 UserLand Software, Inc.
+    Permission is hereby granted, free of charge, to any person obtaining a
+    copy of this software and associated documentation files (the "Software"),
+    to deal in the Software without restriction, including without limitation
+    the rights to use, copy, modify, merge, publish, distribute, sublicense,
+    and/or sell copies of the Software, and to permit persons to whom the
+    Software is furnished to do so, subject to the following conditions:
 
-    This program is free software; you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation; either version 2 of the License, or
-    (at your option) any later version.
+    The above copyright notice and this permission notice shall be included in
+    all copies or substantial portions of the Software.
 
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program; if not, write to the Free Software
-    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-
-******************************************************************************/
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+    FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+    DEALINGS IN THE SOFTWARE.
+*/
 
 data 'TMPL' (47, "cnfg") {
 	$"1748 6F72 697A 6F6E 7461 6C20 7363 726F"            /* .Horizontal scro */
@@ -39,8 +40,8 @@ data 'TMPL' (47, "cnfg") {
 	$"6973 2061 2044 4C4F 473F 4242 4954 1357"            /* is a DLOG?BBIT.W */
 	$"696E 646F 7720 6973 2067 726F 7761 626C"            /* indow is growabl */
 	$"653F 4242 4954 1343 7265 6174 6520 6669"            /* e?BBIT.Create fi */
-	$"6C65 206F 6E20 4E65 773F 4242 4954 15D2"            /* le on New?BBIT.Ò */
-	$"5769 6E64 6F69 64D3 2073 6372 6F6C 6C62"            /* WindoidÓ scrollb */
+	$"6C65 206F 6E20 4E65 773F 4242 4954 15D2"            /* le on New?BBIT.Ã’ */
+	$"5769 6E64 6F69 64D3 2073 6372 6F6C 6C62"            /* WindoidÃ“ scrollb */
 	$"6172 733F 4242 4954 1B53 746F 7265 6420"            /* ars?BBIT.Stored  */
 	$"696E 206D 656E 7562 6172 2064 6174 6162"            /* in menubar datab */
 	$"6173 653F 4242 4954 1B50 6172 656E 7420"            /* ase?BBIT.Parent  */
@@ -59,8 +60,8 @@ data 'TMPL' (47, "cnfg") {
 	$"6544 5752 4416 4D69 6E69 6D75 6D20 7369"            /* eDWRD.Minimum si */
 	$"7A65 206F 6620 7769 6E64 6F77 5245 4354"            /* ze of windowRECT */
 	$"0F46 6F6E 7420 4E61 6D65 2049 6E64 6578"            /* .Font Name Index */
-	$"4457 5244 0946 6F6E 7420 5369 7A65 4457"            /* DWRDÆFont SizeDW */
-	$"5244 0A46 6F6E 7420 5374 796C 6544 5752"            /* RDÂFont StyleDWR */
+	$"4457 5244 0946 6F6E 7420 5369 7A65 4457"            /* DWRDÃ†Font SizeDW */
+	$"5244 0A46 6F6E 7420 5374 796C 6544 5752"            /* RDÃ‚Font StyleDWR */
 	$"4420 5265 736F 7572 6365 2049 4420 666F"            /* D Resource ID fo */
 	$"7220 4275 7474 6F6E 2053 5452 2320 4C69"            /* r Button STR# Li */
 	$"7374 4457 5244 1344 6566 6175 6C74 2077"            /* stDWRD.Default w */
@@ -69,11 +70,11 @@ data 'TMPL' (47, "cnfg") {
 
 data 'TMPL' (48, "wpos") {
 	$"0B57 696E 646F 7720 7265 6374 5245 4354"            /* .Window rectRECT */
-	$"0A56 6572 7420 7661 6C75 6544 5752 4408"            /* ÂVert valueDWRD. */
+	$"0A56 6572 7420 7661 6C75 6544 5752 4408"            /* Ã‚Vert valueDWRD. */
 	$"5665 7274 206D 696E 4457 5244 0856 6572"            /* Vert minDWRD.Ver */
 	$"7420 6D61 7844 5752 440B 486F 7269 7A20"            /* t maxDWRD.Horiz  */
-	$"7661 6C75 6544 5752 4409 486F 7269 7A20"            /* valueDWRDÆHoriz  */
-	$"6D69 6E44 5752 4409 486F 7269 7A20 6D61"            /* minDWRDÆHoriz ma */
+	$"7661 6C75 6544 5752 4409 486F 7269 7A20"            /* valueDWRDÃ†Horiz  */
+	$"6D69 6E44 5752 4409 486F 7269 7A20 6D61"            /* minDWRDÃ†Horiz ma */
 	$"7844 5752 441B 4E75 6D62 6572 206F 6620"            /* xDWRD.Number of  */
 	$"7469 6D65 7320 6669 6C65 206F 7065 6E65"            /* times file opene */
 	$"6444 4C4E 4711 4375 7273 6F72 2072 6F77"            /* dDLNG.Cursor row */
@@ -99,8 +100,8 @@ data 'TMPL' (53, "TMPL", purgeable) {
 };
 
 data 'TMPL' (60, "styl") {
-	$"0946 6F6E 7420 5369 7A65 4457 5244 0A46"            /* ÆFont SizeDWRDÂF */
-	$"6F6E 7420 5374 796C 6544 5752 4409 466F"            /* ont StyleDWRDÆFo */
+	$"0946 6F6E 7420 5369 7A65 4457 5244 0A46"            /* Ã†Font SizeDWRDÃ‚F */
+	$"6F6E 7420 5374 796C 6544 5752 4409 466F"            /* ont StyleDWRDÃ†Fo */
 	$"6E74 204E 616D 6550 5354 52"                        /* nt NamePSTR */
 };
 

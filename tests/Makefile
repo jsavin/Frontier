@@ -490,11 +490,11 @@ check-python-deps:
 	@python3 -c "import pexpect" 2>/dev/null || (echo "Installing pexpect..." && pip3 install pexpect) || true
 
 # Integration test targets (Python-based YAML tests)
-test-integration: check-python-deps
+test-integration: check-python-deps check-license
 	@echo "Running integration tests..."
 	@../tools/run_integration_tests.sh
 
-test-integration-verbose: check-python-deps
+test-integration-verbose: check-python-deps check-license
 	@echo "Running integration tests (verbose)..."
 	@../tools/run_integration_tests.sh --verbose
 
@@ -517,8 +517,13 @@ test-debug:
 test-hooks:
 	@../tools/hooks/tests/test_c_indent_hook.sh
 
-# Run all tests (unit + integration + CLI migration + custom args + debug + hooks)
-test-all: test test-integration test-migrate-flag test-custom-args test-debug test-hooks
+# Verify no GPL headers remain in first-party source files (post-relicensing).
+# Exits non-zero if any in-scope file still carries a GPLv2 boilerplate header.
+check-license:
+	@python3 ../tools/relicense_headers.py --check
+
+# Run all tests (unit + integration + CLI migration + custom args + debug + hooks + license check)
+test-all: test test-integration test-migrate-flag test-custom-args test-debug test-hooks check-license
 	@echo "All test suites completed"
 
 $(STRINGS_COMPILER):
