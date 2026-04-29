@@ -54,163 +54,6 @@ tests:
     expected_success: true
 
   # =========================================================================
-  # /vars Command - Empty Workspace
-  # =========================================================================
-
-  - name: "REPL /vars - empty workspace"
-    description: "/vars shows empty ephemeral workspace"
-    skip: true
-    skip_reason: "QuickScript model: /vars and /clear commands removed (not applicable)"
-    repl_mode: true
-    stdin_input: "/vars\n/exit\n"
-    expected_output_contains:
-      - "(empty)"
-    expected_success: true
-
-  # =========================================================================
-  # /vars Command - With Variables
-  # =========================================================================
-
-  - name: "REPL /vars - single variable"
-    description: "/vars should list single workspace variable"
-    skip: true
-    skip_reason: "QuickScript model: /vars and /clear commands removed (not applicable)"
-    repl_mode: true
-    stdin_input: "x = 42\n/vars\n/exit\n"
-    expected_output_contains:
-      - "x = 42"
-      - "Workspace variables"
-    expected_success: true
-
-  - name: "REPL /vars - multiple variables"
-    description: "/vars should list all workspace variables"
-    skip: true
-    skip_reason: "QuickScript model: /vars and /clear commands removed (not applicable)"
-    repl_mode: true
-    stdin_input: |
-      x = 42
-      y = "hello"
-      z = true
-      /vars
-      /exit
-    expected_output_contains:
-      - "x = 42"
-      - "y = \"hello\""
-      - "z = true"
-      - "Workspace variables (3)"
-    expected_success: true
-
-  - name: "REPL /vars - string variable displays with quotes"
-    description: "/vars should show strings with quote marks"
-    skip: true
-    skip_reason: "QuickScript model: /vars and /clear commands removed (not applicable)"
-    repl_mode: true
-    stdin_input: |
-      greeting = "Hello, world!"
-      /vars
-      /exit
-    expected_output_contains:
-      - "greeting = \"Hello, world!\""
-    expected_success: true
-
-  - name: "REPL /vars - boolean variables"
-    description: "/vars should show true/false for booleans"
-    skip: true
-    skip_reason: "QuickScript model: /vars and /clear commands removed (not applicable)"
-    repl_mode: true
-    stdin_input: |
-      flag1 = true
-      flag2 = false
-      /vars
-      /exit
-    expected_output_contains:
-      - "flag1 = true"
-      - "flag2 = false"
-    expected_success: true
-
-  - name: "REPL /vars - table variable"
-    description: "/vars should show table summary"
-    skip: true
-    skip_reason: "QuickScript model: /vars and /clear commands removed (not applicable)"
-    repl_mode: true
-    stdin_input: |
-      lang.new(tableType, @subtable)
-      subtable.a = 1
-      subtable.b = 2
-      /vars
-      /exit
-    expected_output_contains:
-      - "subtable ="
-      - "[table with 2 items]"
-    expected_success: true
-
-  # =========================================================================
-  # /clear Command
-  # =========================================================================
-
-  - name: "REPL /clear - clears workspace variables"
-    description: "/clear should remove all workspace variables"
-    skip: true
-    skip_reason: "QuickScript model: /vars and /clear commands removed (not applicable)"
-    repl_mode: true
-    stdin_input: |
-      x = 42
-      y = 100
-      /clear
-      /vars
-      /exit
-    expected_output_contains:
-      - "Workspace cleared"
-      - "(empty)"
-    expected_success: true
-
-  - name: "REPL /clear - variables inaccessible after clear"
-    description: "After /clear, variables should not be accessible"
-    skip: true
-    skip_reason: "QuickScript model: /vars and /clear commands removed (not applicable)"
-    repl_mode: true
-    stdin_input: |
-      x = 42
-      /clear
-      x
-      /exit
-    expected_output_contains:
-      - "Can't evaluate"
-      - "hasn't been defined"
-    expected_success: true
-
-  - name: "REPL /clear - can add variables after clear"
-    description: |
-      KNOWN LIMITATION (ADR-009): Variables assigned after /clear may not persist
-      in workspace due to hash table stack restoration in langrunhandletraperror().
-      Will be fixed in Phase 6+ (Explicit Hash Table Context architecture).
-    skip: true
-    skip_reason: "QuickScript model: /vars and /clear commands removed (not applicable)"
-    repl_mode: true
-    stdin_input: |
-      old = 1
-      /clear
-      new = 2
-      /vars
-      /exit
-    expected_output_contains:
-      - "new = 2"
-    expected_output_not_contains:
-      - "old"
-    expected_success: true
-    known_issue: "ADR-009: Hash table stack restoration after /clear"
-
-  - name: "REPL /clear - idempotent (can clear empty workspace)"
-    description: "/clear on empty workspace should succeed"
-    skip: true
-    skip_reason: "QuickScript model: /vars and /clear commands removed (not applicable)"
-    repl_mode: true
-    stdin_input: "/clear\n/clear\n/exit\n"
-    expected_output_contains:
-      - "Workspace cleared"
-    expected_success: true
-
-  # =========================================================================
   # /exit Command
   # =========================================================================
 
@@ -482,22 +325,6 @@ tests:
   # Command Integration with Evaluation
   # =========================================================================
 
-  - name: "REPL - alternate between code and commands"
-    description: "Should seamlessly switch between code and commands"
-    skip: true
-    skip_reason: "QuickScript model: /vars and /clear commands removed (not applicable)"
-    repl_mode: true
-    stdin_input: |
-      x = 10
-      /vars
-      x = 20
-      /vars
-      /exit
-    expected_output_contains:
-      - "x = 10"
-      - "x = 20"
-    expected_success: true
-
   - name: "REPL - error doesn't affect commands"
     description: "Runtime errors shouldn't break command execution"
     repl_mode: true
@@ -508,19 +335,6 @@ tests:
     expected_output_contains:
       - "divide by zero"
       - "Available commands"
-    expected_success: true
-
-  - name: "REPL - command after successful evaluation"
-    description: "Commands should work after successful code"
-    skip: true
-    skip_reason: "QuickScript model: /vars and /clear commands removed (not applicable)"
-    repl_mode: true
-    stdin_input: |
-      result = 42
-      /vars
-      /exit
-    expected_output_contains:
-      - "result = 42"
     expected_success: true
 
   # =========================================================================
@@ -550,38 +364,6 @@ tests:
     stdin_input: "/exit\n"
     expected_output_contains:
       - "Goodbye"
-    expected_success: true
-
-  # =========================================================================
-  # Workspace Context Display
-  # =========================================================================
-
-  - name: "REPL /vars - shows variable count"
-    description: "/vars should show count of workspace variables"
-    skip: true
-    skip_reason: "QuickScript model: /vars and /clear commands removed (not applicable)"
-    repl_mode: true
-    stdin_input: |
-      a = 1
-      b = 2
-      c = 3
-      /vars
-      /exit
-    expected_output_contains:
-      - "(3)"
-    expected_success: true
-
-  - name: "REPL /vars - handles special characters in values"
-    description: "/vars should properly display special characters"
-    skip: true
-    skip_reason: "QuickScript model: /vars and /clear commands removed (not applicable)"
-    repl_mode: true
-    stdin_input: |
-      special = "Line1\nLine2"
-      /vars
-      /exit
-    expected_output_contains:
-      - "special ="
     expected_success: true
 
   # =========================================================================
@@ -621,49 +403,6 @@ tests:
     expected_success: true
 
   # =========================================================================
-  # Complex Workspace State
-  # =========================================================================
-
-  - name: "REPL /vars - nested table display"
-    description: "/vars should handle nested tables"
-    skip: true
-    skip_reason: "QuickScript model: /vars and /clear commands removed (not applicable)"
-    repl_mode: true
-    stdin_input: |
-      lang.new(tableType, @outer)
-      lang.new(tableType, @outer.inner)
-      outer.inner.value = 42
-      /vars
-      /exit
-    expected_output_contains:
-      - "outer ="
-    expected_success: true
-
-  - name: "REPL /vars - large workspace"
-    description: "/vars should handle many variables"
-    skip: true
-    skip_reason: "QuickScript model: /vars and /clear commands removed (not applicable)"
-    repl_mode: true
-    stdin_input: |
-      v1 = 1
-      v2 = 2
-      v3 = 3
-      v4 = 4
-      v5 = 5
-      v6 = 6
-      v7 = 7
-      v8 = 8
-      v9 = 9
-      v10 = 10
-      /vars
-      /exit
-    expected_output_contains:
-      - "v1 ="
-      - "v10 ="
-      - "(10)"
-    expected_success: true
-
-  # =========================================================================
   # Command Help Text Validation
   # =========================================================================
 
@@ -674,28 +413,6 @@ tests:
     expected_output_contains:
       - "/exit"
       - "Exit"
-    expected_success: true
-
-  - name: "REPL /help - documents /vars"
-    description: "/help should explain /vars command"
-    skip: true
-    skip_reason: "QuickScript model: /vars and /clear commands removed (not applicable)"
-    repl_mode: true
-    stdin_input: "/help\n/exit\n"
-    expected_output_contains:
-      - "/vars"
-      - "workspace"
-    expected_success: true
-
-  - name: "REPL /help - documents /clear"
-    description: "/help should explain /clear command"
-    skip: true
-    skip_reason: "QuickScript model: /vars and /clear commands removed (not applicable)"
-    repl_mode: true
-    stdin_input: "/help\n/exit\n"
-    expected_output_contains:
-      - "/clear"
-      - "Clear"
     expected_success: true
 
   # =========================================================================
