@@ -5,6 +5,27 @@
 **Author**: System Architect
 **Relates to**: Issue #135 (Collaborative ODB), ADR-005 (Thread-Safety), ADR-006 (Outline Context)
 
+---
+
+> **Reader's note (2026-04-28)**: The `/clear` and `/vars` REPL commands referenced
+> throughout the body of this ADR were **removed by design** when the QuickScript
+> model shipped in PR #304 (see "Implementation Update: QuickScript Model Decision"
+> near the bottom of this document). The 21 obsolete tests covering them were
+> deleted in PR #569 (2026-04-28).
+>
+> All discussion below of "3 failing tests", "97.8% pass rate", workspace
+> persistence workarounds, and the Phase 3B documentation plan describes the
+> *abandoned* approach — preserved as historical context for *why* the QuickScript
+> model was chosen over the workaround direction. The workaround code at
+> `repl_eval.c:259-267` and `repl_eval.c:142-170` no longer exists.
+>
+> The thread-local `hashtablestack` infrastructure (Phase 3A) IS still in place
+> and IS still load-bearing — it remains the foundation for the Phase 6+ explicit
+> hash-table context architecture (Option 5). The bootstrap-initialization
+> constraint that blocks the macro migration also still applies.
+
+---
+
 ## Executive Summary
 
 The REPL Interactive Mode implementation encounters a critical architectural limitation where `langrunhandletraperror()` calls `pushprocess(nil)` / `popprocess()`, which saves and restores the entire `hashtablestack` state. This causes REPL workspace modifications to be lost between evaluations, breaking the fundamental REPL contract that variables persist across sessions.
@@ -1377,6 +1398,7 @@ This approach follows the principle: "Solve real problems, not hypothetical ones
 
 ## Document History
 
+- **2026-04-28**: Added reader's note clarifying /clear and /vars are removed by design (post-#569 cleanup); body of ADR is historical context for the abandoned workaround direction
 - **2026-01-15**: Added QuickScript MVP scope clarification (PR #310 bot feedback response)
 - **2026-01-15**: Update with QuickScript model decision (PR #304 merged)
 - **2026-01-14**: Initial draft (Phase 3A thread-local migration + Phase 3B documentation)
