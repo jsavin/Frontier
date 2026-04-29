@@ -275,40 +275,6 @@ tests:
     expected_success: true
 
   # =========================================================================
-  # Workspace Clear and Rebuild
-  # =========================================================================
-
-  - name: "REPL - clear and rebuild workspace"
-    description: "Should be able to clear and rebuild workspace"
-    repl_mode: true
-    skip: true
-    skip_reason: "QuickScript model: /vars and /clear commands removed (not applicable)"
-    stdin_input: |
-      old = 1
-      /clear
-      new = 2
-      new
-      /exit
-    expected_output_contains:
-      - "2"
-    expected_success: true
-
-  - name: "REPL - cleared variables inaccessible"
-    description: "After clear, old variables should error"
-    repl_mode: true
-    skip: true
-    skip_reason: "QuickScript model: /vars and /clear commands removed (not applicable)"
-    stdin_input: |
-      x = 42
-      /clear
-      x
-      /exit
-    expected_output_contains:
-      - "Can't evaluate"
-      - "hasn't been defined"
-    expected_success: true
-
-  # =========================================================================
   # Long-Running Session Simulation
   # =========================================================================
 
@@ -401,24 +367,6 @@ tests:
   # =========================================================================
   # Mixed Code and Commands
   # =========================================================================
-
-  - name: "REPL - interleave code and commands"
-    description: "Should seamlessly mix code and commands"
-    repl_mode: true
-    skip: true
-    skip_reason: "QuickScript model: /vars and /clear commands removed (not applicable)"
-    stdin_input: |
-      x = 10
-      /vars
-      y = 20
-      /vars
-      x + y
-      /exit
-    expected_output_contains:
-      - "x = 10"
-      - "y = 20"
-      - "30"
-    expected_success: true
 
   - name: "REPL - help doesn't affect workspace"
     description: "/help command shouldn't affect workspace"
