@@ -32,7 +32,7 @@
       </outline>
       <outline text="Palette layout (the 40x24 floor)">
         <outline text="Bottom 8 rows reserved for the palette when active. Top 16 rows remain scrollback."/>
-        <outline text="Row 1 (palette): breadcrumb. /  &gt;  manila  &gt;  posts"/>
+        <outline text="Row 1 (palette): breadcrumb. /  &gt;  edit  &gt;  find"/>
         <outline text="Row 2 (palette): input. Filter text the user is typing. Live-narrows the visible items."/>
         <outline text="Rows 3-7 (palette): visible items, one per row. Highlighted row is the cursor."/>
         <outline text="Row 8 (palette): footer. Hints: ENTER execute  |  arrow-keys navigate  |  / drill in  |  ESC back  |  ?  describe"/>
@@ -47,11 +47,11 @@
         <outline text="Type any letter: live-filter visible items, fuzzy-match style"/>
         <outline text="? on a highlighted item: show description (one-line tooltip in footer, or full pane on demand)"/>
         <outline text="TAB: complete the partial item name to the longest unambiguous prefix (matches linenoise idiom)"/>
-        <outline text="/ pressed mid-palette: drill into highlighted item (same as RIGHT). This makes typing /manila/posts/publish a continuous gesture without needing to release the slash."/>
+        <outline text="/ pressed mid-palette: drill into highlighted item (same as RIGHT). This makes typing /edit/find/replace a continuous gesture without needing to release the slash."/>
       </outline>
       <outline text="The 'continuous gesture' principle">
         <outline text="Slack/Discord pattern: type /command arg1 arg2 in one breath. We can match this in palette mode too."/>
-        <outline text="From expression prompt, typing /manila/posts/publish hello-world without pausing should: enter palette mode on /, drill manila, drill posts, highlight publish, accept the rest as argument string, and execute on ENTER."/>
+        <outline text="From expression prompt, typing /edit/find/replace foo bar without pausing should: enter palette mode on /, drill edit, drill find, highlight replace, accept the rest as argument string, and execute on ENTER."/>
         <outline text="This requires the palette to accept slashes as drill operators while in filter mode. That makes / consistent across REPL palette, HTTP routing, and chatbot transports -- one gesture, multiple projections."/>
       </outline>
       <outline text="Argument-taking commands">

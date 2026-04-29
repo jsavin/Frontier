@@ -32,16 +32,24 @@
         <outline text="Question: what is a menu in headless Frontier?"/>
         <outline text="Answer (proposed): a menu is the slash-command vocabulary for whatever is consuming Frontier -- REPL, HTTP, chatbot, AI agent. UI rendering, when it returns, is one consumer of N."/>
       </outline>
-      <outline text="Consumers of the same menu data">
-        <outline text="REPL: type / in frontier-cli, get a navigable command palette. /help becomes a menu entry instead of a hardcoded REPL command."/>
-        <outline text="HTTP: POST /commands/manila/publish routes to system.menus.data.manila.publish via mainResponder."/>
-        <outline text="Chatbot (Slack/Discord/Matrix): /manila publish hello-world is the same call, projected through a different transport."/>
-        <outline text="AI agents (MCP): an MCP server enumerates system.menus.data and exposes each leaf as a tool. The model sees /manila/publish as a callable tool with a description; the call routes through the existing menu-item script. A few hundred lines of UserTalk, not a new subsystem."/>
-        <outline text="Future Mac UI: same data, rendered as a menubar."/>
+      <outline text="Prior art: the menu API is one of UserLand's oldest shipping products">
+        <outline text="UserLand shipped a menu-sharing API very early in the company's history. Apps (running inside Frontier or as separate processes) could install items into the system menu, with a UserTalk script as the handler. The user picks a menu item; Frontier dispatches to the script."/>
+        <outline text="That contract -- 'apps register hierarchical, named, scripted commands; the host invokes them when chosen' -- is the contract we'd be reviving and extending, not inventing."/>
+        <outline text="The lineage matters. This is a known-good shape with decades of evidence behind it. We are not designing a new app-extension API."/>
       </outline>
-      <outline text="What this means for Manila">
-        <outline text="Manila's editorial menubar becomes Manila's slash command vocabulary -- automatically -- because Manila already populates system.menus.data when it installs."/>
-        <outline text="No new code in Manila. The menubar Manila already builds IS the API surface."/>
+      <outline text="Consumers of the same menu data (UI side)">
+        <outline text="REPL: type / in frontier-cli, get a navigable command palette. /help becomes a menu entry instead of a hardcoded REPL command."/>
+        <outline text="Future Mac UI: same data, rendered as a menubar -- the original consumer."/>
+        <outline text="Chatbots / terminals / pickers in other hosts: any UI that wants a discoverable command palette can render the same tree."/>
+      </outline>
+      <outline text="Consumers of the same menu data (API side)">
+        <outline text="The menu API was always, in part, a programmatic surface: 'list installed menus, describe an item, invoke it.' That stays."/>
+        <outline text="Modern uses: an MCP server can enumerate the menu tree and expose enabled leaves as tools to an LLM. A test harness can drive an app by invoking its menu items. A scripting bridge can let one app reach into another app's installed menu and call a handler."/>
+        <outline text="None of this replaces app-specific APIs. Manila has its own HTTP API and that is the right interface for Manila. The menu API is for the cross-cutting cases: discovering and invoking the commands an app has chosen to expose at the menu level."/>
+      </outline>
+      <outline text="What this asks of apps (Manila or otherwise)">
+        <outline text="Nothing new. Apps that install menus are already using the API. We are restoring the headless side of it (where the install actually persists data and the invoke actually runs), and adding modern projections on top (palette UI, MCP catalog)."/>
+        <outline text="An app that doesn't want its commands exposed at this level simply doesn't install them as menu items. Same as it has always worked."/>
       </outline>
       <outline text="One honest tension">
         <outline text="VisiCalc's slash was a leader key that switched modes."/>
@@ -66,7 +74,7 @@
       <outline text="Why this is strategic, not tactical">
         <outline text="The skipped tests are pointing at the exact thing we'd build."/>
         <outline text="The ODB already stores menu data the right way. We don't have to invent a new system."/>
-        <outline text="It costs Manila zero work to participate."/>
+        <outline text="Apps that already install menus participate for free -- no new work, no new contract."/>
         <outline text="It gives AI agents a tool catalog for free."/>
         <outline text="And it lands Frontier's command surface on the prefix that has 47 years of muscle memory and is the dominant command UI of 2026."/>
         <outline text="This is the 'least new code, most new capability' shape."/>
