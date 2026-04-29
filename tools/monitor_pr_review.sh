@@ -19,7 +19,7 @@
 #
 # Default timeout: 600 seconds (10 minutes) - bots typically finish in 5-10 min
 # Fixed polling: 15-second intervals (reduces API calls & log spam)
-# Clean exit: Logs reason for exit (timeout/cooldown/ci-complete/no-reviews)
+# Clean exit: Logs reason for exit (timeout/cooldown/no-reviews)
 
 # ============================================================================
 # AUTO-BACKGROUND LOGIC: If not already backgrounded, re-exec self in background
@@ -114,7 +114,7 @@ while true; do
     CURRENT_COMMENTS=$(gh pr view "$PR_NUMBER" --json comments --jq '.comments | length' 2>/dev/null || echo "$LAST_COMMENT_COUNT")
     CURRENT_REVIEWS=$(gh pr view "$PR_NUMBER" --json reviews --jq '.reviews | length' 2>/dev/null || echo "$LAST_REVIEW_COUNT")
 
-    # Check CI status for claude-review (allows early exit when check completes)
+    # Check CI status for claude-review (inert — no check registered; falls through cleanly)
     CI_STATUS=$(gh pr view "$PR_NUMBER" --json statusCheckRollup --jq '.statusCheckRollup[] | select(.name=="claude-review") | .status' 2>/dev/null || echo "")
     CI_CONCLUSION=$(gh pr view "$PR_NUMBER" --json statusCheckRollup --jq '.statusCheckRollup[] | select(.name=="claude-review") | .conclusion' 2>/dev/null || echo "")
 
