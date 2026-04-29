@@ -16,8 +16,10 @@
 > All discussion below of "3 failing tests", "97.8% pass rate", workspace
 > persistence workarounds, and the Phase 3B documentation plan describes the
 > *abandoned* approach — preserved as historical context for *why* the QuickScript
-> model was chosen over the workaround direction. The workaround code at
-> `repl_eval.c:259-267` and `repl_eval.c:142-170` no longer exists.
+> model was chosen over the workaround direction. The workaround code that
+> formerly lived in `repl_eval.c` (around lines 142–267 of the pre-#304 version)
+> no longer exists; the file is now 128 lines and contains no
+> workspace-forcing or manual hash-table-clearing code.
 >
 > The thread-local `hashtablestack` infrastructure (Phase 3A) IS still in place
 > and IS still load-bearing — it remains the foundation for the Phase 6+ explicit
