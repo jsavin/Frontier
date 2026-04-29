@@ -358,7 +358,6 @@ Reference: `reports/coverage/verb-binding/2026-01-27-01.md`
 - **Issue #299** (P2): Implement proper process management verbs for headless mode
 
 ### Build & Infrastructure
-- **Issue #376**: Worktree setup requires manual copy of third_party/Paige/build-headless
 - **Issue #374**: Enable stricter compiler warning flags (-Wconversion, -Wsign-conversion, -Wcast-qual)
 
 ### User Experience
