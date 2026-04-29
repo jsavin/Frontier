@@ -9,7 +9,7 @@ How to safely create, modify, and verify UserTalk scripts in the Frontier object
 1. **Edit `databases/Virgin.root`** for changes that should persist in builds. `Virgin.root` is the source of truth — `make dist` copies it to `dist/Frontier.root`. Edits to `databases/Frontier.root` are local only and will be overwritten by the next dist build.
 2. **Always use `--protocol` mode** for ODB edits — never `-e`. Protocol mode supports multi-step operations (set, compile, save) without shell escaping issues.
 3. **Always use `script.newScriptObject` or `op.newOutlineObject`** to install scripts/outlines — never raw `op.insert`. These verbs handle line ending normalization automatically.
-4. **Always keep `.ut` files in sync** with ODB changes so the PR review bot can see the diff.
+4. **Always keep `.ut` files in sync** with ODB changes so reviewers (human and `/gate`) can see a meaningful diff — the binary `.root` change alone is unreviewable.
 5. **Always verify scripts compile** after installing them.
 6. **Always write integration tests** for new or modified verbs.
 
@@ -179,7 +179,7 @@ git checkout -b feature/my-script-change
 
 ### 2. Edit the `.ut` file
 
-Make your changes in the `.ut` file under `usertalk_scripts/`. This is the human-readable form that the PR review bot will diff.
+Make your changes in the `.ut` file under `usertalk_scripts/`. This is the human-readable form that reviewers (human and `/gate`) will diff.
 
 - No trailing newline after closing `}`
 - Comments indented one level per sub-block (never skip levels)
@@ -221,7 +221,7 @@ git add usertalk_scripts/.../verbName.ut databases/Virgin.root
 git commit -m "feat: Add/modify verbName"
 ```
 
-Both the `.ut` file (reviewable diff) and the binary `.root` file (actual ODB change) must be committed together. The PR review bot reviews the `.ut` diff; the `.root` binary carries the change into builds.
+Both the `.ut` file (reviewable diff) and the binary `.root` file (actual ODB change) must be committed together. Reviewers diff the `.ut` text; the `.root` binary carries the change into builds.
 
 ### 6. Write integration tests
 

@@ -11,7 +11,11 @@
 #   Phase 2: POLL (until review detected or timeout) - Check for incoming reviews
 #   Phase 3: COOLDOWN (30s after last review) - Wait for any final reviews
 #
-# Also monitors GitHub Actions CI status (claude-review check) for early exit.
+# Note: previously also monitored a `claude-review` GitHub Actions check for
+# early exit. That auto-review workflow was removed; the CI-check lookup
+# below silently no-ops now (returns empty, fails the comparison, falls
+# through to cooldown/timeout exits). Kept as inert code for future re-use
+# if a different review-bot check is ever wired in.
 #
 # Default timeout: 600 seconds (10 minutes) - bots typically finish in 5-10 min
 # Fixed polling: 15-second intervals (reduces API calls & log spam)
