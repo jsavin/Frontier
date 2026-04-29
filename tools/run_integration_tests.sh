@@ -43,6 +43,33 @@ if [ ! -f "$CLI_PATH" ]; then
     exit 1
 fi
 
+# Warn if the binary is older than any first-party source file that
+# compiles into frontier-cli. Stale binaries silently produce "regression"
+# failures that don't reflect the current code (e.g., recently merged fixes
+# won't be present).
+#
+# Search Common/source/ and frontier-cli/ — the two trees that feed into
+# frontier-cli. tests/ is intentionally excluded: tests/*.c are unit-test
+# stubs that compile into the headless test binary, not frontier-cli, so
+# touching them shouldn't trigger a "rebuild CLI" warning.
+#
+# Use absolute paths via $PROJECT_ROOT so the check works regardless of the
+# caller's CWD — relative paths would silently match nothing when invoked
+# from outside the repo root, defeating the guard.
+STALE_SOURCES=$(find \
+    "$PROJECT_ROOT/Common/source" \
+    "$PROJECT_ROOT/frontier-cli" \
+    \( -name '*.c' -o -name '*.h' -o -name '*.m' \) \
+    -newer "$CLI_PATH" \
+    2>/dev/null | head -5)
+if [ -n "$STALE_SOURCES" ]; then
+    echo -e "${YELLOW}Warning: source files newer than CLI binary ($CLI_PATH)${NC}"
+    echo "  Sample (up to 5):"
+    echo "$STALE_SOURCES" | sed 's/^/    /'
+    echo "  Tests may fail against stale code. Rebuild with: make -C \"$PROJECT_ROOT/frontier-cli\""
+    echo
+fi
+
 # Check for Python dependencies
 if ! python3 -c "import yaml" 2>/dev/null; then
     echo -e "${YELLOW}Warning: PyYAML not installed${NC}"
