@@ -754,7 +754,7 @@ return op.countlines()  /* Returns 3 (empty summit + 2 items) */
   - Allocate 20% buffer time per phase
   - Automate testing (stress tests, sanitizers)
   - Parallelize testing across phases
-  - Use PR review bot for quick feedback
+  - Use /gate for quick pre-merge review feedback
 
 **Risk 3: Scope Creep (More Globals Discovered)**
 - **Probability**: High
