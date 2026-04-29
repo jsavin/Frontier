@@ -43,6 +43,31 @@ if [ ! -f "$CLI_PATH" ]; then
     exit 1
 fi
 
+# Warn if the binary is older than any first-party source file.
+# Stale binaries silently produce "regression" failures that don't reflect
+# the current code (e.g., recently merged fixes won't be present).
+# Search Common/source/, frontier-cli/, and tests/ (excluding tests/tmp/
+# which holds build output and would always look newer).
+#
+# Use absolute paths via $PROJECT_ROOT so the check works regardless of the
+# caller's CWD — relative paths would silently match nothing when invoked
+# from outside the repo root, defeating the guard.
+STALE_SOURCES=$(find \
+    "$PROJECT_ROOT/Common/source" \
+    "$PROJECT_ROOT/frontier-cli" \
+    "$PROJECT_ROOT/tests" \
+    \( -name '*.c' -o -name '*.h' -o -name '*.m' \) \
+    -newer "$CLI_PATH" \
+    -not -path "$PROJECT_ROOT/tests/tmp/*" \
+    2>/dev/null | head -5)
+if [ -n "$STALE_SOURCES" ]; then
+    echo -e "${YELLOW}Warning: source files newer than CLI binary ($CLI_PATH)${NC}"
+    echo "  Sample (up to 5):"
+    echo "$STALE_SOURCES" | sed 's/^/    /'
+    echo "  Tests may fail against stale code. Rebuild with: cd frontier-cli && make"
+    echo ""
+fi
+
 # Check for Python dependencies
 if ! python3 -c "import yaml" 2>/dev/null; then
     echo -e "${YELLOW}Warning: PyYAML not installed${NC}"
