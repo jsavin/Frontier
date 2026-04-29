@@ -64,7 +64,7 @@ if [ -n "$STALE_SOURCES" ]; then
     echo -e "${YELLOW}Warning: source files newer than CLI binary ($CLI_PATH)${NC}"
     echo "  Sample (up to 5):"
     echo "$STALE_SOURCES" | sed 's/^/    /'
-    echo "  Tests may fail against stale code. Rebuild with: cd frontier-cli && make"
+    echo "  Tests may fail against stale code. Rebuild with: make -C \"$PROJECT_ROOT/frontier-cli\""
     echo ""
 fi
 
