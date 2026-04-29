@@ -28,8 +28,6 @@ tests:
 
   - name: "menu.addMenuCommand - create new menu and add item"
     description: "Add a command to a new menubar, creating the menu if it doesn't exist"
-    skip: false
-    skip_reason: ""
     script: |
       new(menubarType, @system.temp.testMenu);
       local(ok = menu.addMenuCommand(@system.temp.testMenu, "File", "New", "dialog.alert(\"New!\")"));
@@ -40,8 +38,6 @@ tests:
 
   - name: "menu.addMenuCommand - add multiple items to same menu"
     description: "Add multiple commands to the same menu"
-    skip: false
-    skip_reason: ""
     script: |
       new(menubarType, @system.temp.testMenu);
       menu.addMenuCommand(@system.temp.testMenu, "Edit", "Cut", "edit.cut()");
@@ -54,8 +50,6 @@ tests:
 
   - name: "menu.addMenuCommand - replace existing item script"
     description: "Adding an item that already exists should replace its script"
-    skip: false
-    skip_reason: ""
     script: |
       new(menubarType, @system.temp.testMenu);
 
@@ -72,8 +66,6 @@ tests:
 
   - name: "menu.addMenuCommand - create multiple menus"
     description: "Add items to different menus in the same menubar"
-    skip: false
-    skip_reason: ""
     script: |
       new(menubarType, @system.temp.testMenu);
 
@@ -92,8 +84,6 @@ tests:
 
   - name: "menu.deleteMenuCommand - delete existing item"
     description: "Delete a command that exists in the menu"
-    skip: false
-    skip_reason: ""
     script: |
       new(menubarType, @system.temp.testMenu);
       menu.addMenuCommand(@system.temp.testMenu, "File", "ToDelete", "script()");
@@ -105,8 +95,6 @@ tests:
 
   - name: "menu.deleteMenuCommand - delete nonexistent item (no-op in headless)"
     description: "deleteMenuCommand is a no-op in headless mode, returns true regardless"
-    skip: false
-    skip_reason: ""
     script: |
       new(menubarType, @system.temp.testMenu);
 
@@ -120,8 +108,6 @@ tests:
 
   - name: "menu.deleteMenuCommand - delete from nonexistent menu (no-op in headless)"
     description: "deleteMenuCommand is a no-op in headless mode, returns true regardless"
-    skip: false
-    skip_reason: ""
     script: |
       new(menubarType, @system.temp.testMenu);
 
@@ -135,8 +121,6 @@ tests:
 
   - name: "menu.deleteMenuCommand - verify item is actually removed"
     description: "After deletion, adding same item again should work"
-    skip: false
-    skip_reason: ""
     script: |
       new(menubarType, @system.temp.testMenu);
 
@@ -189,8 +173,6 @@ tests:
 
   - name: "menu.setScript - change script on menu item"
     description: "Set a new script on a menu item using address"
-    skip: false
-    skip_reason: ""
     script: |
       new(menubarType, @system.temp.testMenu);
 
@@ -250,8 +232,6 @@ tests:
 
   - name: "menu.setCommandKey - set keyboard shortcut"
     description: "Set a command key (keyboard shortcut) on a menu item"
-    skip: false
-    skip_reason: ""
     script: |
       new(menubarType, @system.temp.testMenu);
 
@@ -346,8 +326,6 @@ tests:
 
   - name: "menu.addMenuCommand - empty menu name creates unnamed menu"
     description: "Using empty string for menu name should still work"
-    skip: false
-    skip_reason: ""
     script: |
       new(menubarType, @system.temp.testMenu);
 
@@ -361,8 +339,6 @@ tests:
 
   - name: "menu.addMenuCommand - empty item name"
     description: "Using empty string for item name"
-    skip: false
-    skip_reason: ""
     script: |
       new(menubarType, @system.temp.testMenu);
 
@@ -376,8 +352,6 @@ tests:
 
   - name: "menu.addMenuCommand - special characters in item name"
     description: "Item names with special characters should work"
-    skip: false
-    skip_reason: ""
     script: |
       new(menubarType, @system.temp.testMenu);
 
@@ -391,8 +365,6 @@ tests:
 
   - name: "menu.addMenuCommand - separator item"
     description: "Using dash for item name may create separator"
-    skip: false
-    skip_reason: ""
     script: |
       new(menubarType, @system.temp.testMenu);
 
@@ -406,8 +378,6 @@ tests:
 
   - name: "menu.addMenuCommand - multiline script"
     description: "Script parameter can contain multiple lines"
-    skip: false
-    skip_reason: ""
     script: |
       new(menubarType, @system.temp.testMenu);
 
@@ -427,8 +397,6 @@ tests:
 
   - name: "menu.buildMenuBar - no-op in headless mode"
     description: "buildMenuBar is a no-op in headless mode, returns true"
-    skip: false
-    skip_reason: ""
     script: |
       new(menubarType, @system.temp.testMenu);
       menu.addMenuCommand(@system.temp.testMenu, "File", "New", "test()");
@@ -443,8 +411,6 @@ tests:
 
   - name: "menu.install - no-op in headless mode"
     description: "menu.install is a no-op in headless mode, returns true"
-    skip: false
-    skip_reason: ""
     script: |
       new(menubarType, @system.temp.testMenu);
       menu.addMenuCommand(@system.temp.testMenu, "Custom", "Test", "test()");
@@ -479,8 +445,6 @@ tests:
 
   - name: "menu verbs - build complete menu structure"
     description: "Create a realistic menu structure with multiple menus and items"
-    skip: false
-    skip_reason: ""
     script: |
       new(menubarType, @system.temp.testMenu);
 
@@ -510,8 +474,6 @@ tests:
 
   - name: "menu verbs - modify existing menu"
     description: "Add items, delete some, modify others"
-    skip: false
-    skip_reason: ""
     script: |
       new(menubarType, @system.temp.testMenu);
 
@@ -565,8 +527,6 @@ tests:
 
   - name: "menu.addSubMenu - add as new top-level menu with empty menuName"
     description: "Using empty string for menuName adds submenu as new top-level menu"
-    skip: false
-    skip_reason: ""
     script: |
       new(menubarType, @system.temp.parentMenu);
 
@@ -585,8 +545,6 @@ tests:
 
   - name: "menu.addSubMenu - creates menu if menuName doesn't exist"
     description: "If menuName doesn't exist, it should be created"
-    skip: false
-    skip_reason: ""
     script: |
       new(menubarType, @system.temp.parentMenu);
       # parentMenu is empty - no "Custom" menu exists yet
@@ -605,8 +563,6 @@ tests:
 
   - name: "menu.addSubMenu - no-op ignores invalid address in headless"
     description: "addSubMenu is a no-op in headless mode, returns true regardless of params"
-    skip: false
-    skip_reason: ""
     script: |
       new(menubarType, @system.temp.parentMenu);
 
@@ -619,8 +575,6 @@ tests:
 
   - name: "menu.deleteSubMenu - delete existing submenu"
     description: "Delete a menu from the menubar by name"
-    skip: false
-    skip_reason: ""
     script: |
       new(menubarType, @system.temp.testMenu);
 
@@ -639,8 +593,6 @@ tests:
 
   - name: "menu.deleteSubMenu - delete nonexistent menu (no-op in headless)"
     description: "deleteSubMenu is a no-op in headless mode, returns true regardless"
-    skip: false
-    skip_reason: ""
     script: |
       new(menubarType, @system.temp.testMenu);
       menu.addMenuCommand(@system.temp.testMenu, "File", "New", "fileNew()");
@@ -655,8 +607,6 @@ tests:
 
   - name: "menu.deleteSubMenu - can delete single item too"
     description: "deleteSubMenu can delete a single item, not just a submenu"
-    skip: false
-    skip_reason: ""
     script: |
       new(menubarType, @system.temp.testMenu);
       menu.addMenuCommand(@system.temp.testMenu, "File", "SingleItem", "doIt()");
@@ -1019,8 +969,6 @@ tests:
 
   - name: "menu.buildMenuBar - returns true without error in headless"
     description: "buildMenuBar is a no-op returning true in headless without throwing error"
-    skip: false
-    skip_reason: ""
     script: |
       new(menubarType, @system.temp.testMenu);
       menu.addMenuCommand(@system.temp.testMenu, "File", "New", "test()");
@@ -1036,8 +984,6 @@ tests:
 
   - name: "menu.install - returns true without error in headless"
     description: "install is a no-op returning true in headless without throwing error"
-    skip: false
-    skip_reason: ""
     script: |
       new(menubarType, @system.temp.testMenu);
       menu.addMenuCommand(@system.temp.testMenu, "Custom", "Test", "test()");
@@ -1053,8 +999,6 @@ tests:
 
   - name: "menu.isInstalled - returns false without error"
     description: "isInstalled should return false in headless without throwing error"
-    skip: false
-    skip_reason: ""
     script: |
       new(menubarType, @system.temp.testMenu);
 
@@ -1069,8 +1013,6 @@ tests:
 
   - name: "menu.remove - returns true without error in headless"
     description: "remove is a no-op returning true in headless without throwing error"
-    skip: false
-    skip_reason: ""
     script: |
       new(menubarType, @system.temp.testMenu);
       menu.addMenuCommand(@system.temp.testMenu, "File", "Test", "test()");

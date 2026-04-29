@@ -19,8 +19,6 @@ tests:
 
   - name: "mbar copy - copy menubar value to new location"
     description: "Create a menubar at system.temp.src, copy to system.temp.dst, verify typeof is mbar"
-    skip: false
-    skip_reason: ""
     script: |
       new(menubarType, @system.temp.src);
       system.temp.dst = system.temp.src;
@@ -37,8 +35,6 @@ tests:
 
   - name: "mbar copy - defined() works after copy"
     description: "Create menubar, copy it, verify defined() returns true on the copy"
-    skip: false
-    skip_reason: ""
     script: |
       new(menubarType, @system.temp.src);
       system.temp.dst = system.temp.src;
@@ -80,8 +76,6 @@ tests:
 
   - name: "mbar read - typeof userland.virginBookmarkMenu is mbar"
     description: "Verify we can access userland.virginBookmarkMenu and its type is mbar"
-    skip: false
-    skip_reason: ""
     script: |
       return typeof(userland.virginBookmarkMenu) == 'mbar'
     expected_success: true
@@ -93,8 +87,6 @@ tests:
 
   - name: "mbar copy - copy userland.virginBookmarkMenu to workspace"
     description: "Copy userland.virginBookmarkMenu to workspace location - this is the exact operation that was failing"
-    skip: false
-    skip_reason: ""
     script: |
       system.temp.testCopy = userland.virginBookmarkMenu;
       local (result = typeof(system.temp.testCopy) == 'mbar');
