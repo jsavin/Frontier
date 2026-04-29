@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<opml version="2.0">
+  <head>
+    <title>Frontier REPL UI design plan</title>
+    <dateCreated>Wed, 29 Apr 2026 00:00:00 GMT</dateCreated>
+    <ownerName>Jake Savin</ownerName>
+  </head>
+  <body>
+    <outline text="Frontier REPL UI design plan">
+      <outline text="North star">
+        <outline text="VisiCalc on Apple ][ is the design floor: text-only, full-screen, modal, instant. 40 columns, all uppercase, four navigation keys (arrows + RETURN), one leader key (slash)."/>
+        <outline text="If the design works in 40x24 over an ssh session in 2026, it will work everywhere. We earn richer renderings only after the floor is solid."/>
+        <outline text="Slash isn't decoration. It's the mode-switch that turns a free-form expression line into a navigable command palette -- and it's the same key Slack, Discord, Claude Code, and Notion use today. 47 years of muscle memory plus the 2026 default."/>
+      </outline>
+      <outline text="Hard constraints (the floor must satisfy these)">
+        <outline text="Pure VT100/ANSI -- no curses dependency, no truecolor required. Works over ssh, in tmux, on a serial console."/>
+        <outline text="Single-key feedback. Every keypress visibly does something within one frame. No hidden state."/>
+        <outline text="Modal visibility. The user always knows whether they are typing UserTalk or navigating commands. Status line says so."/>
+        <outline text="Reversible. ESC always backs out one level. ESC-ESC-ESC always returns to the expression prompt. No dead ends."/>
+        <outline text="Re-renderable from zero. The screen state is a pure function of REPL state. Resizing, redraw-on-corruption, and async output (worker logs) all work by re-renders, not by patches."/>
+        <outline text="Async output never corrupts input. linenoise already does this with hide/show -- we extend the pattern to the palette."/>
+      </outline>
+      <outline text="What exists today">
+        <outline text="frontier-cli is single-line: read a UserTalk expression, evaluate, print result. linenoise (third_party) provides editing, history, tab completion."/>
+        <outline text="repl.c (~2200 lines), repl_output.c (~600), terminal_control.c (~400), tab_completion.c (~230). The substrate is there."/>
+        <outline text="What is missing: the modal palette layer above the expression line."/>
+      </outline>
+      <outline text="The two modes">
+        <outline text="Expression mode (default). The whole screen is a scrollback. Bottom line is the input prompt. Identical to today. UserTalk in, result out. ENTER evaluates."/>
+        <outline text="Palette mode (entered by typing / at column 1 of an empty input). Screen splits: scrollback above, palette overlay at the bottom. Arrow keys navigate the menu tree. ENTER executes. ESC exits palette mode."/>
+        <outline text="Critical: typing / mid-expression does nothing special. It's only a mode switch when the input line is empty. This is the rule that lets / be a UserTalk operator AND a palette opener without conflict."/>
+      </outline>
+      <outline text="Palette layout (the 40x24 floor)">
+        <outline text="Bottom 8 rows reserved for the palette when active. Top 16 rows remain scrollback."/>
+        <outline text="Row 1 (palette): breadcrumb. /  &gt;  manila  &gt;  posts"/>
+        <outline text="Row 2 (palette): input. Filter text the user is typing. Live-narrows the visible items."/>
+        <outline text="Rows 3-7 (palette): visible items, one per row. Highlighted row is the cursor."/>
+        <outline text="Row 8 (palette): footer. Hints: ENTER execute  |  arrow-keys navigate  |  / drill in  |  ESC back  |  ?  describe"/>
+        <outline text="Resize behavior: palette scales to terminal height. Minimum is 6 rows total (breadcrumb + input + 2 items + footer)."/>
+      </outline>
+      <outline text="Navigation grammar">
+        <outline text="UP/DOWN: move cursor between visible items"/>
+        <outline text="LEFT or BACKSPACE-on-empty: go up one level (or back out one breadcrumb)"/>
+        <outline text="RIGHT or ENTER on a submenu: drill in"/>
+        <outline text="ENTER on a leaf: execute"/>
+        <outline text="ESC: exit palette mode entirely, back to expression prompt"/>
+        <outline text="Type any letter: live-filter visible items, fuzzy-match style"/>
+        <outline text="? on a highlighted item: show description (one-line tooltip in footer, or full pane on demand)"/>
+        <outline text="TAB: complete the partial item name to the longest unambiguous prefix (matches linenoise idiom)"/>
+        <outline text="/ pressed mid-palette: drill into highlighted item (same as RIGHT). This makes typing /manila/posts/publish a continuous gesture without needing to release the slash."/>
+      </outline>
+      <outline text="The 'continuous gesture' principle">
+        <outline text="Slack/Discord pattern: type /command arg1 arg2 in one breath. We can match this in palette mode too."/>
+        <outline text="From expression prompt, typing /manila/posts/publish hello-world without pausing should: enter palette mode on /, drill manila, drill posts, highlight publish, accept the rest as argument string, and execute on ENTER."/>
+        <outline text="This requires the palette to accept slashes as drill operators while in filter mode. That makes / consistent across REPL palette, HTTP routing, and chatbot transports -- one gesture, multiple projections."/>
+      </outline>
+      <outline text="Argument-taking commands">
+        <outline text="Mac menus had no arguments. Modern slash commands do."/>
+        <outline text="Proposed: a leaf may declare 'accepts_args: true' in its metadata. When the cursor is on such a leaf, a second input line appears below the breadcrumb prompting for arguments. ENTER submits."/>
+        <outline text="The leaf's UserTalk script receives a single string -- everything after the command name -- and parses it itself. No structured argument schema in v1. This matches /auto, /gate, /doit conventions in Claude Code."/>
+        <outline text="v2 could add typed argument schemas. Not now."/>
+      </outline>
+      <outline text="Discoverability">
+        <outline text="/ alone with no filter shows the top-level command tree -- every app's root menu, alphabetized."/>
+        <outline text="? at any node shows its description (from leaf metadata or app-supplied palette help)."/>
+        <outline text="//search-text fuzzy-searches the entire tree (not just current level), surfacing results with breadcrumbs. This is the 'I know what I want, I don't remember where it lives' affordance."/>
+        <outline text="No man-page browser, no wizards. The palette is the discovery surface."/>
+      </outline>
+      <outline text="Async output in palette mode">
+        <outline text="Today linenoise hides/redraws the input line when async output arrives."/>
+        <outline text="Extension: when palette is active, async output is buffered and shown above the palette boundary (in the scrollback region). The palette region itself is never overwritten by async output."/>
+        <outline text="If a worker thread emits a log line, it appears in the scrollback. The palette stays put. User keeps navigating. This is non-negotiable -- mode integrity is the whole point."/>
+      </outline>
+      <outline text="Iteration ladder (each rung must work in 40x24 vt100)">
+        <outline text="Rung 1 (the floor): expression mode unchanged + palette mode with breadcrumb, filter, item list, footer. Monochrome. No mouse. Pure ANSI cursor positioning + clear-line. This is the VisiCalc-on-Apple-][ baseline. Ship this."/>
+        <outline text="Rung 2: ANSI 16-color palette -- highlighted row inverse, breadcrumb dim, footer dim, leaf-vs-submenu distinguished by glyph (&gt; for submenu, blank for leaf, ! for disabled)."/>
+        <outline text="Rung 3: 256-color where available, with graceful fallback. Fuzzy-match highlighting on filter text. Rich descriptions in footer."/>
+        <outline text="Rung 4: split-pane layout in tall terminals (palette right, scrollback left). 40-col mode still works -- it's just no longer the only mode."/>
+        <outline text="Rung 5: command history-aware palette. Recently-used commands float to top of the relevant subtree. zsh-like."/>
+        <outline text="Rung 6 (much later, optional): mouse support, kitty/iterm2 image protocol for icons, hyperlinks. Strictly opt-in."/>
+        <outline text="No rung depends on the rung above. Each is independently shippable."/>
+      </outline>
+      <outline text="What we do NOT build">
+        <outline text="No ncurses dependency. The screen model is hand-rolled ANSI -- like our existing terminal_control.c."/>
+        <outline text="No mouse-required affordances. Mouse is decoration, never required."/>
+        <outline text="No truecolor-required affordances. 16 colors must always be sufficient."/>
+        <outline text="No terminal-resize-required behavior. 40x24 must work."/>
+        <outline text="No 'modal-but-secretly-not' behavior. Mode is visible, mode is intentional, mode is reversible."/>
+      </outline>
+      <outline text="Open design questions">
+        <outline text="1. Should palette mode block UserTalk evaluation, or run alongside? (Probably block -- but if a palette command itself is async, the user might want to navigate while it runs. Not for v1.)"/>
+        <outline text="2. Should we have a 'recent commands' affordance distinct from history? (zsh fish-style menu select on UP from empty palette filter? Decide later.)"/>
+        <outline text="3. How do we surface app-installed menus that arrive AFTER the REPL has started? Hot-reload the palette? (Probably yes -- menus are just ODB tables, we can re-read on each / press.)"/>
+        <outline text="4. Multi-line palette input for argument-taking commands -- how does ENTER vs SHIFT-ENTER work in vt100 where SHIFT-ENTER may be indistinguishable? (Maybe ENTER submits, ESC cancels, control-J inserts newline. TBD.)"/>
+        <outline text="5. Does /help in palette mode invoke the palette's own help, or evaluate as the menu command system.menus.data.help? (Suggest: in palette mode, ?, F1, and /help-the-palette-builtin all show palette help. /help-as-menu-command resolves only when typed at expression prompt with no prior palette open.)"/>
+      </outline>
+      <outline text="Implementation seams">
+        <outline text="terminal_control.c: extend with cursor-save, cursor-restore, region-clear, region-fill primitives. Today it's mostly raw mode toggling and bell. Add maybe 200 lines."/>
+        <outline text="repl.c: add a palette-mode state machine. Input dispatch branches on mode. ~500 lines."/>
+        <outline text="A new palette.c: owns the palette's render state, navigation, filter, and execute. Reads from system.menus.data via the existing externals. ~600-800 lines."/>
+        <outline text="No new third_party deps. linenoise stays as-is."/>
+      </outline>
+      <outline text="Testability">
+        <outline text="The whole palette is a pure function of (menu tree, breadcrumb stack, filter string, cursor index, terminal size) -&gt; (rendered byte stream)."/>
+        <outline text="Unit tests: feed the renderer a state, snapshot the byte stream, diff. Same pattern as the existing OPML test reports."/>
+        <outline text="Integration tests: drive the palette via scripted keypresses, assert end state. Frontier already has a test runner that pipes input -- this fits."/>
+        <outline text="Hard part: testing actual terminal rendering across emulators. Defer -- snapshot tests cover the floor."/>
+      </outline>
+      <outline text="Why this matters beyond the REPL">
+        <outline text="The palette UI is a reference implementation of how to consume system.menus.data."/>
+        <outline text="Once it works in the REPL, the same data drives the HTTP /commands/* router, the MCP tool catalog, the chatbot command parser, and (when it returns) the Mac menubar."/>
+        <outline text="The REPL palette is not the goal. It's the proof of concept for the menu system as Frontier's universal command surface. If the floor works, every consumer above it gets a credible target to render."/>
+      </outline>
+      <outline text="Companion document">
+        <outline text="See: planning/discussions/headless-menus-as-slash-commands.opml -- the data-model and product framing this UI plan implements."/>
+      </outline>
+    </outline>
+  </body>
+</opml>
