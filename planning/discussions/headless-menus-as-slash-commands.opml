@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<opml version="2.0">
+  <head>
+    <title>Headless menus as Frontier's slash command system</title>
+    <dateCreated>Wed, 29 Apr 2026 00:00:00 GMT</dateCreated>
+    <ownerName>Jake Savin</ownerName>
+  </head>
+  <body>
+    <outline text="Headless menus as Frontier's slash command system">
+      <outline text="The pitch in one line">
+        <outline text="Frontier's menu system is already the right shape to be the slash-command interface for the REPL, chat bots, HTTP responders, and AI agents. We don't need to build that. We need to stop treating menus as UI and start treating them as a scriptable command surface."/>
+      </outline>
+      <outline text="Why slash">
+        <outline text="The slash key has the longest continuous lineage in personal computing: VisiCalc 1979, Lotus 1-2-3, Excel ribbon (still works in Office 365 today)."/>
+        <outline text="Bricklin's reasoning: unshifted, home row, minimum keystrokes."/>
+        <outline text="In 2026, every chat-shaped UI on the planet has converged on the same prefix: Slack, Discord, ChatGPT, Claude Code, Notion, Linear, Vim, Obsidian, X. /command is the universal command modality."/>
+        <outline text="So slash carries 47 years of muscle memory AND is the present-day default for command UIs. That is rare."/>
+      </outline>
+      <outline text="What a Frontier menu already is">
+        <outline text="A hierarchical tree of named commands stored in the ODB at system.menus.data."/>
+        <outline text="Every leaf has a UserTalk script attached -- the executor."/>
+        <outline text="Every leaf has metadata: label, command-key, enable/disable state."/>
+        <outline text="That is exactly the shape of a slash command palette. Type /, navigate the tree, execute the leaf's script."/>
+      </outline>
+      <outline text="What headless mode is missing">
+        <outline text="The structural verbs (menu.install, menu.addMenuCommand) take input but don't write queryable, persistent menu data. They are no-ops at the runtime layer."/>
+        <outline text="20 of 49 tests in menu_data_verbs.yaml are skipped because of this. The skips name the gap exactly: 'menu.addMenuCommand is a no-op in headless mode -- no items are actually added.'"/>
+        <outline text="Some migration weirdness: 'system.menus.data may not exist in migrated root7' -- the headless menu data path was bolted on rather than designed."/>
+      </outline>
+      <outline text="The reframe">
+        <outline text="Headless menus is not a porting problem. It is a product problem."/>
+        <outline text="Question: what is a menu in headless Frontier?"/>
+        <outline text="Answer (proposed): a menu is the slash-command vocabulary for whatever is consuming Frontier -- REPL, HTTP, chatbot, AI agent. UI rendering, when it returns, is one consumer of N."/>
+      </outline>
+      <outline text="Consumers of the same menu data">
+        <outline text="REPL: type / in frontier-cli, get a navigable command palette. /help becomes a menu entry instead of a hardcoded REPL command."/>
+        <outline text="HTTP: POST /commands/manila/publish routes to system.menus.data.manila.publish via mainResponder."/>
+        <outline text="Chatbot (Slack/Discord/Matrix): /manila publish hello-world is the same call, projected through a different transport."/>
+        <outline text="AI agents (MCP): an MCP server enumerates system.menus.data and exposes each leaf as a tool. The model sees /manila/publish as a callable tool with a description; the call routes through the existing menu-item script. A few hundred lines of UserTalk, not a new subsystem."/>
+        <outline text="Future Mac UI: same data, rendered as a menubar."/>
+      </outline>
+      <outline text="What this means for Manila">
+        <outline text="Manila's editorial menubar becomes Manila's slash command vocabulary -- automatically -- because Manila already populates system.menus.data when it installs."/>
+        <outline text="No new code in Manila. The menubar Manila already builds IS the API surface."/>
+      </outline>
+      <outline text="One honest tension">
+        <outline text="VisiCalc's slash was a leader key that switched modes."/>
+        <outline text="Slack/Claude Code's slash is a prefix in a free-form text field."/>
+        <outline text="They are not the same UX."/>
+        <outline text="Resolution: each consumer projects the same menu tree through its own idiom. REPL uses prefix. HTTP uses path routing. MCP uses tool-name flattening. Mac UI uses menubar. The shared substrate is the menu tree."/>
+        <outline text="This forces the data model to be sound enough to survive multiple projections -- which is a feature, not a bug."/>
+      </outline>
+      <outline text="Open design questions (where I want input)">
+        <outline text="1. Where does menu data actually live in v7? Is system.menus.data.AppName the canonical home, or is that legacy? The migration test skips suggest this isn't fully settled."/>
+        <outline text="2. What's the leaf record shape for headless mode? Today it's a Mac-era struct (label, command-key, script, enabled-flag). What does the headless leaf look like? Probably closer to a slash-command spec: {label, script, description, enabled, hidden, shortcut?, accepts_args?}."/>
+        <outline text="3. Argument-taking commands. /foo arg1 arg2 is the modern shape. Mac menus didn't have arguments. Probably: the script handler takes a single string (everything after the command name) and parses it itself."/>
+        <outline text="4. Discoverability. / alone should list available commands. menu.list(), menu.describe(@menu) -- small verbs, but the seam that makes everything else useful."/>
+        <outline text="5. Relationship to the QuickScript REPL. ADR-009 says the REPL is dead simple, no command modes. Adding / as a prefix is adding a narrow command mode back. Worth being explicit: / is the only special prefix; everything else is a UserTalk expression."/>
+      </outline>
+      <outline text="Proposed phasing">
+        <outline text="Phase 1: ADR -- 'Headless Menus as Slash Command Palette.' Define the v7 menu leaf record. Pick canonical home (system.menus.data.&lt;app&gt;.&lt;command&gt; or replacement). Cheap. Unlocks everything else."/>
+        <outline text="Phase 2: Make the no-op verbs in menuverbs.c actually write/read that record. The 20 skipped tests in menu_data_verbs.yaml become the acceptance suite."/>
+        <outline text="Phase 3: Add / to the REPL as a prefix that resolves against system.menus.data and executes the leaf's script. Slash commands work in frontier-cli."/>
+        <outline text="Phase 4 (separable): MCP shim that exposes the menu tree as tools. AI agents can drive Frontier through the same surface humans use."/>
+      </outline>
+      <outline text="Why this is strategic, not tactical">
+        <outline text="The skipped tests are pointing at the exact thing we'd build."/>
+        <outline text="The ODB already stores menu data the right way. We don't have to invent a new system."/>
+        <outline text="It costs Manila zero work to participate."/>
+        <outline text="It gives AI agents a tool catalog for free."/>
+        <outline text="And it lands Frontier's command surface on the prefix that has 47 years of muscle memory and is the dominant command UI of 2026."/>
+        <outline text="This is the 'least new code, most new capability' shape."/>
+      </outline>
+    </outline>
+  </body>
+</opml>
