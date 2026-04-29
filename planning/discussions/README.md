@@ -8,5 +8,5 @@ OPML files in this directory are intended to be opened in [Drummer](https://drum
 
 ## Current
 
-- **[Headless menus as Frontier's slash command system](headless-menus-as-slash-commands.opml)** (2026-04-29) — Proposes treating the existing menu system as the slash-command surface for REPL, HTTP, chatbots, and AI agents rather than as a UI artifact. The 20 skipped tests in `menu_data_verbs.yaml` become the acceptance suite for Phase 2 of the implementation.
+- **[Headless menus as Frontier's slash command system](headless-menus-as-slash-commands.opml)** (2026-04-29) — Proposes treating the existing menu system as the scriptable command surface it has always been, with the REPL palette as the first modern projection. Reframes from "Mac UI artifact" to "the cross-host command vocabulary an app exposes to whatever is calling it." The 20 skipped tests in `menu_data_verbs.yaml` become the acceptance suite for Phase 2 of the implementation.
 - **[Frontier REPL UI design plan](repl-ui-design-plan.opml)** (2026-04-29) — Companion to the menu proposal: the modal palette UI that sits atop `system.menus.data`. North star is VisiCalc on Apple ][ — text-only, full-screen, modal, instant. Iteration ladder rises from there but every rung must work in 40×24 vt100 over ssh.

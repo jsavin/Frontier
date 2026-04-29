@@ -8,7 +8,7 @@
   <body>
     <outline text="Headless menus as Frontier's slash command system">
       <outline text="The pitch in one line">
-        <outline text="Frontier's menu system is already the right shape to be the slash-command interface for the REPL, chat bots, HTTP responders, and AI agents. We don't need to build that. We need to stop treating menus as UI and start treating them as a scriptable command surface."/>
+        <outline text="Frontier's menu system is already the right shape to be the slash-command interface for any UI or programmatic consumer that wants a discoverable, hierarchical, scriptable command surface. We don't need to build that. We need to stop treating menus as a Mac UI artifact and start treating them as the scriptable command surface they have always been."/>
       </outline>
       <outline text="Why slash">
         <outline text="The slash key has the longest continuous lineage in personal computing: VisiCalc 1979, Lotus 1-2-3, Excel ribbon (still works in Office 365 today)."/>
@@ -30,7 +30,7 @@
       <outline text="The reframe">
         <outline text="Headless menus is not a porting problem. It is a product problem."/>
         <outline text="Question: what is a menu in headless Frontier?"/>
-        <outline text="Answer (proposed): a menu is the slash-command vocabulary for whatever is consuming Frontier -- REPL, HTTP, chatbot, AI agent. UI rendering, when it returns, is one consumer of N."/>
+        <outline text="Answer (proposed): a menu is the slash-command vocabulary an app exposes to the host. The host (REPL, chat picker, future Mac menubar, programmatic caller) decides how to project that vocabulary into its own idiom."/>
       </outline>
       <outline text="Prior art: the menu API is one of UserLand's oldest shipping products">
         <outline text="UserLand shipped a menu-sharing API very early in the company's history. Apps (running inside Frontier or as separate processes) could install items into the system menu, with a UserTalk script as the handler. The user picks a menu item; Frontier dispatches to the script."/>
@@ -44,18 +44,18 @@
       </outline>
       <outline text="Consumers of the same menu data (API side)">
         <outline text="The menu API was always, in part, a programmatic surface: 'list installed menus, describe an item, invoke it.' That stays."/>
-        <outline text="Modern uses: an MCP server can enumerate the menu tree and expose enabled leaves as tools to an LLM. A test harness can drive an app by invoking its menu items. A scripting bridge can let one app reach into another app's installed menu and call a handler."/>
+        <outline text="Examples of programmatic consumers: a test harness driving an app by invoking its menu items; a scripting bridge letting one app reach into another's installed menu and call a handler; a remote-control protocol exposing the tree to non-Frontier clients. (And, optionally, an MCP shim that exposes leaves as tools to an LLM -- but that's one possible consumer among many, not the reason this matters.)"/>
         <outline text="None of this replaces app-specific APIs. Manila has its own HTTP API and that is the right interface for Manila. The menu API is for the cross-cutting cases: discovering and invoking the commands an app has chosen to expose at the menu level."/>
       </outline>
       <outline text="What this asks of apps (Manila or otherwise)">
-        <outline text="Nothing new. Apps that install menus are already using the API. We are restoring the headless side of it (where the install actually persists data and the invoke actually runs), and adding modern projections on top (palette UI, MCP catalog)."/>
+        <outline text="Nothing new. Apps that install menus are already using the API. We are restoring the headless side of it (where the install actually persists data and the invoke actually runs), and making the same data available to whatever projection a host wants to render -- starting with the REPL palette."/>
         <outline text="An app that doesn't want its commands exposed at this level simply doesn't install them as menu items. Same as it has always worked."/>
       </outline>
       <outline text="One honest tension">
         <outline text="VisiCalc's slash was a leader key that switched modes."/>
         <outline text="Slack/Claude Code's slash is a prefix in a free-form text field."/>
         <outline text="They are not the same UX."/>
-        <outline text="Resolution: each consumer projects the same menu tree through its own idiom. REPL uses prefix. HTTP uses path routing. MCP uses tool-name flattening. Mac UI uses menubar. The shared substrate is the menu tree."/>
+        <outline text="Resolution: each consumer projects the same menu tree through its own idiom. REPL palette uses prefix-and-navigate. Mac UI uses menubar. A programmatic caller uses list/describe/invoke. New idioms can plug in later without changing the substrate. The shared substrate is the menu tree."/>
         <outline text="This forces the data model to be sound enough to survive multiple projections -- which is a feature, not a bug."/>
       </outline>
       <outline text="Open design questions (where I want input)">
@@ -69,13 +69,13 @@
         <outline text="Phase 1: ADR -- 'Headless Menus as Slash Command Palette.' Define the v7 menu leaf record. Pick canonical home (system.menus.data.&lt;app&gt;.&lt;command&gt; or replacement). Cheap. Unlocks everything else."/>
         <outline text="Phase 2: Make the no-op verbs in menuverbs.c actually write/read that record. The 20 skipped tests in menu_data_verbs.yaml become the acceptance suite."/>
         <outline text="Phase 3: Add / to the REPL as a prefix that resolves against system.menus.data and executes the leaf's script. Slash commands work in frontier-cli."/>
-        <outline text="Phase 4 (separable): MCP shim that exposes the menu tree as tools. AI agents can drive Frontier through the same surface humans use."/>
+        <outline text="Phase 4 (separable, optional, not on the critical path): additional projections such as a remote-control protocol or an MCP shim. These are nice-to-haves that fall out of the substrate; none is required for the menu system to be valuable."/>
       </outline>
       <outline text="Why this is strategic, not tactical">
         <outline text="The skipped tests are pointing at the exact thing we'd build."/>
         <outline text="The ODB already stores menu data the right way. We don't have to invent a new system."/>
         <outline text="Apps that already install menus participate for free -- no new work, no new contract."/>
-        <outline text="It gives AI agents a tool catalog for free."/>
+        <outline text="The same data is enumerable by any caller that wants to discover and invoke an app's commands -- programmatically, not just through a UI. (This makes things like agent tool catalogs, remote control, and test automation cheap to add later, but none of them is the goal.)"/>
         <outline text="And it lands Frontier's command surface on the prefix that has 47 years of muscle memory and is the dominant command UI of 2026."/>
         <outline text="This is the 'least new code, most new capability' shape."/>
       </outline>

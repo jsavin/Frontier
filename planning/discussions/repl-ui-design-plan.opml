@@ -108,7 +108,7 @@
       </outline>
       <outline text="Why this matters beyond the REPL">
         <outline text="The palette UI is a reference implementation of how to consume system.menus.data."/>
-        <outline text="Once it works in the REPL, the same data drives the HTTP /commands/* router, the MCP tool catalog, the chatbot command parser, and (when it returns) the Mac menubar."/>
+        <outline text="Once it works in the REPL, the same data is available to any other host that wants to render or invoke menus -- a future Mac menubar, a chatbot picker, a programmatic enumerator. The REPL palette is the first projection; others can plug in later without changing the substrate."/>
         <outline text="The REPL palette is not the goal. It's the proof of concept for the menu system as Frontier's universal command surface. If the floor works, every consumer above it gets a credible target to render."/>
       </outline>
       <outline text="Companion document">
