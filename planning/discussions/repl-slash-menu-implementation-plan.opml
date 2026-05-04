@@ -14,11 +14,12 @@
       </outline>
       <outline text="Headline decisions in this plan (where I want pushback before code lands)">
         <outline text="1. Canonical headless menu storage is system.menus.data.&lt;app&gt;.&lt;menu&gt;.&lt;item&gt;. Same shape the legacy code already used; lazy-create on first verb call to fix the v7-migrated-root gap."/>
-        <outline text="2. Leaf record fields: label, script, description, enabled, hidden, shortcut, accepts_args, plus cmdkey/cmdmodifiers preserved for legacy compat."/>
+        <outline text="2. Leaf record fields: label, script, description, enabled, hidden, shortcut, accepts_args, plus cmdkey/cmdmodifiers preserved for legacy compat. Note: shortcut is auto-derived (first non-duplicated letter of the label) at install time -- only set explicitly when overriding."/>
         <outline text="3. Build a hand-rolled pane compositor (~600-800 LOC) rather than adopt a TUI framework. notcurses fits some of the requirements but its menu widget is single-level only, and it brings CMake + libunistring + libdeflate + an optional GPM broker for mouse-over-ssh."/>
         <outline text="4. Submenus cascade visually -- parent menu stays on screen, child opens to the right at the selected row. This is the VisiCalc / classic Mac model, not a Slack-style single-pane palette."/>
         <outline text="5. Mouse via xterm SGR 1006 protocol. Click on menubar / item / scroll wheel all supported. Disable cleanly on exit so terminals don't get stuck."/>
         <outline text="6. The 6 existing slash commands (/exit /help /clear /keycodes /list /jump) move into a 'REPL' menu in the menubar. The leading-/ branch in process_line() becomes a fallback resolver against system.menus.data, so /exit ENTER continues to work as muscle memory."/>
+        <outline text="7. Hotkey rule: within a menu (or the menubar itself), each item's hotkey is the first letter of its label that hasn't already been claimed by an earlier sibling at the same level. Resolved at install/build time, surfaced in the leaf's shortcut field, rendered with an underline (or first-char highlight on monochrome). Authors only set shortcut explicitly when they want to override the auto-derivation."/>
       </outline>
       <outline text="Why hand-roll instead of a TUI framework">
         <outline text="No maintained C framework ships a cascading-menu widget. notcurses ncmenu is single-level. termbox2 has no widgets. libtickit has windows but no menu. We'd hand-roll the cascade in any of them."/>
@@ -63,9 +64,16 @@
       </outline>
       <outline text="UserTalk side: default REPL menubar">
         <outline text="New script: usertalk_scripts/Frontier.root/system/menus/installReplMenubar.ut"/>
-        <outline text="Builds the menubar at startup: REPL menu (Help/Clear/List/Jump/Key codes/Exit with hotkeys H/C/L/J/K/X), Help menu, plus File/Edit/View as reserved hotkey placeholders for future PRs."/>
+        <outline text="Builds the menubar at startup: REPL menu (Help / Clear / List / Jump / Key codes / Exit), Help menu, plus File / Edit / View as reserved placeholders for future PRs. All hotkeys auto-derived at install -- no setCommandKey calls needed. Within the REPL menu in declared order: Help=H, Clear=C, List=L, Jump=J, Key codes=K (first-char K is free), Exit=E. The menubar's own scope claims File=F, Edit=E, View=V, Help=H, REPL=R. Per-scope namespaces mean E-in-Edit (menubar) doesn't collide with E-in-Exit (REPL menu)."/>
         <outline text="Six handler scripts under system.menus.handlers.repl.* reproduce the existing C-side slash-command behavior. Five new kernel verbs (in frontier-cli/repl_verbs.c) bridge the parts that today live in C: repl.exit, repl.clearVariables, repl.jumpPath, repl.printKeyCodes, repl.list."/>
         <outline text="Called from REPL init after repl_variables_init at repl.c:2058. Guarantees the palette has content on first / press."/>
+      </outline>
+      <outline text="Hotkey auto-derivation rule">
+        <outline text="Scope is per-sibling-list: each menu has its own hotkey namespace, and so does the menubar itself. Two siblings can't share a hotkey; an item three levels deep can reuse a letter another menu used."/>
+        <outline text="Algorithm at install/build time: walk siblings in declared order. For each label, find the first character whose uppercase form is not yet claimed in this scope. Claim it, store as the leaf's shortcut, and mark for underline rendering."/>
+        <outline text="If every letter in a label is already claimed, the item gets no hotkey -- still navigable by arrow keys + ENTER. Log a warning at install."/>
+        <outline text="Authors override by setting shortcut explicitly in the leaf (or via menu.setCommandKey). Explicit overrides are honored first, before the auto-walk runs, so they reserve their letter."/>
+        <outline text="Rendering: hotkey character is underlined in the rendered label (ANSI SGR 4). On terminals without underline, fall back to first-char highlight via inverse video on that single cell."/>
       </outline>
       <outline text="Phasing -- 8 PRs, mostly independent">
         <outline text="PR 1: Headless menu storage -- canonical home + lazy-create. (kernel-only, gates everything below)"/>
