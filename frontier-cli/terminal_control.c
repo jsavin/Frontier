@@ -361,6 +361,113 @@ key_input terminal_read_key(void) {
 	return result;
 }
 
+/* ---------------------------------------------------------------------------
+ * Slash-menu palette UI substrate (PR 3)
+ *
+ * Cursor positioning, SGR colour/attribute, Unicode box drawing, and xterm
+ * mouse tracking enable/disable.  See header for usage notes and rationale.
+ * ------------------------------------------------------------------------- */
+
+/* Move cursor to absolute (row, col) — 1-based.  CSI CUP. */
+void terminal_move_to(int row, int col) {
+	fprintf(stderr, "\x1b[%d;%dH", row, col);
+	fflush(stderr);
+}
+
+/* Set foreground/background colour and bold/inverse/underline flags.
+ * Always emits a leading SGR 0 reset so callers don't have to track state. */
+void terminal_set_attr(uint8_t fg, uint8_t bg, uint8_t flags) {
+	/* Build "ESC [ 0[;1][;7][;4][;3<fg>][;4<bg>] m" */
+	char buf[64];
+	int n = 0;
+	n += snprintf(buf + n, sizeof(buf) - n, "\x1b[0");
+	if (flags & TERM_ATTR_BOLD)      n += snprintf(buf + n, sizeof(buf) - n, ";1");
+	if (flags & TERM_ATTR_UNDERLINE) n += snprintf(buf + n, sizeof(buf) - n, ";4");
+	if (flags & TERM_ATTR_INVERSE)   n += snprintf(buf + n, sizeof(buf) - n, ";7");
+	if (fg >= 1 && fg <= 7)          n += snprintf(buf + n, sizeof(buf) - n, ";3%u", (unsigned)fg);
+	if (bg >= 1 && bg <= 7)          n += snprintf(buf + n, sizeof(buf) - n, ";4%u", (unsigned)bg);
+	n += snprintf(buf + n, sizeof(buf) - n, "m");
+	(void)n;
+	fputs(buf, stderr);
+	fflush(stderr);
+}
+
+/* Draw a rectangular border using Unicode box-drawing chars. */
+void terminal_emit_box(int x, int y, int w, int h, bool double_line) {
+	if (w < 2 || h < 2) {
+		/* Degenerate — nothing meaningful to draw. */
+		return;
+	}
+
+	/* UTF-8 sequences for the two glyph sets. */
+	const char *tl, *tr, *bl, *br, *hz, *vt;
+	if (double_line) {
+		tl = "\xe2\x95\x94";  /* ╔ U+2554 */
+		tr = "\xe2\x95\x97";  /* ╗ U+2557 */
+		bl = "\xe2\x95\x9a";  /* ╚ U+255A */
+		br = "\xe2\x95\x9d";  /* ╝ U+255D */
+		hz = "\xe2\x95\x90";  /* ═ U+2550 */
+		vt = "\xe2\x95\x91";  /* ║ U+2551 */
+	} else {
+		tl = "\xe2\x94\x8c";  /* ┌ U+250C */
+		tr = "\xe2\x94\x90";  /* ┐ U+2510 */
+		bl = "\xe2\x94\x94";  /* └ U+2514 */
+		br = "\xe2\x94\x98";  /* ┘ U+2518 */
+		hz = "\xe2\x94\x80";  /* ─ U+2500 */
+		vt = "\xe2\x94\x82";  /* │ U+2502 */
+	}
+
+	/* Top edge */
+	fprintf(stderr, "\x1b[%d;%dH", y, x);
+	fputs(tl, stderr);
+	for (int i = 0; i < w - 2; i++) fputs(hz, stderr);
+	fputs(tr, stderr);
+
+	/* Side edges */
+	for (int row = 1; row < h - 1; row++) {
+		fprintf(stderr, "\x1b[%d;%dH", y + row, x);
+		fputs(vt, stderr);
+		fprintf(stderr, "\x1b[%d;%dH", y + row, x + w - 1);
+		fputs(vt, stderr);
+	}
+
+	/* Bottom edge */
+	fprintf(stderr, "\x1b[%d;%dH", y + h - 1, x);
+	fputs(bl, stderr);
+	for (int i = 0; i < w - 2; i++) fputs(hz, stderr);
+	fputs(br, stderr);
+
+	fflush(stderr);
+}
+
+/* atexit-registered cleanup so a normal exit() always restores the terminal. */
+static void terminal_mouse_atexit_cleanup(void) {
+	/* Direct write to STDERR_FILENO using only async-signal-safe APIs is
+	 * unnecessary here (atexit runs from normal context), but using fputs
+	 * + fflush keeps it consistent with the rest of this file. */
+	terminal_disable_mouse();
+}
+
+/* Enable xterm SGR (1006) + button-event (1000) mouse tracking.
+ * Registers atexit cleanup on first call only (idempotent). */
+void terminal_enable_mouse(void) {
+	static bool atexit_registered = false;
+	if (!atexit_registered) {
+		atexit(terminal_mouse_atexit_cleanup);
+		atexit_registered = true;
+	}
+
+	fputs("\x1b[?1006h\x1b[?1000h", stderr);
+	fflush(stderr);
+}
+
+/* Disable mouse tracking.  Order matches xterm convention: turn off the
+ * encoding extension after the button-event tracking that referenced it. */
+void terminal_disable_mouse(void) {
+	fputs("\x1b[?1000l\x1b[?1006l", stderr);
+	fflush(stderr);
+}
+
 /* Sets a custom SIGINT handler; returns the previous handler. */
 terminal_sigint_handler terminal_set_sigint_handler(terminal_sigint_handler handler) {
 	terminal_sigint_handler old_handler = original_sigint_handler;
