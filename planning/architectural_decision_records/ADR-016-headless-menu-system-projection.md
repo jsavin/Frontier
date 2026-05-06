@@ -1,6 +1,6 @@
-# ADR-016 (DRAFT): Headless Projection of the Frontier Menu System
+# ADR-016: Headless Projection of the Frontier Menu System
 
-**Status**: DRAFT — open for discussion. Not yet ratified.
+**Status**: Accepted
 **Date**: 2026-05-05
 **Author**: Jake Savin (with research support)
 **Supersedes**: nothing (new architectural ground)
@@ -11,11 +11,13 @@
 
 ## Status note
 
-This is a draft ADR. It establishes the architectural model for projecting the Frontier menu system into headless hosts (the CLI/REPL today, a future native UI host, possible web/chatbot/MCP projections later). It is informed by a deep read of both the current `jsavin/Frontier/` tree and the legacy `tedchoward/Frontier/` tree.
+This ADR establishes the architectural model for projecting the Frontier menu system into headless hosts (the CLI/REPL today, a future native UI host, possible web/chatbot/MCP projections later). It is informed by a deep read of both the current `jsavin/Frontier/` tree and the legacy `tedchoward/Frontier/` tree.
 
 **This ADR does not commit to an implementation.** It commits to a model. Implementation is described downstream in the slash-menu discussion docs and (eventually) the PRs that follow this ADR.
 
-A standalone research note with the full file:line citations and OPEN QUESTION list lives in this same draft directory: `ADR-016-research-notes-menu-system-architecture.md` (companion to this ADR).
+A standalone research note with the full file:line citations lives in the drafts directory: `drafts/ADR-016-research-notes-menu-system-architecture.md` (companion working artifact, kept for reference but not part of the canonical decision record).
+
+The seven open questions identified during drafting were resolved on 2026-05-05; see "Resolved questions" below for outcomes and rationale, including two answers that diverged from the draft's recommendations.
 
 ---
 
@@ -89,17 +91,20 @@ Every headless host (REPL today, native UI tomorrow, web/chatbot later) projects
 
 - **Order is fixed**: Layer 1 (anchored) → Layer 2 (apps/tools) → Layer 3 (suites) → Layer 5 (system) — exactly mirroring the legacy menubar's left-to-right composition. Help is rendered rightmost.
 - **Layer 1 is host-owned, not application-owned.** The CLI host owns its anchored menus; a native host owns its anchored menus. Tools and suites are guests.
-- **Conflict resolution**: name collisions across layers are resolved by layer precedence — Layer 1 wins over Layer 2, Layer 2 over Layer 3, etc. Within a layer, alphabetical or load-order (TBD — see open questions).
-- **Per-layer hotkey scope**: hotkeys (the auto-derived first-non-duplicated-letter rule) compute per-sibling-list. Layer 1's File menu and a Layer 2 app's File menu would each get F independently if they were rendered as siblings; the layer composition rules prevent that collision in practice by reserving Layer 1 names.
+- **Conflict resolution for menu names**: name collisions across layers are resolved by layer precedence — Layer 1 wins over Layer 2, Layer 2 over Layer 3, etc.
+- **Within Layer 2: insertion order.** The first Tool to call `menu.install()` appears leftmost. Same convention as legacy. An explicit `.priority` field can be added later if a real need surfaces.
+- **Per-layer hotkey scope**: hotkeys (the auto-derived first-non-duplicated-letter rule) compute **per-layer**, not globally. Each layer's sibling list runs the algorithm independently; cross-layer hotkey collisions are tolerated. Rationale: the user is always navigating inside one layer at a time when picking a hotkey, so cross-layer ambiguity doesn't manifest at the keystroke. Per-layer scope also keeps the rule mechanically simple — no "reserved letters" table threaded across layers.
 
 ### What this means for the REPL specifically
 
 The REPL palette's `/` press shows a composed menubar:
 
 - **Layer 1**: Frontier menu, File, Edit, Window, Help — installed at REPL startup by a new `installHostMenubar.ut` (the renamed `installReplMenubar.ut` from the discussion doc). Items inside follow the Pike pattern: structure declared in the outline, behavior in scripts under `system.menus.handlers.<host>.*`.
-- **Layer 2**: Whatever's currently in `system.menus.data.<app>.*` with `.installed = true`. None at fresh launch; populated as user scripts call `menu.install()`. The legacy "Tools is dynamic" semantic is preserved here.
-- **Layer 3**: Empty initially. Activated if/when Suites/IPC clients publish menus to the headless host (future).
-- **Layer 4**: Skipped (REPL has no window-type concept yet).
+  - **Edit menu in v1**: present, with linenoise-aware items. Cut/Copy/Paste/Clear operate against the linenoise input buffer where the operations make sense. Undo/Redo/Find can wait for a richer input surface. Real parity now beats dimmed placeholders.
+  - **Boot failure mode**: if `installHostMenubar.ut` fails, log a prominent warning and continue. The REPL stays usable via legacy `/foo` commands (`/exit`, `/help`, etc.) even without a Layer 1 menubar — this is a deliberate choice to preserve debuggability when the menubar itself is what's broken.
+- **Layer 2**: Whatever's currently in `system.menus.data.<app>.*` with `.installed = true`. None at fresh launch; populated as user scripts call `menu.install()`. The legacy "Tools is dynamic" semantic is preserved here. Within-layer order is insertion order.
+- **Layer 3**: Deferred. Cross-process menu publishing was a System 7-era concept tied to Apple Events; it has no current consumers. The modern equivalent (system tray / menu extras / MCP-style shims) is platform-specific and will be re-imagined when there's a real driver, not ported. A future ADR covers it.
+- **Layer 4**: Skipped. The REPL has no editor windows yet, so there's no window-type to switch on. The legacy WindowTypes mechanism (Tools framework, ~2002–2003) was a separable hack on top of the core menubar; when editor windows return, Layer 4 returns with them. v1 baseline = "no editor frontmost".
 - **Layer 5**: Folded into Layer 1 Help.
 
 ### What this means for verbs
@@ -129,7 +134,7 @@ This is a deliberate simplification of the legacy model. In the Mac code, File >
 
 ### Negative / costs
 
-1. **Bootstrapping order matters.** The host's MBAR install script must run before the user can do anything menu-driven. If install fails, the REPL has no File menu. Mitigation: `installHostMenubar.ut` is part of the kernel boot sequence, not a user script.
+1. **Bootstrapping order matters.** The host's MBAR install script must run before the user can do anything menu-driven. If install fails, the REPL has no File menu. Mitigation: log a prominent warning and continue; the REPL stays usable via legacy `/foo` commands so the user can debug the failure. `installHostMenubar.ut` is part of the kernel boot sequence, not a user script — so failures should be rare and high-signal.
 2. **Layer 4 (window-type switching) is deferred.** The REPL doesn't need it; future native does. We're deciding now to ship without it and re-introduce it when native arrives. That's a coherent decision, but it means the model is incomplete on paper today.
 3. **Layer 5 (system Help) won't return.** Mac OS Carbon adds Help to the menubar via `HMGetHelpMenu()`. Headless hosts can't use that; they have to bake Help into Layer 1. Native hosts when they return will need a decision: re-enable system Help (re-introduces Layer 5) or stay with Layer-1 Help (uniform, simpler). Mark as open question for native era.
 4. **Scripts now run for every menu action, including primitives like Quit.** Performance impact: negligible (script is ~5 lines, parsed once). Correctness impact: a script bug in File > Quit could prevent quit. Mitigation: the host's MBAR install script is part of the kernel boot — it's tested with the same rigor as the kernel.
@@ -147,23 +152,24 @@ This is a deliberate simplification of the legacy model. In the Mac code, File >
 
 ---
 
-## Open questions
+## Resolved questions
 
-These need resolution before this ADR ships, but don't block the model.
+The following questions were raised during drafting and resolved on 2026-05-05. Two answers (Q4, Q6) diverged from the draft's recommendations; the rationale is preserved here.
 
-1. **Per-window-type menubar switching mechanism.** The research couldn't find the explicit table. Is there a `system.menus.<windowtype>` convention, or is it window-activate-time outline activation by name? **Resolution path**: a follow-up research pass focused on `Common/source/shellwindow*.c` and the window-activate event handler. Not blocking — REPL doesn't use Layer 4.
+1. **Per-window-type menubar switching mechanism (Layer 4).** Resolved: defer. The CLI has no editor windows in v1, so there is no window type to switch on. The legacy WindowTypes mechanism was part of the Tools framework added around 2002–2003 — separable from the core menubar, and acknowledged in retrospect as a slight hack. Per-editor-type menubar callbacks will return when external editor windows return; until then, the v1 baseline is "no editor frontmost." No further research needed before shipping.
 
-2. **Suites vs Tools distinction.** Are these two mechanisms (Suites = IPC-published menus, Tools = user-installed-via-menu.install MBARs), or is "Tools" just a colloquial name for what gets installed at `system.menus.data.tools`? **Resolution path**: ask Dave; he has the canonical answer. If they're the same, simplify Layer 3 description. If different, Layer 3 stays as Suites/IPC and Tools gets its own sub-bullet under Layer 2.
+2. **Suites vs Tools distinction.** Resolved: different mechanisms; keep both layers. Tools (Layer 2) is the in-process framework that installs MBARs into the host's menubar via `menu.install()`. Suites/IPC (Layer 3) is cross-process menu publishing — a separate program installs menus into the host's menubar through an IPC transport. Legacy Mac used Apple Events for the Suites transport; that's a System 7-era concept and not a current target.
 
-3. **Within-layer ordering for Layer 2.** Alphabetical, load-order, or explicit `.priority` field? Legacy used insertion order. **Recommendation**: start with insertion order; add explicit priority later if needed. Document the choice in the implementation PR.
+3. **Within-layer ordering for Layer 2.** Resolved: insertion order, matching legacy. First-installed appears leftmost. Add an explicit `.priority` field later if a real need surfaces.
 
-4. **Hotkey collision when Layer 1 reserves a letter Layer 2 wants.** E.g. Layer 1 File claims F; a tool installs a "File Tools" menu in Layer 2 — does it get F (collision), I (next non-claimed), or no hotkey? **Recommendation**: Layer 1 hotkeys are reserved across all layers; Layer 2+ menus walk to the next non-claimed letter. Document in the hotkey rule.
+4. **Hotkey collision precedence across layers.** Resolved: **per-layer scope** (diverges from draft recommendation). Each layer's sibling list runs the auto-derive algorithm independently. Cross-layer hotkey collisions are tolerated. Rationale: when navigating, the user is always inside one layer at a time, so cross-layer ambiguity does not manifest at the keystroke. Per-layer scope also keeps the rule mechanically simple — no "reserved letters" table threaded across the composition.
+   The draft had recommended Layer 1 hotkeys be reserved globally with Layer 2+ walking past them. That added bookkeeping for a problem that doesn't materialize at the user-experience level.
 
-5. **The host MBAR install script's failure mode.** If `installHostMenubar.ut` fails at boot, the REPL has no File menu. Should this be a fatal error (abort REPL startup), a warning (REPL boots without menubar), or a silent fallback to a hard-coded minimal menubar? **Recommendation**: fatal. A REPL without a File menu is a bug, not a degraded experience.
+5. **Host MBAR install failure mode.** Resolved: log a prominent warning and continue (diverges from draft recommendation: fatal). The REPL stays usable via legacy `/foo` commands even when the host MBAR fails to install. Rationale: a REPL that refuses to start when the menubar script breaks is hostile to debugging the menubar script. The pragmatic choice preserves access to the system when something in the menu data is the bug.
 
-6. **Edit menu behavior in REPL today.** The REPL palette has no editable-text-with-selection surface (linenoise is its own world; no Cut/Copy/Paste model exists). Should the Edit menu be present-but-all-disabled, hidden, or absent from the REPL host MBAR until something needs it? **Recommendation**: present-but-all-disabled. It signals the directional goal toward native and keeps the bar shape stable across hosts.
+6. **Edit menu behavior in v1.** Resolved: present, with linenoise-aware items (diverges from draft recommendation: present-but-all-disabled). Cut, Copy, Paste, and Clear operate against the linenoise input buffer where the operations make sense. Undo/Redo/Find/etc. can wait for a richer input surface or for editor windows to return. Real parity now beats dimmed placeholders.
 
-7. **Suites/IPC headless — yes or no for v1?** Layer 3 is K4 (load-bearing Mac UI). Implementing `langipcinstallmenus_headless()` is non-trivial. **Recommendation**: defer to a separate ADR. The REPL ships with Layers 1+2 only; Suites comes later.
+7. **Suites/IPC in v1.** Resolved: defer. Cross-process menu publishing has no current consumers and the legacy transport (Apple Events) is gone. A modern equivalent — system tray / menu extras / MCP-style shim — will be re-imagined when there's a real driver, not ported. A future ADR covers it. Layer 3 stays in the composition model as a stub for future expansion.
 
 ---
 
@@ -198,11 +204,12 @@ Already evaluated in the slash-menu discussion doc; rejected on substrate ground
 The slash-menu implementation plan (`planning/discussions/repl-slash-menu-implementation-plan.opml`) needs updates to align with this ADR:
 
 1. **Rename "REPL menu" to "Frontier menu" / "host menu"**, per the Layer 1 framing. The host owns its anchored menus; "REPL" is a container, not a category.
-2. **Replace the proposed REPL menubar with a Layer 1 menubar**: Frontier (About / Documentation / Key Codes / Clear Variables / Quit), File (Open Database / Close), Edit (placeholder, all disabled in v1), Window (Switch / List / Jump), Help. This matches the legacy menubar shape directionally.
-3. **Add a `installHostMenubar.ut` implementation note** to PR 6: this script is part of kernel boot, not a user script. Failure is fatal.
+2. **Replace the proposed REPL menubar with a Layer 1 menubar**: Frontier (About / Documentation / Key Codes / Clear Variables / Quit), File (Open Database / Close), Edit (Cut / Copy / Paste / Clear, wired against the linenoise input buffer), Window (Switch / List / Jump), Help. This matches the legacy menubar shape directionally and gives v1 real Edit functionality, not dimmed placeholders.
+3. **Add a `installHostMenubar.ut` implementation note** to PR 6: this script is part of kernel boot. On failure, log a prominent warning and continue; the REPL stays usable via legacy `/foo` commands.
 4. **Update PR 1 framing**: it's not "decide headless menu storage" — it's "remove the headless ifdefs from the 6 P0 verbs and implement `menudata_ensure_root()`." The data model decision is THIS ADR.
-5. **Add a Layer 2/3 dynamic enumeration spec** to PR 5: the palette walks `system.menus.data.*` with `installed = true` at every `/` press, plus the host's Layer 1 outline.
+5. **Add a Layer 2 dynamic enumeration spec** to PR 5: the palette walks `system.menus.data.*` with `installed = true` at every `/` press, in insertion order, plus the host's Layer 1 outline. Layer 3 is reserved as a stub but has no v1 enumeration logic.
 6. **Reframe `meuserselected_headless` as universal**, not a special case. Every menu action goes through it, including Layer 1's File > Quit.
+7. **Hotkey computation runs per-layer.** PR 5 implements the auto-derive algorithm independently for each layer's sibling list; no cross-layer reservation table.
 
 These changes are clarifying, not structural. The 8-PR phasing in the discussion doc is unchanged; the framing of what each PR does is sharpened.
 
@@ -210,7 +217,7 @@ These changes are clarifying, not structural. The 8-PR phasing in the discussion
 
 ## References
 
-- **Companion research note** (file:line citations for every claim in this ADR): `ADR-016-research-notes-menu-system-architecture.md` (this directory).
+- **Companion research note** (file:line citations for every claim in this ADR): `drafts/ADR-016-research-notes-menu-system-architecture.md`.
 - **Discussion docs**: `planning/discussions/headless-menus-as-slash-commands.opml` (data model and product framing), `repl-ui-design-plan.opml` (user-facing UX), `repl-slash-menu-implementation-plan.opml` (implementation plan; this ADR informs revisions).
 - **Legacy reference tree**: `/Users/jake/dev/tedchoward/Frontier/` (canonical Mac-era source).
 - **Current tree key files**:
@@ -227,10 +234,8 @@ These changes are clarifying, not structural. The 8-PR phasing in the discussion
 
 ## Sign-off
 
-Pending. This ADR ratifies when:
-- [ ] Open question 2 (Suites vs Tools) is resolved by Dave.
-- [ ] Open question 6 (Edit menu in REPL v1) has user agreement.
-- [ ] Open question 7 (Suites/IPC headless deferral) is acknowledged.
-- [ ] No structural objections from technical reviewers.
+Accepted on 2026-05-05.
 
-When ratified, this draft moves from `drafts/` to the main ADR directory as `ADR-016-headless-menu-system-projection.md` with Status updated to "Accepted."
+The seven open questions raised during drafting were resolved through a structured walkthrough; outcomes are recorded in the "Resolved questions" section above. Two answers (Q4: per-layer hotkey scope; Q6: linenoise-aware Edit menu items) diverged from the draft's recommendations and the rationale for each divergence is preserved.
+
+This document moved from `drafts/` to the main ADR directory at the time of acceptance.
