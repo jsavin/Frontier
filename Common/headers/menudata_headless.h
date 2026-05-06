@@ -80,6 +80,11 @@ extern boolean menudata_ensure_root(void);
  * failure (allocation error). An empty subtree is success with an empty
  * list.
  *
+ * GIL: must be called while holding the GIL — accesses roottable and walks
+ * the lang.c hashtable structures via hashinversesearch / findnamedtable,
+ * and allocates lang values (opnewlist, setaddressvalue) which all assume
+ * GIL discipline.
+ *
  * Backs the menu.list verb. See ADR-016 for the projection model and
  * planning/discussions/pr2-meuserselected-headless-plan.md for sub-PR 2a.
  */
@@ -106,6 +111,10 @@ extern boolean menudata_list_leaves(hdlhashtable hscope, tyvaluerecord *vreturne
  *
  * On success *vreturned holds a freshly-allocated recordvaluetype value
  * owned by the caller. Returns false on hard failure or if hleaf is nil.
+ *
+ * GIL: must be called while holding the GIL — reads from hleaf's hashtable
+ * (lang.c global structure) and allocates lang values (opnewlist,
+ * copyvaluerecord, setheapvalue) which all assume GIL discipline.
  *
  * Backs the menu.describe verb.
  */
@@ -135,6 +144,16 @@ extern boolean menudata_describe_leaf(hdlhashtable hleaf, tyvaluerecord *vreturn
  * megetnodelangtext output / outline-extracted langtext / newtexthandle().
  * langbuildtree consumes hScript on every path; the caller must not
  * reference it after the call.
+ *
+ * Handle privacy: if hScript was extracted from a menu leaf field, the
+ * caller must either (a) have held the GIL continuously between extraction
+ * and this call, or (b) have made a private copy via copyhandle. Otherwise
+ * another GIL-acquiring thread (the GIL is released at langbackgroundtask
+ * yield points inside langruncode) could dispose or rewrite the underlying
+ * handle while we are mid-execution. The recommended path is to dispatch
+ * via the value returned by menudata_describe_leaf, which copyvaluerecord's
+ * every field — those copies are independently allocated and safe to hand
+ * off across yields.
  *
  * Returns true iff the script compiled cleanly AND ran to completion.
  * Returns false on:
