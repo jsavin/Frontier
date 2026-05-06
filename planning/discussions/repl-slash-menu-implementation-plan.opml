@@ -3,6 +3,7 @@
   <head>
     <title>REPL slash-menu implementation plan</title>
     <dateCreated>Mon, 04 May 2026 00:00:00 GMT</dateCreated>
+    <dateModified>Tue, 05 May 2026 00:00:00 GMT</dateModified>
     <ownerName>Jake Savin</ownerName>
   </head>
   <body>
@@ -11,15 +12,26 @@
         <outline text="headless-menus-as-slash-commands.opml -- the data-model and product framing"/>
         <outline text="repl-ui-design-plan.opml -- the user-facing UX"/>
         <outline text="This document is the implementation plan: how to actually build it."/>
+        <outline text="Architectural foundation: ADR-016 (Headless Projection of the Frontier Menu System) -- 5-layer projection model accepted 2026-05-05."/>
       </outline>
-      <outline text="Headline decisions in this plan (where I want pushback before code lands)">
+      <outline text="Headline decisions in this plan (follow from ADR-016)">
         <outline text="1. Canonical headless menu storage is system.menus.data.&lt;app&gt;.&lt;menu&gt;.&lt;item&gt;. Same shape the legacy code already used; lazy-create on first verb call to fix the v7-migrated-root gap."/>
-        <outline text="2. Leaf record fields: label, script, description, enabled, hidden, shortcut, accepts_args, plus cmdkey/cmdmodifiers preserved for legacy compat. Note: shortcut is auto-derived (first non-duplicated letter of the label) at install time -- only set explicitly when overriding."/>
+        <outline text="2. Leaf record fields: label, script, description, enabled, hidden, shortcut, accepts_args, plus cmdkey/cmdmodifiers preserved for legacy compat. shortcut is auto-derived (first non-duplicated letter of the label) at install time -- only set explicitly when overriding."/>
         <outline text="3. Build a hand-rolled pane compositor (~600-800 LOC) rather than adopt a TUI framework. notcurses fits some of the requirements but its menu widget is single-level only, and it brings CMake + libunistring + libdeflate + an optional GPM broker for mouse-over-ssh."/>
-        <outline text="4. Submenus cascade visually -- parent menu stays on screen, child opens to the right at the selected row. This is the VisiCalc / classic Mac model, not a Slack-style single-pane palette."/>
+        <outline text="4. Submenus cascade visually -- parent menu stays on screen, child opens to the right at the selected row. VisiCalc / classic Mac model, not a Slack-style single-pane palette."/>
         <outline text="5. Mouse via xterm SGR 1006 protocol. Click on menubar / item / scroll wheel all supported. Disable cleanly on exit so terminals don't get stuck."/>
-        <outline text="6. The 6 existing slash commands (/exit /help /clear /keycodes /list /jump) move into a 'REPL' menu in the menubar. The leading-/ branch in process_line() becomes a fallback resolver against system.menus.data, so /exit ENTER continues to work as muscle memory."/>
-        <outline text="7. Hotkey rule: within a menu (or the menubar itself), each item's hotkey is the first letter of its label that hasn't already been claimed by an earlier sibling at the same level. Resolved at install/build time, surfaced in the leaf's shortcut field, rendered with an underline (or first-char highlight on monochrome). Authors only set shortcut explicitly when they want to override the auto-derivation."/>
+        <outline text="6. The 6 existing slash commands (/exit /help /clear /keycodes /list /jump) move into the host menubar. The leading-/ branch in process_line() becomes a fallback resolver against system.menus.data, so /exit ENTER continues to work as muscle memory."/>
+        <outline text="7. Hotkey rule: per-layer, per-sibling-list scope. Each menu has its own hotkey namespace; Layer 2 Tools compute hotkeys independently from Layer 1. Cross-layer collisions are tolerated. Resolved at install/build time, surfaced in the leaf's shortcut field, rendered with an underline."/>
+        <outline text="8. meuserselected_headless is universal. Every menu action goes through it, including Layer 1's Quit / Open / etc. No kernel-special-cases distinction between 'host menu items' and 'user-installed menu items.'"/>
+      </outline>
+      <outline text="ADR-016 alignment: the 5-layer projection model">
+        <outline text="Layer 1: Host-anchored. Frontier / File / Edit / Window / Help. Owned by the CLI host. Installed at startup by installHostMenubar.ut. In v1: this is what fresh-launch shows."/>
+        <outline text="Layer 2: Apps/Tools. Whatever's currently in system.menus.data.&lt;app&gt;.* with .installed = true. Populated as user scripts call menu.install(). Insertion order (left-to-right). Empty at fresh launch."/>
+        <outline text="Layer 3: Suites/IPC. Cross-process menu publishing. Deferred to a future ADR; not implemented in v1. Stub in the composition model."/>
+        <outline text="Layer 4: Window-type-specific. The menubar swaps when wptext / outline / table windows become frontmost. Deferred until editor windows return to the CLI; v1 baseline is 'no editor frontmost.'"/>
+        <outline text="Layer 5: System-provided. Mac OS Help via HMGetHelpMenu. Folded into Layer 1 Help in headless."/>
+        <outline text="Hotkey scope is per-layer. Each layer's sibling list runs the auto-derive algorithm independently. Cross-layer collisions are tolerated."/>
+        <outline text="Boot failure mode is warning, not fatal. If installHostMenubar.ut fails, log a prominent warning and continue. The REPL stays usable via legacy /foo commands so the user can debug the failure."/>
       </outline>
       <outline text="Why hand-roll instead of a TUI framework">
         <outline text="No maintained C framework ships a cascading-menu widget. notcurses ncmenu is single-level. termbox2 has no widgets. libtickit has windows but no menu. We'd hand-roll the cascade in any of them."/>
@@ -42,18 +54,20 @@
         <outline text="If a submenu would overflow the right edge, it opens to the LEFT instead. Same for vertical overflow. Same pattern the Mac menu manager used."/>
         <outline text="ESC closes the deepest open pane (pops one cascade level), not the whole palette. ESC at top closes the palette."/>
       </outline>
-      <outline text="Headless menu storage -- what's broken today">
+      <outline text="PR 1 framing: ifdef removal + menudata_ensure_root()">
+        <outline text="PR 1 is NOT 'decide headless menu storage.' That decision is ADR-016. PR 1 is the mechanical implementation."/>
         <outline text="14 menu verbs in tymenutoken (Common/source/menuverbs.c:71-101)."/>
-        <outline text="The structural verbs (install, addMenuCommand, addSubMenu, etc.) return true in headless but DON'T persist anything. menuverbs.c:2042-2046 is the smoking gun: returns true, no side effect."/>
+        <outline text="The structural verbs (install, addMenuCommand, addSubMenu, etc.) currently return true in headless but DON'T persist anything. menuverbs.c:2042-2046 is the smoking gun: returns true, no side effect."/>
         <outline text="The reading verbs (getScript, getCommandKey) return empty string in headless."/>
-        <outline text="20 of 49 tests in menu_data_verbs.yaml are skipped because of this. menu_data_verbs.yaml:1032 names the gap exactly: 'system.menus.data may not exist in migrated root7 - needs investigation.'"/>
-        <outline text="Plan: lazy menudata_ensure_root() at the top of every menu verb. Promotes the 6 P0 verbs from no-op to real persistence, plus 4 P1 verbs (cmdkey, clearMenubar, buildMenubar, isInstalled), plus 2 new verbs (menu.list, menu.describe) for palette enumeration."/>
+        <outline text="16 of 49 tests in menu_data_verbs.yaml are skipped because of this. menu_data_verbs.yaml:1032 names the gap exactly: 'system.menus.data may not exist in migrated root7 - needs investigation.'"/>
+        <outline text="Plan: lazy menudata_ensure_root() at the top of every menu verb. Remove the FRONTIER_HEADLESS ifdefs from the 6 P0 verbs (install, remove, addMenuCommand, addSubMenu, deleteMenuCommand, deleteSubMenu, getScript, setScript, isInstalled). 4 P1 verbs (cmdkey, clearMenubar, buildMenubar, isInstalled) follow. 2 new verbs (menu.list, menu.describe) for palette enumeration ship in PR 2."/>
       </outline>
       <outline text="Headless menu execution">
         <outline text="meuserselected (Common/source/meprograms.c:256-315) is Mac-UI-bound. It calls op_get_outlinedata and shellforcemenuadjust which don't exist in headless."/>
         <outline text="Don't try to make it headless-clean. Add a sibling: meuserselected_headless(Handle hScript)."/>
         <outline text="It does the parts headless needs: scriptbuildtree, langpusherrorcallback, newprocess (with mescripterrorroutine), addprocess. No window-only calls."/>
         <outline text="The palette calls this with the script string fetched from the ODB leaf. ~30 lines of C."/>
+        <outline text="Universal dispatch: every menu action -- Layer 1's Quit, Layer 2 Tool actions, anything -- goes through this path. No kernel special cases."/>
       </outline>
       <outline text="The REPL integration point">
         <outline text="Single insertion at repl.c:2123-2145, inside the linenoiseEditFeed branch. Not at process_line level."/>
@@ -62,28 +76,31 @@
         <outline text="Mid-expression / does nothing special -- the buffer already has &gt;1 char."/>
         <outline text="On palette execute: meuserselected_headless(hscript) directly, then resume linenoise. On palette cancel (ESC at top): just resume linenoise with empty buffer."/>
       </outline>
-      <outline text="UserTalk side: default REPL menubar">
-        <outline text="New script: usertalk_scripts/Frontier.root/system/menus/installReplMenubar.ut"/>
-        <outline text="Builds the menubar at startup: REPL menu (Help / Clear / List / Jump / Key codes / Exit), Help menu, plus File / Edit / View as reserved placeholders for future PRs. All hotkeys auto-derived at install -- no setCommandKey calls needed. Within the REPL menu in declared order: Help=H, Clear=C, List=L, Jump=J, Key codes=K (first-char K is free), Exit=E. The menubar's own scope claims File=F, Edit=E, View=V, Help=H, REPL=R. Per-scope namespaces mean E-in-Edit (menubar) doesn't collide with E-in-Exit (REPL menu)."/>
-        <outline text="Six handler scripts under system.menus.handlers.repl.* reproduce the existing C-side slash-command behavior. Five new kernel verbs (in frontier-cli/repl_verbs.c) bridge the parts that today live in C: repl.exit, repl.clearVariables, repl.jumpPath, repl.printKeyCodes, repl.list."/>
+      <outline text="UserTalk side: default host menubar (Layer 1)">
+        <outline text="New script: usertalk_scripts/Frontier.root/system/menus/installHostMenubar.ut (renamed from installReplMenubar.ut -- the host owns its anchored menus; 'REPL' is a container, not a category)."/>
+        <outline text="Builds the menubar at startup with the legacy menubar shape directionally: Frontier (About / Documentation / Key codes / Clear variables / Quit), File (Open database / Close), Edit (Cut / Copy / Paste / Clear, wired against the linenoise input buffer -- real parity now, not dimmed placeholders. Undo/Redo/Find can wait), Window (Switch / List / Jump), Help (About / Documentation)."/>
+        <outline text="All hotkeys auto-derived at install -- no setCommandKey calls needed. Per-layer scope: each menu's items run the algorithm independently against the menubar's letters and against each other."/>
+        <outline text="Handler scripts under system.menus.handlers.host.* reproduce the existing C-side slash-command behavior. New kernel verbs (in frontier-cli/repl_verbs.c) bridge the parts that today live in C: repl.exit, repl.clearVariables, repl.jumpPath, repl.printKeyCodes, repl.list. Plus new linenoise-buffer verbs for Edit menu wiring: linenoise.cut, linenoise.copy, linenoise.paste, linenoise.clear."/>
         <outline text="Called from REPL init after repl_variables_init at repl.c:2058. Guarantees the palette has content on first / press."/>
+        <outline text="Boot failure mode: if installHostMenubar.ut fails, log a prominent warning and continue. The REPL stays usable via legacy /foo commands (/exit, /help, etc.) so the user can debug the failure."/>
       </outline>
       <outline text="Hotkey auto-derivation rule">
-        <outline text="Scope is per-sibling-list: each menu has its own hotkey namespace, and so does the menubar itself. Two siblings can't share a hotkey; an item three levels deep can reuse a letter another menu used."/>
+        <outline text="Scope is per-layer, per-sibling-list. Each menu has its own hotkey namespace, and so does the menubar itself. Layer 2 Tools compute their hotkeys independently from Layer 1. Cross-layer collisions are tolerated; the user is always inside one layer at a time when picking a hotkey, so the ambiguity doesn't manifest at the keystroke."/>
         <outline text="Algorithm at install/build time: walk siblings in declared order. For each label, find the first character whose uppercase form is not yet claimed in this scope. Claim it, store as the leaf's shortcut, and mark for underline rendering."/>
         <outline text="If every letter in a label is already claimed, the item gets no hotkey -- still navigable by arrow keys + ENTER. Log a warning at install."/>
         <outline text="Authors override by setting shortcut explicitly in the leaf (or via menu.setCommandKey). Explicit overrides are honored first, before the auto-walk runs, so they reserve their letter."/>
         <outline text="Rendering: hotkey character is underlined in the rendered label (ANSI SGR 4). On terminals without underline, fall back to first-char highlight via inverse video on that single cell."/>
       </outline>
       <outline text="Phasing -- 8 PRs, mostly independent">
-        <outline text="PR 1: Headless menu storage -- canonical home + lazy-create. (kernel-only, gates everything below)"/>
-        <outline text="PR 2: meuserselected_headless + menu.list / menu.describe verbs. (kernel-only, parallel with PR 1)"/>
+        <outline text="PR 1: Headless menu storage -- remove 6 P0 ifdefs + menudata_ensure_root(). (kernel-only, gates everything below)"/>
+        <outline text="PR 2: meuserselected_headless (universal dispatch) + menu.list / menu.describe verbs. (kernel-only, parallel with PR 1)"/>
         <outline text="PR 3: terminal_control extensions + SIGWINCH + mouse mode toggles. (frontier-cli only, parallel with 1+2)"/>
         <outline text="PR 4: Pane compositor -- pane_t + z-order + diff-renderer + SGR 1006 mouse parser. (frontier-cli only, parallel with 1+2)"/>
-        <outline text="PR 5: palette.c on top of pane compositor -- cascade rendering, kbd nav, mouse routing. (depends on 1-4)"/>
-        <outline text="PR 6: Default REPL menubar + handler scripts + startup install. (depends on 5)"/>
+        <outline text="PR 5: palette.c on top of pane compositor -- cascade rendering, kbd nav, mouse routing, per-layer hotkey scope. (depends on 1-4)"/>
+        <outline text="PR 6: Default host menubar (Layer 1) + handler scripts + installHostMenubar.ut boot. (depends on 5)"/>
         <outline text="PR 7: Migrate the 6 slash commands to menubar; remove repl_commands.c hardcoded paths. (depends on 6)"/>
         <outline text="PR 8: Palette Rung 2 -- filter, ANSI 16-color, accepts_args input row, scrollable submenus. (independent)"/>
+        <outline text="Test harness (Plan 1, written before PR 4): design and ship the snapshot-test infrastructure for the palette as a first-class PR. Sits between PRs 1-3 and PR 4. Without it, every UI PR ends up validated by manual smoke tests and /auto can't honestly claim convergence."/>
       </outline>
       <outline text="Risk register (top 5)">
         <outline text="meuserselected being Mac-UI-bound. Mitigation: new sibling function, don't patch."/>
@@ -93,12 +110,13 @@
         <outline text="Async output corrupting palette. Mitigation: structural -- log lines route to a scrollback pane, the compositor's diff-render handles it. No special-case code in repl_async_output."/>
       </outline>
       <outline text="Acceptance suite">
-        <outline text="The 20 skipped tests in tests/integration/test_cases/menu_data_verbs.yaml become the kernel-side acceptance suite. Goal: 0 skipped after PR 1+2."/>
-        <outline text="New tests/integration/test_cases/repl_palette.yaml drives the palette via scripted keypresses (pexpect, like repl_basic.yaml). Covers cascade open/close, hotkey jump, ESC."/>
-        <outline text="New tests/integration/test_cases/repl_palette_mouse.yaml covers click-on-menubar, click-on-cascaded-item, click-outside-to-close."/>
-        <outline text="New tests/unit/pane_compositor_test.c snapshots the framebuffer after register/move/render to verify the diff-renderer."/>
-        <outline text="New tests/unit/mouse_parser_test.c verifies SGR 1006 sequence parsing."/>
-        <outline text="Existing repl_commands.yaml continues green throughout -- /exit etc. resolve via the menu, but the user-visible behavior is unchanged."/>
+        <outline text="Kernel-side: the 16 skipped tests in tests/integration/test_cases/menu_data_verbs.yaml become the PR 1+2 acceptance suite. Goal: 0 skipped after PR 2 lands."/>
+        <outline text="Test harness layer (Plan 1): designed and built before PR 4. Specifies cell-buffer snapshot infrastructure, synthetic input feeding, golden-file format, integration-vs-unit boundaries."/>
+        <outline text="Palette UX: new tests/integration/test_cases/repl_palette.yaml drives the palette via scripted keypresses (pexpect, like repl_basic.yaml). Covers cascade open/close, hotkey jump, ESC."/>
+        <outline text="Palette mouse: new tests/integration/test_cases/repl_palette_mouse.yaml covers click-on-menubar, click-on-cascaded-item, click-outside-to-close."/>
+        <outline text="Compositor unit: new tests/unit/pane_compositor_test.c snapshots the framebuffer after register/move/render to verify the diff-renderer."/>
+        <outline text="Mouse parser unit: new tests/unit/mouse_parser_test.c verifies SGR 1006 sequence parsing."/>
+        <outline text="Regression: existing repl_commands.yaml continues green throughout -- /exit etc. resolve via the menu, but the user-visible behavior is unchanged."/>
       </outline>
       <outline text="What I want from this discussion">
         <outline text="Schema: is the leaf-record shape the right one for v7? Anything missing? Anything that should be split out (e.g. typed argument schema for accepts_args, vs the v1 'one string, parse it yourself' choice)?"/>
@@ -107,7 +125,7 @@
         <outline text="Phasing: 8 PRs feels right but I could split or merge. The kernel work (1+2) and the UI substrate (3+4) are independent and could land in either order."/>
       </outline>
       <outline text="Appendix: where the full plan lives">
-        <outline text="The detailed implementation plan with file:line citations is at ~/.claude/plans/humming-painting-hejlsberg.md (private to Jake's working tree). This OPML is the public-facing summary."/>
+        <outline text="The detailed implementation plan with file:line citations is at ~/.claude/plans/humming-painting-hejlsberg.md (private to Jake's working tree). This OPML is the public-facing summary, aligned with ADR-016."/>
       </outline>
     </outline>
   </body>
