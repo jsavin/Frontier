@@ -43,6 +43,7 @@
 
 #include "linenoise.h"
 
+#include "terminal_control.h"
 #include "repl.h"
 #include "repl_eval.h"
 #include "repl_variables.h"
@@ -1404,25 +1405,78 @@ volatile sig_atomic_t g_repl_interrupt_requested = 0;
 // Global script running flag for interrupt handling
 static volatile sig_atomic_t g_script_running = 0;
 
+/* SIGWINCH (window-size change) flag.
+ *
+ * Set by sigwinch_handler() and consumed by repl_sigwinch_consumed().  The
+ * flag exists so that the upcoming slash-menu palette renderer (PR 5) and
+ * other render-tick consumers can react to terminal resize without each
+ * needing to install their own sigaction.
+ *
+ * Coexists with file_browser.c's local SIGWINCH handler — file_browser saves
+ * and restores the previous sigaction around its modal session, so this
+ * REPL-level handler is the long-lived one. */
+static volatile sig_atomic_t g_sigwinch = 0;
+
 // Global linenoise state for terminal cleanup and async output
 static struct linenoiseState *g_active_linenoisestate = NULL;
 
 // Forward declaration for completion callback
 static void linenoise_completion_callback(const char *buf, linenoiseCompletions *lc);
 
-/* Signal handler for SIGINT (Ctrl-C) - must be async-signal-safe */
+/*
+ * Async-signal-safe mouse-tracking disable.
+ *
+ * terminal_disable_mouse() uses fputs/fflush, which are NOT async-signal-safe
+ * (POSIX.1-2017 §2.4.3).  When a signal handler needs to leave mouse mode
+ * before _exit(), it must talk to the kernel directly via write(2), which is
+ * on the AS-safe list.
+ *
+ * The byte sequence matches terminal_disable_mouse() exactly: 16 bytes
+ * "ESC [ ? 1 0 0 0 l ESC [ ? 1 0 0 6 l".  Kept in sync by the matching
+ * unit tests.
+ */
+static void async_signal_safe_disable_mouse(void) {
+	static const char DISABLE_SEQ[] = "\x1b[?1000l\x1b[?1006l";
+	/* Best effort — if write() fails (closed fd, EINTR), there is nothing
+	 * sensible a signal handler can do about it.  Ignore the result
+	 * deliberately to avoid a noisy compile warning. */
+	ssize_t r = write(STDERR_FILENO, DISABLE_SEQ, sizeof(DISABLE_SEQ) - 1);
+	(void)r;
+}
+
+/* Signal handler for SIGINT (Ctrl-C) - must be async-signal-safe.
+ *
+ * The interrupt flag is consumed in user context by handle_interrupt(); the
+ * one new responsibility here is to leave the terminal in a sane mouse mode
+ * if the palette had enabled tracking.  Calling write(2) directly keeps this
+ * AS-safe even though terminal_disable_mouse() itself is not. */
 static void sigint_handler(int sig) {
 	(void)sig;
+	async_signal_safe_disable_mouse();
 	g_repl_interrupt_requested = 1;
 }
 
 /* Signal handler for SIGTERM - exit immediately
  * NOTE: We don't call linenoiseEditStop() here because it's not async-signal-safe.
  * Terminal mode is automatically restored by the OS when the process exits.
+ * Mouse tracking, however, is NOT restored by the OS — it's a remote terminal
+ * mode set by escape sequence.  We emit the disable sequence inline here
+ * (write(2) is async-signal-safe) before _exit so the user does not get left
+ * with a terminal that streams mouse coordinates as garbage characters.
  * Using _exit() to avoid calling atexit handlers from signal context (unsafe). */
 static void sigterm_handler(int sig) {
 	(void)sig;
+	async_signal_safe_disable_mouse();
 	_exit(0);
+}
+
+/* SIGWINCH handler — terminal window resized.
+ *
+ * Only the flag set; consumers poll repl_sigwinch_consumed() in user context.
+ * Coexists with file_browser.c's bounded-scope handler. */
+static void sigwinch_handler(int sig) {
+	(void)sig;
+	g_sigwinch = 1;
 }
 
 /* Terminal cleanup for atexit() */
@@ -1433,7 +1487,7 @@ static void cleanup_terminal(void) {
 	}
 }
 
-/* Install signal handlers for Ctrl-C and SIGTERM */
+/* Install signal handlers for Ctrl-C, SIGTERM, and SIGWINCH */
 static void install_signal_handlers(void) {
 	struct sigaction sa;
 
@@ -1449,8 +1503,25 @@ static void install_signal_handlers(void) {
 	sigemptyset(&sa.sa_mask);
 	sigaction(SIGTERM, &sa, NULL);
 
+	// SIGWINCH handler (terminal resize) — used by the future slash-menu
+	// palette renderer (PR 5).  SA_RESTART so blocking syscalls (read on
+	// stdin, etc.) auto-resume after the signal is delivered.
+	sa.sa_handler = sigwinch_handler;
+	sa.sa_flags = SA_RESTART;
+	sigemptyset(&sa.sa_mask);
+	sigaction(SIGWINCH, &sa, NULL);
+
 	// Register terminal cleanup for atexit
 	atexit(cleanup_terminal);
+}
+
+/* Public consumer for the SIGWINCH flag — see repl.h. */
+boolean repl_sigwinch_consumed(void) {
+	if (g_sigwinch) {
+		g_sigwinch = 0;
+		return true;
+	}
+	return false;
 }
 
 /* Guard to prevent re-entrant interrupt handling */

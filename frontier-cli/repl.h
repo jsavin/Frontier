@@ -111,4 +111,23 @@ boolean repl_resolve_path_ex(const char *path, typathlookupresult *result,
  */
 boolean repl_is_active(void);
 
+/*
+ * SIGWINCH (window-size change) consumer.
+ *
+ * install_signal_handlers() registers a SIGWINCH handler that sets a
+ * process-wide sig_atomic_t flag.  Callers that need to react to terminal
+ * resize (the upcoming slash-menu palette renderer in PR 5, etc.) poll this
+ * accessor each render tick: it returns true exactly once per SIGWINCH
+ * delivery and resets the flag.
+ *
+ * Coexists with file_browser.c's own SIGWINCH handling — file_browser saves
+ * the previous sigaction and restores it on exit, so its scope is bounded to
+ * the file-browser modal.  The REPL handler installed here is the
+ * long-lived handler that file_browser's restore returns to.
+ *
+ * Returns false (without side effect) if no SIGWINCH has occurred.  Returning
+ * true is destructive — only one consumer should poll this per frame.
+ */
+boolean repl_sigwinch_consumed(void);
+
 #endif // REPL_H
