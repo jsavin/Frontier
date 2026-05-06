@@ -151,21 +151,23 @@
 	1,					//Number of "blocks" in this resource
 		"menu\0",		//Function Processor Name
 		true,			//Window required
-			14,			//Count of verbs
-			"zoomscript\0",		
-			"buildmenubar\0",		
-			"clearmenubar\0",		
-			"isinstalled\0",		
-			"install\0",	
+			16,			//Count of verbs
+			"zoomscript\0",
+			"buildmenubar\0",
+			"clearmenubar\0",
+			"isinstalled\0",
+			"install\0",
 			"remove\0",
-			"getscript\0",		
+			"getscript\0",
 			"setscript\0",
 			"addmenucommand\0",
 			"deletemenucommand\0",
 			"addsubmenu\0",
 			"deletesubmenu\0",
 			"getcommandkey\0",
-			"setcommandkey\0"
+			"setcommandkey\0",
+			"list\0",
+			"describe\0"
 	END
 
 

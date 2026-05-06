@@ -64,4 +64,51 @@
  */
 extern boolean menudata_ensure_root(void);
 
+
+/*
+ * Walk the system.menus.data subtree and build a list of address values
+ * pointing at leaf items. A "leaf" is a sub-table whose children are all
+ * scalars — i.e. the deepest rung in the app/menu/item chain. Intermediate
+ * sub-tables (the app and menu rungs) are walked through but are not
+ * themselves returned.
+ *
+ *   hscope == nil     -> walk the entire system.menus.data subtree
+ *   hscope != nil     -> walk only that subtree
+ *
+ * On success *vreturned holds a freshly-allocated listvaluetype value owned
+ * by the caller (dispose with disposevaluerecord). Returns false on hard
+ * failure (allocation error). An empty subtree is success with an empty
+ * list.
+ *
+ * Backs the menu.list verb. See ADR-016 for the projection model and
+ * planning/discussions/pr2-meuserselected-headless-plan.md for sub-PR 2a.
+ */
+extern boolean menudata_list_leaves(hdlhashtable hscope, tyvaluerecord *vreturned);
+
+
+/*
+ * Build a 9-field record describing a single leaf item. Field set per
+ * ADR-016 §"menu.describe contract":
+ *
+ *   label         (string, "" if missing)
+ *   script        (string, "" if missing)
+ *   cmdkey        (char,   '\0' if missing)
+ *   cmdmodifiers  (long,   0 if missing)
+ *   description   (string, "" if missing)
+ *   shortcut      (string, "" if missing)
+ *   enabled       (boolean, true if missing)
+ *   hidden        (boolean, false if missing)
+ *   accepts_args  (boolean, false if missing)
+ *
+ * The defaults reflect the "least-surprising menu item" baseline: enabled
+ * and visible, no accelerator, takes no arguments. Callers don't need to
+ * pre-populate every field.
+ *
+ * On success *vreturned holds a freshly-allocated recordvaluetype value
+ * owned by the caller. Returns false on hard failure or if hleaf is nil.
+ *
+ * Backs the menu.describe verb.
+ */
+extern boolean menudata_describe_leaf(hdlhashtable hleaf, tyvaluerecord *vreturned);
+
 #endif /* menudata_headless_include */

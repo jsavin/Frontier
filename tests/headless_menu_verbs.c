@@ -21,7 +21,9 @@
 #include "lang.h"
 #include "langinternal.h"
 #include "tablestructure.h"
+#include "tableverbs.h"
 #include "logging.h"
+#include "menudata_headless.h"
 
 /* Token enum for all verbs in the menu processor */
 enum {
@@ -38,7 +40,9 @@ enum {
     menv_addsubmenu = 10,
     menv_deletesubmenu = 11,
     menv_getcommandkey = 12,
-    menv_setcommandkey = 13
+    menv_setcommandkey = 13,
+    menv_list = 14,
+    menv_describe = 15
 };
 
 static boolean menu_valueproc(short token, hdltreenode hparam1,
@@ -121,6 +125,71 @@ static boolean menu_valueproc(short token, hdltreenode hparam1,
             /* menu.setCommandKey - no-op in headless mode */
             return setbooleanvalue(true, vreturned);
 
+        case menv_list: {
+            /*
+             * menu.list(adrApp = nil) -> list of @system.menus.data.<app>.
+             *     <menu>.<item> leaf addresses.
+             *
+             * If adrApp is nil/omitted, walk the entire system.menus.data
+             * subtree. If non-nil, scope to the given app (or any sub-table
+             * the caller chose to point at).
+             *
+             * Per ADR-016 the kernel-side first-switch is the source of truth
+             * for verb semantics; the first-switch is dead code in headless
+             * (loadfunctionprocessor is a no-op stub), so the live path runs
+             * through this dispatcher and calls into the shared C
+             * implementation in Common/source/menudata_headless.c.
+             *
+             * IMPORTANT: must NOT use getoptionaltableparam — that helper
+             * calls langassignnewtablevalue which CREATES a fresh empty
+             * table at the address, blowing away the caller's data. We
+             * resolve the address by hand: getoptionaladdressparam to extract
+             * (parent, name), then findnamedtable for read-only access.
+             */
+            short ctconsumed = 0, ctpositional = 0;
+            hdlhashtable hparent = nil;
+            bigstring bsname;
+            bigstring bsadrApp;
+            hdlhashtable hscope = nil;
+
+            flnextparamislast = true;
+
+            copystring(BIGSTRING("\x06" "adrApp"), bsadrApp);
+            setemptystring(bsname);
+
+            if (!getoptionaladdressparam(hparam1, &ctconsumed, &ctpositional,
+                                         bsadrApp, &hparent, bsname))
+                return false;
+
+            if (hparent != nil && !isemptystring(bsname)) {
+                if (!findnamedtable(hparent, bsname, &hscope))
+                    return false;
+            }
+
+            return menudata_list_leaves(hscope, vreturned);
+        }
+
+        case menv_describe: {
+            /*
+             * menu.describe(adrItem) -> 9-field record with documented
+             * defaults for absent fields. adrItem must point at a leaf
+             * sub-table (deepest rung of the system.menus.data chain).
+             */
+            hdlhashtable hcontainer;
+            bigstring bsname;
+            hdlhashtable hleaf = nil;
+
+            flnextparamislast = true;
+
+            if (!getvarparam(hparam1, 1, &hcontainer, bsname))
+                return false;
+
+            if (!findnamedtable(hcontainer, bsname, &hleaf))
+                return false;
+
+            return menudata_describe_leaf(hleaf, vreturned);
+        }
+
         default:
             return false;
     }
@@ -160,6 +229,8 @@ boolean menuinitverbs(void) {
     ADD_VERB(PSTRING("\015", "deletesubmenu"), menv_deletesubmenu);
     ADD_VERB(PSTRING("\015", "getcommandkey"), menv_getcommandkey);
     ADD_VERB(PSTRING("\015", "setcommandkey"), menv_setcommandkey);
+    ADD_VERB(PSTRING("\004", "list"), menv_list);
+    ADD_VERB(PSTRING("\010", "describe"), menv_describe);
 
     #undef ADD_VERB
 

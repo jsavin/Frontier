@@ -1,0 +1,2 @@
+on describe (adrItem) {
+	kernel (menu.describe)}

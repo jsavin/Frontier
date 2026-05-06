@@ -49,6 +49,10 @@
 #include "shelltypes.h"
 #include "memory.h"
 #include "lang.h"
+#include "langinternal.h"
+#include "langsystem7.h"
+#include "langexternal.h"
+#include "oplist.h"
 #include "strings.h"
 #include "tablestructure.h"
 #include "tableverbs.h"
@@ -113,4 +117,312 @@ boolean menudata_ensure_root(void) {
 		return false;
 
 	return true;
+}
+
+
+/*
+ * Resolve a value to its underlying hashtable handle if (and only if) the
+ * value points to a sub-table — i.e. an external value with table-processor
+ * id. Returns true with *ht populated on success; false otherwise.
+ *
+ * This is how we tell "leaf" from "intermediate rung": at the deepest level
+ * (the item rung) every child is a scalar, so this returns false for every
+ * child. At intermediate rungs (app, menu) at least one child will be a
+ * sub-table.
+ */
+static boolean value_as_subtable(tyvaluerecord val, hdlhashtable *ht) {
+
+	if (val.valuetype != externalvaluetype)
+		return false;
+
+	return langexternalvaltotable(val, ht, HNoNode);
+}
+
+
+/*
+ * inversesearch callback used by ht_has_subtable_child.
+ *
+ * hashinversesearch contract (see Common/source/langhash.c:2474): the visit
+ * routine returns true to STOP the walk ("search is over"), false to keep
+ * going. We use that to short-circuit on the first sub-table child we find.
+ *
+ * Sets *(boolean *)refcon to true and returns true (stop walking) the moment
+ * we see any child whose value resolves to a sub-table.
+ */
+static boolean detect_subtable_child(bigstring bsname, hdlhashnode hnode,
+                                     tyvaluerecord val, ptrvoid refcon) {
+	(void) bsname;
+	(void) hnode;
+
+	hdlhashtable hchild = nil;
+	if (value_as_subtable(val, &hchild)) {
+		*((boolean *) refcon) = true;
+		return true; /* stop walking — found a sub-table child */
+	}
+	return false; /* keep walking */
+}
+
+
+/*
+ * Returns true iff at least one entry in ht is itself a sub-table.
+ *
+ * Implemented by walking with hashinversesearch and short-circuiting in the
+ * callback. Per hashinversesearch's contract, the callback returns true to
+ * stop the walk; we use that to bail out on the first sub-table child seen.
+ */
+static boolean ht_has_subtable_child(hdlhashtable ht) {
+	boolean found = false;
+	bigstring bsfound;
+
+	hashinversesearch(ht, &detect_subtable_child, &found, bsfound);
+	return found;
+}
+
+
+/*
+ * Refcon for the leaf-collection walk.
+ */
+typedef struct ty_collect_refcon {
+	hdlhashtable hcontainer;  /* table whose direct child this entry is */
+	hdllistrecord hlist;       /* destination list of address values */
+	boolean error;             /* set on allocation failure */
+} ty_collect_refcon;
+
+
+/* Mutually recursive with walk_visit_entry below. */
+static boolean walk_for_leaves(hdlhashtable ht, hdllistrecord hlist);
+
+
+/*
+ * inversesearch callback for one (parent, name, val) entry. If val is a
+ * sub-table, we have two cases:
+ *
+ *   - The sub-table itself has no sub-table children -> it is a leaf;
+ *     emit an address (parent, bsname) onto the list and continue.
+ *
+ *   - Otherwise -> recurse into the sub-table looking for deeper leaves.
+ *
+ * Scalars are skipped (they're fields of a leaf, not navigation rungs).
+ *
+ * Per hashinversesearch's contract (see Common/source/langhash.c:2474),
+ * returning true means STOP the walk and false means keep going. We always
+ * want to visit every direct child, so the only time we return true is on
+ * a hard allocation failure where continuing would be unsafe — and we set
+ * ctx->error first so the outer driver can surface the failure.
+ *
+ * Mirrors the (parent, name) shape used by tableverbs.c::tablegetselvisit
+ * when pushing address values onto a result list.
+ */
+static boolean walk_visit_entry(bigstring bsname, hdlhashnode hnode,
+                                tyvaluerecord val, ptrvoid refcon) {
+	(void) hnode;
+
+	ty_collect_refcon *ctx = (ty_collect_refcon *) refcon;
+	hdlhashtable hchild = nil;
+	tyvaluerecord addr;
+
+	if (!value_as_subtable(val, &hchild))
+		return false; /* scalar, ignore — keep walking */
+
+	if (!ht_has_subtable_child(hchild)) {
+		/* hchild is a leaf — emit address (ctx->hcontainer, bsname). */
+		if (!setaddressvalue(ctx->hcontainer, bsname, &addr)) {
+			ctx->error = true;
+			return true; /* stop on allocation failure */
+		}
+		if (!langpushlistval(ctx->hlist, nil, &addr)) {
+			disposevaluerecord(addr, true);
+			ctx->error = true;
+			return true; /* stop on allocation failure */
+		}
+		disposevaluerecord(addr, true); /* don't let temp values accumulate */
+		return false; /* keep walking sibling entries */
+	}
+
+	/* Not a leaf — recurse into hchild. */
+	if (!walk_for_leaves(hchild, ctx->hlist)) {
+		ctx->error = true;
+		return true; /* stop on recursive failure */
+	}
+	return false; /* keep walking sibling entries */
+}
+
+
+/*
+ * Recursive walk: visit each direct child of ht. The actual leaf-vs-recurse
+ * decision lives in walk_visit_entry, which has access to (ht, bsname) so
+ * setaddressvalue can synthesize an address pointing AT the leaf.
+ *
+ * If ht is itself nil or empty, returns true with nothing pushed — that's
+ * the documented "empty data tree -> empty list" contract.
+ */
+static boolean walk_for_leaves(hdlhashtable ht, hdllistrecord hlist) {
+
+	ty_collect_refcon ctx;
+	bigstring bsfound;
+
+	if (ht == nil)
+		return true;
+
+	ctx.hcontainer = ht;
+	ctx.hlist = hlist;
+	ctx.error = false;
+
+	(void) hashinversesearch(ht, &walk_visit_entry, &ctx, bsfound);
+
+	return !ctx.error;
+}
+
+
+boolean menudata_list_leaves(hdlhashtable hscope, tyvaluerecord *vreturned) {
+
+	hdllistrecord hlist;
+	hdlhashtable hroot = hscope;
+
+	/*
+	 * If no scope was specified, walk from system.menus.data. Lazy-create
+	 * the chain so we never crash on a freshly-migrated v7 root.
+	 */
+	if (hroot == nil) {
+		hdlhashtable hsystem = nil, hmenus = nil;
+
+		if (!menudata_ensure_root())
+			return false;
+
+		if (!findnamedtable(roottable, namesystembranch, &hsystem))
+			return false;
+		if (!findnamedtable(hsystem, STR_menus, &hmenus))
+			return false;
+		if (!findnamedtable(hmenus, STR_data, &hroot))
+			return false;
+	}
+
+	if (!opnewlist(&hlist, false)) /* false = list (not record) */
+		return false;
+
+	if (!walk_for_leaves(hroot, hlist)) {
+		opdisposelist(hlist);
+		return false;
+	}
+
+	return setheapvalue((Handle) hlist, listvaluetype, vreturned);
+}
+
+
+/*
+ * --- menudata_describe_leaf ---
+ *
+ * Look up each documented field on the leaf hashtable, falling back to the
+ * documented default when the field is absent. Build a record value with all
+ * 9 fields present (callers can read them unconditionally).
+ *
+ * Field defaults reflect the "least-surprising menu item":
+ *   enabled = true, hidden = false, accepts_args = false, shortcut = "",
+ *   description = "", label/script/cmdkey/cmdmodifiers default to empty/zero.
+ */
+
+#define BS_label        BIGSTRING("\x05" "label")
+#define BS_script       BIGSTRING("\x06" "script")
+#define BS_cmdkey       BIGSTRING("\x06" "cmdkey")
+#define BS_cmdmodifiers BIGSTRING("\x0c" "cmdmodifiers")
+#define BS_description  BIGSTRING("\x0b" "description")
+#define BS_shortcut     BIGSTRING("\x08" "shortcut")
+#define BS_enabled      BIGSTRING("\x07" "enabled")
+#define BS_hidden       BIGSTRING("\x06" "hidden")
+#define BS_accepts_args BIGSTRING("\x0c" "accepts_args")
+
+
+/*
+ * Look up bskey in ht. If found, copy the existing value into *out (caller
+ * owns nothing extra; we hand back the same handle/scalar that lived in the
+ * table — the surrounding record build will copy or pack as needed).
+ *
+ * Returns true if the lookup succeeded (regardless of value type).
+ */
+static boolean lookup_field(hdlhashtable ht, bigstring bskey,
+                            tyvaluerecord *out) {
+	hdlhashnode hnode;
+	return hashtablelookup(ht, bskey, out, &hnode);
+}
+
+
+/*
+ * Build a list-record entry for one field, falling back to a default. The
+ * default-builder lambda is implemented by the calling site since we only
+ * need a handful of types here.
+ */
+static boolean push_field_or(hdllistrecord hlist, ptrstring bskey,
+                              hdlhashtable ht, bigstring bslookup,
+                              tyvaluerecord defaultval) {
+	tyvaluerecord val;
+	tyvaluerecord copy;
+
+	if (lookup_field(ht, bslookup, &val)) {
+		if (!copyvaluerecord(val, &copy))
+			return false;
+		return langpushlistval(hlist, bskey, &copy);
+	}
+	if (!copyvaluerecord(defaultval, &copy))
+		return false;
+	return langpushlistval(hlist, bskey, &copy);
+}
+
+
+boolean menudata_describe_leaf(hdlhashtable hleaf, tyvaluerecord *vreturned) {
+
+	hdllistrecord hlist;
+	tyvaluerecord defemptystring, deftrue, deffalse, defzerochar, defzerolong;
+	bigstring bsempty;
+
+	if (hleaf == nil)
+		return false;
+
+	/*
+	 * Defaults. We keep them on the C stack and copy at push time, since
+	 * langpushlistval takes ownership (or near-ownership via copy).
+	 */
+	clearbytes(bsempty, sizeof(bigstring));
+	setemptystring(bsempty);
+	if (!setstringvalue(bsempty, &defemptystring))
+		return false;
+	if (!setbooleanvalue(true, &deftrue))
+		return false;
+	if (!setbooleanvalue(false, &deffalse))
+		return false;
+	if (!setcharvalue('\0', &defzerochar))
+		return false;
+	if (!setlongvalue(0, &defzerolong))
+		return false;
+
+	if (!opnewlist(&hlist, true)) /* true = record */
+		goto cleanup_defaults;
+
+	/*
+	 * Field order matches ADR-016 for human readability. Each push copies
+	 * the looked-up value (or the default). The order does NOT affect
+	 * lookup semantics because rec_field-style consumers index by key.
+	 */
+	if (!push_field_or(hlist, BIGSTRING("\x05" "label"),       hleaf, BS_label,        defemptystring)) goto fail;
+	if (!push_field_or(hlist, BIGSTRING("\x06" "script"),      hleaf, BS_script,       defemptystring)) goto fail;
+	if (!push_field_or(hlist, BIGSTRING("\x06" "cmdkey"),      hleaf, BS_cmdkey,       defzerochar))    goto fail;
+	if (!push_field_or(hlist, BIGSTRING("\x0c" "cmdmodifiers"),hleaf, BS_cmdmodifiers, defzerolong))    goto fail;
+	if (!push_field_or(hlist, BIGSTRING("\x0b" "description"), hleaf, BS_description,  defemptystring)) goto fail;
+	if (!push_field_or(hlist, BIGSTRING("\x08" "shortcut"),    hleaf, BS_shortcut,     defemptystring)) goto fail;
+	if (!push_field_or(hlist, BIGSTRING("\x07" "enabled"),     hleaf, BS_enabled,      deftrue))        goto fail;
+	if (!push_field_or(hlist, BIGSTRING("\x06" "hidden"),      hleaf, BS_hidden,       deffalse))       goto fail;
+	if (!push_field_or(hlist, BIGSTRING("\x0c" "accepts_args"),hleaf, BS_accepts_args, deffalse))       goto fail;
+
+	/*
+	 * Dispose the local default values now that everything's been copied.
+	 */
+	disposevaluerecord(defemptystring, false);
+
+	return setheapvalue((Handle) hlist, recordvaluetype, vreturned);
+
+fail:
+	opdisposelist(hlist);
+
+cleanup_defaults:
+	disposevaluerecord(defemptystring, false);
+	return false;
 }
