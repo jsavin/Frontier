@@ -58,6 +58,7 @@
 
 #ifdef FRONTIER_HEADLESS
 #include "menudata_headless.h"
+#include "tableverbs.h"
 #endif
 
 
@@ -99,9 +100,13 @@ typedef enum tymenutoken { /*verbs that are processed by menueditor.c*/
 	deletesubmenufunc,
 	
 	getcommandkeyfunc,
-	
+
 	setcommandkeyfunc,
-	
+
+	menulistfunc,
+
+	menudescribefunc,
+
 	ctmenuverbs
 	} tymenutoken;
 
@@ -2090,6 +2095,77 @@ static boolean menufunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 			return (true);
 
 		#ifdef FRONTIER_HEADLESS
+		case menulistfunc: {
+			/*
+			 * menu.list(adrApp = nil) -> list of leaf addresses under
+			 * system.menus.data. See ADR-016 §"menu.list contract".
+			 *
+			 * Lives in this first switch (bypasses headless_resolve_menu_target)
+			 * because system.menus.data is a process-global projection, not
+			 * a window-bound menu record. The actual walk lives in
+			 * Common/source/menudata_headless.c so the integration-tests
+			 * dispatcher (tests/headless_menu_verbs.c) can share the exact
+			 * same C implementation. Note that this kernel switch is dead
+			 * code in headless because loadfunctionprocessor is a no-op
+			 * stub at startup — kept for source-of-truth parity.
+			 *
+			 * IMPORTANT: must NOT use getoptionaltableparam — that helper
+			 * calls langassignnewtablevalue which CREATES a fresh empty
+			 * table at the address, blowing away the caller's data. We
+			 * resolve the address by hand: getoptionaladdressparam to
+			 * extract (parent, name), then findnamedtable for read-only
+			 * access.
+			 */
+			short ctconsumed = 0, ctpositional = 0;
+			hdlhashtable hparent = nil;
+			bigstring bsname;
+			bigstring bsadrApp;
+			hdlhashtable hscope = nil;
+
+			flnextparamislast = true;
+
+			copystring (BIGSTRING ("\x06" "adrApp"), bsadrApp);
+			setemptystring (bsname);
+
+			if (!getoptionaladdressparam (hparam1, &ctconsumed, &ctpositional, bsadrApp, &hparent, bsname))
+				goto error;
+
+			if (hparent != nil && !isemptystring (bsname)) {
+				if (!findnamedtable (hparent, bsname, &hscope))
+					goto error;
+				}
+
+			if (!menudata_list_leaves (hscope, v))
+				goto error;
+
+			return (true);
+			}
+
+		case menudescribefunc: {
+			/*
+			 * menu.describe(adrItem) -> 9-field record with documented
+			 * defaults for absent fields. See ADR-016 §"menu.describe
+			 * contract". Same first-switch reasoning as menulistfunc:
+			 * adrItem points into system.menus.data, not a menu record.
+			 */
+			hdlhashtable hcontainer;
+			bigstring bsname;
+			hdlhashtable hleaf = nil;
+
+			flnextparamislast = true;
+
+			if (!getvarparam (hparam1, 1, &hcontainer, bsname))
+				goto error;
+
+			if (!findnamedtable (hcontainer, bsname, &hleaf))
+				goto error;
+
+			if (!menudata_describe_leaf (hleaf, v))
+				goto error;
+
+			return (true);
+			}
+
 		case zoomscriptfunc:
 			/*
 			 * P1-C: zoomScript opens a script editor window — GUI-only by

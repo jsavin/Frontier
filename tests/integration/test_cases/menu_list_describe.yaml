@@ -1,0 +1,134 @@
+# Integration tests for menu.list / menu.describe (sub-PR 2a)
+#
+# Background: ADR-016 establishes system.menus.data as the canonical headless
+# menu storage projection. PR 1 (#575) added menudata_ensure_root() so the
+# table chain is reachable. This file exercises the read-only verbs that walk
+# that chain:
+#
+#   menu.list(adrApp = nil)  -> list of @system.menus.data.<app>.<menu>.<item>
+#                               leaf addresses; if adrApp non-nil, scoped to
+#                               that subtree.
+#   menu.describe(adrItem)   -> 9-field record describing the leaf, with
+#                               documented defaults for absent fields.
+#
+# A "leaf" is a sub-table at the deepest level whose children are all scalar
+# (label / script / cmdkey / ...). Intermediate sub-tables (the app and menu
+# rungs) are walked through but not themselves returned.
+#
+# Each test populates and tears down its own scratch app under
+# system.menus.data, so multiple tests can share the staged DB without cross-
+# contamination — the same isolation discipline that the existing PR 1 yaml
+# learned the hard way.
+
+tests:
+  # ==========================================================================
+  # menu.list - enumerate leaf items under system.menus.data
+  # ==========================================================================
+
+  - name: "menu.list - empty data tree returns empty list"
+    description: "On a fresh root with no apps installed under system.menus.data, menu.list(nil) returns an empty list. (UserTalk does not support # comments in script/eval — keep scripts comment-free.)"
+    script: |
+      try {delete(@system.menus.data.testAppEmpty)};
+      local(items = menu.list());
+      return sizeof(items)
+    expected_success: true
+    expected_result: "0"
+
+  - name: "menu.list - single leaf item is enumerated"
+    description: "After populating system.menus.data.testAppOne.MenuA.ItemA with a label/script pair, menu.list(nil) returns a list containing one address."
+    script: |
+      new(tableType, @system.menus.data.testAppOne);
+      new(tableType, @system.menus.data.testAppOne.MenuA);
+      new(tableType, @system.menus.data.testAppOne.MenuA.ItemA);
+      system.menus.data.testAppOne.MenuA.ItemA.label = "Item A";
+      system.menus.data.testAppOne.MenuA.ItemA.script = "dialog.alert(\"hi\")";
+      local(items = menu.list());
+      local(ct = sizeof(items));
+      delete(@system.menus.data.testAppOne);
+      return ct >= 1
+    expected_success: true
+    expected_result: "true"
+
+  - name: "menu.list - scoped enumeration returns only the requested app"
+    description: "menu.list(@system.menus.data.testScopeA) returns only testScopeA's leaves, not testScopeB's."
+    script: |
+      new(tableType, @system.menus.data.testScopeA);
+      new(tableType, @system.menus.data.testScopeA.M);
+      new(tableType, @system.menus.data.testScopeA.M.I);
+      system.menus.data.testScopeA.M.I.label = "A";
+      system.menus.data.testScopeA.M.I.script = "scriptA()";
+      new(tableType, @system.menus.data.testScopeB);
+      new(tableType, @system.menus.data.testScopeB.M);
+      new(tableType, @system.menus.data.testScopeB.M.I);
+      system.menus.data.testScopeB.M.I.label = "B";
+      system.menus.data.testScopeB.M.I.script = "scriptB()";
+      local(scopedA = menu.list(@system.menus.data.testScopeA));
+      local(ctA = sizeof(scopedA));
+      delete(@system.menus.data.testScopeA);
+      delete(@system.menus.data.testScopeB);
+      return ctA == 1
+    expected_success: true
+    expected_result: "true"
+
+  # ==========================================================================
+  # menu.describe - read fields from a leaf item
+  # ==========================================================================
+
+  - name: "menu.describe - returns script field that was stored"
+    description: "After storing a leaf with label/script, describe returns a record whose script field matches what was set."
+    script: |
+      new(tableType, @system.menus.data.testDescribeOne);
+      new(tableType, @system.menus.data.testDescribeOne.Menu);
+      new(tableType, @system.menus.data.testDescribeOne.Menu.Item);
+      system.menus.data.testDescribeOne.Menu.Item.label = "L";
+      system.menus.data.testDescribeOne.Menu.Item.script = "the script";
+
+      local(rec = menu.describe(@system.menus.data.testDescribeOne.Menu.Item));
+      local(s = rec.script);
+
+      delete(@system.menus.data.testDescribeOne);
+
+      return s == "the script"
+    expected_success: true
+    expected_result: "true"
+
+  - name: "menu.describe - missing optional fields fall back to documented defaults"
+    description: "A leaf with only label and script populated reports enabled=true, hidden=false, shortcut=empty, accepts_args=false."
+    script: |
+      new(tableType, @system.menus.data.testDescribeDefaults);
+      new(tableType, @system.menus.data.testDescribeDefaults.M);
+      new(tableType, @system.menus.data.testDescribeDefaults.M.I);
+      system.menus.data.testDescribeDefaults.M.I.label = "Bare";
+      system.menus.data.testDescribeDefaults.M.I.script = "x()";
+
+      local(rec = menu.describe(@system.menus.data.testDescribeDefaults.M.I));
+
+      local(okEnabled = rec.enabled == true);
+      local(okHidden = rec.hidden == false);
+      local(okShortcut = rec.shortcut == "");
+      local(okArgs = rec.accepts_args == false);
+
+      delete(@system.menus.data.testDescribeDefaults);
+
+      return okEnabled and okHidden and okShortcut and okArgs
+    expected_success: true
+    expected_result: "true"
+
+  - name: "menu.describe - explicitly-set cmdkey is reported"
+    description: "When the leaf has a cmdkey field, describe reflects it."
+    script: |
+      new(tableType, @system.menus.data.testDescribeCmdkey);
+      new(tableType, @system.menus.data.testDescribeCmdkey.M);
+      new(tableType, @system.menus.data.testDescribeCmdkey.M.I);
+      system.menus.data.testDescribeCmdkey.M.I.label = "Save";
+      system.menus.data.testDescribeCmdkey.M.I.script = "saveDoc()";
+      system.menus.data.testDescribeCmdkey.M.I.cmdkey = 'S';
+
+      local(rec = menu.describe(@system.menus.data.testDescribeCmdkey.M.I));
+      local(k = rec.cmdkey);
+
+      delete(@system.menus.data.testDescribeCmdkey);
+
+      return k == 'S'
+    expected_success: true
+    expected_result: "true"

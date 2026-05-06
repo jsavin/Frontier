@@ -64,4 +64,112 @@
  */
 extern boolean menudata_ensure_root(void);
 
+
+/*
+ * Walk the system.menus.data subtree and build a list of address values
+ * pointing at leaf items. A "leaf" is a sub-table whose children are all
+ * scalars — i.e. the deepest rung in the app/menu/item chain. Intermediate
+ * sub-tables (the app and menu rungs) are walked through but are not
+ * themselves returned.
+ *
+ *   hscope == nil     -> walk the entire system.menus.data subtree
+ *   hscope != nil     -> walk only that subtree
+ *
+ * On success *vreturned holds a freshly-allocated listvaluetype value owned
+ * by the caller (dispose with disposevaluerecord). Returns false on hard
+ * failure (allocation error). An empty subtree is success with an empty
+ * list.
+ *
+ * GIL: must be called while holding the GIL — accesses roottable and walks
+ * the lang.c hashtable structures via hashinversesearch / findnamedtable,
+ * and allocates lang values (opnewlist, setaddressvalue) which all assume
+ * GIL discipline.
+ *
+ * Backs the menu.list verb. See ADR-016 for the projection model and
+ * planning/discussions/pr2-meuserselected-headless-plan.md for sub-PR 2a.
+ */
+extern boolean menudata_list_leaves(hdlhashtable hscope, tyvaluerecord *vreturned);
+
+
+/*
+ * Build a 9-field record describing a single leaf item. Field set per
+ * ADR-016 §"menu.describe contract":
+ *
+ *   label         (string, "" if missing)
+ *   script        (string, "" if missing)
+ *   cmdkey        (char,   '\0' if missing)
+ *   cmdmodifiers  (long,   0 if missing)
+ *   description   (string, "" if missing)
+ *   shortcut      (string, "" if missing)
+ *   enabled       (boolean, true if missing)
+ *   hidden        (boolean, false if missing)
+ *   accepts_args  (boolean, false if missing)
+ *
+ * The defaults reflect the "least-surprising menu item" baseline: enabled
+ * and visible, no accelerator, takes no arguments. Callers don't need to
+ * pre-populate every field.
+ *
+ * On success *vreturned holds a freshly-allocated recordvaluetype value
+ * owned by the caller. Returns false on hard failure or if hleaf is nil.
+ *
+ * GIL: must be called while holding the GIL — reads from hleaf's hashtable
+ * (lang.c global structure) and allocates lang values (opnewlist,
+ * copyvaluerecord, setheapvalue) which all assume GIL discipline.
+ *
+ * Backs the menu.describe verb.
+ */
+extern boolean menudata_describe_leaf(hdlhashtable hleaf, tyvaluerecord *vreturned);
+
+
+/*
+ * Headless sibling of meuserselected (Common/source/meprograms.c:256-315).
+ *
+ * Compiles a UserTalk source handle and runs it synchronously on the
+ * calling (GIL-holding) thread. Skips the Mac-UI artifacts
+ * (op_get_outlinedata, shellforcemenuadjust, mezoomscriptwindow) and the
+ * process-scheduler queue (newprocess/addprocess) that the Mac path uses.
+ *
+ * Implementation note: the planning doc described this as a
+ * scriptbuildtree -> newprocess -> addprocess chain, but the headless
+ * build deliberately omits process.c (see frontier-cli/headless_thread_verbs.c
+ * for the parallel POSIX-thread / GIL discipline that replaces it). For
+ * the REPL palette use case — exec-then-resume-linenoise — synchronous
+ * execution via langbuildtree + langruncode matches the existing REPL
+ * eval path and keeps the dispatch path unit-testable without scheduler
+ * fixtures.
+ *
+ * Caller is responsible for fetching hScript from the menu leaf's "script"
+ * field (e.g. via menu.describe). hScript must be a Pascal-prefixed text
+ * handle in the UserTalk shape (typeLAND) — same shape as
+ * megetnodelangtext output / outline-extracted langtext / newtexthandle().
+ * langbuildtree consumes hScript on every path; the caller must not
+ * reference it after the call.
+ *
+ * Handle privacy: if hScript was extracted from a menu leaf field, the
+ * caller must either (a) have held the GIL continuously between extraction
+ * and this call, or (b) have made a private copy via copyhandle. Otherwise
+ * another GIL-acquiring thread (the GIL is released at langbackgroundtask
+ * yield points inside langruncode) could dispose or rewrite the underlying
+ * handle while we are mid-execution. The recommended path is to dispatch
+ * via the value returned by menudata_describe_leaf, which copyvaluerecord's
+ * every field — those copies are independently allocated and safe to hand
+ * off across yields.
+ *
+ * Returns true iff the script compiled cleanly AND ran to completion.
+ * Returns false on:
+ *   - hScript == nil
+ *   - compile failure (langbuildtree rejects the source)
+ *   - runtime error during execution (langruncode returns false)
+ *
+ * GIL: must be called while holding the GIL. Runs user code synchronously,
+ * so all kernel-verb side effects observable on return.
+ *
+ * Future: when async menu dispatch is needed (long-running scripts that
+ * should not block linenoise), wrap in headless_spawn_callback_thread.
+ *
+ * See planning/discussions/repl-slash-menu-implementation-plan.md (sub-PR 2b)
+ * and ADR-016.
+ */
+extern boolean meuserselected_headless(Handle hScript);
+
 #endif /* menudata_headless_include */

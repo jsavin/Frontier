@@ -190,7 +190,9 @@ resource 'EFP#' (idmenuverbs, "menu") {
 		"addsubmenu",
 		"deletesubmenu",
 		"getcommandkey",
-		"setcommandkey"
+		"setcommandkey",
+		"list",
+		"describe"
 		}
 	}
 };
