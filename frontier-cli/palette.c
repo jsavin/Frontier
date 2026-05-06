@@ -63,11 +63,6 @@
 
 static int imax(int a, int b) { return a > b ? a : b; }
 static int imin(int a, int b) { return a < b ? a : b; }
-static int iclamp(int v, int lo, int hi) {
-	if (v < lo) return lo;
-	if (v > hi) return hi;
-	return v;
-}
 
 /* Items are rendered with two columns of label-padding inside the
  * border, so the pane width = max(label widths) + 2 (padding) + 2
@@ -108,6 +103,11 @@ static void layout_menubar(palette_state_t *st) {
 		st->source->menu_describe(st->source->ctx, i,
 		                          st->menu_labels[i],
 		                          sizeof(st->menu_labels[i]), &hk);
+		/* Defensive NUL-termination — vtable spec requires sources to
+		 * NUL-terminate but this enforces the invariant locally so
+		 * subsequent strlen/loops are always safe even against a
+		 * misbehaving source. */
+		st->menu_labels[i][sizeof(st->menu_labels[i]) - 1] = '\0';
 		st->menu_hotkeys[i] = hk;
 		st->menu_x[i] = x;
 		st->menu_w[i] = menubar_entry_width(st->menu_labels[i]);
@@ -213,9 +213,18 @@ static void render_level(palette_state_t *st, int depth) {
 }
 
 /* Compute the natural placement of a cascade level given its parent
- * geometry and term bounds. Implements the LEFT / UP overflow rules. */
-static void place_cascade_pane(palette_state_t *st, int depth,
-                               int w, int h, int *out_x, int *out_y) {
+ * geometry and term bounds. Implements the LEFT / UP overflow rules.
+ *
+ * After the LEFT/UP fallback, applies a final width/height clamp so the
+ * pane never extends past term_cols / term_rows. Returns false if the
+ * post-clamp pane is too small to be useful (w < 4 or h < 3) — caller
+ * should refuse to open this level. *out_w / *out_h hold the
+ * (possibly-clamped) final dimensions. */
+static bool place_cascade_pane(palette_state_t *st, int depth,
+                               int w, int h,
+                               int *out_x, int *out_y,
+                               int *out_w, int *out_h) {
+	int x, y;
 	if (depth == 0) {
 		/* Top-level menu: anchored beneath its menubar entry. */
 		int mi = st->menubar_cursor;
@@ -227,35 +236,45 @@ static void place_cascade_pane(palette_state_t *st, int depth,
 		if (ax < 0) ax = 0;
 		if (ay + h > st->term_rows) ay = st->term_rows - h;
 		if (ay < 1) ay = 1;     /* never overlap the menubar */
-		*out_x = ax;
-		*out_y = ay;
-		return;
-	}
+		x = ax;
+		y = ay;
+	} else {
+		/* Submenu: cascade off the parent at the cursor row. */
+		const palette_level_t *parent = &st->levels[depth - 1];
+		int default_x = parent->pane.x + parent->pane.w;
+		int default_y = parent->pane.y + 1 + parent->cursor;
 
-	/* Submenu: cascade off the parent at the cursor row. */
-	const palette_level_t *parent = &st->levels[depth - 1];
-	int default_x = parent->pane.x + parent->pane.w;
-	int default_y = parent->pane.y + 1 + parent->cursor;
+		x = default_x;
+		y = default_y;
 
-	int x = default_x;
-	int y = default_y;
-
-	if (x + w > st->term_cols) {
-		/* Open LEFT instead. */
-		x = parent->pane.x - w;
-		if (x < 0) {
-			/* Even leftward doesn't fit — pick whichever side leaves
-			 * more pane on screen. Fall back to clamp at 0. */
-			x = 0;
+		if (x + w > st->term_cols) {
+			/* Open LEFT instead. */
+			x = parent->pane.x - w;
+			if (x < 0) {
+				/* Even leftward doesn't fit — pick whichever side leaves
+				 * more pane on screen. Fall back to clamp at 0. */
+				x = 0;
+			}
 		}
+		if (y + h > st->term_rows) {
+			y = st->term_rows - h;
+			if (y < 1) y = 1;       /* never overlap menubar */
+		}
+		if (y < 1) y = 1;
 	}
-	if (y + h > st->term_rows) {
-		y = st->term_rows - h;
-		if (y < 1) y = 1;       /* never overlap menubar */
-	}
-	if (y < 1) y = 1;
+
+	/* Final clamp — even after LEFT/UP fallbacks, narrow terminals can
+	 * still produce a pane that extends past the screen. Trim w/h to fit.
+	 * If trimming makes the pane too small to render usefully, refuse. */
+	if (x + w > st->term_cols) w = st->term_cols - x;
+	if (y + h > st->term_rows) h = st->term_rows - y;
+	if (w < 4 || h < 3) return false;
+
 	*out_x = x;
 	*out_y = y;
+	*out_w = w;
+	*out_h = h;
+	return true;
 }
 
 /* Open a level and populate it from the data source. depth 0 = top
@@ -276,6 +295,10 @@ static bool open_level(palette_state_t *st, int depth) {
 		const palette_level_t *parent = &st->levels[depth - 1];
 		const palette_item_t *anchor = &parent->items[parent->cursor];
 		if (!anchor->is_submenu) return false;
+		/* For submenu levels we propagate the ROOT menu index down for
+		 * caller convenience, but the source MUST resolve items via
+		 * `parent_opaque` — `menu_index` is advisory when
+		 * `parent_opaque != NULL`. See palette_menu_source_t doc. */
 		menu_index = parent->menu_index;
 		parent_opaque = anchor->opaque;
 	}
@@ -292,6 +315,12 @@ static bool open_level(palette_state_t *st, int depth) {
 		                               parent_opaque, i, &tmp)) {
 			continue;
 		}
+		/* Defensive NUL-termination — vtable spec requires sources to
+		 * NUL-terminate but this enforces the invariant locally so
+		 * subsequent strlen/loops are always safe even against a
+		 * misbehaving source. */
+		tmp.label[sizeof(tmp.label) - 1] = '\0';
+		tmp.description[sizeof(tmp.description) - 1] = '\0';
 		if (tmp.hidden) continue;
 		lvl->items[kept++] = tmp;
 	}
@@ -301,14 +330,21 @@ static bool open_level(palette_state_t *st, int depth) {
 	int w = compute_menu_pane_width(lvl->items, lvl->item_count);
 	int h = compute_menu_pane_height(lvl->item_count);
 	int px = 0, py = 0;
+	int pw = 0, ph = 0;
 	/* Use the prospective open_depth so place_cascade_pane sees this
 	 * level as the current focus context. */
 	int saved_depth = st->open_depth;
 	st->open_depth = depth + 1;
-	place_cascade_pane(st, depth, w, h, &px, &py);
+	bool fits = place_cascade_pane(st, depth, w, h, &px, &py, &pw, &ph);
 	st->open_depth = saved_depth;
+	if (!fits) {
+		/* Terminal too small to render this cascade level usefully —
+		 * refuse to open. Caller observes no change in open_depth. */
+		memset(lvl, 0, sizeof(*lvl));
+		return false;
+	}
 
-	pane_init(&lvl->pane, px, py, w, h);
+	pane_init(&lvl->pane, px, py, pw, ph);
 	compositor_register(&lvl->pane);
 	pane_raise(&lvl->pane);
 
@@ -347,12 +383,18 @@ bool palette_open(palette_state_t *st, int term_rows, int term_cols,
 	layout_menubar(st);
 	if (st->menu_count <= 0) return false;
 
-	/* Initialise menubar pane: row 0, full width, 1 row tall, no border. */
+	/* Initialise menubar pane: row 0, full width, 1 row tall, no border.
+	 * Set active=true immediately after the first compositor_register
+	 * call so that palette_close cleans up consistently even if a future
+	 * palette_open variant fails partway through (e.g. during a follow-up
+	 * source query). Today this is simply belt-and-suspenders, but it
+	 * prevents resource leaks if open ever grows additional fallible
+	 * steps. */
 	pane_init(&st->menubar, 0, 0, st->term_cols, 1);
 	compositor_register(&st->menubar);
+	st->active = true;
 	st->menubar_cursor = 0;
 	st->open_depth = 0;
-	st->active = true;
 	st->esc_pending = false;
 	st->csi_len = 0;
 	st->exec_script = NULL;
@@ -360,8 +402,9 @@ bool palette_open(palette_state_t *st, int term_rows, int term_cols,
 }
 
 void palette_close(palette_state_t *st) {
-	if (!st || !st->active) {
-		if (st) st->active = false;
+	if (!st) return;
+	if (!st->active) {
+		/* Already closed (or never opened) — idempotent no-op. */
 		return;
 	}
 	close_all_levels(st);
@@ -433,9 +476,15 @@ static palette_done_t process_csi(palette_state_t *st, char term) {
 		if (st->open_depth == 0) {
 			if (st->menubar_cursor < st->menu_count - 1) st->menubar_cursor++;
 		} else {
-			/* If on a submenu item, open the cascade. Otherwise
-			 * collapse current cascade(s) and move to next menubar
-			 * entry, opening that menu (VisiCalc convention). */
+			/* If on a submenu item, open the cascade. Otherwise:
+			 *   - At depth == 1 (top-level menu open) on a non-submenu
+			 *     item: collapse and advance to the next menubar entry
+			 *     (VisiCalc convention — RIGHT scans the menubar).
+			 *   - At depth > 1 (inside a cascade) on a non-submenu item:
+			 *     intentional no-op. Top-level RIGHT is the only path
+			 *     that navigates the menubar; deeper cascades treat
+			 *     RIGHT as "drill in if possible, else nothing" so the
+			 *     user doesn't lose their place by accident. */
 			palette_level_t *lvl = &st->levels[st->open_depth - 1];
 			if (lvl->cursor >= 0 && lvl->cursor < lvl->item_count &&
 			    lvl->items[lvl->cursor].is_submenu &&
@@ -447,6 +496,7 @@ static palette_done_t process_csi(palette_state_t *st, char term) {
 				st->menubar_cursor++;
 				open_level(st, 0);
 			}
+			/* depth > 1 non-submenu: no-op (see comment above). */
 		}
 		return PALETTE_DONE_NONE;
 	case 'D': /* LEFT */
@@ -472,80 +522,98 @@ static palette_done_t process_csi(palette_state_t *st, char term) {
 palette_done_t palette_feed_byte(palette_state_t *st, unsigned char b) {
 	if (!st || !st->active) return PALETTE_DONE_NONE;
 
-	/* Mid-CSI: collect bytes until terminator. */
-	if (st->csi_len > 0 || (st->esc_pending && b == '[')) {
-		if (st->esc_pending && b == '[') {
+	/* Iterative re-feed loop. The bare-ESC-followed-by-non-'[' path used
+	 * to recurse to "process the trailing byte after flushing ESC".
+	 * Replaced with an explicit loop so there's no implicit recursion
+	 * bound and the control flow is local. The loop body either:
+	 *   - returns (definitive done value), or
+	 *   - sets b to a byte to re-process and `continue`s. */
+	for (;;) {
+		/* Mid-CSI: collect bytes until terminator.
+		 *
+		 * Special case: an ESC arriving mid-CSI aborts the partial
+		 * sequence and begins a fresh ESC dispatch — the partial CSI
+		 * bytes are silently discarded. This matches XTerm behavior and
+		 * avoids stale csi_buf contamination if a runaway sequence is
+		 * interrupted by a user keypress. */
+		if (st->csi_len > 0 || (st->esc_pending && b == '[')) {
+			if (b == 0x1b) {
+				/* Abort current CSI; ESC starts fresh. */
+				st->csi_len = 0;
+				st->esc_pending = true;
+				return PALETTE_DONE_NONE;
+			}
+			if (st->esc_pending && b == '[') {
+				st->esc_pending = false;
+				st->csi_len = 1;        /* mark as "in CSI body" */
+				st->csi_buf[0] = '[';
+				return PALETTE_DONE_NONE;
+			}
+			/* CSI body byte. Final byte is in 0x40..0x7E. */
+			if (b >= 0x40 && b <= 0x7E) {
+				return process_csi(st, (char)b);
+			}
+			/* Parameter / intermediate byte — buffer it. */
+			if (st->csi_len < (int)sizeof(st->csi_buf) - 1) {
+				st->csi_buf[st->csi_len++] = (char)b;
+			}
+			return PALETTE_DONE_NONE;
+		}
+
+		/* Pending bare ESC plus non-'[' byte: flush ESC as cancel/close,
+		 * then re-process the trailing byte by looping. */
+		if (st->esc_pending && b != '[') {
 			st->esc_pending = false;
-			st->csi_len = 1;        /* mark as "in CSI body" */
-			st->csi_buf[0] = '[';
+			if (st->open_depth > 0) {
+				close_deepest_level(st);
+				/* Continue loop to process `b` as a fresh byte. */
+				continue;
+			}
+			/* ESC at top — cancel takes precedence; the trailing byte
+			 * is dropped. (Matches the historical recursive behavior
+			 * when the inner call returned DONE_CANCEL.) */
+			return PALETTE_DONE_CANCEL;
+		}
+
+		if (b == 0x1b) {
+			st->esc_pending = true;
 			return PALETTE_DONE_NONE;
 		}
-		/* CSI body byte. Final byte is in 0x40..0x7E. */
-		if (b >= 0x40 && b <= 0x7E) {
-			return process_csi(st, (char)b);
-		}
-		/* Parameter / intermediate byte — buffer it. */
-		if (st->csi_len < (int)sizeof(st->csi_buf) - 1) {
-			st->csi_buf[st->csi_len++] = (char)b;
-		}
-		return PALETTE_DONE_NONE;
-	}
 
-	/* Pending bare ESC plus non-'[' byte: flush ESC as cancel/close. */
-	if (st->esc_pending && b != '[') {
-		st->esc_pending = false;
-		palette_done_t r;
-		if (st->open_depth > 0) {
-			close_deepest_level(st);
-			r = PALETTE_DONE_NONE;
-		} else {
-			r = PALETTE_DONE_CANCEL;
-		}
-		/* Re-feed the byte that wasn't '['. (Recursion bounded: we
-		 * just cleared esc_pending and csi_len is 0.) */
-		palette_done_t r2 = palette_feed_byte(st, b);
-		if (r == PALETTE_DONE_CANCEL) return r;
-		return r2;
-	}
-
-	if (b == 0x1b) {
-		st->esc_pending = true;
-		return PALETTE_DONE_NONE;
-	}
-
-	if (b == '\r' || b == '\n') {
-		if (st->open_depth == 0) {
-			/* ENTER on menubar opens highlighted menu. */
-			open_level(st, 0);
-			return PALETTE_DONE_NONE;
-		}
-		return activate_cursor_item(st);
-	}
-
-	/* Printable letter — hotkey jump. Letters [A-Za-z] map to menubar
-	 * (when no menu is open) or to the deepest open level. */
-	if (isalpha((unsigned char)b)) {
-		if (st->open_depth == 0) {
-			int idx = find_hotkey_in_menubar(st, (char)b);
-			if (idx >= 0) {
-				st->menubar_cursor = idx;
+		if (b == '\r' || b == '\n') {
+			if (st->open_depth == 0) {
+				/* ENTER on menubar opens highlighted menu. */
 				open_level(st, 0);
+				return PALETTE_DONE_NONE;
+			}
+			return activate_cursor_item(st);
+		}
+
+		/* Printable letter — hotkey jump. Letters [A-Za-z] map to menubar
+		 * (when no menu is open) or to the deepest open level. */
+		if (isalpha((unsigned char)b)) {
+			if (st->open_depth == 0) {
+				int idx = find_hotkey_in_menubar(st, (char)b);
+				if (idx >= 0) {
+					st->menubar_cursor = idx;
+					open_level(st, 0);
+				}
+				return PALETTE_DONE_NONE;
+			}
+			int idx = find_hotkey_in_deepest(st, (char)b);
+			if (idx >= 0) {
+				palette_level_t *lvl = &st->levels[st->open_depth - 1];
+				if (lvl->items[idx].enabled) {
+					lvl->cursor = idx;
+					return activate_cursor_item(st);
+				}
 			}
 			return PALETTE_DONE_NONE;
 		}
-		int idx = find_hotkey_in_deepest(st, (char)b);
-		if (idx >= 0) {
-			palette_level_t *lvl = &st->levels[st->open_depth - 1];
-			if (lvl->items[idx].enabled) {
-				lvl->cursor = idx;
-				return activate_cursor_item(st);
-			}
-		}
+
+		/* Anything else: ignore. */
 		return PALETTE_DONE_NONE;
 	}
-
-	/* Anything else: ignore. */
-	return PALETTE_DONE_NONE;
 }
 
 palette_done_t palette_feed_esc_timeout(palette_state_t *st) {
@@ -564,6 +632,10 @@ palette_done_t palette_feed_mouse(palette_state_t *st, const mouse_event_t *ev) 
 	if (!st || !st->active || !ev) return PALETTE_DONE_NONE;
 	if (!ev->press) return PALETTE_DONE_NONE;        /* react on press only */
 	if (ev->btn != MOUSE_LEFT) return PALETTE_DONE_NONE;
+	/* Mouse coords are 1-based per ANSI/SGR convention. Reject anything
+	 * <= 0 outright — converting to 0-based would wrap into negatives
+	 * and let bogus events slip past the per-pane bounds checks below. */
+	if (ev->x < 1 || ev->y < 1) return PALETTE_DONE_NONE;
 
 	int mx = ev->x - 1;        /* convert 1-based to 0-based */
 	int my = ev->y - 1;
@@ -591,7 +663,18 @@ palette_done_t palette_feed_mouse(palette_state_t *st, const mouse_event_t *ev) 
 		 * occupy rows pane.y+1 ... pane.y+h-2 (inside borders). */
 		int local_y = my - p->y;
 		if (local_y <= 0 || local_y >= p->h - 1) {
-			/* Border click — ignored, but pane stays open. */
+			/* Border click. Behavior split:
+			 *   - On the deepest pane: no-op, pane stays open. The
+			 *     user may have just been imprecise; collapsing on a
+			 *     stray border click would feel hostile.
+			 *   - On a non-deepest (ancestor) pane: collapse to that
+			 *     level. The user reached past the deepest cascade to
+			 *     an ancestor's frame, which reads as "I want to focus
+			 *     this level again". This matches the keyboard LEFT
+			 *     semantic of "close one cascade". */
+			if (d < st->open_depth - 1) {
+				while (st->open_depth - 1 > d) close_deepest_level(st);
+			}
 			return PALETTE_DONE_NONE;
 		}
 		int item = local_y - 1;
@@ -633,20 +716,36 @@ void palette_on_resize(palette_state_t *st, int term_rows, int term_cols) {
 	}
 
 	/* Reposition every open level — cascade geometry depends on
-	 * term_rows/term_cols. We re-place each pane in turn. */
-	for (int d = 0; d < st->open_depth; ++d) {
+	 * term_rows/term_cols. We re-place each pane in turn using its
+	 * INTRINSIC width/height (the natural size from item labels +
+	 * padding/border) rather than its current possibly-clamped size, so
+	 * that shrinking and then re-growing the terminal restores the
+	 * pane's natural width.
+	 *
+	 * If a level no longer fits on screen (place_cascade_pane returns
+	 * false because the post-clamp w<4 or h<3), close that level and
+	 * everything deeper. */
+	for (int d = 0; d < st->open_depth; /* incremented inside */) {
 		palette_level_t *lvl = &st->levels[d];
-		int w = lvl->pane.w;
-		int h = lvl->pane.h;
+		int w = compute_menu_pane_width(lvl->items, lvl->item_count);
+		int h = compute_menu_pane_height(lvl->item_count);
 		int saved_depth = st->open_depth;
 		st->open_depth = d + 1;
 		int px = 0, py = 0;
-		place_cascade_pane(st, d, w, h, &px, &py);
+		int pw = 0, ph = 0;
+		bool fits = place_cascade_pane(st, d, w, h, &px, &py, &pw, &ph);
 		st->open_depth = saved_depth;
+		if (!fits) {
+			/* This level no longer fits. Close it and any deeper
+			 * levels and stop. */
+			while (st->open_depth > d) close_deepest_level(st);
+			break;
+		}
 		pane_move(&lvl->pane, px, py);
+		pane_resize(&lvl->pane, pw, ph);
 		if (lvl->cursor >= lvl->item_count) {
 			lvl->cursor = imax(0, lvl->item_count - 1);
 		}
+		++d;
 	}
-	(void)iclamp;  /* iclamp reserved for future use */
 }

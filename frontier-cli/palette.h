@@ -104,28 +104,75 @@ typedef struct palette_item {
 	/* For leaves only: the script body to dispatch on EXECUTE. The
 	 * palette copies this pointer into palette_state.exec_script and
 	 * the caller (PR 6) hands it to meuserselected_headless. NULL for
-	 * submenu items. The palette does NOT own this pointer; it must
-	 * remain valid for the lifetime of the open palette. */
+	 * submenu items.
+	 *
+	 * Ownership and lifetime — STRICT contract:
+	 *   - The palette does NOT own `script_handle`.
+	 *   - It MUST remain valid across GIL yields for the entire lifetime
+	 *     of the open palette AND survive palette_close so the caller can
+	 *     dispatch on PALETTE_DONE_EXECUTE without a re-fetch.
+	 *   - Because the palette is open across many keystrokes (and thus
+	 *     across multiple GIL yield points — see
+	 *     Common/headers/menudata_headless.h), the source MUST guarantee
+	 *     stability by either:
+	 *       (a) pre-copying the handle into source-private storage when
+	 *           populating its internal cache (e.g. copyhandle /
+	 *           copyvaluerecord), OR
+	 *       (b) advertising the handle as already-immutable (e.g. fields
+	 *           of a deep-copied record returned by
+	 *           menudata_describe_leaf, each independently allocated).
+	 *   - The palette will NOT call back into the source at dispatch
+	 *     time; it aliases this pointer into palette_state.exec_script
+	 *     and the caller is responsible for dispatching BEFORE tearing
+	 *     down the source's backing storage. palette_close does NOT
+	 *     invalidate exec_script. */
 	void *script_handle;
 } palette_item_t;
 
 /* Source vtable — describes a menubar tree. The `ctx` pointer is passed
  * back to every callback verbatim and is opaque to the palette.
  *
- * Lifetime: all returned strings (`label`, `description`) must remain
- * valid for the entire duration of the open palette. The data source is
- * queried once on palette_open() into an internal cache, so transient
- * buffers are OK as long as they're stable across that single walk.
+ * String lifetime: returned strings (`label`, `description`) and any
+ * `script_handle` / `opaque` pointers stored in palette_item_t MUST
+ * remain valid for the entire lifetime of the open palette AND across
+ * GIL yields. The data source is queried once on palette_open() into
+ * an internal cache; transient buffers are OK during the open walk only
+ * if the palette's per-item `label`/`description` byte copies (made via
+ * snprintf into fixed-size buffers below) are sufficient for rendering.
+ * For pointer-typed fields (`opaque`, `script_handle`), see palette_item_t
+ * — the source bears the entire stability burden because the palette
+ * never re-queries.
+ *
+ * Strings written by `menu_describe` and `item_describe` are NUL-
+ * terminated by the source. The palette additionally force-NUL-
+ * terminates the trailing byte after every callback as defense in
+ * depth, so subsequent strlen()/loops are always safe.
+ *
+ * `menu_index` semantics in callbacks:
+ *   - For top-level menus (parent_opaque == NULL): canonical menu
+ *     index, in [0, count_menus()).
+ *   - For submenu levels (parent_opaque != NULL): set to the ROOT
+ *     menu's index for caller convenience, but sources MUST resolve
+ *     items via `parent_opaque`. Sources must not key state off
+ *     `menu_index` when `parent_opaque != NULL`.
  */
 typedef struct palette_menu_source {
 	void *ctx;
 
-	/* Number of top-level menus on the menubar (e.g. REPL, File, Help). */
+	/* Number of top-level menus on the menubar (e.g. REPL, File, Help).
+	 *
+	 * GIL: caller must hold the GIL when this is invoked from
+	 * palette_open / palette_feed_byte. Source implementations may
+	 * touch ODB. */
 	int (*count_menus)(void *ctx);
 
 	/* Fill `out_label` with the menu's label and `out_hotkey` with its
 	 * single-letter hotkey ('\0' if none). Returns false if `index` is
-	 * out of range. `label_cap` is the buffer capacity. */
+	 * out of range. `label_cap` is the buffer capacity. The source must
+	 * NUL-terminate `out_label`; the palette additionally enforces this
+	 * locally.
+	 *
+	 * GIL: caller must hold the GIL. */
 	bool (*menu_describe)(void *ctx, int menu_index,
 	                      char *out_label, size_t label_cap,
 	                      char *out_hotkey);
@@ -135,10 +182,18 @@ typedef struct palette_menu_source {
 	 * top-level menu (in which case `menu_index` selects which one).
 	 * Returns the item count. The same handle stays open until
 	 * the palette closes — sources may cache state keyed off
-	 * (parent_opaque, menu_index). */
+	 * (parent_opaque, menu_index).
+	 *
+	 * GIL: caller must hold the GIL. */
 	int (*item_count)(void *ctx, int menu_index, void *parent_opaque);
 
-	/* Fill `out` with item `item_index` under (menu_index, parent_opaque). */
+	/* Fill `out` with item `item_index` under (menu_index, parent_opaque).
+	 * The source must NUL-terminate `out->label` and `out->description`;
+	 * the palette additionally enforces this locally. The source is
+	 * responsible for stability of `out->opaque` and `out->script_handle`
+	 * across GIL yields — see palette_item_t for the full contract.
+	 *
+	 * GIL: caller must hold the GIL. */
 	bool (*item_describe)(void *ctx, int menu_index, void *parent_opaque,
 	                      int item_index, palette_item_t *out);
 } palette_menu_source_t;
@@ -180,8 +235,20 @@ typedef struct palette_state {
 	int open_depth;             /* 0 = no menu open, 1 = top, 2 = submenu, ... */
 
 	/* Set on PALETTE_DONE_EXECUTE — caller reads this to find the script
-	 * to dispatch. Aliased into the data source's storage; palette does
-	 * not own it. */
+	 * to dispatch.
+	 *
+	 *   - Set by palette_feed_* when returning PALETTE_DONE_EXECUTE.
+	 * 	   - Aliases source-owned storage. Per the palette_item_t
+	 *     `script_handle` contract, the source has guaranteed this
+	 *     pointer is stable across GIL yields and survives palette_close.
+	 *   - Survives palette_close — the typical caller pattern is:
+	 *       1. palette_feed_byte(...) returns PALETTE_DONE_EXECUTE
+	 *       2. capture st->exec_script
+	 *       3. palette_close(&st)
+	 *       4. dispatch the captured handle
+	 *       5. (later) tear down the source's backing storage
+	 *     The palette does NOT own this pointer and palette_close does
+	 *     NOT invalidate it. */
 	void *exec_script;
 
 	/* ESC disambiguation: when palette_feed_byte sees a bare 0x1b, it
@@ -211,39 +278,65 @@ typedef struct palette_state {
  * compositor_on_resize(term_rows, term_cols) — palette does not call it.
  *
  * Returns true on success, false if the menubar source has zero menus or
- * the terminal is too small to render the menubar at all (cols < 4). */
+ * the terminal is too small to render the menubar at all (cols < 4).
+ *
+ * GIL: must be held by the caller. The source vtable callbacks
+ * (count_menus, menu_describe) run inline and may touch the ODB. */
 bool palette_open(palette_state_t *st, int term_rows, int term_cols,
                   const palette_menu_source_t *source);
 
 /* Close the palette. Unregisters all panes from the compositor and
- * destroys their cell buffers. Idempotent. */
+ * destroys their cell buffers. Idempotent.
+ *
+ * GIL: not required. Closes only locally-owned compositor registrations
+ * and pane buffers; does not call back into the source. Note that
+ * palette_state.exec_script (if set) is NOT invalidated by close —
+ * see the field doc. */
 void palette_close(palette_state_t *st);
 
 /* Feed one input byte. Drives both the ESC disambiguation buffer and the
  * CSI parser. Returns DONE_EXECUTE if the byte triggered a leaf dispatch
  * (with `st->exec_script` populated), DONE_CANCEL if the palette should
- * tear down, DONE_NONE otherwise. */
+ * tear down, DONE_NONE otherwise.
+ *
+ * GIL: must be held when this can re-enter the source — drilling into a
+ * submenu (ENTER, RIGHT, hotkey on a submenu item) calls
+ * source->item_count and source->item_describe. The conservative rule is
+ * "always hold the GIL when feeding bytes". */
 palette_done_t palette_feed_byte(palette_state_t *st, unsigned char b);
 
 /* Called by the caller's event loop when the ESC disambiguation timer
  * (POLL_TIMEOUT_MS, ~10ms in the REPL — see plan §1.3b) fires without a
  * follow-up byte. If esc_pending is set, treats it as a bare ESC and
- * processes accordingly (collapse one level / DONE_CANCEL at top). */
+ * processes accordingly (collapse one level / DONE_CANCEL at top).
+ *
+ * GIL: not required. Does not call into the source — only manipulates
+ * local cascade state. */
 palette_done_t palette_feed_esc_timeout(palette_state_t *st);
 
 /* Feed a parsed mouse event. Coordinates are 1-based (matches mouse_parse
  * output and ANSI CUP convention). The palette converts to 0-based and
- * routes via compositor_pane_at(). */
+ * routes via compositor_pane_at().
+ *
+ * GIL: must be held when the click can drill into a submenu (clicking a
+ * submenu item calls source->item_count / item_describe). The
+ * conservative rule is "always hold the GIL when feeding mouse". */
 palette_done_t palette_feed_mouse(palette_state_t *st, const mouse_event_t *ev);
 
 /* Re-render every registered palette pane. Called after any state
  * change. Does NOT call compositor_render() — the caller composites
  * along with the rest of its UI (scrollback, prompt) for one
- * frame-coherent flush per tick. */
+ * frame-coherent flush per tick.
+ *
+ * GIL: not required. Reads only local cached state. */
 void palette_render_state(palette_state_t *st);
 
 /* React to a SIGWINCH-style resize. Re-fetches geometry, repositions
- * cascades, and clamps any cursors out of range. */
+ * cascades, and clamps any cursors out of range. If shrinkage causes a
+ * cascade level to no longer fit on screen (width or height below the
+ * minimum useful size), levels at and below that depth are closed.
+ *
+ * GIL: not required. Does not call back into the source. */
 void palette_on_resize(palette_state_t *st, int term_rows, int term_cols);
 
 #ifdef __cplusplus
