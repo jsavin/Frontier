@@ -56,6 +56,10 @@
 #include "db_format.h"
 #include "logging.h"
 
+#ifdef FRONTIER_HEADLESS
+#include "menudata_headless.h"
+#endif
+
 
 
 #define menustringlist 166
@@ -1950,6 +1954,57 @@ static boolean deletemenucommandverb (hdltreenode hparam1, boolean flsubmenu, ty
 	} /*deletemenucommandverb*/
 
 
+#ifdef FRONTIER_HEADLESS
+/*
+ * Resolve the current language target (set by `target.set(@some.menu)`) to an
+ * in-memory menu record so cursor-based verbs (getScript, setScript,
+ * getCommandKey, setCommandKey) can run without a Mac menu-editor window.
+ *
+ * Returns true on success with *hmenurecord populated. Returns false if no
+ * target is set, the target isn't a menu external, or loading the menu into
+ * memory fails. On failure leaves *hmenurecord unchanged.
+ *
+ * GUI parity reference: the GUI path uses langfindtargetwindow + shellpushglobals
+ * to set up menudata + op_get_outlinedata via the window's data-callback chain.
+ * In headless we have no windows, so we resolve the target to its external
+ * variable directly and rely on mepushmenudata (defined further below) to
+ * stage the outline globals. See ADR-016 for the projection model that
+ * licenses bypassing the window layer.
+ */
+static boolean headless_resolve_menu_target (hdlmenurecord *hmenurecord) {
+	hdlhashtable htable;
+	bigstring bsname;
+	tyvaluerecord val;
+	hdlhashnode hnode;
+	hdlmenuvariable hv;
+
+	if (!langgettarget (&htable, bsname))
+		return (false);
+
+	if (!langsymbolreference (htable, bsname, &val, &hnode))
+		return (false);
+
+	if (val.valuetype != externalvaluetype)
+		return (false);
+
+	hv = (hdlmenuvariable) val.data.externalvalue;
+
+	if (hv == nil)
+		return (false);
+
+	if ((**hv).id != idmenuprocessor)
+		return (false);
+
+	if (!menuverbinmemory ((hdlexternalvariable) hv))
+		return (false);
+
+	*hmenurecord = (hdlmenurecord) (**hv).variabledata;
+
+	return (*hmenurecord != nil);
+} /*headless_resolve_menu_target*/
+#endif
+
+
 static boolean menufunctionvalue (short token, hdltreenode hparam1, tyvaluerecord *vreturned, bigstring bserror) {
 	
 	/*
@@ -1976,9 +2031,23 @@ static boolean menufunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 		}
 	
 	errornum = 0;
-	
+
 	setbooleanvalue (false, v); /*by default, menu functions return false*/
-	
+
+	#ifdef FRONTIER_HEADLESS
+	/*
+	 * Lazy-create system.menus.data on every menu verb entry. This bridges
+	 * the gap in v7-migrated roots that lack the system.menus subtree (the
+	 * gap that motivated the 16 skipped tests in
+	 * tests/integration/test_cases/menu_data_verbs.yaml). See ADR-016 and
+	 * Common/source/menudata_headless.c. Failure here is non-fatal at this
+	 * layer: verbs that don't need system.menus.data still work; ones that
+	 * do (clearMenubar wrapper, future Layer 2 install) will surface the
+	 * error through their own paths.
+	 */
+	(void) menudata_ensure_root();
+	#endif
+
 	switch (token) {/*these verbs don't need any special globals pushed*/
 
 		case buildmenubarfunc:
@@ -2014,30 +2083,16 @@ static boolean menufunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 			return (true);
 
 		case installfunc:
-			#ifdef FRONTIER_HEADLESS
-			/* GUI-only operation - return false in headless mode */
-			(void) hparam1;
-			(*v).data.flvalue = false;
-			return (true);
-			#else
 			if (!menuinstallverb (hparam1, v))
 				goto error;
 
 			return (true);
-			#endif
 
 		case removefunc:
-			#ifdef FRONTIER_HEADLESS
-			/* GUI-only operation - return false in headless mode */
-			(void) hparam1;
-			(*v).data.flvalue = false;
-			return (true);
-			#else
 			if (!menuremoveverb (hparam1, v))
 				goto error;
 
 			return (true);
-			#endif
 		
 		case addmenucommandfunc:
 			if (!addmenucommandverb (hparam1, false, v))
@@ -2068,11 +2123,27 @@ static boolean menufunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 
 	#ifdef FRONTIER_HEADLESS
 	/*
-	 * In headless mode, verbs that require the menu editor window are
-	 * GUI-only and return false. We don't have langfindtargetwindow.
+	 * Headless target acquisition: there is no Mac menu-editor window, so we
+	 * resolve the language target (set by `target.set(@some.menu)`) directly
+	 * to its in-memory menu record and stage the outline via mepushmenudata
+	 * — the same primitive addmenucommandverb uses on the no-window branch.
+	 *
+	 * ZOOMSCRIPT below is GUI-only; we still let it fall through and return
+	 * the sub-switch's default (false / fl=false), matching legacy semantics.
 	 */
 	(void) targetwindow;
-	return (true); /* Already set booleanvalue to false above */
+
+	{
+		hdlmenurecord hmenurecord_target = nil;
+
+		if (!headless_resolve_menu_target (&hmenurecord_target)) {
+			errornum = nomenuerror;
+			goto error;
+		}
+
+		if (!mepushmenudata (hmenurecord_target))
+			goto error;
+	}
 	#else
 
 	if (!langfindtargetwindow (idmenuprocessor, &targetwindow)) { /*all other verbs require an outline window in front*/
@@ -2087,6 +2158,7 @@ static boolean menufunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 	(*shellglobals.gettargetdataroutine) (idmenuprocessor); /*set op globals*/
 
 	mecheckglobals (); /*copy handles from menudata to globals*/
+	#endif
 
 	fl = false; /*default return value*/
 
@@ -2096,7 +2168,15 @@ static boolean menufunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 			if (!langcheckparamcount (hparam1, 0))
 				return (false);
 
+			#ifdef FRONTIER_HEADLESS
+			/*
+			 * zoomScript opens an editor window — GUI-only by definition.
+			 * Return false (no script-window opened) without erroring.
+			 */
+			(*v).data.flvalue = false;
+			#else
 			(*v).data.flvalue = mezoomscriptwindow ();
+			#endif
 
 			fl = true;
 
@@ -2160,11 +2240,14 @@ static boolean menufunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 			break;
 		} /*switch*/
 
+	#ifdef FRONTIER_HEADLESS
+	mepopmenudata ();
+	#else
 	shellpopglobals ();
+	#endif
 
 	return (fl);
-	#endif /* !FRONTIER_HEADLESS */
-	
+
 	error:
 	
 	if (errornum != 0) /*get error string*/
