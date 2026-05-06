@@ -57,11 +57,10 @@
 #include "menudata_headless.h"
 
 /*
- * Inline pascal-string for the "data" rung. STR_data is not a pre-defined
- * constant in stringdefs.h; this literal mirrors the STR_menus form
- * (length-prefix byte + ASCII payload) so the chain reads symmetrically.
+ * STR_data is defined in menudata_headless.h so production code and tests
+ * share the same constant. It mirrors the STR_menus form (length-prefix
+ * byte + ASCII payload) so the chain reads symmetrically.
  */
-#define STR_data BIGSTRING("\x04" "data")
 
 
 /*

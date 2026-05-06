@@ -2015,7 +2015,14 @@ static boolean menufunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 	register tyvaluerecord *v = vreturned;
 	register boolean fl;
 	WindowPtr targetwindow;
-	
+	#ifdef FRONTIER_HEADLESS
+	/*
+	 * Tracks whether mepushmenudata has run so the error path can pop it.
+	 * See the headless target-acquisition block below and P1-A in PR #575.
+	 */
+	boolean flpushed = false;
+	#endif
+
 	if (v == nil) { /*need Frontier process?*/
 		
 		switch (token) {
@@ -2055,8 +2062,14 @@ static boolean menufunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 				return (false);
 
 			#ifdef FRONTIER_HEADLESS
-			/* GUI-only operation - return false in headless mode */
-			(*v).data.flvalue = false;
+			/*
+			 * No-op success in headless: matches the contract documented in
+			 * this file's header and ADR-016, and aligns with sibling verbs
+			 * (clearMenuBar, install, remove). The legacy GUI path installs
+			 * Mac-side menubar resources; in headless we have no menubar to
+			 * install, so reporting success is the correct semantic.
+			 */
+			(*v).data.flvalue = true;
 			#else
 			(*v).data.flvalue = menubuildverb ();
 			#endif
@@ -2075,6 +2088,24 @@ static boolean menufunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 			#endif
 
 			return (true);
+
+		#ifdef FRONTIER_HEADLESS
+		case zoomscriptfunc:
+			/*
+			 * P1-C: zoomScript opens a script editor window — GUI-only by
+			 * definition. In headless we want a clean no-op-returning-false
+			 * with no target/menu requirement, NOT the second-switch path
+			 * that demands a resolved menu record. Living in this first
+			 * switch means we also avoid the mepushmenudata push/pop dance
+			 * (see P1-A note near the headless dispatcher below).
+			 */
+			if (!langcheckparamcount (hparam1, 0))
+				return (false);
+
+			(*v).data.flvalue = false;
+
+			return (true);
+		#endif
 
 		case isinstalledfunc:
 			if (!menuisinstalledverb (hparam1, v))
@@ -2128,8 +2159,14 @@ static boolean menufunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 	 * to its in-memory menu record and stage the outline via mepushmenudata
 	 * — the same primitive addmenucommandverb uses on the no-window branch.
 	 *
-	 * ZOOMSCRIPT below is GUI-only; we still let it fall through and return
-	 * the sub-switch's default (false / fl=false), matching legacy semantics.
+	 * P1-A push/pop discipline: mepushmenudata mutates menudata and
+	 * hmenudatasave BEFORE its internal oppushoutline call, so a partial
+	 * failure leaks the saved-pointer slot. GIL serialization (see ADR-014)
+	 * means single-level nesting is the only legal mode — the
+	 * assert(hmenudatasave == nil) inside mepushmenudata is therefore a real
+	 * invariant, not just debug noise. We use flpushed to guarantee
+	 * mepopmenudata runs on every exit path past a successful push, so
+	 * subsequent verb calls always start with a clean save slot.
 	 */
 	(void) targetwindow;
 
@@ -2143,6 +2180,8 @@ static boolean menufunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 
 		if (!mepushmenudata (hmenurecord_target))
 			goto error;
+
+		flpushed = true;
 	}
 	#else
 
@@ -2164,23 +2203,17 @@ static boolean menufunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 
 	switch (token) { /*these verbs assume that the menueditor globals are set*/
 
+		#ifndef FRONTIER_HEADLESS
 		case zoomscriptfunc:
 			if (!langcheckparamcount (hparam1, 0))
 				return (false);
 
-			#ifdef FRONTIER_HEADLESS
-			/*
-			 * zoomScript opens an editor window — GUI-only by definition.
-			 * Return false (no script-window opened) without erroring.
-			 */
-			(*v).data.flvalue = false;
-			#else
 			(*v).data.flvalue = mezoomscriptwindow ();
-			#endif
 
 			fl = true;
 
 			break;
+		#endif
 
 		/*
 		case findscriptfunc: {
@@ -2241,7 +2274,10 @@ static boolean menufunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 		} /*switch*/
 
 	#ifdef FRONTIER_HEADLESS
-	mepopmenudata ();
+	if (flpushed) {
+		mepopmenudata ();
+		flpushed = false;
+		}
 	#else
 	shellpopglobals ();
 	#endif
@@ -2249,10 +2285,24 @@ static boolean menufunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 	return (fl);
 
 	error:
-	
+
+	#ifdef FRONTIER_HEADLESS
+	/*
+	 * Drop any in-flight push before reporting failure. Without this,
+	 * mepushmenudata's saved-pointer slot stays populated and the next
+	 * legitimate menu verb hits assert(hmenudatasave == nil) in debug
+	 * builds (or silently overwrites the slot in release builds, leaving
+	 * the previous menudata unreachable). See P1-A in PR #575.
+	 */
+	if (flpushed) {
+		mepopmenudata ();
+		flpushed = false;
+		}
+	#endif
+
 	if (errornum != 0) /*get error string*/
 		getstringlist (menuerrorlist, errornum, bserror);
-	
+
 	return (false);
 	} /*menufunctionvalue*/
 

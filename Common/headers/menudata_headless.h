@@ -33,6 +33,18 @@
 
 
 /*
+ * Pascal string for the "data" rung of system.menus.data.
+ *
+ * Exposed in the header so production code (menudata_headless.c) and tests
+ * (tests/menudata_headless_tests.c) reference the same constant rather than
+ * each maintaining its own copy. STR_menus and friends live in
+ * stringdefs.h; STR_data has no equivalent there because "data" is generic
+ * and only this projection chain needs it.
+ */
+#define STR_data BIGSTRING("\x04" "data")
+
+
+/*
  * Lazy-create the system.menus.data table chain. Idempotent.
  *
  * Returns true on success, false if roottable is nil (i.e. called before

@@ -59,14 +59,12 @@ static boolean find_menus(hdlhashtable *hmenus) {
 }
 
 static boolean find_data(hdlhashtable *hdata) {
-	bigstring bsdata;
 	hdlhashtable hmenus = nil;
 
 	if (!find_menus(&hmenus))
 		return false;
 
-	copyctopstring("data", bsdata);
-	return find_subtable(hmenus, bsdata, hdata);
+	return find_subtable(hmenus, STR_data, hdata);
 }
 
 /*
@@ -212,10 +210,8 @@ static void test_fully_populated(void) {
 	if (!find_subtable(hsystem, STR_menus, &hmenus)) {
 		assert(tablenewsubtable(hsystem, STR_menus, &hmenus));
 	}
-	bigstring bsdata;
-	copyctopstring("data", bsdata);
-	if (!find_subtable(hmenus, bsdata, &hdata)) {
-		assert(tablenewsubtable(hmenus, bsdata, &hdata));
+	if (!find_subtable(hmenus, STR_data, &hdata)) {
+		assert(tablenewsubtable(hmenus, STR_data, &hdata));
 	}
 
 	/* Add a child entry under system.menus.data */
