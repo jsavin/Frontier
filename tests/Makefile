@@ -220,7 +220,7 @@ USERTALK_OBJECT_TESTS = \
 	test_usertalk_runner
 
 # Buildable test executables on this branch
-RUN_BUILDABLE = core_tests db_format_tests runtime_tests parser_tests save_migration_tests test_efp_augmentation file_portable_tests file_readline_tests file_verb_tests handle_tests cli_runtime_tests paige_text_tests oppack_tests hashpack_modern_tests hash_corruption_tests langvalue_64_tests table_operations_integration refcon_tests refcon_phase2_tests op_context_tests table_context_tests time_portability_test test_sys_shell_command_verbs headless_selection_tests opattributes_stub_tests headless_thread_registry_tests test_callback_infrastructure tcp_phase1a_unit_tests menu_v7_refcon_tests menudata_headless_tests menu_list_describe_tests meuserselected_headless_tests test_stringerrorlist
+RUN_BUILDABLE = core_tests db_format_tests runtime_tests parser_tests save_migration_tests test_efp_augmentation file_portable_tests file_readline_tests file_verb_tests handle_tests cli_runtime_tests paige_text_tests oppack_tests hashpack_modern_tests hash_corruption_tests langvalue_64_tests table_operations_integration refcon_tests refcon_phase2_tests op_context_tests table_context_tests time_portability_test test_sys_shell_command_verbs headless_selection_tests opattributes_stub_tests headless_thread_registry_tests test_callback_infrastructure tcp_phase1a_unit_tests menu_v7_refcon_tests menudata_headless_tests menu_list_describe_tests meuserselected_headless_tests test_stringerrorlist pane_compositor_tests mouse_parser_tests
 # Note: table_verb_tests skipped - pre-existing macOS path detection issue
 # Note: test_error_messages skipped - needs full runtime linking (tracked in separate task)
 # Note: test_table_sorting skipped - script execution errors cause segfault (Issue #449)
@@ -391,6 +391,13 @@ cli_runtime_tests: cli_runtime_tests.c $(CLI_BIN)
 
 $(CLI_BIN):
 	$(MAKE) -C ../frontier-cli frontier-cli
+
+# Pane compositor + SGR 1006 mouse parser tests (pure CLI-side, no runtime)
+pane_compositor_tests: pane_compositor_tests.c ../frontier-cli/pane.c ../frontier-cli/pane.h
+	$(CC) $(CFLAGS) -I../frontier-cli pane_compositor_tests.c ../frontier-cli/pane.c -o $@ $(LINK_LIBS)
+
+mouse_parser_tests: mouse_parser_tests.c ../frontier-cli/pane.c ../frontier-cli/pane.h
+	$(CC) $(CFLAGS) -I../frontier-cli mouse_parser_tests.c ../frontier-cli/pane.c -o $@ $(LINK_LIBS)
 
 # Test framework object
 framework/test_framework.o: framework/test_framework.c framework/test_framework.h
