@@ -359,6 +359,13 @@ repl_palette_source_tests: repl_palette_source_tests.c $(LANG_RUNTIME_SOURCES) .
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable -I../frontier-cli \
 		repl_palette_source_tests.c $(LANG_RUNTIME_SOURCES) ../Common/source/menudata_headless.c ../frontier-cli/repl_palette_source.c ../frontier-cli/palette.c ../frontier-cli/pane.c ../frontier-cli/stubs/headless_shell.c -o $@ $(LINK_LIBS)
 
+# REPL verbs tests (PR 6). Exercises the 5 repl.* kernel verbs through
+# the real langbuildtree -> langruncode dispatch path with a fake host
+# adapter that records side effects.
+repl_verbs_tests: repl_verbs_tests.c $(LANG_RUNTIME_SOURCES) ../frontier-cli/repl_verbs.c ../frontier-cli/stubs/headless_shell.c
+	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable -I../frontier-cli \
+		repl_verbs_tests.c $(LANG_RUNTIME_SOURCES) ../frontier-cli/repl_verbs.c ../frontier-cli/stubs/headless_shell.c -o $@ $(LINK_LIBS)
+
 runtime_tests: runtime_tests.c $(LANG_RUNTIME_SOURCES) ../frontier-cli/stubs/headless_shell.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable runtime_tests.c $(LANG_RUNTIME_SOURCES) ../frontier-cli/stubs/headless_shell.c -o $@ $(LINK_LIBS)
 
