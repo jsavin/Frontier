@@ -49,6 +49,7 @@
 #include "repl_variables.h"
 #include "repl_output.h"
 #include "repl_commands.h"
+#include "repl_verbs.h"
 #include "completion.h"
 #include "../Common/headers/frontier.h"
 #include "../Common/headers/logging.h"
@@ -96,6 +97,16 @@ static hdlhashtable g_repl_guest_db_root = nil;
 
 // REPL active flag - set when REPL event loop is running
 static boolean g_repl_active = false;
+
+/*
+ * Exit-requested flag set by the repl.exit() kernel verb (via the host
+ * adapter). Both REPL loops (event-loop and blocking) poll this each
+ * iteration and break out cleanly. Distinct from g_repl_interrupt_requested,
+ * which is set asynchronously by the SIGINT handler. Reset to false on
+ * REPL startup so a stale flag from a previous session can't pre-exit a
+ * new one.
+ */
+static boolean g_repl_exit_requested = false;
 
 // Session command tracking for merge-before-save
 static char *session_commands[MAX_SESSION_COMMANDS];
@@ -2039,6 +2050,90 @@ static boolean process_line(const char *line, boolean *running) {
 	return true;
 }
 
+/* ------------------------------------------------------------------- */
+/*  repl.* kernel-verb host adapter                                    */
+/* ------------------------------------------------------------------- */
+/*
+ * These are the host-side bindings registered with repl_verbs.c via
+ * repl_verbs_set_host(). They translate the verb-level callbacks into
+ * the same module-private state that the existing /exit, /clear,
+ * /jump, /keycodes, /list slash-command handlers manipulate, so a
+ * UserTalk script calling repl.exit() ends up in exactly the same
+ * place as a user typing "/exit" at the prompt.
+ *
+ * GIL: every callback here runs on the main thread under the
+ * verb dispatcher, which is invoked from langruncode while the GIL
+ * is held. No additional locking is needed.
+ */
+
+static void replverbhost_exit(void) {
+	g_repl_exit_requested = true;
+}
+
+static void replverbhost_clear_variables(void) {
+	hdlhashtable vars = repl_get_variables_table();
+	if (vars != nil)
+		emptyhashtable(vars, true);
+	repl_jump_path("");
+}
+
+static boolean replverbhost_jump_path(const char *path) {
+	if (path == NULL)
+		return repl_jump_path("");
+	return repl_jump_path(path);
+}
+
+static void replverbhost_print_key_codes(void) {
+	linenoisePrintKeyCodes();
+}
+
+static void replverbhost_list(const char *path) {
+	if (path == NULL || path[0] == '\0') {
+		repl_output_list(nil, NULL);
+		return;
+	}
+
+	typathlookupresult result;
+	char resolved_path[REPL_PATH_MAX_LEN];
+	char error_msg[256] = "";
+
+	if (!repl_resolve_path_ex(path, &result, resolved_path, sizeof(resolved_path),
+	                          error_msg, sizeof(error_msg))) {
+		if (error_msg[0] != '\0')
+			printf("Error: '%s' is not a valid table path (%s)\n", path, error_msg);
+		else
+			printf("Error: '%s' is not a valid table path\n", path);
+		return;
+	}
+
+	if (result.is_table)
+		repl_output_list(result.htable, resolved_path);
+	else
+		repl_output_single_value(resolved_path, &result.val);
+}
+
+/*
+ * Build and install the host adapter struct. Called once from repl_main
+ * before either loop runs. Pairs with repl_verbs_set_host(NULL) on
+ * cleanup so a follow-on call to a repl.* verb after the REPL exits
+ * fails closed (returns false at the script level) rather than calling
+ * stale function pointers.
+ */
+static void install_repl_verbs_host(void) {
+	repl_verbs_host_t host;
+	host.exit = replverbhost_exit;
+	host.clear_variables = replverbhost_clear_variables;
+	host.jump_path = replverbhost_jump_path;
+	host.print_key_codes = replverbhost_print_key_codes;
+	host.list = replverbhost_list;
+	repl_verbs_set_host(&host);
+}
+
+static void uninstall_repl_verbs_host(void) {
+	repl_verbs_set_host(NULL);
+}
+
+
 /* Blocking REPL loop for non-TTY input (fallback mode).
  * Used when stdin is not a terminal (e.g., piped input).
  *
@@ -2100,6 +2195,11 @@ static int repl_main_blocking(void) {
 
 		// Process callbacks after each command
 		tcp_process_callbacks();
+
+		// Honor exit requested by repl.exit() via the kernel-verb host adapter
+		if (g_repl_exit_requested) {
+			running = false;
+		}
 	}
 
 	return 0;
@@ -2131,6 +2231,12 @@ int repl_main(cli_options_t *options, ws_server_t *ws_server) {
 		// Not fatal - we can continue without persistence
 	}
 
+	// 3.1 Install host adapter for repl.* kernel verbs (repl.exit etc.).
+	//     Reset exit-requested flag so a stale value from a prior session
+	//     can't pre-exit this one. Uninstalled on the cleanup paths below.
+	g_repl_exit_requested = false;
+	install_repl_verbs_host();
+
 	// 4. Display welcome message and mark REPL as active
 	repl_output_welcome();
 	g_repl_active = true;
@@ -2149,6 +2255,7 @@ int repl_main(cli_options_t *options, ws_server_t *ws_server) {
 		int result = repl_main_blocking();
 		g_repl_active = false;
 		flreplmode = false;	 /* Clear runtime flag */
+		uninstall_repl_verbs_host();
 		repl_variables_cleanup();
 		cleanup_linenoise();
 		repl_output_goodbye();
@@ -2252,6 +2359,14 @@ int repl_main(cli_options_t *options, ws_server_t *ws_server) {
 		if (g_repl_interrupt_requested) {
 			handle_interrupt(&ls, line_buf, sizeof(line_buf));
 		}
+
+		// 6.6 Honor exit requested by repl.exit() via the kernel-verb host
+		//     adapter. The flag is set on the same thread (verb dispatcher
+		//     runs under the GIL on the main thread), so a plain read is
+		//     safe — no atomic / volatile needed.
+		if (g_repl_exit_requested) {
+			running = false;
+		}
 	}
 
 	// 7. Cleanup
@@ -2260,6 +2375,7 @@ int repl_main(cli_options_t *options, ws_server_t *ws_server) {
 	g_active_linenoisestate = NULL;
 	repl_set_active_linenoisestate(NULL);
 	linenoiseEditStop(&ls);
+	uninstall_repl_verbs_host();
 	repl_variables_cleanup();
 	cleanup_linenoise();
 	repl_output_goodbye();

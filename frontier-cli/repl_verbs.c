@@ -61,6 +61,7 @@
 #include "strings.h"
 #include "lang.h"
 #include "langinternal.h"
+#include "tablestructure.h"
 
 #include "repl_verbs.h"
 
