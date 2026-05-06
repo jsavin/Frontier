@@ -35,7 +35,13 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* ---------- internal compositor state ---------- */
+/* ---------- internal compositor state ----------
+ *
+ * These globals are intentionally unlocked. The compositor is a
+ * single-threaded surface (REPL main thread only); background producers
+ * must marshal through a main-thread queue before touching panes. See
+ * pane.h "Threading" for the full contract.
+ */
 
 static pane_t *g_pane_list_head = NULL;  /* bottom z */
 static pane_t *g_pane_list_tail = NULL;  /* top z */
@@ -45,11 +51,22 @@ static cell_t *g_fb_prev = NULL;
 static int g_fb_rows = 0;
 static int g_fb_cols = 0;
 
-/* ---------- helpers ---------- */
+/* ---------- helpers ----------
+ *
+ * The list helpers below are O(n) in the number of registered panes.
+ * That's intentional: the slash-menu surface is expected to host on the
+ * order of 5-10 panes (REPL output, prompt, palette, hint footer, plus
+ * any transient overlays). If the pane count grows, revisit with a
+ * doubly-linked list + tail pointer maintained on remove.
+ */
 
-static cell_t *alloc_cells(int n) {
-	cell_t *p = (cell_t *)calloc((size_t)n, sizeof(cell_t));
-	return p;
+/* Allocate a zero-initialised cell array of `count` cells.
+ * Promotes to size_t before any multiplication so the math is safe even
+ * for theoretical large counts; calloc itself also guards against
+ * size_t overflow. Returns NULL on OOM (callers degrade to a no-op). */
+static cell_t *alloc_cells(size_t count) {
+	if (count == 0) return NULL;
+	return (cell_t *)calloc(count, sizeof(cell_t));
 }
 
 static void list_remove(pane_t *p) {
@@ -97,7 +114,7 @@ void pane_init(pane_t *p, int x, int y, int w, int h) {
 	p->h = (h > 0) ? h : 0;
 	p->z = 0;
 	if (p->w > 0 && p->h > 0) {
-		p->buf = alloc_cells(p->w * p->h);
+		p->buf = alloc_cells((size_t)p->w * (size_t)p->h);
 	}
 }
 
@@ -168,7 +185,7 @@ void pane_resize(pane_t *p, int w, int h) {
 	p->w = new_w;
 	p->h = new_h;
 	if (new_w > 0 && new_h > 0) {
-		p->buf = alloc_cells(new_w * new_h);
+		p->buf = alloc_cells((size_t)new_w * (size_t)new_h);
 	}
 }
 
@@ -206,8 +223,8 @@ void compositor_on_resize(int rows, int cols) {
 	free(g_fb_prev);
 	g_fb_rows = rows;
 	g_fb_cols = cols;
-	g_fb_curr = alloc_cells(rows * cols);
-	g_fb_prev = alloc_cells(rows * cols);
+	g_fb_curr = alloc_cells((size_t)rows * (size_t)cols);
+	g_fb_prev = alloc_cells((size_t)rows * (size_t)cols);
 	/* Mark prev as a sentinel "definitely different" frame so the next
 	 * render emits everything. We use ch=0 in prev and a fresh zeroed
 	 * curr; the diff will skip identical zero cells, which is the

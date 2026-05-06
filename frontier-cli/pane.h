@@ -14,6 +14,15 @@
  *
  * Mouse parser handles xterm SGR 1006 (ESC[<Cb;Cx;Cy(M|m)). Buffer-bounded
  * — the caller's slice may not be NUL-terminated.
+ *
+ * Threading
+ * ---------
+ * The compositor uses module-level globals (pane list, framebuffer) with
+ * NO internal locking. ALL compositor_* and pane_* functions MUST be
+ * called from the same thread (the REPL main thread). Background
+ * producers (e.g. async stdout, agent-browser callbacks) MUST marshal
+ * their writes onto the main thread before touching panes — see PR 5's
+ * repl_async_output() rerouting for the queue mechanism.
  */
 
 #ifndef FRONTIER_PANE_H
