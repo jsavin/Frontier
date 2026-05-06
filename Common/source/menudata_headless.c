@@ -359,11 +359,19 @@ static boolean push_field_or(hdllistrecord hlist, ptrstring bskey,
 	if (lookup_field(ht, bslookup, &val)) {
 		if (!copyvaluerecord(val, &copy))
 			return false;
-		return langpushlistval(hlist, bskey, &copy);
+		if (!langpushlistval(hlist, bskey, &copy)) {
+			disposevaluerecord(copy, false);
+			return false;
+		}
+		return true;
 	}
 	if (!copyvaluerecord(defaultval, &copy))
 		return false;
-	return langpushlistval(hlist, bskey, &copy);
+	if (!langpushlistval(hlist, bskey, &copy)) {
+		disposevaluerecord(copy, false);
+		return false;
+	}
+	return true;
 }
 
 
@@ -384,14 +392,20 @@ boolean menudata_describe_leaf(hdlhashtable hleaf, tyvaluerecord *vreturned) {
 	setemptystring(bsempty);
 	if (!setstringvalue(bsempty, &defemptystring))
 		return false;
+	/*
+	 * setbooleanvalue / setcharvalue / setlongvalue are scalar setters that
+	 * cannot fail in practice, but we still route their failure paths through
+	 * cleanup_defaults so that defemptystring (the only heap-allocated default)
+	 * is disposed even if the impossible happens.
+	 */
 	if (!setbooleanvalue(true, &deftrue))
-		return false;
+		goto cleanup_defaults;
 	if (!setbooleanvalue(false, &deffalse))
-		return false;
+		goto cleanup_defaults;
 	if (!setcharvalue('\0', &defzerochar))
-		return false;
+		goto cleanup_defaults;
 	if (!setlongvalue(0, &defzerolong))
-		return false;
+		goto cleanup_defaults;
 
 	if (!opnewlist(&hlist, true)) /* true = record */
 		goto cleanup_defaults;
