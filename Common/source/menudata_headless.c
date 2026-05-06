@@ -57,7 +57,6 @@
 #include "tablestructure.h"
 #include "tableverbs.h"
 #include "stringdefs.h"
-
 #include "menudata_headless.h"
 
 /*
@@ -425,4 +424,83 @@ fail:
 cleanup_defaults:
 	disposevaluerecord(defemptystring, false);
 	return false;
+}
+
+
+/*
+ * Headless sibling of meuserselected (Common/source/meprograms.c:256-315).
+ *
+ * Architectural note: the planning doc described this function as a
+ * scriptbuildtree -> newprocess -> addprocess chain mirroring the Mac
+ * meuserselected. That recipe assumes process.c is linked in. It isn't:
+ * the headless build (frontier-cli + unit-test runtime) deliberately omits
+ * process.c — see frontier-cli/headless_thread_verbs.c:336 ("In headless
+ * mode, process.c is not compiled — there are no process handles") and
+ * the parallel POSIX-thread + GIL machinery in headless_thread_verbs.c.
+ *
+ * For the REPL palette use case (plan §"REPL integration point"), the
+ * caller wants exec-then-resume-linenoise semantics. Synchronous execution
+ * on the GIL-holding thread is both simpler and more correct: it matches
+ * the existing REPL eval path (langrun*) and avoids spawning a thread
+ * just to immediately wait for it.
+ *
+ * Steps:
+ *   1. langbuildtree turns the Pascal-prefixed UserTalk source handle into
+ *      a compiled tree. Consumes hScript regardless of outcome (see
+ *      lang.c:534 — langcompiletext disposes htext).
+ *   2. langruncode executes the tree synchronously on the calling thread.
+ *      The result is discarded; menu actions are statements, not
+ *      expressions, so the value carries no caller-visible meaning.
+ *   3. langdisposetree releases the compiled tree.
+ *
+ * Errors surface through the existing langerrormessage callback chain —
+ * same path as REPL eval. We do not push a custom error callback because
+ * the Mac mescripterrorroutine is bound to shell globals (op outlines, the
+ * menu-editor window) we don't have, and a nil callback would no-op.
+ *
+ * GIL: caller must hold the GIL — we touch the global hashtable stack via
+ * langbuildtree's tree-construction path and run user code that may call
+ * any kernel verb.
+ *
+ * Future: when the host eventually wants async menu dispatch (e.g. a long-
+ * running script that should not block linenoise), wrap this in
+ * headless_spawn_callback_thread. That's a follow-up; the palette MVP
+ * needs synchronous semantics.
+ */
+boolean meuserselected_headless(Handle hScript) {
+
+	hdltreenode hcode = nil;
+	tyvaluerecord vresult;
+	boolean fl;
+
+	if (hScript == nil)
+		return false;
+
+	/*
+	 * langbuildtree consumes hScript whether it succeeds or fails (see
+	 * lang.c:534 -> langcompiletext, which disposes htext on every path).
+	 * After this call we must not reference hScript again.
+	 *
+	 * Second arg "fllinebased" matches scripts.c:286's call into
+	 * langbuildtree for the typeLAND signature: true = treat newlines as
+	 * statement terminators, which is how outline-extracted UserTalk is
+	 * always shaped.
+	 */
+	fl = langbuildtree(hScript, true, &hcode);
+
+	if (!fl)
+		return false; /* syntax error */
+
+	/* Compilation produced no error; clear any stale error state.
+	   Mirrors meprograms.c:295's langerrorclear() after the compile. */
+	langerrorclear();
+
+	initvalue(&vresult, novaluetype);
+
+	fl = langruncode(hcode, nil, &vresult);
+
+	disposevaluerecord(vresult, false);
+	langdisposetree(hcode);
+
+	return fl;
 }

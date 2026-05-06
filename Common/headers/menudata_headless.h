@@ -111,4 +111,46 @@ extern boolean menudata_list_leaves(hdlhashtable hscope, tyvaluerecord *vreturne
  */
 extern boolean menudata_describe_leaf(hdlhashtable hleaf, tyvaluerecord *vreturned);
 
+
+/*
+ * Headless sibling of meuserselected (Common/source/meprograms.c:256-315).
+ *
+ * Compiles a UserTalk source handle and runs it synchronously on the
+ * calling (GIL-holding) thread. Skips the Mac-UI artifacts
+ * (op_get_outlinedata, shellforcemenuadjust, mezoomscriptwindow) and the
+ * process-scheduler queue (newprocess/addprocess) that the Mac path uses.
+ *
+ * Implementation note: the planning doc described this as a
+ * scriptbuildtree -> newprocess -> addprocess chain, but the headless
+ * build deliberately omits process.c (see frontier-cli/headless_thread_verbs.c
+ * for the parallel POSIX-thread / GIL discipline that replaces it). For
+ * the REPL palette use case — exec-then-resume-linenoise — synchronous
+ * execution via langbuildtree + langruncode matches the existing REPL
+ * eval path and keeps the dispatch path unit-testable without scheduler
+ * fixtures.
+ *
+ * Caller is responsible for fetching hScript from the menu leaf's "script"
+ * field (e.g. via menu.describe). hScript must be a Pascal-prefixed text
+ * handle in the UserTalk shape (typeLAND) — same shape as
+ * megetnodelangtext output / outline-extracted langtext / newtexthandle().
+ * langbuildtree consumes hScript on every path; the caller must not
+ * reference it after the call.
+ *
+ * Returns true iff the script compiled cleanly AND ran to completion.
+ * Returns false on:
+ *   - hScript == nil
+ *   - compile failure (langbuildtree rejects the source)
+ *   - runtime error during execution (langruncode returns false)
+ *
+ * GIL: must be called while holding the GIL. Runs user code synchronously,
+ * so all kernel-verb side effects observable on return.
+ *
+ * Future: when async menu dispatch is needed (long-running scripts that
+ * should not block linenoise), wrap in headless_spawn_callback_thread.
+ *
+ * See planning/discussions/repl-slash-menu-implementation-plan.md (sub-PR 2b)
+ * and ADR-016.
+ */
+extern boolean meuserselected_headless(Handle hScript);
+
 #endif /* menudata_headless_include */
