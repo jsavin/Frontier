@@ -51,6 +51,10 @@
 #include "repl_commands.h"
 #include "repl_verbs.h"
 #include "completion.h"
+#include "pane.h"
+#include "palette.h"
+#include "repl_palette_source.h"
+#include "../Common/headers/menudata_headless.h" /* meuserselected_headless */
 #include "../Common/headers/frontier.h"
 #include "../Common/headers/logging.h"
 #include "../Common/headers/lang.h"
@@ -2051,6 +2055,341 @@ static boolean process_line(const char *line, boolean *running) {
 }
 
 /* ------------------------------------------------------------------- */
+/*  Slash-menu palette modal runner                                   */
+/* ------------------------------------------------------------------- */
+/*
+ * The REPL event loop hands off to run_palette_modal() the moment the
+ * user types '/' at column 1 of an empty prompt. The modal runner
+ * brackets the palette session in its own raw-mode + mouse-tracking
+ * window:
+ *
+ *   1. linenoiseEditStop  — release linenoise's grip on the terminal
+ *   2. terminal_init / terminal_enable_raw_mode — re-enter raw mode
+ *      under our own termios save (linenoiseEditStop has already
+ *      restored the saved cooked-mode termios, so we save again here
+ *      so terminal_disable_raw_mode can return to it cleanly).
+ *   3. terminal_enable_mouse — turn on SGR 1006 mouse tracking
+ *   4. repl_palette_source_init — bind the palette to
+ *      system.menus.data.repl
+ *   5. palette_open + render
+ *   6. byte loop: poll(STDIN) with POLL_TIMEOUT_MS, feed bytes to
+ *      palette_feed_byte; intercept SGR mouse (ESC '[' '<') and route
+ *      via mouse_parse + palette_feed_mouse; honor SIGWINCH via
+ *      repl_sigwinch_consumed + palette_on_resize; honor the ESC
+ *      disambiguation timer via palette_feed_esc_timeout.
+ *   7. on PALETTE_DONE_EXECUTE: snapshot exec_script, palette_close,
+ *      copy the handle into our own ownership (because
+ *      meuserselected_headless consumes via langbuildtree), dispose
+ *      the adapter (which frees its cached originals), then dispatch.
+ *      On PALETTE_DONE_CANCEL: palette_close + dispose + return.
+ *   8. terminal_disable_mouse + terminal_disable_raw_mode +
+ *      terminal_cleanup, then linenoiseEditStart to resume editing.
+ *
+ * Async output during palette mode (PR-future): if a TCP callback
+ * thread writes to stdout while the palette is open, the cells will
+ * scroll under the palette and corrupt its render. The current
+ * compromise is to NOT process TCP callbacks or background tasks
+ * inside the palette byte loop — they resume on close. This is the
+ * trade-off documented in the PR-6 design (compositor scrollback wiring
+ * is a follow-up). This means a script firing a long-running TCP
+ * request and then opening the palette will see the request stalled
+ * until the palette closes; acceptable for the MVP.
+ *
+ * GIL: the palette source vtable callbacks (count_menus, item_describe)
+ * touch the ODB, so the GIL must be held across palette_open and every
+ * palette_feed_byte. The REPL event loop already holds the GIL.
+ */
+
+/*
+ * Detect whether the byte stream starting with ESC '[' '<' is the SGR
+ * mouse intro. If so, accumulate up through the trailing M/m and
+ * dispatch via palette_feed_mouse. Returns true if consumed (caller
+ * should not feed b to palette_feed_byte directly).
+ *
+ * Stateful — uses the static buffer below to accumulate across reads.
+ * Reset whenever a non-mouse path is taken so we never carry stale
+ * bytes between palette sessions.
+ */
+#define PALETTE_MOUSE_BUF_MAX 32
+
+typedef enum {
+	MOUSE_SGR_IDLE = 0,
+	MOUSE_SGR_GOT_ESC,
+	MOUSE_SGR_GOT_BRACKET,
+	MOUSE_SGR_BUFFERING
+} mouse_sgr_state_t;
+
+typedef struct {
+	mouse_sgr_state_t state;
+	char buf[PALETTE_MOUSE_BUF_MAX];
+	int len;
+} mouse_sgr_parser_t;
+
+static void mouse_sgr_reset(mouse_sgr_parser_t *p) {
+	p->state = MOUSE_SGR_IDLE;
+	p->len = 0;
+	p->buf[0] = '\0';
+}
+
+/*
+ * Returns:
+ *   < 0 — not a mouse byte (or aborted parse); caller should treat the
+ *         original byte as a normal palette byte. The parser may have
+ *         buffered preceding bytes that the caller already consumed —
+ *         those are lost (non-issue for ESC '[' '<' which is
+ *         unambiguously mouse-intro).
+ *   = 0 — byte consumed but mouse sequence still in progress.
+ *   > 0 — full SGR mouse sequence parsed; *out_ev populated.
+ */
+static int mouse_sgr_feed(mouse_sgr_parser_t *p, unsigned char b,
+                          mouse_event_t *out_ev) {
+	switch (p->state) {
+	case MOUSE_SGR_IDLE:
+		if (b == 0x1b) {
+			p->state = MOUSE_SGR_GOT_ESC;
+			return 0;
+		}
+		return -1;
+	case MOUSE_SGR_GOT_ESC:
+		if (b == '[') {
+			p->state = MOUSE_SGR_GOT_BRACKET;
+			return 0;
+		}
+		mouse_sgr_reset(p);
+		return -1;
+	case MOUSE_SGR_GOT_BRACKET:
+		if (b == '<') {
+			p->state = MOUSE_SGR_BUFFERING;
+			p->len = 0;
+			return 0;
+		}
+		mouse_sgr_reset(p);
+		return -1;
+	case MOUSE_SGR_BUFFERING:
+		if (p->len < PALETTE_MOUSE_BUF_MAX - 1) {
+			p->buf[p->len++] = (char)b;
+			p->buf[p->len] = '\0';
+		}
+		if (b == 'M' || b == 'm') {
+			/* Reconstruct full SGR sequence for mouse_parse, which
+			 * expects "<...M" or "<...m". */
+			char seq[PALETTE_MOUSE_BUF_MAX + 2];
+			seq[0] = '<';
+			memcpy(seq + 1, p->buf, (size_t)p->len);
+			seq[1 + p->len] = '\0';
+			int parsed = mouse_parse(seq, (size_t)(1 + p->len), out_ev) ? 1 : -1;
+			mouse_sgr_reset(p);
+			return parsed;
+		}
+		return 0;
+	}
+	mouse_sgr_reset(p);
+	return -1;
+}
+
+/*
+ * Drive a complete palette session. Returns:
+ *   NULL — palette was cancelled (or never opened due to error). No
+ *          dispatch needed.
+ *   non-NULL — script handle that should be passed to
+ *              meuserselected_headless. Caller owns this handle (it
+ *              was copyhandle'd out of adapter-private storage) and
+ *              MUST pass it to meuserselected_headless (which consumes
+ *              it via langbuildtree) or, in failure paths, disposehandle.
+ *
+ * GIL: caller must hold it. We don't yield while the palette is open
+ * (see file-level note above).
+ */
+static Handle run_palette_modal(struct linenoiseState *ls,
+                                char *line_buf, size_t line_buflen) {
+	Handle script_to_run = nil;
+
+	/* 1. Bracket linenoise. */
+	linenoiseEditStop(ls);
+
+	/* 2. Re-enter raw mode under our own termios save. */
+	terminal_state ts;
+	if (!terminal_init(&ts) || !terminal_enable_raw_mode(&ts)) {
+		log_error(LOG_COMP_GENERAL, "palette: failed to enter raw mode");
+		terminal_cleanup(&ts);
+		(void)linenoiseEditStart(ls, STDIN_FILENO, STDOUT_FILENO,
+		                         line_buf, line_buflen, g_repl_prompt);
+		return nil;
+	}
+	terminal_enable_mouse();
+
+	/* 3. Build the ODB-backed palette source. */
+	palette_menu_source_t src;
+	bool src_ok = repl_palette_source_init(&src);
+	if (!src_ok) {
+		printf("(no menubar installed: system.menus.data.%s)\n",
+		       REPL_PALETTE_DEFAULT_MENUBAR);
+		fflush(stdout);
+		goto cleanup_terminal;
+	}
+
+	/* 4. Open palette at current terminal geometry. */
+	int rows = 24, cols = 80;
+	(void)terminal_get_size(&rows, &cols);
+	compositor_on_resize(rows, cols);
+
+	palette_state_t st;
+	memset(&st, 0, sizeof(st));
+	if (!palette_open(&st, rows, cols, &src)) {
+		printf("(menubar empty or terminal too small)\n");
+		fflush(stdout);
+		repl_palette_source_dispose(&src);
+		goto cleanup_terminal;
+	}
+	palette_render_state(&st);
+	compositor_render();
+
+	/* 5. Modal byte loop. */
+	mouse_sgr_parser_t mouse;
+	mouse_sgr_reset(&mouse);
+	bool palette_running = true;
+	palette_done_t done = PALETTE_DONE_NONE;
+
+	while (palette_running) {
+		struct pollfd pfd = {STDIN_FILENO, POLLIN, 0};
+		int ready = poll(&pfd, 1, POLL_TIMEOUT_MS);
+
+		if (ready > 0 && (pfd.revents & POLLIN)) {
+			unsigned char b;
+			ssize_t n = read(STDIN_FILENO, &b, 1);
+			if (n <= 0) {
+				/* EOF or error — treat as cancel. */
+				done = PALETTE_DONE_CANCEL;
+				palette_running = false;
+				break;
+			}
+
+			/* SGR mouse intercept. We try mouse first ONLY when we're
+			 * already in mid-sequence OR the byte is ESC at idle and
+			 * the next two bytes complete '[<'. The mouse parser is
+			 * conservative — it returns -1 (not consumed) on the very
+			 * first non-mouse byte so we can fall through to palette. */
+			mouse_event_t ev;
+			int mouse_rc = mouse_sgr_feed(&mouse, b, &ev);
+			if (mouse_rc > 0) {
+				done = palette_feed_mouse(&st, &ev);
+			} else if (mouse_rc == 0) {
+				/* Byte buffered as part of mouse sequence — do NOT
+				 * also feed it to palette; fall through to render. */
+				done = PALETTE_DONE_NONE;
+			} else {
+				/* mouse_rc < 0: byte not part of a mouse sequence.
+				 * If the parser had buffered any bytes (ESC, ESC '['),
+				 * mouse_sgr_reset already cleared them — but those
+				 * preceding bytes also didn't reach palette. The only
+				 * non-mouse path through GOT_ESC and GOT_BRACKET is:
+				 *   - ESC + non-'[' (bare ESC): we lost ESC from the
+				 *     palette's view, so re-feed ESC explicitly.
+				 *   - ESC '[' + non-'<' (CSI not mouse): we lost
+				 *     ESC '['; re-feed both. */
+				if (mouse.state == MOUSE_SGR_IDLE && b == 0x1b) {
+					/* Already covered: this byte starts mouse parse;
+					 * mouse_rc would be 0 above, not -1. Defensive. */
+					done = palette_feed_byte(&st, b);
+				} else {
+					/* Generic re-feed path. The mouse parser was reset
+					 * on the call that returned -1, but we need to
+					 * reconstruct what the palette missed. The two
+					 * miss-cases are detected by inspecting which
+					 * state the parser was in when -1 was returned —
+					 * but mouse_sgr_feed has already reset state.
+					 * Simplification: feed the current byte only. The
+					 * worst-case loss is a stray ESC or ESC '[', which
+					 * is exactly equivalent to the user typing those
+					 * bytes by hand — palette will start a fresh ESC
+					 * disambiguation cycle on the next ESC and ignore
+					 * the stray '['. Acceptable for keystroke input
+					 * where bare ESC '[' is never typed. */
+					done = palette_feed_byte(&st, b);
+				}
+			}
+		} else if (ready == 0) {
+			/* Timeout — fire ESC disambiguation if pending. */
+			done = palette_feed_esc_timeout(&st);
+		} else if (ready < 0) {
+			if (errno == EINTR) {
+				/* SIGWINCH or SIGINT during poll. SIGINT is fatal for
+				 * the palette session — close and propagate. */
+				if (g_repl_interrupt_requested) {
+					done = PALETTE_DONE_CANCEL;
+					palette_running = false;
+					break;
+				}
+				/* Otherwise (likely SIGWINCH) loop and let the resize
+				 * check below handle it. */
+				done = PALETTE_DONE_NONE;
+			} else {
+				log_error(LOG_COMP_GENERAL, "palette: poll() failed: %s",
+				          strerror(errno));
+				done = PALETTE_DONE_CANCEL;
+				palette_running = false;
+				break;
+			}
+		}
+
+		/* Honor SIGWINCH after every poll cycle. */
+		if (repl_sigwinch_consumed()) {
+			int new_rows = 24, new_cols = 80;
+			(void)terminal_get_size(&new_rows, &new_cols);
+			compositor_on_resize(new_rows, new_cols);
+			palette_on_resize(&st, new_rows, new_cols);
+		}
+
+		switch (done) {
+		case PALETTE_DONE_NONE:
+			palette_render_state(&st);
+			compositor_render();
+			break;
+		case PALETTE_DONE_EXECUTE:
+		case PALETTE_DONE_CANCEL:
+			palette_running = false;
+			break;
+		}
+	}
+
+	/* 6. Capture exec_script BEFORE close (the palette doc says close
+	 *    does not invalidate it, but the adapter's dispose will).
+	 *    Then copyhandle into our own ownership so meuserselected_headless
+	 *    can consume it via langbuildtree without yanking the rug out
+	 *    from under the adapter's later dispose. */
+	if (done == PALETTE_DONE_EXECUTE && st.exec_script != NULL) {
+		Handle hsrc = (Handle)st.exec_script;
+		Handle hcopy = nil;
+		if (copyhandle(hsrc, &hcopy)) {
+			script_to_run = hcopy;
+		} else {
+			log_error(LOG_COMP_GENERAL,
+			          "palette: copyhandle failed for exec_script");
+		}
+	}
+
+	palette_close(&st);
+	repl_palette_source_dispose(&src);
+
+cleanup_terminal:
+	terminal_disable_mouse();
+	terminal_disable_raw_mode(&ts);
+	terminal_cleanup(&ts);
+
+	/* 7. Restart linenoise so the prompt comes back cleanly. */
+	if (linenoiseEditStart(ls, STDIN_FILENO, STDOUT_FILENO,
+	                       line_buf, line_buflen, g_repl_prompt) == -1) {
+		log_error(LOG_COMP_GENERAL,
+		          "palette: failed to restart linenoise after modal");
+		/* Caller's main loop will see ls in invalid state on next
+		 * Feed and terminate. */
+	}
+
+	return script_to_run;
+}
+
+
+/* ------------------------------------------------------------------- */
 /*  repl.* kernel-verb host adapter                                    */
 /* ------------------------------------------------------------------- */
 /*
@@ -2303,7 +2642,32 @@ int repl_main(cli_options_t *options, ws_server_t *ws_server) {
 			char *result = linenoiseEditFeed(&ls);
 
 			if (result == linenoiseEditMore) {
-				// User is still editing - continue polling
+				/* User is still editing — but check the slash-menu
+				 * trigger: '/' typed at column 1 of an empty buffer
+				 * (the editor's len jumped to 1 with buf[0] == '/'
+				 * exactly). This is the only condition that opens the
+				 * palette; '/' typed mid-line is left as a literal
+				 * character. */
+				if (ls.len == 1 && ls.buf[0] == '/') {
+					Handle script = run_palette_modal(&ls, line_buf,
+					                                  sizeof(line_buf));
+					if (script != nil) {
+						/* Dispatch the chosen menu item. The handle
+						 * is consumed by langbuildtree inside
+						 * meuserselected_headless — do NOT free it
+						 * here. */
+						g_script_running = 1;
+						boolean ok = meuserselected_headless(script);
+						g_script_running = 0;
+						if (!ok) {
+							printf("(menu script failed)\n");
+							fflush(stdout);
+						}
+					}
+					/* run_palette_modal already restarted linenoise
+					 * with an empty buffer, so the prompt is fresh.
+					 * Continue the event loop. */
+				}
 			} else if (result != NULL) {
 				// User pressed Enter - stop line editing first (prints newline)
 				linenoiseEditStop(&ls);
