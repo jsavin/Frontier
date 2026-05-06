@@ -90,15 +90,35 @@ boolean meclearmenubar (void) {
 }
 
 boolean meinstallmenubar (hdlmenurecord hmenurecord) {
-	/* GUI-only operation - return false */
-	(void) hmenurecord;
-	return (false);
+	/*
+	 * Headless install: flip the structural "installed" flag on the menu
+	 * record. The Mac version also builds the menubar stack and inserts it
+	 * into the platform menu bar via the Carbon menu manager — neither
+	 * exists in headless. Per ADR-016, Layer 2 install in headless is a
+	 * data-only state change; the projection to a UI surface (REPL palette
+	 * today, native menubar later) reads (**hm).flinstalled at render time.
+	 *
+	 * Returning true preserves the existing semantics that callers (e.g.
+	 * menu.install in UserTalk) and tests rely on: install succeeded as a
+	 * data operation, even though no platform display work happened.
+	 */
+	if (hmenurecord == nil)
+		return (false);
+
+	(**hmenurecord).flinstalled = true;
+	return (true);
 }
 
 boolean meremovemenubar (hdlmenurecord hmenurecord) {
-	/* GUI-only operation - return false */
-	(void) hmenurecord;
-	return (false);
+	/*
+	 * Headless remove: clear the structural "installed" flag. Symmetric
+	 * with meinstallmenubar above. See ADR-016 Layer 2 semantics.
+	 */
+	if (hmenurecord == nil)
+		return (false);
+
+	(**hmenurecord).flinstalled = false;
+	return (true);
 }
 
 boolean meeditmenurecord (void) {

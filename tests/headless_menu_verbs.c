@@ -10,9 +10,7 @@
  *   - menu.addSubMenu, addMenuCommand, deleteSubMenu, deleteMenuCommand
  *   - menu.getScript (returns empty string), setScript
  *   - menu.getCommandKey (returns empty char), setCommandKey
- *
- * Kept as stub (requires window):
- *   - menu.zoomScript
+ *   - menu.zoomScript (returns false; opens an editor window in GUI builds)
  */
 
 #include "frontier.h"
@@ -50,9 +48,17 @@ static boolean menu_valueproc(short token, hdltreenode hparam1,
 
     switch(token) {
         case menv_zoomscript:
-            /* menu.zoomScript - requires menu editor window, keep as stub */
-            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
-            return false;
+            /*
+             * menu.zoomScript opens a script-editor window — purely GUI by
+             * design. In headless we mirror the file-header contract for
+             * other GUI-only menu verbs: report success at the verb-dispatch
+             * level (return true) but set the script-visible result to
+             * false (no editor window opened). This avoids surfacing
+             * "not implemented" through bserror, which UserTalk treats as
+             * a script error rather than a no-op.
+             */
+            (void)hparam1;
+            return setbooleanvalue(false, vreturned);
 
         case menv_buildmenubar:
             /* menu.buildmenubar - no-op in headless mode (no GUI menubar) */
