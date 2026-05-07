@@ -178,6 +178,31 @@ static const cell_t *fb_find_first(int y, const char *s) {
 	return NULL;
 }
 
+/* Find the cell at (col_offset) past the FIRST occurrence of `ref_char`
+ * on row `y`. Returns NULL if `ref_char` is absent on that row, or if
+ * the offset would walk past the framebuffer's column bound.
+ *
+ * Used by tests that need to inspect a specific character within a
+ * known label without re-implementing the "find F, then peek at the
+ * next cell" pattern at every call site. The helper documents exactly
+ * what fixture-shape it depends on (the reference char's first
+ * occurrence is unique on the row), making test failures easier to
+ * diagnose when the fixture's text changes. */
+static const cell_t *fb_find_char_after(int y, char ref_char, int col_offset) {
+	int rows = 0, cols = 0;
+	compositor_test_fb_size(&rows, &cols);
+	if (y < 0 || y >= rows) return NULL;
+	for (int x = 0; x < cols; ++x) {
+		const cell_t *c = compositor_test_fb_at(x, y);
+		if (c && c->ch == (uint32_t)(unsigned char)ref_char) {
+			int target = x + col_offset;
+			if (target < 0 || target >= cols) return NULL;
+			return compositor_test_fb_at(target, y);
+		}
+	}
+	return NULL;
+}
+
 /* ---------- Standard fixture ---------- */
 
 static snap_item_t g_view_items[] = {
@@ -653,25 +678,20 @@ static void test_state_13_menubar_uses_cyan_on_blue(void) {
 
 	/* Find "File" — the second menubar entry (not selected at open).
 	 * Read the 'i' (second char) so we skip the hotkey 'F' which is
-	 * styled with the hotkey color. */
+	 * styled with the hotkey color.
+	 *
+	 * Fixture invariant relied on: the 'F' that introduces "File" is
+	 * the FIRST 'F' on row 0. The other menubar entry "REPL" begins
+	 * with 'R', and no other label on the menubar starts with 'F'.
+	 * fb_find_char_after walks left-to-right, so changing the menubar
+	 * fixture to introduce another 'F' before "File" would silently
+	 * pick up the wrong cell — keep the fixture's invariants in mind
+	 * if/when adding menubar entries. */
 	const cell_t *file = fb_find_first(0, "File");
 	assert(file != NULL);
-	const cell_t *file_i = compositor_test_fb_at(0 /* placeholder */, 0);
-	(void)file_i;
-	/* Find the cell holding 'i' on row 0 specifically within "File"
-	 * by stepping forward from the 'F' cell. */
-	int rows = 0, cols = 0;
-	compositor_test_fb_size(&rows, &cols);
-	const cell_t *i_cell = NULL;
-	for (int x = 0; x + 1 < cols; ++x) {
-		const cell_t *fcell = compositor_test_fb_at(x, 0);
-		const cell_t *icell = compositor_test_fb_at(x + 1, 0);
-		if (fcell && icell && fcell->ch == 'F' && icell->ch == 'i') {
-			i_cell = icell;
-			break;
-		}
-	}
+	const cell_t *i_cell = fb_find_char_after(0, 'F', 1);
 	assert(i_cell != NULL);
+	assert(i_cell->ch == 'i');
 	assert(i_cell->fg == PALETTE_COLOR_BRIGHT_CYAN);
 	assert(i_cell->bg == PALETTE_COLOR_BLUE);
 

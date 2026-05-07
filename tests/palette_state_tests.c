@@ -1437,6 +1437,163 @@ static void test_scroll_wheel(void) {
 	palette_close(&st);
 }
 
+/* ---------- Rung 2 / PR 8: P0 regressions ---------- */
+
+/*
+ * P0-2: when the parent level has scrolled (cursor item is past the
+ * initial visible window), opening a submenu must anchor the submenu's
+ * y-coordinate at the cursor's CURRENT display row — not the cursor's
+ * raw items[] index. Anchoring on the raw index produces a submenu
+ * floating off the bottom of the parent pane, potentially past the
+ * screen edge.
+ *
+ * Fixture: a "Long" menu with 30 children, item index 12 is a submenu.
+ * Terminal is 15 rows tall — the parent pane caps at item_rows ≈ 12,
+ * so reaching item 12 forces scroll_top > 0. We then RIGHT-arrow into
+ * the submenu and assert the submenu's pane.y matches the cursor's
+ * adjusted display row inside the parent pane.
+ */
+static fake_item_t g_p0_2_grandkids[] = {
+	{ "GA", NULL, 'A', true, false, "g.a()", NULL, 0 },
+	{ "GB", NULL, 'B', true, false, "g.b()", NULL, 0 },
+};
+
+static void test_submenu_anchor_uses_visible_row_when_parent_scrolled(void) {
+	compositor_test_reset();
+	compositor_on_resize(15, 80);
+
+	static fake_item_t items[30];
+	static char labels[30][16];
+	static fake_menu_t menus[1];
+	make_long_menu_fixture(30, &menus[0], items, labels);
+	/* Mark item 20 as a submenu so the cursor lands on it well past
+	 * the initial window — the parent pane caps at ~13 visible rows
+	 * on a 15-row terminal, so scroll_top must be > 0 when cursor is
+	 * at index 20. */
+	items[20].is_submenu = true;
+	items[20].script = NULL;
+	items[20].children = g_p0_2_grandkids;
+	items[20].child_count = 2;
+	static fake_source_t src_data;
+	src_data.menus = menus;
+	src_data.menu_count = 1;
+	palette_menu_source_t src = make_source(&src_data);
+
+	palette_state_t st;
+	bool ok = palette_open(&st, 15, 80, &src);
+	assert(ok);
+	palette_feed_byte(&st, '\r');           /* open Long */
+	assert(st.open_depth == 1);
+
+	/* Move cursor down 20 times so it lands on the submenu item. */
+	for (int i = 0; i < 20; ++i) {
+		palette_feed_byte(&st, 0x1b);
+		palette_feed_byte(&st, '[');
+		palette_feed_byte(&st, 'B');
+	}
+	assert(st.levels[0].cursor == 20);
+	assert(st.levels[0].scroll_top > 0);
+
+	/* RIGHT-arrow into the submenu. */
+	palette_feed_byte(&st, 0x1b);
+	palette_feed_byte(&st, '[');
+	palette_feed_byte(&st, 'C');
+	assert(st.open_depth == 2);
+
+	/* The submenu's pane.y must equal parent.pane.y + 1 + (cursor's
+	 * visible-row offset) — i.e. the on-screen row where the cursor
+	 * is rendered, NOT the raw items[] index. The parent's pane.y is
+	 * 1 (just below the menubar). The cursor's visible-row offset is
+	 * 20 - scroll_top. */
+	int parent_y = st.levels[0].pane.y;
+	int vis_row_offset = 20 - st.levels[0].scroll_top;
+	int expected_y = parent_y + 1 + vis_row_offset;
+	int submenu_y = st.levels[1].pane.y;
+	/* The expected y may be clamped by the term-bounds fallback in
+	 * place_cascade_pane (UP overflow), so we accept the expected
+	 * row OR a clamped value that is <= expected_y and >= 1. */
+	assert(submenu_y >= 1);
+	assert(submenu_y <= expected_y);
+	/* Crucially: it must NOT be the buggy parent_y + 1 + 20 = 22
+	 * which is past the 15-row terminal. */
+	assert(submenu_y < 15);
+	/* And it must not be far below the parent — within parent_h
+	 * worth of slack. */
+	int parent_h = st.levels[0].pane.h;
+	assert(submenu_y <= parent_y + parent_h);
+
+	palette_close(&st);
+}
+
+/*
+ * P0-3: after palette_on_resize shrinks the available height, the saved
+ * scroll_top may point past the new last-visible window — leaving the
+ * cursor outside the rendered window. The fix re-clamps via
+ * level_scroll_to_cursor at the end of each per-level resize step.
+ *
+ * Fixture: 30-item menu, terminal 24 rows. Scroll near the bottom by
+ * advancing cursor to index 25 — scroll_top should be > 0. Resize the
+ * terminal to a much smaller height and verify the cursor remains
+ * visible (i.e. scroll_top + visible-window covers the cursor's row).
+ */
+static void test_resize_re_clamps_scroll_top_on_shrink(void) {
+	compositor_test_reset();
+	compositor_on_resize(24, 80);
+
+	static fake_item_t items[30];
+	static char labels[30][16];
+	static fake_menu_t menus[1];
+	make_long_menu_fixture(30, &menus[0], items, labels);
+	static fake_source_t src_data;
+	src_data.menus = menus;
+	src_data.menu_count = 1;
+	palette_menu_source_t src = make_source(&src_data);
+
+	palette_state_t st;
+	bool ok = palette_open(&st, 24, 80, &src);
+	assert(ok);
+	palette_feed_byte(&st, '\r');           /* open Long */
+	assert(st.open_depth == 1);
+
+	/* Move cursor to item 25. */
+	for (int i = 0; i < 25; ++i) {
+		palette_feed_byte(&st, 0x1b);
+		palette_feed_byte(&st, '[');
+		palette_feed_byte(&st, 'B');
+	}
+	assert(st.levels[0].cursor == 25);
+	int saved_scroll_top = st.levels[0].scroll_top;
+	assert(saved_scroll_top > 0);
+
+	/* Now shrink the terminal — fewer rows available means fewer
+	 * item rows. The pre-fix bug: scroll_top was preserved verbatim
+	 * even though the visible window now fewer rows can show, so the
+	 * cursor row could end up outside scroll_top..scroll_top+win-1
+	 * (the visible range). The fix re-clamps. */
+	compositor_on_resize(10, 80);
+	palette_on_resize(&st, 10, 80);
+
+	/* If the level still exists after resize (it may close if too
+	 * small to render), verify the cursor row falls inside the new
+	 * visible window. */
+	if (st.open_depth >= 1) {
+		int item_rows = st.levels[0].pane.h - 2;
+		int cursor_row = -1;
+		for (int i = 0; i < st.levels[0].visible_count; ++i) {
+			if (st.levels[0].visible[i] == st.levels[0].cursor) {
+				cursor_row = i;
+				break;
+			}
+		}
+		assert(cursor_row >= 0);
+		int top = st.levels[0].scroll_top;
+		assert(cursor_row >= top);
+		assert(cursor_row < top + item_rows);
+	}
+
+	palette_close(&st);
+}
+
 int main(void) {
 	TR_INIT("palette_state_tests");
 	TR_RUN(test_open_initial_state);
@@ -1477,6 +1634,9 @@ int main(void) {
 	TR_RUN(test_scroll_overflow_arrow_visible);
 	TR_RUN(test_scroll_pgdn_pgup);
 	TR_RUN(test_scroll_wheel);
+	/* P0 regressions from /gate review of PR #584. */
+	TR_RUN(test_submenu_anchor_uses_visible_row_when_parent_scrolled);
+	TR_RUN(test_resize_re_clamps_scroll_top_on_shrink);
 	TR_SUMMARY();
 	return TR_EXIT_CODE();
 }
