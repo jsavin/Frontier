@@ -116,6 +116,13 @@ static void level_recompute_visible(palette_level_t *lvl,
 	}
 	lvl->cursor = new_cursor;
 
+	/* Clamp scroll_top conservatively to last-item-index. The tighter
+	 * bound of `visible_count - window_rows` is preferred but the
+	 * window_rows isn't known at this layer (it depends on accepts_args
+	 * state of the deepest level, which the caller resolves). The next
+	 * render pass refines via level_scroll_to_cursor on every cursor
+	 * change. The "doesn't account for window_rows here" rule keeps
+	 * this helper free of cross-cutting state lookups. */
 	if (lvl->scroll_top > imax(0, n - 1)) lvl->scroll_top = imax(0, n - 1);
 	if (lvl->scroll_top < 0) lvl->scroll_top = 0;
 }
@@ -382,6 +389,11 @@ static void render_level(palette_state_t *st, int depth) {
 		char footer[PALETTE_FILTER_MAX + 8];
 		int n = snprintf(footer, sizeof(footer), "> %s_", st->filter_buf);
 		if (n < 0) n = 0;
+		/* snprintf clamp: when the formatted output would exceed
+		 * sizeof(footer) it returns the would-have-been length, not
+		 * the truncated length actually written. Clamp here so the
+		 * subsequent loop doesn't read past the truncated NUL. */
+		if (n > (int)sizeof(footer)) n = (int)sizeof(footer);
 		if (n > p->w - 2) n = p->w - 2;
 		int fx = (p->w - n) / 2;
 		if (fx < 1) fx = 1;
@@ -536,10 +548,21 @@ static bool place_cascade_pane(palette_state_t *st, int depth,
 		x = ax;
 		y = ay;
 	} else {
-		/* Submenu: cascade off the parent at the cursor row. */
+		/* Submenu: cascade off the parent at the cursor's CURRENT
+		 * display row, not the cursor's index in items[]. When the
+		 * parent has scrolled (visible_count > pane_h - 2 and the user
+		 * has paged or arrowed past the initial window), the on-screen
+		 * row is `level_visible_row_for_cursor(parent) - parent->scroll_top`.
+		 * Anchoring on the unadjusted `cursor` index produces a submenu
+		 * that floats off the bottom of the parent pane (potentially
+		 * past the screen edge) when the parent is scrolled. */
 		const palette_level_t *parent = &st->levels[depth - 1];
 		int default_x = parent->pane.x + parent->pane.w;
-		int default_y = parent->pane.y + 1 + parent->cursor;
+		int vis_row = level_visible_row_for_cursor(parent);
+		if (vis_row < 0) vis_row = 0;
+		vis_row -= parent->scroll_top;
+		if (vis_row < 0) vis_row = 0;
+		int default_y = parent->pane.y + 1 + vis_row;
 
 		x = default_x;
 		y = default_y;
@@ -793,10 +816,9 @@ static void cursor_step(palette_state_t *st, int delta) {
 	bool was_args = level_cursor_accepts_args(lvl);
 	level_set_cursor_to_visible_row(lvl, new_row);
 	bool now_args = level_cursor_accepts_args(lvl);
-	if (was_args && !now_args) {
-		st->arg_len = 0;
-		st->arg_buf[0] = '\0';
-	}
+	/* Clear the arg buffer on every accepts_args boundary crossing —
+	 * both onto and off-of an arg item — so each visit starts fresh
+	 * per palette.h:341-342. */
 	if (was_args != now_args) {
 		st->arg_len = 0;
 		st->arg_buf[0] = '\0';
@@ -1104,8 +1126,6 @@ palette_done_t palette_feed_mouse(palette_state_t *st, const mouse_event_t *ev) 
 	if (ev->btn == MOUSE_WHEEL_UP || ev->btn == MOUSE_WHEEL_DOWN) {
 		if (st->open_depth <= 0) return PALETTE_DONE_NONE;
 		palette_level_t *lvl = &st->levels[st->open_depth - 1];
-		int win = level_window_rows(lvl, level_cursor_accepts_args(lvl));
-		(void)win;
 		/* Scroll without changing cursor. If the cursor leaves the
 		 * window we leave it where it was — wheel scroll is for
 		 * looking around without moving selection. The user can
@@ -1240,6 +1260,14 @@ void palette_on_resize(palette_state_t *st, int term_rows, int term_cols) {
 		if (lvl->cursor >= lvl->item_count) {
 			lvl->cursor = imax(0, lvl->item_count - 1);
 		}
+		/* After a resize that shrinks the pane, the saved scroll_top
+		 * may point past the new last visible window — leaving the
+		 * cursor outside the rendered window and the user staring at
+		 * a blank pane. Re-clamp via level_scroll_to_cursor so the
+		 * cursor row falls back inside the (possibly shrunk) item-rows
+		 * window. */
+		int win = level_window_rows(lvl, level_cursor_accepts_args(lvl));
+		level_scroll_to_cursor(lvl, win);
 		++d;
 	}
 }

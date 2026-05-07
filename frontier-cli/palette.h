@@ -239,6 +239,13 @@ typedef struct palette_menu_source {
 	                      int item_index, palette_item_t *out);
 } palette_menu_source_t;
 
+/* Maximum items captured per cascade level. Defined ahead of the
+ * struct so the items[] / visible[] array dimensions can use the
+ * constant directly rather than a duplicated literal — keeps the
+ * cap a single source of truth (cf. open_level's `imin(total,
+ * PALETTE_LEVEL_MAX_ITEMS)`). */
+#define PALETTE_LEVEL_MAX_ITEMS 64
+
 /* Per-level cascade frame. Externally visible so tests can inspect, but
  * fields are read-only from the caller's perspective. */
 typedef struct palette_level {
@@ -250,7 +257,7 @@ typedef struct palette_level {
 	int cursor;             /* selected item index, indexed into items[] */
 	/* Cached items for this level — populated on level open from the
 	 * data source. Capped at PALETTE_LEVEL_MAX_ITEMS. */
-	palette_item_t items[64];
+	palette_item_t items[PALETTE_LEVEL_MAX_ITEMS];
 	/* Filtered visibility map: visible[0..visible_count) holds the
 	 * indices into items[] that match the current filter. When the
 	 * filter is empty, visible_count == item_count and visible[i] == i.
@@ -258,15 +265,13 @@ typedef struct palette_level {
 	 * row positions back to source items. The display cursor row
 	 * (i.e. which row inside the pane is highlighted) is the i where
 	 * visible[i] == cursor. */
-	int visible[64];
+	int visible[PALETTE_LEVEL_MAX_ITEMS];
 	int visible_count;
 	/* Scroll offset into visible[]: the first row of the pane shows
 	 * visible[scroll_top]. Adjusted automatically when cursor moves
 	 * outside the visible window or by explicit page/wheel scrolls. */
 	int scroll_top;
 } palette_level_t;
-
-#define PALETTE_LEVEL_MAX_ITEMS 64
 
 /* Palette state. The whole struct is value-typed (no internal mallocs
  * outside the pane buffers, which pane.c manages). */
