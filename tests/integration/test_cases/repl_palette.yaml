@@ -109,16 +109,21 @@ tests:
     expected_success: true
     expected_result: "Help"
 
-  - name: "REPL palette - Help item dispatches to handler script"
+  - name: "REPL palette - Help item dispatches to repl.help kernel verb"
     description: |
       Each menu item's .script field is the UserTalk source the palette
       will hand to meuserselected_headless on selection. For Help that
-      source must invoke system.menus.handlers.repl.help.
+      source invokes repl.help () — the kernel verb that calls
+      repl_output_help() in C. PR 6 originally pointed Help at a UserTalk
+      handler (system.menus.handlers.repl.help), but headless UserTalk
+      lacks a raw-stdout primitive (`msg` adds a "msg: " prefix; there is
+      no `print` / `stdout` verb), so PR 7 routes Help through the kernel
+      verb. The other 5 items still go through their UserTalk handlers.
     script: |
       system.menus.installReplMenubar ();
       return (system.menus.data.repl.REPL.Help.script)
     expected_success: true
-    expected_result: "system.menus.handlers.repl.help ()"
+    expected_result: "repl.help ()"
 
   - name: "REPL palette - Exit item dispatches to handler script"
     description: |

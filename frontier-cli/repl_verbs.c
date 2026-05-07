@@ -96,7 +96,8 @@ enum {
 	rplv_clearvariables = 1,
 	rplv_jumppath = 2,
 	rplv_printkeycodes = 3,
-	rplv_list = 4
+	rplv_list = 4,
+	rplv_help = 5
 };
 
 
@@ -174,6 +175,13 @@ static boolean repl_valueproc(short token, hdltreenode hparam1,
 		return setbooleanvalue(fl, vreturned);
 	}
 
+	case rplv_help:
+		(void) hparam1;
+		if (!g_host_installed || g_host.help == NULL)
+			return setbooleanvalue(false, vreturned);
+		g_host.help();
+		return setbooleanvalue(true, vreturned);
+
 	case rplv_list: {
 		short ctconsumed = 0, ctpositional = 0;
 		tyvaluerecord val;
@@ -249,6 +257,7 @@ boolean replinitverbs(void) {
 	ADD_VERB(PSTRING("\010", "jumppath"), rplv_jumppath);
 	ADD_VERB(PSTRING("\015", "printkeycodes"), rplv_printkeycodes);
 	ADD_VERB(PSTRING("\004", "list"), rplv_list);
+	ADD_VERB(PSTRING("\004", "help"), rplv_help);
 
 	#undef ADD_VERB
 

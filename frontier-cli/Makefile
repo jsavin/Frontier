@@ -86,12 +86,12 @@ CLI_SOURCES = \
     file_browser.c \
     completion.c \
     repl.c \
-    repl_commands.c \
     repl_eval.c \
     repl_output.c \
     repl_variables.c \
     repl_verbs.c \
     repl_palette_source.c \
+    repl_slash_resolver.c \
     pane.c \
     palette.c
 
