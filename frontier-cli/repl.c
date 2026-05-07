@@ -116,6 +116,56 @@ static boolean g_repl_exit_requested = false;
 static char *session_commands[MAX_SESSION_COMMANDS];
 static size_t session_command_count = 0;
 
+/*
+ * safe_print_user_string - terminal-injection hardener.
+ *
+ * Print a user-controlled string to stdout with control bytes scrubbed.
+ * Mirrors the policy in pane.c::safe_render_codepoint(): \t \n \r are
+ * legitimate inside user content (paths can't contain them legally,
+ * but error messages may); every other byte < 0x20 plus 0x7F (DEL) is
+ * replaced with '?'.
+ *
+ * Threat: error/diagnostic printf paths interpolate user-supplied
+ * strings (table paths, menu item names, etc.). An adversary who can
+ * choose a name containing ESC '[' '2' 'J' could clear the screen by
+ * triggering "/list <evil>" — or worse, OSC 52 to write the user's
+ * clipboard. Filtering at the print site short-circuits that surface.
+ *
+ * The helper is byte-oriented: high bytes (>= 0x80) pass through
+ * unmodified (legitimate UTF-8 continuation), and the caller does NOT
+ * need to NUL-terminate the buffer of the helper allocates a stack
+ * temporary capped at SAFE_PRINT_MAX. Truncation appends "..." so the
+ * user can tell something was dropped.
+ */
+#define SAFE_PRINT_MAX 1024
+
+static void safe_print_user_string(const char *s) {
+	if (s == NULL) {
+		fputs("(null)", stdout);
+		return;
+	}
+	char buf[SAFE_PRINT_MAX];
+	size_t out = 0;
+	const size_t cap = sizeof(buf) - 4; /* leave room for "..." + NUL */
+	while (*s != '\0' && out < cap) {
+		unsigned char c = (unsigned char)*s++;
+		if (c == '\t' || c == '\n' || c == '\r') {
+			buf[out++] = (char)c;
+		} else if (c < 0x20 || c == 0x7F) {
+			buf[out++] = '?';
+		} else {
+			buf[out++] = (char)c;
+		}
+	}
+	if (*s != '\0') {
+		buf[out++] = '.';
+		buf[out++] = '.';
+		buf[out++] = '.';
+	}
+	buf[out] = '\0';
+	fputs(buf, stdout);
+}
+
 /* Clears all guest database navigation state */
 static void clear_guest_db_state(void) {
 	g_repl_in_guest_db = false;
@@ -1112,8 +1162,14 @@ boolean repl_jump_path(const char *path) {
 
 		if (!repl_resolve_path_ex(path_buf, &result, resolved_path, sizeof(resolved_path),
 								   error_msg, sizeof(error_msg))) {
-			if (error_msg[0] != '\0')
-				printf("Error: %s\n", error_msg);
+			if (error_msg[0] != '\0') {
+				/* error_msg interpolates user-supplied path
+				 * components — scrub control bytes before print.
+				 * See safe_print_user_string for threat model. */
+				fputs("Error: ", stdout);
+				safe_print_user_string(error_msg);
+				fputc('\n', stdout);
+			}
 			return false;
 		}
 
@@ -2078,9 +2134,13 @@ static boolean process_line(const char *line, boolean *running) {
  *      repl_sigwinch_consumed + palette_on_resize; honor the ESC
  *      disambiguation timer via palette_feed_esc_timeout.
  *   7. on PALETTE_DONE_EXECUTE: snapshot exec_script, palette_close,
- *      copy the handle into our own ownership (because
- *      meuserselected_headless consumes via langbuildtree), dispose
- *      the adapter (which frees its cached originals), then dispatch.
+ *      copy the handle into our own ownership (so the caller's
+ *      lifetime is independent of the adapter's cache, which is
+ *      freed at repl_palette_source_dispose). Dispose the adapter,
+ *      then dispatch. The caller of run_palette_modal is responsible
+ *      for disposehandle'ing the returned handle after dispatch —
+ *      meuserselected_headless does its own internal copyhandle and
+ *      does NOT consume ours.
  *      On PALETTE_DONE_CANCEL: palette_close + dispose + return.
  *   8. terminal_disable_mouse + terminal_disable_raw_mode +
  *      terminal_cleanup, then linenoiseEditStart to resume editing.
@@ -2194,8 +2254,10 @@ static int mouse_sgr_feed(mouse_sgr_parser_t *p, unsigned char b,
  *   non-NULL — script handle that should be passed to
  *              meuserselected_headless. Caller owns this handle (it
  *              was copyhandle'd out of adapter-private storage) and
- *              MUST pass it to meuserselected_headless (which consumes
- *              it via langbuildtree) or, in failure paths, disposehandle.
+ *              MUST disposehandle it after dispatch on every path.
+ *              meuserselected_headless does its own internal copyhandle
+ *              (Common/source/menudata_headless.c:1056) — it does NOT
+ *              consume the caller's handle.
  *
  * GIL: caller must hold it. We don't yield while the palette is open
  * (see file-level note above).
@@ -2438,10 +2500,21 @@ static void replverbhost_list(const char *path) {
 
 	if (!repl_resolve_path_ex(path, &result, resolved_path, sizeof(resolved_path),
 	                          error_msg, sizeof(error_msg))) {
-		if (error_msg[0] != '\0')
-			printf("Error: '%s' is not a valid table path (%s)\n", path, error_msg);
-		else
-			printf("Error: '%s' is not a valid table path\n", path);
+		/* `path` is the unfiltered C string from the verb arg, and
+		 * error_msg may interpolate user-supplied path components.
+		 * Both must be scrubbed before reaching the terminal — see
+		 * safe_print_user_string for threat model. */
+		if (error_msg[0] != '\0') {
+			fputs("Error: '", stdout);
+			safe_print_user_string(path);
+			fputs("' is not a valid table path (", stdout);
+			safe_print_user_string(error_msg);
+			fputs(")\n", stdout);
+		} else {
+			fputs("Error: '", stdout);
+			safe_print_user_string(path);
+			fputs("' is not a valid table path\n", stdout);
+		}
 		return;
 	}
 
@@ -2512,6 +2585,8 @@ static void install_repl_menubar(void) {
 	tyvaluerecord val;
 	boolean flpushpop = !flscriptrunning;
 
+	initvalue(&val, novaluetype);
+
 	if (flpushpop)
 		flpushpop = pushprocess(nil);
 
@@ -2519,6 +2594,13 @@ static void install_repl_menubar(void) {
 
 	if (flpushpop)
 		popprocess();
+
+	/* langrun populates val on both success and failure paths. The
+	 * pattern mirrors langrunhandle_value (Common/source/lang.c:920+):
+	 * caller must disposevaluerecord regardless of return. Without this,
+	 * any string/handle/list payload in val leaks across REPL session
+	 * boots. */
+	disposevaluerecord(val, false);
 
 	if (!ok) {
 		log_warn(LOG_COMP_GENERAL,
@@ -2712,10 +2794,14 @@ int repl_main(cli_options_t *options, ws_server_t *ws_server) {
 					Handle script = run_palette_modal(&ls, line_buf,
 					                                  sizeof(line_buf));
 					if (script != nil) {
-						/* Dispatch the chosen menu item. The handle
-						 * is consumed by langbuildtree inside
-						 * meuserselected_headless — do NOT free it
-						 * here. */
+						/* Dispatch the chosen menu item.
+						 *
+						 * Ownership: meuserselected_headless does its own
+						 * internal copyhandle() (see Common/source/
+						 * menudata_headless.c:1056) — it does NOT consume
+						 * the caller's handle. The caller therefore
+						 * retains ownership and MUST disposehandle on
+						 * BOTH the success and failure paths. */
 						g_script_running = 1;
 						boolean ok = meuserselected_headless(script);
 						g_script_running = 0;
@@ -2723,6 +2809,7 @@ int repl_main(cli_options_t *options, ws_server_t *ws_server) {
 							printf("(menu script failed)\n");
 							fflush(stdout);
 						}
+						disposehandle(script);
 					}
 					/* run_palette_modal already restarted linenoise
 					 * with an empty buffer, so the prompt is fresh.

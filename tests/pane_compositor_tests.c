@@ -21,6 +21,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "pane.h"
 #include "test_report.h"
@@ -29,6 +30,50 @@
 extern const cell_t *compositor_test_fb_at(int x, int y);
 extern void compositor_test_fb_size(int *rows, int *cols);
 extern void compositor_test_reset(void);
+
+/* ---------- stdout capture for byte-stream tests ----------
+ * compositor_render() writes to stdout. The control-byte-filter test
+ * verifies that an attacker-controlled cell value (e.g. 0x1B / ESC
+ * planted in a label by an ODB write) does NOT survive the render to
+ * the user's terminal. We capture stdout to a tmpfile, run a render,
+ * then scan the bytes for prohibited values. */
+
+static int g_saved_stdout_fd = -1;
+static char g_capture_path[256];
+
+static void capture_stdout_begin(void) {
+	snprintf(g_capture_path, sizeof(g_capture_path),
+	         "/tmp/pane_compositor_test_%d_%ld.bin",
+	         (int)getpid(), (long)random());
+	fflush(stdout);
+	g_saved_stdout_fd = dup(STDOUT_FILENO);
+	assert(g_saved_stdout_fd >= 0);
+	FILE *f = freopen(g_capture_path, "w+", stdout);
+	assert(f != NULL);
+}
+
+static char *capture_stdout_end(size_t *out_len) {
+	fflush(stdout);
+	FILE *r = fopen(g_capture_path, "rb");
+	assert(r != NULL);
+	fseek(r, 0, SEEK_END);
+	long sz = ftell(r);
+	fseek(r, 0, SEEK_SET);
+	char *buf = malloc((size_t)sz + 1);
+	assert(buf != NULL);
+	size_t n = fread(buf, 1, (size_t)sz, r);
+	buf[n] = '\0';
+	fclose(r);
+	if (g_saved_stdout_fd >= 0) {
+		dup2(g_saved_stdout_fd, STDOUT_FILENO);
+		close(g_saved_stdout_fd);
+		g_saved_stdout_fd = -1;
+		clearerr(stdout);
+	}
+	unlink(g_capture_path);
+	if (out_len) *out_len = n;
+	return buf;
+}
 
 static void test_pane_init_creates_buffer(void) {
 	pane_t p;
@@ -283,6 +328,105 @@ static void test_pane_move_and_resize(void) {
 	pane_destroy(&p);
 }
 
+/* Count occurrences of `byte` in the rendered output. CSI sequences
+ * legitimately contain ESC (0x1B) and `[` and digits — but those bytes
+ * appear at known positions inside `ESC [ ... H` and `ESC [ ... m`
+ * sequences, never as standalone cell content. To distinguish, we
+ * count byte positions that are NOT followed by '[' (i.e. raw ESCs in
+ * the cell-content stream). For other control bytes (BEL=0x07,
+ * BS=0x08, etc.) any occurrence is a leak from a cell. */
+static int count_byte_outside_csi(const char *buf, size_t n, unsigned char b) {
+	int count = 0;
+	for (size_t i = 0; i < n; i++) {
+		if ((unsigned char)buf[i] != b) continue;
+		if (b == 0x1B) {
+			/* Allow ESC iff immediately followed by '[' (CSI intro). */
+			if (i + 1 < n && buf[i + 1] == '[') continue;
+		}
+		count++;
+	}
+	return count;
+}
+
+/*
+ * Threat model: an adversary with write access to a string visible in
+ * any pane (e.g. system.menus.data.<bar>.<menu>.<item>.label in the
+ * ODB) plants a control byte. Without filtering, that byte is emitted
+ * raw into the user's terminal — ESC opens a CSI window-title-spoof,
+ * BEL pings the terminal, etc.
+ *
+ * This test plants several dangerous codepoints into pane cells and
+ * verifies the rendered byte stream replaces each with '?'. Whitelisted
+ * controls (\t, \n, \r) are NOT relevant here since the pane writer
+ * doesn't put those into single cells, but we exclude them from the
+ * substitution rule by separate code-path inspection.
+ */
+static void test_compositor_filters_unsafe_control_bytes(void) {
+	compositor_test_reset();
+	compositor_on_resize(2, 8);
+
+	pane_t p;
+	pane_init(&p, 0, 0, 8, 1);
+	compositor_register(&p);
+
+	/* Plant control bytes in cells. Use pane_putc directly so we can
+	 * inject codepoints that pane_puts (string-based) wouldn't carry. */
+	pane_putc(&p, 0, 0, 0x1B, 0); /* ESC — would inject CSI */
+	pane_putc(&p, 1, 0, 0x07, 0); /* BEL */
+	pane_putc(&p, 2, 0, 0x08, 0); /* BS */
+	pane_putc(&p, 3, 0, 0x7F, 0); /* DEL */
+	pane_putc(&p, 4, 0, 'A', 0);  /* control: should pass through */
+	pane_putc(&p, 5, 0, 'B', 0);
+	pane_putc(&p, 6, 0, 'C', 0);
+	pane_putc(&p, 7, 0, 'D', 0);
+
+	capture_stdout_begin();
+	compositor_render();
+	size_t n;
+	char *out = capture_stdout_end(&n);
+
+	/* Raw ESC outside a CSI intro: must be 0. ESC bytes appear in
+	 * SGR ("\x1b[0...m") and CUP ("\x1b[N;MH") sequences but every
+	 * one of those is followed by '['. Any standalone ESC indicates
+	 * a leaked cell value. */
+	int stray_esc = count_byte_outside_csi(out, n, 0x1B);
+	assert(stray_esc == 0);
+
+	/* BEL / BS / DEL: never legitimate in render output. */
+	assert(count_byte_outside_csi(out, n, 0x07) == 0);
+	assert(count_byte_outside_csi(out, n, 0x08) == 0);
+	assert(count_byte_outside_csi(out, n, 0x7F) == 0);
+
+	/* The substituted '?' MUST appear at least 4 times (one per
+	 * planted unsafe byte). Allow more in case the diff path emits
+	 * extras for the adjacent cells; we only care about the lower
+	 * bound since the unsafe bytes are gone. */
+	int qcount = 0;
+	for (size_t i = 0; i < n; i++) if (out[i] == '?') qcount++;
+	assert(qcount >= 4);
+
+	/* The clean cells survived intact. */
+	bool found_abcd = false;
+	for (size_t i = 0; i + 3 < n; i++) {
+		/* CUP+SGR escape sequences interleave between cells, so we
+		 * search for each letter individually rather than as a run. */
+		(void)found_abcd;
+	}
+	bool seen_a = false, seen_b = false, seen_c = false, seen_d = false;
+	for (size_t i = 0; i < n; i++) {
+		if (out[i] == 'A') seen_a = true;
+		if (out[i] == 'B') seen_b = true;
+		if (out[i] == 'C') seen_c = true;
+		if (out[i] == 'D') seen_d = true;
+	}
+	assert(seen_a && seen_b && seen_c && seen_d);
+
+	free(out);
+
+	compositor_unregister(&p);
+	pane_destroy(&p);
+}
+
 int main(void) {
 	TR_INIT("pane_compositor_tests");
 	TR_RUN(test_pane_init_creates_buffer);
@@ -295,6 +439,7 @@ int main(void) {
 	TR_RUN(test_compositor_pane_at_highest_z);
 	TR_RUN(test_compositor_on_resize_reallocates);
 	TR_RUN(test_pane_move_and_resize);
+	TR_RUN(test_compositor_filters_unsafe_control_bytes);
 	TR_SUMMARY();
 	return TR_EXIT_CODE();
 }

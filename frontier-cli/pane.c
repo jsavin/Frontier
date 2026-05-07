@@ -267,6 +267,42 @@ static void blit_pane(const pane_t *p) {
 	}
 }
 
+/* Defense-in-depth: scrub unsafe control bytes from cell content before
+ * emitting to the terminal. This runs on the rendered byte stream (egress)
+ * not on input — the same untrusted bytes can reach pane.c through any
+ * future producer (ODB labels, REPL output, palette items, error strings),
+ * so filtering at the single emit point catches them all.
+ *
+ * Threat: an adversary with write access to a string visible in any pane
+ * (e.g. system.menus.data.<bar>.<menu>.<item>.label) could embed ESC,
+ * CSI, or OSC introducers. Without filtering, that byte stream re-enters
+ * the user's terminal as a control sequence — window-title spoofing,
+ * screen clearing, hyperlink injection, and (in some emulators) clipboard
+ * writes via OSC 52.
+ *
+ * Policy:
+ *   - Bytes < 0x20 are control characters. We allow ONLY \t, \n, \r —
+ *     those are legitimate inside pane content (tabs in labels,
+ *     newlines in multi-line cells once we have them). Everything else
+ *     including ESC (0x1B), BEL (0x07), backspace, etc. is rejected.
+ *   - 0x7F (DEL) is also a control byte and rejected.
+ *   - Substitute character: '?' so the visual artifact is obvious to
+ *     the user without injecting any further bytes.
+ *
+ * Returns the safe codepoint (caller-side: equal to ch on the allow path).
+ * Char inputs are unsigned so a sign-extended high byte cannot dodge the
+ * < 0x20 test.
+ */
+static uint32_t safe_render_codepoint(uint32_t ch) {
+	if (ch == '\t' || ch == '\n' || ch == '\r')
+		return ch;
+	if (ch < 0x20)
+		return (uint32_t)'?';
+	if (ch == 0x7F)
+		return (uint32_t)'?';
+	return ch;
+}
+
 /* Minimal SGR emitter — TODO(PR 5): replace with terminal_set_attr().
  * For now we just emit fg/bg as 8-color SGR codes when non-zero, and
  * the bold/inverted/underline bits if attr has them set. */
@@ -309,13 +345,18 @@ void compositor_render(void) {
 			/* CUP: rows/cols are 1-based in ANSI. */
 			fprintf(stdout, "\x1b[%d;%dH", y + 1, x + 1);
 			emit_attr(stdout, c.fg, c.bg, c.attr);
-			if (c.ch == 0) {
+			/* Scrub unsafe control bytes (ESC/CSI/OSC, BEL, DEL, etc.)
+			 * before emit — see safe_render_codepoint() for threat
+			 * model. \t/\n/\r are allowed; everything else < 0x20
+			 * and 0x7F is replaced with '?'. */
+			uint32_t safe_ch = (c.ch == 0) ? 0 : safe_render_codepoint(c.ch);
+			if (safe_ch == 0) {
 				fputc(' ', stdout);
-			} else if (c.ch < 0x80) {
-				fputc((int)c.ch, stdout);
+			} else if (safe_ch < 0x80) {
+				fputc((int)safe_ch, stdout);
 			} else {
 				/* Minimal UTF-8 encoder for the BMP/SMP range. */
-				uint32_t ch = c.ch;
+				uint32_t ch = safe_ch;
 				if (ch < 0x800) {
 					fputc((int)(0xC0 | (ch >> 6)), stdout);
 					fputc((int)(0x80 | (ch & 0x3F)), stdout);
