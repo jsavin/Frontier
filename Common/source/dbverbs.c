@@ -402,7 +402,9 @@ typedef enum tydbtoken { /*verbs that are processed by db*/
 	getnthitemfunc,
 	
 	getmoddatefunc,
-	
+
+	compactdatabasefunc, /* db.compactDatabase(srcPath, dstPath) — v7→v7 compaction */
+
 	ctdbverbs
 	} tydbtoken;
 
@@ -1114,6 +1116,145 @@ static boolean dbgetmoddateverb (hdltreenode hparam1, tyvaluerecord *vreturned) 
 	} /*dbgetmoddateverb*/
 
 
+/* Lowercase wrapper following the existing pattern (e.g. odbsavefile).
+ * Wraps odbCompactDatabase with the odb_context_guard so the caller's
+ * databasedata / rootvariable / mode stack are preserved across the call.
+ * After this, the source's in-memory state is indeterminate — caller is
+ * expected to db.close + db.open the source if they want to keep using it. */
+static boolean odbcompactdatabase_local (odbref odb, const char *dst_path) {
+	odb_context_guard guard;
+	boolean fl;
+
+	odb_guard_enter (&guard);
+
+	fl = odbCompactDatabase (odb, dst_path);
+
+	cancoonglobals = nil;
+
+	odb_guard_exit (&guard);
+
+	return (fl);
+}
+
+
+static boolean dbcompactdatabaseverb (hdltreenode hparam1, tyvaluerecord *vreturned) {
+
+	/*
+	 * db.compactDatabase(srcPath, dstPath) — write a freshly-compacted copy
+	 * of an open guest database to a new file.
+	 *
+	 * Walks the live in-memory tree of the source and writes it to dstPath.
+	 * The result has no avail-list dead space, so the destination file is
+	 * the minimum size required to represent the live data. Used to reclaim
+	 * space after large delete operations.
+	 *
+	 * Contrast with fileMenu.saveCopy: that does a byte-for-byte file copy
+	 * which preserves the avail-list (and the dead space inside it).
+	 *
+	 * Constraints:
+	 *   - srcPath must be currently open as a guest database
+	 *   - dstPath must NOT already exist (refuses to overwrite)
+	 *   - After this call, srcPath's IN-MEMORY state is indeterminate (the
+	 *     in-memory tree's oldaddress fields point at dst's address space).
+	 *     The on-disk source bytes are NOT modified. Caller should db.close
+	 *     and db.open the source if they want to keep using it.
+	 *
+	 * Returns true on success, false on error (with langerror set).
+	 */
+
+	bigstring bssrc, bsdst;
+	tyfilespec srcfs;
+	hdlodbrecord hodb_source = nil;
+	char dstpath_c[1024];
+	FILE *fp_check;
+	boolean ok = false;
+
+	setbooleanvalue (false, vreturned);
+
+	/* Validate exactly 2 params */
+	if (langgetparamcount (hparam1) != 2) {
+		langerrormessage (PSTRING ("\x43",
+			"db.compactDatabase requires exactly 2 parameters (srcPath, dstPath)"));
+		return (false);
+	}
+
+	/* Get srcPath as filespec to look up the open db */
+	if (!getfilespecvalue (hparam1, 1, &srcfs))
+		return (false);
+
+	flnextparamislast = true;
+
+	if (!getstringvalue (hparam1, 2, bsdst))
+		return (false);
+
+	/* Convert dst path to C string for fopen / db_format_compact_to_path */
+	{
+		long ctbytes = stringlength (bsdst);
+		if (ctbytes >= (long) sizeof dstpath_c) {
+			langerrormessage (PSTRING ("\x2d", "db.compactDatabase: destination path too long"));
+			return (false);
+		}
+		copyptocstring (bsdst, dstpath_c);
+	}
+
+	/* Find the source database in hodblist (must be open as guest) */
+	{
+		hdlodbrecord hodb;
+		filespectopath (&srcfs, bssrc);
+
+		for (hodb = (**hodblist).hnext; hodb != nil; hodb = (**hodb).hnext) {
+			if (equalfilespecs (&(**hodb).fs, &srcfs)) {
+				hodb_source = hodb;
+				break;
+			}
+		}
+
+		if (hodb_source == nil) {
+			lang2paramerror (dbnotopenederror, bsfunctionname, bssrc);
+			return (false);
+		}
+
+		if ((**hodb_source).flreadonly) {
+			lang2paramerror (dbopenedreadonlyerror, bsfunctionname, bssrc);
+			return (false);
+		}
+	}
+
+	/* Refuse to overwrite an existing destination file. We use fopen("rb")
+	 * rather than file.exists since this is a kernel-level check and we want
+	 * to be deterministic. */
+	fp_check = fopen (dstpath_c, "rb");
+	if (fp_check != NULL) {
+		fclose (fp_check);
+		langerrormessage (PSTRING ("\x33",
+			"db.compactDatabase: destination file already exists"));
+		return (false);
+	}
+
+	/* First, ensure the source is fully saved to disk. compaction reads from
+	 * the in-memory tree, so the on-disk state must be flushed for any
+	 * caller that later reopens the source from disk to see the same data. */
+	if (!odbsavefile ((**hodb_source).odb)) {
+		log_error (LOG_COMP_DB, "db.compactDatabase: pre-compaction save failed");
+		langerrormessage (PSTRING ("\x26", "db.compactDatabase: source save failed"));
+		return (false);
+	}
+
+	/* Run the compaction. The wrapper saves/restores the caller's globals via
+	 * odb_context_guard so the system root context is unaffected. After this
+	 * returns, the source database's IN-MEMORY root is gone — caller MUST
+	 * db.close + db.open the source to keep using it. */
+	ok = odbcompactdatabase_local ((**hodb_source).odb, dstpath_c);
+
+	if (!ok) {
+		langerrormessage (PSTRING ("\x2f", "db.compactDatabase: compaction operation failed"));
+		return (false);
+	}
+
+	return (setbooleanvalue (true, vreturned));
+	} /*dbcompactdatabaseverb*/
+
+
 boolean dbfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord *vreturned, bigstring bserror) {
 #pragma unused (bserror)
 
@@ -1168,7 +1309,10 @@ boolean dbfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord *vretur
 		
 		case getmoddatefunc:
 			return (dbgetmoddateverb (hp1, v));
-		
+
+		case compactdatabasefunc:
+			return (dbcompactdatabaseverb (hp1, v));
+
 		default:
 			return (false);
 		}

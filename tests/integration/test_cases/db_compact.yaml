@@ -1,0 +1,248 @@
+# Integration tests for db.compactDatabase
+#
+# db.compactDatabase(srcPath, dstPath) writes a freshly-compacted copy of an
+# open guest database to a new file. Walks live records only, so the
+# destination has no avail-list dead space and is the minimum size required
+# to represent the live data.
+#
+# Contrast with fileMenu.saveCopy: that does a byte-for-byte file copy, which
+# does NOT compact the avail-list. After deleting data and saving, saveCopy
+# produces a same-size copy because dbrelease only marks blocks free in the
+# avail-list (does not truncate). db.compactDatabase actually walks the live
+# tree and writes a fresh file, so it reclaims the space.
+#
+# IMPORTANT — semantics:
+# - srcPath must be open as a guest database (db.open or fileMenu.open).
+# - The system root cannot be the source: the in-memory tree is mutated
+#   during compaction (oldaddress fields point at dst), so the source ends
+#   in an indeterminate state. After compaction, the caller MUST close the
+#   source. Re-opening the source from disk is fine (its on-disk state is
+#   intact — the save before compaction flushed everything).
+# - dstPath must not already exist (refuses to overwrite).
+#
+# Test Strategy:
+# 1. Round-trip integrity: compacted DB has the same live data
+# 2. Size shrinks: after deleting bulk data, compacted file is smaller than
+#    the saved-but-not-compacted file
+# 3. Source's ON-DISK file is unchanged: after compaction + close + reopen,
+#    the source still has its data (compaction does not touch source bytes).
+# 4. Error cases: refuses to overwrite, requires exactly 2 args
+# 5. Compacted DB is independently openable
+
+needs_guest_dbs: true
+
+tests:
+  # ========================================================================
+  # Round-trip integrity
+  # ========================================================================
+
+  - name: "db.compactDatabase - basic round-trip preserves data"
+    description: "Compact a populated guest DB to a new path; data should be intact"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(srcPath = tmpDir + "/" + "compact_basic_src.root");
+      local(dstPath = tmpDir + "/" + "compact_basic_dst.root");
+      if file.exists(srcPath) {file.delete(srcPath)};
+      if file.exists(dstPath) {file.delete(dstPath)};
+      db.new(srcPath);
+      db.open(srcPath, false);
+      db.setvalue(srcPath, "alpha", "A");
+      db.setvalue(srcPath, "beta", "B");
+      db.setvalue(srcPath, "gamma", "G");
+      db.save(srcPath);
+      db.compactDatabase(srcPath, dstPath);
+      db.close(srcPath);
+      db.open(dstPath, false);
+      local(a = db.getvalue(dstPath, "alpha"));
+      local(b = db.getvalue(dstPath, "beta"));
+      local(g = db.getvalue(dstPath, "gamma"));
+      db.close(dstPath);
+      return a + b + g
+    expected_success: true
+    expected_result: "ABG"
+
+  # ========================================================================
+  # Size shrink: this is the load-bearing test for the whole feature
+  # ========================================================================
+
+  - name: "db.compactDatabase - shrinks file after large deletion"
+    description: "Write bulk data, delete it, compact — destination must be smaller than source"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(srcPath = tmpDir + "/" + "compact_shrink_src.root");
+      local(dstPath = tmpDir + "/" + "compact_shrink_dst.root");
+      if file.exists(srcPath) {file.delete(srcPath)};
+      if file.exists(dstPath) {file.delete(dstPath)};
+      db.new(srcPath);
+      db.open(srcPath, false);
+      db.setvalue(srcPath, "keep", "small");
+      local(big = string.filledString("X", 32768));
+      db.setvalue(srcPath, "bulk1", big);
+      db.setvalue(srcPath, "bulk2", big);
+      db.setvalue(srcPath, "bulk3", big);
+      db.setvalue(srcPath, "bulk4", big);
+      db.setvalue(srcPath, "bulk5", big);
+      db.setvalue(srcPath, "bulk6", big);
+      db.setvalue(srcPath, "bulk7", big);
+      db.setvalue(srcPath, "bulk8", big);
+      db.save(srcPath);
+      db.delete(srcPath, "bulk1");
+      db.delete(srcPath, "bulk2");
+      db.delete(srcPath, "bulk3");
+      db.delete(srcPath, "bulk4");
+      db.delete(srcPath, "bulk5");
+      db.delete(srcPath, "bulk6");
+      db.delete(srcPath, "bulk7");
+      db.delete(srcPath, "bulk8");
+      db.save(srcPath);
+      local(srcSize = file.size(srcPath));
+      db.compactDatabase(srcPath, dstPath);
+      local(dstSize = file.size(dstPath));
+      db.close(srcPath);
+      return dstSize < srcSize
+    expected_success: true
+    expected_result: "true"
+
+  - name: "db.compactDatabase - kept data survives after compaction"
+    description: "After delete + compact, the kept value is readable in dst"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(srcPath = tmpDir + "/" + "compact_kept_src.root");
+      local(dstPath = tmpDir + "/" + "compact_kept_dst.root");
+      if file.exists(srcPath) {file.delete(srcPath)};
+      if file.exists(dstPath) {file.delete(dstPath)};
+      db.new(srcPath);
+      db.open(srcPath, false);
+      db.setvalue(srcPath, "keep", "survived");
+      local(big = string.filledString("X", 32768));
+      db.setvalue(srcPath, "delete_me", big);
+      db.save(srcPath);
+      db.delete(srcPath, "delete_me");
+      db.save(srcPath);
+      db.compactDatabase(srcPath, dstPath);
+      db.close(srcPath);
+      db.open(dstPath, false);
+      local(v = db.getvalue(dstPath, "keep"));
+      local(stillThere = db.defined(dstPath, "delete_me"));
+      db.close(dstPath);
+      return v + ":" + stillThere
+    expected_success: true
+    expected_result: "survived:false"
+
+  # ========================================================================
+  # Source on-disk file is unchanged
+  # ========================================================================
+
+  - name: "db.compactDatabase - source on-disk file unchanged after compaction"
+    description: "After db.close + db.open, source still has its data (compaction does not modify source bytes)"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(srcPath = tmpDir + "/" + "compact_src_intact_src.root");
+      local(dstPath = tmpDir + "/" + "compact_src_intact_dst.root");
+      if file.exists(srcPath) {file.delete(srcPath)};
+      if file.exists(dstPath) {file.delete(dstPath)};
+      db.new(srcPath);
+      db.open(srcPath, false);
+      db.setvalue(srcPath, "key", "value_in_source");
+      db.save(srcPath);
+      db.compactDatabase(srcPath, dstPath);
+      db.close(srcPath);
+      db.open(srcPath, false);
+      local(v = db.getvalue(srcPath, "key"));
+      db.close(srcPath);
+      return v
+    expected_success: true
+    expected_result: "value_in_source"
+
+  # ========================================================================
+  # Independently openable destination
+  # ========================================================================
+
+  - name: "db.compactDatabase - destination is independently openable after src closes"
+    description: "Compacted DB is a complete file, openable after the source is closed and deleted"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(srcPath = tmpDir + "/" + "compact_indep_src.root");
+      local(dstPath = tmpDir + "/" + "compact_indep_dst.root");
+      if file.exists(srcPath) {file.delete(srcPath)};
+      if file.exists(dstPath) {file.delete(dstPath)};
+      db.new(srcPath);
+      db.open(srcPath, false);
+      db.setvalue(srcPath, "marker", "independent");
+      db.save(srcPath);
+      db.compactDatabase(srcPath, dstPath);
+      db.close(srcPath);
+      file.delete(srcPath);
+      db.open(dstPath, false);
+      local(v = db.getvalue(dstPath, "marker"));
+      db.close(dstPath);
+      return v
+    expected_success: true
+    expected_result: "independent"
+
+  # ========================================================================
+  # Error cases
+  # ========================================================================
+
+  - name: "db.compactDatabase - error when source is not open"
+    description: "Compacting an unopened path returns an error"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(srcPath = tmpDir + "/" + "compact_unopened.root");
+      local(dstPath = tmpDir + "/" + "compact_unopened_dst.root");
+      try {
+        db.compactDatabase(srcPath, dstPath);
+        return "should_have_failed"
+      } else {
+        return "error_caught"
+      }
+    expected_success: true
+    expected_result: "error_caught"
+
+  - name: "db.compactDatabase - error when destination already exists"
+    description: "Refuses to overwrite an existing destination file"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(srcPath = tmpDir + "/" + "compact_overwrite_src.root");
+      local(dstPath = tmpDir + "/" + "compact_overwrite_dst.root");
+      if file.exists(srcPath) {file.delete(srcPath)};
+      if file.exists(dstPath) {file.delete(dstPath)};
+      db.new(srcPath);
+      db.open(srcPath, false);
+      db.setvalue(srcPath, "k", "v");
+      db.save(srcPath);
+      db.new(dstPath);
+      try {
+        db.compactDatabase(srcPath, dstPath);
+        db.close(srcPath);
+        return "should_have_failed"
+      } else {
+        db.close(srcPath);
+        return "error_caught"
+      }
+    expected_success: true
+    expected_result: "error_caught"
+
+  - name: "db.compactDatabase - error with too few params"
+    description: "Calling with 1 param returns an error"
+    script: |
+      try {
+        db.compactDatabase("/tmp/only_one_arg.root");
+        return "should_have_failed"
+      } else {
+        return "error_caught"
+      }
+    expected_success: true
+    expected_result: "error_caught"
+
+  - name: "db.compactDatabase - error with too many params"
+    description: "Calling with 3+ params returns an error"
+    script: |
+      try {
+        db.compactDatabase("/tmp/a.root", "/tmp/b.root", "/tmp/c.root");
+        return "should_have_failed"
+      } else {
+        return "error_caught"
+      }
+    expected_success: true
+    expected_result: "error_caught"

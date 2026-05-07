@@ -196,6 +196,11 @@ extern pascal Handle odbGetRootVariable (odbref odb);
 
 extern pascal boolean odbCloseFile (odbref odb);
 
+/* db.compactDatabase: write a v7→v7 compacted copy. See odbengine.c for full
+ * semantics. After this returns the source's in-memory state is indeterminate;
+ * caller must close + reopen the source to keep using it. */
+extern pascal boolean odbCompactDatabase (odbref odb, const char *dst_path);
+
 extern pascal boolean odbDefined (odbref odb, bigstring bspath);
 
 extern pascal boolean odbDelete (odbref odb, bigstring bspath);

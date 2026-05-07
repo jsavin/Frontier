@@ -1875,10 +1875,11 @@ static void cleanup_migration_database(db_context *dest_context, boolean have_de
  *   1. dbstartsaveas_context — prepare destination handle and saveas state
  *   2. Apply destination mode (v7 + adapter_repack) globally
  *   3. tablesavesystemtable(hrootvariable) — walks live tree, writes to dest
- *   4. cleartablestructureglobals + tableverbdispose(hrootvariable) — caller
- *      sets hrootvariable to nil after this call (helper does NOT clear the
- *      caller's local pointer); helper sets the local *p_hrootvariable=nil
- *      via the in/out parameter so callers don't double-free.
+ *   4. (if fldispose_source) cleartablestructureglobals +
+ *      tableverbdispose(hrootvariable) — sets *p_hrootvariable=nil so
+ *      callers don't double-free. Migration uses this; compaction does NOT
+ *      because the source's in-memory tree may contain externals already
+ *      freed by prior setvalue/delete operations and would assert on dispose.
  *   5. Optionally write hscript via dbassignhandle_context
  *   6. Set view0 to new_root_address (v7 invariant: views[0] is the root)
  *   7. Fixup destination headerLength + versionnumber to v7 canonical
@@ -1909,6 +1910,7 @@ static boolean db_format_write_compacted_internal(
     db_context *dest_context,
     dbaddress *out_root_address,
     dbaddress *out_script_address,
+    boolean fldispose_source,
     const char **fail_step_out)
 {
     dbaddress new_root_address = nildbaddress;
@@ -1987,12 +1989,19 @@ static boolean db_format_write_compacted_internal(
     if (!saved_root)
         return false;
 
-    /* Ensure subsequent opens don't reuse the in-memory system table. */
-    cleartablestructureglobals();
-    if (*p_hrootvariable != nil) {
-        /* false => dispose contents; handle freed below via cleartablestructureglobals */
-        tableverbdispose((hdlexternalvariable) *p_hrootvariable, false);
-        *p_hrootvariable = nil;
+    /* In migration's flow, the source is being replaced so we dispose the
+     * in-memory root tree. For db.compactDatabase the source remains a
+     * separate file and the caller may reopen it later — disposing it can
+     * hit already-freed nested external handles (which were touched by
+     * earlier setvalue/getvalue/delete operations) and abort. The
+     * fldispose_source flag opts in to the dispose-and-clear behavior. */
+    if (fldispose_source) {
+        cleartablestructureglobals();
+        if (*p_hrootvariable != nil) {
+            /* false => dispose contents; handle freed below via cleartablestructureglobals */
+            tableverbdispose((hdlexternalvariable) *p_hrootvariable, false);
+            *p_hrootvariable = nil;
+        }
     }
     if (have_dest_context && dest_context->database != nil) {
         long eof = 0;
@@ -2053,6 +2062,112 @@ static boolean db_format_write_compacted_internal(
         *out_script_address = new_script_address;
     return true;
 }
+
+/*
+ * db_format_compact_to_path - Public entry point for v7→v7 compaction.
+ *
+ * Wraps db_format_write_compacted_internal with the file-open/close glue.
+ * Used by the db.compactDatabase verb. See header for full semantics.
+ *
+ * The caller is expected to have:
+ *   - Saved current globals (databasedata, rootvariable) via odb_context_guard
+ *   - Set globals to point at the source database (e.g., setcancoonglobals)
+ *   - Verified dst_path does not exist
+ */
+boolean db_format_compact_to_path(hdldatabaserecord source_db, Handle source_root, Handle source_script, const char *dst_path) {
+
+    if (source_db == nil || source_root == nil || dst_path == NULL || dst_path[0] == '\0') {
+        log_error(LOG_COMP_DB, "db_format_compact_to_path: invalid arguments source_db=%p source_root=%p dst_path=%s",
+                  (void*)source_db, (void*)source_root, dst_path ? dst_path : "(null)");
+        return false;
+    }
+
+    boolean ok = false;
+    hdlfilenum dst_fnum = 0;
+    Handle hrootvariable = source_root;  /* Will be cleared by helper on success */
+    Handle hscript = source_script;
+    db_context source_context;
+    db_context dest_context;
+    dbaddress new_root_address = nildbaddress;
+    dbaddress new_script_address = nildbaddress;
+    bigstring bsdst;
+    tyfilespec dst_fs;
+    const char *fail_step = "init";
+
+    db_context_init(&source_context);
+    source_context.mode = db_format_mode_current();
+    source_context.database = source_db;
+
+    db_context_init(&dest_context);
+    /* Force v7 modern format for destination. */
+    db_format_mode modern_mode = {true, false};  /* use_64bit_format=true */
+    dest_context.mode = modern_mode;
+    dest_context.database = nil;
+
+    log_trace(LOG_COMP_DB, "db_format_compact_to_path: dst_path=%s", dst_path);
+
+    fail_step = "pathtofilespec(dst)";
+    copyctopstring(dst_path, bsdst);
+    if (!pathtofilespec(bsdst, &dst_fs))
+        goto cleanup;
+
+    fail_step = "opennewfile(dst)";
+    if (!opennewfile(&dst_fs, 'LAND', 'ROOT', &dst_fnum))
+        goto cleanup;
+
+    log_trace(LOG_COMP_DB, "db_format_compact_to_path: opened destination fnum=%d", (int)dst_fnum);
+
+    /* Run the saveas-write phase. The helper:
+     *   - calls dbstartsaveas_context to prepare destination
+     *   - applies v7+repack mode globally (g_mode_depth=0)
+     *   - calls tablesavesystemtable to write the live tree
+     *   - calls cleartablestructureglobals + tableverbdispose on the root,
+     *     setting *p_hrootvariable=nil
+     *   - optionally writes the script handle via dbassignhandle_context
+     *   - sets view0 = new root address, fixes header to v7 canonical
+     *   - calls dbendsaveas_context (disposes destination handle)
+     *   - sets databasedata=nil
+     */
+    if (!db_format_write_compacted_internal(
+            &source_context,
+            &hrootvariable,
+            hscript,
+            dst_fnum,
+            &dest_context,
+            &new_root_address,
+            &new_script_address,
+            false, /* fldispose_source: leave caller's tree alone */
+            &fail_step)) {
+        log_error(LOG_COMP_DB, "db_format_compact_to_path: write_compacted_internal failed at %s", fail_step);
+        goto cleanup;
+    }
+
+    closefile(dst_fnum);
+    dst_fnum = 0;
+
+    log_info(LOG_COMP_DB, "db_format_compact_to_path: compaction complete, root=0x%llx script=0x%llx outfile=%s",
+             (unsigned long long)new_root_address,
+             (unsigned long long)new_script_address,
+             dst_path);
+
+    ok = true;
+
+cleanup:
+    if (!ok) {
+        if (dst_fnum != 0) {
+            closefile(dst_fnum);
+            dst_fnum = 0;
+        }
+        /* On failure, remove partially-written destination so caller can retry. */
+        remove(dst_path);
+        log_error(LOG_COMP_DB, "db_format_compact_to_path: failed at %s", fail_step);
+    }
+
+    db_format_adapter_reset(); /* Clear mode lock so subsequent operations work cleanly */
+
+    return ok;
+} /*db_format_compact_to_path*/
+
 
 static boolean migrate_internal(const char *db_path, const char *explicit_output) {
     if (db_path == NULL || db_path[0] == '\0')
@@ -2301,6 +2416,7 @@ static boolean migrate_internal(const char *db_path, const char *explicit_output
                 &dest_context,
                 &new_root_address,
                 &new_script_address,
+                true, /* fldispose_source: migration owns the source root */
                 &helper_fail_step)) {
             fail_step = helper_fail_step ? helper_fail_step : "compact-helper";
             goto cleanup;

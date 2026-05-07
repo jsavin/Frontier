@@ -177,6 +177,39 @@ boolean migrate_32bit_to_64bit_to_output(const char *db_path, const char *output
  * error, or migration failure).
  */
 boolean ensure_database_v7(const char *db_path, boolean *migrated, char *output_path, size_t output_path_size);
+
+/*
+ * db_format_compact_to_path - Write a freshly-compacted copy of an open
+ * source database to a new destination file.
+ *
+ * Walks the live in-memory tree of the source and writes it to dst_path,
+ * producing a file with no avail-list dead space. Used by db.compactDatabase
+ * for v7→v7 compaction when a database has accumulated freed blocks (e.g.,
+ * after large delete operations).
+ *
+ * Preconditions:
+ *   - source_db is the open source database (cancoon record / odb handle)
+ *   - source_db is in v7 format
+ *   - The in-memory root variable for source_db has been loaded
+ *     (typically via db.open which loads the root on-demand or by prior
+ *     access via db.setvalue / db.getvalue)
+ *   - dst_path is writable and does not currently exist (caller must
+ *     verify; the function does not check)
+ *
+ * Side effects:
+ *   - Mutates the in-memory tree's oldaddress fields to point at the
+ *     destination's address space. After this call returns, the source's
+ *     in-memory state is INDETERMINATE — the caller must close and reopen
+ *     the source if it intends to keep using it. The source's ON-DISK
+ *     bytes are not modified.
+ *   - Caller must save/restore globals (databasedata, rootvariable, mode
+ *     stack) around this call. This function manipulates them internally
+ *     and does NOT restore.
+ *
+ * Returns: true on success, false on failure (with a logged fail step).
+ */
+boolean db_format_compact_to_path(hdldatabaserecord source_db, Handle source_root, Handle source_script, const char *dst_path);
+
 boolean db_format_last_migration_output_path(char *buffer, size_t length);
 void db_format_clear_last_migration_output_path(void);
 boolean db_format_last_backup_output_path(char *buffer, size_t length);

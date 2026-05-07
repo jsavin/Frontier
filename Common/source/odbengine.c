@@ -869,6 +869,77 @@ pascal boolean odbSaveFile (odbref odb) {
 	} /*odbSaveFile*/
 
 
+pascal boolean odbCompactDatabase (odbref odb, const char *dst_path) {
+
+	/*
+	 * v7→v7 compaction. Writes a freshly-compacted copy of the source database
+	 * to dst_path. The result has no avail-list dead space, so the destination
+	 * file is the minimum size required to represent the live data.
+	 *
+	 * Preconditions:
+	 *   - odb is non-nil and points at an open v7 database
+	 *   - The in-memory root variable for odb is loaded
+	 *   - dst_path is writable and does not currently exist (caller checks)
+	 *
+	 * Side effects:
+	 *   - Mutates the in-memory tree's oldaddress fields to point at dst's
+	 *     address space. After this returns, the source's IN-MEMORY state is
+	 *     indeterminate — caller must close + reopen the source to keep using
+	 *     it. The source's ON-DISK bytes are not modified.
+	 *   - Sets cancoonglobals to nil on exit (caller will restore via guard
+	 *     in dbverbs.c::odbcompactdatabase).
+	 *
+	 * Returns true on success.
+	 */
+
+	hdlcancoonrecord hc = (hdlcancoonrecord) odb;
+	Handle source_root = nil;
+	Handle source_script = nil;
+	boolean ok = false;
+
+	setemptystring (bserror);
+
+	if (hc == nil) {
+		log_error (LOG_COMP_DB, "odbCompactDatabase: odb is nil");
+		return (false);
+	}
+
+	/* Make this odb the active one (sets databasedata, rootvariable, roottable,
+	 * and odbengine's private cancoonglobals to hc). */
+	setcancoonglobals (hc);
+
+	source_root = (Handle) (**hc).hrootvariable;
+	/* odbengine's tycancoonrecord (in odbengine.c) has no hscriptstring field;
+	 * the quickscript handle lives only on the GUI cancoon record. Guest dbs
+	 * opened via db.open never have an associated script string, so we always
+	 * pass nil for source_script. */
+	source_script = nil;
+
+	if (source_root == nil) {
+		log_error (LOG_COMP_DB, "odbCompactDatabase: source has no in-memory root variable");
+		clearcancoonglobals ();
+		return (false);
+	}
+
+	/* Run the compaction. The helper writes to dst_path, mutates the in-memory
+	 * tree's oldaddress fields, and disposes the destination's database handle.
+	 * It also disposes the source's in-memory root variable handle. */
+	ok = db_format_compact_to_path ((**hc).hdatabase, source_root, source_script, dst_path);
+
+	/* The compaction disposed the source's in-memory root. Clear the cancoon
+	 * record's stale references so anyone holding hc doesn't follow them. */
+	(**hc).hrootvariable = nil;
+	(**hc).hroottable = nil;
+
+	/* Clear our cancoonglobals so callers that didn't use a guard see a clean
+	 * state. Caller in dbverbs.c uses odb_context_guard to restore proper
+	 * globals. */
+	clearcancoonglobals ();
+
+	return (ok);
+	} /*odbCompactDatabase*/
+
+
 pascal boolean odbCloseFile (odbref odb) {
 
 	/*
