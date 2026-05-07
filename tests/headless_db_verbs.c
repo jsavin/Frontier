@@ -50,7 +50,8 @@ enum {
     dbv_isTable = 9,    // istablefunc
     dbv_countitems = 10, // countitemsfunc
     dbv_getnthitem = 11, // getnthitemfunc
-    dbv_getmoddate = 12  // getmoddatefunc
+    dbv_getmoddate = 12, // getmoddatefunc
+    dbv_compactDatabase = 13 // compactdatabasefunc — v7→v7 compaction
 };
 
 /*
@@ -128,6 +129,7 @@ boolean dbinitverbs(void) {
     ADD_VERB(PSTRING("\012", "countitems"), dbv_countitems);
     ADD_VERB(PSTRING("\012", "getnthitem"), dbv_getnthitem);
     ADD_VERB(PSTRING("\012", "getmoddate"), dbv_getmoddate);
+    ADD_VERB(PSTRING("\017", "compactDatabase"), dbv_compactDatabase);
 
     #undef ADD_VERB
 

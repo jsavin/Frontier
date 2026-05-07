@@ -177,6 +177,47 @@ boolean migrate_32bit_to_64bit_to_output(const char *db_path, const char *output
  * error, or migration failure).
  */
 boolean ensure_database_v7(const char *db_path, boolean *migrated, char *output_path, size_t output_path_size);
+
+/*
+ * db_format_compact_to_path - Write a freshly-compacted copy of an open
+ * source database to a new destination file.
+ *
+ * Walks the live in-memory tree of the source and writes it to dst_path,
+ * producing a file with no avail-list dead space. Used by db.compactDatabase
+ * for v7→v7 compaction when a database has accumulated freed blocks (e.g.,
+ * after large delete operations).
+ *
+ * Preconditions:
+ *   - source_db is the open source database (cancoon record / odb handle)
+ *   - source_db is in v7 format
+ *   - The in-memory root variable for source_db has been loaded
+ *     (typically via db.open which loads the root on-demand or by prior
+ *     access via db.setvalue / db.getvalue)
+ *   - dst_path is writable and does not currently exist (the function
+ *     uses opennewfile_exclusive — atomic O_EXCL+O_NOFOLLOW create —
+ *     which fails if the path exists or is a symlink)
+ *
+ * Side effects on the source:
+ *   - The walk mutates the tree's `oldaddress` fields so they point at
+ *     the destination's address space.  Other tree state (values, types,
+ *     subtable structure) is unchanged in memory.  The caller MUST close
+ *     the source after this returns — db.compactDatabase auto-closes via
+ *     dbclosefile() on both success and failure paths to ensure callers
+ *     never observe the dirty `oldaddress` fields.  The source's ON-DISK
+ *     bytes are not modified, so re-opening from disk yields the
+ *     pre-compact state.
+ *
+ * Side effects on globals:
+ *   - The function snapshots and restores: db_format_mode stack,
+ *     fldatabasesaveas, databasedestination, dbsaveas_source, and
+ *     databasedata.  Callers see the same global state on return as on
+ *     entry, regardless of success or failure (P1-4).
+ *
+ * Returns: true on success, false on failure (with a logged fail step
+ * and the destination file removed).
+ */
+boolean db_format_compact_to_path(hdldatabaserecord source_db, Handle source_root, Handle source_script, const char *dst_path);
+
 boolean db_format_last_migration_output_path(char *buffer, size_t length);
 void db_format_clear_last_migration_output_path(void);
 boolean db_format_last_backup_output_path(char *buffer, size_t length);

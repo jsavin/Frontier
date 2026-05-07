@@ -1863,6 +1863,415 @@ static void cleanup_migration_database(db_context *dest_context, boolean have_de
     /* else: databasedata already nil (normal success path), nothing to do */
 }
 
+/*
+ * db_format_write_compacted - Write a freshly-compacted copy of the in-memory
+ * database tree to a destination file.
+ *
+ * This is the saveas-write phase of migrate_internal, extracted so it can be
+ * reused by db.compactDatabase for v7→v7 compaction (no avail-list dead
+ * space, file size = minimum required for live data).
+ *
+ * Sequence (matches original migrate_internal lines 2099-2246):
+ *   1. dbstartsaveas_context — prepare destination handle and saveas state
+ *   2. Apply destination mode (v7 + adapter_repack) globally
+ *   3. tablesavesystemtable(hrootvariable) — walks live tree, writes to dest
+ *   4. (if fldispose_source) cleartablestructureglobals +
+ *      tableverbdispose(hrootvariable) — sets *p_hrootvariable=nil so
+ *      callers don't double-free. Migration uses this; compaction does NOT
+ *      because the source's in-memory tree may contain externals already
+ *      freed by prior setvalue/delete operations and would assert on dispose.
+ *   5. Optionally write hscript via dbassignhandle_context
+ *   6. Set view0 to new_root_address (v7 invariant: views[0] is the root)
+ *   7. Fixup destination headerLength + versionnumber to v7 canonical
+ *   8. dbendsaveas_context — finalize destination, dispose its handle
+ *
+ * Preconditions:
+ *   - source_context describes an open, populated source database
+ *   - *p_hrootvariable points to the in-memory root variable (loaded from
+ *     source). On successful return *p_hrootvariable is nil (helper disposed
+ *     the in-memory root); on failure it is unchanged.
+ *   - hscript may be nil (no script in source); the helper does not own it.
+ *   - dst_fnum is an open, empty destination file
+ *   - dest_context is db_context_init'd; its .mode field is overwritten by
+ *     the helper (forced to v7 + adapter_repack)
+ *
+ * Side effects:
+ *   - Mode stack (g_mode_depth) is reset to 0 and v7 mode applied globally.
+ *     Caller is responsible for restoring its prior mode after this returns.
+ *   - On success, databasedata is nil (dbendsaveas_context disposed dest).
+ *
+ * Returns: true on success.
+ */
+static boolean db_format_write_compacted_internal(
+    db_context *source_context,
+    Handle *p_hrootvariable,
+    Handle hscript,
+    hdlfilenum dst_fnum,
+    db_context *dest_context,
+    dbaddress *out_root_address,
+    dbaddress *out_script_address,
+    boolean fldispose_source,
+    const char **fail_step_out)
+{
+    dbaddress new_root_address = nildbaddress;
+    dbaddress new_script_address = nildbaddress;
+    boolean saved_root = false;
+    boolean have_dest_context = false;
+    const long header_len_final = (long) sizeof(tydatabaserecord_64);
+
+    if (out_root_address)
+        *out_root_address = nildbaddress;
+    if (out_script_address)
+        *out_script_address = nildbaddress;
+
+    *fail_step_out = "dbstartsaveas";
+    if (!dbstartsaveas_context(dest_context, dst_fnum))
+        return false;
+
+    if (dest_context->database == nil) {
+        *fail_step_out = "destination-handle";
+        return false;
+    }
+    /* From here on, writes should target the destination handle. */
+    dest_context->database = dest_context->saveas.destination;
+    db_saveas_state_apply(&dest_context->saveas);
+
+#if defined(FRONTIER_HEADLESS)
+    if (dest_context->database) {
+        log_trace(LOG_COMP_DB, "compact: destination database handle fnum=%ld flreadonly=%d",
+                  (long)(**dest_context->database).fnumdatabase,
+                  (int)(**dest_context->database).u.extensions.flreadonly);
+    }
+#endif
+
+    dest_context->mode = source_context->mode;
+    dest_context->mode.use_64bit_format = true;
+    dest_context->mode.adapter_repack = true;  /* Force repack so nested tables get fresh v7 addresses */
+    have_dest_context = true;
+
+    /* Switch the destination into BE64 write mode before any assigns.
+     * Call the non-context version directly so the mode persists globally. */
+    db_format_adapter_enable_wide_writes(NULL);
+
+    *fail_step_out = "tablesavesystemtable(root)";
+    db_context save_ctx = *source_context;
+    save_ctx.mode = dest_context->mode; /* write v7 BE64 payloads into the destination */
+    save_ctx.saveas = dest_context->saveas;
+    save_ctx.database = dest_context->database;
+#if defined(FRONTIER_HEADLESS)
+    log_trace(LOG_COMP_DB, "compact save_ctx.mode use64=%d adapter=%d dest_db=%p src_db=%p",
+              save_ctx.mode.use_64bit_format ? 1 : 0,
+              save_ctx.mode.adapter_repack ? 1 : 0,
+              (void *) save_ctx.saveas.destination,
+              (void *) save_ctx.saveas.source);
+#endif
+
+    /* Set mode directly - NO GUARD, NO SAVE/RESTORE (caller restores) */
+    if (save_ctx.database != nil)
+        databasedata = save_ctx.database;
+    g_mode_depth = 0;  /* Clear stacked overrides before applying explicit mode */
+    db_format_mode_apply(&save_ctx.mode);
+    db_saveas_state_apply(&save_ctx.saveas);
+
+#if defined(FRONTIER_HEADLESS)
+    log_trace(LOG_COMP_DB, "compact mode applied (NO GUARD) use64=%d adapter=%d depth=%d current_db=%p",
+              db_format_mode_current().use_64bit_format ? 1 : 0,
+              db_format_mode_current().adapter_repack ? 1 : 0,
+              g_mode_depth,
+              (void *) databasedata);
+#endif
+
+    saved_root = tablesavesystemtable(*p_hrootvariable, &new_root_address);
+#if defined(FRONTIER_HEADLESS)
+    log_debug(LOG_COMP_DB, "compact: after tablesavesystemtable, new_root_address=0x%llx saved_root=%d",
+              (unsigned long long)new_root_address, saved_root ? 1 : 0);
+#endif
+    if (!saved_root)
+        return false;
+
+    /* In migration's flow, the source is being replaced so we dispose the
+     * in-memory root tree. For db.compactDatabase the source remains a
+     * separate file and the caller may reopen it later — disposing it can
+     * hit already-freed nested external handles (which were touched by
+     * earlier setvalue/getvalue/delete operations) and abort. The
+     * fldispose_source flag opts in to the dispose-and-clear behavior. */
+    if (fldispose_source) {
+        cleartablestructureglobals();
+        if (*p_hrootvariable != nil) {
+            /* false => dispose contents; handle freed below via cleartablestructureglobals */
+            tableverbdispose((hdlexternalvariable) *p_hrootvariable, false);
+            *p_hrootvariable = nil;
+        }
+    }
+    if (have_dest_context && dest_context->database != nil) {
+        long eof = 0;
+        filegeteof((hdlfilenum) (**dest_context->database).fnumdatabase, &eof);
+        log_trace(LOG_COMP_DB, "compact write checkpoint fnum=%ld eof=%ld",
+                  (long) (**dest_context->database).fnumdatabase, eof);
+    }
+
+    if ((uint64_t) new_root_address > 0xFFFFFFFFULL)
+        return false;
+
+    if (hscript != nil) {
+        new_script_address = nildbaddress;  /* dbassignhandle_context allocates fresh */
+        *fail_step_out = "dbassignhandle(script)";
+        if (!dbassignhandle_context(dest_context, hscript, &new_script_address))
+            return false;
+        if ((uint64_t) new_script_address > 0xFFFFFFFFULL)
+            return false;
+    }
+
+    /* v7 invariant: views[0] is the root table address; legacy views are nil. */
+#if defined(FRONTIER_HEADLESS)
+    log_trace(LOG_COMP_DB, "compact: setting view[%d] to new_root_address=0x%llx",
+              cancoonview, (unsigned long long)new_root_address);
+#endif
+    for (int i = 0; i < ctviews; ++i)
+        dbsetview(i, nildbaddress);
+    dbsetview(cancoonview, new_root_address);
+
+    if (databasedata != nil) {
+        (**databasedata).headerLength = header_len_final;
+        (**databasedata).versionnumber = dbversionnumber;
+        if ((**databasedata).longversionMajor == 0)
+            (**databasedata).longversionMajor = 7;
+        if ((**databasedata).longversionMinor == 0)
+            (**databasedata).longversionMinor = 0;
+    }
+
+#if defined(FRONTIER_HEADLESS)
+    if (have_dest_context && dest_context->saveas.destination != nil) {
+        log_trace(LOG_COMP_DB, "compact saveas pre-close dest=%p master=%p source=%p",
+                  (void *) dest_context->saveas.destination,
+                  validhandle((Handle) dest_context->saveas.destination) ? (void *) (*dest_context->saveas.destination) : NULL,
+                  (void *) dest_context->saveas.source);
+    }
+#endif
+
+    *fail_step_out = "dbendsaveas";
+    if (!dbendsaveas_context(dest_context))
+        return false;
+    /* dbendsaveas_context disposed the destination handle. Caller must clear
+     * databasedata=nil to prevent double-free during cleanup. */
+    databasedata = nil;
+
+    if (out_root_address)
+        *out_root_address = new_root_address;
+    if (out_script_address)
+        *out_script_address = new_script_address;
+    return true;
+}
+
+/*
+ * db_format_compact_to_path - Public entry point for v7→v7 compaction.
+ *
+ * Wraps db_format_write_compacted_internal with the file-open/close glue.
+ * Used by the db.compactDatabase verb. See header for full semantics.
+ *
+ * The caller is expected to have:
+ *   - Saved current globals (databasedata, rootvariable) via odb_context_guard
+ *   - Set globals to point at the source database (e.g., setcancoonglobals)
+ *   - Verified dst_path does not exist
+ *
+ * Transactional semantics:
+ *   - On success: destination written; the SOURCE's in-memory tree has had
+ *     its oldaddress fields mutated to point at dst's address space, so the
+ *     caller MUST close the source (the wrapping odbCompactDatabase + verb
+ *     do this automatically). The on-disk source bytes are unchanged.
+ *   - On failure: destination is removed; the SOURCE's in-memory tree may
+ *     be partially mutated and is unsafe to reuse. Caller MUST force-close
+ *     the source. The mode stack and saveas state are restored to their
+ *     entry values regardless of outcome.
+ */
+boolean db_format_compact_to_path(hdldatabaserecord source_db, Handle source_root, Handle source_script, const char *dst_path) {
+
+    if (source_db == nil || source_root == nil || dst_path == NULL || dst_path[0] == '\0') {
+        log_error(LOG_COMP_DB, "db_format_compact_to_path: invalid arguments source_db=%p source_root=%p dst_path=%s",
+                  (void*)source_db, (void*)source_root, dst_path ? dst_path : "(null)");
+        return false;
+    }
+
+    boolean ok = false;
+    hdlfilenum dst_fnum = 0;
+    Handle hrootvariable = source_root;
+    Handle hscript = source_script;
+    db_context source_context;
+    db_context dest_context;
+    dbaddress new_root_address = nildbaddress;
+    dbaddress new_script_address = nildbaddress;
+    bigstring bsdst;
+    tyfilespec dst_fs;
+    const char *fail_step = "init";
+    boolean have_dest_context = false;
+
+    /* Snapshot ALL globals we may touch so we can restore on every exit path.
+     * Mirrors migrate_internal's discipline (CR review P0-1, P1-4).
+     * Even on failure, callers (e.g. cleanRoot, runtime clients) must see
+     * a clean mode stack / saveas state / databasedata. */
+    db_saveas_state entry_saveas;
+    db_format_mode entry_mode = db_format_mode_current();
+    hdldatabaserecord entry_databasedata = databasedata;
+    db_saveas_state_snapshot(&entry_saveas);
+
+    /* Compose the v7+repack mode used by source_context below.  Note: we do
+     * NOT push it on g_mode_stack here.  db_format_write_compacted_internal
+     * clobbers g_mode_depth (resets to 0 and applies its own mode), so any
+     * push/pop pair would be vestigial — the actual entry-state restoration
+     * happens via db_format_mode_apply(&entry_mode) in the cleanup block. */
+    db_format_mode v7_repack_mode = {true, true};
+
+    db_context_init(&source_context);
+    source_context.mode = v7_repack_mode;
+    source_context.database = source_db;
+
+    db_context_init(&dest_context);
+    /* Force v7 modern format for destination. */
+    db_format_mode modern_mode = {true, false};  /* use_64bit_format=true */
+    dest_context.mode = modern_mode;
+    dest_context.database = nil;
+
+    log_trace(LOG_COMP_DB, "db_format_compact_to_path: dst_path=%s", dst_path);
+
+    /* Yield GIL once before the (potentially long) saveas walk so other
+     * UserTalk threads waiting on the lock get a chance.  We CANNOT yield
+     * mid-walk because tablesavesystemtable depends on databasedata /
+     * fldatabasesaveas / dbsaveas_source / mode stack, which would be
+     * observable in an inconsistent state by another thread.  Coarse
+     * yields here + at end keep the GIL hold time bounded for short
+     * compactions; long compactions still hold the GIL through the walk.
+     * P2-16: a future change could push yields into tableverbpack at
+     * subtable boundaries, but that requires reentrancy-safe globals. */
+    if (!langbackgroundtask(false)) {
+        fail_step = "langbackgroundtask(pre-walk) cancelled";
+        goto cleanup;
+    }
+
+    fail_step = "pathtofilespec(dst)";
+    copyctopstring(dst_path, bsdst);
+    if (!pathtofilespec(bsdst, &dst_fs))
+        goto cleanup;
+
+    /* Atomic exclusive create with O_NOFOLLOW (P1-1, TOCTOU + symlink-follow).
+     * Replaces the previous fopen("rb") + opennewfile() two-step which had
+     * a TOCTOU race window and would follow symlinks. opennewfile_exclusive
+     * returns false if the destination already exists or is a symlink. */
+    fail_step = "opennewfile_exclusive(dst)";
+    if (!opennewfile_exclusive(&dst_fs, 'LAND', 'ROOT', &dst_fnum))
+        goto cleanup;
+
+    log_trace(LOG_COMP_DB, "db_format_compact_to_path: opened destination fnum=%d", (int)dst_fnum);
+
+    /* Mark dest_context as having entered saveas state once the helper
+     * returns (success or partway): on failure we still need to call
+     * cleanup_migration_database to tear down a partial saveas. */
+    have_dest_context = true;
+
+    /* Run the saveas-write phase. The helper:
+     *   - calls dbstartsaveas_context to prepare destination
+     *   - applies v7+repack mode globally
+     *   - calls tablesavesystemtable to write the live tree
+     *     (mutates source's oldaddress fields to dst's address space)
+     *   - optionally writes the script handle via dbassignhandle_context
+     *   - sets view0 = new root address, fixes header to v7 canonical
+     *   - calls dbendsaveas_context (disposes destination handle)
+     *   - sets databasedata=nil
+     * fldispose_source=false: we do NOT dispose source root here; the
+     * caller (odbCompactDatabase + verb) auto-closes the source which
+     * disposes the in-memory tree via odbCloseFile. */
+    if (!db_format_write_compacted_internal(
+            &source_context,
+            &hrootvariable,
+            hscript,
+            dst_fnum,
+            &dest_context,
+            &new_root_address,
+            &new_script_address,
+            false,
+            &fail_step)) {
+        log_error(LOG_COMP_DB, "db_format_compact_to_path: write_compacted_internal failed at %s", fail_step);
+        goto cleanup;
+    }
+
+    closefile(dst_fnum);
+    dst_fnum = 0;
+
+    log_info(LOG_COMP_DB, "db_format_compact_to_path: compaction complete, root=0x%llx script=0x%llx outfile=%s",
+             (unsigned long long)new_root_address,
+             (unsigned long long)new_script_address,
+             dst_path);
+
+    /* Post-walk GIL yield is deferred until AFTER the cleanup block restores
+     * databasedata to entry_databasedata.  At this point in the function, the
+     * helper has set databasedata = nil (success path), and yielding here
+     * could let another GIL-acquiring thread observe the nil and crash on
+     * dereference.  See the bottom of the cleanup block, just before
+     * `return ok`. */
+
+    ok = true;
+
+cleanup:
+    /* Tear down any partial saveas state on the destination — but ONLY
+     * if we actually started a saveas (have_dest_context=true).  Unlike
+     * migrate_internal where databasedata is the destination, here
+     * databasedata is the SOURCE; cleanup_migration_database would
+     * incorrectly dispose the source if called with have_dest_context=
+     * false but databasedata != nil (P0-1).
+     *
+     * The helper db_format_write_compacted_internal sets databasedata
+     * = dest_context.saveas.destination INSIDE the saveas, then sets
+     * it back to nil on success.  On partial failure inside the helper,
+     * databasedata may point at the destination handle — that's the
+     * case cleanup_migration_database is designed for. */
+    if (have_dest_context)
+        cleanup_migration_database(&dest_context, have_dest_context);
+
+    if (!ok) {
+        if (dst_fnum != 0) {
+            closefile(dst_fnum);
+            dst_fnum = 0;
+        }
+        /* On failure, remove the partially-written destination so the
+         * caller can retry — but only if WE created it.  If
+         * opennewfile_exclusive failed (e.g. dst pre-existed), the file
+         * we'd remove is the caller's pre-existing file: NOT ours to
+         * touch.  have_dest_context is set true only after the
+         * exclusive create succeeded, so it's a reliable proxy. */
+        if (have_dest_context)
+            remove(dst_path);
+        log_error(LOG_COMP_DB, "db_format_compact_to_path: failed at %s", fail_step);
+    }
+
+    /* Restore mode + saveas + databasedata to entry state on every path
+     * (P1-4).  The helper internally clobbers g_mode_depth and applies
+     * its own mode; we restore here via direct apply on the snapshotted
+     * entry_mode.  No matching pop is needed (we never pushed — see the
+     * comment near v7_repack_mode above). */
+    db_format_mode_apply(&entry_mode);
+    db_saveas_state_apply(&entry_saveas);
+    /* If the helper nil'd databasedata (success path) or cleanup did,
+     * restore it to entry value so the caller sees its source still
+     * "live" in memory.  The verb's auto-close via dbclosefile will
+     * dispose the source via odbCloseFile after this returns. */
+    if (databasedata == nil)
+        databasedata = entry_databasedata;
+
+    db_format_adapter_reset(); /* Clear mode lock so subsequent operations work cleanly */
+
+    /* Post-walk GIL yield, deferred from after the saveas walk so it fires
+     * with databasedata pointing at the (now-restored) entry value rather
+     * than nil.  Multi-threaded headless (thread.evaluate / thread.callscript)
+     * means another GIL-acquiring thread could observe a nil databasedata
+     * during this yield and crash on dereference; deferring eliminates that
+     * window.  Yields run on success and failure paths alike — the value
+     * returned by langbackgroundtask is intentionally ignored here because
+     * we are about to return to the caller anyway. */
+    (void) langbackgroundtask(false);
+
+    return ok;
+} /*db_format_compact_to_path*/
+
+
 static boolean migrate_internal(const char *db_path, const char *explicit_output) {
     if (db_path == NULL || db_path[0] == '\0')
         return false;
@@ -1885,7 +2294,6 @@ static boolean migrate_internal(const char *db_path, const char *explicit_output
     db_context source_context;
     db_context dest_context;
     boolean have_dest_context = false;
-    boolean saved_root = false;
     dbaddress root_address = nildbaddress;
     dbaddress script_address = nildbaddress;
     dbaddress new_root_address = nildbaddress;
@@ -2096,154 +2504,29 @@ static boolean migrate_internal(const char *db_path, const char *explicit_output
               (int)dst_fnum, (int)src_fnum);
 #endif
 
-    fail_step = "dbstartsaveas";
-    if (!dbstartsaveas_context(&dest_context, dst_fnum))
-        goto cleanup;
-
-    if (dest_context.database == nil) {
-        fail_step = "destination-handle";
-        goto cleanup;
-    }
-    /* From here on, writes should target the destination handle. */
-    dest_context.database = dest_context.saveas.destination;
-    db_saveas_state_apply(&dest_context.saveas);
-
-#if defined(FRONTIER_HEADLESS)
-    if (dest_context.database) {
-        log_trace(LOG_COMP_DB, "migrate: destination database handle fnum=%ld flreadonly=%d",
-                  (long)(**dest_context.database).fnumdatabase,
-                  (int)(**dest_context.database).u.extensions.flreadonly);
-    }
-#endif
-
-    dest_context.mode = source_context.mode;
-    dest_context.mode.use_64bit_format = true;
-    dest_context.mode.adapter_repack = true;  /* Force repack during migration to ensure nested tables are saved */
-    have_dest_context = true;
-
-    /* Switch the destination into BE64 write mode before any assigns.
-     * Call the non-context version directly so the mode persists globally. */
-    db_format_adapter_enable_wide_writes(NULL);
-
-    fail_step = "tablesavesystemtable(root)";
-    /*
-     * NOTE: External database handles are NOT updated here because WP packing
-     * needs to READ Paige data from SOURCE while WRITING RTF to DESTINATION.
-     * The fixup happens AFTER packing completes.
-     */
-    /*
-    2025-12-20: NO GUARDS - set mode explicitly for table save
-    Apply destination mode directly for v7 writes during migration
-    */
-    db_context save_ctx = source_context;
-    if (have_dest_context) {
-        save_ctx.mode = dest_context.mode; /* write v7 BE64 payloads into the destination */
-        save_ctx.saveas = dest_context.saveas;
-        save_ctx.database = dest_context.database;
-#if defined(FRONTIER_HEADLESS)
-        log_trace(LOG_COMP_DB, "migrate save_ctx.mode use64=%d adapter=%d dest_db=%p src_db=%p",
-                  save_ctx.mode.use_64bit_format ? 1 : 0,
-                  save_ctx.mode.adapter_repack ? 1 : 0,
-                  (void *) save_ctx.saveas.destination,
-                  (void *) save_ctx.saveas.source);
-#endif
-    }
-
-    /* Set mode directly - NO GUARD, NO SAVE/RESTORE */
-    if (have_dest_context) {
-        if (save_ctx.database != nil)
-            databasedata = save_ctx.database;
-        /* Clear mode stack before applying v7 mode to prevent stacked v6 mode from overriding */
-        g_mode_depth = 0;
-        db_format_mode_apply(&save_ctx.mode);
-        db_saveas_state_apply(&save_ctx.saveas);
-    }
-
-#if defined(FRONTIER_HEADLESS)
-    log_trace(LOG_COMP_DB, "migrate mode applied (NO GUARD) use64=%d adapter=%d depth=%d current_db=%p",
-              db_format_mode_current().use_64bit_format ? 1 : 0,
-              db_format_mode_current().adapter_repack ? 1 : 0,
-              g_mode_depth,
-              (void *) databasedata);
-#endif
-
-    saved_root = tablesavesystemtable(hrootvariable, &new_root_address);
-#if defined(FRONTIER_HEADLESS)
-    log_debug(LOG_COMP_DB, "migrate: after tablesavesystemtable, new_root_address=0x%llx saved_root=%d",
-              (unsigned long long)new_root_address, saved_root ? 1 : 0);
-#endif
-    if (!saved_root) {
-        goto cleanup;
-    }
-    /* Ensure subsequent opens don't reuse the in-memory system table. */
-    cleartablestructureglobals();
-    if (hrootvariable != nil) {
-        /* false => dispose contents; handle freed below via cleartablestructureglobals */
-        tableverbdispose((hdlexternalvariable) hrootvariable, false);
-        hrootvariable = nil;
-    }
-    if (have_dest_context && dest_context.database != nil) {
-        long eof = 0;
-        filegeteof((hdlfilenum) (**dest_context.database).fnumdatabase, &eof);
-        log_trace(LOG_COMP_DB, "migrate write checkpoint fnum=%ld eof=%ld",
-                  (long) (**dest_context.database).fnumdatabase, eof);
-    }
-    /* 2025-12-20: NO GUARD EXIT - mode remains as set for subsequent operations */
-
-    if ((uint64_t) new_root_address > 0xFFFFFFFFULL)
-        goto cleanup;
-
-    if (hscript != nil) {
-        new_script_address = script_address;
-        fail_step = "dbassignhandle(script)";
-        if (!dbassignhandle_context(&dest_context, hscript, &new_script_address))
+    /* Saveas-write phase: extracted into helper for reuse by db.compactDatabase
+     * (v7→v7 compaction). The helper handles dbstartsaveas → tablesavesystemtable
+     * → optional script write → dbendsaveas. On success, databasedata is nil
+     * (handle disposed by dbendsaveas_context) and hrootvariable is nil (handle
+     * disposed by tableverbdispose). */
+    {
+        const char *helper_fail_step = NULL;
+        if (!db_format_write_compacted_internal(
+                &source_context,
+                &hrootvariable,
+                hscript,
+                dst_fnum,
+                &dest_context,
+                &new_root_address,
+                &new_script_address,
+                true, /* fldispose_source: migration owns the source root */
+                &helper_fail_step)) {
+            fail_step = helper_fail_step ? helper_fail_step : "compact-helper";
             goto cleanup;
-        if ((uint64_t) new_script_address > 0xFFFFFFFFULL)
-            goto cleanup;
-    } else {
-        new_script_address = 0;
+        }
+        have_dest_context = true; /* helper completed dbstartsaveas+dbendsaveas */
     }
-
-    /* v7 migration always drops legacy Cancoon and points view0 at the root table. */
-#if defined(FRONTIER_HEADLESS)
-    log_trace(LOG_COMP_DB, "migrate: setting view[%d] to new_root_address=0x%llx",
-              cancoonview, (unsigned long long)new_root_address);
-#endif
-    for (int i = 0; i < ctviews; ++i)
-        dbsetview(i, nildbaddress);
-    dbsetview(cancoonview, new_root_address);
-    new_cancoon_address = nildbaddress;
-
-    if (databasedata != nil) {
-        (**databasedata).headerLength = header_len_final;
-        (**databasedata).versionnumber = dbversionnumber;
-        if ((**databasedata).longversionMajor == 0)
-            (**databasedata).longversionMajor = 7;
-        if ((**databasedata).longversionMinor == 0)
-            (**databasedata).longversionMinor = 0;
-    }
-
-#if defined(FRONTIER_HEADLESS)
-    if (have_dest_context && dest_context.saveas.destination != nil) {
-        log_trace(LOG_COMP_DB, "saveas pre-close dest=%p master=%p source=%p",
-                  (void *) dest_context.saveas.destination,
-                  validhandle((Handle) dest_context.saveas.destination) ? (void *) (*dest_context.saveas.destination) : NULL,
-                  (void *) dest_context.saveas.source);
-    }
-#endif
-
-    fail_step = "dbendsaveas";
-    if (have_dest_context) {
-        if (!dbendsaveas_context(&dest_context))
-            goto cleanup;
-        /* dbendsaveas_context already disposed the destination database.
-         * Set databasedata to nil to prevent double-free in cleanup. */
-        databasedata = nil;
-    } else {
-        if (!dbendsaveas())
-            goto cleanup;
-        databasedata = nil;
-    }
+    new_cancoon_address = nildbaddress; /* v7 drops the legacy Cancoon record */
 
     closefile(dst_fnum);
     dst_fnum = 0;

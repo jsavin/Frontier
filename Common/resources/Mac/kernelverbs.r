@@ -988,7 +988,8 @@ resource 'EFP#' (iddbverbs, "db") {
 		"isTable",
 		"countitems",
 		"getnthitem",
-		"getmoddate"
+		"getmoddate",
+		"compactDatabase"
 		}
 	}
 };

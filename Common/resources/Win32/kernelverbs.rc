@@ -919,7 +919,7 @@
 	1,					//Number of "blocks" in this resource
 		"db\0",			//Function Processor Name
 		false,			//Window required
-			13,			//Count of verbs
+			14,			//Count of verbs
 			"new\0",
 			"open\0",
 			"save\0",
@@ -931,8 +931,9 @@
 			"newTable\0",
 			"isTable\0",
 			"countitems\0",
-			"getnthitem\0",	
-			"getmoddate\0"
+			"getnthitem\0",
+			"getmoddate\0",
+			"compactDatabase\0"
 	END
 
 
