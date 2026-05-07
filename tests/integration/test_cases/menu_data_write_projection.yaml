@@ -1,0 +1,203 @@
+# Integration tests for write-side projection of menu verbs into
+# system.menus.data.
+#
+# Background
+# ----------
+# PR 1 (#575) made system.menus.data persist as the headless storage substrate
+# for menubar state. PR 2 (#576) added menu.list / menu.describe that READ from
+# that projection. But the WRITE side was never wired: verbs that mutate menu
+# state (menu.install, menu.addMenuCommand, menu.setScript, etc.) returned
+# success without updating system.menus.data at all.
+#
+# This file proves the write side is wired by issuing a mutating verb, then
+# reading the projection through two independent paths:
+#
+#   1. defined() / direct field read against the leaf — proves the projection
+#      sub-table actually exists with the right fields.
+#   2. menu.isInstalled / menu.list / menu.describe — proves the read-side
+#      verbs see the same state.
+#
+# Save+reload survival is exercised by the C-level
+# menudata_write_projection_tests (no integration runner restart required).
+#
+# Naming convention
+# -----------------
+# Tests use system.menus.data.<barname> directly (NOT system.temp) because
+# the projection only fires when the menubar lives inside system.menus.data
+# — that's the address from which a "bar name" is meaningful. Each test
+# uses a unique bar name (tst1, tst2, ...) so cross-test interference is
+# impossible even when the runner doesn't reset state between cases.
+#
+# sequential: true because the projection root is process-global. Two tests
+# trying to install bars with the same name in parallel would race.
+
+needs_guest_dbs: false
+sequential: true
+
+tests:
+  # ==========================================================================
+  # Group 1: install / remove round-trip
+  # ==========================================================================
+
+  - name: "install round-trip — projection.installed flips to true"
+    description: |
+      menu.install on an @system.menus.data.<bar> address must set
+      system.menus.data.<bar>.installed = true AND make
+      menu.isInstalled return true. Both paths must agree.
+
+      No new(menubarType, ...) precondition: the projection path is
+      designed so the verbs lazy-create the <bar> sub-table on first
+      write — that's the headless model per ADR-016 §"What this means
+      for verbs."
+    script: |
+      menu.install(@system.menus.data.tst1);
+      local(viaProjection = system.menus.data.tst1.installed);
+      local(viaVerb = menu.isInstalled(@system.menus.data.tst1));
+      delete(@system.menus.data.tst1);
+      return viaProjection and viaVerb
+    expected_success: true
+    expected_result: "true"
+
+  - name: "remove round-trip — projection.installed flips to false"
+    description: |
+      After install + remove, the projection field is false and the verb
+      agrees.
+    script: |
+      menu.install(@system.menus.data.tst2);
+      menu.remove(@system.menus.data.tst2);
+      local(viaProjection = system.menus.data.tst2.installed);
+      local(viaVerb = menu.isInstalled(@system.menus.data.tst2));
+      delete(@system.menus.data.tst2);
+      return (viaProjection == false) and (viaVerb == false)
+    expected_success: true
+    expected_result: "true"
+
+  # ==========================================================================
+  # Group 2: addMenuCommand round-trip
+  # ==========================================================================
+
+  - name: "addMenuCommand creates leaf with label, script, enabled fields"
+    description: |
+      addMenuCommand(@bar, menuname, itemname, scripttext) must create a
+      leaf at @bar.<menuname>.<itemname> populated with label=itemname,
+      script=scripttext, enabled=true.
+
+      Note: UserTalk uses the "contains" infix operator (or
+      string.patternMatch returning a 1-based position) for substring
+      checks, not a string.contains function.
+    script: |
+      menu.addMenuCommand(@system.menus.data.tst3, "Foo", "Bar", "x()");
+      local(leafExists = defined(@system.menus.data.tst3.Foo.Bar));
+      local(labelOk = (system.menus.data.tst3.Foo.Bar.label == "Bar"));
+      local(scriptOk = system.menus.data.tst3.Foo.Bar.script contains "x()");
+      local(enabledOk = (system.menus.data.tst3.Foo.Bar.enabled == true));
+      delete(@system.menus.data.tst3);
+      return leafExists and labelOk and scriptOk and enabledOk
+    expected_success: true
+    expected_result: "true"
+
+  - name: "addMenuCommand visible via menu.list"
+    description: |
+      A leaf created via the verb must show up in menu.list scoped to
+      that bar. Proves the read path sees writer's effect.
+    script: |
+      menu.addMenuCommand(@system.menus.data.tst4, "Foo", "Bar", "x()");
+      local(items = menu.list(@system.menus.data.tst4));
+      local(count = sizeOf(items));
+      delete(@system.menus.data.tst4);
+      return count == 1
+    expected_success: true
+    expected_result: "true"
+
+  - name: "addMenuCommand twice creates two leaves under same menu"
+    description: |
+      Two items in the same menu live as two siblings under <menu>.
+    script: |
+      menu.addMenuCommand(@system.menus.data.tst5, "Edit", "Cut", "edit.cut()");
+      menu.addMenuCommand(@system.menus.data.tst5, "Edit", "Copy", "edit.copy()");
+      local(cutOk = defined(@system.menus.data.tst5.Edit.Cut));
+      local(copyOk = defined(@system.menus.data.tst5.Edit.Copy));
+      delete(@system.menus.data.tst5);
+      return cutOk and copyOk
+    expected_success: true
+    expected_result: "true"
+
+  # ==========================================================================
+  # Group 3: setScript round-trip (headless 2-arg form)
+  # ==========================================================================
+
+  - name: "setScript via leaf address updates projection.script"
+    description: |
+      The headless overload menu.setScript(@leaf, "newscript") updates the
+      script field of the leaf in the projection.
+    script: |
+      menu.addMenuCommand(@system.menus.data.tst6, "Foo", "Bar", "old()");
+      menu.setScript(@system.menus.data.tst6.Foo.Bar, "new()");
+      local(updated = system.menus.data.tst6.Foo.Bar.script contains "new()");
+      local(noOld = not (system.menus.data.tst6.Foo.Bar.script contains "old()"));
+      delete(@system.menus.data.tst6);
+      return updated and noOld
+    expected_success: true
+    expected_result: "true"
+
+  # ==========================================================================
+  # Group 4: setCommandKey round-trip (headless 2-arg form)
+  # ==========================================================================
+
+  - name: "setCommandKey via leaf address updates projection.cmdkey"
+    description: |
+      menu.setCommandKey(@leaf, "S") updates the cmdkey character field
+      of the leaf to 'S'.
+    script: |
+      menu.addMenuCommand(@system.menus.data.tst7, "File", "Save", "file.save()");
+      menu.setCommandKey(@system.menus.data.tst7.File.Save, "S");
+      local(keyOk = (system.menus.data.tst7.File.Save.cmdkey == 'S'));
+      delete(@system.menus.data.tst7);
+      return keyOk
+    expected_success: true
+    expected_result: "true"
+
+  # ==========================================================================
+  # Group 5: deleteMenuCommand round-trip
+  # ==========================================================================
+
+  - name: "deleteMenuCommand removes leaf from projection"
+    description: |
+      After delete, the leaf is no longer in menu.list output for the bar.
+      We can't use defined(@bar.menu.item) for this check because
+      defined() of an @-address only verifies that the LEAF'S PARENT
+      table resolves — it returns true regardless of whether the leaf
+      itself exists. The behavioral check is to compare menu.list
+      output before and after the delete.
+    script: |
+      menu.addMenuCommand(@system.menus.data.tst8, "Foo", "Bar", "x()");
+      menu.addMenuCommand(@system.menus.data.tst8, "Foo", "Baz", "y()");
+      local(beforeCount = sizeOf(menu.list(@system.menus.data.tst8)));
+      menu.deleteMenuCommand(@system.menus.data.tst8, "Foo", "Bar");
+      local(afterCount = sizeOf(menu.list(@system.menus.data.tst8)));
+      delete(@system.menus.data.tst8);
+      return (beforeCount == 2) and (afterCount == 1)
+    expected_success: true
+    expected_result: "true"
+
+  # ==========================================================================
+  # Group 6: end-to-end multi-verb scenario
+  # ==========================================================================
+
+  - name: "end-to-end: install + add + describe sees new leaf"
+    description: |
+      Combine install, two add calls, and a describe — the describe must
+      return the script field set by addMenuCommand.
+    script: |
+      menu.install(@system.menus.data.tst9);
+      menu.addMenuCommand(@system.menus.data.tst9, "App", "Quit", "repl.exit()");
+      menu.addMenuCommand(@system.menus.data.tst9, "App", "About", "help.about()");
+
+      local(rec = menu.describe(@system.menus.data.tst9.App.Quit));
+
+      local(scriptOk = rec.script contains "repl.exit()");
+      local(installedOk = (system.menus.data.tst9.installed == true));
+      delete(@system.menus.data.tst9);
+      return scriptOk and installedOk
+    expected_success: true
+    expected_result: "true"

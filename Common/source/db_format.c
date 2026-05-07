@@ -41,6 +41,7 @@
 #include "wpverbs.h"
 #include "pictverbs.h"
 #include "menuverbs.h"
+#include "menudata_headless.h"
 #include "cancoon.h"
 #include "cancooninternal.h"
 #include "file.h"
@@ -348,6 +349,21 @@ boolean db_format_prepare_runtime(void) {
         return false;
     }
     log_debug(LOG_COMP_STARTUP, "db_format_prepare_runtime: system table structure linked successfully");
+
+    /*
+     * PR 5.5 (ADR-016): ensure system.menus.data exists eagerly so UserTalk
+     * addresses like @system.menus.data.<bar> parse before the verb runs.
+     * Without this, the address resolver fails before any menu mutation
+     * verb can lazy-create the deeper rungs. Idempotent and safe to call
+     * on roots where the table already exists. Non-fatal: on failure we
+     * log and continue — write-side menu verbs will degrade to no-op-true,
+     * preserving the prior contract.
+     */
+    if (!menudata_ensure_root()) {
+        log_warn(LOG_COMP_STARTUP, "db_format_prepare_runtime: menudata_ensure_root failed; @system.menus.data addresses may not parse");
+    } else {
+        log_debug(LOG_COMP_STARTUP, "db_format_prepare_runtime: system.menus.data ensured");
+    }
 
     /* Resolve address values in system.paths from v6 migration (PR #336 fix) */
     log_trace(LOG_COMP_STARTUP, "db_format_prepare_runtime: resolving system.paths addresses");

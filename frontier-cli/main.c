@@ -69,6 +69,7 @@
 #include "../Common/headers/stringdefs.h"
 #include "../Common/headers/scripts.h"
 #include "../Common/headers/db_format.h"
+#include "../Common/headers/menudata_headless.h"
 #include "../Common/headers/dbinternal.h"
 #include "../Common/headers/byteorder.h"
 #include "../Common/headers/threadregistry.h"
@@ -1175,6 +1176,23 @@ static boolean hydrate_system_root_database(const char* path) {
 		goto cleanup;
 	}
 
+	/*
+	 * PR 5.5: ensure system.menus.data exists eagerly so UserTalk addresses
+	 * like @system.menus.data.<bar> parse before the verb runs. The write-
+	 * side projection helpers can lazy-create deeper rungs but cannot
+	 * rescue a parse-time failure on the projection root itself. Idempotent
+	 * — safe to call on roots where the table already exists. See ADR-016.
+	 */
+	/*
+	 * PR 5.5: ensure system.menus.data exists eagerly. The canonical hook
+	 * is db_format_prepare_runtime in db_format.c, but that runs before
+	 * roottable is set on this code path, so we re-invoke here as a
+	 * defensive belt-and-braces. Idempotent.
+	 */
+	if (!menudata_ensure_root()) {
+		cli_log_warn("menudata_ensure_root failed while hydrating %s; @system.menus.data addresses may not parse", path);
+	}
+
 	/* Populate system.paths with processor shortcuts (must be AFTER linksystemtablestructure, BEFORE resolve_system_paths) */
 	if (!headless_init_system_paths(hroot)) {
 		cli_log_error("Unable to populate system.paths while hydrating %s", path);
@@ -1206,6 +1224,20 @@ static boolean hydrate_system_root_database(const char* path) {
 		copyctopstring("menus", bsmenus);
 		if (ensure_named_subtable(systemtable, bsmenus, &menustable, false)) {
 			if (menubartable == nil && ensure_named_subtable(menustable, namemenubartable, &menubartable, false))
+				created_optional = true;
+			/*
+			 * Eager projection-root creation. Without this, a fresh
+			 * UserTalk address like @system.menus.data.<bar> can't be
+			 * parsed (the address resolver walks up to system.menus.data
+			 * before the verb runs and fails if it's missing). PR 5.5
+			 * write-projection helpers can lazy-create deeper rungs
+			 * (<bar>, <menu>, <item>) but they cannot rescue a parse-time
+			 * failure on the projection root itself. See ADR-016.
+			 */
+			hdlhashtable datatable = nil;
+			bigstring bsdata;
+			copyctopstring("data", bsdata);
+			if (ensure_named_subtable(menustable, bsdata, &datatable, false))
 				created_optional = true;
 		}
 
@@ -1423,6 +1455,15 @@ static boolean load_system_root_database_internal(const char* path, boolean allo
 			if (ensure_named_subtable(systemtable, bsmenus, &menustable, true)) {
 				if (menubartable == nil && ensure_named_subtable(menustable, namemenubartable, &menubartable, true))
 					applied_patch = true;
+				/*
+				 * Eager projection-root creation (mirror of the hydrate
+				 * branch above). See the long comment there for rationale.
+				 */
+				hdlhashtable datatable = nil;
+				bigstring bsdata;
+				copyctopstring("data", bsdata);
+				if (ensure_named_subtable(menustable, bsdata, &datatable, true))
+					applied_patch = true;
 			}
 
 			hdlhashtable macintoshtable = nil;
@@ -1489,6 +1530,17 @@ static boolean load_system_root_database_internal(const char* path, boolean allo
 		closefile(fnum);
 		databasedata = previous;
 		return false;
+	}
+
+	/*
+	 * PR 5.5: ensure system.menus.data exists eagerly so UserTalk addresses
+	 * like @system.menus.data.<bar> parse before the verb runs. The write-
+	 * side projection helpers can lazy-create deeper rungs but cannot
+	 * rescue a parse-time failure on the projection root itself. Idempotent
+	 * — safe to call on roots where the table already exists. See ADR-016.
+	 */
+	if (!menudata_ensure_root()) {
+		cli_log_warn("menudata_ensure_root failed for %s; @system.menus.data addresses may not parse", path);
 	}
 
 	currenthashtable = roottable;

@@ -1,15 +1,23 @@
 /*
  * headless_menu_verbs.c - Menu processor verbs for headless mode
  *
- * Most menu verbs are GUI-only operations (building menubars, adding submenus,
- * etc.) that have no meaningful effect in headless mode. These are implemented
- * as safe no-ops that return true so scripts don't fail.
+ * Per ADR-016 the headless menu state lives in system.menus.data.<bar>.<menu>.
+ * <item>. The mutating verbs route their effect through the write-side
+ * projection helpers in Common/source/menudata_headless.c whenever the verb's
+ * first-arg address points into the projection.
  *
- * Implemented as no-ops:
- *   - menu.buildmenubar, clearmenubar, isinstalled, install, remove
- *   - menu.addSubMenu, addMenuCommand, deleteSubMenu, deleteMenuCommand
- *   - menu.getScript (returns empty string), setScript
- *   - menu.getCommandKey (returns empty char), setCommandKey
+ * Two-dispatcher landscape (worth knowing):
+ *   - Common/source/menuverbs.c::menufunctionvalue is the source-of-truth
+ *     dispatcher per ADR-016 but is dead in headless because
+ *     loadfunctionprocessor is a no-op stub there.
+ *   - This file (compiled into both frontier-cli and the unit-test binary
+ *     via tests/headless_verbs.mk) is the LIVE dispatcher.
+ *
+ * Verbs whose first arg points OUTSIDE system.menus.data still no-op-true
+ * (preserves the prior behaviour for non-projection callers).
+ *
+ * GUI-only verbs that have no projection meaning remain no-ops:
+ *   - menu.buildmenubar, clearmenubar, getScript, getCommandKey
  *   - menu.zoomScript (returns false; opens an editor window in GUI builds)
  */
 
@@ -73,57 +81,320 @@ static boolean menu_valueproc(short token, hdltreenode hparam1,
             return setbooleanvalue(true, vreturned);
 
         case menv_isinstalled: {
-            /* menu.isInstalled(@adr) - no menus installed in headless mode */
-            hdlhashtable htable;
-            bigstring bs;
+            /*
+             * menu.isInstalled(@bar) — read system.menus.data.<bar>.installed
+             * via the projection. Addresses outside system.menus.data report
+             * false (no projection => not installed).
+             */
+            hdlhashtable hparent = nil;
+            bigstring bsname;
+            bigstring bsbar, bsmenu, bsitem;
+            short depth;
+            boolean fl = false;
 
             flnextparamislast = true;
 
-            if (!getvarparam(hparam1, 1, &htable, bs))
+            if (!getvarparam(hparam1, 1, &hparent, bsname))
                 return false;
 
-            return setbooleanvalue(false, vreturned);
+            depth = menudata_resolve_bar_path(hparent, bsname,
+                                              bsbar, bsmenu, bsitem);
+
+            if (depth >= 1) {
+                if (!menudata_get_installed(bsbar, &fl))
+                    return false;
+            }
+
+            return setbooleanvalue(fl, vreturned);
         }
 
-        case menv_install:
-            /* menu.install - no-op in headless mode */
-            return setbooleanvalue(true, vreturned);
+        case menv_install: {
+            /*
+             * menu.install(@bar) — set system.menus.data.<bar>.installed=true.
+             * Addresses outside system.menus.data are no-op-true (preserves
+             * prior behaviour for non-projection callers; Mac legacy path
+             * tested elsewhere).
+             */
+            hdlhashtable hparent = nil;
+            bigstring bsname;
+            bigstring bsbar, bsmenu, bsitem;
+            short depth;
 
-        case menv_remove:
-            /* menu.remove - no-op in headless mode (no menu bar) */
+            flnextparamislast = true;
+
+            if (!getvarparam(hparam1, 1, &hparent, bsname))
+                return false;
+
+            depth = menudata_resolve_bar_path(hparent, bsname,
+                                              bsbar, bsmenu, bsitem);
+
+            if (depth >= 1) {
+                if (!menudata_set_installed(bsbar, true))
+                    return false;
+            }
+
             return setbooleanvalue(true, vreturned);
+        }
+
+        case menv_remove: {
+            /* menu.remove(@bar) — set installed=false in projection. */
+            hdlhashtable hparent = nil;
+            bigstring bsname;
+            bigstring bsbar, bsmenu, bsitem;
+            short depth;
+
+            flnextparamislast = true;
+
+            if (!getvarparam(hparam1, 1, &hparent, bsname))
+                return false;
+
+            depth = menudata_resolve_bar_path(hparent, bsname,
+                                              bsbar, bsmenu, bsitem);
+
+            if (depth >= 1) {
+                if (!menudata_set_installed(bsbar, false))
+                    return false;
+            }
+
+            return setbooleanvalue(true, vreturned);
+        }
 
         case menv_getscript:
             /* menu.getScript - return empty string in headless mode */
             return setstringvalue(BIGSTRING("\p"), vreturned);
 
-        case menv_setscript:
-            /* menu.setScript - no-op in headless mode */
-            return setbooleanvalue(true, vreturned);
+        case menv_setscript: {
+            /*
+             * Headless overload: menu.setScript(@leaf, "scripttext").
+             * The address points at the leaf sub-table directly (depth 3 in
+             * the projection). Updates the leaf's .script field. Leaf must
+             * already exist — set_script returns false otherwise (matching
+             * "setScript is for updates, not creation" contract).
+             */
+            hdlhashtable hparent = nil;
+            bigstring bsname;
+            bigstring bsbar, bsmenu, bsitem;
+            short depth;
+            bigstring bsscript;
+            Handle hscript = nil;
+            boolean ok;
 
-        case menv_addmenucommand:
-            /* menu.addMenuCommand - no-op in headless mode (no menu bar) */
-            return setbooleanvalue(true, vreturned);
+            if (!getvarparam(hparam1, 1, &hparent, bsname))
+                return false;
 
-        case menv_deletemenucommand:
-            /* menu.deleteMenuCommand - no-op in headless mode */
-            return setbooleanvalue(true, vreturned);
+            flnextparamislast = true;
 
-        case menv_addsubmenu:
-            /* menu.addSubMenu - no-op in headless mode (no menu bar) */
-            return setbooleanvalue(true, vreturned);
+            if (!getstringvalue(hparam1, 2, bsscript))
+                return false;
 
-        case menv_deletesubmenu:
-            /* menu.deleteSubMenu - no-op in headless mode */
+            depth = menudata_resolve_bar_path(hparent, bsname,
+                                              bsbar, bsmenu, bsitem);
+
+            if (depth < 3)
+                return setbooleanvalue(true, vreturned); /* not a leaf */
+
+            if (!newtexthandle(bsscript, &hscript))
+                return false;
+
+            ok = menudata_set_script(bsbar, bsmenu, bsitem, hscript);
+            disposehandle(hscript);
+
+            if (!ok)
+                return false;
+
             return setbooleanvalue(true, vreturned);
+        }
+
+        case menv_addmenucommand: {
+            /*
+             * menu.addMenuCommand(@bar, "menuname", "itemname", "scripttext").
+             * Lazy-creates @bar.<menuname>.<itemname> with label/script/
+             * enabled fields per ADR-016.
+             */
+            hdlhashtable hparent = nil;
+            bigstring bsname;
+            bigstring bsbar, bsmenudummy, bsitemdummy;
+            short depth;
+            bigstring bsmenu;
+            bigstring bsitem;
+            bigstring bsscript;
+            Handle hscript = nil;
+            boolean ok;
+
+            if (!getvarparam(hparam1, 1, &hparent, bsname))
+                return false;
+
+            if (!getstringvalue(hparam1, 2, bsmenu))
+                return false;
+            if (!getstringvalue(hparam1, 3, bsitem))
+                return false;
+
+            flnextparamislast = true;
+
+            if (!getstringvalue(hparam1, 4, bsscript))
+                return false;
+
+            depth = menudata_resolve_bar_path(hparent, bsname,
+                                              bsbar, bsmenudummy, bsitemdummy);
+
+            if (depth < 1)
+                return setbooleanvalue(true, vreturned); /* not in projection */
+
+            if (!newtexthandle(bsscript, &hscript))
+                return false;
+
+            ok = menudata_add_command(bsbar, bsmenu, bsitem, hscript);
+            disposehandle(hscript);
+
+            if (!ok)
+                return false;
+
+            return setbooleanvalue(true, vreturned);
+        }
+
+        case menv_deletemenucommand: {
+            /*
+             * menu.deleteMenuCommand(@bar, "menuname", "itemname"). Removes
+             * the leaf at @bar.<menuname>.<itemname>. Idempotent on absent
+             * targets per menudata_delete_item contract.
+             */
+            hdlhashtable hparent = nil;
+            bigstring bsname;
+            bigstring bsbar, bsmenudummy, bsitemdummy;
+            short depth;
+            bigstring bsmenu;
+            bigstring bsitem;
+
+            if (!getvarparam(hparam1, 1, &hparent, bsname))
+                return false;
+
+            if (!getstringvalue(hparam1, 2, bsmenu))
+                return false;
+
+            flnextparamislast = true;
+
+            if (!getstringvalue(hparam1, 3, bsitem))
+                return false;
+
+            depth = menudata_resolve_bar_path(hparent, bsname,
+                                              bsbar, bsmenudummy, bsitemdummy);
+
+            if (depth < 1)
+                return setbooleanvalue(true, vreturned); /* not in projection */
+
+            if (!menudata_delete_item(bsbar, bsmenu, bsitem))
+                return false;
+
+            return setbooleanvalue(true, vreturned);
+        }
+
+        case menv_addsubmenu: {
+            /*
+             * menu.addSubMenu(@bar, "menuname", "itemname"). Creates an
+             * empty intermediate sub-table at @bar.<menuname>.<itemname>
+             * for downstream addCommand/addSubMenu calls to populate.
+             */
+            hdlhashtable hparent = nil;
+            bigstring bsname;
+            bigstring bsbar, bsmenudummy, bsitemdummy;
+            short depth;
+            bigstring bsmenu;
+            bigstring bsitem;
+
+            if (!getvarparam(hparam1, 1, &hparent, bsname))
+                return false;
+
+            if (!getstringvalue(hparam1, 2, bsmenu))
+                return false;
+
+            flnextparamislast = true;
+
+            if (!getstringvalue(hparam1, 3, bsitem))
+                return false;
+
+            depth = menudata_resolve_bar_path(hparent, bsname,
+                                              bsbar, bsmenudummy, bsitemdummy);
+
+            if (depth < 1)
+                return setbooleanvalue(true, vreturned); /* not in projection */
+
+            if (!menudata_add_submenu(bsbar, bsmenu, bsitem))
+                return false;
+
+            return setbooleanvalue(true, vreturned);
+        }
+
+        case menv_deletesubmenu: {
+            /*
+             * menu.deleteSubMenu(@bar, "menuname"). Removes an entire
+             * <menuname> subtree. The third (item) arg is omitted per the
+             * legacy verb shape — pass-through to menudata_delete_item with
+             * empty itemname triggers menu-level deletion.
+             */
+            hdlhashtable hparent = nil;
+            bigstring bsname;
+            bigstring bsbar, bsmenudummy, bsitemdummy;
+            short depth;
+            bigstring bsmenu;
+            bigstring bsempty;
+
+            if (!getvarparam(hparam1, 1, &hparent, bsname))
+                return false;
+
+            flnextparamislast = true;
+
+            if (!getstringvalue(hparam1, 2, bsmenu))
+                return false;
+
+            depth = menudata_resolve_bar_path(hparent, bsname,
+                                              bsbar, bsmenudummy, bsitemdummy);
+
+            if (depth < 1)
+                return setbooleanvalue(true, vreturned); /* not in projection */
+
+            setemptystring(bsempty);
+            if (!menudata_delete_item(bsbar, bsmenu, bsempty))
+                return false;
+
+            return setbooleanvalue(true, vreturned);
+        }
 
         case menv_getcommandkey:
             /* menu.getCommandKey - return empty char in headless mode */
             return setcharvalue('\0', vreturned);
 
-        case menv_setcommandkey:
-            /* menu.setCommandKey - no-op in headless mode */
+        case menv_setcommandkey: {
+            /*
+             * Headless overload: menu.setCommandKey(@leaf, 'X'). Updates the
+             * leaf's .cmdkey field. Leaf must already exist (set_cmdkey
+             * returns false otherwise — same "for updates, not creation"
+             * contract as set_script).
+             */
+            hdlhashtable hparent = nil;
+            bigstring bsname;
+            bigstring bsbar, bsmenu, bsitem;
+            short depth;
+            char ch;
+
+            if (!getvarparam(hparam1, 1, &hparent, bsname))
+                return false;
+
+            flnextparamislast = true;
+
+            if (!getcharvalue(hparam1, 2, &ch))
+                return false;
+
+            depth = menudata_resolve_bar_path(hparent, bsname,
+                                              bsbar, bsmenu, bsitem);
+
+            if (depth < 3)
+                return setbooleanvalue(true, vreturned); /* not a leaf */
+
+            if (!menudata_set_cmdkey(bsbar, bsmenu, bsitem, ch, 0))
+                return false;
+
             return setbooleanvalue(true, vreturned);
+        }
 
         case menv_list: {
             /*
