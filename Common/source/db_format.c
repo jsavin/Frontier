@@ -2073,6 +2073,16 @@ static boolean db_format_write_compacted_internal(
  *   - Saved current globals (databasedata, rootvariable) via odb_context_guard
  *   - Set globals to point at the source database (e.g., setcancoonglobals)
  *   - Verified dst_path does not exist
+ *
+ * Transactional semantics:
+ *   - On success: destination written; the SOURCE's in-memory tree has had
+ *     its oldaddress fields mutated to point at dst's address space, so the
+ *     caller MUST close the source (the wrapping odbCompactDatabase + verb
+ *     do this automatically). The on-disk source bytes are unchanged.
+ *   - On failure: destination is removed; the SOURCE's in-memory tree may
+ *     be partially mutated and is unsafe to reuse. Caller MUST force-close
+ *     the source. The mode stack and saveas state are restored to their
+ *     entry values regardless of outcome.
  */
 boolean db_format_compact_to_path(hdldatabaserecord source_db, Handle source_root, Handle source_script, const char *dst_path) {
 
@@ -2084,7 +2094,7 @@ boolean db_format_compact_to_path(hdldatabaserecord source_db, Handle source_roo
 
     boolean ok = false;
     hdlfilenum dst_fnum = 0;
-    Handle hrootvariable = source_root;  /* Will be cleared by helper on success */
+    Handle hrootvariable = source_root;
     Handle hscript = source_script;
     db_context source_context;
     db_context dest_context;
@@ -2093,9 +2103,23 @@ boolean db_format_compact_to_path(hdldatabaserecord source_db, Handle source_roo
     bigstring bsdst;
     tyfilespec dst_fs;
     const char *fail_step = "init";
+    boolean have_dest_context = false;
+
+    /* Snapshot ALL globals we may touch so we can restore on every exit path.
+     * Mirrors migrate_internal's discipline (CR review P0-1, P1-4).
+     * Even on failure, callers (e.g. cleanRoot, runtime clients) must see
+     * a clean mode stack / saveas state / databasedata. */
+    db_saveas_state entry_saveas;
+    db_format_mode entry_mode = db_format_mode_current();
+    hdldatabaserecord entry_databasedata = databasedata;
+    db_saveas_state_snapshot(&entry_saveas);
+
+    /* Push a v7+repack mode for the duration of compaction. Pop on exit. */
+    db_format_mode v7_repack_mode = {true, true};
+    db_format_mode_push(&v7_repack_mode);
 
     db_context_init(&source_context);
-    source_context.mode = db_format_mode_current();
+    source_context.mode = v7_repack_mode;
     source_context.database = source_db;
 
     db_context_init(&dest_context);
@@ -2106,28 +2130,52 @@ boolean db_format_compact_to_path(hdldatabaserecord source_db, Handle source_roo
 
     log_trace(LOG_COMP_DB, "db_format_compact_to_path: dst_path=%s", dst_path);
 
+    /* Yield GIL once before the (potentially long) saveas walk so other
+     * UserTalk threads waiting on the lock get a chance.  We CANNOT yield
+     * mid-walk because tablesavesystemtable depends on databasedata /
+     * fldatabasesaveas / dbsaveas_source / mode stack, which would be
+     * observable in an inconsistent state by another thread.  Coarse
+     * yields here + at end keep the GIL hold time bounded for short
+     * compactions; long compactions still hold the GIL through the walk.
+     * P2-16: a future change could push yields into tableverbpack at
+     * subtable boundaries, but that requires reentrancy-safe globals. */
+    if (!langbackgroundtask(false)) {
+        fail_step = "langbackgroundtask(pre-walk) cancelled";
+        goto cleanup;
+    }
+
     fail_step = "pathtofilespec(dst)";
     copyctopstring(dst_path, bsdst);
     if (!pathtofilespec(bsdst, &dst_fs))
         goto cleanup;
 
-    fail_step = "opennewfile(dst)";
-    if (!opennewfile(&dst_fs, 'LAND', 'ROOT', &dst_fnum))
+    /* Atomic exclusive create with O_NOFOLLOW (P1-1, TOCTOU + symlink-follow).
+     * Replaces the previous fopen("rb") + opennewfile() two-step which had
+     * a TOCTOU race window and would follow symlinks. opennewfile_exclusive
+     * returns false if the destination already exists or is a symlink. */
+    fail_step = "opennewfile_exclusive(dst)";
+    if (!opennewfile_exclusive(&dst_fs, 'LAND', 'ROOT', &dst_fnum))
         goto cleanup;
 
     log_trace(LOG_COMP_DB, "db_format_compact_to_path: opened destination fnum=%d", (int)dst_fnum);
 
+    /* Mark dest_context as having entered saveas state once the helper
+     * returns (success or partway): on failure we still need to call
+     * cleanup_migration_database to tear down a partial saveas. */
+    have_dest_context = true;
+
     /* Run the saveas-write phase. The helper:
      *   - calls dbstartsaveas_context to prepare destination
-     *   - applies v7+repack mode globally (g_mode_depth=0)
+     *   - applies v7+repack mode globally
      *   - calls tablesavesystemtable to write the live tree
-     *   - calls cleartablestructureglobals + tableverbdispose on the root,
-     *     setting *p_hrootvariable=nil
+     *     (mutates source's oldaddress fields to dst's address space)
      *   - optionally writes the script handle via dbassignhandle_context
      *   - sets view0 = new root address, fixes header to v7 canonical
      *   - calls dbendsaveas_context (disposes destination handle)
      *   - sets databasedata=nil
-     */
+     * fldispose_source=false: we do NOT dispose source root here; the
+     * caller (odbCompactDatabase + verb) auto-closes the source which
+     * disposes the in-memory tree via odbCloseFile. */
     if (!db_format_write_compacted_internal(
             &source_context,
             &hrootvariable,
@@ -2136,7 +2184,7 @@ boolean db_format_compact_to_path(hdldatabaserecord source_db, Handle source_roo
             &dest_context,
             &new_root_address,
             &new_script_address,
-            false, /* fldispose_source: leave caller's tree alone */
+            false,
             &fail_step)) {
         log_error(LOG_COMP_DB, "db_format_compact_to_path: write_compacted_internal failed at %s", fail_step);
         goto cleanup;
@@ -2150,18 +2198,56 @@ boolean db_format_compact_to_path(hdldatabaserecord source_db, Handle source_roo
              (unsigned long long)new_script_address,
              dst_path);
 
+    /* Yield GIL once after the walk so any blocked thread can run before
+     * the verb returns to UserTalk. */
+    (void) langbackgroundtask(false);
+
     ok = true;
 
 cleanup:
+    /* Tear down any partial saveas state on the destination — but ONLY
+     * if we actually started a saveas (have_dest_context=true).  Unlike
+     * migrate_internal where databasedata is the destination, here
+     * databasedata is the SOURCE; cleanup_migration_database would
+     * incorrectly dispose the source if called with have_dest_context=
+     * false but databasedata != nil (P0-1).
+     *
+     * The helper db_format_write_compacted_internal sets databasedata
+     * = dest_context.saveas.destination INSIDE the saveas, then sets
+     * it back to nil on success.  On partial failure inside the helper,
+     * databasedata may point at the destination handle — that's the
+     * case cleanup_migration_database is designed for. */
+    if (have_dest_context)
+        cleanup_migration_database(&dest_context, have_dest_context);
+
     if (!ok) {
         if (dst_fnum != 0) {
             closefile(dst_fnum);
             dst_fnum = 0;
         }
-        /* On failure, remove partially-written destination so caller can retry. */
-        remove(dst_path);
+        /* On failure, remove the partially-written destination so the
+         * caller can retry — but only if WE created it.  If
+         * opennewfile_exclusive failed (e.g. dst pre-existed), the file
+         * we'd remove is the caller's pre-existing file: NOT ours to
+         * touch.  have_dest_context is set true only after the
+         * exclusive create succeeded, so it's a reliable proxy. */
+        if (have_dest_context)
+            remove(dst_path);
         log_error(LOG_COMP_DB, "db_format_compact_to_path: failed at %s", fail_step);
     }
+
+    /* Restore mode + saveas + databasedata to entry state on every path
+     * (P1-4).  The helper internally clobbers g_mode_depth and applies
+     * its own mode; we restore here. */
+    db_format_mode_pop();
+    db_format_mode_apply(&entry_mode);
+    db_saveas_state_apply(&entry_saveas);
+    /* If the helper nil'd databasedata (success path) or cleanup did,
+     * restore it to entry value so the caller sees its source still
+     * "live" in memory.  The verb's auto-close via dbclosefile will
+     * dispose the source via odbCloseFile after this returns. */
+    if (databasedata == nil)
+        databasedata = entry_databasedata;
 
     db_format_adapter_reset(); /* Clear mode lock so subsequent operations work cleanly */
 

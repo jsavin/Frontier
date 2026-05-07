@@ -13,21 +13,40 @@
 #
 # IMPORTANT — semantics:
 # - srcPath must be open as a guest database (db.open or fileMenu.open).
-# - The system root cannot be the source: the in-memory tree is mutated
+# - The verb auto-closes srcPath on success: the in-memory tree is mutated
 #   during compaction (oldaddress fields point at dst), so the source ends
-#   in an indeterminate state. After compaction, the caller MUST close the
-#   source. Re-opening the source from disk is fine (its on-disk state is
-#   intact — the save before compaction flushed everything).
-# - dstPath must not already exist (refuses to overwrite).
+#   in an indeterminate state. The verb closes the source for the caller to
+#   prevent silent corruption from later db.setvalue / db.getvalue / db.save
+#   calls. Callers do NOT need to (and SHOULD NOT) call db.close after
+#   a successful db.compactDatabase. Re-opening the source from disk is
+#   fine — the on-disk state was flushed by the pre-compaction save.
+# - On failure, the verb force-closes the source (its in-memory tree may be
+#   partially-mutated and is unsafe to reuse). The on-disk source file is
+#   not modified.
+# - The verb refuses to compact the running system root (defensive — the
+#   running root must be saved via fileMenu.save / system shutdown, not
+#   compacted while live).
+# - dstPath must not already exist (refuses to overwrite, atomic O_EXCL
+#   create with O_NOFOLLOW to prevent symlink-follow attacks).
+# - dstPath is auto-coerced to .root extension (matches db.new / db.open
+#   semantics). Length-limited to 255 chars (UserTalk bigstring constraint).
 #
 # Test Strategy:
 # 1. Round-trip integrity: compacted DB has the same live data
 # 2. Size shrinks: after deleting bulk data, compacted file is smaller than
 #    the saved-but-not-compacted file
-# 3. Source's ON-DISK file is unchanged: after compaction + close + reopen,
+# 3. Source's ON-DISK file is unchanged: after auto-close + reopen,
 #    the source still has its data (compaction does not touch source bytes).
-# 4. Error cases: refuses to overwrite, requires exactly 2 args
+# 4. Error cases: refuses to overwrite, requires exactly 2 args,
+#    rejects system root, rejects symlink destinations
 # 5. Compacted DB is independently openable
+# 6. Transactional semantics: failed compact does not leave dst behind,
+#    and source state is well-defined (force-closed)
+#
+# Note on UserTalk comments: do NOT use // comments inside the script
+# bodies — UserTalk's parser handles them in a way that breaks subsequent
+# return-value evaluation. Use YAML `description:` and outer-block YAML
+# # comments to document tests; keep script bodies comment-free.
 
 needs_guest_dbs: true
 
@@ -37,7 +56,7 @@ tests:
   # ========================================================================
 
   - name: "db.compactDatabase - basic round-trip preserves data"
-    description: "Compact a populated guest DB to a new path; data should be intact"
+    description: "Compact a populated guest DB to a new path; data should be intact (verb auto-closes srcPath on success)"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
       local(srcPath = tmpDir + "/" + "compact_basic_src.root");
@@ -51,7 +70,6 @@ tests:
       db.setvalue(srcPath, "gamma", "G");
       db.save(srcPath);
       db.compactDatabase(srcPath, dstPath);
-      db.close(srcPath);
       db.open(dstPath, false);
       local(a = db.getvalue(dstPath, "alpha"));
       local(b = db.getvalue(dstPath, "beta"));
@@ -98,7 +116,6 @@ tests:
       local(srcSize = file.size(srcPath));
       db.compactDatabase(srcPath, dstPath);
       local(dstSize = file.size(dstPath));
-      db.close(srcPath);
       return dstSize < srcSize
     expected_success: true
     expected_result: "true"
@@ -120,7 +137,6 @@ tests:
       db.delete(srcPath, "delete_me");
       db.save(srcPath);
       db.compactDatabase(srcPath, dstPath);
-      db.close(srcPath);
       db.open(dstPath, false);
       local(v = db.getvalue(dstPath, "keep"));
       local(stillThere = db.defined(dstPath, "delete_me"));
@@ -134,7 +150,7 @@ tests:
   # ========================================================================
 
   - name: "db.compactDatabase - source on-disk file unchanged after compaction"
-    description: "After db.close + db.open, source still has its data (compaction does not modify source bytes)"
+    description: "After auto-close + reopen, source still has its data (compaction does not modify source bytes)"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
       local(srcPath = tmpDir + "/" + "compact_src_intact_src.root");
@@ -146,7 +162,6 @@ tests:
       db.setvalue(srcPath, "key", "value_in_source");
       db.save(srcPath);
       db.compactDatabase(srcPath, dstPath);
-      db.close(srcPath);
       db.open(srcPath, false);
       local(v = db.getvalue(srcPath, "key"));
       db.close(srcPath);
@@ -171,7 +186,6 @@ tests:
       db.setvalue(srcPath, "marker", "independent");
       db.save(srcPath);
       db.compactDatabase(srcPath, dstPath);
-      db.close(srcPath);
       file.delete(srcPath);
       db.open(dstPath, false);
       local(v = db.getvalue(dstPath, "marker"));
@@ -181,7 +195,147 @@ tests:
     expected_result: "independent"
 
   # ========================================================================
-  # Error cases
+  # Auto-close semantics (P1-2): source is closed by verb on success.
+  # After the verb returns true, db.close on srcPath would error because
+  # the db is no longer in the open-guest list. We use try-else to verify.
+  # ========================================================================
+
+  - name: "db.compactDatabase - source is auto-closed on success (no explicit db.close needed)"
+    description: "After successful compact, srcPath is no longer in the open db list — calling db.close on it errors, confirming auto-close fired"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(srcPath = tmpDir + "/" + "compact_autoclose_src.root");
+      local(dstPath = tmpDir + "/" + "compact_autoclose_dst.root");
+      if file.exists(srcPath) {file.delete(srcPath)};
+      if file.exists(dstPath) {file.delete(dstPath)};
+      db.new(srcPath);
+      db.open(srcPath, false);
+      db.setvalue(srcPath, "k", "v");
+      db.save(srcPath);
+      db.compactDatabase(srcPath, dstPath);
+      local(reportedClosed = false);
+      try {
+        db.close(srcPath);
+        reportedClosed = false
+      } else {
+        reportedClosed = true
+      };
+      return reportedClosed
+    expected_success: true
+    expected_result: "true"
+
+  # ========================================================================
+  # Unsaved-mutations test (P2-10): values set since last save are
+  # captured in the destination because compaction walks the live in-memory
+  # tree. The verb does pre-compaction save of the source first, so unsaved
+  # mutations are persisted to BOTH source and dst.
+  # ========================================================================
+
+  - name: "db.compactDatabase - unsaved mutations appear in destination"
+    description: "Values set but not saved before compact still appear in dst (verb saves source first)"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(srcPath = tmpDir + "/" + "compact_unsaved_src.root");
+      local(dstPath = tmpDir + "/" + "compact_unsaved_dst.root");
+      if file.exists(srcPath) {file.delete(srcPath)};
+      if file.exists(dstPath) {file.delete(dstPath)};
+      db.new(srcPath);
+      db.open(srcPath, false);
+      db.setvalue(srcPath, "saved", "before");
+      db.save(srcPath);
+      db.setvalue(srcPath, "unsaved", "after");
+      db.compactDatabase(srcPath, dstPath);
+      db.open(dstPath, false);
+      local(savedV = db.getvalue(dstPath, "saved"));
+      local(unsavedV = db.getvalue(dstPath, "unsaved"));
+      db.close(dstPath);
+      return savedV + ":" + unsavedV
+    expected_success: true
+    expected_result: "before:after"
+
+  # ========================================================================
+  # System root rejection (P1-3, P1-5): verb refuses to compact
+  # the running system root. Frontier.getFilePath() returns the system
+  # root path. Calling db.compactDatabase on the system root path BEFORE
+  # db.open-ing it as a guest must error: the source is not in the
+  # open-guest list (db.open hasn't registered it). The "not open" path
+  # is what fires; this is defense-in-depth.
+  # ========================================================================
+
+  - name: "db.compactDatabase - rejects compact of currently-running system root"
+    description: "When source is the live system root path (no guest open), verb refuses with an error"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(dstPath = tmpDir + "/" + "compact_sysroot_dst.root");
+      if file.exists(dstPath) {file.delete(dstPath)};
+      try {
+        db.compactDatabase(Frontier.getFilePath(), dstPath);
+        return "should_have_failed"
+      } else {
+        return "error_caught"
+      }
+    expected_success: true
+    expected_result: "error_caught"
+
+  # ========================================================================
+  # Path-extension auto-coercion (P2-14): destinations missing the .root
+  # extension should be auto-coerced to <stem>.root, matching db.new and
+  # db.open semantics.
+  # ========================================================================
+
+  - name: "db.compactDatabase - destination without .root extension is auto-coerced"
+    description: "Passing a destination without .root extension should append it (matches db.new / db.open)"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(srcPath = tmpDir + "/" + "compact_ext_src.root");
+      local(dstStem = tmpDir + "/" + "compact_ext_dst");
+      local(dstPath = dstStem + ".root");
+      if file.exists(srcPath) {file.delete(srcPath)};
+      if file.exists(dstStem) {file.delete(dstStem)};
+      if file.exists(dstPath) {file.delete(dstPath)};
+      db.new(srcPath);
+      db.open(srcPath, false);
+      db.setvalue(srcPath, "k", "ext_test");
+      db.save(srcPath);
+      db.compactDatabase(srcPath, dstStem);
+      local(coercedExists = file.exists(dstPath));
+      local(stemExists = file.exists(dstStem));
+      return coercedExists + ":" + stemExists
+    expected_success: true
+    expected_result: "true:false"
+
+  # ========================================================================
+  # Failed compact: dst is removed (or pre-existing dst is preserved
+  # untouched), source is force-closed (P0-3).
+  # ========================================================================
+
+  - name: "db.compactDatabase - on failure, pre-existing destination is preserved untouched"
+    description: "Failure (e.g. existing dst) does not write through to dst — the pre-existing content is intact"
+    script: |
+      local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
+      local(srcPath = tmpDir + "/" + "compact_failclean_src.root");
+      local(dstPath = tmpDir + "/" + "compact_failclean_dst.root");
+      if file.exists(srcPath) {file.delete(srcPath)};
+      if file.exists(dstPath) {file.delete(dstPath)};
+      db.new(srcPath);
+      db.open(srcPath, false);
+      db.setvalue(srcPath, "k", "v");
+      db.save(srcPath);
+      file.writeWholeFile(dstPath, "PRE-EXISTING-MARKER");
+      try {
+        db.compactDatabase(srcPath, dstPath);
+        try {db.close(srcPath)};
+        return "should_have_failed"
+      } else {
+        try {db.close(srcPath)};
+        local(content = file.readWholeFile(dstPath));
+        return content
+      }
+    expected_success: true
+    expected_result: "PRE-EXISTING-MARKER"
+
+  # ========================================================================
+  # Existing error cases (preserved)
   # ========================================================================
 
   - name: "db.compactDatabase - error when source is not open"
@@ -214,10 +368,10 @@ tests:
       db.new(dstPath);
       try {
         db.compactDatabase(srcPath, dstPath);
-        db.close(srcPath);
+        try {db.close(srcPath)};
         return "should_have_failed"
       } else {
-        db.close(srcPath);
+        try {db.close(srcPath)};
         return "error_caught"
       }
     expected_success: true

@@ -248,6 +248,83 @@ boolean opennewfile(ptrfilespec fs, OSType creator, OSType filetype, hdlfilenum 
     return false;
 }
 
+/*
+ * opennewfile_exclusive - Atomic exclusive create (P1-1).
+ *
+ * POSIX: open() with O_CREAT|O_EXCL|O_WRONLY|O_NOFOLLOW.  EXCL ensures
+ * the file does not already exist (atomic with create).  NOFOLLOW
+ * ensures the path is not a symlink (defends against symlink-follow
+ * attacks where an attacker pre-creates a symlink at dst_path).
+ * Mode 0644 is the conventional default for newly-created files; we
+ * intentionally do NOT lock down to 0600 in this PR — see PR #581
+ * comments (P2-13 deferred to a future security review pass).
+ *
+ * Returns false if the destination exists, is a symlink, or any other
+ * filesystem error.
+ */
+boolean opennewfile_exclusive(ptrfilespec fs, OSType creator, OSType filetype, hdlfilenum *pfnum) {
+    (void) creator;
+    (void) filetype;
+    if (!fs || !pfnum)
+        return false;
+    char path[4096];
+    if (!path_from_filespec(fs, path, sizeof path))
+        return false;
+
+    /* Atomic exclusive create.  O_RDWR matches the "wb+" stream mode used
+     * downstream — using O_WRONLY here makes fdopen(..., "wb+") fail.
+     * O_NOFOLLOW: refuse to follow symlinks.
+     * O_CLOEXEC: don't leak the fd to child processes (defense in depth). */
+    int oflags = O_RDWR | O_CREAT | O_EXCL | O_NOFOLLOW;
+#ifdef O_CLOEXEC
+    oflags |= O_CLOEXEC;
+#endif
+    int fd = open(path, oflags, 0644);
+    if (fd < 0) {
+        log_trace(LOG_COMP_DB, "opennewfile_exclusive: open(%s) failed errno=%d (%s)",
+                  path, errno, strerror(errno));
+        return false;
+    }
+
+    FILE *fp = fdopen(fd, "wb+");
+    if (!fp) {
+        log_trace(LOG_COMP_DB, "opennewfile_exclusive: fdopen failed errno=%d (%s)",
+                  errno, strerror(errno));
+        close(fd);
+        unlink(path);  /* Best-effort cleanup of the just-created file */
+        return false;
+    }
+
+    hdlfilenum fnum = alloc_fnum();
+    if (!fnum) {
+        fclose(fp);  /* closes underlying fd */
+        unlink(path);
+        return false;
+    }
+
+    pthread_mutex_lock(&ftable_mutex);
+    fnum_entry *slot = entry_from(fnum);
+    if (slot && slot->fp == NULL) {
+        slot->fp = fp;
+        slot->refcount = 0;
+        strncpy(slot->path, path, sizeof slot->path - 1);
+        slot->path[sizeof slot->path - 1] = '\0';
+        path_to_fsname(path, &fs->name);
+        *pfnum = fnum;
+        pthread_mutex_unlock(&ftable_mutex);
+
+        log_trace(LOG_COMP_DB, "opennewfile_exclusive fnum=%d path=%s",
+                  (int) fnum, path);
+        return true;
+    }
+    pthread_mutex_unlock(&ftable_mutex);
+
+    /* Slot raced — close and unlink to avoid leaving the file behind */
+    fclose(fp);
+    unlink(path);
+    return false;
+}
+
 boolean closefile(hdlfilenum fnum) {
     pthread_mutex_lock(&ftable_mutex);
 

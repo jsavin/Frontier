@@ -1119,8 +1119,8 @@ static boolean dbgetmoddateverb (hdltreenode hparam1, tyvaluerecord *vreturned) 
 /* Lowercase wrapper following the existing pattern (e.g. odbsavefile).
  * Wraps odbCompactDatabase with the odb_context_guard so the caller's
  * databasedata / rootvariable / mode stack are preserved across the call.
- * After this, the source's in-memory state is indeterminate — caller is
- * expected to db.close + db.open the source if they want to keep using it. */
+ * The wrapping verb (dbcompactdatabaseverb) is responsible for closing
+ * the source database after this returns, on both success and failure. */
 static boolean odbcompactdatabase_local (odbref odb, const char *dst_path) {
 	odb_context_guard guard;
 	boolean fl;
@@ -1153,21 +1153,33 @@ static boolean dbcompactdatabaseverb (hdltreenode hparam1, tyvaluerecord *vretur
 	 *
 	 * Constraints:
 	 *   - srcPath must be currently open as a guest database
-	 *   - dstPath must NOT already exist (refuses to overwrite)
-	 *   - After this call, srcPath's IN-MEMORY state is indeterminate (the
-	 *     in-memory tree's oldaddress fields point at dst's address space).
-	 *     The on-disk source bytes are NOT modified. Caller should db.close
-	 *     and db.open the source if they want to keep using it.
+	 *   - dstPath must NOT already exist (refuses to overwrite, atomic
+	 *     O_EXCL+O_NOFOLLOW create at the file layer)
+	 *   - dstPath gets a .root extension auto-appended if missing (matches
+	 *     db.new / db.open semantics)
+	 *   - srcPath cannot be the running system root cancoon (defensive —
+	 *     the running root must be saved via fileMenu.save / shutdown,
+	 *     not compacted while live)
+	 *   - dstPath length is bounded by UserTalk bigstring (255 chars)
+	 *
+	 * Side effects:
+	 *   - On SUCCESS: the source database is auto-closed (its in-memory
+	 *     tree is unsafe to reuse — oldaddress fields point at dst's
+	 *     address space).  Callers do NOT need to call db.close.
+	 *   - On FAILURE: the source database is force-closed (its in-memory
+	 *     tree may be partially mutated).  Callers do NOT need to call
+	 *     db.close.  The on-disk source file is not modified, so callers
+	 *     can re-open from disk if needed.
 	 *
 	 * Returns true on success, false on error (with langerror set).
 	 */
 
 	bigstring bssrc, bsdst;
-	tyfilespec srcfs;
+	tyfilespec srcfs, dstfs;
 	hdlodbrecord hodb_source = nil;
-	char dstpath_c[1024];
-	FILE *fp_check;
+	char dstpath_c[DB_PATH_MAX];
 	boolean ok = false;
+	boolean source_closed = false;
 
 	setbooleanvalue (false, vreturned);
 
@@ -1187,14 +1199,38 @@ static boolean dbcompactdatabaseverb (hdltreenode hparam1, tyvaluerecord *vretur
 	if (!getstringvalue (hparam1, 2, bsdst))
 		return (false);
 
-	/* Convert dst path to C string for fopen / db_format_compact_to_path */
+	/* Length check: bigstring is 255 chars max but the verb's user-facing
+	 * contract limits dstPath to that even if bigstring grew.  Detect the
+	 * "passed a too-long literal" case explicitly (P2-12 — earlier the
+	 * >=1024 check below was dead code because bigstring already truncated
+	 * to 255). */
+	if (stringlength (bsdst) > 255) {
+		langerrormessage (PSTRING ("\x39",
+			"db.compactDatabase: dstPath length exceeds 255 characters"));
+		return (false);
+	}
+
+	/* Convert bigstring path to filespec, auto-coerce to .root extension
+	 * (matches db.new / db.open semantics — P2-14).  We modify the local
+	 * filespec only; the caller's bsdst is unchanged. */
+	if (!pathtofilespec (bsdst, &dstfs)) {
+		langerrormessage (PSTRING ("\x3c",
+			"db.compactDatabase: destination path is not a valid filespec"));
+		return (false);
+	}
+	odb_ensure_root_extension (&dstfs);
+
+	/* Convert dst filespec back to a C string for db_format_compact_to_path */
 	{
-		long ctbytes = stringlength (bsdst);
+		bigstring bsdst_coerced;
+		long ctbytes;
+		filespectopath (&dstfs, bsdst_coerced);
+		ctbytes = stringlength (bsdst_coerced);
 		if (ctbytes >= (long) sizeof dstpath_c) {
 			langerrormessage (PSTRING ("\x2d", "db.compactDatabase: destination path too long"));
 			return (false);
 		}
-		copyptocstring (bsdst, dstpath_c);
+		copyptocstring (bsdst_coerced, dstpath_c);
 	}
 
 	/* Find the source database in hodblist (must be open as guest) */
@@ -1220,16 +1256,34 @@ static boolean dbcompactdatabaseverb (hdltreenode hparam1, tyvaluerecord *vretur
 		}
 	}
 
-	/* Refuse to overwrite an existing destination file. We use fopen("rb")
-	 * rather than file.exists since this is a kernel-level check and we want
-	 * to be deterministic. */
-	fp_check = fopen (dstpath_c, "rb");
-	if (fp_check != NULL) {
-		fclose (fp_check);
-		langerrormessage (PSTRING ("\x33",
-			"db.compactDatabase: destination file already exists"));
-		return (false);
+	/* Reject the system root (P1-3).  The system root's databasedata is
+	 * the global currently in effect — cli main.c sets it at boot and
+	 * leaves it there for the lifetime of the process.  Each guest db
+	 * opened via db.open creates its OWN cancoon record and database
+	 * handle, distinct from the system root's.  So if (**hodb_source).odb
+	 * (which points at a cancoon record) has hdatabase == databasedata
+	 * (the running system root's database), we are about to compact the
+	 * system root itself — refuse.
+	 *
+	 * Note: this check must come AFTER we've verified hodb_source is in
+	 * hodblist.  Calling db.compactDatabase BEFORE db.open on the system
+	 * root path returns the "not open" error from the loop above; only
+	 * if a path gets registered as both system root and guest can this
+	 * fire.  Currently the call chain (db.open creates a new cancoon)
+	 * makes that impossible from UserTalk — this is defense-in-depth
+	 * against a future change that exposes the system cancoon as a
+	 * guest. */
+	{
+		hdldatabaserecord src_db = odb_get_database ((**hodb_source).odb);
+		if (src_db != nil && src_db == databasedata) {
+			langerrormessage (PSTRING ("\x3a",
+				"db.compactDatabase: cannot compact the running system root"));
+			return (false);
+		}
 	}
+
+	/* Atomic O_EXCL+O_NOFOLLOW create happens inside db_format_compact_to_path
+	 * via opennewfile_exclusive (P1-1) — no separate fopen("rb") pre-check. */
 
 	/* First, ensure the source is fully saved to disk. compaction reads from
 	 * the in-memory tree, so the on-disk state must be flushed for any
@@ -1240,17 +1294,35 @@ static boolean dbcompactdatabaseverb (hdltreenode hparam1, tyvaluerecord *vretur
 		return (false);
 	}
 
-	/* Run the compaction. The wrapper saves/restores the caller's globals via
-	 * odb_context_guard so the system root context is unaffected. After this
-	 * returns, the source database's IN-MEMORY root is gone — caller MUST
-	 * db.close + db.open the source to keep using it. */
+	/* Run the compaction. */
 	ok = odbcompactdatabase_local ((**hodb_source).odb, dstpath_c);
+
+	/* Auto-close the source on BOTH success and failure (P1-2 + P0-3).
+	 * - Success: source's in-memory tree has dst-space oldaddress fields
+	 *   and is unsafe to reuse — close before any subsequent verb can
+	 *   touch it.
+	 * - Failure: source's in-memory tree may be partially-mutated and
+	 *   is unsafe to reuse — force-close to put the state in a known
+	 *   place.  The on-disk source is unchanged, so re-opening from
+	 *   disk gives a clean state.
+	 * dbclosefile() unlinks from hodblist, calls odbCloseFile (which
+	 * disposes the cancoon record + in-memory tree), and frees the
+	 * hodbrecord handle. */
+	if (!dbclosefile (hodb_source)) {
+		/* Disposal failed — log but don't propagate (the compact result
+		 * is what callers care about; the source is in an unknown state
+		 * either way). */
+		log_warn (LOG_COMP_DB, "db.compactDatabase: dbclosefile of source failed (continuing)");
+	} else {
+		source_closed = true;
+	}
 
 	if (!ok) {
 		langerrormessage (PSTRING ("\x2f", "db.compactDatabase: compaction operation failed"));
 		return (false);
 	}
 
+	(void) source_closed;
 	return (setbooleanvalue (true, vreturned));
 	} /*dbcompactdatabaseverb*/
 

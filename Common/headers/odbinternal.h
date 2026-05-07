@@ -28,6 +28,11 @@
 
 typedef struct odb_ * odbref;
 
+/* Forward decl: full definition in db.h.  Used by odb_get_database (below)
+ * to expose the underlying database handle without forcing odbinternal.h
+ * consumers to include db.h. */
+typedef struct tydatabaserecord **hdldatabaserecord;
+
 /* ODB list record — tracks open guest databases (in-memory only, not a disk format).
  * MUST use pack(2) to match legacy Frontier struct layout. Without pack(2), natural
  * alignment shifts the odb field by 6 bytes, causing corrupted handle dereferences
@@ -198,8 +203,15 @@ extern pascal boolean odbCloseFile (odbref odb);
 
 /* db.compactDatabase: write a v7→v7 compacted copy. See odbengine.c for full
  * semantics. After this returns the source's in-memory state is indeterminate;
- * caller must close + reopen the source to keep using it. */
+ * the wrapping verb (dbcompactdatabaseverb) auto-closes the source on both
+ * success and failure paths. */
 extern pascal boolean odbCompactDatabase (odbref odb, const char *dst_path);
+
+/* Return the database handle backing this odb (its in-memory file record).
+ * Used by dbcompactdatabaseverb to detect "is this odb the running system
+ * root?" by comparing against the global databasedata.  Returns nil if
+ * odb is nil. */
+extern hdldatabaserecord odb_get_database (odbref odb);
 
 extern pascal boolean odbDefined (odbref odb, bigstring bspath);
 

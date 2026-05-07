@@ -445,20 +445,37 @@ boolean opennewfile ( ptrfilespec fs, OSType creator, OSType filetype, hdlfilenu
 	//
 	// 2006-09-13 creedon: for Mac, FSRef-ized
 	//
-	
+
 	boolean flfolder;
-	
+
 	if ( fileexists ( fs, &flfolder ) ) { // file exists, delete it
-	
+
 		//WriteToConsole("We're deleting a file that already exists. No idea why.");
-		
+
 		if ( ! deletefile ( fs ) )
 			return ( false );
 		}
-	
+
 	return ( filecreateandopen ( fs, creator, filetype, fnum ) );
-	
+
 	} // opennewfile
+
+
+boolean opennewfile_exclusive ( ptrfilespec fs, OSType creator, OSType filetype, hdlfilenum *fnum ) {
+
+	//
+	// 2026-05-06 JES: atomic exclusive create (P1-1).  Refuses to overwrite
+	// an existing file or follow a symlink.  On Mac, FSCreateFileUnicode
+	// (via filecreateandopen) returns errFSObjectExists when the target
+	// exists, so we don't need a pre-check + delete.  We do NOT pass
+	// through to opennewfile because that path explicitly deletes any
+	// pre-existing file, defeating the exclusivity guarantee.
+	//
+	#pragma unused (creator, filetype)
+
+	return ( filecreateandopen ( fs, creator, filetype, fnum ) );
+
+	} // opennewfile_exclusive
 
 
 boolean openfile ( const ptrfilespec fs, hdlfilenum *fnum, boolean flreadonly ) {

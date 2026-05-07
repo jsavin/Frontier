@@ -296,6 +296,12 @@ extern void fileshutdown (void);
 
 extern boolean opennewfile ( ptrfilespec , OSType, OSType, hdlfilenum *);
 
+/* Exclusive create (O_EXCL on POSIX, FSCreateFileUnicode rejects existing on
+ * Mac).  Fails if the destination exists or is a symlink (POSIX uses
+ * O_NOFOLLOW).  Used by db.compactDatabase to avoid TOCTOU races and
+ * symlink-follow attacks when creating a new database file. */
+extern boolean opennewfile_exclusive ( ptrfilespec , OSType, OSType, hdlfilenum *);
+
 extern boolean openfile ( const ptrfilespec , hdlfilenum *, boolean );
 
 extern boolean closefile (hdlfilenum);
@@ -564,6 +570,7 @@ extern boolean pathtofilespec (bigstring, ptrfilespec);
 extern boolean filespectopath (const ptrfilespec, bigstring);
 extern boolean openfile (const ptrfilespec, hdlfilenum *, boolean);
 extern boolean opennewfile (ptrfilespec, OSType, OSType, hdlfilenum *);
+extern boolean opennewfile_exclusive (ptrfilespec, OSType, OSType, hdlfilenum *);
 extern boolean closefile (hdlfilenum);
 extern boolean filesetposition (hdlfilenum, long);
 extern boolean filegetposition (hdlfilenum, long *);

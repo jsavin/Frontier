@@ -193,20 +193,28 @@ boolean ensure_database_v7(const char *db_path, boolean *migrated, char *output_
  *   - The in-memory root variable for source_db has been loaded
  *     (typically via db.open which loads the root on-demand or by prior
  *     access via db.setvalue / db.getvalue)
- *   - dst_path is writable and does not currently exist (caller must
- *     verify; the function does not check)
+ *   - dst_path is writable and does not currently exist (the function
+ *     uses opennewfile_exclusive — atomic O_EXCL+O_NOFOLLOW create —
+ *     which fails if the path exists or is a symlink)
  *
- * Side effects:
- *   - Mutates the in-memory tree's oldaddress fields to point at the
- *     destination's address space. After this call returns, the source's
- *     in-memory state is INDETERMINATE — the caller must close and reopen
- *     the source if it intends to keep using it. The source's ON-DISK
- *     bytes are not modified.
- *   - Caller must save/restore globals (databasedata, rootvariable, mode
- *     stack) around this call. This function manipulates them internally
- *     and does NOT restore.
+ * Side effects on the source:
+ *   - The walk mutates the tree's `oldaddress` fields so they point at
+ *     the destination's address space.  Other tree state (values, types,
+ *     subtable structure) is unchanged in memory.  The caller MUST close
+ *     the source after this returns — db.compactDatabase auto-closes via
+ *     dbclosefile() on both success and failure paths to ensure callers
+ *     never observe the dirty `oldaddress` fields.  The source's ON-DISK
+ *     bytes are not modified, so re-opening from disk yields the
+ *     pre-compact state.
  *
- * Returns: true on success, false on failure (with a logged fail step).
+ * Side effects on globals:
+ *   - The function snapshots and restores: db_format_mode stack,
+ *     fldatabasesaveas, databasedestination, dbsaveas_source, and
+ *     databasedata.  Callers see the same global state on return as on
+ *     entry, regardless of success or failure (P1-4).
+ *
+ * Returns: true on success, false on failure (with a logged fail step
+ * and the destination file removed).
  */
 boolean db_format_compact_to_path(hdldatabaserecord source_db, Handle source_root, Handle source_script, const char *dst_path);
 

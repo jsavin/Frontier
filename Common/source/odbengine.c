@@ -884,10 +884,12 @@ pascal boolean odbCompactDatabase (odbref odb, const char *dst_path) {
 	 * Side effects:
 	 *   - Mutates the in-memory tree's oldaddress fields to point at dst's
 	 *     address space. After this returns, the source's IN-MEMORY state is
-	 *     indeterminate — caller must close + reopen the source to keep using
-	 *     it. The source's ON-DISK bytes are not modified.
-	 *   - Sets cancoonglobals to nil on exit (caller will restore via guard
-	 *     in dbverbs.c::odbcompactdatabase).
+	 *     indeterminate — the WRAPPING VERB (db.compactDatabase) will
+	 *     auto-close the source via dbclosefile on success and force-close
+	 *     on failure to ensure the corrupted in-memory state is never
+	 *     exposed to subsequent verbs.  See dbcompactdatabaseverb.
+	 *   - The source's ON-DISK bytes are not modified.
+	 *   - Sets cancoonglobals to nil on exit.
 	 *
 	 * Returns true on success.
 	 */
@@ -921,15 +923,18 @@ pascal boolean odbCompactDatabase (odbref odb, const char *dst_path) {
 		return (false);
 	}
 
-	/* Run the compaction. The helper writes to dst_path, mutates the in-memory
-	 * tree's oldaddress fields, and disposes the destination's database handle.
-	 * It also disposes the source's in-memory root variable handle. */
+	/* Run the compaction. The helper writes to dst_path and mutates the
+	 * in-memory tree's oldaddress fields. It does NOT dispose the source
+	 * root (fldispose_source=false internally) — disposal happens in the
+	 * subsequent dbclosefile() call from the verb (P0-2 strategy b). */
 	ok = db_format_compact_to_path ((**hc).hdatabase, source_root, source_script, dst_path);
 
-	/* The compaction disposed the source's in-memory root. Clear the cancoon
-	 * record's stale references so anyone holding hc doesn't follow them. */
-	(**hc).hrootvariable = nil;
-	(**hc).hroottable = nil;
+	/* DO NOT nil (**hc).hrootvariable / hroottable here.  The wrapping
+	 * verb (dbcompactdatabaseverb) will call dbclosefile(hodb_source) on
+	 * both success and failure paths, which calls odbCloseFile →
+	 * disposecancoonrecord → tabledisposetable + disposehandle.  Leaving
+	 * the handles intact lets that disposal path do its normal work
+	 * (avoids the silent-corruption bug from PR #581 review, P0-2). */
 
 	/* Clear our cancoonglobals so callers that didn't use a guard see a clean
 	 * state. Caller in dbverbs.c uses odb_context_guard to restore proper
@@ -938,6 +943,23 @@ pascal boolean odbCompactDatabase (odbref odb, const char *dst_path) {
 
 	return (ok);
 	} /*odbCompactDatabase*/
+
+
+hdldatabaserecord odb_get_database (odbref odb) {
+
+	/* Return the database record handle backing this odb (its in-memory
+	 * file record).  Exposed via odbinternal.h so dbverbs.c can detect
+	 * "is this odb the running system root?" by comparing against the
+	 * global databasedata, without needing the full tycancoonrecord
+	 * struct definition (which is private to odbengine.c). */
+
+	hdlcancoonrecord hc = (hdlcancoonrecord) odb;
+
+	if (hc == nil)
+		return (nil);
+
+	return ((**hc).hdatabase);
+	} /*odb_get_database*/
 
 
 pascal boolean odbCloseFile (odbref odb) {

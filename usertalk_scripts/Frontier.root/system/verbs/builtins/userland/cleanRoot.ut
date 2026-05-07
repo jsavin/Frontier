@@ -57,7 +57,7 @@ bundle { //clean passwords out of user.html.sites table
 bundle { //set up user.html
 	user.html.prefs = userland.htmlprefs; //initialize user.html.prefs table
 	new (outlinetype, @user.html.changedPages);
-	
+
 	new (tableType, @user.html.images)};
 //edit (@frontier.version)
 Frontier.shipdate = clock.now ();
@@ -92,20 +92,20 @@ bundle { //set up webserver, betty, rootUpdates, people, custody, and WebEdit
 	nuke ("batchExporter");
 	nuke ("export");
 	nuke ("xmlStorageSystem");
-	
+
 	try {delete (@user.scheduler.tasks)}; //PBS 07/06/00: let the user.scheduler.tasks table get re-initialized
 	try {delete (@user.scheduler.everyMinute)};
 	try {delete (@user.scheduler.threads)};
 	try {delete (@user.scheduler.hourly)};
 	try {delete (@user.scheduler.overnight)};
-	
+
 	bundle { //user.manila
 		new (tableType, @user.manila);
 		new (tableType, @user.manila.data);
 		new (tableType, @user.manila.data.sites);
 		new (tableType, @user.manila.prefs);
 		user.manila.prefs.lastSiteUrl = "http://"};
-	
+
 	webserver.init ();
 	betty.init ();
 	people.init ();
@@ -113,7 +113,7 @@ bundle { //set up webserver, betty, rootUpdates, people, custody, and WebEdit
 	webEdit.init ();
 	webEditServer.init ();
 	rootUpdates.init ();
-	
+
 	user.inetd.config.http = webserver.data.inetd.config.http;
 	user.inetd.config.http2 = webserver.data.inetd.config.http2; //port 5335 server
 	if system.environment.isCarbon {
@@ -125,7 +125,7 @@ bundle { //set up webserver, betty, rootUpdates, people, custody, and WebEdit
 	user.inetd.config.http2.timeout = 30;
 	user.inetd.config.http2.startup = true;
 	user.inetd.config.http2.count = 30;
-	
+
 	new (tableType, @user.inetd.listens)};
 
 //bundle //initialize responders
@@ -187,14 +187,38 @@ bundle { //save a copy
 		//stripped tables above stay in the file as freed-but-not-truncated
 		//blocks. Order matters: we must compact AFTER saveCopy because the
 		//compaction temp file opens f as a guest db.
+		//
+		//Error handling: on any failure (open, compact, delete, move),
+		//surface a scriptError with the failing step so dist builds fail
+		//loudly instead of silently producing a non-compacted Virgin.root.
+		//db.compactDatabase auto-closes the source on success and
+		//force-closes on failure, so no manual db.close is needed (and
+		//calling db.close after a successful compact would error).
 		local (slimPath = f + ".compact");
 		try {file.delete (slimPath)};
+		local (compactErr = "");
 		try {
 			db.open (f, false);
-			db.compactDatabase (f, slimPath);
-			db.close (f);
-			file.delete (f);
-			file.move (slimPath, f)}};};
+			db.compactDatabase (f, slimPath)} //auto-closes f
+		else {
+			compactErr = "compact failed: " + tryError};
+		if compactErr != "" {
+			//best-effort cleanup of any stranded slimPath
+			try {file.delete (slimPath)};
+			scriptError ("cleanRoot: " + compactErr)};
+		if not file.exists (slimPath) {
+			scriptError ("cleanRoot: compact returned ok but slimPath missing: " + slimPath)};
+		try {file.delete (f)}
+		else {
+			//slimPath has the new content; leave it for manual recovery
+			scriptError ("cleanRoot: failed to delete saveCopy output before move: " + tryError)};
+		if file.exists (f) {
+			scriptError ("cleanRoot: f still exists after delete: " + f)};
+		try {file.move (slimPath, f)}
+		else {
+			scriptError ("cleanRoot: failed to move slimPath to f: " + tryError)};
+		if not file.exists (f) {
+			scriptError ("cleanRoot: move succeeded but final Virgin.root missing: " + f)}}};
 //bundle //PBS 07/05/00: delete unwanted databases
 	//on visitProc (f)
 		//if not (string.lower (f) == string.lower (Frontier.getFilePath ()))
