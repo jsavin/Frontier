@@ -106,11 +106,21 @@ static boolean g_repl_active = false;
  * Exit-requested flag set by the repl.exit() kernel verb (via the host
  * adapter). Both REPL loops (event-loop and blocking) poll this each
  * iteration and break out cleanly. Distinct from g_repl_interrupt_requested,
- * which is set asynchronously by the SIGINT handler. Reset to false on
- * REPL startup so a stale flag from a previous session can't pre-exit a
- * new one.
+ * which is set asynchronously by the SIGINT handler. Reset to 0 on REPL
+ * startup so a stale flag from a previous session can't pre-exit a new one.
+ *
+ * Storage class: volatile sig_atomic_t — same pattern as
+ * g_repl_interrupt_requested below. The flag is written by the verb
+ * dispatcher (which runs on whichever thread holds the GIL: the REPL
+ * main thread under normal use, or any thread.new() child that
+ * acquires the GIL and calls repl.exit()) and read by the main REPL
+ * loop. Even though writes today happen with the GIL held — so the
+ * GIL acquire/release barrier covers visibility — encoding the
+ * invariant in storage rather than in a comment defends against
+ * future refactors that might relocate the writer off the GIL, and
+ * costs nothing on the read side.
  */
-static boolean g_repl_exit_requested = false;
+static volatile sig_atomic_t g_repl_exit_requested = 0;
 
 // Session command tracking for merge-before-save
 static char *session_commands[MAX_SESSION_COMMANDS];
@@ -2145,15 +2155,20 @@ static boolean process_line(const char *line, boolean *running) {
  *   8. terminal_disable_mouse + terminal_disable_raw_mode +
  *      terminal_cleanup, then linenoiseEditStart to resume editing.
  *
- * Async output during palette mode (PR-future): if a TCP callback
- * thread writes to stdout while the palette is open, the cells will
- * scroll under the palette and corrupt its render. The current
- * compromise is to NOT process TCP callbacks or background tasks
- * inside the palette byte loop — they resume on close. This is the
- * trade-off documented in the PR-6 design (compositor scrollback wiring
- * is a follow-up). This means a script firing a long-running TCP
- * request and then opening the palette will see the request stalled
- * until the palette closes; acceptable for the MVP.
+ * Async output during palette mode: the modal's idle branch yields the
+ * GIL via headless_backgroundtask(true) so that thread.new() children,
+ * agent ticks, and TCP callback threads can run while the user is
+ * mid-keystroke. Without the yield those threads block for the entire
+ * lifetime of the open palette — unacceptable for any non-trivial
+ * background workload.
+ *
+ * Tradeoff: TCP callback threads writing to stdout during the modal
+ * can scroll cells out from under the palette and corrupt the render
+ * for a frame. The compositor's diff-render on the NEXT keystroke
+ * repaints over the corrupted area, so the visual artifact is
+ * transient. Compositor-aware async output (a scrollback pane) is a
+ * follow-up; the GIL-yield correctness fix is in place now to stop
+ * the worse problem of a fully deadlocked process.
  *
  * GIL: the palette source vtable callbacks (count_menus, item_describe)
  * touch the ODB, so the GIL must be held across palette_open and every
@@ -2330,7 +2345,15 @@ static Handle run_palette_modal(struct linenoiseState *ls,
 			 * already in mid-sequence OR the byte is ESC at idle and
 			 * the next two bytes complete '[<'. The mouse parser is
 			 * conservative — it returns -1 (not consumed) on the very
-			 * first non-mouse byte so we can fall through to palette. */
+			 * first non-mouse byte so we can fall through to palette.
+			 *
+			 * Snapshot the parser state BEFORE the feed so that on a
+			 * non-mouse abort (mouse_rc < 0) we can correctly replay
+			 * the bytes the parser had buffered. mouse_sgr_feed
+			 * resets state before returning -1, so a post-call read
+			 * of mouse.state is always MOUSE_SGR_IDLE — useless for
+			 * deciding what to replay. */
+			mouse_sgr_state_t prev_state = mouse.state;
 			mouse_event_t ev;
 			int mouse_rc = mouse_sgr_feed(&mouse, b, &ev);
 			if (mouse_rc > 0) {
@@ -2341,43 +2364,63 @@ static Handle run_palette_modal(struct linenoiseState *ls,
 				done = PALETTE_DONE_NONE;
 			} else {
 				/* mouse_rc < 0: byte not part of a mouse sequence.
-				 * If the parser had buffered any bytes (ESC, ESC '['),
-				 * mouse_sgr_reset already cleared them — but those
-				 * preceding bytes also didn't reach palette. The only
-				 * non-mouse path through GOT_ESC and GOT_BRACKET is:
-				 *   - ESC + non-'[' (bare ESC): we lost ESC from the
-				 *     palette's view, so re-feed ESC explicitly.
-				 *   - ESC '[' + non-'<' (CSI not mouse): we lost
-				 *     ESC '['; re-feed both. */
-				if (mouse.state == MOUSE_SGR_IDLE && b == 0x1b) {
-					/* Already covered: this byte starts mouse parse;
-					 * mouse_rc would be 0 above, not -1. Defensive. */
+				 * The parser had buffered some prefix the palette
+				 * never saw; we replay it here, then feed the
+				 * current byte. Two miss-cases:
+				 *   prev_state == GOT_ESC: parser ate ESC, then
+				 *     `b` was not '['. We feed ESC, then `b` (b is
+				 *     the bare-ESC's follow byte — palette gets a
+				 *     full ESC + b sequence, exactly as typed).
+				 *   prev_state == GOT_BRACKET: parser ate ESC and
+				 *     '[', then `b` was not '<'. Palette gets ESC
+				 *     '[' + b.
+				 *   prev_state == IDLE: parser didn't buffer
+				 *     anything (b is the first byte and not ESC,
+				 *     so mouse_sgr_feed returned -1 directly).
+				 *     Feed b alone.
+				 *   prev_state == BUFFERING: parser's mid-sequence
+				 *     bail (e.g. SGR sequence got corrupted). The
+				 *     buffered bytes are lost; feed b as best-
+				 *     effort recovery. This is only reachable on
+				 *     malformed input — expected to be rare.
+				 */
+				if (prev_state == MOUSE_SGR_GOT_ESC) {
+					(void)palette_feed_byte(&st, 0x1b);
+					done = palette_feed_byte(&st, b);
+				} else if (prev_state == MOUSE_SGR_GOT_BRACKET) {
+					(void)palette_feed_byte(&st, 0x1b);
+					(void)palette_feed_byte(&st, '[');
 					done = palette_feed_byte(&st, b);
 				} else {
-					/* Generic re-feed path. The mouse parser was reset
-					 * on the call that returned -1, but we need to
-					 * reconstruct what the palette missed. The two
-					 * miss-cases are detected by inspecting which
-					 * state the parser was in when -1 was returned —
-					 * but mouse_sgr_feed has already reset state.
-					 * Simplification: feed the current byte only. The
-					 * worst-case loss is a stray ESC or ESC '[', which
-					 * is exactly equivalent to the user typing those
-					 * bytes by hand — palette will start a fresh ESC
-					 * disambiguation cycle on the next ESC and ignore
-					 * the stray '['. Acceptable for keystroke input
-					 * where bare ESC '[' is never typed. */
 					done = palette_feed_byte(&st, b);
 				}
 			}
 		} else if (ready == 0) {
 			/* Timeout — fire ESC disambiguation if pending. */
 			done = palette_feed_esc_timeout(&st);
+			/* GIL yield: while the palette is open the main thread
+			 * holds the GIL exclusively. Without a yield in the idle
+			 * branch, every thread.new() child / TCP callback
+			 * thread / agent tick blocks for the entire duration of
+			 * a user mid-keystroke session. Calling
+			 * headless_backgroundtask() at the poll-timeout point
+			 * mirrors the pattern in the main REPL event loop and
+			 * the blocking REPL loop — one yield per idle tick. */
+			headless_backgroundtask(true);
 		} else if (ready < 0) {
 			if (errno == EINTR) {
 				/* SIGWINCH or SIGINT during poll. SIGINT is fatal for
-				 * the palette session — close and propagate. */
+				 * the palette session — close and propagate.
+				 *
+				 * Consume-on-handle: the palette uses the SIGINT to
+				 * exit the modal. The main loop polls the same flag
+				 * and would otherwise call handle_interrupt(), which
+				 * prints "^C\n" — producing a double echo (one from
+				 * the palette teardown, one from the main loop) for
+				 * the same Ctrl-C. Clear the flag here so only the
+				 * palette gets the consumed signal. */
 				if (g_repl_interrupt_requested) {
+					g_repl_interrupt_requested = 0;
 					done = PALETTE_DONE_CANCEL;
 					palette_running = false;
 					break;
@@ -2438,13 +2481,26 @@ cleanup_terminal:
 	terminal_disable_raw_mode(&ts);
 	terminal_cleanup(&ts);
 
-	/* 7. Restart linenoise so the prompt comes back cleanly. */
+	/* 7. Restart linenoise so the prompt comes back cleanly.
+	 *
+	 * Failure mode: linenoiseEditStart can fail for OOM, ENOTTY (terminal
+	 * went away), or write() failing on a closed fd. After a failure ls
+	 * is in a partially-initialised state — *struct fields may be set
+	 * but raw mode may not be entered, and a subsequent linenoiseEditFeed
+	 * dereferences pointers that haven't been written yet (UAF risk).
+	 *
+	 * Defense: signal the REPL main loop to terminate via the same
+	 * volatile sig_atomic_t exit flag that repl.exit() uses. The caller
+	 * checks it on every loop iteration and breaks cleanly. We
+	 * deliberately do NOT touch ls beyond returning script_to_run —
+	 * the caller's main loop is responsible for skipping the invalid
+	 * Feed call by virtue of the exit flag taking effect first. */
 	if (linenoiseEditStart(ls, STDIN_FILENO, STDOUT_FILENO,
 	                       line_buf, line_buflen, g_repl_prompt) == -1) {
 		log_error(LOG_COMP_GENERAL,
-		          "palette: failed to restart linenoise after modal");
-		/* Caller's main loop will see ls in invalid state on next
-		 * Feed and terminate. */
+		          "palette: failed to restart linenoise after modal — "
+		          "REPL will terminate to avoid UAF on invalid ls");
+		g_repl_exit_requested = 1;
 	}
 
 	return script_to_run;
@@ -2462,13 +2518,19 @@ cleanup_terminal:
  * UserTalk script calling repl.exit() ends up in exactly the same
  * place as a user typing "/exit" at the prompt.
  *
- * GIL: every callback here runs on the main thread under the
- * verb dispatcher, which is invoked from langruncode while the GIL
- * is held. No additional locking is needed.
+ * GIL: every callback here runs under the verb dispatcher, which is
+ * invoked from langruncode while the GIL is held. The REPL main
+ * thread is the typical caller, but UserTalk thread.new() children
+ * can also call into these adapters once they have acquired the GIL
+ * — so writes to module state are NOT necessarily on the main
+ * thread. We rely on (a) the GIL acquire/release barrier for
+ * visibility and (b) volatile sig_atomic_t storage for the exit
+ * flag (see g_repl_exit_requested above) so the read in the main
+ * loop is well-defined even if the GIL story changes.
  */
 
 static void replverbhost_exit(void) {
-	g_repl_exit_requested = true;
+	g_repl_exit_requested = 1;
 }
 
 static void replverbhost_clear_variables(void) {
@@ -2478,14 +2540,40 @@ static void replverbhost_clear_variables(void) {
 	repl_jump_path("");
 }
 
+/*
+ * NOTE (security): repl_jump_path() interprets `path` as a UserTalk
+ * script expression if it contains '(', ')', or '+'
+ * (path_is_script_expression at the top of this file → repl_jump_script
+ * → langrun). This is fine for interactive REPL use but unsafe for any
+ * caller forwarding untrusted strings. Document at the verb header
+ * (repl_verbs.h::jump_path) so script authors know.
+ */
 static boolean replverbhost_jump_path(const char *path) {
 	if (path == NULL)
 		return repl_jump_path("");
 	return repl_jump_path(path);
 }
 
-static void replverbhost_print_key_codes(void) {
+/*
+ * linenoisePrintKeyCodes() takes exclusive control of stdin in raw mode
+ * and only returns once the user types ESC three times. While it runs,
+ * the calling thread holds the GIL and cannot release it — so a
+ * misplaced repl.printKeyCodes() call from a non-interactive context
+ * (e.g. -e mode, webserver verb, agent script) would freeze every
+ * GIL-dependent thread until something poked stdin three times.
+ *
+ * Defense: refuse the call when the REPL is not active OR stdin is not
+ * a TTY. The verb will return false at the script level and the caller
+ * gets a clean recoverable error rather than a hung process. See
+ * repl_verbs.h::print_key_codes for the contract.
+ */
+static boolean replverbhost_print_key_codes(void) {
+	if (!g_repl_active)
+		return false;
+	if (!isatty(STDIN_FILENO))
+		return false;
 	linenoisePrintKeyCodes();
+	return true;
 }
 
 static void replverbhost_list(const char *path) {
@@ -2710,7 +2798,7 @@ int repl_main(cli_options_t *options, ws_server_t *ws_server) {
 	// 3.1 Install host adapter for repl.* kernel verbs (repl.exit etc.).
 	//     Reset exit-requested flag so a stale value from a prior session
 	//     can't pre-exit this one. Uninstalled on the cleanup paths below.
-	g_repl_exit_requested = false;
+	g_repl_exit_requested = 0;
 	install_repl_verbs_host();
 
 	// 3.2 Boot the REPL menubar via UserTalk. Idempotent — the install
@@ -2747,6 +2835,15 @@ int repl_main(cli_options_t *options, ws_server_t *ws_server) {
 	if (linenoiseEditStart(&ls, STDIN_FILENO, STDOUT_FILENO,
 						   line_buf, sizeof(line_buf), g_repl_prompt) == -1) {
 		log_error(LOG_COMP_GENERAL, "Failed to start linenoise editing");
+		/* Symmetry with the non-TTY return path above (and with the
+		 * normal-exit cleanup at the bottom of this function): a host
+		 * adapter that survives this exit-1 path would leave verbs
+		 * resolving against stale function pointers if the next
+		 * caller doesn't re-install. Tear it down here too. */
+		g_repl_active = false;
+		flreplmode = false;
+		uninstall_repl_verbs_host();
+		repl_variables_cleanup();
 		cleanup_linenoise();
 		return 1;
 	}
@@ -2813,7 +2910,15 @@ int repl_main(cli_options_t *options, ws_server_t *ws_server) {
 					}
 					/* run_palette_modal already restarted linenoise
 					 * with an empty buffer, so the prompt is fresh.
-					 * Continue the event loop. */
+					 * Continue the event loop — UNLESS the modal's
+					 * linenoiseEditStart restart failed, in which case
+					 * it set g_repl_exit_requested and we break out
+					 * here BEFORE the next linenoiseEditFeed has a
+					 * chance to dereference an invalid ls. */
+					if (g_repl_exit_requested) {
+						running = false;
+						break;
+					}
 				}
 			} else if (result != NULL) {
 				// User pressed Enter - stop line editing first (prints newline)
@@ -2872,9 +2977,9 @@ int repl_main(cli_options_t *options, ws_server_t *ws_server) {
 		}
 
 		// 6.6 Honor exit requested by repl.exit() via the kernel-verb host
-		//     adapter. The flag is set on the same thread (verb dispatcher
-		//     runs under the GIL on the main thread), so a plain read is
-		//     safe — no atomic / volatile needed.
+		//     adapter. The flag is volatile sig_atomic_t (see declaration),
+		//     so the read is well-defined even if a non-main thread (a
+		//     thread.new() child holding the GIL) called repl.exit().
 		if (g_repl_exit_requested) {
 			running = false;
 		}

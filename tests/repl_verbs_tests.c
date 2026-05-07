@@ -109,8 +109,12 @@ static boolean host_jump(const char *path) {
 	return g_host.jump_should_succeed;
 }
 
-static void host_keycodes(void) {
+static boolean host_keycodes(void) {
 	g_host.keycodes_calls++;
+	/* In tests we always claim success — the unit test asserts the host
+	 * was called, not the interactive-context guard (that's a host-side
+	 * concern in repl.c). */
+	return true;
 }
 
 static void host_list(const char *path) {

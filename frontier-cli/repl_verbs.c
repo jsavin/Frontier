@@ -165,26 +165,32 @@ static boolean repl_valueproc(short token, hdltreenode hparam1,
 		return setbooleanvalue(ok, vreturned);
 	}
 
-	case rplv_printkeycodes:
+	case rplv_printkeycodes: {
+		boolean fl;
 		(void) hparam1;
 		if (!g_host_installed || g_host.print_key_codes == NULL)
 			return setbooleanvalue(false, vreturned);
-		g_host.print_key_codes();
-		return setbooleanvalue(true, vreturned);
+		fl = g_host.print_key_codes();
+		return setbooleanvalue(fl, vreturned);
+	}
 
 	case rplv_list: {
 		short ctconsumed = 0, ctpositional = 0;
 		tyvaluerecord val;
 		bigstring bspath;
 		char cpath[1024];
-		boolean has_path;
+		boolean param_ok;
 
 		initvalue(&val, stringvaluetype);
 		flnextparamislast = true;
 
-		has_path = getoptionalparamvalue(hparam1, &ctconsumed, &ctpositional,
+		/* getoptionalparamvalue returns false on parse error (NOT on
+		 * "param absent") — a missing optional param leaves val at
+		 * the initvalue default and still returns true. So this flag
+		 * tracks param parsing success, not presence. */
+		param_ok = getoptionalparamvalue(hparam1, &ctconsumed, &ctpositional,
 		                                 BIGSTRING("\x04" "path"), &val);
-		if (!has_path)
+		if (!param_ok)
 			return false;
 
 		if (!g_host_installed || g_host.list == NULL) {

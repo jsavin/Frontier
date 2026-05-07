@@ -74,9 +74,38 @@ typedef struct ty_repl_verbs_host {
 	 * jump_path: the host SHOULD return true on a successful navigation,
 	 * false if the path is invalid or unreachable. The verb passes this
 	 * boolean back as the script-level return value.
+	 *
+	 * SECURITY (input contract): the path string is forwarded to the
+	 * host's repl_jump_path() implementation. If `path` contains any
+	 * of the characters '(', ')', or '+', the host MAY interpret it
+	 * as a UserTalk SCRIPT EXPRESSION (path_is_script_expression in
+	 * repl.c) and evaluate it via langrun() to obtain the destination
+	 * table. This is convenient for interactive use ("repl.jumpPath
+	 * (\"foo() + bar\")") but means the verb is NOT safe to feed
+	 * untrusted strings: an adversary controlling `path` can execute
+	 * arbitrary UserTalk by including a '(' character. Callers
+	 * forwarding user-supplied strings MUST validate or sanitize
+	 * before passing.
 	 */
 	boolean (*jump_path)(const char *path);
-	void (*print_key_codes)(void);
+	/*
+	 * print_key_codes: dump pressed keys for diagnostic purposes.
+	 *
+	 * GIL/blocking note: linenoisePrintKeyCodes() takes exclusive control
+	 * of stdin in raw mode and reads bytes in a tight loop. While it is
+	 * running, the calling thread cannot release the GIL — every other
+	 * GIL-dependent thread blocks until the user presses ESC+ESC+ESC. The
+	 * host MUST therefore refuse the call when there is no interactive
+	 * REPL session attached (non-TTY stdin, or REPL not active) — otherwise
+	 * a script run via -e or via a webserver verb dispatch could
+	 * accidentally hang the entire process waiting for keystrokes that
+	 * cannot arrive.
+	 *
+	 * Returns true if the diagnostic actually ran, false if the host
+	 * refused the call (no interactive context). The verb forwards this
+	 * boolean back as the script-level return value.
+	 */
+	boolean (*print_key_codes)(void);
 	/*
 	 * list: NULL path means "current table" (the host decides how to
 	 * resolve that). A non-NULL path is a NUL-terminated UTF-8 C string
