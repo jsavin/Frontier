@@ -170,12 +170,17 @@ static boolean menu_valueproc(short token, hdltreenode hparam1,
              * the projection). Updates the leaf's .script field. Leaf must
              * already exist — set_script returns false otherwise (matching
              * "setScript is for updates, not creation" contract).
+             *
+             * Script body extraction: getexempttextvalue gives us the full
+             * heap-string Handle (any length), not a 255-byte bigstring.
+             * Real menu scripts trivially exceed 255 bytes, so the bigstring
+             * path would silently truncate the source — see PR review of
+             * #580. Caller owns the resulting handle and must dispose it.
              */
             hdlhashtable hparent = nil;
             bigstring bsname;
             bigstring bsbar, bsmenu, bsitem;
             short depth;
-            bigstring bsscript;
             Handle hscript = nil;
             boolean ok;
 
@@ -184,17 +189,16 @@ static boolean menu_valueproc(short token, hdltreenode hparam1,
 
             flnextparamislast = true;
 
-            if (!getstringvalue(hparam1, 2, bsscript))
+            if (!getexempttextvalue(hparam1, 2, &hscript))
                 return false;
 
             depth = menudata_resolve_bar_path(hparent, bsname,
                                               bsbar, bsmenu, bsitem);
 
-            if (depth < 3)
+            if (depth < 3) {
+                disposehandle(hscript);
                 return setbooleanvalue(true, vreturned); /* not a leaf */
-
-            if (!newtexthandle(bsscript, &hscript))
-                return false;
+            }
 
             ok = menudata_set_script(bsbar, bsmenu, bsitem, hscript);
             disposehandle(hscript);
@@ -210,6 +214,10 @@ static boolean menu_valueproc(short token, hdltreenode hparam1,
              * menu.addMenuCommand(@bar, "menuname", "itemname", "scripttext").
              * Lazy-creates @bar.<menuname>.<itemname> with label/script/
              * enabled fields per ADR-016.
+             *
+             * Script body extraction: getexempttextvalue retrieves the full
+             * heap-string Handle for the script param (no 255-byte bigstring
+             * truncation). Caller owns the returned handle.
              */
             hdlhashtable hparent = nil;
             bigstring bsname;
@@ -217,7 +225,6 @@ static boolean menu_valueproc(short token, hdltreenode hparam1,
             short depth;
             bigstring bsmenu;
             bigstring bsitem;
-            bigstring bsscript;
             Handle hscript = nil;
             boolean ok;
 
@@ -231,17 +238,16 @@ static boolean menu_valueproc(short token, hdltreenode hparam1,
 
             flnextparamislast = true;
 
-            if (!getstringvalue(hparam1, 4, bsscript))
+            if (!getexempttextvalue(hparam1, 4, &hscript))
                 return false;
 
             depth = menudata_resolve_bar_path(hparent, bsname,
                                               bsbar, bsmenudummy, bsitemdummy);
 
-            if (depth < 1)
+            if (depth < 1) {
+                disposehandle(hscript);
                 return setbooleanvalue(true, vreturned); /* not in projection */
-
-            if (!newtexthandle(bsscript, &hscript))
-                return false;
+            }
 
             ok = menudata_add_command(bsbar, bsmenu, bsitem, hscript);
             disposehandle(hscript);

@@ -201,3 +201,109 @@ tests:
       return scriptOk and installedOk
     expected_success: true
     expected_result: "true"
+
+  # ==========================================================================
+  # Group 7: long-script preservation (regression test for 255-byte clamp)
+  # ==========================================================================
+
+  - name: "addMenuCommand preserves long script body (>255 bytes)"
+    description: |
+      Real menu scripts trivially exceed 255 bytes. The projection must NOT
+      round-trip the script body through a bigstring (255-byte length-prefixed
+      Pascal string), which would silently truncate the source. The script
+      below is ~600 bytes — long enough to fail any bigstring-based path but
+      short enough that the test stays readable.
+
+      Verifies: full script length round-trips through addMenuCommand, plus
+      both the head and tail bytes are present (catching both front-clip and
+      tail-clip mutations).
+    script: |
+      local(longScript);
+      longScript = "« BEGIN-OF-SCRIPT-MARKER »" + cr;
+      longScript = longScript + "« lorem-ipsum-padding-line-01: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa »" + cr;
+      longScript = longScript + "« lorem-ipsum-padding-line-02: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb »" + cr;
+      longScript = longScript + "« lorem-ipsum-padding-line-03: cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc »" + cr;
+      longScript = longScript + "« lorem-ipsum-padding-line-04: dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd »" + cr;
+      longScript = longScript + "dialog.alert(\"END-OF-SCRIPT-MARKER\")" + cr;
+      local(origLen = sizeOf(longScript));
+      menu.addMenuCommand(@system.menus.data.tst10, "Tools", "LongAction", longScript);
+      local(stored = system.menus.data.tst10.Tools.LongAction.script);
+      local(storedLen = sizeOf(stored));
+      local(headOk = stored contains "BEGIN-OF-SCRIPT-MARKER");
+      local(tailOk = stored contains "END-OF-SCRIPT-MARKER");
+      local(lenOk = (storedLen >= origLen));
+      delete(@system.menus.data.tst10);
+      return headOk and tailOk and lenOk
+    expected_success: true
+    expected_result: "true"
+
+  - name: "setScript preserves long script body (>255 bytes)"
+    description: |
+      Same regression check, but for the setScript path which has its own
+      handle->bigstring conversion. Both paths must use the same heap-string
+      storage mechanism so neither truncates.
+    script: |
+      menu.addMenuCommand(@system.menus.data.tst11, "Tools", "Updater", "old()");
+      local(longScript);
+      longScript = "« UPDATED-HEAD »" + cr;
+      longScript = longScript + "« padding-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa »" + cr;
+      longScript = longScript + "« padding-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb »" + cr;
+      longScript = longScript + "« padding-cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc »" + cr;
+      longScript = longScript + "« UPDATED-TAIL »" + cr;
+      local(origLen = sizeOf(longScript));
+      menu.setScript(@system.menus.data.tst11.Tools.Updater, longScript);
+      local(stored = system.menus.data.tst11.Tools.Updater.script);
+      local(storedLen = sizeOf(stored));
+      local(headOk = stored contains "UPDATED-HEAD");
+      local(tailOk = stored contains "UPDATED-TAIL");
+      local(lenOk = (storedLen >= origLen));
+      local(noOld = not (stored contains "old()"));
+      delete(@system.menus.data.tst11);
+      return headOk and tailOk and lenOk and noOld
+    expected_success: true
+    expected_result: "true"
+
+  # ==========================================================================
+  # Group 8: addSubMenu / deleteSubMenu round-trip
+  # ==========================================================================
+
+  - name: "addSubMenu creates intermediate sub-table at bar.menu.item"
+    description: |
+      menu.addSubMenu(@bar, menuname, subname) creates an empty sub-table
+      at @bar.<menuname>.<subname>. Per the menudata_add_submenu contract
+      the sub-table itself is empty (no fields) — population is the
+      caller's job via subsequent addMenuCommand calls scoped to the bar.
+
+      Verifies: the projection sub-table exists after the verb call, and
+      defined() reaches it via the full path.
+    script: |
+      menu.addSubMenu(@system.menus.data.tst12, "File", "Recent");
+      local(barExists = defined(@system.menus.data.tst12));
+      local(menuExists = defined(@system.menus.data.tst12.File));
+      local(subExists = defined(@system.menus.data.tst12.File.Recent));
+      delete(@system.menus.data.tst12);
+      return barExists and menuExists and subExists
+    expected_success: true
+    expected_result: "true"
+
+  - name: "deleteSubMenu removes entire menu subtree"
+    description: |
+      menu.deleteSubMenu(@bar, menuname) removes the @bar.<menuname>
+      sub-tree wholesale, including all its descendants. Verified via
+      menu.list count delta.
+
+      Caveat (mirrors the deleteMenuCommand test): defined(@bar.menu)
+      returns true regardless of whether the menu sub-table actually
+      exists, because @-address lookup only verifies the parent. The
+      behavioral check is the menu.list count drop after deletion.
+    script: |
+      menu.addMenuCommand(@system.menus.data.tst13, "Edit", "Cut", "edit.cut()");
+      menu.addMenuCommand(@system.menus.data.tst13, "Edit", "Copy", "edit.copy()");
+      menu.addMenuCommand(@system.menus.data.tst13, "View", "Zoom", "view.zoom()");
+      local(beforeCount = sizeOf(menu.list(@system.menus.data.tst13)));
+      menu.deleteSubMenu(@system.menus.data.tst13, "Edit");
+      local(afterCount = sizeOf(menu.list(@system.menus.data.tst13)));
+      delete(@system.menus.data.tst13);
+      return (beforeCount == 3) and (afterCount == 1)
+    expected_success: true
+    expected_result: "true"

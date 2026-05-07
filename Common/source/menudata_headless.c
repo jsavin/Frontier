@@ -586,6 +586,15 @@ static boolean walk_up_to(hdlhashtable htable, hdlhashtable stop_at,
 		if (parent == nil)
 			return false;
 
+		/*
+		 * scratch is hashinversesearch's "last visited name" out-param;
+		 * the callee writes before any caller-side read on every visited
+		 * entry, so the value here is conceptually irrelevant. We
+		 * explicitly empty it so static analysers (and future readers)
+		 * don't have to reason about uninitialized-stack lifetimes.
+		 */
+		setemptystring(scratch);
+
 		ctx.target = cursor;
 		setemptystring(ctx.matched_name);
 		ctx.found = false;
@@ -654,11 +663,13 @@ short menudata_resolve_bar_path(hdlhashtable hparent, bigstring bsname,
 	     stackdepth=3+        -> deeper (sub-menus); compress to depth 3 */
 	total = stackdepth + 1;
 
+	/*
+	 * Invariant: walk_up_to returned true above, so stackdepth >= 1
+	 * (the depth==1 / hparent==hdata case is handled by the early return
+	 * above). That makes total >= 2, so case 1 is unreachable here and
+	 * deliberately omitted from the switch.
+	 */
 	switch (total) {
-		case 1:
-			copystring(bsname, bsbarname);
-			return 1;
-
 		case 2:
 			copystring(stack[0], bsbarname);
 			copystring(bsname, bsmenuname);
@@ -754,37 +765,52 @@ static boolean write_string_field(hdlhashtable hleaf, bigstring bskey,
 
 
 /*
- * Convert a Handle of script text into a bigstring (truncating if needed)
- * and write it to hleaf.script. Handle-based path is what the legacy
- * addmenucommandverb produces (newtexthandle of bsscript). For projection
- * use we round-trip back to a bigstring because tyvaluerecord stringvaluetype
- * stores the entire string in the heap as one chunk and bigstrings are the
- * common currency of the lang layer.
+ * Write a Handle of script text into hleaf.script as a heap stringvalue.
+ *
+ * The previous implementation round-tripped the script through a bigstring,
+ * which silently clamped to 255 bytes. Real menu scripts trivially exceed
+ * that, so we now store the script as a heap-allocated stringvalue built
+ * directly from the handle's full contents — same shape that
+ * menudata_describe_leaf reads back through copyvaluerecord.
+ *
+ * Pattern mirrors Common/source/langhash.c:4268 (newheapvalue with
+ * stringvaluetype + exemptfromtmpstack), which is the canonical
+ * "store an arbitrary-length string into a hashtable" idiom used by the
+ * v7 disk-load path. exemptfromtmpstack() prevents the value from being
+ * disposed when the surrounding tmp-stack frame unwinds — see
+ * docs/ARCHITECTURAL_ANTIPATTERNS.md §"Tmp stack ownership."
+ *
+ * Empty / nil handle path: store an empty stringvalue so callers see a
+ * defined-but-empty script field rather than "field absent" semantics.
  */
 static boolean write_script_field_from_handle(hdlhashtable hleaf,
                                               Handle hscript) {
-	bigstring bs;
+	tyvaluerecord val;
+	long len = 0;
+	ptrvoid pdata = nil;
+	byte emptybyte = 0;
 
-	if (hscript == nil) {
-		setemptystring(bs);
-	}
-	else {
-		long len = gethandlesize(hscript);
-		if (len > 255) /* bigstring length limit */
-			len = 255;
+	if (hscript != nil) {
+		len = gethandlesize(hscript);
 		if (len < 0)
 			len = 0;
-		setstringlength(bs, (byte) len);
-		if (len > 0)
-			/*
-			 * moveleft is the headless-portable wrapper around the
-			 * memmove path — see Common/source/memory.c. BlockMoveData
-			 * is Mac-only; using it here would break the headless build.
-			 */
-			moveleft(*hscript, bs + 1, len);
 	}
 
-	return write_string_field(hleaf, BS_script, bs);
+	if (len > 0) {
+		/* Lock-free: newheapvalue copies via newfilledhandle which uses
+		   moveleft internally — no need to explicitly lock the handle. */
+		pdata = (ptrvoid) *hscript;
+	}
+	else {
+		/* Pass a zero-length pointer to a single byte so newfilledhandle
+		   doesn't dereference nil even though it copies zero bytes. */
+		pdata = (ptrvoid) &emptybyte;
+	}
+
+	if (!newheapvalue(pdata, len, stringvaluetype, &val))
+		return false;
+
+	return assign_exempt(hleaf, BS_script, &val);
 }
 
 
@@ -880,8 +906,10 @@ boolean menudata_delete_item(bigstring bsbarname, bigstring bsmenuname,
 		return hashtabledelete(hbar, bs);
 	}
 
-	/* Delete a specific leaf. hashtabledelete is idempotent on missing
-	   keys (returns false), but we treat absence as success. */
+	/* Delete a specific leaf. hashtabledelete posts a langparamerror via
+	   hashdelete when the key is absent; we discard the error (the (void)
+	   cast on the return) and unconditionally return true to preserve the
+	   idempotent semantics this verb's callers expect. */
 	{
 		bigstring bs;
 		copystring(bsitemname, bs);
@@ -969,13 +997,19 @@ boolean menudata_set_cmdkey(bigstring bsbarname, bigstring bsmenuname,
  * just to immediately wait for it.
  *
  * Steps:
- *   1. langbuildtree turns the Pascal-prefixed UserTalk source handle into
- *      a compiled tree. Consumes hScript regardless of outcome (see
- *      lang.c:534 — langcompiletext disposes htext).
- *   2. langruncode executes the tree synchronously on the calling thread.
+ *   1. We copy hScript into a private handle. langbuildtree CONSUMES the
+ *      handle it is given (lang.c:534 — langcompiletext disposes htext on
+ *      every path), and langruncode below yields the GIL between
+ *      statements. If the caller's handle were aliased to another thread's
+ *      live data, that thread could dispose it mid-build. The copy makes
+ *      the lifetime owned by us and the caller free to dispose its own
+ *      handle the moment we return.
+ *   2. langbuildtree turns the Pascal-prefixed UserTalk source handle into
+ *      a compiled tree, consuming the copy.
+ *   3. langruncode executes the tree synchronously on the calling thread.
  *      The result is discarded; menu actions are statements, not
  *      expressions, so the value carries no caller-visible meaning.
- *   3. langdisposetree releases the compiled tree.
+ *   4. langdisposetree releases the compiled tree.
  *
  * Errors surface through the existing langerrormessage callback chain —
  * same path as REPL eval. We do not push a custom error callback because
@@ -986,6 +1020,10 @@ boolean menudata_set_cmdkey(bigstring bsbarname, bigstring bsmenuname,
  * langbuildtree's tree-construction path and run user code that may call
  * any kernel verb.
  *
+ * Handle ownership: caller retains ownership of hScript and may dispose it
+ * the instant this function returns. Our internal copyhandle defends
+ * against the GIL-yield-then-other-thread-disposes-the-handle race.
+ *
  * Future: when the host eventually wants async menu dispatch (e.g. a long-
  * running script that should not block linenoise), wrap this in
  * headless_spawn_callback_thread. That's a follow-up; the palette MVP
@@ -995,25 +1033,43 @@ boolean meuserselected_headless(Handle hScript) {
 
 	hdltreenode hcode = nil;
 	tyvaluerecord vresult;
+	Handle hcopy = nil;
 	boolean fl;
 
 	if (hScript == nil)
 		return false;
 
 	/*
-	 * langbuildtree consumes hScript whether it succeeds or fails (see
+	 * Defensive: a Handle is a Handle ** — both indirections must be
+	 * non-nil for the script bytes to be reachable. A handle whose master
+	 * pointer is nil indicates the underlying memory has been disposed
+	 * out from under us; bail out rather than crash.
+	 */
+	if (*hScript == nil)
+		return false;
+
+	/*
+	 * Copy the script handle so our lifetime is independent of the caller's.
+	 * See header comment above for the GIL-yield rationale. Even if a future
+	 * caller forgets to copyhandle, this guarantees correctness.
+	 */
+	if (!copyhandle(hScript, &hcopy))
+		return false;
+
+	/*
+	 * langbuildtree consumes hcopy whether it succeeds or fails (see
 	 * lang.c:534 -> langcompiletext, which disposes htext on every path).
-	 * After this call we must not reference hScript again.
+	 * After this call we must not reference hcopy again.
 	 *
 	 * Second arg "fllinebased" matches scripts.c:286's call into
 	 * langbuildtree for the typeLAND signature: true = treat newlines as
 	 * statement terminators, which is how outline-extracted UserTalk is
 	 * always shaped.
 	 */
-	fl = langbuildtree(hScript, true, &hcode);
+	fl = langbuildtree(hcopy, true, &hcode);
 
 	if (!fl)
-		return false; /* syntax error */
+		return false; /* syntax error; langbuildtree already disposed hcopy */
 
 	/* Compilation produced no error; clear any stale error state.
 	   Mirrors meprograms.c:295's langerrorclear() after the compile. */

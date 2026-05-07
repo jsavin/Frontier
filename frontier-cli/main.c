@@ -1177,17 +1177,21 @@ static boolean hydrate_system_root_database(const char* path) {
 	}
 
 	/*
-	 * PR 5.5: ensure system.menus.data exists eagerly so UserTalk addresses
-	 * like @system.menus.data.<bar> parse before the verb runs. The write-
-	 * side projection helpers can lazy-create deeper rungs but cannot
-	 * rescue a parse-time failure on the projection root itself. Idempotent
-	 * — safe to call on roots where the table already exists. See ADR-016.
-	 */
-	/*
-	 * PR 5.5: ensure system.menus.data exists eagerly. The canonical hook
-	 * is db_format_prepare_runtime in db_format.c, but that runs before
-	 * roottable is set on this code path, so we re-invoke here as a
-	 * defensive belt-and-braces. Idempotent.
+	 * PR 5.5: ensure system.menus.data exists eagerly.
+	 *
+	 * Why this is needed: UserTalk addresses like @system.menus.data.<bar>
+	 * must parse-resolve at compile time, before any verb runs. The write-
+	 * side projection helpers (menudata_ensure_bar, menudata_add_command,
+	 * etc.) lazy-create deeper rungs on demand, but they cannot rescue a
+	 * parse-time failure on the projection root itself.
+	 *
+	 * Why here specifically: the canonical hook is db_format_prepare_runtime
+	 * in db_format.c, but on this hydration code path that runs BEFORE
+	 * roottable is set, so menudata_ensure_root() has nowhere to write.
+	 * Re-invoking here, immediately after roottable assignment and table
+	 * linkage, is the belt-and-braces guarantee that the projection root
+	 * exists by the time any user script is parsed. Idempotent — safe on
+	 * roots where the table already exists. See ADR-016.
 	 */
 	if (!menudata_ensure_root()) {
 		cli_log_warn("menudata_ensure_root failed while hydrating %s; @system.menus.data addresses may not parse", path);
