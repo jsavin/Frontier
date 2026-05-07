@@ -1,0 +1,7 @@
+on clear ()
+	//Clear REPL variables and reset focus to root.
+		//5/6/26 by JES
+			//Initial implementation. Wraps repl.clearVariables, the kernel verb
+			//that empties system.temp.FrontierREPL.variables and jumps to root.
+	repl.clearVariables ()
+	return (true)

@@ -221,7 +221,7 @@ USERTALK_OBJECT_TESTS = \
 	test_usertalk_runner
 
 # Buildable test executables on this branch
-RUN_BUILDABLE = core_tests db_format_tests runtime_tests parser_tests save_migration_tests test_efp_augmentation file_portable_tests file_readline_tests file_verb_tests handle_tests cli_runtime_tests paige_text_tests oppack_tests hashpack_modern_tests hash_corruption_tests langvalue_64_tests table_operations_integration refcon_tests refcon_phase2_tests op_context_tests table_context_tests time_portability_test test_sys_shell_command_verbs headless_selection_tests opattributes_stub_tests headless_thread_registry_tests test_callback_infrastructure tcp_phase1a_unit_tests menu_v7_refcon_tests menudata_headless_tests menu_list_describe_tests meuserselected_headless_tests test_stringerrorlist pane_compositor_tests mouse_parser_tests terminal_control_tests palette_state_tests palette_render_snapshot_tests
+RUN_BUILDABLE = core_tests db_format_tests runtime_tests parser_tests save_migration_tests test_efp_augmentation file_portable_tests file_readline_tests file_verb_tests handle_tests cli_runtime_tests paige_text_tests oppack_tests hashpack_modern_tests hash_corruption_tests langvalue_64_tests table_operations_integration refcon_tests refcon_phase2_tests op_context_tests table_context_tests time_portability_test test_sys_shell_command_verbs headless_selection_tests opattributes_stub_tests headless_thread_registry_tests test_callback_infrastructure tcp_phase1a_unit_tests menu_v7_refcon_tests menudata_headless_tests menu_list_describe_tests meuserselected_headless_tests test_stringerrorlist pane_compositor_tests mouse_parser_tests terminal_control_tests palette_state_tests palette_render_snapshot_tests repl_palette_source_tests repl_verbs_tests
 # Note: table_verb_tests skipped - pre-existing macOS path detection issue
 # Note: test_error_messages skipped - needs full runtime linking (tracked in separate task)
 # Note: test_table_sorting skipped - script execution errors cause segfault (Issue #449)
@@ -350,6 +350,21 @@ menu_list_describe_tests: menu_list_describe_tests.c $(LANG_RUNTIME_SOURCES) ../
 meuserselected_headless_tests: meuserselected_headless_tests.c $(LANG_RUNTIME_SOURCES) ../frontier-cli/stubs/headless_shell.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable \
 		meuserselected_headless_tests.c $(LANG_RUNTIME_SOURCES) ../frontier-cli/stubs/headless_shell.c -o $@ $(LINK_LIBS)
+
+# REPL palette source adapter tests (PR 6). Wraps menudata_list_leaves /
+# menudata_describe_leaf in the palette_menu_source_t vtable from PR 5.
+# Links pane.c + palette.c (CLI side, no runtime calls) plus the full lang
+# runtime (which now includes menudata_headless.c via PR 5.5).
+repl_palette_source_tests: repl_palette_source_tests.c $(LANG_RUNTIME_SOURCES) ../frontier-cli/repl_palette_source.c ../frontier-cli/palette.c ../frontier-cli/pane.c ../frontier-cli/stubs/headless_shell.c
+	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable -I../frontier-cli \
+		repl_palette_source_tests.c $(LANG_RUNTIME_SOURCES) ../frontier-cli/repl_palette_source.c ../frontier-cli/palette.c ../frontier-cli/pane.c ../frontier-cli/stubs/headless_shell.c -o $@ $(LINK_LIBS)
+
+# REPL verbs tests (PR 6). Exercises the 5 repl.* kernel verbs through
+# the real langbuildtree -> langruncode dispatch path with a fake host
+# adapter that records side effects.
+repl_verbs_tests: repl_verbs_tests.c $(LANG_RUNTIME_SOURCES) ../frontier-cli/repl_verbs.c ../frontier-cli/stubs/headless_shell.c
+	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable -I../frontier-cli \
+		repl_verbs_tests.c $(LANG_RUNTIME_SOURCES) ../frontier-cli/repl_verbs.c ../frontier-cli/stubs/headless_shell.c -o $@ $(LINK_LIBS)
 
 runtime_tests: runtime_tests.c $(LANG_RUNTIME_SOURCES) ../frontier-cli/stubs/headless_shell.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable runtime_tests.c $(LANG_RUNTIME_SOURCES) ../frontier-cli/stubs/headless_shell.c -o $@ $(LINK_LIBS)

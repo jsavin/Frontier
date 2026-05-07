@@ -1,0 +1,8 @@
+on list ()
+	//List the contents of the current REPL focus table.
+		//5/6/26 by JES
+			//Initial implementation. Wraps repl.list with empty path so the host
+			//shows the current table. A future revision can prompt for a path
+			//via the palette accepts_args input row.
+	repl.list ("")
+	return (true)

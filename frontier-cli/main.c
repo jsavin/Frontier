@@ -85,6 +85,7 @@
 #include "cli_utils.h"
 #include "../Common/headers/langinternal.h"
 #include "repl.h"
+#include "repl_verbs.h"
 #include "protocol_handler.h"
 #include "debug_handler.h"
 #include "ws_server.h"
@@ -905,6 +906,25 @@ static boolean initialize_frontier_runtime(void) {
 	}
 
 	headless_threading_init(); /* Main thread acquires GIL before any scripts run */
+
+	/*
+	 * Register repl.* kernel verbs (repl.exit, repl.clearVariables,
+	 * repl.jumpPath, repl.printKeyCodes, repl.list). Must run after
+	 * langinitverbs() (already invoked from db_format_prepare_runtime()
+	 * above) and after the main thread holds the GIL — replinitverbs()
+	 * manipulates the shared hashtable stack via push/pophashtable.
+	 *
+	 * The host adapter (function-pointer struct that binds these verbs to
+	 * the live REPL state) is installed separately when the REPL starts.
+	 * If a script calls repl.* before the adapter is installed, the verb
+	 * returns false at the script level rather than crashing.
+	 */
+	if (!replinitverbs()) {
+		log_error(LOG_COMP_GENERAL, "Error: Failed to register repl.* verbs");
+		releasethreadglobals();
+		cli_cleanup_logging();
+		return false;
+	}
 
 	if (g_cli_options.system_root != NULL) {
 		if (!load_system_root_database(g_cli_options.system_root)) {

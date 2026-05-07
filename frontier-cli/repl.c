@@ -49,7 +49,12 @@
 #include "repl_variables.h"
 #include "repl_output.h"
 #include "repl_commands.h"
+#include "repl_verbs.h"
 #include "completion.h"
+#include "pane.h"
+#include "palette.h"
+#include "repl_palette_source.h"
+#include "../Common/headers/menudata_headless.h" /* meuserselected_headless */
 #include "../Common/headers/frontier.h"
 #include "../Common/headers/logging.h"
 #include "../Common/headers/lang.h"
@@ -97,9 +102,79 @@ static hdlhashtable g_repl_guest_db_root = nil;
 // REPL active flag - set when REPL event loop is running
 static boolean g_repl_active = false;
 
+/*
+ * Exit-requested flag set by the repl.exit() kernel verb (via the host
+ * adapter). Both REPL loops (event-loop and blocking) poll this each
+ * iteration and break out cleanly. Distinct from g_repl_interrupt_requested,
+ * which is set asynchronously by the SIGINT handler. Reset to 0 on REPL
+ * startup so a stale flag from a previous session can't pre-exit a new one.
+ *
+ * Storage class: volatile sig_atomic_t — same pattern as
+ * g_repl_interrupt_requested below. The flag is written by the verb
+ * dispatcher (which runs on whichever thread holds the GIL: the REPL
+ * main thread under normal use, or any thread.new() child that
+ * acquires the GIL and calls repl.exit()) and read by the main REPL
+ * loop. Even though writes today happen with the GIL held — so the
+ * GIL acquire/release barrier covers visibility — encoding the
+ * invariant in storage rather than in a comment defends against
+ * future refactors that might relocate the writer off the GIL, and
+ * costs nothing on the read side.
+ */
+static volatile sig_atomic_t g_repl_exit_requested = 0;
+
 // Session command tracking for merge-before-save
 static char *session_commands[MAX_SESSION_COMMANDS];
 static size_t session_command_count = 0;
+
+/*
+ * safe_print_user_string - terminal-injection hardener.
+ *
+ * Print a user-controlled string to stdout with control bytes scrubbed.
+ * Mirrors the policy in pane.c::safe_render_codepoint(): \t \n \r are
+ * legitimate inside user content (paths can't contain them legally,
+ * but error messages may); every other byte < 0x20 plus 0x7F (DEL) is
+ * replaced with '?'.
+ *
+ * Threat: error/diagnostic printf paths interpolate user-supplied
+ * strings (table paths, menu item names, etc.). An adversary who can
+ * choose a name containing ESC '[' '2' 'J' could clear the screen by
+ * triggering "/list <evil>" — or worse, OSC 52 to write the user's
+ * clipboard. Filtering at the print site short-circuits that surface.
+ *
+ * The helper is byte-oriented: high bytes (>= 0x80) pass through
+ * unmodified (legitimate UTF-8 continuation), and the caller does NOT
+ * need to NUL-terminate the buffer of the helper allocates a stack
+ * temporary capped at SAFE_PRINT_MAX. Truncation appends "..." so the
+ * user can tell something was dropped.
+ */
+#define SAFE_PRINT_MAX 1024
+
+static void safe_print_user_string(const char *s) {
+	if (s == NULL) {
+		fputs("(null)", stdout);
+		return;
+	}
+	char buf[SAFE_PRINT_MAX];
+	size_t out = 0;
+	const size_t cap = sizeof(buf) - 4; /* leave room for "..." + NUL */
+	while (*s != '\0' && out < cap) {
+		unsigned char c = (unsigned char)*s++;
+		if (c == '\t' || c == '\n' || c == '\r') {
+			buf[out++] = (char)c;
+		} else if (c < 0x20 || c == 0x7F) {
+			buf[out++] = '?';
+		} else {
+			buf[out++] = (char)c;
+		}
+	}
+	if (*s != '\0') {
+		buf[out++] = '.';
+		buf[out++] = '.';
+		buf[out++] = '.';
+	}
+	buf[out] = '\0';
+	fputs(buf, stdout);
+}
 
 /* Clears all guest database navigation state */
 static void clear_guest_db_state(void) {
@@ -1097,8 +1172,14 @@ boolean repl_jump_path(const char *path) {
 
 		if (!repl_resolve_path_ex(path_buf, &result, resolved_path, sizeof(resolved_path),
 								   error_msg, sizeof(error_msg))) {
-			if (error_msg[0] != '\0')
-				printf("Error: %s\n", error_msg);
+			if (error_msg[0] != '\0') {
+				/* error_msg interpolates user-supplied path
+				 * components — scrub control bytes before print.
+				 * See safe_print_user_string for threat model. */
+				fputs("Error: ", stdout);
+				safe_print_user_string(error_msg);
+				fputc('\n', stdout);
+			}
 			return false;
 		}
 
@@ -2039,6 +2120,584 @@ static boolean process_line(const char *line, boolean *running) {
 	return true;
 }
 
+/* ------------------------------------------------------------------- */
+/*  Slash-menu palette modal runner                                   */
+/* ------------------------------------------------------------------- */
+/*
+ * The REPL event loop hands off to run_palette_modal() the moment the
+ * user types '/' at column 1 of an empty prompt. The modal runner
+ * brackets the palette session in its own raw-mode + mouse-tracking
+ * window:
+ *
+ *   1. linenoiseEditStop  — release linenoise's grip on the terminal
+ *   2. terminal_init / terminal_enable_raw_mode — re-enter raw mode
+ *      under our own termios save (linenoiseEditStop has already
+ *      restored the saved cooked-mode termios, so we save again here
+ *      so terminal_disable_raw_mode can return to it cleanly).
+ *   3. terminal_enable_mouse — turn on SGR 1006 mouse tracking
+ *   4. repl_palette_source_init — bind the palette to
+ *      system.menus.data.repl
+ *   5. palette_open + render
+ *   6. byte loop: poll(STDIN) with POLL_TIMEOUT_MS, feed bytes to
+ *      palette_feed_byte; intercept SGR mouse (ESC '[' '<') and route
+ *      via mouse_parse + palette_feed_mouse; honor SIGWINCH via
+ *      repl_sigwinch_consumed + palette_on_resize; honor the ESC
+ *      disambiguation timer via palette_feed_esc_timeout.
+ *   7. on PALETTE_DONE_EXECUTE: snapshot exec_script, palette_close,
+ *      copy the handle into our own ownership (so the caller's
+ *      lifetime is independent of the adapter's cache, which is
+ *      freed at repl_palette_source_dispose). Dispose the adapter,
+ *      then dispatch. The caller of run_palette_modal is responsible
+ *      for disposehandle'ing the returned handle after dispatch —
+ *      meuserselected_headless does its own internal copyhandle and
+ *      does NOT consume ours.
+ *      On PALETTE_DONE_CANCEL: palette_close + dispose + return.
+ *   8. terminal_disable_mouse + terminal_disable_raw_mode +
+ *      terminal_cleanup, then linenoiseEditStart to resume editing.
+ *
+ * Async output during palette mode: the modal's idle branch yields the
+ * GIL via headless_backgroundtask(true) so that thread.new() children,
+ * agent ticks, and TCP callback threads can run while the user is
+ * mid-keystroke. Without the yield those threads block for the entire
+ * lifetime of the open palette — unacceptable for any non-trivial
+ * background workload.
+ *
+ * Tradeoff: TCP callback threads writing to stdout during the modal
+ * can scroll cells out from under the palette and corrupt the render
+ * for a frame. The compositor's diff-render on the NEXT keystroke
+ * repaints over the corrupted area, so the visual artifact is
+ * transient. Compositor-aware async output (a scrollback pane) is a
+ * follow-up; the GIL-yield correctness fix is in place now to stop
+ * the worse problem of a fully deadlocked process.
+ *
+ * GIL: the palette source vtable callbacks (count_menus, item_describe)
+ * touch the ODB, so the GIL must be held across palette_open and every
+ * palette_feed_byte. The REPL event loop already holds the GIL.
+ */
+
+/*
+ * Detect whether the byte stream starting with ESC '[' '<' is the SGR
+ * mouse intro. If so, accumulate up through the trailing M/m and
+ * dispatch via palette_feed_mouse. Returns true if consumed (caller
+ * should not feed b to palette_feed_byte directly).
+ *
+ * Stateful — uses the static buffer below to accumulate across reads.
+ * Reset whenever a non-mouse path is taken so we never carry stale
+ * bytes between palette sessions.
+ */
+#define PALETTE_MOUSE_BUF_MAX 32
+
+typedef enum {
+	MOUSE_SGR_IDLE = 0,
+	MOUSE_SGR_GOT_ESC,
+	MOUSE_SGR_GOT_BRACKET,
+	MOUSE_SGR_BUFFERING
+} mouse_sgr_state_t;
+
+typedef struct {
+	mouse_sgr_state_t state;
+	char buf[PALETTE_MOUSE_BUF_MAX];
+	int len;
+} mouse_sgr_parser_t;
+
+static void mouse_sgr_reset(mouse_sgr_parser_t *p) {
+	p->state = MOUSE_SGR_IDLE;
+	p->len = 0;
+	p->buf[0] = '\0';
+}
+
+/*
+ * Returns:
+ *   < 0 — not a mouse byte (or aborted parse); caller should treat the
+ *         original byte as a normal palette byte. The parser may have
+ *         buffered preceding bytes that the caller already consumed —
+ *         those are lost (non-issue for ESC '[' '<' which is
+ *         unambiguously mouse-intro).
+ *   = 0 — byte consumed but mouse sequence still in progress.
+ *   > 0 — full SGR mouse sequence parsed; *out_ev populated.
+ */
+static int mouse_sgr_feed(mouse_sgr_parser_t *p, unsigned char b,
+                          mouse_event_t *out_ev) {
+	switch (p->state) {
+	case MOUSE_SGR_IDLE:
+		if (b == 0x1b) {
+			p->state = MOUSE_SGR_GOT_ESC;
+			return 0;
+		}
+		return -1;
+	case MOUSE_SGR_GOT_ESC:
+		if (b == '[') {
+			p->state = MOUSE_SGR_GOT_BRACKET;
+			return 0;
+		}
+		mouse_sgr_reset(p);
+		return -1;
+	case MOUSE_SGR_GOT_BRACKET:
+		if (b == '<') {
+			p->state = MOUSE_SGR_BUFFERING;
+			p->len = 0;
+			return 0;
+		}
+		mouse_sgr_reset(p);
+		return -1;
+	case MOUSE_SGR_BUFFERING:
+		if (p->len < PALETTE_MOUSE_BUF_MAX - 1) {
+			p->buf[p->len++] = (char)b;
+			p->buf[p->len] = '\0';
+		}
+		if (b == 'M' || b == 'm') {
+			/* Reconstruct full SGR sequence for mouse_parse, which
+			 * expects "<...M" or "<...m". */
+			char seq[PALETTE_MOUSE_BUF_MAX + 2];
+			seq[0] = '<';
+			memcpy(seq + 1, p->buf, (size_t)p->len);
+			seq[1 + p->len] = '\0';
+			int parsed = mouse_parse(seq, (size_t)(1 + p->len), out_ev) ? 1 : -1;
+			mouse_sgr_reset(p);
+			return parsed;
+		}
+		return 0;
+	}
+	mouse_sgr_reset(p);
+	return -1;
+}
+
+/*
+ * Drive a complete palette session. Returns:
+ *   NULL — palette was cancelled (or never opened due to error). No
+ *          dispatch needed.
+ *   non-NULL — script handle that should be passed to
+ *              meuserselected_headless. Caller owns this handle (it
+ *              was copyhandle'd out of adapter-private storage) and
+ *              MUST disposehandle it after dispatch on every path.
+ *              meuserselected_headless does its own internal copyhandle
+ *              (Common/source/menudata_headless.c:1056) — it does NOT
+ *              consume the caller's handle.
+ *
+ * GIL: caller must hold it. We don't yield while the palette is open
+ * (see file-level note above).
+ */
+static Handle run_palette_modal(struct linenoiseState *ls,
+                                char *line_buf, size_t line_buflen) {
+	Handle script_to_run = nil;
+
+	/* 1. Bracket linenoise. */
+	linenoiseEditStop(ls);
+
+	/* 2. Re-enter raw mode under our own termios save. */
+	terminal_state ts;
+	if (!terminal_init(&ts) || !terminal_enable_raw_mode(&ts)) {
+		log_error(LOG_COMP_GENERAL, "palette: failed to enter raw mode");
+		terminal_cleanup(&ts);
+		(void)linenoiseEditStart(ls, STDIN_FILENO, STDOUT_FILENO,
+		                         line_buf, line_buflen, g_repl_prompt);
+		return nil;
+	}
+	terminal_enable_mouse();
+
+	/* 3. Build the ODB-backed palette source. */
+	palette_menu_source_t src;
+	bool src_ok = repl_palette_source_init(&src);
+	if (!src_ok) {
+		printf("(no menubar installed: system.menus.data.%s)\n",
+		       REPL_PALETTE_DEFAULT_MENUBAR);
+		fflush(stdout);
+		goto cleanup_terminal;
+	}
+
+	/* 4. Open palette at current terminal geometry. */
+	int rows = 24, cols = 80;
+	(void)terminal_get_size(&rows, &cols);
+	compositor_on_resize(rows, cols);
+
+	palette_state_t st;
+	memset(&st, 0, sizeof(st));
+	if (!palette_open(&st, rows, cols, &src)) {
+		printf("(menubar empty or terminal too small)\n");
+		fflush(stdout);
+		repl_palette_source_dispose(&src);
+		goto cleanup_terminal;
+	}
+	palette_render_state(&st);
+	compositor_render();
+
+	/* 5. Modal byte loop. */
+	mouse_sgr_parser_t mouse;
+	mouse_sgr_reset(&mouse);
+	bool palette_running = true;
+	palette_done_t done = PALETTE_DONE_NONE;
+
+	while (palette_running) {
+		struct pollfd pfd = {STDIN_FILENO, POLLIN, 0};
+		int ready = poll(&pfd, 1, POLL_TIMEOUT_MS);
+
+		if (ready > 0 && (pfd.revents & POLLIN)) {
+			unsigned char b;
+			ssize_t n = read(STDIN_FILENO, &b, 1);
+			if (n <= 0) {
+				/* EOF or error — treat as cancel. */
+				done = PALETTE_DONE_CANCEL;
+				palette_running = false;
+				break;
+			}
+
+			/* SGR mouse intercept. We try mouse first ONLY when we're
+			 * already in mid-sequence OR the byte is ESC at idle and
+			 * the next two bytes complete '[<'. The mouse parser is
+			 * conservative — it returns -1 (not consumed) on the very
+			 * first non-mouse byte so we can fall through to palette.
+			 *
+			 * Snapshot the parser state BEFORE the feed so that on a
+			 * non-mouse abort (mouse_rc < 0) we can correctly replay
+			 * the bytes the parser had buffered. mouse_sgr_feed
+			 * resets state before returning -1, so a post-call read
+			 * of mouse.state is always MOUSE_SGR_IDLE — useless for
+			 * deciding what to replay. */
+			mouse_sgr_state_t prev_state = mouse.state;
+			mouse_event_t ev;
+			int mouse_rc = mouse_sgr_feed(&mouse, b, &ev);
+			if (mouse_rc > 0) {
+				done = palette_feed_mouse(&st, &ev);
+			} else if (mouse_rc == 0) {
+				/* Byte buffered as part of mouse sequence — do NOT
+				 * also feed it to palette; fall through to render. */
+				done = PALETTE_DONE_NONE;
+			} else {
+				/* mouse_rc < 0: byte not part of a mouse sequence.
+				 * The parser had buffered some prefix the palette
+				 * never saw; we replay it here, then feed the
+				 * current byte. Two miss-cases:
+				 *   prev_state == GOT_ESC: parser ate ESC, then
+				 *     `b` was not '['. We feed ESC, then `b` (b is
+				 *     the bare-ESC's follow byte — palette gets a
+				 *     full ESC + b sequence, exactly as typed).
+				 *   prev_state == GOT_BRACKET: parser ate ESC and
+				 *     '[', then `b` was not '<'. Palette gets ESC
+				 *     '[' + b.
+				 *   prev_state == IDLE: parser didn't buffer
+				 *     anything (b is the first byte and not ESC,
+				 *     so mouse_sgr_feed returned -1 directly).
+				 *     Feed b alone.
+				 *   prev_state == BUFFERING: parser's mid-sequence
+				 *     bail (e.g. SGR sequence got corrupted). The
+				 *     buffered bytes are lost; feed b as best-
+				 *     effort recovery. This is only reachable on
+				 *     malformed input — expected to be rare.
+				 */
+				if (prev_state == MOUSE_SGR_GOT_ESC) {
+					(void)palette_feed_byte(&st, 0x1b);
+					done = palette_feed_byte(&st, b);
+				} else if (prev_state == MOUSE_SGR_GOT_BRACKET) {
+					(void)palette_feed_byte(&st, 0x1b);
+					(void)palette_feed_byte(&st, '[');
+					done = palette_feed_byte(&st, b);
+				} else {
+					done = palette_feed_byte(&st, b);
+				}
+			}
+		} else if (ready == 0) {
+			/* Timeout — fire ESC disambiguation if pending. */
+			done = palette_feed_esc_timeout(&st);
+			/* GIL yield: while the palette is open the main thread
+			 * holds the GIL exclusively. Without a yield in the idle
+			 * branch, every thread.new() child / TCP callback
+			 * thread / agent tick blocks for the entire duration of
+			 * a user mid-keystroke session. Calling
+			 * headless_backgroundtask() at the poll-timeout point
+			 * mirrors the pattern in the main REPL event loop and
+			 * the blocking REPL loop — one yield per idle tick. */
+			headless_backgroundtask(true);
+		} else if (ready < 0) {
+			if (errno == EINTR) {
+				/* SIGWINCH or SIGINT during poll. SIGINT is fatal for
+				 * the palette session — close and propagate.
+				 *
+				 * Consume-on-handle: the palette uses the SIGINT to
+				 * exit the modal. The main loop polls the same flag
+				 * and would otherwise call handle_interrupt(), which
+				 * prints "^C\n" — producing a double echo (one from
+				 * the palette teardown, one from the main loop) for
+				 * the same Ctrl-C. Clear the flag here so only the
+				 * palette gets the consumed signal. */
+				if (g_repl_interrupt_requested) {
+					g_repl_interrupt_requested = 0;
+					done = PALETTE_DONE_CANCEL;
+					palette_running = false;
+					break;
+				}
+				/* Otherwise (likely SIGWINCH) loop and let the resize
+				 * check below handle it. */
+				done = PALETTE_DONE_NONE;
+			} else {
+				log_error(LOG_COMP_GENERAL, "palette: poll() failed: %s",
+				          strerror(errno));
+				done = PALETTE_DONE_CANCEL;
+				palette_running = false;
+				break;
+			}
+		}
+
+		/* Honor SIGWINCH after every poll cycle. */
+		if (repl_sigwinch_consumed()) {
+			int new_rows = 24, new_cols = 80;
+			(void)terminal_get_size(&new_rows, &new_cols);
+			compositor_on_resize(new_rows, new_cols);
+			palette_on_resize(&st, new_rows, new_cols);
+		}
+
+		switch (done) {
+		case PALETTE_DONE_NONE:
+			palette_render_state(&st);
+			compositor_render();
+			break;
+		case PALETTE_DONE_EXECUTE:
+		case PALETTE_DONE_CANCEL:
+			palette_running = false;
+			break;
+		}
+	}
+
+	/* 6. Capture exec_script BEFORE close (the palette doc says close
+	 *    does not invalidate it, but the adapter's dispose will).
+	 *    Then copyhandle into our own ownership so meuserselected_headless
+	 *    can consume it via langbuildtree without yanking the rug out
+	 *    from under the adapter's later dispose. */
+	if (done == PALETTE_DONE_EXECUTE && st.exec_script != NULL) {
+		Handle hsrc = (Handle)st.exec_script;
+		Handle hcopy = nil;
+		if (copyhandle(hsrc, &hcopy)) {
+			script_to_run = hcopy;
+		} else {
+			log_error(LOG_COMP_GENERAL,
+			          "palette: copyhandle failed for exec_script");
+		}
+	}
+
+	palette_close(&st);
+	repl_palette_source_dispose(&src);
+
+cleanup_terminal:
+	terminal_disable_mouse();
+	terminal_disable_raw_mode(&ts);
+	terminal_cleanup(&ts);
+
+	/* 7. Restart linenoise so the prompt comes back cleanly.
+	 *
+	 * Failure mode: linenoiseEditStart can fail for OOM, ENOTTY (terminal
+	 * went away), or write() failing on a closed fd. After a failure ls
+	 * is in a partially-initialised state — *struct fields may be set
+	 * but raw mode may not be entered, and a subsequent linenoiseEditFeed
+	 * dereferences pointers that haven't been written yet (UAF risk).
+	 *
+	 * Defense: signal the REPL main loop to terminate via the same
+	 * volatile sig_atomic_t exit flag that repl.exit() uses. The caller
+	 * checks it on every loop iteration and breaks cleanly. We
+	 * deliberately do NOT touch ls beyond returning script_to_run —
+	 * the caller's main loop is responsible for skipping the invalid
+	 * Feed call by virtue of the exit flag taking effect first. */
+	if (linenoiseEditStart(ls, STDIN_FILENO, STDOUT_FILENO,
+	                       line_buf, line_buflen, g_repl_prompt) == -1) {
+		log_error(LOG_COMP_GENERAL,
+		          "palette: failed to restart linenoise after modal — "
+		          "REPL will terminate to avoid UAF on invalid ls");
+		g_repl_exit_requested = 1;
+	}
+
+	return script_to_run;
+}
+
+
+/* ------------------------------------------------------------------- */
+/*  repl.* kernel-verb host adapter                                    */
+/* ------------------------------------------------------------------- */
+/*
+ * These are the host-side bindings registered with repl_verbs.c via
+ * repl_verbs_set_host(). They translate the verb-level callbacks into
+ * the same module-private state that the existing /exit, /clear,
+ * /jump, /keycodes, /list slash-command handlers manipulate, so a
+ * UserTalk script calling repl.exit() ends up in exactly the same
+ * place as a user typing "/exit" at the prompt.
+ *
+ * GIL: every callback here runs under the verb dispatcher, which is
+ * invoked from langruncode while the GIL is held. The REPL main
+ * thread is the typical caller, but UserTalk thread.new() children
+ * can also call into these adapters once they have acquired the GIL
+ * — so writes to module state are NOT necessarily on the main
+ * thread. We rely on (a) the GIL acquire/release barrier for
+ * visibility and (b) volatile sig_atomic_t storage for the exit
+ * flag (see g_repl_exit_requested above) so the read in the main
+ * loop is well-defined even if the GIL story changes.
+ */
+
+static void replverbhost_exit(void) {
+	g_repl_exit_requested = 1;
+}
+
+static void replverbhost_clear_variables(void) {
+	hdlhashtable vars = repl_get_variables_table();
+	if (vars != nil)
+		emptyhashtable(vars, true);
+	repl_jump_path("");
+}
+
+/*
+ * NOTE (security): repl_jump_path() interprets `path` as a UserTalk
+ * script expression if it contains '(', ')', or '+'
+ * (path_is_script_expression at the top of this file → repl_jump_script
+ * → langrun). This is fine for interactive REPL use but unsafe for any
+ * caller forwarding untrusted strings. Document at the verb header
+ * (repl_verbs.h::jump_path) so script authors know.
+ */
+static boolean replverbhost_jump_path(const char *path) {
+	if (path == NULL)
+		return repl_jump_path("");
+	return repl_jump_path(path);
+}
+
+/*
+ * linenoisePrintKeyCodes() takes exclusive control of stdin in raw mode
+ * and only returns once the user types ESC three times. While it runs,
+ * the calling thread holds the GIL and cannot release it — so a
+ * misplaced repl.printKeyCodes() call from a non-interactive context
+ * (e.g. -e mode, webserver verb, agent script) would freeze every
+ * GIL-dependent thread until something poked stdin three times.
+ *
+ * Defense: refuse the call when the REPL is not active OR stdin is not
+ * a TTY. The verb will return false at the script level and the caller
+ * gets a clean recoverable error rather than a hung process. See
+ * repl_verbs.h::print_key_codes for the contract.
+ */
+static boolean replverbhost_print_key_codes(void) {
+	if (!g_repl_active)
+		return false;
+	if (!isatty(STDIN_FILENO))
+		return false;
+	linenoisePrintKeyCodes();
+	return true;
+}
+
+static void replverbhost_list(const char *path) {
+	if (path == NULL || path[0] == '\0') {
+		repl_output_list(nil, NULL);
+		return;
+	}
+
+	typathlookupresult result;
+	char resolved_path[REPL_PATH_MAX_LEN];
+	char error_msg[256] = "";
+
+	if (!repl_resolve_path_ex(path, &result, resolved_path, sizeof(resolved_path),
+	                          error_msg, sizeof(error_msg))) {
+		/* `path` is the unfiltered C string from the verb arg, and
+		 * error_msg may interpolate user-supplied path components.
+		 * Both must be scrubbed before reaching the terminal — see
+		 * safe_print_user_string for threat model. */
+		if (error_msg[0] != '\0') {
+			fputs("Error: '", stdout);
+			safe_print_user_string(path);
+			fputs("' is not a valid table path (", stdout);
+			safe_print_user_string(error_msg);
+			fputs(")\n", stdout);
+		} else {
+			fputs("Error: '", stdout);
+			safe_print_user_string(path);
+			fputs("' is not a valid table path\n", stdout);
+		}
+		return;
+	}
+
+	if (result.is_table)
+		repl_output_list(result.htable, resolved_path);
+	else
+		repl_output_single_value(resolved_path, &result.val);
+}
+
+/*
+ * Build and install the host adapter struct. Called once from repl_main
+ * before either loop runs. Pairs with repl_verbs_set_host(NULL) on
+ * cleanup so a follow-on call to a repl.* verb after the REPL exits
+ * fails closed (returns false at the script level) rather than calling
+ * stale function pointers.
+ */
+static void install_repl_verbs_host(void) {
+	repl_verbs_host_t host;
+	host.exit = replverbhost_exit;
+	host.clear_variables = replverbhost_clear_variables;
+	host.jump_path = replverbhost_jump_path;
+	host.print_key_codes = replverbhost_print_key_codes;
+	host.list = replverbhost_list;
+	repl_verbs_set_host(&host);
+}
+
+static void uninstall_repl_verbs_host(void) {
+	repl_verbs_set_host(NULL);
+}
+
+
+/*
+ * Boot the REPL menubar by invoking the UserTalk install script.
+ *
+ * Design note: the menubar lives in the ODB (system.menus.data.repl), and
+ * its install logic + handler scripts live in UserTalk (under
+ * system.menus.installReplMenubar and system.menus.handlers.repl.*).
+ * Invoking those scripts is therefore a one-shot langrun() of the
+ * expression "system.menus.installReplMenubar()". The script itself is
+ * idempotent — guarded by menu.isInstalled — so re-invocation across
+ * sessions is safe and cheap.
+ *
+ * Boot failure mode (per ADR-016 / planning doc): a missing or broken
+ * install script must NOT take down the REPL. Log a prominent warning
+ * and continue. The user can still operate via legacy /commands and the
+ * palette will simply show no items if it's opened.
+ *
+ * GIL: must be called with the GIL held. Called once from repl_main
+ * before either loop runs.
+ */
+static void install_repl_menubar(void) {
+	const char *expr =
+	    "if defined (@system.menus.installReplMenubar) "
+	    "{system.menus.installReplMenubar ()}";
+	size_t expr_len = strlen(expr);
+	Handle htext = nil;
+
+	if (!newemptyhandle(&htext))
+		return;
+	if (!sethandlesize(htext, (long)expr_len)) {
+		disposehandle(htext);
+		return;
+	}
+	HLock(htext);
+	memcpy(*htext, expr, expr_len);
+	HUnlock(htext);
+
+	tyvaluerecord val;
+	boolean flpushpop = !flscriptrunning;
+
+	initvalue(&val, novaluetype);
+
+	if (flpushpop)
+		flpushpop = pushprocess(nil);
+
+	boolean ok = langrun(htext, &val);	/* consumes htext */
+
+	if (flpushpop)
+		popprocess();
+
+	/* langrun populates val on both success and failure paths. The
+	 * pattern mirrors langrunhandle_value (Common/source/lang.c:920+):
+	 * caller must disposevaluerecord regardless of return. Without this,
+	 * any string/handle/list payload in val leaks across REPL session
+	 * boots. */
+	disposevaluerecord(val, false);
+
+	if (!ok) {
+		log_warn(LOG_COMP_GENERAL,
+		         "REPL menubar install script failed; palette will be empty. "
+		         "Legacy /commands continue to work.");
+	}
+}
+
+
 /* Blocking REPL loop for non-TTY input (fallback mode).
  * Used when stdin is not a terminal (e.g., piped input).
  *
@@ -2100,6 +2759,11 @@ static int repl_main_blocking(void) {
 
 		// Process callbacks after each command
 		tcp_process_callbacks();
+
+		// Honor exit requested by repl.exit() via the kernel-verb host adapter
+		if (g_repl_exit_requested) {
+			running = false;
+		}
 	}
 
 	return 0;
@@ -2131,6 +2795,17 @@ int repl_main(cli_options_t *options, ws_server_t *ws_server) {
 		// Not fatal - we can continue without persistence
 	}
 
+	// 3.1 Install host adapter for repl.* kernel verbs (repl.exit etc.).
+	//     Reset exit-requested flag so a stale value from a prior session
+	//     can't pre-exit this one. Uninstalled on the cleanup paths below.
+	g_repl_exit_requested = 0;
+	install_repl_verbs_host();
+
+	// 3.2 Boot the REPL menubar via UserTalk. Idempotent — the install
+	//     script guards with menu.isInstalled. Failure logs a warning and
+	//     continues; the legacy /commands still work.
+	install_repl_menubar();
+
 	// 4. Display welcome message and mark REPL as active
 	repl_output_welcome();
 	g_repl_active = true;
@@ -2149,6 +2824,7 @@ int repl_main(cli_options_t *options, ws_server_t *ws_server) {
 		int result = repl_main_blocking();
 		g_repl_active = false;
 		flreplmode = false;	 /* Clear runtime flag */
+		uninstall_repl_verbs_host();
 		repl_variables_cleanup();
 		cleanup_linenoise();
 		repl_output_goodbye();
@@ -2159,6 +2835,15 @@ int repl_main(cli_options_t *options, ws_server_t *ws_server) {
 	if (linenoiseEditStart(&ls, STDIN_FILENO, STDOUT_FILENO,
 						   line_buf, sizeof(line_buf), g_repl_prompt) == -1) {
 		log_error(LOG_COMP_GENERAL, "Failed to start linenoise editing");
+		/* Symmetry with the non-TTY return path above (and with the
+		 * normal-exit cleanup at the bottom of this function): a host
+		 * adapter that survives this exit-1 path would leave verbs
+		 * resolving against stale function pointers if the next
+		 * caller doesn't re-install. Tear it down here too. */
+		g_repl_active = false;
+		flreplmode = false;
+		uninstall_repl_verbs_host();
+		repl_variables_cleanup();
 		cleanup_linenoise();
 		return 1;
 	}
@@ -2196,7 +2881,45 @@ int repl_main(cli_options_t *options, ws_server_t *ws_server) {
 			char *result = linenoiseEditFeed(&ls);
 
 			if (result == linenoiseEditMore) {
-				// User is still editing - continue polling
+				/* User is still editing — but check the slash-menu
+				 * trigger: '/' typed at column 1 of an empty buffer
+				 * (the editor's len jumped to 1 with buf[0] == '/'
+				 * exactly). This is the only condition that opens the
+				 * palette; '/' typed mid-line is left as a literal
+				 * character. */
+				if (ls.len == 1 && ls.buf[0] == '/') {
+					Handle script = run_palette_modal(&ls, line_buf,
+					                                  sizeof(line_buf));
+					if (script != nil) {
+						/* Dispatch the chosen menu item.
+						 *
+						 * Ownership: meuserselected_headless does its own
+						 * internal copyhandle() (see Common/source/
+						 * menudata_headless.c:1056) — it does NOT consume
+						 * the caller's handle. The caller therefore
+						 * retains ownership and MUST disposehandle on
+						 * BOTH the success and failure paths. */
+						g_script_running = 1;
+						boolean ok = meuserselected_headless(script);
+						g_script_running = 0;
+						if (!ok) {
+							printf("(menu script failed)\n");
+							fflush(stdout);
+						}
+						disposehandle(script);
+					}
+					/* run_palette_modal already restarted linenoise
+					 * with an empty buffer, so the prompt is fresh.
+					 * Continue the event loop — UNLESS the modal's
+					 * linenoiseEditStart restart failed, in which case
+					 * it set g_repl_exit_requested and we break out
+					 * here BEFORE the next linenoiseEditFeed has a
+					 * chance to dereference an invalid ls. */
+					if (g_repl_exit_requested) {
+						running = false;
+						break;
+					}
+				}
 			} else if (result != NULL) {
 				// User pressed Enter - stop line editing first (prints newline)
 				linenoiseEditStop(&ls);
@@ -2252,6 +2975,14 @@ int repl_main(cli_options_t *options, ws_server_t *ws_server) {
 		if (g_repl_interrupt_requested) {
 			handle_interrupt(&ls, line_buf, sizeof(line_buf));
 		}
+
+		// 6.6 Honor exit requested by repl.exit() via the kernel-verb host
+		//     adapter. The flag is volatile sig_atomic_t (see declaration),
+		//     so the read is well-defined even if a non-main thread (a
+		//     thread.new() child holding the GIL) called repl.exit().
+		if (g_repl_exit_requested) {
+			running = false;
+		}
 	}
 
 	// 7. Cleanup
@@ -2260,6 +2991,7 @@ int repl_main(cli_options_t *options, ws_server_t *ws_server) {
 	g_active_linenoisestate = NULL;
 	repl_set_active_linenoisestate(NULL);
 	linenoiseEditStop(&ls);
+	uninstall_repl_verbs_host();
 	repl_variables_cleanup();
 	cleanup_linenoise();
 	repl_output_goodbye();

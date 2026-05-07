@@ -90,7 +90,10 @@ CLI_SOURCES = \
     repl_eval.c \
     repl_output.c \
     repl_variables.c \
-    pane.c
+    repl_verbs.c \
+    repl_palette_source.c \
+    pane.c \
+    palette.c
 
 # cJSON (vendored JSON parser)
 CJSON_SOURCES = $(THIRDPARTYDIR)/cJSON/cJSON.c

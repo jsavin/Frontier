@@ -1,0 +1,19 @@
+on installReplMenubar ()
+	//Install the headless REPL menubar at system.menus.data.repl.
+		//5/6/26 by JES
+			//Initial implementation. Idempotent: guarded by menu.isInstalled.
+			//The "repl" menubar holds a single "REPL" menu whose items reproduce
+			//the legacy slash-command behavior so a user pressing slash at column 1
+			//of an empty prompt sees the same actions as a power-user typing the
+			//slash-command directly.
+	if menu.isInstalled (@system.menus.data.repl)
+		return (true)
+	local (adrbar = @system.menus.data.repl)
+	menu.addMenuCommand (adrbar, "REPL", "Help", "system.menus.handlers.repl.help ()")
+	menu.addMenuCommand (adrbar, "REPL", "Clear", "system.menus.handlers.repl.clear ()")
+	menu.addMenuCommand (adrbar, "REPL", "List", "system.menus.handlers.repl.list ()")
+	menu.addMenuCommand (adrbar, "REPL", "Jump", "system.menus.handlers.repl.jump ()")
+	menu.addMenuCommand (adrbar, "REPL", "Key codes", "system.menus.handlers.repl.keycodes ()")
+	menu.addMenuCommand (adrbar, "REPL", "Exit", "system.menus.handlers.repl.exit ()")
+	menu.install (adrbar)
+	return (true)

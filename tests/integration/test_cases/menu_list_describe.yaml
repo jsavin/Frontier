@@ -25,11 +25,13 @@ tests:
   # menu.list - enumerate leaf items under system.menus.data
   # ==========================================================================
 
-  - name: "menu.list - empty data tree returns empty list"
-    description: "On a fresh root with no apps installed under system.menus.data, menu.list(nil) returns an empty list. (UserTalk does not support # comments in script/eval — keep scripts comment-free.)"
+  - name: "menu.list - empty subtree returns empty list"
+    description: "menu.list scoped to an empty placeholder subtree returns an empty list. (UserTalk does not support # comments in script/eval — keep scripts comment-free.) Note: PR 6 added the boot-installed system.menus.data.repl menubar, so global menu.list() is no longer empty on a fresh root — this test now scopes to a known-empty subtree to preserve the empty-case assertion."
     script: |
       try {delete(@system.menus.data.testAppEmpty)};
-      local(items = menu.list());
+      new(tableType, @system.menus.data.testAppEmpty);
+      local(items = menu.list(@system.menus.data.testAppEmpty));
+      delete(@system.menus.data.testAppEmpty);
       return sizeof(items)
     expected_success: true
     expected_result: "0"

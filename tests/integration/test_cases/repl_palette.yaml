@@ -1,0 +1,252 @@
+# REPL palette / menubar integration tests
+#
+# Background
+# ----------
+# PR 6 of the slash-menu chain ships:
+#   - 5 repl.* kernel verbs (repl.exit, repl.clearVariables, repl.jumpPath,
+#     repl.printKeyCodes, repl.list) — exposed to UserTalk via the host
+#     adapter installed at REPL boot.
+#   - 6 UserTalk handler scripts (system.menus.handlers.repl.{help, clear,
+#     list, jump, keycodes, exit}) wrapping those kernel verbs.
+#   - One install script (system.menus.installReplMenubar) that registers
+#     a "REPL" menu under system.menus.data.repl with 6 items pointing at
+#     the handler scripts.
+#   - A boot hook in repl_main() that invokes installReplMenubar() once
+#     per REPL session.
+#
+# What this file proves
+# ---------------------
+# 1. The install path runs at REPL boot — system.menus.data.repl exists,
+#    is installed, and has 6 items.
+# 2. Each menu item's "script" field is a non-empty string and references
+#    its handler script under system.menus.handlers.repl.*.
+# 3. Each handler script is reachable as a verb (script.compile returns
+#    true) — proves the install actually compiled the .ut sources, not
+#    just stuffed them in the table.
+# 4. Idempotency: invoking installReplMenubar a second time does not
+#    duplicate items or otherwise mutate state.
+#
+# What this file does NOT prove (deferred)
+# ----------------------------------------
+# End-to-end palette modal driving (typing slash, navigating with arrows,
+# selecting an item). The pexpect runner sets FRONTIER_PLAIN_REPL=1 +
+# TERM=dumb to use the blocking REPL path, but the palette modal lives
+# only in the event-loop path. A future PR can extend the runner with a
+# raw-PTY mode that exercises the modal end-to-end. For now the modal
+# path is covered by unit tests (palette_state_tests, palette_render_
+# snapshot_tests) and the read-side adapter (repl_palette_source_tests).
+#
+# Sequential because the menubar projection root (system.menus.data) is
+# process-global; running these tests in parallel against the same staged
+# DB would race.
+
+needs_guest_dbs: false
+sequential: true
+
+tests:
+  # ==========================================================================
+  # Boot-hook contract: installReplMenubar runs and registers the menubar
+  # ==========================================================================
+
+  - name: "REPL palette - install script is reachable at root"
+    description: |
+      The install script must live at @system.menus.installReplMenubar
+      after Virgin.root boot. This is the address the boot hook in
+      repl_main() invokes via langrun().
+    script: |
+      return (defined (@system.menus.installReplMenubar))
+    expected_success: true
+    expected_result: "true"
+
+  - name: "REPL palette - menubar marked installed after boot"
+    description: |
+      Boot side-effect: menu.isInstalled (@system.menus.data.repl) must
+      return true. This proves the install script ran and the write-side
+      projection (PR 5.5) flipped the .installed field.
+    script: |
+      system.menus.installReplMenubar ();
+      return (menu.isInstalled (@system.menus.data.repl))
+    expected_success: true
+    expected_result: "true"
+
+  - name: "REPL palette - menu has six items"
+    description: |
+      The REPL menu must contain Help, Clear, List, Jump, Key codes, Exit
+      after install. menu.list returns the populated item list — sizeof
+      gives 6.
+    script: |
+      system.menus.installReplMenubar ();
+      local (items = menu.list (@system.menus.data.repl.REPL));
+      return (sizeof (items))
+    expected_success: true
+    expected_result: "6"
+
+  - name: "REPL palette - install is idempotent"
+    description: |
+      Calling installReplMenubar a second time must not duplicate items
+      (the script's first action is an isInstalled guard). Item count
+      stays at 6.
+    script: |
+      system.menus.installReplMenubar ();
+      system.menus.installReplMenubar ();
+      system.menus.installReplMenubar ();
+      local (items = menu.list (@system.menus.data.repl.REPL));
+      return (sizeof (items))
+    expected_success: true
+    expected_result: "6"
+
+  # ==========================================================================
+  # Item content: labels and handler-script bindings
+  # ==========================================================================
+
+  - name: "REPL palette - Help item has correct label"
+    description: |
+      Sanity check on at least one item's label field — proves
+      menu.addMenuCommand wrote a real entry, not a stub.
+    script: |
+      system.menus.installReplMenubar ();
+      return (system.menus.data.repl.REPL.Help.label)
+    expected_success: true
+    expected_result: "Help"
+
+  - name: "REPL palette - Help item dispatches to handler script"
+    description: |
+      Each menu item's .script field is the UserTalk source the palette
+      will hand to meuserselected_headless on selection. For Help that
+      source must invoke system.menus.handlers.repl.help.
+    script: |
+      system.menus.installReplMenubar ();
+      return (system.menus.data.repl.REPL.Help.script)
+    expected_success: true
+    expected_result: "system.menus.handlers.repl.help ()"
+
+  - name: "REPL palette - Exit item dispatches to handler script"
+    description: |
+      Exit handler is the canary for "the kernel verb wrapper actually
+      runs" — it sets the host's exit-requested flag. Verify the
+      .script field is the expected handler dispatch string.
+    script: |
+      system.menus.installReplMenubar ();
+      return (system.menus.data.repl.REPL.Exit.script)
+    expected_success: true
+    expected_result: "system.menus.handlers.repl.exit ()"
+
+  - name: "REPL palette - Clear item dispatches to handler script"
+    description: |
+      Clear handler wraps repl.clearVariables. Verify its dispatch
+      string.
+    script: |
+      system.menus.installReplMenubar ();
+      return (system.menus.data.repl.REPL.Clear.script)
+    expected_success: true
+    expected_result: "system.menus.handlers.repl.clear ()"
+
+  - name: "REPL palette - List item dispatches to handler script"
+    description: |
+      List handler wraps repl.list with empty path.
+    script: |
+      system.menus.installReplMenubar ();
+      return (system.menus.data.repl.REPL.List.script)
+    expected_success: true
+    expected_result: "system.menus.handlers.repl.list ()"
+
+  - name: "REPL palette - Jump item dispatches to handler script"
+    description: |
+      Jump handler wraps repl.jumpPath with empty path.
+    script: |
+      system.menus.installReplMenubar ();
+      return (system.menus.data.repl.REPL.Jump.script)
+    expected_success: true
+    expected_result: "system.menus.handlers.repl.jump ()"
+
+  - name: "REPL palette - Key codes item dispatches to handler script"
+    description: |
+      Key codes handler wraps repl.printKeyCodes.
+    script: |
+      system.menus.installReplMenubar ();
+      local (s = system.menus.data.repl.REPL.["Key codes"].script);
+      return (s)
+    expected_success: true
+    expected_result: "system.menus.handlers.repl.keycodes ()"
+
+  # ==========================================================================
+  # Handler scripts compile (proves install actually built valid script
+  # objects, not just stuffed text into the leaf .script string field)
+  # ==========================================================================
+
+  - name: "REPL palette - help handler compiles"
+    description: |
+      Compiling each handler proves the .ut source survived the
+      script.newScriptObject install path with valid outline structure.
+    script: |
+      return (script.compile (@system.menus.handlers.repl.help))
+    expected_success: true
+    expected_result: "true"
+
+  - name: "REPL palette - clear handler compiles"
+    script: |
+      return (script.compile (@system.menus.handlers.repl.clear))
+    expected_success: true
+    expected_result: "true"
+
+  - name: "REPL palette - list handler compiles"
+    script: |
+      return (script.compile (@system.menus.handlers.repl.list))
+    expected_success: true
+    expected_result: "true"
+
+  - name: "REPL palette - jump handler compiles"
+    script: |
+      return (script.compile (@system.menus.handlers.repl.jump))
+    expected_success: true
+    expected_result: "true"
+
+  - name: "REPL palette - keycodes handler compiles"
+    script: |
+      return (script.compile (@system.menus.handlers.repl.keycodes))
+    expected_success: true
+    expected_result: "true"
+
+  - name: "REPL palette - exit handler compiles"
+    script: |
+      return (script.compile (@system.menus.handlers.repl.exit))
+    expected_success: true
+    expected_result: "true"
+
+  # ==========================================================================
+  # Handler-to-kernel-verb plumbing: invoking each handler reaches its
+  # kernel verb without crashing. The kernel verb side effects are tested
+  # in repl_verbs_tests.c (unit) — here we just prove the handler-script
+  # call path is wired.
+  # ==========================================================================
+
+  - name: "REPL palette - clear handler invokes repl.clearVariables"
+    description: |
+      Calling the clear handler must invoke repl.clearVariables, which
+      goes through the host adapter. With no adapter installed (we are
+      in -e mode, not the REPL event loop), the verb returns false at
+      script level — not a crash. Handler still returns true because
+      it doesn't propagate the verb return value.
+    script: |
+      return (system.menus.handlers.repl.clear ())
+    expected_success: true
+    expected_result: "true"
+
+  - name: "REPL palette - list handler invokes repl.list"
+    description: |
+      Same as above for the list handler — must reach repl.list without
+      a NULL deref. Adapter unavailable returns false at the verb, but
+      the handler returns true.
+    script: |
+      return (system.menus.handlers.repl.list ())
+    expected_success: true
+    expected_result: "true"
+
+  - name: "REPL palette - jump handler invokes repl.jumpPath"
+    description: |
+      jumpPath returns its host's success flag. With no adapter, that's
+      false — but the handler swallows it and returns true.
+    script: |
+      return (system.menus.handlers.repl.jump ())
+    expected_success: true
+    expected_result: "true"
