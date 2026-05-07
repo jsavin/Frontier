@@ -135,6 +135,26 @@ bundle { //set up webserver, betty, rootUpdates, people, custody, and WebEdit
 	//try
 		//delete (@user.webserver.responders.websiteFramework.data.docTree.contents)
 
+bundle { //2026-05-06 JES: strip legacy embedded image blob tables (Kevin Hughes EIT icon set)
+	//The @websites.samples.["#images"] and @websites.samples.UserLand.["#images"]
+	//tables hold ~94 MB of GIFs from the Kevin Hughes 1995 EIT public-domain
+	//icon set, embedded into Virgin.root as legacy docserver / Manila content.
+	//None of these blobs are referenced by any path Frontier currently uses
+	//(legacy webserver, Manila, Betty, docserver are all stubbed or removed).
+	//
+	//We strip the #images sub-tables specifically; the rest of @websites
+	//(including @websites.samples.default, .["#data"], .["#ftpSite"], etc.)
+	//is preserved because integration tests still reference those addresses
+	//and html.cleanForExport's default arg points at @websites.["#data"].
+	//
+	//Also strip @fatpages (legacy Manila page cache) and
+	//@user.html.changedPages (transient outline). firstRootRun re-creates
+	//user.html.changedPages.
+	try {delete (@websites.samples.["#images"])};
+	try {delete (@websites.samples.UserLand.["#images"])};
+	try {delete (@fatpages)};
+	try {delete (@user.html.changedPages)}};
+
 filemenu.save ();
 
 bundle { //8.0 stuff
@@ -159,7 +179,22 @@ bundle { //save a copy
 	//file.move (f, file.getSpecialFolderPath (file.volumeFromPath (f), "Trash", false))
 	local (oldtarget = target.set (@root));
 	FileMenu.saveCopy (f);
-	try {target.set (oldtarget)}};
+	try {target.set (oldtarget)};
+	bundle { //2026-05-06 JES: compact the saveCopy output so dist Virgin.root has no avail-list dead space
+		//FileMenu.saveCopy is a byte-copy (preserves avail-list dead space).
+		//db.compactDatabase walks live records only, so the result is the
+		//minimum size needed to represent the data. Without this step the
+		//stripped tables above stay in the file as freed-but-not-truncated
+		//blocks. Order matters: we must compact AFTER saveCopy because the
+		//compaction temp file opens f as a guest db.
+		local (slimPath = f + ".compact");
+		try {file.delete (slimPath)};
+		try {
+			db.open (f, false);
+			db.compactDatabase (f, slimPath);
+			db.close (f);
+			file.delete (f);
+			file.move (slimPath, f)}};};
 //bundle //PBS 07/05/00: delete unwanted databases
 	//on visitProc (f)
 		//if not (string.lower (f) == string.lower (Frontier.getFilePath ()))
