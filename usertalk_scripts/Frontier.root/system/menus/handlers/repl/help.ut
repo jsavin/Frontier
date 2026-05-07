@@ -1,15 +1,13 @@
 on help ()
 	//Print the REPL slash-command reference.
-		//5/6/26 by JES
-			//Initial implementation. Mirrors the C-side repl_output_help() text
-			//so the menu and the power-user shortcut reach the same surface.
-	stdout ("Available commands:\r")
-	stdout ("  /clear             Clear variables and reset focus to root\r")
-	stdout ("  /exit              Exit the REPL\r")
-	stdout ("  /help              Show this help message\r")
-	stdout ("  /jump [path]       Navigate to a table (like cd)\r")
-	stdout ("  /keycodes          Debug terminal key sequences\r")
-	stdout ("  /list [path]       List contents of a table\r")
-	stdout ("\r")
-	stdout ("Press slash at column 1 of an empty prompt to open the menu palette.\r")
+		//5/7/26 by JES (PR 7)
+			//Thin wrapper around the repl.help kernel verb, which calls
+			//repl_output_help() in C to emit the legacy slash help text.
+			//PR 6 had this print directly via a `stdout` verb that is not
+			//defined in headless mode, so PR 7 added the kernel verb and
+			//rewrote the handler. The menubar's "Help" item now installs
+			//"repl.help ()" directly (see installReplMenubar.ut), so this
+			//handler is no longer reached at runtime - it is preserved so
+			//a future host can hook UserTalk customization in here.
+	repl.help ()
 	return (true)

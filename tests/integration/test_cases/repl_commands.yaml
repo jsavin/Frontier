@@ -296,11 +296,17 @@ tests:
       - "/help"
     expected_success: true
 
-  - name: "REPL - command case sensitivity"
-    description: "Commands should be case-sensitive"
+  - name: "REPL - command case insensitivity"
+    description: |
+      As of PR 7 (slash-menu migration) commands resolve via the menubar
+      with case-insensitive label match, so /EXIT routes to the same Exit
+      leaf as /exit. The legacy case-sensitive behavior was a side effect
+      of strcmp() in the old hardcoded dispatcher.
     repl_mode: true
-    stdin_input: "/EXIT\n/exit\n"
+    stdin_input: "/EXIT\n"
     expected_output_contains:
+      - "Goodbye"
+    expected_output_not_contains:
       - "Unknown command"
     expected_success: true
 

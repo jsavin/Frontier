@@ -48,13 +48,15 @@
 #include "repl_eval.h"
 #include "repl_variables.h"
 #include "repl_output.h"
-#include "repl_commands.h"
+#include "repl_slash_resolver.h"
 #include "repl_verbs.h"
 #include "completion.h"
 #include "pane.h"
 #include "palette.h"
 #include "repl_palette_source.h"
 #include "../Common/headers/menudata_headless.h" /* meuserselected_headless */
+#include "../Common/headers/oplist.h"		/* opcountlistitems */
+#include "../Common/headers/langsystem7.h"	/* getnthlistval */
 #include "../Common/headers/frontier.h"
 #include "../Common/headers/logging.h"
 #include "../Common/headers/lang.h"
@@ -2068,6 +2070,326 @@ static void linenoise_completion_callback(const char *buf, linenoiseCompletions 
 	}
 }
 
+/* ------------------------------------------------------------------- */
+/*  Slash-command dispatcher (PR 7 — replaces repl_commands.c)         */
+/* ------------------------------------------------------------------- */
+/*
+ * Routes a line that begins with '/' through the installed REPL menubar
+ * (system.menus.data.repl.REPL) instead of the legacy hardcoded
+ * if/strcmp chain. The hardcoded chain lived in repl_commands.c; PR 7
+ * deletes that file in favor of this dispatch path.
+ *
+ * Flow:
+ *   1. Strip leading '/'. Trim leading and trailing whitespace from the
+ *      remaining text.
+ *   2. Split on the first run of whitespace into TOKEN and ARGS. ARGS may
+ *      be empty.
+ *   3. Resolve TOKEN against the menubar via repl_resolve_slash_command.
+ *      The resolver is case-insensitive, internally-whitespace-insensitive,
+ *      and supports unique prefix + single-letter first-letter matching.
+ *      It returns the matched leaf hashtable AND the leaf's slot key.
+ *   4. Branch on the slot key + presence of ARGS:
+ *
+ *        - "List" + ARGS  -> replverbhost_list(args)
+ *        - "Jump" + ARGS  -> replverbhost_jump_path(args)
+ *        - "List" + ""    -> dispatch via meuserselected_headless (lists
+ *                            current focus table)
+ *        - "Jump" + ""    -> dispatch via meuserselected_headless (returns
+ *                            to root)
+ *        - <other> + ""   -> dispatch via meuserselected_headless
+ *        - <other> + ARGS -> dispatch via meuserselected_headless; the
+ *                            argument is silently ignored. (No leaf in
+ *                            the standard menubar accepts args today
+ *                            except List/Jump. Future leaves with
+ *                            accepts_args = true will route via the
+ *                            palette input row in PR 8.)
+ *
+ *   5. Unresolved tokens emit "Unknown command: /<token>\nType /help for
+ *      available commands\n" and continue. Empty token "/" emits the
+ *      same with a literal "/" rather than crashing.
+ *
+ * Why special-case List/Jump here instead of in the menubar handlers?
+ * --------------------------------------------------------------------
+ * The handlers under system.menus.handlers.repl.* are zero-arg today
+ * (they wrap the kernel verb with empty path). Threading a slash-command
+ * argument through to a UserTalk handler requires either (a) a dedicated
+ * arg-passing channel through meuserselected_headless, or (b) a transient
+ * ODB slot that the handler reads. Both are larger surface than PR 7
+ * needs to land. PR 8 introduces the palette accepts_args input row,
+ * which is the natural place to add arg threading.
+ *
+ * Returns true if the line was consumed (always — even unknown commands
+ * are "consumed" in the sense that the REPL keeps running). Sets
+ * *running to false only when the dispatched command was /exit.
+ *
+ * GIL: must be called while holding the GIL — calls into the resolver,
+ * menudata_describe_leaf, and meuserselected_headless, all of which
+ * require it.
+ */
+
+/* Forward declarations of the host adapter functions defined later in
+ * this file. They wrap the same module-state mutations that the menubar
+ * handlers ultimately reach through the repl.* kernel verbs. */
+static void replverbhost_exit(void);
+static boolean replverbhost_jump_path(const char *path);
+static void replverbhost_list(const char *path);
+
+/* Find the script-string handle inside a record returned by
+ * menudata_describe_leaf. Returns nil if absent or wrong type. The
+ * returned handle lives inside the record envelope and is freed when
+ * the caller disposes the record. */
+static Handle dispatch_script_handle_from_record(tyvaluerecord rec) {
+	if (rec.valuetype != recordvaluetype)
+		return nil;
+	hdllistrecord hlist = rec.data.recordvalue;
+
+	bigstring bskey;
+	copyctopstring("script", bskey);
+	long n = opcountlistitems(hlist);
+	for (long i = 1; i <= n; i++) {
+		bigstring bsfound;
+		tyvaluerecord val;
+		if (!getnthlistval(hlist, i, bsfound, &val))
+			continue;
+		if (!equalstrings(bsfound, bskey))
+			continue;
+		if (val.valuetype != stringvaluetype)
+			return nil;
+		return (Handle)val.data.stringvalue;
+	}
+	return nil;
+}
+
+/*
+ * Dispatch a resolved leaf via meuserselected_headless. Reads the
+ * leaf's "script" field via menudata_describe_leaf (which copyvaluerecord's
+ * every field, satisfying the handle-privacy contract documented in
+ * menudata_headless.h). Makes a private copy of the script handle so
+ * meuserselected_headless's internal copyhandle can run safely against a
+ * source whose lifetime we control.
+ *
+ * Returns true if the script ran to completion (per
+ * meuserselected_headless's contract). Caller does NOT need to dispose
+ * anything — record disposal happens here, and meuserselected_headless
+ * does not consume the script-handle copy we hand it (we dispose ours
+ * after the call).
+ */
+static boolean dispatch_leaf_via_menubar(hdlhashtable hleaf) {
+	if (hleaf == nil)
+		return false;
+
+	tyvaluerecord rec;
+	if (!menudata_describe_leaf(hleaf, &rec))
+		return false;
+
+	Handle hscript_in_record = dispatch_script_handle_from_record(rec);
+	if (hscript_in_record == nil) {
+		disposevaluerecord(rec, false);
+		return false;
+	}
+
+	/* Privacy: copy the script handle so meuserselected_headless's
+	 * internal copyhandle has a stable source independent of the
+	 * record envelope's lifetime. (The record lives on the stack here,
+	 * so disposing it after the call would invalidate the handle in
+	 * the middle of langruncode if we passed it directly.) */
+	Handle hscript_copy = nil;
+	if (!copyhandle(hscript_in_record, &hscript_copy)) {
+		disposevaluerecord(rec, false);
+		return false;
+	}
+
+	g_script_running = 1;
+	boolean ok = meuserselected_headless(hscript_copy);
+	g_script_running = 0;
+
+	disposehandle(hscript_copy);
+	disposevaluerecord(rec, false);
+	return ok;
+}
+
+/*
+ * Trim leading and trailing whitespace from `s` in-place. Returns a
+ * pointer to the first non-whitespace byte (which is `s` after writing
+ * '\0' at the trailing-trim position).
+ */
+static char *trim_inplace(char *s) {
+	if (s == NULL || *s == '\0')
+		return s;
+	while (*s != '\0' && isspace((unsigned char)*s))
+		s++;
+	size_t len = strlen(s);
+	while (len > 0 && isspace((unsigned char)s[len - 1])) {
+		s[--len] = '\0';
+	}
+	return s;
+}
+
+/*
+ * Process a slash-prefixed line. See the comment block above for the full
+ * dispatch flow. Returns true if the REPL should keep running; sets
+ * *running = false on /exit dispatch.
+ */
+static boolean dispatch_slash_command(const char *line, boolean *running) {
+	/* Defensive copy + trim. The caller has already verified line[0] == '/'. */
+	char buf[512];
+	size_t inlen = strlen(line);
+	if (inlen >= sizeof(buf)) {
+		fputs("Error: command too long\n", stdout);
+		fflush(stdout);
+		return true;
+	}
+	memcpy(buf, line, inlen + 1);
+
+	char *p = buf;
+	while (*p != '\0' && isspace((unsigned char)*p)) p++;
+	/* skip leading slash */
+	if (*p == '/') p++;
+
+	/* Trim trailing whitespace from the full body. We need this BEFORE
+	 * the token split so that "/help   \n" with spaces and a newline at
+	 * the end doesn't get misclassified as "/help" + " " args. */
+	{
+		size_t blen = strlen(p);
+		while (blen > 0 && isspace((unsigned char)p[blen - 1])) {
+			p[--blen] = '\0';
+		}
+	}
+
+	/*
+	 * The unknown-command error message wants the FULL token including
+	 * any whitespace+args, so save the body before we split. This
+	 * matches the legacy repl_process_command behavior where typing
+	 * "/tmp/some/path with space" produced
+	 * "Unknown command: /tmp/some/path with space".
+	 *
+	 * The existing integration test "file.getFileDialog - filename with
+	 * spaces" feeds a path like "/tmp/dialogtest/my file.txt" as input
+	 * — the test runner type-ahead's it as a slash-prefixed line. Even
+	 * though it isn't a real command, we want the FULL path to appear
+	 * in the diagnostic so the test's expected_output_contains:
+	 * "my file.txt" assertion still hits.
+	 *
+	 * Copy into a separate buffer because the in-place split below
+	 * writes NUL bytes into `p` that would truncate a pointer into it.
+	 */
+	char body_copy[sizeof(buf)];
+	{
+		size_t bcap = sizeof(body_copy);
+		size_t bn = strlen(p);
+		if (bn >= bcap) bn = bcap - 1;
+		memcpy(body_copy, p, bn);
+		body_copy[bn] = '\0';
+	}
+	const char *full_body = body_copy;
+
+	/* Split into TOKEN and ARGS at the first whitespace run. */
+	char *token_start = p;
+	while (*p != '\0' && !isspace((unsigned char)*p)) p++;
+	char *args_start;
+	if (*p == '\0') {
+		args_start = p; /* points at NUL */
+	} else {
+		*p = '\0';
+		p++;
+		while (*p != '\0' && isspace((unsigned char)*p)) p++;
+		args_start = p;
+	}
+
+	/* args_start is now NUL-terminated at the input end; trailing
+	 * whitespace was stripped above so no further trim needed. */
+
+	/* Empty token: "/" or "/   ". */
+	if (token_start[0] == '\0') {
+		fputs("Unknown command: /\nType /help for available commands\n", stdout);
+		fflush(stdout);
+		return true;
+	}
+
+	/* Resolve the token against the menubar. */
+	hdlhashtable hleaf = nil;
+	char slot_name[REPL_SLASH_TOKEN_MAX];
+	if (!repl_resolve_slash_command(token_start, &hleaf,
+	                                slot_name, sizeof(slot_name))) {
+		/*
+		 * Unknown command: print the FULL body (including any args)
+		 * with a leading "/" so the user sees what they typed. The
+		 * body is scrubbed via safe_print_user_string because it may
+		 * contain control bytes from a paste accident or a malicious
+		 * type-ahead.
+		 */
+		fputs("Unknown command: /", stdout);
+		safe_print_user_string(full_body);
+		fputs("\nType /help for available commands\n", stdout);
+		fflush(stdout);
+		return true;
+	}
+
+	/*
+	 * Special-case List + Jump: when the user supplies an argument, route
+	 * directly to the kernel-verb host adapter so the argument is honored.
+	 * No-arg cases fall through to menubar dispatch (which calls the same
+	 * kernel verb via the UserTalk handler).
+	 *
+	 * The match is case-insensitive on the slot key. The legacy install
+	 * script writes "List" and "Jump" exactly; future-proofed for
+	 * downstream menubar customization that might lowercase or relocalize.
+	 */
+	if (args_start[0] != '\0') {
+		if (strcasecmp(slot_name, "List") == 0) {
+			replverbhost_list(args_start);
+			return true;
+		}
+		if (strcasecmp(slot_name, "Jump") == 0) {
+			if (!replverbhost_jump_path(args_start)) {
+				/* Match the legacy /jump error wording so existing
+				 * integration tests (REPL /jump - invalid path,
+				 * /jump - doesn't change on error) continue to
+				 * recognise the failure mode. The path arg is
+				 * scrubbed via safe_print_user_string because it
+				 * may contain control bytes from a malicious user
+				 * crafting a slash-command. */
+				fputs("Error: '", stdout);
+				safe_print_user_string(args_start);
+				fputs("' is not a valid table path\n", stdout);
+				fflush(stdout);
+			}
+			return true;
+		}
+		/*
+		 * Other resolved leaves don't accept args today. Drop the arg
+		 * silently and dispatch via menubar — same effect as the user
+		 * typing the bare command. Once PR 8 wires accepts_args + the
+		 * palette input row, this branch can route through that channel.
+		 */
+	}
+
+	/* Default: menubar dispatch. /exit is detected by slot-key match
+	 * BEFORE the dispatch, because meuserselected_headless runs the
+	 * handler synchronously and the handler sets g_repl_exit_requested
+	 * via repl.exit() — the main loop's poll of that flag handles the
+	 * actual exit. We also short-circuit here so callers that test for
+	 * *running == false on /exit observe the change without waiting for
+	 * the next event-loop tick. */
+	boolean ok = dispatch_leaf_via_menubar(hleaf);
+	if (!ok) {
+		fputs("(menu script failed)\n", stdout);
+		fflush(stdout);
+	}
+
+	if (strcasecmp(slot_name, "Exit") == 0) {
+		/* Belt-and-braces: also flag exit at this level. The menubar
+		 * handler's repl.exit() also sets g_repl_exit_requested via
+		 * replverbhost_exit, but a stale host adapter (NULL pointer
+		 * after teardown, or a future host that no-ops) shouldn't
+		 * leave the REPL running on a /exit slash. */
+		replverbhost_exit();
+		*running = false;
+	}
+	return true;
+}
+
+
 /* Process a single command line (extracted for use in event loop) */
 static boolean process_line(const char *line, boolean *running) {
 	// Skip empty lines
@@ -2082,11 +2404,7 @@ static boolean process_line(const char *line, boolean *running) {
 
 	// Process command
 	if (line[0] == '/') {
-		repl_command_result result = repl_process_command(line);
-		if (result == REPL_CMD_EXIT) {
-			*running = false;
-		}
-		return true;
+		return dispatch_slash_command(line, running);
 	}
 
 	// Evaluate as UserTalk with persistent variables
@@ -2533,6 +2851,10 @@ static void replverbhost_exit(void) {
 	g_repl_exit_requested = 1;
 }
 
+static void replverbhost_help(void) {
+	repl_output_help();
+}
+
 static void replverbhost_clear_variables(void) {
 	hdlhashtable vars = repl_get_variables_table();
 	if (vars != nil)
@@ -2626,6 +2948,7 @@ static void install_repl_verbs_host(void) {
 	host.jump_path = replverbhost_jump_path;
 	host.print_key_codes = replverbhost_print_key_codes;
 	host.list = replverbhost_list;
+	host.help = replverbhost_help;
 	repl_verbs_set_host(&host);
 }
 

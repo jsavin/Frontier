@@ -36,7 +36,9 @@
 #include "strings.h"
 #include "lang.h"
 #include "langinternal.h"
+#include "langexternal.h"
 #include "tablestructure.h"
+#include "tableverbs.h"
 #include "stringdefs.h"
 
 #include "menudata_headless.h"
@@ -92,16 +94,26 @@ static size_t fold_collapse(const char *src, char *dst, size_t dstsz) {
 
 /*
  * Refcon for the leaf-walking inversesearch.
+ *
+ * Each tier (exact, prefix, first-letter) tracks its own count and best
+ * candidate so the caller can apply precedence after the walk completes.
+ * Slot keys are captured alongside the leaf handles because callers that
+ * need to special-case "List" or "Jump" identify them by slot key, not
+ * by label (label is a free-form string; key is the canonical id under
+ * the parent menu).
  */
 typedef struct ty_resolve_refcon {
 	const char *normalized_token; /* token already case-folded, space-stripped */
 	size_t token_len;
-	hdlhashtable best_leaf;       /* match candidate; nil if none */
-	int exact_count;              /* number of exact-label matches found */
-	int prefix_count;             /* number of prefix matches (length > 1 token) */
-	int firstletter_count;        /* number of first-letter matches (token len 1) */
-	hdlhashtable best_prefix;     /* candidate for prefix match */
-	hdlhashtable best_firstletter; /* candidate for first-letter match */
+	hdlhashtable best_leaf;
+	bigstring    best_leaf_name;
+	int exact_count;
+	hdlhashtable best_prefix;
+	bigstring    best_prefix_name;
+	int prefix_count;
+	hdlhashtable best_firstletter;
+	bigstring    best_firstletter_name;
+	int firstletter_count;
 } ty_resolve_refcon;
 
 
@@ -124,7 +136,7 @@ static size_t read_leaf_label(hdlhashtable hleaf, bigstring bsname,
 	if (dstsz == 0) return 0;
 	dst[0] = '\0';
 
-	memcpy(bskey, BS_label, sizeof(BS_label));
+	copystring(BS_label, bskey);
 	if (hashtablelookup(hleaf, bskey, &val, &hnode)
 	    && val.valuetype == stringvaluetype
 	    && val.data.stringvalue != nil) {
@@ -185,6 +197,7 @@ static boolean visit_leaf(bigstring bsname, hdlhashnode hnode,
 	    && memcmp(folded, ctx->normalized_token, folded_len) == 0) {
 		ctx->exact_count++;
 		ctx->best_leaf = hleaf;
+		copystring(bsname, ctx->best_leaf_name);
 		return false; /* keep walking — exact matches should be unique
 		                 anyway, but the count guards against duplicate
 		                 keys. */
@@ -195,8 +208,10 @@ static boolean visit_leaf(bigstring bsname, hdlhashnode hnode,
 	    && ctx->token_len < folded_len
 	    && memcmp(folded, ctx->normalized_token, ctx->token_len) == 0) {
 		ctx->prefix_count++;
-		if (ctx->best_prefix == nil)
+		if (ctx->best_prefix == nil) {
 			ctx->best_prefix = hleaf;
+			copystring(bsname, ctx->best_prefix_name);
+		}
 	}
 
 	/* First-letter match (token is a single character that matches the
@@ -205,19 +220,34 @@ static boolean visit_leaf(bigstring bsname, hdlhashnode hnode,
 	    && folded_len > 0
 	    && folded[0] == ctx->normalized_token[0]) {
 		ctx->firstletter_count++;
-		if (ctx->best_firstletter == nil)
+		if (ctx->best_firstletter == nil) {
 			ctx->best_firstletter = hleaf;
+			copystring(bsname, ctx->best_firstletter_name);
+		}
 	}
 
 	return false; /* never short-circuit */
 }
 
 
-boolean repl_resolve_slash_command(const char *token, hdlhashtable *out_leaf) {
+/* Copy a Pascal-string slot key into a C buffer (NUL-terminated, capped). */
+static void name_pstring_to_cstring(bigstring bsname, char *dst, size_t dstsz) {
+	if (dstsz == 0) return;
+	size_t len = (size_t)stringlength(bsname);
+	if (len >= dstsz) len = dstsz - 1;
+	memcpy(dst, stringbaseaddress(bsname), len);
+	dst[len] = '\0';
+}
+
+
+boolean repl_resolve_slash_command(const char *token, hdlhashtable *out_leaf,
+                                   char *out_name, size_t out_namesz) {
 
 	if (out_leaf == nil)
 		return false;
 	*out_leaf = nil;
+	if (out_name != NULL && out_namesz > 0)
+		out_name[0] = '\0';
 
 	if (token == NULL || token[0] == '\0')
 		return false;
@@ -247,12 +277,12 @@ boolean repl_resolve_slash_command(const char *token, hdlhashtable *out_leaf) {
 
 	hdlhashtable hbar = nil;
 	bigstring bs;
-	memcpy(bs, BS_repl, sizeof(BS_repl));
+	copystring(BS_repl, bs);
 	if (!findnamedtable(hdata, bs, &hbar))
 		return false;
 
 	hdlhashtable hmenu = nil;
-	memcpy(bs, BS_REPL, sizeof(BS_REPL));
+	copystring(BS_REPL, bs);
 	if (!findnamedtable(hbar, bs, &hmenu))
 		return false;
 
@@ -260,11 +290,14 @@ boolean repl_resolve_slash_command(const char *token, hdlhashtable *out_leaf) {
 	ctx.normalized_token = ntok;
 	ctx.token_len = nlen;
 	ctx.best_leaf = nil;
+	setemptystring(ctx.best_leaf_name);
 	ctx.exact_count = 0;
 	ctx.prefix_count = 0;
 	ctx.firstletter_count = 0;
 	ctx.best_prefix = nil;
+	setemptystring(ctx.best_prefix_name);
 	ctx.best_firstletter = nil;
+	setemptystring(ctx.best_firstletter_name);
 
 	bigstring bsfound;
 	(void)hashinversesearch(hmenu, &visit_leaf, &ctx, bsfound);
@@ -273,6 +306,8 @@ boolean repl_resolve_slash_command(const char *token, hdlhashtable *out_leaf) {
 	 * uniqueness — multiple matches at the same tier returns false. */
 	if (ctx.exact_count == 1) {
 		*out_leaf = ctx.best_leaf;
+		if (out_name != NULL)
+			name_pstring_to_cstring(ctx.best_leaf_name, out_name, out_namesz);
 		return true;
 	}
 	if (ctx.exact_count > 1)
@@ -280,6 +315,8 @@ boolean repl_resolve_slash_command(const char *token, hdlhashtable *out_leaf) {
 
 	if (ctx.prefix_count == 1) {
 		*out_leaf = ctx.best_prefix;
+		if (out_name != NULL)
+			name_pstring_to_cstring(ctx.best_prefix_name, out_name, out_namesz);
 		return true;
 	}
 	if (ctx.prefix_count > 1)
@@ -287,6 +324,8 @@ boolean repl_resolve_slash_command(const char *token, hdlhashtable *out_leaf) {
 
 	if (ctx.firstletter_count == 1) {
 		*out_leaf = ctx.best_firstletter;
+		if (out_name != NULL)
+			name_pstring_to_cstring(ctx.best_firstletter_name, out_name, out_namesz);
 		return true;
 	}
 	return false;

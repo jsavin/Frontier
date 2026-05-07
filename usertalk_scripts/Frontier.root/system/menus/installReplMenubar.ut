@@ -1,15 +1,15 @@
 on installReplMenubar ()
 	//Install the headless REPL menubar at system.menus.data.repl.
-		//5/6/26 by JES
-			//Initial implementation. Idempotent: guarded by menu.isInstalled.
-			//The "repl" menubar holds a single "REPL" menu whose items reproduce
-			//the legacy slash-command behavior so a user pressing slash at column 1
-			//of an empty prompt sees the same actions as a power-user typing the
-			//slash-command directly.
+		//5/7/26 by JES
+			//PR 7: Help item now calls repl.help () directly. UserTalk
+			//in headless REPL mode lacks a raw-stdout primitive so help
+			//text is emitted from C via the repl.help kernel verb,
+			//which calls repl_output_help() to produce the legacy slash
+			//help text.
 	if menu.isInstalled (@system.menus.data.repl)
 		return (true)
 	local (adrbar = @system.menus.data.repl)
-	menu.addMenuCommand (adrbar, "REPL", "Help", "system.menus.handlers.repl.help ()")
+	menu.addMenuCommand (adrbar, "REPL", "Help", "repl.help ()")
 	menu.addMenuCommand (adrbar, "REPL", "Clear", "system.menus.handlers.repl.clear ()")
 	menu.addMenuCommand (adrbar, "REPL", "List", "system.menus.handlers.repl.list ()")
 	menu.addMenuCommand (adrbar, "REPL", "Jump", "system.menus.handlers.repl.jump ()")

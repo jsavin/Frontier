@@ -64,18 +64,28 @@ extern "C" {
  *   *out_leaf - On true return, set to the matched leaf's hashtable handle
  *               (a borrowed reference into the ODB; the caller must NOT
  *               dispose it). On false return, set to nil.
+ *   out_name  - Optional. If non-NULL, on true return filled with the
+ *               matched leaf's slot key (i.e. the name under which it is
+ *               stored inside the parent menu — the third arg to
+ *               menu.addMenuCommand at install time, e.g. "List", "Jump").
+ *               NUL-terminated, capped at out_namesz - 1 chars. On false
+ *               return, out_name[0] is set to '\0'.
+ *               Pass NULL + 0 to skip.
+ *   out_namesz - Capacity of out_name in bytes. Ignored if out_name is NULL.
  *
  * Returns true iff a unique match was found per the precedence rules in
  * the file header. Returns false for: NULL/empty/oversized token, missing
  * REPL menubar, no match, or ambiguous match. In every false-return case
- * *out_leaf is set to nil so the caller can pass it through unconditionally.
+ * *out_leaf is set to nil and out_name (if any) is cleared so the caller
+ * can pass them through unconditionally.
  *
  * GIL: must be called while holding the GIL — walks shared roottable
  * descendants via findnamedtable / hashinversesearch and reads field
  * scalars via hashtablelookup, all of which assume GIL discipline.
  */
 extern boolean repl_resolve_slash_command(const char *token,
-                                          hdlhashtable *out_leaf);
+                                          hdlhashtable *out_leaf,
+                                          char *out_name, size_t out_namesz);
 
 
 #ifdef __cplusplus

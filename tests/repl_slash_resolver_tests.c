@@ -166,7 +166,7 @@ static void test_exact_label_match(void) {
 	build_repl_menubar();
 
 	hdlhashtable hleaf = nil;
-	assert(repl_resolve_slash_command("exit", &hleaf));
+	assert(repl_resolve_slash_command("exit", &hleaf, NULL, 0));
 	assert(hleaf != nil);
 	char label[64];
 	read_label(hleaf, label, sizeof(label));
@@ -174,7 +174,7 @@ static void test_exact_label_match(void) {
 
 	/* Mixed-case input still resolves to the same leaf. */
 	hleaf = nil;
-	assert(repl_resolve_slash_command("ExIt", &hleaf));
+	assert(repl_resolve_slash_command("ExIt", &hleaf, NULL, 0));
 	read_label(hleaf, label, sizeof(label));
 	assert(strcmp(label, "Exit") == 0);
 
@@ -192,7 +192,7 @@ static void test_unique_prefix_match(void) {
 	/* "exi" is a unique prefix of "Exit" (no other label starts with E... */
 	/* well actually "Exit" is the only E-leaf, so "exi" -> "Exit"). */
 	hdlhashtable hleaf = nil;
-	assert(repl_resolve_slash_command("exi", &hleaf));
+	assert(repl_resolve_slash_command("exi", &hleaf, NULL, 0));
 	char label[64];
 	read_label(hleaf, label, sizeof(label));
 	assert(strcmp(label, "Exit") == 0);
@@ -224,11 +224,11 @@ static void test_ambiguous_prefix_fails(void) {
 	set_string(hclose, "label", "Close");
 
 	hdlhashtable hleaf = nil;
-	assert(!repl_resolve_slash_command("cl", &hleaf));
+	assert(!repl_resolve_slash_command("cl", &hleaf, NULL, 0));
 	assert(hleaf == nil);
 
 	/* "cle" is unique to Clear -> resolves. */
-	assert(repl_resolve_slash_command("cle", &hleaf));
+	assert(repl_resolve_slash_command("cle", &hleaf, NULL, 0));
 	char label[64];
 	read_label(hleaf, label, sizeof(label));
 	assert(strcmp(label, "Clear") == 0);
@@ -248,18 +248,18 @@ static void test_hotkey_first_letter_match(void) {
 	/* But our menubar uses "Exit" first letter = 'E'. There's no leaf */
 	/* starting with X. So "x" should NOT match in the standard menubar. */
 	hdlhashtable hleaf = nil;
-	assert(!repl_resolve_slash_command("x", &hleaf));
+	assert(!repl_resolve_slash_command("x", &hleaf, NULL, 0));
 
 	/* "h" is a unique first-letter for "Help" -> resolves. */
 	hleaf = nil;
-	assert(repl_resolve_slash_command("h", &hleaf));
+	assert(repl_resolve_slash_command("h", &hleaf, NULL, 0));
 	char label[64];
 	read_label(hleaf, label, sizeof(label));
 	assert(strcmp(label, "Help") == 0);
 
 	/* "e" is unique to "Exit" -> resolves. */
 	hleaf = nil;
-	assert(repl_resolve_slash_command("e", &hleaf));
+	assert(repl_resolve_slash_command("e", &hleaf, NULL, 0));
 	read_label(hleaf, label, sizeof(label));
 	assert(strcmp(label, "Exit") == 0);
 
@@ -289,7 +289,7 @@ static void test_ambiguous_first_letter_fails(void) {
 	set_string(hclose, "label", "Close");
 
 	hdlhashtable hleaf = nil;
-	assert(!repl_resolve_slash_command("c", &hleaf));
+	assert(!repl_resolve_slash_command("c", &hleaf, NULL, 0));
 	assert(hleaf == nil);
 
 	clear_data_children();
@@ -304,10 +304,10 @@ static void test_empty_token_rejected(void) {
 	build_repl_menubar();
 
 	hdlhashtable hleaf = nil;
-	assert(!repl_resolve_slash_command("", &hleaf));
+	assert(!repl_resolve_slash_command("", &hleaf, NULL, 0));
 	assert(hleaf == nil);
 
-	assert(!repl_resolve_slash_command(NULL, &hleaf));
+	assert(!repl_resolve_slash_command(NULL, &hleaf, NULL, 0));
 	assert(hleaf == nil);
 
 	clear_data_children();
@@ -326,13 +326,13 @@ static void test_overlong_token_rejected(void) {
 	big[64] = '\0'; /* exactly 64 chars + NUL: rejected (>= 64) */
 
 	hdlhashtable hleaf = nil;
-	assert(!repl_resolve_slash_command(big, &hleaf));
+	assert(!repl_resolve_slash_command(big, &hleaf, NULL, 0));
 	assert(hleaf == nil);
 
 	/* 63 chars + NUL: still rejected (no match), but not because of length */
 	big[63] = '\0';
 	hleaf = nil;
-	assert(!repl_resolve_slash_command(big, &hleaf));
+	assert(!repl_resolve_slash_command(big, &hleaf, NULL, 0));
 	/* legitimate "no match" — different code path, still false */
 
 	clear_data_children();
@@ -347,7 +347,7 @@ static void test_unknown_token_returns_false(void) {
 	build_repl_menubar();
 
 	hdlhashtable hleaf = nil;
-	assert(!repl_resolve_slash_command("nonsense", &hleaf));
+	assert(!repl_resolve_slash_command("nonsense", &hleaf, NULL, 0));
 	assert(hleaf == nil);
 
 	clear_data_children();
@@ -362,7 +362,7 @@ static void test_no_menubar_returns_false(void) {
 	clear_data_children(); /* no system.menus.data.repl */
 
 	hdlhashtable hleaf = nil;
-	assert(!repl_resolve_slash_command("exit", &hleaf));
+	assert(!repl_resolve_slash_command("exit", &hleaf, NULL, 0));
 	assert(hleaf == nil);
 
 	printf("PASS\n");
@@ -377,10 +377,52 @@ static void test_two_word_label(void) {
 
 	/* "Key codes" should be reachable as "keycodes" (spaces collapsed). */
 	hdlhashtable hleaf = nil;
-	assert(repl_resolve_slash_command("keycodes", &hleaf));
+	assert(repl_resolve_slash_command("keycodes", &hleaf, NULL, 0));
 	char label[64];
 	read_label(hleaf, label, sizeof(label));
 	assert(strcmp(label, "Key codes") == 0);
+
+	clear_data_children();
+	printf("PASS\n");
+	fflush(stdout);
+}
+
+static void test_out_name_returns_slot_key(void) {
+	printf("[resolver] Test: out_name buffer returns leaf slot key... ");
+	fflush(stdout);
+
+	build_repl_menubar();
+
+	/* Resolve "list" — should match leaf slot key "List". */
+	hdlhashtable hleaf = nil;
+	char name[64];
+	memset(name, 0xAA, sizeof(name));
+	assert(repl_resolve_slash_command("list", &hleaf, name, sizeof(name)));
+	assert(strcmp(name, "List") == 0);
+
+	/* Resolve via prefix — out_name still gets the slot key. */
+	hleaf = nil;
+	memset(name, 0xAA, sizeof(name));
+	assert(repl_resolve_slash_command("ju", &hleaf, name, sizeof(name)));
+	assert(strcmp(name, "Jump") == 0);
+
+	/* Resolve via single-letter — out_name still gets the slot key. */
+	hleaf = nil;
+	memset(name, 0xAA, sizeof(name));
+	assert(repl_resolve_slash_command("e", &hleaf, name, sizeof(name)));
+	assert(strcmp(name, "Exit") == 0);
+
+	/* Two-word slot key "Key codes" preserved verbatim. */
+	hleaf = nil;
+	memset(name, 0xAA, sizeof(name));
+	assert(repl_resolve_slash_command("keycodes", &hleaf, name, sizeof(name)));
+	assert(strcmp(name, "Key codes") == 0);
+
+	/* On failure, out_name is cleared so callers can pass it through. */
+	hleaf = nil;
+	memset(name, 0xAA, sizeof(name));
+	assert(!repl_resolve_slash_command("nonsense", &hleaf, name, sizeof(name)));
+	assert(name[0] == '\0');
 
 	clear_data_children();
 	printf("PASS\n");
@@ -415,6 +457,7 @@ int main(void) {
 	TR_RUN(test_unknown_token_returns_false);
 	TR_RUN(test_no_menubar_returns_false);
 	TR_RUN(test_two_word_label);
+	TR_RUN(test_out_name_returns_slot_key);
 
 	printf("\n=========================================\n");
 	printf("[resolver] ALL TESTS PASSED\n");

@@ -92,6 +92,7 @@ CLI_SOURCES = \
     repl_variables.c \
     repl_verbs.c \
     repl_palette_source.c \
+    repl_slash_resolver.c \
     pane.c \
     palette.c
 

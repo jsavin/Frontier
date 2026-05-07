@@ -112,6 +112,22 @@ typedef struct ty_repl_verbs_host {
 	 * forwarded verbatim.
 	 */
 	void (*list)(const char *path);
+	/*
+	 * help: print the REPL slash-command reference. Backs repl.help() —
+	 * the kernel verb the menubar /help handler invokes. The host
+	 * implementation typically calls repl_output_help() (the C-side
+	 * help-text emitter that the legacy /help slash handler used).
+	 *
+	 * Why a kernel verb instead of letting the UserTalk handler print
+	 * its own text? UserTalk in headless mode lacks a raw-stdout
+	 * primitive — `msg` prepends "msg: " in REPL mode, and there is no
+	 * `print` / `stdout` verb in the kernel verb tree. Until PR 8 (or
+	 * a follow-up) adds a proper raw-stdout verb, the help text must
+	 * be emitted from C. See the help.ut handler at
+	 * usertalk_scripts/Frontier.root/system/menus/handlers/repl/help.ut
+	 * for the call site.
+	 */
+	void (*help)(void);
 } repl_verbs_host_t;
 
 
