@@ -602,11 +602,19 @@ Test file: `repl_multiline.yaml` (to be created)
 - tests/integration/test_cases/repl_commands.yaml - Command tests
 - tests/integration/test_cases/repl_sessions.yaml - Session lifecycle tests
 
-**Implementation Files** (to be created):
-- frontier-cli/repl.h, repl.c - Main REPL loop
+**Implementation Files**:
+- frontier-cli/repl.h, repl.c - Main REPL loop and the slash-command
+  dispatcher (dispatch_slash_command). PR 7 retired the legacy
+  hardcoded if/strcmp chain; slash commands now resolve through
+  the menubar at system.menus.data.repl.REPL.
 - frontier-cli/repl_eval.h, repl_eval.c - Workspace and evaluation
 - frontier-cli/repl_output.h, repl_output.c - Value display
-- frontier-cli/repl_commands.h, repl_commands.c - Command processing
+- frontier-cli/repl_slash_resolver.h, repl_slash_resolver.c -
+  Menubar-walk resolver that maps a slash-command token to a leaf
+  hashtable inside system.menus.data.repl.REPL.
+- frontier-cli/repl_verbs.h, repl_verbs.c - Five repl.* kernel verbs
+  (exit, clearVariables, jumpPath, printKeyCodes, list, help) plus
+  the host adapter pattern that wires them to repl.c side effects.
 
 ---
 

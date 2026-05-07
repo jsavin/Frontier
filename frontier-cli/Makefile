@@ -86,7 +86,6 @@ CLI_SOURCES = \
     file_browser.c \
     completion.c \
     repl.c \
-    repl_commands.c \
     repl_eval.c \
     repl_output.c \
     repl_variables.c \
