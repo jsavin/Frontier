@@ -625,6 +625,258 @@ static void test_state_12_focused_pane_border_bold(void) {
 	palette_close(&st);
 }
 
+/* ---------- Rung 2 / PR 8: snapshot tests ---------- */
+
+/* Find any cell containing the given character on the given row. */
+static const cell_t *fb_find_char_on_row(int y, uint32_t ch) {
+	int rows = 0, cols = 0;
+	compositor_test_fb_size(&rows, &cols);
+	if (y < 0 || y >= rows) return NULL;
+	for (int x = 0; x < cols; ++x) {
+		const cell_t *c = compositor_test_fb_at(x, y);
+		if (c && c->ch == ch) return c;
+	}
+	return NULL;
+}
+
+static void test_state_13_menubar_uses_cyan_on_blue(void) {
+	/* The menubar row (y=0) renders with cyan-on-blue color theme.
+	 * The hotkey letter inside an unselected menu entry is bright
+	 * yellow on blue (so the test reads the second character of the
+	 * label — non-hotkey — to verify the base text color). */
+	compositor_test_reset();
+	compositor_on_resize(24, 80);
+	palette_state_t st;
+	palette_menu_source_t src = snap_source(&g_src);
+	palette_open(&st, 24, 80, &src);
+	render_all(&st);
+
+	/* Find "File" — the second menubar entry (not selected at open).
+	 * Read the 'i' (second char) so we skip the hotkey 'F' which is
+	 * styled with the hotkey color. */
+	const cell_t *file = fb_find_first(0, "File");
+	assert(file != NULL);
+	const cell_t *file_i = compositor_test_fb_at(0 /* placeholder */, 0);
+	(void)file_i;
+	/* Find the cell holding 'i' on row 0 specifically within "File"
+	 * by stepping forward from the 'F' cell. */
+	int rows = 0, cols = 0;
+	compositor_test_fb_size(&rows, &cols);
+	const cell_t *i_cell = NULL;
+	for (int x = 0; x + 1 < cols; ++x) {
+		const cell_t *fcell = compositor_test_fb_at(x, 0);
+		const cell_t *icell = compositor_test_fb_at(x + 1, 0);
+		if (fcell && icell && fcell->ch == 'F' && icell->ch == 'i') {
+			i_cell = icell;
+			break;
+		}
+	}
+	assert(i_cell != NULL);
+	assert(i_cell->fg == PALETTE_COLOR_BRIGHT_CYAN);
+	assert(i_cell->bg == PALETTE_COLOR_BLUE);
+
+	/* The hotkey letter 'F' itself uses bright yellow. */
+	assert(file->fg == PALETTE_COLOR_BRIGHT_YELLOW);
+	assert(file->bg == PALETTE_COLOR_BLUE);
+
+	palette_close(&st);
+}
+
+static void test_state_14_selected_item_inverse_with_colors(void) {
+	/* The selected item carries INVERSE attr AND black-on-white colors.
+	 * (Both are emitted; INVERSE preserves backward compat with terms
+	 * that ignore palette colors.) */
+	compositor_test_reset();
+	compositor_on_resize(24, 80);
+	palette_state_t st;
+	palette_menu_source_t src = snap_source(&g_src);
+	palette_open(&st, 24, 80, &src);
+
+	palette_feed_byte(&st, '\r');           /* open REPL */
+	render_all(&st);
+
+	/* Cursor 0 is "Help" — should be selected: black-on-white +
+	 * INVERSE. */
+	const cell_t *help = NULL;
+	for (int y = 1; y < 24; ++y) {
+		help = fb_find_first(y, "Help");
+		if (help) break;
+	}
+	assert(help != NULL);
+	/* Hotkey 'H' is the first char of "Help" — its fg uses the
+	 * selected scheme (black) instead of bright yellow when selected. */
+	assert(help->attr & PALETTE_ATTR_INVERSE);
+	assert(help->fg == PALETTE_COLOR_BLACK);
+	assert(help->bg == PALETTE_COLOR_WHITE);
+
+	palette_close(&st);
+}
+
+static void test_state_15_filter_footer_visible(void) {
+	/* When the filter is non-empty, the bottom border of the deepest
+	 * pane shows a "> filter_" footer. */
+	compositor_test_reset();
+	compositor_on_resize(24, 80);
+	palette_state_t st;
+	palette_menu_source_t src = snap_source(&g_src);
+	palette_open(&st, 24, 80, &src);
+
+	palette_feed_byte(&st, '\r');
+	palette_feed_byte(&st, 'h');             /* filter "h" */
+	render_all(&st);
+
+	/* Pane bottom row should contain "> h_" in the centered footer. */
+	int by = st.levels[0].pane.y + st.levels[0].pane.h - 1;
+	bool found = fb_has_substring(by, "> h_");
+	assert(found);
+
+	palette_close(&st);
+}
+
+static void test_state_16_no_matches_placeholder(void) {
+	/* Use a custom fixture with wider items so the pane is wide enough
+	 * to hold the full "(no matches)" placeholder text. */
+	compositor_test_reset();
+	compositor_on_resize(24, 80);
+
+	static snap_item_t items[] = {
+		{ "WideItemAAA", 'W', true, false, "x()", NULL, 0 },
+		{ "WideItemBBB", 'B', true, false, "x()", NULL, 0 },
+	};
+	static snap_menu_t menus[] = { { "M", 'M', items, 2 } };
+	static snap_source_t src_data = { menus, 1 };
+	palette_menu_source_t src = snap_source(&src_data);
+
+	palette_state_t st;
+	palette_open(&st, 24, 80, &src);
+
+	palette_feed_byte(&st, '\r');
+	palette_feed_byte(&st, 'z');
+	palette_feed_byte(&st, 'q');
+	assert(st.levels[0].visible_count == 0);
+	render_all(&st);
+
+	/* Find "(no matches)" placeholder anywhere inside the pane. */
+	int py = st.levels[0].pane.y;
+	int ph = st.levels[0].pane.h;
+	bool found = false;
+	for (int y = py; y < py + ph; ++y) {
+		if (fb_has_substring(y, "(no matches)")) { found = true; break; }
+	}
+	assert(found);
+
+	palette_close(&st);
+}
+
+/* Describe wrapper that flags item 0 of the top-level menu as
+ * accepts_args=true. Defined at file scope so it has stable linkage
+ * for use as a vtable entry. */
+static bool snap_describe_with_args(void *ctx, int menu_index,
+                                    void *parent_opaque, int item_index,
+                                    palette_item_t *out) {
+	if (!s_item_describe(ctx, menu_index, parent_opaque, item_index, out))
+		return false;
+	if (item_index == 0 && parent_opaque == NULL) {
+		out->accepts_args = true;
+	}
+	return true;
+}
+
+static void test_state_17_accepts_args_input_row_visible(void) {
+	/* When the cursor lands on an accepts_args item, the pane reserves
+	 * a row above the bottom border for the arg input — visible in the
+	 * framebuffer as a "> typed_" prefix on that row. */
+	compositor_test_reset();
+	compositor_on_resize(24, 80);
+
+	static snap_item_t items[] = {
+		{ "Run", 'R', true, false, "run.cmd", NULL, 0 },
+	};
+	static snap_menu_t menus[] = {
+		{ "X", 'X', items, 1 },
+	};
+	static snap_source_t src_data = { menus, 1 };
+	palette_menu_source_t src = snap_source(&src_data);
+	src.item_describe = snap_describe_with_args;
+
+	palette_state_t st;
+	bool ok = palette_open(&st, 24, 80, &src);
+	assert(ok);
+
+	palette_feed_byte(&st, '\r');           /* open menu, cursor on Run */
+	assert(st.levels[0].items[0].accepts_args);
+	palette_feed_byte(&st, 'a');
+	palette_feed_byte(&st, 'b');
+	render_all(&st);
+
+	/* Find "> ab_" on the input row inside the pane. */
+	int py = st.levels[0].pane.y;
+	int ph = st.levels[0].pane.h;
+	bool found = false;
+	for (int y = py; y < py + ph; ++y) {
+		if (fb_has_substring(y, "> ab_")) { found = true; break; }
+	}
+	assert(found);
+
+	palette_close(&st);
+}
+
+static void test_state_18_scroll_arrows_visible(void) {
+	/* When the menu has more items than fit, scroll arrows '^' and 'v'
+	 * appear at the right edge of the pane. We scroll the cursor past
+	 * the visible window so both arrows are valid. */
+	compositor_test_reset();
+	compositor_on_resize(15, 80);
+
+	static snap_item_t items[30];
+	static char labels[30][16];
+	for (int i = 0; i < 30; ++i) {
+		snprintf(labels[i], 16, "Item%02d", i);
+		items[i].label = labels[i];
+		items[i].shortcut = '\0';
+		items[i].enabled = true;
+		items[i].is_submenu = false;
+		items[i].script = "x()";
+		items[i].children = NULL;
+		items[i].child_count = 0;
+	}
+	static snap_menu_t menus[] = { { "L", 'L', items, 30 } };
+	static snap_source_t src_data = { menus, 1 };
+	palette_menu_source_t src = snap_source(&src_data);
+
+	palette_state_t st;
+	palette_open(&st, 15, 80, &src);
+	palette_feed_byte(&st, '\r');
+	int item_rows = st.levels[0].pane.h - 2;
+
+	/* Move cursor far enough to push scroll_top off zero — both arrows
+	 * should then be valid (items above the window AND below). */
+	int target = item_rows + 5;
+	for (int i = 0; i < target; ++i) {
+		palette_feed_byte(&st, 0x1b);
+		palette_feed_byte(&st, '[');
+		palette_feed_byte(&st, 'B');
+	}
+	assert(st.levels[0].scroll_top > 0);
+	assert(st.levels[0].scroll_top + item_rows < st.levels[0].visible_count);
+	render_all(&st);
+
+	int px = st.levels[0].pane.x + st.levels[0].pane.w - 1;
+	bool found_down = false, found_up = false;
+	int py = st.levels[0].pane.y;
+	int ph = st.levels[0].pane.h;
+	for (int y = py + 1; y < py + ph - 1; ++y) {
+		const cell_t *c = compositor_test_fb_at(px, y);
+		if (c && c->ch == 'v') found_down = true;
+		if (c && c->ch == '^') found_up = true;
+	}
+	assert(found_up);
+	assert(found_down);
+	(void)fb_find_char_on_row;          /* silence unused warning */
+
+	palette_close(&st);
+}
+
 int main(void) {
 	TR_INIT("palette_render_snapshot_tests");
 	TR_RUN(test_state_1_closed_just_menubar);
@@ -639,6 +891,13 @@ int main(void) {
 	TR_RUN(test_state_10_hotkey_letter_is_bold);
 	TR_RUN(test_state_11_disabled_item_dimmed);
 	TR_RUN(test_state_12_focused_pane_border_bold);
+	/* Rung 2 / PR 8 snapshot tests. */
+	TR_RUN(test_state_13_menubar_uses_cyan_on_blue);
+	TR_RUN(test_state_14_selected_item_inverse_with_colors);
+	TR_RUN(test_state_15_filter_footer_visible);
+	TR_RUN(test_state_16_no_matches_placeholder);
+	TR_RUN(test_state_17_accepts_args_input_row_visible);
+	TR_RUN(test_state_18_scroll_arrows_visible);
 	TR_SUMMARY();
 	return TR_EXIT_CODE();
 }

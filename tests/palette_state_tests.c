@@ -462,7 +462,17 @@ static void test_hotkey_on_menubar_opens_menu(void) {
 	palette_close(&st);
 }
 
-static void test_hotkey_within_open_menu_executes(void) {
+static void test_letter_within_open_menu_filters(void) {
+	/* PR 8 (Rung 2) UX: typing a letter within an open menu builds the
+	 * filter buffer instead of jumping to a hotkey. The legacy "press
+	 * X for Exit" behavior moved to the menubar (where typing 'F' to
+	 * open File still works), keeping a single typing model inside an
+	 * open menu: every printable byte is a filter character.
+	 *
+	 * After typing 'X', the filter contains "X" and the visible[] list
+	 * narrows to items whose label contains 'x' case-insensitively. In
+	 * the REPL fixture only "Exit" matches, so the cursor lands on it
+	 * and ENTER then dispatches. */
 	compositor_test_reset();
 	compositor_on_resize(24, 80);
 	palette_state_t st;
@@ -470,8 +480,15 @@ static void test_hotkey_within_open_menu_executes(void) {
 	palette_open(&st, 24, 80, &src);
 
 	palette_feed_byte(&st, '\r');           /* open REPL menu */
-	/* 'X' is the Exit hotkey. */
-	palette_done_t r = palette_feed_byte(&st, 'X');
+	palette_done_t r = palette_feed_byte(&st, 'x');
+	assert(r == PALETTE_DONE_NONE);
+	assert(st.filter_len == 1);
+	assert(st.filter_buf[0] == 'x');
+	assert(st.levels[0].visible_count == 1);
+	assert(strcmp(st.levels[0].items[st.levels[0].visible[0]].label, "Exit") == 0);
+
+	/* ENTER on the single visible item dispatches Exit. */
+	r = palette_feed_byte(&st, '\r');
 	assert(r == PALETTE_DONE_EXECUTE);
 	assert(strcmp((const char *)st.exec_script, "repl.exit()") == 0);
 
@@ -998,6 +1015,428 @@ static void test_resize_clamps_cursors(void) {
 	palette_close(&st);
 }
 
+/* ---------- Rung 2 / PR 8: Filter / type-ahead ---------- */
+
+static void test_filter_narrows_visible_items(void) {
+	/* Typing letters inside an open menu builds a substring filter and
+	 * narrows visible[] to matching items. Match is case-insensitive. */
+	compositor_test_reset();
+	compositor_on_resize(24, 80);
+	palette_state_t st;
+	palette_menu_source_t src = make_default_source();
+	palette_open(&st, 24, 80, &src);
+
+	palette_feed_byte(&st, '\r');           /* open REPL menu */
+	assert(st.levels[0].visible_count == 3);
+
+	/* Type 'h' — should filter to "Help" only. */
+	palette_feed_byte(&st, 'h');
+	assert(st.filter_len == 1);
+	assert(st.levels[0].visible_count == 1);
+	assert(strcmp(st.levels[0].items[st.levels[0].visible[0]].label, "Help") == 0);
+
+	palette_close(&st);
+}
+
+static void test_filter_no_match_yields_empty_visible(void) {
+	/* When the filter matches nothing, visible_count drops to 0. */
+	compositor_test_reset();
+	compositor_on_resize(24, 80);
+	palette_state_t st;
+	palette_menu_source_t src = make_default_source();
+	palette_open(&st, 24, 80, &src);
+
+	palette_feed_byte(&st, '\r');           /* open REPL menu */
+	palette_feed_byte(&st, 'z');            /* no item contains 'z' */
+	palette_feed_byte(&st, 'q');
+	assert(st.filter_len == 2);
+	assert(st.levels[0].visible_count == 0);
+
+	/* ENTER on an empty visible list is a no-op. */
+	palette_done_t r = palette_feed_byte(&st, '\r');
+	assert(r == PALETTE_DONE_NONE);
+
+	palette_close(&st);
+}
+
+static void test_filter_backspace_widens(void) {
+	compositor_test_reset();
+	compositor_on_resize(24, 80);
+	palette_state_t st;
+	palette_menu_source_t src = make_default_source();
+	palette_open(&st, 24, 80, &src);
+
+	palette_feed_byte(&st, '\r');
+	palette_feed_byte(&st, 'h');
+	palette_feed_byte(&st, 'e');
+	assert(st.filter_len == 2);
+	assert(st.levels[0].visible_count == 1);
+
+	/* Backspace removes one char, widens visibility back to 'h'. */
+	palette_feed_byte(&st, 0x7f);
+	assert(st.filter_len == 1);
+	assert(st.levels[0].visible_count == 1);
+	assert(strcmp(st.filter_buf, "h") == 0);
+
+	/* Backspace clears filter completely. */
+	palette_feed_byte(&st, 0x7f);
+	assert(st.filter_len == 0);
+	assert(st.levels[0].visible_count == 3);
+
+	palette_close(&st);
+}
+
+static void test_esc_clears_filter_before_closing(void) {
+	/* First ESC clears the non-empty filter; the level stays open.
+	 * Second ESC then closes the level. */
+	compositor_test_reset();
+	compositor_on_resize(24, 80);
+	palette_state_t st;
+	palette_menu_source_t src = make_default_source();
+	palette_open(&st, 24, 80, &src);
+
+	palette_feed_byte(&st, '\r');           /* depth 1 */
+	palette_feed_byte(&st, 'e');
+	assert(st.filter_len == 1);
+	assert(st.open_depth == 1);
+
+	/* First ESC + timeout: clears filter, level stays open. */
+	palette_feed_byte(&st, 0x1b);
+	palette_done_t r = palette_feed_esc_timeout(&st);
+	assert(r == PALETTE_DONE_NONE);
+	assert(st.filter_len == 0);
+	assert(st.open_depth == 1);
+
+	/* Second ESC + timeout: closes the level. */
+	palette_feed_byte(&st, 0x1b);
+	r = palette_feed_esc_timeout(&st);
+	assert(r == PALETTE_DONE_NONE);
+	assert(st.open_depth == 0);
+
+	palette_close(&st);
+}
+
+static void test_filter_resets_on_level_close(void) {
+	/* When the deepest level closes, the filter buffer resets so the
+	 * new deepest level starts unfiltered. */
+	compositor_test_reset();
+	compositor_on_resize(24, 80);
+	palette_state_t st;
+	palette_menu_source_t src = make_default_source();
+	palette_open(&st, 24, 80, &src);
+
+	/* File -> Views cascade, then filter on the cascade. */
+	palette_feed_byte(&st, 0x1b); palette_feed_byte(&st, '['); palette_feed_byte(&st, 'C');
+	palette_feed_byte(&st, '\r');
+	palette_feed_byte(&st, 0x1b); palette_feed_byte(&st, '['); palette_feed_byte(&st, 'B');
+	palette_feed_byte(&st, '\r');             /* depth 2 */
+	palette_feed_byte(&st, 'o');              /* filter "o" — Outline matches */
+	assert(st.filter_len == 1);
+
+	/* LEFT closes the cascade — filter clears. */
+	palette_feed_byte(&st, 0x1b); palette_feed_byte(&st, '['); palette_feed_byte(&st, 'D');
+	assert(st.open_depth == 1);
+	assert(st.filter_len == 0);
+	assert(st.levels[0].visible_count == 3);
+
+	palette_close(&st);
+}
+
+/* ---------- Rung 2 / PR 8: accepts_args input row ---------- */
+
+/* Fixture: a leaf with accepts_args=true. We use a static palette_item_t
+ * source rather than fake_item_t because the latter has no accepts_args
+ * field — instead, we wire a small custom describe callback that returns
+ * accepts_args=true for one item. */
+static fake_item_t g_args_items[] = {
+	{ "List",    "List path",  'L', true, false, "list.cmd",     NULL, 0 },
+	{ "Plain",   "Plain item", 'P', true, false, "plain.cmd",    NULL, 0 },
+};
+static fake_menu_t g_args_menus[] = {
+	{ "Cmds", 'C', g_args_items, 2 },
+};
+static fake_source_t g_args_src_data = { g_args_menus, 1 };
+
+static bool args_item_describe(void *ctx, int menu_index, void *parent_opaque,
+                               int item_index, palette_item_t *out) {
+	if (!fake_item_describe(ctx, menu_index, parent_opaque, item_index, out))
+		return false;
+	/* Mark item 0 ("List") as accepts_args=true. */
+	if (item_index == 0 && parent_opaque == NULL) {
+		out->accepts_args = true;
+	}
+	return true;
+}
+
+static palette_menu_source_t make_args_source(void) {
+	palette_menu_source_t s;
+	memset(&s, 0, sizeof(s));
+	s.ctx = &g_args_src_data;
+	s.count_menus = fake_count_menus;
+	s.menu_describe = fake_menu_describe;
+	s.item_count = fake_item_count;
+	s.item_describe = args_item_describe;
+	return s;
+}
+
+static void test_accepts_args_typing_builds_arg_buffer(void) {
+	/* On an accepts_args item, typed characters go to arg_buf instead
+	 * of filter_buf. ENTER then dispatches with exec_arg populated. */
+	compositor_test_reset();
+	compositor_on_resize(24, 80);
+	palette_state_t st;
+	palette_menu_source_t src = make_args_source();
+	palette_open(&st, 24, 80, &src);
+
+	palette_feed_byte(&st, '\r');           /* open Cmds menu, cursor on List */
+	assert(st.open_depth == 1);
+	assert(st.levels[0].items[0].accepts_args);
+
+	/* Type "abc" — should append to arg_buf, NOT filter_buf. */
+	palette_feed_byte(&st, 'a');
+	palette_feed_byte(&st, 'b');
+	palette_feed_byte(&st, 'c');
+	assert(st.arg_len == 3);
+	assert(strcmp(st.arg_buf, "abc") == 0);
+	assert(st.filter_len == 0);
+	assert(st.levels[0].visible_count == 2);  /* filter unchanged */
+
+	/* ENTER dispatches with exec_arg = "abc". */
+	palette_done_t r = palette_feed_byte(&st, '\r');
+	assert(r == PALETTE_DONE_EXECUTE);
+	assert(strcmp((const char *)st.exec_script, "list.cmd") == 0);
+	assert(strcmp(st.exec_arg, "abc") == 0);
+
+	palette_close(&st);
+}
+
+static void test_accepts_args_arg_resets_when_cursor_moves(void) {
+	/* Moving the cursor off an accepts_args item clears arg_buf so the
+	 * next visit starts fresh. */
+	compositor_test_reset();
+	compositor_on_resize(24, 80);
+	palette_state_t st;
+	palette_menu_source_t src = make_args_source();
+	palette_open(&st, 24, 80, &src);
+
+	palette_feed_byte(&st, '\r');           /* open Cmds, cursor on List */
+	palette_feed_byte(&st, 'x');
+	palette_feed_byte(&st, 'y');
+	assert(st.arg_len == 2);
+
+	/* DOWN moves cursor to "Plain" (no accepts_args). arg_buf clears. */
+	palette_feed_byte(&st, 0x1b); palette_feed_byte(&st, '['); palette_feed_byte(&st, 'B');
+	assert(st.arg_len == 0);
+
+	/* UP moves back to List. arg_buf still empty (start fresh). */
+	palette_feed_byte(&st, 0x1b); palette_feed_byte(&st, '['); palette_feed_byte(&st, 'A');
+	assert(st.arg_len == 0);
+
+	palette_close(&st);
+}
+
+static void test_accepts_args_esc_clears_arg_first(void) {
+	/* ESC contract: arg_buf clears first, then filter_buf, then level
+	 * close. */
+	compositor_test_reset();
+	compositor_on_resize(24, 80);
+	palette_state_t st;
+	palette_menu_source_t src = make_args_source();
+	palette_open(&st, 24, 80, &src);
+
+	palette_feed_byte(&st, '\r');
+	palette_feed_byte(&st, 'a');
+	palette_feed_byte(&st, 'b');
+	assert(st.arg_len == 2);
+
+	/* ESC clears arg_buf, level stays open. */
+	palette_feed_byte(&st, 0x1b);
+	palette_done_t r = palette_feed_esc_timeout(&st);
+	assert(r == PALETTE_DONE_NONE);
+	assert(st.arg_len == 0);
+	assert(st.open_depth == 1);
+
+	/* ESC again: closes level. */
+	palette_feed_byte(&st, 0x1b);
+	r = palette_feed_esc_timeout(&st);
+	assert(r == PALETTE_DONE_NONE);
+	assert(st.open_depth == 0);
+
+	palette_close(&st);
+}
+
+static void test_no_accepts_args_no_arg_in_dispatch(void) {
+	/* Items WITHOUT accepts_args dispatch with exec_arg empty even if
+	 * the user attempted to type. (Typed chars go to filter; cursor on
+	 * a leaf that matches still dispatches with empty arg.) */
+	compositor_test_reset();
+	compositor_on_resize(24, 80);
+	palette_state_t st;
+	palette_menu_source_t src = make_default_source();
+	palette_open(&st, 24, 80, &src);
+
+	palette_feed_byte(&st, '\r');
+	palette_feed_byte(&st, 'h');             /* filter to Help */
+	assert(st.levels[0].visible_count == 1);
+
+	palette_done_t r = palette_feed_byte(&st, '\r');
+	assert(r == PALETTE_DONE_EXECUTE);
+	assert(strcmp((const char *)st.exec_script, "repl.help()") == 0);
+	assert(st.exec_arg[0] == '\0');
+
+	palette_close(&st);
+}
+
+/* ---------- Rung 2 / PR 8: scrollable submenus ---------- */
+
+/* Builds a fixture with one menu of `count` items. Items beyond the
+ * pane height get scrolled. */
+static void make_long_menu_fixture(int count, fake_menu_t *menu_out,
+                                   fake_item_t *items_out, char (*labels)[16]) {
+	for (int i = 0; i < count; ++i) {
+		snprintf(labels[i], 16, "Item%02d", i);
+		items_out[i].label = labels[i];
+		items_out[i].description = NULL;
+		items_out[i].shortcut = '\0';
+		items_out[i].enabled = true;
+		items_out[i].is_submenu = false;
+		items_out[i].script = "x()";
+		items_out[i].children = NULL;
+		items_out[i].child_count = 0;
+	}
+	menu_out->label = "Long";
+	menu_out->hotkey = 'L';
+	menu_out->items = items_out;
+	menu_out->item_count = count;
+}
+
+static void test_scroll_overflow_arrow_visible(void) {
+	/* When item count > pane.h - 2, scroll_top advances past the
+	 * bottom and the visible window slides. */
+	compositor_test_reset();
+	compositor_on_resize(15, 80);   /* short terminal: cascade pane has limited height */
+
+	static fake_item_t items[30];
+	static char labels[30][16];
+	static fake_menu_t menus[1];
+	make_long_menu_fixture(30, &menus[0], items, labels);
+	static fake_source_t src_data;
+	src_data.menus = menus;
+	src_data.menu_count = 1;
+	palette_menu_source_t src = make_source(&src_data);
+
+	palette_state_t st;
+	bool ok = palette_open(&st, 15, 80, &src);
+	assert(ok);
+
+	palette_feed_byte(&st, '\r');           /* open Long */
+	assert(st.open_depth == 1);
+	assert(st.levels[0].item_count == 30);
+	assert(st.levels[0].visible_count == 30);
+	/* Pane height capped by terminal — fewer rows than items. */
+	int pane_h = st.levels[0].pane.h;
+	int item_rows = pane_h - 2;
+	assert(item_rows < 30);
+	assert(st.levels[0].scroll_top == 0);
+
+	/* DOWN past the visible window scrolls. After (item_rows+1) DOWNs
+	 * cursor must be past the initial window. */
+	for (int i = 0; i < item_rows + 1; ++i) {
+		palette_feed_byte(&st, 0x1b);
+		palette_feed_byte(&st, '[');
+		palette_feed_byte(&st, 'B');
+	}
+	assert(st.levels[0].cursor == item_rows + 1);
+	assert(st.levels[0].scroll_top > 0);
+
+	palette_close(&st);
+}
+
+static void test_scroll_pgdn_pgup(void) {
+	/* PgDn = ESC[6~, PgUp = ESC[5~. One page = item_rows - 1. */
+	compositor_test_reset();
+	compositor_on_resize(15, 80);
+
+	static fake_item_t items[30];
+	static char labels[30][16];
+	static fake_menu_t menus[1];
+	make_long_menu_fixture(30, &menus[0], items, labels);
+	static fake_source_t src_data;
+	src_data.menus = menus;
+	src_data.menu_count = 1;
+	palette_menu_source_t src = make_source(&src_data);
+
+	palette_state_t st;
+	palette_open(&st, 15, 80, &src);
+	palette_feed_byte(&st, '\r');
+
+	int item_rows = st.levels[0].pane.h - 2;
+	int page = (item_rows - 1) > 0 ? (item_rows - 1) : 1;
+
+	/* PgDn one page. */
+	palette_feed_byte(&st, 0x1b);
+	palette_feed_byte(&st, '[');
+	palette_feed_byte(&st, '6');
+	palette_feed_byte(&st, '~');
+	assert(st.levels[0].cursor == page);
+
+	/* PgDn again. */
+	palette_feed_byte(&st, 0x1b);
+	palette_feed_byte(&st, '[');
+	palette_feed_byte(&st, '6');
+	palette_feed_byte(&st, '~');
+	assert(st.levels[0].cursor == 2 * page);
+
+	/* PgUp. */
+	palette_feed_byte(&st, 0x1b);
+	palette_feed_byte(&st, '[');
+	palette_feed_byte(&st, '5');
+	palette_feed_byte(&st, '~');
+	assert(st.levels[0].cursor == page);
+
+	palette_close(&st);
+}
+
+static void test_scroll_wheel(void) {
+	/* Mouse wheel events scroll the deepest pane without changing
+	 * cursor. WHEEL_DOWN advances scroll_top, WHEEL_UP decreases it. */
+	compositor_test_reset();
+	compositor_on_resize(15, 80);
+
+	static fake_item_t items[30];
+	static char labels[30][16];
+	static fake_menu_t menus[1];
+	make_long_menu_fixture(30, &menus[0], items, labels);
+	static fake_source_t src_data;
+	src_data.menus = menus;
+	src_data.menu_count = 1;
+	palette_menu_source_t src = make_source(&src_data);
+
+	palette_state_t st;
+	palette_open(&st, 15, 80, &src);
+	palette_feed_byte(&st, '\r');
+	int saved_cursor = st.levels[0].cursor;
+	assert(st.levels[0].scroll_top == 0);
+
+	/* WHEEL_DOWN: scroll_top advances. */
+	mouse_event_t wd = { MOUSE_WHEEL_DOWN, 5, 5, true };
+	palette_feed_mouse(&st, &wd);
+	assert(st.levels[0].scroll_top == 1);
+	assert(st.levels[0].cursor == saved_cursor);   /* cursor unchanged */
+
+	/* WHEEL_UP: scroll_top decreases. */
+	mouse_event_t wu = { MOUSE_WHEEL_UP, 5, 5, true };
+	palette_feed_mouse(&st, &wu);
+	assert(st.levels[0].scroll_top == 0);
+	assert(st.levels[0].cursor == saved_cursor);
+
+	/* WHEEL_UP at top: clamps. */
+	palette_feed_mouse(&st, &wu);
+	assert(st.levels[0].scroll_top == 0);
+
+	palette_close(&st);
+}
+
 int main(void) {
 	TR_INIT("palette_state_tests");
 	TR_RUN(test_open_initial_state);
@@ -1011,7 +1450,7 @@ int main(void) {
 	TR_RUN(test_left_at_submenu_closes_only_submenu);
 	TR_RUN(test_left_on_open_top_level_closes_to_menubar);
 	TR_RUN(test_hotkey_on_menubar_opens_menu);
-	TR_RUN(test_hotkey_within_open_menu_executes);
+	TR_RUN(test_letter_within_open_menu_filters);
 	TR_RUN(test_mouse_click_on_menubar_opens_menu);
 	TR_RUN(test_mouse_click_on_leaf_executes);
 	TR_RUN(test_mouse_click_outside_cancels);
@@ -1025,6 +1464,19 @@ int main(void) {
 	TR_RUN(test_border_click_on_ancestor_collapses);
 	TR_RUN(test_resize_too_small_closes_cascade);
 	TR_RUN(test_mouse_invalid_low_coords_rejected);
+	/* Rung 2 / PR 8: filter, accepts_args, scroll. */
+	TR_RUN(test_filter_narrows_visible_items);
+	TR_RUN(test_filter_no_match_yields_empty_visible);
+	TR_RUN(test_filter_backspace_widens);
+	TR_RUN(test_esc_clears_filter_before_closing);
+	TR_RUN(test_filter_resets_on_level_close);
+	TR_RUN(test_accepts_args_typing_builds_arg_buffer);
+	TR_RUN(test_accepts_args_arg_resets_when_cursor_moves);
+	TR_RUN(test_accepts_args_esc_clears_arg_first);
+	TR_RUN(test_no_accepts_args_no_arg_in_dispatch);
+	TR_RUN(test_scroll_overflow_arrow_visible);
+	TR_RUN(test_scroll_pgdn_pgup);
+	TR_RUN(test_scroll_wheel);
 	TR_SUMMARY();
 	return TR_EXIT_CODE();
 }

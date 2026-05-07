@@ -148,6 +148,20 @@ void pane_putc(pane_t *p, int x, int y, uint32_t ch, uint8_t attr) {
 	cell_t *c = &p->buf[y * p->w + x];
 	c->ch = ch;
 	c->attr = attr;
+	c->fg = 0;
+	c->bg = 0;
+}
+
+void pane_putc_color(pane_t *p, int x, int y, uint32_t ch,
+                     uint8_t fg, uint8_t bg, uint8_t attr) {
+	if (!p || !p->buf) return;
+	if (x < 0 || x >= p->w) return;
+	if (y < 0 || y >= p->h) return;
+	cell_t *c = &p->buf[y * p->w + x];
+	c->ch = ch;
+	c->attr = attr;
+	c->fg = fg;
+	c->bg = bg;
 }
 
 void pane_puts(pane_t *p, int x, int y, const char *s, uint8_t attr) {
@@ -303,9 +317,19 @@ static uint32_t safe_render_codepoint(uint32_t ch) {
 	return ch;
 }
 
-/* Minimal SGR emitter — TODO(PR 5): replace with terminal_set_attr().
- * For now we just emit fg/bg as 8-color SGR codes when non-zero, and
- * the bold/inverted/underline bits if attr has them set. */
+/* Minimal SGR emitter for the pane diff-renderer.
+ *
+ * Color encoding (matches palette.h):
+ *   fg/bg == 0          -> default (no SGR color emitted)
+ *   fg/bg in 1..8       -> standard colors (SGR 30..37 / 40..47)
+ *   fg/bg in 9..16      -> bright colors (SGR 90..97 / 100..107)
+ *   fg/bg > 16          -> reserved (clamped to standard color modulo 8)
+ *
+ * SGR 0 reset is emitted first so each cell's attributes are
+ * deterministic; bold/dim/underline/inverse follow in fixed order; then
+ * fg, then bg. Output is one ESC[…m sequence per cell — the diff-render
+ * loop changes attributes on every cell anyway, so per-cell reset is
+ * cheaper than tracking deltas. */
 static void emit_attr(FILE *fp, uint8_t fg, uint8_t bg, uint8_t attr) {
 	/* SGR 0 reset, then accumulate. Keep deterministic order. */
 	fputs("\x1b[0", fp);
@@ -314,10 +338,27 @@ static void emit_attr(FILE *fp, uint8_t fg, uint8_t bg, uint8_t attr) {
 	if (attr & 0x04) fputs(";4", fp);    /* underline */
 	if (attr & 0x08) fputs(";7", fp);    /* inverted */
 	if (fg != 0) {
-		fprintf(fp, ";3%u", (unsigned)(fg & 0x07));
+		unsigned idx = (unsigned)fg;
+		if (idx <= 8) {
+			fprintf(fp, ";3%u", (idx - 1) & 0x07);
+		} else if (idx <= 16) {
+			fprintf(fp, ";9%u", (idx - 9) & 0x07);
+		} else {
+			/* Out-of-range — fall back to the low 3 bits as a
+			 * standard color so legacy callers writing raw 0..7
+			 * still produce useful output. */
+			fprintf(fp, ";3%u", idx & 0x07);
+		}
 	}
 	if (bg != 0) {
-		fprintf(fp, ";4%u", (unsigned)(bg & 0x07));
+		unsigned idx = (unsigned)bg;
+		if (idx <= 8) {
+			fprintf(fp, ";4%u", (idx - 1) & 0x07);
+		} else if (idx <= 16) {
+			fprintf(fp, ";10%u", (idx - 9) & 0x07);
+		} else {
+			fprintf(fp, ";4%u", idx & 0x07);
+		}
 	}
 	fputc('m', fp);
 }

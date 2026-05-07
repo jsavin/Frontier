@@ -1,0 +1,107 @@
+# REPL palette Rung 2 (PR 8) integration tests
+#
+# Background
+# ----------
+# PR 8 of the slash-menu chain extends the palette state machine and
+# REPL host with four user-visible features:
+#
+#   1. Filter / type-ahead       — typed letters in an open menu narrow
+#                                  visible items by case-insensitive label
+#                                  substring match
+#   2. ANSI 16-color rendering   — cyan-on-blue menubar, black-on-white
+#                                  selection, bright-yellow hotkey letter,
+#                                  dim-gray disabled items
+#   3. accepts_args input row    — leaves with accepts_args=true reserve
+#                                  a typed-input row above the bottom
+#                                  border; ENTER dispatches with the typed
+#                                  string as the argument
+#   4. Scrollable submenus       — menus larger than the pane scroll with
+#                                  mouse wheel, arrow keys, and PgUp/PgDn
+#
+# What this file proves
+# ---------------------
+# 1. accepts_args is writable as a direct table assignment under
+#    system.menus.data.<bar>.<menu>.<item> — the projection path that
+#    future installation scripts will use to mark which items expect
+#    typed arguments at the palette input row.
+# 2. Reading the field back via direct table dereference returns the
+#    written value, demonstrating the field round-trips through the
+#    headless storage projection.
+# 3. Setting accepts_args on one leaf does not bleed into siblings.
+#
+# What this file does NOT prove (deferred)
+# ----------------------------------------
+# Interactive driving of the palette modal (typing /, navigating with
+# arrows + filter chars, picking an item) — same pexpect-vs-event-loop
+# constraint as repl_palette.yaml. Filter / scroll / color rendering is
+# covered by unit-level snapshot tests in palette_render_snapshot_tests
+# and palette_state_tests; this file covers the headless storage
+# plumbing those modal interactions feed into.
+#
+# Sequential because we mutate system.menus.data.repl entries —
+# parallel runners would race on the shared menubar projection.
+
+needs_guest_dbs: false
+sequential: true
+
+tests:
+  # ==========================================================================
+  # accepts_args field via direct table dereference
+  # ==========================================================================
+
+  - name: "REPL palette Rung 2 - accepts_args field accepts true"
+    description: |
+      The accepts_args field can be written via direct table assignment
+      under system.menus.data.repl.REPL.List and the value reads back
+      via direct dereference. Future palette installs will set this
+      field to mark leaves that expect typed-arg input.
+    script: |
+      system.menus.installReplMenubar ();
+      system.menus.data.repl.REPL.List.accepts_args = true;
+      return system.menus.data.repl.REPL.List.accepts_args
+    expected_success: true
+    expected_result: "true"
+
+  - name: "REPL palette Rung 2 - accepts_args clearable"
+    description: |
+      Setting accepts_args back to false after a true write must
+      reflect the latest write — the projection table doesn't pin
+      the value once set.
+    script: |
+      system.menus.installReplMenubar ();
+      system.menus.data.repl.REPL.List.accepts_args = true;
+      system.menus.data.repl.REPL.List.accepts_args = false;
+      return system.menus.data.repl.REPL.List.accepts_args
+    expected_success: true
+    expected_result: "false"
+
+  - name: "REPL palette Rung 2 - accepts_args isolated per item"
+    description: |
+      Setting accepts_args on the List leaf must not bleed into the
+      Jump leaf — the projection writes each leaf field independently.
+      We verify by setting List=true, then reading Jump's value directly
+      (which should still be the documented default false; the field
+      may be absent from the Jump leaf entirely).
+    script: |
+      system.menus.installReplMenubar ();
+      system.menus.data.repl.REPL.Jump.accepts_args = false;
+      system.menus.data.repl.REPL.List.accepts_args = true;
+      local(jumpVal = system.menus.data.repl.REPL.Jump.accepts_args);
+      system.menus.data.repl.REPL.List.accepts_args = false;
+      return jumpVal
+    expected_success: true
+    expected_result: "false"
+
+  - name: "REPL palette Rung 2 - accepts_args co-exists with label and script"
+    description: |
+      Setting accepts_args on a leaf must not clobber its existing
+      label and script fields — the field write is purely additive.
+    script: |
+      system.menus.installReplMenubar ();
+      system.menus.data.repl.REPL.List.accepts_args = true;
+      local(lbl = system.menus.data.repl.REPL.List.label);
+      local(scrLen = sizeof(system.menus.data.repl.REPL.List.script));
+      system.menus.data.repl.REPL.List.accepts_args = false;
+      return lbl == "List" and scrLen > 0
+    expected_success: true
+    expected_result: "true"

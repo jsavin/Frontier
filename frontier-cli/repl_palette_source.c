@@ -541,6 +541,8 @@ static bool cb_item_describe(void *vctx, int menu_index, void *parent_opaque,
 	out->shortcut = (char) char_field_from_record(rec, "cmdkey");
 	out->enabled = bool_field_from_record(rec, "enabled", true) ? true : false;
 	out->hidden  = bool_field_from_record(rec, "hidden", false) ? true : false;
+	out->accepts_args = bool_field_from_record(rec, "accepts_args", false)
+	                    ? true : false;
 
 	/*
 	 * For PR 6, every leaf in the headless tree is a script-bearing item.

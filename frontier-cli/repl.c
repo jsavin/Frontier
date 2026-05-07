@@ -105,6 +105,45 @@ static hdlhashtable g_repl_guest_db_root = nil;
 static boolean g_repl_active = false;
 
 /*
+ * Palette argument injection (PR 8 / Rung 2 accepts_args).
+ *
+ * When the slash-menu palette dispatches a leaf with accepts_args=true,
+ * the user's typed argument is captured in palette_state_t::exec_arg.
+ * The handler scripts under system.menus.handlers.repl.* call the
+ * kernel verbs with no arguments — repl.list (), repl.jumpPath () — so
+ * we have no direct call-graph mechanism to thread the palette-typed
+ * arg into the verb call.
+ *
+ * The minimum-surface fix: a process-global pending-arg buffer set by
+ * run_palette_modal before dispatch and consumed by the host adapters.
+ * The verbs check this buffer first; if non-empty, they use it instead
+ * of (or in addition to) their nominal `path` parameter.
+ *
+ * This is scoped to the REPL main thread (palette is modal — only one
+ * dispatch happens at a time) and is cleared after dispatch completes.
+ * Threading: write/read both happen under the GIL on the main thread
+ * — no atomic needed.
+ */
+static char g_palette_pending_arg[PALETTE_ARG_MAX] = "";
+
+static void palette_set_pending_arg(const char *arg) {
+	if (!arg) {
+		g_palette_pending_arg[0] = '\0';
+		return;
+	}
+	strncpy(g_palette_pending_arg, arg, sizeof(g_palette_pending_arg) - 1);
+	g_palette_pending_arg[sizeof(g_palette_pending_arg) - 1] = '\0';
+}
+
+static const char *palette_get_pending_arg(void) {
+	return g_palette_pending_arg;
+}
+
+static void palette_clear_pending_arg(void) {
+	g_palette_pending_arg[0] = '\0';
+}
+
+/*
  * Exit-requested flag set by the repl.exit() kernel verb (via the host
  * adapter). Both REPL loops (event-loop and blocking) poll this each
  * iteration and break out cleanly. Distinct from g_repl_interrupt_requested,
@@ -2338,29 +2377,66 @@ static boolean dispatch_slash_command(const char *line, boolean *running) {
 	}
 
 	/*
-	 * Special-case List + Jump: when the user supplies an argument, route
-	 * directly to the kernel-verb host adapter so the argument is honored.
-	 * No-arg cases fall through to menubar dispatch (which calls the same
-	 * kernel verb via the UserTalk handler).
+	 * Hybrid dispatch for typed slash commands with args.
 	 *
-	 * The match is case-insensitive on the slot key. The legacy install
-	 * script writes "List" and "Jump" exactly; future-proofed for
-	 * downstream menubar customization that might lowercase or relocalize.
+	 * Two paths:
+	 *
+	 * (a) Leaf advertises accepts_args=true: stash the arg in the
+	 *     pending-arg buffer and dispatch via menubar. The kernel
+	 *     verb host adapters (replverbhost_list /
+	 *     replverbhost_jump_path) read pending-arg in lieu of their
+	 *     nominal `path` parameter, so the same channel the palette
+	 *     uses for its input row also serves typed-with-args
+	 *     commands. This is the path that PR 8 sets up the menubar
+	 *     to use going forward — set accepts_args=true on List/Jump
+	 *     in the install script.
+	 *
+	 * (b) Legacy fallthrough: special-case List / Jump by slot key
+	 *     to call the host adapter directly. Required for backward
+	 *     compatibility with menubar installs that predate PR 8 and
+	 *     don't set accepts_args=true on those items. This path will
+	 *     retire once the install script (and any downstream forks)
+	 *     are migrated.
+	 *
+	 * For leaves that don't accept args (e.g. /clear, /exit) the arg
+	 * is silently dropped — same legacy behavior.
 	 */
 	if (args_start[0] != '\0') {
-		if (strcasecmp(slot_name, "List") == 0) {
+		tyvaluerecord rec;
+		bool leaf_accepts = false;
+		if (menudata_describe_leaf(hleaf, &rec)) {
+			if (rec.valuetype == recordvaluetype) {
+				hdllistrecord hlist = rec.data.recordvalue;
+				bigstring bskey;
+				copyctopstring("accepts_args", bskey);
+				long n = opcountlistitems(hlist);
+				for (long i = 1; i <= n; i++) {
+					bigstring bsfound;
+					tyvaluerecord val;
+					if (!getnthlistval(hlist, i, bsfound, &val)) continue;
+					if (!equalstrings(bsfound, bskey)) continue;
+					if (val.valuetype == booleanvaluetype) {
+						leaf_accepts = val.data.flvalue ? true : false;
+					}
+					break;
+				}
+			}
+			disposevaluerecord(rec, false);
+		}
+		if (leaf_accepts) {
+			/* Path (a): unified accepts_args dispatch. */
+			palette_set_pending_arg(args_start);
+		} else if (strcasecmp(slot_name, "List") == 0) {
+			/* Path (b) legacy: List with arg. */
 			replverbhost_list(args_start);
 			return true;
-		}
-		if (strcasecmp(slot_name, "Jump") == 0) {
+		} else if (strcasecmp(slot_name, "Jump") == 0) {
+			/* Path (b) legacy: Jump with arg. */
 			if (!replverbhost_jump_path(args_start)) {
-				/* Match the legacy /jump error wording so existing
-				 * integration tests (REPL /jump - invalid path,
-				 * /jump - doesn't change on error) continue to
-				 * recognise the failure mode. The path arg is
-				 * scrubbed via safe_print_user_string because it
-				 * may contain control bytes from a malicious user
-				 * crafting a slash-command. */
+				/* Match the legacy /jump error wording. The path
+				 * arg is scrubbed via safe_print_user_string
+				 * because it may contain control bytes from a
+				 * malicious user crafting a slash-command. */
 				fputs("Error: '", stdout);
 				safe_print_user_string(args_start);
 				fputs("' is not a valid table path\n", stdout);
@@ -2368,12 +2444,6 @@ static boolean dispatch_slash_command(const char *line, boolean *running) {
 			}
 			return true;
 		}
-		/*
-		 * Other resolved leaves don't accept args today. Drop the arg
-		 * silently and dispatch via menubar — same effect as the user
-		 * typing the bare command. Once PR 8 wires accepts_args + the
-		 * palette input row, this branch can route through that channel.
-		 */
 	}
 
 	/* Default: menubar dispatch. /exit is detected by slot-key match
@@ -2384,6 +2454,11 @@ static boolean dispatch_slash_command(const char *line, boolean *running) {
 	 * *running == false on /exit observe the change without waiting for
 	 * the next event-loop tick. */
 	ty_dispatch_result dr = dispatch_leaf_via_menubar(hleaf);
+	/* Defensive clear: even if the host adapter cleared after consuming
+	 * the pending arg, a malformed handler that bypasses the adapter
+	 * would leave the pending-arg set and contaminate the next
+	 * dispatch. Always clear here. */
+	palette_clear_pending_arg();
 	switch (dr) {
 		case DISPATCH_OK:
 			break;
@@ -2621,9 +2696,22 @@ static int mouse_sgr_feed(mouse_sgr_parser_t *p, unsigned char b,
  * GIL: caller must hold it. We don't yield while the palette is open
  * (see file-level note above).
  */
+/*
+ * out_arg, if non-NULL, receives a copy of the palette's arg input
+ * buffer on PALETTE_DONE_EXECUTE for items where accepts_args was
+ * true. The caller should pre-zero out_arg or treat it as undefined
+ * unless run_palette_modal returns non-nil. arg_cap is the buffer
+ * capacity including NUL.
+ *
+ * Lifetime: out_arg is filled in synchronously before run_palette_modal
+ * returns. The caller does not need to free it (stack-allocated by the
+ * caller).
+ */
 static Handle run_palette_modal(struct linenoiseState *ls,
-                                char *line_buf, size_t line_buflen) {
+                                char *line_buf, size_t line_buflen,
+                                char *out_arg, size_t arg_cap) {
 	Handle script_to_run = nil;
+	if (out_arg && arg_cap > 0) out_arg[0] = '\0';
 
 	/* 1. Bracket linenoise. */
 	linenoiseEditStop(ls);
@@ -2811,6 +2899,13 @@ static Handle run_palette_modal(struct linenoiseState *ls,
 		Handle hcopy = nil;
 		if (copyhandle(hsrc, &hcopy)) {
 			script_to_run = hcopy;
+			/* Snapshot the arg buffer if caller asked for it. The
+			 * arg is empty unless the dispatched item had
+			 * accepts_args=true and the user typed in the arg row. */
+			if (out_arg && arg_cap > 0) {
+				strncpy(out_arg, st.exec_arg, arg_cap - 1);
+				out_arg[arg_cap - 1] = '\0';
+			}
 		} else {
 			log_error(LOG_COMP_GENERAL,
 			          "palette: copyhandle failed for exec_script");
@@ -2897,6 +2992,20 @@ static void replverbhost_clear_variables(void) {
  * (repl_verbs.h::jump_path) so script authors know.
  */
 static boolean replverbhost_jump_path(const char *path) {
+	/* Palette accepts_args path: when the palette dispatched a leaf
+	 * with accepts_args=true and the user typed a non-empty argument,
+	 * use that argument instead of the (typically empty) verb arg. The
+	 * pending-arg buffer is cleared after a single read so a subsequent
+	 * non-palette repl.jumpPath call doesn't accidentally inherit the
+	 * stale value. */
+	const char *pending = palette_get_pending_arg();
+	if (pending != NULL && pending[0] != '\0') {
+		char arg_copy[PALETTE_ARG_MAX];
+		strncpy(arg_copy, pending, sizeof(arg_copy) - 1);
+		arg_copy[sizeof(arg_copy) - 1] = '\0';
+		palette_clear_pending_arg();
+		return repl_jump_path(arg_copy);
+	}
 	if (path == NULL)
 		return repl_jump_path("");
 	return repl_jump_path(path);
@@ -2925,6 +3034,21 @@ static boolean replverbhost_print_key_codes(void) {
 }
 
 static void replverbhost_list(const char *path) {
+	/* Palette accepts_args injection — see replverbhost_jump_path for
+	 * the rationale. */
+	const char *pending = palette_get_pending_arg();
+	if (pending != NULL && pending[0] != '\0') {
+		char arg_copy[PALETTE_ARG_MAX];
+		strncpy(arg_copy, pending, sizeof(arg_copy) - 1);
+		arg_copy[sizeof(arg_copy) - 1] = '\0';
+		palette_clear_pending_arg();
+		path = arg_copy;
+		/* Fall through to the path-resolved branch below — but we
+		 * need a stable lifetime for `path` since arg_copy is
+		 * stack-local. The compiler keeps arg_copy live until the
+		 * function returns; aliasing path into it is safe for the
+		 * remainder of this function only. */
+	}
 	if (path == NULL || path[0] == '\0') {
 		repl_output_list(nil, NULL);
 		return;
@@ -3237,8 +3361,11 @@ int repl_main(cli_options_t *options, ws_server_t *ws_server) {
 				 * palette; '/' typed mid-line is left as a literal
 				 * character. */
 				if (ls.len == 1 && ls.buf[0] == '/') {
+					char palette_arg[PALETTE_ARG_MAX] = "";
 					Handle script = run_palette_modal(&ls, line_buf,
-					                                  sizeof(line_buf));
+					                                  sizeof(line_buf),
+					                                  palette_arg,
+					                                  sizeof(palette_arg));
 					if (script != nil) {
 						/* Dispatch the chosen menu item.
 						 *
@@ -3247,10 +3374,24 @@ int repl_main(cli_options_t *options, ws_server_t *ws_server) {
 						 * menudata_headless.c:1056) — it does NOT consume
 						 * the caller's handle. The caller therefore
 						 * retains ownership and MUST disposehandle on
-						 * BOTH the success and failure paths. */
+						 * BOTH the success and failure paths.
+						 *
+						 * Argument injection: if the palette captured a
+						 * non-empty arg (item had accepts_args=true and
+						 * the user typed in the input row), stash it in
+						 * the pending-arg buffer so the kernel verb host
+						 * adapters (replverbhost_list /
+						 * replverbhost_jump_path) can read it during the
+						 * upcoming script run. The adapters clear the
+						 * buffer after consuming it; on dispatch
+						 * completion we also clear unconditionally to
+						 * defend against handlers that don't reach the
+						 * adapter (e.g. a malformed handler script). */
+						palette_set_pending_arg(palette_arg);
 						g_script_running = 1;
 						boolean ok = meuserselected_headless(script);
 						g_script_running = 0;
+						palette_clear_pending_arg();
 						if (!ok) {
 							printf("(menu script failed)\n");
 							fflush(stdout);
