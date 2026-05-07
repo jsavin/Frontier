@@ -18,11 +18,32 @@
  *      requiring uniqueness. "/h" matches "Help" iff no other label
  *      starts with H.
  *
- * SECURITY: the token is bounds-checked (rejected if NULL, empty, or
- * >= 64 chars). The resolver does NOT execute anything — it only walks
- * the menubar table and returns a leaf handle. The caller must fetch
- * the leaf's script field via menudata_describe_leaf and dispatch via
+ * SECURITY
+ * --------
+ * The token is bounds-checked (rejected if NULL, empty, or >= 64 chars).
+ * The resolver does NOT execute anything — it only walks the menubar
+ * table and returns a leaf handle. The caller must fetch the leaf's
+ * script field via menudata_describe_leaf and dispatch via
  * meuserselected_headless.
+ *
+ * Threat model: the menubar at system.menus.data.repl.REPL is part of
+ * the user's database and is mutable from UserTalk. A hostile script
+ * (or a corrupted database) could plant a leaf whose label matches a
+ * canonical REPL command but whose slot key does not — e.g. label
+ * "EvilExit" + slot key "Evil". Without a check, "/e" or "/evilexit"
+ * would resolve to that leaf and dispatch its (attacker-controlled)
+ * script. The resolver does not run the script itself, but the caller
+ * in repl.c special-cases certain slot keys ("Exit", "List", "Jump")
+ * for arg-routing and the post-dispatch *running = false flag — those
+ * branches must not be reachable through a non-canonical leaf.
+ *
+ * Mitigation: the resolver enforces an allowlist of canonical REPL slot
+ * keys ({"Exit", "Help", "Clear", "List", "Jump", "Key codes"}). A leaf
+ * whose slot key is not on this list never resolves, regardless of how
+ * its label matches. Adding new REPL commands requires editing the
+ * allowlist in repl_slash_resolver.c. The allowlist is intentionally
+ * private to the .c file because it is an implementation detail of the
+ * REPL command surface, not a contract callers depend on.
  *
  * License
  * -------

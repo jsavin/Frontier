@@ -2161,6 +2161,24 @@ static Handle dispatch_script_handle_from_record(tyvaluerecord rec) {
 }
 
 /*
+ * Result of dispatch_leaf_via_menubar. Distinguishes "succeeded" from the
+ * two failure modes the caller wants to surface differently:
+ *
+ *   DISPATCH_OK              - meuserselected_headless ran to completion.
+ *   DISPATCH_NO_SCRIPT_FIELD - the leaf record has no script string field
+ *                              (or it's the wrong type, or the leaf record
+ *                              itself couldn't be built — i.e. configuration
+ *                              error rather than a runtime failure).
+ *   DISPATCH_SCRIPT_FAILED   - meuserselected_headless returned false, so
+ *                              UserTalk surfaced an error via langerror.
+ */
+typedef enum {
+	DISPATCH_OK = 0,
+	DISPATCH_NO_SCRIPT_FIELD,
+	DISPATCH_SCRIPT_FAILED
+} ty_dispatch_result;
+
+/*
  * Dispatch a resolved leaf via meuserselected_headless. Reads the
  * leaf's "script" field via menudata_describe_leaf (which copyvaluerecord's
  * every field, satisfying the handle-privacy contract documented in
@@ -2168,24 +2186,24 @@ static Handle dispatch_script_handle_from_record(tyvaluerecord rec) {
  * meuserselected_headless's internal copyhandle can run safely against a
  * source whose lifetime we control.
  *
- * Returns true if the script ran to completion (per
- * meuserselected_headless's contract). Caller does NOT need to dispose
- * anything — record disposal happens here, and meuserselected_headless
- * does not consume the script-handle copy we hand it (we dispose ours
- * after the call).
+ * Returns one of the ty_dispatch_result values so the caller can produce
+ * a precise diagnostic. Caller does NOT need to dispose anything —
+ * record disposal happens here, and meuserselected_headless does not
+ * consume the script-handle copy we hand it (we dispose ours after the
+ * call).
  */
-static boolean dispatch_leaf_via_menubar(hdlhashtable hleaf) {
+static ty_dispatch_result dispatch_leaf_via_menubar(hdlhashtable hleaf) {
 	if (hleaf == nil)
-		return false;
+		return DISPATCH_NO_SCRIPT_FIELD;
 
 	tyvaluerecord rec;
 	if (!menudata_describe_leaf(hleaf, &rec))
-		return false;
+		return DISPATCH_NO_SCRIPT_FIELD;
 
 	Handle hscript_in_record = dispatch_script_handle_from_record(rec);
 	if (hscript_in_record == nil) {
 		disposevaluerecord(rec, false);
-		return false;
+		return DISPATCH_NO_SCRIPT_FIELD;
 	}
 
 	/* Privacy: copy the script handle so meuserselected_headless's
@@ -2196,7 +2214,7 @@ static boolean dispatch_leaf_via_menubar(hdlhashtable hleaf) {
 	Handle hscript_copy = nil;
 	if (!copyhandle(hscript_in_record, &hscript_copy)) {
 		disposevaluerecord(rec, false);
-		return false;
+		return DISPATCH_SCRIPT_FAILED; /* handle-copy OOM is a runtime failure */
 	}
 
 	g_script_running = 1;
@@ -2205,25 +2223,19 @@ static boolean dispatch_leaf_via_menubar(hdlhashtable hleaf) {
 
 	disposehandle(hscript_copy);
 	disposevaluerecord(rec, false);
-	return ok;
+	return ok ? DISPATCH_OK : DISPATCH_SCRIPT_FAILED;
 }
 
 /*
- * Trim leading and trailing whitespace from `s` in-place. Returns a
- * pointer to the first non-whitespace byte (which is `s` after writing
- * '\0' at the trailing-trim position).
+ * Local stack-buffer size for the slash-command working copy. Chosen
+ * intentionally smaller than MAX_COMMAND_LEN: a slash command is a
+ * single token plus an optional path argument, both of which fit
+ * comfortably in 512 bytes. The full-line buffer (MAX_COMMAND_LEN) is
+ * upstream of this dispatcher; oversize lines are rejected here with
+ * an explicit error so the user gets a clear diagnostic instead of a
+ * silent truncation.
  */
-static char *trim_inplace(char *s) {
-	if (s == NULL || *s == '\0')
-		return s;
-	while (*s != '\0' && isspace((unsigned char)*s))
-		s++;
-	size_t len = strlen(s);
-	while (len > 0 && isspace((unsigned char)s[len - 1])) {
-		s[--len] = '\0';
-	}
-	return s;
-}
+#define SLASH_CMD_BUF 512
 
 /*
  * Process a slash-prefixed line. See the comment block above for the full
@@ -2232,7 +2244,7 @@ static char *trim_inplace(char *s) {
  */
 static boolean dispatch_slash_command(const char *line, boolean *running) {
 	/* Defensive copy + trim. The caller has already verified line[0] == '/'. */
-	char buf[512];
+	char buf[SLASH_CMD_BUF];
 	size_t inlen = strlen(line);
 	if (inlen >= sizeof(buf)) {
 		fputs("Error: command too long\n", stdout);
@@ -2371,10 +2383,24 @@ static boolean dispatch_slash_command(const char *line, boolean *running) {
 	 * actual exit. We also short-circuit here so callers that test for
 	 * *running == false on /exit observe the change without waiting for
 	 * the next event-loop tick. */
-	boolean ok = dispatch_leaf_via_menubar(hleaf);
-	if (!ok) {
-		fputs("(menu script failed)\n", stdout);
-		fflush(stdout);
+	ty_dispatch_result dr = dispatch_leaf_via_menubar(hleaf);
+	switch (dr) {
+		case DISPATCH_OK:
+			break;
+		case DISPATCH_NO_SCRIPT_FIELD:
+			/* Configuration error: the leaf is in the menubar but lacks
+			 * a usable script field. Distinct from a runtime failure so
+			 * the user can spot a corrupted/incomplete install. */
+			fputs("(menu item is missing script field)\n", stdout);
+			fflush(stdout);
+			break;
+		case DISPATCH_SCRIPT_FAILED:
+			/* Runtime failure: meuserselected_headless returned false.
+			 * The UserTalk error message has already been surfaced via
+			 * langerror; this line is just the dispatch summary. */
+			fputs("(menu script failed)\n", stdout);
+			fflush(stdout);
+			break;
 	}
 
 	if (strcasecmp(slot_name, "Exit") == 0) {

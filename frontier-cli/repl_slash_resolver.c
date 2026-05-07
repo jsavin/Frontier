@@ -57,6 +57,67 @@
 
 
 /*
+ * Canonical REPL slot keys. A leaf whose slot key (i.e. the key it is
+ * stored under in its parent menu — the third arg to menu.addMenuCommand
+ * at install time) is not on this list will never resolve, even if its
+ * label happens to match the user's input.
+ *
+ * See the SECURITY block in repl_slash_resolver.h for the threat model
+ * this defends against. To add a REPL command: add the new slot key
+ * here AND add the entry to installReplMenubar.ut (and the menubar
+ * handler under system.menus.handlers.repl).
+ *
+ * NUL-terminated array.
+ */
+static const char *const REPL_CANONICAL_SLOT_KEYS[] = {
+	"Exit",
+	"Help",
+	"Clear",
+	"List",
+	"Jump",
+	"Key codes",
+	NULL
+};
+
+
+/*
+ * Returns true iff `name` matches a canonical REPL slot key exactly
+ * (case-sensitive — the install script writes these literals and we
+ * want a corrupted-case variant like "exit" or "EXIT" to be rejected
+ * as non-canonical).
+ */
+static boolean is_canonical_repl_slot_key(const char *name) {
+	if (name == NULL || name[0] == '\0')
+		return false;
+	for (size_t i = 0; REPL_CANONICAL_SLOT_KEYS[i] != NULL; i++) {
+		if (strcmp(name, REPL_CANONICAL_SLOT_KEYS[i]) == 0)
+			return true;
+	}
+	return false;
+}
+
+
+/*
+ * Verify the leaf slot key against the canonical allowlist. The slot key
+ * is the Pascal string `bsname` passed to visit_leaf — copy it to a C
+ * buffer first, then strcmp against the allowlist entries.
+ *
+ * Returns true iff the slot key is in REPL_CANONICAL_SLOT_KEYS.
+ */
+static boolean leaf_slot_key_is_canonical(bigstring bsname) {
+	char namebuf[REPL_SLASH_TOKEN_MAX];
+	size_t len = (size_t)stringlength(bsname);
+	if (len == 0)
+		return false;
+	if (len >= sizeof(namebuf))
+		return false; /* slot key longer than any canonical entry — reject */
+	memcpy(namebuf, stringbaseaddress(bsname), len);
+	namebuf[len] = '\0';
+	return is_canonical_repl_slot_key(namebuf);
+}
+
+
+/*
  * Normalize one byte for case-insensitive label comparison: lowercase ASCII
  * letters, pass everything else through unchanged. Operates on the
  * (unsigned char) C-string representation, not on Pascal strings.
@@ -181,6 +242,15 @@ static boolean visit_leaf(bigstring bsname, hdlhashnode hnode,
 	if (hleaf == nil)
 		return false;
 
+	/*
+	 * Allowlist check: reject leaves whose slot key is not canonical for
+	 * the REPL menubar. See the SECURITY block in repl_slash_resolver.h.
+	 * A hostile or corrupted menubar may contain extra leaves whose
+	 * labels collide with canonical commands; those leaves never resolve.
+	 */
+	if (!leaf_slot_key_is_canonical(bsname))
+		return false;
+
 	char raw_label[REPL_SLASH_TOKEN_MAX * 2];
 	size_t raw_len = read_leaf_label(hleaf, bsname,
 	                                 raw_label, sizeof(raw_label));
@@ -192,12 +262,17 @@ static boolean visit_leaf(bigstring bsname, hdlhashnode hnode,
 	if (folded_len == 0)
 		return false;
 
-	/* Exact (post-fold) match. */
+	/* Exact (post-fold) match. Keep-first like the prefix and first-letter
+	 * tiers below — exact_count >= 2 returns false at the caller anyway,
+	 * but mirroring the pattern eliminates a latent hazard if the
+	 * disambiguation rules ever change. */
 	if (folded_len == ctx->token_len
 	    && memcmp(folded, ctx->normalized_token, folded_len) == 0) {
+		if (ctx->exact_count == 0) {
+			ctx->best_leaf = hleaf;
+			copystring(bsname, ctx->best_leaf_name);
+		}
 		ctx->exact_count++;
-		ctx->best_leaf = hleaf;
-		copystring(bsname, ctx->best_leaf_name);
 		return false; /* keep walking — exact matches should be unique
 		                 anyway, but the count guards against duplicate
 		                 keys. */

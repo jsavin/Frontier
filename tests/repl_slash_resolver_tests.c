@@ -207,9 +207,16 @@ static void test_ambiguous_prefix_fails(void) {
 	fflush(stdout);
 
 	/*
-	 * Build a menubar where TWO leaves share a "Cl" prefix so the resolver
-	 * has to refuse rather than guess. Use "Clear" + "Close" to force
-	 * ambiguity on token "cl".
+	 * Build a menubar where TWO canonical leaves carry labels that share
+	 * a "Cl" prefix so the resolver has to refuse rather than guess. Use
+	 * canonical slot keys "Clear" + "Help" but mutate Help's label to
+	 * "Closeup" — both pass the canonical-slot-key allowlist, and their
+	 * labels collide on prefix "cl" / "clo".
+	 *
+	 * This shape isn't realistic in production (the install script writes
+	 * label = slot key for both) but it exercises the ambiguity path
+	 * without depending on non-canonical slot keys, which the allowlist
+	 * now rejects outright.
 	 */
 	hdlhashtable hdata = nil;
 	assert(menudata_ensure_root());
@@ -220,8 +227,8 @@ static void test_ambiguous_prefix_fails(void) {
 	hdlhashtable hmenu = mk_subtable(hbar, "REPL");
 	hdlhashtable hclear = mk_subtable(hmenu, "Clear");
 	set_string(hclear, "label", "Clear");
-	hdlhashtable hclose = mk_subtable(hmenu, "Close");
-	set_string(hclose, "label", "Close");
+	hdlhashtable hhelp = mk_subtable(hmenu, "Help");
+	set_string(hhelp, "label", "Closeup");
 
 	hdlhashtable hleaf = nil;
 	assert(!repl_resolve_slash_command("cl", &hleaf, NULL, 0));
@@ -273,8 +280,10 @@ static void test_ambiguous_first_letter_fails(void) {
 	fflush(stdout);
 
 	/*
-	 * Two labels starting with C ("Clear", "Close"). Token "c" must not
-	 * resolve to either — caller has to disambiguate.
+	 * Two canonical leaves with labels both starting with C ("Clear" and
+	 * "Help" with label "Closeup"). Token "c" must not resolve to either
+	 * — caller has to disambiguate. Slot keys are canonical so the
+	 * allowlist does not pre-filter.
 	 */
 	hdlhashtable hdata = nil;
 	assert(menudata_ensure_root());
@@ -285,8 +294,8 @@ static void test_ambiguous_first_letter_fails(void) {
 	hdlhashtable hmenu = mk_subtable(hbar, "REPL");
 	hdlhashtable hclear = mk_subtable(hmenu, "Clear");
 	set_string(hclear, "label", "Clear");
-	hdlhashtable hclose = mk_subtable(hmenu, "Close");
-	set_string(hclose, "label", "Close");
+	hdlhashtable hhelp = mk_subtable(hmenu, "Help");
+	set_string(hhelp, "label", "Closeup");
 
 	hdlhashtable hleaf = nil;
 	assert(!repl_resolve_slash_command("c", &hleaf, NULL, 0));
@@ -429,6 +438,73 @@ static void test_out_name_returns_slot_key(void) {
 	fflush(stdout);
 }
 
+static void test_non_canonical_slot_key_rejected(void) {
+	printf("[resolver] Test: non-canonical slot key rejected (allowlist)... ");
+	fflush(stdout);
+
+	/*
+	 * Plant an "EvilExit" leaf alongside the canonical "Exit". Both labels
+	 * start with E, so without the allowlist the resolver might either
+	 * (a) resolve "/e" ambiguously to false, or (b) resolve "/evilexit"
+	 * exactly to the EvilExit leaf and dispatch the attacker's script
+	 * via the Exit slot-key special case.
+	 *
+	 * With the allowlist, EvilExit is filtered out before any tier check.
+	 * "/e" and "/exit" both resolve to canonical Exit (slot key "Exit"),
+	 * and "/evilexit" matches no canonical leaf (no canonical label
+	 * collapses to "evilexit") so it returns false.
+	 */
+	hdlhashtable hdata = nil;
+	assert(menudata_ensure_root());
+	clear_data_children();
+	assert(find_data(&hdata));
+
+	hdlhashtable hbar = mk_subtable(hdata, "repl");
+	hdlhashtable hmenu = mk_subtable(hbar, "REPL");
+
+	hdlhashtable hexit = mk_subtable(hmenu, "Exit");
+	set_string(hexit, "label", "Exit");
+	set_string(hexit, "script", "system.menus.handlers.repl.exit ()");
+
+	/* Hostile: non-canonical slot key whose label collides with canonical. */
+	hdlhashtable hevil = mk_subtable(hmenu, "Evil");
+	set_string(hevil, "label", "EvilExit");
+	set_string(hevil, "script", "shell.run (\"rm -rf /\")");
+
+	/* "/e" resolves to canonical Exit (Evil is filtered, so no first-letter
+	 * ambiguity). */
+	hdlhashtable hleaf = nil;
+	char name[64];
+	memset(name, 0xAA, sizeof(name));
+	assert(repl_resolve_slash_command("e", &hleaf, name, sizeof(name)));
+	assert(strcmp(name, "Exit") == 0);
+
+	/* "/exit" resolves to canonical Exit by exact match. */
+	hleaf = nil;
+	memset(name, 0xAA, sizeof(name));
+	assert(repl_resolve_slash_command("exit", &hleaf, name, sizeof(name)));
+	assert(strcmp(name, "Exit") == 0);
+
+	/* "/evilexit" must not resolve — the only label that would match
+	 * sits behind a non-canonical slot key. */
+	hleaf = nil;
+	memset(name, 0xAA, sizeof(name));
+	assert(!repl_resolve_slash_command("evilexit", &hleaf, name, sizeof(name)));
+	assert(hleaf == nil);
+	assert(name[0] == '\0');
+
+	/* Direct slot-key "/evil" must not resolve either. */
+	hleaf = nil;
+	memset(name, 0xAA, sizeof(name));
+	assert(!repl_resolve_slash_command("evil", &hleaf, name, sizeof(name)));
+	assert(hleaf == nil);
+	assert(name[0] == '\0');
+
+	clear_data_children();
+	printf("PASS\n");
+	fflush(stdout);
+}
+
 /* ---------- main ---------- */
 
 int main(void) {
@@ -458,6 +534,7 @@ int main(void) {
 	TR_RUN(test_no_menubar_returns_false);
 	TR_RUN(test_two_word_label);
 	TR_RUN(test_out_name_returns_slot_key);
+	TR_RUN(test_non_canonical_slot_key_rejected);
 
 	printf("\n=========================================\n");
 	printf("[resolver] ALL TESTS PASSED\n");
