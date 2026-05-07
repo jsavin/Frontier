@@ -1,0 +1,8 @@
+on jump ()
+	//Reset REPL focus to the root table.
+		//5/6/26 by JES
+			//Initial implementation. Wraps repl.jumpPath with an empty path
+			//so the host returns focus to root. A future revision can prompt
+			//for a target path via the palette accepts_args input row.
+	repl.jumpPath ("")
+	return (true)
