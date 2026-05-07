@@ -172,4 +172,183 @@ extern boolean menudata_describe_leaf(hdlhashtable hleaf, tyvaluerecord *vreturn
  */
 extern boolean meuserselected_headless(Handle hScript);
 
+
+/*
+ * --------------------------------------------------------------------------
+ * Write-side projection helpers (PR 5.5 / ADR-016)
+ * --------------------------------------------------------------------------
+ *
+ * The verbs in tests/headless_menu_verbs.c (the live headless menu dispatcher,
+ * since loadfunctionprocessor in Common/source/menuverbs.c is a no-op stub)
+ * are written so that any first-arg address pointing INTO system.menus.data
+ * triggers a projection write. These helpers are the kernel-side primitives.
+ *
+ * Bar-name semantics
+ * ------------------
+ * The "bar name" is the path component immediately under system.menus.data.
+ * For an address like @system.menus.data.repltest, the bar name is "repltest".
+ * For a deeper address like @system.menus.data.repltest.File.New, the bar
+ * name is still "repltest" (the menu/item names are the deeper components).
+ *
+ * Lazy creation
+ * -------------
+ * Every helper calls menudata_ensure_root() first and then creates whatever
+ * intermediate sub-tables are needed. This is intentional: the projection
+ * model (per ADR-016 §"What this means for verbs") replaces the legacy
+ * "must call new(menubarType, @bar) first" precondition with "verbs auto-
+ * create their sub-table chain on first write." See PR 5.5 commit message
+ * for the full rationale.
+ *
+ * GIL discipline
+ * --------------
+ * All helpers must be called while holding the GIL. They mutate process-
+ * global hashtable state (roottable + descendants) and allocate language
+ * values; the same discipline as the read-side helpers above.
+ *
+ * Tmp-stack ownership
+ * -------------------
+ * Field values written through these helpers are exempted from the tmp stack
+ * before being assigned into the projection sub-tables. Without this the
+ * values would be garbage-collected by langtmpstackpop on the next yield
+ * point, leaving stale handle references in the table — a use-after-free
+ * pattern documented in docs/ARCHITECTURAL_ANTIPATTERNS.md §"Tmp stack
+ * ownership". See setexemptaddressvalue in Common/source/langvalue.c for the
+ * canonical exemption idiom.
+ */
+
+
+/*
+ * Resolve the bar sub-table for bsbarname under system.menus.data, creating
+ * it (and the chain) if missing. Returns true with *hbar populated on
+ * success.
+ *
+ * Use this as the first step in any write-side helper that operates on a
+ * specific bar.
+ */
+extern boolean menudata_ensure_bar(bigstring bsbarname, hdlhashtable *hbar);
+
+
+/*
+ * Set system.menus.data.<barname>.installed to flinstalled. Lazy-creates
+ * the bar sub-table. Returns true on success.
+ *
+ * Backs menu.install (flinstalled = true) and menu.remove (flinstalled =
+ * false). The boolean is written via setbooleanvalue, which produces a
+ * scalar that does not need tmp-stack exemption.
+ */
+extern boolean menudata_set_installed(bigstring bsbarname, boolean flinstalled);
+
+
+/*
+ * Read system.menus.data.<barname>.installed into *flinstalled. If the bar
+ * sub-table doesn't exist, *flinstalled is set false and the function
+ * returns true (success: "not installed" is a valid reading of "no record").
+ * If the bar exists but the field is missing, *flinstalled is set false
+ * (the documented default per ADR-016 §"menu.describe contract" defaults).
+ *
+ * Backs menu.isInstalled.
+ */
+extern boolean menudata_get_installed(bigstring bsbarname, boolean *flinstalled);
+
+
+/*
+ * Create or replace a leaf item at system.menus.data.<barname>.<menuname>.
+ * <itemname>. Sets the leaf's required fields:
+ *   label   -> itemname (the human-visible label defaults to the item key)
+ *   script  -> the contents of hscript as a string value (hscript is a
+ *              Handle to the UserTalk source text — same shape that
+ *              addmenucommandverb's bsscript parameter carries on the
+ *              legacy path)
+ *   enabled -> true (per ADR-016 §"least-surprising menu item" defaults)
+ *
+ * If hscript is nil the script field is set to the empty string. If the
+ * bar/menu sub-tables don't exist they are created. If a leaf already
+ * exists with the same name its fields are overwritten (matching the
+ * "replace existing item script" semantic of legacy addmenucommandverb).
+ *
+ * The caller retains ownership of hscript; this helper reads from it but
+ * does not consume it. We make a heap copy for the projection.
+ */
+extern boolean menudata_add_command(bigstring bsbarname, bigstring bsmenuname,
+                                    bigstring bsitemname, Handle hscript);
+
+
+/*
+ * Create an intermediate sub-menu at system.menus.data.<barname>.<menuname>.
+ * <itemname>. Unlike menudata_add_command, this leaves the new sub-table
+ * empty (no fields) so that subsequent menudata_add_command calls scoped to
+ * @bar.<menuname>.<itemname>.<subitem> can populate it as a deeper menu.
+ *
+ * Backs menu.addSubMenu.
+ *
+ * Note: ADR-016's projection model is bar -> menu -> item, three levels
+ * deep. addSubMenu effectively introduces a fourth level. The leaf-vs-
+ * intermediate detection in menudata_list_leaves (ht_has_subtable_child)
+ * already handles arbitrary depth, so deeper trees Just Work for menu.list.
+ */
+extern boolean menudata_add_submenu(bigstring bsbarname, bigstring bsmenuname,
+                                    bigstring bsitemname);
+
+
+/*
+ * Delete a leaf or sub-table at system.menus.data.<barname>.<menuname>.
+ * <itemname>. If bsitemname is empty, deletes the entire <menuname>
+ * sub-tree (used by menu.deleteSubMenu when called with two args). If
+ * bsmenuname is also empty, deletes the entire <barname> sub-table.
+ *
+ * Returns true if a deletion occurred OR the target was already absent
+ * (idempotent), false on hard error.
+ */
+extern boolean menudata_delete_item(bigstring bsbarname, bigstring bsmenuname,
+                                    bigstring bsitemname);
+
+
+/*
+ * Update the .script field of an existing leaf at system.menus.data.
+ * <barname>.<menuname>.<itemname>. Does NOT create the leaf if absent —
+ * returns false in that case (caller should have produced the leaf via
+ * menudata_add_command first; setScript is for updates, not creation).
+ */
+extern boolean menudata_set_script(bigstring bsbarname, bigstring bsmenuname,
+                                   bigstring bsitemname, Handle hscript);
+
+
+/*
+ * Update the .cmdkey and .cmdmodifiers fields of an existing leaf. Same
+ * "leaf must already exist" semantic as menudata_set_script.
+ *
+ * cmdmodifiers is reserved for future modifier-key encoding (Cmd, Shift,
+ * Option, Ctrl bit-OR); pass 0 to leave unspecified, which matches the
+ * documented default for the .cmdmodifiers field per
+ * Common/source/menudata_headless.c::menudata_describe_leaf.
+ */
+extern boolean menudata_set_cmdkey(bigstring bsbarname, bigstring bsmenuname,
+                                   bigstring bsitemname, char cmdkey,
+                                   byte cmdmodifiers);
+
+
+/*
+ * Resolve an address value to (barname, menuname, itemname, depth) where
+ * depth is:
+ *   0 = address is NOT under system.menus.data (caller should fall back
+ *       to legacy path or no-op)
+ *   1 = @system.menus.data.<bar>           (bar identified, no deeper)
+ *   2 = @system.menus.data.<bar>.<menu>    (menu sub-table)
+ *   3 = @system.menus.data.<bar>.<menu>.<item> (leaf)
+ *   4+ = deeper (sub-menus); returned as depth=3 with the deepest two
+ *       components in bsmenuname / bsitemname (callers that need full
+ *       depth walking should use the address parts directly)
+ *
+ * On depth==0 the bigstrings are cleared. On depth>=1 they're filled
+ * left-to-right; unused slots are empty strings.
+ *
+ * The address is split on the dot path stored in the address handle,
+ * combined with the parent table chain. This routine does NOT mutate
+ * the projection — it's read-only address parsing.
+ */
+extern short menudata_resolve_bar_path(hdlhashtable hparent, bigstring bsname,
+                                       bigstring bsbarname,
+                                       bigstring bsmenuname,
+                                       bigstring bsitemname);
+
 #endif /* menudata_headless_include */

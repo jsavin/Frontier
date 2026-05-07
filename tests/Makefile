@@ -179,6 +179,7 @@ LANG_RUNTIME_SOURCES = \
     ../frontier-cli/stubs/headless_pict_stubs.c \
     ../frontier-cli/stubs/headless_menu_stubs.c \
     ../frontier-cli/stubs/headless_menu_globals.c \
+    ../Common/source/menudata_headless.c \
     ../frontier-cli/stubs/headless_search_stubs.c \
     ../frontier-cli/stubs/headless_mac_compat.c \
     ../frontier-cli/stubs/headless_langregexp_stub.c \
@@ -334,21 +335,21 @@ menu_v7_refcon_tests: menu_v7_refcon_tests.c $(LANG_RUNTIME_SOURCES) ../Common/s
 
 # Menudata headless tests - validates menudata_ensure_root() lazy chain creation.
 # See planning/architectural_decision_records/ADR-016 for the architectural model.
-menudata_headless_tests: menudata_headless_tests.c $(LANG_RUNTIME_SOURCES) ../Common/source/menudata_headless.c ../frontier-cli/stubs/headless_shell.c
+menudata_headless_tests: menudata_headless_tests.c $(LANG_RUNTIME_SOURCES) ../frontier-cli/stubs/headless_shell.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable \
-		menudata_headless_tests.c $(LANG_RUNTIME_SOURCES) ../Common/source/menudata_headless.c ../frontier-cli/stubs/headless_shell.c -o $@ $(LINK_LIBS)
+		menudata_headless_tests.c $(LANG_RUNTIME_SOURCES) ../frontier-cli/stubs/headless_shell.c -o $@ $(LINK_LIBS)
 
 # Menu list/describe headless tests - validates the leaf-walk and describe-record
 # helpers that back the menu.list / menu.describe verbs (ADR-016, sub-PR 2a).
-menu_list_describe_tests: menu_list_describe_tests.c $(LANG_RUNTIME_SOURCES) ../Common/source/menudata_headless.c ../frontier-cli/stubs/headless_shell.c
+menu_list_describe_tests: menu_list_describe_tests.c $(LANG_RUNTIME_SOURCES) ../frontier-cli/stubs/headless_shell.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable \
-		menu_list_describe_tests.c $(LANG_RUNTIME_SOURCES) ../Common/source/menudata_headless.c ../frontier-cli/stubs/headless_shell.c -o $@ $(LINK_LIBS)
+		menu_list_describe_tests.c $(LANG_RUNTIME_SOURCES) ../frontier-cli/stubs/headless_shell.c -o $@ $(LINK_LIBS)
 
 # meuserselected_headless tests - validates the headless dispatch path that
 # compiles UserTalk source and schedules a one-shot process. ADR-016 / sub-PR 2b.
-meuserselected_headless_tests: meuserselected_headless_tests.c $(LANG_RUNTIME_SOURCES) ../Common/source/menudata_headless.c ../frontier-cli/stubs/headless_shell.c
+meuserselected_headless_tests: meuserselected_headless_tests.c $(LANG_RUNTIME_SOURCES) ../frontier-cli/stubs/headless_shell.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable \
-		meuserselected_headless_tests.c $(LANG_RUNTIME_SOURCES) ../Common/source/menudata_headless.c ../frontier-cli/stubs/headless_shell.c -o $@ $(LINK_LIBS)
+		meuserselected_headless_tests.c $(LANG_RUNTIME_SOURCES) ../frontier-cli/stubs/headless_shell.c -o $@ $(LINK_LIBS)
 
 runtime_tests: runtime_tests.c $(LANG_RUNTIME_SOURCES) ../frontier-cli/stubs/headless_shell.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable runtime_tests.c $(LANG_RUNTIME_SOURCES) ../frontier-cli/stubs/headless_shell.c -o $@ $(LINK_LIBS)

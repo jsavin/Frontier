@@ -58,6 +58,7 @@
 #include "tableverbs.h"
 #include "stringdefs.h"
 #include "menudata_headless.h"
+#include "logging.h"
 
 /*
  * STR_data is defined in menudata_headless.h so production code and tests
@@ -442,6 +443,543 @@ cleanup_defaults:
 
 
 /*
+ * --------------------------------------------------------------------------
+ * Write-side projection helpers (PR 5.5 / ADR-016)
+ * --------------------------------------------------------------------------
+ *
+ * The verbs that mutate menu state (menu.install / menu.addMenuCommand /
+ * menu.setScript / etc.) need to mirror their effect into system.menus.data.
+ * PR 1 (#575) added the storage; PR 2 (#576) added the read side; this is
+ * the write side.
+ *
+ * Design (per ADR-016 §"What this means for verbs"):
+ *   - The verb's first-arg address determines the bar name. For an address
+ *     @system.menus.data.<bar>(.<menu>(.<item>)?)?, the bar name is the
+ *     path component immediately under system.menus.data.
+ *   - Sub-tables are lazy-created. The legacy "must call new(menubarType,
+ *     @bar) first" precondition does NOT apply to the projection path;
+ *     ADR-016 explicitly chooses sub-table-per-bar over external-per-bar
+ *     because the external is a Mac-era artifact (a Handle wrapping the
+ *     menubar resource). The headless world doesn't need it.
+ *   - All scalar field writes route through setbooleanvalue / setcharvalue /
+ *     setlongvalue (which do NOT push to the tmp stack) or via newheapstring
+ *     followed by setheapvalue and exemptfromtmpstack — the documented
+ *     idiom in docs/ARCHITECTURAL_ANTIPATTERNS.md §"Tmp stack ownership".
+ *
+ * Field name bigstrings are reused from the describe_leaf section (BS_label
+ * etc. above). The "installed" field and other write-only fields get their
+ * bigstrings here.
+ */
+
+#define BS_installed BIGSTRING("\x09" "installed")
+
+
+/*
+ * Find or create the system.menus.data sub-table. Returns the handle in
+ * *hdata. Equivalent to a final findnamedtable after menudata_ensure_root,
+ * but consolidated here so write helpers don't each re-implement it.
+ */
+static boolean find_data_root(hdlhashtable *hdata) {
+	hdlhashtable hsystem = nil, hmenus = nil;
+
+	if (!menudata_ensure_root())
+		return false;
+
+	if (!findnamedtable(roottable, namesystembranch, &hsystem))
+		return false;
+	if (!findnamedtable(hsystem, STR_menus, &hmenus))
+		return false;
+	if (!findnamedtable(hmenus, STR_data, hdata))
+		return false;
+
+	return true;
+}
+
+
+boolean menudata_ensure_bar(bigstring bsbarname, hdlhashtable *hbar) {
+	hdlhashtable hdata = nil;
+
+	*hbar = nil;
+
+	if (isemptystring(bsbarname))
+		return false;
+
+	if (!find_data_root(&hdata))
+		return false;
+
+	return ensure_subtable(hdata, bsbarname, hbar);
+}
+
+
+/*
+ * Resolve a (parent_table, name) address pair to (barname, menuname,
+ * itemname, depth). See menudata_resolve_bar_path docstring in the header
+ * for depth semantics.
+ *
+ * Strategy: walk up from hparent collecting names until we hit
+ * system.menus.data, the depth-1 bar slot is found, or we run out of
+ * parents (depth=0, address not in system.menus.data).
+ *
+ * The walk uses prevhashtable for the parent chain. To get a child's name
+ * within its parent, we use hashinversesearch with a value-match callback
+ * — the same pattern used by langhash.c when reconstructing addresses
+ * after a table rename.
+ */
+
+typedef struct ty_name_match_refcon {
+	hdlhashtable target;       /* the child whose name we want */
+	bigstring matched_name;    /* output: filled if found */
+	boolean found;
+} ty_name_match_refcon;
+
+static boolean find_name_for_child(bigstring bsname, hdlhashnode hnode,
+                                   tyvaluerecord val, ptrvoid refcon) {
+	(void) hnode;
+
+	ty_name_match_refcon *ctx = (ty_name_match_refcon *) refcon;
+	hdlhashtable hchild = nil;
+
+	if (!value_as_subtable(val, &hchild))
+		return false; /* keep walking */
+
+	if (hchild != ctx->target)
+		return false;
+
+	copystring(bsname, ctx->matched_name);
+	ctx->found = true;
+	return true; /* stop */
+}
+
+
+/*
+ * Walk up from htable building a path of names. Stops when stop_at is
+ * reached (returns true) or when we run off the top (returns false).
+ *
+ * names[0..*depth-1] are filled in TOP-DOWN order (so names[0] is the
+ * direct child of stop_at, names[*depth-1] is the deepest). Caller
+ * pre-allocates the names array; max_depth is its capacity.
+ *
+ * Uses (**cursor).parenthashtable for the upward walk. This is the
+ * field that tablenewsubtable (Common/source/tablestructure.c:881)
+ * and findnamedtable (Common/source/tableops.c:246) set. The
+ * sibling field prevhashtable is the LEXICAL chain set only by
+ * chainhashtable() during script-stack push and is unrelated to the
+ * containment hierarchy our address parser cares about.
+ */
+static boolean walk_up_to(hdlhashtable htable, hdlhashtable stop_at,
+                          bigstring names[], short max_depth, short *depth) {
+	hdlhashtable cursor = htable;
+	bigstring stack[8]; /* depth-bounded; matches max_depth ceiling */
+	short ix = 0;
+	short i;
+
+	if (max_depth > 8)
+		max_depth = 8;
+
+	*depth = 0;
+
+	while (cursor != nil && cursor != stop_at) {
+		hdlhashtable parent = (**cursor).parenthashtable;
+		ty_name_match_refcon ctx;
+		bigstring scratch;
+
+		if (parent == nil)
+			return false;
+
+		/*
+		 * scratch is hashinversesearch's "last visited name" out-param;
+		 * the callee writes before any caller-side read on every visited
+		 * entry, so the value here is conceptually irrelevant. We
+		 * explicitly empty it so static analysers (and future readers)
+		 * don't have to reason about uninitialized-stack lifetimes.
+		 */
+		setemptystring(scratch);
+
+		ctx.target = cursor;
+		setemptystring(ctx.matched_name);
+		ctx.found = false;
+		(void) hashinversesearch(parent, &find_name_for_child, &ctx, scratch);
+
+		if (!ctx.found)
+			return false;
+
+		if (ix >= max_depth)
+			return false;
+
+		copystring(ctx.matched_name, stack[ix]);
+		ix++;
+		cursor = parent;
+	}
+
+	if (cursor != stop_at)
+		return false;
+
+	/* Reverse the stack into names[] so names[0] is closest to stop_at. */
+	for (i = 0; i < ix; i++)
+		copystring(stack[ix - 1 - i], names[i]);
+
+	*depth = ix;
+	return true;
+}
+
+
+short menudata_resolve_bar_path(hdlhashtable hparent, bigstring bsname,
+                                bigstring bsbarname, bigstring bsmenuname,
+                                bigstring bsitemname) {
+	hdlhashtable hdata = nil;
+	bigstring stack[8];
+	short stackdepth = 0;
+	short total;
+
+	setemptystring(bsbarname);
+	setemptystring(bsmenuname);
+	setemptystring(bsitemname);
+
+	if (hparent == nil || isemptystring(bsname))
+		return 0;
+
+	if (!find_data_root(&hdata))
+		return 0;
+
+	/* If hparent IS hdata, the address is exactly @system.menus.data.<name>
+	   so name is the bar name (depth 1). */
+	if (hparent == hdata) {
+		copystring(bsname, bsbarname);
+		return 1;
+	}
+
+	/* Otherwise walk up from hparent until we hit hdata. The names along
+	   the way are the bar / menu / sub-menu components; bsname itself is
+	   the deepest leaf-name component. */
+	if (!walk_up_to(hparent, hdata, stack, 8, &stackdepth))
+		return 0;
+
+	/* stack now holds the path from system.menus.data down to (but not
+	   including) the leaf-name. The leaf name is bsname itself. So the
+	   total depth of the address is stackdepth + 1.
+	     stackdepth=0 + leaf -> depth 1 (bar only)  -- handled above
+	     stackdepth=1 + leaf -> depth 2 (bar.menu)
+	     stackdepth=2 + leaf -> depth 3 (bar.menu.item)
+	     stackdepth=3+        -> deeper (sub-menus); compress to depth 3 */
+	total = stackdepth + 1;
+
+	/*
+	 * Invariant: walk_up_to returned true above, so stackdepth >= 1
+	 * (the depth==1 / hparent==hdata case is handled by the early return
+	 * above). That makes total >= 2, so case 1 is unreachable here and
+	 * deliberately omitted from the switch.
+	 */
+	switch (total) {
+		case 2:
+			copystring(stack[0], bsbarname);
+			copystring(bsname, bsmenuname);
+			return 2;
+
+		case 3:
+			copystring(stack[0], bsbarname);
+			copystring(stack[1], bsmenuname);
+			copystring(bsname, bsitemname);
+			return 3;
+
+		default:
+			/* Deeper than 3: keep bar fixed, surface the deepest two as
+			   menu/item. Caller can detect by comparing the returned depth
+			   with the address's actual depth if they care; current callers
+			   only care about "is this a leaf-shaped address". */
+			copystring(stack[0], bsbarname);
+			copystring(stack[stackdepth - 1], bsmenuname);
+			copystring(bsname, bsitemname);
+			return 3;
+	}
+}
+
+
+/*
+ * Helper: assign a value into a hashtable entry, exempting it from the
+ * tmp stack first. The langtmpstack guard shipped with PR 1's storage
+ * helpers showed this pattern; we centralise it here so every write-side
+ * helper uses the same idiom.
+ */
+static boolean assign_exempt(hdlhashtable htable, bigstring bskey,
+                             tyvaluerecord *val) {
+	exemptfromtmpstack(val);
+	return hashtableassign(htable, bskey, *val);
+}
+
+
+boolean menudata_set_installed(bigstring bsbarname, boolean flinstalled) {
+	hdlhashtable hbar = nil;
+	tyvaluerecord val;
+
+	if (!menudata_ensure_bar(bsbarname, &hbar))
+		return false;
+
+	if (!setbooleanvalue(flinstalled, &val))
+		return false;
+
+	/* Booleans are scalars and don't go on the tmp stack, but routing
+	   through assign_exempt keeps the call shape uniform with the string
+	   writers below — important for future maintainers reading this code. */
+	return assign_exempt(hbar, BS_installed, &val);
+}
+
+
+boolean menudata_get_installed(bigstring bsbarname, boolean *flinstalled) {
+	hdlhashtable hdata = nil;
+	hdlhashtable hbar = nil;
+	tyvaluerecord val;
+	hdlhashnode hnode;
+
+	*flinstalled = false;
+
+	if (!find_data_root(&hdata))
+		return true; /* no projection at all = "not installed" */
+
+	if (!findnamedtable(hdata, bsbarname, &hbar))
+		return true; /* bar absent = not installed */
+
+	if (!hashtablelookup(hbar, BS_installed, &val, &hnode))
+		return true; /* field absent = default (not installed) */
+
+	if (val.valuetype != booleanvaluetype)
+		return true; /* malformed -> treat as not installed */
+
+	*flinstalled = val.data.flvalue;
+	return true;
+}
+
+
+/*
+ * Write a single field to a leaf, taking care to exempt and dispose
+ * appropriately. setstringvalue puts the heap string on the tmp stack;
+ * we exempt before assignment so the value stays alive in the projection.
+ */
+static boolean write_string_field(hdlhashtable hleaf, bigstring bskey,
+                                   bigstring bsvalue) {
+	tyvaluerecord val;
+
+	if (!setstringvalue(bsvalue, &val))
+		return false;
+	return assign_exempt(hleaf, bskey, &val);
+}
+
+
+/*
+ * Write a Handle of script text into hleaf.script as a heap stringvalue.
+ *
+ * The previous implementation round-tripped the script through a bigstring,
+ * which silently clamped to 255 bytes. Real menu scripts trivially exceed
+ * that, so we now store the script as a heap-allocated stringvalue built
+ * directly from the handle's full contents — same shape that
+ * menudata_describe_leaf reads back through copyvaluerecord.
+ *
+ * Pattern mirrors Common/source/langhash.c:4268 (newheapvalue with
+ * stringvaluetype + exemptfromtmpstack), which is the canonical
+ * "store an arbitrary-length string into a hashtable" idiom used by the
+ * v7 disk-load path. exemptfromtmpstack() prevents the value from being
+ * disposed when the surrounding tmp-stack frame unwinds — see
+ * docs/ARCHITECTURAL_ANTIPATTERNS.md §"Tmp stack ownership."
+ *
+ * Empty / nil handle path: store an empty stringvalue so callers see a
+ * defined-but-empty script field rather than "field absent" semantics.
+ */
+static boolean write_script_field_from_handle(hdlhashtable hleaf,
+                                              Handle hscript) {
+	tyvaluerecord val;
+	long len = 0;
+	ptrvoid pdata = nil;
+	byte emptybyte = 0;
+
+	if (hscript != nil) {
+		len = gethandlesize(hscript);
+		if (len < 0)
+			len = 0;
+	}
+
+	if (len > 0) {
+		/* Lock-free: newheapvalue copies via newfilledhandle which uses
+		   moveleft internally — no need to explicitly lock the handle. */
+		pdata = (ptrvoid) *hscript;
+	}
+	else {
+		/* Pass a zero-length pointer to a single byte so newfilledhandle
+		   doesn't dereference nil even though it copies zero bytes. */
+		pdata = (ptrvoid) &emptybyte;
+	}
+
+	if (!newheapvalue(pdata, len, stringvaluetype, &val))
+		return false;
+
+	return assign_exempt(hleaf, BS_script, &val);
+}
+
+
+boolean menudata_add_command(bigstring bsbarname, bigstring bsmenuname,
+                             bigstring bsitemname, Handle hscript) {
+	hdlhashtable hbar = nil;
+	hdlhashtable hmenu = nil;
+	hdlhashtable hleaf = nil;
+	tyvaluerecord val;
+
+	if (isemptystring(bsbarname) || isemptystring(bsmenuname) ||
+	    isemptystring(bsitemname))
+		return false;
+
+	if (!menudata_ensure_bar(bsbarname, &hbar))
+		return false;
+
+	if (!ensure_subtable(hbar, bsmenuname, &hmenu))
+		return false;
+
+	if (!ensure_subtable(hmenu, bsitemname, &hleaf))
+		return false;
+
+	/* label = itemname (default human-visible label) */
+	if (!write_string_field(hleaf, BS_label, bsitemname))
+		return false;
+
+	/* script = contents of hscript */
+	if (!write_script_field_from_handle(hleaf, hscript))
+		return false;
+
+	/* enabled = true (default per ADR-016) */
+	if (!setbooleanvalue(true, &val))
+		return false;
+	if (!assign_exempt(hleaf, BS_enabled, &val))
+		return false;
+
+	return true;
+}
+
+
+boolean menudata_add_submenu(bigstring bsbarname, bigstring bsmenuname,
+                             bigstring bsitemname) {
+	hdlhashtable hbar = nil;
+	hdlhashtable hmenu = nil;
+	hdlhashtable hsub = nil;
+
+	if (isemptystring(bsbarname) || isemptystring(bsmenuname) ||
+	    isemptystring(bsitemname))
+		return false;
+
+	if (!menudata_ensure_bar(bsbarname, &hbar))
+		return false;
+
+	if (!ensure_subtable(hbar, bsmenuname, &hmenu))
+		return false;
+
+	/* Create the sub-menu sub-table; leave it empty for downstream
+	   addCommand/addSubMenu calls to populate. */
+	return ensure_subtable(hmenu, bsitemname, &hsub);
+}
+
+
+boolean menudata_delete_item(bigstring bsbarname, bigstring bsmenuname,
+                             bigstring bsitemname) {
+	hdlhashtable hdata = nil;
+	hdlhashtable hbar = nil;
+	hdlhashtable hmenu = nil;
+
+	if (isemptystring(bsbarname))
+		return false;
+
+	if (!find_data_root(&hdata))
+		return false;
+
+	if (!findnamedtable(hdata, bsbarname, &hbar))
+		return true; /* nothing to delete; success (idempotent) */
+
+	if (isemptystring(bsmenuname)) {
+		/* Delete the entire bar sub-tree. */
+		bigstring bs;
+		copystring(bsbarname, bs);
+		return hashtabledelete(hdata, bs);
+	}
+
+	if (!findnamedtable(hbar, bsmenuname, &hmenu))
+		return true; /* menu absent; success */
+
+	if (isemptystring(bsitemname)) {
+		/* Delete the entire menu sub-tree. */
+		bigstring bs;
+		copystring(bsmenuname, bs);
+		return hashtabledelete(hbar, bs);
+	}
+
+	/* Delete a specific leaf. hashtabledelete posts a langparamerror via
+	   hashdelete when the key is absent; we discard the error (the (void)
+	   cast on the return) and unconditionally return true to preserve the
+	   idempotent semantics this verb's callers expect. */
+	{
+		bigstring bs;
+		copystring(bsitemname, bs);
+		(void) hashtabledelete(hmenu, bs);
+		return true;
+	}
+}
+
+
+boolean menudata_set_script(bigstring bsbarname, bigstring bsmenuname,
+                            bigstring bsitemname, Handle hscript) {
+	hdlhashtable hdata = nil;
+	hdlhashtable hbar = nil;
+	hdlhashtable hmenu = nil;
+	hdlhashtable hleaf = nil;
+
+	if (isemptystring(bsbarname) || isemptystring(bsmenuname) ||
+	    isemptystring(bsitemname))
+		return false;
+
+	if (!find_data_root(&hdata))
+		return false;
+	if (!findnamedtable(hdata, bsbarname, &hbar))
+		return false;
+	if (!findnamedtable(hbar, bsmenuname, &hmenu))
+		return false;
+	if (!findnamedtable(hmenu, bsitemname, &hleaf))
+		return false;
+
+	return write_script_field_from_handle(hleaf, hscript);
+}
+
+
+boolean menudata_set_cmdkey(bigstring bsbarname, bigstring bsmenuname,
+                            bigstring bsitemname, char cmdkey,
+                            byte cmdmodifiers) {
+	hdlhashtable hdata = nil;
+	hdlhashtable hbar = nil;
+	hdlhashtable hmenu = nil;
+	hdlhashtable hleaf = nil;
+	tyvaluerecord val;
+
+	if (isemptystring(bsbarname) || isemptystring(bsmenuname) ||
+	    isemptystring(bsitemname))
+		return false;
+
+	if (!find_data_root(&hdata))
+		return false;
+	if (!findnamedtable(hdata, bsbarname, &hbar))
+		return false;
+	if (!findnamedtable(hbar, bsmenuname, &hmenu))
+		return false;
+	if (!findnamedtable(hmenu, bsitemname, &hleaf))
+		return false;
+
+	if (!setcharvalue(cmdkey, &val))
+		return false;
+	if (!assign_exempt(hleaf, BS_cmdkey, &val))
+		return false;
+
+	if (!setlongvalue((long) cmdmodifiers, &val))
+		return false;
+	if (!assign_exempt(hleaf, BS_cmdmodifiers, &val))
+		return false;
+
+	return true;
+}
+
+
+/*
  * Headless sibling of meuserselected (Common/source/meprograms.c:256-315).
  *
  * Architectural note: the planning doc described this function as a
@@ -459,13 +997,19 @@ cleanup_defaults:
  * just to immediately wait for it.
  *
  * Steps:
- *   1. langbuildtree turns the Pascal-prefixed UserTalk source handle into
- *      a compiled tree. Consumes hScript regardless of outcome (see
- *      lang.c:534 — langcompiletext disposes htext).
- *   2. langruncode executes the tree synchronously on the calling thread.
+ *   1. We copy hScript into a private handle. langbuildtree CONSUMES the
+ *      handle it is given (lang.c:534 — langcompiletext disposes htext on
+ *      every path), and langruncode below yields the GIL between
+ *      statements. If the caller's handle were aliased to another thread's
+ *      live data, that thread could dispose it mid-build. The copy makes
+ *      the lifetime owned by us and the caller free to dispose its own
+ *      handle the moment we return.
+ *   2. langbuildtree turns the Pascal-prefixed UserTalk source handle into
+ *      a compiled tree, consuming the copy.
+ *   3. langruncode executes the tree synchronously on the calling thread.
  *      The result is discarded; menu actions are statements, not
  *      expressions, so the value carries no caller-visible meaning.
- *   3. langdisposetree releases the compiled tree.
+ *   4. langdisposetree releases the compiled tree.
  *
  * Errors surface through the existing langerrormessage callback chain —
  * same path as REPL eval. We do not push a custom error callback because
@@ -476,6 +1020,10 @@ cleanup_defaults:
  * langbuildtree's tree-construction path and run user code that may call
  * any kernel verb.
  *
+ * Handle ownership: caller retains ownership of hScript and may dispose it
+ * the instant this function returns. Our internal copyhandle defends
+ * against the GIL-yield-then-other-thread-disposes-the-handle race.
+ *
  * Future: when the host eventually wants async menu dispatch (e.g. a long-
  * running script that should not block linenoise), wrap this in
  * headless_spawn_callback_thread. That's a follow-up; the palette MVP
@@ -485,25 +1033,43 @@ boolean meuserselected_headless(Handle hScript) {
 
 	hdltreenode hcode = nil;
 	tyvaluerecord vresult;
+	Handle hcopy = nil;
 	boolean fl;
 
 	if (hScript == nil)
 		return false;
 
 	/*
-	 * langbuildtree consumes hScript whether it succeeds or fails (see
+	 * Defensive: a Handle is a Handle ** — both indirections must be
+	 * non-nil for the script bytes to be reachable. A handle whose master
+	 * pointer is nil indicates the underlying memory has been disposed
+	 * out from under us; bail out rather than crash.
+	 */
+	if (*hScript == nil)
+		return false;
+
+	/*
+	 * Copy the script handle so our lifetime is independent of the caller's.
+	 * See header comment above for the GIL-yield rationale. Even if a future
+	 * caller forgets to copyhandle, this guarantees correctness.
+	 */
+	if (!copyhandle(hScript, &hcopy))
+		return false;
+
+	/*
+	 * langbuildtree consumes hcopy whether it succeeds or fails (see
 	 * lang.c:534 -> langcompiletext, which disposes htext on every path).
-	 * After this call we must not reference hScript again.
+	 * After this call we must not reference hcopy again.
 	 *
 	 * Second arg "fllinebased" matches scripts.c:286's call into
 	 * langbuildtree for the typeLAND signature: true = treat newlines as
 	 * statement terminators, which is how outline-extracted UserTalk is
 	 * always shaped.
 	 */
-	fl = langbuildtree(hScript, true, &hcode);
+	fl = langbuildtree(hcopy, true, &hcode);
 
 	if (!fl)
-		return false; /* syntax error */
+		return false; /* syntax error; langbuildtree already disposed hcopy */
 
 	/* Compilation produced no error; clear any stale error state.
 	   Mirrors meprograms.c:295's langerrorclear() after the compile. */
