@@ -310,6 +310,92 @@ tests:
       - "Unknown command"
     expected_success: true
 
+  # =========================================================================
+  # Menubar resolver behavior (PR 7) - prefix and hotkey matching
+  # =========================================================================
+  # The slash-command resolver matches the user's token against the
+  # installed REPL menubar (system.menus.data.repl.REPL) using a three-tier
+  # precedence: exact label, unique prefix, single-letter first-letter.
+  # These tests exercise each tier end-to-end through the dispatch path.
+
+  - name: "REPL - unique prefix match (/exi -> Exit)"
+    description: |
+      The resolver routes a unique prefix to its only matching leaf.
+      "exi" is a strict prefix of only the "Exit" label, so /exi should
+      exit cleanly with Goodbye.
+    repl_mode: true
+    stdin_input: "/exi\n"
+    expected_output_contains:
+      - "Goodbye"
+    expected_output_not_contains:
+      - "Unknown command"
+    expected_success: true
+
+  - name: "REPL - first-letter hotkey match (/h -> Help)"
+    description: |
+      Single-letter token matches the first letter of a label when no
+      other label starts with the same letter. /h is unique to "Help"
+      so it dispatches the help text.
+    repl_mode: true
+    stdin_input: "/h\n/exit\n"
+    expected_output_contains:
+      - "Available commands"
+      - "/help"
+    expected_success: true
+
+  - name: "REPL - first-letter hotkey match (/e -> Exit)"
+    description: |
+      /e routes to "Exit" because no other REPL menu label starts with
+      E. Belt-and-braces companion to /h - they share the same matching
+      tier but exercise different leaves.
+    repl_mode: true
+    stdin_input: "/e\n"
+    expected_output_contains:
+      - "Goodbye"
+    expected_output_not_contains:
+      - "Unknown command"
+    expected_success: true
+
+  - name: "REPL - whitespace-collapsed label match (/keycodes)"
+    description: |
+      The "Key codes" label resolves under the token "keycodes" (spaces
+      collapsed) so the legacy /keycodes shorthand still works post-PR 7.
+      The keycodes handler enters linenoise's key-code debug mode, which
+      requires an interactive TTY - in plain REPL mode it returns false
+      without printing a key dump. Assert the menubar dispatch reached
+      the handler (no Unknown command error) rather than the dump output.
+    repl_mode: true
+    stdin_input: "/keycodes\n/exit\n"
+    expected_output_not_contains:
+      - "Unknown command"
+    expected_success: true
+
+  - name: "REPL - unknown command preserves full body in error"
+    description: |
+      A line that begins with / but doesn't resolve must echo the FULL
+      input (including any whitespace+args) in the diagnostic, not just
+      the first whitespace-delimited word. This is the legacy behavior
+      preserved post-PR 7 so users (and integration tests) see what they
+      typed.
+    repl_mode: true
+    stdin_input: "/foo bar baz\n/exit\n"
+    expected_output_contains:
+      - "Unknown command: /foo bar baz"
+    expected_success: true
+
+  - name: "REPL - /jump with bad path emits Error message"
+    description: |
+      /jump <invalid> routes through the kernel-verb host adapter
+      (replverbhost_jump_path) which returns false on an unresolvable
+      path. The dispatcher prints the legacy-format error so existing
+      integration tests for /jump - invalid path keep passing.
+    repl_mode: true
+    stdin_input: "/jump nonexistent.path\n/exit\n"
+    expected_output_contains:
+      - "Error"
+      - "not a valid table path"
+    expected_success: true
+
   - name: "REPL - leading slash required"
     description: "Commands without leading slash are treated as code"
     repl_mode: true
