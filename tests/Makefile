@@ -354,10 +354,10 @@ meuserselected_headless_tests: meuserselected_headless_tests.c $(LANG_RUNTIME_SO
 # REPL palette source adapter tests (PR 6). Wraps menudata_list_leaves /
 # menudata_describe_leaf in the palette_menu_source_t vtable from PR 5.
 # Links pane.c + palette.c (CLI side, no runtime calls) plus the full lang
-# runtime + menudata_headless.c (ODB walks).
-repl_palette_source_tests: repl_palette_source_tests.c $(LANG_RUNTIME_SOURCES) ../Common/source/menudata_headless.c ../frontier-cli/repl_palette_source.c ../frontier-cli/palette.c ../frontier-cli/pane.c ../frontier-cli/stubs/headless_shell.c
+# runtime (which now includes menudata_headless.c via PR 5.5).
+repl_palette_source_tests: repl_palette_source_tests.c $(LANG_RUNTIME_SOURCES) ../frontier-cli/repl_palette_source.c ../frontier-cli/palette.c ../frontier-cli/pane.c ../frontier-cli/stubs/headless_shell.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable -I../frontier-cli \
-		repl_palette_source_tests.c $(LANG_RUNTIME_SOURCES) ../Common/source/menudata_headless.c ../frontier-cli/repl_palette_source.c ../frontier-cli/palette.c ../frontier-cli/pane.c ../frontier-cli/stubs/headless_shell.c -o $@ $(LINK_LIBS)
+		repl_palette_source_tests.c $(LANG_RUNTIME_SOURCES) ../frontier-cli/repl_palette_source.c ../frontier-cli/palette.c ../frontier-cli/pane.c ../frontier-cli/stubs/headless_shell.c -o $@ $(LINK_LIBS)
 
 # REPL verbs tests (PR 6). Exercises the 5 repl.* kernel verbs through
 # the real langbuildtree -> langruncode dispatch path with a fake host
