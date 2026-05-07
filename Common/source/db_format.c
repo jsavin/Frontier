@@ -2114,9 +2114,12 @@ boolean db_format_compact_to_path(hdldatabaserecord source_db, Handle source_roo
     hdldatabaserecord entry_databasedata = databasedata;
     db_saveas_state_snapshot(&entry_saveas);
 
-    /* Push a v7+repack mode for the duration of compaction. Pop on exit. */
+    /* Compose the v7+repack mode used by source_context below.  Note: we do
+     * NOT push it on g_mode_stack here.  db_format_write_compacted_internal
+     * clobbers g_mode_depth (resets to 0 and applies its own mode), so any
+     * push/pop pair would be vestigial — the actual entry-state restoration
+     * happens via db_format_mode_apply(&entry_mode) in the cleanup block. */
     db_format_mode v7_repack_mode = {true, true};
-    db_format_mode_push(&v7_repack_mode);
 
     db_context_init(&source_context);
     source_context.mode = v7_repack_mode;
@@ -2198,9 +2201,12 @@ boolean db_format_compact_to_path(hdldatabaserecord source_db, Handle source_roo
              (unsigned long long)new_script_address,
              dst_path);
 
-    /* Yield GIL once after the walk so any blocked thread can run before
-     * the verb returns to UserTalk. */
-    (void) langbackgroundtask(false);
+    /* Post-walk GIL yield is deferred until AFTER the cleanup block restores
+     * databasedata to entry_databasedata.  At this point in the function, the
+     * helper has set databasedata = nil (success path), and yielding here
+     * could let another GIL-acquiring thread observe the nil and crash on
+     * dereference.  See the bottom of the cleanup block, just before
+     * `return ok`. */
 
     ok = true;
 
@@ -2238,8 +2244,9 @@ cleanup:
 
     /* Restore mode + saveas + databasedata to entry state on every path
      * (P1-4).  The helper internally clobbers g_mode_depth and applies
-     * its own mode; we restore here. */
-    db_format_mode_pop();
+     * its own mode; we restore here via direct apply on the snapshotted
+     * entry_mode.  No matching pop is needed (we never pushed — see the
+     * comment near v7_repack_mode above). */
     db_format_mode_apply(&entry_mode);
     db_saveas_state_apply(&entry_saveas);
     /* If the helper nil'd databasedata (success path) or cleanup did,
@@ -2250,6 +2257,16 @@ cleanup:
         databasedata = entry_databasedata;
 
     db_format_adapter_reset(); /* Clear mode lock so subsequent operations work cleanly */
+
+    /* Post-walk GIL yield, deferred from after the saveas walk so it fires
+     * with databasedata pointing at the (now-restored) entry value rather
+     * than nil.  Multi-threaded headless (thread.evaluate / thread.callscript)
+     * means another GIL-acquiring thread could observe a nil databasedata
+     * during this yield and crash on dereference; deferring eliminates that
+     * window.  Yields run on success and failure paths alike — the value
+     * returned by langbackgroundtask is intentionally ignored here because
+     * we are about to return to the caller anyway. */
+    (void) langbackgroundtask(false);
 
     return ok;
 } /*db_format_compact_to_path*/
