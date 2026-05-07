@@ -50,11 +50,13 @@
  * full lifetime of the palette AND across GIL yields, AND survive
  * palette_close so the host can dispatch on PALETTE_DONE_EXECUTE.
  *
- * We satisfy this by route (a): copyhandle the script into adapter-private
- * storage every time item_describe is called, and free those copies in
- * repl_palette_source_dispose. The adapter never aliases the underlying ODB
- * handle into the palette — every palette_item_t.script_handle returned is
- * an independently-allocated handle owned by this adapter.
+ * We satisfy this by route (a) (per palette.h): copyhandle the script into
+ * adapter-private storage, keyed by the item's hashtable handle so re-
+ * describes of the same item reuse the existing copy instead of growing
+ * the cache. Free wholesale in repl_palette_source_dispose. The adapter
+ * never aliases the underlying ODB handle into the palette — every
+ * palette_item_t.script_handle returned is an independently-allocated handle
+ * owned by this adapter.
  *
  * Why route (a) and not (b)? While menudata_describe_leaf returns a
  * deeply-copied record (so the script field's handle is independently
@@ -62,6 +64,11 @@
  * disposed promptly — otherwise we leak record envelopes for every
  * keystroke that re-fetches an item. Route (a) gives us symmetric ownership:
  * one copy in, one disposehandle out.
+ *
+ * Cache shape: the keyed-by-item-handle design (see ty_script_cache_entry)
+ * bounds growth by the number of UNIQUE items in the menubar — typically
+ * <50 — rather than by the number of describe calls (which can easily
+ * exceed 256 in a single session of arrow-key navigation).
  *
  * Threading
  * ---------
@@ -97,16 +104,42 @@
 /*  adapter context                                              */
 /* ------------------------------------------------------------ */
 
+/*
+ * Cap matches the maximum number of distinct leaf items the headless menu
+ * tree can practically host: bar/menu/item is 3-deep, and the palette renders
+ * (and thus describes) at most one item-list at a time. 256 unique leaves
+ * across a session is enormous headroom — typical menubars have fewer than
+ * 50 leaves total. This is a defensive ceiling, not a performance budget.
+ */
 #define REPL_PS_MAX_CACHED_SCRIPTS 256
+
+/*
+ * Per-item cache slot: keyed by the item's hashtable handle (which is stable
+ * for the menubar's lifetime — repl_palette_source_init validates the bar and
+ * the underlying ODB handles do not move while the palette is open). Keying
+ * on the handle pointer lets re-describes of the same item re-use the
+ * existing copy instead of allocating a new one.
+ *
+ * Why keyed cache (option b) rather than "only cache the pick" (option a):
+ * palette_item_t::script_handle has a strict lifetime contract (palette.h
+ * L109-128) — it MUST remain valid for the entire palette session AND
+ * across GIL yields. The palette aliases the pointer into exec_script
+ * the moment a leaf is highlighted (palette.c:454), and the user might
+ * navigate away and back before pressing Enter. Lazy-on-DONE_EXECUTE
+ * would race that: the second navigation away would invalidate
+ * exec_script's storage. Keying on item identity avoids the race
+ * entirely while still capping growth.
+ */
+typedef struct ty_script_cache_entry {
+	hdlhashtable hitem;                 /* key — item subtable handle */
+	Handle hscript;                     /* value — copy of script body */
+} ty_script_cache_entry;
 
 typedef struct ty_repl_palette_source_ctx {
 	bigstring bsmenubar_name;          /* e.g. "\x04" "repl" */
-	hdlhashtable hbar_cache;            /* lazily resolved; revalidated each entry
-	                                       since the table can be rebuilt by the
-	                                       host. nil = "look it up next time". */
-	/* Adapter-owned copies of script handles, one per item_describe call.
+	/* Adapter-owned copies of script handles, keyed by item handle.
 	   Freed wholesale in dispose so the caller never has to. */
-	Handle cached_scripts[REPL_PS_MAX_CACHED_SCRIPTS];
+	ty_script_cache_entry cached_scripts[REPL_PS_MAX_CACHED_SCRIPTS];
 	int cached_scripts_count;
 	boolean initialised;                /* trips false in dispose so a second
 	                                       dispose is a no-op */
@@ -208,20 +241,41 @@ static hdlhashtable nth_subtable_child(hdlhashtable ht, int idx,
 }
 
 
-/* Push a script handle copy into the adapter's owned cache.
-   Returns the cached handle, or nil on failure (cache full / copy failure). */
+/*
+ * Look up or insert a per-item script handle copy. Keyed by the item
+ * subtable handle so re-describes of the same item return the already-
+ * cached copy rather than allocating a new one. This bounds the cache
+ * by the number of UNIQUE items in the menubar, not by the number of
+ * describe calls — the latter can easily exceed 256 in a single
+ * session as the user arrows through menus.
+ *
+ * Returns the cached handle, or nil on failure (true cache exhaustion
+ * — more unique items than the slot count — or copy failure).
+ */
 static Handle cache_script_handle(ty_repl_palette_source_ctx *ctx,
+                                  hdlhashtable hitem,
                                   Handle horig) {
 	Handle hcopy = nil;
+	int i;
 
-	if (horig == nil)
+	if (horig == nil || hitem == nil)
 		return nil;
+
+	/* Hit: same item already cached — reuse the copy. */
+	for (i = 0; i < ctx->cached_scripts_count; i++) {
+		if (ctx->cached_scripts[i].hitem == hitem)
+			return ctx->cached_scripts[i].hscript;
+	}
+
+	/* Miss: insert a new entry. */
 	if (ctx->cached_scripts_count >= REPL_PS_MAX_CACHED_SCRIPTS)
 		return nil;
 	if (!copyhandle(horig, &hcopy))
 		return nil;
 
-	ctx->cached_scripts[ctx->cached_scripts_count++] = hcopy;
+	ctx->cached_scripts[ctx->cached_scripts_count].hitem = hitem;
+	ctx->cached_scripts[ctx->cached_scripts_count].hscript = hcopy;
+	ctx->cached_scripts_count++;
 	return hcopy;
 }
 
@@ -497,7 +551,7 @@ static bool cb_item_describe(void *vctx, int menu_index, void *parent_opaque,
 	out->opaque = nil;
 
 	hscript_in_record = script_handle_from_record(rec);
-	hcached = cache_script_handle(ctx, hscript_in_record);
+	hcached = cache_script_handle(ctx, hitem, hscript_in_record);
 	out->script_handle = hcached;
 
 	disposevaluerecord(rec, false);
@@ -581,16 +635,16 @@ void repl_palette_source_dispose(palette_menu_source_t *src) {
 		return;
 	}
 
-	/* Free every cached script handle. The host has already had its chance
-	   to dispatch via meuserselected_headless on the most recent
-	   PALETTE_DONE_EXECUTE — that consumed the handle. Any handles still in
-	   the cache belong to items the user looked at but didn't pick, so they
-	   are all ours to free. */
+	/* Free every cached script handle. The host's call site copies the
+	   handle into its own ownership before invoking dispose (so the
+	   eventual disposehandle there is on a separate copy), making every
+	   cached entry ours to free here. */
 	for (i = 0; i < ctx->cached_scripts_count; i++) {
-		if (ctx->cached_scripts[i] != nil) {
-			disposehandle(ctx->cached_scripts[i]);
-			ctx->cached_scripts[i] = nil;
+		if (ctx->cached_scripts[i].hscript != nil) {
+			disposehandle(ctx->cached_scripts[i].hscript);
+			ctx->cached_scripts[i].hscript = nil;
 		}
+		ctx->cached_scripts[i].hitem = nil;
 	}
 	ctx->cached_scripts_count = 0;
 

@@ -16,11 +16,14 @@
  * -----------------------
  * The palette holds script_handle pointers across many keystrokes — and across
  * GIL yield points. This adapter satisfies the palette_item_t::script_handle
- * stability requirement by route (b) per palette.h: extracting the script
- * handle from the deeply-copied record returned by menudata_describe_leaf().
- * That record's fields are independently allocated by push_field_or() (it
- * always copies via copyvaluerecord), so the handle survives both the
- * disposal of the surrounding record AND any subsequent GIL yield.
+ * stability requirement by route (a) per palette.h: it copyhandle()s the
+ * script body into adapter-private storage on every cb_item_describe call,
+ * keyed by the item's hashtable handle so re-describes of the same item
+ * return the same cached copy (instead of allocating a fresh one each time).
+ * The cache is freed wholesale by repl_palette_source_dispose. The adapter
+ * never aliases the underlying ODB handle into the palette — every
+ * palette_item_t.script_handle returned is an independently-allocated handle
+ * owned by this adapter.
  *
  * Threading
  * ---------

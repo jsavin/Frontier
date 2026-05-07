@@ -386,6 +386,70 @@ static void test_script_handle_survives_copy_cycle(void) {
 	fflush(stdout);
 }
 
+/*
+ * Behavioural test for the keyed script-handle cache.
+ *
+ * Before the keyed-cache refactor, every cb_item_describe call grew the
+ * cache by one slot regardless of whether the same item had been
+ * described before. After the refactor, re-describing the SAME item
+ * (same menu_index + item_index → same hashtable handle) must reuse
+ * the existing cached copy and return a STABLE pointer.
+ *
+ * This test runs many describes against the same item and asserts the
+ * script_handle pointer is identical every time. If the cache had
+ * grown linearly, each call would have produced a freshly copyhandle'd
+ * pointer (different value).
+ *
+ * It also runs more describes than the cache cap (256) so that the
+ * pre-refactor implementation would have returned false partway through
+ * — proving we no longer have an O(N) growth bug.
+ */
+static void test_describe_handle_stable_under_repeated_calls(void) {
+	printf("[adapter] Test: re-describe returns stable script_handle... ");
+	fflush(stdout);
+
+	(void)build_test_menubar("test_bar");
+
+	palette_menu_source_t src;
+	assert(repl_palette_source_init_for(&src, "test_bar"));
+
+	int n = src.count_menus(src.ctx);
+	int repl_idx = -1;
+	for (int i = 0; i < n; i++) {
+		char label[64] = {0};
+		char hk = '\0';
+		assert(src.menu_describe(src.ctx, i, label, sizeof(label), &hk));
+		if (strcmp(label, "REPL") == 0) { repl_idx = i; break; }
+	}
+	assert(repl_idx >= 0);
+
+	/* First describe — record the handle. */
+	palette_item_t first;
+	memset(&first, 0, sizeof(first));
+	assert(src.item_describe(src.ctx, repl_idx, NULL, 0, &first));
+	assert(first.script_handle != NULL);
+	void *first_handle = first.script_handle;
+
+	/* Re-describe the SAME item 1024 times — significantly above the
+	 * 256-slot cache cap. With the linear-growth bug each call would
+	 * either return false (cap exhausted) or return a different
+	 * pointer (freshly allocated). With the keyed cache the pointer
+	 * is stable. */
+	for (int i = 0; i < 1024; i++) {
+		palette_item_t scratch;
+		memset(&scratch, 0, sizeof(scratch));
+		bool ok = src.item_describe(src.ctx, repl_idx, NULL, 0, &scratch);
+		assert(ok);
+		assert(scratch.script_handle == first_handle);
+	}
+
+	repl_palette_source_dispose(&src);
+	clear_data_children();
+
+	printf("PASS\n");
+	fflush(stdout);
+}
+
 static void test_dispose_idempotent(void) {
 	printf("[adapter] Test: dispose is idempotent... ");
 	fflush(stdout);
@@ -428,6 +492,7 @@ int main(void) {
 	TR_RUN(test_item_count_for_top_menu);
 	TR_RUN(test_item_describe_yields_leaf_fields);
 	TR_RUN(test_script_handle_survives_copy_cycle);
+	TR_RUN(test_describe_handle_stable_under_repeated_calls);
 	TR_RUN(test_dispose_idempotent);
 
 	printf("\n========================================\n");
