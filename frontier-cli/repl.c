@@ -2473,6 +2473,61 @@ static void uninstall_repl_verbs_host(void) {
 }
 
 
+/*
+ * Boot the REPL menubar by invoking the UserTalk install script.
+ *
+ * Design note: the menubar lives in the ODB (system.menus.data.repl), and
+ * its install logic + handler scripts live in UserTalk (under
+ * system.menus.installReplMenubar and system.menus.handlers.repl.*).
+ * Invoking those scripts is therefore a one-shot langrun() of the
+ * expression "system.menus.installReplMenubar()". The script itself is
+ * idempotent — guarded by menu.isInstalled — so re-invocation across
+ * sessions is safe and cheap.
+ *
+ * Boot failure mode (per ADR-016 / planning doc): a missing or broken
+ * install script must NOT take down the REPL. Log a prominent warning
+ * and continue. The user can still operate via legacy /commands and the
+ * palette will simply show no items if it's opened.
+ *
+ * GIL: must be called with the GIL held. Called once from repl_main
+ * before either loop runs.
+ */
+static void install_repl_menubar(void) {
+	const char *expr =
+	    "if defined (@system.menus.installReplMenubar) "
+	    "{system.menus.installReplMenubar ()}";
+	size_t expr_len = strlen(expr);
+	Handle htext = nil;
+
+	if (!newemptyhandle(&htext))
+		return;
+	if (!sethandlesize(htext, (long)expr_len)) {
+		disposehandle(htext);
+		return;
+	}
+	HLock(htext);
+	memcpy(*htext, expr, expr_len);
+	HUnlock(htext);
+
+	tyvaluerecord val;
+	boolean flpushpop = !flscriptrunning;
+
+	if (flpushpop)
+		flpushpop = pushprocess(nil);
+
+	boolean ok = langrun(htext, &val);	/* consumes htext */
+
+	if (flpushpop)
+		popprocess();
+
+	if (!ok) {
+		log_warn(LOG_COMP_GENERAL,
+		         "REPL menubar install script failed; palette will be empty. "
+		         "Legacy /commands continue to work.");
+	}
+}
+
+
 /* Blocking REPL loop for non-TTY input (fallback mode).
  * Used when stdin is not a terminal (e.g., piped input).
  *
@@ -2575,6 +2630,11 @@ int repl_main(cli_options_t *options, ws_server_t *ws_server) {
 	//     can't pre-exit this one. Uninstalled on the cleanup paths below.
 	g_repl_exit_requested = false;
 	install_repl_verbs_host();
+
+	// 3.2 Boot the REPL menubar via UserTalk. Idempotent — the install
+	//     script guards with menu.isInstalled. Failure logs a warning and
+	//     continues; the legacy /commands still work.
+	install_repl_menubar();
 
 	// 4. Display welcome message and mark REPL as active
 	repl_output_welcome();
