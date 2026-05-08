@@ -2512,13 +2512,25 @@ static boolean dispatch_slash_command(const char *line, boolean *running) {
 			 * as "<handler> (\"typed-arg\")" and dispatch via the
 			 * menubar handler. */
 			char escaped[PALETTE_ARG_MAX * 2 + 4];
-			if (!palette_arg_escape(args_start, escaped, sizeof(escaped))) {
-				/* Forbidden control byte / overflow: refuse to dispatch
-				 * with this arg and surface a clear diagnostic. The user
-				 * can re-type without the offending byte. */
-				fputs("Error: argument contains a forbidden character "
-				      "(control bytes, newlines, and tabs are not allowed)\n",
-				      stdout);
+			palette_arg_escape_result_t esc_r =
+				palette_arg_escape(args_start, escaped, sizeof(escaped));
+			if (esc_r != PALETTE_ARG_ESCAPE_OK) {
+				/* Issue #595: distinguish the two failure modes so the
+				 * user sees an actionable diagnostic. Forbidden-byte
+				 * means the input contained a control char or DEL;
+				 * overflow means the argument was too long. */
+				switch (esc_r) {
+					case PALETTE_ARG_ESCAPE_FORBIDDEN_BYTE:
+						fputs("Error: argument contains a forbidden character "
+						      "(control bytes, newlines, and tabs are not allowed)\n",
+						      stdout);
+						break;
+					case PALETTE_ARG_ESCAPE_OVERFLOW:
+						fputs("Error: argument is too long\n", stdout);
+						break;
+					case PALETTE_ARG_ESCAPE_OK:
+						break;       /* unreachable */
+				}
 				fflush(stdout);
 				return true;
 			}
@@ -3542,7 +3554,9 @@ int repl_main(cli_options_t *options, ws_server_t *ws_server) {
 						bool synth_used = false;
 						if (arg_present) {
 							char escaped[PALETTE_ARG_MAX * 2 + 4];
-							if (palette_arg_escape(palette_arg, escaped, sizeof(escaped))) {
+							palette_arg_escape_result_t esc_r =
+								palette_arg_escape(palette_arg, escaped, sizeof(escaped));
+							if (esc_r == PALETTE_ARG_ESCAPE_OK) {
 								size_t script_len = 0;
 								char *script_cstr = script_handle_to_cstr(script, &script_len);
 								if (script_cstr != NULL) {
@@ -3559,11 +3573,21 @@ int repl_main(cli_options_t *options, ws_server_t *ws_server) {
 									free(script_cstr);
 								}
 							} else {
-								/* Forbidden control byte / overflow.
-								 * Surface a diagnostic and skip the
-								 * dispatch — the user can re-open the
-								 * palette and re-type. */
-								printf("(palette argument contains a forbidden character)\n");
+								/* Issue #595: distinguish the two
+								 * failure modes so the user sees an
+								 * actionable diagnostic. Skip dispatch
+								 * either way — the user can re-open
+								 * the palette and re-type. */
+								switch (esc_r) {
+									case PALETTE_ARG_ESCAPE_FORBIDDEN_BYTE:
+										printf("(palette argument contains a forbidden character)\n");
+										break;
+									case PALETTE_ARG_ESCAPE_OVERFLOW:
+										printf("(palette argument is too long)\n");
+										break;
+									case PALETTE_ARG_ESCAPE_OK:
+										break;       /* unreachable */
+								}
 								fflush(stdout);
 								synth_used = true;       /* skip the no-arg fallback */
 								ok = true;               /* not a script failure per se */

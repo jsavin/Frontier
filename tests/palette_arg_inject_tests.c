@@ -44,36 +44,36 @@
 
 static void test_escape_empty_input_yields_empty_output(void) {
 	char buf[8] = "junk";
-	bool ok = palette_arg_escape("", buf, sizeof(buf));
-	assert(ok);
+	palette_arg_escape_result_t r = palette_arg_escape("", buf, sizeof(buf));
+	assert(r == PALETTE_ARG_ESCAPE_OK);
 	assert(buf[0] == '\0');
 }
 
 static void test_escape_null_input_yields_empty_output(void) {
 	char buf[8] = "junk";
-	bool ok = palette_arg_escape(NULL, buf, sizeof(buf));
-	assert(ok);
+	palette_arg_escape_result_t r = palette_arg_escape(NULL, buf, sizeof(buf));
+	assert(r == PALETTE_ARG_ESCAPE_OK);
 	assert(buf[0] == '\0');
 }
 
 static void test_escape_plain_ascii_passes_through_unchanged(void) {
 	char buf[64];
-	bool ok = palette_arg_escape("hello world", buf, sizeof(buf));
-	assert(ok);
+	palette_arg_escape_result_t r = palette_arg_escape("hello world", buf, sizeof(buf));
+	assert(r == PALETTE_ARG_ESCAPE_OK);
 	assert(strcmp(buf, "hello world") == 0);
 }
 
 static void test_escape_double_quote_is_backslashed(void) {
 	char buf[64];
-	bool ok = palette_arg_escape("a\"b", buf, sizeof(buf));
-	assert(ok);
+	palette_arg_escape_result_t r = palette_arg_escape("a\"b", buf, sizeof(buf));
+	assert(r == PALETTE_ARG_ESCAPE_OK);
 	assert(strcmp(buf, "a\\\"b") == 0);
 }
 
 static void test_escape_backslash_is_backslashed(void) {
 	char buf[64];
-	bool ok = palette_arg_escape("a\\b", buf, sizeof(buf));
-	assert(ok);
+	palette_arg_escape_result_t r = palette_arg_escape("a\\b", buf, sizeof(buf));
+	assert(r == PALETTE_ARG_ESCAPE_OK);
 	assert(strcmp(buf, "a\\\\b") == 0);
 }
 
@@ -83,44 +83,44 @@ static void test_escape_quote_break_attempt_is_neutralized(void) {
 	 * whole sequence stays inside the literal — no UserTalk syntax
 	 * carries through. */
 	char buf[128];
-	bool ok = palette_arg_escape("\"); attack ()", buf, sizeof(buf));
-	assert(ok);
+	palette_arg_escape_result_t r = palette_arg_escape("\"); attack ()", buf, sizeof(buf));
+	assert(r == PALETTE_ARG_ESCAPE_OK);
 	assert(strcmp(buf, "\\\"); attack ()") == 0);
 }
 
 static void test_escape_rejects_newline(void) {
 	char buf[64] = "junk";
-	bool ok = palette_arg_escape("a\nb", buf, sizeof(buf));
-	assert(!ok);
+	palette_arg_escape_result_t r = palette_arg_escape("a\nb", buf, sizeof(buf));
+	assert(r == PALETTE_ARG_ESCAPE_FORBIDDEN_BYTE);
 	assert(buf[0] == '\0');
 }
 
 static void test_escape_rejects_carriage_return(void) {
 	char buf[64] = "junk";
-	bool ok = palette_arg_escape("a\rb", buf, sizeof(buf));
-	assert(!ok);
+	palette_arg_escape_result_t r = palette_arg_escape("a\rb", buf, sizeof(buf));
+	assert(r == PALETTE_ARG_ESCAPE_FORBIDDEN_BYTE);
 	assert(buf[0] == '\0');
 }
 
 static void test_escape_rejects_tab(void) {
 	char buf[64] = "junk";
-	bool ok = palette_arg_escape("a\tb", buf, sizeof(buf));
-	assert(!ok);
+	palette_arg_escape_result_t r = palette_arg_escape("a\tb", buf, sizeof(buf));
+	assert(r == PALETTE_ARG_ESCAPE_FORBIDDEN_BYTE);
 	assert(buf[0] == '\0');
 }
 
 static void test_escape_rejects_low_control(void) {
 	char buf[64] = "junk";
-	bool ok = palette_arg_escape("a\x01""b", buf, sizeof(buf));
-	assert(!ok);
+	palette_arg_escape_result_t r = palette_arg_escape("a\x01""b", buf, sizeof(buf));
+	assert(r == PALETTE_ARG_ESCAPE_FORBIDDEN_BYTE);
 	assert(buf[0] == '\0');
 }
 
 static void test_escape_rejects_del(void) {
 	char buf[64] = "junk";
 	const char input[] = { 'a', 0x7F, 'b', '\0' };
-	bool ok = palette_arg_escape(input, buf, sizeof(buf));
-	assert(!ok);
+	palette_arg_escape_result_t r = palette_arg_escape(input, buf, sizeof(buf));
+	assert(r == PALETTE_ARG_ESCAPE_FORBIDDEN_BYTE);
 	assert(buf[0] == '\0');
 }
 
@@ -128,31 +128,62 @@ static void test_escape_passes_high_bytes(void) {
 	/* UTF-8 continuation bytes are legitimate inside string literals. */
 	char buf[64];
 	const char input[] = { 'a', (char)0xC3, (char)0xA9, 'b', '\0' };  /* "aéb" */
-	bool ok = palette_arg_escape(input, buf, sizeof(buf));
-	assert(ok);
+	palette_arg_escape_result_t r = palette_arg_escape(input, buf, sizeof(buf));
+	assert(r == PALETTE_ARG_ESCAPE_OK);
 	assert(strcmp(buf, input) == 0);
 }
 
-static void test_escape_buffer_overflow_returns_false(void) {
+static void test_escape_buffer_overflow_returns_overflow(void) {
 	char buf[4];
 	memset(buf, 'X', sizeof(buf));
-	/* "hello" is 5 chars + NUL — won't fit in 4. */
-	bool ok = palette_arg_escape("hello", buf, sizeof(buf));
-	assert(!ok);
+	/* "hello" is 5 chars + NUL — won't fit in 4. No forbidden bytes
+	 * present, so the failure mode is overflow, not forbidden-byte. */
+	palette_arg_escape_result_t r = palette_arg_escape("hello", buf, sizeof(buf));
+	assert(r == PALETTE_ARG_ESCAPE_OVERFLOW);
 	assert(buf[0] == '\0');
 }
 
 static void test_escape_buffer_exact_fit_succeeds(void) {
 	char buf[4];      /* "ab" + NUL = 3 — fits in cap=4. */
-	bool ok = palette_arg_escape("ab", buf, sizeof(buf));
-	assert(ok);
+	palette_arg_escape_result_t r = palette_arg_escape("ab", buf, sizeof(buf));
+	assert(r == PALETTE_ARG_ESCAPE_OK);
 	assert(strcmp(buf, "ab") == 0);
 }
 
-static void test_escape_zero_capacity_returns_false(void) {
+static void test_escape_zero_capacity_returns_overflow(void) {
 	char buf[1] = { 'X' };
-	bool ok = palette_arg_escape("", buf, 0);
-	assert(!ok);
+	palette_arg_escape_result_t r = palette_arg_escape("", buf, 0);
+	/* Zero capacity is a buffer-too-small condition, not a forbidden
+	 * byte — the input is empty and contains nothing forbidden. */
+	assert(r == PALETTE_ARG_ESCAPE_OVERFLOW);
+}
+
+static void test_escape_quote_overflow_returns_overflow(void) {
+	/* Issue #595: a buffer of 300 quote characters needs ~600 bytes
+	 * escaped (each '"' becomes '\\' '"'). With a 516-byte buffer (the
+	 * production size), this overflows — but the input has NO forbidden
+	 * bytes. The failure mode must be OVERFLOW, not FORBIDDEN_BYTE.
+	 * Surfacing the wrong diagnostic here was the original bug. */
+	char input[301];
+	memset(input, '"', 300);
+	input[300] = '\0';
+	char buf[516];
+	palette_arg_escape_result_t r = palette_arg_escape(input, buf, sizeof(buf));
+	assert(r == PALETTE_ARG_ESCAPE_OVERFLOW);
+	assert(buf[0] == '\0');
+}
+
+static void test_escape_forbidden_takes_precedence_over_overflow(void) {
+	/* Sanity: when input contains BOTH a forbidden byte AND would also
+	 * overflow, the forbidden-byte rejection happens first (we scan
+	 * left-to-right and refuse on the first forbidden byte before
+	 * we'd ever exceed capacity). The diagnostic surfaced is the more
+	 * actionable one — "remove the bad byte" vs "type less". */
+	char input[10] = { '\n', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', '\0' };
+	char buf[2];     /* tiny buffer that would overflow on any input */
+	palette_arg_escape_result_t r = palette_arg_escape(input, buf, sizeof(buf));
+	assert(r == PALETTE_ARG_ESCAPE_FORBIDDEN_BYTE);
+	assert(buf[0] == '\0');
 }
 
 /* ---------- palette_arg_inject_into_script ---------- */
@@ -312,9 +343,11 @@ int main(void) {
 	TR_RUN(test_escape_rejects_low_control);
 	TR_RUN(test_escape_rejects_del);
 	TR_RUN(test_escape_passes_high_bytes);
-	TR_RUN(test_escape_buffer_overflow_returns_false);
+	TR_RUN(test_escape_buffer_overflow_returns_overflow);
 	TR_RUN(test_escape_buffer_exact_fit_succeeds);
-	TR_RUN(test_escape_zero_capacity_returns_false);
+	TR_RUN(test_escape_zero_capacity_returns_overflow);
+	TR_RUN(test_escape_quote_overflow_returns_overflow);
+	TR_RUN(test_escape_forbidden_takes_precedence_over_overflow);
 
 	TR_RUN(test_inject_simple_call_substitutes_empty_parens);
 	TR_RUN(test_inject_handler_path_substitutes_empty_parens);
