@@ -618,5 +618,158 @@ Test file: `repl_multiline.yaml` (to be created)
 
 ---
 
+## Cross-Thread Test Pattern
+
+**Status**: Established 2026-05-08 (issue #597, PR for chain 7)
+**First example**: `tests/palette_arg_inject_concurrency_tests.c`
+
+### When to use this pattern
+
+Reach for the cross-thread regression pattern whenever a verb or helper
+has any of these properties:
+
+- **Touches a process-shared global between yield points.** The classic
+  example is the original PR #584 design where `g_palette_pending_arg`
+  was written by the dispatcher and read by the kernel verb across
+  `langruncode()`'s GIL-yield boundary. Any sibling thread holding the
+  GIL between those two points could read or stomp the value.
+- **Has a single-shot scratch buffer that lives outside the call frame.**
+  Static buffers, file-scope globals, or singleton arenas that the
+  helper writes through and the caller later reads from are all hijack
+  candidates under the GIL model. The hijack is structurally impossible
+  only if every byte of the per-call data lives on the stack or in a
+  per-call malloc'd heap allocation.
+- **Returns a pointer into an internal cache.** If two callers can
+  receive the same pointer to a shared cache slot, the second caller's
+  write can clobber the first caller's read.
+
+If none of those apply, a single-threaded unit test against the pure
+helper is sufficient — the helper is structurally race-free.
+
+### Pattern shape
+
+The reusable test infrastructure is in
+`tests/palette_arg_inject_concurrency_tests.c`. The shape:
+
+1. **Synchronization barrier** (`barrier_t` — a single-shot mutex +
+   condvar wrapper). Every worker `barrier_wait()`s at the start of its
+   `run()` function; the main thread calls `barrier_release()` once all
+   workers are spawned. This makes all workers start the workload
+   simultaneously, maximizing the contention window for any hypothetical
+   shared-state stomp.
+
+   `pthread_barrier_t` is technically the right primitive but is
+   OPTIONAL in POSIX and absent on macOS — hand-roll the
+   `mutex + cond + bool` wrapper instead.
+
+2. **Per-worker arguments** (`worker_args_t`). Each worker gets:
+   - A unique id (0..N-1)
+   - A pointer to the shared barrier
+   - A thread-private input value (e.g., `"ARG-3"`)
+   - A `failures` counter the worker increments per-iteration when its
+     output doesn't match its own input
+
+3. **Inner loop in the worker**. 1000-2000 iterations per worker is
+   the smallest count that reliably catches a regression in
+   fault-injection runs. Each iteration: call the helper with the
+   worker's input, assert the output reflects ONLY this worker's
+   value (using a strict containment check, not a substring match).
+
+4. **Aggregate at the end**. `main()` joins all workers, sums their
+   failure counts, asserts zero. On non-zero, log per-worker counts to
+   stderr so a future failure points at which workers stomped.
+
+5. **Sanity sub-tests**. Run a single-threaded version of the same
+   workload first (proves the helper itself works), then a low-iteration
+   harness smoke test (proves pthread_create / barrier / pthread_join
+   all work). If those pass and the production stress test fails, the
+   regression is in the production helper, not the harness.
+
+### Verifying the test catches regressions
+
+For any pattern instance, you MUST verify the test goes red on a
+hypothetical regression before declaring it shipped. The cookbook:
+
+1. Temporarily edit the production helper to introduce a static or
+   file-scope buffer that the helper writes through (mimicking the
+   `g_palette_pending_arg`-style hijack).
+2. Rebuild and run the concurrency test — the test should fail with
+   per-worker leakage counts in the high hundreds out of low thousands
+   of iterations.
+3. Revert the production-side regression patch.
+4. Re-run — the test should pass with 0 failures.
+
+For palette_arg_inject specifically, this verification was done during
+PR construction. The pattern caught 2,980 / 16,000 leaked iterations
+when a fake `g_regression_pending_arg` static buffer was wired in.
+
+### Why this is C-level rather than YAML
+
+A YAML-level cross-thread test (using `thread.evaluate("verb_x()")`
+from a sibling thread) is the obvious shape for testing a production
+verb under the GIL. It is the right shape eventually. It is NOT
+available today because:
+
+- `thread.exists / thread.evaluate / thread.callscript / ...` are
+  defined in `frontier-cli/headless_thread_verbs.c::threadinitverbs()`
+  but `threadinitverbs()` is not called in the headless build's
+  startup. Confirmed by running `return thread.getcount()` against
+  `frontier-cli` and observing `Can't call the script because the
+  name thread hasn't been defined.`
+- All seven tests in `tests/integration/test_cases/thread_verbs_foundation.yaml`
+  carry `skip: "thread verbs not wired in headless mode"` for that
+  reason.
+
+When `threadinitverbs()` is wired into headless startup, the cross-
+thread pattern can move up to YAML for the verbs whose entire dispatch
+path is reachable from UserTalk (e.g., calling `repl.list("Y")` from a
+sibling thread while the main thread is mid-palette-dispatch). Until
+then, C-level pthread tests against pure helpers — like
+palette_arg_inject_concurrency_tests — are the durable regression
+guard.
+
+### Underlying mechanism (when YAML cross-thread becomes available)
+
+The thread verbs use a Global Interpreter Lock (GIL) model — see
+`frontier-cli/headless_thread_verbs.c` and ADR-014. Spawned threads
+block on `frontier_gil` and only run when the holding thread yields
+via `langbackgroundtask()` or `thread.sleepTicks()`. A YAML cross-
+thread test pattern would look like:
+
+```yaml
+- name: "verb X arg isolation under thread.evaluate"
+  script: |
+    new(tableType, @system.temp.observed);
+    thread.evaluate(
+      "system.temp.observed.sibling = verb.X(\"Y\")");
+    local(main = verb.X("Z"));
+    thread.sleepTicks(12);
+    local(sibling = system.temp.observed.sibling);
+    delete(@system.temp.observed);
+    return main == "main got Z" and sibling == "sibling got Y"
+```
+
+The `thread.sleepTicks(12)` yields the GIL long enough for the
+sibling to run `verb.X` to completion. If verb X has a process-shared
+arg slot, the sibling's call would read the main thread's arg
+(or vice versa), and one of the assertions would fail.
+
+### Future use
+
+When the next concurrency-sensitive verb lands — e.g., the
+`palette modal blocking GIL during user idle` work tracked in PR #582
+discussion — instantiate the same `barrier_t` + `worker_args_t` shape
+in a new `tests/<verb>_concurrency_tests.c` file. Wire it into
+`tests/Makefile`'s `RUN_BUILDABLE` list and add a corresponding
+build rule (`-lpthread`).
+
+If a verb's full dispatch path is reachable from pure C (like the
+palette helpers) → use C-level pthreads.
+If reachability requires UserTalk-level state (system tables, REPL
+state, file handles) → wait for `threadinitverbs()` wiring and write
+a YAML-level test instead.
+
+---
+
 **Document Status**: Complete - Ready for Implementation
 **Next Step**: Update test runner to support repl_mode flag

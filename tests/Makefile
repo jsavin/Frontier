@@ -222,7 +222,7 @@ USERTALK_OBJECT_TESTS = \
 	test_usertalk_runner
 
 # Buildable test executables on this branch
-RUN_BUILDABLE = core_tests db_format_tests runtime_tests parser_tests save_migration_tests test_efp_augmentation file_portable_tests file_readline_tests file_verb_tests handle_tests cli_runtime_tests paige_text_tests oppack_tests hashpack_modern_tests hash_corruption_tests langvalue_64_tests table_operations_integration refcon_tests refcon_phase2_tests op_context_tests table_context_tests time_portability_test test_sys_shell_command_verbs headless_selection_tests opattributes_stub_tests headless_thread_registry_tests test_callback_infrastructure tcp_phase1a_unit_tests menu_v7_refcon_tests menudata_headless_tests menu_list_describe_tests meuserselected_headless_tests test_stringerrorlist pane_compositor_tests mouse_parser_tests terminal_control_tests palette_state_tests palette_render_snapshot_tests palette_arg_inject_tests repl_palette_source_tests repl_verbs_tests repl_slash_resolver_tests scrollback_pane_tests
+RUN_BUILDABLE = core_tests db_format_tests runtime_tests parser_tests save_migration_tests test_efp_augmentation file_portable_tests file_readline_tests file_verb_tests handle_tests cli_runtime_tests paige_text_tests oppack_tests hashpack_modern_tests hash_corruption_tests langvalue_64_tests table_operations_integration refcon_tests refcon_phase2_tests op_context_tests table_context_tests time_portability_test test_sys_shell_command_verbs headless_selection_tests opattributes_stub_tests headless_thread_registry_tests test_callback_infrastructure tcp_phase1a_unit_tests menu_v7_refcon_tests menudata_headless_tests menu_list_describe_tests meuserselected_headless_tests test_stringerrorlist pane_compositor_tests mouse_parser_tests terminal_control_tests palette_state_tests palette_render_snapshot_tests palette_arg_inject_tests palette_arg_inject_concurrency_tests repl_palette_source_tests repl_verbs_tests repl_slash_resolver_tests scrollback_pane_tests
 # Note: table_verb_tests skipped - pre-existing macOS path detection issue
 # Note: test_error_messages skipped - needs full runtime linking (tracked in separate task)
 # Note: test_table_sorting skipped - script execution errors cause segfault (Issue #449)
@@ -455,6 +455,14 @@ scrollback_pane_tests: scrollback_pane_tests.c ../frontier-cli/pane.c ../frontie
 # rules and the script-source synthesis algorithm.
 palette_arg_inject_tests: palette_arg_inject_tests.c ../frontier-cli/palette_arg_inject.c ../frontier-cli/palette_arg_inject.h
 	$(CC) $(CFLAGS) -I../frontier-cli palette_arg_inject_tests.c ../frontier-cli/palette_arg_inject.c -o $@ $(LINK_LIBS)
+
+# Cross-thread regression test (issue #597). Exercises the same pure
+# helpers under contention to catch a future regression that would
+# reintroduce shared state — e.g., a static scratch buffer or a
+# process-global pending-arg slot. Links pthread because the test spawns
+# real worker threads.
+palette_arg_inject_concurrency_tests: palette_arg_inject_concurrency_tests.c ../frontier-cli/palette_arg_inject.c ../frontier-cli/palette_arg_inject.h
+	$(CC) $(CFLAGS) -I../frontier-cli palette_arg_inject_concurrency_tests.c ../frontier-cli/palette_arg_inject.c -o $@ $(LINK_LIBS) -lpthread
 
 # Test framework object
 framework/test_framework.o: framework/test_framework.c framework/test_framework.h
