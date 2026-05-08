@@ -58,6 +58,35 @@ with `hnode=nil`, blocking the database fallback. This broke `inetd.startOne` an
 scripts under EFP-named tables. The fast-path was removed entirely since database hydration now
 loads system tables at startup.
 
+## `defined(@addr)` semantics — parent resolution, not leaf existence
+
+`defined(@some.path)` returns TRUE whenever the **parent table** of the path resolves to
+a table — regardless of whether the leaf name actually exists in that table. It does NOT
+probe for leaf existence.
+
+This bites verbs that take an address parameter and try to use `defined()` as a presence
+check. The address-form `defined(adrTable)` only verifies the path could be resolved up
+to its containing table; it cannot tell you whether `adrTable^` is actually populated.
+
+```usertalk
+on installed (adrTable) { return defined(adrTable) }
+on test () {
+    new(tableType, @workspace.tst);
+    «tst is empty — has no .foo, no .bar, nothing»
+    msg(installed(@workspace.tst.foo));   «returns TRUE»
+    msg(installed(@workspace.tst.foo.bar.baz));  «also TRUE»
+    delete(@workspace.tst);
+}
+```
+
+**Correct alternatives when you actually need leaf existence:**
+
+- For menu-item presence, take a `menu.list()` size delta around the install/uninstall.
+- Probe with `try { typeof(adrTable^) }` — a missing leaf raises, an existing one returns
+  the OSType.
+- When you have a value reference (not an address), `defined(value)` does check the value
+  itself and is reliable.
+
 ## Function Reference
 
 ### `langdirecttablelookup(htable, bsname, *hresult)`
