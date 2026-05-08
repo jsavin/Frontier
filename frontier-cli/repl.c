@@ -55,6 +55,8 @@
 #include "palette.h"
 #include "palette_arg_inject.h"
 #include "repl_palette_source.h"
+#include "scrollback_pane.h"
+#include "repl_output_async.h"
 #include "../Common/headers/menudata_headless.h" /* meuserselected_headless */
 #include "../Common/headers/oplist.h"		/* opcountlistitems */
 #include "../Common/headers/langsystem7.h"	/* getnthlistval */
@@ -2902,11 +2904,34 @@ static Handle run_palette_modal(struct linenoiseState *ls,
 	(void)terminal_get_size(&rows, &cols);
 	compositor_on_resize(rows, cols);
 
+	/* Scrollback pane (issue #593) — covers rows 1..rows-1 (everything
+	 * below the menubar at row 0). Registered FIRST so it sits at the
+	 * bottom of the z-stack; palette panes register later and composite
+	 * over it. While the modal is active, the async-output router
+	 * appends scrollback lines here instead of writing stdout, so
+	 * background producers (TCP callbacks, agent ticks, msg() calls)
+	 * never corrupt the framebuffer.
+	 *
+	 * SCROLLBACK_LINES_CAP: 256 lines is enough for any realistic
+	 * mid-modal log burst; older lines wrap off the bottom of the
+	 * ring and are still flushed on close so nothing is lost. */
+	#define SCROLLBACK_LINES_CAP 256
+	scrollback_pane_t scrollback;
+	int sb_rows = (rows > 1) ? (rows - 1) : 1;
+	scrollback_pane_init(&scrollback, 0, 1, cols, sb_rows, SCROLLBACK_LINES_CAP);
+	compositor_register(&scrollback.pane);
+	repl_async_output_set_palette_active(true, &scrollback);
+
 	palette_state_t st;
 	memset(&st, 0, sizeof(st));
 	if (!palette_open(&st, rows, cols, &src)) {
 		printf("(menubar empty or terminal too small)\n");
 		fflush(stdout);
+		/* Tear down scrollback we just set up — the modal is
+		 * aborting before its byte loop ever runs. */
+		repl_async_output_set_palette_active(false, NULL);
+		compositor_unregister(&scrollback.pane);
+		scrollback_pane_destroy(&scrollback);
 		repl_palette_source_dispose(&src);
 		goto cleanup_terminal;
 	}
@@ -2999,6 +3024,12 @@ static Handle run_palette_modal(struct linenoiseState *ls,
 			 * mirrors the pattern in the main REPL event loop and
 			 * the blocking REPL loop — one yield per idle tick. */
 			headless_backgroundtask(true);
+			/* Background work above may have appended lines to the
+			 * scrollback ring (e.g. a TCP callback called msg()).
+			 * Project those lines onto the scrollback pane buffer so
+			 * the next compositor_render emits them. The render
+			 * itself happens via the PALETTE_DONE_NONE branch below. */
+			scrollback_pane_render_to_pane(&scrollback);
 		} else if (ready < 0) {
 			if (errno == EINTR) {
 				/* SIGWINCH or SIGINT during poll. SIGINT is fatal for
@@ -3035,6 +3066,12 @@ static Handle run_palette_modal(struct linenoiseState *ls,
 			(void)terminal_get_size(&new_rows, &new_cols);
 			compositor_on_resize(new_rows, new_cols);
 			palette_on_resize(&st, new_rows, new_cols);
+			/* Resize scrollback pane to match the new geometry so it
+			 * keeps covering everything below row 0. The ring's stored
+			 * lines are unaffected — only the projection area changes. */
+			int new_sb_rows = (new_rows > 1) ? (new_rows - 1) : 1;
+			pane_resize(&scrollback.pane, new_cols, new_sb_rows);
+			scrollback_pane_render_to_pane(&scrollback);
 		}
 
 		switch (done) {
@@ -3074,6 +3111,23 @@ static Handle run_palette_modal(struct linenoiseState *ls,
 
 	palette_close(&st);
 	repl_palette_source_dispose(&src);
+
+	/* Tear down the scrollback pane (#593). Order matters:
+	 *   1. Disarm the router FIRST so any in-flight async writer
+	 *      transitions back to stdout cleanly. After this, no new
+	 *      appends can land in the scrollback.
+	 *   2. Unregister the pane from the compositor. Subsequent renders
+	 *      (including the linenoise restart below) will not include
+	 *      its cells.
+	 *   3. Flush queued lines to stdout — the user expects to see
+	 *      whatever happened during the modal in their normal terminal
+	 *      scrollback. The flush happens BEFORE destroy frees the ring,
+	 *      and AFTER unregister so writes go to stdout cleanly without
+	 *      the compositor's diff render contending. */
+	repl_async_output_set_palette_active(false, NULL);
+	compositor_unregister(&scrollback.pane);
+	scrollback_pane_flush_to_stdout(&scrollback);
+	scrollback_pane_destroy(&scrollback);
 
 cleanup_terminal:
 	terminal_disable_mouse();

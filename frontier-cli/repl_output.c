@@ -12,8 +12,9 @@
  */
 
 #include "repl_output.h"
-#include "repl.h"       /* For repl_get_current_table(), REPL_PATH_MAX_LEN */
-#include "linenoise.h"  /* For linenoiseHide/Show */
+#include "repl.h"                /* For repl_get_current_table(), REPL_PATH_MAX_LEN */
+#include "repl_output_async.h"   /* For palette-aware async routing (#593) */
+#include "linenoise.h"           /* For linenoiseHide/Show */
 #include "../Common/headers/lang.h"
 #include "../Common/headers/langexternal.h"
 #include "../Common/headers/strings.h"
@@ -593,10 +594,36 @@ void repl_set_active_linenoisestate(struct linenoiseState *ls) {
 }
 
 /* Display async output while user is typing at prompt.
- * Uses linenoiseHide/Show to preserve the user's current input.
+ *
+ * Routing rules (issue #593):
+ *   - Palette modal active: route through repl_async_output_emit, which
+ *     appends to the registered scrollback pane. Bytes do NOT touch
+ *     stdout — that would corrupt the compositor's framebuffer.
+ *   - Linenoise editing active and palette inactive: hide prompt, write
+ *     CR-to-LF and Mac-Roman-to-UTF-8 converted bytes to stdout, restore
+ *     prompt. (Legacy event-loop behaviour.)
+ *   - Neither active: write directly to stdout.
+ *
+ * The palette-active branch bypasses the linenoise hide/show dance
+ * entirely — linenoise is suspended for the duration of the modal
+ * (see run_palette_modal: linenoiseEditStop on entry,
+ * linenoiseEditStart on exit), so g_linenoisestate is NULL anyway.
  */
 void repl_async_output(const char *message) {
 	if (message == NULL) {
+		return;
+	}
+
+	/* Palette-active path: delegate to the router so the bytes land in
+	 * the scrollback ring, not on stdout. The router's append walks the
+	 * ring under its own mutex; no further coordination needed here. */
+	if (repl_async_output_palette_active()) {
+		size_t len = strlen(message);
+		repl_async_output_emit(message, len);
+		/* Append a trailing newline so the message renders as a
+		 * standalone scrollback line — matches the legacy behaviour
+		 * (stdout path appended '\n' below). */
+		repl_async_output_emit("\n", 1);
 		return;
 	}
 

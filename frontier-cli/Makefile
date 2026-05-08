@@ -88,13 +88,15 @@ CLI_SOURCES = \
     repl.c \
     repl_eval.c \
     repl_output.c \
+    repl_output_async.c \
     repl_variables.c \
     repl_verbs.c \
     repl_palette_source.c \
     repl_slash_resolver.c \
     pane.c \
     palette.c \
-    palette_arg_inject.c
+    palette_arg_inject.c \
+    scrollback_pane.c
 
 # cJSON (vendored JSON parser)
 CJSON_SOURCES = $(THIRDPARTYDIR)/cJSON/cJSON.c
