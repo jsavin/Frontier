@@ -726,13 +726,13 @@ for working examples of the verbs themselves; the cross-thread shape
 for testing OTHER verbs under thread.evaluate is the same pattern
 extended.
 
-### Underlying mechanism (when YAML cross-thread becomes available)
+### Underlying mechanism (GIL and YAML cross-thread tests)
 
 The thread verbs use a Global Interpreter Lock (GIL) model — see
 `frontier-cli/headless_thread_verbs.c` and ADR-014. Spawned threads
 block on `frontier_gil` and only run when the holding thread yields
 via `langbackgroundtask()` or `thread.sleepTicks()`. A YAML cross-
-thread test pattern would look like:
+thread test pattern looks like:
 
 ```yaml
 - name: "verb X arg isolation under thread.evaluate"
@@ -752,7 +752,7 @@ sibling to run `verb.X` to completion. If verb X has a process-shared
 arg slot, the sibling's call would read the main thread's arg
 (or vice versa), and one of the assertions would fail.
 
-### Future use
+### Choosing C-level vs YAML for the next concurrency-sensitive verb
 
 When the next concurrency-sensitive verb lands — e.g., the
 `palette modal blocking GIL during user idle` work tracked in PR #582
