@@ -37,13 +37,22 @@ EXCLUDED_PROCESSORS: Set[str] = {
     'webserver',  # Script-implemented; EFP stub shadows builtins.webserver
 }
 
-# Processors whose initverbs() is defined in core runtime sources (not headless stubs).
-# These don't have headless_*_verbs.c files because their real implementations in
-# Common/source/ are already linked into both test and CLI builds.
+# Processors whose initverbs() is defined outside tests/headless_*_verbs.c stubs.
+# These are real implementations linked into both test and CLI builds. The init
+# function is forward-declared in the generated kernel_verbs_init.c and called
+# from headless_init_kernel_verbs(); the linker resolves the symbol from
+# whichever source file actually defines it.
+#
+# Source locations vary:
+#   - Common/source/<name>.c for core runtime processors (math, crypt, menu)
+#   - frontier-cli/headless_<name>_verbs.c for CLI-resident processors (thread)
+# Both are pulled into the test and CLI Makefiles' source lists, so adding a
+# name here is sufficient to wire the processor without a tests/ stub.
 CORE_IMPLEMENTED_PROCESSORS: Set[str] = {
     'math',    # langmath.c - mathinitverbs()
     'crypt',   # langcrypt.c - cryptinitverbs()
     'menu',    # menuverbs_headless.c - menuinitverbs() (consolidated per issue #585)
+    'thread',  # frontier-cli/headless_thread_verbs.c - threadinitverbs() (issue #614)
 }
 
 
@@ -402,14 +411,15 @@ def generate_kernel_verbs_init_c(processors: List[EFPProcessor], rc_path: str, w
         " *   - tests/headless_verbs.mk (most processors): the headless_<name>_verbs.c",
         " *     pattern for processors with their own headless stub.",
         " *   - CORE_IMPLEMENTED_PROCESSORS in parse_kernelverbs.py: processors whose",
-        " *     initverbs() lives in core runtime sources under Common/source/ and",
-        " *     is already linked into both test and CLI builds (e.g., menu, math, crypt).",
+        " *     initverbs() lives in either Common/source/ (e.g., menu, math, crypt)",
+        " *     or frontier-cli/ (e.g., thread) and is already linked into both test",
+        " *     and CLI builds.",
         " *",
         " * To add a new processor:",
         " *   1. Either (a) create tests/headless_<name>_verbs.c with <name>initverbs()",
         " *      and add it to tests/headless_verbs.mk, OR (b) add <name> to",
         " *      CORE_IMPLEMENTED_PROCESSORS in parse_kernelverbs.py if the impl",
-        " *      lives in Common/source/.",
+        " *      lives in Common/source/ or frontier-cli/.",
         " *   2. Run make to regenerate.",
         " */",
         "",
@@ -440,7 +450,7 @@ def generate_kernel_verbs_init_c(processors: List[EFPProcessor], rc_path: str, w
         " *",
         " * To add more processors: see the file-header comment at the top — choose",
         " * either the tests/headless_<name>_verbs.c stub path or the",
-        " * CORE_IMPLEMENTED_PROCESSORS path (for impls in Common/source/).",
+        " * CORE_IMPLEMENTED_PROCESSORS path (for impls in Common/source/ or frontier-cli/).",
         " *",
         " * Returns: true if all processors initialized successfully, false otherwise",
         " */",

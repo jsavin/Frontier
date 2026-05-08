@@ -707,34 +707,32 @@ when a fake `g_regression_pending_arg` static buffer was wired in.
 
 A YAML-level cross-thread test (using `thread.evaluate("verb_x()")`
 from a sibling thread) is the obvious shape for testing a production
-verb under the GIL. It is the right shape eventually. It is NOT
-available today because:
+verb under the GIL — and as of issue #614 the thread verbs ARE wired
+in headless startup, so this pattern is now available.
 
-- `thread.exists / thread.evaluate / thread.callscript / ...` are
-  defined in `frontier-cli/headless_thread_verbs.c::threadinitverbs()`
-  but `threadinitverbs()` is not called in the headless build's
-  startup. Confirmed by running `return thread.getcount()` against
-  `frontier-cli` and observing `Can't call the script because the
-  name thread hasn't been defined.`
-- All seven tests in `tests/integration/test_cases/thread_verbs_foundation.yaml`
-  carry `skip: "thread verbs not wired in headless mode"` for that
-  reason.
+The C-level pthread approach in `palette_arg_inject_concurrency_tests`
+remains the right fit when:
 
-When `threadinitverbs()` is wired into headless startup, the cross-
-thread pattern can move up to YAML for the verbs whose entire dispatch
-path is reachable from UserTalk (e.g., calling `repl.list("Y")` from a
-sibling thread while the main thread is mid-palette-dispatch). Until
-then, C-level pthread tests against pure helpers — like
-palette_arg_inject_concurrency_tests — are the durable regression
-guard.
+- The verb's dispatch path is reachable purely from C (no UserTalk-
+  level state needed), AND
+- You want deterministic stress (16,000 iterations under a barrier)
+  to catch nondeterministic shared-state bugs.
 
-### Underlying mechanism (when YAML cross-thread becomes available)
+For verbs whose dispatch requires UserTalk-level state (system tables,
+REPL state, file handles), prefer a YAML-level cross-thread test
+using `thread.evaluate(...)` and `thread.sleepTicks(N)` to yield the
+GIL. See `tests/integration/test_cases/thread_verbs_foundation.yaml`
+for working examples of the verbs themselves; the cross-thread shape
+for testing OTHER verbs under thread.evaluate is the same pattern
+extended.
+
+### Underlying mechanism (GIL and YAML cross-thread tests)
 
 The thread verbs use a Global Interpreter Lock (GIL) model — see
 `frontier-cli/headless_thread_verbs.c` and ADR-014. Spawned threads
 block on `frontier_gil` and only run when the holding thread yields
 via `langbackgroundtask()` or `thread.sleepTicks()`. A YAML cross-
-thread test pattern would look like:
+thread test pattern looks like:
 
 ```yaml
 - name: "verb X arg isolation under thread.evaluate"
@@ -754,7 +752,7 @@ sibling to run `verb.X` to completion. If verb X has a process-shared
 arg slot, the sibling's call would read the main thread's arg
 (or vice versa), and one of the assertions would fail.
 
-### Future use
+### Choosing C-level vs YAML for the next concurrency-sensitive verb
 
 When the next concurrency-sensitive verb lands — e.g., the
 `palette modal blocking GIL during user idle` work tracked in PR #582
@@ -766,8 +764,9 @@ build rule (`-lpthread`).
 If a verb's full dispatch path is reachable from pure C (like the
 palette helpers) → use C-level pthreads.
 If reachability requires UserTalk-level state (system tables, REPL
-state, file handles) → wait for `threadinitverbs()` wiring and write
-a YAML-level test instead.
+state, file handles) → write a YAML-level test using
+`thread.evaluate(...)` + `thread.sleepTicks(N)` (thread verbs are
+wired in headless startup as of issue #614).
 
 ---
 
