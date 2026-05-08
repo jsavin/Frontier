@@ -37,13 +37,22 @@ EXCLUDED_PROCESSORS: Set[str] = {
     'webserver',  # Script-implemented; EFP stub shadows builtins.webserver
 }
 
-# Processors whose initverbs() is defined in core runtime sources (not headless stubs).
-# These don't have headless_*_verbs.c files because their real implementations in
-# Common/source/ are already linked into both test and CLI builds.
+# Processors whose initverbs() is defined outside tests/headless_*_verbs.c stubs.
+# These are real implementations linked into both test and CLI builds. The init
+# function is forward-declared in the generated kernel_verbs_init.c and called
+# from headless_init_kernel_verbs(); the linker resolves the symbol from
+# whichever source file actually defines it.
+#
+# Source locations vary:
+#   - Common/source/<name>.c for core runtime processors (math, crypt, menu)
+#   - frontier-cli/headless_<name>_verbs.c for CLI-resident processors (thread)
+# Both are pulled into the test and CLI Makefiles' source lists, so adding a
+# name here is sufficient to wire the processor without a tests/ stub.
 CORE_IMPLEMENTED_PROCESSORS: Set[str] = {
     'math',    # langmath.c - mathinitverbs()
     'crypt',   # langcrypt.c - cryptinitverbs()
     'menu',    # menuverbs_headless.c - menuinitverbs() (consolidated per issue #585)
+    'thread',  # frontier-cli/headless_thread_verbs.c - threadinitverbs() (issue #614)
 }
 
 
