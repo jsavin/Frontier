@@ -21,7 +21,10 @@
 #include "../Common/headers/stringdefs.h"
 #include "../Common/headers/logging.h"
 
+#include "repl_output_async.h"   /* Palette-aware async output (#593). */
+
 #include <stdio.h>
+#include <string.h>
 
 /* Headless msg() verb that outputs to stdout instead of showing a dialog. */
 static boolean headless_msgverb(hdltreenode hparam1, tyvaluerecord *vreturned) {
@@ -36,11 +39,16 @@ static boolean headless_msgverb(hdltreenode hparam1, tyvaluerecord *vreturned) {
 	/* Convert Pascal string to C string */
 	copyptocstring(bsmsg, msg);
 
-	/* Output to stdout with "msg: " prefix to distinguish from return values */
-	fputs("msg: ", stdout);
-	fputs(msg, stdout);
-	fputs("\n", stdout);
-	fflush(stdout);
+	/* Output via the palette-aware router. The router writes to stdout
+	 * when the palette modal is NOT active, and appends to the
+	 * registered scrollback pane when it IS active (issue #593). The
+	 * "msg: " prefix is preserved on both paths so existing tests and
+	 * users see the same prefix regardless of routing. */
+	char prefixed[8 + 256];
+	int n = snprintf(prefixed, sizeof(prefixed), "msg: %s\n", msg);
+	if (n < 0) n = 0;
+	if (n > (int)sizeof(prefixed)) n = (int)sizeof(prefixed);
+	repl_async_output_emit(prefixed, (size_t)n);
 
 	return setbooleanvalue(true, vreturned);
 }
