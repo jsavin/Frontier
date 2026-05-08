@@ -209,6 +209,16 @@ boolean cli_validate_options(const cli_options_t* options) {
 		}
 	}
 
+	/* --read-only and --allow-mutate are mutually exclusive: a request to
+	 * both forbid and permit writes is contradictory and almost certainly a
+	 * scripting bug. Refusing here keeps the operator's intent explicit
+	 * rather than silently picking one. */
+	if (options->read_only && options->allow_mutate) {
+		log_error(LOG_COMP_GENERAL,
+			"Error: --read-only and --allow-mutate cannot be combined");
+		return false;
+	}
+
 	// Note: Conflict validation for positional .root argument is handled in cli_parse_arguments()
 	// when we detect a .root file and system_root is already set.
 
@@ -239,6 +249,13 @@ boolean cli_parse_arguments(int argc, char* argv[], cli_options_t* options) {
 	// Initialize options with defaults
 	cli_init_options(options);
 
+	/* Long-only option codes (no short alias). 256+ keeps them out of the
+	 * single-character optstring while remaining valid getopt return values. */
+	enum {
+		OPT_READ_ONLY = 256,
+		OPT_ALLOW_MUTATE,
+	};
+
 	// Define long options
 	static struct option long_options[] = {
 		{"execute", required_argument, 0, 'e'},
@@ -256,6 +273,8 @@ boolean cli_parse_arguments(int argc, char* argv[], cli_options_t* options) {
 		{"skip-startup", no_argument, 0, 'S'},
 		{"protocol", no_argument, 0, 'P'},
 		{"ws-port", optional_argument, 0, 'W'},
+		{"read-only", no_argument, 0, OPT_READ_ONLY},
+		{"allow-mutate", no_argument, 0, OPT_ALLOW_MUTATE},
 		{"help", no_argument, 0, 'h'},
 		{"version", no_argument, 0, 'V'},
 		{0, 0, 0, 0}
@@ -494,6 +513,8 @@ boolean cli_parse_arguments(int argc, char* argv[], cli_options_t* options) {
 			case 'D':  options->debug = true; break;
 			case 'S':  options->skip_startup = true; break;
 			case 'P':  options->protocol_mode = true; break;
+			case OPT_READ_ONLY:    options->read_only = true; break;
+			case OPT_ALLOW_MUTATE: options->allow_mutate = true; break;
 			case 'h':  options->show_help = true; break;
 			case 'V':  options->show_version = true; break;
 
@@ -668,6 +689,8 @@ void cli_print_options(const cli_options_t* options) {
 	printf("  Force Overwrite: %s\n", options->force_overwrite ? "yes" : "no");
 	printf("  Skip Startup: %s\n", options->skip_startup ? "yes" : "no");
 	printf("  Protocol Mode: %s\n", options->protocol_mode ? "yes" : "no");
+	printf("  Read-Only: %s\n", options->read_only ? "yes" : "no");
+	printf("  Allow Mutate: %s\n", options->allow_mutate ? "yes" : "no");
 	printf("  WebSocket Port: %d\n", options->ws_port);
 	printf("  Verbose: %s\n", options->verbose ? "yes" : "no");
 	printf("  Debug: %s\n", options->debug ? "yes" : "no");

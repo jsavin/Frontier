@@ -337,8 +337,11 @@ dist: $(TARGET)
 # Use before shipping: make dist && make clean-root
 clean-root: dist
 	@echo "Running userland.cleanRoot on dist/Frontier.root..."
+	@# --allow-mutate opts back into read-write: the issue #588 default for
+	@# --protocol --system-root is read-only, but cleanRoot is an explicit
+	@# install path that needs to persist its mutations to the dist file.
 	@echo '{"op":"script/eval","id":1,"params":{"expression":"userland.cleanRoot()"}}' \
-		| $(DIST_DIR)/frontier-cli --protocol --system-root $(DIST_DIR)/Frontier.root 2>&1 \
+		| $(DIST_DIR)/frontier-cli --protocol --allow-mutate --system-root $(DIST_DIR)/Frontier.root 2>&1 \
 		| tee $(DIST_DIR)/cleanroot.log > /dev/null; \
 	if grep -q '"success":true' $(DIST_DIR)/cleanroot.log; then \
 		echo "cleanRoot completed successfully."; \

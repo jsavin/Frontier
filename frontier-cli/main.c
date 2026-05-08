@@ -115,6 +115,13 @@ static hdlfilenum g_system_root_fnum = 0;
 static hdldatabaserecord g_previous_database = nil;
 static char g_system_root_path[CLI_MAX_PATH_LENGTH + 1] = {0};
 
+/* Effective read-only state for the loaded system root.
+ *
+ * Computed once from g_cli_options at hydrate time so consumers (filemenu.save,
+ * shutdown save path) can consult a single boolean without re-deriving the
+ * policy each time. See cli_compute_effective_read_only() for the rules. */
+static boolean g_system_root_read_only = false;
+
 /*
  * Accessor functions for system root state.
  * Used by frontier.getFilePath() verb to access CLI state without exposing globals.
@@ -134,6 +141,37 @@ const char* cli_get_system_root_path(void) {
 
 boolean cli_should_skip_startup(void) {
 	return g_cli_options.skip_startup;
+}
+
+/*
+ * Decide whether to open the system root read-only based on parsed CLI flags.
+ *
+ * Policy (issue #588):
+ *   --read-only            -> always read-only (explicit operator request)
+ *   --allow-mutate         -> always read-write (explicit opt-in)
+ *   otherwise + --protocol -> read-only by default (protects canonical roots
+ *                             during inspection / scripted probes; matches the
+ *                             primary use case)
+ *   otherwise              -> read-write (preserve legacy -e / REPL behavior)
+ *
+ * Validation in cli_validate_options() rejects --read-only + --allow-mutate
+ * together, so the explicit branches never disagree.
+ */
+static boolean cli_compute_effective_read_only(const cli_options_t *opts) {
+	if (opts->read_only)
+		return true;
+	if (opts->allow_mutate)
+		return false;
+	if (opts->protocol_mode)
+		return true;
+	return false;
+}
+
+/* Returns the effective read-only state for the loaded system root.
+ * Used by filemenu.save (and the shutdown save path) to refuse writes
+ * that would mutate a database opened for inspection. */
+boolean cli_is_system_root_read_only(void) {
+	return g_system_root_read_only;
 }
 
 /* system.environment.args key names (camelCase from CLI flags). */
@@ -323,7 +361,7 @@ static boolean load_system_root_database(const char* path);
 static void unload_system_root_database(void);
 static void save_system_root_on_exit(void);
 static boolean ensure_named_subtable(hdlhashtable parent, const unsigned char *name, hdlhashtable *out, boolean mark_dont_save);
-static boolean hydrate_system_root_database(const char* path);
+static boolean hydrate_system_root_database(const char* path, boolean read_only);
 static boolean read_root_table_address(const char *path, dbaddress *adr_out, short *version_out);
 static void log_system_subtable_status(const char *phase,
 									   hdlhashtable system,
@@ -536,7 +574,13 @@ int main(int argc, char* argv[]) {
 	}
 
 	if (system_root_to_load != NULL) {
-		if (!hydrate_system_root_database(system_root_to_load)) {
+		/* Compute effective read-only state once and stash it in a global so
+		 * downstream consumers (filemenu.save, shutdown save path) see a
+		 * consistent answer regardless of which call edge they live on.
+		 * Set BEFORE hydrate so any logging during hydrate reflects the
+		 * decision; hydrate reads the parameter, not the global. */
+		g_system_root_read_only = cli_compute_effective_read_only(&g_cli_options);
+		if (!hydrate_system_root_database(system_root_to_load, g_system_root_read_only)) {
 			log_error(LOG_COMP_GENERAL, "Error: Failed to load system root: %s", system_root_to_load);
 			cleanup_frontier_runtime();
 			return 1;
@@ -801,6 +845,10 @@ static void print_usage(const char* program_name) {
 	printf("  --ws-port PORT		   Start WebSocket server on PORT (localhost only, no auth).\n");
 	printf("						   WARNING: Any local process or browser page (including file://)\n");
 	printf("						   can access the ODB while the server is running.\n");
+	printf("  --read-only			   Open --system-root read-only; refuse all writes (fileMenu.save\n");
+	printf("						   etc. fail with a read-only error). Default for --protocol mode.\n");
+	printf("  --allow-mutate		   Opt --protocol --system-root back into read-write mode (use\n");
+	printf("						   for install paths like cleanRoot or ODB script editing).\n");
 	printf("  -h, --help			   Show this help message\n");
 	printf("  --version				   Show version information\n");
 	printf("\n");
@@ -960,7 +1008,13 @@ static void cleanup_frontier_runtime(void) {
 	 * Killed debug threads leave pushed hash table scopes in the chain,
 	 * making hashpack traversal crash on stale pointers. This is a
 	 * fundamental limitation of killing scripts mid-execution. */
-	if (g_system_root_loaded && debug_is_safe_to_save()) {
+	/* Read-only opens (--read-only, or default for --protocol) deliberately
+	 * skip the on-exit save: the goal of #588 is that inspecting a canonical
+	 * .root file leaves it untouched on disk. The lower-layer flreadonly bit
+	 * already shorts dbflushheader, but skipping the save here is the
+	 * intent-level guarantee — the operator asked for read-only, so honor
+	 * it at every layer. */
+	if (g_system_root_loaded && debug_is_safe_to_save() && !g_system_root_read_only) {
 		save_system_root_on_exit();
 	}
 
@@ -1070,10 +1124,11 @@ static void log_system_subtable_status(const char *phase,
 }
 
 /* Loads and fully initializes the system root database, linking EFP tables and resolving paths. */
-static boolean hydrate_system_root_database(const char* path) {
+static boolean hydrate_system_root_database(const char* path, boolean read_only) {
 	/* Always start from a clean slate; useful to confirm entry. */
 #if defined(FRONTIER_HEADLESS)
-	log_trace(LOG_COMP_STARTUP, "hydrate_system_root_database enter path=%s", path ? path : "(nil)");
+	log_trace(LOG_COMP_STARTUP, "hydrate_system_root_database enter path=%s read_only=%s",
+	          path ? path : "(nil)", read_only ? "true" : "false");
 #endif
 	cleartablestructureglobals();
 
@@ -1097,9 +1152,13 @@ static boolean hydrate_system_root_database(const char* path) {
 	/* After ensure_database_v7, we always have a v7 database (either the original if already v7,
 	 * or the original path now containing the migrated v7 data, with v6 backed up to .v6.root).
 	 *
-	 * v7 databases are opened read-write by default to allow startup scripts and system table
-	 * updates. Use FRONTIER_OPEN_READONLY=1 environment variable to force read-only mode. */
-	boolean flreadonly_for_hydration = (getenv("FRONTIER_OPEN_READONLY") != NULL);
+	 * Read-only mode honors any of:
+	 *   - the explicit `read_only` parameter (driven by --read-only / default
+	 *     for --protocol, see cli_compute_effective_read_only)
+	 *   - FRONTIER_OPEN_READONLY=1 environment override (back-compat with
+	 *     pre-flag scripts; harmless when the flag is already set).
+	 * Either gate is sufficient — neither false-overrides the other. */
+	boolean flreadonly_for_hydration = read_only || (getenv("FRONTIER_OPEN_READONLY") != NULL);
 
 	/* Use the output path from ensure_database_v7 if it differs from input.
 	 * This handles both fresh migrations and cases where a v7 file already exists. */
@@ -1286,8 +1345,13 @@ static boolean hydrate_system_root_database(const char* path) {
 							   objectmodeltable);
 
 	/* Only save if we made changes (created optional tables). Skip for freshly-migrated databases.
-	 * Also skip if no optional tables were created - v7 databases are already complete. */
-	if ((!migrated && created_optional)) {
+	 * Also skip if no optional tables were created - v7 databases are already complete.
+	 * Skip when read-only: the optional-tables patch is in-memory only and
+	 * must not propagate to disk; tablesavesystemtable will trip the
+	 * dbflushheader read-only guard, which logs an error and aborts the
+	 * hydration. The patched tables remain valid in memory for this
+	 * process. See issue #588. */
+	if ((!migrated && created_optional && !read_only)) {
 		boolean repack_scope = false;
 		db_format_mode mode = {true, true};	 /* 64-bit, adapter_repack */
 		db_format_mode_push(&mode);
@@ -1304,11 +1368,18 @@ static boolean hydrate_system_root_database(const char* path) {
 			db_format_mode_pop();
 			repack_scope = false;
 		}
+	} else if (read_only && created_optional) {
+		cli_log_debug("Read-only: skipping in-memory optional-table save for %s", path);
 	} else {
 		cli_log_debug("Skipping save for freshly-migrated database: %s", path);
 	}
 
-	dbsetview(cancoonview, adr);
+	/* dbsetview writes the header to disk via dbflushheader. The lower
+	 * layer's flreadonly guard already short-circuits the actual write,
+	 * but skipping the call here avoids a misleading log line and keeps
+	 * the read-only intent explicit at every layer. */
+	if (!read_only)
+		dbsetview(cancoonview, adr);
 
 	/* Log which system root was loaded and whether it was auto-migrated */
 	if (migrated) {

@@ -19,8 +19,18 @@ How to safely create, modify, and verify UserTalk scripts in the Frontier object
 
 ### Connecting
 
+For **read-only inspection** (no on-disk changes):
+
 ```bash
 frontier-cli --protocol --skip-startup --system-root databases/Virgin.root
+```
+
+Since issue #588, `--protocol --system-root` defaults to **read-only**. `fileMenu.save()` will fail with "system root is read-only" until you opt into mutation.
+
+For **editing** (changes that persist to the .root file), add `--allow-mutate`:
+
+```bash
+frontier-cli --protocol --skip-startup --allow-mutate --system-root databases/Virgin.root
 ```
 
 Use `Virgin.root` for edits that should be part of the distribution. Use `databases/Frontier.root` for local testing only.
@@ -55,7 +65,7 @@ Read back and check it compiles:
 Guest databases (`databases/Guest Databases/apps/*.root`) ship with the dist build. To edit them, load the system root first (so system verbs like `script.newScriptObject` are available), then open the guest DB as a secondary database:
 
 ```bash
-frontier-cli --protocol --skip-startup --system-root databases/Virgin.root
+frontier-cli --protocol --skip-startup --allow-mutate --system-root databases/Virgin.root
 ```
 
 ```json
@@ -188,7 +198,7 @@ Make your changes in the `.ut` file under `usertalk_scripts/`. This is the human
 ### 3. Install in Virgin.root via protocol
 
 ```bash
-frontier-cli --protocol --skip-startup --system-root databases/Virgin.root
+frontier-cli --protocol --skip-startup --allow-mutate --system-root databases/Virgin.root
 ```
 
 ```json
