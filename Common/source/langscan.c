@@ -308,46 +308,58 @@ static boolean parsestringempty (void) {
 	
 	
 static byte parsepopchar (void) {
-	
+
 	/*
 	return the first character from the parse string and remove it
-	from the string.  if there are no characters in the string we 
+	from the string.  if there are no characters in the string we
 	return the null character.
-	
-	5/7/93 dmb: support non-linebased scans.  instead of returns, we 
+
+	5/7/93 dmb: support non-linebased scans.  instead of returns, we
 	start a new "line" when the character count is about to overflow.
-	
+
 	Dave, sorry about the ?: construct -- it's the only one in the product!  :)
+
+	2026-05-06 (issue #586): RAB's 1997 change unconditionally swallowed
+	a following LF after every popped char — intended for CRLF source on
+	Windows but the implementation overshot. For bare-LF source (Unix
+	line endings, JSON, REPL eval wrapper) this silently ate LFs that
+	any caller — most importantly parsepopcomment — needed to see as
+	end-of-line. Constrain the LF-swallow to only fire when the char
+	just popped was a CR. Standalone LFs now surface from parsepopchar
+	and are handled by call sites (parsepopcomment treats it as EOL;
+	parsepopblanks should treat it as whitespace alongside ' '/CR/tab).
 	*/
-	
+
 	register ptrbyte p;
 	register byte ch;
-	
+
 	if (ixparsestring >= lenparsestring) /*string is empty*/
 		return (chendscanstring);
-	
+
 	p = (ptrbyte) *hscanstring + ixparsestring++;
-	
+
 	ch = *p;
-	
+
 	ctscanchars++; /*for error reporting*/
 
-//************ RAB ADDED 10/29/97
-	if (ixparsestring < lenparsestring) {
+	/* RAB 10/29/97 — swallow LF after CR to normalize CRLF as a single
+	 * logical newline. 2026-05-06 (issue #586): gate on ch == chreturn
+	 * so bare LF in the source is preserved for the caller to see. */
+	if (ch == chreturn && ixparsestring < lenparsestring) {
 		p = (ptrbyte) *hscanstring + ixparsestring;
 		if (*p == chlinefeed) {  //lose it
 			++ixparsestring;
 			++ctscanchars;
 			}
 		}
-	
-	if (fllinebasedscan? (ch == chreturn) : (ctscanchars == 0xffff)) { /*passed over another line, or overflowing*/
-		
+
+	if (fllinebasedscan? (ch == chreturn || ch == chlinefeed) : (ctscanchars == 0xffff)) { /*passed over another line, or overflowing*/
+
 		ctscanlines++; /*for error reporting*/
-		
+
 		ctscanchars = 0; /*the number of chars we've passed over in the text*/
 		}
-	
+
 	return (ch);
 	} /*parsepopchar*/
 
@@ -637,8 +649,10 @@ static boolean parsepopstringconst (Handle *htext) {
 		
 		if (ch == chstop) /*properly terminated string*/
 			return (buildtexthandle (bs, htext));
-		
-		if (ch == chreturn) /*don't allow string to span lines*/
+
+		/* 2026-05-06 (issue #586): also break on bare LF — strings must
+		 * not span lines regardless of line ending convention. */
+		if (ch == chreturn || ch == chlinefeed) /*don't allow string to span lines*/
 			break;
 		
 		if (ch == chendscanstring) /*ran out of characters*/
@@ -667,53 +681,67 @@ static boolean parsepopstringconst (Handle *htext) {
 	
 
 static void parsepopcomment (void) {
-	
+
 	/*
 	consume characters up to and including the next chendcomment.
-	
+
 	comments cannot span more than one line, so endofline also causes
 	us to return.
+
+	2026-05-06 (issue #586): also terminate on chlinefeed (LF, U+000A).
+	Sources arriving via the protocol layer / REPL wrapper / JSON-encoded
+	scripts use LF line endings, not CR. The chreturn (CR) check below
+	covers Mac/outline storage; chlinefeed covers Unix-encoded sources
+	(JSON, REPL eval wrapper, .ut files saved on Linux/macOS modern
+	editors). Bare LF only reaches here after parsepopchar's CR-paired
+	"swallow following LF" was tightened to require a leading CR — see
+	the comment in parsepopchar.
 	*/
-	
+
 	register byte ch;
-	
+
 	while (true) {
-		
+
 		ch = parsepopchar ();
-		
-		if ((ch == chendcomment) || (ch == chreturn) || (ch == chendscanstring))
+
+		if ((ch == chendcomment) || (ch == chreturn) || (ch == chlinefeed) || (ch == chendscanstring))
 			return;
 		} /*while*/
 	} /*parsepopcomment*/
 
 
 static boolean parsepopblanks (void) {
-	
+
 	/*
-	pop all the leading white space.  return false if the input stream is 
+	pop all the leading white space.  return false if the input stream is
 	empty, true otherwise.
 
 	5.0a12 dmb: handle // comments
+
+	2026-05-06 (issue #586): treat chlinefeed (LF) as whitespace too.
+	Bare LF (Unix line ending) wasn't recognized here previously — the
+	scanner relied on parsepopchar's now-removed unconditional LF-eating
+	side effect. With that gone, LF must be skipped explicitly.
 	*/
-	
+
 	register byte ch;
-	
+
 	while (true) {
-		
+
 		if (parsestringempty ())
 			return (false);
-		
+
 		ch = parsefirstchar ();
-		
+
 		if ((ch == chstartcomment) || (ch == '/' && parsenextchar () == '/')) {
-			
+
 			parsepopcomment (); /*pop everything up to and including endcomment char*/
 			}
-			
+
 		else {
-			if ((ch != ' ') && (ch != chtab) && (ch != chreturn))
+			if ((ch != ' ') && (ch != chtab) && (ch != chreturn) && (ch != chlinefeed))
 				return (true);
-			
+
 			parsepopchar (); /*consume a whitespace character*/
 			}
 		} /*while*/
