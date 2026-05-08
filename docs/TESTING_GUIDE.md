@@ -581,6 +581,22 @@ python3 cli.py report
 python3 cli.py report -o -
 ```
 
+### Handler scripts require end-to-end execution tests
+
+**Rule:** Any `.ut` file installed into `system.*.handlers.*` (REPL handlers, slash commands, menu actions, key bindings, etc.) must be tested by **invoking the handler through its production dispatch path** and asserting on observable side effects — not by `script.compile` alone.
+
+**Why:** UserTalk uses late-binding verb resolution. A handler that calls a non-existent verb (e.g. `stdout("hello")` when no such verb exists) will compile cleanly because the parser does not validate verb references. The failure only surfaces at execution time, when dispatch tries to resolve the missing name.
+
+**Motivating incident:** PR #582 (REPL menubar) shipped a `help.ut` handler that called a non-existent `stdout` verb. The integration tests verified each handler compiled (`script.compile` returned true) but never executed any of them — so the bug was masked. PR #583 (slash command migration) caught the runtime failure during end-to-end testing and added a `repl.help` kernel verb to fix it.
+
+**What "end-to-end" means here:**
+
+1. Compile check is necessary but not sufficient
+2. Drive the handler through the same dispatch path the user/REPL/menu would use (not by calling its body directly)
+3. Assert on observable behavior — output captured, state mutated, event emitted — not just "no error thrown"
+
+**Reference example:** `tests/integration/test_cases/repl_palette.yaml` exercises slash-command handlers through the menu dispatch path with behavioral assertions on the resulting output.
+
 ### Common Test Commands
 
 ```bash
