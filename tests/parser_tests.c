@@ -150,6 +150,25 @@ static void test_quirk1_slash_slash_comment_with_cr_then_return(void) {
 }
 
 /*
+ * Quirk 1 with CRLF line endings: Windows/cross-platform. The fix in
+ * parsepopchar specifically preserves CRLF collapse (gate is ch == chreturn),
+ * so this should pass identically to LF/CR. Pinned as a regression guard so a
+ * future refactor can't accidentally drop CRLF normalization without a
+ * unit-level signal.
+ */
+static void test_quirk1_slash_slash_comment_with_crlf_then_return(void) {
+	static const char src[] =
+		"local (x = 42);\r\n"
+		"// this comment line should not swallow the following return\r\n"
+		"return (x)";
+	char buf[256];
+	int vt = -1;
+	boolean ok = run_multiline(src, sizeof(src) - 1, buf, sizeof(buf), &vt);
+	assert(ok);
+	assert(strcmp(buf, "42") == 0);
+}
+
+/*
  * Quirk 2 (issue #586): UTF-8 em-dash (U+2014, bytes 0xE2 0x80 0x94) inside
  * a // comment must not break compilation. Compile must succeed and the
  * script must return the trailing expression's value verbatim. Same root
@@ -317,6 +336,7 @@ int main(void) {
 	TR_RUN(test_quirk1_control_no_comment_returns_value);
 	TR_RUN(test_quirk1_slash_slash_comment_with_cr_then_return);
 	TR_RUN(test_quirk1_slash_slash_comment_with_lf_then_return);
+	TR_RUN(test_quirk1_slash_slash_comment_with_crlf_then_return);
 	TR_RUN(test_quirk2_em_dash_in_slash_slash_comment);
 	TR_RUN(test_quirk3_consecutive_locals_with_field_reference_cr);
 	TR_RUN(test_quirk3_consecutive_locals_with_field_reference_lf);
