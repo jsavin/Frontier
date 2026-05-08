@@ -130,6 +130,29 @@ static char fold_byte(char c) {
 
 
 /*
+ * Locale-independent ASCII case-insensitive equality. See the contract in
+ * repl_slash_resolver.h. Walks both strings byte-by-byte applying the same
+ * ASCII fold the resolver uses for label matching; this guarantees that the
+ * slot-key special-case sites in repl.c agree with the resolver regardless
+ * of process locale. NULL inputs are not-equal (defensive).
+ */
+boolean slot_key_eq(const char *a, const char *b) {
+	if (a == NULL || b == NULL)
+		return false;
+	for (;;) {
+		char ca = fold_byte(*a);
+		char cb = fold_byte(*b);
+		if (ca != cb)
+			return false;
+		if (ca == '\0')
+			return true; /* both reached terminator on the same step */
+		a++;
+		b++;
+	}
+}
+
+
+/*
  * Copy `src` into `dst` (size `dstsz`), case-folding ASCII and dropping
  * spaces. NUL-terminates dst. Returns the number of output bytes written
  * (excluding the trailing NUL). If dstsz is 0 returns 0 and writes nothing.

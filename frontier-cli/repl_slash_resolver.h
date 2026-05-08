@@ -109,6 +109,38 @@ extern boolean repl_resolve_slash_command(const char *token,
                                           char *out_name, size_t out_namesz);
 
 
+/*
+ * slot_key_eq - locale-independent ASCII case-insensitive equality for
+ * slot-key matching at the REPL dispatch sites.
+ *
+ * The resolver's label-folding (fold_byte) is hand-rolled, ASCII-only:
+ * 'A'..'Z' fold to 'a'..'z'; every other byte (including high-bit bytes
+ * 0x80..0xFF) is passed through unchanged. Call sites in repl.c that
+ * special-case the slot key returned by repl_resolve_slash_command (e.g.
+ * "Exit", "List", "Jump") historically used strcasecmp(3), which is
+ * locale-sensitive: under a non-C locale, classification of high-bit bytes
+ * can diverge between the resolver and the dispatcher. Slot keys today are
+ * pure ASCII so the divergence is dormant, but a future menubar entry with
+ * a non-ASCII slot key, or a setlocale() call elsewhere in the process,
+ * could turn that into a real bug.
+ *
+ * Contract:
+ *   - Returns true iff `a` and `b` are non-NULL and compare equal byte-for-
+ *     byte after applying the same ASCII-only case fold the resolver uses
+ *     ('A'..'Z' -> 'a'..'z'; everything else passes through).
+ *   - NULL inputs are treated as not-equal (defensive — the resolver always
+ *     populates the slot_name buffer with a NUL-terminated string, so NULL
+ *     should never reach call sites in practice).
+ *   - Symmetric: slot_key_eq(a, b) == slot_key_eq(b, a) for every input.
+ *   - Strings of differing length are unequal even when one is a prefix.
+ *
+ * No call to setlocale(), tolower(), strcasecmp(), or any other locale-
+ * sensitive C library routine. Safe to call from any thread; pure function
+ * over its inputs.
+ */
+extern boolean slot_key_eq(const char *a, const char *b);
+
+
 #ifdef __cplusplus
 }
 #endif
