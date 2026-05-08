@@ -2141,35 +2141,31 @@ static void linenoise_completion_callback(const char *buf, linenoiseCompletions 
  *      The resolver is case-insensitive, internally-whitespace-insensitive,
  *      and supports unique prefix + single-letter first-letter matching.
  *      It returns the matched leaf hashtable AND the leaf's slot key.
- *   4. Branch on the slot key + presence of ARGS:
+ *   4. Dispatch:
  *
- *        - "List" + ARGS  -> replverbhost_list(args)
- *        - "Jump" + ARGS  -> replverbhost_jump_path(args)
- *        - "List" + ""    -> dispatch via meuserselected_headless (lists
- *                            current focus table)
- *        - "Jump" + ""    -> dispatch via meuserselected_headless (returns
- *                            to root)
- *        - <other> + ""   -> dispatch via meuserselected_headless
- *        - <other> + ARGS -> dispatch via meuserselected_headless; the
- *                            argument is silently ignored. (No leaf in
- *                            the standard menubar accepts args today
- *                            except List/Jump. Future leaves with
- *                            accepts_args = true will route via the
- *                            palette input row in PR 8.)
+ *        - <leaf> + ARGS, leaf.accepts_args=true:
+ *              Synthesize "<handler> (\"escaped-arg\")" via
+ *              palette_arg_inject_into_script and dispatch the result
+ *              via meuserselected_headless. The arg is bound at compile
+ *              time inside the handler's call expression — no global
+ *              hand-off (issue #594 collapsed the previous hybrid path).
+ *        - <leaf> + ARGS, leaf.accepts_args=false:
+ *              Dispatch via meuserselected_headless without the arg —
+ *              the argument is silently ignored, matching legacy
+ *              behavior for items that don't expect typed input.
+ *        - <leaf> + "":
+ *              Dispatch via meuserselected_headless with the leaf's
+ *              stored script as-is.
  *
  *   5. Unresolved tokens emit "Unknown command: /<token>\nType /help for
  *      available commands\n" and continue. Empty token "/" emits the
  *      same with a literal "/" rather than crashing.
  *
- * Why special-case List/Jump here instead of in the menubar handlers?
- * --------------------------------------------------------------------
- * The handlers under system.menus.handlers.repl.* are zero-arg today
- * (they wrap the kernel verb with empty path). Threading a slash-command
- * argument through to a UserTalk handler requires either (a) a dedicated
- * arg-passing channel through meuserselected_headless, or (b) a transient
- * ODB slot that the handler reads. Both are larger surface than PR 7
- * needs to land. PR 8 introduces the palette accepts_args input row,
- * which is the natural place to add arg threading.
+ * The List and Jump leaves in the standard installed menubar advertise
+ * accepts_args=true (set by installReplMenubar.ut), so typed args reach
+ * the system.menus.handlers.repl.list / .jump handlers as a string
+ * parameter. Those handlers forward to repl.list / repl.jumpPath. There
+ * is no slot-key special case for List or Jump in this dispatcher.
  *
  * Returns true if the line was consumed (always — even unknown commands
  * are "consumed" in the sense that the REPL keeps running). Sets
@@ -2468,28 +2464,26 @@ static boolean dispatch_slash_command(const char *line, boolean *running) {
 	}
 
 	/*
-	 * Hybrid dispatch for typed slash commands with args.
+	 * Unified arg-bearing dispatch (issue #594).
 	 *
-	 * Two paths:
-	 *
-	 * (a) Leaf advertises accepts_args=true: synthesize a new script
-	 *     source by injecting the typed arg as a string literal into
-	 *     the leaf's empty () call frame, then dispatch the synthesized
-	 *     source via meuserselected_headless. The arg is bound at
-	 *     compile time inside the call expression — no global hand-off,
-	 *     no GIL-yield window for a sibling thread.new() child to read
-	 *     the wrong arg. See palette_arg_inject.h for the synthesis
-	 *     algorithm and threat model.
-	 *
-	 * (b) Legacy fallthrough: special-case List / Jump by slot key
-	 *     to call the host adapter directly. Required for backward
-	 *     compatibility with menubar installs that predate PR 8 and
-	 *     don't set accepts_args=true on those items. This path will
-	 *     retire once the install script (and any downstream forks)
-	 *     are migrated.
+	 * If the leaf advertises accepts_args=true, synthesize a new script
+	 * source by injecting the typed arg as a string literal into the
+	 * leaf's empty () call frame, then dispatch the synthesized source
+	 * via meuserselected_headless. The arg is bound at compile time
+	 * inside the call expression — no global hand-off, no GIL-yield
+	 * window for a sibling thread.new() child to read the wrong arg.
+	 * See palette_arg_inject.h for the synthesis algorithm and threat
+	 * model.
 	 *
 	 * For leaves that don't accept args (e.g. /clear, /exit) the arg
 	 * is silently dropped — same legacy behavior.
+	 *
+	 * Prior to issue #594 a "hybrid" fallthrough special-cased List /
+	 * Jump by slot key to call the host adapter directly, because the
+	 * Virgin.root install script didn't set accepts_args=true on those
+	 * leaves. The install script now does (see installReplMenubar.ut),
+	 * so the synthesis path handles them uniformly with every other
+	 * leaf — no slot-key special cases, no second dispatcher.
 	 */
 	if (args_start[0] != '\0') {
 		tyvaluerecord rec;
@@ -2514,7 +2508,9 @@ static boolean dispatch_slash_command(const char *line, boolean *running) {
 			disposevaluerecord(rec, false);
 		}
 		if (leaf_accepts) {
-			/* Path (a): per-call script-source synthesis. */
+			/* Per-call script-source synthesis: rewrite "<handler> ()"
+			 * as "<handler> (\"typed-arg\")" and dispatch via the
+			 * menubar handler. */
 			char escaped[PALETTE_ARG_MAX * 2 + 4];
 			if (!palette_arg_escape(args_start, escaped, sizeof(escaped))) {
 				/* Forbidden control byte / overflow: refuse to dispatch
@@ -2598,23 +2594,6 @@ static boolean dispatch_slash_command(const char *line, boolean *running) {
 			if (slot_key_eq(slot_name, "Exit")) {
 				replverbhost_exit();
 				*running = false;
-			}
-			return true;
-		} else if (slot_key_eq(slot_name, "List")) {
-			/* Path (b) legacy: List with arg. */
-			replverbhost_list(args_start);
-			return true;
-		} else if (slot_key_eq(slot_name, "Jump")) {
-			/* Path (b) legacy: Jump with arg. */
-			if (!replverbhost_jump_path(args_start)) {
-				/* Match the legacy /jump error wording. The path
-				 * arg is scrubbed via safe_print_user_string
-				 * because it may contain control bytes from a
-				 * malicious user crafting a slash-command. */
-				fputs("Error: '", stdout);
-				safe_print_user_string(args_start);
-				fputs("' is not a valid table path\n", stdout);
-				fflush(stdout);
 			}
 			return true;
 		}
@@ -3159,6 +3138,18 @@ static void replverbhost_clear_variables(void) {
  * → langrun). This is fine for interactive REPL use but unsafe for any
  * caller forwarding untrusted strings. Document at the verb header
  * (repl_verbs.h::jump_path) so script authors know.
+ *
+ * Failure reporting: when repl_jump_path() returns false the host adapter
+ * emits the legacy "Error: '<path>' is not a valid table path" diagnostic
+ * to stdout. This used to live in dispatch_slash_command's direct-dispatch
+ * branch for /jump; issue #594 collapsed that branch in favor of the
+ * unified menubar synthesis path, so the error message had to migrate
+ * with the failure-detection responsibility. Centralizing it in the host
+ * adapter (matching replverbhost_list, which already prints its own error)
+ * gives every caller — slash-command, palette, programmatic UserTalk —
+ * uniform error text. The verb still returns the boolean result so
+ * UserTalk callers that want silent failure can branch on the return
+ * value (they will see the message but can ignore it).
  */
 static boolean replverbhost_jump_path(const char *path) {
 	/* The verb's path argument is the source of truth. When the palette
@@ -3169,7 +3160,19 @@ static boolean replverbhost_jump_path(const char *path) {
 	 * wrong value. */
 	if (path == NULL)
 		return repl_jump_path("");
-	return repl_jump_path(path);
+	boolean ok = repl_jump_path(path);
+	if (!ok) {
+		/* `path` is the unfiltered C string from the verb arg and may
+		 * contain control bytes from a paste accident or a malicious
+		 * type-ahead. Scrub via safe_print_user_string before reaching
+		 * the terminal — see repl_output.c safe_print_user_string for
+		 * the threat model. */
+		fputs("Error: '", stdout);
+		safe_print_user_string(path);
+		fputs("' is not a valid table path\n", stdout);
+		fflush(stdout);
+	}
+	return ok;
 }
 
 /*

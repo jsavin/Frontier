@@ -1,8 +1,12 @@
-on jump ()
-	//Reset REPL focus to the root table.
-		//5/6/26 by JES
-			//Initial implementation. Wraps repl.jumpPath with an empty path
-			//so the host returns focus to root. A future revision can prompt
-			//for a target path via the palette accepts_args input row.
-	repl.jumpPath ("")
+on jump (path = "")
+	//Move REPL focus to a target table (or to the root).
+		//5/8/26 by JES
+			//Issue #594 — accept optional path arg so the slash-command and
+			//palette accepts_args paths both route through this handler via
+			//the unified palette_arg_inject synthesis. Empty / missing path
+			//falls through to repl.jumpPath (""), which returns focus to
+			//root (existing behavior). This wraps repl.jumpPath with whatever
+			//path the dispatch path supplied; a future revision could prompt
+			//for a path interactively via the palette accepts_args input row.
+	repl.jumpPath (path)
 	return (true)

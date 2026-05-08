@@ -385,15 +385,54 @@ tests:
 
   - name: "REPL - /jump with bad path emits Error message"
     description: |
-      /jump <invalid> routes through the kernel-verb host adapter
-      (replverbhost_jump_path) which returns false on an unresolvable
-      path. The dispatcher prints the legacy-format error so existing
-      integration tests for /jump - invalid path keep passing.
+      /jump <invalid> routes through the unified menubar dispatch path
+      (issue #594): the slash-command dispatcher resolves the Jump leaf,
+      sees accepts_args=true, synthesizes
+      `system.menus.handlers.repl.jump ("nonexistent.path")` via
+      palette_arg_inject, runs it through meuserselected_headless, and
+      the handler forwards to repl.jumpPath which returns false. The
+      legacy-format error is emitted by the host adapter
+      replverbhost_jump_path so callers from any path (slash-command,
+      palette, programmatic UserTalk) get uniform error text.
     repl_mode: true
     stdin_input: "/jump nonexistent.path\n/exit\n"
     expected_output_contains:
       - "Error"
       - "not a valid table path"
+    expected_success: true
+
+  - name: "REPL - /list and /jump leaves advertise accepts_args=true"
+    description: |
+      Issue #594 collapse: the unified dispatch path requires the List
+      and Jump leaves in the installed REPL menubar to declare
+      accepts_args=true so dispatch_slash_command synthesizes the call
+      with the typed argument bound at compile time. If a future change
+      regresses the install script (or otherwise drops the flag), the
+      slash-command path silently no-ops the arg — losing /list <path>
+      and /jump <path>. This test asserts the field is present and
+      true on a freshly-installed menubar.
+    script: |
+      system.menus.installReplMenubar ();
+      local (listOk = system.menus.data.repl.REPL.List.accepts_args == true);
+      local (jumpOk = system.menus.data.repl.REPL.Jump.accepts_args == true);
+      return (listOk and jumpOk)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "REPL /list - quoted-style arg routes through unified handler"
+    description: |
+      Issue #594 unified path: typing a path with quote-like characters
+      should still reach the menubar handler verbatim. Since the
+      synthesizer wraps the typed arg in a UserTalk string literal,
+      both `/list system` and a path that already contains a stray
+      space-comma must produce the same output as a literal string
+      argument to repl.list. We use a path with a trailing dot — the
+      kernel verb strips it, so output should match `/list system`.
+    repl_mode: true
+    stdin_input: "/list system.\n/exit\n"
+    expected_output_contains:
+      - "system:"
+      - "verbs"
     expected_success: true
 
   - name: "REPL - leading slash required"
