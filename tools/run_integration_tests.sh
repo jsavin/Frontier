@@ -195,6 +195,14 @@ if [ -z "$STAGE_DIR" ]; then
     echo -e "${RED}Error: STAGE_DIR is empty — refusing to rm -rf${NC}"
     exit 1
 fi
+# Surface a note when STAGE_DIR is non-empty before cleanup. Pre-fix,
+# polluted staging from interrupted runs caused 51 spurious failures
+# during PR #584 (issue #589). The unconditional rm -rf below already
+# prevents that; this note adds visibility so operators can correlate
+# leftover state with prior runs (interrupted or otherwise).
+if [ -d "$STAGE_DIR" ] && [ -n "$(ls -A "$STAGE_DIR" 2>/dev/null)" ]; then
+    echo -e "${YELLOW}Note: clearing leftover staged DBs in $STAGE_DIR (from prior run)${NC}"
+fi
 rm -rf "$STAGE_DIR"
 mkdir -p "$STAGE_DIR"
 cp "$SOURCE_ROOT" "$SYSTEM_ROOT"
