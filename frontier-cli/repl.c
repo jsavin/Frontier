@@ -53,6 +53,7 @@
 #include "completion.h"
 #include "pane.h"
 #include "palette.h"
+#include "palette_arg_inject.h"
 #include "repl_palette_source.h"
 #include "../Common/headers/menudata_headless.h" /* meuserselected_headless */
 #include "../Common/headers/oplist.h"		/* opcountlistitems */
@@ -103,6 +104,33 @@ static hdlhashtable g_repl_guest_db_root = nil;
 
 // REPL active flag - set when REPL event loop is running
 static boolean g_repl_active = false;
+
+/*
+ * Palette argument injection (PR 8 / Rung 2 accepts_args).
+ *
+ * When the slash-menu palette dispatches a leaf with accepts_args=true,
+ * the user's typed argument is captured in palette_state_t::exec_arg.
+ * The handler scripts under system.menus.handlers.repl.* are stored
+ * in the menubar as call expressions like "system.menus.handlers.repl.
+ * list ()" — the call frame has empty parens.
+ *
+ * To bind the typed arg into that call, the dispatch path synthesizes
+ * a NEW UserTalk source string per dispatch by replacing the empty
+ * parens with a single quoted string literal:
+ *
+ *     system.menus.handlers.repl.list ("typed-arg")
+ *
+ * The synthesized source is fed to meuserselected_headless / langbuildtree
+ * just like the original — the parser sees a fully-formed call with the
+ * arg bound at compile time. There is NO process-global hand-off state
+ * between the dispatcher and any host verb adapter, so a sibling
+ * thread.new() child running its own palette dispatch cannot consume
+ * the wrong arg via langruncode's GIL-yield window.
+ *
+ * Implementation: palette_arg_escape + palette_arg_inject_into_script
+ * in palette_arg_inject.c. Pure helpers — no ODB / handle dependencies
+ * — exercised by tests/palette_arg_inject_tests.c.
+ */
 
 /*
  * Exit-requested flag set by the repl.exit() kernel verb (via the host
@@ -2179,6 +2207,83 @@ typedef enum {
 } ty_dispatch_result;
 
 /*
+ * Build a Handle of UserTalk source bytes from a C string. The caller
+ * owns the returned handle (or nil on failure) and must disposehandle it
+ * — except that meuserselected_headless does NOT consume the handle
+ * (it copyhandle's internally per Common/source/menudata_headless.c),
+ * so the standard pattern is "build → dispatch → disposehandle" on every
+ * exit path.
+ *
+ * No NUL terminator is written into the handle — the parser keys off
+ * the handle size, not a sentinel. (gethandlesize is the source of
+ * truth for langbuildtree.)
+ */
+static Handle build_script_handle_from_c_string(const char *src, size_t src_len) {
+	Handle htext = nil;
+	if (!newemptyhandle(&htext))
+		return nil;
+	if (src_len == 0)
+		return htext;          /* zero-length handle is valid */
+	if (!sethandlesize(htext, (long)src_len)) {
+		disposehandle(htext);
+		return nil;
+	}
+	HLock(htext);
+	memcpy(*htext, src, src_len);
+	HUnlock(htext);
+	return htext;
+}
+
+/*
+ * Dispatch a synthesized script source string. Used by the accepts_args
+ * dispatch paths (slash-with-args and palette-with-arg) to bind a typed
+ * argument into a leaf's call expression at compile time. See
+ * palette_arg_inject.h for the synthesis algorithm and the threading
+ * rationale.
+ *
+ * Wraps the build-handle / meuserselected_headless / dispose dance and
+ * returns the same DISPATCH_* status as dispatch_leaf_via_menubar so
+ * call sites can produce uniform diagnostics. The script_running flag
+ * is set across the call for SIGINT consistency.
+ */
+static ty_dispatch_result dispatch_synthesized_script(const char *src, size_t src_len) {
+	Handle htext = build_script_handle_from_c_string(src, src_len);
+	if (htext == nil)
+		return DISPATCH_SCRIPT_FAILED;
+	g_script_running = 1;
+	boolean ok = meuserselected_headless(htext);
+	g_script_running = 0;
+	disposehandle(htext);
+	return ok ? DISPATCH_OK : DISPATCH_SCRIPT_FAILED;
+}
+
+/*
+ * Read the script bytes out of a Handle (returned by
+ * dispatch_script_handle_from_record or palette_state.exec_script) into
+ * a heap-allocated NUL-terminated C buffer. Caller frees with free().
+ *
+ * Returns NULL on OOM or an empty handle. The NUL terminator is appended
+ * after the handle's raw bytes; the parser doesn't need it (it uses
+ * gethandlesize) but the arg-injection helpers expect a length-explicit
+ * read-only string.
+ */
+static char *script_handle_to_cstr(Handle h, size_t *out_len) {
+	if (h == nil) return NULL;
+	long n = gethandlesize(h);
+	if (n < 0) return NULL;
+	char *buf = (char *)malloc((size_t)n + 1);
+	if (buf == NULL) return NULL;
+	if (n > 0) {
+		HLock(h);
+		memcpy(buf, *h, (size_t)n);
+		HUnlock(h);
+	}
+	buf[n] = '\0';
+	if (out_len) *out_len = (size_t)n;
+	return buf;
+}
+
+/*
  * Dispatch a resolved leaf via meuserselected_headless. Reads the
  * leaf's "script" field via menudata_describe_leaf (which copyvaluerecord's
  * every field, satisfying the handle-privacy contract documented in
@@ -2338,29 +2443,149 @@ static boolean dispatch_slash_command(const char *line, boolean *running) {
 	}
 
 	/*
-	 * Special-case List + Jump: when the user supplies an argument, route
-	 * directly to the kernel-verb host adapter so the argument is honored.
-	 * No-arg cases fall through to menubar dispatch (which calls the same
-	 * kernel verb via the UserTalk handler).
+	 * Hybrid dispatch for typed slash commands with args.
 	 *
-	 * The match is case-insensitive on the slot key. The legacy install
-	 * script writes "List" and "Jump" exactly; future-proofed for
-	 * downstream menubar customization that might lowercase or relocalize.
+	 * Two paths:
+	 *
+	 * (a) Leaf advertises accepts_args=true: synthesize a new script
+	 *     source by injecting the typed arg as a string literal into
+	 *     the leaf's empty () call frame, then dispatch the synthesized
+	 *     source via meuserselected_headless. The arg is bound at
+	 *     compile time inside the call expression — no global hand-off,
+	 *     no GIL-yield window for a sibling thread.new() child to read
+	 *     the wrong arg. See palette_arg_inject.h for the synthesis
+	 *     algorithm and threat model.
+	 *
+	 * (b) Legacy fallthrough: special-case List / Jump by slot key
+	 *     to call the host adapter directly. Required for backward
+	 *     compatibility with menubar installs that predate PR 8 and
+	 *     don't set accepts_args=true on those items. This path will
+	 *     retire once the install script (and any downstream forks)
+	 *     are migrated.
+	 *
+	 * For leaves that don't accept args (e.g. /clear, /exit) the arg
+	 * is silently dropped — same legacy behavior.
 	 */
 	if (args_start[0] != '\0') {
-		if (strcasecmp(slot_name, "List") == 0) {
+		tyvaluerecord rec;
+		bool leaf_accepts = false;
+		if (menudata_describe_leaf(hleaf, &rec)) {
+			if (rec.valuetype == recordvaluetype) {
+				hdllistrecord hlist = rec.data.recordvalue;
+				bigstring bskey;
+				copyctopstring("accepts_args", bskey);
+				long n = opcountlistitems(hlist);
+				for (long i = 1; i <= n; i++) {
+					bigstring bsfound;
+					tyvaluerecord val;
+					if (!getnthlistval(hlist, i, bsfound, &val)) continue;
+					if (!equalstrings(bsfound, bskey)) continue;
+					if (val.valuetype == booleanvaluetype) {
+						leaf_accepts = val.data.flvalue ? true : false;
+					}
+					break;
+				}
+			}
+			disposevaluerecord(rec, false);
+		}
+		if (leaf_accepts) {
+			/* Path (a): per-call script-source synthesis. */
+			char escaped[PALETTE_ARG_MAX * 2 + 4];
+			if (!palette_arg_escape(args_start, escaped, sizeof(escaped))) {
+				/* Forbidden control byte / overflow: refuse to dispatch
+				 * with this arg and surface a clear diagnostic. The user
+				 * can re-type without the offending byte. */
+				fputs("Error: argument contains a forbidden character "
+				      "(control bytes, newlines, and tabs are not allowed)\n",
+				      stdout);
+				fflush(stdout);
+				return true;
+			}
+			/* Read the leaf's stored script bytes. */
+			tyvaluerecord rec2;
+			if (!menudata_describe_leaf(hleaf, &rec2)) {
+				fputs("(menu item is missing script field)\n", stdout);
+				fflush(stdout);
+				return true;
+			}
+			Handle hscript = dispatch_script_handle_from_record(rec2);
+			if (hscript == nil) {
+				disposevaluerecord(rec2, false);
+				fputs("(menu item is missing script field)\n", stdout);
+				fflush(stdout);
+				return true;
+			}
+			size_t script_len = 0;
+			char *script_cstr = script_handle_to_cstr(hscript, &script_len);
+			disposevaluerecord(rec2, false);
+			if (script_cstr == NULL) {
+				fputs("(out of memory reading menu script)\n", stdout);
+				fflush(stdout);
+				return true;
+			}
+			char *synth = NULL;
+			size_t synth_len = 0;
+			bool inj_ok = palette_arg_inject_into_script(script_cstr, script_len,
+			                                             escaped, &synth, &synth_len);
+			free(script_cstr);
+			if (!inj_ok) {
+				/* Leaf's script doesn't match the simple "name ()" shape
+				 * the injector handles. Fall back to dispatching the
+				 * unmodified leaf — handler runs without the arg, which
+				 * matches accepts_args=false behavior. Log so a future
+				 * menubar maintainer can spot the mismatch. */
+				log_warn(LOG_COMP_GENERAL,
+				         "slash-command: leaf script could not be transformed "
+				         "to inject arg; dispatching without arg.");
+				ty_dispatch_result dr_fallback = dispatch_leaf_via_menubar(hleaf);
+				switch (dr_fallback) {
+					case DISPATCH_OK: break;
+					case DISPATCH_NO_SCRIPT_FIELD:
+						fputs("(menu item is missing script field)\n", stdout);
+						fflush(stdout);
+						break;
+					case DISPATCH_SCRIPT_FAILED:
+						fputs("(menu script failed)\n", stdout);
+						fflush(stdout);
+						break;
+				}
+				if (strcasecmp(slot_name, "Exit") == 0) {
+					replverbhost_exit();
+					*running = false;
+				}
+				return true;
+			}
+			ty_dispatch_result dr_inj = dispatch_synthesized_script(synth, synth_len);
+			free(synth);
+			switch (dr_inj) {
+				case DISPATCH_OK: break;
+				case DISPATCH_NO_SCRIPT_FIELD:
+					/* Synthesis path doesn't produce this — keep arm
+					 * for type-completeness. */
+					fputs("(menu item is missing script field)\n", stdout);
+					fflush(stdout);
+					break;
+				case DISPATCH_SCRIPT_FAILED:
+					fputs("(menu script failed)\n", stdout);
+					fflush(stdout);
+					break;
+			}
+			if (strcasecmp(slot_name, "Exit") == 0) {
+				replverbhost_exit();
+				*running = false;
+			}
+			return true;
+		} else if (strcasecmp(slot_name, "List") == 0) {
+			/* Path (b) legacy: List with arg. */
 			replverbhost_list(args_start);
 			return true;
-		}
-		if (strcasecmp(slot_name, "Jump") == 0) {
+		} else if (strcasecmp(slot_name, "Jump") == 0) {
+			/* Path (b) legacy: Jump with arg. */
 			if (!replverbhost_jump_path(args_start)) {
-				/* Match the legacy /jump error wording so existing
-				 * integration tests (REPL /jump - invalid path,
-				 * /jump - doesn't change on error) continue to
-				 * recognise the failure mode. The path arg is
-				 * scrubbed via safe_print_user_string because it
-				 * may contain control bytes from a malicious user
-				 * crafting a slash-command. */
+				/* Match the legacy /jump error wording. The path
+				 * arg is scrubbed via safe_print_user_string
+				 * because it may contain control bytes from a
+				 * malicious user crafting a slash-command. */
 				fputs("Error: '", stdout);
 				safe_print_user_string(args_start);
 				fputs("' is not a valid table path\n", stdout);
@@ -2368,12 +2593,6 @@ static boolean dispatch_slash_command(const char *line, boolean *running) {
 			}
 			return true;
 		}
-		/*
-		 * Other resolved leaves don't accept args today. Drop the arg
-		 * silently and dispatch via menubar — same effect as the user
-		 * typing the bare command. Once PR 8 wires accepts_args + the
-		 * palette input row, this branch can route through that channel.
-		 */
 	}
 
 	/* Default: menubar dispatch. /exit is detected by slot-key match
@@ -2618,12 +2837,25 @@ static int mouse_sgr_feed(mouse_sgr_parser_t *p, unsigned char b,
  *              (Common/source/menudata_headless.c:1056) — it does NOT
  *              consume the caller's handle.
  *
- * GIL: caller must hold it. We don't yield while the palette is open
- * (see file-level note above).
+ * GIL: caller must hold it. See the file-level note above for the
+ * yield policy inside the byte loop.
+ */
+/*
+ * out_arg, if non-NULL, receives a copy of the palette's arg input
+ * buffer on PALETTE_DONE_EXECUTE for items where accepts_args was
+ * true. The caller should pre-zero out_arg or treat it as undefined
+ * unless run_palette_modal returns non-nil. arg_cap is the buffer
+ * capacity including NUL.
+ *
+ * Lifetime: out_arg is filled in synchronously before run_palette_modal
+ * returns. The caller does not need to free it (stack-allocated by the
+ * caller).
  */
 static Handle run_palette_modal(struct linenoiseState *ls,
-                                char *line_buf, size_t line_buflen) {
+                                char *line_buf, size_t line_buflen,
+                                char *out_arg, size_t arg_cap) {
 	Handle script_to_run = nil;
+	if (out_arg && arg_cap > 0) out_arg[0] = '\0';
 
 	/* 1. Bracket linenoise. */
 	linenoiseEditStop(ls);
@@ -2811,6 +3043,13 @@ static Handle run_palette_modal(struct linenoiseState *ls,
 		Handle hcopy = nil;
 		if (copyhandle(hsrc, &hcopy)) {
 			script_to_run = hcopy;
+			/* Snapshot the arg buffer if caller asked for it. The
+			 * arg is empty unless the dispatched item had
+			 * accepts_args=true and the user typed in the arg row. */
+			if (out_arg && arg_cap > 0) {
+				strncpy(out_arg, st.exec_arg, arg_cap - 1);
+				out_arg[arg_cap - 1] = '\0';
+			}
 		} else {
 			log_error(LOG_COMP_GENERAL,
 			          "palette: copyhandle failed for exec_script");
@@ -2897,6 +3136,12 @@ static void replverbhost_clear_variables(void) {
  * (repl_verbs.h::jump_path) so script authors know.
  */
 static boolean replverbhost_jump_path(const char *path) {
+	/* The verb's path argument is the source of truth. When the palette
+	 * dispatches a leaf with accepts_args=true, the typed arg is bound
+	 * into the call expression at compile time (see palette_arg_inject.h),
+	 * so it arrives here as a normal `path` parameter — no global
+	 * hand-off, no GIL-yield window for sibling threads to consume the
+	 * wrong value. */
 	if (path == NULL)
 		return repl_jump_path("");
 	return repl_jump_path(path);
@@ -2925,6 +3170,8 @@ static boolean replverbhost_print_key_codes(void) {
 }
 
 static void replverbhost_list(const char *path) {
+	/* The verb's path argument is the source of truth — see
+	 * replverbhost_jump_path for the threading rationale. */
 	if (path == NULL || path[0] == '\0') {
 		repl_output_list(nil, NULL);
 		return;
@@ -3237,8 +3484,11 @@ int repl_main(cli_options_t *options, ws_server_t *ws_server) {
 				 * palette; '/' typed mid-line is left as a literal
 				 * character. */
 				if (ls.len == 1 && ls.buf[0] == '/') {
+					char palette_arg[PALETTE_ARG_MAX] = "";
 					Handle script = run_palette_modal(&ls, line_buf,
-					                                  sizeof(line_buf));
+					                                  sizeof(line_buf),
+					                                  palette_arg,
+					                                  sizeof(palette_arg));
 					if (script != nil) {
 						/* Dispatch the chosen menu item.
 						 *
@@ -3247,10 +3497,57 @@ int repl_main(cli_options_t *options, ws_server_t *ws_server) {
 						 * menudata_headless.c:1056) — it does NOT consume
 						 * the caller's handle. The caller therefore
 						 * retains ownership and MUST disposehandle on
-						 * BOTH the success and failure paths. */
-						g_script_running = 1;
-						boolean ok = meuserselected_headless(script);
-						g_script_running = 0;
+						 * BOTH the success and failure paths.
+						 *
+						 * Argument injection: if the palette captured a
+						 * non-empty arg (item had accepts_args=true and
+						 * the user typed in the input row), synthesize a
+						 * new script source with the typed arg bound as
+						 * a string literal in the leaf's call expression.
+						 * The arg is bound at compile time inside the
+						 * call frame — no global hand-off, no GIL-yield
+						 * window for sibling threads. See
+						 * palette_arg_inject.h for the algorithm and
+						 * threat model. */
+						boolean ok = false;
+						bool arg_present = (palette_arg[0] != '\0');
+						bool synth_used = false;
+						if (arg_present) {
+							char escaped[PALETTE_ARG_MAX * 2 + 4];
+							if (palette_arg_escape(palette_arg, escaped, sizeof(escaped))) {
+								size_t script_len = 0;
+								char *script_cstr = script_handle_to_cstr(script, &script_len);
+								if (script_cstr != NULL) {
+									char *synth = NULL;
+									size_t synth_len = 0;
+									if (palette_arg_inject_into_script(script_cstr,
+									                                   script_len, escaped,
+									                                   &synth, &synth_len)) {
+										ty_dispatch_result dr = dispatch_synthesized_script(synth, synth_len);
+										ok = (dr == DISPATCH_OK);
+										free(synth);
+										synth_used = true;
+									}
+									free(script_cstr);
+								}
+							} else {
+								/* Forbidden control byte / overflow.
+								 * Surface a diagnostic and skip the
+								 * dispatch — the user can re-open the
+								 * palette and re-type. */
+								printf("(palette argument contains a forbidden character)\n");
+								fflush(stdout);
+								synth_used = true;       /* skip the no-arg fallback */
+								ok = true;               /* not a script failure per se */
+							}
+						}
+						if (!synth_used) {
+							/* No arg or synthesis declined — dispatch
+							 * the leaf's stored script as-is. */
+							g_script_running = 1;
+							ok = meuserselected_headless(script);
+							g_script_running = 0;
+						}
 						if (!ok) {
 							printf("(menu script failed)\n");
 							fflush(stdout);

@@ -71,12 +71,52 @@ extern "C" {
 #define PALETTE_LABEL_MAX 64
 #define PALETTE_DESC_MAX  128
 
+/* Maximum length of the filter / type-ahead buffer, including NUL. */
+#define PALETTE_FILTER_MAX 64
+
+/* Maximum length of the accepts_args input row, including NUL. */
+#define PALETTE_ARG_MAX 256
+
 /* Attribute bits used for rendering. Mirrors pane.c's emit_attr() bit
  * assignments so the values composite directly into cell.attr. */
 #define PALETTE_ATTR_BOLD     0x01u
 #define PALETTE_ATTR_DIM      0x02u
 #define PALETTE_ATTR_UNDERLINE 0x04u
 #define PALETTE_ATTR_INVERSE  0x08u
+
+/* ANSI 16-color palette indices used in cell.fg / cell.bg.
+ *
+ * The compositor's emit_attr() encodes the low 3 bits as an SGR base color
+ * and the 4th bit as the "bright" modifier (SGR 9x for fg, 10x for bg).
+ * Color value 0 means "default" — the compositor emits no SGR color code,
+ * letting the terminal's own defaults take effect.
+ *
+ * Encoding:
+ *   0          = default (no SGR color)
+ *   1..8       = standard colors (SGR 30..37 / 40..47, offset by -1 because
+ *                value 0 is reserved for "default")
+ *   9..16      = bright variants (SGR 90..97 / 100..107)
+ *
+ * Values >16 are reserved for 256-color extension. The palette uses only
+ * the 16-color subset so it works on classic terminals without 256-color
+ * support. */
+#define PALETTE_COLOR_DEFAULT       0u
+#define PALETTE_COLOR_BLACK         1u
+#define PALETTE_COLOR_RED           2u
+#define PALETTE_COLOR_GREEN         3u
+#define PALETTE_COLOR_YELLOW        4u
+#define PALETTE_COLOR_BLUE          5u
+#define PALETTE_COLOR_MAGENTA       6u
+#define PALETTE_COLOR_CYAN          7u
+#define PALETTE_COLOR_WHITE         8u
+#define PALETTE_COLOR_BRIGHT_BLACK  9u
+#define PALETTE_COLOR_BRIGHT_RED    10u
+#define PALETTE_COLOR_BRIGHT_GREEN  11u
+#define PALETTE_COLOR_BRIGHT_YELLOW 12u
+#define PALETTE_COLOR_BRIGHT_BLUE   13u
+#define PALETTE_COLOR_BRIGHT_MAGENTA 14u
+#define PALETTE_COLOR_BRIGHT_CYAN   15u
+#define PALETTE_COLOR_BRIGHT_WHITE  16u
 
 /* Result of palette_feed_byte / palette_feed_mouse. */
 typedef enum {
@@ -96,6 +136,7 @@ typedef struct palette_item {
 	bool enabled;
 	bool hidden;
 	bool is_submenu;      /* true → has children, false → leaf with script */
+	bool accepts_args;    /* true → ENTER passes input-row text as argument */
 	/* Opaque per-item handle that the source uses to identify this item
 	 * for subsequent open_submenu / describe_leaf calls. The palette
 	 * treats this as an uninterpreted token. For the ODB adapter this
@@ -198,6 +239,13 @@ typedef struct palette_menu_source {
 	                      int item_index, palette_item_t *out);
 } palette_menu_source_t;
 
+/* Maximum items captured per cascade level. Defined ahead of the
+ * struct so the items[] / visible[] array dimensions can use the
+ * constant directly rather than a duplicated literal — keeps the
+ * cap a single source of truth (cf. open_level's `imin(total,
+ * PALETTE_LEVEL_MAX_ITEMS)`). */
+#define PALETTE_LEVEL_MAX_ITEMS 64
+
 /* Per-level cascade frame. Externally visible so tests can inspect, but
  * fields are read-only from the caller's perspective. */
 typedef struct palette_level {
@@ -206,14 +254,24 @@ typedef struct palette_level {
 	void *parent_opaque;    /* opaque token of the item that opened this level
 	                         * (NULL for the top-level menu itself) */
 	int item_count;
-	int cursor;             /* selected item index */
+	int cursor;             /* selected item index, indexed into items[] */
 	/* Cached items for this level — populated on level open from the
-	 * data source. Capped at PALETTE_LEVEL_MAX_ITEMS; sources reporting
-	 * more items get the rest hidden (PR 8 will scroll). */
-	palette_item_t items[64];
+	 * data source. Capped at PALETTE_LEVEL_MAX_ITEMS. */
+	palette_item_t items[PALETTE_LEVEL_MAX_ITEMS];
+	/* Filtered visibility map: visible[0..visible_count) holds the
+	 * indices into items[] that match the current filter. When the
+	 * filter is empty, visible_count == item_count and visible[i] == i.
+	 * `cursor` always indexes items[]; render walks visible[] to map
+	 * row positions back to source items. The display cursor row
+	 * (i.e. which row inside the pane is highlighted) is the i where
+	 * visible[i] == cursor. */
+	int visible[PALETTE_LEVEL_MAX_ITEMS];
+	int visible_count;
+	/* Scroll offset into visible[]: the first row of the pane shows
+	 * visible[scroll_top]. Adjusted automatically when cursor moves
+	 * outside the visible window or by explicit page/wheel scrolls. */
+	int scroll_top;
 } palette_level_t;
-
-#define PALETTE_LEVEL_MAX_ITEMS 64
 
 /* Palette state. The whole struct is value-typed (no internal mallocs
  * outside the pane buffers, which pane.c manages). */
@@ -251,6 +309,10 @@ typedef struct palette_state {
 	 *     NOT invalidate it. */
 	void *exec_script;
 
+	/* Set on PALETTE_DONE_EXECUTE for items where accepts_args is true.
+	 * NUL-terminated, may be empty. Caller copies before palette_close. */
+	char exec_arg[PALETTE_ARG_MAX];
+
 	/* ESC disambiguation: when palette_feed_byte sees a bare 0x1b, it
 	 * sets esc_pending=true and returns DONE_NONE. The next byte either
 	 * forms a CSI sequence (and clears the flag) or — if the caller's
@@ -261,6 +323,38 @@ typedef struct palette_state {
 	 * terminating letter arrives. */
 	char csi_buf[16];
 	int csi_len;
+
+	/* Filter / type-ahead buffer.
+	 *
+	 * When a menu is open (open_depth > 0), printable letters and digits
+	 * append here instead of triggering hotkey acceleration. The deepest
+	 * level's visible[] is recomputed against this filter on every keystroke
+	 * — a case-insensitive substring match against the item label.
+	 *
+	 * BACKSPACE (0x7f, 0x08) removes one character. ESC clears the buffer
+	 * if non-empty (first ESC); a second ESC then closes the deepest level
+	 * (existing semantic). When the deepest level closes, the buffer is
+	 * cleared so the new deepest level starts unfiltered.
+	 *
+	 * On menubar (open_depth == 0): letters retain hotkey-accelerator
+	 * behavior — they jump-and-open the matching top-level menu without
+	 * touching this buffer. */
+	char filter_buf[PALETTE_FILTER_MAX];
+	int filter_len;
+
+	/* Argument input row (for items where accepts_args == true).
+	 *
+	 * When the deepest level's cursor lands on an item with accepts_args,
+	 * the cascade pane reserves an extra inner row above the bottom border
+	 * for typed arguments. ENTER on such an item dispatches with this
+	 * buffer as the argument string (copied into exec_arg).
+	 *
+	 * The filter buffer and the arg buffer are mutually exclusive — when
+	 * the cursor is on an accepts_args item, typing goes to arg_buf and
+	 * the filter buffer is left untouched. Moving the cursor off the
+	 * accepts_args item clears arg_buf so the next visit starts fresh. */
+	char arg_buf[PALETTE_ARG_MAX];
+	int arg_len;
 
 	const palette_menu_source_t *source;
 } palette_state_t;

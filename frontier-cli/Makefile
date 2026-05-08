@@ -93,7 +93,8 @@ CLI_SOURCES = \
     repl_palette_source.c \
     repl_slash_resolver.c \
     pane.c \
-    palette.c
+    palette.c \
+    palette_arg_inject.c
 
 # cJSON (vendored JSON parser)
 CJSON_SOURCES = $(THIRDPARTYDIR)/cJSON/cJSON.c

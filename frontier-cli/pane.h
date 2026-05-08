@@ -71,6 +71,11 @@ void pane_set_title(pane_t *p, const char *title);
 /* Content writes. Out-of-bounds (x,y) is silently clipped — never crashes. */
 void pane_putc(pane_t *p, int x, int y, uint32_t ch, uint8_t attr);
 void pane_puts(pane_t *p, int x, int y, const char *s, uint8_t attr);
+/* Write one cell with explicit fg/bg colors (in addition to attr). The
+ * color encoding is the same as palette.h's PALETTE_COLOR_* constants —
+ * 0 means "default" (no SGR color emitted). */
+void pane_putc_color(pane_t *p, int x, int y, uint32_t ch,
+                     uint8_t fg, uint8_t bg, uint8_t attr);
 void pane_clear(pane_t *p);
 
 /* Geometry. resize allocates a new zeroed buffer; the prior buffer is freed. */
