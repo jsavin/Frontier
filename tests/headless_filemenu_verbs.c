@@ -114,6 +114,20 @@ static boolean filemenu_save_systemroot(void) {
 
     log_debug(LOG_COMP_DB, "filemenu_save_systemroot: saving system root database");
 
+    /* Refuse to save when the system root was opened read-only (--read-only
+     * or default for --protocol). The CLI symbol is dynamically resolved so
+     * test binaries that don't link main.o still compile; a missing
+     * definition there is fine because tests don't reach this verb on a
+     * read-only DB. See issue #588. */
+    extern boolean cli_is_system_root_read_only(void) __attribute__((weak));
+    if (cli_is_system_root_read_only && cli_is_system_root_read_only()) {
+        log_verb_error(LOG_COMP_DB,
+            "filemenu_save_systemroot: system root opened read-only; refusing save");
+        langerrormessage(PSTRING("\x43",
+            "Can't save: system root is read-only (use --allow-mutate to opt in)"));
+        return false;
+    }
+
     /* Check if we have a database open */
     if (databasedata == nil) {
         log_verb_error(LOG_COMP_DB, "filemenu_save_systemroot: no database open");

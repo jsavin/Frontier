@@ -60,6 +60,8 @@ typedef struct {
 	boolean force_overwrite;	// Force overwrite existing output file (-f/--force)
 	boolean skip_startup;		// Skip startup scripts (--skip-startup)
 	boolean protocol_mode;		// NDJSON protocol mode (--protocol)
+	boolean read_only;			// Open system root read-only (--read-only); blocks all writes
+	boolean allow_mutate;		// Force read-write opt-in for --protocol --system-root (--allow-mutate)
 	int ws_port;				// WebSocket server port (--ws-port), 0 = disabled
 	boolean show_help;			// Show help flag
 	boolean show_version;		// Show version flag

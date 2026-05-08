@@ -111,6 +111,8 @@ The system root is opened read-only. The CLI will log descriptive warnings if th
 | `-h, --help` | Show help message | Available |
 | `--version` | Show build/version info | Available |
 | `--system-root PATH` | Load a system root database before running scripts | Available |
+| `--read-only` | Open `--system-root` read-only; refuse all writes (default for `--protocol`) | Available |
+| `--allow-mutate` | Opt `--protocol --system-root` back into read-write mode | Available |
 | `-d, --database FILE` | Select database for operations | Disabled (planned) |
 | `-q, --query QUERY` | Execute database query | Disabled (planned) |
 | `-m, --migrate` | Migrate database in place | Disabled (planned) |

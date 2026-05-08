@@ -83,6 +83,9 @@ TEST_FILES=()
 VERBOSE=""
 BATCH_FLAG="--batch"
 WORKERS_FLAG="-j 0"
+# Track whether the user invoked us without args (run-everything mode) so
+# the post-YAML shell test pass can opt out for targeted runs.
+ORIG_ARG_COUNT=$#
 
 if [ $# -eq 0 ]; then
     # No arguments - run all tests. Files matching *_network.yaml were
@@ -253,6 +256,21 @@ done
 # Run the tests (using v7 source database directly)
 "$RUNNER" $VERBOSE $BATCH_FLAG $WORKERS_FLAG --cli "$CLI_PATH" --system-root "$SYSTEM_ROOT" "${TEST_FILES[@]}"
 EXIT_CODE=$?
+
+# Shell-based protocol read-only tests (issue #588). Independent from the
+# YAML runner because they exercise CLI argv parsing and on-disk md5
+# checks — neither is well-expressed in the YAML/protocol-ops harness.
+# Run only when the user did not pass explicit YAML test files (i.e.
+# default "all tests" mode), so targeted invocations stay focused.
+PROTOCOL_RO_TESTS="$PROJECT_ROOT/tests/integration/protocol_readonly_tests.sh"
+if [ "$ORIG_ARG_COUNT" -eq 0 ] && [ -x "$PROTOCOL_RO_TESTS" ]; then
+    echo
+    "$PROTOCOL_RO_TESTS"
+    PROTOCOL_RO_RC=$?
+    if [ $PROTOCOL_RO_RC -ne 0 ]; then
+        EXIT_CODE=$PROTOCOL_RO_RC
+    fi
+fi
 
 # Verify integrity of every staged database after tests.
 #

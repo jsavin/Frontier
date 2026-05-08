@@ -78,6 +78,8 @@ To run `frontier-cli` from any directory, either:
 | | `--non-interactive` | | Alias for `--batch` |
 | `-v` | `--verbose` | | Enable verbose output |
 | | `--debug` | | Enable debug mode |
+| | `--read-only` | | Open `--system-root` read-only; refuse all writes (default for `--protocol`) |
+| | `--allow-mutate` | | Opt `--protocol --system-root` back into read-write (e.g. for installs) |
 | `-h` | `--help` | | Show help message |
 | | `--version` | | Show version information |
 

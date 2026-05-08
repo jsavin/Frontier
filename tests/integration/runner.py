@@ -364,8 +364,17 @@ class ProtocolExecutor:
         self._next_id = 1
 
     def start(self):
-        """Spawn the frontier-cli --protocol subprocess."""
-        cmd = [self.cli_path, '--protocol', '--skip-startup']
+        """Spawn the frontier-cli --protocol subprocess.
+
+        --allow-mutate: opt back into read-write so tests can call
+        fileMenu.save(), workspace assignments, etc. Issue #588 made
+        --protocol --system-root default to read-only to protect canonical
+        roots during inspection. Integration tests run against staged
+        copies under tests/tmp/results/db/ — mutating those copies is
+        intentional, the staging layer (tools/run_integration_tests.sh)
+        treats them as disposable.
+        """
+        cmd = [self.cli_path, '--protocol', '--skip-startup', '--allow-mutate']
         if self.system_root:
             cmd.extend(['--system-root', self.system_root])
 
