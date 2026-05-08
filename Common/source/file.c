@@ -31,7 +31,8 @@
 
 
 	#include <sys/param.h>
-	
+	#include <sys/stat.h> // chmod (issue #590)
+
 
 #include "filealias.h"
 #include "cursor.h"
@@ -471,9 +472,27 @@ boolean opennewfile_exclusive ( ptrfilespec fs, OSType creator, OSType filetype,
 	// through to opennewfile because that path explicitly deletes any
 	// pre-existing file, defeating the exclusivity guarantee.
 	//
+	// Issue #590: lock down newly-created database files to mode 0600
+	// (owner read-write only).  FSCreateFileUnicode does not accept a
+	// permission argument, so chmod the path after a successful create.
+	// This is best-effort: if chmod fails (e.g. on a non-POSIX volume),
+	// we still return success — the file exists and is usable, and the
+	// chmod-failure window is narrow on the local filesystem.
+	//
 	#pragma unused (creator, filetype)
 
-	return ( filecreateandopen ( fs, creator, filetype, fnum ) );
+	if ( ! filecreateandopen ( fs, creator, filetype, fnum ) )
+		return ( false );
+
+	bigstring bspath;
+	char path [ 4096 ];
+
+	if ( filespectopath ( fs, bspath ) ) {
+		copyptocstring ( bspath, path );
+		(void) chmod ( path, 0600 ); // best-effort; see comment above
+		}
+
+	return ( true );
 
 	} // opennewfile_exclusive
 
