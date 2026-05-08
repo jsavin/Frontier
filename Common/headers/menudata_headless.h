@@ -178,10 +178,10 @@ extern boolean meuserselected_headless(Handle hScript);
  * Write-side projection helpers (PR 5.5 / ADR-016)
  * --------------------------------------------------------------------------
  *
- * The verbs in tests/headless_menu_verbs.c (the live headless menu dispatcher,
- * since loadfunctionprocessor in Common/source/menuverbs.c is a no-op stub)
- * are written so that any first-arg address pointing INTO system.menus.data
- * triggers a projection write. These helpers are the kernel-side primitives.
+ * The verbs in Common/source/menuverbs_headless.c (the canonical headless
+ * menu dispatcher, consolidated per issue #585) are written so that any
+ * first-arg address pointing INTO system.menus.data triggers a projection
+ * write. These helpers are the kernel-side primitives.
  *
  * Bar-name semantics
  * ------------------

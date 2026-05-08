@@ -179,6 +179,7 @@ LANG_RUNTIME_SOURCES = \
     ../frontier-cli/stubs/headless_pict_stubs.c \
     ../frontier-cli/stubs/headless_menu_stubs.c \
     ../frontier-cli/stubs/headless_menu_globals.c \
+    ../Common/source/menuverbs_headless.c \
     ../Common/source/menudata_headless.c \
     ../frontier-cli/stubs/headless_search_stubs.c \
     ../frontier-cli/stubs/headless_mac_compat.c \

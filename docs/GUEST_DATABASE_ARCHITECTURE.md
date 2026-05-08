@@ -216,7 +216,7 @@ The system root save path uses `tablesavesystemtable()` to serialize the root ta
 | File | Contains |
 |------|----------|
 | `tests/headless_filemenu_verbs.c` | fileMenu verb implementations for headless mode |
-| `tests/headless_menu_verbs.c` | Menu verb no-ops for headless mode |
+| `Common/source/menuverbs_headless.c` | Menu verb dispatcher for headless mode |
 | `Common/source/dbverbs.c` | `hodblist`, `dbopenverb`, `dbclosefile`, lowercase ODB wrappers |
 | `Common/source/langexternal.c` | `langexternalregisterwindow` (GUI mount pattern) |
 | `Common/source/langverbs.c` | `langgettarget` implementation |

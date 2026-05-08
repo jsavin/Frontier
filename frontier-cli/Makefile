@@ -169,6 +169,7 @@ RUNTIME_SOURCES = \
     ../Common/source/sysshellcall.c \
     ../Common/source/menupack.c \
     ../Common/source/menuverbs.c \
+    ../Common/source/menuverbs_headless.c \
     ../Common/source/menudata_headless.c \
     ../Common/source/threadregistry.c
 

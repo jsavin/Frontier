@@ -51,7 +51,7 @@
  * The verb-registration shape (newfunctionprocessor + pushhashtable +
  * langaddkeyword + pophashtable) mirrors threadinitverbs() in
  * frontier-cli/headless_thread_verbs.c. Param parsing (string params,
- * optional params) mirrors menu_valueproc in tests/headless_menu_verbs.c.
+ * optional params) mirrors menu_valueproc in Common/source/menuverbs_headless.c.
  */
 
 #include "frontier.h"
