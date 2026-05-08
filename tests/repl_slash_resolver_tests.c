@@ -505,6 +505,133 @@ static void test_non_canonical_slot_key_rejected(void) {
 	fflush(stdout);
 }
 
+/* ---------- slot_key_eq tests ----------
+ *
+ * slot_key_eq is the locale-independent ASCII case-insensitive equality
+ * helper used by repl.c at the slot-key special-case sites ("Exit", "List",
+ * "Jump"). The legacy code there used strcasecmp, which is locale-sensitive
+ * — under a non-C locale, classification of high-bit bytes can diverge
+ * between strcasecmp and the resolver's hand-rolled fold_byte (ASCII-only).
+ * The helper guarantees the two paths agree byte-for-byte regardless of
+ * setlocale() state.
+ *
+ * These tests are pure-C and require no ODB state; they run before the
+ * menubar tests in main().
+ */
+
+static void test_slot_key_eq_basic_ascii(void) {
+	printf("[resolver] Test: slot_key_eq matches ASCII variants... ");
+	fflush(stdout);
+
+	/* All-lowercase, all-uppercase, and mixed-case all compare equal. */
+	assert(slot_key_eq("Exit", "Exit"));
+	assert(slot_key_eq("Exit", "exit"));
+	assert(slot_key_eq("Exit", "EXIT"));
+	assert(slot_key_eq("Exit", "eXiT"));
+	assert(slot_key_eq("List", "list"));
+	assert(slot_key_eq("Jump", "JUMP"));
+
+	/* Different strings (canonical slot keys) are not equal. */
+	assert(!slot_key_eq("Exit", "List"));
+	assert(!slot_key_eq("Exit", "Jump"));
+	assert(!slot_key_eq("List", "Jump"));
+
+	/* Different lengths are not equal even when one is a prefix. */
+	assert(!slot_key_eq("Exit", "Exi"));
+	assert(!slot_key_eq("Exi", "Exit"));
+	assert(!slot_key_eq("", "Exit"));
+	assert(!slot_key_eq("Exit", ""));
+
+	/* Two empty strings are equal. */
+	assert(slot_key_eq("", ""));
+
+	printf("PASS\n");
+	fflush(stdout);
+}
+
+static void test_slot_key_eq_symmetric(void) {
+	printf("[resolver] Test: slot_key_eq is symmetric... ");
+	fflush(stdout);
+
+	/* Symmetry: f(a,b) == f(b,a) for every pair we care about. */
+	const char *pairs[][2] = {
+		{ "Exit", "exit" },
+		{ "EXIT", "ExIt" },
+		{ "Key codes", "key codes" },
+		{ "Help", "help" },
+		{ "List", "JUMP" },           /* unequal pair */
+		{ "Exi", "Exit" },            /* unequal length */
+		{ "abc\xC3\x84", "ABC\xC3\x84" }, /* high-bit byte: equal under
+		                                     byte-equality, regardless of
+		                                     locale-specific casing */
+		{ NULL, NULL }
+	};
+	for (int i = 0; pairs[i][0] != NULL; i++) {
+		boolean ab = slot_key_eq(pairs[i][0], pairs[i][1]);
+		boolean ba = slot_key_eq(pairs[i][1], pairs[i][0]);
+		assert(ab == ba);
+	}
+
+	printf("PASS\n");
+	fflush(stdout);
+}
+
+static void test_slot_key_eq_high_bit_bytes_byte_equal(void) {
+	printf("[resolver] Test: slot_key_eq compares high-bit bytes byte-equal... ");
+	fflush(stdout);
+
+	/*
+	 * High-bit bytes (0x80-0xFF) must NOT be case-folded — the helper is
+	 * intentionally ASCII-only so that a process locale change via
+	 * setlocale() cannot reclassify them. Identical raw byte sequences are
+	 * equal; differing high-bit bytes are unequal even if some locale
+	 * would consider them a case pair.
+	 *
+	 * This is the carryover-1 invariant: the resolver's fold_byte is
+	 * ASCII-only, so the slot-key special-case sites in repl.c must
+	 * follow the same rule. Any locale-aware tolower at high bytes would
+	 * produce divergent classification between resolver and dispatcher.
+	 */
+
+	/* Two strings with the same high-bit byte: equal. */
+	assert(slot_key_eq("foo\xC3\xA9", "foo\xC3\xA9"));
+	assert(slot_key_eq("FOO\xC3\xA9", "foo\xC3\xA9"));  /* ASCII-fold
+	                                                       front, byte-equal
+	                                                       at the tail */
+
+	/* Two strings whose high-bit bytes differ: not equal. */
+	assert(!slot_key_eq("foo\xC3\x84", "foo\xC3\xA4"));
+	/* 0xC4 vs 0xE4 in ISO-8859-1 (Ä vs ä) — locale-aware tolower under
+	 * an ISO-8859-1 / UTF-8 locale might fold these together, but the
+	 * helper intentionally does not. */
+	assert(!slot_key_eq("foo\xC4", "foo\xE4"));
+
+	/* The ASCII fold range is strictly 'A'..'Z' / 'a'..'z'. Bytes outside
+	 * that range are passed through. Confirm ASCII non-letter bytes
+	 * (digits, punctuation) compare byte-equal without folding. */
+	assert(slot_key_eq("Exit-1", "EXIT-1"));
+	assert(!slot_key_eq("Exit-1", "Exit-2"));
+
+	printf("PASS\n");
+	fflush(stdout);
+}
+
+static void test_slot_key_eq_null_safety(void) {
+	printf("[resolver] Test: slot_key_eq handles NULL safely... ");
+	fflush(stdout);
+
+	/* NULL inputs: defined as not-equal (defensive). The helper must not
+	 * crash on either-or-both NULL. The repl.c call sites pass slot_name
+	 * (a stack buffer that is always NUL-terminated by the resolver), but
+	 * a defensive contract is cheap and prevents future regressions. */
+	assert(!slot_key_eq(NULL, "Exit"));
+	assert(!slot_key_eq("Exit", NULL));
+	assert(!slot_key_eq(NULL, NULL));
+
+	printf("PASS\n");
+	fflush(stdout);
+}
+
 /* ---------- main ---------- */
 
 int main(void) {
@@ -522,6 +649,12 @@ int main(void) {
 	assert(langinitresources_headless());
 	assert(langinitverbs());
 	assert(wp_portable_init());
+
+	/* slot_key_eq helper tests (pure C, no ODB state). */
+	TR_RUN(test_slot_key_eq_basic_ascii);
+	TR_RUN(test_slot_key_eq_symmetric);
+	TR_RUN(test_slot_key_eq_high_bit_bytes_byte_equal);
+	TR_RUN(test_slot_key_eq_null_safety);
 
 	TR_RUN(test_exact_label_match);
 	TR_RUN(test_unique_prefix_match);

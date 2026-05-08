@@ -152,6 +152,21 @@ static boolean g_repl_active = false;
  */
 static volatile sig_atomic_t g_repl_exit_requested = 0;
 
+/*
+ * Set across user-script execution so the SIGINT handler (installed further
+ * down) knows it should request interruption rather than tearing the REPL
+ * down. Hoisted to the top of the file so callers earlier in the source
+ * (e.g. repl_jump_script) can wrap their langrun() calls.
+ *
+ * Writers: any function on the GIL that runs a user script. Reader: the
+ * SIGINT handler, which uses sig_atomic_t reads to stay async-signal-safe.
+ *
+ * NOTE: writers MUST clear this flag on every exit path (success and
+ * failure) — a stale "1" makes Ctrl-C requests interruption against a
+ * non-running script and confuses the next command's signal handling.
+ */
+static volatile sig_atomic_t g_script_running = 0;
+
 // Session command tracking for merge-before-save
 static char *session_commands[MAX_SESSION_COMMANDS];
 static size_t session_command_count = 0;
@@ -319,7 +334,16 @@ static boolean repl_jump_script(const char *script) {
 	if (flpushpop)
 		flpushpop = pushprocess(nil);
 
+	/* Mark script-running across the langrun call so the SIGINT handler
+	 * requests interruption of the user expression rather than tearing the
+	 * REPL down. Mirrors the wrap pattern used by process_line() (the
+	 * eval-line path) and dispatch_synthesized_script() / dispatch_leaf_via_menubar()
+	 * (the menubar-handler paths). The legacy `/jump expr()` path was missing
+	 * this wrap (issue #591); without it Ctrl-C during a long-running jump
+	 * expression would not interrupt cleanly. */
+	g_script_running = 1;
 	boolean fl = langrun(htext, &val);	/* langrun consumes htext */
+	g_script_running = 0;
 
 	if (flpushpop)
 		popprocess();
@@ -1513,8 +1537,9 @@ hdlhashtable repl_resolve_path(const char *path, char *resolved_path, size_t pat
 // Declared as non-static so lang.c can check it for script interruption
 volatile sig_atomic_t g_repl_interrupt_requested = 0;
 
-// Global script running flag for interrupt handling
-static volatile sig_atomic_t g_script_running = 0;
+/* g_script_running lives at the top of the file (near g_repl_exit_requested)
+ * so its readers and writers can be hoisted ahead of this point without
+ * forward-declaration churn. See the comment block on the declaration. */
 
 /* SIGWINCH (window-size change) flag.
  *
@@ -2549,7 +2574,7 @@ static boolean dispatch_slash_command(const char *line, boolean *running) {
 						fflush(stdout);
 						break;
 				}
-				if (strcasecmp(slot_name, "Exit") == 0) {
+				if (slot_key_eq(slot_name, "Exit")) {
 					replverbhost_exit();
 					*running = false;
 				}
@@ -2570,16 +2595,16 @@ static boolean dispatch_slash_command(const char *line, boolean *running) {
 					fflush(stdout);
 					break;
 			}
-			if (strcasecmp(slot_name, "Exit") == 0) {
+			if (slot_key_eq(slot_name, "Exit")) {
 				replverbhost_exit();
 				*running = false;
 			}
 			return true;
-		} else if (strcasecmp(slot_name, "List") == 0) {
+		} else if (slot_key_eq(slot_name, "List")) {
 			/* Path (b) legacy: List with arg. */
 			replverbhost_list(args_start);
 			return true;
-		} else if (strcasecmp(slot_name, "Jump") == 0) {
+		} else if (slot_key_eq(slot_name, "Jump")) {
 			/* Path (b) legacy: Jump with arg. */
 			if (!replverbhost_jump_path(args_start)) {
 				/* Match the legacy /jump error wording. The path
@@ -2622,7 +2647,7 @@ static boolean dispatch_slash_command(const char *line, boolean *running) {
 			break;
 	}
 
-	if (strcasecmp(slot_name, "Exit") == 0) {
+	if (slot_key_eq(slot_name, "Exit")) {
 		/* Belt-and-braces: also flag exit at this level. The menubar
 		 * handler's repl.exit() also sets g_repl_exit_requested via
 		 * replverbhost_exit, but a stale host adapter (NULL pointer
