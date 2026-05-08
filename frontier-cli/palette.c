@@ -391,9 +391,12 @@ static void render_level(palette_state_t *st, int depth) {
 		if (n < 0) n = 0;
 		/* snprintf clamp: when the formatted output would exceed
 		 * sizeof(footer) it returns the would-have-been length, not
-		 * the truncated length actually written. Clamp here so the
-		 * subsequent loop doesn't read past the truncated NUL. */
-		if (n > (int)sizeof(footer)) n = (int)sizeof(footer);
+		 * the truncated length actually written. Clamp at sizeof-1
+		 * so the subsequent loop never reads the NUL byte snprintf
+		 * wrote at footer[sizeof(footer)-1]. Currently dead code
+		 * (PALETTE_FILTER_MAX=63 → max n=67 < sizeof(footer)=72),
+		 * but defends against future widening of PALETTE_FILTER_MAX. */
+		if (n >= (int)sizeof(footer)) n = (int)sizeof(footer) - 1;
 		if (n > p->w - 2) n = p->w - 2;
 		int fx = (p->w - n) / 2;
 		if (fx < 1) fx = 1;
