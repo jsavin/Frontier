@@ -25,7 +25,6 @@ HEADLESS_VERBS_SOURCES = \
     headless_opattributes_verbs.c \
     headless_script_verbs.c \
     headless_osa_verbs.c \
-    headless_menu_verbs.c \
     headless_pict_verbs.c \
     headless_clock_verbs.c \
     headless_date_verbs.c \

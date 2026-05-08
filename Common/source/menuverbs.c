@@ -1959,106 +1959,41 @@ static boolean deletemenucommandverb (hdltreenode hparam1, boolean flsubmenu, ty
 	} /*deletemenucommandverb*/
 
 
-#ifdef FRONTIER_HEADLESS
+#ifndef FRONTIER_HEADLESS
 /*
- * Resolve the current language target (set by `target.set(@some.menu)`) to an
- * in-memory menu record so cursor-based verbs (getScript, setScript,
- * getCommandKey, setCommandKey) can run without a Mac menu-editor window.
- *
- * Returns true on success with *hmenurecord populated. Returns false if no
- * target is set, the target isn't a menu external, or loading the menu into
- * memory fails. On failure leaves *hmenurecord unchanged.
- *
- * GUI parity reference: the GUI path uses langfindtargetwindow + shellpushglobals
- * to set up menudata + op_get_outlinedata via the window's data-callback chain.
- * In headless we have no windows, so we resolve the target to its external
- * variable directly and rely on mepushmenudata (defined further below) to
- * stage the outline globals. See ADR-016 for the projection model that
- * licenses bypassing the window layer.
+ * Mac-build verb dispatcher (issue #585: the headless dispatcher lives in
+ * Common/source/menuverbs_headless.c and is the canonical implementation
+ * for the headless build; this dispatcher is preserved for the
+ * currently-inactive Mac build only).
  */
-static boolean headless_resolve_menu_target (hdlmenurecord *hmenurecord) {
-	hdlhashtable htable;
-	bigstring bsname;
-	tyvaluerecord val;
-	hdlhashnode hnode;
-	hdlmenuvariable hv;
-
-	if (!langgettarget (&htable, bsname))
-		return (false);
-
-	if (!langsymbolreference (htable, bsname, &val, &hnode))
-		return (false);
-
-	if (val.valuetype != externalvaluetype)
-		return (false);
-
-	hv = (hdlmenuvariable) val.data.externalvalue;
-
-	if (hv == nil)
-		return (false);
-
-	if ((**hv).id != idmenuprocessor)
-		return (false);
-
-	if (!menuverbinmemory ((hdlexternalvariable) hv))
-		return (false);
-
-	*hmenurecord = (hdlmenurecord) (**hv).variabledata;
-
-	return (*hmenurecord != nil);
-} /*headless_resolve_menu_target*/
-#endif
-
-
 static boolean menufunctionvalue (short token, hdltreenode hparam1, tyvaluerecord *vreturned, bigstring bserror) {
-	
+
 	/*
-	6/1/93 dmb: when vreturned is nil, return whether or not verb token must 
+	6/1/93 dmb: when vreturned is nil, return whether or not verb token must
 	be run in the Frontier process
 	*/
-	
+
 	register tyvaluerecord *v = vreturned;
 	register boolean fl;
 	WindowPtr targetwindow;
-	#ifdef FRONTIER_HEADLESS
-	/*
-	 * Tracks whether mepushmenudata has run so the error path can pop it.
-	 * See the headless target-acquisition block below and P1-A in PR #575.
-	 */
-	boolean flpushed = false;
-	#endif
 
 	if (v == nil) { /*need Frontier process?*/
-		
+
 		switch (token) {
-			
+
 			case isinstalledfunc:
 			case getscriptfunc:
 			case setscriptfunc:
 				return (false);
-			
+
 			default:
 				return (true);
 			}
 		}
-	
+
 	errornum = 0;
 
 	setbooleanvalue (false, v); /*by default, menu functions return false*/
-
-	#ifdef FRONTIER_HEADLESS
-	/*
-	 * Lazy-create system.menus.data on every menu verb entry. This bridges
-	 * the gap in v7-migrated roots that lack the system.menus subtree (the
-	 * gap that motivated the 16 skipped tests in
-	 * tests/integration/test_cases/menu_data_verbs.yaml). See ADR-016 and
-	 * Common/source/menudata_headless.c. Failure here is non-fatal at this
-	 * layer: verbs that don't need system.menus.data still work; ones that
-	 * do (clearMenubar wrapper, future Layer 2 install) will surface the
-	 * error through their own paths.
-	 */
-	(void) menudata_ensure_root();
-	#endif
 
 	switch (token) {/*these verbs don't need any special globals pushed*/
 
@@ -2066,18 +2001,7 @@ static boolean menufunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 			if (!langcheckparamcount (hparam1, 0)) /*shouldn't have any parameters*/
 				return (false);
 
-			#ifdef FRONTIER_HEADLESS
-			/*
-			 * No-op success in headless: matches the contract documented in
-			 * this file's header and ADR-016, and aligns with sibling verbs
-			 * (clearMenuBar, install, remove). The legacy GUI path installs
-			 * Mac-side menubar resources; in headless we have no menubar to
-			 * install, so reporting success is the correct semantic.
-			 */
-			(*v).data.flvalue = true;
-			#else
 			(*v).data.flvalue = menubuildverb ();
-			#endif
 
 			return (true);
 
@@ -2085,103 +2009,9 @@ static boolean menufunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 			if (!langcheckparamcount (hparam1, 0))
 				return (false);
 
-			#ifdef FRONTIER_HEADLESS
-			/* GUI-only operation - return true (no-op success) in headless mode */
-			(*v).data.flvalue = true;
-			#else
 			(*v).data.flvalue = menuclearverb ();
-			#endif
 
 			return (true);
-
-		#ifdef FRONTIER_HEADLESS
-		case menulistfunc: {
-			/*
-			 * menu.list(adrApp = nil) -> list of leaf addresses under
-			 * system.menus.data. See ADR-016 §"menu.list contract".
-			 *
-			 * Lives in this first switch (bypasses headless_resolve_menu_target)
-			 * because system.menus.data is a process-global projection, not
-			 * a window-bound menu record. The actual walk lives in
-			 * Common/source/menudata_headless.c so the integration-tests
-			 * dispatcher (tests/headless_menu_verbs.c) can share the exact
-			 * same C implementation. Note that this kernel switch is dead
-			 * code in headless because loadfunctionprocessor is a no-op
-			 * stub at startup — kept for source-of-truth parity.
-			 *
-			 * IMPORTANT: must NOT use getoptionaltableparam — that helper
-			 * calls langassignnewtablevalue which CREATES a fresh empty
-			 * table at the address, blowing away the caller's data. We
-			 * resolve the address by hand: getoptionaladdressparam to
-			 * extract (parent, name), then findnamedtable for read-only
-			 * access.
-			 */
-			short ctconsumed = 0, ctpositional = 0;
-			hdlhashtable hparent = nil;
-			bigstring bsname;
-			bigstring bsadrApp;
-			hdlhashtable hscope = nil;
-
-			flnextparamislast = true;
-
-			copystring (BIGSTRING ("\x06" "adrApp"), bsadrApp);
-			setemptystring (bsname);
-
-			if (!getoptionaladdressparam (hparam1, &ctconsumed, &ctpositional, bsadrApp, &hparent, bsname))
-				goto error;
-
-			if (hparent != nil && !isemptystring (bsname)) {
-				if (!findnamedtable (hparent, bsname, &hscope))
-					goto error;
-				}
-
-			if (!menudata_list_leaves (hscope, v))
-				goto error;
-
-			return (true);
-			}
-
-		case menudescribefunc: {
-			/*
-			 * menu.describe(adrItem) -> 9-field record with documented
-			 * defaults for absent fields. See ADR-016 §"menu.describe
-			 * contract". Same first-switch reasoning as menulistfunc:
-			 * adrItem points into system.menus.data, not a menu record.
-			 */
-			hdlhashtable hcontainer;
-			bigstring bsname;
-			hdlhashtable hleaf = nil;
-
-			flnextparamislast = true;
-
-			if (!getvarparam (hparam1, 1, &hcontainer, bsname))
-				goto error;
-
-			if (!findnamedtable (hcontainer, bsname, &hleaf))
-				goto error;
-
-			if (!menudata_describe_leaf (hleaf, v))
-				goto error;
-
-			return (true);
-			}
-
-		case zoomscriptfunc:
-			/*
-			 * P1-C: zoomScript opens a script editor window — GUI-only by
-			 * definition. In headless we want a clean no-op-returning-false
-			 * with no target/menu requirement, NOT the second-switch path
-			 * that demands a resolved menu record. Living in this first
-			 * switch means we also avoid the mepushmenudata push/pop dance
-			 * (see P1-A note near the headless dispatcher below).
-			 */
-			if (!langcheckparamcount (hparam1, 0))
-				return (false);
-
-			(*v).data.flvalue = false;
-
-			return (true);
-		#endif
 
 		case isinstalledfunc:
 			if (!menuisinstalledverb (hparam1, v))
@@ -2200,66 +2030,33 @@ static boolean menufunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 				goto error;
 
 			return (true);
-		
+
 		case addmenucommandfunc:
 			if (!addmenucommandverb (hparam1, false, v))
 				goto error;
-			
+
 			return (true);
-		
+
 		case deletemenucommandfunc:
 			if (!deletemenucommandverb (hparam1, false, v))
 				goto error;
-			
+
 			return (true);
-		
+
 		case addsubmenufunc:
 			if (!addmenucommandverb (hparam1, true, v))
 				goto error;
-			
+
 			return (true);
-		
+
 		case deletesubmenufunc:
 			if (!deletemenucommandverb (hparam1, true, v))
 				goto error;
-			
+
 			return (true);
 		} /*switch*/
-	
+
 	/*be sure there's a menu window in front -- set menueditor.c globals*/
-
-	#ifdef FRONTIER_HEADLESS
-	/*
-	 * Headless target acquisition: there is no Mac menu-editor window, so we
-	 * resolve the language target (set by `target.set(@some.menu)`) directly
-	 * to its in-memory menu record and stage the outline via mepushmenudata
-	 * — the same primitive addmenucommandverb uses on the no-window branch.
-	 *
-	 * P1-A push/pop discipline: mepushmenudata mutates menudata and
-	 * hmenudatasave BEFORE its internal oppushoutline call, so a partial
-	 * failure leaks the saved-pointer slot. GIL serialization (see ADR-014)
-	 * means single-level nesting is the only legal mode — the
-	 * assert(hmenudatasave == nil) inside mepushmenudata is therefore a real
-	 * invariant, not just debug noise. We use flpushed to guarantee
-	 * mepopmenudata runs on every exit path past a successful push, so
-	 * subsequent verb calls always start with a clean save slot.
-	 */
-	(void) targetwindow;
-
-	{
-		hdlmenurecord hmenurecord_target = nil;
-
-		if (!headless_resolve_menu_target (&hmenurecord_target)) {
-			errornum = nomenuerror;
-			goto error;
-		}
-
-		if (!mepushmenudata (hmenurecord_target))
-			goto error;
-
-		flpushed = true;
-	}
-	#else
 
 	if (!langfindtargetwindow (idmenuprocessor, &targetwindow)) { /*all other verbs require an outline window in front*/
 
@@ -2273,13 +2070,11 @@ static boolean menufunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 	(*shellglobals.gettargetdataroutine) (idmenuprocessor); /*set op globals*/
 
 	mecheckglobals (); /*copy handles from menudata to globals*/
-	#endif
 
 	fl = false; /*default return value*/
 
 	switch (token) { /*these verbs assume that the menueditor globals are set*/
 
-		#ifndef FRONTIER_HEADLESS
 		case zoomscriptfunc:
 			if (!langcheckparamcount (hparam1, 0))
 				return (false);
@@ -2289,7 +2084,6 @@ static boolean menufunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 			fl = true;
 
 			break;
-		#endif
 
 		/*
 		case findscriptfunc: {
@@ -2349,32 +2143,11 @@ static boolean menufunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 			break;
 		} /*switch*/
 
-	#ifdef FRONTIER_HEADLESS
-	if (flpushed) {
-		mepopmenudata ();
-		flpushed = false;
-		}
-	#else
 	shellpopglobals ();
-	#endif
 
 	return (fl);
 
 	error:
-
-	#ifdef FRONTIER_HEADLESS
-	/*
-	 * Drop any in-flight push before reporting failure. Without this,
-	 * mepushmenudata's saved-pointer slot stays populated and the next
-	 * legitimate menu verb hits assert(hmenudatasave == nil) in debug
-	 * builds (or silently overwrites the slot in release builds, leaving
-	 * the previous menudata unreachable). See P1-A in PR #575.
-	 */
-	if (flpushed) {
-		mepopmenudata ();
-		flpushed = false;
-		}
-	#endif
 
 	if (errornum != 0) /*get error string*/
 		getstringlist (menuerrorlist, errornum, bserror);
@@ -2384,9 +2157,10 @@ static boolean menufunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 
 
 static boolean menuinitverbs (void) {
-	
+
 	return (loadfunctionprocessor (idmenuverbs, &menufunctionvalue));
 	} /*menuinitverbs*/
+#endif /* !FRONTIER_HEADLESS */
 
 
 static boolean menuverbkeystroke (void) {
@@ -2619,9 +2393,17 @@ boolean menustart (void) {
 	register ptrcallbacks cb;
 	
 	assert (sizeof (tyexternalvariable) == sizeof (tymenuvariable));
-	
+
+#ifndef FRONTIER_HEADLESS
+	/*
+	 * Headless builds register the consolidated menu dispatcher via
+	 * headless_init_kernel_verbs() (see Common/source/menuverbs_headless.c
+	 * and tools/kernelverbs_parser/parse_kernelverbs.py). Mac builds register
+	 * here through the legacy loadfunctionprocessor path.
+	 */
 	menuinitverbs ();
-	
+#endif
+
 	meinit ();
 	
 	shellpushscraphook (&mescraphook);

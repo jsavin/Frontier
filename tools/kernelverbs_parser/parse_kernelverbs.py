@@ -43,6 +43,7 @@ EXCLUDED_PROCESSORS: Set[str] = {
 CORE_IMPLEMENTED_PROCESSORS: Set[str] = {
     'math',    # langmath.c - mathinitverbs()
     'crypt',   # langcrypt.c - cryptinitverbs()
+    'menu',    # menuverbs_headless.c - menuinitverbs() (consolidated per issue #585)
 }
 
 
