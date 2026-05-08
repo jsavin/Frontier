@@ -255,9 +255,11 @@ boolean opennewfile(ptrfilespec fs, OSType creator, OSType filetype, hdlfilenum 
  * the file does not already exist (atomic with create).  NOFOLLOW
  * ensures the path is not a symlink (defends against symlink-follow
  * attacks where an attacker pre-creates a symlink at dst_path).
- * Mode 0644 is the conventional default for newly-created files; we
- * intentionally do NOT lock down to 0600 in this PR — see PR #581
- * comments (P2-13 deferred to a future security review pass).
+ *
+ * Mode 0600 (owner read-write only): database files may contain
+ * sensitive data (e.g. user.prefs.portForwardingAdminPassword), so
+ * the destination is created without group/world access.  Matches
+ * the lock-file pattern in db_format.c.  Issue #590 / PR #581 P2-13.
  *
  * Returns false if the destination exists, is a symlink, or any other
  * filesystem error.
@@ -279,7 +281,7 @@ boolean opennewfile_exclusive(ptrfilespec fs, OSType creator, OSType filetype, h
 #ifdef O_CLOEXEC
     oflags |= O_CLOEXEC;
 #endif
-    int fd = open(path, oflags, 0644);
+    int fd = open(path, oflags, 0600);
     if (fd < 0) {
         log_trace(LOG_COMP_DB, "opennewfile_exclusive: open(%s) failed errno=%d (%s)",
                   path, errno, strerror(errno));
