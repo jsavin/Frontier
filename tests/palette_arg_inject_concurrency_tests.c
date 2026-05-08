@@ -361,12 +361,15 @@ static void test_harness_smoke_eight_threads_complete(void) {
 		assert(rc == 0);
 	}
 
-	/* Smoke: every worker did at least one iteration of work — its
-	 * failures count should be < ITERATIONS_PER_WORKER (would only equal
-	 * iterations if it failed every single one — that's a regression,
-	 * not a smoke-level concern, and is caught by the previous test). */
+	/* Smoke: every worker completed cleanly with zero failures. (A worker
+	 * that exited without running iterations would also have failures==0,
+	 * but the previous test's pthread_join + assert(rc==0) covers that —
+	 * the pthread layer signals fork failure or worker abort distinctly
+	 * from clean completion. Asserting failures==0 here matches what the
+	 * production stress test asserts at high iteration count, so the
+	 * smoke is just a low-iteration version of the real check. */
 	for (int i = 0; i < WORKER_COUNT; ++i)
-		assert(workers[i].failures < ITERATIONS_PER_WORKER);
+		assert(workers[i].failures == 0);
 
 	barrier_destroy(&barrier);
 }
