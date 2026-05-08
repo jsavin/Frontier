@@ -1,8 +1,12 @@
-on list ()
-	//List the contents of the current REPL focus table.
-		//5/6/26 by JES
-			//Initial implementation. Wraps repl.list with empty path so the host
-			//shows the current table. A future revision can prompt for a path
-			//via the palette accepts_args input row.
-	repl.list ("")
+on list (path = "")
+	//List the contents of a REPL focus table (or the current one).
+		//5/8/26 by JES
+			//Issue #594 — accept optional path arg so the slash-command and
+			//palette accepts_args paths both route through this handler via
+			//the unified palette_arg_inject synthesis. Empty / missing path
+			//falls through to repl.list (""), which lists the current focus
+			//table (existing behavior). This wraps repl.list with whatever
+			//path the dispatch path supplied; a future revision could prompt
+			//for a path interactively via the palette accepts_args input row.
+	repl.list (path)
 	return (true)

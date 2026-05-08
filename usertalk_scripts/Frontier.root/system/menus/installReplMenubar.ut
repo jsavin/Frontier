@@ -1,12 +1,24 @@
 on installReplMenubar ()
 	//Install the headless REPL menubar at system.menus.data.repl.
-		//5/7/26 by JES
-			//PR 7: Help item now calls repl.help () directly. UserTalk
-			//in headless REPL mode lacks a raw-stdout primitive so help
-			//text is emitted from C via the repl.help kernel verb,
-			//which calls repl_output_help() to produce the legacy slash
-			//help text.
+		//5/8/26 by JES
+			//Issue #594 — set accepts_args=true on List and Jump leaves so the
+			//slash-command path and the palette accepts_args input row both
+			//route through the same palette_arg_inject synthesis. The
+			//assignment uses direct table dereference because there is no
+			//dedicated menu.* verb for the field today; the headless storage
+			//projection treats the assignment as a normal hashtable write.
+			//These accepts_args writes happen on BOTH branches of the
+			//menu.isInstalled check so re-running the install script
+			//against a DB with an already-installed menubar still
+			//converges to the desired state — required for in-place
+			//upgrades of pre-#594 Virgin.root images that have List/Jump
+			//but no accepts_args field. The assignments are idempotent.
+			//Help item calls repl.help () directly via the kernel verb so
+			//that headless REPL mode (which lacks a raw-stdout primitive)
+			//can still emit the legacy slash help text via repl_output_help().
 	if menu.isInstalled (@system.menus.data.repl)
+		system.menus.data.repl.REPL.List.accepts_args = true
+		system.menus.data.repl.REPL.Jump.accepts_args = true
 		return (true)
 	local (adrbar = @system.menus.data.repl)
 	menu.addMenuCommand (adrbar, "REPL", "Help", "repl.help ()")
@@ -15,5 +27,7 @@ on installReplMenubar ()
 	menu.addMenuCommand (adrbar, "REPL", "Jump", "system.menus.handlers.repl.jump ()")
 	menu.addMenuCommand (adrbar, "REPL", "Key codes", "system.menus.handlers.repl.keycodes ()")
 	menu.addMenuCommand (adrbar, "REPL", "Exit", "system.menus.handlers.repl.exit ()")
+	system.menus.data.repl.REPL.List.accepts_args = true
+	system.menus.data.repl.REPL.Jump.accepts_args = true
 	menu.install (adrbar)
 	return (true)
