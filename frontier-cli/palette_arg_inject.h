@@ -71,6 +71,21 @@ extern "C" {
 #endif
 
 /*
+ * palette_arg_escape result codes — distinguish the two failure modes
+ * so callers can surface accurate, actionable diagnostics. Issue #595:
+ * lumping forbidden-byte and overflow under a single bool meant a user
+ * who typed too many quote characters saw "argument contains a forbidden
+ * character" — misleading because they typed nothing forbidden, just
+ * too much. Splitting the result lets the REPL say "argument too long"
+ * vs "argument contains a forbidden character" appropriately.
+ */
+typedef enum {
+	PALETTE_ARG_ESCAPE_OK = 0,
+	PALETTE_ARG_ESCAPE_FORBIDDEN_BYTE,
+	PALETTE_ARG_ESCAPE_OVERFLOW,
+} palette_arg_escape_result_t;
+
+/*
  * palette_arg_escape — escape a typed argument for safe insertion inside
  * a UserTalk double-quoted string literal.
  *
@@ -93,13 +108,21 @@ extern "C" {
  *     bytes are legitimate inside string literals.
  *
  * Returns:
- *   true  — out is NUL-terminated and contains the escaped form.
- *   false — input contained a forbidden control byte, OR escaped form
- *           did not fit in out_cap. On failure out[0] is set to '\\0'
- *           (caller-side defensive cleanup) but the caller MUST still
- *           treat the operation as failed.
+ *   PALETTE_ARG_ESCAPE_OK              — out is NUL-terminated and
+ *                                        contains the escaped form.
+ *   PALETTE_ARG_ESCAPE_FORBIDDEN_BYTE  — input contained a control byte
+ *                                        or DEL.
+ *   PALETTE_ARG_ESCAPE_OVERFLOW        — escaped form did not fit in
+ *                                        out_cap (or out_cap == 0).
+ *
+ * On any failure, out[0] is set to '\\0' (defensive cleanup) but the
+ * caller MUST treat the operation as failed. Forbidden-byte detection
+ * is left-to-right, so it takes precedence over overflow when both
+ * conditions apply (the diagnostic is more actionable: remove the bad
+ * byte vs. type less).
  */
-bool palette_arg_escape(const char *arg, char *out, size_t out_cap);
+palette_arg_escape_result_t palette_arg_escape(const char *arg,
+                                               char *out, size_t out_cap);
 
 /*
  * palette_arg_inject_into_script — produce a new UserTalk source string

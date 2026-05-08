@@ -14,43 +14,52 @@
 #include <stdlib.h>
 #include <string.h>
 
-bool palette_arg_escape(const char *arg, char *out, size_t out_cap) {
-	if (out == NULL || out_cap == 0)
-		return false;
+palette_arg_escape_result_t palette_arg_escape(const char *arg,
+                                               char *out, size_t out_cap) {
+	if (out == NULL)
+		return PALETTE_ARG_ESCAPE_OVERFLOW;
+	if (out_cap == 0) {
+		/* No room even for a NUL terminator — strictly an overflow case.
+		 * Don't dereference out; the contract says out_cap is the buffer
+		 * size, and 0 means "no buffer to write to". */
+		return PALETTE_ARG_ESCAPE_OVERFLOW;
+	}
 	out[0] = '\0';
 	if (arg == NULL) {
 		/* NULL arg is treated as empty — escape produces an empty string,
 		 * which the caller may detect and skip injection for. */
-		return true;
+		return PALETTE_ARG_ESCAPE_OK;
 	}
 	size_t outpos = 0;
 	for (const char *p = arg; *p != '\0'; ++p) {
 		unsigned char c = (unsigned char)*p;
 		/* Reject control bytes and DEL. Newline / CR / tab fall in here
-		 * deliberately — see header comment. */
+		 * deliberately — see header comment. Forbidden-byte check runs
+		 * before the bounds check so the more actionable diagnostic
+		 * wins when both would fail (issue #595). */
 		if (c < 0x20 || c == 0x7F) {
 			out[0] = '\0';
-			return false;
+			return PALETTE_ARG_ESCAPE_FORBIDDEN_BYTE;
 		}
 		/* Each '"' or '\\' produces two output bytes plus we need 1 for
 		 * trailing NUL. Bound check before each write. */
 		if (c == '"' || c == '\\') {
 			if (outpos + 2 >= out_cap) {
 				out[0] = '\0';
-				return false;
+				return PALETTE_ARG_ESCAPE_OVERFLOW;
 			}
 			out[outpos++] = '\\';
 			out[outpos++] = (char)c;
 		} else {
 			if (outpos + 1 >= out_cap) {
 				out[0] = '\0';
-				return false;
+				return PALETTE_ARG_ESCAPE_OVERFLOW;
 			}
 			out[outpos++] = (char)c;
 		}
 	}
 	out[outpos] = '\0';
-	return true;
+	return PALETTE_ARG_ESCAPE_OK;
 }
 
 /*
