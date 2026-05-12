@@ -98,3 +98,15 @@ tests:
       return (result == "a // b ; c { d } e")
     expected_success: true
     expected_result: "true"
+
+  - name: "round-trip: inline one-line nested block preserves both braces (#621)"
+    description: "A line like `if cond {\\r\\ttry {body}}` where the inner {body} is a one-line nested block must round-trip with both closing braces. Before #621, the strip pass would remove the trailing }} naively, leaving the inline `try {body` with an unmatched `{`. On read-back the export pass added one `}` from the level transition but the second `}` was never reconstructed, so brace counts drifted (script no longer compiled)."
+    script: |
+      local (src = "on f () {\r\tif true {\r\t\ttry {local (x = 42)}};\r\treturn (1)}");
+      new (tabletype, @system.temp.rt);
+      script.newScriptObject (src, @system.temp.rt.f);
+      local (result = system.temp.rt.f ());
+      delete (@system.temp.rt);
+      return (result == 1)
+    expected_success: true
+    expected_result: "true"

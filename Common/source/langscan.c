@@ -1355,17 +1355,69 @@ boolean langstripstructuremarkers (Handle hin, Handle *hout) {
 			}
 
 		/*strip trailing run of {, }, ;, space, tab from the content portion
-		(linestart+indent .. commentstart). Leave the comment span untouched.*/
+		(linestart+indent .. commentstart). Leave the comment span untouched.
+
+		Refinement (#621): stop stripping if doing so would leave a one-line
+		nested block (a `{` in the kept content that has no matching `}`
+		within the same kept content). Example: `try {new (...)}}` — naively
+		stripping all four trailing chars leaves `try {new (...)`, an
+		unbalanced opening brace. The outline-export pass (oplangtextvisit)
+		re-derives structural braces from outline LEVEL transitions, but
+		this line stays at one level (its body is inline, not a child node),
+		so the export can't know to emit a matching `}`. The result is a
+		dropped closing brace on read-back.
+
+		Algorithm: scan the would-be-kept content for unmatched `{` (ones
+		that don't have a later `}` partner within the kept content, ignoring
+		string literals). If any are unmatched, stop stripping earlier so
+		the trailing `}` that pairs with the inline `{` survives. We keep
+		stripping as long as the kept content's brace balance is non-negative.*/
 		stripfrom = commentstart;
 
 		if (!fliscomment) {
 
 			while (stripfrom > linestart + indent) {
 				byte ch = buf [stripfrom - 1];
-				if (ch == '{' || ch == '}' || ch == ';' || ch == chspace || ch == chtab)
-					--stripfrom;
-				else
+				if (ch != '{' && ch != '}' && ch != ';' && ch != chspace && ch != chtab)
 					break;
+
+				/*tentatively strip; check that the remaining content
+				(linestart+indent .. stripfrom-1) still has balanced or
+				surplus closing braces. If not, the brace we're about to
+				strip is needed to close an inline one-line block; stop.*/
+				long try_from = stripfrom - 1;
+				if (ch == '}') {
+					/*count {/} in [linestart+indent .. try_from), respecting strings*/
+					long open_ct = 0;
+					long close_ct = 0;
+					boolean in_str = false;
+					boolean qcurly = false;
+					boolean esc = false;
+					long k;
+					for (k = linestart + indent; k < try_from; ++k) {
+						byte kc = buf [k];
+						if (esc) { esc = false; continue; }
+						if (in_str) {
+							if (kc == '\\') esc = true;
+							else if ((!qcurly && kc == '"')
+							         || (qcurly && kc == (byte) chclosecurlyquote))
+								in_str = false;
+							continue;
+							}
+						if (kc == '"' || kc == chopencurlyquote) {
+							in_str = true;
+							qcurly = (kc == chopencurlyquote);
+							continue;
+							}
+						if (kc == '{') ++open_ct;
+						else if (kc == '}') ++close_ct;
+						}
+					/*if the kept content has unmatched `{` (more opens than
+					closes), this `}` is needed to balance; don't strip it.*/
+					if (open_ct > close_ct)
+						break;
+					}
+				--stripfrom;
 				}
 			}
 
