@@ -81,8 +81,6 @@ tests:
   - name: "Database migration - system.paths address values preserved"
     description: "Address values in system.paths should have correct structure after migration"
     script: |
-      # Verify system.paths exists and has expected entries
-      # Note: Actual address value correctness requires working EFP table loading
       if not defined(system.paths) {
         return false
       };
@@ -96,13 +94,10 @@ tests:
   - name: "Database migration - system.paths entries not duplicated"
     description: "Migration should not add duplicate processor shortcuts to existing system.paths"
     script: |
-      # Count system.paths entries (should be 14 from v6, not 44 from pollution)
-      # Our fix ensures we don't populate when table already exists
       if not defined(system.paths) {
         return false
       };
       local(ct = sizeOf(system.paths));
-      # Should be around 14 original entries, not 44 (14 + 30 duplicates)
       return ct < 30
     expected_success: true
     expected_result: "true"

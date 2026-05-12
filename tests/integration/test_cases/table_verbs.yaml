@@ -217,13 +217,10 @@ tests:
   - name: "Table lookup - nested table child resolution"
     description: "langgettableval should search inside parent table before falling back to external lookup"
     script: |
-      # Create parent table with child
       lang.new(tableType, @parent);
       lang.new(tableType, @parent.child);
       parent.child.value = "found";
 
-      # Verify child is accessible via nested lookup
-      # This tests that langgettableval() searches inside parent.child before external lookup
       return parent.child.value
     expected_success: true
     expected_result: "found"
