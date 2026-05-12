@@ -494,7 +494,7 @@ extern boolean langisidentifier (bigstring);
 
 extern boolean langdeparsestring (bigstring, byte);
 
-extern boolean langstriptextsyntax (Handle);
+extern boolean langstripstructuremarkers (Handle, Handle *);
 
 extern boolean langaddapplescriptsyntax (Handle);
 
