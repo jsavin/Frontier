@@ -19,11 +19,11 @@
 
 tests:
   - name: "protocol script/eval - illegal-character compile error surfaces as failure"
-    description: "A script body that doesn't compile must return success: false with an error message, not success: true / value: 'true'. Reproducer from issue #618: bare-LF inside a top-level statement sequence triggers the parser's illegal-character error on develop."
+    description: "A script body that doesn't compile must return success: false with an error message, not success: true / value: 'true'. Reproducer: UTF-8 em-dash (U+2014, bytes E2 80 94) inside an expression triggers the scanner's illegal-character error. Before #618, the parser kept going and the wrapper returned success: true with bogus value 'true' (see umbrella issue #620 for the false-greens this masked)."
     protocol_ops:
       - op: "script/eval"
         params:
-          expression: "local(x = 1);\n\nlocal(y = 2);\nreturn x + y"
+          expression: "local(x — 1); return x"
         validate:
           success: false
 
