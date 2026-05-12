@@ -1,0 +1,100 @@
+# Integration tests for script.newScriptObject round-trip fidelity
+#
+# BUG: script.newScriptObject ran inserted text through langstriptextsyntax,
+# which strips { } ; tokens it identifies as redundant outline-export markers.
+# That heuristic was designed for an export format where outline parent/child
+# encoded nesting; modern .ut files use { and ; as load-bearing syntax with
+# conventional line-break placement. Result: real braces got stripped and the
+# re-emit pass injected garbage { / }; / ;; into the body, producing scripts
+# that no longer compile.
+#
+# Additional: scriptcommentvisit only recognized « (0xC7) as a comment line
+# marker. Modern .ut files use //. Comment lines on import were not marked
+# flcomment, so they parsed as code on outline render (compile may still
+# succeed because the scanner separately recognizes // at line start).
+#
+# FIX:
+#   1. Remove the langstriptextsyntax call from scripttexttooutlineroutine.
+#      The strip path served pre-headless clipboard-paste cleanup; that path
+#      doesn't fire in headless builds, and on the script-import path it
+#      actively corrupts modern source.
+#   2. Extend scriptcommentvisit to recognize a leading "//" sequence as a
+#      comment marker, equivalent to chcomment (0xC7).
+#
+# These tests are end-to-end behavioral checks: install via script.newScriptObject,
+# read back via string(adrScript), assert the body is byte-equal to what was
+# installed (or that the installed script still works).
+
+tests:
+  - name: "round-trip: // comments preserved as comments"
+    description: "Install a script with // comments; read-back should be byte-equal"
+    script: |
+      local (src = "on f () { //a comment\r\tlocal (i = 42);\r\treturn (i)}");
+      new (tabletype, @system.temp.rt);
+      script.newScriptObject (src, @system.temp.rt.foo);
+      local (back = string (system.temp.rt.foo));
+      delete (@system.temp.rt);
+      return (back == src)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "round-trip: « comments preserved (legacy form)"
+    description: "Install with « comments (the historical ODB form); read-back byte-equal"
+    script: |
+      local (src = "on f () { «a comment\r\tlocal (i = 42);\r\treturn (i)}");
+      new (tabletype, @system.temp.rt);
+      script.newScriptObject (src, @system.temp.rt.foo);
+      local (back = string (system.temp.rt.foo));
+      delete (@system.temp.rt);
+      return (back == src)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "round-trip: script compiles after install"
+    description: "After installing via script.newScriptObject, calling the script must work"
+    script: |
+      local (src = "on f (x) { //double it\r\treturn (x * 2)}");
+      new (tabletype, @system.temp.rt);
+      script.newScriptObject (src, @system.temp.rt.f);
+      local (result = system.temp.rt.f (21));
+      delete (@system.temp.rt);
+      return (result == 42)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "round-trip: nested braces survive"
+    description: "if/while/for blocks with proper brace structure must not be corrupted"
+    script: |
+      local (src = "on f () {\r\tlocal (i);\r\tfor i = 1 to 3 {\r\t\tif i == 2 {\r\t\t\treturn (i)}};\r\treturn (0)}");
+      new (tabletype, @system.temp.rt);
+      script.newScriptObject (src, @system.temp.rt.f);
+      local (result = system.temp.rt.f ());
+      delete (@system.temp.rt);
+      return (result == 2)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "round-trip: LF line endings normalize"
+    description: "Source with LF line endings round-trips cleanly with no duplicated structural markers. The body is expected to be the LF input with CR substituted for LF; comment-marker form (// vs «) on the export side is implementation detail — both should be accepted."
+    script: |
+      local (srcLF = "on f () {\n\tlocal (i = 1);\n\treturn (i)}");
+      local (expectCR = "on f () {\r\tlocal (i = 1);\r\treturn (i)}");
+      new (tabletype, @system.temp.rt);
+      script.newScriptObject (srcLF, @system.temp.rt.foo);
+      local (back = string (system.temp.rt.foo));
+      delete (@system.temp.rt);
+      return (back == expectCR)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "round-trip: // and ; inside string literal are not treated as structure"
+    description: "A string literal containing the bytes // (comment marker) or { } ; (structural markers) must round-trip unchanged. The strip pass must track string-literal state so it does not mis-classify these bytes."
+    script: |
+      local (src = "on f () {\r\tlocal (s = \"a // b ; c { d } e\");\r\treturn (s)}");
+      new (tabletype, @system.temp.rt);
+      script.newScriptObject (src, @system.temp.rt.f);
+      local (result = system.temp.rt.f ());
+      delete (@system.temp.rt);
+      return (result == "a // b ; c { d } e")
+    expected_success: true
+    expected_result: "true"

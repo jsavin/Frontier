@@ -394,7 +394,112 @@ void rollbeachball (void) { }
 /* secondstodatetime and secondstodayofweek now in Common/source/timedate.c with portable implementations */
 void setfserrorparam ( const ptrfilespec fs ) { (void)fs; }
 boolean setoserrorparam (bigstring bs) { (void)bs; return false; }
-void scriptsetcallbacks (hdloutlinerecord ho) { (void)ho; }
+/*
+Headless equivalent of scripts.c's scriptsetcallbacks. The kernel's scripts.c
+isn't compiled in headless (OSA/AppleEvent dependencies), so we install the
+text-to-outline callback ourselves with a headless-only implementation. The
+other Mac-UI callbacks (cmdclick, doubleclick, scrap) have no headless trigger
+and remain unset.
+
+The texttooutline callback is where structural { } ; markers get stripped on
+script import — without this, op.insert deposits raw text into the outline,
+and oplangtextvisit later re-emits structural markers on top of the surviving
+literals, producing duplicates like {{, ;;, }} that don't compile.
+*/
+
+extern boolean langstripstructuremarkers (Handle, Handle *);
+
+static boolean headless_scriptcommentvisit (hdlheadrecord hnode, void *refcon) {
+	(void) refcon;
+
+	/*
+	Mark a node as a comment line if its text begins with the legacy chcomment
+	glyph (0xC7, historically «) OR a modern // marker. bigstring is Pascal-
+	style: bs[0] is the length byte, bs[1] is the first content byte. Strip
+	the marker so the outline stores only the comment body, matching legacy
+	behavior for «.
+	*/
+
+	register hdlheadrecord h = hnode;
+	bigstring bs;
+	short markerlen = 0;
+
+	getheadstring (h, bs);
+
+	if (!isemptystring (bs)) {
+		if (bs [1] == chcomment)
+			markerlen = 1;
+		else if (stringlength (bs) >= 2 && bs [1] == '/' && bs [2] == '/')
+			markerlen = 2;
+		}
+
+	if (markerlen > 0) {
+
+		pullfromhandle ((**h).headstring, 0, markerlen, nil);
+
+		if (!opnestedincomment (h))
+			(**h).flcomment = true;
+		}
+
+	return (true);
+	}
+
+static boolean headless_scripttexttooutline (hdloutlinerecord houtline, Handle hscrap, hdlheadrecord *hnode) {
+
+	/*
+	Build a script outline from inline UserTalk source text.
+
+	Storage convention: node text contains content only; outline export
+	(oplangtextvisit) re-derives { } ; structural markers from outline level
+	transitions. If trailing structural markers survive in node text, the
+	export side adds them on top — producing {{, ;;, }} on read-back.
+
+	langstripstructuremarkers makes a clean copy with trailing structural
+	markers stripped (skipping comment lines, where those bytes may appear
+	as human-readable content). The caller's handle is not mutated.
+
+	scriptcommentvisit then walks the resulting outline and marks comment
+	nodes (« or // prefix) with flcomment so the outline UI / export treats
+	them as comments.
+	*/
+
+	boolean flusertalk;
+	Handle hstripped = nil;
+	Handle htouse;
+	boolean fl;
+
+	/*Callers (optexttooutline → outline texttooutlinecallback) should always
+	pass a real scrap, but the callback contract is broader than the single
+	op.insert path in this PR's tests — be defensive.*/
+	if (houtline == nil || hscrap == nil)
+		return (false);
+
+	flusertalk = (**houtline).outlinesignature == typeLAND;
+	htouse = hscrap;
+
+	if (flusertalk) {
+		if (!langstripstructuremarkers (hscrap, &hstripped))
+			return (false);
+		htouse = hstripped;
+		}
+
+	fl = optextscraptooutline (houtline, htouse, hnode);
+
+	if (hstripped != nil)
+		disposehandle (hstripped);
+
+	if (!fl)
+		return (false);
+
+	if (flusertalk)
+		opsiblingvisiter (*hnode, false, &headless_scriptcommentvisit, nil);
+
+	return (true);
+	}
+
+void scriptsetcallbacks (hdloutlinerecord ho) {
+	(**ho).texttooutlinecallback = (optexttooutlinecallback) &headless_scripttexttooutline;
+	}
 boolean shellfindcallbacks (short id, short *ix) { (void)id; if (ix) *ix=0; return false; }
 boolean browsergetrefcon (hdlheadrecord hnode, tybrowserinfo *info) { (void)hnode; if (info) memset(info,0,sizeof(*info)); return false; }
 boolean memoryerror (void) { return false; }

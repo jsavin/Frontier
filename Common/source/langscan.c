@@ -1157,102 +1157,207 @@ tokentype parsegettoken (hdltreenode *nodetoken) {
 	} /*parsegettoken*/
 
 
-boolean langstriptextsyntax (Handle htext) {
-	
-	/*
-	strip out braces and semicolons from the source text, so it 
-	can be pasted into a script outline
-	*/
-	
-	boolean fldone = false;
-	hdltreenode hnode;
-	tokentype token, token2 = 0;
-	long ixstart;
-	long ix1 = 0, ix2 = 0;
-	unsigned long line2 =  0;
-	short ctendbraces = 0;
-	
-	parsesetscanstring (htext, true);
-	
-	disablelangerror ();
-	
-	while (!fldone) {
-		
-		ixstart = ixparsestring;
-		
-		token = langscanner (&hnode);
-		
-		langdisposetree (hnode); /*we don't need it*/
-		
-		if (ix2 > 0) { /*something waiting to be stripped*/
-			
-			if ((token2 == '}') && (ctendbraces > 0))
-				--ctendbraces;
-			
-			else {
-				
-				if ((token2 == '}') || (ctscanlines > line2)) { /*we got a return, go ahead & strip it*/
-					
-					short len;
-					
-					if (token2 == '}') /* 2005-01-15 creedon - fix suggested by JES w/caveats < http://sourceforge.net/tracker/index.php?func=detail&aid=1093595&group_id=120666&atid=687798 > */
-						ix1 = ix2 - 1;
+boolean langstripstructuremarkers (Handle hin, Handle *hout) {
 
-					len = ix2 - ix1;
-					
-					pullfromhandle (htext, ix1, len, nil); /*get rid of the token source*/
-					
-					lenparsestring -= len; /*make adjustments*/
-					
-					ixparsestring -= len; /*ditto*/
-					
-					ixstart -= len;
-					
-					ctendbraces = 0; /*reset*/
-					}
-				else {
-					
-					if (token2 == '{')
-						++ctendbraces;
-					}
-				}
-			
-			ix2 = 0; /*reset*/
+	/*
+	Produce a fresh copy of UserTalk source text with structural { } ; markers
+	stripped from line ends. The outline-builder splits the result by CR into
+	nodes; the outline-export pass (oplangtextvisit) re-emits { } ; based on
+	outline level transitions on read-back. If those markers survive into a
+	node's text AND the export side also emits them, the result is doubled
+	markers ({{, ;;, }}) and the script no longer compiles. So storage
+	convention is: node text contains content only — no trailing structural
+	markers.
+
+	Input contract:
+	  - hin: borrowed handle, untouched.
+	  - The caller has normalized line endings to CR. This function does NOT
+	    re-normalize; if your caller didn't, fix the caller (every path that
+	    reaches scripttexttooutlineroutine goes through opnormalizelineendings_cr
+	    first, so this should be a non-issue in practice).
+	  - Indentation may be tabs OR spaces; we only look at "is this line a
+	    comment" (skip-strip) — we do not infer or use indent levels. The
+	    outline-builder (opgetlinetext) handles indent inference separately.
+
+	Output contract:
+	  - On success: *hout owns a freshly-allocated handle. Caller disposes.
+	  - On failure: *hout = nil, returns false.
+
+	Per-line algorithm:
+	  1. Skip leading whitespace to find the line's first semantic byte.
+	  2. If the whole line is a comment (starts with « or //) — leave it
+	     untouched. Comments may legitimately contain { } ; as text.
+	  3. Otherwise find the start of any trailing comment by scanning forward
+	     while tracking string-literal state. The portion of the line up to
+	     that point (or end-of-line) is the "content".
+	  4. From the end of content, strip a contiguous trailing run of
+	     { } ; space tab. This catches both end-of-line markers
+	     (`local (i);`) and end-of-content-followed-by-comment forms
+	     (`on foo () { //note` — strips the ` { ` before `//note`, leaving
+	     `on foo () //note`).
+	  5. Preserve any trailing comment verbatim.
+
+	Replaces langstriptextsyntax, which used a scanner-token-based heuristic
+	("a brace separated from its next token by a CR is structural"). That
+	worked for the historical script-export format but mis-classified inline
+	braces in modern source — `on foo (x) { //comment\r\tlocal (i = 1);` had
+	its `{` stripped because the scanner skipped over the comment and CR
+	before seeing the next token, even though the brace was load-bearing.
+	*/
+
+	long size;
+	long readix = 0;
+	long writeix = 0;
+	ptrbyte buf;
+	Handle hcopy = nil;
+
+	*hout = nil;
+
+	if (!copyhandle (hin, &hcopy))
+		return (false);
+
+	size = gethandlesize (hcopy);
+
+	if (size <= 0) {
+		*hout = hcopy;
+		return (true);
+		}
+
+	buf = (ptrbyte) (*hcopy);
+
+	while (readix < size) {
+
+		long linestart = readix;
+		long lineend;
+		long indent = 0;
+		long commentstart; /*offset where any trailing comment begins; == content-end*/
+		long stripfrom;
+		boolean fliscomment = false;
+		boolean flinstring = false;
+
+		/*find end-of-line — CR or end-of-buffer*/
+		while (readix < size && buf [readix] != chreturn)
+			++readix;
+
+		lineend = readix;
+
+		/*skip leading whitespace to find the line's first semantic byte*/
+		while (linestart + indent < lineend) {
+			byte ch = buf [linestart + indent];
+			if (ch == chtab || ch == chspace)
+				++indent;
+			else
+				break;
 			}
-		
-		switch (token) {
-			
-			case errortoken:
-			case eoltoken:
-				fldone = true;
-				
-				break;
-			
-			case '{':
-			case '}':
-			case ';':
-				token2 = token;
-				
-				ix1 = ixstart;
-				
-				ix2 = ixparsestring;
-				
-				line2 = ctscanlines;
-				
-				break;
-			
-			default:
-				break;
+
+		/*detect whole-line comment — « or // as first non-whitespace byte*/
+		if (linestart + indent < lineend) {
+			byte ch1 = buf [linestart + indent];
+			if (ch1 == chcomment
+			    || (ch1 == '/'
+			        && (linestart + indent + 1) < lineend
+			        && buf [linestart + indent + 1] == '/'))
+				fliscomment = true;
+			}
+
+		commentstart = lineend; /*default: no trailing comment, content runs to EOL*/
+
+		if (!fliscomment) {
+
+			/*scan forward from the indent boundary to find the start of any
+			trailing comment (« or //) outside a string literal. UserTalk
+			strings use ASCII " (chdoublequote, 0x22) OR the Mac smart-quote
+			pair chopencurlyquote (0xD2) / chclosecurlyquote (0xD3); the
+			scanner accepts both forms (langscan.c parsepopstringconst), so
+			we track both here. Without that, a string like "a // b" with
+			"" delimiters works, but "a // b" with «...» smart quotes would
+			get its // misread as a comment start and the rest of the line
+			truncated. flqcurly distinguishes the closing delimiter to use.*/
+			long i = linestart + indent;
+			boolean flqcurly = false;
+			while (i < lineend) {
+				byte ch = buf [i];
+				if (flinstring) {
+					/*\ escapes the next byte (e.g. \" inside ASCII strings).
+					Same convention applies inside curly-quote strings; the
+					scanner doesn't distinguish.*/
+					if (ch == '\\' && i + 1 < lineend) {
+						i += 2;
+						continue;
+						}
+					if ((!flqcurly && ch == '"')
+					    || (flqcurly && ch == (byte) chclosecurlyquote))
+						flinstring = false;
+					++i;
+					continue;
+					}
+				if (ch == '"' || ch == chopencurlyquote) {
+					flinstring = true;
+					flqcurly = (ch == chopencurlyquote);
+					++i;
+					continue;
+					}
+				if (ch == chcomment
+				    || (ch == '/' && i + 1 < lineend && buf [i + 1] == '/')) {
+					commentstart = i;
+					break;
+					}
+				++i;
+				}
+			}
+
+		/*strip trailing run of {, }, ;, space, tab from the content portion
+		(linestart+indent .. commentstart). Leave the comment span untouched.*/
+		stripfrom = commentstart;
+
+		if (!fliscomment) {
+
+			while (stripfrom > linestart + indent) {
+				byte ch = buf [stripfrom - 1];
+				if (ch == '{' || ch == '}' || ch == ';' || ch == chspace || ch == chtab)
+					--stripfrom;
+				else
+					break;
+				}
+			}
+
+		/*copy kept content [linestart .. stripfrom) into the write cursor*/
+		{
+			long ct = stripfrom - linestart;
+			if (writeix != linestart && ct > 0)
+				moveleft (buf + linestart, buf + writeix, ct);
+			writeix += ct;
+			}
+
+		/*copy any trailing comment [commentstart .. lineend)*/
+		if (commentstart < lineend) {
+			long ct = lineend - commentstart;
+			if (writeix != commentstart && ct > 0)
+				moveleft (buf + commentstart, buf + writeix, ct);
+			writeix += ct;
+			}
+
+		/*copy the CR delimiter (if present), then advance past it*/
+		if (readix < size && buf [readix] == chreturn) {
+			buf [writeix++] = chreturn;
+			++readix;
 			}
 		}
-	
-	if (ix2 > 0) /*something waiting to be stripped*/
-		pullfromhandle (htext, ix1, ix2 - ix1, nil);
-	
-	enablelangerror ();
-	
+
+	if (writeix != size) {
+		if (!sethandlesize (hcopy, writeix)) {
+			/*shrink should never fail in practice, but if it does we'd
+			be returning a handle whose declared size points past valid
+			data. Dispose and fail rather than hand back a stale tail.*/
+			disposehandle (hcopy);
+			return (false);
+			}
+		}
+
+	*hout = hcopy;
+
 	return (true);
-	} /*langstriptextsyntax*/
+	} /*langstripstructuremarkers*/
 
 
 boolean langaddapplescriptsyntax (Handle hscript) {
