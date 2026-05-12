@@ -226,7 +226,6 @@ tests:
       local(gifDims = html.getgifheightwidth(gifPath));
       local(jpegDims = html.getjpegheightwidth(jpegPath));
 
-      # Verify both work correctly
       local(gifOK = (gifDims[1] == 50) and (gifDims[2] == 100));
       local(jpegOK = (jpegDims[1] == 200) and (jpegDims[2] == 200));
 
