@@ -470,6 +470,21 @@ boolean repl_eval_with_variables_value(
 
 	g_repl_eval_active = false;
 
+	/* Trap-and-return is a REPL UX feature: a typo at the REPL prompt
+	 * shouldn't crash the loop. But for protocol script/eval callers (and
+	 * yaml integration tests that go through this path), a compile error
+	 * inside the `with system.temp.FrontierREPL.variables { ... }` wrapper
+	 * must NOT be reported as success — the user's code never ran, and the
+	 * wrapper block defaulting to a truthy value would mask the failure.
+	 * If langtraperror populated error_msg, the script failed even if the
+	 * wrapper itself evaluated. Surface that as overall failure.
+	 *
+	 * Issue #618 surfaced ~85 yaml tests that pass on develop only because
+	 * this trap returns true. With this guard, those tests will fail and
+	 * can be fixed against real behavior. */
+	if (ok && !isemptystring(error_msg))
+		ok = false;
+
 	return ok;
 }
 

@@ -793,9 +793,29 @@ boolean langrun (Handle htext, tyvaluerecord *val) {
 	flevaluateglobalwith = false; /*reset every time*/
 	
 	fl = langbuildtree (htext, true, &hcode);
-	
+
 	if (!fl)
 		goto exit;
+
+	/*
+	Issue #618: the UserTalk scanner reports illegal-token / illegal-character
+	errors via langparamerror → langerrormessage, which sets fllangerror but
+	does NOT make yyparse fail (the offending token is consumed and parsing
+	continues). The result is langbuildtree returning true on a script that
+	had a scan-level error, leading callers (script/eval, yaml tests via
+	the with-wrapper) to evaluate a broken tree and report success with a
+	bogus value. If fllangerror is set immediately after build-tree, treat
+	the compile as failed and fall through to exit.
+	*/
+	if (fllangerror) {
+
+		fl = false;
+
+		if (hcode)
+			langdisposetree (hcode);
+
+		goto exit;
+		}
 	
 	if (flscriptalreadyrunning) { /*make nodes of this code tree point to current position*/
 		
@@ -848,7 +868,7 @@ boolean langrun (Handle htext, tyvaluerecord *val) {
 		langpoperrorcallback ();
 	
 	flscriptrunning = flscriptalreadyrunning;
-	
+
 	return (fl);
 	} /*langrun*/
 
@@ -961,33 +981,59 @@ static boolean langtraperror (bigstring bsmsg, ptrstring perrorstring) {
 
 
 boolean langruntraperror (Handle htext, tyvaluerecord *v, bigstring bserror) {
-	
+
 	/*
 	for langhtml.c: closely an evaluate under a try statement
+
+	Issue #618: compile errors that fire BEFORE the trapping callback is
+	consulted (e.g. langcompileerror inside langcompiletext) report via
+	bsparsererror and set fllangerror, but the caller's bserror is never
+	populated. Without explicitly observing fllangerror here, the wrapper
+	can return success (the with-block evaluated to a truthy default) and
+	overwrite the langerror state in the cleanup below, hiding the
+	compile failure from protocol/eval and yaml integration tests.
+
+	If a lang error fired during the run, treat the call as failed and
+	copy the captured parser error into bserror so callers can surface it.
 	*/
-	
+
 	boolean fl;
 	langerrormessagecallback savecallback;
 	ptrvoid saverefcon;
-	
+
 	savecallback = langcallbacks.errormessagecallback;
-	
+
 	saverefcon = langcallbacks.errormessagerefcon;
-	
+
 	langcallbacks.errormessagecallback = (langerrormessagecallback) &langtraperror;
-	
+
 	langcallbacks.errormessagerefcon = bserror;
-	
+
 	fl = langrun (htext, v);
-	
+
 	langcallbacks.errormessagecallback = savecallback;
-	
+
 	langcallbacks.errormessagerefcon = saverefcon;
-	
+
+	/*
+	Backstop for the scanner-error case described in #618: if langrun
+	returned true but fllangerror was still set after its own check ran
+	(shouldn't happen in steady state, but cheap to verify), trust the
+	error signal. Copy the global parser-error message into the caller's
+	bserror so protocol/eval surfaces something useful.
+	*/
+	if (fllangerror && fl) {
+
+		fl = false;
+
+		if (isemptystring (bserror) && !isemptystring (bsparsererror))
+			copystring (bsparsererror, bserror);
+		}
+
 	fllangerror = false;
-	
+
 	return (fl);
-	} /*langrunhandletraperror*/
+	} /*langruntraperror*/
 
 
 boolean langrunhandletraperror (Handle htext, bigstring bsresult, bigstring bserror) {

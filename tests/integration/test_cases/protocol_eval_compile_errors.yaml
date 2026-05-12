@@ -1,0 +1,49 @@
+# Integration tests for issue #618:
+# protocol script/eval must surface compile errors as success: false.
+#
+# Background: repl_eval_with_variables_value wraps user code as
+# `with system.temp.FrontierREPL.variables { ... }` and calls
+# langruntraperror. When the inner code fails to compile (e.g. an illegal
+# character like a bare LF in some parser paths), the compile error is
+# emitted on stderr but the `with` wrapper's evaluation can still report
+# success with the wrapper block's default truthy value. Result: callers
+# (yaml integration tests, protocol clients) see success: true / value
+# "true" / type "boolean" even though no user code ran.
+#
+# This created false-green test coverage. Issue #586 fix surfaces ~85
+# yaml tests that pass on develop only because of this trap.
+#
+# Fix (Path A from issue #618): when langruntraperror sets an error_msg,
+# repl_eval_with_variables_value returns false regardless of langrun's
+# return value, and handle_script_eval forwards that as success: false.
+
+tests:
+  - name: "protocol script/eval - illegal-character compile error surfaces as failure"
+    description: "A script body that doesn't compile must return success: false with an error message, not success: true / value: 'true'. Reproducer from issue #618: bare-LF inside a top-level statement sequence triggers the parser's illegal-character error on develop."
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "local(x = 1);\n\nlocal(y = 2);\nreturn x + y"
+        validate:
+          success: false
+
+  - name: "protocol script/eval - syntax garbage compile error surfaces as failure"
+    description: "Truly malformed source returns success: false (this case already works on develop; included as a regression guard so the fix does not break clean cases)."
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "@@@illegal@@@"
+        validate:
+          success: false
+
+  - name: "protocol script/eval - clean expression returns success: true"
+    description: "A valid expression must continue to return success: true with the right result type. Guards against the fix over-rejecting."
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "1 + 1"
+        validate:
+          success: true
+          result:
+            value: "2"
+            type: "long"
