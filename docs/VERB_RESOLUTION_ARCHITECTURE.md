@@ -79,6 +79,16 @@ on test () {
 }
 ```
 
+**Correct call forms for `defined()`:**
+
+- `defined(dot.address.of.object)` — the bare path resolves the value at the address.
+  Returns false if the path can't be resolved, true if it can.
+- `defined(adrObject^)` — given a local address variable, dereference it before passing
+  to `defined`. The `^` does the actual lookup; `defined` then checks the resulting value.
+
+The `defined(@addr)` form (with the address-of operator) is the parent-resolution-only
+variant described above; reach for it only when that is exactly what you want.
+
 **Correct alternatives when you actually need leaf existence:**
 
 - For menu-item presence, take a `menu.list()` size delta around the install/uninstall.
@@ -137,5 +147,6 @@ on test () {
 
 ## Update History
 
+- 2026-05-12: Added explicit call-form guidance to the `defined(@addr)` section (issue #587).
 - 2026-01-26: Updated Path 3 (EFP Resolution) to reflect PR #352 fix
 - 2026-01-25: Initial version created during Issue #344 investigation
