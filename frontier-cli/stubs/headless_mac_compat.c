@@ -463,10 +463,19 @@ static boolean headless_scripttexttooutline (hdloutlinerecord houtline, Handle h
 	them as comments.
 	*/
 
-	boolean flusertalk = (**houtline).outlinesignature == typeLAND;
+	boolean flusertalk;
 	Handle hstripped = nil;
-	Handle htouse = hscrap;
+	Handle htouse;
 	boolean fl;
+
+	/*Callers (optexttooutline → outline texttooutlinecallback) should always
+	pass a real scrap, but the callback contract is broader than the single
+	op.insert path in this PR's tests — be defensive.*/
+	if (houtline == nil || hscrap == nil)
+		return (false);
+
+	flusertalk = (**houtline).outlinesignature == typeLAND;
+	htouse = hscrap;
 
 	if (flusertalk) {
 		if (!langstripstructuremarkers (hscrap, &hstripped))

@@ -1253,14 +1253,11 @@ boolean langstripstructuremarkers (Handle hin, Handle *hout) {
 		/*detect whole-line comment — « or // as first non-whitespace byte*/
 		if (linestart + indent < lineend) {
 			byte ch1 = buf [linestart + indent];
-			if (ch1 == chcomment) {
+			if (ch1 == chcomment
+			    || (ch1 == '/'
+			        && (linestart + indent + 1) < lineend
+			        && buf [linestart + indent + 1] == '/'))
 				fliscomment = true;
-				}
-			else if (ch1 == '/'
-			         && (linestart + indent + 1) < lineend
-			         && buf [linestart + indent + 1] == '/') {
-				fliscomment = true;
-				}
 			}
 
 		commentstart = lineend; /*default: no trailing comment, content runs to EOL*/
@@ -1268,33 +1265,40 @@ boolean langstripstructuremarkers (Handle hin, Handle *hout) {
 		if (!fliscomment) {
 
 			/*scan forward from the indent boundary to find the start of any
-			trailing comment (« or //) that's outside a string literal*/
+			trailing comment (« or //) outside a string literal. UserTalk
+			strings use ASCII " (chdoublequote, 0x22) OR the Mac smart-quote
+			pair chopencurlyquote (0xD2) / chclosecurlyquote (0xD3); the
+			scanner accepts both forms (langscan.c parsepopstringconst), so
+			we track both here. Without that, a string like "a // b" with
+			"" delimiters works, but "a // b" with «...» smart quotes would
+			get its // misread as a comment start and the rest of the line
+			truncated. flqcurly distinguishes the closing delimiter to use.*/
 			long i = linestart + indent;
+			boolean flqcurly = false;
 			while (i < lineend) {
 				byte ch = buf [i];
 				if (flinstring) {
-					/*inside a double-quoted string. \" is an escape, "" closes.
-					UserTalk uses \ as a string escape (see langdeparsestring),
-					so skip the next byte after a backslash.*/
+					/*\ escapes the next byte (e.g. \" inside ASCII strings).
+					Same convention applies inside curly-quote strings; the
+					scanner doesn't distinguish.*/
 					if (ch == '\\' && i + 1 < lineend) {
 						i += 2;
 						continue;
 						}
-					if (ch == '"')
+					if ((!flqcurly && ch == '"')
+					    || (flqcurly && ch == (byte) chclosecurlyquote))
 						flinstring = false;
 					++i;
 					continue;
 					}
-				if (ch == '"') {
+				if (ch == '"' || ch == chopencurlyquote) {
 					flinstring = true;
+					flqcurly = (ch == chopencurlyquote);
 					++i;
 					continue;
 					}
-				if (ch == chcomment) {
-					commentstart = i;
-					break;
-					}
-				if (ch == '/' && i + 1 < lineend && buf [i + 1] == '/') {
+				if (ch == chcomment
+				    || (ch == '/' && i + 1 < lineend && buf [i + 1] == '/')) {
 					commentstart = i;
 					break;
 					}
@@ -1340,8 +1344,15 @@ boolean langstripstructuremarkers (Handle hin, Handle *hout) {
 			}
 		}
 
-	if (writeix != size)
-		sethandlesize (hcopy, writeix);
+	if (writeix != size) {
+		if (!sethandlesize (hcopy, writeix)) {
+			/*shrink should never fail in practice, but if it does we'd
+			be returning a handle whose declared size points past valid
+			data. Dispose and fail rather than hand back a stale tail.*/
+			disposehandle (hcopy);
+			return (false);
+			}
+		}
 
 	*hout = hcopy;
 

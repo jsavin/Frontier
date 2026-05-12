@@ -86,3 +86,15 @@ tests:
       return (back == expectCR)
     expected_success: true
     expected_result: "true"
+
+  - name: "round-trip: // and ; inside string literal are not treated as structure"
+    description: "A string literal containing the bytes // (comment marker) or { } ; (structural markers) must round-trip unchanged. The strip pass must track string-literal state so it does not mis-classify these bytes."
+    script: |
+      local (src = "on f () {\r\tlocal (s = \"a // b ; c { d } e\");\r\treturn (s)}");
+      new (tabletype, @system.temp.rt);
+      script.newScriptObject (src, @system.temp.rt.f);
+      local (result = system.temp.rt.f ());
+      delete (@system.temp.rt);
+      return (result == "a // b ; c { d } e")
+    expected_success: true
+    expected_result: "true"
