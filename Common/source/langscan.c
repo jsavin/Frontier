@@ -1381,13 +1381,15 @@ boolean langstripstructuremarkers (Handle hin, Handle *hout) {
 				if (ch != '{' && ch != '}' && ch != ';' && ch != chspace && ch != chtab)
 					break;
 
-				/*tentatively strip; check that the remaining content
-				(linestart+indent .. stripfrom-1) still has balanced or
-				surplus closing braces. If not, the brace we're about to
-				strip is needed to close an inline one-line block; stop.*/
-				long try_from = stripfrom - 1;
 				if (ch == '}') {
-					/*count {/} in [linestart+indent .. try_from), respecting strings*/
+					/*Tentatively strip; check that the remaining content
+					(linestart+indent .. stripfrom-1) still has balanced or
+					surplus closing braces. If not, the brace we are about
+					to strip is needed to close an inline one-line block;
+					stop. Count {/} in the kept content, respecting
+					string-literal state for both " and « forms (escape
+					with backslash applies to both).*/
+					long try_from = stripfrom - 1;
 					long open_ct = 0;
 					long close_ct = 0;
 					boolean in_str = false;
@@ -1412,8 +1414,6 @@ boolean langstripstructuremarkers (Handle hin, Handle *hout) {
 						if (kc == '{') ++open_ct;
 						else if (kc == '}') ++close_ct;
 						}
-					/*if the kept content has unmatched `{` (more opens than
-					closes), this `}` is needed to balance; don't strip it.*/
 					if (open_ct > close_ct)
 						break;
 					}
