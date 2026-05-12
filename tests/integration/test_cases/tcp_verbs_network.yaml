@@ -253,7 +253,7 @@ tests:
       tcp.closeListen(listenID);
       delete(@system.temp.tcpNet9106);
 
-      return string.length(response) > 0 and string.contains(response, "Hello from server", false)
+      return string.length(response) > 0 and (response contains "Hello from server", false)
     expected_success: true
     expected_result: "true"
 

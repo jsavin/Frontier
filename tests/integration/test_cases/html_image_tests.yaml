@@ -244,5 +244,5 @@ tests:
       imgTag = imgTag + " width=\"" + dimensions[2] + "\"";
       imgTag = imgTag + " height=\"" + dimensions[1] + "\">";
 
-      return string.contains(imgTag, "width=\"100\"") and string.contains(imgTag, "height=\"50\"")
+      return (imgTag contains "width=\"100\"") and (imgTag contains "height=\"50\"")
     expected_result: "true"

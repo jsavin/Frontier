@@ -221,7 +221,7 @@ tests:
 
       local(hasTitle = pageTable.title == "My Page")
       local(hasAuthor = pageTable.author == "John")
-      local(hasContent = string.contains(result, "<p>Content here</p>"))
+      local(hasContent = (result contains "<p>Content here</p>"))
 
       return hasTitle and hasAuthor and hasContent
     expected_result: "true"
@@ -300,7 +300,7 @@ tests:
       local(text = "#title = \"Test\"\r<p>Content</p>")
       local(result = html.rundirectives(text, @pageTable))
 
-      return not string.contains(result, "#title")
+      return not (result contains "#title")
     expected_result: "true"
 
   # =============================================================================
@@ -468,7 +468,7 @@ tests:
     script: |
       local(text = "&lt;tag&gt; &amp; &quot;text&quot;")
       local(result = html.cleanforexport(text))
-      return string.contains(result, "&lt;") and string.contains(result, "&amp;")
+      return (result contains "&lt;") and (result contains "&amp;")
     expected_result: "true"
 
   # =============================================================================
@@ -488,7 +488,7 @@ tests:
       user.html.prefs.useGlossPatcher = true
       html.glossarypatcher(@pageTable)
 
-      return string.contains(pageTable.renderedtext, "<a href=")
+      return (pageTable.renderedtext contains "<a href=")
     expected_result: "true"
 
   - name: "html.glossarypatcher - multiple patches"
@@ -612,7 +612,7 @@ tests:
       local(text = "#title = \"My Page\"\r<p>Content</p>")
       local(content = html.rundirectives(text, @pageTable))
 
-      return (pageTable.title == "My Page") and string.contains(content, "<p>Content</p>")
+      return (pageTable.title == "My Page") and (content contains "<p>Content</p>")
     expected_result: "true"
 
   - name: "html - preference inheritance chain"

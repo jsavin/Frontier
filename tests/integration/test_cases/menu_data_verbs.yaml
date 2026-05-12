@@ -229,7 +229,7 @@ tests:
 
       local(key = menu.getCommandKey());
 
-      local(hasKey = string.contains(key, "O"));
+      local(hasKey = (key contains "O"));
 
       delete(@system.temp.testMenu);
       return hasKey
@@ -267,7 +267,7 @@ tests:
 
       local(key = menu.getCommandKey());
 
-      local(match = string.contains(key, "F"));
+      local(match = (key contains "F"));
 
       delete(@system.temp.testMenu);
       return match

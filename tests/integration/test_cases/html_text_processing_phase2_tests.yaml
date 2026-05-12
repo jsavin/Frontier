@@ -67,7 +67,7 @@ tests:
       lang.new(tableType, @mapping);
       local(text = "test &amp; more");
       local(result = html.iso8859encode(text, @mapping));
-      return string.contains(result, "amp")
+      return (result contains "amp")
     expected_result: "true"
 
   - name: "html.iso8859encode - long text"
@@ -124,7 +124,7 @@ tests:
     script: |
       local(html = "Line 1<br/>Line 2<img src='test.jpg'/>End");
       local(result = searchengine.stripmarkup(html));
-      return string.contains(result, "Line 1") and string.contains(result, "Line 2")
+      return (result contains "Line 1") and (result contains "Line 2")
     expected_result: "true"
 
   - name: "searchengine.stripmarkup - script tags"
@@ -132,7 +132,7 @@ tests:
     script: |
       local(html = "<p>Text</p><script>alert('xss')</script><p>More</p>");
       local(result = searchengine.stripmarkup(html));
-      return string.contains(result, "Text") and not string.contains(result, "alert")
+      return (result contains "Text") and not (result contains "alert")
     expected_result: "true"
 
   - name: "searchengine.stripmarkup - style tags"
@@ -140,13 +140,13 @@ tests:
     script: |
       local(html = "<p>Text</p><style>body { color: red; }</style><p>More</p>");
       local(result = searchengine.stripmarkup(html));
-      return string.contains(result, "Text") and not string.contains(result, "color")
+      return (result contains "Text") and not (result contains "color")
     expected_result: "true"
 
   - name: "searchengine.stripmarkup - HTML entities preserved"
     description: "HTML entities should remain in output"
     skip: "UserTalk parser cannot handle &amp; in multi-line scripts"
-    script: 'return string.contains(searchengine.stripmarkup("test more"), "test")'
+    script: 'return (searchengine.stripmarkup("test more") contains "test")'
     expected_result: "true"
 
   - name: "searchengine.stripmarkup - plain text"
@@ -169,7 +169,7 @@ tests:
     script: |
       local(html = "<p>Unclosed tag<b>Bold text");
       local(result = searchengine.stripmarkup(html));
-      return string.contains(result, "Unclosed") and string.contains(result, "Bold")
+      return (result contains "Unclosed") and (result contains "Bold")
     expected_result: "true"
 
   - name: "searchengine.stripmarkup - multiple spaces collapsed"
@@ -177,7 +177,7 @@ tests:
     script: |
       local(html = "<p>Too    many     spaces</p>");
       local(result = searchengine.stripmarkup(html));
-      return string.contains(result, "Too") and string.contains(result, "spaces")
+      return (result contains "Too") and (result contains "spaces")
     expected_result: "true"
 
   - name: "searchengine.stripmarkup - line breaks preserved"
@@ -185,13 +185,13 @@ tests:
     script: |
       local(html = "<p>Line 1</p>\r<p>Line 2</p>");
       local(result = searchengine.stripmarkup(html));
-      return string.contains(result, "Line 1") and string.contains(result, "Line 2")
+      return (result contains "Line 1") and (result contains "Line 2")
     expected_result: "true"
 
   - name: "searchengine.stripmarkup - comment tags removed"
     description: "HTML comments should be removed"
     skip: "UserTalk parser cannot handle < character in string literals (even inside quotes)"
-    script: 'return not string.contains(searchengine.stripmarkup("Text comment More"), "comment")'
+    script: 'return not (searchengine.stripmarkup("Text comment More") contains "comment")'
     expected_result: "true"
 
   - name: "searchengine.stripmarkup - CDATA sections"
@@ -205,13 +205,13 @@ tests:
   - name: "searchengine.stripmarkup - DOCTYPE declarations"
     description: "DOCTYPE should be removed"
     skip: "UserTalk parser cannot handle < character in string literals (even inside quotes)"
-    script: 'return not string.contains(searchengine.stripmarkup("DOCTYPE Content"), "DOCTYPE")'
+    script: 'return not (searchengine.stripmarkup("DOCTYPE Content") contains "DOCTYPE")'
     expected_result: "true"
 
   - name: "searchengine.stripmarkup - XML/XHTML"
     description: "Handle XML/XHTML tags"
     skip: "UserTalk parser cannot handle < character in string literals (even inside quotes)"
-    script: 'return string.contains(searchengine.stripmarkup("xml version=1.0 Text"), "Text")'
+    script: 'return (searchengine.stripmarkup("xml version=1.0 Text") contains "Text")'
     expected_result: "true"
 
   # =============================================================================
@@ -224,9 +224,9 @@ tests:
       local(htmlPage = "<html><head><title>My Page</title></head><body><h1>Welcome</h1><p>This is <b>important</b> content.</p></body></html>");
       local(indexableText = searchengine.stripmarkup(htmlPage));
 
-      local(hasTitle = string.contains(indexableText, "My Page"));
-      local(hasContent = string.contains(indexableText, "important"));
-      local(noTags = not string.contains(indexableText, "<h1>"));
+      local(hasTitle = (indexableText contains "My Page"));
+      local(hasContent = (indexableText contains "important"));
+      local(noTags = not (indexableText contains "<h1>"));
 
       return hasTitle and hasContent and noTags
     expected_result: "true"
@@ -237,7 +237,7 @@ tests:
       local(html = "<p>The <b>quick</b> brown <i>fox</i> jumps over the lazy dog.</p>");
       local(snippet = searchengine.stripmarkup(html));
 
-      return string.contains(snippet, "quick brown fox")
+      return (snippet contains "quick brown fox")
     expected_result: "true"
 
   - name: "html.iso8859encode - export workflow"
@@ -274,7 +274,7 @@ tests:
       local(html = "<p>Use &lt;tag&gt; for HTML and &amp; for ampersand</p>");
       local(plain = searchengine.stripmarkup(html));
 
-      return string.contains(plain, "&lt;tag&gt;") and string.contains(plain, "&amp;")
+      return (plain contains "&lt;tag&gt;") and (plain contains "&amp;")
     expected_result: "true"
 
   - name: "html.iso8859encode - batch processing"
@@ -298,10 +298,10 @@ tests:
 
       local(plainText = searchengine.stripmarkup(complexHtml));
 
-      local(hasTitle = string.contains(plainText, "Blog Post"));
-      local(hasContent = string.contains(plainText, "First paragraph"));
-      local(noScript = not string.contains(plainText, "console.log"));
-      local(noStyle = not string.contains(plainText, "margin"));
+      local(hasTitle = (plainText contains "Blog Post"));
+      local(hasContent = (plainText contains "First paragraph"));
+      local(noScript = not (plainText contains "console.log"));
+      local(noStyle = not (plainText contains "margin"));
 
       return hasTitle and hasContent and noScript and noStyle
     expected_result: "true"

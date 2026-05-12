@@ -525,7 +525,7 @@ tests:
       safetags.b.flLegal = true;
       safetags.b.flClose = true;
       local(result = html.neutertags("<b>bold", @safetags));
-      return string.contains(result, "</b>")
+      return (result contains "</b>")
     expected_success: true
     expected_result: "true"
 
@@ -584,6 +584,6 @@ tests:
       local(withMacros = "Result: {1+1}, visit http://example.com/");
       local(processed = html.processmacros(withMacros, false, @pagetable));
       local(withLinks = html.expandurls(processed));
-      return string.contains(withLinks, "2") and string.contains(withLinks, "<a href")
+      return (withLinks contains "2") and (withLinks contains "<a href")
     expected_success: true
     expected_result: "true"
