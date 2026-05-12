@@ -667,53 +667,101 @@ static boolean parsepopstringconst (Handle *htext) {
 	
 
 static void parsepopcomment (void) {
-	
+
 	/*
 	consume characters up to and including the next chendcomment.
-	
+
 	comments cannot span more than one line, so endofline also causes
 	us to return.
+
+	2026-05-11 jes (Issue #586): terminate on chlinefeed (bare LF) as
+	well as chreturn. The 1997 RAB workaround in parsepopchar (langscan.c
+	lines ~336-342) peek-eats LFs *after* every returned char, which
+	means a bare LF immediately following a comment body char never
+	reaches us as `ch` here — the LF is silently consumed and the
+	comment runs on to swallow the next statement. Two layers of
+	detection are needed:
+
+	  1. Check parsefirstchar BEFORE each parsepopchar — catches LF as
+	     the next char to read (e.g., comment starts and is immediately
+	     followed by LF, or LF that survived parsepopchar's peek-eat).
+
+	  2. After parsepopchar, detect whether the peek-eat in parsepopchar
+	     just consumed a trailing LF — by observing a 2-char advance of
+	     ixparsestring when only 1 char was returned. If so, that LF
+	     was the line terminator and we should return.
+
+	parsepopchar itself is intentionally NOT modified — earlier attempts
+	(PR #609) to change its LF-eating produced 43 integration regressions
+	across cross-domain consumers that depended on it.
 	*/
-	
+
 	register byte ch;
-	
+	register long ixbefore;
+
 	while (true) {
-		
+
+		ch = parsefirstchar ();
+
+		if ((ch == chreturn) || (ch == chlinefeed)) {
+			parsepopchar (); /*consume the terminator before returning*/
+			return;
+			}
+
+		if (ch == chendscanstring)
+			return;
+
+		ixbefore = ixparsestring;
+
 		ch = parsepopchar ();
-		
-		if ((ch == chendcomment) || (ch == chreturn) || (ch == chendscanstring))
+
+		if (ch == chendcomment)
+			return;
+
+		/*
+		If parsepopchar advanced the index by 2, it peek-ate a trailing
+		LF after the char it returned. That LF is the comment terminator.
+		*/
+		if (ixparsestring - ixbefore == 2)
 			return;
 		} /*while*/
 	} /*parsepopcomment*/
 
 
 static boolean parsepopblanks (void) {
-	
+
 	/*
-	pop all the leading white space.  return false if the input stream is 
+	pop all the leading white space.  return false if the input stream is
 	empty, true otherwise.
 
 	5.0a12 dmb: handle // comments
+
+	2026-05-11 jes (Issue #586): treat chlinefeed (bare LF) as whitespace
+	on par with chreturn. The RAB-1997 LF-eat in parsepopchar swallows
+	most LFs before they reach the scanner, but bare LF at start of input
+	or LF in a "\n\n" blank-line pair still reaches us as a token char
+	and was previously reported as illegaltokenerror. Accepting LF here
+	is symmetrical to chreturn and does not affect parsepopchar.
 	*/
-	
+
 	register byte ch;
-	
+
 	while (true) {
-		
+
 		if (parsestringempty ())
 			return (false);
-		
+
 		ch = parsefirstchar ();
-		
+
 		if ((ch == chstartcomment) || (ch == '/' && parsenextchar () == '/')) {
-			
+
 			parsepopcomment (); /*pop everything up to and including endcomment char*/
 			}
-			
+
 		else {
-			if ((ch != ' ') && (ch != chtab) && (ch != chreturn))
+			if ((ch != ' ') && (ch != chtab) && (ch != chreturn) && (ch != chlinefeed))
 				return (true);
-			
+
 			parsepopchar (); /*consume a whitespace character*/
 			}
 		} /*while*/

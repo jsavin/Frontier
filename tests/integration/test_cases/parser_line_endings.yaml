@@ -1,0 +1,143 @@
+# Integration tests for UserTalk parser line-ending handling (Issue #586)
+#
+# BACKGROUND
+# UserTalk source is canonically CR-terminated (the Frontier outline node
+# separator). When source enters the compiler from non-outline paths — most
+# notably the REPL's `with system.temp.FrontierREPL.variables { ... }` wrapper,
+# protocol-mode `script.eval` / `script.compile`, .ut files read directly via
+# file.readWholeFile + langcompiletext — the bytes are typically LF-terminated.
+#
+# The 1997 RAB workaround in parsepopchar (langscan.c) peek-eats a trailing LF
+# after every returned char, which silently absorbs most LFs and made plain
+# scripts work. But two related bugs remained:
+#
+#   Quirk 1: `// line comment` followed by `return v` returned boolean `true`
+#   instead of `v`, because parsepopcomment terminated only on CR — the
+#   peek-ate LF flowed through and the comment swallowed the next statement.
+#
+#   Quirk 2: any non-ASCII byte inside a // comment on an LF-terminated line
+#   (e.g. UTF-8 em-dash U+2014, bytes E2 80 94) caused silent compile failure.
+#   Same root cause as Quirk 1 — the comment did not terminate on the line
+#   end and ran into the rest of the script with unbalanced state.
+#
+#   Quirk 3: consecutive `local()` statements on LF-terminated lines or
+#   separated by an LF-only blank line produced an "illegal character" parse
+#   error. Root cause: parsepopblanks treated only CR (not LF) as whitespace,
+#   so a bare LF that survived parsepopchar's peek-eat surfaced as an
+#   unrecognized token.
+#
+# FIX (Common/source/langscan.c)
+#   - parsepopcomment now terminates on LF as well as CR, AND detects when
+#     parsepopchar's peek-eat just consumed the line-terminating LF (via a
+#     2-char index advance on a 1-char return).
+#   - parsepopblanks now treats chlinefeed as whitespace, same as chreturn.
+#   - parsepopchar's behavior is unchanged — earlier attempts to modify it
+#     (PR #609) introduced 43 integration-test regressions in cross-domain
+#     consumers (op.insert line-endings, db.compact, menu projection, REPL
+#     palette, fileMenu) that depended on the silent LF-eat.
+#
+# These integration tests are the cross-domain safety net the prior attempt
+# lacked. They exercise the parser fix through the same UserTalk paths the
+# bug surfaced from (protocol-mode script.eval, // comments, multi-statement
+# scripts with bare LF separators), independently of the C-level unit tests
+# in parser_tests.c.
+
+tests:
+  # ========================================================================
+  # Quirk 1: // comment followed by return — LF, CRLF, CR variants
+  # ========================================================================
+
+  - name: "parser line endings - LF comment + return preserves value"
+    description: "Issue #586 Quirk 1: `// comment` followed by `return v` on LF line endings must return v, not boolean true."
+    script: |
+      local (s = "local (x = 42);\n// comment\nreturn (x)\n");
+      local (result = lang.evaluate (s));
+      return (result == 42)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "parser line endings - CRLF comment + return preserves value"
+    description: "Issue #586 Quirk 1 (CRLF variant): `// comment` followed by `return v` on Windows line endings must return v."
+    script: |
+      local (s = "local (x = 42);\r\n// comment\r\nreturn (x)\r\n");
+      local (result = lang.evaluate (s));
+      return (result == 42)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "parser line endings - CR comment + return preserves value (baseline)"
+    description: "Canonical CR line endings must continue to work unchanged."
+    script: |
+      local (s = "local (x = 42);\r// comment\rreturn (x)\r");
+      local (result = lang.evaluate (s));
+      return (result == 42)
+    expected_success: true
+    expected_result: "true"
+
+  # ========================================================================
+  # Quirk 2: non-ASCII bytes inside // comments
+  # ========================================================================
+
+  - name: "parser line endings - non-ASCII byte in LF comment does not break compile"
+    description: "Issue #586 Quirk 2: any non-ASCII byte (high-bit set, including UTF-8 continuation bytes from chars like em-dash) inside a // comment on LF source must NOT cause silent compile failure."
+    script: |
+      // \xE2\x80\x94 is UTF-8 em-dash U+2014; the bytes 0xE2 0x80 0x94 used
+      // to make parsepopcomment lose its line bearings on LF-terminated source.
+      local (s = "local (x = 7);\n// a \xE2\x80\x94 b\nreturn (x)\n");
+      local (result = lang.evaluate (s));
+      return (result == 7)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "parser line endings - multiple non-ASCII bytes in comment"
+    description: "More than one non-ASCII byte in a single comment must be tolerated."
+    script: |
+      local (s = "local (x = 8);\n// \xC9 \xCA \xCB \xE2\x80\x94 end\nreturn (x)\n");
+      local (result = lang.evaluate (s));
+      return (result == 8)
+    expected_success: true
+    expected_result: "true"
+
+  # ========================================================================
+  # Quirk 3: consecutive local() with bare-LF separators / blank lines
+  # ========================================================================
+
+  - name: "parser line endings - adjacent local() on LF lines compiles"
+    description: "Issue #586 Quirk 3: two consecutive `local()` statements separated by a bare LF must compile and run."
+    script: |
+      local (s = "local (x = 1);\nlocal (y = 2);\nreturn (x + y)\n");
+      local (result = lang.evaluate (s));
+      return (result == 3)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "parser line endings - blank line between LF statements compiles"
+    description: "Issue #586 Quirk 3 (blank line variant): a bare LF as a blank line between statements must be treated as whitespace, not an illegal character."
+    script: |
+      local (s = "local (x = 4);\n\nlocal (y = 5);\nreturn (x + y)\n");
+      local (result = lang.evaluate (s));
+      return (result == 9)
+    expected_success: true
+    expected_result: "true"
+
+  # ========================================================================
+  # Compositional: // comments interleaved with statements
+  # ========================================================================
+
+  - name: "parser line endings - multiple // comments between statements (LF)"
+    description: "Several // comments interspersed with statements on LF source must not affect the result."
+    script: |
+      local (s = "// header\nlocal (x = 10);\n// mid\nlocal (y = 20);\n// trailing\nreturn (x + y)\n");
+      local (result = lang.evaluate (s));
+      return (result == 30)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "parser line endings - // comment as final line of script (LF)"
+    description: "A trailing // comment with no following statement must not corrupt the previous result."
+    script: |
+      local (s = "local (x = 99);\nreturn (x);\n// trailing\n");
+      local (result = lang.evaluate (s));
+      return (result == 99)
+    expected_success: true
+    expected_result: "true"
