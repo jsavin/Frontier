@@ -347,8 +347,6 @@ tests:
     expected_result: "{safe}"
 
   - name: "html.neutermacros - mixed safe and unsafe"
-    skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
     description: "Escape only unsafe macros, leave safe ones"
     script: |
       local(safemacros);
@@ -356,7 +354,7 @@ tests:
       safemacros.safe = true;
       local(original = "{safe} {unsafe}");
       local(result = html.neutermacros(original, @safemacros));
-      local(hasSafe = string.patternMatch("{safe}*", result));
+      local(hasSafe = (result contains "{safe}"));
       local(isLonger = sizeOf(result) > sizeOf(original));
       return hasSafe and isLonger
     expected_success: true
@@ -403,13 +401,11 @@ tests:
     expected_result: "plain text"
 
   - name: "html.neutermacros - macro with params (unsafe)"
-    skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
     description: "Macros with parameters should be checked"
     script: |
       local(safemacros);
       lang.new(tableType, @safemacros);
-      safemacros.clock = true;  # Allow clock without params
+      safemacros.clock = true;
       local(original = "{clock.now()}");
       local(result = html.neutermacros(original, @safemacros));
       return sizeOf(result) > sizeOf(original)
@@ -456,8 +452,6 @@ tests:
     # Should return with <b> tags intact
 
   - name: "html.neutertags - mixed safe and unsafe"
-    skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
     description: "Escape only unsafe tags, leave safe ones"
     script: |
       local(safetags);
@@ -465,7 +459,7 @@ tests:
       safetags.b = true;
       local(original = "<b>bold</b> <script>alert('xss')</script>");
       local(result = html.neutertags(original, @safetags));
-      local(hasB = string.patternMatch("*<b>*", result));
+      local(hasB = (result contains "<b>"));
       local(isLonger = sizeOf(result) > sizeOf(original));
       return hasB and isLonger
     expected_success: true
@@ -536,9 +530,7 @@ tests:
     expected_result: "true"
 
   - name: "html.neutertags - tag balancing"
-    skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
-    description: "Multiple unclosed safe tags should all be closed"
+    description: "Multiple unclosed safe tags should all be closed. countFields takes a single-character delimiter in UserTalk, so we test by string equality against the expected balanced output instead."
     script: |
       local(safetags);
       lang.new(tableType, @safetags);
@@ -546,7 +538,7 @@ tests:
       safetags.i.flLegal = true;
       safetags.i.flClose = true;
       local(result = html.neutertags("<i>one <i>two", @safetags));
-      return string.countFields(result, "</i>") == 2
+      return result == "<i>one <i>two</i></i>"
     expected_success: true
     expected_result: "true"
 
@@ -555,8 +547,6 @@ tests:
   # =============================================================================
 
   - name: "html - complete sanitization workflow"
-    skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
     description: "SECURITY: Full sanitization of untrusted user input"
     script: |
       local(safetags, safemacros);
@@ -567,7 +557,7 @@ tests:
       local(untrustedInput = "<b>Hello</b> <script>alert('xss')</script> {file.delete()}");
       local(step1 = html.neutertags(untrustedInput, @safetags));
       local(step2 = html.neutermacros(step1, @safemacros));
-      local(hasB = string.patternMatch("*<b>*", step2));
+      local(hasB = (step2 contains "<b>"));
       local(isLonger = sizeOf(step2) > sizeOf(untrustedInput));
       return hasB and isLonger
     expected_success: true
