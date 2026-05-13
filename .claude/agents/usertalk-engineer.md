@@ -116,7 +116,8 @@ persistent (dbValue)         // Persistent globals (stored in ODB)
 
 1. **Repetition:**
    - `for i = 1 to N` - Counter-based loop
-   - `for element in list` - List iteration (0-based indexing)
+   - `for value in listOrRecord` - List/record iteration; visitor is the value. Order is positional/insertion-order.
+   - `for adrMember in @table` - Table iteration; visitor is the ADDRESS of each member. Dereference with `^` to get value; `nameOf (adrMember^)` for member name. **Pass the table's address (`@t`), not the value (`t`)** — `for x in tableValue` fails with "not supported for table values."
    - `while condition` - Conditional loop
    - `fileloop (f in path)` or `fileloop (f in path, depth)` - Recursive file iteration
    - `loop` with `break` - Infinite loop with exit condition (avoid in favor of for/while)
@@ -185,16 +186,18 @@ Frontier's verb architecture uses "glue scripts" to connect UserTalk code to ker
 - DocServer reference: 75+ verb categories at `docs/usertalk/docserver/` (source markup from docserver.userland.com CMS)
 
 **Data Types (28 total, focus on these):**
-- `stringType` - Text (full 255-char set), literal: `"Hello"`
+- `stringType` - Text, literal: `"Hello"`. Internally stored as Pascal-string (255-byte max) or `Handle` (arbitrary length) depending on context; see `docs/usertalk/strings_and_text.md` for the 255-byte truncation landmine.
 - `numberType` - Integer or float (dynamically typed), literal: `42` or `3.14`
 - `booleanType` - `true` or `false`
-- `addressType` - ODB reference, literal: `@table.object`
-- `arrayType` - 0-indexed heterogeneous list, literal: `{1, "two", true}`
-- `recordType` - Key-value associative, literal: `["key": "value", "age": 30]`
-- `tableType` - ODB table object, created: `new table`
-- `outlineType` - Hierarchical outline, created: `new outline`
-- `scriptType` - Executable code object, created: `new script`
-- `wptextType` - Rich text with formatting, created: `new wptext`
+- `addressType` - ODB reference, literal: `@table.object`. An address value is always defined; `defined (@x)` checks address validity (parent path exists), NOT target presence. Use `defined (adr^)` to check target.
+- `listType` (a.k.a. arrayType) - Positional, heterogeneous list. Literal: `{1, "two", true}` (curly braces, NOT square brackets). Iterate with `for x in listValue` (visitor is the value).
+- `recordType` - Insertion-ordered key/value structure. Literal: `{"key": "value", "age": 30}` (curly braces, NOT square brackets). Iterate with `for x in recordValue` (visitor is the value). **Records do NOT support dotted-name access** — `r.key` doesn't work. Use ordinal iteration. To add a member, use `+`: `r = r + {"newKey": "newValue"}`. `+` on a name collision is a silent no-op (a long-standing quirk; tables are the right choice for keyed-mutable storage). See `docs/usertalk/records_and_tables.md`.
+- `tableType` - Named-member container; the workhorse. Literal: created via `new (tableType, @address)`. Dotted-name access works (`t.name`); bracket form for dynamic/keyword-shadowing names (`t.[var]`, `t.["stringType"]`). Iterate with `for adrM in @tableAddress` (visitor is the ADDRESS of each member; dereference with `adrM^`). Member names must be unique. Headless: insertion order; legacy Mac: alpha-sorted (divergence).
+- `outlineType` - Hierarchical outline, created: `new (outlineType, @adr)`
+- `scriptType` - Executable code object, created: `new (scriptType, @adr)`
+- `wptextType` - Rich text with formatting, created: `new (wptextType, @adr)`
+
+**Square brackets are NOT a UserTalk literal syntax.** Both records and lists use curly braces; the parser distinguishes them by whether the elements have `"key":` prefix.
 
 **Operators (Support both symbols AND word equivalents):**
 - Arithmetic: `+` (add/concat), `-` (subtract), `*` (multiply), `/` (divide), `%` (modulo), `^` (power)
@@ -268,12 +271,14 @@ else {
 
 **CRITICAL UserTalk Parser Constraints:**
 
-1. **NO Inline Comments Inside Code Blocks**
-   - ❌ WRONG: `if true { // comment inside block`
-   - ❌ WRONG: `on handler() { // comment`
-   - ✅ CORRECT: Place all // comments OUTSIDE blocks (before `if`, `on`, `try`, etc.)
-   - **Why**: The UserTalk parser does not support inline // comments inside `{ }` blocks
-   - **Pattern**: Use compact formatting without comments inside blocks
+1. **`//` Comments Inside `{ }` Blocks — usually OK, with one caveat**
+   - ✅ CORRECT: `//` between statements inside a block compiles fine
+   - ✅ CORRECT: `//` on its own line inside a block
+   - ⚠️ UNSAFE: `//` on the same physical line directly BEFORE a closing `}` (interacts with brace tracking)
+   - ✅ CORRECT: `//` AFTER a closing `}` on the same line (since `}` ends the block first)
+   - **Why**: The parser tracks `//` to end-of-line; ambiguity is only at the `}` boundary
+   - **`/* */` is NOT a UserTalk comment** — never use it (either compile error or silent miscompile)
+   - **Pattern**: When in doubt, put comments on their own line inside blocks
 
 2. **Blank Lines Must Match Indentation Level**
    - ❌ WRONG: Blank line with zero indentation inside an indented block

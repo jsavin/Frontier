@@ -176,6 +176,10 @@ Cross-agent UserTalk invariants and integration-test parser constraints live in 
 - typeof() returns OSType codes (e.g. `'TEXT'`) not descriptive strings
 - Absolute paths required — UserTalk table paths must be fully qualified (e.g. `@workspace.foo`)
 
+### UserTalk language primer (load before .ut or yaml-script work)
+
+Before writing inline UserTalk in yaml integration tests, editing `.ut` files, or debugging UserTalk runtime behavior, load `docs/usertalk/CLAUDE_PRIMER.md` (~250 lines). It's the language tour with idioms and failure-mode decoder — what the docserver verb reference doesn't teach. Deeper docs in `docs/usertalk/` (records_and_tables, operators_and_idioms, strings_and_text, verb_invocation_patterns, testing_patterns, debugging_workflow) are linked from the primer and load on demand.
+
 ---
 
 ## C Coding Style
