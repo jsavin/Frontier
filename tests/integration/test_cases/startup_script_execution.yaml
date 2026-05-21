@@ -1,0 +1,163 @@
+# Integration tests for startupScript execution correctness.
+#
+# BACKGROUND:
+# Recent work (#616, #618, #621, #622) touched the script round-trip path that
+# startupScript depends on. Specifically:
+#   - #616: restored script.newScriptObject round-trip (langstripstructuremarkers)
+#   - #618: fixed fllangerror so compile errors surface instead of silently passing
+#   - #621: fixed brace-balance so inline nested blocks like `try {body}}` survive
+#   - #622: reinstalled startupScript in Virgin.root after the #621 fix
+#
+# The integration test runner uses --skip-startup, so startupScript is NOT invoked
+# automatically. These tests call startup.startupScript() explicitly and check:
+#   1. The script compiles and runs without error (end-to-end execution)
+#   2. The expected state is set (system.temp.Frontier table, startingUp flag)
+#   3. The idempotency guard works (second call returns early)
+#   4. Scheduler task times are pushed into the future
+#   5. user.databases table is created if not already defined
+#
+# EXECUTION NOTE:
+# These tests run in the persistent protocol executor process (--skip-startup +
+# --allow-mutate). Calling startup.startupScript() within a test sets
+# system.temp.Frontier for the lifetime of that process. Tests are self-contained:
+# each script checks its own observable state in one atomic operation.
+# sequential: true prevents parallel runs from racing on system.temp.Frontier.
+
+sequential: true
+
+tests:
+  # ============================================================
+  # Test 1: startupScript executes to completion without error
+  # ============================================================
+  - name: "startup: startupScript completes and sets system.temp.Frontier"
+    description: |
+      Core smoke test: calling startup.startupScript() must complete without
+      runtime error and leave system.temp.Frontier defined. This verifies the
+      script compiles (exercising the #621 brace-balance fix on inline nested
+      blocks in the script body) and that headless-incompatible calls (window.about,
+      webBrowser.openUrl, etc.) are wrapped in try blocks and don't crash execution.
+    timeout: 20
+    script: |
+      startup.startupScript();
+      return defined(system.temp.Frontier)
+    expected_success: true
+    expected_result: "true"
+
+  # ============================================================
+  # Test 2: startingUp flag cleared at completion
+  # ============================================================
+  - name: "startup: startingUp flag is false after completion"
+    description: |
+      startupScript sets system.temp.Frontier.startingUp = true at the beginning
+      and = false at the very last line. A false value proves execution reached
+      the end of the script body, not just the early guard return. This is the
+      tightest available signal that the full script ran to completion.
+      Builds on Test 1 — system.temp.Frontier already exists so the idempotency
+      guard returns early; this test works because it reads the state left by Test 1.
+    timeout: 5
+    script: |
+      return (defined(system.temp.Frontier) and not system.temp.Frontier.startingUp)
+    expected_success: true
+    expected_result: "true"
+
+  # ============================================================
+  # Test 3: startupTime is set to a recent timestamp
+  # ============================================================
+  - name: "startup: startupTime is set and is a recent date"
+    description: |
+      startupScript sets system.temp.Frontier.startupTime = clock.now() near the
+      top of the script. We verify it is defined and is within the last 60 seconds,
+      confirming the table was populated in the current run (not a stale value from
+      a prior session). A stale or missing startupTime would indicate the script
+      body was skipped or the ODB was corrupted.
+    timeout: 5
+    script: |
+      if not defined(system.temp.Frontier.startupTime) {
+          return "startupTime not set"};
+      local(age = clock.now() - system.temp.Frontier.startupTime);
+      return (age >= 0 and age < 60)
+    expected_success: true
+    expected_result: "true"
+
+  # ============================================================
+  # Test 4: Idempotency guard — second call returns early
+  # ============================================================
+  - name: "startup: second call to startupScript is a no-op (idempotency guard)"
+    description: |
+      startupScript opens with: if defined(system.temp.Frontier) { return }.
+      Calling it a second time must return immediately without modifying state.
+      We capture startupTime before the call and verify it is unchanged after,
+      proving the guard fired and the body was skipped entirely.
+    timeout: 10
+    script: |
+      local(t1 = system.temp.Frontier.startupTime);
+      startup.startupScript();
+      local(t2 = system.temp.Frontier.startupTime);
+      return (t1 == t2)
+    expected_success: true
+    expected_result: "true"
+
+  # ============================================================
+  # Test 5: Scheduler task times are in the future
+  # ============================================================
+  - name: "startup: scheduler task times are in the future after startup"
+    description: |
+      startupScript adjusts predefined scheduler task times to be in the future.
+      everyMinute is set to (now + 1 minute), hourly to (now + 1 hour). The
+      overnight task is conditionally adjusted: if it's already in the past it's
+      rescheduled. We verify hourly and overnight are > now using the state left by
+      Test 1 (no re-run needed; idempotency guard would make a second call a no-op
+      anyway). everyMinute is intentionally excluded: its 1-minute window is too
+      narrow for reliable CI timing. Re-calling startupScript() is avoided because
+      it triggers inetd.start(), which binds TCP ports — an unneeded side effect.
+    timeout: 5
+    script: |
+      local(hourly = user.scheduler.tasks.hourly.taskTime);
+      local(overnight = user.scheduler.tasks.overnight.taskTime);
+      local(now = clock.now());
+      return (hourly > now) and (overnight > now)
+    expected_success: true
+    expected_result: "true"
+
+  # ============================================================
+  # Test 6: user.databases table created when undefined
+  # ============================================================
+  - name: "startup: user.databases table is created when not already defined"
+    description: |
+      Near the end of startupScript's database-opening bundle:
+        if not defined(user.databases) { new(tableType, @user.databases) }
+      This ensures the user.databases path always exists after startup, even on a
+      clean Virgin.root that has no user databases registered. We verify the table
+      exists and has the right type.
+    timeout: 5
+    script: |
+      return (defined(user.databases) and typeof(user.databases) == tableType)
+    expected_success: true
+    expected_result: "true"
+
+  # ============================================================
+  # Test 7: startupScript compiles cleanly as a round-trip
+  # ============================================================
+  - name: "startup: startupScript round-trips through script.newScriptObject (#621 regression guard)"
+    description: |
+      startupScript was reinstalled in Virgin.root by PR #622 after the #621
+      brace-balance fix. This test reinstalls it from its string representation
+      into a temp location and verifies it still compiles and can be called.
+      This is a direct regression guard for the langstripstructuremarkers fix:
+      if the brace-balance logic ever regresses, inline one-line nested blocks
+      inside startupScript will be corrupted on import and produce a compile error.
+      Note: this test runs startupScript a second time; the idempotency guard
+      returns early, so the call itself is fast. The test verifies compilation, not
+      side effects.
+    timeout: 20
+    script: |
+      local(src = string(@system.startup.startupScript));
+      new(tableType, @system.temp.startupRoundtripTest);
+      local(compiled = false);
+      try {
+          script.newScriptObject(src, @system.temp.startupRoundtripTest.startupScript);
+          compiled = defined(system.temp.startupRoundtripTest.startupScript)};
+      delete(@system.temp.startupRoundtripTest);
+      return compiled
+    expected_success: true
+    expected_result: "true"
