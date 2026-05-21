@@ -1,3 +1,4 @@
+sequential: true  # Tests bind TCP ports; parallel workers would conflict
 # Integration tests for TCP Phase 1A Client Operations - Localhost Pattern
 # MIGRATION COMPLETE: External network tests converted to localhost patterns
 #
@@ -205,9 +206,8 @@ tests:
     notes: "Migrated - uses localhost server"
 
   - name: "tcp.countConnections - track stream lifecycle"
-    skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
     description: "Verify countConnections tracks open/close correctly"
+    timeout: 10
     script: |
       local(listenID = tcp.listenStream(10007, 5, ""));
 
@@ -238,9 +238,8 @@ tests:
   # ===========================================================================
 
   - name: "tcp.readStream - empty read when no data sent"
-    skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
     description: "Verify non-blocking read returns empty string when no data"
+    timeout: 10
     script: |
       local(listenID = tcp.listenStream(10008, 5, ""));
 
@@ -266,26 +265,21 @@ tests:
     notes: "Migrated - uses localhost server (no echo handler)"
 
   - name: "tcp.readStream - read after write using echo server"
-    skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
     description: "Verify read returns data after sending to echo server"
+    timeout: 10
     script: |
-      on tcpEchoHandler(streamID, remoteAddr, remotePort) {
-        local(data = tcp.readStream(streamID, 1024));
-        if (string.length(data) > 0) {
-          tcp.writeStream(streamID, "ECHO: " + data)
-        };
-        tcp.closeStream(streamID);
-        return true
-      };
+      new(tableType, @system.temp.tcpCli09);
+      system.temp.tcpCli09.fired = false;
+      script.newScriptObject("on myEchoHandler(sid, refcon) {\r  local(data = tcp.readStream(sid, 1024));\r  if string.length(data) > 0 {\r    tcp.writeStream(sid, \"ECHO: \" + data)\r  };\r  tcp.closeStream(sid);\r  system.temp.tcpCli09.fired = true;\r  return true}", @system.temp.tcpCli09.myEchoHandler);
 
-      local(listenID = tcp.listenStream(10009, 5, @tcpEchoHandler));
+      local(listenID = tcp.listenStream(10009, 5, @system.temp.tcpCli09.myEchoHandler));
 
       try {
         local(localhostIP = tcp.addressEncode("127.0.0.1"));
         local(stream = tcp.openStream(localhostIP, 10009));
         if (stream <= 0) {
           tcp.closeListen(listenID);
+          delete(@system.temp.tcpCli09);
           return "false"
         };
 
@@ -293,23 +287,31 @@ tests:
         if (not writeOk) {
           tcp.closeStream(stream);
           tcp.closeListen(listenID);
+          delete(@system.temp.tcpCli09);
           return "false"
         };
 
-        local(startTicks = clock.ticks());
+        local(deadline = clock.ticks() + 300);
+        while (not system.temp.tcpCli09.fired) and (clock.ticks() < deadline) {
+          clock.ticks()
+        };
+
         local(response = "");
-        while (string.length(response) == 0) and ((clock.ticks() - startTicks) < 60) {
+        local(readDeadline = clock.ticks() + 120);
+        while (string.length(response) == 0) and (clock.ticks() < readDeadline) {
           response = tcp.readStream(stream, 1024);
-          thread.sleepFor(10)
+          clock.ticks()
         };
 
         tcp.closeStream(stream);
         tcp.closeListen(listenID);
+        delete(@system.temp.tcpCli09);
 
         return response == "ECHO: Hello Server"
       }
       else {
         tcp.closeListen(listenID);
+        delete(@system.temp.tcpCli09);
         return "false"
       }
     expected_success: true
@@ -321,33 +323,33 @@ tests:
   # ===========================================================================
 
   - name: "tcp.writeStream - write to echo server"
-    skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
     description: "Test blocking write sends all data"
+    timeout: 10
     script: |
-      on tcpEchoHandler(streamID, remoteAddr, remotePort) {
-        local(data = tcp.readStream(streamID, 1024));
-        tcp.closeStream(streamID);
-        return true
-      };
+      new(tableType, @system.temp.tcpCli10);
+      system.temp.tcpCli10.fired = false;
+      script.newScriptObject("on mySinkHandler(sid, refcon) {\r  local(data = tcp.readStream(sid, 1024));\r  tcp.closeStream(sid);\r  system.temp.tcpCli10.fired = true;\r  return true}", @system.temp.tcpCli10.mySinkHandler);
 
-      local(listenID = tcp.listenStream(10010, 5, @tcpEchoHandler));
+      local(listenID = tcp.listenStream(10010, 5, @system.temp.tcpCli10.mySinkHandler));
 
       try {
         local(localhostIP = tcp.addressEncode("127.0.0.1"));
         local(stream = tcp.openStream(localhostIP, 10010));
         if (stream <= 0) {
           tcp.closeListen(listenID);
+          delete(@system.temp.tcpCli10);
           return "false"
         };
 
         local(ok = tcp.writeStream(stream, "Test data"));
         tcp.closeStream(stream);
         tcp.closeListen(listenID);
+        delete(@system.temp.tcpCli10);
         return ok
       }
       else {
         tcp.closeListen(listenID);
+        delete(@system.temp.tcpCli10);
         return "false"
       }
     expected_success: true
@@ -355,9 +357,8 @@ tests:
     notes: "Migrated - uses localhost echo server"
 
   - name: "tcp.writeStream - empty data"
-    skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
     description: "Writing zero-length data should succeed (no-op)"
+    timeout: 10
     script: |
       local(listenID = tcp.listenStream(10011, 5, ""));
 
@@ -386,9 +387,8 @@ tests:
   # ===========================================================================
 
   - name: "tcp.closeStream - double close (idempotent)"
-    skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
     description: "Closing already-closed stream should be safe"
+    timeout: 10
     script: |
       local(listenID = tcp.listenStream(10012, 5, ""));
 
@@ -419,9 +419,8 @@ tests:
     notes: "Migrated - uses localhost server"
 
   - name: "tcp.readStream - read from closed stream"
-    skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
     description: "Reading from closed stream should raise error"
+    timeout: 10
     script: |
       local(listenID = tcp.listenStream(10013, 5, ""));
 
@@ -452,9 +451,8 @@ tests:
     notes: "Migrated - uses localhost server"
 
   - name: "tcp.writeStream - write to closed stream"
-    skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
     description: "Writing to closed stream should raise error"
+    timeout: 10
     script: |
       local(listenID = tcp.listenStream(10014, 5, ""));
 
@@ -489,9 +487,8 @@ tests:
   # ===========================================================================
 
   - name: "tcp.countConnections - multiple concurrent streams"
-    skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
     description: "Verify tracking of multiple open connections"
+    timeout: 10
     script: |
       local(listenID = tcp.listenStream(10015, 5, ""));
 
@@ -521,26 +518,21 @@ tests:
     notes: "Migrated - uses localhost server"
 
   - name: "tcp connection lifecycle - full echo exchange"
-    skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
     description: "Test complete echo request/response cycle"
+    timeout: 10
     script: |
-      on tcpEchoHandler(streamID, remoteAddr, remotePort) {
-        local(data = tcp.readStream(streamID, 2048));
-        if (string.length(data) > 0) {
-          tcp.writeStream(streamID, "RESPONSE: " + data)
-        };
-        tcp.closeStream(streamID);
-        return true
-      };
+      new(tableType, @system.temp.tcpCli16);
+      system.temp.tcpCli16.fired = false;
+      script.newScriptObject("on myEchoHandler(sid, refcon) {\r  local(data = tcp.readStream(sid, 2048));\r  if string.length(data) > 0 {\r    tcp.writeStream(sid, \"RESPONSE: \" + data)\r  };\r  tcp.closeStream(sid);\r  system.temp.tcpCli16.fired = true;\r  return true}", @system.temp.tcpCli16.myEchoHandler);
 
-      local(listenID = tcp.listenStream(10016, 5, @tcpEchoHandler));
+      local(listenID = tcp.listenStream(10016, 5, @system.temp.tcpCli16.myEchoHandler));
 
       try {
         local(localhostIP = tcp.addressEncode("127.0.0.1"));
         local(stream = tcp.openStream(localhostIP, 10016));
         if (stream <= 0) {
           tcp.closeListen(listenID);
+          delete(@system.temp.tcpCli16);
           return "false"
         };
 
@@ -548,23 +540,31 @@ tests:
         if (not writeOk) {
           tcp.closeStream(stream);
           tcp.closeListen(listenID);
+          delete(@system.temp.tcpCli16);
           return "false"
         };
 
-        local(startTicks = clock.ticks());
+        local(deadline = clock.ticks() + 300);
+        while (not system.temp.tcpCli16.fired) and (clock.ticks() < deadline) {
+          clock.ticks()
+        };
+
         local(response = "");
-        while (string.length(response) == 0) and ((clock.ticks() - startTicks) < 60) {
+        local(readDeadline = clock.ticks() + 120);
+        while (string.length(response) == 0) and (clock.ticks() < readDeadline) {
           response = tcp.readStream(stream, 2048);
-          thread.sleepFor(10)
+          clock.ticks()
         };
 
         tcp.closeStream(stream);
         tcp.closeListen(listenID);
+        delete(@system.temp.tcpCli16);
 
         return response == "RESPONSE: Test Request"
       }
       else {
         tcp.closeListen(listenID);
+        delete(@system.temp.tcpCli16);
         return "false"
       }
     expected_success: true
@@ -576,9 +576,8 @@ tests:
   # ===========================================================================
 
   - name: "tcp.readStream - zero byte count"
-    skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
     description: "Reading zero bytes should return empty string (not error)"
+    timeout: 10
     script: |
       local(listenID = tcp.listenStream(10017, 5, ""));
 
@@ -603,23 +602,21 @@ tests:
     notes: "Migrated - uses localhost server"
 
   - name: "tcp.writeStream - large data write"
-    skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
     description: "Test writing larger data block (multi-KB)"
+    timeout: 10
     script: |
-      on tcpSinkHandler(streamID, remoteAddr, remotePort) {
-        local(data = tcp.readStream(streamID, 8192));
-        tcp.closeStream(streamID);
-        return true
-      };
+      new(tableType, @system.temp.tcpCli18);
+      system.temp.tcpCli18.fired = false;
+      script.newScriptObject("on mySinkHandler(sid, refcon) {\r  local(data = tcp.readStream(sid, 8192));\r  tcp.closeStream(sid);\r  system.temp.tcpCli18.fired = true;\r  return true}", @system.temp.tcpCli18.mySinkHandler);
 
-      local(listenID = tcp.listenStream(10018, 5, @tcpSinkHandler));
+      local(listenID = tcp.listenStream(10018, 5, @system.temp.tcpCli18.mySinkHandler));
 
       try {
         local(localhostIP = tcp.addressEncode("127.0.0.1"));
         local(stream = tcp.openStream(localhostIP, 10018));
         if (stream <= 0) {
           tcp.closeListen(listenID);
+          delete(@system.temp.tcpCli18);
           return "false"
         };
 
@@ -627,10 +624,12 @@ tests:
         local(ok = tcp.writeStream(stream, body));
         tcp.closeStream(stream);
         tcp.closeListen(listenID);
+        delete(@system.temp.tcpCli18);
         return ok
       }
       else {
         tcp.closeListen(listenID);
+        delete(@system.temp.tcpCli18);
         return "false"
       }
     expected_success: true
@@ -649,4 +648,3 @@ tests:
   # - "tcp.openStream - DNS failure for invalid hostname"
   #
   # All other tests (42 of 43) have been successfully migrated to localhost.
-

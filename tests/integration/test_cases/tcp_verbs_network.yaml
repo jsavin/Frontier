@@ -13,7 +13,7 @@ sequential: true  # Port conflicts between parallel workers
 #   - tcp.abortStream(stream) -> true
 #   - tcp.countConnections() -> count
 #
-# Port allocation: 9100-9115 (tcp_server_verbs.yaml uses 9000-9022)
+# Port allocation: 9100-9115 (tcp_server_verbs.yaml uses 9000-9027)
 #
 # NOTE on tcp.openNameStream: This verb has SSRF/DNS-rebinding protection that
 # rejects connections to private/reserved IPs (127.0.0.0/8, 10.0.0.0/8, etc).
@@ -23,6 +23,12 @@ sequential: true  # Port conflicts between parallel workers
 # NOTE on error handling: TCP verb errors use langerrormessage() which is not
 # catchable by try/else in UserTalk. Error-expecting tests use expected_success: false
 # rather than try/catch wrappers.
+#
+# NOTE on callbacks: All callback tests use script.newScriptObject to install
+# the handler into a persistent ODB path (system.temp.tcpNetXXXX). Callbacks
+# use 2-param signature (sid, refcon) — the kernel only passes these 2 args.
+# The wait loop uses clock.ticks() as the body (not thread.sleepFor) to yield
+# the GIL and allow callback threads to run.
 
 tests:
   # ===========================================================================
@@ -51,21 +57,17 @@ tests:
     script: |
       new(tableType, @system.temp.tcpNet9101);
       system.temp.tcpNet9101.accepted = false;
+      system.temp.tcpNet9101.serverStream = -1;
+      script.newScriptObject("on myHandler(sid, refcon) {\r  system.temp.tcpNet9101.accepted = true;\r  system.temp.tcpNet9101.serverStream = sid;\r  tcp.closeStream(sid);\r  return true}", @system.temp.tcpNet9101.myHandler);
 
-      on tcpHandler9101(streamID, remoteAddr, remotePort) {
-        system.temp.tcpNet9101.accepted = true;
-        tcp.closeStream(streamID);
-        return true
-      };
-
-      local(listenID = tcp.listenStream(9101, 5, @tcpHandler9101));
-      local(localhostIP = 2130706433);
+      local(listenID = tcp.listenStream(9101, 5, @system.temp.tcpNet9101.myHandler));
+      local(localhostIP = tcp.addressEncode("127.0.0.1"));
       local(stream = tcp.openAddrStream(localhostIP, 9101));
       local(valid = stream > 0);
 
-      local(startTicks = clock.ticks());
-      while (not system.temp.tcpNet9101.accepted) and ((clock.ticks() - startTicks) < 60) {
-        thread.sleepFor(10)
+      local(deadline = clock.ticks() + 300);
+      while (not system.temp.tcpNet9101.accepted) and (clock.ticks() < deadline) {
+        clock.ticks()
       };
 
       tcp.closeStream(stream);
@@ -92,22 +94,21 @@ tests:
     script: |
       new(tableType, @system.temp.tcpNet9102);
       system.temp.tcpNet9102.accepted = false;
+      system.temp.tcpNet9102.serverStream = -1;
+      script.newScriptObject("on myHandler(sid, refcon) {\r  system.temp.tcpNet9102.accepted = true;\r  system.temp.tcpNet9102.serverStream = sid;\r  return true}", @system.temp.tcpNet9102.myHandler);
 
-      on tcpHandler9102(streamID, remoteAddr, remotePort) {
-        system.temp.tcpNet9102.accepted = true;
-        tcp.closeStream(streamID);
-        return true
-      };
-
-      local(listenID = tcp.listenStream(9102, 5, @tcpHandler9102));
+      local(listenID = tcp.listenStream(9102, 5, @system.temp.tcpNet9102.myHandler));
       local(clientStream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 9102));
 
-      local(startTicks = clock.ticks());
-      while (not system.temp.tcpNet9102.accepted) and ((clock.ticks() - startTicks) < 60) {
-        thread.sleepFor(10)
+      local(deadline = clock.ticks() + 300);
+      while (not system.temp.tcpNet9102.accepted) and (clock.ticks() < deadline) {
+        clock.ticks()
       };
 
       local(ok = tcp.closeStream(clientStream));
+      if system.temp.tcpNet9102.serverStream > 0 {
+        tcp.closeStream(system.temp.tcpNet9102.serverStream)
+      };
       tcp.closeListen(listenID);
       delete(@system.temp.tcpNet9102);
 
@@ -121,22 +122,21 @@ tests:
     script: |
       new(tableType, @system.temp.tcpNet9103);
       system.temp.tcpNet9103.accepted = false;
+      system.temp.tcpNet9103.serverStream = -1;
+      script.newScriptObject("on myHandler(sid, refcon) {\r  system.temp.tcpNet9103.accepted = true;\r  system.temp.tcpNet9103.serverStream = sid;\r  return true}", @system.temp.tcpNet9103.myHandler);
 
-      on tcpHandler9103(streamID, remoteAddr, remotePort) {
-        system.temp.tcpNet9103.accepted = true;
-        tcp.closeStream(streamID);
-        return true
-      };
-
-      local(listenID = tcp.listenStream(9103, 5, @tcpHandler9103));
+      local(listenID = tcp.listenStream(9103, 5, @system.temp.tcpNet9103.myHandler));
       local(clientStream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 9103));
 
-      local(startTicks = clock.ticks());
-      while (not system.temp.tcpNet9103.accepted) and ((clock.ticks() - startTicks) < 60) {
-        thread.sleepFor(10)
+      local(deadline = clock.ticks() + 300);
+      while (not system.temp.tcpNet9103.accepted) and (clock.ticks() < deadline) {
+        clock.ticks()
       };
 
       local(ok = tcp.abortStream(clientStream));
+      if system.temp.tcpNet9103.serverStream > 0 {
+        tcp.closeStream(system.temp.tcpNet9103.serverStream)
+      };
       tcp.closeListen(listenID);
       delete(@system.temp.tcpNet9103);
 
@@ -145,34 +145,33 @@ tests:
     expected_result: "true"
 
   - name: "tcp.countConnections - track stream lifecycle"
-    skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
     description: "Verify countConnections tracks open/close correctly"
     timeout: 15
     script: |
       new(tableType, @system.temp.tcpNet9104);
       system.temp.tcpNet9104.accepted = false;
+      system.temp.tcpNet9104.serverStream = -1;
+      script.newScriptObject("on myHandler(sid, refcon) {\r  system.temp.tcpNet9104.accepted = true;\r  system.temp.tcpNet9104.serverStream = sid;\r  return true}", @system.temp.tcpNet9104.myHandler);
 
-      on tcpHandler9104(streamID, remoteAddr, remotePort) {
-        system.temp.tcpNet9104.accepted = true;
-        system.temp.tcpNet9104.serverStream = streamID;
-        return true
-      };
-
-      local(listenID = tcp.listenStream(9104, 5, @tcpHandler9104));
+      local(listenID = tcp.listenStream(9104, 5, @system.temp.tcpNet9104.myHandler));
       local(before = tcp.countConnections());
       local(clientStream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 9104));
 
-      local(startTicks = clock.ticks());
-      while (not system.temp.tcpNet9104.accepted) and ((clock.ticks() - startTicks) < 60) {
-        thread.sleepFor(10)
+      local(deadline = clock.ticks() + 300);
+      while (not system.temp.tcpNet9104.accepted) and (clock.ticks() < deadline) {
+        clock.ticks()
       };
 
       local(during = tcp.countConnections());
       tcp.closeStream(clientStream);
-      tcp.closeStream(system.temp.tcpNet9104.serverStream);
+      if system.temp.tcpNet9104.serverStream > 0 {
+        tcp.closeStream(system.temp.tcpNet9104.serverStream)
+      };
 
-      thread.sleepFor(50);
+      local(afterDeadline = clock.ticks() + 60);
+      while clock.ticks() < afterDeadline {
+        clock.ticks()
+      };
 
       local(after = tcp.countConnections());
       tcp.closeListen(listenID);
@@ -187,33 +186,29 @@ tests:
   # ===========================================================================
 
   - name: "tcp.readStream - empty read when no data sent"
-    skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
     description: "Verify non-blocking read returns empty string when no data available"
     timeout: 15
     script: |
       new(tableType, @system.temp.tcpNet9105);
       system.temp.tcpNet9105.accepted = false;
+      system.temp.tcpNet9105.serverStream = -1;
+      script.newScriptObject("on myHandler(sid, refcon) {\r  system.temp.tcpNet9105.accepted = true;\r  system.temp.tcpNet9105.serverStream = sid;\r  return true}", @system.temp.tcpNet9105.myHandler);
 
-      on tcpHandler9105(streamID, remoteAddr, remotePort) {
-        system.temp.tcpNet9105.accepted = true;
-        system.temp.tcpNet9105.serverStream = streamID;
-        return true
-      };
-
-      local(listenID = tcp.listenStream(9105, 5, @tcpHandler9105));
+      local(listenID = tcp.listenStream(9105, 5, @system.temp.tcpNet9105.myHandler));
       local(clientStream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 9105));
 
-      local(startTicks = clock.ticks());
-      while (not system.temp.tcpNet9105.accepted) and ((clock.ticks() - startTicks) < 60) {
-        thread.sleepFor(10)
+      local(deadline = clock.ticks() + 300);
+      while (not system.temp.tcpNet9105.accepted) and (clock.ticks() < deadline) {
+        clock.ticks()
       };
 
       local(data = tcp.readStream(clientStream, 1024));
       local(isEmpty = (string.length(data) == 0));
 
       tcp.closeStream(clientStream);
-      tcp.closeStream(system.temp.tcpNet9105.serverStream);
+      if system.temp.tcpNet9105.serverStream > 0 {
+        tcp.closeStream(system.temp.tcpNet9105.serverStream)
+      };
       tcp.closeListen(listenID);
       delete(@system.temp.tcpNet9105);
 
@@ -222,44 +217,42 @@ tests:
     expected_result: "true"
 
   - name: "tcp.readStream - read data from server"
-    skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
     description: "Server writes data, client reads it"
+    skip: true
+    skip_reason: "Server-side writeStream in accept callback raises 'Invalid stream ID: Stream not connected' — the accepted sid is not yet in a writable state when the callback fires; requires kernel fix"
     timeout: 15
     script: |
       new(tableType, @system.temp.tcpNet9106);
       system.temp.tcpNet9106.accepted = false;
+      system.temp.tcpNet9106.serverStream = -1;
+      script.newScriptObject("on myHandler(sid, refcon) {\r  system.temp.tcpNet9106.accepted = true;\r  tcp.writeStream(sid, \"Hello from server\");\r  system.temp.tcpNet9106.serverStream = sid;\r  return true}", @system.temp.tcpNet9106.myHandler);
 
-      on tcpHandler9106(streamID, remoteAddr, remotePort) {
-        system.temp.tcpNet9106.accepted = true;
-        tcp.writeStream(streamID, "Hello from server");
-        system.temp.tcpNet9106.serverStream = streamID;
-        return true
-      };
-
-      local(listenID = tcp.listenStream(9106, 5, @tcpHandler9106));
+      local(listenID = tcp.listenStream(9106, 5, @system.temp.tcpNet9106.myHandler));
       local(clientStream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 9106));
 
-      local(startTicks = clock.ticks());
-      while (not system.temp.tcpNet9106.accepted) and ((clock.ticks() - startTicks) < 60) {
-        thread.sleepFor(10)
+      local(deadline = clock.ticks() + 300);
+      while (not system.temp.tcpNet9106.accepted) and (clock.ticks() < deadline) {
+        clock.ticks()
       };
 
-      thread.sleepFor(100);
-
       local(response = "");
-      local(readStart = clock.ticks());
-      while (sizeOf(response) == 0) and ((clock.ticks() - readStart) < 200) {
-        response = tcp.readStream(clientStream, 1024);
-        thread.sleepFor(10)
+      local(readDeadline = clock.ticks() + 200);
+      while (response == "") and (clock.ticks() < readDeadline) {
+        local(chunk = tcp.readStream(clientStream, 1024));
+        if typeOf(chunk) == 'TEXT' {
+          response = chunk
+        };
+        clock.ticks()
       };
 
       tcp.closeStream(clientStream);
-      tcp.closeStream(system.temp.tcpNet9106.serverStream);
+      if system.temp.tcpNet9106.serverStream > 0 {
+        tcp.closeStream(system.temp.tcpNet9106.serverStream)
+      };
       tcp.closeListen(listenID);
       delete(@system.temp.tcpNet9106);
 
-      return string.length(response) > 0 and (response contains "Hello from server", false)
+      return string.length(response) > 0 and (response contains "Hello from server")
     expected_success: true
     expected_result: "true"
 
@@ -268,32 +261,28 @@ tests:
   # ===========================================================================
 
   - name: "tcp.writeStream - write data to server"
-    skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
     description: "Test blocking write sends data successfully"
     timeout: 15
     script: |
       new(tableType, @system.temp.tcpNet9107);
       system.temp.tcpNet9107.accepted = false;
+      system.temp.tcpNet9107.serverStream = -1;
+      script.newScriptObject("on myHandler(sid, refcon) {\r  system.temp.tcpNet9107.accepted = true;\r  system.temp.tcpNet9107.serverStream = sid;\r  return true}", @system.temp.tcpNet9107.myHandler);
 
-      on tcpHandler9107(streamID, remoteAddr, remotePort) {
-        system.temp.tcpNet9107.accepted = true;
-        system.temp.tcpNet9107.serverStream = streamID;
-        return true
-      };
-
-      local(listenID = tcp.listenStream(9107, 5, @tcpHandler9107));
+      local(listenID = tcp.listenStream(9107, 5, @system.temp.tcpNet9107.myHandler));
       local(clientStream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 9107));
 
-      local(startTicks = clock.ticks());
-      while (not system.temp.tcpNet9107.accepted) and ((clock.ticks() - startTicks) < 60) {
-        thread.sleepFor(10)
+      local(deadline = clock.ticks() + 300);
+      while (not system.temp.tcpNet9107.accepted) and (clock.ticks() < deadline) {
+        clock.ticks()
       };
 
       local(ok = tcp.writeStream(clientStream, "Hello from client"));
 
       tcp.closeStream(clientStream);
-      tcp.closeStream(system.temp.tcpNet9107.serverStream);
+      if system.temp.tcpNet9107.serverStream > 0 {
+        tcp.closeStream(system.temp.tcpNet9107.serverStream)
+      };
       tcp.closeListen(listenID);
       delete(@system.temp.tcpNet9107);
 
@@ -302,32 +291,28 @@ tests:
     expected_result: "true"
 
   - name: "tcp.writeStream - empty data"
-    skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
     description: "Writing zero-length data should succeed (no-op)"
     timeout: 15
     script: |
       new(tableType, @system.temp.tcpNet9115);
       system.temp.tcpNet9115.accepted = false;
+      system.temp.tcpNet9115.serverStream = -1;
+      script.newScriptObject("on myHandler(sid, refcon) {\r  system.temp.tcpNet9115.accepted = true;\r  system.temp.tcpNet9115.serverStream = sid;\r  return true}", @system.temp.tcpNet9115.myHandler);
 
-      on tcpHandler9115(streamID, remoteAddr, remotePort) {
-        system.temp.tcpNet9115.accepted = true;
-        system.temp.tcpNet9115.serverStream = streamID;
-        return true
-      };
-
-      local(listenID = tcp.listenStream(9115, 5, @tcpHandler9115));
+      local(listenID = tcp.listenStream(9115, 5, @system.temp.tcpNet9115.myHandler));
       local(clientStream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 9115));
 
-      local(startTicks = clock.ticks());
-      while (not system.temp.tcpNet9115.accepted) and ((clock.ticks() - startTicks) < 60) {
-        thread.sleepFor(10)
+      local(deadline = clock.ticks() + 300);
+      while (not system.temp.tcpNet9115.accepted) and (clock.ticks() < deadline) {
+        clock.ticks()
       };
 
       local(ok = tcp.writeStream(clientStream, ""));
 
       tcp.closeStream(clientStream);
-      tcp.closeStream(system.temp.tcpNet9115.serverStream);
+      if system.temp.tcpNet9115.serverStream > 0 {
+        tcp.closeStream(system.temp.tcpNet9115.serverStream)
+      };
       tcp.closeListen(listenID);
       delete(@system.temp.tcpNet9115);
 
@@ -342,26 +327,21 @@ tests:
   # ===========================================================================
 
   - name: "tcp.closeStream - double close"
-    skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
     description: "Second close on already-closed stream — verify behavior"
+    skip: true
+    skip_reason: "Implementation raises error on double close (Invalid stream ID) rather than succeeding silently — requires kernel change to make idempotent"
     timeout: 15
     script: |
       new(tableType, @system.temp.tcpNet9108);
       system.temp.tcpNet9108.accepted = false;
+      script.newScriptObject("on myHandler(sid, refcon) {\r  system.temp.tcpNet9108.accepted = true;\r  tcp.closeStream(sid);\r  return true}", @system.temp.tcpNet9108.myHandler);
 
-      on tcpHandler9108(streamID, remoteAddr, remotePort) {
-        system.temp.tcpNet9108.accepted = true;
-        tcp.closeStream(streamID);
-        return true
-      };
-
-      local(listenID = tcp.listenStream(9108, 5, @tcpHandler9108));
+      local(listenID = tcp.listenStream(9108, 5, @system.temp.tcpNet9108.myHandler));
       local(clientStream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 9108));
 
-      local(startTicks = clock.ticks());
-      while (not system.temp.tcpNet9108.accepted) and ((clock.ticks() - startTicks) < 60) {
-        thread.sleepFor(10)
+      local(deadline = clock.ticks() + 300);
+      while (not system.temp.tcpNet9108.accepted) and (clock.ticks() < deadline) {
+        clock.ticks()
       };
 
       tcp.closeStream(clientStream);
@@ -374,26 +354,21 @@ tests:
     expected_result: "true"
 
   - name: "tcp.readStream - read from closed stream returns empty"
-    skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
     description: "Reading from closed stream returns empty string (fd already closed)"
+    skip: true
+    skip_reason: "Implementation raises error (Invalid stream ID) when reading from closed stream rather than returning empty string — requires kernel change"
     timeout: 15
     script: |
       new(tableType, @system.temp.tcpNet9109);
       system.temp.tcpNet9109.accepted = false;
+      script.newScriptObject("on myHandler(sid, refcon) {\r  system.temp.tcpNet9109.accepted = true;\r  tcp.closeStream(sid);\r  return true}", @system.temp.tcpNet9109.myHandler);
 
-      on tcpHandler9109(streamID, remoteAddr, remotePort) {
-        system.temp.tcpNet9109.accepted = true;
-        tcp.closeStream(streamID);
-        return true
-      };
-
-      local(listenID = tcp.listenStream(9109, 5, @tcpHandler9109));
+      local(listenID = tcp.listenStream(9109, 5, @system.temp.tcpNet9109.myHandler));
       local(clientStream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 9109));
 
-      local(startTicks = clock.ticks());
-      while (not system.temp.tcpNet9109.accepted) and ((clock.ticks() - startTicks) < 60) {
-        thread.sleepFor(10)
+      local(deadline = clock.ticks() + 300);
+      while (not system.temp.tcpNet9109.accepted) and (clock.ticks() < deadline) {
+        clock.ticks()
       };
 
       tcp.closeStream(clientStream);
@@ -407,26 +382,21 @@ tests:
     expected_result: "true"
 
   - name: "tcp.writeStream - write to closed stream succeeds silently"
-    skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
     description: "Writing to closed stream returns true (no error raised)"
+    skip: true
+    skip_reason: "Implementation raises error when writing to closed stream rather than succeeding silently — requires kernel change"
     timeout: 15
     script: |
       new(tableType, @system.temp.tcpNet9110);
       system.temp.tcpNet9110.accepted = false;
+      script.newScriptObject("on myHandler(sid, refcon) {\r  system.temp.tcpNet9110.accepted = true;\r  tcp.closeStream(sid);\r  return true}", @system.temp.tcpNet9110.myHandler);
 
-      on tcpHandler9110(streamID, remoteAddr, remotePort) {
-        system.temp.tcpNet9110.accepted = true;
-        tcp.closeStream(streamID);
-        return true
-      };
-
-      local(listenID = tcp.listenStream(9110, 5, @tcpHandler9110));
+      local(listenID = tcp.listenStream(9110, 5, @system.temp.tcpNet9110.myHandler));
       local(clientStream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 9110));
 
-      local(startTicks = clock.ticks());
-      while (not system.temp.tcpNet9110.accepted) and ((clock.ticks() - startTicks) < 60) {
-        thread.sleepFor(10)
+      local(deadline = clock.ticks() + 300);
+      while (not system.temp.tcpNet9110.accepted) and (clock.ticks() < deadline) {
+        clock.ticks()
       };
 
       tcp.closeStream(clientStream);
@@ -444,28 +414,22 @@ tests:
   # ===========================================================================
 
   - name: "tcp.countConnections - multiple concurrent streams"
-    skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
     description: "Verify tracking of multiple open connections"
     timeout: 15
     script: |
       new(tableType, @system.temp.tcpNet9111);
       system.temp.tcpNet9111.acceptCount = 0;
+      script.newScriptObject("on myHandler(sid, refcon) {\r  system.temp.tcpNet9111.acceptCount = system.temp.tcpNet9111.acceptCount + 1;\r  return true}", @system.temp.tcpNet9111.myHandler);
 
-      on tcpHandler9111(streamID, remoteAddr, remotePort) {
-        system.temp.tcpNet9111.acceptCount = system.temp.tcpNet9111.acceptCount + 1;
-        return true
-      };
-
-      local(listenID = tcp.listenStream(9111, 5, @tcpHandler9111));
+      local(listenID = tcp.listenStream(9111, 5, @system.temp.tcpNet9111.myHandler));
 
       local(stream1 = tcp.openStream(tcp.addressEncode("127.0.0.1"), 9111));
       local(stream2 = tcp.openStream(tcp.addressEncode("127.0.0.1"), 9111));
       local(stream3 = tcp.openStream(tcp.addressEncode("127.0.0.1"), 9111));
 
-      local(startTicks = clock.ticks());
-      while (system.temp.tcpNet9111.acceptCount < 3) and ((clock.ticks() - startTicks) < 120) {
-        thread.sleepFor(10)
+      local(deadline = clock.ticks() + 300);
+      while (system.temp.tcpNet9111.acceptCount < 3) and (clock.ticks() < deadline) {
+        clock.ticks()
       };
 
       local(count = tcp.countConnections());
@@ -482,36 +446,37 @@ tests:
     expected_result: "true"
 
   - name: "tcp connection lifecycle - full data exchange"
-    skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
     description: "Test complete client-server data exchange cycle"
+    skip: true
+    skip_reason: "Race condition: server callback closes stream before client polls; tcp.readStream on a closed server stream returns false — requires kernel-level stream event notification"
     timeout: 15
     script: |
-      on tcpHandler9112(streamID, remoteAddr, remotePort) {
-        local(data = tcp.readStream(streamID, 1024));
-        tcp.writeStream(streamID, "ECHO: " + data);
-        tcp.closeStream(streamID);
-        return true
-      };
+      new(tableType, @system.temp.tcpNet9112);
+      system.temp.tcpNet9112.fired = false;
+      script.newScriptObject("on myHandler(sid, refcon) {\r  local(data = tcp.readStream(sid, 1024));\r  tcp.writeStream(sid, \"ECHO: \" + data);\r  tcp.closeStream(sid);\r  system.temp.tcpNet9112.fired = true;\r  return true}", @system.temp.tcpNet9112.myHandler);
 
-      local(listenID = tcp.listenStream(9112, 5, @tcpHandler9112));
+      local(listenID = tcp.listenStream(9112, 5, @system.temp.tcpNet9112.myHandler));
       local(clientStream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 9112));
 
       tcp.writeStream(clientStream, "Hello Server");
 
-      thread.sleepFor(100);
+      local(deadline = clock.ticks() + 300);
+      while (not system.temp.tcpNet9112.fired) and (clock.ticks() < deadline) {
+        clock.ticks()
+      };
 
       local(response = "");
-      local(startTicks = clock.ticks());
-      while (sizeOf(response) == 0) and ((clock.ticks() - startTicks) < 200) {
+      local(readDeadline = clock.ticks() + 120);
+      while (sizeOf(response) == 0) and (clock.ticks() < readDeadline) {
         response = tcp.readStream(clientStream, 1024);
-        thread.sleepFor(10)
+        clock.ticks()
       };
 
       local(validResponse = response == "ECHO: Hello Server");
 
       tcp.closeStream(clientStream);
       tcp.closeListen(listenID);
+      delete(@system.temp.tcpNet9112);
 
       return validResponse
     expected_success: true
@@ -522,32 +487,30 @@ tests:
   # ===========================================================================
 
   - name: "tcp.readStream - zero byte count"
-    skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
     description: "Reading zero bytes should return empty string (not error)"
+    skip: true
+    skip_reason: "Implementation raises error (must be positive) for zero byte count rather than returning empty string — requires kernel change"
     timeout: 15
     script: |
       new(tableType, @system.temp.tcpNet9113);
       system.temp.tcpNet9113.accepted = false;
+      system.temp.tcpNet9113.serverStream = -1;
+      script.newScriptObject("on myHandler(sid, refcon) {\r  system.temp.tcpNet9113.accepted = true;\r  system.temp.tcpNet9113.serverStream = sid;\r  return true}", @system.temp.tcpNet9113.myHandler);
 
-      on tcpHandler9113(streamID, remoteAddr, remotePort) {
-        system.temp.tcpNet9113.accepted = true;
-        system.temp.tcpNet9113.serverStream = streamID;
-        return true
-      };
-
-      local(listenID = tcp.listenStream(9113, 5, @tcpHandler9113));
+      local(listenID = tcp.listenStream(9113, 5, @system.temp.tcpNet9113.myHandler));
       local(clientStream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 9113));
 
-      local(startTicks = clock.ticks());
-      while (not system.temp.tcpNet9113.accepted) and ((clock.ticks() - startTicks) < 60) {
-        thread.sleepFor(10)
+      local(deadline = clock.ticks() + 300);
+      while (not system.temp.tcpNet9113.accepted) and (clock.ticks() < deadline) {
+        clock.ticks()
       };
 
       local(data = tcp.readStream(clientStream, 0));
 
       tcp.closeStream(clientStream);
-      tcp.closeStream(system.temp.tcpNet9113.serverStream);
+      if system.temp.tcpNet9113.serverStream > 0 {
+        tcp.closeStream(system.temp.tcpNet9113.serverStream)
+      };
       tcp.closeListen(listenID);
       delete(@system.temp.tcpNet9113);
 
@@ -556,33 +519,29 @@ tests:
     expected_result: "true"
 
   - name: "tcp.writeStream - large data write"
-    skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
     description: "Test writing larger data block (4KB, multi-packet)"
     timeout: 15
     script: |
       new(tableType, @system.temp.tcpNet9114);
       system.temp.tcpNet9114.accepted = false;
+      system.temp.tcpNet9114.serverStream = -1;
+      script.newScriptObject("on myHandler(sid, refcon) {\r  system.temp.tcpNet9114.accepted = true;\r  system.temp.tcpNet9114.serverStream = sid;\r  return true}", @system.temp.tcpNet9114.myHandler);
 
-      on tcpHandler9114(streamID, remoteAddr, remotePort) {
-        system.temp.tcpNet9114.accepted = true;
-        system.temp.tcpNet9114.serverStream = streamID;
-        return true
-      };
-
-      local(listenID = tcp.listenStream(9114, 5, @tcpHandler9114));
+      local(listenID = tcp.listenStream(9114, 5, @system.temp.tcpNet9114.myHandler));
       local(clientStream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 9114));
 
-      local(startTicks = clock.ticks());
-      while (not system.temp.tcpNet9114.accepted) and ((clock.ticks() - startTicks) < 60) {
-        thread.sleepFor(10)
+      local(deadline = clock.ticks() + 300);
+      while (not system.temp.tcpNet9114.accepted) and (clock.ticks() < deadline) {
+        clock.ticks()
       };
 
       local(bigData = string.filledString("X", 4000));
       local(ok = tcp.writeStream(clientStream, bigData));
 
       tcp.closeStream(clientStream);
-      tcp.closeStream(system.temp.tcpNet9114.serverStream);
+      if system.temp.tcpNet9114.serverStream > 0 {
+        tcp.closeStream(system.temp.tcpNet9114.serverStream)
+      };
       tcp.closeListen(listenID);
       delete(@system.temp.tcpNet9114);
 

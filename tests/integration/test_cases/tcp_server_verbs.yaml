@@ -1,3 +1,4 @@
+sequential: true  # Tests bind TCP ports; parallel workers would conflict
 # Integration tests for TCP Phase 3 - Server Operations
 # Tests tcp.listenStream(), tcp.closeListen(), and callback infrastructure
 #
@@ -52,143 +53,120 @@ tests:
     notes: "Phase 3 - Verify closeListen returns boolean true"
 
   - name: "tcp.listenStream - callback receives connection"
-    skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
-    description: "Verify callback is invoked with correct parameters when client connects"
+    description: "Verify callback is invoked when client connects"
+    timeout: 10
     script: |
-      new(tableType, @system.temp.tcpTest);
-      system.temp.tcpTest.callbackInvoked = false;
-      system.temp.tcpTest.streamID = 0;
-      system.temp.tcpTest.remoteAddr = 0;
-      system.temp.tcpTest.remotePort = 0;
+      new(tableType, @system.temp.tcpSrv03);
+      system.temp.tcpSrv03.fired = false;
+      system.temp.tcpSrv03.sid = -1;
+      script.newScriptObject("on myHandler(sid, refcon) {\r  system.temp.tcpSrv03.fired = true;\r  system.temp.tcpSrv03.sid = sid;\r  tcp.closeStream(sid);\r  return true}", @system.temp.tcpSrv03.myHandler);
 
-      on tcpHandler(streamID, remoteAddr, remotePort) {
-        system.temp.tcpTest.callbackInvoked = true;
-        system.temp.tcpTest.streamID = streamID;
-        system.temp.tcpTest.remoteAddr = remoteAddr;
-        system.temp.tcpTest.remotePort = remotePort;
-
-        tcp.closeStream(streamID);
-        return true
-      };
-
-      local(listenID = tcp.listenStream(9003, 5, @tcpHandler);
-
+      local(listenID = tcp.listenStream(9003, 5, @system.temp.tcpSrv03.myHandler));
       local(clientStream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 9003));
 
-      local(startTicks = clock.ticks());
-      while (not defined(system.temp.tcpTest.callbackInvoked)) and ((clock.ticks() - startTicks) < 60) {
-        thread.sleepFor(10)
+      local(deadline = clock.ticks() + 300);
+      while (not system.temp.tcpSrv03.fired) and (clock.ticks() < deadline) {
+        clock.ticks()
       };
 
-      local(invoked = defined(system.temp.tcpTest.callbackInvoked));
-      local(validStream = system.temp.tcpTest.streamID > 0);
+      local(invoked = system.temp.tcpSrv03.fired);
+      local(validStream = system.temp.tcpSrv03.sid > 0);
 
       tcp.closeStream(clientStream);
       tcp.closeListen(listenID);
-      delete(@system.temp.tcpTest);
+      delete(@system.temp.tcpSrv03);
 
       return invoked and validStream
     expected_success: true
     expected_result: "true"
-    notes: "Phase 3 - Requires P0a callback infrastructure (PR #328)"
+    notes: "Phase 3 - Callback installed via script.newScriptObject; 2-param signature (sid, refcon)"
 
   - name: "tcp.listenStream - callback receives correct remote address"
-    skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
-    description: "Verify callback receives 127.0.0.1 as remote address"
+    description: "Verify server can query 127.0.0.1 as peer address via tcp.getPeerAddress on accepted stream"
+    timeout: 10
     script: |
-      new(tableType, @system.temp.tcpTest);
-      system.temp.tcpTest.remoteAddr = 0;
+      new(tableType, @system.temp.tcpSrv04);
+      system.temp.tcpSrv04.fired = false;
+      system.temp.tcpSrv04.peerAddr = 0;
+      script.newScriptObject("on myHandler(sid, refcon) {\r  system.temp.tcpSrv04.fired = true;\r  system.temp.tcpSrv04.peerAddr = tcp.getPeerAddress(sid);\r  tcp.closeStream(sid);\r  return true}", @system.temp.tcpSrv04.myHandler);
 
-      on tcpHandler(streamID, remoteAddr, remotePort) {
-        system.temp.tcpTest.remoteAddr = remoteAddr;
-        tcp.closeStream(streamID);
-        return true
-      };
-
-      local(listenID = tcp.listenStream(9004, 5, @tcpHandler);
+      local(listenID = tcp.listenStream(9004, 5, @system.temp.tcpSrv04.myHandler));
       local(clientStream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 9004));
 
-      local(startTicks = clock.ticks());
-      while (not defined(system.temp.tcpTest.remoteAddr)) and ((clock.ticks() - startTicks) < 60) {
-        thread.sleepFor(10)
+      local(deadline = clock.ticks() + 300);
+      while (not system.temp.tcpSrv04.fired) and (clock.ticks() < deadline) {
+        clock.ticks()
       };
 
-      local(validAddr = system.temp.tcpTest.remoteAddr == tcp.addressEncode("127.0.0.1"));
+      local(validAddr = system.temp.tcpSrv04.peerAddr == tcp.addressEncode("127.0.0.1"));
 
       tcp.closeStream(clientStream);
       tcp.closeListen(listenID);
-      delete(@system.temp.tcpTest);
+      delete(@system.temp.tcpSrv04);
 
       return validAddr
     expected_success: true
     expected_result: "true"
-    notes: "Phase 3 - Verify callback receives correct remote IP address parameter"
+    notes: "Phase 3 - Remote addr obtained via tcp.getPeerAddress(sid) inside callback"
 
   - name: "tcp.listenStream - callback receives correct remote port"
-    skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
-    description: "Verify callback receives ephemeral port number from client"
+    description: "Verify server sees ephemeral port number from client via tcp.getPeerPort"
+    timeout: 10
     script: |
-      new(tableType, @system.temp.tcpTest);
-      system.temp.tcpTest.remotePort = 0;
+      new(tableType, @system.temp.tcpSrv05);
+      system.temp.tcpSrv05.fired = false;
+      system.temp.tcpSrv05.peerPort = 0;
+      script.newScriptObject("on myHandler(sid, refcon) {\r  system.temp.tcpSrv05.fired = true;\r  system.temp.tcpSrv05.peerPort = tcp.getPeerPort(sid);\r  tcp.closeStream(sid);\r  return true}", @system.temp.tcpSrv05.myHandler);
 
-      on tcpHandler(streamID, remoteAddr, remotePort) {
-        system.temp.tcpTest.remotePort = remotePort;
-        tcp.closeStream(streamID);
-        return true
-      };
-
-      local(listenID = tcp.listenStream(9005, 5, @tcpHandler);
+      local(listenID = tcp.listenStream(9005, 5, @system.temp.tcpSrv05.myHandler));
       local(clientStream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 9005));
 
-      local(startTicks = clock.ticks());
-      while (not defined(system.temp.tcpTest.remotePort)) and ((clock.ticks() - startTicks) < 60) {
-        thread.sleepFor(10)
+      local(deadline = clock.ticks() + 300);
+      while (not system.temp.tcpSrv05.fired) and (clock.ticks() < deadline) {
+        clock.ticks()
       };
 
-      local(validPort = (system.temp.tcpTest.remotePort > 0) and (system.temp.tcpTest.remotePort < 65536));
+      local(validPort = (system.temp.tcpSrv05.peerPort > 0) and (system.temp.tcpSrv05.peerPort < 65536));
 
       tcp.closeStream(clientStream);
       tcp.closeListen(listenID);
-      delete(@system.temp.tcpTest);
+      delete(@system.temp.tcpSrv05);
 
       return validPort
     expected_success: true
     expected_result: "true"
-    notes: "Phase 3 - Verify callback receives correct remote port parameter"
+    notes: "Phase 3 - Remote port obtained via tcp.getPeerPort(sid) inside callback"
 
   - name: "tcp.listenStream - read/write on accepted connection"
-    skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
     description: "Verify data can be read and written on accepted connection"
+    timeout: 10
     script: |
-      on tcpHandler(streamID, remoteAddr, remotePort) {
-        local(data = tcp.readStream(streamID, 1024));
-        tcp.writeStream(streamID, "ECHO: " + data);
-        tcp.closeStream(streamID);
-        return true
-      };
+      new(tableType, @system.temp.tcpSrv06);
+      system.temp.tcpSrv06.fired = false;
+      script.newScriptObject("on myHandler(sid, refcon) {\r  local(data = tcp.readStream(sid, 1024));\r  tcp.writeStream(sid, \"ECHO: \" + data);\r  tcp.closeStream(sid);\r  system.temp.tcpSrv06.fired = true;\r  return true}", @system.temp.tcpSrv06.myHandler);
 
-      local(listenID = tcp.listenStream(9006, 5, @tcpHandler);
+      local(listenID = tcp.listenStream(9006, 5, @system.temp.tcpSrv06.myHandler));
       local(clientStream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 9006));
 
       tcp.writeStream(clientStream, "Hello Server");
 
-      thread.sleepFor(100);
+      local(deadline = clock.ticks() + 300);
+      while (not system.temp.tcpSrv06.fired) and (clock.ticks() < deadline) {
+        clock.ticks()
+      };
 
-      local(startTicks = clock.ticks());
       local(response = "");
-      while (sizeOf(response) == 0) and ((clock.ticks() - startTicks) < 200) {
+      local(readDeadline = clock.ticks() + 120);
+      while (sizeOf(response) == 0) and (clock.ticks() < readDeadline) {
         response = tcp.readStream(clientStream, 1024);
-        thread.sleepFor(10)
+        clock.ticks()
       };
 
       local(validResponse = response == "ECHO: Hello Server");
 
       tcp.closeStream(clientStream);
       tcp.closeListen(listenID);
+      delete(@system.temp.tcpSrv06);
 
       return validResponse
     expected_success: true
@@ -196,30 +174,33 @@ tests:
     notes: "Phase 3 - Verify read/write operations work on accepted connections"
 
   - name: "tcp.listenStream - connection closes after callback returns"
-    skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
-    description: "Verify connection is properly closed when callback closes stream"
+    description: "Verify connection properly closes when callback writes response and closes stream"
+    timeout: 10
     script: |
-      on tcpHandler(streamID, remoteAddr, remotePort) {
-        tcp.writeStream(streamID, "OK");
-        tcp.closeStream(streamID);
-        return true
-      };
+      new(tableType, @system.temp.tcpSrv07);
+      system.temp.tcpSrv07.fired = false;
+      script.newScriptObject("on myHandler(sid, refcon) {\r  tcp.writeStream(sid, \"OK\");\r  tcp.closeStream(sid);\r  system.temp.tcpSrv07.fired = true;\r  return true}", @system.temp.tcpSrv07.myHandler);
 
-      local(listenID = tcp.listenStream(9007, 5, @tcpHandler);
+      local(listenID = tcp.listenStream(9007, 5, @system.temp.tcpSrv07.myHandler));
       local(clientStream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 9007));
 
-      local(startTicks = clock.ticks());
+      local(deadline = clock.ticks() + 300);
+      while (not system.temp.tcpSrv07.fired) and (clock.ticks() < deadline) {
+        clock.ticks()
+      };
+
       local(response = "");
-      while (sizeOf(response) == 0) and ((clock.ticks() - startTicks) < 60) {
+      local(readDeadline = clock.ticks() + 120);
+      while (sizeOf(response) == 0) and (clock.ticks() < readDeadline) {
         response = tcp.readStream(clientStream, 1024);
-        thread.sleepFor(10)
+        clock.ticks()
       };
 
       local(validResponse = response == "OK");
 
       tcp.closeStream(clientStream);
       tcp.closeListen(listenID);
+      delete(@system.temp.tcpSrv07);
 
       return validResponse
     expected_success: true
@@ -227,15 +208,17 @@ tests:
     notes: "Phase 3 - Verify graceful connection close in callback"
 
   - name: "tcp.listenStream - listener restart on same port"
-    skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
     description: "Verify listener can be stopped and restarted on same port"
+    timeout: 10
     script: |
       local(listenID1 = tcp.listenStream(9008, 5, ""));
 
       tcp.closeListen(listenID1);
 
-      thread.sleepFor(100);
+      local(deadline = clock.ticks() + 30);
+      while clock.ticks() < deadline {
+        clock.ticks()
+      };
 
       local(listenID2 = tcp.listenStream(9008, 5, ""));
       local(validRestart = listenID2 > 0);
@@ -252,40 +235,36 @@ tests:
 # ============================================================================
 
   - name: "tcp.listenStream - sequential connections"
-    skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
     description: "Verify listener accepts multiple connections sequentially"
+    timeout: 15
     script: |
-      new(tableType, @system.temp.tcpTest);
-      system.temp.tcpTest.count = 0;
+      new(tableType, @system.temp.tcpSrv09);
+      system.temp.tcpSrv09.count = 0;
+      script.newScriptObject("on myHandler(sid, refcon) {\r  system.temp.tcpSrv09.count = system.temp.tcpSrv09.count + 1;\r  tcp.writeStream(sid, \"OK\");\r  tcp.closeStream(sid);\r  return true}", @system.temp.tcpSrv09.myHandler);
 
-      on tcpHandler(streamID, remoteAddr, remotePort) {
-        system.temp.tcpTest.count = system.temp.tcpTest.count + 1;
-        tcp.writeStream(streamID, "OK");
-        tcp.closeStream(streamID);
-        return true
-      };
-
-      local(listenID = tcp.listenStream(9009, 5, @tcpHandler);
+      local(listenID = tcp.listenStream(9009, 5, @system.temp.tcpSrv09.myHandler));
 
       local(i);
       for i = 1 to 3 {
         local(stream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 9009));
         local(response = "");
-        local(startTicks = clock.ticks());
-        while (sizeOf(response) == 0) and ((clock.ticks() - startTicks) < 60) {
+        local(readDeadline = clock.ticks() + 120);
+        while (sizeOf(response) == 0) and (clock.ticks() < readDeadline) {
           response = tcp.readStream(stream, 1024);
-          thread.sleepFor(10)
+          clock.ticks()
         };
         tcp.closeStream(stream)
       };
 
-      thread.sleepFor(100);
+      local(countDeadline = clock.ticks() + 120);
+      while (system.temp.tcpSrv09.count < 3) and (clock.ticks() < countDeadline) {
+        clock.ticks()
+      };
 
-      local(allAccepted = system.temp.tcpTest.count == 3);
+      local(allAccepted = system.temp.tcpSrv09.count == 3);
 
       tcp.closeListen(listenID);
-      delete(@system.temp.tcpTest);
+      delete(@system.temp.tcpSrv09);
 
       return allAccepted
     expected_success: true
@@ -293,35 +272,31 @@ tests:
     notes: "Phase 3 - Verify listener can accept multiple sequential connections"
 
   - name: "tcp.listenStream - concurrent connections"
-    skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
     description: "Verify listener accepts multiple concurrent connections"
+    timeout: 15
     script: |
-      new(tableType, @system.temp.tcpTest);
-      system.temp.tcpTest.count = 0;
+      new(tableType, @system.temp.tcpSrv10);
+      system.temp.tcpSrv10.count = 0;
+      script.newScriptObject("on myHandler(sid, refcon) {\r  system.temp.tcpSrv10.count = system.temp.tcpSrv10.count + 1;\r  tcp.writeStream(sid, \"OK\");\r  tcp.closeStream(sid);\r  return true}", @system.temp.tcpSrv10.myHandler);
 
-      on tcpHandler(streamID, remoteAddr, remotePort) {
-        system.temp.tcpTest.count = system.temp.tcpTest.count + 1;
-        tcp.writeStream(streamID, "OK");
-        tcp.closeStream(streamID);
-        return true
-      };
-
-      local(listenID = tcp.listenStream(9010, 5, @tcpHandler);
+      local(listenID = tcp.listenStream(9010, 5, @system.temp.tcpSrv10.myHandler));
 
       local(stream1 = tcp.openStream(tcp.addressEncode("127.0.0.1"), 9010));
       local(stream2 = tcp.openStream(tcp.addressEncode("127.0.0.1"), 9010));
       local(stream3 = tcp.openStream(tcp.addressEncode("127.0.0.1"), 9010));
 
-      thread.sleepFor(200);
+      local(deadline = clock.ticks() + 300);
+      while (system.temp.tcpSrv10.count < 3) and (clock.ticks() < deadline) {
+        clock.ticks()
+      };
 
-      local(allAccepted = system.temp.tcpTest.count == 3);
+      local(allAccepted = system.temp.tcpSrv10.count == 3);
 
       tcp.closeStream(stream1);
       tcp.closeStream(stream2);
       tcp.closeStream(stream3);
       tcp.closeListen(listenID);
-      delete(@system.temp.tcpTest);
+      delete(@system.temp.tcpSrv10);
 
       return allAccepted
     expected_success: true
@@ -343,36 +318,31 @@ tests:
     notes: "Phase 3 - Behavioral spec: depth parameter controls accept queue backlog"
 
   - name: "tcp.countConnections - includes accepted connections"
-    skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
     description: "Verify countConnections includes server-accepted connections"
+    timeout: 10
     script: |
-      new(tableType, @system.temp.tcpTest);
-      system.temp.tcpTest.connected = false;
-
-      on tcpHandler(streamID, remoteAddr, remotePort) {
-        system.temp.tcpTest.connected = true;
-        system.temp.tcpTest.serverStream = streamID;
-        return true
-      };
+      new(tableType, @system.temp.tcpSrv12);
+      system.temp.tcpSrv12.connected = false;
+      system.temp.tcpSrv12.serverStream = -1;
+      script.newScriptObject("on myHandler(sid, refcon) {\r  system.temp.tcpSrv12.connected = true;\r  system.temp.tcpSrv12.serverStream = sid;\r  return true}", @system.temp.tcpSrv12.myHandler);
 
       local(initialCount = tcp.countConnections());
 
-      local(listenID = tcp.listenStream(9012, 5, @tcpHandler);
+      local(listenID = tcp.listenStream(9012, 5, @system.temp.tcpSrv12.myHandler));
       local(clientStream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 9012));
 
-      local(startTicks = clock.ticks());
-      while (not system.temp.tcpTest.connected) and ((clock.ticks() - startTicks) < 60) {
-        thread.sleepFor(10)
+      local(deadline = clock.ticks() + 300);
+      while (not system.temp.tcpSrv12.connected) and (clock.ticks() < deadline) {
+        clock.ticks()
       };
 
       local(newCount = tcp.countConnections());
       local(countIncreased = newCount >= initialCount + 2);
 
       tcp.closeStream(clientStream);
-      tcp.closeStream(system.temp.tcpTest.serverStream);
+      tcp.closeStream(system.temp.tcpSrv12.serverStream);
       tcp.closeListen(listenID);
-      delete(@system.temp.tcpTest);
+      delete(@system.temp.tcpSrv12);
 
       return countIncreased
     expected_success: true
@@ -426,9 +396,8 @@ tests:
     notes: "Phase 3 - Port must be in valid range (1-65535)"
 
   - name: "tcp.listenStream - port already in use"
-    skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
     description: "Attempting to listen on already-bound port should raise error"
+    timeout: 10
     script: |
       local(listenID = tcp.listenStream(9013, 5, ""));
 
@@ -520,9 +489,8 @@ tests:
 # ============================================================================
 
   - name: "tcp.closeListen - idempotent behavior"
-    skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
     description: "Calling closeListen twice on same listenID should be safe (idempotent)"
+    timeout: 10
     script: |
       local(listenID = tcp.listenStream(9016, 5, ""));
 
@@ -544,44 +512,39 @@ tests:
     notes: "Phase 3 - Behavioral spec: closeListen should be idempotent or fail gracefully"
 
   - name: "tcp.listenStream - connections survive listener close"
-    skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
     description: "Verify accepted connections remain open after listener closes"
+    timeout: 10
     script: |
-      new(tableType, @system.temp.tcpTest);
-      system.temp.tcpTest.connected = false;
+      new(tableType, @system.temp.tcpSrv17);
+      system.temp.tcpSrv17.connected = false;
+      system.temp.tcpSrv17.serverStream = -1;
+      script.newScriptObject("on myHandler(sid, refcon) {\r  system.temp.tcpSrv17.connected = true;\r  system.temp.tcpSrv17.serverStream = sid;\r  return true}", @system.temp.tcpSrv17.myHandler);
 
-      on tcpHandler(streamID, remoteAddr, remotePort) {
-        system.temp.tcpTest.connected = true;
-        system.temp.tcpTest.serverStream = streamID;
-        return true
-      };
-
-      local(listenID = tcp.listenStream(9017, 5, @tcpHandler);
+      local(listenID = tcp.listenStream(9017, 5, @system.temp.tcpSrv17.myHandler));
       local(clientStream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 9017));
 
-      local(startTicks = clock.ticks());
-      while (not system.temp.tcpTest.connected) and ((clock.ticks() - startTicks) < 60) {
-        thread.sleepFor(10)
+      local(deadline = clock.ticks() + 300);
+      while (not system.temp.tcpSrv17.connected) and (clock.ticks() < deadline) {
+        clock.ticks()
       };
 
       tcp.closeListen(listenID);
 
       tcp.writeStream(clientStream, "test");
-      tcp.writeStream(system.temp.tcpTest.serverStream, "response");
+      tcp.writeStream(system.temp.tcpSrv17.serverStream, "response");
 
-      local(startTicks2 = clock.ticks());
       local(response = "");
-      while (sizeOf(response) == 0) and ((clock.ticks() - startTicks2) < 60) {
+      local(readDeadline = clock.ticks() + 120);
+      while (sizeOf(response) == 0) and (clock.ticks() < readDeadline) {
         response = tcp.readStream(clientStream, 1024);
-        thread.sleepFor(10)
+        clock.ticks()
       };
 
       local(connectionSurvived = response == "response");
 
       tcp.closeStream(clientStream);
-      tcp.closeStream(system.temp.tcpTest.serverStream);
-      delete(@system.temp.tcpTest);
+      tcp.closeStream(system.temp.tcpSrv17.serverStream);
+      delete(@system.temp.tcpSrv17);
 
       return connectionSurvived
     expected_success: true
@@ -589,29 +552,30 @@ tests:
     notes: "Phase 3 - Verify closeListen only stops accepting new connections, doesn't close established ones"
 
   - name: "tcp.listenStream - graceful shutdown (close all before closeListen)"
-    skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
     description: "Verify pattern: close all accepted connections before closing listener"
+    timeout: 15
     script: |
-      new(tableType, @system.temp.tcpTest);
-      system.temp.tcpTest.streams = {};
+      new(tableType, @system.temp.tcpSrv18);
+      system.temp.tcpSrv18.count = 0;
+      system.temp.tcpSrv18.s1 = -1;
+      system.temp.tcpSrv18.s2 = -1;
+      script.newScriptObject("on myHandler(sid, refcon) {\r  if system.temp.tcpSrv18.s1 == -1 {\r    system.temp.tcpSrv18.s1 = sid\r  } else {\r    system.temp.tcpSrv18.s2 = sid\r  };\r  system.temp.tcpSrv18.count = system.temp.tcpSrv18.count + 1;\r  return true}", @system.temp.tcpSrv18.myHandler);
 
-      on tcpHandler(streamID, remoteAddr, remotePort) {
-        local(idx = sizeOf(system.temp.tcpTest.streams) + 1);
-        system.temp.tcpTest.streams[idx] = streamID;
-        return true
-      };
-
-      local(listenID = tcp.listenStream(9018, 5, @tcpHandler);
+      local(listenID = tcp.listenStream(9018, 5, @system.temp.tcpSrv18.myHandler));
 
       local(client1 = tcp.openStream(tcp.addressEncode("127.0.0.1"), 9018));
       local(client2 = tcp.openStream(tcp.addressEncode("127.0.0.1"), 9018));
 
-      thread.sleepFor(100);
+      local(deadline = clock.ticks() + 300);
+      while (system.temp.tcpSrv18.count < 2) and (clock.ticks() < deadline) {
+        clock.ticks()
+      };
 
-      local(i);
-      for i = 1 to sizeOf(system.temp.tcpTest.streams) {
-        tcp.closeStream(system.temp.tcpTest.streams[i])
+      if system.temp.tcpSrv18.s1 > 0 {
+        tcp.closeStream(system.temp.tcpSrv18.s1)
+      };
+      if system.temp.tcpSrv18.s2 > 0 {
+        tcp.closeStream(system.temp.tcpSrv18.s2)
       };
 
       tcp.closeStream(client1);
@@ -619,7 +583,7 @@ tests:
 
       local(result = tcp.closeListen(listenID));
 
-      delete(@system.temp.tcpTest);
+      delete(@system.temp.tcpSrv18);
 
       return result == true
     expected_success: true
@@ -627,15 +591,17 @@ tests:
     notes: "Phase 3 - Best practice: close all connections before listener shutdown"
 
   - name: "tcp.listenStream - new connections rejected after closeListen"
-    skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
     description: "Verify no new connections accepted after listener is closed"
+    timeout: 10
     script: |
       local(listenID = tcp.listenStream(9019, 5, ""));
 
       tcp.closeListen(listenID);
 
-      thread.sleepFor(50);
+      local(deadline = clock.ticks() + 15);
+      while clock.ticks() < deadline {
+        clock.ticks()
+      };
 
       try {
         tcp.openStream(tcp.addressEncode("127.0.0.1"), 9019);
@@ -653,34 +619,28 @@ tests:
 # ============================================================================
 
   - name: "tcp.listenStream - callback executes in separate thread"
-    skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
     description: "Behavioral spec: callback executes asynchronously in worker thread"
+    timeout: 10
     script: |
-      new(tableType, @system.temp.tcpTest);
-      system.temp.tcpTest.callbackComplete = false;
+      new(tableType, @system.temp.tcpSrv20);
+      system.temp.tcpSrv20.callbackComplete = false;
+      script.newScriptObject("on myHandler(sid, refcon) {\r  system.temp.tcpSrv20.callbackComplete = true;\r  tcp.closeStream(sid);\r  return true}", @system.temp.tcpSrv20.myHandler);
 
-      on tcpHandler(streamID, remoteAddr, remotePort) {
-        system.temp.tcpTest.callbackComplete = true;
-        tcp.closeStream(streamID);
-        return true
-      };
-
-      local(listenID = tcp.listenStream(9020, 5, @tcpHandler);
+      local(listenID = tcp.listenStream(9020, 5, @system.temp.tcpSrv20.myHandler));
       local(clientStream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 9020));
 
       local(mainThreadContinued = true);
 
-      local(startTicks = clock.ticks());
-      while (not system.temp.tcpTest.callbackComplete) and ((clock.ticks() - startTicks) < 60) {
-        thread.sleepFor(10)
+      local(deadline = clock.ticks() + 300);
+      while (not system.temp.tcpSrv20.callbackComplete) and (clock.ticks() < deadline) {
+        clock.ticks()
       };
 
-      local(callbackRan = system.temp.tcpTest.callbackComplete);
+      local(callbackRan = system.temp.tcpSrv20.callbackComplete);
 
       tcp.closeStream(clientStream);
       tcp.closeListen(listenID);
-      delete(@system.temp.tcpTest);
+      delete(@system.temp.tcpSrv20);
 
       return mainThreadContinued and callbackRan
     expected_success: true
@@ -688,80 +648,74 @@ tests:
     notes: "Phase 3 - Behavioral spec: callbacks execute asynchronously in worker threads"
 
   - name: "tcp.listenStream - callback parameter types"
-    skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
-    description: "Verify all callback parameters are longType (streamID, remoteAddr, remotePort)"
+    description: "Verify callback sid parameter is longType; peer info via tcp.getPeerAddress/getPeerPort"
+    timeout: 10
     script: |
-      new(tableType, @system.temp.tcpTest);
+      new(tableType, @system.temp.tcpSrv21);
+      system.temp.tcpSrv21.fired = false;
+      system.temp.tcpSrv21.streamType = "";
+      system.temp.tcpSrv21.peerAddr = 0;
+      system.temp.tcpSrv21.peerPort = 0;
+      script.newScriptObject("on myHandler(sid, refcon) {\r  system.temp.tcpSrv21.fired = true;\r  system.temp.tcpSrv21.streamType = typeof(sid);\r  system.temp.tcpSrv21.peerAddr = tcp.getPeerAddress(sid);\r  system.temp.tcpSrv21.peerPort = tcp.getPeerPort(sid);\r  tcp.closeStream(sid);\r  return true}", @system.temp.tcpSrv21.myHandler);
 
-      on tcpHandler(streamID, remoteAddr, remotePort) {
-        system.temp.tcpTest.streamType = typeof(streamID);
-        system.temp.tcpTest.addrType = typeof(remoteAddr);
-        system.temp.tcpTest.portType = typeof(remotePort);
-        tcp.closeStream(streamID);
-        return true
-      };
-
-      local(listenID = tcp.listenStream(9021, 5, @tcpHandler);
+      local(listenID = tcp.listenStream(9021, 5, @system.temp.tcpSrv21.myHandler));
       local(clientStream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 9021));
 
-      local(startTicks = clock.ticks());
-      while (not defined(system.temp.tcpTest.streamType)) and ((clock.ticks() - startTicks) < 60) {
-        thread.sleepFor(10)
+      local(deadline = clock.ticks() + 300);
+      while (not system.temp.tcpSrv21.fired) and (clock.ticks() < deadline) {
+        clock.ticks()
       };
 
-      local(validTypes = (system.temp.tcpTest.streamType == longType) and
-                         (system.temp.tcpTest.addrType == longType) and
-                         (system.temp.tcpTest.portType == longType));
+      local(validTypes = (system.temp.tcpSrv21.streamType == longType) and
+                         (typeof(system.temp.tcpSrv21.peerAddr) == longType) and
+                         (typeof(system.temp.tcpSrv21.peerPort) == longType));
 
       tcp.closeStream(clientStream);
       tcp.closeListen(listenID);
-      delete(@system.temp.tcpTest);
+      delete(@system.temp.tcpSrv21);
 
       return validTypes
     expected_success: true
     expected_result: "true"
-    notes: "Phase 3 - Verify callback parameter types (all long)"
+    notes: "Phase 3 - Verify sid is longType; peer addr/port retrieved via verbs (2-param callback)"
 
 # ============================================================================
 # CATEGORY 6: tcp.statusStream Integration (Phase 1A verb with Phase 3 use)
 # ============================================================================
 
   - name: "tcp.statusStream - query pending bytes on accepted connection"
-    skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
     description: "Verify statusStream works on server-accepted connections"
+    timeout: 10
     script: |
-      new(tableType, @system.temp.tcpTest);
-      system.temp.tcpTest.connected = false;
+      new(tableType, @system.temp.tcpSrv22);
+      system.temp.tcpSrv22.connected = false;
+      system.temp.tcpSrv22.serverStream = -1;
+      script.newScriptObject("on myHandler(sid, refcon) {\r  system.temp.tcpSrv22.connected = true;\r  system.temp.tcpSrv22.serverStream = sid;\r  return true}", @system.temp.tcpSrv22.myHandler);
 
-      on tcpHandler(streamID, remoteAddr, remotePort) {
-        system.temp.tcpTest.connected = true;
-        system.temp.tcpTest.serverStream = streamID;
-        return true
-      };
-
-      local(listenID = tcp.listenStream(9022, 5, @tcpHandler);
+      local(listenID = tcp.listenStream(9022, 5, @system.temp.tcpSrv22.myHandler));
       local(clientStream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 9022));
 
-      local(startTicks = clock.ticks());
-      while (not system.temp.tcpTest.connected) and ((clock.ticks() - startTicks) < 60) {
-        thread.sleepFor(10)
+      local(deadline = clock.ticks() + 300);
+      while (not system.temp.tcpSrv22.connected) and (clock.ticks() < deadline) {
+        clock.ticks()
       };
 
       tcp.writeStream(clientStream, "test data");
 
-      thread.sleepFor(50);
+      local(writeDeadline = clock.ticks() + 60);
+      while clock.ticks() < writeDeadline {
+        clock.ticks()
+      };
 
       local(bytesPending);
-      local(status = tcp.statusStream(system.temp.tcpTest.serverStream, @bytesPending));
+      local(status = tcp.statusStream(system.temp.tcpSrv22.serverStream, @bytesPending));
 
       local(hasData = bytesPending > 0);
 
       tcp.closeStream(clientStream);
-      tcp.closeStream(system.temp.tcpTest.serverStream);
+      tcp.closeStream(system.temp.tcpSrv22.serverStream);
       tcp.closeListen(listenID);
-      delete(@system.temp.tcpTest);
+      delete(@system.temp.tcpSrv22);
 
       return hasData
     expected_success: true
@@ -773,9 +727,8 @@ tests:
 # ============================================================================
 
   - name: "tcp.listenStream - return type spec"
-    skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
     description: "Spec: listenStream returns positive long (listenID)"
+    timeout: 10
     script: |
       local(listenID = tcp.listenStream(9023, 5, ""));
       local(validType = typeof(listenID) == longType);
@@ -789,9 +742,8 @@ tests:
     notes: "Phase 3 - Behavioral spec: listenStream returns positive long (listenID > 0)"
 
   - name: "tcp.closeListen - return type spec"
-    skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
     description: "Spec: closeListen returns boolean true"
+    timeout: 10
     script: |
       local(listenID = tcp.listenStream(9024, 5, ""));
       local(result = tcp.closeListen(listenID));
@@ -824,9 +776,8 @@ tests:
     notes: "Phase 3 - Verify INADDR_ANY (0.0.0.0) binding works"
 
   - name: "tcp.listenStream - explicit localhost binding"
-    skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
     description: "Verify listener can bind explicitly to 127.0.0.1"
+    timeout: 10
     script: |
       local(listenID = tcp.listenStream(9026, 5, ""));
       local(validBind = listenID > 0);
@@ -839,9 +790,8 @@ tests:
     notes: "Phase 3 - Verify explicit 127.0.0.1 binding works"
 
   - name: "tcp.listenStream - maximum queue depth"
-    skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
     description: "Verify listener accepts large queue depth value"
+    timeout: 10
     script: |
       local(listenID = tcp.listenStream(9027, 128, ""));
       local(validDepth = listenID > 0);

@@ -1,3 +1,4 @@
+sequential: true  # Tests bind TCP ports; parallel workers would conflict
 # Integration tests for TCP Phase 2 - Status and Peer Information Verbs
 # Tests for tcp.statusStream, tcp.getPeerAddress, tcp.getPeerPort, tcp.myAddress
 #
@@ -23,6 +24,9 @@
 #
 # NOTE: All tests use LOCALHOST ONLY (127.0.0.1) - NO external network dependencies!
 # Tests are self-contained: client and server on same machine.
+#
+# Port allocation: 9200-9220 (avoids conflicts with tcp_server_verbs.yaml 9000-9027
+# and tcp_verbs_network.yaml 9100-9115)
 #
 # Reference:
 #   - docs/usertalk/docserver/tcp/statusStream.txt
@@ -81,20 +85,22 @@ tests:
   # ===========================================================================
 
   - name: "tcp.statusStream - returns OPEN for idle connection"
-    skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
     description: "Verify statusStream returns OPEN when no data pending"
+    timeout: 10
     script: |
-      local(listenID = tcp.listenStream(9100, 5, ""));
+      local(listenID = tcp.listenStream(9200, 5, ""));
 
       try {
-        local(stream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 9100));
+        local(stream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 9200));
         if (stream <= 0) {
           tcp.closeListen(listenID);
           return "false"
         };
 
-        thread.sleepFor(50);
+        local(deadline = clock.ticks() + 15);
+        while clock.ticks() < deadline {
+          clock.ticks()
+        };
 
         local(bytesPending);
         local(status = tcp.statusStream(stream, @bytesPending));
@@ -114,42 +120,40 @@ tests:
     notes: "Phase 2 - Verify OPEN status for idle stream"
 
   - name: "tcp.statusStream - returns DATA when bytes available"
-    skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
     description: "Verify statusStream returns DATA when data is pending"
+    timeout: 10
     script: |
-      new(tableType, @system.temp.tcpTest);
-      system.temp.tcpTest.connected = false;
+      new(tableType, @system.temp.tcpPh201);
+      system.temp.tcpPh201.connected = false;
+      system.temp.tcpPh201.serverStream = -1;
+      script.newScriptObject("on myHandler(sid, refcon) {\r  system.temp.tcpPh201.connected = true;\r  system.temp.tcpPh201.serverStream = sid;\r  return true}", @system.temp.tcpPh201.myHandler);
 
-      on tcpHandler(streamID, remoteAddr, remotePort) {
-        system.temp.tcpTest.connected = true;
-        system.temp.tcpTest.serverStream = streamID;
-        return true
-      };
-
-      local(listenID = tcp.listenStream(9101, 5, @tcpHandler);
-      local(clientStream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 9101));
+      local(listenID = tcp.listenStream(9201, 5, @system.temp.tcpPh201.myHandler));
+      local(clientStream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 9201));
 
       // Wait for connection
-      local(startTicks = clock.ticks());
-      while (not system.temp.tcpTest.connected) and ((clock.ticks() - startTicks) < 60) {
-        thread.sleepFor(10)
+      local(deadline = clock.ticks() + 300);
+      while (not system.temp.tcpPh201.connected) and (clock.ticks() < deadline) {
+        clock.ticks()
       };
 
       // Send data from client to server
       tcp.writeStream(clientStream, "Hello Server!");
 
       // Wait for data to arrive
-      thread.sleepFor(100);
+      local(dataDeadline = clock.ticks() + 60);
+      while clock.ticks() < dataDeadline {
+        clock.ticks()
+      };
 
       // Check server stream status
       local(bytesPending);
-      local(status = tcp.statusStream(system.temp.tcpTest.serverStream, @bytesPending));
+      local(status = tcp.statusStream(system.temp.tcpPh201.serverStream, @bytesPending));
 
       tcp.closeStream(clientStream);
-      tcp.closeStream(system.temp.tcpTest.serverStream);
+      tcp.closeStream(system.temp.tcpPh201.serverStream);
       tcp.closeListen(listenID);
-      delete(@system.temp.tcpTest);
+      delete(@system.temp.tcpPh201);
 
       return (status == "DATA") and (bytesPending > 0)
     expected_success: true
@@ -157,39 +161,37 @@ tests:
     notes: "Phase 2 - Verify DATA status and bytesPending count"
 
   - name: "tcp.statusStream - bytesPending matches sent data"
-    skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
     description: "Verify bytesPending equals length of sent data"
+    timeout: 10
     script: |
-      new(tableType, @system.temp.tcpTest);
-      system.temp.tcpTest.connected = false;
+      new(tableType, @system.temp.tcpPh202);
+      system.temp.tcpPh202.connected = false;
+      system.temp.tcpPh202.serverStream = -1;
+      script.newScriptObject("on myHandler(sid, refcon) {\r  system.temp.tcpPh202.connected = true;\r  system.temp.tcpPh202.serverStream = sid;\r  return true}", @system.temp.tcpPh202.myHandler);
 
-      on tcpHandler(streamID, remoteAddr, remotePort) {
-        system.temp.tcpTest.connected = true;
-        system.temp.tcpTest.serverStream = streamID;
-        return true
-      };
+      local(listenID = tcp.listenStream(9202, 5, @system.temp.tcpPh202.myHandler));
+      local(clientStream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 9202));
 
-      local(listenID = tcp.listenStream(9102, 5, @tcpHandler);
-      local(clientStream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 9102));
-
-      local(startTicks = clock.ticks());
-      while (not system.temp.tcpTest.connected) and ((clock.ticks() - startTicks) < 60) {
-        thread.sleepFor(10)
+      local(deadline = clock.ticks() + 300);
+      while (not system.temp.tcpPh202.connected) and (clock.ticks() < deadline) {
+        clock.ticks()
       };
 
       local(testData = "0123456789");  // 10 bytes
       tcp.writeStream(clientStream, testData);
 
-      thread.sleepFor(100);
+      local(dataDeadline = clock.ticks() + 60);
+      while clock.ticks() < dataDeadline {
+        clock.ticks()
+      };
 
       local(bytesPending);
-      tcp.statusStream(system.temp.tcpTest.serverStream, @bytesPending);
+      tcp.statusStream(system.temp.tcpPh202.serverStream, @bytesPending);
 
       tcp.closeStream(clientStream);
-      tcp.closeStream(system.temp.tcpTest.serverStream);
+      tcp.closeStream(system.temp.tcpPh202.serverStream);
       tcp.closeListen(listenID);
-      delete(@system.temp.tcpTest);
+      delete(@system.temp.tcpPh202);
 
       return bytesPending == 10
     expected_success: true
@@ -199,10 +201,10 @@ tests:
   - name: "tcp.statusStream - return type is string"
     description: "Verify statusStream returns stringType"
     script: |
-      local(listenID = tcp.listenStream(9103, 5, ""));
+      local(listenID = tcp.listenStream(9203, 5, ""));
 
       try {
-        local(stream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 9103));
+        local(stream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 9203));
         if (stream <= 0) {
           tcp.closeListen(listenID);
           return "false"
@@ -235,11 +237,10 @@ tests:
     notes: "Phase 2 - Non-existent streams return INACTIVE status, not an error"
 
   - name: "tcp.statusStream - listener ID returns LISTENING"
-    skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
     description: "Verify statusStream with listener ID returns LISTENING (legacy script compatibility)"
+    timeout: 10
     script: |
-      local(listenID = tcp.listenStream(9109, 5, ""));
+      local(listenID = tcp.listenStream(9209, 5, ""));
       local(bytesPending);
       local(status = tcp.statusStream(listenID, @bytesPending));
       tcp.closeListen(listenID);
@@ -255,10 +256,10 @@ tests:
   - name: "tcp.getPeerAddress - returns localhost for local connection"
     description: "Verify getPeerAddress returns 127.0.0.1 for localhost connection"
     script: |
-      local(listenID = tcp.listenStream(9104, 5, ""));
+      local(listenID = tcp.listenStream(9204, 5, ""));
 
       try {
-        local(stream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 9104));
+        local(stream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 9204));
         if (stream <= 0) {
           tcp.closeListen(listenID);
           return "false"
@@ -281,53 +282,48 @@ tests:
     notes: "Phase 2 - Client sees server address as 127.0.0.1"
 
   - name: "tcp.getPeerAddress - server sees client as localhost"
-    skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
-    description: "Verify server callback receives 127.0.0.1 as peer address"
+    description: "Verify server can query 127.0.0.1 as peer address via tcp.getPeerAddress on accepted stream"
+    timeout: 10
     script: |
-      new(tableType, @system.temp.tcpTest);
-      system.temp.tcpTest.connected = false;
+      new(tableType, @system.temp.tcpPh205);
+      system.temp.tcpPh205.connected = false;
+      system.temp.tcpPh205.serverStream = -1;
+      system.temp.tcpPh205.peerAddr = 0;
+      script.newScriptObject("on myHandler(sid, refcon) {\r  system.temp.tcpPh205.connected = true;\r  system.temp.tcpPh205.serverStream = sid;\r  system.temp.tcpPh205.peerAddr = tcp.getPeerAddress(sid);\r  return true}", @system.temp.tcpPh205.myHandler);
 
-      on tcpHandler(streamID, remoteAddr, remotePort) {
-        system.temp.tcpTest.connected = true;
-        system.temp.tcpTest.serverStream = streamID;
-        system.temp.tcpTest.peerAddrFromCallback = remoteAddr;
-        return true
+      local(listenID = tcp.listenStream(9205, 5, @system.temp.tcpPh205.myHandler));
+      local(clientStream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 9205));
+
+      local(deadline = clock.ticks() + 300);
+      while (not system.temp.tcpPh205.connected) and (clock.ticks() < deadline) {
+        clock.ticks()
       };
 
-      local(listenID = tcp.listenStream(9105, 5, @tcpHandler);
-      local(clientStream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 9105));
-
-      local(startTicks = clock.ticks());
-      while (not system.temp.tcpTest.connected) and ((clock.ticks() - startTicks) < 60) {
-        thread.sleepFor(10)
-      };
-
-      // Also verify via getPeerAddress
-      local(peerAddrFromVerb = tcp.getPeerAddress(system.temp.tcpTest.serverStream));
+      // Also verify via getPeerAddress called from main thread
+      local(peerAddrFromVerb = tcp.getPeerAddress(system.temp.tcpPh205.serverStream));
 
       tcp.closeStream(clientStream);
-      tcp.closeStream(system.temp.tcpTest.serverStream);
+      tcp.closeStream(system.temp.tcpPh205.serverStream);
       tcp.closeListen(listenID);
 
       local(localhost = tcp.addressEncode("127.0.0.1"));
-      local(callbackCorrect = system.temp.tcpTest.peerAddrFromCallback == localhost);
+      local(callbackCorrect = system.temp.tcpPh205.peerAddr == localhost);
       local(verbCorrect = peerAddrFromVerb == localhost);
 
-      delete(@system.temp.tcpTest);
+      delete(@system.temp.tcpPh205);
 
       return callbackCorrect and verbCorrect
     expected_success: true
     expected_result: "true"
-    notes: "Phase 2 - Server sees client as 127.0.0.1"
+    notes: "Phase 2 - Server sees client as 127.0.0.1; peer addr from getPeerAddress inside callback"
 
   - name: "tcp.getPeerAddress - return type is long"
     description: "Verify getPeerAddress returns longType"
     script: |
-      local(listenID = tcp.listenStream(9106, 5, ""));
+      local(listenID = tcp.listenStream(9206, 5, ""));
 
       try {
-        local(stream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 9106));
+        local(stream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 9206));
         if (stream <= 0) {
           tcp.closeListen(listenID);
           return "false"
@@ -369,7 +365,7 @@ tests:
   - name: "tcp.getPeerPort - returns server port for client"
     description: "Verify client's getPeerPort returns the server's listen port"
     script: |
-      local(serverPort = 9107);
+      local(serverPort = 9207);
       local(listenID = tcp.listenStream(serverPort, 5, ""));
 
       try {
@@ -395,53 +391,48 @@ tests:
     notes: "Phase 2 - Client sees server's listen port"
 
   - name: "tcp.getPeerPort - server sees ephemeral client port"
-    skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
-    description: "Verify server sees client's ephemeral port (> 0 and < 65536)"
+    description: "Verify server sees client's ephemeral port (> 0 and < 65536) via tcp.getPeerPort"
+    timeout: 10
     script: |
-      new(tableType, @system.temp.tcpTest);
-      system.temp.tcpTest.connected = false;
+      new(tableType, @system.temp.tcpPh208);
+      system.temp.tcpPh208.connected = false;
+      system.temp.tcpPh208.serverStream = -1;
+      system.temp.tcpPh208.peerPort = 0;
+      script.newScriptObject("on myHandler(sid, refcon) {\r  system.temp.tcpPh208.connected = true;\r  system.temp.tcpPh208.serverStream = sid;\r  system.temp.tcpPh208.peerPort = tcp.getPeerPort(sid);\r  return true}", @system.temp.tcpPh208.myHandler);
 
-      on tcpHandler(streamID, remoteAddr, remotePort) {
-        system.temp.tcpTest.connected = true;
-        system.temp.tcpTest.serverStream = streamID;
-        system.temp.tcpTest.peerPortFromCallback = remotePort;
-        return true
+      local(listenID = tcp.listenStream(9208, 5, @system.temp.tcpPh208.myHandler));
+      local(clientStream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 9208));
+
+      local(deadline = clock.ticks() + 300);
+      while (not system.temp.tcpPh208.connected) and (clock.ticks() < deadline) {
+        clock.ticks()
       };
 
-      local(listenID = tcp.listenStream(9108, 5, @tcpHandler);
-      local(clientStream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 9108));
-
-      local(startTicks = clock.ticks());
-      while (not system.temp.tcpTest.connected) and ((clock.ticks() - startTicks) < 60) {
-        thread.sleepFor(10)
-      };
-
-      local(peerPortFromVerb = tcp.getPeerPort(system.temp.tcpTest.serverStream));
+      local(peerPortFromVerb = tcp.getPeerPort(system.temp.tcpPh208.serverStream));
 
       tcp.closeStream(clientStream);
-      tcp.closeStream(system.temp.tcpTest.serverStream);
+      tcp.closeStream(system.temp.tcpPh208.serverStream);
       tcp.closeListen(listenID);
 
       // Ephemeral ports are typically > 1024 and < 65536
-      local(callbackValid = (system.temp.tcpTest.peerPortFromCallback > 0) and (system.temp.tcpTest.peerPortFromCallback < 65536));
+      local(callbackValid = (system.temp.tcpPh208.peerPort > 0) and (system.temp.tcpPh208.peerPort < 65536));
       local(verbValid = (peerPortFromVerb > 0) and (peerPortFromVerb < 65536));
-      local(match = system.temp.tcpTest.peerPortFromCallback == peerPortFromVerb);
+      local(match = system.temp.tcpPh208.peerPort == peerPortFromVerb);
 
-      delete(@system.temp.tcpTest);
+      delete(@system.temp.tcpPh208);
 
       return callbackValid and verbValid and match
     expected_success: true
     expected_result: "true"
-    notes: "Phase 2 - Server sees client's ephemeral port"
+    notes: "Phase 2 - Ephemeral port from getPeerPort inside callback; kernel passes 2 params (sid, refcon)"
 
   - name: "tcp.getPeerPort - return type is long"
     description: "Verify getPeerPort returns longType"
     script: |
-      local(listenID = tcp.listenStream(9109, 5, ""));
+      local(listenID = tcp.listenStream(9210, 5, ""));
 
       try {
-        local(stream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 9109));
+        local(stream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 9210));
         if (stream <= 0) {
           tcp.closeListen(listenID);
           return "false"
@@ -481,78 +472,68 @@ tests:
   # ===========================================================================
 
   - name: "tcp.getPeerAddress/getPeerPort - consistent with callback params"
-    skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
-    description: "Verify getPeerAddress and getPeerPort match callback parameters"
+    description: "Verify getPeerAddress and getPeerPort inside callback match main-thread query"
+    timeout: 10
     script: |
-      new(tableType, @system.temp.tcpTest);
-      system.temp.tcpTest.connected = false;
+      new(tableType, @system.temp.tcpPh210);
+      system.temp.tcpPh210.connected = false;
+      system.temp.tcpPh210.serverStream = -1;
+      system.temp.tcpPh210.cbAddr = 0;
+      system.temp.tcpPh210.cbPort = 0;
+      script.newScriptObject("on myHandler(sid, refcon) {\r  system.temp.tcpPh210.connected = true;\r  system.temp.tcpPh210.serverStream = sid;\r  system.temp.tcpPh210.cbAddr = tcp.getPeerAddress(sid);\r  system.temp.tcpPh210.cbPort = tcp.getPeerPort(sid);\r  return true}", @system.temp.tcpPh210.myHandler);
 
-      on tcpHandler(streamID, remoteAddr, remotePort) {
-        system.temp.tcpTest.connected = true;
-        system.temp.tcpTest.serverStream = streamID;
-        system.temp.tcpTest.callbackAddr = remoteAddr;
-        system.temp.tcpTest.callbackPort = remotePort;
-        return true
+      local(listenID = tcp.listenStream(9211, 5, @system.temp.tcpPh210.myHandler));
+      local(clientStream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 9211));
+
+      local(deadline = clock.ticks() + 300);
+      while (not system.temp.tcpPh210.connected) and (clock.ticks() < deadline) {
+        clock.ticks()
       };
 
-      local(listenID = tcp.listenStream(9110, 5, @tcpHandler);
-      local(clientStream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 9110));
-
-      local(startTicks = clock.ticks());
-      while (not system.temp.tcpTest.connected) and ((clock.ticks() - startTicks) < 60) {
-        thread.sleepFor(10)
-      };
-
-      local(verbAddr = tcp.getPeerAddress(system.temp.tcpTest.serverStream));
-      local(verbPort = tcp.getPeerPort(system.temp.tcpTest.serverStream));
+      local(verbAddr = tcp.getPeerAddress(system.temp.tcpPh210.serverStream));
+      local(verbPort = tcp.getPeerPort(system.temp.tcpPh210.serverStream));
 
       tcp.closeStream(clientStream);
-      tcp.closeStream(system.temp.tcpTest.serverStream);
+      tcp.closeStream(system.temp.tcpPh210.serverStream);
       tcp.closeListen(listenID);
 
-      local(addrMatch = verbAddr == system.temp.tcpTest.callbackAddr);
-      local(portMatch = verbPort == system.temp.tcpTest.callbackPort);
+      local(addrMatch = verbAddr == system.temp.tcpPh210.cbAddr);
+      local(portMatch = verbPort == system.temp.tcpPh210.cbPort);
 
-      delete(@system.temp.tcpTest);
+      delete(@system.temp.tcpPh210);
 
       return addrMatch and portMatch
     expected_success: true
     expected_result: "true"
-    notes: "Phase 2 - Verbs and callback params should be consistent"
+    notes: "Phase 2 - Peer addr/port from getPeerAddress/getPeerPort inside callback matches main thread"
 
   - name: "tcp.getPeerAddress/getPeerPort - usable for client identification"
-    skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
     description: "Verify peer info can be used to create unique client identifier"
+    timeout: 10
     script: |
-      new(tableType, @system.temp.tcpTest);
-      system.temp.tcpTest.connected = false;
+      new(tableType, @system.temp.tcpPh211);
+      system.temp.tcpPh211.connected = false;
+      system.temp.tcpPh211.serverStream = -1;
+      script.newScriptObject("on myHandler(sid, refcon) {\r  system.temp.tcpPh211.connected = true;\r  system.temp.tcpPh211.serverStream = sid;\r  return true}", @system.temp.tcpPh211.myHandler);
 
-      on tcpHandler(streamID, remoteAddr, remotePort) {
-        system.temp.tcpTest.connected = true;
-        system.temp.tcpTest.serverStream = streamID;
-        return true
-      };
+      local(listenID = tcp.listenStream(9212, 5, @system.temp.tcpPh211.myHandler));
+      local(clientStream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 9212));
 
-      local(listenID = tcp.listenStream(9111, 5, @tcpHandler);
-      local(clientStream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 9111));
-
-      local(startTicks = clock.ticks());
-      while (not system.temp.tcpTest.connected) and ((clock.ticks() - startTicks) < 60) {
-        thread.sleepFor(10)
+      local(deadline = clock.ticks() + 300);
+      while (not system.temp.tcpPh211.connected) and (clock.ticks() < deadline) {
+        clock.ticks()
       };
 
       // Create client identifier string: "ip:port"
-      local(peerAddr = tcp.getPeerAddress(system.temp.tcpTest.serverStream));
-      local(peerPort = tcp.getPeerPort(system.temp.tcpTest.serverStream));
+      local(peerAddr = tcp.getPeerAddress(system.temp.tcpPh211.serverStream));
+      local(peerPort = tcp.getPeerPort(system.temp.tcpPh211.serverStream));
       local(ipString = tcp.addressDecode(peerAddr));
       local(clientId = ipString + ":" + peerPort);
 
       tcp.closeStream(clientStream);
-      tcp.closeStream(system.temp.tcpTest.serverStream);
+      tcp.closeStream(system.temp.tcpPh211.serverStream);
       tcp.closeListen(listenID);
-      delete(@system.temp.tcpTest);
+      delete(@system.temp.tcpPh211);
 
       // clientId should look like "127.0.0.1:xxxxx"
       return string.length(clientId) > 12
@@ -565,14 +546,13 @@ tests:
   # ===========================================================================
 
   - name: "tcp.statusStream - after stream closed"
-    skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
     description: "Verify statusStream handles closed stream gracefully"
+    timeout: 10
     script: |
-      local(listenID = tcp.listenStream(9112, 5, ""));
+      local(listenID = tcp.listenStream(9215, 5, ""));
 
       try {
-        local(stream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 9112));
+        local(stream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 9212));
         if (stream <= 0) {
           tcp.closeListen(listenID);
           return "false"
@@ -603,10 +583,10 @@ tests:
   - name: "tcp.getPeerAddress - after stream closed"
     description: "Verify getPeerAddress handles closed stream gracefully"
     script: |
-      local(listenID = tcp.listenStream(9113, 5, ""));
+      local(listenID = tcp.listenStream(9213, 5, ""));
 
       try {
-        local(stream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 9113));
+        local(stream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 9213));
         if (stream <= 0) {
           tcp.closeListen(listenID);
           return "false"
@@ -635,10 +615,10 @@ tests:
   - name: "tcp.getPeerPort - after stream closed"
     description: "Verify getPeerPort handles closed stream gracefully"
     script: |
-      local(listenID = tcp.listenStream(9114, 5, ""));
+      local(listenID = tcp.listenStream(9214, 5, ""));
 
       try {
-        local(stream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 9114));
+        local(stream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 9214));
         if (stream <= 0) {
           tcp.closeListen(listenID);
           return "false"
