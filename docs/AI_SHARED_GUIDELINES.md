@@ -80,6 +80,10 @@ Minimum expectations:
 
 ## UserTalk and Integration Test Constraints
 
+### Before writing UserTalk
+
+Load `docs/usertalk/CLAUDE_PRIMER.md` (~250 lines) before writing inline UserTalk in yaml integration tests, editing `.ut` files, or debugging UserTalk runtime behavior. Deeper docs in `docs/usertalk/` (records_and_tables, testing_patterns, debugging_workflow, etc.) are linked from the primer and load on demand. The primer covers idioms, the failure-mode decoder, the yaml-test `with`-wrapper trap (#624), and protocol UserTalk debugger usage — content the docserver verb reference doesn't cover.
+
 ### UserTalk runtime facts
 
 1. Strings use double quotes (`"text"`).
@@ -88,11 +92,13 @@ Minimum expectations:
 
 ### UserTalk integration YAML constraints
 
-- Do not place inline `//` comments inside UserTalk `{ ... }` blocks.
+- `//` comments inside `{ }` blocks are usually OK between statements; the failure mode is `//` directly before a closing `}` on the same physical line. See `docs/usertalk/CLAUDE_PRIMER.md` and `docs/usertalk/SYNTAX.md` for the current rules.
+- Never use `/* */` — not a UserTalk comment marker at all; silently miscompiles in some positions.
 - Keep indentation consistent inside blocks; avoid stray blank lines with mismatched indentation.
 - Isolate test state under `system.temp.*`, never by mutating `system.*` tables directly.
 - Cleanup of `system.temp` objects is unnecessary (the table is non-persistent and recreated fresh each run), but acceptable for clarity.
 - **NEVER use `new(tableType, @workspace)` or `new(tableType, @workspace.something)`** — this creates persistent tables in workspace that pollute the database across test runs and cause flaky tests. Always use `new(tableType, @system.temp.something)` instead.
+- **Multi-line `local`/`return` returns `true` instead of the value** in protocol mode (issue #624). Use same-line `;` to keep the statements together: `local (x = 5); return x`, OR set `repl_mode: true` on the test.
 
 ### Integration test parallel/sequential rules
 
