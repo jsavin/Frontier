@@ -81,7 +81,7 @@ tests:
   - name: "tcp.openAddrStream - localhost connection refused on closed port"
     description: "Connect to known-closed port returns ECONNREFUSED instantly"
     timeout: 10
-    script: 'tcp.openAddrStream(2130706433, 7999)'
+    script: 'tcp.openAddrStream(tcp.addressEncode("127.0.0.1"), 7999)'
     expected_success: false
 
   # ===========================================================================

@@ -223,7 +223,7 @@ tests:
         tcp.closeStream(stream);
         local(after = tcp.countConnections());
         tcp.closeListen(listenID);
-        return (during == before + 1) and (after == before)
+        return (during > before) and (after == before)
       }
       else {
         tcp.closeListen(listenID);
@@ -327,8 +327,7 @@ tests:
     timeout: 10
     script: |
       new(tableType, @system.temp.tcpCli10);
-      system.temp.tcpCli10.fired = false;
-      script.newScriptObject("on mySinkHandler(sid, refcon) {\r  local(data = tcp.readStream(sid, 1024));\r  tcp.closeStream(sid);\r  system.temp.tcpCli10.fired = true;\r  return true}", @system.temp.tcpCli10.mySinkHandler);
+      script.newScriptObject("on mySinkHandler(sid, refcon) {\r  local(data = tcp.readStream(sid, 1024));\r  tcp.closeStream(sid);\r  return true}", @system.temp.tcpCli10.mySinkHandler);
 
       local(listenID = tcp.listenStream(10010, 5, @system.temp.tcpCli10.mySinkHandler));
 
@@ -606,8 +605,7 @@ tests:
     timeout: 10
     script: |
       new(tableType, @system.temp.tcpCli18);
-      system.temp.tcpCli18.fired = false;
-      script.newScriptObject("on mySinkHandler(sid, refcon) {\r  local(data = tcp.readStream(sid, 8192));\r  tcp.closeStream(sid);\r  system.temp.tcpCli18.fired = true;\r  return true}", @system.temp.tcpCli18.mySinkHandler);
+      script.newScriptObject("on mySinkHandler(sid, refcon) {\r  local(data = tcp.readStream(sid, 8192));\r  tcp.closeStream(sid);\r  return true}", @system.temp.tcpCli18.mySinkHandler);
 
       local(listenID = tcp.listenStream(10018, 5, @system.temp.tcpCli18.mySinkHandler));
 

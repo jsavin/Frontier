@@ -151,7 +151,7 @@ tests:
       local(status = tcp.statusStream(system.temp.tcpPh201.serverStream, @bytesPending));
 
       tcp.closeStream(clientStream);
-      tcp.closeStream(system.temp.tcpPh201.serverStream);
+      if system.temp.tcpPh201.serverStream > 0 { tcp.closeStream(system.temp.tcpPh201.serverStream) };
       tcp.closeListen(listenID);
       delete(@system.temp.tcpPh201);
 
@@ -189,7 +189,7 @@ tests:
       tcp.statusStream(system.temp.tcpPh202.serverStream, @bytesPending);
 
       tcp.closeStream(clientStream);
-      tcp.closeStream(system.temp.tcpPh202.serverStream);
+      if system.temp.tcpPh202.serverStream > 0 { tcp.closeStream(system.temp.tcpPh202.serverStream) };
       tcp.closeListen(listenID);
       delete(@system.temp.tcpPh202);
 
@@ -303,7 +303,7 @@ tests:
       local(peerAddrFromVerb = tcp.getPeerAddress(system.temp.tcpPh205.serverStream));
 
       tcp.closeStream(clientStream);
-      tcp.closeStream(system.temp.tcpPh205.serverStream);
+      if system.temp.tcpPh205.serverStream > 0 { tcp.closeStream(system.temp.tcpPh205.serverStream) };
       tcp.closeListen(listenID);
 
       local(localhost = tcp.addressEncode("127.0.0.1"));
@@ -411,7 +411,7 @@ tests:
       local(peerPortFromVerb = tcp.getPeerPort(system.temp.tcpPh208.serverStream));
 
       tcp.closeStream(clientStream);
-      tcp.closeStream(system.temp.tcpPh208.serverStream);
+      if system.temp.tcpPh208.serverStream > 0 { tcp.closeStream(system.temp.tcpPh208.serverStream) };
       tcp.closeListen(listenID);
 
       // Ephemeral ports are typically > 1024 and < 65536
@@ -494,7 +494,7 @@ tests:
       local(verbPort = tcp.getPeerPort(system.temp.tcpPh210.serverStream));
 
       tcp.closeStream(clientStream);
-      tcp.closeStream(system.temp.tcpPh210.serverStream);
+      if system.temp.tcpPh210.serverStream > 0 { tcp.closeStream(system.temp.tcpPh210.serverStream) };
       tcp.closeListen(listenID);
 
       local(addrMatch = verbAddr == system.temp.tcpPh210.cbAddr);
@@ -531,7 +531,7 @@ tests:
       local(clientId = ipString + ":" + peerPort);
 
       tcp.closeStream(clientStream);
-      tcp.closeStream(system.temp.tcpPh211.serverStream);
+      if system.temp.tcpPh211.serverStream > 0 { tcp.closeStream(system.temp.tcpPh211.serverStream) };
       tcp.closeListen(listenID);
       delete(@system.temp.tcpPh211);
 
@@ -552,7 +552,7 @@ tests:
       local(listenID = tcp.listenStream(9215, 5, ""));
 
       try {
-        local(stream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 9212));
+        local(stream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 9215));
         if (stream <= 0) {
           tcp.closeListen(listenID);
           return "false"
