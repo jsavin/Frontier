@@ -105,15 +105,13 @@ tests:
       startupScript adjusts predefined scheduler task times to be in the future.
       everyMinute is set to (now + 1 minute), hourly to (now + 1 hour). The
       overnight task is conditionally adjusted: if it's already in the past it's
-      rescheduled. We call startupScript() in this test to get a fresh reference
-      time, then verify hourly and overnight are > now. We skip everyMinute
-      because its 1-minute window is too narrow for reliable CI timing.
-      Reads from user.scheduler.tasks, which startupScript initializes via
-      scheduler.init() followed by date arithmetic.
-    timeout: 20
+      rescheduled. We verify hourly and overnight are > now using the state left by
+      Test 1 (no re-run needed; idempotency guard would make a second call a no-op
+      anyway). everyMinute is intentionally excluded: its 1-minute window is too
+      narrow for reliable CI timing. Re-calling startupScript() is avoided because
+      it triggers inetd.start(), which binds TCP ports — an unneeded side effect.
+    timeout: 5
     script: |
-      delete(@system.temp.Frontier);
-      startup.startupScript();
       local(hourly = user.scheduler.tasks.hourly.taskTime);
       local(overnight = user.scheduler.tasks.overnight.taskTime);
       local(now = clock.now());
@@ -155,8 +153,10 @@ tests:
     script: |
       local(src = string(@system.startup.startupScript));
       new(tableType, @system.temp.startupRoundtripTest);
-      script.newScriptObject(src, @system.temp.startupRoundtripTest.startupScript);
-      local(compiled = defined(system.temp.startupRoundtripTest.startupScript));
+      local(compiled = false);
+      try {
+          script.newScriptObject(src, @system.temp.startupRoundtripTest.startupScript);
+          compiled = defined(system.temp.startupRoundtripTest.startupScript)};
       delete(@system.temp.startupRoundtripTest);
       return compiled
     expected_success: true
