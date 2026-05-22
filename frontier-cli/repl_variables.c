@@ -300,11 +300,13 @@ hdlhashtable repl_get_variables_table(void) {
  * statement's value.
  *
  * Rules:
- *   - Insert ';' before every \r unless the preceding non-whitespace
- *     byte is already ';' or '{' (end of a block header or existing sep)
- *   - Insert ';' before every standalone \n (\n not part of \r\n)
- *     using the same guard
- *   - Never double-insert ';' (guard prevents ;;)
+ *   - Insert ';' before every \r unless the preceding non-whitespace byte
+ *     is already ';' or '{' (existing sep, or block-open like `if x {\n`).
+ *     A trailing ';' before '}' is harmless: UserTalk accepts `stmt; }` inside
+ *     a bracketedstatementlist, so no '}' guard is needed here.
+ *   - Same guard applies to every standalone \n (\n not part of \r\n).
+ *   - Never double-insert ';' (';' guard prevents ;;).
+ *   - \r\n pairs are treated as a single separator (\n is consumed after \r).
  *
  * The result is a freshly-malloc'd C string that the caller owns.
  * Returns NULL on allocation failure.
@@ -323,7 +325,7 @@ static char *normalize_newlines_to_semicolons(const char *script) {
 
 	const char *src = script;
 	char *dst = out;
-	char prev_nonws = '\0';	/* last non-whitespace byte written */
+	unsigned char prev_nonws = '\0';	/* last non-whitespace byte written */
 
 	while (*src != '\0') {
 		unsigned char c = (unsigned char)*src;
@@ -333,7 +335,7 @@ static char *normalize_newlines_to_semicolons(const char *script) {
 				*dst++ = ';';
 			*dst++ = '\r';
 			src++;
-			/* Eat a following \n so \r\n counts as one separator. */
+			/* '\0' != '\n', so end-of-string input never advances past the terminator. */
 			if (*src == '\n')
 				src++;
 			prev_nonws = ';';
@@ -347,7 +349,7 @@ static char *normalize_newlines_to_semicolons(const char *script) {
 			*dst++ = (char)c;
 			src++;
 			if (c != ' ' && c != '\t')
-				prev_nonws = (char)c;
+				prev_nonws = c;
 		}
 	}
 	*dst = '\0';
@@ -432,23 +434,32 @@ boolean repl_eval_with_variables(
 	if (g_repl_variables_table == nil) {
 		log_warn(LOG_COMP_GENERAL, "REPL variables not initialized, using direct eval");
 
-		/* Regular evaluation without wrapping */
-		size_t script_len = strlen(script);
+		/* Issue #624: normalize bare \r/\n to ;\r/;\n. */
+		char *normalized = normalize_newlines_to_semicolons(script);
+		if (normalized == NULL) {
+			copyctopstring("Out of memory normalizing script", error_msg);
+			return false;
+		}
+
+		size_t script_len = strlen(normalized);
 
 		if (!newemptyhandle(&htext)) {
+			free(normalized);
 			copyctopstring("Out of memory allocating script handle", error_msg);
 			return false;
 		}
 
 		if (!sethandlesize(htext, (long)script_len)) {
 			disposehandle(htext);
+			free(normalized);
 			copyctopstring("Out of memory resizing script handle", error_msg);
 			return false;
 		}
 
 		HLock(htext);
-		memcpy(*htext, script, script_len);
+		memcpy(*htext, normalized, script_len);
 		HUnlock(htext);
+		free(normalized);
 
 		return langrunhandletraperror(htext, result, error_msg);
 	}

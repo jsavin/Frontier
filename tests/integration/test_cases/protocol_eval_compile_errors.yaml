@@ -109,3 +109,27 @@ tests:
           result:
             value: "7"
             type: "long"
+
+  - name: "protocol script/eval - CRLF line endings treated as single separator (#624)"
+    description: "Windows-style CRLF must be treated as one statement separator, not two. The \\n is consumed after \\r so only one ';' is inserted and no double-semicolon results."
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "local (x = 42)\r\nreturn x"
+        validate:
+          success: true
+          result:
+            value: "42"
+            type: "long"
+
+  - name: "protocol script/eval - if block with newline before closing brace (#624)"
+    description: "A block-structured script with bare newlines before '}' must not get a spurious ';' before '}'. Grammar rule bracketedstatementlist: '{' statementlist '}' rejects a trailing ';' inside the block body. The '}' guard in normalize_newlines_to_semicolons prevents this."
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "local (x = 0)\rif true {\rx = 1\r}\rreturn x"
+        validate:
+          success: true
+          result:
+            value: "1"
+            type: "long"
