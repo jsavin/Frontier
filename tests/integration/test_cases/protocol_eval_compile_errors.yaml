@@ -47,3 +47,89 @@ tests:
           result:
             value: "2"
             type: "long"
+
+  # ============================================================
+  # Issue #624: bare CR/LF treated as statement separator
+  # ============================================================
+  # UserTalk grammar: ';' is the ONLY statement separator.
+  # \r and \n are whitespace (langscanner / parsepopblanks).
+  # Without a ';' between statements, YACC error recovery silently
+  # drops the second statement, and evaltree's default return value
+  # (true) is what the caller observes.
+  #
+  # Fix: build_wrapped_script (or its caller) must normalize bare
+  # \r and \n to ;\r / ;\n so newlines act as statement separators.
+  # The fix must NOT double-insert ';' before a \r that's already
+  # preceded by ';' or '{'.
+
+  - name: "protocol script/eval - local across CR separator returns local value (#624)"
+    description: "local (x = 5) followed by a bare CR then return x must return 5, not true. Before #624 fix: the CR is whitespace (not a statement separator), YACC error recovery drops 'return x', and evaltree's default true is the observed result."
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "local (x = 5)\rreturn x"
+        validate:
+          success: true
+          result:
+            value: "5"
+            type: "long"
+
+  - name: "protocol script/eval - local across LF separator returns local value (#624)"
+    description: "Same as the CR case but with bare LF. Confirms both line-ending styles are handled by the normalization."
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "local (x = 99)\nreturn x"
+        validate:
+          success: true
+          result:
+            value: "99"
+            type: "long"
+
+  - name: "protocol script/eval - multi-statement CR-separated script uses last value (#624)"
+    description: "Three statements separated by bare CRs: x=1, x=x+1, return x. Without the fix, only x=1 runs and true is returned. With the fix all three run and 2 is returned."
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "local (x = 1)\rx = x + 1\rreturn x"
+        validate:
+          success: true
+          result:
+            value: "2"
+            type: "long"
+
+  - name: "protocol script/eval - semicolon-separated statements still work after #624 fix"
+    description: "Regression guard: scripts that already use ';' must not get double-semicolons or other corruption from the newline normalization."
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "local (x = 7); return x"
+        validate:
+          success: true
+          result:
+            value: "7"
+            type: "long"
+
+  - name: "protocol script/eval - CRLF line endings treated as single separator (#624)"
+    description: "Windows-style CRLF must be treated as one statement separator, not two. The \\n is consumed after \\r so only one ';' is inserted and no double-semicolon results."
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "local (x = 42)\r\nreturn x"
+        validate:
+          success: true
+          result:
+            value: "42"
+            type: "long"
+
+  - name: "protocol script/eval - if block with newline before closing brace (#624)"
+    description: "A block-structured script with bare newlines before '}' must not get a spurious ';' before '}'. Grammar rule bracketedstatementlist: '{' statementlist '}' rejects a trailing ';' inside the block body. The '}' guard in normalize_newlines_to_semicolons prevents this."
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "local (x = 0)\rif true {\rx = 1\r}\rreturn x"
+        validate:
+          success: true
+          result:
+            value: "1"
+            type: "long"
