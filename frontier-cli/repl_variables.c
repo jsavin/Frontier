@@ -288,6 +288,73 @@ hdlhashtable repl_get_variables_table(void) {
 }
 
 /*
+ * Normalize bare CR and LF in a script to ;\r / ;\n so they act as
+ * statement separators.
+ *
+ * UserTalk grammar: ';' is the ONLY statement separator — \r and \n
+ * are whitespace to the scanner (parsepopblanks in langscan.c).  A
+ * multi-line script sent over the protocol uses \r or \n as natural
+ * line boundaries; without normalization, YACC error recovery silently
+ * drops every statement after the first, and evaltree's default return
+ * value (true) is what the caller observes instead of the last
+ * statement's value.
+ *
+ * Rules:
+ *   - Insert ';' before every \r unless the preceding non-whitespace
+ *     byte is already ';' or '{' (end of a block header or existing sep)
+ *   - Insert ';' before every standalone \n (\n not part of \r\n)
+ *     using the same guard
+ *   - Never double-insert ';' (guard prevents ;;)
+ *
+ * The result is a freshly-malloc'd C string that the caller owns.
+ * Returns NULL on allocation failure.
+ *
+ * Issue #624.
+ */
+static char *normalize_newlines_to_semicolons(const char *script) {
+	if (script == NULL)
+		return NULL;
+
+	size_t src_len = strlen(script);
+	/* Worst case: every byte is a \r or \n, each gains a ';' prefix. */
+	char *out = malloc(src_len * 2 + 1);
+	if (out == NULL)
+		return NULL;
+
+	const char *src = script;
+	char *dst = out;
+	char prev_nonws = '\0';	/* last non-whitespace byte written */
+
+	while (*src != '\0') {
+		unsigned char c = (unsigned char)*src;
+
+		if (c == '\r') {
+			if (prev_nonws != ';' && prev_nonws != '{' && prev_nonws != '\0')
+				*dst++ = ';';
+			*dst++ = '\r';
+			src++;
+			/* Eat a following \n so \r\n counts as one separator. */
+			if (*src == '\n')
+				src++;
+			prev_nonws = ';';
+		} else if (c == '\n') {
+			if (prev_nonws != ';' && prev_nonws != '{' && prev_nonws != '\0')
+				*dst++ = ';';
+			*dst++ = '\n';
+			src++;
+			prev_nonws = ';';
+		} else {
+			*dst++ = (char)c;
+			src++;
+			if (c != ' ' && c != '\t')
+				prev_nonws = (char)c;
+		}
+	}
+	*dst = '\0';
+	return out;
+}
+
+/*
  * Build a wrapped script that brings variables into scope.
  *
  * Transforms:
@@ -304,7 +371,13 @@ static boolean build_wrapped_script(const char *script, Handle *hresult) {
 		"with system.temp.FrontierREPL.variables {\n";
 	static const char suffix[] = "\n}";
 
-	size_t script_len = strlen(script);
+	/* Issue #624: normalize bare \r/\n to ;\r/;\n so they act as
+	 * statement separators (UserTalk grammar uses ';' only). */
+	char *normalized = normalize_newlines_to_semicolons(script);
+	if (normalized == NULL)
+		return false;
+
+	size_t script_len = strlen(normalized);
 	size_t prefix_len = sizeof(prefix) - 1;
 	size_t suffix_len = sizeof(suffix) - 1;
 	size_t total_len = prefix_len + script_len + suffix_len;
@@ -312,11 +385,13 @@ static boolean build_wrapped_script(const char *script, Handle *hresult) {
 	Handle htext = nil;
 
 	if (!newemptyhandle(&htext)) {
+		free(normalized);
 		return false;
 	}
 
 	if (!sethandlesize(htext, (long)total_len)) {
 		disposehandle(htext);
+		free(normalized);
 		return false;
 	}
 
@@ -324,10 +399,11 @@ static boolean build_wrapped_script(const char *script, Handle *hresult) {
 	char *p = (char *) *htext;
 	memcpy(p, prefix, prefix_len);
 	p += prefix_len;
-	memcpy(p, script, script_len);
+	memcpy(p, normalized, script_len);
 	p += script_len;
 	memcpy(p, suffix, suffix_len);
 	HUnlock(htext);
+	free(normalized);
 
 	*hresult = htext;
 	return true;
@@ -436,23 +512,32 @@ boolean repl_eval_with_variables_value(
 	if (g_repl_variables_table == nil) {
 		log_warn(LOG_COMP_GENERAL, "REPL variables not initialized, using direct eval");
 
-		/* Regular evaluation without wrapping */
-		size_t script_len = strlen(script);
+		/* Issue #624: normalize bare \r/\n to ;\r/;\n. */
+		char *normalized = normalize_newlines_to_semicolons(script);
+		if (normalized == NULL) {
+			copyctopstring("Out of memory normalizing script", error_msg);
+			return false;
+		}
+
+		size_t script_len = strlen(normalized);
 
 		if (!newemptyhandle(&htext)) {
+			free(normalized);
 			copyctopstring("Out of memory allocating script handle", error_msg);
 			return false;
 		}
 
 		if (!sethandlesize(htext, (long)script_len)) {
 			disposehandle(htext);
+			free(normalized);
 			copyctopstring("Out of memory resizing script handle", error_msg);
 			return false;
 		}
 
 		HLock(htext);
-		memcpy(*htext, script, script_len);
+		memcpy(*htext, normalized, script_len);
 		HUnlock(htext);
+		free(normalized);
 
 		return langrunhandle_value(htext, vreturned);
 	}
