@@ -103,6 +103,8 @@ Hard-stops the thread. No locals returned, no completion success — gone.
 
 Set or **toggle** a breakpoint. Calling `setBreakpoint` again on the same (script, line) clears it — there is no separate single-breakpoint clear op.
 
+**Line numbering is 1-based from the `on handlerName ()` declaration line.** The declaration itself is line 1; the first statement inside the handler body is line 2. Use `debug/getSource` to see the numbered lines before setting breakpoints — it shows the exact layout the debugger uses.
+
 Optional `condition`: `"varname op value"` where `op` is `==`, `!=`, `>`, `<`, `>=`, `<=`. Numeric compare if both sides parse as numbers, string compare otherwise.
 
 ### 3.7 `debug/listBreakpoints`
