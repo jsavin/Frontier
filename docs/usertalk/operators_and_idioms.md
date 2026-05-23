@@ -70,7 +70,7 @@ Short-circuit evaluation works as you'd expect — `&&` stops on the first false
 | `*` | Multiply |
 | `/` | Divide |
 | `%` | Modulo |
-| `^` | Power (when applied to two numbers — NOT to be confused with the address-dereference suffix) |
+| `^` | **Dereference only** (postfix on an address — `adr^`). There is no power operator in UserTalk. |
 | `++` | Pre/post increment on a numeric variable |
 | `--` | Pre/post decrement on a numeric variable |
 
@@ -94,9 +94,9 @@ local (s = string (a) + string (b))            // ✓ "12" + "34" = "1234"
 local (n = a + b)                              // ✗ this is 12 + 34 = 46
 ```
 
-### `^` is ambiguous between power and dereference — context disambiguates
+### `^` is dereference only — there is no power operator
 
-`a ^ b` between two numeric expressions is power. `adr^` as a postfix on an address is dereference. The parser distinguishes by position; you almost never see real ambiguity. If a script is doing math on a value also used as an address, name those variables clearly.
+`adr^` as a postfix on an address is dereference. `^` between two values does NOT compute a power — `2 ^ 10` produces an error. There is no `math.pow` or `math.power` verb either. If you need exponentiation, write a loop or install a helper.
 
 ---
 
@@ -155,27 +155,28 @@ if string.contains (userInput, "yes") {...}    // ✗ no such verb
 
 These are plain substring tests — no wildcards, no regex. For wildcards, see `string.patternMatch` below.
 
-`contains` also works on lists and (sometimes) records — it tests for value membership, not substring. Confirm with `typeof ()` first if you're not sure what you're holding.
+`contains` also works on **lists** — it tests for value membership: `{1, 2, 3} contains 2` → `true`. It does NOT work on records — `record contains value` produces "Can't coerce X value to a record." Confirm with `typeof ()` if you're not sure what you're holding.
 
 ---
 
 ## Pattern matching
 
-`string.patternMatch (pattern, source)` does wildcard matching:
+`string.patternMatch (pattern, source)` is **an exact-equality check**, not a wildcard or glob matcher. Despite the name, `*` and `?` are treated as literal characters.
 
-- `*` matches any sequence of characters (zero or more)
-- `?` matches a single character
+- Returns `1` if `pattern == source` (full string equality).
+- Returns `0` if they differ.
+- Case-sensitive.
 
 ```
-local (pos = string.patternMatch ("*.ut", "foo.ut"))      // pos == 1 (matched at position 1)
-local (pos = string.patternMatch ("foo*", "foobar"))      // pos == 1
-local (pos = string.patternMatch ("*bar", "foobar"))      // pos == 4
-local (pos = string.patternMatch ("xyz", "foobar"))       // pos == 0 (no match)
+local (pos = string.patternMatch ("hello", "hello"))      // pos == 1 — equal
+local (pos = string.patternMatch ("hello", "Hello"))      // pos == 0 — case differs
+local (pos = string.patternMatch ("*.ut", "foo.ut"))      // pos == 0 — * is literal
+local (pos = string.patternMatch ("llo", "hello"))        // pos == 0 — substring, not equal
 ```
 
-**The return is a 1-based position, NOT a boolean.** Zero means no match; anything else is the position. Don't write `if string.patternMatch (...)` and expect Python-style truthiness — write `if string.patternMatch (...) > 0`.
+**There is no wildcard pattern matcher in the standard verb library.** For substring checks, use `contains` (which IS a substring test). For glob-style matching, you'd need to write or install one.
 
-For simple substring checks (no wildcards), use `contains`, which is cheaper and clearer.
+**The return is a `long`, not a boolean.** Don't write `if string.patternMatch (...)` — check `if string.patternMatch (...) > 0` if you ever need the boolean form (though for equality, just use `==` directly).
 
 ---
 

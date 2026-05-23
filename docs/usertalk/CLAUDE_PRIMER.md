@@ -119,6 +119,8 @@ For tables: pass the address (`@examples.colors`), not the value (`examples.colo
 | yaml test passes with `success: true` but `result_type: unknown` for an OSType | Test framework JSON-serializes OSType codes as strings | Use `"TEXT"` etc. in test expectations, not `stringType` |
 | `[lang-ERROR] langcallbacks.c:208:` (empty error line after success) | Harmless — known protocol bookkeeping noise | Ignore |
 | `expected_result: true` mismatch even though script returns `true` | yaml parsed `true` as a boolean, but test framework compares string | Quote it: `expected_result: "true"` |
+| `string.patternMatch` returns 0 even though strings look equal | `string.patternMatch` is exact equality, not a glob/substring match — `*` and `?` are literals | Use `contains` for substring, `==` for equality |
+| `Can't coerce X value to a record.` on `record contains val` | `contains` on records is not supported | Use `contains` only on strings or lists; iterate records ordinally |
 
 ---
 
