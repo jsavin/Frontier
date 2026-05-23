@@ -287,7 +287,15 @@ else {
    - **Why**: The parser expects consistent indentation even for blank lines
    - **Best Practice**: UserTalk code is typically compact without blank lines for visual separation
 
-3. **Test Data Isolation - Use system.temp, NEVER system table**
+3. **Inline Closing Braces (Canonical Style)**
+   - ✅ CORRECT: `try { ... ; doThing ()};` — `};` inlined at end of last statement
+   - ✅ CORRECT: `if cond { yes ()}` newline `else { no ()};` — `}` inlined before else
+   - ✅ CORRECT: `on f (x) { return (x * 2)}` — function body `}` inlined
+   - ❌ NON-CANONICAL: closing `}` on its own line, lone `};` on its own line
+   - **Why**: The textifier (outline → text round-trip) inlines `}` and `};` at the end of the last statement of a block. Code written in C-style multi-line layout is not what production source looks like and may get reformatted during round-trip.
+   - **Where it matters**: writing/editing `.ut` files, ODB scripts via the protocol. yaml integration test `script:` blocks tolerate C-style layout because the protocol normalizes newlines (#624, #628, #635), but production-style is still preferred.
+
+4. **Test Data Isolation - Use system.temp, NEVER system table**
    - ❌ WRONG: `system.verbs.tcp.test.foo = "bar"` (modifies system table!)
    - ✅ CORRECT: `new(tableType, @system.temp.tcpTest); system.temp.tcpTest.foo = "bar"`
    - **Cleanup**: Always `delete(@system.temp.tcpTest)` at end of test

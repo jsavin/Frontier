@@ -18,7 +18,7 @@ This primer's job: stop you from probing-and-experimenting for basic idioms duri
 | `for x in collection` always yields values | Two forms: `for v in listOrRecordValue` yields **values** (works on records and lists). `for adrM in @table` yields **addresses** (works on tables; pass the address, not the value). Dereference with `adrM^`. |
 | `/* comment */` works | **Not a UserTalk comment.** It silently parses as a division-multiplication expression and can corrupt your script's return value. Use `//` or `«…»`. |
 | Verb calls: `f(x)` | UserLand style: **space before `(`**: `f (x)`. Both compile; only the spaced form is idiomatic. |
-| Closing brace on its own line | Idiomatically **inline at the end of the last statement**: `... ; return x}`. This matches outline ↔ text round-trip. |
+| Closing brace on its own line | Canonical UT **inlines `}` and `};` at the end of the last statement of a block** — never on its own line. `try { ... ; doThing ()};` not `try {\n  ...\n};`. See section 2.6. |
 | Method-style verb evolution | UserTalk is dispatch-by-name through the ODB. The "verb" `string.upper` is a script at `system.verbs.builtins.string.upper` — a glue script that calls a C kernel implementation. |
 
 If something feels surprising, check this table before assuming. The rest of the primer expands each row.
@@ -100,6 +100,25 @@ for v in rec {
 For tables: pass the address (`@examples.colors`), not the value (`examples.colors`). Passing the value gives `This operation is not supported for table values.`
 
 `nameOf (adrMember^)` gets the member name; `nameOf (adrMember)` gets the local variable's name (`"adrMember"`), which is rarely what you want.
+
+### 2.6 Brace and `};` placement (canonical style)
+
+UserTalk's outline ↔ text round-trip puts the closing `}` (and `};` when a statement separator is needed) **inline at the end of the last statement of a block**, not on its own line:
+
+```
+try { //comment OK here
+	scheduler.shutdown ()};	  // '};' inlined — '}' closes try, ';' terminates statement
+if cond {
+	yes ()}                   // '}' inline; no ';' because 'else' follows
+else {
+	no ()};                   // '};' inline at end of else
+on f (x) {
+	return (x * 2)}           // function body closes inline
+```
+
+You almost never see `\n}` or `\n};` or a lone `;` on a line by itself in textified UT. If you do, you're looking at hand-written C-style source, not canonical output from the textifier.
+
+This matters when writing UserTalk for production (`.ut` files, ODB scripts) — match the inline convention. In yaml integration test `script:` blocks, C-style multi-line is OK because the protocol normalizes newlines (#624 / #628 / #635), but inline-canonical style is still preferred for parity.
 
 ---
 
