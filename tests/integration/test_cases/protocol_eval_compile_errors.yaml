@@ -205,3 +205,15 @@ tests:
           result:
             value: "inner"
             type: "string"
+
+  - name: "protocol script/eval - case/else across newlines (#635)"
+    description: "case statements use the same caseheader casebody elsetoken bracketedstatementlist grammar as try/else and if/else. The '}\\nelse' boundary should behave identically. Locks in the third UserTalk construct that exercises the }-else lookahead so future refactors can't silently regress it."
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "local (n = 2);\nlocal (result = \"\");\ncase n {\n  1 { result = \"one\"};\n  2 { result = \"two\"}}\nelse {\n  result = \"other\"};\nreturn result"
+        validate:
+          success: true
+          result:
+            value: "two"
+            type: "string"

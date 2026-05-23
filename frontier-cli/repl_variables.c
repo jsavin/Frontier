@@ -370,7 +370,9 @@ static char *normalize_newlines_to_semicolons(const char *script) {
 					if (peek[0] == '/' && peek[1] == '/') {
 						while (*peek != '\0' && *peek != '\r' && *peek != '\n')
 							peek++;
-						continue;	/* loop: skip the \r/\n that ended the comment */
+						/* Stop AT the \r/\n. The outer loop's whitespace
+						 * pass on the next iteration will skip it. */
+						continue;
 					}
 					if ((unsigned char)peek[0] == 0xC2 && (unsigned char)peek[1] == 0xAB) {
 						peek += 2;
