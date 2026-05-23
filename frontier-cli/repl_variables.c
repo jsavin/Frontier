@@ -330,20 +330,44 @@ static char *normalize_newlines_to_semicolons(const char *script) {
 	while (*src != '\0') {
 		unsigned char c = (unsigned char)*src;
 
-		if (c == '\r') {
-			if (prev_nonws != ';' && prev_nonws != '{' && prev_nonws != '\0')
+		if (c == '\r' || c == '\n') {
+			/* Decide whether this newline needs a ';' inserted before it.
+			 *
+			 * UserTalk grammar requires ';' between statements at top level.
+			 * Bare \r/\n are whitespace to the scanner, so multi-line scripts
+			 * without explicit ';' fail to parse. We insert one synthetically.
+			 *
+			 * Guards (no ';' inserted):
+			 *   - prev is ';' — already separated
+			 *   - prev is '{' — start of block, next is first statement
+			 *   - prev is '}' AND next non-whitespace is 'else'/';'/'}' — the
+			 *     '}' closes a block; inserting ';' before 'else' would split
+			 *     it from its if/try clause. Other followers (return, local,
+			 *     identifier, ...) ARE statements and need an explicit ';'.
+			 *   - prev is '\0' — start of script
+			 */
+			boolean need_sep = (prev_nonws != ';' && prev_nonws != '{' && prev_nonws != '\0');
+			if (need_sep && prev_nonws == '}') {
+				/* Peek past whitespace (space/tab/\r/\n) for the next token. */
+				const char *peek = src;
+				while (*peek == ' ' || *peek == '\t' || *peek == '\r' || *peek == '\n')
+					peek++;
+				/* Tokens that attach to or close the '}' without needing ';'. */
+				if (*peek == '\0' || *peek == '}' || *peek == ';' ||
+				    (peek[0] == 'e' && peek[1] == 'l' && peek[2] == 's' && peek[3] == 'e' &&
+				     (peek[4] == '\0' || peek[4] == ' ' || peek[4] == '\t' ||
+				      peek[4] == '\r' || peek[4] == '\n' || peek[4] == '{'))) {
+					need_sep = false;
+				}
+			}
+			if (need_sep)
 				*dst++ = ';';
-			*dst++ = '\r';
+			*dst++ = (char)c;
 			src++;
-			/* '\0' != '\n', so end-of-string input never advances past the terminator. */
-			if (*src == '\n')
+			/* CRLF: silently consume the \n after an emitted \r so we don't
+			 * produce two visible separators. Matches the pre-#628 contract. */
+			if (c == '\r' && *src == '\n')
 				src++;
-			prev_nonws = ';';
-		} else if (c == '\n') {
-			if (prev_nonws != ';' && prev_nonws != '{' && prev_nonws != '\0')
-				*dst++ = ';';
-			*dst++ = '\n';
-			src++;
 			prev_nonws = ';';
 		} else {
 			*dst++ = (char)c;

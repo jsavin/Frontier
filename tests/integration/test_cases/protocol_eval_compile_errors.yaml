@@ -133,3 +133,39 @@ tests:
           result:
             value: "1"
             type: "long"
+
+  - name: "protocol script/eval - try/else across newlines does not get split by ';' (#624)"
+    description: "When a try { } is followed by an else { }, the closing '}' of the try is followed by a newline before 'else'. Without a '}' in the guard, normalize_newlines_to_semicolons inserts a ';' between '}' and 'else', which splits the try from its else clause. The parser sees a standalone try (executes silently) followed by an orphan 'else' keyword, producing a parse error that the with-wrapper silently masks as 'true'. The fix is to treat '}' the same as ';' and '{' — newlines that follow it must not gain a ';'."
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "local (result = \"ok\");\ntry {\n  local (x = 1 + 1)}\nelse {\n  result = \"error\"};\nreturn result"
+        validate:
+          success: true
+          result:
+            value: "ok"
+            type: "string"
+
+  - name: "protocol script/eval - try/else recovers from real error (#624)"
+    description: "Companion to the previous test: when the try body DOES throw, the else block runs and result becomes 'caught'. Verifies the }-before-else fix doesn't break the error-recovery path."
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "local (result = \"ok\");\ntry {\n  local (x = 1 / 0)}\nelse {\n  result = \"caught\"};\nreturn result"
+        validate:
+          success: true
+          result:
+            value: "caught"
+            type: "string"
+
+  - name: "protocol script/eval - if/else across newlines (#624)"
+    description: "Same shape as try/else: an if's closing '}' followed by newline then 'else' must not gain a ';'. Locks in the same fix for if/else."
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "local (result = \"none\");\nif false {\n  result = \"yes\"}\nelse {\n  result = \"no\"};\nreturn result"
+        validate:
+          success: true
+          result:
+            value: "no"
+            type: "string"
