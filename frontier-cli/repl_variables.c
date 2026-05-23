@@ -300,18 +300,24 @@ hdlhashtable repl_get_variables_table(void) {
  * statement's value.
  *
  * Rules:
- *   - Insert ';' before every \r unless the preceding non-whitespace byte
- *     is already ';' or '{' (existing sep, or block-open like `if x {\n`).
- *     A trailing ';' before '}' is harmless: UserTalk accepts `stmt; }` inside
- *     a bracketedstatementlist, so no '}' guard is needed here.
- *   - Same guard applies to every standalone \n (\n not part of \r\n).
+ *   - Insert ';' before every \r/\n unless the preceding non-whitespace
+ *     byte is already ';' or '{' or '\0' (existing sep, block-open like
+ *     `if x {\n`, or start-of-script).
+ *   - '}' guard with lookahead: when prev is '}', peek past whitespace
+ *     and comments for the next real token. If it's 'else'/';'/'}'/EOF,
+ *     suppress the ';' — those tokens either attach to the '}' (else),
+ *     close further (}}, EOF), or already provide the separator (;).
+ *     Other followers (return, local, identifier, ...) are new statements
+ *     and need an explicit ';'. Without this, `try { }\nelse { }` is split
+ *     into a standalone try and an orphan else, producing a parse error
+ *     that the with-wrapper masks as a truthy default. Issue #635.
  *   - Never double-insert ';' (';' guard prevents ;;).
  *   - \r\n pairs are treated as a single separator (\n is consumed after \r).
  *
  * The result is a freshly-malloc'd C string that the caller owns.
  * Returns NULL on allocation failure.
  *
- * Issue #624.
+ * Issues #624, #635.
  */
 static char *normalize_newlines_to_semicolons(const char *script) {
 	if (script == NULL)
@@ -348,10 +354,38 @@ static char *normalize_newlines_to_semicolons(const char *script) {
 			 */
 			boolean need_sep = (prev_nonws != ';' && prev_nonws != '{' && prev_nonws != '\0');
 			if (need_sep && prev_nonws == '}') {
-				/* Peek past whitespace (space/tab/\r/\n) for the next token. */
+				/* Peek past inter-token noise — whitespace AND comments — to
+				 * find the next real token after the '}'. A '//' or '«...»'
+				 * comment between '}' and 'else' on its own line must not hide
+				 * the 'else' from the lookahead (#635 P1).
+				 *
+				 * UTF-8: '«' is 0xC2 0xAB. We match the leading byte 0xC2
+				 * followed by 0xAB; both bytes are well-formed UTF-8 and any
+				 * non-comment 0xC2 byte (continuation of a different char) is
+				 * followed by a non-0xAB byte, so the check is unambiguous. */
 				const char *peek = src;
-				while (*peek == ' ' || *peek == '\t' || *peek == '\r' || *peek == '\n')
-					peek++;
+				for (;;) {
+					while (*peek == ' ' || *peek == '\t' || *peek == '\r' || *peek == '\n')
+						peek++;
+					if (peek[0] == '/' && peek[1] == '/') {
+						while (*peek != '\0' && *peek != '\r' && *peek != '\n')
+							peek++;
+						continue;	/* loop: skip the \r/\n that ended the comment */
+					}
+					if ((unsigned char)peek[0] == 0xC2 && (unsigned char)peek[1] == 0xAB) {
+						peek += 2;
+						/* Walk to the closing '»' (0xC2 0xBB). End-of-string
+						 * exit is safe — the malformed source will fail to
+						 * compile after normalization, but we stop scanning. */
+						while (*peek != '\0' &&
+						       !((unsigned char)peek[0] == 0xC2 && (unsigned char)peek[1] == 0xBB))
+							peek++;
+						if (*peek != '\0')
+							peek += 2;	/* skip the closing '»' */
+						continue;
+					}
+					break;
+				}
 				/* Tokens that attach to or close the '}' without needing ';'. */
 				if (*peek == '\0' || *peek == '}' || *peek == ';' ||
 				    (peek[0] == 'e' && peek[1] == 'l' && peek[2] == 's' && peek[3] == 'e' &&
@@ -368,6 +402,11 @@ static char *normalize_newlines_to_semicolons(const char *script) {
 			 * produce two visible separators. Matches the pre-#628 contract. */
 			if (c == '\r' && *src == '\n')
 				src++;
+			/* prev_nonws is now ';' regardless of whether we emitted one.
+			 * The newline acts as a statement-boundary signal even when the
+			 * '}' guard suppressed the explicit ';' — subsequent guards key
+			 * off "we just finished a statement", which is the truth either
+			 * way. Don't try to mirror the emitted-byte history here. */
 			prev_nonws = ';';
 		} else {
 			*dst++ = (char)c;

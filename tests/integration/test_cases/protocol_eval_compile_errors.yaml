@@ -169,3 +169,39 @@ tests:
           result:
             value: "no"
             type: "string"
+
+  - name: "protocol script/eval - comment on own line between } and else (#635)"
+    description: "A '//' line comment between the closing '}' of a try/if body and the 'else' on a separate line must not break the composite statement. The peek-past-noise loop needs to skip line comments to find 'else'. Without this, the normalizer sees '/' instead of 'else' and inserts ';' before the comment line — splitting try from else (same failure mode as the original #635 P0)."
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "local (result = \"ok\");\ntry {\n  local (x = 1 / 0)}\n// recover gracefully\nelse {\n  result = \"caught\"};\nreturn result"
+        validate:
+          success: true
+          result:
+            value: "caught"
+            type: "string"
+
+  - name: "protocol script/eval - canonical inline '};' between try and else (#635)"
+    description: "Canonical UT source inlines '};' at end of last statement of a block. 'try { body };\nelse { ... }' is the production-shape case (vs. the C-style multi-line cases in the previous tests). Verifies the normalizer handles the inline form correctly."
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "local (result = \"ok\"); try { local (x = 1 / 0)}\nelse { result = \"caught\"}; return result"
+        validate:
+          success: true
+          result:
+            value: "caught"
+            type: "string"
+
+  - name: "protocol script/eval - nested try/else across newlines (#635)"
+    description: "Two levels of nested try/else, each spanning a newline. Locks in correct lookahead behaviour through stacked '}}' transitions. Inner try catches, outer try sees no error and passes through."
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "local (result = \"start\");\ntry {\n  try {\n    local (x = 1 / 0)}\n  else {\n    result = \"inner\"}}\nelse {\n  result = \"outer\"};\nreturn result"
+        validate:
+          success: true
+          result:
+            value: "inner"
+            type: "string"

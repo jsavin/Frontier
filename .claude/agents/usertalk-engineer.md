@@ -295,7 +295,7 @@ else {
    - **Why**: The textifier (outline → text round-trip) inlines `}` and `};` at the end of the last statement of a block. Code written in C-style multi-line layout is not what production source looks like and may get reformatted during round-trip.
    - **Where it matters**: writing/editing `.ut` files, ODB scripts via the protocol. yaml integration test `script:` blocks tolerate C-style layout because the protocol normalizes newlines (#624, #628, #635), but production-style is still preferred.
 
-3. **Test Data Isolation - Use system.temp, NEVER system table**
+4. **Test Data Isolation - Use system.temp, NEVER system table**
    - ❌ WRONG: `system.verbs.tcp.test.foo = "bar"` (modifies system table!)
    - ✅ CORRECT: `new(tableType, @system.temp.tcpTest); system.temp.tcpTest.foo = "bar"`
    - **Cleanup**: Always `delete(@system.temp.tcpTest)` at end of test
