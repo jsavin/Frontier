@@ -108,7 +108,7 @@ For tables: pass the address (`@examples.colors`), not the value (`examples.colo
 | Symptom | Likely cause | Fix |
 |---|---|---|
 | `Can't compile this script because of a syntax error.` on `/* ... */` | `/* */` isn't a UserTalk comment | Use `//` or `«…»` |
-| Script `returns` a value but yaml test sees `true` (boolean) | Protocol-mode `with`-wrapper drops `local` scope across `\r` (#624) | Use `;` to keep `local`/`return` on one logical statement, or set `repl_mode: true` |
+| Script `returns` a value but yaml test sees `true` (boolean) | Multi-statement script missing `;` separators — `\r`/`\n` are whitespace in UserTalk, not statement terminators | The protocol layer now normalizes bare `\r`/`\n` to `;` (#628), but explicit `;` is clearest |
 | `Character constant isnt correctly specified. Must be of the form 'c'.` | Used `'foo'` for a string | Use `"foo"` |
 | `Can't find a sub-table named X` | Tried `r.X` on a value that's NOT a `tableType` (probably `recordType` or scalar) | `typeof (r)` to check; if it's a record, you must iterate ordinally |
 | `Can't call the script because the name X hasn't been defined.` | Verb doesn't exist, OR you forgot the system root, OR name collides with a global | Check verb name; confirm `--system-root` is loaded; try bracket form for the leaf |
@@ -139,7 +139,7 @@ expected_result: "true"       # MUST be quoted string — compared against scrip
 
 Protocol mode (default for yaml integration tests) wraps every `script:` block in `with system.temp.FrontierREPL.variables { ... }`. This causes:
 
-- **`local`s declared on one line don't survive past `\r` to a `return` on the next line.** The script silently returns `true` instead of the intended value. Filed as **#624 (P0)** — a real bug that can mask integration-test failures. **Fix**: same line + `;`, or set `repl_mode: true`.
+- **`\r`/`\n` are whitespace in UserTalk, not statement terminators.** The protocol layer normalizes bare newlines to `;` (#628), so multi-line scripts work. Explicit `;` is still clearest and most portable.
 - Verbs taking `@addr` output parameters often fail inside the wrapper. **Fix**: `repl_mode: true`.
 - `thread.evaluate` doesn't work inside the wrapper. **Fix**: `repl_mode: true`.
 - Empty string returns may serialize as `null`.
