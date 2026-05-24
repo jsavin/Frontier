@@ -288,6 +288,54 @@ hdlhashtable repl_get_variables_table(void) {
 }
 
 /*
+ * Skip past inter-token noise — whitespace and comments — and return a
+ * pointer to the next real source byte (or to the '\0' terminator if
+ * nothing real follows).
+ *
+ * Noise includes:
+ *   - ASCII whitespace: space, tab, CR, LF
+ *   - C++-style line comments: '// ... \r|\n'
+ *   - UserTalk curly comments: '«...»' encoded as UTF-8 (0xC2 0xAB ... 0xC2 0xBB)
+ *
+ * UTF-8 note: '«' is 0xC2 0xAB and '»' is 0xC2 0xBB. Both bytes are
+ * well-formed UTF-8, and any non-comment 0xC2 byte (continuation of a
+ * different multi-byte character) is followed by a non-0xAB byte, so the
+ * leading-byte check is unambiguous.
+ *
+ * Used by the newline-normalizer's lookahead to decide whether a real
+ * statement follows a bare \r/\n. Factored out so the same skip rules
+ * apply to both the '}' guard (#635) and the EOF guard (#620 trailing
+ * newline cluster).
+ */
+static const char *peek_next_real_byte(const char *p) {
+	for (;;) {
+		while (*p == ' ' || *p == '\t' || *p == '\r' || *p == '\n')
+			p++;
+		if (p[0] == '/' && p[1] == '/') {
+			while (*p != '\0' && *p != '\r' && *p != '\n')
+				p++;
+			/* Stop AT the \r/\n. The outer loop's whitespace pass
+			 * consumes it on the next iteration. */
+			continue;
+		}
+		if ((unsigned char)p[0] == 0xC2 && (unsigned char)p[1] == 0xAB) {
+			p += 2;
+			/* Walk to the closing '»' (0xC2 0xBB). End-of-string
+			 * exit is safe — a malformed unterminated comment will
+			 * fail to compile after normalization; we just stop
+			 * scanning here. */
+			while (*p != '\0' &&
+			       !((unsigned char)p[0] == 0xC2 && (unsigned char)p[1] == 0xBB))
+				p++;
+			if (*p != '\0')
+				p += 2;	/* skip the closing '»' */
+			continue;
+		}
+		return p;
+	}
+}
+
+/*
  * Normalize bare CR and LF in a script to ;\r / ;\n so they act as
  * statement separators.
  *
@@ -311,13 +359,31 @@ hdlhashtable repl_get_variables_table(void) {
  *     and need an explicit ';'. Without this, `try { }\nelse { }` is split
  *     into a standalone try and an orphan else, producing a parse error
  *     that the with-wrapper masks as a truthy default. Issue #635.
+ *   - Trailing-newline guard: regardless of prev, if the next real byte
+ *     after this \r/\n (skipping all whitespace and comments) is EOF,
+ *     suppress the ';' insertion. The caller wraps the normalized script
+ *     as `with ... { <script> \n}` — a trailing ';' would inject an empty
+ *     statement at the end of the with-block, and evaltree returns the
+ *     wrapper's truthy default ('true') for that empty statement instead
+ *     of the user's last-expression value. YAML `|` block scalars always
+ *     append a trailing '\n', so before this guard, every multi-line yaml
+ *     script that didn't end in '}' or ';' lost its final value. Issue
+ *     #620 (callback_tcp, callback_database, bigstring boundary clusters).
+ *   - Trailing strip: after scanning, strip any trailing ';' and trailing
+ *     whitespace from the output. A user-typed trailing ';' (e.g. 'x;\n')
+ *     would otherwise yield an empty trailing statement at the script's
+ *     top level — the parser returns the empty statement's default 'true'
+ *     instead of the value of the preceding expression. This affects both
+ *     the with-wrapped path (where the suffix '\n}' makes it visible) and
+ *     the fallback langrunhandle_value path (where '1 + 2;' returns 'true'
+ *     directly). The strip is the symmetric closer to the EOF guard.
  *   - Never double-insert ';' (';' guard prevents ;;).
  *   - \r\n pairs are treated as a single separator (\n is consumed after \r).
  *
  * The result is a freshly-malloc'd C string that the caller owns.
  * Returns NULL on allocation failure.
  *
- * Issues #624, #635.
+ * Issues #624, #635, #620.
  */
 static char *normalize_newlines_to_semicolons(const char *script) {
 	if (script == NULL)
@@ -353,47 +419,33 @@ static char *normalize_newlines_to_semicolons(const char *script) {
 			 *   - prev is '\0' — start of script
 			 */
 			boolean need_sep = (prev_nonws != ';' && prev_nonws != '{' && prev_nonws != '\0');
-			if (need_sep && prev_nonws == '}') {
-				/* Peek past inter-token noise — whitespace AND comments — to
-				 * find the next real token after the '}'. A '//' or '«...»'
-				 * comment between '}' and 'else' on its own line must not hide
-				 * the 'else' from the lookahead (#635 P1).
+			if (need_sep) {
+				/* Peek past inter-token noise (whitespace and comments) to
+				 * find the next real source byte. Two separate suppressions
+				 * key off this lookahead:
 				 *
-				 * UTF-8: '«' is 0xC2 0xAB. We match the leading byte 0xC2
-				 * followed by 0xAB; both bytes are well-formed UTF-8 and any
-				 * non-comment 0xC2 byte (continuation of a different char) is
-				 * followed by a non-0xAB byte, so the check is unambiguous. */
-				const char *peek = src;
-				for (;;) {
-					while (*peek == ' ' || *peek == '\t' || *peek == '\r' || *peek == '\n')
-						peek++;
-					if (peek[0] == '/' && peek[1] == '/') {
-						while (*peek != '\0' && *peek != '\r' && *peek != '\n')
-							peek++;
-						/* Stop AT the \r/\n. The outer loop's whitespace
-						 * pass on the next iteration will skip it. */
-						continue;
-					}
-					if ((unsigned char)peek[0] == 0xC2 && (unsigned char)peek[1] == 0xAB) {
-						peek += 2;
-						/* Walk to the closing '»' (0xC2 0xBB). End-of-string
-						 * exit is safe — the malformed source will fail to
-						 * compile after normalization, but we stop scanning. */
-						while (*peek != '\0' &&
-						       !((unsigned char)peek[0] == 0xC2 && (unsigned char)peek[1] == 0xBB))
-							peek++;
-						if (*peek != '\0')
-							peek += 2;	/* skip the closing '»' */
-						continue;
-					}
-					break;
-				}
-				/* Tokens that attach to or close the '}' without needing ';'. */
-				if (*peek == '\0' || *peek == '}' || *peek == ';' ||
-				    (peek[0] == 'e' && peek[1] == 'l' && peek[2] == 's' && peek[3] == 'e' &&
-				     (peek[4] == '\0' || peek[4] == ' ' || peek[4] == '\t' ||
-				      peek[4] == '\r' || peek[4] == '\n' || peek[4] == '{'))) {
+				 *   1. EOF guard (#620): if nothing real follows, this is a
+				 *      purely trailing newline. Inserting ';' would inject an
+				 *      empty statement at the end of the with-wrapper, whose
+				 *      default value masks the user's actual last expression
+				 *      as the truthy default 'true'.
+				 *   2. '}' guard (#635): when prev is '}', tokens that attach
+				 *      to or close it ('else'/';'/'}'/EOF) must not be split
+				 *      from it by an inserted ';'.
+				 *
+				 * Both guards use the same skip rules — see peek_next_real_byte. */
+				const char *peek = peek_next_real_byte(src);
+				if (*peek == '\0') {
+					/* Trailing-newline case: no statement follows. */
 					need_sep = false;
+				} else if (prev_nonws == '}') {
+					/* Tokens that attach to or close the '}' without needing ';'. */
+					if (*peek == '}' || *peek == ';' ||
+					    (peek[0] == 'e' && peek[1] == 'l' && peek[2] == 's' && peek[3] == 'e' &&
+					     (peek[4] == '\0' || peek[4] == ' ' || peek[4] == '\t' ||
+					      peek[4] == '\r' || peek[4] == '\n' || peek[4] == '{'))) {
+						need_sep = false;
+					}
 				}
 			}
 			if (need_sep)
@@ -418,6 +470,23 @@ static char *normalize_newlines_to_semicolons(const char *script) {
 		}
 	}
 	*dst = '\0';
+
+	/* Trailing strip (#620 trailing-';' case): a user-typed ';' at the very
+	 * end of the script — possibly followed by whitespace — would parse as
+	 * an empty trailing statement and produce the parser's default 'true'.
+	 * Strip trailing ';' and whitespace so the last real expression is the
+	 * top-level result. The EOF guard above handles the no-explicit-';'
+	 * case; this strip handles the explicit-';' case. The two together cover
+	 * every shape of "script ends without a final expression value". */
+	while (dst > out) {
+		unsigned char last = (unsigned char)dst[-1];
+		if (last == ' ' || last == '\t' || last == '\r' || last == '\n' || last == ';') {
+			dst--;
+			*dst = '\0';
+		} else {
+			break;
+		}
+	}
 	return out;
 }
 

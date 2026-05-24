@@ -404,6 +404,83 @@ tests:
         validate:
           success: true
 
+  # ------------------------------------------------------------
+  # Trailing-newline handling (#620 regression cluster)
+  # ------------------------------------------------------------
+  # YAML `|` block scalars always append a trailing newline to the script.
+  # Before the fix, normalize_newlines_to_semicolons inserted a ';' before
+  # that trailing '\n' (since prev_nonws was an identifier / paren / digit /
+  # quote), producing 'lastexpr;\n'. The build_wrapped_script then appended
+  # the suffix '\n}', giving the with-wrapper a trailing empty statement.
+  # evaltree's default value for an empty trailing statement is the truthy
+  # default the wrapper carries — the user observed 'true' instead of the
+  # real last-expression value. This broke ~30+ callback_* and bigstring
+  # tests after #635 tightened normalization.
+  #
+  # Fix: when peeking past whitespace and comments after a bare \r/\n, if
+  # nothing real follows before EOF, suppress the ';' insertion. The
+  # newline is purely trailing and has no statement after it.
+
+  - name: "protocol script/eval - trailing newline after expression does not inject empty statement (#620)"
+    description: "YAML | blocks add a trailing '\\n'. With prev_nonws being a digit/identifier/paren, the normalizer used to insert ';' before that trailing '\\n', then build_wrapped_script's '\\n}' suffix made the with-block end in an empty statement that evaluated to the wrapper's truthy default. The user's last expression value was lost. Reproducer: a multi-line callback definition followed by a call. Expected: the call's return value, not 'true'."
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "on tcpHandler(stream, addr, port) {\n  local(s = stream);\n  local(a = addr);\n  local(p = port);\n  return s + a + p\n};\ntcpHandler(100, 200, 300)\n"
+        validate:
+          success: true
+          result:
+            value: "600"
+            type: "long"
+
+  - name: "protocol script/eval - trailing newline after simple expression preserves value (#620)"
+    description: "Minimal reproducer: '1 + 2\\n' must return 3, not 'true'. Pins the trailing-newline behavior without any callback or block structure."
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "1 + 2\n"
+        validate:
+          success: true
+          result:
+            value: "3"
+            type: "long"
+
+  - name: "protocol script/eval - trailing semicolon plus newline preserves last value (#620)"
+    description: "When the user explicitly writes a trailing ';' followed by '\\n', the with-block still ends with an empty statement and used to evaluate to the wrapper default. After the fix, the parser sees a normal terminated last statement and the value of the preceding expression is returned."
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "local(x = 5);\nx + 10;\n"
+        validate:
+          success: true
+          result:
+            value: "15"
+            type: "long"
+
+  - name: "protocol script/eval - trailing whitespace before EOF preserves last value (#620)"
+    description: "Trailing spaces and tabs after the final '\\n' must not change the result. The normalizer's lookahead skips all inter-token noise (whitespace, line and curly comments) when deciding whether a real statement follows."
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "local(x = 7);\nx * 2\n   \t  \n"
+        validate:
+          success: true
+          result:
+            value: "14"
+            type: "long"
+
+  - name: "protocol script/eval - trailing // comment after final expression preserves value (#620)"
+    description: "A '//' line comment after the final expression's newline must not inject a spurious ';' that swallows the value. The lookahead recognises that no real statement follows."
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "local(x = 4);\nx + 1\n// trailing comment after newline\n"
+        validate:
+          success: true
+          result:
+            value: "5"
+            type: "long"
+
   - name: "protocol script/eval - string literal containing }\\nelse documents pre-existing scanner gap (#620)"
     description: "DOCUMENTS A KNOWN PRE-EXISTING LIMITATION (not a normalizer bug, tracked separately): the normalizer in repl_variables.c does not track string-literal state, so a '}\\nelse' inside a string literal triggers the '}' lookahead from #635 and suppresses ';' insertion. The observed net behavior is that the string content appears to collapse to '}else {' (7 chars) — the '\\n' has been dropped somewhere in the pipeline. Best current hypothesis is that the scanner consumes the bare LF as part of its CR/LF normalization, but this has not been verified end-to-end. File a follow-up issue if the exact scanner behavior needs to be pinned down. This test locks in the current OBSERVED output as the contract; any future change (string-state tracking in the normalizer, scanner LF preservation, or both) will surface as a test-update rather than a silent semantic shift."
     protocol_ops:
