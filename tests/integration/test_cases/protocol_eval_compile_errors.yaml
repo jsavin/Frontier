@@ -293,11 +293,11 @@ tests:
             type: "long"
 
   - name: "protocol script/eval - with table { body } across newlines (#620)"
-    description: "withheader-bracketedstatementlist production. The 'with' block has no else continuation. Closing '}' is terminal; '}' followed by '\\nreturn' must gain a ';'."
+    description: "withheader-bracketedstatementlist production. The 'with' block has no else continuation. Closing '}' is terminal; '}' followed by '\\nreturn' must gain a ';'. Test uses a non-mutating witness — assigns to local 'q' inside the with block so the namespace push/pop exercises the production without writing into system.temp."
     protocol_ops:
       - op: "script/eval"
         params:
-          expression: "local (r = 0);\nwith system.temp {\n  r = 7\n}\nreturn r"
+          expression: "local (r = 0);\nwith system.temp {\n  local (q = 7);\n  r = q\n}\nreturn r"
         validate:
           success: true
           result:
@@ -314,6 +314,18 @@ tests:
           success: true
           result:
             value: "3"
+            type: "long"
+
+  - name: "protocol script/eval - fileloop { body } across newlines (#620)"
+    description: "fileloopheader-bracketedstatementlist production (langparser.y:652 — fileloop (var in fspec) {...}). No else continuation; closing '}' is terminal; '}' before '\\nreturn' must gain a ';'. Wrapped in 'if false' so the parser exercises the production without touching the filesystem (compile-time coverage, not behavioral iteration)."
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "local (n = 0);\nif false {\n  fileloop (f in @system.temp) {\n    n = n + 1}}\nreturn n"
+        validate:
+          success: true
+          result:
+            value: "0"
             type: "long"
 
   - name: "protocol script/eval - try without else across newlines (#620)"
@@ -393,7 +405,7 @@ tests:
           success: true
 
   - name: "protocol script/eval - string literal containing }\\nelse documents pre-existing scanner gap (#620)"
-    description: "DOCUMENTS A KNOWN PRE-EXISTING LIMITATION (not a normalizer bug, tracked separately): the normalizer does not track string-literal state, so a '}\\nelse' inside a string literal triggers the lookahead and suppresses ';'. Additionally, the langscan parsepopchar swallows bare LF following any byte (CRLF -> CR convention), so the LF inside the string disappears entirely. Net observed behavior: the string content collapses to '}else {' (7 chars) — the '\\n' is gone. This test pins down the current observed output so any future change (string-state tracking in the normalizer OR LF preservation in the scanner) shows up as a test-update, not a silent semantic shift."
+    description: "DOCUMENTS A KNOWN PRE-EXISTING LIMITATION (not a normalizer bug, tracked separately): the normalizer in repl_variables.c does not track string-literal state, so a '}\\nelse' inside a string literal triggers the '}' lookahead from #635 and suppresses ';' insertion. The observed net behavior is that the string content appears to collapse to '}else {' (7 chars) — the '\\n' has been dropped somewhere in the pipeline. Best current hypothesis is that the scanner consumes the bare LF as part of its CR/LF normalization, but this has not been verified end-to-end. File a follow-up issue if the exact scanner behavior needs to be pinned down. This test locks in the current OBSERVED output as the contract; any future change (string-state tracking in the normalizer, scanner LF preservation, or both) will surface as a test-update rather than a silent semantic shift."
     protocol_ops:
       - op: "script/eval"
         params:
