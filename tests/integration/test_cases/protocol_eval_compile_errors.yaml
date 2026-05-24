@@ -217,3 +217,189 @@ tests:
           result:
             value: "two"
             type: "string"
+
+  # ============================================================
+  # Issue #620 burndown: newline-normalization regression sweep
+  # ============================================================
+  # Goal: lock in every composite/block grammar production where the
+  # closing '}' of a block is followed by a continuation or where the
+  # construct interacts with the protocol normalizer's bare-CR/LF -> ';'
+  # rewrite. The grammar (langparser.y) productions audited are:
+  #
+  #   - handlerheader bracketedstatementlist        (on f () { ... })
+  #   - loopheader bracketedstatementlist           (loop { ... }, while x { ... })
+  #   - forloopheader / forinloopheader             (for i = 1 to 3 { ... })
+  #   - ifheader bracketedstatementlist [elsetoken ...]
+  #   - bundleheader bracketedstatementlist         (bundle { ... })
+  #   - caseheader '{' casebody '}' [elsetoken ...]
+  #   - withheader bracketedstatementlist           (with table { ... })
+  #   - tryheader bracketedstatementlist [elsetoken ...]
+  #
+  # Only the three '... [elsetoken bracketedstatementlist]' forms
+  # (if/case/try) attach a continuation to the closing '}'. All other
+  # forms terminate at '}' — the next token starts a new statement and
+  # requires a ';' separator. The default normalizer behavior (insert
+  # ';' after '}' unless the lookahead sees else/;/}/EOF) is therefore
+  # correct for the other forms. These tests pin that down so any future
+  # change to the lookahead (e.g. broadening which tokens it suppresses
+  # ';' before) can't silently regress these constructs.
+
+  - name: "protocol script/eval - on handler def then call across newline (#620)"
+    description: "on f () { body } is a handler definition. After the closing '}', the next statement (the call site) requires ';'. Default normalizer behavior must insert one. Regression guard for the handlerheader bracketedstatementlist grammar production."
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "on f () {\n  return 42\n}\nreturn f()"
+        validate:
+          success: true
+          result:
+            value: "42"
+            type: "long"
+
+  - name: "protocol script/eval - loop { body } across newlines (#620)"
+    description: "loop { body } body is a loopheader-bracketedstatementlist production. Closing '}' terminates the loop; the next statement (return) needs ';' between them, which the normalizer's default behavior provides. Includes break inside an if to exercise nested '}' boundaries."
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "local (s = 0);\nlocal (i = 0);\nloop {\n  if i >= 3 {\n    break\n  };\n  s = s + i;\n  i = i + 1\n}\nreturn s"
+        validate:
+          success: true
+          result:
+            value: "3"
+            type: "long"
+
+  - name: "protocol script/eval - while header { body } across newlines (#620)"
+    description: "while cond { body } reuses loopheader (whiletoken expr) production. Same '}\\nreturn' attachment pattern as the loop test. Regression guard."
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "local (s = 0);\nlocal (i = 0);\nwhile i < 3 {\n  s = s + i;\n  i = i + 1\n}\nreturn s"
+        validate:
+          success: true
+          result:
+            value: "3"
+            type: "long"
+
+  - name: "protocol script/eval - for i = 1 to 3 across newlines (#620)"
+    description: "forloopheader-bracketedstatementlist production. Closing '}' is terminal; default ';' insertion before return is correct."
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "local (s = 0);\nfor i = 1 to 3 {\n  s = s + i\n}\nreturn s"
+        validate:
+          success: true
+          result:
+            value: "6"
+            type: "long"
+
+  - name: "protocol script/eval - with table { body } across newlines (#620)"
+    description: "withheader-bracketedstatementlist production. The 'with' block has no else continuation. Closing '}' is terminal; '}' followed by '\\nreturn' must gain a ';'."
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "local (r = 0);\nwith system.temp {\n  r = 7\n}\nreturn r"
+        validate:
+          success: true
+          result:
+            value: "7"
+            type: "long"
+
+  - name: "protocol script/eval - bundle { body } across newlines (#620)"
+    description: "bundleheader-bracketedstatementlist production groups statements without changing scope. Closing '}' is terminal; '}' before '\\nreturn' must get ';'."
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "local (s = 0);\nbundle {\n  s = s + 1;\n  s = s + 2\n}\nreturn s"
+        validate:
+          success: true
+          result:
+            value: "3"
+            type: "long"
+
+  - name: "protocol script/eval - try without else across newlines (#620)"
+    description: "try { body } with NO else clause is a separate production (tryheader bracketedstatementlist, no elsetoken). The closing '}' is terminal — next statement requires ';'. Lookahead must NOT find 'else' here, because there isn't one — it's a return."
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "local (s = 1);\ntry {\n  s = 2\n}\nreturn s"
+        validate:
+          success: true
+          result:
+            value: "2"
+            type: "long"
+
+  - name: "protocol script/eval - case without else, multiple clauses (#620)"
+    description: "case header { ... } without an else clause. Inside casebody, case clauses are separated by ';' (grammar: casebody ';' expr optionalstatementlist). The closing '}' between one clause's body and the next clause's label needs a ';' inserted — the default normalizer behavior provides it. Without correct insertion, the parser cannot distinguish the second clause label from a stray expression."
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "local (n = 2);\nlocal (r = \"\");\ncase n {\n  1 {\n    r = \"one\"\n  };\n  2 {\n    r = \"two\"\n  }\n}\nreturn r"
+        validate:
+          success: true
+          result:
+            value: "two"
+            type: "string"
+
+  # ------------------------------------------------------------
+  # Whitespace and comment edge cases for the }-else lookahead
+  # ------------------------------------------------------------
+  # The peek loop in normalize_newlines_to_semicolons skips spaces, tabs,
+  # CR, LF, '//' line comments, and UTF-8 '«...»' curly comments to find
+  # the next real token after '}'. These tests pin down the corners.
+
+  - name: "protocol script/eval - blank lines between } and else (#620)"
+    description: "Multiple blank lines between try's closing '}' and 'else' must still attach. The peek loop's whitespace skip is greedy across CR/LF runs."
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "local (r = \"ok\");\ntry {\n  local (x = 1 / 0)\n}\n\n\nelse {\n  r = \"caught\"\n}\nreturn r"
+        validate:
+          success: true
+          result:
+            value: "caught"
+            type: "string"
+
+  - name: "protocol script/eval - leading newlines at start of script (#620)"
+    description: "Script that begins with bare CR/LF characters. prev_nonws starts at '\\0' which is in the no-insert guard, so leading newlines don't get spurious ';' prepended. Regression guard for the start-of-script case."
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "\n\nlocal (x = 5)\nreturn x"
+        validate:
+          success: true
+          result:
+            value: "5"
+            type: "long"
+
+  - name: "protocol script/eval - // comment at very end of script, no trailing newline (#620)"
+    description: "A '//' line comment as the final token in the script, with no trailing newline. Exercises the EOF-during-comment-skip path. The scanner ignores the comment; the result is the value returned before it."
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "local (x = 5);\nreturn x\n// trailing comment"
+        validate:
+          success: true
+          result:
+            value: "5"
+            type: "long"
+
+  - name: "protocol script/eval - whitespace-only script does not crash (#620)"
+    description: "A script consisting of only spaces, tabs, and bare newlines must not crash the normalizer or the parser. Documents whatever the normalizer produces — currently returns success: true with the with-wrapper's default truthy value (no user code ran). The exact value is incidental; what matters is the absence of a crash."
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "   \n\n   "
+        validate:
+          success: true
+
+  - name: "protocol script/eval - string literal containing }\\nelse documents pre-existing scanner gap (#620)"
+    description: "DOCUMENTS A KNOWN PRE-EXISTING LIMITATION (not a normalizer bug, tracked separately): the normalizer does not track string-literal state, so a '}\\nelse' inside a string literal triggers the lookahead and suppresses ';'. Additionally, the langscan parsepopchar swallows bare LF following any byte (CRLF -> CR convention), so the LF inside the string disappears entirely. Net observed behavior: the string content collapses to '}else {' (7 chars) — the '\\n' is gone. This test pins down the current observed output so any future change (string-state tracking in the normalizer OR LF preservation in the scanner) shows up as a test-update, not a silent semantic shift."
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "local (s = \"}\nelse {\");\nreturn s"
+        validate:
+          success: true
+          result:
+            value: "}else {"
+            type: "string"
