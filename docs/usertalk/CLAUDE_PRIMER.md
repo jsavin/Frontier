@@ -16,7 +16,7 @@ This primer's job: stop you from probing-and-experimenting for basic idioms duri
 | `defined (@x.y.z)` checks if the object exists | `defined ()` actually checks **address validity** — true if `@x.y.z` is well-formed (either points to a real object, OR points to a creatable location where the parent path exists). To check whether the object actually exists *right now*, use `defined (adr^)`. See section 2.2. (Tracked: #625.) |
 | `f(x, y)` always takes positional values | Many verbs take **addresses** (`@var`) so they can write back. `dialog.ask ("?", @result)` writes into `result`. |
 | `for x in collection` always yields values | Two forms: `for v in listOrRecordValue` yields **values** (works on records and lists). `for adrM in @table` yields **addresses** (works on tables; pass the address, not the value). Dereference with `adrM^`. |
-| `/* comment */` works | **Not a UserTalk comment.** It silently parses as a division-multiplication expression and can corrupt your script's return value. Use `//` or `«…»`. |
+| `/* comment */` works | **Not a UserTalk comment.** It silently parses as a division-multiplication expression and can corrupt your script's return value. Use `//` (works everywhere) or `«…»` (MacRoman `.ut` files only — see section 4 / #637). |
 | Verb calls: `f(x)` | UserLand style: **space before `(`**: `f (x)`. Both compile; only the spaced form is idiomatic. |
 | Closing brace on its own line | Canonical UT **inlines `}` and `};` at the end of the last statement of a block** — never on its own line. `try { ... ; doThing ()};` not `try {\n  ...\n};`. See section 2.6. |
 | Method-style verb evolution | UserTalk is dispatch-by-name through the ODB. The "verb" `string.upper` is a script at `system.verbs.builtins.string.upper` — a glue script that calls a C kernel implementation. |
@@ -170,7 +170,7 @@ Full details: `testing_patterns.md`.
 ### Comments in yaml `script:` blocks
 
 - `//` is OK between statements inside `script:` blocks (it consumes to end of line).
-- `«…»` works but YAML may mangle the bytes — avoid in yaml scripts; OK in `.ut` files.
+- `«…»` works in MacRoman-encoded `.ut` files but **does NOT work over the protocol** — the scanner only recognizes the single-byte MacRoman encoding (`0xC7`/`0xC8`), and UTF-8 sources its `«` as `0xC2 0xAB` which the scanner ignores. Use `//` for any protocol-mode script (yaml integration tests, REPL paste, programmatic eval). See #637.
 - `/* */` is **NEVER OK** — not a UserTalk comment at all.
 - `#` is a yaml comment but **NOT inside `script:` block content** — UserTalk doesn't have `#` comments.
 
