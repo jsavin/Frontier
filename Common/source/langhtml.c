@@ -813,7 +813,18 @@ static boolean htmlcleanforexport (Handle x) {
 			/* The local 'b' is intentional: clang -fpascal-strings on arm64 mis-compiles
 			 * switch ((*handle)[index]) and fails to dispatch to (char)0xXX cases when
 			 * the controlling expression is a dereferenced handle. Reading into a local
-			 * char fixes it. See PR for langhtml arm64 codegen workaround. */
+			 * char fixes it. PR #646.
+			 *
+			 * Verification: if you remove the local, every cleanforexport integration
+			 * test over high-bit MacRoman bytes (0xd0/0xd1/0xd2/0xd3/0xd4/0xd5/0xc7/0xc8/
+			 * 0xc9/0xca/0xa5) fails on arm64 release builds because the switch dispatches
+			 * to no case at all.
+			 *
+			 * Signedness is deliberately preserved: 'char b' (signed by default on this
+			 * platform) matches the case labels '(char)0xXX'. Do NOT rewrite to
+			 * 'unsigned char b' with raw '0xXX' labels — on a platform where char is
+			 * unsigned by default, the (char)0xXX literals would still be signed and
+			 * dispatch would silently break again. */
 			char b = (*x) [s.pos];
 
 			switch (b) { // set chreplace or bsreplace
