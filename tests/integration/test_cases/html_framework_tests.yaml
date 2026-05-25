@@ -119,7 +119,7 @@ tests:
       local(pageTable)
       lang.new(tableType, @pageTable)
       pageTable.adrObject = @websites.samples.default
-      pageTable.ftpsite = @websites."#ftpSite"
+      pageTable.ftpsite = @websites.["#ftpSite"]
 
       html.rundirective("#title = \"Test Page\"", @pageTable)
       return pageTable.title == "Test Page"
@@ -132,7 +132,7 @@ tests:
       local(pageTable)
       lang.new(tableType, @pageTable)
       pageTable.adrObject = @websites.samples.default
-      pageTable.ftpsite = @websites."#ftpSite"
+      pageTable.ftpsite = @websites.["#ftpSite"]
 
       html.rundirective("#priority = 10", @pageTable)
       return pageTable.priority == 10
@@ -145,7 +145,7 @@ tests:
       local(pageTable)
       lang.new(tableType, @pageTable)
       pageTable.adrObject = @websites.samples.default
-      pageTable.ftpsite = @websites."#ftpSite"
+      pageTable.ftpsite = @websites.["#ftpSite"]
 
       html.rundirective("#published = true", @pageTable)
       return pageTable.published == true
@@ -158,7 +158,7 @@ tests:
       local(pageTable)
       lang.new(tableType, @pageTable)
       pageTable.adrObject = @websites.samples.default
-      pageTable.ftpsite = @websites."#ftpSite"
+      pageTable.ftpsite = @websites.["#ftpSite"]
 
       html.rundirective("#count = 5 + 5", @pageTable)
       return pageTable.count == 10
@@ -171,7 +171,7 @@ tests:
       local(pageTable)
       lang.new(tableType, @pageTable)
       pageTable.adrObject = @websites.samples.default
-      pageTable.ftpsite = @websites."#ftpSite"
+      pageTable.ftpsite = @websites.["#ftpSite"]
 
       html.rundirective("#timestamp = clock.now()", @pageTable)
       return defined(pageTable.timestamp)
@@ -184,7 +184,7 @@ tests:
       local(pageTable)
       lang.new(tableType, @pageTable)
       pageTable.adrObject = @websites.samples.default
-      pageTable.ftpsite = @websites."#ftpSite"
+      pageTable.ftpsite = @websites.["#ftpSite"]
 
       html.rundirective("#template = @websites.samples.default", @pageTable)
       return defined(pageTable.template) and (pageTable.indirectTemplate == true)
@@ -197,7 +197,7 @@ tests:
       local(pageTable)
       lang.new(tableType, @pageTable)
       pageTable.adrObject = @websites.samples.default
-      pageTable.ftpsite = @websites."#ftpSite"
+      pageTable.ftpsite = @websites.["#ftpSite"]
 
       html.rundirective("author = \"John Doe\"", @pageTable)
       return pageTable.author == "John Doe"
@@ -214,7 +214,7 @@ tests:
       local(pageTable)
       lang.new(tableType, @pageTable)
       pageTable.adrObject = @websites.samples.default
-      pageTable.ftpsite = @websites."#ftpSite"
+      pageTable.ftpsite = @websites.["#ftpSite"]
 
       local(text = "#title = \"My Page\"\r#author = \"John\"\r<p>Content here</p>")
       local(result = html.rundirectives(text, @pageTable))
@@ -233,7 +233,7 @@ tests:
       local(pageTable)
       lang.new(tableType, @pageTable)
       pageTable.adrObject = @websites.samples.default
-      pageTable.ftpsite = @websites."#ftpSite"
+      pageTable.ftpsite = @websites.["#ftpSite"]
 
       user.html.prefs.directivesOnlyAtBeginning = true
 
@@ -250,7 +250,7 @@ tests:
       local(pageTable)
       lang.new(tableType, @pageTable)
       pageTable.adrObject = @websites.samples.default
-      pageTable.ftpsite = @websites."#ftpSite"
+      pageTable.ftpsite = @websites.["#ftpSite"]
 
       user.html.prefs.directivesOnlyAtBeginning = false
 
@@ -267,7 +267,7 @@ tests:
       local(pageTable)
       lang.new(tableType, @pageTable)
       pageTable.adrObject = @websites.samples.default
-      pageTable.ftpsite = @websites."#ftpSite"
+      pageTable.ftpsite = @websites.["#ftpSite"]
 
       local(text = "<p>Plain HTML content</p>")
       local(result = html.rundirectives(text, @pageTable))
@@ -282,7 +282,7 @@ tests:
       local(pageTable)
       lang.new(tableType, @pageTable)
       pageTable.adrObject = @websites.samples.default
-      pageTable.ftpsite = @websites."#ftpSite"
+      pageTable.ftpsite = @websites.["#ftpSite"]
 
       local(result = html.rundirectives("", @pageTable))
       return result == ""
@@ -295,7 +295,7 @@ tests:
       local(pageTable)
       lang.new(tableType, @pageTable)
       pageTable.adrObject = @websites.samples.default
-      pageTable.ftpsite = @websites."#ftpSite"
+      pageTable.ftpsite = @websites.["#ftpSite"]
 
       local(text = "#title = \"Test\"\r<p>Content</p>")
       local(result = html.rundirectives(text, @pageTable))
@@ -314,7 +314,7 @@ tests:
       local(pageTable)
       lang.new(tableType, @pageTable)
       pageTable.adrObject = @websites.samples.default
-      pageTable.ftpsite = @websites."#ftpSite"
+      pageTable.ftpsite = @websites.["#ftpSite"]
 
       local(outline)
       lang.new(outlineType, @outline)
@@ -334,7 +334,7 @@ tests:
       local(pageTable)
       lang.new(tableType, @pageTable)
       pageTable.adrObject = @websites.samples.default
-      pageTable.ftpsite = @websites."#ftpSite"
+      pageTable.ftpsite = @websites.["#ftpSite"]
 
       local(outline)
       lang.new(outlineType, @outline)
@@ -355,7 +355,7 @@ tests:
       local(pageTable)
       lang.new(tableType, @pageTable)
       pageTable.adrObject = @websites.samples.default
-      pageTable.ftpsite = @websites."#ftpSite"
+      pageTable.ftpsite = @websites.["#ftpSite"]
 
       local(outline)
       lang.new(outlineType, @outline)
@@ -482,7 +482,7 @@ tests:
       local(pageTable)
       lang.new(tableType, @pageTable)
       pageTable.adrObject = @websites.samples.default
-      pageTable.ftpsite = @websites."#ftpSite"
+      pageTable.ftpsite = @websites.["#ftpSite"]
       pageTable.renderedtext = "<p>See [[#glossPatch about|About Us]]</p>"
 
       user.html.prefs.useGlossPatcher = true
@@ -498,7 +498,7 @@ tests:
       local(pageTable)
       lang.new(tableType, @pageTable)
       pageTable.adrObject = @websites.samples.default
-      pageTable.ftpsite = @websites."#ftpSite"
+      pageTable.ftpsite = @websites.["#ftpSite"]
       pageTable.renderedtext = "[[#glossPatch home|Home]] and [[#glossPatch about|About]]"
 
       user.html.prefs.useGlossPatcher = true
@@ -514,7 +514,7 @@ tests:
       local(pageTable)
       lang.new(tableType, @pageTable)
       pageTable.adrObject = @websites.samples.default
-      pageTable.ftpsite = @websites."#ftpSite"
+      pageTable.ftpsite = @websites.["#ftpSite"]
       pageTable.renderedtext = "[[#glossPatch contact|]]"
 
       user.html.prefs.useGlossPatcher = true
@@ -530,7 +530,7 @@ tests:
       local(pageTable)
       lang.new(tableType, @pageTable)
       pageTable.adrObject = @websites.samples.default
-      pageTable.ftpsite = @websites."#ftpSite"
+      pageTable.ftpsite = @websites.["#ftpSite"]
       local(original = "[[#glossPatch about|About]]")
       pageTable.renderedtext = original
 
@@ -547,7 +547,7 @@ tests:
       local(pageTable)
       lang.new(tableType, @pageTable)
       pageTable.adrObject = @websites.samples.default
-      pageTable.ftpsite = @websites."#ftpSite"
+      pageTable.ftpsite = @websites.["#ftpSite"]
       local(original = "<p>Plain HTML content</p>")
       pageTable.renderedtext = original
 
@@ -637,7 +637,7 @@ tests:
       local(pageTable)
       lang.new(tableType, @pageTable)
       pageTable.adrObject = @websites.samples.default
-      pageTable.ftpsite = @websites."#ftpSite"
+      pageTable.ftpsite = @websites.["#ftpSite"]
 
       html.rundirective("#year = 2020 + 6", @pageTable)
       return pageTable.year == 2026
