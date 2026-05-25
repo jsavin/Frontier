@@ -27,11 +27,21 @@ frontier-cli --protocol --skip-startup --system-root databases/Virgin.root
 
 Since issue #588, `--protocol --system-root` defaults to **read-only**. `fileMenu.save()` will fail with "system root is read-only" until you opt into mutation.
 
-For **editing** (changes that persist to the .root file), add `--allow-mutate`:
+For **editing** (changes that persist to the .root file), use the stage-and-confirm wrapper:
+
+```bash
+tools/edit_virgin_root.sh
+```
+
+The wrapper copies `databases/Virgin.root` to `/tmp/frontier-edit-<hash>/Virgin.root`, spawns `frontier-cli --protocol --skip-startup --allow-mutate --system-root <staged>`, and prompts before promoting the changed copy back over the canonical file. A killed session or runaway script cannot corrupt the source — worst case you discard the staged copy. See `tools/edit_virgin_root.sh --help` and issue #644 for the rationale.
+
+**Emergency / experts only** — if you genuinely need to edit the canonical file in place (e.g., recovery work, scripted batch edits where the prompt would be in the way), invoke frontier-cli directly:
 
 ```bash
 frontier-cli --protocol --skip-startup --allow-mutate --system-root databases/Virgin.root
 ```
+
+A leaked or killed session against the canonical file can corrupt `databases/Virgin.root` locally — recover via `git checkout databases/Virgin.root`.
 
 Use `Virgin.root` for edits that should be part of the distribution. Use `databases/Frontier.root` for local testing only.
 
@@ -62,7 +72,13 @@ Read back and check it compiles:
 
 ## Editing Guest Databases
 
-Guest databases (`databases/Guest Databases/apps/*.root`) ship with the dist build. To edit them, load the system root first (so system verbs like `script.newScriptObject` are available), then open the guest DB as a secondary database:
+Guest databases (`databases/Guest Databases/apps/*.root`) ship with the dist build. To edit them, load the system root first (so system verbs like `script.newScriptObject` are available), then open the guest DB as a secondary database. Use the wrapper so the system root stays staged:
+
+```bash
+tools/edit_virgin_root.sh
+```
+
+(Emergency / experts only — direct invocation against the canonical file:)
 
 ```bash
 frontier-cli --protocol --skip-startup --allow-mutate --system-root databases/Virgin.root
@@ -196,6 +212,14 @@ Make your changes in the `.ut` file under `usertalk_scripts/`. This is the human
 - Use tab indentation
 
 ### 3. Install in Virgin.root via protocol
+
+Recommended — use the stage-and-confirm wrapper (issue #644):
+
+```bash
+tools/edit_virgin_root.sh
+```
+
+Emergency / experts only — direct invocation against the canonical file:
 
 ```bash
 frontier-cli --protocol --skip-startup --allow-mutate --system-root databases/Virgin.root

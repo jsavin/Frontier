@@ -9,16 +9,24 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 CLI="$PROJECT_ROOT/frontier-cli/frontier-cli"
-DB="$PROJECT_ROOT/databases/Virgin.root"
+SOURCE_DB="$PROJECT_ROOT/databases/Virgin.root"
 
 if [ ! -x "$CLI" ]; then
     echo "Error: frontier-cli not found at $CLI" >&2
     exit 1
 fi
-if [ ! -f "$DB" ]; then
-    echo "Error: database not found at $DB" >&2
+if [ ! -f "$SOURCE_DB" ]; then
+    echo "Error: database not found at $SOURCE_DB" >&2
     exit 1
 fi
+
+# Stage Virgin.root into a tmpdir so a regression in the protocol read-only
+# default (issue #588) cannot corrupt the canonical .root file. Mirrors
+# tests/integration/protocol_readonly_tests.sh. Issue #644.
+STAGE_DIR="$(mktemp -d -t frontier-debug-proto-XXXXXX)"
+DB="$STAGE_DIR/Virgin.root"
+cp "$SOURCE_DB" "$DB"
+trap 'rm -rf "$STAGE_DIR"' EXIT
 
 export DEBUG_TEST_CLI="$CLI"
 export DEBUG_TEST_DB="$DB"
