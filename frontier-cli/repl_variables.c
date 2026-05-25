@@ -370,13 +370,22 @@ static const char *peek_next_real_byte(const char *p) {
  *     script that didn't end in '}' or ';' lost its final value. Issue
  *     #620 (callback_tcp, callback_database, bigstring boundary clusters).
  *   - Trailing strip: after scanning, strip any trailing ';' and trailing
- *     whitespace from the output. A user-typed trailing ';' (e.g. 'x;\n')
- *     would otherwise yield an empty trailing statement at the script's
- *     top level — the parser returns the empty statement's default 'true'
- *     instead of the value of the preceding expression. This affects both
- *     the with-wrapped path (where the suffix '\n}' makes it visible) and
- *     the fallback langrunhandle_value path (where '1 + 2;' returns 'true'
- *     directly). The strip is the symmetric closer to the EOF guard.
+ *     whitespace from the output. **This is a semantic change for
+ *     user-typed terminated scripts, not just symmetric closure with the
+ *     EOF guard.** Before this PR, 'foo();' returned the wrapper's truthy
+ *     default 'true'; after the strip, it returns foo()'s value. This is
+ *     the REPL convention "always return the value of the last expression"
+ *     — a one-line script ending in ';' is taken to mean "evaluate this
+ *     and give me its value", not "evaluate this for side effects only".
+ *     A user-typed trailing ';' (e.g. 'x;\n') would otherwise yield an
+ *     empty trailing statement at the script's top level — the parser
+ *     returns the empty statement's default 'true' instead of the value
+ *     of the preceding expression. This affects both the with-wrapped
+ *     path (where the suffix '\n}' makes it visible) and the fallback
+ *     langrunhandle_value path (where '1 + 2;' returns 'true' directly).
+ *     The EOF guard handles the no-explicit-';' case; the strip handles
+ *     the explicit-';' case. Together they cover every shape of "script
+ *     ends without a final expression value".
  *   - Never double-insert ';' (';' guard prevents ;;).
  *   - \r\n pairs are treated as a single separator (\n is consumed after \r).
  *
@@ -435,6 +444,10 @@ static char *normalize_newlines_to_semicolons(const char *script) {
 				 *
 				 * Both guards use the same skip rules — see peek_next_real_byte. */
 				const char *peek = peek_next_real_byte(src);
+				/* EOF guard checked first — subsumes the '}' guard's EOF case.
+				 * Order matters: if both could apply (e.g. '}\n' at end of
+				 * script), EOF guard wins. The '}' guard only fires when
+				 * something real follows '}'. */
 				if (*peek == '\0') {
 					/* Trailing-newline case: no statement follows. */
 					need_sep = false;
@@ -477,7 +490,11 @@ static char *normalize_newlines_to_semicolons(const char *script) {
 	 * Strip trailing ';' and whitespace so the last real expression is the
 	 * top-level result. The EOF guard above handles the no-explicit-';'
 	 * case; this strip handles the explicit-';' case. The two together cover
-	 * every shape of "script ends without a final expression value". */
+	 * every shape of "script ends without a final expression value".
+	 *
+	 * dst > out: never strip into the prefix. Empty or fully-strippable
+	 * input (e.g. "" or "   \n\n;;;") safely yields "" — the strip stops at
+	 * dst == out, which is its initial value before any byte was emitted. */
 	while (dst > out) {
 		unsigned char last = (unsigned char)dst[-1];
 		if (last == ' ' || last == '\t' || last == '\r' || last == '\n' || last == ';') {
