@@ -392,12 +392,38 @@ static const char *rtrim_dst(const char *out, const char *dst) {
 	return dst;
 }
 
+/* Returns 1 if the bytes immediately preceding p (exclusive) exactly match
+ * the keyword kw of length kwlen AND that match is preceded by either the
+ * start of the output buffer or a non-identifier byte. Used by prev_is_binop
+ * to detect trailing UserTalk word-form infix operators while preventing
+ * false matches against identifiers ending in the same suffix (e.g. 'band'
+ * vs 'and', 'door' vs 'or', 'thatContains' vs 'contains'). */
+static int prev_matches_keyword(const char *out, const char *p,
+                                const char *kw, size_t kwlen) {
+	if ((size_t)(p - out) < kwlen)
+		return 0;
+	if (memcmp(p - kwlen, kw, kwlen) != 0)
+		return 0;
+	if ((size_t)(p - out) > kwlen &&
+	    is_ident_byte((unsigned char)*(p - kwlen - 1)))
+		return 0;
+	return 1;
+}
+
 /* Detects whether the most recent token in the output buffer is a binary
  * operator that demands a continuation on the next line. Operators covered:
  *
- *   multi-char keywords: 'and', 'or' (word-bounded)
- *   multi-char relational: '==', '>=', '<=', '!='
- *   single-char arithmetic / list: '+', '-', '*', '/', ','
+ *   symbolic boolean:     '&&', '||'
+ *   keyword boolean:      'and', 'or' (word-bounded)
+ *   symbolic relational:  '==', '>=', '<=', '!='
+ *   keyword relational:   'equals', 'notEquals', 'lessThan', 'greaterThan'
+ *                         (note: 'lessThanOrEqual' / 'greaterThanOrEqual'
+ *                         are documented but NOT accepted by the parser as
+ *                         infix operators — confirmed empirically — so they
+ *                         are intentionally not included here)
+ *   keyword string/list:  'contains', 'beginsWith', 'endsWith'
+ *   single-char arith:    '+', '-', '*', '/', '%'
+ *   list separator:       ','
  *   single-char relational: '>', '<'
  *   open paren:           '('
  *
@@ -412,8 +438,8 @@ static const char *rtrim_dst(const char *out, const char *dst) {
  * is preferable to silently mis-normalizing the common binary-'-' case.
  *
  * The byte-before-operator check for '=' disambiguates '==' from assignment.
- * The word-boundary check for 'and' / 'or' prevents misclassification of
- * identifiers ending in those substrings ('band', 'kand', 'door').
+ * The word-boundary check inside prev_matches_keyword prevents false matches
+ * against identifiers ending in keyword substrings ('band', 'door', etc).
  */
 static int prev_is_binop(const char *out, const char *dst) {
 	const char *p = rtrim_dst(out, dst);
@@ -421,7 +447,7 @@ static int prev_is_binop(const char *out, const char *dst) {
 		return 0;
 	unsigned char last = (unsigned char)p[-1];
 	switch (last) {
-		case '+': case '-': case '*': case '/': case ',':
+		case '+': case '-': case '*': case '/': case '%': case ',':
 		case '(': case '>': case '<':
 			return 1;
 		case '=':
@@ -442,21 +468,18 @@ static int prev_is_binop(const char *out, const char *dst) {
 			if (p - out >= 2 && p[-2] == '|')
 				return 1;
 			return 0;
-		case 'd':
-			/* Trailing 'and' must be a standalone keyword. */
-			if (p - out >= 3 && p[-3] == 'a' && p[-2] == 'n') {
-				if (p - out == 3 || !is_ident_byte((unsigned char)p[-4]))
-					return 1;
-			}
-			return 0;
-		case 'r':
-			/* Trailing 'or' must be a standalone keyword. */
-			if (p - out >= 2 && p[-2] == 'o') {
-				if (p - out == 2 || !is_ident_byte((unsigned char)p[-3]))
-					return 1;
-			}
-			return 0;
 		default:
+			/* Word-form infix operators. Each match requires a word boundary
+			 * (start-of-buffer or non-identifier byte) before the keyword. */
+			if (prev_matches_keyword(out, p, "and", 3)) return 1;
+			if (prev_matches_keyword(out, p, "or", 2)) return 1;
+			if (prev_matches_keyword(out, p, "equals", 6)) return 1;
+			if (prev_matches_keyword(out, p, "notEquals", 9)) return 1;
+			if (prev_matches_keyword(out, p, "lessThan", 8)) return 1;
+			if (prev_matches_keyword(out, p, "greaterThan", 11)) return 1;
+			if (prev_matches_keyword(out, p, "contains", 8)) return 1;
+			if (prev_matches_keyword(out, p, "beginsWith", 10)) return 1;
+			if (prev_matches_keyword(out, p, "endsWith", 8)) return 1;
 			return 0;
 	}
 }
