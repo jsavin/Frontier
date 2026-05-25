@@ -337,15 +337,19 @@ static const char *peek_next_real_byte(const char *p) {
 
 /* Token-kind classification for the newline-normalizer transition table.
  *
- * prev_kind tracks the last non-whitespace byte written to the output. The
- * normalizer only needs to distinguish four anchor bytes ('\0' = start of
- * script, ';', '{', '}') from "anything else" — none of the suppression
- * rules look at other identifiers. */
+ * prev_kind tracks the last non-whitespace byte (or token) written to the
+ * output. The normalizer distinguishes four anchor bytes ('\0' = start of
+ * script, ';', '{', '}'), a "binary-operator-at-EOL" class (the most recent
+ * non-whitespace bytes form a binary operator that demands a continuation),
+ * and "anything else". The BINOP class is the #620-burndown fix for line
+ * continuations like 'x and\n y' / 'x ==\n y' / 'f (\n x, y)' — without it,
+ * the (PREV_OTHER, NEXT_OTHER) cell would emit ';' and break the expression. */
 typedef enum {
 	PREV_START = 0,	/* '\0' — nothing written yet */
 	PREV_SEMI,	/* ';' — already separated */
 	PREV_LBRACE,	/* '{' — block-open, next byte is first statement */
 	PREV_RBRACE,	/* '}' — block-close, may attach else/};/}} */
+	PREV_BINOP,	/* trailing token is a binary operator — continuation expected */
 	PREV_OTHER,	/* identifier / digit / paren / operator / etc. */
 	PREV_KIND_COUNT
 } prev_kind_t;
@@ -363,6 +367,94 @@ typedef enum {
 	NEXT_KIND_COUNT
 } next_kind_t;
 
+/* Returns 1 if byte c can be part of a UserTalk identifier (ASCII letter,
+ * digit, or underscore). Used to enforce a word boundary before identifier-
+ * shaped operators 'and' / 'or' — without this, the variable name 'band'
+ * would falsely match as an 'and' continuation token. */
+static int is_ident_byte(unsigned char c) {
+	return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+	       (c >= '0' && c <= '9') || c == '_';
+}
+
+/* Walks backward from the current dst position over output bytes that act
+ * as inter-token whitespace (space, tab, \r, \n) and returns a pointer
+ * (one past) the last non-whitespace byte written to dst. Returns 'out' if
+ * the buffer is empty or contains only whitespace. The byte immediately
+ * before the returned pointer is the trailing token's last byte. */
+static const char *rtrim_dst(const char *out, const char *dst) {
+	while (dst > out) {
+		unsigned char c = (unsigned char)dst[-1];
+		if (c == ' ' || c == '\t' || c == '\r' || c == '\n')
+			dst--;
+		else
+			break;
+	}
+	return dst;
+}
+
+/* Detects whether the most recent token in the output buffer is a binary
+ * operator that demands a continuation on the next line. Operators covered:
+ *
+ *   multi-char keywords: 'and', 'or' (word-bounded)
+ *   multi-char relational: '==', '>=', '<=', '!='
+ *   single-char arithmetic / list: '+', '-', '*', '/', ','
+ *   single-char relational: '>', '<'
+ *   open paren:           '('
+ *
+ * Excluded by design:
+ *   ')'        — close paren is end-of-expression, not continuation
+ *   '='        — assignment; a continuation case ends in '==', not '='
+ *   '}', '{', ';' — handled by their own prev-kind classes
+ *
+ * Unary '-' at EOL (e.g. 'x = -\n 1') is rare and statically indistinguishable
+ * from binary '-' without a tokenizer; we over-suppress here. The worst case
+ * is a parser error on a script that was already broken — surfacing the bug
+ * is preferable to silently mis-normalizing the common binary-'-' case.
+ *
+ * The byte-before-operator check for '=' disambiguates '==' from assignment.
+ * The word-boundary check for 'and' / 'or' prevents misclassification of
+ * identifiers ending in those substrings ('band', 'kand', 'door').
+ */
+static int prev_is_binop(const char *out, const char *dst) {
+	const char *p = rtrim_dst(out, dst);
+	if (p == out)
+		return 0;
+	unsigned char last = (unsigned char)p[-1];
+	switch (last) {
+		case '+': case '-': case '*': case '/': case ',':
+		case '(': case '>': case '<':
+			return 1;
+		case '=':
+			/* '==' or '>=' or '<=' or '!=' are BINOP; bare '=' is assignment. */
+			if (p - out >= 2) {
+				unsigned char prev = (unsigned char)p[-2];
+				if (prev == '=' || prev == '>' || prev == '<' || prev == '!')
+					return 1;
+			}
+			return 0;
+		case 'd':
+			/* Trailing 'and' must be a standalone keyword. */
+			if (p - out >= 3 && p[-3] == 'a' && p[-2] == 'n') {
+				if (p - out == 3 || !is_ident_byte((unsigned char)p[-4]))
+					return 1;
+			}
+			return 0;
+		case 'r':
+			/* Trailing 'or' must be a standalone keyword. */
+			if (p - out >= 2 && p[-2] == 'o') {
+				if (p - out == 2 || !is_ident_byte((unsigned char)p[-3]))
+					return 1;
+			}
+			return 0;
+		default:
+			return 0;
+	}
+}
+
+/* Map the last byte written (prev_nonws) to its prev-kind. For anchor bytes
+ * the byte alone is sufficient; for the BINOP class, the caller must consult
+ * prev_is_binop() because the operator may span multiple bytes ('and', '==').
+ * The single-byte form is retained for callers that have no buffer pointer. */
 static prev_kind_t classify_prev(unsigned char prev_nonws) {
 	switch (prev_nonws) {
 		case '\0': return PREV_START;
@@ -371,6 +463,17 @@ static prev_kind_t classify_prev(unsigned char prev_nonws) {
 		case '}':  return PREV_RBRACE;
 		default:   return PREV_OTHER;
 	}
+}
+
+/* Buffer-aware classifier used by the normalizer loop. Falls back to the
+ * single-byte form, then upgrades PREV_OTHER → PREV_BINOP when the trailing
+ * token in the output buffer is a binary operator demanding continuation. */
+static prev_kind_t classify_prev_full(unsigned char prev_nonws,
+                                      const char *out, const char *dst) {
+	prev_kind_t k = classify_prev(prev_nonws);
+	if (k == PREV_OTHER && prev_is_binop(out, dst))
+		return PREV_BINOP;
+	return k;
 }
 
 /* Classify the byte at *peek (a pointer returned by peek_next_real_byte).
@@ -405,6 +508,7 @@ static next_kind_t classify_next(const char *peek) {
  *   SEMI          |   -   |   -   |   -   |   -   |   -   |   already separated by ';'
  *   LBRACE        |   -   |   -   |   -   |   -   |   -   |   inside block: '{' acts as separator
  *   RBRACE        |   -   |   -   |   -   |   -   |   E   |   '}' attaches else/};/}}; only "other" needs ';'
+ *   BINOP         |   -   |   -   |   -   |   -   |   -   |   continuation expected; next line is same expression
  *   OTHER         |   -   |   E   |   E   |   E   |   E   |   real expression: ';' needed for any real follower
  *
  *   E = emit ';'; '-' = suppress.
@@ -423,12 +527,21 @@ static next_kind_t classify_next(const char *peek) {
  *   - START row exists to match real source: leading bare newlines (common
  *     in YAML `|` block scalars) and whitespace-only scripts must not gain
  *     a leading ';'.
+ *   - BINOP row (#620 5th-hole, this commit): when a line ends with a
+ *     binary-operator token ('and', 'or', '==', '>=', '<=', '!=', '>', '<',
+ *     '+', '-', '*', '/', ',', '('), the next line is a continuation of the
+ *     same expression. Inserting ';' produces invalid source like 'x and; y'
+ *     which the parser rejects. Suppress for every next-kind. The classifier
+ *     (prev_is_binop) requires a word boundary before identifier-shaped
+ *     operators so 'band' / 'door' aren't misread.
  *
  * Moot-by-construction cells (the input that would exercise them is itself
  * a parse error before normalization matters, so flipping these values has
  * no observable effect): START x ELSE, START x RBRACE, SEMI x ELSE,
- * LBRACE x ELSE, LBRACE x EOF. Five cells. The others are all reachable
- * from valid source and covered by integration tests in
+ * LBRACE x ELSE, LBRACE x EOF, BINOP x ELSE/SEMI/RBRACE/EOF (a script that
+ * ends with a binop is itself malformed; those cells stay 0 for consistency).
+ * The reachable BINOP cell is BINOP x OTHER. The other non-moot cells are
+ * covered by integration tests in
  * tests/integration/test_cases/protocol_eval_compile_errors.yaml.
  *
  * If a future grammar change needs a new suppression, flip exactly one cell
@@ -440,6 +553,7 @@ static const unsigned char kEmitSep[PREV_KIND_COUNT][NEXT_KIND_COUNT] = {
 	/* SEMI    */ {  0,    0,    0,    0,      0    },
 	/* LBRACE  */ {  0,    0,    0,    0,      0    },
 	/* RBRACE  */ {  0,    0,    0,    0,      1    },
+	/* BINOP   */ {  0,    0,    0,    0,      0    },
 	/* OTHER   */ {  0,    1,    1,    1,      1    },
 };
 
@@ -509,8 +623,11 @@ static char *normalize_newlines_to_semicolons(const char *script) {
 			/* UserTalk grammar requires ';' between statements at top level.
 			 * Bare \r/\n are whitespace to the scanner, so multi-line scripts
 			 * without explicit ';' fail to parse. The transition table above
-			 * maps every (prev_kind, next_kind) pair to emit-or-suppress. */
-			prev_kind_t pk = classify_prev(prev_nonws);
+			 * maps every (prev_kind, next_kind) pair to emit-or-suppress.
+			 * classify_prev_full inspects the dst buffer to detect multi-byte
+			 * binary-operator tokens (and / or / == / >= / <= / !=) so the
+			 * BINOP row suppresses ';' for line continuations. */
+			prev_kind_t pk = classify_prev_full(prev_nonws, out, dst);
 			next_kind_t nk = classify_next(peek_next_real_byte(src));
 			if (kEmitSep[pk][nk])
 				*dst++ = ';';

@@ -552,3 +552,157 @@ tests:
           result:
             value: "9"
             type: "long"
+
+  # ------------------------------------------------------------
+  # PREV_BINOP class (5th normalizer hole, #620 burndown)
+  # ------------------------------------------------------------
+  # When a line ends with a binary-operator token (boolean 'and'/'or',
+  # relational '==' '>=' '<=' '!=' '>' '<', arithmetic '+' '-' '*' '/',
+  # comma, or open paren), the next line is a continuation of the same
+  # expression — not a new statement. Earlier versions of the normalizer
+  # treated these as PREV_OTHER and emitted a synthetic ';' before the
+  # newline, producing source like 'x and; y' that the parser rejects.
+  # The fix introduces a PREV_BINOP prev-kind that suppresses ';' for
+  # every next-kind: a continuation is a continuation regardless of what
+  # follows.
+
+  - name: "protocol script/eval - PREV_BINOP boolean 'and' at EOL allows continuation"
+    description: "Pattern: 'return true and\\n true'. Before the PREV_BINOP fix, the normalizer treated trailing 'and' as PREV_OTHER and inserted ';' before the newline ('and;'), which is a parse error. With PREV_BINOP, the ';' is suppressed and the expression evaluates correctly to true."
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "return true and\n true"
+        validate:
+          success: true
+          result:
+            value: "true"
+            type: "boolean"
+
+  - name: "protocol script/eval - PREV_BINOP boolean 'or' at EOL allows continuation"
+    description: "Pattern: 'return false or\\n true'. Mirrors the 'and' case — 'or' is a binary operator token, so a newline immediately after it must not introduce a ';'."
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "return false or\n true"
+        validate:
+          success: true
+          result:
+            value: "true"
+            type: "boolean"
+
+  - name: "protocol script/eval - PREV_BINOP relational '==' at EOL allows continuation"
+    description: "Pattern: 'return 1 ==\\n 1'. The multi-char '==' token ends in '=' — single '=' would be assignment, but the byte before is also '=', so the trailing token is '=='. PREV_BINOP must distinguish == (relational) from = (assignment) by walking back through the output buffer."
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "return 1 ==\n 1"
+        validate:
+          success: true
+          result:
+            value: "true"
+            type: "boolean"
+
+  - name: "protocol script/eval - PREV_BINOP arithmetic '+' at EOL allows continuation"
+    description: "Pattern: 'return 1 +\\n 2'. Single-character arithmetic operators are unambiguous as continuations — '+' as the last non-whitespace byte at EOL means another operand follows."
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "return 1 +\n 2"
+        validate:
+          success: true
+          result:
+            value: "3"
+            type: "long"
+
+  - name: "protocol script/eval - PREV_BINOP comma at EOL allows continuation"
+    description: "Pattern: 'string.padwithzeros (5,\\n 3)'. Comma is a list/argument separator; a newline after it must NOT terminate the call."
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "return string.padwithzeros (5,\n 3)"
+        validate:
+          success: true
+          result:
+            value: "005"
+            type: "string"
+
+  - name: "protocol script/eval - PREV_BINOP open paren at EOL allows continuation"
+    description: "Pattern: 'string.padwithzeros (\\n 5, 3)'. Open paren is the start of a parenthesized expression / argument list; the bytes after the newline are the body. PREV_BINOP must not be confused with PREV_LBRACE — '(' is paren, '{' is block-open."
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "return string.padwithzeros (\n 5, 3)"
+        validate:
+          success: true
+          result:
+            value: "005"
+            type: "string"
+
+  - name: "protocol script/eval - PREV_BINOP word-boundary 'and' not confused with identifier"
+    description: "Regression guard: the PREV_BINOP detector must require a word boundary before 'and'/'or' so identifiers like 'band' or 'kand' don't trigger continuation behavior. Pattern: 'local (band = 7)\\n return band' — the variable 'band' ends in 'and' but the byte before 'and' is 'b' (identifier-continuing), so this is a regular statement followed by 'return', and ';' MUST be inserted."
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "local (band = 7)\n return band"
+        validate:
+          success: true
+          result:
+            value: "7"
+            type: "long"
+
+  - name: "protocol script/eval - PREV_BINOP single '=' assignment NOT treated as binop"
+    description: "Regression guard: a single trailing '=' must NOT be treated as a binary operator (which would suppress ';' insertion). Without the byte-before-'=' disambiguation in prev_is_binop, this lookup could misclassify single '=' as the tail of '==' / '>=' / '<=' / '!=' and incorrectly trigger BINOP. By checking the byte before '=' and requiring it to be one of '=','>','<','!', we preserve the existing behavior: 'x =\\n 5' is a parse error (the normalizer emits ';' producing 'x =;' which the parser rejects). This pins down that the BINOP class does not accidentally subsume bare assignment."
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "local (x = 0); x =\n 5; return x"
+        validate:
+          success: false
+
+  - name: "protocol script/eval - PREV_BINOP relational '>=' at EOL allows continuation"
+    description: "Regression guard for the '>=' byte-class in prev_is_binop's '=' case. The classifier checks byte-before-'=' is in {'=','>','<','!'} to distinguish multi-char relationals from single assignment. This test pins '>=' specifically; without it, a regression in the '>' arm could go undetected since '==' covers a different sub-path."
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "return 2 >=\n 1"
+        validate:
+          success: true
+          result:
+            value: "true"
+            type: "boolean"
+
+  - name: "protocol script/eval - PREV_BINOP relational '!=' at EOL allows continuation"
+    description: "Regression guard for the '!=' byte-class in prev_is_binop's '=' case. Pins the '!' arm of the byte-before-'=' disambiguation; without it, a regression in '!' handling would not be caught by '==' or '>='."
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "return 2 !=\n 1"
+        validate:
+          success: true
+          result:
+            value: "true"
+            type: "boolean"
+
+  - name: "protocol script/eval - PREV_BINOP arithmetic '*' at EOL allows continuation"
+    description: "Regression guard for the '*' BINOP byte-class. The classifier dispatches via switch on the last byte; the '*' arm is distinct from the keyword-tail ('and'/'or') and the relational-equals ('=') arms. Pins this byte to verify the BINOP table row covers it."
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "return 2 *\n 3"
+        validate:
+          success: true
+          result:
+            value: "6"
+            type: "long"
+
+  - name: "protocol script/eval - PREV_BINOP word-boundary 'or' not confused with identifier"
+    description: "Symmetric to the 'band' word-boundary regression for 'and'. The variable 'door' ends in 'or' but the byte before 'or' is 'do' (identifier-continuing), so this must be classified as a regular statement, not as a continuation. ';' MUST be inserted before 'return' or the script fails to compile."
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "local (door = 9)\n return door"
+        validate:
+          success: true
+          result:
+            value: "9"
+            type: "long"
