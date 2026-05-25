@@ -1476,14 +1476,16 @@ class TestRunner:
             f.write('\n')
 
 
-def _collect_test_names(yaml_paths: List[str]) -> set:
-    """Scan YAML files and return the set of all test names found.
+def _collect_test_names_per_file(yaml_paths: List[str]) -> Dict[str, set]:
+    """Scan YAML files and return a map of file path -> set of test names.
 
-    Used by --select to validate that every selector matches at least one
-    test before launching workers. Parse errors are surfaced as warnings;
-    the file is skipped (its tests won't be discoverable by --select).
+    Used by --select to (a) validate that every selector matches at least
+    one test before launching workers, and (b) drop files with zero matches
+    from dispatch so workers don't pay per-file DB-copy cost for nothing.
+    Parse errors are surfaced as warnings; the file is skipped (its tests
+    won't be discoverable by --select).
     """
-    names = set()
+    per_file: Dict[str, set] = {}
     for path in yaml_paths:
         try:
             with open(path, encoding='utf-8') as f:
@@ -1491,12 +1493,22 @@ def _collect_test_names(yaml_paths: List[str]) -> set:
         except (OSError, yaml.YAMLError) as e:
             print(f"Warning: failed to read test names from {path}: {e}",
                   file=sys.stderr)
+            per_file[path] = set()
             continue
-        if not isinstance(data, dict):
-            continue
-        for td in data.get('tests', []) or []:
-            if isinstance(td, dict):
-                names.add(td.get('name', 'Unnamed Test'))
+        names: set = set()
+        if isinstance(data, dict):
+            for td in data.get('tests', []) or []:
+                if isinstance(td, dict):
+                    names.add(td.get('name', 'Unnamed Test'))
+        per_file[path] = names
+    return per_file
+
+
+def _collect_test_names(yaml_paths: List[str]) -> set:
+    """Scan YAML files and return the union of all test names found."""
+    names: set = set()
+    for file_names in _collect_test_names_per_file(yaml_paths).values():
+        names |= file_names
     return names
 
 
@@ -1560,10 +1572,15 @@ def main():
 
     # Resolve --select into a set; verify every selector matches at least one
     # test name in the provided files (fail fast on typos / stale names).
+    # Then drop files with zero matches so workers don't pay per-file
+    # DB-copy / Guest-Databases-copytree cost only to filter to nothing.
     selectors = None
     if args.select:
         selectors = set(args.select)
-        all_names = _collect_test_names(valid_files)
+        names_per_file = _collect_test_names_per_file(valid_files)
+        all_names: set = set()
+        for file_names in names_per_file.values():
+            all_names |= file_names
         unmatched = sorted(s for s in selectors if s not in all_names)
         if unmatched:
             print("Error: --select names did not match any test in the given files:",
@@ -1571,6 +1588,8 @@ def main():
             for name in unmatched:
                 print(f"  - {name!r}", file=sys.stderr)
             return 1
+        valid_files = [f for f in valid_files
+                       if names_per_file.get(f, set()) & selectors]
 
     # === Sequential mode (j=1) or single file ===
     if args.workers == 1 or len(valid_files) == 1:
