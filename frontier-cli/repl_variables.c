@@ -335,65 +335,6 @@ static const char *peek_next_real_byte(const char *p) {
 	}
 }
 
-/*
- * Normalize bare CR and LF in a script to ;\r / ;\n so they act as
- * statement separators.
- *
- * UserTalk grammar: ';' is the ONLY statement separator — \r and \n
- * are whitespace to the scanner (parsepopblanks in langscan.c).  A
- * multi-line script sent over the protocol uses \r or \n as natural
- * line boundaries; without normalization, YACC error recovery silently
- * drops every statement after the first, and evaltree's default return
- * value (true) is what the caller observes instead of the last
- * statement's value.
- *
- * Rules:
- *   - Insert ';' before every \r/\n unless the preceding non-whitespace
- *     byte is already ';' or '{' or '\0' (existing sep, block-open like
- *     `if x {\n`, or start-of-script).
- *   - '}' guard with lookahead: when prev is '}', peek past whitespace
- *     and comments for the next real token. If it's 'else'/';'/'}'/EOF,
- *     suppress the ';' — those tokens either attach to the '}' (else),
- *     close further (}}, EOF), or already provide the separator (;).
- *     Other followers (return, local, identifier, ...) are new statements
- *     and need an explicit ';'. Without this, `try { }\nelse { }` is split
- *     into a standalone try and an orphan else, producing a parse error
- *     that the with-wrapper masks as a truthy default. Issue #635.
- *   - Trailing-newline guard: regardless of prev, if the next real byte
- *     after this \r/\n (skipping all whitespace and comments) is EOF,
- *     suppress the ';' insertion. The caller wraps the normalized script
- *     as `with ... { <script> \n}` — a trailing ';' would inject an empty
- *     statement at the end of the with-block, and evaltree returns the
- *     wrapper's truthy default ('true') for that empty statement instead
- *     of the user's last-expression value. YAML `|` block scalars always
- *     append a trailing '\n', so before this guard, every multi-line yaml
- *     script that didn't end in '}' or ';' lost its final value. Issue
- *     #620 (callback_tcp, callback_database, bigstring boundary clusters).
- *   - Trailing strip: after scanning, strip any trailing ';' and trailing
- *     whitespace from the output. **This is a semantic change for
- *     user-typed terminated scripts, not just symmetric closure with the
- *     EOF guard.** Before this PR, 'foo();' returned the wrapper's truthy
- *     default 'true'; after the strip, it returns foo()'s value. This is
- *     the REPL convention "always return the value of the last expression"
- *     — a one-line script ending in ';' is taken to mean "evaluate this
- *     and give me its value", not "evaluate this for side effects only".
- *     A user-typed trailing ';' (e.g. 'x;\n') would otherwise yield an
- *     empty trailing statement at the script's top level — the parser
- *     returns the empty statement's default 'true' instead of the value
- *     of the preceding expression. This affects both the with-wrapped
- *     path (where the suffix '\n}' makes it visible) and the fallback
- *     langrunhandle_value path (where '1 + 2;' returns 'true' directly).
- *     The EOF guard handles the no-explicit-';' case; the strip handles
- *     the explicit-';' case. Together they cover every shape of "script
- *     ends without a final expression value".
- *   - Never double-insert ';' (';' guard prevents ;;).
- *   - \r\n pairs are treated as a single separator (\n is consumed after \r).
- *
- * The result is a freshly-malloc'd C string that the caller owns.
- * Returns NULL on allocation failure.
- *
- * Issues #624, #635, #620.
- */
 /* Token-kind classification for the newline-normalizer transition table.
  *
  * prev_kind tracks the last non-whitespace byte written to the output. The
@@ -483,6 +424,13 @@ static next_kind_t classify_next(const char *peek) {
  *     in YAML `|` block scalars) and whitespace-only scripts must not gain
  *     a leading ';'.
  *
+ * Moot-by-construction cells (the input that would exercise them is itself
+ * a parse error before normalization matters, so flipping these values has
+ * no observable effect): START x ELSE, START x RBRACE, SEMI x ELSE,
+ * LBRACE x ELSE, LBRACE x EOF. Five cells. The others are all reachable
+ * from valid source and covered by integration tests in
+ * tests/integration/test_cases/protocol_eval_compile_errors.yaml.
+ *
  * If a future grammar change needs a new suppression, flip exactly one cell
  * here and the loop logic stays unchanged.
  */
@@ -508,7 +456,7 @@ static const unsigned char kEmitSep[PREV_KIND_COUNT][NEXT_KIND_COUNT] = {
  * Never strips into the prefix: the loop stops at dst == out, which is
  * the initial value before any byte was emitted. Empty input (and fully
  * strippable input like "   \n\n;;;") safely yields "". */
-static void strip_trailing_terminators(char *out, char **dst_io) {
+static void strip_trailing_whitespace_and_semicolons(char *out, char **dst_io) {
 	char *dst = *dst_io;
 	while (dst > out) {
 		unsigned char last = (unsigned char)dst[-1];
@@ -522,6 +470,24 @@ static void strip_trailing_terminators(char *out, char **dst_io) {
 	*dst_io = dst;
 }
 
+/* Normalize bare \r/\n in a UserTalk script into statement separators so
+ * multi-line protocol script/eval sources parse correctly.
+ *
+ * UserTalk's grammar requires ';' between statements at top level; bare
+ * \r/\n are whitespace to the scanner. Without normalization, YACC error
+ * recovery drops every statement after the first and the with-wrapper's
+ * evaltree default 'true' replaces the user's last-expression value.
+ *
+ * The kEmitSep transition table above is the specification — for every
+ * (prev_kind, next_kind) pair, the cell value decides emit (';' inserted)
+ * or suppress. Post-pass strips trailing whitespace and ';' so explicitly-
+ * terminated scripts return their last-expression value, matching REPL
+ * convention.
+ *
+ * Caller owns the returned heap buffer. Returns NULL on alloc failure or
+ * NULL input. Issues #624 (initial), #635 ('}' guard), #620 (trailing
+ * newline + trailing-';' strip).
+ */
 static char *normalize_newlines_to_semicolons(const char *script) {
 	if (script == NULL)
 		return NULL;
@@ -569,7 +535,7 @@ static char *normalize_newlines_to_semicolons(const char *script) {
 	}
 	*dst = '\0';
 
-	strip_trailing_terminators(out, &dst);
+	strip_trailing_whitespace_and_semicolons(out, &dst);
 	return out;
 }
 
