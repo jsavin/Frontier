@@ -280,6 +280,19 @@ if [ "$ORIG_ARG_COUNT" -eq 0 ] && [ -x "$PROTOCOL_RO_TESTS" ]; then
     fi
 fi
 
+# Shell-based tests for tools/edit_virgin_root.sh (issue #644). Same
+# rationale as protocol_readonly_tests above: exercises CLI argv + on-disk
+# md5 behavior, not well-expressed in the YAML harness.
+EDIT_VIRGIN_TESTS="$PROJECT_ROOT/tests/integration/edit_virgin_root_wrapper_test.sh"
+if [ "$ORIG_ARG_COUNT" -eq 0 ] && [ -x "$EDIT_VIRGIN_TESTS" ]; then
+    echo
+    "$EDIT_VIRGIN_TESTS"
+    EDIT_VIRGIN_RC=$?
+    if [ $EDIT_VIRGIN_RC -ne 0 ]; then
+        EXIT_CODE=$EDIT_VIRGIN_RC
+    fi
+fi
+
 # Verify integrity of every staged database after tests.
 #
 # Drift is reported as a warning only and does NOT fail EXIT_CODE. This
