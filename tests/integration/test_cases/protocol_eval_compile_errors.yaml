@@ -492,3 +492,63 @@ tests:
           result:
             value: "}else {"
             type: "string"
+
+  # ------------------------------------------------------------
+  # Transition-matrix coverage (refactor follow-up to #628/#635/#640)
+  # ------------------------------------------------------------
+  # The normalize_newlines_to_semicolons function makes its emit/suppress
+  # decision from a (prev_kind, next_kind) pair where prev_kind is one of
+  # {start, ';', '{', '}', other} and next_kind (after peek-past-noise) is
+  # one of {EOF, 'else', ';', '}', other}. Earlier tests in this file cover
+  # the most common cells (start×other, '}'×else, '}'×other, other×EOF, ...).
+  # The tests below fill cells that were previously implicit — locking the
+  # behavior in so a table-driven rewrite of the function can't silently
+  # regress these transitions.
+
+  - name: "protocol script/eval - matrix ';' x '}' explicit semicolon before newline-close-brace"
+    description: "Cell (prev=';', next='}'): inside a block, the last inner statement is explicitly terminated with ';' followed by a newline before the closing '}'. Pattern: 'if true { y = 5;\\n}'. The ';' guard suppresses a synthetic ';' before the newline (already separated), so the parser sees a valid block with one terminated statement. Witnesses by reading the assigned-to variable after the block."
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "local (y = 0);\nif true {\n  y = 5;\n}\nreturn y"
+        validate:
+          success: true
+          result:
+            value: "5"
+            type: "long"
+
+  - name: "protocol script/eval - matrix '{' x '}' empty block across newlines"
+    description: "Cell (prev='{', next='}'): an empty block written on multiple lines — '{' then bare newline(s) then '}'. The '{' guard suppresses ';' before the newline, and the lookahead correctly identifies '}' as the next real byte. Result: the parser sees a valid empty block. The if-false branch never runs; the witness is the outer return value, confirming the script compiled and executed."
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "if false {\n}\nreturn 7"
+        validate:
+          success: true
+          result:
+            value: "7"
+            type: "long"
+
+  - name: "protocol script/eval - matrix other x ';' bare newline followed by explicit semicolon"
+    description: "Cell (prev=other, next=';'): an unterminated top-level statement followed by a bare newline followed by an explicit ';' on the next line. Pattern: 'local(x=3)\\n;return x'. prev_nonws after ')' is other; the lookahead sees ';' as the next real byte. The normalizer EMITS a synthetic ';' before the newline, producing 'local(x=3);\\n;return x'. The parser accepts an empty statement between the two semicolons and returns x."
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "local (x = 3)\n;return x"
+        validate:
+          success: true
+          result:
+            value: "3"
+            type: "long"
+
+  - name: "protocol script/eval - matrix '}' x ';' closing brace followed by newline then explicit semicolon"
+    description: "Cell (prev='}', next=';'): a block's closing '}' is followed by a bare newline, then an explicit ';' on the next line. The '}' guard's lookahead sees ';' and suppresses the synthetic ';' insertion (the explicit ';' already provides the separator). Without the guard, the output would be '}\\n;;next' — the parser would see an extra empty statement that, while syntactically harmless, is not what the user wrote. This pins down that '}' x ';' is a suppression cell, not an emission cell."
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "local (z = 0);\nif true {\n  z = 9\n}\n;return z"
+        validate:
+          success: true
+          result:
+            value: "9"
+            type: "long"
