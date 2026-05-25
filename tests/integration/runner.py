@@ -691,7 +691,8 @@ def _run_file_worker(args: tuple) -> dict:
     Uses ProtocolExecutor for compatible tests, falls back to FrontierCLI for others.
     Returns a serializable dict (for multiprocessing).
     """
-    yaml_path, cli_path, system_root, test_root_dir, protocol_batch, verbose, worker_id = args
+    (yaml_path, cli_path, system_root, test_root_dir, protocol_batch, verbose,
+     worker_id, selectors) = args
 
     # Load file-level metadata (sequential, needs_guest_dbs, protocol_mode)
     meta = load_file_metadata(yaml_path)
@@ -749,7 +750,11 @@ def _run_file_worker(args: tuple) -> dict:
         with open(yaml_path, 'r') as f:
             data = yaml.safe_load(f)
 
-        test_cases = [TestCase(td) for td in data.get('tests', [])]
+        test_dicts = data.get('tests', [])
+        if selectors:
+            test_dicts = [td for td in test_dicts
+                          if td.get('name', 'Unnamed Test') in selectors]
+        test_cases = [TestCase(td) for td in test_dicts]
         results = []
 
         for test in test_cases:
@@ -919,20 +924,27 @@ class TestRunner:
     """Main test runner that executes test cases."""
 
     def __init__(self, cli: FrontierCLI, verbose: bool = False, test_root_dir: Optional[str] = None,
-                 protocol_executor: Optional[ProtocolExecutor] = None):
+                 protocol_executor: Optional[ProtocolExecutor] = None,
+                 selectors: Optional[set] = None):
         self.cli = cli
         self.verbose = verbose
         self.test_root_dir = test_root_dir or str(Path.cwd())
         self.results: List[TestResult] = []
         self.protocol_executor = protocol_executor
+        # Optional set of test names to filter by (None = no filtering).
+        self.selectors = selectors
 
     def load_test_file(self, yaml_path: str) -> List[TestCase]:
-        """Load test cases from YAML file."""
+        """Load test cases from YAML file, applying --select filter if set."""
         with open(yaml_path, 'r') as f:
             data = yaml.safe_load(f)
 
         test_cases = []
         for test_data in data.get('tests', []):
+            if self.selectors is not None:
+                name = test_data.get('name', 'Unnamed Test')
+                if name not in self.selectors:
+                    continue
             test_cases.append(TestCase(test_data))
 
         return test_cases
@@ -1464,6 +1476,42 @@ class TestRunner:
             f.write('\n')
 
 
+def _collect_test_names_per_file(yaml_paths: List[str]) -> Dict[str, set]:
+    """Scan YAML files and return a map of file path -> set of test names.
+
+    Used by --select to (a) validate that every selector matches at least
+    one test before launching workers, and (b) drop files with zero matches
+    from dispatch so workers don't pay per-file DB-copy cost for nothing.
+    Parse errors are surfaced as warnings; the file is skipped (its tests
+    won't be discoverable by --select).
+    """
+    per_file: Dict[str, set] = {}
+    for path in yaml_paths:
+        try:
+            with open(path, encoding='utf-8') as f:
+                data = yaml.safe_load(f)
+        except (OSError, yaml.YAMLError) as e:
+            print(f"Warning: failed to read test names from {path}: {e}",
+                  file=sys.stderr)
+            per_file[path] = set()
+            continue
+        names: set = set()
+        if isinstance(data, dict):
+            for td in data.get('tests', []) or []:
+                if isinstance(td, dict):
+                    names.add(td.get('name', 'Unnamed Test'))
+        per_file[path] = names
+    return per_file
+
+
+def _collect_test_names(yaml_paths: List[str]) -> set:
+    """Scan YAML files and return the union of all test names found."""
+    names: set = set()
+    for file_names in _collect_test_names_per_file(yaml_paths).values():
+        names |= file_names
+    return names
+
+
 def _find_test_root(test_files: List[str]) -> str:
     """Find project root by walking up from the first test file."""
     if test_files:
@@ -1490,6 +1538,10 @@ def main():
                        help='Disable NDJSON protocol, use per-process execution')
     parser.add_argument('-j', '--workers', type=int, default=0,
                        help='Number of parallel workers (0 = auto, 1 = sequential)')
+    parser.add_argument('--select', action='append', default=None, metavar='TEST_NAME',
+                       help='Run only tests whose name exactly matches TEST_NAME. '
+                            'Pass multiple times to select multiple tests. '
+                            'File arguments are still required.')
 
     args = parser.parse_args()
 
@@ -1518,6 +1570,27 @@ def main():
         print("No valid test files found", file=sys.stderr)
         return 1
 
+    # Resolve --select into a set; verify every selector matches at least one
+    # test name in the provided files (fail fast on typos / stale names).
+    # Then drop files with zero matches so workers don't pay per-file
+    # DB-copy / Guest-Databases-copytree cost only to filter to nothing.
+    selectors = None
+    if args.select:
+        selectors = set(args.select)
+        names_per_file = _collect_test_names_per_file(valid_files)
+        all_names: set = set()
+        for file_names in names_per_file.values():
+            all_names |= file_names
+        unmatched = sorted(s for s in selectors if s not in all_names)
+        if unmatched:
+            print("Error: --select names did not match any test in the given files:",
+                  file=sys.stderr)
+            for name in unmatched:
+                print(f"  - {name!r}", file=sys.stderr)
+            return 1
+        valid_files = [f for f in valid_files
+                       if names_per_file.get(f, set()) & selectors]
+
     # === Sequential mode (j=1) or single file ===
     if args.workers == 1 or len(valid_files) == 1:
         executor = None
@@ -1530,7 +1603,7 @@ def main():
                 executor = None
 
         runner = TestRunner(cli, verbose=args.verbose, test_root_dir=test_root_dir,
-                            protocol_executor=executor)
+                            protocol_executor=executor, selectors=selectors)
         runner.cleanup_test_artifacts()
 
         seq_start = time.time()
@@ -1572,7 +1645,7 @@ def main():
         for i, f in enumerate(parallel_files):
             worker_args.append((
                 f, args.cli, args.system_root, test_root_dir,
-                args.batch, args.verbose, i
+                args.batch, args.verbose, i, selectors
             ))
 
         print(f"\nRunning {len(parallel_files)} test file(s) across {min(args.workers, len(parallel_files))} worker(s)...")
@@ -1623,7 +1696,7 @@ def main():
                 executor = None
 
         runner = TestRunner(cli, verbose=args.verbose, test_root_dir=test_root_dir,
-                            protocol_executor=executor)
+                            protocol_executor=executor, selectors=selectors)
         for f in sequential_files:
             runner.run_test_file(f)
 
