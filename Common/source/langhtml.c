@@ -809,9 +809,15 @@ static boolean htmlcleanforexport (Handle x) {
 		openhandlestream (x, &s);
 		
 		for (s.pos = 0; s.pos < s.eof; ++s.pos) {
-			
-			switch ((*x) [s.pos]) { // set chreplace or bsreplace
-			
+
+			/* The local 'b' is intentional: clang -fpascal-strings on arm64 mis-compiles
+			 * switch ((*handle)[index]) and fails to dispatch to (char)0xXX cases when
+			 * the controlling expression is a dereferenced handle. Reading into a local
+			 * char fixes it. See PR for langhtml arm64 codegen workaround. */
+			char b = (*x) [s.pos];
+
+			switch (b) { // set chreplace or bsreplace
+
 				case (char)0xd4:	/* '�' open single quote */
 				case (char)0xd5:	/* '�' close single quote */
 					(*x) [s.pos] = '\'';
