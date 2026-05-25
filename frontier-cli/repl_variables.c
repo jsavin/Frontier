@@ -432,6 +432,16 @@ static int prev_is_binop(const char *out, const char *dst) {
 					return 1;
 			}
 			return 0;
+		case '&':
+			/* '&&' is the symbolic boolean AND; bare '&' is not a UserTalk operator. */
+			if (p - out >= 2 && p[-2] == '&')
+				return 1;
+			return 0;
+		case '|':
+			/* '||' is the symbolic boolean OR; bare '|' is not a UserTalk operator. */
+			if (p - out >= 2 && p[-2] == '|')
+				return 1;
+			return 0;
 		case 'd':
 			/* Trailing 'and' must be a standalone keyword. */
 			if (p - out >= 3 && p[-3] == 'a' && p[-2] == 'n') {

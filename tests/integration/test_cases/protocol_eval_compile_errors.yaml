@@ -706,3 +706,64 @@ tests:
           result:
             value: "9"
             type: "long"
+
+  # ------------------------------------------------------------
+  # PREV_BINOP symbolic '&&' / '||' (PR #643 burndown)
+  # ------------------------------------------------------------
+  # UserTalk accepts both keyword ('and'/'or') and symbolic ('&&'/'||')
+  # forms of the boolean operators. The PREV_BINOP detector originally
+  # covered only the keyword forms, so a line ending in '&&' or '||'
+  # before a bare newline got a synthetic ';' inserted (e.g. '&&;\n'),
+  # producing a parse error. The motivating failure is db_migration.yaml's
+  # 'Database - system table accessible after hydration' test, whose body
+  # is 'return sizeOf(system) > 0 &&\n ... &&\n ...'. Replacing '&&' with
+  # 'and' makes that test pass without any code change — the falsifiable
+  # check that this is the root cause.
+
+  - name: "protocol script/eval - PREV_BINOP symbolic '&&' at EOL allows continuation"
+    description: "Pattern: 'return 1 + 1 == 2 &&\\n 2 + 2 == 4'. Without the symbolic-'&&' addition to prev_is_binop, the normalizer treats the trailing '&' bytes as PREV_OTHER and emits ';' before the newline, producing '&&;\\n' which is a parse error. With the fix, the two-byte '&&' lookbehind classifies as BINOP and the ';' is suppressed."
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "return 1 + 1 == 2 &&\n  2 + 2 == 4"
+        validate:
+          success: true
+          result:
+            value: "true"
+            type: "boolean"
+
+  - name: "protocol script/eval - PREV_BINOP symbolic '||' at EOL allows continuation"
+    description: "Pattern: 'return false ||\\n true'. Mirrors the '&&' case for the symbolic OR. The two-byte '||' lookbehind must classify as BINOP so the newline does not gain a synthetic ';'."
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "return false ||\n  true"
+        validate:
+          success: true
+          result:
+            value: "true"
+            type: "boolean"
+
+  - name: "protocol script/eval - PREV_BINOP symbolic '&&' followed by parens on next line"
+    description: "Pattern: 'return true &&\\n (1 < 2)'. Exercises the case where the continuation begins with an open paren — the next real byte after the suppressed ';' is '(' and the parser must accept it as the start of the right-hand operand."
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "return true &&\n  (1 < 2)"
+        validate:
+          success: true
+          result:
+            value: "true"
+            type: "boolean"
+
+  - name: "protocol script/eval - PREV_BINOP symbolic '&&' mixed with keyword 'and' across newlines"
+    description: "Pattern combines the symbolic '&&' and the keyword 'and' on separate continuation lines. Both must be classified as BINOP (suppress ';') and the resulting expression must evaluate as a single chained boolean. Exercises the symbolic and keyword arms of prev_is_binop in the same script."
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "return (1 == 1) &&\n  (2 == 2) and\n  (3 == 3)"
+        validate:
+          success: true
+          result:
+            value: "true"
+            type: "boolean"
