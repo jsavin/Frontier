@@ -394,6 +394,134 @@ static const char *peek_next_real_byte(const char *p) {
  *
  * Issues #624, #635, #620.
  */
+/* Token-kind classification for the newline-normalizer transition table.
+ *
+ * prev_kind tracks the last non-whitespace byte written to the output. The
+ * normalizer only needs to distinguish four anchor bytes ('\0' = start of
+ * script, ';', '{', '}') from "anything else" — none of the suppression
+ * rules look at other identifiers. */
+typedef enum {
+	PREV_START = 0,	/* '\0' — nothing written yet */
+	PREV_SEMI,	/* ';' — already separated */
+	PREV_LBRACE,	/* '{' — block-open, next byte is first statement */
+	PREV_RBRACE,	/* '}' — block-close, may attach else/};/}} */
+	PREV_OTHER,	/* identifier / digit / paren / operator / etc. */
+	PREV_KIND_COUNT
+} prev_kind_t;
+
+/* next_kind is the kind of the next real source byte after peeking past
+ * whitespace and comments. The normalizer cares about EOF, the 'else'
+ * keyword, ';', '}', and "anything else" — those are the only cells that
+ * can flip a suppression decision. */
+typedef enum {
+	NEXT_EOF = 0,	/* '\0' — nothing real follows */
+	NEXT_ELSE,	/* 'else' keyword followed by a delimiter */
+	NEXT_SEMI,	/* ';' */
+	NEXT_RBRACE,	/* '}' */
+	NEXT_OTHER,	/* any other source byte (identifier / number / paren / ...) */
+	NEXT_KIND_COUNT
+} next_kind_t;
+
+static prev_kind_t classify_prev(unsigned char prev_nonws) {
+	switch (prev_nonws) {
+		case '\0': return PREV_START;
+		case ';':  return PREV_SEMI;
+		case '{':  return PREV_LBRACE;
+		case '}':  return PREV_RBRACE;
+		default:   return PREV_OTHER;
+	}
+}
+
+/* Classify the byte at *peek (a pointer returned by peek_next_real_byte).
+ *
+ * The 'else' check requires that 'else' be a standalone keyword, not the
+ * prefix of a longer identifier — so the byte after the 'e' must be a
+ * delimiter ('\0', whitespace, or '{'). This is the same check the
+ * original guard ran inline. */
+static next_kind_t classify_next(const char *peek) {
+	if (*peek == '\0')
+		return NEXT_EOF;
+	if (*peek == ';')
+		return NEXT_SEMI;
+	if (*peek == '}')
+		return NEXT_RBRACE;
+	if (peek[0] == 'e' && peek[1] == 'l' && peek[2] == 's' && peek[3] == 'e' &&
+	    (peek[4] == '\0' || peek[4] == ' ' || peek[4] == '\t' ||
+	     peek[4] == '\r' || peek[4] == '\n' || peek[4] == '{')) {
+		return NEXT_ELSE;
+	}
+	return NEXT_OTHER;
+}
+
+/* Transition table: emit (1) a synthetic ';' before the bare \r/\n, or
+ * suppress (0). Rows indexed by prev_kind, columns by next_kind.
+ *
+ * The cells are the specification — the loop below is just a lookup.
+ *
+ *                 |  EOF  | ELSE  | SEMI  | RBRACE| OTHER |
+ *   --------------+-------+-------+-------+-------+-------+
+ *   START         |   -   |   -   |   -   |   -   |   -   |   start-of-script: nothing precedes
+ *   SEMI          |   -   |   -   |   -   |   -   |   -   |   already separated by ';'
+ *   LBRACE        |   -   |   -   |   -   |   -   |   -   |   inside block: '{' acts as separator
+ *   RBRACE        |   -   |   -   |   -   |   -   |   E   |   '}' attaches else/};/}}; only "other" needs ';'
+ *   OTHER         |   -   |   E   |   E   |   E   |   E   |   real expression: ';' needed for any real follower
+ *
+ *   E = emit ';'; '-' = suppress.
+ *
+ * Notes on individual cells:
+ *   - OTHER x EOF (#620 trailing-newline): a purely trailing '\r'/'\n' must
+ *     not inject a ';' — the with-wrapper's '\n}' suffix would then enclose
+ *     an empty statement whose evaltree default 'true' would mask the
+ *     user's last-expression value.
+ *   - RBRACE x ELSE/SEMI/RBRACE (#635 '}' guard): tokens that attach to or
+ *     close the '}' must not be split from it. Inserting ';' before 'else'
+ *     would orphan it from its if/try/case clause; before another '}' or
+ *     ';' would inject an empty statement.
+ *   - LBRACE row mirrors SEMI: the language treats '{' as a statement
+ *     separator at block boundaries, so the first body byte never needs ';'.
+ *   - START row exists to match real source: leading bare newlines (common
+ *     in YAML `|` block scalars) and whitespace-only scripts must not gain
+ *     a leading ';'.
+ *
+ * If a future grammar change needs a new suppression, flip exactly one cell
+ * here and the loop logic stays unchanged.
+ */
+static const unsigned char kEmitSep[PREV_KIND_COUNT][NEXT_KIND_COUNT] = {
+	/*               EOF  ELSE  SEMI  RBRACE  OTHER */
+	/* START   */ {  0,    0,    0,    0,      0    },
+	/* SEMI    */ {  0,    0,    0,    0,      0    },
+	/* LBRACE  */ {  0,    0,    0,    0,      0    },
+	/* RBRACE  */ {  0,    0,    0,    0,      1    },
+	/* OTHER   */ {  0,    1,    1,    1,      1    },
+};
+
+/* Strip trailing ';' and trailing ASCII whitespace from the normalized
+ * output, advancing *dst_io backward and rewriting the terminator.
+ *
+ * Used as a post-pass on the normalized buffer (#620 trailing-';' case).
+ * A user-typed trailing ';' — possibly followed by whitespace — would
+ * otherwise parse as an empty trailing statement and produce the parser's
+ * default truthy value instead of the preceding expression's value. The
+ * EOF guard in the main loop handles the no-explicit-';' case; this strip
+ * handles the explicit-';' case.
+ *
+ * Never strips into the prefix: the loop stops at dst == out, which is
+ * the initial value before any byte was emitted. Empty input (and fully
+ * strippable input like "   \n\n;;;") safely yields "". */
+static void strip_trailing_terminators(char *out, char **dst_io) {
+	char *dst = *dst_io;
+	while (dst > out) {
+		unsigned char last = (unsigned char)dst[-1];
+		if (last == ' ' || last == '\t' || last == '\r' || last == '\n' || last == ';') {
+			dst--;
+			*dst = '\0';
+		} else {
+			break;
+		}
+	}
+	*dst_io = dst;
+}
+
 static char *normalize_newlines_to_semicolons(const char *script) {
 	if (script == NULL)
 		return NULL;
@@ -412,56 +540,13 @@ static char *normalize_newlines_to_semicolons(const char *script) {
 		unsigned char c = (unsigned char)*src;
 
 		if (c == '\r' || c == '\n') {
-			/* Decide whether this newline needs a ';' inserted before it.
-			 *
-			 * UserTalk grammar requires ';' between statements at top level.
+			/* UserTalk grammar requires ';' between statements at top level.
 			 * Bare \r/\n are whitespace to the scanner, so multi-line scripts
-			 * without explicit ';' fail to parse. We insert one synthetically.
-			 *
-			 * Guards (no ';' inserted):
-			 *   - prev is ';' — already separated
-			 *   - prev is '{' — start of block, next is first statement
-			 *   - prev is '}' AND next non-whitespace is 'else'/';'/'}' — the
-			 *     '}' closes a block; inserting ';' before 'else' would split
-			 *     it from its if/try clause. Other followers (return, local,
-			 *     identifier, ...) ARE statements and need an explicit ';'.
-			 *   - prev is '\0' — start of script
-			 */
-			boolean need_sep = (prev_nonws != ';' && prev_nonws != '{' && prev_nonws != '\0');
-			if (need_sep) {
-				/* Peek past inter-token noise (whitespace and comments) to
-				 * find the next real source byte. Two separate suppressions
-				 * key off this lookahead:
-				 *
-				 *   1. EOF guard (#620): if nothing real follows, this is a
-				 *      purely trailing newline. Inserting ';' would inject an
-				 *      empty statement at the end of the with-wrapper, whose
-				 *      default value masks the user's actual last expression
-				 *      as the truthy default 'true'.
-				 *   2. '}' guard (#635): when prev is '}', tokens that attach
-				 *      to or close it ('else'/';'/'}'/EOF) must not be split
-				 *      from it by an inserted ';'.
-				 *
-				 * Both guards use the same skip rules — see peek_next_real_byte. */
-				const char *peek = peek_next_real_byte(src);
-				/* EOF guard checked first — subsumes the '}' guard's EOF case.
-				 * Order matters: if both could apply (e.g. '}\n' at end of
-				 * script), EOF guard wins. The '}' guard only fires when
-				 * something real follows '}'. */
-				if (*peek == '\0') {
-					/* Trailing-newline case: no statement follows. */
-					need_sep = false;
-				} else if (prev_nonws == '}') {
-					/* Tokens that attach to or close the '}' without needing ';'. */
-					if (*peek == '}' || *peek == ';' ||
-					    (peek[0] == 'e' && peek[1] == 'l' && peek[2] == 's' && peek[3] == 'e' &&
-					     (peek[4] == '\0' || peek[4] == ' ' || peek[4] == '\t' ||
-					      peek[4] == '\r' || peek[4] == '\n' || peek[4] == '{'))) {
-						need_sep = false;
-					}
-				}
-			}
-			if (need_sep)
+			 * without explicit ';' fail to parse. The transition table above
+			 * maps every (prev_kind, next_kind) pair to emit-or-suppress. */
+			prev_kind_t pk = classify_prev(prev_nonws);
+			next_kind_t nk = classify_next(peek_next_real_byte(src));
+			if (kEmitSep[pk][nk])
 				*dst++ = ';';
 			*dst++ = (char)c;
 			src++;
@@ -471,9 +556,9 @@ static char *normalize_newlines_to_semicolons(const char *script) {
 				src++;
 			/* prev_nonws is now ';' regardless of whether we emitted one.
 			 * The newline acts as a statement-boundary signal even when the
-			 * '}' guard suppressed the explicit ';' — subsequent guards key
-			 * off "we just finished a statement", which is the truth either
-			 * way. Don't try to mirror the emitted-byte history here. */
+			 * table suppressed the explicit ';' — subsequent guards key off
+			 * "we just finished a statement", which is the truth either way.
+			 * Don't try to mirror the emitted-byte history here. */
 			prev_nonws = ';';
 		} else {
 			*dst++ = (char)c;
@@ -484,26 +569,7 @@ static char *normalize_newlines_to_semicolons(const char *script) {
 	}
 	*dst = '\0';
 
-	/* Trailing strip (#620 trailing-';' case): a user-typed ';' at the very
-	 * end of the script — possibly followed by whitespace — would parse as
-	 * an empty trailing statement and produce the parser's default 'true'.
-	 * Strip trailing ';' and whitespace so the last real expression is the
-	 * top-level result. The EOF guard above handles the no-explicit-';'
-	 * case; this strip handles the explicit-';' case. The two together cover
-	 * every shape of "script ends without a final expression value".
-	 *
-	 * dst > out: never strip into the prefix. Empty or fully-strippable
-	 * input (e.g. "" or "   \n\n;;;") safely yields "" — the strip stops at
-	 * dst == out, which is its initial value before any byte was emitted. */
-	while (dst > out) {
-		unsigned char last = (unsigned char)dst[-1];
-		if (last == ' ' || last == '\t' || last == '\r' || last == '\n' || last == ';') {
-			dst--;
-			*dst = '\0';
-		} else {
-			break;
-		}
-	}
+	strip_trailing_terminators(out, &dst);
 	return out;
 }
 
