@@ -706,3 +706,210 @@ tests:
           result:
             value: "9"
             type: "long"
+
+  # ------------------------------------------------------------
+  # PREV_BINOP symbolic '&&' / '||' (PR #643 burndown)
+  # ------------------------------------------------------------
+  # UserTalk accepts both keyword ('and'/'or') and symbolic ('&&'/'||')
+  # forms of the boolean operators. The PREV_BINOP detector originally
+  # covered only the keyword forms, so a line ending in '&&' or '||'
+  # before a bare newline got a synthetic ';' inserted (e.g. '&&;\n'),
+  # producing a parse error. The motivating failure is db_migration.yaml's
+  # 'Database - system table accessible after hydration' test, whose body
+  # is 'return sizeOf(system) > 0 &&\n ... &&\n ...'. Replacing '&&' with
+  # 'and' makes that test pass without any code change — the falsifiable
+  # check that this is the root cause.
+
+  - name: "protocol script/eval - PREV_BINOP symbolic '&&' at EOL allows continuation"
+    description: "Pattern: 'return 1 + 1 == 2 &&\\n 2 + 2 == 4'. Without the symbolic-'&&' addition to prev_is_binop, the normalizer treats the trailing '&' bytes as PREV_OTHER and emits ';' before the newline, producing '&&;\\n' which is a parse error. With the fix, the two-byte '&&' lookbehind classifies as BINOP and the ';' is suppressed."
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "return 1 + 1 == 2 &&\n  2 + 2 == 4"
+        validate:
+          success: true
+          result:
+            value: "true"
+            type: "boolean"
+
+  - name: "protocol script/eval - PREV_BINOP symbolic '||' at EOL allows continuation"
+    description: "Pattern: 'return false ||\\n true'. Mirrors the '&&' case for the symbolic OR. The two-byte '||' lookbehind must classify as BINOP so the newline does not gain a synthetic ';'."
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "return false ||\n  true"
+        validate:
+          success: true
+          result:
+            value: "true"
+            type: "boolean"
+
+  - name: "protocol script/eval - PREV_BINOP symbolic '&&' followed by parens on next line"
+    description: "Pattern: 'return true &&\\n (1 < 2)'. Exercises the case where the continuation begins with an open paren — the next real byte after the suppressed ';' is '(' and the parser must accept it as the start of the right-hand operand."
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "return true &&\n  (1 < 2)"
+        validate:
+          success: true
+          result:
+            value: "true"
+            type: "boolean"
+
+  - name: "protocol script/eval - PREV_BINOP symbolic '&&' mixed with keyword 'and' across newlines"
+    description: "Pattern combines the symbolic '&&' and the keyword 'and' on separate continuation lines. Both must be classified as BINOP (suppress ';') and the resulting expression must evaluate as a single chained boolean. Exercises the symbolic and keyword arms of prev_is_binop in the same script."
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "return (1 == 1) &&\n  (2 == 2) and\n  (3 == 3)"
+        validate:
+          success: true
+          result:
+            value: "true"
+            type: "boolean"
+
+  # ------------------------------------------------------------
+  # PREV_BINOP remaining operators sweep (PR #126 bar-raiser P2-1)
+  # ------------------------------------------------------------
+  # Completes PREV_BINOP coverage for every UserTalk infix operator
+  # documented in docs/usertalk/operators_and_idioms.md:
+  #   - symbolic arithmetic: '%' (modulo)
+  #   - keyword comparison: equals, notEquals, lessThan, greaterThan,
+  #     lessThanOrEqual, greaterThanOrEqual
+  #   - keyword string/list infix: contains, beginsWith, endsWith
+  # Each operator at EOL must suppress the synthetic ';' so the next
+  # line continues the expression instead of being parsed as a new
+  # statement.
+
+  - name: "protocol script/eval - PREV_BINOP modulo '%' at EOL allows continuation"
+    description: "Pattern: 'return 5 %\\n 3'. Modulo is a single-char arithmetic operator; trailing '%' before a bare newline must classify as BINOP so no synthetic ';' is inserted."
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "return 5 %\n  3"
+        validate:
+          success: true
+          result:
+            value: "2"
+            type: "long"
+
+  - name: "protocol script/eval - PREV_BINOP keyword 'equals' at EOL allows continuation"
+    description: "Pattern: 'return 1 equals\\n 1'. The word form of '=='; trailing 'equals' as a standalone keyword must classify as BINOP."
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "return 1 equals\n  1"
+        validate:
+          success: true
+          result:
+            value: "true"
+            type: "boolean"
+
+  - name: "protocol script/eval - PREV_BINOP keyword 'notEquals' at EOL allows continuation"
+    description: "Pattern: 'return 1 notEquals\\n 2'. Word form of '!='. Shares last six bytes with 'equals' (capital E) but must still match as a distinct keyword via prev_matches_keyword."
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "return 1 notEquals\n  2"
+        validate:
+          success: true
+          result:
+            value: "true"
+            type: "boolean"
+
+  - name: "protocol script/eval - PREV_BINOP keyword 'lessThan' at EOL allows continuation"
+    description: "Pattern: 'return 1 lessThan\\n 2'. Word form of '<'. Ends in 'n' — same last byte as 'greaterThan', so the helper must compare the full keyword bytes."
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "return 1 lessThan\n  2"
+        validate:
+          success: true
+          result:
+            value: "true"
+            type: "boolean"
+
+  - name: "protocol script/eval - PREV_BINOP keyword 'greaterThan' at EOL allows continuation"
+    description: "Pattern: 'return 2 greaterThan\\n 1'. Word form of '>'."
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "return 2 greaterThan\n  1"
+        validate:
+          success: true
+          result:
+            value: "true"
+            type: "boolean"
+
+  # Note: docs/usertalk/operators_and_idioms.md lists 'lessThanOrEqual' and
+  # 'greaterThanOrEqual' as word forms of '<=' / '>=', but the UserTalk
+  # parser does NOT actually accept those as infix operators (verified
+  # empirically — '1 lessThanOrEqual 1' compiles and returns 1, not true).
+  # They are intentionally omitted from prev_is_binop until either the
+  # parser is extended or the docs are corrected.
+
+  - name: "protocol script/eval - PREV_BINOP keyword 'contains' at EOL allows continuation"
+    description: "Pattern: 'return \"foo\" contains\\n \"f\"'. Substring infix operator. Ends in 's' — shares last byte with 'equals'/'notEquals' so helper must compare full bytes."
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "return \"foo\" contains\n  \"f\""
+        validate:
+          success: true
+          result:
+            value: "true"
+            type: "boolean"
+
+  - name: "protocol script/eval - PREV_BINOP keyword 'beginsWith' at EOL allows continuation"
+    description: "Pattern: 'return \"prefix.ut\" beginsWith\\n \"pre\"'. Substring infix operator."
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "return \"prefix.ut\" beginsWith\n  \"pre\""
+        validate:
+          success: true
+          result:
+            value: "true"
+            type: "boolean"
+
+  - name: "protocol script/eval - PREV_BINOP keyword 'endsWith' at EOL allows continuation"
+    description: "Pattern: 'return \"file.ut\" endsWith\\n \".ut\"'. Substring infix operator. Ends in 'h' — same last byte as 'beginsWith' so helper must compare full bytes."
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "return \"file.ut\" endsWith\n  \".ut\""
+        validate:
+          success: true
+          result:
+            value: "true"
+            type: "boolean"
+
+  - name: "protocol script/eval - PREV_BINOP keyword 'contains' word-boundary not confused with identifier"
+    description: "Regression guard: an identifier ending in 'contains' (e.g. 'thatContains') must not trigger continuation behavior. The word-boundary check in prev_matches_keyword requires a non-identifier byte (or start-of-buffer) before the keyword. Without it, a variable whose name ends in 'contains' would suppress ';' insertion and the script would fail to compile."
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "local (thatContains = 5)\n return thatContains"
+        validate:
+          success: true
+          result:
+            value: "5"
+            type: "long"
+
+  - name: "protocol script/eval - PREV_BINOP bare '&' at EOL is NOT continuation"
+    description: "Negative test: bare '&' is not a UserTalk operator — only '&&' is. The single-byte '&' arm of prev_is_binop must require a second '&' before it; bare '&' at EOL falls through to 0, the synthetic ';' is inserted, and the parser surfaces the script as a compile failure ('&' is not a valid token in expression position). This pins down that the symbolic-'&&' addition does not accidentally promote bare '&' to BINOP."
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "local (x = 1)\n x & 2"
+        validate:
+          success: false
+
+  - name: "protocol script/eval - PREV_BINOP bare '|' at EOL is NOT continuation"
+    description: "Symmetric negative test for '|': bare '|' is not a UserTalk operator. Falls through to 0; synthetic ';' is inserted; the parser rejects the script. Pins the same guarantee as the bare-'&' test."
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "local (x = 1)\n x | 2"
+        validate:
+          success: false
