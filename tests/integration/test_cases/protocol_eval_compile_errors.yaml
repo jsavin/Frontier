@@ -658,3 +658,51 @@ tests:
           expression: "local (x = 0); x =\n 5; return x"
         validate:
           success: false
+
+  - name: "protocol script/eval - PREV_BINOP relational '>=' at EOL allows continuation"
+    description: "Regression guard for the '>=' byte-class in prev_is_binop's '=' case. The classifier checks byte-before-'=' is in {'=','>','<','!'} to distinguish multi-char relationals from single assignment. This test pins '>=' specifically; without it, a regression in the '>' arm could go undetected since '==' covers a different sub-path."
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "return 2 >=\n 1"
+        validate:
+          success: true
+          result:
+            value: "true"
+            type: "boolean"
+
+  - name: "protocol script/eval - PREV_BINOP relational '!=' at EOL allows continuation"
+    description: "Regression guard for the '!=' byte-class in prev_is_binop's '=' case. Pins the '!' arm of the byte-before-'=' disambiguation; without it, a regression in '!' handling would not be caught by '==' or '>='."
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "return 2 !=\n 1"
+        validate:
+          success: true
+          result:
+            value: "true"
+            type: "boolean"
+
+  - name: "protocol script/eval - PREV_BINOP arithmetic '*' at EOL allows continuation"
+    description: "Regression guard for the '*' BINOP byte-class. The classifier dispatches via switch on the last byte; the '*' arm is distinct from the keyword-tail ('and'/'or') and the relational-equals ('=') arms. Pins this byte to verify the BINOP table row covers it."
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "return 2 *\n 3"
+        validate:
+          success: true
+          result:
+            value: "6"
+            type: "long"
+
+  - name: "protocol script/eval - PREV_BINOP word-boundary 'or' not confused with identifier"
+    description: "Symmetric to the 'band' word-boundary regression for 'and'. The variable 'door' ends in 'or' but the byte before 'or' is 'do' (identifier-continuing), so this must be classified as a regular statement, not as a continuation. ';' MUST be inserted before 'return' or the script fails to compile."
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "local (door = 9)\n return door"
+        validate:
+          success: true
+          result:
+            value: "9"
+            type: "long"
