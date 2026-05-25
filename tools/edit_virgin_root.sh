@@ -12,14 +12,14 @@
 # This wrapper interposes a staging step:
 #
 #   1. Compute md5 of databases/Virgin.root.
-#   2. Copy it to /tmp/frontier-edit-<sha>/Virgin.root.
+#   2. Copy it to a unique stage dir under $TMPDIR (default /tmp on macOS).
 #   3. Spawn frontier-cli --protocol against the staged copy (stdin/stdout
 #      passed through so the operator can interact normally).
 #   4. After the session exits, compute the staged copy's new md5 + size.
 #   5. Print a diff banner (before/after md5, size delta).
 #   6. If unchanged, discard the staged copy and exit.
 #   7. Otherwise prompt: "Promote changes to databases/Virgin.root? [y/N]"
-#        - yes: copy staged -> canonical, then rm -rf the temp.
+#        - yes: atomically replace canonical, then rm -rf the temp.
 #        - no:  rename staged copy to .bak-<timestamp> for inspection
 #               and tell the operator where it is.
 #
@@ -59,12 +59,13 @@ READ_ONLY=0
 # ---------------------------------------------------------------------------
 
 usage() {
-	cat <<EOF
+    cat <<EOF
 Usage: tools/edit_virgin_root.sh [options]
 
-Stage databases/Virgin.root to a temp directory, spawn frontier-cli's
-protocol-mode editor against the staged copy, then prompt before promoting
-any changes back to the canonical file.
+Stage databases/Virgin.root to a unique stage dir under \$TMPDIR (default
+/tmp on macOS), spawn frontier-cli's protocol-mode editor against the
+staged copy, then prompt before promoting any changes back to the
+canonical file.
 
 Options:
   --help        Show this help and exit.
@@ -88,30 +89,30 @@ EOF
 }
 
 err() {
-	echo "edit_virgin_root.sh: error: $*" >&2
+    echo "edit_virgin_root.sh: error: $*" >&2
 }
 
 md5_of() {
-	# Cross-platform md5; prefer md5sum (Linux + portable) then fall back to
-	# macOS's md5 -q. Frontier's dev platform is macOS but agents on CI may
-	# differ.
-	if command -v md5sum >/dev/null 2>&1; then
-		md5sum "$1" | cut -d' ' -f1
-	elif command -v md5 >/dev/null 2>&1; then
-		md5 -q "$1"
-	else
-		err "neither md5sum nor md5 available"
-		exit 2
-	fi
+    # Cross-platform md5; prefer md5sum (Linux + portable) then fall back to
+    # macOS's md5 -q. Frontier's dev platform is macOS but agents on CI may
+    # differ.
+    if command -v md5sum >/dev/null 2>&1; then
+        md5sum "$1" | cut -d' ' -f1
+    elif command -v md5 >/dev/null 2>&1; then
+        md5 -q "$1"
+    else
+        err "neither md5sum nor md5 available"
+        exit 2
+    fi
 }
 
 size_of() {
-	# Cross-platform byte size. stat differs between BSD (macOS) and GNU.
-	if stat -f%z "$1" >/dev/null 2>&1; then
-		stat -f%z "$1"
-	else
-		stat -c%s "$1"
-	fi
+    # Cross-platform byte size. stat differs between BSD (macOS) and GNU.
+    if stat -f%z "$1" >/dev/null 2>&1; then
+        stat -f%z "$1"
+    else
+        stat -c%s "$1"
+    fi
 }
 
 # ---------------------------------------------------------------------------
@@ -119,26 +120,26 @@ size_of() {
 # ---------------------------------------------------------------------------
 
 while [ $# -gt 0 ]; do
-	case "$1" in
-		--help|-h)
-			usage
-			exit 0
-			;;
-		--dry-run)
-			DRY_RUN=1
-			shift
-			;;
-		--read-only)
-			READ_ONLY=1
-			shift
-			;;
-		*)
-			err "unknown argument: $1"
-			echo >&2
-			usage >&2
-			exit 2
-			;;
-	esac
+    case "$1" in
+        --help|-h)
+            usage
+            exit 0
+            ;;
+        --dry-run)
+            DRY_RUN=1
+            shift
+            ;;
+        --read-only)
+            READ_ONLY=1
+            shift
+            ;;
+        *)
+            err "unknown argument: $1"
+            echo >&2
+            usage >&2
+            exit 2
+            ;;
+    esac
 done
 
 # ---------------------------------------------------------------------------
@@ -146,15 +147,15 @@ done
 # ---------------------------------------------------------------------------
 
 if [ ! -f "$CANONICAL_ROOT" ]; then
-	err "databases/Virgin.root not found at $CANONICAL_ROOT"
-	err "run this wrapper from the Frontier project root (or its tools/ dir)"
-	exit 2
+    err "databases/Virgin.root not found at $CANONICAL_ROOT"
+    err "run this wrapper from the Frontier project root (or its tools/ dir)"
+    exit 2
 fi
 
 if [ ! -x "$CLI" ]; then
-	err "frontier-cli not found or not executable at $CLI"
-	err "build it first: make -C frontier-cli"
-	exit 2
+    err "frontier-cli not found or not executable at $CLI"
+    err "build it first: make -C frontier-cli"
+    exit 2
 fi
 
 # ---------------------------------------------------------------------------
@@ -164,25 +165,43 @@ fi
 BEFORE_MD5="$(md5_of "$CANONICAL_ROOT")"
 BEFORE_SIZE="$(size_of "$CANONICAL_ROOT")"
 
-# Short hash from the canonical md5 — collisions across concurrent runs are
-# impossible because md5 is deterministic on identical inputs; we want both
-# uniqueness *and* reproducibility for debugging.
-STAGE_KEY="${BEFORE_MD5:0:12}"
-STAGE_DIR="/tmp/frontier-edit-$STAGE_KEY"
+# Unpredictable suffix via mktemp -d closes symlink-hijack on /tmp.
+# Prefix kept human-readable for debugging.
+STAGE_DIR="$(mktemp -d -t "frontier-edit-${BEFORE_MD5:0:12}-XXXXXXXX")" || {
+    err "mktemp -d failed"
+    exit 2
+}
 STAGED_ROOT="$STAGE_DIR/Virgin.root"
 
-# If a previous run left this exact stage dir around (same source md5),
-# refresh it. We never overwrite without copying anew.
-mkdir -p "$STAGE_DIR"
+# EXIT trap for cleanup. Sets STAGE_PRESERVE=1 to skip removal on the
+# "rejected promotion" and "--read-only changed" forensic branches.
+STAGE_PRESERVE=0
+cleanup_stage() {
+    if [ "$STAGE_PRESERVE" -eq 0 ] && [ -n "${STAGE_DIR:-}" ] && [ -d "$STAGE_DIR" ]; then
+        rm -rf "$STAGE_DIR"
+    fi
+    # Sweep any orphan .promoting.$$ file in the canonical's directory in
+    # case a signal hit between cp and mv during promotion.
+    canonical_dir="$(dirname "$CANONICAL_ROOT")"
+    [ -d "$canonical_dir" ] && find "$canonical_dir" -maxdepth 1 -name "*.promoting.$$" -delete 2>/dev/null || true
+}
+trap cleanup_stage EXIT
+
 cp "$CANONICAL_ROOT" "$STAGED_ROOT"
+# Belt-and-suspenders: verify what we wrote is a regular file.
+if [ ! -f "$STAGED_ROOT" ] || [ -L "$STAGED_ROOT" ]; then
+    err "staged path is not a regular file: $STAGED_ROOT"
+    exit 3
+fi
 
 # Verify the copy is byte-identical to the source — defense against a
 # truncated cp on a full /tmp.
 STAGED_MD5="$(md5_of "$STAGED_ROOT")"
 if [ "$STAGED_MD5" != "$BEFORE_MD5" ]; then
-	err "staged copy md5 ($STAGED_MD5) does not match source ($BEFORE_MD5)"
-	err "leaving stage dir for inspection: $STAGE_DIR"
-	exit 3
+    err "staged copy md5 ($STAGED_MD5) does not match source ($BEFORE_MD5)"
+    err "leaving stage dir for inspection: $STAGE_DIR"
+    STAGE_PRESERVE=1
+    exit 3
 fi
 
 echo "Staged Virgin.root for editing:"
@@ -197,9 +216,8 @@ echo
 # ---------------------------------------------------------------------------
 
 if [ "$DRY_RUN" -eq 1 ]; then
-	echo "(dry-run) skipping frontier-cli; cleaning up staged copy."
-	rm -rf "$STAGE_DIR"
-	exit 0
+    echo "(dry-run) skipping frontier-cli; cleaning up staged copy."
+    exit 0
 fi
 
 # ---------------------------------------------------------------------------
@@ -208,13 +226,13 @@ fi
 
 CLI_ARGS=(--protocol --skip-startup --system-root "$STAGED_ROOT")
 if [ "$READ_ONLY" -eq 0 ]; then
-	CLI_ARGS=(--allow-mutate "${CLI_ARGS[@]}")
+    CLI_ARGS=(--allow-mutate "${CLI_ARGS[@]}")
 fi
 
 if [ "$READ_ONLY" -eq 1 ]; then
-	echo "Spawning frontier-cli in read-only mode (no --allow-mutate)."
+    echo "Spawning frontier-cli in read-only mode (no --allow-mutate)."
 else
-	echo "Spawning frontier-cli with --allow-mutate against the staged copy."
+    echo "Spawning frontier-cli with --allow-mutate against the staged copy."
 fi
 echo "Command: $CLI ${CLI_ARGS[*]}"
 echo
@@ -247,17 +265,18 @@ echo "============================================="
 echo
 
 if [ "$BEFORE_MD5" = "$AFTER_MD5" ]; then
-	echo "No changes — discarding staged copy."
-	rm -rf "$STAGE_DIR"
-	exit 0
+    echo "No changes — discarding staged copy."
+    exit 0
 fi
 
 if [ "$READ_ONLY" -eq 1 ]; then
-	# This shouldn't happen — read-only mode means the CLI shouldn't write —
-	# but if it does, treat it as a hard error and preserve the staged copy.
-	err "staged copy changed despite --read-only — refusing to promote"
-	err "staged copy left at: $STAGED_ROOT"
-	exit 4
+    # This shouldn't happen — read-only mode means the CLI shouldn't write —
+    # but if it does, treat it as a hard error and preserve the staged copy
+    # for forensics.
+    err "staged copy changed despite --read-only — refusing to promote"
+    err "staged copy left at: $STAGED_ROOT"
+    STAGE_PRESERVE=1
+    exit 4
 fi
 
 # ---------------------------------------------------------------------------
@@ -267,18 +286,35 @@ fi
 # Default N: a stray Enter must not promote.
 read -r -p "Promote changes to databases/Virgin.root? [y/N] " response
 case "$response" in
-	y|Y|yes|YES|Yes)
-		cp "$STAGED_ROOT" "$CANONICAL_ROOT"
-		echo "Promoted staged copy -> $CANONICAL_ROOT"
-		rm -rf "$STAGE_DIR"
-		;;
-	*)
-		# Preserve the staged copy under a .bak path so the operator can
-		# inspect or recover from it later.
-		ts="$(date +%Y%m%d-%H%M%S)"
-		bak_path="$STAGE_DIR/Virgin.root.bak-$ts"
-		mv "$STAGED_ROOT" "$bak_path"
-		echo "Changes NOT promoted."
-		echo "Staged copy preserved at: $bak_path"
-		;;
+    y|Y|yes|YES|Yes)
+        # Race check: someone else may have written to the canonical while
+        # we held our staged copy. Refuse to clobber their work.
+        CURRENT_MD5="$(md5_of "$CANONICAL_ROOT")"
+        if [ "$CURRENT_MD5" != "$BEFORE_MD5" ]; then
+            err "$CANONICAL_ROOT changed externally during this session"
+            err "  expected md5: $BEFORE_MD5"
+            err "  current md5:  $CURRENT_MD5"
+            err "  refusing to promote — another process may be writing"
+            err "  staged copy preserved at: $STAGED_ROOT"
+            STAGE_PRESERVE=1
+            exit 5
+        fi
+        # Atomic on same filesystem: write to .new, then rename. A Ctrl-C
+        # mid-cp leaves the old Virgin.root intact; only the rename swaps it.
+        canonical_tmp="$CANONICAL_ROOT.promoting.$$"
+        cp "$STAGED_ROOT" "$canonical_tmp"
+        sync
+        mv "$canonical_tmp" "$CANONICAL_ROOT"
+        echo "Promoted staged copy -> $CANONICAL_ROOT"
+        ;;
+    *)
+        # Preserve the staged copy under a .bak path so the operator can
+        # inspect or recover from it later.
+        ts="$(date +%Y%m%d-%H%M%S)"
+        bak_path="$STAGE_DIR/Virgin.root.bak-$ts"
+        mv "$STAGED_ROOT" "$bak_path"
+        echo "Changes NOT promoted."
+        echo "Staged copy preserved at: $bak_path"
+        STAGE_PRESERVE=1
+        ;;
 esac
