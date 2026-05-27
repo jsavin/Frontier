@@ -66,3 +66,19 @@ Boolean shell_api_is_headless(void) {
 
     return (api != NULL) ? api->is_headless : false;
 }
+
+/* Issue #649: in-process source of truth for --lock-opened-roots. The CLI
+ * parser converges the env-var FRONTIER_LOCK_OPENED_ROOTS and the
+ * --lock-opened-roots flag into a single decision at parse time, then calls
+ * shell_api_set_lock_opened_roots() exactly once. Other modules (e.g.,
+ * dbopenverb in Common/source/dbverbs.c) read via shell_api_lock_opened_roots()
+ * rather than re-reading the env, so the value cannot drift mid-session. */
+static boolean g_lock_opened_roots = false;
+
+void shell_api_set_lock_opened_roots(boolean value) {
+    g_lock_opened_roots = value;
+}
+
+boolean shell_api_lock_opened_roots(void) {
+    return g_lock_opened_roots;
+}

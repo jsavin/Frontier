@@ -48,6 +48,14 @@ Boolean shell_api_is_headless(void);
 /* Convenience for tests/headless servers to install the strict implementation. */
 void shell_api_use_headless(void);
 
+/* Runtime flag accessors -- in-process source of truth for CLI runtime
+ * flags that downstream modules need to consult without linking back to the
+ * CLI parser. The CLI converges the env-var and CLI-flag inputs at parse
+ * time, then calls the setter once; everything else reads via the getter.
+ * See issue #649. */
+void shell_api_set_lock_opened_roots(boolean value);
+boolean shell_api_lock_opened_roots(void);
+
 #ifdef __cplusplus
 } /* extern "C" */
 #endif
