@@ -61,6 +61,7 @@
 #include "odbinternal.h"
 #include "db_format.h" /* migration helpers */
 #include "db.h" /* odb_context_guard */
+#include "shell_api.h" /* shell_api_lock_opened_roots() (#649) */
 
 /* DB_PATH_MAX is defined in db_format.h */
 
@@ -717,17 +718,19 @@ static boolean dbopenverb (hdltreenode hparam1, tyvaluerecord *vreturned) {
 		return (false);
 	}
 
-	/* Issue #127: --lock-opened-roots / FRONTIER_LOCK_OPENED_ROOTS=1 forces
-	 * every loaded-from-disk guest DB read-only, regardless of the user's
-	 * db.open(path, readonly) flag. Newly created roots (db.new /
-	 * file.save / file.saveAs / db.compactDatabase) are unaffected --
-	 * those paths don't go through dbopenverb.
+	/* Issue #127 / #649: --lock-opened-roots forces every loaded-from-disk
+	 * guest DB read-only, regardless of the user's db.open(path, readonly)
+	 * flag. Newly created roots (db.new / file.save / file.saveAs /
+	 * db.compactDatabase) are unaffected -- those paths don't go through
+	 * dbopenverb.
 	 *
-	 * env_truthy() (Common/SystemHeaders/standard.h) shares the truthiness
-	 * contract with cli_parser.c so the CLI flag and the dbopenverb env
-	 * check agree on what counts as enabled. */
-	if (!odbrec.flreadonly && env_truthy("FRONTIER_LOCK_OPENED_ROOTS")) {
-		log_debug(LOG_COMP_DB, "dbopenverb: FRONTIER_LOCK_OPENED_ROOTS in effect, forcing readonly=true");
+	 * shell_api_lock_opened_roots() is the authoritative in-process source
+	 * of truth (see Common/source/shell_api.c). cli_parser.c converges
+	 * the FRONTIER_LOCK_OPENED_ROOTS env var and the --lock-opened-roots
+	 * CLI flag into the accessor at startup, then everything else reads
+	 * here -- no per-call env_truthy() that could drift mid-session. */
+	if (!odbrec.flreadonly && shell_api_lock_opened_roots()) {
+		log_debug(LOG_COMP_DB, "dbopenverb: shell_api_lock_opened_roots in effect, forcing readonly=true");
 		odbrec.flreadonly = true;
 	}
 
