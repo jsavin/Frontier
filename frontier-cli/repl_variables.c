@@ -417,10 +417,8 @@ static int prev_matches_keyword(const char *out, const char *p,
  *   keyword boolean:      'and', 'or' (word-bounded)
  *   symbolic relational:  '==', '>=', '<=', '!='
  *   keyword relational:   'equals', 'notEquals', 'lessThan', 'greaterThan'
- *                         (note: 'lessThanOrEqual' / 'greaterThanOrEqual'
- *                         are documented but NOT accepted by the parser as
- *                         infix operators — confirmed empirically — so they
- *                         are intentionally not included here)
+ *                         (the UserTalk parser does not accept word forms
+ *                         of '<=' / '>=', so none are listed here)
  *   keyword string/list:  'contains', 'beginsWith', 'endsWith'
  *   single-char arith:    '+', '-', '*', '/', '%'
  *   list separator:       ','

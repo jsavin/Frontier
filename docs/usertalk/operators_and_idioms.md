@@ -15,9 +15,9 @@ UserTalk supports both **symbol** and **word** forms. They compile identically. 
 | `==` | `equals` | Equal |
 | `!=` | `notEquals` | Not equal |
 | `<` | `lessThan` | Less than |
-| `<=` | `lessThanOrEqual` | Less than or equal |
+| `<=` | (none) | Less than or equal |
 | `>` | `greaterThan` | Greater than |
-| `>=` | `greaterThanOrEqual` | Greater than or equal |
+| `>=` | (none) | Greater than or equal |
 
 ```
 if examples.count == 0 {...}                   // ✓ idiomatic

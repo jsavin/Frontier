@@ -771,8 +771,7 @@ tests:
   # Completes PREV_BINOP coverage for every UserTalk infix operator
   # documented in docs/usertalk/operators_and_idioms.md:
   #   - symbolic arithmetic: '%' (modulo)
-  #   - keyword comparison: equals, notEquals, lessThan, greaterThan,
-  #     lessThanOrEqual, greaterThanOrEqual
+  #   - keyword comparison: equals, notEquals, lessThan, greaterThan
   #   - keyword string/list infix: contains, beginsWith, endsWith
   # Each operator at EOL must suppress the synthetic ';' so the next
   # line continues the expression instead of being parsed as a new
@@ -837,13 +836,6 @@ tests:
           result:
             value: "true"
             type: "boolean"
-
-  # Note: docs/usertalk/operators_and_idioms.md lists 'lessThanOrEqual' and
-  # 'greaterThanOrEqual' as word forms of '<=' / '>=', but the UserTalk
-  # parser does NOT actually accept those as infix operators (verified
-  # empirically — '1 lessThanOrEqual 1' compiles and returns 1, not true).
-  # They are intentionally omitted from prev_is_binop until either the
-  # parser is extended or the docs are corrected.
 
   - name: "protocol script/eval - PREV_BINOP keyword 'contains' at EOL allows continuation"
     description: "Pattern: 'return \"foo\" contains\\n \"f\"'. Substring infix operator. Ends in 's' — shares last byte with 'equals'/'notEquals' so helper must compare full bytes."
