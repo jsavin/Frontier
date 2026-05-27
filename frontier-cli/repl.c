@@ -2675,6 +2675,25 @@ static boolean process_line(const char *line, boolean *running) {
 
 	tyvaluerecord val;
 	bigstring error_msg;
+
+	/*
+	 * PR2 of REPL error context chain (2026-05-27 JES): tell the runtime
+	 * to subtract the REPL wrapper's 1-line prefix
+	 * ("with system.temp.FrontierREPL.variables {\r") when reporting
+	 * line numbers on the <eval> frame. Mirrors the protocol-mode
+	 * eval offset install in op_handler.c::handle_script_eval.
+	 *
+	 * Gated on the variables table existing because
+	 * repl_eval_with_variables_value falls through to a non-wrapped
+	 * direct eval when it doesn't -- in that path the raw line number
+	 * IS the user line and the offset would over-subtract.
+	 */
+	hdlhashtable repl_vars = repl_get_variables_table();
+	if (repl_vars != nil)
+		langsetevalinputoffset(1);
+	else
+		langclearevalinputoffset();
+
 	boolean success = repl_eval_with_variables_value(line, &val, error_msg);
 
 	g_script_running = 0;  // Script finished
@@ -2683,8 +2702,15 @@ static boolean process_line(const char *line, boolean *running) {
 		// Success - display result (handles strings >255 chars)
 		repl_output_value(&val);
 		disposevaluerecord(val, false);
+		langclearevalinputoffset();
 	} else {
-		// Error - display error
+		// Error - display error.
+		// PR2: route through the structured renderer; pass the user's
+		// input line as the <eval>-frame source so the source-window
+		// has something to point at. The structured renderer reads the
+		// snapshot via langgetlasterror/langgetstackframe (set by PR1)
+		// and falls back to the legacy single-line repl_output_error
+		// when no snapshot is available.
 		char error_buf[256];
 		size_t error_len = stringlength(error_msg);
 		if (error_len > sizeof(error_buf) - 1) {
@@ -2695,7 +2721,13 @@ static boolean process_line(const char *line, boolean *running) {
 			memcpy(error_buf, stringbaseaddress(error_msg), error_len);
 			error_buf[error_len] = '\0';
 		}
-		repl_output_error(error_buf);
+		repl_output_structured_error(error_buf, line);
+		/* Clear the offset AFTER rendering: the structured renderer
+		 * reads langgetlasterror, which applies the offset internally
+		 * to <eval> frames. Clearing before would leave the offset
+		 * unset for a follow-up renderer call (none today, but defense
+		 * in depth). */
+		langclearevalinputoffset();
 	}
 
 	return true;

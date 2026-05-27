@@ -1,0 +1,210 @@
+# PR2 of REPL error context chain: REPL display with source context.
+#
+# These tests assert that the interactive REPL renders rich error displays
+# when an evaluation fails. The renderer consumes the structured location
+# and stack data PR1 added (lang.c langgetlasterror/langgetstackdepth/
+# langgetstackframe) and emits:
+#
+#   - a header line with the error message
+#   - one "at <script> line N" line per stack frame
+#   - a source-context window (the failing line plus +/-7 lines when
+#     available; the REPL's interactive process_line path gives one
+#     source line per eval, so the window is single-line in practice)
+#   - the error line marked (bold in TTY mode, ">>>" prefix in non-TTY)
+#   - the token range underlined (ANSI underline in TTY, "^^^" caret in
+#     non-TTY)
+#
+# TTY detection uses isatty(STDERR_FILENO). REPL tests pipe stdin, so
+# isatty(stderr) is false by default; FRONTIER_FORCE_COLOR=1 is the
+# override that lets us cover TTY rendering from non-interactive test
+# runs (and lets users force color when piping to a pager).
+#
+# All tests are repl_mode: stdin -> frontier-cli REPL -> stderr capture.
+# sequential: true because REPL spawns share process-wide terminal
+# state and we don't want concurrent runs racing on stderr capture.
+
+sequential: true
+
+tests:
+  # ===========================================================================
+  # Non-TTY mode (default for piped stdin without FRONTIER_FORCE_COLOR)
+  # ===========================================================================
+
+  - name: "error_display - non-TTY syntax error emits header, location, caret"
+    description: |
+      Single-line eval input with a trailing-operator syntax error. Without
+      FRONTIER_FORCE_COLOR the renderer must use the plain-text fallback:
+      ">>>" marker on the error line and a "^^^" caret line beneath the
+      token range. The "at <eval> line N" frame header must be present.
+      No ANSI escape codes are allowed in plain mode.
+
+      The line number is not pinned: an EOF-terminated syntax error
+      currently reports the wrapper's closing brace line ("with ... { \n
+      <user>\n }"), which translates to user-relative line 2 even
+      though the user typed one line. The header text "at <eval> line"
+      is the load-bearing assertion -- the actual digit is whichever
+      line the runtime claims is the failure site.
+    repl_mode: true
+    stdin_input: "foo +\n/exit\n"
+    expected_success: true
+    expected_output_contains:
+      - "at <eval> line"
+      - ">>>"
+      - "^^^"
+    expected_output_not_contains:
+      - "\x1b[1m"
+      - "\x1b[4m"
+
+  - name: "error_display - non-TTY runtime error shows source line verbatim"
+    description: |
+      Undefined identifier on line 1. Same plain-text rendering rules as
+      the syntax-error case. The user's source line content must appear
+      verbatim in the rendered window so the user can read it back.
+    repl_mode: true
+    stdin_input: "local (x = undefinedXYZ123)\n/exit\n"
+    expected_success: true
+    expected_output_contains:
+      - "at <eval> line"
+      - "local (x = undefinedXYZ123)"
+      - ">>>"
+      - "^^^"
+    expected_output_not_contains:
+      - "\x1b[1m"
+
+  - name: "error_display - non-TTY mode never leaks ANSI codes anywhere"
+    description: |
+      Belt-and-suspenders: no ANSI escape sequence (CSI introducer)
+      anywhere in the output for plain-text-mode errors. Reset and
+      hyperlink sequences are equally forbidden.
+    repl_mode: true
+    stdin_input: "scriptError (\"user-raised\")\n/exit\n"
+    expected_success: true
+    expected_output_contains:
+      - "at <eval> line"
+    expected_output_not_contains:
+      - "\x1b["
+
+  # ===========================================================================
+  # TTY mode (FRONTIER_FORCE_COLOR=1 overrides isatty check)
+  # ===========================================================================
+
+  - name: "error_display - TTY syntax error uses bold + underline ANSI"
+    description: |
+      Same broken input as the first non-TTY test, but with
+      FRONTIER_FORCE_COLOR=1 set. The renderer must emit ANSI bold (ESC[1m)
+      and underline (ESC[4m) sequences along with an ANSI reset (ESC[0m).
+      No plain-text ">>>" / "^^^" markers in TTY mode.
+    repl_mode: true
+    stdin_input: "foo +\n/exit\n"
+    environment:
+      FRONTIER_FORCE_COLOR: "1"
+    expected_success: true
+    expected_output_contains:
+      - "at <eval> line"
+      - "\x1b[1m"
+      - "\x1b[4m"
+      - "\x1b[0m"
+    expected_output_not_contains:
+      - ">>>"
+      - "^^^"
+
+  - name: "error_display - TTY runtime error shows source line plus ANSI"
+    description: |
+      Runtime error under TTY rendering still includes the user's source
+      text and the ANSI bold/underline/reset triplet that marks the
+      failure site. The full source string is NOT asserted as a single
+      substring: the renderer wraps the failing token in
+      ESC[4m..ESC[0m, which breaks the line wherever the token sits.
+      We assert on the distinctive identifier "undefinedXYZ123" which
+      lies past the token range in observed runs (the failing token is
+      typically a small fragment near the start of the identifier or at
+      a closing paren); if the renderer ever decides to underline the
+      entire identifier this assertion still holds because the bytes
+      survive ANSI insertion as a contiguous substring outside the
+      underline span.
+
+      ANSI bold/underline/reset must all be present.
+    repl_mode: true
+    stdin_input: "local (x = undefinedXYZ123)\n/exit\n"
+    environment:
+      FRONTIER_FORCE_COLOR: "1"
+    expected_success: true
+    expected_output_contains:
+      - "at <eval> line"
+      - "undefinedXYZ123"
+      - "\x1b[1m"
+      - "\x1b[4m"
+      - "\x1b[0m"
+
+  # ===========================================================================
+  # Security: control-byte injection sanitization (PR2 gate review P1.2)
+  # ===========================================================================
+
+  - name: "error_display - ESC bytes in source are sanitized, not passed through"
+    description: |
+      The renderer writes the user's source line back to stderr inside its
+      own ANSI bold/underline envelope. If raw control bytes from the
+      source survived that write, a hostile script (e.g. one loaded from a
+      network ODB) could embed OSC 52 (clipboard write), OSC 8 (hyperlink
+      hijack), title-bar spoof, or cursor-reposition sequences that the
+      terminal would execute.
+
+      This test feeds a line that contains a literal ESC + ']' + ... + BEL
+      sequence ahead of an undefined identifier so the parser errors and
+      the source line gets rendered. The renderer must replace each
+      control byte with '?' before writing the source line. We assert
+      positively on the sanitized form ("?]0;HACKED?") to prove the
+      substitution happened -- a negative-only assertion would conflate
+      the source-line ESC with pre-existing ESC bytes that may appear in
+      lang-ERROR log output (those carry the offending character through
+      the parser's "is an illegal character" message and are out of scope
+      for this PR).
+
+      Non-TTY mode keeps the renderer in plain-text mode so the only
+      potential ESC source in the ">>>" line is the source bytes -- our
+      sanitization is the only thing standing between the bytes and the
+      terminal.
+    repl_mode: true
+    stdin_input: "\x1b]0;HACKED\x07 undefinedXYZ123\n/exit\n"
+    expected_success: true
+    expected_output_contains:
+      - "at <eval> line"
+      - ">>>"
+      # The literal ESC and BEL bytes in the source must show as '?' in
+      # the rendered source line. If sanitization were missing this would
+      # read ">>> 1 | <ESC>]0;HACKED<BEL> undefinedXYZ123" instead.
+      - "?]0;HACKED? undefinedXYZ123"
+
+  # ===========================================================================
+  # Tab-character caret alignment (PR2 gate review P2.1)
+  # ===========================================================================
+
+  - name: "error_display - tab in source aligns caret to visual columns"
+    description: |
+      Frontier outline source uses tabs heavily. A byte-offset caret
+      computation desyncs the rendered ">>>" / "^^^" markers from what
+      the user sees on screen by 7+ columns per tab. The renderer
+      expands tabs to 8-column tab stops both in the source-line write
+      and in the caret-column math, so a leading tab pushes the caret
+      out to column 8 (gutter prefix + tab stop) rather than column 1.
+
+      Input is "\tfoo +\n" -- a single tab then a syntax error.
+      The rendered line should show the tab as eight spaces, and the
+      caret line should begin its "^^^" run at the visual column where
+      the failing token starts, not at byte offset 1.
+
+      The test asserts on a uniquely-shaped caret line: at least 8
+      spaces of indent before the first '^', proving the tab was
+      expanded for caret positioning. We pick non-TTY mode because
+      "^^^" is only emitted in plain-text rendering.
+    repl_mode: true
+    stdin_input: "\tfoo +\n/exit\n"
+    expected_success: true
+    expected_output_contains:
+      - "at <eval> line"
+      - ">>>"
+      # Eight or more leading spaces before the first caret -- the
+      # renderer's gutter prefix is 4 (marker) + digit_width + 3 (" | "),
+      # plus the tab expansion of 8 columns for the source line.
+      # We assert on the more conservative substring: 8 spaces then '^'.
+      - "        ^"

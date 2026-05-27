@@ -20,10 +20,18 @@
 #include "../Common/headers/strings.h"
 #include "../Common/headers/tablestructure.h"  /* For roottable */
 #include "../Common/headers/logging.h"
+#include "../Common/headers/op.h"               /* For hdloutlinerecord (PR2 source fetch) */
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <sys/ioctl.h>
+
+/* Forward declaration for ODB outline-text retrieval -- mirrors
+ * debug_handler.c. opgetlangtext exists in Common/source but has no
+ * public header. Used by the PR2 structured error renderer to fetch
+ * source for named-script stack frames. */
+extern boolean opgetlangtext(hdloutlinerecord, boolean, Handle *);	/* oplangtext.c */
 
 /* Global linenoise state for async output (set by event loop) */
 static struct linenoiseState *g_linenoisestate = NULL;
@@ -642,4 +650,579 @@ void repl_async_output(const char *message) {
 		putchar('\n');
 		fflush(stdout);
 	}
+}
+
+/* ========================================================================
+ * Structured error renderer (PR2 of REPL error context chain)
+ *
+ * Reads the snapshot PR1 captures via langseterrorcallbackline (exposed
+ * through langgetlasterror / langgetstackdepth / langgetstackframe) and
+ * builds a rich error display with per-frame source-context windows.
+ *
+ * ANSI styling: bold + underline of the failing token in TTY mode, with
+ * a ">>>" line prefix + "^^^" caret line in plain-text mode. TTY check
+ * is isatty(STDERR_FILENO) with FRONTIER_FORCE_COLOR=1 as override.
+ *
+ * Source fetching: the outermost <eval> frame uses the caller-supplied
+ * eval_source_text (the line the user just typed); named-script frames
+ * resolve via the refcon-as-hdlhashnode (the encoding op_handler.c
+ * uses) and opgetlangtext, mirroring debug_handler.c::handle_debug_getsource.
+ * ======================================================================== */
+
+#define ERR_CONTEXT_BEFORE 7
+#define ERR_CONTEXT_AFTER  7
+
+/* ANSI escape sequences -- kept minimal. Bold marks the failing line in
+ * the source window; underline brackets the failing token; reset closes
+ * each marker. Codes are stored as string constants so the compiler can
+ * coalesce them. */
+#define ANSI_BOLD       "\x1b[1m"
+#define ANSI_UNDERLINE  "\x1b[4m"
+#define ANSI_RESET      "\x1b[0m"
+
+/*
+ * TTY-vs-plain decision. FRONTIER_FORCE_COLOR=1 forces ANSI rendering
+ * even when stderr is not a TTY; useful when piping the REPL into a
+ * pager that interprets ANSI, and lets the integration test runner
+ * exercise the TTY branch from a pipe-driven REPL spawn.
+ *
+ * Any other value (including "0") falls through to the isatty check, so
+ * unset and "0" are equivalent (no force; isatty wins).
+ */
+static boolean stderr_supports_ansi(void) {
+	const char *force = getenv("FRONTIER_FORCE_COLOR");
+	if (force != NULL && force[0] == '1' && force[1] == '\0')
+		return true;
+	return isatty(STDERR_FILENO) ? true : false;
+}
+
+/*
+ * Derive a printable script name from an error-frame errorrefcon, the
+ * same encoding op_handler.c uses for protocol responses:
+ *   0L  -- outermost top-level (REPL input)
+ *   -1L -- inline nested call (script-already-running path)
+ *   else -- (long) hdlhashnode for a named script; we print the leaf name
+ *
+ * Buffer is cstring-sized; caller provides it.
+ */
+static void script_name_for_frame(long refcon, char *out, size_t outlen) {
+	if (outlen == 0) return;
+
+	if (refcon == 0L) {
+		strncpy(out, "<eval>", outlen);
+		out[outlen - 1] = '\0';
+		return;
+	}
+	if (refcon == -1L) {
+		strncpy(out, "<eval-inner>", outlen);
+		out[outlen - 1] = '\0';
+		return;
+	}
+
+	hdlhashnode hnode = (hdlhashnode) refcon;
+	if (hnode == nil) {
+		strncpy(out, "<unknown>", outlen);
+		out[outlen - 1] = '\0';
+		return;
+	}
+
+	/* hashkey is a Pascal bigstring: byte 0 is length, bytes 1..N are
+	 * the identifier characters. */
+	const unsigned char *bskey = (const unsigned char *)(**hnode).hashkey;
+	size_t n = (size_t) bskey[0];
+	if (n >= outlen) n = outlen - 1;
+	memcpy(out, (const char *)(bskey + 1), n);
+	out[n] = '\0';
+}
+
+/*
+ * Resolve a named-script frame's hdlhashnode (the errorrefcon a
+ * non-<eval> frame carries) to its source text. The node already points
+ * at the script's value record, so we skip the path-string round-trip
+ * the previous implementation needed and go straight to the outline.
+ * This mirrors debug_handler.c::handle_debug_getsource's outline-fetch
+ * tail (after it has resolved the path) but starts from the node, not
+ * a path string.
+ *
+ * NOTE: requires the caller to hold the GIL (we touch the ODB). All
+ * current invocation paths (process_line in repl.c) already do.
+ *
+ * Returns a malloc'd null-terminated string (caller frees) with CR
+ * separators normalized to LF, or NULL on any failure. We choose to
+ * normalize here so the line splitter has a single separator to chase.
+ *
+ * Only handles in-memory outlines -- the headless REPL keeps scripts
+ * hot once loaded, and we don't want to take a load-from-DB dependency
+ * in the error path. If the outline isn't in memory the renderer skips
+ * the source window for that frame.
+ */
+static char *fetch_script_source_from_node(hdlhashnode hnode) {
+	if (hnode == nil)
+		return NULL;
+
+	tyvaluerecord val = (**hnode).val;
+	if (val.valuetype != externalvaluetype)
+		return NULL;
+
+	hdlexternalvariable hv = (hdlexternalvariable)val.data.externalvalue;
+	if (hv == nil)
+		return NULL;
+
+	if (!(**hv).flinmemory)
+		return NULL;
+
+	hdloutlinerecord houtline = (hdloutlinerecord)(**hv).variabledata;
+	if (houtline == nil)
+		return NULL;
+
+	Handle htext = nil;
+	opgetlangtext(houtline, false, &htext);
+	if (htext == nil)
+		return NULL;
+
+	long textlen = gethandlesize(htext);
+	char *out = (char *) malloc((size_t)textlen + 1);
+	if (out == NULL) {
+		disposehandle(htext);
+		return NULL;
+	}
+	memcpy(out, *htext, (size_t)textlen);
+	out[textlen] = '\0';
+	disposehandle(htext);
+
+	/* Normalize CR to LF so the line splitter has a single separator.
+	 * opgetlangtext returns CR-separated text (Frontier outline
+	 * convention); the splitter below treats LF as the boundary. */
+	for (long i = 0; i < textlen; i++)
+		if (out[i] == '\r')
+			out[i] = '\n';
+
+	return out;
+}
+
+/*
+ * Split a NUL-terminated source string into an array of NUL-terminated
+ * lines. Caller must free *out_lines AND free each entry it owns -- we
+ * allocate the outer array and a single backing buffer; entries point
+ * into the backing buffer (so free(backing); free(out_lines)). To keep
+ * the caller simple we return both via out params: out_buf is the
+ * backing string copy, out_lines is the array of char* pointers into it.
+ *
+ * Returns true on success, false on OOM or empty input. Empty input
+ * yields a single empty line so the renderer always has something to
+ * point at.
+ */
+static boolean split_into_lines(const char *src,
+                                 char **out_buf,
+                                 char ***out_lines,
+                                 int *out_count) {
+	*out_buf = NULL;
+	*out_lines = NULL;
+	*out_count = 0;
+
+	if (src == NULL)
+		src = "";
+
+	size_t srclen = strlen(src);
+	char *buf = (char *) malloc(srclen + 1);
+	if (buf == NULL)
+		return false;
+	memcpy(buf, src, srclen);
+	buf[srclen] = '\0';
+
+	/* First pass: count lines (always at least 1). */
+	int count = 1;
+	for (size_t i = 0; i < srclen; i++)
+		if (buf[i] == '\n')
+			count++;
+
+	char **lines = (char **) malloc((size_t)count * sizeof(char *));
+	if (lines == NULL) {
+		free(buf);
+		return false;
+	}
+
+	int ix = 0;
+	lines[ix++] = buf;
+	for (size_t i = 0; i < srclen; i++) {
+		if (buf[i] == '\n') {
+			buf[i] = '\0';
+			if (ix < count)
+				lines[ix++] = buf + i + 1;
+		}
+	}
+
+	/* If the input ends with a trailing newline, the last "line" is
+	 * empty; that's intentional -- we keep it so the splitter is
+	 * faithful to the input. */
+
+	*out_buf = buf;
+	*out_lines = lines;
+	*out_count = ix;
+	return true;
+}
+
+/* Visual column width for tab expansion. Tabs advance to the next
+ * multiple of TAB_WIDTH in visual column space. Eight matches the
+ * canonical Frontier outline indent and the most common terminal
+ * default. */
+#define TAB_WIDTH 8
+
+/*
+ * Returns true when byte b is safe to emit to a terminal as-is. Control
+ * bytes (< 0x20, except tab which write_source_line expands) and DEL
+ * are unsafe — they can fire ANSI / OSC sequences (title spoof, OSC 52
+ * clipboard write, OSC 8 hyperlink hijack, cursor reposition). Bytes
+ * 0x80-0x9F are also rejected before MacRoman translation since several
+ * map to format-control code points. The renderer substitutes '?' for
+ * any byte that fails this check; '?' preserves single-byte alignment
+ * (same width as the rejected byte in a fixed-width font) and matches
+ * the debugger-style sanitization convention.
+ *
+ * Tab (0x09) is allowed here because write_source_line expands tabs to
+ * spaces before emitting them; the visual-column math depends on tab
+ * being preserved through this filter.
+ */
+static boolean is_safe_display_byte(unsigned char b) {
+	if (b == '\t')
+		return true;
+	if (b < 0x20)
+		return false;	/* C0 controls including ESC, BEL, BS */
+	if (b == 0x7F)
+		return false;	/* DEL */
+	if (b >= 0x80 && b <= 0x9F)
+		return false;	/* C1 controls (pre-MacRoman) */
+	return true;
+}
+
+/*
+ * Compute the visual column that a given byte offset reaches when the
+ * line is rendered with tabs expanded to TAB_WIDTH-stops. start_col is
+ * the visual column at which byte 0 of the line is emitted (0 for the
+ * caret-line math; the gutter prefix is added separately). Bytes that
+ * fail is_safe_display_byte() contribute one column (the '?' substitute).
+ *
+ * Note: this is a byte-to-column map, not a grapheme-to-column map. UTF-8
+ * multi-byte sequences (from MacRoman 0x80-0xFF) render as one display
+ * column per source byte in our renderer, which matches what most
+ * monospace terminals do for the BMP characters in the MacRoman table.
+ * Combining marks would break this assumption, but MacRoman has none.
+ */
+static int visual_column_for_byte(const char *line, size_t byte_offset,
+                                  int start_col) {
+	int col = start_col;
+	for (size_t i = 0; i < byte_offset; i++) {
+		unsigned char ch = (unsigned char)line[i];
+		if (ch == '\t') {
+			col += TAB_WIDTH - (col % TAB_WIDTH);
+		} else {
+			col++;
+		}
+	}
+	return col;
+}
+
+/* Write a single source line to stderr with CR->LF and Mac Roman->UTF-8
+ * conversion (same translation fputs_cr_to_lf does). The input slice is
+ * a single line already, so we just translate per-byte.
+ *
+ * Tabs are expanded to spaces using TAB_WIDTH-column tab stops, relative
+ * to the supplied start_col (the visual column at which the first byte
+ * lands). This keeps caret alignment consistent with what the user sees
+ * on screen.
+ *
+ * Control bytes that could fire terminal sequences (ESC, BEL, OSC, etc.)
+ * are replaced with '?' via is_safe_display_byte(). The bold/underline
+ * envelope around the failing token therefore can't be hijacked by
+ * source bytes coming in from a hostile script.
+ *
+ * Returns the visual column reached after the last byte is emitted.
+ */
+static int write_source_line(const char *line, size_t len, int start_col) {
+	int col = start_col;
+	for (size_t i = 0; i < len; i++) {
+		unsigned char ch = (unsigned char)line[i];
+		if (ch == '\r' || ch == '\n')
+			continue;	/* shouldn't occur; line is pre-split */
+		if (ch == '\t') {
+			int spaces = TAB_WIDTH - (col % TAB_WIDTH);
+			for (int s = 0; s < spaces; s++)
+				putc(' ', stderr);
+			col += spaces;
+			continue;
+		}
+		if (!is_safe_display_byte(ch)) {
+			putc('?', stderr);
+			col++;
+			continue;
+		}
+		if (ch < 0x80) {
+			putc(ch, stderr);
+		} else {
+			putc_utf8(kMacRomanHighToUnicode[ch - 0x80], stderr);
+		}
+		col++;
+	}
+	return col;
+}
+
+/* Width (in decimal digits) of a 1-origin line number. */
+static int digit_width(int n) {
+	if (n < 10)   return 1;
+	if (n < 100)  return 2;
+	if (n < 1000) return 3;
+	int w = 0;
+	while (n > 0) { w++; n /= 10; }
+	return w;
+}
+
+/*
+ * Render a source-context window for one stack frame.
+ *
+ *   lines / count          - all source lines for this frame (1-origin
+ *                            indexing via lines[error_line-1])
+ *   error_line             - 1-origin line number where the error fired
+ *   token_start, token_end - 0-origin column range of the failing token
+ *                            on error_line. If both are 0 (no token
+ *                            available) we fall back to underlining /
+ *                            caret-marking the whole line.
+ *   use_ansi               - true for TTY rendering (bold/underline);
+ *                            false for the plain-text fallback (">>>"
+ *                            prefix + "^^^" caret line)
+ */
+static void render_source_window(char **lines, int count,
+                                  int error_line,
+                                  int token_start, int token_end,
+                                  boolean use_ansi,
+                                  int *out_actual_line) {
+	if (count <= 0) {
+		if (out_actual_line != NULL)
+			*out_actual_line = error_line;
+		return;
+	}
+
+	/* Clamp error_line into the source range. The REPL wrapper adds a
+	 * synthetic closing brace line; an EOF-terminated parse error
+	 * reports that synthetic line (raw line = wrapper_prefix +
+	 * user_lines + 1), and after subtracting the eval input offset
+	 * the result can sit one past the last user line. Clamp to the
+	 * last actual line so the user sees their own source rather than
+	 * an empty window for these EOF-shaped failures.
+	 *
+	 * The clamped value is returned via out_actual_line so the caller
+	 * can use it in the frame header instead of the raw runtime value;
+	 * otherwise the header reads "line 2" while the window highlights
+	 * line 1. */
+	if (error_line < 1)
+		error_line = 1;
+	if (error_line > count)
+		error_line = count;
+	if (out_actual_line != NULL)
+		*out_actual_line = error_line;
+
+	int first = error_line - ERR_CONTEXT_BEFORE;
+	if (first < 1) first = 1;
+	int last = error_line + ERR_CONTEXT_AFTER;
+	if (last > count) last = count;
+
+	int gutter_w = digit_width(last);
+
+	for (int ln = first; ln <= last; ln++) {
+		const char *src = lines[ln - 1];
+		size_t srclen = strlen(src);
+		boolean is_error_line = (ln == error_line);
+
+		/* Marker column (plain-text mode): ">>>" for the error line,
+		 * "   " otherwise. TTY mode uses bold on the error line and
+		 * blanks the marker column to keep the gutter alignment. */
+		if (!use_ansi) {
+			fputs(is_error_line ? ">>> " : "    ", stderr);
+		} else {
+			fputs("    ", stderr);
+		}
+
+		fprintf(stderr, "%*d | ", gutter_w, ln);
+
+		if (is_error_line) {
+			if (use_ansi) {
+				/* Bold the entire line for visibility, with underline
+				 * over the token range. Token range is clamped to the
+				 * line length so we never run off the end.
+				 *
+				 * Order matters: clamp ts up to srclen BEFORE clamping
+				 * te, otherwise a tokenstart past srclen falls through
+				 * to write_source_line(src, ts) and reads past the end
+				 * of this line into the next packed line in the
+				 * backing buffer. */
+				int ts = token_start;
+				int te = token_end;
+				if (ts < 0) ts = 0;
+				if (ts > (int)srclen) ts = (int)srclen;
+				if (te > (int)srclen) te = (int)srclen;
+				if (te < ts) te = ts;
+
+				/* If we have no actual token range (PR1 sets both to 0
+				 * when nothing useful is known), underline the whole
+				 * line as a conservative fallback. */
+				if (ts == 0 && te == 0) {
+					ts = 0;
+					te = (int)srclen;
+				}
+
+				fputs(ANSI_BOLD, stderr);
+				int col = 0;
+				if (ts > 0)
+					col = write_source_line(src, (size_t)ts, col);
+				fputs(ANSI_UNDERLINE, stderr);
+				col = write_source_line(src + ts, (size_t)(te - ts), col);
+				fputs(ANSI_RESET, stderr);
+				fputs(ANSI_BOLD, stderr);
+				if ((size_t)te < srclen)
+					(void) write_source_line(src + te, srclen - (size_t)te, col);
+				fputs(ANSI_RESET, stderr);
+				putc('\n', stderr);
+			} else {
+				(void) write_source_line(src, srclen, 0);
+				putc('\n', stderr);
+
+				/* Caret line: leading spaces sized to match the gutter
+				 * ("    NNN | ") plus the visual column of the token
+				 * start, then "^^^" spanning the visual width of the
+				 * token range. We use visual columns (not byte offsets)
+				 * so tabs in the source line don't desync the caret. */
+				int prefix_spaces = 4 + gutter_w + 3;	/* marker + gutter + " | " */
+				int ts = token_start;
+				int te = token_end;
+				if (ts < 0) ts = 0;
+				if (ts > (int)srclen) ts = (int)srclen;
+				if (te > (int)srclen) te = (int)srclen;
+				if (te < ts) te = ts;
+
+				int ts_col = visual_column_for_byte(src, (size_t)ts, 0);
+				int te_col;
+				int caret_count;
+				if (ts == 0 && te == 0) {
+					/* No token info -- caret the whole line. */
+					te_col = visual_column_for_byte(src, srclen, 0);
+					caret_count = te_col;
+					if (caret_count < 3) caret_count = 3;
+				} else {
+					te_col = visual_column_for_byte(src, (size_t)te, 0);
+					caret_count = te_col - ts_col;
+					if (caret_count < 3) caret_count = 3;
+				}
+
+				for (int i = 0; i < prefix_spaces + ts_col; i++)
+					putc(' ', stderr);
+				for (int i = 0; i < caret_count; i++)
+					putc('^', stderr);
+				putc('\n', stderr);
+			}
+		} else {
+			(void) write_source_line(src, srclen, 0);
+			putc('\n', stderr);
+		}
+	}
+}
+
+void repl_output_structured_error(const char *error_msg,
+                                  const char *eval_source_text) {
+	/* Fall back to the legacy single-line renderer if there's no
+	 * structured snapshot to draw from. This keeps the entry point
+	 * safe to call unconditionally on the error path. */
+	short depth = langgetstackdepth();
+	tyerrorrecord topframe;
+	boolean have_snapshot = (depth > 0) && langgetlasterror(&topframe);
+
+	if (!have_snapshot) {
+		repl_output_error(error_msg);
+		return;
+	}
+
+	boolean use_ansi = stderr_supports_ansi();
+
+	/* Header. Logged at error severity to match the legacy renderer's
+	 * logging behavior so existing log consumers don't regress. */
+	const char *msg = (error_msg != NULL && error_msg[0] != '\0')
+	                  ? error_msg
+	                  : "(no message)";
+	log_error(LOG_COMP_GENERAL, "%s", msg);
+
+	if (use_ansi)
+		fprintf(stderr, ANSI_BOLD "Error: %s" ANSI_RESET "\n", msg);
+	else
+		fprintf(stderr, "Error: %s\n", msg);
+
+	/* Walk frames from failure site (ix=0) to outermost caller. For
+	 * each frame: emit the "at <script> line N" header and render the
+	 * source-context window when we can fetch the source for that
+	 * frame. */
+	for (short ix = 0; ix < depth; ix++) {
+		tyerrorrecord frame;
+		long refcon = 0;
+		if (!langgetstackframe(ix, &frame, &refcon))
+			break;
+
+		char namebuf[256];
+		script_name_for_frame(refcon, namebuf, sizeof(namebuf));
+
+		/* Choose source text for this frame:
+		 *   - <eval> / <eval-inner>: the caller-supplied input buffer
+		 *   - named script: fetch via opgetlangtext using the
+		 *     refcon-as-hdlhashnode (the encoding op_handler.c uses)
+		 */
+		char *source_text_owned = NULL;	/* malloc'd, must free */
+		const char *source_text = NULL;	/* borrowed view */
+
+		if (refcon == 0L || refcon == -1L) {
+			source_text = eval_source_text;
+		} else {
+			source_text_owned =
+				fetch_script_source_from_node((hdlhashnode)refcon);
+			source_text = source_text_owned;
+		}
+
+		/* Render the source window first so we can clamp the line
+		 * number against the actual line count; then print the frame
+		 * header with the clamped value. Without the clamp, an EOF
+		 * shaped parse error would say "line N+1" while the window
+		 * highlights line N. */
+		int header_line = (int)frame.errorline;
+		if (source_text != NULL) {
+			char *buf = NULL;
+			char **lines = NULL;
+			int line_count = 0;
+			if (split_into_lines(source_text, &buf, &lines, &line_count)) {
+				int actual_line = header_line;
+				/* render to a stringstream-free path: print header
+				 * first, then window, but use the line count to
+				 * pre-clamp the header. */
+				if (line_count > 0) {
+					if (actual_line < 1) actual_line = 1;
+					if (actual_line > line_count) actual_line = line_count;
+				}
+				header_line = actual_line;
+				fprintf(stderr, "  at %s line %d\n", namebuf, header_line);
+				render_source_window(lines, line_count,
+				                      (int)frame.errorline,
+				                      (int)frame.tokenstart,
+				                      (int)frame.tokenend,
+				                      use_ansi,
+				                      &actual_line);
+				/* actual_line is set by render_source_window using the
+				 * same clamp; both values match by construction. */
+				(void) actual_line;
+				free(lines);
+				free(buf);
+			} else {
+				fprintf(stderr, "  at %s line %d\n", namebuf, header_line);
+			}
+		} else {
+			fprintf(stderr, "  at %s line %d\n", namebuf, header_line);
+		}
+
+		free(source_text_owned);
+	}
+
+	fflush(stderr);
 }
