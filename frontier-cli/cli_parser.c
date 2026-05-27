@@ -39,6 +39,7 @@
 #include "cli_utils.h"
 #include "standard.h"			/* env_truthy() */
 #include "../Common/headers/logging.h"
+#include "../Common/headers/shell_api.h"	/* shell_api_set_lock_opened_roots() */
 
 /*
  * Convert a kebab-case flag name to camelCase.
@@ -624,6 +625,11 @@ boolean cli_parse_arguments(int argc, char* argv[], cli_options_t* options) {
 
 		if (options->lock_opened_roots)
 			setenv("FRONTIER_LOCK_OPENED_ROOTS", "1", 1);
+
+		/* Issue #649: publish the converged decision to shell_api so
+		 * non-CLI consumers (e.g., dbopenverb) can read a single
+		 * in-process source of truth without re-parsing the env var. */
+		shell_api_set_lock_opened_roots(options->lock_opened_roots);
 	}
 
 	// Validate the parsed options
