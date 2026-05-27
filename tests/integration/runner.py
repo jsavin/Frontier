@@ -1158,6 +1158,81 @@ class TestRunner:
             if expected_substr not in error_msg:
                 return f"[{step_desc}] Expected error containing {expected_substr!r}, got {error_msg!r}"
 
+        # PR1 (REPL error context): structured error.location assertions.
+        # expected_error_location is a dict with any subset of:
+        #   script: exact-match string
+        #   line: int (exact)
+        #   column: int (exact)
+        #   token_start_min: int (actual >= expected)
+        #   token_end_min: int (actual >= expected)
+        if 'expected_error_location' in validate:
+            expected_loc = validate['expected_error_location']
+            error_obj = resp.get('error', {})
+            if not isinstance(error_obj, dict):
+                return (f"[{step_desc}] expected_error_location set but response error is "
+                        f"not a dict: {error_obj!r}")
+            actual_loc = error_obj.get('location')
+            if not isinstance(actual_loc, dict):
+                return (f"[{step_desc}] expected_error_location set but response has no "
+                        f"error.location object (got {actual_loc!r})")
+            for key in ('script', 'line', 'column'):
+                if key in expected_loc:
+                    exp_val = expected_loc[key]
+                    act_val = actual_loc.get(key)
+                    if act_val != exp_val:
+                        return (f"[{step_desc}] error.location.{key}: expected "
+                                f"{exp_val!r}, got {act_val!r}")
+            for key, min_key in (('tokenStart', 'token_start_min'),
+                                 ('tokenEnd', 'token_end_min')):
+                if min_key in expected_loc:
+                    exp_min = expected_loc[min_key]
+                    act_val = actual_loc.get(key)
+                    if not isinstance(act_val, int) or act_val < exp_min:
+                        return (f"[{step_desc}] error.location.{key}: expected >= "
+                                f"{exp_min}, got {act_val!r}")
+
+        # PR1 (REPL error context): assert that EITHER tokenStart > 0 OR
+        # tokenEnd > tokenStart -- proves the scanner snapshotted a real span.
+        if 'expected_error_token_present' in validate and validate['expected_error_token_present']:
+            error_obj = resp.get('error', {})
+            actual_loc = error_obj.get('location') if isinstance(error_obj, dict) else None
+            if not isinstance(actual_loc, dict):
+                return (f"[{step_desc}] expected_error_token_present set but response "
+                        f"has no error.location object")
+            ts = actual_loc.get('tokenStart')
+            te = actual_loc.get('tokenEnd')
+            if not (isinstance(ts, int) and isinstance(te, int)):
+                return (f"[{step_desc}] expected_error_token_present: tokenStart/tokenEnd "
+                        f"missing or non-int (tokenStart={ts!r}, tokenEnd={te!r})")
+            if not (ts > 0 or te > ts):
+                return (f"[{step_desc}] expected_error_token_present: neither tokenStart>0 "
+                        f"nor tokenEnd>tokenStart (tokenStart={ts}, tokenEnd={te})")
+
+        # PR1 (REPL error context): minimum stack depth (>=).
+        if 'expected_error_stack_min' in validate:
+            expected_min = validate['expected_error_stack_min']
+            error_obj = resp.get('error', {})
+            actual_stack = error_obj.get('stack') if isinstance(error_obj, dict) else None
+            if not isinstance(actual_stack, list):
+                return (f"[{step_desc}] expected_error_stack_min={expected_min} but "
+                        f"error.stack missing or not a list (got {actual_stack!r})")
+            if len(actual_stack) < expected_min:
+                return (f"[{step_desc}] error.stack: expected at least {expected_min} "
+                        f"frames, got {len(actual_stack)} ({actual_stack!r})")
+
+        # PR1 (REPL error context): substring match on top stack frame's script.
+        if 'expected_error_stack_top_script_contains' in validate:
+            expected_substr = validate['expected_error_stack_top_script_contains']
+            error_obj = resp.get('error', {})
+            actual_stack = error_obj.get('stack') if isinstance(error_obj, dict) else None
+            if not isinstance(actual_stack, list) or len(actual_stack) == 0:
+                return (f"[{step_desc}] expected_error_stack_top_script_contains "
+                        f"requires non-empty error.stack list (got {actual_stack!r})")
+            top_script = actual_stack[0].get('script') if isinstance(actual_stack[0], dict) else None
+            if not isinstance(top_script, str) or expected_substr not in top_script:
+                return (f"[{step_desc}] error.stack[0].script: expected to contain "
+                        f"{expected_substr!r}, got {top_script!r}")
+
         # Check result_count first (before per-item loop) so count mismatches
         # produce a clear message rather than an IndexError or confusing diff.
         if 'result_count' in validate:

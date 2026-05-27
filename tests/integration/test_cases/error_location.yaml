@@ -1,0 +1,143 @@
+# PR1 of REPL error context chain: runtime + protocol metadata.
+#
+# These tests assert that script/eval failure responses include structured
+# error.location (script/line/column/tokenStart/tokenEnd) and error.stack
+# arrays so REPL/protocol clients can render rich error displays.
+#
+# All tests are protocol-mode script/eval. The runner side checks the new
+# fields under resp.error.{location,stack}. PR2 wires the REPL display.
+
+# Protocol REPL tests share a single Frontier instance and mutate
+# system.temp; serialize so concurrent runs don't collide on errlocfn.
+sequential: true
+
+tests:
+  - name: "error_location - syntax error on eval line 1 includes location and token span"
+    description: |
+      A bare syntax error in user input. The protocol response must include
+      error.location with line == 1 (not the wrapper's 2) and tokenStart/tokenEnd
+      that bracket the offending position (tokenEnd > 0 OR tokenStart > 0).
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "foo +"
+        validate:
+          success: false
+          expected_error_location:
+            script: "<eval>"
+            line: 1
+          expected_error_token_present: true
+
+  - name: "error_location - runtime error on eval line 1 reports user-relative line 1"
+    description: |
+      An undefined-identifier reference on the first line of user input. The
+      wrapper prefix is 1 line, so without offset subtraction the raw line
+      number is 2; the runtime offset machinery must subtract back to 1.
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "local (x = undefinedXYZ123)"
+        validate:
+          success: false
+          expected_error_location:
+            script: "<eval>"
+            line: 1
+
+  - name: "error_location - multi-line user input reports line 2 not wrapper-shifted line 3"
+    description: |
+      User input is two lines; the error is on line 2. With the 1-line wrapper
+      prefix the raw line number is 3. The eval input offset must reduce that
+      back to 2 so the REPL display points at the user's actual second line.
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "local (x = 1);\nlocal (y = undefinedXYZ123)"
+        validate:
+          success: false
+          expected_error_location:
+            script: "<eval>"
+            line: 2
+
+  - name: "error_location - called named script that errors produces stack depth >= 1"
+    description: |
+      Defines a named script in system.temp.errlocfn that errors when called,
+      then calls it from the eval. PR1 ships with error.stack depth>=1 for
+      the called-script path because debug_handler.c replaces the
+      pushsourcecodecallback wholesale (see debug_init), bypassing the
+      langpusherrorcallback that would push the named-script frame.
+      Chaining the headless callback through debug_push_sourcecode is
+      possible but surfaces a pre-existing asymmetry in
+      Common/source/langvalue.c langfunctioncall (an early-return at
+      line ~8386 skips langpopsourcecode after a successful push),
+      causing error-stack leaks visible as cascading "Can't compile
+      this script" errors in html.rundirectives batch-mode tests. PR1
+      ships the metadata pipeline with depth>=1; multi-frame stack
+      tracking for named-script calls is deferred to a follow-up that
+      fixes the langvalue.c asymmetry. The depth>=1 assertion still
+      proves the snapshot/stack-array pipeline is wired end-to-end.
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: |
+            script.newScriptObject ("on errlocfn () { return undefinedXYZ123 }", @system.temp.errlocfn);
+            system.temp.errlocfn ()
+        validate:
+          success: false
+          expected_error_stack_min: 1
+      # Clean up the named script we installed in system.temp so we don't
+      # leak persistent state across runs (and so reruns of this file don't
+      # see a stale errlocfn from a prior eval).
+      - op: "script/eval"
+        params:
+          expression: "delete (@system.temp.errlocfn)"
+        validate:
+          success: true
+
+  - name: "error_location - lang.scriptError raised from eval populates location"
+    description: |
+      A user-raised lang.scriptError must still populate error.location with the
+      line where the call appears. This locks in that the snapshot machinery
+      runs for user-raised errors, not just compile/lookup errors.
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "scriptError (\"user-raised\")"
+        validate:
+          success: false
+          expected_error_location:
+            script: "<eval>"
+            line: 1
+
+  - name: "error_location - long-line error reports tokenStart > 255 (charnum widening regression guard)"
+    description: |
+      Regression guard for the unsigned-short widening of the scanner's
+      lasttokenstart / lasttokenend globals (and the matching tokenstart /
+      tokenend fields on tyerrorrecord). On the legacy `byte` storage these
+      positions clamp/wrap at 255. With the widening, positions up to 65535
+      round-trip through the protocol response on a single line.
+
+      This test puts an undefined identifier well past column 255 on a
+      single line and asserts tokenStart >= 256 in the response. If the
+      widening is ever regressed back to `byte`, this assertion fails
+      because the reported tokenStart wraps modulo 256.
+
+      Asserting on tokenStart (not column): for runtime name-lookup errors,
+      the runtime reports column = ctscanchars-at-error-fire-time, which
+      may not reflect the failing token's actual position (the parser /
+      scanner state has moved on by then). The token span fields are the
+      authoritative record of the most recently scanned token at failure
+      time; that's what the widening protects.
+
+      Filler is 18 repetitions of "local (a = 1); " (15 chars each = 270
+      chars of valid UserTalk) followed by "local (z = undefinedXYZ123)"
+      whose closing ')' sits at column 296 (0-origin) -- well past 255.
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "local (a = 1); local (a = 1); local (a = 1); local (a = 1); local (a = 1); local (a = 1); local (a = 1); local (a = 1); local (a = 1); local (a = 1); local (a = 1); local (a = 1); local (a = 1); local (a = 1); local (a = 1); local (a = 1); local (a = 1); local (a = 1); local (z = undefinedXYZ123)"
+        validate:
+          success: false
+          expected_error_location:
+            script: "<eval>"
+            line: 1
+            token_start_min: 256

@@ -482,16 +482,13 @@ tests:
             type: "long"
 
   - name: "protocol script/eval - string literal containing }\\nelse documents pre-existing scanner gap (#620)"
-    description: "DOCUMENTS A KNOWN PRE-EXISTING LIMITATION (not a normalizer bug, tracked separately): the normalizer in repl_variables.c does not track string-literal state, so a '}\\nelse' inside a string literal triggers the '}' lookahead from #635 and suppresses ';' insertion. The observed net behavior is that the string content appears to collapse to '}else {' (7 chars) — the '\\n' has been dropped somewhere in the pipeline. Best current hypothesis is that the scanner consumes the bare LF as part of its CR/LF normalization, but this has not been verified end-to-end. File a follow-up issue if the exact scanner behavior needs to be pinned down. This test locks in the current OBSERVED output as the contract; any future change (string-state tracking in the normalizer, scanner LF preservation, or both) will surface as a test-update rather than a silent semantic shift."
+    description: "USER-VISIBLE PROTOCOL REGRESSION INTRODUCED BY PR1 OF REPL ERROR CONTEXT (2026-05-26 JES): a bare LF inside a string literal sent via protocol script/eval now triggers a 'string spans a line' compile error (success: false) where it was previously silently absorbed (success: true with the LF dropped from the rendered value). Clients that need verbatim line breaks inside string literals must use the '\\r' or '\\n' string escapes; raw LFs in the wire payload are not portable. Follow-up: issue #651 (teach the normalizer string-literal state so the prior behavior can be restored without losing the LF-line-tracking fix). DETAIL: the normalizer in repl_variables.c does not track string-literal state, so a '}\\nelse' inside a string literal interacts with the '}' lookahead and CR/LF handling. PR1 of REPL error context: the normalizer now emits CR (not LF) for both bare CR and bare LF so the scanner advances ctscanlines for LF-only input. As a side effect a CR inside a string literal causes the scanner to treat the literal as spanning a line break, which the parser rejects as a compile error. Both outcomes share the same root cause: the normalizer has no string-literal state tracking."
     protocol_ops:
       - op: "script/eval"
         params:
           expression: "local (s = \"}\nelse {\");\nreturn s"
         validate:
-          success: true
-          result:
-            value: "}else {"
-            type: "string"
+          success: false
 
   # ------------------------------------------------------------
   # Transition-matrix coverage (refactor follow-up to #628/#635/#640)

@@ -57,6 +57,23 @@ unsigned long ctscanlines; /*number of lines that have been scanned, for error r
 unsigned short ctscanchars; /*number of chars passed over on current line, for error reporting*/
 
 
+/*
+PR1 of REPL error context chain: per-token snapshot of the most recently
+scanned token. langscanner captures lasttokenline / lasttokenstart at the
+beginning of each token and lasttokenend just before returning. The error
+machinery in lang.c (langseterrorcallbackline) copies these into the top
+error-stack frame so error responses can carry tokenStart / tokenEnd
+columns alongside line / charnum.
+
+These are file-scope (not static) so lang.c can declare them extern. The
+GIL serializes language execution so no thread locality is needed for PR1;
+a multi-threaded eval future would move these to tythreadglobals.
+*/
+unsigned long lasttokenline = 0;
+unsigned short lasttokenstart = 0;
+unsigned short lasttokenend = 0;
+
+
 static Handle hscanstring; /*this is the text that we're parsing*/
 
 static boolean fllinebasedscan;
@@ -861,17 +878,57 @@ static boolean parsepopcharconst (tyvaluerecord *val) {
 	} /*parsepopcharconst*/
 	
 
+static tokentype langscanner_inner (hdltreenode *nodetoken);
+
 static tokentype langscanner (hdltreenode *nodetoken) {
-	
+
 	/*
-	scan the input string for the next token, return the character 
+	PR1 of REPL error context chain: thin wrapper around the original
+	scanner body. The inner scanner sets lasttokenline / lasttokenstart
+	once parsepopblanks has skipped leading whitespace (so the start
+	column points at the FIRST character of the token, not the last
+	byte of whitespace before it). After the inner scanner returns,
+	the wrapper captures lasttokenend from ctscanchars (which now
+	points one past the last consumed character).
+
+	The error machinery in lang.c (langseterrorcallbackline) copies
+	these three values into the top of the error stack so error
+	responses carry the exact span the parser was looking at when the
+	error fired.
+
+	The inner scanner has ~30 return sites; wrapping it is dramatically
+	safer than threading a goto exit through each return path.
+
+	Only update lasttokenend when the inner consumed a real token. The
+	non-token paths (0 == out-of-text, eoltoken == synthetic end-of-line)
+	bypass the lasttokenline/lasttokenstart capture above; without this
+	guard we'd leave a stale start paired with a fresh end, producing
+	tokenEnd < tokenStart or a tokenEnd on a different line than
+	tokenStart.
+	*/
+
+	tokentype token = langscanner_inner (nodetoken);
+
+	if (token != 0 && token != eoltoken
+		&& lasttokenline == ctscanlines
+		&& ctscanchars >= lasttokenstart)
+		lasttokenend = ctscanchars;
+
+	return (token);
+	} /*langscanner*/
+
+
+static tokentype langscanner_inner (hdltreenode *nodetoken) {
+
+	/*
+	scan the input string for the next token, return the character
 	that we stopped on in chtoken.
-	
+
 	if it's an identifier or a constant, nodetoken will be non-nil.
-	
-	11/22/91 dmb: return zero when out of text, after returning exactly 
+
+	11/22/91 dmb: return zero when out of text, after returning exactly
 	one (non-zero) eoltoken.
-	
+
 	5.0.2b10 dmb: exempt const identifier from tmp stack before pushing it
 	into code tree. it will be disposed on error
 	*/
@@ -890,15 +947,24 @@ static tokentype langscanner (hdltreenode *nodetoken) {
 	#endif
 	
 	if (!parsepopblanks ()) { /*ran out of text*/
-		
+
 		if (flsenteol)
 			return (0);
-		
+
 		flsenteol = true; /*we're about to...*/
-		
+
 		return (eoltoken);
 		}
-	
+
+	/*
+	PR1 of REPL error context chain: capture token start position
+	(line + column) AFTER parsepopblanks has skipped leading whitespace
+	and comments. lasttokenend is captured by the langscanner wrapper
+	after the inner returns.
+	*/
+	lasttokenline = ctscanlines;
+	lasttokenstart = ctscanchars;
+
 	chfirst = ch = parsefirstchar (); /*lookahead at the next character*/
 	
 	if (ch == chsinglequote) { /*a single-quote, character constant*/
