@@ -7,6 +7,10 @@
 # All tests are protocol-mode script/eval. The runner side checks the new
 # fields under resp.error.{location,stack}. PR2 wires the REPL display.
 
+# Protocol REPL tests share a single Frontier instance and mutate
+# system.temp; serialize so concurrent runs don't collide on errlocfn.
+sequential: true
+
 tests:
   - name: "error_location - syntax error on eval line 1 includes location and token span"
     description: |
@@ -80,6 +84,14 @@ tests:
         validate:
           success: false
           expected_error_stack_min: 1
+      # Clean up the named script we installed in system.temp so we don't
+      # leak persistent state across runs (and so reruns of this file don't
+      # see a stale errlocfn from a prior eval).
+      - op: "script/eval"
+        params:
+          expression: "delete (@system.temp.errlocfn)"
+        validate:
+          success: true
 
   - name: "error_location - lang.scriptError raised from eval populates location"
     description: |
@@ -95,3 +107,37 @@ tests:
           expected_error_location:
             script: "<eval>"
             line: 1
+
+  - name: "error_location - long-line error reports tokenStart > 255 (charnum widening regression guard)"
+    description: |
+      Regression guard for the unsigned-short widening of the scanner's
+      lasttokenstart / lasttokenend globals (and the matching tokenstart /
+      tokenend fields on tyerrorrecord). On the legacy `byte` storage these
+      positions clamp/wrap at 255. With the widening, positions up to 65535
+      round-trip through the protocol response on a single line.
+
+      This test puts an undefined identifier well past column 255 on a
+      single line and asserts tokenStart >= 256 in the response. If the
+      widening is ever regressed back to `byte`, this assertion fails
+      because the reported tokenStart wraps modulo 256.
+
+      Asserting on tokenStart (not column): for runtime name-lookup errors,
+      the runtime reports column = ctscanchars-at-error-fire-time, which
+      may not reflect the failing token's actual position (the parser /
+      scanner state has moved on by then). The token span fields are the
+      authoritative record of the most recently scanned token at failure
+      time; that's what the widening protects.
+
+      Filler is 18 repetitions of "local (a = 1); " (15 chars each = 270
+      chars of valid UserTalk) followed by "local (z = undefinedXYZ123)"
+      whose closing ')' sits at column 296 (0-origin) -- well past 255.
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "local (a = 1); local (a = 1); local (a = 1); local (a = 1); local (a = 1); local (a = 1); local (a = 1); local (a = 1); local (a = 1); local (a = 1); local (a = 1); local (a = 1); local (a = 1); local (a = 1); local (a = 1); local (a = 1); local (a = 1); local (a = 1); local (z = undefinedXYZ123)"
+        validate:
+          success: false
+          expected_error_location:
+            script: "<eval>"
+            line: 1
+            token_start_min: 256
