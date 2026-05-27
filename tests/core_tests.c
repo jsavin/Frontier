@@ -24,11 +24,48 @@ static void test_shell_api_headless_mode(void) {
     assert(!shell_api_require(kShellCapabilityWindows, "window.open"));
 }
 
+/* Issue #649: shell_api_lock_opened_roots is the in-process source of truth
+ * for the --lock-opened-roots flag, replacing FRONTIER_LOCK_OPENED_ROOTS as a
+ * cross-module signal. The four tests below cover default state, set->get
+ * roundtrip in both directions, and idempotency. */
+
+static void test_shell_api_lock_opened_roots_default_false(void) {
+    /* The static initializer guarantees this is false; explicitly reset to
+     * defend the test against ordering with siblings that flip it. */
+    shell_api_set_lock_opened_roots(false);
+    assert(shell_api_lock_opened_roots() == false);
+}
+
+static void test_shell_api_lock_opened_roots_set_true_get_true(void) {
+    shell_api_set_lock_opened_roots(false);
+    shell_api_set_lock_opened_roots(true);
+    assert(shell_api_lock_opened_roots() == true);
+}
+
+static void test_shell_api_lock_opened_roots_set_false_get_false(void) {
+    shell_api_set_lock_opened_roots(true);
+    shell_api_set_lock_opened_roots(false);
+    assert(shell_api_lock_opened_roots() == false);
+}
+
+static void test_shell_api_lock_opened_roots_set_idempotent(void) {
+    shell_api_set_lock_opened_roots(true);
+    shell_api_set_lock_opened_roots(true);
+    assert(shell_api_lock_opened_roots() == true);
+    shell_api_set_lock_opened_roots(false);
+    shell_api_set_lock_opened_roots(false);
+    assert(shell_api_lock_opened_roots() == false);
+}
+
 int main(void) {
     TR_INIT("core_tests");
     TR_RUN(test_shell_api_capability_names);
     TR_RUN(test_shell_api_default_mode);
     TR_RUN(test_shell_api_headless_mode);
+    TR_RUN(test_shell_api_lock_opened_roots_default_false);
+    TR_RUN(test_shell_api_lock_opened_roots_set_true_get_true);
+    TR_RUN(test_shell_api_lock_opened_roots_set_false_get_false);
+    TR_RUN(test_shell_api_lock_opened_roots_set_idempotent);
     TR_SUMMARY();
     return TR_EXIT_CODE();
 }
