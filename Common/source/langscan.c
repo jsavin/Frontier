@@ -898,11 +898,21 @@ static tokentype langscanner (hdltreenode *nodetoken) {
 
 	The inner scanner has ~30 return sites; wrapping it is dramatically
 	safer than threading a goto exit through each return path.
+
+	Only update lasttokenend when the inner consumed a real token. The
+	non-token paths (0 == out-of-text, eoltoken == synthetic end-of-line)
+	bypass the lasttokenline/lasttokenstart capture above; without this
+	guard we'd leave a stale start paired with a fresh end, producing
+	tokenEnd < tokenStart or a tokenEnd on a different line than
+	tokenStart.
 	*/
 
 	tokentype token = langscanner_inner (nodetoken);
 
-	lasttokenend = ctscanchars;
+	if (token != 0 && token != eoltoken
+		&& lasttokenline == ctscanlines
+		&& ctscanchars >= lasttokenstart)
+		lasttokenend = ctscanchars;
 
 	return (token);
 	} /*langscanner*/

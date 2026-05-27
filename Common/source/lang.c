@@ -588,6 +588,18 @@ static void langprescript (void) {
 	fllastfirederrorvalid = false;
 
 	lastfirederrorstackdepth = 0;
+
+	/*
+	PR1 of REPL error context chain: also clear the scanner's last-token
+	span. Each eval starts fresh; no token span from a prior eval should
+	be carried over if eval N+1 errors before any token is scanned (e.g.
+	a name-lookup failure on an inherited tree fragment).
+	*/
+	lasttokenline = 0;
+
+	lasttokenstart = 0;
+
+	lasttokenend = 0;
 	} /*langprescript*/
 
 
