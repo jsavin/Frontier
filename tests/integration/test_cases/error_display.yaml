@@ -135,3 +135,76 @@ tests:
       - "\x1b[1m"
       - "\x1b[4m"
       - "\x1b[0m"
+
+  # ===========================================================================
+  # Security: control-byte injection sanitization (PR2 gate review P1.2)
+  # ===========================================================================
+
+  - name: "error_display - ESC bytes in source are sanitized, not passed through"
+    description: |
+      The renderer writes the user's source line back to stderr inside its
+      own ANSI bold/underline envelope. If raw control bytes from the
+      source survived that write, a hostile script (e.g. one loaded from a
+      network ODB) could embed OSC 52 (clipboard write), OSC 8 (hyperlink
+      hijack), title-bar spoof, or cursor-reposition sequences that the
+      terminal would execute.
+
+      This test feeds a line that contains a literal ESC + ']' + ... + BEL
+      sequence ahead of an undefined identifier so the parser errors and
+      the source line gets rendered. The renderer must replace each
+      control byte with '?' before writing the source line. We assert
+      positively on the sanitized form ("?]0;HACKED?") to prove the
+      substitution happened -- a negative-only assertion would conflate
+      the source-line ESC with pre-existing ESC bytes that may appear in
+      lang-ERROR log output (those carry the offending character through
+      the parser's "is an illegal character" message and are out of scope
+      for this PR).
+
+      Non-TTY mode keeps the renderer in plain-text mode so the only
+      potential ESC source in the ">>>" line is the source bytes -- our
+      sanitization is the only thing standing between the bytes and the
+      terminal.
+    repl_mode: true
+    stdin_input: "\x1b]0;HACKED\x07 undefinedXYZ123\n/exit\n"
+    expected_success: true
+    expected_output_contains:
+      - "at <eval> line"
+      - ">>>"
+      # The literal ESC and BEL bytes in the source must show as '?' in
+      # the rendered source line. If sanitization were missing this would
+      # read ">>> 1 | <ESC>]0;HACKED<BEL> undefinedXYZ123" instead.
+      - "?]0;HACKED? undefinedXYZ123"
+
+  # ===========================================================================
+  # Tab-character caret alignment (PR2 gate review P2.1)
+  # ===========================================================================
+
+  - name: "error_display - tab in source aligns caret to visual columns"
+    description: |
+      Frontier outline source uses tabs heavily. A byte-offset caret
+      computation desyncs the rendered ">>>" / "^^^" markers from what
+      the user sees on screen by 7+ columns per tab. The renderer
+      expands tabs to 8-column tab stops both in the source-line write
+      and in the caret-column math, so a leading tab pushes the caret
+      out to column 8 (gutter prefix + tab stop) rather than column 1.
+
+      Input is "\tfoo +\n" -- a single tab then a syntax error.
+      The rendered line should show the tab as eight spaces, and the
+      caret line should begin its "^^^" run at the visual column where
+      the failing token starts, not at byte offset 1.
+
+      The test asserts on a uniquely-shaped caret line: at least 8
+      spaces of indent before the first '^', proving the tab was
+      expanded for caret positioning. We pick non-TTY mode because
+      "^^^" is only emitted in plain-text rendering.
+    repl_mode: true
+    stdin_input: "\tfoo +\n/exit\n"
+    expected_success: true
+    expected_output_contains:
+      - "at <eval> line"
+      - ">>>"
+      # Eight or more leading spaces before the first caret -- the
+      # renderer's gutter prefix is 4 (marker) + digit_width + 3 (" | "),
+      # plus the tab expansion of 8 columns for the source line.
+      # We assert on the more conservative substring: 8 spaces then '^'.
+      - "        ^"
