@@ -109,10 +109,20 @@ static void send_ack(long id, transport_t *transport) {
 /*
  * Send an error response. cJSON_AddStringToObject handles JSON escaping
  * of the message string automatically.
+ *
+ * PR1 of REPL error context chain (2026-05-26 JES): if location and/or
+ * stack are non-NULL, they are attached under error.location / error.stack.
+ * Ownership transfers to the response on attach; the helper calls
+ * cJSON_Delete on these arguments if it can't construct the wrapper, so
+ * callers must not delete them on the success path.
  */
-static void send_error(long id, const char *message, transport_t *transport) {
+static void send_error_with_metadata(long id, const char *message,
+                                     cJSON *location, cJSON *stack,
+                                     transport_t *transport) {
 	cJSON *response = cJSON_CreateObject();
 	if (response == NULL) {
+		if (location != NULL) cJSON_Delete(location);
+		if (stack != NULL) cJSON_Delete(stack);
 		transport_send(transport, OOM_FALLBACK);
 		return;
 	}
@@ -120,15 +130,27 @@ static void send_error(long id, const char *message, transport_t *transport) {
 
 	cJSON *error_obj = cJSON_CreateObject();
 	if (error_obj == NULL) {
-		/* Degrade gracefully: flat error string instead of nested object */
+		/* Degrade gracefully: flat error string instead of nested object.
+		 * Drop any location/stack — they can't be attached without the
+		 * containing error object. */
+		if (location != NULL) cJSON_Delete(location);
+		if (stack != NULL) cJSON_Delete(stack);
 		cJSON_AddStringToObject(response, "error", message);
 	} else {
 		cJSON_AddStringToObject(error_obj, "message", message);
+		if (location != NULL)
+			cJSON_AddItemToObject(error_obj, "location", location);
+		if (stack != NULL)
+			cJSON_AddItemToObject(error_obj, "stack", stack);
 		cJSON_AddItemToObject(response, "error", error_obj);
 	}
 
 	cJSON_AddBoolToObject(response, "success", 0);
 	send_cjson_response(transport, response);
+}
+
+static void send_error(long id, const char *message, transport_t *transport) {
+	send_error_with_metadata(id, message, NULL, NULL, transport);
 }
 
 /*
@@ -244,6 +266,116 @@ static void send_eval_success(long id, tyvaluerecord *val, transport_t *transpor
  * Operation handlers
  * ======================================================================== */
 
+/*
+ * PR1 of REPL error context chain (2026-05-26 JES): derive a human-readable
+ * script name from an error-frame errorrefcon.
+ *
+ * Frontier's error stack records each frame's identity in errorrefcon:
+ *   0L  -- outermost top-level (REPL input / script.eval)
+ *   -1L -- inline nested call (script-already-running path in langrun)
+ *   else -- (long) hdlhashnode for a named script
+ *
+ * For named scripts PR1 emits the leaf name (the hashnode's hashkey).
+ * Computing the full dotted table path is deferred; see "Deferred" in the
+ * task report. Buffer must be cstring-sized; caller provides it.
+ */
+static void script_name_from_refcon(long refcon, char *out, size_t outlen) {
+	if (outlen == 0) return;
+
+	if (refcon == 0L) {
+		strncpy(out, "<eval>", outlen);
+		out[outlen - 1] = '\0';
+		return;
+	}
+	if (refcon == -1L) {
+		strncpy(out, "<eval-inner>", outlen);
+		out[outlen - 1] = '\0';
+		return;
+	}
+
+	/* Named-script frame: refcon is (long)hdlhashnode. The hashnode's
+	 * hashkey is a Pascal-style bigstring; copy to a C string. */
+	hdlhashnode hnode = (hdlhashnode) refcon;
+	if (hnode == nil || hnode == HNoNode) {
+		strncpy(out, "<unknown>", outlen);
+		out[outlen - 1] = '\0';
+		return;
+	}
+
+	/* hashkey is a Pascal-style bigstring: byte 0 is length, bytes 1..N
+	 * are the identifier characters. Read it directly without copystring
+	 * to avoid pulling that header transitively into op_handler. */
+	const byte *bskey = (const byte *)(**hnode).hashkey;
+	size_t n = (size_t) bskey[0];
+	if (n >= outlen) n = outlen - 1;
+	memcpy(out, (const char *)(bskey + 1), n);
+	out[n] = '\0';
+}
+
+/*
+ * PR1 of REPL error context chain: build the error.location cJSON object
+ * from the snapshot captured by langseterrorcallbackline. Returns NULL if
+ * no snapshot is available or on OOM -- caller proceeds without a location
+ * field (backwards-compatible response).
+ */
+static cJSON *build_error_location(void) {
+	tyerrorrecord rec;
+	if (!langgetlasterror(&rec))
+		return NULL;
+
+	cJSON *loc = cJSON_CreateObject();
+	if (loc == NULL)
+		return NULL;
+
+	char namebuf[256];
+	script_name_from_refcon(rec.errorrefcon, namebuf, sizeof(namebuf));
+
+	cJSON_AddStringToObject(loc, "script", namebuf);
+	cJSON_AddNumberToObject(loc, "line", (double)rec.errorline);
+	cJSON_AddNumberToObject(loc, "column", (double)rec.errorchar);
+	cJSON_AddNumberToObject(loc, "tokenStart", (double)rec.tokenstart);
+	cJSON_AddNumberToObject(loc, "tokenEnd", (double)rec.tokenend);
+	return loc;
+}
+
+/*
+ * PR1 of REPL error context chain: build the error.stack cJSON array.
+ * Index 0 is the failure site, growing outward to the outermost caller.
+ * Returns NULL when no snapshot is available; returns an empty array if
+ * the snapshot exists but has zero frames (so clients can rely on the
+ * field's array type).
+ */
+static cJSON *build_error_stack(void) {
+	short depth = langgetstackdepth();
+	if (depth <= 0)
+		return NULL;
+
+	cJSON *stack = cJSON_CreateArray();
+	if (stack == NULL)
+		return NULL;
+
+	for (short ix = 0; ix < depth; ++ix) {
+		tyerrorrecord rec;
+		long refcon = 0;
+		if (!langgetstackframe(ix, &rec, &refcon))
+			break;
+
+		cJSON *frame = cJSON_CreateObject();
+		if (frame == NULL)
+			break;
+
+		char namebuf[256];
+		script_name_from_refcon(refcon, namebuf, sizeof(namebuf));
+
+		cJSON_AddStringToObject(frame, "script", namebuf);
+		cJSON_AddNumberToObject(frame, "line", (double)rec.errorline);
+		cJSON_AddNumberToObject(frame, "column", (double)rec.errorchar);
+		cJSON_AddItemToArray(stack, frame);
+	}
+
+	return stack;
+}
+
 static void handle_script_eval(long id, const char *json_line, transport_t *transport) {
 	/* Use cJSON for expression extraction — strstr-based op_json_extract_string
 	 * could match "expression" inside a string value from untrusted WebSocket input. */
@@ -272,9 +404,28 @@ static void handle_script_eval(long id, const char *json_line, transport_t *tran
 	initvalue(&result, novaluetype);
 	setemptystring(error_msg);
 
+	/*
+	 * PR1 of REPL error context chain (2026-05-26 JES):
+	 * repl_eval_with_variables_value wraps user input as
+	 *     with system.temp.FrontierREPL.variables {\r <user code> \r}
+	 * adding exactly one line before user input -- BUT only if the
+	 * variables table is initialized (interactive REPL); the protocol
+	 * mode falls through to a non-wrapped langrunhandle_value path,
+	 * which means raw and user-relative line numbers are the same and
+	 * no offset should be subtracted. Gate the offset install on the
+	 * table actually existing so the fallback path reports raw lines
+	 * verbatim.
+	 */
+	hdlhashtable repl_vars = repl_get_variables_table();
+	if (repl_vars != nil)
+		langsetevalinputoffset(1);
+	else
+		langclearevalinputoffset();
+
 	boolean ok = repl_eval_with_variables_value(expression, &result, error_msg);
 
 	if (ok) {
+		langclearevalinputoffset();
 		send_eval_success(id, &result, transport);
 	} else {
 		char c_error[256];
@@ -287,7 +438,14 @@ static void handle_script_eval(long id, const char *json_line, transport_t *tran
 		} else {
 			snprintf(c_error, sizeof(c_error), "Script error (message too long)");
 		}
-		send_error(id, c_error, transport);
+
+		/* Build location / stack BEFORE clearing the offset -- the
+		 * builders apply the offset internally to errorline. */
+		cJSON *location = build_error_location();
+		cJSON *stack = build_error_stack();
+
+		langclearevalinputoffset();
+		send_error_with_metadata(id, c_error, location, stack, transport);
 	}
 
 	disposevaluerecord(result, false);

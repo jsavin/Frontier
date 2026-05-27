@@ -147,6 +147,53 @@ WebSocket provides bidirectional communication, enabling server-initiated events
 }
 ```
 
+**Script error response with location and stack (PR1 of REPL error context, 2026-05-26):**
+
+`script/eval` and other script-execution operations may attach two optional
+fields to `error` so clients can render rich error displays:
+
+```json
+{
+  "id": 1,
+  "error": {
+    "message": "Can't evaluate the expression because the name undefinedXYZ123 hasn't been defined.",
+    "location": {
+      "script": "<eval>",
+      "line": 2,
+      "column": 14,
+      "tokenStart": 14,
+      "tokenEnd": 27
+    },
+    "stack": [
+      { "script": "<eval>", "line": 2, "column": 14 }
+    ]
+  },
+  "success": false
+}
+```
+
+- `location.script`: human-readable identifier for the source. Reserved
+  values: `"<eval>"` for the outermost REPL/protocol eval frame and
+  `"<eval-inner>"` for inline-eval frames (a script calling eval).
+  Anything else is the leaf name of the named script that failed.
+- `location.line`, `location.column`: 1-origin position within the script.
+  When the script is `<eval>`, line and column are reported relative to
+  the user's input (the wrapper's prefix lines are subtracted).
+- `location.tokenStart`, `location.tokenEnd`: bracket of the most
+  recently scanned token at the moment of failure, as zero-origin
+  column offsets on `location.line`. When no bracket is available, both
+  are 0. Useful for client UIs that want to highlight the offending
+  span rather than just the cursor.
+- `stack`: failure site at index 0, growing outward to the outermost
+  caller. Each frame carries `script`, `line`, `column`. Stack depth
+  is at least 1 for any script-execution failure. PR1 ships single-
+  frame stacks via the protocol path; multi-frame stacks for named-
+  script calls are deferred to a follow-up that resolves a
+  pre-existing asymmetry in `Common/source/langvalue.c`.
+
+Both fields are backwards-compatible: clients that don't know about
+`location` / `stack` continue to read `error.message` unchanged.
+
 **Server-initiated event (no `id`):**
 ```json
 {

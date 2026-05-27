@@ -664,10 +664,19 @@ static char *normalize_newlines_to_semicolons(const char *script) {
 			next_kind_t nk = classify_next(peek_next_real_byte(src));
 			if (kEmitSep[pk][nk])
 				*dst++ = ';';
-			*dst++ = (char)c;
+			/* PR1 of REPL error context chain (2026-05-26 JES): emit CR
+			 * for both CR and LF newlines. The UserTalk scanner only
+			 * increments ctscanlines on chreturn (CR); bare LFs are
+			 * silently consumed without advancing the line counter (see
+			 * langscan.c parsepopchar). Normalizing both line endings to
+			 * CR here makes error.location.line report the correct user-
+			 * relative line for protocol clients without changing the
+			 * statement-separator semantics callers already rely on. */
+			*dst++ = '\r';
 			src++;
-			/* CRLF: silently consume the \n after an emitted \r so we don't
-			 * produce two visible separators. Matches the pre-#628 contract. */
+			/* CRLF: silently consume the \n after an emitted CR so we
+			 * don't produce two visible separators. Matches the pre-#628
+			 * contract. */
 			if (c == '\r' && *src == '\n')
 				src++;
 			/* prev_nonws is now ';' regardless of whether we emitted one.
@@ -702,9 +711,15 @@ static char *normalize_newlines_to_semicolons(const char *script) {
  * implementation. See issue for target.set() double-call crash.
  */
 static boolean build_wrapped_script(const char *script, Handle *hresult) {
+	/* PR1 of REPL error context chain (2026-05-26 JES): use CR instead of
+	 * LF as the line break in the wrapper. Bare LFs do not advance
+	 * langscan.c ctscanlines, so a LF-prefixed wrapper would leave the
+	 * user's first line of code on raw scan-line 1, defeating the input
+	 * offset machinery that handle_script_eval installs. CRs increment
+	 * the counter correctly. */
 	static const char prefix[] =
-		"with system.temp.FrontierREPL.variables {\n";
-	static const char suffix[] = "\n}";
+		"with system.temp.FrontierREPL.variables {\r";
+	static const char suffix[] = "\r}";
 
 	/* Issue #624: normalize bare \r/\n to ;\r/;\n so they act as
 	 * statement separators (UserTalk grammar uses ';' only). */
