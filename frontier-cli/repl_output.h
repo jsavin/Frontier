@@ -51,6 +51,40 @@ void repl_output_result(bigstring result);
 /* Display error message */
 void repl_output_error(const char *error_msg);
 
+/*
+ * Display a rich, structured error message (PR2 of REPL error context chain).
+ *
+ * Reads the snapshot captured by PR1's langseterrorcallbackline (via
+ * langgetlasterror / langgetstackdepth / langgetstackframe) and renders:
+ *
+ *   - header line with the error message
+ *   - one "at <script> line N" line per stack frame, failure site first
+ *   - a source-context window for each frame: the failing line plus up
+ *     to 7 lines of leading/trailing context when the source is multi-line
+ *   - the error line marked: ANSI bold + underline of the failing token
+ *     range in TTY mode, ">>>" line prefix + "^^^" caret line in plain
+ *     mode
+ *
+ * TTY detection is isatty(STDERR_FILENO), with FRONTIER_FORCE_COLOR=1 as
+ * an override (lets users force color when piping to a pager and lets
+ * tests cover both modes from non-interactive runs).
+ *
+ * Parameters:
+ *   error_msg          - human-readable error string (may be empty/NULL;
+ *                        a "(no message)" placeholder is used)
+ *   eval_source_text   - the user's source text for the outermost <eval>
+ *                        frame (the line the user just typed). May be
+ *                        NULL if unavailable; in that case the eval
+ *                        frame renders with the header line only.
+ *
+ * If no structured snapshot is available (langgetlasterror returns
+ * false), this falls back to the plain repl_output_error behavior so
+ * callers can safely use this entry point unconditionally on the error
+ * path.
+ */
+void repl_output_structured_error(const char *error_msg,
+                                  const char *eval_source_text);
+
 /* Display help text (for /help command) */
 void repl_output_help(void);
 
