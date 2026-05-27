@@ -176,14 +176,18 @@ fields to `error` so clients can render rich error displays:
   values: `"<eval>"` for the outermost REPL/protocol eval frame and
   `"<eval-inner>"` for inline-eval frames (a script calling eval).
   Anything else is the leaf name of the named script that failed.
-- `location.line`, `location.column`: 1-origin position within the script.
-  When the script is `<eval>`, line and column are reported relative to
-  the user's input (the wrapper's prefix lines are subtracted).
+- `location.line`: 1-origin line number within the script. When the
+  script is `<eval>`, line is reported relative to the user's input
+  (the wrapper's prefix lines are subtracted).
+- `location.column`: 0-origin character offset within `location.line`
+  pointing at the failure cursor. Clients that display a 1-origin
+  column to end users should add 1.
 - `location.tokenStart`, `location.tokenEnd`: bracket of the most
-  recently scanned token at the moment of failure, as zero-origin
-  column offsets on `location.line`. When no bracket is available, both
-  are 0. Useful for client UIs that want to highlight the offending
-  span rather than just the cursor.
+  recently scanned token at the moment of failure, as 0-origin
+  character offsets within `location.line` (same origin as `column`).
+  When no bracket is available, both are 0. Useful for client UIs
+  that want to highlight the offending span rather than just the
+  cursor.
 - `stack`: failure site at index 0, growing outward to the outermost
   caller. Each frame carries `script`, `line`, `column`. Stack depth
   is at least 1 for any script-execution failure. PR1 ships single-
