@@ -730,7 +730,7 @@ static boolean dbopenverb (hdltreenode hparam1, tyvaluerecord *vreturned) {
 	 * CLI flag into the accessor at startup, then everything else reads
 	 * here -- no per-call env_truthy() that could drift mid-session. */
 	if (!odbrec.flreadonly && shell_api_lock_opened_roots()) {
-		log_debug(LOG_COMP_DB, "dbopenverb: shell_api_lock_opened_roots in effect, forcing readonly=true");
+		log_debug(LOG_COMP_DB, "dbopenverb: lock_opened_roots in effect (--lock-opened-roots or FRONTIER_LOCK_OPENED_ROOTS), forcing readonly=true");
 		odbrec.flreadonly = true;
 	}
 

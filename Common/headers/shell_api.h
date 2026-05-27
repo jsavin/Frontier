@@ -52,7 +52,12 @@ void shell_api_use_headless(void);
  * flags that downstream modules need to consult without linking back to the
  * CLI parser. The CLI converges the env-var and CLI-flag inputs at parse
  * time, then calls the setter once; everything else reads via the getter.
- * See issue #649. */
+ * See issue #649.
+ *
+ * Type note: `boolean` (lowercase) is intentional -- it matches the consumer
+ * types (cli_options_t.lock_opened_roots, dbopenverb return). The capital
+ * `Boolean` used in tyshellapi above is the Carbon-shim type for AppleEvent
+ * interop; don't "unify" them. */
 void shell_api_set_lock_opened_roots(boolean value);
 boolean shell_api_lock_opened_roots(void);
 

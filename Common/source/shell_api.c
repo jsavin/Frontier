@@ -72,7 +72,13 @@ Boolean shell_api_is_headless(void) {
  * --lock-opened-roots flag into a single decision at parse time, then calls
  * shell_api_set_lock_opened_roots() exactly once. Other modules (e.g.,
  * dbopenverb in Common/source/dbverbs.c) read via shell_api_lock_opened_roots()
- * rather than re-reading the env, so the value cannot drift mid-session. */
+ * rather than re-reading the env, so the value cannot drift mid-session.
+ *
+ * Threading contract: single-writer at startup (before headless_threading_init
+ * spawns any worker threads), multi-reader after. No synchronization required
+ * under that contract -- POSIX thread-creation happens-before makes the write
+ * visible to all subsequent threads. Do NOT add a mid-session setter from a
+ * worker thread without revisiting this. */
 static boolean g_lock_opened_roots = false;
 
 void shell_api_set_lock_opened_roots(boolean value) {

@@ -595,40 +595,35 @@ boolean cli_parse_arguments(int argc, char* argv[], cli_options_t* options) {
 
 	free(filtered_argv);
 
-	/* Environment <-> CLI flag synchronization for --lock-opened-roots (issue #127).
+	/* --lock-opened-roots: converge env-var + CLI-flag inputs, then publish
+	 * the single in-process decision via shell_api (issues #127, #649).
 	 *
-	 * The env var FRONTIER_LOCK_OPENED_ROOTS lets the integration test runner
-	 * and other ephemeral consumers opt every loaded-from-disk DB into
-	 * read-only-on-save without threading a CLI flag through every spawn
-	 * site.
+	 * Inputs:
+	 *   - FRONTIER_LOCK_OPENED_ROOTS env var (truthy = enable; lets the
+	 *     integration test runner and other ephemeral consumers opt every
+	 *     loaded-from-disk DB into read-only-on-save without threading a
+	 *     CLI flag through every spawn site).
+	 *   - --lock-opened-roots CLI flag (already folded into
+	 *     options->lock_opened_roots during getopt parsing).
 	 *
-	 * Sync rules so non-CLI consumers (e.g., dbopenverb in
-	 * Common/source/dbverbs.c, which has no link to the CLI parser state)
-	 * can read a single source of truth via getenv():
+	 * Convergence: if either input is enabled, options->lock_opened_roots
+	 * is true. The shell_api setter is then called once; downstream
+	 * modules (e.g., dbopenverb in Common/source/dbverbs.c) read via
+	 * shell_api_lock_opened_roots() and never re-parse the env, so the
+	 * value cannot drift mid-session.
 	 *
-	 *   - If env is set truthy (non-empty and not "0"), it enables the flag.
-	 *   - If --lock-opened-roots was passed on the CLI, the flag is
-	 *     authoritative: setenv() unconditionally so any descendant code
-	 *     path that consults FRONTIER_LOCK_OPENED_ROOTS sees "1", even if
-	 *     the inherited env had FRONTIER_LOCK_OPENED_ROOTS=0. Without this
-	 *     overwrite, the CLI flag would lock the system root while
-	 *     dbopenverb's env check would still permit guest-DB writes --
-	 *     inconsistent state. The explicit CLI flag always wins.
+	 * env_truthy() (Common/SystemHeaders/standard.h) is the shared
+	 * truthiness contract. The env var is read here exactly once; the
+	 * setenv-on-CLI-flag back-propagation was removed in Phase D of #649
+	 * because nothing in-process reads the env after parse time (child
+	 * processes spawned by sys.shell inherit the parent's env unchanged
+	 * and run their own parse-time read).
 	 *
 	 * Validation in cli_validate_options() runs after. */
 	{
-		/* env_truthy() lives in Common/SystemHeaders/standard.h; reusing it
-		 * here keeps the FRONTIER_LOCK_OPENED_ROOTS truthiness contract in
-		 * lockstep with dbverbs.c's enforcement check. */
 		if (env_truthy("FRONTIER_LOCK_OPENED_ROOTS"))
 			options->lock_opened_roots = true;
 
-		if (options->lock_opened_roots)
-			setenv("FRONTIER_LOCK_OPENED_ROOTS", "1", 1);
-
-		/* Issue #649: publish the converged decision to shell_api so
-		 * non-CLI consumers (e.g., dbopenverb) can read a single
-		 * in-process source of truth without re-parsing the env var. */
 		shell_api_set_lock_opened_roots(options->lock_opened_roots);
 	}
 
