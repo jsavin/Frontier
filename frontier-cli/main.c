@@ -60,6 +60,7 @@
 #include "../Common/headers/memory.h"
 #include "../Common/headers/strings.h"
 #include "../Common/headers/tablestructure.h"
+#include "../Common/headers/tableinternal.h"
 #include "../Common/headers/shell_api.h"
 #include "../Common/headers/db.h"
 #include "../Common/headers/file.h"
@@ -146,23 +147,19 @@ boolean cli_should_skip_startup(void) {
 /*
  * Decide whether to open the system root read-only based on parsed CLI flags.
  *
- * Policy (issue #588):
- *   --read-only            -> always read-only (explicit operator request)
- *   --allow-mutate         -> always read-write (explicit opt-in)
- *   otherwise + --protocol -> read-only by default (protects canonical roots
- *                             during inspection / scripted probes; matches the
- *                             primary use case)
- *   otherwise              -> read-write (preserve legacy -e / REPL behavior)
- *
- * Validation in cli_validate_options() rejects --read-only + --allow-mutate
- * together, so the explicit branches never disagree.
+ * Policy:
+ *   --lock-opened-roots    -> suppress save-on-exit for loaded-from-disk DBs
+ *                             (issue #127). In-memory mutations still
+ *                             evaluate; only the disk persist is skipped.
+ *                             Newly created roots (file.save / file.saveAs /
+ *                             db.compactDatabase) are unaffected — those
+ *                             paths don't go through the on-exit save.
+ *   otherwise              -> read-write (legacy Frontier semantics: every
+ *                             system root and guest DB is mutable by default,
+ *                             including under --protocol).
  */
 static boolean cli_compute_effective_read_only(const cli_options_t *opts) {
-	if (opts->read_only)
-		return true;
-	if (opts->allow_mutate)
-		return false;
-	if (opts->protocol_mode)
+	if (opts->lock_opened_roots)
 		return true;
 	return false;
 }
@@ -361,7 +358,9 @@ static boolean load_system_root_database(const char* path);
 static void unload_system_root_database(void);
 static void save_system_root_on_exit(void);
 static boolean ensure_named_subtable(hdlhashtable parent, const unsigned char *name, hdlhashtable *out, boolean mark_dont_save);
+static boolean ensure_named_subtable_ex(hdlhashtable parent, const unsigned char *name, hdlhashtable *out, boolean mark_dont_save, boolean *out_created);
 static boolean hydrate_system_root_database(const char* path, boolean read_only);
+static void clear_post_hydration_dirty_flags(hdlhashtable ht);
 static boolean read_root_table_address(const char *path, dbaddress *adr_out, short *version_out);
 static void log_system_subtable_status(const char *phase,
 									   hdlhashtable system,
@@ -596,6 +595,14 @@ int main(int argc, char* argv[]) {
 			log_error(LOG_COMP_GENERAL, "Error: startup scripts failed for: %s", system_root_to_load);
 			/* Continue despite startup script errors - they're not fatal */
 		}
+
+		/* Note: dirty bits set by startup scripts are intentionally preserved
+		 * here. Under the legacy (default) policy those mutations are
+		 * user-visible state (e.g., REPL menubar installation persisting
+		 * into system.menus.data) and SHOULD save on exit. Ephemeral
+		 * consumers that don't want this should pass --lock-opened-roots,
+		 * which skips save_system_root_on_exit() via
+		 * g_system_root_read_only. */
 	}
 
 	// Start WebSocket server if --ws-port was specified
@@ -845,10 +852,12 @@ static void print_usage(const char* program_name) {
 	printf("  --ws-port PORT		   Start WebSocket server on PORT (localhost only, no auth).\n");
 	printf("						   WARNING: Any local process or browser page (including file://)\n");
 	printf("						   can access the ODB while the server is running.\n");
-	printf("  --read-only			   Open --system-root read-only; refuse all writes (fileMenu.save\n");
-	printf("						   etc. fail with a read-only error). Default for --protocol mode.\n");
-	printf("  --allow-mutate		   Opt --protocol --system-root back into read-write mode (use\n");
-	printf("						   for install paths like cleanRoot or ODB script editing).\n");
+	printf("  --lock-opened-roots	   Suppress save-on-exit for every loaded-from-disk system root\n");
+	printf("						   and guest DB; fileMenu.save() etc. fail with a read-only\n");
+	printf("						   error. In-memory mutations still evaluate; only the disk\n");
+	printf("						   persist is skipped. Newly created roots (file.save /\n");
+	printf("						   file.saveAs / db.compactDatabase) are unaffected.\n");
+	printf("						   Also enabled by FRONTIER_LOCK_OPENED_ROOTS=1.\n");
 	printf("  -h, --help			   Show this help message\n");
 	printf("  --version				   Show version information\n");
 	printf("\n");
@@ -871,6 +880,11 @@ static void print_usage(const char* program_name) {
 	printf("  FRONTIER_LOG_LEVEL	   Set global log level (TRACE, DEBUG, INFO, WARN, ERROR)\n");
 	printf("  FRONTIER_LOG_COMPONENT   Filter logs by component (db, hash, lang, etc.)\n");
 	printf("  FRONTIER_HEADLESS_RUN_STARTUP	 Set to 0 to skip system.startup scripts (default: run)\n");
+	printf("  FRONTIER_LOCK_OPENED_ROOTS  Set to any non-empty value other than \"0\" to enable\n");
+	printf("						   --lock-opened-roots without passing the flag (useful for\n");
+	printf("						   test runners and ephemeral consumers). Unset and \"0\" both\n");
+	printf("						   disable. The CLI flag, when passed, takes precedence and\n");
+	printf("						   overrides the environment.\n");
 	printf("\n");
 
 	printf("Examples:\n");
@@ -1008,13 +1022,21 @@ static void cleanup_frontier_runtime(void) {
 	 * Killed debug threads leave pushed hash table scopes in the chain,
 	 * making hashpack traversal crash on stale pointers. This is a
 	 * fundamental limitation of killing scripts mid-execution. */
-	/* Read-only opens (--read-only, or default for --protocol) deliberately
-	 * skip the on-exit save: the goal of #588 is that inspecting a canonical
-	 * .root file leaves it untouched on disk. The lower-layer flreadonly bit
-	 * already shorts dbflushheader, but skipping the save here is the
-	 * intent-level guarantee — the operator asked for read-only, so honor
-	 * it at every layer. */
-	if (g_system_root_loaded && debug_is_safe_to_save() && !g_system_root_read_only) {
+	/* --lock-opened-roots deliberately skips the on-exit save: the operator
+	 * explicitly asked for read-only-on-save, so honor it at every layer.
+	 * The lower-layer flreadonly bit already shorts dbflushheader, but
+	 * skipping the save here is the intent-level guarantee.
+	 *
+	 * Issue #127: legacy Frontier persisted every system root mutation by
+	 * default. The save runs whenever the root was opened RW; tests and
+	 * other ephemeral consumers opt OUT via --lock-opened-roots /
+	 * FRONTIER_LOCK_OPENED_ROOTS (which routes through
+	 * g_system_root_read_only above). The dirty-bit short-circuit inside
+	 * save_system_root_on_exit() handles the case where no actual mutation
+	 * occurred -- nothing gets rewritten then. */
+	if (g_system_root_loaded
+		&& debug_is_safe_to_save()
+		&& !g_system_root_read_only) {
 		save_system_root_on_exit();
 	}
 
@@ -1060,8 +1082,16 @@ static void cleanup_frontier_runtime(void) {
 	g_initialized = false;
 }
 
-/* Finds or creates a named subtable under a parent table. */
-static boolean ensure_named_subtable(hdlhashtable parent, const unsigned char *name, hdlhashtable *out, boolean mark_dont_save) {
+/* Finds or creates a named subtable under a parent table.
+ *
+ * If `out_created` is non-NULL, it is set to true iff the table did not
+ * exist and was created by this call. This lets hydration distinguish a
+ * genuine in-memory mutation (which should drive a persist) from an
+ * idempotent find (which should not). See issue #127. */
+static boolean ensure_named_subtable_ex(hdlhashtable parent, const unsigned char *name, hdlhashtable *out, boolean mark_dont_save, boolean *out_created) {
+	if (out_created != NULL)
+		*out_created = false;
+
 	if (parent == nil || name == NULL) {
 		return false;
 	}
@@ -1084,6 +1114,8 @@ static boolean ensure_named_subtable(hdlhashtable parent, const unsigned char *n
 		if (out != NULL) {
 			*out = table;
 		}
+		if (out_created != NULL)
+			*out_created = true;
 		return true;
 	}
 
@@ -1095,6 +1127,92 @@ static boolean ensure_named_subtable(hdlhashtable parent, const unsigned char *n
 	}
 
 	return false;
+}
+
+/* Backwards-compatible wrapper for callers that don't care whether the
+ * subtable was found or newly created. */
+static boolean ensure_named_subtable(hdlhashtable parent, const unsigned char *name, hdlhashtable *out, boolean mark_dont_save) {
+	return ensure_named_subtable_ex(parent, name, out, mark_dont_save, NULL);
+}
+
+/* Visitor refcon for clear_post_hydration_dirty_flags_visit. */
+typedef struct {
+	long ctcleared;
+} cleardirtyrefcon;
+
+static boolean clear_post_hydration_dirty_flags_visit(hdlhashnode hnode, ptrvoid refcon);
+
+/* Recursively clear fldirty/flsubsdirty on `ht` and all of its in-memory
+ * subtables, and clear dirty on any non-table externals (outlines, wpdocs).
+ *
+ * Cost: O(in-memory nodes in roottable). Walk is bounded by what hydration
+ * link-phase loaded (compiler / environment / charsets / temp /
+ * system.menus.data subtrees plus any external table reached via
+ * augment_database_tables_with_efp). Negligible relative to other hydration
+ * costs. Bounded by `flinmemory` recursion guard at the visitor -- does not
+ * force-load on-disk subtables.
+ *
+ * Rationale (issue #127): hydration link-phase work (linksystemtablestructure,
+ * menudata_ensure_root, headless_init_system_paths, resolve_system_paths,
+ * augment_database_tables_with_efp, ensure_named_subtable) does hashinsert /
+ * hashassign on subtables to wire in-memory EFP / compiler / environment
+ * tables into the loaded system table. Those hashinserts mark the host tables
+ * dirty via langsymbolchanged -> dirtyhashtable. The injected tables
+ * themselves are flagged fldontsave (so their value is not persisted), but
+ * the dirtying of the host table they live in is what then drives
+ * save_system_root_on_exit() to rewrite the whole file on shutdown -- even
+ * when no user-visible mutation occurred.
+ *
+ * Since hydration just loaded this tree from disk, NOTHING in it should be
+ * considered dirty at this point. Walk and clear, so subsequent exit-time
+ * save logic can trust the dirty bits and short-circuit when no user
+ * mutation happened.
+ *
+ * In-memory only -- we never force-load on-disk tables for the sole purpose
+ * of clearing flags they don't have.
+ */
+static void clear_post_hydration_dirty_flags(hdlhashtable ht) {
+	if (ht == nil)
+		return;
+
+	(**ht).fldirty = false;
+	(**ht).flsubsdirty = false;
+
+	cleardirtyrefcon refcon = {0};
+	hashtablevisit(ht, &clear_post_hydration_dirty_flags_visit, &refcon);
+}
+
+static boolean clear_post_hydration_dirty_flags_visit(hdlhashnode hnode, ptrvoid refcon) {
+	cleardirtyrefcon *rc = (cleardirtyrefcon *) refcon;
+	tyvaluerecord val = (**hnode).val;
+
+	if (val.valuetype != externalvaluetype)
+		return true;
+
+	hdlexternalvariable hv = (hdlexternalvariable) val.data.externalvalue;
+	if (hv == nil)
+		return true;
+
+	if (istablevariable(hv)) {
+		/* Only recurse into in-memory subtables. On-disk subtables can't be
+		 * dirty (they haven't been loaded), so there's nothing to clear, and
+		 * we must not force-load them just to clean flags. */
+		if ((**hv).flinmemory) {
+			hdlhashtable subt = (hdlhashtable) (**hv).variabledata;
+			if (subt != nil)
+				clear_post_hydration_dirty_flags(subt);
+		}
+	} else {
+		/* Non-table external (outline, wpdoc, menu, picture, etc.). Clear
+		 * dirty so a freshly-loaded value doesn't trigger a save. Ignore
+		 * failure: this is best-effort hygiene for in-memory objects. */
+		if (langexternalisdirty((hdlexternalhandle) hv)) {
+			(void) langexternalsetdirty((hdlexternalhandle) hv, false);
+			rc->ctcleared++;
+		}
+	}
+
+	return true;
 }
 
 /* Logs the current state of system subtables for debugging hydration issues. */
@@ -1153,8 +1271,8 @@ static boolean hydrate_system_root_database(const char* path, boolean read_only)
 	 * or the original path now containing the migrated v7 data, with v6 backed up to .v6.root).
 	 *
 	 * Read-only mode honors any of:
-	 *   - the explicit `read_only` parameter (driven by --read-only / default
-	 *     for --protocol, see cli_compute_effective_read_only)
+	 *   - the explicit `read_only` parameter (driven by --lock-opened-roots,
+	 *     see cli_compute_effective_read_only)
 	 *   - FRONTIER_OPEN_READONLY=1 environment override (back-compat with
 	 *     pre-flag scripts; harmless when the flag is already set).
 	 * Either gate is sufficient — neither false-overrides the other. */
@@ -1294,19 +1412,26 @@ static boolean hydrate_system_root_database(const char* path, boolean read_only)
 		goto cleanup;
 	}
 
+	/* Track whether any optional table was *actually created* (vs. found
+	 * pre-existing). Persisting is only needed for genuine creations; an
+	 * idempotent find must not trigger a full system-table rewrite (the
+	 * Virgin.root drift issue #127). */
 	boolean created_optional = false;
+	boolean did_create = false;
 	if (systemtable != nil) {
-		if (resourcestable == nil && ensure_named_subtable(systemtable, nameresourcestable, &resourcestable, false))
+		if (resourcestable == nil && ensure_named_subtable_ex(systemtable, nameresourcestable, &resourcestable, false, &did_create) && did_create)
 			created_optional = true;
 
-		if (pathstable == nil && ensure_named_subtable(systemtable, namepathstable, &pathstable, false))
+		if (pathstable == nil && ensure_named_subtable_ex(systemtable, namepathstable, &pathstable, false, &did_create) && did_create)
 			created_optional = true;
 
 		hdlhashtable menustable = nil;
 		bigstring bsmenus;
 		copyctopstring("menus", bsmenus);
-		if (ensure_named_subtable(systemtable, bsmenus, &menustable, false)) {
-			if (menubartable == nil && ensure_named_subtable(menustable, namemenubartable, &menubartable, false))
+		if (ensure_named_subtable_ex(systemtable, bsmenus, &menustable, false, &did_create)) {
+			if (did_create)
+				created_optional = true;
+			if (menubartable == nil && ensure_named_subtable_ex(menustable, namemenubartable, &menubartable, false, &did_create) && did_create)
 				created_optional = true;
 			/*
 			 * Eager projection-root creation. Without this, a fresh
@@ -1320,17 +1445,19 @@ static boolean hydrate_system_root_database(const char* path, boolean read_only)
 			hdlhashtable datatable = nil;
 			bigstring bsdata;
 			copyctopstring("data", bsdata);
-			if (ensure_named_subtable(menustable, bsdata, &datatable, false))
+			if (ensure_named_subtable_ex(menustable, bsdata, &datatable, false, &did_create) && did_create)
 				created_optional = true;
 		}
 
 		hdlhashtable macintoshtable = nil;
 		bigstring bsmacintosh;
 		copyctopstring("macintosh", bsmacintosh);
-		if (ensure_named_subtable(systemtable, bsmacintosh, &macintoshtable, false)) {
+		if (ensure_named_subtable_ex(systemtable, bsmacintosh, &macintoshtable, false, &did_create)) {
+			if (did_create)
+				created_optional = true;
 			bigstring bsobjectmodel;
 			copyctopstring("objectmodel", bsobjectmodel);
-			if (objectmodeltable == nil && ensure_named_subtable(macintoshtable, bsobjectmodel, &objectmodeltable, false))
+			if (objectmodeltable == nil && ensure_named_subtable_ex(macintoshtable, bsobjectmodel, &objectmodeltable, false, &did_create) && did_create)
 				created_optional = true;
 		}
 	}
@@ -1400,6 +1527,13 @@ static boolean hydrate_system_root_database(const char* path, boolean read_only)
 	 * 2. system.paths is populated and resolved
 	 * 3. Database tables are augmented with EFP implementations
 	 * This avoids running scripts during v6->v7 migration when database state is incomplete. */
+
+	/* Issue #127 -- clear dirty bits that the link-phase work above set as a
+	 * side effect of hashinsert/hashassign. The tree was just loaded from
+	 * disk; nothing in it should be considered dirty at this point. Without
+	 * this, save_system_root_on_exit() rewrites the entire file on every
+	 * shutdown even when no user mutation occurred (~1.2 MB drift). */
+	clear_post_hydration_dirty_flags(hroot);
 
 	ok = true;
 
@@ -1664,31 +1798,55 @@ static boolean load_system_root_database(const char* path) {
 
 /* Saves the system root database to disk before unloading.
  * Called during cleanup to persist any changes made during script execution
- * (e.g., user.databases entries created by finishInstall during first-run). */
+ * (e.g., user.databases entries created by finishInstall during first-run).
+ *
+ * Issue #127: this short-circuits to a no-op when the in-memory tree is
+ * fully clean. Hydration pre-clears the dirty bits set by link-phase
+ * hashinserts (see clear_post_hydration_dirty_flags), so the only way the
+ * root reaches save with dirty bits set is via genuine user mutation. */
 static void save_system_root_on_exit(void) {
 	dbaddress root_adr;
 	db_context ctx;
+	dbaddress prior_view = nildbaddress;
 
 	if (databasedata == nil || rootvariable == nil) {
 		return;
 	}
 
-	/* Note: We intentionally do NOT check dbdirtymask here.
-	 *
-	 * The dbdirtymask flag tracks disk-level allocation changes (new blocks
-	 * allocated/released), but in-memory table modifications (e.g., new entries
-	 * added via hashinsert) set fldirty on hash tables WITHOUT setting dbdirtymask.
-	 * This means in-memory changes can exist that dbdirtymask doesn't reflect.
-	 *
-	 * tablesavesystemtable() is efficient when nothing is dirty — it walks the
-	 * in-memory tree checking fldirty/flsubsdirty and no-ops for clean tables.
-	 * The cost of an unnecessary walk is minimal compared to losing data. */
+	/* Propagate sub-dirty flags up so we can trust roottable->flsubsdirty. */
+	tablepreflightsubsdirtyflag((hdlexternalvariable) rootvariable);
+
+	cli_log_debug("save_system_root_on_exit: entry roottable=%p fldirty=%d flsubsdirty=%d",
+	              (void *)roottable,
+	              roottable ? (**roottable).fldirty : -1,
+	              roottable ? (**roottable).flsubsdirty : -1);
+
+	if (roottable != nil
+		&& !(**roottable).fldirty
+		&& !(**roottable).flsubsdirty) {
+		/* Nothing changed since hydration -- skip the entire save path.
+		 * No tablesavesystemtable (avoids rewriting all reachable blocks),
+		 * no dbflushreleasestack (no allocations to flush), no dbsetview
+		 * (avoids a misleading header rewrite). */
+		cli_log_info("save_system_root_on_exit: tree clean, skipping save");
+		return;
+	}
 
 	cli_log_info("Saving system root database before exit");
 
-	/* Save the root table using v7 format */
+	/* Remember the prior view so we can avoid an unnecessary header flush. */
+	dbgetview(cancoonview, &prior_view);
+
+	/* Save the root table using v7 format.
+	 *
+	 * adapter_repack=true forces a full repack: every reachable block is
+	 * rewritten under the current format mode (64-bit). This is required
+	 * for save correctness when the on-disk tree mixes addresses across
+	 * format generations or when adapter logic must normalize them. Without
+	 * repack, the save can leave stale dbaddresses dangling in subtrees
+	 * whose owners weren't visited (e.g., user.inetd.listens). Issue #127. */
 	{
-		db_format_mode mode = {true, false};  /* 64-bit, no adapter_repack */
+		db_format_mode mode = {true, true};  /* 64-bit, adapter_repack */
 		db_format_mode_push(&mode);
 
 		if (!tablesavesystemtable(rootvariable, &root_adr)) {
@@ -1706,9 +1864,11 @@ static void save_system_root_on_exit(void) {
 	if (!dbflushreleasestack_context(&ctx))
 		cli_log_warn("save_system_root_on_exit: dbflushreleasestack_context failed");
 
-	/* Update views[0] to point to the saved root table;
-	 * dbsetview already flushes the header to disk. */
-	dbsetview(cancoonview, root_adr);
+	/* Update views[0] to point to the saved root table only if the address
+	 * actually changed. dbsetview rewrites the file header, so skipping it
+	 * when the view is unchanged avoids touching the header pages. */
+	if (root_adr != prior_view)
+		dbsetview(cancoonview, root_adr);
 
 	cli_log_info("System root database saved successfully");
 }

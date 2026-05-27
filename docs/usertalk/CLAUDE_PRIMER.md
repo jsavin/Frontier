@@ -204,7 +204,7 @@ Full walkthrough with burndown-relevant examples: `debugging_workflow.md`.
 
 Then NDJSON in, NDJSON out. One-shot expressions; great for "what does this verb return on this input?" Per-eval, the protocol wraps in the `with` block — same caveats as yaml tests.
 
-For ODB **edits**, add `--allow-mutate`. `--protocol --system-root` defaults to read-only since #588.
+For ODB **edits**, protocol mode opens the system root read-write by default (issue #127). Use `--lock-opened-roots` to evaluate mutations in memory without persisting them to disk (suitable for inspection-only sessions).
 
 ### `string ()`, `typeof ()`, `nameOf ()` for inspection
 

@@ -56,6 +56,8 @@ tests:
   # ========================================================================
 
   - name: "db.compactDatabase - basic round-trip preserves data"
+    environment:
+      FRONTIER_LOCK_OPENED_ROOTS: "0"
     description: "Compact a populated guest DB to a new path; data should be intact (verb auto-closes srcPath on success)"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
@@ -84,6 +86,8 @@ tests:
   # ========================================================================
 
   - name: "db.compactDatabase - shrinks file after large deletion"
+    environment:
+      FRONTIER_LOCK_OPENED_ROOTS: "0"
     description: "Write bulk data, delete it, compact — destination must be smaller than source"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
@@ -121,6 +125,8 @@ tests:
     expected_result: "true"
 
   - name: "db.compactDatabase - kept data survives after compaction"
+    environment:
+      FRONTIER_LOCK_OPENED_ROOTS: "0"
     description: "After delete + compact, the kept value is readable in dst"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
@@ -150,6 +156,8 @@ tests:
   # ========================================================================
 
   - name: "db.compactDatabase - source on-disk file unchanged after compaction"
+    environment:
+      FRONTIER_LOCK_OPENED_ROOTS: "0"
     description: "After auto-close + reopen, source still has its data (compaction does not modify source bytes)"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
@@ -174,6 +182,8 @@ tests:
   # ========================================================================
 
   - name: "db.compactDatabase - destination is independently openable after src closes"
+    environment:
+      FRONTIER_LOCK_OPENED_ROOTS: "0"
     description: "Compacted DB is a complete file, openable after the source is closed and deleted"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
@@ -201,6 +211,8 @@ tests:
   # ========================================================================
 
   - name: "db.compactDatabase - source is auto-closed on success (no explicit db.close needed)"
+    environment:
+      FRONTIER_LOCK_OPENED_ROOTS: "0"
     description: "After successful compact, srcPath is no longer in the open db list — calling db.close on it errors, confirming auto-close fired"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
@@ -232,6 +244,8 @@ tests:
   # ========================================================================
 
   - name: "db.compactDatabase - unsaved mutations appear in destination"
+    environment:
+      FRONTIER_LOCK_OPENED_ROOTS: "0"
     description: "Values set but not saved before compact still appear in dst (verb saves source first)"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
@@ -284,6 +298,8 @@ tests:
   # ========================================================================
 
   - name: "db.compactDatabase - destination without .root extension is auto-coerced"
+    environment:
+      FRONTIER_LOCK_OPENED_ROOTS: "0"
     description: "Passing a destination without .root extension should append it (matches db.new / db.open)"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
@@ -310,6 +326,8 @@ tests:
   # ========================================================================
 
   - name: "db.compactDatabase - on failure, pre-existing destination is preserved untouched"
+    environment:
+      FRONTIER_LOCK_OPENED_ROOTS: "0"
     description: "Failure (e.g. existing dst) does not write through to dst — the pre-existing content is intact"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
@@ -354,6 +372,8 @@ tests:
     expected_result: "error_caught"
 
   - name: "db.compactDatabase - error when destination already exists"
+    environment:
+      FRONTIER_LOCK_OPENED_ROOTS: "0"
     description: "Refuses to overwrite an existing destination file"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");

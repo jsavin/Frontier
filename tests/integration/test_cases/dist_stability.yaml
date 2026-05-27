@@ -47,6 +47,10 @@ tests:
 
   - name: "guest db open + system root save - no corruption"
     description: "Open a guest database, then save the system root. Verifies that guest db mount points under system.compiler.files (marked fldontsave) don't corrupt the system root during save."
+    # Issue #127: test verifies the write-path (fileMenu.save of system root);
+    # override runner's default FRONTIER_LOCK_OPENED_ROOTS=1 injection.
+    environment:
+      FRONTIER_LOCK_OPENED_ROOTS: "0"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
       local(dbPath = tmpDir + "/" + "dist_guest_save_test.root");
@@ -60,6 +64,10 @@ tests:
 
   - name: "guest db lifecycle - open, write, save guest, save system, close, reopen"
     description: "Full lifecycle: open guest db, write data, save both guest and system root, close, reopen, verify data. This is the pattern that Frontier.tools.install() exercises."
+    # Issue #127: test verifies the write-path (fileMenu.save of system root
+    # and guest DB write operations); override runner's default.
+    environment:
+      FRONTIER_LOCK_OPENED_ROOTS: "0"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
       local(dbPath = tmpDir + "/" + "dist_lifecycle.root");
@@ -107,6 +115,9 @@ tests:
 
   - name: "fileMenu.save - system root save returns true"
     description: "Basic smoke test that fileMenu.save() on the system root completes without error"
+    # Issue #127: test verifies the write-path; override runner's default.
+    environment:
+      FRONTIER_LOCK_OPENED_ROOTS: "0"
     script: |
       return fileMenu.save()
     expected_success: true
@@ -114,6 +125,9 @@ tests:
 
   - name: "fileMenu.save - save after creating new table doesn't crash"
     description: "Create a new table in the system root, save, verify no crash. Exercises the pack path for new in-memory externals with hdatabase set via langexternalsetdatabase."
+    # Issue #127: test verifies the write-path; override runner's default.
+    environment:
+      FRONTIER_LOCK_OPENED_ROOTS: "0"
     script: |
       new(tableType, @system.temp.saveStability);
       system.temp.saveStability.data = "test";

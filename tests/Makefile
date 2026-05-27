@@ -603,6 +603,11 @@ test-debug:
 	@echo "Running debug protocol tests..."
 	@./debug_protocol_test.sh
 
+# Run system root copy-on-write idempotency tests (shell-based, issue #127)
+test-cow-idempotent:
+	@echo "Running system root copy-on-write idempotency tests..."
+	@./system_root_readonly_idempotent_test.sh
+
 # Run pre-commit hook tests (fixture-based; no project tooling needed)
 test-hooks:
 	@../tools/hooks/tests/test_c_indent_hook.sh
@@ -613,7 +618,7 @@ check-license:
 	@python3 ../tools/relicense_headers.py --check
 
 # Run all tests (unit + integration + CLI migration + custom args + debug + hooks + license check)
-test-all: test test-integration test-migrate-flag test-custom-args test-debug test-hooks check-license
+test-all: test test-integration test-migrate-flag test-custom-args test-debug test-cow-idempotent test-hooks check-license
 	@echo "All test suites completed"
 
 $(STRINGS_COMPILER):

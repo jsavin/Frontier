@@ -153,7 +153,7 @@ The unit and integration commands above are also listed in the Quick Reference s
 
 **Edit `databases/Virgin.root`** for changes that should persist in builds. `Virgin.root` is the source of truth — `make dist` copies it to `dist/Frontier.root`. Edits to `databases/Frontier.root` are local only and overwritten.
 
-**Always use `--protocol` mode for ODB edits, never `-e`.** Protocol supports multi-step operations without shell escaping issues. Pair with `--allow-mutate` when the edit must persist — `--protocol --system-root` defaults to **read-only** since #588, so `fileMenu.save()` will fail without it.
+**Always use `--protocol` mode for ODB edits, never `-e`.** Protocol supports multi-step operations without shell escaping issues. Protocol mode opens the system root read-write by default (issue #127 restored the legacy default); use `--lock-opened-roots` for inspection-only sessions — in-memory mutations evaluate normally, but the on-exit save is suppressed.
 
 **Always use `script.newScriptObject` / `op.newOutlineObject`** to install scripts — never raw `op.insert`. These verbs handle line ending normalization (LF/CRLF → CR).
 

@@ -717,6 +717,20 @@ static boolean dbopenverb (hdltreenode hparam1, tyvaluerecord *vreturned) {
 		return (false);
 	}
 
+	/* Issue #127: --lock-opened-roots / FRONTIER_LOCK_OPENED_ROOTS=1 forces
+	 * every loaded-from-disk guest DB read-only, regardless of the user's
+	 * db.open(path, readonly) flag. Newly created roots (db.new /
+	 * file.save / file.saveAs / db.compactDatabase) are unaffected --
+	 * those paths don't go through dbopenverb.
+	 *
+	 * env_truthy() (Common/SystemHeaders/standard.h) shares the truthiness
+	 * contract with cli_parser.c so the CLI flag and the dbopenverb env
+	 * check agree on what counts as enabled. */
+	if (!odbrec.flreadonly && env_truthy("FRONTIER_LOCK_OPENED_ROOTS")) {
+		log_debug(LOG_COMP_DB, "dbopenverb: FRONTIER_LOCK_OPENED_ROOTS in effect, forcing readonly=true");
+		odbrec.flreadonly = true;
+	}
+
 	log_debug(LOG_COMP_DB, "dbopenverb: readonly=%d", odbrec.flreadonly);
 
 	/* Auto-migration: If opening a v6 database in read-write mode, migrate to v7.

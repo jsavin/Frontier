@@ -28,7 +28,7 @@ The shape of the rule: **eval first if it's a value question, breakpoint first i
 
 ## 2. Protocol mode setup
 
-Read-only session (the default):
+Default-RW session:
 
 ```bash
 ./frontier-cli/frontier-cli --protocol --skip-startup --system-root databases/Frontier.root
@@ -36,7 +36,7 @@ Read-only session (the default):
 
 NDJSON in (one JSON object per line on stdin), NDJSON out (responses + unsolicited notifications on stdout). The protocol stream carries both `script/*` and `debug/*` ops — same session, same connection.
 
-For ODB **edits** (installing verbs, mutating tables), add `--allow-mutate`. Protocol mode has been read-only by default since #588 — this is a safety rail, not a bug.
+Protocol mode opens the system root read-write by default (issue #127 restored the legacy default). To evaluate mutations in memory without persisting them to disk (useful for probes, tests, and inspection-only sessions), add `--lock-opened-roots`.
 
 Suspension reasons you'll see in `debug/suspended` notifications:
 

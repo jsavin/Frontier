@@ -251,6 +251,8 @@ tests:
     timeout: 5
 
   - name: "closeall - access after close fails"
+    environment:
+      FRONTIER_LOCK_OPENED_ROOTS: "0"
     description: |
       After db.close(), attempting to read from a closed guest database
       should fail, confirming the handle is released. Uses db.open/db.close
@@ -271,6 +273,8 @@ tests:
     timeout: 5
 
   - name: "closeall - reopen after close succeeds"
+    environment:
+      FRONTIER_LOCK_OPENED_ROOTS: "0"
     description: |
       After fileMenu.closeall(), reopening a previously closed database
       should succeed, confirming no lingering file locks.

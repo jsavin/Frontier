@@ -4,10 +4,11 @@
 # via frontier-cli's protocol mode.
 #
 # Problem (issue #644): the documented ODB-edit workflow points
-# `--allow-mutate` directly at `databases/Virgin.root`. A forgotten session,
-# a runaway script, or a mid-write kill can leave the canonical .root file
-# corrupted locally with no automatic recovery. PR #643's agent hit this in
-# practice — Virgin.root grew from 20MB to 31MB due to a leaked session.
+# `frontier-cli --protocol` directly at `databases/Virgin.root`. A forgotten
+# session, a runaway script, or a mid-write kill can leave the canonical
+# .root file corrupted locally with no automatic recovery. PR #643's agent
+# hit this in practice — Virgin.root grew from 20MB to 31MB due to a leaked
+# session.
 #
 # This wrapper interposes a staging step:
 #
@@ -27,10 +28,13 @@
 #   --help        Print usage and exit 0.
 #   --dry-run     Stage the copy but do NOT spawn frontier-cli. Useful for
 #                 testing the wrapper itself.
-#   --read-only   Omit --allow-mutate from the spawned frontier-cli. Lets
-#                 operators do read-only inspection without the wrapper's
-#                 promotion ceremony. (Equivalent to running the CLI
-#                 directly in inspection mode, but staged for consistency.)
+#   --read-only   Pass --lock-opened-roots to the spawned frontier-cli.
+#                 Lets operators do read-only inspection without the
+#                 wrapper's promotion ceremony. (Equivalent to running the
+#                 CLI directly in inspection mode, but staged for
+#                 consistency.) Kept as --read-only on the wrapper for
+#                 operator-facing clarity; --lock-opened-roots is the
+#                 underlying CLI flag.
 #
 # On Ctrl-C during the editor session the staged temp dir is left in place
 # for inspection.
@@ -71,10 +75,11 @@ Options:
   --help        Show this help and exit.
   --dry-run     Stage the copy but do not spawn frontier-cli. Cleans up the
                 staged temp dir on exit. Use this to smoke-test the wrapper.
-  --read-only   Spawn frontier-cli without --allow-mutate. The session is
-                read-only by the CLI's own defense (issue #588) regardless,
-                but this flag also disables the promotion prompt at the end
-                since the staged copy cannot have been changed.
+  --read-only   Spawn frontier-cli with --lock-opened-roots. The session
+                evaluates mutations in memory but the on-exit save is
+                suppressed, and this flag also disables the promotion
+                prompt at the end since the staged copy cannot have been
+                changed on disk.
 
 Examples:
   tools/edit_virgin_root.sh
@@ -174,7 +179,7 @@ STAGE_DIR="$(mktemp -d -t "frontier-edit-${BEFORE_MD5:0:12}-XXXXXXXX")" || {
 STAGED_ROOT="$STAGE_DIR/Virgin.root"
 
 # EXIT trap for cleanup. Sets STAGE_PRESERVE=1 to skip removal on the
-# "rejected promotion" and "--read-only changed" forensic branches.
+# "rejected promotion" and "--read-only changed" (lock-bypass) forensic branches.
 STAGE_PRESERVE=0
 cleanup_stage() {
     if [ "$STAGE_PRESERVE" -eq 0 ] && [ -n "${STAGE_DIR:-}" ] && [ -d "$STAGE_DIR" ]; then
@@ -225,14 +230,14 @@ fi
 # ---------------------------------------------------------------------------
 
 CLI_ARGS=(--protocol --skip-startup --system-root "$STAGED_ROOT")
-if [ "$READ_ONLY" -eq 0 ]; then
-    CLI_ARGS=(--allow-mutate "${CLI_ARGS[@]}")
+if [ "$READ_ONLY" -eq 1 ]; then
+    CLI_ARGS=(--lock-opened-roots "${CLI_ARGS[@]}")
 fi
 
 if [ "$READ_ONLY" -eq 1 ]; then
-    echo "Spawning frontier-cli in read-only mode (no --allow-mutate)."
+    echo "Spawning frontier-cli in --read-only mode (--lock-opened-roots)."
 else
-    echo "Spawning frontier-cli with --allow-mutate against the staged copy."
+    echo "Spawning frontier-cli (default-RW) against the staged copy."
 fi
 echo "Command: $CLI ${CLI_ARGS[*]}"
 echo
@@ -270,10 +275,10 @@ if [ "$BEFORE_MD5" = "$AFTER_MD5" ]; then
 fi
 
 if [ "$READ_ONLY" -eq 1 ]; then
-    # This shouldn't happen — read-only mode means the CLI shouldn't write —
-    # but if it does, treat it as a hard error and preserve the staged copy
-    # for forensics.
-    err "staged copy changed despite --read-only — refusing to promote"
+    # This shouldn't happen — --lock-opened-roots means the CLI shouldn't
+    # write to disk — but if it does, treat it as a hard error and preserve
+    # the staged copy for forensics.
+    err "staged copy changed despite --read-only (--lock-opened-roots) — refusing to promote"
     err "staged copy left at: $STAGED_ROOT"
     STAGE_PRESERVE=1
     exit 4

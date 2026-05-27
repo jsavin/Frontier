@@ -302,6 +302,10 @@ tests:
 
   - name: "fileMenu.save - save system root (no params)"
     description: "Calling fileMenu.save() with no parameters saves the system root database"
+    # Issue #127: test verifies the write-path; must override runner's default
+    # FRONTIER_LOCK_OPENED_ROOTS=1 injection so the save actually executes.
+    environment:
+      FRONTIER_LOCK_OPENED_ROOTS: "0"
     script: |
       return fileMenu.save()
     expected_success: true
@@ -314,6 +318,10 @@ tests:
       of system table externals would switch databasedata to the guest database,
       causing dbread failures on sibling externals (e.g. menus at addresses
       valid only in the system root).
+    # Issue #127: test verifies the write-path; must override runner's default
+    # FRONTIER_LOCK_OPENED_ROOTS=1 injection so the save actually executes.
+    environment:
+      FRONTIER_LOCK_OPENED_ROOTS: "0"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
       local(dbPath = tmpDir + "/" + "filemenu_save_regression.root");
@@ -429,6 +437,8 @@ tests:
   # ========================================================================
 
   - name: "fileMenu.saveCopy - save system root to new file"
+    environment:
+      FRONTIER_LOCK_OPENED_ROOTS: "0"
     description: "saveCopy creates a copy of the system root database"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
@@ -439,6 +449,8 @@ tests:
     expected_result: "true"
 
   - name: "fileMenu.saveCopy - original database unchanged after copy"
+    environment:
+      FRONTIER_LOCK_OPENED_ROOTS: "0"
     description: "After saveCopy, the system root is still fully usable"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
@@ -449,6 +461,8 @@ tests:
     expected_result: "true"
 
   - name: "fileMenu.saveCopy - new file is independently openable"
+    environment:
+      FRONTIER_LOCK_OPENED_ROOTS: "0"
     description: "The copied database can be opened and contains system table"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
@@ -462,6 +476,8 @@ tests:
     expected_result: "true"
 
   - name: "fileMenu.saveAs - aliases to same behavior as saveCopy"
+    environment:
+      FRONTIER_LOCK_OPENED_ROOTS: "0"
     description: "saveAs and saveCopy are interchangeable"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");

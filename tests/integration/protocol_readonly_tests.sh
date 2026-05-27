@@ -1,16 +1,20 @@
 #!/bin/bash
 #
-# Integration tests for --protocol read-only behavior (issue #588).
+# Integration tests for --protocol read/write behavior under issue #127.
+#
+# Issue #127 restores the legacy default: --protocol --system-root opens
+# read-write. The previous #588 default (RO unless --allow-mutate) was
+# removed because it inverted legacy Frontier semantics and required test
+# infrastructure to thread an opt-in through every spawn site.
 #
 # Verifies:
-#  1. Default: --protocol --system-root opens read-only; no-op script does
-#     not modify the .root file.
-#  2. --allow-mutate: opt-in to read-write mode; fileMenu.save() succeeds
-#     and modifies the file on disk.
-#  3. Default with mutation: fileMenu.save() returns success:false with
-#     a "read-only" error message — the file is not modified.
-#  4. --read-only and --allow-mutate together: rejected at argv parse.
-#  5. --read-only outside protocol mode: still honored (defense in depth).
+#  1. Default --protocol with no-op script + --lock-opened-roots: file
+#     unchanged.
+#  2. Default --protocol with fileMenu.save(): file changes (default-RW
+#     persists the save).
+#  3. --lock-opened-roots + fileMenu.save(): save reports failure and the
+#     file is not modified (lock blocks the save path).
+#  4. --lock-opened-roots outside protocol mode (-e): still honored.
 #
 # Each test stages a fresh copy of Virgin.root in tests/tmp/ to avoid
 # touching the canonical database under databases/.
@@ -34,6 +38,9 @@ NC='\033[0m'
 PASS=0
 FAIL=0
 TOTAL=0
+
+# Clear inherited lock env so the test exercises the CLI flag directly.
+unset FRONTIER_LOCK_OPENED_ROOTS
 
 if [ ! -x "$CLI" ]; then
 	echo -e "${RED}Error: frontier-cli not found at $CLI${NC}"
@@ -81,111 +88,93 @@ _record_test() {
 }
 
 echo "=============================================="
-echo "Protocol Read-Only Tests (issue #588)"
+echo "Protocol Read/Write Tests (issue #127)"
 echo "=============================================="
 echo
 
 # -----------------------------------------------------------------------
-# Test 1: --protocol --system-root (no flags) — file unchanged after no-op.
-# This is the core regression: previously the CLI re-saved the file even
-# when no mutation was requested.
+# Test 1: --protocol --lock-opened-roots no-op — file unchanged.
+# This is the "ephemeral inspection" path tests run on by default.
 # -----------------------------------------------------------------------
 {
-	db=$(_stage_db "test1_default_readonly")
+	db=$(_stage_db "test1_lock_noop")
 	before=$(_md5 "$db")
 	out=$(echo '{"id":1,"op":"script/eval","params":{"expression":"1+1"}}' \
-		| "$CLI" --protocol --skip-startup --system-root "$db" 2>&1)
+		| "$CLI" --protocol --skip-startup --lock-opened-roots --system-root "$db" 2>&1)
 	after=$(_md5 "$db")
 	if [ "$before" = "$after" ]; then
-		_record_test "default --protocol leaves DB unchanged after no-op" pass
+		_record_test "--protocol --lock-opened-roots leaves DB unchanged after no-op" pass
 	else
-		_record_test "default --protocol leaves DB unchanged after no-op" fail \
+		_record_test "--protocol --lock-opened-roots leaves DB unchanged after no-op" fail \
 			"md5 changed: $before -> $after"
 	fi
 }
 
 # -----------------------------------------------------------------------
-# Test 2: --allow-mutate + protocol with fileMenu.save() — file changes.
-# This confirms the install/build path (clean-root, ODB editing) still
-# works when explicitly opted in.
+# Test 2: default --protocol with fileMenu.save() — file changes.
+# Confirms the install/build path (clean-root, ODB editing) works without
+# any opt-in flag under the issue #127 default.
 # -----------------------------------------------------------------------
 {
-	db=$(_stage_db "test2_allow_mutate")
+	db=$(_stage_db "test2_default_save")
 	before=$(_md5 "$db")
 	# Touch a value, then save. The save should succeed and persist.
 	out=$(printf '%s\n%s\n' \
-		'{"id":1,"op":"script/eval","params":{"expression":"new(stringType,@workspace.testReadOnly588); workspace.testReadOnly588=\"changed\"; return true"}}' \
+		'{"id":1,"op":"script/eval","params":{"expression":"new(stringType,@workspace.testPersist127); workspace.testPersist127=\"changed\"; return true"}}' \
 		'{"id":2,"op":"script/eval","params":{"expression":"fileMenu.save()"}}' \
-		| "$CLI" --protocol --skip-startup --allow-mutate --system-root "$db" 2>&1)
+		| "$CLI" --protocol --skip-startup --system-root "$db" 2>&1)
 	after=$(_md5 "$db")
 	if [ "$before" != "$after" ] && echo "$out" | grep -q '"id":2.*"success":true'; then
-		_record_test "--allow-mutate permits fileMenu.save() to persist" pass
+		_record_test "default --protocol permits fileMenu.save() to persist" pass
 	else
-		_record_test "--allow-mutate permits fileMenu.save() to persist" fail \
+		_record_test "default --protocol permits fileMenu.save() to persist" fail \
 			"md5 unchanged or save failed. before=$before after=$after out=$out"
 	fi
 }
 
 # -----------------------------------------------------------------------
-# Test 3: default --protocol with fileMenu.save() — error returned and
-# file unchanged. Failure is loud (success:false), not silent.
+# Test 3: --lock-opened-roots + fileMenu.save() — save reports failure and
+# file is unchanged. Lock turns on the lower-layer flreadonly bit, so
+# fileMenu.save() returns success:false with a read-only error.
 # -----------------------------------------------------------------------
 {
-	db=$(_stage_db "test3_default_blocks_save")
+	db=$(_stage_db "test3_lock_blocks_save")
 	before=$(_md5 "$db")
 	out=$(echo '{"id":1,"op":"script/eval","params":{"expression":"fileMenu.save()"}}' \
-		| "$CLI" --protocol --skip-startup --system-root "$db" 2>&1)
+		| "$CLI" --protocol --skip-startup --lock-opened-roots --system-root "$db" 2>&1)
 	after=$(_md5 "$db")
 	# Save must report failure AND file must not have changed.
 	if [ "$before" = "$after" ] && echo "$out" | grep -q '"id":1' \
 		&& echo "$out" | grep -qi "read-only"; then
-		_record_test "default --protocol refuses fileMenu.save() with read-only error" pass
+		_record_test "--lock-opened-roots refuses fileMenu.save() with read-only error" pass
 	else
-		_record_test "default --protocol refuses fileMenu.save() with read-only error" fail \
+		_record_test "--lock-opened-roots refuses fileMenu.save() with read-only error" fail \
 			"md5 changed=$([ \"$before\" != \"$after\" ] && echo yes || echo no), out=$out"
 	fi
 }
 
 # -----------------------------------------------------------------------
-# Test 4: --read-only and --allow-mutate together are rejected.
-# -----------------------------------------------------------------------
-{
-	db=$(_stage_db "test4_conflict")
-	# Use --batch to force exit on argv parse error rather than dropping
-	# into a REPL (some CLIs don't bail until an op arrives). The CLI
-	# should print an error and exit non-zero.
-	out=$("$CLI" --read-only --allow-mutate --skip-startup --system-root "$db" -e "1" 2>&1)
-	rc=$?
-	if [ "$rc" -ne 0 ] && echo "$out" | grep -qiE "read-only.*allow-mutate|allow-mutate.*read-only|cannot.*combined"; then
-		_record_test "--read-only + --allow-mutate is rejected" pass
-	else
-		_record_test "--read-only + --allow-mutate is rejected" fail \
-			"rc=$rc out=$out"
-	fi
-}
-
-# -----------------------------------------------------------------------
-# Test 5: --read-only honored outside --protocol (defense in depth).
+# Test 4: --lock-opened-roots honored outside --protocol (-e mode).
 # Even with -e mode and an explicit fileMenu.save(), the file should not
-# change when --read-only is set.
+# change when --lock-opened-roots is set.
 # -----------------------------------------------------------------------
 {
-	db=$(_stage_db "test5_read_only_outside_protocol")
+	db=$(_stage_db "test4_lock_opened_roots_outside_protocol")
 	before=$(_md5 "$db")
-	out=$("$CLI" --read-only --skip-startup --system-root "$db" \
+	out=$("$CLI" --lock-opened-roots --skip-startup --system-root "$db" \
 		-e "fileMenu.save()" 2>&1)
 	after=$(_md5 "$db")
 	if [ "$before" = "$after" ]; then
-		_record_test "--read-only honored in -e mode (file unchanged)" pass
+		_record_test "--lock-opened-roots honored in -e mode (file unchanged)" pass
 	else
-		_record_test "--read-only honored in -e mode (file unchanged)" fail \
+		_record_test "--lock-opened-roots honored in -e mode (file unchanged)" fail \
 			"md5 changed: $before -> $after; out=$out"
 	fi
 }
 
 echo
 echo "=============================================="
-echo "Protocol Read-Only Tests: $PASS/$TOTAL passed"
+echo "Protocol Read/Write Tests: $PASS/$TOTAL passed"
 if [ $FAIL -eq 0 ]; then
 	echo -e "${GREEN}All tests passed${NC}"
 	rm -rf "$TMP_DIR"

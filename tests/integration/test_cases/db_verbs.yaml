@@ -67,6 +67,8 @@ tests:
   # Test 3: db.setvalue - Write simple string value
   # ========================================================================
   - name: "db.setvalue - write string to root"
+    environment:
+      FRONTIER_LOCK_OPENED_ROOTS: "0"
     description: "Create DB, open it, set a string value (self-contained)"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
@@ -82,6 +84,8 @@ tests:
   # Test 4: db.getvalue - Read back string value
   # ========================================================================
   - name: "db.getvalue - read string from root"
+    environment:
+      FRONTIER_LOCK_OPENED_ROOTS: "0"
     description: "Set and get a string value (self-contained test)"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
@@ -98,6 +102,8 @@ tests:
   # Test 5: db.defined - Check existence of value
   # ========================================================================
   - name: "db.defined - check existing value"
+    environment:
+      FRONTIER_LOCK_OPENED_ROOTS: "0"
     description: "Verify that a value exists after setting it (self-contained)"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
@@ -126,6 +132,8 @@ tests:
   # Test 6: db.setvalue - Write numeric value
   # ========================================================================
   - name: "db.setvalue - write number to root"
+    environment:
+      FRONTIER_LOCK_OPENED_ROOTS: "0"
     description: "Create DB and set a numeric value (self-contained)"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
@@ -138,6 +146,8 @@ tests:
     expected_result: "true"
 
   - name: "db.getvalue - read number from root"
+    environment:
+      FRONTIER_LOCK_OPENED_ROOTS: "0"
     description: "Set and get a numeric value (self-contained)"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
@@ -154,6 +164,8 @@ tests:
   # Test 7: db.newtable - Create table
   # ========================================================================
   - name: "db.newtable - create table at root"
+    environment:
+      FRONTIER_LOCK_OPENED_ROOTS: "0"
     description: "Create DB and add a new table (self-contained)"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
@@ -169,6 +181,8 @@ tests:
   # Test 8: db.istable - Check if address is a table
   # ========================================================================
   - name: "db.istable - verify table type"
+    environment:
+      FRONTIER_LOCK_OPENED_ROOTS: "0"
     description: "Create table and verify it is a table (self-contained)"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
@@ -182,6 +196,8 @@ tests:
     expected_result: "true"
 
   - name: "db.istable - verify string is not a table"
+    environment:
+      FRONTIER_LOCK_OPENED_ROOTS: "0"
     description: "Create string and verify it is not a table (self-contained)"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
@@ -198,6 +214,8 @@ tests:
   # Test 9: db.setvalue - Write values into table
   # ========================================================================
   - name: "db.setvalue - write to nested table"
+    environment:
+      FRONTIER_LOCK_OPENED_ROOTS: "0"
     description: "Create table and set values inside it (self-contained)"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
@@ -216,6 +234,8 @@ tests:
   # Test 10: db.countitems - Count items in table
   # ========================================================================
   - name: "db.countitems - count table items"
+    environment:
+      FRONTIER_LOCK_OPENED_ROOTS: "0"
     description: "Create table with items and count them (self-contained)"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
@@ -235,6 +255,8 @@ tests:
   # Test 11: db.getnthitem - Enumerate table items
   # ========================================================================
   - name: "db.getnthitem - get first item name"
+    environment:
+      FRONTIER_LOCK_OPENED_ROOTS: "0"
     description: "Create table and get first item name (self-contained)"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
@@ -251,6 +273,8 @@ tests:
     expected_result: "item1"
 
   - name: "db.getnthitem - get second item name"
+    environment:
+      FRONTIER_LOCK_OPENED_ROOTS: "0"
     description: "Create table and get second item name (self-contained)"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
@@ -267,6 +291,8 @@ tests:
     expected_result: "item2"
 
   - name: "db.getnthitem - get third item name"
+    environment:
+      FRONTIER_LOCK_OPENED_ROOTS: "0"
     description: "Create table and get third item name (self-contained)"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
@@ -286,6 +312,8 @@ tests:
   # Test 12: db.getmoddate - Get modification date
   # ========================================================================
   - name: "db.getmoddate - get item modification date"
+    environment:
+      FRONTIER_LOCK_OPENED_ROOTS: "0"
     description: "Create value and get its modification date (self-contained)"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
@@ -302,6 +330,8 @@ tests:
   # Test 13: db.delete - Delete value
   # ========================================================================
   - name: "db.delete - delete string value"
+    environment:
+      FRONTIER_LOCK_OPENED_ROOTS: "0"
     description: "Create and delete a value (self-contained)"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
@@ -315,6 +345,8 @@ tests:
     expected_result: "true"
 
   - name: "db.defined - verify deletion"
+    environment:
+      FRONTIER_LOCK_OPENED_ROOTS: "0"
     description: "Create value, delete it, verify it's gone (self-contained)"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
@@ -332,6 +364,8 @@ tests:
   # Test 14: db.save - Save changes to disk
   # ========================================================================
   - name: "db.save - save database changes"
+    environment:
+      FRONTIER_LOCK_OPENED_ROOTS: "0"
     description: "Create DB, write data, save to disk (self-contained)"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
@@ -363,6 +397,8 @@ tests:
   # Test 16: Reopen and verify persistence
   # ========================================================================
   - name: "db.open - reopen saved database"
+    environment:
+      FRONTIER_LOCK_OPENED_ROOTS: "0"
     description: "Create, save, close, then reopen (self-contained)"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
@@ -378,6 +414,8 @@ tests:
     expected_result: "true"
 
   - name: "db.getvalue - verify persisted value"
+    environment:
+      FRONTIER_LOCK_OPENED_ROOTS: "0"
     description: "Test full persistence cycle: create, save, close, reopen, read"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
@@ -394,6 +432,8 @@ tests:
     expected_result: "42"
 
   - name: "db.countitems - verify persisted table"
+    environment:
+      FRONTIER_LOCK_OPENED_ROOTS: "0"
     description: "Test table persistence: create, populate, save, close, reopen, count"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
@@ -413,6 +453,8 @@ tests:
     expected_result: "3"
 
   - name: "db.defined - verify deletion persisted"
+    environment:
+      FRONTIER_LOCK_OPENED_ROOTS: "0"
     description: "Test delete persistence: create, delete, save, close, reopen, verify gone"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
@@ -469,6 +511,8 @@ tests:
     expected_result: "true"
 
   - name: "db.setvalue - write to v7 database"
+    environment:
+      FRONTIER_LOCK_OPENED_ROOTS: "0"
     description: "Create v7 DB and set value (self-contained)"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
@@ -481,6 +525,8 @@ tests:
     expected_result: "true"
 
   - name: "db.getvalue - read from v7 database"
+    environment:
+      FRONTIER_LOCK_OPENED_ROOTS: "0"
     description: "Create v7 DB, write value, read it back (self-contained)"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
@@ -562,6 +608,8 @@ tests:
     expected_result: "true"
 
   - name: "Issue #264 - multiple close/reopen cycles with data persistence"
+    environment:
+      FRONTIER_LOCK_OPENED_ROOTS: "0"
     description: "Data persists across multiple close/reopen cycles in same script"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
