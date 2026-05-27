@@ -173,6 +173,10 @@ tests:
       external whose data is on disk in the source (guest) database.
       Previously failed with dbrefhandle FAILED when the pack context used
       the destination database instead of the source.
+    # Issue #127: test verifies the write-path (fileMenu.save of system
+    # root); override runner's default FRONTIER_LOCK_OPENED_ROOTS=1.
+    environment:
+      FRONTIER_LOCK_OPENED_ROOTS: "0"
     script: |
       local (sysdir = file.folderFromPath(Frontier.getFilePath()));
       local (guestpath = sysdir + "StartupTasks.root");

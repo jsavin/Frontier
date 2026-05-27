@@ -343,6 +343,22 @@ typedef Pattern xppattern;
 
 extern boolean flcominitialized; /* set up in lang.c */
 
+/* Returns true if env var `name` is set to a value other than "" or "0".
+ * Use for boolean flag-style env vars: empty / "0" / unset are all false.
+ *
+ * `static inline` so it works in any TU that includes standard.h without
+ * needing a dedicated env_util.c and matching makefile entries in both the
+ * CLI and tests builds.
+ *
+ * Note: FRONTIER_OPEN_READONLY (main.c::hydrate_system_root_database) uses
+ * any-value-is-on semantics (even "0" enables it) for pre-existing
+ * back-compat reasons -- do not retrofit env_truthy() onto that call site
+ * without a deliberate semantic-change decision. */
+static inline boolean env_truthy(const char *name) {
+	const char *v = getenv(name);
+	return (boolean)(v != NULL && v[0] != '\0' && strcmp(v, "0") != 0);
+}
+
 #endif
 
 #endif

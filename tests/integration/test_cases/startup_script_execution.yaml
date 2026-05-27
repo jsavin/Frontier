@@ -17,8 +17,8 @@
 #   5. user.databases table is created if not already defined
 #
 # EXECUTION NOTE:
-# These tests run in the persistent protocol executor process (--skip-startup +
-# --allow-mutate). Calling startup.startupScript() within a test sets
+# These tests run in the persistent protocol executor process (--skip-startup,
+# default-RW under issue #127). Calling startup.startupScript() within a test sets
 # system.temp.Frontier for the lifetime of that process. Tests are self-contained:
 # each script checks its own observable state in one atomic operation.
 # sequential: true prevents parallel runs from racing on system.temp.Frontier.

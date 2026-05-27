@@ -33,12 +33,12 @@ For **editing** (changes that persist to the .root file), use the stage-and-conf
 tools/edit_virgin_root.sh
 ```
 
-The wrapper copies `databases/Virgin.root` to `/tmp/frontier-edit-<hash>/Virgin.root`, spawns `frontier-cli --protocol --skip-startup --allow-mutate --system-root <staged>`, and prompts before promoting the changed copy back over the canonical file. A killed session or runaway script cannot corrupt the source — worst case you discard the staged copy. See `tools/edit_virgin_root.sh --help` and issue #644 for the rationale.
+The wrapper copies `databases/Virgin.root` to `/tmp/frontier-edit-<hash>/Virgin.root`, spawns `frontier-cli --protocol --skip-startup --system-root <staged>`, and prompts before promoting the changed copy back over the canonical file. A killed session or runaway script cannot corrupt the source — worst case you discard the staged copy. See `tools/edit_virgin_root.sh --help` and issue #644 for the rationale.
 
 **Emergency / experts only** — if you genuinely need to edit the canonical file in place (e.g., recovery work, scripted batch edits where the prompt would be in the way), invoke frontier-cli directly:
 
 ```bash
-frontier-cli --protocol --skip-startup --allow-mutate --system-root databases/Virgin.root
+frontier-cli --protocol --skip-startup --system-root databases/Virgin.root
 ```
 
 A leaked or killed session against the canonical file can corrupt `databases/Virgin.root` locally — recover via `git checkout databases/Virgin.root`.
@@ -81,7 +81,7 @@ tools/edit_virgin_root.sh
 (Emergency / experts only — direct invocation against the canonical file:)
 
 ```bash
-frontier-cli --protocol --skip-startup --allow-mutate --system-root databases/Virgin.root
+frontier-cli --protocol --skip-startup --system-root databases/Virgin.root
 ```
 
 ```json
@@ -222,7 +222,7 @@ tools/edit_virgin_root.sh
 Emergency / experts only — direct invocation against the canonical file:
 
 ```bash
-frontier-cli --protocol --skip-startup --allow-mutate --system-root databases/Virgin.root
+frontier-cli --protocol --skip-startup --system-root databases/Virgin.root
 ```
 
 ```json

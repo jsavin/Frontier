@@ -116,8 +116,23 @@ class FrontierCLI:
             if batch_mode:
                 cmd.append('--batch')
 
-            # Merge environment variables with current environment
+            # Merge environment variables with current environment.
+            #
+            # FRONTIER_LOCK_OPENED_ROOTS=1 (issue #127): treat the staged system root
+            # and every loaded-from-disk guest DB as read-only. Tests stage
+            # databases as disposable copies under tests/tmp/results/db/, so
+            # disk persistence is never required across processes -- in-memory
+            # mutations still evaluate as expected, only the save-on-exit is
+            # suppressed. Without this, every CLI invocation rewrites the
+            # staged Virgin.root and trips the drift-detection warning in
+            # tools/run_integration_tests.sh (PR #555). Drift detection still
+            # fires for tests that explicitly persist (fileMenu.save on guest
+            # DBs etc.), just less aggressively.
+            #
+            # Tests that need to write to the system root must override by
+            # passing env={'FRONTIER_LOCK_OPENED_ROOTS': '0'} on the execute() call.
             process_env = os.environ.copy()
+            process_env.setdefault('FRONTIER_LOCK_OPENED_ROOTS', '1')
             if env:
                 process_env.update(env)
 
@@ -204,8 +219,11 @@ class FrontierCLI:
         if self.system_root:
             cmd.extend(['--system-root', self.system_root])
 
-        # Merge environment variables with current environment
+        # Merge environment variables with current environment.
+        # FRONTIER_LOCK_OPENED_ROOTS=1: protect staged Virgin.root from drift; see
+        # comment in execute() above. Caller can override with env arg.
         process_env = os.environ.copy()
+        process_env.setdefault('FRONTIER_LOCK_OPENED_ROOTS', '1')
         # Force interactive mode for testing (ensures prompts are shown)
         process_env['FRONTIER_FORCE_INTERACTIVE'] = '1'
         if env:
@@ -274,7 +292,10 @@ class FrontierCLI:
         # - TERM=dumb: Makes linenoise use simple fgets() instead of raw mode
         #   editing, eliminating character-by-character echo and ANSI escapes
         # - FRONTIER_FORCE_INTERACTIVE: Ensures dialog verbs use stdio prompts
+        # - FRONTIER_LOCK_OPENED_ROOTS=1 (issue #127): protect staged Virgin.root
+        #   from drift; see comment in FrontierCLI.execute() above.
         process_env = os.environ.copy()
+        process_env.setdefault('FRONTIER_LOCK_OPENED_ROOTS', '1')
         process_env['FRONTIER_PLAIN_REPL'] = '1'
         process_env['TERM'] = 'dumb'
         process_env['FRONTIER_FORCE_INTERACTIVE'] = '1'
@@ -363,18 +384,24 @@ class ProtocolExecutor:
         self._stderr_file = None
         self._next_id = 1
 
-    def start(self):
+    def start(self, env_overrides: Optional[Dict[str, str]] = None):
         """Spawn the frontier-cli --protocol subprocess.
 
-        --allow-mutate: opt back into read-write so tests can call
-        fileMenu.save(), workspace assignments, etc. Issue #588 made
-        --protocol --system-root default to read-only to protect canonical
-        roots during inspection. Integration tests run against staged
-        copies under tests/tmp/results/db/ — mutating those copies is
-        intentional, the staging layer (tools/run_integration_tests.sh)
-        treats them as disposable.
+        Protocol mode now uses legacy default-RW (issue #127): tests can
+        call fileMenu.save(), workspace assignments, etc. without opting
+        in. Integration tests run against staged copies under
+        tests/tmp/results/db/ — mutating those copies is intentional, the
+        staging layer (tools/run_integration_tests.sh) treats them as
+        disposable. Tests that must NOT persist on-disk should set
+        FRONTIER_LOCK_OPENED_ROOTS=1 in their env (or rely on the env
+        defaults set by FrontierCLI.execute()).
+
+        env_overrides: per-instance environment overrides. Used by
+        run_protocol_test() to spawn a dedicated executor for protocol_ops
+        tests whose YAML declares an `environment:` block (e.g.
+        FRONTIER_LOCK_OPENED_ROOTS=0 to enable on-disk saves).
         """
-        cmd = [self.cli_path, '--protocol', '--skip-startup', '--allow-mutate']
+        cmd = [self.cli_path, '--protocol', '--skip-startup']
         if self.system_root:
             cmd.extend(['--system-root', self.system_root])
 
@@ -382,6 +409,20 @@ class ProtocolExecutor:
         # (using a file avoids pipe buffer deadlocks)
         self._stderr_file = tempfile.NamedTemporaryFile(
             mode='w+', prefix='frontier_protocol_stderr_', suffix='.log', delete=False)
+
+        # Merge environment to inject FRONTIER_LOCK_OPENED_ROOTS=1 (issue #127):
+        # treat the staged system root and every loaded-from-disk guest DB as
+        # read-only for the long-lived protocol batch process. Mirrors the
+        # FrontierCLI.execute() / execute_repl() / execute_interactive() pattern.
+        # Tests that need to write to the system root carry an explicit
+        # `environment:` block in YAML; script-mode tests are forced out of
+        # the protocol batch by _is_protocol_compatible() and run via the
+        # per-process executor. protocol_ops tests with an environment block
+        # use a dedicated short-lived executor (see run_protocol_test()).
+        process_env = os.environ.copy()
+        process_env.setdefault('FRONTIER_LOCK_OPENED_ROOTS', '1')
+        if env_overrides:
+            process_env.update(env_overrides)
 
         try:
             self._proc = subprocess.Popen(
@@ -391,6 +432,7 @@ class ProtocolExecutor:
                 stderr=self._stderr_file,
                 text=True,
                 bufsize=1,  # Line buffered
+                env=process_env,
             )
         except Exception:
             self._close_stderr_file()
@@ -1009,10 +1051,31 @@ class TestRunner:
         # entries may remain in workspace. This is acceptable for now — tests
         # use unique prefixes and check specific paths, so stale entries from
         # prior runs don't cause false failures.
-        if self.protocol_executor is None or not self.protocol_executor.is_alive:
-            return TestResult(
-                test.name, False,
-                error="Protocol executor not available (required for protocol_ops tests)")
+        #
+        # Issue #127: If the test declares an `environment:` block, spawn a
+        # dedicated short-lived executor so the per-test env overrides (e.g.
+        # FRONTIER_LOCK_OPENED_ROOTS=0 for save-path tests) apply. The shared
+        # batch executor is started with FRONTIER_LOCK_OPENED_ROOTS=1 by
+        # default and can't accept per-test overrides at send time.
+        dedicated_executor: Optional[ProtocolExecutor] = None
+        if test.environment:
+            dedicated_executor = ProtocolExecutor(
+                cli_path=self.cli.cli_path,
+                system_root=self.protocol_executor.system_root if self.protocol_executor else None,
+            )
+            try:
+                dedicated_executor.start(env_overrides=test.environment)
+            except Exception as e:
+                return TestResult(
+                    test.name, False,
+                    error=f"Failed to start dedicated protocol executor: {e}")
+            executor = dedicated_executor
+        else:
+            if self.protocol_executor is None or not self.protocol_executor.is_alive:
+                return TestResult(
+                    test.name, False,
+                    error="Protocol executor not available (required for protocol_ops tests)")
+            executor = self.protocol_executor
 
         try:
             for step_idx, step in enumerate(test.protocol_ops):
@@ -1034,14 +1097,14 @@ class TestRunner:
                     msg['params'] = params
 
                 try:
-                    resp = self.protocol_executor.send_raw(msg, timeout=test.timeout)
+                    resp = executor.send_raw(msg, timeout=test.timeout)
                 except TimeoutError:
                     return TestResult(
                         test.name, False,
                         error=f"Timeout at {step_desc}: op={op}")
                 except RuntimeError as e:
                     try:
-                        self.protocol_executor._restart()
+                        executor._restart()
                     except Exception as restart_err:
                         logging.warning("Protocol executor restart failed: %s", restart_err)
                     return TestResult(
@@ -1060,7 +1123,13 @@ class TestRunner:
         except Exception as e:
             return TestResult(test.name, False, error=f"Unexpected error: {e}")
         finally:
-            self.protocol_executor.reset()
+            if dedicated_executor is not None:
+                try:
+                    dedicated_executor.stop()
+                except Exception:
+                    pass
+            elif self.protocol_executor is not None:
+                self.protocol_executor.reset()
 
     @staticmethod
     def _validate_protocol_response(resp: dict, validate: dict, step_desc: str) -> Optional[str]:

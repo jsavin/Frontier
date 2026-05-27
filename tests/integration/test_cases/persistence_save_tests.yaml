@@ -27,6 +27,8 @@ tests:
   # ========================================================================
 
   - name: "protocol filemenu.save - save system root via script/eval"
+    environment:
+      FRONTIER_LOCK_OPENED_ROOTS: "0"
     description: "Call filemenu.save() through protocol script/eval and verify success"
     protocol_ops:
       - op: "script/eval"
@@ -39,6 +41,8 @@ tests:
         description: "save system root via protocol"
 
   - name: "protocol filemenu.save - create value then save via protocol"
+    environment:
+      FRONTIER_LOCK_OPENED_ROOTS: "0"
     description: "Create a value via odb/set, then save system root via script/eval"
     protocol_ops:
       - op: "odb/set"
@@ -163,6 +167,11 @@ tests:
       Modify a value in the system root (system.temp), open and
       modify a guest database, save the system root, save the guest DB,
       close/reopen the guest DB, and verify both values survived.
+    # Issue #127: test verifies the write-path (fileMenu.save on both
+    # system root and guest DB); override runner's default
+    # FRONTIER_LOCK_OPENED_ROOTS=1.
+    environment:
+      FRONTIER_LOCK_OPENED_ROOTS: "0"
     script: |
       try {delete(@system.temp.persist_dual_db)} else {1};
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
@@ -187,6 +196,10 @@ tests:
     description: >
       Interleave modifications between system root and guest DB to stress
       the database context switching during pack/save operations.
+    # Issue #127: test verifies the write-path; override runner's default
+    # FRONTIER_LOCK_OPENED_ROOTS=1.
+    environment:
+      FRONTIER_LOCK_OPENED_ROOTS: "0"
     script: |
       try {delete(@system.temp.persist_interleaved)} else {1};
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
@@ -355,6 +368,10 @@ tests:
     description: >
       Full shutdown sequence: save system root, save all guest DBs,
       close all guest DBs. Verifies the complete clean shutdown path.
+    # Issue #127: test verifies the write-path; override runner's default
+    # FRONTIER_LOCK_OPENED_ROOTS=1.
+    environment:
+      FRONTIER_LOCK_OPENED_ROOTS: "0"
     script: |
       try {delete(@system.temp.persist_full_shutdown)} else {1};
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");

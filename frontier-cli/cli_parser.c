@@ -37,6 +37,7 @@
 
 #include "cli_parser.h"
 #include "cli_utils.h"
+#include "standard.h"			/* env_truthy() */
 #include "../Common/headers/logging.h"
 
 /*
@@ -209,16 +210,6 @@ boolean cli_validate_options(const cli_options_t* options) {
 		}
 	}
 
-	/* --read-only and --allow-mutate are mutually exclusive: a request to
-	 * both forbid and permit writes is contradictory and almost certainly a
-	 * scripting bug. Refusing here keeps the operator's intent explicit
-	 * rather than silently picking one. */
-	if (options->read_only && options->allow_mutate) {
-		log_error(LOG_COMP_GENERAL,
-			"Error: --read-only and --allow-mutate cannot be combined");
-		return false;
-	}
-
 	// Note: Conflict validation for positional .root argument is handled in cli_parse_arguments()
 	// when we detect a .root file and system_root is already set.
 
@@ -252,8 +243,7 @@ boolean cli_parse_arguments(int argc, char* argv[], cli_options_t* options) {
 	/* Long-only option codes (no short alias). 256+ keeps them out of the
 	 * single-character optstring while remaining valid getopt return values. */
 	enum {
-		OPT_READ_ONLY = 256,
-		OPT_ALLOW_MUTATE,
+		OPT_LOCK_OPENED_ROOTS = 256,
 	};
 
 	// Define long options
@@ -273,8 +263,7 @@ boolean cli_parse_arguments(int argc, char* argv[], cli_options_t* options) {
 		{"skip-startup", no_argument, 0, 'S'},
 		{"protocol", no_argument, 0, 'P'},
 		{"ws-port", optional_argument, 0, 'W'},
-		{"read-only", no_argument, 0, OPT_READ_ONLY},
-		{"allow-mutate", no_argument, 0, OPT_ALLOW_MUTATE},
+		{"lock-opened-roots", no_argument, 0, OPT_LOCK_OPENED_ROOTS},
 		{"help", no_argument, 0, 'h'},
 		{"version", no_argument, 0, 'V'},
 		{0, 0, 0, 0}
@@ -513,8 +502,7 @@ boolean cli_parse_arguments(int argc, char* argv[], cli_options_t* options) {
 			case 'D':  options->debug = true; break;
 			case 'S':  options->skip_startup = true; break;
 			case 'P':  options->protocol_mode = true; break;
-			case OPT_READ_ONLY:    options->read_only = true; break;
-			case OPT_ALLOW_MUTATE: options->allow_mutate = true; break;
+			case OPT_LOCK_OPENED_ROOTS: options->lock_opened_roots = true; break;
 			case 'h':  options->show_help = true; break;
 			case 'V':  options->show_version = true; break;
 
@@ -606,6 +594,38 @@ boolean cli_parse_arguments(int argc, char* argv[], cli_options_t* options) {
 
 	free(filtered_argv);
 
+	/* Environment <-> CLI flag synchronization for --lock-opened-roots (issue #127).
+	 *
+	 * The env var FRONTIER_LOCK_OPENED_ROOTS lets the integration test runner
+	 * and other ephemeral consumers opt every loaded-from-disk DB into
+	 * read-only-on-save without threading a CLI flag through every spawn
+	 * site.
+	 *
+	 * Sync rules so non-CLI consumers (e.g., dbopenverb in
+	 * Common/source/dbverbs.c, which has no link to the CLI parser state)
+	 * can read a single source of truth via getenv():
+	 *
+	 *   - If env is set truthy (non-empty and not "0"), it enables the flag.
+	 *   - If --lock-opened-roots was passed on the CLI, the flag is
+	 *     authoritative: setenv() unconditionally so any descendant code
+	 *     path that consults FRONTIER_LOCK_OPENED_ROOTS sees "1", even if
+	 *     the inherited env had FRONTIER_LOCK_OPENED_ROOTS=0. Without this
+	 *     overwrite, the CLI flag would lock the system root while
+	 *     dbopenverb's env check would still permit guest-DB writes --
+	 *     inconsistent state. The explicit CLI flag always wins.
+	 *
+	 * Validation in cli_validate_options() runs after. */
+	{
+		/* env_truthy() lives in Common/SystemHeaders/standard.h; reusing it
+		 * here keeps the FRONTIER_LOCK_OPENED_ROOTS truthiness contract in
+		 * lockstep with dbverbs.c's enforcement check. */
+		if (env_truthy("FRONTIER_LOCK_OPENED_ROOTS"))
+			options->lock_opened_roots = true;
+
+		if (options->lock_opened_roots)
+			setenv("FRONTIER_LOCK_OPENED_ROOTS", "1", 1);
+	}
+
 	// Validate the parsed options
 	return cli_validate_options(options);
 
@@ -689,8 +709,7 @@ void cli_print_options(const cli_options_t* options) {
 	printf("  Force Overwrite: %s\n", options->force_overwrite ? "yes" : "no");
 	printf("  Skip Startup: %s\n", options->skip_startup ? "yes" : "no");
 	printf("  Protocol Mode: %s\n", options->protocol_mode ? "yes" : "no");
-	printf("  Read-Only: %s\n", options->read_only ? "yes" : "no");
-	printf("  Allow Mutate: %s\n", options->allow_mutate ? "yes" : "no");
+	printf("  Lock Opened Roots: %s\n", options->lock_opened_roots ? "yes" : "no");
 	printf("  WebSocket Port: %d\n", options->ws_port);
 	printf("  Verbose: %s\n", options->verbose ? "yes" : "no");
 	printf("  Debug: %s\n", options->debug ? "yes" : "no");

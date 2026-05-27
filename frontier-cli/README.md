@@ -25,7 +25,7 @@ Frontier CLI is a command-line client for running UserTalk scripts without the l
 ### Current Capabilities
 - Execute UserTalk scripts from files or inline code.
 - Headless operation using the shared test adapters (`FRONTIER_HEADLESS`, `shell_api_headless`).
-- Load the canonical system root database in read-only mode via `--system-root` to expose runtime tables for scripts.
+- Load the canonical system root database via `--system-root` to expose runtime tables for scripts.
 - Verbose and debug logging toggles.
 - Buildable with sanitizers for development use.
 
@@ -88,7 +88,7 @@ Passing database (`-d`, `-q`, `--migrate`) or server (`--server`, `--websocket`,
     -e "1 + 1"
 ```
 
-The system root is opened read-only. The CLI will log descriptive warnings if the file cannot be located, read, or if optional tables (e.g., `system.misc`, `system.menus`) are missing. The headless loader hydrates the tables it needs in memory so script execution can continue, but the warnings are useful cues that the legacy database still needs migration work.
+The system root is opened read-write by default. Use `--lock-opened-roots` (or `FRONTIER_LOCK_OPENED_ROOTS=1` in the environment) to suppress save-on-exit for inspection-only sessions — in-memory mutations still evaluate, but they aren't persisted back to disk. The CLI will log descriptive warnings if the file cannot be located, read, or if optional tables (e.g., `system.misc`, `system.menus`) are missing. The headless loader hydrates the tables it needs in memory so script execution can continue, but the warnings are useful cues that the legacy database still needs migration work.
 
 ## Examples
 
@@ -111,8 +111,7 @@ The system root is opened read-only. The CLI will log descriptive warnings if th
 | `-h, --help` | Show help message | Available |
 | `--version` | Show build/version info | Available |
 | `--system-root PATH` | Load a system root database before running scripts | Available |
-| `--read-only` | Open `--system-root` read-only; refuse all writes (default for `--protocol`) | Available |
-| `--allow-mutate` | Opt `--protocol --system-root` back into read-write mode | Available |
+| `--lock-opened-roots` | Suppress save-on-exit for every loaded-from-disk DB; in-memory mutations still work. Also `FRONTIER_LOCK_OPENED_ROOTS=1` | Available |
 | `-d, --database FILE` | Select database for operations | Disabled (planned) |
 | `-q, --query QUERY` | Execute database query | Disabled (planned) |
 | `-m, --migrate` | Migrate database in place | Disabled (planned) |
