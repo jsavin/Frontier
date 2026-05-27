@@ -382,6 +382,18 @@ export FRONTIER_HEADLESS_RUN_STARTUP=0
 
 > **Note:** Prior to v1.0.0-alpha.5, startup scripts were skipped by default. The default was changed to match legacy Frontier behavior where `system.startup` scripts always run on launch.
 
+### `FRONTIER_FORCE_COLOR`
+
+Force ANSI color in REPL error rendering even when stderr is not a TTY.
+
+The interactive REPL's structured error display (header + per-frame source-context window) emits ANSI bold/underline sequences when stderr is a TTY and plain `>>>` / `^^^` markers otherwise. Set `FRONTIER_FORCE_COLOR=1` to force the ANSI path regardless of TTY detection — useful when piping the REPL into a pager that interprets ANSI (`less -R`), or when capturing colored output for review.
+
+```bash
+FRONTIER_FORCE_COLOR=1 ./frontier-cli/frontier-cli | less -R
+```
+
+Any value other than the literal string `1` falls through to the `isatty(stderr)` check (so unset and `0` are equivalent: no force, isatty wins).
+
 ---
 
 ## Working with Databases
