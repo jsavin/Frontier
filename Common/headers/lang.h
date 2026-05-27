@@ -414,8 +414,16 @@ typedef struct tytreenode {
 	struct tytreenode **link; /*links parameter lists, statement lists*/
 	
 	unsigned long lnum; /*which line number in the source was this node generated from?*/
-	
-	byte charnum; /*at what character offset? max is 255*/
+
+	/*
+	PR1 of REPL error context chain (2026-05-26 JES): widened from byte to
+	unsigned short so columns past 255 can be reported in error.location
+	for long REPL lines. The on-disk format (tydisktreenode.charnum at
+	langtree.c:61) is already 16-bit short, packed/unpacked by
+	memtodiskshort / disktomemshort, so this is value-preserving with no
+	database migration required.
+	*/
+	unsigned short charnum; /*at what character offset on the line?*/
 	
 	byte ctparams; /*number of params actually allocated, max is 4*/
 	
@@ -569,19 +577,31 @@ typedef struct tyaddress { // 5.0.2 dmb (finally)
 #define cterrorcallbacks 200 /*6.1d19 AR*/
 
 typedef struct tyerrorrecord {
-	
+
 	langerrorcallback errorcallback;
-	
+
 	unsigned long errorline;
-	
+
 	unsigned short errorchar;
-	
-	
+
+	/*
+	PR1 of REPL error context chain (2026-05-26 JES): bracket of the
+	token the scanner had most recently consumed when the error fired.
+	Snapshotted by langseterrorcallbackline from the lasttoken* globals
+	maintained by langscanner. Both are columns (zero-origin character
+	offsets) on errorline. When no token bracket is available, both
+	default to zero.
+	*/
+	unsigned short tokenstart;
+
+	unsigned short tokenend;
+
+
 	unsigned long profilebase;
-	
+
 	unsigned long profiletotal;
-	
-	
+
+
 	long errorrefcon;
 	} tyerrorrecord;
 
@@ -740,6 +760,18 @@ extern unsigned long ctscanlines; /*number of lines that have been scanned, for 
 
 extern unsigned short ctscanchars; /*number of chars passed over on current line, for error reporting*/
 
+/*
+PR1 of REPL error context chain (2026-05-26 JES): per-token snapshot of
+the most recently scanned token's location. Captured by langscanner;
+read by langseterrorcallbackline. See Common/source/langscan.c for the
+capture machinery and Common/source/lang.c for the snapshot.
+*/
+extern unsigned long lasttokenline;
+
+extern unsigned short lasttokenstart;
+
+extern unsigned short lasttokenend;
+
 extern tylangcallbacks langcallbacks; /*routines that wire the language into environment*/
 
 
@@ -760,6 +792,25 @@ extern unsigned long langgetsourceoffset (unsigned long, unsigned short);
 extern void langsetsourceoffset (unsigned long);
 
 extern boolean langfinderrorrefcon (long, langerrorcallback *);
+
+/*
+PR1 of REPL error context chain (2026-05-26 JES): snapshot/read API for
+the error stack at the moment the last error fired. langseterrorcallbackline
+now copies the entire stack into a file-static buffer; these accessors
+expose top-of-stack and per-frame for protocol callers building structured
+error responses. langsetevalinputoffset lets the REPL wrapper subtract its
+prefix lines so user-relative line numbers are reported. See lang.c for
+implementation.
+*/
+extern boolean langgetlasterror (tyerrorrecord *out);
+
+extern boolean langgetstackframe (short ix, tyerrorrecord *out, long *outRefcon);
+
+extern short langgetstackdepth (void);
+
+extern void langsetevalinputoffset (unsigned long lineOffset);
+
+extern void langclearevalinputoffset (void);
 
 extern boolean langcompiletext (Handle, boolean, hdltreenode *);
 

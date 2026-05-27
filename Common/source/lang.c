@@ -84,6 +84,33 @@ boolean flbreak = false; /*for loop and break ops*/
 
 boolean flcontinue = false; /*for loops*/
 
+
+/*
+PR1 of REPL error context chain (2026-05-26 JES): snapshot of the error
+stack at the moment the most recent error fired. langseterrorcallbackline
+populates these; langgetlasterror / langgetstackframe / langgetstackdepth
+read them. File-static is sufficient for PR1 because the protocol handler
+serializes calls under the GIL. A future multi-threaded eval path would
+need to move these into tythreadglobals.
+
+langeval_inputoffset is the number of wrapper lines to subtract from
+errorline when reporting the outermost (errorrefcon == 0L) eval frame.
+The REPL's repl_eval_with_variables_value wraps user input as
+  with system.temp.FrontierREPL.variables {\n <user code> \n}
+which adds exactly one line before user input, so handle_script_eval
+calls langsetevalinputoffset(1) before eval and langclearevalinputoffset
+after. Compile errors fire before the eval is actually run, but they
+still travel through the same error stack, so the offset applies
+uniformly.
+*/
+static tyerrorrecord lastfirederrorstack [cterrorcallbacks];
+
+static short lastfirederrorstackdepth = 0;
+
+static boolean fllastfirederrorvalid = false;
+
+static unsigned long langeval_inputoffset = 0;
+
 boolean flreturn = false; /*for return op*/
 
 boolean flscriptrunning = false; /*for nesting within thread*/
@@ -242,11 +269,20 @@ boolean langpusherrorcallback (langerrorcallback errorroutine, long errorrefcon)
 		return (false);
 	
 	item.errorcallback = errorroutine;
-	
+
 	item.errorline = ctscanlines;
-	
-	item.errorchar = ctscanchars;	
-	
+
+	item.errorchar = ctscanchars;
+
+	/*
+	PR1 of REPL error context chain: initialize the token-span fields from
+	the current scanner snapshot so a frame that errors before
+	langseterrorcallbackline runs still carries a plausible bracket.
+	*/
+	item.tokenstart = lasttokenstart;
+
+	item.tokenend = lasttokenend;
+
 	item.errorrefcon = errorrefcon;
 	
 	
@@ -269,7 +305,7 @@ boolean langpusherrorcallback (langerrorcallback errorroutine, long errorrefcon)
 	
 	
 	(**hs).stack [(**hs).toperror++] = item;
-	
+
 	return (true);
 	} /*langpusherrorcallback*/
 
@@ -317,24 +353,59 @@ boolean langpoperrorcallback (void) {
 
 
 boolean langseterrorcallbackline (void) {
-	
+
 	register hdlerrorstack hs = langcallbacks.scripterrorstack;
 	tyerrorrecord *pe;
-	
+	short depth;
+	short i;
+
 	if (hs == nil)
 		return (false);
-	
+
 	if ((**hs).toperror <= 0)
 		return (false);
-	
+
 	pe = &(**hs).stack [(**hs).toperror - 1];
-	
+
 	(*pe).errorline = ctscanlines;
-	
+
 	(*pe).errorchar = ctscanchars;
-	
+
+	/*
+	PR1 of REPL error context chain: stamp the most recently scanned
+	token's span onto the top error frame. The lasttoken* globals are
+	maintained by langscanner in langscan.c. When no token has been
+	scanned yet (or after a reset), these are zero -- which the protocol
+	layer treats as "no bracket available" and emits as 0/0 columns.
+	*/
+	(*pe).tokenstart = lasttokenstart;
+
+	(*pe).tokenend = lasttokenend;
+
+	/*
+	Snapshot the entire error stack at the moment this error fires.
+	Subsequent langpoperrorcallback calls (during the unwind in
+	langtraperror / langrun's exit path) tear the live stack down before
+	the protocol layer ever gets a chance to inspect it. The snapshot
+	preserves both depth and per-frame contents -- including the just-set
+	tokenstart / tokenend on the top frame and the inherited errorline /
+	errorchar / errorrefcon on the rest -- so langgetlasterror /
+	langgetstackframe can report on the state *as of* the error.
+	*/
+	depth = (**hs).toperror;
+
+	if (depth > cterrorcallbacks)
+		depth = cterrorcallbacks;
+
+	for (i = 0; i < depth; ++i)
+		lastfirederrorstack [i] = (**hs).stack [i];
+
+	lastfirederrorstackdepth = depth;
+
+	fllastfirederrorvalid = true;
+
 	return (true);
-	} /*langpoperrorcallback*/
+	} /*langseterrorcallbackline*/
 
 
 
@@ -385,6 +456,104 @@ boolean langfinderrorrefcon (long errorrefcon, langerrorcallback *errorcallback)
 	} /*langfinderrorrefcon*/
 
 
+/*
+PR1 of REPL error context chain (2026-05-26 JES): read accessors for the
+error-stack snapshot captured by langseterrorcallbackline. The protocol
+layer (frontier-cli/op_handler.c) uses these to build the
+error.location / error.stack fields of script/eval failure responses.
+
+langgetlasterror returns the FAILURE-SITE frame -- top of the error
+stack at the moment the error fired. langgetstackframe walks the stack
+from failure site (ix=0) outward (ix=depth-1 is the bottom / outermost).
+Both apply the eval input-offset to the outermost <eval> frame
+(errorrefcon == 0L) so user-relative line numbers are reported.
+
+The offset subtraction is intentionally clamped at line 1: if it would
+underflow (e.g. offset == 1 but errorline == 0, which shouldn't happen
+in practice but is possible if an error fires before any line was
+scanned), we report line 1 rather than overflowing into a large unsigned
+value that would render as garbage in the protocol response.
+*/
+boolean langgetlasterror (tyerrorrecord *out) {
+
+	tyerrorrecord frame;
+
+	if (out == nil)
+		return (false);
+
+	if (!fllastfirederrorvalid || lastfirederrorstackdepth == 0)
+		return (false);
+
+	frame = lastfirederrorstack [lastfirederrorstackdepth - 1];
+
+	if (frame.errorrefcon == 0L && langeval_inputoffset > 0) {
+
+		if (frame.errorline > langeval_inputoffset)
+			frame.errorline -= langeval_inputoffset;
+		else
+			frame.errorline = 1;
+		}
+
+	*out = frame;
+
+	return (true);
+	} /*langgetlasterror*/
+
+
+boolean langgetstackframe (short ix, tyerrorrecord *out, long *outRefcon) {
+
+	tyerrorrecord frame;
+
+	if (out == nil)
+		return (false);
+
+	if (!fllastfirederrorvalid)
+		return (false);
+
+	if (ix < 0 || ix >= lastfirederrorstackdepth)
+		return (false);
+
+	/* Failure site at ix=0; outermost frame at ix=depth-1. */
+	frame = lastfirederrorstack [lastfirederrorstackdepth - 1 - ix];
+
+	if (frame.errorrefcon == 0L && langeval_inputoffset > 0) {
+
+		if (frame.errorline > langeval_inputoffset)
+			frame.errorline -= langeval_inputoffset;
+		else
+			frame.errorline = 1;
+		}
+
+	*out = frame;
+
+	if (outRefcon != nil)
+		*outRefcon = frame.errorrefcon;
+
+	return (true);
+	} /*langgetstackframe*/
+
+
+short langgetstackdepth (void) {
+
+	if (!fllastfirederrorvalid)
+		return (0);
+
+	return (lastfirederrorstackdepth);
+	} /*langgetstackdepth*/
+
+
+void langsetevalinputoffset (unsigned long lineOffset) {
+
+	langeval_inputoffset = lineOffset;
+	} /*langsetevalinputoffset*/
+
+
+void langclearevalinputoffset (void) {
+
+	langeval_inputoffset = 0;
+	} /*langclearevalinputoffset*/
+
+
 static void langprescript (void) {
 	
 	/*
@@ -403,12 +572,22 @@ static void langprescript (void) {
 	*/
 	
 	fllangerror = false; /*the user hasn't seen an error dialog yet*/
-	
+
 	flreturn = false;
-	
+
 	flbreak = false;
-	
+
 	flcontinue = false;
+
+	/*
+	PR1 of REPL error context chain: invalidate the previous error's
+	snapshot so stale frames from an earlier eval can't leak into a fresh
+	one. langseterrorcallbackline will rebuild the snapshot on the next
+	error.
+	*/
+	fllastfirederrorvalid = false;
+
+	lastfirederrorstackdepth = 0;
 	} /*langprescript*/
 
 
