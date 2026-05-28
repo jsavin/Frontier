@@ -34,7 +34,7 @@ tests:
       a positive line number when the snapshot fires.
     script: |
       try {
-        scriptError("boom")}
+        lang.scriptError("boom")}
       else {
         return tryErrorLine > 0}
     expected_success: true
@@ -47,7 +47,7 @@ tests:
       tryErrorScript and gets back the string "<eval>".
     script: |
       try {
-        scriptError("inline boom")}
+        lang.scriptError("inline boom")}
       else {
         return tryErrorScript}
     expected_success: true
@@ -61,7 +61,7 @@ tests:
       we don't want to lock into the assertion.
     script: |
       try {
-        scriptError("boom")}
+        lang.scriptError("boom")}
       else {
         return tryErrorColumn > 0}
     expected_success: true
@@ -74,7 +74,7 @@ tests:
       should be > 0 (some token was scanned before the failure fired).
     script: |
       try {
-        scriptError("boom")}
+        lang.scriptError("boom")}
       else {
         return tryErrorTokenStart > 0}
     expected_success: true
@@ -88,7 +88,7 @@ tests:
       "not <" instead.
     script: |
       try {
-        scriptError("boom")}
+        lang.scriptError("boom")}
       else {
         return not (tryErrorTokenEnd < tryErrorTokenStart)}
     expected_success: true
@@ -105,9 +105,9 @@ tests:
       globals; tryError itself remains a stringType value.
     script: |
       try {
-        scriptError("specific message")}
+        lang.scriptError("specific message")}
       else {
-        return tryError contains "specific"}
+        return tryError == "specific message"}
     expected_success: true
     expected_result: "true"
 
@@ -118,7 +118,7 @@ tests:
       will flip and force a deliberate decision.
     script: |
       try {
-        scriptError("x")}
+        lang.scriptError("x")}
       else {
         return typeOf(tryError) == stringType}
     expected_success: true
@@ -130,8 +130,8 @@ tests:
 
   - name: "tryError origin - called script that errors still populates sibling globals"
     description: |
-      A named script installed in system.temp errors on its body. The
-      try block calls it; the else block reads tryError + sibling globals.
+      A handler defined inline errors on its body. The try block calls it;
+      the else block reads tryError + sibling globals.
 
       Asserting only that tryError contains the original error message
       and that tryErrorLine is populated (> 0). The reported tryErrorScript
@@ -142,14 +142,18 @@ tests:
       fixes the asymmetry in Common/source/langvalue.c langfunctioncall).
       When that limitation is resolved, this test can be tightened to
       check tryErrorScript == "errfn" (or the full dotted path).
+
+      We use an inline on-handler rather than script.newScriptObject because
+      --skip-startup mode (used by the script-mode test harness) does not
+      load the script verb table.
     script: |
-      script.newScriptObject ("on errfn () { scriptError(\"deep\") }", @system.temp.errfn);
+      on errfn () {
+        lang.scriptError("deep")};
       try {
-        system.temp.errfn ()}
+        errfn ()}
       else {
         local (msgOk = tryError contains "deep");
         local (lineOk = tryErrorLine > 0);
-        delete (@system.temp.errfn);
         return msgOk and lineOk}
     expected_success: true
     expected_result: "true"
@@ -175,9 +179,9 @@ tests:
         params:
           expression: |
             try {
-              scriptError("original try failure")}
+              lang.scriptError("original try failure")}
             else {
-              scriptError("else block re-failure")}
+              lang.scriptError("else block re-failure")}
         validate:
           success: false
           expected_error_causedby:
@@ -197,7 +201,7 @@ tests:
         params:
           expression: |
             try {
-              scriptError("caught silently")}
+              lang.scriptError("caught silently")}
             else {
               "recovered"}
         validate:
