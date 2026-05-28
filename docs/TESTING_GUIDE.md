@@ -597,6 +597,22 @@ python3 cli.py report -o -
 
 **Reference example:** `tests/integration/test_cases/repl_palette.yaml` exercises slash-command handlers through the menu dispatch path with behavioral assertions on the resulting output.
 
+### Peek-snapshot pattern (probing state behind gated getters)
+
+**Use when:** kernel state-machinery exposes only a "valid flag + gated getters" API, where the public getters all return NULL or zero when the valid flag is false — making it impossible to distinguish "all fields reset to zero" from "one field still leaked, but valid flag was cleared" through normal observation.
+
+**The trick:** if the machinery has a `save_snapshot(out)` function that copies internal state verbatim without consulting the valid flag, call it a SECOND time as a read probe. The captured fields in the probe-output give you direct read access to each underlying field, bypassing the valid-flag gate.
+
+**Motivating incident:** PR #665 added unit tests for the causedby-snapshot save/restore primitives (PR3's cross-thread leak fix in `Common/source/process.c`). Initial tests asserted `langgetcausedbymessage() == NULL` after a save-reset — which is correct but observably weak: ALL public getters (`langgetcausedbymessage`, `langgetcausedbystackdepth`, `langgetcausedbyerror`, `langgetcausedbystackframe`) gate on `flcausedbyerrorvalid`. When save sets valid=false, all four getters return NULL/0 regardless of whether `trybodydepth`, `causedbyerrorstackdepth`, `causedbyerrormessage[]`, or `causedbyerrorstack[]` were also reset.
+
+The gate review caught this: a regression that removed any one of those four reset lines individually would NOT have failed the original tests. Solution: call `langsavecausedbysnapshot(&peek)` a second time after the test's main save. The `peek` struct receives raw field values directly — `peek.trybodydepth`, `peek.causedbyerrorstackdepth`, `peek.causedbyerrormessage[0]`, and `peek.causedbyerrorstack[i]` are all observable without going through the valid-flag gate.
+
+**Reference example:** `tests/lang_causedby_snapshot_tests.c` — see `test_save_resets_live_state` (peek-probes each reset field) and `test_save_restore_preserves_stack_array` (seeds a recognizable `tyerrorrecord`, probes byte-for-byte survival through both save and restore via the peek technique).
+
+**Falsification check:** after applying this technique, REVERT each individual reset/copy line in the machinery one at a time and confirm a test fails for each. If a revert doesn't fail any test, the coverage is still incomplete — keep strengthening. The reference tests above pass this check for all 4 reset fields + both array memcpys.
+
+**When NOT to use:** if the machinery has no verbatim-copy save function (only mutating operations and gated getters), this pattern doesn't apply. Consider extending the API with a test-only inspector, or accept the structural coverage limit and document it in the test description.
+
 ### Common Test Commands
 
 ```bash
