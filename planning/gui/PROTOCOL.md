@@ -198,6 +198,55 @@ fields to `error` so clients can render rich error displays:
 Both fields are backwards-compatible: clients that don't know about
 `location` / `stack` continue to read `error.message` unchanged.
 
+**Try/else origin context — `error.causedBy` (PR3 of REPL error context, 2026-05-27):**
+
+When an error fires from inside the `else` block of a `try { ... } else { ... }`
+chain whose `try` body originally failed, the response gains an optional
+`error.causedBy` object describing the originating try-block failure:
+
+```json
+{
+  "id": 1,
+  "error": {
+    "message": "...else-block failure message...",
+    "location": { "script": "<eval>", "line": 4, "column": 21, ... },
+    "stack": [ ... ],
+    "causedBy": {
+      "message": "original try-body failure message",
+      "location": { "script": "<eval>", "line": 2, "column": 14, ... },
+      "stack": [ { "script": "<eval>", "line": 2, "column": 14 } ]
+    }
+  },
+  "success": false
+}
+```
+
+`causedBy.message` / `causedBy.location` / `causedBy.stack` have the
+same shape as the top-level error fields, but describe the failure
+captured WHEN THE TRY BODY ERRORED (before the else block ran). This
+makes the error chain explicit in the response so clients can render
+both the immediate failure and its root cause without forcing the
+script to manually thread the originating error through `tryError`
+and friends.
+
+`causedBy` is absent when:
+
+- the error did not originate inside a try body (the common case), OR
+- the try body succeeded and the else block ran independently
+  (no originating failure), OR
+- the try body's error was caught silently (no else block fired).
+
+UserTalk scripts running inside the else block can also read the
+originating error's metadata directly through the sibling globals
+`tryError` (string, the message), `tryErrorLine`, `tryErrorColumn`,
+`tryErrorScript`, `tryErrorTokenStart`, `tryErrorTokenEnd`. These are
+populated alongside the existing `tryError` value and exposed in the
+else block's local frame.
+
+`causedBy` is backwards-compatible: clients that don't know about it
+continue to read `error.message` / `error.location` / `error.stack`
+unchanged.
+
 **Server-initiated event (no `id`):**
 ```json
 {
