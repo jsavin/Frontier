@@ -1233,6 +1233,48 @@ class TestRunner:
                 return (f"[{step_desc}] error.stack[0].script: expected to contain "
                         f"{expected_substr!r}, got {top_script!r}")
 
+        # PR3 (REPL error context): assert error.causedBy is present and
+        # matches expectations. Used for the try/else origin-context chain:
+        # when an error fires from inside an else block, the originating
+        # try-block failure is exposed as error.causedBy with its own
+        # {message, location, stack} substructure.
+        #
+        # expected_error_causedby is a dict with any subset of:
+        #   message_contains: substring match on error.causedBy.message
+        #   location_present: bool -- error.causedBy.location must be a dict
+        #   stack_min: int -- len(error.causedBy.stack) >= this value
+        if 'expected_error_causedby' in validate:
+            expected_cb = validate['expected_error_causedby']
+            error_obj = resp.get('error', {})
+            if not isinstance(error_obj, dict):
+                return (f"[{step_desc}] expected_error_causedby set but response error "
+                        f"is not a dict: {error_obj!r}")
+            actual_cb = error_obj.get('causedBy')
+            if not isinstance(actual_cb, dict):
+                return (f"[{step_desc}] expected_error_causedby set but response has no "
+                        f"error.causedBy object (got {actual_cb!r})")
+            if 'message_contains' in expected_cb:
+                expected_substr = expected_cb['message_contains']
+                actual_msg = actual_cb.get('message', '')
+                if not isinstance(actual_msg, str) or expected_substr not in actual_msg:
+                    return (f"[{step_desc}] error.causedBy.message: expected to contain "
+                            f"{expected_substr!r}, got {actual_msg!r}")
+            if expected_cb.get('location_present'):
+                actual_loc = actual_cb.get('location')
+                if not isinstance(actual_loc, dict):
+                    return (f"[{step_desc}] error.causedBy.location: expected dict, "
+                            f"got {actual_loc!r}")
+            if 'stack_min' in expected_cb:
+                expected_min = expected_cb['stack_min']
+                actual_stack = actual_cb.get('stack')
+                if not isinstance(actual_stack, list):
+                    return (f"[{step_desc}] error.causedBy.stack: expected list, "
+                            f"got {actual_stack!r}")
+                if len(actual_stack) < expected_min:
+                    return (f"[{step_desc}] error.causedBy.stack: expected at least "
+                            f"{expected_min} frames, got {len(actual_stack)} "
+                            f"({actual_stack!r})")
+
         # Check result_count first (before per-item loop) so count mismatches
         # produce a clear message rather than an IndexError or confusing diff.
         if 'result_count' in validate:
