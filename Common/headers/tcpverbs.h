@@ -164,6 +164,12 @@ boolean tcp_get_stats(long listener_id, bigstring stats_out);
 boolean tcp_init_context(void);
 boolean tcp_shutdown_context(void);
 
+/* Reset the tcp connection rate-limit sliding window. Called by
+ * frontier-cli's script/clearContext handler so the long-lived protocol
+ * subprocess does not accumulate cross-test rate-limit pressure. See
+ * tcpverbs.c for the full contract. Issue #130. */
+void tcp_reset_rate_limit_window(void);
+
 /* Callback Queue Processing
  * Must be called periodically from main thread to process TCP callbacks.
  * Each callback is enqueued as a one-shot process via newprocess/addprocess.
