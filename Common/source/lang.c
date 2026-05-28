@@ -111,6 +111,63 @@ static boolean fllastfirederrorvalid = false;
 
 static unsigned long langeval_inputoffset = 0;
 
+/*
+PR3 of REPL error context chain (2026-05-27 JES): separate snapshot for
+errors that fire INSIDE a try block. The PR1 snapshot
+(lastfirederrorstack) gets overwritten when the else block runs and
+errors itself; this parallel snapshot survives so the else-block error
+response can attach the originating try-block failure as causedBy.
+
+trybodydepth (incremented/decremented via langsetintryblock) is updated
+by evaluatetry in langevaluate.c around the try body's evaluatelist
+call. langseterrorcallbackline copies the just-built PR1 snapshot into
+the causedby buffer when trybodydepth > 0, so any error fired anywhere
+inside the try body (including inside called scripts and nested
+try/else) is captured. !flcausedbyerrorvalid prevents a nested-try
+failure from overwriting the outermost try body's originating failure.
+
+langclearcausedbyerror is called by langprescript so causedby state from
+a prior eval cannot leak into a fresh one, and by evaluatetry when a
+try block completes without firing the else path (no caused-by data
+should be visible to subsequent error reporting).
+
+NOTE: langprescript intentionally does NOT clear trybodydepth.
+langprescript runs at the start of every nested compile/run, including
+paths invoked from inside a try body (kernel verbs, debugger hooks,
+osa scripts). Clearing the depth here would mask the in-try state
+mid-evaluatetry and any error fired inside the try body would not get
+its causedby snapshot captured. The counter's lifecycle is governed
+exclusively by evaluatetry's set/clear pair, which correctly brackets
+the try body's evaluatelist call.
+*/
+static tyerrorrecord causedbyerrorstack [cterrorcallbacks];
+
+static short causedbyerrorstackdepth = 0;
+
+static boolean flcausedbyerrorvalid = false;
+
+/*
+PR3 of REPL error context chain: the originating error's message,
+captured at the same time as the causedby snapshot. Stored as a C
+string (rather than a Handle) so the protocol/REPL layer can read it
+without having to take a GIL trip into ODB land. Sized to bigstring's
+255-byte max + null terminator. Set by langseterrorcallbackline only
+when we're inside a try body AND no causedby snapshot already exists,
+mirroring the snapshot's capture-first-error-and-hold semantics.
+*/
+static char causedbyerrormessage [256] = {0};
+
+/*
+trybodydepth is a counter rather than a boolean so nested try blocks
+"just work": each nested evaluatetry increments on entry and decrements
+on exit. The snapshot capture in langseterrorcallbackline triggers
+whenever the depth is > 0. The outermost try body's failure is the
+"originating" one, and !flcausedbyerrorvalid below ensures we keep
+that first snapshot rather than overwriting it with a nested try's
+failure later.
+*/
+static int trybodydepth = 0;
+
 boolean flreturn = false; /*for return op*/
 
 boolean flscriptrunning = false; /*for nesting within thread*/
@@ -404,6 +461,29 @@ boolean langseterrorcallbackline (void) {
 
 	fllastfirederrorvalid = true;
 
+	/*
+	PR3 of REPL error context chain: if this error is firing inside a try
+	body, mirror the snapshot into the causedby buffer so it survives any
+	subsequent error fired from the else block. Multiple errors inside the
+	try body would overwrite each other -- we keep the FIRST one (the one
+	that triggers the else path), so only update when not already valid.
+
+	When the snapshot is mirrored, also stamp errorline/errorchar/token*
+	from the live scanner onto the buffer's top frame, mirroring the
+	just-applied edits to the live stack above. This keeps causedby's
+	failure-site frame consistent with the PR1 snapshot taken at the same
+	point.
+	*/
+	if (trybodydepth > 0 && !flcausedbyerrorvalid) {
+
+		for (i = 0; i < depth; ++i)
+			causedbyerrorstack [i] = (**hs).stack [i];
+
+		causedbyerrorstackdepth = depth;
+
+		flcausedbyerrorvalid = true;
+		}
+
 	return (true);
 	} /*langseterrorcallbackline*/
 
@@ -542,6 +622,161 @@ short langgetstackdepth (void) {
 	} /*langgetstackdepth*/
 
 
+/*
+PR3 of REPL error context chain: accessors for the causedby snapshot --
+the originating try-block failure that should accompany an else-block
+re-failure. langgetcausedbyerror returns the failure-site (top) frame;
+langgetcausedbystackframe walks the snapshot from failure site (ix=0)
+outward; langgetcausedbystackdepth reports the frame count.
+
+Symmetric with langgetlasterror / langgetstackframe / langgetstackdepth.
+The eval input offset is applied identically so reported line numbers
+are user-relative on the outermost <eval> frame.
+
+langsetintryblock / langclearcausedbyerror are runtime-internal:
+evaluatetry calls langsetintryblock(true) before the try body's
+evaluatelist, langsetintryblock(false) after; langclearcausedbyerror
+clears the snapshot when a try block completes without invoking the
+else path. langprescript also clears so causedby state cannot leak
+across evals.
+*/
+boolean langgetcausedbyerror (tyerrorrecord *out) {
+
+	tyerrorrecord frame;
+
+	if (out == nil)
+		return (false);
+
+	if (!flcausedbyerrorvalid || causedbyerrorstackdepth == 0)
+		return (false);
+
+	frame = causedbyerrorstack [causedbyerrorstackdepth - 1];
+
+	if (frame.errorrefcon == 0L && langeval_inputoffset > 0) {
+
+		if (frame.errorline > langeval_inputoffset)
+			frame.errorline -= langeval_inputoffset;
+		else
+			frame.errorline = 1;
+		}
+
+	*out = frame;
+
+	return (true);
+	} /*langgetcausedbyerror*/
+
+
+boolean langgetcausedbystackframe (short ix, tyerrorrecord *out, long *outRefcon) {
+
+	tyerrorrecord frame;
+
+	if (out == nil)
+		return (false);
+
+	if (!flcausedbyerrorvalid)
+		return (false);
+
+	if (ix < 0 || ix >= causedbyerrorstackdepth)
+		return (false);
+
+	frame = causedbyerrorstack [causedbyerrorstackdepth - 1 - ix];
+
+	if (frame.errorrefcon == 0L && langeval_inputoffset > 0) {
+
+		if (frame.errorline > langeval_inputoffset)
+			frame.errorline -= langeval_inputoffset;
+		else
+			frame.errorline = 1;
+		}
+
+	*out = frame;
+
+	if (outRefcon != nil)
+		*outRefcon = frame.errorrefcon;
+
+	return (true);
+	} /*langgetcausedbystackframe*/
+
+
+short langgetcausedbystackdepth (void) {
+
+	if (!flcausedbyerrorvalid)
+		return (0);
+
+	return (causedbyerrorstackdepth);
+	} /*langgetcausedbystackdepth*/
+
+
+/*
+PR3 of REPL error context chain: read the originating error message
+captured alongside the causedby snapshot. Returns a pointer to an
+internal NUL-terminated buffer (valid until the next eval). Returns
+NULL if no causedby snapshot is currently valid.
+*/
+const char *langgetcausedbymessage (void) {
+
+	if (!flcausedbyerrorvalid)
+		return (NULL);
+
+	return (causedbyerrormessage);
+	} /*langgetcausedbymessage*/
+
+
+/*
+PR3 of REPL error context chain: capture the originating error
+message for the causedby snapshot. Called from langerrormessage in
+langcallbacks.c just before langseterrorcallbackline, so the message
+and the stack snapshot are populated atomically. Mirrors the
+"first-error-wins" semantics: only writes when no causedby snapshot
+is already valid (i.e., this is the first error inside the current
+try body).
+*/
+void langtrysetcausedbymessage (const bigstring bs) {
+
+	register short len;
+
+	if (trybodydepth == 0)
+		return;
+
+	if (flcausedbyerrorvalid)
+		return;
+
+	len = stringlength (bs);
+
+	if (len > (short) (sizeof (causedbyerrormessage) - 1))
+		len = (short) (sizeof (causedbyerrormessage) - 1);
+
+	if (len > 0)
+		memcpy (causedbyerrormessage, stringbaseaddress (bs), (size_t) len);
+
+	causedbyerrormessage [len] = '\0';
+	} /*langtrysetcausedbymessage*/
+
+
+void langsetintryblock (boolean fl) {
+
+	/*
+	Counter-based: true increments, false decrements. Nested try blocks
+	just stack. The decrement is clamped at zero so a stray false call
+	(without a matching true) can't push the depth negative.
+	*/
+	if (fl)
+		trybodydepth++;
+	else if (trybodydepth > 0)
+		trybodydepth--;
+	} /*langsetintryblock*/
+
+
+void langclearcausedbyerror (void) {
+
+	flcausedbyerrorvalid = false;
+
+	causedbyerrorstackdepth = 0;
+
+	causedbyerrormessage [0] = '\0';
+	} /*langclearcausedbyerror*/
+
+
 void langsetevalinputoffset (unsigned long lineOffset) {
 
 	langeval_inputoffset = lineOffset;
@@ -588,6 +823,28 @@ static void langprescript (void) {
 	fllastfirederrorvalid = false;
 
 	lastfirederrorstackdepth = 0;
+
+	/*
+	PR3 of REPL error context chain: clear causedby snapshot state too so
+	stale frames from an earlier eval's try/else chain can't leak into a
+	fresh one. Defense in depth -- evaluatetry also clears at try entry
+	and on success exit, but a script that aborts in an unusual way (e.g.
+	user kill) could leave the flag set without invoking those paths.
+	*/
+	flcausedbyerrorvalid = false;
+
+	causedbyerrorstackdepth = 0;
+
+	/*
+	NOTE: do NOT clear flintryblock here. langprescript runs at the start
+	of every script compile/run, including paths invoked from INSIDE a
+	try body (kernel verbs that compile-on-the-fly, debugger calls, etc).
+	Clearing flintryblock here would mask the in-try state mid-evaluatetry,
+	and any error fired inside the try body would not get its causedby
+	snapshot captured. flintryblock's lifecycle is governed exclusively
+	by evaluatetry's set/clear pair, which correctly brackets the try
+	body's evaluatelist call.
+	*/
 
 	/*
 	PR1 of REPL error context chain: also clear the scanner's last-token

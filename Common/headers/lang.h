@@ -808,6 +808,34 @@ extern boolean langgetstackframe (short ix, tyerrorrecord *out, long *outRefcon)
 
 extern short langgetstackdepth (void);
 
+/*
+PR3 of REPL error context chain (2026-05-27 JES): causedby snapshot
+accessors. Symmetric with langgetlasterror / langgetstackframe /
+langgetstackdepth but read from a SEPARATE snapshot captured when an
+error fires inside a try block. The protocol layer attaches this as
+error.causedBy when an else-block re-failure is being reported; the
+REPL renderer emits a "Caused by (line N):" header below the primary
+error's context window.
+
+langsetintryblock is called by evaluatetry around the try body.
+langclearcausedbyerror is called by evaluatetry when a try block
+completes without invoking the else path. See lang.c for the full
+state-machine description.
+*/
+extern boolean langgetcausedbyerror (tyerrorrecord *out);
+
+extern boolean langgetcausedbystackframe (short ix, tyerrorrecord *out, long *outRefcon);
+
+extern short langgetcausedbystackdepth (void);
+
+extern const char *langgetcausedbymessage (void);
+
+extern void langtrysetcausedbymessage (const bigstring bs);
+
+extern void langsetintryblock (boolean fl);
+
+extern void langclearcausedbyerror (void);
+
 extern void langsetevalinputoffset (unsigned long lineOffset);
 
 extern void langclearevalinputoffset (void);

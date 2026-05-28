@@ -276,6 +276,15 @@ boolean langerrormessage (bigstring bs) {
 		newtexthandle (bs, &tryerror);
 
 
+	/*
+	PR3 of REPL error context chain (2026-05-27 JES): if we're inside
+	a try body, capture the originating error message into the
+	causedby buffer so the protocol/REPL layer can surface it on the
+	else block's response. No-op outside a try body. First-error-wins:
+	subsequent errors don't overwrite the captured message.
+	*/
+	langtrysetcausedbymessage (bs);
+
 	langseterrorcallbackline ();
 
 
