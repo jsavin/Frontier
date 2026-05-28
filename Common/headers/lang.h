@@ -836,6 +836,28 @@ extern void langsetintryblock (boolean fl);
 
 extern void langclearcausedbyerror (void);
 
+/*
+PR3 P1 (concurrency + security, 2026-05-27 JES): snapshot of the
+in-try-body depth + causedby state, captured on thread context switch
+(pushprocess) and restored on the way back (popprocess). The struct
+contents are owned by lang.c -- process.c stores a value of this type
+inside typrocessstackrecord and shuttles it through the save/restore
+accessors below. Keeping the layout opaque-ish (full struct so the
+storage size is known to the compiler, but callers should treat it as
+opaque) means process.c does not need to track lang internals.
+*/
+typedef struct tycausedbysnapshot {
+	int trybodydepth;
+	short causedbyerrorstackdepth;
+	boolean flcausedbyerrorvalid;
+	tyerrorrecord causedbyerrorstack [cterrorcallbacks];
+	char causedbyerrormessage [256];
+	} tycausedbysnapshot;
+
+extern void langsavecausedbysnapshot (tycausedbysnapshot *out);
+
+extern void langrestorecausedbysnapshot (const tycausedbysnapshot *in);
+
 extern void langsetevalinputoffset (unsigned long lineOffset);
 
 extern void langclearevalinputoffset (void);

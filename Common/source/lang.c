@@ -126,10 +126,14 @@ inside the try body (including inside called scripts and nested
 try/else) is captured. !flcausedbyerrorvalid prevents a nested-try
 failure from overwriting the outermost try body's originating failure.
 
-langclearcausedbyerror is called by langprescript so causedby state from
-a prior eval cannot leak into a fresh one, and by evaluatetry when a
-try block completes without firing the else path (no caused-by data
-should be visible to subsequent error reporting).
+langclearcausedbyerror is called by evaluatetry in three places: at try
+entry, when a try body succeeds without firing the else path, and when
+a try has no else block at all. All three call sites are gated by
+"don't touch what wasn't yours": evaluatetry saves a snapshot-was-valid
+boolean at entry and skips the clear when an outer try/else chain owns
+the snapshot. langprescript also zeroes flcausedbyerrorvalid and
+causedbyerrorstackdepth directly (inline clear, not via the function)
+so causedby state from a prior eval cannot leak into a fresh one.
 
 NOTE: langprescript intentionally does NOT clear trybodydepth.
 langprescript runs at the start of every nested compile/run, including
@@ -468,11 +472,8 @@ boolean langseterrorcallbackline (void) {
 	try body would overwrite each other -- we keep the FIRST one (the one
 	that triggers the else path), so only update when not already valid.
 
-	When the snapshot is mirrored, also stamp errorline/errorchar/token*
-	from the live scanner onto the buffer's top frame, mirroring the
-	just-applied edits to the live stack above. This keeps causedby's
-	failure-site frame consistent with the PR1 snapshot taken at the same
-	point.
+	The PR1 stamping on the live stack's top frame (above) is naturally
+	captured by this copy -- no additional stamping needed here.
 	*/
 	if (trybodydepth > 0 && !flcausedbyerrorvalid) {
 
@@ -765,6 +766,57 @@ void langsetintryblock (boolean fl) {
 	else if (trybodydepth > 0)
 		trybodydepth--;
 	} /*langsetintryblock*/
+
+
+/*
+PR3 P1 (concurrency + security, 2026-05-27 JES): save the in-try-body
+state and causedby snapshot into out, then reset live state to a clean
+slate. Called from pushprocess immediately before swapping in the
+incoming thread's process context, so the incoming thread starts with
+trybodydepth == 0 and no causedby snapshot -- cannot inherit the
+outgoing thread's try-body context.
+
+Pairs with langrestorecausedbysnapshot, which is called from popprocess
+on the way back.
+*/
+void langsavecausedbysnapshot (tycausedbysnapshot *out) {
+
+	out->trybodydepth = trybodydepth;
+	out->causedbyerrorstackdepth = causedbyerrorstackdepth;
+	out->flcausedbyerrorvalid = flcausedbyerrorvalid;
+	memcpy (out->causedbyerrorstack, causedbyerrorstack,
+	        sizeof (causedbyerrorstack));
+	memcpy (out->causedbyerrormessage, causedbyerrormessage,
+	        sizeof (causedbyerrormessage));
+
+	/* Reset live state. The incoming thread starts with no in-try-body
+	 * context and no causedby snapshot; its own evaluatetry calls and
+	 * langseterrorcallbackline triggers will populate live state from
+	 * scratch as it runs. */
+	trybodydepth = 0;
+	causedbyerrorstackdepth = 0;
+	flcausedbyerrorvalid = false;
+	causedbyerrormessage [0] = '\0';
+	} /*langsavecausedbysnapshot*/
+
+
+/*
+PR3 P1 (concurrency + security, 2026-05-27 JES): restore previously
+saved in-try-body state and causedby snapshot. Called from popprocess
+after the previously-paused thread context is being resumed. The
+incoming-side snapshot is discarded -- whatever try-body state the
+returning thread had at yield time is now back in live globals.
+*/
+void langrestorecausedbysnapshot (const tycausedbysnapshot *in) {
+
+	trybodydepth = in->trybodydepth;
+	causedbyerrorstackdepth = in->causedbyerrorstackdepth;
+	flcausedbyerrorvalid = in->flcausedbyerrorvalid;
+	memcpy (causedbyerrorstack, in->causedbyerrorstack,
+	        sizeof (causedbyerrorstack));
+	memcpy (causedbyerrormessage, in->causedbyerrormessage,
+	        sizeof (causedbyerrormessage));
+	} /*langrestorecausedbysnapshot*/
 
 
 void langclearcausedbyerror (void) {

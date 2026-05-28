@@ -1081,8 +1081,21 @@ static boolean evaluatetry (hdltreenode htry, tyvaluerecord *valtree) {
 	causedby snapshot from a prior try/else chain. A fresh try block
 	starts with a clean originating-context slate; otherwise the
 	previous chain's snapshot could leak into this one's else block.
+
+	P1-1 (bar-raiser, 2026-05-27 JES): a snapshot present at THIS try's
+	entry belongs to an outer chain still in progress (typical case:
+	outer try failed, outer else is now running and contains an inner
+	try/else). The outer chain owns that snapshot; this try block must
+	not wipe it on entry, on success-exit, or on no-else exit. Save the
+	"snapshot was already valid at entry" boolean here and gate every
+	clear in this function on it -- "don't touch what wasn't yours."
+	langprescript zeroes flcausedbyerrorvalid at every eval boundary, so
+	any valid flag here is from the live in-progress chain.
 	*/
-	langclearcausedbyerror ();
+	boolean outer_chain_owns_snapshot = (langgetcausedbystackdepth () > 0);
+
+	if (!outer_chain_owns_snapshot)
+		langclearcausedbyerror ();
 
 	#if fltryerrorstackcode
 		assert (tryerrorstack == nil);
@@ -1135,8 +1148,13 @@ static boolean evaluatetry (hdltreenode htry, tyvaluerecord *valtree) {
 		the causedby snapshot wouldn't have been populated, but be defensive
 		so a stray langseterrorcallbackline call inside the try body that
 		didn't fail the body's overall result can't leak.)
+
+		P1-1 (bar-raiser, 2026-05-27 JES): suppress the wipe when an outer
+		chain owned a snapshot at this try's entry -- that snapshot belongs
+		to the outer chain and its else block still needs it.
 		*/
-		langclearcausedbyerror ();
+		if (!outer_chain_owns_snapshot)
+			langclearcausedbyerror ();
 
 		return (fl); /*might be false if script has been killed*/
 		}
@@ -1163,8 +1181,14 @@ static boolean evaluatetry (hdltreenode htry, tyvaluerecord *valtree) {
 		caused-by data. Clear it so subsequent error reporting (a later
 		unrelated failure) doesn't pick up a stale causedby that has no
 		semantic relationship to its primary error.
+
+		P1-1 (bar-raiser, 2026-05-27 JES): suppress the wipe when an outer
+		chain owned a snapshot at this try's entry. First-error-wins means
+		any inner failure here did NOT overwrite the outer snapshot, so the
+		outer's data is still intact -- preserve it for the outer else.
 		*/
-		langclearcausedbyerror ();
+		if (!outer_chain_owns_snapshot)
+			langclearcausedbyerror ();
 
 		return (true);
 		}
