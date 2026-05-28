@@ -279,47 +279,26 @@ static void send_eval_success(long id, tyvaluerecord *val, transport_t *transpor
 
 /*
  * PR1 of REPL error context chain (2026-05-26 JES): derive a human-readable
- * script name from an error-frame errorrefcon.
+ * script name from an error-frame errorrefcon. Thin wrapper around the
+ * shared kernel helper langscriptnamefromrefcon -- copies the resulting
+ * Pascal bigstring into the caller's C buffer with size-aware clamping.
  *
- * Frontier's error stack records each frame's identity in errorrefcon:
- *   0L  -- outermost top-level (REPL input / script.eval)
- *   -1L -- inline nested call (script-already-running path in langrun)
- *   else -- (long) hdlhashnode for a named script
- *
- * For named scripts PR1 emits the leaf name (the hashnode's hashkey).
- * Computing the full dotted table path is deferred; see "Deferred" in the
- * task report. Buffer must be cstring-sized; caller provides it.
+ * Refcon semantics (see lang.c::langscriptnamefromrefcon for details):
+ *   0L  -- "<eval>"     (outermost top-level / REPL input / script.eval)
+ *   -1L -- "<eval-inner>" (inline nested call)
+ *   else -- (hdlhashnode)refcon's hashkey, or "<unknown>" if nil/HNoNode
  */
 static void script_name_from_refcon(long refcon, char *out, size_t outlen) {
+	bigstring bsname;
+
 	if (outlen == 0) return;
 
-	if (refcon == 0L) {
-		strncpy(out, "<eval>", outlen);
-		out[outlen - 1] = '\0';
-		return;
-	}
-	if (refcon == -1L) {
-		strncpy(out, "<eval-inner>", outlen);
-		out[outlen - 1] = '\0';
-		return;
-	}
+	langscriptnamefromrefcon(refcon, bsname);
 
-	/* Named-script frame: refcon is (long)hdlhashnode. The hashnode's
-	 * hashkey is a Pascal-style bigstring; copy to a C string. */
-	hdlhashnode hnode = (hdlhashnode) refcon;
-	if (hnode == nil || hnode == HNoNode) {
-		strncpy(out, "<unknown>", outlen);
-		out[outlen - 1] = '\0';
-		return;
-	}
-
-	/* hashkey is a Pascal-style bigstring: byte 0 is length, bytes 1..N
-	 * are the identifier characters. Read it directly without copystring
-	 * to avoid pulling that header transitively into op_handler. */
-	const byte *bskey = (const byte *)(**hnode).hashkey;
-	size_t n = (size_t) bskey[0];
+	/* Copy bigstring (length byte + payload) to C string with clamp. */
+	size_t n = (size_t) bsname[0];
 	if (n >= outlen) n = outlen - 1;
-	memcpy(out, (const char *)(bskey + 1), n);
+	memcpy(out, (const char *)(bsname + 1), n);
 	out[n] = '\0';
 }
 

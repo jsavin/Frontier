@@ -724,6 +724,51 @@ const char *langgetcausedbymessage (void) {
 
 
 /*
+Resolve a script-error refcon to a script name as a Pascal bigstring.
+
+Frontier's error stack records each frame's identity in errorrefcon:
+	 0L  -- outermost top-level (REPL input / script.eval)  -> "<eval>"
+	-1L  -- inline nested call (script-already-running in langrun) -> "<eval-inner>"
+	other -- (long) hdlhashnode for a named script; emit the leaf name
+	         (the hashnode's hashkey). If the handle is nil or HNoNode
+	         (defensive -- a real refcon should never be the hashtable's
+	         empty-bucket sentinel), emit "<unknown>".
+
+Shared by op_handler.c (protocol error responses), repl_output.c
+(REPL stack-frame rendering), and langevaluate.c (tryErrorScript
+assignment on else-block re-failure). Centralizing here keeps the
+three call sites in sync; previously each had its own copy and the
+repl_output.c copy was missing the HNoNode defensive check.
+
+Full dotted-path resolution (e.g. "system.startup.foo" instead of
+"foo") is deferred -- see PR2/PR3 of the REPL error context chain.
+*/
+void langscriptnamefromrefcon (long refcon, bigstring out) {
+
+	if (refcon == 0L) {
+		copyctopstring ("<eval>", out);
+		return;
+		}
+
+	if (refcon == -1L) {
+		copyctopstring ("<eval-inner>", out);
+		return;
+		}
+
+	{
+	hdlhashnode hnode = (hdlhashnode) refcon;
+
+	if (hnode == nil || hnode == HNoNode) {
+		copyctopstring ("<unknown>", out);
+		return;
+		}
+
+	copystring ((**hnode).hashkey, out);
+	}
+	} /*langscriptnamefromrefcon*/
+
+
+/*
 PR3 of REPL error context chain: capture the originating error
 message for the causedby snapshot. Called from langerrormessage in
 langcallbacks.c just before langseterrorcallbackline, so the message

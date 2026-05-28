@@ -697,41 +697,22 @@ static boolean stderr_supports_ansi(void) {
 }
 
 /*
- * Derive a printable script name from an error-frame errorrefcon, the
- * same encoding op_handler.c uses for protocol responses:
- *   0L  -- outermost top-level (REPL input)
- *   -1L -- inline nested call (script-already-running path)
- *   else -- (long) hdlhashnode for a named script; we print the leaf name
- *
- * Buffer is cstring-sized; caller provides it.
+ * Derive a printable script name from an error-frame errorrefcon. Thin
+ * wrapper around the shared kernel helper langscriptnamefromrefcon --
+ * copies the resulting Pascal bigstring into the caller's C buffer with
+ * size-aware clamping. See lang.c::langscriptnamefromrefcon for the
+ * refcon semantics shared with op_handler.c and langevaluate.c.
  */
 static void script_name_for_frame(long refcon, char *out, size_t outlen) {
+	bigstring bsname;
+
 	if (outlen == 0) return;
 
-	if (refcon == 0L) {
-		strncpy(out, "<eval>", outlen);
-		out[outlen - 1] = '\0';
-		return;
-	}
-	if (refcon == -1L) {
-		strncpy(out, "<eval-inner>", outlen);
-		out[outlen - 1] = '\0';
-		return;
-	}
+	langscriptnamefromrefcon(refcon, bsname);
 
-	hdlhashnode hnode = (hdlhashnode) refcon;
-	if (hnode == nil) {
-		strncpy(out, "<unknown>", outlen);
-		out[outlen - 1] = '\0';
-		return;
-	}
-
-	/* hashkey is a Pascal bigstring: byte 0 is length, bytes 1..N are
-	 * the identifier characters. */
-	const unsigned char *bskey = (const unsigned char *)(**hnode).hashkey;
-	size_t n = (size_t) bskey[0];
+	size_t n = (size_t) bsname[0];
 	if (n >= outlen) n = outlen - 1;
-	memcpy(out, (const char *)(bskey + 1), n);
+	memcpy(out, (const char *)(bsname + 1), n);
 	out[n] = '\0';
 }
 
