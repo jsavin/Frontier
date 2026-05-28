@@ -128,46 +128,6 @@ static void set_live_state(int depth, boolean valid, const char *cmessage) {
 	(void) i;
 }
 
-/* Helper: assert the live state matches expected values. */
-static void assert_live_state(const char *label, int expected_depth_gate,
-							  boolean expected_valid,
-							  const char *expected_message) {
-	bigstring probe;
-	const char *got_msg;
-
-	(void) label;
-
-	/* trybodydepth is observed via the langtrysetcausedbymessage gate. */
-	if (expected_depth_gate > 0) {
-		/* depth > 0 and !valid -> gate open. Drive a probe value through
-		 * and read it back. */
-		if (!expected_valid) {
-			bs_from_cstr("__probe_depth_gate__", probe);
-			langtrysetcausedbymessage(probe);
-			/* probe must have been written -> message buffer holds it. */
-			/* langgetcausedbymessage returns NULL when !flcausedbyerrorvalid;
-			 * so we cannot read via that getter here. Instead, we know
-			 * the buffer holds the probe because we just wrote it -- the
-			 * test of the gate is enough. */
-		}
-		/* If depth > 0 AND valid, langtrysetcausedbymessage is gated off
-		 * (the "first error wins" rule). We rely on the valid-state check
-		 * below to confirm the snapshot's valid flag. */
-	}
-
-	got_msg = langgetcausedbymessage();
-
-	if (expected_valid) {
-		assert(got_msg != NULL);
-		if (expected_message != NULL)
-			assert(strcmp(got_msg, expected_message) == 0);
-	} else {
-		/* langgetcausedbymessage gates on flcausedbyerrorvalid -> returns
-		 * NULL when invalid. */
-		assert(got_msg == NULL);
-	}
-}
-
 /*
  * Test 1: save preserves the snapshot's trybodydepth field.
  *
