@@ -8313,6 +8313,7 @@ boolean langfunctioncall (hdltreenode hcallernode, hdlhashtable htable, hdlhashn
 	register boolean fl;
 	hdlhashtable hlocaltable;
 	tyvaluerecord osacode;
+	boolean flpushedsource = false; /*#659: track push so failure path can pop*/
 
         if (hcode == nil) { /*can only be a kernel call -- or an error*/
 #if defined(FRONTIER_HEADLESS)
@@ -8377,19 +8378,24 @@ boolean langfunctioncall (hdltreenode hcallernode, hdlhashtable htable, hdlhashn
 	if (fl && hcallernode)
 		fl = langdebuggercall (hcallernode); /*user killed the script*/
 	
-	if (fl)
+	if (fl) {
 		fl = langpushsourcecode (htable, hnode, bsname);
-	
+		flpushedsource = fl;
+		}
+
 	if (fl && !(**htable).fllocaltable)
 		fl = langsetthisvalue (hlocaltable, htable, bsname);
-	
+
 	if (!fl) {
-		
+
+		if (flpushedsource) /*#659: balance push when later step failed*/
+			langpopsourcecode ();
+
 		disposehashtable (hlocaltable, false);
-		
+
 		return (false);
 		}
-	
+
 	hmagictable = hlocaltable; /*evaluatelist uses this as its local symbol table*/
 	
 	/*
