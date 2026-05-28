@@ -1275,6 +1275,17 @@ class TestRunner:
                             f"{expected_min} frames, got {len(actual_stack)} "
                             f"({actual_stack!r})")
 
+        # PR3 P1-2 (bar-raiser): assert that error.causedBy is NOT present.
+        # Used to verify the "promote causedBy to primary" code path in
+        # op_handler: when bserror is empty and a causedby snapshot is
+        # available, the originating message becomes primary and causedBy
+        # is dropped to avoid duplication.
+        if validate.get('expected_error_causedby_absent'):
+            error_obj = resp.get('error', {})
+            if isinstance(error_obj, dict) and 'causedBy' in error_obj:
+                return (f"[{step_desc}] expected_error_causedby_absent set but "
+                        f"response has error.causedBy: {error_obj.get('causedBy')!r}")
+
         # Check result_count first (before per-item loop) so count mismatches
         # produce a clear message rather than an IndexError or confusing diff.
         if 'result_count' in validate:

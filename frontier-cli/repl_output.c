@@ -1263,10 +1263,27 @@ void repl_output_structured_error(const char *error_msg,
 		if (cb_msg == NULL) cb_msg = "(no message)";
 
 		fputc('\n', stderr);
-		if (use_ansi)
-			fprintf(stderr, ANSI_BOLD "Caused by: %s" ANSI_RESET "\n", cb_msg);
-		else
-			fprintf(stderr, "Caused by: %s\n", cb_msg);
+
+		/* P1-3 (bar-raiser, 2026-05-27 JES): include the originating
+		 * frame's line in the "Caused by" header when available. The
+		 * errorline on cb_top has already had langeval_inputoffset applied
+		 * by langgetcausedbyerror, so we print it verbatim and don't need
+		 * to adjust here. */
+		if (cb_top.errorline > 0) {
+			if (use_ansi)
+				fprintf(stderr,
+				        ANSI_BOLD "Caused by (line %lu): %s" ANSI_RESET "\n",
+				        cb_top.errorline, cb_msg);
+			else
+				fprintf(stderr, "Caused by (line %lu): %s\n",
+				        cb_top.errorline, cb_msg);
+		} else {
+			if (use_ansi)
+				fprintf(stderr, ANSI_BOLD "Caused by: %s" ANSI_RESET "\n",
+				        cb_msg);
+			else
+				fprintf(stderr, "Caused by: %s\n", cb_msg);
+		}
 
 		render_error_stack(cb_depth, /*use_causedby=*/true,
 		                    eval_source_text, use_ansi);

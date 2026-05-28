@@ -520,11 +520,13 @@ static void handle_script_eval(long id, const char *json_line, transport_t *tran
 	} else {
 		char c_error[256];
 		long errlen = stringlength(error_msg);
+		boolean error_empty = false;
 		if (errlen > 0 && errlen < (long)sizeof(c_error)) {
 			memcpy(c_error, stringbaseaddress(error_msg), errlen);
 			c_error[errlen] = '\0';
 		} else if (errlen == 0) {
 			snprintf(c_error, sizeof(c_error), "Script evaluation failed");
+			error_empty = true;
 		} else {
 			snprintf(c_error, sizeof(c_error), "Script error (message too long)");
 		}
@@ -539,6 +541,31 @@ static void handle_script_eval(long id, const char *json_line, transport_t *tran
 		cJSON *location = build_error_location();
 		cJSON *stack = build_error_stack();
 		cJSON *caused_by = build_error_causedby();
+
+		/* P1-2 (bar-raiser, 2026-05-27 JES): when bserror is empty (common
+		 * for scriptError() fired from inside an else block — the
+		 * langtraperror path leaves bserror empty for eval-wrapped scripts)
+		 * AND a causedby snapshot is available, promote the causedby message
+		 * to the primary error.message slot and drop the causedBy field to
+		 * avoid duplicate text. This makes the user-facing message
+		 * meaningful instead of the "Script evaluation failed" boilerplate.
+		 *
+		 * The causedby snapshot's location/stack remain available via the
+		 * top-level error.location / error.stack (already built from the
+		 * live error state, which carries the originating frame in this
+		 * empty-bserror case). */
+		const char *cb_msg = langgetcausedbymessage();
+		short cb_depth = langgetcausedbystackdepth();
+		if (error_empty && caused_by != NULL && cb_msg != NULL
+		    && cb_msg[0] != '\0' && cb_depth > 0) {
+			size_t cb_len = strlen(cb_msg);
+			if (cb_len >= sizeof(c_error))
+				cb_len = sizeof(c_error) - 1;
+			memcpy(c_error, cb_msg, cb_len);
+			c_error[cb_len] = '\0';
+			cJSON_Delete(caused_by);
+			caused_by = NULL;
+		}
 
 		langclearevalinputoffset();
 		send_error_with_metadata(id, c_error, location, stack, caused_by, transport);
