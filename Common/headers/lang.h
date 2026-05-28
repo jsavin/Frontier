@@ -830,6 +830,15 @@ extern short langgetcausedbystackdepth (void);
 
 extern const char *langgetcausedbymessage (void);
 
+/*
+Shared script-name-from-refcon helper. Used by op_handler.c (protocol
+error responses), repl_output.c (REPL stack rendering), and langevaluate.c
+(tryErrorScript assignment). Refcon sentinels: 0L -> "<eval>",
+-1L -> "<eval-inner>", nil/HNoNode -> "<unknown>"; otherwise the
+hashnode's hashkey is copied into `out`. See lang.c for full notes.
+*/
+extern void langscriptnamefromrefcon (long refcon, bigstring out);
+
 extern void langtrysetcausedbymessage (const bigstring bs);
 
 extern void langsetintryblock (boolean fl);

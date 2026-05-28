@@ -2050,12 +2050,13 @@ boolean evaluatelist (hdltreenode hfirst, tyvaluerecord *val) {
 			tryError assignment above so any subsequent disposal of
 			the local frame walks them consistently.
 
-			Script name derivation mirrors op_handler.c::
-			script_name_from_refcon and repl_output.c::
-			script_name_for_frame: refcon 0 -> "<eval>",
-			refcon -1 -> "<eval-inner>", otherwise the leaf identifier
-			from (hdlhashnode)refcon's hashkey. Full dotted-path
-			resolution is deferred for symmetry with PR1.
+			Script name derivation uses the shared kernel helper
+			langscriptnamefromrefcon (lang.c), which is also used by
+			op_handler.c (protocol error responses) and repl_output.c
+			(REPL stack rendering): refcon 0 -> "<eval>", -1 ->
+			"<eval-inner>", otherwise the leaf identifier from
+			(hdlhashnode)refcon's hashkey. Full dotted-path resolution
+			is deferred for symmetry with PR1.
 			*/
 			{
 				tyerrorrecord cbrec;
@@ -2081,22 +2082,10 @@ boolean evaluatelist (hdltreenode hfirst, tyvaluerecord *val) {
 					if (hashassign (nametryerrortokenendval, nval))
 						exemptfromtmpstack (&nval);
 
-					/* Build the script-name bigstring from refcon. */
-					if (cbrec.errorrefcon == 0L) {
-						copyctopstring ("<eval>", bsscript);
-						}
-					else if (cbrec.errorrefcon == -1L) {
-						copyctopstring ("<eval-inner>", bsscript);
-						}
-					else {
-						hdlhashnode hnode = (hdlhashnode) cbrec.errorrefcon;
-						if (hnode == nil || hnode == HNoNode) {
-							copyctopstring ("<unknown>", bsscript);
-							}
-						else {
-							copystring ((**hnode).hashkey, bsscript);
-							}
-						}
+					/* Build the script-name bigstring from refcon via the
+					   shared kernel helper (op_handler.c and repl_output.c
+					   use the same helper for protocol/REPL rendering). */
+					langscriptnamefromrefcon (cbrec.errorrefcon, bsscript);
 
 					if (setstringvalue (bsscript, &nval))
 						if (hashassign (nametryerrorscriptval, nval))
