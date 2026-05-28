@@ -818,3 +818,153 @@ tests:
   #   expected_success: true
   #   expected_result: "true"
     notes: "Phase 3 - Behavioral spec: privileged ports (<1024) require root/admin privileges"
+
+# ============================================================================
+# CATEGORY 9: Regression tests for #129 (callback-side read/write)
+# ============================================================================
+#
+# Issue #129: tcp.readStream and tcp.writeStream rejected server-accepted
+# streams inside tcp.listenStream callbacks with "Stream not connected",
+# because the verb state-check at tcpverbs.c:849 / :961 only accepted
+# STREAM_CONNECTED. tcp_accept_thread sets STREAM_ACCEPTED (enum 3, distinct
+# from STREAM_CONNECTED=1) for server-side accepted sockets, so callbacks
+# could see the stream id but neither read incoming bytes nor write a
+# response. The fix accepts both states; tcp_status_stream (~line 1874)
+# already had this pattern. Tests below cover read, write, round-trip, and
+# the negative case (closed streams still reject).
+
+  - name: "tcp.readStream - server callback reads client data (#129)"
+    description: "Regression for #129. Inside a tcp.listenStream callback, the accepted server-side stream is in STREAM_ACCEPTED state. tcp.readStream must accept this state, not reject it as 'Stream not connected'. The test wraps the verb call in try/else: pre-fix the verb errors and readSucceeded stays false; post-fix the verb returns (possibly empty) data and readSucceeded becomes true. We do NOT assert payload bytes here because tcp.readStream is non-blocking and may return empty if the client write hasn't drained to the recv buffer yet — that timing concern is orthogonal to the state-check bug we're guarding."
+    timeout: 10
+    script: |
+      new(tableType, @system.temp.tcpSrv28);
+      system.temp.tcpSrv28.fired = false;
+      system.temp.tcpSrv28.readSucceeded = false;
+      script.newScriptObject("on myHandler(sid, refcon) {\r  try {\r    local(d = tcp.readStream(sid, 1024));\r    system.temp.tcpSrv28.readSucceeded = true};\r  system.temp.tcpSrv28.fired = true;\r  tcp.closeStream(sid);\r  return true}", @system.temp.tcpSrv28.myHandler);
+
+      local(listenID = tcp.listenStream(9028, 5, @system.temp.tcpSrv28.myHandler));
+      local(clientStream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 9028));
+
+      tcp.writeStream(clientStream, "hello-from-129");
+
+      local(deadline = clock.ticks() + 300);
+      while (not system.temp.tcpSrv28.fired) and (clock.ticks() < deadline) {
+        clock.ticks()
+      };
+
+      local(verbWorked = system.temp.tcpSrv28.readSucceeded);
+
+      tcp.closeStream(clientStream);
+      tcp.closeListen(listenID);
+      delete(@system.temp.tcpSrv28);
+
+      return verbWorked
+    expected_success: true
+    expected_result: "true"
+    notes: "Issue #129 - callback-side tcp.readStream on STREAM_ACCEPTED. Verb-level regression check via try/else; deliberately does not assert payload bytes (see description)."
+
+  - name: "tcp.writeStream - server callback writes response data (#129)"
+    description: "Regression for #129. Inside a tcp.listenStream callback, tcp.writeStream must succeed on the accepted (STREAM_ACCEPTED) server stream. The test wraps the verb call in try/else: pre-fix the verb errors and writeSucceeded stays false; post-fix the verb succeeds and writeSucceeded becomes true. We do NOT assert that the client receives the exact bytes here, because client-side tcp.readStream is non-blocking and its accumulation semantics are orthogonal to the state-check bug under test."
+    timeout: 10
+    script: |
+      new(tableType, @system.temp.tcpSrv29);
+      system.temp.tcpSrv29.fired = false;
+      system.temp.tcpSrv29.writeSucceeded = false;
+      script.newScriptObject("on myHandler(sid, refcon) {\r  try {\r    tcp.writeStream(sid, \"response-from-129\");\r    system.temp.tcpSrv29.writeSucceeded = true};\r  system.temp.tcpSrv29.fired = true;\r  tcp.closeStream(sid);\r  return true}", @system.temp.tcpSrv29.myHandler);
+
+      local(listenID = tcp.listenStream(9029, 5, @system.temp.tcpSrv29.myHandler));
+      local(clientStream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 9029));
+
+      local(deadline = clock.ticks() + 300);
+      while (not system.temp.tcpSrv29.fired) and (clock.ticks() < deadline) {
+        clock.ticks()
+      };
+
+      local(verbWorked = system.temp.tcpSrv29.writeSucceeded);
+
+      tcp.closeStream(clientStream);
+      tcp.closeListen(listenID);
+      delete(@system.temp.tcpSrv29);
+
+      return verbWorked
+    expected_success: true
+    expected_result: "true"
+    notes: "Issue #129 - callback-side tcp.writeStream on STREAM_ACCEPTED. Verb-level regression check via try/else; deliberately does not assert client-side payload bytes (see description)."
+
+  - name: "tcp.readStream/writeStream - bidirectional round-trip in callback (#129)"
+    description: "Regression for #129. Realistic listener primitive shape: inside the same callback, BOTH tcp.readStream and tcp.writeStream must succeed on the STREAM_ACCEPTED server stream. Pre-fix: both verbs error (state-check rejects STREAM_ACCEPTED), so neither flag flips. Post-fix: both verbs return successfully and both flags become true. Each verb is wrapped in its own try/else so a failure of one is independently detectable from the other."
+    timeout: 10
+    script: |
+      new(tableType, @system.temp.tcpSrv30);
+      system.temp.tcpSrv30.fired = false;
+      system.temp.tcpSrv30.readSucceeded = false;
+      system.temp.tcpSrv30.writeSucceeded = false;
+      script.newScriptObject("on myHandler(sid, refcon) {\r  try {\r    local(d = tcp.readStream(sid, 1024));\r    system.temp.tcpSrv30.readSucceeded = true};\r  try {\r    tcp.writeStream(sid, \"pong\");\r    system.temp.tcpSrv30.writeSucceeded = true};\r  system.temp.tcpSrv30.fired = true;\r  tcp.closeStream(sid);\r  return true}", @system.temp.tcpSrv30.myHandler);
+
+      local(listenID = tcp.listenStream(9030, 5, @system.temp.tcpSrv30.myHandler));
+      local(clientStream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 9030));
+
+      tcp.writeStream(clientStream, "ping");
+
+      local(deadline = clock.ticks() + 300);
+      while (not system.temp.tcpSrv30.fired) and (clock.ticks() < deadline) {
+        clock.ticks()
+      };
+
+      local(bothVerbsWorked = system.temp.tcpSrv30.readSucceeded and system.temp.tcpSrv30.writeSucceeded);
+
+      tcp.closeStream(clientStream);
+      tcp.closeListen(listenID);
+      delete(@system.temp.tcpSrv30);
+
+      return bothVerbsWorked
+    expected_success: true
+    expected_result: "true"
+    notes: "Issue #129 - both read and write verbs must succeed on STREAM_ACCEPTED in a single callback"
+
+  - name: "tcp.readStream - closed stream after callback still rejects (#129 negative)"
+    description: "Guards against the #129 fix being too permissive. After the callback closes the accepted stream via tcp.closeStream(sid), the captured stream id is in STREAM_CLOSING/STREAM_CLOSED state. tcp.readStream from outside the callback must still ERROR with 'Stream not connected'. If the fix accidentally permitted reads on closed streams (e.g., by widening the check too far), this test would fail."
+    timeout: 10
+    script: |
+      new(tableType, @system.temp.tcpSrv31);
+      system.temp.tcpSrv31.fired = false;
+      system.temp.tcpSrv31.serverStream = -1;
+      script.newScriptObject("on myHandler(sid, refcon) {\r  system.temp.tcpSrv31.serverStream = sid;\r  tcp.closeStream(sid);\r  system.temp.tcpSrv31.fired = true;\r  return true}", @system.temp.tcpSrv31.myHandler);
+
+      local(listenID = tcp.listenStream(9031, 5, @system.temp.tcpSrv31.myHandler));
+      local(clientStream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 9031));
+
+      local(deadline = clock.ticks() + 300);
+      while (not system.temp.tcpSrv31.fired) and (clock.ticks() < deadline) {
+        clock.ticks()
+      };
+
+      // Note: the saved serverStream sid could theoretically be reused by the
+      // stream pool after tcp.closeStream brings refcount to 0. In this isolated
+      // test no concurrent connections arrive, so the slot stays free and the
+      // sid still maps to the closed stream (which tcp_get_stream filters out
+      // by sockfd<0 and STREAM_CLOSING). If a future test in this file changes
+      // that assumption, this test could become flaky-toward-FAIL (false fail),
+      // not flaky-toward-PASS, because closedRejected would stay false.
+      local(closedRejected = false);
+      try {
+        tcp.readStream(system.temp.tcpSrv31.serverStream, 1024);
+        closedRejected = false
+      }
+      else {
+        closedRejected = true
+      };
+
+      tcp.closeStream(clientStream);
+      tcp.closeListen(listenID);
+      delete(@system.temp.tcpSrv31);
+
+      if closedRejected {
+        return "true"
+      }
+      else {
+        return "false"
+      }
+    expected_success: true
+    expected_result: "true"
+    notes: "Issue #129 - negative test: closed/closing streams must still reject"

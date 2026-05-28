@@ -846,7 +846,14 @@ boolean tcp_read_stream(long stream_id, long bytes_to_read, Handle *data_out) {
 
     /* Acquire stream reference (TOCTOU protection) */
     stream = tcp_stream_acquire(stream_id);
-    if (!stream || stream->state != STREAM_CONNECTED) {
+
+    /* Accept both STREAM_CONNECTED (client-initiated connect) and STREAM_ACCEPTED
+     * (server-side accept inside a listener callback). Both represent a fully-
+     * established TCP socket where read/write are valid. tcp_status_stream (~line
+     * 1874) follows the same pattern. Without this, scripts using tcp.listenStream
+     * callbacks cannot read incoming bytes or write responses, rendering the
+     * listener primitive useless. Issue #129. */
+    if (!stream || (stream->state != STREAM_CONNECTED && stream->state != STREAM_ACCEPTED)) {
         if (stream)
             tcp_stream_release(stream);
         *data_out = nil;
@@ -958,7 +965,10 @@ boolean tcp_write_stream(long stream_id, Handle hdata) {
 
     /* Acquire stream reference (TOCTOU protection) */
     stream = tcp_stream_acquire(stream_id);
-    if (!stream || stream->state != STREAM_CONNECTED) {
+
+    /* Accept both STREAM_CONNECTED and STREAM_ACCEPTED states. See the matching
+     * check in tcp_read_stream (~line 849) for the full rationale. Issue #129. */
+    if (!stream || (stream->state != STREAM_CONNECTED && stream->state != STREAM_ACCEPTED)) {
         if (stream)
             tcp_stream_release(stream);
         tcp_set_error(TCP_ERR_INVALID_STREAM, "Stream not connected");
