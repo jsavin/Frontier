@@ -162,18 +162,23 @@ tests:
   # Protocol-visible: causedBy field for else-block re-failures
   # ========================================================================
 
-  - name: "tryError origin - causedBy in protocol response when else also errors"
+  - name: "tryError origin - causedBy promoted to primary message when else also errors"
     description: |
       try block errors with message A; else block errors with message B.
-      The protocol response exposes A as error.causedBy.message with
-      location and stack on the originating frame.
+      Because scriptError() in the else block leaves bserror empty (the
+      langtraperror callback path doesn't populate it for eval-wrapped
+      scripts), the primary error.message would otherwise read the
+      generic "Script evaluation failed" boilerplate.
 
-      We do NOT assert on the primary error.message here -- the scriptError
-      callback path (langtraperror) leaves bserror empty in the
-      script/eval wrapper, surfacing as the "Script evaluation failed"
-      fallback. That's a pre-existing PR1/PR2 condition unrelated to PR3
-      and is locked in by error_location.yaml (which similarly omits
-      error_contains for scriptError-raised eval errors).
+      P1-2 fix (bar-raiser, 2026-05-27): when bserror is empty AND a
+      causedby snapshot is available, op_handler promotes the originating
+      try-block message into the primary error.message slot AND drops
+      the causedBy field to avoid duplicate text. This gives clients a
+      meaningful primary message rendering of the failure even though
+      scriptError doesn't itself populate bserror.
+
+      We assert the primary error.message contains the originating
+      try-block error text and that causedBy is absent (promoted).
     protocol_ops:
       - op: "script/eval"
         params:
@@ -184,10 +189,8 @@ tests:
               lang.scriptError("else block re-failure")}
         validate:
           success: false
-          expected_error_causedby:
-            message_contains: "original try failure"
-            location_present: true
-            stack_min: 1
+          error_contains: "original try failure"
+          expected_error_causedby_absent: true
 
   - name: "tryError origin - causedBy absent when else block succeeds"
     description: |
@@ -206,3 +209,36 @@ tests:
               "recovered"}
         validate:
           success: true
+
+  - name: "tryError origin - nested try in else preserves outer causedBy"
+    description: |
+      P1-1 (bar-raiser, 2026-05-27 JES) regression guard.
+
+      Setup: outer try fails with "outer fail"; outer else runs, contains
+      an inner try block that succeeds (no inner failure); then outer else
+      itself fails with a second scriptError.
+
+      Without the entry-clear gating, the inner try's evaluatetry would
+      call langclearcausedbyerror at entry and wipe the outer chain's
+      snapshot -- so when outer's else later errored, the protocol
+      response would have no error.causedBy (outer originating context
+      lost). With the gate, langclearcausedbyerror only fires when
+      trybodydepth == 0, so the outer snapshot survives the inner
+      try/else and the originating outer-fail message is promoted to
+      the primary error.message (P1-2 path).
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: |
+            try {
+              lang.scriptError("outer fail")}
+            else {
+              try {
+                "inner succeeds"}
+              else {
+                "inner else (not taken)"};
+              lang.scriptError("outer else fail")}
+        validate:
+          success: false
+          error_contains: "outer fail"
+          expected_error_causedby_absent: true
