@@ -100,12 +100,48 @@ directly: `tests/lang_causedby_snapshot_tests.c`. This catches future
 regressions in `langsavecausedbysnapshot` /
 `langrestorecausedbysnapshot` themselves.
 
-Falsification:
+Falsification (verified against current strengthened tests):
 
-- Reverting the reset block in `langsavecausedbysnapshot` (the four
-  lines that zero live state after the capture): 2 of 4 unit tests fail.
+- Reverting just `causedbyerrorstackdepth = 0;` in the save-reset:
+  `test_save_resets_live_state` fails on the
+  `peek.causedbyerrorstackdepth == 0` assertion.
+- Reverting any other individual reset line (`trybodydepth = 0`,
+  `flcausedbyerrorvalid = false`, `causedbyerrormessage[0] = '\0'`):
+  `test_save_resets_live_state` fails on the matching peek assertion.
+- Replacing the save-side `memcpy(out->causedbyerrorstack, ...)` with
+  a no-op (zero-fill): `test_save_restore_preserves_stack_array` fails
+  on the `snap.causedbyerrorstack[0].errorline == 12345` assertion.
+- Replacing the restore-side `memcpy(causedbyerrorstack, ...)` with a
+  no-op: `test_save_restore_preserves_stack_array` fails on the
+  post-restore `readback.errorline == 12345` assertion.
 - Reverting the entire body of `langrestorecausedbysnapshot` to a
-  no-op: 4 of 4 unit tests fail.
+  no-op: all tests fail (set_live_state itself depends on restore).
+
+Probe technique for fields hidden behind `flcausedbyerrorvalid`:
+
+All public getters (`langgetcausedbymessage`,
+`langgetcausedbystackdepth`, `langgetcausedbyerror`,
+`langgetcausedbystackframe`) gate on `flcausedbyerrorvalid`. When the
+save-reset sets valid=false, the entire read surface goes opaque -- a
+test that only checks `langgetcausedbymessage() == NULL` after save
+cannot distinguish "all four fields reset" from "only valid-flag reset
+and the other three leaked". The CWE-488 cross-thread leak PR3 closed
+is specifically about `trybodydepth` leaking, so the strengthened test
+must observe that field's reset directly.
+
+`langsavecausedbysnapshot` itself copies live fields into the output
+struct verbatim, with no valid-flag gating (`lang.c::827-845`). The
+strengthened `test_save_resets_live_state` therefore performs a second
+save into a `peek` snapshot immediately after the first save, then
+asserts on each raw field of `peek`. This bypasses the valid-gate and
+gives observable coverage of each individual reset.
+
+For the stack-array memcpy on both save and restore sides,
+`test_save_restore_preserves_stack_array` seeds a recognizable
+`tyerrorrecord` into `causedbyerrorstack[0]` via the seedFrame parameter
+of `set_live_state` (which writes the frame into the temp snapshot's
+stack before calling `langrestorecausedbysnapshot`), then asserts the
+frame survives a save+restore round-trip byte-for-byte.
 
 What the unit test does not cover:
 
