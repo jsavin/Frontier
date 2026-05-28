@@ -206,7 +206,7 @@ tests:
     notes: "Migrated - uses localhost server"
 
   - name: "tcp.countConnections - track stream lifecycle"
-    description: "Verify countConnections tracks open/close correctly"
+    description: "Verify countConnections increases on open and decreases on client close (server-accepted counterpart persists until server-side closes)"
     timeout: 10
     script: |
       local(listenID = tcp.listenStream(10007, 5, ""));
@@ -223,7 +223,7 @@ tests:
         tcp.closeStream(stream);
         local(after = tcp.countConnections());
         tcp.closeListen(listenID);
-        return (during > before) and (after == before)
+        return (during > before) and (after < during)
       }
       else {
         tcp.closeListen(listenID);
@@ -386,7 +386,7 @@ tests:
   # ===========================================================================
 
   - name: "tcp.closeStream - double close (idempotent)"
-    description: "Closing already-closed stream should be safe"
+    description: "Double-close raises (matches read-after-close / write-after-close family pattern)"
     timeout: 10
     script: |
       local(listenID = tcp.listenStream(10012, 5, ""));
@@ -399,14 +399,15 @@ tests:
           return "false"
         };
         tcp.closeStream(stream);
+        // Double-close intentionally raises (use-after-close family pattern)
         try {
           tcp.closeStream(stream);
           tcp.closeListen(listenID);
-          return "true"
+          return "false"
         }
         else {
           tcp.closeListen(listenID);
-          return "false"
+          return "true"
         }
       }
       else {

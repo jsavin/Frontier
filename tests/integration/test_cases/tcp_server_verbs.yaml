@@ -497,13 +497,13 @@ tests:
       local(result1 = tcp.closeListen(listenID));
 
       local(validFirstClose = result1 == true);
+      local(validSecondClose = true);
 
       try {
-        tcp.closeListen(listenID);
-        local(validSecondClose = true)
+        tcp.closeListen(listenID)
       }
       else {
-        local(validSecondClose = true)  // Expected to fail
+        // Double-close raises; accepted as idempotent-equivalent
       };
 
       return validFirstClose and validSecondClose
