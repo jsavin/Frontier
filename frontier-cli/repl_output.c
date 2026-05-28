@@ -1125,42 +1125,35 @@ static void render_source_window(char **lines, int count,
 	}
 }
 
-void repl_output_structured_error(const char *error_msg,
-                                  const char *eval_source_text) {
-	/* Fall back to the legacy single-line renderer if there's no
-	 * structured snapshot to draw from. This keeps the entry point
-	 * safe to call unconditionally on the error path. */
-	short depth = langgetstackdepth();
-	tyerrorrecord topframe;
-	boolean have_snapshot = (depth > 0) && langgetlasterror(&topframe);
-
-	if (!have_snapshot) {
-		repl_output_error(error_msg);
-		return;
-	}
-
-	boolean use_ansi = stderr_supports_ansi();
-
-	/* Header. Logged at error severity to match the legacy renderer's
-	 * logging behavior so existing log consumers don't regress. */
-	const char *msg = (error_msg != NULL && error_msg[0] != '\0')
-	                  ? error_msg
-	                  : "(no message)";
-	log_error(LOG_COMP_GENERAL, "%s", msg);
-
-	if (use_ansi)
-		fprintf(stderr, ANSI_BOLD "Error: %s" ANSI_RESET "\n", msg);
-	else
-		fprintf(stderr, "Error: %s\n", msg);
-
-	/* Walk frames from failure site (ix=0) to outermost caller. For
-	 * each frame: emit the "at <script> line N" header and render the
-	 * source-context window when we can fetch the source for that
-	 * frame. */
+/*
+ * PR3 of REPL error context chain (2026-05-27 JES): walk an error
+ * stack snapshot and render one "at <script> line N" header plus a
+ * source-context window per frame. Extracted from
+ * repl_output_structured_error so the same machinery can render
+ * either the primary error stack (use_causedby=false, reads
+ * langgetstackframe) or the causedby stack (use_causedby=true,
+ * reads langgetcausedbystackframe).
+ *
+ * Parameters:
+ *   depth             - frame count returned by the matching
+ *                       langget(causedby)stackdepth call
+ *   use_causedby      - true to read frames from the causedby
+ *                       snapshot, false for the primary snapshot
+ *   eval_source_text  - source text for <eval> / <eval-inner> frames
+ *                       (the user's REPL input); NULL omits the
+ *                       source window for those frames
+ *   use_ansi          - true to emit ANSI styling in render_source_window
+ */
+static void render_error_stack(short depth, boolean use_causedby,
+                               const char *eval_source_text,
+                               boolean use_ansi) {
 	for (short ix = 0; ix < depth; ix++) {
 		tyerrorrecord frame;
 		long refcon = 0;
-		if (!langgetstackframe(ix, &frame, &refcon))
+		boolean ok = use_causedby
+		             ? langgetcausedbystackframe(ix, &frame, &refcon)
+		             : langgetstackframe(ix, &frame, &refcon);
+		if (!ok)
 			break;
 
 		char namebuf[256];
@@ -1194,9 +1187,6 @@ void repl_output_structured_error(const char *error_msg,
 			int line_count = 0;
 			if (split_into_lines(source_text, &buf, &lines, &line_count)) {
 				int actual_line = header_line;
-				/* render to a stringstream-free path: print header
-				 * first, then window, but use the line count to
-				 * pre-clamp the header. */
 				if (line_count > 0) {
 					if (actual_line < 1) actual_line = 1;
 					if (actual_line > line_count) actual_line = line_count;
@@ -1209,8 +1199,6 @@ void repl_output_structured_error(const char *error_msg,
 				                      (int)frame.tokenend,
 				                      use_ansi,
 				                      &actual_line);
-				/* actual_line is set by render_source_window using the
-				 * same clamp; both values match by construction. */
 				(void) actual_line;
 				free(lines);
 				free(buf);
@@ -1222,6 +1210,66 @@ void repl_output_structured_error(const char *error_msg,
 		}
 
 		free(source_text_owned);
+	}
+}
+
+void repl_output_structured_error(const char *error_msg,
+                                  const char *eval_source_text) {
+	/* Fall back to the legacy single-line renderer if there's no
+	 * structured snapshot to draw from. This keeps the entry point
+	 * safe to call unconditionally on the error path. */
+	short depth = langgetstackdepth();
+	tyerrorrecord topframe;
+	boolean have_snapshot = (depth > 0) && langgetlasterror(&topframe);
+
+	if (!have_snapshot) {
+		repl_output_error(error_msg);
+		return;
+	}
+
+	boolean use_ansi = stderr_supports_ansi();
+
+	/* Header. Logged at error severity to match the legacy renderer's
+	 * logging behavior so existing log consumers don't regress. */
+	const char *msg = (error_msg != NULL && error_msg[0] != '\0')
+	                  ? error_msg
+	                  : "(no message)";
+	log_error(LOG_COMP_GENERAL, "%s", msg);
+
+	if (use_ansi)
+		fprintf(stderr, ANSI_BOLD "Error: %s" ANSI_RESET "\n", msg);
+	else
+		fprintf(stderr, "Error: %s\n", msg);
+
+	render_error_stack(depth, /*use_causedby=*/false, eval_source_text, use_ansi);
+
+	/*
+	 * PR3 of REPL error context chain (2026-05-27 JES): if the error
+	 * came from an else block whose try body originally failed, surface
+	 * the originating failure under a "Caused by:" header followed by
+	 * its own context-window stack. This makes the chain explicit in
+	 * the REPL output without forcing the user to reconstruct it from
+	 * the tryError / tryErrorLine / tryErrorScript locals.
+	 *
+	 * Detection is langgetcausedbyerror() returning true -- populated
+	 * by langseterrorcallbackline when an error fires inside a try
+	 * body. Cleared on the next eval (langprescript) and at the next
+	 * try block's entry (evaluatetry).
+	 */
+	short cb_depth = langgetcausedbystackdepth();
+	tyerrorrecord cb_top;
+	if (cb_depth > 0 && langgetcausedbyerror(&cb_top)) {
+		const char *cb_msg = langgetcausedbymessage();
+		if (cb_msg == NULL) cb_msg = "(no message)";
+
+		fputc('\n', stderr);
+		if (use_ansi)
+			fprintf(stderr, ANSI_BOLD "Caused by: %s" ANSI_RESET "\n", cb_msg);
+		else
+			fprintf(stderr, "Caused by: %s\n", cb_msg);
+
+		render_error_stack(cb_depth, /*use_causedby=*/true,
+		                    eval_source_text, use_ansi);
 	}
 
 	fflush(stderr);
