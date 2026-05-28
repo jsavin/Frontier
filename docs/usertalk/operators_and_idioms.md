@@ -315,6 +315,41 @@ local (ok = true); for adrM in @examples.t1 {if !defined (examples.t2.[nameOf (a
 
 ---
 
+## `try` / `else` and the `tryError*` siblings
+
+When an error fires inside a `try` body, the else block can read both the
+error message and the originating failure's location via locals injected
+into the else block's scope:
+
+| Name | Type | Meaning |
+|------|------|---------|
+| `tryError` | string | The error message (existing; unchanged) |
+| `tryErrorLine` | long | 1-origin line within the failing source |
+| `tryErrorColumn` | long | 0-origin character offset on that line |
+| `tryErrorScript` | string | Source identifier (`"<eval>"`, `"<eval-inner>"`, or named script's leaf name) |
+| `tryErrorTokenStart` | long | 0-origin start of the most recently scanned token at failure time |
+| `tryErrorTokenEnd` | long | 0-origin end of that token |
+
+```
+try {
+  scriptError("something went wrong")}
+else {
+  // tryError is "something went wrong"
+  // tryErrorLine, tryErrorColumn, tryErrorScript etc. point at the failure
+  return "caught " + tryError + " at line " + string(tryErrorLine)}
+```
+
+`tryError` is still a `stringType` and string-coerces in expressions like
+before — `scriptError(tryError)` and `tryError contains "x"` keep working
+unchanged. The sibling globals are additive.
+
+When the else block itself errors, the protocol response gains an
+`error.causedBy` object describing the original try-body failure (see
+`planning/gui/PROTOCOL.md`), and the REPL renders a "Caused by:" header
+with its own source-context window below the primary error.
+
+---
+
 ## See also
 
 - `CLAUDE_PRIMER.md` — load first. Section 2 covers the five idioms you'll write most often

@@ -808,6 +808,56 @@ extern boolean langgetstackframe (short ix, tyerrorrecord *out, long *outRefcon)
 
 extern short langgetstackdepth (void);
 
+/*
+PR3 of REPL error context chain (2026-05-27 JES): causedby snapshot
+accessors. Symmetric with langgetlasterror / langgetstackframe /
+langgetstackdepth but read from a SEPARATE snapshot captured when an
+error fires inside a try block. The protocol layer attaches this as
+error.causedBy when an else-block re-failure is being reported; the
+REPL renderer emits a "Caused by (line N):" header below the primary
+error's context window.
+
+langsetintryblock is called by evaluatetry around the try body.
+langclearcausedbyerror is called by evaluatetry when a try block
+completes without invoking the else path. See lang.c for the full
+state-machine description.
+*/
+extern boolean langgetcausedbyerror (tyerrorrecord *out);
+
+extern boolean langgetcausedbystackframe (short ix, tyerrorrecord *out, long *outRefcon);
+
+extern short langgetcausedbystackdepth (void);
+
+extern const char *langgetcausedbymessage (void);
+
+extern void langtrysetcausedbymessage (const bigstring bs);
+
+extern void langsetintryblock (boolean fl);
+
+extern void langclearcausedbyerror (void);
+
+/*
+PR3 P1 (concurrency + security, 2026-05-27 JES): snapshot of the
+in-try-body depth + causedby state, captured on thread context switch
+(pushprocess) and restored on the way back (popprocess). The struct
+contents are owned by lang.c -- process.c stores a value of this type
+inside typrocessstackrecord and shuttles it through the save/restore
+accessors below. Keeping the layout opaque-ish (full struct so the
+storage size is known to the compiler, but callers should treat it as
+opaque) means process.c does not need to track lang internals.
+*/
+typedef struct tycausedbysnapshot {
+	int trybodydepth;
+	short causedbyerrorstackdepth;
+	boolean flcausedbyerrorvalid;
+	tyerrorrecord causedbyerrorstack [cterrorcallbacks];
+	char causedbyerrormessage [256];
+	} tycausedbysnapshot;
+
+extern void langsavecausedbysnapshot (tycausedbysnapshot *out);
+
+extern void langrestorecausedbysnapshot (const tycausedbysnapshot *in);
+
 extern void langsetevalinputoffset (unsigned long lineOffset);
 
 extern void langclearevalinputoffset (void);

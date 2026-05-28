@@ -93,18 +93,35 @@ typedef struct tymaceventsettings {
 
 #pragma pack(2)
 typedef struct typrocessstackrecord {
-	
+
 	hdlprocessrecord hprocess;
-	
+
 	langerrormessagecallback errormessagecallback;
-	
+
 	langerrormessagecallback debugerrormessagecallback;
-	
+
 	langvoidcallback clearerrorcallback;
-	
+
 	hdlerrorstack herrorstack;
-	
+
 	hdltablestack htablestack;
+
+	/*
+	PR3 P1 (concurrency + security, 2026-05-27 JES): save/restore the
+	"in-try-body" depth and causedby snapshot across thread context
+	switches. trybodydepth and the causedby globals live in lang.c as
+	process-wide state, but evaluatetry can yield at langbackgroundtask
+	mid-try-body and let another thread take the GIL. Without save/restore,
+	thread B sees thread A's trybodydepth > 0 and inherits A's causedby
+	snapshot -- which leaks try-body context across threads (CWE-488). The
+	pushprocess/popprocess pair brackets every context switch, so saving on
+	push and restoring on pop -- with a clean slate for the incoming thread
+	in between -- bounds the leak.
+
+	Storage is treated as opaque by process.c; lang.c owns the snapshot via
+	the accessor pair langsavecausedbysnapshot / langrestorecausedbysnapshot.
+	*/
+	tycausedbysnapshot causedbysnapshot;
 	} typrocessstackrecord;
 
 

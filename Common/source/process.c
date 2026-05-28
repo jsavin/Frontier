@@ -198,17 +198,29 @@ boolean pushprocess (register hdlprocessrecord hp) {
 		(**hp).hthread = (**currentprocess).hthread;
 	
 	item.hprocess = currentprocess;
-	
+
 	item.errormessagecallback = langcallbacks.errormessagecallback;
-	
+
 	item.debugerrormessagecallback = langcallbacks.debugerrormessagecallback;
-	
+
 //	item.clearerrorcallback = langcallbacks.clearerrorcallback;
-	
+
 	item.herrorstack = langcallbacks.scripterrorstack;
-	
+
 	item.htablestack = hashtablestack;
-	
+
+	/*
+	PR3 P1 (concurrency + security, 2026-05-27 JES): save the outgoing
+	thread's in-try-body depth and causedby snapshot, then reset live
+	state so the incoming thread starts with a clean slate. Without
+	this, an outgoing thread mid-try-body would leak trybodydepth > 0
+	(causing the incoming thread's errors to be captured into the
+	causedby buffer) and its causedby snapshot (which could end up
+	shipped on the incoming thread's eval error response). See lang.c
+	langsavecausedbysnapshot for the full leak rationale (CWE-488).
+	*/
+	langsavecausedbysnapshot (&item.causedbysnapshot);
+
 	processstack.stack [processstack.top++] = item;
 	
 	currentprocess = hp;
@@ -237,19 +249,26 @@ boolean popprocess (void) {
 	assert (processstack.top > 0);
 	
 	item = processstack.stack [--processstack.top];
-	
+
 	currentprocess = item.hprocess;
-	
+
 	langcallbacks.scripterrorstack = item.herrorstack;
-	
+
 	langcallbacks.errormessagecallback = item.errormessagecallback;
-	
+
 	langcallbacks.debugerrormessagecallback = item.debugerrormessagecallback;
-	
+
 //	langcallbacks.clearerrorcallback = item.clearerrorcallback;
-	
+
 	hashtablestack = item.htablestack;
-	
+
+	/*
+	PR3 P1 (concurrency + security, 2026-05-27 JES): restore the
+	previously-paused thread's in-try-body depth and causedby snapshot.
+	Pairs with the save in pushprocess.
+	*/
+	langrestorecausedbysnapshot (&item.causedbysnapshot);
+
 	return (true);
 	} /*popprocess*/
 

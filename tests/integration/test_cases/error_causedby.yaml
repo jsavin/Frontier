@@ -1,0 +1,244 @@
+# PR3 of REPL error context chain: try/else origin context.
+#
+# When an error fires inside a try block, the runtime now snapshots the
+# error's location separately from the main "last error" snapshot so it
+# survives until the else block runs (and survives any subsequent error
+# that fires from the else block itself).
+#
+# UserTalk-visible surface: tryErrorLine / tryErrorColumn / tryErrorScript /
+# tryErrorTokenStart / tryErrorTokenEnd globals are populated alongside the
+# existing tryError string in the else block's local frame. Sibling-globals
+# approach (not dotted-access record) was chosen for backwards-compat: it
+# preserves tryError as a plain string so existing "scriptError(tryError)"
+# and "tryError contains X" patterns keep working.
+#
+# Protocol-visible surface: when an error fires from inside an else block
+# (chain: try fails -> else block also fails), the script/eval failure
+# response gains an error.causedBy object with {message, location, stack}
+# describing the originating try-block failure.
+
+sequential: true
+
+tests:
+  # ========================================================================
+  # UserTalk-visible: tryErrorLine populated on inline failure
+  # ========================================================================
+
+  - name: "tryError origin - tryErrorLine populated"
+    description: |
+      tryErrorLine carries the line where the originating failure fired.
+      We assert >= 1 to prove the field is populated; the exact line
+      number depends on scanner state at error fire time and the
+      script's wrapping context (which differs between script-mode
+      execution and the REPL/protocol with-wrapper). Both modes report
+      a positive line number when the snapshot fires.
+    script: |
+      try {
+        lang.scriptError("boom")}
+      else {
+        return tryErrorLine > 0}
+    expected_success: true
+    expected_result: "true"
+
+  - name: "tryError origin - tryErrorScript reports <eval> for inline failure"
+    description: |
+      Inline failures inside an eval-wrapped try block carry an <eval>
+      script name on the originating frame. The else block reads
+      tryErrorScript and gets back the string "<eval>".
+    script: |
+      try {
+        lang.scriptError("inline boom")}
+      else {
+        return tryErrorScript}
+    expected_success: true
+    expected_result: "<eval>"
+
+  - name: "tryError origin - tryErrorColumn populated"
+    description: |
+      tryErrorColumn carries the column of the failure. We assert > 0 to
+      prove the field is populated; exact column depends on scanner state
+      at error fire time and is sensitive to whitespace/wrapping details
+      we don't want to lock into the assertion.
+    script: |
+      try {
+        lang.scriptError("boom")}
+      else {
+        return tryErrorColumn > 0}
+    expected_success: true
+    expected_result: "true"
+
+  - name: "tryError origin - tryErrorTokenStart populated"
+    description: |
+      tryErrorTokenStart is the start of the most recently scanned token
+      span at failure time. For a runtime error like scriptError() it
+      should be > 0 (some token was scanned before the failure fired).
+    script: |
+      try {
+        lang.scriptError("boom")}
+      else {
+        return tryErrorTokenStart > 0}
+    expected_success: true
+    expected_result: "true"
+
+  - name: "tryError origin - tryErrorTokenEnd not less than tryErrorTokenStart"
+    description: |
+      The token span is non-decreasing. tokenEnd must be > tokenStart - 1
+      (i.e., tokenEnd >= tokenStart) for any valid bracket the scanner has
+      scanned. UserTalk's >= operator doesn't parse as ASCII ">="; we use
+      "not <" instead.
+    script: |
+      try {
+        lang.scriptError("boom")}
+      else {
+        return not (tryErrorTokenEnd < tryErrorTokenStart)}
+    expected_success: true
+    expected_result: "true"
+
+  # ========================================================================
+  # UserTalk-visible: tryError string still works (backwards compat)
+  # ========================================================================
+
+  - name: "tryError origin - tryError string coercion still works"
+    description: |
+      Existing scripts that use tryError as a string ("scriptError(tryError)",
+      "tryError contains X") must keep working. PR3 only ADDS sibling
+      globals; tryError itself remains a stringType value.
+    script: |
+      try {
+        lang.scriptError("specific message")}
+      else {
+        return tryError == "specific message"}
+    expected_success: true
+    expected_result: "true"
+
+  - name: "tryError origin - typeOf(tryError) is still stringType"
+    description: |
+      Locks in that tryError is still a stringType after PR3. If a future
+      change promotes tryError to a tableType / record, this assertion
+      will flip and force a deliberate decision.
+    script: |
+      try {
+        lang.scriptError("x")}
+      else {
+        return typeOf(tryError) == stringType}
+    expected_success: true
+    expected_result: "true"
+
+  # ========================================================================
+  # UserTalk-visible: called-script failures
+  # ========================================================================
+
+  - name: "tryError origin - called script that errors still populates sibling globals"
+    description: |
+      A handler defined inline errors on its body. The try block calls it;
+      the else block reads tryError + sibling globals.
+
+      Asserting only that tryError contains the original error message
+      and that tryErrorLine is populated (> 0). The reported tryErrorScript
+      currently reads "<eval>" (not the called script's leaf name) because
+      named-script frames aren't pushed onto the error-callback stack the
+      snapshot reads from -- the same pre-existing PR1 limitation
+      documented in error_location.yaml (deferred to a follow-up that
+      fixes the asymmetry in Common/source/langvalue.c langfunctioncall).
+      When that limitation is resolved, this test can be tightened to
+      check tryErrorScript == "errfn" (or the full dotted path).
+
+      We use an inline on-handler rather than script.newScriptObject because
+      --skip-startup mode (used by the script-mode test harness) does not
+      load the script verb table.
+    script: |
+      on errfn () {
+        lang.scriptError("deep")};
+      try {
+        errfn ()}
+      else {
+        local (msgOk = tryError contains "deep");
+        local (lineOk = tryErrorLine > 0);
+        return msgOk and lineOk}
+    expected_success: true
+    expected_result: "true"
+
+  # ========================================================================
+  # Protocol-visible: causedBy field for else-block re-failures
+  # ========================================================================
+
+  - name: "tryError origin - causedBy promoted to primary message when else also errors"
+    description: |
+      try block errors with message A; else block errors with message B.
+      Because scriptError() in the else block leaves bserror empty (the
+      langtraperror callback path doesn't populate it for eval-wrapped
+      scripts), the primary error.message would otherwise read the
+      generic "Script evaluation failed" boilerplate.
+
+      P1-2 fix (bar-raiser, 2026-05-27): when bserror is empty AND a
+      causedby snapshot is available, op_handler promotes the originating
+      try-block message into the primary error.message slot AND drops
+      the causedBy field to avoid duplicate text. This gives clients a
+      meaningful primary message rendering of the failure even though
+      scriptError doesn't itself populate bserror.
+
+      We assert the primary error.message contains the originating
+      try-block error text and that causedBy is absent (promoted).
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: |
+            try {
+              lang.scriptError("original try failure")}
+            else {
+              lang.scriptError("else block re-failure")}
+        validate:
+          success: false
+          error_contains: "original try failure"
+          expected_error_causedby_absent: true
+
+  - name: "tryError origin - causedBy absent when else block succeeds"
+    description: |
+      Negative case: when the else block runs to completion (or even when
+      there's no else and the try just catches silently), the script/eval
+      response must NOT include error.causedBy. (Here the eval succeeds,
+      so there's no error.causedBy by construction; the assertion is
+      that the success path is unaffected by PR3.)
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: |
+            try {
+              lang.scriptError("caught silently")}
+            else {
+              "recovered"}
+        validate:
+          success: true
+
+  - name: "tryError origin - nested try in else preserves outer causedBy"
+    description: |
+      P1-1 (bar-raiser, 2026-05-27 JES) regression guard.
+
+      Setup: outer try fails with "outer fail"; outer else runs, contains
+      an inner try block that succeeds (no inner failure); then outer else
+      itself fails with a second scriptError.
+
+      Without the entry-clear gating, the inner try's evaluatetry would
+      call langclearcausedbyerror at entry and wipe the outer chain's
+      snapshot -- so when outer's else later errored, the protocol
+      response would have no error.causedBy (outer originating context
+      lost). With the gate, langclearcausedbyerror only fires when
+      trybodydepth == 0, so the outer snapshot survives the inner
+      try/else and the originating outer-fail message is promoted to
+      the primary error.message (P1-2 path).
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: |
+            try {
+              lang.scriptError("outer fail")}
+            else {
+              try {
+                "inner succeeds"}
+              else {
+                "inner else (not taken)"};
+              lang.scriptError("outer else fail")}
+        validate:
+          success: false
+          error_contains: "outer fail"
+          expected_error_causedby_absent: true

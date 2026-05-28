@@ -64,6 +64,38 @@ static byte nametryerrorval [] = "\x08" "tryerror\0";
 	static byte nametryerrorstackval [] = "\x0d" "tryerrorstack\0";
 #endif
 
+/*
+PR3 of REPL error context chain (2026-05-27 JES): sibling globals that
+expose the originating try-block failure's location to the else block.
+Populated alongside tryError in the else-block local frame from the
+PR3 causedby snapshot (langgetcausedbyerror in lang.c).
+
+Sibling-globals approach (vs. promoting tryError to a tableType with
+dotted-access members) chosen for backwards compat: tryError remains
+a stringType so existing patterns like `scriptError(tryError)` and
+`tryError contains "x"` keep working unchanged. Trade-off: less
+elegant than `tryError.line` but lower blast radius; a future PR can
+promote tryError to a record if dotted access is judged more important
+than zero-friction backward compatibility. See PR3 task report for
+the deliberation.
+
+Pascal-style identifier names (length-prefixed):
+   tryErrorLine        = 12 chars = 0x0c
+   tryErrorColumn      = 14 chars = 0x0e
+   tryErrorScript      = 14 chars = 0x0e
+   tryErrorTokenStart  = 18 chars = 0x12
+   tryErrorTokenEnd    = 16 chars = 0x10
+
+Names use the bigstring/Pascal convention matching nametryerrorval
+above; case is preserved (UserTalk is case-insensitive by hashtable
+lookup convention).
+*/
+static byte nametryerrorlineval       [] = "\x0c" "tryErrorLine\0";
+static byte nametryerrorcolumnval     [] = "\x0e" "tryErrorColumn\0";
+static byte nametryerrorscriptval     [] = "\x0e" "tryErrorScript\0";
+static byte nametryerrortokenstartval [] = "\x12" "tryErrorTokenStart\0";
+static byte nametryerrortokenendval   [] = "\x10" "tryErrorTokenEnd\0";
+
 
 void langseterrorline (hdltreenode hnode) {
 	
@@ -1044,6 +1076,27 @@ static boolean evaluatetry (hdltreenode htry, tyvaluerecord *valtree) {
 		tryerror = nil;
 		}
 
+	/*
+	PR3 of REPL error context chain (2026-05-27 JES): also clear any
+	causedby snapshot from a prior try/else chain. A fresh try block
+	starts with a clean originating-context slate; otherwise the
+	previous chain's snapshot could leak into this one's else block.
+
+	P1-1 (bar-raiser, 2026-05-27 JES): a snapshot present at THIS try's
+	entry belongs to an outer chain still in progress (typical case:
+	outer try failed, outer else is now running and contains an inner
+	try/else). The outer chain owns that snapshot; this try block must
+	not wipe it on entry, on success-exit, or on no-else exit. Save the
+	"snapshot was already valid at entry" boolean here and gate every
+	clear in this function on it -- "don't touch what wasn't yours."
+	langprescript zeroes flcausedbyerrorvalid at every eval boundary, so
+	any valid flag here is from the live in-progress chain.
+	*/
+	boolean outer_chain_owns_snapshot = (langgetcausedbystackdepth () > 0);
+
+	if (!outer_chain_owns_snapshot)
+		langclearcausedbyerror ();
+
 	#if fltryerrorstackcode
 		assert (tryerrorstack == nil);
 	#endif
@@ -1058,7 +1111,22 @@ static boolean evaluatetry (hdltreenode htry, tyvaluerecord *valtree) {
 
 	disablelangerrorlog (); /*suppress error logging but allow callback to capture error*/
 
+	/*
+	PR3 of REPL error context chain (2026-05-27 JES): tell the snapshot
+	machinery in lang.c that subsequent errors fire from inside a try
+	body. langseterrorcallbackline will mirror the PR1 snapshot into the
+	causedby buffer the first time it fires so the originating failure's
+	location survives any subsequent error fired from the else block.
+
+	Cleared unconditionally after the try body's evaluatelist returns --
+	the else block (if any) runs outside the "in-try" window because its
+	own errors are the PRIMARY failure, not the originating one.
+	*/
+	langsetintryblock (true);
+
 	fl = evaluatelist ((**h).param2, valtree);
+
+	langsetintryblock (false);
 
 	enablelangerrorlog (); /*restore error logging*/
 
@@ -1073,6 +1141,20 @@ static boolean evaluatetry (hdltreenode htry, tyvaluerecord *valtree) {
 		#if fltryerrorstackcode
 			assert (tryerrorstack == nil);
 		#endif
+
+		/*
+		PR3 of REPL error context chain: try body succeeded -- no caused-by
+		state should be visible to subsequent error reporting. (In practice
+		the causedby snapshot wouldn't have been populated, but be defensive
+		so a stray langseterrorcallbackline call inside the try body that
+		didn't fail the body's overall result can't leak.)
+
+		P1-1 (bar-raiser, 2026-05-27 JES): suppress the wipe when an outer
+		chain owned a snapshot at this try's entry -- that snapshot belongs
+		to the outer chain and its else block still needs it.
+		*/
+		if (!outer_chain_owns_snapshot)
+			langclearcausedbyerror ();
 
 		return (fl); /*might be false if script has been killed*/
 		}
@@ -1093,6 +1175,20 @@ static boolean evaluatetry (hdltreenode htry, tyvaluerecord *valtree) {
 
 			tryerrorstack = nil;
 		#endif
+
+		/*
+		PR3 of REPL error context chain: no else block to surface the
+		caused-by data. Clear it so subsequent error reporting (a later
+		unrelated failure) doesn't pick up a stale causedby that has no
+		semantic relationship to its primary error.
+
+		P1-1 (bar-raiser, 2026-05-27 JES): suppress the wipe when an outer
+		chain owned a snapshot at this try's entry. First-error-wins means
+		any inner failure here did NOT overwrite the outer snapshot, so the
+		outer's data is still intact -- preserve it for the outer else.
+		*/
+		if (!outer_chain_owns_snapshot)
+			langclearcausedbyerror ();
 
 		return (true);
 		}
@@ -1929,14 +2025,94 @@ boolean evaluatelist (hdltreenode hfirst, tyvaluerecord *val) {
 			}
 		
 		if (tryerror != nil) {
-			
+
 			tyvaluerecord errorval;
-			
+
 			if (setheapvalue (tryerror, stringvaluetype, &errorval))
 				if (hashassign (nametryerrorval, errorval))
 					exemptfromtmpstack (&errorval);
-			
+
 			tryerror = nil;
+
+			/*
+			PR3 of REPL error context chain (2026-05-27 JES): populate
+			the sibling globals tryErrorLine / tryErrorColumn /
+			tryErrorScript / tryErrorTokenStart / tryErrorTokenEnd from
+			the causedby snapshot captured by langseterrorcallbackline
+			when the error fired inside the try body. Best-effort: if
+			the snapshot is unavailable (the try body didn't actually
+			error -- shouldn't happen, but be defensive) we skip the
+			assignments rather than write garbage.
+
+			Each value is stored as a scalar (long for numeric fields,
+			string for script name). Assignments use the same
+			setheapvalue/hashassign/exemptfromtmpstack pattern as the
+			tryError assignment above so any subsequent disposal of
+			the local frame walks them consistently.
+
+			Script name derivation mirrors op_handler.c::
+			script_name_from_refcon and repl_output.c::
+			script_name_for_frame: refcon 0 -> "<eval>",
+			refcon -1 -> "<eval-inner>", otherwise the leaf identifier
+			from (hdlhashnode)refcon's hashkey. Full dotted-path
+			resolution is deferred for symmetry with PR1.
+			*/
+			{
+				tyerrorrecord cbrec;
+
+				if (langgetcausedbyerror (&cbrec)) {
+
+					tyvaluerecord nval;
+					bigstring bsscript;
+
+					setlongvalue ((int64_t) cbrec.errorline, &nval);
+					if (hashassign (nametryerrorlineval, nval))
+						exemptfromtmpstack (&nval);
+
+					setlongvalue ((int64_t) cbrec.errorchar, &nval);
+					if (hashassign (nametryerrorcolumnval, nval))
+						exemptfromtmpstack (&nval);
+
+					setlongvalue ((int64_t) cbrec.tokenstart, &nval);
+					if (hashassign (nametryerrortokenstartval, nval))
+						exemptfromtmpstack (&nval);
+
+					setlongvalue ((int64_t) cbrec.tokenend, &nval);
+					if (hashassign (nametryerrortokenendval, nval))
+						exemptfromtmpstack (&nval);
+
+					/* Build the script-name bigstring from refcon. */
+					if (cbrec.errorrefcon == 0L) {
+						copyctopstring ("<eval>", bsscript);
+						}
+					else if (cbrec.errorrefcon == -1L) {
+						copyctopstring ("<eval-inner>", bsscript);
+						}
+					else {
+						hdlhashnode hnode = (hdlhashnode) cbrec.errorrefcon;
+						if (hnode == nil || hnode == HNoNode) {
+							copyctopstring ("<unknown>", bsscript);
+							}
+						else {
+							copystring ((**hnode).hashkey, bsscript);
+							}
+						}
+
+					if (setstringvalue (bsscript, &nval))
+						if (hashassign (nametryerrorscriptval, nval))
+							exemptfromtmpstack (&nval);
+					}
+				}
+
+			/*
+			DO NOT clear the causedby snapshot here. The else block
+			runs next, and if it ALSO errors, the protocol-layer
+			response needs the snapshot to attach as error.causedBy.
+			The snapshot is cleared at the next eval's start
+			(langprescript) and at the next try block's entry
+			(evaluatetry's tryerror cleanup branch) -- so this branch
+			leaving it set won't leak to unrelated error reports.
+			*/
 			}
 
 		#if fltryerrorstackcode
