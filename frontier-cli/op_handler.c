@@ -115,14 +115,22 @@ static void send_ack(long id, transport_t *transport) {
  * Ownership transfers to the response on attach; the helper calls
  * cJSON_Delete on these arguments if it can't construct the wrapper, so
  * callers must not delete them on the success path.
+ *
+ * PR3 of REPL error context chain (2026-05-27 JES): added caused_by
+ * parameter. When non-NULL it is attached under error.causedBy with the
+ * same ownership semantics as location/stack. Used when an else-block
+ * re-failure is the primary error and the originating try-block failure
+ * provides additional context.
  */
 static void send_error_with_metadata(long id, const char *message,
                                      cJSON *location, cJSON *stack,
+                                     cJSON *caused_by,
                                      transport_t *transport) {
 	cJSON *response = cJSON_CreateObject();
 	if (response == NULL) {
 		if (location != NULL) cJSON_Delete(location);
 		if (stack != NULL) cJSON_Delete(stack);
+		if (caused_by != NULL) cJSON_Delete(caused_by);
 		transport_send(transport, OOM_FALLBACK);
 		return;
 	}
@@ -131,10 +139,11 @@ static void send_error_with_metadata(long id, const char *message,
 	cJSON *error_obj = cJSON_CreateObject();
 	if (error_obj == NULL) {
 		/* Degrade gracefully: flat error string instead of nested object.
-		 * Drop any location/stack — they can't be attached without the
-		 * containing error object. */
+		 * Drop any location/stack/causedBy — they can't be attached without
+		 * the containing error object. */
 		if (location != NULL) cJSON_Delete(location);
 		if (stack != NULL) cJSON_Delete(stack);
+		if (caused_by != NULL) cJSON_Delete(caused_by);
 		cJSON_AddStringToObject(response, "error", message);
 	} else {
 		cJSON_AddStringToObject(error_obj, "message", message);
@@ -142,6 +151,8 @@ static void send_error_with_metadata(long id, const char *message,
 			cJSON_AddItemToObject(error_obj, "location", location);
 		if (stack != NULL)
 			cJSON_AddItemToObject(error_obj, "stack", stack);
+		if (caused_by != NULL)
+			cJSON_AddItemToObject(error_obj, "causedBy", caused_by);
 		cJSON_AddItemToObject(response, "error", error_obj);
 	}
 
@@ -150,7 +161,7 @@ static void send_error_with_metadata(long id, const char *message,
 }
 
 static void send_error(long id, const char *message, transport_t *transport) {
-	send_error_with_metadata(id, message, NULL, NULL, transport);
+	send_error_with_metadata(id, message, NULL, NULL, NULL, transport);
 }
 
 /*
@@ -376,6 +387,85 @@ static cJSON *build_error_stack(void) {
 	return stack;
 }
 
+/*
+ * PR3 of REPL error context chain (2026-05-27 JES): build the
+ * error.causedBy cJSON object from the causedby snapshot
+ * (langgetcausedbyerror / langgetcausedbystackframe / langgetcausedbystackdepth).
+ *
+ * Structure mirrors the top-level error response:
+ *   { message: "<originating try-block error message or empty>",
+ *     location: { script, line, column, tokenStart, tokenEnd },
+ *     stack:    [ { script, line, column }, ... ] }
+ *
+ * The message field is best-effort: we read it from the tryError global
+ * when accessible. If unavailable (e.g. the runtime has already cleared
+ * the handle by the time we build the response), we emit an empty
+ * string so the field is type-stable for clients. The location and
+ * stack are always populated from the snapshot.
+ *
+ * Returns NULL if no causedby snapshot is available -- caller proceeds
+ * without an error.causedBy field (backwards-compatible response).
+ */
+static cJSON *build_error_causedby(void) {
+	tyerrorrecord rec;
+	if (!langgetcausedbyerror(&rec))
+		return NULL;
+
+	cJSON *cb = cJSON_CreateObject();
+	if (cb == NULL)
+		return NULL;
+
+	/* PR3 of REPL error context chain: read the originating error message
+	 * captured by langerrormessage when the try-block error fired (via
+	 * langtrysetcausedbymessage in lang.c). Falls back to an empty string
+	 * if unavailable (e.g., the message was longer than the bigstring
+	 * buffer and got truncated to empty -- shouldn't happen, but be
+	 * defensive). */
+	const char *cb_msg = langgetcausedbymessage();
+	cJSON_AddStringToObject(cb, "message", (cb_msg != NULL) ? cb_msg : "");
+
+	cJSON *loc = cJSON_CreateObject();
+	if (loc != NULL) {
+		char namebuf[256];
+		script_name_from_refcon(rec.errorrefcon, namebuf, sizeof(namebuf));
+
+		cJSON_AddStringToObject(loc, "script", namebuf);
+		cJSON_AddNumberToObject(loc, "line", (double)rec.errorline);
+		cJSON_AddNumberToObject(loc, "column", (double)rec.errorchar);
+		cJSON_AddNumberToObject(loc, "tokenStart", (double)rec.tokenstart);
+		cJSON_AddNumberToObject(loc, "tokenEnd", (double)rec.tokenend);
+		cJSON_AddItemToObject(cb, "location", loc);
+	}
+
+	short depth = langgetcausedbystackdepth();
+	if (depth > 0) {
+		cJSON *stack = cJSON_CreateArray();
+		if (stack != NULL) {
+			for (short ix = 0; ix < depth; ++ix) {
+				tyerrorrecord frec;
+				long refcon = 0;
+				if (!langgetcausedbystackframe(ix, &frec, &refcon))
+					break;
+
+				cJSON *frame = cJSON_CreateObject();
+				if (frame == NULL)
+					break;
+
+				char namebuf[256];
+				script_name_from_refcon(refcon, namebuf, sizeof(namebuf));
+
+				cJSON_AddStringToObject(frame, "script", namebuf);
+				cJSON_AddNumberToObject(frame, "line", (double)frec.errorline);
+				cJSON_AddNumberToObject(frame, "column", (double)frec.errorchar);
+				cJSON_AddItemToArray(stack, frame);
+			}
+			cJSON_AddItemToObject(cb, "stack", stack);
+		}
+	}
+
+	return cb;
+}
+
 static void handle_script_eval(long id, const char *json_line, transport_t *transport) {
 	/* Use cJSON for expression extraction — strstr-based op_json_extract_string
 	 * could match "expression" inside a string value from untrusted WebSocket input. */
@@ -439,13 +529,19 @@ static void handle_script_eval(long id, const char *json_line, transport_t *tran
 			snprintf(c_error, sizeof(c_error), "Script error (message too long)");
 		}
 
-		/* Build location / stack BEFORE clearing the offset -- the
-		 * builders apply the offset internally to errorline. */
+		/* Build location / stack / causedBy BEFORE clearing the offset --
+		 * the builders apply the offset internally to errorline.
+		 *
+		 * PR3 of REPL error context chain: build_error_causedby returns
+		 * NULL when no causedby snapshot exists (the common case: error
+		 * fired outside any try/else chain), in which case the response
+		 * has no error.causedBy field -- backwards compatible. */
 		cJSON *location = build_error_location();
 		cJSON *stack = build_error_stack();
+		cJSON *caused_by = build_error_causedby();
 
 		langclearevalinputoffset();
-		send_error_with_metadata(id, c_error, location, stack, transport);
+		send_error_with_metadata(id, c_error, location, stack, caused_by, transport);
 	}
 
 	disposevaluerecord(result, false);
