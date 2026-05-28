@@ -574,6 +574,39 @@ static boolean tcp_check_rate_limit(void) {
     return true;
 }
 
+/* Reset the tcp connection rate-limit sliding window and telemetry counter.
+ *
+ * Intended to be called from script/clearContext (a test-runner reset
+ * boundary) so the long-lived protocol subprocess does not accumulate
+ * cross-test rate-limit pressure. Without this reset, tests in earlier
+ * yaml files that fire many connection attempts can poison the window for
+ * ~1 second, causing subsequent tcp tests in the same process to
+ * spuriously fail with "Connection rate limit exceeded" until the
+ * timestamps age out. Issue #130.
+ *
+ * Does NOT touch:
+ *   - connections_per_sec: user-set policy that must persist
+ *   - streams[] / active_count / listeners[]: structural resources managed
+ *     by their own acquire/release/close lifecycle
+ *   - total_connections / failed_connections: lifetime telemetry, not
+ *     behavior-gating
+ *
+ * DOES reset rate_limited_count because it counts window trips, not lifetime
+ * trips. Keeping it across the reset would misrepresent the cleared window
+ * (the counter would suggest the limiter has fired, even though the window
+ * is now empty).
+ *
+ * Thread safety: takes TCP_LOCK. Safe to call from any thread that does
+ * not already hold TCP_LOCK. */
+void tcp_reset_rate_limit_window(void) {
+    TCP_LOCK();
+    memset(g_tcp_context.connection_timestamps_us, 0,
+           sizeof(g_tcp_context.connection_timestamps_us));
+    g_tcp_context.timestamp_write_pos = 0;
+    g_tcp_context.rate_limited_count = 0;
+    TCP_UNLOCK();
+}
+
 /* ========================================================================
  * Phase 1B: Address Operations (No Network I/O)
  * ======================================================================== */

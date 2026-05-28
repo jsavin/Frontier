@@ -639,3 +639,156 @@ tests:
     expected_success: true
     expected_result: "true"
     notes: "Phase 2 - Error handling for closed stream"
+
+  # ===========================================================================
+  # Issue #130: TCP connection rate-limit sliding-window reset across
+  # script/clearContext.
+  #
+  # Background: the integration test runner reuses a single long-lived
+  # protocol subprocess across yaml files (see ProtocolExecutor in
+  # tests/integration/runner.py). Between tests it issues
+  # script/clearContext. Without resetting the tcp rate-limit window,
+  # a yaml file that fires many tcp.openStream calls in a tight loop
+  # (e.g. tcp_client_verbs.yaml) poisons the sliding window for
+  # roughly one second of wall-clock time, causing the next file's
+  # tcp tests to fail with "Connection rate limit exceeded" until
+  # the timestamps age out.
+  #
+  # Default rate limit is 10 connections/sec (TCP_DEFAULT_RATE_LIMIT in
+  # Common/headers/tcpverbs.h). All three tests below fire enough
+  # connections in a tight loop to saturate that window.
+  #
+  # These tests rely on the script/clearContext boundary, so they use
+  # protocol_ops rather than a single `script:` body -- only the
+  # protocol shape exposes clearContext mid-test.
+  # ===========================================================================
+
+  - name: "tcp rate-limit window resets across script/clearContext (#130)"
+    description: |
+      Regression for #130. First eval saturates the rate-limit window by
+      firing 15 tcp.openStream calls to a closed port. The second eval,
+      after an intervening script/clearContext, fires a single
+      tcp.openStream and reports which failure mode it hit. Pre-fix the
+      window is still poisoned and the second eval returns "rate_limited".
+      Post-fix the window is empty and the second eval returns
+      "connection_failed" (the real closed-port error).
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: |
+            local(i, rateLimited = 0);
+            for i = 1 to 15 {
+              try {
+                local(s = tcp.openStream("127.0.0.1", 65530));
+                tcp.closeStream(s)
+              }
+              else {
+                if string.patternMatch("rate limit", tryError) > 0 {
+                  rateLimited = rateLimited + 1
+                }
+              }
+            };
+            return rateLimited > 0
+        validate:
+          success: true
+          result:
+            value: "true"
+            type: "boolean"
+        description: "saturate rate-limit window"
+
+      - op: "script/clearContext"
+        validate:
+          success: true
+        description: "reset boundary (must clear tcp rate-limit window for #130)"
+
+      - op: "script/eval"
+        params:
+          expression: |
+            try {
+              local(s = tcp.openStream("127.0.0.1", 65530));
+              tcp.closeStream(s);
+              return "unexpected_success"
+            }
+            else {
+              if string.patternMatch("rate limit", tryError) > 0 {
+                return "rate_limited"
+              };
+              return "connection_failed"
+            }
+        validate:
+          success: true
+          result:
+            value: "connection_failed"
+            type: "string"
+        description: "post-clearContext openStream must NOT see rate-limit error"
+
+  - name: "tcp rate-limit still fires within a single eval (positive control #130)"
+    description: |
+      Positive control: confirms the rate limiter still works after the
+      #130 fix. Fires 15 tcp.openStream calls inside one eval (no
+      intervening clearContext) and asserts at least one tripped the
+      limit. Guards against accidentally disabling the rate limiter.
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: |
+            local(i, rateLimited = 0);
+            for i = 1 to 15 {
+              try {
+                local(s = tcp.openStream("127.0.0.1", 65530));
+                tcp.closeStream(s)
+              }
+              else {
+                if string.patternMatch("rate limit", tryError) > 0 {
+                  rateLimited = rateLimited + 1
+                }
+              }
+            };
+            return rateLimited > 0
+        validate:
+          success: true
+          result:
+            value: "true"
+            type: "boolean"
+
+  - name: "tcp rate-limit accumulates across statements in same eval (positive control #130)"
+    description: |
+      Positive control: the rate limiter is cumulative across statements
+      within a single eval -- only script/clearContext resets it. Fires
+      6 openStream calls (well under the limit), then 9 more in a
+      second loop. Total = 15 attempts. At least one must trip the limit.
+      If the fix accidentally reset the window between every statement
+      (or every verb call), this would report zero rate-limited attempts.
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: |
+            local(i, rateLimited = 0);
+            for i = 1 to 6 {
+              try {
+                local(s = tcp.openStream("127.0.0.1", 65530));
+                tcp.closeStream(s)
+              }
+              else {
+                if string.patternMatch("rate limit", tryError) > 0 {
+                  rateLimited = rateLimited + 1
+                }
+              }
+            };
+            for i = 1 to 9 {
+              try {
+                local(s = tcp.openStream("127.0.0.1", 65530));
+                tcp.closeStream(s)
+              }
+              else {
+                if string.patternMatch("rate limit", tryError) > 0 {
+                  rateLimited = rateLimited + 1
+                }
+              }
+            };
+            return rateLimited > 0
+        validate:
+          success: true
+          result:
+            value: "true"
+            type: "boolean"

@@ -46,6 +46,7 @@
 #include "../Common/headers/langexternal.h"
 #include "../Common/headers/memory.h"
 #include "../Common/headers/langinternal.h"
+#include "../Common/headers/tcpverbs.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -576,6 +577,11 @@ static void handle_clear_context(long id, transport_t *transport) {
 	langerrordisable = 0;
 	langerrorlogdisable = 0;
 	fllangerror = false;
+
+	/* Issue #130: reset the tcp connection rate-limit sliding window so
+	 * earlier tests' connection bursts do not poison subsequent tests in
+	 * the same long-lived protocol session. */
+	tcp_reset_rate_limit_window();
 
 	send_ack(id, transport);
 }
