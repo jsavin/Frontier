@@ -398,6 +398,28 @@ bool palette_open(palette_state_t *st, int term_rows, int term_cols,
  * see the field doc. */
 void palette_close(palette_state_t *st);
 
+/* Paint every registered palette pane (menubar + open cascade levels)
+ * to blank cells with terminal-default fg / bg / attr. Idempotent and
+ * a no-op when the palette is not active.
+ *
+ * Why this exists: the compositor diff-renders against its previous
+ * framebuffer. When the palette modal exits, the panes' cells still
+ * carry the menubar/selection attributes from the last frame. If we
+ * simply unregister the panes and let subsequent writes (a leaf
+ * script's output, the linenoise prompt redraw) paint over them, the
+ * compositor sees no change to those cells (the new cell content has
+ * the same printable char and the framebuffer still says "menubar
+ * attrs") and the attributes leak through.
+ *
+ * The contract: call this BEFORE palette_close, then call
+ * compositor_render() ONCE so the cleared cells reach the terminal
+ * while the panes are still registered. Only AFTER that flush is it
+ * safe to call palette_close / unregister the panes.
+ *
+ * GIL: not required. Touches only locally-owned pane buffers; does not
+ * call into the source. */
+void palette_paint_teardown(palette_state_t *st);
+
 /* Feed one input byte. Drives both the ESC disambiguation buffer and the
  * CSI parser. Returns DONE_EXECUTE if the byte triggered a leaf dispatch
  * (with `st->exec_script` populated), DONE_CANCEL if the palette should

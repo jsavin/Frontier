@@ -1,4 +1,3 @@
-Frontier REPL - Interactive UserTalk Environment
 Type /help for commands, /exit to quit
 
 [root]> /
@@ -21,4 +20,5 @@ Type /help for commands, /exit to quit
 
 
 
- REPL
+
+[root]>

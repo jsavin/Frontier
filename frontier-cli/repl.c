@@ -3206,6 +3206,19 @@ static Handle run_palette_modal(struct linenoiseState *ls,
 		}
 	}
 
+	/* Paint every palette pane back to terminal-default attributes and
+	 * flush ONE compositor frame so the cleared cells reach the
+	 * terminal BEFORE we unregister the panes. Without this, the
+	 * compositor's diff render sees no change to cells that still
+	 * carry menubar / selection attributes in the previous-frame
+	 * buffer, and subsequent writes (a dispatched leaf script's stdout,
+	 * the restarted linenoise prompt) inherit those attributes —
+	 * producing the cyan-on-blue bleed observed before this fix.
+	 * Covers both PALETTE_DONE_EXECUTE and PALETTE_DONE_CANCEL exit
+	 * paths; the helper is a no-op when the palette is not active. */
+	palette_paint_teardown(&st);
+	compositor_render();
+
 	palette_close(&st);
 	repl_palette_source_dispose(&src);
 

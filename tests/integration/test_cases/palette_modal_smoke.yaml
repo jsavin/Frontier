@@ -27,13 +27,12 @@
 # That's expected -- the test guards against unintentional drift, not
 # intentional redesigns.
 #
-# A closed-state screenshot_match is intentionally NOT included today:
-# bare-ESC dismissal still leaves visual residue (the " REPL" menubar
-# header sticks at row 0; the post-dismissal prompt overprints the
-# original startup banner row). Asserting on that frame would lock in
-# the broken behavior. The bleed-through + ghost-cell fixes ship in
-# the next chain link (host-anchored horizontal cascade); a proper
-# closed-state golden gets added there.
+# Closed-state and post-execute screenshot matches are included as of
+# the bleed-through + ghost-cell fix (palette_paint_teardown):
+#   - menubar_open.txt:    after '/' opens the menubar
+#   - menubar_drilled.txt: after 'R' drills into the REPL menu
+#   - menubar_closed.txt:  after ESC dismisses (bare prompt, no residue)
+# These goldens regress if the teardown helper stops clearing the panes.
 
 needs_guest_dbs: false
 sequential: true
@@ -45,12 +44,24 @@ tests:
     interactive_steps:
       - expect: "\\[root\\]> "
         send_raw: "/"
-      # screenshot_match disabled while the host-anchored horizontal
-      # cascade rework lands; the menubar_just_opened.txt golden was
-      # captured against the legacy row-0 vertical layout and will be
-      # regenerated in the follow-up Phase F commit.
-      # - screenshot_match: "fixtures/palette/menubar_just_opened.txt"
+      - screenshot_match: "fixtures/palette/menubar_just_opened.txt"
       - send_raw: "\x1b"
       - expect: "\\[root\\]> "
+      - screenshot_match: "fixtures/palette/menubar_closed.txt"
+      - send_raw: "\x04"
+    expected_success: true
+
+  - name: "palette modal: drilling into REPL menu paints cascade strip"
+    palette_mode: true
+    timeout: 15
+    interactive_steps:
+      - expect: "\\[root\\]> "
+        send_raw: "/"
+      - send_raw: "R"
+      - screenshot_match: "fixtures/palette/menubar_drilled.txt"
+      - send_raw: "\x1b"
+      - send_raw: "\x1b"
+      - expect: "\\[root\\]> "
+      - screenshot_match: "fixtures/palette/menubar_closed.txt"
       - send_raw: "\x04"
     expected_success: true

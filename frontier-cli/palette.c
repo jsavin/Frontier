@@ -349,6 +349,19 @@ bool palette_open(palette_state_t *st, int term_rows, int term_cols,
 	return true;
 }
 
+void palette_paint_teardown(palette_state_t *st) {
+	if (!st) return;
+	if (!st->active) return;
+	/* pane_clear zeroes every cell (ch=0, fg=0, bg=0, attr=0). The
+	 * compositor renders ch=0 as ' ' and emits no SGR for fg/bg/attr
+	 * == 0 (default), so the next compositor_render() emits a "go back
+	 * to terminal default" frame for every cell these panes cover. */
+	for (int d = 0; d < st->open_depth && d < PALETTE_MAX_DEPTH; ++d) {
+		pane_clear(&st->levels[d].pane);
+	}
+	pane_clear(&st->menubar);
+}
+
 void palette_close(palette_state_t *st) {
 	if (!st) return;
 	if (!st->active) return;
