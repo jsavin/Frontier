@@ -3067,7 +3067,26 @@ static Handle run_palette_modal(struct linenoiseState *ls,
 				}
 			}
 		} else if (ready == 0) {
-			/* Timeout — fire ESC disambiguation if pending. */
+			/* Timeout — fire ESC disambiguation if pending.
+			 *
+			 * Lone-ESC rescue: if the mouse SGR parser greedily
+			 * buffered a bare ESC waiting for '[<...M' and no
+			 * follow-up byte arrived within the poll window, the
+			 * ESC was a real bare ESC (not a mouse intro). Reset
+			 * the parser and deliver the ESC to palette_feed_byte
+			 * BEFORE the timeout call, so the palette sees
+			 * esc_pending and the subsequent palette_feed_esc_timeout
+			 * can cancel correctly. Without this, the buffered
+			 * ESC was lost and the menubar was undismissable by
+			 * a single ESC keystroke. */
+			if (mouse.state == MOUSE_SGR_GOT_ESC) {
+				mouse_sgr_reset(&mouse);
+				done = palette_feed_byte(&st, 0x1b);
+				if (done != PALETTE_DONE_NONE) {
+					palette_running = false;
+					break;
+				}
+			}
 			done = palette_feed_esc_timeout(&st);
 			/* GIL yield: while the palette is open the main thread
 			 * holds the GIL exclusively. Without a yield in the idle
