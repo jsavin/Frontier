@@ -24,12 +24,25 @@ is broken" without needing further triage.
 
 ## The four layers
 
-| Layer | What it tests                                                                  | File / fixture location                                                                                                  | When to add a test                                                                          |
-| ----- | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------- |
-| L1    | Pure `palette_render(state)` -> cell buffer produces the expected grid         | `tests/palette_render_snapshot_tests.c`                                                                                  | New visual element (border, hotkey style, overflow indicator), layout rule change           |
-| L2    | Key bytes / SGR-1006 mouse events drive the right state transitions            | `tests/palette_state_tests.c`, `tests/palette_arg_inject_tests.c`, `tests/palette_arg_inject_concurrency_tests.c`        | New keybinding, mouse handling edge case, parser ambiguity                                  |
-| L3    | Pane register/unregister, Z-order, diff render, hit-test                       | `tests/pane_compositor_tests.c`, `tests/repl_palette_source_tests.c`                                                     | New pane lifecycle behavior, compositor rule change                                         |
-| L4    | Real PTY, real `frontier-cli`, captured frame matches golden                   | `tests/integration/test_cases/palette_modal_smoke.yaml`, fixtures under `tests/fixtures/palette/`                        | New end-to-end modal flow, regression that didn't reproduce at L1-L3                        |
+### L1 — render snapshot
+- **What it tests**: pure `palette_render(state)` -> cell buffer produces the expected grid.
+- **Where**: `tests/palette_render_snapshot_tests.c`.
+- **When to add**: new visual element (border, hotkey style, overflow indicator) or a layout rule change.
+
+### L2 — input -> state transitions
+- **What it tests**: key bytes / SGR-1006 mouse events drive the right state transitions.
+- **Where**: `tests/palette_state_tests.c`, `tests/palette_arg_inject_tests.c`, `tests/palette_arg_inject_concurrency_tests.c`.
+- **When to add**: new keybinding, mouse handling edge case, parser ambiguity.
+
+### L3 — compositor / panes
+- **What it tests**: pane register/unregister, Z-order, diff render, hit-test.
+- **Where**: `tests/pane_compositor_tests.c`, `tests/repl_palette_source_tests.c`.
+- **When to add**: new pane lifecycle behavior or a compositor rule change.
+
+### L4 — end-to-end PTY harness
+- **What it tests**: real PTY, real `frontier-cli`, captured frame matches a golden file.
+- **Where**: `tests/integration/test_cases/palette_modal_smoke.yaml`; fixtures under `tests/fixtures/palette/`.
+- **When to add**: new end-to-end modal flow, or a regression that does not reproduce at L1-L3.
 
 Push every test as far down the stack as the bug allows. L1 is
 deterministic and runs in microseconds; L4 spawns a child process and
@@ -143,15 +156,15 @@ noise vs. PTY size).
 
 ### When to use L4 vs. lower layers
 
-| Symptom                                              | Layer | Why                                                  |
-| ---------------------------------------------------- | ----- | ---------------------------------------------------- |
-| Wrong character / attribute in a cell                | L1    | Pure render; no PTY noise                            |
-| Layout breaks at the right edge                      | L1    | State-only; no terminal needed                       |
-| Mouse coordinate off-by-one                          | L2+L3 | Parser -> hit-test                                   |
-| Diff-render emits CSI when nothing changed           | L3    | Compositor-internal                                  |
-| ESC ambiguity in a real terminal                     | L4    | Only PTY exposes the timing surface                  |
-| Palette doesn't open on `/` at column 1              | L4    | Linenoise integration only happens in the real REPL  |
-| Mouse mode leak on Ctrl-C                            | L4    | Only signals work in a real process                  |
+Pick the lowest layer that can express the bug:
+
+- **L1** — wrong character / attribute in a cell (pure render; no PTY noise).
+- **L1** — layout breaks at the right edge (state-only; no terminal needed).
+- **L2 + L3** — mouse coordinate off-by-one (parser -> hit-test).
+- **L3** — diff-render emits CSI when nothing changed (compositor-internal).
+- **L4** — ESC ambiguity in a real terminal (only PTY exposes the timing surface).
+- **L4** — palette doesn't open on `/` at column 1 (linenoise integration only happens in the real REPL).
+- **L4** — mouse mode leak on Ctrl-C (only signals work in a real process).
 
 Default: try the lowest layer that can express the bug. Adding a new L4
 test should be a deliberate choice, not the default reach.

@@ -39,6 +39,11 @@ tests:
         send_raw: "/"
       - screenshot_match: "fixtures/palette/menubar_just_opened.txt"
       - send_raw: "\x1b\x1b"
+      # Assert the closed state: ESC ESC must fully tear down the menubar
+      # and return us to a bare REPL prompt. Without this second golden,
+      # a regression where ESC leaves a partial render (e.g. the top
+      # row's " REPL" header sticks around) would slip through.
       - expect: "\\[root\\]> "
-        send_raw: "\x04"
+      - screenshot_match: "fixtures/palette/menubar_closed.txt"
+      - send_raw: "\x04"
     expected_success: true

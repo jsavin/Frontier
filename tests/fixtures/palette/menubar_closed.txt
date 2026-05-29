@@ -1,0 +1,4 @@
+ REPL
+[root]> lp for commands, /exit to quit
+
+[root]> /

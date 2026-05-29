@@ -420,7 +420,9 @@ palette_done_t palette_feed_esc_timeout(palette_state_t *st);
  * surface flexible — tests can flip the env var between calls — at
  * negligible cost.
  *
- * GIL: not required. Reads only process env state. */
+ * GIL: this function touches no GIL-protected state (only process env).
+ * In practice it is only called from the modal byte loop, which already
+ * holds the GIL. */
 int palette_esc_timeout_ms(void);
 
 /* Default ESC disambiguation timeout (milliseconds) used when

@@ -2977,6 +2977,9 @@ static Handle run_palette_modal(struct linenoiseState *ls,
 	 * outside tests but worth a one-time stderr warning so a user
 	 * with this env var accidentally set understands why their
 	 * terminal feels twitchy. */
+	/* Single-thread modal entry invariant; see GIL note above
+	 * (run_palette_modal runs only on the GIL-holding REPL thread,
+	 * so the static flag does not need an atomic guard). */
 	static bool fast_timers_logged = false;
 	if (!fast_timers_logged) {
 		fast_timers_logged = true;

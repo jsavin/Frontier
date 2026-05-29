@@ -1,4 +1,4 @@
  REPL
-[palette] FRONTIER_PALETTE_FAST_TIMERS=1 -- using 1ms ESC timeout (test mode)
+Type /help for commands, /exit to quit
 
 [root]> /

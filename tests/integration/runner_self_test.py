@@ -13,6 +13,7 @@ Run with:
 
 import io
 import os
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -22,7 +23,10 @@ from unittest import mock
 
 # Make the runner module importable as 'runner' (its sibling layout). Vendored
 # pexpect/ptyprocess remain on the path; pyte is a pip dependency loaded via
-# runner._ensure_pyte() so the bootstrap shim is the only entry point.
+# runner._ensure_pyte() inside individual tests so the bootstrap shim is the
+# only entry point AND so importing this module does NOT silently pre-load
+# pyte (which would mask the "install when missing" code path from any test
+# that wants to exercise it — see PyteBootstrapWhenMissingTest below).
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _REPO_ROOT = os.path.abspath(os.path.join(_HERE, '..', '..'))
 _VENDOR_DIR = os.path.join(_REPO_ROOT, 'tests', 'vendor')
@@ -33,13 +37,21 @@ if _HERE not in sys.path:
 
 import runner  # noqa: E402
 
-# Bootstrap pyte (installs via pip if missing); the screenshot tests below
-# need a real pyte.Screen/Stream pair to exercise the comparison logic.
-pyte, _bootstrap_err = runner._ensure_pyte()
-if pyte is None:
-    raise RuntimeError(
-        f"runner_self_test: pyte bootstrap failed: {_bootstrap_err}"
-    )
+
+def _load_pyte():
+    """Bootstrap pyte for tests that need real Screen/Stream instances.
+
+    Lives outside the module scope (was at import time previously) so that
+    tests which patch sys.modules / subprocess to exercise the missing-pyte
+    branch don't run against a pre-loaded pyte. Called from setUp() of the
+    classes that need it.
+    """
+    pyte, err = runner._ensure_pyte()
+    if pyte is None:
+        raise RuntimeError(
+            f"runner_self_test: pyte bootstrap failed: {err}"
+        )
+    return pyte
 
 
 class PaletteModeParsingTest(unittest.TestCase):
@@ -74,10 +86,13 @@ class PaletteModeParsingTest(unittest.TestCase):
 class ScreenshotMatchGoldenUpdateTest(unittest.TestCase):
     """FRONTIER_UPDATE_GOLDENS=1 with a missing fixture creates the fixture file."""
 
+    def setUp(self):
+        self.pyte = _load_pyte()
+
     def test_missing_fixture_with_update_env_creates_file(self):
         # Feed a deterministic screen state via pyte directly (no PTY).
-        screen = pyte.Screen(40, 5)
-        stream = pyte.Stream(screen)
+        screen = self.pyte.Screen(40, 5)
+        stream = self.pyte.Stream(screen)
         stream.feed("alpha\r\nbeta")
 
         with tempfile.TemporaryDirectory() as tmp:
@@ -104,12 +119,49 @@ class ScreenshotMatchGoldenUpdateTest(unittest.TestCase):
                                 "per-line trailing whitespace not stripped")
 
 
+class ScreenshotMatchUpdateLogsToStderrTest(unittest.TestCase):
+    """FRONTIER_UPDATE_GOLDENS=1 must log a loud per-file stderr notice (P1 #5)."""
+
+    def setUp(self):
+        self.pyte = _load_pyte()
+
+    def test_update_mode_logs_overwrite_to_stderr(self):
+        screen = self.pyte.Screen(20, 3)
+        stream = self.pyte.Stream(screen)
+        stream.feed("hello")
+
+        with tempfile.TemporaryDirectory() as tmp:
+            golden_path = os.path.join(tmp, 'logged_golden.txt')
+
+            captured_stderr = io.StringIO()
+            with mock.patch.dict(os.environ, {'FRONTIER_UPDATE_GOLDENS': '1'}), \
+                    mock.patch.object(sys, 'stderr', captured_stderr):
+                ok, _err = runner.compare_screen_to_golden(
+                    screen=screen,
+                    golden_path=golden_path,
+                )
+            self.assertTrue(ok)
+            log_text = captured_stderr.getvalue()
+            # Behavioral: the notice mentions UPDATING GOLDEN, the actual
+            # path, and the triggering env var so a developer who left the
+            # flag set in their shell sees what is happening.
+            self.assertIn("UPDATING GOLDEN", log_text,
+                          f"stderr should announce golden overwrite; got: {log_text!r}")
+            self.assertIn(golden_path, log_text,
+                          f"stderr should include the path; got: {log_text!r}")
+            self.assertIn("FRONTIER_UPDATE_GOLDENS", log_text,
+                          f"stderr should name the triggering env var; got: {log_text!r}")
+
+
 class ScreenshotMatchMismatchTest(unittest.TestCase):
     """A non-matching fixture produces a failure result with a mismatch message."""
 
+    def setUp(self):
+        self.pyte = _load_pyte()
+
     def test_mismatch_reports_failure(self):
-        screen = pyte.Screen(40, 5)
-        stream = pyte.Stream(screen)
+        screen = self.pyte.Screen(40, 5)
+        stream = self.pyte.Stream(screen)
         stream.feed("hello world")
 
         with tempfile.TemporaryDirectory() as tmp:
@@ -164,18 +216,22 @@ class PyteBootstrapInstallCommandTest(unittest.TestCase):
 
 
 class PyteBootstrapWhenAlreadyInstalledTest(unittest.TestCase):
-    """_ensure_pyte() must be a no-op when pyte is already importable.
+    """_ensure_pyte() is a no-op when pyte is already importable.
 
-    Runs the bootstrap a second time in this process: pyte is already loaded
-    (the module-level call at the top of this file imported it), so the shim
-    must return the module without attempting any subprocess install.
+    Subprocess.run is patched to raise on any call so an accidental install
+    attempt is caught immediately. We force-load pyte in setUp before the
+    patch goes up, so the early-return path is the one under test.
     """
 
     def test_ensure_pyte_returns_module_without_install(self):
-        # Patch subprocess.run so any accidental install attempt would raise.
-        with mock.patch('runner.subprocess.run',
-                        side_effect=AssertionError(
-                            "subprocess.run must not be called when pyte is already importable")):
+        # Force pyte to be importable for this test.
+        _load_pyte()
+        self.assertIn('pyte', sys.modules,
+                      "precondition: pyte must already be loaded")
+
+        with mock.patch.object(runner.subprocess, 'run',
+                               side_effect=AssertionError(
+                                   "subprocess.run must not be called when pyte is already importable")):
             module, err = runner._ensure_pyte()
 
         self.assertIsNone(err, f"expected no error; got {err!r}")
@@ -186,6 +242,153 @@ class PyteBootstrapWhenAlreadyInstalledTest(unittest.TestCase):
         stream.feed("hi")
         self.assertTrue(screen.display[0].startswith("hi"),
                         f"returned module not functional as pyte; display={screen.display!r}")
+
+
+class PyteBootstrapWhenMissingTest(unittest.TestCase):
+    """When pyte is NOT importable, _ensure_pyte must invoke pip and reimport.
+
+    Drops pyte from sys.modules, masks the import so the first `import pyte`
+    raises ImportError, and verifies that subprocess.run is called with the
+    documented install command. Subprocess is mocked so no pip actually runs.
+    """
+
+    def test_ensure_pyte_invokes_pip_when_module_missing(self):
+        # Snapshot pyte so we can restore it after — other tests need it.
+        saved_pyte = sys.modules.pop('pyte', None)
+        # Also pop any pyte.* submodules so a partial import doesn't satisfy
+        # the bootstrap.
+        saved_submods = {k: sys.modules.pop(k) for k in list(sys.modules)
+                         if k.startswith('pyte.')}
+
+        # First import attempt raises; we then "succeed" by leaving a fake
+        # pyte module in sys.modules that the second import call returns.
+        original_import = __builtins__['__import__'] if isinstance(__builtins__, dict) \
+            else __builtins__.__import__
+
+        fake_pyte = mock.MagicMock(name='fake_pyte_module')
+        import_call_count = {'n': 0}
+
+        def fake_import(name, *args, **kwargs):
+            if name == 'pyte':
+                import_call_count['n'] += 1
+                if import_call_count['n'] == 1:
+                    raise ImportError("simulated: pyte not installed")
+                # After the (mocked) install, populate sys.modules so the
+                # real import machinery returns the fake module.
+                sys.modules['pyte'] = fake_pyte
+                return fake_pyte
+            return original_import(name, *args, **kwargs)
+
+        # Stub subprocess.run to report a successful install without
+        # actually invoking pip.
+        fake_run_result = mock.MagicMock(returncode=0, stderr='', stdout='')
+        run_calls = []
+
+        def fake_run(cmd, **kwargs):
+            run_calls.append((cmd, kwargs))
+            return fake_run_result
+
+        try:
+            with mock.patch.object(runner.subprocess, 'run', side_effect=fake_run), \
+                    mock.patch('builtins.__import__', side_effect=fake_import):
+                module, err = runner._ensure_pyte()
+        finally:
+            # Restore the real pyte so subsequent tests have it back.
+            sys.modules.pop('pyte', None)
+            if saved_pyte is not None:
+                sys.modules['pyte'] = saved_pyte
+            for k, v in saved_submods.items():
+                sys.modules[k] = v
+
+        self.assertIsNone(err, f"expected success after install; got err={err!r}")
+        self.assertIs(module, fake_pyte,
+                      "should return the freshly-imported module")
+        self.assertGreaterEqual(len(run_calls), 1,
+                                "pip install must have been invoked at least once")
+        # First install attempt should be the documented user-install command.
+        first_cmd = run_calls[0][0]
+        self.assertEqual(first_cmd[0], sys.executable)
+        self.assertEqual(first_cmd[1:4], ['-m', 'pip', 'install'])
+        self.assertIn('--user', first_cmd)
+        self.assertEqual(first_cmd[-1], 'pyte>=0.8.2')
+        # Timeout was applied (P1 #4).
+        self.assertEqual(run_calls[0][1].get('timeout'), 120,
+                         f"install subprocess must use timeout=120; "
+                         f"got kwargs={run_calls[0][1]!r}")
+
+
+class PyteBootstrapHandlesPipTimeoutTest(unittest.TestCase):
+    """If pip install hangs past the timeout, _ensure_pyte returns an error path (P1 #4).
+
+    The whole point of the timeout is that a wedged network mirror cannot
+    stall the test suite indefinitely. This test patches subprocess.run to
+    raise TimeoutExpired for every install attempt and asserts that the
+    error tuple is returned cleanly (no exception propagates).
+    """
+
+    def test_pip_timeout_returns_error_tuple(self):
+        saved_pyte = sys.modules.pop('pyte', None)
+        saved_submods = {k: sys.modules.pop(k) for k in list(sys.modules)
+                         if k.startswith('pyte.')}
+
+        original_import = __builtins__['__import__'] if isinstance(__builtins__, dict) \
+            else __builtins__.__import__
+
+        def fake_import(name, *args, **kwargs):
+            if name == 'pyte':
+                raise ImportError("simulated: pyte not installed")
+            return original_import(name, *args, **kwargs)
+
+        def fake_run(cmd, **kwargs):
+            raise subprocess.TimeoutExpired(cmd=cmd, timeout=kwargs.get('timeout', 120))
+
+        try:
+            with mock.patch.object(runner.subprocess, 'run', side_effect=fake_run), \
+                    mock.patch('builtins.__import__', side_effect=fake_import):
+                module, err = runner._ensure_pyte()
+        finally:
+            sys.modules.pop('pyte', None)
+            if saved_pyte is not None:
+                sys.modules['pyte'] = saved_pyte
+            for k, v in saved_submods.items():
+                sys.modules[k] = v
+
+        self.assertIsNone(module,
+                          "module must be None when every install attempt times out")
+        self.assertIsNotNone(err,
+                             "an error message must be returned, not propagated as exception")
+        self.assertIn("timed out", err.lower(),
+                      f"error message should mention timeout; got: {err!r}")
+
+
+class ScreenshotMatchPathTraversalRejectedTest(unittest.TestCase):
+    """screenshot_match must reject golden paths that escape golden_root (P2 #15).
+
+    Exercised via execute_interactive_palette would require spawning a child,
+    so this validates the realpath check directly. The check lives inline in
+    execute_interactive_palette; we replicate it with the same os.path.realpath
+    logic to ensure the boundary semantics behave as documented.
+    """
+
+    def test_relative_dotdot_escape_is_detected(self):
+        # Mirror the check that runs inside execute_interactive_palette.
+        with tempfile.TemporaryDirectory() as root:
+            inside = os.path.join(root, 'fixtures', 'palette', 'ok.txt')
+            outside_via_dotdot = os.path.join(root, '..', 'evil.txt')
+            absolute_outside = os.path.realpath(os.path.join(root, '..', 'evil.txt'))
+
+            def is_escape(path):
+                resolved = os.path.realpath(path)
+                root_real = os.path.realpath(root)
+                return not (resolved == root_real
+                            or resolved.startswith(root_real + os.sep))
+
+            self.assertFalse(is_escape(inside),
+                             "in-tree fixture path must be accepted")
+            self.assertTrue(is_escape(outside_via_dotdot),
+                            "../ escape must be rejected")
+            self.assertTrue(is_escape(absolute_outside),
+                            "absolute path outside root must be rejected")
 
 
 if __name__ == "__main__":

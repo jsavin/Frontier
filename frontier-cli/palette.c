@@ -1127,6 +1127,9 @@ palette_done_t palette_feed_esc_timeout(palette_state_t *st) {
  * flip the variable per-call. The cost (one libc getenv per palette
  * poll cycle) is negligible. */
 int palette_esc_timeout_ms(void) {
+	/* Safe only because FRONTIER_PALETTE_FAST_TIMERS is set once at
+	 * process startup (by the test harness) and never mutated at runtime;
+	 * no concurrent setenv from another thread. */
 	const char *v = getenv("FRONTIER_PALETTE_FAST_TIMERS");
 	if (v && v[0] != '\0') return PALETTE_ESC_TIMEOUT_FAST_MS;
 	return PALETTE_ESC_TIMEOUT_DEFAULT_MS;

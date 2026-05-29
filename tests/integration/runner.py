@@ -7,6 +7,7 @@ Executes YAML test cases against frontier-cli and validates results.
 
 import argparse
 import concurrent.futures
+import difflib
 import json
 import multiprocessing
 import os
@@ -30,14 +31,20 @@ except ImportError:
 
 try:
     import pexpect
+    import ptyprocess
     HAS_PEXPECT = True
 except ImportError:
     try:
-        # Fall back to vendored copy
-        sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'vendor'))
+        # Fall back to vendored copy. Both pexpect and ptyprocess are
+        # vendored under tests/vendor/. We leave the vendor dir on
+        # sys.path so subsequent late imports (e.g. ptyprocess inside
+        # execute_interactive_palette's _PaletteSpawn) resolve cleanly.
+        _VENDOR_PATH = os.path.join(os.path.dirname(__file__), '..', 'vendor')
+        if _VENDOR_PATH not in sys.path:
+            sys.path.insert(0, _VENDOR_PATH)
         import pexpect
+        import ptyprocess
         HAS_PEXPECT = True
-        sys.path.pop(0)
     except ImportError:
         HAS_PEXPECT = False
 
@@ -109,11 +116,21 @@ def _ensure_pyte():
     #      (minimal Python builds shipped without the pip module)
     def _try(cmd):
         try:
-            r = subprocess.run(cmd, capture_output=True, text=True)
+            # P1 #4: bound pip install at 120s so a wedged network mirror
+            # or a stalled package index does not hang the whole test run
+            # indefinitely. TimeoutExpired is caught alongside the other
+            # subprocess failures so the install-failed branch fires
+            # cleanly (returning a (None, error_message) tuple to the
+            # caller via the surrounding _ensure_pyte loop).
+            r = subprocess.run(cmd, capture_output=True, text=True,
+                               timeout=120)
             if r.returncode == 0:
                 return None
             return (f"'{' '.join(cmd)}' exited {r.returncode}:\n"
                     f"{r.stderr.strip()}")
+        except subprocess.TimeoutExpired:
+            return (f"'{' '.join(cmd)}' timed out after 120s "
+                    "(network/mirror stall?)")
         except (OSError, subprocess.SubprocessError) as e:
             return f"failed to invoke {cmd[0]}: {e}"
 
@@ -155,7 +172,11 @@ def _ensure_pyte():
         user_site = site.getusersitepackages()
         if user_site and user_site not in sys.path:
             sys.path.insert(0, user_site)
-    except Exception:
+    except (AttributeError, OSError):
+        # P2 #16: only swallow the two failure modes site.getusersitepackages
+        # can plausibly raise (missing attr on stripped-down interpreters;
+        # filesystem error resolving the path). A broader except would
+        # mask programmer errors in this bootstrap path.
         pass
     importlib.invalidate_caches()
     try:
@@ -197,8 +218,6 @@ def compare_screen_to_golden(screen, golden_path: str,
     string "screenshot mismatch" so test reports surface the failure
     intent clearly.
     """
-    import difflib
-
     actual = _normalize_screen_frame(screen)
 
     if os.environ.get('FRONTIER_UPDATE_GOLDENS') == '1':
@@ -206,6 +225,15 @@ def compare_screen_to_golden(screen, golden_path: str,
                     exist_ok=True)
         with open(golden_path, 'w', encoding='utf-8') as f:
             f.write(actual)
+        # P1 #5: a loud, per-file stderr line so a developer who left
+        # FRONTIER_UPDATE_GOLDENS=1 in their shell sees that goldens are
+        # being rewritten on every run. Without this the overwrite is
+        # silent and easy to commit accidentally.
+        print(
+            f"[palette-test] UPDATING GOLDEN: {golden_path} "
+            "(FRONTIER_UPDATE_GOLDENS=1)",
+            file=sys.stderr,
+        )
         return True, None
 
     if not os.path.exists(golden_path):
@@ -671,10 +699,65 @@ class FrontierCLI:
                     empty_in_a_row += 1
             return ''.join(chunks)
 
+        # Initialize child = None so the except handlers below can safely
+        # reference it even if pexpect.spawn() itself raises before
+        # `child` would otherwise be bound (P1 #6).
+        child = None
+        # Redirect the CHILD's stderr away from the PTY so frontier-cli's
+        # diagnostic stderr lines (notably the one-time
+        # FRONTIER_PALETTE_FAST_TIMERS=1 notice from run_palette_modal)
+        # do not enter pyte's framebuffer and contaminate goldens (P0 #1).
+        # The child still writes diagnostics — they go to the runner's own
+        # stderr, which the developer sees in their terminal — but the
+        # captured screen frame is just menubar + cursor state.
+        #
+        # Implementation: duplicate the runner's stderr fd in the parent
+        # BEFORE fork; pass it through to the child via ptyprocess'
+        # pass_fds (so its close-all-but-3 loop spares it); then use a
+        # preexec_fn to dup2 it over fd 2 in the child. Without pass_fds
+        # the duplicate fd is closed before preexec_fn runs and the
+        # dup2 falls back silently — leaving the slave PTY on fd 2.
         try:
-            child = pexpect.spawn(cmd_args[0], args=cmd_args[1:], timeout=timeout,
+            stderr_dup_fd = os.dup(2)
+        except OSError:
+            stderr_dup_fd = None
+
+        def _redirect_child_stderr():
+            # Runs in the child between fork and exec. The slave PTY is
+            # already on fd 2 at this point; replace it with the parent's
+            # real stderr so the captured PTY contains only stdout.
+            if stderr_dup_fd is not None:
+                try:
+                    os.dup2(stderr_dup_fd, 2)
+                except OSError:
+                    pass
+
+        # Subclass pexpect.spawn locally so we can thread pass_fds through
+        # to ptyprocess.PtyProcess.spawn(). Pexpect's stock spawn does not
+        # expose pass_fds in its public API.
+        class _PaletteSpawn(pexpect.spawn):
+            _pass_fds = (
+                (stderr_dup_fd,) if stderr_dup_fd is not None else ()
+            )
+
+            def _spawnpty(self, args, **kwargs):
+                kwargs.setdefault('pass_fds', self._pass_fds)
+                return ptyprocess.PtyProcess.spawn(args, **kwargs)
+
+        try:
+            child = _PaletteSpawn(cmd_args[0], args=cmd_args[1:], timeout=timeout,
                                   env=process_env, encoding='utf-8',
-                                  dimensions=(24, 80))
+                                  dimensions=(24, 80),
+                                  preexec_fn=_redirect_child_stderr)
+
+            # Close the parent's duplicate stderr fd now that the child has
+            # inherited it. Parent fd 2 still points to the runner's stderr.
+            if stderr_dup_fd is not None:
+                try:
+                    os.close(stderr_dup_fd)
+                except OSError:
+                    pass
+                stderr_dup_fd = None
 
             for step in interactive_steps:
                 if 'screenshot_match' in step:
@@ -690,6 +773,21 @@ class FrontierCLI:
                     # directory the runner is invoked from.
                     if golden_root and not os.path.isabs(golden_path):
                         golden_path = os.path.join(golden_root, golden_path)
+                    # P2 #15: reject paths that escape golden_root via ".."
+                    # or absolute paths pointing outside the tree. With
+                    # FRONTIER_UPDATE_GOLDENS=1 a hostile YAML could otherwise
+                    # overwrite arbitrary files; even read-only matches
+                    # against /etc/passwd are pointless surface area.
+                    if golden_root:
+                        resolved = os.path.realpath(golden_path)
+                        root_real = os.path.realpath(golden_root)
+                        if not (resolved == root_real
+                                or resolved.startswith(root_real + os.sep)):
+                            screenshot_failures.append(
+                                "screenshot_match path escapes golden_root: "
+                                f"{step['screenshot_match']!r} -> {resolved!r}"
+                            )
+                            continue
                     actual_dump_path = None
                     if results_dir is not None:
                         slug = (test_name or 'palette_test').replace('/', '_').replace(' ', '_')
@@ -751,10 +849,17 @@ class FrontierCLI:
             )
 
         except pexpect.TIMEOUT:
-            try:
-                child.close(force=True)
-            except Exception:
-                pass
+            # P1 #6: child may be None if pexpect.spawn() itself raised.
+            if child is not None:
+                try:
+                    child.close(force=True)
+                except Exception:
+                    pass
+            if stderr_dup_fd is not None:
+                try:
+                    os.close(stderr_dup_fd)
+                except OSError:
+                    pass
             return subprocess.CompletedProcess(
                 args=[self.cli_path],
                 returncode=-1,
@@ -762,10 +867,17 @@ class FrontierCLI:
                 stderr=f'Palette interactive execution timed out ({timeout}s)',
             )
         except Exception as e:
-            try:
-                child.close(force=True)
-            except Exception:
-                pass
+            # P1 #6: child may be None if pexpect.spawn() itself raised.
+            if child is not None:
+                try:
+                    child.close(force=True)
+                except Exception:
+                    pass
+            if stderr_dup_fd is not None:
+                try:
+                    os.close(stderr_dup_fd)
+                except OSError:
+                    pass
             return subprocess.CompletedProcess(
                 args=[self.cli_path],
                 returncode=-1,

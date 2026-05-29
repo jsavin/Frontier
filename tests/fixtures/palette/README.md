@@ -28,9 +28,15 @@ in the test's failure message.
 Only regenerate when an intentional UI change makes the prior golden
 incorrect — never to silence a failing test:
 
-    FRONTIER_UPDATE_GOLDENS=1 cd .. && \
+    cd .. && FRONTIER_UPDATE_GOLDENS=1 \
       ./tools/run_integration_tests.sh \
       tests/integration/test_cases/palette_modal_smoke.yaml
+
+(The previous form placed the env-var assignment before `cd`, which set
+it only in the subshell created by the assignment-prefix — that subshell
+exits immediately and the variable is gone before `cd` runs. The form
+above runs `cd` first, then prefixes the actual command with the env
+var so the assignment scopes to that command, as intended.)
 
 Review the diff before committing — accidental regressions (extra
 spaces, stray ANSI, cursor in wrong cell) look identical to "the menu
