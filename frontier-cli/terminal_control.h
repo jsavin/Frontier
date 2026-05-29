@@ -74,6 +74,23 @@ void terminal_hide_cursor(void);
 void terminal_show_cursor(void);
 
 /*
+ * Query the terminal for the current cursor position via DSR (Device
+ * Status Report).  Writes "\x1b[6n" to stderr and reads back the
+ * "\x1b[<row>;<col>R" reply from stdin (1-based row/col).  Uses poll(2)
+ * with a ~50ms timeout to bound the wait when stdin is a pipe / file or
+ * the terminal never replies.
+ *
+ * Returns true on a fully-parsed reply.  On any failure (no read,
+ * malformed response, timeout, stdin not a tty) returns false and leaves
+ * *row / *col untouched so the caller can keep defaults.
+ *
+ * Must be called while the terminal is in raw mode — otherwise the
+ * reply will be line-buffered until the user hits Enter and the poll
+ * will time out.
+ */
+bool terminal_get_cursor_pos(int *row, int *col);
+
+/*
  * Slash-menu palette UI substrate (PR 3).
  *
  * These primitives back the future REPL slash-command palette renderer

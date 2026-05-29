@@ -2936,6 +2936,19 @@ static Handle run_palette_modal(struct linenoiseState *ls,
 	(void)terminal_get_size(&rows, &cols);
 	compositor_on_resize(rows, cols);
 
+	/* Query the REPL prompt's row via DSR so the palette can anchor
+	 * the menubar directly below the prompt instead of at row 0.  If
+	 * the query fails (non-tty stdin, slow terminal), default to the
+	 * bottom-most row -- palette_open will scroll up by 1 to make
+	 * room. */
+	int prompt_row = rows - 1;
+	int prompt_col = 1;
+	(void)terminal_get_cursor_pos(&prompt_row, &prompt_col);
+	/* terminal_get_cursor_pos returns 1-based; the palette uses 0-based. */
+	prompt_row -= 1;
+	if (prompt_row < 0) prompt_row = 0;
+	if (prompt_row >= rows) prompt_row = rows - 1;
+
 	/* Scrollback pane (issue #593) — covers rows 1..rows-1 (everything
 	 * below the menubar at row 0). Registered FIRST so it sits at the
 	 * bottom of the z-stack; palette panes register later and composite
@@ -2956,7 +2969,7 @@ static Handle run_palette_modal(struct linenoiseState *ls,
 
 	palette_state_t st;
 	memset(&st, 0, sizeof(st));
-	if (!palette_open(&st, rows, cols, &src)) {
+	if (!palette_open(&st, rows, cols, prompt_row, &src)) {
 		printf("(menubar empty or terminal too small)\n");
 		fflush(stdout);
 		/* Tear down scrollback we just set up — the modal is

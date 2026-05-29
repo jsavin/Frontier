@@ -1,10 +1,12 @@
 /*
  * palette.h - REPL slash-menu palette state machine on top of pane compositor.
  *
- * VisiCalc-style modal menu palette: top-level menubar (row 0), cascading
- * submenus opening to the right of their parent at the selected row,
- * keyboard + mouse navigation, hotkey acceleration. Implements plan
- * §1.3b "palette.c on top of pane compositor"; see
+ * Host-anchored horizontal cascade: a single-row menubar strip painted
+ * immediately below the REPL prompt (rather than at row 0), with each
+ * open submenu rendering as another full-width single-row strip stacked
+ * directly below.  Keyboard navigation, hotkey type-to-activate, mouse
+ * click + wheel.  Implements plan §1.3b "palette.c on top of pane
+ * compositor"; see
  * planning/architectural_decision_records/ADR-016 for the data model and
  * /Users/jake/.claude/plans/humming-painting-hejlsberg.md for the scope
  * decomposition (PR 5 = module-only, no REPL integration yet).
@@ -279,8 +281,15 @@ typedef struct palette_state {
 	bool active;
 	int term_rows;
 	int term_cols;
+	/* The terminal row of the REPL prompt at palette_open() time.
+	 * The menubar pane lives at prompt_row + 1; each open cascade
+	 * level lives at prompt_row + 1 + depth.  When the prompt is on
+	 * the bottom-most row (prompt_row + 1 >= term_rows), palette_open
+	 * scrolls the terminal up by 1 and decrements prompt_row so the
+	 * menubar can land at the freed row. */
+	int prompt_row;
 
-	pane_t menubar;             /* row 0, full-width strip */
+	pane_t menubar;             /* full-width strip at prompt_row + 1 */
 	int menubar_cursor;         /* index of focused top-level menu */
 	int menu_count;             /* cached from source.count_menus() */
 	/* Menubar entries — labels + screen x positions, computed at open. */
@@ -377,6 +386,7 @@ typedef struct palette_state {
  * GIL: must be held by the caller. The source vtable callbacks
  * (count_menus, menu_describe) run inline and may touch the ODB. */
 bool palette_open(palette_state_t *st, int term_rows, int term_cols,
+                  int prompt_row,
                   const palette_menu_source_t *source);
 
 /* Close the palette. Unregisters all panes from the compositor and
