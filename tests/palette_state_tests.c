@@ -1594,6 +1594,50 @@ static void test_resize_re_clamps_scroll_top_on_shrink(void) {
 	palette_close(&st);
 }
 
+/* FRONTIER_PALETTE_FAST_TIMERS: when set non-empty, palette_esc_timeout_ms()
+ * returns 1 (fast). When unset/empty, returns the 10ms default. Used by L4
+ * integration tests so PTY interaction does not wait 10ms-per-ESC for the
+ * bare-ESC vs ESC-CSI disambiguation. */
+static void test_fast_timers_env_var_sets_short_esc_timeout(void) {
+	/* Snapshot the existing env value so we can restore it. */
+	const char *saved = getenv("FRONTIER_PALETTE_FAST_TIMERS");
+	char saved_copy[64];
+	bool had = false;
+	if (saved) {
+		had = true;
+		strncpy(saved_copy, saved, sizeof(saved_copy) - 1);
+		saved_copy[sizeof(saved_copy) - 1] = '\0';
+	}
+
+	/* Unset: default 10ms. */
+	unsetenv("FRONTIER_PALETTE_FAST_TIMERS");
+	int def_ms = palette_esc_timeout_ms();
+	assert(def_ms == 10);
+
+	/* Set to "1": fast 1ms. */
+	setenv("FRONTIER_PALETTE_FAST_TIMERS", "1", 1);
+	int fast_ms = palette_esc_timeout_ms();
+	assert(fast_ms == 1);
+
+	/* Set to empty string: treated as unset, default 10ms. */
+	setenv("FRONTIER_PALETTE_FAST_TIMERS", "", 1);
+	int empty_ms = palette_esc_timeout_ms();
+	assert(empty_ms == 10);
+
+	/* Set to arbitrary non-empty: fast 1ms (env var is a switch, value
+	 * other than empty just means "on"). */
+	setenv("FRONTIER_PALETTE_FAST_TIMERS", "yes", 1);
+	int yes_ms = palette_esc_timeout_ms();
+	assert(yes_ms == 1);
+
+	/* Restore. */
+	if (had) {
+		setenv("FRONTIER_PALETTE_FAST_TIMERS", saved_copy, 1);
+	} else {
+		unsetenv("FRONTIER_PALETTE_FAST_TIMERS");
+	}
+}
+
 int main(void) {
 	TR_INIT("palette_state_tests");
 	TR_RUN(test_open_initial_state);
@@ -1637,6 +1681,8 @@ int main(void) {
 	/* P0 regressions from /gate review of PR #584. */
 	TR_RUN(test_submenu_anchor_uses_visible_row_when_parent_scrolled);
 	TR_RUN(test_resize_re_clamps_scroll_top_on_shrink);
+	/* L4 palette test harness: ESC timeout env-var override. */
+	TR_RUN(test_fast_timers_env_var_sets_short_esc_timeout);
 	TR_SUMMARY();
 	return TR_EXIT_CODE();
 }

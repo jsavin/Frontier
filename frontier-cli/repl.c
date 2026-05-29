@@ -2970,6 +2970,25 @@ static Handle run_palette_modal(struct linenoiseState *ls,
 	palette_render_state(&st);
 	compositor_render();
 
+	/* L4 harness fast-timer notice. The env var compresses the
+	 * bare-ESC vs ESC-CSI disambiguation window from 10ms to 1ms so
+	 * pexpect-driven integration tests do not stall on each ESC. It
+	 * also changes the modal's idle poll cadence, which is harmless
+	 * outside tests but worth a one-time stderr warning so a user
+	 * with this env var accidentally set understands why their
+	 * terminal feels twitchy. */
+	static bool fast_timers_logged = false;
+	if (!fast_timers_logged) {
+		fast_timers_logged = true;
+		const char *ft = getenv("FRONTIER_PALETTE_FAST_TIMERS");
+		if (ft && ft[0] != '\0') {
+			fprintf(stderr,
+				"[palette] FRONTIER_PALETTE_FAST_TIMERS=%s -- "
+				"using %dms ESC timeout (test mode)\n",
+				ft, palette_esc_timeout_ms());
+		}
+	}
+
 	/* 5. Modal byte loop. */
 	mouse_sgr_parser_t mouse;
 	mouse_sgr_reset(&mouse);
@@ -2978,7 +2997,7 @@ static Handle run_palette_modal(struct linenoiseState *ls,
 
 	while (palette_running) {
 		struct pollfd pfd = {STDIN_FILENO, POLLIN, 0};
-		int ready = poll(&pfd, 1, POLL_TIMEOUT_MS);
+		int ready = poll(&pfd, 1, palette_esc_timeout_ms());
 
 		if (ready > 0 && (pfd.revents & POLLIN)) {
 			unsigned char b;
