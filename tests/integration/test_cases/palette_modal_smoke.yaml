@@ -27,12 +27,17 @@
 # That's expected -- the test guards against unintentional drift, not
 # intentional redesigns.
 #
-# Closed-state and post-execute screenshot matches are included as of
-# the bleed-through + ghost-cell fix (palette_paint_teardown):
-#   - menubar_open.txt:    after '/' opens the menubar
-#   - menubar_drilled.txt: after 'R' drills into the REPL menu
-#   - menubar_closed.txt:  after ESC dismisses (bare prompt, no residue)
-# These goldens regress if the teardown helper stops clearing the panes.
+# Closed-state screenshot match guards the bleed-through + ghost-cell fix
+# (palette_paint_teardown). Without the fix, menubar_closed.txt would show
+# a stale " REPL" header row (the menubar's last-painted cells); the
+# screenshot diff catches that regression.
+#
+# A "drilled-in" state test was considered but pyte's text-only normalization
+# discards SGR attributes, so the captured frame for "REPL menu opened, Help
+# selected" is byte-identical to "menubar just opened, REPL highlighted" --
+# both render as " REPL" in plain text. To test drilled state behaviorally,
+# a future L4 enhancement would need to expose color/attr info from pyte
+# (emitted_csi_contains key per PALETTE_TEST_HARNESS.md known gaps).
 
 needs_guest_dbs: false
 sequential: true
@@ -51,17 +56,3 @@ tests:
       - send_raw: "\x04"
     expected_success: true
 
-  - name: "palette modal: drilling into REPL menu paints cascade strip"
-    palette_mode: true
-    timeout: 15
-    interactive_steps:
-      - expect: "\\[root\\]> "
-        send_raw: "/"
-      - send_raw: "R"
-      - screenshot_match: "fixtures/palette/menubar_drilled.txt"
-      - send_raw: "\x1b"
-      - send_raw: "\x1b"
-      - expect: "\\[root\\]> "
-      - screenshot_match: "fixtures/palette/menubar_closed.txt"
-      - send_raw: "\x04"
-    expected_success: true
