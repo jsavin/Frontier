@@ -7,3 +7,9 @@ pyyaml>=6.0          # YAML test case parsing
 #
 # Optional (tests auto-skip if not installed):
 pexpect>=4.8         # Interactive PTY-based dialog testing
+#
+# Auto-installed by runner.py on first use (palette_mode L4 tests):
+pyte>=0.8.2          # VT100/xterm screen emulator for screenshot diffing
+                     #   NOT vendored — pyte is LGPL-3.0, incompatible with
+                     #   Frontier's MIT-only vendoring policy (RELICENSING.md).
+                     #   runner._ensure_pyte() pip-installs on demand.

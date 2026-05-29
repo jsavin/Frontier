@@ -20,8 +20,9 @@ from pathlib import Path
 from unittest import mock
 
 
-# Make the runner module importable as 'runner' (its sibling layout) and ensure
-# the vendored pyte/wcwidth take precedence over any pip-installed copies.
+# Make the runner module importable as 'runner' (its sibling layout). Vendored
+# pexpect/ptyprocess remain on the path; pyte is a pip dependency loaded via
+# runner._ensure_pyte() so the bootstrap shim is the only entry point.
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _REPO_ROOT = os.path.abspath(os.path.join(_HERE, '..', '..'))
 _VENDOR_DIR = os.path.join(_REPO_ROOT, 'tests', 'vendor')
@@ -31,7 +32,14 @@ if _HERE not in sys.path:
     sys.path.insert(0, _HERE)
 
 import runner  # noqa: E402
-import pyte    # noqa: E402
+
+# Bootstrap pyte (installs via pip if missing); the screenshot tests below
+# need a real pyte.Screen/Stream pair to exercise the comparison logic.
+pyte, _bootstrap_err = runner._ensure_pyte()
+if pyte is None:
+    raise RuntimeError(
+        f"runner_self_test: pyte bootstrap failed: {_bootstrap_err}"
+    )
 
 
 class PaletteModeParsingTest(unittest.TestCase):
@@ -128,6 +136,56 @@ class ScreenshotMatchMismatchTest(unittest.TestCase):
             # An .actual dump should be written alongside the golden for diffing.
             self.assertTrue(os.path.exists(actual_path),
                             "actual frame must be dumped on mismatch")
+
+
+class PyteBootstrapInstallCommandTest(unittest.TestCase):
+    """The install command must be constructable as a pure function for testing.
+
+    The shim auto-installs pyte via pip when it is not already importable.
+    Exposing the command as a pure function (no subprocess call) lets us
+    assert on its exact shape without mocking subprocess.run().
+    """
+
+    def test_install_command_uses_python_pip_user_install(self):
+        cmd = runner._pyte_install_command()
+        self.assertIsInstance(cmd, list,
+                              "install command must be a list (for subprocess)")
+        # Must invoke pip via the current interpreter so we install into the
+        # same Python that's running the runner.
+        self.assertEqual(cmd[0], sys.executable,
+                         f"command must use current interpreter; got {cmd[0]!r}")
+        self.assertEqual(cmd[1:4], ['-m', 'pip', 'install'],
+                         f"expected '-m pip install' prefix; got {cmd[1:4]!r}")
+        self.assertIn('--user', cmd,
+                      "install must be --user-scoped (no root required)")
+        # The pyte package spec is the final positional argument.
+        self.assertEqual(cmd[-1], 'pyte>=0.8.2',
+                         f"expected 'pyte>=0.8.2' as last arg; got {cmd[-1]!r}")
+
+
+class PyteBootstrapWhenAlreadyInstalledTest(unittest.TestCase):
+    """_ensure_pyte() must be a no-op when pyte is already importable.
+
+    Runs the bootstrap a second time in this process: pyte is already loaded
+    (the module-level call at the top of this file imported it), so the shim
+    must return the module without attempting any subprocess install.
+    """
+
+    def test_ensure_pyte_returns_module_without_install(self):
+        # Patch subprocess.run so any accidental install attempt would raise.
+        with mock.patch('runner.subprocess.run',
+                        side_effect=AssertionError(
+                            "subprocess.run must not be called when pyte is already importable")):
+            module, err = runner._ensure_pyte()
+
+        self.assertIsNone(err, f"expected no error; got {err!r}")
+        self.assertIsNotNone(module, "expected pyte module to be returned")
+        # Behavioral check: the returned module must be usable as pyte.
+        screen = module.Screen(10, 2)
+        stream = module.Stream(screen)
+        stream.feed("hi")
+        self.assertTrue(screen.display[0].startswith("hi"),
+                        f"returned module not functional as pyte; display={screen.display!r}")
 
 
 if __name__ == "__main__":

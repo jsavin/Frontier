@@ -41,18 +41,131 @@ except ImportError:
     except ImportError:
         HAS_PEXPECT = False
 
-try:
-    import pyte
-    HAS_PYTE = True
-except ImportError:
+# pyte is a pip dependency (NOT vendored — it is LGPL-3.0, incompatible with
+# Frontier's MIT-only vendoring policy per RELICENSING.md). The shim below
+# auto-installs it on first use so palette_mode tests work on a fresh
+# checkout with zero manual setup. Bootstrap is lazy: importing this module
+# does NOT trigger an install — only execute_interactive_palette() and the
+# palette_mode dispatcher branch call _ensure_pyte().
+
+
+def _pyte_install_command() -> list:
+    """Return the argv list used to install pyte via pip.
+
+    Exposed as a pure function (no side effects) so tests can assert on the
+    exact command shape without mocking subprocess. Uses the current Python
+    interpreter via ``-m pip`` so the install lands in the same environment
+    that's running the runner.
+    """
+    return [sys.executable, '-m', 'pip', 'install', '--user', 'pyte>=0.8.2']
+
+
+def _pyte_install_command_break_system() -> list:
+    """Return the PEP 668 escape-hatch argv for installing pyte.
+
+    On Homebrew Python and Debian/Ubuntu system Python, PEP 668 marks the
+    environment as "externally managed" and refuses `pip install --user`
+    without `--break-system-packages`. Adding the flag is the documented
+    workaround when a user-site install is genuinely intended.
+    """
+    return [sys.executable, '-m', 'pip', 'install', '--user',
+            '--break-system-packages', 'pyte>=0.8.2']
+
+
+def _ensure_pyte():
+    """Import pyte, installing it via pip if necessary.
+
+    Returns a ``(module, error)`` tuple:
+      - ``(pyte_module, None)`` on success
+      - ``(None, error_message)`` if import + install + reimport all fail
+
+    The first call may run ``pip install`` as a subprocess (with progress
+    logged to stderr); subsequent calls reuse the already-imported module.
+    """
     try:
-        # Fall back to vendored copy (mirrors the pexpect pattern above).
-        sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'vendor'))
-        import pyte
-        HAS_PYTE = True
-        sys.path.pop(0)
+        import pyte  # noqa: F401
+        return pyte, None
     except ImportError:
-        HAS_PYTE = False
+        pass
+
+    # First fallback: vendored copy (legacy — kept defensive in case a user
+    # restores tests/vendor/pyte locally). Normally this path is skipped.
+    vendor_dir = os.path.join(os.path.dirname(__file__), '..', 'vendor')
+    vendored_pyte = os.path.join(vendor_dir, 'pyte')
+    if os.path.isdir(vendored_pyte):
+        if vendor_dir not in sys.path:
+            sys.path.insert(0, vendor_dir)
+        try:
+            import pyte  # noqa: F401
+            return pyte, None
+        except ImportError:
+            pass
+
+    # Auto-install via pip. Attempt sequence (each falls back to the next):
+    #   1. python -m pip install --user pyte>=0.8.2
+    #   2. python -m pip install --user --break-system-packages ...
+    #      (PEP 668 escape hatch — Homebrew / Debian system Python)
+    #   3. pip3 install --user --break-system-packages ...
+    #      (minimal Python builds shipped without the pip module)
+    def _try(cmd):
+        try:
+            r = subprocess.run(cmd, capture_output=True, text=True)
+            if r.returncode == 0:
+                return None
+            return (f"'{' '.join(cmd)}' exited {r.returncode}:\n"
+                    f"{r.stderr.strip()}")
+        except (OSError, subprocess.SubprocessError) as e:
+            return f"failed to invoke {cmd[0]}: {e}"
+
+    print("pyte not found - installing automatically via pip...",
+          file=sys.stderr)
+
+    attempts = [
+        _pyte_install_command(),
+        _pyte_install_command_break_system(),
+        ['pip3', 'install', '--user', '--break-system-packages',
+         'pyte>=0.8.2'],
+    ]
+
+    install_err = None
+    for cmd in attempts:
+        err = _try(cmd)
+        if err is None:
+            install_err = None
+            break
+        install_err = err
+        print(f"install attempt failed: {err}", file=sys.stderr)
+        print(f"retrying with next strategy...", file=sys.stderr)
+
+    if install_err is not None:
+        return None, (
+            "pyte is required for palette_mode tests but could not be "
+            f"auto-installed: {install_err}\n"
+            "Run: pip3 install -r tests/requirements.txt"
+        )
+
+    # Reimport after install. Two extra steps beyond plain ``import pyte``:
+    #   (a) ensure the user-site directory is on sys.path (it usually is
+    #       already, but some embedded interpreters skip site init), and
+    #   (b) invalidate import caches so the negative result from the
+    #       earlier ImportError doesn't shadow the freshly installed pkg.
+    import importlib
+    import site
+    try:
+        user_site = site.getusersitepackages()
+        if user_site and user_site not in sys.path:
+            sys.path.insert(0, user_site)
+    except Exception:
+        pass
+    importlib.invalidate_caches()
+    try:
+        import pyte  # noqa: F401
+        return pyte, None
+    except ImportError as e:
+        return None, (
+            f"pyte was installed but cannot be imported: {e}\n"
+            "Run: pip3 install -r tests/requirements.txt"
+        )
 
 
 def _normalize_screen_frame(screen) -> str:
@@ -488,12 +601,16 @@ class FrontierCLI:
                 stdout='',
                 stderr='pexpect is not installed (required for palette tests)',
             )
-        if not HAS_PYTE:
+        # Lazy bootstrap: import (and pip-install if missing) pyte at first
+        # palette-mode invocation. Avoids slowing down the 99% of test runs
+        # that never touch palette_mode.
+        pyte, pyte_err = _ensure_pyte()
+        if pyte is None:
             return subprocess.CompletedProcess(
                 args=[self.cli_path],
                 returncode=-1,
                 stdout='',
-                stderr='pyte is not installed (required for palette tests)',
+                stderr=pyte_err or 'pyte is not installed (required for palette tests)',
             )
 
         cmd_args = [self.cli_path, '--skip-startup']
@@ -1310,13 +1427,17 @@ class TestRunner:
                     skipped=True
                 )
             if test.palette_mode:
-                if not HAS_PYTE:
+                # Lazy bootstrap pyte (pip-installs on first palette test).
+                # If install fails, surface as a configuration failure rather
+                # than a silent skip — palette tests are mandatory once the
+                # YAML opts into palette_mode.
+                _pyte_mod, pyte_err = _ensure_pyte()
+                if _pyte_mod is None:
                     return TestResult(
                         name=test.name,
-                        passed=True,
-                        error=None,
-                        details="pyte is required for palette_mode tests. Install with: pip3 install pyte",
-                        skipped=True
+                        passed=False,
+                        error=pyte_err or "pyte bootstrap failed",
+                        details="pyte is required for palette_mode tests. Run: pip3 install -r tests/requirements.txt",
                     )
                 return self.run_interactive_palette_test(test)
             return self.run_interactive_test(test)
