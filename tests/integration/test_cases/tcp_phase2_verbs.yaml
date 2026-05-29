@@ -253,7 +253,7 @@ tests:
     description: "Verify statusStream returns INACTIVE for a listener ID after tcp.closeListen frees the slot"
     timeout: 10
     script: |
-      local(listenID = tcp.listenStream(9216, 5, ""));
+      local(listenID = tcp.listenStream(9220, 5, ""));
       tcp.closeListen(listenID);
       local(bytesPending);
       local(status = tcp.statusStream(listenID, @bytesPending));
@@ -583,8 +583,9 @@ tests:
         local(bytesPending);
         local(status = tcp.statusStream(stream, @bytesPending));
         tcp.closeListen(listenID);
-        // After tcp.closeStream, the stream's state is STREAM_CLOSING and its
-        // sockfd is -1, so tcp_stream_acquire() returns NULL. The verb then
+        // After tcp.closeStream, the stream slot has been freed and reset to
+        // STREAM_INVALID (or possibly recycled), so tcp_stream_acquire() returns
+        // NULL via the STREAM_INVALID guard in tcp_get_stream. The verb then
         // falls through to the listener-ID lookup, which also misses (this is
         // a client stream ID, not a listener ID), and returns INACTIVE.
         return status == "INACTIVE"
