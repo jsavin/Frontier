@@ -1840,10 +1840,18 @@ boolean tcp_init_context(void) {
 
 /* tcp.statusStream(stream) -> status, bytesPending
  * Get status of a TCP stream and number of bytes available to read.
- * Status values: "DATA", "OPEN", "INACTIVE", "CLOSED", "CLOSING", "UNKNOWN"
+ * Status values: "DATA", "OPEN", "INACTIVE", "CLOSED", "CLOSING", "UNKNOWN",
+ * "LISTENING", "STOPPED".
+ *
+ * The input ID may be either a stream reference (from tcp.openStream) or a
+ * listener reference (from tcp.listenStream). The listener-ID overload is a
+ * legacy shared-ID-space behavior used by scripts such as
+ * inetd.isDaemonRunning() to check whether a listener is still active; it
+ * returns "LISTENING" (listener still running) or "STOPPED" (listener slot
+ * still in registry but no longer running).
  *
  * Parameters:
- *   stream_id       - Stream ID to check
+ *   stream_id       - Stream or listener ID to check
  *   status_out      - Output: Status string (Pascal string)
  *   bytes_pending   - Output: Number of bytes available to read (may be NULL)
  *
@@ -1948,9 +1956,10 @@ boolean tcp_status_stream(long stream_id, bigstring status_out, long *bytes_pend
             }
             break;
 
-        case STREAM_LISTENING:
-            copyctopstring("LISTENING", status_out);
-            break;
+        /* Note: STREAM_LISTENING is declared in the tcp_stream_state_t enum
+         * but is never assigned to a stream's state field — listeners live in
+         * g_tcp_listeners[], not in g_tcp_context.streams[]. The "LISTENING"
+         * status is returned only by the listener-ID lookup branch above. */
 
         case STREAM_CLOSING:
             copyctopstring("CLOSING", status_out);

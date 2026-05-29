@@ -249,6 +249,26 @@ tests:
     expected_result: "true"
     notes: "Phase 2 - Listener IDs passed to statusStream return LISTENING (legacy compatibility)"
 
+  - name: "tcp.statusStream - listener ID after closeListen returns INACTIVE"
+    description: "Verify statusStream returns INACTIVE for a listener ID after tcp.closeListen frees the slot"
+    timeout: 10
+    script: |
+      local(listenID = tcp.listenStream(9220, 5, ""));
+      tcp.closeListen(listenID);
+      local(bytesPending);
+      local(status = tcp.statusStream(listenID, @bytesPending));
+      // tcp.closeListen is synchronous: it joins the accept thread and frees
+      // the listener registry slot before returning. By the time we query
+      // statusStream here, the listener is gone from g_tcp_listeners[], so
+      // the verb falls through to the "not found" branch and returns INACTIVE.
+      // (The transient STOPPED state is only visible during a race window
+      // inside closeListen and is not observable from a single-threaded
+      // caller — see docs/usertalk/docserver/tcp/statusStream.txt.)
+      return status == "INACTIVE"
+    expected_success: true
+    expected_result: "true"
+    notes: "Phase 2 - Closed listener IDs return INACTIVE; STOPPED is a race-window-only transient state"
+
   # ===========================================================================
   # tcp.getPeerAddress - Remote IP Address Query
   # ===========================================================================
@@ -546,7 +566,7 @@ tests:
   # ===========================================================================
 
   - name: "tcp.statusStream - after stream closed"
-    description: "Verify statusStream returns CLOSED/INACTIVE/UNKNOWN sentinel for closed stream (status query, does not raise)"
+    description: "Verify statusStream returns INACTIVE for a closed client stream (status query, does not raise)"
     timeout: 10
     script: |
       local(listenID = tcp.listenStream(9215, 5, ""));
@@ -563,10 +583,12 @@ tests:
         local(bytesPending);
         local(status = tcp.statusStream(stream, @bytesPending));
         tcp.closeListen(listenID);
-        // statusStream is a non-raising status query — any non-empty sentinel string is acceptable
-        // (documented sentinels: CLOSED/INACTIVE/UNKNOWN/OPEN/DATA/CLOSING/STOPPED;
-        //  empirically may also return LISTENING for closed client streams)
-        return (typeof(status) == 'TEXT') and (sizeof(status) > 0)
+        // After tcp.closeStream, the stream slot has been freed and reset to
+        // STREAM_INVALID (or possibly recycled), so tcp_stream_acquire() returns
+        // NULL via the STREAM_INVALID guard in tcp_get_stream. The verb then
+        // falls through to the listener-ID lookup, which also misses (this is
+        // a client stream ID, not a listener ID), and returns INACTIVE.
+        return status == "INACTIVE"
       }
       else {
         tcp.closeListen(listenID);
@@ -574,7 +596,7 @@ tests:
       }
     expected_success: true
     expected_result: "true"
-    notes: "Phase 2 - Error handling for closed stream"
+    notes: "Phase 2 - Closed client streams return INACTIVE (listener-ID overload does not match)"
 
   - name: "tcp.getPeerAddress - after stream closed"
     description: "Verify getPeerAddress handles closed stream gracefully"
