@@ -2262,8 +2262,16 @@ static boolean tcp_read_until_condition(
 
     /* Acquire stream reference (TOCTOU protection) */
     stream = tcp_stream_acquire(stream_id);
-    if (!stream) {
-        tcp_set_error(TCP_ERR_INVALID_STREAM, "Invalid stream");
+
+    /* Issue #666: gate on stream state in addition to !stream. Accept
+     * STREAM_CONNECTED (client-initiated connect) and STREAM_ACCEPTED
+     * (server-side accept inside a listener callback); reject everything
+     * else (notably STREAM_LISTENING and STREAM_CONNECTING). Mirrors the
+     * post-#667 gate in tcp_read_stream (~line 889) and tcp_write_stream. */
+    if (!stream || (stream->state != STREAM_CONNECTED && stream->state != STREAM_ACCEPTED)) {
+        if (stream)
+            tcp_stream_release(stream);
+        tcp_set_error(TCP_ERR_INVALID_STREAM, "Stream not connected");
         return false;
     }
 
@@ -2551,8 +2559,15 @@ boolean tcp_read_stream_inetd(long stream_id, Handle hbuffer, long timeout_secs)
 
     /* Acquire stream reference (TOCTOU protection) */
     stream = tcp_stream_acquire(stream_id);
-    if (!stream) {
-        tcp_set_error(TCP_ERR_INVALID_STREAM, "Invalid stream");
+
+    /* Issue #666: gate on stream state. Accept STREAM_CONNECTED /
+     * STREAM_ACCEPTED only; reject STREAM_LISTENING / STREAM_CONNECTING
+     * up-front rather than surfacing a kernel error from recv() on a
+     * non-readable socket. Mirrors tcp_read_stream (~line 889). */
+    if (!stream || (stream->state != STREAM_CONNECTED && stream->state != STREAM_ACCEPTED)) {
+        if (stream)
+            tcp_stream_release(stream);
+        tcp_set_error(TCP_ERR_INVALID_STREAM, "Stream not connected");
         return false;
     }
 
@@ -2732,8 +2747,15 @@ boolean tcp_write_string_to_stream(long stream_id, Handle hdata, long chunk_size
 
     /* Acquire stream reference (TOCTOU protection) */
     stream = tcp_stream_acquire(stream_id);
-    if (!stream) {
-        tcp_set_error(TCP_ERR_INVALID_STREAM, "Invalid stream");
+
+    /* Issue #666: gate on stream state. Accept STREAM_CONNECTED /
+     * STREAM_ACCEPTED only; reject STREAM_LISTENING / STREAM_CONNECTING
+     * up-front rather than surfacing a kernel error from send() on a
+     * non-writable socket. Mirrors tcp_write_stream (~line 961). */
+    if (!stream || (stream->state != STREAM_CONNECTED && stream->state != STREAM_ACCEPTED)) {
+        if (stream)
+            tcp_stream_release(stream);
+        tcp_set_error(TCP_ERR_INVALID_STREAM, "Stream not connected");
         return false;
     }
 
@@ -2844,8 +2866,15 @@ boolean tcp_write_file_to_stream(long stream_id, Handle hprefix, Handle hsuffix,
 
     /* Acquire stream reference (TOCTOU protection) */
     stream = tcp_stream_acquire(stream_id);
-    if (!stream) {
-        tcp_set_error(TCP_ERR_INVALID_STREAM, "Invalid stream");
+
+    /* Issue #666: gate on stream state. Accept STREAM_CONNECTED /
+     * STREAM_ACCEPTED only; reject STREAM_LISTENING / STREAM_CONNECTING
+     * up-front so we don't attempt file I/O whose bytes can never flow
+     * through this socket. Mirrors tcp_write_stream (~line 961). */
+    if (!stream || (stream->state != STREAM_CONNECTED && stream->state != STREAM_ACCEPTED)) {
+        if (stream)
+            tcp_stream_release(stream);
+        tcp_set_error(TCP_ERR_INVALID_STREAM, "Stream not connected");
         return false;
     }
 
