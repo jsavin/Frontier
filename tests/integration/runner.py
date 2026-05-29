@@ -41,6 +41,94 @@ except ImportError:
     except ImportError:
         HAS_PEXPECT = False
 
+try:
+    import pyte
+    HAS_PYTE = True
+except ImportError:
+    try:
+        # Fall back to vendored copy (mirrors the pexpect pattern above).
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'vendor'))
+        import pyte
+        HAS_PYTE = True
+        sys.path.pop(0)
+    except ImportError:
+        HAS_PYTE = False
+
+
+def _normalize_screen_frame(screen) -> str:
+    """Return a normalized text dump of a pyte.Screen.
+
+    Normalization: strip trailing whitespace from each row (xterm pads rows
+    with spaces to the full column width), then strip trailing blank rows
+    from the whole frame. Lines are joined with '\\n' and a single trailing
+    newline is appended so golden files have a stable, editor-friendly form.
+    """
+    rows = [row.rstrip() for row in screen.display]
+    # Drop trailing blank rows so adding screen rows below the content
+    # area doesn't churn goldens.
+    while rows and rows[-1] == '':
+        rows.pop()
+    return '\n'.join(rows) + '\n'
+
+
+def compare_screen_to_golden(screen, golden_path: str,
+                             actual_dump_path: Optional[str] = None) -> Tuple[bool, Optional[str]]:
+    """Compare a normalized pyte.Screen dump against a golden text fixture.
+
+    Returns (passed, error_message). Honors FRONTIER_UPDATE_GOLDENS=1: when
+    set, writes the current frame to ``golden_path`` (creating parent dirs
+    as needed) and returns success without comparing.
+
+    On mismatch, writes the actual frame to ``actual_dump_path`` (if given)
+    and returns an error message containing a unified diff and the literal
+    string "screenshot mismatch" so test reports surface the failure
+    intent clearly.
+    """
+    import difflib
+
+    actual = _normalize_screen_frame(screen)
+
+    if os.environ.get('FRONTIER_UPDATE_GOLDENS') == '1':
+        os.makedirs(os.path.dirname(os.path.abspath(golden_path)) or '.',
+                    exist_ok=True)
+        with open(golden_path, 'w', encoding='utf-8') as f:
+            f.write(actual)
+        return True, None
+
+    if not os.path.exists(golden_path):
+        # Always dump actual when golden is missing — caller can inspect.
+        if actual_dump_path:
+            os.makedirs(os.path.dirname(os.path.abspath(actual_dump_path)) or '.',
+                        exist_ok=True)
+            with open(actual_dump_path, 'w', encoding='utf-8') as f:
+                f.write(actual)
+        return False, (
+            f"screenshot mismatch: golden file not found at {golden_path!r} "
+            f"(set FRONTIER_UPDATE_GOLDENS=1 to create it)"
+        )
+
+    with open(golden_path, 'r', encoding='utf-8') as f:
+        expected = f.read()
+
+    if actual == expected:
+        return True, None
+
+    # Dump actual for inspection.
+    if actual_dump_path:
+        os.makedirs(os.path.dirname(os.path.abspath(actual_dump_path)) or '.',
+                    exist_ok=True)
+        with open(actual_dump_path, 'w', encoding='utf-8') as f:
+            f.write(actual)
+
+    diff = ''.join(difflib.unified_diff(
+        expected.splitlines(keepends=True),
+        actual.splitlines(keepends=True),
+        fromfile=f'{golden_path} (expected)',
+        tofile='actual',
+        n=3,
+    ))
+    return False, f"screenshot mismatch vs {golden_path}:\n{diff}"
+
 
 # Type name aliases: Maps Frontier's internal type names to canonical test names
 # Frontier uses shortened or internal names in JSON output that differ from
@@ -365,6 +453,188 @@ class FrontierCLI:
                 returncode=-1,
                 stdout=''.join(collected_output),
                 stderr=f'Interactive execution error: {str(e)}'
+            )
+
+
+    def execute_interactive_palette(self, interactive_steps: list, timeout: int = 30,
+                                    env: Optional[Dict[str, str]] = None,
+                                    test_name: Optional[str] = None,
+                                    results_dir: Optional[str] = None) -> subprocess.CompletedProcess:
+        """
+        Execute frontier-cli in palette mode for L4 screenshot-based testing.
+
+        Parallel to execute_interactive() but tuned for tests that exercise
+        the palette/REPL UI:
+          - TERM=xterm-256color (preserves ANSI escapes for pyte to parse)
+          - FRONTIER_PALETTE_FAST_TIMERS=1 (deterministic timing)
+          - No FRONTIER_PLAIN_REPL — full event loop is needed for palette
+          - dimensions=(24, 80) on the pty for stable geometry
+
+        Each step is a dict with one of these shapes:
+          - {'expect': '<pattern>', 'send': '<text>'}   (plain pexpect step)
+          - {'send': '<text>'}                          (send-only)
+          - {'screenshot_match': '<golden-path>'}       (drain + compare via pyte)
+
+        The screenshot_match step drains pending pty bytes (bounded read loop:
+        2 consecutive empty reads OR 500ms total), feeds them through the
+        per-session pyte Stream+Screen, normalizes the frame, and compares
+        against the golden file. On mismatch the actual frame is dumped to
+        ``results_dir/<slug>.actual`` and the failure is recorded in stderr.
+        """
+        if not HAS_PEXPECT:
+            return subprocess.CompletedProcess(
+                args=[self.cli_path],
+                returncode=-1,
+                stdout='',
+                stderr='pexpect is not installed (required for palette tests)',
+            )
+        if not HAS_PYTE:
+            return subprocess.CompletedProcess(
+                args=[self.cli_path],
+                returncode=-1,
+                stdout='',
+                stderr='pyte is not installed (required for palette tests)',
+            )
+
+        cmd_args = [self.cli_path, '--skip-startup']
+        if self.system_root:
+            cmd_args.extend(['--system-root', self.system_root])
+
+        # Palette-mode environment (DIFFERENT from execute_interactive):
+        # - TERM=xterm-256color: pyte expects xterm-family escapes
+        # - FRONTIER_PALETTE_FAST_TIMERS=1: collapse cursor-blink / debounce
+        #   timers so screen state stabilizes quickly
+        # - NO FRONTIER_PLAIN_REPL: we need the real event loop
+        # - NO TERM=dumb: linenoise raw mode must be active to emit the
+        #   sequences we want to test
+        process_env = os.environ.copy()
+        process_env.setdefault('FRONTIER_LOCK_OPENED_ROOTS', '1')
+        process_env['TERM'] = 'xterm-256color'
+        process_env['FRONTIER_PALETTE_FAST_TIMERS'] = '1'
+        process_env['FRONTIER_FORCE_INTERACTIVE'] = '1'
+        if env:
+            process_env.update(env)
+
+        # Per-session pyte pair. 24 rows x 80 cols matches dimensions= below.
+        screen = pyte.Screen(80, 24)
+        stream = pyte.Stream(screen)
+
+        collected_output: list = []
+        screenshot_failures: list = []
+
+        def drain_pty(child) -> str:
+            """Read pending bytes until 2 consecutive empty reads or 500ms.
+
+            Returns the concatenated string (may be empty). Empty reads are
+            detected via pexpect.TIMEOUT with a short per-read timeout.
+            """
+            import time as _time
+            chunks: list = []
+            empty_in_a_row = 0
+            deadline = _time.monotonic() + 0.5
+            while _time.monotonic() < deadline and empty_in_a_row < 2:
+                try:
+                    data = child.read_nonblocking(size=4096, timeout=0.05)
+                except pexpect.TIMEOUT:
+                    empty_in_a_row += 1
+                    continue
+                except pexpect.EOF:
+                    break
+                if data:
+                    chunks.append(data)
+                    empty_in_a_row = 0
+                else:
+                    empty_in_a_row += 1
+            return ''.join(chunks)
+
+        try:
+            child = pexpect.spawn(cmd_args[0], args=cmd_args[1:], timeout=timeout,
+                                  env=process_env, encoding='utf-8',
+                                  dimensions=(24, 80))
+
+            for step in interactive_steps:
+                if 'screenshot_match' in step:
+                    # Drain pending bytes, then compare.
+                    pending = drain_pty(child)
+                    if pending:
+                        collected_output.append(pending)
+                        stream.feed(pending)
+                    golden_path = step['screenshot_match']
+                    actual_dump_path = None
+                    if results_dir is not None:
+                        slug = (test_name or 'palette_test').replace('/', '_').replace(' ', '_')
+                        actual_dump_path = os.path.join(
+                            results_dir, 'palette', f'{slug}.actual')
+                    ok, err = compare_screen_to_golden(
+                        screen=screen,
+                        golden_path=golden_path,
+                        actual_dump_path=actual_dump_path,
+                    )
+                    if not ok:
+                        screenshot_failures.append(err or 'screenshot mismatch')
+                    continue
+
+                expect_pattern = step.get('expect')
+                send_text = step.get('send')
+
+                if expect_pattern:
+                    child.expect(expect_pattern, timeout=timeout)
+                    before = child.before or ''
+                    after = child.after or ''
+                    collected_output.append(before)
+                    collected_output.append(after)
+                    if before:
+                        stream.feed(before)
+                    if after:
+                        stream.feed(after)
+
+                if send_text is not None:
+                    child.sendline(send_text)
+
+            # Drain any final output.
+            try:
+                child.expect(pexpect.EOF, timeout=min(timeout, 2))
+                tail = child.before or ''
+                if tail:
+                    collected_output.append(tail)
+                    stream.feed(tail)
+            except (pexpect.TIMEOUT, pexpect.EOF):
+                pass
+            try:
+                child.close()
+            except Exception:
+                pass
+
+            stderr = '\n'.join(screenshot_failures) if screenshot_failures else ''
+            returncode = (child.exitstatus or 0) if not screenshot_failures else 1
+            return subprocess.CompletedProcess(
+                args=[self.cli_path],
+                returncode=returncode,
+                stdout=''.join(collected_output),
+                stderr=stderr,
+            )
+
+        except pexpect.TIMEOUT:
+            try:
+                child.close(force=True)
+            except Exception:
+                pass
+            return subprocess.CompletedProcess(
+                args=[self.cli_path],
+                returncode=-1,
+                stdout=''.join(collected_output),
+                stderr=f'Palette interactive execution timed out ({timeout}s)',
+            )
+        except Exception as e:
+            try:
+                child.close(force=True)
+            except Exception:
+                pass
+            return subprocess.CompletedProcess(
+                args=[self.cli_path],
+                returncode=-1,
+                stdout=''.join(collected_output),
+                stderr=f'Palette interactive execution error: {e}',
             )
 
 
@@ -840,8 +1110,18 @@ class TestCase:
         self.skip = data.get('skip')  # Can be True/False or string reason
         self.skip_reason = data.get('skip_reason', 'No reason provided')
 
-        # Interactive steps support (pexpect PTY-based dialog testing)
+        # Interactive steps support (pexpect PTY-based dialog testing).
+        # In palette_mode=True, interactive_steps may include
+        # {'screenshot_match': '<path-to-golden>'} entries that compare the
+        # current pyte-emulated screen against a golden text fixture. See
+        # FrontierCLI.execute_interactive_palette() for the routing.
         self.interactive_steps = data.get('interactive_steps', [])
+
+        # L4 palette test harness: when true, run the interactive_steps
+        # through a pyte-backed xterm-256color PTY instead of the plain
+        # TERM=dumb REPL path. Required for tests that exercise palette
+        # menu rendering, REPL menu cascade, or any ANSI-styled UI.
+        self.palette_mode = data.get('palette_mode', False)
 
         # REPL mode support (auto-skip if repl_mode is true)
         self.repl_mode = data.get('repl_mode', False)  # Run test in REPL interactive mode
@@ -1029,6 +1309,16 @@ class TestRunner:
                     details="pexpect is required for interactive tests. Install with: pip3 install pexpect",
                     skipped=True
                 )
+            if test.palette_mode:
+                if not HAS_PYTE:
+                    return TestResult(
+                        name=test.name,
+                        passed=True,
+                        error=None,
+                        details="pyte is required for palette_mode tests. Install with: pip3 install pyte",
+                        skipped=True
+                    )
+                return self.run_interactive_palette_test(test)
             return self.run_interactive_test(test)
         elif test.repl_mode:
             return self.run_repl_test(test)
@@ -1558,6 +1848,51 @@ class TestRunner:
         )
 
         # Validate using REPL output validation (checks expected_output_contains etc.)
+        passed, error = test.validate_repl_output(result)
+
+        details = None
+        if not passed and self.verbose:
+            details = (
+                f"Exit code: {result.returncode}\n"
+                f"Stdout:\n{result.stdout}\n"
+                f"Stderr:\n{result.stderr}"
+            )
+
+        return TestResult(test.name, passed, error, details)
+
+    def run_interactive_palette_test(self, test: TestCase) -> TestResult:
+        """Run a palette_mode interactive test (pexpect + pyte screenshot diff).
+
+        Routed from run_test() when test.palette_mode is true. Differences
+        vs run_interactive_test():
+          - Uses execute_interactive_palette() (xterm-256color PTY, no
+            FRONTIER_PLAIN_REPL, deterministic geometry).
+          - Honors screenshot_match steps via pyte; mismatches surface as
+            test failures whose error message contains the unified diff.
+        """
+        test_env = test.environment.copy()
+        results_dir = os.path.join(self.test_root_dir, 'tmp', 'results')
+
+        result = self.cli.execute_interactive_palette(
+            interactive_steps=test.interactive_steps,
+            timeout=test.timeout,
+            env=test_env,
+            test_name=test.name,
+            results_dir=results_dir,
+        )
+
+        # Screenshot mismatches arrive on stderr from
+        # execute_interactive_palette(); surface them as the primary error.
+        if result.stderr and 'screenshot mismatch' in result.stderr.lower():
+            details = None
+            if self.verbose:
+                details = (
+                    f"Exit code: {result.returncode}\n"
+                    f"Stdout:\n{result.stdout}\n"
+                    f"Stderr:\n{result.stderr}"
+                )
+            return TestResult(test.name, False, result.stderr, details)
+
         passed, error = test.validate_repl_output(result)
 
         details = None
