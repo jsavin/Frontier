@@ -408,6 +408,32 @@ palette_done_t palette_feed_byte(palette_state_t *st, unsigned char b);
  * local cascade state. */
 palette_done_t palette_feed_esc_timeout(palette_state_t *st);
 
+/* ESC disambiguation timeout in milliseconds. Returns 1 when the
+ * FRONTIER_PALETTE_FAST_TIMERS environment variable is set to a non-
+ * empty string, otherwise 10 (the production default). Callers should
+ * use this value as the poll(2) timeout for the palette modal byte
+ * loop so that L4 integration tests can compress the per-ESC wait
+ * from ~10ms to ~1ms without recompilation.
+ *
+ * The env var is re-read on each call (one getenv(3) per palette
+ * poll cycle, ~100Hz while a palette is open). This keeps the test
+ * surface flexible — tests can flip the env var between calls — at
+ * negligible cost.
+ *
+ * GIL: this function touches no GIL-protected state (only process env).
+ * In practice it is only called from the modal byte loop, which already
+ * holds the GIL. */
+int palette_esc_timeout_ms(void);
+
+/* Default ESC disambiguation timeout (milliseconds) used when
+ * FRONTIER_PALETTE_FAST_TIMERS is unset or empty. Public so callers
+ * and tests share a single source of truth. */
+#define PALETTE_ESC_TIMEOUT_DEFAULT_MS 10
+
+/* Fast ESC disambiguation timeout (milliseconds) used when
+ * FRONTIER_PALETTE_FAST_TIMERS is set non-empty. */
+#define PALETTE_ESC_TIMEOUT_FAST_MS 1
+
 /* Feed a parsed mouse event. Coordinates are 1-based (matches mouse_parse
  * output and ANSI CUP convention). The palette converts to 0-based and
  * routes via compositor_pane_at().

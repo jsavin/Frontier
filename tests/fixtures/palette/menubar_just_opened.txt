@@ -1,0 +1,4 @@
+ REPL
+Type /help for commands, /exit to quit
+
+[root]> /

@@ -591,8 +591,14 @@ check-python-deps:
 	@python3 -c "import yaml" 2>/dev/null || (echo "Installing PyYAML..." && pip3 install pyyaml)
 	@python3 -c "import pexpect" 2>/dev/null || (echo "Installing pexpect..." && pip3 install pexpect) || true
 
-# Integration test targets (Python-based YAML tests)
+# Integration test targets (Python-based YAML tests).
+# Runs the runner self-tests first (fast, behavioral coverage of the
+# runner.py helpers — palette_mode parsing, screenshot_match comparison,
+# pyte bootstrap). If any of those fail the YAML harness can't be trusted,
+# so we want them up front. The shell script then runs the YAML suite.
 test-integration: check-python-deps check-license
+	@echo "Running runner self-tests..."
+	@cd .. && python3 -m unittest tests.integration.runner_self_test -v
 	@echo "Running integration tests..."
 	@../tools/run_integration_tests.sh
 

@@ -1116,6 +1116,25 @@ palette_done_t palette_feed_esc_timeout(palette_state_t *st) {
 	return PALETTE_DONE_CANCEL;
 }
 
+/* FRONTIER_PALETTE_FAST_TIMERS support. The REPL modal byte loop polls
+ * stdin with a timeout that doubles as the bare-ESC vs ESC-CSI
+ * disambiguation window (when poll returns 0, palette_feed_esc_timeout
+ * fires). The production default is PALETTE_ESC_TIMEOUT_DEFAULT_MS;
+ * L4 integration tests set FRONTIER_PALETTE_FAST_TIMERS=1 in the
+ * frontier-cli child's environment to compress wall-clock waits.
+ *
+ * Re-reads getenv on each call rather than caching, so tests can
+ * flip the variable per-call. The cost (one libc getenv per palette
+ * poll cycle) is negligible. */
+int palette_esc_timeout_ms(void) {
+	/* Safe only because FRONTIER_PALETTE_FAST_TIMERS is set once at
+	 * process startup (by the test harness) and never mutated at runtime;
+	 * no concurrent setenv from another thread. */
+	const char *v = getenv("FRONTIER_PALETTE_FAST_TIMERS");
+	if (v && v[0] != '\0') return PALETTE_ESC_TIMEOUT_FAST_MS;
+	return PALETTE_ESC_TIMEOUT_DEFAULT_MS;
+}
+
 palette_done_t palette_feed_mouse(palette_state_t *st, const mouse_event_t *ev) {
 	if (!st || !st->active || !ev) return PALETTE_DONE_NONE;
 	/* Mouse coords are 1-based per ANSI/SGR convention. Reject anything

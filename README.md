@@ -88,6 +88,7 @@ cd tests && make test-all
 - **[Getting Started Guide](docs/GETTING_STARTED.md)** - Complete newcomer guide with detailed setup
 - **[CLI Usage Guide](docs/CLI_USAGE_GUIDE.md)** - Comprehensive CLI and REPL documentation
 - **[Testing Guide](docs/TESTING_GUIDE.md)** - Writing and running tests
+- **[Palette Test Harness](docs/PALETTE_TEST_HARNESS.md)** - Four-layer (L1-L4) test model for the REPL slash-menu palette
 
 ## MySQL Client Setup
 

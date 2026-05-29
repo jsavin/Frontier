@@ -926,4 +926,5 @@ tests:
 - `docs/VERB_IMPLEMENTATION_GUIDE.md` - Implementing kernel verbs in C
 - `docs/CLI_USAGE_GUIDE.md` - Complete CLI reference (600+ lines)
 - `docs/LOGGING_STANDARDS.md` - Logging infrastructure
+- `docs/PALETTE_TEST_HARNESS.md` - Four-layer (L1-L4) test model for the REPL slash-menu palette
 - `CLAUDE.md` - Quick reference and development guidelines
