@@ -792,3 +792,164 @@ tests:
           result:
             value: "true"
             type: "boolean"
+
+  # ===========================================================================
+  # CATEGORY 10: Regression tests for #666 (variant verbs reject non-CONNECTED
+  # stream states)
+  # ===========================================================================
+  #
+  # Issue #666: The TCP variant verbs (tcp.readStreamUntil / .readStreamBytes
+  # / .readStreamUntilClosed / .writeStringToStream / .writeFileToStream and
+  # the C-only tcp_read_stream_inetd) historically gated only on `!stream`;
+  # they inherited tcp_get_stream's filter for STREAM_INVALID / STREAM_CLOSING
+  # / sockfd<0 but silently accepted STREAM_CONNECTING (in-flight client
+  # connect) and STREAM_LISTENING (listener socket), surfacing kernel-level
+  # errors (EBADF/ENOTCONN) instead of the documented "Stream not connected"
+  # rejection. PR #667 closed the same gap on the main tcp.readStream /
+  # tcp.writeStream verbs (state != CONNECTED && state != ACCEPTED); this set
+  # extends that gate to the variants.
+  #
+  # Test shape: open a listener on a fresh port to obtain an id in
+  # STREAM_LISTENING state, call each variant verb on the listener id wrapped
+  # in try/else, and assert the verb errors with "Stream not connected".
+  # Pre-fix the verb proceeds into the kernel (recv/send on a listen socket)
+  # and either succeeds with bogus semantics or fails with a kernel error
+  # message; post-fix it rejects at the state gate with the documented
+  # message. STREAM_CONNECTING uses the same `state != CONNECTED && state !=
+  # ACCEPTED` check and is not separately tested (the in-flight handshake
+  # window is milliseconds wide and would race; LISTENING coverage is
+  # sufficient to prove the gate is in place).
+  #
+  # tcp.readStreamInetd is NOT exposed via the headless verb processor (used
+  # only by webserver.inetd via langhtml.c), so no integration test is
+  # written for it; the C fix is symmetric and covered by code review.
+
+  - name: "tcp.readStreamUntil - rejects listener-state stream (#666)"
+    description: "Regression for #666. tcp.readStreamUntil must reject a stream id in STREAM_LISTENING state with 'Stream not connected', not proceed into a kernel recv() on a listen socket. The test obtains a listener id from tcp.listenStream, wraps the variant call in try/else, and asserts the verb errors AND the message matches the documented gate. Pre-fix the verb dispatches into tcp_read_until_condition which only checked !stream, then issued recv() on a listen socket, surfacing a kernel error or a select() timeout. Post-fix the state-gate rejects with TCP_ERR_INVALID_STREAM."
+    timeout: 10
+    script: |
+      local(listenID = tcp.listenStream(9216, 5, ""));
+      local(rejected = false);
+      local(msgMatched = false);
+
+      local(buffer = "");
+      local(pattern = "X");
+      try {
+        tcp.readStreamUntil(listenID, pattern, 1, @buffer)
+      }
+      else {
+        rejected = true;
+        if string.patternMatch("Stream not connected", tryError) > 0 {
+          msgMatched = true
+        }
+      };
+
+      tcp.closeListen(listenID);
+
+      return rejected and msgMatched
+    expected_success: true
+    expected_result: "true"
+    notes: "Issue #666 - state gate rejects STREAM_LISTENING with documented error"
+
+  - name: "tcp.readStreamBytes - rejects listener-state stream (#666)"
+    description: "Regression for #666. tcp.readStreamBytes must reject STREAM_LISTENING with 'Stream not connected'. Same shape as the readStreamUntil test: open a listener, call the variant on the listener id, assert verb-level rejection plus error-message match. Pre-fix the verb proceeded into kernel recv() on the listen socket; post-fix the state-gate rejects up front."
+    timeout: 10
+    script: |
+      local(listenID = tcp.listenStream(9217, 5, ""));
+      local(rejected = false);
+      local(msgMatched = false);
+
+      local(buffer = "");
+      try {
+        tcp.readStreamBytes(listenID, 1, 1, @buffer)
+      }
+      else {
+        rejected = true;
+        if string.patternMatch("Stream not connected", tryError) > 0 {
+          msgMatched = true
+        }
+      };
+
+      tcp.closeListen(listenID);
+
+      return rejected and msgMatched
+    expected_success: true
+    expected_result: "true"
+    notes: "Issue #666 - state gate rejects STREAM_LISTENING with documented error"
+
+  - name: "tcp.readStreamUntilClosed - rejects listener-state stream (#666)"
+    description: "Regression for #666. tcp.readStreamUntilClosed must reject STREAM_LISTENING with 'Stream not connected'. Same shape as the other variant tests; the underlying tcp_read_until_condition path is shared, but each public variant gets its own regression test so a future refactor that splits the gating per-variant cannot silently regress one."
+    timeout: 10
+    script: |
+      local(listenID = tcp.listenStream(9218, 5, ""));
+      local(rejected = false);
+      local(msgMatched = false);
+
+      local(buffer = "");
+      try {
+        tcp.readStreamUntilClosed(listenID, 1, @buffer)
+      }
+      else {
+        rejected = true;
+        if string.patternMatch("Stream not connected", tryError) > 0 {
+          msgMatched = true
+        }
+      };
+
+      tcp.closeListen(listenID);
+
+      return rejected and msgMatched
+    expected_success: true
+    expected_result: "true"
+    notes: "Issue #666 - state gate rejects STREAM_LISTENING with documented error"
+
+  - name: "tcp.writeStringToStream - rejects listener-state stream (#666)"
+    description: "Regression for #666. tcp.writeStringToStream must reject STREAM_LISTENING with 'Stream not connected'. Pre-fix the verb proceeded into kernel send() on a listen socket; post-fix the state-gate rejects up front. Same try/else + patternMatch shape as the read variants."
+    timeout: 10
+    script: |
+      local(listenID = tcp.listenStream(9219, 5, ""));
+      local(rejected = false);
+      local(msgMatched = false);
+
+      try {
+        tcp.writeStringToStream(listenID, "hello", 0, 1)
+      }
+      else {
+        rejected = true;
+        if string.patternMatch("Stream not connected", tryError) > 0 {
+          msgMatched = true
+        }
+      };
+
+      tcp.closeListen(listenID);
+
+      return rejected and msgMatched
+    expected_success: true
+    expected_result: "true"
+    notes: "Issue #666 - state gate rejects STREAM_LISTENING with documented error"
+
+  - name: "tcp.writeFileToStream - rejects listener-state stream (#666)"
+    description: "Regression for #666. tcp.writeFileToStream must reject STREAM_LISTENING with 'Stream not connected' at the state-gate (before attempting to open the file). The state-check runs immediately after tcp_stream_acquire, so the filespec contents are irrelevant -- the test passes a synthesized lang.filespec path without creating the file. Pre-fix the verb proceeded past the !stream check and would attempt I/O on a listen socket; post-fix the state-gate rejects up front."
+    timeout: 10
+    script: |
+      local(listenID = tcp.listenStream(9220, 5, ""));
+      local(rejected = false);
+      local(msgMatched = false);
+
+      local(fspec = lang.filespec("/tmp/tcp666_does_not_need_to_exist.bin"));
+      try {
+        tcp.writeFileToStream(listenID, fspec)
+      }
+      else {
+        rejected = true;
+        if string.patternMatch("Stream not connected", tryError) > 0 {
+          msgMatched = true
+        }
+      };
+
+      tcp.closeListen(listenID);
+
+      return rejected and msgMatched
+    expected_success: true
+    expected_result: "true"
+    notes: "Issue #666 - state gate rejects STREAM_LISTENING before file I/O is attempted"
