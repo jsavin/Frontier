@@ -11,14 +11,14 @@
 #   3. screenshot_match drains pending PTY bytes, feeds them through pyte,
 #      and compares the resulting frame against tests/fixtures/palette/
 #      menubar_just_opened.txt.
-#   4. Send ESC ESC (\x1b\x1b) to dismiss the modal. Bare-ESC dismissal needs
-#      two bytes because the modal's mouse-SGR parser greedily buffers the
-#      first ESC waiting to see if it begins a "\x1b[<...M" sequence; a second
-#      ESC bounces the parser out (non-'[' follow-up) and replays both bytes
-#      into palette_feed_byte, where esc_pending->cancel collapses the menubar.
-#      A single bare ESC followed by a poll-timeout has no path to the palette
-#      today; if/when run_palette_modal grows a "flush mouse-parser on timeout"
-#      branch, a single ESC will suffice and this test can be simplified.
+#   4. Send a single bare ESC (\x1b) to dismiss the modal. This is also the
+#      regression guard for the lone-ESC swallow bug: the modal byte loop's
+#      mouse SGR parser greedily buffers an ESC waiting for "[<...M"; before
+#      the fix, the poll timeout fired palette_feed_esc_timeout without ever
+#      delivering the buffered ESC to palette_feed_byte, so the cancel was
+#      lost and the menubar stuck around. The fix in repl.c flushes the
+#      buffered ESC into palette_feed_byte at poll timeout so the subsequent
+#      esc_timeout sees esc_pending and cancels.
 #   5. Wait for the [root]> prompt again, then send Ctrl-D (\x04) -- the
 #      event loop's read returns 0 and the REPL terminates with exit code 0.
 #
@@ -26,26 +26,27 @@
 # this fixture will need regeneration with FRONTIER_UPDATE_GOLDENS=1.
 # That's expected -- the test guards against unintentional drift, not
 # intentional redesigns.
+#
+# A closed-state screenshot_match is intentionally NOT included today:
+# bare-ESC dismissal still leaves visual residue (the " REPL" menubar
+# header sticks at row 0; the post-dismissal prompt overprints the
+# original startup banner row). Asserting on that frame would lock in
+# the broken behavior. The bleed-through + ghost-cell fixes ship in
+# the next chain link (host-anchored horizontal cascade); a proper
+# closed-state golden gets added there.
 
 needs_guest_dbs: false
 sequential: true
 
 tests:
-  - name: "palette modal: slash opens menubar, ESC closes, EOF terminates"
+  - name: "palette modal: slash opens, single bare ESC dismisses, EOF terminates"
     palette_mode: true
     timeout: 15
     interactive_steps:
       - expect: "\\[root\\]> "
         send_raw: "/"
       - screenshot_match: "fixtures/palette/menubar_just_opened.txt"
-      - send_raw: "\x1b\x1b"
-      # NOTE: a closed-state screenshot_match was intentionally NOT added.
-      # Today's ESC ESC dismissal leaves visual residue (the " REPL" menubar
-      # header sticks at row 0; the post-dismissal prompt overprints the
-      # original startup banner row). Asserting on that frame would lock in
-      # the broken behavior. The bleed-through + ghost-cell fixes ship in
-      # the next chain link (host-anchored horizontal cascade); a proper
-      # closed-state golden gets added there.
+      - send_raw: "\x1b"
       - expect: "\\[root\\]> "
       - send_raw: "\x04"
     expected_success: true

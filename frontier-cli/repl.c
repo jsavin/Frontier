@@ -3067,7 +3067,37 @@ static Handle run_palette_modal(struct linenoiseState *ls,
 				}
 			}
 		} else if (ready == 0) {
-			/* Timeout — fire ESC disambiguation if pending. */
+			/* Timeout — fire ESC disambiguation if pending.
+			 *
+			 * Lone-ESC rescue: if the mouse SGR parser greedily
+			 * buffered a bare ESC waiting for '[<...M' and no
+			 * follow-up byte arrived within the poll window, the
+			 * ESC was a real bare ESC (not a mouse intro). Reset
+			 * the parser and deliver the ESC to palette_feed_byte
+			 * BEFORE the timeout call, so the palette sees
+			 * esc_pending and the subsequent palette_feed_esc_timeout
+			 * can cancel correctly. Without this, the buffered
+			 * ESC was lost and the menubar was undismissable by
+			 * a single ESC keystroke.
+			 *
+			 * Only MOUSE_SGR_GOT_ESC is handled here. The other
+			 * mid-sequence states (MOUSE_SGR_GOT_BRACKET,
+			 * MOUSE_SGR_BUFFERING) require a real terminal to send
+			 * a partial CSI and then pause for >poll_timeout_ms —
+			 * terminals ship CSI sequences atomically in one TTY
+			 * write, so this is practically unreachable. If a future
+			 * test or pathological client surfaces it, mirror the
+			 * pattern: reset parser, replay the buffered bytes via
+			 * palette_feed_byte. palette_feed_byte(0x1b) on a fresh
+			 * palette always returns PALETTE_DONE_NONE today (it
+			 * just sets esc_pending), so we let control fall through
+			 * to palette_feed_esc_timeout below — keeps the byte-read
+			 * branch and timeout branch sharing the same post-dispatch
+			 * bookkeeping (SIGWINCH check, GIL yield). */
+			if (mouse.state == MOUSE_SGR_GOT_ESC) {
+				mouse_sgr_reset(&mouse);
+				(void)palette_feed_byte(&st, 0x1b);
+			}
 			done = palette_feed_esc_timeout(&st);
 			/* GIL yield: while the palette is open the main thread
 			 * holds the GIL exclusively. Without a yield in the idle
