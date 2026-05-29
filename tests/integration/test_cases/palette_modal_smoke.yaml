@@ -1,0 +1,44 @@
+# L4 end-to-end smoke: prove the palette modal can be driven via PTY,
+# captured via pyte, and compared to a golden fixture. This is the
+# minimum bar for the L4 harness -- if this passes, the harness chain
+# (pexpect + pyte + screenshot_match + FRONTIER_PALETTE_FAST_TIMERS)
+# is working end-to-end.
+#
+# Flow:
+#   1. Wait for the [root]> prompt.
+#   2. Send '/' (raw, no newline) -- linenoise sees ls.len==1 && ls.buf[0]=='/'
+#      and hands control to run_palette_modal() in repl.c.
+#   3. screenshot_match drains pending PTY bytes, feeds them through pyte,
+#      and compares the resulting frame against tests/fixtures/palette/
+#      menubar_just_opened.txt.
+#   4. Send ESC ESC (\x1b\x1b) to dismiss the modal. Bare-ESC dismissal needs
+#      two bytes because the modal's mouse-SGR parser greedily buffers the
+#      first ESC waiting to see if it begins a "\x1b[<...M" sequence; a second
+#      ESC bounces the parser out (non-'[' follow-up) and replays both bytes
+#      into palette_feed_byte, where esc_pending->cancel collapses the menubar.
+#      A single bare ESC followed by a poll-timeout has no path to the palette
+#      today; if/when run_palette_modal grows a "flush mouse-parser on timeout"
+#      branch, a single ESC will suffice and this test can be simplified.
+#   5. Wait for the [root]> prompt again, then send Ctrl-D (\x04) -- the
+#      event loop's read returns 0 and the REPL terminates with exit code 0.
+#
+# When the menu UX changes (host-anchored row, horizontal cascade, etc.),
+# this fixture will need regeneration with FRONTIER_UPDATE_GOLDENS=1.
+# That's expected -- the test guards against unintentional drift, not
+# intentional redesigns.
+
+needs_guest_dbs: false
+sequential: true
+
+tests:
+  - name: "palette modal: slash opens menubar, ESC closes, EOF terminates"
+    palette_mode: true
+    timeout: 15
+    interactive_steps:
+      - expect: "\\[root\\]> "
+        send_raw: "/"
+      - screenshot_match: "fixtures/palette/menubar_just_opened.txt"
+      - send_raw: "\x1b\x1b"
+      - expect: "\\[root\\]> "
+        send_raw: "\x04"
+    expected_success: true

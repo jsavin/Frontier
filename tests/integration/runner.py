@@ -572,7 +572,8 @@ class FrontierCLI:
     def execute_interactive_palette(self, interactive_steps: list, timeout: int = 30,
                                     env: Optional[Dict[str, str]] = None,
                                     test_name: Optional[str] = None,
-                                    results_dir: Optional[str] = None) -> subprocess.CompletedProcess:
+                                    results_dir: Optional[str] = None,
+                                    golden_root: Optional[str] = None) -> subprocess.CompletedProcess:
         """
         Execute frontier-cli in palette mode for L4 screenshot-based testing.
 
@@ -584,9 +585,15 @@ class FrontierCLI:
           - dimensions=(24, 80) on the pty for stable geometry
 
         Each step is a dict with one of these shapes:
-          - {'expect': '<pattern>', 'send': '<text>'}   (plain pexpect step)
-          - {'send': '<text>'}                          (send-only)
+          - {'expect': '<pattern>', 'send': '<text>'}   (plain pexpect step; sendline appends '\n')
+          - {'send': '<text>'}                          (send-only; sendline appends '\n')
+          - {'send_raw': '<bytes>'}                     (raw send; NO trailing newline)
+          - {'expect': '<pattern>', 'send_raw': '<bytes>'}
           - {'screenshot_match': '<golden-path>'}       (drain + compare via pyte)
+
+        Use ``send_raw`` for single keystrokes or escape sequences (e.g. '/',
+        '\\x1b', arrow keys). ``send`` is for typing whole commands that end
+        with Enter (e.g. '/exit').
 
         The screenshot_match step drains pending pty bytes (bounded read loop:
         2 consecutive empty reads OR 500ms total), feeds them through the
@@ -677,6 +684,12 @@ class FrontierCLI:
                         collected_output.append(pending)
                         stream.feed(pending)
                     golden_path = step['screenshot_match']
+                    # Resolve relative golden paths against golden_root (typically
+                    # the project root). Lets YAML use stable repo-relative paths
+                    # like "tests/fixtures/palette/foo.txt" regardless of which
+                    # directory the runner is invoked from.
+                    if golden_root and not os.path.isabs(golden_path):
+                        golden_path = os.path.join(golden_root, golden_path)
                     actual_dump_path = None
                     if results_dir is not None:
                         slug = (test_name or 'palette_test').replace('/', '_').replace(' ', '_')
@@ -693,6 +706,7 @@ class FrontierCLI:
 
                 expect_pattern = step.get('expect')
                 send_text = step.get('send')
+                send_raw = step.get('send_raw')
 
                 if expect_pattern:
                     child.expect(expect_pattern, timeout=timeout)
@@ -705,7 +719,12 @@ class FrontierCLI:
                     if after:
                         stream.feed(after)
 
-                if send_text is not None:
+                # send_raw takes precedence: raw byte send with no trailing newline
+                # (for single keystrokes like '/', ESC, arrow keys). send uses
+                # sendline which appends '\n' (for typing whole commands).
+                if send_raw is not None:
+                    child.send(send_raw)
+                elif send_text is not None:
                     child.sendline(send_text)
 
             # Drain any final output.
@@ -2000,6 +2019,7 @@ class TestRunner:
             env=test_env,
             test_name=test.name,
             results_dir=results_dir,
+            golden_root=self.test_root_dir,
         )
 
         # Screenshot mismatches arrive on stderr from
