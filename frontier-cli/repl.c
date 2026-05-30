@@ -2936,16 +2936,50 @@ static Handle run_palette_modal(struct linenoiseState *ls,
 	(void)terminal_get_size(&rows, &cols);
 	compositor_on_resize(rows, cols);
 
-	/* Query the REPL prompt's row via DSR so the palette can anchor
-	 * the menubar directly below the prompt instead of at row 0.  If
-	 * the query fails (non-tty stdin, slow terminal), default to the
-	 * bottom-most row -- palette_open will scroll up by 1 to make
-	 * room. */
-	int prompt_row = rows - 1;
-	int prompt_col = 1;
-	(void)terminal_get_cursor_pos(&prompt_row, &prompt_col);
-	/* terminal_get_cursor_pos returns 1-based; the palette uses 0-based. */
-	prompt_row -= 1;
+	/* Query the cursor row via DSR so the palette can anchor the menubar
+	 * directly below the REPL prompt instead of at row 0.
+	 *
+	 * Cursor vs prompt: linenoiseEditStop above emitted '\n', which moved
+	 * the cursor down one row. When the prompt was on the bottom row the
+	 * '\n' also scrolled the terminal up by one, so post-EditStop the
+	 * cursor is always on a fresh blank row immediately BELOW the prompt
+	 * (whether the prompt is mid-screen or just got scrolled up by one).
+	 * We therefore subtract another row from the DSR cursor reading to
+	 * land on the prompt itself; the menubar then anchors at
+	 * prompt_row + 1 = cursor_row, the freed blank row.
+	 *
+	 * DSR-fails fallback: when stderr is redirected (test harness) or
+	 * the terminal doesn't echo a DSR reply, default to "prompt sits one
+	 * above the bottom row" -- i.e. cursor (post linenoise '\n' scroll)
+	 * is on the bottom row, prompt is the row above. This keeps the
+	 * fallback consistent with the success path's accounting.
+	 *
+	 * Test override: FRONTIER_PALETTE_PROMPT_ROW (1-based) lets the L4
+	 * harness pin the prompt row deterministically without depending on
+	 * a working DSR round-trip (the harness redirects stderr away from
+	 * the PTY to keep diagnostic chatter out of pyte's framebuffer,
+	 * which also eats the DSR query response). Production never sets
+	 * this env var. */
+	int cursor_row = rows;          /* 1-based default: bottom row */
+	int cursor_col = 1;
+	const char *prow_env = getenv("FRONTIER_PALETTE_PROMPT_ROW");
+	bool prompt_row_from_env = false;
+	int prompt_row = 0;
+	if (prow_env && prow_env[0] != '\0') {
+		int v = atoi(prow_env);
+		if (v >= 1 && v <= rows) {
+			prompt_row = v - 1;       /* env var is 1-based */
+			prompt_row_from_env = true;
+		}
+	}
+	if (!prompt_row_from_env) {
+		(void)terminal_get_cursor_pos(&cursor_row, &cursor_col);
+		/* terminal_get_cursor_pos returns 1-based; the palette uses
+		 * 0-based. cursor_row - 1 is the cursor's 0-based row; the
+		 * prompt is one row above that (linenoise's '\n' moved the
+		 * cursor off the prompt line). */
+		prompt_row = cursor_row - 2;
+	}
 	if (prompt_row < 0) prompt_row = 0;
 	if (prompt_row >= rows) prompt_row = rows - 1;
 
@@ -3244,27 +3278,25 @@ cleanup_terminal:
 	terminal_disable_raw_mode(&ts);
 	terminal_cleanup(&ts);
 
-	/* 7. Restart linenoise so the prompt comes back cleanly.
+	/* 7. Anchor the cursor at column 1 of a fresh row before returning.
 	 *
-	 * Failure mode: linenoiseEditStart can fail for OOM, ENOTTY (terminal
-	 * went away), or write() failing on a closed fd. After a failure ls
-	 * is in a partially-initialised state — *struct fields may be set
-	 * but raw mode may not be entered, and a subsequent linenoiseEditFeed
-	 * dereferences pointers that haven't been written yet (UAF risk).
+	 * Why not linenoiseEditStart here? Restarting line editing inside
+	 * run_palette_modal would print the prompt at whatever cell the
+	 * compositor left the cursor on. The caller still has to dispatch
+	 * the chosen leaf script after we return (see the run_palette_modal
+	 * call site near "leaf dispatch" in repl_main_loop), and that
+	 * script's stdout would then collide with our freshly-printed
+	 * prompt -- producing the garbled output that this fix addresses.
 	 *
-	 * Defense: signal the REPL main loop to terminate via the same
-	 * volatile sig_atomic_t exit flag that repl.exit() uses. The caller
-	 * checks it on every loop iteration and breaks cleanly. We
-	 * deliberately do NOT touch ls beyond returning script_to_run —
-	 * the caller's main loop is responsible for skipping the invalid
-	 * Feed call by virtue of the exit flag taking effect first. */
-	if (linenoiseEditStart(ls, STDIN_FILENO, STDOUT_FILENO,
-	                       line_buf, line_buflen, g_repl_prompt) == -1) {
-		log_error(LOG_COMP_GENERAL,
-		          "palette: failed to restart linenoise after modal — "
-		          "REPL will terminate to avoid UAF on invalid ls");
-		g_repl_exit_requested = 1;
-	}
+	 * Instead, emit \r\n to position the cursor at column 1 of a fresh
+	 * blank row. The caller dispatches the leaf (which writes its
+	 * output starting on that row), then restarts linenoise itself --
+	 * matching the discipline of the Enter-key path further down in
+	 * repl_main_loop, where linenoiseEditStop's own newline emit
+	 * already provides this anchor and the new linenoiseEditStart
+	 * happens AFTER the line has been processed. */
+	printf("\r\n");
+	fflush(stdout);
 
 	return script_to_run;
 }
@@ -3689,6 +3721,14 @@ int repl_main(cli_options_t *options, ws_server_t *ws_server) {
 				 * character. */
 				if (ls.len == 1 && ls.buf[0] == '/') {
 					char palette_arg[PALETTE_ARG_MAX] = "";
+					/* run_palette_modal returns with linenoise STOPPED
+					 * (it called linenoiseEditStop on entry) and the
+					 * cursor anchored at column 1 of a fresh row via the
+					 * \r\n emit at the end of its cleanup. Leaf
+					 * dispatch -- if any -- writes its output starting
+					 * there, then we restart linenoise below so the next
+					 * prompt redraws cleanly. Mirrors the Enter-key
+					 * path: EditStop -> process line -> EditStart. */
 					Handle script = run_palette_modal(&ls, line_buf,
 					                                  sizeof(line_buf),
 					                                  palette_arg,
@@ -3770,13 +3810,22 @@ int repl_main(cli_options_t *options, ws_server_t *ws_server) {
 						}
 						disposehandle(script);
 					}
-					/* run_palette_modal already restarted linenoise
-					 * with an empty buffer, so the prompt is fresh.
-					 * Continue the event loop — UNLESS the modal's
-					 * linenoiseEditStart restart failed, in which case
-					 * it set g_repl_exit_requested and we break out
-					 * here BEFORE the next linenoiseEditFeed has a
-					 * chance to dereference an invalid ls. */
+					/* Restart linenoise so the prompt redraws after the
+					 * modal (and any leaf dispatch above) is fully done.
+					 * Failure mode mirrors the Enter-key path's restart
+					 * below: a partially-initialised ls is unsafe to feed,
+					 * so we set g_repl_exit_requested and break out before
+					 * the next linenoiseEditFeed dereferences invalid
+					 * state. */
+					if (running) {
+						if (linenoiseEditStart(&ls, STDIN_FILENO, STDOUT_FILENO,
+						                       line_buf, sizeof(line_buf),
+						                       g_repl_prompt) == -1) {
+							log_error(LOG_COMP_GENERAL,
+							          "palette: failed to restart linenoise after modal");
+							g_repl_exit_requested = 1;
+						}
+					}
 					if (g_repl_exit_requested) {
 						running = false;
 						break;

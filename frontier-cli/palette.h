@@ -283,10 +283,11 @@ typedef struct palette_state {
 	int term_cols;
 	/* The terminal row of the REPL prompt at palette_open() time.
 	 * The menubar pane lives at prompt_row + 1; each open cascade
-	 * level lives at prompt_row + 1 + depth.  When the prompt is on
-	 * the bottom-most row (prompt_row + 1 >= term_rows), palette_open
-	 * scrolls the terminal up by 1 and decrements prompt_row so the
-	 * menubar can land at the freed row. */
+	 * level lives at prompt_row + 1 + depth. The caller is expected
+	 * to have stopped linenoise (which emits '\n' and, when the
+	 * prompt is on the bottom row, scrolls the terminal up by one)
+	 * BEFORE calling palette_open, so prompt_row + 1 is always a
+	 * free row inside the visible viewport. */
 	int prompt_row;
 
 	pane_t menubar;             /* full-width strip at prompt_row + 1 */

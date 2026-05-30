@@ -319,13 +319,21 @@ bool palette_open(palette_state_t *st, int term_rows, int term_cols,
 	if (prompt_row < 0) prompt_row = 0;
 	if (prompt_row >= term_rows) prompt_row = term_rows - 1;
 
-	/* Edge case: prompt sits on the bottom-most row, so there is no
-	 * room below it for the menubar.  Emit a scroll-up so the prompt
-	 * moves up one row, then anchor the menubar to the freed row. */
+	/* The caller is responsible for ensuring there is a free row below
+	 * the prompt before we open: run_palette_modal in repl.c calls
+	 * linenoiseEditStop() first, which emits '\n' and (when the prompt
+	 * is on the bottom row) scrolls the terminal up by one. The cursor
+	 * post-EditStop is always on the row immediately below the prompt,
+	 * which is exactly where the menubar will anchor (prompt_row + 1).
+	 *
+	 * Defensive fallback: if prompt_row + 1 would still land outside the
+	 * visible area (impossible after EditStop's '\n' scroll), pull
+	 * prompt_row back into range so menubar.y = prompt_row + 1 is at
+	 * most term_rows - 1. This branch is unreachable in practice but
+	 * keeps the pane_init below from constructing an off-screen menubar
+	 * if a future caller skips the EditStop pre-step. */
 	if (prompt_row + 1 >= term_rows) {
-		fputs("\x1b[1S", stderr);
-		fflush(stderr);
-		prompt_row -= 1;
+		prompt_row = term_rows - 2;
 		if (prompt_row < 0) prompt_row = 0;
 	}
 	st->prompt_row = prompt_row;
