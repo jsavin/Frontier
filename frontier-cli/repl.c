@@ -2390,6 +2390,12 @@ static ty_dispatch_result dispatch_leaf_via_menubar(hdlhashtable hleaf) {
  * *running = false on /exit dispatch.
  */
 static boolean dispatch_slash_command(const char *line, boolean *running) {
+	/* Self-healing reset: if a prior dispatch longjmp'd out of the
+	 * UserTalk runtime past the clear sites below, this resets the
+	 * flag on re-entry so subsequent reads can't be poisoned. The
+	 * UserTalk runtime's exception path doesn't run C cleanup. */
+	g_repl_dispatching_from_slash = false;
+
 	/* Defensive copy + trim. The caller has already verified line[0] == '/'. */
 	char buf[SLASH_CMD_BUF];
 	size_t inlen = strlen(line);

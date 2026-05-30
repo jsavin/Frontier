@@ -29,13 +29,18 @@
  * (Device Status Report) cursor-position query added by the REPL menu
  * horizontal-cascade rework.
  *
- * Strategy: replace STDIN_FILENO with a pipe, write a synthetic
- * terminal response into the write end, and verify
- * terminal_get_cursor_pos parses it correctly.  Three cases:
- *   1. Well-formed reply -- true, out row/col populated.
- *   2. No reply (pipe stays empty) -- false, out params untouched,
+ * Strategy: terminal_get_cursor_pos() now gates on isatty(STDIN_FILENO)
+ * to avoid consuming bytes from a piped stdin that might carry real
+ * data. So we use openpty() to get a real TTY pair: the slave side
+ * becomes the program's stdin, the master side simulates the terminal.
+ *
+ * Cases:
+ *   1. Well-formed reply via PTY -- true, out row/col populated.
+ *   2. No reply (PTY stays silent) -- false, out params untouched,
  *      returns within the configured 50ms timeout window.
- *   3. Malformed reply -- false, out params untouched.
+ *   3. Malformed reply via PTY -- false, out params untouched.
+ *   4. Non-TTY stdin (pipe) -- false immediately (<1ms typical),
+ *      out params untouched, and no bytes consumed from the pipe.
  */
 
 #include <assert.h>
@@ -45,15 +50,45 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/time.h>
+#include <termios.h>
 #include <time.h>
 #include <unistd.h>
+#include <util.h>
 
 #include "terminal_control.h"
 #include "test_report.h"
 
+/* Open a PTY pair, replace STDIN_FILENO with the slave end, return
+ * the master fd. Saves the original stdin fd into *saved so the test
+ * can restore it after running.
+ *
+ * The slave side is configured into raw mode so writes to the master
+ * arrive on stdin byte-for-byte (no line discipline transformations,
+ * no echo). */
+static int redirect_stdin_to_pty(int *saved) {
+	int master_fd = -1, slave_fd = -1;
+	int rc = openpty(&master_fd, &slave_fd, NULL, NULL, NULL);
+	assert(rc == 0);
+
+	struct termios tio;
+	rc = tcgetattr(slave_fd, &tio);
+	assert(rc == 0);
+	cfmakeraw(&tio);
+	rc = tcsetattr(slave_fd, TCSANOW, &tio);
+	assert(rc == 0);
+
+	*saved = dup(STDIN_FILENO);
+	assert(*saved >= 0);
+
+	rc = dup2(slave_fd, STDIN_FILENO);
+	assert(rc >= 0);
+	close(slave_fd);
+
+	return master_fd;
+}
+
 /* Replace STDIN_FILENO with a pipe's read end and return the write fd.
- * Saves the original stdin fd into *saved so the test can restore it
- * after running. */
+ * Used by the non-TTY guard test. */
 static int redirect_stdin_to_pipe(int *saved) {
 	int pipefd[2];
 	int rc = pipe(pipefd);
@@ -107,12 +142,13 @@ static void restore_stderr(int saved) {
 static void test_dsr_well_formed_reply(void) {
 	printf("test_dsr_well_formed_reply\n");
 	int saved_stdin = -1;
-	int wfd = redirect_stdin_to_pipe(&saved_stdin);
+	int master_fd = redirect_stdin_to_pty(&saved_stdin);
 	int saved_stderr = suppress_stderr();
 
-	/* Prime the pipe with a well-formed DSR reply. */
+	/* Prime the PTY with a well-formed DSR reply (writes from master
+	 * arrive on the slave -- which is now stdin). */
 	const char *reply = "\x1b[12;5R";
-	ssize_t w = write(wfd, reply, strlen(reply));
+	ssize_t w = write(master_fd, reply, strlen(reply));
 	assert(w == (ssize_t)strlen(reply));
 
 	int row = -1, col = -1;
@@ -120,7 +156,7 @@ static void test_dsr_well_formed_reply(void) {
 
 	restore_stderr(saved_stderr);
 	restore_stdin(saved_stdin);
-	close(wfd);
+	close(master_fd);
 
 	if (!ok) { printf("  FAIL: expected true, got false\n"); fflush(stdout); }
 	assert(ok);
@@ -134,7 +170,7 @@ static void test_dsr_well_formed_reply(void) {
 static void test_dsr_no_reply_returns_false_quickly(void) {
 	printf("test_dsr_no_reply_returns_false_quickly\n");
 	int saved_stdin = -1;
-	int wfd = redirect_stdin_to_pipe(&saved_stdin);
+	int master_fd = redirect_stdin_to_pty(&saved_stdin);
 	int saved_stderr = suppress_stderr();
 
 	int row = 99, col = 77;
@@ -145,7 +181,7 @@ static void test_dsr_no_reply_returns_false_quickly(void) {
 
 	restore_stderr(saved_stderr);
 	restore_stdin(saved_stdin);
-	close(wfd);
+	close(master_fd);
 
 	long ms = elapsed_ms(&t0, &t1);
 	if (ok) { printf("  FAIL: expected false on no reply, got true\n"); fflush(stdout); }
@@ -168,14 +204,15 @@ static void test_dsr_no_reply_returns_false_quickly(void) {
 static void test_dsr_malformed_reply_returns_false(void) {
 	printf("test_dsr_malformed_reply_returns_false\n");
 	int saved_stdin = -1;
-	int wfd = redirect_stdin_to_pipe(&saved_stdin);
+	int master_fd = redirect_stdin_to_pty(&saved_stdin);
 	int saved_stderr = suppress_stderr();
 
-	/* Garbage that contains an ESC but does NOT terminate with 'R'. */
+	/* Garbage that contains an ESC but does NOT terminate with 'R'.
+	 * Close the master so the read sees EOF after the garbage. */
 	const char *reply = "\x1b[XX$";
-	ssize_t w = write(wfd, reply, strlen(reply));
+	ssize_t w = write(master_fd, reply, strlen(reply));
 	assert(w == (ssize_t)strlen(reply));
-	close(wfd);     /* close so the read sees EOF after the garbage */
+	close(master_fd);
 
 	int row = 42, col = 24;
 	bool ok = terminal_get_cursor_pos(&row, &col);
@@ -194,11 +231,71 @@ static void test_dsr_malformed_reply_returns_false(void) {
 	printf("  PASS: malformed reply returned false (out params untouched)\n");
 }
 
+/* Verifies the isatty(STDIN_FILENO) guard added to
+ * terminal_get_cursor_pos: when stdin is a pipe (not a TTY), the
+ * function must return false immediately without emitting the DSR
+ * query and without consuming any bytes from the pipe. This protects
+ * a non-TTY input stream from having its real data eaten. */
+static void test_dsr_non_tty_stdin_returns_false_without_consuming(void) {
+	printf("test_dsr_non_tty_stdin_returns_false_without_consuming\n");
+	int saved_stdin = -1;
+	int wfd = redirect_stdin_to_pipe(&saved_stdin);
+	int saved_stderr = suppress_stderr();
+
+	/* Prime the pipe with sentinel bytes that the function must NOT
+	 * eat. After the call we'll read them back ourselves. */
+	const char *sentinel = "HELLO";
+	ssize_t w = write(wfd, sentinel, strlen(sentinel));
+	assert(w == (ssize_t)strlen(sentinel));
+
+	int row = 7, col = 9;
+	struct timeval t0, t1;
+	gettimeofday(&t0, NULL);
+	bool ok = terminal_get_cursor_pos(&row, &col);
+	gettimeofday(&t1, NULL);
+
+	long ms = elapsed_ms(&t0, &t1);
+
+	/* Read back the sentinel from stdin (still the pipe at this
+	 * point) to prove no bytes were consumed. */
+	char readback[8] = {0};
+	ssize_t rb = read(STDIN_FILENO, readback, strlen(sentinel));
+
+	restore_stderr(saved_stderr);
+	restore_stdin(saved_stdin);
+	close(wfd);
+
+	if (ok) { printf("  FAIL: expected false on non-TTY stdin, got true\n"); fflush(stdout); }
+	assert(!ok);
+	if (row != 7 || col != 9) {
+		printf("  FAIL: out params clobbered (row=%d col=%d)\n", row, col);
+		fflush(stdout);
+	}
+	assert(row == 7);
+	assert(col == 9);
+	/* Should not pay the 50ms-per-byte timeout. Allow generous slop
+	 * for slow CI; the key claim is "fast", not "instant". */
+	if (ms > 50) {
+		printf("  FAIL: too slow for non-TTY early-return: %ldms (want <50ms)\n", ms);
+		fflush(stdout);
+	}
+	assert(ms < 50);
+	if (rb != (ssize_t)strlen(sentinel) || memcmp(readback, sentinel, strlen(sentinel)) != 0) {
+		printf("  FAIL: sentinel bytes consumed or corrupted (rb=%zd, readback='%s')\n",
+		       rb, readback);
+		fflush(stdout);
+	}
+	assert(rb == (ssize_t)strlen(sentinel));
+	assert(memcmp(readback, sentinel, strlen(sentinel)) == 0);
+	printf("  PASS: non-TTY stdin returned false in %ldms; sentinel intact\n", ms);
+}
+
 int main(void) {
 	TR_INIT("terminal_control_dsr_tests");
 	TR_RUN(test_dsr_well_formed_reply);
 	TR_RUN(test_dsr_no_reply_returns_false_quickly);
 	TR_RUN(test_dsr_malformed_reply_returns_false);
+	TR_RUN(test_dsr_non_tty_stdin_returns_false_without_consuming);
 	TR_SUMMARY();
 	return TR_EXIT_CODE();
 }

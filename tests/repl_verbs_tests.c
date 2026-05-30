@@ -361,6 +361,89 @@ static void test_repl_from_slash_returns_host_value(void) {
 
 
 /*
+ * Round-trip test: branch on repl.fromSlash() inside UserTalk and
+ * trigger a distinguishable side effect in each branch. This proves
+ * the boolean value actually flows back from the verb into the
+ * interpreter, not just that the hook was called.
+ *
+ * Branch true  -> calls repl.exit() (exit_calls becomes 1)
+ * Branch false -> calls repl.clearVariables() (clear_calls becomes 1)
+ */
+static void test_repl_from_slash_value_drives_branch(void) {
+	printf("[repl_verbs] Test: repl.fromSlash() return value drives UT branch... ");
+	fflush(stdout);
+
+	const char *branch_script =
+		"if repl.fromSlash() {\r"
+		"\trepl.exit()\r"
+		"}\r"
+		"else {\r"
+		"\trepl.clearVariables()\r"
+		"}";
+
+	/* Case A: host reports false -> else branch -> clearVariables called. */
+	host_reset();
+	install_test_host();
+	g_host.from_slash_returns = false;
+	assert(run_script(branch_script));
+	assert(g_host.from_slash_calls == 1);
+	assert(g_host.exit_calls == 0);   /* true branch NOT taken */
+	assert(g_host.clear_calls == 1);  /* else branch taken */
+
+	/* Case B: host reports true -> true branch -> exit called. */
+	host_reset();
+	install_test_host();
+	g_host.from_slash_returns = true;
+	assert(run_script(branch_script));
+	assert(g_host.from_slash_calls == 1);
+	assert(g_host.exit_calls == 1);   /* true branch taken */
+	assert(g_host.clear_calls == 0);  /* else branch NOT taken */
+
+	printf("PASS\n");
+	fflush(stdout);
+}
+
+
+/*
+ * Round-trip test for repl.isActive(): same shape as the fromSlash
+ * branching test. Proves the bool actually flows back to UserTalk.
+ */
+static void test_repl_is_active_value_drives_branch(void) {
+	printf("[repl_verbs] Test: repl.isActive() return value drives UT branch... ");
+	fflush(stdout);
+
+	const char *branch_script =
+		"if repl.isActive() {\r"
+		"\trepl.exit()\r"
+		"}\r"
+		"else {\r"
+		"\trepl.clearVariables()\r"
+		"}";
+
+	/* Case A: host reports false -> else branch. */
+	host_reset();
+	install_test_host();
+	g_host.is_active_returns = false;
+	assert(run_script(branch_script));
+	assert(g_host.is_active_calls == 1);
+	assert(g_host.exit_calls == 0);
+	assert(g_host.clear_calls == 1);
+
+	/* Case B: host reports true -> true branch. */
+	host_reset();
+	install_test_host();
+	g_host.is_active_returns = true;
+	assert(run_script(branch_script));
+	assert(g_host.is_active_calls == 1);
+	assert(g_host.exit_calls == 1);
+	assert(g_host.clear_calls == 0);
+
+	printf("PASS\n");
+	fflush(stdout);
+}
+
+
+/*
  * repl.isActive() returns the value the host hook reports.
  */
 static void test_repl_is_active_returns_host_value(void) {
@@ -474,8 +557,10 @@ int main(void) {
 	TR_RUN(test_repl_list_no_arg_passes_null);
 	TR_RUN(test_repl_list_with_path_forwards_string);
 	TR_RUN(test_repl_from_slash_returns_host_value);
+	TR_RUN(test_repl_from_slash_value_drives_branch);
 	TR_RUN(test_repl_from_slash_no_host_returns_false);
 	TR_RUN(test_repl_is_active_returns_host_value);
+	TR_RUN(test_repl_is_active_value_drives_branch);
 	TR_RUN(test_no_host_does_not_crash);
 
 	printf("\n========================================\n");

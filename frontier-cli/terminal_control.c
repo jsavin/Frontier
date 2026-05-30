@@ -188,6 +188,13 @@ bool terminal_get_size(int *rows, int *cols) {
  * response.  On any failure the out-params are left untouched.
  */
 bool terminal_get_cursor_pos(int *row, int *col) {
+	/* If stdin isn't a TTY (e.g., piped from a process feeding real
+	 * data), don't emit the DSR query and don't consume bytes from
+	 * the pipe.  Returns false immediately; out-params untouched. */
+	if (!isatty(STDIN_FILENO)) {
+		return false;
+	}
+
 	/* Emit the DSR query.  Match the existing convention of writing to
 	 * stderr (other CSI emitters in this file do likewise). */
 	fputs("\x1b[6n", stderr);
@@ -219,7 +226,7 @@ bool terminal_get_cursor_pos(int *row, int *col) {
 	}
 
 	int r = 0, c = 0;
-	if (sscanf(buf + 2, "%d;%d", &r, &c) != 2) {
+	if (sscanf(buf + 2, "%30d;%30d", &r, &c) != 2) {
 		return false;
 	}
 	if (r <= 0 || c <= 0) return false;

@@ -132,6 +132,11 @@ typedef enum {
  * and free of any UserTalk type dependencies. The data source fills these
  * in from the underlying ODB rows; palette never mutates them. */
 typedef struct palette_item {
+	/* `label` and `description` are interpreted as 7-bit ASCII. The palette
+	 * renderer byte-counts these strings for width calculations and column
+	 * alignment, so UTF-8 multi-byte sequences, wide characters (CJK), and
+	 * combining marks will misrender (column drift, wrap mispositioning).
+	 * Right-to-left scripts are not supported. Stick to printable ASCII. */
 	char label[PALETTE_LABEL_MAX];
 	char description[PALETTE_DESC_MAX];
 	char shortcut;        /* uppercase hotkey letter, '\0' if none */
