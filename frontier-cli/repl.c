@@ -2920,6 +2920,14 @@ static Handle run_palette_modal(struct linenoiseState *ls,
 		return nil;
 	}
 	terminal_enable_mouse();
+	/* Hide the terminal cursor for the modal lifetime. Without this the
+	 * cursor parks next to whichever cell the compositor most recently
+	 * wrote, producing a stray "]" next to the selected menu item in
+	 * terminals that render the block cursor on top of menu paint. The
+	 * show-cursor counterpart fires in the cleanup_terminal path below
+	 * BEFORE terminal_disable_raw_mode so the SGR write goes out while
+	 * the terminal is still in raw mode. */
+	terminal_hide_cursor();
 
 	/* 3. Build the ODB-backed palette source. */
 	palette_menu_source_t src;
@@ -2982,6 +2990,49 @@ static Handle run_palette_modal(struct linenoiseState *ls,
 	}
 	if (prompt_row < 0) prompt_row = 0;
 	if (prompt_row >= rows) prompt_row = rows - 1;
+
+	/* Reserve rows for the cascade so submenu drills don't silently
+	 * fail when the prompt is near the bottom of the terminal.
+	 *
+	 * Geometry: menubar lives at prompt_row+1; cascade level d lives
+	 * at prompt_row+1+(d+1). To open all levels through depth `reserve`
+	 * we need prompt_row + 1 + reserve <= rows - 1, i.e.
+	 * prompt_row <= rows - 2 - reserve.
+	 *
+	 * Frontier's headless menubar tree is exactly 3 deep (bar/menu/
+	 * leaf), so a typical session never needs more than 2 cascade rows
+	 * below the menubar. Reserve PALETTE_CASCADE_RESERVE_ROWS so the
+	 * common case of "open the REPL menu" never silently fails because
+	 * the terminal lacks one free row. This is smaller than
+	 * PALETTE_MAX_DEPTH (8) on purpose — reserving 8 rows would feel
+	 * intrusive on small terminals, and most menus are 2-3 deep in
+	 * practice.
+	 *
+	 * If reserve is required, emit '\n' enough times to scroll the
+	 * terminal up; each scroll bumps prompt_row down by 1 from the
+	 * cursor's perspective without changing the absolute row count.
+	 * Because '\n' originates from the bottom row (where the cursor
+	 * sits post-linenoise '\n'), each emit shifts the visible
+	 * scrollback up by one and frees a row at the bottom. */
+	#define PALETTE_CASCADE_RESERVE_ROWS 4
+	int reserve = PALETTE_CASCADE_RESERVE_ROWS;
+	if (reserve > PALETTE_MAX_DEPTH) reserve = PALETTE_MAX_DEPTH;
+	int max_prompt = rows - 2 - reserve;
+	if (max_prompt < 0) max_prompt = 0;
+	if (prompt_row > max_prompt) {
+		int need = prompt_row - max_prompt;
+		/* Raw mode is in effect (terminal_enable_raw_mode above), so
+		 * OPOST is off — '\n' is literal LF, not CR+LF. Pair each LF
+		 * with a CR so the cursor lands at column 1 of the scrolled-in
+		 * row; the absolute row of the cursor doesn't change at the
+		 * bottom (the terminal scrolls the buffer up instead), which
+		 * is exactly the effect we want. */
+		for (int i = 0; i < need; ++i) {
+			fputs("\r\n", stdout);
+		}
+		fflush(stdout);
+		prompt_row = max_prompt;
+	}
 
 	/* Scrollback pane (issue #593) — covers rows 1..rows-1 (everything
 	 * below the menubar at row 0). Registered FIRST so it sits at the
@@ -3275,6 +3326,10 @@ static Handle run_palette_modal(struct linenoiseState *ls,
 
 cleanup_terminal:
 	terminal_disable_mouse();
+	/* Restore the cursor BEFORE leaving raw mode so the SGR escape is
+	 * emitted via the same raw stream that hid it. Mirrors the
+	 * terminal_hide_cursor() call right after raw_mode was enabled. */
+	terminal_show_cursor();
 	terminal_disable_raw_mode(&ts);
 	terminal_cleanup(&ts);
 

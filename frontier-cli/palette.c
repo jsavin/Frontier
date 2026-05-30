@@ -39,6 +39,41 @@
 
 static int imax(int a, int b) { return a > b ? a : b; }
 
+/* Per-layer hotkey auto-derivation. Per the plan ("Hotkey auto-derivation
+ * rule" in planning/discussions/repl-slash-menu-implementation-plan.md):
+ * within a sibling list, each item's hotkey is the first letter of its
+ * label that hasn't already been claimed by an earlier sibling at the
+ * same level. Explicit overrides (non-zero `existing`) win and reserve
+ * their letter against later siblings.
+ *
+ * `claimed` is a 256-byte bitmap of uppercase letters claimed within this
+ * sibling list. `existing` is the source-provided shortcut (0 if none).
+ * Returns the shortcut to use (uppercase letter, or 0 if none available).
+ *
+ * Why in palette.c rather than the source adapter: the per-layer scope
+ * means we need the entire sibling list visible at once to compute
+ * collisions. palette.c already iterates the siblings (menubar entries
+ * at layout time, level items at open time); doing it here keeps the
+ * data source free of UI-layer knowledge and works for ANY source
+ * implementation, not just the ODB adapter. */
+static char derive_hotkey(const char *label, char existing, bool *claimed) {
+	if (existing) {
+		unsigned char up = (unsigned char)toupper((unsigned char)existing);
+		claimed[up] = true;
+		return (char)up;
+	}
+	if (label == NULL) return '\0';
+	for (const char *p = label; *p; ++p) {
+		unsigned char c = (unsigned char)*p;
+		if (!isalpha(c) && !isdigit(c)) continue;
+		unsigned char up = (unsigned char)toupper(c);
+		if (claimed[up]) continue;
+		claimed[up] = true;
+		return (char)up;
+	}
+	return '\0';
+}
+
 /* Menubar layout: every entry is " Label " -- single spaces around the
  * label so adjacent menubar entries do not visually fuse. */
 static int menubar_entry_width(const char *label) {
@@ -54,6 +89,8 @@ static void layout_menubar(palette_state_t *st) {
 	st->menu_count = n;
 
 	int x = 0;
+	/* First pass: collect labels + source-provided explicit hotkeys. */
+	char src_hk[16];
 	for (int i = 0; i < n; ++i) {
 		char hk = '\0';
 		st->source->menu_describe(st->source->ctx, i,
@@ -63,10 +100,24 @@ static void layout_menubar(palette_state_t *st) {
 		 * NUL-terminate but enforce it locally too so subsequent
 		 * strlen/loops are always safe. */
 		st->menu_labels[i][sizeof(st->menu_labels[i]) - 1] = '\0';
-		st->menu_hotkeys[i] = hk;
+		src_hk[i] = hk;
 		st->menu_x[i] = x;
 		st->menu_w[i] = menubar_entry_width(st->menu_labels[i]);
 		x += st->menu_w[i];
+	}
+	/* Second pass: auto-derive per-layer. Explicit overrides claim
+	 * first so later auto-derivations skip those letters. */
+	bool claimed[256];
+	memset(claimed, 0, sizeof(claimed));
+	for (int i = 0; i < n; ++i) {
+		if (src_hk[i]) {
+			unsigned char up = (unsigned char)toupper((unsigned char)src_hk[i]);
+			claimed[up] = true;
+		}
+	}
+	for (int i = 0; i < n; ++i) {
+		st->menu_hotkeys[i] = derive_hotkey(st->menu_labels[i], src_hk[i],
+		                                    claimed);
 	}
 }
 
@@ -267,6 +318,29 @@ static bool open_level(palette_state_t *st, int depth) {
 		lvl->items[kept++] = tmp;
 	}
 	lvl->item_count = kept;
+	/* Per-layer hotkey auto-derivation: walk siblings in declared order,
+	 * claim explicit shortcuts first, then fill in unclaimed letters from
+	 * each item's label. See derive_hotkey() for the algorithm. Without
+	 * this, the ODB source returns shortcut='\0' for any item without an
+	 * explicit cmdkey field and type-to-activate breaks at runtime even
+	 * though the unit tests (which set shortcuts directly in fixtures)
+	 * pass. */
+	{
+		bool claimed[256];
+		memset(claimed, 0, sizeof(claimed));
+		for (int i = 0; i < kept; ++i) {
+			if (lvl->items[i].shortcut) {
+				unsigned char up = (unsigned char)toupper(
+					(unsigned char)lvl->items[i].shortcut);
+				claimed[up] = true;
+			}
+		}
+		for (int i = 0; i < kept; ++i) {
+			lvl->items[i].shortcut = derive_hotkey(lvl->items[i].label,
+			                                       lvl->items[i].shortcut,
+			                                       claimed);
+		}
+	}
 	lvl->cursor = 0;
 	lvl->scroll_top = 0;
 	/* visible[] held over from the legacy filter UI is unused by the

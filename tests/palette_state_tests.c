@@ -529,6 +529,114 @@ static void test_cascade_hotkey_opens_submenu(void) {
 	palette_close(&st);
 }
 
+/* ---------- Hotkey auto-derivation (regression for production bug) ---------- */
+
+/*
+ * The ODB-backed source (repl_palette_source.c) returns shortcut='\0'
+ * for any item without an explicit cmdkey field — which is almost every
+ * item in the headless REPL menubar. The previous Phase D tests above
+ * passed because their fixtures set `shortcut` explicitly, masking the
+ * fact that runtime type-to-activate was broken end-to-end.
+ *
+ * These tests pin the auto-derivation contract: when a sibling list has
+ * no explicit shortcuts, the palette MUST derive them from the labels
+ * (first available uppercase alpha letter, claiming-as-it-goes) so
+ * find_hotkey_in_level returns hits at runtime.
+ */
+static fake_item_t g_noshortcut_items[] = {
+	{ "Help",     NULL, '\0', true, false, "h",  NULL, 0 },
+	{ "Clear",    NULL, '\0', true, false, "c",  NULL, 0 },
+	{ "List",     NULL, '\0', true, false, "l",  NULL, 0 },
+	{ "Jump",     NULL, '\0', true, false, "j",  NULL, 0 },
+	{ "Key codes", NULL, '\0', true, false, "k", NULL, 0 },
+	{ "Exit",     NULL, '\0', true, false, "x",  NULL, 0 },
+};
+
+static fake_menu_t g_noshortcut_menus[] = {
+	{ "REPL", '\0', g_noshortcut_items, 6 },
+};
+
+static fake_source_t g_noshortcut_src = { g_noshortcut_menus, 1 };
+
+static void test_menubar_hotkey_autoderived_when_source_silent(void) {
+	/* The source provides no menu hotkey ('\0'). The palette MUST derive
+	 * 'R' from "REPL" so typing 'R' on the menubar opens that menu. */
+	compositor_test_reset();
+	compositor_on_resize(24, 80);
+	palette_state_t st;
+	palette_menu_source_t src = make_source(&g_noshortcut_src);
+	bool ok = palette_open(&st, 24, 80, 0, &src);
+	assert(ok);
+	assert(st.menu_hotkeys[0] == 'R');
+
+	palette_done_t r = palette_feed_byte(&st, 'R');
+	assert(r == PALETTE_DONE_NONE);
+	assert(st.menubar_cursor == 0);
+	assert(st.open_depth == 1);
+
+	palette_close(&st);
+}
+
+static void test_cascade_items_hotkey_autoderived_when_source_silent(void) {
+	/* The items have no explicit shortcuts. After opening REPL, every
+	 * item.shortcut must hold a derived uppercase letter that matches
+	 * the per-layer auto-derivation rule: first unclaimed letter of the
+	 * label, walking siblings left to right. For "Help, Clear, List,
+	 * Jump, Key codes, Exit" the expected derivation is H,C,L,J,K,E
+	 * (each label's first letter is free at the time of derivation). */
+	compositor_test_reset();
+	compositor_on_resize(24, 80);
+	palette_state_t st;
+	palette_menu_source_t src = make_source(&g_noshortcut_src);
+	palette_open(&st, 24, 80, 0, &src);
+
+	palette_feed_byte(&st, '\r');           /* open REPL menu */
+	assert(st.open_depth == 1);
+	const palette_level_t *lvl = &st.levels[0];
+	assert(lvl->item_count == 6);
+	assert(lvl->items[0].shortcut == 'H');
+	assert(lvl->items[1].shortcut == 'C');
+	assert(lvl->items[2].shortcut == 'L');
+	assert(lvl->items[3].shortcut == 'J');
+	assert(lvl->items[4].shortcut == 'K');
+	assert(lvl->items[5].shortcut == 'E');
+
+	/* End-to-end: 'H' must dispatch the Help leaf. */
+	palette_done_t r = palette_feed_byte(&st, 'H');
+	assert(r == PALETTE_DONE_EXECUTE);
+	assert(st.exec_script != NULL);
+	assert(strcmp((const char *)st.exec_script, "h") == 0);
+
+	palette_close(&st);
+}
+
+static fake_item_t g_collide_items[] = {
+	/* Both labels start with 'F' — second one must skip to 'I'. */
+	{ "File",  NULL, '\0', true, false, "f",  NULL, 0 },
+	{ "Find",  NULL, '\0', true, false, "i",  NULL, 0 },
+};
+
+static fake_menu_t g_collide_menus[] = {
+	{ "Top", '\0', g_collide_items, 2 },
+};
+
+static fake_source_t g_collide_src = { g_collide_menus, 1 };
+
+static void test_hotkey_autoderive_handles_collision(void) {
+	/* "File" claims 'F'; "Find" must skip to 'I' (next unclaimed alpha
+	 * in "Find"). */
+	compositor_test_reset();
+	compositor_on_resize(24, 80);
+	palette_state_t st;
+	palette_menu_source_t src = make_source(&g_collide_src);
+	palette_open(&st, 24, 80, 0, &src);
+	palette_feed_byte(&st, '\r');           /* open Top menu */
+	assert(st.open_depth == 1);
+	assert(st.levels[0].items[0].shortcut == 'F');
+	assert(st.levels[0].items[1].shortcut == 'I');
+	palette_close(&st);
+}
+
 /* ---------- Mouse ---------- */
 
 static void test_mouse_click_on_menubar_opens_menu(void) {
@@ -789,6 +897,9 @@ int main(void) {
 	TR_RUN(test_menubar_hotkey_activates_immediately);
 	TR_RUN(test_cascade_hotkey_activates_leaf);
 	TR_RUN(test_cascade_hotkey_opens_submenu);
+	TR_RUN(test_menubar_hotkey_autoderived_when_source_silent);
+	TR_RUN(test_cascade_items_hotkey_autoderived_when_source_silent);
+	TR_RUN(test_hotkey_autoderive_handles_collision);
 	TR_RUN(test_mouse_click_on_menubar_opens_menu);
 	TR_RUN(test_mouse_wheel_moves_menubar_cursor);
 	TR_RUN(test_mouse_invalid_low_coords_rejected);
