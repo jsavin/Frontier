@@ -169,6 +169,25 @@ static volatile sig_atomic_t g_repl_exit_requested = 0;
  */
 static volatile sig_atomic_t g_script_running = 0;
 
+/*
+ * Set to true for the duration of a slash-command dispatch so UserTalk
+ * handler scripts can branch on repl.fromSlash() to distinguish
+ * "user typed /jump" from "user activated Jump via the palette menu".
+ *
+ * Lifetime contract: set to true immediately before calling
+ * meuserselected_headless (or dispatch_synthesized_script) from
+ * dispatch_slash_command, cleared to false on every exit path including
+ * error paths.  Because the REPL modal is GIL-held throughout, and
+ * dispatch_slash_command is non-reentrant within a single REPL session,
+ * a plain boolean (no volatile) is sufficient -- the GIL acquire/release
+ * barrier covers visibility to any GIL-acquired thread that reads it via
+ * the repl.fromSlash() verb during the same dispatch call.
+ *
+ * Writers: dispatch_slash_command only.
+ * Readers: replverbhost_from_slash (via the repl.fromSlash() verb).
+ */
+static boolean g_repl_dispatching_from_slash = false;
+
 // Session command tracking for merge-before-save
 static char *session_commands[MAX_SESSION_COMMANDS];
 static size_t session_command_count = 0;
@@ -2572,7 +2591,9 @@ static boolean dispatch_slash_command(const char *line, boolean *running) {
 				log_warn(LOG_COMP_GENERAL,
 				         "slash-command: leaf script could not be transformed "
 				         "to inject arg; dispatching without arg.");
+				g_repl_dispatching_from_slash = true;
 				ty_dispatch_result dr_fallback = dispatch_leaf_via_menubar(hleaf);
+				g_repl_dispatching_from_slash = false;
 				switch (dr_fallback) {
 					case DISPATCH_OK: break;
 					case DISPATCH_NO_SCRIPT_FIELD:
@@ -2590,7 +2611,9 @@ static boolean dispatch_slash_command(const char *line, boolean *running) {
 				}
 				return true;
 			}
+			g_repl_dispatching_from_slash = true;
 			ty_dispatch_result dr_inj = dispatch_synthesized_script(synth, synth_len);
+			g_repl_dispatching_from_slash = false;
 			free(synth);
 			switch (dr_inj) {
 				case DISPATCH_OK: break;
@@ -2620,7 +2643,9 @@ static boolean dispatch_slash_command(const char *line, boolean *running) {
 	 * actual exit. We also short-circuit here so callers that test for
 	 * *running == false on /exit observe the change without waiting for
 	 * the next event-loop tick. */
+	g_repl_dispatching_from_slash = true;
 	ty_dispatch_result dr = dispatch_leaf_via_menubar(hleaf);
+	g_repl_dispatching_from_slash = false;
 	switch (dr) {
 		case DISPATCH_OK:
 			break;
@@ -3460,6 +3485,29 @@ static boolean replverbhost_print_key_codes(void) {
 	return true;
 }
 
+/*
+ * Returns true iff the current script call was dispatched from a slash
+ * command (e.g. /jump, /list) rather than from palette menu activation.
+ *
+ * Reads g_repl_dispatching_from_slash, which dispatch_slash_command sets
+ * true around every meuserselected_headless (and dispatch_synthesized_script)
+ * call and clears false on every exit path. Because the GIL is held for the
+ * full duration of the dispatch, no locking is needed.
+ */
+static boolean replverbhost_from_slash(void) {
+	return g_repl_dispatching_from_slash;
+}
+
+/*
+ * Returns true iff a REPL session is currently active (the host has entered
+ * the REPL main loop and not yet exited). Handler scripts use repl.isActive()
+ * to gate interactive operations (dialog.ask prompts) so they do not fire
+ * in non-REPL contexts (integration tests, protocol mode, -e evaluation).
+ */
+static boolean replverbhost_is_active(void) {
+	return g_repl_active;
+}
+
 static void replverbhost_list(const char *path) {
 	/* The verb's path argument is the source of truth — see
 	 * replverbhost_jump_path for the threading rationale. */
@@ -3513,6 +3561,8 @@ static void install_repl_verbs_host(void) {
 	host.print_key_codes = replverbhost_print_key_codes;
 	host.list = replverbhost_list;
 	host.help = replverbhost_help;
+	host.from_slash = replverbhost_from_slash;
+	host.is_active = replverbhost_is_active;
 	repl_verbs_set_host(&host);
 }
 

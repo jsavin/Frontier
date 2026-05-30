@@ -97,7 +97,9 @@ enum {
 	rplv_jumppath = 2,
 	rplv_printkeycodes = 3,
 	rplv_list = 4,
-	rplv_help = 5
+	rplv_help = 5,
+	rplv_fromslash = 6,
+	rplv_isactive = 7
 };
 
 
@@ -222,6 +224,18 @@ static boolean repl_valueproc(short token, hdltreenode hparam1,
 		return setbooleanvalue(true, vreturned);
 	}
 
+	case rplv_fromslash:
+		(void) hparam1;
+		if (!g_host_installed || g_host.from_slash == NULL)
+			return setbooleanvalue(false, vreturned);
+		return setbooleanvalue(g_host.from_slash(), vreturned);
+
+	case rplv_isactive:
+		(void) hparam1;
+		if (!g_host_installed || g_host.is_active == NULL)
+			return setbooleanvalue(false, vreturned);
+		return setbooleanvalue(g_host.is_active(), vreturned);
+
 	default:
 		return false;
 	}
@@ -258,6 +272,8 @@ boolean replinitverbs(void) {
 	ADD_VERB(PSTRING("\015", "printkeycodes"), rplv_printkeycodes);
 	ADD_VERB(PSTRING("\004", "list"), rplv_list);
 	ADD_VERB(PSTRING("\004", "help"), rplv_help);
+	ADD_VERB(PSTRING("\x09", "fromslash"), rplv_fromslash);
+	ADD_VERB(PSTRING("\x08", "isactive"), rplv_isactive);
 
 	#undef ADD_VERB
 
