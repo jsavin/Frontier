@@ -1,7 +1,4 @@
 ---
-
-**⚠️ MANDATORY OUTPUT LIMIT**: ALL tool results MUST be <100KB. Use `head -100`, `tail -100`, `grep -m 50` with line limits. Summarize findings instead of embedding raw data. Exceeding this limit will corrupt the session file.
-
 name: refactoring-consultant
 description: |
   Use this agent when you need expert guidance on improving code structure, design, or architecture without changing external behavior. Trigger this agent when: encountering code that is difficult to understand or maintain, planning to add new features to legacy code, noticing code smells or anti-patterns, wanting to improve testability, seeking to reduce technical debt, or needing advice on design patterns and best practices.

@@ -1,7 +1,4 @@
 ---
-
-**⚠️ MANDATORY OUTPUT LIMIT**: ALL tool results MUST be <100KB. Use `head -100`, `tail -100`, `grep -m 50` with line limits. Summarize findings instead of embedding raw data. Exceeding this limit will corrupt the session file.
-
 name: odb-database-expert
 description: |
   Use this agent when working with Frontier's Object Database (ODB) system, including: reading/writing database files, implementing or debugging pack/unpack operations, handling database migration between v6 and v7 formats, managing in-memory object representations, debugging address format issues or external table variables, refactoring legacy push/pop mode stack patterns to explicit context-passing architectures, investigating database-related test failures, or reviewing/maintaining documentation in planning/phase3/ related to database formats, migration, or persistence.

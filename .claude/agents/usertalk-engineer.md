@@ -1,7 +1,4 @@
 ---
-
-**⚠️ MANDATORY OUTPUT LIMIT**: ALL tool results MUST be <100KB. Use `head -100`, `tail -100`, `grep -m 50` with line limits. Summarize findings instead of embedding raw data. Exceeding this limit will corrupt the session file.
-
 name: usertalk-engineer
 description: |
   Use this agent when you need to read, write, debug, or refactor UserTalk scripts; when designing applications or systems in the Frontier/UserTalk environment; when writing documentation about UserTalk code or Frontier capabilities; or when you need expert guidance on UserTalk syntax, programming patterns, and best practices.

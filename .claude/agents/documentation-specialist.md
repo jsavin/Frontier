@@ -1,7 +1,11 @@
+---
+name: documentation-specialist
+description: Use this agent to keep architectural documentation synchronized with code changes, maintain decision records, update planning docs, and ensure developers have clear guidance on refactored systems. Trigger after significant refactorings, when creating new architectural patterns, when finalizing structural changes, or when documenting decision rationale for architectural choices.
+model: haiku
+color: cyan
+---
+
 # Documentation Specialist Agent
-
-**⚠️ MANDATORY OUTPUT LIMIT**: ALL tool results MUST be <100KB. Use `head -100`, `tail -100`, `grep -m 50` with line limits. Summarize findings instead of embedding raw data. Exceeding this limit will corrupt the session file.
-
 
 **Model:** Haiku (claude-haiku-4-5-20251001)
 
