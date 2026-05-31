@@ -13,9 +13,10 @@
 ## Quick Reference
 
 Build/test/migration command reference: see `docs/QUICK_REFERENCE.md`. Key paths:
-- Build CLI: `make -C frontier-cli`
-- Unit tests: `./tools/run_headless_tests.sh`
-- Integration tests: `cd tests && make test-integration`
+- Build CLI: `make -C frontier-cli` (or `make build` from repo root)
+- Unit tests: `./tools/run_headless_tests.sh` (or `make unit`)
+- Integration tests: `cd tests && make test-integration` (or `make integration`)
+- ODB sync check: `./tools/verify_virgin_root_sync.sh --full` (or `make verify-odb-sync` from repo root, or `cd tests && make verify-odb-sync`)
 - Migrate v6→v7: `./frontier-cli/frontier-cli --migrate <db>.root`
 - PR monitoring: `./tools/monitor_pr_review.sh <PR_NUMBER>`
 

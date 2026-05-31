@@ -33,7 +33,12 @@
 #       as a known false-positive with recommended fix.
 #   v8: violation output strips the diff "+" prefix (cosmetic; line
 #       numbers unchanged).
-HOOK_VERSION=8
+#   v9: Virgin.root <-> .ut corpus sync check (warn-only, issue #675).
+#       Reports drift to stderr when staged .ut files diverge from
+#       Virgin.root, but does not block the commit. Promote to a hard
+#       gate once the historical drift in the corpus is cleaned up
+#       (tracked separately).
+HOOK_VERSION=9
 
 set -e
 
@@ -325,6 +330,47 @@ if [ -n "$VERB_FILES_CHANGED" ]; then
             exit 1
         fi
         echo -e "${GREEN}Pascal string lengths verified${NC}"
+    fi
+fi
+
+# ──────────────────────────────────────────────────────────────
+# Virgin.root <-> .ut corpus sync (issue #675) — WARN-ONLY
+# ──────────────────────────────────────────────────────────────
+#
+# The .ut tree at usertalk_scripts/Frontier.root/ is the diffable mirror
+# of databases/Virgin.root. We surface drift between them so reviewers
+# (human and bot) get a heads-up when a commit touches one but not the
+# other.
+#
+# This is intentionally WARN-ONLY in v9 because the corpus on develop
+# carries ~12% historical drift (encoding artifacts, structure-marker
+# loss) that predates this hook. Promoting to a hard gate requires
+# cleaning that baseline first (tracked separately). Until then we
+# print but do not block.
+UT_STAGED=$(git diff --cached --name-only --diff-filter=ACMR \
+    | grep -E '^usertalk_scripts/Frontier\.root/.*\.ut$' || true)
+ROOT_STAGED=$(git diff --cached --name-only --diff-filter=ACMR \
+    | grep -E '^databases/Virgin\.root$' || true)
+
+if [ -n "$UT_STAGED" ] || [ -n "$ROOT_STAGED" ]; then
+    if [ -x "$GIT_ROOT/frontier-cli/frontier-cli" ]; then
+        cd "$GIT_ROOT"
+        # Incremental on staged .ut files (fast). If Virgin.root itself
+        # is staged we have no way to scope, but a full walk is too slow
+        # for a pre-commit gate, so skip in that case and rely on
+        # `make verify-odb-sync` for visibility.
+        if [ -n "$UT_STAGED" ]; then
+            # shellcheck disable=SC2086 # word-splitting is intentional
+            if ! ./tools/verify_virgin_root_sync.sh --paths $UT_STAGED --no-diff --quiet 2>&1; then
+                echo "" >&2
+                echo -e "${YELLOW}NOTE: staged .ut file(s) diverge from Virgin.root (warn-only).${NC}" >&2
+                echo "  This is not currently blocking the commit, but reviewers will see it." >&2
+                echo "  Reconcile by: re-installing the .ut content into Virgin.root via" >&2
+                echo "  tools/edit_virgin_root.sh, OR by rewriting the .ut from Virgin.root" >&2
+                echo "  with: ./tools/verify_virgin_root_sync.sh --rewrite --paths <file...>" >&2
+                echo "" >&2
+            fi
+        fi
     fi
 fi
 

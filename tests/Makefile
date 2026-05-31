@@ -607,6 +607,8 @@ test-integration: check-python-deps check-license
 	@cd .. && python3 -m unittest tests.integration.runner_self_test -v
 	@echo "Running integration tests..."
 	@../tools/run_integration_tests.sh
+	@echo "Running ODB sync verifier tests..."
+	@./verify_odb_sync_test.sh
 
 test-integration-verbose: check-python-deps check-license
 	@echo "Running integration tests (verbose)..."
@@ -644,6 +646,17 @@ check-license:
 # Run all tests (unit + integration + CLI migration + custom args + debug + hooks + license check)
 test-all: test test-integration test-migrate-flag test-custom-args test-debug test-cow-idempotent test-hooks check-license
 	@echo "All test suites completed"
+
+# Verify Virgin.root <-> .ut corpus sync (issue #675).
+# Proxies to the canonical verifier in tools/. Operates on the repo root,
+# not the tests/ subdir, so we cd up before invoking.
+verify-odb-sync:
+	@cd .. && ./tools/verify_virgin_root_sync.sh --full
+
+# Test the verifier itself: a known-good .ut passes; a synthetic
+# drift in a sandbox is detected. Runs as part of test-integration.
+test-odb-sync:
+	@./verify_odb_sync_test.sh
 
 $(STRINGS_COMPILER):
 	$(MAKE) -C $(STRINGS_COMPILER_DIR)
@@ -723,7 +736,7 @@ verify-errors:
 	@echo "Verifying error message coverage..."
 	@../tools/verify_error_coverage.sh
 
-.PHONY: all test test-report test-integration test-integration-verbose test-migrate-flag test-custom-args test-debug test-hooks test-all clean install uninstall help results strings_generated kernel_verbs_generated verify-errors validate-bigstrings check-python-deps
+.PHONY: all test test-report test-integration test-integration-verbose test-migrate-flag test-custom-args test-debug test-hooks test-all verify-odb-sync test-odb-sync clean install uninstall help results strings_generated kernel_verbs_generated verify-errors validate-bigstrings check-python-deps
 
 check_v6_tables: check_v6_tables.c $(LANG_RUNTIME_SOURCES) ../Common/source/odbengine.c ../frontier-cli/stubs/headless_shell.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -DHEADLESS_TEST_PORTABLE_FILE -DHEADLESS_LINKS_REAL_DB -I../Common/headers -I../Common/SystemHeaders -I../portable check_v6_tables.c \
