@@ -337,8 +337,9 @@ static bool test_injection_attempt_is_safe(void) {
 	 * Without langdeparsestring escaping, this path would produce the script:
 	 *   system.callbacks.openWindow("evil");system.temp.phasec_inject_marker=true;(")
 	 *
-	 * With proper escaping, the embedded quote is doubled so the injected code
-	 * is never parsed as a separate statement.
+	 * With proper escaping (langdeparsestring inserts a backslash before each
+	 * `"` and `\`), the embedded quote is backslash-escaped to `\"` so the
+	 * injected code is never parsed as a separate statement.
 	 */
 	const char *evil_path =
 		"evil\");system.temp.phasec_inject_marker=true;(\"";
