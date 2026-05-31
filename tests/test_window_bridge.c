@@ -351,7 +351,7 @@ static bool test_injection_attempt_is_safe(void) {
 		"if defined(system.temp.phasec_inject_marker) {\"INJECTED\"} else {\"safe\"}",
 		bsresult);
 	TEST_ASSERT(bs_equals(bsresult, "safe"),
-		"Injected code must NOT execute; langdeparsestring must double the embedded quote");
+		"Injected code must NOT execute; langdeparsestring must backslash-escape the embedded quote");
 
 	remove_test_hooks();
 	clear_markers();
