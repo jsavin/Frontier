@@ -450,6 +450,94 @@ static void test_describe_handle_stable_under_repeated_calls(void) {
 	fflush(stdout);
 }
 
+/*
+ * P1 #1 guard: init_for with a name longer than 255 bytes must return false
+ * rather than silently overflowing the bigstring buffer. bigstring is
+ * unsigned char[256] with byte 0 as the Pascal length, so max content is
+ * 255 characters.
+ */
+static void test_init_for_too_long_name_returns_false(void) {
+	printf("[adapter] Test: init_for rejects name longer than 255 bytes... ");
+	fflush(stdout);
+
+	/* 300-byte name -- well beyond the 255-char bigstring limit. */
+	char long_name[301];
+	memset(long_name, 'x', 300);
+	long_name[300] = '\0';
+
+	palette_menu_source_t src;
+	memset(&src, 0xAA, sizeof(src)); /* poison */
+
+	bool ok = repl_palette_source_init_for(&src, long_name);
+	assert(!ok);
+
+	/* dispose must be safe on a rejected init */
+	repl_palette_source_dispose(&src);
+
+	printf("PASS\n");
+	fflush(stdout);
+}
+
+
+/*
+ * P2 #3 guard: menus within a bar must be enumerated in deterministic
+ * alphabetical order regardless of insertion order.
+ *
+ * We install three menus in non-alphabetical order ("Zoo", "Apple", "Mango")
+ * and verify menu_describe returns them sorted ("Apple", "Mango", "Zoo").
+ */
+static void test_menus_within_bar_are_alphabetically_ordered(void) {
+	printf("[adapter] Test: menus within a bar are alphabetically ordered... ");
+	fflush(stdout);
+
+	hdlhashtable hdata = nil;
+	assert(menudata_ensure_root());
+	clear_data_children();
+	assert(find_data(&hdata));
+
+	/* Insert menus in non-alphabetical order: Zoo, Apple, Mango. */
+	hdlhashtable hbar = mk_subtable(hdata, "sort_test_bar");
+
+	hdlhashtable hzoo  = mk_subtable(hbar, "Zoo");
+	hdlhashtable hzi   = mk_subtable(hzoo, "Item1");
+	set_string(hzi, "label", "Zoo");
+	set_string(hzi, "script", "-- zoo script");
+
+	hdlhashtable happle = mk_subtable(hbar, "Apple");
+	hdlhashtable hai    = mk_subtable(happle, "Item2");
+	set_string(hai, "label", "Apple");
+	set_string(hai, "script", "-- apple script");
+
+	hdlhashtable hmango = mk_subtable(hbar, "Mango");
+	hdlhashtable hmi    = mk_subtable(hmango, "Item3");
+	set_string(hmi, "label", "Mango");
+	set_string(hmi, "script", "-- mango script");
+
+	palette_menu_source_t src;
+	assert(repl_palette_source_init_for(&src, "sort_test_bar"));
+
+	int n = src.count_menus(src.ctx);
+	assert(n == 3);
+
+	char label0[64] = {0}, label1[64] = {0}, label2[64] = {0};
+	char hk = '\0';
+	assert(src.menu_describe(src.ctx, 0, label0, sizeof(label0), &hk));
+	assert(src.menu_describe(src.ctx, 1, label1, sizeof(label1), &hk));
+	assert(src.menu_describe(src.ctx, 2, label2, sizeof(label2), &hk));
+
+	/* Alphabetical: Apple < Mango < Zoo */
+	assert(strcmp(label0, "Apple") == 0);
+	assert(strcmp(label1, "Mango") == 0);
+	assert(strcmp(label2, "Zoo")   == 0);
+
+	repl_palette_source_dispose(&src);
+	clear_data_children();
+
+	printf("PASS\n");
+	fflush(stdout);
+}
+
+
 static void test_dispose_idempotent(void) {
 	printf("[adapter] Test: dispose is idempotent... ");
 	fflush(stdout);
@@ -467,6 +555,209 @@ static void test_dispose_idempotent(void) {
 	printf("PASS\n");
 	fflush(stdout);
 }
+
+/* ---------- multi-bar helpers ---------- */
+
+/*
+ * Set the .installed boolean on a bar that already has its subtable
+ * created (build_test_menubar calls menudata_ensure_root so the system
+ * path exists; we then call menudata_set_installed to stamp the flag).
+ */
+static void install_bar(const char *bar_name) {
+	bigstring bs;
+	cstr_to_bs(bar_name, bs);
+	assert(menudata_set_installed(bs, true));
+}
+
+/*
+ * Build a minimal menubar at system.menus.data.<bar_name> WITHOUT clearing
+ * existing data children first (unlike build_test_menubar which calls
+ * clear_data_children). Used so multi-bar tests can build two bars
+ * side-by-side.
+ *
+ * Shape: <bar_name>/<menu_a>/Item1, <bar_name>/<menu_b>/Item2
+ */
+static hdlhashtable build_bar_additive(const char *bar_name,
+                                       const char *menu1, const char *menu2) {
+	hdlhashtable hdata = nil;
+
+	assert(menudata_ensure_root());
+	assert(find_data(&hdata));
+
+	hdlhashtable hbar = mk_subtable(hdata, bar_name);
+
+	hdlhashtable hm1 = mk_subtable(hbar, menu1);
+	hdlhashtable hi1 = mk_subtable(hm1, "Item1");
+	set_string(hi1, "label", menu1);
+	set_string(hi1, "script", "-- item1 script");
+	set_char(hi1, "cmdkey", '1');
+
+	if (menu2 != nil) {
+		hdlhashtable hm2 = mk_subtable(hbar, menu2);
+		hdlhashtable hi2 = mk_subtable(hm2, "Item2");
+		set_string(hi2, "label", menu2);
+		set_string(hi2, "script", "-- item2 script");
+		set_char(hi2, "cmdkey", '2');
+	}
+
+	return hbar;
+}
+
+
+/* ---------- multi-bar init_all tests ---------- */
+
+/*
+ * Two installed bars: bar_a (2 menus), bar_b (1 menu).
+ * init_all should union them -> count_menus == 3.
+ */
+static void test_multi_bar_union_count(void) {
+	printf("[adapter] Test: init_all unions menus from multiple bars... ");
+	fflush(stdout);
+
+	clear_data_children();
+	build_bar_additive("bar_a", "Alpha", "Beta");
+	install_bar("bar_a");
+	build_bar_additive("bar_b", "Gamma", nil);
+	install_bar("bar_b");
+
+	palette_menu_source_t src;
+	bool ok = repl_palette_source_init_all(&src);
+	assert(ok);
+
+	int n = src.count_menus(src.ctx);
+	assert(n == 3); /* bar_a: Alpha, Beta; bar_b: Gamma */
+
+	repl_palette_source_dispose(&src);
+	clear_data_children();
+
+	printf("PASS\n");
+	fflush(stdout);
+}
+
+
+/*
+ * Alphabetical ordering: bar "zzz" vs bar "aaa".
+ * menu_describe(0) must return the first menu from "aaa".
+ */
+static void test_multi_bar_ordering_is_alphabetical(void) {
+	printf("[adapter] Test: init_all orders bars alphabetically... ");
+	fflush(stdout);
+
+	clear_data_children();
+	build_bar_additive("zzz", "ZMenu", nil);
+	install_bar("zzz");
+	build_bar_additive("aaa", "AMenu", nil);
+	install_bar("aaa");
+
+	palette_menu_source_t src;
+	bool ok = repl_palette_source_init_all(&src);
+	assert(ok);
+
+	char label[64] = {0};
+	char hk = '\0';
+	bool described = src.menu_describe(src.ctx, 0, label, sizeof(label), &hk);
+	assert(described);
+	/* "aaa" sorts before "zzz", so index 0 must be from "aaa" -> "AMenu" */
+	assert(strcmp(label, "AMenu") == 0);
+
+	repl_palette_source_dispose(&src);
+	clear_data_children();
+
+	printf("PASS\n");
+	fflush(stdout);
+}
+
+
+/*
+ * Cross-bar describe: two bars (2+1 menus), menu_describe(2) returns
+ * the label from the second bar's first menu.
+ */
+static void test_multi_bar_item_describe_crosses_bars(void) {
+	printf("[adapter] Test: init_all menu_describe crosses bar boundary... ");
+	fflush(stdout);
+
+	clear_data_children();
+	build_bar_additive("aaa", "Menu1", "Menu2");
+	install_bar("aaa");
+	build_bar_additive("zzz", "Menu3", nil);
+	install_bar("zzz");
+
+	palette_menu_source_t src;
+	bool ok = repl_palette_source_init_all(&src);
+	assert(ok);
+
+	int n = src.count_menus(src.ctx);
+	assert(n == 3);
+
+	char label[64] = {0};
+	char hk = '\0';
+	bool described = src.menu_describe(src.ctx, 2, label, sizeof(label), &hk);
+	assert(described);
+	/* index 2 is the 3rd menu across the union: aaa[0]=Menu1 aaa[1]=Menu2 zzz[0]=Menu3 */
+	assert(strcmp(label, "Menu3") == 0);
+
+	repl_palette_source_dispose(&src);
+	clear_data_children();
+
+	printf("PASS\n");
+	fflush(stdout);
+}
+
+
+/*
+ * Installed filter: two bars, only one marked installed.
+ * init_all must exclude the uninstalled bar.
+ */
+static void test_installed_filter_excludes_uninstalled(void) {
+	printf("[adapter] Test: init_all excludes bars not marked installed... ");
+	fflush(stdout);
+
+	clear_data_children();
+	build_bar_additive("installed_bar", "VisibleMenu", nil);
+	install_bar("installed_bar");
+	build_bar_additive("hidden_bar", "HiddenMenu", nil);
+	/* hidden_bar: do NOT call install_bar — .installed defaults to false */
+
+	palette_menu_source_t src;
+	bool ok = repl_palette_source_init_all(&src);
+	assert(ok);
+
+	int n = src.count_menus(src.ctx);
+	assert(n == 1); /* only installed_bar's VisibleMenu */
+
+	repl_palette_source_dispose(&src);
+	clear_data_children();
+
+	printf("PASS\n");
+	fflush(stdout);
+}
+
+
+/*
+ * Single installed bar named "repl" still works through init_all.
+ */
+static void test_single_installed_bar_still_works_via_init_all(void) {
+	printf("[adapter] Test: init_all works with single installed bar... ");
+	fflush(stdout);
+
+	clear_data_children();
+	build_bar_additive("repl", "REPL", "Help");
+	install_bar("repl");
+
+	palette_menu_source_t src;
+	bool ok = repl_palette_source_init_all(&src);
+	assert(ok);
+
+	int n = src.count_menus(src.ctx);
+	assert(n == 2); /* REPL + Help */
+
+	repl_palette_source_dispose(&src);
+	clear_data_children();
+
+	printf("PASS\n");
+	fflush(stdout);
+}
+
 
 /* ---------- main ---------- */
 
@@ -487,6 +778,7 @@ int main(void) {
 	assert(wp_portable_init());
 
 	TR_RUN(test_init_for_missing_menubar_returns_false);
+	TR_RUN(test_init_for_too_long_name_returns_false);
 	TR_RUN(test_count_menus_reflects_menubar);
 	TR_RUN(test_menu_describe_returns_label);
 	TR_RUN(test_item_count_for_top_menu);
@@ -494,6 +786,14 @@ int main(void) {
 	TR_RUN(test_script_handle_survives_copy_cycle);
 	TR_RUN(test_describe_handle_stable_under_repeated_calls);
 	TR_RUN(test_dispose_idempotent);
+	TR_RUN(test_menus_within_bar_are_alphabetically_ordered);
+
+	/* Phase A: multi-bar init_all tests */
+	TR_RUN(test_multi_bar_union_count);
+	TR_RUN(test_multi_bar_ordering_is_alphabetical);
+	TR_RUN(test_multi_bar_item_describe_crosses_bars);
+	TR_RUN(test_installed_filter_excludes_uninstalled);
+	TR_RUN(test_single_installed_bar_still_works_via_init_all);
 
 	printf("\n========================================\n");
 	printf("[adapter] ALL TESTS PASSED\n");

@@ -1,0 +1,114 @@
+# L4 integration test: multi-menubar union composition (Phase A, Issue #677)
+#
+# What this file proves
+# ---------------------
+# When two menubars are installed (the boot-default "repl" bar plus a
+# dynamically-added "aux" bar), repl_palette_source_init_all composes their
+# top-level menus into a single horizontal strip. The palette renders both
+# bars' menus left-to-right, sorted alphabetically by bar name:
+#
+#   "aux" sorts before "repl", so the strip is: File | REPL | Help
+#                                                ^^^^   ^^^^   ^^^^
+#                                                aux    repl   repl
+#
+# The screenshot golden locks in the union semantics as a regression guard.
+# Any future change that breaks the enumeration, filter, or ordering will
+# produce a golden diff and surface here.
+#
+# Setup
+# -----
+# 1. The "repl" bar is installed at REPL boot (installReplMenubar hook).
+# 2. Before opening the palette we send a REPL command that installs a
+#    second bar named "aux" with a single "File" menu containing one item.
+#    UserTalk: menu.addMenuCommand(@system.menus.data.aux, "File", "Open",
+#              "fileOpen()"); menu.install(@system.menus.data.aux)
+# 3. The palette is opened with '/' and screenshot-matched.
+# 4. Cleanup: 'delete(@system.menus.data.aux)' removes the transient bar
+#    so subsequent tests start from the same clean state.
+#
+# Why "aux" and not an arbitrary name
+# ------------------------------------
+# "aux" sorts lexicographically before "repl", so alphabetical ordering
+# produces a deterministic strip: File (from aux) + REPL + Help (from repl).
+# If we used "zzz" the strip would be REPL | Help | FileZ -- still valid but
+# harder to reason about in the golden.
+#
+# Screenshot match
+# ----------------
+# Golden: tests/fixtures/palette/menubar_two_bars.txt
+# Regenerate only when Phase A UX intentionally changes:
+#   cd tests && FRONTIER_UPDATE_GOLDENS=1 make test-integration
+#
+# Sequential because we mutate system.menus.data (shared process-global ODB
+# state). A parallel runner sharing the same staged DB would race.
+#
+# Note on sizeof(system.menus.data)
+# ----------------------------------
+# system.menus.data contains non-bar scalar entries (currentmenu,
+# currentMenuType, currentsuite) in addition to bar subtables, so
+# sizeof() returns more than just the number of bars. We use
+# menu.isInstalled to verify bar setup instead.
+
+needs_guest_dbs: false
+sequential: true
+
+tests:
+  - name: "palette multi-bar: union of two installed bars renders as single strip"
+    palette_mode: true
+    timeout: 20
+    environment:
+      # Pin prompt row so we skip the 50ms DSR poll that the test harness
+      # cannot answer (harness redirects stderr away from the PTY, so the
+      # DSR query eats the answer). Without this pin, the DSR timeout is
+      # enough to exhaust drain_pty's consecutive-empty-reads budget before
+      # the palette has finished rendering, producing a stale golden frame.
+      FRONTIER_PALETTE_PROMPT_ROW: "20"
+    interactive_steps:
+      # Step 1: Wait for the REPL prompt after boot (installReplMenubar ran).
+      - expect: "\\[root\\]> "
+
+      # Step 2a: Add a "File" menu to a new bar "aux".
+      # Expect "true" first so pexpect consumes the verb's return value before
+      # matching the prompt -- otherwise the prompt from the PREVIOUS step's
+      # output could be matched prematurely, leaving this command's completion
+      # unconfirmed and the "install" step racing with its own execution.
+      - send_raw: "menu.addMenuCommand(@system.menus.data.aux, \"File\", \"Open\", \"fileOpen()\")\r"
+      - expect: "true"
+      - expect: "\\[root\\]> "
+
+      # Step 2b: Mark the aux bar installed.
+      - send_raw: "menu.install(@system.menus.data.aux)\r"
+      - expect: "true"
+      - expect: "\\[root\\]> "
+
+      # Step 2c: Verify the aux bar is installed.
+      # Note: sizeof(system.menus.data) is intentionally not checked here --
+      # system.menus.data contains non-bar scalar entries (currentmenu,
+      # currentMenuType, currentsuite) in addition to the bar subtables, so
+      # the count is environment-dependent. menu.isInstalled is the right
+      # predicate: it checks the .installed flag set by menu.install.
+      - send_raw: "menu.isInstalled(@system.menus.data.aux)\r"
+      - expect: "true"
+      - expect: "\\[root\\]> "
+
+      # Step 3: Open the palette using the double-slash fast-path which
+      # bypasses the disambiguation timer. repl_palette_source_init_all
+      # now finds two installed bars ("aux" + "repl") and composes a strip:
+      # File | REPL | Help  (alphabetical: aux < repl).
+      - send_raw: "//"
+
+      # Step 4: Capture the composed strip. Golden must show "File" before
+      # "REPL" (alphabetical: aux < repl).
+      - screenshot_match: "fixtures/palette/menubar_two_bars.txt"
+
+      # Step 5: Dismiss the palette.
+      - send_raw: "\x1b"
+      - expect: "\\[root\\]> "
+
+      # Step 6: Clean up the transient bar so other tests see a clean ODB.
+      - send_raw: "delete(@system.menus.data.aux)\r"
+      - expect: "\\[root\\]> "
+
+      # Step 7: Exit.
+      - send_raw: "\x04"
+    expected_success: true
