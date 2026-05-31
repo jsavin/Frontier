@@ -3856,7 +3856,7 @@ int repl_main(cli_options_t *options, ws_server_t *ws_server) {
 				 *     what the user sees. The leading '/' stays put.
 				 *
 				 * The fast-timer env var FRONTIER_PALETTE_FAST_TIMERS
-				 * compresses 250ms -> 5ms for the L4 test harness, so
+				 * compresses 350ms -> 5ms for the L4 test harness, so
 				 * pyte-driven tests don't pay the full disambiguation
 				 * cost on each '/' send. */
 				bool open_menu = false;

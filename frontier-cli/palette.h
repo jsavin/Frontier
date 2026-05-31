@@ -487,12 +487,16 @@ int palette_esc_timeout_ms(void);
  * GIL: same contract as palette_esc_timeout_ms — only touches getenv. */
 int slash_menu_trigger_delay_ms(void);
 
-/* Default slash-menu disambiguation timeout (milliseconds). 250ms is
+/* Default slash-menu disambiguation timeout (milliseconds). 350ms is
  * the upper bound on inter-keystroke delay for a deliberate slash
  * command — short enough that a user who types '/' alone perceives
  * the menu as "instant", long enough that any second key in a typed
- * command beats the timer. */
-#define SLASH_MENU_TRIGGER_DELAY_DEFAULT_MS 250
+ * command beats the timer. The number is tuned for US QWERTY where
+ * '/' is right-pinky and the second character is often a different
+ * finger; the right-pinky reach + finger transition pushes typical
+ * inter-key intervals into the 200-300ms range, so 250ms was too
+ * tight in practice (caught the menu when typing /keycodes etc.). */
+#define SLASH_MENU_TRIGGER_DELAY_DEFAULT_MS 350
 
 /* Fast slash-menu disambiguation timeout (milliseconds) used when
  * FRONTIER_PALETTE_FAST_TIMERS is set non-empty. */
