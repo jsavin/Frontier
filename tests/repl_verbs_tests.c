@@ -25,9 +25,9 @@
 */
 
 /*
- * repl_verbs_tests.c - Behavioural tests for the 5 REPL kernel verbs:
+ * repl_verbs_tests.c - Behavioural tests for the REPL kernel verbs:
  *   repl.exit, repl.clearVariables, repl.jumpPath, repl.printKeyCodes,
- *   repl.list
+ *   repl.list, repl.fromSlash
  *
  * Each verb is dispatched by compiling and running real UserTalk source
  * (e.g. `repl.exit()`) so we are exercising the real
@@ -43,7 +43,9 @@
  *   - repl.printKeyCodes() invokes the keycodes callback and returns true
  *   - repl.list() with no arg invokes the list callback with NULL path
  *   - repl.list("@foo") forwards the path string verbatim
- *   - all 5 verbs are registered (compile succeeds for each form)
+ *   - repl.fromSlash() returns the host's from_slash flag value
+ *   - repl.fromSlash() returns false when no host is installed
+ *   - all verbs are registered (compile succeeds for each form)
  */
 
 #include <assert.h>
@@ -82,6 +84,10 @@ typedef struct ty_test_host {
 	char last_list_path[256];
 	boolean last_list_path_was_null;
 	int list_calls;
+	boolean from_slash_returns; /* value the test host's from_slash hook reports */
+	int from_slash_calls;
+	boolean is_active_returns;  /* value the test host's is_active hook reports */
+	int is_active_calls;
 } ty_test_host;
 
 static ty_test_host g_host;
@@ -89,6 +95,8 @@ static ty_test_host g_host;
 static void host_reset(void) {
 	memset(&g_host, 0, sizeof(g_host));
 	g_host.jump_should_succeed = true; /* default: jumps succeed */
+	g_host.from_slash_returns = false;  /* default: not a slash dispatch */
+	g_host.is_active_returns  = false;  /* default: no REPL active */
 }
 
 static void host_exit(void) {
@@ -130,6 +138,16 @@ static void host_list(const char *path) {
 	}
 }
 
+static boolean host_from_slash(void) {
+	g_host.from_slash_calls++;
+	return g_host.from_slash_returns;
+}
+
+static boolean host_is_active(void) {
+	g_host.is_active_calls++;
+	return g_host.is_active_returns;
+}
+
 static void install_test_host(void) {
 	repl_verbs_host_t host;
 	memset(&host, 0, sizeof(host));
@@ -138,6 +156,8 @@ static void install_test_host(void) {
 	host.jump_path = &host_jump;
 	host.print_key_codes = &host_keycodes;
 	host.list = &host_list;
+	host.from_slash = &host_from_slash;
+	host.is_active  = &host_is_active;
 	repl_verbs_set_host(&host);
 }
 
@@ -310,6 +330,166 @@ static void test_repl_list_with_path_forwards_string(void) {
 
 
 /*
+ * repl.fromSlash() returns the value the host hook reports.
+ * When g_host.from_slash_returns is false the verb returns false;
+ * when true, it returns true.
+ */
+static void test_repl_from_slash_returns_host_value(void) {
+	printf("[repl_verbs] Test: repl.fromSlash() returns host hook value... ");
+	fflush(stdout);
+
+	host_reset();
+	install_test_host();
+
+	/* Default: from_slash_returns = false -> verb compile+run succeeds;
+	 * host hook called once. We assert the hook was called but not the
+	 * boolean result (run_script only checks run success, not retval). */
+	g_host.from_slash_returns = false;
+	assert(run_script("local (x); x = repl.fromSlash()"));
+	assert(g_host.from_slash_calls == 1);
+
+	/* Now set to true; hook still called. */
+	host_reset();
+	install_test_host();
+	g_host.from_slash_returns = true;
+	assert(run_script("local (x); x = repl.fromSlash()"));
+	assert(g_host.from_slash_calls == 1);
+
+	printf("PASS\n");
+	fflush(stdout);
+}
+
+
+/*
+ * Round-trip test: branch on repl.fromSlash() inside UserTalk and
+ * trigger a distinguishable side effect in each branch. This proves
+ * the boolean value actually flows back from the verb into the
+ * interpreter, not just that the hook was called.
+ *
+ * Branch true  -> calls repl.exit() (exit_calls becomes 1)
+ * Branch false -> calls repl.clearVariables() (clear_calls becomes 1)
+ */
+static void test_repl_from_slash_value_drives_branch(void) {
+	printf("[repl_verbs] Test: repl.fromSlash() return value drives UT branch... ");
+	fflush(stdout);
+
+	const char *branch_script =
+		"if repl.fromSlash() {\r"
+		"\trepl.exit()\r"
+		"}\r"
+		"else {\r"
+		"\trepl.clearVariables()\r"
+		"}";
+
+	/* Case A: host reports false -> else branch -> clearVariables called. */
+	host_reset();
+	install_test_host();
+	g_host.from_slash_returns = false;
+	assert(run_script(branch_script));
+	assert(g_host.from_slash_calls == 1);
+	assert(g_host.exit_calls == 0);   /* true branch NOT taken */
+	assert(g_host.clear_calls == 1);  /* else branch taken */
+
+	/* Case B: host reports true -> true branch -> exit called. */
+	host_reset();
+	install_test_host();
+	g_host.from_slash_returns = true;
+	assert(run_script(branch_script));
+	assert(g_host.from_slash_calls == 1);
+	assert(g_host.exit_calls == 1);   /* true branch taken */
+	assert(g_host.clear_calls == 0);  /* else branch NOT taken */
+
+	printf("PASS\n");
+	fflush(stdout);
+}
+
+
+/*
+ * Round-trip test for repl.isActive(): same shape as the fromSlash
+ * branching test. Proves the bool actually flows back to UserTalk.
+ */
+static void test_repl_is_active_value_drives_branch(void) {
+	printf("[repl_verbs] Test: repl.isActive() return value drives UT branch... ");
+	fflush(stdout);
+
+	const char *branch_script =
+		"if repl.isActive() {\r"
+		"\trepl.exit()\r"
+		"}\r"
+		"else {\r"
+		"\trepl.clearVariables()\r"
+		"}";
+
+	/* Case A: host reports false -> else branch. */
+	host_reset();
+	install_test_host();
+	g_host.is_active_returns = false;
+	assert(run_script(branch_script));
+	assert(g_host.is_active_calls == 1);
+	assert(g_host.exit_calls == 0);
+	assert(g_host.clear_calls == 1);
+
+	/* Case B: host reports true -> true branch. */
+	host_reset();
+	install_test_host();
+	g_host.is_active_returns = true;
+	assert(run_script(branch_script));
+	assert(g_host.is_active_calls == 1);
+	assert(g_host.exit_calls == 1);
+	assert(g_host.clear_calls == 0);
+
+	printf("PASS\n");
+	fflush(stdout);
+}
+
+
+/*
+ * repl.isActive() returns the value the host hook reports.
+ */
+static void test_repl_is_active_returns_host_value(void) {
+	printf("[repl_verbs] Test: repl.isActive() returns host hook value... ");
+	fflush(stdout);
+
+	host_reset();
+	install_test_host();
+
+	/* Default: is_active_returns = false -> hook called once. */
+	g_host.is_active_returns = false;
+	assert(run_script("local (x); x = repl.isActive()"));
+	assert(g_host.is_active_calls == 1);
+
+	host_reset();
+	install_test_host();
+	g_host.is_active_returns = true;
+	assert(run_script("local (x); x = repl.isActive()"));
+	assert(g_host.is_active_calls == 1);
+
+	printf("PASS\n");
+	fflush(stdout);
+}
+
+
+/*
+ * repl.fromSlash() must return false (not crash) when no host is installed.
+ */
+static void test_repl_from_slash_no_host_returns_false(void) {
+	printf("[repl_verbs] Test: repl.fromSlash() with no host returns false safely... ");
+	fflush(stdout);
+
+	host_reset();
+	repl_verbs_set_host(NULL);
+
+	/* Script should compile and run without crashing. */
+	(void)run_script("local (x); x = repl.fromSlash()");
+	/* No hook calls — host was not installed. */
+	assert(g_host.from_slash_calls == 0);
+
+	printf("PASS\n");
+	fflush(stdout);
+}
+
+
+/*
  * No-host safety: if the test forgets to install a host (or the host is
  * cleared), verbs must NOT crash. They should report failure (return
  * false) so the script gets a recoverable error rather than a SIGSEGV.
@@ -329,6 +509,8 @@ static void test_no_host_does_not_crash(void) {
 	(void)run_script("local (x); x = repl.jumpPath(\"x\")");
 	(void)run_script("local (x); x = repl.printKeyCodes()");
 	(void)run_script("local (x); x = repl.list()");
+	(void)run_script("local (x); x = repl.fromSlash()");
+	(void)run_script("local (x); x = repl.isActive()");
 
 	/* Without a host, none of the hook counters should have changed. */
 	assert(g_host.exit_calls == 0);
@@ -336,6 +518,8 @@ static void test_no_host_does_not_crash(void) {
 	assert(g_host.jump_calls == 0);
 	assert(g_host.keycodes_calls == 0);
 	assert(g_host.list_calls == 0);
+	assert(g_host.from_slash_calls == 0);
+	assert(g_host.is_active_calls == 0);
 
 	printf("PASS\n");
 	fflush(stdout);
@@ -372,6 +556,11 @@ int main(void) {
 	TR_RUN(test_repl_print_key_codes_calls_host);
 	TR_RUN(test_repl_list_no_arg_passes_null);
 	TR_RUN(test_repl_list_with_path_forwards_string);
+	TR_RUN(test_repl_from_slash_returns_host_value);
+	TR_RUN(test_repl_from_slash_value_drives_branch);
+	TR_RUN(test_repl_from_slash_no_host_returns_false);
+	TR_RUN(test_repl_is_active_returns_host_value);
+	TR_RUN(test_repl_is_active_value_drives_branch);
 	TR_RUN(test_no_host_does_not_crash);
 
 	printf("\n========================================\n");

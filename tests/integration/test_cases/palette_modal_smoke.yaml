@@ -27,13 +27,17 @@
 # That's expected -- the test guards against unintentional drift, not
 # intentional redesigns.
 #
-# A closed-state screenshot_match is intentionally NOT included today:
-# bare-ESC dismissal still leaves visual residue (the " REPL" menubar
-# header sticks at row 0; the post-dismissal prompt overprints the
-# original startup banner row). Asserting on that frame would lock in
-# the broken behavior. The bleed-through + ghost-cell fixes ship in
-# the next chain link (host-anchored horizontal cascade); a proper
-# closed-state golden gets added there.
+# Closed-state screenshot match guards the bleed-through + ghost-cell fix
+# (palette_paint_teardown). Without the fix, menubar_closed.txt would show
+# a stale " REPL" header row (the menubar's last-painted cells); the
+# screenshot diff catches that regression.
+#
+# A "drilled-in" state test was considered but pyte's text-only normalization
+# discards SGR attributes, so the captured frame for "REPL menu opened, Help
+# selected" is byte-identical to "menubar just opened, REPL highlighted" --
+# both render as " REPL" in plain text. To test drilled state behaviorally,
+# a future L4 enhancement would need to expose color/attr info from pyte
+# (emitted_csi_contains key per PALETTE_TEST_HARNESS.md known gaps).
 
 needs_guest_dbs: false
 sequential: true
@@ -48,5 +52,147 @@ tests:
       - screenshot_match: "fixtures/palette/menubar_just_opened.txt"
       - send_raw: "\x1b"
       - expect: "\\[root\\]> "
+      - screenshot_match: "fixtures/palette/menubar_closed.txt"
       - send_raw: "\x04"
     expected_success: true
+
+  # Bug 2 regression guard: mid-screen prompt anchors menubar at
+  # prompt_row + 1 (NOT at the bottom row by default).
+  #
+  # Pre-fix palette.c had an edge branch: "if prompt_row + 1 >= term_rows,
+  # emit \x1b[1S (scroll up) and decrement prompt_row." On the bottom row,
+  # linenoiseEditStop's own '\n' emit already scrolled the terminal up by
+  # one; the palette's extra scroll burned a second row of scrollback and
+  # left the cursor / framebuffer / linenoise tracking inconsistent. The
+  # fix deletes that branch entirely and changes run_palette_modal's
+  # prompt_row computation to subtract a second row from the DSR cursor
+  # (because EditStop's '\n' moved the cursor off the prompt line).
+  #
+  # The L4 harness redirects the child's stderr away from the PTY, which
+  # eats the DSR reply -- so this test uses FRONTIER_PALETTE_PROMPT_ROW
+  # to pin prompt_row deterministically near the top. The expected
+  # screenshot then shows the menubar at row 5 (prompt_row + 1, where
+  # prompt_row == 4 0-based after the 1-based env value), NOT at the
+  # bottom. The slash-dismiss test above continues to exercise the
+  # DSR-fails fallback path (prompt_row defaults to term_rows - 2 so
+  # menubar still lands at term_rows - 1, matching its existing golden).
+  - name: "palette modal: mid-screen prompt anchors menubar one row below"
+    palette_mode: true
+    timeout: 10
+    environment:
+      FRONTIER_PALETTE_PROMPT_ROW: "4"
+    interactive_steps:
+      - expect: "\\[root\\]> "
+        send_raw: "/"
+      - screenshot_match: "fixtures/palette/menubar_mid_screen.txt"
+      - send_raw: "\x1b"
+      - expect: "\\[root\\]> "
+      - send_raw: "\x04"
+    expected_success: true
+
+  # PR #674 slash-vs-menu disambiguator: a single '/' followed by no
+  # other byte within slash_menu_trigger_delay_ms() opens the menu.
+  # The L4 harness sets FRONTIER_PALETTE_FAST_TIMERS=1, so the wait
+  # compresses to ~5ms — fast enough that a single send_raw("/") with
+  # no follow-up reliably opens the menu and matches the existing
+  # menubar_just_opened.txt golden. This is the timeout-fires path.
+  - name: "palette modal: lone slash opens menu after disambig timeout"
+    palette_mode: true
+    timeout: 15
+    interactive_steps:
+      - expect: "\\[root\\]> "
+        send_raw: "/"
+      - screenshot_match: "fixtures/palette/menubar_just_opened.txt"
+      - send_raw: "\x1b"
+      - expect: "\\[root\\]> "
+      - send_raw: "\x04"
+    expected_success: true
+
+  # PR #674 power-user fast-path: typing '//' opens the menu instantly
+  # without waiting for the disambiguation timer. The disambiguator
+  # consumes the second '/' (clearing the leading '/' from the edit
+  # buffer) so the modal opens against a clean prompt row — visually
+  # identical to the lone-slash path, so the same golden applies.
+  - name: "palette modal: double slash opens menu via fast-path"
+    palette_mode: true
+    timeout: 15
+    interactive_steps:
+      - expect: "\\[root\\]> "
+        send_raw: "//"
+      - screenshot_match: "fixtures/palette/menubar_just_opened.txt"
+      - send_raw: "\x1b"
+      - expect: "\\[root\\]> "
+      - send_raw: "\x04"
+    expected_success: true
+
+  # PR #674 disambiguator regression guard: a slash command typed as a
+  # single atomic write (the harness sends "/totallybogus\n" in one
+  # call) must NOT open the menu. The second byte ('t') arrives well
+  # within the 5ms fast-timer window, so the disambiguator injects it
+  # into linenoise and the line completes as a normal slash command.
+  # dispatch_slash_command() resolves the unknown token and prints
+  # "Unknown command: /totallybogus" — the assertion proves the
+  # slash-command path ran, not the menu path. (If the menu opened
+  # instead, the rest of the bytes would route to palette_feed_byte
+  # and no "Unknown command:" line would ever be printed.)
+  - name: "palette modal: typed slash command does NOT open menu"
+    palette_mode: true
+    timeout: 15
+    interactive_steps:
+      - expect: "\\[root\\]> "
+        send_raw: "/totallybogus\r"
+      - expect: "Unknown command: /totallybogus"
+      - expect: "\\[root\\]> "
+      - send_raw: "\x04"
+    expected_success: true
+
+  # PR #674 disambiguator regression guard: backspace after a leading
+  # '/' must delete the slash, not insert a literal 0x7f. Before the
+  # fix, the disambiguator called linenoiseEditInsert for every non-'/'
+  # byte, so backspace (0x7f) was inserted as a control char and the
+  # leading '/' stayed put — user-visible bug: typing '/' then
+  # backspace appeared to do nothing. The fix special-cases 0x7f/0x08
+  # to call linenoiseEditBackspace instead.
+  #
+  # Test shape: send '/<BS>/help\r' as one atomic write. If backspace
+  # deletes the '/' correctly, linenoise sees just '/help' as the new
+  # input (and the disambiguator runs again — the second '/' is the
+  # start of a new slash command, second char 'h' arrives within the
+  # fast-timer window, the disambiguator injects it, and /help runs).
+  # The expect for repl_output_help's "Available commands" header
+  # proves the backspace deleted the leading '/' AND the subsequent
+  # /help dispatched as a slash command. If backspace was broken,
+  # the buffer would be '/<DEL>/help' and dispatch_slash_command would
+  # try to resolve '/<DEL>/help' which would fail to match /help.
+  - name: "palette modal: backspace deletes the leading slash"
+    palette_mode: true
+    timeout: 15
+    interactive_steps:
+      - expect: "\\[root\\]> "
+        send_raw: "/\x7f/help\r"
+      - expect: "Available commands"
+      - expect: "\\[root\\]> "
+      - send_raw: "\x04"
+    expected_success: true
+
+# L4 GAP -- leaf execution end-to-end: not currently covered.
+#
+# An ideal third test would drill /, DOWN, ENTER to fire the REPL > Help
+# leaf and assert "Available commands:" reaches the PTY ungarbled --
+# directly exercising Bug 1's "leaf output collides with restarted
+# prompt" fix. The mechanics work (arrow keys and Enter reach the modal,
+# the modal returns the script handle to the caller), but
+# meuserselected_headless -> langruncode hangs indefinitely inside the
+# pexpect-spawned child for reasons that don't reproduce in a regular
+# interactive REPL session. The same script ("repl.help ()") returns
+# cleanly when run via the protocol-mode CLI or typed at an interactive
+# prompt. Investigation requires lldb attach to the hung child --
+# tracked as a follow-up since the underlying language-runtime hang is
+# unrelated to the palette UX work in this PR.
+#
+# Bug 1's cancel-path teardown (palette_paint_teardown + compositor
+# clear + linenoise restart at column 1 of a fresh row) is exercised by
+# the slash-dismiss test above: the menubar_closed.txt golden would
+# show prompt cell collisions if the cleanup regressed. The leaf path
+# uses the same cleanup helper, so the cancel coverage is a strong
+# proxy for the execute-path teardown contract.

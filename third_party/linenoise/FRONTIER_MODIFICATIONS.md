@@ -54,6 +54,33 @@ Linenoise is a lightweight readline alternative used by frontier-cli for REPL li
 - **`linenoisePrintKeyCodes()`** (line ~1593)
   - Enhanced to exit on ESC key (previously only 'quit' command)
   - Used by frontier-cli's `/keycodes` command for terminal debugging
+  - PR #674 (2026-05-30): both exit branches (ESC and "quit") now emit
+    explicit `\r\n` before breaking out of the raw-mode loop. The bare
+    `\n` from the original code left the cursor at its current column
+    after termios was restored, causing the next REPL prompt to print
+    mid-row instead of column 1 — visible from both the slash command
+    and the new REPL menu's "Key codes" item.
+
+#### Exported Internals
+
+- **`linenoiseEditInsert`** (linenoise.c line ~1099)
+  - PR #674 (2026-05-30): exported via linenoise.h. Originally
+    intra-translation-unit but had external linkage; frontier-cli's
+    slash-menu disambiguator in `repl.c` needs to push a follow-up
+    byte back into the edit buffer after consuming it for `//`
+    fast-path detection. The function echoes the byte to the user's
+    terminal and updates the linenoise state's buf/len/pos, so
+    linenoise sees the byte on the next `linenoiseEditFeed` cycle
+    as if the user typed it normally.
+
+- **`linenoiseEditBackspace`** (linenoise.c line ~1205)
+  - PR #674 (2026-05-30): exported via linenoise.h. Used by the slash-
+    menu disambiguator in `repl.c` to correctly handle the case where
+    the byte consumed during the disambig poll window is backspace
+    (0x7f or Ctrl-H 0x08). Without this, the disambiguator would call
+    linenoiseEditInsert with the backspace byte, inserting it as a
+    literal control character instead of deleting the leading '/' —
+    visible bug: typing '/' then backspace appeared to do nothing.
 
 ---
 
@@ -117,5 +144,5 @@ Word navigation is tested manually due to integration test framework limitations
 ## Version Information
 
 **Linenoise Version**: 1.0 (as of vendoring)
-**Last Frontier Modification**: 2026-01-27
+**Last Frontier Modification**: 2026-05-30
 **Modified Lines**: ~100 lines added to ~1500 line file (~6.6% modification)

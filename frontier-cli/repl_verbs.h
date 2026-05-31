@@ -128,6 +128,39 @@ typedef struct ty_repl_verbs_host {
 	 * for the call site.
 	 */
 	void (*help)(void);
+	/*
+	 * from_slash: returns true iff the currently-executing handler script
+	 * was dispatched from a slash command (e.g. the user typed /jump or
+	 * /list at the REPL prompt) rather than activated via the palette
+	 * menu. UserTalk scripts call repl.fromSlash() to branch on this
+	 * flag so they can show interactive prompts (dialog.ask) when the
+	 * user picks a menu item without an argument, while slash commands
+	 * preserve their existing no-prompt semantics.
+	 *
+	 * The host sets g_repl_dispatching_from_slash true immediately before
+	 * calling meuserselected_headless (or dispatch_synthesized_script) in
+	 * dispatch_slash_command and clears it false on every exit path. The
+	 * GIL is held for the full dispatch, so the boolean is visible to any
+	 * UserTalk code running in that call chain without additional locking.
+	 *
+	 * Returns false when no host is installed (scripts not running inside
+	 * a REPL dispatch return false, matching "not a slash command").
+	 */
+	boolean (*from_slash)(void);
+	/*
+	 * is_active: returns true iff a REPL session is currently running
+	 * (the host has entered the REPL main loop and not yet exited).
+	 * UserTalk handler scripts use repl.isActive() to guard interactive
+	 * operations (like dialog.ask prompts) so they do not fire when the
+	 * handler is called from non-REPL contexts (integration tests,
+	 * protocol mode, -e evaluation).
+	 *
+	 * Backed by g_repl_active in repl.c, which is set true at REPL entry
+	 * and false on every exit path.
+	 *
+	 * Returns false when no host is installed.
+	 */
+	boolean (*is_active)(void);
 } repl_verbs_host_t;
 
 

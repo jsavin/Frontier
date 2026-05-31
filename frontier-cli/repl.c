@@ -169,6 +169,25 @@ static volatile sig_atomic_t g_repl_exit_requested = 0;
  */
 static volatile sig_atomic_t g_script_running = 0;
 
+/*
+ * Set to true for the duration of a slash-command dispatch so UserTalk
+ * handler scripts can branch on repl.fromSlash() to distinguish
+ * "user typed /jump" from "user activated Jump via the palette menu".
+ *
+ * Lifetime contract: set to true immediately before calling
+ * meuserselected_headless (or dispatch_synthesized_script) from
+ * dispatch_slash_command, cleared to false on every exit path including
+ * error paths.  Because the REPL modal is GIL-held throughout, and
+ * dispatch_slash_command is non-reentrant within a single REPL session,
+ * a plain boolean (no volatile) is sufficient -- the GIL acquire/release
+ * barrier covers visibility to any GIL-acquired thread that reads it via
+ * the repl.fromSlash() verb during the same dispatch call.
+ *
+ * Writers: dispatch_slash_command only.
+ * Readers: replverbhost_from_slash (via the repl.fromSlash() verb).
+ */
+static boolean g_repl_dispatching_from_slash = false;
+
 // Session command tracking for merge-before-save
 static char *session_commands[MAX_SESSION_COMMANDS];
 static size_t session_command_count = 0;
@@ -1561,6 +1580,12 @@ static struct linenoiseState *g_active_linenoisestate = NULL;
 // Forward declaration for completion callback
 static void linenoise_completion_callback(const char *buf, linenoiseCompletions *lc);
 
+/* linenoiseEditInsert is declared in third_party/linenoise/linenoise.h
+ * (Frontier modification). Used by the slash-menu disambiguator below
+ * to re-inject a follow-up byte that we consumed from stdin to decide
+ * whether to open the menu — see the comment block at the call site
+ * (search for "slash-menu disambiguator"). */
+
 /*
  * Async-signal-safe mouse-tracking disable.
  *
@@ -2371,6 +2396,12 @@ static ty_dispatch_result dispatch_leaf_via_menubar(hdlhashtable hleaf) {
  * *running = false on /exit dispatch.
  */
 static boolean dispatch_slash_command(const char *line, boolean *running) {
+	/* Self-healing reset: if a prior dispatch longjmp'd out of the
+	 * UserTalk runtime past the clear sites below, this resets the
+	 * flag on re-entry so subsequent reads can't be poisoned. The
+	 * UserTalk runtime's exception path doesn't run C cleanup. */
+	g_repl_dispatching_from_slash = false;
+
 	/* Defensive copy + trim. The caller has already verified line[0] == '/'. */
 	char buf[SLASH_CMD_BUF];
 	size_t inlen = strlen(line);
@@ -2572,7 +2603,9 @@ static boolean dispatch_slash_command(const char *line, boolean *running) {
 				log_warn(LOG_COMP_GENERAL,
 				         "slash-command: leaf script could not be transformed "
 				         "to inject arg; dispatching without arg.");
+				g_repl_dispatching_from_slash = true;
 				ty_dispatch_result dr_fallback = dispatch_leaf_via_menubar(hleaf);
+				g_repl_dispatching_from_slash = false;
 				switch (dr_fallback) {
 					case DISPATCH_OK: break;
 					case DISPATCH_NO_SCRIPT_FIELD:
@@ -2590,7 +2623,9 @@ static boolean dispatch_slash_command(const char *line, boolean *running) {
 				}
 				return true;
 			}
+			g_repl_dispatching_from_slash = true;
 			ty_dispatch_result dr_inj = dispatch_synthesized_script(synth, synth_len);
+			g_repl_dispatching_from_slash = false;
 			free(synth);
 			switch (dr_inj) {
 				case DISPATCH_OK: break;
@@ -2620,7 +2655,9 @@ static boolean dispatch_slash_command(const char *line, boolean *running) {
 	 * actual exit. We also short-circuit here so callers that test for
 	 * *running == false on /exit observe the change without waiting for
 	 * the next event-loop tick. */
+	g_repl_dispatching_from_slash = true;
 	ty_dispatch_result dr = dispatch_leaf_via_menubar(hleaf);
+	g_repl_dispatching_from_slash = false;
 	switch (dr) {
 		case DISPATCH_OK:
 			break;
@@ -2920,6 +2957,14 @@ static Handle run_palette_modal(struct linenoiseState *ls,
 		return nil;
 	}
 	terminal_enable_mouse();
+	/* Hide the terminal cursor for the modal lifetime. Without this the
+	 * cursor parks next to whichever cell the compositor most recently
+	 * wrote, producing a stray "]" next to the selected menu item in
+	 * terminals that render the block cursor on top of menu paint. The
+	 * show-cursor counterpart fires in the cleanup_terminal path below
+	 * BEFORE terminal_disable_raw_mode so the SGR write goes out while
+	 * the terminal is still in raw mode. */
+	terminal_hide_cursor();
 
 	/* 3. Build the ODB-backed palette source. */
 	palette_menu_source_t src;
@@ -2935,6 +2980,96 @@ static Handle run_palette_modal(struct linenoiseState *ls,
 	int rows = 24, cols = 80;
 	(void)terminal_get_size(&rows, &cols);
 	compositor_on_resize(rows, cols);
+
+	/* Query the cursor row via DSR so the palette can anchor the menubar
+	 * directly below the REPL prompt instead of at row 0.
+	 *
+	 * Cursor vs prompt: linenoiseEditStop above emitted '\n', which moved
+	 * the cursor down one row. When the prompt was on the bottom row the
+	 * '\n' also scrolled the terminal up by one, so post-EditStop the
+	 * cursor is always on a fresh blank row immediately BELOW the prompt
+	 * (whether the prompt is mid-screen or just got scrolled up by one).
+	 * We therefore subtract another row from the DSR cursor reading to
+	 * land on the prompt itself; the menubar then anchors at
+	 * prompt_row + 1 = cursor_row, the freed blank row.
+	 *
+	 * DSR-fails fallback: when stderr is redirected (test harness) or
+	 * the terminal doesn't echo a DSR reply, default to "prompt sits one
+	 * above the bottom row" -- i.e. cursor (post linenoise '\n' scroll)
+	 * is on the bottom row, prompt is the row above. This keeps the
+	 * fallback consistent with the success path's accounting.
+	 *
+	 * Test override: FRONTIER_PALETTE_PROMPT_ROW (1-based) lets the L4
+	 * harness pin the prompt row deterministically without depending on
+	 * a working DSR round-trip (the harness redirects stderr away from
+	 * the PTY to keep diagnostic chatter out of pyte's framebuffer,
+	 * which also eats the DSR query response). Production never sets
+	 * this env var. */
+	int cursor_row = rows;          /* 1-based default: bottom row */
+	int cursor_col = 1;
+	const char *prow_env = getenv("FRONTIER_PALETTE_PROMPT_ROW");
+	bool prompt_row_from_env = false;
+	int prompt_row = 0;
+	if (prow_env && prow_env[0] != '\0') {
+		int v = atoi(prow_env);
+		if (v >= 1 && v <= rows) {
+			prompt_row = v - 1;       /* env var is 1-based */
+			prompt_row_from_env = true;
+		}
+	}
+	if (!prompt_row_from_env) {
+		(void)terminal_get_cursor_pos(&cursor_row, &cursor_col);
+		/* terminal_get_cursor_pos returns 1-based; the palette uses
+		 * 0-based. cursor_row - 1 is the cursor's 0-based row; the
+		 * prompt is one row above that (linenoise's '\n' moved the
+		 * cursor off the prompt line). */
+		prompt_row = cursor_row - 2;
+	}
+	if (prompt_row < 0) prompt_row = 0;
+	if (prompt_row >= rows) prompt_row = rows - 1;
+
+	/* Reserve rows for the cascade so submenu drills don't silently
+	 * fail when the prompt is near the bottom of the terminal.
+	 *
+	 * Geometry: menubar lives at prompt_row+1; cascade level d lives
+	 * at prompt_row+1+(d+1). To open all levels through depth `reserve`
+	 * we need prompt_row + 1 + reserve <= rows - 1, i.e.
+	 * prompt_row <= rows - 2 - reserve.
+	 *
+	 * Frontier's headless menubar tree is exactly 3 deep (bar/menu/
+	 * leaf), so a typical session never needs more than 2 cascade rows
+	 * below the menubar. Reserve PALETTE_CASCADE_RESERVE_ROWS so the
+	 * common case of "open the REPL menu" never silently fails because
+	 * the terminal lacks one free row. This is smaller than
+	 * PALETTE_MAX_DEPTH (8) on purpose — reserving 8 rows would feel
+	 * intrusive on small terminals, and most menus are 2-3 deep in
+	 * practice.
+	 *
+	 * If reserve is required, emit '\n' enough times to scroll the
+	 * terminal up; each scroll bumps prompt_row down by 1 from the
+	 * cursor's perspective without changing the absolute row count.
+	 * Because '\n' originates from the bottom row (where the cursor
+	 * sits post-linenoise '\n'), each emit shifts the visible
+	 * scrollback up by one and frees a row at the bottom. */
+	#define PALETTE_CASCADE_RESERVE_ROWS 4
+	int reserve = PALETTE_CASCADE_RESERVE_ROWS;
+	if (reserve > PALETTE_MAX_DEPTH) reserve = PALETTE_MAX_DEPTH;
+	int max_prompt = rows - 2 - reserve;
+	if (max_prompt < 0) max_prompt = 0;
+	if (prompt_row > max_prompt) {
+		int need = prompt_row - max_prompt;
+		/* Raw mode is in effect (terminal_enable_raw_mode above), so
+		 * OPOST is off — '\n' is literal LF, not CR+LF. Pair each LF
+		 * with a CR so the cursor lands at column 1 of the scrolled-in
+		 * row; the absolute row of the cursor doesn't change at the
+		 * bottom (the terminal scrolls the buffer up instead), which
+		 * is exactly the effect we want. */
+		for (int i = 0; i < need; ++i) {
+			fputs("\r\n", stdout);
+		}
+		fflush(stdout);
+		prompt_row = max_prompt;
+	}
 
 	/* Scrollback pane (issue #593) — covers rows 1..rows-1 (everything
 	 * below the menubar at row 0). Registered FIRST so it sits at the
@@ -2956,7 +3091,7 @@ static Handle run_palette_modal(struct linenoiseState *ls,
 
 	palette_state_t st;
 	memset(&st, 0, sizeof(st));
-	if (!palette_open(&st, rows, cols, &src)) {
+	if (!palette_open(&st, rows, cols, prompt_row, &src)) {
 		printf("(menubar empty or terminal too small)\n");
 		fflush(stdout);
 		/* Tear down scrollback we just set up — the modal is
@@ -3193,6 +3328,19 @@ static Handle run_palette_modal(struct linenoiseState *ls,
 		}
 	}
 
+	/* Paint every palette pane back to terminal-default attributes and
+	 * flush ONE compositor frame so the cleared cells reach the
+	 * terminal BEFORE we unregister the panes. Without this, the
+	 * compositor's diff render sees no change to cells that still
+	 * carry menubar / selection attributes in the previous-frame
+	 * buffer, and subsequent writes (a dispatched leaf script's stdout,
+	 * the restarted linenoise prompt) inherit those attributes —
+	 * producing the cyan-on-blue bleed observed before this fix.
+	 * Covers both PALETTE_DONE_EXECUTE and PALETTE_DONE_CANCEL exit
+	 * paths; the helper is a no-op when the palette is not active. */
+	palette_paint_teardown(&st);
+	compositor_render();
+
 	palette_close(&st);
 	repl_palette_source_dispose(&src);
 
@@ -3215,30 +3363,32 @@ static Handle run_palette_modal(struct linenoiseState *ls,
 
 cleanup_terminal:
 	terminal_disable_mouse();
+	/* Restore the cursor BEFORE leaving raw mode so the SGR escape is
+	 * emitted via the same raw stream that hid it. Mirrors the
+	 * terminal_hide_cursor() call right after raw_mode was enabled. */
+	terminal_show_cursor();
 	terminal_disable_raw_mode(&ts);
 	terminal_cleanup(&ts);
 
-	/* 7. Restart linenoise so the prompt comes back cleanly.
+	/* 7. Anchor the cursor at column 1 of a fresh row before returning.
 	 *
-	 * Failure mode: linenoiseEditStart can fail for OOM, ENOTTY (terminal
-	 * went away), or write() failing on a closed fd. After a failure ls
-	 * is in a partially-initialised state — *struct fields may be set
-	 * but raw mode may not be entered, and a subsequent linenoiseEditFeed
-	 * dereferences pointers that haven't been written yet (UAF risk).
+	 * Why not linenoiseEditStart here? Restarting line editing inside
+	 * run_palette_modal would print the prompt at whatever cell the
+	 * compositor left the cursor on. The caller still has to dispatch
+	 * the chosen leaf script after we return (see the run_palette_modal
+	 * call site near "leaf dispatch" in repl_main_loop), and that
+	 * script's stdout would then collide with our freshly-printed
+	 * prompt -- producing the garbled output that this fix addresses.
 	 *
-	 * Defense: signal the REPL main loop to terminate via the same
-	 * volatile sig_atomic_t exit flag that repl.exit() uses. The caller
-	 * checks it on every loop iteration and breaks cleanly. We
-	 * deliberately do NOT touch ls beyond returning script_to_run —
-	 * the caller's main loop is responsible for skipping the invalid
-	 * Feed call by virtue of the exit flag taking effect first. */
-	if (linenoiseEditStart(ls, STDIN_FILENO, STDOUT_FILENO,
-	                       line_buf, line_buflen, g_repl_prompt) == -1) {
-		log_error(LOG_COMP_GENERAL,
-		          "palette: failed to restart linenoise after modal — "
-		          "REPL will terminate to avoid UAF on invalid ls");
-		g_repl_exit_requested = 1;
-	}
+	 * Instead, emit \r\n to position the cursor at column 1 of a fresh
+	 * blank row. The caller dispatches the leaf (which writes its
+	 * output starting on that row), then restarts linenoise itself --
+	 * matching the discipline of the Enter-key path further down in
+	 * repl_main_loop, where linenoiseEditStop's own newline emit
+	 * already provides this anchor and the new linenoiseEditStart
+	 * happens AFTER the line has been processed. */
+	printf("\r\n");
+	fflush(stdout);
 
 	return script_to_run;
 }
@@ -3347,6 +3497,29 @@ static boolean replverbhost_print_key_codes(void) {
 	return true;
 }
 
+/*
+ * Returns true iff the current script call was dispatched from a slash
+ * command (e.g. /jump, /list) rather than from palette menu activation.
+ *
+ * Reads g_repl_dispatching_from_slash, which dispatch_slash_command sets
+ * true around every meuserselected_headless (and dispatch_synthesized_script)
+ * call and clears false on every exit path. Because the GIL is held for the
+ * full duration of the dispatch, no locking is needed.
+ */
+static boolean replverbhost_from_slash(void) {
+	return g_repl_dispatching_from_slash;
+}
+
+/*
+ * Returns true iff a REPL session is currently active (the host has entered
+ * the REPL main loop and not yet exited). Handler scripts use repl.isActive()
+ * to gate interactive operations (dialog.ask prompts) so they do not fire
+ * in non-REPL contexts (integration tests, protocol mode, -e evaluation).
+ */
+static boolean replverbhost_is_active(void) {
+	return g_repl_active;
+}
+
 static void replverbhost_list(const char *path) {
 	/* The verb's path argument is the source of truth — see
 	 * replverbhost_jump_path for the threading rationale. */
@@ -3400,6 +3573,8 @@ static void install_repl_verbs_host(void) {
 	host.print_key_codes = replverbhost_print_key_codes;
 	host.list = replverbhost_list;
 	host.help = replverbhost_help;
+	host.from_slash = replverbhost_from_slash;
+	host.is_active = replverbhost_is_active;
 	repl_verbs_set_host(&host);
 }
 
@@ -3660,9 +3835,105 @@ int repl_main(cli_options_t *options, ws_server_t *ws_server) {
 				 * (the editor's len jumped to 1 with buf[0] == '/'
 				 * exactly). This is the only condition that opens the
 				 * palette; '/' typed mid-line is left as a literal
-				 * character. */
+				 * character.
+				 *
+				 * slash-menu disambiguator (PR #674): we cannot open
+				 * the menu immediately on '/' alone, because the user
+				 * may be typing a slash command like "/help" or
+				 * "/keycodes". Wait up to slash_menu_trigger_delay_ms()
+				 * for a follow-up byte:
+				 *   - timeout (no byte)            -> open menu
+				 *   - follow-up byte is '/'        -> open menu (fast
+				 *     path for power users: "//" skips the wait). The
+				 *     leading '/' is removed from the buffer before
+				 *     the modal opens, since the modal expects a clean
+				 *     prompt row.
+				 *   - any other follow-up byte     -> NOT a menu
+				 *     trigger; this is the second char of a slash
+				 *     command. Inject the byte into the linenoise
+				 *     edit buffer (linenoiseEditInsert, see forward
+				 *     decl) so it echoes and the buffer state matches
+				 *     what the user sees. The leading '/' stays put.
+				 *
+				 * The fast-timer env var FRONTIER_PALETTE_FAST_TIMERS
+				 * compresses 350ms -> 5ms for the L4 test harness, so
+				 * pyte-driven tests don't pay the full disambiguation
+				 * cost on each '/' send. */
+				bool open_menu = false;
 				if (ls.len == 1 && ls.buf[0] == '/') {
+					struct pollfd dfd = { STDIN_FILENO, POLLIN, 0 };
+					int dready = poll(&dfd, 1, slash_menu_trigger_delay_ms());
+					if (dready == 0) {
+						/* Timeout — user typed '/' and stopped. */
+						open_menu = true;
+					} else if (dready > 0 && (dfd.revents & POLLIN)) {
+						unsigned char nb;
+						ssize_t nn = read(STDIN_FILENO, &nb, 1);
+						if (nn == 1 && nb == '/') {
+							/* '//' fast-path: clear leading '/' from
+							 * buffer so the modal opens against a
+							 * clean prompt row, matching the timeout
+							 * path's invariant. */
+							ls.buf[0] = '\0';
+							ls.len = 0;
+							ls.pos = 0;
+							open_menu = true;
+						} else if (nn == 1) {
+							/* Some other byte arrived during the
+							 * disambig window. We've consumed it from
+							 * stdin and need to give it back to the
+							 * user via linenoise's edit state. Not all
+							 * bytes are insertable — backspace must
+							 * delete (not insert as literal 0x7f);
+							 * control chars (Enter, Ctrl-C, ESC, etc.)
+							 * have semantics linenoise's normal switch
+							 * handles, which we can't fully replay
+							 * here without duplicating that switch.
+							 * Handle the common typing-correction case
+							 * (backspace) explicitly; for any other
+							 * control char, drop the byte and leave
+							 * the leading '/' in the buffer so the
+							 * user can finish typing or backspace it
+							 * away. Printable chars insert normally. */
+							if (nb == 0x7f || nb == 0x08) {
+								/* Backspace / Ctrl-H: delete the
+								 * leading '/'. linenoiseEditBackspace
+								 * handles the echo + buffer update. */
+								linenoiseEditBackspace(&ls);
+							} else if (nb >= 0x20 && nb != 0x7f) {
+								/* Printable byte — second char of a
+								 * slash command. Inject into linenoise
+								 * so it echoes and the buffer state
+								 * matches what the user sees. */
+								char cb = (char)nb;
+								(void)linenoiseEditInsert(&ls, &cb, 1);
+							}
+							/* else: control byte (Enter, Ctrl-C, ESC,
+							 * tab, etc.). Dropping is the safe choice
+							 * — leaves '/' in the buffer; user can
+							 * backspace or retype. Rare in practice
+							 * (who types '/' then Enter?). */
+						}
+						/* nn <= 0 (EOF or error): treat as timeout —
+						 * fall through with open_menu = false; the
+						 * next loop iteration will hit the EOF path
+						 * in linenoiseEditFeed and exit cleanly. */
+					} else if (dready < 0 && errno == EINTR) {
+						/* Signal interrupted the poll. Don't open the
+						 * menu; let the outer loop's signal handling
+						 * (Ctrl-C, SIGWINCH) run on the next pass. */
+					}
+				}
+				if (open_menu) {
 					char palette_arg[PALETTE_ARG_MAX] = "";
+					/* run_palette_modal returns with linenoise STOPPED
+					 * (it called linenoiseEditStop on entry) and the
+					 * cursor anchored at column 1 of a fresh row via the
+					 * \r\n emit at the end of its cleanup. Leaf
+					 * dispatch -- if any -- writes its output starting
+					 * there, then we restart linenoise below so the next
+					 * prompt redraws cleanly. Mirrors the Enter-key
+					 * path: EditStop -> process line -> EditStart. */
 					Handle script = run_palette_modal(&ls, line_buf,
 					                                  sizeof(line_buf),
 					                                  palette_arg,
@@ -3744,13 +4015,22 @@ int repl_main(cli_options_t *options, ws_server_t *ws_server) {
 						}
 						disposehandle(script);
 					}
-					/* run_palette_modal already restarted linenoise
-					 * with an empty buffer, so the prompt is fresh.
-					 * Continue the event loop — UNLESS the modal's
-					 * linenoiseEditStart restart failed, in which case
-					 * it set g_repl_exit_requested and we break out
-					 * here BEFORE the next linenoiseEditFeed has a
-					 * chance to dereference an invalid ls. */
+					/* Restart linenoise so the prompt redraws after the
+					 * modal (and any leaf dispatch above) is fully done.
+					 * Failure mode mirrors the Enter-key path's restart
+					 * below: a partially-initialised ls is unsafe to feed,
+					 * so we set g_repl_exit_requested and break out before
+					 * the next linenoiseEditFeed dereferences invalid
+					 * state. */
+					if (running) {
+						if (linenoiseEditStart(&ls, STDIN_FILENO, STDOUT_FILENO,
+						                       line_buf, sizeof(line_buf),
+						                       g_repl_prompt) == -1) {
+							log_error(LOG_COMP_GENERAL,
+							          "palette: failed to restart linenoise after modal");
+							g_repl_exit_requested = 1;
+						}
+					}
 					if (g_repl_exit_requested) {
 						running = false;
 						break;

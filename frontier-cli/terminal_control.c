@@ -180,6 +180,62 @@ bool terminal_get_size(int *rows, int *cols) {
 	return false;
 }
 
+/*
+ * Query the terminal for the current cursor position via the ANSI DSR
+ * (Device Status Report) sequence ESC [ 6 n.  The terminal replies with
+ * ESC [ <row> ; <col> R.  Read up to 32 bytes of the reply with a 50ms
+ * timeout per byte, parse, and return true only on a fully formed
+ * response.  On any failure the out-params are left untouched.
+ */
+bool terminal_get_cursor_pos(int *row, int *col) {
+	/* If stdin isn't a TTY (e.g., piped from a process feeding real
+	 * data), don't emit the DSR query and don't consume bytes from
+	 * the pipe.  Returns false immediately; out-params untouched. */
+	if (!isatty(STDIN_FILENO)) {
+		return false;
+	}
+
+	/* Emit the DSR query.  Match the existing convention of writing to
+	 * stderr (other CSI emitters in this file do likewise). */
+	fputs("\x1b[6n", stderr);
+	fflush(stderr);
+
+	/* Accumulate reply bytes until we hit 'R' or fill the buffer. */
+	char buf[32];
+	size_t n = 0;
+	while (n < sizeof(buf) - 1) {
+		struct pollfd pfd = { .fd = STDIN_FILENO, .events = POLLIN };
+		int pr = poll(&pfd, 1, 50);
+		if (pr <= 0) {
+			/* Timeout or error -- no reply (or no more bytes). */
+			return false;
+		}
+		char c;
+		ssize_t r = read(STDIN_FILENO, &c, 1);
+		if (r != 1) {
+			return false;
+		}
+		buf[n++] = c;
+		if (c == 'R') break;
+	}
+	buf[n] = '\0';
+
+	if (n < 6) return false;        /* shortest valid reply: ESC [ 1 ; 1 R */
+	if (buf[0] != '\x1b' || buf[1] != '[' || buf[n - 1] != 'R') {
+		return false;
+	}
+
+	int r = 0, c = 0;
+	if (sscanf(buf + 2, "%30d;%30d", &r, &c) != 2) {
+		return false;
+	}
+	if (r <= 0 || c <= 0) return false;
+
+	if (row) *row = r;
+	if (col) *col = c;
+	return true;
+}
+
 /* Clears entire screen and moves cursor to top-left. */
 void terminal_clear_screen(void) {
 	fputs("\x1b[2J\x1b[H", stderr);

@@ -1,28 +1,19 @@
 /*
- * palette_render_snapshot_tests.c - Visual-state snapshots of palette
- * cascade configurations.
+ * palette_render_snapshot_tests.c - Visual-state snapshots of the
+ * horizontal-cascade palette renderer.
  *
- * For each canonical state we drive the public API to set up the state,
- * call palette_render_state() + compositor_render() (the latter blits
- * pane buffers into the framebuffer), then read back the framebuffer
- * via the test-only inspection hook compositor_test_fb_at(). This is
- * end-to-end and behavioural — we are not regex-matching source code or
- * inspecting struct internals; we are reading the pixels (cells) the
- * end user would see.
+ * After the host-anchored horizontal cascade rework, each open cascade
+ * level renders as a full-width, single-row strip stacked beneath the
+ * menubar.  Items reserve 4 cells around their label (bracket + space +
+ * label + space + bracket) so neighbours do not jitter as the cursor
+ * moves; the brackets render as spaces on non-selected items.
  *
- * The 12 canonical states (per task spec):
- *   1. closed (just opened, only menubar)
- *   2. top menu open at cursor 0
- *   3. top menu open with cursor moved
- *   4. submenu open
- *   5. submenu navigated
- *   6. 3-level cascade
- *   7. cascade opens LEFT due to right-edge overflow
- *   8. cascade opens UP due to bottom-edge overflow
- *   9. both overflows simultaneously
- *  10. hotkey-highlighted item (bold attr in label)
- *  11. disabled (dimmed) item
- *  12. focused border style on deepest pane
+ * Coverage:
+ *   - menubar background fill (cyan-on-blue across the entire row)
+ *   - selected cascade item shows '[' and ']' brackets
+ *   - non-selected cascade items occupy the same cells (no jitter)
+ *   - hotkey letter is BOLD only when the item is selected
+ *   - hotkey letter is BOLD + bright-yellow when not selected
  *
  * License
  * -------
@@ -45,7 +36,7 @@ extern const cell_t *compositor_test_fb_at(int x, int y);
 extern void compositor_test_fb_size(int *rows, int *cols);
 extern void compositor_test_reset(void);
 
-/* ---------- Synthetic source (mirrors palette_state_tests) ---------- */
+/* ---------- Synthetic source ---------- */
 
 typedef struct snap_item {
 	const char *label;
@@ -128,108 +119,36 @@ static palette_menu_source_t snap_source(snap_source_t *src) {
 	return s;
 }
 
-/* ---------- Rendering helpers ---------- */
-
-/* Run palette_render_state then compositor_render, so the framebuffer
- * reflects the current palette + pane state. */
 static void render_all(palette_state_t *st) {
 	palette_render_state(st);
 	compositor_render();
 }
 
-/* Find a label in the framebuffer — returns true if every char of `s`
- * appears consecutively in row `y` starting at some column. */
-static bool fb_has_substring(int y, const char *s) {
+/* Capture all cells of a single row into a caller-provided array, up to
+ * the smaller of the framebuffer's column count and `cap`.  Returns the
+ * number of cells captured. */
+static int snapshot_row(int y, cell_t *out, int cap) {
 	int rows = 0, cols = 0;
 	compositor_test_fb_size(&rows, &cols);
-	if (y < 0 || y >= rows) return false;
-	int slen = (int)strlen(s);
-	for (int x = 0; x + slen <= cols; ++x) {
-		bool match = true;
-		for (int k = 0; k < slen; ++k) {
-			const cell_t *c = compositor_test_fb_at(x + k, y);
-			if (!c || c->ch != (uint32_t)(unsigned char)s[k]) {
-				match = false;
-				break;
-			}
-		}
-		if (match) return true;
-	}
-	return false;
-}
-
-/* Find a label and return the cell of the first char (or NULL). */
-static const cell_t *fb_find_first(int y, const char *s) {
-	int rows = 0, cols = 0;
-	compositor_test_fb_size(&rows, &cols);
-	if (y < 0 || y >= rows) return NULL;
-	int slen = (int)strlen(s);
-	for (int x = 0; x + slen <= cols; ++x) {
-		bool match = true;
-		for (int k = 0; k < slen; ++k) {
-			const cell_t *c = compositor_test_fb_at(x + k, y);
-			if (!c || c->ch != (uint32_t)(unsigned char)s[k]) {
-				match = false;
-				break;
-			}
-		}
-		if (match) return compositor_test_fb_at(x, y);
-	}
-	return NULL;
-}
-
-/* Find the cell at (col_offset) past the FIRST occurrence of `ref_char`
- * on row `y`. Returns NULL if `ref_char` is absent on that row, or if
- * the offset would walk past the framebuffer's column bound.
- *
- * Used by tests that need to inspect a specific character within a
- * known label without re-implementing the "find F, then peek at the
- * next cell" pattern at every call site. The helper documents exactly
- * what fixture-shape it depends on (the reference char's first
- * occurrence is unique on the row), making test failures easier to
- * diagnose when the fixture's text changes. */
-static const cell_t *fb_find_char_after(int y, char ref_char, int col_offset) {
-	int rows = 0, cols = 0;
-	compositor_test_fb_size(&rows, &cols);
-	if (y < 0 || y >= rows) return NULL;
-	for (int x = 0; x < cols; ++x) {
+	if (y < 0 || y >= rows) return 0;
+	int n = cols < cap ? cols : cap;
+	for (int x = 0; x < n; ++x) {
 		const cell_t *c = compositor_test_fb_at(x, y);
-		if (c && c->ch == (uint32_t)(unsigned char)ref_char) {
-			int target = x + col_offset;
-			if (target < 0 || target >= cols) return NULL;
-			return compositor_test_fb_at(target, y);
-		}
+		out[x] = *c;
 	}
-	return NULL;
+	return n;
 }
 
-/* ---------- Standard fixture ---------- */
-
-static snap_item_t g_view_items[] = {
-	{ "Outline", 'O', true, false, "view.o()", NULL, 0 },
-	{ "Table",   'T', true, false, "view.t()", NULL, 0 },
-};
-
-static snap_item_t g_grand_items[] = {
-	{ "AAA", 'A', true, false, "g.a()", NULL, 0 },
-	{ "BBB", 'B', true, false, "g.b()", NULL, 0 },
-};
-
-static snap_item_t g_advanced[] = {
-	{ "Sub1", 'S', true, true, NULL, g_grand_items, 2 },
-	{ "Sub2", 'U', true, false, "adv.s2()", NULL, 0 },
-};
+/* ---------- Fixture ---------- */
 
 static snap_item_t g_repl_items[] = {
-	{ "Help",  'H', true,  false, "repl.help()",  NULL, 0 },
-	{ "Bad",   'B', false, false, "repl.bad()",   NULL, 0 },  /* disabled */
-	{ "Views", 'V', true,  true,  NULL, g_view_items, 2 },
-	{ "Adv",   'A', true,  true,  NULL, g_advanced, 2 },
-	{ "Exit",  'X', true,  false, "repl.exit()",  NULL, 0 },
+	{ "Help",  'H', true, false, "repl.help()",  NULL, 0 },
+	{ "Clear", 'C', true, false, "repl.clear()", NULL, 0 },
+	{ "Exit",  'X', true, false, "repl.exit()",  NULL, 0 },
 };
 
 static snap_menu_t g_menus[] = {
-	{ "REPL", 'R', g_repl_items, 5 },
+	{ "REPL", 'R', g_repl_items, 3 },
 	{ "File", 'F', NULL, 0 },
 };
 
@@ -237,687 +156,276 @@ static snap_source_t g_src = { g_menus, 2 };
 
 /* ---------- Tests ---------- */
 
-static void test_state_1_closed_just_menubar(void) {
+static void test_menubar_strip_full_width(void) {
+	/* The menubar strip background paints across the entire term_cols
+	 * width (not just behind the entries) so the strip reads as one
+	 * continuous bar.  Cells in the SELECTED menubar entry use the
+	 * inverse-style white bg; every other cell uses the menubar's
+	 * blue bg -- including the empty trailing region past the last
+	 * entry. */
 	compositor_test_reset();
 	compositor_on_resize(24, 80);
 	palette_state_t st;
 	palette_menu_source_t src = snap_source(&g_src);
-	palette_open(&st, 24, 80, &src);
-
-	render_all(&st);
-	/* Menubar shows REPL and File on row 0. */
-	assert(fb_has_substring(0, "REPL"));
-	assert(fb_has_substring(0, "File"));
-
-	palette_close(&st);
-}
-
-static void test_state_2_top_menu_open_cursor_0(void) {
-	compositor_test_reset();
-	compositor_on_resize(24, 80);
-	palette_state_t st;
-	palette_menu_source_t src = snap_source(&g_src);
-	palette_open(&st, 24, 80, &src);
-
-	palette_feed_byte(&st, '\r');           /* open REPL menu */
-	render_all(&st);
-	assert(fb_has_substring(0, "REPL"));
-	/* Open menu shows item labels on rows below row 0. */
-	bool found_help = false;
-	for (int y = 1; y < 24; ++y) {
-		if (fb_has_substring(y, "Help")) { found_help = true; break; }
-	}
-	assert(found_help);
-
-	palette_close(&st);
-}
-
-static void test_state_3_cursor_moved_in_top_menu(void) {
-	compositor_test_reset();
-	compositor_on_resize(24, 80);
-	palette_state_t st;
-	palette_menu_source_t src = snap_source(&g_src);
-	palette_open(&st, 24, 80, &src);
-
-	palette_feed_byte(&st, '\r');
-	/* DOWN twice: should put cursor on item 2 ("Views"). */
-	for (int i = 0; i < 2; ++i) {
-		palette_feed_byte(&st, 0x1b);
-		palette_feed_byte(&st, '[');
-		palette_feed_byte(&st, 'B');
-	}
-	assert(st.levels[0].cursor == 2);
+	palette_open(&st, 24, 80, 0, &src);
 	render_all(&st);
 
-	/* The cursor item should be rendered with INVERSE attribute. Find
-	 * the "Views" label in the framebuffer and check its cell attr. */
-	const cell_t *c = NULL;
-	for (int y = 1; y < 24; ++y) {
-		const cell_t *try = fb_find_first(y, "Views");
-		if (try) { c = try; break; }
-	}
-	assert(c != NULL);
-	assert(c->attr & PALETTE_ATTR_INVERSE);
-
-	palette_close(&st);
-}
-
-static void test_state_4_submenu_open(void) {
-	compositor_test_reset();
-	compositor_on_resize(24, 80);
-	palette_state_t st;
-	palette_menu_source_t src = snap_source(&g_src);
-	palette_open(&st, 24, 80, &src);
-
-	palette_feed_byte(&st, '\r');
-	/* DOWN twice → "Views" submenu. */
-	for (int i = 0; i < 2; ++i) {
-		palette_feed_byte(&st, 0x1b);
-		palette_feed_byte(&st, '[');
-		palette_feed_byte(&st, 'B');
-	}
-	palette_feed_byte(&st, '\r');           /* open cascade */
-	assert(st.open_depth == 2);
-	render_all(&st);
-
-	/* Both panes visible. */
-	bool views_in_parent = false;
-	bool outline_in_child = false;
-	for (int y = 1; y < 24; ++y) {
-		if (fb_has_substring(y, "Views")) views_in_parent = true;
-		if (fb_has_substring(y, "Outline")) outline_in_child = true;
-	}
-	assert(views_in_parent);
-	assert(outline_in_child);
-
-	palette_close(&st);
-}
-
-static void test_state_5_submenu_navigated(void) {
-	compositor_test_reset();
-	compositor_on_resize(24, 80);
-	palette_state_t st;
-	palette_menu_source_t src = snap_source(&g_src);
-	palette_open(&st, 24, 80, &src);
-
-	palette_feed_byte(&st, '\r');
-	for (int i = 0; i < 2; ++i) {
-		palette_feed_byte(&st, 0x1b);
-		palette_feed_byte(&st, '[');
-		palette_feed_byte(&st, 'B');
-	}
-	palette_feed_byte(&st, '\r');
-	/* Navigate down once in cascade (cursor was 0 = Outline → 1 = Table). */
-	palette_feed_byte(&st, 0x1b);
-	palette_feed_byte(&st, '[');
-	palette_feed_byte(&st, 'B');
-	assert(st.levels[1].cursor == 1);
-	render_all(&st);
-
-	/* "Table" should be inverted in the cascade pane. */
-	const cell_t *c = NULL;
-	for (int y = 1; y < 24; ++y) {
-		const cell_t *try = fb_find_first(y, "Table");
-		if (try) { c = try; break; }
-	}
-	assert(c != NULL);
-	assert(c->attr & PALETTE_ATTR_INVERSE);
-
-	palette_close(&st);
-}
-
-static void test_state_6_three_level_cascade(void) {
-	compositor_test_reset();
-	compositor_on_resize(24, 80);
-	palette_state_t st;
-	palette_menu_source_t src = snap_source(&g_src);
-	palette_open(&st, 24, 80, &src);
-
-	palette_feed_byte(&st, '\r');               /* depth 1: REPL menu */
-	/* Down 3 → "Adv". */
-	for (int i = 0; i < 3; ++i) {
-		palette_feed_byte(&st, 0x1b);
-		palette_feed_byte(&st, '[');
-		palette_feed_byte(&st, 'B');
-	}
-	palette_feed_byte(&st, '\r');               /* depth 2: Adv submenu */
-	/* Cursor on Sub1 (item 0, submenu). */
-	palette_feed_byte(&st, '\r');               /* depth 3: Sub1 cascade */
-	assert(st.open_depth == 3);
-	render_all(&st);
-
-	/* All three panes visible. */
-	bool found_adv = false, found_sub1 = false, found_aaa = false;
-	for (int y = 1; y < 24; ++y) {
-		if (fb_has_substring(y, "Adv")) found_adv = true;
-		if (fb_has_substring(y, "Sub1")) found_sub1 = true;
-		if (fb_has_substring(y, "AAA")) found_aaa = true;
-	}
-	assert(found_adv && found_sub1 && found_aaa);
-
-	palette_close(&st);
-}
-
-static void test_state_7_overflow_right_opens_left(void) {
-	/* Use a narrow terminal so the cascade off Views overflows the right
-	 * edge. With 30 cols, REPL menu pane is at column 0, width ~9 (REPL
-	 * label). Submenu width = "Outline"=7 + 2 padding + 2 border = 11.
-	 * If REPL pane right edge + 11 > 30, cascade opens LEFT. */
-	compositor_test_reset();
-	compositor_on_resize(24, 30);
-	palette_state_t st;
-	palette_menu_source_t src = snap_source(&g_src);
-	bool ok = palette_open(&st, 24, 30, &src);
-	assert(ok);
-
-	/* Move REPL pane near right edge by selecting File first then back
-	 * — actually, REPL is the leftmost menu, and its pane opens beneath
-	 * it. The submenu cascades right of it, and we want THAT to overflow.
-	 * Build the test on a tighter terminal where the submenu's natural
-	 * x+w exceeds cols. Force a 16-col width: REPL pane width=9, submenu
-	 * x=9, submenu w >= 7, x+w=16 fits exactly → no overflow. Need a
-	 * wider submenu label. */
-	palette_close(&st);
-
-	/* Reset with a custom fixture: 30 cols, REPL menu pane is wider
-	 * because we make the submenu items long. */
-	static snap_item_t big_children[] = {
-		{ "VeryLongLabelAAAA", 'A', true, false, "x()", NULL, 0 },
-	};
-	static snap_item_t big_items[] = {
-		{ "Wide", 'W', true, true, NULL, big_children, 1 },
-	};
-	static snap_menu_t big_menus[] = {
-		{ "M", 'M', big_items, 1 },
-	};
-	static snap_source_t big_src = { big_menus, 1 };
-
-	compositor_test_reset();
-	compositor_on_resize(24, 30);
-	palette_menu_source_t src2 = snap_source(&big_src);
-	ok = palette_open(&st, 24, 30, &src2);
-	assert(ok);
-
-	palette_feed_byte(&st, '\r');           /* open M */
-	palette_feed_byte(&st, '\r');           /* open Wide cascade */
-	assert(st.open_depth == 2);
-
-	/* The submenu's natural x = parent.x + parent.w. If that + submenu.w
-	 * > cols, palette must have opened LEFT. */
-	int parent_right = st.levels[0].pane.x + st.levels[0].pane.w;
-	if (parent_right + st.levels[1].pane.w > 30) {
-		assert(st.levels[1].pane.x + st.levels[1].pane.w <= st.levels[0].pane.x);
-	}
-	/* Either way, fully on screen. */
-	assert(st.levels[1].pane.x >= 0);
-	assert(st.levels[1].pane.x + st.levels[1].pane.w <= 30);
-
-	palette_close(&st);
-}
-
-static void test_state_8_overflow_bottom_opens_up(void) {
-	/* Tall menu (10 items, last is submenu); short terminal (12 rows)
-	 * so the submenu opening at cursor 9 would overshoot the bottom. */
-	compositor_test_reset();
-	compositor_on_resize(12, 80);
-
-	static snap_item_t kids[5];
-	static char klabels[5][8];
-	for (int i = 0; i < 5; ++i) {
-		snprintf(klabels[i], sizeof(klabels[i]), "K%d", i);
-		kids[i].label = klabels[i];
-		kids[i].shortcut = '\0';
-		kids[i].enabled = true;
-		kids[i].is_submenu = false;
-		kids[i].script = "k()";
-		kids[i].children = NULL;
-		kids[i].child_count = 0;
-	}
-	static snap_item_t items[10];
-	static char ilabels[10][8];
-	for (int i = 0; i < 10; ++i) {
-		snprintf(ilabels[i], sizeof(ilabels[i]), "I%d", i);
-		items[i].label = ilabels[i];
-		items[i].shortcut = '\0';
-		items[i].enabled = true;
-		items[i].is_submenu = (i == 9);
-		items[i].script = (i == 9) ? NULL : "i()";
-		items[i].children = (i == 9) ? kids : NULL;
-		items[i].child_count = (i == 9) ? 5 : 0;
-	}
-	static snap_menu_t menus[1] = { { "T", 'T', items, 10 } };
-	static snap_source_t src_data = { menus, 1 };
-	palette_menu_source_t src = snap_source(&src_data);
-
-	palette_state_t st;
-	bool ok = palette_open(&st, 12, 80, &src);
-	assert(ok);
-
-	palette_feed_byte(&st, '\r');
-	for (int i = 0; i < 9; ++i) {
-		palette_feed_byte(&st, 0x1b);
-		palette_feed_byte(&st, '[');
-		palette_feed_byte(&st, 'B');
-	}
-	palette_feed_byte(&st, '\r');
-	assert(st.open_depth == 2);
-
-	/* Submenu must fit. */
-	assert(st.levels[1].pane.y + st.levels[1].pane.h <= 12);
-	assert(st.levels[1].pane.y >= 0);
-
-	palette_close(&st);
-}
-
-static void test_state_9_simultaneous_overflow(void) {
-	/* Both narrow AND short. The cascade must not exceed either bound. */
-	compositor_test_reset();
-	compositor_on_resize(10, 25);
-
-	static snap_item_t kids[6];
-	static char klabels[6][12];
-	for (int i = 0; i < 6; ++i) {
-		snprintf(klabels[i], sizeof(klabels[i]), "ChildABCD%d", i);
-		kids[i].label = klabels[i];
-		kids[i].shortcut = '\0';
-		kids[i].enabled = true;
-		kids[i].is_submenu = false;
-		kids[i].script = "k()";
-		kids[i].children = NULL;
-		kids[i].child_count = 0;
-	}
-	static snap_item_t items[6];
-	static char ilabels[6][12];
-	for (int i = 0; i < 6; ++i) {
-		snprintf(ilabels[i], sizeof(ilabels[i]), "ParentX%d", i);
-		items[i].label = ilabels[i];
-		items[i].shortcut = '\0';
-		items[i].enabled = true;
-		items[i].is_submenu = (i == 5);
-		items[i].script = (i == 5) ? NULL : "i()";
-		items[i].children = (i == 5) ? kids : NULL;
-		items[i].child_count = (i == 5) ? 6 : 0;
-	}
-	static snap_menu_t menus[1] = { { "M", 'M', items, 6 } };
-	static snap_source_t src_data = { menus, 1 };
-	palette_menu_source_t src = snap_source(&src_data);
-
-	palette_state_t st;
-	bool ok = palette_open(&st, 10, 25, &src);
-	assert(ok);
-
-	palette_feed_byte(&st, '\r');
-	for (int i = 0; i < 5; ++i) {
-		palette_feed_byte(&st, 0x1b);
-		palette_feed_byte(&st, '[');
-		palette_feed_byte(&st, 'B');
-	}
-	palette_feed_byte(&st, '\r');
-	assert(st.open_depth == 2);
-
-	/* Must be on-screen in both axes. */
-	assert(st.levels[1].pane.x >= 0);
-	assert(st.levels[1].pane.x + st.levels[1].pane.w <= 25);
-	assert(st.levels[1].pane.y >= 0);
-	assert(st.levels[1].pane.y + st.levels[1].pane.h <= 10);
-
-	palette_close(&st);
-}
-
-static void test_state_10_hotkey_letter_is_bold(void) {
-	compositor_test_reset();
-	compositor_on_resize(24, 80);
-	palette_state_t st;
-	palette_menu_source_t src = snap_source(&g_src);
-	palette_open(&st, 24, 80, &src);
-
-	palette_feed_byte(&st, '\r');           /* open REPL menu */
-	render_all(&st);
-
-	/* "Help" has hotkey 'H'. Find the 'H' cell on its label row and
-	 * verify the BOLD attribute bit is set. */
-	const cell_t *help = NULL;
-	for (int y = 1; y < 24; ++y) {
-		help = fb_find_first(y, "Help");
-		if (help) break;
-	}
-	assert(help != NULL);
-	/* The first character is the hotkey 'H' for Help — should be bold. */
-	assert(help->ch == (uint32_t)'H');
-	assert(help->attr & PALETTE_ATTR_BOLD);
-
-	palette_close(&st);
-}
-
-static void test_state_11_disabled_item_dimmed(void) {
-	compositor_test_reset();
-	compositor_on_resize(24, 80);
-	palette_state_t st;
-	palette_menu_source_t src = snap_source(&g_src);
-	palette_open(&st, 24, 80, &src);
-
-	palette_feed_byte(&st, '\r');
-	render_all(&st);
-
-	/* "Bad" is disabled in the fixture. Its label cells should carry
-	 * the DIM attribute. */
-	const cell_t *bad = NULL;
-	for (int y = 1; y < 24; ++y) {
-		bad = fb_find_first(y, "Bad");
-		if (bad) break;
-	}
-	assert(bad != NULL);
-	assert(bad->attr & PALETTE_ATTR_DIM);
-
-	palette_close(&st);
-}
-
-static void test_state_12_focused_pane_border_bold(void) {
-	compositor_test_reset();
-	compositor_on_resize(24, 80);
-	palette_state_t st;
-	palette_menu_source_t src = snap_source(&g_src);
-	palette_open(&st, 24, 80, &src);
-
-	palette_feed_byte(&st, '\r');
-	for (int i = 0; i < 2; ++i) {
-		palette_feed_byte(&st, 0x1b);
-		palette_feed_byte(&st, '[');
-		palette_feed_byte(&st, 'B');
-	}
-	palette_feed_byte(&st, '\r');           /* open Views cascade */
-	assert(st.open_depth == 2);
-	render_all(&st);
-
-	/* The deepest pane (st.levels[1]) is focused. Its border corner
-	 * cell should carry BOLD. We pick the top-left corner of that pane
-	 * — its position is known from st.levels[1].pane.{x,y}. */
-	int bx = st.levels[1].pane.x;
-	int by = st.levels[1].pane.y;
-	const cell_t *corner = compositor_test_fb_at(bx, by);
-	assert(corner != NULL);
-	assert(corner->ch != 0);                /* border drawn */
-	assert(corner->attr & PALETTE_ATTR_BOLD);
-
-	/* The non-focused parent pane's border should NOT be bold. */
-	int px = st.levels[0].pane.x;
-	int py = st.levels[0].pane.y;
-	const cell_t *pcorner = compositor_test_fb_at(px, py);
-	assert(pcorner != NULL);
-	assert(pcorner->ch != 0);
-	assert(!(pcorner->attr & PALETTE_ATTR_BOLD));
-
-	palette_close(&st);
-}
-
-/* ---------- Rung 2 / PR 8: snapshot tests ---------- */
-
-/* Find any cell containing the given character on the given row. */
-static const cell_t *fb_find_char_on_row(int y, uint32_t ch) {
+	int y = st.menubar.y;
 	int rows = 0, cols = 0;
 	compositor_test_fb_size(&rows, &cols);
-	if (y < 0 || y >= rows) return NULL;
-	for (int x = 0; x < cols; ++x) {
+	/* The selected entry (REPL) occupies cells menu_x[0]..menu_x[0]+w-1.
+	 * Cells past menu_x[1]+menu_w[1] (trailing fill) must be blue. */
+	int trailing_start = st.menu_x[1] + st.menu_w[1];
+	int n_trailing_blue = 0;
+	for (int x = trailing_start; x < cols; ++x) {
 		const cell_t *c = compositor_test_fb_at(x, y);
-		if (c && c->ch == ch) return c;
+		assert(c != NULL);
+		assert(c->bg == PALETTE_COLOR_BLUE);
+		n_trailing_blue++;
 	}
-	return NULL;
-}
-
-static void test_state_13_menubar_uses_cyan_on_blue(void) {
-	/* The menubar row (y=0) renders with cyan-on-blue color theme.
-	 * The hotkey letter inside an unselected menu entry is bright
-	 * yellow on blue (so the test reads the second character of the
-	 * label — non-hotkey — to verify the base text color). */
-	compositor_test_reset();
-	compositor_on_resize(24, 80);
-	palette_state_t st;
-	palette_menu_source_t src = snap_source(&g_src);
-	palette_open(&st, 24, 80, &src);
-	render_all(&st);
-
-	/* Find "File" — the second menubar entry (not selected at open).
-	 * Read the 'i' (second char) so we skip the hotkey 'F' which is
-	 * styled with the hotkey color.
-	 *
-	 * Fixture invariant relied on: the 'F' that introduces "File" is
-	 * the FIRST 'F' on row 0. The other menubar entry "REPL" begins
-	 * with 'R', and no other label on the menubar starts with 'F'.
-	 * fb_find_char_after walks left-to-right, so changing the menubar
-	 * fixture to introduce another 'F' before "File" would silently
-	 * pick up the wrong cell — keep the fixture's invariants in mind
-	 * if/when adding menubar entries. */
-	const cell_t *file = fb_find_first(0, "File");
-	assert(file != NULL);
-	const cell_t *i_cell = fb_find_char_after(0, 'F', 1);
-	assert(i_cell != NULL);
-	assert(i_cell->ch == 'i');
-	assert(i_cell->fg == PALETTE_COLOR_BRIGHT_CYAN);
-	assert(i_cell->bg == PALETTE_COLOR_BLUE);
-
-	/* The hotkey letter 'F' itself uses bright yellow. */
-	assert(file->fg == PALETTE_COLOR_BRIGHT_YELLOW);
-	assert(file->bg == PALETTE_COLOR_BLUE);
+	assert(n_trailing_blue > 0);
+	/* The non-selected menubar entry "File" must also be blue. */
+	for (int x = st.menu_x[1]; x < st.menu_x[1] + st.menu_w[1]; ++x) {
+		const cell_t *c = compositor_test_fb_at(x, y);
+		assert(c->bg == PALETTE_COLOR_BLUE);
+	}
 
 	palette_close(&st);
 }
 
-static void test_state_14_selected_item_inverse_with_colors(void) {
-	/* The selected item carries INVERSE attr AND black-on-white colors.
-	 * (Both are emitted; INVERSE preserves backward compat with terms
-	 * that ignore palette colors.) */
+static void test_horizontal_strip_full_width(void) {
+	/* The cascade strip is also full-width with bg fill.  The selected
+	 * item's 4 reserved cells (bracket + space + label + space +
+	 * bracket) carry the inverse white bg; everything else on the
+	 * strip carries the menubar blue bg, including the trailing fill
+	 * past the last item. */
 	compositor_test_reset();
 	compositor_on_resize(24, 80);
 	palette_state_t st;
 	palette_menu_source_t src = snap_source(&g_src);
-	palette_open(&st, 24, 80, &src);
+	palette_open(&st, 24, 80, 0, &src);
+	palette_feed_byte(&st, '\r');           /* open REPL menu */
+	render_all(&st);
+
+	int y = st.levels[0].pane.y;
+	int rows = 0, cols = 0;
+	compositor_test_fb_size(&rows, &cols);
+	int n_blue = 0;
+	int n_white = 0;
+	for (int x = 0; x < cols; ++x) {
+		const cell_t *c = compositor_test_fb_at(x, y);
+		assert(c != NULL);
+		if (c->bg == PALETTE_COLOR_WHITE) n_white++;
+		else if (c->bg == PALETTE_COLOR_BLUE) n_blue++;
+		else {
+			/* Neither selected nor default -- fail. */
+			assert(0 && "unexpected bg on cascade strip");
+		}
+	}
+	/* "Help" is selected -- 4 reserved cells around the 4-char label
+	 * means 8 white cells (label + 2 spaces + 2 brackets). */
+	assert(n_white == 4 + 2 + 2);
+	/* The rest of the row is blue. */
+	assert(n_blue == cols - n_white);
+
+	palette_close(&st);
+}
+
+static void test_item_bracket_reservation(void) {
+	/* The cells occupied by the cascade items must be identical
+	 * (positionally) regardless of which item is selected.  Snapshot
+	 * the row with cursor on item 0, move RIGHT, snapshot again, and
+	 * compare the cells of NON-selected items between the two
+	 * snapshots.  They must be unchanged. */
+	compositor_test_reset();
+	compositor_on_resize(24, 80);
+	palette_state_t st;
+	palette_menu_source_t src = snap_source(&g_src);
+	palette_open(&st, 24, 80, 0, &src);
 
 	palette_feed_byte(&st, '\r');           /* open REPL */
 	render_all(&st);
 
-	/* Cursor 0 is "Help" — should be selected: black-on-white +
-	 * INVERSE. */
-	const cell_t *help = NULL;
-	for (int y = 1; y < 24; ++y) {
-		help = fb_find_first(y, "Help");
-		if (help) break;
+	cell_t row_a[80];
+	int n_a = snapshot_row(st.levels[0].pane.y, row_a, 80);
+	assert(n_a > 0);
+
+	/* Move cursor RIGHT to item 1, snapshot again. */
+	palette_feed_byte(&st, 0x1b);
+	palette_feed_byte(&st, '[');
+	palette_feed_byte(&st, 'C');
+	assert(st.levels[0].cursor == 1);
+	render_all(&st);
+
+	cell_t row_b[80];
+	int n_b = snapshot_row(st.levels[0].pane.y, row_b, 80);
+	assert(n_b == n_a);
+
+	/* For every cell that contains a label character of NON-selected
+	 * items in both snapshots (i.e. the characters of Clear and Exit
+	 * when cursor is on Help, vs. Help and Exit when cursor on Clear),
+	 * the character itself must be in the same column.  Strategy: find
+	 * the 'C' of "Clear" and the 'E' of "Exit" in both snapshots and
+	 * assert the columns are identical. */
+	int col_c_a = -1, col_e_a = -1;
+	int col_c_b = -1, col_e_b = -1;
+	for (int x = 0; x < n_a; ++x) {
+		if (col_c_a < 0 && row_a[x].ch == 'C') col_c_a = x;
+		if (col_e_a < 0 && row_a[x].ch == 'E') col_e_a = x;
 	}
-	assert(help != NULL);
-	/* Hotkey 'H' is the first char of "Help" — its fg uses the
-	 * selected scheme (black) instead of bright yellow when selected. */
-	assert(help->attr & PALETTE_ATTR_INVERSE);
-	assert(help->fg == PALETTE_COLOR_BLACK);
-	assert(help->bg == PALETTE_COLOR_WHITE);
+	for (int x = 0; x < n_b; ++x) {
+		if (col_c_b < 0 && row_b[x].ch == 'C') col_c_b = x;
+		if (col_e_b < 0 && row_b[x].ch == 'E') col_e_b = x;
+	}
+	assert(col_c_a >= 0 && col_e_a >= 0);
+	assert(col_c_b >= 0 && col_e_b >= 0);
+	assert(col_c_a == col_c_b);
+	assert(col_e_a == col_e_b);
 
 	palette_close(&st);
 }
 
-static void test_state_15_filter_footer_visible(void) {
-	/* When the filter is non-empty, the bottom border of the deepest
-	 * pane shows a "> filter_" footer. */
+static void test_selected_item_has_brackets(void) {
+	/* The selected item's first and last (of its 4 reserved cells)
+	 * contain '[' and ']'.  Non-selected items have spaces in those
+	 * positions. */
 	compositor_test_reset();
 	compositor_on_resize(24, 80);
 	palette_state_t st;
 	palette_menu_source_t src = snap_source(&g_src);
-	palette_open(&st, 24, 80, &src);
+	palette_open(&st, 24, 80, 0, &src);
 
-	palette_feed_byte(&st, '\r');
-	palette_feed_byte(&st, 'h');             /* filter "h" */
+	palette_feed_byte(&st, '\r');           /* open REPL, cursor on Help */
 	render_all(&st);
 
-	/* Pane bottom row should contain "> h_" in the centered footer. */
-	int by = st.levels[0].pane.y + st.levels[0].pane.h - 1;
-	bool found = fb_has_substring(by, "> h_");
-	assert(found);
+	int y = st.levels[0].pane.y;
+	cell_t row[80];
+	int n = snapshot_row(y, row, 80);
+	assert(n > 0);
+
+	/* Find the 'H' of "Help" and inspect the two cells before and one
+	 * cell after the label. */
+	int col_h = -1;
+	for (int x = 0; x < n; ++x) {
+		if (row[x].ch == 'H') { col_h = x; break; }
+	}
+	assert(col_h >= 2);
+	int label_len = 4;     /* "Help" */
+	/* Bracket cells: col_h - 2 (open) and col_h + label_len + 1 (close). */
+	const cell_t *open_b = &row[col_h - 2];
+	const cell_t *close_b = &row[col_h + label_len + 1];
+	assert(open_b->ch == '[');
+	assert(close_b->ch == ']');
+
+	/* Non-selected Clear/Exit: their open-bracket positions should be
+	 * spaces.  Find 'C' of Clear. */
+	int col_c = -1;
+	for (int x = 0; x < n; ++x) {
+		if (row[x].ch == 'C') { col_c = x; break; }
+	}
+	assert(col_c >= 2);
+	assert(row[col_c - 2].ch == ' ');
+	assert(row[col_c + 5 + 1].ch == ' ');  /* "Clear" len=5 */
 
 	palette_close(&st);
 }
 
-static void test_state_16_no_matches_placeholder(void) {
-	/* Use a custom fixture with wider items so the pane is wide enough
-	 * to hold the full "(no matches)" placeholder text. */
+static void test_hotkey_bold_yellow_when_not_selected(void) {
+	/* On a non-selected item, the hotkey letter cell carries BOLD
+	 * attribute and the bright-yellow foreground. */
 	compositor_test_reset();
 	compositor_on_resize(24, 80);
-
-	static snap_item_t items[] = {
-		{ "WideItemAAA", 'W', true, false, "x()", NULL, 0 },
-		{ "WideItemBBB", 'B', true, false, "x()", NULL, 0 },
-	};
-	static snap_menu_t menus[] = { { "M", 'M', items, 2 } };
-	static snap_source_t src_data = { menus, 1 };
-	palette_menu_source_t src = snap_source(&src_data);
-
 	palette_state_t st;
-	palette_open(&st, 24, 80, &src);
+	palette_menu_source_t src = snap_source(&g_src);
+	palette_open(&st, 24, 80, 0, &src);
 
-	palette_feed_byte(&st, '\r');
-	palette_feed_byte(&st, 'z');
-	palette_feed_byte(&st, 'q');
-	assert(st.levels[0].visible_count == 0);
+	palette_feed_byte(&st, '\r');           /* cursor on Help (item 0) */
 	render_all(&st);
 
-	/* Find "(no matches)" placeholder anywhere inside the pane. */
-	int py = st.levels[0].pane.y;
-	int ph = st.levels[0].pane.h;
-	bool found = false;
-	for (int y = py; y < py + ph; ++y) {
-		if (fb_has_substring(y, "(no matches)")) { found = true; break; }
+	int y = st.levels[0].pane.y;
+	cell_t row[80];
+	(void)snapshot_row(y, row, 80);
+
+	/* "Clear" is not selected -- its 'C' hotkey is bright-yellow + BOLD. */
+	int col_c = -1;
+	for (int x = 0; x < 80; ++x) {
+		if (row[x].ch == 'C') { col_c = x; break; }
 	}
-	assert(found);
+	assert(col_c >= 0);
+	assert(row[col_c].attr & PALETTE_ATTR_BOLD);
+	assert(row[col_c].fg == PALETTE_COLOR_BRIGHT_YELLOW);
 
 	palette_close(&st);
 }
 
-/* Describe wrapper that flags item 0 of the top-level menu as
- * accepts_args=true. Defined at file scope so it has stable linkage
- * for use as a vtable entry. */
-static bool snap_describe_with_args(void *ctx, int menu_index,
-                                    void *parent_opaque, int item_index,
-                                    palette_item_t *out) {
-	if (!s_item_describe(ctx, menu_index, parent_opaque, item_index, out))
-		return false;
-	if (item_index == 0 && parent_opaque == NULL) {
-		out->accepts_args = true;
-	}
-	return true;
-}
-
-static void test_state_17_accepts_args_input_row_visible(void) {
-	/* When the cursor lands on an accepts_args item, the pane reserves
-	 * a row above the bottom border for the arg input — visible in the
-	 * framebuffer as a "> typed_" prefix on that row. */
+static void test_hotkey_bold_only_when_selected(void) {
+	/* On the selected item, the hotkey letter is BOLD but NOT
+	 * overridden to yellow -- the inverse-style selection cell handles
+	 * the highlighting on its own. */
 	compositor_test_reset();
 	compositor_on_resize(24, 80);
-
-	static snap_item_t items[] = {
-		{ "Run", 'R', true, false, "run.cmd", NULL, 0 },
-	};
-	static snap_menu_t menus[] = {
-		{ "X", 'X', items, 1 },
-	};
-	static snap_source_t src_data = { menus, 1 };
-	palette_menu_source_t src = snap_source(&src_data);
-	src.item_describe = snap_describe_with_args;
-
 	palette_state_t st;
-	bool ok = palette_open(&st, 24, 80, &src);
-	assert(ok);
+	palette_menu_source_t src = snap_source(&g_src);
+	palette_open(&st, 24, 80, 0, &src);
 
-	palette_feed_byte(&st, '\r');           /* open menu, cursor on Run */
-	assert(st.levels[0].items[0].accepts_args);
-	palette_feed_byte(&st, 'a');
-	palette_feed_byte(&st, 'b');
+	palette_feed_byte(&st, '\r');           /* cursor on Help (selected) */
 	render_all(&st);
 
-	/* Find "> ab_" on the input row inside the pane. */
-	int py = st.levels[0].pane.y;
-	int ph = st.levels[0].pane.h;
-	bool found = false;
-	for (int y = py; y < py + ph; ++y) {
-		if (fb_has_substring(y, "> ab_")) { found = true; break; }
+	int y = st.levels[0].pane.y;
+	cell_t row[80];
+	(void)snapshot_row(y, row, 80);
+
+	int col_h = -1;
+	for (int x = 0; x < 80; ++x) {
+		if (row[x].ch == 'H') { col_h = x; break; }
 	}
-	assert(found);
+	assert(col_h >= 0);
+	/* Selected hotkey: BOLD set, but fg is the selected scheme (black),
+	 * not bright-yellow. */
+	assert(row[col_h].attr & PALETTE_ATTR_BOLD);
+	assert(row[col_h].fg != PALETTE_COLOR_BRIGHT_YELLOW);
+	assert(row[col_h].fg == PALETTE_COLOR_BLACK);
+	assert(row[col_h].bg == PALETTE_COLOR_WHITE);
 
 	palette_close(&st);
 }
 
-static void test_state_18_scroll_arrows_visible(void) {
-	/* When the menu has more items than fit, scroll arrows '^' and 'v'
-	 * appear at the right edge of the pane. We scroll the cursor past
-	 * the visible window so both arrows are valid. */
+static void test_menubar_hotkey_styling(void) {
+	/* On the menubar itself, the hotkey letter of a non-selected entry
+	 * is bright yellow on blue. */
 	compositor_test_reset();
-	compositor_on_resize(15, 80);
-
-	static snap_item_t items[30];
-	static char labels[30][16];
-	for (int i = 0; i < 30; ++i) {
-		snprintf(labels[i], 16, "Item%02d", i);
-		items[i].label = labels[i];
-		items[i].shortcut = '\0';
-		items[i].enabled = true;
-		items[i].is_submenu = false;
-		items[i].script = "x()";
-		items[i].children = NULL;
-		items[i].child_count = 0;
-	}
-	static snap_menu_t menus[] = { { "L", 'L', items, 30 } };
-	static snap_source_t src_data = { menus, 1 };
-	palette_menu_source_t src = snap_source(&src_data);
-
+	compositor_on_resize(24, 80);
 	palette_state_t st;
-	palette_open(&st, 15, 80, &src);
-	palette_feed_byte(&st, '\r');
-	int item_rows = st.levels[0].pane.h - 2;
-
-	/* Move cursor far enough to push scroll_top off zero — both arrows
-	 * should then be valid (items above the window AND below). */
-	int target = item_rows + 5;
-	for (int i = 0; i < target; ++i) {
-		palette_feed_byte(&st, 0x1b);
-		palette_feed_byte(&st, '[');
-		palette_feed_byte(&st, 'B');
-	}
-	assert(st.levels[0].scroll_top > 0);
-	assert(st.levels[0].scroll_top + item_rows < st.levels[0].visible_count);
+	palette_menu_source_t src = snap_source(&g_src);
+	palette_open(&st, 24, 80, 0, &src);
 	render_all(&st);
 
-	int px = st.levels[0].pane.x + st.levels[0].pane.w - 1;
-	bool found_down = false, found_up = false;
-	int py = st.levels[0].pane.y;
-	int ph = st.levels[0].pane.h;
-	for (int y = py + 1; y < py + ph - 1; ++y) {
-		const cell_t *c = compositor_test_fb_at(px, y);
-		if (c && c->ch == 'v') found_down = true;
-		if (c && c->ch == '^') found_up = true;
+	int y = st.menubar.y;
+	cell_t row[80];
+	(void)snapshot_row(y, row, 80);
+
+	/* "File" is not selected (REPL is the initial selection).  Find F. */
+	int col_f = -1;
+	for (int x = 0; x < 80; ++x) {
+		if (row[x].ch == 'F') { col_f = x; break; }
 	}
-	assert(found_up);
-	assert(found_down);
-	(void)fb_find_char_on_row;          /* silence unused warning */
+	assert(col_f >= 0);
+	assert(row[col_f].attr & PALETTE_ATTR_BOLD);
+	assert(row[col_f].fg == PALETTE_COLOR_BRIGHT_YELLOW);
+	assert(row[col_f].bg == PALETTE_COLOR_BLUE);
 
 	palette_close(&st);
 }
 
 int main(void) {
 	TR_INIT("palette_render_snapshot_tests");
-	TR_RUN(test_state_1_closed_just_menubar);
-	TR_RUN(test_state_2_top_menu_open_cursor_0);
-	TR_RUN(test_state_3_cursor_moved_in_top_menu);
-	TR_RUN(test_state_4_submenu_open);
-	TR_RUN(test_state_5_submenu_navigated);
-	TR_RUN(test_state_6_three_level_cascade);
-	TR_RUN(test_state_7_overflow_right_opens_left);
-	TR_RUN(test_state_8_overflow_bottom_opens_up);
-	TR_RUN(test_state_9_simultaneous_overflow);
-	TR_RUN(test_state_10_hotkey_letter_is_bold);
-	TR_RUN(test_state_11_disabled_item_dimmed);
-	TR_RUN(test_state_12_focused_pane_border_bold);
-	/* Rung 2 / PR 8 snapshot tests. */
-	TR_RUN(test_state_13_menubar_uses_cyan_on_blue);
-	TR_RUN(test_state_14_selected_item_inverse_with_colors);
-	TR_RUN(test_state_15_filter_footer_visible);
-	TR_RUN(test_state_16_no_matches_placeholder);
-	TR_RUN(test_state_17_accepts_args_input_row_visible);
-	TR_RUN(test_state_18_scroll_arrows_visible);
+	TR_RUN(test_menubar_strip_full_width);
+	TR_RUN(test_horizontal_strip_full_width);
+	TR_RUN(test_item_bracket_reservation);
+	TR_RUN(test_selected_item_has_brackets);
+	TR_RUN(test_hotkey_bold_yellow_when_not_selected);
+	TR_RUN(test_hotkey_bold_only_when_selected);
+	TR_RUN(test_menubar_hotkey_styling);
 	TR_SUMMARY();
 	return TR_EXIT_CODE();
 }

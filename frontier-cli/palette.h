@@ -1,10 +1,12 @@
 /*
  * palette.h - REPL slash-menu palette state machine on top of pane compositor.
  *
- * VisiCalc-style modal menu palette: top-level menubar (row 0), cascading
- * submenus opening to the right of their parent at the selected row,
- * keyboard + mouse navigation, hotkey acceleration. Implements plan
- * §1.3b "palette.c on top of pane compositor"; see
+ * Host-anchored horizontal cascade: a single-row menubar strip painted
+ * immediately below the REPL prompt (rather than at row 0), with each
+ * open submenu rendering as another full-width single-row strip stacked
+ * directly below.  Keyboard navigation, hotkey type-to-activate, mouse
+ * click + wheel.  Implements plan §1.3b "palette.c on top of pane
+ * compositor"; see
  * planning/architectural_decision_records/ADR-016 for the data model and
  * /Users/jake/.claude/plans/humming-painting-hejlsberg.md for the scope
  * decomposition (PR 5 = module-only, no REPL integration yet).
@@ -130,6 +132,11 @@ typedef enum {
  * and free of any UserTalk type dependencies. The data source fills these
  * in from the underlying ODB rows; palette never mutates them. */
 typedef struct palette_item {
+	/* `label` and `description` are interpreted as 7-bit ASCII. The palette
+	 * renderer byte-counts these strings for width calculations and column
+	 * alignment, so UTF-8 multi-byte sequences, wide characters (CJK), and
+	 * combining marks will misrender (column drift, wrap mispositioning).
+	 * Right-to-left scripts are not supported. Stick to printable ASCII. */
 	char label[PALETTE_LABEL_MAX];
 	char description[PALETTE_DESC_MAX];
 	char shortcut;        /* uppercase hotkey letter, '\0' if none */
@@ -279,8 +286,16 @@ typedef struct palette_state {
 	bool active;
 	int term_rows;
 	int term_cols;
+	/* The terminal row of the REPL prompt at palette_open() time.
+	 * The menubar pane lives at prompt_row + 1; each open cascade
+	 * level lives at prompt_row + 1 + depth. The caller is expected
+	 * to have stopped linenoise (which emits '\n' and, when the
+	 * prompt is on the bottom row, scrolls the terminal up by one)
+	 * BEFORE calling palette_open, so prompt_row + 1 is always a
+	 * free row inside the visible viewport. */
+	int prompt_row;
 
-	pane_t menubar;             /* row 0, full-width strip */
+	pane_t menubar;             /* full-width strip at prompt_row + 1 */
 	int menubar_cursor;         /* index of focused top-level menu */
 	int menu_count;             /* cached from source.count_menus() */
 	/* Menubar entries — labels + screen x positions, computed at open. */
@@ -377,6 +392,7 @@ typedef struct palette_state {
  * GIL: must be held by the caller. The source vtable callbacks
  * (count_menus, menu_describe) run inline and may touch the ODB. */
 bool palette_open(palette_state_t *st, int term_rows, int term_cols,
+                  int prompt_row,
                   const palette_menu_source_t *source);
 
 /* Close the palette. Unregisters all panes from the compositor and
@@ -387,6 +403,28 @@ bool palette_open(palette_state_t *st, int term_rows, int term_cols,
  * palette_state.exec_script (if set) is NOT invalidated by close —
  * see the field doc. */
 void palette_close(palette_state_t *st);
+
+/* Paint every registered palette pane (menubar + open cascade levels)
+ * to blank cells with terminal-default fg / bg / attr. Idempotent and
+ * a no-op when the palette is not active.
+ *
+ * Why this exists: the compositor diff-renders against its previous
+ * framebuffer. When the palette modal exits, the panes' cells still
+ * carry the menubar/selection attributes from the last frame. If we
+ * simply unregister the panes and let subsequent writes (a leaf
+ * script's output, the linenoise prompt redraw) paint over them, the
+ * compositor sees no change to those cells (the new cell content has
+ * the same printable char and the framebuffer still says "menubar
+ * attrs") and the attributes leak through.
+ *
+ * The contract: call this BEFORE palette_close, then call
+ * compositor_render() ONCE so the cleared cells reach the terminal
+ * while the panes are still registered. Only AFTER that flush is it
+ * safe to call palette_close / unregister the panes.
+ *
+ * GIL: not required. Touches only locally-owned pane buffers; does not
+ * call into the source. */
+void palette_paint_teardown(palette_state_t *st);
 
 /* Feed one input byte. Drives both the ESC disambiguation buffer and the
  * CSI parser. Returns DONE_EXECUTE if the byte triggered a leaf dispatch
@@ -433,6 +471,36 @@ int palette_esc_timeout_ms(void);
 /* Fast ESC disambiguation timeout (milliseconds) used when
  * FRONTIER_PALETTE_FAST_TIMERS is set non-empty. */
 #define PALETTE_ESC_TIMEOUT_FAST_MS 1
+
+/* Slash-vs-menu disambiguation timeout in milliseconds. When the user
+ * types '/' at column 1 of an empty REPL buffer, the REPL waits this
+ * long for a follow-up byte before opening the menu. If a byte arrives
+ * within the window, it is treated as the second character of a slash
+ * command (e.g. "/help") and the menu does NOT open. A second '/' is
+ * a power-user fast-path that opens the menu instantly.
+ *
+ * Returns SLASH_MENU_TRIGGER_DELAY_FAST_MS when
+ * FRONTIER_PALETTE_FAST_TIMERS is set non-empty (shares the env var
+ * with palette_esc_timeout_ms so L4 tests have a single knob),
+ * otherwise SLASH_MENU_TRIGGER_DELAY_DEFAULT_MS.
+ *
+ * GIL: same contract as palette_esc_timeout_ms — only touches getenv. */
+int slash_menu_trigger_delay_ms(void);
+
+/* Default slash-menu disambiguation timeout (milliseconds). 350ms is
+ * the upper bound on inter-keystroke delay for a deliberate slash
+ * command — short enough that a user who types '/' alone perceives
+ * the menu as "instant", long enough that any second key in a typed
+ * command beats the timer. The number is tuned for US QWERTY where
+ * '/' is right-pinky and the second character is often a different
+ * finger; the right-pinky reach + finger transition pushes typical
+ * inter-key intervals into the 200-300ms range, so 250ms was too
+ * tight in practice (caught the menu when typing /keycodes etc.). */
+#define SLASH_MENU_TRIGGER_DELAY_DEFAULT_MS 350
+
+/* Fast slash-menu disambiguation timeout (milliseconds) used when
+ * FRONTIER_PALETTE_FAST_TIMERS is set non-empty. */
+#define SLASH_MENU_TRIGGER_DELAY_FAST_MS 5
 
 /* Feed a parsed mouse event. Coordinates are 1-based (matches mouse_parse
  * output and ANSI CUP convention). The palette converts to 0-based and

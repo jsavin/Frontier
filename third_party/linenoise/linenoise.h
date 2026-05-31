@@ -80,6 +80,18 @@ char *linenoiseEditFeed(struct linenoiseState *l);
 void linenoiseEditStop(struct linenoiseState *l);
 void linenoiseHide(struct linenoiseState *l);
 void linenoiseShow(struct linenoiseState *l);
+/* Frontier modification: exposed for the slash-menu disambiguator in
+ * repl.c. Inserts characters into the active edit buffer, echoing them
+ * to the user's terminal. Used to push back a byte read during the
+ * `/`-vs-menu poll window so linenoise sees it on the next iteration. */
+int linenoiseEditInsert(struct linenoiseState *l, const char *c, size_t clen);
+/* Frontier modification: exposed for the slash-menu disambiguator in
+ * repl.c. Deletes one character to the left of the cursor and echoes
+ * the change to the terminal. Used when the byte consumed during the
+ * `/`-vs-menu poll window is backspace (0x7f or Ctrl-H 0x08) so the
+ * leading '/' is correctly removed instead of being inserted as a
+ * literal control byte. */
+void linenoiseEditBackspace(struct linenoiseState *l);
 
 /* Blocking API. */
 char *linenoise(const char *prompt);

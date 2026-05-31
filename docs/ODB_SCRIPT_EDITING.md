@@ -282,3 +282,15 @@ frontier-cli --skip-startup --system-root databases/Frontier.root -e 'string(sys
 ```
 
 For anything that modifies the ODB, use `--protocol`.
+
+---
+
+## Known Issues & Open Architectural Work
+
+The workflow described above has structural fragility that's tracked as open work:
+
+- **[#675](https://github.com/jsavin/Frontier/issues/675) — Sync verification (P1).** No mechanical check ensures `databases/Virgin.root` and the `.ut` corpus stay in sync after an edit. Drift between the binary ODB and the human-readable exports is undetected until something fails at runtime. The proposed fix is a pre-commit + CI script that walks every `.ut` file, reads the corresponding script from Virgin.root via protocol, normalizes both, and asserts byte-equality.
+
+- **[#676](https://github.com/jsavin/Frontier/issues/676) — Make Virgin.root a build artifact (P2).** The deeper architectural fix: treat the `.ut` corpus as the single source of truth and generate Virgin.root from a clean baseline + the `.ut` files at build time. Eliminates the two-sources-of-truth problem entirely, prevents orphan-block accumulation (script edits via `script.newScriptObject` grow the file ~1.2MB per round), and makes PRs reviewable via `.ut` diffs alone.
+
+Until those land, follow the discipline above closely: ODB-first edits via `--protocol`, then export back to `.ut`, verify visually before committing. The Virgin.root binary diff is opaque in PR review — the `.ut` files are the only human-reviewable record.
