@@ -347,21 +347,31 @@ fi
 # loss) that predates this hook. Promoting to a hard gate requires
 # cleaning that baseline first (tracked separately). Until then we
 # print but do not block.
-UT_STAGED=$(git diff --cached --name-only --diff-filter=ACMR \
-    | grep -E '^usertalk_scripts/Frontier\.root/.*\.ut$' || true)
-ROOT_STAGED=$(git diff --cached --name-only --diff-filter=ACMR \
-    | grep -E '^databases/Virgin\.root$' || true)
+# Read staged paths NUL-delimited so paths containing spaces or shell-glob
+# characters are not silently mishandled (issue #675 P1: warn-only today,
+# would be a bypass primitive if/when the check is promoted to a gate).
+UT_STAGED_PATHS=()
+ROOT_STAGED=""
+while IFS= read -r -d '' f; do
+    case "$f" in
+        usertalk_scripts/Frontier.root/*.ut)
+            UT_STAGED_PATHS+=("$f")
+            ;;
+        databases/Virgin.root)
+            ROOT_STAGED="$f"
+            ;;
+    esac
+done < <(git diff --cached --name-only -z --diff-filter=ACMR)
 
-if [ -n "$UT_STAGED" ] || [ -n "$ROOT_STAGED" ]; then
+if [ ${#UT_STAGED_PATHS[@]} -gt 0 ] || [ -n "$ROOT_STAGED" ]; then
     if [ -x "$GIT_ROOT/frontier-cli/frontier-cli" ]; then
         cd "$GIT_ROOT"
         # Incremental on staged .ut files (fast). If Virgin.root itself
         # is staged we have no way to scope, but a full walk is too slow
         # for a pre-commit gate, so skip in that case and rely on
         # `make verify-odb-sync` for visibility.
-        if [ -n "$UT_STAGED" ]; then
-            # shellcheck disable=SC2086 # word-splitting is intentional
-            if ! ./tools/verify_virgin_root_sync.sh --paths $UT_STAGED --no-diff --quiet 2>&1; then
+        if [ ${#UT_STAGED_PATHS[@]} -gt 0 ]; then
+            if ! ./tools/verify_virgin_root_sync.sh --paths "${UT_STAGED_PATHS[@]}" --no-diff --quiet 2>&1; then
                 echo "" >&2
                 echo -e "${YELLOW}NOTE: staged .ut file(s) diverge from Virgin.root (warn-only).${NC}" >&2
                 echo "  This is not currently blocking the commit, but reviewers will see it." >&2
@@ -371,6 +381,10 @@ if [ -n "$UT_STAGED" ] || [ -n "$ROOT_STAGED" ]; then
                 echo "" >&2
             fi
         fi
+    else
+        # Surface the skip — silent elision hides the gap from contributors
+        # who haven't built frontier-cli yet (issue #675 bar-raiser P2 #3).
+        echo -e "${YELLOW}NOTE: skipping ODB sync check (frontier-cli not built; run \`make build\`).${NC}" >&2
     fi
 fi
 

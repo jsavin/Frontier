@@ -60,10 +60,17 @@ import difflib
 import json
 import os
 import re
+import selectors
 import subprocess
 import sys
 from pathlib import Path
 from typing import Iterable
+
+
+# Per-request read timeout (seconds). The kernel normally responds in
+# milliseconds; this bounds a hung subprocess so the pre-commit hook can't
+# wedge the user's terminal. Overridable via FRONTIER_VERIFIER_TIMEOUT env.
+DEFAULT_READ_TIMEOUT_S = float(os.environ.get("FRONTIER_VERIFIER_TIMEOUT", "30"))
 
 
 # ---------------------------------------------------------------------------
@@ -103,6 +110,9 @@ class ProtocolSession:
         self.system_root = system_root
         self.proc: subprocess.Popen | None = None
         self.next_id = 1
+        # Persistent read buffer so a read1() chunk that crosses a
+        # newline boundary doesn't discard the next response's prefix.
+        self._read_buf = bytearray()
 
     def __enter__(self) -> "ProtocolSession":
         self.proc = subprocess.Popen(
@@ -120,6 +130,67 @@ class ProtocolSession:
             bufsize=0,
         )
         return self
+
+    def _readline_with_timeout(self, timeout_s: float) -> bytes:
+        """Read one line from the subprocess stdout, bounded by timeout.
+
+        Uses a persistent self._read_buf so that a read1() chunk which
+        contains MORE than one line keeps the surplus for the next call.
+        Returns empty bytes if the subprocess closed stdout. Raises
+        RuntimeError if the timeout elapses before a complete line
+        arrives — verify_files treats this as infra error (exit 2).
+        """
+        import time
+        assert self.proc is not None and self.proc.stdout is not None
+
+        # First, check if a complete line is already buffered from a
+        # prior over-read.
+        nl = self._read_buf.find(b"\n")
+        if nl >= 0:
+            line = bytes(self._read_buf[: nl + 1])
+            del self._read_buf[: nl + 1]
+            return line
+
+        sel = selectors.DefaultSelector()
+        sel.register(self.proc.stdout, selectors.EVENT_READ)
+        deadline_ns = int(timeout_s * 1_000_000_000)
+        start = time.monotonic_ns()
+        try:
+            while True:
+                remaining_ns = deadline_ns - (time.monotonic_ns() - start)
+                if remaining_ns <= 0:
+                    try:
+                        self.proc.kill()
+                    except OSError:
+                        pass
+                    raise RuntimeError(
+                        f"protocol response timeout after {timeout_s}s "
+                        f"(set FRONTIER_VERIFIER_TIMEOUT to override)"
+                    )
+                events = sel.select(timeout=remaining_ns / 1_000_000_000)
+                if not events:
+                    continue
+                # Use os.read on the fd directly: bufsize=0 Popen gives
+                # FileIO, which lacks read1; os.read returns whatever's
+                # available without blocking once selectors says ready.
+                try:
+                    chunk = os.read(self.proc.stdout.fileno(), 65536)
+                except OSError:
+                    chunk = b""
+                if not chunk:
+                    # EOF. Return whatever's in the buffer (caller treats
+                    # empty as "session ended").
+                    out = bytes(self._read_buf)
+                    self._read_buf.clear()
+                    return out
+                self._read_buf.extend(chunk)
+                nl = self._read_buf.find(b"\n")
+                if nl >= 0:
+                    line = bytes(self._read_buf[: nl + 1])
+                    del self._read_buf[: nl + 1]
+                    return line
+        finally:
+            sel.close()
 
     def __exit__(self, exc_type, exc, tb) -> None:
         if self.proc is None:
@@ -163,8 +234,11 @@ class ProtocolSession:
         self.proc.stdin.write(req)
         self.proc.stdin.flush()
 
-        # Read one response line. The line may contain non-UTF8 bytes.
-        line = self.proc.stdout.readline()
+        # Read one response line, bounded by DEFAULT_READ_TIMEOUT_S so a
+        # kernel stall can't wedge the pre-commit hook. The kernel
+        # normally responds in milliseconds; the timeout exists for
+        # adversarial / pathological inputs (issue #675 P1).
+        line = self._readline_with_timeout(DEFAULT_READ_TIMEOUT_S)
         if not line:
             stderr = self.proc.stderr.read().decode("utf-8", errors="replace") if self.proc.stderr else ""
             raise RuntimeError(f"protocol session ended unexpectedly. stderr: {stderr}")
@@ -337,10 +411,37 @@ def normalize_kernel_body(raw: bytes) -> bytes:
 IDENT_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
 
+def _path_within(candidate: Path, root: Path) -> bool:
+    """Return True if `candidate` is `root` itself or under `root`.
+
+    Path.is_relative_to() exists from Python 3.9 but the implementation
+    differs slightly across versions; use commonpath for stability.
+    """
+    try:
+        return os.path.commonpath([str(candidate), str(root)]) == str(root)
+    except ValueError:
+        # Different drives on Windows (not applicable here, but be safe).
+        return False
+
+
 def _quote_segment(seg: str) -> str:
-    """Return seg as a valid ODB-path segment, bracket-quoting if needed."""
+    """Return seg as a valid ODB-path segment, bracket-quoting if needed.
+
+    Rejects segments containing control bytes (NUL through US, plus DEL)
+    or newlines — these can't safely round-trip and are not expected in
+    any legitimate corpus path. Defensive against pathological filesystem
+    state (POSIX permits these bytes in filenames, even though no real
+    corpus path uses them).
+
+    Note: `[` and `]` ARE permitted in segments — the corpus uses literal
+    brackets as part of escape encodings in some paths (e.g. the
+    `[colon]` / `[slash]` segments under xml.rss.moduleDrivers).
+    Bracket-quoting still works in UserTalk for these.
+    """
     if IDENT_RE.match(seg):
         return seg
+    if any(ord(c) < 0x20 or c == "\x7f" for c in seg):
+        raise ValueError(f"unrepresentable ODB path segment: {seg!r}")
     # Bracket-quoted form: ["seg"]. Escape embedded quotes / backslashes.
     escaped = seg.replace("\\", "\\\\").replace('"', '\\"')
     return f'["{escaped}"]'
@@ -472,9 +573,18 @@ def verify_files(
                         diff_str = f"(diff render error: {e})"
                 reason = "content drift"
                 if rewrite:
+                    # Containment check: --rewrite is a generic file-overwrite
+                    # primitive if the caller controls both --paths and
+                    # --corpus-root. Refuse to write outside the resolved
+                    # corpus root. (CWE-22 / CWE-73 mitigation.)
                     try:
-                        ut_path.write_bytes(kernel_bytes)
-                        reason = "content drift (rewritten)"
+                        resolved = ut_path.resolve()
+                        corpus_resolved = corpus_root.resolve()
+                        if not _path_within(resolved, corpus_resolved):
+                            reason = "content drift (rewrite refused: outside corpus root)"
+                        else:
+                            ut_path.write_bytes(kernel_bytes)
+                            reason = "content drift (rewritten)"
                     except OSError as e:
                         reason = f"content drift (rewrite failed: {e})"
                 drifts.append(
@@ -598,7 +708,8 @@ def main(argv: list[str] | None = None) -> int:
             "DANGER: overwrite drifted .ut files with the kernel-canonical "
             "form. Use this to re-sync a known-stale .ut corpus to match "
             "edits made directly in Virgin.root. Always inspect the resulting "
-            "git diff before committing."
+            "git diff before committing. Refuses to write outside the "
+            "resolved --corpus-root for safety."
         ),
     )
     args = ap.parse_args(argv)
