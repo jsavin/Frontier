@@ -1,0 +1,8 @@
+on openWindow (adr) {
+	//Phase C: REPL window opened event.
+	//The windowTypes framework calls this after finding "ReplWindow" as the
+	//window type. In Phase D, window.attributes.getOne will be implemented
+	//and this handler will configure the REPL window (set title, compose
+	//menus via the menuTypes framework).
+	//For now, return true to signal successful handling.
+	return (true)}
