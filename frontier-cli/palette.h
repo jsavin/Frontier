@@ -472,6 +472,32 @@ int palette_esc_timeout_ms(void);
  * FRONTIER_PALETTE_FAST_TIMERS is set non-empty. */
 #define PALETTE_ESC_TIMEOUT_FAST_MS 1
 
+/* Slash-vs-menu disambiguation timeout in milliseconds. When the user
+ * types '/' at column 1 of an empty REPL buffer, the REPL waits this
+ * long for a follow-up byte before opening the menu. If a byte arrives
+ * within the window, it is treated as the second character of a slash
+ * command (e.g. "/help") and the menu does NOT open. A second '/' is
+ * a power-user fast-path that opens the menu instantly.
+ *
+ * Returns SLASH_MENU_TRIGGER_DELAY_FAST_MS when
+ * FRONTIER_PALETTE_FAST_TIMERS is set non-empty (shares the env var
+ * with palette_esc_timeout_ms so L4 tests have a single knob),
+ * otherwise SLASH_MENU_TRIGGER_DELAY_DEFAULT_MS.
+ *
+ * GIL: same contract as palette_esc_timeout_ms — only touches getenv. */
+int slash_menu_trigger_delay_ms(void);
+
+/* Default slash-menu disambiguation timeout (milliseconds). 250ms is
+ * the upper bound on inter-keystroke delay for a deliberate slash
+ * command — short enough that a user who types '/' alone perceives
+ * the menu as "instant", long enough that any second key in a typed
+ * command beats the timer. */
+#define SLASH_MENU_TRIGGER_DELAY_DEFAULT_MS 250
+
+/* Fast slash-menu disambiguation timeout (milliseconds) used when
+ * FRONTIER_PALETTE_FAST_TIMERS is set non-empty. */
+#define SLASH_MENU_TRIGGER_DELAY_FAST_MS 5
+
 /* Feed a parsed mouse event. Coordinates are 1-based (matches mouse_parse
  * output and ANSI CUP convention). The palette converts to 0-based and
  * routes via compositor_pane_at().

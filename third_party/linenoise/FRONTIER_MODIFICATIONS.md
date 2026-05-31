@@ -61,6 +61,18 @@ Linenoise is a lightweight readline alternative used by frontier-cli for REPL li
     mid-row instead of column 1 — visible from both the slash command
     and the new REPL menu's "Key codes" item.
 
+#### Exported Internals
+
+- **`linenoiseEditInsert`** (linenoise.c line ~1099)
+  - PR #674 (2026-05-30): exported via linenoise.h. Originally
+    intra-translation-unit but had external linkage; frontier-cli's
+    slash-menu disambiguator in `repl.c` needs to push a follow-up
+    byte back into the edit buffer after consuming it for `//`
+    fast-path detection. The function echoes the byte to the user's
+    terminal and updates the linenoise state's buf/len/pos, so
+    linenoise sees the byte on the next `linenoiseEditFeed` cycle
+    as if the user typed it normally.
+
 ---
 
 ## Rationale for UserTalk-Specific Word Boundaries

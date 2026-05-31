@@ -1580,6 +1580,12 @@ static struct linenoiseState *g_active_linenoisestate = NULL;
 // Forward declaration for completion callback
 static void linenoise_completion_callback(const char *buf, linenoiseCompletions *lc);
 
+/* linenoiseEditInsert is declared in third_party/linenoise/linenoise.h
+ * (Frontier modification). Used by the slash-menu disambiguator below
+ * to re-inject a follow-up byte that we consumed from stdin to decide
+ * whether to open the menu — see the comment block at the call site
+ * (search for "slash-menu disambiguator"). */
+
 /*
  * Async-signal-safe mouse-tracking disable.
  *
@@ -3829,8 +3835,70 @@ int repl_main(cli_options_t *options, ws_server_t *ws_server) {
 				 * (the editor's len jumped to 1 with buf[0] == '/'
 				 * exactly). This is the only condition that opens the
 				 * palette; '/' typed mid-line is left as a literal
-				 * character. */
+				 * character.
+				 *
+				 * slash-menu disambiguator (PR #674): we cannot open
+				 * the menu immediately on '/' alone, because the user
+				 * may be typing a slash command like "/help" or
+				 * "/keycodes". Wait up to slash_menu_trigger_delay_ms()
+				 * for a follow-up byte:
+				 *   - timeout (no byte)            -> open menu
+				 *   - follow-up byte is '/'        -> open menu (fast
+				 *     path for power users: "//" skips the wait). The
+				 *     leading '/' is removed from the buffer before
+				 *     the modal opens, since the modal expects a clean
+				 *     prompt row.
+				 *   - any other follow-up byte     -> NOT a menu
+				 *     trigger; this is the second char of a slash
+				 *     command. Inject the byte into the linenoise
+				 *     edit buffer (linenoiseEditInsert, see forward
+				 *     decl) so it echoes and the buffer state matches
+				 *     what the user sees. The leading '/' stays put.
+				 *
+				 * The fast-timer env var FRONTIER_PALETTE_FAST_TIMERS
+				 * compresses 250ms -> 5ms for the L4 test harness, so
+				 * pyte-driven tests don't pay the full disambiguation
+				 * cost on each '/' send. */
+				bool open_menu = false;
 				if (ls.len == 1 && ls.buf[0] == '/') {
+					struct pollfd dfd = { STDIN_FILENO, POLLIN, 0 };
+					int dready = poll(&dfd, 1, slash_menu_trigger_delay_ms());
+					if (dready == 0) {
+						/* Timeout — user typed '/' and stopped. */
+						open_menu = true;
+					} else if (dready > 0 && (dfd.revents & POLLIN)) {
+						unsigned char nb;
+						ssize_t nn = read(STDIN_FILENO, &nb, 1);
+						if (nn == 1 && nb == '/') {
+							/* '//' fast-path: clear leading '/' from
+							 * buffer so the modal opens against a
+							 * clean prompt row, matching the timeout
+							 * path's invariant. */
+							ls.buf[0] = '\0';
+							ls.len = 0;
+							ls.pos = 0;
+							open_menu = true;
+						} else if (nn == 1) {
+							/* Some other byte — second char of a
+							 * slash command. Inject it into linenoise
+							 * so it echoes and the buffer reflects
+							 * what the user sees. Errors here are
+							 * non-fatal: at worst the byte is dropped
+							 * and the user retypes. */
+							char cb = (char)nb;
+							(void)linenoiseEditInsert(&ls, &cb, 1);
+						}
+						/* nn <= 0 (EOF or error): treat as timeout —
+						 * fall through with open_menu = false; the
+						 * next loop iteration will hit the EOF path
+						 * in linenoiseEditFeed and exit cleanly. */
+					} else if (dready < 0 && errno == EINTR) {
+						/* Signal interrupted the poll. Don't open the
+						 * menu; let the outer loop's signal handling
+						 * (Ctrl-C, SIGWINCH) run on the next pass. */
+					}
+				}
+				if (open_menu) {
 					char palette_arg[PALETTE_ARG_MAX] = "";
 					/* run_palette_modal returns with linenoise STOPPED
 					 * (it called linenoiseEditStop on entry) and the

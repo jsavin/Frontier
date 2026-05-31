@@ -90,6 +90,62 @@ tests:
       - send_raw: "\x04"
     expected_success: true
 
+  # PR #674 slash-vs-menu disambiguator: a single '/' followed by no
+  # other byte within slash_menu_trigger_delay_ms() opens the menu.
+  # The L4 harness sets FRONTIER_PALETTE_FAST_TIMERS=1, so the wait
+  # compresses to ~5ms — fast enough that a single send_raw("/") with
+  # no follow-up reliably opens the menu and matches the existing
+  # menubar_just_opened.txt golden. This is the timeout-fires path.
+  - name: "palette modal: lone slash opens menu after disambig timeout"
+    palette_mode: true
+    timeout: 15
+    interactive_steps:
+      - expect: "\\[root\\]> "
+        send_raw: "/"
+      - screenshot_match: "fixtures/palette/menubar_just_opened.txt"
+      - send_raw: "\x1b"
+      - expect: "\\[root\\]> "
+      - send_raw: "\x04"
+    expected_success: true
+
+  # PR #674 power-user fast-path: typing '//' opens the menu instantly
+  # without waiting for the disambiguation timer. The disambiguator
+  # consumes the second '/' (clearing the leading '/' from the edit
+  # buffer) so the modal opens against a clean prompt row — visually
+  # identical to the lone-slash path, so the same golden applies.
+  - name: "palette modal: double slash opens menu via fast-path"
+    palette_mode: true
+    timeout: 15
+    interactive_steps:
+      - expect: "\\[root\\]> "
+        send_raw: "//"
+      - screenshot_match: "fixtures/palette/menubar_just_opened.txt"
+      - send_raw: "\x1b"
+      - expect: "\\[root\\]> "
+      - send_raw: "\x04"
+    expected_success: true
+
+  # PR #674 disambiguator regression guard: a slash command typed as a
+  # single atomic write (the harness sends "/totallybogus\n" in one
+  # call) must NOT open the menu. The second byte ('t') arrives well
+  # within the 5ms fast-timer window, so the disambiguator injects it
+  # into linenoise and the line completes as a normal slash command.
+  # dispatch_slash_command() resolves the unknown token and prints
+  # "Unknown command: /totallybogus" — the assertion proves the
+  # slash-command path ran, not the menu path. (If the menu opened
+  # instead, the rest of the bytes would route to palette_feed_byte
+  # and no "Unknown command:" line would ever be printed.)
+  - name: "palette modal: typed slash command does NOT open menu"
+    palette_mode: true
+    timeout: 15
+    interactive_steps:
+      - expect: "\\[root\\]> "
+        send_raw: "/totallybogus\r"
+      - expect: "Unknown command: /totallybogus"
+      - expect: "\\[root\\]> "
+      - send_raw: "\x04"
+    expected_success: true
+
 # L4 GAP -- leaf execution end-to-end: not currently covered.
 #
 # An ideal third test would drill /, DOWN, ENTER to fire the REPL > Help

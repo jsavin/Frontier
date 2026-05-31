@@ -650,6 +650,12 @@ int palette_esc_timeout_ms(void) {
 	return PALETTE_ESC_TIMEOUT_DEFAULT_MS;
 }
 
+int slash_menu_trigger_delay_ms(void) {
+	const char *v = getenv("FRONTIER_PALETTE_FAST_TIMERS");
+	if (v && v[0] != '\0') return SLASH_MENU_TRIGGER_DELAY_FAST_MS;
+	return SLASH_MENU_TRIGGER_DELAY_DEFAULT_MS;
+}
+
 palette_done_t palette_feed_mouse(palette_state_t *st, const mouse_event_t *ev) {
 	if (!st || !st->active || !ev) return PALETTE_DONE_NONE;
 	if (ev->x < 1 || ev->y < 1) return PALETTE_DONE_NONE;
