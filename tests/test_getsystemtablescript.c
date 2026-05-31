@@ -219,12 +219,14 @@ static bool test_idrunopenrecentmenuscript_resolves(void) {
 }
 
 /*
- * Test 12: All 46 enum values defined in tablestructure.h resolve to
- * non-empty paths. This is the comprehensive smoke test: if any entry
- * is missing from the YAML table, this test catches it.
+ * Test 12: All 45 defined enum values in tablestructure.h resolve to
+ * non-empty paths. (Index 43 is unassigned in the C enum — the legacy Mac
+ * resource has an entry there for a Windows-specific systemTray handler,
+ * but no idXxxScript constant exists.) This is the comprehensive smoke
+ * test: if any entry is missing from the YAML table, this test catches it.
  */
 static bool test_all_defined_ids_resolve(void) {
-	g_test_stats.current_test_name = "All 46 idsystemtablescripts enum values resolve";
+	g_test_stats.current_test_name = "All 45 idsystemtablescripts enum values resolve";
 
 	/*
 	 * Enum values from tablestructure.h, in declaration order.

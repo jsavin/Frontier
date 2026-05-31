@@ -53,7 +53,7 @@ idsystemtablescripts:
 
   - id: idcontrol2clickscript
     index: 8
-    text: "if defined(system.callbacks.control2click){system.callbacks.control2click(\"^0\")}"
+    text: "system.callbacks.control2click(\"^0\")"
 
   - id: idcommand2clickscript
     index: 9
