@@ -193,6 +193,12 @@ typedef struct ty_repl_multi_source_ctx {
 	ty_script_cache_entry cached_scripts[REPL_PS_MAX_CACHED_SCRIPTS];
 	int cached_scripts_count;
 
+	/* Latch so the script-cache overflow warning fires once per init,
+	 * not once per miss-after-full. Without this, a long session that
+	 * arrows through many unique items after the cache fills would
+	 * emit a log line per describe. */
+	boolean cache_overflow_warned;
+
 	boolean initialised;
 } ty_repl_multi_source_ctx;
 
@@ -417,9 +423,13 @@ static Handle cache_script_handle(ty_repl_multi_source_ctx *ctx,
 
 	/* Miss: insert a new entry. */
 	if (ctx->cached_scripts_count >= REPL_PS_MAX_CACHED_SCRIPTS) {
-		log_warn(LOG_COMP_GENERAL,
-		         "REPL palette: script cache full (%d unique items),"
-		         " cannot cache additional scripts", REPL_PS_MAX_CACHED_SCRIPTS);
+		if (!ctx->cache_overflow_warned) {
+			log_warn(LOG_COMP_GENERAL,
+			         "REPL palette: script cache full (%d unique items),"
+			         " cannot cache additional scripts",
+			         REPL_PS_MAX_CACHED_SCRIPTS);
+			ctx->cache_overflow_warned = true;
+		}
 		return nil;
 	}
 	if (!copyhandle(horig, &hcopy))
