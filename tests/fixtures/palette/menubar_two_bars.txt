@@ -1,0 +1,20 @@
+Frontier REPL - Interactive UserTalk Environment
+Type /help for commands, /exit to quit
+
+[root]> menu.addMenuCommand(@system.menus.data.aux, "File", "Open", "fileOpen()"
+)
+true
+[root]> menu.install(@system.menus.data.aux)
+true
+[root]> menu.isInstalled(@system.menus.data.aux)
+true
+[root]> /
+
+
+
+
+
+
+
+
+ File  REPL

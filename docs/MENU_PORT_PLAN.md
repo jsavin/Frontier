@@ -111,6 +111,8 @@ Supersedes the 8-PR plan's Phases 6-8. Recasts the deep-dive's 5-step sequence w
 - **Open decisions to resolve here**: Decision Point 4 (storage path reconciliation) — either fix or defer explicitly
 - **Blocks**: all subsequent phases
 
+**Phase A shipped** (2026-05-31, worktree-menu-port-phase-a-enumerate). `repl_palette_source.c` now enumerates all children of `@system.menus.data` filtered by `.installed = true` and composes their top-level menus into a single horizontal strip, sorted alphabetically by bar name for deterministic output. The existing `_init_for` (single-bar, bypasses installed filter) is preserved for test compatibility. The L4 PTY regression test (`repl_palette_multi_bar.yaml`) installs a second bar dynamically and verifies the union strip renders "File REPL" (alphabetical: aux < repl). When the union of all installed bars' menus exceeds terminal width, `palette.c` truncates at the right edge; overflow UX (ellipsization, horizontal scroll) is deferred as a follow-up per issue #677.
+
 ### Phase B — Script Hook Infrastructure (two parallel sub-tracks)
 
 **B1 — `getsystemtablescript` headless support**

@@ -2966,12 +2966,11 @@ static Handle run_palette_modal(struct linenoiseState *ls,
 	 * the terminal is still in raw mode. */
 	terminal_hide_cursor();
 
-	/* 3. Build the ODB-backed palette source. */
+	/* 3. Build the ODB-backed palette source (all installed bars). */
 	palette_menu_source_t src;
-	bool src_ok = repl_palette_source_init(&src);
+	bool src_ok = repl_palette_source_init_all(&src);
 	if (!src_ok) {
-		printf("(no menubar installed: system.menus.data.%s)\n",
-		       REPL_PALETTE_DEFAULT_MENUBAR);
+		printf("(no menubar installed: system.menus.data.*)\n");
 		fflush(stdout);
 		goto cleanup_terminal;
 	}

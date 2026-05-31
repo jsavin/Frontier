@@ -55,28 +55,49 @@ extern "C" {
 #define REPL_PALETTE_DEFAULT_MENUBAR "repl"
 
 /*
+ * Deprecated: use repl_palette_source_init_all. Preserved for compat.
+ *
  * Initialise a palette_menu_source_t pointing at the default menubar
- * (system.menus.data.repl). The adapter holds its own private context
- * referenced by out->ctx; the caller does not need to allocate or free
- * anything between repl_palette_source_init() and the corresponding
- * repl_palette_source_dispose() — the adapter manages its cache lifecycle.
+ * (system.menus.data.repl). Does NOT check .installed -- bypasses the
+ * installed filter. Use repl_palette_source_init_all for production
+ * enumeration that respects the installed flag.
  *
- * Returns true on success, false on allocation failure.
+ * Returns true on success, false if the default menubar is absent or on
+ * allocation failure.
  *
- * GIL: must be called while holding the GIL. Touches roottable to validate
- * the menubar exists; on first call lazy-creates system.menus.data via
- * menudata_ensure_root().
+ * GIL: must be called while holding the GIL.
  */
 bool repl_palette_source_init(palette_menu_source_t *out);
 
 /*
- * Same, but for a specific menubar name (e.g. "test_menubar" in unit tests).
+ * Initialise for a specific menubar name (e.g. "test_bar" in unit tests).
+ * Does NOT check .installed -- bypasses installed-filter for direct test
+ * access. Use repl_palette_source_init_all for production enumeration.
+ *
  * Stores the name internally; caller need not retain the string.
  *
  * GIL: must be held.
  */
 bool repl_palette_source_init_for(palette_menu_source_t *out,
                                   const char *menubar_name);
+
+/*
+ * Enumerate ALL installed menubars under system.menus.data and compose their
+ * top-level menus into a single horizontal strip (union semantics, matching
+ * legacy OS menubar behavior). Only bars whose .installed field is true are
+ * included. Bars are ordered alphabetically by name for deterministic output.
+ *
+ * Use this in production code (e.g. repl.c's run_palette_modal) instead of
+ * repl_palette_source_init / repl_palette_source_init_for.
+ *
+ * Returns true if at least one installed bar was found; false if none are
+ * installed (caller should suppress the palette in that case) or on
+ * allocation failure.
+ *
+ * GIL: must be held. Calls menudata_ensure_root() and walks the full
+ * system.menus.data subtree.
+ */
+bool repl_palette_source_init_all(palette_menu_source_t *out);
 
 /*
  * Tear down the adapter. Releases any handles the adapter copied into its
