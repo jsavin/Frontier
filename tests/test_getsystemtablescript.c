@@ -30,6 +30,8 @@
 #include "../Common/headers/frontier.h"
 /* Include tablestructure.h for idsystemtablescripts and the enum constants */
 #include "../Common/headers/tablestructure.h"
+/* Include logging.h for log_init prototype */
+#include "../Common/headers/logging.h"
 
 /* Provided by headless_lang_runtime_more_stubs.c */
 extern boolean getstringlist(short listid, short index, bigstring bs);
