@@ -32,18 +32,11 @@
 
 These gate the phases below. Listed in order of urgency.
 
-### Decision Point 1 — Obtain windowTypes Frontier.root (BLOCKS PHASE D)
+### Decision Point 1 — ~~Obtain windowTypes Frontier.root~~ RESOLVED 2026-05-31
 
-The windowTypes framework JES wrote is the entire window-type-to-menubar-manifest mapping. Without the actual source we don't know the exact table path (`system.windowTypes` is the working hypothesis), what a "window type" looks like as stored in a window record, or what fields the framework inspects on the window record vs. on a table.
+**Resolved**: the windowTypes framework is **already installed** in Virgin.root and exported to `usertalk_scripts/Frontier.root/system/verbs/builtins/Frontier/tools/windowTypes/`. Actual path is `system.verbs.builtins.Frontier.tools.windowTypes` — not the `system.windowTypes` hypothesis. Contents include `init.ut`, `findWindowType.ut`, `callWindowType.ut`, `newWindow.ut`, `openWindow.ut`, `runFileMenuScript.ut`, `runEditMenuScript.ut`, `findWindowWithMatchingAtts.ut`, plus `callbacks/` and `commands/` subtables.
 
-**Options:**
-- **(i) Get the actual .root from JES.** Export the relevant `system.windowTypes` subtable and its handlers as `.ut` files. Port verbatim. The only way to guarantee fidelity.
-- (ii) Recreate from intent + kernel evidence. Equivalent to writing a compatible implementation, not porting the original.
-- (iii) Fresh design with same conceptual goals.
-
-**Recommendation: option (i) is required.** Fidelity goal makes (i) the only defensible path. (ii)/(iii) are acceptable only for scaffolding that JES will review and correct against the real source when it surfaces.
-
-**Action required from JES**: export `system.windowTypes` from a running legacy Frontier instance, or provide the `.root` file. Even a screenshot or behavioral notes ("when Script Editor was frontmost, these menus were visible") narrows uncertainty.
+Phase D is rescoped from "port the framework" to "verify the kernel primitives the existing framework calls work in headless." See Phase D section below.
 
 ### Decision Point 2 — Sync vs Async Menu Script Dispatch (BLOCKS PHASE B2)
 
@@ -90,7 +83,7 @@ The REPL's own "window" is a static global, initialized at startup with `windowt
 
 **Step 3 (window-event callback bridge):** Order correct. Characterization "just stubs" is optimistic. Bridge needs to actually fire: `getsystemtablescript(idopenwindowscript, bs)` → resolve path → run via `meuserselected_headless`. Real port of `lang.c:1168-1215` pattern. ~150 LOC.
 
-**Step 4 (window-type registry / windowTypes framework):** Blocked on Decision Point 1. Cannot proceed faithfully without the source. Scaffolding tables can be created early; handler scripts cannot.
+**Step 4 (window-type registry / windowTypes framework):** ~~Blocked on Decision Point 1.~~ Unblocked: framework located at `system.verbs.builtins.Frontier.tools.windowTypes/`. Work shifts to verifying kernel primitives (`window.frontMost`, `window.attributes.*`, callback registry) work in headless against the existing framework.
 
 **Step 5 (editor windows):** Correctly last. Requires 1-4 and GUI editor work that doesn't exist yet.
 
@@ -141,22 +134,28 @@ Both sub-tracks block Phase C.
 - **Dependencies**: Phase A (multi-menubar enumeration to see effects), Phase B1 (getsystemtablescript)
 - **Blocks**: Phase D
 
-### Phase D — WindowTypes Framework Port
+### Phase D — Verify WindowTypes Framework Kernel Primitives in Headless
 
-- **BLOCKED ON Decision Point 1** (JES providing the actual Frontier.root)
-- Once source available: port `system.windowTypes` table structure and handler scripts verbatim into `Virgin.root` via the ODB script editing protocol
-- `idopenwindowscript` and `idclosewindowscript` handlers installed by the framework will be triggered by Phase C's bridge
-- Install a `"ReplWindow"` entry immediately to validate the model
-- **Size**: unknown until source available (100-500 lines of UserTalk likely)
-- **Acceptance**: execute fidelity verification protocol (see below)
+**Rescoped 2026-05-31**: the original framing assumed the windowTypes framework had to be ported into Virgin.root. Discovery: the framework is **already present** at `usertalk_scripts/Frontier.root/system/verbs/builtins/Frontier/tools/windowTypes/` (init.ut, findWindowType.ut, callWindowType.ut, newWindow.ut, openWindow.ut, runFileMenuScript.ut, runEditMenuScript.ut, findWindowWithMatchingAtts.ut, isFileMenuItemChecked.ut, isFileMenuItemEnabled.ut, isWindowDirty.ut, getDefaultFilename.ut, plus `callbacks/` and `commands/` subtables). Phase D is no longer a port — it is verification work.
+
+- **Scope**: confirm the kernel primitives the existing UserTalk framework calls work in headless:
+  - `window.frontMost()` — must return something Phase C's static REPL-window sentinel registers as
+  - `window.attributes.getOne("type", ...)` — must read from the registry Phase C populates
+  - The `idXxxScript` callback registry (populated by Phase B1, fired by Phase C)
+- For each primitive: write a behavioral test that drives the framework UserTalk from inside the headless REPL and asserts expected dispatch
+- If a primitive is missing or broken, file a targeted issue and either stub it in C or note it as a fidelity gap
+- **Size**: ~50-200 LOC of new C only if gaps surface; mostly tests
+- **Acceptance**: framework UserTalk can be invoked from headless and reaches the kernel primitives without crashing; behavioral chain `boot → windowTypes.init → openWindow(replWindow) → menubar installed` works end-to-end
+- **Out of scope (deferred future work)**: promoting parts of the windowTypes framework from UserTalk to C for performance — no current need
 
 ### Phase E — Menu Content
 
 - Port the legacy File / Edit / View / Window / Help menus with REPL-appropriate behavior
 - Specific scripts for each item must be reviewed against what legacy Frontier ran for that item
 - **Edit menu (Cut/Copy/Paste)** requires the `linenoise.*` verb bridge to the REPL's input buffer — new work with no legacy analog (terminals didn't exist in classic Frontier)
-- **Dependencies**: Phase D (windowTypes framework, so menus appear in the right contexts)
+- **Dependencies**: Phase D verification passed (kernel primitives the existing windowTypes framework relies on confirmed working in headless), Phase C bridge live
 - This is where the original plan's "Phase 6 detailed plan" (task #20) executes
+- Menu content scripts may already live alongside the windowTypes framework in `usertalk_scripts/Frontier.root/.../windowTypes/commands/` — audit before re-implementing from scratch
 
 ---
 
@@ -182,7 +181,7 @@ The fidelity goal requires a concrete comparison protocol. Without this, "matche
 
 | Risk | Severity | Mitigation |
 |------|----------|------------|
-| windowTypes framework source never surfaces; port must be built from hypothesis | High | Escalate as prerequisite, not nice-to-have. Block Phase D explicitly until resolved. |
+| ~~windowTypes framework source never surfaces; port must be built from hypothesis~~ | RESOLVED 2026-05-31 | Framework located at `usertalk_scripts/Frontier.root/system/verbs/builtins/Frontier/tools/windowTypes/`. Phase D rescoped to verification of kernel primitives the framework calls. |
 | Async dispatch (Phase B2) more complex than estimated; GIL contention with REPL input | Medium-High | Build B2 as isolated module with its own integration test before wiring into palette dispatch. Fall back to synchronous if threading issues appear. |
 | `getsystemtablescript` string table contains paths that no longer exist in v7 databases | Medium | Port faithfully, then validate each path against a running headless instance. Add "verb not found" logging in Phase C bridge rather than silent failure. |
 | Union-menubar rendering overflows terminal width | Medium | Phase A should include terminal-width enforcement: overflow menus ellipsized or hidden (classic Mac behavior). Define overflow behavior before Phase A ships. |

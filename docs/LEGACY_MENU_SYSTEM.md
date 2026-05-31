@@ -2,7 +2,9 @@
 
 **Audience**: internal technical (Claude, JES, future agents). Investigation produced from reading `/Users/jake/dev/tedchoward/Frontier/Common/source/` and cross-referencing against the headless port work in `/Users/jake/dev/jsavin/Frontier/`.
 
-**Status**: Part 1 (how the legacy worked) is from C source reading. Part 2 (port roadmap) is grounded in Part 1 + the PR #563 / #608 / #674 work that exists today. **Gap**: the UserTalk windowTypes framework JES wrote on top of these kernel primitives lives in a Frontier.root that is not in either the legacy `tedchoward` tree or the current `jsavin/Frontier` tree. This doc captures the kernel surface (which is in-source) and the windowTypes framework's contract with that surface (inferred from kernel evidence + JES guidance). When a real windowTypes-bearing .root surfaces, this doc should be updated with the actual UserTalk implementation details.
+**Status**: Part 1 (how the legacy worked) is from C source reading. Part 2 (port roadmap) is grounded in Part 1 + the PR #563 / #608 / #674 work that exists today.
+
+**Update 2026-05-31 — windowTypes framework located**: the UserTalk windowTypes framework is **already present in Virgin.root** and exported to `usertalk_scripts/Frontier.root/system/verbs/builtins/Frontier/tools/windowTypes/`. The actual path is `system.verbs.builtins.Frontier.tools.windowTypes` — not the `system.windowTypes` working hypothesis used throughout this doc. Files present: `init.ut`, `findWindowType.ut`, `callWindowType.ut`, `newWindow.ut`, `openWindow.ut`, `runFileMenuScript.ut`, `runEditMenuScript.ut`, `findWindowWithMatchingAtts.ut`, `isFileMenuItemChecked.ut`, `isFileMenuItemEnabled.ut`, `isWindowDirty.ut`, `getDefaultFilename.ut`, plus `callbacks/` and `commands/` subtables. The "hypothesis" notes below are retained for historical context, but read the `.ut` files for ground truth on the framework's actual shape.
 
 ---
 
