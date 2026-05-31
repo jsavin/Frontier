@@ -122,20 +122,20 @@ Both sub-tracks block Phase C.
 
 ### Phase C — Window-Event Callback Bridge
 
-**Refined 2026-05-31 (post-B1 #680 merge + windowTypes audit)**: list 139 entries are inline UserTalk script templates with `^0`/`^1` parameter substitution markers, NOT bare ODB verb paths. Phase C dispatch is `getsystemtablescript → parsedialogstring (with escaped params) → processrunstring`, NOT `→ langfindvalue → meuserselected_headless`. See PR #680 and issues #681, #682.
+**Phase C shipped** (2026-05-31, worktree-menu-port-phase-c-bridge). Dispatch implementation: `getsystemtablescript → langdeparsestring(bs_path, '"') → parsedialogstring → langrunstringnoerror`. Key correction vs. original spec: the script templates use straight ASCII double-quotes `"` as string delimiters, so the escaping uses `'"'` (not `chclosecurlyquote`/0xD3) to prevent injection of embedded `"` characters. All 5 behavioral unit tests in `tests/test_window_bridge.c` pass (green).
 
-**Audit findings** (see also `/tmp/phase-c-windowtypes-audit.md` if present, or re-derive from `usertalk_scripts/.../windowTypes/`):
-- Framework calls `window.frontMost()`, `window.attributes.getOne("type", ...)`, `window.attributes.setOne`, `window.setTitle(adr, title)` — Phase C must implement these in headless, OR verify existing implementations
-- Framework calls `thread.callScript(adr, params)` for menu-item dispatch — **already implemented** in `frontier-cli/headless_thread_verbs.c` (`headless_thread_callscript`). Async dispatch for menu items is therefore handled at the framework layer, NOT in Phase C's bridge — see Decision Point 2 resolution
-- Framework looks up windowType definitions in `user.tools.windowTypes.[type]` and `Frontier.tools.data.windowTypes.[type]` (in that order); Phase C must install a `ReplWindow` entry in the latter
+**What was delivered**:
+- `frontier-cli/window_registry.c` + `window_registry.h`: `window_registry_init()` creates `system.temp.windowTypes.windows.repl` with `type="ReplWindow"`, `title="REPL"`. `on_frontmost_changed(old, new)` fires `idclosewindowscript`/`idopenwindowscript` using the corrected dispatch chain with `'"'` escaping.
+- `frontier-cli/repl.c`: wired `window_registry_init()` + `on_frontmost_changed(nil, WINDOW_BRIDGE_REPL_PATH)` into boot sequence after `install_repl_menubar()` (step 3.3).
+- `usertalk_scripts/.../Frontier/tools/data/windowTypes/ReplWindow/openWindow.ut`: installed in `databases/Virgin.root` via protocol; returns true as a Phase D placeholder.
+- `tests/test_window_bridge.c`: 5 behavioral tests using C-side `langcompiletext`+`hashtableassign` stubs (avoids `script.newScriptObject` dependency on full Frontier.root). Confirmed RED → GREEN.
 
-**Phase C tasks**:
-- Implement `on_frontmost_changed(old, new)` in `repl.c`: fires `getsystemtablescript(idclosewindowscript)` for old, `getsystemtablescript(idopenwindowscript)` for new. For each fired script, substitute `^0` = `langdeparsestring(adr.path, chclosecurlyquote)` via `parsedialogstring`, then `processrunstring` synchronously. (Sync is fine here — this runs once at boot, before REPL accepts input.)
-- Implement the static "REPL window" sentinel: a `tyhdlwindow repl_window` global with `type="ReplWindow"`, `title="REPL"`, wired as initial `frontmost_window` at boot
-- Install a `Frontier.tools.data.windowTypes.ReplWindow` entry (via UserTalk boot script under `databases/usertalk_scripts/` or via C-side ODB API at boot) — contains the menubar manifest pointing at the `repl` bar that Phase A enumeration finds
-- At boot: fire `on_frontmost_changed(nil, &repl_window)` to trigger `idopenwindowscript`
-- **Per-dispatch-site escaping checklist** (from issue #682): document trust assumption for each `^0`/`^1` source; window paths are user-controllable → MUST escape via `langdeparsestring`
-- **Size**: ~150-250 LOC in `repl.c` + small new `window_registry.c` + UserTalk boot script for the `ReplWindow` entry
+**Phase D pre-work signal**: `window.attributes.getOne("type", adr)` is NOT implemented in headless. The framework's `callbacks/openWindow.ut` gracefully returns true when this fails (`if window.attributes.getOne(...) {...}` skips the if-body). Full ReplWindow menu composition is blocked until Phase D implements `window.attributes.*`.
+
+**Escaping correction** (issue #682): original spec said use `chclosecurlyquote` (0xD3). Actual template strings use straight ASCII `"`. `langdeparsestring(bs, 0xD3)` does NOT escape `"` (0x22) — it only escapes the curly-quote (0xD3). Fixed to `langdeparsestring(bs_path, '"')`.
+
+**Refined 2026-05-31 (post-B1 #680 merge + windowTypes audit)**: list 139 entries are inline UserTalk script templates with `^0`/`^1` parameter substitution markers, NOT bare ODB verb paths.
+
 - **Dependencies**: Phase A (#678, merged), Phase B1 (#680, merged)
 - **Blocks**: Phase D
 

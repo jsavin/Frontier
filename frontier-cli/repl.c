@@ -57,6 +57,7 @@
 #include "repl_palette_source.h"
 #include "scrollback_pane.h"
 #include "repl_output_async.h"
+#include "window_registry.h"	/* window_registry_init, on_frontmost_changed */
 #include "../Common/headers/menudata_headless.h" /* meuserselected_headless */
 #include "../Common/headers/oplist.h"		/* opcountlistitems */
 #include "../Common/headers/langsystem7.h"	/* getnthlistval */
@@ -3749,10 +3750,31 @@ int repl_main(cli_options_t *options, ws_server_t *ws_server) {
 	g_repl_exit_requested = 0;
 	install_repl_verbs_host();
 
-	// 3.2 Boot the REPL menubar via UserTalk. Idempotent — the install
+	// 3.2 Boot the REPL menubar via UserTalk. Idempotent -- the install
 	//     script guards with menu.isInstalled. Failure logs a warning and
 	//     continues; the legacy /commands still work.
 	install_repl_menubar();
+
+	// 3.3 Phase C: initialize the static REPL window sentinel in the ODB
+	//     and fire the initial "window opened" event.
+	//
+	//     window_registry_init() creates system.temp.windowTypes.windows.repl
+	//     with type = "ReplWindow" so the windowTypes framework can resolve
+	//     this window's type entry.
+	//
+	//     on_frontmost_changed(nil, REPL_PATH) fires idopenwindowscript, which
+	//     calls system.callbacks.openWindow(repl_path).  The windowTypes
+	//     framework (Frontier.tools.windowTypes.callbacks.openWindow) handles
+	//     this call and composes the menu for the REPL window type.
+	//
+	//     Both calls are boot-failure-safe (ADR-016): they log and continue
+	//     on error rather than aborting the REPL.
+	if (!window_registry_init()) {
+		log_warn(LOG_COMP_GENERAL,
+		         "repl_main: window_registry_init failed -- "
+		         "REPL window sentinel not created; windowTypes bridge is no-op");
+	}
+	on_frontmost_changed(nil, WINDOW_BRIDGE_REPL_PATH);
 
 	// 4. Display welcome message and mark REPL as active
 	repl_output_welcome();
