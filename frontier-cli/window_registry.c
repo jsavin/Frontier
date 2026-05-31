@@ -171,40 +171,59 @@ boolean window_registry_init(void) {
 	 * attribute of "ReplWindow".  This lets the windowTypes framework resolve
 	 * the window's type entry in Frontier.tools.data.windowTypes.ReplWindow.
 	 *
-	 * We do this via a short inline UserTalk script rather than raw ODB API
-	 * calls because:
+	 * We do this via a sequence of short inline UserTalk statements rather than
+	 * raw ODB API calls because:
 	 *   1. The path is multi-level; ODB API calls would need multiple
 	 *      hashtablelookupnode + hashtablesetnodevalue calls.
 	 *   2. The UserTalk path matches what the framework expects, so if the
 	 *      path convention changes we only change it in one place.
 	 *   3. The script is idempotent ("if not defined" guards).
 	 *
-	 * If any part of this fails (e.g. system.temp doesn't exist yet), we log
+	 * Each statement is kept under 255 bytes (the bigstring limit -- see
+	 * lenbigstring / Str255) so no statement is truncated mid-token.
+	 * The original single-script form was 411 bytes and was silently truncated
+	 * to 255, producing a syntax error on "line 1" at startup (PR #683 bug 1).
+	 *
+	 * If any statement fails (e.g. system.temp doesn't exist yet), we log
 	 * a warning and return false.  The caller (repl.c) continues -- the REPL
 	 * runs without the window sentinel, but the bridge will be a no-op.
 	 */
-	static const char *init_script =
-		"if not defined (system.temp.windowTypes) {"
-		"  new (tableType, @system.temp.windowTypes)};"
-		"if not defined (system.temp.windowTypes.windows) {"
-		"  new (tableType, @system.temp.windowTypes.windows)};"
-		"if not defined (system.temp.windowTypes.windows.repl) {"
-		"  new (tableType, @system.temp.windowTypes.windows.repl)};"
-		/* Store "type" directly as a string value in the window table.
-		 * window.attributes.getOne reads from the /atts sibling of the
-		 * window node; we also store directly for simpler Phase C testing. */
-		"system.temp.windowTypes.windows.repl.type = \"ReplWindow\";"
-		"system.temp.windowTypes.windows.repl.title = \"REPL\"";
+
+	/*
+	 * Five idempotent statements, each well under 255 bytes:
+	 *   s1: ensure system.temp.windowTypes table exists
+	 *   s2: ensure system.temp.windowTypes.windows table exists
+	 *   s3: ensure system.temp.windowTypes.windows.repl table exists
+	 *   s4: set .type = "ReplWindow"  (read by windowTypes framework)
+	 *   s5: set .title = "REPL"       (display name)
+	 */
+	static const char *stmts[] = {
+		"if not defined (system.temp.windowTypes) "
+		"{new (tableType, @system.temp.windowTypes)}",
+
+		"if not defined (system.temp.windowTypes.windows) "
+		"{new (tableType, @system.temp.windowTypes.windows)}",
+
+		"if not defined (system.temp.windowTypes.windows.repl) "
+		"{new (tableType, @system.temp.windowTypes.windows.repl)}",
+
+		"system.temp.windowTypes.windows.repl.type = \"ReplWindow\"",
+
+		"system.temp.windowTypes.windows.repl.title = \"REPL\"",
+	};
+	static const int nstmts = (int)(sizeof(stmts) / sizeof(stmts[0]));
 
 	bigstring bsprog;
 	bigstring bsresult;
-	cstr_to_bigstring(init_script, bsprog);
 
-	if (!langrunstringnoerror(bsprog, bsresult)) {
-		log_warn(LOG_COMP_GENERAL,
-		         "window_registry_init: init script failed -- "
-		         "REPL window sentinel not created");
-		return false;
+	for (int i = 0; i < nstmts; i++) {
+		cstr_to_bigstring(stmts[i], bsprog);
+		if (!langrunstringnoerror(bsprog, bsresult)) {
+			log_warn(LOG_COMP_GENERAL,
+			         "window_registry_init: statement %d failed -- "
+			         "REPL window sentinel not created", i);
+			return false;
+		}
 	}
 
 	log_debug(LOG_COMP_GENERAL,
