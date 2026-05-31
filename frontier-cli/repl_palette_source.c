@@ -111,6 +111,8 @@
 #include "palette.h"
 #include "repl_palette_source.h"
 
+#include "../Common/headers/logging.h"
+
 #include <stdlib.h>
 #include <string.h>
 
@@ -236,21 +238,40 @@ static hdlhashtable resolve_bar_by_name(const bigstring bsname) {
 }
 
 
-/* hashinversesearch callback shared by count-children and pick-Nth. */
-typedef struct ty_walk_state {
-	int seen;             /* how many subtable entries we've visited */
-	int target_index;     /* index we want, -1 to just count */
-	hdlhashtable hresult; /* set when target_index reached */
-	bigstring bsresult;   /* name of the picked entry */
-} ty_walk_state;
+/*
+ * Collect-then-sort helpers for deterministic menu ordering within a bar.
+ *
+ * hashinversesearch visits nodes in hash-bucket order, which is not
+ * alphabetical and may change if the table is resized on insert. In the
+ * headless runtime langcallbacks.comparenodescallback is cb_noop_compare
+ * (always returns 0), so hashsortedinversesearch also produces insertion
+ * order rather than alphabetical order. We therefore collect all subtable
+ * children into a local array and qsort them by name before indexing.
+ *
+ * The cap of 256 children is generous -- typical menus have fewer than
+ * 16 entries. It matches the bigstring size limit so no slot can be
+ * constructively larger than the name encoding allows.
+ */
+#define SUBTABLE_CHILDREN_CAP 256
+
+typedef struct ty_child_slot {
+	bigstring bsname;
+	hdlhashtable htable;
+} ty_child_slot;
+
+typedef struct ty_collect_state {
+	ty_child_slot *slots;
+	int count;
+	int cap;
+} ty_collect_state;
 
 
 /* Returns true to STOP per hashinversesearch. */
-static boolean walk_cb(bigstring bsname, hdlhashnode hnode,
-                       tyvaluerecord val, ptrvoid refcon) {
+static boolean collect_cb(bigstring bsname, hdlhashnode hnode,
+                          tyvaluerecord val, ptrvoid refcon) {
 	(void) hnode;
 
-	ty_walk_state *st = (ty_walk_state *) refcon;
+	ty_collect_state *st = (ty_collect_state *) refcon;
 	hdlhashtable hchild = nil;
 
 	if (val.valuetype != externalvaluetype)
@@ -259,37 +280,66 @@ static boolean walk_cb(bigstring bsname, hdlhashnode hnode,
 		return false;
 	if (hchild == nil)
 		return false;
+	if (st->count >= st->cap)
+		return false; /* cap reached -- keep walking to count all */
 
-	if (st->target_index >= 0 && st->seen == st->target_index) {
-		st->hresult = hchild;
-		copystring(bsname, st->bsresult);
-		return true; /* found -- stop */
-	}
-	st->seen++;
-	return false; /* keep walking */
+	copystring(bsname, st->slots[st->count].bsname);
+	st->slots[st->count].htable = hchild;
+	st->count++;
+	return false; /* always continue */
+}
+
+
+/* qsort comparator for ty_child_slot -- alphabetical by Pascal bigstring. */
+static int child_slot_cmp(const void *a, const void *b) {
+	const ty_child_slot *sa = (const ty_child_slot *) a;
+	const ty_child_slot *sb = (const ty_child_slot *) b;
+	int la = stringlength(sa->bsname);
+	int lb = stringlength(sb->bsname);
+	int minlen = la < lb ? la : lb;
+	int cmp = memcmp(&sa->bsname[1], &sb->bsname[1], (size_t) minlen);
+	if (cmp != 0)
+		return cmp;
+	return la - lb;
+}
+
+
+/*
+ * Collect and sort direct subtable children of ht into caller-supplied
+ * slots[cap]. Returns the count of children found (<= cap).
+ * Children are sorted alphabetically by name.
+ */
+static int collect_sorted_children(hdlhashtable ht,
+                                   ty_child_slot *slots, int cap) {
+	ty_collect_state st;
+	bigstring bsfound;
+
+	if (ht == nil || slots == nil || cap <= 0)
+		return 0;
+
+	st.slots = slots;
+	st.count = 0;
+	st.cap = cap;
+	(void) hashinversesearch(ht, &collect_cb, &st, bsfound);
+
+	if (st.count > 1)
+		qsort(slots, (size_t) st.count, sizeof(slots[0]), child_slot_cmp);
+	return st.count;
 }
 
 
 /* Count direct subtable children of ht. */
 static int count_subtable_children(hdlhashtable ht) {
-	ty_walk_state st;
-	bigstring bsfound;
-
-	if (ht == nil)
-		return 0;
-
-	memset(&st, 0, sizeof(st));
-	st.target_index = -1; /* count-only mode */
-	(void) hashinversesearch(ht, &walk_cb, &st, bsfound);
-	return st.seen;
+	ty_child_slot slots[SUBTABLE_CHILDREN_CAP];
+	return collect_sorted_children(ht, slots, SUBTABLE_CHILDREN_CAP);
 }
 
 
 /* Get the Nth subtable child of ht (0-based). Returns nil if out of range. */
 static hdlhashtable nth_subtable_child(hdlhashtable ht, int idx,
                                        bigstring bsout_name) {
-	ty_walk_state st;
-	bigstring bsfound;
+	ty_child_slot slots[SUBTABLE_CHILDREN_CAP];
+	int n;
 
 	if (bsout_name != nil)
 		setemptystring(bsout_name);
@@ -297,14 +347,13 @@ static hdlhashtable nth_subtable_child(hdlhashtable ht, int idx,
 	if (ht == nil || idx < 0)
 		return nil;
 
-	memset(&st, 0, sizeof(st));
-	st.target_index = idx;
-	(void) hashinversesearch(ht, &walk_cb, &st, bsfound);
+	n = collect_sorted_children(ht, slots, SUBTABLE_CHILDREN_CAP);
+	if (idx >= n)
+		return nil;
 
-	if (st.hresult != nil && bsout_name != nil)
-		copystring(st.bsresult, bsout_name);
-
-	return st.hresult;
+	if (bsout_name != nil)
+		copystring(slots[idx].bsname, bsout_name);
+	return slots[idx].htable;
 }
 
 
@@ -367,8 +416,12 @@ static Handle cache_script_handle(ty_repl_multi_source_ctx *ctx,
 	}
 
 	/* Miss: insert a new entry. */
-	if (ctx->cached_scripts_count >= REPL_PS_MAX_CACHED_SCRIPTS)
+	if (ctx->cached_scripts_count >= REPL_PS_MAX_CACHED_SCRIPTS) {
+		log_warn(LOG_COMP_GENERAL,
+		         "REPL palette: script cache full (%d unique items),"
+		         " cannot cache additional scripts", REPL_PS_MAX_CACHED_SCRIPTS);
 		return nil;
+	}
 	if (!copyhandle(horig, &hcopy))
 		return nil;
 
@@ -728,8 +781,16 @@ static boolean bar_enum_cb(bigstring bsname, hdlhashnode hnode,
 	boolean installed = false;
 	int mc;
 
-	if (*st->count >= st->max)
-		return false; /* capacity reached -- stop */
+	if (*st->count >= st->max) {
+		/*
+		 * Capacity reached. Return true so hashinversesearch stops traversal
+		 * (see Common/source/langhash.c:2474 -- the early-out triggers on
+		 * true, not false). Log once; the caller is responsible for emitting
+		 * the overflow warning before invoking hashinversesearch so that the
+		 * message fires at most once per init, not once per dropped bar.
+		 */
+		return true;
+	}
 
 	if (val.valuetype != externalvaluetype)
 		return false; /* skip scalars (currentmenu, currentsuite, etc.) */
@@ -818,6 +879,12 @@ bool repl_palette_source_init_all(palette_menu_source_t *out) {
 
 	(void) hashinversesearch(hdata, &bar_enum_cb, &est, bsfound);
 
+	/* Warn once if the traversal stopped early due to capacity. */
+	if (ctx->bar_count >= REPL_PS_MAX_BARS)
+		log_warn(LOG_COMP_GENERAL,
+		         "REPL palette: bar count exceeded REPL_PS_MAX_BARS (%d),"
+		         " dropping additional bars", REPL_PS_MAX_BARS);
+
 	if (ctx->bar_count == 0) {
 		free(ctx);
 		return false; /* no installed bars */
@@ -853,6 +920,14 @@ bool repl_palette_source_init_for(palette_menu_source_t *out,
 
 	ctx = (ty_repl_multi_source_ctx *) calloc(1, sizeof(*ctx));
 	if (ctx == nil)
+		return false;
+
+	/*
+	 * bigstring is unsigned char[256]: byte 0 is the Pascal length, bytes
+	 * 1..255 hold content. A name of 256+ characters cannot be represented
+	 * without overflow. Fail loudly rather than truncating silently.
+	 */
+	if (strlen(menubar_name) > 255)
 		return false;
 
 	copyctopstring((char *)menubar_name, bsname);
