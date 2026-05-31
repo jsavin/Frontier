@@ -1627,15 +1627,26 @@ void linenoisePrintKeyCodes(void) {
         nread = read(STDIN_FILENO,&c,1);
         if (nread <= 0) continue;
 
-        /* Exit on ESC key */
+        /* Exit on ESC key. CR+LF (not bare LF): we are still in raw mode,
+         * so a bare LF advances down a row but leaves the cursor at its
+         * current column. Without the CR, the caller's next prompt prints
+         * mid-row instead of at column 1. */
         if (c == 27) {
-            printf("ESC pressed - exiting keycode mode\n");
+            printf("ESC pressed - exiting keycode mode\r\n");
             break;
         }
 
         memmove(quit,quit+1,sizeof(quit)-1); /* shift string to left. */
         quit[sizeof(quit)-1] = c; /* Insert current char on the right. */
-        if (memcmp(quit,"quit",sizeof(quit)) == 0) break;
+        if (memcmp(quit,"quit",sizeof(quit)) == 0) {
+            /* Same raw-mode CR+LF concern as the ESC branch above: when
+             * the user types "quit", the final 't' triggers this break
+             * BEFORE the per-keypress printf runs, so we never get the
+             * loop's '\r'. Emit one explicitly so the next prompt lands
+             * at column 1 of a fresh row. */
+            printf("\r\n");
+            break;
+        }
 
         printf("'%c' %02x (%d) (type quit or ESC to exit)\n",
             isprint(c) ? c : '?', (int)c, (int)c);
