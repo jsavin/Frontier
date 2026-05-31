@@ -75,6 +75,12 @@ boolean getsystemerrorstring (OSErr err, bigstring bs) { (void)err; setemptystri
 #include "../generated/strings_tables.h"
 #include "langinternal.h"
 #include "shell.rsrc.h"
+/* idsystemtablescripts = 139 defined in tablestructure.h; use literal here to
+ * avoid pulling in the heavy lang.h + db.h transitive include chain in this
+ * narrow stubs compilation unit. */
+#ifndef idsystemtablescripts
+#define idsystemtablescripts 139
+#endif
 
 #define tablestringlist 165	 // from tableinternal.h
 
@@ -101,6 +107,12 @@ boolean getstringlist (short listid, short index, bigstring bs) {
 			break;
 		case 263:  // stringerrorlist - text encoding error strings
 			table_name = "stringerrorlist";
+			break;
+		case idsystemtablescripts:  // 139 - kernel->UserTalk callback registry
+			// Phase B1 (docs/MENU_PORT_PLAN.md): maps idsystemtablescripts enum
+			// values (idopenwindowscript, idclosewindowscript, etc.) to the script
+			// text the kernel fires for each event. Source: resources/strings/idsystemtablescripts.yaml.
+			table_name = "idsystemtablescripts";
 			break;
 		default:
 			// Unknown list ID

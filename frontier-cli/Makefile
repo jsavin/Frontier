@@ -251,7 +251,7 @@ $(GENERATED_STRINGS): $(STRINGS_COMPILER) $(STRINGS_INPUTS)
 		echo "No YAML string tables found under resources/strings." >&2; \
 		exit 1; \
 	fi
-	$(STRINGS_COMPILER) --c-output $(STRINGS_C) --h-output $(STRINGS_H) --manifest $(STRINGS_MANIFEST) $(STRINGS_INPUTS)
+	cat $(STRINGS_INPUTS) | $(STRINGS_COMPILER) --c-output $(STRINGS_C) --h-output $(STRINGS_H) --manifest $(STRINGS_MANIFEST) -
 
 strings_generated: $(GENERATED_STRINGS)
 
