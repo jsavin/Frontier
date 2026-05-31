@@ -251,7 +251,13 @@ $(GENERATED_STRINGS): $(STRINGS_COMPILER) $(STRINGS_INPUTS)
 		echo "No YAML string tables found under resources/strings." >&2; \
 		exit 1; \
 	fi
-	$(STRINGS_COMPILER) --c-output $(STRINGS_C) --h-output $(STRINGS_H) --manifest $(STRINGS_MANIFEST) $(STRINGS_INPUTS)
+	# Pipe-via-cat workaround: strings_compiler currently accepts only one
+	# positional input file (strings_compiler_main.c rejects a second arg).
+	# Concatenating to stdin works because the YAML loader handles a root
+	# mapping with multiple table keys, but parse errors report "stdin"
+	# rather than the source filename. Follow-up: teach the compiler to
+	# loop over multiple positional args and revert this to a direct call.
+	cat $(STRINGS_INPUTS) | $(STRINGS_COMPILER) --c-output $(STRINGS_C) --h-output $(STRINGS_H) --manifest $(STRINGS_MANIFEST) -
 
 strings_generated: $(GENERATED_STRINGS)
 

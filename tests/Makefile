@@ -222,7 +222,7 @@ USERTALK_OBJECT_TESTS = \
 	test_usertalk_runner
 
 # Buildable test executables on this branch
-RUN_BUILDABLE = core_tests db_format_tests runtime_tests parser_tests save_migration_tests test_efp_augmentation file_portable_tests file_readline_tests file_verb_tests handle_tests cli_runtime_tests paige_text_tests oppack_tests hashpack_modern_tests hash_corruption_tests langvalue_64_tests table_operations_integration refcon_tests refcon_phase2_tests op_context_tests table_context_tests time_portability_test test_sys_shell_command_verbs headless_selection_tests opattributes_stub_tests headless_thread_registry_tests test_callback_infrastructure tcp_phase1a_unit_tests menu_v7_refcon_tests menudata_headless_tests menu_list_describe_tests meuserselected_headless_tests test_stringerrorlist pane_compositor_tests mouse_parser_tests terminal_control_tests terminal_control_dsr_tests palette_state_tests palette_render_snapshot_tests palette_arg_inject_tests palette_arg_inject_concurrency_tests repl_palette_source_tests repl_verbs_tests repl_slash_resolver_tests scrollback_pane_tests lang_causedby_snapshot_tests
+RUN_BUILDABLE = core_tests db_format_tests runtime_tests parser_tests save_migration_tests test_efp_augmentation file_portable_tests file_readline_tests file_verb_tests handle_tests cli_runtime_tests paige_text_tests oppack_tests hashpack_modern_tests hash_corruption_tests langvalue_64_tests table_operations_integration refcon_tests refcon_phase2_tests op_context_tests table_context_tests time_portability_test test_sys_shell_command_verbs headless_selection_tests opattributes_stub_tests headless_thread_registry_tests test_callback_infrastructure tcp_phase1a_unit_tests menu_v7_refcon_tests menudata_headless_tests menu_list_describe_tests meuserselected_headless_tests test_stringerrorlist pane_compositor_tests mouse_parser_tests terminal_control_tests terminal_control_dsr_tests palette_state_tests palette_render_snapshot_tests palette_arg_inject_tests palette_arg_inject_concurrency_tests repl_palette_source_tests repl_verbs_tests repl_slash_resolver_tests scrollback_pane_tests lang_causedby_snapshot_tests test_getsystemtablescript
 # Note: table_verb_tests skipped - pre-existing macOS path detection issue
 # Note: test_error_messages skipped - needs full runtime linking (tracked in separate task)
 # Note: test_table_sorting skipped - script execution errors cause segfault (Issue #449)
@@ -515,6 +515,18 @@ test_stringerrorlist: test_stringerrorlist.c $(TEST_FRAMEWORK) ../frontier-cli/s
 	$(CC) $(CFLAGS) -I../Common/headers -I../Common/SystemHeaders -I../portable -I../generated \
 		test_stringerrorlist.c framework/test_framework.c ../frontier-cli/stubs/headless_lang_runtime_more_stubs.c $(STRINGS_C) ../Common/source/logging.c ../portable/classic_handle.c ../Common/source/portable_handles.c -o $@ $(LDFLAGS)
 
+# Phase B1: getsystemtablescript headless support tests.
+# Verifies that getstringlist(idsystemtablescripts=139, ...) correctly
+# resolves all idsystemtablescripts enum values to ODB verb path strings.
+#
+# Minimal linking slice (identical to test_stringerrorlist): the test
+# calls getstringlist() directly, which is the exact function modified
+# by Phase B1. getsystemtablescript() is a 1-line wrapper around it,
+# so testing getstringlist(139, ...) is fully behavioral.
+test_getsystemtablescript: test_getsystemtablescript.c $(TEST_FRAMEWORK) ../frontier-cli/stubs/headless_lang_runtime_more_stubs.c $(STRINGS_C) ../Common/source/logging.c ../portable/classic_handle.c ../Common/source/portable_handles.c
+	$(CC) $(CFLAGS) -I../Common/headers -I../Common/SystemHeaders -I../portable -I../generated \
+		test_getsystemtablescript.c framework/test_framework.c ../frontier-cli/stubs/headless_lang_runtime_more_stubs.c $(STRINGS_C) ../Common/source/logging.c ../portable/classic_handle.c ../Common/source/portable_handles.c -o $@ $(LDFLAGS)
+
 # UserTalk object test executables
 test_usertalk_runner: components/usertalk_objects/test_usertalk_objects.c components/usertalk_objects/test_runner.c $(TEST_FRAMEWORK) $(FRONTIER_SOURCES) $(CLI_SOURCES)
 	$(CC) $(CFLAGS) -DFRONTIER_PORTABLE -I../portable -I../Common/SystemHeaders -I$(HEADERDIR) -I../portable $^ -o $@ $(LINK_LIBS)
@@ -667,7 +679,13 @@ $(GENERATED_STRINGS): $(STRINGS_COMPILER) $(STRINGS_INPUTS)
 		echo "No YAML string tables found under resources/strings." >&2; \
 		exit 1; \
 	fi
-	$(STRINGS_COMPILER) --c-output $(STRINGS_C) --h-output $(STRINGS_H) --manifest $(STRINGS_MANIFEST) $(STRINGS_INPUTS)
+	# Pipe-via-cat workaround: strings_compiler currently accepts only one
+	# positional input file (strings_compiler_main.c rejects a second arg).
+	# Concatenating to stdin works because the YAML loader handles a root
+	# mapping with multiple table keys, but parse errors report "stdin"
+	# rather than the source filename. Follow-up: teach the compiler to
+	# loop over multiple positional args and revert this to a direct call.
+	cat $(STRINGS_INPUTS) | $(STRINGS_COMPILER) --c-output $(STRINGS_C) --h-output $(STRINGS_H) --manifest $(STRINGS_MANIFEST) -
 
 strings_generated: $(GENERATED_STRINGS)
 

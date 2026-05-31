@@ -1,0 +1,208 @@
+# idsystemtablescripts.yaml
+#
+# String resource list 139 (idsystemtablescripts) for headless Frontier.
+#
+# In legacy Mac Frontier, this STR# resource was compiled into the app and
+# loaded at runtime by getstringlist(idsystemtablescripts=139, id, bs).
+# getsystemtablescript() in tablestructure.c is a 1-line wrapper around
+# getstringlist(139, ...).
+#
+# Each entry is the script text (or script expression) the kernel fires
+# when the corresponding event occurs. Most are inline UserTalk code with
+# parameter substitution markers (^0, ^1); a few are bare ODB path names
+# used as boolean or table lookups.
+#
+# Source: Common/resources/Mac/lang.r, resource STR# 139 "System Scripts".
+# Mac-specific quotation marks (Mac Roman \xD2/\xD3) are replaced with
+# standard ASCII double quotes, consistent with UserTalk string conventions.
+#
+# Enum constants: Common/headers/tablestructure.h idsystemtablescripts enum.
+# Indices 1-42 are sequential; 43 is unused (no enum constant); 44-46 are
+# explicit numeric assignments in the enum.
+#
+# Phase B1 of docs/MENU_PORT_PLAN.md -- 2026-05-31
+#
+idsystemtablescripts:
+  - id: idmenubarscript
+    index: 1
+    text: "edit (@system.misc.menubar)"
+
+  - id: idobjectdbscript
+    index: 2
+    text: "edit (@root)"
+
+  - id: idquickscriptscript
+    index: 3
+    text: "window.quickscript ()"
+
+  - id: idtechsupportscript
+    index: 4
+    text: "system.misc.techsupport ()"
+
+  - id: idfinder2clickscript
+    index: 5
+    text: "Frontier.finder2click(\"^0\")"
+
+  - id: idfinder2frontscript
+    index: 6
+    text: "Frontier.finderToFront = ^0"
+
+  - id: idfrontierclickers
+    index: 7
+    text: "Frontier.clickers.typeXXXX"
+
+  - id: idcontrol2clickscript
+    index: 8
+    text: "system.callbacks.control2click(\"^0\")"
+
+  - id: idcommand2clickscript
+    index: 9
+    text: "if defined(system.callbacks.cmd2click){system.callbacks.cmd2click(\"^0\")}else{edit(\"^0\")}"
+
+  - id: idoption2clickscript
+    index: 10
+    text: "system.callbacks.option2click(\"^0\")"
+
+  - id: idopenwindowscript
+    index: 11
+    text: "if defined(system.callbacks){system.callbacks.openWindow(\"^0\");}"
+
+  - id: idsavewindowscript
+    index: 12
+    text: "system.callbacks.saveWindow(\"^0\",^1)"
+
+  - id: idclosewindowscript
+    index: 13
+    text: "system.callbacks.closeWindow(\"^0\")"
+
+  - id: idcompilewindowscript
+    index: 14
+    text: "system.callbacks.compileChangedScript(address(\"^0\"))"
+
+  - id: idisfirsttimescript
+    index: 15
+    text: "system.startup.firsttime||(Frontier.version()<2.1)||defined(nothreads)"
+
+  - id: idopenurlscript
+    index: 16
+    text: "webBrowser.openURL(\"^0\");webBrowser.bringToFront ()"
+
+  - id: iduseriso8859map
+    index: 17
+    text: "user.html.prefs.iso8859map"
+
+  - id: iduserfontprefscript
+    index: 18
+    text: "user.prefs.fonts.^0Font"
+
+  - id: idinexpertmodescript
+    index: 19
+    text: "user.prefs.expertMode"
+
+  - id: idtoggleexpertmodescript
+    index: 20
+    text: "Frontier.setExpertMode(^0)"
+
+  - id: idrequiredeclarationsscript
+    index: 21
+    text: "user.prefs.requiredeclarations"
+
+  - id: idsuspendscript
+    index: 22
+    text: "if defined(system.callbacks){system.callbacks.suspend();}"
+
+  - id: idresumescript
+    index: 23
+    text: "if defined(system.callbacks){system.callbacks.resume();}"
+
+  - id: idsearchparamstable
+    index: 24
+    text: "user.prefs.search.xxx"
+
+  - id: idagentsenabledscript
+    index: 25
+    text: "user.prefs.agentsenabled"
+
+  - id: idautosave
+    index: 26
+    text: "user.prefs.autosave"
+
+  - id: idfrontierstartup
+    index: 27
+    text: "system.temp.Frontier.startingUp"
+
+  - id: idflwaitduringstartup
+    index: 28
+    text: "user.webserver.prefs.flWaitDuringStartup"
+
+  - id: idwebserverstats
+    index: 29
+    text: "user.webserver.prefs.flStats"
+
+  - id: idinetdshutdown
+    index: 30
+    text: "user.inetd.shutdown"
+
+  - id: idpikeisfilemenuitemenabledscript
+    index: 31
+    text: "Frontier.tools.windowTypes.isFileMenuItemEnabled(\"^0\")"
+
+  - id: idpikegetmenuitemstring
+    index: 32
+    text: "pike.getFileMenuItemName(\"^0\")"
+
+  - id: idrunfilemenuscript
+    index: 33
+    text: "Frontier.tools.windowTypes.runFileMenuScript(\"^0\")"
+
+  - id: idopstruct2clickscript
+    index: 34
+    text: "if defined(system.callbacks.opStruct2Click){return(system.callbacks.opStruct2Click())}else{return(false)}"
+
+  - id: idopreturnkeyscript
+    index: 35
+    text: "if defined(system.callbacks.opReturnKey){return(system.callbacks.opReturnKey())}else{return(false)}"
+
+  - id: idopexpandscript
+    index: 36
+    text: "if defined(system.callbacks.opExpand){return(system.callbacks.opExpand())}else{return(false)}"
+
+  - id: idopcollapsescript
+    index: 37
+    text: "if defined(system.callbacks.opCollapse){return(system.callbacks.opCollapse())}else{return(false)}"
+
+  - id: idopcursormovedscript
+    index: 38
+    text: "if defined(system.callbacks.opCursorMoved){return(system.callbacks.opCursorMoved())}else{return(false)}"
+
+  - id: idoprightclickscript
+    index: 39
+    text: "if defined(system.callbacks.opRightClick){return(system.callbacks.opRightClick())}else{return(false)}"
+
+  - id: idruneditmenuscript
+    index: 40
+    text: "Frontier.tools.windowTypes.runEditMenuScript(\"^0\")"
+
+  - id: idpikeisfilemenuitemcheckedscript
+    index: 41
+    text: "Frontier.tools.windowTypes.isFileMenuItemChecked(\"^0\")"
+
+  - id: idopinsertscript
+    index: 42
+    text: "if defined(system.callbacks.opInsert){return(system.callbacks.opInsert())}else{return(false)}"
+
+  # Index 43 has no enum constant in tablestructure.h (the enum jumps from 42 to
+  # idopenrecentmenutable=44). The resource entry at 43 is the systemTray right-click
+  # handler from a Windows-specific feature; omitting it preserves the enum contract.
+
+  - id: idopenrecentmenutable
+    index: 44
+    text: "user.prefs.openRecentMenu.items.xxx"
+
+  - id: idreplacedialogexpertmode
+    index: 45
+    text: "user.prefs.flReplaceDialogExpertMode"
+
+  - id: idrunopenrecentmenuscript
+    index: 46
+    text: "Frontier.tools.windowTypes.runOpenRecentMenuScript (\"^0\")"
