@@ -225,7 +225,12 @@ static hdlhashtable resolve_bar_by_name(const bigstring bsname) {
 	if (hdata == nil)
 		return nil;
 
-	if (!findnamedtable(hdata, bsname, &hbar))
+	/* Cast away const: findnamedtable's bigstring param is non-const in
+	 * the legacy header but does not mutate. Our caller declares bsname
+	 * const to advertise its own non-mutation. Cast via (unsigned char *)
+	 * because bigstring is an array type and cannot be the target of a
+	 * direct cast. */
+	if (!findnamedtable(hdata, (unsigned char *)bsname, &hbar))
 		return nil;
 	return hbar;
 }
