@@ -73,6 +73,15 @@ Linenoise is a lightweight readline alternative used by frontier-cli for REPL li
     linenoise sees the byte on the next `linenoiseEditFeed` cycle
     as if the user typed it normally.
 
+- **`linenoiseEditBackspace`** (linenoise.c line ~1205)
+  - PR #674 (2026-05-30): exported via linenoise.h. Used by the slash-
+    menu disambiguator in `repl.c` to correctly handle the case where
+    the byte consumed during the disambig poll window is backspace
+    (0x7f or Ctrl-H 0x08). Without this, the disambiguator would call
+    linenoiseEditInsert with the backspace byte, inserting it as a
+    literal control character instead of deleting the leading '/' —
+    visible bug: typing '/' then backspace appeared to do nothing.
+
 ---
 
 ## Rationale for UserTalk-Specific Word Boundaries

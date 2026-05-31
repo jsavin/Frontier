@@ -146,6 +146,35 @@ tests:
       - send_raw: "\x04"
     expected_success: true
 
+  # PR #674 disambiguator regression guard: backspace after a leading
+  # '/' must delete the slash, not insert a literal 0x7f. Before the
+  # fix, the disambiguator called linenoiseEditInsert for every non-'/'
+  # byte, so backspace (0x7f) was inserted as a control char and the
+  # leading '/' stayed put — user-visible bug: typing '/' then
+  # backspace appeared to do nothing. The fix special-cases 0x7f/0x08
+  # to call linenoiseEditBackspace instead.
+  #
+  # Test shape: send '/<BS>/help\r' as one atomic write. If backspace
+  # deletes the '/' correctly, linenoise sees just '/help' as the new
+  # input (and the disambiguator runs again — the second '/' is the
+  # start of a new slash command, second char 'h' arrives within the
+  # fast-timer window, the disambiguator injects it, and /help runs).
+  # The expect for repl_output_help's "Available commands" header
+  # proves the backspace deleted the leading '/' AND the subsequent
+  # /help dispatched as a slash command. If backspace was broken,
+  # the buffer would be '/<DEL>/help' and dispatch_slash_command would
+  # try to resolve '/<DEL>/help' which would fail to match /help.
+  - name: "palette modal: backspace deletes the leading slash"
+    palette_mode: true
+    timeout: 15
+    interactive_steps:
+      - expect: "\\[root\\]> "
+        send_raw: "/\x7f/help\r"
+      - expect: "Available commands"
+      - expect: "\\[root\\]> "
+      - send_raw: "\x04"
+    expected_success: true
+
 # L4 GAP -- leaf execution end-to-end: not currently covered.
 #
 # An ideal third test would drill /, DOWN, ENTER to fire the REPL > Help

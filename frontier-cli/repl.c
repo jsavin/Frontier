@@ -3879,14 +3879,40 @@ int repl_main(cli_options_t *options, ws_server_t *ws_server) {
 							ls.pos = 0;
 							open_menu = true;
 						} else if (nn == 1) {
-							/* Some other byte — second char of a
-							 * slash command. Inject it into linenoise
-							 * so it echoes and the buffer reflects
-							 * what the user sees. Errors here are
-							 * non-fatal: at worst the byte is dropped
-							 * and the user retypes. */
-							char cb = (char)nb;
-							(void)linenoiseEditInsert(&ls, &cb, 1);
+							/* Some other byte arrived during the
+							 * disambig window. We've consumed it from
+							 * stdin and need to give it back to the
+							 * user via linenoise's edit state. Not all
+							 * bytes are insertable — backspace must
+							 * delete (not insert as literal 0x7f);
+							 * control chars (Enter, Ctrl-C, ESC, etc.)
+							 * have semantics linenoise's normal switch
+							 * handles, which we can't fully replay
+							 * here without duplicating that switch.
+							 * Handle the common typing-correction case
+							 * (backspace) explicitly; for any other
+							 * control char, drop the byte and leave
+							 * the leading '/' in the buffer so the
+							 * user can finish typing or backspace it
+							 * away. Printable chars insert normally. */
+							if (nb == 0x7f || nb == 0x08) {
+								/* Backspace / Ctrl-H: delete the
+								 * leading '/'. linenoiseEditBackspace
+								 * handles the echo + buffer update. */
+								linenoiseEditBackspace(&ls);
+							} else if (nb >= 0x20 && nb != 0x7f) {
+								/* Printable byte — second char of a
+								 * slash command. Inject into linenoise
+								 * so it echoes and the buffer state
+								 * matches what the user sees. */
+								char cb = (char)nb;
+								(void)linenoiseEditInsert(&ls, &cb, 1);
+							}
+							/* else: control byte (Enter, Ctrl-C, ESC,
+							 * tab, etc.). Dropping is the safe choice
+							 * — leaves '/' in the buffer; user can
+							 * backspace or retype. Rare in practice
+							 * (who types '/' then Enter?). */
 						}
 						/* nn <= 0 (EOF or error): treat as timeout —
 						 * fall through with open_menu = false; the
