@@ -138,7 +138,7 @@ class ProtocolSession:
         contains MORE than one line keeps the surplus for the next call.
         Returns empty bytes if the subprocess closed stdout. Raises
         RuntimeError if the timeout elapses before a complete line
-        arrives — verify_files treats this as infra error (exit 2).
+        arrives - verify_files treats this as infra error (exit 2).
         """
         import time
         assert self.proc is not None and self.proc.stdout is not None
@@ -414,13 +414,22 @@ IDENT_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 def _path_within(candidate: Path, root: Path) -> bool:
     """Return True if `candidate` is `root` itself or under `root`.
 
-    Path.is_relative_to() exists from Python 3.9 but the implementation
-    differs slightly across versions; use commonpath for stability.
+    Both arguments are resolved internally so callers can pass raw
+    Path objects without remembering to resolve first. The lexical
+    commonpath comparison only protects against prefix attacks
+    (`/a/b` vs `/a/bc`) when both sides are already fully resolved,
+    hence the unconditional resolve(). Path.is_relative_to() would
+    work on Python 3.9+ but commonpath behaves consistently across
+    versions.
     """
     try:
-        return os.path.commonpath([str(candidate), str(root)]) == str(root)
-    except ValueError:
-        # Different drives on Windows (not applicable here, but be safe).
+        c = candidate.resolve()
+        r = root.resolve()
+        return os.path.commonpath([str(c), str(r)]) == str(r)
+    except (ValueError, OSError):
+        # ValueError on Windows cross-drive paths; OSError on
+        # filesystem errors during resolve() (broken symlinks, etc.).
+        # Either way, refuse rather than guess.
         return False
 
 
@@ -428,12 +437,12 @@ def _quote_segment(seg: str) -> str:
     """Return seg as a valid ODB-path segment, bracket-quoting if needed.
 
     Rejects segments containing control bytes (NUL through US, plus DEL)
-    or newlines — these can't safely round-trip and are not expected in
+    or newlines - these can't safely round-trip and are not expected in
     any legitimate corpus path. Defensive against pathological filesystem
     state (POSIX permits these bytes in filenames, even though no real
     corpus path uses them).
 
-    Note: `[` and `]` ARE permitted in segments — the corpus uses literal
+    Note: `[` and `]` ARE permitted in segments - the corpus uses literal
     brackets as part of escape encodings in some paths (e.g. the
     `[colon]` / `[slash]` segments under xml.rss.moduleDrivers).
     Bracket-quoting still works in UserTalk for these.
@@ -577,10 +586,9 @@ def verify_files(
                     # primitive if the caller controls both --paths and
                     # --corpus-root. Refuse to write outside the resolved
                     # corpus root. (CWE-22 / CWE-73 mitigation.)
+                    # _path_within resolves both arguments internally.
                     try:
-                        resolved = ut_path.resolve()
-                        corpus_resolved = corpus_root.resolve()
-                        if not _path_within(resolved, corpus_resolved):
+                        if not _path_within(ut_path, corpus_root):
                             reason = "content drift (rewrite refused: outside corpus root)"
                         else:
                             ut_path.write_bytes(kernel_bytes)
