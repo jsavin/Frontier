@@ -38,16 +38,11 @@ These gate the phases below. Listed in order of urgency.
 
 Phase D is rescoped from "port the framework" to "verify the kernel primitives the existing framework calls work in headless." See Phase D section below.
 
-### Decision Point 2 — Sync vs Async Menu Script Dispatch (BLOCKS PHASE B2)
+### Decision Point 2 — ~~Sync vs Async Menu Script Dispatch~~ RESOLVED 2026-05-31
 
-Legacy `meuserselected` used `addprocess` to queue scripts as runtime processes; the menubar stayed live while the script ran. Headless `meuserselected_headless` runs `langruncode` synchronously — the REPL is unresponsive until the script returns.
+**Resolved by audit of the existing windowTypes UserTalk framework**: `runFileMenuScript.ut` (under `usertalk_scripts/Frontier.root/system/verbs/builtins/Frontier/tools/windowTypes/`) already uses `thread.callScript(@Frontier.tools.windowTypes.commands.[itemname], {})` for menu-item dispatch. `thread.callScript` is already implemented in headless (`frontier-cli/headless_thread_verbs.c:683` — `headless_thread_callscript` spawns a real POSIX thread under the GIL model). Async dispatch for menu items therefore exists at the framework layer; Phase C's bridge does not need to make this choice.
 
-**Options:**
-- (A) Accept synchronous dispatch for MVP. Document the deviation; long-running scripts must explicitly yield.
-- **(B) Spawn menu scripts on a GIL-managed background thread.** Matches legacy. Headless threading infrastructure already supports it (`headless_thread_verbs.c`, the GIL mutex). ~250 LOC at the spawn site + small REPL event-loop change.
-- (C) Restructure REPL event loop to re-enter palette input during dispatch. Architecturally complex and fragile.
-
-**Recommendation: option (B).** Matches legacy most closely. The GIL infrastructure already supports it. Not optional if fidelity is the goal — if JES wants to defer async dispatch and accept synchronous for now, it should be an explicit decision, not a default.
+Phase B2 (a C-side async dispatch wrapper around `meuserselected_headless`) becomes optional / deferrable — the framework's `thread.callScript` already provides the async semantics. Phase C's own boot-time bridge (firing `idopenwindowscript` once at startup) is synchronous and that's correct (runs before REPL accepts input).
 
 ### Decision Point 3 — Per-Database Menubar Scoping in Headless
 
@@ -127,11 +122,21 @@ Both sub-tracks block Phase C.
 
 ### Phase C — Window-Event Callback Bridge
 
-- Implement `on_frontmost_changed(old, new)` in `repl.c`: fires `getsystemtablescript(idclosewindowscript)` for old, `getsystemtablescript(idopenwindowscript)` for new, resolves each to an ODB path, calls via `meuserselected_headless` (or async dispatch if Phase B2 shipped)
-- Implement the static "REPL window" sentinel and wire as initial frontmost at boot
-- At boot: fire `on_frontmost_changed(nil, repl_window)` to trigger `idopenwindowscript` — how the REPL's menus get installed in the windowTypes model
-- **Size**: ~200 LOC in `repl.c` + a small new `window_registry.c`
-- **Dependencies**: Phase A (multi-menubar enumeration to see effects), Phase B1 (getsystemtablescript)
+**Refined 2026-05-31 (post-B1 #680 merge + windowTypes audit)**: list 139 entries are inline UserTalk script templates with `^0`/`^1` parameter substitution markers, NOT bare ODB verb paths. Phase C dispatch is `getsystemtablescript → parsedialogstring (with escaped params) → processrunstring`, NOT `→ langfindvalue → meuserselected_headless`. See PR #680 and issues #681, #682.
+
+**Audit findings** (see also `/tmp/phase-c-windowtypes-audit.md` if present, or re-derive from `usertalk_scripts/.../windowTypes/`):
+- Framework calls `window.frontMost()`, `window.attributes.getOne("type", ...)`, `window.attributes.setOne`, `window.setTitle(adr, title)` — Phase C must implement these in headless, OR verify existing implementations
+- Framework calls `thread.callScript(adr, params)` for menu-item dispatch — **already implemented** in `frontier-cli/headless_thread_verbs.c` (`headless_thread_callscript`). Async dispatch for menu items is therefore handled at the framework layer, NOT in Phase C's bridge — see Decision Point 2 resolution
+- Framework looks up windowType definitions in `user.tools.windowTypes.[type]` and `Frontier.tools.data.windowTypes.[type]` (in that order); Phase C must install a `ReplWindow` entry in the latter
+
+**Phase C tasks**:
+- Implement `on_frontmost_changed(old, new)` in `repl.c`: fires `getsystemtablescript(idclosewindowscript)` for old, `getsystemtablescript(idopenwindowscript)` for new. For each fired script, substitute `^0` = `langdeparsestring(adr.path, chclosecurlyquote)` via `parsedialogstring`, then `processrunstring` synchronously. (Sync is fine here — this runs once at boot, before REPL accepts input.)
+- Implement the static "REPL window" sentinel: a `tyhdlwindow repl_window` global with `type="ReplWindow"`, `title="REPL"`, wired as initial `frontmost_window` at boot
+- Install a `Frontier.tools.data.windowTypes.ReplWindow` entry (via UserTalk boot script under `databases/usertalk_scripts/` or via C-side ODB API at boot) — contains the menubar manifest pointing at the `repl` bar that Phase A enumeration finds
+- At boot: fire `on_frontmost_changed(nil, &repl_window)` to trigger `idopenwindowscript`
+- **Per-dispatch-site escaping checklist** (from issue #682): document trust assumption for each `^0`/`^1` source; window paths are user-controllable → MUST escape via `langdeparsestring`
+- **Size**: ~150-250 LOC in `repl.c` + small new `window_registry.c` + UserTalk boot script for the `ReplWindow` entry
+- **Dependencies**: Phase A (#678, merged), Phase B1 (#680, merged)
 - **Blocks**: Phase D
 
 ### Phase D — Verify WindowTypes Framework Kernel Primitives in Headless
