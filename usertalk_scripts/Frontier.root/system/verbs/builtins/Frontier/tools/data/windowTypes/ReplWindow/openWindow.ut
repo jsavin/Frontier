@@ -1,8 +1,53 @@
-on openWindow (adr) {
-	//Phase C: REPL window opened event.
-	//The windowTypes framework calls this after finding "ReplWindow" as the
-	//window type. In Phase D, window.attributes.getOne will be implemented
-	//and this handler will configure the REPL window (set title, compose
-	//menus via the menuTypes framework).
-	//For now, return true to signal successful handling.
-	return (true)}
+on openWindow (adr)
+	//Install the headless REPL host menubar at system.menus.data.frontier.
+		//5/31/26 by JES
+			//Phase E (Issue #677 / MENU_PORT_PLAN.md). The Phase C
+			//placeholder just returned true; this real implementation
+			//composes the legacy-fidelity File / Edit / View menus.
+			//
+			//Dispatch shape: items invoke the windowTypes framework's
+			//runFileMenuScript / runEditMenuScript helpers, which use
+			//thread.callScript to run Frontier.tools.windowTypes.commands.<name>
+			//async under the GIL. A missing or erroring command logs and
+			//drops on the worker thread; the REPL itself stays up. This
+			//matches the legacy async-process dispatch (lang.c addprocess
+			//pattern) per Decision Point 2 in MENU_PORT_PLAN.md.
+			//
+			//File>Quit reconciliation (task #21): wired directly to
+			//repl.exit () rather than commands.quit. commands.quit walks
+			//windows + open databases + calls filemenu.quit (legacy GUI
+			//semantics, none of which are functional in the headless REPL
+			//today). repl.exit is the REPL's reliable shutdown path and
+			//the same target as REPL>Exit -- both menus reach the same
+			//host-level exit flag.
+			//
+			//Bar name "frontier" sorts before "repl" alphabetically, so
+			//the Phase A union composition renders the strip as
+			//File | Edit | View | REPL -- matching the legacy ordering
+			//where File came first.
+			//
+			//Idempotent via menu.isInstalled. Re-invoking openWindow
+			//across REPL boots converges to the same state.
+	local (adrbar = @system.menus.data.frontier)
+	if menu.isInstalled (adrbar)
+		return (true)
+	bundle //File menu
+		menu.addMenuCommand (adrbar, "File", "New", "Frontier.tools.windowTypes.runFileMenuScript (\"new\")")
+		menu.addMenuCommand (adrbar, "File", "Open", "Frontier.tools.windowTypes.runFileMenuScript (\"open\")")
+		menu.addMenuCommand (adrbar, "File", "Close", "Frontier.tools.windowTypes.runFileMenuScript (\"close\")")
+		menu.addMenuCommand (adrbar, "File", "Save", "Frontier.tools.windowTypes.runFileMenuScript (\"save\")")
+		menu.addMenuCommand (adrbar, "File", "Save As", "Frontier.tools.windowTypes.runFileMenuScript (\"saveAs\")")
+		menu.addMenuCommand (adrbar, "File", "Quit", "repl.exit ()")
+	bundle //Edit menu
+		menu.addMenuCommand (adrbar, "Edit", "Find", "Frontier.tools.windowTypes.runEditMenuScript (\"find\")")
+		menu.addMenuCommand (adrbar, "Edit", "Find Next", "Frontier.tools.windowTypes.runEditMenuScript (\"findNext\")")
+		menu.addMenuCommand (adrbar, "Edit", "Replace", "Frontier.tools.windowTypes.runEditMenuScript (\"replace\")")
+		menu.addMenuCommand (adrbar, "Edit", "Replace and Find Next", "Frontier.tools.windowTypes.runEditMenuScript (\"replaceAndFindNext\")")
+		menu.addMenuCommand (adrbar, "Edit", "Insert Date/Time", "Frontier.tools.windowTypes.runEditMenuScript (\"insertDateTime\")")
+	bundle //View menu (font-size items: no-op-in-headless, installed for legacy fidelity)
+		menu.addMenuCommand (adrbar, "View", "Huge", "Frontier.tools.windowTypes.commands.huge ()")
+		menu.addMenuCommand (adrbar, "View", "Medium", "Frontier.tools.windowTypes.commands.medium ()")
+		menu.addMenuCommand (adrbar, "View", "Tiny", "Frontier.tools.windowTypes.commands.tiny ()")
+		menu.addMenuCommand (adrbar, "View", "Readable", "Frontier.tools.windowTypes.commands.readable ()")
+	menu.install (adrbar)
+	return (true)

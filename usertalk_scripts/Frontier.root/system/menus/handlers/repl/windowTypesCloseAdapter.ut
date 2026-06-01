@@ -1,0 +1,16 @@
+on windowTypesCloseAdapter (name)
+	//Phase E adapter: bridge kernel string-path callback to the windowTypes
+	//framework's address-based closeWindow handler.
+		//5/31/26 by JES
+			//Mirror of windowTypesOpenAdapter; see its change log for
+			//background. Used for idclosewindowscript firing path.
+	if name beginsWith "@" {
+		name = string.delete (name, 1, 1)};
+	local (adr);
+	try {adr = address (name)};
+	if adr == nil {
+		return (true)};
+	if not defined (adr^) {
+		return (true)};
+	Frontier.tools.windowTypes.callbacks.closeWindow (adr);
+	return (true)
