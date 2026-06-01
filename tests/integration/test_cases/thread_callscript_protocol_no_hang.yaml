@@ -30,7 +30,8 @@ tests:
       return a positive long (the thread ID) promptly. Before the fix this
       call would spin at 100% CPU holding the GIL for the entire 5s timeout
       due to hashtable stack overflow in the spawned thread.
-      sleepTicks(60) drains the spawned thread so the next test starts clean.
+      sleepTicks(60) forces a GIL yield for test determinism (so the detached
+      spawned thread drains before the next test), not a production requirement.
     script: |
       local (tid = thread.callScript (@Frontier.tools.windowTypes.commands.open, {}));
       thread.sleepTicks (60);
@@ -43,7 +44,8 @@ tests:
     description: |
       Spawned threads are allocated IDs starting at 3 (main thread is 2).
       Verifies the thread registry allocated a real entry and the call returned.
-      sleepTicks(60) drains the spawned thread so the next test starts clean.
+      sleepTicks(60) forces a GIL yield for test determinism (so the detached
+      spawned thread drains before the next test), not a production requirement.
     script: |
       local (tid = thread.callScript (@Frontier.tools.windowTypes.commands.open, {}));
       thread.sleepTicks (60);
@@ -57,7 +59,8 @@ tests:
       After thread.callScript returns, the main thread must remain able to
       execute further statements. Tests that the protocol loop is not stuck
       waiting to reacquire the GIL.
-      sleepTicks(60) drains the spawned thread so the next test starts clean.
+      sleepTicks(60) forces a GIL yield for test determinism (so the detached
+      spawned thread drains before the next test), not a production requirement.
     script: |
       local (tid = thread.callScript (@Frontier.tools.windowTypes.commands.open, {}));
       thread.sleepTicks (60);
@@ -96,6 +99,62 @@ tests:
       local (r = defined (@system.temp.callscript_marker_706) and system.temp.callscript_marker_706);
       try {delete (@system.temp.callscript_marker_706)};
       return r
+    expected_result: "true"
+    expected_success: true
+    timeout: 10
+
+  - name: "thread.callScript - spawned script EXECUTES to completion (marker read-back)"
+    description: |
+      The other callScript tests assert only that the spawn returns a valid
+      thread ID -- they catch the hang via the 10s timeout, but do not by
+      themselves prove the spawned script ran. This test closes that gap on
+      the callScript path (not the evaluate path): it installs a real script
+      object, dispatches it via thread.callScript, yields, then reads back the
+      side effect the spawned script wrote. If the fresh-stack fix regressed
+      and the spawned thread overflowed instead of running, the marker would
+      never be written and this assertion would fail (in addition to timing
+      out). thread.sleepTicks here is load-bearing: it forces the GIL yield
+      that lets the detached spawned thread run before the read-back.
+    script: |
+      new (tableType, @system.temp.cs706);
+      script.newScriptObject ("system.temp.cs706.ran = true", @system.temp.cs706.markerWriter);
+      system.temp.cs706.ran = false;
+      local (tid = thread.callScript ("system.temp.cs706.markerWriter", {}));
+      thread.sleepTicks (60);
+      local (ok = (system.temp.cs706.ran == true) and (tid >= 3));
+      delete (@system.temp.cs706);
+      return ok
+    expected_result: "true"
+    expected_success: true
+    timeout: 10
+
+  - name: "thread.callScript - dispatched from deep scope nesting still runs"
+    description: |
+      Reproduces the actual trigger condition for issue #706: callScript
+      dispatched while the caller is several scope frames deep (the original
+      hang only manifested because the protocol dispatcher's evaluatelist
+      chain was 15-20 frames deep, so the deep-copied caller stack was near
+      the 80-entry limit). Here we deliberately nest the dispatch inside
+      several with/local frames. With the pre-fix newfilledhandle deep-copy,
+      the spawned script would inherit that depth and overflow on its first
+      push; with the fresh-stack fix it starts at toptables=0 regardless of
+      caller depth. Asserts the spawned script ran to completion.
+    script: |
+      new (tableType, @system.temp.cs706n);
+      script.newScriptObject ("system.temp.cs706n.ran = true", @system.temp.cs706n.markerWriter);
+      system.temp.cs706n.ran = false;
+      local (tid = 0);
+      with system.temp.cs706n {
+        local (a = 1);
+        with system.temp.cs706n {
+          local (b = 2);
+          with system.temp.cs706n {
+            local (c = 3);
+            tid = thread.callScript ("system.temp.cs706n.markerWriter", {})}}};
+      thread.sleepTicks (60);
+      local (ok = (system.temp.cs706n.ran == true) and (tid >= 3));
+      delete (@system.temp.cs706n);
+      return ok
     expected_result: "true"
     expected_success: true
     timeout: 10

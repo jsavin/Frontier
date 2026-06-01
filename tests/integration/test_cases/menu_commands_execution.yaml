@@ -29,7 +29,8 @@ tests:
       hashtable-stack-overflow bug caused this to hold the GIL for the full
       timeout duration. After the fix, the spawned thread runs promptly even
       when the main loop is idle in protocol mode.
-      sleepTicks(60) drains the spawned thread so the next test starts clean.
+      sleepTicks(60) forces a GIL yield for test determinism (so the detached
+      spawned thread drains before the next test), not a production requirement.
     script: |
       local (r = Frontier.tools.windowTypes.runFileMenuScript ("open"));
       thread.sleepTicks (60);
@@ -42,7 +43,8 @@ tests:
     description: |
       runFileMenuScript("close") calls thread.callScript(@commands.close, {}).
       Same fix as the open command path.
-      sleepTicks(60) drains the spawned thread so the next test starts clean.
+      sleepTicks(60) forces a GIL yield for test determinism (so the detached
+      spawned thread drains before the next test), not a production requirement.
     script: |
       local (r = Frontier.tools.windowTypes.runFileMenuScript ("close"));
       thread.sleepTicks (60);
@@ -55,7 +57,8 @@ tests:
     description: |
       Explicit verification that runFileMenuScript returns true (the thread ID
       is truthy) and that the spawned thread ID is a valid positive long.
-      sleepTicks(60) drains the spawned thread so the next test starts clean.
+      sleepTicks(60) forces a GIL yield for test determinism (so the detached
+      spawned thread drains before the next test), not a production requirement.
     script: |
       local (ok = Frontier.tools.windowTypes.runFileMenuScript ("open"));
       thread.sleepTicks (60);
@@ -68,7 +71,8 @@ tests:
     description: |
       Direct call to thread.callScript to verify the returned thread ID type
       and range. This is the core regression test for issue #706.
-      sleepTicks(60) drains the spawned thread so the next test starts clean.
+      sleepTicks(60) forces a GIL yield for test determinism (so the detached
+      spawned thread drains before the next test), not a production requirement.
     script: |
       local (tid = thread.callScript (@Frontier.tools.windowTypes.commands.open, {}));
       thread.sleepTicks (60);
