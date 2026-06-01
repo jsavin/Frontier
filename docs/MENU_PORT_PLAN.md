@@ -141,17 +141,34 @@ Both sub-tracks block Phase C.
 
 ### Phase D — Verify WindowTypes Framework Kernel Primitives in Headless
 
-**Rescoped 2026-05-31**: the original framing assumed the windowTypes framework had to be ported into Virgin.root. Discovery: the framework is **already present** at `usertalk_scripts/Frontier.root/system/verbs/builtins/Frontier/tools/windowTypes/` (init.ut, findWindowType.ut, callWindowType.ut, newWindow.ut, openWindow.ut, runFileMenuScript.ut, runEditMenuScript.ut, findWindowWithMatchingAtts.ut, isFileMenuItemChecked.ut, isFileMenuItemEnabled.ut, isWindowDirty.ut, getDefaultFilename.ut, plus `callbacks/` and `commands/` subtables). Phase D is no longer a port — it is verification work.
+**Phase D shipped** (2026-05-31, worktree-menu-port-phase-d-verify). Two Phase C bugs found and fixed. All 9 behavioral integration tests pass.
 
-- **Scope**: confirm the kernel primitives the existing UserTalk framework calls work in headless:
-  - `window.frontMost()` — must return something Phase C's static REPL-window sentinel registers as
-  - `window.attributes.getOne("type", ...)` — must read from the registry Phase C populates
-  - The `idXxxScript` callback registry (populated by Phase B1, fired by Phase C)
-- For each primitive: write a behavioral test that drives the framework UserTalk from inside the headless REPL and asserts expected dispatch
-- If a primitive is missing or broken, file a targeted issue and either stub it in C or note it as a fidelity gap
-- **Size**: ~50-200 LOC of new C only if gaps surface; mostly tests
-- **Acceptance**: framework UserTalk can be invoked from headless and reaches the kernel primitives without crashing; behavioral chain `boot → windowTypes.init → openWindow(replWindow) → menubar installed` works end-to-end
-- **Out of scope (deferred future work)**: promoting parts of the windowTypes framework from UserTalk to C for performance — no current need
+**Bugs found and fixed**:
+
+1. `window.frontmost()` C kernel (`tests/headless_window_verbs.c`) was returning an empty string instead of an address value. The windowTypes framework passes this result to `parentOf()` which requires `addressType`. Fixed via `setstringvalue` + `coercetoaddress`: builds the REPL sentinel path string then coerces it to a live ODB address using `langexpandtodotparams`.
+
+2. `window_registry_init()` (`frontier-cli/window_registry.c`) created the sentinel with `type`/`title` as direct fields on the window node at `system.temp.windowTypes.windows.repl`. But `window.attributes.getOne` navigates `parentOf(adrwindow^).["/atts"].[attname]` -- a sibling table named `/atts` inside the parent (`windows`) table. The sentinel was populating the wrong location. Fixed by adding three new idempotent statements to `window_registry_init()` that create `system.temp.windowTypes.windows.["/atts"]` and populate `type="ReplWindow"` and `title="REPL"` there.
+
+**Kernel verb inventory** (final status after Phase D fixes):
+
+| Verb | Status | Notes |
+|------|--------|-------|
+| `window.frontmost()` | WORKS | Returns `addressType` pointing at REPL sentinel |
+| `window.attributes.getOne` | WORKS | Pure UserTalk; reads from `/atts` sibling (sentinel fixed) |
+| `window.attributes.setOne` | WORKS | Pure UserTalk; writes to `/atts` sibling |
+| `window.setTitle` | STUB | Returns false (no GUI window); framework handles this gracefully |
+| `thread.callScript` | WORKS | Wired in `headless_thread_verbs.c:683`; dispatches without error |
+
+**Key architectural discovery - the /atts pattern**: `window.attributes.getOne(name, @out, adrwindow)` does NOT read from the window node itself. It navigates `parentOf(adrwindow^).["/atts"].[name]` -- a sibling table named `/atts` alongside the window node in its parent table. For `adrwindow = @system.temp.windowTypes.windows.repl`, the parent is `@system.temp.windowTypes.windows`, so the attributes live at `system.temp.windowTypes.windows.["/atts"]`. Phase C had populated the wrong location.
+
+**Test note - `thread.callScript` integration test**: behavioral verification calls `thread.callScript(@system.verbs.builtins.thread.sleepTicks, {0})` on an existing compiled ODB script. We do not attempt a side-effect roundtrip because `script.newScriptObject` embeds double-quotes that break the YAML test harness parser, and async scheduling makes timing-based probes flaky. The wiring check (dispatch without error on a valid ODB address) is the correct behavioral claim for the kernel verb inventory.
+
+**What was delivered**:
+- `tests/headless_window_verbs.c`: `winv_frontmost` case now builds the sentinel path string and coerces to `addressType` via `coercetoaddress()`.
+- `frontier-cli/window_registry.c`: three new idempotent statements in `window_registry_init()` create the `/atts` sibling and populate `type`/`title` there (in addition to the direct fields retained for backward compatibility).
+- `tests/integration/test_cases/window_primitives_phase_d.yaml`: 9 behavioral integration tests; each test includes a 6-line sentinel setup preamble (mirroring `window_registry_init()`) so tests are self-contained in `--skip-startup` mode.
+
+**Rescoped 2026-05-31 (original description)**: the original framing assumed the windowTypes framework had to be ported into Virgin.root. Discovery: the framework is **already present** at `usertalk_scripts/Frontier.root/system/verbs/builtins/Frontier/tools/windowTypes/` (init.ut, findWindowType.ut, callWindowType.ut, newWindow.ut, openWindow.ut, runFileMenuScript.ut, runEditMenuScript.ut, findWindowWithMatchingAtts.ut, isFileMenuItemChecked.ut, isFileMenuItemEnabled.ut, isWindowDirty.ut, getDefaultFilename.ut, plus `callbacks/` and `commands/` subtables). Phase D was no longer a port -- it became verification work.
 
 ### Phase E — Menu Content
 
