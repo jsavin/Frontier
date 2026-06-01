@@ -830,6 +830,51 @@ assert_test("breakpoint fires on each function entry",
             len(bp_hits) >= 2,
             f"Breakpoint hits: {len(bp_hits)}, Messages: {bp_hits}")
 
+# --- Test 20: debug/run roots the spawned thread at roottable (#706) ---
+# Regression guard for the debug/run half of the #706 fresh-stack fix
+# (newclearhandle + hcurrenthashtable = roottable in handle_debug_run).
+#
+# NOTE ON RED-ABILITY: this test CANNOT be made to fail against the pre-fix
+# binary the way the thread.callScript YAML repro can. debug/run dispatches at
+# the top level of the protocol loop (handle_debug_run), which copies the MAIN
+# thread's hashtablestack -- and that stack is always shallow because debug/run
+# bypasses the deep with-wrapping evaluatelist chain that thread.callScript runs
+# inside. There is no protocol-reachable input that leaves the main thread deep
+# at debug/run dispatch time, so the deep-copy overflow never triggers via the
+# protocol. The fix is correct defense-in-depth (and the depth-independent base
+# PR 2's unified spawn helper builds on); this test pins the spawned thread to
+# roottable-rooted behavior: a script installed under an absolute system.temp
+# path runs to completion on the debug/run-spawned thread (which now starts from
+# a clean roottable chain), guarding against future regressions.
+print()
+print("--- debug/run roots spawned thread at roottable (#706) ---")
+
+with DebugSession(timeout=20) as s:
+    # Install a marker-writer script (mirrors the proven callScript markerWriter
+    # pattern). The spawned thread starts from a clean roottable chain, so the
+    # absolute system.temp.dr706.ran assignment resolves and executes.
+    s.send_and_wait({"op": "script/eval", "id": 1, "params": {
+        "expression": 'new(tableType, @system.temp.dr706); script.newScriptObject("system.temp.dr706.ran = true", @system.temp.dr706.marker); system.temp.dr706.ran = false'
+    }})
+    s.send_and_wait({"op": "debug/run", "id": 2, "params": {"expression": "system.temp.dr706.marker()"}})
+    s.wait_for_notification(reason="entry")
+    s.send_and_wait({"op": "debug/continue", "id": 3, "params": {"threadId": FIRST_DEBUG_TID}})
+    completed = s.wait_for_notification(op="debug/completed", timeout=10)
+    assert_test("debug/run spawned script completes (no hang)",
+                completed is not None and completed.get("params", {}).get("success") is True,
+                f"Messages: {[m for m in s.messages if m.get('op') == 'debug/completed']}")
+    # Read back the marker to prove the spawned script actually executed.
+    readback = s.send_and_wait({"op": "script/eval", "id": 4, "params": {
+        "expression": "defined(@system.temp.dr706.ran) and system.temp.dr706.ran"
+    }})
+    ran = readback.get("result", {}).get("value") if readback else None
+    assert_test("debug/run spawned script executed to completion (marker set)",
+                ran == "true",
+                f"Read-back: {readback}")
+    s.send_and_wait({"op": "script/eval", "id": 5, "params": {
+        "expression": "try {delete(@system.temp.dr706)}"
+    }})
+
 print()
 print("=" * 46)
 print(f"RESULTS: {PASSED} passed, {FAILED} failed")

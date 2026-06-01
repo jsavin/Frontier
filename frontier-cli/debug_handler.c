@@ -37,8 +37,8 @@
 #include "db_format.h"
 #include "../third_party/cJSON/cJSON.h"
 
-/* Global: table stack (thread globals) — currenthashtable is now a macro in processinternal.h */
-extern hdltablestack hashtablestack;
+/* Global: currenthashtable is a macro in processinternal.h; roottable is the
+ * clean base for independent spawned-thread execution. */
 extern hdlhashtable roottable;
 
 /* Forward declarations — these functions exist in Common/source but have no
@@ -1110,10 +1110,20 @@ void handle_debug_run(int id, const char *json_line, transport_t *transport) {
 	(**new_hglobals).idthread = (hdlthread)threadid;
 	rec->hglobals = new_hglobals;
 
-	/* Copy hashtable stack from current thread */
+	/* Allocate a fresh, empty hashtablestack for the spawned thread.
+	 * Mirrors the #706 fix in headless_thread_callscript / headless_thread_evaluate.
+	 * Summary: copying the caller's toptables depth would let the spawned script
+	 * overflow the 80-entry stack and spin in a CPU-bound GIL-starvation hang.
+	 * The interpreter is designed to start each execution thread from a clean
+	 * chain rooted at roottable (langpushscopechain). debug/run dispatches at the
+	 * top level of the protocol loop, so the caller stack is shallow today and
+	 * the deep-copy overflow is not reachable through the protocol -- but rooting
+	 * at roottable is the correct, depth-independent base regardless. */
 	{
 		Handle hcopy;
-		if (!newfilledhandle((char *)(*hashtablestack), sizeof(tytablestack), &hcopy)) {
+
+		/* newclearhandle zeroes all memory: toptables = 0 and stack[] = nil. */
+		if (!newclearhandle(sizeof(tytablestack), &hcopy)) {
 			langdisposetree(hcode);
 			headless_dispose_threadglobals(new_hglobals);
 			free_thread_record(rec);
@@ -1125,7 +1135,8 @@ void handle_debug_run(int id, const char *json_line, transport_t *transport) {
 		}
 		(**new_hglobals).htablestack = (hdltablestack)hcopy;
 	}
-	(**new_hglobals).hcurrenthashtable = currenthashtable;
+	/* Root table is the correct base for an independent script execution. */
+	(**new_hglobals).hcurrenthashtable = roottable;
 
 	/* Register debug state */
 	tydebugstate *debugstate = debug_register_thread(threadid, transport);
