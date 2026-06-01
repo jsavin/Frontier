@@ -190,12 +190,25 @@ boolean window_registry_init(void) {
 	 */
 
 	/*
-	 * Five idempotent statements, each well under 255 bytes:
+	 * Idempotent statements, each well under 255 bytes:
+	 *
 	 *   s1: ensure system.temp.windowTypes table exists
 	 *   s2: ensure system.temp.windowTypes.windows table exists
-	 *   s3: ensure system.temp.windowTypes.windows.repl table exists
-	 *   s4: set .type = "ReplWindow"  (read by windowTypes framework)
-	 *   s5: set .title = "REPL"       (display name)
+	 *   s3: ensure system.temp.windowTypes.windows.repl table exists (the window node)
+	 *   s4: ensure the /atts sibling table exists in system.temp.windowTypes.windows
+	 *   s5: set type attribute in /atts to "ReplWindow"
+	 *   s6: set title attribute in /atts to "REPL"
+	 *
+	 *   window.attributes.getOne(name, @out, adrwindow) navigates:
+	 *     adrparent = parentOf(adrwindow^)    -- parent of the window node
+	 *     adratts   = @adrparent^.["/atts"]   -- /atts child of that parent
+	 *   So for adrwindow = @system.temp.windowTypes.windows.repl:
+	 *     adrparent = @system.temp.windowTypes.windows
+	 *     adratts   = @system.temp.windowTypes.windows.["/atts"]
+	 *
+	 *   The /atts sibling is what window.attributes.getOne/setOne require.
+	 *   Direct fields on the window node itself (e.g. windows.repl.type) are
+	 *   NOT populated; the framework reads exclusively from the /atts sibling.
 	 */
 	static const char *stmts[] = {
 		"if not defined (system.temp.windowTypes) "
@@ -207,9 +220,13 @@ boolean window_registry_init(void) {
 		"if not defined (system.temp.windowTypes.windows.repl) "
 		"{new (tableType, @system.temp.windowTypes.windows.repl)}",
 
-		"system.temp.windowTypes.windows.repl.type = \"ReplWindow\"",
+		/* /atts sibling -- required by window.attributes.getOne/setOne */
+		"if not defined (system.temp.windowTypes.windows.[\"/atts\"]) "
+		"{new (tableType, @system.temp.windowTypes.windows.[\"/atts\"])}",
 
-		"system.temp.windowTypes.windows.repl.title = \"REPL\"",
+		"system.temp.windowTypes.windows.[\"/atts\"].type = \"ReplWindow\"",
+
+		"system.temp.windowTypes.windows.[\"/atts\"].title = \"REPL\"",
 	};
 	static const int nstmts = (int)(sizeof(stmts) / sizeof(stmts[0]));
 

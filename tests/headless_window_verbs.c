@@ -275,9 +275,50 @@ static boolean window_valueproc(short token, hdltreenode hparam1,
             /* Verb: window.sendtoback - not yet implemented */
             if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
             return false;
-        case winv_frontmost:
-            /* window.frontmost - no-op in headless mode, returns empty string */
-            return setstringvalue(BIGSTRING("\x00"), vreturned);
+        case winv_frontmost: {
+            /*
+             * window.frontmost() -- return the address of the frontmost window.
+             *
+             * In headless mode the only "window" is the REPL itself, represented
+             * by the static sentinel created at boot by window_registry_init() at:
+             *   system.temp.windowTypes.windows.repl
+             *
+             * The windowTypes framework passes the returned value directly to
+             * parentOf() and window.attributes.getOne(), both of which require
+             * an addressvaluetype.  The prior stub returned an empty string,
+             * which caused the framework to silently skip the /atts lookup.
+             *
+             * We build the address by setting a string value then coercing it to
+             * an address.  This mirrors the pattern in langvalue.c:coercetoaddress
+             * (coercetostring + stringtoaddress) and correctly resolves the ODB
+             * path so the hdlhashtable pointer embedded in the address record
+             * points at the live windows table.
+             *
+             * If the sentinel does not exist yet (e.g. window_registry_init()
+             * has not been called, or failed), coercetoaddress will fail and we
+             * fall back to the empty-string stub behavior.  The framework already
+             * handles this via "if window.attributes.getOne(...) { ... }" guards.
+             */
+            /* path without leading "@" -- stringtoaddress will walk the ODB */
+            bigstring bs_repl_path;
+            copyctopstring("system.temp.windowTypes.windows.repl", bs_repl_path);
+
+            if (!setstringvalue(bs_repl_path, vreturned))
+                return false;
+
+            disablelangerror();
+            boolean fl_addr = coercetoaddress(vreturned);
+            enablelangerror();
+
+            if (!fl_addr) {
+                /* sentinel not set up yet -- return empty address (graceful) */
+                bigstring bs_empty;
+                setemptystring(bs_empty);
+                return setstringvalue(bs_empty, vreturned);
+            }
+
+            return true;
+        }
         case winv_next:
             /* Verb: window.next - not yet implemented */
             if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
