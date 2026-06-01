@@ -132,27 +132,50 @@ debug client, breakpoint `commands.open`, trigger File>Open from the menu, and
 step through the `file.getFileDialog` -> spawned-thread-stdin conflict (the
 actual File>Open defect, separately documented). No more PTY screen-scraping.
 
-## Build sequence (when approved)
+## Build sequence (when approved) -- two PRs
+
+### PR 1: isolated debug/run #706 fix
+
+1. TDD red: deep-nesting `debug/run` test mirroring the #706 reproduction
+   (dispatch a script via `debug/run` from many scope frames deep; assert it
+   does not hang). Today this overflows on the deep-copied stack.
+2. Convert `debug_handler.c:1116`/:1128 from `newfilledhandle` deep-copy +
+   `currenthashtable` to `newclearhandle` + `roottable`.
+3. Red test green; existing debug/run tests stay green.
+4. Full unit + integration suites green. No Virgin.root change expected.
+
+### PR 2: spawn unification + lazy attach (builds on PR 1)
 
 1. TDD red: protocol-mode integration test -- set a breakpoint in a script,
    dispatch it via `thread.callScript`, assert the debugger suspends + reports
    the hit over the protocol transport. (Today this would never fire.)
 2. Extract `headless_spawn_script_thread` from the two existing paths; prove
    parity (existing callScript + debug/run tests stay green).
-3. Convert `debug/run` to the unified helper with `newclearhandle` table stack
-   (fixes #706 exposure). Add a deep-nesting debug/run test mirroring the
-   #706 reproduction.
-4. Add `g_debug_attach_transport` + lazy attach in the breakpoint callback.
-5. Make the red test from step 1 green.
-6. Full unit + integration suites green. No Virgin.root change expected (pure
+3. Add `g_debug_attach_transport` + lazy attach in the breakpoint callback.
+4. Make the red test from step 1 green.
+5. Full unit + integration suites green. No Virgin.root change expected (pure
    C + C/protocol tests) -- standing gate: if Virgin.root is touched, pause
    for live-test approval.
 
-## Open questions for JES
+Bare interactive REPL debugging is OUT OF SCOPE for both PRs -- tracked as
+**issue #691** (P1).
 
-- **Scope of "debuggable when attached"**: protocol + WS only is the natural
-  boundary (bare interactive has no transport). Acceptable, or do you want a
-  future linenoise-side debug channel? (Recommend: protocol/WS only for now.)
-- **Should `debug/run` adopting `newclearhandle` be its own small PR first**
-  (it's an isolated #706 fix), or bundled into the unification? (Recommend:
-  bundle -- the unification is what makes both paths share the fix.)
+## Decisions (JES, 2026-06-01)
+
+- **Scope = protocol + WS only** for this work. Bare interactive REPL
+  debugging is deferred and tracked as a P1 follow-up: **issue #691**
+  (provide a debug transport for bare linenoise sessions).
+- **`debug/run`'s `newclearhandle` / #706 fix ships as its own separate PR**,
+  not bundled into the unification. It is an isolated fix and JES prefers it
+  decoupled. The unification PR then builds on top of (or alongside) it.
+
+This splits the build sequence below into two PRs:
+
+- **PR 1 (isolated #706 fix)**: convert `debug/run`'s table-stack copy from
+  the pre-#689 `newfilledhandle` deep-copy (`debug_handler.c:1116`, rooted
+  `currenthashtable` :1128) to `newclearhandle` rooted at `roottable`,
+  matching the callScript/evaluate paths. Add a deep-nesting `debug/run` test
+  mirroring the #706 reproduction.
+- **PR 2 (unification + lazy attach)**: extract `headless_spawn_script_thread`,
+  add `g_debug_attach_transport` + lazy breakpoint-driven attach, make
+  callScript threads debuggable when a protocol/WS client is connected.
