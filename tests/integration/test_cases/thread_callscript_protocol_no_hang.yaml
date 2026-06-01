@@ -1,0 +1,160 @@
+# thread.callScript - no-hang regression tests
+#
+# These tests verify that thread.callScript() returns promptly in
+# protocol/non-interactive mode and does not deadlock by holding the GIL
+# while executing a spawned script.
+#
+# Root cause of the bug (issue #706): the spawned thread's hashtablestack
+# was deep-copied from the calling thread's current stack, which was already
+# several levels deep inside the protocol dispatcher's evaluatelist() chain.
+# The spawned script then overflowed the 80-entry stack limit immediately on
+# its first local-scope push, producing a tight CPU-bound retry loop that
+# held the GIL indefinitely.
+#
+# Fix: headless_thread_evaluate() and headless_thread_callscript() now
+# allocate a fresh zero-depth hashtablestack for each spawned thread and
+# set hcurrenthashtable = roottable, giving the script a clean starting
+# context independent of the caller's nesting depth.
+#
+# All tests have a 10s timeout. Before the fix, every test here would hang
+# until the runner killed the process (exit 124). After the fix, each should
+# complete in well under 1s.
+
+description: "thread.callScript no-hang regression tests (issue #706)"
+sequential: true
+
+tests:
+  - name: "thread.callScript on commands.open returns a valid thread ID"
+    description: |
+      thread.callScript(@Frontier.tools.windowTypes.commands.open, {}) must
+      return a positive long (the thread ID) promptly. Before the fix this
+      call would spin at 100% CPU holding the GIL for the entire 5s timeout
+      due to hashtable stack overflow in the spawned thread.
+      sleepTicks(60) forces a GIL yield for test determinism (so the detached
+      spawned thread drains before the next test), not a production requirement.
+    script: |
+      local (tid = thread.callScript (@Frontier.tools.windowTypes.commands.open, {}));
+      thread.sleepTicks (60);
+      return (typeof (tid) == 'long' and tid > 0)
+    expected_result: "true"
+    expected_success: true
+    timeout: 10
+
+  - name: "thread.callScript does not hang - spawned thread ID is >= 3"
+    description: |
+      Spawned threads are allocated IDs starting at 3 (main thread is 2).
+      Verifies the thread registry allocated a real entry and the call returned.
+      sleepTicks(60) forces a GIL yield for test determinism (so the detached
+      spawned thread drains before the next test), not a production requirement.
+    script: |
+      local (tid = thread.callScript (@Frontier.tools.windowTypes.commands.open, {}));
+      thread.sleepTicks (60);
+      return (tid >= 3)
+    expected_result: "true"
+    expected_success: true
+    timeout: 10
+
+  - name: "thread.callScript - main thread continues executing after spawn"
+    description: |
+      After thread.callScript returns, the main thread must remain able to
+      execute further statements. Tests that the protocol loop is not stuck
+      waiting to reacquire the GIL.
+      sleepTicks(60) forces a GIL yield for test determinism (so the detached
+      spawned thread drains before the next test), not a production requirement.
+    script: |
+      local (tid = thread.callScript (@Frontier.tools.windowTypes.commands.open, {}));
+      thread.sleepTicks (60);
+      local (ok = typeof (tid) == 'long' and tid > 0);
+      return ok
+    expected_result: "true"
+    expected_success: true
+    timeout: 10
+
+  - name: "thread.callScript - spawn then sleepTicks does not deadlock"
+    description: |
+      After spawning via thread.callScript, the main thread calls
+      thread.sleepTicks which voluntarily yields the GIL. This exercises the
+      full cooperative handoff: spawn -> yield -> spawned thread runs -> main
+      reacquires GIL. Before the fix the spawned thread held the GIL for the
+      full timeout, so this would also have hung.
+    script: |
+      local (tid = thread.callScript (@Frontier.tools.windowTypes.commands.open, {}));
+      thread.sleepTicks (60);
+      return (typeof (tid) == 'long' and tid > 0)
+    expected_result: "true"
+    expected_success: true
+    timeout: 10
+
+  - name: "thread.callScript - write marker via thread.evaluate verifies GIL yield"
+    description: |
+      A simpler script is used here to test the yield/marker pattern without
+      triggering file dialogs. thread.evaluate runs a short script that writes
+      a marker to system.temp; after sleepTicks the main thread reads it back.
+      This confirms the GIL is correctly yielded and the spawned thread runs.
+      try-wrapped deletes handle the case where the marker does not exist yet.
+    script: |
+      try {delete (@system.temp.callscript_marker_706)};
+      local (tid = thread.evaluate ("system.temp.callscript_marker_706 = true"));
+      thread.sleepTicks (60);
+      local (r = defined (@system.temp.callscript_marker_706) and system.temp.callscript_marker_706);
+      try {delete (@system.temp.callscript_marker_706)};
+      return r
+    expected_result: "true"
+    expected_success: true
+    timeout: 10
+
+  - name: "thread.callScript - spawned script EXECUTES to completion (marker read-back)"
+    description: |
+      The other callScript tests assert only that the spawn returns a valid
+      thread ID -- they catch the hang via the 10s timeout, but do not by
+      themselves prove the spawned script ran. This test closes that gap on
+      the callScript path (not the evaluate path): it installs a real script
+      object, dispatches it via thread.callScript, yields, then reads back the
+      side effect the spawned script wrote. If the fresh-stack fix regressed
+      and the spawned thread overflowed instead of running, the marker would
+      never be written and this assertion would fail (in addition to timing
+      out). thread.sleepTicks here is load-bearing: it forces the GIL yield
+      that lets the detached spawned thread run before the read-back.
+    script: |
+      new (tableType, @system.temp.cs706);
+      script.newScriptObject ("system.temp.cs706.ran = true", @system.temp.cs706.markerWriter);
+      system.temp.cs706.ran = false;
+      local (tid = thread.callScript ("system.temp.cs706.markerWriter", {}));
+      thread.sleepTicks (60);
+      local (ok = (system.temp.cs706.ran == true) and (tid >= 3));
+      delete (@system.temp.cs706);
+      return ok
+    expected_result: "true"
+    expected_success: true
+    timeout: 10
+
+  - name: "thread.callScript - dispatched from deep scope nesting still runs"
+    description: |
+      Reproduces the actual trigger condition for issue #706: callScript
+      dispatched while the caller is several scope frames deep (the original
+      hang only manifested because the protocol dispatcher's evaluatelist
+      chain was 15-20 frames deep, so the deep-copied caller stack was near
+      the 80-entry limit). Here we deliberately nest the dispatch inside
+      several with/local frames. With the pre-fix newfilledhandle deep-copy,
+      the spawned script would inherit that depth and overflow on its first
+      push; with the fresh-stack fix it starts at toptables=0 regardless of
+      caller depth. Asserts the spawned script ran to completion.
+    script: |
+      new (tableType, @system.temp.cs706n);
+      script.newScriptObject ("system.temp.cs706n.ran = true", @system.temp.cs706n.markerWriter);
+      system.temp.cs706n.ran = false;
+      local (tid = 0);
+      with system.temp.cs706n {
+        local (a = 1);
+        with system.temp.cs706n {
+          local (b = 2);
+          with system.temp.cs706n {
+            local (c = 3);
+            tid = thread.callScript ("system.temp.cs706n.markerWriter", {})}}};
+      thread.sleepTicks (60);
+      local (ok = (system.temp.cs706n.ran == true) and (tid >= 3));
+      delete (@system.temp.cs706n);
+      return ok
+    expected_result: "true"
+    expected_success: true
+    timeout: 10

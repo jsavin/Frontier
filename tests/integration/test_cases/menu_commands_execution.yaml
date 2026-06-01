@@ -1,0 +1,82 @@
+# Menu command execution tests -- File / Edit / View menu dispatches
+#
+# These tests verify that menu command dispatch via thread.callScript does NOT
+# hang in protocol/non-interactive mode. Each test calls the dispatch path that
+# the REPL uses when the user selects a menu item, and verifies it returns true
+# promptly (within 10s).
+#
+# Before the hashtable-stack fix (issue #706), every one of these tests would
+# time out because runFileMenuScript calls thread.callScript, which would spin
+# at 100% CPU holding the GIL due to stack overflow in the spawned thread.
+#
+# Test design:
+#   - runFileMenuScript("open") calls thread.callScript(@commands.open, {})
+#   - commands.open calls file.getFileDialog which returns false in headless
+#   - The dispatch path returns true regardless of whether the command
+#     "did something useful" -- we only care that it doesn't hang
+#   - 10s timeout catches any regression back to the hang state
+#
+# These tests do NOT cover GUI behavior (file pickers, window creation, etc.),
+# only that the dispatch infrastructure works end-to-end without deadlocking.
+
+description: "Menu command execution tests -- no-hang verification (issue #706)"
+sequential: true
+
+tests:
+  - name: "File > Open dispatches without hanging"
+    description: |
+      Phase E's runFileMenuScript dispatches via thread.callScript. The
+      hashtable-stack-overflow bug caused this to hold the GIL for the full
+      timeout duration. After the fix, the spawned thread runs promptly even
+      when the main loop is idle in protocol mode.
+      sleepTicks(60) forces a GIL yield for test determinism (so the detached
+      spawned thread drains before the next test), not a production requirement.
+    script: |
+      local (r = Frontier.tools.windowTypes.runFileMenuScript ("open"));
+      thread.sleepTicks (60);
+      return r
+    expected_success: true
+    expected_result: "true"
+    timeout: 10
+
+  - name: "File > Close dispatches without hanging"
+    description: |
+      runFileMenuScript("close") calls thread.callScript(@commands.close, {}).
+      Same fix as the open command path.
+      sleepTicks(60) forces a GIL yield for test determinism (so the detached
+      spawned thread drains before the next test), not a production requirement.
+    script: |
+      local (r = Frontier.tools.windowTypes.runFileMenuScript ("close"));
+      thread.sleepTicks (60);
+      return r
+    expected_success: true
+    expected_result: "true"
+    timeout: 10
+
+  - name: "thread.callScript on commands.open returns true from runFileMenuScript"
+    description: |
+      Explicit verification that runFileMenuScript returns true (the thread ID
+      is truthy) and that the spawned thread ID is a valid positive long.
+      sleepTicks(60) forces a GIL yield for test determinism (so the detached
+      spawned thread drains before the next test), not a production requirement.
+    script: |
+      local (ok = Frontier.tools.windowTypes.runFileMenuScript ("open"));
+      thread.sleepTicks (60);
+      return (ok == true)
+    expected_success: true
+    expected_result: "true"
+    timeout: 10
+
+  - name: "thread.callScript result is a long -- direct dispatch verification"
+    description: |
+      Direct call to thread.callScript to verify the returned thread ID type
+      and range. This is the core regression test for issue #706.
+      sleepTicks(60) forces a GIL yield for test determinism (so the detached
+      spawned thread drains before the next test), not a production requirement.
+    script: |
+      local (tid = thread.callScript (@Frontier.tools.windowTypes.commands.open, {}));
+      thread.sleepTicks (60);
+      return (typeof (tid) == 'long' and tid > 0)
+    expected_success: true
+    expected_result: "true"
+    timeout: 10

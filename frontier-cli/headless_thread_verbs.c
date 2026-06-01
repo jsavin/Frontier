@@ -413,13 +413,17 @@ boolean headless_spawn_callback_thread(hdltreenode hcode, long stream_id) {
 	/* Link globals to registry record */
 	rec->hglobals = new_hglobals;
 
-	/* Deep-copy the calling thread's hashtablestack so the callback gets its
-	 * own stack pointer/index state. Shared underlying hash table pointers are
-	 * safe under GIL serialization. */
+	/* Allocate a fresh, empty hashtablestack for the callback thread.
+	 * Same fix as headless_thread_evaluate/callscript: copying the caller's
+	 * toptables depth causes stack overflow in the callback script. TCP
+	 * callbacks are spawned from headless_backgroundtask(), which can be
+	 * called from arbitrary interpreter depth. Starting with toptables = 0
+	 * and roottable as the base gives the callback a clean execution context. */
 	{
 		Handle hcopy;
 
-		if (!newfilledhandle((char *)(*hashtablestack), sizeof(tytablestack), &hcopy)) {
+		/* newclearhandle zeroes all memory: toptables = 0 and stack[] = nil. */
+		if (!newclearhandle(sizeof(tytablestack), &hcopy)) {
 			langdisposetree(hcode);
 			headless_dispose_threadglobals(new_hglobals);
 			free_thread_record(rec);
@@ -428,7 +432,7 @@ boolean headless_spawn_callback_thread(hdltreenode hcode, long stream_id) {
 
 		(**new_hglobals).htablestack = (hdltablestack)hcopy;
 	}
-	(**new_hglobals).hcurrenthashtable = currenthashtable;
+	(**new_hglobals).hcurrenthashtable = roottable;
 
 	/* Package launch parameters */
 	params = (thread_launch_params *)malloc(sizeof(thread_launch_params));
@@ -608,20 +612,32 @@ static boolean headless_thread_evaluate(bigstring bscode, tyvaluerecord *vreturn
 	/* Link globals to registry record */
 	rec->hglobals = new_hglobals;
 
-	/* Deep-copy the calling thread's hashtablestack structure so the new
-	 * thread gets its own stack pointer/index state (push/pop won't alias
-	 * the parent's stack).
+	/* Allocate a fresh, empty hashtablestack for the spawned thread.
 	 *
-	 * NOTE: This is a shallow copy of the tytablestack structure — both
-	 * threads share pointers to the same underlying hash tables. This is
-	 * safe under GIL serialization (only one thread accesses at a time),
-	 * but would be a data race if the GIL is ever removed.
-	 * TODO(Phase4): When global state elimination removes the GIL, each
-	 * thread will need deep-copied or thread-local hash table chains. */
+	 * We do NOT copy the calling thread's current toptables depth. The calling
+	 * thread may be deeply nested inside evaluatelist when thread.evaluate is
+	 * dispatched (e.g., from a protocol script/eval handler that is itself
+	 * several frames deep in evaluatelist). Copying that depth causes immediate
+	 * hashtable stack overflow when the spawned script pushes its own local
+	 * scopes -- manifesting as a tight CPU-bound loop that starves the GIL for
+	 * the entire script duration.
+	 *
+	 * Fix: start with toptables = 0 (fresh stack) and hcurrenthashtable =
+	 * roottable. langrunscriptcode / evaluatelist pushes the correct local
+	 * scope chain for the spawned script.
+	 *
+	 * Each thread gets its own tytablestack allocation so push/pop ops on one
+	 * thread do not alias the other's stack pointer. Under GIL serialization
+	 * only one thread accesses C globals at a time, so the underlying hash
+	 * table handles in stack[] are safe to share (they are borrowed refs to ODB
+	 * nodes, not thread-owned memory).
+	 * TODO(Phase4): When GIL is removed, threads need independent table chains. */
 	{
 		Handle hcopy;
 
-		if (!newfilledhandle((char *)(*hashtablestack), sizeof(tytablestack), &hcopy)) {
+		/* newclearhandle zeroes all memory: toptables = 0 and stack[] = nil.
+		 * This gives the spawned thread a clean starting state. */
+		if (!newclearhandle(sizeof(tytablestack), &hcopy)) {
 			langdisposetree(hcode);
 			headless_dispose_threadglobals(new_hglobals);
 			free_thread_record(rec);
@@ -630,7 +646,9 @@ static boolean headless_thread_evaluate(bigstring bscode, tyvaluerecord *vreturn
 
 		(**new_hglobals).htablestack = (hdltablestack)hcopy;
 	}
-	(**new_hglobals).hcurrenthashtable = currenthashtable;
+	/* Root table is the correct base for an independent script execution.
+	 * The spawned thread's langrunscriptcode call pushes its own local scope. */
+	(**new_hglobals).hcurrenthashtable = roottable;
 
 	/* Register in system.compiler.threads (calling thread context) */
 	copystring(PSTRING("\011", "anonymous"), bsanon);
@@ -771,12 +789,15 @@ static boolean headless_thread_callscript(bigstring bsscriptname, tyvaluerecord 
 	(**new_hglobals).idthread = (hdlthread) threadid;
 	rec->hglobals = new_hglobals;
 
-	/* Deep-copy the calling thread's hashtablestack structure. See comment
-	 * in headless_thread_evaluate for shallow-copy semantics and Phase 4 TODO. */
+	/* Allocate a fresh, empty hashtablestack for the spawned thread.
+	 * See the identical fix in headless_thread_evaluate for the full rationale.
+	 * Summary: copying the caller's toptables depth causes stack overflow in
+	 * the spawned script, producing a CPU-bound GIL-starvation hang. */
 	{
 		Handle hcopy;
 
-		if (!newfilledhandle((char *)(*hashtablestack), sizeof(tytablestack), &hcopy)) {
+		/* newclearhandle zeroes all memory: toptables = 0 and stack[] = nil. */
+		if (!newclearhandle(sizeof(tytablestack), &hcopy)) {
 			headless_dispose_threadglobals(new_hglobals);
 			free_thread_record(rec);
 			return false;
@@ -784,7 +805,8 @@ static boolean headless_thread_callscript(bigstring bsscriptname, tyvaluerecord 
 
 		(**new_hglobals).htablestack = (hdltablestack)hcopy;
 	}
-	(**new_hglobals).hcurrenthashtable = currenthashtable;
+	/* Root table is the correct base for an independent script execution. */
+	(**new_hglobals).hcurrenthashtable = roottable;
 
 	/* Register in system.compiler.threads (calling thread context) */
 	headless_register_thread(bsverb, threadid);
