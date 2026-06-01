@@ -1,0 +1,249 @@
+# Phase D: Verify windowTypes kernel primitives in headless mode
+#
+# Tests each kernel verb the existing UserTalk windowTypes framework calls.
+# See docs/MENU_PORT_PLAN.md Phase D section for context.
+#
+# The windowTypes framework (system.verbs.builtins.window.attributes.*)
+# uses these verbs at runtime.  Each test is BEHAVIORAL: it calls the verb
+# from UserTalk and asserts the return value or observable side-effect.
+#
+# Inventory status legend (updated as tests pass):
+#   (A) WORKS    -- verb exists, returns correct value
+#   (B) STUB     -- returns something but wrong shape or value
+#   (C) MISSING  -- dispatch fails entirely
+#
+# Phase C created the REPL window sentinel at:
+#   system.temp.windowTypes.windows.repl   (type="ReplWindow", title="REPL")
+#
+# The window.attributes.getOne/setOne UserTalk scripts (builtins) look for
+# a /atts sibling table alongside the window node.  Phase D must populate:
+#   system.temp.windowTypes.windows.["/atts"].type  = "ReplWindow"
+#   system.temp.windowTypes.windows.["/atts"].title = "REPL"
+#
+# SETUP NOTE: window_registry_init() (which creates the sentinel) is called
+# from repl_main(), not from the script-execution path.  Integration tests run
+# in script-execution mode (--skip-startup) so each test that depends on the
+# sentinel must create it via UserTalk preamble (mirroring window_registry_init).
+#
+# The preamble mirrors frontier-cli/window_registry.c:window_registry_init():
+#
+#   on setup_sentinel ()
+#     if not defined (system.temp.windowTypes)
+#       {new (tableType, @system.temp.windowTypes)};
+#     if not defined (system.temp.windowTypes.windows)
+#       {new (tableType, @system.temp.windowTypes.windows)};
+#     if not defined (system.temp.windowTypes.windows.repl)
+#       {new (tableType, @system.temp.windowTypes.windows.repl)};
+#     if not defined (system.temp.windowTypes.windows.["/atts"])
+#       {new (tableType, @system.temp.windowTypes.windows.["/atts"])};
+#     system.temp.windowTypes.windows.["/atts"].type = "ReplWindow";
+#     system.temp.windowTypes.windows.["/atts"].title = "REPL"
+
+tests:
+
+  # ========================================================================
+  # 1. window.frontmost() -- (B) STUB: returns "" instead of address
+  # ========================================================================
+
+  - name: "window.frontmost returns an address value"
+    description: |
+      window.frontmost() must return an address to the REPL window sentinel
+      (system.temp.windowTypes.windows.repl), not an empty string.
+      The windowTypes framework passes this result directly to parentOf()
+      which requires an address type.
+    script: |
+      if not defined (system.temp.windowTypes) {new (tableType, @system.temp.windowTypes)};
+      if not defined (system.temp.windowTypes.windows) {new (tableType, @system.temp.windowTypes.windows)};
+      if not defined (system.temp.windowTypes.windows.repl) {new (tableType, @system.temp.windowTypes.windows.repl)};
+      if not defined (system.temp.windowTypes.windows.["/atts"]) {new (tableType, @system.temp.windowTypes.windows.["/atts"])};
+      system.temp.windowTypes.windows.["/atts"].type = "ReplWindow";
+      system.temp.windowTypes.windows.["/atts"].title = "REPL";
+      local (w = window.frontmost ());
+      return typeOf (w) == addressType
+    expected_success: true
+    expected_result: "true"
+
+  - name: "window.frontmost returns REPL sentinel path"
+    description: |
+      The returned address must point at the REPL sentinel record, so that
+      parentOf(window.frontmost()^) resolves to the windows table.
+    script: |
+      if not defined (system.temp.windowTypes) {new (tableType, @system.temp.windowTypes)};
+      if not defined (system.temp.windowTypes.windows) {new (tableType, @system.temp.windowTypes.windows)};
+      if not defined (system.temp.windowTypes.windows.repl) {new (tableType, @system.temp.windowTypes.windows.repl)};
+      if not defined (system.temp.windowTypes.windows.["/atts"]) {new (tableType, @system.temp.windowTypes.windows.["/atts"])};
+      system.temp.windowTypes.windows.["/atts"].type = "ReplWindow";
+      system.temp.windowTypes.windows.["/atts"].title = "REPL";
+      local (w = window.frontmost ());
+      return string (w) == "system.temp.windowTypes.windows.repl"
+    expected_success: true
+    expected_result: "true"
+
+  # ========================================================================
+  # 2. window.attributes.getOne("type", ...) -- reads from /atts sibling
+  #
+  # The /atts pattern: the attributes table is stored as a sibling of the
+  # window node named "/atts" inside the parent windows table.
+  # ========================================================================
+
+  - name: "window.attributes.getOne reads type from REPL sentinel"
+    description: |
+      window.attributes.getOne("type", @out, adr) reads the "type" attribute
+      from the /atts sub-table that is a sibling of the window node in its
+      parent table.  For the REPL sentinel this must return "ReplWindow".
+    script: |
+      if not defined (system.temp.windowTypes) {new (tableType, @system.temp.windowTypes)};
+      if not defined (system.temp.windowTypes.windows) {new (tableType, @system.temp.windowTypes.windows)};
+      if not defined (system.temp.windowTypes.windows.repl) {new (tableType, @system.temp.windowTypes.windows.repl)};
+      if not defined (system.temp.windowTypes.windows.["/atts"]) {new (tableType, @system.temp.windowTypes.windows.["/atts"])};
+      system.temp.windowTypes.windows.["/atts"].type = "ReplWindow";
+      system.temp.windowTypes.windows.["/atts"].title = "REPL";
+      local (t);
+      local (adrWindow = window.frontmost ());
+      if window.attributes.getOne ("type", @t, adrWindow) {
+        return t};
+      return "not found"
+    expected_success: true
+    expected_result: "ReplWindow"
+
+  - name: "window.attributes.getOne reads title from REPL sentinel"
+    description: |
+      The title attribute in the /atts table for the REPL sentinel should be "REPL".
+    script: |
+      if not defined (system.temp.windowTypes) {new (tableType, @system.temp.windowTypes)};
+      if not defined (system.temp.windowTypes.windows) {new (tableType, @system.temp.windowTypes.windows)};
+      if not defined (system.temp.windowTypes.windows.repl) {new (tableType, @system.temp.windowTypes.windows.repl)};
+      if not defined (system.temp.windowTypes.windows.["/atts"]) {new (tableType, @system.temp.windowTypes.windows.["/atts"])};
+      system.temp.windowTypes.windows.["/atts"].type = "ReplWindow";
+      system.temp.windowTypes.windows.["/atts"].title = "REPL";
+      local (t);
+      local (adrWindow = window.frontmost ());
+      if window.attributes.getOne ("title", @t, adrWindow) {
+        return t};
+      return "not found"
+    expected_success: true
+    expected_result: "REPL"
+
+  - name: "window.attributes.getOne returns false for missing attribute"
+    description: |
+      If an attribute does not exist in /atts, getOne returns false without
+      error.  This is the happy-path guard the framework uses (if not ...).
+    script: |
+      if not defined (system.temp.windowTypes) {new (tableType, @system.temp.windowTypes)};
+      if not defined (system.temp.windowTypes.windows) {new (tableType, @system.temp.windowTypes.windows)};
+      if not defined (system.temp.windowTypes.windows.repl) {new (tableType, @system.temp.windowTypes.windows.repl)};
+      if not defined (system.temp.windowTypes.windows.["/atts"]) {new (tableType, @system.temp.windowTypes.windows.["/atts"])};
+      system.temp.windowTypes.windows.["/atts"].type = "ReplWindow";
+      system.temp.windowTypes.windows.["/atts"].title = "REPL";
+      local (t);
+      local (adrWindow = window.frontmost ());
+      return window.attributes.getOne ("nonexistent_attr_xyz", @t, adrWindow)
+    expected_success: true
+    expected_result: "false"
+
+  # ========================================================================
+  # 3. window.attributes.setOne -- roundtrip test
+  # ========================================================================
+
+  - name: "window.attributes.setOne then getOne roundtrip"
+    description: |
+      setOne writes a value to the /atts sibling table; getOne can read it back.
+      This verifies the /atts structure is write-accessible in headless.
+    script: |
+      if not defined (system.temp.windowTypes) {new (tableType, @system.temp.windowTypes)};
+      if not defined (system.temp.windowTypes.windows) {new (tableType, @system.temp.windowTypes.windows)};
+      if not defined (system.temp.windowTypes.windows.repl) {new (tableType, @system.temp.windowTypes.windows.repl)};
+      if not defined (system.temp.windowTypes.windows.["/atts"]) {new (tableType, @system.temp.windowTypes.windows.["/atts"])};
+      system.temp.windowTypes.windows.["/atts"].type = "ReplWindow";
+      system.temp.windowTypes.windows.["/atts"].title = "REPL";
+      local (adrWindow = window.frontmost ());
+      window.attributes.setOne ("phase_d_test", "hello", adrWindow);
+      local (out);
+      if window.attributes.getOne ("phase_d_test", @out, adrWindow) {
+        return out};
+      return "not found"
+    expected_success: true
+    expected_result: "hello"
+
+  # ========================================================================
+  # 4. window.setTitle -- (B) STUB: returns false in headless (no GUI window)
+  #    The framework calls it for display; false is acceptable for headless.
+  # ========================================================================
+
+  - name: "window.setTitle accepts call without crashing"
+    description: |
+      window.setTitle is a kernel verb.  In headless mode it has no GUI window
+      to rename, so it returns false as a no-op indicator.  The framework
+      calls it inside callbacks/openWindow.ut; it must not raise a script error.
+    script: |
+      if not defined (system.temp.windowTypes) {new (tableType, @system.temp.windowTypes)};
+      if not defined (system.temp.windowTypes.windows) {new (tableType, @system.temp.windowTypes.windows)};
+      if not defined (system.temp.windowTypes.windows.repl) {new (tableType, @system.temp.windowTypes.windows.repl)};
+      if not defined (system.temp.windowTypes.windows.["/atts"]) {new (tableType, @system.temp.windowTypes.windows.["/atts"])};
+      system.temp.windowTypes.windows.["/atts"].type = "ReplWindow";
+      system.temp.windowTypes.windows.["/atts"].title = "REPL";
+      local (adrWindow = window.frontmost ());
+      try {
+        window.setTitle (adrWindow, "REPL");
+        return "no error"
+      } else {
+        return "error: " + tryError}
+    expected_success: true
+    expected_result: "no error"
+
+  # ========================================================================
+  # 5. thread.callScript -- (A) WORKS per headless_thread_verbs.c:683
+  #    Verify behavioral test: spawns a thread, writes a side-effect.
+  # ========================================================================
+
+  - name: "thread.callScript dispatches a script by ODB address without error"
+    description: |
+      thread.callScript is already wired in frontier-cli/headless_thread_verbs.c.
+      Behavioral verification: call an existing compiled script at a known ODB
+      address (system.verbs.builtins.thread.sleepTicks) via thread.callScript,
+      passing a zero-tick sleep as the argument record.  Verify no UserTalk
+      error is raised.  We do not attempt a side-effect roundtrip because
+      script.newScriptObject requires embedded double-quotes that break the
+      YAML test harness parser, and the async scheduling makes timing-based
+      side-effect probes inherently flaky.  The wiring check (dispatch without
+      error) is the correct behavioral claim for the kernel verb inventory.
+    script: |
+      local (result = "no error");
+      try {
+        thread.callScript (@system.verbs.builtins.thread.sleepTicks, {0});
+        thread.sleepTicks (30)
+      } else {
+        result = "error: " + tryError};
+      return result
+    expected_success: true
+    expected_result: "no error"
+
+  # ========================================================================
+  # 6. End-to-end: windowTypes.callbacks.openWindow runs without error
+  #
+  # This is the critical chain: boot -> window.frontmost -> attributes.getOne
+  # -> findWindowType -> ReplWindow entry.  The Phase C bridge fires this
+  # on startup; here we call it directly to verify the full chain.
+  # ========================================================================
+
+  - name: "Frontier.tools.windowTypes.callbacks.openWindow chain runs cleanly"
+    description: |
+      Calls the openWindow callback directly with the REPL sentinel address.
+      The chain is: openWindow -> window.attributes.getOne("type", ...) ->
+      findWindowType("ReplWindow", ...) -> ReplWindow.openWindow script.
+      If the chain breaks at any step, the callback returns false and we
+      surface the failure.
+    script: |
+      if not defined (system.temp.windowTypes) {new (tableType, @system.temp.windowTypes)};
+      if not defined (system.temp.windowTypes.windows) {new (tableType, @system.temp.windowTypes.windows)};
+      if not defined (system.temp.windowTypes.windows.repl) {new (tableType, @system.temp.windowTypes.windows.repl)};
+      if not defined (system.temp.windowTypes.windows.["/atts"]) {new (tableType, @system.temp.windowTypes.windows.["/atts"])};
+      system.temp.windowTypes.windows.["/atts"].type = "ReplWindow";
+      system.temp.windowTypes.windows.["/atts"].title = "REPL";
+      local (adrWindow = window.frontmost ());
+      if not defined (adrWindow^) {
+        return "sentinel not defined"};
+      local (result = Frontier.tools.windowTypes.callbacks.openWindow (adrWindow));
+      return result
+    expected_success: true
+    expected_result: "true"
