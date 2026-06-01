@@ -17,4 +17,4 @@ true
 
 
 
- File  REPL
+ File  Edit  File  View  REPL

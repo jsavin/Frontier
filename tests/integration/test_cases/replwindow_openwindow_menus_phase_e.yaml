@@ -1,0 +1,203 @@
+# Phase E: ReplWindow.openWindow installs the File / Edit / View menubars
+#
+# What this file proves
+# ---------------------
+# After the windowTypes framework dispatches openWindow to
+# Frontier.tools.data.windowTypes.ReplWindow.openWindow (the per-windowType
+# handler) the host menubar at system.menus.data.frontier exists, is
+# marked installed, and contains the three menus File / Edit / View, each
+# populated with the expected items.
+#
+# Why these tests fail without Phase E
+# ------------------------------------
+# The Phase C placeholder for ReplWindow.openWindow just returns true.  No
+# menubar gets installed.  These tests assert the presence and shape of the
+# bar; with the placeholder they fail because the bar does not exist.
+#
+# Each test calls Frontier.tools.data.windowTypes.ReplWindow.openWindow
+# directly with the sentinel window address.  This is the same call the
+# framework's callbacks.openWindow performs after findWindowType resolves
+# "ReplWindow"; calling it directly here keeps the assertion focused on
+# the new handler without re-exercising the Phase C dispatch chain (which
+# already has tests in test_window_bridge.c).
+#
+# Test isolation
+# --------------
+# Each test runs under --skip-startup and creates the REPL window sentinel
+# inline (mirroring window_registry_init() in frontier-cli/window_registry.c)
+# so the framework's window.attributes.getOne lookups resolve.
+# After the openWindow call, each test asserts a specific property and
+# cleans up by deleting the frontier bar so subsequent tests see a clean ODB.
+# system.menus.data.repl is left untouched because installReplMenubar is
+# idempotent (Phase A integration tests rely on it being present).
+
+sequential: true
+
+tests:
+
+  # ========================================================================
+  # 1. ReplWindow.openWindow installs system.menus.data.frontier
+  # ========================================================================
+
+  - name: "ReplWindow.openWindow creates and installs frontier menubar"
+    description: |
+      After calling the per-windowType openWindow handler, the bar at
+      system.menus.data.frontier must exist and be marked installed.
+    script: |
+      if not defined (system.temp.windowTypes) {new (tableType, @system.temp.windowTypes)};
+      if not defined (system.temp.windowTypes.windows) {new (tableType, @system.temp.windowTypes.windows)};
+      if not defined (system.temp.windowTypes.windows.repl) {new (tableType, @system.temp.windowTypes.windows.repl)};
+      if not defined (system.temp.windowTypes.windows.["/atts"]) {new (tableType, @system.temp.windowTypes.windows.["/atts"])};
+      system.temp.windowTypes.windows.["/atts"].type = "ReplWindow";
+      system.temp.windowTypes.windows.["/atts"].title = "REPL";
+      Frontier.tools.data.windowTypes.ReplWindow.openWindow (@system.temp.windowTypes.windows.repl);
+      local (a = @system.menus.data.frontier);
+      local (ok = defined (a^) and menu.isInstalled (a));
+      try {delete (@system.menus.data.frontier)};
+      return (ok)
+    expected_success: true
+    expected_result: "true"
+
+  # ========================================================================
+  # 2. The frontier bar contains a File menu with a Quit item
+  # ========================================================================
+
+  - name: "frontier bar contains File menu with Quit item"
+    description: |
+      The File menu must exist and contain a Quit item.  Quit is the most
+      load-bearing item (task #21 -- File>Quit must reach repl.exit() so
+      the REPL has a working menu-driven shutdown path).
+    script: |
+      if not defined (system.temp.windowTypes) {new (tableType, @system.temp.windowTypes)};
+      if not defined (system.temp.windowTypes.windows) {new (tableType, @system.temp.windowTypes.windows)};
+      if not defined (system.temp.windowTypes.windows.repl) {new (tableType, @system.temp.windowTypes.windows.repl)};
+      if not defined (system.temp.windowTypes.windows.["/atts"]) {new (tableType, @system.temp.windowTypes.windows.["/atts"])};
+      system.temp.windowTypes.windows.["/atts"].type = "ReplWindow";
+      system.temp.windowTypes.windows.["/atts"].title = "REPL";
+      Frontier.tools.data.windowTypes.ReplWindow.openWindow (@system.temp.windowTypes.windows.repl);
+      local (a = @system.menus.data.frontier.File.Quit);
+      local (ok = defined (a^));
+      try {delete (@system.menus.data.frontier)};
+      return (ok)
+    expected_success: true
+    expected_result: "true"
+
+  # ========================================================================
+  # 3. The frontier bar contains an Edit menu with a Find item
+  # ========================================================================
+
+  - name: "frontier bar contains Edit menu with Find item"
+    description: |
+      The Edit menu must exist and contain a Find item that dispatches
+      through Frontier.tools.windowTypes.runEditMenuScript.
+    script: |
+      if not defined (system.temp.windowTypes) {new (tableType, @system.temp.windowTypes)};
+      if not defined (system.temp.windowTypes.windows) {new (tableType, @system.temp.windowTypes.windows)};
+      if not defined (system.temp.windowTypes.windows.repl) {new (tableType, @system.temp.windowTypes.windows.repl)};
+      if not defined (system.temp.windowTypes.windows.["/atts"]) {new (tableType, @system.temp.windowTypes.windows.["/atts"])};
+      system.temp.windowTypes.windows.["/atts"].type = "ReplWindow";
+      system.temp.windowTypes.windows.["/atts"].title = "REPL";
+      Frontier.tools.data.windowTypes.ReplWindow.openWindow (@system.temp.windowTypes.windows.repl);
+      local (a = @system.menus.data.frontier.Edit.Find);
+      local (ok = defined (a^));
+      try {delete (@system.menus.data.frontier)};
+      return (ok)
+    expected_success: true
+    expected_result: "true"
+
+  # ========================================================================
+  # 4. The frontier bar contains a View menu with a Medium item
+  # ========================================================================
+
+  - name: "frontier bar contains View menu with Medium item"
+    description: |
+      The View menu must exist with one of the four font-size items.
+      These are no-op-in-headless but installed for legacy fidelity --
+      legacy Frontier's View menu shipped Huge / Medium / Tiny / Readable
+      regardless of windowType.
+    script: |
+      if not defined (system.temp.windowTypes) {new (tableType, @system.temp.windowTypes)};
+      if not defined (system.temp.windowTypes.windows) {new (tableType, @system.temp.windowTypes.windows)};
+      if not defined (system.temp.windowTypes.windows.repl) {new (tableType, @system.temp.windowTypes.windows.repl)};
+      if not defined (system.temp.windowTypes.windows.["/atts"]) {new (tableType, @system.temp.windowTypes.windows.["/atts"])};
+      system.temp.windowTypes.windows.["/atts"].type = "ReplWindow";
+      system.temp.windowTypes.windows.["/atts"].title = "REPL";
+      Frontier.tools.data.windowTypes.ReplWindow.openWindow (@system.temp.windowTypes.windows.repl);
+      local (a = @system.menus.data.frontier.View.Medium);
+      local (ok = defined (a^));
+      try {delete (@system.menus.data.frontier)};
+      return (ok)
+    expected_success: true
+    expected_result: "true"
+
+  # ========================================================================
+  # 5. ReplWindow.openWindow is idempotent
+  # ========================================================================
+
+  - name: "ReplWindow.openWindow is idempotent"
+    description: |
+      Calling openWindow twice must not error and must leave the bar in
+      the same shape.  The handler guards with menu.isInstalled so the
+      second call is a fast no-op.  Asserted by counting File menu items
+      before and after the second call.
+    script: |
+      if not defined (system.temp.windowTypes) {new (tableType, @system.temp.windowTypes)};
+      if not defined (system.temp.windowTypes.windows) {new (tableType, @system.temp.windowTypes.windows)};
+      if not defined (system.temp.windowTypes.windows.repl) {new (tableType, @system.temp.windowTypes.windows.repl)};
+      if not defined (system.temp.windowTypes.windows.["/atts"]) {new (tableType, @system.temp.windowTypes.windows.["/atts"])};
+      system.temp.windowTypes.windows.["/atts"].type = "ReplWindow";
+      system.temp.windowTypes.windows.["/atts"].title = "REPL";
+      Frontier.tools.data.windowTypes.ReplWindow.openWindow (@system.temp.windowTypes.windows.repl);
+      local (n1 = sizeOf (system.menus.data.frontier.File));
+      Frontier.tools.data.windowTypes.ReplWindow.openWindow (@system.temp.windowTypes.windows.repl);
+      local (n2 = sizeOf (system.menus.data.frontier.File));
+      try {delete (@system.menus.data.frontier)};
+      return (n1 == n2 and n1 > 0)
+    expected_success: true
+    expected_result: "true"
+
+  # ========================================================================
+  # 6. File>Quit script invokes repl.exit (the REPL's reliable exit path)
+  # ========================================================================
+  #
+  # Per task #21 reconciliation: File>Quit and REPL>Exit should both call
+  # the same underlying exit path.  REPL>Exit calls repl.exit() (see
+  # usertalk_scripts/.../system/menus/handlers/repl/exit.ut).  File>Quit
+  # in REPL context bypasses the heavyweight commands.quit chain (which
+  # iterates windows + databases + calls filemenu.quit -- legacy GUI
+  # semantics) and directly invokes repl.exit so the REPL has a working
+  # menu-driven shutdown path.
+  #
+  # We assert the script body contains "repl.exit" as a behavioral check
+  # on the wiring decision.  This is structural-pattern matching but the
+  # script field IS the dispatch payload -- the palette will compile and
+  # run exactly this string when the user selects File>Quit.  No more
+  # abstract test exists short of actually exiting the REPL (which the
+  # palette modal smoke test handles end-to-end).
+
+  - name: "File>Quit script invokes repl.exit"
+    description: |
+      File>Quit's script payload must contain "repl.exit" so the palette
+      dispatches to the REPL's exit path when the item is selected.
+      Task #21 reconciliation: File>Quit == REPL>Exit at the dispatch
+      target level.
+
+      Reads the script directly from the leaf's "script" field instead
+      of using menu.getScript -- the headless menu.getScript verb returns
+      empty for items installed via menu.addMenuCommand (it's wired for
+      the legacy in-memory menu cache, not the system.menus.data
+      projection that headless uses).
+    script: |
+      if not defined (system.temp.windowTypes) {new (tableType, @system.temp.windowTypes)};
+      if not defined (system.temp.windowTypes.windows) {new (tableType, @system.temp.windowTypes.windows)};
+      if not defined (system.temp.windowTypes.windows.repl) {new (tableType, @system.temp.windowTypes.windows.repl)};
+      if not defined (system.temp.windowTypes.windows.["/atts"]) {new (tableType, @system.temp.windowTypes.windows.["/atts"])};
+      system.temp.windowTypes.windows.["/atts"].type = "ReplWindow";
+      system.temp.windowTypes.windows.["/atts"].title = "REPL";
+      Frontier.tools.data.windowTypes.ReplWindow.openWindow (@system.temp.windowTypes.windows.repl);
+      local (s = system.menus.data.frontier.File.Quit.script);
+      local (ok = s contains "repl.exit (");
+      try {delete (@system.menus.data.frontier)};
+      return (ok)
+    expected_success: true
+    expected_result: "true"

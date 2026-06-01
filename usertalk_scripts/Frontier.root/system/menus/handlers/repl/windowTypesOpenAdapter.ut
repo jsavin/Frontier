@@ -1,0 +1,37 @@
+on windowTypesOpenAdapter (name)
+	//Phase E adapter: bridge kernel string-path callback to the windowTypes
+	//framework's address-based handler.
+		//5/31/26 by JES
+			//system.callbacks.openWindow passes 'name' as a string path
+			//because the Phase C kernel bridge substitutes the path into
+			//the idopenwindowscript template. The framework's openWindow
+			//handler at Frontier.tools.windowTypes.callbacks.openWindow
+			//expects an addressType. Convert and dispatch.
+			//
+			//WINDOW_BRIDGE_REPL_PATH in frontier-cli/window_registry.h is
+			//"@system.temp.windowTypes.windows.repl" with a leading '@'
+			//(matching how UserTalk would render the address as a literal).
+			//address() rejects strings with a leading '@', so we strip it
+			//here. Tolerate inputs both with and without the prefix --
+			//editor windows opened by Phase F+ may pass either form.
+			//
+			//If address() can't resolve the path or the target doesn't
+			//exist, return silently -- this is a callback in a fire-and-
+			//forget chain; failures here must not block other callbacks.
+		//6/1/26 by JES
+			//Use a local copy of 'name' rather than mutating the parameter
+			//in place. UserTalk parameter passing semantics for shared
+			//buffers are not formally specified; defensive idiom keeps the
+			//adapter robust against future framework changes that pass
+			//addresses or shared string handles.
+	local (path = name);
+	if path beginsWith "@" {
+		path = string.delete (path, 1, 1)};
+	local (adr);
+	try {adr = address (path)};
+	if adr == nil {
+		return (true)};
+	if not defined (adr^) {
+		return (true)};
+	Frontier.tools.windowTypes.callbacks.openWindow (adr);
+	return (true)
