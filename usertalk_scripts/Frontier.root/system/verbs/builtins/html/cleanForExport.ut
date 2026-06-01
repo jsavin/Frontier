@@ -10,14 +10,14 @@ on cleanForExport (text, adrPageTable=@websites.["#data"]) { //prepare text to l
 				if string.patternMatch (searchfor, text) != 0 { //optimization
 					text = string.replaceAll (text, searchfor, replacewith)}};
 			
-			replace ("Õ", "'");
-			replace ("¥", "o");
+			replace ("’", "'");
+			replace ("•", "o");
 			replace ("...", "...");
-			replace ("Ô", "'");
-			replace ("Ê", " "); //a funny space that Word produces
+			replace ("‘", "'");
+			replace (" ", " "); //a funny space that Word produces
 			replace ("“", “"”);
 			replace ("”", “"”);
-			replace ("Ð", "--");
+			replace ("–", "--");
 			replace ("//", "&lt;&lt;");
-			replace ("»", "&gt;&gt;")};
+			replace ("", "&gt;&gt;")};
 		return (text)}}

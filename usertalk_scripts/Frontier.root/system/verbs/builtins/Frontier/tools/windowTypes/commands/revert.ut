@@ -56,7 +56,7 @@ on revert (adr = nil) {
 								return (true)}}}}}}};
 	
 	return (false);
-	
+	};
 	//bundle //old code for reverting Manila windows
 		//if adrItem!= nil
 			//local (flConsumed = false)
@@ -108,7 +108,7 @@ on revert (adr = nil) {
 		//
 		//fileMenu.save ()
 		//
-		//return (true)};
+		//return (true)
 
 bundle { //debugging
 	revert (window.frontmost ())}

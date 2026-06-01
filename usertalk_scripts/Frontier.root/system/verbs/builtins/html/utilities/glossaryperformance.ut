@@ -5,7 +5,7 @@ bundle { //method 1, using a table
 		local (adrsubtable = @user.html.glossary [name]);
 		if defined (adrsubtable^) {
 			ct++}};
-	dialog.alert (clock.ticks () - ticks)};
+	dialog.alert (clock.ticks () - ticks)}
 //bundle //method 2, using an outline
 	//local (name = "Bernie Dekoven", ct = 0)
 	//ticks = clock.ticks ()

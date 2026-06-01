@@ -5,7 +5,7 @@ on window2Position() {
 		//08/19/95 ECT: ported from AppleScript to UserTalk
 	//Description:
 		//Move window to top-right position on a 1024-pixel wide screen. Used with putting two files,
-		//80 columns wide, side by side on a 17” screen, but this one doesnÕt resize the window.
+		//80 columns wide, side by side on a 17” screen, but this one doesn’t resize the window.
 	with objectModel, BBEdit, eventInfo {
 		//Remember: {top, left, bottom, right}
 		local {

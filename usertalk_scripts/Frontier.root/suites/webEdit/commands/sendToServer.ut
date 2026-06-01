@@ -25,6 +25,6 @@ on sendToServer () {
 	s = webEdit.sendObjectToServer (adrObject, note);
 	
 	webEdit.notify (s);
-	return (true)};
+	return (true)}
 //bundle //test code
 	//sendToServer ()

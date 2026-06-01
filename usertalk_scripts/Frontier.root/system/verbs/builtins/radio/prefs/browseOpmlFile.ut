@@ -19,6 +19,6 @@ on browseOpmlFile (f) {
 		local (xmltext = file.readwholefile (f));
 		op.xmltooutline (xmltext, adrincache);
 		settimemodified (adrincache, file.modified (f))};
-	return (radio.prefs.browser (adrincache))};
+	return (radio.prefs.browser (adrincache))}
 //bundle //test code
 	//browseOpmlFile ("C:\\Program Files\\Radio UserLand\\www\\userland\\todolist.opml")

@@ -4,5 +4,5 @@ on client (drivername, screenname, procedurename, paramlist) {
 			//Created.
 	tcp.im.send (drivername, screenname, tcp.im.rpi.encode (procedurename, paramlist))};
 bundle { //test code
-	dialog.notify (client ("aim", "eatthefuture", "examples.getstatename", {12}) );
-	}//dialog.notify (client ("jabber", "Jeremy@192.168.0.4/Human", "examples.getStateName", {"\""}) )
+	dialog.notify (client ("aim", "eatthefuture", "examples.getstatename", {12}) )}
+	//dialog.notify (client ("jabber", "Jeremy@192.168.0.4/Human", "examples.getStateName", {"\""}) )

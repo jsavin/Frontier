@@ -43,7 +43,7 @@ on saveAsHtml (adr=nil, adrFilepath=nil, flPreview=false) {
 					return (false)}}}};
 	
 	return (true);
-	
+	};
 	//bundle //this code moved to Frontier.tools.data.windowTypes.outlinerFile.saveAsHtml
 		//local (extension = user.html.prefs.fileExtension)
 		//
@@ -74,7 +74,7 @@ on saveAsHtml (adr=nil, adrFilepath=nil, flPreview=false) {
 		//
 		//local (f = fname)
 		//if file.putFileDialog ("Save " + title + " as HTML:", @f)
-			//pike.saveOutlineAsHtml (adrItem, f)};
+			//pike.saveOutlineAsHtml (adrItem, f)
 
 //bundle //test code
 	//saveAsHtml (window.frontmost ())

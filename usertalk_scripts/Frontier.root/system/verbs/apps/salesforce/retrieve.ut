@@ -13,7 +13,7 @@ on retrieve (adrSession, objectType, objectId, fields={}) {
 				fieldList = fieldList + fields[i]}}}
 	else {
 		fieldList = fields};
-	return (salesforce.callApi (adrSession, nameOf (this^), {"fieldList":fieldList, "sObjectType":objectType, "ids":objectId}))};
+	return (salesforce.callApi (adrSession, nameOf (this^), {"fieldList":fieldList, "sObjectType":objectType, "ids":objectId}))}
 //bundle //testing
 	//local (adrses)
 	//bundle //set adrses

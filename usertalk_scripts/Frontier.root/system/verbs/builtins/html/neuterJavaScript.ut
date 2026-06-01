@@ -139,7 +139,7 @@ on neuterJavaScript (s, legalProtocolSchemes=nil) {
 										break}}}}}}}};
 		ix++};
 	
-	return (s)};
+	return (s)}
 //bundle //test code
 	//html.neuterJavaScript ("<script type=\"text\">Foo</script>")
 		//"&lt;script type=\"text\">Foo&lt;/script>"

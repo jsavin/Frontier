@@ -22,7 +22,7 @@ if op.attributes.getOne ("xmlurl", @url) {
 			op.go (left, 1)}}
 	else {
 		dialog.alert ("Error parsing RSS: " + tryError)};
-	op.setDisplay (oldDisplay)};
+	op.setDisplay (oldDisplay)}
 //bundle //old code
 	//local (adrwindow = window.frontmost ())
 	//

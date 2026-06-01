@@ -15,7 +15,7 @@ on openWindow (adr) {
 		if nameOf (adr^) != "/atts" { //don't set the title of window attribute table windows
 			if window.attributes.getOne ("title", @title, adr) {
 				window.setTitle (adr, title)}}};
-	return (true)}; //default behavior
+	return (true)} //default behavior
 //bundle //bunch of b.s.
 	//on openWindow (adr)
 		//if not Frontier.tools.windowTypes.callWindowType (nameOf (this^), adr)

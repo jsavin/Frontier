@@ -27,19 +27,19 @@ on addRandomRecord () {
 	ubase.addRecord (fnum, key, @holder);
 	ubase.lookupRecord (fnum, key, @result);
 	bundle { //check the fields, see that everything worked
-		if holder.bool != result.bool || holder.bool != uBASE.getField (fnum, key, 'bool') {
+		if holder.bool ≠ result.bool || holder.bool ≠ uBASE.getField (fnum, key, 'bool') {
 			scriptError (holder.bool + " should equal " + result.bool + " for " + key + ".")};
-		if holder.long != result.long || holder.long != uBASE.getField (fnum, key, 'long') {
+		if holder.long ≠ result.long || holder.long ≠ uBASE.getField (fnum, key, 'long') {
 			scriptError (holder.long + " should equal " + result.long + " for " + key + ".")};
-		if holder.date != result.date || holder.date != uBASE.getField (fnum, key, 'date') {
+		if holder.date ≠ result.date || holder.date ≠ uBASE.getField (fnum, key, 'date') {
 			scriptError (holder.date + " should equal " + (result.date) + " for " + key + ".")};
-		if holder.stri != result.stri || holder.stri != uBASE.getField (fnum, key, 'stri') {
+		if holder.stri ≠ result.stri || holder.stri ≠ uBASE.getField (fnum, key, 'stri') {
 			scriptError (holder.stri + " should equal " + result.stri + " for " + key + ".")};
 		if abs (holder.doub - result.doub) > 0.0000001 { //account for imprecision in floating compares
 			scriptError (holder.doub + " should equal " + result.doub + " for " + key + ".")};
 		if abs (holder.doub - uBASE.getField (fnum, key, 'doub')) > 0.0000001 {
 			scriptError (holder.doub + " should equal " + result.doub + " for " + key + ".")};
-		if holder.bina != result.bina || holder.bina != uBASE.getField (fnum, key, 'bina') {
+		if holder.bina ≠ result.bina || holder.bina ≠ uBASE.getField (fnum, key, 'bina') {
 			scriptError ("the binary object does not compare equal for " + key + ".")}};
 	msg ("Added " + key + ".");
 	rollBeachball ()};

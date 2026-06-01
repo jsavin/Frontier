@@ -10,6 +10,6 @@ on setOne (attname, attval, adrwindow=nil) {
 			local (adratt = @adratts^.[attname]);
 			table.assign (adratt, attval);
 			return (true)}};
-	return (false)};
+	return (false)}
 //bundle //testing
 	//setOne ("type", "manilaSite")

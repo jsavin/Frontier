@@ -9,7 +9,7 @@ on getCachedPage (url, key=user.google.key) {
 	with google.data {
 		local (params = {"key":key, "url":url});
 		result = soap.rpc.client (path, methods.getCachedPage, @params, server, port, soapAction:soapAction, methodNamespace:"m", methodNamespaceUri:namespace)};
-	return (result)};
+	return (result)}
 //bundle //testing
 	//local (url = "http://www.userland.com/")
 	//local (htmltext)

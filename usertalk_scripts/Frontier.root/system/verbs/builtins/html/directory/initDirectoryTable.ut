@@ -29,7 +29,7 @@ on initDirectoryTable (identifier, adrdirectories) {
 		local (adrhits = @adrtable^.hits);
 		if not defined (adrhits^) {
 			new (tabletype, adrhits)}};
-	return (adrtable)};
+	return (adrtable)}
 //bundle //test code
 	//local (adrmsg = @worldoutlineManilaWebsite.["#discussionGroup"].messages.["0000004"])
 	//for i = 1 to 1000

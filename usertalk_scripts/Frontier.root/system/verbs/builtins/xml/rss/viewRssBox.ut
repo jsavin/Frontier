@@ -24,6 +24,6 @@ on viewRssBox (url, boxTitle=nil, width=125, frameColor="#000000", titleBarTextC
 		xml.rss.readService (url, @user.xml.rss.cache, "http://frontier.userland.com/xmlRss", adrStoryArrivedCallback);
 		adrincache^.timeExpires = clock.now () + (60 * 60)};
 	adrincache^.xmlUrl = url;
-	return (xml.rss.getHtmlRendering (adrincache, boxTitle, width, frameColor, titleBarTextColor, titleBarColor, boxFillColor, timeZone, maxItems, timeZoneOffsetHours))};
+	return (xml.rss.getHtmlRendering (adrincache, boxTitle, width, frameColor, titleBarTextColor, titleBarColor, boxFillColor, timeZone, maxItems, timeZoneOffsetHours))}
 //bundle //test code
 	//webbrowser.displaytext (xml.rss.viewRssBox ("http://www.ourfavoritesongs.com/users/dave@userland.com/rss/soap.xml"))

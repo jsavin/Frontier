@@ -9,7 +9,7 @@ on visitSelection (adrcallback) {
 		if not adrcallback^ () {
 			break}};
 	op.setcursor (oldcursor);
-	return (true)};
+	return (true)}
 //bundle //test code
 	//local (ctwords = 0)
 	//on callback ()

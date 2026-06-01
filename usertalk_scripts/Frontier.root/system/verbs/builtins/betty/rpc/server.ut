@@ -78,7 +78,7 @@ on server (xmlText, adrParamTable) { //called from the RPC2 responder on an inco
 	
 	bundle { //AR 11/04/1999: check for rpc request blocking
 		if not betty.rpc.checkClient (adrParamTable) { //1/31/02 JES: factored for use for both XML-RPC and SOAP
-			rpcFault ("Access not allowed from " + adrParamTable^.client + ".", betty.rpc.errorCodes.securityFault)};
+			rpcFault ("Access not allowed from " + adrParamTable^.client + ".", betty.rpc.errorCodes.securityFault)}};
 		//if defined (user.betty.prefs.flAllowByIpOnly)
 			//if user.betty.prefs.flAllowByIpOnly
 				//local (flBlocked = true)
@@ -100,7 +100,7 @@ on server (xmlText, adrParamTable) { //called from the RPC2 responder on an inco
 							//flblocked = false
 							//break
 				//if flblocked
-					//rpcFault ("Access not allowed from " + adrParamTable^.client + ".", betty.rpc.errorCodes.securityFault)};
+					//rpcFault ("Access not allowed from " + adrParamTable^.client + ".", betty.rpc.errorCodes.securityFault)
 	
 	if (not flFault) { //get the procedure name and the paramlist
 		on parseXML () {

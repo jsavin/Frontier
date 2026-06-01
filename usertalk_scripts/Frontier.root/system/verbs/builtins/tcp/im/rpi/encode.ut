@@ -38,7 +38,7 @@ on encode (procedureName, paramlist) {
 		addOneParam (item)};
 	add ("</params>");
 	add ("</methodCall>");
-	return (xmltext)};
+	return (xmltext)}
 //bundle //test code
 	//wp.newtextobject (encode ("test.noOp", {user.prefs.commonStyles}), @scratchpad.rpctext)
 	//local (xstruct); xml.compile (string (scratchpad.rpctext), @xstruct); wp.newtextobject (xml.decompile (@xstruct), @scratchpad.rpctext)

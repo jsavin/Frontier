@@ -13,6 +13,6 @@ on getProgramName () {
 	else {
 		s = "UserLand Frontier"};
 	s = s + ( " v" + v );
-	return (s)};
+	return (s)}
 //bundle //test code
 	//dialog.alert (getProgramName ())

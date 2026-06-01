@@ -44,6 +44,6 @@ on getCurrentTime (server="time-b.timefreq.bldrdoc.gov", flMessages=true) {
 	tcp.closeStream (stream);
 	if flMessages { //clean up the message area
 		msg ("")};
-	return (d)};
+	return (d)}
 //bundle //test code
 	//dialog.alert (tcp.getCurrentTime ())

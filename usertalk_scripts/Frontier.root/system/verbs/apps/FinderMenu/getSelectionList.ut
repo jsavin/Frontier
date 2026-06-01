@@ -7,6 +7,6 @@ on getSelectionList () {
 			else {
 				return {}}}}
 	else {
-		return (appleEvent (@FinderMenu.ucmd.code, 'ÄSel', 'ÄSel'))}};
+		return (appleEvent (@FinderMenu.ucmd.code, 'ƒSel', 'ƒSel'))}};
 bundle { //test code
 	dialog.alert (getSelectionList ())}

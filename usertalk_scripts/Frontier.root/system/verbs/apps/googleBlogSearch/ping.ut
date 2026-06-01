@@ -17,6 +17,6 @@ on ping (name, url, changesUrl=url, rssUrl, categoryName="", adrdata=@googleBlog
 	else {
 		if adrmessage != nil {
 			adrmessage^ = tryError};
-		return (false)}};
+		return (false)}}
 //bundle //test code
 	//ping ("UserLand Blog", "http://blog.userland.com/", rssUrl:"http://blog.userland.com/xml/rss.xml")

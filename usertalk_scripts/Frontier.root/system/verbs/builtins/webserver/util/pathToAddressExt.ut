@@ -144,7 +144,7 @@ bundle { // testing
 	paramTable.responder = "default";
 	paramTable.responderTableAdr = @user.webserver.responders.default;
 	paramTable.path = "/";
-	dialog.notify(webserver.util.pathToAddressExt (paramTable.path, @user.webserver.responders.default.data.docTree, @paramTable));
+	dialog.notify(webserver.util.pathToAddressExt (paramTable.path, @user.webserver.responders.default.data.docTree, @paramTable))}
 	//paramTable.path = "/images/"
 	//dialog.notify(webserver.util.pathToAddressExt (paramTable.path, @user.webserver.responders.default.data.docTree, @paramTable))
 	//paramTable.path = "/frontier/debug/.../scripts"
@@ -152,4 +152,4 @@ bundle { // testing
 	//paramTable.path = "/bierman/samples/davenet"
 	//dialog.notify(webserver.util.pathToAddressExt (paramTable.path, @user.webserver.responders.default.data.docTree, @paramTable))
 	//paramTable.path = "/bierman/samples/davenet/../../../../"
-	}//dialog.notify(webserver.util.pathToAddressExt (paramTable.path, @user.webserver.responders.default.data.docTree, @paramTable))
+	//dialog.notify(webserver.util.pathToAddressExt (paramTable.path, @user.webserver.responders.default.data.docTree, @paramTable))

@@ -122,11 +122,11 @@ on buildMCF (folder, url, f, sitename, author=user.name, org=user.organization, 
 		return true};
 	if ( filter == nil ) {
 		filter = @nilFilter};
-	return (generateFileStructureMCF (folder, f, url, sitename, author, org, email, filter))};
+	return (generateFileStructureMCF (folder, f, url, sitename, author, org, email, filter))}
 //bundle //test code
 	//local (folder = "internal:apps:webstar:frontier:")
 	//local (url = "http://www.scripting.com/frontier/")
 	//local (f = folder + "siteMap.mcf")
 	//buildMCF (folder, url, f, "Frontier")
-//bundle //Êmore test code
+//bundle // more test code
 	//html.utilities.buildMCF ("Touch of Grey:WebSite:", "http://tango.mth.umassd.edu/correia/", "Touch of Grey:WebSite:root.mcf", "JimC")

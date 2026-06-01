@@ -40,8 +40,8 @@ on array (adrmsg, listvalue, adrparent, name, customStructType=nil, customNamesp
 				booleanType {
 					type = "boolean"};
 				doubleType {
-					type = "float";
-					};//type = "double"
+					type = "float"};
+					//type = "double"
 				shortType {
 					type = "short"};
 				binaryType {

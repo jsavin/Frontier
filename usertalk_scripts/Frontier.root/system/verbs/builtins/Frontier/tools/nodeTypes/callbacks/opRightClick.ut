@@ -57,7 +57,7 @@ on opRightClick (adradrmenu) {
 				flbookmarkpossible = typeof (adr^) == tabletype}};
 		if not flbookmarkpossible {
 			local (url);
-			flbookmarkpossible = op.attributes.getOne ("url", @url)};
+			flbookmarkpossible = op.attributes.getOne ("url", @url)}};
 		//if not flbookmarkpossible //12/18/00 JES: bookmarks are possible for homepage, template and siteStructureMessage nodes
 			//local (type, url)
 			//if op.attributes.getOne ("type", @type)
@@ -65,7 +65,7 @@ on opRightClick (adradrmenu) {
 				//if not flbookmarkpossible
 					//flbookmarkpossible = string.lower (type)  == "manilatemplate"
 				//if not flbookmarkpossible
-					//flbookmarkpossible = string.lower (type)  == "manilasitestructuremessage"};
+					//flbookmarkpossible = string.lower (type)  == "manilasitestructuremessage"
 	
 	local (nodeType);
 	op.attributes.getOne ("type", @nodeType);

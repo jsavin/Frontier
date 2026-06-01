@@ -62,7 +62,7 @@ on newSuite (adrSuite) {
 	//menu.addSuite (adrSuite) //it appears in the menubar now
 	
 	system.menus.buildSuitesSubmenu (); //add DG to Suites sub-menu of the Main menu
-	return (true)};
+	return (true)}
 //bundle //test code
 	//newSuite (@suites.blagooey)
 	//edit (@suites.blagooey)

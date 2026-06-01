@@ -16,6 +16,6 @@ on getStackDump (adrTable) {
 		if defined (name^) {
 			name = address (name)};
 		adrTable^.["level" + level] = name};
-	return (true)};
+	return (true)}
 //bundle // test code
 	//thread.getStackDump (@scratchpad.dump)

@@ -1,2 +1,4 @@
-on unixShellCommand (s) {
+on unixShellCommand (s, adrStdout=nil, adrStderr=nil) {
+	//2/15/26; 12:39:40 AM by JES
+		//Added new optional parameters for the address of string objects to store stdout and stderr
 	kernel (sys.unixshellcommand)}

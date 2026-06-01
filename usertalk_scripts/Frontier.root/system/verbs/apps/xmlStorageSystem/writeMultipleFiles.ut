@@ -15,7 +15,7 @@ on writeMultipleFiles (email, password, relativepathlist, filetextlist, adrrespo
 		rpcPath = adrdata^.rpcPath};
 	with adrdata^ {
 		adrresponse^ = xml.rpc (server, port, "xmlStorageSystem.saveMultipleFiles", @params, rpcPath:rpcPath, fldebug:fldebug, flShowMessages:flShowMessages, protocol:protocol, soapAction:soapAction);
-		return (not adrresponse^.flerror)}};
+		return (not adrresponse^.flerror)}}
 //bundle //test code
 	//local (relativepathlist = {"/test/xxx.html", "/test/yyy.html", "/test/zzz.html"})
 	//local (filetextlist = {"xxx", "yyy", "zzz"})

@@ -38,7 +38,7 @@ on readHeadFile (f, adroutline) {
 	file.close (f);
 	op.firstSummit ();
 	window.zoom (adroutline);
-	window.close (adroutline)};
+	window.close (adroutline)}
 //bundle //test code
 	//local (folder = "C:\\Frontier 5\\ThinkTank Templates\\", f)
 	//local (adrtable = @scratchpad.tankTemplates)

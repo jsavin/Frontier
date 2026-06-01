@@ -31,7 +31,7 @@ on iso8601StringToDate (s) {
 	local (tzoffset = 60 * (60 * number (string.nthField (tzstring, ":", 1)) + number (string.nthField (tzstring, ":", 2))));
 	if ixminus {
 		tzoffset = -1 * tzoffset};
-	return (date.set (day, month, year, hour, minute, second) - tzoffset + date.getCurrentTimeZone ())};
+	return (date.set (day, month, year, hour, minute, second) - tzoffset + date.getCurrentTimeZone ())}
 //bundle //test code
 	//date.iso8601StringToDate ("2003-02-12T18:25:38-08:00")
 		//"2/12/03; 6:25:38 PM"

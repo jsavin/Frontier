@@ -22,4 +22,4 @@ on entityEncode (s, flAlphaEntities = false) {
 			s = string.replaceall (s, "\"", "&quot;")}};
 	return (s)};
 bundle { //test code
-	dialog.alert (entityEncode ("Olejováø \"skvrna\" na Labi zøejmì do Nìmecka nedoplujeøíjna 1999 13:49", true))}
+	dialog.alert (entityEncode ("Olejov·¯ \"skvrna\" na Labi z¯ejmÏ do NÏmecka nedopluje¯Ìjna 1999 13:49", true))}

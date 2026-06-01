@@ -16,7 +16,7 @@ on findModuleDriver (nsUri, adradrdriver) {
 		return (true)};
 	if findInTable (@xml.rss.moduleDrivers) {
 		return (true)};
-	return (false)};
+	return (false)}
 //bundle //test code
 	//local (adrdriver)
 	//findModuleDriver ("http://backend.userland.com/blogChannelModule", @adrdriver)

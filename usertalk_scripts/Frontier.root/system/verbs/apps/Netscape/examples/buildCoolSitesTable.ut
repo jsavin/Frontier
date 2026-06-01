@@ -3,7 +3,7 @@ local (startHref = "<a href=\"", endHref = "</a><br>");
 	//use NetScape 1.0N
 	//visit the Cool Sites of the Day, Previous Cool Sites page, at:
 		//http://www.infi.net/oldcool.html
-	//choose the Source... command from the View menu
+	//choose the Source… command from the View menu
 	//save the file that's opened in your text editor
 	//run this script, choose the same file
 	//a bunch of cool sites will show up in this table

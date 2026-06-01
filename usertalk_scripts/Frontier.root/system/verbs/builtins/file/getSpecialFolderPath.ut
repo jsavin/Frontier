@@ -98,6 +98,6 @@ on getSpecialFolderPath (vol, specialfolder, create) {
 						return (true)};
 					errormessage = "Couldn't get the folder path because \"" + specialfolder;
 					errormessage = errormessage + "\" is not a special folder name.";
-					return (scriptError (errormessage))}}}}};
+					return (scriptError (errormessage))}}}}}
 //bundle //testing
 	//file.getSpecialFolderPath ("", "temp", true)

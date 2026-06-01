@@ -72,7 +72,7 @@ on discoverPingInfo (adrurl) {
 		else { // found some RDF, but not the auto-discovery bits
 			htmltext = string.delete (htmltext, 1, sizeOf (xtext));
 			continue}};
-	adrurl^.flSupportsTrackback = true};
+	adrurl^.flSupportsTrackback = true}
 //bundle //test code
 	//discoverPingInfo (@tbtestManilaWebsite.["#discussionGroup"].messages.["0000005"].trackback.outbound.urls.["http://127.0.0.1/tbtest/2003/07/14#a4"])
 //bundle //more test code

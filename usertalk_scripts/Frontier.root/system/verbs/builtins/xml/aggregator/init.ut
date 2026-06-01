@@ -103,7 +103,7 @@ bundle { //prefs
 	if not defined (adrdata^.prefs.maxErrorsBeforeAutoUnsubscribe) {
 		adrdata^.prefs.maxErrorsBeforeAutoUnsubscribe = 24 * 2};
 	if not defined (adrdata^.prefs.flSaveItemData) { //JES 11/14/02: passed to xml.rss.readService
-		adrdata^.prefs.flSaveItemData = true; //JES 3/4/03: always init to true -- needed for "modern" aggregator features to work
+		adrdata^.prefs.flSaveItemData = true}; //JES 3/4/03: always init to true -- needed for "modern" aggregator features to work
 		//bundle //old code/notes
 			//11/14/02 JES: The aggregator XML-RPC API returns the title and link along with the item. xml.rss.readService takes an optional parameter, flSaveData, which determines whether to save the title and link in the item sub-table of the compilation.
 				//Previously, the default value for this parameter was false. In Radio, it needs to be passed in as true, so that the aggregator API will get the right data.
@@ -111,7 +111,7 @@ bundle { //prefs
 			//if system.environment.isRadio
 				//adrdata^.prefs.flSaveItemData = true
 			//else
-				//adrdata^.prefs.flSaveItemData = false};
+				//adrdata^.prefs.flSaveItemData = false
 	if not system.environment.isRadio { //PBS 12/27/01: set up flBehindFirewall pref on Frontier
 		//In Radio the pref is at user.radio.prefs.flBehindFirewall. In Frontier the pref is in the adrdata^.prefs table.
 		if not defined (adrdata^.prefs.flBehindFirewall) {
@@ -166,8 +166,8 @@ bundle { //make sure everyMinute script is installed, if necessary
 			//adrdata^.settings.flInstalled = true //only do this once
 		if defined (user.scheduler.everyMinute.aggregator) {
 			if user.scheduler.everyMinute.aggregator == @xml.aggregator.everyMinute {
-				delete (@user.scheduler.everyMinute.aggregator)};
-			};//adrdata^.settings.flInstalled = true //only do this once
+				delete (@user.scheduler.everyMinute.aggregator)}};
+			//adrdata^.settings.flInstalled = true //only do this once
 		////install the table address in user.scheduler
 		if not defined (user.scheduler.threads.aggregator) {
 			user.scheduler.threads.aggregator = @xml.aggregator.thread}}};

@@ -25,6 +25,6 @@ on openGuestDatabase (f, topLevelName="", flHidden=true) {
 		wp.settextmode (false);
 		target.set (oldtarget)};
 	fileMenu.save (f);
-	return (true)};
+	return (true)}
 //bundle //test code
 	//openGuestDatabase ("c:\\program files\\radio userland\\backups\\test.root", "testStuff", false)

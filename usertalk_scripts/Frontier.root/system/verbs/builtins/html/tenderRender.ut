@@ -154,8 +154,8 @@ on tenderRender (adr) { //turn an object into HTML
 							typestring = "string4"};
 						stringtype {
 							valuestring = itemaddress^;
-							typestring = "string [" + sizeof (valuestring) + "]";
-							};//flnowrapvalue = false //let the browser client wrap this cell
+							typestring = "string [" + sizeof (valuestring) + "]"};
+							//flnowrapvalue = false //let the browser client wrap this cell
 						tabletype {
 							local (itemcount = itemsize);
 							if defined (itemaddress^.["{aretha stats}"]) {
@@ -167,8 +167,8 @@ on tenderRender (adr) { //turn an object into HTML
 							typestring = "table"};
 						wptexttype {
 							valuestring = itemsize + " chars";
-							typestring = "wptext";
-							};//flnowrapvalue = false //let the browser client wrap this cell
+							typestring = "wptext"};
+							//flnowrapvalue = false //let the browser client wrap this cell
 						picturetype {
 							valuestring =  itemsize + " bytes";
 							typestring = "picture"}};

@@ -53,6 +53,6 @@ on monitorThreads () { //called from scheduler.monitor, runs once a minute
 		local (i, ct = sizeof (user.scheduler.threads), adrthread, namethread);
 		for i = 1 to ct {
 			adrthread = @user.scheduler.threads [i];
-			killOneThread (adrthread)}}};
+			killOneThread (adrthread)}}}
 //bundle //test code
 	//monitorThreads ()

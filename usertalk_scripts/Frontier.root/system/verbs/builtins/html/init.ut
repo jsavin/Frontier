@@ -32,8 +32,8 @@ if not defined (user.html.prefs.textFileCreator) {
 if not defined (user.html.images) { //Tue, Dec 10, 1996 at 5:58:58 AM by DW
 	new (tabletype, @user.html.images)};
 if not defined (user.html.prefs.defaultFileName) { //Sun, Dec 15, 1996 at 6:28:18 AM by DW
-	user.html.prefs.defaultFileName = "index";
-	};//Index is far more common than default. PBS 1/27/97
+	user.html.prefs.defaultFileName = "index"};
+	//Index is far more common than default. PBS 1/27/97
 if not defined (user.html.prefs.charset) { //Mon, Dec 30, 1996 at 2:34:03 PM by DW
 	user.html.prefs.charset = "iso-8859-1"};
 if not defined (user.html.prefs.addLineFeeds) { //Tuesday, January 27, 1998 at 10:53:13 AM by PBS

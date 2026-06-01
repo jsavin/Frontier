@@ -1,6 +1,6 @@
 on compileDocs (adrOutline) {
 	// version 1.1; 8/21/92, dmb
-		//use '» 'character for example results, and only in examples section
+		//use ' 'character for example results, and only in examples section
 			//also checks to see if the character is already there
 			//and makes sure that it's the only heading at that level
 		//write each verb out to the file we go, reducing memory requirements
@@ -38,8 +38,8 @@ on compileDocs (adrOutline) {
 						if (ctSubs == 1) and (section == "Examples") { //an example
 							local (line);
 							line = op.getLineText ();
-							if string.nthChar (line, 1) != '»' {
-								line = "» " + line};
+							if string.nthChar (line, 1) ≠ '' {
+								line = " " + line};
 							s = s + tab + line + cr}
 						else {
 							loop {

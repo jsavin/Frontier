@@ -103,7 +103,7 @@ bundle { //test code
 			productname = "frontier"};
 		local (f = "c:\\program files\\radio userland\\www\\alidlExamples\\" + foldername + "\\" + productname + ".xml");
 		file.surefilepath (f);
-		file.writewholefile (f, s);
-		};//webbrowser.openurl ("http://www.ourfavoritesongs.com/users/dave@userland.com/alidlExamples/" + foldername + "/" + productname + ".xml")
+		file.writewholefile (f, s)};
+		//webbrowser.openurl ("http://www.ourfavoritesongs.com/users/dave@userland.com/alidlExamples/" + foldername + "/" + productname + ".xml")
 	writefile (get (@user.soap.rpcHandlers, "/", "soap", true), "soap");
 	writefile (get (@user.betty.rpcHandlers, "/RPC2", "xml-rpc", true), "xmlrpc")}

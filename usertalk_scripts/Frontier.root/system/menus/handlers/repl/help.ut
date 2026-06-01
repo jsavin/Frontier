@@ -1,4 +1,4 @@
-on help ()
+on help () {
 	//Print the REPL slash-command reference.
 		//5/7/26 by JES (PR 7)
 			//Thin wrapper around the repl.help kernel verb, which calls
@@ -9,5 +9,5 @@ on help ()
 			//"repl.help ()" directly (see installReplMenubar.ut), so this
 			//handler is no longer reached at runtime - it is preserved so
 			//a future host can hook UserTalk customization in here.
-	repl.help ()
-	return (true)
+	repl.help ();
+	return (true)}

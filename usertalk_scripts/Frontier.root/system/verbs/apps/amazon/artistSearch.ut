@@ -18,6 +18,6 @@ on artistSearch (artist, productline="music", page=1, flDetails=false) {
 	t.type = type;
 	return (amazon.call (nameOf (this^), t))};
 bundle { //test code
-	scratchpad.result = artistSearch ("painting over picasso")
-		//Here's an Easter Egg for you -- the guy who wrote this code played bass on the album returned by this search request. ;->;
+	scratchpad.result = artistSearch ("painting over picasso");
+		//Here's an Easter Egg for you -- the guy who wrote this code played bass on the album returned by this search request. ;->
 	edit (@scratchpad.result)}

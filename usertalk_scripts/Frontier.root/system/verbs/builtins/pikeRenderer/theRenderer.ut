@@ -40,8 +40,8 @@ on theRenderer (adroutline) {
 							local (val = adrvalue^);
 							if (typeof (val) == stringtype) and (val == "infinity") {
 								val = infinity};
-							adrrule^ = val}}}}};
-		};//scratchpad.myrules = adrtable^
+							adrrule^ = val}}}}}};
+		//scratchpad.myrules = adrtable^
 	local (s = "", level = 0);
 	op.firstsummit ();
 	on getLevel () {
@@ -68,8 +68,8 @@ on theRenderer (adroutline) {
 						new (tabletype, @adrsub^.values);
 						for legalvalue in legalvaluetags {
 							try {adrsub^.values.[legalvalue] = xml.getaddress (item, legalvalue)^}}}};
-				getmyrules (@myrules);
-				}//op.deleteline ()
+				getmyrules (@myrules)}
+				//op.deleteline ()
 			else {
 				if string.lower (linetext) == "<debug/>" {
 					scratchpad.rules = rules;
@@ -120,7 +120,7 @@ on theRenderer (adroutline) {
 				break}};
 		popruleslevel ()};
 	getLevel ();
-	return (s)};
+	return (s)}
 //bundle //test code
 	//edit (@websites.pikerenderer.default)
 	//scratchpad.theoutline = websites.pikerenderer.default

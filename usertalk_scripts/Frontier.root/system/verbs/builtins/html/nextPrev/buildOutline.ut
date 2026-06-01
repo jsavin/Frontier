@@ -34,6 +34,6 @@ on buildOutline (adrtable, adroutline) {
 	traverse (adrtable);
 	op.firstSummit ();
 	target.set (oldtarget);
-	return (true)};
+	return (true)}
 //bundle { //test code
 	//buildOutline (@user.websites.midas, @user.websites.midas.["#nextPrevs"])

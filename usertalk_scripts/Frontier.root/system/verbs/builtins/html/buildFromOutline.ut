@@ -36,6 +36,6 @@ on buildFromOutline (adroutline) { //4.2
 			if not op.go (down, 1) {
 				break}}};
 	try {target.set (oldtarget)};
-	return (ctbuilds)};
+	return (ctbuilds)}
 //bundle //test code
 	//buildFromOutline (@user.html.changedPages)

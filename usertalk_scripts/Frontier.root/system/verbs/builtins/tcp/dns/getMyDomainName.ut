@@ -5,7 +5,7 @@ on getMyDomainName () { //return the domain name of the machine we're running on
 		//Optimized by caching the domain name in system.temp.
 	if not defined (system.temp.myDomainName) {
 		system.temp.myDomainName = tcp.dns.getDomainName (tcp.addressDecode (tcp.myAddress ()))};
-	return (system.temp.myDomainName)};
+	return (system.temp.myDomainName)}
 //bundle //test code
 	//local (tc = clock.ticks ())
 	//for i = 1 to 1000

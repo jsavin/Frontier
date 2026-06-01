@@ -17,7 +17,7 @@ on ping (name, url, changesUrl=url, categoryName="none", adrdata=@weblogUpdates.
 	else {
 		if adrmessage != nil {
 			adrmessage^ = tryError};
-		return (false)}};
+		return (false)}}
 //bundle //test code
 	//ping ("Scripting News in XML", "http://scriptingnews.userland.com/xml/scriptingNews2.xml", categoryname:"rss")
 	//ping ("Scripting News", "http://www.scripting.com/", categoryname:"europe")

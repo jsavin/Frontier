@@ -74,8 +74,8 @@ on cmd2Click (name) {
 					whereAmI = op.getCursor()}}; // uniqueID, to restore at end
 			
 			if wp.inTextMode() { // doesn't apply to cmd2Click, but may to Jump
-				wp.getSelect(@leftOfSelection, @rightOfSelection)};
-			};//else: the left/right of selection are correct at zero
+				wp.getSelect(@leftOfSelection, @rightOfSelection)}};
+			//else: the left/right of selection are correct at zero
 		on restoreOutline() {
 			case windowType {
 				outlineType; // added 5/16/96 ==> changed to a case statement
@@ -267,8 +267,8 @@ on cmd2Click (name) {
 				whereAmI = op.getCursor()}; // uniqueID, to restore at end
 			
 			if wp.inTextMode() { // doesn't apply to cmd2Click, but may to Jump
-				wp.getSelect(@leftOfSelection, @rightOfSelection)};
-			};//else: the left/right of selection are correct at zero
+				wp.getSelect(@leftOfSelection, @rightOfSelection)}};
+			//else: the left/right of selection are correct at zero
 		on restoreOutline() {
 			if windowType equals scriptType {
 				op.setCursor(whereAmI)};

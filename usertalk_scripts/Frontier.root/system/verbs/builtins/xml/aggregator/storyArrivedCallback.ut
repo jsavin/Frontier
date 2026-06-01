@@ -62,6 +62,6 @@ on storyArrivedCallback (adrservice, adritem) {
 					adrcallback = adrcallback^};
 				adrcallback^ (adrservice, adrItem)}}};
 	xml.aggregator.clearCache ();
-	return (adrstory)};
+	return (adrstory)}
 //bundle //test code
 	//storyArrivedCallback (@aggregatorData.services.["http://radio.weblogs.com/0001015/rss.xml"], @aggregatorData.services.["http://radio.weblogs.com/0001015/rss.xml"].compilation.items.["00011"])

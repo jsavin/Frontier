@@ -87,11 +87,11 @@ on getMail (host, username, password, adrMsgTable, deleteMessages="", timeOutTic
 		bundle { //split out the header
 			headerLocation = string.patternMatch("\r\n\r\n",adrMsg^);
 			adrMsgTable^.text = string.delete(adrMsg^,1,headerLocation+3);
-			adrMsgTable^.fullHeader = string.delete(adrMsg^,headerLocation,infinity);
+			adrMsgTable^.fullHeader = string.delete(adrMsg^,headerLocation,infinity)};
 			//text may be pretty big, as could be msg. We are keeping msg for 
 				//pop purposes. We're keeping text for further mime processing.
 				//Fullheader is around for showing what the headers were.
-				//I like them, but some people don't.};
+				//I like them, but some people don't.
 		
 		if (parseSMTP) {
 			adrMsgTable^.text = string.replaceAll(adrMsgTable^.text,CR+LF+".",CR+LF)};
@@ -149,7 +149,7 @@ on getMail (host, username, password, adrMsgTable, deleteMessages="", timeOutTic
 					boundary = string.replaceAll (boundary, "+", "\\+");
 					boundary = string.replaceAll (boundary, ".", "\\.");
 					
-					partslist = regex.split (boundary, @adrMsgTable^.text)};
+					partslist = regex.split (boundary, @adrMsgTable^.text)}};
 				//bundle //original code
 					//local (matchtable)
 					//if not regex.easySearch ("boundary *= *\"[^\"]*\"", boundary, @matchtable)
@@ -165,7 +165,7 @@ on getMail (host, username, password, adrMsgTable, deleteMessages="", timeOutTic
 					//boundary = string.replaceAll (boundary, "+", "\\+")
 					//boundary = string.replaceAll (boundary, ".", "\\.")
 					//
-					//partslist = regex.split (boundary, @adrMsgTable^.text)};
+					//partslist = regex.split (boundary, @adrMsgTable^.text)
 			//adrMsgTable^.text = "" // replaces Eric's text
 			for aPart in partslist {
 				if sizeOf (aPart) == 0 { // regex puts an empty one on the front

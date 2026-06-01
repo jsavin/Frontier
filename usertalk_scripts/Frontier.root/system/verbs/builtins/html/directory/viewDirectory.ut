@@ -308,7 +308,7 @@ on viewDirectory (adroutline, directoryHomeUrl, remainingPath="", identifier="",
 								local (title);
 								bundle { //set the url
 									if flTopLevel {
-										url = homePageUrl + "directory/" + origpath + "/" + html.directory.getcanonicalname (text);
+										url = homePageUrl + "directory/" + origpath + "/" + html.directory.getcanonicalname (text)}
 										//bundle //unnecessarily verbose
 											//url = homePageUrl + "directory"
 											//if not ((url endsWith "/") or (origpath beginsWith "/"))
@@ -316,7 +316,7 @@ on viewDirectory (adroutline, directoryHomeUrl, remainingPath="", identifier="",
 											//url = url + origpath
 											//if not (origpath endsWith "/")
 												//url = url + "/"
-											//url = url + html.directory.getcanonicalname (text)}
+											//url = url + html.directory.getcanonicalname (text)
 									else {
 										//url = directoryHomeUrl + "/" + html.directory.getcanonicalname (text)
 										//url = pta^.uri
@@ -394,7 +394,7 @@ on viewDirectory (adroutline, directoryHomeUrl, remainingPath="", identifier="",
 										else {
 											icon = "<a class=\"" + cssPrefix + "IconLink\" href=\"" + url + "\"" + linktargetstring + ">" + linkicon + "</a>";
 											type = "link";
-											flAtLeastOneLink = true}}};
+											flAtLeastOneLink = true}}}}};
 								//if adr^.["/atts"].type == "link" //old version
 									//url = adr^.["/atts"].url
 									//if string.lower (url) beginswith string.lower (directoryHomeUrl) //it's a link into the directory on this site
@@ -431,7 +431,7 @@ on viewDirectory (adroutline, directoryHomeUrl, remainingPath="", identifier="",
 										//else
 											//icon = "<a class=\"" + cssPrefix + "IconLink\" href=\"" + url + "\">" + linkicon + "</a>"
 											//type = "link"
-											//flAtLeastOneLink = true}};
+											//flAtLeastOneLink = true
 						local (xmlLinks = "", itemtext);
 						if defined (adr^.["/atts"].xmlUrl) { //set xmlLinks to the coffee mug and xml button links
 							local (xmlurl = adr^.["/atts"].xmlUrl);

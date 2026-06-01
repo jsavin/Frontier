@@ -11,6 +11,6 @@ on spellingSuggestion (phrase, key=user.google.key) {
 	with google.data {
 		local (params = {"key":key, "phrase":phrase});
 		result = soap.rpc.client (path, methods.spellingSuggestion, @params, server, port, soapAction:soapAction, methodNamespace:"m", methodNamespaceUri:namespace)};
-	return (result)};
+	return (result)}
 //bundle //testing
 	//dialog.alert (spellingSuggestion ("Oh give me a hymn whre the bufalo rom, and the ski is not cloudy all day."))

@@ -29,7 +29,7 @@ on readService (url, adrservices, adradrservice=nil) {
 	try {adrdata^.stats.lastRun.lastChannelRead = adrservice^.compilation.channeltitle};
 	if adradrservice != nil { //10/14/02 DW
 		adradrservice^ = adrservice};
-	return (true)};
+	return (true)}
 //bundle //test code
 	//local (url = "http://partners.userland.com/people/docSearls.xml")
 	//url = "http://www.bbc.co.uk/syndication/feeds/news/ukfs_news/front_page/rss091.xml"

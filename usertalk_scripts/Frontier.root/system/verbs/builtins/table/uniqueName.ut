@@ -8,7 +8,8 @@ on uniqueName (prefix, tableAdr, places=nil) { //returns the address of a unique
 			adr = @tableAdr^.[prefix + string.padWithZeros (ct, places)]};
 		if not defined (adr^) {
 			return (adr)};
-		ct++}};
+		ct++}}
 //bundle 
-	//dialog.alert (uniqueName ("object", @scratchpad, 3))
-	//dialog.alert (uniqueName ("object", @scratchpad, 3))
+	//dialog.alert (table.uniqueName ("object", @scratchpad, 3))
+	//typeOf (table.uniqueName ("object", @scratchpad, 3))
+		//'addr'

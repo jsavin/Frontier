@@ -1,2 +1,2 @@
 on validateUser (x, password, realm, appID = WebStar.id) { //Validate that a given password is correct for a user in a specific realm
-	return (appleEvent (appID, 'WWW½', 'Vusr', '----', x, 'AUpw', password, 'AUrm', realm))}
+	return (appleEvent (appID, 'WWWΩ', 'Vusr', '----', x, 'AUpw', password, 'AUrm', realm))}

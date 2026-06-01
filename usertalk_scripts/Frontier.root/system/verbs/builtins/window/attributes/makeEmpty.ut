@@ -5,6 +5,6 @@ on makeEmpty (adrwindow=nil) {
 	if defined (adrparent^) {
 		local (adratts = @adrparent^.["/atts"]);
 		new (tableType, adratts)};
-	return (true)};
+	return (true)}
 //bundle //testing
 	//makeEmpty ()

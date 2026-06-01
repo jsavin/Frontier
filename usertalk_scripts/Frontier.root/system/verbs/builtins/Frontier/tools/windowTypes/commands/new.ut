@@ -78,7 +78,7 @@ on new (flHidden=false, title=nil, adradrwindow=nil) {
 		adradrwindow^ = adr};
 	
 	return (true);
-	
+	};
 	//bundle //old code
 		//local (nextFileNum, titleString)
 		//
@@ -111,7 +111,7 @@ on new (flHidden=false, title=nil, adradrwindow=nil) {
 				//adrTable^.flLocal = true
 			//pike.newWindow (titleString) //PBS 12/26/00: call new bottleneck script
 		//
-		//return (true)};
+		//return (true)
 
 //bundle //debugging
 	//new ()

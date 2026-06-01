@@ -52,9 +52,9 @@ on openManilaSite (siteurl=nil, adradrwindow=nil) {
 			return (true)}};
 	
 	return (false); //command not handled
-	
+	};
 	//bundle //old code
-		//return (playlist.manila.commands.openManilaSite ())};
+		//return (playlist.manila.commands.openManilaSite ())
 
 //bundle //testing
 	//openManilaSite ()

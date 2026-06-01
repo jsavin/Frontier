@@ -5,6 +5,6 @@ on enableFiltering (fl) { //if true, enable filtering; if false disable
 	if fl { //enabling
 		mail.traps.startup ()}
 	else { //disabling
-		mail.traps.shutdown ()}};
+		mail.traps.shutdown ()}}
 //bundle //test code
 	//enableFiltering (true)

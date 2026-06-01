@@ -1,4 +1,4 @@
-on windowTypesOpenAdapter (name)
+on windowTypesOpenAdapter (name) {
 	//Phase E adapter: bridge kernel string-path callback to the windowTypes
 	//framework's address-based handler.
 		//5/31/26 by JES
@@ -34,4 +34,4 @@ on windowTypesOpenAdapter (name)
 	if not defined (adr^) {
 		return (true)};
 	Frontier.tools.windowTypes.callbacks.openWindow (adr);
-	return (true)
+	return (true)}

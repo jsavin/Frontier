@@ -1,2 +1,2 @@
-on unqueue (obj) { //Remove a message from the queue, so it wonÕt be sent
+on unqueue (obj) { //Remove a message from the queue, so it won’t be sent
 	return (appleEvent (Eudora.id, 'CSOm', 'eUnQ', '----', objspec (obj)))}

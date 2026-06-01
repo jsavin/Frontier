@@ -21,7 +21,7 @@ on dateToIso8601String (d) {
 		tzsign = "+"};
 	local (tzhours = tzoffset / 60);
 	local (tzminutes = tzoffset % 60);
-	return (s + tzsign + string.padWithZeros (tzhours, 2) + ":"  + string.padWithZeros (tzminutes, 2))};
+	return (s + tzsign + string.padWithZeros (tzhours, 2) + ":"  + string.padWithZeros (tzminutes, 2))}
 //bundle //test code
 	//date.dateToIso8601String (clock.now ())
 		//"2003-02-12T18:25:38-08:00"

@@ -12,6 +12,6 @@ on getEnclosureData (url, adrenclosure) {
 		adrenclosure^.length = number (headers.["Content-Length"]);
 		adrenclosure^.type = headers.["Content-Type"]}
 	else {
-		adrenclosure^.error = tryError}};
+		adrenclosure^.error = tryError}}
 //bundle //test code
 	//getEnclosureData ("http://www.scripting.com/mp3s/touchOfGrey.mp3", @myUserLandData.stories.["00008242"].enclosure)

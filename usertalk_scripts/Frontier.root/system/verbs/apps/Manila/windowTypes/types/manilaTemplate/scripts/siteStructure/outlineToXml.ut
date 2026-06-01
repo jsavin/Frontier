@@ -109,6 +109,6 @@ on outlineToXml (adrOutline) {
 	if system.environment.isMac {
 		xmltext = latinToMac.macToLatin (xmlText)};
 	
-	return (xmlText)};
+	return (xmlText)}
 //bundle //test code
 	//wp.newTextObject (outlineToXml (window.frontmost ()), @workspace.xtext)

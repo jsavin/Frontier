@@ -1,4 +1,4 @@
-on windowTypesCloseAdapter (name)
+on windowTypesCloseAdapter (name) {
 	//Phase E adapter: bridge kernel string-path callback to the windowTypes
 	//framework's address-based closeWindow handler.
 		//5/31/26 by JES
@@ -25,4 +25,4 @@ on windowTypesCloseAdapter (name)
 		return (true)};
 	if not defined (adr^) {
 		return (true)};
-	return (Frontier.tools.windowTypes.callbacks.closeWindow (adr))
+	return (Frontier.tools.windowTypes.callbacks.closeWindow (adr))}

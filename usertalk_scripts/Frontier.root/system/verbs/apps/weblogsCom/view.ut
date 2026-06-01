@@ -118,7 +118,7 @@ on view (cellBgColor=radio.data.htmlColors.cellBgColor, frameColor=radio.data.ht
 		add ("</form>"); indentlevel--};
 	add ("</td>"); indentlevel--;
 	add ("</tr></table>"); indentlevel--;
-	return (htmltext)};
+	return (htmltext)}
 //bundle //test code
 	//html.setpagetableaddress (@scratchpad.params)
 	//view ()

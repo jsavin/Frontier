@@ -18,9 +18,9 @@ on recv_event(adrSelf) {
 			else {
 				tcp.im.builtinDrivers.aim.code.core.derror(adrSelf,tryerror)};
 			thread.sleepfor(1);
-			};
+			}};
 		//This will loop till there is something on the port. 
-			//probably need to be nicer about it. };
+			//probably need to be nicer about it. 
 	
 	if header == "" {
 		tcp.im.builtinDrivers.aim.code.core.err_disconnect(adrSelf);

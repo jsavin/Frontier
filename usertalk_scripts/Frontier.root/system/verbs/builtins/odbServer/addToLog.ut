@@ -17,7 +17,7 @@ on addToLog (label, commandname, atts) {
 		if dir == down {
 			op.go (left, 1)};
 		op.setDisplay (true);
-		odbServer.targetClear (@user.odbServer.log)}};
+		odbServer.targetClear (@user.odbServer.log)}}
 //bundle //test code
 	//local (atts)
 	//new (tabletype, @atts)

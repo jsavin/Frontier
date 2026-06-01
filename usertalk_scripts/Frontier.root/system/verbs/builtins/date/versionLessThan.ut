@@ -79,7 +79,7 @@ on versionLessThan (vs1, vs2) {
 					//else
 						//return (vt1.subVersionNum < vt2.subVersionNum)
 				//return (false) //they're equal
-	kernel (date.versionLessThan)};
+	kernel (date.versionLessThan)}
 //bundle //test code, all should return false
 	//dialog.notify (not date.versionLessThan ("2.0b9", "2.0"))
 	//dialog.notify (not date.versionLessThan ("2.0b9", "2.0"))

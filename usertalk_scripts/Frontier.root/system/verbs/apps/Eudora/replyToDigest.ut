@@ -92,6 +92,6 @@ on replyToDigest(toField="") {
 		theMsg = createMessage(); // creates new message, returns an ObjectSpecifier
 		setMessageTo(theMsg, toField);
 		setMessageSubject(theMsg, subjectField);
-		setMessageText(theMsg, fromField + " typed:" + cr + textField + signature);
-		}};//setMessageText(theMsg, "On " + dateField + ", " + fromField + " typed:" + cr + textField)
+		setMessageText(theMsg, fromField + " typed:" + cr + textField + signature)}};
+		//setMessageText(theMsg, "On " + dateField + ", " + fromField + " typed:" + cr + textField)
 replyToDigest()

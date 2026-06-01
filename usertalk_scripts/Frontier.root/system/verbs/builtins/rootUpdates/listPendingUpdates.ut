@@ -24,6 +24,6 @@ on listPendingUpdates (adrUpdatesTable) {
 						if i > 1 {
 							add ("<hr size=\"1\" width=\"100%\">")}};
 					return (htext)}}}};
-	return ("There are no new features or bug fixes to list at this time.")};
+	return ("There are no new features or bug fixes to list at this time.")}
 //bundle //test code
 	//listPendingUpdates ()

@@ -27,6 +27,6 @@ on login (driverName, screenname, message) {
 		else {
 			return ("Can't login to \"" + siteurl + "\" because the username or password is incorrect.")};
 		user.im.responders.manila.prefs.currentSite = nameOf (adrinfo^);
-		return ("Logged in to " + adrinfo^.displaySiteName + ".")}};
+		return ("Logged in to " + adrinfo^.displaySiteName + ".")}}
 //bundle //test code
 	//login ("", "", "manila login jake.editthispage.com jake@jspace.org guessme")

@@ -1,6 +1,6 @@
 on day (theDate = clock.now ()) { //return just the day from the date
 	local (day, month, year, hour, minute, second);
 	date.get (theDate, @day, @month, @year, @hour, @minute, @second);
-	return (day)};
+	return (day)}
 //bundle //test code
 	//dialog.alert (date.day ())

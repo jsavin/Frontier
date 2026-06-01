@@ -17,6 +17,6 @@ bundle { //visit all the records in the database
 		ubase.deleteRecord (fnum, key);
 		ubase.addRecord (fnum, key, @x);
 		if random (1, 50) == 35 {
-			msg ("Validating file...");
+			msg ("Validating file…");
 			msg (ubase.validateFile (fnum));
 			clock.waitSeconds (3)}}}

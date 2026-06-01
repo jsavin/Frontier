@@ -51,6 +51,6 @@ on box (searchterm, ctResults=10, tableWidth=191, frameColor="#000000", boxColor
 		add ("</table>"); indentlevel--;
 		add ("<br><table><tr><td valign=\"top\"><a href=\"" + helpLink + "\"><img src=\"http://static.userland.com/shortcuts/images/qbullets/help.gif\" width=\"12\" height=\"11\" border=\"0\" alt=\"Help link\"></a></td><td valign=\"top\">" + textpre + "&nbsp;<i>" + whenLastRead + ".</i>" + textpost + "</td></tr></table>");
 		add ("</td></tr></table></td></tr></table>"); indentlevel--};
-	return (htmltext)};
+	return (htmltext)}
 //bundle //test code
 	//webbrowser.displaytext (box ("dhrb", 25, boxcolor:"whitesmoke", align:"right") + string.filledstring ("oh the buzzing of the bees ", 500))

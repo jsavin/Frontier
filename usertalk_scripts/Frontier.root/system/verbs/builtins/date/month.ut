@@ -1,6 +1,6 @@
 on month (theDate = clock.now ()) { //return just the month from the date
 	local (day, month, year, hour, minute, second);
 	date.get (theDate, @day, @month, @year, @hour, @minute, @second);
-	return (month)};
+	return (month)}
 //bundle //test code
 	//dialog.alert (date.month ())

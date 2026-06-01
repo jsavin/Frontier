@@ -3,9 +3,9 @@ on putFilesAway () {
 	
 	on visit (path) {
 		//we take every file (folders are ignored) and check it's creator
-			//then we find out the name of the creator app, & add a 'Ä' to
+			//then we find out the name of the creator app, & add a 'ƒ' to
 			//the end of it's name. We then put the file into a folder named
-			//'[appName] Ä'. If the folder doesn't exist, we make it. If the
+			//'[appName] ƒ'. If the folder doesn't exist, we make it. If the
 			//creating app doesn't exist, the file goes into the 'unknown' 
 			//folder
 		if file.isFolder (path) or (file.type (path) == 'APPL') {
@@ -15,7 +15,7 @@ on putFilesAway () {
 			dest = finderMenu.examples.putAwayPath};
 		if app == "" {
 			app = "Unknown files"};
-		dest = dest + app + " Ä:";
+		dest = dest + app + " ƒ:";
 		if ! file.exists (dest) { // if the destination folder doesn't exist, make it
 			file.newFolder (dest)};
 		//We can run into problems here

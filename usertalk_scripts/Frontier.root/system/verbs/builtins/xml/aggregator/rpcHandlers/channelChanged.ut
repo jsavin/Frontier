@@ -9,6 +9,6 @@ on channelChanged (url) {
 		if adrdata^.prefs.flChannelChange {
 			local (link = "<a href=\"" + url + "\">" + adrservice^.compilation.channeltitle + "</a>");
 			try {radio.log.add ("Channel change", link + " changed.", startticks)}}};
-	return (true)};
+	return (true)}
 //bundle //test code
 	//channelChanged ("http://www.salon.com/feed/RDF/salon_use.rdf")

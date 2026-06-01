@@ -35,5 +35,5 @@ on iqRegister ( connection, mesAdr, iq, query ) {
 			if defined ( connection^.registrationInfoAdr^.[name] ) {
 				xml.addValue ( q, name, connection^.registrationInfoAdr^.[name] )}}};
 	
-	tcp.im.builtinDrivers.jabber.code.writeXML (iq, connection: connection )};
+	tcp.im.builtinDrivers.jabber.code.writeXML (iq, connection: connection )}
 //iqRegister(@system.temp.jabber.references[1], nil, nil, nil, "temp" )

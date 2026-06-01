@@ -19,10 +19,10 @@ on suggestALinkForm () {
 			referer = "fill in later";
 			editorname = "Bull Mancuso";
 			editoremail = "bull@mancuso.com";
-			
+			};
 			//referer = args.referer
 			//editorname = base64.decode (args.ownername)
-			};//editoremail = base64.decode (args.owneremail)
+			//editoremail = base64.decode (args.owneremail)
 		"POST" {
 			local (recipient = base64.decode (pta^.postargs.editor));
 			local (subject = "Suggested Link: " + pta^.postargs.title);

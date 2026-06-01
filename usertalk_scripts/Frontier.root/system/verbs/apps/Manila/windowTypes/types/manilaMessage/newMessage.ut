@@ -25,7 +25,7 @@ on newMessage (siteUrl, title, inResponseTo=0, flPromoteToStory=true) {
 		window.attributes.addGroup (@atts, adr)};
 	
 	return (true);
-	
+	}
 	//bundle //old code
 		//local (siteInfo, storyInfo)
 		//siteInfo = playlist.manila.buildSiteInfo (siteUrl)
@@ -45,4 +45,4 @@ on newMessage (siteUrl, title, inResponseTo=0, flPromoteToStory=true) {
 		//
 		//thread.callScript (@pike.commands.newStory, {adrStoryTable})
 		//
-		//return (true)}
+		//return (true)

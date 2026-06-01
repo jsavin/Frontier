@@ -24,9 +24,9 @@ with objectModel, Filemaker {
 		scratchVar=get(record[1 to 5].cell[1]); //cells from range of records
 		scratchVar=get(record[1 to 5].uniqueID)}; //IDs from range of records
 	bundle { //getting data as a certain type
-		scratchVar=get(record[1].cell[1],stringtype);
+		scratchVar=get(record[1].cell[1],stringtype)};
 		//Other types might be:
 			//dateType
 			//longType (number)
-			//binaryType (images etc};
+			//binaryType (images etc
 	scratchVar=0} //a step so that the last change to scratchVar can be seen in the lookup

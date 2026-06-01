@@ -53,7 +53,7 @@ on discoverPingInfo (adrurl) {
 			adrurl^.postDate = date.iso8601StringToDate (adratts^.["dc:date"])}
 		else {
 			adrurl^.postDate = clock.now ()}};
-	adrurl^.flSupportsTrackback = true};
+	adrurl^.flSupportsTrackback = true}
 //bundle //test code
 	//discoverPingInfo (@newssiteManilaWebsite.["#discussionGroup"].messages.["0000005"].trackback.outbound.urls.["http://static3.userland.com/mtweblog/archives/000056.html#000056"])
 //bundle //more test code

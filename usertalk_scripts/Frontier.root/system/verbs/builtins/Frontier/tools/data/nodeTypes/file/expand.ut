@@ -33,7 +33,7 @@ if op.attributes.getOne ("url", @url) {
 else {
 	dialog.alert ("Can't expand the file because its URL is unknown.")};
 op.setDisplay (oldDisplay);
-try {target.set (oldTarget)};
+try {target.set (oldTarget)}
 //bundle //old code
 	//case true
 		//string.lower (url) endswith ".opml"

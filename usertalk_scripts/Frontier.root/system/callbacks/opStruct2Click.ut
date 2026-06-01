@@ -14,6 +14,6 @@ on opStruct2Click () {
 				adrScript = adrScript^};
 			if adrscript^ () {
 				return (true)}}}; //consumed
-	return (false)}; //not consumed
+	return (false)} //not consumed
 //bundle //test code
 	//opStruct2Click ()

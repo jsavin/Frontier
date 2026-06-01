@@ -24,6 +24,6 @@ on getCurrentServer (adrObject=nil) {
 					return (nomad^.["#prefs"].["#webEditServer"])}}}};
 	
 	//No #webEditServer directive, return the current server.
-	return (user.webEdit.prefs.currentServer)};
+	return (user.webEdit.prefs.currentServer)}
 //bundle //test code
 	//getCurrentServer ()

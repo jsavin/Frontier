@@ -85,7 +85,7 @@ on save (adr, flClosing=false, subject=nil) {
 	
 	msg ("");
 	return (true);
-	
+	};
 	//bundle //old code
 		//local (windowType = pike.getWindowType (adrItem))
 		//if windowType != ""
@@ -172,7 +172,7 @@ on save (adr, flClosing=false, subject=nil) {
 						//if not (adrTable^.storyInfo.flAddToStoriesList)
 							//flAddToStoriesList = false
 					//if flAddToStoriesList
-						//manila.message.addToStoriesList (@adrTable^.siteinfo, resulttable.msgnum)};
+						//manila.message.addToStoriesList (@adrTable^.siteinfo, resulttable.msgnum)
 
 bundle { //debugging
 	save (window.frontmost ())}

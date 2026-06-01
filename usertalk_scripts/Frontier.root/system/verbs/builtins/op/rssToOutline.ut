@@ -137,7 +137,7 @@ on rssToOutline (xmltext, adroutline, url="") {
 	op.firstsummit ();
 	window.setposition (adroutline, 75, 125);
 	window.setsize (adroutline, 400, 450);
-	target.set (oldtarget)};
+	target.set (oldtarget)}
 //bundle //test code
 	//local (url = "http://www.palmstation.com/palmstation.rdf")
 	//local (s = tcp.httpReadUrl (url))

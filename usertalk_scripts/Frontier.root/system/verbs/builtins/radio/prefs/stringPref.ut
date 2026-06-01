@@ -48,7 +48,7 @@ on stringPref (prompt, adrstring, type="text", size=50, maxlength=100, textToRig
 					weblogData.prefs.authorName = value};
 				if adr == @user.prefs.mailAddress {
 					weblogData.prefs.authorMailAddress = value}}}};
-	return (error + "<tr><td align=\"left\">" + prompt + ":</td><td valign=\"top\" width=\"70%\" colspan=\"" + colspan + "\"><input type=\"" + type + "\" name=\"" + string.urlEncode (string.popFileFromAddress (adrstring)) + "\" size=\"" + size + "\" maxlength=\"" + maxlength + "\" value=\"" + string (adrstring^) + "\">" + textToRight + "</td></tr>")};
+	return (error + "<tr><td align=\"left\">" + prompt + ":</td><td valign=\"top\" width=\"70%\" colspan=\"" + colspan + "\"><input type=\"" + type + "\" name=\"" + string.urlEncode (string.popFileFromAddress (adrstring)) + "\" size=\"" + size + "\" maxlength=\"" + maxlength + "\" value=\"" + string (adrstring^) + "\">" + textToRight + "</td></tr>")}
 //bundle //test code
 	//html.setpagetableaddress (@scratchpad.params)
 	//stringpref ("Mail server", @user.prefs.mailHost)

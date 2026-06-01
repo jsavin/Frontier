@@ -212,7 +212,7 @@ on parseAete (appPath, adrTable) { //parse the app's aete resource and build a v
 				rtn = rtn + ", '" + id + "', " + makeParam (paramname, paramtype);
 				isFirst = false}};
 		ctevents = getshort ();
-		if mapSuite (suiteCode, @adrSuite) and (suiteCode!='misc' or ctevents==0) { //map all events of suite
+		if mapSuite (suiteCode, @adrSuite) and (suiteCode≠'misc' or ctevents==0) { //map all events of suite
 			for i = 1 to sizeOf (adrSuite^) {
 				mapEvent (@adrSuite^ [i], adrTable)}};
 		eventprefix = "return (appleEvent (" + nameOf (adrTable^) + ".id, '";

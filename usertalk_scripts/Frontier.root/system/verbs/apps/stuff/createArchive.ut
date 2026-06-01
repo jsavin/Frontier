@@ -24,7 +24,7 @@ on createArchive (sitfile, filelist, flbinhex) {
 				appleEvent (stuff.id, 'core', 'clos', '----', objspec (window [file.filefrompath (sitfile)]))}};
 		if flbinhex { //create the BinHex file
 			appleevent (stuff.id, 'SIT!', 'TRAN', '----', alias (sitfile), 'trnm', "BinHex4", 'encd', true);
-			file.delete (sitfile)}}};
+			file.delete (sitfile)}}}
 //bundle //test code
 	//local (sitfile = "Jaz Disk 1:testfile.sit")
 	//local (filelist = {"Jaz Disk 1:Picture 1", "Jaz Disk 1:tmp.html"})

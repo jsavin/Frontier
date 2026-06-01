@@ -9,8 +9,8 @@ on send (username, messagetext) {
 		s = string.replaceall (string (messagetext), "&", "&amp;");
 		s = string.replaceall (s, "<", "&lt;");
 		s = string.replaceall (s, ">", "&gt;");
-		s = string.replaceall (s, "\"", "&quot;");
-		};//messagetext = string.replaceall (s, "'", "&apos;") //JES 7/30/02: commented out -- AOL IM doesn't decode this.
+		s = string.replaceall (s, "\"", "&quot;")};
+		//messagetext = string.replaceall (s, "'", "&apos;") //JES 7/30/02: commented out -- AOL IM doesn't decode this.
 	return (tcp.im.builtinDrivers.aim.code.outgoing.sendIm (@temp.im.aim, username, s))};
 bundle { //test code
 	send ("esoroos2", "Hey there!")}

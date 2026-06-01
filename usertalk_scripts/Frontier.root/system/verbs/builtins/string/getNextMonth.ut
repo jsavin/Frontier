@@ -25,7 +25,7 @@ on getNextMonth (adrmonth, adryear) {
 			adrmonth^ = "December"};
 		"December" {
 			adrmonth^ = "January";
-			adryear^ = adryear^ + 1}}};
+			adryear^ = adryear^ + 1}}}
 //bundle
 	//local (month = "December", year = 1997)
 	//getNextMonth (@month, @year)

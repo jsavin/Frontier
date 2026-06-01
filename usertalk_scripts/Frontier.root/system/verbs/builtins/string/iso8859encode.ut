@@ -12,7 +12,7 @@ on iso8859encode (s, adrtable=nil) {
 		scriptError ("Can't do ISO-8859 encoding because no table was specified, and the current platform could not be determined.")};
 	on kernelCall (s, adrtable) {
 		kernel (string.iso8859encode)};
-	kernelCall (s, adrtable)};
+	kernelCall (s, adrtable)}
 //bundle //test code
 	//dialog.alert (iso8859encode ("© Copyright 1996-" + date.year () + " UserLand Software", @html.data.iso8859.mac))
 	//dialog.alert (iso8859encode ("© Copyright 1996-" + date.year () + " UserLand Software"))

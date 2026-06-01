@@ -60,7 +60,7 @@ on saveServicesXml (f, adrIncludeCallback=nil) {
 	if system.environment.isMac { //02/22/2001 JES: convert to Latin text
 		xmltext = latinToMac.macToLatin (xmltext)};
 	file.surefilepath (f);
-	file.writewholefile (f, xmltext, 'OPML', Frontier.id)};
+	file.writewholefile (f, xmltext, 'OPML', Frontier.id)}
 //bundle //test code
 	//local (f = file.getSystemDisk () + "mySubscriptions.xml")
 	//saveServicesXml (f)

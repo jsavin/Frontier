@@ -29,7 +29,7 @@ on wildcardMatch (s, pattern, flCaseSensitive=true) {
 				return (true)};
 			return (s endswith onepart)};
 		endix = ix + sizepart};
-	return (true)};
+	return (true)}
 //bundle //testing
 	//string.wildcardMatch ("this is a wildcard test", "is*test")
 		//false

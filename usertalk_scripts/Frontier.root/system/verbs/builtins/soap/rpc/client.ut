@@ -110,7 +110,7 @@ on client (actionURI, methodName, adrparams, rpcServer="localhost", rpcPort=user
 				supportsUTF = false};
 			case string.lower (charset) {
 				soap.constants.charsetLatin1 {
-					};//default behavior
+					//default behavior
 				soap.constants.charsetUsAscii {
 					flEntityEncodeHighAscii = true};
 				soap.constants.charsetUtf8 {

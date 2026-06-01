@@ -32,7 +32,7 @@ on urlSplit (url) {
 				//path = string.delete (url, 1, ix)
 				//
 				//return ({protocol, domain, path})
-	kernel (string.urlsplit)};
+	kernel (string.urlsplit)}
 //bundle //test code
 	//dialog.alert (urlsplit ("http://www.yourserver.com/"))
 	//dialog.alert (urlsplit ("http://www.yourserver.com/essays/97/04/myLife.html"))

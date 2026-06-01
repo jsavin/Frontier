@@ -163,7 +163,7 @@ on client (rpcServer="localhost", rpcPort=user.inetd.config.http.port, procedure
 			if not defined (adrcount^) {
 				adrcount^ = 0};
 			adrcount^ = adrcount^ + (clock.ticks () - startticks)}};
-	return (returnedValue)};
+	return (returnedValue)}
 //bundle //test code
 	//local (params = {"Dave's Handsome Radio Blog", "http://radio.weblogs.com/0001015/"})
 	//scratchpad.response = betty.rpc.client ("rpc.weblogs.com", 80, "weblogUpdates.ping", @params)

@@ -3,8 +3,8 @@ on getMessageTable (cookie, adrtable) {
 		//Fixed toys reference.
 	local (s);
 	with objectmodel, eudora, eventinfo {
-		s = get (cookie);
-		};//toys.newtextobject (s, @scratchpad.s) //for debugging
+		s = get (cookie)};
+		//toys.newtextobject (s, @scratchpad.s) //for debugging
 	on getline () {
 		local (linestring = string.nthfield (s, cr, 1));
 		s = string.delete (s, 1, sizeof (linestring) + 1);

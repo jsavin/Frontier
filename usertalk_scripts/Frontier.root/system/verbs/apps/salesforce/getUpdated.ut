@@ -7,7 +7,7 @@ on getUpdated (adrSession, objectType, startDate, endDate) {
 		return ({})};
 	if typeOf (retval[1]) == listType {
 		return (retval[1])};
-	return ({retval[1]})};
+	return ({retval[1]})}
 //bundle //test code
 	//local (adrses)
 	//bundle //set adrses

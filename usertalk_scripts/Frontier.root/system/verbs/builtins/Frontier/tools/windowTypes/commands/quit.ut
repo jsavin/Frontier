@@ -27,7 +27,7 @@ on quit () {
 	filemenu.save ();
 	filemenu.quit ();
 	return (true);
-	
+	};
 	//bundle //old code
 		//Quit Radio UserLand.
 			//Changes:
@@ -88,6 +88,6 @@ on quit () {
 			//return (false)
 		//filemenu.save ()
 		//filemenu.quit ()
-		//return (true)};
+		//return (true)
 bundle { // debugging
 	quit ()}

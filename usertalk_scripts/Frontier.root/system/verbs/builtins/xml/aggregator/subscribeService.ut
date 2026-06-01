@@ -58,7 +58,7 @@ on subscribeService (xmlUrl, adrerrorstring=nil, adradrservice=nil) {
 				while typeof (adrscript^) == addresstype {
 					adrscript = adrscript^};
 				try {adrscript^ (nameof (adrservice^), adrservice)}}}};
-	return (true)};
+	return (true)}
 //bundle //test code
 	//local (url = "http://philringnalda.com/scratchpad/redir.php")
 	//url = "http://bitworking.org/rss.xml"

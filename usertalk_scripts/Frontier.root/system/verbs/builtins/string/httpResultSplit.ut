@@ -3,7 +3,7 @@ on httpResultSplit (s, adrheadertable=nil) { //break an HTTP result into its com
 	if adrheadertable != nil { //caller wants the header info
 		new (tabletype, adrheadertable); //webserver.util.parseHeaders will accumulate duplicates into lists, we don't want that here
 		webserver.util.parseHeaders (s, adrheadertable)};
-	return (string.delete (s, 1, ix + 3))};
+	return (string.delete (s, 1, ix + 3))}
 //bundle //test code
 	//local (headers)
 	//new (tabletype, @headers)

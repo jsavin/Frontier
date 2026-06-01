@@ -60,7 +60,7 @@ on getDefaultNote (adr, adrAdrCache=nil, flAnyComment=false) {
 		op.newOutlineObject (string.trimWhiteSpace (s), @adrInCache^.note);
 		window.attributes.setOne ("type", "webEditNote", @adrInCache^.note);
 		adrAdrCache^ = @adrInCache^.note};
-	return (s)};
+	return (s)}
 //bundle //test code
 	//local (adrCache)
 	//getDefaultNote (this, @adrCache)

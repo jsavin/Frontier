@@ -6,7 +6,7 @@ on getRegistryValue (registryPath) {
 	
 	local (s = string (winShell.data.scripts.getRegistryValue));
 	
-	return (com.callScript (s, "VBScript", "Main", {registryPath}))};
+	return (com.callScript (s, "VBScript", "Main", {registryPath}))}
 //bundle //test code
 	//winShell.getRegistryValue ("HKCU\\Software\\UserLand\\Frontier\\FrameH")
 		//"937"

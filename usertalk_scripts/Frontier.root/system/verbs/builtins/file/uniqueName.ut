@@ -10,7 +10,7 @@ on uniqueName (prefix, folder, places=nil, extension = "") { //New 11/11/97 DW
 		f = folder + prefix + string.padWithZeros (ct, places) + extension;
 		if not file.exists (f) {
 			return (f)};
-		ct++}};
+		ct++}}
 //bundle //test code
 	//local (i, f)
 	//for i = 1 to 100

@@ -2,5 +2,5 @@ on getOutlineHtml (adroutline, indentstring, outdentstring, linestartstring, lin
 	//get the text of the outline, represented as an HTML outline
 	local (data);
 	pack (adroutline^, @data);
-	return (appleEvent (@html.ucmds.outlineops, 'ucmd', 'ohtm', 'prm1', string (indentstring), 'prm2', string (outdentstring), 'prm3', string (linestartstring), 'prm4', string (lineendstring), '----', data));
-	}//return (appleEvent ('OUTS', 'outs', 'ohtm', 'prm1', string (indentstring), 'prm2', string (outdentstring), 'prm3', string (linestartstring), 'prm4', string (lineendstring), '----', data))
+	return (appleEvent (@html.ucmds.outlineops, 'ucmd', 'ohtm', 'prm1', string (indentstring), 'prm2', string (outdentstring), 'prm3', string (linestartstring), 'prm4', string (lineendstring), '----', data))}
+	//return (appleEvent ('OUTS', 'outs', 'ohtm', 'prm1', string (indentstring), 'prm2', string (outdentstring), 'prm3', string (linestartstring), 'prm4', string (lineendstring), '----', data))

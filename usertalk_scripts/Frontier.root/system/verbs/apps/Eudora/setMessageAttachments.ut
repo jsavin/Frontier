@@ -1,7 +1,7 @@
 on setMessageAttachments (msgObj, msgAttachments) {
 	//msgAttachments contains a list of attachment paths as produced by Eudora
 		//":" must be added to the front and back of each attachment for
-		//it to work via Eudora...
+		//it to work via Eudora…
 	
 	with objectModel, Eudora, eventInfo {
 		return (core.set (id, msgObj.field ["X-Attachments"], msgAttachments))}}

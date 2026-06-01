@@ -9,7 +9,7 @@ on rePrefixSelection() {
 		local {
 			selStart = window[1].selectionStartLine;
 			selEnd = window[1].selectionEndLine};
-		if (selStart != selEnd) {
+		if (selStart ≠ selEnd) {
 			//Remove all the prefix ">"'s first, and rewrap
 			replace(everyOccurrence, "^>", "", selectionOnly:true);
 			hardWrap(selectionOnly:true);

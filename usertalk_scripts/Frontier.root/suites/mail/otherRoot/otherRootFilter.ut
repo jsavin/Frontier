@@ -41,6 +41,6 @@ on defaultFilter (mailerappname, whatEvent, theList) {
 			mailmsg.date = clock.now ()};
 		mail.otherRoot.addMessage (@mailmsg, user.mail.prefs.msgcount)};
 	mail.otherRoot.close ();
-	return (true)};
+	return (true)}
 //bundle //test code
 	//defaultFilter ("Eudora", 'wArv', scratchpad.enotlist)

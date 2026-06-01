@@ -45,7 +45,7 @@ bundle { //test code
 	local (permalink = "http://127.0.0.1/tbtest/2003/07/14#a5");
 	local (excerpt = adrmsg^.newsitem.description);
 	local (weblogname = "tbtest");
-	ping (adrurl, title, permalink, excerpt, weblogname)};
+	ping (adrurl, title, permalink, excerpt, weblogname)}
 //bundle //more test code
 	//local (adrurl = @scratchpad.aPost.trackback.outbound.urls.["http://127.0.0.1/jaketest2/2003/04/24"])
 	//new (tableType, adrurl)

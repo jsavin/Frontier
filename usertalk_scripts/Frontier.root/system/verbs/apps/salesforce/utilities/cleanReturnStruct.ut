@@ -21,6 +21,6 @@ on cleanReturnStruct (adrStruct) {
 	if typeOf (adrStruct^) == tableType {
 		doLevel (adrStruct)};
 	
-	return (true)};
+	return (true)}
 //bundle //testing
 	//cleanReturnStruct (@workspace.retval)

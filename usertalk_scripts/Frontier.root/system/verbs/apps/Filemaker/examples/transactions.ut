@@ -29,8 +29,8 @@ bundle { //using transactions
 			delete(request[all]);
 			create(request,"requestData",0,endOf(database[1].layout[1]));
 			find(window[1]);
-			local(foundSet=get(document[1].layout[1].record[all]));
-			};//"document" contains the found set
+			local(foundSet=get(document[1].layout[1].record[all]))};
+			//"document" contains the found set
 		EndTransaction (); //the transaction ID is passed to filemaker since we are still in an event transaction
 		SetEventTransactionID (0)}
 	else { //be sure to end the transaction no matter what
@@ -47,16 +47,16 @@ loop { //using transactions with repeated attempts
 			delete(request[all]);
 			create(request,"requestData",0,endOf(database[1].layout[1]));
 			find(window[1]);
-			local(foundSet=get(document[1].layout[1].record[all]));
-			};//"document" contains the found set
+			local(foundSet=get(document[1].layout[1].record[all]))};
+			//"document" contains the found set
 		EndTransaction ();
 		SetEventTransactionID (0);
 		break} //end the loop
 	else {
 		if tryError contains "transaction" {
-			clock.waitseconds(1);
+			clock.waitseconds(1)}
 			//or
-			}//sys.systemTask()
+			//sys.systemTask()
 		else { //be sure to end the transaction no matter what
 			EndTransaction ();
 			SetEventTransactionID (0);
@@ -86,8 +86,8 @@ bundle { //using Semephores
 			delete(request[all]);
 			create(request,"requestData",0,endOf(database[1].layout[1]));
 			find(window[1]);
-			local(foundSet=get(document[1].layout[1].record[all]));
-			};//"document" contains the found set
+			local(foundSet=get(document[1].layout[1].record[all]))};
+			//"document" contains the found set
 		semaphores.unlock("filemaker")}
 	else { //be sure to unlock the semaphore in case of an error
 		semaphores.unlock("filemaker");

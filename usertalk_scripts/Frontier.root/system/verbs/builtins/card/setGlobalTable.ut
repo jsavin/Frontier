@@ -16,20 +16,20 @@ on setGlobalTable (adrTable, majorswitch) {
 		if defined (system.compiler.cards.activeCard^.menubar) { //remove old menubar
 			cardInFrontier = (sys.frontmostApp() == file.fileFromPath (Frontier.getProgramPath ()));
 			if cardInFrontier {
-				menu.remove (@system.compiler.cards.activeCard^.menubar)};
+				menu.remove (@system.compiler.cards.activeCard^.menubar)}};
 			//else
 				//destAdr = @system.menubars.[file.creator (sys.frontmostApp())]
 				//menu.deletesubMenu
 				//if defined (destAdr^)
-					//delete (destAdr)};
+					//delete (destAdr)
 		
 		system.compiler.cards.activeCard = adrTable;
 		
 		if defined (adrTable^.menubar) { //install new menubar, if present
 			cardInFrontier = (sys.frontmostApp() == file.fileFromPath (Frontier.getProgramPath ()));
 			if cardInFrontier {
-				menu.install (@adrTable^.menubar)};
+				menu.install (@adrTable^.menubar)}}};
 			//else
-				//system.menubars.DRPb = adrTable^.menubar}};
+				//system.menubars.DRPb = adrTable^.menubar
 	
 	return (true)}

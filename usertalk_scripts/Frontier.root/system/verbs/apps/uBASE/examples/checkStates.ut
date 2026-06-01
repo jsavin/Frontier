@@ -11,9 +11,9 @@ bundle { //start up uBASE, open the file
 on checkState (name, capital, abbrev) {
 	local (holder);
 	if ubase.lookupRecord (fnum, name, @holder) {
-		if holder.capi != capital {
+		if holder.capi ≠ capital {
 			scriptError (holder.capi + " should equal " + capital + " [for " + name + "].")};
-		if holder.abbr != abbrev {
+		if holder.abbr ≠ abbrev {
 			scriptError (holder.abbr + " should equal " + abbrev + " [for " + name + "].")};
 		msg (capital)} //show capital in Frontier main window
 	else { //  Report the error

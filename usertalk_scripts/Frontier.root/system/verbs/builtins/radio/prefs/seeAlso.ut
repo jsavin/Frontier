@@ -17,6 +17,6 @@ on seeAlso (pagetitle, linetext=pagetitle) {
 	else {
 		dottedid = system.temp.radio.prefsCache.[string.popFileFromAddress (pta^.adrPrefsOutline)].pagetitles.[pagetitle]};
 	local (url = "?page=" + dottedid);
-	return ("<a href=\"" + url + "\">" + linetext + "</a>")};
+	return ("<a href=\"" + url + "\">" + linetext + "</a>")}
 //bundle //test code
 	//seealso ("Your community server")

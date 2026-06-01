@@ -25,7 +25,7 @@ on search (queryString, start=0, ctResults=10, restrict="", languageRestrict="",
 	with google.data {
 		local (params = {"key":key, "q":queryString, "start":start, "maxResults":ctResults, "filter":false, "restrict":restrict, "safeSearch":safeSearch, "lr":languageRestrict, "ie":inputEncoding, "oe":outputEncoding});
 		result = soap.rpc.client (path, methods.search, @params, server, port, soapAction:soapAction, methodNamespace:"m", methodNamespaceUri:namespace, fldebug:false)};
-	return (result)};
+	return (result)}
 //bundle //testing
 	//local (queryString = "\"Bull Mancuso\"")
 	//scratchpad.googleSearch = search (queryString)

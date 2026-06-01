@@ -29,7 +29,7 @@ on fixGuestDbAdr (adr) { //possibly convert for guest database
 	s = "(" + s - string.lower (frontier.pathString) + ")";
 	ix = string.patternMatch ("].", adr);
 	s = s + string.delete (adr, 1, ix);
-	return (s)};
+	return (s)}
 //bundle //test code
 	//webedit.fixGuestDbAdr (@musicSuite)
 		//"(tools:music.root).musicSuite"

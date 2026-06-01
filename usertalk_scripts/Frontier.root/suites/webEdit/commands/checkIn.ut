@@ -26,6 +26,6 @@ on checkIn () {
 	
 	webEdit.notify (s);
 	
-	return (true)};
+	return (true)}
 //bundle //test code
 	//checkIn ()

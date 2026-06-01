@@ -62,14 +62,14 @@ on changedPost (adrpost, flnew, posttext) {
 			if url beginswith "http://127.0.0.1" { //2/19/03 by DW
 				fladd = false};
 			if fladd {
-				trackback.initOutboundUrl (adrpost, url);
+				trackback.initOutboundUrl (adrpost, url)};
 				//bundle //factored code
 					//local (adrurl = @adrtrackback^.outbound.urls.[url])
 					//if not defined (adrurl^)
 						//new (tabletype, adrurl)
 						//adrurl^.flPinged = false
 						//adrurl^.flChecked = false
-						//adrurl^.flSupportsTrackback = false};
+						//adrurl^.flSupportsTrackback = false
 			s = string.delete (s, 1, sizeof (url) + 1);
 			posttext = string.delete (posttext, 1, sizeof (url) + 1)}};
 	bundle { //loop over urls and find out if there's trackback support on the other end
@@ -77,7 +77,7 @@ on changedPost (adrpost, flnew, posttext) {
 		for adrurl in adrurls {
 			if not adrurl^.flChecked {
 				trackback.discoverPingInfo (adrurl);
-				adrurl^.flChecked = true}}}};
+				adrurl^.flChecked = true}}}}
 //bundle //test code
 	//local (adrpost = @newssiteManilaWebsite.["#discussionGroup"].messages.["0000005"])
 	//changedPost (adrpost, false, string (adrpost^.newsItem.description))

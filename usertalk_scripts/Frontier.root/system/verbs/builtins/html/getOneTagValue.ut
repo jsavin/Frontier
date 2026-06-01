@@ -22,7 +22,7 @@ on getOneTagValue (htmltext, tagname) {
 	local (ix = string.patternmatch ("</" + tagname + ">", lowertext));
 	if ix == 0 {
 		return ("")};
-	return (string.mid (tagval, 1, ix - 1))};
+	return (string.mid (tagval, 1, ix - 1))}
 //bundle //test code
 	//dialog.alert ("*" + getOneTagValue ("xxx<Title val1 val2>hello!</title>yyy", "tiTle") + "*")
 	//dialog.alert ("*" + getOneTagValue ("<TItle>hello!</tiTle>", "tiTle") + "*")

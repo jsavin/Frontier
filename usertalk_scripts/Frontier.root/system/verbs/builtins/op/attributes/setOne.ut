@@ -12,6 +12,6 @@ on setOne (attname, attval) {
 	attstable.[attname] = attval;
 	pack (attstable, @packeddata);
 	op.setrefcon (packeddata);
-	return (true)};
+	return (true)}
 //bundle //test code
 	//setHeadlineAttribute ("time", clock.now ())

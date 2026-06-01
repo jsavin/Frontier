@@ -10,7 +10,7 @@ on deleteMultipleFiles (email, password, relativepathlist, adrresponse, adrdata 
 		rpcPath = adrdata^.rpcPath};
 	with adrdata^ {
 		adrresponse^ = xml.rpc (server, port, "xmlStorageSystem.deleteMultipleFiles", @params, rpcPath:rpcPath, fldebug:fldebug, flShowMessages:flShowMessages, protocol:protocol, soapAction:soapAction);
-		return (not adrresponse^.flerror)}};
+		return (not adrresponse^.flerror)}}
 //bundle //test code
 	//local (relativepathlist = {"/userland/testRadio71/New Mexico/03.txt", "/userland/testRadio71/New Hampshire/"})
 	//with user.xmlStorageSystem

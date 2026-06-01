@@ -245,7 +245,7 @@ on get (adrParamTable) {
 		else { //this should never occur
 			adrParamTable^.code = 500;
 			adrParamTable^.responseBody = webserver.util.buildErrorPage ("500 Internal Server Error", "The type of the object " + adrParamTable^.path + " is unknown.")}};
-	return (true)};
+	return (true)}
 //bundle //Testing code
 	//local (paramTable)
 	//new (tableType, @paramTable)

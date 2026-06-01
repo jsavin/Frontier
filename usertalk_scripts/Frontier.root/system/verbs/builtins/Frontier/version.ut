@@ -13,7 +13,7 @@ on version () { //return the version string for the Frontier application
 						//version = string.delete (version, 1, 6)
 					//system.temp.frontierVersionString = version
 				//return (system.temp.frontierVersionString)
-	kernel (Frontier.version)};
+	kernel (Frontier.version)}
 //bundle //test code
 	//local (i, s, ticks)
 	//ticks = clock.ticks ()

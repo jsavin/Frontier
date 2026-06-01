@@ -12,10 +12,10 @@ bundle { //Sat, Sep 21, 1996 at 8:07:58 AM by DW, made it smarter for user
 			if script.getLanguage (adr) == "AppleScript" {
 				lastkind = "Script Editor format"}}};
 	lastlocation = "File";
-	lastcompression = "None";
+	lastcompression = "None"};
 	//lastkind = user.export.lastkind
 	//lastlocation = user.export.lastlocation
-	};//lastcompression = user.export.lastcompression
+	//lastcompression = user.export.lastcompression
 bundle { //set up the Kind popup
 	local (s, checkeditem);
 	s = "Packed object;Desktop script;Folder;Script Editor format;";

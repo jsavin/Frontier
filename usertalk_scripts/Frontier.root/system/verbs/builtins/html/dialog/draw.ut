@@ -434,11 +434,11 @@ on draw (pta = nil) {
 		on endTable () {
 			add ("</table>"); indentlevel--};
 		on startRow (padding=0) {
-			add ("<tr><td style=\"padding-left: " + padding + ";\">&nbsp;</td>"); indentlevel++;
-			};//add ("<tr><td style=\"padding-left: " + padding + ";\">"); indentlevel++
+			add ("<tr><td style=\"padding-left: " + padding + ";\">&nbsp;</td>"); indentlevel++};
+			//add ("<tr><td style=\"padding-left: " + padding + ";\">"); indentlevel++
 		on endRow () {
-			add ("</td></tr>"); indentlevel--;
-			};//add ("</tr>"); indentlevel--
+			add ("</td></tr>"); indentlevel--};
+			//add ("</tr>"); indentlevel--
 		on td (indent=0, align=nil) {
 			local (styleString = "", alignString = "");
 			if indent != 0 {
@@ -508,9 +508,9 @@ on draw (pta = nil) {
 							s = s + " checked"};
 						add (s + ">" + linetext)};
 					addradio ("true", boolean (defaultvalue), "Yes");
-					addradio ("false", !boolean (defaultvalue), "No");
+					addradio ("false", !boolean (defaultvalue), "No")};
 					//add ("<input type=\"radio\" name=\"" + adrPref + "\" value=" + "1 checked" + ">" + "Yes")
-					};//add ("<input type=\"radio\" name=\"" + adrPref + "\" value=\"" + "0" + "\">" + "No")
+					//add ("<input type=\"radio\" name=\"" + adrPref + "\" value=\"" + "0" + "\">" + "No")
 				"checkbox" {
 					if defaultvalue {
 						add ("<input type=\"checkbox\" name=\"" + adrPref + "\"  value=\"" + defaultvalue + "\" checked>")}
@@ -561,8 +561,8 @@ on draw (pta = nil) {
 					td (itemIndent, itemAlign);
 					if itemTitle != nil {
 						add (itemTitle + "<br>")};
-					addField (adrItem, itemType, prefAdr, getDefaultValue (prefAdr));
-					};//add ("</td>")
+					addField (adrItem, itemType, prefAdr, getDefaultValue (prefAdr))};
+					//add ("</td>")
 				"html" {
 					td (10);
 					if itemTitle != nil {
@@ -592,8 +592,8 @@ on draw (pta = nil) {
 					if itemTitle != nil {
 						add ("<td valign=\"top\">" + string.replaceAll (itemTitle, " ", "&nbsp;") + "&nbsp;&nbsp;</td>")};
 					add ("<td valign=\"bottom\" width=\"100%\"><hr></td>");
-					add ("</tr></table>"); indentlevel--;
-					};//add ("</td>")
+					add ("</tr></table>"); indentlevel--};
+					//add ("</td>")
 				"custom" { // custom items are handled by the callback, and are on a row by themselves
 					addField (adrItem, itemType, prefAdr, getDefaultValue (prefAdr))}}
 			else {
@@ -609,7 +609,7 @@ on draw (pta = nil) {
 			type = xml.convertToDisplayName (nameOf (adr^));
 			case (type) {
 				"description" {
-					};// not currently used
+					// not currently used
 				"item" {
 					startRow ();
 					startTable ();

@@ -1,4 +1,4 @@
-on openWindow (adr)
+on openWindow (adr) {
 	//Install the headless REPL host menubar at system.menus.data.frontier.
 		//5/31/26 by JES
 			//Phase E (Issue #677 / MENU_PORT_PLAN.md). The Phase C
@@ -28,26 +28,26 @@ on openWindow (adr)
 			//
 			//Idempotent via menu.isInstalled. Re-invoking openWindow
 			//across REPL boots converges to the same state.
-	local (adrbar = @system.menus.data.frontier)
-	if menu.isInstalled (adrbar)
-		return (true)
-	bundle //File menu
-		menu.addMenuCommand (adrbar, "File", "New", "Frontier.tools.windowTypes.runFileMenuScript (\"new\")")
-		menu.addMenuCommand (adrbar, "File", "Open", "Frontier.tools.windowTypes.runFileMenuScript (\"open\")")
-		menu.addMenuCommand (adrbar, "File", "Close", "Frontier.tools.windowTypes.runFileMenuScript (\"close\")")
-		menu.addMenuCommand (adrbar, "File", "Save", "Frontier.tools.windowTypes.runFileMenuScript (\"save\")")
-		menu.addMenuCommand (adrbar, "File", "Save As", "Frontier.tools.windowTypes.runFileMenuScript (\"saveAs\")")
-		menu.addMenuCommand (adrbar, "File", "Quit", "repl.exit ()")
-	bundle //Edit menu
-		menu.addMenuCommand (adrbar, "Edit", "Find", "Frontier.tools.windowTypes.runEditMenuScript (\"find\")")
-		menu.addMenuCommand (adrbar, "Edit", "Find Next", "Frontier.tools.windowTypes.runEditMenuScript (\"findNext\")")
-		menu.addMenuCommand (adrbar, "Edit", "Replace", "Frontier.tools.windowTypes.runEditMenuScript (\"replace\")")
-		menu.addMenuCommand (adrbar, "Edit", "Replace and Find Next", "Frontier.tools.windowTypes.runEditMenuScript (\"replaceAndFindNext\")")
-		menu.addMenuCommand (adrbar, "Edit", "Insert Date/Time", "Frontier.tools.windowTypes.runEditMenuScript (\"insertDateTime\")")
-	bundle //View menu (font-size items: no-op-in-headless, installed for legacy fidelity)
-		menu.addMenuCommand (adrbar, "View", "Huge", "Frontier.tools.windowTypes.commands.huge ()")
-		menu.addMenuCommand (adrbar, "View", "Medium", "Frontier.tools.windowTypes.commands.medium ()")
-		menu.addMenuCommand (adrbar, "View", "Tiny", "Frontier.tools.windowTypes.commands.tiny ()")
-		menu.addMenuCommand (adrbar, "View", "Readable", "Frontier.tools.windowTypes.commands.readable ()")
-	menu.install (adrbar)
-	return (true)
+	local (adrbar = @system.menus.data.frontier);
+	if menu.isInstalled (adrbar) {
+		return (true)};
+	bundle { //File menu
+		menu.addMenuCommand (adrbar, "File", "New", "Frontier.tools.windowTypes.runFileMenuScript (\"new\")");
+		menu.addMenuCommand (adrbar, "File", "Open", "Frontier.tools.windowTypes.runFileMenuScript (\"open\")");
+		menu.addMenuCommand (adrbar, "File", "Close", "Frontier.tools.windowTypes.runFileMenuScript (\"close\")");
+		menu.addMenuCommand (adrbar, "File", "Save", "Frontier.tools.windowTypes.runFileMenuScript (\"save\")");
+		menu.addMenuCommand (adrbar, "File", "Save As", "Frontier.tools.windowTypes.runFileMenuScript (\"saveAs\")");
+		menu.addMenuCommand (adrbar, "File", "Quit", "repl.exit ()")};
+	bundle { //Edit menu
+		menu.addMenuCommand (adrbar, "Edit", "Find", "Frontier.tools.windowTypes.runEditMenuScript (\"find\")");
+		menu.addMenuCommand (adrbar, "Edit", "Find Next", "Frontier.tools.windowTypes.runEditMenuScript (\"findNext\")");
+		menu.addMenuCommand (adrbar, "Edit", "Replace", "Frontier.tools.windowTypes.runEditMenuScript (\"replace\")");
+		menu.addMenuCommand (adrbar, "Edit", "Replace and Find Next", "Frontier.tools.windowTypes.runEditMenuScript (\"replaceAndFindNext\")");
+		menu.addMenuCommand (adrbar, "Edit", "Insert Date/Time", "Frontier.tools.windowTypes.runEditMenuScript (\"insertDateTime\")")};
+	bundle { //View menu (font-size items: no-op-in-headless, installed for legacy fidelity)
+		menu.addMenuCommand (adrbar, "View", "Huge", "Frontier.tools.windowTypes.commands.huge ()");
+		menu.addMenuCommand (adrbar, "View", "Medium", "Frontier.tools.windowTypes.commands.medium ()");
+		menu.addMenuCommand (adrbar, "View", "Tiny", "Frontier.tools.windowTypes.commands.tiny ()");
+		menu.addMenuCommand (adrbar, "View", "Readable", "Frontier.tools.windowTypes.commands.readable ()")};
+	menu.install (adrbar);
+	return (true)}

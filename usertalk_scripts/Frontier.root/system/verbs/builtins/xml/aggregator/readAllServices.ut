@@ -97,6 +97,6 @@ on readAllServices (maxStories=infinity, adrlogcallback=nil, adrdata=nil) {
 	adrdata^.stats.lastRun.whenComplete = clock.now ();
 	adrdata^.stats.lastRun.flScanRunningNow = false;
 	doCallbacks (@adrdata^.callbacks.postScan);
-	msg ("")};
+	msg ("")}
 //bundle //test code
 	//readAllServices (adrlogcallback:@radio.log.add)

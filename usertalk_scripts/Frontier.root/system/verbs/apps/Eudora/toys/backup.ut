@@ -2,7 +2,7 @@ local (releasefolder = "UserLand:New Releases:Eudora:");
 local (backuppointer = releasefolder + "Backup Folder", destfolder);
 bundle { //error checking on the backup folder, set destfolder
 	on error () {
-		scriptError ("You must have an alias named “Backup Folder”Êin the same folder as this script.")};
+		scriptError ("You must have an alias named “Backup Folder” in the same folder as this script.")};
 	if not file.exists (backuppointer) {
 		error ()};
 	if not file.isAlias (backuppointer) {

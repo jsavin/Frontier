@@ -32,6 +32,6 @@ on writeWholeFile (f, s, type = nil, creator = nil, creationdate = nil) {
 				while typeOf (adrscript^) == addressType {
 					adrscript = adrscript^};
 				adrscript^ (f)}}};
-	return (true)};
+	return (true)}
 //bundle //test code
 	//writewholefile ("c:\\tmp.html", clock.now ())

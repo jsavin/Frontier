@@ -15,7 +15,7 @@ on findDriver (type, adradrdriver) {
 		return (true)};
 	if findInTable (@tcp.im.builtinDrivers) {
 		return (true)};
-	return (false)};
+	return (false)}
 //bundle //test code
 	//local (adrdriver)
 	//findDriver ("aim", @adrdriver)

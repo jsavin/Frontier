@@ -56,7 +56,7 @@ on get (msgText="", fieldName="body", rows=9, pta=nil, toolabrImgUrl="/mainrespo
 	s = string.replaceAll (s, "[[baseUrl]]", baseUrl, false);
 	s = string.replaceAll (s, "[[formName]]", formName, false);
 	
-	return (s)};
+	return (s)}
 //bundle //testing
 	//op.newOutlineObject (html.editor.get ("Initial HTML text...", "itemtext", 9, @workspace.pt, radio.images.systemImageUrl ("toolbars/htmlEditor")), @workspace.htmlEditor)
 	//edit (@workspace.htmlEditor)

@@ -15,6 +15,6 @@ on start () {
 				delete (@system.temp.im.aim)}}};
 	tcp.im.builtinDrivers.aim.init ();
 	tcp.im.builtinDrivers.aim.code.core.__init__(@system.temp.im.aim, user.im.aim.username, string (user.im.aim.password), @tcp.im.builtinDrivers.aim.code.responderCallbacks);
-	tcp.im.builtinDrivers.aim.code.core.go (@system.temp.im.aim)};
+	tcp.im.builtinDrivers.aim.code.core.go (@system.temp.im.aim)}
 //bundle //test code
 	//start ()

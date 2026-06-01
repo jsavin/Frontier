@@ -79,9 +79,9 @@ on getString (stringId, adrLanguageTable, adrReplacementTable=nil, defaultLangua
 	return (s)};
 bundle { //test code
 	bundle { //test
-		dialog.notify (getString ("weblogPostForm.postButton", @radio.data.localization.languages))};
+		dialog.notify (getString ("weblogPostForm.postButton", @radio.data.localization.languages))}}
 	//bundle //benchmark
 		//local (t = clock.ticks ())
 		//for i = 1 to 1000
 			//getString ("weblogPostForm.postButton", @radio.data.localization.languages.english)
-		//dialog.notify (clock.ticks () - t)}
+		//dialog.notify (clock.ticks () - t)

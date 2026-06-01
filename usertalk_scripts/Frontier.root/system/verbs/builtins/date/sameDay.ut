@@ -10,7 +10,7 @@ on sameDay (d1, d2) {
 	local (day2, month2, year2, hour2, minute2, second2);
 	date.get (d2, @day2, @month2, @year2, @hour2, @minute2, @second2);
 	
-	return ((year1 == year2) and (month1 == month2) and (day1 == day2))};
+	return ((year1 == year2) and (month1 == month2) and (day1 == day2))}
 //bundle //test code
 	//dialog.alert (date.sameDay (clock.now (), date ("12/25/99")))
 	//dialog.alert (date.sameDay (clock.now (), date ("1/14/02")))

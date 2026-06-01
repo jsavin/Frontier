@@ -8,6 +8,6 @@ on gigabyteString (size) { //display size in gigabytes, the next step after stri
 	local (rawgigs = size / onegig);
 	local (leftofdecimal = string.nthfield (rawgigs, ".", 1));
 	local (rightofdecimal = string.nthfield (rawgigs, ".", 2));
-	return (leftofdecimal + "." +  rightofdecimal [1] + "GB")};
+	return (leftofdecimal + "." +  rightofdecimal [1] + "GB")}
 //bundle //test code
 	//dialog.alert (string.gigabyteString (file.volumeSize (file.volumeFromPath (Frontier.getProgramPath ()))))

@@ -4,7 +4,7 @@ on isValidSerialNumber (s) {
 			//Kernelized.
 		//12/2/01; 10:28:10 AM by DW
 			//Created. Returns true if it is a valid serial number, false otherwise. Jake has the code that really does this, I hope.
-	kernel (frontier.isvalidserialnumber)};
+	kernel (frontier.isvalidserialnumber)}
 //bundle //test code
 	//op.go (right, 1)
 	//loop
