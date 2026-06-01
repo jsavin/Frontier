@@ -195,8 +195,9 @@ boolean window_registry_init(void) {
 	 *   s1: ensure system.temp.windowTypes table exists
 	 *   s2: ensure system.temp.windowTypes.windows table exists
 	 *   s3: ensure system.temp.windowTypes.windows.repl table exists (the window node)
-	 *
-	 *   s4-s5: populate the /atts SIBLING table alongside the window node.
+	 *   s4: ensure the /atts sibling table exists in system.temp.windowTypes.windows
+	 *   s5: set type attribute in /atts to "ReplWindow"
+	 *   s6: set title attribute in /atts to "REPL"
 	 *
 	 *   window.attributes.getOne(name, @out, adrwindow) navigates:
 	 *     adrparent = parentOf(adrwindow^)    -- parent of the window node
@@ -205,13 +206,9 @@ boolean window_registry_init(void) {
 	 *     adrparent = @system.temp.windowTypes.windows
 	 *     adratts   = @system.temp.windowTypes.windows.["/atts"]
 	 *
-	 *   s4: ensure the /atts table exists in the windows table
-	 *   s5: set type attribute in /atts
-	 *   s6: set title attribute in /atts
-	 *
-	 *   The direct fields on the window node (Phase C original s4-s5) are
-	 *   retained for future callers that read from the node directly, but
-	 *   the /atts sibling is what window.attributes.getOne requires.
+	 *   The /atts sibling is what window.attributes.getOne/setOne require.
+	 *   Direct fields on the window node itself (e.g. windows.repl.type) are
+	 *   NOT populated; the framework reads exclusively from the /atts sibling.
 	 */
 	static const char *stmts[] = {
 		"if not defined (system.temp.windowTypes) "

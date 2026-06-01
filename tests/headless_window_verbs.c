@@ -300,7 +300,6 @@ static boolean window_valueproc(short token, hdltreenode hparam1,
              * handles this via "if window.attributes.getOne(...) { ... }" guards.
              */
             /* path without leading "@" -- stringtoaddress will walk the ODB */
-            /* length: "system.temp.windowTypes.windows.repl" = 36 = 0x24 */
             bigstring bs_repl_path;
             copyctopstring("system.temp.windowTypes.windows.repl", bs_repl_path);
 
