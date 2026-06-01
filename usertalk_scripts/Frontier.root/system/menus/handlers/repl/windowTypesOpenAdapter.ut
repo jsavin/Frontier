@@ -18,10 +18,17 @@ on windowTypesOpenAdapter (name)
 			//If address() can't resolve the path or the target doesn't
 			//exist, return silently -- this is a callback in a fire-and-
 			//forget chain; failures here must not block other callbacks.
-	if name beginsWith "@" {
-		name = string.delete (name, 1, 1)};
+		//6/1/26 by JES
+			//Use a local copy of 'name' rather than mutating the parameter
+			//in place. UserTalk parameter passing semantics for shared
+			//buffers are not formally specified; defensive idiom keeps the
+			//adapter robust against future framework changes that pass
+			//addresses or shared string handles.
+	local (path = name);
+	if path beginsWith "@" {
+		path = string.delete (path, 1, 1)};
 	local (adr);
-	try {adr = address (name)};
+	try {adr = address (path)};
 	if adr == nil {
 		return (true)};
 	if not defined (adr^) {

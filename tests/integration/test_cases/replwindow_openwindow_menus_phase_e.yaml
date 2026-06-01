@@ -196,7 +196,7 @@ tests:
       system.temp.windowTypes.windows.["/atts"].title = "REPL";
       Frontier.tools.data.windowTypes.ReplWindow.openWindow (@system.temp.windowTypes.windows.repl);
       local (s = system.menus.data.frontier.File.Quit.script);
-      local (ok = s contains "repl.exit");
+      local (ok = s contains "repl.exit (");
       try {delete (@system.menus.data.frontier)};
       return (ok)
     expected_success: true
