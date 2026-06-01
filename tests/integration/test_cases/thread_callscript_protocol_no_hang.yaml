@@ -1,0 +1,101 @@
+# thread.callScript - no-hang regression tests
+#
+# These tests verify that thread.callScript() returns promptly in
+# protocol/non-interactive mode and does not deadlock by holding the GIL
+# while executing a spawned script.
+#
+# Root cause of the bug (issue #706): the spawned thread's hashtablestack
+# was deep-copied from the calling thread's current stack, which was already
+# several levels deep inside the protocol dispatcher's evaluatelist() chain.
+# The spawned script then overflowed the 80-entry stack limit immediately on
+# its first local-scope push, producing a tight CPU-bound retry loop that
+# held the GIL indefinitely.
+#
+# Fix: headless_thread_evaluate() and headless_thread_callscript() now
+# allocate a fresh zero-depth hashtablestack for each spawned thread and
+# set hcurrenthashtable = roottable, giving the script a clean starting
+# context independent of the caller's nesting depth.
+#
+# All tests have a 10s timeout. Before the fix, every test here would hang
+# until the runner killed the process (exit 124). After the fix, each should
+# complete in well under 1s.
+
+description: "thread.callScript no-hang regression tests (issue #706)"
+sequential: true
+
+tests:
+  - name: "thread.callScript on commands.open returns a valid thread ID"
+    description: |
+      thread.callScript(@Frontier.tools.windowTypes.commands.open, {}) must
+      return a positive long (the thread ID) promptly. Before the fix this
+      call would spin at 100% CPU holding the GIL for the entire 5s timeout
+      due to hashtable stack overflow in the spawned thread.
+      sleepTicks(60) drains the spawned thread so the next test starts clean.
+    script: |
+      local (tid = thread.callScript (@Frontier.tools.windowTypes.commands.open, {}));
+      thread.sleepTicks (60);
+      return (typeof (tid) == 'long' and tid > 0)
+    expected_result: "true"
+    expected_success: true
+    timeout: 10
+
+  - name: "thread.callScript does not hang - spawned thread ID is >= 3"
+    description: |
+      Spawned threads are allocated IDs starting at 3 (main thread is 2).
+      Verifies the thread registry allocated a real entry and the call returned.
+      sleepTicks(60) drains the spawned thread so the next test starts clean.
+    script: |
+      local (tid = thread.callScript (@Frontier.tools.windowTypes.commands.open, {}));
+      thread.sleepTicks (60);
+      return (tid >= 3)
+    expected_result: "true"
+    expected_success: true
+    timeout: 10
+
+  - name: "thread.callScript - main thread continues executing after spawn"
+    description: |
+      After thread.callScript returns, the main thread must remain able to
+      execute further statements. Tests that the protocol loop is not stuck
+      waiting to reacquire the GIL.
+      sleepTicks(60) drains the spawned thread so the next test starts clean.
+    script: |
+      local (tid = thread.callScript (@Frontier.tools.windowTypes.commands.open, {}));
+      thread.sleepTicks (60);
+      local (ok = typeof (tid) == 'long' and tid > 0);
+      return ok
+    expected_result: "true"
+    expected_success: true
+    timeout: 10
+
+  - name: "thread.callScript - spawn then sleepTicks does not deadlock"
+    description: |
+      After spawning via thread.callScript, the main thread calls
+      thread.sleepTicks which voluntarily yields the GIL. This exercises the
+      full cooperative handoff: spawn -> yield -> spawned thread runs -> main
+      reacquires GIL. Before the fix the spawned thread held the GIL for the
+      full timeout, so this would also have hung.
+    script: |
+      local (tid = thread.callScript (@Frontier.tools.windowTypes.commands.open, {}));
+      thread.sleepTicks (60);
+      return (typeof (tid) == 'long' and tid > 0)
+    expected_result: "true"
+    expected_success: true
+    timeout: 10
+
+  - name: "thread.callScript - write marker via thread.evaluate verifies GIL yield"
+    description: |
+      A simpler script is used here to test the yield/marker pattern without
+      triggering file dialogs. thread.evaluate runs a short script that writes
+      a marker to system.temp; after sleepTicks the main thread reads it back.
+      This confirms the GIL is correctly yielded and the spawned thread runs.
+      try-wrapped deletes handle the case where the marker does not exist yet.
+    script: |
+      try {delete (@system.temp.callscript_marker_706)};
+      local (tid = thread.evaluate ("system.temp.callscript_marker_706 = true"));
+      thread.sleepTicks (60);
+      local (r = defined (@system.temp.callscript_marker_706) and system.temp.callscript_marker_706);
+      try {delete (@system.temp.callscript_marker_706)};
+      return r
+    expected_result: "true"
+    expected_success: true
+    timeout: 10
