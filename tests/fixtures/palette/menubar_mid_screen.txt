@@ -2,4 +2,4 @@ Frontier REPL - Interactive UserTalk Environment
 Type /help for commands, /exit to quit
 
 [root]> /
- Edit  File  View  REPL
+ File  Edit  View  REPL

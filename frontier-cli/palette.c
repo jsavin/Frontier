@@ -39,6 +39,19 @@
 
 static int imax(int a, int b) { return a > b ? a : b; }
 
+/* Glyphs for legacy menu-text prefix codes (mereducemenucodes parity).
+ *
+ * CHECK_GLYPH is U+2714 HEAVY CHECK MARK, emitted as UTF-8 by the pane
+ * compositor. It occupies a single terminal cell. SEP_GLYPH is the divider
+ * drawn in place of a separator item ('-' line); a plain ASCII '|'. */
+#define PALETTE_CHECK_GLYPH 0x2714u
+#define PALETTE_SEP_GLYPH   ((uint32_t)'|')
+
+/* Cells a checked item reserves to the LEFT of its label for the checkmark
+ * glyph plus a trailing space (e.g. "[ X Wrap ]"). Unchecked items reserve
+ * the same cells as blanks so neighbours don't jitter as checks toggle. */
+#define PALETTE_CHECK_CELLS 2
+
 /* Per-layer hotkey auto-derivation. Per the plan ("Hotkey auto-derivation
  * rule" in planning/discussions/repl-slash-menu-implementation-plan.md):
  * within a sibling list, each item's hotkey is the first letter of its
@@ -146,11 +159,24 @@ static void layout_menubar(palette_state_t *st) {
  * "[ label ]".  Reserving the same 4 cells either way keeps neighbour
  * items from jittering left/right as the cursor moves.
  *
+ * A CHECKED item reserves PALETTE_CHECK_CELLS extra cells inside the
+ * brackets for the checkmark glyph + space ("[ X label ]"). An UNCHECKED
+ * item does NOT reserve them, since within a single menu either no items
+ * are checkable or the rendering is per-item; the width is computed
+ * per-item from its own `checked` flag so screen_x stays consistent.
+ *
+ * A SEPARATOR is not a label at all: it reserves a single divider cell.
+ *
  * Two leading spaces precede the first item; two spaces separate
  * adjacent items.
  */
-static int item_cell_width(const char *label) {
-	return (int)strlen(label) + 4;
+static int item_cell_width(const palette_item_t *it) {
+	if (it->is_separator)
+		return 1; /* single divider glyph */
+	int w = (int)strlen(it->label) + 4;
+	if (it->checked)
+		w += PALETTE_CHECK_CELLS;
+	return w;
 }
 
 /* Compute the screen-x of item `i` inside a level's strip (relative to
@@ -159,7 +185,7 @@ static int item_cell_width(const char *label) {
 static int item_screen_x(const palette_level_t *lvl, int i) {
 	int x = 2;
 	for (int k = 0; k < i; ++k) {
-		x += item_cell_width(lvl->items[k].label) + 2;
+		x += item_cell_width(&lvl->items[k]) + 2;
 	}
 	return x;
 }
@@ -229,17 +255,35 @@ static void render_level(palette_state_t *st, int depth) {
 
 		int lx = item_screen_x(lvl, i);
 		if (lx >= p->w) break;       /* overflow: stop, no pagination yet */
-		int label_len = (int)strlen(it->label);
-		int total_w = label_len + 4;
+		int total_w = item_cell_width(it);
 		/* Truncation: if this item would run past the strip's right edge
 		 * just stop here.  Pagination is a follow-up. */
 		if (lx + total_w > p->w) break;
+
+		/* Separator: a single dim divider glyph, never selected, never the
+		 * cursor (cursor_step skips it). It is always disabled, so it draws
+		 * dim regardless of the `selected` math above. */
+		if (it->is_separator) {
+			pane_putc_color(p, lx, 0, PALETTE_SEP_GLYPH,
+			                PT_FG_DISABLED, PT_BG_MENUBAR, PALETTE_ATTR_DIM);
+			continue;
+		}
+
+		int label_len = (int)strlen(it->label);
+		/* Inner offset where the label starts: past the opening bracket and
+		 * leading space, plus the checkmark cells when the item is checked. */
+		int label_x = lx + 2 + (it->checked ? PALETTE_CHECK_CELLS : 0);
 
 		/* Cell 0: opening bracket (space when not selected). */
 		pane_putc_color(p, lx, 0, selected ? '[' : ' ', fg, bg, base);
 		/* Cell 1: leading space. */
 		pane_putc_color(p, lx + 1, 0, ' ', fg, bg, base);
-		/* Cells 2..2+label_len: label, with hotkey letter styling. */
+		/* Checkmark glyph + trailing space (only when checked). */
+		if (it->checked) {
+			pane_putc_color(p, lx + 2, 0, PALETTE_CHECK_GLYPH, fg, bg, base);
+			pane_putc_color(p, lx + 3, 0, ' ', fg, bg, base);
+		}
+		/* Label, with hotkey letter styling. */
 		char hk = it->shortcut;
 		bool hk_seen = false;
 		for (int k = 0; k < label_len; ++k) {
@@ -251,13 +295,13 @@ static void render_level(palette_state_t *st, int depth) {
 				if (!selected && it->enabled) cell_fg = PT_FG_HOTKEY;
 				hk_seen = true;
 			}
-			pane_putc_color(p, lx + 2 + k, 0,
+			pane_putc_color(p, label_x + k, 0,
 			                (uint32_t)(unsigned char)ch, cell_fg, bg, a);
 		}
 		/* Trailing space. */
-		pane_putc_color(p, lx + 2 + label_len, 0, ' ', fg, bg, base);
+		pane_putc_color(p, label_x + label_len, 0, ' ', fg, bg, base);
 		/* Closing bracket (space when not selected). */
-		pane_putc_color(p, lx + 3 + label_len, 0,
+		pane_putc_color(p, label_x + label_len + 1, 0,
 		                selected ? ']' : ' ', fg, bg, base);
 	}
 }
@@ -280,6 +324,10 @@ static bool place_cascade_strip(palette_state_t *st, int depth,
 /* Open a level and populate it from the data source.  depth 0 = top
  * menu under menubar_cursor; depth >= 1 = submenu off levels[depth-1]'s
  * cursor item. */
+/* Cursor-skipping helpers (defined below cursor_step). Forward-declared so
+ * open_level can place the initial cursor on the first selectable item. */
+static int find_selectable(const palette_level_t *lvl, int start, int step);
+
 static bool open_level(palette_state_t *st, int depth) {
 	if (depth < 0 || depth >= PALETTE_MAX_DEPTH) return false;
 
@@ -341,7 +389,12 @@ static bool open_level(palette_state_t *st, int depth) {
 			                                       claimed);
 		}
 	}
-	lvl->cursor = 0;
+	/* Land the initial cursor on the first selectable (non-separator) item.
+	 * If the level somehow contains only separators, fall back to 0. */
+	{
+		int first = find_selectable(lvl, 0, 1);
+		lvl->cursor = first >= 0 ? first : 0;
+	}
 	lvl->scroll_top = 0;
 	/* visible[] held over from the legacy filter UI is unused by the
 	 * horizontal renderer but we keep the field populated as an identity
@@ -497,14 +550,40 @@ static palette_done_t activate_cursor_item(palette_state_t *st) {
 	return PALETTE_DONE_EXECUTE;
 }
 
-/* Move the deepest level's cursor by `delta`, clamping. */
+/* Return true if item index `i` in `lvl` is a landable cursor target, i.e.
+ * in range and not a separator. Separators are visual dividers only; the
+ * cursor never rests on them. */
+static bool is_selectable(const palette_level_t *lvl, int i) {
+	if (i < 0 || i >= lvl->item_count) return false;
+	return !lvl->items[i].is_separator;
+}
+
+/* Find the first selectable index at or after `start` (when step>0) or at or
+ * before `start` (when step<0). Returns -1 if none exists in that direction. */
+static int find_selectable(const palette_level_t *lvl, int start, int step) {
+	for (int i = start; i >= 0 && i < lvl->item_count; i += step) {
+		if (is_selectable(lvl, i)) return i;
+	}
+	return -1;
+}
+
+/* Move the deepest level's cursor by `delta`, skipping separators and
+ * clamping. A separator is never a valid resting place, so we keep walking
+ * in the direction of travel until we hit a selectable item; if there is
+ * none past the current position, the cursor stays put. */
 static void cursor_step(palette_state_t *st, int delta) {
 	if (st->open_depth <= 0) return;
 	palette_level_t *lvl = &st->levels[st->open_depth - 1];
 	if (lvl->item_count <= 0) return;
-	int c = lvl->cursor + delta;
-	if (c < 0) c = 0;
-	if (c >= lvl->item_count) c = lvl->item_count - 1;
+	if (delta == 0) return;
+
+	int step = delta > 0 ? 1 : -1;
+	int c = lvl->cursor;
+	for (int n = (delta > 0 ? delta : -delta); n > 0; --n) {
+		int next = find_selectable(lvl, c + step, step);
+		if (next < 0) break; /* no selectable item further in this direction */
+		c = next;
+	}
 	lvl->cursor = c;
 }
 
@@ -702,7 +781,11 @@ palette_done_t palette_feed_mouse(palette_state_t *st, const mouse_event_t *ev) 
 		/* Find which item the click landed on. */
 		for (int i = 0; i < lvl->item_count; ++i) {
 			int lx = item_screen_x(lvl, i);
-			int total_w = item_cell_width(lvl->items[i].label);
+			int total_w = item_cell_width(&lvl->items[i]);
+			/* Separators are non-interactive: a click on the divider does
+			 * nothing rather than selecting a phantom item. */
+			if (lvl->items[i].is_separator)
+				continue;
 			if (mx >= lx && mx < lx + total_w) {
 				/* Collapse any deeper levels first. */
 				while (st->open_depth - 1 > d) close_deepest_level(st);

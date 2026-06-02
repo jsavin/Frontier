@@ -103,6 +103,15 @@ static void set_char(hdlhashtable ht, const char *name, byte v) {
 	assert(hashtableassign(ht, bsname, val));
 }
 
+static void set_long(hdlhashtable ht, const char *name, long v) {
+	bigstring bsname;
+	tyvaluerecord val;
+
+	cstr_to_bs(name, bsname);
+	assert(setlongvalue(v, &val));
+	assert(hashtableassign(ht, bsname, val));
+}
+
 static void clear_data_children(void) {
 	hdlhashtable hdata = nil;
 	if (!find_data(&hdata))
@@ -538,6 +547,134 @@ static void test_menus_within_bar_are_alphabetically_ordered(void) {
 }
 
 
+/*
+ * Order-field guard (Option A): when items within a menu carry an explicit
+ * integer "order" field, the adapter must enumerate them by ascending order
+ * value, NOT alphabetically by sub-table name.
+ *
+ * We install three items whose alphabetical name order is the REVERSE of
+ * their intended display order:
+ *   sub-table "Cmd_z"  order=0  (should be first)
+ *   sub-table "Cmd_m"  order=1  (should be second)
+ *   sub-table "Cmd_a"  order=2  (should be third)
+ *
+ * Alphabetically the names sort Cmd_a < Cmd_m < Cmd_z, so the pre-Option-A
+ * adapter (which sorts purely by name) would yield labels in the order
+ * Aaa, Mmm, Zzz. With order honored, the labels must come back Zzz, Mmm, Aaa.
+ * This test fails RED against the name-only comparator and passes GREEN once
+ * child_slot_cmp keys on the order field first.
+ */
+static void test_items_ordered_by_order_field(void) {
+	printf("[adapter] Test: items honor explicit order field over name... ");
+	fflush(stdout);
+
+	hdlhashtable hdata = nil;
+	assert(menudata_ensure_root());
+	clear_data_children();
+	assert(find_data(&hdata));
+
+	hdlhashtable hbar  = mk_subtable(hdata, "order_test_bar");
+	hdlhashtable hmenu = mk_subtable(hbar, "REPL");
+
+	/* Names sort A<M<Z but order says Z(0) < M(1) < A(2). */
+	hdlhashtable hz = mk_subtable(hmenu, "Cmd_z");
+	set_string(hz, "label", "Zzz");
+	set_string(hz, "script", "-- z");
+	set_long(hz, "order", 0);
+
+	hdlhashtable hm = mk_subtable(hmenu, "Cmd_m");
+	set_string(hm, "label", "Mmm");
+	set_string(hm, "script", "-- m");
+	set_long(hm, "order", 1);
+
+	hdlhashtable ha = mk_subtable(hmenu, "Cmd_a");
+	set_string(ha, "label", "Aaa");
+	set_string(ha, "script", "-- a");
+	set_long(ha, "order", 2);
+
+	palette_menu_source_t src;
+	assert(repl_palette_source_init_for(&src, "order_test_bar"));
+
+	int n = src.count_menus(src.ctx);
+	assert(n == 1);
+
+	int items = src.item_count(src.ctx, 0, NULL);
+	assert(items == 3);
+
+	palette_item_t out0, out1, out2;
+	memset(&out0, 0, sizeof(out0));
+	memset(&out1, 0, sizeof(out1));
+	memset(&out2, 0, sizeof(out2));
+	assert(src.item_describe(src.ctx, 0, NULL, 0, &out0));
+	assert(src.item_describe(src.ctx, 0, NULL, 1, &out1));
+	assert(src.item_describe(src.ctx, 0, NULL, 2, &out2));
+
+	/* By order field: Zzz(0), Mmm(1), Aaa(2). */
+	assert(strcmp(out0.label, "Zzz") == 0);
+	assert(strcmp(out1.label, "Mmm") == 0);
+	assert(strcmp(out2.label, "Aaa") == 0);
+
+	repl_palette_source_dispose(&src);
+	clear_data_children();
+
+	printf("PASS\n");
+	fflush(stdout);
+}
+
+/*
+ * Back-compat guard for the order field: items WITHOUT an order field must
+ * keep enumerating alphabetically (the legacy default). This pins the
+ * fall-back behavior so the order-field change does not regress existing
+ * menubars that never wrote an order value.
+ *
+ * Distinct from test_menus_within_bar_are_alphabetically_ordered (which
+ * covers top-level menus); this covers items within a single menu.
+ */
+static void test_items_without_order_fall_back_to_alpha(void) {
+	printf("[adapter] Test: items without order field stay alphabetical... ");
+	fflush(stdout);
+
+	hdlhashtable hdata = nil;
+	assert(menudata_ensure_root());
+	clear_data_children();
+	assert(find_data(&hdata));
+
+	hdlhashtable hbar  = mk_subtable(hdata, "noorder_bar");
+	hdlhashtable hmenu = mk_subtable(hbar, "REPL");
+
+	/* No order field written on any item. */
+	hdlhashtable hz = mk_subtable(hmenu, "Zebra");
+	set_string(hz, "label", "Zebra");
+	set_string(hz, "script", "-- z");
+
+	hdlhashtable ha = mk_subtable(hmenu, "Apple");
+	set_string(ha, "label", "Apple");
+	set_string(ha, "script", "-- a");
+
+	palette_menu_source_t src;
+	assert(repl_palette_source_init_for(&src, "noorder_bar"));
+
+	int items = src.item_count(src.ctx, 0, NULL);
+	assert(items == 2);
+
+	palette_item_t out0, out1;
+	memset(&out0, 0, sizeof(out0));
+	memset(&out1, 0, sizeof(out1));
+	assert(src.item_describe(src.ctx, 0, NULL, 0, &out0));
+	assert(src.item_describe(src.ctx, 0, NULL, 1, &out1));
+
+	/* Alphabetical: Apple < Zebra. */
+	assert(strcmp(out0.label, "Apple") == 0);
+	assert(strcmp(out1.label, "Zebra") == 0);
+
+	repl_palette_source_dispose(&src);
+	clear_data_children();
+
+	printf("PASS\n");
+	fflush(stdout);
+}
+
+
 static void test_dispose_idempotent(void) {
 	printf("[adapter] Test: dispose is idempotent... ");
 	fflush(stdout);
@@ -759,6 +896,160 @@ static void test_single_installed_bar_still_works_via_init_all(void) {
 }
 
 
+/* ---------- legacy prefix-code parsing (mereducemenucodes parity) ---------- */
+
+/*
+ * Helper: run palette_reduce_menu_codes on a fresh copy of `in` and report
+ * the resulting label + flags. Mirrors how cb_item_describe will call it.
+ */
+static void reduce(const char *in, char *out_label, size_t cap,
+                   bool *enabled, bool *checked, bool *is_sep) {
+	*enabled = true;       /* defaults per mereducemenucodes contract */
+	*checked = false;
+	*is_sep = false;
+	snprintf(out_label, cap, "%s", in);
+	palette_reduce_menu_codes(out_label, enabled, checked, is_sep);
+}
+
+static void test_prefix_plain_label_unchanged(void) {
+	printf("[adapter] Prefix: plain label is untouched... ");
+	fflush(stdout);
+
+	char label[64];
+	bool en, ck, sep;
+	reduce("Open", label, sizeof(label), &en, &ck, &sep);
+
+	assert(strcmp(label, "Open") == 0);
+	assert(en == true);
+	assert(ck == false);
+	assert(sep == false);
+
+	printf("PASS\n");
+	fflush(stdout);
+}
+
+static void test_prefix_open_paren_disables(void) {
+	printf("[adapter] Prefix: leading '(' disables and is stripped... ");
+	fflush(stdout);
+
+	char label[64];
+	bool en, ck, sep;
+	reduce("(Save", label, sizeof(label), &en, &ck, &sep);
+
+	assert(strcmp(label, "Save") == 0);
+	assert(en == false);
+	assert(ck == false);
+	assert(sep == false);
+
+	printf("PASS\n");
+	fflush(stdout);
+}
+
+static void test_prefix_paren_pair_not_disabled(void) {
+	printf("[adapter] Prefix: '(' with trailing ')' is NOT a disable code... ");
+	fflush(stdout);
+
+	/* mereducemenucodes: '(' only disables when lastchar != ')'. A label
+	   like "(beta)" is a literal parenthesised word, left intact + enabled. */
+	char label[64];
+	bool en, ck, sep;
+	reduce("(beta)", label, sizeof(label), &en, &ck, &sep);
+
+	assert(strcmp(label, "(beta)") == 0);
+	assert(en == true);
+	assert(ck == false);
+	assert(sep == false);
+
+	printf("PASS\n");
+	fflush(stdout);
+}
+
+static void test_prefix_bang_checks(void) {
+	printf("[adapter] Prefix: leading '!' checks and is stripped... ");
+	fflush(stdout);
+
+	char label[64];
+	bool en, ck, sep;
+	reduce("!Wrap", label, sizeof(label), &en, &ck, &sep);
+
+	assert(strcmp(label, "Wrap") == 0);
+	assert(en == true);
+	assert(ck == true);
+	assert(sep == false);
+
+	printf("PASS\n");
+	fflush(stdout);
+}
+
+static void test_prefix_bang_alone_not_checked(void) {
+	printf("[adapter] Prefix: lone '!' is a literal label, not a check code... ");
+	fflush(stdout);
+
+	/* mereducemenucodes: '!' only checks when stringlength > 1. */
+	char label[64];
+	bool en, ck, sep;
+	reduce("!", label, sizeof(label), &en, &ck, &sep);
+
+	assert(strcmp(label, "!") == 0);
+	assert(en == true);
+	assert(ck == false);
+	assert(sep == false);
+
+	printf("PASS\n");
+	fflush(stdout);
+}
+
+static void test_prefix_paren_then_bang_stacks(void) {
+	printf("[adapter] Prefix: '(!Foo' stacks disable + check... ");
+	fflush(stdout);
+
+	/* '(' is processed before '!', and both can stack. */
+	char label[64];
+	bool en, ck, sep;
+	reduce("(!Foo", label, sizeof(label), &en, &ck, &sep);
+
+	assert(strcmp(label, "Foo") == 0);
+	assert(en == false);
+	assert(ck == true);
+	assert(sep == false);
+
+	printf("PASS\n");
+	fflush(stdout);
+}
+
+static void test_prefix_dash_is_separator(void) {
+	printf("[adapter] Prefix: a line of exactly '-' is a separator... ");
+	fflush(stdout);
+
+	char label[64];
+	bool en, ck, sep;
+	reduce("-", label, sizeof(label), &en, &ck, &sep);
+
+	assert(sep == true);
+	assert(en == false);   /* separators are non-selectable / disabled */
+	assert(ck == false);
+
+	printf("PASS\n");
+	fflush(stdout);
+}
+
+static void test_prefix_multidash_not_separator(void) {
+	printf("[adapter] Prefix: '--' (len>1) is NOT a separator... ");
+	fflush(stdout);
+
+	/* Separator is ONLY the exact single '-' (stringlength == 1). */
+	char label[64];
+	bool en, ck, sep;
+	reduce("--", label, sizeof(label), &en, &ck, &sep);
+
+	assert(sep == false);
+	assert(en == true);
+	assert(strcmp(label, "--") == 0);
+
+	printf("PASS\n");
+	fflush(stdout);
+}
+
 /* ---------- main ---------- */
 
 int main(void) {
@@ -787,6 +1078,18 @@ int main(void) {
 	TR_RUN(test_describe_handle_stable_under_repeated_calls);
 	TR_RUN(test_dispose_idempotent);
 	TR_RUN(test_menus_within_bar_are_alphabetically_ordered);
+	TR_RUN(test_items_ordered_by_order_field);
+	TR_RUN(test_items_without_order_fall_back_to_alpha);
+
+	/* Legacy prefix-code parsing (mereducemenucodes parity) */
+	TR_RUN(test_prefix_plain_label_unchanged);
+	TR_RUN(test_prefix_open_paren_disables);
+	TR_RUN(test_prefix_paren_pair_not_disabled);
+	TR_RUN(test_prefix_bang_checks);
+	TR_RUN(test_prefix_bang_alone_not_checked);
+	TR_RUN(test_prefix_paren_then_bang_stacks);
+	TR_RUN(test_prefix_dash_is_separator);
+	TR_RUN(test_prefix_multidash_not_separator);
 
 	/* Phase A: multi-bar init_all tests */
 	TR_RUN(test_multi_bar_union_count);

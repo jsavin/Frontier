@@ -144,6 +144,11 @@ typedef struct palette_item {
 	bool hidden;
 	bool is_submenu;      /* true → has children, false → leaf with script */
 	bool accepts_args;    /* true → ENTER passes input-row text as argument */
+	bool checked;         /* true → draw a checkmark glyph before the label
+	                       *        (legacy '!' menu-text prefix). */
+	bool is_separator;    /* true → render a divider, not a label; the item is
+	                       *        non-selectable (cursor skips it) and is
+	                       *        disabled (legacy '-' menu-text line). */
 	/* Opaque per-item handle that the source uses to identify this item
 	 * for subsequent open_submenu / describe_leaf calls. The palette
 	 * treats this as an uninterpreted token. For the ODB adapter this

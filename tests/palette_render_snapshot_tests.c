@@ -43,6 +43,8 @@ typedef struct snap_item {
 	char shortcut;
 	bool enabled;
 	bool is_submenu;
+	bool checked;
+	bool is_separator;
 	const char *script;
 	struct snap_item *children;
 	int child_count;
@@ -103,6 +105,8 @@ static bool s_item_describe(void *ctx, int menu_index, void *parent_opaque,
 	out->shortcut = it->shortcut;
 	out->enabled = it->enabled;
 	out->is_submenu = it->is_submenu;
+	out->checked = it->checked;
+	out->is_separator = it->is_separator;
 	out->opaque = it;
 	out->script_handle = it->script ? (void *)it->script : NULL;
 	return true;
@@ -142,9 +146,9 @@ static int snapshot_row(int y, cell_t *out, int cap) {
 /* ---------- Fixture ---------- */
 
 static snap_item_t g_repl_items[] = {
-	{ "Help",  'H', true, false, "repl.help()",  NULL, 0 },
-	{ "Clear", 'C', true, false, "repl.clear()", NULL, 0 },
-	{ "Exit",  'X', true, false, "repl.exit()",  NULL, 0 },
+	{ "Help",  'H', true, false, false, false, "repl.help()",  NULL, 0 },
+	{ "Clear", 'C', true, false, false, false, "repl.clear()", NULL, 0 },
+	{ "Exit",  'X', true, false, false, false, "repl.exit()",  NULL, 0 },
 };
 
 static snap_menu_t g_menus[] = {
@@ -390,6 +394,114 @@ static void test_hotkey_bold_only_when_selected(void) {
 	palette_close(&st);
 }
 
+/* Fixture exercising checked items and a separator.  The "Edit" menu
+ * holds: a checked item ("Wrap"), a separator, and a plain item ("Copy"). */
+static snap_item_t g_edit_items[] = {
+	{ "Wrap", 'W', true,  false, true,  false, "edit.wrap()", NULL, 0 },
+	{ "-",    0,   false, false, false, true,  NULL,          NULL, 0 },
+	{ "Copy", 'C', true,  false, false, false, "edit.copy()", NULL, 0 },
+};
+
+static snap_menu_t g_edit_menus[] = {
+	{ "Edit", 'E', g_edit_items, 3 },
+};
+
+static snap_source_t g_edit_src = { g_edit_menus, 1 };
+
+static void test_checked_item_draws_check_glyph(void) {
+	/* A checked item reserves PALETTE_CHECK_CELLS extra cells inside the
+	 * brackets and draws the U+2714 check glyph immediately after the
+	 * opening bracket + leading space (cell lx+2), before the label. */
+	compositor_test_reset();
+	compositor_on_resize(24, 80);
+	palette_state_t st;
+	palette_menu_source_t src = snap_source(&g_edit_src);
+	palette_open(&st, 24, 80, 0, &src);
+	palette_feed_byte(&st, '\r');           /* open Edit menu */
+	render_all(&st);
+
+	int y = st.levels[0].pane.y;
+	cell_t row[80];
+	int n = snapshot_row(y, row, 80);
+	assert(n > 0);
+
+	/* The check glyph U+2714 must appear in the row. */
+	int col_check = -1;
+	for (int x = 0; x < n; ++x) {
+		if (row[x].ch == 0x2714u) { col_check = x; break; }
+	}
+	assert(col_check >= 0);
+
+	/* The 'W' of "Wrap" must come AFTER the check glyph (the glyph is
+	 * drawn before the label). */
+	int col_w = -1;
+	for (int x = 0; x < n; ++x) {
+		if (row[x].ch == 'W') { col_w = x; break; }
+	}
+	assert(col_w >= 0);
+	assert(col_check < col_w);
+	/* Glyph sits two cells before the label: [ space check space W. */
+	assert(col_w == col_check + 2);
+
+	palette_close(&st);
+}
+
+static void test_separator_draws_dim_divider(void) {
+	/* A separator item renders as a single dim '|' divider glyph and
+	 * carries the dim attribute + disabled foreground. */
+	compositor_test_reset();
+	compositor_on_resize(24, 80);
+	palette_state_t st;
+	palette_menu_source_t src = snap_source(&g_edit_src);
+	palette_open(&st, 24, 80, 0, &src);
+	palette_feed_byte(&st, '\r');           /* open Edit menu */
+	render_all(&st);
+
+	int y = st.levels[0].pane.y;
+	cell_t row[80];
+	int n = snapshot_row(y, row, 80);
+	assert(n > 0);
+
+	/* Find the divider '|' and assert it is dim + disabled fg. */
+	int col_bar = -1;
+	for (int x = 0; x < n; ++x) {
+		if (row[x].ch == (uint32_t)'|') { col_bar = x; break; }
+	}
+	assert(col_bar >= 0);
+	assert(row[col_bar].attr & PALETTE_ATTR_DIM);
+	assert(row[col_bar].fg == PALETTE_COLOR_BRIGHT_BLACK);
+
+	palette_close(&st);
+}
+
+static void test_cursor_skips_separator(void) {
+	/* The cursor must never land on a separator: opening the menu places
+	 * the cursor on item 0 (Wrap), and stepping RIGHT once jumps PAST the
+	 * separator (item 1) to land on Copy (item 2). */
+	compositor_test_reset();
+	compositor_on_resize(24, 80);
+	palette_state_t st;
+	palette_menu_source_t src = snap_source(&g_edit_src);
+	palette_open(&st, 24, 80, 0, &src);
+	palette_feed_byte(&st, '\r');           /* open Edit menu */
+
+	assert(st.levels[0].cursor == 0);       /* Wrap, not the separator */
+
+	/* Step RIGHT: should skip the separator at index 1 and land on Copy. */
+	palette_feed_byte(&st, 0x1b);
+	palette_feed_byte(&st, '[');
+	palette_feed_byte(&st, 'C');
+	assert(st.levels[0].cursor == 2);
+
+	/* Step LEFT: should skip back over the separator to Wrap. */
+	palette_feed_byte(&st, 0x1b);
+	palette_feed_byte(&st, '[');
+	palette_feed_byte(&st, 'D');
+	assert(st.levels[0].cursor == 0);
+
+	palette_close(&st);
+}
+
 static void test_menubar_hotkey_styling(void) {
 	/* On the menubar itself, the hotkey letter of a non-selected entry
 	 * is bright yellow on blue. */
@@ -426,6 +538,9 @@ int main(void) {
 	TR_RUN(test_hotkey_bold_yellow_when_not_selected);
 	TR_RUN(test_hotkey_bold_only_when_selected);
 	TR_RUN(test_menubar_hotkey_styling);
+	TR_RUN(test_checked_item_draws_check_glyph);
+	TR_RUN(test_separator_draws_dim_divider);
+	TR_RUN(test_cursor_skips_separator);
 	TR_SUMMARY();
 	return TR_EXIT_CODE();
 }

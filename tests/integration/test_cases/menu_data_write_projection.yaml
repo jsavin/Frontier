@@ -309,3 +309,62 @@ tests:
       return (beforeCount == 3) and (afterCount == 1)
     expected_success: true
     expected_result: "true"
+
+  # ==========================================================================
+  # Group 9: order field round-trip (insertion order, not alphabetical)
+  # ==========================================================================
+
+  - name: "addMenuCommand stamps order field on each leaf in insertion order"
+    description: |
+      Each item written via addMenuCommand gets an explicit `order` field
+      stamped with the count of already-ordered siblings — i.e. its zero-
+      based insertion index within the parent menu. Names are deliberately
+      non-alphabetical (Zebra, Mike, Alpha) so an alphabetical fallback
+      would produce a DIFFERENT ordering (Alpha=0, Mike=1, Zebra=2). The
+      stamped order must reflect ADD sequence, not sort order.
+    script: |
+      menu.addMenuCommand(@system.menus.data.tst14, "M", "Zebra", "z()");
+      menu.addMenuCommand(@system.menus.data.tst14, "M", "Mike",  "m()");
+      menu.addMenuCommand(@system.menus.data.tst14, "M", "Alpha", "a()");
+      local(zOrder = system.menus.data.tst14.M.Zebra.order);
+      local(mOrder = system.menus.data.tst14.M.Mike.order);
+      local(aOrder = system.menus.data.tst14.M.Alpha.order);
+      delete(@system.menus.data.tst14);
+      return (zOrder == 0) and (mOrder == 1) and (aOrder == 2)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "re-adding an existing item leaves its order unchanged"
+    description: |
+      The order stamp is idempotent: stamp_order_if_absent only writes when
+      the field is absent. Adding First then Second yields order 0 and 1;
+      re-adding First (a no-op create on an existing leaf) must NOT renumber
+      it — First stays 0, Second stays 1.
+    script: |
+      menu.addMenuCommand(@system.menus.data.tst15, "M", "First",  "f()");
+      menu.addMenuCommand(@system.menus.data.tst15, "M", "Second", "s()");
+      menu.addMenuCommand(@system.menus.data.tst15, "M", "First",  "f2()");
+      local(firstOrder = system.menus.data.tst15.M.First.order);
+      local(secondOrder = system.menus.data.tst15.M.Second.order);
+      delete(@system.menus.data.tst15);
+      return (firstOrder == 0) and (secondOrder == 1)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "top-level menus also get order stamped in insertion order"
+    description: |
+      The order stamp applies to menus (the bar's direct children), not
+      just leaf items. Adding items under menus Zoo then Ant then Bee (non-
+      alphabetical) stamps the MENU sub-tables with order 0, 1, 2 by add
+      sequence.
+    script: |
+      menu.addMenuCommand(@system.menus.data.tst16, "Zoo", "x", "x()");
+      menu.addMenuCommand(@system.menus.data.tst16, "Ant", "y", "y()");
+      menu.addMenuCommand(@system.menus.data.tst16, "Bee", "z", "z()");
+      local(zooOrder = system.menus.data.tst16.Zoo.order);
+      local(antOrder = system.menus.data.tst16.Ant.order);
+      local(beeOrder = system.menus.data.tst16.Bee.order);
+      delete(@system.menus.data.tst16);
+      return (zooOrder == 0) and (antOrder == 1) and (beeOrder == 2)
+    expected_success: true
+    expected_result: "true"

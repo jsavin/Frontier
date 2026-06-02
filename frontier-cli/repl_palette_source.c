@@ -113,6 +113,7 @@
 
 #include "../Common/headers/logging.h"
 
+#include <limits.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -136,6 +137,63 @@
  * 50 leaves total. This is a defensive ceiling, not a performance budget.
  */
 #define REPL_PS_MAX_CACHED_SCRIPTS 256
+
+
+/* ------------------------------------------------------------ */
+/*  legacy prefix-code parsing (mereducemenucodes parity)        */
+/* ------------------------------------------------------------ */
+
+/*
+ * C-string port of Common/source/menubar.c::mereducemenucodes. Operates on a
+ * NUL-terminated label in place. See the header for the full contract; the
+ * order of operations (separator, then '(' disable, then '!' check) mirrors
+ * the legacy routine exactly so behavior matches the Mac menu code path.
+ */
+void palette_reduce_menu_codes(char *label, bool *enabled, bool *checked,
+                               bool *is_separator) {
+	size_t len;
+
+	if (label == nil)
+		return;
+
+	len = strlen(label);
+
+	/*
+	 * Separator: a line that is EXACTLY "-" (length 1). Legacy:
+	 *   *flenabled = (stringlength > 1) || (char[0] != '-');
+	 * i.e. a lone '-' is the only disabled-by-dash case. We additionally
+	 * flag it as a separator so the renderer can draw a divider.
+	 */
+	if (len == 1 && label[0] == '-') {
+		if (enabled != nil)
+			*enabled = false;
+		if (is_separator != nil)
+			*is_separator = true;
+		return; /* '(' and '!' handling below never applies to "-" */
+	}
+
+	/*
+	 * Disable: leading '(' when the LAST char is not ')'. "(beta)" stays a
+	 * literal parenthesised word. Strip the '(' and mark disabled.
+	 */
+	if (len >= 1 && label[0] == '(' && label[len - 1] != ')') {
+		memmove(label, label + 1, len); /* includes the NUL terminator */
+		len -= 1;
+		if (enabled != nil)
+			*enabled = false;
+	}
+
+	/*
+	 * Check: leading '!' when something follows it (length > 1 in legacy
+	 * terms, i.e. at least one char after the '!'). Strip the '!' and mark
+	 * checked. '(' is handled first, so "(!Foo" disables AND checks.
+	 */
+	if (len > 1 && label[0] == '!') {
+		memmove(label, label + 1, len); /* includes the NUL terminator */
+		if (checked != nil)
+			*checked = true;
+	}
+}
 
 
 /* ------------------------------------------------------------ */
@@ -260,9 +318,18 @@ static hdlhashtable resolve_bar_by_name(const bigstring bsname) {
  */
 #define SUBTABLE_CHILDREN_CAP 256
 
+/*
+ * Sentinel order value for a child that carries no explicit "order" field.
+ * Unordered children sort AFTER every explicitly-ordered child and then
+ * alphabetically among themselves, preserving the pre-Option-A behavior for
+ * menubars that never wrote an order value.
+ */
+#define CHILD_ORDER_UNSET LONG_MAX
+
 typedef struct ty_child_slot {
 	bigstring bsname;
 	hdlhashtable htable;
+	long order;             /* explicit order field, or CHILD_ORDER_UNSET */
 } ty_child_slot;
 
 typedef struct ty_collect_state {
@@ -270,6 +337,28 @@ typedef struct ty_collect_state {
 	int count;
 	int cap;
 } ty_collect_state;
+
+
+/*
+ * Read the explicit "order" field from a child sub-table. Returns the long
+ * value if present and integer-typed (int or long scalar), else
+ * CHILD_ORDER_UNSET. Sub-tables without an order field keep the legacy
+ * alphabetical-by-name behavior because the sentinel sorts them last.
+ */
+#define BS_order BIGSTRING("\x05" "order")
+
+static long read_child_order(hdlhashtable hchild) {
+	tyvaluerecord val;
+	hdlhashnode hnode;
+
+	if (hchild == nil)
+		return CHILD_ORDER_UNSET;
+	if (!hashtablelookup(hchild, BS_order, &val, &hnode))
+		return CHILD_ORDER_UNSET;
+	if (val.valuetype == longvaluetype || val.valuetype == intvaluetype)
+		return (long) val.data.longvalue;
+	return CHILD_ORDER_UNSET;
+}
 
 
 /* Returns true to STOP per hashinversesearch. */
@@ -291,19 +380,35 @@ static boolean collect_cb(bigstring bsname, hdlhashnode hnode,
 
 	copystring(bsname, st->slots[st->count].bsname);
 	st->slots[st->count].htable = hchild;
+	st->slots[st->count].order = read_child_order(hchild);
 	st->count++;
 	return false; /* always continue */
 }
 
 
-/* qsort comparator for ty_child_slot -- alphabetical by Pascal bigstring. */
+/*
+ * qsort comparator for ty_child_slot. Two-key (Option A):
+ *   1. explicit "order" field, ascending. Children without an order field
+ *      carry CHILD_ORDER_UNSET (LONG_MAX) so they sort after every ordered
+ *      child.
+ *   2. alphabetical by Pascal bigstring name, as a stable tie-breaker (and
+ *      the sole key when neither child has an order field -- the legacy
+ *      pre-Option-A behavior).
+ */
 static int child_slot_cmp(const void *a, const void *b) {
 	const ty_child_slot *sa = (const ty_child_slot *) a;
 	const ty_child_slot *sb = (const ty_child_slot *) b;
-	int la = stringlength(sa->bsname);
-	int lb = stringlength(sb->bsname);
-	int minlen = la < lb ? la : lb;
-	int cmp = memcmp(&sa->bsname[1], &sb->bsname[1], (size_t) minlen);
+	int la, lb, minlen, cmp;
+
+	if (sa->order < sb->order)
+		return -1;
+	if (sa->order > sb->order)
+		return 1;
+
+	la = stringlength(sa->bsname);
+	lb = stringlength(sb->bsname);
+	minlen = la < lb ? la : lb;
+	cmp = memcmp(&sa->bsname[1], &sb->bsname[1], (size_t) minlen);
 	if (cmp != 0)
 		return cmp;
 	return la - lb;
@@ -713,6 +818,18 @@ static bool cb_item_describe(void *vctx, int menu_index, void *parent_opaque,
 
 	out->shortcut = (char) char_field_from_record(rec, "cmdkey");
 	out->enabled = bool_field_from_record(rec, "enabled", true) ? true : false;
+
+	/*
+	 * Apply legacy menu-text prefix codes to the label in place, matching the
+	 * Mac code path (mereducemenucodes): leading '(' disables, leading '!'
+	 * checks, a lone '-' is a separator. These compose with the stored
+	 * `enabled` field: an item explicitly disabled in the ODB stays disabled
+	 * even without a '(' prefix, and a '(' prefix can disable an otherwise-
+	 * enabled item. We therefore seed the reducer with the current enabled
+	 * value and let it only ever turn it off.
+	 */
+	palette_reduce_menu_codes(out->label, &out->enabled, &out->checked,
+	                          &out->is_separator);
 	out->hidden  = bool_field_from_record(rec, "hidden", false) ? true : false;
 	out->accepts_args = bool_field_from_record(rec, "accepts_args", false)
 	                    ? true : false;

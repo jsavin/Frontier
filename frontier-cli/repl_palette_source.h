@@ -111,6 +111,29 @@ bool repl_palette_source_init_all(palette_menu_source_t *out);
  */
 void repl_palette_source_dispose(palette_menu_source_t *src);
 
+/*
+ * Parse legacy menu-text prefix codes in-place, mirroring
+ * Common/source/menubar.c::mereducemenucodes:
+ *
+ *   - A line that is exactly "-" is a SEPARATOR: *is_separator = true and
+ *     *enabled = false. The label is left as "-" for the caller to render
+ *     however it likes (the palette draws a divider, not the text).
+ *   - A leading '(' (when the last char is NOT ')') DISABLES the item: the
+ *     '(' is stripped and *enabled = false.
+ *   - A leading '!' (when the remaining string is non-empty) CHECKS the item:
+ *     the '!' is stripped and *checked = true.
+ *
+ * '(' is processed before '!', and both can stack (e.g. "(!Foo" -> disabled
+ * AND checked, label "Foo"). On entry *enabled defaults to true and *checked
+ * / *is_separator default to false; this function only ever turns enabled
+ * off and the others on.
+ *
+ * `label` is a NUL-terminated C string modified in place; it never grows, so
+ * no capacity argument is needed. Passing nil for any out-param is allowed.
+ */
+void palette_reduce_menu_codes(char *label, bool *enabled, bool *checked,
+                               bool *is_separator);
+
 #ifdef __cplusplus
 }
 #endif

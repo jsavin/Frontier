@@ -67,6 +67,39 @@ static boolean find_data(hdlhashtable *hdata) {
 	return find_subtable(hmenus, STR_data, hdata);
 }
 
+#define BS_order_t BIGSTRING("\x05" "order")
+
+/*
+ * Read the explicit "order" scalar from a sub-table. Returns true with *out
+ * set if the field exists and is a long/int scalar; false otherwise.
+ */
+static boolean read_order(hdlhashtable ht, long *out) {
+	tyvaluerecord val;
+	hdlhashnode hnode;
+
+	if (!hashtablelookup(ht, BS_order_t, &val, &hnode))
+		return false;
+	if (val.valuetype != longvaluetype && val.valuetype != intvaluetype)
+		return false;
+	*out = (long) val.data.longvalue;
+	return true;
+}
+
+/*
+ * Convenience: resolve system.menus.data.<bar>.<menu> sub-table.
+ */
+static boolean find_menu_subtable(bigstring bsbar, bigstring bsmenu,
+                                  hdlhashtable *hresult) {
+	hdlhashtable hdata = nil;
+	hdlhashtable hbar = nil;
+
+	if (!find_data(&hdata))
+		return false;
+	if (!find_subtable(hdata, bsbar, &hbar))
+		return false;
+	return find_subtable(hbar, bsmenu, hresult);
+}
+
 /*
  * Reset to a known-clean state between tests.
  *
@@ -269,6 +302,110 @@ static void test_nil_roottable(void) {
 }
 
 /*
+ * Test 6: Order field is stamped incrementally as items/menus are added.
+ *
+ * Three commands added under the same menu must receive order 0, 1, 2 in
+ * insertion order (NOT alphabetical). Two menus under the same bar must
+ * likewise receive order 0, 1 in the order they were first created.
+ */
+static void test_order_stamped_on_add(void) {
+	printf("[menudata] Test 6: Order stamped incrementally on add... ");
+	fflush(stdout);
+
+	bigstring bsbar, bsmenuA, bsmenuB;
+	bigstring bsZ, bsM, bsA;
+	hdlhashtable hmenuA = nil, hmenuB = nil;
+	hdlhashtable hdata = nil, hbar = nil;
+	hdlhashtable hitem = nil;
+	long order;
+
+	ensure_system_only();
+
+	copyctopstring("orderbar", bsbar);
+	copyctopstring("MenuOne", bsmenuA);
+	copyctopstring("MenuTwo", bsmenuB);
+	/* Item names chosen so alphabetical != insertion order. */
+	copyctopstring("ZebraCmd", bsZ);
+	copyctopstring("MikeCmd", bsM);
+	copyctopstring("AlphaCmd", bsA);
+
+	/* Insert three items into MenuOne in non-alphabetical order. */
+	assert(menudata_add_command(bsbar, bsmenuA, bsZ, nil));
+	assert(menudata_add_command(bsbar, bsmenuA, bsM, nil));
+	assert(menudata_add_command(bsbar, bsmenuA, bsA, nil));
+
+	/* Add a second menu so we can check menu-level ordering too. */
+	assert(menudata_add_command(bsbar, bsmenuB, bsA, nil));
+
+	assert(find_menu_subtable(bsbar, bsmenuA, &hmenuA));
+
+	assert(find_subtable(hmenuA, bsZ, &hitem));
+	assert(read_order(hitem, &order));
+	assert(order == 0);
+
+	assert(find_subtable(hmenuA, bsM, &hitem));
+	assert(read_order(hitem, &order));
+	assert(order == 1);
+
+	assert(find_subtable(hmenuA, bsA, &hitem));
+	assert(read_order(hitem, &order));
+	assert(order == 2);
+
+	/* Menu-level ordering: MenuOne before MenuTwo. */
+	assert(find_data(&hdata));
+	assert(find_subtable(hdata, bsbar, &hbar));
+	assert(find_subtable(hbar, bsmenuA, &hmenuA));
+	assert(read_order(hmenuA, &order));
+	assert(order == 0);
+	assert(find_subtable(hbar, bsmenuB, &hmenuB));
+	assert(read_order(hmenuB, &order));
+	assert(order == 1);
+
+	printf("PASS\n");
+	fflush(stdout);
+}
+
+/*
+ * Test 7: Re-adding an existing item preserves its order (idempotency).
+ *
+ * The order stamp must only happen on first creation. A subsequent add of the
+ * same item (e.g. a script-driven rebuild) must not renumber it to the end.
+ */
+static void test_order_preserved_on_readd(void) {
+	printf("[menudata] Test 7: Re-add preserves existing order... ");
+	fflush(stdout);
+
+	bigstring bsbar, bsmenu, bsFirst, bsSecond;
+	hdlhashtable hmenu = nil, hitem = nil;
+	long order_first, order_after;
+
+	ensure_system_only();
+
+	copyctopstring("readdbar", bsbar);
+	copyctopstring("ReMenu", bsmenu);
+	copyctopstring("FirstItem", bsFirst);
+	copyctopstring("SecondItem", bsSecond);
+
+	assert(menudata_add_command(bsbar, bsmenu, bsFirst, nil));
+	assert(menudata_add_command(bsbar, bsmenu, bsSecond, nil));
+
+	assert(find_menu_subtable(bsbar, bsmenu, &hmenu));
+	assert(find_subtable(hmenu, bsFirst, &hitem));
+	assert(read_order(hitem, &order_first));
+	assert(order_first == 0);
+
+	/* Re-add FirstItem; its order must stay 0, not jump past SecondItem. */
+	assert(menudata_add_command(bsbar, bsmenu, bsFirst, nil));
+
+	assert(find_subtable(hmenu, bsFirst, &hitem));
+	assert(read_order(hitem, &order_after));
+	assert(order_after == order_first);
+
+	printf("PASS\n");
+	fflush(stdout);
+}
+
+/*
  * Main test runner.
  */
 int main(void) {
@@ -295,6 +432,8 @@ int main(void) {
 	TR_RUN(test_idempotent);
 	TR_RUN(test_partial_chain);
 	TR_RUN(test_fully_populated);
+	TR_RUN(test_order_stamped_on_add);
+	TR_RUN(test_order_preserved_on_readd);
 	TR_RUN(test_nil_roottable);
 
 	printf("\n========================================\n");

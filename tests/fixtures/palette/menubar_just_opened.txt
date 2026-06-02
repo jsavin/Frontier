@@ -17,4 +17,4 @@ Type /help for commands, /exit to quit
 
 
 
- Edit  File  View  REPL
+ File  Edit  View  REPL

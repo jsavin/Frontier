@@ -472,6 +472,7 @@ cleanup_defaults:
  */
 
 #define BS_installed BIGSTRING("\x09" "installed")
+#define BS_order     BIGSTRING("\x05" "order")
 
 
 /*
@@ -707,6 +708,72 @@ static boolean assign_exempt(hdlhashtable htable, bigstring bskey,
 }
 
 
+/*
+ * inversesearch callback for count_ordered_siblings. Increments the long
+ * counter in refcon once for every sub-table child that carries an explicit
+ * "order" field. Returns false to keep walking the whole table.
+ */
+static boolean count_ordered_child(bigstring bsname, hdlhashnode hnode,
+                                   tyvaluerecord val, ptrvoid refcon) {
+	hdlhashtable hchild = nil;
+	tyvaluerecord ordval;
+
+	(void) bsname;
+	(void) hnode;
+
+	if (!value_as_subtable(val, &hchild))
+		return false; /* scalar leaf field, not an orderable child */
+
+	if (lookup_field(hchild, BS_order, &ordval))
+		*((long *) refcon) += 1;
+
+	return false; /* keep walking */
+}
+
+
+/*
+ * Count how many sub-table children of hparent already carry an explicit
+ * "order" field. The next child to be stamped gets this count as its order
+ * value, so insertion order is preserved: the first ordered child is 0, the
+ * second 1, and so on. Children without an order field don't participate in
+ * the numbering (they sort last, alphabetically, per the read side).
+ */
+static long count_ordered_siblings(hdlhashtable hparent) {
+	long count = 0;
+	bigstring bsfound;
+
+	hashinversesearch(hparent, &count_ordered_child, &count, bsfound);
+	return count;
+}
+
+
+/*
+ * Stamp an explicit "order" field on hchild if it doesn't already have one.
+ *
+ * Idempotent: ensure_subtable returns the same handle whether the child was
+ * found or freshly created, so a re-add of an existing menu/item must NOT
+ * renumber it. We therefore only stamp when the order field is absent, and
+ * the value we assign is the count of already-ordered siblings under
+ * hparent — i.e. the child takes the next slot at the end of the ordering.
+ */
+static boolean stamp_order_if_absent(hdlhashtable hparent,
+                                     hdlhashtable hchild) {
+	tyvaluerecord existing;
+	tyvaluerecord val;
+	long order;
+
+	if (lookup_field(hchild, BS_order, &existing))
+		return true; /* already ordered — preserve it */
+
+	order = count_ordered_siblings(hparent);
+
+	if (!setlongvalue((int64_t) order, &val))
+		return false;
+
+	return assign_exempt(hchild, BS_order, &val);
+}
+
+
 boolean menudata_set_installed(bigstring bsbarname, boolean flinstalled) {
 	hdlhashtable hbar = nil;
 	tyvaluerecord val;
@@ -831,7 +898,15 @@ boolean menudata_add_command(bigstring bsbarname, bigstring bsmenuname,
 	if (!ensure_subtable(hbar, bsmenuname, &hmenu))
 		return false;
 
+	/* Preserve insertion order: stamp the menu's order on first creation. */
+	if (!stamp_order_if_absent(hbar, hmenu))
+		return false;
+
 	if (!ensure_subtable(hmenu, bsitemname, &hleaf))
+		return false;
+
+	/* Stamp the item's order within its menu on first creation. */
+	if (!stamp_order_if_absent(hmenu, hleaf))
 		return false;
 
 	/* label = itemname (default human-visible label) */
@@ -868,9 +943,17 @@ boolean menudata_add_submenu(bigstring bsbarname, bigstring bsmenuname,
 	if (!ensure_subtable(hbar, bsmenuname, &hmenu))
 		return false;
 
+	/* Preserve insertion order: stamp the menu's order on first creation. */
+	if (!stamp_order_if_absent(hbar, hmenu))
+		return false;
+
 	/* Create the sub-menu sub-table; leave it empty for downstream
 	   addCommand/addSubMenu calls to populate. */
-	return ensure_subtable(hmenu, bsitemname, &hsub);
+	if (!ensure_subtable(hmenu, bsitemname, &hsub))
+		return false;
+
+	/* Stamp the sub-menu's order within its parent menu on first creation. */
+	return stamp_order_if_absent(hmenu, hsub);
 }
 
 
