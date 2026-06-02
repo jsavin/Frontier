@@ -8,4 +8,4 @@ on im (rpcServer, procedureName, paramlist) {
 	tcp.im.rpi.client(driverName, screenName, procedureName, paramlist);
 	return true}
 //bundle // test scripts
-	//["im://aim/JerfBowersTest"].alert("Hello!\n\n\nŸÔÔ &amp;")
+	//["im://aim/JerfBowersTest"].alert("Hello!\n\n\n»ŸÔÔ &amp;")

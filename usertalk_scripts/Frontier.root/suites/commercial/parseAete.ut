@@ -18,9 +18,9 @@ on parseAete (appPath, adrTable) { //parse the app's aete resource and build a v
 		local (dir = right);
 		local (comment = "");
 		if string.length (s) > maxlen { //won't fit on one line
-			if s contains '//' {
-				comment = string.nthField (s, '//', 2);
-				s = string.nthField (s, '//', 1)};
+			if s contains '«' {
+				comment = string.nthField (s, '«', 2);
+				s = string.nthField (s, '«', 1)};
 			while string.length (s) > maxlen { //still won't fit on one line
 				local (i);
 				for i = maxlen - 1 downto 1 {
@@ -241,7 +241,7 @@ on parseAete (appPath, adrTable) { //parse the app's aete resource and build a v
 				parseParams (false)}
 			else {
 				parseParams (true)};
-			hdr = hdr + ") //" + comment;
+			hdr = hdr + ") «" + comment;
 			rtn = rtn + "))";
 			makeScript (hdr, rtn, adr)}};
 	on parseClasses () {

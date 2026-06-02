@@ -18,6 +18,6 @@ on cleanForExport (text, adrPageTable=@websites.["#data"]) { //prepare text to l
 			replace ("“", “"”);
 			replace ("”", “"”);
 			replace ("–", "--");
-			replace ("//", "&lt;&lt;");
-			replace ("", "&gt;&gt;")};
+			replace ("«", "&lt;&lt;");
+			replace ("»", "&gt;&gt;")};
 		return (text)}}

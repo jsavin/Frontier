@@ -10,7 +10,7 @@ if not defined (user.odbServer.commandFilter) {
 	op.insert ("Add your own code to filter all incoming messages", right);
 	script.makeComment ();
 	op.insert ("", down);
-	op.insert ("return (true) //return false to skip processing message", down);
+	op.insert ("return (true) «return false to skip processing message", down);
 	op.firstSummit ();
 	odbServer.targetClear (@user.odbServer.commandFilter)};
 bundle { //set up user.odbServer.prefs

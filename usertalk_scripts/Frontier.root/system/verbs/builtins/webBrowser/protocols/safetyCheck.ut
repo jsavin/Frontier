@@ -24,7 +24,7 @@ on safetyCheck (textToBeChecked, alert = true, adrSafetyScriptsInit = @webBrowse
 	
 	//workingCopyOfScript = textToBeChecked
 	string.setWordChar (" ");
-	if textToBeChecked contains "//" {
+	if textToBeChecked contains "«" {
 		reportError ("Illegal instruction: Comments not allowed"); //don't allow comments, it throws off identification of strings
 		return (false)};
 	if (textToBeChecked contains "“") or  (textToBeChecked contains "”") {
@@ -131,7 +131,7 @@ on safetyCheck (textToBeChecked, alert = true, adrSafetyScriptsInit = @webBrowse
 		//x = "[\"file\"]  .[\"delete\"] (\"Mac HD:Test\")"
 		//x = "[\"file\"].[\"delete\"] (\"Mac HD:Test\")"
 		//x = "scratchpad.test1 = “I wrote data to the OD”"
-		//x = "local (test) //enclose \";file.delete (\"HD:Sacrificial\");//\""
+		//x = "local (test) «enclose \";file.delete (\"HD:Sacrificial\");«\""
 		//x = "local (f = address (\"file.delete\"); f^ (\"Macintosh HD:Sacrificial File\");"
 		//x = "evaluate (-300);"
 		//x = "file.delete (\"Macintosh HD:Sacrificial File\")"

@@ -36,15 +36,17 @@ The .ut corpus has been converted to:
   - UTF-8 throughout
   - LF (0x0a) line endings
   - `//` for single-line comments
-  - block-comment `«»` removed during conversion (no surviving `«»` in any .ut)
+  - comment-delimiter `«»` removed during conversion, EXCEPT where `«` / `»`
+    appear inside a string or character literal (there they are literal data
+    and are preserved verbatim)
 
 Verifier applies these transforms to kernel output before byte-comparing
 against .ut content:
   1. Decode raw kernel bytes as MacRoman → UTF-8.
-  2. Substitute UTF-8 `«` («) → `//`.
-  3. Substitute UTF-8 `»` (») → empty.
-  4. CR → LF.
-  5. Strip a single trailing LF if present (.ut files have no trailing newline).
+  2. Substitute comment markers literal-aware: `«` → `//` and `»` → dropped,
+     but ONLY outside string ("...", “...”) and char ('...') literals.
+  3. CR → LF.
+  4. Strip a single trailing LF if present (.ut files have no trailing newline).
 
 Exit codes
 ----------
@@ -275,6 +277,81 @@ class ProtocolSession:
 # Normalization
 # ---------------------------------------------------------------------------
 
+# Mac smart-quote string delimiters (chopencurlyquote / chclosecurlyquote,
+# 0xD2 / 0xD3) as they appear after MacRoman -> Unicode decoding.
+_OPEN_CURLY = "“"   # "
+_CLOSE_CURLY = "”"  # "
+
+
+def _substitute_comment_markers(text: str) -> str:
+    """Replace legacy comment markers «/» with //-comment form, literal-aware.
+
+    `«` (chcomment) starts a comment equivalent to `//`; `»` (chendcomment)
+    closes a legacy comment and is dropped (a `//` comment runs to EOL). Both
+    are substituted ONLY when they appear outside a string or character
+    literal — inside `"..."`, the Mac curly-quote pair “...”, or `'...'` they
+    are literal data and must be preserved verbatim.
+
+    Mirrors langscan.c's per-line literal tracking: literals never span lines,
+    so state resets at each CR/LF. `\\` escapes the next character inside any
+    literal.
+    """
+    if "«" not in text and "»" not in text:
+        return text
+
+    out = []
+    in_string = False     # inside "..." or “...”
+    string_close = '"'    # which delimiter closes the current string
+    in_char = False       # inside '...'
+    escaped = False
+    for ch in text:
+        if ch == "\r" or ch == "\n":
+            # Line break: any unterminated literal cannot span lines.
+            in_string = False
+            in_char = False
+            escaped = False
+            out.append(ch)
+            continue
+        if in_string or in_char:
+            if escaped:
+                escaped = False
+                out.append(ch)
+                continue
+            if ch == "\\":
+                escaped = True
+                out.append(ch)
+                continue
+            if in_string and ch == string_close:
+                in_string = False
+            elif in_char and ch == "'":
+                in_char = False
+            out.append(ch)
+            continue
+        # Not inside any literal.
+        if ch == '"':
+            in_string = True
+            string_close = '"'
+            out.append(ch)
+            continue
+        if ch == _OPEN_CURLY:
+            in_string = True
+            string_close = _CLOSE_CURLY
+            out.append(ch)
+            continue
+        if ch == "'":
+            in_char = True
+            out.append(ch)
+            continue
+        if ch == "«":
+            out.append("//")
+            continue
+        if ch == "»":
+            # comment-end marker: dropped (// comments run to EOL)
+            continue
+        out.append(ch)
+    return "".join(out)
+
+
 def normalize_kernel_body(raw: bytes) -> bytes:
     """Apply the kernel-canonical → .ut-canonical transform.
 
@@ -344,11 +421,28 @@ def normalize_kernel_body(raw: bytes) -> bytes:
         # fall back to latin-1 (also 1:1 byte-to-codepoint, never errors).
         decoded = bytes(out).decode("latin-1")
 
-    # 3. Substitute the kernel's single-line-comment marker. After MacRoman
-    #    decoding, 0xC7/0xC8 became `«` / `»` (the UTF-8 sequences are
-    #    « / »).
-    decoded = decoded.replace("«", "//")
-    decoded = decoded.replace("»", "")
+    # 3. Substitute the kernel's legacy comment markers, but ONLY where they
+    #    act as comment delimiters — never inside a string or character
+    #    literal, where `«` / `»` are literal data.
+    #
+    #    After MacRoman decoding, 0xC7/0xC8 became `«` / `»`. In UserTalk these
+    #    are chcomment (0xC7, comment START, equivalent to `//`) and
+    #    chendcomment (0xC8, comment END). A legacy `«...»` comment maps to a
+    #    `//` comment that runs to end-of-line, so an unliteralized `«` becomes
+    #    `//` and an unliteralized `»` is dropped.
+    #
+    #    But `«` / `»` also appear as literal data inside string literals
+    #    ("...", or the Mac curly-quote pair “...”) and character constants
+    #    ('...'). Blindly replacing them there corrupts the script — e.g.
+    #    `nthChar (line, 1) ≠ '»'` would lose its char literal, and
+    #    `replace ("»", ">>")` would lose its search string. We mirror
+    #    langscan.c's per-line literal tracking: walk each line, track whether
+    #    we are inside a "..." / “...” string or a '...' char literal (with `\`
+    #    escaping the next byte), and only substitute markers seen OUTSIDE a
+    #    literal. Literals do not span lines in UserTalk, so state resets at
+    #    each line break. At this point line breaks are still CR (step 4 does
+    #    CR->LF).
+    decoded = _substitute_comment_markers(decoded)
 
     # 4. CR → LF.
     decoded = decoded.replace("\r", "\n")
