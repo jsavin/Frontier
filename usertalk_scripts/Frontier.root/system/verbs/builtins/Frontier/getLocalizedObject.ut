@@ -38,7 +38,7 @@ on getLocalizedObject (objectId, adrLanguageTable, adrAdrObject, defaultLanguage
 			if dive (objectId, nomad, adrAdrObject) {
 				return (true)}}};
 	
-	return (false)}; //didn't find it
+	return (false)} //didn't find it
 //bundle //test code
 	//local (adr)
 	//local (t = clock.ticks ())

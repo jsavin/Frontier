@@ -2,6 +2,6 @@ on publicRssPing (feedname, feedurl, server="rssrpc.weblogs.com") {
 	//Changes
 		//10/30/02; 5:28:56 PM by DW
 			//Created. Send a special RSS ping to the indicated server. This is a nice bottleneck that will make it easy to relocate the server if we need to, or to change the procedure. How do I know this will be handy? Because I'm doing it right now, and it's a b*tch to find all the places I hard-coded the server name. :-(
-	return (["xmlrpc://" + server + "/RPC2"].rssUpdate (feedname, feedurl))};
+	return (["xmlrpc://" + server + "/RPC2"].rssUpdate (feedname, feedurl))}
 //bundle //test code
 	//scratchpad.result = publicRssPing ("New York Times: Business", "http://partners.userland.com/nytRss/business.xml")

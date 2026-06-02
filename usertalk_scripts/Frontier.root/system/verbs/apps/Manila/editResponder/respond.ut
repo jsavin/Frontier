@@ -121,10 +121,10 @@ on respond (pta) {
 						siteinfo.username = base64.decode (args.u)};
 					if defined (args.p) {
 						siteinfo.password = base64.decode (args.p)};
-					
+					}}
 					//if siteInfo.username == "" or siteInfo.password == "" //get from prefs or prompt user
 						//siteInfo.password = ""
-						//playlist.manila.getUserNameAndPassword (siteinfo.URL, @siteInfo.username, @siteInfo.password)}}
+						//playlist.manila.getUserNameAndPassword (siteinfo.URL, @siteInfo.username, @siteInfo.password)
 			else {
 				scripterror ("Can't edit with Radio because an error occured while decoding the GET arguments: " + tryerror)}};
 		
@@ -172,7 +172,7 @@ on respond (pta) {
 							if system.environment.isMac {
 								title = latinToMac.convert (title)};
 							if not adrtype^.newMessage (args.url, title, inResponseTo, boolean (args.flPromoteToStory)) {
-								scriptError ("Can't create story because there was a problem calling the manilaMessage.newMessage windowType script. It returned false.")}};
+								scriptError ("Can't create story because there was a problem calling the manilaMessage.newMessage windowType script. It returned false.")}}};
 						//bundle //old code
 							//pike.checkSiteInfoTable (@siteinfo, "create story in Radio")
 							//local (storyinfo)
@@ -195,14 +195,14 @@ on respond (pta) {
 							//adrStoryTable^.siteinfo = siteinfo
 							//adrStoryTable^.storyinfo = storyinfo
 							//
-							//thread.callScript (@pike.commands.newStory, {adrStoryTable})};
+							//thread.callScript (@pike.commands.newStory, {adrStoryTable})
 					"editstory" {
 						local (adrtype);
 						if Frontier.tools.windowTypes.findWindowType ("manilaMessage", @adrtype) {
 							local (flHomePage = false, adrwindow);
 							try {flHomePage = (args.url == args.redirectUrl)};
 							if not adrtype^.openMessage (args.url, args.msgnum, false, flHomePage, @adrwindow) {
-								scriptError ("Can't edit message because there was a problem calling the manilaMessage.openMessage windowType script. It returned false.")}};
+								scriptError ("Can't edit message because there was a problem calling the manilaMessage.openMessage windowType script. It returned false.")}}};
 						//bundle //old code
 							//pike.checkSiteInfoTable (@siteinfo, "edit story in Radio")
 							//local (msgnum) //actually, we don't care if it's a number
@@ -226,7 +226,7 @@ on respond (pta) {
 								//if system.environment.isMac //convert from Latin to Mac text (if this is a Mac)
 									//if defined (storyinfo.opml) //01/22/01 JES: only convert to Mac text if the body is opml
 										//storyInfo.body = latinToMac.convert (storyInfo.body)
-								//thread.callScript (@pike.commands.editStory, {siteinfo, storyinfo})};
+								//thread.callScript (@pike.commands.editStory, {siteinfo, storyinfo})
 					"editadvanceditem" {
 						local (item);
 						try { //get the itemtype
@@ -236,7 +236,7 @@ on respond (pta) {
 						local (adrtype);
 						if Frontier.tools.windowTypes.findWindowType ("manilaTemplate", @adrtype) {
 							if not adrtype^.openTemplate (args.url, itemtype) {
-								scriptError ("Can't edit message because there was a problem calling the manilaTemplate.openTemplate windowType script. It returned false.")}};
+								scriptError ("Can't edit message because there was a problem calling the manilaTemplate.openTemplate windowType script. It returned false.")}}}}
 						//bundle //old code
 							//manila.advancedPref.checkOut (@siteInfo, itemType) //check it out
 							//local (itemInfo = manila.advancedPref.get (@siteInfo, itemType))
@@ -247,7 +247,7 @@ on respond (pta) {
 								//"sitestructure"
 									//adrBuildDisplayRoutine = @playlist.manila.siteStructure.xmlToOutline
 									//adrSerializeRoutine = @playlist.manila.siteStructure.outlineToXml
-							//thread.callScript (@pike.commands.editAdvancedItem, {siteinfo, iteminfo, true, adrBuildDisplayRoutine, adrSerializeRoutine})}}
+							//thread.callScript (@pike.commands.editAdvancedItem, {siteinfo, iteminfo, true, adrBuildDisplayRoutine, adrSerializeRoutine})
 				else { //unimplemented command
 					buildResponse (404, "NOT FOUND", "The object \"" + command + "\" doesn't exist.");
 					return (true)}}
@@ -275,6 +275,6 @@ on respond (pta) {
 		pta^.code = 200;
 		pta^.responseBody = htmlText};
 	
-	return (true)};
+	return (true)}
 //bundle //debugging
 	//respond (@scratchpad.pt)

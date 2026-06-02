@@ -7,7 +7,7 @@ on compile (adrservice, flSaveData, adrStoryArrivedCallback) {
 	local (adrredirect = xml.getAddress (adrxstruct, "redirect"));
 	local (redirecturl = xml.getValue (adrredirect, "newLocation"));
 	adrservice^.urlChanged = redirecturl;
-	return (true)};
+	return (true)}
 //bundle //test code
 	//local (url = "http://127.0.0.1/test/hell.xml")
 	//xml.aggregator.readservice (url, @aggregatorData.services)

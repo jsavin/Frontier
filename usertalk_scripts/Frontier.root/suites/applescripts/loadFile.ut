@@ -19,7 +19,7 @@ on loadFile (f, adrtable, flconfirmations) {
 			//an AppleScript Script Editor file containing an OSA script
 			local (resdata);
 			if not rez.getResource (f, 'scpt', 128, @resdata) {
-				scriptError ("CanÕt open script in file “" + file.fileFromPath (f) + "”.")};
+				scriptError ("Can’t open script in file “" + file.fileFromPath (f) + "”.")};
 			osa.getSource (@resdata, adr);
 			delete (@resdata);
 			target.set (adr);
@@ -53,7 +53,7 @@ on loadFile (f, adrtable, flconfirmations) {
 							//ct = sizeof (word1)
 							//newlen = sizeof (linebuf) + 1 + sizeof (word1)
 							//if newlen > 200
-								//scripttext = scripttext + linebuf + "Â" + cr
+								//scripttext = scripttext + linebuf + "¬" + cr
 								//linebuf = ""
 							//linebuf = linebuf + word1 + ","
 							//line1 = string.delete (line1, 1, ct + 1)

@@ -60,7 +60,7 @@ on getAutodiscoveryXml (permalinkUrl, pingUrl, title="", subject="", description
 	add ("<rdf:Description " + atts + " />");
 	add ("</rdf:RDF>");
 	
-	return (xtext)};
+	return (xtext)}
 //bundle //test code
 	//wp.newTextObject (getAutodiscoveryXml ("http://jake.userland.com/2002/04/01.html#a123", "http://radio.xmlsotragesystem.com/trackbackPing?u=0001000&p=123", postDate:clock.now (), description:"<b>Foo</b>\r\r<i>bar</i>"), @workspace.xtext)
 	//edit (@workspace.xtext)

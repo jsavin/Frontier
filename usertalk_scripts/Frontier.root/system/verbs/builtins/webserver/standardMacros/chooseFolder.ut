@@ -15,7 +15,7 @@ on chooseFolder (argTableAdr, openURL, selectURL, cancelURL, rootPath = "", fiel
 	add ("<TR><TD ALIGN=LEFT COLSPAN=2>");
 	if (basePath != "") {
 		bundle { // show folder name
-			add ((file.fileFromPath (basePath) - pathChar) + "<BR>")};
+			add ((file.fileFromPath (basePath) - pathChar) + "<BR>")}}
 		//bundle // show full path
 			//add ("<FONT SIZE=-1>" + basePath + "</FONT><BR>")
 		//bundle // as pop-up list
@@ -30,7 +30,7 @@ on chooseFolder (argTableAdr, openURL, selectURL, cancelURL, rootPath = "", fiel
 			//add ("<FONT SIZE=-1>")
 			//for i = 1 to string.countFields (basePath, pathChar)
 				//add (string.filledString ("&nbsp;", 2* (i - 1)) + string.nthField (basePath, pathChar, i) + "<BR>")
-			//add ("</FONT>")}
+			//add ("</FONT>")
 	else {
 		add ("Select a volume<BR>")};
 	add ("</TD></TR>");

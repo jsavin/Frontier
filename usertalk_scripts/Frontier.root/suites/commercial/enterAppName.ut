@@ -40,11 +40,11 @@ if dialog.ask ("Enter the name for your app's “Glue” table:", @temp.appname)
 		adrAppInfo^.name = temp.appname;
 		adrAppInfo^.sharedMenus = dialog.yesNo ("Does " + temp.appname + " support Menu Sharing?");
 		adrAppInfo^.path = "";
-		adrAppInfo^.id = '????';
+		adrAppInfo^.id = '????'};
 		//if not dialog.ask ("What is " + temp.appname + "'s creator id?", @adrAppInfo^.id)
 			//return
 		//adrAppInfo^.id = string4 (adrAppInfo^.id)
-		};//adrGlueTable^.id = adrAppInfo^.id
+		//adrGlueTable^.id = adrAppInfo^.id
 	
 	local (promptForFile = false);
 	bundle { //determine if we should prompt for the file
@@ -66,7 +66,7 @@ if dialog.ask ("Enter the name for your app's “Glue” table:", @temp.appname)
 	
 	if somethingCreated { //seed table with scripts if table or appInfo is new
 		if rez.countResources (adrAppInfo^.path, 'aete') > 0 {
-			if dialog.confirm ("Create glue scripts based on " + temp.appname + "Õs 'aete' resource?") {
+			if dialog.confirm ("Create glue scripts based on " + temp.appname + "’s 'aete' resource?") {
 				commercial.importAeteInfo ()}}};
 	
 	if adrAppInfo^.sharedMenus {

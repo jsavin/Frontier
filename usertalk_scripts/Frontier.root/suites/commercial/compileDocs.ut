@@ -38,7 +38,7 @@ on compileDocs (adrOutline) {
 						if (ctSubs == 1) and (section == "Examples") { //an example
 							local (line);
 							line = op.getLineText ();
-							if string.nthChar (line, 1) != '»' {
+							if string.nthChar (line, 1) ≠ '»' {
 								line = "» " + line};
 							s = s + tab + line + cr}
 						else {

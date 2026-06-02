@@ -9,7 +9,7 @@ on prefixWithGreaterThan() {
 		local {
 			selStart = window[1].selectionStart;
 			selEnd = window[1].selectionEnd};
-		if (selStart != selEnd) {
+		if (selStart ≠ selEnd) {
 			replace(everyOccurrence, "^", ">", selectionOnly:true, grep:true)}
 		else {
 			replace(everyOccurrence, "^", ">", grep:true)}}};

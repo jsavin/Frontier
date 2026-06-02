@@ -17,6 +17,6 @@ on edit (adrobject) {
 	local (scriptdata);
 	osa.compile (adrobject, false, @scriptdata);
 	bundle { //send the apple event, it's a long line
-		appleEvent (ideditorapp, 'edit', 'EDIT', '----', scriptdata, 'ASwt', wtitle, 'ASid', id, 'ASnc', requestCloseEvents, 'ASct', clientContext, 'ASna', editorComeToFront, 'ASro', readOnly)}};
+		appleEvent (ideditorapp, 'edit', 'EDIT', '----', scriptdata, 'ASwt', wtitle, 'ASid', id, 'ASnc', requestCloseEvents, 'ASct', clientContext, 'ASna', editorComeToFront, 'ASro', readOnly)}}
 //bundle //test code
 	//edit (@suites.samples.applescript.script2)

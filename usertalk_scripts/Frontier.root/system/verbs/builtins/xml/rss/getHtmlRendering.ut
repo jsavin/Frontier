@@ -79,8 +79,8 @@ on getHtmlRendering (adrservice, boxTitle=nil, width=125, frameColor="#000000", 
 			add ("<tr bgcolor=\"" + boxFillColor + "\">"); indentlevel++;
 			add ("<td width=\"100%\" colspan=\"3\">"); indentlevel++}
 		else {
-			add ("<table cellspacing=\"0\" cellpadding=\"5\" border=\"0\">"); indentlevel++;
-			};//add ("<tr><td></td><td><font size=\"-1\">XML</font></td></tr>")
+			add ("<table cellspacing=\"0\" cellpadding=\"5\" border=\"0\">"); indentlevel++};
+			//add ("<tr><td></td><td><font size=\"-1\">XML</font></td></tr>")
 		bundle { //generate the news items
 			local (storyLink, i, ct = 0);
 			if sizeof (imagelink) > 0 {
@@ -92,8 +92,8 @@ on getHtmlRendering (adrservice, boxTitle=nil, width=125, frameColor="#000000", 
 					if flbox {
 						align = " hspace=\"10\" vspace=\"2\" align=\"left\""};
 					if defined (adritem^.sourceChannelTitle) {
-						bullet = "<a href=\"" + adritem^.sourceChannelUrl + "\" title=\"Source: " + adritem^.sourceChannelTitle + "\"><img src=\"http://www.scripting.com/images/bullet.gif\" height=\"10\" width=\"5\"" + align + " border=\"0\" alt=\"Source: " + adrItem^.sourceChannelTitle + "\"></a>"; //PBS 03/28/01: add alt tag -- it's the name of the source
-						}//http://static.userland.com/shortcuts/images/qbullets/text.gif
+						bullet = "<a href=\"" + adritem^.sourceChannelUrl + "\" title=\"Source: " + adritem^.sourceChannelTitle + "\"><img src=\"http://www.scripting.com/images/bullet.gif\" height=\"10\" width=\"5\"" + align + " border=\"0\" alt=\"Source: " + adrItem^.sourceChannelTitle + "\"></a>"} //PBS 03/28/01: add alt tag -- it's the name of the source
+						//http://static.userland.com/shortcuts/images/qbullets/text.gif
 					else {
 						bullet = "<img src=\"http://www.scripting.com/images/bullet.gif\" height=\"10\" width=\"5\"" + align + " border=\"0\" alt=\"Bullet\">"}};
 				if flbox {
@@ -127,6 +127,6 @@ on getHtmlRendering (adrservice, boxTitle=nil, width=125, frameColor="#000000", 
 		add ("</table>"); indentlevel--};
 	adrservice^.htmlRendering = htmltext;
 	//scratchpad.service = adrservice^
-	return (htmltext)};
+	return (htmltext)}
 //bundle //test code
 	//webbrowser.displaytext (getHtmlRendering (@scratchpad.service, width:300))

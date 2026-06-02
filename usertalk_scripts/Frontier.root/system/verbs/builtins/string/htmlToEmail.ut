@@ -87,7 +87,7 @@ on htmlToEmail (htmltext) {
 		while htmltext contains "\r\n\r\n\r\n" { //never more than double-space
 			htmltext = string.replaceAll (htmltext, "\r\n\r\n\r\n", "\r\n\r\n")};
 		htmltext = string.trimWhitespace (htmltext)};
-	return (htmltext)};
+	return (htmltext)}
 //bundle //test code
 	//local (s = "This is a test message. Here is some <i>italic text</i>. Here is some <b>boldface text</b>. <p>Now I would like to <a href=\"http://radiodiscuss.userland.com/itsAnOutliner\">link</a> to a story that I find interesting.<p>Oh and here's a <a href=\"http://www.scripting.com/wavs/fargo5.wav\">sound file</a> that might entertain you.\r\n \r \n \r\n \r\n \r\n \r\n", t)
 	//s = worldoutlineManilaWebsite.["#discussionGroup"].messages.["0000016"].body

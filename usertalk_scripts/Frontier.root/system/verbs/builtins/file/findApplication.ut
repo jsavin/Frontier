@@ -36,6 +36,6 @@ on findApplication (creator) {
 								appPath = string.mid (command, 1, ix);
 								break}}}};
 				appPath = string.replace (appPath, "%SystemRoot%", systemPath)}};
-		return (appPath)}};
+		return (appPath)}}
 //bundle //test code
 	//findApplication ("txt")

@@ -23,7 +23,7 @@ on ping (email, password, status, adruserinfo=nil, adrdata=@xmlStorageSystem.dat
 		if adrclouddata != nil {
 			adrclouddata^ = result.clouddata};
 		//scratchpad.result = result
-		return (not result.flerror)}};
+		return (not result.flerror)}}
 //bundle //test code
 	//local (info); new (tabletype, @info); info.flBehindFirewall = false
 	//ping (user.radio.prefs.usernum, user.radio.prefs.passwords.default, 0, @info, adrclouddata:@scratchpad.clouddata)

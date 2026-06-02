@@ -24,6 +24,6 @@ on browseHttpFile (url, ctCacheSeconds=3600, flNeuterMacros=true) {
 				xmltext = string.replaceall (xmltext, "{", "&#123;")}};
 		op.xmltooutline (xmltext, adrincache);
 		settimemodified (adrincache, clock.now ())};
-	return (radio.prefs.browser (adrincache))};
+	return (radio.prefs.browser (adrincache))}
 //bundle //test code
 	//browseHttpFile ("http://radio.weblogs.com/0001015/gems/todolist.opml")

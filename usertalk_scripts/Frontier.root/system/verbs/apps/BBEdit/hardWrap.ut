@@ -1,7 +1,7 @@
 on hardWrap (limit = nil, selectionOnly = nil, paragraphFill = nil, width = nil, indentation = nil) { //Hard-wraps the text (or the text of the current selection) to conform to the parameters.
 	//Revisions:
 		//08/21/95 ECT: made changes to correctly handle no width specification
-	if (width != nil) {
+	if (width ≠ nil) {
 		return (appleEvent (BBEdit.id, 'R*ch', 'Wrap', 'WLmt', limit, 'OSel', boolean (selectionOnly), 'PgFl', boolean (paragraphFill), 'Wdth', short (width), 'Indt', indentation))}
 	else {
 		return (appleEvent (BBEdit.id, 'R*ch', 'Wrap', 'WLmt', limit, 'OSel', boolean (selectionOnly), 'PgFl', boolean (paragraphFill), 'Indt', indentation))}}

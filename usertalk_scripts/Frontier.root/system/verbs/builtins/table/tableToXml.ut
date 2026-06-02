@@ -234,7 +234,7 @@ on tableToXml (adrtable, flIncludeAddress=false) {
 	
 	doTable (adrtable, flIncludeAddress:flIncludeAddress);
 	
-	return (xmltext)};
+	return (xmltext)}
 //bundle //testing
 	//op.newOutlineObject (table.tableToXml (@workspace, true), @scratchpad.tableXml)
 	//edit (@scratchpad.tableXml)

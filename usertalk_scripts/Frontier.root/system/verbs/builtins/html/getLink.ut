@@ -32,7 +32,7 @@ on getLink (linetext, url, whatTarget=nil, anchor=nil, class=nil, title=nil, acc
 		if onclick != nil {
 			add("onclick", onclick)};
 		
-		return (htmltext + ">" + linetext + "</a>")}};
+		return (htmltext + ">" + linetext + "</a>")}}
 //bundle //test code
 	//html.getLink("Foo!", "")
 		//"Foo!"

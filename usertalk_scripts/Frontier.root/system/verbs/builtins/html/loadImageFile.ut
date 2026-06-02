@@ -25,6 +25,6 @@ on loadImageFile (f, adrtable, name=nil) {
 	else {
 		adrtable^.[name] = file.readWholeFile (f);
 		setBinaryType (@adrtable^.[name], type)};
-	return (@adrtable^.[name])};
+	return (@adrtable^.[name])}
 //bundle //test code
 	//dialog.alert (loadimagefile ("Macintosh HD:Desktop Folder:WINDOWS.GIF", @user.html.images))

@@ -14,7 +14,7 @@ on timerExpired (processname, ctSecsBetwRuns=60) {
 	if (clock.now () - adrtimer^) >= ctSecsBetwRuns {
 		adrtimer^ = clock.now ();
 		return (true)}; //run the process
-	return (false)}; //it hasn't expired yet
+	return (false)} //it hasn't expired yet
 //bundle //test code
 	//loop
 		//if timerExpired ("test", 2)

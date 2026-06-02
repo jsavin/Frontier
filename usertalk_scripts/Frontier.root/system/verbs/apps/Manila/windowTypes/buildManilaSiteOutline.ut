@@ -85,7 +85,7 @@ on buildManilaSiteOutline (adr, adrinfo, flManagingEditor=true) {
 	try {target.set (oldTarget)};
 	
 	return (true);
-	
+	}
 	//bundle //old code
 		//on createDefaultNodes (siteUrl, flManagingEditor=true)
 			//Create the default nodes in a Manila site: home page, various templates, links to prefs/admin pages. Assume the target is set, and the cursor is on the parent, the Manila site node.
@@ -181,4 +181,4 @@ on buildManilaSiteOutline (adr, adrinfo, flManagingEditor=true) {
 			//
 			//op.setCursor (origCursor)
 			//
-			//return (true)}
+			//return (true)

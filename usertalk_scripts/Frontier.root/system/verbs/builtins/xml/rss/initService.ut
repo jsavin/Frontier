@@ -21,6 +21,6 @@ on initService (url, adrservices) {
 		adrservice^.ctConsecutiveErrors = 0};
 	if not defined (adrservice^.timeLastError) {
 		adrservice^.timeLastError = date (0)};
-	return (adrservice)};
+	return (adrservice)}
 //bundle //test code
 	//initservice ("http://www.wired.com/news_drop/netcenter/netcenter.rdf", @scratchpad)

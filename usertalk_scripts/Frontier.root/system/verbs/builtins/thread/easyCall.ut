@@ -14,6 +14,6 @@ on easyCall (routinename, paramlist) { //4.2
 		firstparam = false;
 		s = s + "\"" + string.replaceAll (param, "\"", "\\\"") + "\""};
 	s = s + ")";
-	return (evaluateThread (s))};
+	return (evaluateThread (s))}
 //bundle //test code
 	//easyCall ("dialog.threeway", {"Pick a word!", "oh", "the", "buzz"})

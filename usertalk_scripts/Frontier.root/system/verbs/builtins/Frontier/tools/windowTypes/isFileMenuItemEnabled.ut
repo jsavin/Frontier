@@ -82,26 +82,26 @@ on isFileMenuItemEnabled (cmd) {
 					return (false)}};
 			return (true)};
 		"close" {
-			return (true); //PBS 02/19/01: always enabled
+			return (true)}; //PBS 02/19/01: always enabled
 			//local (adr = windowFrontmost)
-			};//return ((adr != "") and (not window.ishidden (adr)))
+			//return ((adr != "") and (not window.ishidden (adr)))
 		"save" {
 			local (flReadOnly = false);
 			if isWindowTypesWindow {
 				if window.attributes.getOne ("flReadOnly", @flReadOnly, windowFrontmost) {
 					return (not flReadOnly)}}; //JES 10/14/05: save disabled for read-only windows
-			return (true);
+			return (true)};
 			//local (adr = getCursorAddress ())
 			//local (windowType = pike.getWindowType (adr))
 			//if windowType == ""
 				//return (true)
-			};//return (pike.isItemDirty (parentOf (adr^)))
+			//return (pike.isItemDirty (parentOf (adr^)))
 		"revert" {
 			if isWindowTypesWindow {
 				if defined (adrtype^.revert) {
 					if Frontier.tools.windowTypes.isWindowDirty (windowFrontmost) {
 						return (true)}}};
-			return (false);
+			return (false)};
 			//bundle //old code
 				//local (adr = getCursorAddress ())
 				//if pike.isLocalOutline (adr) //PBS 07/24/00: check local outlines
@@ -113,7 +113,7 @@ on isFileMenuItemEnabled (cmd) {
 						//return (pike.isItemDirty (parentOf (adr^)))
 					//"newStories"
 						//return (false)
-				//return (false)};
+				//return (false)
 		"viewinbrowser";
 		"saveashtml";
 		"saveasplaintext" { //PBS 12/15/00: enable all outlines
@@ -125,8 +125,8 @@ on isFileMenuItemEnabled (cmd) {
 				scriptType;
 				outlineType {
 					return (true)}}};
-		"saveas" //PBS 07/24/00: Save As now is the same as Change Title
-			//return (true) //uncomment this line to make the Save As command equivalent to the Export Object command.;
+		"saveas"; //PBS 07/24/00: Save As now is the same as Change Title
+			//return (true) //uncomment this line to make the Save As command equivalent to the Export Object command.
 		"changetitle" {
 			if isWindowTypesWindow {
 				if defined (adrtype^.saveAs) {
@@ -134,7 +134,7 @@ on isFileMenuItemEnabled (cmd) {
 			local (adr = getCursorAddress ());
 			if typeOf (adr^) == outlineType {
 				return (true)};
-			return (false);
+			return (false)};
 			//bundle //old code
 				//local (adr = getCursorAddress ())
 				//if pike.isLocalOutline (adr) //PBS 07/24/00
@@ -147,7 +147,7 @@ on isFileMenuItemEnabled (cmd) {
 						//return (false)
 				//if typeOf (adr^) == outlineType
 					//return (true)
-				//return (false)};
+				//return (false)
 		"update" {
 			if defined (tcp.isOffline) {
 				if tcp.isOffline () {

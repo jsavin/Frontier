@@ -7,6 +7,6 @@ on customRenderer (partialaddress, defaultvalue, adrxmltable) {
 	
 	case string.lower (partialaddress) {
 		"NOP" {
-			}};//do nothing
+			//do nothing
 	
 	return (htmltext)}

@@ -11,4 +11,4 @@ on boxLoop (boxName) {
 			try {
 				msg (Eudora.getMessageSubject (x))}
 			else {
-				msg ("¥¥¥ERROR¥¥¥")}}}}
+				msg ("•••ERROR•••")}}}}

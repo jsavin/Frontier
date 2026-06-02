@@ -3,6 +3,6 @@ on minute (theDate = clock.now ()) {
 		//I have lots of scripts that want to know the current minute and don't care what hour, second, day or year it is. This verb just returns the current minute.
 	local (day, month, year, hour, minute, second);
 	date.get (theDate, @day, @month, @year, @hour, @minute, @second);
-	return (minute)};
+	return (minute)}
 //bundle //test code
 	//dialog.alert (minute ())

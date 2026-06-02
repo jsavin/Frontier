@@ -27,7 +27,7 @@ on getNamespaceUriForElement (adrelement, adrdoc, default="") {
 			if nsprefix != "" { //this is an error -- the namespace hasn't been declared
 				scriptError ("Can't get the namespace URI for the specified element because there is no namespace declaration for the prefix, \"" + nsprefix + "\".")};
 			break}};
-	return (default)}; //default namespace
+	return (default)} //default namespace
 //bundle //test code
 	//local (adrxstruct = @workspace.snRssXstruct)
 	//local (adrrss = xml.getAddress (adrxstruct, "rss"))

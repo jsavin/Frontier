@@ -8,6 +8,6 @@ on getCursorAddress () { //4.0.2 -- return the address of the current object
 		return (nil)};
 	if typeOf (adrobject^) == tabletype {
 		adrobject = table.getCursor ()};
-	return (adrobject)};
+	return (adrobject)}
 //bundle //test code
 	//dialog.alert (getCursorAddress ())

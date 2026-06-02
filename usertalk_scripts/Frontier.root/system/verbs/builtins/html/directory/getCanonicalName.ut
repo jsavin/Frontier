@@ -19,6 +19,6 @@ on getCanonicalName (linetext) {
 		else {
 			if number (ch) > 127 {
 				name = string.delete (name, i, 1)}}};
-	return (string.innerCaseName (name))};
+	return (string.innerCaseName (name))}
 //bundle //test code
 	//dialog.alert (getCanonicalName ("xml-rpc"))

@@ -47,7 +47,7 @@ on getServicesXml (adrdata=xml.aggregator.init (), adrIncludeCallback=nil) {
 	if system.environment.isMac { //02/22/2001 JES: convert to Latin text
 		xmltext = latinToMac.macToLatin (xmltext)};
 	
-	return (xmltext)};
+	return (xmltext)}
 //bundle //test code
 	//on includeCallback (adr)
 		//return (nameOf (adr^) contains "userland")

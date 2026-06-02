@@ -12,6 +12,6 @@ on monthToString (monthnum) {
 				//if not defined (adrlist^)
 					//adrlist^ = {"January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"}
 				//return (adrlist^ [monthnum])
-	kernel (date.monthToString)};
+	kernel (date.monthToString)}
 //bundle //test code
 	//dialog.notify (monthToString (12))

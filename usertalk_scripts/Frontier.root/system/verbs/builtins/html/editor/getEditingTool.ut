@@ -82,6 +82,6 @@ on getEditingTool (pta=nil) {
 		else {
 			editingToolName = "none"}};
 	
-	return (editingToolName)};
+	return (editingToolName)}
 //bundle //test code
 	//dialog.alert (getEditingTool (@workspace.pt))

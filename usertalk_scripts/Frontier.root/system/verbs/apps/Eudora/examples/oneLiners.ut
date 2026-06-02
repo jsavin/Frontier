@@ -23,10 +23,10 @@ with objectModel, Eudora, eventInfo { //most scripts should issue Eudora command
 		//Non Object Model way:
 		result = getMessageSubject (mailfolder[""].mailbox["In"].message[1]);
 		result = getSetting(25);
-		result = getMessageSender (mailfolder[""].mailbox["In"].message[1]);
+		result = getMessageSender (mailfolder[""].mailbox["In"].message[1])};
 		//Notice that sender is a different concept in objectModel vs non objectModel scripts
 			//getMessageSender actually returns the "From:" field, where getting the sender property of a message gets
-			//what Eudora displays in the sender column of index views.};
+			//what Eudora displays in the sender column of index views.
 	
 	bundle { //moving messages
 		result = move (mailfolder[""].mailbox["in"].message[1], endOf (mailfolder[""].mailbox["trash"]));

@@ -11,12 +11,12 @@ with objectModel, Filemaker {
 		create(record); //create a new blank record
 		create(record,{"Washington","Olympia"}); //record with data
 		create(record,"Washington"+tab+"Olympia"); //record with data as string
-		create(record, {"Washington","Olympia"},0,endOf(database[1])); //create a record with data at a location
+		create(record, {"Washington","Olympia"},0,endOf(database[1]))}; //create a record with data at a location
 		//other locations could be: (all result in a insertionLoc object)
 			//beginningOf(obj)
 			//after(obj)
 			//before(obj)
-			//replace(obj)? Haven't tested this one};
+			//replace(obj)? Haven't tested this one
 	bundle { //creating requests
 		create(request,{"Washington","Olympia"}); //create request with data
 		create(request,{"Washington"}); //create request with partial data (first cell)

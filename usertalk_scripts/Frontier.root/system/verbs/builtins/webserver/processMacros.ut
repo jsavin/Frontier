@@ -7,10 +7,10 @@ on processMacros (text, adrVar = nil) {
 					if string.patternMatch (tag , text ) < 1 {
 						return (text)}; //no macros
 					local (i, z, workCopy);
-					workCopy = string.replaceAll (text, tag, "Æ"); // change to one char for string.nthField
-					for i = 2 to string.countFields (workCopy, "Æ") {
-						local (tempString = string.nthField (workCopy, "Æ", i), macroString = "");
-						tempString = string.replaceAll (tempString, "\\\"", "Æ"); //replace escaped quotes
+					workCopy = string.replaceAll (text, tag, "∆"); // change to one char for string.nthField
+					for i = 2 to string.countFields (workCopy, "∆") {
+						local (tempString = string.nthField (workCopy, "∆", i), macroString = "");
+						tempString = string.replaceAll (tempString, "\\\"", "∆"); //replace escaped quotes
 						for z = 1 to string.countFields (tempString, "\"") { //build macrostring, ignoring things between quotes
 							local (testString = string.nthField (tempString, "\"", z));
 							if (mod (z, 2)) > 0 { // test even/odd
@@ -21,7 +21,7 @@ on processMacros (text, adrVar = nil) {
 								macroString = macroString + testString + "\""}
 							else {
 								macroString = macroString + testString + "\""}};
-						macroString = string.replaceAll (macroString , "Æ", "\\\""); //put escaped quotes back
+						macroString = string.replaceAll (macroString , "∆", "\\\""); //put escaped quotes back
 						if string.patternMatch ("(", macroString) < 1 { // no parentheses, not a script 
 							if defined (macroString^) {
 								case typeOf (macroString^) {
@@ -41,9 +41,9 @@ on processMacros (text, adrVar = nil) {
 				if string.patternMatch (tag , text ) < 1 {
 					return (text)}; //no macros
 				local (i, z, workCopy);
-				workCopy = string.replaceAll (text, tag, "Æ"); // change to one char for string.nthField
-				for i = 2 to string.countFields (workCopy, "Æ") {
-					local (tempString = string.nthField (workCopy, "Æ", i), macroString = "");
+				workCopy = string.replaceAll (text, tag, "∆"); // change to one char for string.nthField
+				for i = 2 to string.countFields (workCopy, "∆") {
+					local (tempString = string.nthField (workCopy, "∆", i), macroString = "");
 					for z = 1 to string.countFields (tempString, "\"") { //build macrostring, ignoring things between quotes
 						local (testString = string.nthField (tempString, "\"", z));
 						if (mod (z, 2)) > 0 { // test even/odd

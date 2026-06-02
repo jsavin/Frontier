@@ -86,7 +86,7 @@ on walk (adroutline, identifier, path, adrcrumblist, adrlastxstruct, adrrulestab
 			if adrInSiteInclusionCallback == nil { //error
 				scriptError ("Can't find the directory element because there is no item at \"" + path + "\". We ran into trouble at this element: \"" + s + "\".")}
 			else {
-				flfound = adrInSiteInclusionCallback^ (s, @nomad, @adrlastxstruct, adrcrumblist)};
+				flfound = adrInSiteInclusionCallback^ (s, @nomad, @adrlastxstruct, adrcrumblist)}}
 			//bundle //original code
 				//local (othermsgnum)
 				//fladdtocrumblist = false
@@ -106,7 +106,7 @@ on walk (adroutline, identifier, path, adrcrumblist, adrlastxstruct, adrrulestab
 				//nomad = xml.getaddress (nomad, "body")
 				//if fladdtocrumblist
 					//adrcrumblist^ = adrcrumblist^ + {adrmsg^.subject}
-				//flfound = true}
+				//flfound = true
 		else {
 			if s endswith "~" {
 				s = string.delete (s, sizeof (s), 1);

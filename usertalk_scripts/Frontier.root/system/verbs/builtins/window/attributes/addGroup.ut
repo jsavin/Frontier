@@ -15,7 +15,7 @@ on addGroup (adrtable, adrwindow=nil) {
 		local (adrnewitem);
 		for adrnewitem in adrtable {
 			table.assign (@adratts^.[nameof (adrnewitem^)], adrnewitem^)}};
-	return (true)};
+	return (true)}
 //bundle //testing
 	//local (t); new (tableType, @t)
 	//t.foo = "bar"

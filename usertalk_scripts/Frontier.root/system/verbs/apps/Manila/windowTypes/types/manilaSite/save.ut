@@ -59,7 +59,7 @@ on save (adr, flClosing=false) {
 		//manila.editorialOutline.checkIn (@siteInfoTable)
 	
 	return (true);
-	
+	};
 	//bundle //original code
 		//local (adrTable = parentOf (adrItem^))
 		//if adrTable^.flReadOnly //can't be saved
@@ -84,7 +84,7 @@ on save (adr, flClosing=false) {
 		//if flClosing //also check it in if the app is shutting down
 			//playlist.manila.rpc.checkInManilaSiteOutline (siteUrl, username, password)
 		//
-		//return (true)};
+		//return (true)
 
 bundle { //debugging
 	save (window.frontmost ())}

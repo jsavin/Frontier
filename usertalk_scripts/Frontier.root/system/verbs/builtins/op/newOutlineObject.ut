@@ -1,8 +1,8 @@
 on newOutlineObject (s, adr) {
 	//3/24/26 by JES
-		//Trim trailing whitespace to prevent outline structure errors.
+	//Trim trailing whitespace to prevent outline structure errors.
 	//3/21/26 by JES
-		//Normalize line endings (CRLF, LF) to CR for cross-platform compatibility.
+	//Normalize line endings (CRLF, LF) to CR for cross-platform compatibility.
 	//8/16/98; 11:40:55 AM by DW
 		//New for 5.1.3, creates a new outline object at the specified address.
 			//The text is assumed to be tab-indented,

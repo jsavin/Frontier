@@ -40,7 +40,7 @@ on register (email, password, name, adrgreeting = nil, adrdata = @xmlStorageSyst
 			adrgreeting^ = result.message};
 		if adrresponse != nil {
 			adrresponse^ = result};
-		return (not result.flerror)}};
+		return (not result.flerror)}}
 //bundle //test code
 	//local (greeting)
 	//local (data); new (tableType, @data)

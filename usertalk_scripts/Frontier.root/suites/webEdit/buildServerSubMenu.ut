@@ -38,6 +38,6 @@ on buildServerSubMenu () {
 	
 	try {target.set (oldTarget)};
 	
-	return (true)};
+	return (true)}
 //bundle //test code
 	//buildServerSubMenu ()

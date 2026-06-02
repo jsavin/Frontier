@@ -10,7 +10,7 @@ on create (adrSession, objectType, adrDataTable) {
 	if retval.success {
 		return (retval.id)}
 	else { //throw the error
-		scriptError ("Can't create the object because the server returned an error: " + retval.errors.message)}};
+		scriptError ("Can't create the object because the server returned an error: " + retval.errors.message)}}
 //bundle //testing
 	//local (adrses)
 	//bundle //set adrses

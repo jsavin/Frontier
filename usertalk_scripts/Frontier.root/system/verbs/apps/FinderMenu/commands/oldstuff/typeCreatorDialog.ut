@@ -25,14 +25,14 @@ on doDialog (path) {
 				dialog.alert (msg);
 				return (false)}}; //don't get rid of dialog
 		s = dialog.getvalue (typeitem);
-		if s != string (type) {
+		if s ≠ string (type) {
 			if not check4chars (s, "type") {
 				//dialog.setvalue (typeitem, type) //restore to original value
 				return (false)}; //don't get rid of dialog
 			file.setType (path, s)};
 		
 		s = dialog.getvalue (creatoritem);
-		if s != string (creator) {
+		if s ≠ string (creator) {
 			if not check4chars (s, "type") {
 				//dialog.setvalue (creatoritem, creator) //restore to original value
 				return (false)}; //don't get rid of dialog

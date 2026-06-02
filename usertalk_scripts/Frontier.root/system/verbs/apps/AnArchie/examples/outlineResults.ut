@@ -24,7 +24,7 @@ on outlineResults (searchResults, sortList=nil, outlineAddr=nil) {
 	for x = 1 to count {
 		aRec = searchResults^[x];
 		if (aRec[anarchie.eventInfo.isDirectory]) {
-			op.insert(aRec[1] + " Ä", dir)}
+			op.insert(aRec[1] + " ƒ", dir)}
 		else {
 			op.insert(aRec[1], dir)};
 		dir = down; // after the first, insert down

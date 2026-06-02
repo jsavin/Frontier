@@ -17,7 +17,7 @@ on getMyDottedId () { //return the dotted id of the system we're running on
 					system.temp.myIpAddress = ipAddress;
 					return (system.temp.myIpAddress)}}};
 		system.temp.myIpAddress = tcp.addressDecode (tcp.myAddress ())};
-	return (system.temp.myIpAddress)};
+	return (system.temp.myIpAddress)}
 //bundle //test code
 	//local (tc = clock.ticks ())
 	//for i = 1 to 1000

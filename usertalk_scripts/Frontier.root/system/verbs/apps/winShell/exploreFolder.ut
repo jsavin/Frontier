@@ -1,5 +1,5 @@
 on exploreFolder (folderPath) {
-	return (boolean (dll.call (winShell.getDllPath (), "shellexplore", folderPath)))};
+	return (boolean (dll.call (winShell.getDllPath (), "shellexplore", folderPath)))}
 //bundle //test code
 	//winShell.exploreFolder (frontier.pathString)
 		//true

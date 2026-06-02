@@ -6,6 +6,6 @@ on reveal (f) { //open the folder containing f, and highlight it
 		return (Finder.reveal (f))};
 	if system.environment.isWindows {
 		local (osfolder = file.getSpecialFolderPath ("", "windows",  false));
-		return (launch.appWithDocument (osfolder + "explorer.exe", "/select," + f))}};
+		return (launch.appWithDocument (osfolder + "explorer.exe", "/select," + f))}}
 //bundle //test code
 	//reveal ("c:\\palm springs\\frontier.exe")

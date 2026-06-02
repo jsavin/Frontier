@@ -11,7 +11,7 @@ on getDottedId (domainName) { //turn a domain name into a dotted id
 	else {
 		local (s = tcp.addressDecode (tcp.nameToAddress (domainName)));
 		adritem^ = s;
-		return (s)}};
+		return (s)}}
 //bundle //test code
 	//for i = 1 to 100
 		//s = getDomainName ("www.scripting.com")

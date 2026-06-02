@@ -4,6 +4,6 @@ on saveMyRoot (adrInRoot) { //save the database that contains the object
 		fileMenu.save (alist [1]);
 		return (alist [1])}
 	else {
-		fileMenu.save ()}};
+		fileMenu.save ()}}
 //bundle //test code
 	//saveMyRoot (@suites.webEdit)

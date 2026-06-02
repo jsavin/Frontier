@@ -74,7 +74,7 @@ on compile (adrservice, flSaveData, adrStoryArrivedCallback) {
 			adrdata^.byline = byline;
 			adrdata^.timestamp = converttimestamp (decode (xml.getValue (article, "timestamp")))};
 		addToHistory (adritem)};
-	return (true)};
+	return (true)}
 //bundle //test code
 	//local (url = "http://radiouser:Csm!]-tvMm@partners.userland.com/nyt/business.xml")
 	//local (adrservice = xml.rss.initService (url, @aggregatorData.services))

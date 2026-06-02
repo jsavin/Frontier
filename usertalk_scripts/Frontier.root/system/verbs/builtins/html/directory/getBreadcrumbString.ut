@@ -13,6 +13,6 @@ on getBreadcrumbString (crumblist, uri, searchArgs="", flDirectoryHomeUrlEndsWit
 		for i = 1 to ctcrumbs - 1 {
 			crumbstring = crumbstring + "<a class=\"directoryCrumbLink\" href=\"" + popuri (uri, ctcrumbs - i) + searchArgs + "\">" + string.replaceall (crumblist [i], " ", "&nbsp;") + "</a> > "};
 		crumbstring = crumbstring + "<b>" + crumblist [ctcrumbs] + "</b>"};
-	return (crumbstring)};
+	return (crumbstring)}
 //bundle //test code
 	//dialog.alert (getBreadcrumbString ({"United States", "Western States", "California"}, "/us/west/ca"))

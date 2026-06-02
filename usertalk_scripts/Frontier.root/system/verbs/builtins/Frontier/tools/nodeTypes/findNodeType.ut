@@ -45,7 +45,7 @@ on findNodeType (type = "", adradrtable) {
 					adrtable = adrtable^};
 				adradrtable^ = adrtable;
 				return (true)}}};
-	return (false)};
+	return (false)}
 //bundle //test code
 	//dialog.alert (findnodetype ("", @adrtable))
 	//dialog.alert (adrtable)

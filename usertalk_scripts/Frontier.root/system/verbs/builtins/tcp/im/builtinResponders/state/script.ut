@@ -9,6 +9,6 @@ on script (driverName, screenname, message) {
 	if not (s endswith "]") {
 		incorrectsyntax ()};
 	s = string.mid (s, 2, sizeof (s) - 2);
-	tcp.im.send (driverName, screenName, states.nthstate (number (s)))};
+	tcp.im.send (driverName, screenName, states.nthstate (number (s)))}
 //bundle //test code
 	//dialog.alert (script ("xxx", "state (12)"))

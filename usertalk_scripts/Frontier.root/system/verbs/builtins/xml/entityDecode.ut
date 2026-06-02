@@ -84,14 +84,14 @@ on entityDecode (s, flAlphaEntities = false, flSkipMalformedEntities = true, flD
 			s = string.replaceall (s, "&gt;", ">");
 			s = string.replaceall (s, "&amp;", "&");
 			s = string.replaceall (s, "&quot;", "\"")}};
-	return (s)};
+	return (s)}
 //bundle //test code
 	//xml.entityDecode ("Oh the &lt;buzzing&gt; of the bees &amp; the &quot;sycamore&quot; trees.", true)
 		//"Oh the <buzzing> of the bees & the \"sycamore\" trees."
 	//xml.entityDecode ("A&#8217;&#80;B")
 		//"A&#8217;PB"
-	//xml.entityDecode (xml.entityEncode ("Olejováø skvrna na \"Labi\"zøejmì do <Nìmecka> & nedoplujeøíjna 1999 13:49"), true)
-		//"Olejováø skvrna na \"Labi\"zøejmì do <Nìmecka> & nedoplujeøíjna 1999 13:49"
+	//xml.entityDecode (xml.entityEncode ("Olejov·¯ skvrna na \"Labi\"z¯ejmÏ do <NÏmecka> & nedopluje¯Ìjna 1999 13:49"), true)
+		//"Olejov·¯ skvrna na \"Labi\"z¯ejmÏ do <NÏmecka> & nedopluje¯Ìjna 1999 13:49"
 	//xml.entityDecode ("&#123Hello&#125;", flSkipMalformedEntities:true)
 		//"&#123Hello}"
 	//xml.entityDecode ("&#123Hello&#125;", flSkipMalformedEntities:false) //should be an error

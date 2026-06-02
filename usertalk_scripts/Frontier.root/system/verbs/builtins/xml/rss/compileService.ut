@@ -608,7 +608,7 @@ on compileService (adrservice, flSaveData=false, adrStoryArrivedCallback=nil) {
 		local (i);
 		for i = sizeof (adrhistory^) downto 1 {
 			if not adrhistory^ [i] {
-				delete (@adrhistory^ [i])}}}};
+				delete (@adrhistory^ [i])}}}}
 //bundle //test item-level categories
 	//compileService (@aggregatorData.services.["http://radio.weblogs.com/0001015/rss.xml"], true, @xml.aggregator.storyArrivedCallback)
 //bundle //test for Jon Udell's experiment

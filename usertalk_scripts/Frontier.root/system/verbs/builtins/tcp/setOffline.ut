@@ -19,6 +19,6 @@ on setOffline (flOffline) {
 	if not tcp.isOffline () { //call the callbacks
 		system.callbacks.tcpSetOffline (flOffline)}; //call the callbacks
 	
-	return (true)};
+	return (true)}
 //bundle //test code
 	//setOffline (false)

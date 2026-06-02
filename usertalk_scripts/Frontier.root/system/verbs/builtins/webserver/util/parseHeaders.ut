@@ -28,7 +28,7 @@ on parseHeaders (response, adrHeaderTable) {
 							//adrHeaderTable^.[headerName] = {adrHeaderTable^.[headerName], headerValue}
 				//
 				//return (firstLine)
-	kernel (webserver.parseheaders)};
+	kernel (webserver.parseheaders)}
 //bundle //test code
 	//local (ix, ct = clock.ticks ())
 	//for ix = 1 to 10

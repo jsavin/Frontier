@@ -29,13 +29,13 @@ on query (adrSession, queryString, adrResult, adrQueryLocator=nil) {
 						//The like operator:
 							//Expression is True if the value in the specified fieldName matches the characters of the text string in the specified value.
 							//The like operator in SOQL is similar to the same operator in SQL; it provides a mechanism for matching partial text strings and includes support for wildcards.
-								//TheÊ% and _ wildcards are supported for the like operator.
-								//TheÊ% wildcard matches zero or more characters.
+								//The % and _ wildcards are supported for the like operator.
+								//The % wildcard matches zero or more characters.
 								//The _ wildcard matches exactly one character.
 								//The text string in the specified value must be enclosed in single quotes.
 								//The like operator is supported for string fields only (see string).
 								//The like operator performs a case-insensitive match, unlike the case-sensitive matching in SQL.
-								//The like operator in SOQL does not currently support escaping of special characters such asÊ% or _. The \ (backslash) character should not be used.
+								//The like operator in SOQL does not currently support escaping of special characters such as % or _. The \ (backslash) character should not be used.
 							//select AccountId, FirstName, lastname from Contact where lastname like `%appl_%' 
 							//matches Appleton, Apple, Bapple, but not Appl.
 					//A fieldExpression uses the following date formats:
@@ -67,7 +67,7 @@ on query (adrSession, queryString, adrResult, adrQueryLocator=nil) {
 			local (t); new (tableType, @t);
 			t.records_0000001 = retval.records;
 			adrResult^ = t}};
-	return (retval.done)};
+	return (retval.done)}
 //bundle //testing
 	//local (adrses)
 	//bundle //set adrses

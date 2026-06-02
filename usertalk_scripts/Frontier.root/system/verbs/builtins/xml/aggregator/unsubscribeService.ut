@@ -21,6 +21,6 @@ on unsubscribeService (xmlUrl, adrdata=nil) {
 	adrdata^.trash.[nameof (adrservice^)] = adrservice^;
 	delete (adrservice);
 	adrdata^.settings.flSubscriptionsChanged = true;
-	xml.aggregator.clearCache (adrdata)};
+	xml.aggregator.clearCache (adrdata)}
 //bundle //test code
 	//unsubscribeService ("http://www.nintendorks.com/rss.xml")

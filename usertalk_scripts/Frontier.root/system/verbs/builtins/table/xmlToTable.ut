@@ -155,7 +155,7 @@ on xmlToTable (xmltext, adrtable=nil) {
 	
 	doTable (adrtablestruct, adrtable);
 	
-	return (true)};
+	return (true)}
 //bundle //testing
 	//table.xmlToTable ("<table name=\"myTable\" address=\"workspace.myTable\"><string name=\"myString\" value=\"This is a string.\"/></table>")
 	//table.xmlToTable (string (workspace.foo), @workspace.deserializedTable)

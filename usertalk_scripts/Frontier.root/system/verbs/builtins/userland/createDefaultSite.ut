@@ -27,8 +27,8 @@ on createDefaultSite (siteName="createASiteManilaWebsite", password=nil, serverN
 			fileMenu.open (gdbPath, true)} //it does, open it
 		else {
 			fileMenu.new (gdbPath);
-			window.hide (@[gdbPath]);
-			}};//fileMenu.save (gdbPath)
+			window.hide (@[gdbPath])}};
+			//fileMenu.save (gdbPath)
 	
 	bundle { //add hosting gdb to user.databases
 		local (adrTable = @user.databases.[gdbName]);

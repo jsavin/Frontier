@@ -22,5 +22,5 @@ on urlToFTPRec (urlString) {
 		ftpRec = {'name': name, path: thePath, host: theHost}};
 	
 	return(ftpRec);
-	};
+	}
 //urlToFTPRec("ftp://ftp.brown.edu/pub/tcl/classes/TurboTCP-1.0b6-C-classes")

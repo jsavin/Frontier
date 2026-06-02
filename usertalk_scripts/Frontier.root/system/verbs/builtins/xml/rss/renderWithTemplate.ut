@@ -115,7 +115,7 @@ on renderWithTemplate (adrService, template, itemTemplate, serviceTitle=nil, max
 		if oldPta != nil {
 			html.setPageTableAddress (oldPta)}};
 	
-	return (htmltext)};
+	return (htmltext)}
 //bundle //test code
 	//local (adrService = @myUserLandData.services.["http://www.ourfavoritesongs.com/users/dave@userland.com/rss/mindBombs.xml"])
 	//local (template = string (myUserLandData.prefs.templates.serviceTemplate))

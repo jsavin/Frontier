@@ -8,6 +8,6 @@ on popTrailingFilename (s, delimiter="/") {
 	for i = sizeof (s) downto 1 {
 		if s [i] == delimiter {
 			return (string.mid (s, 1, i ))}};
-	return (s)};
+	return (s)}
 //bundle //test code
 	//dialog.alert (popTrailingFilename ("http://www.scripting.com/index.html"))

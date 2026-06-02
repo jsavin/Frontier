@@ -7,7 +7,7 @@ on createUrlShortcut (path, url) {
 	
 	com.callScript (s, "VBScript", "Main", {path, url});
 	
-	return (true)};
+	return (true)}
 //bundle //test code
 	//winShell.createUrlShortcut ("c:\\Scripting News.url", "http://www.scriptingnews.com/")
 		//true

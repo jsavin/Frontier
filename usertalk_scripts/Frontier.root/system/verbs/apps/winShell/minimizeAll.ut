@@ -6,7 +6,7 @@ on minimizeAll () {
 	
 	com.callScript (s, "VBScript", "Main", {});
 	
-	return (true)};
+	return (true)}
 //bundle //test code
 	//winShell.minimizeAll ()
 		//true

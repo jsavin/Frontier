@@ -1,8 +1,8 @@
-on exit ()
+on exit () {
 	//Request a clean REPL exit.
 		//5/6/26 by JES
 			//Initial implementation. Wraps repl.exit, which sets the host's
 			//exit-requested flag. The event loop drains and shuts down on
 			//the next iteration.
-	repl.exit ()
-	return (true)
+	repl.exit ();
+	return (true)}

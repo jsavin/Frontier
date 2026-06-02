@@ -1,4 +1,4 @@
-on jump (path = "")
+on jump (path = "") {
 	//Move REPL focus to a target table (or to the root).
 		//5/8/26 by JES
 			//Issue #594 -- accept optional path arg so the slash-command and
@@ -14,9 +14,9 @@ on jump (path = "")
 			//tests, protocol mode, -e eval) so dialog.ask is never invoked there.
 			//repl.fromSlash () is true only for slash-command dispatches, so
 			//menu activation in a live REPL falls into the prompt branch.
-	if path == "" and repl.isActive () and not repl.fromSlash ()
-		local (promptResult = "")
-		if dialog.ask ("Jump to table:", @promptResult)
-			path = promptResult
-	repl.jumpPath (path)
-	return (true)
+	if path == "" and repl.isActive () and not repl.fromSlash () {
+		local (promptResult = "");
+		if dialog.ask ("Jump to table:", @promptResult) {
+			path = promptResult}};
+	repl.jumpPath (path);
+	return (true)}

@@ -4,6 +4,6 @@ on getRootAddress (adr) { //return the address of the root of the db containing 
 	if table.inGuestDatabase (adr) {
 		local (x = string.parseAddress (adr));
 		return (@[x [1]])};
-	return (@root)};
+	return (@root)}
 //bundle //test code
 	//dialog.alert (getRootAddress (table.getCursorAddress ()))

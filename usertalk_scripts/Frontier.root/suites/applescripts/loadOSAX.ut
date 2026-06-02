@@ -235,7 +235,7 @@ on loadOSAX (f) {
 								parseParams (false)}
 							else {
 								parseParams (true)};
-							hdr = hdr + ") //" + comment;
+							hdr = hdr + ") «" + comment;
 							rtn = rtn + "))";
 							makeScript (hdr, rtn, adr)}};
 					on parseClasses () {

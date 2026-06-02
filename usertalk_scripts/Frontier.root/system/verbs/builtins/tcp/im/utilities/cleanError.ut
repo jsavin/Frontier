@@ -5,6 +5,6 @@ on cleanError (s) {
 	if system.environment.isMac {
 		s = string.replaceAll (s, "“", "\"");
 		s = string.replaceAll (s, "”", "\"");
-		s = string.replaceAll (s, "Ô", "\'");
-		s = string.replaceAll (s, "Õ", "\'")};
+		s = string.replaceAll (s, "‘", "\'");
+		s = string.replaceAll (s, "’", "\'")};
 	return (s)}

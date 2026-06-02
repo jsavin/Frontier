@@ -166,7 +166,7 @@ on openSite (adrinfo, username, password, flHidden=false, adradrwindow=nil) {
 		edit (adrwindow, t.title, flReadOnly)};
 	
 	return (true);
-	
+	}
 	//bundle //old code
 		//if not defined (temp.pike)
 			//new (tableType, @temp.pike)
@@ -287,6 +287,6 @@ on openSite (adrinfo, username, password, flHidden=false, adradrwindow=nil) {
 				//try {target.set (oldTarget)}
 			//edit (@adrTable^.outline, displaySiteName, flReadOnly)
 		//
-		//return (true)};
+		//return (true)
 //bundle //testing
 	//openSite (@user.manila.data.sites.["http://private.braincase.net:80/"], "jake@userland.com", "forget!it")

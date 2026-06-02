@@ -75,7 +75,7 @@ on buildCDF (adrsite) { //build a Microsoft CDF-format file for the site
 			add ("\t\t</schedule>\r")};
 		add ("\r\t</Channel>");
 		};
-	return (channeltext)};
+	return (channeltext)}
 //bundle //test code
 	//wp.newtextobject (buildCDF (@user.websites.davenet), @scratchpad.cdf)
 	//edit (@scratchpad.cdf)

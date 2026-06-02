@@ -1,7 +1,7 @@
 on expandEnvironmentStrings (s) {
 	local (scriptCode = string (winShell.data.scripts.expandEnvironmentStrings));
 	
-	return (com.callScript (scriptCode, "VBScript", "Main", {s}))};
+	return (com.callScript (scriptCode, "VBScript", "Main", {s}))}
 //bundle //test code
 	//winShell.expandEnvironmentStrings ("%SystemRoot%\\system32\\cmd.exe")
 		//"C:\\WINNTSVR\\system32\\cmd.exe"

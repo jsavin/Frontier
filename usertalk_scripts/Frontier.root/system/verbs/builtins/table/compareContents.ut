@@ -104,7 +104,7 @@ on compareContents (adr1, adr2, flDateSensitive=false, flCompareOutlinesAsOpml=f
 				if adr^ != adrdest^ {
 					return (false)}}};
 		return (true)};
-	return (visit (adr1, adr2))};
+	return (visit (adr1, adr2))}
 //bundle //test code
 	//table.compareContents (@scratchpad, @scratchpad)
 		//true

@@ -128,7 +128,7 @@ on compile (adrservice, flSaveData, adrStoryArrivedCallback) {
 				s = string.replaceAll (s, ">", "&gt;");
 				s = string.replaceAll (s, "\"", "&quot;")};
 			"text/html" {
-				}};//do nothing -- this is what we need out the other end anyway
+				//do nothing -- this is what we need out the other end anyway
 		return (s)};
 	on getSubElementValue (adr, name) {
 		local (adrsub = xml.getAddress (adr, name));

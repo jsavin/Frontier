@@ -13,6 +13,6 @@ on xmlrpc (rpcServer, procedureName, paramlist) {
 		server = string.popSuffix (server, ':')};
 	if not (rpcPath beginswith "/") {
 		rpcPath = "/" + rpcPath};
-	return (betty.rpc.client (server, port, procedureName, @paramlist, rpcPath: rpcPath, fldebug:false))};
+	return (betty.rpc.client (server, port, procedureName, @paramlist, rpcPath: rpcPath, fldebug:false))}
 //bundle //test code
 	//dialog.alert (["xmlrpc://time.xmlrpc.com/RPC2"].currentTime.getCurrentTime ())

@@ -40,7 +40,7 @@ on formStart (fieldName=nil, action=nil, name="editPostForm", method="POST", enc
 		add (" onsubmit=\"" + onsubmit + "\"")};
 	add (">");
 	
-	return (htmltext)};
+	return (htmltext)}
 //bundle //testing
 	//html.editor.formStart (pta:@workspace.pt)
 		//"<form name=\"htmlEditor\" method=\"POST\" onsubmit=\"setMode(true);document.htmlEditor.body.value=document.frames('idEdit').document.body.innerHtml\">"

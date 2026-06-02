@@ -11,6 +11,6 @@ on popSuffix (s, chseparator='.') {
 					//if s [i] == chseparator
 						//return (string.mid (s, 1, i -1))
 				//return (s)
-	kernel (string.popsuffix)};
+	kernel (string.popsuffix)}
 //bundle //test code
 	//dialog.alert (popSuffix ("xyz.html"))

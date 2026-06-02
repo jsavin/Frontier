@@ -1,2 +1,0 @@
-on ["type.FAT"] (path) {
-	return (frontier.clickers.typeFATP (path))}

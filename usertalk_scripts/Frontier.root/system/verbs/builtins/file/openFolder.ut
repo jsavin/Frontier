@@ -6,6 +6,6 @@ on openFolder (path) { //open the folder in the operating system
 		return (launch.anything (path))};
 	if system.environment.isWindows {
 		local (osfolder = file.getSpecialFolderPath ("", "windows",  false));
-		return (launch.appWithDocument (osfolder + "explorer.exe", path))}};
+		return (launch.appWithDocument (osfolder + "explorer.exe", path))}}
 //bundle //test code
 	//openFolder ("C:\\palm springs\\")

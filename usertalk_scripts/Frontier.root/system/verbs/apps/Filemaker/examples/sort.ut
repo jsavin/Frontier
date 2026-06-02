@@ -11,10 +11,10 @@
 	//
 	//The Sort event has three components:
 	//
-	//¥ The object (layout, window) to be sorted, which is the layout where the sort results are displayed. 
+	//• The object (layout, window) to be sorted, which is the layout where the sort results are displayed. 
 		//This is the only required parameter. 
-	//¥ The field by which the layout is sorted. If no field is provided, FileMaker Pro will unsort the database.
-	//¥ The direction of the sort Ð ascending, descending, or custom. If no direction is provided, 
+	//• The field by which the layout is sorted. If no field is provided, FileMaker Pro will unsort the database.
+	//• The direction of the sort – ascending, descending, or custom. If no direction is provided, 
 		//FileMaker Pro will sort in ascending order. Sorting a field by custom order uses the 
 		//value list associated with the field on the specified layout (or the current layout if none is specified).
 	//

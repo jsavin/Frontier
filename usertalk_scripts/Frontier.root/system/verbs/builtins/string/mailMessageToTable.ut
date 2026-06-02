@@ -18,7 +18,7 @@ on mailMessageToTable (s, adrtable) { //breaks a message up into its parts
 		if value endsWith "\r" {
 			value = string.delete (value, sizeof (value), 1)};
 		adrtable^.[label] = value};
-	return (true)};
+	return (true)}
 //bundle //test code
 	//local (s = "X-Sender: dave@scripting.com\r\nX-Mailer: Random mail program\r\nDate: Tue, 22 Sep 1998 06:55:54 -0700\r\nTo: dave@userland.com\r\nFrom: Dave Winer <dave@userland.com>\r\nSubject: Test message\r\n\r\nHello, this is a test. Dave")
 	//new (tabletype, @scratchpad.mailparts)

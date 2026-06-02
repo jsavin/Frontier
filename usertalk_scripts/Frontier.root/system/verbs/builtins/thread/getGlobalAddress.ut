@@ -10,7 +10,7 @@ on getGlobalAddress (name) {
 				//One underscore, not two, is needed on either side of the name.
 			//7/3/01; 10:45:44 AM by PBS
 				//There was a problem with returning an address -- so instead a string is returned. The string can be coerced transparently to an address, there's no need to update any scripts.
-	return ("_" + name + "_")};
+	return ("_" + name + "_")}
 //bundle //test code
 	//adr = getGlobalAddress ("hello")
 	//adr^ = clock.now ()

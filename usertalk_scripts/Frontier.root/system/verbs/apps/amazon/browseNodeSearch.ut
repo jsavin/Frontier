@@ -176,7 +176,7 @@ on browseNodeSearch (nodeId, productline="books", page=1, flDetails=false) {
 						//Music, Top Selling 301668
 						//Outdoor, Birding 553632
 						//Outdoor, Camping 892986
-						//Outdoor, DŽcor 553788
+						//Outdoor, Décor 553788
 						//Outdoor, Furniture 553824
 						//Outdoor, Gifts 553648
 						//Outdoor, Grills 553760

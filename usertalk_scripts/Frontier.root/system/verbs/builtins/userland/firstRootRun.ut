@@ -135,7 +135,8 @@ bundle { //set up user.menus
 	user.menus.customMenu = userland.virginCustomMenu};
 
 with websites.["#ftpSite"] {
-	folder = file.folderFromPath (Frontier.getProgramPath ()) + "Websites" + file.getPathChar (); file.sureFolder (folder)
+	folder = file.folderFromPath (Frontier.getProgramPath ()) + "Websites" + file.getPathChar ();
+	//file.sureFolder (folder)
 	url = file.fileToURL (folder);
 	isLocal = true};
 

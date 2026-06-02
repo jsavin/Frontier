@@ -27,5 +27,5 @@ on tableContains (adrTable, adrItem) { //4.2
 			return (true)};
 		nomad = parentOf (nomad^);
 		if nomad == nil {
-			return (false)}}};
+			return (false)}}}
 //tablecontains(@scratchpad, @mainresponder.nosuchaddress)

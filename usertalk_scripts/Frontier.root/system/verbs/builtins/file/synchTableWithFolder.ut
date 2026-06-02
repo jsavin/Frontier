@@ -116,7 +116,7 @@ on synchTableWithFolder (folder, adrtable, adrcallback=nil) {
 					if fldelete {
 						delete (adr)}}}};
 		dotable (adrtable, folder)};
-	return (true)};
+	return (true)}
 //bundle //new test code
 	//file.synchTableWithFolder (frontier.pathstring + "Macros" + file.getPathChar (), @radio.data.website.["#tools"], nil)
 //bundle //old test code

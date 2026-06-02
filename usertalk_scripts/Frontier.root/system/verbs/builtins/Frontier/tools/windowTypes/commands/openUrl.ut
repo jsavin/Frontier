@@ -247,16 +247,16 @@ on openUrl (url=nil, flOpenInPlace=false, adroutline=nil) {
 					else {
 						try { //try to compile the text
 							if not defined (adrincache^.xstruct) {
-								xml.compile (s, @adrincache^.xstruct)};
+								xml.compile (s, @adrincache^.xstruct)}}}};
 							//local (nomad = @adrincache^.xstruct)
 							//nomad = xml.getAddress (nomad, "opml")
 							//nomad = xml.getAddress (nomad, "head")
 							//try {adrincache^.ownerName = xml.getValue (nomad, "ownerName") }
-							}}};//try {adrincache^.ownerEmail = xml.getValue (nomad, "ownerEmail") }
-				adrincache^.ctXmlBytes = sizexmltext;
-				};//return (s)
+							//try {adrincache^.ownerEmail = xml.getValue (nomad, "ownerEmail") }
+				adrincache^.ctXmlBytes = sizexmltext}};
+				//return (s)
 			//else
-				//return (adrincache^.xmltext)};
+				//return (adrincache^.xmltext)
 		on insertInOutline (adr) {
 			local (oldTarget = target.get ());
 			target.set (frontWindow);
@@ -294,8 +294,8 @@ on openUrl (url=nil, flOpenInPlace=false, adroutline=nil) {
 					op.xmltooutline (latinToMac.convert (adrincache^.xmltext), adr)}
 				else {
 					op.xmltooutline (adrincache^.xmltext, adr)};
-				adrincache^.outline = adr^;
-				};//delete (@adrincache^.xmltext)
+				adrincache^.outline = adr^};
+				//delete (@adrincache^.xmltext)
 			
 			if adroutline == nil { // set window attributes
 				setCloudAttribute ();
@@ -331,8 +331,8 @@ on openUrl (url=nil, flOpenInPlace=false, adroutline=nil) {
 				adr^ = adrincache^.outline}
 			else {
 				op.rsstooutline (adrincache^.xmltext, adr, url);
-				adrincache^.outline = adr^;
-				};//delete (@adrincache^.xmltext)
+				adrincache^.outline = adr^};
+				//delete (@adrincache^.xmltext)
 			
 			local (oldTarget = target.set (adr));
 			local (title = op.getlinetext ());

@@ -113,7 +113,7 @@ on save (adrItem=nil, flClosing=false) {
 	
 	saveDatabase ();
 	
-	return (true);
+	return (true)};
 	//bundle //old code
 		//if adrItem == nil //get the current selection
 			//try {adrItem = table.getCursorAddress ()}
@@ -351,6 +351,6 @@ on save (adrItem=nil, flClosing=false) {
 		//if not flAboutWindowOpen //close the About Window if it wasn't open before doing a save
 			//window.close (aboutWindowName)
 		//
-		//return (true)};
+		//return (true)
 bundle { // debugging
 	save (window.frontMost ())}

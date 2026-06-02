@@ -31,9 +31,9 @@ on quotedPrintableDecode (s) {
 		ix++;
 		if ix > sizeOf (s) {
 			break}};
-	return (s)};
+	return (s)}
 //bundle //test code
 	//string.quotedPrintableDecode ("Here's some more accented text: =E5=E9=EE=F8=FC=F1") //Windows
-		//"Here's some more accented text: åéîøüñ"
+		//"Here's some more accented text: ÂÈÓ¯¸Ò"
 	//string.latinToMac (string.quotedPrintableDecode ("Here's some more accented text: =E5=E9=EE=F8=FC=F1")) //Mac
-		//"Here's some more accented text: ŒŽ”¿Ÿ–"
+		//"Here's some more accented text: åé”øüñ"

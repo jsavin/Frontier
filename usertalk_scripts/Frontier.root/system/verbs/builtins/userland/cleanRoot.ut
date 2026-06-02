@@ -6,11 +6,11 @@
 //Changes
 	//8/18/02; 5:05:04 PM by JES
 		//Delete the RCS Backups, Manila Backups and backups folders from the Frontier folder. Initialize user.prefs.serialNumber to the empty string. Set up the port 5335 HTTP server at user.inetd.config.http2.
-try { //disable threads
-	user.scheduler.prefs.runThreads = false;
-	scheduler.monitorThreads ()};
-Frontier.enableAgents (false);
-inetd.stop ();
+try { { //disable threads
+	user.scheduler.prefs.runThreads = false;;
+	scheduler.monitorThreads ()};};
+Frontier.enableAgents (false);;
+inetd.stop ();;
 //bundle //set up the root window
 	//target.set ("root")
 	//op.firstSummit ()
@@ -19,12 +19,12 @@ inetd.stop ();
 	//wp.setTextMode (false)
 	//op.expand (1)
 	//target.clear ()
-bundle { //initialize the quick script window
-	window.quickScript ();
-	clipboard.putvalue ("dialog.notify (\"Hello World!\")");
-	editmenu.selectall ();
-	editmenu.paste ();
-	window.close ("Quick Script")};
+bundle { { //initialize the quick script window
+	window.quickScript ();;
+	clipboard.putvalue ("dialog.notify (\"Hello World!\")");;
+	editmenu.selectall ();;
+	editmenu.paste ();;
+	window.close ("Quick Script")};};
 
 //case sys.os ()
 	//"MacOS"
@@ -36,97 +36,97 @@ bundle { //initialize the quick script window
 			//newscript.init ()
 		//new (tabletype, @netfrontier.buddies)
 
-bundle { //empty out standard tables
-	new (tabletype, @scratchpad);
+bundle { { //empty out standard tables
+	new (tabletype, @scratchpad);;
 	//new (tabletype, @workspace)
-	new (outlineType, @workspace.notepad)};
-bundle { //clear the path for all apps in the apps table
-	local (adrappstable = @system.verbs.apps, i);
-	for i = 1 to sizeof (adrappstable^) {
-		local (adrappinfo = @adrappstable^ [i].appInfo);
-		if defined (adrappinfo^) {
-			adrappinfo^.path = ""}}};
-bundle { //clean passwords out of user.html.sites table
-	local (i);
-	for i = 1 to sizeof (user.html.sites) {
-		if defined (user.html.sites [i].password) {
-			user.html.sites [i].password = "xxxxx"}}};
+	new (outlineType, @workspace.notepad)};};
+bundle { { //clear the path for all apps in the apps table
+	local (adrappstable = @system.verbs.apps, i);;
+	for i = 1 to sizeof (adrappstable^) { {
+		local (adrappinfo = @adrappstable^ [i].appInfo);;
+		if defined (adrappinfo^) { {
+			adrappinfo^.path = ""}}};}}};
+bundle { { //clean passwords out of user.html.sites table
+	local (i);;
+	for i = 1 to sizeof (user.html.sites) { {
+		if defined (user.html.sites [i].password) { {
+			user.html.sites [i].password = "xxxxx"}}};}}};
 //bundle //initialize stuff in the webServer suite
 	//webServer.preferences.hostname = ""
 	//webServer.preferences.rootPath = ""
-bundle { //set up user.html
-	user.html.prefs = userland.htmlprefs; //initialize user.html.prefs table
-	new (outlinetype, @user.html.changedPages);
-
-	new (tableType, @user.html.images)};
+bundle { { //set up user.html
+	user.html.prefs = userland.htmlprefs;; //initialize user.html.prefs table
+	new (outlinetype, @user.html.changedPages);};
+ {
+	new (tableType, @user.html.images)};};
 //edit (@frontier.version)
-Frontier.shipdate = clock.now ();
-userland.initialLastUpdateTime = date.netStandardString (Frontier.shipDate);
-user.prefs.search.winStandardFindCommand = false;
-user.prefs.agentsEnabled = true;
-user.prefs.dialogs.jumpAddress = "workspace";
-user.prefs.firstRootRun = true;
-user.prefs.serialNumber = "";
-user.prefs.frontierIsServer = false;
-user.prefs.flShortTimeStamp = false;
-user.prefs.flWinStandardMaximize = true;
-try {delete (@user.prefs.portForwardingAdminPassword)};
-bundle { //set up trial version info
-	try {delete (@userland.trialVersion)};
-	user.prefs.serialNumber = ""};
+Frontier.shipdate = clock.now ();;
+userland.initialLastUpdateTime = date.netStandardString (Frontier.shipDate);;
+user.prefs.search.winStandardFindCommand = false;;
+user.prefs.agentsEnabled = true;;
+user.prefs.dialogs.jumpAddress = "workspace";;
+user.prefs.firstRootRun = true;;
+user.prefs.serialNumber = "";;
+user.prefs.frontierIsServer = false;;
+user.prefs.flShortTimeStamp = false;;
+user.prefs.flWinStandardMaximize = true;;
+try {delete (@user.prefs.portForwardingAdminPassword)};;
+bundle { { //set up trial version info
+	try {delete (@userland.trialVersion)};;
+	user.prefs.serialNumber = ""};};
 
-bundle { //set up webserver, betty, rootUpdates, people, custody, and WebEdit
-	on nuke (name) {
-		if defined (user.[name]) {
-			delete (@user.[name])};
-		return (true)};
-	nuke ("webserver");
-	nuke ("betty");
-	nuke ("people");
-	nuke ("custody");
-	nuke ("webEdit");
-	nuke ("webEditServer");
-	nuke ("rootUpdates");
-	nuke ("databases");
-	nuke ("backups");
-	nuke ("batchExporter");
-	nuke ("export");
-	nuke ("xmlStorageSystem");
-
-	try {delete (@user.scheduler.tasks)}; //PBS 07/06/00: let the user.scheduler.tasks table get re-initialized
-	try {delete (@user.scheduler.everyMinute)};
-	try {delete (@user.scheduler.threads)};
-	try {delete (@user.scheduler.hourly)};
-	try {delete (@user.scheduler.overnight)};
-
-	bundle { //user.manila
-		new (tableType, @user.manila);
-		new (tableType, @user.manila.data);
-		new (tableType, @user.manila.data.sites);
-		new (tableType, @user.manila.prefs);
-		user.manila.prefs.lastSiteUrl = "http://"};
-
-	webserver.init ();
-	betty.init ();
-	people.init ();
-	custody.init ();
-	webEdit.init ();
-	webEditServer.init ();
-	rootUpdates.init ();
-
-	user.inetd.config.http = webserver.data.inetd.config.http;
-	user.inetd.config.http2 = webserver.data.inetd.config.http2; //port 5335 server
-	if system.environment.isCarbon {
-		user.inetd.config.http.port = 8080;
-		user.inetd.config.http.apparentPort = 80};
-	user.inetd.config.http.timeout = 30;
-	user.inetd.config.http.startup = true;
-	user.inetd.config.http.count = 30;
-	user.inetd.config.http2.timeout = 30;
-	user.inetd.config.http2.startup = true;
-	user.inetd.config.http2.count = 30;
-
-	new (tableType, @user.inetd.listens)};
+bundle { { //set up webserver, betty, rootUpdates, people, custody, and WebEdit
+	on nuke (name) { {
+		if defined (user.[name]) { {
+			delete (@user.[name])};};
+		return (true)};};
+	nuke ("webserver");;
+	nuke ("betty");;
+	nuke ("people");;
+	nuke ("custody");;
+	nuke ("webEdit");;
+	nuke ("webEditServer");;
+	nuke ("rootUpdates");;
+	nuke ("databases");;
+	nuke ("backups");;
+	nuke ("batchExporter");;
+	nuke ("export");;
+	nuke ("xmlStorageSystem");};
+ {
+	try {delete (@user.scheduler.tasks)};; //PBS 07/06/00: let the user.scheduler.tasks table get re-initialized
+	try {delete (@user.scheduler.everyMinute)};;
+	try {delete (@user.scheduler.threads)};;
+	try {delete (@user.scheduler.hourly)};;
+	try {delete (@user.scheduler.overnight)};};
+ {
+	bundle { { //user.manila
+		new (tableType, @user.manila);;
+		new (tableType, @user.manila.data);;
+		new (tableType, @user.manila.data.sites);;
+		new (tableType, @user.manila.prefs);;
+		user.manila.prefs.lastSiteUrl = "http://"};}};
+ {
+	webserver.init ();;
+	betty.init ();;
+	people.init ();;
+	custody.init ();;
+	webEdit.init ();;
+	webEditServer.init ();;
+	rootUpdates.init ();};
+ {
+	user.inetd.config.http = webserver.data.inetd.config.http;;
+	user.inetd.config.http2 = webserver.data.inetd.config.http2;; //port 5335 server
+	if system.environment.isCarbon { {
+		user.inetd.config.http.port = 8080;;
+		user.inetd.config.http.apparentPort = 80};};
+	user.inetd.config.http.timeout = 30;;
+	user.inetd.config.http.startup = true;;
+	user.inetd.config.http.count = 30;;
+	user.inetd.config.http2.timeout = 30;;
+	user.inetd.config.http2.startup = true;;
+	user.inetd.config.http2.count = 30;};
+ {
+	new (tableType, @user.inetd.listens)};};
 
 //bundle //initialize responders
 	//user.webserver.responders.websiteFramework.data.docTree.samples = @websites.samples
@@ -135,7 +135,7 @@ bundle { //set up webserver, betty, rootUpdates, people, custody, and WebEdit
 	//try
 		//delete (@user.webserver.responders.websiteFramework.data.docTree.contents)
 
-bundle { //2026-05-06 JES: strip legacy embedded image blob tables (Kevin Hughes EIT icon set)
+bundle { { //2026-05-06 JES: strip legacy embedded image blob tables (Kevin Hughes EIT icon set)
 	//The @websites.samples.["#images"] and @websites.samples.UserLand.["#images"]
 	//tables hold ~94 MB of GIFs from the Kevin Hughes 1995 EIT public-domain
 	//icon set, embedded into Virgin.root as legacy docserver / Manila content.
@@ -150,14 +150,14 @@ bundle { //2026-05-06 JES: strip legacy embedded image blob tables (Kevin Hughes
 	//Also strip @fatpages (legacy Manila page cache) and
 	//@user.html.changedPages (transient outline). firstRootRun re-creates
 	//user.html.changedPages.
-	try {delete (@websites.samples.["#images"])};
-	try {delete (@websites.samples.UserLand.["#images"])};
-	try {delete (@fatpages)};
-	try {delete (@user.html.changedPages)}};
+	try {delete (@websites.samples.["#images"])};;
+	try {delete (@websites.samples.UserLand.["#images"])};;
+	try {delete (@fatpages)};;
+	try {delete (@user.html.changedPages)}};};
 
-filemenu.save ();
+filemenu.save ();;
 
-bundle { //8.0 stuff
+bundle { { //8.0 stuff
 	//bundle //user.odbEditors
 		//new (tableType, @user.odbEditors)
 		//new (tableType, @user.odbEditors.data)
@@ -165,22 +165,22 @@ bundle { //8.0 stuff
 		//user.odbEditors.openFiles.data.serialnum = 1
 		//user.odbEditors.openFiles.data.TextEditor = ""
 		//user.odbEditors.textFileExtension = ".html"
-	try {delete (@user.odbEditors)};
-	bundle { //user.netEvents
-		try {delete (@user.netEvents)}};
-	bundle { //user.xmlStorageSystem
-		try {delete (@user.xmlStorageSystem)}};
-	try {delete (@user.tools)};
-	Frontier.tools.thread.ct = 0;
-	Frontier.tools.thread.enabled = true};
+	try {delete (@user.odbEditors)};;
+	bundle { { //user.netEvents
+		try {delete (@user.netEvents)}};};
+	bundle { { //user.xmlStorageSystem
+		try {delete (@user.xmlStorageSystem)}};};
+	try {delete (@user.tools)};;
+	Frontier.tools.thread.ct = 0;;
+	Frontier.tools.thread.enabled = true};};
 
-bundle { //save a copy
-	local (f = frontier.pathstring + "Virgin.root");
+bundle { { //save a copy
+	local (f = frontier.pathstring + "Virgin.root");;
 	//file.move (f, file.getSpecialFolderPath (file.volumeFromPath (f), "Trash", false))
-	local (oldtarget = target.set (@root));
-	FileMenu.saveCopy (f);
-	try {target.set (oldtarget)};
-	bundle { //2026-05-06 JES: compact the saveCopy output so dist Virgin.root has no avail-list dead space
+	local (oldtarget = target.set (@root));;
+	FileMenu.saveCopy (f);;
+	try {target.set (oldtarget)};;
+	bundle { { //2026-05-06 JES: compact the saveCopy output so dist Virgin.root has no avail-list dead space
 		//FileMenu.saveCopy is a byte-copy (preserves avail-list dead space).
 		//db.compactDatabase walks live records only, so the result is the
 		//minimum size needed to represent the data. Without this step the
@@ -194,31 +194,31 @@ bundle { //save a copy
 		//db.compactDatabase auto-closes the source on success and
 		//force-closes on failure, so no manual db.close is needed (and
 		//calling db.close after a successful compact would error).
-		local (slimPath = f + ".compact");
-		try {file.delete (slimPath)};
-		local (compactErr = "");
-		try {
-			db.open (f, false);
-			db.compactDatabase (f, slimPath)} //auto-closes f
-		else {
-			compactErr = "compact failed: " + tryError};
-		if compactErr != "" {
+		local (slimPath = f + ".compact");;
+		try {file.delete (slimPath)};;
+		local (compactErr = "");;
+		try { {
+			db.open (f, false);;
+			db.compactDatabase (f, slimPath)}} //auto-closes f
+		else { {
+			compactErr = "compact failed: " + tryError};};
+		if compactErr != "" { {
 			//best-effort cleanup of any stranded slimPath
-			try {file.delete (slimPath)};
-			scriptError ("cleanRoot: " + compactErr)};
-		if not file.exists (slimPath) {
-			scriptError ("cleanRoot: compact returned ok but slimPath missing: " + slimPath)};
+			try {file.delete (slimPath)};;
+			scriptError ("cleanRoot: " + compactErr)};};
+		if not file.exists (slimPath) { {
+			scriptError ("cleanRoot: compact returned ok but slimPath missing: " + slimPath)};};
 		try {file.delete (f)}
-		else {
+		else { {
 			//slimPath has the new content; leave it for manual recovery
-			scriptError ("cleanRoot: failed to delete saveCopy output before move: " + tryError)};
-		if file.exists (f) {
-			scriptError ("cleanRoot: f still exists after delete: " + f)};
+			scriptError ("cleanRoot: failed to delete saveCopy output before move: " + tryError)};};
+		if file.exists (f) { {
+			scriptError ("cleanRoot: f still exists after delete: " + f)};};
 		try {file.move (slimPath, f)}
-		else {
-			scriptError ("cleanRoot: failed to move slimPath to f: " + tryError)};
-		if not file.exists (f) {
-			scriptError ("cleanRoot: move succeeded but final Virgin.root missing: " + f)}}};
+		else { {
+			scriptError ("cleanRoot: failed to move slimPath to f: " + tryError)};};
+		if not file.exists (f) { {
+			scriptError ("cleanRoot: move succeeded but final Virgin.root missing: " + f)}}};}}};
 //bundle //PBS 07/05/00: delete unwanted databases
 	//on visitProc (f)
 		//if not (string.lower (f) == string.lower (Frontier.getFilePath ()))
@@ -280,6 +280,6 @@ bundle { //save a copy
 	//try {file.deleteFolder (frontier.pathString + "Manila Backups" + file.getPathChar ())}
 	//try {file.deleteFolder (frontier.pathString + "backups" + file.getPathChar ())}
 
-msg ("Finished.");
+msg ("Finished.");;
 
 return (true)

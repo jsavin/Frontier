@@ -26,7 +26,7 @@ on parseLinks (htmltext, adrlinks) {
 			adrsubtable^ = linkstruct [1].["/atts"]};
 		return (true)}
 	else {
-		return (false)}};
+		return (false)}}
 //bundle //test code
 	//if not defined (scratchpad.dhrbhome)
 		//scratchpad.dhrbhome = tcp.httpreadurl ("http://radio.weblogs.com/0001015/")

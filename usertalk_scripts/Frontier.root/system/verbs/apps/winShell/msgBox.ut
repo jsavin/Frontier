@@ -32,7 +32,7 @@ on msgBox (message, buttonsNum, title) {
 	
 	local (s = string (winShell.data.scripts.msgBox));
 	
-	return (com.callScript (s, "VBScript", "Main", {message, buttonsNum, title}))};
+	return (com.callScript (s, "VBScript", "Main", {message, buttonsNum, title}))}
 //bundle //test code
 	//winShell.msgBox ("Hello Frontier!", 2 + 48 + 512, "UserLand Frontier")
 		//"5"

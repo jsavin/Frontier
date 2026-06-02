@@ -2,7 +2,7 @@ on describeLayout (adrSession, objectType) {
 	//Changes
 		//4/13/06; 2:45:39 AM by JES
 			//Created. Return a description of the specified object type's layout (as returned by salesforce.describeLayout).
-	return (salesforce.callApi (adrSession, nameOf (this^), {"sObjectType":objectType}))};
+	return (salesforce.callApi (adrSession, nameOf (this^), {"sObjectType":objectType}))}
 //bundle //test code
 	//local (adrses)
 	//bundle //set adrses

@@ -274,7 +274,7 @@ on isValidEmailAddress (s) {
 		return true}
 	else {
 		stack.dispose (stackAdr);
-		scriptError ("string.isValidEmailAddress: " + tryError)}};
+		scriptError ("string.isValidEmailAddress: " + tryError)}}
 //bundle //testing
 	//string.isValidEmailAddress ("webmaster@userland.com")
 		//true

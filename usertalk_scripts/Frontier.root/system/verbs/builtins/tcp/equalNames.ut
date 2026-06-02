@@ -9,11 +9,11 @@ on equalNames (name1, name2) { //return true if they're the same node on the net
 			return (name)}
 		else {
 			name = tcp.nameToAddress (name);
-			return (tcp.addressDecode (name));
-			}};//return (tcp.addressDecode (tcp.nameToAddress (name)))
+			return (tcp.addressDecode (name))}};
+			//return (tcp.addressDecode (tcp.nameToAddress (name)))
 	name1 = normalizeName (name1);
 	name2 = normalizeName (name2);
-	return (name1 == name2)};
+	return (name1 == name2)}
 //bundle //test code
 	//dialog.alert (equalNames ("www.userland.com", "206.204.24.11"))
 	//dialog.alert (equalNames ("www.scripting.com", "206.204.24.4"))

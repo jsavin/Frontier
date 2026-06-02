@@ -26,7 +26,7 @@ on server (driverName, screenname, message) {
 							tcp.im.log.add ("Error response to \"" + screenname + "\": " + tryError + " by responder " + nameof (adr^) + ".", startticks)};
 						return tcp.im.send (driverName, screenName, "Can't complete your request because an error occurred: \"" + tcp.im.utilities.cleanError (tryerror) + "\"")}}}}};
 	if user.im.prefs.flLog {
-		tcp.im.log.add ("Error response to \"" + screenname + "\": No responder accepted the message.", startticks)};
-	};//tcp.im.send (driverName, screenName, user.im.prefs.sorryMessage)
+		tcp.im.log.add ("Error response to \"" + screenname + "\": No responder accepted the message.", startticks)}}
+	//tcp.im.send (driverName, screenName, user.im.prefs.sorryMessage)
 //bundle //test code
 	//dialog.alert (server ("aim", "xxx", "news"))

@@ -150,7 +150,7 @@ on readService (url, adrservices, referer="", adrStoryArrivedCallback=nil, flSav
 		adrservice^.ctErrors++;
 		adrservice^.ctConsecutiveErrors++;
 		adrservice^.timeLastError = clock.now ()};
-	return (adrservice)};
+	return (adrservice)}
 //bundle //test code
 	//readService ("http://www.scripting.com/rss.xml", @aggregatordata.services, "jerzy")
 	//readService ("http://inessential.com/xml/rss.xml", @aggregatordata.services, "jerzy")

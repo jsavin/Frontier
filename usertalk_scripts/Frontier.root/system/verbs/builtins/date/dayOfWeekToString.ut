@@ -12,6 +12,6 @@ on dayOfWeekToString (daynum) {
 				//if not defined (adrlist^)
 					//adrlist^ = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"}
 				//return (adrlist^ [daynum])
-	kernel (date.dayOfWeekToString)};
+	kernel (date.dayOfWeekToString)}
 //bundle //test code
 	//dialog.notify (dayOfWeekToString (1))

@@ -8,6 +8,6 @@ on getFirstComment (adrinxstruct) {
 			local (s = xml.entityDecode (adrsub^.["/atts"].text, flAlphaEntities:true));
 			if not (s beginswith "<") { //it's not a rule
 				return (s)}}};
-	return ("")};
+	return ("")}
 //bundle //test code
 	//dialog.alert (getFirstComment (table.getcursor ()))

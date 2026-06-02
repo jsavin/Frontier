@@ -7,8 +7,8 @@ if not defined (user.scheduler) {
 if not defined (user.scheduler.prefs) {
 	new (tabletype, @user.scheduler.prefs)};
 if not defined (user.scheduler.prefs.confirmStartupTasks) {
-	user.scheduler.prefs.confirmStartupTasks = true;
-	};//Thu, Feb 18, 1999 at 1:45:33 PM by PBS
+	user.scheduler.prefs.confirmStartupTasks = true};
+	//Thu, Feb 18, 1999 at 1:45:33 PM by PBS
 if not defined (user.scheduler.prefs.keepLog) {
 	user.scheduler.prefs.keepLog = false};
 if not defined (user.scheduler.prefs.logInGuestDatabase) {

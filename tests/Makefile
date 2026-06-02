@@ -625,6 +625,8 @@ check-python-deps:
 test-integration: check-python-deps check-license
 	@echo "Running runner self-tests..."
 	@cd .. && python3 -m unittest tests.integration.runner_self_test -v
+	@echo "Running ODB sync verifier self-tests..."
+	@cd .. && python3 -m unittest tests.verify_virgin_root_sync_self_test -v
 	@echo "Running integration tests..."
 	@../tools/run_integration_tests.sh
 	@echo "Running ODB sync verifier tests..."

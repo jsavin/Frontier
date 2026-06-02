@@ -9,7 +9,7 @@ on loadFolder (folder, adrtable) {
 			new (tabletype, adrsubtable);
 			html.loadFolder (f, adrsubtable)} //recurse
 		else {
-			html.loadTextFile (f, adrtable)}}};
+			html.loadTextFile (f, adrtable)}}}
 //bundle //test code
 	//local (folder = "C:\\Frontier 5\\Websites\\samples\\davenet\\")
 	//local (adrtable = @websites.test)

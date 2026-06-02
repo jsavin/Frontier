@@ -109,14 +109,14 @@ on startWithDocument (appTable, docPath) { //start talking with the application,
 		bundle { //set up the app table in the object database for this application
 			app.id = id; //all app verbs are sent to this application
 			appTable^.id = id; //make life easy for the app's glue scripts
-			app.adrAppTable = appTable; //the app verbs can refer to current app's info table
+			app.adrAppTable = appTable}; //the app verbs can refer to current app's info table
 			//bundle //fuss with the paths table
 				//local (adr = @system.misc.paths.app1path)
 				//if app1Supported //app verbs are global
 					//adr^ = @system.verbs.builtins.app
 				//else //app verbs are undefined, or require a full path
 					//if defined (adr^)
-						//delete (adr)};
+						//delete (adr)
 		
 		if docPath != "" { //tell app to open the document
 			required.openDocument (id, docPath)};

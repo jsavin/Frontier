@@ -45,7 +45,7 @@ on callScript (scriptCode, language, mainRoutine, parameters) {
 		edit (@temp.scriptControlDllTrace);
 		window.zoom (@temp.scriptControlDllTrace)};
 	
-	return (result)};
+	return (result)}
 //bundle //test code
 	//local (s = "Function MyMainRoutine (a, b)\r\nMsgBox (a)\r\nMyMainRoutine = b * 3\r\nEnd Function")
 	//local (x)

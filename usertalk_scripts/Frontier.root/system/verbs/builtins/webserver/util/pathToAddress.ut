@@ -14,7 +14,7 @@ on pathToAddress (path, nomad=@root) {
 			remainder = string.delete (remainder, 1, sizeof (firstpart) + 1);
 			nomad = @nomad^.[firstpart]}};
 	
-	return (nomad)};
+	return (nomad)}
 //bundle // testing
 	//webserver.util.pathToAddress ("/workspace/notepad")
 		//@workspace.notepad

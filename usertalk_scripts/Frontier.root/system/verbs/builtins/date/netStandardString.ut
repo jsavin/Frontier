@@ -66,6 +66,6 @@ on netStandardString (localDate) {
 				//s = s + string.padWithZeros (minute, 2) + ":"
 				//s = s + string.padWithZeros (second, 2) + " GMT"
 				//return (s)
-	kernel (date.netStandardString)};
+	kernel (date.netStandardString)}
 //bundle //test code
 	//dialog.notify (date.netStandardString (clock.now ()))

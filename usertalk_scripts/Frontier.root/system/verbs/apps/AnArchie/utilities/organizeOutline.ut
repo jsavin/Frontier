@@ -40,7 +40,7 @@ on organizeOutline (outlineAddr) {
 				if (!processLine(curLine, addIt)) {
 					if (matchCount > 0) {
 						matchCount++; // adjust for initial find
-						if (!atEnd) { //Êwe need to be a bit smarter on the last entry
+						if (!atEnd) { // we need to be a bit smarter on the last entry
 							op.go(flatup, matchCount+1)} // adjust for header
 						else {
 							op.go(flatup, matchCount)};

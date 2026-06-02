@@ -15,7 +15,7 @@ on listToOutline (theList, adroutline) { //4.2
 				op.insert (elem, dir); dir = down}}};
 	insertList (theList);
 	target.set (oldtarget);
-	return (theList)};
+	return (theList)}
 //bundle //test code
 	//try {delete (@scratchpad.xxx)}
 	//scratchpad.theList = op.outlineToList (@tablemap.thelist)

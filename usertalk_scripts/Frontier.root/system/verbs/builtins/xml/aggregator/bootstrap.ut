@@ -22,6 +22,6 @@ on bootstrap (url) {
 		adrservice = @adrdata^.services.[xmlurl];
 		if not defined (adrservice^) {
 			new (tabletype, adrservice)}};
-	xml.aggregator.readAllServices ()};
+	xml.aggregator.readAllServices ()}
 //bundle //test code
 	//bootstrap (radio.data.cloudUrls.aggregatorBootstrap)

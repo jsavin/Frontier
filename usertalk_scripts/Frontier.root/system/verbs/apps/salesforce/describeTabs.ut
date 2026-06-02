@@ -3,7 +3,7 @@ on describeTabs (adrSession) {
 		//4/13/06; 2:46:27 AM by JES
 			//Created. Retrieve a list of all objects.
 				//Once you have a list of objects, you can iterate through the list using describeObject to get metadata for each object type.
-	return (salesforce.callApi (adrSession, nameOf (this^)))};
+	return (salesforce.callApi (adrSession, nameOf (this^)))}
 //bundle //test code
 	//local (adrses)
 	//bundle //set adrses

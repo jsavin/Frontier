@@ -43,7 +43,7 @@ on httpGet (domainName, path, port, adrheader=nil) {
 			adrheader^ = string.mid (s, 1, ixendkey - 1)};
 		s = string.mid (s, ixendkey, sizeof (s) - ixendkey + 1)};
 	
-	return (s)};
+	return (s)}
 //bundle //test code
 	//for i = 1 to 10
 		//local (s, header)

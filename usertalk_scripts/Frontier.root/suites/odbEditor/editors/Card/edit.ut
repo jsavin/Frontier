@@ -11,6 +11,6 @@ on edit (adrobject) {
 	local (wtitle = nameOf (adrobject^));
 	local (id = adrobject);
 	bundle { //send the apple event, it's a long line
-		appleEvent (ideditorapp, 'app1', 'ewin', '----', adrobject^, 'refc', id, 'titl', wtitle)}};
+		appleEvent (ideditorapp, 'app1', 'ewin', '----', adrobject^, 'refc', id, 'titl', wtitle)}}
 //bundle //test code
 	//edit (@suites.samples.cards.card1)

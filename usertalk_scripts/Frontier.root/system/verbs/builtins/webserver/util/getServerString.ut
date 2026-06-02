@@ -23,7 +23,7 @@ on getServerString () {
 	else {
 		on kernelcall () {
 			kernel (webserver.getServerString)};
-		kernelcall ()}};
+		kernelcall ()}}
 //bundle //test code
 	//local (startticks = clock.ticks ())
 	//for i = 1 to 10000

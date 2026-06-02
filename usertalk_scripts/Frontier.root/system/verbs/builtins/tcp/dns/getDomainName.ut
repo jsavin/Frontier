@@ -17,7 +17,7 @@ on getDomainName (dottedid) { //turn a dotted id into a domain name
 		else {
 			s = dottedid};
 		adritem^ = s;
-		return (s)}};
+		return (s)}}
 //bundle //test code
 	//dialog.alert (getDomainName ("208.204.52.230")) //doesn't have a DNS record
 	//for i = 1 to 100

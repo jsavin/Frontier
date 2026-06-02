@@ -64,7 +64,7 @@ on echoResponder (adrParamTable) {
 	
 	adrParamTable^.responseHeaders.["Content-Type"] = "text/html"; // always set the MIME type
 	adrParamTable^.responseBody = htmltext;
-	return (true)};
+	return (true)}
 //bundle //test code
 	//local (params)
 	//new (tabletype, @params)

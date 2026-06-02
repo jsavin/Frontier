@@ -42,7 +42,7 @@ on saveAsPlainText (adr=nil, adrFilepath=nil) {
 			if Frontier.tools.windowTypes.findWindowType ("outlinerFile", @adrtype) {
 				if defined (adrtype^.saveAsPlainText) {
 					if not adrtype^.saveAsPlainText (adr) {
-						return (false)}}};
+						return (false)}}}}};
 			//bundle //old code
 				//local (adrParentTable = parentOf (adrItem^))
 				//local (title = window.getTitle (adrItem))
@@ -82,7 +82,7 @@ on saveAsPlainText (adr=nil, adrFilepath=nil) {
 						//adrTable^.lastSaved = clock.now ()
 						//adrTable^.flOutlineDocument = false
 						//adrTable^.flPlainText = true
-					//return (Frontier.tools.windowTypes.commands.open (f))}};
+					//return (Frontier.tools.windowTypes.commands.open (f))
 	//else //not a local, file-based outline, but something like the notepad
 		//local (title = window.getTitle (adrItem))
 		//local (adrTable = pike.newWindow (title, false, false))

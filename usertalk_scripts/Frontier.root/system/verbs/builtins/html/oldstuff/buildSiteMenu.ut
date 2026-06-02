@@ -110,7 +110,7 @@ on buildSiteMenu (adrsitetable, adrmenubar, callback=nil) {
 				op.go (down, infinity)}}};
 	traverse (adrsitetable, "http://" + adrsitetable^.["#ftpsite"].url);
 	op.firstSummit ();
-	return (true)};
+	return (true)}
 //bundle //test code
 	//on callback (link)
 		//return ("webBrowser.openURL (\"" + link + "\")")

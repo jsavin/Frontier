@@ -24,7 +24,7 @@ on setCookie (adrParams, cookieName, cookieValue, cookieDomain="", cookieExpires
 			adrcookie^ = adrcookie^ + "\r\n" + s}
 		else {
 			adrcookie^ = s}};
-	return (s)};
+	return (s)}
 //bundle //test code
 	//local (params)
 	//new (tabletype, @params)

@@ -12,7 +12,7 @@ on getServerCapabilities (email, password, adrtable, adrdata = @xmlStorageSystem
 		rpcPath = adrdata^.rpcPath};
 	with adrdata^ {
 		adrtable^ = xml.rpc (server, port, "xmlStorageSystem.getServerCapabilities", @params, rpcPath:rpcPath, fldebug:fldebug, flShowMessages:flMessages, protocol:protocol, soapAction:soapAction);
-		return (not adrtable^.flerror)}};
+		return (not adrtable^.flerror)}}
 //bundle //test code
 	//with user.xmlStorageSystem
 		//getServerCapabilities (email, password, @scratchpad.serverCapabilities)

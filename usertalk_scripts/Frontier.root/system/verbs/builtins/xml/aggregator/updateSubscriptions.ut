@@ -57,6 +57,6 @@ on updateSubscriptions (flSubscribeAll = false) {
 						adrservice^.timeLastSubscribe = now}}}};
 		if adrdata^.prefs.flLogNotification {
 			if htmltext != "" {
-				try {radio.log.add ("Please notify", htmltext, startticks)}}}}};
+				try {radio.log.add ("Please notify", htmltext, startticks)}}}}}
 //bundle //test code
 	//updateSubscriptions (true)

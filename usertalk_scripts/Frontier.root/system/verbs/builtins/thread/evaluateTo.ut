@@ -1,5 +1,5 @@
 on evaluateTo (s, adr) {
 	local (scriptString = "thread.wrapper (\"" + s + "\", @" + adr + ")");
-	return (thread.evaluate (scriptString))};
+	return (thread.evaluate (scriptString))}
 //bundle //test code
 	//evaluateTo ("12 + 99", @scratchpad.tmp3)

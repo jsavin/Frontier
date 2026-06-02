@@ -131,7 +131,7 @@ on form (serverName, serverUrl, adrGetRecipientCallback, adrGetRecipientNameCall
 		add ("</form>"); indentlevel--;
 		title = string.replaceAll (pageTitle, "{username}", recipientName)};
 	pta^.title = title;
-	return (htmltext)};
+	return (htmltext)}
 //bundle //test code
 	//html.setPageTableAddress (@workspace.pt)
 	//form ("My Site", "http://foo.com/", @msg, @msg)

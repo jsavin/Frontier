@@ -33,7 +33,7 @@ on login (username, password, adrAdrSession, adrEndpoint=@salesforce.data.defaul
 	
 	adrAdrSession^ = adrSession;
 	
-	return (true)};
+	return (true)}
 //bundle //testing
 	//local (adrses)
 	//this^ (workspace.salesforcecomUsername, workspace.salesforcecomPassword, @adrses)

@@ -88,6 +88,6 @@ on openDataFile (fname) { //returns an address
 	adrfile^.whenLastUsed = now;
 	adrfile^.adrData = adrdata;
 	adrfile^.ctAccesses = 1;
-	return (adrdata)};
+	return (adrdata)}
 //bundle //test code
 	//openDataFile ("testData")

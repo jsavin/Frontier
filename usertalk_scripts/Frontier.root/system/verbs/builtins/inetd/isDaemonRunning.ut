@@ -9,6 +9,6 @@ on isDaemonRunning (adrDaemonTable) {
 			delete (listenerTableAdr);
 			return (false)};
 		return (true)};
-	return (false)};
+	return (false)}
 //bundle //test code
 	//isDaemonRunning (@user.inetd.config.http)

@@ -1,5 +1,4 @@
-on openURL (s, openURLIn=nil) {
-	//3/21/26 by JES
+on openURL (s, openURLIn=nil) { //3/21/26 by JES
 		//Modernized for three runtime modes:
 			//GUI mode (isHeadless=false): use legacy AppleEvent path
 			//CLI mode (isHeadless=true, macOS with display): use "open" command

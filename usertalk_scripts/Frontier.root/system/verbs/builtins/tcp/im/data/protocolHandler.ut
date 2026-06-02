@@ -6,6 +6,6 @@ on im (rpcServer, procedureName, paramlist) {
 	driverName = string.nthField(rpcServer, "/", 3);
 	screenName = string.mid(rpcServer, sizeOf ( driverName ) + 7, infinity );
 	tcp.im.rpi.client(driverName, screenName, procedureName, paramlist);
-	return true};
+	return true}
 //bundle // test scripts
-	//["im://aim/JerfBowersTest"].alert("Hello!\n\n\n»Ùïï &amp;")
+	//["im://aim/JerfBowersTest"].alert("Hello!\n\n\n»ŸÔÔ &amp;")

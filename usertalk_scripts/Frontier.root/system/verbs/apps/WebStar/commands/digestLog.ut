@@ -25,7 +25,7 @@ on digestLog (f) {
 					adr^++}
 				else {
 					adr^ = 1};
-				msg (url)};
+				msg (url)}}};
 			//bundle //gather information about hosts
 				//on gatherHostInfo ()
 					//local (host)
@@ -49,7 +49,7 @@ on digestLog (f) {
 						//adr^++
 					//else
 						//adr^ = 1
-				//gatherHostInfo ()}};
+				//gatherHostInfo ()
 	file.close (f);
 	bundle { //sort the tables
 		msg ("Sorting user.webstar.urls");

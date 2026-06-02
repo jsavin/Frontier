@@ -69,7 +69,7 @@ on array (adrmsg, adrelement, arraytype, flEnforceSimpleTypes=true, flDuplicates
 					"anyType" {
 						resultlist[position] = soap.decode.main (adrmsg, adrarrayelement, flEnforceSimpleTypes, flDuplicatesToArrays)}}
 				else { //call soap.decode.simpleType, for single-type arrays
-					resultlist[position] = soap.decode.simpleType (adrmsg, adrarrayelement, arraytype)}};
+					resultlist[position] = soap.decode.simpleType (adrmsg, adrarrayelement, arraytype)}}}
 			//bundle //old code for dealing with arrays of structs
 				//try //simple type
 					//resultlist[position] = soap.decode.simpleType (adrmsg, adrarrayelement, arraytype)
@@ -78,7 +78,7 @@ on array (adrmsg, adrelement, arraytype, flEnforceSimpleTypes=true, flDuplicates
 						//new (tableType, @resultlist)
 					//local (name = string.nthField (arrayType, ":", 2) + string.padWithZeros (position, 7))
 					//resultlist.[name] = soap.decode.struct (adrmsg, adrarrayelement, flEnforceSimpleTypes)
-					//resultlist.[name] = soap.decode.main (adrmsg, adrarrayelement, flEnforceSimpleTypes)}
+					//resultlist.[name] = soap.decode.main (adrmsg, adrarrayelement, flEnforceSimpleTypes)
 		else {
 			local (type = soap.xmlutils.getAttributeValue (adrarrayelement, soap.xmlutils.setQualifiedName (adrmsg, "type", soap.constants.nsSchemaURI)));
 			if type {

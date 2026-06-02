@@ -5,5 +5,5 @@ on getRefconHtml (outlineadr, s) {
 		//it replaces occurrences of %A5 in the refcon text with the 2nd param, a string
 	local (data);
 	pack (outlineadr^, @data);
-	return (appleEvent (@html.ucmds.outlineops, 'ucmd', 'html', '----', data, 'mail', string (s)));
-	}//return (appleEvent ('OUTS', 'outs', 'html', '----', data, 'mail', string (mailaddress)))
+	return (appleEvent (@html.ucmds.outlineops, 'ucmd', 'html', '----', data, 'mail', string (s)))}
+	//return (appleEvent ('OUTS', 'outs', 'html', '----', data, 'mail', string (mailaddress)))

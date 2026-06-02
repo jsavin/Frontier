@@ -1,4 +1,9 @@
+//2/19/26; 11:44:48 PM by JES
+	//If the default browser is "shell" (for headless), it's always "running".
 local (i, supportedBrowsers);
+if webBrowser.getDefaultBrowser() == "shell" {
+	user.webBrowser.currentid = "shell";
+	return (true)};
 try {
 	if sys.appIsRunning (user.webBrowser.currentid) {
 		return (true)}};

@@ -42,8 +42,8 @@ on spacePixels (ctpixels, orientation="horizontal") {
 		try {preview = adrPageTable^.preview};
 		fileWriter = adrPageTable^.fileWriter;
 		on writeSpaceGif () {
-			html.writeFile (f, @html.data.images.space, 'GIFf', html.getPref ("imgFileCreator", adrPageTable), clock.now (), adrPageTable);
-			};//file.writeWholeFile (f, html.data.images.space, 'GIFf', html.getPref ("imgFileCreator", adrPageTable), clock.now ())
+			html.writeFile (f, @html.data.images.space, 'GIFf', html.getPref ("imgFileCreator", adrPageTable), clock.now (), adrPageTable)};
+			//file.writeWholeFile (f, html.data.images.space, 'GIFf', html.getPref ("imgFileCreator", adrPageTable), clock.now ())
 		if string.lower (fileWriter) == "file" {
 			if not (file.exists (f)) {
 				writeSpaceGif ()}}

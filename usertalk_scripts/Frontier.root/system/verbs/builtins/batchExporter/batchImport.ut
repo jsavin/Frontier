@@ -32,6 +32,6 @@ on batchImport (folder = user.batchExporter.folder) {
 		msg ("Imported \"" + adrobject + "\".")};
 	msg ("Saving the database...");
 	fileMenu.save ();
-	msg (ctImported + " objects imported.")};
+	msg (ctImported + " objects imported.")}
 //bundle //test code
 	//batchImport ()

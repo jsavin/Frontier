@@ -18,6 +18,6 @@ on anything (path) {
 					"bat" {
 						return (launch.application (path))}}
 				else {
-					return (launch.appWithDocument (file.findApplication (extension), path))}}}}};
+					return (launch.appWithDocument (file.findApplication (extension), path))}}}}}
 //bundle //test code
 	//launch.anything ("C:\\test.txt")

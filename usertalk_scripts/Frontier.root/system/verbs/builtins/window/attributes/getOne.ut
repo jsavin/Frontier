@@ -9,7 +9,7 @@ on getOne (attname, adrval, adrwindow=nil) {
 				if defined (adratts^.[attname]) {
 					adrval^ = adratts^.[attname];
 					return (true)}}}};
-	return (false)};
+	return (false)}
 //bundle //test code
 	//local (val)
 	//getOne ("type", @val)

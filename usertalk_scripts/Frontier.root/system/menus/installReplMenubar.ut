@@ -1,4 +1,4 @@
-on installReplMenubar ()
+on installReplMenubar () {
 	//Install the headless REPL menubar at system.menus.data.repl.
 		//5/31/26 by JES
 			//Phase E: register the windowTypes framework's openWindow / closeWindow
@@ -18,7 +18,7 @@ on installReplMenubar ()
 			//each registered callback returns void; the framework consumes the
 			//event regardless of slot position.
 		//5/8/26 by JES
-			//Issue #594 — set accepts_args=true on List and Jump leaves so the
+			//Issue #594 ‚Äî set accepts_args=true on List and Jump leaves so the
 			//slash-command path and the palette accepts_args input row both
 			//route through the same palette_arg_inject synthesis. The
 			//assignment uses direct table dereference because there is no
@@ -27,13 +27,13 @@ on installReplMenubar ()
 			//These accepts_args writes happen on BOTH branches of the
 			//menu.isInstalled check so re-running the install script
 			//against a DB with an already-installed menubar still
-			//converges to the desired state — required for in-place
+			//converges to the desired state ‚Äî required for in-place
 			//upgrades of pre-#594 Virgin.root images that have List/Jump
 			//but no accepts_args field. The assignments are idempotent.
 			//Help item calls repl.help () directly via the kernel verb so
 			//that headless REPL mode (which lacks a raw-stdout primitive)
 			//can still emit the legacy slash help text via repl_output_help().
-	bundle //Phase E: wire windowTypes framework into kernel callback chain
+	bundle { //Phase E: wire windowTypes framework into kernel callback chain
 		//system.callbacks.openWindow (the kernel-fired hook) passes a string
 		//path (e.g. "system.temp.windowTypes.windows.repl") to each registered
 		//callback, but Frontier.tools.windowTypes.callbacks.openWindow expects
@@ -41,26 +41,26 @@ on installReplMenubar ()
 		//do the conversion and dispatch -- they are installed alongside the
 		//other repl menu handlers (clear, exit, etc.) by the existing
 		//repl-handlers corpus.
-		if not defined (user.callbacks)
-			new (tableType, @user.callbacks)
-		if not defined (user.callbacks.openWindow)
-			new (tableType, @user.callbacks.openWindow)
-		if not defined (user.callbacks.closeWindow)
-			new (tableType, @user.callbacks.closeWindow)
-		user.callbacks.openWindow.windowTypesAdapter = @system.menus.handlers.repl.windowTypesOpenAdapter
-		user.callbacks.closeWindow.windowTypesAdapter = @system.menus.handlers.repl.windowTypesCloseAdapter
-	if menu.isInstalled (@system.menus.data.repl)
-		system.menus.data.repl.REPL.List.accepts_args = true
-		system.menus.data.repl.REPL.Jump.accepts_args = true
-		return (true)
-	local (adrbar = @system.menus.data.repl)
-	menu.addMenuCommand (adrbar, "REPL", "Help", "repl.help ()")
-	menu.addMenuCommand (adrbar, "REPL", "Clear", "system.menus.handlers.repl.clear ()")
-	menu.addMenuCommand (adrbar, "REPL", "List", "system.menus.handlers.repl.list ()")
-	menu.addMenuCommand (adrbar, "REPL", "Jump", "system.menus.handlers.repl.jump ()")
-	menu.addMenuCommand (adrbar, "REPL", "Key codes", "system.menus.handlers.repl.keycodes ()")
-	menu.addMenuCommand (adrbar, "REPL", "Exit", "system.menus.handlers.repl.exit ()")
-	system.menus.data.repl.REPL.List.accepts_args = true
-	system.menus.data.repl.REPL.Jump.accepts_args = true
-	menu.install (adrbar)
-	return (true)
+		if not defined (user.callbacks) {
+			new (tableType, @user.callbacks)};
+		if not defined (user.callbacks.openWindow) {
+			new (tableType, @user.callbacks.openWindow)};
+		if not defined (user.callbacks.closeWindow) {
+			new (tableType, @user.callbacks.closeWindow)};
+		user.callbacks.openWindow.windowTypesAdapter = @system.menus.handlers.repl.windowTypesOpenAdapter;
+		user.callbacks.closeWindow.windowTypesAdapter = @system.menus.handlers.repl.windowTypesCloseAdapter};
+	if menu.isInstalled (@system.menus.data.repl) {
+		system.menus.data.repl.REPL.List.accepts_args = true;
+		system.menus.data.repl.REPL.Jump.accepts_args = true;
+		return (true)};
+	local (adrbar = @system.menus.data.repl);
+	menu.addMenuCommand (adrbar, "REPL", "Help", "repl.help ()");
+	menu.addMenuCommand (adrbar, "REPL", "Clear", "system.menus.handlers.repl.clear ()");
+	menu.addMenuCommand (adrbar, "REPL", "List", "system.menus.handlers.repl.list ()");
+	menu.addMenuCommand (adrbar, "REPL", "Jump", "system.menus.handlers.repl.jump ()");
+	menu.addMenuCommand (adrbar, "REPL", "Key codes", "system.menus.handlers.repl.keycodes ()");
+	menu.addMenuCommand (adrbar, "REPL", "Exit", "system.menus.handlers.repl.exit ()");
+	system.menus.data.repl.REPL.List.accepts_args = true;
+	system.menus.data.repl.REPL.Jump.accepts_args = true;
+	menu.install (adrbar);
+	return (true)}

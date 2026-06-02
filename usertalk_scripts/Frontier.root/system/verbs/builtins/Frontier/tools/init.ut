@@ -56,7 +56,7 @@ bundle { //make sure nodeTypes-related callbacks are installed
 	local (adrcode = @Frontier.tools.nodeTypes.callbacks);
 	installCallback (adrcode, "opCollapse", "return (Frontier.tools.opExpandCallback ())");
 	installCallback (adrcode, "opExpand", "return (Frontier.tools.opExpandCallback ())");
-	installCallback (adrcode, "opRightClick", "on tools (adrmenu) {\r\treturn (Frontier.tools.opRightClickCallback (adrmenu))}");
+	installCallback (adrcode, "opRightClick", "on tools (adrmenu) {\r\treturn (Frontier.tools.opRightClickCallback (adrmenu))}")};
 	//bundle //old code
 		//bundle //opCollapse
 			//local (adrtable = @user.callbacks.opCollapse)
@@ -87,7 +87,7 @@ bundle { //make sure nodeTypes-related callbacks are installed
 				//if string (adrscript^) == "on tools (adrmenu) {\r\treturn (Frontier.tools.opRightClickCallback (adrmenu))}"
 					//delete (adrscript)
 			//if not defined (adrscript^)
-				//adrscript^ = @adrcode^.opRightClick};
+				//adrscript^ = @adrcode^.opRightClick
 bundle { //make sure the html fileWriters callbacks table exists
 	if not defined (user.html.callbacks) {
 		new (tableType, @user.html.callbacks)};

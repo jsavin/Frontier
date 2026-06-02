@@ -6,5 +6,5 @@ on addressDecode (encodedAdr) { //Turn a 4-byte number into a dotted IP address
 		ip = ip + number ("0x" + string.mid (s, 1, 2)) + "."};
 	return (string.mid (ip, 1, sizeof (ip) - 1))};
 bundle { //test code
-	netEvents.addressDecode (-825485308)
-		//"206.204.24.4"}
+	netEvents.addressDecode (-825485308)}
+		//"206.204.24.4"

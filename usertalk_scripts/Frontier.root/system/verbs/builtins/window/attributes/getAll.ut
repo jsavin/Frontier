@@ -7,6 +7,6 @@ on getAll (adrtable, adrwindow=nil) {
 		if defined (adratts^) {
 			adrtable^ = adratts^;
 			return (true)}};
-	return (false)};
+	return (false)}
 //bundle //test code
 	//getAll (@scratchpad.atts)

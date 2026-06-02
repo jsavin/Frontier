@@ -1,5 +1,5 @@
 on myDottedID () {
-	return (tcp.addressDecode (tcp.myAddress ()))};
+	return (tcp.addressDecode (tcp.myAddress ()))}
 //bundle //test code
 	//local (i)
 	//window.about ()

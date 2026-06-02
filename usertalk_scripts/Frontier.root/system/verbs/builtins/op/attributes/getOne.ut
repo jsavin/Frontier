@@ -5,7 +5,7 @@ on getOne (attname, adrval) {
 	if not defined (attstable.[attname]) {
 		return (false)};
 	adrval^ = attstable.[attname];
-	return (true)};
+	return (true)}
 //bundle //test code
 	//local (name)
 	//getOne ("f", @name)

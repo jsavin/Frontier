@@ -15,7 +15,7 @@ on getJpegHeightWidth (f) {
 		hwList = kernelcall (tempFilePath);
 		file.delete (tempFilePath);
 		return (hwList)};
-	return (kernelcall (f))};
+	return (kernelcall (f))}
 //bundle //test code
 	//dialog.alert (getJpegHeightWidth (@websites.samples.["#images"].wozJobs)) //test addresses
 	//dialog.alert (getJpegHeightWidth ("C:\\Frontier\\Websites\\samples\\images\\wozjobs.jpg")) //test files on Windows

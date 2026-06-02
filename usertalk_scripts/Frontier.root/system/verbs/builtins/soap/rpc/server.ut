@@ -162,7 +162,7 @@ on server (actionURI, adrRequestText, adrResponseText) {
 							break};
 						"0";
 						false {
-							}}//do nothing
+							//do nothing
 					else { //it's not a valid value -- fault
 						soapfault (soap.constants.faultClient, "Can't process the request because a Header element has a mustUnderstand attribute with an illegal value.")};
 					local (actor = soap.xmlutils.getAttributeValue (nomad, soap.xmlutils.setQualifiedName (adrrequest, "actor", soap.constants.nsEnvelopeURI)));
@@ -262,7 +262,7 @@ on server (actionURI, adrRequestText, adrResponseText) {
 			else {
 				local (errormessage = tryerror);
 				if sizeOf (paramrecord) > 0 { //check for parameter name mismatches
-					if tryError contains " because it doesnÕt define a parameter named " {
+					if tryError contains " because it doesn’t define a parameter named " {
 						local (flParamNameError = false, ct = sizeOf (paramrecord));
 						if tryError contains "param1" {
 							errormessage = "Can't call the method \"" + nameOf (adrhandler^) + "\" because the input parameters don't match the expected parameters. If the client is Frontier/Radio, use a record of name/value pairs for the input parameters."}

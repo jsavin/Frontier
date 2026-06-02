@@ -18,6 +18,6 @@ on getPathAddress (xtable, path, adrresult) {
 		else {
 			return (false)}};
 	adrresult^ = nomad;
-	return (true)};
+	return (true)}
 //bundle //test code
 	//dialog.alert (getpathaddress (@notepad.testing.testTable, "/ticket/header/title")^)

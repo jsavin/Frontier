@@ -19,7 +19,7 @@ on scriptToOutline (adrscript, adroutline) { //Fri, Aug 16, 1996 at 8:36:58 AM b
 			s = op.getLineText (); //get line from the script
 			curlineiscomment = script.isComment ();
 			if curlineiscomment or leveliscomment {
-				s = "//" + s};
+				s = "«" + s};
 			target.set (adroutline);
 			if dir == nodirection {
 				op.setlinetext (s)}

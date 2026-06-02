@@ -3,7 +3,7 @@ on replaceSelectedText (newtext) {
 		try {
 			core.set (id, selectedText, newtext)}
 		else {
-			if tryError == "“Eudora” reported the following error:  “The specified object wasnÕt found.”." {
+			if tryError == "“Eudora” reported the following error:  “The specified object wasn’t found.”." {
 				return (true)}
 			else {
 				scriptError (tryError)}}}}

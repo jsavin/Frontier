@@ -29,10 +29,10 @@ on sortIcons (folder) {
 		if file.isFolder (f) {
 			rollBeachball ();
 			file.setIconPos (f, h, v);
-			bumppos ()}};
+			bumppos ()}}};
 	//fileloop (f in folder) //dive into each folder
 		//if file.isFolder (f)
-			//sortIcons (f)};
+			//sortIcons (f)
 
 on visit (path) {
 	local (folder = path);

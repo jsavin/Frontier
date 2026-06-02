@@ -60,7 +60,7 @@ on compile (adrservice, flSaveData=false, adrStoryArrivedCallback=nil) {
 				adrdata^.description = description;
 				adrdata^.author = author};
 			addToHistory (adritem)}};
-	return (true)};
+	return (true)}
 //bundle //test code
 	//local (url = "http://www.macromedia.com/desdev/resources/macromedia_resources.xml")
 	//local (adrservice = xml.rss.initService (url, @aggregatorData.services))

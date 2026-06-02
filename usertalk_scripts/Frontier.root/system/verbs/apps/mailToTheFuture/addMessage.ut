@@ -13,6 +13,6 @@ on addMessage (recipient, subject, bodytext, when) {
 	mailToTheFuture.init ();
 	local (params = {"username":user.mailToTheFuture.username, "password":user.mailToTheFuture.password, "msgstruct":msgstruct});
 	with mailToTheFuture.data {
-		return (soap.rpc.client (path, "addMessage", @params, server, port))}};
+		return (soap.rpc.client (path, "addMessage", @params, server, port))}}
 //bundle //test code
 	//dialog.alert (addMessage (user.prefs.mailaddress, "Test message", "This is a quick test of MTTF.", clock.now ()))
