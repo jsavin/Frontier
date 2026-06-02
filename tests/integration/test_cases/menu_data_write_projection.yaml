@@ -317,7 +317,7 @@ tests:
   - name: "addMenuCommand stamps order field on each leaf in insertion order"
     description: |
       Each item written via addMenuCommand gets an explicit `order` field
-      stamped with the count of already-ordered siblings — i.e. its zero-
+      stamped with the count of already-ordered siblings - i.e. its zero-
       based insertion index within the parent menu. Names are deliberately
       non-alphabetical (Zebra, Mike, Alpha) so an alphabetical fallback
       would produce a DIFFERENT ordering (Alpha=0, Mike=1, Zebra=2). The
@@ -339,7 +339,7 @@ tests:
       The order stamp is idempotent: stamp_order_if_absent only writes when
       the field is absent. Adding First then Second yields order 0 and 1;
       re-adding First (a no-op create on an existing leaf) must NOT renumber
-      it — First stays 0, Second stays 1.
+      it - First stays 0, Second stays 1.
     script: |
       menu.addMenuCommand(@system.menus.data.tst15, "M", "First",  "f()");
       menu.addMenuCommand(@system.menus.data.tst15, "M", "Second", "s()");

@@ -675,6 +675,83 @@ static void test_items_without_order_fall_back_to_alpha(void) {
 }
 
 
+/*
+ * End-to-end wiring guard: item_describe must run the legacy prefix reducer
+ * over the label it reads from the ODB sub-table. The reduce() unit tests
+ * above exercise palette_reduce_menu_codes in isolation, so they stay green
+ * even if cb_item_describe stops calling the reducer. This test stores
+ * prefix-coded labels in a REAL sub-table tree and asserts item_describe
+ * returns the stripped label plus the derived flags -- it goes red if the
+ * reducer call is deleted, reordered before the label read, or wired to the
+ * wrong fields.
+ */
+static void test_item_describe_applies_prefix_codes(void) {
+	printf("[adapter] Test: item_describe applies legacy prefix codes... ");
+	fflush(stdout);
+
+	hdlhashtable hdata = nil;
+	assert(menudata_ensure_root());
+	clear_data_children();
+	assert(find_data(&hdata));
+
+	hdlhashtable hbar  = mk_subtable(hdata, "prefix_wire_bar");
+	hdlhashtable hmenu = mk_subtable(hbar, "REPL");
+
+	/* order field pins enumeration so index maps to a known item. */
+	hdlhashtable hcheck = mk_subtable(hmenu, "Cmd_check");
+	set_string(hcheck, "label", "!Wrap");   /* leading '!' -> checked, strip */
+	set_string(hcheck, "script", "-- wrap");
+	set_long(hcheck, "order", 0);
+
+	hdlhashtable hdis = mk_subtable(hmenu, "Cmd_disable");
+	set_string(hdis, "label", "(Save");     /* leading '(' -> disabled, strip */
+	set_string(hdis, "script", "-- save");
+	set_long(hdis, "order", 1);
+
+	hdlhashtable hsep = mk_subtable(hmenu, "Cmd_sep");
+	set_string(hsep, "label", "-");         /* lone '-' -> separator */
+	set_string(hsep, "script", "-- noop");
+	set_long(hsep, "order", 2);
+
+	palette_menu_source_t src;
+	assert(repl_palette_source_init_for(&src, "prefix_wire_bar"));
+
+	int items = src.item_count(src.ctx, 0, NULL);
+	assert(items == 3);
+
+	palette_item_t checked_item, disabled_item, sep_item;
+	memset(&checked_item, 0, sizeof(checked_item));
+	memset(&disabled_item, 0, sizeof(disabled_item));
+	memset(&sep_item, 0, sizeof(sep_item));
+	assert(src.item_describe(src.ctx, 0, NULL, 0, &checked_item));
+	assert(src.item_describe(src.ctx, 0, NULL, 1, &disabled_item));
+	assert(src.item_describe(src.ctx, 0, NULL, 2, &sep_item));
+
+	/* "!Wrap" -> label "Wrap", checked, still enabled, not a separator. */
+	assert(strcmp(checked_item.label, "Wrap") == 0);
+	assert(checked_item.checked == true);
+	assert(checked_item.enabled == true);
+	assert(checked_item.is_separator == false);
+
+	/* "(Save" -> label "Save", disabled, not checked, not a separator. */
+	assert(strcmp(disabled_item.label, "Save") == 0);
+	assert(disabled_item.enabled == false);
+	assert(disabled_item.checked == false);
+	assert(disabled_item.is_separator == false);
+
+	/* "-" -> separator, non-selectable. */
+	assert(sep_item.is_separator == true);
+	assert(sep_item.enabled == false);
+	assert(sep_item.checked == false);
+
+	repl_palette_source_dispose(&src);
+	clear_data_children();
+
+	printf("PASS\n");
+	fflush(stdout);
+}
+
+
 static void test_dispose_idempotent(void) {
 	printf("[adapter] Test: dispose is idempotent... ");
 	fflush(stdout);
@@ -1080,6 +1157,7 @@ int main(void) {
 	TR_RUN(test_menus_within_bar_are_alphabetically_ordered);
 	TR_RUN(test_items_ordered_by_order_field);
 	TR_RUN(test_items_without_order_fall_back_to_alpha);
+	TR_RUN(test_item_describe_applies_prefix_codes);
 
 	/* Legacy prefix-code parsing (mereducemenucodes parity) */
 	TR_RUN(test_prefix_plain_label_unchanged);

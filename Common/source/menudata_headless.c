@@ -754,7 +754,7 @@ static long count_ordered_siblings(hdlhashtable hparent) {
  * found or freshly created, so a re-add of an existing menu/item must NOT
  * renumber it. We therefore only stamp when the order field is absent, and
  * the value we assign is the count of already-ordered siblings under
- * hparent — i.e. the child takes the next slot at the end of the ordering.
+ * hparent - i.e. the child takes the next slot at the end of the ordering.
  */
 static boolean stamp_order_if_absent(hdlhashtable hparent,
                                      hdlhashtable hchild) {
@@ -763,7 +763,7 @@ static boolean stamp_order_if_absent(hdlhashtable hparent,
 	long order;
 
 	if (lookup_field(hchild, BS_order, &existing))
-		return true; /* already ordered — preserve it */
+		return true; /* already ordered - preserve it */
 
 	order = count_ordered_siblings(hparent);
 
