@@ -802,6 +802,17 @@ class FrontierCLI:
                         screenshot_failures.append(err or 'screenshot mismatch')
                     continue
 
+                # {'delay': <seconds>} -- pause between steps. Used to space
+                # out palette keystrokes so each escape sequence is fully
+                # processed (and rendered) before the next arrives. The
+                # palette modal's ESC parser uses a 1ms fast-timer under
+                # FRONTIER_PALETTE_FAST_TIMERS=1, so back-to-back arrow
+                # sequences can race the parser; a small inter-keystroke
+                # delay lets the modal's poll loop drain + redraw between
+                # them. May be combined with a send_raw in the same step
+                # (delay runs AFTER the send).
+                delay = step.get('delay')
+
                 expect_pattern = step.get('expect')
                 send_text = step.get('send')
                 send_raw = step.get('send_raw')
@@ -824,6 +835,27 @@ class FrontierCLI:
                     child.send(send_raw)
                 elif send_text is not None:
                     child.sendline(send_text)
+
+                # Honor an explicit inter-step delay (after any send): SLEEP
+                # first so the palette modal's poll loop (10ms period) has
+                # time to consume the keystroke and emit its redraw, THEN
+                # drain the pty so that redraw reaches pyte. Order matters --
+                # draining before the modal has rendered would capture a stale
+                # frame and the post-keystroke redraw would back up unread
+                # until the next screenshot_match. The harness otherwise only
+                # reads the pty at screenshot_match steps, so without this the
+                # final captured frame shows the menubar but not the
+                # drilled-in dropdown (the navigation redraws were never read).
+                # Draining here keeps the pyte framebuffer current
+                # step-by-step, mirroring a real terminal that paints
+                # continuously.
+                if delay is not None:
+                    import time as _time
+                    _time.sleep(float(delay))
+                    pending = drain_pty(child)
+                    if pending:
+                        collected_output.append(pending)
+                        stream.feed(pending)
 
             # Drain any final output.
             try:

@@ -502,6 +502,61 @@ static void test_cursor_skips_separator(void) {
 	palette_close(&st);
 }
 
+/* Fixture mirroring the real "Edit" menu that overflows an 80-col strip.
+ * Five wide items whose combined cell widths run past column 80, so the
+ * last item ("Insert Date/Time") is clipped by the pre-scroll renderer. */
+static snap_item_t g_wide_items[] = {
+	{ "Find",                  'F', true, false, false, false, "edit.find()",   NULL, 0 },
+	{ "Find Next",             'N', true, false, false, false, "edit.findn()",  NULL, 0 },
+	{ "Replace",               'R', true, false, false, false, "edit.repl()",   NULL, 0 },
+	{ "Replace and Find Next", 'a', true, false, false, false, "edit.replfn()", NULL, 0 },
+	{ "Insert Date/Time",      'I', true, false, false, false, "edit.date()",   NULL, 0 },
+};
+
+static snap_menu_t g_wide_menus[] = {
+	{ "Edit", 'E', g_wide_items, 5 },
+};
+
+static snap_source_t g_wide_src = { g_wide_menus, 1 };
+
+static void test_wide_menu_keeps_cursor_item_visible(void) {
+	/* When the cascade strip overflows the terminal width, arrowing the
+	 * cursor to the last (off-screen) item must scroll the row so that
+	 * item's label becomes visible.  Pre-scroll renderer clips anything
+	 * past p->w and silently drops it -- this test is RED until the
+	 * cursor-anchored horizontal scroll lands. */
+	compositor_test_reset();
+	compositor_on_resize(24, 80);
+	palette_state_t st;
+	palette_menu_source_t src = snap_source(&g_wide_src);
+	palette_open(&st, 24, 80, 0, &src);
+	palette_feed_byte(&st, '\r');           /* open Edit menu */
+
+	/* Step RIGHT to the last item (index 4). */
+	for (int i = 0; i < 4; ++i) {
+		palette_feed_byte(&st, 0x1b);
+		palette_feed_byte(&st, '[');
+		palette_feed_byte(&st, 'C');
+	}
+	assert(st.levels[0].cursor == 4);
+	render_all(&st);
+
+	int y = st.levels[0].pane.y;
+	cell_t row[80];
+	int n = snapshot_row(y, row, 80);
+	assert(n > 0);
+
+	/* The 'I' of "Insert Date/Time" (the cursor item) must be present on
+	 * the visible strip row. */
+	int col_i = -1;
+	for (int x = 0; x < n; ++x) {
+		if (row[x].ch == 'I') { col_i = x; break; }
+	}
+	assert(col_i >= 0 && "cursor item must be visible after horizontal scroll");
+
+	palette_close(&st);
+}
+
 static void test_menubar_hotkey_styling(void) {
 	/* On the menubar itself, the hotkey letter of a non-selected entry
 	 * is bright yellow on blue. */
@@ -541,6 +596,7 @@ int main(void) {
 	TR_RUN(test_checked_item_draws_check_glyph);
 	TR_RUN(test_separator_draws_dim_divider);
 	TR_RUN(test_cursor_skips_separator);
+	TR_RUN(test_wide_menu_keeps_cursor_item_visible);
 	TR_SUMMARY();
 	return TR_EXIT_CODE();
 }

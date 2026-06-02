@@ -1,0 +1,22 @@
+Type /help for commands, /exit to quit
+
+[root]> menu.addMenuCommand(@system.menus.data.aaedit, "Edit", "Find", "noop()")
+
+true
+[root]> menu.addMenuCommand(@system.menus.data.aaedit, "Edit", "Find Next", "noo
+p()")
+true
+[root]> menu.addMenuCommand(@system.menus.data.aaedit, "Edit", "Replace", "noop(
+)")
+true
+[root]> menu.addMenuCommand(@system.menus.data.aaedit, "Edit", "Replace and Find
+ Next", "noop()")
+true
+[root]> menu.addMenuCommand(@system.menus.data.aaedit, "Edit", "Insert Date/Time
+", "noop()")
+true
+[root]> menu.install(@system.menus.data.aaedit)
+true
+ Edit  File  Edit  View  REPL
+<      Find Next      Replace      Replace and Find Next    [ Insert Date/Time ]
+[root]> /

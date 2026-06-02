@@ -283,6 +283,11 @@ typedef struct palette_level {
 	 * visible[scroll_top]. Adjusted automatically when cursor moves
 	 * outside the visible window or by explicit page/wheel scrolls. */
 	int scroll_top;
+	/* Horizontal scroll offset in cells for the single-row cascade strip.
+	 * The strip is drawn shifted left by `hscroll` columns so an item that
+	 * would otherwise overflow the right edge stays visible. Adjusted
+	 * automatically when the cursor moves outside the visible window. */
+	int hscroll;
 } palette_level_t;
 
 /* Palette state. The whole struct is value-typed (no internal mallocs

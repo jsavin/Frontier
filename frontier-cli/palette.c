@@ -190,6 +190,52 @@ static int item_screen_x(const palette_level_t *lvl, int i) {
 	return x;
 }
 
+/* Total laid-out width of a level's strip in cells (lead-in + all items +
+ * inter-item separators), before any horizontal scroll is applied. */
+static int level_content_width(const palette_level_t *lvl) {
+	if (lvl->item_count <= 0) return 0;
+	int last = lvl->item_count - 1;
+	return item_screen_x(lvl, last) + item_cell_width(&lvl->items[last]);
+}
+
+/* Adjust lvl->hscroll so the cursor item is fully visible within a strip
+ * `strip_w` cells wide.  Reserves one cell on each overflowing edge for the
+ * '<' / '>' indicators so the indicator never hides part of the item.  Also
+ * clamps hscroll so the strip never scrolls past its content. */
+static void ensure_cursor_visible(palette_level_t *lvl, int strip_w) {
+	if (lvl->item_count <= 0 || strip_w <= 0) {
+		lvl->hscroll = 0;
+		return;
+	}
+	int c = lvl->cursor;
+	if (c < 0 || c >= lvl->item_count) return;
+
+	int item_lx = item_screen_x(lvl, c);
+	int item_w = item_cell_width(&lvl->items[c]);
+	int content_w = level_content_width(lvl);
+
+	/* Left edge: if the item starts before the visible window, scroll left.
+	 * Reserve a cell for the '<' indicator when not at the very start. */
+	int left_margin = (item_lx > 0) ? 1 : 0;
+	if (item_lx - lvl->hscroll < left_margin) {
+		lvl->hscroll = item_lx - left_margin;
+	}
+
+	/* Right edge: if the item ends past the visible window, scroll right.
+	 * Reserve a cell for the '>' indicator when content extends past it. */
+	int right_margin = ((item_lx + item_w) < content_w) ? 1 : 0;
+	int item_right = item_lx + item_w;
+	if (item_right - lvl->hscroll > strip_w - right_margin) {
+		lvl->hscroll = item_right - (strip_w - right_margin);
+	}
+
+	/* Clamp: never scroll past the content's end, never below zero. */
+	int max_scroll = content_w - strip_w;
+	if (max_scroll < 0) max_scroll = 0;
+	if (lvl->hscroll > max_scroll) lvl->hscroll = max_scroll;
+	if (lvl->hscroll < 0) lvl->hscroll = 0;
+}
+
 /* Render the menubar pane.  Menubar entries do not use the
  * bracket-reservation scheme -- they only render " Label " around each
  * label.  The selected entry is INVERSE; the hotkey letter inside each
@@ -233,11 +279,29 @@ static void render_menubar(palette_state_t *st) {
 
 /* Render one cascade level as a single-row horizontal strip.  Pane is
  * full-width, height 1.  Items are stamped left-to-right with bracket
- * reservation so neighbour cells stay put as selection moves. */
+ * reservation so neighbour cells stay put as selection moves.  The whole
+ * strip is shifted left by lvl->hscroll cells so the cursor item stays
+ * visible when the content overflows the terminal width; '<' / '>' edge
+ * indicators are drawn when items remain off-screen in either direction. */
+
+/* Place a glyph at content-x `cx` shifted by hscroll, clipped to the pane.
+ * Cells that scroll off either edge are simply dropped. */
+static void strip_putc(pane_t *p, int cx, int hscroll, uint32_t ch,
+                       uint8_t fg, uint8_t bg, uint8_t attr) {
+	int sx = cx - hscroll;
+	if (sx < 0 || sx >= p->w) return;
+	pane_putc_color(p, sx, 0, ch, fg, bg, attr);
+}
+
 static void render_level(palette_state_t *st, int depth) {
 	palette_level_t *lvl = &st->levels[depth];
 	pane_t *p = &lvl->pane;
 	pane_clear(p);
+
+	/* Keep hscroll in sync with the current cursor/pane width even when this
+	 * render was not triggered by a cursor_step (e.g. resize, first open). */
+	ensure_cursor_visible(lvl, p->w);
+	int hs = lvl->hscroll;
 
 	/* Background fill for the whole strip. */
 	for (int x = 0; x < p->w; ++x) {
@@ -254,18 +318,18 @@ static void render_level(palette_state_t *st, int depth) {
 		if (!it->enabled) base |= PALETTE_ATTR_DIM;
 
 		int lx = item_screen_x(lvl, i);
-		if (lx >= p->w) break;       /* overflow: stop, no pagination yet */
 		int total_w = item_cell_width(it);
-		/* Truncation: if this item would run past the strip's right edge
-		 * just stop here.  Pagination is a follow-up. */
-		if (lx + total_w > p->w) break;
+		/* Skip items entirely off either edge of the visible window; partial
+		 * items are clipped per-cell by strip_putc. */
+		if (lx + total_w - hs <= 0) continue;
+		if (lx - hs >= p->w) break;
 
 		/* Separator: a single dim divider glyph, never selected, never the
 		 * cursor (cursor_step skips it). It is always disabled, so it draws
 		 * dim regardless of the `selected` math above. */
 		if (it->is_separator) {
-			pane_putc_color(p, lx, 0, PALETTE_SEP_GLYPH,
-			                PT_FG_DISABLED, PT_BG_MENUBAR, PALETTE_ATTR_DIM);
+			strip_putc(p, lx, hs, PALETTE_SEP_GLYPH,
+			           PT_FG_DISABLED, PT_BG_MENUBAR, PALETTE_ATTR_DIM);
 			continue;
 		}
 
@@ -275,13 +339,13 @@ static void render_level(palette_state_t *st, int depth) {
 		int label_x = lx + 2 + (it->checked ? PALETTE_CHECK_CELLS : 0);
 
 		/* Cell 0: opening bracket (space when not selected). */
-		pane_putc_color(p, lx, 0, selected ? '[' : ' ', fg, bg, base);
+		strip_putc(p, lx, hs, selected ? '[' : ' ', fg, bg, base);
 		/* Cell 1: leading space. */
-		pane_putc_color(p, lx + 1, 0, ' ', fg, bg, base);
+		strip_putc(p, lx + 1, hs, ' ', fg, bg, base);
 		/* Checkmark glyph + trailing space (only when checked). */
 		if (it->checked) {
-			pane_putc_color(p, lx + 2, 0, PALETTE_CHECK_GLYPH, fg, bg, base);
-			pane_putc_color(p, lx + 3, 0, ' ', fg, bg, base);
+			strip_putc(p, lx + 2, hs, PALETTE_CHECK_GLYPH, fg, bg, base);
+			strip_putc(p, lx + 3, hs, ' ', fg, bg, base);
 		}
 		/* Label, with hotkey letter styling. */
 		char hk = it->shortcut;
@@ -295,14 +359,27 @@ static void render_level(palette_state_t *st, int depth) {
 				if (!selected && it->enabled) cell_fg = PT_FG_HOTKEY;
 				hk_seen = true;
 			}
-			pane_putc_color(p, label_x + k, 0,
-			                (uint32_t)(unsigned char)ch, cell_fg, bg, a);
+			strip_putc(p, label_x + k, hs,
+			           (uint32_t)(unsigned char)ch, cell_fg, bg, a);
 		}
 		/* Trailing space. */
-		pane_putc_color(p, label_x + label_len, 0, ' ', fg, bg, base);
+		strip_putc(p, label_x + label_len, hs, ' ', fg, bg, base);
 		/* Closing bracket (space when not selected). */
-		pane_putc_color(p, label_x + label_len + 1, 0,
-		                selected ? ']' : ' ', fg, bg, base);
+		strip_putc(p, label_x + label_len + 1, hs,
+		           selected ? ']' : ' ', fg, bg, base);
+	}
+
+	/* Edge indicators: '<' when content is scrolled off the left, '>' when
+	 * content extends past the right edge.  Drawn last so they sit on top of
+	 * any partially clipped item cell. */
+	int content_w = level_content_width(lvl);
+	if (hs > 0) {
+		pane_putc_color(p, 0, 0, '<', PT_FG_HOTKEY, PT_BG_MENUBAR,
+		                PALETTE_ATTR_BOLD);
+	}
+	if (content_w - hs > p->w) {
+		pane_putc_color(p, p->w - 1, 0, '>', PT_FG_HOTKEY, PT_BG_MENUBAR,
+		                PALETTE_ATTR_BOLD);
 	}
 }
 
@@ -585,6 +662,7 @@ static void cursor_step(palette_state_t *st, int delta) {
 		c = next;
 	}
 	lvl->cursor = c;
+	ensure_cursor_visible(lvl, lvl->pane.w);
 }
 
 /* Process a CSI terminator.  csi_buf holds the bytes between '[' and
@@ -778,6 +856,9 @@ palette_done_t palette_feed_mouse(palette_state_t *st, const mouse_event_t *ev) 
 		palette_level_t *lvl = &st->levels[d];
 		pane_t *p = &lvl->pane;
 		if (my != p->y) continue;
+		/* Convert the screen click to content space: the strip is shifted
+		 * left by hscroll, so content-x = screen-x + hscroll. */
+		int cx = mx + lvl->hscroll;
 		/* Find which item the click landed on. */
 		for (int i = 0; i < lvl->item_count; ++i) {
 			int lx = item_screen_x(lvl, i);
@@ -786,10 +867,11 @@ palette_done_t palette_feed_mouse(palette_state_t *st, const mouse_event_t *ev) 
 			 * nothing rather than selecting a phantom item. */
 			if (lvl->items[i].is_separator)
 				continue;
-			if (mx >= lx && mx < lx + total_w) {
+			if (cx >= lx && cx < lx + total_w) {
 				/* Collapse any deeper levels first. */
 				while (st->open_depth - 1 > d) close_deepest_level(st);
 				lvl->cursor = i;
+				ensure_cursor_visible(lvl, p->w);
 				return activate_cursor_item(st);
 			}
 		}
