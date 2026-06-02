@@ -546,13 +546,42 @@ static void test_wide_menu_keeps_cursor_item_visible(void) {
 	int n = snapshot_row(y, row, 80);
 	assert(n > 0);
 
-	/* The 'I' of "Insert Date/Time" (the cursor item) must be present on
-	 * the visible strip row. */
-	int col_i = -1;
-	for (int x = 0; x < n; ++x) {
-		if (row[x].ch == 'I') { col_i = x; break; }
+	/* Flatten the row to ASCII so we can assert on substrings.  Non-ASCII
+	 * glyphs (the '<' indicator is ASCII; any wide glyphs are not present
+	 * here) collapse to '?', which never matches the labels we search for. */
+	char text[81];
+	for (int x = 0; x < n && x < 80; ++x) {
+		uint32_t ch = row[x].ch;
+		text[x] = (ch >= 0x20 && ch < 0x7f) ? (char)ch : '?';
 	}
-	assert(col_i >= 0 && "cursor item must be visible after horizontal scroll");
+	text[n < 80 ? n : 80] = '\0';
+
+	/* (a) The cursor item's full label must be contiguous on the strip --
+	 * not just an 'I' somewhere (the pre-fix bug dropped the whole item, and
+	 * a lone-glyph check is too weak to catch a partial render). */
+	assert(strstr(text, "Insert Date/Time") != NULL &&
+	       "cursor item must be fully visible after horizontal scroll");
+
+	/* (b) The '<' left-edge indicator must be present at column 0, proving
+	 * the strip actually scrolled (and signalling off-screen items left). */
+	assert(row[0].ch == (uint32_t)'<' &&
+	       "left-edge '<' indicator must mark the scrolled-off content");
+
+	/* (c) The leftmost item must have scrolled off.  With the cursor on the
+	 * rightmost item, the strip shifts left just far enough to reveal the
+	 * cursor item; item 0 ("Find") is the first to leave the window, so the
+	 * first label still visible is "Find Next".  The bare "Find" item label
+	 * is the prefix of "Find Next", so we cannot search for it directly;
+	 * instead assert the first non-blank glyph after the '<' indicator
+	 * begins the "Find Next" label, proving item 0 is gone. */
+	{
+		const char *first_label = text + 1;
+		while (*first_label == ' ')
+			first_label++;
+		assert(strncmp(first_label, "Find Next", 9) == 0 &&
+		       "after scroll the first visible item must be 'Find Next', "
+		       "with item 0 'Find' scrolled off");
+	}
 
 	palette_close(&st);
 }

@@ -229,6 +229,15 @@ static void ensure_cursor_visible(palette_level_t *lvl, int strip_w) {
 		lvl->hscroll = item_right - (strip_w - right_margin);
 	}
 
+	/* Reconcile when the item is wider than the visible window: the
+	 * right-edge branch above may have scrolled far enough to reveal the
+	 * item's tail while pushing its head (and hotkey letter) off-screen.
+	 * An over-wide item cannot fit either way, so prefer showing its head
+	 * -- anchor the left edge -- rather than a headless middle slice. */
+	if (item_lx - lvl->hscroll < left_margin) {
+		lvl->hscroll = item_lx - left_margin;
+	}
+
 	/* Clamp: never scroll past the content's end, never below zero. */
 	int max_scroll = content_w - strip_w;
 	if (max_scroll < 0) max_scroll = 0;
@@ -856,6 +865,23 @@ palette_done_t palette_feed_mouse(palette_state_t *st, const mouse_event_t *ev) 
 		palette_level_t *lvl = &st->levels[d];
 		pane_t *p = &lvl->pane;
 		if (my != p->y) continue;
+		/* Edge indicators are scroll affordances, not items.  render_level
+		 * draws '<' at col 0 when scrolled off the left and '>' at the last
+		 * col when content extends past the right.  A click there must NOT
+		 * fall through to the item hit-test below: the cell under the
+		 * indicator maps (via content-x = screen-x + hscroll) to a real but
+		 * visually-occluded item, so without this guard clicking '<' would
+		 * silently fire a hidden command.  Instead, step the cursor toward
+		 * the off-screen side, which scrolls the strip in that direction. */
+		int content_w = level_content_width(lvl);
+		if (mx == 0 && lvl->hscroll > 0) {
+			cursor_step(st, -1);
+			return PALETTE_DONE_NONE;
+		}
+		if (mx == p->w - 1 && content_w - lvl->hscroll > p->w) {
+			cursor_step(st, +1);
+			return PALETTE_DONE_NONE;
+		}
 		/* Convert the screen click to content space: the strip is shifted
 		 * left by hscroll, so content-x = screen-x + hscroll. */
 		int cx = mx + lvl->hscroll;
