@@ -502,6 +502,90 @@ static void test_cursor_skips_separator(void) {
 	palette_close(&st);
 }
 
+/* Fixture mirroring the real "Edit" menu that overflows an 80-col strip.
+ * Five wide items whose combined cell widths run past column 80, so the
+ * last item ("Insert Date/Time") is clipped by the pre-scroll renderer. */
+static snap_item_t g_wide_items[] = {
+	{ "Find",                  'F', true, false, false, false, "edit.find()",   NULL, 0 },
+	{ "Find Next",             'N', true, false, false, false, "edit.findn()",  NULL, 0 },
+	{ "Replace",               'R', true, false, false, false, "edit.repl()",   NULL, 0 },
+	{ "Replace and Find Next", 'a', true, false, false, false, "edit.replfn()", NULL, 0 },
+	{ "Insert Date/Time",      'I', true, false, false, false, "edit.date()",   NULL, 0 },
+};
+
+static snap_menu_t g_wide_menus[] = {
+	{ "Edit", 'E', g_wide_items, 5 },
+};
+
+static snap_source_t g_wide_src = { g_wide_menus, 1 };
+
+static void test_wide_menu_keeps_cursor_item_visible(void) {
+	/* When the cascade strip overflows the terminal width, arrowing the
+	 * cursor to the last (off-screen) item must scroll the row so that
+	 * item's label becomes visible.  Pre-scroll renderer clips anything
+	 * past p->w and silently drops it -- this test is RED until the
+	 * cursor-anchored horizontal scroll lands. */
+	compositor_test_reset();
+	compositor_on_resize(24, 80);
+	palette_state_t st;
+	palette_menu_source_t src = snap_source(&g_wide_src);
+	palette_open(&st, 24, 80, 0, &src);
+	palette_feed_byte(&st, '\r');           /* open Edit menu */
+
+	/* Step RIGHT to the last item (index 4). */
+	for (int i = 0; i < 4; ++i) {
+		palette_feed_byte(&st, 0x1b);
+		palette_feed_byte(&st, '[');
+		palette_feed_byte(&st, 'C');
+	}
+	assert(st.levels[0].cursor == 4);
+	render_all(&st);
+
+	int y = st.levels[0].pane.y;
+	cell_t row[80];
+	int n = snapshot_row(y, row, 80);
+	assert(n > 0);
+
+	/* Flatten the row to ASCII so we can assert on substrings.  Non-ASCII
+	 * glyphs (the '<' indicator is ASCII; any wide glyphs are not present
+	 * here) collapse to '?', which never matches the labels we search for. */
+	char text[81];
+	for (int x = 0; x < n && x < 80; ++x) {
+		uint32_t ch = row[x].ch;
+		text[x] = (ch >= 0x20 && ch < 0x7f) ? (char)ch : '?';
+	}
+	text[n < 80 ? n : 80] = '\0';
+
+	/* (a) The cursor item's full label must be contiguous on the strip --
+	 * not just an 'I' somewhere (the pre-fix bug dropped the whole item, and
+	 * a lone-glyph check is too weak to catch a partial render). */
+	assert(strstr(text, "Insert Date/Time") != NULL &&
+	       "cursor item must be fully visible after horizontal scroll");
+
+	/* (b) The '<' left-edge indicator must be present at column 0, proving
+	 * the strip actually scrolled (and signalling off-screen items left). */
+	assert(row[0].ch == (uint32_t)'<' &&
+	       "left-edge '<' indicator must mark the scrolled-off content");
+
+	/* (c) The leftmost item must have scrolled off.  With the cursor on the
+	 * rightmost item, the strip shifts left just far enough to reveal the
+	 * cursor item; item 0 ("Find") is the first to leave the window, so the
+	 * first label still visible is "Find Next".  The bare "Find" item label
+	 * is the prefix of "Find Next", so we cannot search for it directly;
+	 * instead assert the first non-blank glyph after the '<' indicator
+	 * begins the "Find Next" label, proving item 0 is gone. */
+	{
+		const char *first_label = text + 1;
+		while (*first_label == ' ')
+			first_label++;
+		assert(strncmp(first_label, "Find Next", 9) == 0 &&
+		       "after scroll the first visible item must be 'Find Next', "
+		       "with item 0 'Find' scrolled off");
+	}
+
+	palette_close(&st);
+}
+
 static void test_menubar_hotkey_styling(void) {
 	/* On the menubar itself, the hotkey letter of a non-selected entry
 	 * is bright yellow on blue. */
@@ -541,6 +625,7 @@ int main(void) {
 	TR_RUN(test_checked_item_draws_check_glyph);
 	TR_RUN(test_separator_draws_dim_divider);
 	TR_RUN(test_cursor_skips_separator);
+	TR_RUN(test_wide_menu_keeps_cursor_item_visible);
 	TR_SUMMARY();
 	return TR_EXIT_CODE();
 }

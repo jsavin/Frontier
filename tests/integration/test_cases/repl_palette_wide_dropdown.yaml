@@ -1,0 +1,142 @@
+# L4 integration test: wide-dropdown horizontal scroll (Issue #677 follow-up)
+#
+# What this file proves
+# ---------------------
+# When an opened dropdown's items overflow the terminal width, arrowing the
+# cursor to an item that would otherwise be clipped past the right edge
+# scrolls the strip horizontally so the cursor item stays visible, and a
+# '<' edge indicator appears once the strip has scrolled off its left edge.
+#
+# This is the end-to-end guard for the cursor-anchored horizontal scroll in
+# render_level (palette.c). Before the fix, render_level truncated any item
+# whose laid-out cells ran past p->w with `if (lx + total_w > p->w) break;`
+# and the last item ("Insert Date/Time") was silently dropped -- the live
+# dist menu rendered incomplete. The unit test
+# (palette_render_snapshot_tests.c::test_wide_menu_keeps_cursor_item_visible)
+# covers the synthetic-source render math; this file proves it holds through
+# the full ODB -> repl_palette_source -> palette modal stack driven over a
+# real PTY.
+#
+# Setup
+# -----
+# 1. Build a bar "aaedit" (sorts before the boot "repl" bar, so it is the
+#    leftmost menubar entry -> menu index 0) with one menu "Edit" holding
+#    five wide items whose combined cell widths overflow an 80-col strip:
+#      Find | Find Next | Replace | Replace and Find Next | Insert Date/Time
+# 2. Install it, open the palette with the '//' fast-path.
+# 3. DOWN opens the leftmost (Edit) dropdown; RIGHT x4 walks the cursor to
+#    the last item, forcing a horizontal scroll.
+# 4. screenshot_match against a golden that shows the scrolled strip: the
+#    cursor item "Insert Date/Time" is fully visible and a '<' indicator
+#    sits at the left edge.
+# 5. Cleanup: delete the transient bar so other tests see a clean ODB.
+#
+# pyte note: the captured frame is plain text (SGR attrs are dropped), so
+# the golden locks in the *text* layout -- the presence of "Insert
+# Date/Time" and the '<' indicator, and the absence of the now-scrolled-off
+# leftmost items -- which is exactly what the truncation bug got wrong.
+#
+# Sequential because we mutate system.menus.data (process-global ODB state).
+
+needs_guest_dbs: false
+sequential: true
+
+tests:
+  - name: "palette wide dropdown: overflow scrolls to keep cursor item visible"
+    palette_mode: true
+    timeout: 20
+    environment:
+      FRONTIER_PALETTE_PROMPT_ROW: "20"
+      # Disable the 1ms ESC fast-timer for this test. The harness sets
+      # FRONTIER_PALETTE_FAST_TIMERS=1 globally, which collapses the
+      # bare-ESC-vs-CSI disambiguation window to 1ms. When pexpect delivers
+      # an arrow sequence ("\x1b[B") with the ESC byte and the "[B" in
+      # separate PTY reads, a 1ms window can expire between them -- the modal
+      # then treats the ESC as a lone-ESC DISMISS, closing the palette and
+      # leaking the "[B" to the REPL. An empty value falls through
+      # palette_esc_timeout_ms() to the 10ms default, wide enough for the
+      # rest of the CSI sequence to arrive. The "//" double-slash fast-path
+      # opens the menu immediately regardless of the (now 350ms) slash
+      # disambiguation timer, so navigation timing is unaffected.
+      FRONTIER_PALETTE_FAST_TIMERS: ""
+    interactive_steps:
+      # Step 1: Wait for the REPL prompt after boot.
+      - expect: "\\[root\\]> "
+
+      # Step 2: Build the wide Edit menu on bar "aaedit".
+      - send_raw: "menu.addMenuCommand(@system.menus.data.aaedit, \"Edit\", \"Find\", \"noop()\")\r"
+      - expect: "true"
+      - expect: "\\[root\\]> "
+      - send_raw: "menu.addMenuCommand(@system.menus.data.aaedit, \"Edit\", \"Find Next\", \"noop()\")\r"
+      - expect: "true"
+      - expect: "\\[root\\]> "
+      - send_raw: "menu.addMenuCommand(@system.menus.data.aaedit, \"Edit\", \"Replace\", \"noop()\")\r"
+      - expect: "true"
+      - expect: "\\[root\\]> "
+      - send_raw: "menu.addMenuCommand(@system.menus.data.aaedit, \"Edit\", \"Replace and Find Next\", \"noop()\")\r"
+      - expect: "true"
+      - expect: "\\[root\\]> "
+      - send_raw: "menu.addMenuCommand(@system.menus.data.aaedit, \"Edit\", \"Insert Date/Time\", \"noop()\")\r"
+      - expect: "true"
+      - expect: "\\[root\\]> "
+
+      # Step 3: Install the bar and confirm.
+      - send_raw: "menu.install(@system.menus.data.aaedit)\r"
+      - expect: "true"
+      - expect: "\\[root\\]> "
+      - send_raw: "menu.isInstalled(@system.menus.data.aaedit)\r"
+      - expect: "true"
+      - expect: "\\[root\\]> "
+
+      # Step 4: Open the palette (fast-path). "aaedit" sorts before "repl",
+      # so menubar entry 0 is Edit. The trailing delay lets the modal's read
+      # loop fully take over linenoise before we start arrowing.
+      - send_raw: "//"
+        delay: 0.3
+
+      # Step 5: DOWN opens the Edit dropdown; RIGHT x4 walks to the last item.
+      # Each arrow is its own step with a delay AFTER it: the palette modal's
+      # ESC parser runs a 1ms fast-timer (FRONTIER_PALETTE_FAST_TIMERS=1), so
+      # the bytes of one escape sequence must arrive together (they do, in a
+      # single send) but consecutive sequences must be spaced out -- otherwise
+      # the modal's poll loop hasn't finished parsing + redrawing the previous
+      # arrow before the next arrives, and the navigation desyncs. 80ms per
+      # keystroke is comfortably above the 10ms poll period.
+      - send_raw: "\x1b[B"
+        delay: 0.3
+      - send_raw: "\x1b[C"
+        delay: 0.3
+      - send_raw: "\x1b[C"
+        delay: 0.3
+      - send_raw: "\x1b[C"
+        delay: 0.3
+      - send_raw: "\x1b[C"
+        delay: 0.3
+
+      # Step 6: Capture the scrolled strip. Golden must show "Insert
+      # Date/Time" (the cursor item, previously clipped) and the '<'
+      # left-edge indicator.
+      - screenshot_match: "fixtures/palette/dropdown_wide_scrolled.txt"
+
+      # Step 7: Dismiss the palette. ESC collapses ONE cascade level at a
+      # time (palette.c: bare ESC with open_depth>0 calls
+      # close_deepest_level; only open_depth==0 returns PALETTE_DONE_CANCEL).
+      # The dropdown is open (open_depth==1), so the first ESC collapses it
+      # back to the menubar and the second ESC dismisses the menubar and
+      # returns control to the REPL. A delay between them lets the modal's
+      # poll loop process each ESC (and clear esc_pending) before the next
+      # arrives. Without the second ESC the palette stays open at the
+      # menubar level, the following delete() leaks into the modal as
+      # keystrokes, no prompt returns, and the child is SIGHUP-killed at
+      # teardown (exit -1).
+      - send_raw: "\x1b"
+      - send_raw: "\x1b"
+      - expect: "\\[root\\]> "
+
+      # Step 8: Clean up the transient bar.
+      - send_raw: "delete(@system.menus.data.aaedit)\r"
+      - expect: "\\[root\\]> "
+
+      # Step 9: Exit.
+      - send_raw: "\x04"
+    expected_success: true
