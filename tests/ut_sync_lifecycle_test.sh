@@ -364,6 +364,57 @@ else
 fi
 
 # ---------------------------------------------------------------------------
+# Test 9: repl.syncScan() on-demand verb -- callable and returns a number.
+#
+# The PRIMARY red signal is that repl.syncScan() is an UNDEFINED verb
+# pre-implementation, so the protocol eval returns an error (verb not found),
+# and probe_value yields <none>.  After wiring, the verb must:
+#   (a) evaluate without a "can't find verb" error (probe_value returns a
+#       non-empty string), AND
+#   (b) return a non-negative integer (a number >= 0 cast to string).
+#
+# We also drop a fresh .ut that did NOT exist at the time of the previous
+# boot scan, then call repl.syncScan() in the same invocation to prove it
+# picks up the new file on demand.  The verb return value (count) must be
+# >= 1, and defined(@system.verbs.builtins.zzondemand.ping) must be true.
+# ---------------------------------------------------------------------------
+echo "==> Test 9: repl.syncScan() verb is callable and returns a number"
+
+# Drop a new .ut that the earlier boot scans have never seen.
+ONDEMAND_DIR="$ROOT_SYNC/system/verbs/builtins/zzondemand"
+ONDEMAND_FILE="$ONDEMAND_DIR/ping.ut"
+mkdir -p "$ONDEMAND_DIR"
+printf 'on ping () {\n\treturn (true)}\n' > "$ONDEMAND_FILE"
+
+PROBE_9=$(printf '%s\n' \
+    '{"id":1,"op":"script/eval","params":{"expression":"repl.syncScan()"}}' \
+    '{"id":2,"op":"script/eval","params":{"expression":"defined(@system.verbs.builtins.zzondemand.ping)"}}' \
+    '{"id":3,"op":"shutdown","params":{}}' \
+    | run_protocol "")
+
+SCAN_RETVAL="$(probe_value "$PROBE_9" 1)"
+ONDEMAND_DEFINED="$(probe_value "$PROBE_9" 2)"
+
+if [ -n "$SCAN_RETVAL" ]; then
+    pass "repl.syncScan() is callable (returned '${SCAN_RETVAL}')"
+else
+    fail "repl.syncScan() is NOT callable -- verb undefined or errored (got '${SCAN_RETVAL:-<none>}')"
+fi
+
+# The return value must be a non-negative integer string.
+if printf '%s' "$SCAN_RETVAL" | grep -qE '^[0-9]+$'; then
+    pass "repl.syncScan() returned a non-negative number (${SCAN_RETVAL})"
+else
+    fail "repl.syncScan() did not return a number (got '${SCAN_RETVAL:-<none>}')"
+fi
+
+if [ "$ONDEMAND_DEFINED" = "true" ]; then
+    pass "zzondemand.ping created by on-demand syncScan"
+else
+    fail "zzondemand.ping NOT created by on-demand syncScan (defined -> '${ONDEMAND_DEFINED:-<none>}')"
+fi
+
+# ---------------------------------------------------------------------------
 # Canonical protection: the source Virgin.root must be untouched.
 # ---------------------------------------------------------------------------
 ACTUAL_CANONICAL="$(md5_of "$SOURCE_DB")"

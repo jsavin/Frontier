@@ -161,6 +161,21 @@ typedef struct ty_repl_verbs_host {
 	 * Returns false when no host is installed.
 	 */
 	boolean (*is_active)(void);
+	/*
+	 * sync_scan: walk the ut-sync tree and auto-create any ODB nodes whose
+	 * .ut file exists on disk but is absent from the in-memory hashtable.
+	 * Delegates to ut_sync_scan_and_create(). Backs repl.syncScan().
+	 *
+	 * Returns the count of newly created ODB nodes (>= 0), or 0 when
+	 * ut-sync mode is not active (--ut-sync-dir was not supplied) so the
+	 * verb is a safe no-op in non-sync sessions.
+	 *
+	 * Return contract: the verb returns the count as a UserTalk number
+	 * (longvalue). A return of 0 means "no orphans found" OR "not in
+	 * ut-sync mode"; a return >= 1 means that many nodes were created.
+	 * Returns 0 (not a crash) when no host is installed.
+	 */
+	int (*sync_scan)(void);
 } repl_verbs_host_t;
 
 

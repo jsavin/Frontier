@@ -73,6 +73,13 @@
 #include "../Common/headers/langinternal.h" /* flreplmode */
 #include "../Common/headers/threadregistry.h" /* headless_backgroundtask */
 #include "ws_server.h"						 /* ws_server_t, ws_server_* */
+#include "ut_scan.h"						 /* ut_sync_scan_and_create */
+
+/* cli_get_ut_sync_dir and cli_get_system_root_basename are defined in main.c.
+ * Forward-declared here to avoid a circular header dependency -- same pattern
+ * as ut_scan.c::cli_record_ut_import. */
+extern const char *cli_get_ut_sync_dir(void);
+extern const char *cli_get_system_root_basename(void);
 
 // History configuration
 #define HISTORY_FILE ".frontier_history"
@@ -3559,6 +3566,23 @@ static void replverbhost_list(const char *path) {
 }
 
 /*
+ * Walk the ut-sync tree and create any ODB nodes whose .ut file exists on
+ * disk but is absent from the in-memory hashtable.  Delegates to
+ * ut_sync_scan_and_create().  Backs repl.syncScan().
+ *
+ * Returns the count of newly created nodes (>= 0), or 0 when ut-sync mode
+ * is not active (--ut-sync-dir was not supplied) so the verb is a safe
+ * no-op in non-sync sessions.
+ */
+static int replverbhost_sync_scan(void) {
+	const char *sync_dir = cli_get_ut_sync_dir();
+	if (sync_dir == NULL)
+		return 0;
+	int n = ut_sync_scan_and_create(sync_dir, cli_get_system_root_basename());
+	return (n < 0) ? 0 : n;
+}
+
+/*
  * Build and install the host adapter struct. Called once from repl_main
  * before either loop runs. Pairs with repl_verbs_set_host(NULL) on
  * cleanup so a follow-on call to a repl.* verb after the REPL exits
@@ -3575,6 +3599,7 @@ static void install_repl_verbs_host(void) {
 	host.help = replverbhost_help;
 	host.from_slash = replverbhost_from_slash;
 	host.is_active = replverbhost_is_active;
+	host.sync_scan = replverbhost_sync_scan;
 	repl_verbs_set_host(&host);
 }
 
