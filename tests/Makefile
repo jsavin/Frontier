@@ -662,6 +662,8 @@ test-integration: check-python-deps check-license
 	@../tools/run_integration_tests.sh
 	@echo "Running ODB sync verifier tests..."
 	@./verify_odb_sync_test.sh
+	@echo "Running ODB<->.ut sync lifecycle tests..."
+	@./ut_sync_lifecycle_test.sh
 
 test-integration-verbose: check-python-deps check-license
 	@echo "Running integration tests (verbose)..."
@@ -687,6 +689,12 @@ test-cow-idempotent:
 	@echo "Running system root copy-on-write idempotency tests..."
 	@./system_root_readonly_idempotent_test.sh
 
+# Run ODB<->.ut bidirectional sync lifecycle tests (shell-based, issue #675).
+# Multi-invocation export/import round-trip + last-write-wins + broken-.ut boot.
+test-ut-sync-lifecycle:
+	@echo "Running ODB<->.ut sync lifecycle tests..."
+	@./ut_sync_lifecycle_test.sh
+
 # Run pre-commit hook tests (fixture-based; no project tooling needed)
 test-hooks:
 	@../tools/hooks/tests/test_c_indent_hook.sh
@@ -697,7 +705,7 @@ check-license:
 	@python3 ../tools/relicense_headers.py --check
 
 # Run all tests (unit + integration + CLI migration + custom args + debug + hooks + license check)
-test-all: test test-integration test-migrate-flag test-custom-args test-debug test-cow-idempotent test-hooks check-license
+test-all: test test-integration test-migrate-flag test-custom-args test-debug test-cow-idempotent test-ut-sync-lifecycle test-hooks check-license
 	@echo "All test suites completed"
 
 # Verify Virgin.root <-> .ut corpus sync (issue #675).
