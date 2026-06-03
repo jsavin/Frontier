@@ -17,9 +17,9 @@ The motivating failure: `system.menus.buildMenubar` (the authoritative menubar b
 ## TL;DR for the impatient
 
 1. The corpus path-mapping, the read-only drift verifier, the script-write path, and a clean pre-startupScript boot window all **already exist**. Good foundation.
-2. **The mtime-wins conflict rule cannot be implemented as stated today.** The ODB has no per-*script* timestamp — only a per-*table* `timelastsave` shared by every script in that table. Editing one script bumps the timestamp for all its siblings. So "ODB script timestamp" is not a real per-script quantity. This is the one decision that needs revisiting (Section 5).
-3. Recommended path: a **sidecar sync manifest** (per-script content hash + last-synced time) as the source of conflict truth, with mtime as a tie-breaker hint. This is robust against the per-table-timestamp problem and against clock skew, and it makes "both sides changed" a detectable conflict rather than a silent clobber.
-4. Build order: exporter -> manifest -> verifier-as-gate -> boot import pass -> save hook. Each step is independently useful.
+2. **The mtime-wins conflict rule IS implementable.** The ODB stores a real per-*script* modification time, reachable from UserTalk as `timeModified(@scriptAddress)` (and `timeCreated(@scriptAddress)`). Verified live: two scripts in the same hashtable return different mod dates (`timeModified(@system.verbs.builtins.op)` = 3/23/2026 vs `@system.verbs.builtins.string` = 3/21/2026), which is only possible if the timestamp is stored per external value, not per table. So "ODB script timestamp" is a real per-script quantity after all. (See Section 5.)
+3. Recommended path: **mtime-wins as the primary conflict rule** (your original choice), using `timeModified(@script)` on the ODB side and file mtime on the `.ut` side. A **sidecar sync manifest** (per-script content hash + last-synced time) is still worth adding as a *safety layer* — it turns a true two-sided edit into a detectable conflict instead of a silent clobber, and protects against clock skew — but it is now an optional hardening, not a forced workaround for a missing timestamp.
+4. Build order: exporter -> verifier-as-gate -> boot import pass -> save hook, with the optional content-hash manifest slotted in whenever two-sided-edit safety is wanted. Each step is independently useful.
 
 ---
 
@@ -31,11 +31,11 @@ The motivating failure: `system.menus.buildMenubar` (the authoritative menubar b
 | Read-only drift verifier (ODB vs corpus, byte-compare) | EXISTS | `tools/verify_virgin_root_sync.{py,sh}`, `make verify-odb-sync` (`Makefile:33-34`) |
 | Script write path (source -> ODB node) | EXISTS | `script.newScriptObject` (`Common/source/opverbs.c:2335-2389`); `langcompiletext` (`lang.c:1003`); `hashtableassign` (`opverbs.c:2382`) |
 | Clean pre-startupScript boot window | EXISTS | between `hydrate_system_root_database` (`main.c:582`) and `loadsystemscripts` (`main.c:594`) |
-| Per-table mod timestamp | EXISTS | `tyhashtable.timelastsave` (`lang.h:532`); `odbGetModDate` / `db.getModDate` (`odbengine.c:1237-1267`) |
+| Per-*script* mod timestamp | EXISTS | `timeModified(@adr)` / `timeCreated(@adr)` UserTalk verbs; kernel `langexternalgettimes` -> `opverbgettimes` for scripts (`langexternal.c:3213`); verified live (siblings in one table return different dates) |
+| Per-table mod timestamp | EXISTS (rarely used) | `tyhashtable.timelastsave` (`lang.h:532`); `odbGetModDate` / `db.getModDate` (`odbengine.c:1237-1267`) — JES: "we almost never used db.getModDate" |
 | Kernel-body / comment normalization (round-trip) | PARTIAL | `normalize_kernel_body` in the verifier (`verify_virgin_root_sync.py:355-414`) |
 | ODB -> .ut exporter (committed tool) | **MISSING** | corpus was produced ad hoc |
 | .ut -> ODB importer (committed tool) | **MISSING** | issue #676 proposes `tools/build-virgin-root.sh` |
-| Per-*script* mod timestamp | **MISSING** | ODB has only per-table (see Section 5) |
 | Save hook (ODB write -> .ut export) | **MISSING** | no write-time chokepoint today |
 | Boot import pass (.ut -> ODB) | **MISSING** | the `main.c:582-594` window is unused |
 | Pre-commit / CI gating | **MISSING** | verifier is manual-only; #675 deferred CI |
@@ -71,7 +71,7 @@ ODB <-> .ut is not a byte-identity transform. The known transforms (from `normal
 
 **Recommendation**: ship A1 first (formalized exporter + "export after edit" in the protocol workflow), design A2 as a later enhancement once the GUI editor defines the real save semantics.
 
-**Mechanism.** Read the script's source from the ODB (protocol `debug/getSource` or in-process), run the shared canonicalizer (ODB-form -> .ut-form), write the `.ut` at the mapped path, update the sync manifest (Section 5).
+**Mechanism.** Read the script's source from the ODB (protocol `debug/getSource` or in-process), run the shared canonicalizer (ODB-form -> .ut-form), write the `.ut` at the mapped path, set the `.ut` mtime from the script's `timeModified(@script)` so the two sides agree (and update the optional sync manifest, Section 5).
 
 ### Direction B: .ut -> ODB (at boot)
 
@@ -82,66 +82,77 @@ ODB <-> .ut is not a byte-identity transform. The known transforms (from `normal
 - Compile failures are non-fatal: log, skip that script, leave the ODB copy intact, continue boot. A bad `.ut` edit must not prevent the app from starting.
 - Reuse `script.newScriptObject`'s outline-construction path (per issue #676) so imported scripts match the structure the exporter reads back.
 
-**Scope control.** Importing all 4677 scripts every boot is wasteful and risky. The manifest (Section 5) lets the pass import only scripts whose `.ut` changed since last sync.
+**Scope control.** Importing all 4677 scripts every boot is wasteful and risky. The pass should import only scripts whose `.ut` is newer than the ODB's `timeModified(@script)` (mtime-wins, Section 5) — or, if the optional manifest is in use, only scripts whose `.ut` hash changed since last sync.
 
 ---
 
-## Section 5: Conflict resolution — why mtime alone fails, and the fix
+## Section 5: Conflict resolution — mtime-wins works, with an optional safety layer
 
-### The problem with the chosen rule
+### Per-script timestamps exist (corrected finding)
 
-The decision was "file mtime vs ODB timestamp, newer wins." The audit shows **the ODB has no per-script timestamp**. `tyhashnode` (the per-identifier struct, `lang.h:436-461`) has no time field. The only timestamp is `tyhashtable.timelastsave` (`lang.h:532`), per *table*. `odbGetModDate` returns the *parent table's* `timelastsave` for a non-table item (`odbengine.c:1263`). So:
+The decision was "file mtime vs ODB timestamp, newer wins." An earlier draft of this doc claimed that rule was unimplementable because the ODB had only a per-*table* `timelastsave`. **That was wrong.** Frontier stores a real per-*script* modification time, exposed to UserTalk as:
 
-- Every script in `system.menus.*` shares one timestamp.
-- Editing `system.menus.installReplMenubar` bumps the timestamp that `system.menus.buildMenubar` also reports.
-- You cannot tell *which* script in a table changed, or compare a single script's ODB time against its `.ut` mtime meaningfully.
+- `timeModified(@scriptAddress)` -> the script's last-modified datetime
+- `timeCreated(@scriptAddress)` -> the script's creation datetime
+- setters `setTimeModified` / `setTimeCreated`
 
-Implementing "newer wins" on this would mis-resolve constantly: a `.ut` edit to script X would look "older" than the ODB simply because an unrelated sibling Y was saved later, or vice versa.
+This was verified empirically (frontier-cli eval against a Virgin.root copy): two scripts in the **same** hashtable return **different** mod dates --
+`timeModified(@system.verbs.builtins.op)` = `3/23/2026; 9:38:38 PM`,
+`timeModified(@system.verbs.builtins.string)` = `3/21/2026; 8:53:05 PM`.
+Different timestamps for siblings in one table is only possible if the time is stored **per external value**, not per table. (Kernel path: `langexternalgettimes`, `langexternal.c:3213`, dispatches per external type to `opverbgettimes` for script-typed values.)
 
-### Three ways to get real per-script time (pick one)
+Note the verb is **`timeModified`, not `lastModified`** — there is no `lastModified` keyword in the headless runtime. The per-table `db.getModDate` (`odbGetModDate`, `odbengine.c:1263`, returning the parent table's `timelastsave`) is a different, coarser thing and is rarely used.
 
-1. **Add a timestamp to `tyhashnode`.** Truest fidelity, but it's a disk-format change to a `pack(2)` legacy struct — high risk, affects every ODB, needs a migration. Not recommended now.
-2. **One script per table.** Wrap each script node in its own single-item table so `timelastsave` becomes effectively per-script. Invasive to the ODB shape and to every consumer that walks these tables. Not recommended.
-3. **Sidecar sync manifest (recommended).** A version-controlled file (e.g. `usertalk_scripts/.sync-manifest.json`) mapping each script path to `{ ut_hash, odb_hash_at_last_sync, last_synced_utc }`. Conflict logic uses *content hashes*, not timestamps:
-   - At sync time, compute current `.ut` hash and current ODB hash (both canonicalized).
-   - Compare each against the manifest's last-synced hashes:
-     - Only `.ut` changed -> import `.ut` -> ODB.
-     - Only ODB changed -> export ODB -> `.ut`.
-     - **Both changed -> CONFLICT**: halt that script, report it, do not clobber. (mtime can *rank* the conflict list, but never auto-resolves a two-sided edit.)
-     - Neither changed -> skip.
-   - Update the manifest after each successful sync.
+### Conflict rule: mtime-wins (primary)
 
-The manifest makes "both sides edited since last sync" a *detectable, surfaced* event instead of a silent loss — which is the whole point of putting this under source control. mtime becomes a hint (ordering the conflict report, or a fast pre-filter to skip hashing unchanged files), not the arbiter.
+The original choice is directly implementable:
 
-**Revised conflict rule**: content-hash three-way compare via the manifest; conflicts halt and report; mtime is an optimization/tiebreaker only. This supersedes the pure-mtime decision — flagged for JES sign-off.
+- **ODB side**: `timeModified(@script)` for the per-script ODB time.
+- **`.ut` side**: filesystem mtime of the mapped `.ut`.
+- **Rule**: newer wins. Only `.ut` newer -> import `.ut` -> ODB. Only ODB newer -> export ODB -> `.ut`. Neither side changed since last sync -> skip.
+
+This is enough for the common single-editor case (one human or one agent editing at a time), which is the current reality.
+
+### Optional safety layer: sidecar sync manifest
+
+Pure mtime-wins has two well-known weaknesses: it silently clobbers when **both** sides changed since the last sync (it just picks the newer one), and it is vulnerable to clock skew between the ODB-host clock and the filesystem clock. To harden against those, add a version-controlled manifest (e.g. `usertalk_scripts/.sync-manifest.json`) mapping each script path to `{ ut_hash, odb_hash_at_last_sync, last_synced_utc }`:
+
+- Only `.ut` content-hash changed -> import.
+- Only ODB content-hash changed -> export.
+- **Both changed -> CONFLICT**: halt that script, report it, do not clobber. mtime *ranks* the conflict list but never auto-resolves a two-sided edit.
+- Neither changed -> skip.
+
+The manifest turns "both sides edited since last sync" into a *detectable, surfaced* event instead of a silent loss. It is **optional hardening**, not a prerequisite — ship mtime-wins first; add the manifest when concurrent two-sided editing (or untrusted clocks) becomes a real risk.
+
+**Conflict rule summary**: mtime-wins as the primary arbiter (uses `timeModified(@script)`); optional manifest content-hash layer to detect and halt true two-sided conflicts. Both honor JES's original "newer wins" choice — the manifest only adds a guard rail, it does not replace the rule.
 
 ---
 
 ## Proposed build sequence
 
-Each phase is independently shippable and de-risks the next. (Phases 1-2 are the ODB->.ut half; 3 makes drift impossible to commit; 4-5 are the .ut->ODB half.)
+Each phase is independently shippable and de-risks the next. (Phase 1 is the ODB->.ut half; 2 makes drift impossible to commit; 3-4 are the .ut->ODB half; the optional manifest can be added at any point after Phase 1.)
 
 **Phase 1 — Canonicalizer + exporter (ODB -> .ut).**
-Extract the shared canonicalization module (from `normalize_kernel_body`), build `tools/export_odb_to_ut.py` that exports the full script tree (or one path) from a `--protocol` session. Verify it round-trips against the existing corpus (the 4677 files should re-export byte-identical). Preserve brace-wrapped comment subtrees. Fix the `DEFAULT_CORPUS_ROOT` stale path. *Output: a committed, reproducible exporter — closes the "buildMenubar was never exported" class of bug for ODB->.ut.*
+Extract the shared canonicalization module (from `normalize_kernel_body`), build `tools/export_odb_to_ut.py` that exports the full script tree (or one path) from a `--protocol` session. Verify it round-trips against the existing corpus (the 4677 files should re-export byte-identical). Preserve brace-wrapped comment subtrees. Set each exported `.ut`'s mtime from `timeModified(@script)`. Fix the `DEFAULT_CORPUS_ROOT` stale path. *Output: a committed, reproducible exporter — closes the "buildMenubar was never exported" class of bug for ODB->.ut.*
 
-**Phase 2 — Sync manifest.**
-Define the manifest format and a `tools/sync_manifest.py` that computes/updates it. Backfill it for the current corpus + Virgin.root. *Output: a content-hash baseline that conflict logic and CI both consume.*
+**Phase 2 — Verifier as a gate.**
+Wire `verify-odb-sync` into the pre-commit hook and, when CI exists, into CI. Re-validate issue #675's "gates commits" exit criterion (currently unmet — the verifier ships but isn't wired in). *Output: drift can no longer be committed silently.*
 
-**Phase 3 — Verifier as a gate.**
-Wire `verify-odb-sync` (extended to consult the manifest) into the pre-commit hook and, when CI exists, into CI. Re-validate issue #675's "gates commits" exit criterion (currently unmet — the verifier ships but isn't wired in). *Output: drift can no longer be committed silently.*
+**Phase 3 — Boot import pass (.ut -> ODB).**
+Implement the import pass in the `main.c:582-594` window: mtime-driven (import a `.ut` only when its mtime is newer than the ODB's `timeModified(@script)`), compile-and-assign only (no execution), non-fatal on compile error, reuse `script.newScriptObject` construction. On import, set the new ODB script's `timeModified` to match the `.ut` mtime so the next boot sees them as in-sync. Gate behind a flag initially (e.g. `FRONTIER_UT_IMPORT=1`) so it's opt-in until proven. Add an integration test that edits a `.ut`, boots, and asserts the ODB picked it up — and one that feeds a broken `.ut` and asserts boot still completes. *Output: agent edits to `.ut` land in the running app automatically.* This is the .ut->ODB half of issue #676.
 
-**Phase 4 — Boot import pass (.ut -> ODB).**
-Implement the import pass in the `main.c:582-594` window: manifest-driven (import only changed `.ut`), compile-and-assign only (no execution), non-fatal on compile error, reuse `script.newScriptObject` construction. Gate behind a flag initially (e.g. `FRONTIER_UT_IMPORT=1`) so it's opt-in until proven. Add an integration test that edits a `.ut`, boots, and asserts the ODB picked it up — and one that feeds a broken `.ut` and asserts boot still completes. *Output: agent edits to `.ut` land in the running app automatically.* This is the .ut->ODB half of issue #676.
-
-**Phase 5 — Save hook (ODB -> .ut), A1 then A2.**
+**Phase 4 — Save hook (ODB -> .ut), A1 then A2.**
 A1: a protocol/CLI `export script <path>` command + a documented "export after edit" step. A2 (later, with the GUI editor): an ODB write-hook that auto-exports on save. *Output: ODB edits flow back to `.ut` without a manual re-export.*
+
+**Optional — Sync manifest (any time after Phase 1).**
+Define a manifest format and a `tools/sync_manifest.py` that computes/updates per-script content hashes + last-synced time. Lets the verifier and the boot pass detect true two-sided edits (both ODB and `.ut` changed since last sync) and halt instead of clobbering — the clock-skew/concurrent-edit guard rail described in Section 5. Not required for the single-editor mtime-wins path; add it when concurrent editing becomes a real risk.
 
 ---
 
 ## Open questions for JES
 
-1. **Conflict model** (Section 5): confirm the move from pure-mtime to **manifest content-hash + conflict-halt** (mtime as tiebreaker). This is the one decision the audit forces a change on.
-2. **Canonical source of truth.** Issue #676 wants the `.ut` corpus to be authoritative (Virgin.root becomes a build artifact). The boot-import design (Direction B) is compatible with that. But Direction A (ODB->.ut on save) implies the ODB is *also* authoritative between syncs. The manifest reconciles them, but: do you want a steady-state where **both** are live-editable (manifest mediates), or an eventual end-state where **`.ut` is the only source** and the ODB is always rebuilt from it (#676)? This affects how aggressive Phase 4/5 should be.
+1. **Conflict model** (Section 5): your original **mtime-wins** rule is implementable as-is via `timeModified(@script)` — no change forced. Open sub-question: do you want the optional content-hash manifest layer now (detects/halts true two-sided edits, guards against clock skew), or is single-editor mtime-wins enough for the current AI-agent-via-protocol workflow?
+2. **Canonical source of truth.** Issue #676 wants the `.ut` corpus to be authoritative (Virgin.root becomes a build artifact). The boot-import design (Direction B) is compatible with that. But Direction A (ODB->.ut on save) implies the ODB is *also* authoritative between syncs. mtime-wins (and the optional manifest) reconciles them, but: do you want a steady-state where **both** are live-editable, or an eventual end-state where **`.ut` is the only source** and the ODB is always rebuilt from it (#676)? This affects how aggressive Phase 3/4 should be.
 3. **A2 timing.** Is the automatic ODB-write-hook worth building before the GUI editor exists, or is the A1 explicit-export command enough for the current AI-agent-via-protocol workflow?
 4. **Startup ordering edge case.** Should the import pass run before *or* after guest-database / EFP linking (also in the hydrate path)? Default proposal: after hydrate (system root fully linked), before `startup.startupScript`. Confirm no script the import pass needs is loaded later than that.
 
