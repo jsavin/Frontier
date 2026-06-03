@@ -96,6 +96,58 @@ int ut_canonicalize_outline_text(const unsigned char *in, size_t inlen,
 
 
 /*
+ * ut_decanonicalize_outline_text - inverse of ut_canonicalize_outline_text.
+ * Transform .ut canonical bytes (UTF-8, LF line endings, "//" comments, no
+ * structure markers, no trailing newline) back into in-memory outline source
+ * bytes (MacRoman, CR line endings, 0xC7 comment markers).
+ *
+ * Transform steps (reverse of the forward pass):
+ *
+ *   1. UTF-8 decode -> MacRoman encode: each UTF-8 sequence is decoded to a
+ *      Unicode scalar, then mapped back to a MacRoman byte via the inverse of
+ *      kMacRomanToUnicode. ASCII scalars (< 0x80) pass through unchanged. A
+ *      scalar with no MacRoman representation causes immediate failure.
+ *
+ *   2. LF (0x0A) -> CR (0x0D): every line-feed becomes a carriage return.
+ *
+ *   3. Literal-aware "//" -> 0xC7: a "//" that begins a comment (outside any
+ *      string or char literal) becomes a single 0xC7 byte. The literal-state
+ *      machine mirrors the forward pass exactly: "//" inside "...", inside
+ *      curly-quote strings (U+201C...U+201D, i.e. MacRoman 0xD2...0xD3 bytes
+ *      in the output), or inside '...' char literals is data and is preserved
+ *      as two 0x2F bytes. Backslash escapes the next code point inside a
+ *      literal. Literal state resets at each CR (produced by step 2). No 0xC8
+ *      is ever emitted: the forward pass dropped all 0xC8 bytes, so there is
+ *      no information to restore.
+ *
+ *   NOTE: Structure markers (brace wrappers around all-comment subtrees) are
+ *   NOT re-inserted. The forward pass stripped them, and the kernel's install
+ *   path (langstripstructuremarkers / the comment visitor) reconstructs structure
+ *   on re-compilation. Callers should treat the output of this function as the
+ *   raw source bytes that the kernel's compile-time machinery expects.
+ *
+ *   NOTE: A trailing CR is NOT appended. The forward pass dropped a trailing
+ *   CR/LF, and the kernel install path tolerates no-trailing-CR. Round-trip
+ *   fidelity for inputs that originally had a trailing CR is not exact
+ *   (fixed-point stability holds: forward(reverse(expected)) == expected).
+ *
+ * Inputs:  in/inlen = .ut canonical bytes (UTF-8, LF, "//"-comments).
+ * Outputs: *out = malloc'd MacRoman/CR buffer (NUL-terminated for caller
+ *          convenience; NUL is NOT counted in *outlen). The caller owns the
+ *          buffer and must free() it. *outlen = byte length excluding NUL.
+ * Returns 1 on success, 0 on:
+ *   - allocation failure
+ *   - malformed UTF-8 sequence
+ *   - a UTF-8 scalar that has no MacRoman representation (e.g. emoji)
+ *   On failure *out is set to NULL and *outlen to 0.
+ *
+ * Pure function: no globals, no kernel state, thread-safe, GIL-free.
+ */
+int ut_decanonicalize_outline_text(const unsigned char *in, size_t inlen,
+                                   unsigned char **out, size_t *outlen);
+
+
+/*
  * PATH MAPPING
  * ------------
  * A script at ODB dotted path "a.b.c" maps to the filesystem path

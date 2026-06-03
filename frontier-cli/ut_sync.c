@@ -376,6 +376,300 @@ int ut_canonicalize_outline_text(const unsigned char *in, size_t inlen,
 }
 
 /* ------------------------------------------------------------------------- */
+/* Reverse canonicalizer                                                     */
+/* ------------------------------------------------------------------------- */
+
+/*
+ * macroman_from_unicode - map a Unicode scalar to its MacRoman byte.
+ *
+ * ASCII scalars (< 0x80) return the scalar itself cast to unsigned char and
+ * set *ok to 1. For scalars in the MacRoman 0x80..0xFF range, we scan
+ * kMacRomanToUnicode for a match and return the corresponding byte; *ok is
+ * set to 1 on hit, 0 on miss. Scalars >= 0x80 that have no MacRoman encoding
+ * (e.g. emoji) set *ok = 0 and the return value is undefined.
+ *
+ * The table has 128 entries with all distinct Unicode values (verified: no
+ * collisions), so a linear scan is correct and always finds the unique match.
+ * This function is called once per encoded byte at import time, which is an
+ * infrequent operation; scan cost is acceptable.
+ */
+static unsigned char macroman_from_unicode(unsigned int cp, int *ok) {
+	int i;
+	if (cp < 0x80) {
+		*ok = 1;
+		return (unsigned char)cp;
+	}
+	for (i = 0; i < 128; i++) {
+		if ((unsigned int)kMacRomanToUnicode[i] == cp) {
+			*ok = 1;
+			return (unsigned char)(i + 0x80);
+		}
+	}
+	*ok = 0;
+	return 0;
+}
+
+/*
+ * decode_utf8_scalar - decode one UTF-8 scalar from buf[*pos..inlen).
+ *
+ * On success: advances *pos past the sequence and returns the scalar.
+ * On failure (truncated or invalid sequence): returns 0xFFFFFFFF to signal
+ * an error (not a valid Unicode scalar).
+ *
+ * Accepts well-formed UTF-8 only (1-4 byte sequences). Overlong encodings,
+ * surrogates, and scalars above U+10FFFF are rejected (return 0xFFFFFFFF).
+ */
+static unsigned int decode_utf8_scalar(const unsigned char *buf, size_t inlen,
+                                       size_t *pos) {
+	unsigned char b0;
+	unsigned int cp;
+	size_t i;
+	size_t nbytes;
+
+	if (*pos >= inlen)
+		return 0xFFFFFFFF;
+
+	b0 = buf[*pos];
+
+	if (b0 < 0x80) {
+		(*pos)++;
+		return (unsigned int)b0;
+	}
+	if (b0 < 0xC2) {
+		/* continuation byte or overlong 2-byte sequence: invalid */
+		return 0xFFFFFFFF;
+	}
+	if (b0 < 0xE0) {
+		nbytes = 2;
+		cp = (unsigned int)(b0 & 0x1F);
+	} else if (b0 < 0xF0) {
+		nbytes = 3;
+		cp = (unsigned int)(b0 & 0x0F);
+	} else if (b0 <= 0xF4) {
+		nbytes = 4;
+		cp = (unsigned int)(b0 & 0x07);
+	} else {
+		return 0xFFFFFFFF; /* > U+10FFFF */
+	}
+
+	if (*pos + nbytes > inlen)
+		return 0xFFFFFFFF; /* truncated */
+
+	for (i = 1; i < nbytes; i++) {
+		unsigned char cb = buf[*pos + i];
+		if ((cb & 0xC0) != 0x80)
+			return 0xFFFFFFFF; /* not a continuation byte */
+		cp = (cp << 6) | (unsigned int)(cb & 0x3F);
+	}
+
+	/* Reject surrogates and values above U+10FFFF */
+	if (cp >= 0xD800 && cp <= 0xDFFF)
+		return 0xFFFFFFFF;
+	if (cp > 0x10FFFF)
+		return 0xFFFFFFFF;
+
+	*pos += nbytes;
+	return cp;
+}
+
+/*
+ * append_byte_rev - append one byte to the growable output buffer.
+ * Returns 1 on success, 0 on allocation failure.
+ */
+static int append_byte_rev(unsigned char **buf, size_t *len, size_t *cap,
+                            unsigned char b) {
+	if (*len + 2 > *cap) { /* +2 for the byte and the NUL sentinel */
+		size_t newcap = (*cap == 0) ? 256 : *cap * 2;
+		unsigned char *grown;
+		while (newcap < *len + 2)
+			newcap *= 2;
+		grown = (unsigned char *)realloc(*buf, newcap);
+		if (grown == NULL)
+			return 0;
+		*buf = grown;
+		*cap = newcap;
+	}
+	(*buf)[(*len)++] = b;
+	return 1;
+}
+
+int ut_decanonicalize_outline_text(const unsigned char *in, size_t inlen,
+                                   unsigned char **out, size_t *outlen) {
+	unsigned char *buf = NULL;
+	size_t len = 0;
+	size_t cap = 0;
+	size_t pos = 0;
+
+	/*
+	 * Literal state, mirroring decode_and_substitute in the forward pass.
+	 * We track state at the code-point level (post-UTF8-decode) because the
+	 * curly-quote string delimiters are multi-byte in UTF-8 but single code
+	 * points at the scalar level (U+201C opens, U+201D closes).
+	 */
+	int in_string = 0;           /* inside "..." or curly-quote string */
+	unsigned int string_close = '"'; /* scalar that closes the current string */
+	int in_char   = 0;           /* inside '...' char literal */
+	int escaped   = 0;           /* next code point is escaped */
+
+	if (out == NULL || outlen == NULL)
+		return 0;
+	*out = NULL;
+	*outlen = 0;
+
+	while (pos < inlen) {
+		size_t scalar_start = pos;
+		unsigned int cp = decode_utf8_scalar(in, inlen, &pos);
+		unsigned char mac_byte;
+		int mac_ok;
+
+		if (cp == 0xFFFFFFFF) {
+			/* Malformed UTF-8 */
+			free(buf);
+			*out = NULL;
+			*outlen = 0;
+			return 0;
+		}
+
+		/*
+		 * LF -> CR: before literal state and everything else, map line endings.
+		 * Literal state resets at each line break (same as the forward pass).
+		 */
+		if (cp == 0x0A) {
+			in_string = 0;
+			in_char   = 0;
+			escaped   = 0;
+			if (!append_byte_rev(&buf, &len, &cap, 0x0D))
+				goto fail;
+			continue;
+		}
+
+		/*
+		 * Inside a literal: pass bytes through as MacRoman. Backslash escapes
+		 * the following code point. Closing delimiter ends the literal.
+		 *
+		 * Note: 0xC7 and 0xC8 are valid MacRoman bytes that can appear inside
+		 * literals. The forward pass preserved them verbatim (encoded to UTF-8)
+		 * inside literals. Here we decode them back to MacRoman.
+		 */
+		if (in_string || in_char) {
+			if (escaped) {
+				escaped = 0;
+				/* Encode back to MacRoman -- backslash was already emitted */
+				mac_byte = macroman_from_unicode(cp, &mac_ok);
+				if (!mac_ok)
+					goto fail_encoding;
+				if (!append_byte_rev(&buf, &len, &cap, mac_byte))
+					goto fail;
+				continue;
+			}
+			if (cp == 0x5C) { /* backslash: emit it and set escaped */
+				escaped = 1;
+				mac_byte = macroman_from_unicode(cp, &mac_ok);
+				if (!mac_ok)
+					goto fail_encoding;
+				if (!append_byte_rev(&buf, &len, &cap, mac_byte))
+					goto fail;
+				continue;
+			}
+			if (in_string && cp == string_close) {
+				in_string = 0;
+			} else if (in_char && cp == (unsigned int)'\'') {
+				in_char = 0;
+			}
+			/* Emit the literal data as MacRoman */
+			mac_byte = macroman_from_unicode(cp, &mac_ok);
+			if (!mac_ok)
+				goto fail_encoding;
+			if (!append_byte_rev(&buf, &len, &cap, mac_byte))
+				goto fail;
+			continue;
+		}
+
+		/*
+		 * Outside any literal.
+		 *
+		 * Check for "//" (two ASCII 0x2F code points). We need to peek at the
+		 * next code point without consuming it. Since "/" is ASCII (single byte
+		 * in UTF-8), we can just check in[pos] directly when cp == '/'.
+		 */
+		if (cp == (unsigned int)'/') {
+			if (pos < inlen && in[pos] == '/') {
+				/* "//" outside a literal: this is a comment marker -> 0xC7 */
+				pos++; /* consume the second '/' */
+				if (!append_byte_rev(&buf, &len, &cap, MACROMAN_CHCOMMENT))
+					goto fail;
+				continue;
+			}
+			/* Single '/': pass through as-is */
+			if (!append_byte_rev(&buf, &len, &cap, '/'))
+				goto fail;
+			continue;
+		}
+
+		/* String and char literal openers */
+		if (cp == (unsigned int)'"') {
+			in_string = 1;
+			string_close = (unsigned int)'"';
+			if (!append_byte_rev(&buf, &len, &cap, '"'))
+				goto fail;
+			continue;
+		}
+		if (cp == 0x201C) {
+			/* U+201C LEFT DOUBLE QUOTATION MARK: opens a curly-quote string.
+			 * Closed by U+201D (0x201D). In MacRoman: 0xD2 opens, 0xD3 closes. */
+			in_string = 1;
+			string_close = 0x201D;
+			if (!append_byte_rev(&buf, &len, &cap, MACROMAN_OPEN_CURLY))
+				goto fail;
+			continue;
+		}
+		if (cp == (unsigned int)'\'') {
+			in_char = 1;
+			if (!append_byte_rev(&buf, &len, &cap, '\''))
+				goto fail;
+			continue;
+		}
+
+		/*
+		 * Default: decode UTF-8 scalar to MacRoman. ASCII scalars (< 0x80)
+		 * map to themselves. High-bit scalars go through the reverse table.
+		 */
+		mac_byte = macroman_from_unicode(cp, &mac_ok);
+		if (!mac_ok)
+			goto fail_encoding;
+		if (!append_byte_rev(&buf, &len, &cap, mac_byte))
+			goto fail;
+
+		/* Suppress unused-variable warning for scalar_start */
+		(void)scalar_start;
+	}
+
+	/* Allocate at least 1 byte so we can NUL-terminate empty output */
+	if (buf == NULL) {
+		buf = (unsigned char *)malloc(1);
+		if (buf == NULL)
+			return 0;
+		cap = 1;
+	}
+	buf[len] = '\0';
+	*out = buf;
+	*outlen = len;
+	return 1;
+
+fail_encoding:
+	free(buf);
+	*out = NULL;
+	*outlen = 0;
+	return 0;
+
+fail:
+	free(buf);
+	*out = NULL;
+	*outlen = 0;
+	return 0;
+}
+
+/* ------------------------------------------------------------------------- */
 /* Path mapping                                                              */
 /* ------------------------------------------------------------------------- */
 
