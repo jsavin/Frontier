@@ -67,6 +67,7 @@
 #include "../Common/headers/db_format.h"
 #include "../Common/headers/tableverbs.h"
 #include "../Common/headers/langexternal.h"
+#include "../Common/headers/opverbs.h"
 #include "../Common/headers/stringdefs.h"
 #include "../Common/headers/scripts.h"
 #include "../Common/headers/db_format.h"
@@ -81,6 +82,7 @@
 #include "../portable/fileverbs_portable.h"
 
 // CLI-specific headers
+#include "ut_sync.h"
 #include "cli_parser.h"
 #include "cli_executor.h"
 #include "cli_utils.h"
@@ -858,6 +860,11 @@ static void print_usage(const char* program_name) {
 	printf("						   persist is skipped. Newly created roots (file.save /\n");
 	printf("						   file.saveAs / db.compactDatabase) are unaffected.\n");
 	printf("						   Also enabled by FRONTIER_LOCK_OPENED_ROOTS=1.\n");
+	printf("  --ut-sync DIR		   On save, export every dirty script in the system root as a\n");
+	printf("						   .ut file under DIR (ODB<->.ut sync export half). The .ut\n");
+	printf("						   file's mtime is set from the ODB script's timeModified so\n");
+	printf("						   the two sides agree for last-write-wins conflict resolution.\n");
+	printf("						   Example: --ut-sync usertalk_scripts/Frontier.root\n");
 	printf("  -h, --help			   Show this help message\n");
 	printf("  --version				   Show version information\n");
 	printf("\n");
@@ -1796,6 +1803,129 @@ static boolean load_system_root_database(const char* path) {
 	return load_system_root_database_internal(path, true);
 }
 
+/* -------------------------------------------------------------------------
+ * ODB -> .ut export walk (ut_sync export hook, Direction A)
+ *
+ * Called from save_system_root_on_exit() when --ut-sync is active.
+ * Walks the system root hashtable tree recursively, building dotted paths
+ * (identical pattern to langhash_materialize_table_internal). For each node
+ * that is a script or outline external AND is dirty, calls ut_export_script()
+ * to write the .ut file.
+ *
+ * "Dirty" check: langexternalisdirty(hv) -> opverbisdirty -> (**ho).fldirty ||
+ * (**ho).fldirtyview. The value must also be flinmemory=true for the dirty
+ * flag to be meaningful (disk-only values can't be dirty in memory).
+ *
+ * Only errors are logged; individual script failures do not abort the walk.
+ * The ODB save proceeds regardless -- this is export-only, the save path is
+ * authoritative.
+ * ---------------------------------------------------------------------- */
+
+typedef struct ut_export_walk_ctx {
+	const char *sync_dir;
+	int exported;  /* count of successfully exported scripts */
+	int errors;    /* count of export failures */
+} ut_export_walk_ctx;
+
+/* Forward declaration (recursive walk calls itself for subtables). */
+static void ut_export_walk_table(hdlhashtable htable, const char *path,
+                                 ut_export_walk_ctx *ctx);
+
+static void ut_export_walk_table(hdlhashtable htable, const char *path,
+                                 ut_export_walk_ctx *ctx) {
+	hdlhashnode nomad;
+
+	if (htable == nil)
+		return;
+
+	for (nomad = (**htable).hfirstsort; nomad != nil;
+	     nomad = (**nomad).sortedlink) {
+		tyvaluerecord *val = &(**nomad).val;
+		bigstring bsname;
+		char nodepath[512];
+
+		gethashkey(nomad, bsname);
+
+		/* Build the dotted path for this node. */
+		if (path != NULL && path[0] != '\0')
+			snprintf(nodepath, sizeof(nodepath), "%s.%.*s",
+			         path, (int)bsname[0], (char *)&bsname[1]);
+		else
+			snprintf(nodepath, sizeof(nodepath), "%.*s",
+			         (int)bsname[0], (char *)&bsname[1]);
+		nodepath[sizeof(nodepath) - 1] = '\0';
+
+		if (val->valuetype != externalvaluetype)
+			continue;
+
+		{
+			hdlexternalvariable hv = (hdlexternalvariable) val->data.externalvalue;
+			tyexternalid extid = (**hv).id;
+
+			if (extid == idtableprocessor) {
+				/* Recurse into subtables. */
+				if ((**hv).flinmemory)
+					ut_export_walk_table(
+						(hdlhashtable)(**hv).variabledata,
+						nodepath, ctx);
+				continue;
+			}
+
+			/* Export script and outline externals when dirty. */
+			if (extid == idscriptprocessor || extid == idoutlineprocessor) {
+				Handle htext = nil;
+				long sig = 0;
+				int64_t tc = 0, tm = 0;
+
+				/* Only dirty in-memory values need exporting. */
+				if (!(**hv).flinmemory || !langexternalisdirty(hv))
+					continue;
+
+				/* Get source text (flpretty=true to match corpus convention). */
+				if (!opverbgetlangtext(hv, true, &htext, &sig)) {
+					cli_log_warn("ut-sync: opverbgetlangtext failed for %s",
+					             nodepath);
+					ctx->errors++;
+					continue;
+				}
+
+				/* Get modification time (Mac epoch). */
+				if (!langexternalgettimes(hv, &tc, &tm, nil)) {
+					cli_log_warn("ut-sync: langexternalgettimes failed for %s",
+					             nodepath);
+					/* Not fatal -- export with mtime 0 (skip stamping). */
+					tm = 0;
+				}
+
+				{
+					size_t rawlen = gethandlesize(htext);
+					const unsigned char *raw =
+						(const unsigned char *)(*htext);
+					int ok = ut_export_script(raw, rawlen,
+					                          nodepath,
+					                          ctx->sync_dir,
+					                          tm);
+					disposehandle(htext);
+					htext = nil;
+
+					if (ok) {
+						cli_log_debug(
+							"ut-sync: exported %s", nodepath);
+						ctx->exported++;
+					} else {
+						cli_log_warn(
+							"ut-sync: ut_export_script failed for %s",
+							nodepath);
+						ctx->errors++;
+					}
+				}
+				continue;
+			}
+			/* Other external types (menu, wp, pict): skip. */
+		}
+	}
+}
+
 /* Saves the system root database to disk before unloading.
  * Called during cleanup to persist any changes made during script execution
  * (e.g., user.databases entries created by finishInstall during first-run).
@@ -1833,6 +1963,23 @@ static void save_system_root_on_exit(void) {
 	}
 
 	cli_log_info("Saving system root database before exit");
+
+	/* ODB -> .ut export (Direction A): export dirty scripts before pack
+	 * clears their dirty flags. Gated by --ut-sync. tablesavesystemtable
+	 * runs opverbpack per dirty script which sets (**ho).fldirty=false, so
+	 * export must happen here, before the pack pass. */
+	if (g_cli_options.ut_sync_dir != NULL && roottable != nil) {
+		ut_export_walk_ctx export_ctx;
+		export_ctx.sync_dir = g_cli_options.ut_sync_dir;
+		export_ctx.exported = 0;
+		export_ctx.errors   = 0;
+		/* Walk starting from the root hashtable (roottable IS the
+		 * hdlhashtable; it is not an external variable wrapping one). */
+		ut_export_walk_table(roottable, "", &export_ctx);
+		cli_log_info("ut-sync: exported %d dirty script(s) to %s (%d error(s))",
+		             export_ctx.exported, g_cli_options.ut_sync_dir,
+		             export_ctx.errors);
+	}
 
 	/* Remember the prior view so we can avoid an unnecessary header flush. */
 	dbgetview(cancoonview, &prior_view);

@@ -14,8 +14,16 @@
 
 #include "ut_sync.h"
 
+#include <errno.h>
+#include <fcntl.h>
+#include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <sys/time.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 /*
  * MacRoman -> UTF-8 for the 128 high-bit code points (0x80..0xFF). The
@@ -527,4 +535,144 @@ int ut_fs_path_to_odb(const char *fs_path, const char *sync_dir,
 	}
 	out[pos] = '\0';
 	return 1;
+}
+
+/* ------------------------------------------------------------------------- */
+/* Export primitive                                                           */
+/* ------------------------------------------------------------------------- */
+
+/*
+ * mkdir_p - create a directory and all missing ancestors.
+ * path is modified in place (and restored), so it must be writable.
+ * Returns 0 on success, -1 on error (errno set).
+ */
+static int mkdir_p(char *path) {
+	char *p = path;
+	int rc = 0;
+
+	/* Skip leading '/' for absolute paths */
+	if (*p == '/')
+		p++;
+
+	for (; *p != '\0'; p++) {
+		if (*p == '/') {
+			*p = '\0';
+			rc = mkdir(path, 0755);
+			if (rc != 0 && errno != EEXIST) {
+				*p = '/';
+				return -1;
+			}
+			*p = '/';
+		}
+	}
+	/* Create the final component */
+	rc = mkdir(path, 0755);
+	if (rc != 0 && errno != EEXIST)
+		return -1;
+	return 0;
+}
+
+/*
+ * Mac epoch (seconds since 1904-01-01) minus Unix epoch (1970-01-01).
+ * Matches timedate.c: "const int64_t frontier_epoch_offset = 2082844800LL"
+ */
+#define UT_MAC_TO_UNIX_EPOCH_OFFSET ((int64_t)2082844800LL)
+
+int ut_export_script(const unsigned char *raw, size_t rawlen,
+                     const char *dotted_path, const char *sync_dir,
+                     int64_t mac_mtime) {
+	unsigned char *canon = NULL;
+	size_t canon_len = 0;
+	char fs_path[4096];
+	char tmp_path[4096 + 8]; /* ".tmp" suffix room */
+	char parent[4096];
+	char *last_slash;
+	int fd = -1;
+	ssize_t written;
+	int ok = 0;
+
+	if (raw == NULL || dotted_path == NULL || sync_dir == NULL)
+		return 0;
+
+	/* Step 1: Canonicalize */
+	if (!ut_canonicalize_outline_text(raw, rawlen, &canon, &canon_len))
+		return 0;
+
+	/* Step 2: Map path */
+	if (!ut_odb_path_to_fs(dotted_path, sync_dir, fs_path, sizeof(fs_path)))
+		goto done;
+
+	/* Step 3: Create parent directories (mkdir -p). */
+	if (strlen(fs_path) >= sizeof(parent)) {
+		goto done;
+	}
+	strcpy(parent, fs_path);
+	last_slash = strrchr(parent, '/');
+	if (last_slash != NULL) {
+		*last_slash = '\0';
+		if (mkdir_p(parent) != 0)
+			goto done;
+	}
+
+	/* Step 4: Write to a temp file in the same directory, then rename.
+	 *
+	 * Temp name: <fs_path>.tmp<pid> -- simple and avoids collisions between
+	 * concurrent frontiers (same pid can't run two exports at once). */
+	{
+		int n = snprintf(tmp_path, sizeof(tmp_path), "%s.tmp%d",
+		                 fs_path, (int)getpid());
+		if (n < 0 || n >= (int)sizeof(tmp_path))
+			goto done;
+	}
+
+	fd = open(tmp_path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+	if (fd < 0)
+		goto done;
+
+	if (canon_len > 0) {
+		written = write(fd, canon, canon_len);
+		if (written < 0 || (size_t)written != canon_len) {
+			close(fd);
+			fd = -1;
+			unlink(tmp_path);
+			goto done;
+		}
+	}
+
+	if (close(fd) != 0) {
+		fd = -1;
+		unlink(tmp_path);
+		goto done;
+	}
+	fd = -1;
+
+	/* Atomic rename into place */
+	if (rename(tmp_path, fs_path) != 0) {
+		unlink(tmp_path);
+		goto done;
+	}
+
+	/* Step 5: Set mtime from mac_mtime.
+	 *
+	 * Skip stamping if mac_mtime is at or before the Unix epoch (i.e. the
+	 * Mac timestamp predates 1970). In practice every real script has a
+	 * timestamp well past 1904 so this guard is belt-and-suspenders. */
+	if (mac_mtime > UT_MAC_TO_UNIX_EPOCH_OFFSET) {
+		time_t unix_secs = (time_t)(mac_mtime - UT_MAC_TO_UNIX_EPOCH_OFFSET);
+		struct timeval tv[2];
+		tv[0].tv_sec  = unix_secs; /* atime */
+		tv[0].tv_usec = 0;
+		tv[1].tv_sec  = unix_secs; /* mtime */
+		tv[1].tv_usec = 0;
+		/* utimes() is POSIX; ignore failure (best-effort mtime stamp) */
+		(void)utimes(fs_path, tv);
+	}
+
+	ok = 1;
+
+done:
+	free(canon);
+	if (fd >= 0)
+		close(fd);
+	return ok;
 }

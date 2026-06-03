@@ -58,6 +58,7 @@
 #define UT_SYNC_INCLUDE
 
 #include <stddef.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -163,6 +164,65 @@ int ut_odb_path_to_fs(const char *dotted_path, const char *sync_dir,
  */
 int ut_fs_path_to_odb(const char *fs_path, const char *sync_dir,
                       char *out, size_t outsz);
+
+
+/*
+ * EXPORT PRIMITIVE
+ * ----------------
+ * ut_export_script - write one dirty script to its .ut file.
+ *
+ * This is a pure, kernel-independent function. It combines canonicalization,
+ * path mapping, parent-directory creation, atomic file write, and mtime
+ * stamping into a single call. It has no knowledge of the ODB or the Frontier
+ * runtime -- it operates only on byte buffers and POSIX file-system calls.
+ *
+ * Inputs:
+ *   raw        - in-memory outline-text bytes (MacRoman, CR endings,
+ *                0xC7/0xC8 comment markers, structure braces). Exactly the
+ *                bytes that opverbgetlangtext / opgetlangtext produces.
+ *   rawlen     - number of bytes at raw.
+ *   dotted_path - NUL-terminated dotted ODB path, e.g. "system.verbs.op".
+ *                 Must pass the same safety checks as ut_odb_path_to_fs.
+ *   sync_dir   - NUL-terminated sync corpus root, e.g.
+ *                "usertalk_scripts/Frontier.root". No trailing slash required.
+ *   mac_mtime  - the script's modification time in Mac epoch seconds
+ *                (seconds since 1904-01-01 00:00:00). The written .ut file's
+ *                mtime is set to (mac_mtime - 2082844800), the equivalent
+ *                Unix epoch time. This offset matches timedate.c line 314:
+ *                "frontier_epoch_offset = 2082844800LL". If mac_mtime is <=
+ *                2082844800 (i.e. the Unix equivalent would be <= 0), mtime
+ *                stamping is skipped (the file's mtime will be "now").
+ *
+ * Behavior:
+ *   1. Canonicalize raw -> UTF-8/LF/"//" form via ut_canonicalize_outline_text.
+ *   2. Map dotted_path -> fs path via ut_odb_path_to_fs.
+ *   3. Create all parent directories (mkdir -p semantics).
+ *   4. Write canonical bytes to a temp file in the same directory, then
+ *      rename into place (atomic on POSIX). The previous .ut (if any) is
+ *      silently overwritten.
+ *   5. Set the .ut file's mtime via utimes()/utimensat() from mac_mtime.
+ *
+ * Returns 1 on success. Returns 0 if:
+ *   - dotted_path fails the ut_odb_path_to_fs safety check
+ *   - any directory could not be created
+ *   - the file could not be written
+ *   - canonicalization failed (allocation error)
+ * On any failure the .ut file is left in whatever state it was in before
+ * the call (because the write goes to a temp file first).
+ *
+ * Thread safety: concurrent writes to DIFFERENT paths are safe (each uses
+ * its own temp file). Concurrent writes to the SAME path are not safe --
+ * the rename() is atomic but the last writer wins without any conflict
+ * detection. This matches the export contract: only one thread (the
+ * save_system_root_on_exit path) calls this during a save.
+ *
+ * Pure function apart from file-system side effects. No kernel state, no
+ * globals. Safe to call without the GIL once the script's text bytes have
+ * been extracted.
+ */
+int ut_export_script(const unsigned char *raw, size_t rawlen,
+                     const char *dotted_path, const char *sync_dir,
+                     int64_t mac_mtime);
 
 
 #ifdef __cplusplus
