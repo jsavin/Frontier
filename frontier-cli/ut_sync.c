@@ -872,6 +872,110 @@ static int mkdir_p(char *path) {
  */
 #define UT_MAC_TO_UNIX_EPOCH_OFFSET ((int64_t)2082844800LL)
 
+/* ------------------------------------------------------------------------- */
+/* Import primitive                                                           */
+/* ------------------------------------------------------------------------- */
+
+int ut_import_check(const char *dotted_path, const char *sync_base,
+                    int64_t odb_mac_mtime,
+                    unsigned char **out, size_t *outlen,
+                    int64_t *ut_mac_mtime) {
+	char fs_path[4096];
+	struct stat st;
+	int64_t dot_mac_mtime;
+	FILE *f;
+	unsigned char *raw = NULL;
+	size_t raw_len;
+	unsigned char *decan = NULL;
+	size_t decan_len = 0;
+
+	/* Safe initialisation of all outputs. */
+	if (out) *out = NULL;
+	if (outlen) *outlen = 0;
+	if (ut_mac_mtime) *ut_mac_mtime = 0;
+
+	if (dotted_path == NULL || sync_base == NULL || out == NULL ||
+	    outlen == NULL || ut_mac_mtime == NULL)
+		return 0;
+
+	/* Step 1: Map dotted path to filesystem path.
+	 * ut_odb_path_to_fs rejects ".." and other unsafe segments. */
+	if (!ut_odb_path_to_fs(dotted_path, sync_base, fs_path, sizeof(fs_path)))
+		return 0;
+
+	/* Step 2: stat() -- cheapest check; returns immediately if .ut missing. */
+	if (stat(fs_path, &st) != 0)
+		return 0;  /* ENOENT or unreadable: no import */
+
+	/* Step 3: Convert .ut st_mtime to Mac epoch and compare.
+	 * st_mtime + UT_MAC_TO_UNIX_EPOCH_OFFSET yields Mac epoch seconds.
+	 * Import only when the .ut is STRICTLY newer than the ODB value. */
+	dot_mac_mtime = (int64_t)st.st_mtime + UT_MAC_TO_UNIX_EPOCH_OFFSET;
+	if (dot_mac_mtime <= odb_mac_mtime)
+		return 0;
+
+	/* Step 4: Read the .ut file into a buffer. */
+	f = fopen(fs_path, "rb");
+	if (f == NULL)
+		return 0;
+	if (fseek(f, 0, SEEK_END) != 0) {
+		fclose(f);
+		return 0;
+	}
+	{
+		long sz = ftell(f);
+		if (sz < 0) {
+			fclose(f);
+			return 0;
+		}
+		if (fseek(f, 0, SEEK_SET) != 0) {
+			fclose(f);
+			return 0;
+		}
+		raw_len = (size_t)sz;
+		if (raw_len == 0) {
+			/* Empty .ut: decanonicalize of empty input is empty. */
+			fclose(f);
+			decan = (unsigned char *)malloc(1);
+			if (decan == NULL)
+				return 0;
+			decan[0] = '\0';
+			*out          = decan;
+			*outlen       = 0;
+			*ut_mac_mtime = dot_mac_mtime;
+			return 1;
+		}
+		raw = (unsigned char *)malloc(raw_len);
+		if (raw == NULL) {
+			fclose(f);
+			return 0;
+		}
+		if (fread(raw, 1, raw_len, f) != raw_len) {
+			fclose(f);
+			free(raw);
+			return 0;
+		}
+		fclose(f);
+	}
+
+	/* Step 5: Decanonicalize (UTF-8/LF/slash-slash -> MacRoman/CR/0xC7).
+	 * Fails if the .ut contains non-MacRoman characters (e.g. emoji). */
+	if (!ut_decanonicalize_outline_text(raw, raw_len, &decan, &decan_len)) {
+		free(raw);
+		return 0;
+	}
+	free(raw);
+
+	*out          = decan;
+	*outlen       = decan_len;
+	*ut_mac_mtime = dot_mac_mtime;
+	return 1;
+}
+
+/* ------------------------------------------------------------------------- */
+/* Export primitive                                                           */
+/* ------------------------------------------------------------------------- */
+
 int ut_export_script(const unsigned char *raw, size_t rawlen,
                      const char *dotted_path, const char *sync_dir,
                      int64_t mac_mtime) {

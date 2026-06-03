@@ -277,6 +277,61 @@ int ut_export_script(const unsigned char *raw, size_t rawlen,
                      int64_t mac_mtime);
 
 
+/*
+ * IMPORT PRIMITIVE
+ * ----------------
+ * ut_import_check - decide whether a script's .ut file is newer than the ODB
+ * and, if so, return its decanonicalized (MacRoman/CR/0xC7) bytes ready to
+ * install into the outline record.
+ *
+ * The common case (no .ut, .ut not newer) is a stat() + mtime compare and
+ * returns 0 immediately. It is cheap enough to call from opverbinmemory for
+ * every script/outline materialization when the feature is enabled.
+ *
+ * Inputs:
+ *   dotted_path    - ODB dotted path, e.g. "system.verbs.builtins.op".
+ *                    Passed through ut_odb_path_to_fs for path mapping and
+ *                    safety checks; unsafe paths return 0.
+ *   sync_base      - effective sync corpus root that already includes the root
+ *                    basename segment, e.g. "usertalk_scripts/Frontier.root".
+ *                    Pass directly as sync_dir to ut_odb_path_to_fs.
+ *   odb_mac_mtime  - the ODB script's timelastsave in Mac epoch seconds
+ *                    (seconds since 1904-01-01). The .ut is considered newer
+ *                    only when its mtime (in Mac epoch) strictly exceeds this.
+ *
+ * Outputs (only meaningful when return == 1):
+ *   *out           - malloc'd MacRoman/CR buffer (NUL-terminated for caller
+ *                    convenience; NUL NOT counted in *outlen). Caller must
+ *                    free().
+ *   *outlen        - byte length of *out excluding the NUL sentinel.
+ *   *ut_mac_mtime  - the .ut file's st_mtime converted to Mac epoch seconds.
+ *                    Stamp this onto (**ho).timelastsave after installing the
+ *                    outline content so subsequent loads see them as in-sync
+ *                    (convergence -- prevents oscillation).
+ *
+ * Returns:
+ *   1  -> .ut is newer; *out holds the decanonicalized bytes to install.
+ *   0  -> no import needed (or not possible). *out is NULL. This is the
+ *          common path and is inexpensive (stat + compare).
+ *
+ * Failure modes that return 0 (all non-fatal):
+ *   - dotted_path fails the ut_odb_path_to_fs safety check
+ *   - .ut file does not exist (stat() returns ENOENT)
+ *   - .ut mtime (Mac epoch) <= odb_mac_mtime (ODB is current or newer)
+ *   - file read failure
+ *   - decanonicalization failure (malformed UTF-8 or unmappable code point)
+ *
+ * Pure apart from stat() and file read. No kernel state. GIL-free.
+ * Thread safety: concurrent calls on different paths are safe; concurrent
+ * calls on the same path may race with a .ut write (import wins or loses
+ * non-deterministically, which is acceptable for last-write-wins semantics).
+ */
+int ut_import_check(const char *dotted_path, const char *sync_base,
+                    int64_t odb_mac_mtime,
+                    unsigned char **out, size_t *outlen,
+                    int64_t *ut_mac_mtime);
+
+
 #ifdef __cplusplus
 }
 #endif

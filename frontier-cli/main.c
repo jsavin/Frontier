@@ -146,6 +146,170 @@ boolean cli_should_skip_startup(void) {
 	return g_cli_options.skip_startup;
 }
 
+/* Accessor for the --ut-sync-dir value (NULL when feature is off).
+ * Called from opverbinmemory import hook via extern declaration. */
+const char *cli_get_ut_sync_dir(void) {
+	return g_cli_options.ut_sync_dir;
+}
+
+/* Accessor for the basename of the loaded system root (e.g. "Frontier.root").
+ * Returns a pointer to a static buffer; valid for the process lifetime.
+ * Returns "" if no system root is loaded or the path is empty.
+ * Called from opverbinmemory import hook via extern declaration. */
+const char *cli_get_system_root_basename(void) {
+	static char bn_buf[CLI_MAX_PATH_LENGTH + 1];
+	if (g_system_root_path[0] == '\0') {
+		bn_buf[0] = '\0';
+		return bn_buf;
+	}
+	/* Find last '/' and return everything after it; no '/' -> whole string. */
+	const char *slash = strrchr(g_system_root_path, '/');
+	const char *base = (slash != NULL) ? (slash + 1) : g_system_root_path;
+	snprintf(bn_buf, sizeof(bn_buf), "%s", base);
+	return bn_buf;
+}
+
+/*
+ * .ut import boot-time re-dirty infrastructure.
+ *
+ * During bulk hydrate, opverbinmemory calls cli_record_ut_import for every
+ * script it imports from a .ut file. After the hydrate walk completes,
+ * clear_post_hydration_dirty_flags() clears ALL dirty bits in the tree
+ * (including the ones just set by the import hook). hydrate_system_root_database
+ * then calls cli_redirty_ut_imported_paths() to re-mark those scripts dirty so
+ * the next tablesavesystemtable persists the imported content to the ODB.
+ *
+ * For post-boot lazy loads (opverbinmemory called outside bulk hydrate), the
+ * clear pass never runs, so the dirty flag set by the hook stands naturally.
+ *
+ * Thread safety: cli_record_ut_import is only called from opverbinmemory during
+ * the bulk-hydrate walk on the main thread while the GIL is held. No concurrent
+ * access possible.
+ */
+#define UT_IMPORT_MAX 256
+
+static char *g_ut_imported_paths[UT_IMPORT_MAX];
+static int g_ut_imported_count = 0;
+
+/* Called from opverbinmemory (via extern) when a .ut file is imported.
+ * Records the dotted path for the re-dirty pass after clear_post_hydration_dirty_flags. */
+void cli_record_ut_import(const char *dotted_path) {
+	if (dotted_path == NULL || dotted_path[0] == '\0')
+		return;
+	if (g_ut_imported_count >= UT_IMPORT_MAX) {
+		log_warn(LOG_COMP_STARTUP,
+		         "ut-sync: import list full (max %d); skipping re-dirty for %s",
+		         UT_IMPORT_MAX, dotted_path);
+		return;
+	}
+	char *copy = strdup(dotted_path);
+	if (copy == NULL) {
+		log_warn(LOG_COMP_STARTUP,
+		         "ut-sync: strdup failed for path %s; re-dirty will be skipped", dotted_path);
+		return;
+	}
+	g_ut_imported_paths[g_ut_imported_count++] = copy;
+}
+
+/*
+ * Walk a dotted ODB path (e.g. "system.verbs.foo") from roottable and, if the
+ * leaf holds a script or outline external variable, call opverbsetdirty(hv, true).
+ *
+ * Intermediate segments are expected to be table externals; if an intermediate
+ * segment is not in-memory yet, the walk stops (the lazy-load dirty flag is not
+ * affected by clear_post_hydration_dirty_flags anyway).
+ *
+ * Returns 1 if the leaf was found and dirtied, 0 otherwise.
+ */
+static int redirty_one_path(const char *dotted_path) {
+	char *buf = strdup(dotted_path);
+	if (buf == NULL)
+		return 0;
+
+	hdlhashtable cur = roottable;
+	char *seg = buf;
+	int found = 0;
+
+	while (cur != nil && seg != NULL) {
+		while (*seg == '.')
+			seg++;
+		if (*seg == '\0')
+			break;
+
+		char *dot = strchr(seg, '.');
+		if (dot != NULL)
+			*dot = '\0';
+
+		/* Build Pascal string for this segment. */
+		bigstring bsseg;
+		size_t seglen = strlen(seg);
+		if (seglen > 255)
+			break;
+		bsseg[0] = (unsigned char) seglen;
+		memcpy(&bsseg[1], seg, seglen);
+
+		tyvaluerecord val;
+		hdlhashnode hnode = nil;
+		if (!hashtablelookup(cur, bsseg, &val, &hnode))
+			break;
+
+		if (dot == NULL) {
+			/* Leaf: dirty it if it is a script or outline external. */
+			if (val.valuetype == externalvaluetype && val.data.externalvalue != NULL) {
+				hdlexternalvariable hv = (hdlexternalvariable) val.data.externalvalue;
+				unsigned short xid = (**hv).id;
+				if (xid == idscriptprocessor || xid == idoutlineprocessor) {
+					opverbsetdirty(hv, true);
+					found = 1;
+				}
+			}
+			break;
+		} else {
+			/* Intermediate: descend into the table if it is already in memory. */
+			if (val.valuetype == externalvaluetype && val.data.externalvalue != NULL) {
+				hdlexternalvariable hv_seg = (hdlexternalvariable) val.data.externalvalue;
+				/* variabledata is a long; when flinmemory it holds an hdlhashtable cast. */
+				if ((**hv_seg).flinmemory && (**hv_seg).variabledata != 0)
+					cur = (hdlhashtable)(Handle)(uintptr_t)(**hv_seg).variabledata;
+				else
+					break;
+			} else {
+				break;
+			}
+			seg = dot + 1;
+		}
+	}
+
+	free(buf);
+	return found;
+}
+
+/*
+ * Re-mark all scripts recorded by cli_record_ut_import as dirty.
+ * Called immediately after clear_post_hydration_dirty_flags() so that
+ * boot-time .ut imports persist on the next tablesavesystemtable.
+ * Frees the recorded list and resets the count.
+ */
+static void cli_redirty_ut_imported_paths(void) {
+	int n = g_ut_imported_count;
+	if (n == 0)
+		return;
+	log_info(LOG_COMP_STARTUP,
+	         "ut-sync: re-dirtying %d imported script(s) after hydration clear", n);
+	for (int i = 0; i < n; i++) {
+		if (g_ut_imported_paths[i] != NULL) {
+			if (!redirty_one_path(g_ut_imported_paths[i])) {
+				log_warn(LOG_COMP_STARTUP,
+				         "ut-sync: could not re-dirty %s (not found or not a script)",
+				         g_ut_imported_paths[i]);
+			}
+			free(g_ut_imported_paths[i]);
+			g_ut_imported_paths[i] = NULL;
+		}
+	}
+	g_ut_imported_count = 0;
+}
+
 /*
  * Decide whether to open the system root read-only based on parsed CLI flags.
  *
@@ -154,7 +318,7 @@ boolean cli_should_skip_startup(void) {
  *                             (issue #127). In-memory mutations still
  *                             evaluate; only the disk persist is skipped.
  *                             Newly created roots (file.save / file.saveAs /
- *                             db.compactDatabase) are unaffected — those
+ *                             db.compactDatabase) are unaffected -- those
  *                             paths don't go through the on-exit save.
  *   otherwise              -> read-write (legacy Frontier semantics: every
  *                             system root and guest DB is mutable by default,
@@ -860,11 +1024,14 @@ static void print_usage(const char* program_name) {
 	printf("						   persist is skipped. Newly created roots (file.save /\n");
 	printf("						   file.saveAs / db.compactDatabase) are unaffected.\n");
 	printf("						   Also enabled by FRONTIER_LOCK_OPENED_ROOTS=1.\n");
-	printf("  --ut-sync DIR		   On save, export every dirty script in the system root as a\n");
-	printf("						   .ut file under DIR (ODB<->.ut sync export half). The .ut\n");
-	printf("						   file's mtime is set from the ODB script's timeModified so\n");
-	printf("						   the two sides agree for last-write-wins conflict resolution.\n");
-	printf("						   Example: --ut-sync usertalk_scripts/Frontier.root\n");
+	printf("  --ut-sync-dir DIR    Top-level .ut sync directory (ODB<->.ut bidirectional sync).\n");
+	printf("                       The loaded root's basename is the first path component, so\n");
+	printf("                       e.g. --ut-sync-dir usertalk_scripts with Frontier.root loaded\n");
+	printf("                       writes/reads usertalk_scripts/Frontier.root/a/b/c.ut for\n");
+	printf("                       ODB path a.b.c. Enables both export-on-save (Direction A)\n");
+	printf("                       and import-on-materialize (Direction B, last-write-wins).\n");
+	printf("                       Also enabled by FRONTIER_UT_SYNC_DIR env var; CLI flag wins.\n");
+	printf("                       Example: --ut-sync-dir usertalk_scripts\n");
 	printf("  -h, --help			   Show this help message\n");
 	printf("  --version				   Show version information\n");
 	printf("\n");
@@ -1542,6 +1709,13 @@ static boolean hydrate_system_root_database(const char* path, boolean read_only)
 	 * shutdown even when no user mutation occurred (~1.2 MB drift). */
 	clear_post_hydration_dirty_flags(hroot);
 
+	/* ut-sync Direction B: re-dirty any scripts imported from .ut files during
+	 * the bulk hydrate walk. The clear pass above wiped the dirty flags that
+	 * opverbinmemory set on those scripts; this call restores them so
+	 * tablesavesystemtable will persist the imported content on the next save.
+	 * No-op when --ut-sync-dir is not active (count stays 0). */
+	cli_redirty_ut_imported_paths();
+
 	ok = true;
 
 cleanup:
@@ -1806,7 +1980,7 @@ static boolean load_system_root_database(const char* path) {
 /* -------------------------------------------------------------------------
  * ODB -> .ut export walk (ut_sync export hook, Direction A)
  *
- * Called from save_system_root_on_exit() when --ut-sync is active.
+ * Called from save_system_root_on_exit() when --ut-sync-dir is active.
  * Walks the system root hashtable tree recursively, building dotted paths
  * (identical pattern to langhash_materialize_table_internal). For each node
  * that is a script or outline external AND is dirty, calls ut_export_script()
@@ -1965,19 +2139,34 @@ static void save_system_root_on_exit(void) {
 	cli_log_info("Saving system root database before exit");
 
 	/* ODB -> .ut export (Direction A): export dirty scripts before pack
-	 * clears their dirty flags. Gated by --ut-sync. tablesavesystemtable
+	 * clears their dirty flags. Gated by --ut-sync-dir. tablesavesystemtable
 	 * runs opverbpack per dirty script which sets (**ho).fldirty=false, so
-	 * export must happen here, before the pack pass. */
+	 * export must happen here, before the pack pass.
+	 *
+	 * Effective sync base = <ut_sync_dir>/<rootBasename>. The path functions
+	 * in ut_sync.c remain unchanged; we build the base here and pass it as
+	 * sync_dir to ut_export_script (via the walk ctx). */
 	if (g_cli_options.ut_sync_dir != NULL && roottable != nil) {
+		char effective_sync_base[CLI_MAX_PATH_LENGTH * 2 + 4];
+		const char *rbn = cli_get_system_root_basename();
+		if (rbn[0] != '\0') {
+			snprintf(effective_sync_base, sizeof(effective_sync_base),
+			         "%s/%s", g_cli_options.ut_sync_dir, rbn);
+		} else {
+			/* No root basename (unusual): fall back to sync_dir itself. */
+			snprintf(effective_sync_base, sizeof(effective_sync_base),
+			         "%s", g_cli_options.ut_sync_dir);
+		}
+
 		ut_export_walk_ctx export_ctx;
-		export_ctx.sync_dir = g_cli_options.ut_sync_dir;
+		export_ctx.sync_dir = effective_sync_base;
 		export_ctx.exported = 0;
 		export_ctx.errors   = 0;
 		/* Walk starting from the root hashtable (roottable IS the
 		 * hdlhashtable; it is not an external variable wrapping one). */
 		ut_export_walk_table(roottable, "", &export_ctx);
 		cli_log_info("ut-sync: exported %d dirty script(s) to %s (%d error(s))",
-		             export_ctx.exported, g_cli_options.ut_sync_dir,
+		             export_ctx.exported, effective_sync_base,
 		             export_ctx.errors);
 	}
 
