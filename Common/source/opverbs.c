@@ -583,6 +583,11 @@ static boolean opverbpackoutline (hdloutlinerecord houtline, Handle *hpacked) {
 
 #if defined(FRONTIER_HEADLESS)
 #include <time.h> /* time() for the .ut hot-path import throttle */
+/* ut_pct_encode_segment lives in frontier-cli/ut_sync.c; declare here so
+ * ut_find_dotted_path_topdown can encode raw bsname segments without
+ * pulling in the full ut_sync.h include chain from Common/source. */
+extern int ut_pct_encode_segment(const char *raw, size_t rawlen,
+                                 char *out, size_t outsz);
 /*
  * ut_find_dotted_path_topdown - recursively search a hashtable subtree for the
  * external variable `target`, building the dotted path top-down (root-first).
@@ -613,13 +618,24 @@ static int ut_find_dotted_path_topdown(hdlhashtable htable, hdlexternalvariable 
 			continue;
 
 		gethashkey(nomad, bsname);
-		if (prefix != NULL && prefix[0] != '\0')
-			snprintf(nodepath, sizeof(nodepath), "%s.%.*s",
-			         prefix, (int)bsname[0], (char *)&bsname[1]);
-		else
-			snprintf(nodepath, sizeof(nodepath), "%.*s",
-			         (int)bsname[0], (char *)&bsname[1]);
-		nodepath[sizeof(nodepath) - 1] = '\0';
+		{
+			/* Encode the raw segment before joining into the dotted path. */
+			char encoded_seg[766]; /* 255 * 3 + 1 -- max encoded Pascal name */
+			int enc_ok;
+			int n;
+			enc_ok = ut_pct_encode_segment((const char *)&bsname[1],
+			                               (size_t)bsname[0],
+			                               encoded_seg, sizeof(encoded_seg));
+			if (!enc_ok)
+				continue; /* segment un-encodable: skip (for loop advances nomad) */
+			if (prefix != NULL && prefix[0] != '\0')
+				n = snprintf(nodepath, sizeof(nodepath), "%s.%s", prefix, encoded_seg);
+			else
+				n = snprintf(nodepath, sizeof(nodepath), "%s", encoded_seg);
+			if (n < 0 || n >= (int)sizeof(nodepath))
+				continue; /* path overflow: skip */
+		}
+		nodepath[sizeof(nodepath) - 1] = '\0'; /* belt-and-suspenders NUL */
 
 		{
 			hdlexternalvariable hv = (hdlexternalvariable) val->data.externalvalue;

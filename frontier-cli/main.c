@@ -253,13 +253,19 @@ static int redirty_one_path(const char *dotted_path) {
 		if (dot != NULL)
 			*dot = '\0';
 
-		/* Build Pascal string for this segment. */
+		/* Decode the percent-encoded segment back to its raw ODB key name
+		 * before building the Pascal string for hashtablelookup. */
+		char decoded_seg[256]; /* max raw Pascal name: 255 bytes + NUL */
+		if (!ut_pct_decode_segment(seg, decoded_seg, sizeof(decoded_seg)))
+			break; /* malformed %XX in a path we emitted -- treat as miss */
+
+		/* Build Pascal string for this (now raw) segment. */
 		bigstring bsseg;
-		size_t seglen = strlen(seg);
+		size_t seglen = strlen(decoded_seg);
 		if (seglen > 255)
 			break;
 		bsseg[0] = (unsigned char) seglen;
-		memcpy(&bsseg[1], seg, seglen);
+		memcpy(&bsseg[1], decoded_seg, seglen);
 
 		tyvaluerecord val;
 		hdlhashnode hnode = nil;
@@ -2036,14 +2042,27 @@ static void ut_export_walk_table(hdlhashtable htable, const char *path,
 
 		gethashkey(nomad, bsname);
 
-		/* Build the dotted path for this node. */
-		if (path != NULL && path[0] != '\0')
-			snprintf(nodepath, sizeof(nodepath), "%s.%.*s",
-			         path, (int)bsname[0], (char *)&bsname[1]);
-		else
-			snprintf(nodepath, sizeof(nodepath), "%.*s",
-			         (int)bsname[0], (char *)&bsname[1]);
-		nodepath[sizeof(nodepath) - 1] = '\0';
+		/* Build the dotted path for this node, percent-encoding the raw segment
+		 * so ODB keys with '.' '/' ':' '"' '\' or control bytes are lossless. */
+		{
+			char encoded_seg[766]; /* 255 * 3 + 1 -- max encoded Pascal name */
+			int n;
+			if (!ut_pct_encode_segment((const char *)&bsname[1], (size_t)bsname[0],
+			                           encoded_seg, sizeof(encoded_seg))) {
+				cli_log_warn("ut-sync: segment encode overflow for node under %s",
+				             path ? path : "<root>");
+				continue;
+			}
+			if (path != NULL && path[0] != '\0')
+				n = snprintf(nodepath, sizeof(nodepath), "%s.%s", path, encoded_seg);
+			else
+				n = snprintf(nodepath, sizeof(nodepath), "%s", encoded_seg);
+			if (n < 0 || n >= (int)sizeof(nodepath)) {
+				cli_log_warn("ut-sync: nodepath overflow under %s", path ? path : "<root>");
+				continue;
+			}
+		}
+		nodepath[sizeof(nodepath) - 1] = '\0'; /* belt-and-suspenders NUL */
 
 		if (val->valuetype != externalvaluetype)
 			continue;

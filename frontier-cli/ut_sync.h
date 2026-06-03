@@ -148,24 +148,86 @@ int ut_decanonicalize_outline_text(const unsigned char *in, size_t inlen,
 
 
 /*
- * PATH MAPPING
- * ------------
- * A script at ODB dotted path "a.b.c" maps to the filesystem path
- * "<sync_dir>/a/b/c.ut" and back. The mapping is purely lexical: each dotted
- * segment becomes one filesystem path component, with no escaping. This
- * matches the corpus on disk (segments like "#filters" are stored as literal
- * directory names) and the verifier's documented contract
- * (tools/verify_virgin_root_sync.py: "lexical, no escaping").
+ * PERCENT-CODEC
+ * -------------
+ * Raw ODB segment names may contain characters that are structurally
+ * significant in the dotted-path interchange string ('.' separator) or
+ * unsafe as filesystem path components ('/', ':', '"', '\', control bytes,
+ * leading '-'). The codec escapes these bytes as %XX sequences so each
+ * encoded segment is safe to use as one component of both the dotted path
+ * and the filesystem path. The '%' sigil is always escaped first ("%25"),
+ * ensuring the codec is a lossless bijection.
+ */
+
+/*
+ * ut_pct_encode_segment - percent-encode a raw ODB segment name.
  *
- * The dotted path is the one the kernel builds during hydrate
- * (langhash_materialize_current_path) and pack: it is a "." join of raw key
- * names, NOT bracket-quoted. The lexical mapping is therefore ambiguous only
- * if a key name itself contains "." or "/"; no script in the corpus does, and
- * the functions reject any segment containing "/" (path-separator injection)
- * or control bytes. A key containing "." cannot be distinguished from a
- * segment boundary by these functions -- callers that might handle such keys
- * must walk the hashtable chain instead. (Documented limitation; not present
- * in any real corpus.)
+ * Encodes each byte that would be structurally unsafe or ambiguous:
+ *   '%' -> "%25"  (escape-the-escape FIRST)
+ *   '.' -> "%2E"  '/' -> "%2F"  ':' -> "%3A"  '"' -> "%22"  '\' -> "%5C"
+ *   b < 0x20 OR b == 0x7F  -> "%XX"  (control bytes / DEL; uppercase hex)
+ *   leading '-' (i==0)     -> "%2D"  (interior / trailing '-' passed through)
+ *   all other bytes        -> copied unchanged
+ *
+ * Returns 1 on success (out is NUL-terminated). Returns 0 if the encoded
+ * result plus NUL would not fit in outsz; in that case out[0] is set to '\0'.
+ * Empty input (rawlen 0) writes out="" and returns 1.
+ *
+ * Pure function: no globals, no kernel state, thread-safe.
+ */
+int ut_pct_encode_segment(const char *raw, size_t rawlen,
+                          char *out, size_t outsz);
+
+/*
+ * ut_pct_decode_segment - decode a percent-encoded ODB segment name.
+ *
+ * For each input character:
+ *   '%' -> requires two following hex digits ([0-9A-Fa-f]); decoded to one byte.
+ *          A lone trailing '%' or '%X' (only one hex digit) causes failure.
+ *   other -> copied unchanged.
+ *
+ * Returns 1 on success (out is NUL-terminated). Returns 0 on any malformed %
+ * escape or if the decoded result plus NUL would not fit in outsz; on failure
+ * out[0] is set to '\0'. Empty input writes out="" and returns 1.
+ *
+ * Lenient hex case: both upper and lower case hex digits are accepted (%2E
+ * and %2e both decode to '.').
+ *
+ * Pure function: no globals, no kernel state, thread-safe.
+ */
+int ut_pct_decode_segment(const char *enc, char *out, size_t outsz);
+
+
+/*
+ * PATH MAPPING + PERCENT-CODEC
+ * ----------------------------
+ * A script at ODB dotted path "a.b.c" maps to the filesystem path
+ * "<sync_dir>/a/b/c.ut" and back. Each dotted segment is percent-encoded
+ * before being used as a filesystem path component (see ut_pct_encode_segment
+ * below), so ODB keys that contain '.', '/', ':', '"', '\', '%', control
+ * bytes, or a leading '-' are represented losslessly on disk. The encoded
+ * form uses only characters that are safe as filesystem path components and
+ * does not contain '.' or '/', so the structural separator and the
+ * segment-safety checks in ut_odb_path_to_fs / ut_fs_path_to_odb continue to
+ * work without modification.
+ *
+ * The dotted path that traverses the boundary between the kernel and the
+ * path-mapping layer carries ENCODED segment names joined by '.'. Callers
+ * that build this string (langhash_materialize_table_internal,
+ * ut_export_walk_table, ut_find_dotted_path_topdown) MUST encode each raw
+ * Pascal-string segment with ut_pct_encode_segment before joining. Callers
+ * that split the string back into raw segment names (redirty_one_path,
+ * hashtablelookup) MUST decode each segment with ut_pct_decode_segment before
+ * building the Pascal string.
+ *
+ * Segments like "#filters" that consist entirely of safe characters encode to
+ * themselves, so the corpus on disk is byte-identical for the common case.
+ *
+ * SECURITY: ut_odb_path_to_fs refuses any dotted path that, after mapping,
+ * would escape sync_dir -- empty segments, segments equal to "." or "..", a
+ * leading/trailing/double dot, or any segment containing "/" or a control
+ * byte. This prevents a hostile or corrupt ODB key (e.g. "..") from steering
+ * an export write outside the sync directory.
  *
  * SECURITY: ut_odb_path_to_fs refuses any dotted path that, after mapping,
  * would escape sync_dir -- empty segments, segments equal to "." or "..", a

@@ -94,6 +94,7 @@ _Static_assert(sizeof(tydisksymbolrecord_v7) == 16, "tydisksymbolrecord_v7 must 
 _Static_assert(offsetof(tydisksymbolrecord_v7, data) == 8, "tydisksymbolrecord_v7.data offset must be 8");
 #endif
 #if defined(FRONTIER_HEADLESS)
+#include "../../frontier-cli/ut_sync.h" /* ut_pct_encode_segment for ODB path encoding */
 #include "../portable/wptext_portable.h"
 #include <stdio.h>
 #include <errno.h>
@@ -259,24 +260,48 @@ static boolean langhash_materialize_table_internal(hdlhashtable htable, const ch
 		const char *prior_path = langhash_materialize_current_path;
 
 		gethashkey(nomad, bsname);
-			size_t need = (size_t) bsname[0] + 1; /* name + dot/null */
+			/*
+			 * Percent-encode the raw segment name. Worst case: each byte of
+			 * a max-length Pascal string (255 bytes) encodes to 3 chars, plus
+			 * the NUL. 255*3 + 1 = 766. nodepath is 512, so a single very long
+			 * encoded segment may legitimately overflow -- that is a safe fail.
+			 */
+			{
+			char encoded_seg[766]; /* 255 * 3 + 1 -- max encoded Pascal name */
+			size_t encoded_len;
+			size_t need;
+
+			if (!ut_pct_encode_segment((const char *)&bsname[1], (size_t)bsname[0],
+			                           encoded_seg, sizeof(encoded_seg))) {
+#if defined(FRONTIER_HEADLESS)
+				if (log_enabled(LOG_LEVEL_TRACE, LOG_COMP_HASH)) {
+					log_trace(LOG_COMP_HASH,
+					          "materialize encode overflow path=%s name=%.*s",
+					          path ? path : "<nil>", (int)bsname[0], (char *)&bsname[1]);
+				}
+#endif
+				return false;
+			}
+			encoded_len = strlen(encoded_seg);
+			need = encoded_len + 1; /* name + null (or dot joins below) */
 			if (path != NULL && path[0] != '\0')
-				need += strlen(path) + 1; /* dot + existing path */
+				need += strlen(path) + 1; /* path + dot separator */
 			if (need >= sizeof(nodepath)) {
 #if defined(FRONTIER_HEADLESS)
 				if (log_enabled(LOG_LEVEL_TRACE, LOG_COMP_HASH)) {
-					log_trace(LOG_COMP_HASH, "materialize path overflow path=%s name=%.*s need=%zu limit=%zu",
-		        path ? path : "<nil>", (int) bsname[0], (char *) &bsname[1],
-		        need, sizeof(nodepath));
+					log_trace(LOG_COMP_HASH,
+					          "materialize path overflow path=%s encoded=%s need=%zu limit=%zu",
+					          path ? path : "<nil>", encoded_seg, need, sizeof(nodepath));
 				}
 #endif
 				return false; /* avoid overflow on deep nesting */
 			}
 
 			if (path != NULL && path[0] != '\0')
-				snprintf(nodepath, sizeof(nodepath), "%s.%.*s", path, (int) bsname[0], (char *) &bsname[1]);
+				snprintf(nodepath, sizeof(nodepath), "%s.%s", path, encoded_seg);
 			else
-				snprintf(nodepath, sizeof(nodepath), "%.*s", (int) bsname[0], (char *) &bsname[1]);
+				snprintf(nodepath, sizeof(nodepath), "%s", encoded_seg);
+			} /* end encoding block */
 
 		strncpy(langhash_materialize_path_buf, nodepath, sizeof(langhash_materialize_path_buf) - 1);
 		langhash_materialize_path_buf[sizeof(langhash_materialize_path_buf) - 1] = '\0';
