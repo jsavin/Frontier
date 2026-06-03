@@ -6,6 +6,21 @@ Both artifacts are tracked in git. The .ut corpus exists so git/PR reviewers
 have something diffable for changes that actually land in the binary
 Virgin.root. Without a verifier, the two drift undetected (issue #675).
 
+CANONICALIZATION IS NOW IMPLEMENTED IN C (PARTIAL DEPRECATION)
+-------------------------------------------------------------
+The kernel-output -> .ut normalization below (normalize_kernel_body) is a
+Python REFERENCE only. The authoritative canonicalizer is the C function
+ut_canonicalize_outline_text() in frontier-cli/ut_sync.c, which is the one
+the runtime --ut-sync-dir export path uses. tests/ut_sync_canonicalize_tests.c
+asserts the C output is byte-identical to this reference on the real corpus,
+so the two cannot silently diverge. When the normalization rules change,
+change the C function first; this Python copy follows.
+
+This SCRIPT (the protocol-driven drift harness) is NOT deprecated: it is the
+git-time check that committed Virgin.root matches the committed .ut corpus,
+which the runtime sync feature does not replace. Only the embedded
+normalization logic is a reference-tracks-C copy.
+
 Mode of operation
 -----------------
 - default (no args): incremental. Reads staged .ut paths via
@@ -354,6 +369,12 @@ def _substitute_comment_markers(text: str) -> str:
 
 def normalize_kernel_body(raw: bytes) -> bytes:
     """Apply the kernel-canonical → .ut-canonical transform.
+
+    REFERENCE COPY. The authoritative implementation is
+    ut_canonicalize_outline_text() in frontier-cli/ut_sync.c. Keep this in
+    lockstep with the C function -- tests/ut_sync_canonicalize_tests.c proves
+    byte-for-byte parity, so any divergence fails that test. Change the C
+    function first, then mirror it here.
 
     Input: raw bytes from the JSON "value" field (still JSON-escaped,
     still in MacRoman encoding).
