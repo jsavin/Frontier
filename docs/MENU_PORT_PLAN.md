@@ -4,6 +4,10 @@
 
 **North star** (JES scope refinement): The headless REPL's menu behavior must **match the legacy GUI behavior** — not approximate it, not modernize it. If a legacy Frontier user remembers seeing the Script menu appear when a Script Editor was frontmost and disappear when they switched to an Outline Editor, the headless REPL must reproduce that observable behavior. All architectural forks default to "do it the legacy way" unless there is a concrete, non-negotiable headless-context blocker.
 
+**Correction 2026-06-03 — composition mechanism diverges from legacy**: this plan (and earlier revisions of `LEGACY_MENU_SYSTEM.md`) framed menubar composition around the windowTypes framework. That is not how legacy works. Legacy composes the bar with one UserTalk script, **`system.menus.buildMenubar`** (clears the bar; installs base `user.menus.menubar`; folds in html menu, bookmark/custom menus, every `user.menus` `menuBarType` Tool menu, and the Help menu; installs ONE modal menu keyed off `window.getType(window.frontmost())`; then calls kernel `menu.buildMenuBar`). The windowTypes framework is per-window-open behavior + File/Edit command dispatch only — it does **not** build the bar.
+
+The headless port shipped (Phases A–E) composes the bar a **different way**: `installReplMenubar` installs the `repl` bar, and `ReplWindow.openWindow` (a windowTypes per-type handler) installs the `frontier` bar; the palette then unions installed bars. This works and matches the *observable* legacy output for the REPL today, but it is **not** the legacy *mechanism*. The divergence was forced because `system.menus.buildMenubar` is not in this repo's `.ut` corpus — it lives only in the live legacy Frontier.root (see `LEGACY_MENU_SYSTEM.md` gap #1). Full mechanism-fidelity requires exporting `system.menus.buildMenubar` + its data tables into the corpus first. Until then, the port is behavior-faithful for the REPL but mechanism-divergent.
+
 **Companion docs**:
 - `docs/LEGACY_MENU_SYSTEM.md` — the deep-dive investigation that grounds this plan
 - `planning/discussions/repl-slash-menu-implementation-plan.md` — the original 8-PR plan from late 2025; this doc supersedes its Phases 6-8
@@ -24,7 +28,8 @@
 - `getsystemtablescript`: the headless `getstringlist` stub has a switch on list IDs and `idsystemtablescripts` (139) is **absent** from the switch — every call to `getsystemtablescript` currently returns false/empty in headless
 - Window-event callback bridge: `idopenwindowscript`, `idclosewindowscript`, `idresumescript`, `idsuspendscript` are declared in `tablestructure.h` but never fired in headless
 - Frontmost-window tracking: no concept of "frontmost" in the headless event loop; the REPL is trivially always frontmost
-- The UserTalk windowTypes framework: not in either the tedchoward or jsavin/Frontier tree; its existence is hypothesized from kernel evidence
+- The UserTalk windowTypes framework: located 2026-05-31 in the corpus at `system/verbs/builtins/Frontier/tools/windowTypes/` (per-window callbacks + File/Edit command dispatch — NOT a menubar builder)
+- **`system.menus.buildMenubar` (the real legacy menubar builder): NOT in the corpus** — live legacy ODB only. This is the authoritative composition script the port does not yet reproduce (see top-of-doc correction + `LEGACY_MENU_SYSTEM.md` gap #1)
 
 ---
 
@@ -32,9 +37,11 @@
 
 These gate the phases below. Listed in order of urgency.
 
-### Decision Point 1 — ~~Obtain windowTypes Frontier.root~~ RESOLVED 2026-05-31
+### Decision Point 1 — ~~Obtain windowTypes Frontier.root~~ RESOLVED 2026-05-31 (but premise corrected 2026-06-03)
 
 **Resolved**: the windowTypes framework is **already installed** in Virgin.root and exported to `usertalk_scripts/Frontier.root/system/verbs/builtins/Frontier/tools/windowTypes/`. Actual path is `system.verbs.builtins.Frontier.tools.windowTypes` — not the `system.windowTypes` hypothesis. Contents include `init.ut`, `findWindowType.ut`, `callWindowType.ut`, `newWindow.ut`, `openWindow.ut`, `runFileMenuScript.ut`, `runEditMenuScript.ut`, `findWindowWithMatchingAtts.ut`, plus `callbacks/` and `commands/` subtables.
+
+**Premise correction 2026-06-03**: locating the windowTypes framework was framed as "we now have the menu-composition machinery." It is not. The framework is per-window behavior + command dispatch. The actual composition machinery is **`system.menus.buildMenubar`**, which is still NOT in the corpus. So Decision Point 1 is only *partly* resolved: we have the windowTypes framework, but not the menubar builder. A new action supersedes it — **export `system.menus.buildMenubar` and its data tables** (`user.menus.menubar`/`system.menus.menubar`, `system.menus.helpMenu`, `system.menus.modals.*`) into the corpus before claiming mechanism-fidelity.
 
 Phase D is rescoped from "port the framework" to "verify the kernel primitives the existing framework calls work in headless." See Phase D section below.
 
@@ -233,10 +240,11 @@ Without this wiring the kernel bridge fires correctly but `system.callbacks.open
 
 **Test counts**: Unit 492/492 PASS. Integration 2168/2395 PASS (+6 from Phase E), 20 FAIL (all pre-existing html / startup / tcp -- unrelated to menu work).
 
-**Functional parity with legacy GUI achieved** — the goal of task #23. Remaining Phase E follow-ups (not in scope of this PR):
+**Behavioral parity with legacy GUI achieved for the REPL** — the goal of task #23, at the *observable* level (the slash strip shows File/Edit/View/REPL with legacy-shaped items). **Mechanism parity is NOT achieved**: legacy composes via `system.menus.buildMenubar`; this port composes via `installReplMenubar` + the `ReplWindow.openWindow` handler. See the top-of-doc correction. Closing the mechanism gap requires exporting `system.menus.buildMenubar` into the corpus (tracked as a follow-up below). Remaining Phase E follow-ups (not in scope of this PR):
 - Cut/Copy/Paste via linenoise bridge (separate feature; no legacy analog)
 - View menu items wired to a no-op-friendly headless path so they don't log warnings on every click
 - Per-windowType menu composition for editor windows (Phase E scope was REPL only; editor windows are a separate feature)
+- **Export `system.menus.buildMenubar` into the corpus + adopt it as the composer** (mechanism-fidelity). Today's `installReplMenubar` + `ReplWindow.openWindow` composition is a divergence forced by the builder's absence from the corpus. Until the builder (and `user.menus.menubar`/`system.menus.menubar`, `system.menus.helpMenu`, `system.menus.modals.*`) are exported, the port reproduces legacy *output* but not legacy *mechanism*.
 - Fix the `@`-prefix in `WINDOW_BRIDGE_REPL_PATH` (`frontier-cli/window_registry.h`): the bridge currently passes `"@system.temp.windowTypes.windows.repl"` and Phase E's adapter strips the prefix. Cleaner fix: change the constant to omit the `@`. Deferred so the Phase E adapter remains tolerant for editor-window paths that may legitimately carry the prefix.
 
 ---

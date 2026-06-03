@@ -1,10 +1,14 @@
 # Legacy Menu System: Architecture + Headless Port Roadmap
 
-**Audience**: internal technical (Claude, JES, future agents). Investigation produced from reading `/Users/jake/dev/tedchoward/Frontier/Common/source/` and cross-referencing against the headless port work in `/Users/jake/dev/jsavin/Frontier/`.
+**Audience**: internal technical (Claude, JES, future agents). Investigation produced from reading `/Users/jake/dev/tedchoward/Frontier/Common/source/`, the UserTalk `.ut` corpus under `usertalk_scripts/Frontier.root/`, and the `system.menus.buildMenubar` script body (provided by JES from the live legacy ODB), cross-referenced against the headless port work in `/Users/jake/dev/jsavin/Frontier/`.
 
-**Status**: Part 1 (how the legacy worked) is from C source reading. Part 2 (port roadmap) is grounded in Part 1 + the PR #563 / #608 / #674 work that exists today.
+**Status**: Part 1 (how the legacy worked) is from C source + UserTalk reading. Part 2 (port roadmap) is grounded in Part 1 + the PR #563 / #608 / #674 work that exists today.
 
-**Update 2026-05-31 — windowTypes framework located**: the UserTalk windowTypes framework is **already present in Virgin.root** and exported to `usertalk_scripts/Frontier.root/system/verbs/builtins/Frontier/tools/windowTypes/`. The actual path is `system.verbs.builtins.Frontier.tools.windowTypes` — not the `system.windowTypes` working hypothesis used throughout this doc. Files present: `init.ut`, `findWindowType.ut`, `callWindowType.ut`, `newWindow.ut`, `openWindow.ut`, `runFileMenuScript.ut`, `runEditMenuScript.ut`, `findWindowWithMatchingAtts.ut`, `isFileMenuItemChecked.ut`, `isFileMenuItemEnabled.ut`, `isWindowDirty.ut`, `getDefaultFilename.ut`, plus `callbacks/` and `commands/` subtables. The "hypothesis" notes below are retained for historical context, but read the `.ut` files for ground truth on the framework's actual shape.
+**Correction 2026-06-03 — the menubar builder is a UserTalk script, not the windowTypes framework**: earlier revisions of this doc claimed the windowTypes framework composes the menubar via window-focus hooks. That is wrong. The authoritative menubar builder is the UserTalk script **`system.menus.buildMenubar`** (see the dedicated section below). The windowTypes framework is a separate, narrower thing: it handles per-window open/close/save/cursor callbacks and File/Edit menu-command dispatch, and it contributes at most the *single modal menu* keyed off the frontmost window's type. It does not build the bar. The bulk of the bar (base menubar, html menu, bookmark/custom menus, every Tool-contributed menu, the Help menu) is assembled by `system.menus.buildMenubar` independent of any window-focus event.
+
+**Corpus/ODB drift note**: `system.menus.buildMenubar` (the real builder body) is **not** present in this repo's `.ut` corpus. The only `buildMenubar.ut` in the corpus — `usertalk_scripts/Frontier.root/system/verbs/builtins/menu/buildMenubar.ut` — is a thin kernel wrapper (`on buildMenubar () { kernel (menu.buildmenubar)}`), a *different verb with the same short name*. The real builder lives only in the live legacy Frontier.root. This is a concrete instance of the open `.root`/`.ut` sync problem.
+
+**windowTypes framework location**: `usertalk_scripts/Frontier.root/system/verbs/builtins/Frontier/tools/windowTypes/` (UserTalk path `system.verbs.builtins.Frontier.tools.windowTypes`). Files: `init.ut`, `findWindowType.ut`, `callWindowType.ut`, `newWindow.ut`, `openWindow.ut`, `runFileMenuScript.ut`, `runEditMenuScript.ut`, `findWindowWithMatchingAtts.ut`, `isFileMenuItemChecked.ut`, `isFileMenuItemEnabled.ut`, `isWindowDirty.ut`, `getDefaultFilename.ut`, plus `callbacks/` and `commands/` subtables. Read the `.ut` files for ground truth on the framework's shape.
 
 ---
 
@@ -12,13 +16,34 @@
 
 ### The big picture
 
-Legacy Frontier had **three layers** for the menu system:
+Legacy Frontier's menu system has **three layers**, but the composition layer is a UserTalk *script*, not the windowTypes framework:
 
-1. **C kernel** — owns menubar data structures, dispatch from OS-level menu hit to script execution, storage format (the `menubarType` ODB record). Knows nothing about "window types" by name.
-2. **UserTalk verb surface** — 13 verbs in `system.verbs.menu.*` that let scripts manipulate menubars (`install`, `remove`, `addMenuCommand`, `setScript`, etc.). Built into the kernel via `menuverbs.c`.
-3. **UserTalk-side framework (windowTypes)** — JES-authored, lives entirely in the Frontier.root database. Sits on top of the verb surface to provide window-type-aware menubar composition: "when frontmost window is type X, install menubars A, B, C; when type Y becomes frontmost, swap to D, E, F." Hooks into kernel-fired script callbacks for window focus events.
+1. **C kernel** — owns menubar data structures, dispatch from OS-level menu hit to script execution, storage format (the `menubarType` / `'mbar'` ODB record), and the low-level "turn an outline into OS menu handles" builder (`mebuildmenubar`, exposed to UserTalk as the kernel verb `menu.buildmenubar`). Knows nothing about "window types" by name.
+2. **UserTalk verb surface** — 13 verbs in `system.verbs.menu.*` that let scripts manipulate menubars (`install`, `remove`, `addMenuCommand`, `setScript`, `clearMenuBar`, `buildMenubar`, etc.). Built into the kernel via `menuverbs.c`.
+3. **UserTalk-side composition** — driven primarily by the **`system.menus.buildMenubar`** script (and the smaller scripts it calls: `html.menu.install`, the `user.menus` loop, the modal-menu lookup). This is the authority for *what the menubar contains*. The windowTypes framework is a peer UserTalk-side subsystem that handles per-window-open behavior and File/Edit command dispatch; it feeds the builder only indirectly (its commands can be reached from menu items the builder installed), and contributes the single modal menu's content.
 
-The kernel is **deliberately unaware** of windowTypes. The kernel fires a small set of well-known scripts at well-known moments (window opened, window closed, app suspended/resumed, etc.) and the windowTypes framework hooks those firing points to drive the menubar swap.
+The kernel is **deliberately unaware** of both windowTypes and `system.menus.buildMenubar`. It provides the verb surface and the OS-handle builder; the UserTalk layer decides composition. `system.menus.buildMenubar` is called explicitly (e.g. by `system.menus.installMainMenu` at startup, and again whenever the frontmost window changes so the modal menu can be swapped) — it is not fired by a kernel window-event hook.
+
+### The authoritative builder: `system.menus.buildMenubar`
+
+This UserTalk script is **the** menubar composer. Its body is not in this repo's corpus (live ODB only); the logic below is from the script body JES provided. In order, it:
+
+1. **Defines a local helper** `on add (adrmenu)` — installs one menu into the bar being built.
+2. **`menu.clearMenuBar ()`** — tears down the current bar so composition starts from a clean slate.
+3. **Installs the base menubar** from `user.menus.menubar` (falling back to `system.menus.menubar`). This base bar is **ODB data** (a `menubarType` / `'mbar'` record), *not* a set of Mac `MENU` resources. This is the File/Edit/Window/etc. skeleton.
+4. **`html.menu.install ()`** — if the HTML/web-editor menu is enabled, folds it in (see `usertalk_scripts/.../html/menu/install.ut`).
+5. **Adds the bookmark menu and the custom menu.**
+6. **Loops over `user.menus`**, installing every entry whose type is `menuBarType`, *skipping* the reserved entries `bookmarkMenu`, `customMenu`, and `menubar` (those were handled in steps 3 and 5). **This loop is the channel by which the Tools Framework contributes menus** — a Tool drops a `menuBarType` record under `user.menus` and it appears as a top-level menu here.
+7. **Adds `system.menus.helpMenu`.**
+8. **Installs exactly one modal menu**, chosen by the frontmost window's *window type*: `winType = window.getType (window.frontmost ())`, recorded in `system.menus.data.currentMenuType`, looked up under `system.menus.modals.[winType]`. This is the **only** point where the frontmost window influences the bar, and it contributes a single menu.
+9. **`menu.buildMenuBar ()`** — calls the kernel verb (`menu.buildmenubar` → `mebuildmenubar`, `menubar.c`) to turn the assembled outline(s) into live OS menu handles and force the menubar to redraw.
+
+Key consequences for the mental model:
+
+- **The bar is data-driven.** `user.menus.menubar` / `system.menus.menubar`, `user.menus.*`, `system.menus.helpMenu`, `system.menus.modals.*` are all ODB records. Editing the menubar means editing ODB data, then re-running the builder.
+- **Window type touches only step 8.** Everything else (base bar, html, bookmarks, custom, all Tool menus, help) is window-type-independent. The frontmost window selects one modal menu; it does not compose the bar.
+- **"window type" here is a meta-type**, distinct from an ODB external value type. `window.getType()` returns a string like `"ScriptEditor"` / `"OutlineEditor"`; that is *not* the `typeOf` of any ODB value. (Contrast: `menuBarType` in step 6 *is* an ODB external value type — `'mbar'`. Same word "type", two different notions.)
+- **Tools and window types are independent capabilities.** A Tool can contribute a top-level menu (step 6, via `user.menus`) *and/or* declare its own window types (consumed by the windowTypes framework and step 8). Neither implies the other.
 
 ### Source map
 
@@ -117,11 +142,13 @@ hdlcancoonrecord .hmenubarlist     // cancoon.c — one menubarlist per database
 
 `setcancoonglobals(hcancoon)` at `cancoon.c:542` calls `setcurrentmenubarlist((**hcancoon).hmenubarlist)` to swap. So **opening a different Frontier database swaps the entire menubarlist** — this is the coarse-grained "menubar swap" axis. The fine-grained axis (window-type-driven) is separate.
 
-### Kernel→UserTalk callback registry (the windowTypes substrate)
+### Kernel→UserTalk callback registry (window-event substrate)
 
 `tablestructure.h:47-138` defines an enum `idsystemtablescripts = 139` indexing **40+ well-known kernel→UserTalk callback scripts**. The kernel resolves each ID to a UserTalk path via `getsystemtablescript(idscript, bspath)` (`tablestructure.c:155`), which reads from string resource list 139 in the Mac OS resource fork.
 
-Selected hooks relevant to windowTypes:
+This registry is what the **windowTypes framework** hooks — but note its scope: window open/close/save/cursor events, *not* "build the menubar." The framework reacts to a window opening by running that window type's `openWindow` handler (which may set the window title, or install/remove a type-specific menu), and it routes File/Edit menu *commands* to per-window-type scripts. The whole-bar composition still belongs to `system.menus.buildMenubar`. When the frontmost window changes, the modal-menu swap is achieved by re-running `system.menus.buildMenubar` (step 8 re-reads `window.getType(window.frontmost())`), not by a windowTypes hook rebuilding the bar.
+
+Selected hooks relevant to window events:
 
 | Hook ID | Purpose | Caller |
 |---------|---------|--------|
@@ -136,17 +163,19 @@ Selected hooks relevant to windowTypes:
 | `idopcursormovedscript` | Outline cursor moved | (outline editor) |
 | `idruneditmenuscript`, `idrunfilemenuscript`, `idrunopenrecentmenuscript` | Per-menu hooks added 2005 ("pike" era) | various |
 
-**windowTypes framework hypothesis** (based on kernel evidence + JES guidance): the UserTalk windowTypes framework registers handlers under (or aliases) `idopenwindowscript` / `idclosewindowscript` / `idsuspendscript` / `idresumescript`. When a window of type X opens, the framework's openwindowscript handler:
+**windowTypes framework — what it actually does** (confirmed from the `.ut` corpus):
 
-1. Looks up the window's declared windowType (a refcon on the window record, or a property on the window's data table)
-2. Looks up that windowType's menubar manifest (probably under `system.windowTypes.<TypeName>.menubars` — names speculative)
-3. For each manifest entry, calls `menu.install(@some.menubar)` to add the menubar to the current menubarlist
+The framework registers handlers under `idopenwindowscript` / `idclosewindowscript` / `idsavewindowscript` / `idopcursormovedscript` (its `callbacks/` subtable: `openWindow.ut`, `closeWindow.ut`, `saveWindow.ut`, `opCursorMoved.ut`, `opReturnKey.ut`). The open-window path is:
 
-When the window closes / loses focus, the inverse fires: walk the manifest and call `menu.remove` on each.
+1. `callbacks/openWindow.ut` reads the window's `"type"` attribute via `window.attributes.getOne("type", @windowType, adr)`.
+2. It calls `findWindowType.ut` to resolve that type string to a table — first checking `user.tools.windowTypes.[type]`, then `Frontier.tools.data.windowTypes.[type]` (`findWindowType.ut:7-19`).
+3. If that type table has an `openWindow` script, it runs it (`callbacks/openWindow.ut:11-13`). That per-type handler is free to install a type-specific menu, set the title, etc.
 
-Meta-types resolve through a level of indirection in the framework: `windowType X.metaOf = "EditorWindow"; windowType EditorWindow.menubars = (@Edit, @View)` means a window declared as X gets both X-specific menubars and EditorWindow-meta-type menubars installed.
+File/Edit menu *commands* route through `runFileMenuScript.ut` / `runEditMenuScript.ut`, which `thread.callScript` into `Frontier.tools.windowTypes.commands.[itemname]` (e.g. `new`, `open`, `save`, `find`).
 
-**This is hypothesis until a Frontier.root with a populated windowTypes table is available for inspection.** The kernel side is what makes it possible; the framework is what makes it usable.
+**What it does NOT do**: none of the framework scripts call `menu.install` to compose the whole bar, and none call `menu.buildMenuBar`. The framework is per-window behavior + command dispatch. The bar is built by `system.menus.buildMenubar`. The framework's only contribution to *bar content* is upstream of step 8 of the builder: a window's type determines which modal menu the builder installs.
+
+This is why the headless port (Part 2) had to be careful: it reuses the windowTypes framework as the dispatch substrate but composes the headless bar through `installReplMenubar` + a `ReplWindow.openWindow` handler that installs the `frontier` bar directly — **a deliberate divergence from the legacy `system.menus.buildMenubar` single-builder model**, made because the real builder script was never in the corpus to port.
 
 ### The UserTalk verb surface
 
@@ -175,7 +204,7 @@ menu.setCommandKey        (setcommandkeyfunc)
 2. If not currently active: insert into menubarlist via `meinsertmenubar(stack)`
 3. Mark `.flinstalled = true`
 
-This is the pivotal verb the windowTypes framework calls (many times, once per menubar in the type's manifest) when a window of that type becomes frontmost.
+This is the verb `system.menus.buildMenubar`'s `add` helper calls (once per menu it folds into the bar), and the verb a window type's `openWindow` handler may call to install a type-specific menu.
 
 ### End-to-end worked example: "user clicks File > New Script in legacy Frontier"
 
@@ -200,20 +229,27 @@ Assume frontmost window is a Script Editor; menubarlist currently contains [Fron
    f. returns true → memenu returns
 6. Asynchronously: the runtime picks up the queued process,
    executes scriptEditor.newWindow(), which:
-   a. Allocates a new Script Editor window
+   a. Allocates a new Script Editor window (type attribute "ScriptEditor")
    b. Calls window-creation framework, which fires idopenwindowscript
-   c. The windowTypes framework's openwindowscript handler runs:
-      - Reads the new window's windowType (= "ScriptEditor")
-      - Looks up ScriptEditor's menubar manifest
-      - For each manifest entry: calls menu.install(@<bar>)
-        → each menu.install eventually calls meinstallmenubar
-        → meinstallmenubar appends to menubarlist
-      - menubarlist is now [Frontier-host-bar, Script-bar, ScriptEditor-bar]
-   d. Window is shown
-7. Next time user clicks a menu, memenu walks the updated 3-bar list.
+   c. The windowTypes framework's callbacks/openWindow handler runs:
+      - Reads the new window's "type" attribute (= "ScriptEditor")
+      - findWindowType resolves it to the ScriptEditor type table
+      - If that table has an openWindow script, runs it (may set title,
+        may install a type-specific menu) -- per-window behavior, NOT
+        a full-bar rebuild
+   d. The window becomes frontmost. To reflect that in the bar, the
+      app re-runs system.menus.buildMenubar:
+      - steps 1-7 reassemble the base bar + html + bookmark/custom +
+        every user.menus menuBarType (Tool menus) + helpMenu
+      - step 8: winType = window.getType(window.frontmost()) is now
+        "ScriptEditor"; it installs system.menus.modals.ScriptEditor
+        as the single modal menu and records currentMenuType
+      - step 9: menu.buildMenuBar() rebuilds the OS handles
+   e. Window is shown
+7. Next time user clicks a menu, memenu walks the rebuilt bar.
 ```
 
-The kernel never knows the window is "ScriptEditor-typed." That label and the menubar-manifest mapping live entirely in the UserTalk-side windowTypes framework, which uses `idopenwindowscript` as its hook point.
+The kernel never knows the window is "ScriptEditor-typed." That label is a window *attribute* read by the windowTypes framework (`window.attributes.getOne("type", ...)`) and by the builder (`window.getType(window.frontmost())`). The windowTypes framework reacts to the open event (per-window behavior); the *bar content* change is `system.menus.buildMenubar`'s job — specifically its step-8 modal-menu swap.
 
 ### Why `idmenubarscript` is declared but unreferenced in source
 
@@ -222,16 +258,16 @@ The header declares `idmenubarscript = 1` but the kernel sources don't call `get
 1. **Vestigial.** Earlier Frontier versions called it; later ones removed the call. The id stayed in the header to preserve the ordering of subsequent IDs (changing it would break the resource fork mapping).
 2. **Called from somewhere I haven't grepped.** A different naming convention, an indirect reference, or a callsite in Mac-specific code outside `Common/source/`.
 
-For port purposes, this is mostly trivia — the active window-event hooks (`idopenwindowscript`, etc.) are clearly load-bearing and where the windowTypes framework hangs.
+For port purposes, this is mostly trivia. The likely answer: `idmenubarscript` is vestigial — modern Frontier composes the bar by *calling* `system.menus.buildMenubar` explicitly (from `installMainMenu` at startup and on frontmost-window changes), not by the kernel firing a menubar-build hook. The active window-event hooks (`idopenwindowscript`, etc.) are load-bearing for the windowTypes framework's per-window behavior, but they are not how the bar gets built.
 
-### Per-database vs. windowTypes axes
+### Per-database vs. frontmost-window axes
 
-Two axes of menubar swap exist in legacy Frontier:
+Two axes of menubar variation exist in legacy Frontier:
 
 1. **Database swap** (`setcancoonglobals` → `setcurrentmenubarlist`): each open Frontier database has its own menubarlist. Switching between databases is a coarse-grained swap. Driven entirely by C-side cancoon machinery.
-2. **Window-type swap** (windowTypes framework hooks on `idopenwindowscript` etc.): within a single database's menubarlist, menubars come and go as windows of different types become frontmost. Driven entirely by UserTalk.
+2. **Frontmost-window swap** (`system.menus.buildMenubar` step 8): within a database, the *modal menu* changes as windows of different types become frontmost. This is a single-menu swap, performed by re-running the builder (which re-reads `window.getType(window.frontmost())`), not by the windowTypes framework swapping whole menubars.
 
-The two axes compose: the database swap establishes the menubarlist; the windowTypes framework adds/removes menubars within that list as windows open and close.
+The two axes compose: the database swap establishes the menubarlist; re-running `system.menus.buildMenubar` recomposes the bar (including the frontmost-driven modal menu) within it. The windowTypes framework rides alongside as the per-window-open/command-dispatch layer; it is not one of the menubar-*composition* axes.
 
 ---
 
@@ -259,26 +295,18 @@ These pieces have conceptual analogs but the headless context changes the substr
 
 These are the load-bearing pieces that **don't exist in the headless port yet** and need to be built before editor windows can integrate cleanly:
 
-#### (1) Window-type registry (UserTalk-side, mirrors legacy windowTypes framework)
+#### (1) Window-type registry (UserTalk-side) + a builder analog
 
-A table at `system.windowTypes` (or `system.windows.types` — naming TBD) with entries like:
+The windowTypes registry already exists in the corpus at `Frontier.tools.data.windowTypes.[type]` (resolved by `findWindowType.ut`, with `user.tools.windowTypes.[type]` as the user-override layer). Each type table can carry an `openWindow` handler (run on open) plus File/Edit command tables. The headless port reuses this.
 
-```
-@system.windowTypes
-    .ScriptEditor
-        .menubars = {@user.menubars.editMenu, @user.menubars.scriptMenu}
-        .metaOf = "EditorWindow"     <- optional, supports meta-types
-    .OutlineEditor
-        .menubars = {@user.menubars.editMenu, @user.menubars.outlineMenu}
-        .metaOf = "EditorWindow"
-    .EditorWindow
-        .menubars = {@user.menubars.fileMenu, @user.menubars.windowMenu}
-        .abstract = true             <- meta-types are abstract; no window has this as concrete type
-    .ReplWindow
-        .menubars = {@user.menubars.replMenu}
-```
+But note what the registry is *for*: per-window behavior, and (in legacy) selecting the step-8 modal menu via `system.menus.modals.[winType]`. It is **not** a menubar manifest. Legacy did not have "windowType X → install menubars A,B,C"; legacy had `system.menus.buildMenubar` assembling base + html + bookmarks + custom + all `user.menus` Tool menus + help + one modal menu.
 
-JES wrote this on the legacy side; the headless port should adopt the same shape so existing windowTypes definitions are portable.
+Two honest options for the headless port:
+
+- **(a) Port the builder.** Bring `system.menus.buildMenubar` (and the `user.menus.menubar` / `system.menus.menubar` / `system.menus.helpMenu` / `system.menus.modals.*` data it reads) into the corpus and call it as legacy does. This is the high-fidelity path but requires the builder script body (live ODB only today — see the drift note at the top).
+- **(b) The current headless divergence.** `installReplMenubar` installs the `repl` bar directly, and a `ReplWindow.openWindow` manifest handler (in `Frontier.tools.data.windowTypes.ReplWindow`) installs the `frontier` bar (File/Edit/View). The palette then unions the installed bars. This works and is shipped (Phase E), but it composes the bar through the windowTypes per-window-open path rather than through a `buildMenubar` builder — a deliberate divergence, documented in MENU_PORT_PLAN.md.
+
+If full legacy fidelity is the goal, option (a) is the eventual target and depends on first getting `system.menus.buildMenubar` into the corpus.
 
 #### (2) Frontmost-window tracking (headless event loop)
 
@@ -302,7 +330,7 @@ void on_frontmost_changed (hdl_window old_window, hdl_window new_window) {
 }
 ```
 
-The UserTalk windowTypes framework's `idopenwindowscript` handler reads the new window's type, looks up the menubar manifest, and calls `menu.install` for each. The framework's `idclosewindowscript` handler does the reverse.
+The UserTalk windowTypes framework's `callbacks/openWindow` handler reads the new window's `"type"` attribute, resolves it via `findWindowType`, and runs that type's `openWindow` script (per-window behavior — title, optional type-specific menu). It does **not** install a menubar manifest; legacy bar composition is `system.menus.buildMenubar`'s job. In the headless port, the `ReplWindow.openWindow` handler installs the `frontier` host bar directly — that is the port's divergence from the legacy builder model, not a faithful reproduction of the legacy openWindow handler.
 
 `run_user_script` and the `getsystemtablescript` machinery: port from `tablestructure.c`. Likely needs adaptation for the headless GIL model — we don't have addprocess as a separate runtime queue; scripts run synchronously inline.
 
@@ -327,22 +355,17 @@ The investigation suggests this dependency order for the menu-system port work:
 
 3. **Window-event callback bridge stubs** — port `idopenwindowscript` etc. firing points. Even without windows yet, the REPL itself can fire `idresumescript` / `idsuspendscript` on its own activation/deactivation if that's useful. This is the wiring the windowTypes framework needs.
 
-4. **Window-type registry** — port the UserTalk windowTypes framework as `system.windowTypes` table + handler scripts. Can be done before any actual windows exist — the registry can be populated for "ReplWindow" right away to validate the model.
+4. **Window-type registry** — already present: `Frontier.tools.data.windowTypes.[type]` (corpus), with `user.tools.windowTypes.[type]` as the override layer, resolved by `findWindowType.ut`. Populated for `ReplWindow` (Phase C/E). NOTE: this registry drives per-window behavior + the modal-menu selection; it is not a menubar manifest. Faithful legacy composition additionally needs `system.menus.buildMenubar` + its data tables (gap #1).
 
 5. **Editor windows** — when these arrive, each editor's window record has a windowType, focus changes fire the events, the framework drives menubar composition.
 
 The first three are doable BEFORE editors arrive and would clear the path for them. Editor work would then plug in via clean interfaces rather than retrofitting.
 
-### File > Exit vs REPL > Exit (task #21 deferral)
+### File > Quit vs REPL > Exit (task #21, resolved in Phase E)
 
-The collision question becomes clearer in the windowTypes model:
+In legacy, File lives in the base menubar (`user.menus.menubar`, installed by `system.menus.buildMenubar` step 3) and is present whenever the host bar is up. There is no per-window-type "File menu appears only for editors" mechanism — File is part of the always-present base bar; window type selects only the single modal menu (step 8).
 
-- File menu lives in `system.windowTypes.EditorWindow.menubars` (or wherever the meta-type lives) — appears when an editor window is frontmost.
-- REPL menu lives in `system.windowTypes.ReplWindow.menubars` — appears when the REPL is frontmost.
-
-Today there's no concept of frontmost-window in the headless CLI, so both menubars are always installed (only REPL is implemented). When windowTypes drives composition, **File > Exit and REPL > Exit are visible at different times** — File when an editor is frontmost, REPL when the REPL is. They don't actually collide in any single screen.
-
-This makes option (a) from task #21 (both exist, redundant by design) the right answer — they're not redundant in practice once windowTypes is wired.
+In the headless port, both the `repl` bar (REPL menu, incl. Exit) and the `frontier` bar (File menu, incl. Quit) are installed and the palette unions them, so both are visible at once. Phase E resolved the apparent collision by wiring **File > Quit and REPL > Exit to the same exit path** (`repl.exit ()`): they are dispatch-target-identical, not redundant. See MENU_PORT_PLAN.md Phase E for details.
 
 ---
 
@@ -350,11 +373,11 @@ This makes option (a) from task #21 (both exist, redundant by design) the right 
 
 These remain unresolved in this investigation and should be tracked:
 
-1. **The UserTalk windowTypes framework's actual implementation.** Hypothetical here. When a Frontier.root with the framework surfaces (or JES exports the relevant scripts), this doc should be updated with concrete UserTalk verb signatures, table shape, and handler logic.
+1. **`system.menus.buildMenubar` is not in the corpus.** The authoritative builder body lives only in the live legacy Frontier.root. Until it is exported into `usertalk_scripts/`, the legacy composition model can be described (this doc) but not run/ported faithfully. This is the single biggest gap, and a concrete instance of the broader `.root`/`.ut` sync problem. **Action: export `system.menus.buildMenubar` (and the data tables it reads — `user.menus.menubar`/`system.menus.menubar`, `system.menus.helpMenu`, `system.menus.modals.*`) into the corpus.**
 
-2. **`idmenubarscript` purpose.** Declared but not referenced in `Common/source/`. Either vestigial or called from Mac-specific code outside that tree. Worth checking before porting (might be a hook the windowTypes framework relies on).
+2. **`idmenubarscript` purpose.** Declared (`tablestructure.h`) but not referenced in `Common/source/`. Almost certainly vestigial — modern Frontier composes the bar by explicitly *calling* `system.menus.buildMenubar`, not via a kernel menubar-build hook. Worth a final confirmation before porting, but low risk.
 
-3. **Per-database vs. per-window menubar scope.** Legacy had both. Headless port currently has neither articulated explicitly. Design choice when editors arrive: do menubars belong to a database, a window, both, or neither?
+3. **Per-database vs. per-window menubar scope.** Legacy had per-database (cancoon) menubarlists and a per-frontmost-window modal-menu swap. Headless port currently articulates neither explicitly. Design choice when editors arrive: do menubars belong to a database, a window, both, or neither?
 
 4. **Async vs. sync script dispatch.** Legacy `meuserselected` runs scripts as queued processes (async). Headless `meuserselected_headless` runs inline under the GIL. This is a real semantic difference — if a legacy menu script did `wait 5` then continued, the menubar continued to function. Headless equivalent would freeze the REPL for 5 seconds. Worth surfacing in any porting of substantial legacy menu scripts.
 
