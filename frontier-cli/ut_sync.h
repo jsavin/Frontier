@@ -94,6 +94,77 @@ int ut_canonicalize_outline_text(const unsigned char *in, size_t inlen,
                                  unsigned char **out, size_t *outlen);
 
 
+/*
+ * PATH MAPPING
+ * ------------
+ * A script at ODB dotted path "a.b.c" maps to the filesystem path
+ * "<sync_dir>/a/b/c.ut" and back. The mapping is purely lexical: each dotted
+ * segment becomes one filesystem path component, with no escaping. This
+ * matches the corpus on disk (segments like "#filters" are stored as literal
+ * directory names) and the verifier's documented contract
+ * (tools/verify_virgin_root_sync.py: "lexical, no escaping").
+ *
+ * The dotted path is the one the kernel builds during hydrate
+ * (langhash_materialize_current_path) and pack: it is a "." join of raw key
+ * names, NOT bracket-quoted. The lexical mapping is therefore ambiguous only
+ * if a key name itself contains "." or "/"; no script in the corpus does, and
+ * the functions reject any segment containing "/" (path-separator injection)
+ * or control bytes. A key containing "." cannot be distinguished from a
+ * segment boundary by these functions -- callers that might handle such keys
+ * must walk the hashtable chain instead. (Documented limitation; not present
+ * in any real corpus.)
+ *
+ * SECURITY: ut_odb_path_to_fs refuses any dotted path that, after mapping,
+ * would escape sync_dir -- empty segments, segments equal to "." or "..", a
+ * leading/trailing/double dot, or any segment containing "/" or a control
+ * byte. This prevents a hostile or corrupt ODB key (e.g. "..") from steering
+ * an export write outside the sync directory.
+ */
+
+/*
+ * ut_odb_path_to_fs - map an ODB dotted path to its .ut filesystem path.
+ *
+ * Inputs:
+ *   dotted_path - NUL-terminated dotted path, e.g. "system.verbs.builtins.op".
+ *   sync_dir    - NUL-terminated sync corpus root, e.g.
+ *                 "usertalk_scripts/Frontier.root". No trailing slash
+ *                 required (one is inserted if absent).
+ *   out         - caller-provided buffer for the result fs path.
+ *   outsz       - capacity of out in bytes.
+ *
+ * On success writes "<sync_dir>/<a>/<b>/<c>.ut" to out (NUL-terminated) and
+ * returns 1. Returns 0 if dotted_path is malformed/unsafe (see SECURITY
+ * above), if any argument is NULL, or if the result would not fit in outsz.
+ * On any failure out[0] is set to '\0' when outsz > 0.
+ */
+int ut_odb_path_to_fs(const char *dotted_path, const char *sync_dir,
+                      char *out, size_t outsz);
+
+/*
+ * ut_fs_path_to_odb - map a .ut filesystem path back to its ODB dotted path.
+ *
+ * Inputs:
+ *   fs_path  - NUL-terminated path to a .ut file. May be absolute or relative;
+ *              it must be lexically within sync_dir and end in ".ut".
+ *   sync_dir - NUL-terminated sync corpus root (same value passed to
+ *              ut_odb_path_to_fs).
+ *   out      - caller-provided buffer for the dotted path.
+ *   outsz    - capacity of out in bytes.
+ *
+ * On success writes the dotted path (e.g. "system.verbs.builtins.op") to out
+ * and returns 1. Returns 0 if fs_path is not under sync_dir, lacks a ".ut"
+ * suffix, contains a "." in a path component (which would corrupt the dotted
+ * form), any argument is NULL, or the result would not fit. On failure out[0]
+ * is set to '\0' when outsz > 0.
+ *
+ * This function does NOT resolve symlinks or canonicalize ".."; it operates
+ * lexically. Callers feeding untrusted fs_path values should resolve and
+ * confine the path first.
+ */
+int ut_fs_path_to_odb(const char *fs_path, const char *sync_dir,
+                      char *out, size_t outsz);
+
+
 #ifdef __cplusplus
 }
 #endif

@@ -366,3 +366,165 @@ int ut_canonicalize_outline_text(const unsigned char *in, size_t inlen,
 	*outlen = len;
 	return 1;
 }
+
+/* ------------------------------------------------------------------------- */
+/* Path mapping                                                              */
+/* ------------------------------------------------------------------------- */
+
+/* Reject a single ODB-path segment that cannot safely become an fs component:
+ * empty, ".", "..", or containing "/" or a control byte. Returns 1 if safe. */
+static int segment_is_safe(const char *seg, size_t len) {
+	size_t i;
+	if (len == 0)
+		return 0;
+	if (len == 1 && seg[0] == '.')
+		return 0;
+	if (len == 2 && seg[0] == '.' && seg[1] == '.')
+		return 0;
+	for (i = 0; i < len; i++) {
+		unsigned char c = (unsigned char)seg[i];
+		if (c == '/' || c < 0x20 || c == 0x7f)
+			return 0;
+	}
+	return 1;
+}
+
+int ut_odb_path_to_fs(const char *dotted_path, const char *sync_dir,
+                      char *out, size_t outsz) {
+	size_t dirlen;
+	size_t pos = 0;
+	const char *seg;
+	size_t seglen;
+	const char *p;
+	int need_sep;
+
+	if (out != NULL && outsz > 0)
+		out[0] = '\0';
+	if (dotted_path == NULL || sync_dir == NULL || out == NULL || outsz == 0)
+		return 0;
+	if (dotted_path[0] == '\0')
+		return 0;
+
+	/* Copy sync_dir, then a single separator (unless sync_dir already ends
+	 * in one). */
+	dirlen = strlen(sync_dir);
+	if (dirlen + 1 >= outsz)
+		return 0;
+	memcpy(out, sync_dir, dirlen);
+	pos = dirlen;
+	need_sep = (dirlen == 0) ? 0 : (sync_dir[dirlen - 1] != '/');
+	if (need_sep) {
+		out[pos++] = '/';
+	}
+
+	/* Walk dotted segments, emitting each as a path component. */
+	seg = dotted_path;
+	p = dotted_path;
+	for (;;) {
+		if (*p == '.' || *p == '\0') {
+			seglen = (size_t)(p - seg);
+			if (!segment_is_safe(seg, seglen))
+				goto fail;
+			if (pos + seglen >= outsz)
+				goto fail;
+			memcpy(out + pos, seg, seglen);
+			pos += seglen;
+			if (*p == '\0')
+				break;
+			/* segment separator -> "/" */
+			if (pos + 1 >= outsz)
+				goto fail;
+			out[pos++] = '/';
+			seg = p + 1;
+		}
+		p++;
+	}
+
+	/* Append ".ut". */
+	if (pos + 3 >= outsz)
+		goto fail;
+	out[pos++] = '.';
+	out[pos++] = 'u';
+	out[pos++] = 't';
+	out[pos] = '\0';
+	return 1;
+
+fail:
+	out[0] = '\0';
+	return 0;
+}
+
+int ut_fs_path_to_odb(const char *fs_path, const char *sync_dir,
+                      char *out, size_t outsz) {
+	size_t dirlen;
+	size_t pathlen;
+	const char *rel;
+	size_t rellen;
+	size_t i;
+	size_t pos = 0;
+
+	if (out != NULL && outsz > 0)
+		out[0] = '\0';
+	if (fs_path == NULL || sync_dir == NULL || out == NULL || outsz == 0)
+		return 0;
+
+	dirlen = strlen(sync_dir);
+	/* Strip a trailing slash on sync_dir for the prefix compare. */
+	while (dirlen > 0 && sync_dir[dirlen - 1] == '/')
+		dirlen--;
+	if (dirlen == 0)
+		return 0;
+
+	pathlen = strlen(fs_path);
+	/* fs_path must start with sync_dir followed by '/'. */
+	if (pathlen <= dirlen + 1)
+		return 0;
+	if (strncmp(fs_path, sync_dir, dirlen) != 0)
+		return 0;
+	if (fs_path[dirlen] != '/')
+		return 0;
+
+	rel = fs_path + dirlen + 1;
+	rellen = strlen(rel);
+
+	/* Require ".ut" suffix; strip it. */
+	if (rellen < 3 || strcmp(rel + rellen - 3, ".ut") != 0)
+		return 0;
+	rellen -= 3;
+	if (rellen == 0)
+		return 0;
+
+	/* Map "/" -> "." ; reject a "." inside any component (would corrupt the
+	 * dotted form), and reject empty components / control bytes. */
+	for (i = 0; i < rellen; i++) {
+		unsigned char c = (unsigned char)rel[i];
+		char outc;
+		if (c == '/') {
+			/* empty component (leading, trailing, or "//") is invalid */
+			if (pos == 0 || out[pos - 1] == '.')
+				return 0;
+			outc = '.';
+		} else if (c == '.') {
+			/* a literal dot in a path component cannot round-trip */
+			out[0] = '\0';
+			return 0;
+		} else if (c < 0x20 || c == 0x7f) {
+			out[0] = '\0';
+			return 0;
+		} else {
+			outc = (char)c;
+		}
+		if (pos + 1 >= outsz) {
+			out[0] = '\0';
+			return 0;
+		}
+		out[pos++] = outc;
+	}
+	/* trailing component must be non-empty (no trailing slash before .ut) */
+	if (pos == 0 || out[pos - 1] == '.') {
+		out[0] = '\0';
+		return 0;
+	}
+	out[pos] = '\0';
+	return 1;
+}
