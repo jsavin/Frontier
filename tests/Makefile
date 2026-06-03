@@ -222,7 +222,7 @@ USERTALK_OBJECT_TESTS = \
 	test_usertalk_runner
 
 # Buildable test executables on this branch
-RUN_BUILDABLE = core_tests db_format_tests runtime_tests parser_tests save_migration_tests test_efp_augmentation file_portable_tests file_readline_tests file_verb_tests handle_tests cli_runtime_tests paige_text_tests oppack_tests hashpack_modern_tests hash_corruption_tests langvalue_64_tests table_operations_integration refcon_tests refcon_phase2_tests op_context_tests table_context_tests time_portability_test test_sys_shell_command_verbs headless_selection_tests opattributes_stub_tests headless_thread_registry_tests test_callback_infrastructure tcp_phase1a_unit_tests menu_v7_refcon_tests menudata_headless_tests menu_list_describe_tests meuserselected_headless_tests test_stringerrorlist pane_compositor_tests mouse_parser_tests terminal_control_tests terminal_control_dsr_tests palette_state_tests palette_render_snapshot_tests palette_arg_inject_tests palette_arg_inject_concurrency_tests repl_palette_source_tests repl_verbs_tests repl_slash_resolver_tests scrollback_pane_tests lang_causedby_snapshot_tests test_getsystemtablescript test_window_bridge
+RUN_BUILDABLE = core_tests db_format_tests runtime_tests parser_tests save_migration_tests test_efp_augmentation file_portable_tests file_readline_tests file_verb_tests handle_tests cli_runtime_tests paige_text_tests oppack_tests hashpack_modern_tests hash_corruption_tests langvalue_64_tests table_operations_integration refcon_tests refcon_phase2_tests op_context_tests table_context_tests time_portability_test test_sys_shell_command_verbs headless_selection_tests opattributes_stub_tests headless_thread_registry_tests test_callback_infrastructure tcp_phase1a_unit_tests menu_v7_refcon_tests menudata_headless_tests menu_list_describe_tests meuserselected_headless_tests test_stringerrorlist pane_compositor_tests mouse_parser_tests terminal_control_tests terminal_control_dsr_tests palette_state_tests palette_render_snapshot_tests palette_arg_inject_tests palette_arg_inject_concurrency_tests repl_palette_source_tests repl_verbs_tests repl_slash_resolver_tests scrollback_pane_tests lang_causedby_snapshot_tests test_getsystemtablescript test_window_bridge ut_sync_canonicalize_tests
 # Note: table_verb_tests skipped - pre-existing macOS path detection issue
 # Note: test_error_messages skipped - needs full runtime linking (tracked in separate task)
 # Note: test_table_sorting skipped - script execution errors cause segfault (Issue #449)
@@ -391,6 +391,13 @@ repl_verbs_tests: repl_verbs_tests.c $(LANG_RUNTIME_SOURCES) ../frontier-cli/rep
 repl_slash_resolver_tests: repl_slash_resolver_tests.c $(LANG_RUNTIME_SOURCES) ../frontier-cli/repl_slash_resolver.c ../frontier-cli/stubs/headless_shell.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable -I../frontier-cli \
 		repl_slash_resolver_tests.c $(LANG_RUNTIME_SOURCES) ../frontier-cli/repl_slash_resolver.c ../frontier-cli/stubs/headless_shell.c -o $@ $(LINK_LIBS)
+
+# ODB<->.ut canonicalizer parity tests. ut_canonicalize_outline_text is a
+# pure byte transform (no kernel state), so this binary needs only the two
+# source files and the standard C library -- no LANG_RUNTIME_SOURCES.
+ut_sync_canonicalize_tests: ut_sync_canonicalize_tests.c ../frontier-cli/ut_sync.c ../frontier-cli/ut_sync.h
+	$(CC) $(CFLAGS) -I../frontier-cli \
+		ut_sync_canonicalize_tests.c ../frontier-cli/ut_sync.c -o $@ $(LINK_LIBS)
 
 runtime_tests: runtime_tests.c $(LANG_RUNTIME_SOURCES) ../frontier-cli/stubs/headless_shell.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable runtime_tests.c $(LANG_RUNTIME_SOURCES) ../frontier-cli/stubs/headless_shell.c -o $@ $(LINK_LIBS)
