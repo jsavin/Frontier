@@ -245,6 +245,7 @@ boolean cli_parse_arguments(int argc, char* argv[], cli_options_t* options) {
 	 * single-character optstring while remaining valid getopt return values. */
 	enum {
 		OPT_LOCK_OPENED_ROOTS = 256,
+		OPT_UT_SYNC_DIR,
 	};
 
 	// Define long options
@@ -265,6 +266,7 @@ boolean cli_parse_arguments(int argc, char* argv[], cli_options_t* options) {
 		{"protocol", no_argument, 0, 'P'},
 		{"ws-port", optional_argument, 0, 'W'},
 		{"lock-opened-roots", no_argument, 0, OPT_LOCK_OPENED_ROOTS},
+		{"ut-sync-dir", required_argument, 0, OPT_UT_SYNC_DIR},
 		{"help", no_argument, 0, 'h'},
 		{"version", no_argument, 0, 'V'},
 		{0, 0, 0, 0}
@@ -504,6 +506,23 @@ boolean cli_parse_arguments(int argc, char* argv[], cli_options_t* options) {
 			case 'S':  options->skip_startup = true; break;
 			case 'P':  options->protocol_mode = true; break;
 			case OPT_LOCK_OPENED_ROOTS: options->lock_opened_roots = true; break;
+
+			case OPT_UT_SYNC_DIR:
+				if (options->ut_sync_dir != NULL) {
+					log_error(LOG_COMP_GENERAL, "Error: Multiple --ut-sync-dir options not allowed");
+					goto parse_error;
+				}
+				if (strlen(optarg) > CLI_MAX_PATH_LENGTH) {
+					log_error(LOG_COMP_GENERAL, "Error: --ut-sync-dir path too long (max %d characters)", CLI_MAX_PATH_LENGTH);
+					goto parse_error;
+				}
+				options->ut_sync_dir = strdup(optarg);
+				if (options->ut_sync_dir == NULL) {
+					log_error(LOG_COMP_GENERAL, "Error: Memory allocation failed for --ut-sync-dir");
+					goto parse_error;
+				}
+				break;
+
 			case 'h':  options->show_help = true; break;
 			case 'V':  options->show_version = true; break;
 
@@ -627,6 +646,27 @@ boolean cli_parse_arguments(int argc, char* argv[], cli_options_t* options) {
 		shell_api_set_lock_opened_roots(options->lock_opened_roots);
 	}
 
+	/* FRONTIER_UT_SYNC_DIR env-var fallback for --ut-sync-dir.
+	 * CLI flag wins: only populate from env when the flag was not given.
+	 * strdup so cli_free_options can free uniformly regardless of source. */
+	if (options->ut_sync_dir == NULL) {
+		const char *env_sync = getenv("FRONTIER_UT_SYNC_DIR");
+		if (env_sync != NULL && env_sync[0] != '\0') {
+			if (strlen(env_sync) > CLI_MAX_PATH_LENGTH) {
+				log_error(LOG_COMP_GENERAL,
+				          "Error: FRONTIER_UT_SYNC_DIR path too long (max %d characters)",
+				          CLI_MAX_PATH_LENGTH);
+				return false;
+			}
+			options->ut_sync_dir = strdup(env_sync);
+			if (options->ut_sync_dir == NULL) {
+				log_error(LOG_COMP_GENERAL,
+				          "Error: Memory allocation failed for FRONTIER_UT_SYNC_DIR");
+				return false;
+			}
+		}
+	}
+
 	// Validate the parsed options
 	return cli_validate_options(options);
 
@@ -670,6 +710,11 @@ void cli_free_options(cli_options_t* options) {
 	if (options->log_spec != NULL) {
 		free(options->log_spec);
 		options->log_spec = NULL;
+	}
+
+	if (options->ut_sync_dir != NULL) {
+		free(options->ut_sync_dir);
+		options->ut_sync_dir = NULL;
 	}
 
 	/* Free extra args linked list */

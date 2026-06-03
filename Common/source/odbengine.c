@@ -709,6 +709,23 @@ pascal Handle odbGetRootVariable (odbref odb) {
 
 pascal boolean odbSaveFile (odbref odb) {
 
+	/*
+	 * TODO(#70): guest-DB ut-sync export site.
+	 *
+	 * When --ut-sync is active, dirty scripts in this guest database should
+	 * be exported to .ut files before the pack pass clears their dirty flags,
+	 * matching the same export logic in save_system_root_on_exit() in main.c.
+	 *
+	 * This is the second of two export sites (the system-root site is
+	 * implemented; this guest-DB site is deferred). To implement:
+	 *   1. Add g_cli_options.ut_sync_dir visibility here (extern or a
+	 *      getter function in cli_utils.h).
+	 *   2. Get the guest database's root hdlhashtable from odb/hc.
+	 *   3. Call ut_export_walk_table() with an appropriate dotted-path
+	 *      prefix (could be the guest DB filename without extension).
+	 * Issue #70 tracks this work.
+	 */
+
 	hdlcancoonrecord hc = (hdlcancoonrecord) odb;
 	tyversion2cancoonrecord info;
 	dbaddress adr;

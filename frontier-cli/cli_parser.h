@@ -66,6 +66,7 @@ typedef struct {
 								// suppressed. Newly created roots (file.save / file.saveAs /
 								// db.compactDatabase) are unaffected. Issue #127.
 	int ws_port;				// WebSocket server port (--ws-port), 0 = disabled
+	char* ut_sync_dir;			// .ut sync corpus root (--ut-sync <dir>); NULL = feature off
 	boolean show_help;			// Show help flag
 	boolean show_version;		// Show version flag
 	cli_extra_arg_t *extra_args;	// Linked list of unknown --flags

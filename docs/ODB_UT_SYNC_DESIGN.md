@@ -33,12 +33,12 @@ The motivating failure: `system.menus.buildMenubar` (the authoritative menubar b
 | Clean pre-startupScript boot window | EXISTS | between `hydrate_system_root_database` (`main.c:582`) and `loadsystemscripts` (`main.c:594`) |
 | Per-*script* mod timestamp | EXISTS | `timeModified(@adr)` / `timeCreated(@adr)` UserTalk verbs; kernel `langexternalgettimes` -> `opverbgettimes` for scripts (`langexternal.c:3213`); verified live (siblings in one table return different dates) |
 | Per-table mod timestamp | EXISTS (rarely used) | `tyhashtable.timelastsave` (`lang.h:532`); `odbGetModDate` / `db.getModDate` (`odbengine.c:1237-1267`) — JES: "we almost never used db.getModDate" |
-| Kernel-body / comment normalization (round-trip) | PARTIAL | `normalize_kernel_body` in the verifier (`verify_virgin_root_sync.py:355-414`) |
-| ODB -> .ut exporter (committed tool) | **MISSING** | corpus was produced ad hoc |
-| .ut -> ODB importer (committed tool) | **MISSING** | issue #676 proposes `tools/build-virgin-root.sh` |
-| Save hook (ODB write -> .ut export) | **MISSING** | no write-time chokepoint today |
-| Boot import pass (.ut -> ODB) | **MISSING** | the `main.c:582-594` window is unused |
-| Pre-commit / CI gating | **MISSING** | verifier is manual-only; #675 deferred CI |
+| Kernel-body / comment normalization (round-trip) | EXISTS (C authoritative) | `ut_canonicalize_outline_text` / `ut_decanonicalize_outline_text` in `frontier-cli/ut_sync.c`; Python `normalize_kernel_body` is now a parity-tracked reference (`tests/ut_sync_canonicalize_tests.c` proves byte-equality) |
+| ODB -> .ut exporter (runtime) | EXISTS | `ut_export_script` (`ut_sync.c`), driven by the save-on-exit walk `ut_export_walk_table` (`main.c`); gated by `--ut-sync-dir` / `FRONTIER_UT_SYNC_DIR` |
+| .ut -> ODB importer (runtime) | EXISTS | `ut_import_hook` + `ut_import_check` fired from `opverbinmemory` (`opverbs.c`) on hydrate/materialize; last-write-wins by mtime |
+| Save hook (ODB write -> .ut export) | EXISTS | `save_system_root_on_exit` -> `ut_export_walk_table` (`main.c`) |
+| Boot import pass (.ut -> ODB) | EXISTS | import site inside the kernel `opverbinmemory` materialize path (catches live out-of-band .ut edits) |
+| Pre-commit / CI gating | PARTIAL | git-time drift verifier is manual / warn-only; runtime sync now lifecycle-tested (`tests/ut_sync_lifecycle_test.sh`) |
 
 **Stale-path note to fix in passing**: the verifier's `DEFAULT_CORPUS_ROOT` and issue #675's prose reference `databases/usertalk_scripts/`, but the live corpus is `usertalk_scripts/Frontier.root/` (4677 `.ut` files). Reconcile during Phase 1.
 
@@ -54,7 +54,7 @@ ODB <-> .ut is not a byte-identity transform. The known transforms (from `normal
 - **Trailing newline**: `.ut` has none; the ODB form may.
 - **Brace-wrapped comment subtrees**: the historical ad-hoc exporter **dropped** these. Any new exporter must preserve them or round-trip is lossy.
 
-**Design requirement**: there must be exactly ONE canonicalization library, shared by exporter, importer, and verifier. Today the normalization logic lives only in the verifier. If the exporter re-implements it independently, the two will drift and we recreate the original problem one level up. Extract `normalize`/`canonicalize` into a single module that all three tools import.
+**Design requirement (SATISFIED)**: there must be exactly ONE canonicalization library, shared by exporter, importer, and verifier. This is now `ut_canonicalize_outline_text` / `ut_decanonicalize_outline_text` in `frontier-cli/ut_sync.c`, used by both the runtime exporter (`ut_export_script`) and importer (`ut_import_check`). The Python `normalize_kernel_body` in the git-time verifier is a deliberate parity-tracked copy, not an independent reimplementation: `tests/ut_sync_canonicalize_tests.c` asserts the C output is byte-identical to the Python reference on the real corpus, so the two cannot silently drift. Rule: change the C function first, then mirror it in Python.
 
 ---
 
