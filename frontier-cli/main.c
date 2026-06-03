@@ -185,22 +185,35 @@ const char *cli_get_system_root_basename(void) {
  * Thread safety: cli_record_ut_import is only called from opverbinmemory during
  * the bulk-hydrate walk on the main thread while the GIL is held. No concurrent
  * access possible.
+ *
+ * The list grows dynamically: a fixed cap would silently drop re-dirty records
+ * past the limit, which means those imported scripts would NOT be persisted on
+ * the next save (the imported content would appear to load then vanish on the
+ * following reload). A corpus can legitimately have thousands of scripts, so the
+ * list must accommodate as many imports as actually occur.
  */
-#define UT_IMPORT_MAX 256
-
-static char *g_ut_imported_paths[UT_IMPORT_MAX];
+static char **g_ut_imported_paths = NULL;
 static int g_ut_imported_count = 0;
+static int g_ut_imported_cap = 0;
 
 /* Called from opverbinmemory (via extern) when a .ut file is imported.
  * Records the dotted path for the re-dirty pass after clear_post_hydration_dirty_flags. */
 void cli_record_ut_import(const char *dotted_path) {
 	if (dotted_path == NULL || dotted_path[0] == '\0')
 		return;
-	if (g_ut_imported_count >= UT_IMPORT_MAX) {
-		log_warn(LOG_COMP_STARTUP,
-		         "ut-sync: import list full (max %d); skipping re-dirty for %s",
-		         UT_IMPORT_MAX, dotted_path);
-		return;
+	if (g_ut_imported_count >= g_ut_imported_cap) {
+		int newcap = (g_ut_imported_cap == 0) ? 256 : g_ut_imported_cap * 2;
+		char **grown = (char **) realloc(g_ut_imported_paths,
+		                                 (size_t) newcap * sizeof(char *));
+		if (grown == NULL) {
+			log_warn(LOG_COMP_STARTUP,
+			         "ut-sync: import list grow failed (%d entries); "
+			         "skipping re-dirty for %s",
+			         g_ut_imported_cap, dotted_path);
+			return;
+		}
+		g_ut_imported_paths = grown;
+		g_ut_imported_cap = newcap;
 	}
 	char *copy = strdup(dotted_path);
 	if (copy == NULL) {
@@ -307,7 +320,10 @@ static void cli_redirty_ut_imported_paths(void) {
 			g_ut_imported_paths[i] = NULL;
 		}
 	}
+	free(g_ut_imported_paths);
+	g_ut_imported_paths = NULL;
 	g_ut_imported_count = 0;
+	g_ut_imported_cap = 0;
 }
 
 /*

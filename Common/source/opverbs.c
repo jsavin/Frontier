@@ -582,6 +582,7 @@ static boolean opverbpackoutline (hdloutlinerecord houtline, Handle *hpacked) {
 
 
 #if defined(FRONTIER_HEADLESS)
+#include <time.h> /* time() for the .ut hot-path import throttle */
 /*
  * ut_find_dotted_path_topdown - recursively search a hashtable subtree for the
  * external variable `target`, building the dotted path top-down (root-first).
@@ -725,7 +726,40 @@ static int ut_build_dotted_path_from_hv(hdlexternalvariable hv,
  * Non-fatal: any failure logs and falls through to the ODB version. Import
  * failure never blocks script execution.
  */
-static void ut_import_hook(hdloutlinevariable hv, hdloutlinerecord ho) {
+/*
+ * Coarse wall-clock throttle for the already-in-memory hot-path site.
+ *
+ * Direction-B re-import on the flinmemory==true path runs every time a script
+ * is materialized (i.e. on every call). Each run does a blocking stat()+open
+ * of the .ut file under the GIL. A script called in a tight loop would issue
+ * one filesystem syscall per iteration -- a needless syscall storm that
+ * serializes against every other thread via the GIL.
+ *
+ * Live out-of-band .ut edits are a human-speed event, so checking the
+ * filesystem at most once per UT_HOTPATH_CHECK_INTERVAL_SECS across all
+ * hot-path materializations is imperceptible to the editor while removing the
+ * per-call cost. The gate is a single GIL-protected static (only the GIL
+ * holder runs interpreter C code), so no locking is required.
+ *
+ * The first-materialization site (disk->memory load) is NOT throttled: it is
+ * one check per script per load and must always run so boot-time and lazy
+ * imports work.
+ */
+#define UT_HOTPATH_CHECK_INTERVAL_SECS ((time_t)1)
+
+static int ut_hotpath_check_due(void) {
+	static time_t last_check = 0;
+	time_t now = time(NULL);
+	if (now == (time_t)-1)
+		return 1; /* clock unavailable: don't suppress correctness */
+	if (now - last_check < UT_HOTPATH_CHECK_INTERVAL_SECS)
+		return 0;
+	last_check = now;
+	return 1;
+}
+
+static void ut_import_hook(hdloutlinevariable hv, hdloutlinerecord ho,
+                           int is_hotpath) {
 	extern const char *cli_get_ut_sync_dir(void) __attribute__((weak));
 	extern const char *cli_get_system_root_basename(void) __attribute__((weak));
 	extern void cli_record_ut_import(const char *dotted_path) __attribute__((weak));
@@ -742,6 +776,10 @@ static void ut_import_hook(hdloutlinevariable hv, hdloutlinerecord ho) {
 	    !((**hv).id == idscriptprocessor || (**hv).id == idoutlineprocessor))
 		return;
 
+	/* Hot path: skip the filesystem check unless the coarse interval elapsed. */
+	if (is_hotpath && !ut_hotpath_check_due())
+		return;
+
 	char dotted_path[512];
 	if (!ut_build_dotted_path_from_hv((hdlexternalvariable) hv,
 	                                  dotted_path, sizeof(dotted_path))) {
@@ -751,14 +789,27 @@ static void ut_import_hook(hdloutlinevariable hv, hdloutlinerecord ho) {
 		return;
 	}
 
-	/* Build effective sync base = sync_dir + "/" + rootBasename. */
+	/*
+	 * Build effective sync base = sync_dir + "/" + rootBasename.
+	 *
+	 * sync_dir can be up to the CLI's max path length (1024); rootBasename
+	 * adds a filename plus a separator. The export side (ut_sync.c /
+	 * frontier-cli/main.c) sizes its equivalent buffer generously, so the
+	 * import side must match or the two directions compute DIFFERENT .ut
+	 * paths for a long sync_dir and sync silently breaks. Size to 4096
+	 * (same as ut_sync.c's fs_path buffers) and bail on truncation rather
+	 * than proceed with a wrong, possibly attacker-influenced, base.
+	 */
 	const char *rbn = (cli_get_system_root_basename != NULL)
 	                      ? cli_get_system_root_basename() : "";
-	char sync_base[1024];
+	char sync_base[4096];
+	int sb_n;
 	if (rbn[0] != '\0')
-		snprintf(sync_base, sizeof(sync_base), "%s/%s", sync_dir, rbn);
+		sb_n = snprintf(sync_base, sizeof(sync_base), "%s/%s", sync_dir, rbn);
 	else
-		snprintf(sync_base, sizeof(sync_base), "%s", sync_dir);
+		sb_n = snprintf(sync_base, sizeof(sync_base), "%s", sync_dir);
+	if (sb_n < 0 || sb_n >= (int) sizeof(sync_base))
+		return; /* truncated: do not import from a wrong path */
 
 	int64_t odb_mac_mtime = (**ho).timelastsave;
 	unsigned char *decan_buf = NULL;
@@ -783,7 +834,16 @@ static void ut_import_hook(hdloutlinevariable hv, hdloutlinerecord ho) {
 		if (optexttooutline(ho, htext, &hsummit)) {
 			opsetsummit(ho, hsummit);
 			opsetctexpanded(ho);
-			/* Stamp mtime for convergence: next load sees .ut not newer. */
+			/*
+			 * Stamp mtime for convergence BEFORE the opverbsetdirty call
+			 * below. This ordering is load-bearing: opverbsetdirty re-enters
+			 * opverbinmemory, which re-invokes this hook. By stamping
+			 * timelastsave = ut_mac_mtime first, the recursive ut_import_check
+			 * sees the .ut as no-longer-strictly-newer (equal mtime) and
+			 * returns 0, terminating the recursion at depth 1. Reordering
+			 * these two lines (dirty before stamp) would re-import on every
+			 * recursion level and rebuild the outline mid-flight -- do not.
+			 */
 			(**ho).timelastsave = ut_mac_mtime;
 			/* Mark dirty so tablesavesystemtable persists on next save. */
 			opverbsetdirty((hdlexternalvariable) hv, true);
@@ -841,9 +901,11 @@ boolean opverbinmemory (const db_context *ctx, hdlexternalvariable hvariable) {
 		 * .ut import hook (Direction B), already-in-memory site. Catches LIVE
 		 * out-of-band .ut edits: edit a .ut after boot, and the next time the
 		 * verb is materialized this re-checks the .ut mtime and re-imports if
-		 * newer. No-op (one stat) when sync is off or the .ut is not newer.
+		 * newer. No-op when sync is off or the .ut is not newer; the
+		 * filesystem check is throttled (is_hotpath=1) so a script called in a
+		 * tight loop does not issue a stat() per call.
 		 */
-		ut_import_hook(hv, ho);
+		ut_import_hook(hv, ho, /*is_hotpath=*/1);
 #endif
 
 		return (true);
@@ -965,8 +1027,10 @@ boolean opverbinmemory (const db_context *ctx, hdlexternalvariable hvariable) {
 	 * .ut import hook (Direction B), first-materialization site. Runs after
 	 * opverbsetupoutline + opinitcallbacks so the texttooutlinecallback is
 	 * wired and ho->timelastsave is populated by opunpack. See ut_import_hook.
+	 * is_hotpath=0: one check per script per disk->memory load, never
+	 * throttled, so boot-time and lazy imports always run.
 	 */
-	ut_import_hook(hv, ho);
+	ut_import_hook(hv, ho, /*is_hotpath=*/0);
 #endif /* FRONTIER_HEADLESS */
 
 	return (true);

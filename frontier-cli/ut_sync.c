@@ -14,6 +14,7 @@
 
 #include "ut_sync.h"
 
+#include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <stdint.h>
@@ -23,6 +24,7 @@
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/types.h>
+#include <time.h>
 #include <unistd.h>
 
 /*
@@ -101,9 +103,14 @@ static int append_utf8(unsigned char **buf, size_t *len, size_t *cap,
 	return 1;
 }
 
-/* Append a single raw byte (already final) to a growable buffer. */
-static int append_byte(unsigned char **buf, size_t *len, size_t *cap,
-                       unsigned char b) {
+/*
+ * Append a single ASCII byte to a growable UTF-8 buffer. Callers only ever
+ * pass structural ASCII (CR, LF, '/'); a non-ASCII byte would be silently
+ * re-encoded as multi-byte UTF-8 by append_utf8, which is never intended here.
+ */
+static int append_ascii_byte(unsigned char **buf, size_t *len, size_t *cap,
+                             unsigned char b) {
+	assert(b < 0x80);
 	return append_utf8(buf, len, cap, (unsigned int)b);
 }
 
@@ -148,7 +155,7 @@ static int decode_and_substitute(const unsigned char *in, size_t inlen,
 			in_string = 0;
 			in_char = 0;
 			escaped = 0;
-			if (!append_byte(&buf, &len, &cap, b))
+			if (!append_ascii_byte(&buf, &len, &cap, b))
 				goto fail;
 			continue;
 		}
@@ -197,8 +204,8 @@ static int decode_and_substitute(const unsigned char *in, size_t inlen,
 			continue;
 		}
 		if (b == MACROMAN_CHCOMMENT) {
-			if (!append_byte(&buf, &len, &cap, '/') ||
-			    !append_byte(&buf, &len, &cap, '/'))
+			if (!append_ascii_byte(&buf, &len, &cap, '/') ||
+			    !append_ascii_byte(&buf, &len, &cap, '/'))
 				goto fail;
 			continue;
 		}
@@ -462,6 +469,13 @@ static unsigned int decode_utf8_scalar(const unsigned char *buf, size_t inlen,
 		cp = (cp << 6) | (unsigned int)(cb & 0x3F);
 	}
 
+	/* Reject overlong encodings: a scalar must use the shortest sequence.
+	 * (The 2-byte overlong case is already excluded by the b0 < 0xC2 test.) */
+	if (nbytes == 3 && cp < 0x800)
+		return 0xFFFFFFFF;
+	if (nbytes == 4 && cp < 0x10000)
+		return 0xFFFFFFFF;
+
 	/* Reject surrogates and values above U+10FFFF */
 	if (cp >= 0xD800 && cp <= 0xDFFF)
 		return 0xFFFFFFFF;
@@ -517,7 +531,6 @@ int ut_decanonicalize_outline_text(const unsigned char *in, size_t inlen,
 	*outlen = 0;
 
 	while (pos < inlen) {
-		size_t scalar_start = pos;
 		unsigned int cp = decode_utf8_scalar(in, inlen, &pos);
 		unsigned char mac_byte;
 		int mac_ok;
@@ -639,9 +652,6 @@ int ut_decanonicalize_outline_text(const unsigned char *in, size_t inlen,
 			goto fail_encoding;
 		if (!append_byte_rev(&buf, &len, &cap, mac_byte))
 			goto fail;
-
-		/* Suppress unused-variable warning for scalar_start */
-		(void)scalar_start;
 	}
 
 	/* Allocate at least 1 byte so we can NUL-terminate empty output */
@@ -872,6 +882,15 @@ static int mkdir_p(char *path) {
  */
 #define UT_MAC_TO_UNIX_EPOCH_OFFSET ((int64_t)2082844800LL)
 
+/*
+ * Upper bound on a .ut file we are willing to read into memory on import.
+ * UserTalk scripts are at most a few KB; anything past this is either corrupt
+ * or a resource-exhaustion lever planted in the sync dir, so we refuse it
+ * rather than malloc()/read() an arbitrarily large blob on the GIL-held
+ * materialize path. 8 MiB is comfortably above any real script.
+ */
+#define UT_MAX_FILE_BYTES ((size_t)(8u * 1024u * 1024u))
+
 /* ------------------------------------------------------------------------- */
 /* Import primitive                                                           */
 /* ------------------------------------------------------------------------- */
@@ -883,7 +902,7 @@ int ut_import_check(const char *dotted_path, const char *sync_base,
 	char fs_path[4096];
 	struct stat st;
 	int64_t dot_mac_mtime;
-	FILE *f;
+	int fd = -1;
 	unsigned char *raw = NULL;
 	size_t raw_len;
 	unsigned char *decan = NULL;
@@ -903,60 +922,95 @@ int ut_import_check(const char *dotted_path, const char *sync_base,
 	if (!ut_odb_path_to_fs(dotted_path, sync_base, fs_path, sizeof(fs_path)))
 		return 0;
 
-	/* Step 2: stat() -- cheapest check; returns immediately if .ut missing. */
-	if (stat(fs_path, &st) != 0)
-		return 0;  /* ENOENT or unreadable: no import */
+	/*
+	 * Step 2: Open the file once, with O_NOFOLLOW on the final component, and
+	 * do ALL subsequent checks (mtime, size, read) against that one fd via
+	 * fstat. This closes two holes a writer of the sync dir could otherwise
+	 * exploit, since imported .ut content becomes executable UserTalk:
+	 *   - symlink redirect: O_NOFOLLOW refuses to open a symlinked .ut, so a
+	 *     planted symlink can't pull in a file outside the sync dir.
+	 *   - TOCTOU: stat-then-open lets the file be swapped between the mtime
+	 *     check and the read. fstat on the opened fd checks the exact bytes
+	 *     we are about to read.
+	 * O_NONBLOCK guards against the final component being a FIFO/device that
+	 * would block open() indefinitely; we clear it implicitly by only ever
+	 * reading a regular file (checked below).
+	 */
+	fd = open(fs_path, O_RDONLY | O_NOFOLLOW | O_NONBLOCK);
+	if (fd < 0)
+		return 0;  /* ENOENT, ELOOP (symlink), or unreadable: no import */
+
+	if (fstat(fd, &st) != 0) {
+		close(fd);
+		return 0;
+	}
+
+	/* Only import from a regular file; reject FIFOs, devices, directories. */
+	if (!S_ISREG(st.st_mode)) {
+		close(fd);
+		return 0;
+	}
 
 	/* Step 3: Convert .ut st_mtime to Mac epoch and compare.
 	 * st_mtime + UT_MAC_TO_UNIX_EPOCH_OFFSET yields Mac epoch seconds.
 	 * Import only when the .ut is STRICTLY newer than the ODB value. */
 	dot_mac_mtime = (int64_t)st.st_mtime + UT_MAC_TO_UNIX_EPOCH_OFFSET;
-	if (dot_mac_mtime <= odb_mac_mtime)
+	if (dot_mac_mtime <= odb_mac_mtime) {
+		close(fd);
 		return 0;
+	}
 
-	/* Step 4: Read the .ut file into a buffer. */
-	f = fopen(fs_path, "rb");
-	if (f == NULL)
+	/* Step 4: Read the .ut file into a buffer, using the size from fstat. */
+	if (st.st_size < 0) {
+		close(fd);
 		return 0;
-	if (fseek(f, 0, SEEK_END) != 0) {
-		fclose(f);
+	}
+	raw_len = (size_t)st.st_size;
+	if (raw_len > UT_MAX_FILE_BYTES) {
+		/* Oversized: refuse rather than allocate/read an arbitrary blob. */
+		close(fd);
+		return 0;
+	}
+	if (raw_len == 0) {
+		/* Empty .ut: decanonicalize of empty input is empty. */
+		close(fd);
+		decan = (unsigned char *)malloc(1);
+		if (decan == NULL)
+			return 0;
+		decan[0] = '\0';
+		*out          = decan;
+		*outlen       = 0;
+		*ut_mac_mtime = dot_mac_mtime;
+		return 1;
+	}
+	raw = (unsigned char *)malloc(raw_len);
+	if (raw == NULL) {
+		close(fd);
 		return 0;
 	}
 	{
-		long sz = ftell(f);
-		if (sz < 0) {
-			fclose(f);
-			return 0;
-		}
-		if (fseek(f, 0, SEEK_SET) != 0) {
-			fclose(f);
-			return 0;
-		}
-		raw_len = (size_t)sz;
-		if (raw_len == 0) {
-			/* Empty .ut: decanonicalize of empty input is empty. */
-			fclose(f);
-			decan = (unsigned char *)malloc(1);
-			if (decan == NULL)
+		/* read() may return short; loop until raw_len bytes or error/EOF. */
+		size_t got = 0;
+		while (got < raw_len) {
+			ssize_t n = read(fd, raw + got, raw_len - got);
+			if (n < 0) {
+				if (errno == EINTR)
+					continue;
+				close(fd);
+				free(raw);
 				return 0;
-			decan[0] = '\0';
-			*out          = decan;
-			*outlen       = 0;
-			*ut_mac_mtime = dot_mac_mtime;
-			return 1;
+			}
+			if (n == 0)
+				break;  /* unexpected EOF: file shrank since fstat */
+			got += (size_t)n;
 		}
-		raw = (unsigned char *)malloc(raw_len);
-		if (raw == NULL) {
-			fclose(f);
-			return 0;
-		}
-		if (fread(raw, 1, raw_len, f) != raw_len) {
-			fclose(f);
+		if (got != raw_len) {
+			close(fd);
 			free(raw);
 			return 0;
 		}
-		fclose(f);
 	}
+	close(fd);
 
 	/* Step 5: Decanonicalize (UTF-8/LF/slash-slash -> MacRoman/CR/0xC7).
 	 * Fails if the .ut contains non-MacRoman characters (e.g. emoji). */
@@ -1014,18 +1068,32 @@ int ut_export_script(const unsigned char *raw, size_t rawlen,
 
 	/* Step 4: Write to a temp file in the same directory, then rename.
 	 *
-	 * Temp name: <fs_path>.tmp<pid> -- simple and avoids collisions between
-	 * concurrent frontiers (same pid can't run two exports at once). */
+	 * Temp name: <fs_path>.tmp<pid>.<rand> -- the random suffix plus O_EXCL
+	 * means a pre-planted file or symlink at the temp path can't be reused or
+	 * followed (O_NOFOLLOW), and O_EXCL fails rather than truncating an
+	 * attacker-controlled target. We retry a few times in the (vanishingly
+	 * unlikely) event of a name collision. */
 	{
-		int n = snprintf(tmp_path, sizeof(tmp_path), "%s.tmp%d",
-		                 fs_path, (int)getpid());
-		if (n < 0 || n >= (int)sizeof(tmp_path))
+		int opened = 0;
+		for (int attempt = 0; attempt < 8 && !opened; attempt++) {
+			unsigned int r = (unsigned int)(getpid() ^ (attempt * 2654435761u));
+			r ^= (unsigned int)time(NULL);
+			r = r * 1103515245u + 12345u;
+			int n = snprintf(tmp_path, sizeof(tmp_path), "%s.tmp%d.%08x",
+			                 fs_path, (int)getpid(), r & 0xffffffffu);
+			if (n < 0 || n >= (int)sizeof(tmp_path))
+				goto done;
+			fd = open(tmp_path,
+			          O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW, 0644);
+			if (fd >= 0) {
+				opened = 1;
+			} else if (errno != EEXIST) {
+				goto done;
+			}
+		}
+		if (!opened)
 			goto done;
 	}
-
-	fd = open(tmp_path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-	if (fd < 0)
-		goto done;
 
 	if (canon_len > 0) {
 		written = write(fd, canon, canon_len);
