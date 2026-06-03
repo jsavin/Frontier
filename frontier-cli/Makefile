@@ -97,7 +97,8 @@ CLI_SOURCES = \
     palette.c \
     palette_arg_inject.c \
     scrollback_pane.c \
-    window_registry.c
+    window_registry.c \
+    ut_sync.c
 
 # cJSON (vendored JSON parser)
 CJSON_SOURCES = $(THIRDPARTYDIR)/cJSON/cJSON.c

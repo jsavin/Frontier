@@ -583,6 +583,65 @@ static boolean opverbpackoutline (hdloutlinerecord houtline, Handle *hpacked) {
 
 #if defined(FRONTIER_HEADLESS)
 /*
+ * ut_find_dotted_path_topdown - recursively search a hashtable subtree for the
+ * external variable `target`, building the dotted path top-down (root-first).
+ *
+ * Mirrors the .ut export walk (main.c ut_export_walk_table): iterate via
+ * hfirstsort/sortedlink, recurse into idtableprocessor subtables, and on a
+ * match append the leaf name to `prefix`. This avoids relying on the
+ * parenthashtable / thistableshashnode back-pointers, which are NOT populated
+ * for in-memory headless hashtables (they read back as nil), so a bottom-up
+ * parent-chain walk yields only the leaf segment.
+ *
+ * Returns 1 and writes the full dotted path into buf on success, 0 otherwise.
+ * `prefix` is the dotted path of `htable` itself ("" for roottable).
+ */
+static int ut_find_dotted_path_topdown(hdlhashtable htable, hdlexternalvariable target,
+                                       const char *prefix, char *buf, size_t bufsz) {
+	hdlhashnode nomad;
+
+	if (htable == nil)
+		return 0;
+
+	for (nomad = (**htable).hfirstsort; nomad != nil; nomad = (**nomad).sortedlink) {
+		tyvaluerecord *val = &(**nomad).val;
+		bigstring bsname;
+		char nodepath[512];
+
+		if (val->valuetype != externalvaluetype)
+			continue;
+
+		gethashkey(nomad, bsname);
+		if (prefix != NULL && prefix[0] != '\0')
+			snprintf(nodepath, sizeof(nodepath), "%s.%.*s",
+			         prefix, (int)bsname[0], (char *)&bsname[1]);
+		else
+			snprintf(nodepath, sizeof(nodepath), "%.*s",
+			         (int)bsname[0], (char *)&bsname[1]);
+		nodepath[sizeof(nodepath) - 1] = '\0';
+
+		{
+			hdlexternalvariable hv = (hdlexternalvariable) val->data.externalvalue;
+			if (hv == target) {
+				size_t len = strlen(nodepath);
+				if (len >= bufsz)
+					return 0;
+				memcpy(buf, nodepath, len + 1);
+				return 1;
+			}
+			/* Recurse into in-memory subtables. */
+			if ((**hv).id == idtableprocessor && (**hv).flinmemory) {
+				if (ut_find_dotted_path_topdown(
+				        (hdlhashtable)(**hv).variabledata,
+				        target, nodepath, buf, bufsz))
+					return 1;
+			}
+		}
+	}
+	return 0;
+}
+
+/*
  * ut_build_dotted_path_from_hv - reconstruct the ODB dotted path for a
  * script/outline variable handle.
  *
@@ -590,12 +649,13 @@ static boolean opverbpackoutline (hdloutlinerecord houtline, Handle *hpacked) {
  *   Phase 1 (fast): if langhash_materialize_current_path is non-NULL we are
  *     inside the bulk-hydrate walk, which already set the path; use it
  *     directly with no allocation. This covers all scripts at boot time.
+ *     The leading "root." segment is stripped to match the export convention.
  *
  *   Phase 2 (lazy-load fallback): langhash_materialize_current_path is NULL
- *     (post-boot lazy load). We use tablefindvariable to find the parent
- *     table and leaf name, then walk up parenthashtable/thistableshashnode
- *     chains to build the full dotted path. This is O(in-memory nodes) but
- *     is acceptable for the infrequent lazy-load case.
+ *     (post-boot lazy load). Recursively search roottable top-down for the
+ *     handle, building the dotted path as we descend. O(in-memory nodes),
+ *     acceptable for the infrequent lazy-load case. Top-down is required
+ *     because the bottom-up back-pointers are nil in headless mode.
  *
  * Writes the dotted path into `buf` (capacity `bufsz`). Returns 1 on
  * success, 0 if the path cannot be determined (e.g. variable not found in
@@ -609,95 +669,141 @@ static int ut_build_dotted_path_from_hv(hdlexternalvariable hv,
 		return 0;
 	buf[0] = '\0';
 
-	/* Phase 1: path already set by bulk-hydrate walker (common case). */
+	/* Phase 1: path already set by bulk-hydrate walker (common case).
+	 *
+	 * The walker prefixes the path with the root table's own name ("root."),
+	 * e.g. "root.scratchpad.smokeVerb". The .ut export walk (main.c) starts
+	 * from roottable with an empty prefix and produces "scratchpad.smokeVerb"
+	 * (no "root." segment). Strip the leading "root." here so both directions
+	 * agree on the dotted path -> filesystem mapping. */
 	if (langhash_materialize_current_path != NULL) {
-		size_t len = strlen(langhash_materialize_current_path);
+		const char *src = langhash_materialize_current_path;
+		if (strncmp(src, "root.", 5) == 0)
+			src += 5;
+		else if (strcmp(src, "root") == 0)
+			src += 4;  /* the root table itself: empty relative path */
+		size_t len = strlen(src);
 		if (len >= bufsz)
 			return 0;
-		memcpy(buf, langhash_materialize_current_path, len + 1);
-		return 1;
+		memcpy(buf, src, len + 1);
+		return len > 0 ? 1 : 0;
 	}
 
-	/* Phase 2: lazy-load fallback -- reconstruct from parent chain.
-	 *
-	 * tablefindvariable searches roottable for a hashnode whose
-	 * val.data.externalvalue == hv. Even with flinmemory=false the handle
-	 * is still allocated and stored in the hashnode, so the search succeeds.
-	 * O(in-memory nodes); acceptable for infrequent post-boot lazy loads.
-	 *
-	 * After finding the leaf (parent htable + leaf name), walk upward via
-	 * parenthashtable + thistableshashnode to build the dotted path. The
-	 * root table has parenthashtable==nil, which terminates the walk.
+	/* Phase 2: lazy-load fallback -- top-down recursive search from roottable.
+	 * The bottom-up parenthashtable / thistableshashnode back-pointers are nil
+	 * for in-memory headless hashtables, so we descend from the root instead,
+	 * matching the .ut export walk's traversal and dotted-path convention. */
+	return ut_find_dotted_path_topdown(roottable, hv, "", buf, bufsz);
+}
+
+/*
+ * .ut import hook (Direction B): if --ut-sync-dir is active and a newer .ut
+ * file exists for this script or outline, install its content into ho now.
+ *
+ * Called from BOTH opverbinmemory paths:
+ *   1. The already-in-memory fast path (flinmemory == true), so LIVE
+ *      out-of-band .ut edits are picked up the next time the verb is
+ *      materialized (e.g. called), not only on the first disk->memory load.
+ *   2. The post-unpack path (first materialization), so boot-time and
+ *      lazy-load imports work.
+ *
+ * Weak declarations: cli_get_* / cli_record_ut_import live in main.c and
+ * ut_import_check in ut_sync.c. Unit-test binaries that link opverbs.c but
+ * not those translation units get NULL pointers; every call is NULL-guarded
+ * so those binaries skip the hook entirely (no CLI options, no sync dir).
+ *
+ * Convergence / no oscillation: on import we stamp (**ho).timelastsave with
+ * the .ut mtime (Mac epoch). The next materialization sees odb_mac_mtime ==
+ * .ut mtime, so the .ut is no longer "newer" and no re-import fires.
+ * opverbsetdirty marks the script dirty so the next save persists it.
+ *
+ * Boot-time persistence: clear_post_hydration_dirty_flags runs AFTER the
+ * bulk hydrate walk and clears the dirty bit set here; main.c re-marks the
+ * recorded paths (cli_record_ut_import) immediately after that clear pass.
+ * Post-boot loads need no re-dirty (no clear pass runs).
+ *
+ * Non-fatal: any failure logs and falls through to the ODB version. Import
+ * failure never blocks script execution.
+ */
+static void ut_import_hook(hdloutlinevariable hv, hdloutlinerecord ho) {
+	extern const char *cli_get_ut_sync_dir(void) __attribute__((weak));
+	extern const char *cli_get_system_root_basename(void) __attribute__((weak));
+	extern void cli_record_ut_import(const char *dotted_path) __attribute__((weak));
+	extern int ut_import_check(const char *dotted_path, const char *sync_base,
+	                           int64_t odb_mac_mtime,
+	                           unsigned char **out, size_t *outlen,
+	                           int64_t *ut_mac_mtime) __attribute__((weak));
+
+	if (ho == nil)
+		return;
+
+	const char *sync_dir = (cli_get_ut_sync_dir != NULL) ? cli_get_ut_sync_dir() : NULL;
+	if (sync_dir == NULL ||
+	    !((**hv).id == idscriptprocessor || (**hv).id == idoutlineprocessor))
+		return;
+
+	char dotted_path[512];
+	if (!ut_build_dotted_path_from_hv((hdlexternalvariable) hv,
+	                                  dotted_path, sizeof(dotted_path))) {
+		log_debug(LOG_COMP_OP,
+		          "ut-sync import: could not determine dotted path for hv=%p",
+		          (void *)hv);
+		return;
+	}
+
+	/* Build effective sync base = sync_dir + "/" + rootBasename. */
+	const char *rbn = (cli_get_system_root_basename != NULL)
+	                      ? cli_get_system_root_basename() : "";
+	char sync_base[1024];
+	if (rbn[0] != '\0')
+		snprintf(sync_base, sizeof(sync_base), "%s/%s", sync_dir, rbn);
+	else
+		snprintf(sync_base, sizeof(sync_base), "%s", sync_dir);
+
+	int64_t odb_mac_mtime = (**ho).timelastsave;
+	unsigned char *decan_buf = NULL;
+	size_t decan_len = 0;
+	int64_t ut_mac_mtime = 0;
+
+	if (ut_import_check == NULL ||
+	    !ut_import_check(dotted_path, sync_base, odb_mac_mtime,
+	                     &decan_buf, &decan_len, &ut_mac_mtime))
+		return;
+
+	/*
+	 * .ut is newer: install its content into ho. Wrap the decanonicalized
+	 * bytes in a kernel Handle so optexttooutline can consume them.
+	 * optexttooutline copies the data internally; we free both the handle
+	 * and the original malloc buffer after the call.
 	 */
-	{
-		hdlhashtable htable = nil;
-		bigstring bsleaf;
-		/* Segment components accumulated while walking up; reversed at end. */
-#define UT_MAX_DEPTH 32
-		const char *segs[UT_MAX_DEPTH];
-		int nsegs = 0;
-		char segbufs[UT_MAX_DEPTH][256]; /* storage for each segment */
-		size_t total = 0;
-
-		setemptystring(bsleaf);
-		if (!tablefindvariable(hv, &htable, bsleaf))
-			return 0;  /* not found in the in-memory tree */
-
-		/* Leaf segment (from bsleaf Pascal string). */
-		{
-			int leaflen = (int)bsleaf[0];
-			if (leaflen <= 0 || leaflen >= (int)sizeof(segbufs[0]))
-				return 0;
-			memcpy(segbufs[nsegs], &bsleaf[1], (size_t)leaflen);
-			segbufs[nsegs][leaflen] = '\0';
-			segs[nsegs] = segbufs[nsegs];
-			total += (size_t)leaflen;
-			nsegs++;
+	Handle htext = nil;
+	if (newhandle((long)decan_len, &htext)) {
+		moveleft(decan_buf, *htext, (long)decan_len);
+		hdlheadrecord hsummit = nil;
+		if (optexttooutline(ho, htext, &hsummit)) {
+			opsetsummit(ho, hsummit);
+			opsetctexpanded(ho);
+			/* Stamp mtime for convergence: next load sees .ut not newer. */
+			(**ho).timelastsave = ut_mac_mtime;
+			/* Mark dirty so tablesavesystemtable persists on next save. */
+			opverbsetdirty((hdlexternalvariable) hv, true);
+			/* Record for re-dirty pass after clear_post_hydration_dirty_flags. */
+			if (cli_record_ut_import != NULL)
+				cli_record_ut_import(dotted_path);
+			log_info(LOG_COMP_OP,
+			         "ut-sync import: installed %s from .ut", dotted_path);
+		} else {
+			log_warn(LOG_COMP_OP,
+			         "ut-sync import: optexttooutline failed for %s",
+			         dotted_path);
 		}
-
-		/* Walk up the parent chain. Each level adds a segment and a dot. */
-		{
-			hdlhashtable cur = htable;
-			while (cur != nil && cur != roottable && nsegs < UT_MAX_DEPTH) {
-				hdlhashnode self_node = (**cur).thistableshashnode;
-				hdlhashtable parent = (**cur).parenthashtable;
-				if (self_node == nil || parent == nil)
-					break;  /* chain incomplete; use partial path or bail */
-				bigstring bsseg;
-				gethashkey(self_node, bsseg);
-				{
-					int seglen = (int)bsseg[0];
-					if (seglen <= 0 || seglen >= (int)sizeof(segbufs[0]))
-						return 0;
-					memcpy(segbufs[nsegs], &bsseg[1], (size_t)seglen);
-					segbufs[nsegs][seglen] = '\0';
-					segs[nsegs] = segbufs[nsegs];
-					total += 1 + (size_t)seglen; /* dot + segment */
-					nsegs++;
-				}
-				cur = parent;
-			}
-		}
-
-		/* total includes all segment characters plus (nsegs-1) dots. */
-		if (total + 1 > bufsz)  /* +1 for NUL */
-			return 0;
-
-		/* Write segments in reverse (root-first) order. */
-		{
-			size_t pos = 0;
-			for (int i = nsegs - 1; i >= 0; i--) {
-				if (i < nsegs - 1)
-					buf[pos++] = '.';
-				size_t slen = strlen(segs[i]);
-				memcpy(buf + pos, segs[i], slen);
-				pos += slen;
-			}
-			buf[pos] = '\0';
-		}
-		return 1;
+		disposehandle(htext);
+	} else {
+		log_warn(LOG_COMP_OP,
+		         "ut-sync import: newhandle failed for %s (%zu bytes)",
+		         dotted_path, decan_len);
 	}
-#undef UT_MAX_DEPTH
+	free(decan_buf);
 }
 #endif /* FRONTIER_HEADLESS */
 
@@ -729,6 +835,16 @@ boolean opverbinmemory (const db_context *ctx, hdlexternalvariable hvariable) {
 
 		if (ho != nil)
 			opinitcallbacks (ho); /*now idempotent via flcallbacksinited flag — safe to call unconditionally*/
+
+#if defined(FRONTIER_HEADLESS)
+		/*
+		 * .ut import hook (Direction B), already-in-memory site. Catches LIVE
+		 * out-of-band .ut edits: edit a .ut after boot, and the next time the
+		 * verb is materialized this re-checks the .ut mtime and re-imports if
+		 * newer. No-op (one stat) when sync is off or the .ut is not newer.
+		 */
+		ut_import_hook(hv, ho);
+#endif
 
 		return (true);
 	}
@@ -846,138 +962,11 @@ boolean opverbinmemory (const db_context *ctx, hdlexternalvariable hvariable) {
 
 #if defined(FRONTIER_HEADLESS)
 	/*
-	 * .ut import hook (Direction B): if --ut-sync-dir is active and a newer
-	 * .ut file exists for this script or outline, install its content now.
-	 *
-	 * Hook site: after opverbsetupoutline + opinitcallbacks so the
-	 * texttooutlinecallback (scripttexttooutlineroutine) is wired in and
-	 * ho is fully initialised. ho->timelastsave is populated by opunpack /
-	 * opunpack_legacy, so the ODB mtime is valid for the comparison.
-	 *
-	 * Dotted path: obtained via ut_build_dotted_path_from_hv, which uses
-	 * langhash_materialize_current_path during bulk hydrate (fast, O(1)) and
-	 * falls back to tablefindvariable + parent-chain walk for post-boot lazy
-	 * loads (O(in-memory nodes), acceptable for infrequent lazy loads).
-	 *
-	 * Handle ownership: ut_import_check returns a malloc'd buffer (decan_buf).
-	 * We wrap it in a kernel Handle (htext) so optexttooutline can consume it.
-	 * optexttooutline copies data out of htext (see opverbs.c:1828
-	 * "optexttooutline copied data out; free normalized buffer"). After the
-	 * call we disposehandle(htext) to free the kernel handle, and free
-	 * decan_buf because the outer malloc is separate from the handle.
-	 *
-	 * Convergence / no oscillation: we stamp (**ho).timelastsave with the .ut
-	 * file's mtime (in Mac epoch). On the next materialization, odb_mac_mtime
-	 * will equal the .ut mtime, so the .ut is no longer "newer" and no import
-	 * fires. opverbsetdirty marks the script dirty so tablesavesystemtable
-	 * packs and persists it; the next save sets the .ut mtime from the ODB
-	 * timelastsave, completing the convergence loop.
-	 *
-	 * Boot-time persistence (clear_post_hydration_dirty_flags interaction):
-	 * At bulk hydrate, clear_post_hydration_dirty_flags runs AFTER this hook
-	 * and clears the dirty flag we set here. To ensure boot-time imports
-	 * persist, main.c maintains a small static list of imported paths
-	 * (g_ut_imported_paths) filled by cli_record_ut_import. After
-	 * clear_post_hydration_dirty_flags returns, hydrate_system_root_database
-	 * re-marks those scripts dirty by re-resolving each path and calling
-	 * opverbsetdirty. See main.c for the re-dirty pass.
-	 * For post-boot lazy loads, no clear pass runs, so the dirty flag stands.
-	 *
-	 * Non-fatal: any failure logs a warning and falls through to use the ODB
-	 * version. Import failure never blocks script execution.
+	 * .ut import hook (Direction B), first-materialization site. Runs after
+	 * opverbsetupoutline + opinitcallbacks so the texttooutlinecallback is
+	 * wired and ho->timelastsave is populated by opunpack. See ut_import_hook.
 	 */
-	{
-		/*
-		 * Weak declarations: these functions live in main.c (cli_get_*,
-		 * cli_record_ut_import) and ut_sync.c (ut_import_check). Unit-test
-		 * binaries that link opverbs.c but not main.c will have NULL function
-		 * pointers here. Guard every call with a NULL check so those binaries
-		 * skip the import hook entirely (correct: no CLI options, no sync dir).
-		 */
-		extern const char *cli_get_ut_sync_dir(void) __attribute__((weak));
-		extern const char *cli_get_system_root_basename(void) __attribute__((weak));
-		extern void cli_record_ut_import(const char *dotted_path) __attribute__((weak));
-		extern int ut_import_check(const char *dotted_path, const char *sync_base,
-		                           int64_t odb_mac_mtime,
-		                           unsigned char **out, size_t *outlen,
-		                           int64_t *ut_mac_mtime) __attribute__((weak));
-
-		const char *sync_dir = (cli_get_ut_sync_dir != NULL) ? cli_get_ut_sync_dir() : NULL;
-		if (sync_dir != NULL &&
-		    ((**hv).id == idscriptprocessor || (**hv).id == idoutlineprocessor)) {
-			char dotted_path[512];
-			if (ut_build_dotted_path_from_hv((hdlexternalvariable) hv,
-			                                 dotted_path, sizeof(dotted_path))) {
-				/* Build effective sync base = sync_dir + "/" + rootBasename. */
-				const char *rbn = (cli_get_system_root_basename != NULL)
-				                      ? cli_get_system_root_basename() : "";
-				char sync_base[1024];
-				if (rbn[0] != '\0')
-					snprintf(sync_base, sizeof(sync_base), "%s/%s", sync_dir, rbn);
-				else
-					snprintf(sync_base, sizeof(sync_base), "%s", sync_dir);
-
-				int64_t odb_mac_mtime = (**ho).timelastsave;
-				unsigned char *decan_buf = NULL;
-				size_t decan_len = 0;
-				int64_t ut_mac_mtime = 0;
-
-				if (ut_import_check != NULL &&
-				    ut_import_check(dotted_path, sync_base, odb_mac_mtime,
-				                    &decan_buf, &decan_len, &ut_mac_mtime)) {
-					/*
-					 * .ut is newer: install its content into ho.
-					 * Wrap the decanonicalized bytes in a kernel Handle so
-					 * optexttooutline can consume them. optexttooutline copies
-					 * the data internally; we free both the handle and the
-					 * original malloc buffer after the call.
-					 */
-					Handle htext = nil;
-					boolean install_ok = false;
-
-					if (newhandle((long)decan_len, &htext)) {
-						moveleft(decan_buf, *htext, (long)decan_len);
-						hdlheadrecord hsummit = nil;
-						if (optexttooutline(ho, htext, &hsummit)) {
-							opsetsummit(ho, hsummit);
-							opsetctexpanded(ho);
-							/* Stamp mtime for convergence: next load sees .ut not newer. */
-							(**ho).timelastsave = ut_mac_mtime;
-							/* Mark dirty so tablesavesystemtable persists on next save. */
-							opverbsetdirty((hdlexternalvariable) hv, true);
-							/* Record for re-dirty pass after clear_post_hydration_dirty_flags. */
-							if (cli_record_ut_import != NULL)
-								cli_record_ut_import(dotted_path);
-							install_ok = true;
-							log_info(LOG_COMP_OP,
-							         "ut-sync import: installed %s from .ut",
-							         dotted_path);
-						} else {
-							log_warn(LOG_COMP_OP,
-							         "ut-sync import: optexttooutline failed for %s",
-							         dotted_path);
-						}
-						/*
-						 * optexttooutline copied data out; free the kernel Handle.
-						 * Also free decan_buf (malloc'd by ut_import_check; separate
-						 * from the handle's storage).
-						 */
-						disposehandle(htext);
-					} else {
-						log_warn(LOG_COMP_OP,
-						         "ut-sync import: newhandle failed for %s (%zu bytes)",
-						         dotted_path, decan_len);
-					}
-					free(decan_buf);
-					(void)install_ok;
-				}
-			} else {
-				log_debug(LOG_COMP_OP,
-				          "ut-sync import: could not determine dotted path for hv=%p",
-				          (void *)hv);
-			}
-		}
-	}
+	ut_import_hook(hv, ho);
 #endif /* FRONTIER_HEADLESS */
 
 	return (true);
