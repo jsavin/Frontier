@@ -213,6 +213,156 @@ else
     fail "boot crashed on malformed .ut (exit $BOOT_RC)"
 fi
 
+# ===========================================================================
+# Issue #699 Part 2: BOOT-TRIGGER import-discovery scan (TDD RED).
+#
+# The scan (to be implemented as ut_sync_scan_and_create, invoked at boot AFTER
+# hydration when --ut-sync-dir is active) walks the sync tree, finds .ut leaves
+# whose ODB node does NOT exist, and AUTO-CREATES the intermediate table chain
+# plus the leaf script, marking them dirty so they persist on save.
+#
+# Cases A and B are RED until the scan exists: the dropped nodes are never
+# created, so defined() returns "false". Case C is a no-damage regression guard,
+# expected GREEN throughout (no scan = no damage; with scan, must not duplicate
+# or shadow an already-existing node).
+#
+# A leaf .ut on disk is simply the script body text (no header lines):
+#   on hello () {<TAB>return (true)}
+# A dotted ODB address a.b.c maps to <sync>/<root>/a/b/c.ut; a node key with
+# collision chars is ONE percent-encoded path component (see ut_sync.c codec):
+#   key "http://webns.net/mvcb/" -> dir "http%3A%2F%2Fwebns%2Enet%2Fmvcb%2F".
+#
+# Assertion mechanism mirrors run_protocol usage above: pipe a heredoc of
+# script/eval probes to run_protocol and grep the JSON result for the id-tagged
+# value we expect. probe_value extracts the "value" for a given response id.
+# ---------------------------------------------------------------------------
+ROOT_SYNC="$SYNC_DIR/Frontier.root"
+
+# probe_value OUTPUT ID -- echo the result "value" string for response "id":ID.
+# Matches the protocol JSON shape: {"id":N,"result":{"value":"X",...},...}.
+probe_value() {
+    local output="$1" id="$2"
+    printf '%s\n' "$output" \
+        | grep -o "\"id\":$id,\"result\":{\"value\":\"[^\"]*\"" \
+        | sed 's/.*"value":"//; s/"$//'
+}
+
+# ---------------------------------------------------------------------------
+# Test 6 (Case A): boot scan auto-creates a dropped .ut under a NEW subdir
+# with a simple identifier path. New table "zzdroptest", new leaf "hello".
+# RED until ut_sync_scan_and_create exists.
+#
+# IMPORTANT discriminator note: defined()/typeof()/sizeof() on a DIRECT child of
+# system.verbs.builtins (e.g. @...builtins.zzdroptest) report a phantom
+# "true"/"addr"/32 even pre-scan -- a verb-search/EFP resolution artifact, NOT a
+# real ODB node. Verified: defined(@...builtins.neverEverDropped12345) -> true,
+# but its grandchild .child -> false. So the ONLY honest signal is the GRANDCHILD
+# leaf: @...builtins.zzdroptest.hello resolves to true iff the scan really built
+# BOTH the zzdroptest table AND the hello leaf. We assert on the leaf, and also
+# on calling the created verb (hello() -> true), which cannot succeed unless a
+# real script object exists.
+# ---------------------------------------------------------------------------
+echo "==> Test 6 (Case A): boot scan creates dropped .ut (simple path)"
+DROP_A_DIR="$ROOT_SYNC/system/verbs/builtins/zzdroptest"
+DROP_A_FILE="$DROP_A_DIR/hello.ut"
+mkdir -p "$DROP_A_DIR"
+# Minimal well-formed leaf script body (no header lines required on disk).
+printf 'on hello () {\n\treturn (true)}\n' > "$DROP_A_FILE"
+
+PROBE_A=$(printf '%s\n' \
+    '{"id":1,"op":"script/eval","params":{"expression":"defined(@system.verbs.builtins.zzdroptest.hello)"}}' \
+    '{"id":2,"op":"script/eval","params":{"expression":"system.verbs.builtins.zzdroptest.hello()"}}' \
+    '{"id":3,"op":"shutdown","params":{}}' \
+    | run_protocol "")
+
+A_LEAF="$(probe_value "$PROBE_A" 1)"
+A_CALL="$(probe_value "$PROBE_A" 2)"
+if [ "$A_LEAF" = "true" ]; then
+    pass "leaf zzdroptest.hello created by boot scan (table chain built)"
+else
+    fail "leaf zzdroptest.hello NOT created (defined -> '${A_LEAF:-<none>}')"
+fi
+if [ "$A_CALL" = "true" ]; then
+    pass "created verb zzdroptest.hello() is callable (returns true)"
+else
+    fail "created verb zzdroptest.hello() not callable (got '${A_CALL:-<none>}')"
+fi
+
+# Persistence: the previous run saved on shutdown. Re-boot and re-probe; a
+# correctly-dirtied orphan must survive the save/reload.
+PROBE_A2=$(printf '%s\n' \
+    '{"id":1,"op":"script/eval","params":{"expression":"defined(@system.verbs.builtins.zzdroptest.hello)"}}' \
+    '{"id":2,"op":"shutdown","params":{}}' \
+    | run_protocol "")
+A_LEAF2="$(probe_value "$PROBE_A2" 1)"
+if [ "$A_LEAF2" = "true" ]; then
+    pass "created node persists across save/reload"
+else
+    fail "created node did NOT persist across reload (defined -> '${A_LEAF2:-<none>}')"
+fi
+
+# ---------------------------------------------------------------------------
+# Test 7 (Case B): boot scan auto-creates a URL-keyed (percent-encoded) path.
+# New table "zztest" so we never collide with the real xml.rss.moduleDrivers.
+# On disk the URL key is ONE percent-encoded component; the UserTalk address
+# uses the RAW key in brackets -- this exercises reverse-map + decode end to end.
+# RED until ut_sync_scan_and_create exists.
+# ---------------------------------------------------------------------------
+echo "==> Test 7 (Case B): boot scan creates URL-keyed (percent-encoded) path"
+# "http://webns.net/mvcb/" encodes to http%3A%2F%2Fwebns%2Enet%2Fmvcb%2F
+URLKEY_ENC='http%3A%2F%2Fwebns%2Enet%2Fmvcb%2F'
+DROP_B_DIR="$ROOT_SYNC/system/verbs/builtins/zztest/moduleDrivers/$URLKEY_ENC"
+DROP_B_FILE="$DROP_B_DIR/init.ut"
+mkdir -p "$DROP_B_DIR"
+printf 'on init () {\n\treturn (true)}\n' > "$DROP_B_FILE"
+
+PROBE_B=$(printf '%s\n' \
+    '{"id":1,"op":"script/eval","params":{"expression":"defined(@system.verbs.builtins.zztest.moduleDrivers[\"http://webns.net/mvcb/\"].init)"}}' \
+    '{"id":2,"op":"script/eval","params":{"expression":"typeof(@system.verbs.builtins.zztest.moduleDrivers[\"http://webns.net/mvcb/\"])"}}' \
+    '{"id":3,"op":"shutdown","params":{}}' \
+    | run_protocol "")
+
+B_LEAF="$(probe_value "$PROBE_B" 1)"
+B_TABLE_TYPE="$(probe_value "$PROBE_B" 2)"
+if [ "$B_LEAF" = "true" ]; then
+    pass "URL-keyed leaf init created by boot scan (decode path works)"
+else
+    fail "URL-keyed leaf NOT created (defined -> '${B_LEAF:-<none>}')"
+fi
+if [ "$B_TABLE_TYPE" = "addr" ]; then
+    pass "URL-keyed node is a table (typeof -> addr)"
+else
+    # Pre-scan the chain is absent, so typeof() errors out ("Script evaluation
+    # failed") and probe_value yields <none>; post-scan it must resolve to addr.
+    fail "URL-keyed node not a table (typeof -> '${B_TABLE_TYPE:-<none> (chain absent)}')"
+fi
+
+# ---------------------------------------------------------------------------
+# Test 8 (Case C): scan must NOT duplicate / NOT create for an EXISTING node.
+# No new drop. The scan runs over the full existing corpus; a well-known node
+# must remain intact, singular, and callable. NO-DAMAGE GUARD: expected GREEN
+# throughout (pre-implementation no scan = no damage; post-implementation the
+# scan must treat existing/lazy nodes as present and not shadow them).
+# ---------------------------------------------------------------------------
+echo "==> Test 8 (Case C): scan does not damage an existing node (guard)"
+PROBE_C=$(printf '%s\n' \
+    '{"id":1,"op":"script/eval","params":{"expression":"defined(@system.verbs.builtins.string.upper)"}}' \
+    '{"id":2,"op":"script/eval","params":{"expression":"string.upper(\"ab\")"}}' \
+    '{"id":3,"op":"shutdown","params":{}}' \
+    | run_protocol "")
+C_DEFINED="$(probe_value "$PROBE_C" 1)"
+C_RESULT="$(probe_value "$PROBE_C" 2)"
+if [ "$C_DEFINED" = "true" ]; then
+    pass "existing node string.upper still defined after scan"
+else
+    fail "existing node string.upper missing after scan (defined -> '${C_DEFINED:-<none>}')"
+fi
+if [ "$C_RESULT" = "AB" ]; then
+    pass "existing node string.upper still works (\"ab\" -> AB)"
+else
+    fail "string.upper broken after scan (got '${C_RESULT:-<none>}')"
+fi
+
 # ---------------------------------------------------------------------------
 # Canonical protection: the source Virgin.root must be untouched.
 # ---------------------------------------------------------------------------

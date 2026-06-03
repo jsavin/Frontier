@@ -83,6 +83,7 @@
 
 // CLI-specific headers
 #include "ut_sync.h"
+#include "ut_scan.h"
 #include "cli_parser.h"
 #include "cli_executor.h"
 #include "cli_utils.h"
@@ -1730,6 +1731,24 @@ static boolean hydrate_system_root_database(const char* path, boolean read_only)
 	 * this, save_system_root_on_exit() rewrites the entire file on every
 	 * shutdown even when no user mutation occurred (~1.2 MB drift). */
 	clear_post_hydration_dirty_flags(hroot);
+
+	/* ut-sync boot-discovery scan: walk the sync tree and auto-create any .ut
+	 * leaves that have no corresponding in-memory ODB node (orphans dropped
+	 * into the sync dir while the runtime was not running). Must run AFTER the
+	 * full-materialization pass above (so hashtable misses are genuine absences)
+	 * and AFTER clear_post_hydration_dirty_flags (so only the newly-created
+	 * nodes end up dirty). Each created path is recorded via cli_record_ut_import
+	 * so the cli_redirty_ut_imported_paths call below re-dirtied them for save. */
+	if (cli_get_ut_sync_dir() != NULL) {
+		int scan_count = ut_sync_scan_and_create(cli_get_ut_sync_dir(),
+		                                         cli_get_system_root_basename());
+		if (scan_count > 0) {
+			log_info(LOG_COMP_STARTUP,
+			         "ut-scan: %d orphan node(s) created from sync tree", scan_count);
+		} else if (scan_count < 0) {
+			cli_log_warn("ut-scan: boot scan encountered an error");
+		}
+	}
 
 	/* ut-sync Direction B: re-dirty any scripts imported from .ut files during
 	 * the bulk hydrate walk. The clear pass above wiped the dirty flags that
