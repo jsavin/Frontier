@@ -48,6 +48,44 @@ extern void cli_record_ut_import(const char *dotted_path);
 
 
 /* -------------------------------------------------------------------------
+ * Internal: count the number of decoded bytes that ut_pct_decode_segment
+ * would produce for the given encoded segment, WITHOUT actually decoding.
+ *
+ * Each non-'%' character contributes 1 byte. Each valid '%XX' escape
+ * contributes 1 byte. Returns -1 if the encoding is malformed (lone '%'
+ * or '%X' without two hex digits). The caller can compare this against
+ * strlen(decoded) to detect an embedded NUL: if they differ, at least one
+ * decoded byte was 0x00 (which strlen stops at, giving a smaller count).
+ * ------------------------------------------------------------------------- */
+static int hex_digit_val(unsigned char c) {
+	if (c >= '0' && c <= '9') return c - '0';
+	if (c >= 'A' && c <= 'F') return c - 'A' + 10;
+	if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+	return -1;
+}
+
+static int pct_decoded_byte_count(const char *enc) {
+	int count = 0;
+	const char *p = enc;
+	while (*p != '\0') {
+		if (*p == '%') {
+			if (p[1] == '\0' || p[2] == '\0')
+				return -1; /* malformed */
+			if (hex_digit_val((unsigned char)p[1]) < 0 ||
+			    hex_digit_val((unsigned char)p[2]) < 0)
+				return -1; /* malformed */
+			count++;
+			p += 3;
+		} else {
+			count++;
+			p++;
+		}
+	}
+	return count;
+}
+
+
+/* -------------------------------------------------------------------------
  * Internal: maximum depth for recursive directory walk (guards against
  * pathological symlink loops that O_NOFOLLOW at the open level can't catch
  * for the opendir path).
@@ -207,6 +245,44 @@ static int node_exists_in_memory(const char *encoded_dotted) {
 		}
 
 		size_t rawlen = strlen(decoded);
+
+		/*
+		 * P1 #2 -- post-decode NUL guard: a crafted %00 sequence in an encoded
+		 * filename decodes to a NUL byte. strlen() stops at the first NUL, so
+		 * rawlen (= strlen(decoded)) would be shorter than the actual decoded
+		 * byte count. This silently truncates the Pascal string we build from
+		 * decoded[0..rawlen], potentially corrupting a hashtable key.
+		 *
+		 * Detection: pct_decoded_byte_count() counts the bytes the decoder
+		 * WOULD produce (one per char or per %XX) without actually decoding.
+		 * If that count exceeds strlen(decoded), at least one decoded byte was
+		 * 0x00 and strlen stopped early. In that case, reject this orphan.
+		 *
+		 * Note: segment_is_safe() is NOT called here. segment_is_safe() is a
+		 * forward-direction (ODB->fs) validator that rejects "/" and control
+		 * bytes to prevent unsafe filesystem path components. On the reverse
+		 * path (fs->ODB), "/" and control bytes are valid ODB key characters
+		 * (e.g. URL-keyed tables like "http://webns.net/mvcb/") and must be
+		 * allowed through. NUL is the only byte dangerous in this direction.
+		 */
+		{
+			int expected_len = pct_decoded_byte_count(segs[i]);
+			if (expected_len < 0 || (size_t)expected_len != rawlen) {
+				/* Malformed encoding or embedded NUL: reject. */
+				log_warn(LOG_COMP_STARTUP,
+				         "ut-scan: embedded NUL or malformed encoding in segment (encoded: '%.64s'), skipping",
+				         segs[i]);
+				found = 0;
+				goto done;
+			}
+		}
+
+		if (rawlen == 0) {
+			/* Empty decoded segment is not a valid ODB key. */
+			found = 0;
+			goto done;
+		}
+
 		if (rawlen > 255) {
 			found = 0; /* too long for a Pascal string */
 			goto done;
@@ -232,8 +308,16 @@ static int node_exists_in_memory(const char *encoded_dotted) {
 
 		/*
 		 * Intermediate segment: descend into the table. The node must be an
-		 * in-memory table external variable. If it isn't (e.g. it's some other
-		 * type), we can't descend and treat the leaf as absent.
+		 * in-memory EXTERNAL TABLE variable (id == idtableprocessor).
+		 *
+		 * P1 #1 -- type guard: if the existing node is an external but is NOT
+		 * a table (e.g. it is a script, outline, menu, or picture), the path
+		 * component collides with a real non-table object. We must NOT treat
+		 * the leaf as an orphan and attempt to create it -- doing so would
+		 * cause create_orphan_node to call langsuretablevalue on this slot,
+		 * which silently overwrites the existing script/outline with an empty
+		 * table (data loss). Treat the path as "present" (found=1) so the
+		 * entire orphan is skipped.
 		 */
 		tyvaluerecord val = (**hnode).val;
 		if (val.valuetype != externalvaluetype || val.data.externalvalue == NULL) {
@@ -241,9 +325,10 @@ static int node_exists_in_memory(const char *encoded_dotted) {
 			goto done;
 		}
 		hdlexternalvariable hv = (hdlexternalvariable) val.data.externalvalue;
+
 		if (!(**hv).flinmemory || (**hv).variabledata == 0) {
 			/*
-			 * Intermediate table is not in memory. Post-full-materialization
+			 * Intermediate node is not in memory. Post-full-materialization
 			 * this should not happen for a real ODB node, but if it does we
 			 * conservatively treat the leaf as present (don't shadow a real
 			 * lazy node we couldn't descend into).
@@ -251,6 +336,21 @@ static int node_exists_in_memory(const char *encoded_dotted) {
 			found = 1;
 			goto done;
 		}
+
+		if ((**hv).id != idtableprocessor) {
+			/*
+			 * The intermediate slot exists but is a non-table external (script,
+			 * outline, menu, picture, etc.). A .ut path cannot thread through a
+			 * non-table node. Treat as present so create_orphan_node is not
+			 * called -- calling it would clobber the existing non-table object.
+			 */
+			log_warn(LOG_COMP_STARTUP,
+			         "ut-scan: intermediate segment '%.64s' is a non-table external (id=%u), skipping orphan",
+			         decoded, (unsigned)(**hv).id);
+			found = 1;
+			goto done;
+		}
+
 		curtable = (hdlhashtable)(Handle)(uintptr_t)(**hv).variabledata;
 	}
 
@@ -283,9 +383,39 @@ static int create_orphan_node(const char *encoded_dotted, const char *fspath) {
 	}
 
 	/*
+	 * P1 #2 -- pre-flight segment validation: decode and validate ALL
+	 * segments before making any ODB mutation. This ensures we never create
+	 * partial intermediate tables that would be orphaned if a later segment
+	 * (e.g. the leaf) fails validation. A crafted %00 in any segment would
+	 * cause strlen to stop early, producing a wrong-length Pascal key or a
+	 * collision with an existing node.
+	 */
+	for (int i = 0; i < nseg; i++) {
+		char decoded_check[256];
+		if (!ut_pct_decode_segment(segs[i], decoded_check, sizeof(decoded_check))) {
+			free(buf);
+			return 0; /* malformed %XX */
+		}
+		size_t rawlen_check = strlen(decoded_check);
+		int expected_check = pct_decoded_byte_count(segs[i]);
+		if (expected_check < 0 || (size_t)expected_check != rawlen_check || rawlen_check == 0) {
+			log_warn(LOG_COMP_STARTUP,
+			         "ut-scan: create: pre-flight rejected segment (encoded: '%.64s'), aborting orphan",
+			         segs[i]);
+			free(buf);
+			return 0;
+		}
+		if (rawlen_check > 255) {
+			free(buf);
+			return 0;
+		}
+	}
+
+	/*
 	 * Walk from roottable, creating missing intermediate tables, until we
 	 * reach the parent of the leaf (nseg-1 segments). The leaf itself is
-	 * created as a script external.
+	 * created as a script external. All segment encodings were validated
+	 * above, so we only need the type-guard check here.
 	 */
 	hdlhashtable curtable = roottable;
 	int ok = 0;
@@ -295,18 +425,55 @@ static int create_orphan_node(const char *encoded_dotted, const char *fspath) {
 		if (!ut_pct_decode_segment(segs[i], decoded, sizeof(decoded)))
 			goto done;
 		size_t rawlen = strlen(decoded);
-		if (rawlen > 255)
-			goto done;
+		/* rawlen is validated safe by the pre-flight pass above. */
 
 		bigstring bsseg;
 		bsseg[0] = (unsigned char)rawlen;
 		memcpy(&bsseg[1], decoded, rawlen);
 
+		/*
+		 * P1 #1 -- pre-langsuretablevalue type guard: if a node already exists
+		 * at this intermediate slot and it is a non-table external (script,
+		 * outline, menu, picture), langsuretablevalue would silently overwrite
+		 * it with a new empty table (data loss). Guard by checking the existing
+		 * node's type before calling langsuretablevalue.
+		 *
+		 * langsuretablevalue is only safe to call when:
+		 *   (a) the slot is empty (no existing node), OR
+		 *   (b) the existing node is already a table (idtableprocessor).
+		 * In all other cases, abort this orphan creation.
+		 */
+		{
+			tyvaluerecord existing_val;
+			hdlhashnode existing_hnode = nil;
+			if (hashtablelookup(curtable, bsseg, &existing_val, &existing_hnode)) {
+				/* Slot occupied: verify it is a table before proceeding. */
+				if (existing_val.valuetype == externalvaluetype &&
+				    existing_val.data.externalvalue != NULL) {
+					hdlexternalvariable hv_exist =
+					    (hdlexternalvariable) existing_val.data.externalvalue;
+					if ((**hv_exist).id != idtableprocessor) {
+						/* Non-table external occupies an intermediate slot -- do NOT clobber. */
+						log_warn(LOG_COMP_STARTUP,
+						         "ut-scan: create: intermediate '%.64s' is non-table (id=%u), aborting orphan",
+						         decoded, (unsigned)(**hv_exist).id);
+						goto done;
+					}
+				} else if (existing_val.valuetype != externalvaluetype) {
+					/* Slot holds a non-external value (scalar, etc.) -- cannot descend. */
+					log_warn(LOG_COMP_STARTUP,
+					         "ut-scan: create: intermediate '%.64s' is a non-external value, aborting orphan",
+					         decoded);
+					goto done;
+				}
+			}
+		}
+
 		hdlhashtable nexttable = nil;
 		/*
 		 * langsuretablevalue: if the table already exists, return it; if not,
-		 * create a new empty table and assign it. Safe to call when the node
-		 * is already present (idempotent for the already-exists case).
+		 * create a new empty table and assign it. The pre-guard above ensures
+		 * we only reach this call when the slot is empty or already a table.
 		 */
 		if (!langsuretablevalue(curtable, bsseg, &nexttable) || nexttable == nil)
 			goto done;
@@ -320,6 +487,8 @@ static int create_orphan_node(const char *encoded_dotted, const char *fspath) {
 		if (!ut_pct_decode_segment(leaf_enc, leaf_raw, sizeof(leaf_raw)))
 			goto done;
 		size_t leaflen = strlen(leaf_raw);
+		/* leaflen is validated safe (non-zero, no embedded NUL, <= 255) by the
+		 * pre-flight pass above. No additional check needed here. */
 		if (leaflen > 255)
 			goto done;
 

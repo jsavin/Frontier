@@ -816,8 +816,9 @@ int ut_pct_decode_segment(const char *enc, char *out, size_t outsz) {
 /* ------------------------------------------------------------------------- */
 
 /* Reject a single ODB-path segment that cannot safely become an fs component:
- * empty, ".", "..", or containing "/" or a control byte. Returns 1 if safe. */
-static int segment_is_safe(const char *seg, size_t len) {
+ * empty, ".", "..", or containing "/" or a control byte. Returns 1 if safe.
+ * Exported (non-static) for use by ut_scan.c post-decode validation. */
+int segment_is_safe(const char *seg, size_t len) {
 	size_t i;
 	if (len == 0)
 		return 0;

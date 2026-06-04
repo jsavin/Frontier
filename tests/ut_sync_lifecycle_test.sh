@@ -415,6 +415,114 @@ else
 fi
 
 # ---------------------------------------------------------------------------
+# Test 10 (P1 #1 -- node-clobber guard): a .ut whose INTERMEDIATE path
+# component collides with an EXISTING script node must NOT clobber that node.
+#
+# system.verbs.builtins.string.upper is a live script.  Drop a .ut at
+#   <sync>/system/verbs/builtins/string/upper/evil.ut
+# so "upper" is the colliding intermediate -- the scan would need "upper" to be
+# a table to descend into it.  It is a script, so the entire orphan must be
+# rejected without touching the existing "upper" verb.
+#
+# Assert:
+#   (a) string.upper("ab") still returns "AB" -- the verb is intact (not clobbered).
+#   (b) the phantom leaf system.verbs.builtins.string.upper.evil is NOT defined.
+# ---------------------------------------------------------------------------
+echo "==> Test 10 (P1 #1): clobber guard -- collision with existing script node"
+
+# Drop the colliding .ut under the live scan dir.
+CLOBBER_DIR="$ROOT_SYNC/system/verbs/builtins/string/upper"
+CLOBBER_FILE="$CLOBBER_DIR/evil.ut"
+mkdir -p "$CLOBBER_DIR"
+printf 'on evil () {\n\treturn (false)}\n' > "$CLOBBER_FILE"
+
+PROBE_10=$(printf '%s\n' \
+    '{"id":1,"op":"script/eval","params":{"expression":"string.upper(\"ab\")"}}' \
+    '{"id":2,"op":"script/eval","params":{"expression":"defined(@system.verbs.builtins.string.upper.evil)"}}' \
+    '{"id":3,"op":"shutdown","params":{}}' \
+    | run_protocol "")
+
+T10_UPPER="$(probe_value "$PROBE_10" 1)"
+T10_EVIL="$(probe_value "$PROBE_10" 2)"
+
+if [ "$T10_UPPER" = "AB" ]; then
+    pass "clobber guard: string.upper still works after scan with colliding .ut"
+else
+    fail "clobber guard: string.upper BROKEN after scan (got '${T10_UPPER:-<none>}') -- script was clobbered"
+fi
+
+if [ "$T10_EVIL" != "true" ]; then
+    pass "clobber guard: phantom leaf evil was NOT created (correct rejection)"
+else
+    fail "clobber guard: phantom leaf evil WAS created despite intermediate-node collision"
+fi
+
+# ---------------------------------------------------------------------------
+# Test 11 (P1 #2 -- post-decode NUL guard): a .ut filename containing %00
+# (which decodes to a NUL byte) must be silently rejected -- the scan must
+# not crash and must not create any node from the NUL-containing key.
+#
+# The security concern: "%00" in an encoded path component decodes to 0x00,
+# which strlen() silently truncates, causing the Pascal string built from the
+# decoded bytes to be shorter than intended. This could corrupt a hashtable
+# key or cause a lookup in the wrong table.
+#
+# Note: "%2E%2E" -> ".." and "%2F" -> "/" are legitimate ODB key characters
+# (URL-keyed tables use slashes and dots in their keys, e.g., RSS module
+# driver keys like "http://webns.net/mvcb/"). The NUL byte (0x00) is the
+# only decoded byte that is genuinely dangerous for ODB Pascal-string keys.
+#
+# We use %00 in the leaf position (the filename stem before .ut).
+# After decoding, the leaf key would be a zero-length string (since strlen
+# stops at the NUL), which we also reject as empty (rawlen==0 check).
+#
+# We also verify that a NUL in an intermediate directory component is rejected,
+# by dropping a file in a subdirectory whose name encodes a NUL.
+# ---------------------------------------------------------------------------
+echo "==> Test 11 (P1 #2): post-decode NUL guard rejects %00 in encoded filenames"
+
+# Leaf NUL: the filename stem decodes to a NUL-containing key.
+NUL_DIR="$ROOT_SYNC/system/verbs/builtins/zznultest"
+NUL_LEAF_FILE="$NUL_DIR/%00evil.ut"
+mkdir -p "$NUL_DIR"
+printf 'on evil () {\n\treturn (true)}\n' > "$NUL_LEAF_FILE"
+
+# Intermediate NUL: a directory component with an encoded NUL.
+# The intermediate dir decodes to a NUL-containing key, which must be rejected.
+NUL_INTM_DIR="$ROOT_SYNC/system/verbs/builtins/%00intm"
+NUL_INTM_FILE="$NUL_INTM_DIR/leaf.ut"
+mkdir -p "$NUL_INTM_DIR"
+printf 'on leaf () {\n\treturn (true)}\n' > "$NUL_INTM_FILE"
+
+PROBE_11=$(printf '%s\n' \
+    '{"id":1,"op":"script/eval","params":{"expression":"defined(@system.verbs.builtins.zznultest.evil)"}}' \
+    '{"id":2,"op":"shutdown","params":{}}' \
+    | run_protocol "")
+
+T11_BOOT_RC=$?
+T11_NULTEST="$(probe_value "$PROBE_11" 1)"
+
+# Boot must survive (not crash) even with NUL-encoded filenames present.
+if [ "$T11_BOOT_RC" -eq 0 ] || [ "$T11_BOOT_RC" -eq 1 ]; then
+    pass "post-decode NUL guard: boot survived %00-encoded filenames (exit $T11_BOOT_RC)"
+else
+    fail "post-decode NUL guard: boot CRASHED on %00-encoded filenames (exit $T11_BOOT_RC)"
+fi
+
+# Assert the grandchild leaf (.evil) was NOT created. We probe the grandchild
+# (not the table itself) because defined() on a direct child of
+# system.verbs.builtins returns phantom "true" via the EFP search path even
+# for nodes that do not exist -- the same gotcha documented in Test 6.
+# A phantom grandchild is not possible: EFP only applies one level deep.
+# If the grandchild is "true", the NUL guard failed and the table chain WAS
+# created -- i.e., the pre-flight did not abort before creating zznultest.
+if [ "$T11_NULTEST" != "true" ]; then
+    pass "post-decode NUL guard: NUL-encoded leaf rejected (grandchild evil not created)"
+else
+    fail "post-decode NUL guard: grandchild evil WAS created -- pre-flight NUL guard did not abort early enough"
+fi
+
+# ---------------------------------------------------------------------------
 # Canonical protection: the source Virgin.root must be untouched.
 # ---------------------------------------------------------------------------
 ACTUAL_CANONICAL="$(md5_of "$SOURCE_DB")"

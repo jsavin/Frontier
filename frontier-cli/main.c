@@ -288,6 +288,15 @@ static int redirty_one_path(const char *dotted_path) {
 			/* Intermediate: descend into the table if it is already in memory. */
 			if (val.valuetype == externalvaluetype && val.data.externalvalue != NULL) {
 				hdlexternalvariable hv_seg = (hdlexternalvariable) val.data.externalvalue;
+				/*
+				 * P1 #1 defense-in-depth: verify the intermediate node is a table
+				 * (idtableprocessor) before casting variabledata to hdlhashtable.
+				 * A non-table external (script, outline, menu) has variabledata
+				 * pointing to its own record type, not an hdlhashtable. Casting
+				 * it would produce wrong-typed memory access.
+				 */
+				if ((**hv_seg).id != idtableprocessor)
+					break;
 				/* variabledata is a long; when flinmemory it holds an hdlhashtable cast. */
 				if ((**hv_seg).flinmemory && (**hv_seg).variabledata != 0)
 					cur = (hdlhashtable)(Handle)(uintptr_t)(**hv_seg).variabledata;
