@@ -83,6 +83,7 @@
 
 // CLI-specific headers
 #include "ut_sync.h"
+#include "ut_scan.h"
 #include "cli_parser.h"
 #include "cli_executor.h"
 #include "cli_utils.h"
@@ -253,13 +254,29 @@ static int redirty_one_path(const char *dotted_path) {
 		if (dot != NULL)
 			*dot = '\0';
 
-		/* Build Pascal string for this segment. */
+		/* Decode the percent-encoded segment back to its raw ODB key name
+		 * before building the Pascal string for hashtablelookup. */
+		char decoded_seg[256]; /* max raw Pascal name: 255 bytes + NUL */
+		/*
+		 * Defense-in-depth NUL guard: reject any segment that contains %00.
+		 * ut_pct_decode_segment would decode it to an embedded NUL byte,
+		 * causing strlen(decoded_seg) to silently truncate the key and diverge
+		 * from the codec contract (ut_sync.h line ~219). This matches the
+		 * equivalent rawlen==0 guard in ut_scan.c. %00 has no hex-case variant
+		 * (both digits are '0'), so a literal strstr suffices.
+		 */
+		if (strstr(seg, "%00") != NULL)
+			break;
+		if (!ut_pct_decode_segment(seg, decoded_seg, sizeof(decoded_seg)))
+			break; /* malformed %XX in a path we emitted -- treat as miss */
+
+		/* Build Pascal string for this (now raw) segment. */
 		bigstring bsseg;
-		size_t seglen = strlen(seg);
+		size_t seglen = strlen(decoded_seg);
 		if (seglen > 255)
 			break;
 		bsseg[0] = (unsigned char) seglen;
-		memcpy(&bsseg[1], seg, seglen);
+		memcpy(&bsseg[1], decoded_seg, seglen);
 
 		tyvaluerecord val;
 		hdlhashnode hnode = nil;
@@ -281,6 +298,15 @@ static int redirty_one_path(const char *dotted_path) {
 			/* Intermediate: descend into the table if it is already in memory. */
 			if (val.valuetype == externalvaluetype && val.data.externalvalue != NULL) {
 				hdlexternalvariable hv_seg = (hdlexternalvariable) val.data.externalvalue;
+				/*
+				 * P1 #1 defense-in-depth: verify the intermediate node is a table
+				 * (idtableprocessor) before casting variabledata to hdlhashtable.
+				 * A non-table external (script, outline, menu) has variabledata
+				 * pointing to its own record type, not an hdlhashtable. Casting
+				 * it would produce wrong-typed memory access.
+				 */
+				if ((**hv_seg).id != idtableprocessor)
+					break;
 				/* variabledata is a long; when flinmemory it holds an hdlhashtable cast. */
 				if ((**hv_seg).flinmemory && (**hv_seg).variabledata != 0)
 					cur = (hdlhashtable)(Handle)(uintptr_t)(**hv_seg).variabledata;
@@ -1725,6 +1751,25 @@ static boolean hydrate_system_root_database(const char* path, boolean read_only)
 	 * shutdown even when no user mutation occurred (~1.2 MB drift). */
 	clear_post_hydration_dirty_flags(hroot);
 
+	/* ut-sync boot-discovery scan: walk the sync tree and auto-create any .ut
+	 * leaves that have no corresponding in-memory ODB node (orphans dropped
+	 * into the sync dir while the runtime was not running). Must run AFTER the
+	 * full-materialization pass above (so hashtable misses are genuine absences)
+	 * and AFTER clear_post_hydration_dirty_flags (so only the newly-created
+	 * nodes end up dirty). Each created path is recorded via cli_record_ut_import
+	 * so the cli_redirty_ut_imported_paths call below re-dirtied them for save. */
+	if (cli_get_ut_sync_dir() != NULL) {
+		int scan_count = ut_sync_scan_and_create(cli_get_ut_sync_dir(),
+		                                         cli_get_system_root_basename(),
+		                                         1 /* record_for_redirty: boot path */);
+		if (scan_count > 0) {
+			log_info(LOG_COMP_STARTUP,
+			         "ut-scan: %d orphan node(s) created from sync tree", scan_count);
+		} else if (scan_count < 0) {
+			cli_log_warn("ut-scan: boot scan encountered an error");
+		}
+	}
+
 	/* ut-sync Direction B: re-dirty any scripts imported from .ut files during
 	 * the bulk hydrate walk. The clear pass above wiped the dirty flags that
 	 * opverbinmemory set on those scripts; this call restores them so
@@ -2036,14 +2081,27 @@ static void ut_export_walk_table(hdlhashtable htable, const char *path,
 
 		gethashkey(nomad, bsname);
 
-		/* Build the dotted path for this node. */
-		if (path != NULL && path[0] != '\0')
-			snprintf(nodepath, sizeof(nodepath), "%s.%.*s",
-			         path, (int)bsname[0], (char *)&bsname[1]);
-		else
-			snprintf(nodepath, sizeof(nodepath), "%.*s",
-			         (int)bsname[0], (char *)&bsname[1]);
-		nodepath[sizeof(nodepath) - 1] = '\0';
+		/* Build the dotted path for this node, percent-encoding the raw segment
+		 * so ODB keys with '.' '/' ':' '"' '\' or control bytes are lossless. */
+		{
+			char encoded_seg[766]; /* 255 * 3 + 1 -- max encoded Pascal name */
+			int n;
+			if (!ut_pct_encode_segment((const char *)&bsname[1], (size_t)bsname[0],
+			                           encoded_seg, sizeof(encoded_seg))) {
+				cli_log_warn("ut-sync: segment encode overflow for node under %s",
+				             path ? path : "<root>");
+				continue;
+			}
+			if (path != NULL && path[0] != '\0')
+				n = snprintf(nodepath, sizeof(nodepath), "%s.%s", path, encoded_seg);
+			else
+				n = snprintf(nodepath, sizeof(nodepath), "%s", encoded_seg);
+			if (n < 0 || n >= (int)sizeof(nodepath)) {
+				cli_log_warn("ut-sync: nodepath overflow under %s", path ? path : "<root>");
+				continue;
+			}
+		}
+		nodepath[sizeof(nodepath) - 1] = '\0'; /* belt-and-suspenders NUL */
 
 		if (val->valuetype != externalvaluetype)
 			continue;

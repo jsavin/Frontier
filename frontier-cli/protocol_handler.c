@@ -38,6 +38,7 @@
 #include "protocol_handler.h"
 #include "op_handler.h"
 #include "ws_server.h"
+#include "repl.h"
 
 #include "../Common/headers/logging.h"
 #include "headless_threading.h"
@@ -142,14 +143,20 @@ int protocol_main(cli_options_t *options, ws_server_t *ws_server) {
 
 	int stdin_flags = -1;  /* saved stdin fcntl flags; restored before return */
 
+	/* Install the repl.* verb host adapter so verbs like repl.syncScan()
+	 * work in --protocol mode, just as they do in --repl mode. */
+	repl_install_verb_host();
+
 	char *line_buf = malloc(PROTOCOL_LINE_MAX);
 	if (line_buf == NULL) {
 		fprintf(stderr, "protocol: failed to allocate line buffer\n");
+		repl_uninstall_verb_host();
 		return 1;
 	}
 
 	if (setup_protocol_output() < 0) {
 		free(line_buf);
+		repl_uninstall_verb_host();
 		return 1;
 	}
 
@@ -337,6 +344,7 @@ int protocol_main(cli_options_t *options, ws_server_t *ws_server) {
 
 	free(line_buf);
 	teardown_protocol_output();
+	repl_uninstall_verb_host();
 
 	log_info(LOG_COMP_GENERAL, "Protocol mode: shutting down");
 	return 0;

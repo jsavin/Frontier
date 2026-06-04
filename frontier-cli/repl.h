@@ -43,6 +43,12 @@
 // Returns: exit code (0 for success, 1 for error)
 int repl_main(cli_options_t *options, ws_server_t *ws_server);
 
+/* Install/uninstall the repl.* verb host adapter (backs repl.syncScan etc.).
+ * Called by repl_main; also called by protocol_main so that repl.* verbs
+ * work in --protocol mode.  Safe to call without the GIL. */
+void repl_install_verb_host(void);
+void repl_uninstall_verb_host(void);
+
 /* Result from index-aware path navigation (repl_navigate_path_ex).
  * Can represent either a table or a scalar value at the end of a path. */
 typedef struct {

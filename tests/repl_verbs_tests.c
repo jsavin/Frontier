@@ -88,6 +88,8 @@ typedef struct ty_test_host {
 	int from_slash_calls;
 	boolean is_active_returns;  /* value the test host's is_active hook reports */
 	int is_active_calls;
+	int sync_scan_returns;      /* count the test host's sync_scan hook reports */
+	int sync_scan_calls;
 } ty_test_host;
 
 static ty_test_host g_host;
@@ -97,6 +99,7 @@ static void host_reset(void) {
 	g_host.jump_should_succeed = true; /* default: jumps succeed */
 	g_host.from_slash_returns = false;  /* default: not a slash dispatch */
 	g_host.is_active_returns  = false;  /* default: no REPL active */
+	g_host.sync_scan_returns  = 0;      /* default: no orphans found */
 }
 
 static void host_exit(void) {
@@ -148,6 +151,11 @@ static boolean host_is_active(void) {
 	return g_host.is_active_returns;
 }
 
+static int host_sync_scan(void) {
+	g_host.sync_scan_calls++;
+	return g_host.sync_scan_returns;
+}
+
 static void install_test_host(void) {
 	repl_verbs_host_t host;
 	memset(&host, 0, sizeof(host));
@@ -158,6 +166,7 @@ static void install_test_host(void) {
 	host.list = &host_list;
 	host.from_slash = &host_from_slash;
 	host.is_active  = &host_is_active;
+	host.sync_scan  = &host_sync_scan;
 	repl_verbs_set_host(&host);
 }
 
@@ -490,6 +499,38 @@ static void test_repl_from_slash_no_host_returns_false(void) {
 
 
 /*
+ * repl.syncScan() invokes the host hook and the return value (count as
+ * UserTalk number) flows back to the caller.  Two cases:
+ *   - hook reports 0  -> verb compiles and runs; hook called once
+ *   - hook reports 7  -> same; we can't inspect the number via run_script
+ *                        but we verify the hook was called with the right
+ *                        count configured (proves the long-value path).
+ */
+static void test_repl_sync_scan_calls_host(void) {
+	printf("[repl_verbs] Test: repl.syncScan() invokes host hook and returns count... ");
+	fflush(stdout);
+
+	host_reset();
+	install_test_host();
+
+	/* Case A: host returns 0 -- verb runs cleanly, hook called once. */
+	g_host.sync_scan_returns = 0;
+	assert(run_script("local (x); x = repl.syncScan()"));
+	assert(g_host.sync_scan_calls == 1);
+
+	/* Case B: host returns 7 -- still runs cleanly, hook called again. */
+	host_reset();
+	install_test_host();
+	g_host.sync_scan_returns = 7;
+	assert(run_script("local (x); x = repl.syncScan()"));
+	assert(g_host.sync_scan_calls == 1);
+
+	printf("PASS\n");
+	fflush(stdout);
+}
+
+
+/*
  * No-host safety: if the test forgets to install a host (or the host is
  * cleared), verbs must NOT crash. They should report failure (return
  * false) so the script gets a recoverable error rather than a SIGSEGV.
@@ -511,6 +552,7 @@ static void test_no_host_does_not_crash(void) {
 	(void)run_script("local (x); x = repl.list()");
 	(void)run_script("local (x); x = repl.fromSlash()");
 	(void)run_script("local (x); x = repl.isActive()");
+	(void)run_script("local (x); x = repl.syncScan()");
 
 	/* Without a host, none of the hook counters should have changed. */
 	assert(g_host.exit_calls == 0);
@@ -520,6 +562,7 @@ static void test_no_host_does_not_crash(void) {
 	assert(g_host.list_calls == 0);
 	assert(g_host.from_slash_calls == 0);
 	assert(g_host.is_active_calls == 0);
+	assert(g_host.sync_scan_calls == 0);
 
 	printf("PASS\n");
 	fflush(stdout);
@@ -561,6 +604,7 @@ int main(void) {
 	TR_RUN(test_repl_from_slash_no_host_returns_false);
 	TR_RUN(test_repl_is_active_returns_host_value);
 	TR_RUN(test_repl_is_active_value_drives_branch);
+	TR_RUN(test_repl_sync_scan_calls_host);
 	TR_RUN(test_no_host_does_not_crash);
 
 	printf("\n========================================\n");

@@ -99,7 +99,8 @@ enum {
 	rplv_list = 4,
 	rplv_help = 5,
 	rplv_fromslash = 6,
-	rplv_isactive = 7
+	rplv_isactive = 7,
+	rplv_syncscan = 8
 };
 
 
@@ -236,6 +237,12 @@ static boolean repl_valueproc(short token, hdltreenode hparam1,
 			return setbooleanvalue(false, vreturned);
 		return setbooleanvalue(g_host.is_active(), vreturned);
 
+	case rplv_syncscan:
+		(void) hparam1;
+		if (!g_host_installed || g_host.sync_scan == NULL)
+			return setlongvalue(0, vreturned);
+		return setlongvalue((long) g_host.sync_scan(), vreturned);
+
 	default:
 		return false;
 	}
@@ -274,6 +281,7 @@ boolean replinitverbs(void) {
 	ADD_VERB(PSTRING("\004", "help"), rplv_help);
 	ADD_VERB(PSTRING("\x09", "fromslash"), rplv_fromslash);
 	ADD_VERB(PSTRING("\x08", "isactive"), rplv_isactive);
+	ADD_VERB(PSTRING("\x08", "syncscan"), rplv_syncscan);
 
 	#undef ADD_VERB
 

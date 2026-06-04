@@ -293,6 +293,9 @@ void repl_output_help(void) {
 	fputs("    workspace.x = 42         (saved to database)\n", stdout);
 	fputs("\n", stdout);
 	fputs("Multi-line input: Coming in Phase 2\n", stdout);
+	fputs("\n", stdout);
+	fputs("Kernel verbs (call from any UserTalk expression):\n", stdout);
+	fputs("  repl.syncScan()    scan the ut-sync dir and create ODB nodes for any orphan .ut files\n", stdout);
 	fflush(stdout);
 }
 

@@ -161,6 +161,21 @@ typedef struct ty_repl_verbs_host {
 	 * Returns false when no host is installed.
 	 */
 	boolean (*is_active)(void);
+	/*
+	 * sync_scan: walk the ut-sync tree and auto-create any ODB nodes whose
+	 * .ut file exists on disk but is absent from the in-memory hashtable.
+	 * Delegates to ut_sync_scan_and_create(). Backs repl.syncScan().
+	 *
+	 * Returns the count of newly created ODB nodes (>= 0), or 0 when
+	 * ut-sync mode is not active (--ut-sync-dir was not supplied) so the
+	 * verb is a safe no-op in non-sync sessions.
+	 *
+	 * Return contract: the verb returns the count as a UserTalk number
+	 * (longvalue). A return of 0 means "no orphans found" OR "not in
+	 * ut-sync mode"; a return >= 1 means that many nodes were created.
+	 * Returns 0 (not a crash) when no host is installed.
+	 */
+	int (*sync_scan)(void);
 } repl_verbs_host_t;
 
 
@@ -185,11 +200,11 @@ extern boolean replinitverbs(void);
  * at the script level rather than crash). The adapter struct is COPIED
  * by value internally, so the caller may free or stack-allocate `host`.
  *
- * Thread-safety note: host installation is protected by no mutex. The
- * intended pattern is "install once at REPL startup, never change" —
- * the host pointer is read by the verb dispatcher on the main thread,
- * and it is the caller's responsibility to install before any user
- * script can run.
+ * Thread-safety note: the host is installed at the start of whichever
+ * mode runs (repl_main or protocol_main) and uninstalled on that mode's
+ * exit. The two modes are mutually exclusive (main.c dispatches to one
+ * or the other), so there is never concurrent or overlapping installation.
+ * All install/uninstall calls happen on the main thread under the GIL.
  */
 extern void repl_verbs_set_host(const repl_verbs_host_t *host);
 

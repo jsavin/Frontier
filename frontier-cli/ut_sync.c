@@ -680,6 +680,138 @@ fail:
 }
 
 /* ------------------------------------------------------------------------- */
+/* Percent-codec                                                             */
+/* ------------------------------------------------------------------------- */
+
+/*
+ * Hex digit emit helper. Returns the ASCII hex char for the low nibble of v,
+ * uppercase (0-9, A-F).
+ */
+static char hex_upper(unsigned int v) {
+	v &= 0x0f;
+	return (v < 10) ? (char)('0' + v) : (char)('A' + v - 10);
+}
+
+/*
+ * Hex digit parse helper. Returns the value of a single hex digit c (0..15),
+ * or -1 if c is not a valid hex digit.
+ */
+static int hex_val(unsigned char c) {
+	if (c >= '0' && c <= '9') return (int)(c - '0');
+	if (c >= 'A' && c <= 'F') return (int)(c - 'A' + 10);
+	if (c >= 'a' && c <= 'f') return (int)(c - 'a' + 10);
+	return -1;
+}
+
+int ut_pct_encode_segment(const char *raw, size_t rawlen,
+                          char *out, size_t outsz) {
+	size_t i;
+	size_t pos = 0;
+
+	if (out == NULL || outsz == 0)
+		return 0;
+	out[0] = '\0';
+
+	for (i = 0; i < rawlen; i++) {
+		unsigned char b = (unsigned char)raw[i];
+		int escape = 0;
+		unsigned int hex_byte = (unsigned int)b;
+
+		/*
+		 * Decide whether this byte must be percent-escaped and, if so, which
+		 * hex value to emit. The order of checks matters: '%' is tested first
+		 * so the escape-the-escape invariant holds.
+		 */
+		if (b == '%') {
+			escape = 1; hex_byte = 0x25;
+		} else if (b == '.') {
+			escape = 1; hex_byte = 0x2E;
+		} else if (b == '/') {
+			escape = 1; hex_byte = 0x2F;
+		} else if (b == ':') {
+			escape = 1; hex_byte = 0x3A;
+		} else if (b == '"') {
+			escape = 1; hex_byte = 0x22;
+		} else if (b == '\\') {
+			escape = 1; hex_byte = 0x5C;
+		} else if (b < 0x20 || b == 0x7F) {
+			/* Control bytes and DEL */
+			escape = 1; hex_byte = (unsigned int)b;
+		} else if (i == 0 && b == '-') {
+			/* Leading dash only */
+			escape = 1; hex_byte = 0x2D;
+		}
+
+		if (escape) {
+			/* Need 3 bytes (%XX) + the final NUL sentinel */
+			if (pos + 3 + 1 > outsz) {
+				out[0] = '\0';
+				return 0;
+			}
+			out[pos++] = '%';
+			out[pos++] = hex_upper(hex_byte >> 4);
+			out[pos++] = hex_upper(hex_byte);
+		} else {
+			/* Need 1 byte + the final NUL sentinel */
+			if (pos + 1 + 1 > outsz) {
+				out[0] = '\0';
+				return 0;
+			}
+			out[pos++] = (char)b;
+		}
+	}
+
+	out[pos] = '\0';
+	return 1;
+}
+
+int ut_pct_decode_segment(const char *enc, char *out, size_t outsz) {
+	size_t pos = 0;
+	const char *p = enc;
+
+	if (out == NULL || outsz == 0)
+		return 0;
+	out[0] = '\0';
+	if (enc == NULL)
+		return 0;
+
+	while (*p != '\0') {
+		if (*p == '%') {
+			int hi, lo;
+			/* Require exactly two following hex digits. */
+			if (p[1] == '\0' || p[2] == '\0') {
+				out[0] = '\0';
+				return 0;
+			}
+			hi = hex_val((unsigned char)p[1]);
+			lo = hex_val((unsigned char)p[2]);
+			if (hi < 0 || lo < 0) {
+				out[0] = '\0';
+				return 0;
+			}
+			/* Need 1 decoded byte + the final NUL sentinel */
+			if (pos + 1 + 1 > outsz) {
+				out[0] = '\0';
+				return 0;
+			}
+			out[pos++] = (char)((hi << 4) | lo);
+			p += 3;
+		} else {
+			/* Need 1 literal byte + the final NUL sentinel */
+			if (pos + 1 + 1 > outsz) {
+				out[0] = '\0';
+				return 0;
+			}
+			out[pos++] = *p++;
+		}
+	}
+
+	out[pos] = '\0';
+	return 1;
+}
+
+
+/* ------------------------------------------------------------------------- */
 /* Path mapping                                                              */
 /* ------------------------------------------------------------------------- */
 
