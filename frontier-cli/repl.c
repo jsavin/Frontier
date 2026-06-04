@@ -3627,7 +3627,10 @@ void repl_uninstall_verb_host(void) {
 
 
 /*
- * Boot the REPL menubar by invoking the UserTalk install script.
+ * Boot the REPL menubar by invoking the UserTalk install script, then
+ * run the legacy dynamic-composition verb system.menus.buildMenuBar to
+ * fold in any additional menus (user.menus.*, system.menus.helpMenu,
+ * the frontmost-keyed modal menu, etc.) the way the legacy GUI did.
  *
  * Design note: the menubar lives in the ODB (system.menus.data.repl), and
  * its install logic + handler scripts live in UserTalk (under
@@ -3637,10 +3640,23 @@ void repl_uninstall_verb_host(void) {
  * idempotent — guarded by menu.isInstalled — so re-invocation across
  * sessions is safe and cheap.
  *
+ * system.menus.buildMenuBar is the legacy UserTalk composer. Its
+ * headless effect is currently a no-op for the bar projection: the
+ * composer's menu.install calls target addresses outside
+ * system.menus.data (e.g. @user.menus.menubar, @system.menus.helpMenu),
+ * which menudata_resolve_bar_path treats as depth=0 and does not flip
+ * the .installed flag for. menu.clearMenuBar and kernel menu.buildMenuBar
+ * are also headless no-ops. Wiring the composer in now is a
+ * mechanism-fidelity step: as soon as editor windows exist and the
+ * frontmost-keyed modal menu has somewhere to land, the same code path
+ * will produce the dynamic per-window behavior. The empty-frontmost
+ * path is handled gracefully by the composer itself (try/else around
+ * the modal install).
+ *
  * Boot failure mode (per ADR-016 / planning doc): a missing or broken
- * install script must NOT take down the REPL. Log a prominent warning
- * and continue. The user can still operate via legacy /commands and the
- * palette will simply show no items if it's opened.
+ * install or composer script must NOT take down the REPL. Log a
+ * prominent warning and continue. The user can still operate via legacy
+ * /commands and the palette will simply show no items if it's opened.
  *
  * GIL: must be called with the GIL held. Called once from repl_main
  * before either loop runs.
@@ -3648,7 +3664,9 @@ void repl_uninstall_verb_host(void) {
 static void install_repl_menubar(void) {
 	const char *expr =
 	    "if defined (@system.menus.installReplMenubar) "
-	    "{system.menus.installReplMenubar ()}";
+	    "{system.menus.installReplMenubar ()}; "
+	    "if defined (@system.menus.buildMenuBar) "
+	    "{system.menus.buildMenuBar ()}";
 	size_t expr_len = strlen(expr);
 	Handle htext = nil;
 
