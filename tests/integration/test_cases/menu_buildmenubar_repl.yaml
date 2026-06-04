@@ -1,0 +1,80 @@
+# Integration tests for system.menus.buildMenubar running alongside
+# system.menus.installReplMenubar — the legacy UserTalk composer must
+# leave the REPL bar in system.menus.data intact so the palette can
+# still render it.
+#
+# Background
+# ----------
+# The legacy Frontier app composed its menubar via a UserTalk verb,
+# system.menus.buildMenubar, which clears the bar, folds in user.menus
+# tables, helpMenu, and a frontmost-keyed modal menu, then calls the
+# kernel menu.buildMenuBar(). The headless REPL today populates its
+# bar by direct writes from system.menus.installReplMenubar.
+#
+# This file pins the contract that the composer can run *after*
+# installReplMenubar without disturbing the REPL bar that the palette
+# (frontier-cli/repl_palette_source.c, walking system.menus.data.repl)
+# depends on. Required because the composer calls menu.clearMenuBar()
+# (currently a headless no-op — these tests fail fast if that ever
+# changes to a real wipe) and a chain of menu.install() calls on
+# addresses outside system.menus.data (also currently silent no-ops —
+# the tests catch any regression where those start writing somewhere
+# that clobbers system.menus.data.repl).
+#
+# sequential: true because system.menus.data.repl is a singleton path;
+# parallel tests can't isolate via unique bar names like
+# menu_data_write_projection.yaml does.
+
+needs_guest_dbs: false
+sequential: true
+
+tests:
+  - name: "buildMenubar runs cleanly on a hydrated DB"
+    description: |
+      The legacy composer must evaluate end-to-end without erroring on
+      the empty-frontmost path (no editor windows, window.frontmost()
+      returns ""). All called verbs (menu.clearMenuBar, menu.install,
+      html.menu.install, window.getType, menu.buildMenuBar) must
+      resolve and complete. RED today only if the composer is broken;
+      the contract is that it stays runnable.
+    script: |
+      local(ok = false);
+      try {
+        system.menus.buildMenubar();
+        ok = true
+      };
+      return ok
+    expected_success: true
+    expected_result: "true"
+
+  - name: "buildMenubar preserves the REPL bar after installReplMenubar"
+    description: |
+      Running the composer after installReplMenubar must leave
+      system.menus.data.repl installed. This is the load-bearing
+      assertion for the REPL bootstrap: if menu.clearMenuBar ever
+      becomes a real wipe, or if some menu.install side effect clears
+      .installed, this test catches the regression before the palette
+      goes blank in production.
+    script: |
+      system.menus.installReplMenubar();
+      system.menus.buildMenubar();
+      return menu.isInstalled(@system.menus.data.repl)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "buildMenubar leaves REPL menu items intact"
+    description: |
+      After the composer runs, the REPL menu items written by
+      installReplMenubar must still exist and still carry the script
+      bodies installReplMenubar set. Reads through the same field
+      path the palette renderer uses (system.menus.data.<bar>.<menu>.
+      <item>.script). Behavioral, not source-inspection: this would
+      fail if the composer wiped or rewrote the projection.
+    script: |
+      system.menus.installReplMenubar();
+      system.menus.buildMenubar();
+      local(helpDefined = defined(@system.menus.data.repl.REPL.Help));
+      local(helpScript = system.menus.data.repl.REPL.Help.script);
+      return helpDefined and (string.patternMatch("repl.help", helpScript) > 0)
+    expected_success: true
+    expected_result: "true"

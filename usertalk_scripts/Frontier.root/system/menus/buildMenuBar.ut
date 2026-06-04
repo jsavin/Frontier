@@ -1,0 +1,39 @@
+on add (adrmenu) {
+	try {
+		menu.install (adrmenu)}};
+
+menu.clearMenuBar ();
+
+bundle { //install menus
+	if defined (user.menus.menubar) {
+		add (@user.menus.menubar)}
+	else {
+		add (@system.menus.menubar)};
+	html.menu.install ();
+	add (@user.menus.bookmarkMenu);
+	add (@user.menus.customMenu);
+	local (i);
+	for i = 1 to sizeOf (user.menus) { //PBS 8/13/98: add additional user menus
+		local (adrMenu = @user.menus [i]);
+		if typeOf (adrMenu^) == addressType { //menus can be address
+			if not defined (adrMenu^^) {
+				continue};
+			adrMenu = adrMenu^};
+		if typeOf (adrMenu^) == menuBarType {
+			case string.lower (nameOf (user.menus [i])) {
+				"bookmarkmenu";
+				"custommenu";
+				"menubar" {
+					continue}};
+			add (adrMenu)}};
+	add (@system.menus.helpMenu)};
+
+bundle { //add the modal menu, based on the type of the frontmost window
+	local (winType = window.getType (window.frontmost ()));
+	try {
+		menu.install (@system.menus.modals.[winType])}
+	else {
+		winType = 0};
+	system.menus.data.currentMenuType = winType}; //see system.menus.agent
+
+menu.buildMenuBar () //force update
