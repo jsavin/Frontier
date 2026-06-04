@@ -160,23 +160,6 @@ int ut_decanonicalize_outline_text(const unsigned char *in, size_t inlen,
  */
 
 /*
- * segment_is_safe - validate a decoded ODB segment for use as a path component.
- *
- * Returns 1 if the segment (byte pointer + length) is safe: non-empty, not "."
- * or "..", and contains no "/" or control bytes (< 0x20 or 0x7F). Returns 0 if
- * the segment is unsafe.
- *
- * Used in the ODB->fs forward direction (ut_odb_path_to_fs) and by ut_scan.c
- * for post-decode validation of segments decoded from percent-encoded filenames.
- * Keeping the check in one function ensures the two directions apply identical
- * rejection criteria.
- *
- * Pure function: no globals, no kernel state, thread-safe.
- */
-int segment_is_safe(const char *seg, size_t len);
-
-
-/*
  * ut_pct_encode_segment - percent-encode a raw ODB segment name.
  *
  * Encodes each byte that would be structurally unsafe or ambiguous:

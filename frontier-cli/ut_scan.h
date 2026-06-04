@@ -31,27 +31,30 @@ extern "C" {
  *
  * Must be called after langhash_materialize_disk_values() has fully loaded
  * the tree into memory (so a hashtable miss genuinely means absent, not
- * lazy-unloaded) and after clear_post_hydration_dirty_flags() has cleared
- * all dirty bits (so the caller can re-dirty only the nodes it creates).
- * Each newly created path is recorded via cli_record_ut_import() so the
- * existing cli_redirty_ut_imported_paths() pass persists them on save.
+ * lazy-unloaded).
  *
  * Runs on the main thread holding the GIL -- the same execution context as
  * the bulk hydrate walk, so all kernel hashtable/op/lang primitives are safe
  * to call directly.
  *
  * Parameters:
- *   sync_dir     - value of --ut-sync-dir (e.g. "usertalk_scripts"). Not NULL.
- *   root_basename - filename of the loaded .root (e.g. "Frontier.root"). Not NULL.
+ *   sync_dir          - value of --ut-sync-dir (e.g. "usertalk_scripts"). Not NULL.
+ *   root_basename     - filename of the loaded .root (e.g. "Frontier.root"). Not NULL.
+ *   record_for_redirty - non-zero: record each created path via cli_record_ut_import()
+ *                        so cli_redirty_ut_imported_paths() can re-dirty them after
+ *                        clear_post_hydration_dirty_flags() wiped the bits (boot path).
+ *                        Zero: skip recording -- dirty bits from hashtableassign/
+ *                        langsuretablevalue survive naturally to the next save
+ *                        (post-boot / repl.syncScan path). Passing 0 post-boot also
+ *                        prevents an unbounded memory leak: the recorded list is only
+ *                        consumed once (at boot) and post-boot accumulations are
+ *                        never freed.
  *
  * Returns the number of ODB nodes created (>= 0), or -1 on a hard error
  * (e.g. sync directory not accessible).
- *
- * Designed as a clean reusable routine: the future repl.syncScan REPL verb
- * will call this after boot to pick up .ut drops that arrive while the
- * runtime is running.
  */
-int ut_sync_scan_and_create(const char *sync_dir, const char *root_basename);
+int ut_sync_scan_and_create(const char *sync_dir, const char *root_basename,
+                             int record_for_redirty);
 
 #ifdef __cplusplus
 }

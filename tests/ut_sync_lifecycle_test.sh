@@ -378,40 +378,90 @@ fi
 # picks up the new file on demand.  The verb return value (count) must be
 # >= 1, and defined(@system.verbs.builtins.zzondemand.ping) must be true.
 # ---------------------------------------------------------------------------
-echo "==> Test 9: repl.syncScan() verb is callable and returns a number"
+# Test 9: repl.syncScan() genuinely picks up an on-demand .ut drop.
+#
+# Design: ping.ut does NOT exist when the CLI boots, so the boot scan
+# cannot create it. A valid .ut is pre-staged in a temp location and then
+# copied into the sync dir from within the running protocol session via
+# sys.unixShellCommand. repl.syncScan() is then called twice:
+#
+#   Call 1: repl.syncScan() must return >= 1 (created ping -- on-demand).
+#   Call 2: repl.syncScan() must return 0 (idempotent -- node exists now).
+#
+# A no-op verb, or one that always returns 0, cannot satisfy BOTH
+# assertions at once. The double-call also confirms idempotency.
+#
+# Verification uses count only (not defined()), because defined() can
+# return phantom-true via EFP for builtins children even when the node does
+# not exist in the hashtable -- see node_exists_in_memory in ut_scan.c.
+#
+# The .ut content must be non-empty (a valid script). Empty files pass
+# read_ut_file but fail optexttooutline, so create_orphan_node returns 0.
+# ---------------------------------------------------------------------------
+echo "==> Test 9: repl.syncScan() picks up an on-demand .ut drop (>= 1 then 0)"
 
-# Drop a new .ut that the earlier boot scans have never seen.
 ONDEMAND_DIR="$ROOT_SYNC/system/verbs/builtins/zzondemand"
 ONDEMAND_FILE="$ONDEMAND_DIR/ping.ut"
+# Ensure parent directory exists (boot will not create it -- ping.ut absent at boot).
 mkdir -p "$ONDEMAND_DIR"
-printf 'on ping () {\n\treturn (true)}\n' > "$ONDEMAND_FILE"
+# ping.ut must NOT exist when the CLI boots.
+rm -f "$ONDEMAND_FILE"
 
-PROBE_9=$(printf '%s\n' \
-    '{"id":1,"op":"script/eval","params":{"expression":"repl.syncScan()"}}' \
-    '{"id":2,"op":"script/eval","params":{"expression":"defined(@system.verbs.builtins.zzondemand.ping)"}}' \
-    '{"id":3,"op":"shutdown","params":{}}' \
-    | run_protocol "")
+# Build shell command that copies ping.ut from within the session (post-boot).
+#
+# The .ut content is pre-staged in a temp file here in the test harness so
+# we avoid complex quoting inside the JSON expression. The UserTalk
+# sys.unixShellCommand then does a simple "cp SRC DST" with no escaping
+# hazards. The content is a minimal canonicalized .ut (UTF-8/LF) so that
+# create_orphan_node's optexttooutline call succeeds (empty files fail to
+# parse and produce a count of 0 even though read_ut_file accepts them).
+#
+# Verification uses the two-call count pattern only (not defined(), which
+# can return phantom-true via EFP even for nodes that do not exist --
+# see node_exists_in_memory comment in ut_scan.c and ARCHITECTURAL_ANTIPATTERNS.md).
+T9_STAGED="$(mktemp /tmp/ut_test9_staged.XXXXXX)"
+printf 'on ping ()\n\treturn (true)\n' > "${T9_STAGED}"
 
-SCAN_RETVAL="$(probe_value "$PROBE_9" 1)"
-ONDEMAND_DEFINED="$(probe_value "$PROBE_9" 2)"
+# cp command: copy the staged file to the target sync path post-boot.
+WRITE_CMD="cp ${T9_STAGED} ${ONDEMAND_FILE}"
 
-if [ -n "$SCAN_RETVAL" ]; then
-    pass "repl.syncScan() is callable (returned '${SCAN_RETVAL}')"
+# Write the protocol request file. Request id=1 drops the file (post-boot);
+# id=2 is the first syncScan (must return >= 1); id=3 is the second syncScan
+# (must return 0 -- idempotent). The two-count pattern is unforgeable by a
+# no-op verb.
+T9_REQUESTS="$(mktemp /tmp/ut_test9_req.XXXXXX)"
+printf '{"id":1,"op":"script/eval","params":{"expression":"sys.unixShellCommand(\\"%s\\")"}}\n' \
+    "${WRITE_CMD}" > "${T9_REQUESTS}"
+printf '%s\n' \
+    '{"id":2,"op":"script/eval","params":{"expression":"repl.syncScan()"}}' \
+    '{"id":3,"op":"script/eval","params":{"expression":"repl.syncScan()"}}' \
+    '{"id":4,"op":"shutdown","params":{}}' \
+    >> "${T9_REQUESTS}"
+
+PROBE_9=$(run_protocol "" < "${T9_REQUESTS}")
+rm -f "${T9_REQUESTS}" "${T9_STAGED}"
+
+SCAN_CALL1="$(probe_value "$PROBE_9" 2)"
+SCAN_CALL2="$(probe_value "$PROBE_9" 3)"
+
+# First call: must be a non-negative integer >= 1 (created ping on-demand).
+if printf '%s' "$SCAN_CALL1" | grep -qE '^[0-9]+$'; then
+    pass "repl.syncScan() call 1 returned a number (${SCAN_CALL1})"
 else
-    fail "repl.syncScan() is NOT callable -- verb undefined or errored (got '${SCAN_RETVAL:-<none>}')"
+    fail "repl.syncScan() call 1 did not return a number (got '${SCAN_CALL1:-<none>}')"
 fi
 
-# The return value must be a non-negative integer string.
-if printf '%s' "$SCAN_RETVAL" | grep -qE '^[0-9]+$'; then
-    pass "repl.syncScan() returned a non-negative number (${SCAN_RETVAL})"
+if [ -n "$SCAN_CALL1" ] && [ "$SCAN_CALL1" -ge 1 ] 2>/dev/null; then
+    pass "repl.syncScan() call 1 returned >= 1 (on-demand path exercised, count=${SCAN_CALL1})"
 else
-    fail "repl.syncScan() did not return a number (got '${SCAN_RETVAL:-<none>}')"
+    fail "repl.syncScan() call 1 returned < 1 -- on-demand creation did NOT run (got '${SCAN_CALL1:-<none>}')"
 fi
 
-if [ "$ONDEMAND_DEFINED" = "true" ]; then
-    pass "zzondemand.ping created by on-demand syncScan"
+# Second call: must return 0 (idempotent -- node now exists).
+if [ "$SCAN_CALL2" = "0" ]; then
+    pass "repl.syncScan() call 2 returned 0 (idempotent, node already exists)"
 else
-    fail "zzondemand.ping NOT created by on-demand syncScan (defined -> '${ONDEMAND_DEFINED:-<none>}')"
+    fail "repl.syncScan() call 2 expected 0, got '${SCAN_CALL2:-<none>}'"
 fi
 
 # ---------------------------------------------------------------------------

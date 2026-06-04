@@ -3570,6 +3570,10 @@ static void replverbhost_list(const char *path) {
  * disk but is absent from the in-memory hashtable.  Delegates to
  * ut_sync_scan_and_create().  Backs repl.syncScan().
  *
+ * GIL: called on the UserTalk thread that evaluates repl.syncScan(), which
+ * holds the GIL at the point of call (all UserTalk evaluation is GIL-held).
+ * ut_sync_scan_and_create and all kernel primitives it calls are safe.
+ *
  * Returns the count of newly created nodes (>= 0), or 0 when ut-sync mode
  * is not active (--ut-sync-dir was not supplied) so the verb is a safe
  * no-op in non-sync sessions.
@@ -3578,7 +3582,8 @@ static int replverbhost_sync_scan(void) {
 	const char *sync_dir = cli_get_ut_sync_dir();
 	if (sync_dir == NULL)
 		return 0;
-	int n = ut_sync_scan_and_create(sync_dir, cli_get_system_root_basename());
+	int n = ut_sync_scan_and_create(sync_dir, cli_get_system_root_basename(),
+	                                0 /* record_for_redirty: post-boot, dirty bits persist naturally */);
 	return (n < 0) ? 0 : n;
 }
 
@@ -3605,6 +3610,19 @@ static void install_repl_verbs_host(void) {
 
 static void uninstall_repl_verbs_host(void) {
 	repl_verbs_set_host(NULL);
+}
+
+/*
+ * repl_install_verb_host / repl_uninstall_verb_host - public wrappers so
+ * protocol_main (protocol_handler.c) can install the same host adapter that
+ * repl_main installs.  This ensures that repl.* verbs (including
+ * repl.syncScan()) work in both --repl and --protocol modes.
+ */
+void repl_install_verb_host(void) {
+	install_repl_verbs_host();
+}
+void repl_uninstall_verb_host(void) {
+	uninstall_repl_verbs_host();
 }
 
 

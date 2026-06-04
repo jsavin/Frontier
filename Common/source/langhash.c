@@ -387,7 +387,7 @@ static boolean langhash_materialize_external(tyvaluerecord *val, const char *pat
 		return true;
 
 	const char *prior_path = langhash_materialize_current_path;
-	char local_path_buf[256];
+	char local_path_buf[512]; /* matches nodepath[512] in the caller */
 
 	if (path != NULL) {
 		strncpy(local_path_buf, path, sizeof(local_path_buf) - 1);

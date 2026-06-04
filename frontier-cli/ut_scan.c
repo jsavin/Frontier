@@ -100,7 +100,10 @@ static int pct_decoded_byte_count(const char *enc) {
 
 /*
  * Maximum size of a .ut file we will attempt to import during the scan.
- * Matches UT_IMPORT_SIZE_CAP in ut_sync.c (1 MB).
+ * ut_sync.c uses UT_MAX_FILE_BYTES (8 MB) as the import-hook cap; this
+ * scan-side cap is intentionally tighter (1 MB) -- boot-scan files should
+ * be small scripts, and a larger cap just widens the attack surface for
+ * resource exhaustion via a planted oversized file in the sync dir.
  */
 #define UT_SCAN_SIZE_CAP ((size_t)(1u << 20))
 
@@ -367,6 +370,10 @@ done:
  *                  and consumed by cli_redirty_ut_imported_paths / redirty_one_path).
  * fspath         - absolute filesystem path to the .ut file.
  *
+ * GIL: must be called with the GIL held. All kernel primitives used here
+ * (langsuretablevalue, hashtableassign, langexternalnewvalue, etc.) require
+ * exclusive GIL ownership, matching the boot-scan and repl.syncScan contexts.
+ *
  * Returns 1 on success, 0 on failure.
  * ------------------------------------------------------------------------- */
 static int create_orphan_node(const char *encoded_dotted, const char *fspath) {
@@ -585,13 +592,24 @@ done:
  *   1. Reverse-map its fs path to the ENCODED dotted ODB path.
  *   2. Check existence via structural hashtable walk (EFP-immune).
  *   3. If absent, create the intermediate table chain + leaf script.
- *   4. Record the created path so the redirty pass persists it.
+ *   4. Record the created path (only when record_for_redirty is non-zero,
+ *      i.e. the boot path) so the redirty pass persists it on save.
+ *      Post-boot (repl.syncScan) callers pass 0: the dirty bits set by
+ *      hashtableassign/langsuretablevalue survive naturally to the next
+ *      save without the record/redirty mechanism.
  *
  * count_out is incremented for each node successfully created.
  * depth guards against runaway recursion.
+ *
+ * P1 #3 -- TOCTOU fix for directory descent: directory children are opened
+ * with O_RDONLY|O_NOFOLLOW|O_DIRECTORY|O_NONBLOCK and classified via fstat()
+ * on the pinned fd (fdopendir).  This eliminates the window between lstat()
+ * and opendir() where an attacker could swap a directory entry for a symlink
+ * pointing out of the sync tree.  Regular files are still handled by the
+ * existing O_NOFOLLOW path inside read_ut_file().
  * ------------------------------------------------------------------------- */
 static void scan_dir_recursive(const char *dirpath, const char *sync_dir,
-                                int depth, int *count_out) {
+                                int depth, int *count_out, int record_for_redirty) {
 	if (depth > UT_SCAN_MAX_DEPTH) {
 		log_warn(LOG_COMP_STARTUP,
 		         "ut-scan: max depth %d exceeded at: %s", UT_SCAN_MAX_DEPTH, dirpath);
@@ -619,58 +637,78 @@ static void scan_dir_recursive(const char *dirpath, const char *sync_dir,
 			continue;
 		}
 
-		/* lstat to classify without following symlinks. */
-		struct stat st;
-		if (lstat(childpath, &st) != 0)
-			continue;
-
-		/* Skip symlinks -- defense against symlink escape. */
-		if (S_ISLNK(st.st_mode))
-			continue;
-
-		if (S_ISDIR(st.st_mode)) {
-			scan_dir_recursive(childpath, sync_dir, depth + 1, count_out);
-		} else if (S_ISREG(st.st_mode)) {
-			size_t namelen = strlen(name);
-			if (namelen < 3 || strcmp(name + namelen - 3, ".ut") != 0)
-				continue;
-
-			/*
-			 * Reverse-map this .ut fs path to its ENCODED dotted ODB path.
-			 * sync_dir here is the effective sync base (sync_dir/root_basename),
-			 * which was pre-computed by the caller.
-			 */
-			char encoded_dotted[2048];
-			if (!ut_fs_path_to_odb(childpath, sync_dir, encoded_dotted,
-			                       sizeof(encoded_dotted))) {
-				log_warn(LOG_COMP_STARTUP,
-				         "ut-scan: could not map to ODB path (skipping): %s", childpath);
-				continue;
+		/*
+		 * Classify the child by opening it with O_NOFOLLOW so symlinks are
+		 * never followed at any point.  Use O_DIRECTORY to detect directories
+		 * without a separate lstat(): if open() succeeds, the child is a
+		 * directory and the fd is pinned to that inode.  O_NONBLOCK avoids
+		 * blocking on a FIFO masquerading as a directory (macOS requirement).
+		 */
+		int cfd = open(childpath, O_RDONLY | O_NOFOLLOW | O_DIRECTORY | O_NONBLOCK);
+		if (cfd >= 0) {
+			/* Verify via fstat -- confirms S_ISDIR on the pinned inode. */
+			struct stat st;
+			if (fstat(cfd, &st) == 0 && S_ISDIR(st.st_mode)) {
+				DIR *cd = fdopendir(cfd); /* takes ownership of cfd */
+				if (cd != NULL) {
+					closedir(cd); /* also closes cfd */
+					scan_dir_recursive(childpath, sync_dir, depth + 1,
+					                   count_out, record_for_redirty);
+					continue;
+				}
 			}
+			close(cfd);
+			continue;
+		}
 
-			/* Structural EFP-immune existence check. */
-			if (node_exists_in_memory(encoded_dotted))
-				continue;
+		/*
+		 * open() failed with O_DIRECTORY -- child is not a directory.
+		 * It may be a regular file, a symlink, or another special type.
+		 * Symlinks are silently skipped: open() with O_NOFOLLOW returns
+		 * ELOOP for symlinks, and read_ut_file() also uses O_NOFOLLOW, so
+		 * any symlink attempt is refused at both layers.
+		 * Only process potential .ut regular files below.
+		 */
+		size_t namelen = strlen(name);
+		if (namelen < 3 || strcmp(name + namelen - 3, ".ut") != 0)
+			continue;
 
-			/* Genuine orphan: create the table chain + leaf. */
-			log_info(LOG_COMP_STARTUP,
-			         "ut-scan: creating orphan node: %s", encoded_dotted);
-			if (create_orphan_node(encoded_dotted, childpath)) {
+		/*
+		 * Reverse-map this .ut fs path to its ENCODED dotted ODB path.
+		 * sync_dir here is the effective sync base (sync_dir/root_basename),
+		 * which was pre-computed by the caller.
+		 */
+		char encoded_dotted[2048];
+		if (!ut_fs_path_to_odb(childpath, sync_dir, encoded_dotted,
+		                       sizeof(encoded_dotted))) {
+			log_warn(LOG_COMP_STARTUP,
+			         "ut-scan: could not map to ODB path (skipping): %s", childpath);
+			continue;
+		}
+
+		/* Structural EFP-immune existence check. */
+		if (node_exists_in_memory(encoded_dotted))
+			continue;
+
+		/* Genuine orphan: create the table chain + leaf. */
+		log_info(LOG_COMP_STARTUP,
+		         "ut-scan: creating orphan node: %s", encoded_dotted);
+		if (create_orphan_node(encoded_dotted, childpath)) {
+			if (record_for_redirty) {
 				/*
-				 * Record with the ENCODED dotted form. cli_record_ut_import feeds
-				 * cli_redirty_ut_imported_paths which calls redirty_one_path. That
-				 * function (main.c ~237) splits on '.' and decodes each segment with
-				 * ut_pct_decode_segment before building the Pascal key for
-				 * hashtablelookup. So the ENCODED form is the correct contract for
-				 * cli_record_ut_import. Passing the raw form would break the decode
-				 * step for paths that contain '%' or other encoded characters.
+				 * Boot path: record with the ENCODED dotted form so
+				 * cli_redirty_ut_imported_paths can re-dirty the node
+				 * after clear_post_hydration_dirty_flags wiped it.
+				 * cli_record_ut_import/redirty_one_path split on '.'
+				 * and call ut_pct_decode_segment per segment, so the
+				 * ENCODED form is the correct contract here.
 				 */
 				cli_record_ut_import(encoded_dotted);
-				(*count_out)++;
-			} else {
-				log_warn(LOG_COMP_STARTUP,
-				         "ut-scan: failed to create node for: %s", childpath);
 			}
+			(*count_out)++;
+		} else {
+			log_warn(LOG_COMP_STARTUP,
+			         "ut-scan: failed to create node for: %s", childpath);
 		}
 	}
 
@@ -680,8 +718,22 @@ static void scan_dir_recursive(const char *dirpath, const char *sync_dir,
 
 /* -------------------------------------------------------------------------
  * Public entry point.
+ *
+ * record_for_redirty controls whether newly created nodes are recorded via
+ * cli_record_ut_import() for the post-boot redirty pass:
+ *
+ *   1 (boot path, main.c): boot scan runs AFTER clear_post_hydration_dirty_flags
+ *     wipes all dirty bits, so created nodes must be re-dirtied explicitly via
+ *     cli_record_ut_import + cli_redirty_ut_imported_paths to survive to save.
+ *
+ *   0 (post-boot, repl.syncScan): no clear pass runs between the scan and the
+ *     next save, so the dirty bits set by hashtableassign/langsuretablevalue
+ *     inside create_orphan_node survive naturally.  Recording the paths is both
+ *     unnecessary and a memory leak (the recorded list is consumed only once, at
+ *     boot, and post-boot accumulations are never freed).
  * ------------------------------------------------------------------------- */
-int ut_sync_scan_and_create(const char *sync_dir, const char *root_basename) {
+int ut_sync_scan_and_create(const char *sync_dir, const char *root_basename,
+                             int record_for_redirty) {
 	if (sync_dir == NULL || root_basename == NULL)
 		return -1;
 
@@ -711,11 +763,12 @@ int ut_sync_scan_and_create(const char *sync_dir, const char *root_basename) {
 	}
 
 	int count = 0;
-	scan_dir_recursive(scan_base, scan_base, 0, &count);
+	scan_dir_recursive(scan_base, scan_base, 0, &count, record_for_redirty);
 
 	if (count > 0) {
 		log_info(LOG_COMP_STARTUP,
-		         "ut-scan: boot scan complete, created %d orphan node(s)", count);
+		         "ut-scan: %s scan complete, created %d orphan node(s)",
+		         record_for_redirty ? "boot" : "on-demand", count);
 	}
 
 	return count;

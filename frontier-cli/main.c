@@ -1750,7 +1750,8 @@ static boolean hydrate_system_root_database(const char* path, boolean read_only)
 	 * so the cli_redirty_ut_imported_paths call below re-dirtied them for save. */
 	if (cli_get_ut_sync_dir() != NULL) {
 		int scan_count = ut_sync_scan_and_create(cli_get_ut_sync_dir(),
-		                                         cli_get_system_root_basename());
+		                                         cli_get_system_root_basename(),
+		                                         1 /* record_for_redirty: boot path */);
 		if (scan_count > 0) {
 			log_info(LOG_COMP_STARTUP,
 			         "ut-scan: %d orphan node(s) created from sync tree", scan_count);
