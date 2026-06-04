@@ -2,7 +2,7 @@
 
 **Audience**: internal technical (JES, Claude, future agents).
 
-**Status**: design proposal. No implementation yet. Written 2026-06-03 after an infrastructure audit of the current ODB, the `.ut` corpus, the existing sync verifier, and the boot sequence.
+**Status**: SHIPPED. Originally written 2026-06-03 as a design proposal; the feature shipped via #698 (core sync) and #699 (lossless percent-encoding + import-discovery scan). This doc is retained as the design-rationale / mechanism deep-dive. For the agent-facing workflow guide (how to edit/debug/review under sync), see `docs/usertalk/UT_SYNC_WORKFLOW.md`. Original audit covered the ODB, the `.ut` corpus, the existing sync verifier, and the boot sequence.
 
 **Goal** (JES): get all UserTalk under source control as `.ut` files while still being able to edit live in Frontier. Edits flow both ways automatically:
 

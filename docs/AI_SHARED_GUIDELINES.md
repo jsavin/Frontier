@@ -119,6 +119,7 @@ When modifying UserTalk scripts in `.root` databases, follow `docs/ODB_SCRIPT_ED
 - Always use `script.newScriptObject` to install scripts (handles line endings + whitespace)
 - Commit both the `.ut` file AND the `.root` binary together in PRs
 - See the SOP section in `ODB_SCRIPT_EDITING.md` for the full PR workflow
+- For the runtime ODB<->.ut mirror (`--ut-sync-dir`): edit/debug in protocol mode (ODB is authoritative; the `.ut` tree is an outbound text projection), not by hand-editing `.ut` files. Full workflow + caveats: `docs/usertalk/UT_SYNC_WORKFLOW.md`
 
 ## Migration and Data-Safety Invariants
 

@@ -222,6 +222,7 @@ Use `return` to surface values, or write to a temp object you can read back via 
 
 ## 6. Deeper docs (load when topic comes up)
 
+- **UT_SYNC_WORKFLOW.md** — when editing `.ut` files under `--ut-sync-dir`, or reasoning about how filesystem `.ut` edits reach the live ODB (protocol-first edit/debug; outbound `.ut` mirror; mtime last-write-wins)
 - **records_and_tables.md** — when you hit "Can't find sub-table" or need to walk an unknown structure
 - **operators_and_idioms.md** — when an operator behaves unexpectedly (`contains`, `==`, `^`, `@`, word vs symbol forms)
 - **strings_and_text.md** — when truncation hits at 255 bytes, when escaping fights you, Pascal-string vs `Handle` distinction
