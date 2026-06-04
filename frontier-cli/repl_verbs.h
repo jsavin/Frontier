@@ -200,11 +200,11 @@ extern boolean replinitverbs(void);
  * at the script level rather than crash). The adapter struct is COPIED
  * by value internally, so the caller may free or stack-allocate `host`.
  *
- * Thread-safety note: host installation is protected by no mutex. The
- * intended pattern is "install once at REPL startup, never change" —
- * the host pointer is read by the verb dispatcher on the main thread,
- * and it is the caller's responsibility to install before any user
- * script can run.
+ * Thread-safety note: the host is installed at the start of whichever
+ * mode runs (repl_main or protocol_main) and uninstalled on that mode's
+ * exit. The two modes are mutually exclusive (main.c dispatches to one
+ * or the other), so there is never concurrent or overlapping installation.
+ * All install/uninstall calls happen on the main thread under the GIL.
  */
 extern void repl_verbs_set_host(const repl_verbs_host_t *host);
 

@@ -257,6 +257,16 @@ static int redirty_one_path(const char *dotted_path) {
 		/* Decode the percent-encoded segment back to its raw ODB key name
 		 * before building the Pascal string for hashtablelookup. */
 		char decoded_seg[256]; /* max raw Pascal name: 255 bytes + NUL */
+		/*
+		 * Defense-in-depth NUL guard: reject any segment that contains %00.
+		 * ut_pct_decode_segment would decode it to an embedded NUL byte,
+		 * causing strlen(decoded_seg) to silently truncate the key and diverge
+		 * from the codec contract (ut_sync.h line ~219). This matches the
+		 * equivalent rawlen==0 guard in ut_scan.c. %00 has no hex-case variant
+		 * (both digits are '0'), so a literal strstr suffices.
+		 */
+		if (strstr(seg, "%00") != NULL)
+			break;
 		if (!ut_pct_decode_segment(seg, decoded_seg, sizeof(decoded_seg)))
 			break; /* malformed %XX in a path we emitted -- treat as miss */
 

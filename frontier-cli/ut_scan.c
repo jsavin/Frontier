@@ -133,29 +133,36 @@ static int split_dotted(char *buf, const char **segs, int max_segs) {
 
 
 /* -------------------------------------------------------------------------
- * Internal: read an entire .ut file into a malloc'd buffer.
+ * Internal: read an entire .ut file from an already-opened fd.
+ *
+ * Takes ownership of fd (closes it on both success and failure).
+ * The fd must have been opened with O_NOFOLLOW and O_NONBLOCK; this
+ * function verifies S_ISREG via fstat, clears O_NONBLOCK, and reads.
+ * fspath_for_log is used only for warning messages -- it does not
+ * re-open the file, so no TOCTOU window is introduced.
  *
  * Returns 1 on success (*out is malloc'd, *outlen is the byte count).
  * Returns 0 on any error (*out is NULL, *outlen is 0).
- * Uses O_NOFOLLOW to refuse symlinks (matches the import hook's posture).
  * ------------------------------------------------------------------------- */
-static int read_ut_file(const char *fspath, unsigned char **out, size_t *outlen) {
+static int read_ut_file_fd(int fd, const char *fspath_for_log,
+                            unsigned char **out, size_t *outlen) {
 	*out = NULL;
 	*outlen = 0;
-
-	int fd = open(fspath, O_RDONLY | O_NOFOLLOW);
-	if (fd < 0)
-		return 0;
 
 	struct stat st;
 	if (fstat(fd, &st) != 0 || !S_ISREG(st.st_mode) || st.st_size < 0) {
 		close(fd);
 		return 0;
 	}
+	/* Confirmed regular file: clear O_NONBLOCK so read() blocks normally. */
+	int fl = fcntl(fd, F_GETFL);
+	if (fl != -1)
+		(void) fcntl(fd, F_SETFL, fl & ~O_NONBLOCK);
+
 	size_t sz = (size_t)st.st_size;
 	if (sz > UT_SCAN_SIZE_CAP) {
 		log_warn(LOG_COMP_STARTUP,
-		         "ut-scan: skipping oversized .ut (%zu bytes): %s", sz, fspath);
+		         "ut-scan: skipping oversized .ut (%zu bytes): %s", sz, fspath_for_log);
 		close(fd);
 		return 0;
 	}
@@ -185,6 +192,26 @@ static int read_ut_file(const char *fspath, unsigned char **out, size_t *outlen)
 	*out = buf;
 	*outlen = total;
 	return 1;
+}
+
+/* -------------------------------------------------------------------------
+ * Internal: read an entire .ut file into a malloc'd buffer (path-based).
+ *
+ * Opens with O_NOFOLLOW|O_NONBLOCK to refuse symlinks and avoid blocking
+ * on a FIFO before the S_ISREG fstat guard in read_ut_file_fd runs.
+ * Delegates to read_ut_file_fd after the open.
+ *
+ * Returns 1 on success (*out is malloc'd, *outlen is the byte count).
+ * Returns 0 on any error (*out is NULL, *outlen is 0).
+ * ------------------------------------------------------------------------- */
+static int read_ut_file(const char *fspath, unsigned char **out, size_t *outlen) {
+	int fd = open(fspath, O_RDONLY | O_NOFOLLOW | O_NONBLOCK);
+	if (fd < 0) {
+		*out = NULL;
+		*outlen = 0;
+		return 0;
+	}
+	return read_ut_file_fd(fd, fspath, out, outlen);
 }
 
 
@@ -368,7 +395,11 @@ done:
  *
  * encoded_dotted - ENCODED dotted path (the form stored by cli_record_ut_import
  *                  and consumed by cli_redirty_ut_imported_paths / redirty_one_path).
- * fspath         - absolute filesystem path to the .ut file.
+ * fspath         - absolute filesystem path to the .ut file (for logging only
+ *                  when prefd >= 0; used to open the file when prefd == -1).
+ * prefd          - if >= 0, a pre-opened fd for the .ut file (opened via openat
+ *                  on the pinned parent dir fd; ownership is transferred to this
+ *                  function). If -1, the file is opened by path via read_ut_file.
  *
  * GIL: must be called with the GIL held. All kernel primitives used here
  * (langsuretablevalue, hashtableassign, langexternalnewvalue, etc.) require
@@ -376,17 +407,26 @@ done:
  *
  * Returns 1 on success, 0 on failure.
  * ------------------------------------------------------------------------- */
-static int create_orphan_node(const char *encoded_dotted, const char *fspath) {
+static int create_orphan_node(const char *encoded_dotted, const char *fspath, int prefd) {
+	/*
+	 * prefd (when >= 0) is owned by this function: it must be closed on EVERY
+	 * exit path. read_ut_file_fd consumes it (closes it) on the success path;
+	 * for all earlier bails we close it here. Centralize via the close_prefd
+	 * label so no early return leaks the fd. ut_bytes (if allocated) is freed
+	 * before reaching close_prefd on every path, so this label only owns prefd.
+	 */
+	int ok = 0; /* declared before any goto so close_prefd can return it */
+
 	/* Split on dots to get segment list. */
 	char *buf = strdup(encoded_dotted);
 	if (buf == NULL)
-		return 0;
+		goto close_prefd;
 
 	const char *segs[UT_SCAN_MAX_SEGMENTS];
 	int nseg = split_dotted(buf, segs, UT_SCAN_MAX_SEGMENTS);
 	if (nseg <= 0) {
 		free(buf);
-		return 0;
+		goto close_prefd;
 	}
 
 	/*
@@ -425,7 +465,6 @@ static int create_orphan_node(const char *encoded_dotted, const char *fspath) {
 	 * above, so we only need the type-guard check here.
 	 */
 	hdlhashtable curtable = roottable;
-	int ok = 0;
 
 	for (int i = 0; i < nseg - 1 && curtable != nil; i++) {
 		char decoded[256];
@@ -503,10 +542,19 @@ static int create_orphan_node(const char *encoded_dotted, const char *fspath) {
 		bsleaf[0] = (unsigned char)leaflen;
 		memcpy(&bsleaf[1], leaf_raw, leaflen);
 
-		/* Read the .ut file bytes. */
+		/* Read the .ut file bytes.  Use the pre-opened fd when available
+		 * (openat path from scan_dir_fd); fall back to open-by-path when
+		 * prefd == -1 (legacy callers that have no pinned parent fd). */
 		unsigned char *ut_bytes = NULL;
 		size_t ut_len = 0;
-		if (!read_ut_file(fspath, &ut_bytes, &ut_len)) {
+		int read_ok;
+		if (prefd >= 0) {
+			read_ok = read_ut_file_fd(prefd, fspath, &ut_bytes, &ut_len);
+			prefd = -1; /* read_ut_file_fd took ownership and closed it */
+		} else {
+			read_ok = read_ut_file(fspath, &ut_bytes, &ut_len);
+		}
+		if (!read_ok) {
 			log_warn(LOG_COMP_STARTUP,
 			         "ut-scan: could not read .ut file: %s", fspath);
 			goto done;
@@ -581,6 +629,11 @@ static int create_orphan_node(const char *encoded_dotted, const char *fspath) {
 
 done:
 	free(buf);
+close_prefd:
+	/* Close prefd if it was not consumed by read_ut_file_fd (every early
+	 * bail before the read reaches here with prefd still owned). */
+	if (prefd >= 0)
+		close(prefd);
 	return ok;
 }
 
@@ -601,24 +654,33 @@ done:
  * count_out is incremented for each node successfully created.
  * depth guards against runaway recursion.
  *
- * P1 #3 -- TOCTOU fix for directory descent: directory children are opened
- * with O_RDONLY|O_NOFOLLOW|O_DIRECTORY|O_NONBLOCK and classified via fstat()
- * on the pinned fd (fdopendir).  This eliminates the window between lstat()
- * and opendir() where an attacker could swap a directory entry for a symlink
- * pointing out of the sync tree.  Regular files are still handled by the
- * existing O_NOFOLLOW path inside read_ut_file().
+ * P1 #3 / P2 -- TOCTOU-free descent: every child is resolved via openat()
+ * on the pinned parent dir fd (dirfd(d)), so no absolute path re-walk can
+ * race with a directory entry swap.  Directory children are recursed with
+ * the pinned DIR* passed directly into scan_dir_fd -- the caller never
+ * closes the dir before recursing.  Regular .ut files are opened via
+ * openat() and the pre-opened fd is passed into create_orphan_node (prefd
+ * argument), so read_ut_file_fd is used instead of open-by-path.
  * ------------------------------------------------------------------------- */
-static void scan_dir_recursive(const char *dirpath, const char *sync_dir,
-                                int depth, int *count_out, int record_for_redirty) {
+
+/* Forward declaration: scan_dir_fd is mutually recursive with itself. */
+static void scan_dir_fd(DIR *d, const char *dirpath, const char *sync_dir,
+                         int depth, int *count_out, int record_for_redirty);
+
+static void scan_dir_fd(DIR *d, const char *dirpath, const char *sync_dir,
+                         int depth, int *count_out, int record_for_redirty) {
+	/*
+	 * d is owned by this frame; closedir(d) at exit (also closes dirfd(d)).
+	 * dirpath is used only for path-string construction (logging + ODB mapping).
+	 */
 	if (depth > UT_SCAN_MAX_DEPTH) {
 		log_warn(LOG_COMP_STARTUP,
 		         "ut-scan: max depth %d exceeded at: %s", UT_SCAN_MAX_DEPTH, dirpath);
+		closedir(d);
 		return;
 	}
 
-	DIR *d = opendir(dirpath);
-	if (d == NULL)
-		return;
+	int parent_fd = dirfd(d);
 
 	struct dirent *ent;
 	while ((ent = readdir(d)) != NULL) {
@@ -628,7 +690,8 @@ static void scan_dir_recursive(const char *dirpath, const char *sync_dir,
 		if (name[0] == '.' && (name[1] == '\0' || (name[1] == '.' && name[2] == '\0')))
 			continue;
 
-		/* Build full child path. */
+		/* Build full child path string (for logging and ODB path mapping only --
+		 * actual file opens use openat on parent_fd, not this path string). */
 		char childpath[4096];
 		int n = snprintf(childpath, sizeof(childpath), "%s/%s", dirpath, name);
 		if (n < 0 || n >= (int)sizeof(childpath)) {
@@ -638,22 +701,27 @@ static void scan_dir_recursive(const char *dirpath, const char *sync_dir,
 		}
 
 		/*
-		 * Classify the child by opening it with O_NOFOLLOW so symlinks are
-		 * never followed at any point.  Use O_DIRECTORY to detect directories
-		 * without a separate lstat(): if open() succeeds, the child is a
-		 * directory and the fd is pinned to that inode.  O_NONBLOCK avoids
-		 * blocking on a FIFO masquerading as a directory (macOS requirement).
+		 * Classify the child by opening it relative to the pinned parent fd
+		 * via openat().  O_NOFOLLOW refuses symlinks; O_DIRECTORY succeeds
+		 * only for directories; O_NONBLOCK avoids blocking on a FIFO
+		 * masquerading as a directory (macOS requirement).  This resolves the
+		 * name relative to the kernel-pinned parent inode, not via the path
+		 * string -- no TOCTOU window.
 		 */
-		int cfd = open(childpath, O_RDONLY | O_NOFOLLOW | O_DIRECTORY | O_NONBLOCK);
+		int cfd = openat(parent_fd, name,
+		                 O_RDONLY | O_NOFOLLOW | O_DIRECTORY | O_NONBLOCK);
 		if (cfd >= 0) {
 			/* Verify via fstat -- confirms S_ISDIR on the pinned inode. */
 			struct stat st;
 			if (fstat(cfd, &st) == 0 && S_ISDIR(st.st_mode)) {
 				DIR *cd = fdopendir(cfd); /* takes ownership of cfd */
 				if (cd != NULL) {
-					closedir(cd); /* also closes cfd */
-					scan_dir_recursive(childpath, sync_dir, depth + 1,
-					                   count_out, record_for_redirty);
+					/* Pass the pinned DIR* directly into the recursive frame.
+					 * Do NOT closedir(cd) here: scan_dir_fd owns it and will
+					 * close it on exit.  This eliminates the TOCTOU window
+					 * between closedir and a re-resolving opendir(childpath). */
+					scan_dir_fd(cd, childpath, sync_dir, depth + 1,
+					            count_out, record_for_redirty);
 					continue;
 				}
 			}
@@ -662,11 +730,11 @@ static void scan_dir_recursive(const char *dirpath, const char *sync_dir,
 		}
 
 		/*
-		 * open() failed with O_DIRECTORY -- child is not a directory.
+		 * openat() with O_DIRECTORY failed -- child is not a directory.
 		 * It may be a regular file, a symlink, or another special type.
-		 * Symlinks are silently skipped: open() with O_NOFOLLOW returns
-		 * ELOOP for symlinks, and read_ut_file() also uses O_NOFOLLOW, so
-		 * any symlink attempt is refused at both layers.
+		 * Symlinks are silently skipped: openat() with O_NOFOLLOW returns
+		 * ELOOP for symlinks, and read_ut_file_fd also received the fd from
+		 * an O_NOFOLLOW openat, so symlink pivot is refused at both layers.
 		 * Only process potential .ut regular files below.
 		 */
 		size_t namelen = strlen(name);
@@ -675,8 +743,9 @@ static void scan_dir_recursive(const char *dirpath, const char *sync_dir,
 
 		/*
 		 * Reverse-map this .ut fs path to its ENCODED dotted ODB path.
-		 * sync_dir here is the effective sync base (sync_dir/root_basename),
-		 * which was pre-computed by the caller.
+		 * sync_dir is the effective sync base (sync_dir/root_basename),
+		 * pre-computed by the caller.  childpath is the path string used
+		 * for mapping; the actual file read uses a pre-opened fd below.
 		 */
 		char encoded_dotted[2048];
 		if (!ut_fs_path_to_odb(childpath, sync_dir, encoded_dotted,
@@ -690,10 +759,18 @@ static void scan_dir_recursive(const char *dirpath, const char *sync_dir,
 		if (node_exists_in_memory(encoded_dotted))
 			continue;
 
-		/* Genuine orphan: create the table chain + leaf. */
+		/* Open the .ut file relative to the pinned parent fd via openat --
+		 * no re-resolution of the absolute path string. */
+		int ffd = openat(parent_fd, name, O_RDONLY | O_NOFOLLOW | O_NONBLOCK);
+		if (ffd < 0)
+			continue; /* vanished or became a symlink after readdir -- skip */
+
+		/* Genuine orphan: create the table chain + leaf.
+		 * Pass ffd as prefd so create_orphan_node uses read_ut_file_fd
+		 * (ffd ownership transferred; create_orphan_node closes it). */
 		log_info(LOG_COMP_STARTUP,
 		         "ut-scan: creating orphan node: %s", encoded_dotted);
-		if (create_orphan_node(encoded_dotted, childpath)) {
+		if (create_orphan_node(encoded_dotted, childpath, ffd)) {
 			if (record_for_redirty) {
 				/*
 				 * Boot path: record with the ENCODED dotted form so
@@ -713,6 +790,41 @@ static void scan_dir_recursive(const char *dirpath, const char *sync_dir,
 	}
 
 	closedir(d);
+}
+
+static void scan_dir_recursive(const char *dirpath, const char *sync_dir,
+                                int depth, int *count_out, int record_for_redirty) {
+	if (depth > UT_SCAN_MAX_DEPTH) {
+		log_warn(LOG_COMP_STARTUP,
+		         "ut-scan: max depth %d exceeded at: %s", UT_SCAN_MAX_DEPTH, dirpath);
+		return;
+	}
+
+	/*
+	 * Open the directory with O_NOFOLLOW|O_DIRECTORY|O_NONBLOCK so the root
+	 * of the recursion is also pinned to a kernel inode.  The top-level
+	 * dirpath is operator-supplied (--ut-sync-dir), not an attacker-controlled
+	 * subtree path, so it does not strictly need openat hardening -- but
+	 * pinning it here is cheap and gives consistent posture throughout.
+	 */
+	int fd = open(dirpath, O_RDONLY | O_NOFOLLOW | O_DIRECTORY | O_NONBLOCK);
+	if (fd < 0)
+		return;
+
+	struct stat st;
+	if (fstat(fd, &st) != 0 || !S_ISDIR(st.st_mode)) {
+		close(fd);
+		return;
+	}
+
+	DIR *d = fdopendir(fd); /* takes ownership of fd */
+	if (d == NULL) {
+		close(fd);
+		return;
+	}
+
+	/* Delegate to the fd-pinned recursive worker.  scan_dir_fd owns d. */
+	scan_dir_fd(d, dirpath, sync_dir, depth, count_out, record_for_redirty);
 }
 
 

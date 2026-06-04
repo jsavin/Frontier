@@ -573,6 +573,43 @@ else
 fi
 
 # ---------------------------------------------------------------------------
+# Test 12 (P1 O_NONBLOCK -- FIFO boot-hang): a FIFO named foo.ut in the sync
+# tree must not cause open() to block forever.  Without O_NONBLOCK on the
+# read_ut_file open, a plain O_RDONLY open on a FIFO blocks until a writer
+# appears -- hanging startup indefinitely.  With O_NONBLOCK the open returns
+# ENXIO immediately and the FIFO is silently skipped.
+#
+# The CLI is wrapped in `timeout 10` so that if the fix regresses we get a
+# definitive failure (RC 124) rather than a hung test suite.
+# ---------------------------------------------------------------------------
+echo "==> Test 12 (P1 O_NONBLOCK): FIFO named .ut does not block boot scan"
+
+FIFO_DIR="$ROOT_SYNC/system/verbs/builtins/zzfifotest"
+FIFO_FILE="$FIFO_DIR/foo.ut"
+mkdir -p "$FIFO_DIR"
+mkfifo "$FIFO_FILE"
+
+FIFO_DB="$STAGE_DIR/Frontier_fifo.root"
+cp "$SOURCE_DB" "$FIFO_DB"
+
+FIFO_RC=0
+timeout 10 "$CLI" --skip-startup --ut-sync-dir "$SYNC_DIR" \
+    --system-root "$FIFO_DB" -e "1+1" >/dev/null 2>/dev/null
+FIFO_RC=$?
+
+# Remove the FIFO before checking (so subsequent tests are not affected).
+rm -f "$FIFO_FILE"
+rmdir "$FIFO_DIR" 2>/dev/null || true
+
+if [ "$FIFO_RC" -eq 124 ]; then
+    fail "FIFO boot-hang: CLI blocked on foo.ut FIFO (timeout 10s expired, RC=124)"
+elif [ "$FIFO_RC" -eq 0 ] || [ "$FIFO_RC" -eq 1 ]; then
+    pass "FIFO boot-hang: boot returned normally with FIFO in sync tree (RC=$FIFO_RC)"
+else
+    pass "FIFO boot-hang: boot returned (RC=$FIFO_RC, non-zero but not timeout)"
+fi
+
+# ---------------------------------------------------------------------------
 # Canonical protection: the source Virgin.root must be untouched.
 # ---------------------------------------------------------------------------
 ACTUAL_CANONICAL="$(md5_of "$SOURCE_DB")"
