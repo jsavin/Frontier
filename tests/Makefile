@@ -691,8 +691,8 @@ test-migrate-flag:
 
 # Run --migrate >255-byte-path truncation test (shell-based, issue #712).
 # Defense-in-depth check for copyctopstring callsites in db_format.c
-# migration paths. Today this fails for the right reason: stderr says
-# "openfile(src)" instead of naming the truncation as the cause.
+# migration paths. Asserts the CLI rejects >255-byte --migrate paths with
+# a clear error before any filesystem side effects.
 test-migrate-long-path:
 	@echo "Running --migrate long-path truncation tests..."
 	@./integration/cli_migrate_long_path_test.sh

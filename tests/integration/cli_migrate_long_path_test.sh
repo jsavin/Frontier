@@ -160,7 +160,7 @@ fi
 # "openfile(src)" which is indistinguishable from permission denied,
 # missing file, or any other downstream failure. Post-fix we expect the
 # error to name the actual cause (path too long / truncated / 255).
-if grep -qiE "path.*too.*long|too.*long.*path|exceeds.*255|truncat|> 255 bytes|exceeded 255" "$STDERR_FILE" "$STDOUT_FILE"; then
+if grep -qiE "path.*too.*long|too.*long.*path|exceeds.*255|truncat(ed|ion|ing)|> 255 bytes|exceeded 255" "$STDERR_FILE" "$STDOUT_FILE"; then
     pass "error message identifies path-length / truncation as the cause"
 else
     fail "stderr does not mention truncation or path length" \

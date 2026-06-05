@@ -108,6 +108,14 @@ extern long releasethreadglobals(void);
 // System root filename (used in search path construction)
 #define SYSTEM_ROOT_FILENAME "Frontier.root"
 
+// Maximum path length accepted by --migrate. The migration stack runs each
+// path through copyctopstring, which clips Pascal strings to 255 bytes (1
+// length byte + 255 payload). Reject earlier paths fast at argv-parse time
+// rather than letting them surface as confusing downstream errors. The
+// deep-stack defense-in-depth checks in db_format.c / dbverbs.c catch
+// callers that bypass the CLI (db.open() auto-migration, direct C API).
+#define MIGRATE_MAX_PATH_BYTES 255
+
 // System root search paths (for auto-discovery)
 #define MAX_SEARCH_PATHS 5
 
@@ -648,11 +656,10 @@ int main(int argc, char* argv[]) {
 			return 1;
 		}
 
-		/* Reject paths > 255 bytes early -- copyctopstring in the migration
-		 * stack clips Pascal strings to 255 bytes.  Fail fast here with a
-		 * clear message rather than letting the truncated path surface as a
-		 * confusing "openfile" or "pathtofilespec" error downstream. */
-#define MIGRATE_MAX_PATH_BYTES 255
+		/* Reject paths > 255 bytes early (see MIGRATE_MAX_PATH_BYTES at top
+		 * of file). Fail fast here with a clear message rather than letting
+		 * the truncated path surface as a confusing "openfile" or
+		 * "pathtofilespec" error downstream. */
 		if (input_len > MIGRATE_MAX_PATH_BYTES) {
 			fprintf(stderr, "Error: --migrate: path exceeds %d bytes (maximum supported by database format)\n",
 			        MIGRATE_MAX_PATH_BYTES);
