@@ -1213,6 +1213,15 @@ def load_file_metadata(yaml_path: str) -> dict:
       sequential: bool      - Run in main process, not parallel worker (default: false)
       needs_guest_dbs: bool - Copy sibling .root files + Guest Databases/ to worker (default: false)
       protocol_mode: bool   - Use NDJSON protocol executor (default: true)
+
+    ALL flags are FILE-LEVEL only. They MUST appear at the YAML root,
+    not inside a `tests:` entry. A per-test `sequential: true` (or any
+    of the other flags) parses without YAML error but is silently
+    IGNORED -- the runner buckets the whole file as parallel-eligible.
+    PR #709 (#690) hit this: a per-test sequential flag let a TCP
+    listener race against other workers. If a test needs port-binding
+    isolation, promote the flag to file root (and serialize the other
+    tests in the same file as a side effect).
     """
     try:
         with open(yaml_path, encoding='utf-8') as f:
