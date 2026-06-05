@@ -308,6 +308,37 @@ if [ "$ORIG_ARG_COUNT" -eq 0 ] && [ -x "$LONG_PATH_MIGRATE_TEST" ]; then
     fi
 fi
 
+# Shell-based test for --system-root with a >255-byte v6 path (issue #715,
+# deep-stack copyctopstring coverage). Exercises callsite #2 in
+# migrate_internal (db_format.c:2390) which is reached via the v6 auto-
+# migration path when --system-root receives a long path. The CLI has
+# no MIGRATE_MAX_PATH_BYTES fast-fail on --system-root, so the long path
+# flows through to the deep-stack defense added by PR #714.
+SYSTEM_ROOT_LONG_PATH_TEST="$PROJECT_ROOT/tests/integration/cli_system_root_long_path_test.sh"
+if [ "$ORIG_ARG_COUNT" -eq 0 ] && [ -x "$SYSTEM_ROOT_LONG_PATH_TEST" ]; then
+    echo
+    "$SYSTEM_ROOT_LONG_PATH_TEST"
+    SYSTEM_ROOT_LONG_PATH_RC=$?
+    if [ $SYSTEM_ROOT_LONG_PATH_RC -ne 0 ]; then
+        EXIT_CODE=$SYSTEM_ROOT_LONG_PATH_RC
+    fi
+fi
+
+# Shell-based test for --system-root temp-path boundary (issue #715,
+# callsite #3). Constructs a db_path in [249..255] bytes so that the
+# source-path check passes (callsite #2) but the temp_path = db_path +
+# ".v7.tmp" overflows at callsite #3 (db_format.c:2511). Self-skips on
+# worktree paths too long to satisfy the boundary construction.
+SYSTEM_ROOT_TEMP_PATH_TEST="$PROJECT_ROOT/tests/integration/cli_system_root_temp_path_boundary_test.sh"
+if [ "$ORIG_ARG_COUNT" -eq 0 ] && [ -x "$SYSTEM_ROOT_TEMP_PATH_TEST" ]; then
+    echo
+    "$SYSTEM_ROOT_TEMP_PATH_TEST"
+    SYSTEM_ROOT_TEMP_PATH_RC=$?
+    if [ $SYSTEM_ROOT_TEMP_PATH_RC -ne 0 ]; then
+        EXIT_CODE=$SYSTEM_ROOT_TEMP_PATH_RC
+    fi
+fi
+
 # Verify integrity of every staged database after tests.
 #
 # Drift is reported as a warning only and does NOT fail EXIT_CODE. This

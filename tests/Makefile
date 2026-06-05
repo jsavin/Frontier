@@ -697,6 +697,25 @@ test-migrate-long-path:
 	@echo "Running --migrate long-path truncation tests..."
 	@./integration/cli_migrate_long_path_test.sh
 
+# Run --system-root >255-byte-path truncation test (shell-based, issue #715).
+# Behavioral coverage for db_format.c:2390 (migrate_internal source-path
+# copyctopstring guard, callsite #2). The CLI does not fast-fail on
+# --system-root the way it does on --migrate, so a long v6 path flows
+# through auto-migration and reaches the deep-stack defense.
+test-system-root-long-path:
+	@echo "Running --system-root long-path truncation tests..."
+	@./integration/cli_system_root_long_path_test.sh
+
+# Run --system-root temp-path boundary test (shell-based, issue #715).
+# Behavioral coverage for db_format.c:2511 (migrate_internal temp-path
+# copyctopstring guard, callsite #3). Exercises the [249..255]-byte
+# db_path window where callsite #2 passes but db_path + ".v7.tmp"
+# overflows at callsite #3. Self-skips on worktree paths too long to
+# satisfy the boundary construction.
+test-system-root-temp-path-boundary:
+	@echo "Running --system-root temp-path boundary tests..."
+	@./integration/cli_system_root_temp_path_boundary_test.sh
+
 # Run custom CLI args tests (shell-based, uses -e mode)
 test-custom-args:
 	@echo "Running custom CLI args tests..."
@@ -728,7 +747,7 @@ check-license:
 	@python3 ../tools/relicense_headers.py --check
 
 # Run all tests (unit + integration + CLI migration + custom args + debug + hooks + license check)
-test-all: test test-integration test-migrate-flag test-migrate-long-path test-custom-args test-debug test-cow-idempotent test-ut-sync-lifecycle test-hooks check-license
+test-all: test test-integration test-migrate-flag test-migrate-long-path test-system-root-long-path test-system-root-temp-path-boundary test-custom-args test-debug test-cow-idempotent test-ut-sync-lifecycle test-hooks check-license
 	@echo "All test suites completed"
 
 # Verify Virgin.root <-> .ut corpus sync (issue #675).
@@ -820,7 +839,7 @@ verify-errors:
 	@echo "Verifying error message coverage..."
 	@../tools/verify_error_coverage.sh
 
-.PHONY: all test test-report test-integration test-integration-verbose test-migrate-flag test-migrate-long-path test-custom-args test-debug test-hooks test-all verify-odb-sync test-odb-sync clean install uninstall help results strings_generated kernel_verbs_generated verify-errors validate-bigstrings check-python-deps
+.PHONY: all test test-report test-integration test-integration-verbose test-migrate-flag test-migrate-long-path test-system-root-long-path test-system-root-temp-path-boundary test-custom-args test-debug test-hooks test-all verify-odb-sync test-odb-sync clean install uninstall help results strings_generated kernel_verbs_generated verify-errors validate-bigstrings check-python-deps
 
 check_v6_tables: check_v6_tables.c $(LANG_RUNTIME_SOURCES) ../Common/source/odbengine.c ../frontier-cli/stubs/headless_shell.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -DHEADLESS_TEST_PORTABLE_FILE -DHEADLESS_LINKS_REAL_DB -I../Common/headers -I../Common/SystemHeaders -I../portable check_v6_tables.c \
