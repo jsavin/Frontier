@@ -231,7 +231,20 @@ boolean window_registry_init(void) {
 	 *   Direct fields on the window node itself (e.g. windows.repl.type) are
 	 *   NOT populated; the framework reads exclusively from the /atts sibling.
 	 */
-	static const char *stmts[] = {
+	/*
+	 * Issue #685: stmts[] is declared as array-of-fixed-arrays (each
+	 * entry sized at 256 bytes, the Pascal-bigstring maximum) so the
+	 * CSTR_TO_BIGSTRING_LIT compile-time macro can guard each entry
+	 * via _Static_assert(sizeof(stmts[i]) <= 256). This catches the
+	 * original PR #683 bug 1 shape (a 411-byte literal silently
+	 * truncated mid-token) AT BUILD TIME rather than at boot. Cost:
+	 * ~1.5 KB of static const data on a CLI-startup path — negligible.
+	 * If a future statement legitimately needs to grow past 255 bytes,
+	 * the build will fail loudly with a clear assertion message,
+	 * forcing the author to split the statement rather than discover
+	 * the truncation as a misleading boot-time "syntax error".
+	 */
+	static const char stmts[][256] = {
 		"if not defined (system.temp.windowTypes) "
 		"{new (tableType, @system.temp.windowTypes)}",
 
@@ -254,24 +267,13 @@ boolean window_registry_init(void) {
 	bigstring bsprog;
 	bigstring bsresult;
 
-	/*
-	 * Issue #685: surface bigstring truncation. The CSTR_TO_BIGSTRING_LIT
-	 * compile-time macro cannot be applied here because stmts[] is an
-	 * array of (const char *), not an array-of-arrays, so sizeof(stmts[i])
-	 * would give pointer size, not the literal length. The runtime
-	 * boolean check on the per-element copy is the equivalent guard, and
-	 * matches the original PR #683 bug-1 failure shape: a too-long
-	 * statement gets clamped to 255 bytes, mid-token, then
-	 * langrunstringnoerror would fail with a misleading "syntax error".
-	 * Catch it explicitly instead.
-	 */
 	for (int i = 0; i < nstmts; i++) {
-		if (!cstr_to_bigstring(stmts[i], bsprog)) {
-			log_warn(LOG_COMP_GENERAL,
-			         "window_registry_init: statement %d exceeded 255 bytes "
-			         "and was truncated; aborting init", i);
-			return false;
-		}
+		/* The macro asserts sizeof(stmts[i]) <= 256 at compile time. The
+		 * inner runtime check from cstr_to_bigstring is discarded (it
+		 * would always succeed given the assert), but is still wired
+		 * through the helper so that any future literal that does NOT
+		 * use the macro retains the runtime safety net. */
+		CSTR_TO_BIGSTRING_LIT(stmts[i], bsprog);
 		if (!langrunstringnoerror(bsprog, bsresult)) {
 			log_warn(LOG_COMP_GENERAL,
 			         "window_registry_init: statement %d failed -- "

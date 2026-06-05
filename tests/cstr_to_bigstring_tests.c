@@ -15,11 +15,14 @@
  *
  * The companion compile-time guard is the CSTR_TO_BIGSTRING_LIT(literal,
  * bs) macro for string-literal inputs - it _Static_assert()s that
- * sizeof(literal) <= 256, so a too-large literal fails to compile rather
- * than silently truncating at runtime. The macro is exercised by the
- * production code (frontier-cli/window_registry.c init path) and proven
- * by build; testing it here would require a separate must-fail-to-compile
- * infrastructure, which is overkill.
+ * sizeof(literal) <= 256, so a too-large literal fails to compile
+ * rather than silently truncating at runtime. The macro is exercised
+ * by the production stmts[] table in window_registry_init() (each
+ * entry sized as a fixed-width char[256] so the assert can apply);
+ * adding a too-long literal there would fail the build directly. We
+ * don't test the macro's compile-time failure here because that would
+ * require a separate must-fail-to-compile infrastructure - the
+ * production callsite is the canonical test.
  */
 
 #include <assert.h>

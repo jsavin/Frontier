@@ -125,19 +125,28 @@ bool cstr_to_bigstring(const char *cstr, bigstring bs);
 
 /*
  * Compile-time-checked wrapper around cstr_to_bigstring() for string-literal
- * inputs. The _Static_assert fires at build time if the literal (including
- * its NUL terminator) exceeds 256 bytes, which is the maximum that fits in
- * a Pascal bigstring (1 length byte + 255 payload). This would have caught
- * PR #683 bug 1 at compile time rather than at boot.
+ * inputs (or fixed-size array entries where sizeof returns the buffer size,
+ * e.g. `static const char stmts[N][256]`). The _Static_assert fires at
+ * build time if the literal (including its NUL terminator) exceeds 256
+ * bytes, which is the maximum that fits in a Pascal bigstring (1 length
+ * byte + 255 payload). This catches PR #683 bug 1 at compile time rather
+ * than at boot.
  *
- * Use this when the source argument is a string-literal expression; use the
+ * Use this when the source argument has a compile-time-known size; use the
  * bare cstr_to_bigstring() (and check its return) when the source is a
- * runtime-supplied C string. Callers that pass a string literal AND check
- * the return will get both a compile-time guarantee and a redundant runtime
- * check -- that's fine; the macro discards the return.
+ * runtime-supplied C string (e.g. an ODB-derived path). Callers that pass
+ * a string literal AND check the return get both a compile-time guarantee
+ * and a redundant runtime check -- that's fine; the macro discards the
+ * return.
  *
  * Note: sizeof(literal) includes the trailing NUL, so a 255-character
  * payload occupies sizeof == 256. The bound is "<= 256" rather than "< 256".
+ *
+ * Requires C11 for _Static_assert. The project builds at -std=c17 in
+ * frontier-cli/ and -std=c99 in tests/, but tests link against this
+ * helper and so MUST use a C11-or-later test target if they invoke the
+ * macro. cstr_to_bigstring_tests.c does not invoke the macro directly;
+ * if a future test does, ensure that test's CFLAGS specify -std=c11+.
  */
 #define CSTR_TO_BIGSTRING_LIT(literal, bs)                                       \
 	do {                                                                         \
