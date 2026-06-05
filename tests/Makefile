@@ -689,6 +689,14 @@ test-migrate-flag:
 	@echo "Running CLI migration flag tests..."
 	@./test_migrate_flag.sh
 
+# Run --migrate >255-byte-path truncation test (shell-based, issue #712).
+# Defense-in-depth check for copyctopstring callsites in db_format.c
+# migration paths. Today this fails for the right reason: stderr says
+# "openfile(src)" instead of naming the truncation as the cause.
+test-migrate-long-path:
+	@echo "Running --migrate long-path truncation tests..."
+	@./integration/cli_migrate_long_path_test.sh
+
 # Run custom CLI args tests (shell-based, uses -e mode)
 test-custom-args:
 	@echo "Running custom CLI args tests..."
@@ -720,7 +728,7 @@ check-license:
 	@python3 ../tools/relicense_headers.py --check
 
 # Run all tests (unit + integration + CLI migration + custom args + debug + hooks + license check)
-test-all: test test-integration test-migrate-flag test-custom-args test-debug test-cow-idempotent test-ut-sync-lifecycle test-hooks check-license
+test-all: test test-integration test-migrate-flag test-migrate-long-path test-custom-args test-debug test-cow-idempotent test-ut-sync-lifecycle test-hooks check-license
 	@echo "All test suites completed"
 
 # Verify Virgin.root <-> .ut corpus sync (issue #675).
@@ -812,7 +820,7 @@ verify-errors:
 	@echo "Verifying error message coverage..."
 	@../tools/verify_error_coverage.sh
 
-.PHONY: all test test-report test-integration test-integration-verbose test-migrate-flag test-custom-args test-debug test-hooks test-all verify-odb-sync test-odb-sync clean install uninstall help results strings_generated kernel_verbs_generated verify-errors validate-bigstrings check-python-deps
+.PHONY: all test test-report test-integration test-integration-verbose test-migrate-flag test-migrate-long-path test-custom-args test-debug test-hooks test-all verify-odb-sync test-odb-sync clean install uninstall help results strings_generated kernel_verbs_generated verify-errors validate-bigstrings check-python-deps
 
 check_v6_tables: check_v6_tables.c $(LANG_RUNTIME_SOURCES) ../Common/source/odbengine.c ../frontier-cli/stubs/headless_shell.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -DHEADLESS_TEST_PORTABLE_FILE -DHEADLESS_LINKS_REAL_DB -I../Common/headers -I../Common/SystemHeaders -I../portable check_v6_tables.c \

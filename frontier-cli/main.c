@@ -648,6 +648,17 @@ int main(int argc, char* argv[]) {
 			return 1;
 		}
 
+		/* Reject paths > 255 bytes early -- copyctopstring in the migration
+		 * stack clips Pascal strings to 255 bytes.  Fail fast here with a
+		 * clear message rather than letting the truncated path surface as a
+		 * confusing "openfile" or "pathtofilespec" error downstream. */
+#define MIGRATE_MAX_PATH_BYTES 255
+		if (input_len > MIGRATE_MAX_PATH_BYTES) {
+			fprintf(stderr, "Error: --migrate: path exceeds %d bytes (maximum supported by database format)\n",
+			        MIGRATE_MAX_PATH_BYTES);
+			return 1;
+		}
+
 		/* Check --output target BEFORE migration to avoid side effects on failure */
 		if (g_cli_options.output_path != NULL) {
 			if (access(g_cli_options.output_path, F_OK) == 0 && !g_cli_options.force_overwrite) {
