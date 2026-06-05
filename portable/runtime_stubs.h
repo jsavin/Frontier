@@ -52,7 +52,7 @@ void *coercetoalias(void *value);
 void *coercetolist(void *value);
 void *coercetoobjspec(void *value);
 int comparehandles(void *h1, void *h2);
-void copyctopstring(const char *src, char *dst);
+unsigned char copyctopstring(const char *src, char *dst); /* boolean; see Common/headers/strings.h */
 void copyheapstring(const char *src, char *dst);
 void countwords(const char *str);
 void *currentprocess(void);

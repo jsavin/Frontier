@@ -15,14 +15,18 @@ void copystring(const char *src, char *dst) {
     strcpy(dst, src);
 }
 
-void copyctopstring(const char *src, char *dst) {
+/* Returns 1 (true) on complete copy, 0 (false) on truncation. Stub
+ * signature mirrors Common/source/strings.c after issue #707. */
+unsigned char copyctopstring(const char *src, char *dst) {
     if (!src || !dst)
-        return;
+        return 0;
     size_t len = strlen(src);
-    if (len > lenbigstring)
+    unsigned char fits = (len <= lenbigstring) ? 1 : 0;
+    if (!fits)
         len = lenbigstring;
     dst[0] = (unsigned char) len;
     memcpy(dst + 1, src, len);
+    return fits;
 }
 
 void copyheapstring(const char *src, char *dst) {

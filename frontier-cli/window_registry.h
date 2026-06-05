@@ -48,7 +48,6 @@
 #ifndef WINDOW_REGISTRY_H
 #define WINDOW_REGISTRY_H
 
-#include <stdbool.h>
 #include "../Common/headers/frontier.h"
 
 /*
@@ -106,53 +105,21 @@ boolean window_registry_init(void);
 void on_frontmost_changed(const char *old_path, const char *new_path);
 
 /*
- * Copy a C string into a Pascal bigstring (length byte + up to 255 payload).
+ * Pascal bigstring construction
+ * -----------------------------
+ * Issue #707 merged this header's previously-local cstr_to_bigstring()
+ * helper into the shared copyctopstring() in Common/source/strings.c
+ * (declared in Common/headers/strings.h). copyctopstring() now returns
+ * boolean (true on complete copy, false on truncation) and clamps the
+ * payload to 255 bytes before the memmove, so it has the same safety
+ * properties this header's local helper had. The CSTR_TO_BIGSTRING_LIT
+ * macro is gone too -- callers with compile-time-known sizes should
+ * place a `_Static_assert(sizeof(literal) <= 256, ...)` next to their
+ * copyctopstring() call (see window_registry.c stmts[] for the pattern).
  *
- * Returns true on a complete copy, false when the input exceeded 255 bytes
- * and was truncated to fit. Pre-#685 the function returned void and
- * truncation was silent; that masked PR #683 bug 1 where a 411-byte
- * UserTalk script was cut mid-token at boot ("syntax error at line 1"
- * with no obvious root cause). Callers that pass dynamically-sized data
- * (e.g. ODB-derived window paths) MUST check the return and decide what
- * to do on truncation -- log a warning and abort the op in most cases,
- * since a truncated path or script is not safely recoverable.
- *
- * For compile-time-known string literals, prefer the
- * CSTR_TO_BIGSTRING_LIT() macro below: it adds a _Static_assert that
- * catches over-length literals at build time, with zero runtime cost.
+ * Use copyctopstring() directly:
+ *   #include "strings.h"
+ *   if (!copyctopstring(window_path, bs_path)) { log_warn(...); return; }
  */
-bool cstr_to_bigstring(const char *cstr, bigstring bs);
-
-/*
- * Compile-time-checked wrapper around cstr_to_bigstring() for string-literal
- * inputs (or fixed-size array entries where sizeof returns the buffer size,
- * e.g. `static const char stmts[N][256]`). The _Static_assert fires at
- * build time if the literal (including its NUL terminator) exceeds 256
- * bytes, which is the maximum that fits in a Pascal bigstring (1 length
- * byte + 255 payload). This catches PR #683 bug 1 at compile time rather
- * than at boot.
- *
- * Use this when the source argument has a compile-time-known size; use the
- * bare cstr_to_bigstring() (and check its return) when the source is a
- * runtime-supplied C string (e.g. an ODB-derived path). Callers that pass
- * a string literal AND check the return get both a compile-time guarantee
- * and a redundant runtime check -- that's fine; the macro discards the
- * return.
- *
- * Note: sizeof(literal) includes the trailing NUL, so a 255-character
- * payload occupies sizeof == 256. The bound is "<= 256" rather than "< 256".
- *
- * Requires C11 for _Static_assert. The project builds at -std=c17 in
- * frontier-cli/ and -std=c99 in tests/, but tests link against this
- * helper and so MUST use a C11-or-later test target if they invoke the
- * macro. cstr_to_bigstring_tests.c does not invoke the macro directly;
- * if a future test does, ensure that test's CFLAGS specify -std=c11+.
- */
-#define CSTR_TO_BIGSTRING_LIT(literal, bs)                                       \
-	do {                                                                         \
-		_Static_assert(sizeof(literal) <= 256,                                   \
-		               "literal exceeds 255-byte Pascal bigstring limit");       \
-		(void)cstr_to_bigstring((literal), (bs));                                \
-	} while (0)
 
 #endif /* WINDOW_REGISTRY_H */
