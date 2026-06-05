@@ -48,6 +48,7 @@
 #ifndef WINDOW_REGISTRY_H
 #define WINDOW_REGISTRY_H
 
+#include <stdbool.h>
 #include "../Common/headers/frontier.h"
 
 /*
@@ -103,5 +104,46 @@ boolean window_registry_init(void);
  * GIL: must be called with the GIL held.
  */
 void on_frontmost_changed(const char *old_path, const char *new_path);
+
+/*
+ * Copy a C string into a Pascal bigstring (length byte + up to 255 payload).
+ *
+ * Returns true on a complete copy, false when the input exceeded 255 bytes
+ * and was truncated to fit. Pre-#685 the function returned void and
+ * truncation was silent; that masked PR #683 bug 1 where a 411-byte
+ * UserTalk script was cut mid-token at boot ("syntax error at line 1"
+ * with no obvious root cause). Callers that pass dynamically-sized data
+ * (e.g. ODB-derived window paths) MUST check the return and decide what
+ * to do on truncation -- log a warning and abort the op in most cases,
+ * since a truncated path or script is not safely recoverable.
+ *
+ * For compile-time-known string literals, prefer the
+ * CSTR_TO_BIGSTRING_LIT() macro below: it adds a _Static_assert that
+ * catches over-length literals at build time, with zero runtime cost.
+ */
+bool cstr_to_bigstring(const char *cstr, bigstring bs);
+
+/*
+ * Compile-time-checked wrapper around cstr_to_bigstring() for string-literal
+ * inputs. The _Static_assert fires at build time if the literal (including
+ * its NUL terminator) exceeds 256 bytes, which is the maximum that fits in
+ * a Pascal bigstring (1 length byte + 255 payload). This would have caught
+ * PR #683 bug 1 at compile time rather than at boot.
+ *
+ * Use this when the source argument is a string-literal expression; use the
+ * bare cstr_to_bigstring() (and check its return) when the source is a
+ * runtime-supplied C string. Callers that pass a string literal AND check
+ * the return will get both a compile-time guarantee and a redundant runtime
+ * check -- that's fine; the macro discards the return.
+ *
+ * Note: sizeof(literal) includes the trailing NUL, so a 255-character
+ * payload occupies sizeof == 256. The bound is "<= 256" rather than "< 256".
+ */
+#define CSTR_TO_BIGSTRING_LIT(literal, bs)                                       \
+	do {                                                                         \
+		_Static_assert(sizeof(literal) <= 256,                                   \
+		               "literal exceeds 255-byte Pascal bigstring limit");       \
+		(void)cstr_to_bigstring((literal), (bs));                                \
+	} while (0)
 
 #endif /* WINDOW_REGISTRY_H */

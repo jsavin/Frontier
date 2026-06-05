@@ -70,13 +70,20 @@ extern boolean langrunstringnoerror(const bigstring bsprogram, bigstring bsresul
 /* ------------------------------------------------------------------ */
 
 /*
- * Copy a C string into a Pascal bigstring.  Truncates silently at 255 bytes.
+ * Copy a C string into a Pascal bigstring.  Returns true on a complete
+ * copy, false when the input exceeded 255 bytes and was truncated to fit.
+ * Truncation still happens (clamped to 255 bytes) so callers that opt to
+ * proceed get the prefix; the boolean lets disciplined callers detect and
+ * surface the loss instead of silently shipping a chopped string. See the
+ * full rationale in window_registry.h. (Issue #685.)
  */
-static void cstr_to_bigstring(const char *cstr, bigstring bs) {
+bool cstr_to_bigstring(const char *cstr, bigstring bs) {
 	size_t len = strlen(cstr);
-	if (len > 255) len = 255;
+	bool ok = (len <= 255);
+	if (!ok) len = 255;
 	bs[0] = (unsigned char)len;
 	memcpy(bs + 1, cstr, len);
+	return ok;
 }
 
 /*
@@ -116,8 +123,22 @@ static void fire_window_script(short idscript, const char *window_path) {
 		return;
 	}
 
-	/* Step 2: copy the window path into a Pascal bigstring */
-	cstr_to_bigstring(window_path, bs_path);
+	/* Step 2: copy the window path into a Pascal bigstring.
+	 *
+	 * Issue #685: a window_path longer than 255 bytes would otherwise be
+	 * silently truncated, producing a chopped ODB address that injects
+	 * meaningless data into the dispatched script. Phase C only ever passes
+	 * the compile-time WINDOW_BRIDGE_REPL_PATH (well under the limit), but
+	 * Phase E will populate paths from user-derived editor-window ODB
+	 * addresses; surface the truncation now so a long path becomes a
+	 * loud warning rather than an obscure script error. */
+	if (!cstr_to_bigstring(window_path, bs_path)) {
+		log_warn(LOG_COMP_GENERAL,
+		         "fire_window_script: window_path exceeded 255 bytes and "
+		         "was truncated; skipping script dispatch (idscript=%d)",
+		         (int)idscript);
+		return;
+	}
 
 	/*
 	 * Step 3: escape the path for safe embedding as a string literal.
@@ -233,8 +254,24 @@ boolean window_registry_init(void) {
 	bigstring bsprog;
 	bigstring bsresult;
 
+	/*
+	 * Issue #685: surface bigstring truncation. The CSTR_TO_BIGSTRING_LIT
+	 * compile-time macro cannot be applied here because stmts[] is an
+	 * array of (const char *), not an array-of-arrays, so sizeof(stmts[i])
+	 * would give pointer size, not the literal length. The runtime
+	 * boolean check on the per-element copy is the equivalent guard, and
+	 * matches the original PR #683 bug-1 failure shape: a too-long
+	 * statement gets clamped to 255 bytes, mid-token, then
+	 * langrunstringnoerror would fail with a misleading "syntax error".
+	 * Catch it explicitly instead.
+	 */
 	for (int i = 0; i < nstmts; i++) {
-		cstr_to_bigstring(stmts[i], bsprog);
+		if (!cstr_to_bigstring(stmts[i], bsprog)) {
+			log_warn(LOG_COMP_GENERAL,
+			         "window_registry_init: statement %d exceeded 255 bytes "
+			         "and was truncated; aborting init", i);
+			return false;
+		}
 		if (!langrunstringnoerror(bsprog, bsresult)) {
 			log_warn(LOG_COMP_GENERAL,
 			         "window_registry_init: statement %d failed -- "
