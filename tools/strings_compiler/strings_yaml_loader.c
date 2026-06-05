@@ -57,7 +57,17 @@ int strings_load_yaml_stream(FILE *stream, const char *source_name) {
 	yaml_parser_set_input_file(&parser, stream);
 
 	if (!yaml_parser_load(&parser, &document)) {
-		strings_report_error("libyaml parser error: %s", parser.problem ? parser.problem : "unknown");
+		/*
+		 * Issue #681: include source_name + libyaml's reported line/col
+		 * so multi-input runs can point the operator at the right file.
+		 * problem_mark.line is 0-based; bump to 1-based for human-style
+		 * "filename:line:col" output.
+		 */
+		strings_report_error("%s:%lu:%lu: libyaml parser error: %s",
+				source_name ? source_name : "input",
+				(unsigned long)(parser.problem_mark.line + 1),
+				(unsigned long)(parser.problem_mark.column + 1),
+				parser.problem ? parser.problem : "unknown");
 		yaml_parser_delete(&parser);
 		return -1;
 	}
