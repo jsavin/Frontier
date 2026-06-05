@@ -1238,13 +1238,25 @@ void copyptocstring (const bigstring bssource, char *sdest) {
 	} /*copyptocstring*/
 
 
-void copyctopstring (const char *ssource, bigstring bsdest) {
+boolean copyctopstring (const char *ssource, bigstring bsdest) {
 
-	short len = strlen (ssource);  /*YES: use strlen, this is a C string*/
+	/*
+	 * Issue #707: clamp payload to 255 bytes BEFORE the memmove so
+	 * a >255-byte input cannot write past the end of bsdest. Pre-fix
+	 * `short len = strlen(...)` allowed a 300-byte source to memmove
+	 * 300 bytes into a 256-byte bigstring buffer; setstringlength()
+	 * then masked the length to a single byte, leaving the bigstring
+	 * internally inconsistent (length byte said 44, payload was 300).
+	 */
+	size_t srclen = strlen (ssource);  /*YES: use strlen, this is a C string*/
+	boolean fits = (srclen <= 255);
+	size_t copylen = fits ? srclen : 255;
 
-	memmove (stringbaseaddress (bsdest), ssource, len);
+	memmove (stringbaseaddress (bsdest), ssource, copylen);
 
-	setstringlength (bsdest, len);
+	setstringlength (bsdest, copylen);
+
+	return (fits);
 	} /*copyctopstring*/
 
 

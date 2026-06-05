@@ -65,27 +65,6 @@ extern boolean langdeparsestring(bigstring bs, byte ch);
  */
 extern boolean langrunstringnoerror(const bigstring bsprogram, bigstring bsresult);
 
-/* ------------------------------------------------------------------ */
-/*  Helpers                                                            */
-/* ------------------------------------------------------------------ */
-
-/*
- * Copy a C string into a Pascal bigstring.  Returns true on a complete
- * copy, false when the input exceeded 255 bytes and was truncated to fit.
- * Truncation still happens (clamped to 255 bytes) so callers that opt to
- * proceed get the prefix; the boolean lets disciplined callers detect and
- * surface the loss instead of silently shipping a chopped string. See the
- * full rationale in window_registry.h. (Issue #685.)
- */
-bool cstr_to_bigstring(const char *cstr, bigstring bs) {
-	size_t len = strlen(cstr);
-	bool ok = (len <= 255);
-	if (!ok) len = 255;
-	bs[0] = (unsigned char)len;
-	memcpy(bs + 1, cstr, len);
-	return ok;
-}
-
 /*
  * fire_window_script -- internal workhorse.
  *
@@ -125,14 +104,16 @@ static void fire_window_script(short idscript, const char *window_path) {
 
 	/* Step 2: copy the window path into a Pascal bigstring.
 	 *
-	 * Issue #685: a window_path longer than 255 bytes would otherwise be
-	 * silently truncated, producing a chopped ODB address that injects
-	 * meaningless data into the dispatched script. Phase C only ever passes
-	 * the compile-time WINDOW_BRIDGE_REPL_PATH (well under the limit), but
-	 * Phase E will populate paths from user-derived editor-window ODB
-	 * addresses; surface the truncation now so a long path becomes a
-	 * loud warning rather than an obscure script error. */
-	if (!cstr_to_bigstring(window_path, bs_path)) {
+	 * Issue #685 / #707: a window_path longer than 255 bytes would
+	 * otherwise be silently truncated, producing a chopped ODB address
+	 * that injects meaningless data into the dispatched script. Phase C
+	 * only ever passes the compile-time WINDOW_BRIDGE_REPL_PATH (well
+	 * under the limit), but Phase E will populate paths from user-
+	 * derived editor-window ODB addresses; surface the truncation now
+	 * so a long path becomes a loud warning rather than an obscure
+	 * script error. copyctopstring() (post-#707) returns false on
+	 * truncation. */
+	if (!copyctopstring(window_path, bs_path)) {
 		log_warn(LOG_COMP_GENERAL,
 		         "fire_window_script: window_path exceeded 255 bytes and "
 		         "was truncated; skipping script dispatch (idscript=%d)",
@@ -232,13 +213,13 @@ boolean window_registry_init(void) {
 	 *   NOT populated; the framework reads exclusively from the /atts sibling.
 	 */
 	/*
-	 * Issue #685: stmts[] is declared as array-of-fixed-arrays (each
-	 * entry sized at 256 bytes, the Pascal-bigstring maximum) so the
-	 * CSTR_TO_BIGSTRING_LIT compile-time macro can guard each entry
-	 * via _Static_assert(sizeof(stmts[i]) <= 256). This catches the
-	 * original PR #683 bug 1 shape (a 411-byte literal silently
-	 * truncated mid-token) AT BUILD TIME rather than at boot. Cost:
-	 * ~1.5 KB of static const data on a CLI-startup path — negligible.
+	 * Issue #685 / #707: stmts[] is declared as array-of-fixed-arrays
+	 * (each entry sized at 256 bytes, the Pascal-bigstring maximum) so
+	 * a compile-time `_Static_assert(sizeof(stmts[i]) <= 256)` (below)
+	 * catches over-length entries AT BUILD TIME. The original PR #683
+	 * bug 1 (a 411-byte literal silently truncated mid-token) would
+	 * now fail the build rather than mis-execute at boot. Cost: ~1.5
+	 * KB of static const data on a CLI-startup path -- negligible.
 	 * If a future statement legitimately needs to grow past 255 bytes,
 	 * the build will fail loudly with a clear assertion message,
 	 * forcing the author to split the statement rather than discover
@@ -267,13 +248,15 @@ boolean window_registry_init(void) {
 	bigstring bsprog;
 	bigstring bsresult;
 
+	/* Compile-time guard on per-entry size. Requires C11 (_Static_assert)
+	 * and a compile-time-known array element size, which the [256] above
+	 * provides. Discards the boolean return from copyctopstring inside
+	 * the loop because the assert already proves no entry can truncate. */
+	_Static_assert(sizeof(stmts[0]) <= 256,
+	               "window_registry_init stmts[] entry exceeds 255-byte Pascal bigstring limit");
+
 	for (int i = 0; i < nstmts; i++) {
-		/* The macro asserts sizeof(stmts[i]) <= 256 at compile time. The
-		 * inner runtime check from cstr_to_bigstring is discarded (it
-		 * would always succeed given the assert), but is still wired
-		 * through the helper so that any future literal that does NOT
-		 * use the macro retains the runtime safety net. */
-		CSTR_TO_BIGSTRING_LIT(stmts[i], bsprog);
+		(void)copyctopstring(stmts[i], bsprog);
 		if (!langrunstringnoerror(bsprog, bsresult)) {
 			log_warn(LOG_COMP_GENERAL,
 			         "window_registry_init: statement %d failed -- "

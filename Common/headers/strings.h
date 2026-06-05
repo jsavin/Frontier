@@ -157,7 +157,21 @@ extern void copystring (const bigstring, bigstring);
 
 extern void copyptocstring (const bigstring, char *);
 
-extern void copyctopstring (const char *, bigstring);
+/*
+ * Copy a C string into a Pascal bigstring (length byte + up to 255 payload).
+ *
+ * Returns true on a complete copy, false when the input exceeded 255 bytes
+ * and was clamped to fit. Pre-#707 the function returned void, the length
+ * variable was a `short` (no clamp), and the payload memmove() could write
+ * past the end of the 256-byte bigstring buffer for inputs >= 256 bytes.
+ * Now the payload is clamped to 255 bytes BEFORE the copy and the length
+ * byte always matches the actual payload written.
+ *
+ * Existing callers that ignore the return value get exactly the same
+ * observable behavior MINUS the buffer overflow -- the boolean is opt-in
+ * for callers that want to detect truncation. See issue #707.
+ */
+extern boolean copyctopstring (const char *, bigstring);
 
 /*
  Utility helpers for bridging between C strings and Frontier bigstrings (Pascal).
