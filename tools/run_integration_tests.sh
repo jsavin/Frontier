@@ -293,6 +293,21 @@ if [ "$ORIG_ARG_COUNT" -eq 0 ] && [ -x "$EDIT_VIRGIN_TESTS" ]; then
     fi
 fi
 
+# Shell-based test for --migrate with a >255-byte path (issue #712,
+# copyctopstring callsite defense-in-depth). Exercises the v6->v7
+# migration path with a path that exceeds the bigstring 255-byte limit
+# and asserts the failure surfaces as a clear truncation error rather
+# than a confusing downstream openfile/pathtofilespec failure.
+LONG_PATH_MIGRATE_TEST="$PROJECT_ROOT/tests/integration/cli_migrate_long_path_test.sh"
+if [ "$ORIG_ARG_COUNT" -eq 0 ] && [ -x "$LONG_PATH_MIGRATE_TEST" ]; then
+    echo
+    "$LONG_PATH_MIGRATE_TEST"
+    LONG_PATH_RC=$?
+    if [ $LONG_PATH_RC -ne 0 ]; then
+        EXIT_CODE=$LONG_PATH_RC
+    fi
+fi
+
 # Verify integrity of every staged database after tests.
 #
 # Drift is reported as a warning only and does NOT fail EXIT_CODE. This

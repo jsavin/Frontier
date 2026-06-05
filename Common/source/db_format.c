@@ -2147,8 +2147,14 @@ boolean db_format_compact_to_path(hdldatabaserecord source_db, Handle source_roo
         goto cleanup;
     }
 
+    /* Defense-in-depth (#712): dst_path comes from the UserTalk caller of
+     * db.compactDatabase.  Fail loud before pathtofilespec sees a truncated path. */
+    if (!copyctopstring(dst_path, bsdst)) {
+        fail_step = "destination path > 255 bytes (truncated)";
+        log_error(LOG_COMP_DB, "db_format_compact_to_path: destination path exceeds 255 bytes and would be truncated: %s", dst_path);
+        goto cleanup;
+    }
     fail_step = "pathtofilespec(dst)";
-    copyctopstring(dst_path, bsdst);
     if (!pathtofilespec(bsdst, &dst_fs))
         goto cleanup;
 
@@ -2375,7 +2381,15 @@ static boolean migrate_internal(const char *db_path, const char *explicit_output
 
     snprintf(temp_path, sizeof temp_path, "%s.v7.tmp", output_path);
 
-    copyctopstring(db_path, bspath);
+    /* Defense-in-depth (#712): fail loudly before pathtofilespec sees a
+     * truncated path.  The CLI pre-check at MIGRATE_MAX_PATH_BYTES is the
+     * first line of defense; this catches callers that bypass the CLI
+     * (e.g. db.open() auto-migration, direct C API). */
+    if (!copyctopstring(db_path, bspath)) {
+        fail_step = "source path > 255 bytes (truncated)";
+        log_error(LOG_COMP_DB, "migrate_internal: source path exceeds 255 bytes and would be truncated: %s", db_path);
+        goto cleanup;
+    }
     fail_step = "pathtofilespec(src)";
     if (!pathtofilespec(bspath, &src_fs))
         goto cleanup;
@@ -2490,7 +2504,13 @@ static boolean migrate_internal(const char *db_path, const char *explicit_output
             goto cleanup;
     }
 
-    copyctopstring(temp_path, bsdst);
+    /* Defense-in-depth (#712): temp_path = output_path + ".v7.tmp" so it is
+     * always longer than db_path -- doubly important to check here. */
+    if (!copyctopstring(temp_path, bsdst)) {
+        fail_step = "temp path > 255 bytes (truncated)";
+        log_error(LOG_COMP_DB, "migrate_internal: temp path exceeds 255 bytes and would be truncated: %s", temp_path);
+        goto cleanup;
+    }
     fail_step = "pathtofilespec(dst)";
     if (!pathtofilespec(bsdst, &dst_fs))
         goto cleanup;

@@ -763,9 +763,17 @@ static boolean dbopenverb (hdltreenode hparam1, tyvaluerecord *vreturned) {
 			}
 
 			if (output_path[0] != '\0' && strcmp(cpath, output_path) != 0) {
-				/* Output path differs from input -- update filespec */
+				/* Output path differs from input -- update filespec.
+				 * output_path is derived from the migrated path; it can be >255 bytes
+				 * if the user opened a database with a long path.  Defense-in-depth
+				 * (#712): fail loud rather than letting pathtofilespec see a truncated
+				 * path.  (The primary guard is the CLI pre-check; this catches callers
+				 * that reach dbopenverb directly, e.g. via db.open() UserTalk verb.) */
 				bigstring bsoutput;
-				copyctopstring(output_path, bsoutput);
+				if (!copyctopstring(output_path, bsoutput)) {
+					log_error(LOG_COMP_DB, "dbopenverb: migrated output path exceeds 255 bytes: %s", output_path);
+					return (false);
+				}
 				if (!pathtofilespec(bsoutput, &odbrec.fs)) {
 					log_error(LOG_COMP_DB, "dbopenverb: pathtofilespec failed for %s", output_path);
 					return (false);
@@ -1464,7 +1472,13 @@ boolean db_migrate_reopen_if_legacy(odbref *podb) {
             if (!db_format_last_migration_output_path(migrated_path, sizeof migrated_path))
                 return false;
             bigstring bsmigrated;
-            copyctopstring(migrated_path, bsmigrated);
+            /* Defense-in-depth (#712): migrated_path comes from the migration
+             * output path which may be >255 bytes if the ODB was opened from a
+             * long path.  Fail loud rather than silently truncating. */
+            if (!copyctopstring(migrated_path, bsmigrated)) {
+                log_error(LOG_COMP_DB, "db_migrate_reopen_if_legacy: migrated path exceeds 255 bytes: %s", migrated_path);
+                return false;
+            }
             if (!pathtofilespec(bsmigrated, &(**hodb).fs))
                 return false;
             /* Reopen the migrated file */

@@ -517,6 +517,12 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 				bigstring bserrmsg;
 				char errbuf[512];
 				snprintf(errbuf, sizeof(errbuf), "Can't find a file named \"%s\".", path);
+				/* copyctopstring clips to 255 bytes on very long paths.  This is
+				 * intentional here: we are already on the error path (stat failed),
+				 * and a truncated error message is acceptable -- the caller still
+				 * sees a meaningful "Can't find a file named ..." prefix.  No
+				 * secondary error handling is added to avoid nesting error logic
+				 * inside an error reporter. (#712 audit) */
 				copyctopstring(errbuf, bserrmsg);
 				langerrormessage(bserrmsg);
 				return false;
