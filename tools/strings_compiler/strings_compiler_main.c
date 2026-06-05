@@ -88,14 +88,14 @@ int main(int argc, char **argv) {
 
 	/* No inputs => read stdin once, same backwards-compatible behavior
 	 * as before. Callers can still pipe via `cat foo.yaml bar.yaml |
-	 * strings_compiler`, though they lose source filenames in errors. */
+	 * strings_compiler`, though they lose source filenames in errors.
+	 * Invariant: input_cap grows only when input_count grows, so
+	 * input_count == 0 implies input_cap == 0 and inputs == NULL. */
 	if (input_count == 0) {
-		if (input_cap == 0) {
-			inputs = malloc(sizeof(*inputs));
-			if (!inputs) {
-				fprintf(stderr, "strings_compiler: out of memory\n");
-				return EXIT_FAILURE;
-			}
+		inputs = malloc(sizeof(*inputs));
+		if (!inputs) {
+			fprintf(stderr, "strings_compiler: out of memory\n");
+			return EXIT_FAILURE;
 		}
 		inputs[0] = "-";
 		input_count = 1;
