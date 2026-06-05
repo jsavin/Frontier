@@ -1,6 +1,25 @@
 category: "TCP Callbacks"
 description: "Integration tests for TCP callback infrastructure using langruncallbackwithparams()"
 
+# Test 21 (#690 no-hang regression guard) binds a real TCP listener on
+# port 9250. The runner's `sequential` flag is file-level only -- a per-
+# test value is silently ignored (see tests/integration/runner.py
+# _read_yaml_file_metadata). Promoting to file scope serialises the
+# other 20 callback-registration tests too, but they are fast and the
+# alternative is a parallel-collision race once the runner-side TCP
+# blocker is fixed.
+#
+# KNOWN-FAILING ON DEVELOP: Test 21 currently fails with "Script
+# evaluation failed" -- the same mode as the existing 6 baseline tcp.*
+# failures (tcp.readStream / listenStream / connection-lifecycle).
+# The kernel TCP path is fine under direct `frontier-cli --protocol`
+# (manually verified); the failure is in the integration runner's
+# interaction with TCP-callback-fire tests. Test ships as a documented
+# regression-guard target; will start passing without changes here once
+# the runner-side TCP issue is fixed (separate workstream from #689 /
+# #690).
+sequential: true
+
 tests:
   # Test 1: Basic 3-parameter callback (stream, addr, port)
   - name: "TCP callback - basic parameter passing"
@@ -250,3 +269,79 @@ tests:
       mainHandler(10, 0, 20)
     expected_success: true
     expected_result: '60'
+
+  # Test 21: Regression guard for PR #689 / issue #690.
+  # headless_spawn_callback_thread is the third spawn path that received
+  # the newfilledhandle -> newclearhandle (fresh-stack) fix in PR #689.
+  # The other two spawn paths (headless_thread_callscript,
+  # headless_thread_evaluate) got dedicated no-hang regression tests; the
+  # callback spawn path did not. This test fills that coverage gap by
+  # registering a TCP-listener callback, triggering it from inside several
+  # nested `with` frames so the spawn happens from a deep dispatch
+  # context, and asserting the callback runs to completion within the
+  # 10-second timeout. Pre-fix this configuration would hang (GIL-stuck
+  # in retried scope pushes from the overflowing deep-copied stack);
+  # post-fix the spawn starts with toptables=0 regardless of caller depth
+  # and the callback runs cleanly.
+  - name: "TCP callback - dispatched from deep scope nesting still runs (#690)"
+    description: |
+      Regression guard for PR #689 / issue #690: headless_spawn_callback_thread
+      received the same fresh-stack fix as the other two spawn paths but had
+      no dedicated no-hang regression test. This test registers a TCP-listener
+      callback and triggers it from several `with` frames deep, asserting the
+      callback completes (marker read-back) within the 10-second timeout. The
+      pre-PR-#689 deep-copied stack would have been near the 80-entry limit
+      and overflowed on the spawned callback's first scope push, retried in
+      a tight loop under the GIL until the script timed out (88% CPU; REPL
+      hang). With the fix, the spawned callback's stack starts fresh at
+      toptables=0 regardless of caller depth, so the callback runs cleanly.
+
+      See the header comment in this file for the known-failing-on-
+      develop note (this test joins the 6 baseline tcp.* failures until
+      the runner-side TCP blocker is fixed -- separate workstream from
+      #689 / #690). File-level sequential: true serialises the listen
+      against the other callback_tcp.yaml tests.
+    timeout: 15
+    script: |
+      new(tableType, @system.temp.cb690);
+      system.temp.cb690.fired = false;
+      system.temp.cb690.serverStream = -1;
+      script.newScriptObject("on cb690Handler(sid, refcon) {\r  system.temp.cb690.fired = true;\r  system.temp.cb690.serverStream = sid;\r  return true}", @system.temp.cb690.handler);
+
+      local(listenID = -1);
+      local(clientStream = -1);
+      // Trigger spawn from deep dispatch context: nest the listen/connect
+      // inside several with/local frames so the kernel's backgroundtask
+      // entry into headless_spawn_callback_thread occurs near the
+      // 80-entry hashtable-stack limit (the original PR #689 trigger
+      // shape was ~15-20 frames deep).
+      with system.temp.cb690 {
+        local(a = 1);
+        with system.temp.cb690 {
+          local(b = 2);
+          with system.temp.cb690 {
+            local(c = 3);
+            // Port 9250: outside the 9000-9220 range used by tcp_*_verbs.yaml
+            // and the 10000+ range used by callback_tcp.yaml itself; unassigned
+            // by IANA and unprivileged.
+            listenID = tcp.listenStream(9250, 5, @system.temp.cb690.handler);
+            clientStream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 9250)}}};
+
+      // Wait for the callback to fire. 5 seconds is plenty when the spawn
+      // works (callback fires in milliseconds); a hang would burn the
+      // full 10s timeout and the test would FAIL via the harness rather
+      // than this poll.
+      local(deadline = clock.ticks() + 300);
+      while (not system.temp.cb690.fired) and (clock.ticks() < deadline) {
+        clock.ticks()
+      };
+
+      if clientStream > 0 { tcp.closeStream(clientStream) };
+      if system.temp.cb690.serverStream > 0 { tcp.closeStream(system.temp.cb690.serverStream) };
+      if listenID > 0 { tcp.closeListen(listenID) };
+
+      local(ok = system.temp.cb690.fired);
+      delete(@system.temp.cb690);
+      return ok
+    expected_success: true
+    expected_result: "true"
