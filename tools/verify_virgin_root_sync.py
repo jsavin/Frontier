@@ -233,6 +233,72 @@ class ProtocolSession:
         finally:
             self.proc = None
 
+    # Matches the structural probe response. We pack `defined()` and
+    # `typeof()` into a single eval that concatenates a marker, e.g.
+    # `t|scpt`, so we get both signals in one protocol round-trip.
+    PROBE_VALUE_RE = re.compile(rb'"value":"([tf])\|([a-zA-Z]{4})"', re.DOTALL)
+
+    def probe_node(self, odb_path: str) -> tuple[bool, str, str]:
+        """Structurally probe an ODB path: (defined, typeof_ostype, error).
+
+        Sends one eval that concatenates a marker for `defined` and the
+        4-char OSType from `typeof`, e.g. `t|scpt`. This is cheaper than
+        guessing from the body of `string()` (issue #700 defect 1):
+        `string()` of a genuinely-empty script body falls through to
+        addresstostring() and returns the path string, not an empty
+        body, so it cannot distinguish "empty script" from "no such
+        node". `defined()` + `typeof()` answer both unambiguously.
+
+        Returns:
+            (defined=True, typeof_ostype=..., error="") on success.
+            (defined=False, typeof_ostype="", error=msg) on protocol/parse error.
+        """
+        assert self.proc is not None
+        req_id = self.next_id
+        self.next_id += 1
+        # Build the probe expression. UserTalk's `if` is a statement,
+        # not an expression, so we use locals + if/else + a trailing
+        # concat expression. The wire format `t|scpt` or `f|none` is
+        # short enough to match with PROBE_VALUE_RE in one round-trip.
+        # typeof() returns an OSType (4 chars) coerced to string.
+        # Bracket-quoted path segments work here unchanged.
+        expr = (
+            "local(d, t); "
+            "if defined(" + odb_path + ") { "
+            "d = \"t\"; t = string(typeof(" + odb_path + "))"
+            " } else { "
+            "d = \"f\"; t = \"none\""
+            " }; "
+            "d + \"|\" + t"
+        )
+        expr_json = json.dumps(expr)
+        req = f'{{"op":"script/eval","id":{req_id},"params":{{"expression":{expr_json}}}}}\n'.encode("ascii")
+        self.proc.stdin.write(req)
+        self.proc.stdin.flush()
+
+        line = self._readline_with_timeout(DEFAULT_READ_TIMEOUT_S)
+        if not line:
+            stderr = self.proc.stderr.read().decode("utf-8", errors="replace") if self.proc.stderr else ""
+            raise RuntimeError(f"protocol session ended unexpectedly. stderr: {stderr}")
+        line = line.rstrip(b"\r\n")
+
+        m_succ = self.SUCCESS_RE.search(line)
+        if not (m_succ and m_succ.group(1) == b"true"):
+            try:
+                parsed = json.loads(line.decode("utf-8", errors="replace"))
+                err = parsed.get("error", {})
+                msg = err.get("message", "unknown error")
+            except json.JSONDecodeError:
+                msg = "unparseable error response"
+            return (False, "", msg)
+
+        m_val = self.PROBE_VALUE_RE.search(line)
+        if not m_val:
+            return (False, "", "probe response did not match expected pattern")
+        defined = m_val.group(1) == b"t"
+        ostype = m_val.group(2).decode("ascii")
+        return (defined, ostype, "")
+
     def get_script_body(self, odb_path: str) -> tuple[bool, bytes, str]:
         """Send `string(<odb_path>)`. Returns (success, raw_value_bytes, error_message).
 
@@ -548,26 +614,43 @@ def _path_within(candidate: Path, root: Path) -> bool:
         return False
 
 
+_PCT_RE = re.compile(r"%([0-9A-Fa-f]{2})")
+
+
+def _pct_decode_segment(seg: str) -> str:
+    """Reverse `ut_pct_encode_segment` (frontier-cli/ut_sync.c).
+
+    The corpus FS layout uses `%XX` (uppercase hex) to encode bytes that
+    aren't safe in a path segment: `%` itself, `.`, `/`, `:`, `"`, `\\`,
+    control bytes, and leading `-`. Anything else passes through
+    literally. To translate a FS segment back to the raw ODB key we
+    just percent-decode it. A segment containing no `%` decodes to
+    itself.
+    """
+    if "%" not in seg:
+        return seg
+    return _PCT_RE.sub(lambda m: chr(int(m.group(1), 16)), seg)
+
+
 def _quote_segment(seg: str) -> str:
     """Return seg as a valid ODB-path segment, bracket-quoting if needed.
 
-    Rejects segments containing control bytes (NUL through US, plus DEL)
-    or newlines - these can't safely round-trip and are not expected in
-    any legitimate corpus path. Defensive against pathological filesystem
-    state (POSIX permits these bytes in filenames, even though no real
-    corpus path uses them).
+    Percent-decodes the segment first (FS layout uses `%XX` for ODB keys
+    with reserved characters per #699). Then if the decoded text is a
+    valid UserTalk identifier, returns it bare; otherwise wraps in
+    bracket-quoted form `["..."]`.
 
-    Note: `[` and `]` ARE permitted in segments - the corpus uses literal
-    brackets as part of escape encodings in some paths (e.g. the
-    `[colon]` / `[slash]` segments under xml.rss.moduleDrivers).
-    Bracket-quoting still works in UserTalk for these.
+    Rejects decoded segments containing control bytes (NUL through US,
+    plus DEL) or newlines - these can't safely round-trip and are not
+    expected in any legitimate corpus path.
     """
-    if IDENT_RE.match(seg):
-        return seg
-    if any(ord(c) < 0x20 or c == "\x7f" for c in seg):
+    decoded = _pct_decode_segment(seg)
+    if IDENT_RE.match(decoded):
+        return decoded
+    if any(ord(c) < 0x20 or c == "\x7f" for c in decoded):
         raise ValueError(f"unrepresentable ODB path segment: {seg!r}")
     # Bracket-quoted form: ["seg"]. Escape embedded quotes / backslashes.
-    escaped = seg.replace("\\", "\\\\").replace('"', '\\"')
+    escaped = decoded.replace("\\", "\\\\").replace('"', '\\"')
     return f'["{escaped}"]'
 
 
@@ -634,6 +717,70 @@ def verify_files(
                 drifts.append(DriftRecord(ut_path, "", f"path translation: {e}"))
                 continue
 
+            # Structural existence probe (issue #700 defect 1). `string()`
+            # alone can't distinguish "node missing" from "node present
+            # with empty body" because the kernel coerces an
+            # address-valued empty external via addresstostring() and
+            # returns the path string, not "". Probe with `defined()` +
+            # `typeof()` first; only fetch the body if the node is
+            # genuinely a script-bearing leaf.
+            try:
+                node_defined, ostype, probe_err = sess.probe_node(odb_path)
+            except RuntimeError as e:
+                drifts.append(DriftRecord(ut_path, odb_path, f"protocol error: {e}"))
+                continue
+
+            if probe_err:
+                drifts.append(
+                    DriftRecord(
+                        ut_path,
+                        odb_path,
+                        f"probe error: {probe_err}",
+                    )
+                )
+                continue
+
+            if not node_defined:
+                # Truly missing from the ODB. Drift on the .ut side only.
+                drifts.append(
+                    DriftRecord(
+                        ut_path,
+                        odb_path,
+                        "path not found in Virgin.root",
+                    )
+                )
+                continue
+
+            # Read disk bytes once for both the empty-script fast path
+            # and the general comparison below.
+            try:
+                disk_bytes = ut_path.read_bytes()
+            except OSError as e:
+                drifts.append(DriftRecord(ut_path, odb_path, f"read error: {e}"))
+                continue
+
+            # Non-script ODB nodes: report as such. Tables, outlines, etc.
+            # are valid ODB shapes but not script-bearing. The corpus
+            # currently only contains script bodies, so seeing a non-
+            # script node behind a .ut is a real signal — we keep the
+            # pre-#700 behavior of reporting it as drift.
+            if ostype != "scpt":
+                drifts.append(
+                    DriftRecord(
+                        ut_path,
+                        odb_path,
+                        f"non-script ODB node (typeof={ostype})",
+                    )
+                )
+                continue
+
+            # Always fetch the body so we can compare both sides
+            # symmetrically. The original verifier had a "treat empty
+            # raw_value as drift" branch which broke the one empty
+            # script in the corpus (webBrowser/protocols/shutdown). The
+            # right contract is "compare bytes after normalization,
+            # including the empty case." We still surface an error if
+            # the regex genuinely didn't match (vs. matched-and-empty).
             try:
                 ok, raw_value, err = sess.get_script_body(odb_path)
             except RuntimeError as e:
@@ -641,36 +788,30 @@ def verify_files(
                 continue
 
             if not ok:
-                # Script doesn't exist at that ODB path → drift: .ut on disk,
-                # nothing in Virgin.root.
                 drifts.append(
                     DriftRecord(
                         ut_path,
                         odb_path,
-                        f"path not found in Virgin.root: {err}",
+                        f"script body fetch failed: {err}",
                     )
                 )
                 continue
 
-            if not raw_value:
-                # success=true but no string value — non-script node.
-                # Skip with note; the .ut probably wraps a non-script
-                # object we don't know how to render canonically.
+            # get_script_body returns (True, b'', "") for an in-band empty
+            # body and (True, b'', "no string value...") if the regex
+            # failed to match at all. Distinguish the two so the empty
+            # script doesn't look like a parse failure.
+            if not raw_value and err:
                 drifts.append(
                     DriftRecord(
                         ut_path,
                         odb_path,
-                        "non-script node (success=true but no value)",
+                        f"kernel response parse error: {err}",
                     )
                 )
                 continue
 
             kernel_bytes = normalize_kernel_body(raw_value)
-            try:
-                disk_bytes = ut_path.read_bytes()
-            except OSError as e:
-                drifts.append(DriftRecord(ut_path, odb_path, f"read error: {e}"))
-                continue
 
             # Symmetric trailing-LF strip: .ut files in the corpus are
             # inconsistent (some have a trailing newline, some don't);
