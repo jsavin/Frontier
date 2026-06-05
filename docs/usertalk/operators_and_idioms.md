@@ -153,7 +153,7 @@ NOT:
 if string.contains (userInput, "yes") {...}    // ✗ no such verb
 ```
 
-These are plain substring tests — no wildcards, no regex. For wildcards, see `string.patternMatch` below.
+These are plain substring tests — no wildcards, no regex. For substring search by position, see `string.patternMatch` below.
 
 `contains` also works on **lists** — it tests for value membership: `{1, 2, 3} contains 2` → `true`. It does NOT work on records — `record contains value` produces "Can't coerce X value to a record." Confirm with `typeof ()` if you're not sure what you're holding.
 
@@ -161,22 +161,23 @@ These are plain substring tests — no wildcards, no regex. For wildcards, see `
 
 ## Pattern matching
 
-`string.patternMatch (pattern, source)` is **an exact-equality check**, not a wildcard or glob matcher. Despite the name, `*` and `?` are treated as literal characters.
+`string.patternMatch (pattern, source)` is a **1-based substring search**, not a wildcard or glob matcher. Despite the name, `*` and `?` are treated as literal characters.
 
-- Returns `1` if `pattern == source` (full string equality).
-- Returns `0` if they differ.
+- Returns the **1-based position** of the first occurrence of `pattern` in `source` (a positive `long`).
+- Returns `0` if `pattern` does not occur in `source`.
 - Case-sensitive.
 
 ```
-local (pos = string.patternMatch ("hello", "hello"))      // pos == 1 — equal
+local (pos = string.patternMatch ("hello", "hello"))      // pos == 1 — match at start
+local (pos = string.patternMatch ("llo", "hello"))        // pos == 3 — match at offset 3
 local (pos = string.patternMatch ("hello", "Hello"))      // pos == 0 — case differs
-local (pos = string.patternMatch ("*.ut", "foo.ut"))      // pos == 0 — * is literal
-local (pos = string.patternMatch ("llo", "hello"))        // pos == 0 — substring, not equal
+local (pos = string.patternMatch ("*.ut", "foo.ut"))      // pos == 0 — * is literal, not a wildcard
+local (pos = string.patternMatch ("xyz", "hello"))        // pos == 0 — not found
 ```
 
-**There is no wildcard pattern matcher in the standard verb library.** For substring checks, use `contains` (which IS a substring test). For glob-style matching, you'd need to write or install one.
+**There is no wildcard pattern matcher in the standard verb library.** For a yes/no substring test, `contains` is shorter; use `patternMatch` when you need the position (e.g. to slice the string around the match). For glob-style matching, you'd need to write or install one.
 
-**The return is a `long`, not a boolean.** Don't write `if string.patternMatch (...)` — check `if string.patternMatch (...) > 0` if you ever need the boolean form (though for equality, just use `==` directly).
+**The return is a `long`, not a boolean.** Don't write `if string.patternMatch (...)` — check `if string.patternMatch (...) > 0` to use it as a boolean. To test for equality, use `==` directly.
 
 ---
 
