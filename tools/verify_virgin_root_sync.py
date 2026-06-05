@@ -774,22 +774,13 @@ def verify_files(
                 )
                 continue
 
-            # Empty-body fast path: a 0-byte .ut matches a 0-byte ODB
-            # script without ever calling string() (which would return
-            # the path-string fallback). We treat "0 bytes on disk" as
-            # the cheapest sentinel for "expected empty"; the verifier's
-            # contract is data-equality post-normalization, and 0 == 0
-            # is trivially data-equal. Empirically the corpus has
-            # exactly ONE 0-byte .ut (`webBrowser/protocols/shutdown`)
-            # paired with an empty ODB script body. Without this branch
-            # the probe finds the node and we fall into get_script_body,
-            # which returns the path-string for empty scripts and
-            # spuriously reports drift.
-            disk_stripped = disk_bytes[:-1] if disk_bytes.endswith(b"\n") else disk_bytes
-            if len(disk_stripped) == 0:
-                # In sync. No drift record.
-                continue
-
+            # Always fetch the body so we can compare both sides
+            # symmetrically. The original verifier had a "treat empty
+            # raw_value as drift" branch which broke the one empty
+            # script in the corpus (webBrowser/protocols/shutdown). The
+            # right contract is "compare bytes after normalization,
+            # including the empty case." We still surface an error if
+            # the regex genuinely didn't match (vs. matched-and-empty).
             try:
                 ok, raw_value, err = sess.get_script_body(odb_path)
             except RuntimeError as e:
@@ -806,16 +797,16 @@ def verify_files(
                 )
                 continue
 
-            if not raw_value:
-                # success=true but no string value matched VALUE_RE.
-                # Unusual at this point (we already confirmed scpt type
-                # and non-empty disk); record explicitly so the human
-                # sees it.
+            # get_script_body returns (True, b'', "") for an in-band empty
+            # body and (True, b'', "no string value...") if the regex
+            # failed to match at all. Distinguish the two so the empty
+            # script doesn't look like a parse failure.
+            if not raw_value and err:
                 drifts.append(
                     DriftRecord(
                         ut_path,
                         odb_path,
-                        "kernel string() returned no value despite defined+scpt",
+                        f"kernel response parse error: {err}",
                     )
                 )
                 continue
