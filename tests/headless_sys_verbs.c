@@ -372,7 +372,18 @@ static boolean sys_valueproc(short token, hdltreenode hparam1,
         case sysv_getenvironmentvariable: {
             /* @IMPLEMENTED sys.getenvironmentvariable(name) - Get environment variable value
              * Returns empty string if variable not found
-             * Uses heap-allocated string to support values > 255 characters
+             * Uses heap-allocated string (newfilledhandle / setheapvalue) to support
+             * values > 255 characters.
+             *
+             * 2026-06-05 JES #716 item 3: this is the headless path. The legacy
+             * impl at Common/source/shellsysverbs.c::getenvironmentvariablefunc
+             * (only built into the full Mac app, NOT linked into frontier-cli)
+             * uses copyctopstring into a bigstring and rejects >255-byte values
+             * with langerrormessage. The audit in #716 flagged that as a
+             * truncation surface; the headless path avoids the bigstring entirely
+             * by going straight to a heap handle, so there is no >255-byte
+             * truncation here by construction. Do not add a bigstring length
+             * guard to this path — that would be a regression.
              */
             bigstring varname;
             char cvarname[256];  /* C string buffer for environment variable name */
