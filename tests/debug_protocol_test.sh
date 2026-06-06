@@ -1096,6 +1096,103 @@ with DebugSession(timeout=15) as s:
 assert_test("UAF guard: process exits cleanly (no SIGSEGV)", True,
             "Session closed normally -- if we reached here, no crash")
 
+# --- Test 22b: drain timeout -- session closes while lazy thread is SUSPENDED ---
+# Exercises the actual hang scenario that Test 22 deliberately sidesteps.
+# Test 22 sends debug/continue before closing so the thread resumes and drains
+# cleanly. This test does NOT send continue -- it closes the session while the
+# thread is still suspended at a breakpoint.
+#
+# Expected behavior (post-fix):
+#   1. Protocol process detects EOF on stdin.
+#   2. protocol_main calls debug_wait_lazy_threads_drained().
+#   3. Drain loop polls; thread is suspended and never self-drains.
+#   4. After ~5s timeout: drain loop fires flkill on the suspended thread,
+#      clears flsuspended so the thread wakes from its sleep.
+#   5. Thread sees flkill on next callback cycle and exits voluntarily.
+#   6. g_lazy_attached_count drops to 0; drain proceeds.
+#   7. Process exits with code 0 within ~7 seconds total.
+#
+# Without the timeout fix (pre-fix): the process hangs forever.
+# We bound the wait with a hard 13-second subprocess.wait() timeout to
+# catch the hang case.
+print()
+print("--- drain timeout: session closes while lazy thread is suspended (#691) ---")
+
+import subprocess as _sp22b
+
+_drain_session = DebugSession(timeout=10)
+
+# Step 1: install target script
+_drain_session.send_and_wait({"op": "script/eval", "id": 1, "params": {
+    "expression": (
+        'new(scriptType, @system.temp.drainBp); '
+        'script.newScriptObject('
+        '"local (x = 0)\\rx = 1\\rx = 2\\rx = 3\\rreturn x", '
+        '@system.temp.drainBp)'
+    )
+}})
+
+# Step 2: set breakpoint on line 1
+bp_resp_22b = _drain_session.send_and_wait({"op": "debug/setBreakpoint", "id": 2, "params": {
+    "script": "system.temp.drainBp", "line": 1
+}})
+assert_test("drain-timeout: breakpoint set",
+            bp_resp_22b is not None and bp_resp_22b.get("result", {}).get("action") == "set",
+            f"Response: {bp_resp_22b}")
+
+# Step 3: dispatch via thread.callScript -- thread will hit line-1 breakpoint
+_drain_session.send_and_wait({"op": "script/eval", "id": 3, "params": {
+    "expression": "thread.callScript(@system.temp.drainBp, {})"
+}})
+
+# Step 4: wait for the thread to suspend at the breakpoint
+suspended_22b = _drain_session.wait_for_notification(op="debug/suspended",
+                                                      reason="breakpoint", timeout=5)
+assert_test("drain-timeout: thread suspends at breakpoint",
+            suspended_22b is not None,
+            f"Expected debug/suspended; got timeout")
+
+# Step 5: close WITHOUT sending debug/continue.
+# Directly close stdin (bypassing DebugSession.close which would send shutdown).
+# This sends EOF to protocol_main, triggering teardown with the thread still suspended.
+_drain_proc = _drain_session._proc
+try:
+    _drain_proc.stdin.close()
+except (BrokenPipeError, OSError):
+    pass
+# Null out stdin so DebugSession.close() does not try to write to it again.
+_drain_proc.stdin = None
+
+_t_close_22b = time.monotonic()
+
+# Step 6: wait for the process to exit. Timeout = 13 seconds:
+#   5s drain timeout + 500ms grace + ~7s headroom for flkill + thread exit.
+# Pre-fix: the process never exits (hangs forever).
+# Post-fix: exits within ~7 seconds.
+try:
+    retcode_22b = _drain_proc.wait(timeout=13)
+    elapsed_22b = time.monotonic() - _t_close_22b
+    assert_test("drain-timeout: process exits after drain timeout (no hang)",
+                retcode_22b == 0,
+                f"Exit code: {retcode_22b}, elapsed: {elapsed_22b:.1f}s")
+    assert_test("drain-timeout: exit within 13 seconds",
+                elapsed_22b < 13.0,
+                f"Elapsed: {elapsed_22b:.1f}s (expected < 13s)")
+except _sp22b.TimeoutExpired:
+    _drain_proc.kill()
+    _drain_proc.wait()
+    assert_test("drain-timeout: process exits after drain timeout (no hang)",
+                False, "Process did not exit within 13s -- drain timeout not firing")
+    assert_test("drain-timeout: exit within 13 seconds",
+                False, "Process timed out (hang confirmed)")
+
+# Cleanup: install a fresh session to delete the temp script and breakpoints
+with DebugSession(timeout=10) as s_cleanup:
+    s_cleanup.send_and_wait({"op": "script/eval", "id": 1, "params": {
+        "expression": "try {delete(@system.temp.drainBp)}"
+    }})
+    s_cleanup.send_and_wait({"op": "debug/clearBreakpoints", "id": 2, "params": {}})
+
 print()
 print("=" * 46)
 print(f"RESULTS: {PASSED} passed, {FAILED} failed")

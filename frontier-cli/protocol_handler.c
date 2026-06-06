@@ -391,8 +391,34 @@ int protocol_main(cli_options_t *options, ws_server_t *ws_server) {
 	 * The wait must come BEFORE the NULL-clear so that a thread checking
 	 * g_debug_attach_transport for its transport pointer in debug_send_completed
 	 * does not see a freed pointer.
+	 *
+	 * 2026-06-06 JES #691 (P1-B fix): save and restore main-thread globals
+	 * around the drain so cleanup_frontier_runtime sees a valid context.
+	 *
+	 * The drain releases and reacquires the GIL on each 10ms poll cycle.  While
+	 * the GIL is released, a lazy-attached callScript thread runs
+	 * headless_restore_threadglobals() which overwrites the C globals
+	 * hthreadglobals, hashtablestack, currenthashtable, and langcallbacks.
+	 * The thread then frees its hglobals in headless_dispose_threadglobals()
+	 * before releasing the GIL.  After the drain returns these C globals are
+	 * stale pointers to freed memory, causing a SIGSEGV in
+	 * cleanup_frontier_runtime.
+	 *
+	 * Fix: snapshot the main-thread globals handle before draining; restore all
+	 * C globals from it after.  At this point the fgets loop has completed
+	 * (headless_restore_threadglobals was the last call in the loop body), so
+	 * hthreadglobals is the main thread's own handle and is still valid.
 	 */
-	debug_wait_lazy_threads_drained();
+	{
+		/* Snapshot main-thread handle.  At this point hthreadglobals == main
+		 * thread's own handle (fgets loop exited with a restore call). */
+		hdlthreadglobals main_hglobals = hthreadglobals;
+		debug_wait_lazy_threads_drained();
+		/* Re-install main-thread C globals (hthreadglobals, hashtablestack,
+		 * currenthashtable, langcallbacks, etc.) that lazy callScript threads
+		 * may have overwritten with their own contexts during the drain. */
+		headless_restore_threadglobals(main_hglobals);
+	}
 	debug_set_attach_transport(NULL);
 	free(transport);
 	transport = NULL;

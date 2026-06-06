@@ -305,9 +305,11 @@ boolean headless_spawn_script_thread(hdltreenode hcode,
 	tydebugstate *debugstate = NULL;
 	pthread_t tid;
 	pthread_attr_t attr;
+	boolean attr_inited = false; /* track whether pthread_attr_init succeeded */
 
 	if (run_spec == NULL || out_user_threadid == NULL) {
 		log_error(LOG_COMP_THREAD, "headless_spawn_script_thread: NULL required arg");
+		/* hcode ownership not transferred on NULL-arg guard -- caller retains it */
 		return false;
 	}
 
@@ -319,15 +321,14 @@ boolean headless_spawn_script_thread(hdltreenode hcode,
 	rec = allocate_thread_record();
 	if (rec == NULL) {
 		log_error(LOG_COMP_THREAD, "headless_spawn_script_thread: allocate_thread_record failed");
-		return false;
+		goto fail;
 	}
 
 	/* --- Allocate thread globals --- */
 	new_hglobals = headless_new_threadglobals();
 	if (new_hglobals == nil) {
 		log_error(LOG_COMP_THREAD, "headless_spawn_script_thread: headless_new_threadglobals failed");
-		free_thread_record(rec);
-		return false;
+		goto fail;
 	}
 
 	/* Wire idthread into globals and hglobals into rec */
@@ -344,9 +345,7 @@ boolean headless_spawn_script_thread(hdltreenode hcode,
 
 		if (!newclearhandle(sizeof(tytablestack), &hcopy)) {
 			log_error(LOG_COMP_THREAD, "headless_spawn_script_thread: newclearhandle failed");
-			headless_dispose_threadglobals(new_hglobals);
-			free_thread_record(rec);
-			return false;
+			goto fail;
 		}
 
 		(**new_hglobals).htablestack = (hdltablestack)hcopy;
@@ -368,9 +367,7 @@ boolean headless_spawn_script_thread(hdltreenode hcode,
 		if (debugstate == NULL) {
 			log_error(LOG_COMP_THREAD,
 				"headless_spawn_script_thread: debug_register_thread failed (table full)");
-			headless_dispose_threadglobals(new_hglobals);
-			free_thread_record(rec);
-			return false;
+			goto fail;
 		}
 	}
 
@@ -392,13 +389,7 @@ boolean headless_spawn_script_thread(hdltreenode hcode,
 	sparams = (spawn_params *)calloc(1, sizeof(spawn_params));
 	if (sparams == NULL) {
 		log_error(LOG_COMP_THREAD, "headless_spawn_script_thread: calloc sparams failed");
-		if (debugstate != NULL)
-			debug_unregister_thread((long)rec->user_thread_id);
-		if (run_spec->is_callscript)
-			headless_unregister_thread((long)rec->user_thread_id);
-		headless_dispose_threadglobals(new_hglobals);
-		free_thread_record(rec);
-		return false;
+		goto fail;
 	}
 
 	sparams->hcode = hcode;
@@ -413,15 +404,9 @@ boolean headless_spawn_script_thread(hdltreenode hcode,
 	/* --- pthread_attr: joinable for debug, detached for callScript --- */
 	if (pthread_attr_init(&attr) != 0) {
 		log_error(LOG_COMP_THREAD, "headless_spawn_script_thread: pthread_attr_init failed");
-		if (debugstate != NULL)
-			debug_unregister_thread((long)rec->user_thread_id);
-		if (run_spec->is_callscript)
-			headless_unregister_thread((long)rec->user_thread_id);
-		headless_dispose_threadglobals(new_hglobals);
-		free_thread_record(rec);
-		free(sparams);
-		return false;
+		goto fail;
 	}
+	attr_inited = true;
 
 	{
 		int detach_state = (debug_opts != NULL)
@@ -430,30 +415,14 @@ boolean headless_spawn_script_thread(hdltreenode hcode,
 
 		if (pthread_attr_setdetachstate(&attr, detach_state) != 0) {
 			log_error(LOG_COMP_THREAD, "headless_spawn_script_thread: pthread_attr_setdetachstate failed");
-			pthread_attr_destroy(&attr);
-			if (debugstate != NULL)
-				debug_unregister_thread((long)rec->user_thread_id);
-			if (run_spec->is_callscript)
-				headless_unregister_thread((long)rec->user_thread_id);
-			headless_dispose_threadglobals(new_hglobals);
-			free_thread_record(rec);
-			free(sparams);
-			return false;
+			goto fail;
 		}
 	}
 
 	/* --- pthread_create --- */
 	if (pthread_create(&tid, &attr, unified_thread_entry, sparams) != 0) {
 		log_error(LOG_COMP_THREAD, "headless_spawn_script_thread: pthread_create failed");
-		pthread_attr_destroy(&attr);
-		if (debugstate != NULL)
-			debug_unregister_thread((long)rec->user_thread_id);
-		if (run_spec->is_callscript)
-			headless_unregister_thread((long)rec->user_thread_id);
-		headless_dispose_threadglobals(new_hglobals);
-		free_thread_record(rec);
-		free(sparams);
-		return false;
+		goto fail;
 	}
 
 	pthread_attr_destroy(&attr);
@@ -477,4 +446,44 @@ boolean headless_spawn_script_thread(hdltreenode hcode,
 
 	*out_user_threadid = (long)rec->user_thread_id;
 	return true;
+
+	/*
+	 * 2026-06-06 JES #691 (P1-A fix): single failure exit. All early-return
+	 * failure paths above jump here via goto. Resources are freed in reverse
+	 * allocation order. hcode is disposed exactly once when is_callscript==false,
+	 * mirroring the pre-refactor handle_debug_run pattern (lines 1089-1206 of
+	 * the pre-refactor debug_handler.c). The callScript caller retains hcode
+	 * ownership on failure (per the header contract at headless_spawn.h:93-95).
+	 *
+	 * Ordering:
+	 *   sparams:       freed before unregister so hglobals/rec fields do not
+	 *                  dangle (sparams does not own them -- it just copies pointers).
+	 *   debugstate:    unregistered before threadglobals/rec are freed.
+	 *   callScript reg: unregistered before threadglobals/rec are freed.
+	 *   hcode:         disposed last, after all thread infrastructure is torn down.
+	 *
+	 * Note: if sparams was successfully allocated, hglobals and rec are now
+	 * referenced via sparams fields. We still free them via the original
+	 * new_hglobals / rec locals because sparams is freed first.
+	 */
+fail:
+	if (attr_inited)
+		pthread_attr_destroy(&attr);
+	if (sparams != NULL) {
+		free(sparams);
+		sparams = NULL;
+	}
+	if (debugstate != NULL)
+		debug_unregister_thread((long)rec->user_thread_id);
+	if (run_spec->is_callscript)
+		headless_unregister_thread((long)rec->user_thread_id);
+	if (new_hglobals != nil)
+		headless_dispose_threadglobals(new_hglobals);
+	if (rec != NULL)
+		free_thread_record(rec);
+	/* Dispose hcode only when ownership was transferred to us (debug/run path).
+	 * callScript callers compiled hcode and retain ownership on failure. */
+	if (!run_spec->is_callscript && hcode != NULL)
+		langdisposetree(hcode);
+	return false;
 }

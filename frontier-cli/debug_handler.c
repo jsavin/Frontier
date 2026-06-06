@@ -22,6 +22,7 @@
 #include <string.h>
 #include <strings.h>  /* strcasecmp */
 #include <pthread.h>
+#include <time.h>     /* clock_gettime, CLOCK_MONOTONIC */
 
 #include "../Common/headers/frontier.h"
 #include "memory.h"
@@ -158,12 +159,47 @@ void debug_set_attach_transport(transport_t *t) {
 }
 
 /*
- * 2026-06-06 JES #691 (P1 #1 fix): block until all lazily-attached threads
- * have unregistered. Called by protocol_main BEFORE freeing the heap transport
- * and BEFORE calling debug_set_attach_transport(NULL).
- * Releases and reacquires the GIL on each 10ms sleep cycle so the lazy threads
- * can acquire the GIL to finish their cleanup.
+ * 2026-06-06 JES #691 (P1 #1 fix, updated for concurrency P1): block until
+ * all lazily-attached threads have unregistered, with a bounded timeout.
+ * Called by protocol_main BEFORE freeing the heap transport and BEFORE calling
+ * debug_set_attach_transport(NULL).
+ *
+ * Releases and reacquires the GIL on each 10ms sleep cycle so lazy threads can
+ * acquire the GIL to finish their cleanup.
+ *
+ * Timeout design (5-second drain + 500ms grace):
+ *   If a lazily-attached callScript thread is suspended at a breakpoint when
+ *   the protocol client disconnects (without sending debug/continue), the thread
+ *   will never self-resume -- it is waiting for a continue that will never arrive.
+ *   Without a timeout the drain would block the process forever.
+ *
+ *   On timeout expiry:
+ *     1. Walk g_debug_threads[] under g_debug_mutex; for each detached entry
+ *        with a non-NULL debugstate, set flkill=true and clear flsuspended.
+ *        This causes the thread to exit on its next callback cycle (it checks
+ *        flkill after each statement). flkill is the same signal used by
+ *        debug_kill_all_threads.
+ *     2. Re-poll for up to 500ms of grace to let those threads exit.
+ *     3. If counter still non-zero after grace: log_warn and proceed anyway.
+ *        The worst case is a thread writes through a pointer to the
+ *        already-freeing transport -- a bounded race on process exit, which is
+ *        better than hanging the process indefinitely.
+ *
+ * Trade-off: wedged threads that are NOT at a breakpoint (e.g., blocked in a
+ * system call outside the interpreter loop) will not respond to flkill within
+ * the grace period, so the 500ms grace may expire without the counter dropping.
+ * The log_warn + proceed path exists for this case. For the common case
+ * (suspended at a breakpoint), flkill causes exit within one callback cycle.
  */
+#define DRAIN_TIMEOUT_NS  (5LL * 1000000000LL)  /* 5 seconds */
+#define DRAIN_GRACE_NS    (500LL * 1000000LL)    /* 500ms additional grace */
+
+static long long _mono_ns(void) {
+	struct timespec ts;
+	clock_gettime(CLOCK_MONOTONIC, &ts);
+	return (long long)ts.tv_sec * 1000000000LL + ts.tv_nsec;
+}
+
 void debug_wait_lazy_threads_drained(void) {
 
 	/* Fast path: no lazy threads were ever registered this session */
@@ -173,7 +209,11 @@ void debug_wait_lazy_threads_drained(void) {
 	log_info(LOG_COMP_LANG, "debug: waiting for %d lazy-attached thread(s) to drain",
 			 atomic_load(&g_lazy_attached_count));
 
+	long long deadline = _mono_ns() + DRAIN_TIMEOUT_NS;
+
 	while (atomic_load_explicit(&g_lazy_attached_count, memory_order_acquire) > 0) {
+		if (_mono_ns() >= deadline)
+			break;
 		/* Release GIL so lazy threads can complete cleanup and decrement counter */
 		pthread_mutex_unlock(&frontier_gil);
 		struct timespec ts = {0, 10000000}; /* 10ms */
@@ -181,7 +221,47 @@ void debug_wait_lazy_threads_drained(void) {
 		pthread_mutex_lock(&frontier_gil);
 	}
 
-	log_info(LOG_COMP_LANG, "debug: all lazy-attached threads drained");
+	/* If timed out, forcibly kill suspended lazy threads so they can exit */
+	if (atomic_load_explicit(&g_lazy_attached_count, memory_order_acquire) > 0) {
+		log_warn(LOG_COMP_LANG,
+			"debug: drain timeout -- forcibly killing %d suspended lazy thread(s)",
+			atomic_load(&g_lazy_attached_count));
+
+		/* Walk the table under g_debug_mutex and signal all detached entries */
+		pthread_mutex_lock(&g_debug_mutex);
+		for (int i = 0; i < MAX_DEBUG_THREADS; i++) {
+			tydebugstate *s = g_debug_threads[i];
+			if (s != NULL && s->fldetached) {
+				atomic_store_explicit(&s->flkill, true, memory_order_seq_cst);
+				atomic_store_explicit(&s->flsuspended, false, memory_order_seq_cst);
+			}
+		}
+		pthread_mutex_unlock(&g_debug_mutex);
+
+		/* Grace period: re-poll while threads respond to flkill */
+		long long grace_deadline = _mono_ns() + DRAIN_GRACE_NS;
+		while (atomic_load_explicit(&g_lazy_attached_count, memory_order_acquire) > 0) {
+			if (_mono_ns() >= grace_deadline)
+				break;
+			pthread_mutex_unlock(&frontier_gil);
+			struct timespec ts = {0, 10000000}; /* 10ms */
+			nanosleep(&ts, NULL);
+			pthread_mutex_lock(&frontier_gil);
+		}
+
+		if (atomic_load_explicit(&g_lazy_attached_count, memory_order_acquire) > 0) {
+			/* Wedged threads did not exit within the grace period. Proceed anyway:
+			 * the process is exiting, and hanging indefinitely is worse than the
+			 * bounded race of threads writing through a nearly-freed transport.
+			 * This path is only reachable for threads blocked outside the
+			 * interpreter callback loop (not at a breakpoint). */
+			log_warn(LOG_COMP_LANG,
+				"debug: %d lazy thread(s) did not drain after grace -- proceeding",
+				atomic_load(&g_lazy_attached_count));
+		}
+	}
+
+	log_info(LOG_COMP_LANG, "debug: lazy-attached thread drain complete");
 }
 
 /* ========================================================================
