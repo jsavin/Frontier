@@ -716,6 +716,12 @@ test-system-root-temp-path-boundary:
 	@echo "Running --system-root temp-path boundary tests..."
 	@./integration/cli_system_root_temp_path_boundary_test.sh
 
+# Run sys.getenvironmentvariable >255-byte regression test (shell-based, #716 #3).
+# Locks in the headless path's heap-handle design (no bigstring truncation).
+test-sys-getenv-long-value:
+	@echo "Running sys.getenvironmentvariable long-value regression tests..."
+	@./integration/sys_getenv_long_value_test.sh
+
 # Run custom CLI args tests (shell-based, uses -e mode)
 test-custom-args:
 	@echo "Running custom CLI args tests..."
@@ -747,7 +753,7 @@ check-license:
 	@python3 ../tools/relicense_headers.py --check
 
 # Run all tests (unit + integration + CLI migration + custom args + debug + hooks + license check)
-test-all: test test-integration test-migrate-flag test-migrate-long-path test-system-root-long-path test-system-root-temp-path-boundary test-custom-args test-debug test-cow-idempotent test-ut-sync-lifecycle test-hooks check-license
+test-all: test test-integration test-migrate-flag test-migrate-long-path test-system-root-long-path test-system-root-temp-path-boundary test-sys-getenv-long-value test-custom-args test-debug test-cow-idempotent test-ut-sync-lifecycle test-hooks check-license
 	@echo "All test suites completed"
 
 # Verify Virgin.root <-> .ut corpus sync (issue #675).
@@ -839,7 +845,7 @@ verify-errors:
 	@echo "Verifying error message coverage..."
 	@../tools/verify_error_coverage.sh
 
-.PHONY: all test test-report test-integration test-integration-verbose test-migrate-flag test-migrate-long-path test-system-root-long-path test-system-root-temp-path-boundary test-custom-args test-debug test-hooks test-all verify-odb-sync test-odb-sync clean install uninstall help results strings_generated kernel_verbs_generated verify-errors validate-bigstrings check-python-deps
+.PHONY: all test test-report test-integration test-integration-verbose test-migrate-flag test-migrate-long-path test-system-root-long-path test-system-root-temp-path-boundary test-sys-getenv-long-value test-custom-args test-debug test-hooks test-all verify-odb-sync test-odb-sync clean install uninstall help results strings_generated kernel_verbs_generated verify-errors validate-bigstrings check-python-deps
 
 check_v6_tables: check_v6_tables.c $(LANG_RUNTIME_SOURCES) ../Common/source/odbengine.c ../frontier-cli/stubs/headless_shell.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -DHEADLESS_TEST_PORTABLE_FILE -DHEADLESS_LINKS_REAL_DB -I../Common/headers -I../Common/SystemHeaders -I../portable check_v6_tables.c \

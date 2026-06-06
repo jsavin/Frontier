@@ -580,18 +580,22 @@ static boolean sysfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord
 				return (setstringvalue (emptystr, v));
 			}
 
-			/* Convert C string to Pascal string and return */
+			/* Convert C string to Pascal string and return.
+			   2026-06-05 JES #716 item 3: collapse the pre-check + memmove into
+			   a single canonical post-#707 boolean check on copyctopstring's
+			   return. The truncation surface is unchanged (long env vars still
+			   produce a script-visible langerrormessage); the cost of the
+			   throwaway memmove on the overflow path is negligible since
+			   `result` is a stack local. Mirrors the post-#707 pattern used at
+			   frontier-cli/window_registry.c:116 and the langerror.c:163 fix
+			   in PR #718. */
 			{
 				bigstring result;
-				size_t len = strlen (value);
 
-				/* Check for buffer overflow - bigstring max content length is 255 */
-				if (len > 255) {
+				if (!copyctopstring (value, result)) {
 					langerrormessage (BIGSTRING ("\pCan't get environment variable because value exceeds 255 characters"));
 					return (false);
 				}
-
-				copyctopstring (value, result);
 				return (setstringvalue (result, v));
 			}
 		}
