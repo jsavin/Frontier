@@ -389,6 +389,74 @@ TEST(address_encode_invalid_format) {
     }
 }
 
+/*
+ * Test 3.8: tcp_address_to_name_pack rejects >255-byte hostname and falls
+ * back to IP string (issue #716 item 5)
+ *
+ * Purpose: When getnameinfo returns a hostname longer than the 255-byte
+ * bigstring payload limit (NI_MAXHOST is 1025 on macOS/Linux), the legacy
+ * code path silently truncated via copyctopstring. A long PTR record could
+ * confuse UserTalk-level identity checks ("did we connect to evil.com?" if
+ * an attacker crafted "evil.com.<padding>.victim.com" past the 255 cutoff).
+ * The fix surfaces the truncation as a log warning and falls back to the
+ * dotted-decimal IP string -- same as the getnameinfo() failure path.
+ *
+ * Why a behavioral test is possible: tcp_address_to_name_pack was extracted
+ * from tcp_address_to_name specifically so this branch can be exercised
+ * without mocking getnameinfo. The helper takes the resolved C string and
+ * the original address, so we drive it directly with a synthetic 300-byte
+ * hostname.
+ *
+ * Reference: tcpverbs.c:tcp_address_to_name_pack(), PR #716 item 5
+ */
+TEST(address_to_name_pack_long_hostname_falls_back_to_ip) {
+    bigstring name_out;
+    char long_hostname[400];
+    long addr = 0xC0A80101L;  /* 192.168.1.1 */
+    boolean fit;
+
+    /* Construct a 300-byte hostname (well over the 255 bigstring limit). */
+    memset(long_hostname, 'x', 300);
+    long_hostname[300] = '\0';
+
+    fit = tcp_address_to_name_pack(addr, long_hostname, name_out);
+
+    /* The helper should report it didn't fit. */
+    ASSERT_FALSE(fit);
+
+    /* And name_out should contain the dotted-decimal IP fallback, NOT a
+       255-byte truncation of the synthetic hostname. */
+    char name_cstr[16];
+    copyptocstring(name_out, name_cstr);
+    ASSERT_EQ(strcmp(name_cstr, "192.168.1.1"), 0);
+}
+
+/*
+ * Test 3.9: tcp_address_to_name_pack writes the hostname verbatim when it
+ * fits (issue #716 item 5 -- happy path)
+ *
+ * Purpose: Regression guard alongside test 3.8. Verifies the success path
+ * preserves the hostname exactly when it is under the bigstring limit, so
+ * the new branch in tcp_address_to_name doesn't accidentally rewrite short
+ * hostnames as IPs.
+ *
+ * Reference: tcpverbs.c:tcp_address_to_name_pack()
+ */
+TEST(address_to_name_pack_short_hostname_preserved) {
+    bigstring name_out;
+    const char *short_hostname = "example.com";
+    long addr = 0xC0A80101L;  /* 192.168.1.1 -- not used on this branch */
+    boolean fit;
+
+    fit = tcp_address_to_name_pack(addr, short_hostname, name_out);
+
+    ASSERT_TRUE(fit);
+
+    char name_cstr[64];
+    copyptocstring(name_out, name_cstr);
+    ASSERT_EQ(strcmp(name_cstr, "example.com"), 0);
+}
+
 /* ========================================================================
  * Test Category 4: Error Handling Tests
  * ======================================================================== */
@@ -804,6 +872,8 @@ int main(void) {
     TR_RUN(test_address_decode_to_string);
     TR_RUN(test_address_roundtrip_conversion);
     TR_RUN(test_address_encode_invalid_format);
+    TR_RUN(test_address_to_name_pack_long_hostname_falls_back_to_ip);
+    TR_RUN(test_address_to_name_pack_short_hostname_preserved);
 
     printf("\nTest Category 4: Error Handling\n");
     TR_RUN(test_error_invalid_stream_id_zero);

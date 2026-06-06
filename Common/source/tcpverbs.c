@@ -1239,6 +1239,40 @@ boolean tcp_name_to_address(bigstring domain_name, long *addr_out) {
  *
  * To detect if reverse DNS succeeded, compare the result with the original
  * IP address string - if they match, reverse lookup failed. */
+/*
+ * 2026-06-05 JES #716 item 5: helper extracted from tcp_address_to_name so
+ * the >255-byte hostname truncation path is testable without mocking
+ * getnameinfo(). Takes a resolved C-string hostname plus the original
+ * address for the fallback path; writes the bigstring result and returns
+ * true if the hostname fit, false if it was rejected and the IP fallback
+ * was used instead.
+ *
+ * NI_MAXHOST is 1025 (macOS, Linux) to accommodate non-DNS resolution
+ * sources (NIS, LDAP, /etc/hosts), but UserTalk bigstring max payload
+ * is 255. A long PTR record or attacker-controlled reverse lookup result
+ * would silently truncate via copyctopstring's clamp, producing a partial
+ * hostname that could confuse UserTalk-level identity checks (e.g.
+ * "did we connect to evil.com?" if the PTR was crafted as
+ * "evil.com.padding-padding-...-victim.com" and got clipped past the
+ * "evil.com" prefix). Surface as an explicit warning and fall back to
+ * the dotted-decimal IP string -- the same fallback path used when
+ * getnameinfo() itself fails. Pattern matches
+ * frontier-cli/window_registry.c:116 and the post-#707 callsites
+ * updated in PR #714.
+ */
+boolean tcp_address_to_name_pack(long addr, const char *hostname,
+                                  bigstring name_out) {
+    if (!copyctopstring(hostname, name_out)) {
+        log_warn(LOG_COMP_LANG,
+                 "tcp_address_to_name: resolved hostname exceeded 255 bytes; "
+                 "falling back to IP string (addr=%ld)",
+                 addr);
+        tcp_address_decode(addr, name_out);
+        return false;
+    }
+    return true;
+}
+
 /* tcp.addressToName(addr) -> string
  *
  * NOTE: Boolean return always true by design. This function cannot fail - it either
@@ -1270,9 +1304,8 @@ boolean tcp_address_to_name(long addr, bigstring name_out) {
         return true;
     }
 
-    copyctopstring(hostname, name_out);
-
-    log_info(LOG_COMP_LANG, "tcp_address_to_name: resolved to hostname");
+    if (tcp_address_to_name_pack(addr, hostname, name_out))
+        log_info(LOG_COMP_LANG, "tcp_address_to_name: resolved to hostname");
 
     return true;
 }
