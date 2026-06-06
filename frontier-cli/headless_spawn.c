@@ -473,10 +473,12 @@ fail:
 		free(sparams);
 		sparams = NULL;
 	}
-	if (debugstate != NULL)
-		debug_unregister_thread((long)rec->user_thread_id);
-	if (run_spec->is_callscript)
-		headless_unregister_thread((long)rec->user_thread_id);
+	if (rec != NULL) {
+		if (debugstate != NULL)
+			debug_unregister_thread((long)rec->user_thread_id);
+		if (run_spec->is_callscript)
+			headless_unregister_thread((long)rec->user_thread_id);
+	}
 	if (new_hglobals != nil)
 		headless_dispose_threadglobals(new_hglobals);
 	if (rec != NULL)
