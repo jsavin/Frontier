@@ -91,6 +91,15 @@ static void *unified_thread_entry(void *arg) {
 	tyvaluerecord result;
 	boolean fl_ran = false;
 	boolean fl_success = false;
+	/*
+	 * 2026-06-06 JES #691 (P1 #4 fix): hoisted to function top to avoid
+	 * "declared after goto" UB. Previously declared after the goto cleanup
+	 * at line ~149; the C standard says the initializer is skipped on the
+	 * goto path, leaving the variable indeterminate at the else-if check
+	 * below. Currently unreachable on the goto path (params->debugstate is
+	 * non-NULL when goto fires), but fragile. Hoist removes the latent UB.
+	 */
+	tydebugstate *lazy_state = NULL;
 
 	if (params == NULL)
 		return NULL;
@@ -183,8 +192,8 @@ static void *unified_thread_entry(void *arg) {
 	 * and a breakpoint matched. In that case, hthreadglobals->debugstate was
 	 * set by the callback. We must send debug/completed and unregister here,
 	 * since unified_thread_entry is the only place that can do so reliably
-	 * (the callback can return at any point, the GIL owner is this thread). */
-	tydebugstate *lazy_state = NULL;
+	 * (the callback can return at any point, the GIL owner is this thread).
+	 * lazy_state was declared at function top (P1 #4 fix). */
 	if (params->debugstate == NULL && params->hglobals != nil) {
 		lazy_state = (tydebugstate *)((**params->hglobals).debugstate);
 	}
@@ -353,7 +362,8 @@ boolean headless_spawn_script_thread(hdltreenode hcode,
 	 *
 	 * callScript path: skip -- no debug registration needed. */
 	if (debug_opts != NULL) {
-		debugstate = debug_register_thread((long)rec->user_thread_id, debug_opts->transport);
+		debugstate = debug_register_thread((long)rec->user_thread_id, debug_opts->transport,
+		                                   false /* fldetached: joinable debug/run thread */);
 
 		if (debugstate == NULL) {
 			log_error(LOG_COMP_THREAD,

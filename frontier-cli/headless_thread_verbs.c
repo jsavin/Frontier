@@ -551,8 +551,12 @@ static boolean headless_thread_evaluate(bigstring bscode, tyvaluerecord *vreturn
 	}
 
 	/* Register in system.compiler.threads AFTER spawn so we know the real threadid.
-	 * The thread is blocked on GIL and cannot run yet, so registration is safe here.
-	 * Matches original behavior (was registered before pthread_create). */
+	 * Safe because we still hold the GIL across this call -- the spawned thread
+	 * cannot have begun executing (it blocks on pthread_mutex_lock(&frontier_gil)
+	 * as its first action). Registration order vs the spawned thread is unchanged
+	 * from the pre-refactor behavior: the original code registered before
+	 * pthread_create, which is equally safe since the new thread was blocked on
+	 * GIL acquisition. */
 	headless_register_thread(bsanon, eval_threadid);
 
 	/* Return thread ID to caller -- thread is spawned but blocked on GIL */

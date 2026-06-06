@@ -132,18 +132,56 @@ static __thread char tls_script_stack[DEBUG_SCRIPT_STACK_MAX][DEBUG_SCRIPT_PATH_
 /* 2026-06-06 JES #691: when a protocol debug session is attached,
    this is the transport the lazy-attach path uses to register
    spawned threads. NULL when no debug client is attached.
-   Lifetime contract: the pointed-to transport_t must outlive any
-   spawned thread that could hit a breakpoint -- which means the
-   set point must be stable storage (protocol_main's stack frame
-   for the whole session is acceptable; per-message stack transports
-   are NOT). */
+   Lifetime contract: the pointed-to transport_t must be heap-allocated
+   and must remain valid until debug_wait_lazy_threads_drained() returns
+   after debug_set_attach_transport(NULL) is called. See debug_handler.h
+   for the full contract. Stack-local transports do NOT satisfy it. */
 static _Atomic(transport_t *) g_debug_attach_transport = NULL;
 
+/*
+ * 2026-06-06 JES #691 (P1 #1 fix): count of lazily-attached callScript
+ * threads that are currently registered in g_debug_threads. Incremented
+ * under g_debug_mutex when a lazy thread registers (fldetached=true);
+ * decremented under g_debug_mutex in debug_unregister_thread when that
+ * thread exits. protocol_main waits for this to drop to zero before
+ * freeing the heap-allocated transport (debug_wait_lazy_threads_drained).
+ *
+ * Atomic so protocol_main can read it without holding g_debug_mutex
+ * in the polling loop of debug_wait_lazy_threads_drained.
+ */
+static atomic_int g_lazy_attached_count = 0;
+
 /* Set or clear the lazy-attach transport. Pass NULL to clear at session
-   teardown. The pointed-to transport must outlive any thread that
-   could hit a breakpoint while this is non-NULL. */
+   teardown. See debug_handler.h for the heap-allocation lifetime contract. */
 void debug_set_attach_transport(transport_t *t) {
 	atomic_store_explicit(&g_debug_attach_transport, t, memory_order_release);
+}
+
+/*
+ * 2026-06-06 JES #691 (P1 #1 fix): block until all lazily-attached threads
+ * have unregistered. Called by protocol_main BEFORE freeing the heap transport
+ * and BEFORE calling debug_set_attach_transport(NULL).
+ * Releases and reacquires the GIL on each 10ms sleep cycle so the lazy threads
+ * can acquire the GIL to finish their cleanup.
+ */
+void debug_wait_lazy_threads_drained(void) {
+
+	/* Fast path: no lazy threads were ever registered this session */
+	if (atomic_load_explicit(&g_lazy_attached_count, memory_order_acquire) == 0)
+		return;
+
+	log_info(LOG_COMP_LANG, "debug: waiting for %d lazy-attached thread(s) to drain",
+			 atomic_load(&g_lazy_attached_count));
+
+	while (atomic_load_explicit(&g_lazy_attached_count, memory_order_acquire) > 0) {
+		/* Release GIL so lazy threads can complete cleanup and decrement counter */
+		pthread_mutex_unlock(&frontier_gil);
+		struct timespec ts = {0, 10000000}; /* 10ms */
+		nanosleep(&ts, NULL);
+		pthread_mutex_lock(&frontier_gil);
+	}
+
+	log_info(LOG_COMP_LANG, "debug: all lazy-attached threads drained");
 }
 
 /* ========================================================================
@@ -217,14 +255,19 @@ static tydebugstate *debug_get_state_for_thread(long threadid) {
 	return NULL;
 }
 
-/* 2026-06-06 JES #691: Promoted from static; declared in debug_handler.h */
-tydebugstate *debug_register_thread(long threadid, transport_t *transport) {
+/* 2026-06-06 JES #691: Promoted from static; declared in debug_handler.h.
+ * fldetached distinguishes lazy-attached (POSIX DETACHED, pthread_join is UB)
+ * from normal debug/run threads (joinable). See debug_handler.h for full
+ * contract. */
+tydebugstate *debug_register_thread(long threadid, transport_t *transport,
+                                    boolean fldetached) {
 
 	tydebugstate *state = (tydebugstate *)calloc(1, sizeof(tydebugstate));
 	if (state == NULL)
 		return NULL;
 
 	state->fldebugmode = true;
+	state->fldetached = fldetached;
 	atomic_store(&state->flsuspended, false);
 	atomic_store(&state->flinterrupt, false);
 	atomic_store(&state->flkill, false);
@@ -237,6 +280,14 @@ tydebugstate *debug_register_thread(long threadid, transport_t *transport) {
 	for (int i = 0; i < MAX_DEBUG_THREADS; i++) {
 		if (g_debug_threads[i] == NULL) {
 			g_debug_threads[i] = state;
+			/*
+			 * 2026-06-06 JES #691 (P1 #1 + P1 #2 fix): track lazy-attached threads
+			 * separately so protocol_main can wait for them before freeing the
+			 * heap transport, and so kill/join can skip them (pthread_join is UB
+			 * on DETACHED threads).
+			 */
+			if (fldetached)
+				atomic_fetch_add(&g_lazy_attached_count, 1);
 			pthread_mutex_unlock(&g_debug_mutex);
 			return state;
 		}
@@ -251,16 +302,27 @@ tydebugstate *debug_register_thread(long threadid, transport_t *transport) {
 void debug_unregister_thread(long threadid) {
 
 	tydebugstate *state = NULL;
+	boolean was_detached = false;
 
 	pthread_mutex_lock(&g_debug_mutex);
 
 	for (int i = 0; i < MAX_DEBUG_THREADS; i++) {
 		if (g_debug_threads[i] != NULL && g_debug_threads[i]->threadid == threadid) {
 			state = g_debug_threads[i];
+			was_detached = state->fldetached;
 			g_debug_threads[i] = NULL; /* remove from registry */
 			break;
 		}
 	}
+
+	/*
+	 * 2026-06-06 JES #691 (P1 #1 fix): decrement lazy-attach counter under
+	 * g_debug_mutex so protocol_main's drain loop sees a consistent count.
+	 * This is the signal that the heap transport is no longer referenced by
+	 * this thread -- safe to free once the counter reaches zero.
+	 */
+	if (was_detached)
+		atomic_fetch_sub(&g_lazy_attached_count, 1);
 
 	pthread_mutex_unlock(&g_debug_mutex);
 
@@ -326,8 +388,21 @@ void debug_kill_all_threads(void) {
 			 * Mark as unsafe so save-on-exit is skipped. */
 			atomic_store(&g_debug_thread_was_killed, true);
 
-			/* Capture pthread_t before the thread can unregister and free state */
-			g_killed_threads[g_killed_thread_count++] = g_debug_threads[i]->pthread_id;
+			/*
+			 * 2026-06-06 JES #691 (P1 #2 fix): lazily-attached callScript threads
+			 * are POSIX DETACHED -- pthread_join on a detached thread is UB.
+			 * They also never wrote pthread_id (it stays zero-initialized from
+			 * calloc), so capturing it into g_killed_threads would store 0 and
+			 * cause pthread_join(0, NULL) -- also UB.
+			 *
+			 * Skip detached entries from the kill-list capture. The flkill signal
+			 * is still sent so the thread can exit on its next callback; draining
+			 * is handled by g_lazy_attached_count in debug_wait_lazy_threads_drained.
+			 */
+			if (!g_debug_threads[i]->fldetached) {
+				/* Capture pthread_t before the thread can unregister and free state */
+				g_killed_threads[g_killed_thread_count++] = g_debug_threads[i]->pthread_id;
+			}
 			atomic_store_explicit(&g_debug_threads[i]->flkill, true, memory_order_seq_cst);
 			atomic_store_explicit(&g_debug_threads[i]->flsuspended, false, memory_order_seq_cst); /* wake suspended threads */
 		}
@@ -339,7 +414,13 @@ void debug_kill_all_threads(void) {
 void debug_join_all_threads(void) {
 
 	/* Join threads captured by debug_kill_all_threads. Must be called
-	 * with GIL released so threads can acquire it to finish cleanup. */
+	 * with GIL released so threads can acquire it to finish cleanup.
+	 *
+	 * 2026-06-06 JES #691 (P1 #2 fix): g_killed_threads only contains
+	 * pthread_t values from non-detached (joinable) threads -- detached
+	 * entries were excluded in debug_kill_all_threads. pthread_join on a
+	 * detached thread is UB; those threads drain via g_lazy_attached_count
+	 * in debug_wait_lazy_threads_drained, not here. */
 	for (int i = 0; i < g_killed_thread_count; i++) {
 		pthread_join(g_killed_threads[i], NULL);
 	}
@@ -576,9 +657,24 @@ static boolean protocol_debugger_callback(hdltreenode hnode) {
 			return true;
 
 		/* Lazy register: allocate a tydebugstate and hook it to the attach
-		 * transport. debug_register_thread stores state in g_debug_threads. */
+		 * transport. debug_register_thread stores state in g_debug_threads.
+		 *
+		 * TLS reliability (P1 #3 resolved, 2026-06-06 JES #691): the lazy-attach
+		 * check at the top of this function already filtered out tls_current_script
+		 * being empty. The path that populates TLS (debug_push_sourcecode in
+		 * langvalue.c) fires BEFORE langdebuggercall reaches this point for all
+		 * user-visible scripts: langhandlercall calls langpushsourcecode at line 8382
+		 * BEFORE evaluatelist runs the function body's first statement. Test 21
+		 * (which passes) is the live proof -- a breakpoint on line 1 of a
+		 * callScript-dispatched script fires correctly. No code change is needed.
+		 *
+		 * fldetached=true: callScript threads are POSIX DETACHED (see headless_spawn.c
+		 * PTHREAD_CREATE_DETACHED); pthread_join on them is UB. The fldetached flag
+		 * prevents debug_kill_all_threads from capturing their pthread_t (which is
+		 * also 0 -- never written for lazy threads) and prevents
+		 * debug_join_all_threads from calling pthread_join on them. */
 		long idthread = (long)((**hthreadglobals).idthread);
-		state = debug_register_thread(idthread, attach_t);
+		state = debug_register_thread(idthread, attach_t, true /* fldetached */);
 		if (state == NULL) {
 			log_warn(LOG_COMP_LANG,
 					 "lazy debug attach: debug_register_thread failed "

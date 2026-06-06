@@ -161,17 +161,38 @@ int protocol_main(cli_options_t *options, ws_server_t *ws_server) {
 		return 1;
 	}
 
-	transport_t transport = {
-		.ctx = NULL,
-		.write_line = stdio_write_line,
-	};
+	/*
+	 * 2026-06-06 JES #691 (P1 #1 fix): heap-allocate the transport.
+	 *
+	 * Previously the transport was a stack local. A lazily-attached callScript
+	 * thread captured &transport into tydebugstate->transport. After
+	 * protocol_main returned, the stack frame was freed, but the thread could
+	 * still be running and call debug_send_completed(state->transport, ...) --
+	 * a write through dangling stack memory (UAF).
+	 *
+	 * Fix: allocate on the heap so the transport outlives the stack frame. The
+	 * transport is freed only AFTER:
+	 *   (a) debug_wait_lazy_threads_drained() returns (all lazy threads have
+	 *       called debug_unregister_thread and decremented g_lazy_attached_count),
+	 *   (b) debug_set_attach_transport(NULL) is called to prevent new lazy
+	 *       registrations.
+	 *
+	 * See debug_handler.h debug_set_attach_transport / debug_wait_lazy_threads_drained.
+	 */
+	transport_t *transport = (transport_t *)malloc(sizeof(transport_t));
+	if (transport == NULL) {
+		fprintf(stderr, "protocol: failed to allocate transport\n");
+		free(line_buf);
+		teardown_protocol_output();
+		repl_uninstall_verb_host();
+		return 1;
+	}
+	transport->ctx = NULL;
+	transport->write_line = stdio_write_line;
 
-	/* 2026-06-06 JES #691: Register the stdio transport for lazy debug attach.
-	 * Cleared at all exit points below. The transport struct lives on this
-	 * stack frame for the entire duration of the protocol session, so the
-	 * lifetime contract is satisfied: any spawned thread that hits a breakpoint
-	 * during the session sees a valid transport pointer. */
-	debug_set_attach_transport(&transport);
+	/* Register the stdio transport for lazy debug attach.
+	 * Cleared after drain (see teardown sequence below). */
+	debug_set_attach_transport(transport);
 
 	log_info(LOG_COMP_GENERAL, "Protocol mode: ready for NDJSON on stdin");
 
@@ -278,7 +299,7 @@ int protocol_main(cli_options_t *options, ws_server_t *ws_server) {
 					while ((nl = strchr(start, '\n')) != NULL) {
 						*nl = '\0';
 						size_t llen = (size_t)(nl - start);
-						if (process_line(start, llen, &transport)) {
+						if (process_line(start, llen, transport)) {
 							running = 0;
 							break;
 						}
@@ -299,7 +320,7 @@ int protocol_main(cli_options_t *options, ws_server_t *ws_server) {
 					/* Process any remaining data in buffer */
 					if (line_pos > 0) {
 						line_buf[line_pos] = '\0';
-						process_line(line_buf, line_pos, &transport);
+						process_line(line_buf, line_pos, transport);
 						line_pos = 0;
 					}
 				}
@@ -336,7 +357,7 @@ int protocol_main(cli_options_t *options, ws_server_t *ws_server) {
 				break;
 
 			size_t len = strlen(line_buf);
-			if (process_line(line_buf, len, &transport)) {
+			if (process_line(line_buf, len, transport)) {
 				break;
 			}
 		}
@@ -354,10 +375,27 @@ int protocol_main(cli_options_t *options, ws_server_t *ws_server) {
 	teardown_protocol_output();
 	repl_uninstall_verb_host();
 
-	/* 2026-06-06 JES #691: Clear lazy-attach transport before stack unwind.
-	 * Any spawned thread that hits a breakpoint after this point will see
-	 * NULL and skip lazy registration (the transport is about to be invalid). */
+	/*
+	 * 2026-06-06 JES #691 (P1 #1 fix): safe teardown sequence for heap transport.
+	 *
+	 * Order matters:
+	 *   1. debug_wait_lazy_threads_drained() -- block until all lazily-attached
+	 *      callScript threads have called debug_unregister_thread and released
+	 *      their reference to transport. Releases GIL on each 10ms sleep cycle so
+	 *      the threads can complete cleanup.
+	 *   2. debug_set_attach_transport(NULL) -- prevent new lazy registrations.
+	 *      After this, any thread that hits a breakpoint sees NULL and skips
+	 *      lazy attach.
+	 *   3. free(transport) -- safe because no thread holds a pointer to it.
+	 *
+	 * The wait must come BEFORE the NULL-clear so that a thread checking
+	 * g_debug_attach_transport for its transport pointer in debug_send_completed
+	 * does not see a freed pointer.
+	 */
+	debug_wait_lazy_threads_drained();
 	debug_set_attach_transport(NULL);
+	free(transport);
+	transport = NULL;
 
 	log_info(LOG_COMP_GENERAL, "Protocol mode: shutting down");
 	return 0;
