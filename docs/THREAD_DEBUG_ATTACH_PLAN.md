@@ -13,8 +13,32 @@ a latent #706 hang in `debug/run`.
   = roottable` (current anchors: ~:1126 and ~:1139). Regression guard at
   `tests/debug_protocol_test.sh:833-876` ("Test 20: debug/run roots the
   spawned thread at roottable").
-- **PR 2 (spawn unification + lazy attach)**: in progress on branch
-  `worktree-691-thread-debug-attach`. Builds directly on PR #692.
+- **PR 2 (spawn unification + lazy attach)**: SHIPPED as **PR #722**
+  (commit `d36db3ac8`, 2026-06-06). `headless_spawn_script_thread` in
+  new `frontier-cli/headless_spawn.{c,h}` is now the single spawn primitive;
+  both `debug/run` and `thread.callScript`/`evaluate` go through it. Lazy
+  breakpoint-driven attach via `tls_current_script` + atomic
+  `g_debug_attach_transport` + `debug_register_thread` in the breakpoint
+  callback. Heap-allocated transport + `g_lazy_attached_count` drain
+  counter + 5s drain timeout in `protocol_main`. callScript threads
+  carry `fldetached`; `debug_kill_all_threads`/`join_all` skip detached.
+  Test 21 (lazy attach RED-then-GREEN), Test 21b (zero-breakpoint hot
+  path), Test 22 (session close after thread completes), Test 22b
+  (session close while thread suspended -> drain timeout fires).
+  4 rounds of /gate fix-loop; 8 P0/P1 items addressed; 9 P2 polish items
+  deferred to follow-up issue #723.
+
+## Status
+
+**Both PRs SHIPPED. Menu-handler threads are now debuggable when a
+protocol debug client is attached.** File>Open is the next downstream
+work: a normal debuggable bug now that the structural blocker is gone.
+
+#691 itself remains OPEN for the broader question of bare-interactive
+REPL debugging without a protocol/WS client. That's likely subsumed by
+the boxen-based TUI debugger plan (`planning/boxen/OVERVIEW.md`), where
+the TUI itself becomes the debug UI and no transport is needed in the
+classic sense.
 
 ## Problem
 
