@@ -55,7 +55,7 @@ Three layers, clearly separated.
 |     boxen_window_t,               |
 |     boxen_open, boxen_close,      |
 |     boxen_resize, boxen_scroll,   |
-|     boxen_poll, etc.              |
+|     boxen_poll_event, etc.        |
 +-----------------------------------+
 |     boxen core                    |   (window manager logic; backend-agnostic)
 |     - window list, z-order        |
@@ -157,7 +157,7 @@ void            boxen_shutdown(void);
 
 // Lower-level primitives — Frontier surfaces use these to interleave boxen
 // with Frontier-runtime events (async debug notifications, UserTalk callbacks).
-boxen_result_t  boxen_poll(boxen_event_t *out, int timeout_ms);
+boxen_result_t  boxen_poll_event(boxen_event_t *out, int timeout_ms);
 void            boxen_present(void);             // redraw all visible windows
 
 // Convenience main loop for standalone programs (examples/, eventual non-Frontier
@@ -167,7 +167,7 @@ boxen_result_t  boxen_run(void);
 void            boxen_quit(void);                // request main loop exit
 ```
 
-The split between `boxen_run()` (convenience) and `boxen_poll()` + `boxen_present()` (primitives) is deliberate. Frontier surface code needs the primitives so it can interleave terminal events with Frontier-runtime callbacks under the GIL discipline. Standalone consumers (the `examples/` programs, any future non-Frontier consumer) use `boxen_run()` for the typical case.
+The split between `boxen_run()` (convenience) and `boxen_poll_event()` + `boxen_present()` (primitives) is deliberate. Frontier surface code needs the primitives so it can interleave terminal events with Frontier-runtime callbacks under the GIL discipline. Standalone consumers (the `examples/` programs, any future non-Frontier consumer) use `boxen_run()` for the typical case.
 
 ### Window management
 
@@ -229,14 +229,16 @@ typedef enum {
 struct boxen_event {
     boxen_event_type_t type;
     union {
-        struct { uint32_t key; uint32_t ch; uint16_t mod;             } key;
-        struct { int x, y; uint8_t button; bool pressed; uint16_t mod; } mouse;
-        struct { int w, h;                                             } resize;
+        struct { uint32_t key; uint32_t ch; uint16_t mod;                              } key;
+        struct { int x, y; uint8_t button; bool pressed; uint16_t mod; uint16_t flags; } mouse;
+        struct { int w, h;                                                             } resize;
     };
 };
 ```
 
 The `mod` field on mouse events is load-bearing: the debugger's cmd-2-click identifier resolution (Section 2) must detect Meta+double-click on a script-pane cell. Boxen defines its own portable `boxen_key_t` / `boxen_mod_t` enums; the backend shim translates from the underlying terminal library's representation. This is one of the cases where backend swappability requires a small up-front investment.
+
+The `flags` field on mouse events surfaces synthesized higher-level gestures. Boxen detects double-click from raw press/release sequences (within 500 ms and 1 cell of the prior press) and sets `BOXEN_MOUSE_DOUBLE_CLICK` on the second press event. Consumers that don't care ignore the flag. See `EXECUTION_PLAN.md` § "Synthesized double-click events" for tuning and rationale.
 
 ### Layout helpers
 

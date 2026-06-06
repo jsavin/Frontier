@@ -228,6 +228,20 @@ The `key` field in `boxen_event_t` carries a `boxen_key_t` for special keys, zer
 
 The `backend_tb2.c` shim translates `TB_KEY_*` → `BOXEN_KEY_*` and `TB_MOD_*` → `BOXEN_MOD_*`. This is ~50 lines of translation table. The cost is small; the benefit is real.
 
+### Function keys with modifiers come as separate fields
+
+Function-key + modifier combinations (Shift-F11, Alt-F5, etc.) are **always** delivered as `ev.key.key = BOXEN_KEY_Fn` with `ev.key.mod` carrying the modifier bitmask. Boxen does NOT define synthetic combined constants like `BOXEN_KEY_SHIFT_F11`. Consumers detect Shift-F11 by checking:
+
+```c
+if (ev.type == BOXEN_EV_KEY
+    && ev.key.key == BOXEN_KEY_F11
+    && (ev.key.mod & BOXEN_MOD_SHIFT)) {
+    /* Shift-F11 — debugger TUI's step-out */
+}
+```
+
+This matches what termbox2 delivers natively, avoids combinatorial enum explosion (n keys × m modifier combinations), and keeps the modifier semantics consistent across keyboard and mouse events. The debugger TUI's standard keybinds (F5 continue, F10 step-over, F11 step-into, Shift-F11 step-out, F9 toggle-breakpoint) all use this pattern.
+
 ### The cmd-2-click case
 
 The debugger TUI needs "cmd-click" for identifier resolution. `BOXEN_MOD_META` is how this is expressed:
@@ -268,11 +282,11 @@ Note: `boxen_event_t` for mouse events must also carry `mod`. OVERVIEW's draft h
  * async output queue pattern (see repl_output_async.c) and call
  * boxen_window_invalidate() from the marshal target.
  *
- * The boxen_poll() call may block. The GIL must be released before
- * calling boxen_poll() with a non-zero timeout. Standard pattern:
+ * The boxen_poll_event() call may block. The GIL must be released before
+ * calling boxen_poll_event() with a non-zero timeout. Standard pattern:
  *
  *   lang_yield_gil();
- *   boxen_result_t r = boxen_poll(&ev, timeout_ms);
+ *   boxen_result_t r = boxen_poll_event(&ev, timeout_ms);
  *   lang_reacquire_gil();
  *   if (r == BOXEN_OK) { ... }
  */
@@ -286,7 +300,9 @@ If a future use case requires multi-threaded event delivery, the right pattern i
 
 ### The boxen_run() main loop and GIL
 
-The `boxen_run()` main loop must release the GIL around `boxen_poll()` to prevent the Frontier runtime from starving. This is not boxen's problem to solve — `boxen_run()` accepts a callback-per-event model, and the Frontier-specific wrapper that calls `boxen_run()` is responsible for GIL discipline. Boxen itself is GIL-unaware; it is pure terminal I/O.
+The `boxen_run()` main loop must release the GIL around `boxen_poll_event()` to prevent the Frontier runtime from starving. This is not boxen's problem to solve — `boxen_run()` accepts a callback-per-event model, and the Frontier-specific wrapper that calls `boxen_run()` is responsible for GIL discipline. Boxen itself is GIL-unaware; it is pure terminal I/O.
+
+**Beyond GIL discipline:** the consumer's wrapper around `boxen_poll_event()` is also responsible for any *additional* state-snapshot work the Frontier runtime requires across a GIL yield (e.g., snapshotting `hglobals` before unlock and restoring after lock — see `frontier-cli/protocol_handler.c` for the canonical pattern from PR #722). Boxen has no opinion on this; it neither knows about nor manages Frontier runtime state. The boundary is clean: boxen owns the terminal, the consumer owns the runtime contract.
 
 ---
 
@@ -614,9 +630,25 @@ struct {
     int x, y;
     uint8_t button;
     bool pressed;
-    uint16_t mod;   /* BOXEN_MOD_* bitmask — ADDED */
+    uint16_t mod;     /* BOXEN_MOD_* bitmask — ADDED */
+    uint16_t flags;   /* BOXEN_MOUSE_* bitmask — see below */
 } mouse;
 ```
+
+**5. Synthesized double-click events**
+
+Termbox2 delivers raw mouse press/release events; there is no native double-click. Every consumer would otherwise reinvent the same state machine (track last-click position + timestamp, fire double-click if next click is within N ms and within K cells of the previous one). Boxen synthesizes double-click instead, surfacing it via a `flags` bitmask on the existing `BOXEN_EV_MOUSE` event:
+
+```c
+#define BOXEN_MOUSE_DOUBLE_CLICK   0x01   /* second press in a rapid sequence */
+#define BOXEN_MOUSE_TRIPLE_CLICK   0x02   /* reserved for future surfaces */
+```
+
+A double-click is detected when a second `pressed=true` arrives within 500 ms of the previous `pressed=true` AND within a 1-cell radius of its position. The double-click event is delivered IN ADDITION TO the second raw press — consumers that don't care about double-click ignore the flag; consumers that do (the debugger's cmd-2-click identifier resolution) check `ev.mouse.flags & BOXEN_MOUSE_DOUBLE_CLICK`.
+
+Tuning constants (`BOXEN_DOUBLE_CLICK_MS`, `BOXEN_DOUBLE_CLICK_RADIUS_CELLS`) live in `boxen_internal.h` and are not part of the public API in v1.0. If a future consumer needs to tune them, that's a v1.1 conversation.
+
+Mock backend exposes a convenience: `boxen_mock_push_double_click(int x, int y, uint16_t mod)` synthesizes the press/release/press/release sequence with the correct timing so tests don't have to thread `clock_gettime` mocks through.
 
 ### Removals or scope reductions
 
@@ -758,7 +790,7 @@ The OVERVIEW rightly implies back-to-front per frame. The question is whether di
 
 **Redraw sequence** (fully specified):
 
-1. `boxen_run()` calls `boxen_poll()` to block until an event.
+1. `boxen_run()` calls `boxen_poll_event()` to block until an event.
 2. On event receipt, dispatch to the focused window's `input_fn`.
 3. After input dispatch, call each window's `draw_fn` in z-order (bottom to top).
 4. Each `draw_fn` writes into the window's internal cell buffer using `boxen_set_cell` et al.
@@ -815,7 +847,7 @@ This mirrors the pattern in `scrollback_pane_tests.c` which uses `compositor_tes
 The mock backend's `poll_event` can be fed a queue of synthetic events:
 
 ```c
-/* Inject an event to be returned by the next boxen_poll() call. */
+/* Inject an event to be returned by the next boxen_poll_event() call. */
 void boxen_mock_push_event(const boxen_event_t *ev);
 
 /* Inject a key event (convenience). */
