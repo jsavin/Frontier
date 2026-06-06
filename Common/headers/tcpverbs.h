@@ -136,6 +136,11 @@ long tcp_count_connections(void);
 boolean tcp_open_stream_name(bigstring hostname, long port, long *stream_id_out);
 boolean tcp_name_to_address(bigstring domain_name, long *addr_out);
 boolean tcp_address_to_name(long addr, bigstring name_out);
+/* #716 item 5: testable helper -- packs a resolved C-string hostname into
+   the bigstring, falling back to dotted-decimal IP if the hostname exceeds
+   the 255-byte bigstring limit. Returns true if the hostname fit, false if
+   the IP fallback was used. */
+boolean tcp_address_to_name_pack(long addr, const char *hostname, bigstring name_out);
 boolean tcp_address_encode(bigstring ip_string, long *addr_out);
 boolean tcp_address_decode(long addr, bigstring ip_string_out);
 
