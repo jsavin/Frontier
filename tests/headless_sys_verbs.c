@@ -382,8 +382,10 @@ static boolean sys_valueproc(short token, hdltreenode hparam1,
              * with langerrormessage. The audit in #716 flagged that as a
              * truncation surface; the headless path avoids the bigstring entirely
              * by going straight to a heap handle, so there is no >255-byte
-             * truncation here by construction. Do not add a bigstring length
-             * guard to this path — that would be a regression.
+             * truncation here by construction. Do not add a 255-byte bigstring
+             * length guard to this path -- that would be a regression. (An
+             * overflow-safe upper-bound check against a much larger limit
+             * remains future-compatible.)
              */
             bigstring varname;
             char cvarname[256];  /* C string buffer for environment variable name */

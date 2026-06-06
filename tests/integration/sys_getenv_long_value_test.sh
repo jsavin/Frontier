@@ -92,7 +92,10 @@ else
 fi
 
 # --- 300-byte regression guard: must return full length, not truncated ---
-VALUE_300=$(printf 'y%.0s' $(seq 1 300))
+# Mixed-content payload: 150 'A's then 150 'B's. Length-only assertions
+# would pass even if internal bytes were silently rewritten; mid-buffer
+# markers around byte 150/151 catch that class of regression too.
+VALUE_300="$(printf 'A%.0s' $(seq 1 150))$(printf 'B%.0s' $(seq 1 150))"
 LEN_300=$(FRONTIER_TEST_LONG_VAR="$VALUE_300" "$CLI" --system-root "$SYSTEM_ROOT" --batch -e \
     'string.length(sys.getenvironmentvariable("FRONTIER_TEST_LONG_VAR"))' 2>&1 | strip_warnings | tail -1)
 
@@ -106,15 +109,17 @@ else
          "got '$LEN_300', expected 300"
 fi
 
-# --- 300-byte content fidelity: full value is preserved verbatim ---
-LAST_CHAR=$(FRONTIER_TEST_LONG_VAR="$VALUE_300" "$CLI" --system-root "$SYSTEM_ROOT" --batch -e \
-    'string.mid(sys.getenvironmentvariable("FRONTIER_TEST_LONG_VAR"), 300, 1)' 2>&1 | strip_warnings | tail -1)
+# --- content fidelity: A/B boundary preserved at byte 150/151, and last
+# byte (300) is the final 'B'. Together these catch length-preserving
+# corruption that a single end-of-string check would miss. ---
+PROBE=$(FRONTIER_TEST_LONG_VAR="$VALUE_300" "$CLI" --system-root "$SYSTEM_ROOT" --batch -e \
+    'string.mid(sys.getenvironmentvariable("FRONTIER_TEST_LONG_VAR"), 150, 1) + string.mid(sys.getenvironmentvariable("FRONTIER_TEST_LONG_VAR"), 151, 1) + string.mid(sys.getenvironmentvariable("FRONTIER_TEST_LONG_VAR"), 300, 1)' 2>&1 | strip_warnings | tail -1)
 
-if [ "$LAST_CHAR" = "y" ]; then
-    pass "300-byte env var content preserved verbatim through byte 300"
+if [ "$PROBE" = "ABB" ]; then
+    pass "300-byte env var content preserved verbatim across mid-buffer + tail markers"
 else
-    fail "300-byte env var byte 300 was not preserved" \
-         "got '$LAST_CHAR', expected 'y'"
+    fail "300-byte env var content corrupted somewhere in the buffer" \
+         "got '$PROBE', expected 'ABB' (byte 150='A', byte 151='B', byte 300='B')"
 fi
 
 echo ""
