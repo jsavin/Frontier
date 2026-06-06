@@ -181,4 +181,31 @@ boolean debug_is_safe_to_save(void);
  */
 void debug_send_suspended(transport_t *transport, long threadid, long line, debug_suspend_reason_t reason);
 
+/*
+ * Send a debug/completed notification to the client.
+ * success is the return value of the script execution (langruncode/langrunscriptcode).
+ *
+ * 2026-06-06 JES #691: Promoted from static (was debug_handler.c-only) so
+ * that unified_thread_entry in headless_spawn.c can call it.
+ */
+void debug_send_completed(transport_t *transport, long threadid, boolean success);
+
+/*
+ * Register a thread in the debug thread table.
+ * Returns an allocated tydebugstate on success, NULL if the table is full.
+ *
+ * 2026-06-06 JES #691: Promoted from static so that unified_thread_entry in
+ * headless_spawn.c can register the thread under its own ID (which is known
+ * only after the thread starts and allocates its registry record).
+ */
+tydebugstate *debug_register_thread(long threadid, transport_t *transport);
+
+/*
+ * Unregister a thread from the debug thread table.
+ * Called when a debug thread exits (inside unified_thread_entry).
+ *
+ * 2026-06-06 JES #691: Promoted from static (was debug_handler.c-only).
+ */
+void debug_unregister_thread(long threadid);
+
 #endif /* DEBUG_HANDLER_H */

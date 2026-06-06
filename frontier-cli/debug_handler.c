@@ -36,6 +36,7 @@
 #include "op.h"
 #include "db_format.h"
 #include "../third_party/cJSON/cJSON.h"
+#include "headless_spawn.h"  /* headless_spawn_script_thread, thread_run_spec, thread_debug_opts */
 
 /* Global: currenthashtable is a macro in processinternal.h; roottable is the
  * clean base for independent spawned-thread execution. */
@@ -170,7 +171,8 @@ static tydebugstate *debug_get_state_for_thread(long threadid) {
 	return NULL;
 }
 
-static tydebugstate *debug_register_thread(long threadid, transport_t *transport) {
+/* 2026-06-06 JES #691: Promoted from static; declared in debug_handler.h */
+tydebugstate *debug_register_thread(long threadid, transport_t *transport) {
 
 	tydebugstate *state = (tydebugstate *)calloc(1, sizeof(tydebugstate));
 	if (state == NULL)
@@ -199,7 +201,8 @@ static tydebugstate *debug_register_thread(long threadid, transport_t *transport
 	return NULL; /* no slots available */
 }
 
-static void debug_unregister_thread(long threadid) {
+/* 2026-06-06 JES #691: Promoted from static; declared in debug_handler.h */
+void debug_unregister_thread(long threadid) {
 
 	tydebugstate *state = NULL;
 
@@ -315,7 +318,8 @@ void debug_send_suspended(transport_t *transport, long threadid, long line, debu
 	transport->write_line(transport->ctx, json, strlen(json));
 }
 
-static void debug_send_completed(transport_t *transport, long threadid, boolean success) {
+/* 2026-06-06 JES #691: Promoted from static; declared in debug_handler.h */
+void debug_send_completed(transport_t *transport, long threadid, boolean success) {
 
 	char json[256];
 	snprintf(json, sizeof(json),
@@ -437,10 +441,10 @@ static boolean debug_pop_sourcecode(void) {
  */
 static boolean protocol_debugger_callback(hdltreenode hnode) {
 
-	/* Get debug state from thread globals. debugstate is set to a
-	 * tydebugstate* by debug_thread_entry. For non-debug threads it's NULL
-	 * (calloc-initialized). The cast is safe as long as only debug_handler.c
-	 * writes to debugstate. */
+	/* Get debug state from thread globals. debugstate is wired by
+	 * unified_thread_entry (headless_spawn.c) for debug threads; NULL for
+	 * non-debug threads. The cast is safe as long as only debug_handler.c
+	 * and headless_spawn.c write to tythreadglobals.debugstate. */
 	if (hthreadglobals == nil)
 		return true;
 
@@ -887,9 +891,9 @@ after_stepping: /* label for watchpoint goto — skips stepping when watchpoint 
 	 * (evaluatelist) knows this is a kill, not a bug.
 	 *
 	 * Notification flow for kill-after-continue: this callback returns false,
-	 * langruncode returns false, debug_thread_entry sends debug/completed
-	 * with success=false, then cleans up. The callback does NOT send
-	 * debug/completed — that's always the thread entry's responsibility. */
+	 * langruncode returns false, unified_thread_entry (headless_spawn.c) sends
+	 * debug/completed with success=false, then cleans up. The callback does NOT
+	 * send debug/completed -- that's always the thread entry's responsibility. */
 	if (atomic_load(&state->flkill)) {
 		if (my_hglobals != nil)
 			(**my_hglobals).flthreadkilled = true;
@@ -912,105 +916,11 @@ void debug_init(void) {
 }
 
 /* ========================================================================
- * Debug thread entry point
- * ======================================================================== */
-
-typedef struct {
-	hdltreenode hcode;
-	hdlthreadglobals hglobals;
-	frontier_pthread_record *rec;
-	tydebugstate *debugstate;
-} debug_thread_params;
-
-static void *debug_thread_entry(void *arg) {
-
-	debug_thread_params *params = (debug_thread_params *)arg;
-	tyvaluerecord result;
-
-	if (params == NULL)
-		return NULL;
-
-	/* Acquire GIL */
-	pthread_mutex_lock(&frontier_gil);
-
-	/* Restore this thread's globals */
-	headless_restore_threadglobals(params->hglobals);
-
-	/* Register in system.compiler.threads */
-	{
-		bigstring bsname;
-		copyctopstring("debug", bsname);
-		headless_register_thread(bsname, params->debugstate->threadid);
-	}
-
-	/* Store debug state in thread globals for the callback to find,
-	 * and store thread globals in debug state for protocol handlers to
-	 * access the suspended thread's hash tables (debug/getLocals). */
-	(**params->hglobals).debugstate = (void *)params->debugstate;
-	params->debugstate->hglobals = (void *)params->hglobals;
-
-	boolean fl_ran = false;
-
-	/* Initial suspension — pause before first statement so client can set breakpoints */
-	atomic_store(&params->debugstate->flsuspended, true);
-	debug_send_suspended(params->debugstate->transport, params->debugstate->threadid, 0, DEBUG_REASON_ENTRY);
-
-	/* Suspension loop (same pattern as in the callback) */
-	while (atomic_load(&params->debugstate->flsuspended)) {
-
-		if (atomic_load(&params->debugstate->flkill)) {
-			debug_send_completed(params->debugstate->transport, params->debugstate->threadid, false);
-			goto cleanup;
-		}
-
-		headless_save_threadglobals(params->hglobals);
-		pthread_mutex_unlock(&frontier_gil);
-
-		struct timespec ts = {0, 10000000};
-		nanosleep(&ts, NULL);
-
-		pthread_mutex_lock(&frontier_gil);
-		headless_restore_threadglobals(params->hglobals);
-	}
-
-	/* Execute the script */
-	fl_ran = true;
-	initvalue(&result, novaluetype);
-
-	boolean fl = langruncode(params->hcode, nil, &result);
-
-	/* Send completion notification */
-	debug_send_completed(params->debugstate->transport, params->debugstate->threadid, fl);
-
-cleanup:
-	if (fl_ran)
-		disposevaluerecord(result, false);
-
-	/* Save globals while we still hold GIL */
-	headless_save_threadglobals(params->hglobals);
-
-	/* Clear error state */
-	headless_clear_last_lang_error();
-
-	/* Unregister from system.compiler.threads and debug registry */
-	headless_unregister_thread(params->rec->user_thread_id);
-	debug_unregister_thread(params->debugstate->threadid);
-
-	/* Cleanup */
-	langdisposetree(params->hcode);
-	headless_dispose_threadglobals(params->hglobals);
-	free_thread_record(params->rec);
-	free(params);
-
-	/* Release GIL */
-	pthread_mutex_unlock(&frontier_gil);
-	pthread_cond_broadcast(&gil_available);
-
-	return NULL;
-}
-
-/* ========================================================================
  * Protocol operation handlers
+ *
+ * 2026-06-06 JES #691: debug_thread_params struct and debug_thread_entry
+ * function removed; replaced by unified_thread_entry in headless_spawn.c.
+ * handle_debug_run now calls headless_spawn_script_thread.
  * ======================================================================== */
 
 void handle_debug_run(int id, const char *json_line, transport_t *transport) {
@@ -1083,131 +993,28 @@ void handle_debug_run(int id, const char *json_line, transport_t *transport) {
 		return;
 	}
 
-	/* Allocate thread record */
-	frontier_pthread_record *rec = allocate_thread_record();
-	if (rec == NULL) {
-		langdisposetree(hcode);
-		char err[512];
-		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Failed to allocate thread\"},\"success\":false}", id);
-		transport->write_line(transport->ctx, err, strlen(err));
-		cJSON_Delete(root);
-		return;
-	}
+	/* 2026-06-06 JES #691: Spawn boilerplate replaced by headless_spawn_script_thread.
+	 * The common alloc-globals / wire-idthread / alloc-tablestack / pthread_create
+	 * sequence is now in headless_spawn.c. debug_register_thread is called inside
+	 * headless_spawn_script_thread (before pthread_create) using the allocated
+	 * thread's own ID, so the debug slot is populated before the thread can run.
+	 * headless_spawn_script_thread returns the tydebugstate* via out_debugstate. */
 
-	/* Allocate thread globals */
-	hdlthreadglobals new_hglobals = headless_new_threadglobals();
-	if (new_hglobals == nil) {
-		langdisposetree(hcode);
-		free_thread_record(rec);
-		char err[512];
-		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Failed to allocate thread globals\"},\"success\":false}", id);
-		transport->write_line(transport->ctx, err, strlen(err));
-		cJSON_Delete(root);
-		return;
-	}
+	thread_run_spec run_spec;
+	memset(&run_spec, 0, sizeof(run_spec));
+	run_spec.is_callscript = false;
 
-	long threadid = (long)rec->user_thread_id;
-	(**new_hglobals).idthread = (hdlthread)threadid;
-	rec->hglobals = new_hglobals;
+	tydebugstate *debugstate = NULL;
+	thread_debug_opts debug_opts;
+	debug_opts.transport = transport;
+	debug_opts.out_debugstate = (void **)&debugstate;
+	debug_opts.start_suspended = true;
 
-	/* Allocate a fresh, empty hashtablestack for the spawned thread.
-	 * Mirrors the #706 fix in headless_thread_callscript / headless_thread_evaluate.
-	 * Summary: copying the caller's toptables depth would let the spawned script
-	 * overflow the 80-entry stack and spin in a CPU-bound GIL-starvation hang.
-	 * The interpreter is designed to start each execution thread from a clean
-	 * chain rooted at roottable (langpushscopechain). debug/run dispatches at the
-	 * top level of the protocol loop, so the caller stack is shallow today and
-	 * the deep-copy overflow is not reachable through the protocol -- but rooting
-	 * at roottable is the correct, depth-independent base regardless. */
-	{
-		Handle hcopy;
+	long user_threadid = 0;
 
-		/* newclearhandle zeroes all memory: toptables = 0 and stack[] = nil. */
-		if (!newclearhandle(sizeof(tytablestack), &hcopy)) {
-			langdisposetree(hcode);
-			headless_dispose_threadglobals(new_hglobals);
-			free_thread_record(rec);
-			char err[512];
-			snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Failed to copy table stack\"},\"success\":false}", id);
-			transport->write_line(transport->ctx, err, strlen(err));
-			cJSON_Delete(root);
-			return;
-		}
-		(**new_hglobals).htablestack = (hdltablestack)hcopy;
-	}
-	/* Root table is the correct base for an independent script execution. */
-	(**new_hglobals).hcurrenthashtable = roottable;
-
-	/* Register debug state */
-	tydebugstate *debugstate = debug_register_thread(threadid, transport);
-	if (debugstate == NULL) {
-		langdisposetree(hcode);
-		headless_dispose_threadglobals(new_hglobals);
-		free_thread_record(rec);
-		char err[512];
-		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Too many debug threads\"},\"success\":false}", id);
-		transport->write_line(transport->ctx, err, strlen(err));
-		cJSON_Delete(root);
-		return;
-	}
-
-	/* Package launch parameters */
-	debug_thread_params *dparams = (debug_thread_params *)malloc(sizeof(debug_thread_params));
-	if (dparams == NULL) {
-		langdisposetree(hcode);
-		headless_dispose_threadglobals(new_hglobals);
-		free_thread_record(rec);
-		debug_unregister_thread(threadid);
-		char err[512];
-		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Memory allocation failed\"},\"success\":false}", id);
-		transport->write_line(transport->ctx, err, strlen(err));
-		cJSON_Delete(root);
-		return;
-	}
-
-	dparams->hcode = hcode;
-	dparams->hglobals = new_hglobals;
-	dparams->rec = rec;
-	dparams->debugstate = debugstate;
-
-	/* Spawn debug thread */
-	pthread_t tid;
-	pthread_attr_t attr;
-
-	if (pthread_attr_init(&attr) != 0) {
-		langdisposetree(hcode);
-		headless_dispose_threadglobals(new_hglobals);
-		free_thread_record(rec);
-		debug_unregister_thread(threadid);
-		free(dparams);
-		char err[512];
-		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"pthread_attr_init failed\"},\"success\":false}", id);
-		transport->write_line(transport->ctx, err, strlen(err));
-		cJSON_Delete(root);
-		return;
-	}
-
-	if (pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE) != 0) {
-		pthread_attr_destroy(&attr);
-		langdisposetree(hcode);
-		headless_dispose_threadglobals(new_hglobals);
-		free_thread_record(rec);
-		debug_unregister_thread(threadid);
-		free(dparams);
-		char err[512];
-		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"pthread_attr_setdetachstate failed\"},\"success\":false}", id);
-		transport->write_line(transport->ctx, err, strlen(err));
-		cJSON_Delete(root);
-		return;
-	}
-
-	if (pthread_create(&tid, &attr, debug_thread_entry, dparams) != 0) {
-		pthread_attr_destroy(&attr);
-		langdisposetree(hcode);
-		headless_dispose_threadglobals(new_hglobals);
-		free_thread_record(rec);
-		debug_unregister_thread(threadid);
-		free(dparams);
+	if (!headless_spawn_script_thread(hcode, &run_spec, &debug_opts, &user_threadid)) {
+		/* spawn failed -- all resources freed inside the primitive,
+		 * including debug registration (debugstate is NULL). */
 		char err[512];
 		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Failed to spawn debug thread\"},\"success\":false}", id);
 		transport->write_line(transport->ctx, err, strlen(err));
@@ -1215,21 +1022,15 @@ void handle_debug_run(int id, const char *json_line, transport_t *transport) {
 		return;
 	}
 
-	pthread_attr_destroy(&attr);
-	rec->pthread_id = tid;
-
-	/* Set pthread_id immediately after create — debug_kill_all_threads reads
-	 * this field under g_debug_mutex, so set it before any code that could
-	 * trigger shutdown (the response write below). */
-	pthread_mutex_lock(&g_debug_mutex);
-	debugstate->pthread_id = tid;
-	pthread_mutex_unlock(&g_debug_mutex);
+	/* pthread_id was set in headless_spawn_script_thread (under GIL before
+	 * any context switch) and is ready for debug_kill_all_threads. No
+	 * additional setup needed here. */
 
 	/* Return immediately with thread ID */
 	char resp[128];
 	snprintf(resp, sizeof(resp),
 			 "{\"id\":%d,\"result\":{\"threadId\":%ld,\"status\":\"started\"},\"success\":true}",
-			 id, threadid);
+			 id, user_threadid);
 	transport->write_line(transport->ctx, resp, strlen(resp));
 
 	cJSON_Delete(root);
