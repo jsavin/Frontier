@@ -1,9 +1,20 @@
 # Thread-spawn unification + debugger attach for menu-handler threads
 
-Status: PLANNING (no code written). Author: Claude + JES, 2026-06-01.
+Status: IN PROGRESS. Author: Claude + JES, 2026-06-01.
 Decision: JES chose to do this BEFORE fixing File>Open, because it removes
 debugging churn structurally for all future menu-handler work and also fixes
 a latent #706 hang in `debug/run`.
+
+## Build sequence status (2026-06-06)
+
+- **PR 1 (#706 isolated `debug/run` fix)**: SHIPPED as **PR #692**
+  (commit `ec4483270`, 2026-06-01). `debug_handler.c::debug_thread_entry`
+  now uses `newclearhandle(sizeof(tytablestack), ...)` + `hcurrenthashtable
+  = roottable` (current anchors: ~:1126 and ~:1139). Regression guard at
+  `tests/debug_protocol_test.sh:833-876` ("Test 20: debug/run roots the
+  spawned thread at roottable").
+- **PR 2 (spawn unification + lazy attach)**: in progress on branch
+  `worktree-691-thread-debug-attach`. Builds directly on PR #692.
 
 ## Problem
 

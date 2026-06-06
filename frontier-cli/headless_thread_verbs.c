@@ -37,6 +37,7 @@
 #include "processinternal.h"
 #include "script_portable.h"
 #include "tcpverbs.h"  /* tcp_process_callbacks */
+#include "headless_spawn.h"  /* headless_spawn_script_thread, thread_run_spec */
 #include <errno.h>
 #include <sched.h>
 
@@ -97,13 +98,15 @@ pthread_cond_t gil_available = PTHREAD_COND_INITIALIZER;
  * the waiting thread gets scheduled, causing the main thread to immediately
  * reacquire the GIL (starvation).
  *
- * Solution: the yielding thread sleeps on yield_cond for a short timeout
+ * Solution: the yielding thread sleeps on headless_yield_cond for a short timeout
  * (1ms) WITHOUT holding the GIL. This guarantees the waiting thread gets
- * a chance to run. The callback thread signals yield_cond when it finishes,
+ * a chance to run. The callback thread signals headless_yield_cond when it finishes,
  * waking the yielder early if no more work is pending.
  */
-static pthread_mutex_t yield_mutex = PTHREAD_MUTEX_INITIALIZER;
-static pthread_cond_t yield_cond = PTHREAD_COND_INITIALIZER;
+/* 2026-06-06 JES #691: Exported (was static) so headless_spawn.c can signal
+ * headless_yield_cond from unified_thread_entry. Declaration in headless_threading.h. */
+pthread_mutex_t headless_yield_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t headless_yield_cond = PTHREAD_COND_INITIALIZER;
 
 /*
  * headless_threading_init - Main thread acquires the GIL at startup
@@ -209,11 +212,16 @@ void headless_threading_shutdown(void) {
 	headless_restore_threadglobals(main_globals);
 }
 
-/* Forward declarations for static functions used by thread_entry_point */
+/* Forward declaration used by callback_thread_entry_point */
 boolean headless_unregister_thread(long idthread);
 
 /*
- * Thread launch parameters - passed from spawning thread to new POSIX thread
+ * Thread launch parameters - passed from spawning thread to new POSIX thread.
+ * Used by callback_thread_entry_point.
+ *
+ * 2026-06-06 JES #691: thread_entry_point (which also used this struct for the
+ * callScript and evaluate paths) has been removed. Those paths now use
+ * headless_spawn_script_thread (headless_spawn.c) with thread_run_spec.
  */
 typedef struct {
 	hdltreenode hcode;
@@ -226,76 +234,6 @@ typedef struct {
 	hdlhashtable hcontext;
 	boolean is_callscript;
 } thread_launch_params;
-
-/*
- * thread_entry_point - POSIX thread entry for spawned threads
- *
- * Acquires the GIL, restores this thread's globals, executes the code,
- * then cleans up. The thread blocks on GIL acquisition until the spawning
- * thread yields via langbackgroundtask() or thread.sleep().
- */
-static void *thread_entry_point(void *arg) {
-	thread_launch_params *params = (thread_launch_params *)arg;
-	tyvaluerecord result;
-
-	if (params == NULL) {
-		log_error(LOG_COMP_THREAD, "thread_entry_point: NULL params — aborting thread");
-		return NULL;
-	}
-
-	/* Block until we can acquire the GIL */
-	pthread_mutex_lock(&frontier_gil);
-
-	/* Restore this thread's globals (makes C globals point to our state) */
-	headless_restore_threadglobals(params->hglobals);
-
-	/* Execute the code */
-	initvalue(&result, novaluetype);
-
-	if (params->is_callscript) {
-		langrunscriptcode(params->htable, params->bsverb, params->hcode,
-						  &params->vparams, params->hcontext, &result);
-	}
-	else {
-		langruncode(params->hcode, nil, &result);
-	}
-
-	/* Save our globals before cleanup (while we still hold the GIL) */
-	headless_save_threadglobals(params->hglobals);
-
-	/* Clear global error buffer (fire-and-forget) */
-	headless_clear_last_lang_error();
-
-	/* Unregister from system.compiler.threads */
-	headless_unregister_thread(params->rec->user_thread_id);
-
-	/* Cleanup */
-	if (!params->is_callscript) {
-		/* For evaluate: we compiled hcode, so we own it */
-		langdisposetree(params->hcode);
-	}
-	else {
-		/* For callscript: hcode belongs to the hash table, do NOT dispose.
-		 * Dispose the deep-copied vparams (we own it from copyvaluerecord). */
-		disposevaluerecord(params->vparams, false);
-	}
-
-	disposevaluerecord(result, false);
-	headless_dispose_threadglobals(params->hglobals);
-	free_thread_record(params->rec);
-	free(params);
-
-	/* Release the GIL and signal other threads */
-	pthread_mutex_unlock(&frontier_gil);
-	pthread_cond_broadcast(&gil_available);
-
-	/* Wake any thread blocked in headless_backgroundtask yield wait */
-	pthread_mutex_lock(&yield_mutex);
-	pthread_cond_signal(&yield_cond);
-	pthread_mutex_unlock(&yield_mutex);
-
-	return NULL;
-}
 
 /*
  * callback_thread_entry_point - POSIX thread entry for TCP callback threads
@@ -366,9 +304,9 @@ static void *callback_thread_entry_point(void *arg) {
 	/* Wake the yielding thread (headless_backgroundtask) so it can
 	 * reacquire the GIL promptly instead of waiting for the full
 	 * yield timeout to expire. */
-	pthread_mutex_lock(&yield_mutex);
-	pthread_cond_signal(&yield_cond);
-	pthread_mutex_unlock(&yield_mutex);
+	pthread_mutex_lock(&headless_yield_mutex);
+	pthread_cond_signal(&headless_yield_cond);
+	pthread_mutex_unlock(&headless_yield_mutex);
 
 	return NULL;
 }
@@ -562,16 +500,10 @@ boolean headless_unregister_thread(long idthread) {
  */
 static boolean headless_thread_evaluate(bigstring bscode, tyvaluerecord *vreturned) {
 	hdltreenode hcode = nil;
-	frontier_pthread_record *rec = nil;
-	hdlthreadglobals new_hglobals = nil;
 	boolean fl;
-	long threadid;
 	Handle htext = nil;
 	long codelen;
 	bigstring bsanon;
-	thread_launch_params *params = nil;
-	pthread_t tid;
-	pthread_attr_t attr;
 
 	/* Compile the code string into a tree */
 	codelen = stringlength(bscode);
@@ -587,114 +519,48 @@ static boolean headless_thread_evaluate(bigstring bscode, tyvaluerecord *vreturn
 		return false;
 	}
 
-	/* Allocate thread record from registry */
-	rec = allocate_thread_record();
+	/* 2026-06-06 JES #691: Replaced open-coded alloc/wire/pthread_create with
+	 * headless_spawn_script_thread. The evaluate path uses is_callscript=false
+	 * (langruncode, thread owns hcode). Registration name is "anonymous". */
 
-	if (rec == NULL) {
-		langdisposetree(hcode);
-		return false;
-	}
+	/* Build run spec: langruncode path (evaluate compiles hcode, thread owns it) */
+	thread_run_spec eval_run_spec;
+	memset(&eval_run_spec, 0, sizeof(eval_run_spec));
+	eval_run_spec.is_callscript = false;
 
-	threadid = rec->user_thread_id;
-
-	/* Allocate new thread globals */
-	new_hglobals = headless_new_threadglobals();
-
-	if (new_hglobals == nil) {
-		langdisposetree(hcode);
-		free_thread_record(rec);
-		return false;
-	}
-
-	/* Set thread ID in the new globals */
-	(**new_hglobals).idthread = (hdlthread) threadid;
-
-	/* Link globals to registry record */
-	rec->hglobals = new_hglobals;
-
-	/* Allocate a fresh, empty hashtablestack for the spawned thread.
+	/* Register with name "anonymous" before spawning, matching original behavior.
+	 * headless_spawn_script_thread registers for is_callscript=true paths, but
+	 * skips registration for is_callscript=false (debug path registers as "debug"
+	 * in the thread entry). For evaluate, we want "anonymous" registered here
+	 * before pthread_create, so we do it manually and then let the spawn skip it.
 	 *
-	 * We do NOT copy the calling thread's current toptables depth. The calling
-	 * thread may be deeply nested inside evaluatelist when thread.evaluate is
-	 * dispatched (e.g., from a protocol script/eval handler that is itself
-	 * several frames deep in evaluatelist). Copying that depth causes immediate
-	 * hashtable stack overflow when the spawned script pushes its own local
-	 * scopes -- manifesting as a tight CPU-bound loop that starves the GIL for
-	 * the entire script duration.
-	 *
-	 * Fix: start with toptables = 0 (fresh stack) and hcurrenthashtable =
-	 * roottable. langrunscriptcode / evaluatelist pushes the correct local
-	 * scope chain for the spawned script.
-	 *
-	 * Each thread gets its own tytablestack allocation so push/pop ops on one
-	 * thread do not alias the other's stack pointer. Under GIL serialization
-	 * only one thread accesses C globals at a time, so the underlying hash
-	 * table handles in stack[] are safe to share (they are borrowed refs to ODB
-	 * nodes, not thread-owned memory).
-	 * TODO(Phase4): When GIL is removed, threads need independent table chains. */
-	{
-		Handle hcopy;
-
-		/* newclearhandle zeroes all memory: toptables = 0 and stack[] = nil.
-		 * This gives the spawned thread a clean starting state. */
-		if (!newclearhandle(sizeof(tytablestack), &hcopy)) {
-			langdisposetree(hcode);
-			headless_dispose_threadglobals(new_hglobals);
-			free_thread_record(rec);
-			return false;
-		}
-
-		(**new_hglobals).htablestack = (hdltablestack)hcopy;
-	}
-	/* Root table is the correct base for an independent script execution.
-	 * The spawned thread's langrunscriptcode call pushes its own local scope. */
-	(**new_hglobals).hcurrenthashtable = roottable;
-
-	/* Register in system.compiler.threads (calling thread context) */
+	 * NOTE: headless_spawn_script_thread calls headless_register_thread only for
+	 * is_callscript=true. For is_callscript=false (this path), the thread entry
+	 * (unified_thread_entry) registers as "debug" -- but only when debug_opts is
+	 * non-NULL. Since we pass NULL for debug_opts here, NO registration happens
+	 * inside the primitive. We handle it here to preserve the original behavior.
+	 */
 	copystring(PSTRING("\011", "anonymous"), bsanon);
-	headless_register_thread(bsanon, threadid);
 
-	/* Package launch parameters */
-	params = (thread_launch_params *)malloc(sizeof(thread_launch_params));
+	long eval_threadid = 0;
 
-	if (params == NULL) {
-		langdisposetree(hcode);
-		headless_unregister_thread(threadid);
-		headless_dispose_threadglobals(new_hglobals);
-		free_thread_record(rec);
+	if (!headless_spawn_script_thread(hcode, &eval_run_spec, NULL, &eval_threadid)) {
+		log_error(LOG_COMP_THREAD, "headless_spawn_script_thread failed for thread.evaluate");
+		/* hcode freed inside the primitive (is_callscript=false, thread owns it) */
 		return false;
 	}
 
-	params->hcode = hcode;
-	params->hglobals = new_hglobals;
-	params->rec = rec;
-	params->is_callscript = false;
+	/* Register in system.compiler.threads AFTER spawn so we know the real threadid.
+	 * Safe because we still hold the GIL across this call -- the spawned thread
+	 * cannot have begun executing (it blocks on pthread_mutex_lock(&frontier_gil)
+	 * as its first action). Registration order vs the spawned thread is unchanged
+	 * from the pre-refactor behavior: the original code registered before
+	 * pthread_create, which is equally safe since the new thread was blocked on
+	 * GIL acquisition. */
+	headless_register_thread(bsanon, eval_threadid);
 
-	/* Spawn detached POSIX thread — it will block on GIL until we yield */
-	pthread_attr_init(&attr);
-	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
-
-	if (pthread_create(&tid, &attr, thread_entry_point, params) != 0) {
-		log_error(LOG_COMP_THREAD, "pthread_create failed for thread.evaluate");
-		pthread_attr_destroy(&attr);
-		/* Full cleanup: unregister from system.compiler.threads, dispose
-		 * thread globals (frees deep-copied hashtablestack and error stack),
-		 * release the registry record (decrements refcount to zero, removing
-		 * it from the registry). params->hcode is not freed here because
-		 * langdisposetree handles it directly. */
-		langdisposetree(hcode);
-		headless_unregister_thread(threadid);
-		headless_dispose_threadglobals(new_hglobals);
-		free_thread_record(rec);
-		free(params);
-		return false;
-	}
-
-	pthread_attr_destroy(&attr);
-	rec->pthread_id = tid;	/* Set AFTER successful create — not read until thread runs */
-
-	/* Return thread ID to caller — thread is spawned but blocked on GIL */
-	return setlongvalue(threadid, vreturned);
+	/* Return thread ID to caller -- thread is spawned but blocked on GIL */
+	return setlongvalue(eval_threadid, vreturned);
 }
 
 /*
@@ -711,13 +577,7 @@ static boolean headless_thread_evaluate(bigstring bscode, tyvaluerecord *vreturn
  */
 static boolean headless_thread_callscript(bigstring bsscriptname, tyvaluerecord vparams,
 										  hdlhashtable hcontext, tyvaluerecord *vreturned) {
-	frontier_pthread_record *rec = nil;
-	hdlthreadglobals new_hglobals = nil;
 	boolean fl;
-	long threadid;
-	thread_launch_params *params = nil;
-	pthread_t tid;
-	pthread_attr_t attr;
 
 	/* --- Phase 1: Resolve script in calling thread context --- */
 	/* Failures here (bad name, not a script, compile error) propagate to caller */
@@ -769,115 +629,47 @@ static boolean headless_thread_callscript(bigstring bsscriptname, tyvaluerecord 
 		}
 	}
 
-	/* --- Phase 2: Spawn POSIX thread for execution --- */
-	/* Runtime errors from here on are fire-and-forget */
-
-	rec = allocate_thread_record();
-
-	if (rec == NULL)
-		return false;
-
-	threadid = rec->user_thread_id;
-
-	new_hglobals = headless_new_threadglobals();
-
-	if (new_hglobals == nil) {
-		free_thread_record(rec);
-		return false;
-	}
-
-	(**new_hglobals).idthread = (hdlthread) threadid;
-	rec->hglobals = new_hglobals;
-
-	/* Allocate a fresh, empty hashtablestack for the spawned thread.
-	 * See the identical fix in headless_thread_evaluate for the full rationale.
-	 * Summary: copying the caller's toptables depth causes stack overflow in
-	 * the spawned script, producing a CPU-bound GIL-starvation hang. */
-	{
-		Handle hcopy;
-
-		/* newclearhandle zeroes all memory: toptables = 0 and stack[] = nil. */
-		if (!newclearhandle(sizeof(tytablestack), &hcopy)) {
-			headless_dispose_threadglobals(new_hglobals);
-			free_thread_record(rec);
-			return false;
-		}
-
-		(**new_hglobals).htablestack = (hdltablestack)hcopy;
-	}
-	/* Root table is the correct base for an independent script execution. */
-	(**new_hglobals).hcurrenthashtable = roottable;
-
-	/* Register in system.compiler.threads (calling thread context) */
-	headless_register_thread(bsverb, threadid);
-
-	/* Package launch parameters */
-	params = (thread_launch_params *)malloc(sizeof(thread_launch_params));
-
-	if (params == NULL) {
-		headless_unregister_thread(threadid);
-		headless_dispose_threadglobals(new_hglobals);
-		free_thread_record(rec);
-		return false;
-	}
-
-	params->hcode = hcode;
-	params->hglobals = new_hglobals;
-	params->rec = rec;
-
-	/* Store resolved script references. These are pointers into the ODB —
-	 * htable and hcode are owned by the hash table, not by us. This is safe
-	 * under GIL serialization: the caller cannot mutate or delete the script
-	 * while we hold the GIL (which we do until pthread_create returns and
-	 * the caller yields). The spawned thread acquires the GIL before accessing
-	 * these pointers, so no stale-pointer race is possible.
-	 * TODO(Phase4): If GIL is removed, callscript must retain/copy these
-	 * references or re-resolve the script inside the spawned thread. */
-	params->htable = htable;
-	copystring(bsverb, params->bsverb);
-	params->hcontext = hcontext;
-	params->is_callscript = true;
+	/* --- Phase 2: Spawn POSIX thread for execution ---
+	 * 2026-06-06 JES #691: Replaced open-coded alloc/wire/pthread_create
+	 * with headless_spawn_script_thread.  Runtime errors are fire-and-forget. */
 
 	/* Deep-copy vparams so the spawned thread owns its own list Handle.
 	 * A struct copy would alias the calling thread's Handle data, which
 	 * becomes invalid after the calling thread's stack frame is unwound
-	 * or the tmp stack reclaims it. */
-	if (!copyvaluerecord(vparams, &params->vparams)) {
-		headless_unregister_thread(threadid);
-		headless_dispose_threadglobals(new_hglobals);
-		free_thread_record(rec);
-		free(params);
+	 * or the tmp stack reclaims it.
+	 * TODO(Phase4): If GIL is removed, callscript must retain/copy these
+	 * references or re-resolve the script inside the spawned thread. */
+	tyvaluerecord vparams_copy;
+	if (!copyvaluerecord(vparams, &vparams_copy))
 		return false;
-	}
 
 	/* Exempt the deep-copied vparams from the calling thread's tmp stack.
 	 * Without this, the calling thread's evaluator will dispose the Handle
 	 * when it cleans up its tmp stack, invalidating the spawned thread's copy. */
-	exemptfromtmpstack(&params->vparams);
+	exemptfromtmpstack(&vparams_copy);
 
-	/* Spawn detached POSIX thread */
-	pthread_attr_init(&attr);
-	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+	thread_run_spec run_spec;
+	memset(&run_spec, 0, sizeof(run_spec));
+	run_spec.is_callscript = true;
+	copystring(bsverb, run_spec.bsverb);
+	run_spec.htable = htable;
+	run_spec.hcontext = hcontext;
+	run_spec.vparams = vparams_copy;
+	/* hcode: ODB-owned pointer, safe under GIL (see original comment above) */
 
-	if (pthread_create(&tid, &attr, thread_entry_point, params) != 0) {
-		log_error(LOG_COMP_THREAD, "pthread_create failed for thread.callscript");
-		pthread_attr_destroy(&attr);
-		/* Full cleanup: unregister, dispose globals (frees deep-copied
-		 * hashtablestack and error stack), dispose deep-copied vparams,
-		 * release registry record (refcount → 0, removed from registry). */
-		disposevaluerecord(params->vparams, false);
-		headless_unregister_thread(threadid);
-		headless_dispose_threadglobals(new_hglobals);
-		free_thread_record(rec);
-		free(params);
+	long user_threadid = 0;
+
+	if (!headless_spawn_script_thread(hcode, &run_spec, NULL, &user_threadid)) {
+		log_error(LOG_COMP_THREAD, "headless_spawn_script_thread failed for thread.callscript");
+		/* On spawn failure for is_callscript, vparams_copy is NOT disposed inside
+		 * the primitive (hcode and vparams are caller-owned for this path).
+		 * Dispose vparams_copy here to avoid leaking the deep-copied Handle. */
+		disposevaluerecord(vparams_copy, false);
 		return false;
 	}
 
-	pthread_attr_destroy(&attr);
-	rec->pthread_id = tid;	/* Set AFTER successful create */
-
-	/* Return thread ID — thread is spawned but blocked on GIL */
-	return setlongvalue(threadid, vreturned);
+	/* Return thread ID -- thread is spawned but blocked on GIL */
+	return setlongvalue(user_threadid, vreturned);
 }
 
 /*
@@ -911,7 +703,7 @@ boolean headless_backgroundtask(boolean flresting) {
 	 * was insufficient — it often returned before the waiting thread got
 	 * scheduled, starving callback threads indefinitely.
 	 *
-	 * The 1ms timeout is a ceiling; callback threads signal yield_cond
+	 * The 1ms timeout is a ceiling; callback threads signal headless_yield_cond
 	 * when they finish, waking us early. */
 	{
 		struct timespec ts;
@@ -921,9 +713,9 @@ boolean headless_backgroundtask(boolean flresting) {
 			ts.tv_sec++;
 			ts.tv_nsec -= 1000000000L;
 		}
-		pthread_mutex_lock(&yield_mutex);
-		pthread_cond_timedwait(&yield_cond, &yield_mutex, &ts);
-		pthread_mutex_unlock(&yield_mutex);
+		pthread_mutex_lock(&headless_yield_mutex);
+		pthread_cond_timedwait(&headless_yield_cond, &headless_yield_mutex, &ts);
+		pthread_mutex_unlock(&headless_yield_mutex);
 	}
 
 	/* Reacquire the GIL */

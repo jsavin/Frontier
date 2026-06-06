@@ -33,6 +33,20 @@
 extern pthread_mutex_t frontier_gil;
 extern pthread_cond_t gil_available;
 
+/*
+ * Yield synchronization for headless_backgroundtask().
+ *
+ * When the main thread yields the GIL, it sleeps on headless_yield_cond for
+ * a short timeout (1ms) so spawned threads get a chance to run before the
+ * main thread reacquires. Spawned threads signal headless_yield_cond on exit
+ * to wake the background task early.
+ *
+ * 2026-06-06 JES #691: Exported from headless_thread_verbs.c (was static)
+ * so that unified_thread_entry in headless_spawn.c can signal it on exit.
+ */
+extern pthread_mutex_t headless_yield_mutex;
+extern pthread_cond_t headless_yield_cond;
+
 /* Thread globals management */
 extern hdlthreadglobals headless_new_threadglobals(void);
 extern void headless_dispose_threadglobals(hdlthreadglobals hg);

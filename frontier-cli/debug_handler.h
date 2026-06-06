@@ -76,6 +76,12 @@ typedef enum {
 typedef struct tydebugstate {
 	boolean fldebugmode;			 /* not atomic: set once at registration (under GIL) before
 									  * thread starts, only read after. GIL provides ordering. */
+	boolean fldetached;				 /* true for lazily-attached callScript threads, which are
+									  * DETACHED (pthread_join is UB on them) and whose transport
+									  * lifetime is managed by g_lazy_attached_count.
+									  * Not atomic: written once at registration, read only during
+									  * kill/join (under g_debug_mutex) and unregister (single
+									  * writer, GIL-ordered). */
 	atomic_bool flsuspended;		 /* is this thread paused? */
 	atomic_bool flinterrupt;		 /* pause at next statement (debug/pause) */
 	atomic_bool flkill;				 /* kill the script */
@@ -178,7 +184,80 @@ boolean debug_is_safe_to_save(void);
 
 /*
  * Send an unsolicited debug/suspended notification to the client.
+ * script_path is optional (may be NULL). When non-NULL, the notification
+ * includes a "script" field so clients can identify which script hit the
+ * breakpoint without a separate debug/getStack call.
  */
-void debug_send_suspended(transport_t *transport, long threadid, long line, debug_suspend_reason_t reason);
+void debug_send_suspended(transport_t *transport, long threadid, long line,
+                          debug_suspend_reason_t reason, const char *script_path);
+
+/*
+ * Set or clear the lazy-attach transport. Call with a non-NULL transport at
+ * protocol session start and with NULL at session exit.
+ *
+ * Lifetime contract (2026-06-06 JES #691, heap-allocation fix):
+ *   The transport_t pointed to by t MUST be heap-allocated and MUST remain
+ *   valid until debug_set_attach_transport(NULL) is called AND
+ *   debug_wait_lazy_threads_drained() returns. protocol_main fulfills this
+ *   by allocating the transport on the heap, registering it here, waiting
+ *   for g_lazy_attached_count to drop to zero via
+ *   debug_wait_lazy_threads_drained(), and only then calling
+ *   debug_set_attach_transport(NULL) and freeing the heap transport.
+ *
+ *   Stack-local transports (e.g., per-WS-message) do NOT satisfy the
+ *   contract because the stack frame can unwind while a lazy-attached thread
+ *   still holds a pointer. WS lazy attach is intentionally out of scope
+ *   for this commit (UAF risk, deferred to a follow-up).
+ *
+ * 2026-06-06 JES #691
+ */
+void debug_set_attach_transport(transport_t *t);
+
+/*
+ * Wait until all lazily-attached threads have unregistered (i.e., completed
+ * their final debug_unregister_thread call, which decrements
+ * g_lazy_attached_count). Returns immediately if the count is already zero.
+ * Polls with 10ms sleep; expected to return quickly in normal operation.
+ * Must be called with the GIL held (releases and reacquires during each
+ * sleep cycle so lazy threads can complete their cleanup).
+ *
+ * 2026-06-06 JES #691
+ */
+void debug_wait_lazy_threads_drained(void);
+
+/*
+ * Send a debug/completed notification to the client.
+ * success is the return value of the script execution (langruncode/langrunscriptcode).
+ *
+ * 2026-06-06 JES #691: Promoted from static (was debug_handler.c-only) so
+ * that unified_thread_entry in headless_spawn.c can call it.
+ */
+void debug_send_completed(transport_t *transport, long threadid, boolean success);
+
+/*
+ * Register a thread in the debug thread table.
+ * Returns an allocated tydebugstate on success, NULL if the table is full.
+ *
+ * fldetached: pass true for lazily-attached callScript threads (POSIX DETACHED,
+ *   pthread_join is UB on them). These are excluded from debug_kill_all_threads'
+ *   kill-list capture and debug_join_all_threads' join loop. They also increment
+ *   g_lazy_attached_count so protocol_main can wait for them to drain before
+ *   freeing the heap transport (P1 #1 + P1 #2 fix, 2026-06-06 JES #691).
+ *   Pass false for debug/run threads (joinable, pthread_id is valid).
+ *
+ * 2026-06-06 JES #691: Promoted from static so that unified_thread_entry in
+ * headless_spawn.c can register the thread under its own ID (which is known
+ * only after the thread starts and allocates its registry record).
+ */
+tydebugstate *debug_register_thread(long threadid, transport_t *transport,
+                                    boolean fldetached);
+
+/*
+ * Unregister a thread from the debug thread table.
+ * Called when a debug thread exits (inside unified_thread_entry).
+ *
+ * 2026-06-06 JES #691: Promoted from static (was debug_handler.c-only).
+ */
+void debug_unregister_thread(long threadid);
 
 #endif /* DEBUG_HANDLER_H */

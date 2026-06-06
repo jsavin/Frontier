@@ -74,6 +74,7 @@ CLI_SOURCES = \
     protocol_handler.c \
     op_handler.c \
     debug_handler.c \
+    headless_spawn.c \
     odb_ops.c \
     ws_server.c \
     ws_frame.c \

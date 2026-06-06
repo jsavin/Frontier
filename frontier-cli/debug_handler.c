@@ -22,6 +22,7 @@
 #include <string.h>
 #include <strings.h>  /* strcasecmp */
 #include <pthread.h>
+#include <time.h>     /* clock_gettime, CLOCK_MONOTONIC */
 
 #include "../Common/headers/frontier.h"
 #include "memory.h"
@@ -36,6 +37,7 @@
 #include "op.h"
 #include "db_format.h"
 #include "../third_party/cJSON/cJSON.h"
+#include "headless_spawn.h"  /* headless_spawn_script_thread, thread_run_spec, thread_debug_opts */
 
 /* Global: currenthashtable is a macro in processinternal.h; roottable is the
  * clean base for independent spawned-thread execution. */
@@ -98,6 +100,169 @@ typedef struct {
 
 static debug_breakpoint_t g_breakpoints[MAX_BREAKPOINTS] = {0};
 static atomic_bool g_has_breakpoints = false; /* fast-path: skip mutex when no breakpoints set */
+
+/* ========================================================================
+ * Lazy-attach infrastructure (#691)
+ *
+ * Allows callScript-spawned threads (which have state == NULL) to be
+ * lazily registered with the debug subsystem when they hit a breakpoint.
+ *
+ * TLS tracks the current script path on every thread -- not just debug
+ * threads -- so the breakpoint callback can match scripts even when
+ * the thread has no registered debug state.
+ *
+ * g_debug_attach_transport holds the stdio transport for the active
+ * protocol session. Set by protocol_main via debug_set_attach_transport;
+ * cleared at session exit. The pointer-to-transport is valid for the
+ * lifetime of the protocol_main stack frame, which outlives any spawned
+ * thread that could hit a breakpoint during the session.
+ *
+ * Lock ordering: g_debug_attach_transport is load/acquire by the
+ * breakpoint callback (running under GIL), set/cleared by protocol_main
+ * (also under GIL). The GIL serializes all writes, so a simple
+ * memory_order_acquire load is sufficient.
+ * ======================================================================== */
+
+/* 2026-06-06 JES #691: per-thread record of the current script path,
+   used by the breakpoint callback to match breakpoints on threads
+   that don't yet have a registered debug state. */
+static __thread char tls_current_script[DEBUG_SCRIPT_PATH_MAX];
+static __thread short tls_script_depth;
+static __thread char tls_script_stack[DEBUG_SCRIPT_STACK_MAX][DEBUG_SCRIPT_PATH_MAX];
+
+/* 2026-06-06 JES #691: when a protocol debug session is attached,
+   this is the transport the lazy-attach path uses to register
+   spawned threads. NULL when no debug client is attached.
+   Lifetime contract: the pointed-to transport_t must be heap-allocated
+   and must remain valid until debug_wait_lazy_threads_drained() returns
+   after debug_set_attach_transport(NULL) is called. See debug_handler.h
+   for the full contract. Stack-local transports do NOT satisfy it. */
+static _Atomic(transport_t *) g_debug_attach_transport = NULL;
+
+/*
+ * 2026-06-06 JES #691 (P1 #1 fix): count of lazily-attached callScript
+ * threads that are currently registered in g_debug_threads. Incremented
+ * under g_debug_mutex when a lazy thread registers (fldetached=true);
+ * decremented under g_debug_mutex in debug_unregister_thread when that
+ * thread exits. protocol_main waits for this to drop to zero before
+ * freeing the heap-allocated transport (debug_wait_lazy_threads_drained).
+ *
+ * Atomic so protocol_main can read it without holding g_debug_mutex
+ * in the polling loop of debug_wait_lazy_threads_drained.
+ */
+static atomic_int g_lazy_attached_count = 0;
+
+/* Set or clear the lazy-attach transport. Pass NULL to clear at session
+   teardown. See debug_handler.h for the heap-allocation lifetime contract. */
+void debug_set_attach_transport(transport_t *t) {
+	atomic_store_explicit(&g_debug_attach_transport, t, memory_order_release);
+}
+
+/*
+ * 2026-06-06 JES #691 (P1 #1 fix, updated for concurrency P1): block until
+ * all lazily-attached threads have unregistered, with a bounded timeout.
+ * Called by protocol_main BEFORE freeing the heap transport and BEFORE calling
+ * debug_set_attach_transport(NULL).
+ *
+ * Releases and reacquires the GIL on each 10ms sleep cycle so lazy threads can
+ * acquire the GIL to finish their cleanup.
+ *
+ * Timeout design (5-second drain + 500ms grace):
+ *   If a lazily-attached callScript thread is suspended at a breakpoint when
+ *   the protocol client disconnects (without sending debug/continue), the thread
+ *   will never self-resume -- it is waiting for a continue that will never arrive.
+ *   Without a timeout the drain would block the process forever.
+ *
+ *   On timeout expiry:
+ *     1. Walk g_debug_threads[] under g_debug_mutex; for each detached entry
+ *        with a non-NULL debugstate, set flkill=true and clear flsuspended.
+ *        This causes the thread to exit on its next callback cycle (it checks
+ *        flkill after each statement). flkill is the same signal used by
+ *        debug_kill_all_threads.
+ *     2. Re-poll for up to 500ms of grace to let those threads exit.
+ *     3. If counter still non-zero after grace: log_warn and proceed anyway.
+ *        The worst case is a thread writes through a pointer to the
+ *        already-freeing transport -- a bounded race on process exit, which is
+ *        better than hanging the process indefinitely.
+ *
+ * Trade-off: wedged threads that are NOT at a breakpoint (e.g., blocked in a
+ * system call outside the interpreter loop) will not respond to flkill within
+ * the grace period, so the 500ms grace may expire without the counter dropping.
+ * The log_warn + proceed path exists for this case. For the common case
+ * (suspended at a breakpoint), flkill causes exit within one callback cycle.
+ */
+#define DRAIN_TIMEOUT_NS  (5LL * 1000000000LL)  /* 5 seconds */
+#define DRAIN_GRACE_NS    (500LL * 1000000LL)    /* 500ms additional grace */
+
+static long long _mono_ns(void) {
+	struct timespec ts;
+	clock_gettime(CLOCK_MONOTONIC, &ts);
+	return (long long)ts.tv_sec * 1000000000LL + ts.tv_nsec;
+}
+
+void debug_wait_lazy_threads_drained(void) {
+
+	/* Fast path: no lazy threads were ever registered this session */
+	if (atomic_load_explicit(&g_lazy_attached_count, memory_order_acquire) == 0)
+		return;
+
+	log_info(LOG_COMP_LANG, "debug: waiting for %d lazy-attached thread(s) to drain",
+			 atomic_load(&g_lazy_attached_count));
+
+	long long deadline = _mono_ns() + DRAIN_TIMEOUT_NS;
+
+	while (atomic_load_explicit(&g_lazy_attached_count, memory_order_acquire) > 0) {
+		if (_mono_ns() >= deadline)
+			break;
+		/* Release GIL so lazy threads can complete cleanup and decrement counter */
+		pthread_mutex_unlock(&frontier_gil);
+		struct timespec ts = {0, 10000000}; /* 10ms */
+		nanosleep(&ts, NULL);
+		pthread_mutex_lock(&frontier_gil);
+	}
+
+	/* If timed out, forcibly kill suspended lazy threads so they can exit */
+	if (atomic_load_explicit(&g_lazy_attached_count, memory_order_acquire) > 0) {
+		log_warn(LOG_COMP_LANG,
+			"debug: drain timeout -- forcibly killing %d suspended lazy thread(s)",
+			atomic_load(&g_lazy_attached_count));
+
+		/* Walk the table under g_debug_mutex and signal all detached entries */
+		pthread_mutex_lock(&g_debug_mutex);
+		for (int i = 0; i < MAX_DEBUG_THREADS; i++) {
+			tydebugstate *s = g_debug_threads[i];
+			if (s != NULL && s->fldetached) {
+				atomic_store_explicit(&s->flkill, true, memory_order_seq_cst);
+				atomic_store_explicit(&s->flsuspended, false, memory_order_seq_cst);
+			}
+		}
+		pthread_mutex_unlock(&g_debug_mutex);
+
+		/* Grace period: re-poll while threads respond to flkill */
+		long long grace_deadline = _mono_ns() + DRAIN_GRACE_NS;
+		while (atomic_load_explicit(&g_lazy_attached_count, memory_order_acquire) > 0) {
+			if (_mono_ns() >= grace_deadline)
+				break;
+			pthread_mutex_unlock(&frontier_gil);
+			struct timespec ts = {0, 10000000}; /* 10ms */
+			nanosleep(&ts, NULL);
+			pthread_mutex_lock(&frontier_gil);
+		}
+
+		if (atomic_load_explicit(&g_lazy_attached_count, memory_order_acquire) > 0) {
+			/* Wedged threads did not exit within the grace period. Proceed anyway:
+			 * the process is exiting, and hanging indefinitely is worse than the
+			 * bounded race of threads writing through a nearly-freed transport.
+			 * This path is only reachable for threads blocked outside the
+			 * interpreter callback loop (not at a breakpoint). */
+			log_warn(LOG_COMP_LANG,
+				"debug: %d lazy thread(s) did not drain after grace -- proceeding",
+				atomic_load(&g_lazy_attached_count));
+		}
+	}
+
+	log_info(LOG_COMP_LANG, "debug: lazy-attached thread drain complete");
+}
 
 /* ========================================================================
  * Watchpoints (Phase 6)
@@ -170,13 +335,19 @@ static tydebugstate *debug_get_state_for_thread(long threadid) {
 	return NULL;
 }
 
-static tydebugstate *debug_register_thread(long threadid, transport_t *transport) {
+/* 2026-06-06 JES #691: Promoted from static; declared in debug_handler.h.
+ * fldetached distinguishes lazy-attached (POSIX DETACHED, pthread_join is UB)
+ * from normal debug/run threads (joinable). See debug_handler.h for full
+ * contract. */
+tydebugstate *debug_register_thread(long threadid, transport_t *transport,
+                                    boolean fldetached) {
 
 	tydebugstate *state = (tydebugstate *)calloc(1, sizeof(tydebugstate));
 	if (state == NULL)
 		return NULL;
 
 	state->fldebugmode = true;
+	state->fldetached = fldetached;
 	atomic_store(&state->flsuspended, false);
 	atomic_store(&state->flinterrupt, false);
 	atomic_store(&state->flkill, false);
@@ -189,6 +360,14 @@ static tydebugstate *debug_register_thread(long threadid, transport_t *transport
 	for (int i = 0; i < MAX_DEBUG_THREADS; i++) {
 		if (g_debug_threads[i] == NULL) {
 			g_debug_threads[i] = state;
+			/*
+			 * 2026-06-06 JES #691 (P1 #1 + P1 #2 fix): track lazy-attached threads
+			 * separately so protocol_main can wait for them before freeing the
+			 * heap transport, and so kill/join can skip them (pthread_join is UB
+			 * on DETACHED threads).
+			 */
+			if (fldetached)
+				atomic_fetch_add(&g_lazy_attached_count, 1);
 			pthread_mutex_unlock(&g_debug_mutex);
 			return state;
 		}
@@ -199,19 +378,31 @@ static tydebugstate *debug_register_thread(long threadid, transport_t *transport
 	return NULL; /* no slots available */
 }
 
-static void debug_unregister_thread(long threadid) {
+/* 2026-06-06 JES #691: Promoted from static; declared in debug_handler.h */
+void debug_unregister_thread(long threadid) {
 
 	tydebugstate *state = NULL;
+	boolean was_detached = false;
 
 	pthread_mutex_lock(&g_debug_mutex);
 
 	for (int i = 0; i < MAX_DEBUG_THREADS; i++) {
 		if (g_debug_threads[i] != NULL && g_debug_threads[i]->threadid == threadid) {
 			state = g_debug_threads[i];
+			was_detached = state->fldetached;
 			g_debug_threads[i] = NULL; /* remove from registry */
 			break;
 		}
 	}
+
+	/*
+	 * 2026-06-06 JES #691 (P1 #1 fix): decrement lazy-attach counter under
+	 * g_debug_mutex so protocol_main's drain loop sees a consistent count.
+	 * This is the signal that the heap transport is no longer referenced by
+	 * this thread -- safe to free once the counter reaches zero.
+	 */
+	if (was_detached)
+		atomic_fetch_sub(&g_lazy_attached_count, 1);
 
 	pthread_mutex_unlock(&g_debug_mutex);
 
@@ -277,8 +468,21 @@ void debug_kill_all_threads(void) {
 			 * Mark as unsafe so save-on-exit is skipped. */
 			atomic_store(&g_debug_thread_was_killed, true);
 
-			/* Capture pthread_t before the thread can unregister and free state */
-			g_killed_threads[g_killed_thread_count++] = g_debug_threads[i]->pthread_id;
+			/*
+			 * 2026-06-06 JES #691 (P1 #2 fix): lazily-attached callScript threads
+			 * are POSIX DETACHED -- pthread_join on a detached thread is UB.
+			 * They also never wrote pthread_id (it stays zero-initialized from
+			 * calloc), so capturing it into g_killed_threads would store 0 and
+			 * cause pthread_join(0, NULL) -- also UB.
+			 *
+			 * Skip detached entries from the kill-list capture. The flkill signal
+			 * is still sent so the thread can exit on its next callback; draining
+			 * is handled by g_lazy_attached_count in debug_wait_lazy_threads_drained.
+			 */
+			if (!g_debug_threads[i]->fldetached) {
+				/* Capture pthread_t before the thread can unregister and free state */
+				g_killed_threads[g_killed_thread_count++] = g_debug_threads[i]->pthread_id;
+			}
 			atomic_store_explicit(&g_debug_threads[i]->flkill, true, memory_order_seq_cst);
 			atomic_store_explicit(&g_debug_threads[i]->flsuspended, false, memory_order_seq_cst); /* wake suspended threads */
 		}
@@ -290,7 +494,13 @@ void debug_kill_all_threads(void) {
 void debug_join_all_threads(void) {
 
 	/* Join threads captured by debug_kill_all_threads. Must be called
-	 * with GIL released so threads can acquire it to finish cleanup. */
+	 * with GIL released so threads can acquire it to finish cleanup.
+	 *
+	 * 2026-06-06 JES #691 (P1 #2 fix): g_killed_threads only contains
+	 * pthread_t values from non-detached (joinable) threads -- detached
+	 * entries were excluded in debug_kill_all_threads. pthread_join on a
+	 * detached thread is UB; those threads drain via g_lazy_attached_count
+	 * in debug_wait_lazy_threads_drained, not here. */
 	for (int i = 0; i < g_killed_thread_count; i++) {
 		pthread_join(g_killed_threads[i], NULL);
 	}
@@ -303,19 +513,31 @@ void debug_join_all_threads(void) {
  * ======================================================================== */
 
 /* Send a debug/suspended notification with a type-safe reason enum.
- * The enum is converted to a JSON-safe string via debug_reason_string(). */
-void debug_send_suspended(transport_t *transport, long threadid, long line, debug_suspend_reason_t reason) {
+ * The enum is converted to a JSON-safe string via debug_reason_string().
+ * script_path is optional (may be NULL). When non-NULL, a "script" field
+ * is included so clients can identify the suspended script without a
+ * separate debug/getStack call. */
+void debug_send_suspended(transport_t *transport, long threadid, long line,
+                          debug_suspend_reason_t reason, const char *script_path) {
 
-	char json[512];
-	snprintf(json, sizeof(json),
-			 "{\"id\":null,\"op\":\"debug/suspended\",\"params\":"
-			 "{\"threadId\":%ld,\"line\":%ld,\"reason\":\"%s\"}}",
-			 threadid, line, debug_reason_string(reason));
+	char json[640];
+	if (script_path != NULL && script_path[0] != '\0') {
+		snprintf(json, sizeof(json),
+				 "{\"id\":null,\"op\":\"debug/suspended\",\"params\":"
+				 "{\"threadId\":%ld,\"line\":%ld,\"reason\":\"%s\",\"script\":\"%s\"}}",
+				 threadid, line, debug_reason_string(reason), script_path);
+	} else {
+		snprintf(json, sizeof(json),
+				 "{\"id\":null,\"op\":\"debug/suspended\",\"params\":"
+				 "{\"threadId\":%ld,\"line\":%ld,\"reason\":\"%s\"}}",
+				 threadid, line, debug_reason_string(reason));
+	}
 
 	transport->write_line(transport->ctx, json, strlen(json));
 }
 
-static void debug_send_completed(transport_t *transport, long threadid, boolean success) {
+/* 2026-06-06 JES #691: Promoted from static; declared in debug_handler.h */
+void debug_send_completed(transport_t *transport, long threadid, boolean success) {
 
 	char json[256];
 	snprintf(json, sizeof(json),
@@ -341,12 +563,41 @@ static boolean debug_push_sourcecode(hdlhashtable htable, hdlhashnode hnode, big
 	if (hthreadglobals == nil)
 		return true;
 
+	/* 2026-06-06 JES #691: Update TLS script tracking BEFORE checking
+	 * debug state. This allows the breakpoint callback to match scripts
+	 * on threads with state == NULL (callScript-spawned threads). */
+
+	/* Build full dotted path from table + name */
+	bigstring bspath;
+	hdlwindowinfo hroot = NULL;
+	char new_script[DEBUG_SCRIPT_PATH_MAX];
+	new_script[0] = '\0';
+
+	if (langexternalgetfullpath(htable, bsname, bspath, &hroot)) {
+		(void)hroot;
+		int len = bspath[0];
+		if (len >= DEBUG_SCRIPT_PATH_MAX)
+			len = DEBUG_SCRIPT_PATH_MAX - 1;
+		memcpy(new_script, bspath + 1, (size_t)len);
+		new_script[len] = '\0';
+	}
+
+	/* Push TLS stack unconditionally (independent of debug state) */
+	if (tls_script_depth < DEBUG_SCRIPT_STACK_MAX) {
+		memcpy(tls_script_stack[tls_script_depth], tls_current_script, DEBUG_SCRIPT_PATH_MAX);
+		tls_script_depth++;
+	}
+	/* If TLS stack overflows, silently drop the old value (rare deep call nesting);
+	 * the worst outcome is a missed breakpoint match in the overflowed caller frame. */
+	memcpy(tls_current_script, new_script, DEBUG_SCRIPT_PATH_MAX);
+
+	/* --- Debug-state path (registered debug threads only) --- */
 	tydebugstate *state = (tydebugstate *)((**hthreadglobals).debugstate);
 
 	if (state == NULL || !state->fldebugmode)
 		return true;
 
-	/* Save current script path on the stack before overwriting */
+	/* Save current script path on the debug state stack before overwriting */
 	if (state->script_stack_depth < DEBUG_SCRIPT_STACK_MAX) {
 		memcpy(state->script_stack[state->script_stack_depth],
 			   state->current_script, DEBUG_SCRIPT_PATH_MAX);
@@ -361,24 +612,10 @@ static boolean debug_push_sourcecode(hdlhashtable htable, hdlhashnode hnode, big
 		state->current_script[0] = '\0';
 	}
 
-	/* Build full dotted path from table + name */
-	bigstring bspath;
-	hdlwindowinfo hroot = NULL;
-
-	if (langexternalgetfullpath(htable, bsname, bspath, &hroot)) {
-		(void)hroot; /* used only by langexternalgetfullpath, not needed here */
-		/* Convert Pascal string to C string, store in debug state.
-		 * Path is like "mainResponder.respond" (no leading @). */
-		int len = bspath[0];
-		if (len >= DEBUG_SCRIPT_PATH_MAX)
-			len = DEBUG_SCRIPT_PATH_MAX - 1;
-		memcpy(state->current_script, bspath + 1, (size_t)len);
-		state->current_script[len] = '\0';
-
+	/* Store resolved path in debug state */
+	memcpy(state->current_script, new_script, DEBUG_SCRIPT_PATH_MAX);
+	if (new_script[0] != '\0') {
 		log_debug(LOG_COMP_LANG, "debug: push source '%s' for thread %ld", state->current_script, state->threadid);
-	} else {
-		/* Path resolution failed — clear to avoid false breakpoint matches */
-		state->current_script[0] = '\0';
 	}
 
 	/* Track call depth for step-over/step-out.
@@ -395,12 +632,22 @@ static boolean debug_pop_sourcecode(void) {
 	if (hthreadglobals == nil)
 		return true;
 
+	/* 2026-06-06 JES #691: Pop TLS stack BEFORE checking debug state,
+	 * mirroring the push ordering for callScript-spawned threads. */
+	if (tls_script_depth > 0) {
+		tls_script_depth--;
+		memcpy(tls_current_script, tls_script_stack[tls_script_depth], DEBUG_SCRIPT_PATH_MAX);
+	} else {
+		tls_current_script[0] = '\0';
+	}
+
+	/* --- Debug-state path (registered debug threads only) --- */
 	tydebugstate *state = (tydebugstate *)((**hthreadglobals).debugstate);
 
 	if (state == NULL || !state->fldebugmode)
 		return true;
 
-	/* Restore caller's script path from the stack.
+	/* Restore caller's script path from the debug state stack.
 	 * If we overflowed on push, consume the overflow counter instead
 	 * of restoring — the saved path was never recorded. */
 	if (state->script_stack_overflow > 0) {
@@ -437,17 +684,93 @@ static boolean debug_pop_sourcecode(void) {
  */
 static boolean protocol_debugger_callback(hdltreenode hnode) {
 
-	/* Get debug state from thread globals. debugstate is set to a
-	 * tydebugstate* by debug_thread_entry. For non-debug threads it's NULL
-	 * (calloc-initialized). The cast is safe as long as only debug_handler.c
-	 * writes to debugstate. */
+	/* Get debug state from thread globals. debugstate is wired by
+	 * unified_thread_entry (headless_spawn.c) for debug threads; NULL for
+	 * non-debug threads. The cast is safe as long as only debug_handler.c
+	 * and headless_spawn.c write to tythreadglobals.debugstate. */
 	if (hthreadglobals == nil)
 		return true;
 
 	tydebugstate *state = (tydebugstate *)((**hthreadglobals).debugstate);
 
-	if (state == NULL || !state->fldebugmode)
-		return true; /* not debugging this thread */
+	if (state == NULL || !state->fldebugmode) {
+		/* 2026-06-06 JES #691: Lazy-attach path for callScript-spawned threads.
+		 *
+		 * callScript threads have state == NULL (intentional -- menu clicks must
+		 * not pay per-click debug registration cost). When a protocol debug
+		 * session is attached AND a breakpoint is set AND tls_current_script
+		 * matches, lazily register this thread with the debug subsystem.
+		 *
+		 * Cheap path: three gated conditions before any expensive work.
+		 *   1. g_debug_attach_transport: one acquire atomic load (NULL in all
+		 *      non-debug-session execution -- effectively free).
+		 *   2. g_has_breakpoints: one relaxed atomic load (fast-path guard).
+		 *   3. tls_current_script: one null-check on TLS memory.
+		 * Only when all three pass do we take g_debug_mutex for the match. */
+		transport_t *attach_t = atomic_load_explicit(
+				&g_debug_attach_transport, memory_order_acquire);
+
+		if (attach_t == NULL
+			|| !atomic_load_explicit(&g_has_breakpoints, memory_order_relaxed)
+			|| tls_current_script[0] == '\0')
+			return true; /* unchanged cheap path */
+
+		/* Get the current line number for the match */
+		unsigned long lazy_lnum = (hnode != nil) ? (**hnode).lnum : 0;
+		if (lazy_lnum == 0)
+			return true;
+
+		/* Check if any breakpoint matches tls_current_script + lazy_lnum */
+		boolean lazy_match = false;
+		pthread_mutex_lock(&g_debug_mutex);
+		for (int i = 0; i < MAX_BREAKPOINTS; i++) {
+			if (g_breakpoints[i].active &&
+				g_breakpoints[i].line == lazy_lnum &&
+				strcasecmp(g_breakpoints[i].script, tls_current_script) == 0) {
+				lazy_match = true;
+				break;
+			}
+		}
+		pthread_mutex_unlock(&g_debug_mutex);
+
+		if (!lazy_match)
+			return true;
+
+		/* Lazy register: allocate a tydebugstate and hook it to the attach
+		 * transport. debug_register_thread stores state in g_debug_threads.
+		 *
+		 * TLS reliability (P1 #3 resolved, 2026-06-06 JES #691): the lazy-attach
+		 * check at the top of this function already filtered out tls_current_script
+		 * being empty. The path that populates TLS (debug_push_sourcecode in
+		 * langvalue.c) fires BEFORE langdebuggercall reaches this point for all
+		 * user-visible scripts: langhandlercall calls langpushsourcecode at line 8382
+		 * BEFORE evaluatelist runs the function body's first statement. Test 21
+		 * (which passes) is the live proof -- a breakpoint on line 1 of a
+		 * callScript-dispatched script fires correctly. No code change is needed.
+		 *
+		 * fldetached=true: callScript threads are POSIX DETACHED (see headless_spawn.c
+		 * PTHREAD_CREATE_DETACHED); pthread_join on them is UB. The fldetached flag
+		 * prevents debug_kill_all_threads from capturing their pthread_t (which is
+		 * also 0 -- never written for lazy threads) and prevents
+		 * debug_join_all_threads from calling pthread_join on them. */
+		long idthread = (long)((**hthreadglobals).idthread);
+		state = debug_register_thread(idthread, attach_t, true /* fldetached */);
+		if (state == NULL) {
+			log_warn(LOG_COMP_LANG,
+					 "lazy debug attach: debug_register_thread failed "
+					 "(thread=%ld); continuing without attach",
+					 idthread);
+			return true;
+		}
+		(**hthreadglobals).debugstate = (void *)state;
+		/* Wire the TLS current_script into the debug state so the existing
+		 * suspension-and-wait path (below) sees the right script name. */
+		memcpy(state->current_script, tls_current_script, DEBUG_SCRIPT_PATH_MAX);
+		log_debug(LOG_COMP_LANG,
+				  "lazy debug attach: registered thread %ld at %s line %ld",
+				  idthread, tls_current_script, lazy_lnum);
+		/* Fall through to the existing suspension-and-wait path */
+	}
 
 	/* Check kill flag */
 	if (atomic_load(&state->flkill)) {
@@ -476,7 +799,8 @@ static boolean protocol_debugger_callback(hdltreenode hnode) {
 
 		atomic_store(&state->lastlnum, lnum);
 
-		debug_send_suspended(state->transport, state->threadid, (long)lnum, DEBUG_REASON_INTERRUPTED);
+		debug_send_suspended(state->transport, state->threadid, (long)lnum,
+							 DEBUG_REASON_INTERRUPTED, state->current_script);
 		log_debug(LOG_COMP_LANG, "debug: thread %ld interrupted at line %ld", state->threadid, (long)lnum);
 	}
 
@@ -666,7 +990,8 @@ static boolean protocol_debugger_callback(hdltreenode hnode) {
 			atomic_store(&state->stepdir, DEBUG_STEP_NONE);
 
 			atomic_store_explicit(&state->flsuspended, true, memory_order_seq_cst);
-			debug_send_suspended(state->transport, state->threadid, (long)lnum, DEBUG_REASON_BREAKPOINT);
+			debug_send_suspended(state->transport, state->threadid, (long)lnum,
+								 DEBUG_REASON_BREAKPOINT, state->current_script);
 			log_debug(LOG_COMP_LANG, "debug: thread %ld hit breakpoint at %s line %ld",
 					  state->threadid, state->current_script, (long)lnum);
 		}
@@ -845,7 +1170,8 @@ static boolean protocol_debugger_callback(hdltreenode hnode) {
 			 * suspended state before a fast client can react to the notification
 			 * and send a continue/step command. */
 			atomic_store_explicit(&state->flsuspended, true, memory_order_seq_cst);
-			debug_send_suspended(state->transport, state->threadid, (long)lnum, DEBUG_REASON_STEP);
+			debug_send_suspended(state->transport, state->threadid, (long)lnum,
+								 DEBUG_REASON_STEP, state->current_script);
 			log_debug(LOG_COMP_LANG, "debug: thread %ld step completed at line %ld", state->threadid, (long)lnum);
 		}
 	}
@@ -887,9 +1213,9 @@ after_stepping: /* label for watchpoint goto — skips stepping when watchpoint 
 	 * (evaluatelist) knows this is a kill, not a bug.
 	 *
 	 * Notification flow for kill-after-continue: this callback returns false,
-	 * langruncode returns false, debug_thread_entry sends debug/completed
-	 * with success=false, then cleans up. The callback does NOT send
-	 * debug/completed — that's always the thread entry's responsibility. */
+	 * langruncode returns false, unified_thread_entry (headless_spawn.c) sends
+	 * debug/completed with success=false, then cleans up. The callback does NOT
+	 * send debug/completed -- that's always the thread entry's responsibility. */
 	if (atomic_load(&state->flkill)) {
 		if (my_hglobals != nil)
 			(**my_hglobals).flthreadkilled = true;
@@ -912,105 +1238,11 @@ void debug_init(void) {
 }
 
 /* ========================================================================
- * Debug thread entry point
- * ======================================================================== */
-
-typedef struct {
-	hdltreenode hcode;
-	hdlthreadglobals hglobals;
-	frontier_pthread_record *rec;
-	tydebugstate *debugstate;
-} debug_thread_params;
-
-static void *debug_thread_entry(void *arg) {
-
-	debug_thread_params *params = (debug_thread_params *)arg;
-	tyvaluerecord result;
-
-	if (params == NULL)
-		return NULL;
-
-	/* Acquire GIL */
-	pthread_mutex_lock(&frontier_gil);
-
-	/* Restore this thread's globals */
-	headless_restore_threadglobals(params->hglobals);
-
-	/* Register in system.compiler.threads */
-	{
-		bigstring bsname;
-		copyctopstring("debug", bsname);
-		headless_register_thread(bsname, params->debugstate->threadid);
-	}
-
-	/* Store debug state in thread globals for the callback to find,
-	 * and store thread globals in debug state for protocol handlers to
-	 * access the suspended thread's hash tables (debug/getLocals). */
-	(**params->hglobals).debugstate = (void *)params->debugstate;
-	params->debugstate->hglobals = (void *)params->hglobals;
-
-	boolean fl_ran = false;
-
-	/* Initial suspension — pause before first statement so client can set breakpoints */
-	atomic_store(&params->debugstate->flsuspended, true);
-	debug_send_suspended(params->debugstate->transport, params->debugstate->threadid, 0, DEBUG_REASON_ENTRY);
-
-	/* Suspension loop (same pattern as in the callback) */
-	while (atomic_load(&params->debugstate->flsuspended)) {
-
-		if (atomic_load(&params->debugstate->flkill)) {
-			debug_send_completed(params->debugstate->transport, params->debugstate->threadid, false);
-			goto cleanup;
-		}
-
-		headless_save_threadglobals(params->hglobals);
-		pthread_mutex_unlock(&frontier_gil);
-
-		struct timespec ts = {0, 10000000};
-		nanosleep(&ts, NULL);
-
-		pthread_mutex_lock(&frontier_gil);
-		headless_restore_threadglobals(params->hglobals);
-	}
-
-	/* Execute the script */
-	fl_ran = true;
-	initvalue(&result, novaluetype);
-
-	boolean fl = langruncode(params->hcode, nil, &result);
-
-	/* Send completion notification */
-	debug_send_completed(params->debugstate->transport, params->debugstate->threadid, fl);
-
-cleanup:
-	if (fl_ran)
-		disposevaluerecord(result, false);
-
-	/* Save globals while we still hold GIL */
-	headless_save_threadglobals(params->hglobals);
-
-	/* Clear error state */
-	headless_clear_last_lang_error();
-
-	/* Unregister from system.compiler.threads and debug registry */
-	headless_unregister_thread(params->rec->user_thread_id);
-	debug_unregister_thread(params->debugstate->threadid);
-
-	/* Cleanup */
-	langdisposetree(params->hcode);
-	headless_dispose_threadglobals(params->hglobals);
-	free_thread_record(params->rec);
-	free(params);
-
-	/* Release GIL */
-	pthread_mutex_unlock(&frontier_gil);
-	pthread_cond_broadcast(&gil_available);
-
-	return NULL;
-}
-
-/* ========================================================================
  * Protocol operation handlers
+ *
+ * 2026-06-06 JES #691: debug_thread_params struct and debug_thread_entry
+ * function removed; replaced by unified_thread_entry in headless_spawn.c.
+ * handle_debug_run now calls headless_spawn_script_thread.
  * ======================================================================== */
 
 void handle_debug_run(int id, const char *json_line, transport_t *transport) {
@@ -1083,131 +1315,28 @@ void handle_debug_run(int id, const char *json_line, transport_t *transport) {
 		return;
 	}
 
-	/* Allocate thread record */
-	frontier_pthread_record *rec = allocate_thread_record();
-	if (rec == NULL) {
-		langdisposetree(hcode);
-		char err[512];
-		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Failed to allocate thread\"},\"success\":false}", id);
-		transport->write_line(transport->ctx, err, strlen(err));
-		cJSON_Delete(root);
-		return;
-	}
+	/* 2026-06-06 JES #691: Spawn boilerplate replaced by headless_spawn_script_thread.
+	 * The common alloc-globals / wire-idthread / alloc-tablestack / pthread_create
+	 * sequence is now in headless_spawn.c. debug_register_thread is called inside
+	 * headless_spawn_script_thread (before pthread_create) using the allocated
+	 * thread's own ID, so the debug slot is populated before the thread can run.
+	 * headless_spawn_script_thread returns the tydebugstate* via out_debugstate. */
 
-	/* Allocate thread globals */
-	hdlthreadglobals new_hglobals = headless_new_threadglobals();
-	if (new_hglobals == nil) {
-		langdisposetree(hcode);
-		free_thread_record(rec);
-		char err[512];
-		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Failed to allocate thread globals\"},\"success\":false}", id);
-		transport->write_line(transport->ctx, err, strlen(err));
-		cJSON_Delete(root);
-		return;
-	}
+	thread_run_spec run_spec;
+	memset(&run_spec, 0, sizeof(run_spec));
+	run_spec.is_callscript = false;
 
-	long threadid = (long)rec->user_thread_id;
-	(**new_hglobals).idthread = (hdlthread)threadid;
-	rec->hglobals = new_hglobals;
+	tydebugstate *debugstate = NULL;
+	thread_debug_opts debug_opts;
+	debug_opts.transport = transport;
+	debug_opts.out_debugstate = (void **)&debugstate;
+	debug_opts.start_suspended = true;
 
-	/* Allocate a fresh, empty hashtablestack for the spawned thread.
-	 * Mirrors the #706 fix in headless_thread_callscript / headless_thread_evaluate.
-	 * Summary: copying the caller's toptables depth would let the spawned script
-	 * overflow the 80-entry stack and spin in a CPU-bound GIL-starvation hang.
-	 * The interpreter is designed to start each execution thread from a clean
-	 * chain rooted at roottable (langpushscopechain). debug/run dispatches at the
-	 * top level of the protocol loop, so the caller stack is shallow today and
-	 * the deep-copy overflow is not reachable through the protocol -- but rooting
-	 * at roottable is the correct, depth-independent base regardless. */
-	{
-		Handle hcopy;
+	long user_threadid = 0;
 
-		/* newclearhandle zeroes all memory: toptables = 0 and stack[] = nil. */
-		if (!newclearhandle(sizeof(tytablestack), &hcopy)) {
-			langdisposetree(hcode);
-			headless_dispose_threadglobals(new_hglobals);
-			free_thread_record(rec);
-			char err[512];
-			snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Failed to copy table stack\"},\"success\":false}", id);
-			transport->write_line(transport->ctx, err, strlen(err));
-			cJSON_Delete(root);
-			return;
-		}
-		(**new_hglobals).htablestack = (hdltablestack)hcopy;
-	}
-	/* Root table is the correct base for an independent script execution. */
-	(**new_hglobals).hcurrenthashtable = roottable;
-
-	/* Register debug state */
-	tydebugstate *debugstate = debug_register_thread(threadid, transport);
-	if (debugstate == NULL) {
-		langdisposetree(hcode);
-		headless_dispose_threadglobals(new_hglobals);
-		free_thread_record(rec);
-		char err[512];
-		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Too many debug threads\"},\"success\":false}", id);
-		transport->write_line(transport->ctx, err, strlen(err));
-		cJSON_Delete(root);
-		return;
-	}
-
-	/* Package launch parameters */
-	debug_thread_params *dparams = (debug_thread_params *)malloc(sizeof(debug_thread_params));
-	if (dparams == NULL) {
-		langdisposetree(hcode);
-		headless_dispose_threadglobals(new_hglobals);
-		free_thread_record(rec);
-		debug_unregister_thread(threadid);
-		char err[512];
-		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Memory allocation failed\"},\"success\":false}", id);
-		transport->write_line(transport->ctx, err, strlen(err));
-		cJSON_Delete(root);
-		return;
-	}
-
-	dparams->hcode = hcode;
-	dparams->hglobals = new_hglobals;
-	dparams->rec = rec;
-	dparams->debugstate = debugstate;
-
-	/* Spawn debug thread */
-	pthread_t tid;
-	pthread_attr_t attr;
-
-	if (pthread_attr_init(&attr) != 0) {
-		langdisposetree(hcode);
-		headless_dispose_threadglobals(new_hglobals);
-		free_thread_record(rec);
-		debug_unregister_thread(threadid);
-		free(dparams);
-		char err[512];
-		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"pthread_attr_init failed\"},\"success\":false}", id);
-		transport->write_line(transport->ctx, err, strlen(err));
-		cJSON_Delete(root);
-		return;
-	}
-
-	if (pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE) != 0) {
-		pthread_attr_destroy(&attr);
-		langdisposetree(hcode);
-		headless_dispose_threadglobals(new_hglobals);
-		free_thread_record(rec);
-		debug_unregister_thread(threadid);
-		free(dparams);
-		char err[512];
-		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"pthread_attr_setdetachstate failed\"},\"success\":false}", id);
-		transport->write_line(transport->ctx, err, strlen(err));
-		cJSON_Delete(root);
-		return;
-	}
-
-	if (pthread_create(&tid, &attr, debug_thread_entry, dparams) != 0) {
-		pthread_attr_destroy(&attr);
-		langdisposetree(hcode);
-		headless_dispose_threadglobals(new_hglobals);
-		free_thread_record(rec);
-		debug_unregister_thread(threadid);
-		free(dparams);
+	if (!headless_spawn_script_thread(hcode, &run_spec, &debug_opts, &user_threadid)) {
+		/* spawn failed -- all resources freed inside the primitive,
+		 * including debug registration (debugstate is NULL). */
 		char err[512];
 		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Failed to spawn debug thread\"},\"success\":false}", id);
 		transport->write_line(transport->ctx, err, strlen(err));
@@ -1215,21 +1344,15 @@ void handle_debug_run(int id, const char *json_line, transport_t *transport) {
 		return;
 	}
 
-	pthread_attr_destroy(&attr);
-	rec->pthread_id = tid;
-
-	/* Set pthread_id immediately after create — debug_kill_all_threads reads
-	 * this field under g_debug_mutex, so set it before any code that could
-	 * trigger shutdown (the response write below). */
-	pthread_mutex_lock(&g_debug_mutex);
-	debugstate->pthread_id = tid;
-	pthread_mutex_unlock(&g_debug_mutex);
+	/* pthread_id was set in headless_spawn_script_thread (under GIL before
+	 * any context switch) and is ready for debug_kill_all_threads. No
+	 * additional setup needed here. */
 
 	/* Return immediately with thread ID */
 	char resp[128];
 	snprintf(resp, sizeof(resp),
 			 "{\"id\":%d,\"result\":{\"threadId\":%ld,\"status\":\"started\"},\"success\":true}",
-			 id, threadid);
+			 id, user_threadid);
 	transport->write_line(transport->ctx, resp, strlen(resp));
 
 	cJSON_Delete(root);

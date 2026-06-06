@@ -39,6 +39,7 @@
 #include "op_handler.h"
 #include "ws_server.h"
 #include "repl.h"
+#include "debug_handler.h"  /* debug_set_attach_transport */
 
 #include "../Common/headers/logging.h"
 #include "headless_threading.h"
@@ -160,10 +161,38 @@ int protocol_main(cli_options_t *options, ws_server_t *ws_server) {
 		return 1;
 	}
 
-	transport_t transport = {
-		.ctx = NULL,
-		.write_line = stdio_write_line,
-	};
+	/*
+	 * 2026-06-06 JES #691 (P1 #1 fix): heap-allocate the transport.
+	 *
+	 * Previously the transport was a stack local. A lazily-attached callScript
+	 * thread captured &transport into tydebugstate->transport. After
+	 * protocol_main returned, the stack frame was freed, but the thread could
+	 * still be running and call debug_send_completed(state->transport, ...) --
+	 * a write through dangling stack memory (UAF).
+	 *
+	 * Fix: allocate on the heap so the transport outlives the stack frame. The
+	 * transport is freed only AFTER:
+	 *   (a) debug_wait_lazy_threads_drained() returns (all lazy threads have
+	 *       called debug_unregister_thread and decremented g_lazy_attached_count),
+	 *   (b) debug_set_attach_transport(NULL) is called to prevent new lazy
+	 *       registrations.
+	 *
+	 * See debug_handler.h debug_set_attach_transport / debug_wait_lazy_threads_drained.
+	 */
+	transport_t *transport = (transport_t *)malloc(sizeof(transport_t));
+	if (transport == NULL) {
+		fprintf(stderr, "protocol: failed to allocate transport\n");
+		free(line_buf);
+		teardown_protocol_output();
+		repl_uninstall_verb_host();
+		return 1;
+	}
+	transport->ctx = NULL;
+	transport->write_line = stdio_write_line;
+
+	/* Register the stdio transport for lazy debug attach.
+	 * Cleared after drain (see teardown sequence below). */
+	debug_set_attach_transport(transport);
 
 	log_info(LOG_COMP_GENERAL, "Protocol mode: ready for NDJSON on stdin");
 
@@ -270,7 +299,7 @@ int protocol_main(cli_options_t *options, ws_server_t *ws_server) {
 					while ((nl = strchr(start, '\n')) != NULL) {
 						*nl = '\0';
 						size_t llen = (size_t)(nl - start);
-						if (process_line(start, llen, &transport)) {
+						if (process_line(start, llen, transport)) {
 							running = 0;
 							break;
 						}
@@ -291,7 +320,7 @@ int protocol_main(cli_options_t *options, ws_server_t *ws_server) {
 					/* Process any remaining data in buffer */
 					if (line_pos > 0) {
 						line_buf[line_pos] = '\0';
-						process_line(line_buf, line_pos, &transport);
+						process_line(line_buf, line_pos, transport);
 						line_pos = 0;
 					}
 				}
@@ -328,7 +357,7 @@ int protocol_main(cli_options_t *options, ws_server_t *ws_server) {
 				break;
 
 			size_t len = strlen(line_buf);
-			if (process_line(line_buf, len, &transport)) {
+			if (process_line(line_buf, len, transport)) {
 				break;
 			}
 		}
@@ -345,6 +374,54 @@ int protocol_main(cli_options_t *options, ws_server_t *ws_server) {
 	free(line_buf);
 	teardown_protocol_output();
 	repl_uninstall_verb_host();
+
+	/*
+	 * 2026-06-06 JES #691 (P1 #1 fix): safe teardown sequence for heap transport.
+	 *
+	 * Order matters:
+	 *   1. debug_wait_lazy_threads_drained() -- block until all lazily-attached
+	 *      callScript threads have called debug_unregister_thread and released
+	 *      their reference to transport. Releases GIL on each 10ms sleep cycle so
+	 *      the threads can complete cleanup.
+	 *   2. debug_set_attach_transport(NULL) -- prevent new lazy registrations.
+	 *      After this, any thread that hits a breakpoint sees NULL and skips
+	 *      lazy attach.
+	 *   3. free(transport) -- safe because no thread holds a pointer to it.
+	 *
+	 * The wait must come BEFORE the NULL-clear so that a thread checking
+	 * g_debug_attach_transport for its transport pointer in debug_send_completed
+	 * does not see a freed pointer.
+	 *
+	 * 2026-06-06 JES #691 (P1-B fix): save and restore main-thread globals
+	 * around the drain so cleanup_frontier_runtime sees a valid context.
+	 *
+	 * The drain releases and reacquires the GIL on each 10ms poll cycle.  While
+	 * the GIL is released, a lazy-attached callScript thread runs
+	 * headless_restore_threadglobals() which overwrites the C globals
+	 * hthreadglobals, hashtablestack, currenthashtable, and langcallbacks.
+	 * The thread then frees its hglobals in headless_dispose_threadglobals()
+	 * before releasing the GIL.  After the drain returns these C globals are
+	 * stale pointers to freed memory, causing a SIGSEGV in
+	 * cleanup_frontier_runtime.
+	 *
+	 * Fix: snapshot the main-thread globals handle before draining; restore all
+	 * C globals from it after.  At this point the fgets loop has completed
+	 * (headless_restore_threadglobals was the last call in the loop body), so
+	 * hthreadglobals is the main thread's own handle and is still valid.
+	 */
+	{
+		/* Snapshot main-thread handle.  At this point hthreadglobals == main
+		 * thread's own handle (fgets loop exited with a restore call). */
+		hdlthreadglobals main_hglobals = hthreadglobals;
+		debug_wait_lazy_threads_drained();
+		/* Re-install main-thread C globals (hthreadglobals, hashtablestack,
+		 * currenthashtable, langcallbacks, etc.) that lazy callScript threads
+		 * may have overwritten with their own contexts during the drain. */
+		headless_restore_threadglobals(main_hglobals);
+	}
+	debug_set_attach_transport(NULL);
+	free(transport);
+	transport = NULL;
 
 	log_info(LOG_COMP_GENERAL, "Protocol mode: shutting down");
 	return 0;
