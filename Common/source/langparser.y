@@ -1585,6 +1585,6 @@ int yyerror (const char *s) {
 	clearbytes (&parseresult, (long) sizeof (parseresult));
 	*/
 	
-	parseerror ((ptrstring) s);
-	return 0; 
+	parseerror (s);
+	return 0;
 	} /*yyerror*/

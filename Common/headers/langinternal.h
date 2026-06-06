@@ -424,7 +424,7 @@ extern boolean langrundialog (hdltreenode, tyvaluerecord *);
 extern boolean langdialogstart (void); /*langdialog.c*/
 
 
-extern void parseerror (bigstring); /*langerror.c*/
+extern void parseerror (const char *); /*langerror.c*/
 
 
 extern hdlerrorstack langerrorgetstack (void); /*langerrorwindow.c*/
