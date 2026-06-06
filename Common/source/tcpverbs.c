@@ -1259,6 +1259,21 @@ boolean tcp_name_to_address(bigstring domain_name, long *addr_out) {
  * getnameinfo() itself fails. Pattern matches
  * frontier-cli/window_registry.c:116 and the post-#707 callsites
  * updated in PR #714.
+ *
+ * Why dotted-decimal IP fallback rather than empty / langerrormessage:
+ * the function's documented contract is "always returns true; either the
+ * hostname or the IP string". An empty string risks UserTalk callers
+ * treating it as a wildcard or skipping an identity check; an error
+ * breaks the contract and breaks scripts that rely on it. The IP
+ * literal also cannot be mistaken for a hostname suffix match (a
+ * substring check for "victim.com" against "192.168.1.1" is
+ * unambiguous), so fail-closed-to-IP is the safest choice.
+ *
+ * Why log_warn omits the hostname: the truncated hostname is
+ * attacker-controlled and up to 1025 bytes. Logging it raw would create
+ * a log-injection vector (newlines, ANSI escapes, format specifiers)
+ * and a size-amplification risk. The addr alone is enough for an
+ * operator to investigate via separate dig/host queries.
  */
 boolean tcp_address_to_name_pack(long addr, const char *hostname,
                                   bigstring name_out) {

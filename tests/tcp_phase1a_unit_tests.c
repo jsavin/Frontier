@@ -415,6 +415,11 @@ TEST(address_to_name_pack_long_hostname_falls_back_to_ip) {
     long addr = 0xC0A80101L;  /* 192.168.1.1 */
     boolean fit;
 
+    /* Zero the bigstring so a future regression that early-returns without
+       writing would surface as a deterministic empty string rather than
+       reading stack garbage. */
+    memset(name_out, 0, sizeof(name_out));
+
     /* Construct a 300-byte hostname (well over the 255 bigstring limit). */
     memset(long_hostname, 'x', 300);
     long_hostname[300] = '\0';
@@ -447,6 +452,9 @@ TEST(address_to_name_pack_short_hostname_preserved) {
     const char *short_hostname = "example.com";
     long addr = 0xC0A80101L;  /* 192.168.1.1 -- not used on this branch */
     boolean fit;
+
+    /* Zero the bigstring (see preceding test's rationale). */
+    memset(name_out, 0, sizeof(name_out));
 
     fit = tcp_address_to_name_pack(addr, short_hostname, name_out);
 
