@@ -39,6 +39,7 @@
 #include "op_handler.h"
 #include "ws_server.h"
 #include "repl.h"
+#include "debug_handler.h"  /* debug_set_attach_transport */
 
 #include "../Common/headers/logging.h"
 #include "headless_threading.h"
@@ -164,6 +165,13 @@ int protocol_main(cli_options_t *options, ws_server_t *ws_server) {
 		.ctx = NULL,
 		.write_line = stdio_write_line,
 	};
+
+	/* 2026-06-06 JES #691: Register the stdio transport for lazy debug attach.
+	 * Cleared at all exit points below. The transport struct lives on this
+	 * stack frame for the entire duration of the protocol session, so the
+	 * lifetime contract is satisfied: any spawned thread that hits a breakpoint
+	 * during the session sees a valid transport pointer. */
+	debug_set_attach_transport(&transport);
 
 	log_info(LOG_COMP_GENERAL, "Protocol mode: ready for NDJSON on stdin");
 
@@ -345,6 +353,11 @@ int protocol_main(cli_options_t *options, ws_server_t *ws_server) {
 	free(line_buf);
 	teardown_protocol_output();
 	repl_uninstall_verb_host();
+
+	/* 2026-06-06 JES #691: Clear lazy-attach transport before stack unwind.
+	 * Any spawned thread that hits a breakpoint after this point will see
+	 * NULL and skip lazy registration (the transport is about to be invalid). */
+	debug_set_attach_transport(NULL);
 
 	log_info(LOG_COMP_GENERAL, "Protocol mode: shutting down");
 	return 0;

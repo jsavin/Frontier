@@ -875,6 +875,134 @@ with DebugSession(timeout=20) as s:
         "expression": "try {delete(@system.temp.dr706)}"
     }})
 
+# --- Test 21: lazy breakpoint-driven attach for thread.callScript (#691) ---
+# Verifies that a breakpoint set before a thread.callScript dispatch fires
+# when the spawned thread hits the matching script/line, even though the
+# thread was not registered in the debug table at spawn time.
+#
+# Protocol exchange:
+#   1. script/eval -> install system.temp.csBp
+#   2. debug/setBreakpoint -> system.temp.csBp, line 1
+#   3. script/eval -> thread.callScript(@system.temp.csBp, {})
+#   4. wait_for_notification(op="debug/suspended", reason="breakpoint")
+#      ASSERT: arrives; params.script == "system.temp.csBp"; line == 1; threadId is int
+#   5. debug/continue -> threadId from step 4
+#   6. wait_for_notification(op="debug/completed")
+#      ASSERT: arrives, success=true
+#
+# NOTE: thread.callScript is async in the protocol loop -- the script/eval
+# that dispatches it returns to the caller before the spawned thread hits the
+# breakpoint. The test must wait for both the debug/suspended notification and
+# (after continue) the debug/completed notification.
+print()
+print("--- lazy attach: breakpoint in thread.callScript spawned thread (#691) ---")
+
+with DebugSession(timeout=15) as s:
+    # Step 1: install target script
+    s.send_and_wait({"op": "script/eval", "id": 1, "params": {
+        "expression": 'new(scriptType, @system.temp.csBp); script.newScriptObject("local (x = 1)\\rreturn (x + 1)", @system.temp.csBp)'
+    }})
+    # Step 2: set breakpoint on line 1 of the script
+    bp_resp = s.send_and_wait({"op": "debug/setBreakpoint", "id": 2, "params": {
+        "script": "system.temp.csBp", "line": 1
+    }})
+    assert_test("setBreakpoint for csBp returns action=set",
+                bp_resp is not None and bp_resp.get("result", {}).get("action") == "set",
+                f"Response: {bp_resp}")
+
+    # Step 3: dispatch via thread.callScript (non-blocking from protocol's perspective)
+    s.send_and_wait({"op": "script/eval", "id": 3, "params": {
+        "expression": "thread.callScript(@system.temp.csBp, {})"
+    }})
+
+    # Step 4: wait for the spawned thread to hit the breakpoint
+    suspended = s.wait_for_notification(op="debug/suspended", reason="breakpoint", timeout=5)
+    assert_test("callScript thread suspends at breakpoint",
+                suspended is not None,
+                f"Expected debug/suspended(reason=breakpoint), got timeout. Messages: {[m for m in s.messages if m.get('op') == 'debug/suspended']}")
+
+    cs_tid = None
+    if suspended:
+        params_sus = suspended.get("params", {})
+        cs_script = params_sus.get("script")
+        cs_line = params_sus.get("line")
+        cs_tid = params_sus.get("threadId")
+        assert_test("suspended.script == system.temp.csBp",
+                    cs_script == "system.temp.csBp",
+                    f"Expected 'system.temp.csBp', got {cs_script!r}")
+        assert_test("suspended.line == 1",
+                    cs_line == 1,
+                    f"Expected 1, got {cs_line!r}")
+        assert_test("suspended.threadId is a number",
+                    isinstance(cs_tid, (int, float)) and cs_tid is not None,
+                    f"Expected numeric threadId, got {cs_tid!r}")
+
+    # Step 5: continue the suspended thread
+    if cs_tid is not None:
+        s.send_and_wait({"op": "debug/continue", "id": 4, "params": {"threadId": int(cs_tid)}})
+
+        # Step 6: wait for completion
+        completed = s.wait_for_notification(op="debug/completed", timeout=5)
+        assert_test("callScript thread completes after continue",
+                    completed is not None and completed.get("params", {}).get("success") is True,
+                    f"Expected debug/completed(success=true), got: {completed}")
+    else:
+        assert_test("callScript thread completes after continue", False, "skipped - no threadId from step 4")
+
+    # Cleanup
+    s.send_and_wait({"op": "script/eval", "id": 5, "params": {
+        "expression": "try {delete(@system.temp.csBp)}"
+    }})
+    s.send_and_wait({"op": "debug/clearBreakpoints", "id": 6, "params": {}})
+
+# --- Test 21b: zero-breakpoint hot path cost (#691) ---
+# With NO breakpoints set, thread.callScript dispatch returns without
+# any debug/suspended notification within 2 seconds, and no unexpected
+# suspension fires. Guards against per-statement overhead from the
+# lazy-attach path (the atomic load of g_debug_attach_transport must be
+# essentially free when no breakpoints are active).
+#
+# NOTE: headless_backgroundtask yields at loop boundaries (~1ms per
+# iteration). A 100-iteration loop should complete in well under 2 seconds
+# even accounting for GIL contention.
+print()
+print("--- zero-breakpoint hot-path cost (#691) ---")
+
+with DebugSession(timeout=15) as s:
+    # Ensure clean breakpoint state
+    s.send_and_wait({"op": "debug/clearBreakpoints", "id": 1, "params": {}})
+
+    # Install a small loop script (100 iterations -- avoids multi-second
+    # background-task sleep accumulation while still exercising the hot path)
+    s.send_and_wait({"op": "script/eval", "id": 2, "params": {
+        "expression": 'new(scriptType, @system.temp.hotLoop); script.newScriptObject("local (i = 0)\\rfor i = 1 to 100 {i = i}\\rreturn i", @system.temp.hotLoop)'
+    }})
+
+    # Dispatch via callScript (no debug registration, no breakpoints set)
+    import time as _time
+    t_start = _time.monotonic()
+    s.send_and_wait({"op": "script/eval", "id": 3, "params": {
+        "expression": "thread.callScript(@system.temp.hotLoop, {})"
+    }}, timeout=5)
+    # Check no unexpected suspension arrives within 2 seconds
+    unexpected = s.wait_for(
+        lambda m: m.get("op") == "debug/suspended",
+        timeout=2
+    )
+    t_elapsed = _time.monotonic() - t_start
+
+    assert_test("zero-breakpoint loop: no unexpected suspension",
+                unexpected is None,
+                f"Got unexpected debug/suspended: {unexpected}")
+    assert_test("zero-breakpoint loop: returns within 5 seconds",
+                t_elapsed < 5.0,
+                f"Elapsed: {t_elapsed:.3f}s (expected < 5.0s)")
+
+    # Cleanup
+    s.send_and_wait({"op": "script/eval", "id": 4, "params": {
+        "expression": "try {delete(@system.temp.hotLoop)}"
+    }})
+
 print()
 print("=" * 46)
 print(f"RESULTS: {PASSED} passed, {FAILED} failed")

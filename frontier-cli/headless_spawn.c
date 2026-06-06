@@ -136,7 +136,8 @@ static void *unified_thread_entry(void *arg) {
 			params->debugstate->transport,
 			params->debugstate->threadid,
 			0,
-			DEBUG_REASON_ENTRY);
+			DEBUG_REASON_ENTRY,
+			NULL); /* no current script at entry suspension */
 
 		while (atomic_load(&params->debugstate->flsuspended)) {
 
@@ -176,6 +177,18 @@ static void *unified_thread_entry(void *arg) {
 		fl_success = langruncode(params->hcode, nil, &result);
 	}
 
+	/* 2026-06-06 JES #691: Check for lazy debug attach.
+	 * A callScript thread (params->debugstate == NULL) may have been lazily
+	 * registered by the breakpoint callback if a protocol session was active
+	 * and a breakpoint matched. In that case, hthreadglobals->debugstate was
+	 * set by the callback. We must send debug/completed and unregister here,
+	 * since unified_thread_entry is the only place that can do so reliably
+	 * (the callback can return at any point, the GIL owner is this thread). */
+	tydebugstate *lazy_state = NULL;
+	if (params->debugstate == NULL && params->hglobals != nil) {
+		lazy_state = (tydebugstate *)((**params->hglobals).debugstate);
+	}
+
 	/* --- Step 6: Debug completion notification --- */
 	if (params->debugstate != NULL) {
 		/*
@@ -188,6 +201,9 @@ static void *unified_thread_entry(void *arg) {
 			params->debugstate->transport,
 			params->debugstate->threadid,
 			fl_success);
+	} else if (lazy_state != NULL) {
+		/* Lazy-attached thread: send completion on the lazily-acquired transport */
+		debug_send_completed(lazy_state->transport, lazy_state->threadid, fl_success);
 	}
 
 cleanup:
@@ -205,10 +221,13 @@ cleanup:
 	/* Unregister from system.compiler.threads */
 	headless_unregister_thread(params->rec->user_thread_id);
 
-	/* Unregister from debug registry (if debug mode).
+	/* Unregister from debug registry (if explicitly or lazily registered).
 	 * Mirrors debug_thread_entry:997. */
 	if (params->debugstate != NULL) {
 		debug_unregister_thread(params->debugstate->threadid);
+	} else if (lazy_state != NULL) {
+		/* 2026-06-06 JES #691: Unregister lazily-attached state */
+		debug_unregister_thread(lazy_state->threadid);
 	}
 
 	/*
@@ -227,7 +246,13 @@ cleanup:
 		disposevaluerecord(params->run.vparams, false);
 	}
 
-	/* Save the debug flag before free(params) -- used in Step 9 below */
+	/* Save the debug flag before free(params) -- used in Step 9 below.
+	 * A lazily-attached thread is treated as a debug thread for the
+	 * purposes of the yield_cond signal: it was joinable? No -- callScript
+	 * threads are DETACHED regardless of lazy attach. The yield_cond
+	 * signal must still be sent for detached threads. Lazy attach does not
+	 * change the thread's detach state, so is_debug_thread stays false
+	 * for callScript threads to ensure the yield_cond signal fires. */
 	boolean is_debug_thread = (params->debugstate != NULL);
 
 	headless_dispose_threadglobals(params->hglobals);

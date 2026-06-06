@@ -178,8 +178,24 @@ boolean debug_is_safe_to_save(void);
 
 /*
  * Send an unsolicited debug/suspended notification to the client.
+ * script_path is optional (may be NULL). When non-NULL, the notification
+ * includes a "script" field so clients can identify which script hit the
+ * breakpoint without a separate debug/getStack call.
  */
-void debug_send_suspended(transport_t *transport, long threadid, long line, debug_suspend_reason_t reason);
+void debug_send_suspended(transport_t *transport, long threadid, long line,
+                          debug_suspend_reason_t reason, const char *script_path);
+
+/*
+ * Set or clear the lazy-attach transport. Call with a non-NULL transport at
+ * protocol session start and with NULL at session exit. The pointed-to
+ * transport must outlive any thread that could hit a breakpoint while this
+ * is non-NULL -- protocol_main's stack-frame transport meets this contract.
+ * Per-WS-message stack transports do NOT; WS lazy attach is intentionally
+ * out of scope for this commit (UAF risk, deferred to a follow-up).
+ *
+ * 2026-06-06 JES #691
+ */
+void debug_set_attach_transport(transport_t *t);
 
 /*
  * Send a debug/completed notification to the client.

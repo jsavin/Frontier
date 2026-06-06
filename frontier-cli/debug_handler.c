@@ -101,6 +101,52 @@ static debug_breakpoint_t g_breakpoints[MAX_BREAKPOINTS] = {0};
 static atomic_bool g_has_breakpoints = false; /* fast-path: skip mutex when no breakpoints set */
 
 /* ========================================================================
+ * Lazy-attach infrastructure (#691)
+ *
+ * Allows callScript-spawned threads (which have state == NULL) to be
+ * lazily registered with the debug subsystem when they hit a breakpoint.
+ *
+ * TLS tracks the current script path on every thread -- not just debug
+ * threads -- so the breakpoint callback can match scripts even when
+ * the thread has no registered debug state.
+ *
+ * g_debug_attach_transport holds the stdio transport for the active
+ * protocol session. Set by protocol_main via debug_set_attach_transport;
+ * cleared at session exit. The pointer-to-transport is valid for the
+ * lifetime of the protocol_main stack frame, which outlives any spawned
+ * thread that could hit a breakpoint during the session.
+ *
+ * Lock ordering: g_debug_attach_transport is load/acquire by the
+ * breakpoint callback (running under GIL), set/cleared by protocol_main
+ * (also under GIL). The GIL serializes all writes, so a simple
+ * memory_order_acquire load is sufficient.
+ * ======================================================================== */
+
+/* 2026-06-06 JES #691: per-thread record of the current script path,
+   used by the breakpoint callback to match breakpoints on threads
+   that don't yet have a registered debug state. */
+static __thread char tls_current_script[DEBUG_SCRIPT_PATH_MAX];
+static __thread short tls_script_depth;
+static __thread char tls_script_stack[DEBUG_SCRIPT_STACK_MAX][DEBUG_SCRIPT_PATH_MAX];
+
+/* 2026-06-06 JES #691: when a protocol debug session is attached,
+   this is the transport the lazy-attach path uses to register
+   spawned threads. NULL when no debug client is attached.
+   Lifetime contract: the pointed-to transport_t must outlive any
+   spawned thread that could hit a breakpoint -- which means the
+   set point must be stable storage (protocol_main's stack frame
+   for the whole session is acceptable; per-message stack transports
+   are NOT). */
+static _Atomic(transport_t *) g_debug_attach_transport = NULL;
+
+/* Set or clear the lazy-attach transport. Pass NULL to clear at session
+   teardown. The pointed-to transport must outlive any thread that
+   could hit a breakpoint while this is non-NULL. */
+void debug_set_attach_transport(transport_t *t) {
+	atomic_store_explicit(&g_debug_attach_transport, t, memory_order_release);
+}
+
+/* ========================================================================
  * Watchpoints (Phase 6)
  *
  * Watchpoints monitor a named variable and suspend when its value changes.
@@ -306,14 +352,25 @@ void debug_join_all_threads(void) {
  * ======================================================================== */
 
 /* Send a debug/suspended notification with a type-safe reason enum.
- * The enum is converted to a JSON-safe string via debug_reason_string(). */
-void debug_send_suspended(transport_t *transport, long threadid, long line, debug_suspend_reason_t reason) {
+ * The enum is converted to a JSON-safe string via debug_reason_string().
+ * script_path is optional (may be NULL). When non-NULL, a "script" field
+ * is included so clients can identify the suspended script without a
+ * separate debug/getStack call. */
+void debug_send_suspended(transport_t *transport, long threadid, long line,
+                          debug_suspend_reason_t reason, const char *script_path) {
 
-	char json[512];
-	snprintf(json, sizeof(json),
-			 "{\"id\":null,\"op\":\"debug/suspended\",\"params\":"
-			 "{\"threadId\":%ld,\"line\":%ld,\"reason\":\"%s\"}}",
-			 threadid, line, debug_reason_string(reason));
+	char json[640];
+	if (script_path != NULL && script_path[0] != '\0') {
+		snprintf(json, sizeof(json),
+				 "{\"id\":null,\"op\":\"debug/suspended\",\"params\":"
+				 "{\"threadId\":%ld,\"line\":%ld,\"reason\":\"%s\",\"script\":\"%s\"}}",
+				 threadid, line, debug_reason_string(reason), script_path);
+	} else {
+		snprintf(json, sizeof(json),
+				 "{\"id\":null,\"op\":\"debug/suspended\",\"params\":"
+				 "{\"threadId\":%ld,\"line\":%ld,\"reason\":\"%s\"}}",
+				 threadid, line, debug_reason_string(reason));
+	}
 
 	transport->write_line(transport->ctx, json, strlen(json));
 }
@@ -345,12 +402,41 @@ static boolean debug_push_sourcecode(hdlhashtable htable, hdlhashnode hnode, big
 	if (hthreadglobals == nil)
 		return true;
 
+	/* 2026-06-06 JES #691: Update TLS script tracking BEFORE checking
+	 * debug state. This allows the breakpoint callback to match scripts
+	 * on threads with state == NULL (callScript-spawned threads). */
+
+	/* Build full dotted path from table + name */
+	bigstring bspath;
+	hdlwindowinfo hroot = NULL;
+	char new_script[DEBUG_SCRIPT_PATH_MAX];
+	new_script[0] = '\0';
+
+	if (langexternalgetfullpath(htable, bsname, bspath, &hroot)) {
+		(void)hroot;
+		int len = bspath[0];
+		if (len >= DEBUG_SCRIPT_PATH_MAX)
+			len = DEBUG_SCRIPT_PATH_MAX - 1;
+		memcpy(new_script, bspath + 1, (size_t)len);
+		new_script[len] = '\0';
+	}
+
+	/* Push TLS stack unconditionally (independent of debug state) */
+	if (tls_script_depth < DEBUG_SCRIPT_STACK_MAX) {
+		memcpy(tls_script_stack[tls_script_depth], tls_current_script, DEBUG_SCRIPT_PATH_MAX);
+		tls_script_depth++;
+	}
+	/* If TLS stack overflows, silently drop the old value (rare deep call nesting);
+	 * the worst outcome is a missed breakpoint match in the overflowed caller frame. */
+	memcpy(tls_current_script, new_script, DEBUG_SCRIPT_PATH_MAX);
+
+	/* --- Debug-state path (registered debug threads only) --- */
 	tydebugstate *state = (tydebugstate *)((**hthreadglobals).debugstate);
 
 	if (state == NULL || !state->fldebugmode)
 		return true;
 
-	/* Save current script path on the stack before overwriting */
+	/* Save current script path on the debug state stack before overwriting */
 	if (state->script_stack_depth < DEBUG_SCRIPT_STACK_MAX) {
 		memcpy(state->script_stack[state->script_stack_depth],
 			   state->current_script, DEBUG_SCRIPT_PATH_MAX);
@@ -365,24 +451,10 @@ static boolean debug_push_sourcecode(hdlhashtable htable, hdlhashnode hnode, big
 		state->current_script[0] = '\0';
 	}
 
-	/* Build full dotted path from table + name */
-	bigstring bspath;
-	hdlwindowinfo hroot = NULL;
-
-	if (langexternalgetfullpath(htable, bsname, bspath, &hroot)) {
-		(void)hroot; /* used only by langexternalgetfullpath, not needed here */
-		/* Convert Pascal string to C string, store in debug state.
-		 * Path is like "mainResponder.respond" (no leading @). */
-		int len = bspath[0];
-		if (len >= DEBUG_SCRIPT_PATH_MAX)
-			len = DEBUG_SCRIPT_PATH_MAX - 1;
-		memcpy(state->current_script, bspath + 1, (size_t)len);
-		state->current_script[len] = '\0';
-
+	/* Store resolved path in debug state */
+	memcpy(state->current_script, new_script, DEBUG_SCRIPT_PATH_MAX);
+	if (new_script[0] != '\0') {
 		log_debug(LOG_COMP_LANG, "debug: push source '%s' for thread %ld", state->current_script, state->threadid);
-	} else {
-		/* Path resolution failed — clear to avoid false breakpoint matches */
-		state->current_script[0] = '\0';
 	}
 
 	/* Track call depth for step-over/step-out.
@@ -399,12 +471,22 @@ static boolean debug_pop_sourcecode(void) {
 	if (hthreadglobals == nil)
 		return true;
 
+	/* 2026-06-06 JES #691: Pop TLS stack BEFORE checking debug state,
+	 * mirroring the push ordering for callScript-spawned threads. */
+	if (tls_script_depth > 0) {
+		tls_script_depth--;
+		memcpy(tls_current_script, tls_script_stack[tls_script_depth], DEBUG_SCRIPT_PATH_MAX);
+	} else {
+		tls_current_script[0] = '\0';
+	}
+
+	/* --- Debug-state path (registered debug threads only) --- */
 	tydebugstate *state = (tydebugstate *)((**hthreadglobals).debugstate);
 
 	if (state == NULL || !state->fldebugmode)
 		return true;
 
-	/* Restore caller's script path from the stack.
+	/* Restore caller's script path from the debug state stack.
 	 * If we overflowed on push, consume the overflow counter instead
 	 * of restoring — the saved path was never recorded. */
 	if (state->script_stack_overflow > 0) {
@@ -450,8 +532,69 @@ static boolean protocol_debugger_callback(hdltreenode hnode) {
 
 	tydebugstate *state = (tydebugstate *)((**hthreadglobals).debugstate);
 
-	if (state == NULL || !state->fldebugmode)
-		return true; /* not debugging this thread */
+	if (state == NULL || !state->fldebugmode) {
+		/* 2026-06-06 JES #691: Lazy-attach path for callScript-spawned threads.
+		 *
+		 * callScript threads have state == NULL (intentional -- menu clicks must
+		 * not pay per-click debug registration cost). When a protocol debug
+		 * session is attached AND a breakpoint is set AND tls_current_script
+		 * matches, lazily register this thread with the debug subsystem.
+		 *
+		 * Cheap path: three gated conditions before any expensive work.
+		 *   1. g_debug_attach_transport: one acquire atomic load (NULL in all
+		 *      non-debug-session execution -- effectively free).
+		 *   2. g_has_breakpoints: one relaxed atomic load (fast-path guard).
+		 *   3. tls_current_script: one null-check on TLS memory.
+		 * Only when all three pass do we take g_debug_mutex for the match. */
+		transport_t *attach_t = atomic_load_explicit(
+				&g_debug_attach_transport, memory_order_acquire);
+
+		if (attach_t == NULL
+			|| !atomic_load_explicit(&g_has_breakpoints, memory_order_relaxed)
+			|| tls_current_script[0] == '\0')
+			return true; /* unchanged cheap path */
+
+		/* Get the current line number for the match */
+		unsigned long lazy_lnum = (hnode != nil) ? (**hnode).lnum : 0;
+		if (lazy_lnum == 0)
+			return true;
+
+		/* Check if any breakpoint matches tls_current_script + lazy_lnum */
+		boolean lazy_match = false;
+		pthread_mutex_lock(&g_debug_mutex);
+		for (int i = 0; i < MAX_BREAKPOINTS; i++) {
+			if (g_breakpoints[i].active &&
+				g_breakpoints[i].line == lazy_lnum &&
+				strcasecmp(g_breakpoints[i].script, tls_current_script) == 0) {
+				lazy_match = true;
+				break;
+			}
+		}
+		pthread_mutex_unlock(&g_debug_mutex);
+
+		if (!lazy_match)
+			return true;
+
+		/* Lazy register: allocate a tydebugstate and hook it to the attach
+		 * transport. debug_register_thread stores state in g_debug_threads. */
+		long idthread = (long)((**hthreadglobals).idthread);
+		state = debug_register_thread(idthread, attach_t);
+		if (state == NULL) {
+			log_warn(LOG_COMP_LANG,
+					 "lazy debug attach: debug_register_thread failed "
+					 "(thread=%ld); continuing without attach",
+					 idthread);
+			return true;
+		}
+		(**hthreadglobals).debugstate = (void *)state;
+		/* Wire the TLS current_script into the debug state so the existing
+		 * suspension-and-wait path (below) sees the right script name. */
+		memcpy(state->current_script, tls_current_script, DEBUG_SCRIPT_PATH_MAX);
+		log_debug(LOG_COMP_LANG,
+				  "lazy debug attach: registered thread %ld at %s line %ld",
+				  idthread, tls_current_script, lazy_lnum);
+		/* Fall through to the existing suspension-and-wait path */
+	}
 
 	/* Check kill flag */
 	if (atomic_load(&state->flkill)) {
@@ -480,7 +623,8 @@ static boolean protocol_debugger_callback(hdltreenode hnode) {
 
 		atomic_store(&state->lastlnum, lnum);
 
-		debug_send_suspended(state->transport, state->threadid, (long)lnum, DEBUG_REASON_INTERRUPTED);
+		debug_send_suspended(state->transport, state->threadid, (long)lnum,
+							 DEBUG_REASON_INTERRUPTED, state->current_script);
 		log_debug(LOG_COMP_LANG, "debug: thread %ld interrupted at line %ld", state->threadid, (long)lnum);
 	}
 
@@ -670,7 +814,8 @@ static boolean protocol_debugger_callback(hdltreenode hnode) {
 			atomic_store(&state->stepdir, DEBUG_STEP_NONE);
 
 			atomic_store_explicit(&state->flsuspended, true, memory_order_seq_cst);
-			debug_send_suspended(state->transport, state->threadid, (long)lnum, DEBUG_REASON_BREAKPOINT);
+			debug_send_suspended(state->transport, state->threadid, (long)lnum,
+								 DEBUG_REASON_BREAKPOINT, state->current_script);
 			log_debug(LOG_COMP_LANG, "debug: thread %ld hit breakpoint at %s line %ld",
 					  state->threadid, state->current_script, (long)lnum);
 		}
@@ -849,7 +994,8 @@ static boolean protocol_debugger_callback(hdltreenode hnode) {
 			 * suspended state before a fast client can react to the notification
 			 * and send a continue/step command. */
 			atomic_store_explicit(&state->flsuspended, true, memory_order_seq_cst);
-			debug_send_suspended(state->transport, state->threadid, (long)lnum, DEBUG_REASON_STEP);
+			debug_send_suspended(state->transport, state->threadid, (long)lnum,
+								 DEBUG_REASON_STEP, state->current_script);
 			log_debug(LOG_COMP_LANG, "debug: thread %ld step completed at line %ld", state->threadid, (long)lnum);
 		}
 	}
