@@ -6,6 +6,7 @@
 #include "memory.h"
 #include "strings.h"
 #include "lang.h"
+#include "langinternal.h"
 #include "tablestructure.h"
 #include "logging.h"
 #include "../portable/wptext_portable.h"
@@ -227,6 +228,58 @@ static void test_quirk_compile_smoke(void) {
  * to work — earlier parser fixes (PR #609) broke this path and produced
  * 43 integration regressions.
  */
+/*
+ * Issue #716 item 1: parseerror used to take `bigstring` and the only caller
+ * (yyerror in langparser.c) cast its `const char *s` to `(ptrstring) s` to
+ * match. parseerror then cast it back to `(const char *)` to feed
+ * copyctopstring. The cast pair laundered the real type for no reason. Post
+ * fix: parseerror takes const char * directly. These tests drive the
+ * parse-error path with malformed input so that the yyerror -> parseerror
+ * -> copyctopstring chain is exercised end-to-end. They guard against
+ * regressions where someone "tidies" the signature back to bigstring.
+ */
+static void test_parseerror_short_message_does_not_crash(void) {
+    /* Trailing operator triggers a short bison "syntax error" message. */
+    assert(!compile_only("1 + "));
+}
+
+static void test_parseerror_long_token_does_not_crash(void) {
+    /*
+     * A single 300-char identifier followed by garbage produces a yyerror
+     * call whose message embeds the (truncated) token. The C-string-typed
+     * argument flows through parseerror -> copyctopstring which post-#707
+     * clamps payload to 255 bytes. We only require that compilation fails
+     * cleanly without crashing or overflowing the bigstring.
+     */
+    char prog[512];
+    memset(prog, 'a', 300);
+    prog[300] = '\0';
+    strcat(prog, " +");          /* trailing operator forces parse error */
+    assert(!compile_only(prog));
+}
+
+static void test_parseerror_direct_long_message_well_defined(void) {
+    /*
+     * Call parseerror directly with a >255-byte C string. Pre-fix this
+     * input would have been cast to ptrstring at the only callsite and
+     * then back to const char *; the round-trip happened to be safe
+     * because the original was always a real C string, but the function
+     * signature lied about the type. Post-fix the signature matches
+     * reality and the truncation path is taken in a well-defined manner.
+     */
+    char msg[400];
+    memset(msg, 'x', 350);
+    msg[350] = '\0';
+    /*
+     * langerrordisable suppresses the error-reporting callback so the
+     * test doesn't print a wall of noise; the body that copies the
+     * C string into a bigstring runs unconditionally.
+     */
+    disablelangerror();
+    parseerror(msg);
+    enablelangerror();
+}
+
 static void test_cr_path_with_tab_indented_comments(void) {
     /* Top-of-file comments, tab-indented like startupScript. */
     eval_handle_expect("// header\r\t// indented comment\r\t\t// more indent\rreturn (42)\r",
@@ -263,6 +316,9 @@ int main(void) {
     TR_RUN(test_quirk3_consecutive_local_with_field_access);
     TR_RUN(test_quirk_compile_smoke);
     TR_RUN(test_cr_path_with_tab_indented_comments);
+    TR_RUN(test_parseerror_short_message_does_not_crash);
+    TR_RUN(test_parseerror_long_token_does_not_crash);
+    TR_RUN(test_parseerror_direct_long_message_well_defined);
 
     TR_SUMMARY();
     return TR_EXIT_CODE();

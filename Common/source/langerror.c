@@ -32,6 +32,7 @@
 #include "ops.h"
 #include "resources.h"
 #include "strings.h"
+#include "logging.h"
 #include "langinternal.h"
 
 
@@ -160,11 +161,29 @@ void langostypeparamerror (short stringnum, OSType x) {
 	} /*langostypeparamerror*/
 
 
-void parseerror (bigstring bs) {
-	/* 2025-12-09 Codex: bs is a C string from yacc/lex; copy to Pascal safely. */
-	bigstring bscopy; /* must work on a copy */
+void parseerror (const char *cs) {
+	/*
+	 * Issue #716 item 1: parseerror takes a NUL-terminated C string from
+	 * yacc/lex (see yyerror in langparser.y / langparser.c). Convert to a
+	 * Pascal bigstring for lang3paramerror's parsedialogstring formatter.
+	 *
+	 * Pre-fix the prototype was `bigstring bs`, so yyerror cast its
+	 * `const char *s` to `(ptrstring) s` and this function cast it back
+	 * to `(const char *)`. The double cast laundered the real type
+	 * through a misleading Pascal-typed parameter for no reason.
+	 *
+	 * copyctopstring (post-#707) clamps payload to 255 bytes and returns
+	 * false on truncation. Long syntax-error messages from bison (e.g.
+	 * the multi-fragment "syntax error, unexpected ... expecting ..."
+	 * variants) can exceed that; surface as a warning so the truncation
+	 * is observable rather than silent.
+	 */
+	bigstring bscopy;
 
-	copyctopstring ((const char *) bs, bscopy);
+	if (!copyctopstring (cs, bscopy)) {
+		log_warn (LOG_COMP_PARSE,
+		          "parseerror: yacc message exceeded 255 bytes and was truncated");
+		}
 	langparamerror (parsererror, bscopy);
 	} /*parseerror*/
 
