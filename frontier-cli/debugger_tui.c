@@ -25,6 +25,7 @@
  *
  * 2026-06-06 JES Phase B.0 #691
  * 2026-06-06 JES Phase B.0 #734 round 1: terminal size + resize + dead code + quit-key
+ * 2026-06-07 JES Phase B.3 #691: F5/F10/F11/Shift-F11 keybinds + debug_state machine
  *
  * SPDX-License-Identifier: MIT
  * Copyright (c) 2025-2026 Frontier contributors
@@ -359,9 +360,21 @@ static void tui_write_line(void *ctx, const char *json, size_t len) {
 			s->script_path[sizeof(s->script_path) - 1] = '\0';
 		}
 
-		/* Invalidate the script pane so the next present() redraws it */
+		/* 2026-06-07 JES Phase B.3 #691: transition to SUSPENDED state.
+		 * This is the path after a step completes or a breakpoint fires.
+		 * SENTINEL: do NOT call debug/getStack or debug/getSource while
+		 * TUI_DEBUG_RUNNING (thread holds GIL); this transition happens
+		 * inside write_line which arrives after the thread has suspended
+		 * again, so it is safe. */
+		s->debug_state = TUI_DEBUG_SUSPENDED;
+
+		/* Invalidate both panes so the next present() redraws them */
 		if (s->script_win != NULL)
 			boxen_window_invalidate(s->script_win);
+		if (s->stack_win != NULL)
+			boxen_window_invalidate(s->stack_win);
+		if (s->footer_win != NULL)
+			boxen_window_invalidate(s->footer_win);
 
 	} else if (cJSON_IsObject(result_j)) {
 		/* Case 2: response containing a "result" object.
@@ -616,11 +629,109 @@ static void draw_stack_pane(boxen_window_t *win, void *ud) {
 	}
 }
 
+/* -------------------------------------------------------------------------
+ * 2026-06-07 JES Phase B.3 #691: debug op dispatch helpers.
+ *
+ * tui_dispatch_json -- central dispatch: writes to op_dispatch in production,
+ *   or to the dispatch_capture_buf when set (test mode only).
+ *
+ * tui_do_continue / tui_do_step_over / tui_do_step_into / tui_do_step_out --
+ *   synthesize the JSON request string and hand it to tui_dispatch_json.
+ *   After dispatching, set debug_state = TUI_DEBUG_RUNNING.
+ *
+ * Dispatch pattern per EXECUTION_PLAN.md B.3:
+ *   The TUI dispatches via op_dispatch with synthesized JSON and its own
+ *   transport. This is consistent with the protocol path and avoids needing
+ *   to know which handle_debug_* function maps to which op.
+ *
+ * SENTINEL (EXECUTION_PLAN.md B.3): NEVER call these while
+ *   debug_state != TUI_DEBUG_SUSPENDED. Check callers.
+ *
+ * Re-entrancy: F-key mashing before the runtime responds cannot corrupt state
+ *   because the on_input callback gates on debug_state == TUI_DEBUG_SUSPENDED.
+ *   A second F5 press while TUI_DEBUG_RUNNING is silently ignored.
+ * ---------------------------------------------------------------------- */
+
+/* op_dispatch is defined in op_handler.c; not linked in test builds.
+ * The DEBUGGER_TUI_OMIT_MAIN guard (used in test builds) does not cover
+ * tui_dispatch_json because that function is exercised by tests.  Instead,
+ * the dispatch_capture_buf path is taken in tests so op_dispatch is never
+ * called (and never needs to be linked). */
+#ifndef DEBUGGER_TUI_OMIT_MAIN
+/* op_dispatch declaration; full prototype in op_handler.h which is included
+ * via debugger_tui_internal.h -> op_handler.h already. */
+#endif
+
+static void tui_dispatch_json(tui_state_t *s, const char *json) {
+	size_t len = strlen(json);
+	if (s->dispatch_capture_buf != NULL && s->dispatch_capture_cap > 0) {
+		/* Test mode: capture the JSON instead of calling into the runtime */
+		int cap = s->dispatch_capture_cap - 1;
+		int copy = (int)len < cap ? (int)len : cap;
+		memcpy(s->dispatch_capture_buf, json, (size_t)copy);
+		s->dispatch_capture_buf[copy] = '\0';
+		return;
+	}
+	/* Production mode: route through op_dispatch (full runtime required). */
+	op_dispatch(json, len, s->transport);
+}
+
+/* Request ID counter; wraps at 0x7FFF to avoid int overflow on long sessions. */
+static int g_tui_req_id = 1;
+static int next_req_id(void) {
+	int id = g_tui_req_id++;
+	if (g_tui_req_id > 0x7FFF) g_tui_req_id = 1;
+	return id;
+}
+
+static void tui_do_continue(tui_state_t *s) {
+	/* SENTINEL: only call while TUI_DEBUG_SUSPENDED */
+	char req[256];
+	snprintf(req, sizeof(req),
+	         "{\"op\":\"debug/continue\",\"id\":%d,\"params\":{\"threadId\":%ld}}",
+	         next_req_id(), s->pending_thread_id);
+	s->debug_state = TUI_DEBUG_RUNNING;
+	tui_dispatch_json(s, req);
+}
+
+static void tui_do_step(tui_state_t *s, const char *direction) {
+	/* SENTINEL: only call while TUI_DEBUG_SUSPENDED */
+	char req[256];
+	snprintf(req, sizeof(req),
+	         "{\"op\":\"debug/step\",\"id\":%d,\"params\":"
+	         "{\"threadId\":%ld,\"direction\":\"%s\"}}",
+	         next_req_id(), s->pending_thread_id, direction);
+	s->debug_state = TUI_DEBUG_RUNNING;
+	tui_dispatch_json(s, req);
+}
+
+static void tui_do_step_over(tui_state_t *s)  { tui_do_step(s, "over"); }
+static void tui_do_step_into(tui_state_t *s)  { tui_do_step(s, "into"); }
+static void tui_do_step_out(tui_state_t *s)   { tui_do_step(s, "out");  }
+
+/* -------------------------------------------------------------------------
+ * 2026-06-07 JES Phase B.3 #691: draw_footer.
+ *
+ * Footer state machine (EXECUTION_PLAN.md B.3 "Footer update"):
+ *   TUI_DEBUG_SUSPENDED: full keybind hint
+ *   TUI_DEBUG_RUNNING:   "[running...]  q:quit"
+ *   TUI_DEBUG_IDLE:      "q:quit"
+ * ---------------------------------------------------------------------- */
+
 static void draw_footer(boxen_window_t *win, void *ud) {
-	(void)ud;
+	tui_state_t *s = (tui_state_t *)ud;
 	int w = boxen_window_content_width(win);
 	if (w <= 0) return;
-	const char *text = "q:quit";
+
+	const char *text;
+	if (s != NULL && s->debug_state == TUI_DEBUG_SUSPENDED) {
+		text = "F5:continue  F9:bp  F10:step-over  F11:step-in  S-F11:step-out  q:quit";
+	} else if (s != NULL && s->debug_state == TUI_DEBUG_RUNNING) {
+		text = "[running...]  q:quit";
+	} else {
+		text = "q:quit";
+	}
+
 	char buf[256];
 	/* Pad/truncate to content width so the bar covers the full row */
 	int n = snprintf(buf, sizeof(buf), "%-*.*s", w, w, text);
@@ -771,6 +882,46 @@ static void on_input(boxen_window_t *win, const boxen_event_t *ev, void *ud) {
 	    ev->key.key == BOXEN_KEY_CTRL_C ||
 	    ev->key.ch == 'q' || ev->key.ch == 'Q') {
 		s->quit_requested = true;
+		return;
+	}
+
+	/* 2026-06-07 JES Phase B.3 #691: F-key debug controls.
+	 *
+	 * Only dispatch when the thread is suspended.  Pressing step/continue
+	 * while TUI_DEBUG_RUNNING is silently ignored -- the runtime is running
+	 * and cannot accept another step/continue until the thread suspends again.
+	 *
+	 * Key table (EXECUTION_PLAN.md B.3 "Keybind table"):
+	 *   F5           -> debug/continue
+	 *   F10          -> debug/step direction:over
+	 *   F11 (no mod) -> debug/step direction:into
+	 *   F11+Shift    -> debug/step direction:out
+	 *
+	 * Re-entrancy: setting debug_state = TUI_DEBUG_RUNNING inside tui_do_*
+	 * before the dispatch call means a second key event arriving during the
+	 * same tick (impossible in practice, but safe by design) will hit the
+	 * SUSPENDED guard and be dropped.
+	 */
+	if (s->debug_state == TUI_DEBUG_SUSPENDED) {
+		if (ev->key.key == BOXEN_KEY_F5) {
+			tui_do_continue(s);
+			if (s->footer_win != NULL) boxen_window_invalidate(s->footer_win);
+			return;
+		}
+		if (ev->key.key == BOXEN_KEY_F10) {
+			tui_do_step_over(s);
+			if (s->footer_win != NULL) boxen_window_invalidate(s->footer_win);
+			return;
+		}
+		if (ev->key.key == BOXEN_KEY_F11) {
+			if (ev->key.mod & BOXEN_MOD_SHIFT) {
+				tui_do_step_out(s);
+			} else {
+				tui_do_step_into(s);
+			}
+			if (s->footer_win != NULL) boxen_window_invalidate(s->footer_win);
+			return;
+		}
 	}
 }
 
@@ -799,7 +950,11 @@ static void tui_wire_callbacks(tui_state_t *s) {
 		boxen_window_set_input(s->stack_win, on_stack_input);
 		boxen_window_set_user_data(s->stack_win, s);
 	}
-	/* footer: draw already set in tui_build_layout; no input needed */
+	/* footer: draw already set in tui_build_layout; wire user_data for
+	 * B.3's draw_footer to access debug_state. */
+	if (s->footer_win != NULL) {
+		boxen_window_set_user_data(s->footer_win, s);
+	}
 
 	/* Focus the script pane */
 	if (s->script_win != NULL) {
@@ -813,6 +968,11 @@ void debugger_tui_state_init(tui_state_t *s, int tw, int th) {
 	/* 2026-06-07 JES Phase B.1 #691: initialize source state sentinels */
 	s->current_line    = -1;  /* -1 = not suspended */
 	s->pending_thread_id = -1;
+
+	/* 2026-06-07 JES Phase B.3 #691: initial debug state */
+	s->debug_state = TUI_DEBUG_IDLE;
+	/* dispatch_capture_buf is NULL by default (production mode);
+	 * tests set it explicitly after init. */
 
 	/* Allocate heap transport (stub; B.6 wires debug_set_attach_transport) */
 	s->transport = calloc(1, sizeof(transport_t));
@@ -842,6 +1002,10 @@ void debugger_tui_state_teardown(tui_state_t *s) {
 	tui_free_script_lines(s);
 	/* 2026-06-07 JES Phase B.2 #691: free locals */
 	tui_free_locals(s);
+	/* 2026-06-07 JES Phase B.3 #691: clear dispatch capture (not heap; just NULL) */
+	s->dispatch_capture_buf = NULL;
+	s->dispatch_capture_cap = 0;
+	s->debug_state = TUI_DEBUG_IDLE;
 }
 
 int debugger_tui_run_one_tick(tui_state_t *s, const boxen_event_t *ev) {
