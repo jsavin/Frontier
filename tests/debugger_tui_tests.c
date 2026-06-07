@@ -417,6 +417,60 @@ static void test_load_source_parses_response(void) {
 }
 
 /* -------------------------------------------------------------------------
+ * test_store_source_preserves_current_line_when_field_absent
+ *
+ * Regression test for P1-D (PR #737 round 1).
+ *
+ * Sequence:
+ *   1. Inject a debug/suspended notification that sets current_line = 5.
+ *   2. Inject a debug/getSource response that has NO "currentLine" field.
+ *   3. Assert current_line is still 5 (not reset to -1).
+ *
+ * Before the fix, tui_store_source unconditionally evaluated
+ *   s->current_line = cJSON_IsNumber(curline_j) ? ... : -1;
+ * so an absent "currentLine" field would silently zero the marker and disable
+ * autoscroll.  The fix guards the update: only assign if the field is present.
+ *
+ * 2026-06-07 JES Phase B.1 #737 round 1 P1-D
+ * ---------------------------------------------------------------------- */
+
+static void test_store_source_preserves_current_line_when_field_absent(void) {
+	setup();
+
+	/* Step 1: inject a debug/suspended notification to set current_line = 5 */
+	const char *suspended =
+		"{\"id\":null,\"op\":\"debug/suspended\","
+		"\"params\":{\"threadId\":1,\"line\":5,\"script\":\"test.path\"}}";
+	assert(g_state.transport != NULL);
+	g_state.transport->write_line(g_state.transport->ctx,
+	                              suspended, strlen(suspended));
+
+	/* Verify the suspended notification took effect */
+	assert(g_state.current_line == 5);
+
+	/* Step 2: inject a debug/getSource response WITHOUT a "currentLine" field */
+	const char *src_no_curline =
+		"{\"id\":2,\"result\":{"
+		"\"script\":\"test.path\","
+		"\"lines\":["
+		"{\"num\":1,\"text\":\"local x\",\"breakpoint\":false},"
+		"{\"num\":2,\"text\":\"  x := 42\",\"breakpoint\":false},"
+		"{\"num\":3,\"text\":\"  return x\",\"breakpoint\":false}"
+		"]}}";
+	g_state.transport->write_line(g_state.transport->ctx,
+	                              src_no_curline, strlen(src_no_curline));
+
+	/* Step 3: current_line must be unchanged (5, not -1) */
+	assert(g_state.current_line == 5);
+
+	/* Source lines should have been populated normally */
+	assert(g_state.script_line_count == 3);
+
+	free_script_lines(&g_state);
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
  * main
  * ---------------------------------------------------------------------- */
 
@@ -435,6 +489,9 @@ int main(void) {
 	TR_RUN(test_script_pane_draws_source);
 	TR_RUN(test_script_pane_autoscrolls_to_current_line);
 	TR_RUN(test_load_source_parses_response);
+
+	/* B.1 round-1 review regression tests */
+	TR_RUN(test_store_source_preserves_current_line_when_field_absent);
 
 	TR_SUMMARY();
 	return TR_EXIT_CODE();

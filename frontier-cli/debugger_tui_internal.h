@@ -38,6 +38,12 @@
 /* Maximum number of breakpoints tracked in TUI state. */
 #define TUI_MAX_BREAKPOINTS 256
 
+/* 2026-06-07 JES Phase B.1 #737 round 1 P1-B: cap source lines to prevent
+ * a DoS via a malicious/oversized debug/getSource response.  ODB scripts are
+ * typically <1000 lines; 10000 is generous and avoids the 80MB+ allocation
+ * that an uncapped count from cJSON_GetArraySize() would trigger. */
+#define TUI_MAX_SOURCE_LINES 10000
+
 typedef struct {
 	boxen_window_t *script_win;    /* left pane: script source (B.1) */
 	boxen_window_t *stack_win;     /* right pane: call stack + locals (B.2) */

@@ -71,32 +71,54 @@ static void tui_free_script_lines(tui_state_t *s) {
 
 /* Parse a debug/getSource result JSON object (the "result" sub-object) into
  * tui_state_t. On success, updates script_path, script_lines,
- * script_line_count, current_line, bp_lines, bp_line_count. */
+ * script_line_count, current_line, bp_lines, bp_line_count.
+ *
+ * 2026-06-07 JES Phase B.1 #737 round 1: P1-B/C/D/E fixes. */
 static void tui_store_source(tui_state_t *s, cJSON *result) {
-	cJSON *script_j = cJSON_GetObjectItemCaseSensitive(result, "script");
+	cJSON *script_j  = cJSON_GetObjectItemCaseSensitive(result, "script");
 	cJSON *curline_j = cJSON_GetObjectItemCaseSensitive(result, "currentLine");
-	cJSON *lines_j  = cJSON_GetObjectItemCaseSensitive(result, "lines");
+	cJSON *lines_j   = cJSON_GetObjectItemCaseSensitive(result, "lines");
 
 	if (!cJSON_IsString(script_j) || script_j->valuestring == NULL) return;
 	if (!cJSON_IsArray(lines_j)) return;
 
-	/* Store script path */
+	/* P1-E: count and validate BEFORE mutating script_path / current_line.
+	 * An empty-lines response would otherwise update the path while leaving
+	 * the old script_lines array intact, showing stale source under a new
+	 * path. */
+	int count = cJSON_GetArraySize(lines_j);
+	if (count <= 0) return;
+
+	/* P1-B: cap to TUI_MAX_SOURCE_LINES to prevent malloc(80M+) from a
+	 * malicious or oversized debug/getSource response. */
+	if (count > TUI_MAX_SOURCE_LINES) {
+		log_warn(LOG_COMP_GENERAL,
+		         "tui_store_source: response has %d lines; truncating to %d",
+		         count, TUI_MAX_SOURCE_LINES);
+		count = TUI_MAX_SOURCE_LINES;
+	}
+
+	/* Store script path (safe now that count is validated) */
 	strncpy(s->script_path, script_j->valuestring, sizeof(s->script_path) - 1);
 	s->script_path[sizeof(s->script_path) - 1] = '\0';
 
-	/* Store current line (-1 if not present) */
-	s->current_line = cJSON_IsNumber(curline_j) ? (long)curline_j->valuedouble : -1;
-
-	/* Count lines */
-	int count = cJSON_GetArraySize(lines_j);
-	if (count <= 0) return;
+	/* P1-D: only update current_line if the field is present.  An absent
+	 * currentLine field means the runtime did not supply a new position --
+	 * preserve whatever was set by the preceding debug/suspended
+	 * notification so the gutter marker and autoscroll remain correct. */
+	if (cJSON_IsNumber(curline_j)) {
+		s->current_line = (long)curline_j->valuedouble;
+	}
 
 	/* Release old source */
 	tui_free_script_lines(s);
 
-	/* Allocate new array */
-	s->script_lines = (char **)malloc((size_t)count * sizeof(char *));
+	/* P1-C: calloc so unfilled slots are guaranteed NULL even if strdup
+	 * fails partway through the population loop. */
+	s->script_lines = (char **)calloc((size_t)count, sizeof(char *));
 	if (s->script_lines == NULL) return;
+	/* Commit count AFTER allocation succeeds so script_line_count always
+	 * reflects the true population of the array. */
 	s->script_line_count = count;
 
 	/* Reset breakpoints from this source load */
@@ -105,6 +127,8 @@ static void tui_store_source(tui_state_t *s, cJSON *result) {
 	int i = 0;
 	cJSON *lineobj = NULL;
 	cJSON_ArrayForEach(lineobj, lines_j) {
+		if (i >= count) break; /* honour the P1-B truncation cap */
+
 		cJSON *text_j = cJSON_GetObjectItemCaseSensitive(lineobj, "text");
 		cJSON *num_j  = cJSON_GetObjectItemCaseSensitive(lineobj, "num");
 		cJSON *bp_j   = cJSON_GetObjectItemCaseSensitive(lineobj, "breakpoint");
@@ -112,7 +136,13 @@ static void tui_store_source(tui_state_t *s, cJSON *result) {
 		const char *text = (cJSON_IsString(text_j) && text_j->valuestring != NULL)
 		                   ? text_j->valuestring : "";
 		s->script_lines[i] = strdup(text);
-		if (s->script_lines[i] == NULL) s->script_lines[i] = strdup("");
+		if (s->script_lines[i] == NULL) {
+			/* P1-C: both strdup attempts failed (OOM).  Truncate to the
+			 * successfully populated slots so draw_script_pane never
+			 * dereferences a NULL entry via strlen(). */
+			s->script_line_count = i;
+			break;
+		}
 
 		/* Record breakpoint lines */
 		if (cJSON_IsTrue(bp_j) && cJSON_IsNumber(num_j) &&
@@ -271,13 +301,23 @@ static void draw_script_pane(boxen_window_t *win, void *ud) {
 		boxen_set_cell(win, 0, content_row, (uint32_t)gutter, fg, bg, attr);
 
 		/* Draw source text (truncated to available width) */
-		const char *text = s->script_lines[i];
+		/* P1-C: belt-and-suspenders NULL guard; calloc + truncation in
+		 * tui_store_source already prevent NULL entries, but a defensive
+		 * check here keeps the renderer safe regardless of how lines were
+		 * populated. */
+		const char *text = s->script_lines[i] != NULL ? s->script_lines[i] : "";
 		int text_len = (int)strlen(text);
 		int avail    = w - 1; /* one column reserved for gutter */
 		if (avail <= 0) continue;
 
-		/* Build a padded/truncated line buffer for uniform cell coverage */
+		/* P1-A: cap avail to linebuf capacity so memset + NUL write cannot
+		 * overflow the stack frame on terminals wider than 512 columns
+		 * (e.g. tmux splits, wide xterms). */
 		char linebuf[512];
+		int cap = (int)sizeof(linebuf) - 1;
+		if (avail > cap) avail = cap;
+
+		/* Build a padded/truncated line buffer for uniform cell coverage */
 		int copy = text_len < avail ? text_len : avail;
 		memcpy(linebuf, text, (size_t)copy);
 		/* Pad remainder with spaces so REVERSE attr covers the full row */
@@ -417,6 +457,14 @@ void debugger_tui_state_init(tui_state_t *s, int tw, int th) {
 	/* Allocate heap transport (stub; B.6 wires debug_set_attach_transport) */
 	s->transport = calloc(1, sizeof(transport_t));
 	if (s->transport != NULL) {
+		/* TODO(B.6): ctx points at stack-allocated tui_state_t.  Once B.6
+		 * calls debug_set_attach_transport() to register this transport with
+		 * the debug runtime, in-flight write_line callbacks can arrive from
+		 * callScript threads after teardown begins.  B.6 MUST add a
+		 * drain-before-free sequence (debug_wait_lazy_threads_drained() +
+		 * debug_set_attach_transport(NULL)) before free(s->transport) in
+		 * debugger_tui_state_teardown(), mirroring protocol_handler.c:411-421.
+		 * Gated on B.6 per /auto Phase 7 P2 deferral (PR #737 round 1). */
 		s->transport->ctx        = s;
 		s->transport->write_line = tui_write_line;
 	}
