@@ -7,6 +7,7 @@
 | linenoise | https://github.com/antirez/linenoise | BSD-2-Clause | upstream snapshot | Line-editing for the CLI REPL | Vendored source under `third_party/linenoise`. |
 | pexpect | https://github.com/pexpect/pexpect | ISC | 4.9.0 | PTY-based interactive dialog verb testing | Vendored pure-Python source under `tests/vendor/pexpect`; used by the integration test runner to drive interactive dialog prompts via expect/send pairs. Test-only dependency — not linked into the CLI binary. |
 | ptyprocess | https://github.com/pexpect/ptyprocess | ISC | 0.7.0 | PTY process management (pexpect dependency) | Vendored pure-Python source under `tests/vendor/ptyprocess`; required by pexpect for spawning and managing PTY subprocesses. Test-only dependency. |
+| termbox2 | https://github.com/termbox/termbox2 | MIT | v2.5.0 (SHA 9b5a5da) | TUI terminal rendering substrate for the boxen window manager | Single-header library vendored under `frontier-cli/third_party/termbox2/`. `termbox2_impl.c` is the one TU that defines `TB_IMPL` to activate the implementation; all other files include `termbox2.h` for declarations only. Pin details in `frontier-cli/third_party/termbox2/VERSION`. |
 
 Add new entries here whenever we vendor or patch third-party code so future upgrades stay tractable.
 

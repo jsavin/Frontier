@@ -54,6 +54,15 @@ LDFLAGS = -Wl,-undefined,dynamic_lookup
 # Linenoise (cross-platform readline alternative)
 LINENOISE_SRC = $(THIRDPARTYDIR)/linenoise/linenoise.c
 
+# Boxen termbox2 vendor (in-tree under frontier-cli/third_party/termbox2/).
+# termbox2 v2.5.0 is a single-header library: termbox2.h contains both the
+# API declarations and the implementation. termbox2_impl.c is the one TU that
+# activates the implementation (it #defines TB_IMPL before the include).
+# All other source files include termbox2.h without TB_IMPL (declarations only).
+TB2_DIR = third_party/termbox2
+INCLUDES += -I$(TB2_DIR)
+TB2_IMPL_SRC = $(TB2_DIR)/termbox2_impl.c
+
 # Strings compiler integration (shared with tests)
 STRINGS_COMPILER_DIR = ../tools/strings_compiler
 STRINGS_COMPILER = $(STRINGS_COMPILER_DIR)/strings_compiler
@@ -238,12 +247,13 @@ all: build dist
 # Use 'make build' when you don't need dist/ updated
 build: strings_generated kernel_verbs_generated $(TARGET)
 
-$(TARGET): $(CLI_SOURCES) $(FRONTIER_SOURCES) $(CJSON_SOURCES) $(LINENOISE_SRC)
+$(TARGET): $(CLI_SOURCES) $(FRONTIER_SOURCES) $(CJSON_SOURCES) $(LINENOISE_SRC) $(TB2_IMPL_SRC)
 	$(CC) $(CFLAGS) $(ARCH_FLAGS) $(INCLUDES) \
 		$(CLI_SOURCES) \
 		$(CJSON_SOURCES) \
 		$(FRONTIER_SOURCES) \
 		$(LINENOISE_SRC) \
+		$(TB2_IMPL_SRC) \
 		-o $(TARGET) $(LIBS) $(LDFLAGS) -lm
 
 $(STRINGS_COMPILER):
@@ -387,4 +397,33 @@ lint-shell:
 	@command -v shellcheck >/dev/null 2>&1 || { echo "shellcheck not installed. Run: brew install shellcheck"; exit 1; }
 	-find .. -name '*.sh' -not -path '../tests/tmp/*' -not -path '../third_party/*' -not -path '../tests/vendor/*' | xargs shellcheck
 
-.PHONY: all build clean strings_generated kernel_verbs_generated dist dist-clean clean-root validate-bigstrings lint lint-all lint-python lint-shell
+# termbox2 portability smoke -- compiles termbox2_impl.c + minimal main.
+# Reserved for cross-platform CI (Linux/Windows) when test environments are
+# available. Not currently run by the macOS-only CI workflow; exists to ensure
+# tb2-smoke remains a viable build target so adding Linux/Windows CI later is
+# a CI-config change, not a code change.
+#
+# Two-step compile is required because termbox2_impl.c must be compiled with
+# -DTB_IMPL (to activate the single-header implementation) while smoke_main.c
+# must NOT get -DTB_IMPL (would cause duplicate symbol errors at link time).
+#
+# The recipe hardcodes a minimal CFLAGS set instead of inheriting $(CFLAGS) on
+# purpose: the project CFLAGS include -fpascal-strings (Apple-clang-only) and
+# Mach-O linker flags. The smoke target must compile cleanly on Linux/Windows
+# when those CI jobs land, so it sticks to portable flags only.
+#
+# Object files land in obj/ (local, gitignored) rather than /tmp to avoid the
+# predictable-path race risk on shared dev machines.
+TB2_SMOKE_SRC = $(TB2_DIR)/smoke_main.c
+TB2_SMOKE_BIN = tb2-smoke
+TB2_SMOKE_OBJDIR = obj/tb2-smoke
+
+tb2-smoke: $(TB2_IMPL_SRC) $(TB2_SMOKE_SRC)
+	@mkdir -p $(TB2_SMOKE_OBJDIR)
+	$(CC) -std=c17 -Wall -Wextra -O0 -g -I$(TB2_DIR) \
+		-c $(TB2_IMPL_SRC) -o $(TB2_SMOKE_OBJDIR)/tb2_impl.o
+	$(CC) -std=c17 -Wall -Wextra -O0 -g -I$(TB2_DIR) \
+		-c $(TB2_SMOKE_SRC) -o $(TB2_SMOKE_OBJDIR)/tb2_smoke_main.o
+	$(CC) $(TB2_SMOKE_OBJDIR)/tb2_impl.o $(TB2_SMOKE_OBJDIR)/tb2_smoke_main.o -o $(TB2_SMOKE_BIN)
+
+.PHONY: all build clean strings_generated kernel_verbs_generated dist dist-clean clean-root validate-bigstrings lint lint-all lint-python lint-shell tb2-smoke

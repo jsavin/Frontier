@@ -1,0 +1,53 @@
+# boxen-ci.yml -- CI for boxen TUI substrate (frontier-cli)
+#
+# macOS-only for boxen milestone A.0. Linux/Windows CI deferred until a
+# Linux/Windows test environment is set up. The `tb2-smoke` target exists
+# to keep that path viable -- adding Linux/Windows jobs later is a CI-config
+# change, not a code change.
+#
+# Why macOS-only: frontier-cli uses -fpascal-strings and Mach-O linker flags
+# that are clang/macOS-specific. We do not yet have a Linux/Windows test
+# environment. The original A.0 acceptance criteria called for CI on all three
+# platforms; this is an intentional scope reduction per the boxen A.0 plan
+# (see planning/boxen/PHASE_A_MILESTONES.md, A.0 scope note).
+#
+# The `tb2-smoke` target (make -C frontier-cli tb2-smoke) compiles termbox2
+# in isolation. It serves as the forward-compat proof: when a Linux/Windows
+# test env is available, adding a job that runs tb2-smoke is purely a
+# CI-config change with no code changes needed.
+
+name: Boxen CI
+
+# Default-deny: workflow gets only the minimum needed (read repo contents for
+# checkout). Defense-in-depth against a future step or compromised third-party
+# action attempting to write to the repo, post comments, mint OIDC tokens, etc.
+permissions:
+  contents: read
+
+on:
+  push:
+    branches: [develop]
+    paths:
+      - 'frontier-cli/**'
+      - 'planning/boxen/**'
+      - '.github/workflows/boxen-ci.yml'
+  pull_request:
+    paths:
+      - 'frontier-cli/**'
+      - 'planning/boxen/**'
+      - '.github/workflows/boxen-ci.yml'
+
+jobs:
+  macos:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build frontier-cli (includes termbox2_impl.c)
+        run: make -C frontier-cli
+
+      - name: Run headless unit tests
+        run: ./tools/run_headless_tests.sh
+
+      - name: Verify termbox2 smoke target compiles and runs
+        run: make -C frontier-cli tb2-smoke && ./frontier-cli/tb2-smoke

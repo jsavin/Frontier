@@ -41,37 +41,50 @@ A.4, A.5, A.6 can theoretically run in parallel after A.3. In practice, /auto ch
 
 ## Milestone A.0 — Vendor termbox2 + CI infrastructure
 
-**One sentence**: Drop termbox2 into the tree, wire up the build system to compile it, set up CI on all three target platforms — no boxen code yet.
+**One sentence**: Drop termbox2 into the tree, wire up the build system to compile it, set up CI on macOS — no boxen code yet.
 
 **Scope**:
-- Create `frontier-cli/third_party/termbox2/` and vendor `termbox2.h` + `termbox2.c` from the current upstream MIT-licensed release.
-- Pin a specific upstream commit SHA in a `frontier-cli/third_party/termbox2/VERSION` file so future updates are explicit.
-- Update `frontier-cli/Makefile` to compile `termbox2.c` into the existing frontier-cli build. Define the standard termbox2 macros (`TB_IMPL`, `TB_LIB_OPTS`) in exactly one translation unit.
-- Add a placeholder `frontier-cli/boxen/` directory with an empty `boxen.h` (just a header guard) and an empty `README.md` saying "Phase A in progress, see planning/boxen/" — this reserves the directory and proves the include path works.
-- Create `.github/workflows/boxen-ci.yml` that:
-  - Builds frontier-cli on `macos-14` (clang), `ubuntu-24.04` (gcc), and `windows-latest` (MSYS2 + mingw-w64-x86_64-gcc per EXECUTION_PLAN §3)
-  - Runs the existing frontier-cli unit tests (proves we didn't break anything by adding termbox2)
-  - Triggers on PRs that touch `frontier-cli/**` or `planning/boxen/**` or `.github/workflows/boxen-ci.yml`
+- Create `frontier-cli/third_party/termbox2/` and vendor `termbox2.h` from upstream (v2.5.0, MIT license).
+- NOTE: termbox2 v2.5.0 is a **single-header library** — there is no separate `termbox2.c` upstream. The implementation is activated by `#define TB_IMPL` before including the header. `termbox2_impl.c` is the Frontier-authored TU that owns this define.
+- Pin the upstream commit SHA in `frontier-cli/third_party/termbox2/VERSION` so future updates are explicit.
+- Update `frontier-cli/Makefile` to compile `termbox2_impl.c` into the existing frontier-cli build, and add a `tb2-smoke` target (see below).
+- Add a placeholder `frontier-cli/boxen/` directory with an empty `boxen.h` (just a header guard) and an empty `README.md`.
+- Create `.github/workflows/boxen-ci.yml` (macOS-only — see scope note below).
+
+**Intentional scope reduction: macOS-only CI**
+
+The original A.0 acceptance criteria called for CI green on macOS, Linux, and Windows. This is amended:
+
+- **A.0 CI is macOS-only.** frontier-cli uses `-fpascal-strings` and Mach-O linker flags (`-Wl,-undefined,dynamic_lookup`) that are clang/macOS-specific. We do not have a Linux/Windows test environment. Building frontier-cli on Linux/Windows is a multi-PR effort deferred to a later phase.
+- This is not a deferral of the termbox2 substrate question. The `tb2-smoke` target (see below) proves termbox2 itself compiles cleanly. When a Linux/Windows env is available, adding those CI jobs is a CI-config change — no code changes needed.
+- The `tb2-smoke` Makefile target exists and is verified on macOS in A.0's CI. It compiles `termbox2_impl.c` + `smoke_main.c` as a standalone binary (no frontier-cli dependencies). This is the forward-compat hook for Linux/Windows CI.
+
+**The tb2-smoke target**
+
+`make -C frontier-cli tb2-smoke` compiles termbox2 in isolation (no Frontier headers, no pascal-strings, no Mach-O flags). It does NOT call `tb_init()` (which requires a TTY). It exercises link-time symbol resolution only and exits 0. The target exists at A.0 so adding Linux/Windows CI jobs at A.N is purely a workflow YAML change.
 
 **Out of scope** (deferred to later milestones):
 - The boxen backend implementation (A.1)
 - Any boxen-specific tests (A.2+)
+- Linux/Windows CI (deferred — no test env available)
 - termbox2 integration tests (proven indirectly by linking)
 
-**Acceptance criteria** (all binary):
-- ☐ `frontier-cli/third_party/termbox2/termbox2.{h,c}` exist with a `VERSION` file
-- ☐ `make -C frontier-cli` succeeds on macOS — no compile errors, no new warnings
-- ☐ `./tools/run_headless_tests.sh` still passes (unit baseline unchanged)
-- ☐ `frontier-cli/boxen/boxen.h` exists with header guard only
-- ☐ `.github/workflows/boxen-ci.yml` exists and triggers on the PR itself
-- ☐ CI green on macOS, Linux, and Windows
-- ☐ Frontier's integration suite baseline preserved (21 baseline failures, no new ones)
+**Acceptance criteria** (all binary, updated from original):
 
-**Rough LOC**: ~3000 lines vendored (termbox2.{h,c}) + ~100 lines of build/CI config. Most of the diff is the vendor drop.
+| Criterion | Status | Notes |
+|-----------|--------|-------|
+| `frontier-cli/third_party/termbox2/termbox2.h` exists with `VERSION` file | ☐ | Single-header library; no separate `.c` upstream |
+| `make -C frontier-cli` succeeds on macOS, no new warnings | ☐ | termbox2_impl.c produces zero warnings |
+| `make -C frontier-cli tb2-smoke && ./frontier-cli/tb2-smoke` succeeds | ☐ | Forward-compat smoke for Linux/Windows CI |
+| `./tools/run_headless_tests.sh` passes (unit baseline unchanged) | ☐ | |
+| `frontier-cli/boxen/boxen.h` exists with header guard only | ☐ | |
+| `.github/workflows/boxen-ci.yml` exists, triggers on PR, CI green on macOS | ☐ | macOS-only per scope reduction above |
+| Frontier integration suite baseline preserved (21 pre-existing failures, no new ones) | ☐ | |
+
+**Rough LOC**: ~3500 lines vendored (termbox2.h is 3519 lines) + ~100 lines of build/CI config.
 
 **Risk callouts**:
-- termbox2 may have warnings under `-Wall -Wextra -Wpedantic` that don't show up in its own build but do show up in Frontier's. Mitigation: if specific warnings fire, add a targeted `-Wno-foo` flag *only* for `termbox2.c` compilation, not project-wide.
-- Windows GHA runner with MSYS2 setup is the unknown. If it fails, that's a `/ask` moment — the platform decision may shift.
+- termbox2 may have warnings under `-Wall -Wextra` that don't show up in its own build but do show up in Frontier's. Mitigation: if warnings fire, add targeted `#pragma clang diagnostic` suppressions in `termbox2_impl.c` only. (For v2.5.0 on macOS/clang with `-std=c17 -Wall -Wextra`: zero warnings observed.)
 
 ---
 
