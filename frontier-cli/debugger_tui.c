@@ -12,6 +12,15 @@
  *   - BOXEN_EV_RESIZE handling: rebuild layout proportionally on terminal resize
  *   - debugger_tui_state_init / run_one_tick / state_teardown for unit tests
  *
+ * Milestone B.6: lazy-attach wiring and lifecycle polish.
+ *   - debug_set_attach_transport called on entry; drain-before-free on exit
+ *   - tui_state_t heap-allocated so transport->ctx survives the drain window
+ *   - tui_req_id moved from static global to per-session tui_state_t field (#742)
+ *   - TUI_DISPATCH_LOG_SLOT widened to 2048 (#744)
+ *   - log_write stub for test build so log_warn is safe in non-OMIT_MAIN paths (#740)
+ *   - Shell integration test tests/debugger_tui_test.sh (#746)
+ *   - Drain-before-free contract (#738)
+ *
  * GIL discipline:
  *   - Snapshot hthreadglobals before yielding; restore after poll returns.
  *   - Pattern copied verbatim from protocol_handler.c:348-354 and 411-421.
@@ -20,8 +29,7 @@
  * Transport sentinel:
  *   - Heap-allocated to outlive lazy-attached callScript threads.
  *   - On teardown: drain -> NULL-clear -> free (same as protocol_main).
- *   - B.6 wires debug_set_attach_transport; B.0 stub skips it (no debug
- *     runtime wiring yet per EXECUTION_PLAN.md B.0 "Out of scope").
+ *   - B.6 wires debug_set_attach_transport per EXECUTION_PLAN.md B.6.
  *
  * 2026-06-06 JES Phase B.0 #691
  * 2026-06-06 JES Phase B.0 #734 round 1: terminal size + resize + dead code + quit-key
@@ -29,6 +37,7 @@
  * 2026-06-07 JES Phase B.4 #691: F9 breakpoint toggle + condition modal (A.7 cursor)
  * 2026-06-07 JES Phase B.4 #743 round 1: condition preservation + JSON escape + F9 gate
  * 2026-06-07 JES Phase B.5 #691: cmd-double-click identifier resolution + watchpoints
+ * 2026-06-07 JES Phase B.6 #691 #738 #740 #742 #744 #746: lazy-attach wiring + polish
  *
  * SPDX-License-Identifier: MIT
  * Copyright (c) 2025-2026 Frontier contributors
@@ -101,10 +110,12 @@ static void tui_store_locals(tui_state_t *s, cJSON *result) {
 	/* Cap to prevent allocation overflow from a malformed response.
 	 * UserTalk types coerced to display form can be multi-MB; per-value caps
 	 * below (TUI_LOCAL_NAME_MAX / TUI_LOCAL_VALUE_MAX) bound heap per slot.
-	 * Silent clamp: log_warn is a Frontier runtime call and crashes in the
-	 * test build (log_write resolves to NULL via dynamic lookup).  The B.1
-	 * tui_store_source uses the same silent-clamp pattern. */
+	 * 2026-06-07 JES Phase B.6 #740: log_warn is now safe in test builds
+	 * (stub in debugger_tui_tests.c provides a no-op log_write). */
 	if (count > TUI_MAX_LOCALS) {
+		log_warn(LOG_COMP_GENERAL,
+		         "debugger_tui: debug/getLocals returned %d locals; clamped to %d",
+		         count, TUI_MAX_LOCALS);
 		count = TUI_MAX_LOCALS;
 	}
 
@@ -183,8 +194,11 @@ static void tui_store_stack(tui_state_t *s, cJSON *result) {
 	if (count <= 0) return;
 
 	/* Cap to prevent stack smash on a malformed response.
-	 * Silent clamp: see note in tui_store_locals for why log_warn is omitted. */
+	 * 2026-06-07 JES Phase B.6 #740: log_warn now safe in test builds. */
 	if (count > TUI_MAX_FRAMES) {
+		log_warn(LOG_COMP_GENERAL,
+		         "debugger_tui: debug/getStack returned %d frames; clamped to %d",
+		         count, TUI_MAX_FRAMES);
 		count = TUI_MAX_FRAMES;
 	}
 
@@ -253,10 +267,11 @@ static void tui_store_source(tui_state_t *s, cJSON *result) {
 
 	/* P1-B: cap to TUI_MAX_SOURCE_LINES to prevent malloc(80M+) from a
 	 * malicious or oversized debug/getSource response.
-	 * Silent clamp: log_warn is a Frontier runtime call that resolves to NULL
-	 * via -Wl,-undefined,dynamic_lookup in the test build, causing a crash
-	 * when the over-limit path is exercised in tests. */
+	 * 2026-06-07 JES Phase B.6 #740: log_warn now safe in test builds. */
 	if (count > TUI_MAX_SOURCE_LINES) {
+		log_warn(LOG_COMP_GENERAL,
+		         "debugger_tui: debug/getSource returned %d lines; clamped to %d",
+		         count, TUI_MAX_SOURCE_LINES);
 		count = TUI_MAX_SOURCE_LINES;
 	}
 
@@ -702,11 +717,14 @@ static void tui_dispatch_json(tui_state_t *s, const char *json) {
 	op_dispatch(json, len, s->transport);
 }
 
-/* Request ID counter; wraps at 0x7FFF to avoid int overflow on long sessions. */
-static int g_tui_req_id = 1;
-static int next_req_id(void) {
-	int id = g_tui_req_id++;
-	if (g_tui_req_id > 0x7FFF) g_tui_req_id = 1;
+/* 2026-06-07 JES Phase B.6 #742: per-session request ID.
+ * Counter is now in tui_state_t (initialized to 1 in state_init).
+ * Wraps at 0x7FFF to avoid int overflow on long sessions.
+ * Taking s as a parameter (not returning a raw int) keeps the API honest:
+ * callers cannot accidentally share the counter across sessions. */
+static int next_req_id(tui_state_t *s) {
+	int id = s->tui_req_id++;
+	if (s->tui_req_id > 0x7FFF) s->tui_req_id = 1;
 	return id;
 }
 
@@ -715,7 +733,7 @@ static void tui_do_continue(tui_state_t *s) {
 	char req[256];
 	snprintf(req, sizeof(req),
 	         "{\"op\":\"debug/continue\",\"id\":%d,\"params\":{\"threadId\":%ld}}",
-	         next_req_id(), s->pending_thread_id);
+	         next_req_id(s), s->pending_thread_id);
 	s->debug_state = TUI_DEBUG_RUNNING;
 	/* 2026-06-07 JES Phase B.4 #743 round 1: clear current_line when transitioning
 	 * to RUNNING so F9 cannot fire against a stale last-suspended line position. */
@@ -729,7 +747,7 @@ static void tui_do_step(tui_state_t *s, const char *direction) {
 	snprintf(req, sizeof(req),
 	         "{\"op\":\"debug/step\",\"id\":%d,\"params\":"
 	         "{\"threadId\":%ld,\"direction\":\"%s\"}}",
-	         next_req_id(), s->pending_thread_id, direction);
+	         next_req_id(s), s->pending_thread_id, direction);
 	s->debug_state = TUI_DEBUG_RUNNING;
 	/* 2026-06-07 JES Phase B.4 #743 round 1: clear current_line when transitioning
 	 * to RUNNING.  Symmetric with the continue path above. */
@@ -852,7 +870,7 @@ static void tui_toggle_breakpoint(tui_state_t *s, long line) {
 		snprintf(req, sizeof(req),
 		         "{\"op\":\"debug/setBreakpoint\",\"id\":%d,"
 		         "\"params\":{\"script\":\"%s\",\"line\":%ld}}",
-		         next_req_id(), esc_path, line);
+		         next_req_id(s), esc_path, line);
 		tui_dispatch_json(s, req);
 
 		/* Update local cache: no condition (unconditional BP) */
@@ -868,7 +886,7 @@ static void tui_toggle_breakpoint(tui_state_t *s, long line) {
 		snprintf(req, sizeof(req),
 		         "{\"op\":\"debug/clearBreakpoints\",\"id\":%d,"
 		         "\"params\":{\"script\":\"%s\"}}",
-		         next_req_id(), esc_path);
+		         next_req_id(s), esc_path);
 		tui_dispatch_json(s, req);
 
 		/* Re-add all surviving breakpoints, preserving each one's condition */
@@ -882,14 +900,14 @@ static void tui_toggle_breakpoint(tui_state_t *s, long line) {
 					         "{\"op\":\"debug/setBreakpoint\",\"id\":%d,"
 					         "\"params\":{\"script\":\"%s\",\"line\":%lu,"
 					         "\"condition\":\"%s\"}}",
-					         next_req_id(), esc_path,
+					         next_req_id(s), esc_path,
 					         s->bp_lines[i], esc_cond);
 				} else {
 					/* Unconditional re-add */
 					snprintf(req, sizeof(req),
 					         "{\"op\":\"debug/setBreakpoint\",\"id\":%d,"
 					         "\"params\":{\"script\":\"%s\",\"line\":%lu}}",
-					         next_req_id(), esc_path, s->bp_lines[i]);
+					         next_req_id(s), esc_path, s->bp_lines[i]);
 				}
 				tui_dispatch_json(s, req);
 			}
@@ -990,7 +1008,7 @@ static void input_condition_modal(boxen_window_t *win, const boxen_event_t *ev, 
 		         "{\"op\":\"debug/setBreakpoint\",\"id\":%d,"
 		         "\"params\":{\"script\":\"%s\",\"line\":%ld,"
 		         "\"condition\":\"%s\"}}",
-		         next_req_id(), esc_path, s->current_line, esc_cond);
+		         next_req_id(s), esc_path, s->current_line, esc_cond);
 
 		/* Update local cache: add or replace the conditional breakpoint.
 		 * Remove any existing entry for this line first (free its condition),
@@ -1317,7 +1335,7 @@ static void input_watchpoint_modal(boxen_window_t *win, const boxen_event_t *ev,
 		snprintf(req, sizeof(req),
 		         "{\"op\":\"debug/setWatchpoint\",\"id\":%d,"
 		         "\"params\":{\"variable\":\"%s\"}}",
-		         next_req_id(), esc_path);
+		         next_req_id(s), esc_path);
 
 		tui_close_watchpoint_modal(s);
 		tui_dispatch_json(s, req);
@@ -1829,6 +1847,11 @@ void debugger_tui_state_init(tui_state_t *s, int tw, int th) {
 
 	/* 2026-06-07 JES Phase B.3 #691: initial debug state */
 	s->debug_state = TUI_DEBUG_IDLE;
+
+	/* 2026-06-07 JES Phase B.6 #742: initialize per-session request ID counter.
+	 * Starts at 1; wraps at 0x7FFF (see next_req_id). */
+	s->tui_req_id = 1;
+
 	/* dispatch_capture_buf is NULL by default (production mode);
 	 * tests set it explicitly after init. */
 
@@ -1946,41 +1969,98 @@ int debugger_tui_run_one_tick(tui_state_t *s, const boxen_event_t *ev) {
 
 #ifndef DEBUGGER_TUI_OMIT_MAIN
 
-/* These includes are intentionally at function scope (not file scope) to
- * prevent the GIL and hglobals symbols from appearing in the test binary's
- * undefined symbol table. Including them here means the compiler still
- * type-checks the code; the symbols just don't appear as undefined refs in
- * the object file unless this translation unit is compiled without
- * DEBUGGER_TUI_OMIT_MAIN. */
+/* These includes are intentionally inside #ifndef DEBUGGER_TUI_OMIT_MAIN to
+ * prevent GIL, hglobals, and debug_handler symbols from appearing in the test
+ * binary's undefined symbol table.  The test build uses
+ * -Wl,-undefined,dynamic_lookup so unresolved symbols crash at runtime (on
+ * dyld load) rather than link time -- we MUST keep runtime-only symbols out of
+ * the non-main .o.
+ *
+ * debug_handler.h: debug_set_attach_transport + debug_wait_lazy_threads_drained
+ * headless_threading.h: frontier_gil, hthreadglobals, headless_{save,restore}
+ * pthread.h: pthread_mutex_{lock,unlock}
+ */
+#include "debug_handler.h"
 #include "headless_threading.h"
 #include <pthread.h>
 
 int debugger_tui_main(const cli_options_t *opts) {
 	(void)opts;
 
+	/* 2026-06-07 JES Phase B.6 #691 #738: heap-allocate tui_state_t.
+	 *
+	 * The transport->ctx pointer points into tui_state_t.  When the TUI
+	 * exits, lazy-attached callScript threads may still be calling write_line
+	 * through that ctx pointer.  If state is stack-allocated, the frame
+	 * unwinds before the drain completes and those threads see a freed pointer
+	 * (UAF).  Heap-allocation ensures the state is valid until we call
+	 * debugger_tui_state_teardown AFTER the drain.
+	 *
+	 * This mirrors protocol_handler.c's heap-allocated transport pattern and
+	 * the "ctx lifetime" note in planning/phase_b/EXECUTION_PLAN.md B.6. */
+	tui_state_t *state = calloc(1, sizeof(tui_state_t));
+	if (state == NULL) {
+		log_error(LOG_COMP_GENERAL, "debugger_tui: out of memory allocating state");
+		return 1;
+	}
+
 	/* 2026-06-06 JES Phase B.0 #734 round 1 P1-1: boxen_init MUST be called
 	 * BEFORE querying terminal dimensions. termbox2's tb_width()/tb_height()
 	 * return TB_ERR_NOT_INIT (negative) when called before tb_init(); the
 	 * original > 0 guard silently fell back to 80x24 on every terminal. */
 	const boxen_backend_t *be = boxen_tb2_backend();
+	bool boxen_initialized = false;
 	boxen_result_t rc = boxen_init(be, NULL, NULL);
 	if (rc != BOXEN_OK) {
 		log_error(LOG_COMP_GENERAL, "debugger_tui: boxen_init failed: %s",
 		          boxen_last_error_str());
+		free(state);
 		return 1;
 	}
+	boxen_initialized = true;
 
 	/* Query terminal dimensions after init -- backend is now running */
 	int tw = (be->width  && be->width()  > 0) ? be->width()  : 80;
 	int th = (be->height && be->height() > 0) ? be->height() : 24;
 
-	tui_state_t state;
-	debugger_tui_state_init(&state, tw, th);
+	debugger_tui_state_init(state, tw, th);
+
+	/* 2026-06-07 JES Phase B.6 #747 round 1 P2-1: transport calloc failure guard.
+	 * debugger_tui_state_init allocates state->transport via calloc.  If that
+	 * allocation fails, state->transport is NULL.  Registering NULL here would
+	 * silently run the TUI in "no remote attach" mode with no diagnostic.
+	 * Symmetric with the calloc(state) failure check at lines 2002-2004 above. */
+	if (state->transport == NULL) {
+		log_error(LOG_COMP_GENERAL, "debugger_tui_main: transport allocation failed; exiting");
+		debugger_tui_state_teardown(state);
+		free(state);
+		if (boxen_initialized) { boxen_shutdown(); }
+		return 1;
+	}
+
+	/* 2026-06-07 JES Phase B.6 #691 #738: register the lazy-attach transport.
+	 *
+	 * From this point, callScript-spawned threads that hit a breakpoint will
+	 * lazily register against state->transport and call write_line when they
+	 * suspend.  The transport MUST remain valid until after
+	 * debug_wait_lazy_threads_drained() returns.  State is heap-allocated
+	 * above to guarantee this.  The matching clear+free is in the teardown
+	 * block below; the order MUST be:
+	 *
+	 *   1. debug_wait_lazy_threads_drained() -- all lazy threads have exited
+	 *   2. headless_restore_threadglobals()  -- restore main-thread C globals
+	 *   3. debug_set_attach_transport(NULL)  -- prevent new lazy registrations
+	 *   4. debugger_tui_state_teardown()     -- frees transport + state
+	 *   5. free(state)
+	 *
+	 * Pattern mirrors protocol_handler.c:412-424 exactly.
+	 * See planning/phase_b/EXECUTION_PLAN.md B.6 "Teardown sequence". */
+	debug_set_attach_transport(state->transport);
 
 	log_info(LOG_COMP_GENERAL, "Debugger TUI: entering event loop (q/Esc/Ctrl-C to quit)");
 
 	/* Event loop: release GIL around each poll so background threads can run */
-	while (!state.quit_requested) {
+	while (!state->quit_requested) {
 		boxen_event_t ev;
 		memset(&ev, 0, sizeof(ev));
 
@@ -2006,16 +2086,51 @@ int debugger_tui_main(const cli_options_t *opts) {
 			break;
 		}
 
-		debugger_tui_run_one_tick(&state, &ev);
+		debugger_tui_run_one_tick(state, &ev);
 		boxen_present();
 	}
 
-	/* 2026-06-06 JES Phase B.0 #691: teardown.
-	 * B.6 inserts debug_wait_lazy_threads_drained() + debug_set_attach_transport(NULL)
-	 * here per protocol_handler.c:411-421. B.0 skips those calls because no
-	 * debug_set_attach_transport() was made on entry. */
-	debugger_tui_state_teardown(&state);
-	boxen_shutdown();
+	/* 2026-06-07 JES Phase B.6 #691 #738: drain-before-free teardown.
+	 *
+	 * Order matters (mirrors protocol_handler.c:412-424 exactly):
+	 *
+	 *   1. debug_wait_lazy_threads_drained() -- block until all lazily-attached
+	 *      callScript threads have decremented g_lazy_attached_count.  Releases
+	 *      and reacquires the GIL on each 10ms poll cycle so the threads can
+	 *      complete their cleanup.
+	 *
+	 *   2. headless_restore_threadglobals(main_hglobals) -- during the drain,
+	 *      lazy threads called headless_restore_threadglobals() with THEIR own
+	 *      globals handle, overwriting hthreadglobals/hashtablestack/etc. with
+	 *      stale pointers.  Restoring main_hglobals here puts the C globals back
+	 *      to the main thread's context before cleanup_frontier_runtime runs.
+	 *      (See protocol_handler.c:395-421 for the detailed comment.)
+	 *
+	 *   3. debug_set_attach_transport(NULL) -- no new lazy registrations after
+	 *      this.  Must come AFTER drain so threads in debug_send_completed still
+	 *      see a valid transport pointer (not a freed one).
+	 *
+	 *   4. debugger_tui_state_teardown() -- closes windows, frees transport,
+	 *      frees heap arrays.  transport is freed here because teardown owns it.
+	 *
+	 *   5. free(state) -- the heap-allocated state block.
+	 */
+	{
+		/* Snapshot main-thread handle before the drain.  At this point we still
+		 * hold the GIL and hthreadglobals is our own handle. */
+		hdlthreadglobals main_hglobals = hthreadglobals;
+		debug_wait_lazy_threads_drained();
+		/* Re-install main-thread C globals that lazy threads may have clobbered. */
+		headless_restore_threadglobals(main_hglobals);
+	}
+	debug_set_attach_transport(NULL);
+
+	debugger_tui_state_teardown(state);
+	if (boxen_initialized) {
+		boxen_shutdown();
+	}
+	free(state);
+	state = NULL;
 
 	log_info(LOG_COMP_GENERAL, "Debugger TUI: exited cleanly");
 	return 0;

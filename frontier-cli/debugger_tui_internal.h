@@ -12,6 +12,8 @@
  * 2026-06-07 JES Phase B.4 #691: breakpoint UI, condition modal, dispatch log
  * 2026-06-07 JES Phase B.4 #743 round 1: condition preservation, JSON escape, F9 gate
  * 2026-06-07 JES Phase B.5 #691: cmd-double-click resolution, watchpoint modal
+ * 2026-06-07 JES Phase B.6 #742: tui_req_id moved from static global to per-session state
+ * 2026-06-07 JES Phase B.6 #744: TUI_DISPATCH_LOG_SLOT widened to 2048
  */
 
 #ifndef DEBUGGER_TUI_INTERNAL_H
@@ -87,10 +89,13 @@ typedef enum {
 #define TUI_DISPATCH_LOG_COUNT 32
 
 /* 2026-06-07 JES Phase B.4 #743 round 1: dispatch log slot size.
- * Worst-case JSON-escaped script_path (256 bytes, all control chars) expands
- * to 256*6+1 = 1537 bytes.  Slots must hold the full escaped JSON request so
- * regression tests can inspect the complete setBreakpoint payload. */
-#define TUI_DISPATCH_LOG_SLOT  1537
+ * 2026-06-07 JES Phase B.6 #744: widened 1537->2048.  Real-runtime responses
+ * (getSource, getLocals) can embed long JSON values that exceed the B.4 bound.
+ * 2048 bytes covers a 256-byte fully-escaped path plus a 1000-byte value field
+ * with a 792-byte safety margin.  Unit tests verify no live request exceeds
+ * TUI_DISPATCH_LOG_SLOT - 1 bytes so any future regression is caught at test
+ * time rather than silently truncating the log slot. */
+#define TUI_DISPATCH_LOG_SLOT  2048
 
 /* 2026-06-07 JES Phase B.1 #737 round 1 P1-B: cap source lines to prevent
  * a DoS via a malicious/oversized debug/getSource response.  ODB scripts are
@@ -147,6 +152,14 @@ typedef struct {
 
 	/* 2026-06-07 JES Phase B.3 #691: debug session state machine */
 	tui_debug_state_t debug_state;   /* IDLE / SUSPENDED / RUNNING */
+
+	/* 2026-06-07 JES Phase B.6 #742: per-session request ID counter.
+	 *
+	 * Previously a static global (g_tui_req_id).  Moving it to tui_state_t
+	 * makes each TUI session independent: parallel test runs don't share the
+	 * counter, and the counter is reset to 1 on each debugger_tui_state_init
+	 * call.  Wraps at 0x7FFF (same bound as the old static). */
+	int tui_req_id;   /* next request ID; starts at 1, wraps at 0x7FFF */
 
 	/* 2026-06-07 JES Phase B.3 #691: dispatch capture for unit tests.
 	 *
