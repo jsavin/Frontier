@@ -18,6 +18,11 @@
 #   3. Signal handling (SIGTERM): process exits cleanly when signalled
 #   4. State heap-allocation: no crash from B.6 context lifetime change
 #
+# TODO: A PTY-driven lifecycle test that exercises the lazy-attach drain path
+# (debug_wait_lazy_threads_drained + drain-before-free sequence) should be
+# added as a follow-up once Phase B.7 lands.  Without a PTY, boxen_init fails
+# immediately and the drain path is never reached.
+#
 # 2026-06-07 JES Phase B.6 #691 #746
 #
 # SPDX-License-Identifier: MIT
@@ -153,9 +158,10 @@ fi
 echo
 echo "--- Test 3: SIGTERM handling ---"
 # Start frontier-cli --debug-tui in background, send SIGTERM, verify it exits.
-# The process may exit immediately (exit 1) because boxen_init fails without a
-# terminal.  If it somehow starts, SIGTERM must terminate it cleanly within a
-# short window.  Either way: no hang, no coredump.
+# Without a TTY, boxen_init fails immediately (pre-init path) so the process
+# exits before SIGTERM arrives.  This test verifies clean exit + no coredump
+# on the pre-init alloc/free path.  A PTY-driven test would be needed to
+# exercise the actual drain-before-free path (SIGTERM during a live TUI session).
 
 SIGTERM_CLI_PID=""
 "$CLI" --debug-tui --skip-startup --system-root "$DB" \
@@ -197,9 +203,12 @@ fi
 
 echo
 echo "--- Test 4: heap-state lifetime (B.6 #738) ---"
-# Verify the binary can be launched and exited multiple times in succession
-# without accumulating state from prior runs.  This catches regressions where
-# tui_state_t was stack-allocated and ctx was invalid across runs.
+# Smoke test: repeated --debug-tui invocations exit cleanly without crashing.
+# Without a TTY, boxen_init fails immediately and each run exercises only the
+# calloc/free of tui_state_t on the pre-init exit path.  This does NOT exercise
+# the heap-state survival across the drain window; a PTY-driven test is needed
+# for that.  What this does catch: crashes from leaked/corrupt state across
+# successive invocations (e.g., double-free, use-after-free on global cleanup).
 
 HEAP_OK=true
 for i in 1 2 3; do

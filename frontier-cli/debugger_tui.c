@@ -2025,6 +2025,19 @@ int debugger_tui_main(const cli_options_t *opts) {
 
 	debugger_tui_state_init(state, tw, th);
 
+	/* 2026-06-07 JES Phase B.6 #747 round 1 P2-1: transport calloc failure guard.
+	 * debugger_tui_state_init allocates state->transport via calloc.  If that
+	 * allocation fails, state->transport is NULL.  Registering NULL here would
+	 * silently run the TUI in "no remote attach" mode with no diagnostic.
+	 * Symmetric with the calloc(state) failure check at lines 2002-2004 above. */
+	if (state->transport == NULL) {
+		log_error(LOG_COMP_GENERAL, "debugger_tui_main: transport allocation failed; exiting");
+		debugger_tui_state_teardown(state);
+		free(state);
+		if (boxen_initialized) { boxen_shutdown(); }
+		return 1;
+	}
+
 	/* 2026-06-07 JES Phase B.6 #691 #738: register the lazy-attach transport.
 	 *
 	 * From this point, callScript-spawned threads that hit a breakpoint will
