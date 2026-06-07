@@ -75,6 +75,7 @@
  * equivalent external lock. No internal synchronization.
  */
 
+#include <math.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -165,6 +166,7 @@ static struct {
  * resize/move property setters above it in the file. */
 static int find_live_window_index(const boxen_window_t *win);
 static void clamp_rect_to_bounds(boxen_rect_t *r);
+static uint32_t utf8_next(const unsigned char **p);
 
 /* -------------------------------------------------------------------------
  * Library lifecycle
@@ -234,8 +236,9 @@ void boxen_shutdown(void) {
 	g_should_quit    = false;
 
 	/* Reset drag state so a re-init starts clean. */
-	g_drag.state = DRAG_NONE;
-	g_drag.win   = NULL;
+	g_drag.state       = DRAG_NONE;
+	g_drag.win         = NULL;
+	g_drag.was_pressed = false;  /* match the init-path reset */
 }
 
 /* -------------------------------------------------------------------------
@@ -417,11 +420,21 @@ boxen_rect_t boxen_window_get_rect(const boxen_window_t *win) {
  */
 int boxen_window_content_width(const boxen_window_t *win) {
 	if (win == NULL) return 0;
+	int cw = win->borders ? (win->rect.w - 2) : win->rect.w;
+	if (cw <= 0) return 0;
+	/* If a vertical scrollbar will be drawn over the rightmost interior
+	 * column, that column is no longer usable for content. Shrink
+	 * content_width by 1 so callers don't draw into a cell the scrollbar
+	 * will clobber. The scrollbar is only present when borders are on
+	 * AND content_h > visible interior height (see chrome rendering). */
 	if (win->borders) {
-		int cw = win->rect.w - 2;
-		return (cw > 0) ? cw : 0;
+		int vh = win->rect.h - 2;
+		if (vh > 0 && win->content_h > vh) {
+			cw -= 1;
+			if (cw < 0) cw = 0;
+		}
 	}
-	return win->rect.w;
+	return cw;
 }
 
 int boxen_window_content_height(const boxen_window_t *win) {
@@ -472,6 +485,10 @@ void boxen_window_set_borders(boxen_window_t *win, bool borders) {
 	/* Validate before write per the A.4 mutator convention. */
 	if (find_live_window_index(win) < 0) return;
 	win->borders = borders;
+	/* Re-clamp scroll: toggling borders changes the viewport's effective
+	 * content area, so existing scroll_x/y may now be past the legal max.
+	 * boxen_window_set_scroll clamps to [0, content_dim - viewport_dim]. */
+	boxen_window_set_scroll(win, win->scroll_x, win->scroll_y);
 }
 
 /* -------------------------------------------------------------------------
@@ -989,10 +1006,20 @@ static void draw_chrome(boxen_window_t *w) {
 			const unsigned char *p = (const unsigned char *)w->title;
 			int chars_drawn = 0;
 			while (*p != 0 && chars_drawn < title_area) {
-				/* Simple ASCII only for now; treat each byte as a codepoint. */
-				uint32_t cp = *p++;
+				/* Decode one codepoint and use boxen_wcwidth for proper
+				 * cell-width accounting (CJK = 2 cells, controls = 0).
+				 * Skip zero-width / non-printable codepoints. */
+				uint32_t cp = utf8_next(&p);
+				int cw = boxen_wcwidth(cp);
+				if (cw <= 0) continue;
+				if (chars_drawn + cw > title_area) break;
 				g_backend->set_cell(draw_col++, y0, cp, fg, bg, attr);
-				chars_drawn++;
+				/* If 2-cell wide, write a placeholder space in the next
+				 * cell so the chrome line doesn't overlap the codepoint. */
+				if (cw == 2) {
+					g_backend->set_cell(draw_col++, y0, (uint32_t)' ', fg, bg, attr);
+				}
+				chars_drawn += cw;
 			}
 			g_backend->set_cell(draw_col++, y0, (uint32_t)' ', fg, bg, attr);
 			/* Remaining cells in top row are already filled with hc from above. */
@@ -1421,6 +1448,15 @@ void boxen_layout_split_h(boxen_rect_t total, float ratio,
 	if (right) *right = NULL;
 	if (!g_initialized) return;
 
+	/* Defensive: validate ratio + total. NaN/Inf get coerced to a 0.5 split,
+	 * negative is treated as 0, values > 1 as 1. Degenerate total
+	 * (w < 2 or non-positive h) returns both NULL rather than producing
+	 * unrenderable windows. */
+	if (!isfinite(ratio)) ratio = 0.5f;
+	if (ratio < 0.0f) ratio = 0.0f;
+	if (ratio > 1.0f) ratio = 1.0f;
+	if (total.w < 2 || total.h < 1) return;
+
 	/* Clamp ratio so each side gets at least 1 column. */
 	int min_left = 1;
 	int min_right = 1;
@@ -1444,6 +1480,13 @@ void boxen_layout_split_v(boxen_rect_t total, float ratio,
 	if (top)    *top    = NULL;
 	if (bottom) *bottom = NULL;
 	if (!g_initialized) return;
+
+	/* Defensive: validate ratio + total. NaN/Inf -> 0.5, negative -> 0,
+	 * > 1 -> 1. Degenerate total returns both NULL. */
+	if (!isfinite(ratio)) ratio = 0.5f;
+	if (ratio < 0.0f) ratio = 0.0f;
+	if (ratio > 1.0f) ratio = 1.0f;
+	if (total.h < 2 || total.w < 1) return;
 
 	/* Clamp ratio so each side gets at least 1 row. */
 	int top_h = (int)((float)total.h * ratio);
@@ -1499,6 +1542,14 @@ void boxen_set_cell(boxen_window_t *win, int x, int y,
 	/* Determine viewport dimensions: reduced by 2 on each axis when bordered. */
 	int vw = win->borders ? (win->rect.w > 2 ? win->rect.w - 2 : 0) : win->rect.w;
 	int vh = win->borders ? (win->rect.h > 2 ? win->rect.h - 2 : 0) : win->rect.h;
+
+	/* If a vertical scrollbar will be drawn (bordered + content overflows
+	 * height), the rightmost interior column is reserved for it. Shrink
+	 * viewport width so set_cell calls in that column are clipped before
+	 * the scrollbar overwrites them. Matches content_width's reporting. */
+	if (win->borders && vh > 0 && win->content_h > vh && vw > 0) {
+		vw -= 1;
+	}
 
 	/* Clip against the visible content viewport. */
 	if (sx < 0 || sx >= vw) return;
@@ -1664,25 +1715,54 @@ void boxen_fill_rect(boxen_window_t *win, boxen_rect_t r,
 
 boxen_window_t *boxen_window_at(int sx, int sy, int *cx, int *cy) {
 	/* Scan from last (topmost in z-order) to first (bottommost). A.3 raise/lower
-	 * operations maintain g_windows[g_window_count-1] as the topmost window. */
+	 * operations maintain g_windows[g_window_count-1] as the topmost window.
+	 *
+	 * Coordinate output (A.6+):
+	 *   - For cells in the content area, cx and cy are CONTENT coordinates
+	 *     (window-local + scroll offset).
+	 *   - For cells in the border or scrollbar chrome, *cx and *cy are set
+	 *     to BOXEN_HIT_CHROME (defined in boxen.h as INT_MIN). This
+	 *     sentinel is independent of scroll state, so callers can
+	 *     distinguish "border hit" from "content hit at (scroll_x-1, ...)"
+	 *     regardless of the window's scroll position. */
 	for (int i = g_window_count - 1; i >= 0; i--) {
 		boxen_window_t *w = g_windows[i];
 		/* Defensive: slots 0..g_window_count-1 are invariant non-NULL
 		 * via the open/close protocol, but a NULL guard costs nothing
 		 * and survives future refactors. */
 		if (w == NULL) continue;
-		if (sx >= w->rect.x && sx < w->rect.x + w->rect.w &&
-		    sy >= w->rect.y && sy < w->rect.y + w->rect.h) {
-			if (w->borders) {
-				/* Border-aware: subtract 1 extra to account for the border inset. */
-				if (cx != NULL) *cx = (sx - w->rect.x - 1) + w->scroll_x;
-				if (cy != NULL) *cy = (sy - w->rect.y - 1) + w->scroll_y;
-			} else {
-				if (cx != NULL) *cx = (sx - w->rect.x) + w->scroll_x;
-				if (cy != NULL) *cy = (sy - w->rect.y) + w->scroll_y;
+		if (sx < w->rect.x || sx >= w->rect.x + w->rect.w) continue;
+		if (sy < w->rect.y || sy >= w->rect.y + w->rect.h) continue;
+
+		/* In-rect hit. Determine content vs chrome. */
+		int local_x = sx - w->rect.x;
+		int local_y = sy - w->rect.y;
+		bool in_chrome = false;
+		if (w->borders) {
+			/* Border cells: top/bottom rows and left/right columns. */
+			if (local_x == 0 || local_x == w->rect.w - 1 ||
+			    local_y == 0 || local_y == w->rect.h - 1) {
+				in_chrome = true;
 			}
-			return w;
+			/* Scrollbar column (rightmost interior column when active). */
+			int vh = w->rect.h - 2;
+			if (!in_chrome && vh > 0 && w->content_h > vh &&
+			    local_x == w->rect.w - 2) {
+				in_chrome = true;
+			}
 		}
+
+		if (in_chrome) {
+			if (cx != NULL) *cx = BOXEN_HIT_CHROME;
+			if (cy != NULL) *cy = BOXEN_HIT_CHROME;
+		} else if (w->borders) {
+			if (cx != NULL) *cx = (local_x - 1) + w->scroll_x;
+			if (cy != NULL) *cy = (local_y - 1) + w->scroll_y;
+		} else {
+			if (cx != NULL) *cx = local_x + w->scroll_x;
+			if (cy != NULL) *cy = local_y + w->scroll_y;
+		}
+		return w;
 	}
 	return NULL;
 }

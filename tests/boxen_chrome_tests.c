@@ -318,26 +318,27 @@ static void test_window_at_accounts_for_borders(void) {
 	assert(cx == 0);
 	assert(cy == 0);
 
-	/* Left border column (5, 5): cx should be -1 (border sentinel). */
+	/* Left border column (5, 5): both cx and cy should be the chrome
+	 * sentinel (independent of scroll, distinct from any content coord). */
 	cx = 99; cy = 99;
 	found = boxen_window_at(5, 5, &cx, &cy);
-	/* The window is found (within rect), but cx is in border territory. */
 	assert(found == win);
-	assert(cx == -1);
+	assert(cx == BOXEN_HIT_CHROME);
+	assert(cy == BOXEN_HIT_CHROME);
 
-	/* Top border row (7, 2): cy should be -1. */
+	/* Top border row (7, 2): same chrome sentinel. */
 	cx = 99; cy = 99;
 	found = boxen_window_at(7, 2, &cx, &cy);
 	assert(found == win);
-	assert(cy == -1);
+	assert(cx == BOXEN_HIT_CHROME);
+	assert(cy == BOXEN_HIT_CHROME);
 
-	/* Right border column (24, 5): window right edge is 5+20-1=24.
-	 * cx should be content_width (off right edge = border). */
-	int cw = boxen_window_content_width(win);  /* 18 */
+	/* Right border column (24, 5): window right edge is 5+20-1=24. */
 	cx = 99; cy = 99;
 	found = boxen_window_at(24, 5, &cx, &cy);
 	assert(found == win);
-	assert(cx == cw);  /* border sentinel = content_width */
+	assert(cx == BOXEN_HIT_CHROME);
+	assert(cy == BOXEN_HIT_CHROME);
 
 	/* Completely outside: returns NULL. */
 	found = boxen_window_at(0, 0, &cx, &cy);
@@ -525,6 +526,82 @@ static void test_pinned_bottom_survives_terminal_resize(void) {
 }
 
 /* -------------------------------------------------------------------------
+ * Test 10: window_at returns BOXEN_HIT_CHROME for border cells regardless
+ * of scroll (security P2 regression -- pre-fix the sentinel collapsed to a
+ * content-cell value when scroll was non-zero).
+ * ---------------------------------------------------------------------- */
+static void test_window_at_chrome_sentinel_independent_of_scroll(void) {
+	setup();
+	boxen_window_t *w = boxen_window_open("w", (boxen_rect_t){5, 5, 20, 10}, NULL);
+	assert(w != NULL);
+	/* borders=true by default */
+	boxen_window_set_content_size(w, 100, 50);
+	boxen_window_set_scroll(w, 7, 3);
+
+	/* Click on left border (sx == rect.x). Pre-fix: cx = -1 + scroll_x = 6. */
+	int cx = 0, cy = 0;
+	boxen_window_t *hit = boxen_window_at(5, 8, &cx, &cy);
+	assert(hit == w);
+	assert(cx == BOXEN_HIT_CHROME);
+	assert(cy == BOXEN_HIT_CHROME);
+
+	/* Click on top-left corner. */
+	hit = boxen_window_at(5, 5, &cx, &cy);
+	assert(hit == w);
+	assert(cx == BOXEN_HIT_CHROME);
+
+	/* Click inside content area. Should be content coords. */
+	hit = boxen_window_at(7, 7, &cx, &cy);
+	assert(hit == w);
+	/* local = (2, 2); border offset = -1, -1; +scroll (7, 3) = (8, 4) */
+	assert(cx == 8);
+	assert(cy == 4);
+
+	boxen_window_close(w);
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * Test 11: split_h validates pathological inputs (security P2 regression).
+ * ---------------------------------------------------------------------- */
+static void test_split_h_validates_inputs(void) {
+	setup();
+	boxen_window_t *l = NULL, *r = NULL;
+
+	/* Degenerate total: w < 2 must return both NULL. */
+	boxen_layout_split_h((boxen_rect_t){0, 0, 1, 5}, 0.5f, "l", &l, "r", &r);
+	assert(l == NULL);
+	assert(r == NULL);
+
+	/* Negative ratio: treated as 0. */
+	boxen_layout_split_h((boxen_rect_t){0, 0, 10, 5}, -1.0f, "l", &l, "r", &r);
+	assert(l != NULL);
+	assert(r != NULL);
+	/* Both still get min 1 cell. */
+	boxen_rect_t lr = boxen_window_get_rect(l);
+	boxen_rect_t rr = boxen_window_get_rect(r);
+	assert(lr.w >= 1);
+	assert(rr.w >= 1);
+	assert(lr.w + rr.w == 10);
+	boxen_window_close(l);
+	boxen_window_close(r);
+	l = NULL; r = NULL;
+
+	/* NaN ratio: coerced to 0.5. */
+	float nan_val = 0.0f / 0.0f;
+	boxen_layout_split_h((boxen_rect_t){0, 0, 10, 5}, nan_val, "l", &l, "r", &r);
+	assert(l != NULL);
+	assert(r != NULL);
+	lr = boxen_window_get_rect(l);
+	rr = boxen_window_get_rect(r);
+	assert(lr.w == 5);  /* 0.5 split of 10 */
+	assert(rr.w == 5);
+	boxen_window_close(l);
+	boxen_window_close(r);
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
  * main
  * ---------------------------------------------------------------------- */
 
@@ -540,6 +617,8 @@ int main(void) {
 	TR_RUN(test_scrollbar_renders_when_content_overflows);
 	TR_RUN(test_split_h_creates_two_windows);
 	TR_RUN(test_pinned_bottom_survives_terminal_resize);
+	TR_RUN(test_window_at_chrome_sentinel_independent_of_scroll);
+	TR_RUN(test_split_h_validates_inputs);
 
 	TR_SUMMARY();
 	return TR_EXIT_CODE();
