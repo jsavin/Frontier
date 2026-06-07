@@ -1038,6 +1038,215 @@ set to `true` after `boxen_init` succeeds; check before calling `boxen_shutdown`
 
 ---
 
+### Milestone B.7 -- Scratch-eval pane
+
+**Goal**: Add a single-line expression input pane that lets the user evaluate a
+UserTalk expression against the suspended thread's runtime context without leaving
+the debugger TUI. Available ONLY while a thread is suspended; hidden (or shows a
+"no thread suspended" hint) otherwise.
+
+This milestone is scope expansion past the strict definition of #691. Issue #691 is
+closed by B.6. B.7 is not required for issue closure but is expected to be wanted
+before the debugger sees real use -- the moment of suspension is exactly when scratch
+evaluation is most useful. This judgment is documented explicitly so the implementer
+knows the scope boundary and can ship B.6 and B.7 as separate PRs if desired.
+
+#### UX
+
+`:` activates the input pane (consistent with the vi-style "command mode" metaphor;
+distinct from the F-key debug binds in B.3 so there is no chord conflict). `Escape`
+leaves it. `Enter` submits the expression.
+
+The expression input area is a single line at the bottom of the TUI, rendered above
+the keybind footer. When the user presses `:` a visible cursor appears in the input
+area (using the reverse-video block-cursor approach from B.4 -- see the B.4 sentinel
+on `boxen_window_set_cursor`). The input area is NOT a separate window; it is a
+reserved row in the footer region drawn by the footer draw callback.
+
+Above the input line, an output buffer holds the last 10-20 evaluations (suggest
+`EVAL_HISTORY_MAX 16`) as formatted `[N] expression -> result` lines. The buffer
+scrolls if it overflows its display area. This scroll-back is the user's primary way
+to compare results across multiple evaluations during a suspension; there is no
+history persistence across sessions (no `.frontier_history` equivalent for the
+eval buffer).
+
+The pane is only active while `state->debug_state == TUI_STATE_SUSPENDED`. When the
+user continues or steps (transition to `TUI_STATE_RUNNING`), the input area is hidden
+and the pending input buffer is preserved so it reappears if the thread suspends again
+(e.g., at the next breakpoint). This is the least-surprising behavior for conditional
+re-evaluation patterns.
+
+#### Eval mechanism
+
+The scratch pane dispatches via `script/eval` -- the same op used by the REPL and the
+protocol layer. NOT `debug/eval` -- that op does not exist. Verified: `debug_handler.h`
+declares no eval handler; `op_handler.c:449` implements `handle_script_eval` at
+`op_handler.c:931`, dispatched as `"script/eval"`. The JSON request shape is:
+
+```c
+snprintf(req, sizeof(req),
+    "{\"op\":\"script/eval\",\"id\":%d,\"params\":{\"expression\":\"%s\"}}",
+    next_eval_id++, escaped_expression);
+```
+
+The response arrives via the TUI's transport `write_line` as a JSON object with either
+`"result"` (success) or `"error"` (runtime error). The eval pane formats and appends
+it to the output buffer.
+
+Note: `script/eval` evaluates in the REPL's default variable context
+(`system.temp.FrontierREPL.variables` if initialized), not explicitly in the suspended
+thread's frame. For inspecting frame locals, `debug/getLocals` (B.2) is the correct
+path. The scratch pane is best for expression evaluation (arithmetic, string ops,
+quick UserTalk probes) rather than local-variable lookup, which already has a dedicated
+right-pane display. Document this scope boundary in a code comment.
+
+#### Boxen-side API gap -- FOLLOW-UP REQUIRED BEFORE B.7
+
+The scratch-eval pane needs a positioned text cursor inside the footer-region draw
+callback. The existing approach (reverse-video block cursor, documented in B.4's
+`boxen_window_set_cursor` sentinel) works but is awkward: the draw callback must know
+the cursor column and paint one cell with `BOXEN_ATTR_REVERSE` at the right position.
+There is no `boxen_window_set_cursor(win, cx, cy)` public function.
+
+**This is acceptable for B.7 using the same reverse-video workaround as B.4.**
+
+However, B.7 is the second site that needs in-window cursor positioning (B.4's
+condition modal was the first). Two sites establish a pattern. Before or alongside
+B.7, a small boxen PR adding:
+
+```c
+void boxen_window_set_cursor(boxen_window_t *win, int cx, int cy);
+void boxen_window_hide_cursor(boxen_window_t *win);
+```
+
+...would let B.7 (and retroactively B.4's modal) use a clean API instead of the
+workaround. This is a boxen-side follow-up, NOT a Phase B blocker -- the workaround
+ships, the clean API follows. Flag the workaround at every call site with a TODO
+referencing this paragraph.
+
+The backend vtable already has `set_cursor(int x, int y)` and
+`set_cursor_visible(bool visible)` (confirmed at `boxen.h:216-217`). A
+`boxen_window_set_cursor` wrapper translates window-local `(cx, cy)` coordinates
+to screen coordinates and calls the backend. This is a ~15-line addition to `boxen.c`.
+Flag it as "boxen-cursor-api" and track in the boxen follow-up list.
+
+#### Data model additions
+
+Add to `tui_state_t`:
+
+```c
+/* Scratch eval pane */
+boolean eval_pane_active;          /* true while ':' mode is engaged */
+char    eval_input_buf[256];       /* current input line being typed */
+int     eval_input_cursor;         /* cursor column in eval_input_buf */
+char   *eval_history[EVAL_HISTORY_MAX]; /* ring buffer of "expr -> result" strings */
+int     eval_history_count;        /* entries currently in history, 0..EVAL_HISTORY_MAX */
+int     eval_history_head;         /* index of oldest entry (ring buffer) */
+int     eval_history_scroll;       /* scroll offset for history display */
+int     eval_next_id;              /* incrementing id for script/eval requests */
+```
+
+The `eval_history` strings are heap-allocated per entry; freed on ring-buffer wrap.
+
+#### Files to modify
+
+`frontier-cli/debugger_tui.c`:
+- Add `EVAL_HISTORY_MAX` constant (suggest 16)
+- Add `tui_eval_pane_*` functions: `tui_eval_activate`, `tui_eval_dismiss`,
+  `tui_eval_submit`, `tui_eval_handle_key`, `tui_eval_append_result`
+- Extend `draw_footer` to reserve rows for eval output and eval input line
+- Extend the global input callback to route `:` key to `tui_eval_activate` when
+  `debug_state == TUI_STATE_SUSPENDED` and eval pane is not yet active
+- Extend `write_line` handler: when a `script/eval` response arrives and
+  `eval_next_id` matches, call `tui_eval_append_result`
+- Hide eval pane on transition to `TUI_STATE_RUNNING`; preserve `eval_input_buf`
+
+No new files. All changes to `debugger_tui.c` (and `debugger_tui_internal.h` if
+the tick-function header is used for tests).
+
+#### Tests
+
+Same mock-backend pattern as B.3/B.4 -- inject keystrokes, assert cell grid after
+redraw.
+
+`test_colon_key_activates_eval_pane`:
+- State: `debug_state = TUI_STATE_SUSPENDED`; inject `:`
+- Verify `state.eval_pane_active == true`
+
+`test_escape_dismisses_eval_pane`:
+- Activate pane; inject `BOXEN_KEY_ESCAPE`
+- Verify `state.eval_pane_active == false`
+
+`test_eval_pane_hidden_when_not_suspended`:
+- State: `debug_state = TUI_STATE_IDLE`; inject `:`
+- Verify `state.eval_pane_active == false` (colon is a no-op outside suspension)
+
+`test_eval_pane_hidden_on_continue`:
+- Activate pane; transition `debug_state = TUI_STATE_RUNNING`; trigger draw
+- Verify footer draw does NOT render the input line (mock cell at input row is blank)
+
+`test_eval_submit_dispatches_script_eval`:
+- Activate pane; push keys `x`, `+`, `1`; inject Enter
+- Verify `script/eval` request was dispatched with `"expression":"x+1"`
+
+`test_eval_result_appended_to_history`:
+- Call `tui_eval_append_result("x+1", "42")`
+- Verify `state.eval_history_count == 1`
+- Verify history entry contains "x+1" and "42"
+
+`test_eval_history_ring_wraps`:
+- Append `EVAL_HISTORY_MAX + 2` entries
+- Verify `eval_history_count == EVAL_HISTORY_MAX` (oldest entry freed and replaced)
+
+`test_eval_footer_renders_history`:
+- Append two results; trigger draw
+- Verify footer region contains both result strings via `boxen_mock_has_text`
+
+#### Verification gate
+
+Unit + integration. Main-session: YES -- `script/eval` calls into the UserTalk
+runtime under GIL.
+
+#### Dependencies
+
+B.6 complete. The `script/eval` op (`op_handler.c:449`) and its transport-based
+response path are the only runtime dependency; both were verified as part of B.7
+planning.
+
+#### Out of scope
+
+- No history persistence across sessions (no file I/O)
+- No slash commands from the eval pane (just raw UserTalk expressions)
+- No tab completion in the eval pane
+- No multi-line input
+- No per-frame eval context (evaluates in default variable context; frame locals
+  are inspected via the right pane, not the eval buffer)
+- No `boxen_window_set_cursor` clean-up PR (tracked as "boxen-cursor-api" follow-up;
+  the workaround ships with B.7)
+
+#### Sentinels / fragile assumptions
+
+SENTINEL: `script/eval` response arrives asynchronously via `write_line`. The
+`write_line` callback must distinguish `script/eval` responses from `debug/*`
+notifications using the `"id"` field. Track the most-recently-dispatched eval
+`id` in `eval_next_id` and match it in `write_line`. Misrouted eval responses
+(e.g., a `debug/suspended` notification while an eval is in flight) should be
+handled correctly: `debug/suspended` always takes the suspension path regardless
+of pending eval state.
+
+SENTINEL: `script/eval` evaluates in the REPL variable context, not the suspended
+frame. A user who types a local variable name (e.g., `x`) may get "undefined
+variable" if `x` is a stack-local rather than a globals-table entry. This is a known
+limitation and should be documented in the eval pane's "no thread suspended" hint or
+a short help string visible when `:` is first pressed. It is NOT a bug to fix in B.7.
+
+SENTINEL: The `eval_input_buf` must be C-string safe before constructing the
+`script/eval` JSON. Escape embedded double-quotes and backslashes at a minimum.
+A minimal `json_escape_string` helper (or inline escaping) is sufficient; the full
+JSON encoder from `cJSON` is available but overkill for a single string field.
+
+---
+
 ## 6. Closing Notes
 
 ### Closing condition for issue #691
@@ -1091,6 +1300,7 @@ interface freeze) and Phase E (standalone extraction) are straightforward execut
 | B.4 -- breakpoints | `debugger_tui.c` | `debug_handler.h:144-145` (`handle_debug_setbreakpoint`, `handle_debug_clearbreakpoints`) |
 | B.5 -- cmd-click + watchpoints | `debugger_tui.c` | `boxen.h:406` (`BOXEN_HIT_CHROME`), `backend_mock.h:95` (`boxen_mock_push_double_click`), `debug_handler.h:151` (`handle_debug_setwatchpoint`) |
 | B.6 -- polish + integration | `debugger_tui.c`, `tests/debugger_tui_test.sh` | `debug_handler.h:214,226` (`debug_set_attach_transport`, `debug_wait_lazy_threads_drained`), `protocol_handler.c:411-424` (teardown pattern) |
+| B.7 -- scratch-eval pane | `debugger_tui.c` | `op_handler.c:449` (`handle_script_eval`), `op_handler.c:931` (dispatch as `"script/eval"`); boxen cursor API gap (see B.7 follow-up section) |
 | Tests (all milestones) | `tests/debugger_tui_tests.c` (new), `tests/debugger_tui_test.sh` (new) | `frontier-cli/boxen/backend_mock.h`, `tests/test_report.h` |
 
 ---
@@ -1119,3 +1329,9 @@ interface freeze) and Phase E (standalone extraction) are straightforward execut
 | boxen API churn | Zero; Phase A is frozen; gaps filed as follow-ups | Non-goals |
 | TUI unit test harness | C unit tests via backend_mock + test_report.h TR_RUN | 4.1 |
 | TUI integration test | Shell test for lifecycle; `sequential: true` in runner | 4.2 |
+| Scratch-eval op | `script/eval` (NOT `debug/eval` -- no such op exists) | B.7 |
+| Scratch-eval cursor | Reverse-video block cursor workaround; `boxen_window_set_cursor` filed as follow-up | B.7 |
+| Scratch-eval scope | Evaluates in REPL variable context, not suspended frame; frame locals stay in right pane | B.7 |
+| Scratch-eval history | In-session ring buffer, `EVAL_HISTORY_MAX 16`, no file persistence | B.7 |
+| Scratch-eval keybind | `:` activates, `Escape` dismisses, `Enter` submits | B.7 |
+| Scratch-eval availability | Suspended state only; hidden on continue/step, preserved on re-suspend | B.7 |
