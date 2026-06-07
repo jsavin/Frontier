@@ -36,9 +36,11 @@ Full verb reference: `tests/debug_protocol_test.sh` (81 tests, all green) is the
 ```c
 typedef struct {
     void *ctx;
-    int (*write_line)(void *ctx, const char *line);
+    void (*write_line)(void *ctx, const char *json, size_t len);
 } transport_t;
 ```
+
+(Note: an earlier draft of this doc cited the signature as `int (*write_line)(void *ctx, const char *line)` -- 2 params, int return. That was wrong. The actual signature takes 3 params and returns void. Caught by the Phase B architect during plan verification; corrected 2026-06-06.)
 
 That's the entire contract. The TUI builds one of these with:
 
