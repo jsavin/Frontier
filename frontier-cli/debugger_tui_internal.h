@@ -44,6 +44,13 @@
  * that an uncapped count from cJSON_GetArraySize() would trigger. */
 #define TUI_MAX_SOURCE_LINES 10000
 
+/* 2026-06-07 JES Phase B.2 #691: caps for frame stack and locals arrays.
+ * Call stacks in UserTalk scripts are shallow (typically < 20 deep).
+ * 200 frames is a generous cap that prevents malloc overflow from a malformed
+ * debug/getStack response.  500 locals is similarly conservative. */
+#define TUI_MAX_FRAMES  200
+#define TUI_MAX_LOCALS  500
+
 typedef struct {
 	boxen_window_t *script_win;    /* left pane: script source (B.1) */
 	boxen_window_t *stack_win;     /* right pane: call stack + locals (B.2) */
@@ -59,6 +66,17 @@ typedef struct {
 	long   pending_thread_id;       /* thread ID from last debug/suspended, or -1 */
 	unsigned long bp_lines[TUI_MAX_BREAKPOINTS]; /* 1-based line numbers with breakpoints */
 	int           bp_line_count;    /* number of valid entries in bp_lines */
+
+	/* 2026-06-07 JES Phase B.2 #691: call stack state */
+	int   frame_count;                           /* number of valid frames */
+	char  frame_scripts[TUI_MAX_FRAMES][256];    /* dotted script path per frame */
+	long  frame_lines[TUI_MAX_FRAMES];           /* 1-based line per frame; 0 if absent */
+	int   selected_frame;                        /* 0-based index; 0 = outermost */
+
+	/* 2026-06-07 JES Phase B.2 #691: locals state (innermost suspended frame) */
+	char **local_names;   /* heap array of strdup'd local variable name strings */
+	char **local_values;  /* heap array of strdup'd local variable value strings */
+	int    local_count;   /* number of valid entries in local_names / local_values */
 } tui_state_t;
 
 /*

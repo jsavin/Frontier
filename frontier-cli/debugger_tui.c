@@ -52,6 +52,135 @@
 #include <stdbool.h>
 
 /* -------------------------------------------------------------------------
+ * 2026-06-07 JES Phase B.2 #691: locals state helpers.
+ *
+ * tui_free_locals  -- release heap arrays of local variable name/value strings.
+ * tui_store_locals -- parse a debug/getLocals result object into state.
+ * tui_store_stack  -- parse a debug/getStack result object into state.
+ * ---------------------------------------------------------------------- */
+
+static void tui_free_locals(tui_state_t *s) {
+	if (s->local_names != NULL) {
+		for (int i = 0; i < s->local_count; i++) {
+			free(s->local_names[i]);
+			free(s->local_values[i]);
+		}
+		free(s->local_names);
+		free(s->local_values);
+		s->local_names  = NULL;
+		s->local_values = NULL;
+		s->local_count  = 0;
+	}
+}
+
+/* Parse a debug/getLocals result JSON object (the "result" sub-object).
+ * Actual response shape from debug_handler.c:1900 (code-verified):
+ *   result.locals = [{name, value, type}, ...]
+ * Updates local_names, local_values, local_count.
+ * Locals always reflect the innermost suspended frame -- no per-frame API
+ * exists (EXECUTION_PLAN.md B.2 Sentinels). */
+static void tui_store_locals(tui_state_t *s, cJSON *result) {
+	cJSON *locals_j = cJSON_GetObjectItemCaseSensitive(result, "locals");
+	if (!cJSON_IsArray(locals_j)) return;
+
+	int count = cJSON_GetArraySize(locals_j);
+	if (count <= 0) return;
+
+	/* Cap to prevent allocation overflow from a malformed response.
+	 * Silent clamp: log_warn is a Frontier runtime call and crashes in the
+	 * test build (log_write resolves to NULL via dynamic lookup).  The B.1
+	 * tui_store_source uses the same silent-clamp pattern. */
+	if (count > TUI_MAX_LOCALS) {
+		count = TUI_MAX_LOCALS;
+	}
+
+	tui_free_locals(s);
+
+	/* calloc so unfilled slots are NULL even if strdup fails partway through */
+	s->local_names  = (char **)calloc((size_t)count, sizeof(char *));
+	s->local_values = (char **)calloc((size_t)count, sizeof(char *));
+	if (s->local_names == NULL || s->local_values == NULL) {
+		free(s->local_names);
+		free(s->local_values);
+		s->local_names  = NULL;
+		s->local_values = NULL;
+		return;
+	}
+
+	int i = 0;
+	cJSON *entry = NULL;
+	cJSON_ArrayForEach(entry, locals_j) {
+		if (i >= count) break;
+
+		cJSON *name_j  = cJSON_GetObjectItemCaseSensitive(entry, "name");
+		cJSON *value_j = cJSON_GetObjectItemCaseSensitive(entry, "value");
+
+		const char *name  = (cJSON_IsString(name_j)  && name_j->valuestring  != NULL)
+		                    ? name_j->valuestring  : "";
+		const char *value = (cJSON_IsString(value_j) && value_j->valuestring != NULL)
+		                    ? value_j->valuestring : "";
+
+		s->local_names[i]  = strdup(name);
+		s->local_values[i] = strdup(value);
+		if (s->local_names[i] == NULL || s->local_values[i] == NULL) {
+			/* OOM: truncate to successfully populated slots */
+			free(s->local_names[i]);
+			free(s->local_values[i]);
+			s->local_names[i]  = NULL;
+			s->local_values[i] = NULL;
+			s->local_count = i;
+			return;
+		}
+		i++;
+	}
+	s->local_count = i;
+}
+
+/* Parse a debug/getStack result JSON object (the "result" sub-object).
+ * Actual response shape from debug_handler.c:2011 (code-verified):
+ *   result.frames = [{level, script, line?}, ...] outermost to innermost.
+ * Updates frame_count, frame_scripts, frame_lines.
+ * selected_frame is set to the innermost frame on a fresh stack load so
+ * the user's cursor lands at the currently executing frame by default. */
+static void tui_store_stack(tui_state_t *s, cJSON *result) {
+	cJSON *frames_j = cJSON_GetObjectItemCaseSensitive(result, "frames");
+	if (!cJSON_IsArray(frames_j)) return;
+
+	int count = cJSON_GetArraySize(frames_j);
+	if (count <= 0) return;
+
+	/* Cap to prevent stack smash on a malformed response.
+	 * Silent clamp: see note in tui_store_locals for why log_warn is omitted. */
+	if (count > TUI_MAX_FRAMES) {
+		count = TUI_MAX_FRAMES;
+	}
+
+	int i = 0;
+	cJSON *frame = NULL;
+	cJSON_ArrayForEach(frame, frames_j) {
+		if (i >= count) break;
+
+		cJSON *script_j = cJSON_GetObjectItemCaseSensitive(frame, "script");
+		cJSON *line_j   = cJSON_GetObjectItemCaseSensitive(frame, "line");
+
+		const char *script = (cJSON_IsString(script_j) && script_j->valuestring != NULL)
+		                     ? script_j->valuestring : "";
+		strncpy(s->frame_scripts[i], script, sizeof(s->frame_scripts[i]) - 1);
+		s->frame_scripts[i][sizeof(s->frame_scripts[i]) - 1] = '\0';
+
+		/* line may be absent for the outermost frame before any statement fires */
+		s->frame_lines[i] = cJSON_IsNumber(line_j) ? (long)line_j->valuedouble : 0;
+
+		i++;
+	}
+
+	s->frame_count    = i;
+	/* Default selection: innermost frame (highest index), which is where
+	 * execution is suspended.  Outermost is index 0 (matching getStack order). */
+	s->selected_frame = (i > 0) ? (i - 1) : 0;
+}
+
+/* -------------------------------------------------------------------------
  * 2026-06-07 JES Phase B.1 #691: source state helpers.
  *
  * tui_free_script_lines -- release the heap array of source line strings.
@@ -90,11 +219,11 @@ static void tui_store_source(tui_state_t *s, cJSON *result) {
 	if (count <= 0) return;
 
 	/* P1-B: cap to TUI_MAX_SOURCE_LINES to prevent malloc(80M+) from a
-	 * malicious or oversized debug/getSource response. */
+	 * malicious or oversized debug/getSource response.
+	 * Silent clamp: log_warn is a Frontier runtime call that resolves to NULL
+	 * via -Wl,-undefined,dynamic_lookup in the test build, causing a crash
+	 * when the over-limit path is exercised in tests. */
 	if (count > TUI_MAX_SOURCE_LINES) {
-		log_warn(LOG_COMP_GENERAL,
-		         "tui_store_source: response has %d lines; truncating to %d",
-		         count, TUI_MAX_SOURCE_LINES);
 		count = TUI_MAX_SOURCE_LINES;
 	}
 
@@ -206,10 +335,17 @@ static void tui_write_line(void *ctx, const char *json, size_t len) {
 			boxen_window_invalidate(s->script_win);
 
 	} else if (cJSON_IsObject(result_j)) {
-		/* Case 2: response containing a "result" object -- treat as getSource
-		 * response if it has a "lines" array. */
-		cJSON *lines_j = cJSON_GetObjectItemCaseSensitive(result_j, "lines");
+		/* Case 2: response containing a "result" object.
+		 * Discriminate by which array key is present in the result:
+		 *   "lines"  -> debug/getSource response  (B.1)
+		 *   "frames" -> debug/getStack response   (B.2)
+		 *   "locals" -> debug/getLocals response  (B.2) */
+		cJSON *lines_j  = cJSON_GetObjectItemCaseSensitive(result_j, "lines");
+		cJSON *frames_j = cJSON_GetObjectItemCaseSensitive(result_j, "frames");
+		cJSON *locals_j = cJSON_GetObjectItemCaseSensitive(result_j, "locals");
+
 		if (cJSON_IsArray(lines_j)) {
+			/* debug/getSource response */
 			tui_store_source(s, result_j);
 
 			/* Auto-scroll to current line if suspended */
@@ -219,6 +355,18 @@ static void tui_write_line(void *ctx, const char *json, size_t len) {
 			}
 			if (s->script_win != NULL)
 				boxen_window_invalidate(s->script_win);
+
+		} else if (cJSON_IsArray(frames_j)) {
+			/* 2026-06-07 JES Phase B.2 #691: debug/getStack response */
+			tui_store_stack(s, result_j);
+			if (s->stack_win != NULL)
+				boxen_window_invalidate(s->stack_win);
+
+		} else if (cJSON_IsArray(locals_j)) {
+			/* 2026-06-07 JES Phase B.2 #691: debug/getLocals response */
+			tui_store_locals(s, result_j);
+			if (s->stack_win != NULL)
+				boxen_window_invalidate(s->stack_win);
 		}
 	}
 
@@ -328,14 +476,115 @@ static void draw_script_pane(boxen_window_t *win, void *ud) {
 	}
 }
 
-static void draw_stack(boxen_window_t *win, void *ud) {
-	(void)ud;
+/* -------------------------------------------------------------------------
+ * 2026-06-07 JES Phase B.2 #691: draw_stack_pane
+ *
+ * Renders the right pane with two sections:
+ *
+ *   Top half: call stack list.  One row per frame, outermost first.
+ *     Format:   "  L1  outer.script:10"
+ *     Selected frame row uses BOXEN_ATTR_REVERSE for the highlight.
+ *
+ *   Separator: "--- Locals ---" at the midpoint row.
+ *
+ *   Bottom half: flat list of "varname = value" for the innermost suspended
+ *     frame's locals.  debug/getLocals has no per-frame variant so locals
+ *     always reflect the innermost frame regardless of selection
+ *     (EXECUTION_PLAN.md B.2 Sentinels).
+ *
+ * Linebuf safety (applying B.1 round-1 P1-A lesson):
+ *   char linebuf[512]; int cap = sizeof(linebuf) - 1;
+ *   avail = min(avail, cap) BEFORE any snprintf/memcpy into linebuf.
+ *   This prevents stack smash on terminals wider than 512 columns.
+ * ---------------------------------------------------------------------- */
+
+static void draw_stack_pane(boxen_window_t *win, void *ud) {
+	tui_state_t *s = (tui_state_t *)ud;
 	int w = boxen_window_content_width(win);
 	if (w <= 0) return;
-	/* B.2 will render call stack and locals. B.0 shows a placeholder. */
-	boxen_draw_text(win, 0, 0,
-	                "Call stack / locals (B.2)",
-	                BOXEN_COLOR_DEFAULT, BOXEN_COLOR_DEFAULT, BOXEN_ATTR_DIM);
+
+	if (s == NULL) return;
+
+	/* Show placeholder if no stack is loaded yet */
+	if (s->frame_count <= 0 && s->local_count <= 0) {
+		boxen_draw_text(win, 0, 0,
+		                "Call stack / locals (suspended to load)",
+		                BOXEN_COLOR_DEFAULT, BOXEN_COLOR_DEFAULT, BOXEN_ATTR_DIM);
+		return;
+	}
+
+	char linebuf[512];
+	int  cap   = (int)sizeof(linebuf) - 1;
+	int  avail = w < cap ? w : cap;
+
+	/* Compute the split point: roughly half the content height.
+	 * Stack section rows: 0 .. (split-1)
+	 * Separator row: split
+	 * Locals section rows: (split+1) .. end */
+	int content_rows = s->frame_count + 1 /* separator */ + s->local_count;
+	/* Use at least 4 rows for each section even if the pane is tiny */
+	int stack_rows = (s->frame_count > 0) ? s->frame_count : 0;
+	int sep_row    = stack_rows;
+	int local_start = sep_row + 1;
+
+	boxen_window_set_content_size(win, w, content_rows > 0 ? content_rows : 1);
+
+	/* -- Frame stack section -- */
+	for (int i = 0; i < s->frame_count; i++) {
+		bool is_selected = (i == s->selected_frame);
+		uint16_t attr    = is_selected ? BOXEN_ATTR_REVERSE : BOXEN_ATTR_NONE;
+
+		/* Format: "  L<level>  <script>:<line>" or "  L<level>  <script>" if line==0 */
+		int level = i + 1; /* 1-based level, matching debug/getStack "level" field */
+		int n;
+		if (s->frame_lines[i] > 0) {
+			n = snprintf(linebuf, (size_t)(avail + 1),
+			             "  L%-2d  %s:%ld",
+			             level, s->frame_scripts[i], s->frame_lines[i]);
+		} else {
+			n = snprintf(linebuf, (size_t)(avail + 1),
+			             "  L%-2d  %s",
+			             level, s->frame_scripts[i]);
+		}
+		/* Clamp and NUL-terminate to avail chars (snprintf may have truncated) */
+		if (n < 0) n = 0;
+		if (n > avail) n = avail;
+		/* Pad to avail with spaces so REVERSE attr covers the full row */
+		memset(linebuf + n, ' ', (size_t)(avail - n));
+		linebuf[avail] = '\0';
+
+		boxen_draw_text(win, 0, i, linebuf,
+		                BOXEN_COLOR_DEFAULT, BOXEN_COLOR_DEFAULT, attr);
+	}
+
+	/* -- Separator -- */
+	{
+		const char *sep = "--- Locals ---";
+		int sep_len = (int)strlen(sep);
+		int copy    = sep_len < avail ? sep_len : avail;
+		memcpy(linebuf, sep, (size_t)copy);
+		memset(linebuf + copy, '-', (size_t)(avail - copy));
+		linebuf[avail] = '\0';
+		boxen_draw_text(win, 0, sep_row, linebuf,
+		                BOXEN_COLOR_DEFAULT, BOXEN_COLOR_DEFAULT, BOXEN_ATTR_DIM);
+	}
+
+	/* -- Locals section -- */
+	for (int i = 0; i < s->local_count; i++) {
+		/* Belt-and-suspenders NULL guards (calloc + truncation in tui_store_locals
+		 * already prevent NULL entries, but draw must never crash regardless of
+		 * how the arrays were populated). */
+		const char *name  = (s->local_names  && s->local_names[i])  ? s->local_names[i]  : "";
+		const char *value = (s->local_values && s->local_values[i]) ? s->local_values[i] : "";
+
+		int n = snprintf(linebuf, (size_t)(avail + 1), "%s = %s", name, value);
+		if (n < 0) n = 0;
+		if (n > avail) n = avail;
+		linebuf[n] = '\0';
+
+		boxen_draw_text(win, 0, local_start + i, linebuf,
+		                BOXEN_COLOR_DEFAULT, BOXEN_COLOR_DEFAULT, BOXEN_ATTR_NONE);
+	}
 }
 
 static void draw_footer(boxen_window_t *win, void *ud) {
@@ -393,7 +642,76 @@ static void tui_build_layout(tui_state_t *s, int tw, int th) {
 }
 
 /* -------------------------------------------------------------------------
- * 2026-06-06 JES Phase B.0 #691: input callback (shared by all panes).
+ * 2026-06-07 JES Phase B.2 #691: stack pane frame selection.
+ *
+ * When the stack pane has focus, UP moves the selection toward the outermost
+ * frame (lower index) and DOWN moves toward the innermost (higher index).
+ * Frames are stored outermost-first (matching debug/getStack order), so:
+ *   selected_frame == 0 is the outermost caller
+ *   selected_frame == frame_count-1 is the innermost (currently executing)
+ *
+ * On selection change, update the script pane to show the selected frame's
+ * script and line by calling the same cross-pane helper that B.1 introduced
+ * (EXECUTION_PLAN.md B.2 Sentinels: "implement it by having the stack pane's
+ * input callback call the same load_source function").
+ *
+ * In B.2 we update script_path and current_line directly from the frame data
+ * and invalidate the script pane; the full op_dispatch-based source reload
+ * is wired in B.6 once debug_set_attach_transport is connected.
+ * ---------------------------------------------------------------------- */
+
+static void tui_select_frame(tui_state_t *s, int new_frame) {
+	if (s->frame_count <= 0) return;
+	if (new_frame < 0) new_frame = 0;
+	if (new_frame >= s->frame_count) new_frame = s->frame_count - 1;
+
+	s->selected_frame = new_frame;
+
+	/* Cross-pane side effect: update script pane to show the selected frame's
+	 * script and line (EXECUTION_PLAN.md B.2 Sentinels).
+	 * Locals do NOT change -- debug/getLocals always returns the innermost
+	 * frame's locals; there is no per-frame locals API. */
+	strncpy(s->script_path, s->frame_scripts[new_frame],
+	        sizeof(s->script_path) - 1);
+	s->script_path[sizeof(s->script_path) - 1] = '\0';
+	s->current_line = s->frame_lines[new_frame];
+
+	if (s->script_win != NULL) {
+		if (s->current_line > 0)
+			boxen_window_ensure_visible(s->script_win, 0,
+			                            (int)(s->current_line - 1));
+		boxen_window_invalidate(s->script_win);
+	}
+	if (s->stack_win != NULL)
+		boxen_window_invalidate(s->stack_win);
+}
+
+static void on_stack_input(boxen_window_t *win, const boxen_event_t *ev, void *ud) {
+	(void)win;
+	tui_state_t *s = (tui_state_t *)ud;
+	if (ev->type != BOXEN_EV_KEY) return;
+
+	/* Frame navigation: UP moves toward outermost (lower index);
+	 * DOWN moves toward innermost (higher index). */
+	if (ev->key.key == BOXEN_KEY_UP) {
+		tui_select_frame(s, s->selected_frame - 1);
+		return;
+	}
+	if (ev->key.key == BOXEN_KEY_DOWN) {
+		tui_select_frame(s, s->selected_frame + 1);
+		return;
+	}
+
+	/* Pass quit keys through to the shared handler */
+	if (ev->key.key == BOXEN_KEY_ESCAPE ||
+	    ev->key.key == BOXEN_KEY_CTRL_C ||
+	    ev->key.ch == 'q' || ev->key.ch == 'Q') {
+		s->quit_requested = true;
+	}
+}
+
+/* -------------------------------------------------------------------------
+ * 2026-06-06 JES Phase B.0 #691: input callback (shared by script pane and footer).
  *
  * 'q', Escape, and Ctrl-C set quit_requested. All other events are ignored
  * in B.0; keybinds for debug ops are wired in B.3.
@@ -435,8 +753,9 @@ static void tui_wire_callbacks(tui_state_t *s) {
 		boxen_window_set_user_data(s->script_win, s);
 	}
 	if (s->stack_win != NULL) {
-		boxen_window_set_draw(s->stack_win,  draw_stack);
-		boxen_window_set_input(s->stack_win, on_input);
+		/* 2026-06-07 JES Phase B.2 #691: real stack/locals draw + frame selection input */
+		boxen_window_set_draw(s->stack_win,  draw_stack_pane);
+		boxen_window_set_input(s->stack_win, on_stack_input);
 		boxen_window_set_user_data(s->stack_win, s);
 	}
 	/* footer: draw already set in tui_build_layout; no input needed */
@@ -480,6 +799,8 @@ void debugger_tui_state_teardown(tui_state_t *s) {
 	if (s->transport  != NULL)  { free(s->transport);                 s->transport   = NULL; }
 	/* 2026-06-07 JES Phase B.1 #691: free source lines */
 	tui_free_script_lines(s);
+	/* 2026-06-07 JES Phase B.2 #691: free locals */
+	tui_free_locals(s);
 }
 
 int debugger_tui_run_one_tick(tui_state_t *s, const boxen_event_t *ev) {
