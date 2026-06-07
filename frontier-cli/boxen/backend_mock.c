@@ -247,7 +247,10 @@ static int mock_init(void *config) {
 }
 
 static void mock_shutdown(void) {
-	/* nothing */
+	/* Clear double-click state so a re-init starts fresh. Symmetric with
+	 * the tb2 backend. boxen_mock_reset() is the broader test-reset entry
+	 * point; this handles the narrower init/shutdown lifecycle case. */
+	memset(&g_last_press, 0, sizeof(g_last_press));
 }
 
 static int mock_width(void) {
@@ -293,7 +296,12 @@ static int mock_poll_event(boxen_event_t *out, int timeout_ms) {
 }
 
 static void mock_clear(void) {
-	memset(g_grid, 0, sizeof(g_grid));
+	/* Clear only the active region (g_width x g_height), not the full static
+	 * MOCK_MAX_HEIGHT x MOCK_MAX_WIDTH grid -- consistent with set_cell which
+	 * also bounds at active dimensions. */
+	for (int y = 0; y < g_height; y++) {
+		memset(g_grid[y], 0, (size_t)g_width * sizeof(g_grid[y][0]));
+	}
 }
 
 /* -------------------------------------------------------------------------

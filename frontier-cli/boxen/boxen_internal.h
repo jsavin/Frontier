@@ -29,6 +29,11 @@ void boxen__log(boxen_log_level_t level,
                 const char *file, int line,
                 const char *fmt, ...);
 
+/* Internal last-error setter -- records a human-readable error string in
+ * thread-local storage retrievable by boxen_last_error_str(). Called from
+ * boxen API functions that detect a failure they want to expose to callers. */
+void boxen__set_last_error(const char *msg);
+
 #define BOXEN_LOG_E(fmt, ...) \
 	boxen__log(BOXEN_LOG_ERROR, __FILE__, __LINE__, fmt, ##__VA_ARGS__)
 #define BOXEN_LOG_W(fmt, ...) \

@@ -240,7 +240,14 @@ typedef void (*boxen_log_fn)(
 );
 
 /* Install a log hook. Pass NULL to suppress all output (the default).
- * The hook is called synchronously; do not call boxen APIs from inside it. */
+ * The hook is called synchronously; do not call boxen APIs from inside it.
+ *
+ * Threading: per boxen's overall threading contract, the caller must hold
+ * any external lock (e.g. Frontier's GIL) that serializes concurrent access.
+ * The function pointer is stored with a plain write; concurrent install + log
+ * from a non-GIL thread is a torn-read race. If a future caller needs to log
+ * from a signal handler or non-GIL context, the function pointer storage
+ * must be upgraded to _Atomic with acquire/release semantics. */
 void boxen_set_log_hook(boxen_log_fn fn, void *user_data);
 
 /* -------------------------------------------------------------------------

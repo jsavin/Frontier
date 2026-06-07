@@ -168,6 +168,19 @@ static uintattr_t translate_attr(uint16_t boxen_attr) {
 }
 
 /* -------------------------------------------------------------------------
+ * Color translation: BOXEN_COLOR_* -> termbox2 uintattr_t color value
+ *
+ * Today BOXEN_COLOR_DEFAULT (0) and BOXEN_COLOR_BLACK..WHITE (1..8) happen to
+ * have the same numeric values as TB_DEFAULT and TB_BLACK..TB_WHITE. This
+ * function exists to make that coincidence explicit and local: if termbox2
+ * ever renumbers its color constants, only this function needs to change.
+ * ---------------------------------------------------------------------- */
+
+static uintattr_t translate_color(boxen_color_t c) {
+	return (uintattr_t)c;
+}
+
+/* -------------------------------------------------------------------------
  * Modifier translation: TB_MOD_* -> BOXEN_MOD_*
  * ---------------------------------------------------------------------- */
 
@@ -240,7 +253,19 @@ static int tb2_init(void *config) {
 	return (r == TB_OK) ? BOXEN_OK : BOXEN_ERR_INIT;
 }
 
+/* Last cursor position passed to tb_set_cursor(). Used by
+ * tb2_set_cursor_visible(true) to restore visibility after a hide_cursor() --
+ * termbox2 has no symmetric show_cursor() API; the only way to bring it back
+ * is to re-issue tb_set_cursor() with valid coordinates. */
+static int g_tb2_cursor_x = 0;
+static int g_tb2_cursor_y = 0;
+
 static void tb2_shutdown(void) {
+	/* Symmetric with init: clear double-click state so a re-init starts fresh
+	 * even if init's memset is ever removed or the cycle is reused. */
+	memset(&g_tb2_last_press, 0, sizeof(g_tb2_last_press));
+	g_tb2_cursor_x = 0;
+	g_tb2_cursor_y = 0;
 	tb_shutdown();
 }
 
@@ -261,18 +286,24 @@ static int tb2_color_depth(void) {
 
 static void tb2_set_cell(int x, int y, uint32_t ch,
                          uint16_t fg, uint16_t bg, uint16_t attr) {
-	uintattr_t ta = translate_attr(attr);
-	tb_set_cell(x, y, ch, (uintattr_t)fg | ta, (uintattr_t)bg);
+	uintattr_t ta  = translate_attr(attr);
+	uintattr_t tfg = translate_color(fg);
+	uintattr_t tbg = translate_color(bg);
+	tb_set_cell(x, y, ch, tfg | ta, tbg);
 }
 
 static void tb2_set_cursor(int x, int y) {
+	g_tb2_cursor_x = x;
+	g_tb2_cursor_y = y;
 	tb_set_cursor(x, y);
 }
 
 static void tb2_set_cursor_visible(bool visible) {
 	if (visible) {
-		/* Position is managed by the caller; just ensure it's not hidden.
-		 * tb_set_cursor() with valid coords makes it visible. */
+		/* Restore visibility by re-issuing the last known position.
+		 * termbox2 has no dedicated tb_show_cursor(); tb_set_cursor() with
+		 * valid coords is the canonical re-show idiom. */
+		tb_set_cursor(g_tb2_cursor_x, g_tb2_cursor_y);
 	} else {
 		tb_hide_cursor();
 	}
