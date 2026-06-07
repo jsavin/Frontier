@@ -1012,6 +1012,266 @@ static void test_frame_select_clears_source_when_script_differs(void) {
 	teardown();
 }
 
+/* =========================================================================
+ * Phase B.3 tests -- keybinds and step/continue.
+ *
+ * 2026-06-07 JES Phase B.3 #691
+ *
+ * Five behavioral tests per EXECUTION_PLAN.md B.3 "Tests" section:
+ *   test_f5_dispatches_continue         -- F5 sends debug/continue JSON
+ *   test_f10_dispatches_step_over       -- F10 sends debug/step direction:over
+ *   test_shift_f11_dispatches_step_out  -- Shift-F11 sends debug/step direction:out
+ *   test_footer_shows_running_after_continue -- debug_state RUNNING -> footer "running"
+ *   test_panes_refresh_on_suspended     -- write_line suspended -> state updated
+ *                                         (already covered by B.2, explicit guard here)
+ *
+ * Additional robustness tests (applying B.1/B.2 round-1 lessons):
+ *   test_f11_dispatches_step_into       -- F11 (no shift) sends direction:into
+ *   test_keybind_ignored_when_running   -- F5 while RUNNING is a no-op
+ *   test_debug_state_set_running_on_continue -- debug_state becomes RUNNING after F5
+ *   test_suspended_resets_debug_state   -- write_line suspended -> debug_state SUSPENDED
+ *   test_footer_shows_hints_when_suspended  -- debug_state SUSPENDED shows F5/F10/F11
+ *
+ * Dispatch capture mechanism:
+ *   tui_state_t has dispatch_capture_buf / dispatch_capture_len fields.
+ *   When dispatch_capture_buf != NULL, tui_do_* functions write the JSON
+ *   string there instead of calling op_dispatch (which is not linked in tests).
+ *   Tests set dispatch_capture_buf to a fixed-size buffer; the field is NULL
+ *   in production builds.
+ * ========================================================================= */
+
+/* Helper: reset the dispatch capture buffer */
+static char g_dispatch_buf[512];
+static void reset_dispatch_capture(void) {
+	memset(g_dispatch_buf, 0, sizeof(g_dispatch_buf));
+	g_state.dispatch_capture_buf = g_dispatch_buf;
+	g_state.dispatch_capture_cap = (int)sizeof(g_dispatch_buf);
+}
+
+/* Helper: inject an F-key event at the given key code with optional modifier */
+static boxen_event_t make_fkey_event(uint32_t key, uint16_t mod) {
+	boxen_event_t ev;
+	memset(&ev, 0, sizeof(ev));
+	ev.type    = BOXEN_EV_KEY;
+	ev.key.key = key;
+	ev.key.ch  = 0;
+	ev.key.mod = mod;
+	return ev;
+}
+
+/* -------------------------------------------------------------------------
+ * test_f5_dispatches_continue
+ *
+ * Spec: Set up suspended state; inject F5.
+ * Verify dispatched JSON contains "op":"debug/continue".
+ * ---------------------------------------------------------------------- */
+static void test_f5_dispatches_continue(void) {
+	setup();
+	g_state.debug_state      = TUI_DEBUG_SUSPENDED;
+	g_state.pending_thread_id = 1;
+	reset_dispatch_capture();
+
+	boxen_event_t ev = make_fkey_event(BOXEN_KEY_F5, BOXEN_MOD_NONE);
+	int rc = debugger_tui_run_one_tick(&g_state, &ev);
+
+	assert(rc == TUI_CONTINUE);
+	/* Captured JSON must contain the continue op */
+	assert(strstr(g_dispatch_buf, "debug/continue") != NULL);
+
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * test_f10_dispatches_step_over
+ *
+ * Spec: Inject F10; verify dispatched JSON has "direction":"over".
+ * ---------------------------------------------------------------------- */
+static void test_f10_dispatches_step_over(void) {
+	setup();
+	g_state.debug_state      = TUI_DEBUG_SUSPENDED;
+	g_state.pending_thread_id = 1;
+	reset_dispatch_capture();
+
+	boxen_event_t ev = make_fkey_event(BOXEN_KEY_F10, BOXEN_MOD_NONE);
+	debugger_tui_run_one_tick(&g_state, &ev);
+
+	assert(strstr(g_dispatch_buf, "debug/step") != NULL);
+	assert(strstr(g_dispatch_buf, "\"direction\":\"over\"") != NULL);
+
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * test_f11_dispatches_step_into
+ *
+ * Spec: Inject F11 (no shift); verify dispatched JSON has "direction":"into".
+ * ---------------------------------------------------------------------- */
+static void test_f11_dispatches_step_into(void) {
+	setup();
+	g_state.debug_state      = TUI_DEBUG_SUSPENDED;
+	g_state.pending_thread_id = 1;
+	reset_dispatch_capture();
+
+	boxen_event_t ev = make_fkey_event(BOXEN_KEY_F11, BOXEN_MOD_NONE);
+	debugger_tui_run_one_tick(&g_state, &ev);
+
+	assert(strstr(g_dispatch_buf, "debug/step") != NULL);
+	assert(strstr(g_dispatch_buf, "\"direction\":\"into\"") != NULL);
+
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * test_shift_f11_dispatches_step_out
+ *
+ * Spec: Inject F11 with BOXEN_MOD_SHIFT; verify dispatched JSON has
+ * "direction":"out".
+ * ---------------------------------------------------------------------- */
+static void test_shift_f11_dispatches_step_out(void) {
+	setup();
+	g_state.debug_state      = TUI_DEBUG_SUSPENDED;
+	g_state.pending_thread_id = 1;
+	reset_dispatch_capture();
+
+	boxen_event_t ev = make_fkey_event(BOXEN_KEY_F11, BOXEN_MOD_SHIFT);
+	debugger_tui_run_one_tick(&g_state, &ev);
+
+	assert(strstr(g_dispatch_buf, "debug/step") != NULL);
+	assert(strstr(g_dispatch_buf, "\"direction\":\"out\"") != NULL);
+
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * test_debug_state_set_running_on_continue
+ *
+ * After F5, debug_state must be TUI_DEBUG_RUNNING (the thread has resumed).
+ * ---------------------------------------------------------------------- */
+static void test_debug_state_set_running_on_continue(void) {
+	setup();
+	g_state.debug_state      = TUI_DEBUG_SUSPENDED;
+	g_state.pending_thread_id = 1;
+	reset_dispatch_capture();
+
+	boxen_event_t ev = make_fkey_event(BOXEN_KEY_F5, BOXEN_MOD_NONE);
+	debugger_tui_run_one_tick(&g_state, &ev);
+
+	assert(g_state.debug_state == TUI_DEBUG_RUNNING);
+
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * test_keybind_ignored_when_running
+ *
+ * F5 pressed while debug_state == TUI_DEBUG_RUNNING must be a no-op.
+ * dispatch_capture_buf must remain empty (no request dispatched).
+ * ---------------------------------------------------------------------- */
+static void test_keybind_ignored_when_running(void) {
+	setup();
+	g_state.debug_state      = TUI_DEBUG_RUNNING;
+	g_state.pending_thread_id = 1;
+	reset_dispatch_capture();
+
+	boxen_event_t ev = make_fkey_event(BOXEN_KEY_F5, BOXEN_MOD_NONE);
+	debugger_tui_run_one_tick(&g_state, &ev);
+
+	/* No dispatch must have occurred */
+	assert(g_dispatch_buf[0] == '\0');
+
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * test_footer_shows_running_after_continue
+ *
+ * Spec: Set state.debug_state = TUI_DEBUG_RUNNING; trigger draw.
+ * Verify footer content contains "running".
+ * ---------------------------------------------------------------------- */
+static void test_footer_shows_running_after_continue(void) {
+	setup();
+	g_state.debug_state = TUI_DEBUG_RUNNING;
+
+	boxen_window_invalidate(g_state.footer_win);
+	boxen_present();
+
+	assert(boxen_mock_has_text("running"));
+
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * test_footer_shows_hints_when_suspended
+ *
+ * When debug_state == TUI_DEBUG_SUSPENDED, footer must show the full keybind
+ * hint line: "F5:continue" and "F10:step-over".
+ * ---------------------------------------------------------------------- */
+static void test_footer_shows_hints_when_suspended(void) {
+	setup();
+	g_state.debug_state = TUI_DEBUG_SUSPENDED;
+
+	boxen_window_invalidate(g_state.footer_win);
+	boxen_present();
+
+	assert(boxen_mock_has_text("F5:continue"));
+	assert(boxen_mock_has_text("F10:step-over"));
+
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * test_suspended_resets_debug_state
+ *
+ * A debug/suspended notification delivered via write_line must set
+ * debug_state to TUI_DEBUG_SUSPENDED (transitioning from RUNNING).
+ * This is the path taken when a step completes or a breakpoint fires.
+ * ---------------------------------------------------------------------- */
+static void test_suspended_resets_debug_state(void) {
+	setup();
+	g_state.debug_state = TUI_DEBUG_RUNNING;
+
+	const char *suspended =
+		"{\"id\":null,\"op\":\"debug/suspended\","
+		"\"params\":{\"threadId\":7,\"line\":3,\"script\":\"foo.script\"}}";
+	assert(g_state.transport != NULL);
+	g_state.transport->write_line(g_state.transport->ctx,
+	                              suspended, strlen(suspended));
+
+	assert(g_state.debug_state == TUI_DEBUG_SUSPENDED);
+	assert(g_state.pending_thread_id == 7);
+
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * test_panes_refresh_on_suspended
+ *
+ * Spec: Inject a synthetic debug/suspended notification via write_line.
+ * Verify the script pane's script_path and current_line are updated.
+ * (This is already partially covered by B.2 test_suspended_fires_getstack_getlocals
+ * but this test makes the B.3-specific contract explicit: the suspended path
+ * also sets debug_state = TUI_DEBUG_SUSPENDED.)
+ * ---------------------------------------------------------------------- */
+static void test_panes_refresh_on_suspended(void) {
+	setup();
+	g_state.debug_state = TUI_DEBUG_IDLE;
+
+	const char *suspended =
+		"{\"id\":null,\"op\":\"debug/suspended\","
+		"\"params\":{\"threadId\":5,\"line\":10,\"script\":\"bar.script\"}}";
+	assert(g_state.transport != NULL);
+	g_state.transport->write_line(g_state.transport->ctx,
+	                              suspended, strlen(suspended));
+
+	/* Script pane state must be updated */
+	assert(g_state.current_line == 10);
+	assert(strcmp(g_state.script_path, "bar.script") == 0);
+	/* debug_state must be set to SUSPENDED */
+	assert(g_state.debug_state == TUI_DEBUG_SUSPENDED);
+
+	teardown();
+}
+
 /* -------------------------------------------------------------------------
  * main
  * ---------------------------------------------------------------------- */
@@ -1050,6 +1310,18 @@ int main(void) {
 	TR_RUN(test_store_locals_clears_on_empty_array);
 	TR_RUN(test_store_locals_caps_long_value);
 	TR_RUN(test_frame_select_clears_source_when_script_differs);
+
+	/* B.3 tests */
+	TR_RUN(test_f5_dispatches_continue);
+	TR_RUN(test_f10_dispatches_step_over);
+	TR_RUN(test_f11_dispatches_step_into);
+	TR_RUN(test_shift_f11_dispatches_step_out);
+	TR_RUN(test_debug_state_set_running_on_continue);
+	TR_RUN(test_keybind_ignored_when_running);
+	TR_RUN(test_footer_shows_running_after_continue);
+	TR_RUN(test_footer_shows_hints_when_suspended);
+	TR_RUN(test_suspended_resets_debug_state);
+	TR_RUN(test_panes_refresh_on_suspended);
 
 	TR_SUMMARY();
 	return TR_EXIT_CODE();

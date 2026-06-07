@@ -8,6 +8,7 @@
  * one event at a time without calling the blocking debugger_tui_main() loop.
  *
  * 2026-06-06 JES Phase B.0 #691
+ * 2026-06-07 JES Phase B.3 #691: tui_debug_state_t, dispatch capture, keybind fields
  */
 
 #ifndef DEBUGGER_TUI_INTERNAL_H
@@ -27,12 +28,37 @@
 #define TUI_QUIT      1   /* user requested exit ('q', Escape, Ctrl-C) */
 
 /*
+ * 2026-06-07 JES Phase B.3 #691: debug session state machine.
+ *
+ * TUI_DEBUG_IDLE      -- no debug thread attached; no step/continue keybinds active.
+ * TUI_DEBUG_SUSPENDED -- a thread is suspended; step/continue keybinds are active.
+ * TUI_DEBUG_RUNNING   -- thread is executing (after continue/step, before next
+ *                        suspension); step/continue keybinds are disabled to prevent
+ *                        double-dispatch while the thread holds the GIL.
+ *
+ * State transitions:
+ *   IDLE       -> SUSPENDED: debug/suspended notification arrives via write_line
+ *   SUSPENDED  -> RUNNING:   F5/F10/F11/Shift-F11 dispatches a debug op
+ *   RUNNING    -> SUSPENDED: next debug/suspended notification arrives
+ *   any        -> IDLE:      (future: debug session ends / thread killed)
+ *
+ * SENTINEL (EXECUTION_PLAN.md B.3): NEVER call debug/getStack or debug/getSource
+ * while debug_state == TUI_DEBUG_RUNNING (thread holds GIL; ODB ops would deadlock).
+ */
+typedef enum {
+	TUI_DEBUG_IDLE      = 0,
+	TUI_DEBUG_SUSPENDED = 1,
+	TUI_DEBUG_RUNNING   = 2
+} tui_debug_state_t;
+
+/*
  * TUI state -- the data shared between the event loop and draw callbacks.
  *
  * B.0: placeholder layout only.
  * B.1: script source fields added (script_path, script_lines, script_line_count,
  *      current_line, bp_lines, bp_line_count, pending_thread_id).
  * B.2: stack/locals fields added.
+ * B.3: debug_state, dispatch_capture_buf/cap for keybind tests.
  */
 
 /* Maximum number of breakpoints tracked in TUI state. */
@@ -85,6 +111,25 @@ typedef struct {
 	char **local_names;   /* heap array of strdup'd local variable name strings */
 	char **local_values;  /* heap array of strdup'd local variable value strings */
 	int    local_count;   /* number of valid entries in local_names / local_values */
+
+	/* 2026-06-07 JES Phase B.3 #691: debug session state machine */
+	tui_debug_state_t debug_state;   /* IDLE / SUSPENDED / RUNNING */
+
+	/* 2026-06-07 JES Phase B.3 #691: dispatch capture for unit tests.
+	 *
+	 * In production this field is always NULL and dispatch functions call
+	 * op_dispatch() directly.  In unit tests (test build omits op_dispatch),
+	 * tests set dispatch_capture_buf to a stack buffer and dispatch_capture_cap
+	 * to its size; the tui_do_* functions then snprintf the JSON request into
+	 * that buffer instead of calling op_dispatch().  This lets tests inspect
+	 * what would have been sent to the runtime without linking the full Frontier
+	 * runtime.
+	 *
+	 * Thread safety: dispatch capture is only used from the event loop (single-
+	 * threaded with GIL held); no synchronization is needed.
+	 */
+	char *dispatch_capture_buf;  /* NULL in production; test buffer pointer in tests */
+	int   dispatch_capture_cap;  /* capacity of dispatch_capture_buf (0 if NULL) */
 } tui_state_t;
 
 /*
