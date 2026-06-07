@@ -10,6 +10,7 @@
  * 2026-06-06 JES Phase B.0 #691
  * 2026-06-07 JES Phase B.3 #691: tui_debug_state_t, dispatch capture, keybind fields
  * 2026-06-07 JES Phase B.4 #691: breakpoint UI, condition modal, dispatch log
+ * 2026-06-07 JES Phase B.4 #743 round 1: condition preservation, JSON escape, F9 gate
  */
 
 #ifndef DEBUGGER_TUI_INTERNAL_H
@@ -76,6 +77,12 @@ typedef enum {
  * surviving line) set dispatch_log to a stack array of this many slots. */
 #define TUI_DISPATCH_LOG_COUNT 32
 
+/* 2026-06-07 JES Phase B.4 #743 round 1: dispatch log slot size.
+ * Worst-case JSON-escaped script_path (256 bytes, all control chars) expands
+ * to 256*6+1 = 1537 bytes.  Slots must hold the full escaped JSON request so
+ * regression tests can inspect the complete setBreakpoint payload. */
+#define TUI_DISPATCH_LOG_SLOT  1537
+
 /* 2026-06-07 JES Phase B.1 #737 round 1 P1-B: cap source lines to prevent
  * a DoS via a malicious/oversized debug/getSource response.  ODB scripts are
  * typically <1000 lines; 10000 is generous and avoids the 80MB+ allocation
@@ -111,7 +118,12 @@ typedef struct {
 	long   current_line;            /* 1-based; -1 if not suspended */
 	long   pending_thread_id;       /* thread ID from last debug/suspended, or -1 */
 	unsigned long bp_lines[TUI_MAX_BREAKPOINTS]; /* 1-based line numbers with breakpoints */
-	int           bp_line_count;    /* number of valid entries in bp_lines */
+	/* 2026-06-07 JES Phase B.4 #743 round 1: parallel conditions array.
+	 * bp_conditions[i] is the condition string for bp_lines[i], or NULL for
+	 * unconditional.  Heap-allocated (strdup); freed in state_teardown.
+	 * Must stay in sync with bp_lines / bp_line_count at all times. */
+	char         *bp_conditions[TUI_MAX_BREAKPOINTS]; /* NULL = unconditional */
+	int           bp_line_count;    /* number of valid entries in bp_lines/bp_conditions */
 
 	/* 2026-06-07 JES Phase B.2 #691: call stack state */
 	int   frame_count;                           /* number of valid frames */
@@ -158,7 +170,7 @@ typedef struct {
 	 * is non-NULL, the existing single-slot capture still runs; the log records
 	 * all calls in addition.  Tests can use either or both.
 	 */
-	char (*dispatch_log)[256]; /* NULL in production; test array in tests */
+	char (*dispatch_log)[TUI_DISPATCH_LOG_SLOT]; /* NULL in production; test array in tests */
 	int   dispatch_log_cap;    /* number of slots in dispatch_log (0 if NULL) */
 	int   dispatch_log_count;  /* number of calls logged so far */
 

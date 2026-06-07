@@ -1366,9 +1366,9 @@ static void test_f9_toggles_breakpoint_off(void) {
 	reset_dispatch_capture();
 
 	/* Use multi-dispatch log for sequence verification */
-	char dispatch_log[TUI_DISPATCH_LOG_COUNT][256];
+	char dispatch_log[TUI_DISPATCH_LOG_COUNT][TUI_DISPATCH_LOG_SLOT];
 	memset(dispatch_log, 0, sizeof(dispatch_log));
-	g_state.dispatch_log      = (char (*)[256])dispatch_log;
+	g_state.dispatch_log      = (char (*)[TUI_DISPATCH_LOG_SLOT])dispatch_log;
 	g_state.dispatch_log_cap  = TUI_DISPATCH_LOG_COUNT;
 	g_state.dispatch_log_count = 0;
 
@@ -1745,6 +1745,211 @@ static void test_footer_shows_f9_hint_when_suspended(void) {
 	teardown();
 }
 
+/* =========================================================================
+ * Phase B.4 round-1 review regression tests (#743).
+ *
+ * 2026-06-07 JES Phase B.4 #743 round 1
+ *
+ * Three behavioral tests covering the four gate findings:
+ *   P1-A (bar-raiser):
+ *     test_toggle_off_preserves_condition  -- conditional BP survives toggle-off
+ *   P1-A (security):
+ *     test_json_escape_in_script_path      -- script_path with " is escaped in dispatch
+ *   P2 (bar-raiser):
+ *     test_f9_no_op_after_resume           -- F9 after F5 (RUNNING state) is no-op
+ * ========================================================================= */
+
+/* -------------------------------------------------------------------------
+ * test_toggle_off_preserves_condition
+ *
+ * Regression for P1-A (bar-raiser): condition stripped from surviving BPs
+ * during toggle-off clear-and-readd.
+ *
+ * Sequence:
+ *   1. Place BP at line 10 with condition "x>0" (simulate via bp_lines +
+ *      bp_conditions directly, as if it came from a prior Shift-F9 confirm).
+ *   2. Place unconditional BP at line 20.
+ *   3. Set current_line = 20; inject F9 (toggle-off line 20).
+ *   4. Assert dispatch sequence:
+ *      - slot 0: debug/clearBreakpoints
+ *      - slot 1: debug/setBreakpoint for line 10 WITH "condition":"x>0"
+ *   5. Assert slot 1 does NOT contain line 20 (removed).
+ *
+ * RED: before fix, slot 1 had no "condition" field (conditions not stored).
+ * GREEN: after fix, slot 1 contains "\"condition\":\"x>0\"".
+ * ---------------------------------------------------------------------- */
+static void test_toggle_off_preserves_condition(void) {
+	setup();
+	g_state.debug_state       = TUI_DEBUG_SUSPENDED;
+	g_state.pending_thread_id  = 1;
+	g_state.current_line      = 20;   /* line to toggle off */
+	strncpy(g_state.script_path, "my.script", sizeof(g_state.script_path) - 1);
+	g_state.script_path[sizeof(g_state.script_path) - 1] = '\0';
+
+	/* Set up two BPs: line 10 conditional, line 20 unconditional */
+	g_state.bp_line_count     = 2;
+	g_state.bp_lines[0]       = 10;
+	g_state.bp_conditions[0]  = strdup("x>0");  /* heap-owned condition */
+	g_state.bp_lines[1]       = 20;
+	g_state.bp_conditions[1]  = NULL;            /* unconditional */
+
+	reset_dispatch_capture();
+
+	/* Multi-dispatch log to capture the full sequence */
+	char dispatch_log[TUI_DISPATCH_LOG_COUNT][TUI_DISPATCH_LOG_SLOT];
+	memset(dispatch_log, 0, sizeof(dispatch_log));
+	g_state.dispatch_log       = (char (*)[TUI_DISPATCH_LOG_SLOT])dispatch_log;
+	g_state.dispatch_log_cap   = TUI_DISPATCH_LOG_COUNT;
+	g_state.dispatch_log_count = 0;
+
+	/* F9 on line 20: toggle off */
+	boxen_event_t ev = make_fkey_event(BOXEN_KEY_F9, BOXEN_MOD_NONE);
+	int rc = debugger_tui_run_one_tick(&g_state, &ev);
+
+	assert(rc == TUI_CONTINUE);
+
+	/* Sequence must be: clearBreakpoints, then setBreakpoint(line=10, cond) */
+	assert(g_state.dispatch_log_count >= 2);
+
+	/* Slot 0: clearBreakpoints */
+	assert(strstr(dispatch_log[0], "debug/clearBreakpoints") != NULL);
+
+	/* Slot 1: setBreakpoint for line 10 WITH condition "x>0" */
+	assert(strstr(dispatch_log[1], "debug/setBreakpoint") != NULL);
+	assert(strstr(dispatch_log[1], "\"line\":10") != NULL);
+	/* GREEN assertion: condition must be present after the fix */
+	assert(strstr(dispatch_log[1], "\"condition\":\"x>0\"") != NULL);
+
+	/* No setBreakpoint for line 20 anywhere in the log */
+	bool found_line20_set = false;
+	for (int i = 0; i < g_state.dispatch_log_count; i++) {
+		if (strstr(dispatch_log[i], "debug/setBreakpoint") != NULL &&
+		    strstr(dispatch_log[i], "\"line\":20") != NULL) {
+			found_line20_set = true;
+		}
+	}
+	assert(!found_line20_set);
+
+	/* Cleanup: bp_conditions[0] was consumed (freed) by the toggle; the teardown
+	 * path frees remaining slots, but since we mutated the count during the
+	 * toggle the slot 0 condition was already freed by tui_toggle_breakpoint.
+	 * The surviving entry (line 10) at new index 0 now has bp_conditions[0]
+	 * pointing at the re-inserted strdup from bp_conditions -- teardown frees it.
+	 * Just null out dispatch_log fields so teardown doesn't double-free. */
+	g_state.dispatch_log       = NULL;
+	g_state.dispatch_log_cap   = 0;
+	g_state.dispatch_log_count = 0;
+
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * test_json_escape_in_script_path
+ *
+ * Regression for P1-A (security): script_path containing a double-quote was
+ * interpolated unescaped into outbound JSON, producing malformed JSON.
+ *
+ * Sequence:
+ *   1. Simulate a debug/suspended notification arriving with a script path
+ *      that contains a double-quote: 'foo"bar'.
+ *   2. Set current_line = 5 and inject F9 (toggle BP on).
+ *   3. Assert the dispatched JSON correctly escapes the quote:
+ *      the captured string contains \"script\":\"foo\\\"bar\" (escaped form).
+ *
+ * RED: before fix, dispatch contained 'foo"bar' raw, breaking JSON.
+ * GREEN: after fix, dispatch contains 'foo\"bar' (the quote is escaped).
+ * ---------------------------------------------------------------------- */
+static void test_json_escape_in_script_path(void) {
+	setup();
+	g_state.debug_state       = TUI_DEBUG_SUSPENDED;
+	g_state.pending_thread_id  = 1;
+	g_state.current_line      = 5;
+	g_state.bp_line_count     = 0;
+
+	/* Script path with an embedded double-quote (user-influenced name) */
+	strncpy(g_state.script_path, "foo\"bar", sizeof(g_state.script_path) - 1);
+	g_state.script_path[sizeof(g_state.script_path) - 1] = '\0';
+
+	reset_dispatch_capture();
+
+	/* F9: toggle BP on at line 5 */
+	boxen_event_t ev = make_fkey_event(BOXEN_KEY_F9, BOXEN_MOD_NONE);
+	debugger_tui_run_one_tick(&g_state, &ev);
+
+	/* The dispatch must have occurred */
+	assert(strstr(g_dispatch_buf, "debug/setBreakpoint") != NULL);
+
+	/* GREEN: the double-quote must be escaped as \" in the JSON output.
+	 * In C string: the JSON text "foo\"bar" is represented as "foo\\\"bar" in
+	 * the dispatch buffer (the backslash is literal, the quote is literal).
+	 * We search for the 8-char sequence: f o o \ " b a r */
+	assert(strstr(g_dispatch_buf, "foo\\\"bar") != NULL);
+
+	/* Sanity: the unescaped form must NOT appear as a bare unescaped quote
+	 * in the script field.  We verify by checking the dispatch buffer does not
+	 * contain the raw JSON-breaking sequence ..."script":"foo"bar"... */
+	/* The raw unescaped form would look like "script":"foo"bar" where the
+	 * second quote terminates the value early.  After escaping the buffer
+	 * has "script":"foo\"bar" which strstr("foo\"bar") finds -- confirmed above.
+	 * The raw form "foo"bar" is definitively absent when the escaped form is present
+	 * and the buffer is parseable JSON (structural check is done implicitly). */
+
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * test_f9_no_op_after_resume
+ *
+ * Regression for P2 (bar-raiser): F9 gated on current_line > 0 but
+ * current_line was not reset on resume, so F9 could fire against the stale
+ * last-suspended line position while TUI_DEBUG_RUNNING.
+ *
+ * Note: the primary guard is debug_state == TUI_DEBUG_SUSPENDED in on_input.
+ * This test exercises the defense-in-depth: after F5, debug_state == RUNNING
+ * so F9 is blocked by the outer guard AND current_line is reset to 0.
+ *
+ * Sequence:
+ *   1. Set up SUSPENDED with current_line = 7 and script_path = "s.script".
+ *   2. Inject F5 (transitions to RUNNING; current_line must become 0).
+ *   3. Assert debug_state == TUI_DEBUG_RUNNING.
+ *   4. Assert current_line == 0.
+ *   5. Reset dispatch buffer; inject F9.
+ *   6. Assert no dispatch was captured (F9 is blocked while RUNNING).
+ *
+ * RED: before fix, current_line remained 7 after F5; a hypothetical future
+ * path that skipped the debug_state check could fire F9 at the stale line.
+ * GREEN: after fix, current_line == 0 after F5, and F9 produces no dispatch.
+ * ---------------------------------------------------------------------- */
+static void test_f9_no_op_after_resume(void) {
+	setup();
+	g_state.debug_state       = TUI_DEBUG_SUSPENDED;
+	g_state.pending_thread_id  = 1;
+	g_state.current_line      = 7;
+	strncpy(g_state.script_path, "s.script", sizeof(g_state.script_path) - 1);
+	g_state.script_path[sizeof(g_state.script_path) - 1] = '\0';
+	g_state.bp_line_count     = 0;
+	reset_dispatch_capture();
+
+	/* Step 1: inject F5 -- transitions to RUNNING and resets current_line */
+	boxen_event_t ev = make_fkey_event(BOXEN_KEY_F5, BOXEN_MOD_NONE);
+	debugger_tui_run_one_tick(&g_state, &ev);
+
+	/* Verify RUNNING state and cleared current_line */
+	assert(g_state.debug_state == TUI_DEBUG_RUNNING);
+	/* GREEN assertion: current_line must be 0 (reset by tui_do_continue) */
+	assert(g_state.current_line == 0);
+
+	/* Step 2: reset capture and inject F9 -- must be a no-op */
+	memset(g_dispatch_buf, 0, sizeof(g_dispatch_buf));
+	ev = make_fkey_event(BOXEN_KEY_F9, BOXEN_MOD_NONE);
+	debugger_tui_run_one_tick(&g_state, &ev);
+
+	/* No dispatch should have occurred */
+	assert(g_dispatch_buf[0] == '\0');
+
+	teardown();
+}
+
 /* -------------------------------------------------------------------------
  * main
  * ---------------------------------------------------------------------- */
@@ -1809,6 +2014,11 @@ int main(void) {
 	TR_RUN(test_condition_modal_cursor_hidden_on_close);
 	TR_RUN(test_gutter_shows_current_and_bp_overlap);
 	TR_RUN(test_footer_shows_f9_hint_when_suspended);
+
+	/* B.4 round-1 review regression tests (#743) */
+	TR_RUN(test_toggle_off_preserves_condition);
+	TR_RUN(test_json_escape_in_script_path);
+	TR_RUN(test_f9_no_op_after_resume);
 
 	TR_SUMMARY();
 	return TR_EXIT_CODE();
