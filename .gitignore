@@ -49,6 +49,7 @@ a.out
 frontier-cli/frontier-cli
 frontier-cli/frontier-cli.dSYM/
 frontier-cli/tb2-smoke
+frontier-cli/split_demo
 frontier-cli/obj/
 tests/cli_runtime_tests
 
