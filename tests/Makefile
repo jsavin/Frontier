@@ -223,7 +223,7 @@ USERTALK_OBJECT_TESTS = \
 	test_usertalk_runner
 
 # Buildable test executables on this branch
-RUN_BUILDABLE = core_tests db_format_tests runtime_tests parser_tests save_migration_tests test_efp_augmentation file_portable_tests file_readline_tests file_verb_tests handle_tests cli_runtime_tests paige_text_tests oppack_tests hashpack_modern_tests hash_corruption_tests langvalue_64_tests table_operations_integration refcon_tests refcon_phase2_tests op_context_tests table_context_tests time_portability_test test_sys_shell_command_verbs headless_selection_tests opattributes_stub_tests headless_thread_registry_tests test_callback_infrastructure tcp_phase1a_unit_tests menu_v7_refcon_tests menudata_headless_tests menu_list_describe_tests meuserselected_headless_tests test_stringerrorlist pane_compositor_tests mouse_parser_tests terminal_control_tests terminal_control_dsr_tests palette_state_tests palette_render_snapshot_tests palette_arg_inject_tests palette_arg_inject_concurrency_tests repl_palette_source_tests repl_verbs_tests repl_slash_resolver_tests scrollback_pane_tests lang_causedby_snapshot_tests test_getsystemtablescript test_window_bridge copyctopstring_tests ut_sync_canonicalize_tests ut_sync_pathmap_tests ut_sync_pctcodec_tests ut_sync_export_tests ut_sync_decanonicalize_tests ut_sync_import_tests boxen_backend_tests boxen_core_tests boxen_input_tests boxen_resize_tests boxen_scroll_tests boxen_chrome_tests
+RUN_BUILDABLE = core_tests db_format_tests runtime_tests parser_tests save_migration_tests test_efp_augmentation file_portable_tests file_readline_tests file_verb_tests handle_tests cli_runtime_tests paige_text_tests oppack_tests hashpack_modern_tests hash_corruption_tests langvalue_64_tests table_operations_integration refcon_tests refcon_phase2_tests op_context_tests table_context_tests time_portability_test test_sys_shell_command_verbs headless_selection_tests opattributes_stub_tests headless_thread_registry_tests test_callback_infrastructure tcp_phase1a_unit_tests menu_v7_refcon_tests menudata_headless_tests menu_list_describe_tests meuserselected_headless_tests test_stringerrorlist pane_compositor_tests mouse_parser_tests terminal_control_tests terminal_control_dsr_tests palette_state_tests palette_render_snapshot_tests palette_arg_inject_tests palette_arg_inject_concurrency_tests repl_palette_source_tests repl_verbs_tests repl_slash_resolver_tests scrollback_pane_tests lang_causedby_snapshot_tests test_getsystemtablescript test_window_bridge copyctopstring_tests ut_sync_canonicalize_tests ut_sync_pathmap_tests ut_sync_pctcodec_tests ut_sync_export_tests ut_sync_decanonicalize_tests ut_sync_import_tests boxen_backend_tests boxen_core_tests boxen_input_tests boxen_resize_tests boxen_scroll_tests boxen_chrome_tests debugger_tui_tests
 # Note: table_verb_tests skipped - pre-existing macOS path detection issue
 # Note: test_error_messages skipped - needs full runtime linking (tracked in separate task)
 # Note: test_table_sorting skipped - script execution errors cause segfault (Issue #449)
@@ -546,6 +546,34 @@ boxen_scroll_tests: boxen_scroll_tests.c $(BOXEN_CORE_TEST_SRCS)
 # Same link set as A.5 (boxen.c is the unit under test).
 boxen_chrome_tests: boxen_chrome_tests.c $(BOXEN_CORE_TEST_SRCS)
 	$(CC) $(CFLAGS) -I$(BOXEN_DIR) boxen_chrome_tests.c $(BOXEN_CORE_TEST_SRCS) -o $@ $(LINK_LIBS)
+
+# boxen Phase B.0 -- debugger TUI skeleton unit tests.
+# Links debugger_tui.c against the mock backend + boxen core.
+# Does NOT link the full Frontier runtime (no GIL, no debug_handler).
+# The mock backend replaces the real terminal; op_handler.h is satisfied by
+# the stub transport allocated inside debugger_tui_state_init().
+#
+# 2026-06-06 JES Phase B.0 #691
+DEBUGGER_TUI_TEST_SRCS = \
+	$(BOXEN_CORE_TEST_SRCS) \
+	../frontier-cli/debugger_tui.c
+
+# debugger_tui.c includes headless_threading.h for the GIL symbols.
+# In the test build those symbols are undefined (no Frontier runtime).
+# -Wl,-undefined,dynamic_lookup (already in LINK_LIBS) lets the linker
+# defer them; the test binary never enters debugger_tui_main() so they
+# are never actually called -- only the tick/init/teardown functions are
+# exercised, which do not reference GIL symbols.
+debugger_tui_tests: debugger_tui_tests.c $(DEBUGGER_TUI_TEST_SRCS)
+	$(CC) $(CFLAGS) \
+		-I$(BOXEN_DIR) \
+		-I../frontier-cli \
+		-I$(HEADERDIR) \
+		-I$(SYSTEMHEADERDIR) \
+		-I../portable \
+		-DDEBUGGER_TUI_OMIT_MAIN \
+		debugger_tui_tests.c $(DEBUGGER_TUI_TEST_SRCS) \
+		-o $@ $(LINK_LIBS)
 
 # Pure helper for arg-injection — no Frontier runtime / handle deps, so it
 # compiles with palette_arg_inject.c standalone. The test exercises escape

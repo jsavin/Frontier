@@ -211,6 +211,14 @@ boolean cli_validate_options(const cli_options_t* options) {
 		}
 	}
 
+	/* 2026-06-06 JES Phase B.0 #691: --debug-tui and --protocol are mutually
+	 * exclusive (both call debug_set_attach_transport; only one transport can
+	 * be registered at a time per DEBUGGER_TUI_HANDOFF.md). */
+	if (options->tui_mode && options->protocol_mode) {
+		log_error(LOG_COMP_GENERAL, "Error: --debug-tui and --protocol are mutually exclusive");
+		return false;
+	}
+
 	// Note: Conflict validation for positional .root argument is handled in cli_parse_arguments()
 	// when we detect a .root file and system_root is already set.
 
@@ -246,6 +254,7 @@ boolean cli_parse_arguments(int argc, char* argv[], cli_options_t* options) {
 	enum {
 		OPT_LOCK_OPENED_ROOTS = 256,
 		OPT_UT_SYNC_DIR,
+		OPT_DEBUG_TUI,		/* 2026-06-06 JES Phase B.0 #691: --debug-tui */
 	};
 
 	// Define long options
@@ -267,6 +276,7 @@ boolean cli_parse_arguments(int argc, char* argv[], cli_options_t* options) {
 		{"ws-port", optional_argument, 0, 'W'},
 		{"lock-opened-roots", no_argument, 0, OPT_LOCK_OPENED_ROOTS},
 		{"ut-sync-dir", required_argument, 0, OPT_UT_SYNC_DIR},
+		{"debug-tui", no_argument, 0, OPT_DEBUG_TUI},
 		{"help", no_argument, 0, 'h'},
 		{"version", no_argument, 0, 'V'},
 		{0, 0, 0, 0}
@@ -506,6 +516,8 @@ boolean cli_parse_arguments(int argc, char* argv[], cli_options_t* options) {
 			case 'S':  options->skip_startup = true; break;
 			case 'P':  options->protocol_mode = true; break;
 			case OPT_LOCK_OPENED_ROOTS: options->lock_opened_roots = true; break;
+			/* 2026-06-06 JES Phase B.0 #691: TUI debug mode */
+			case OPT_DEBUG_TUI: options->tui_mode = true; break;
 
 			case OPT_UT_SYNC_DIR:
 				if (options->ut_sync_dir != NULL) {
