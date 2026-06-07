@@ -3346,6 +3346,219 @@ static void test_eval_cursor_column_tracks_input(void) {
 	teardown();
 }
 
+/* =========================================================================
+ * Phase B.7 #750 polish tests.
+ *
+ * 2026-06-07 JES Phase B.7 #750
+ *
+ * Four behavioral tests covering the five B.7 polish items:
+ *   test_eval_dispatched_id_cleared_after_response
+ *     -- eval_last_dispatched_id is 0 after a successful response is routed
+ *        (item 1: stale id hygiene).
+ *   test_eval_history_entry_contains_expression
+ *     -- history entry contains the submitted expression, not "[eval]"
+ *        (item 2: expr tag in history).
+ *   test_eval_display_counter_monotonic_past_wrap
+ *     -- [N] continues incrementing past EVAL_HISTORY_MAX; does not restart
+ *        (item 3: monotonic counter).
+ *   test_eval_modal_open_colon_does_not_activate_eval_pane
+ *     -- with condition modal open, pressing ':' does NOT activate eval pane
+ *        (item 5: modal absorbs ':' as text input).
+ * ========================================================================= */
+
+/* -------------------------------------------------------------------------
+ * test_eval_dispatched_id_cleared_after_response
+ *
+ * 2026-06-07 JES Phase B.7 #750 item 1.
+ *
+ * Sequence:
+ *   1. Set up SUSPENDED state; activate eval pane; populate expression.
+ *   2. Submit -> eval_last_dispatched_id becomes the dispatched id (non-zero).
+ *   3. Inject a matching synthetic eval response through write_line.
+ *   4. Assert eval_last_dispatched_id == 0.
+ *
+ * Before the fix, write_line did not clear eval_last_dispatched_id after
+ * routing the response, so the stale id would match any subsequent response
+ * that happened to carry the same numeric id in a future session.
+ * ---------------------------------------------------------------------- */
+static void test_eval_dispatched_id_cleared_after_response(void) {
+	setup();
+	g_state.debug_state = TUI_DEBUG_SUSPENDED;
+	reset_dispatch_capture();
+
+	tui_eval_activate(&g_state);
+	strncpy(g_state.eval_input_buf, "2+2", sizeof(g_state.eval_input_buf) - 1);
+	g_state.eval_input_buf[sizeof(g_state.eval_input_buf) - 1] = '\0';
+	g_state.eval_input_cursor = 3;
+
+	int expected_id = g_state.tui_req_id;
+	tui_eval_submit(&g_state);
+
+	/* After submit: id must be non-zero (pending) */
+	assert(g_state.eval_last_dispatched_id == expected_id);
+
+	/* Inject matching eval response */
+	char resp[256];
+	snprintf(resp, sizeof(resp),
+	         "{\"id\":%d,\"result\":{\"value\":\"4\",\"type\":\"number\"},\"success\":true}",
+	         expected_id);
+	assert(g_state.transport != NULL);
+	g_state.transport->write_line(g_state.transport->ctx, resp, strlen(resp));
+
+	/* After response consumed: id must be cleared to 0 */
+	assert(g_state.eval_last_dispatched_id == 0);
+
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * test_eval_history_entry_contains_expression
+ *
+ * 2026-06-07 JES Phase B.7 #750 item 2.
+ *
+ * Sequence:
+ *   1. Set up SUSPENDED state; populate eval_input_buf with "myExpr".
+ *   2. Submit -> eval_last_expr must be stashed.
+ *   3. Inject matching eval response.
+ *   4. Assert the history entry contains "myExpr" (not "[eval]").
+ *
+ * Before the fix, the expr tag was hardcoded "[eval]" because the expression
+ * was not stashed in state before the input buffer was cleared on submit.
+ * ---------------------------------------------------------------------- */
+static void test_eval_history_entry_contains_expression(void) {
+	setup();
+	g_state.debug_state = TUI_DEBUG_SUSPENDED;
+	reset_dispatch_capture();
+
+	tui_eval_activate(&g_state);
+	strncpy(g_state.eval_input_buf, "myExpr", sizeof(g_state.eval_input_buf) - 1);
+	g_state.eval_input_buf[sizeof(g_state.eval_input_buf) - 1] = '\0';
+	g_state.eval_input_cursor = 6;
+
+	int expected_id = g_state.tui_req_id;
+	tui_eval_submit(&g_state);
+
+	/* eval_last_expr must have been stashed before input was cleared */
+	assert(strcmp(g_state.eval_last_expr, "myExpr") == 0);
+
+	/* Inject matching eval response */
+	char resp[256];
+	snprintf(resp, sizeof(resp),
+	         "{\"id\":%d,\"result\":{\"value\":\"99\",\"type\":\"number\"},\"success\":true}",
+	         expected_id);
+	assert(g_state.transport != NULL);
+	g_state.transport->write_line(g_state.transport->ctx, resp, strlen(resp));
+
+	/* History entry must contain the expression, not the placeholder */
+	assert(g_state.eval_history_count == 1);
+	assert(g_state.eval_history[0] != NULL);
+	assert(strstr(g_state.eval_history[0], "myExpr") != NULL);
+	assert(strstr(g_state.eval_history[0], "[eval]") == NULL);
+
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * test_eval_display_counter_monotonic_past_wrap
+ *
+ * 2026-06-07 JES Phase B.7 #750 item 3.
+ *
+ * Append EVAL_HISTORY_MAX + 4 entries via tui_eval_append_result.
+ * Verify:
+ *   - eval_display_counter == EVAL_HISTORY_MAX + 4 (monotonically increased).
+ *   - The last history slot contains a [N] tag with EVAL_HISTORY_MAX + 4,
+ *     NOT a tag that reset to 1 or clamped at EVAL_HISTORY_MAX.
+ *
+ * Before the fix, the display index was computed as eval_history_count + 1,
+ * which clamped at EVAL_HISTORY_MAX + 1 after the ring was full and then
+ * repeated that value for all subsequent wrapping entries.
+ * ---------------------------------------------------------------------- */
+static void test_eval_display_counter_monotonic_past_wrap(void) {
+	setup();
+
+	int total = EVAL_HISTORY_MAX + 4;
+	for (int i = 0; i < total; i++) {
+		char expr[32], result[32];
+		snprintf(expr,   sizeof(expr),   "e%d", i);
+		snprintf(result, sizeof(result), "r%d", i);
+		tui_eval_append_result(&g_state, expr, result);
+	}
+
+	/* Counter must equal the total number of appends (never resets) */
+	assert(g_state.eval_display_counter == total);
+
+	/* The ring slots contain the most recent EVAL_HISTORY_MAX entries.
+	 * The last entry written is at slot: (head + count - 1) % MAX.
+	 * Verify its [N] tag is exactly [EVAL_HISTORY_MAX + 4]. */
+	int last_slot = (g_state.eval_history_head + g_state.eval_history_count - 1)
+	                % EVAL_HISTORY_MAX;
+	assert(g_state.eval_history[last_slot] != NULL);
+
+	/* Build the expected tag prefix */
+	char expected_tag[32];
+	snprintf(expected_tag, sizeof(expected_tag), "[%d]", total);
+	assert(strstr(g_state.eval_history[last_slot], expected_tag) != NULL);
+
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * test_eval_modal_open_colon_does_not_activate_eval_pane
+ *
+ * 2026-06-07 JES Phase B.7 #750 item 5.
+ *
+ * Sequence:
+ *   1. Set up SUSPENDED state with a conditional breakpoint modal open.
+ *   2. Inject a ':' key event through run_one_tick.
+ *   3. Assert eval_pane_active is still false (modal absorbed ':').
+ *   4. Assert condition_modal_win is still non-NULL (modal still open).
+ *
+ * This is safe-by-construction: when the condition modal is open it is the
+ * focused window and receives the ':' via its own input callback.  The ':'-
+ * to-eval-pane mapping in on_input is only reachable when the script_win is
+ * focused (no modal).  This test locks in that behavior.
+ * ---------------------------------------------------------------------- */
+static void test_eval_modal_open_colon_does_not_activate_eval_pane(void) {
+	setup();
+	g_state.debug_state      = TUI_DEBUG_SUSPENDED;
+	g_state.pending_thread_id = 1;
+	g_state.current_line     = 3;
+	g_state.bp_line_count    = 0;
+	strncpy(g_state.script_path, "test.script", sizeof(g_state.script_path) - 1);
+	g_state.script_path[sizeof(g_state.script_path) - 1] = '\0';
+
+	/* Open the condition modal via Shift-F9 */
+	boxen_event_t open_ev = make_fkey_event(BOXEN_KEY_F9, BOXEN_MOD_SHIFT);
+	debugger_tui_run_one_tick(&g_state, &open_ev);
+	assert(g_state.condition_modal_win != NULL);
+	assert(g_state.eval_pane_active == false);
+
+	/* Inject ':' while modal is open */
+	boxen_event_t colon_ev;
+	memset(&colon_ev, 0, sizeof(colon_ev));
+	colon_ev.type    = BOXEN_EV_KEY;
+	colon_ev.key.key = BOXEN_KEY_NONE;
+	colon_ev.key.ch  = ':';
+	colon_ev.key.mod = BOXEN_MOD_NONE;
+	int rc = debugger_tui_run_one_tick(&g_state, &colon_ev);
+
+	assert(rc == TUI_CONTINUE);
+	/* eval pane must NOT have been activated */
+	assert(g_state.eval_pane_active == false);
+	/* modal must still be open */
+	assert(g_state.condition_modal_win != NULL);
+
+	/* Close modal for clean teardown */
+	if (g_state.condition_modal_win != NULL) {
+		boxen_window_set_modal(g_state.condition_modal_win, false);
+		boxen_window_close(g_state.condition_modal_win);
+		g_state.condition_modal_win = NULL;
+	}
+	boxen_window_set_cursor_visible(g_state.script_win, false);
+
+	teardown();
+}
+
 /* -------------------------------------------------------------------------
  * main
  * ---------------------------------------------------------------------- */
@@ -3456,6 +3669,12 @@ int main(void) {
 	TR_RUN(test_eval_empty_submit_is_noop);
 	TR_RUN(test_eval_response_parsed_from_write_line);
 	TR_RUN(test_eval_cursor_column_tracks_input);
+
+	/* B.7 #750 polish tests */
+	TR_RUN(test_eval_dispatched_id_cleared_after_response);
+	TR_RUN(test_eval_history_entry_contains_expression);
+	TR_RUN(test_eval_display_counter_monotonic_past_wrap);
+	TR_RUN(test_eval_modal_open_colon_does_not_activate_eval_pane);
 
 	TR_SUMMARY();
 	return TR_EXIT_CODE();

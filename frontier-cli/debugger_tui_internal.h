@@ -15,6 +15,7 @@
  * 2026-06-07 JES Phase B.6 #742: tui_req_id moved from static global to per-session state
  * 2026-06-07 JES Phase B.6 #744: TUI_DISPATCH_LOG_SLOT widened to 2048
  * 2026-06-07 JES Phase B.7 #691: scratch-eval pane fields and constants
+ * 2026-06-07 JES Phase B.7 #750: eval_last_expr, eval_display_counter added
  */
 
 #ifndef DEBUGGER_TUI_INTERNAL_H
@@ -306,6 +307,20 @@ typedef struct {
 	int   eval_history_head;
 	int   eval_history_scroll;
 	int   eval_last_dispatched_id;
+
+	/* 2026-06-07 JES Phase B.7 #750: eval polish fields.
+	 *
+	 * eval_last_expr      -- expression text stashed at submit time so that the
+	 *   history entry tag shows the actual expression instead of the placeholder
+	 *   "[eval]".  Bounded to EVAL_INPUT_MAX (same as eval_input_buf).
+	 *   Cleared to "" in state_init; overwritten in tui_eval_submit before dispatch.
+	 *
+	 * eval_display_counter -- monotonically increasing [N] label used in history
+	 *   entry display tags.  Starts at 0; incremented (to 1) before the first
+	 *   history entry is written.  Never resets on ring-wrap, so [N] increases
+	 *   past EVAL_HISTORY_MAX as expected. */
+	char  eval_last_expr[EVAL_INPUT_MAX];
+	int   eval_display_counter;
 } tui_state_t;
 
 /*
