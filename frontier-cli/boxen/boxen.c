@@ -1578,7 +1578,8 @@ void boxen_set_cell(boxen_window_t *win, int x, int y,
  *   surfaces from racing to position a single terminal cursor.
  *   Implicitly validates the win pointer: a non-live pointer can equal
  *   neither g_focused_window (cleared on close) nor a current modal
- *   (cleared on close + modal flag scrubbed on close).
+ *   (closed windows are removed from g_windows[] before free, so
+ *   find_topmost_modal cannot return them).
  * ---------------------------------------------------------------------- */
 
 static boxen_window_t *find_topmost_modal(void) {
@@ -1600,7 +1601,8 @@ static bool cursor_owner_allowed(boxen_window_t *win) {
 /* -------------------------------------------------------------------------
  * boxen_window_set_cursor -- content-coord cursor positioning
  *
- * Translation pipeline mirrors boxen_set_cell:
+ * After the focus gate (cursor_owner_allowed), the translation pipeline
+ * mirrors boxen_set_cell:
  *   1. BOXEN_MAX_DIMENSION input guard (overflow prevention).
  *   2. Subtract scroll offset to get window-local screen coord.
  *   3. Compute viewport dimensions (border-aware, scrollbar-aware).

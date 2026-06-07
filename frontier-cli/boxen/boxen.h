@@ -419,6 +419,9 @@ void boxen_fill_rect(boxen_window_t *win, boxen_rect_t r,
  *   followed by a show restores the cursor at the last set_cursor coord.
  *   It also obeys the focus gate: a non-focused, non-modal caller is
  *   silently ignored.
+ *   If no prior boxen_window_set_cursor call successfully placed the cursor,
+ *   set_cursor_visible(true) makes the cursor visible at the backend's
+ *   default position (typically (0, 0) after init).
  *
  * Coordinates are validated against BOXEN_MAX_DIMENSION to prevent signed-
  * int overflow in the translation arithmetic.

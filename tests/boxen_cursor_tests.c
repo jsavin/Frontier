@@ -16,9 +16,11 @@
  *   4. test_set_cursor_clipped_hides
  *      Content coord outside the visible viewport causes visible=false;
  *      the call must succeed (no crash).
- *   5. test_set_cursor_occluded_by_modal_hides
- *      A modal window B occludes a screen cell A is trying to write to.
- *      set_cursor from A hides; a coord outside B's rect is visible.
+ *   5. test_modal_blocks_non_modal_from_cursor
+ *      When a modal B exists, the focus gate redirects all cursor
+ *      ownership to the modal. Non-modal A's set_cursor calls are
+ *      silently ignored regardless of target position; modal B itself
+ *      can still drive the cursor.
  *   6. test_set_cursor_ignored_for_non_focused_non_modal
  *      Focus gate: non-focused, non-modal window cannot move the cursor.
  *      Deliberate footgun-prevention policy -- documented as such.
@@ -170,21 +172,26 @@ static void test_set_cursor_clipped_hides(void) {
 }
 
 /* -------------------------------------------------------------------------
- * Test 5: modal window occludes cursor from below
+ * Test 5: modal presence blocks non-modal callers from cursor ownership
  *
  * A is focused and covers (0, 0, 20, 10). B is modal at (5, 2, 10, 6).
  *
- * NOTE: modal blocks A from owning the cursor at all (only modal or
- * the modal itself may drive the cursor when a modal is present). So
- * both attempts from A are silently rejected by the focus gate -- the
- * mock cursor never updates, and visible stays false from the boxen_init
- * default state. The test asserts visible==false in both branches, which
- * is consistent with both "occluded -> hide" and "focus-gate-rejected ->
- * no update". The next test isolates the focus-gate behavior, and the
- * scroll/in-bounds tests above exercise the visibility-true path.
+ * When a modal exists, cursor_owner_allowed redirects all cursor
+ * ownership to the modal regardless of target position; non-modal
+ * callers are silently ignored before any translation or
+ * modal-occlusion check runs. This test asserts that A's calls do not
+ * touch the mock cursor at all -- get_cursor still returns (-1, -1) --
+ * which catches a regression where the focus gate accepts the call but
+ * the cursor is updated anyway.
+ *
+ * The modal-occlusion branch inside boxen_window_set_cursor exists as
+ * defense-in-depth for future gate-policy changes, but is currently
+ * unreachable from the public API, so this test does not exercise it
+ * directly. The positive assertion that modal B itself can drive the
+ * cursor anchors that the API does work for the right caller.
  * ---------------------------------------------------------------------- */
 
-static void test_set_cursor_occluded_by_modal_hides(void) {
+static void test_modal_blocks_non_modal_from_cursor(void) {
 	setup();
 
 	boxen_window_t *a = boxen_window_open("A",
@@ -197,24 +204,29 @@ static void test_set_cursor_occluded_by_modal_hides(void) {
 	assert(b != NULL);
 	boxen_window_set_modal(b, true);
 
-	/* From A, target content (6, 3) -> screen (6+1, 3+1) = (7, 4),
-	 * which falls inside B's rect (5,2)-(15,8). Hidden either way. */
+	/* From A, target content (6, 3) -> would-be screen (7, 4), inside B's
+	 * rect. Focus gate rejects before translation; cursor untouched. */
 	boxen_window_set_cursor(a, 6, 3);
 	assert(boxen_mock_cursor_visible() == false);
+	int cx = -99, cy = -99;
+	boxen_mock_get_cursor(&cx, &cy);
+	assert(cx == -1);
+	assert(cy == -1);
 
-	/* From A, target content (17, 5) -> screen (17+1, 5+1) = (18, 6),
-	 * which is outside B's rect. Still hidden because the focus gate
-	 * routes cursor ownership to the modal when one is present. */
+	/* From A, target content (17, 5) -> would-be screen (18, 6), outside
+	 * B's rect. Same: focus gate rejects before any check. */
 	boxen_window_set_cursor(a, 17, 5);
 	assert(boxen_mock_cursor_visible() == false);
+	cx = -99; cy = -99;
+	boxen_mock_get_cursor(&cx, &cy);
+	assert(cx == -1);
+	assert(cy == -1);
 
-	/* But the modal itself owns the cursor: a normal in-bounds call from
+	/* The modal itself owns the cursor: a normal in-bounds call from
 	 * B at content (0, 0) (borders on -> screen (5+1, 2+1) = (6, 3))
-	 * succeeds. This anchors the "modal occlusion check applies to
-	 * non-modal callers" half of the contract. */
+	 * succeeds. This anchors that the API works for the right caller. */
 	boxen_window_set_cursor(b, 0, 0);
 	assert(boxen_mock_cursor_visible() == true);
-	int cx = -99, cy = -99;
 	boxen_mock_get_cursor(&cx, &cy);
 	assert(cx == 6);
 	assert(cy == 3);
@@ -272,9 +284,9 @@ static void test_set_cursor_ignored_for_non_focused_non_modal(void) {
  * set_cursor_visible(false) hides without changing position; (true)
  * shows again, still at the last position.
  *
- * Also verifies that set_cursor_visible respects the focus gate: a call
- * from a non-focused, non-modal window does not change the visibility
- * flag.
+ * Also verifies that set_cursor_visible respects the focus gate in
+ * BOTH directions: a call from a non-focused, non-modal window does not
+ * change the visibility flag whether attempting to hide or to show.
  * ---------------------------------------------------------------------- */
 
 static void test_set_cursor_visible_independent_of_position(void) {
@@ -314,6 +326,15 @@ static void test_set_cursor_visible_independent_of_position(void) {
 	/* Visibility flag unchanged -- still true from the prior call. */
 	assert(boxen_mock_cursor_visible() == true);
 
+	/* Symmetric: explicitly drop to false via focused A, then verify that
+	 * non-focused B cannot flip it back on either. */
+	boxen_window_set_cursor_visible(a, false);
+	assert(boxen_mock_cursor_visible() == false);
+
+	boxen_window_set_cursor_visible(b, true);
+	/* Visibility flag unchanged -- still false, focus gate rejects show. */
+	assert(boxen_mock_cursor_visible() == false);
+
 	boxen_window_close(b);
 	boxen_window_close(a);
 	teardown();
@@ -330,7 +351,7 @@ int main(void) {
 	TR_RUN(test_set_cursor_chrome_offset_with_borders_off);
 	TR_RUN(test_set_cursor_respects_scroll);
 	TR_RUN(test_set_cursor_clipped_hides);
-	TR_RUN(test_set_cursor_occluded_by_modal_hides);
+	TR_RUN(test_modal_blocks_non_modal_from_cursor);
 	TR_RUN(test_set_cursor_ignored_for_non_focused_non_modal);
 	TR_RUN(test_set_cursor_visible_independent_of_position);
 
