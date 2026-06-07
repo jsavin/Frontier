@@ -180,6 +180,61 @@ static void test_footer_renders_quit_hint(void) {
 }
 
 /* -------------------------------------------------------------------------
+ * Test: resize_rebuilds_layout
+ *
+ * Injecting a BOXEN_EV_RESIZE event must:
+ *   1. Return TUI_CONTINUE (not TUI_QUIT).
+ *   2. Leave all three windows non-NULL (rebuilt, not destroyed).
+ *   3. Update window geometry to the new dimensions: the footer must sit at
+ *      row (new_h - 1) and span the full new width.
+ *   4. Produce fresh window pointers (the old windows were closed and new
+ *      ones were opened for the new size).
+ *
+ * 2026-06-06 JES Phase B.0 #734 round 1 P1-2 behavioral test.
+ * ---------------------------------------------------------------------- */
+
+static void test_resize_rebuilds_layout(void) {
+	setup();
+
+	/* Verify the initial 80x24 footer geometry before resize */
+	boxen_rect_t before = boxen_window_get_rect(g_state.footer_win);
+	assert(before.y == 23);   /* th - 1 == 24 - 1 */
+	assert(before.w == 80);
+
+	/* Tell the mock backend that the terminal is now 120x40 */
+	boxen_mock_width_set(120);
+	boxen_mock_height_set(40);
+
+	/* Inject a resize event */
+	boxen_event_t ev;
+	memset(&ev, 0, sizeof(ev));
+	ev.type      = BOXEN_EV_RESIZE;
+	ev.resize.w  = 120;
+	ev.resize.h  = 40;
+
+	int rc = debugger_tui_run_one_tick(&g_state, &ev);
+
+	/* Must return TUI_CONTINUE (resize is not a quit signal) */
+	assert(rc == TUI_CONTINUE);
+
+	/* All three windows must be non-NULL after the rebuild */
+	assert(g_state.script_win != NULL);
+	assert(g_state.stack_win  != NULL);
+	assert(g_state.footer_win != NULL);
+
+	/* Footer geometry must reflect the new terminal size.
+	 * Note: pointer identity is NOT checked -- the allocator may return the
+	 * same address after close+open. The geometry change is the behavioral
+	 * contract: footer moved to row 39 and spans 120 columns. */
+	boxen_rect_t footer_rect = boxen_window_get_rect(g_state.footer_win);
+	assert(footer_rect.y == 39);   /* th - 1 == 40 - 1 */
+	assert(footer_rect.w == 120);  /* full new width */
+	assert(footer_rect.h == 1);    /* still one row tall */
+
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
  * main
  * ---------------------------------------------------------------------- */
 
@@ -192,6 +247,7 @@ int main(void) {
 	TR_RUN(test_non_quit_key_continues);
 	TR_RUN(test_layout_windows_open);
 	TR_RUN(test_footer_renders_quit_hint);
+	TR_RUN(test_resize_rebuilds_layout);
 
 	TR_SUMMARY();
 	return TR_EXIT_CODE();

@@ -9,6 +9,7 @@
  *   - Event loop with GIL release/reacquire around boxen_poll_event()
  *   - Stub transport_t (write_line is a no-op; B.1 wires notifications)
  *   - 'q', Escape, Ctrl-C to quit
+ *   - BOXEN_EV_RESIZE handling: rebuild layout proportionally on terminal resize
  *   - debugger_tui_state_init / run_one_tick / state_teardown for unit tests
  *
  * GIL discipline:
@@ -23,6 +24,7 @@
  *     runtime wiring yet per EXECUTION_PLAN.md B.0 "Out of scope").
  *
  * 2026-06-06 JES Phase B.0 #691
+ * 2026-06-06 JES Phase B.0 #734 round 1: terminal size + resize + dead code + quit-key
  *
  * SPDX-License-Identifier: MIT
  * Copyright (c) 2025-2026 Frontier contributors
@@ -101,6 +103,9 @@ static void draw_footer(boxen_window_t *win, void *ud) {
 
 /* -------------------------------------------------------------------------
  * 2026-06-06 JES Phase B.0 #691: layout construction.
+ * 2026-06-06 JES Phase B.0 #734 round 1 P1-2: renamed to tui_build_layout;
+ *   now closes any existing windows before opening new ones so it can be
+ *   called on both init and BOXEN_EV_RESIZE without leaking windows.
  *
  * Three-window layout:
  *   +-- Script (60%) --------+-- Stack (40%) --+
@@ -111,7 +116,12 @@ static void draw_footer(boxen_window_t *win, void *ud) {
  * Matches the plan's "three empty windows (script, stack, footer)" spec.
  * ---------------------------------------------------------------------- */
 
-static void build_layout(tui_state_t *s, int tw, int th) {
+static void tui_build_layout(tui_state_t *s, int tw, int th) {
+	/* Close any windows from a previous layout (resize path) */
+	if (s->footer_win != NULL) { boxen_window_close(s->footer_win); s->footer_win = NULL; }
+	if (s->stack_win  != NULL) { boxen_window_close(s->stack_win);  s->stack_win  = NULL; }
+	if (s->script_win != NULL) { boxen_window_close(s->script_win); s->script_win = NULL; }
+
 	/* Reserve one row for the pinned footer */
 	int content_h = (th > 2) ? (th - 1) : 1;
 
@@ -144,9 +154,13 @@ static void on_input(boxen_window_t *win, const boxen_event_t *ev, void *ud) {
 	tui_state_t *s = (tui_state_t *)ud;
 	if (ev->type != BOXEN_EV_KEY) return;
 
+	/* 2026-06-06 JES Phase B.0 #734 round 1 P1-4: accept q/Q regardless of
+	 * ev->key.key value. Real termbox2 may set key != BOXEN_KEY_NONE for
+	 * printable chars on some terminals; the BOXEN_KEY_NONE guard was too
+	 * strict and would have silently ignored quit on those backends. */
 	if (ev->key.key == BOXEN_KEY_ESCAPE ||
 	    ev->key.key == BOXEN_KEY_CTRL_C ||
-	    (ev->key.key == BOXEN_KEY_NONE && (ev->key.ch == 'q' || ev->key.ch == 'Q'))) {
+	    ev->key.ch == 'q' || ev->key.ch == 'Q') {
 		s->quit_requested = true;
 	}
 }
@@ -154,6 +168,33 @@ static void on_input(boxen_window_t *win, const boxen_event_t *ev, void *ud) {
 /* -------------------------------------------------------------------------
  * 2026-06-06 JES Phase B.0 #691: exported for unit tests (internal API).
  * ---------------------------------------------------------------------- */
+
+/* -------------------------------------------------------------------------
+ * tui_wire_callbacks -- wire draw/input callbacks after every layout build.
+ *
+ * Called from debugger_tui_state_init and from the resize path in
+ * debugger_tui_run_one_tick. Separated so tui_build_layout stays a pure
+ * window-geometry function (no callback wiring) and both call sites use the
+ * same wiring logic.
+ * ---------------------------------------------------------------------- */
+static void tui_wire_callbacks(tui_state_t *s) {
+	if (s->script_win != NULL) {
+		boxen_window_set_draw(s->script_win,  draw_script);
+		boxen_window_set_input(s->script_win, on_input);
+		boxen_window_set_user_data(s->script_win, s);
+	}
+	if (s->stack_win != NULL) {
+		boxen_window_set_draw(s->stack_win,  draw_stack);
+		boxen_window_set_input(s->stack_win, on_input);
+		boxen_window_set_user_data(s->stack_win, s);
+	}
+	/* footer: draw already set in tui_build_layout; no input needed */
+
+	/* Focus the script pane */
+	if (s->script_win != NULL) {
+		boxen_window_focus(s->script_win);
+	}
+}
 
 void debugger_tui_state_init(tui_state_t *s, int tw, int th) {
 	memset(s, 0, sizeof(tui_state_t));
@@ -165,26 +206,8 @@ void debugger_tui_state_init(tui_state_t *s, int tw, int th) {
 		s->transport->write_line = tui_write_line;
 	}
 
-	build_layout(s, tw, th);
-
-	/* Wire draw and input callbacks */
-	if (s->script_win != NULL) {
-		boxen_window_set_draw(s->script_win,  draw_script);
-		boxen_window_set_input(s->script_win, on_input);
-		boxen_window_get_user_data(s->script_win); /* no-op; sets ud below */
-		boxen_window_set_user_data(s->script_win, s);
-	}
-	if (s->stack_win != NULL) {
-		boxen_window_set_draw(s->stack_win,  draw_stack);
-		boxen_window_set_input(s->stack_win, on_input);
-		boxen_window_set_user_data(s->stack_win, s);
-	}
-	/* footer: draw already set in build_layout; no input needed */
-
-	/* Focus the script pane */
-	if (s->script_win != NULL) {
-		boxen_window_focus(s->script_win);
-	}
+	tui_build_layout(s, tw, th);
+	tui_wire_callbacks(s);
 }
 
 void debugger_tui_state_teardown(tui_state_t *s) {
@@ -195,6 +218,19 @@ void debugger_tui_state_teardown(tui_state_t *s) {
 }
 
 int debugger_tui_run_one_tick(tui_state_t *s, const boxen_event_t *ev) {
+	/* 2026-06-06 JES Phase B.0 #734 round 1 P1-2: handle BOXEN_EV_RESIZE.
+	 * Tear down and rebuild the layout at the new dimensions, then re-wire
+	 * callbacks and re-focus. boxen_dispatch_event is NOT called for resize
+	 * because the layout rebuild already repositions all windows; dispatching
+	 * would deliver the event to the (now-closed) old focused window. */
+	if (ev->type == BOXEN_EV_RESIZE) {
+		int nw = (ev->resize.w > 0) ? ev->resize.w : 80;
+		int nh = (ev->resize.h > 0) ? ev->resize.h : 24;
+		tui_build_layout(s, nw, nh);
+		tui_wire_callbacks(s);
+		return TUI_CONTINUE;
+	}
+
 	boxen_dispatch_event(ev);
 	if (s->quit_requested) {
 		return TUI_QUIT;
@@ -236,19 +272,21 @@ int debugger_tui_run_one_tick(tui_state_t *s, const boxen_event_t *ev) {
 int debugger_tui_main(const cli_options_t *opts) {
 	(void)opts;
 
-	/* Query terminal dimensions */
+	/* 2026-06-06 JES Phase B.0 #734 round 1 P1-1: boxen_init MUST be called
+	 * BEFORE querying terminal dimensions. termbox2's tb_width()/tb_height()
+	 * return TB_ERR_NOT_INIT (negative) when called before tb_init(); the
+	 * original > 0 guard silently fell back to 80x24 on every terminal. */
 	const boxen_backend_t *be = boxen_tb2_backend();
-	int tw = 80, th = 24;
-	if (be->width  && be->width()  > 0) tw = be->width();
-	if (be->height && be->height() > 0) th = be->height();
-
-	/* Initialize boxen with the real termbox2 backend */
 	boxen_result_t rc = boxen_init(be, NULL, NULL);
 	if (rc != BOXEN_OK) {
 		log_error(LOG_COMP_GENERAL, "debugger_tui: boxen_init failed: %s",
 		          boxen_last_error_str());
 		return 1;
 	}
+
+	/* Query terminal dimensions after init -- backend is now running */
+	int tw = (be->width  && be->width()  > 0) ? be->width()  : 80;
+	int th = (be->height && be->height() > 0) ? be->height() : 24;
 
 	tui_state_t state;
 	debugger_tui_state_init(&state, tw, th);
