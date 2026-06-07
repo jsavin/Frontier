@@ -468,6 +468,71 @@ static void test_row_highlight_paints_visible_row(void) {
  * main
  * ---------------------------------------------------------------------- */
 
+/* -------------------------------------------------------------------------
+ * Test 9: set_cell + ensure_visible reject pathological coords (security P2)
+ *
+ * Regression test for the BOXEN_MAX_DIMENSION clamp added to defend against
+ * signed-int overflow when caller passes extreme content coords.
+ * ---------------------------------------------------------------------- */
+static void test_extreme_coords_rejected(void) {
+	setup();
+	boxen_window_t *win = boxen_window_open("w", (boxen_rect_t){0, 0, 10, 5}, NULL);
+	assert(win != NULL);
+	boxen_window_set_content_size(win, 100, 100);
+
+	/* set_cell with extreme content coords must not crash or wrap-around.
+	 * Mock backend won't have anything written; just ensuring no UB. */
+	boxen_set_cell(win, 2147483647, 5, 'X',
+	               BOXEN_COLOR_DEFAULT, BOXEN_COLOR_DEFAULT, 0);
+	boxen_set_cell(win, -2147483647 - 1, 5, 'X',
+	               BOXEN_COLOR_DEFAULT, BOXEN_COLOR_DEFAULT, 0);
+	boxen_set_cell(win, 5, 2147483647, 'X',
+	               BOXEN_COLOR_DEFAULT, BOXEN_COLOR_DEFAULT, 0);
+
+	/* ensure_visible with extreme content coords must not crash. */
+	boxen_window_ensure_visible(win, 2147483647, 5);
+	boxen_window_ensure_visible(win, 5, 2147483647);
+
+	/* And a normal call still works (sanity). */
+	boxen_set_cell(win, 3, 2, 'A',
+	               BOXEN_COLOR_DEFAULT, BOXEN_COLOR_DEFAULT, 0);
+	const boxen_mock_cell_t *c = boxen_mock_cell_at(3, 2);
+	assert(c != NULL);
+	assert(c->ch == 'A');
+
+	boxen_window_close(win);
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * Test 10: ensure_visible on zero-dim window is no-op (P3 bar-raiser)
+ * ---------------------------------------------------------------------- */
+static void test_ensure_visible_zero_dim_noop(void) {
+	setup();
+	boxen_window_t *win = boxen_window_open("w", (boxen_rect_t){0, 0, 0, 0}, NULL);
+	assert(win != NULL);
+	boxen_window_set_content_size(win, 100, 100);
+
+	/* Pre-state. */
+	int sx0 = 0, sy0 = 0;
+	boxen_window_get_scroll(win, &sx0, &sy0);
+
+	/* Should be a no-op on a zero-dim viewport. */
+	boxen_window_ensure_visible(win, 50, 50);
+
+	int sx1 = 0, sy1 = 0;
+	boxen_window_get_scroll(win, &sx1, &sy1);
+	assert(sx1 == sx0);
+	assert(sy1 == sy0);
+
+	boxen_window_close(win);
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * main
+ * ---------------------------------------------------------------------- */
+
 int main(void) {
 	TR_INIT("boxen_scroll_tests");
 
@@ -479,6 +544,8 @@ int main(void) {
 	TR_RUN(test_set_cell_clips_at_viewport);
 	TR_RUN(test_window_at_returns_content_coords);
 	TR_RUN(test_row_highlight_paints_visible_row);
+	TR_RUN(test_extreme_coords_rejected);
+	TR_RUN(test_ensure_visible_zero_dim_noop);
 
 	TR_SUMMARY();
 	return TR_EXIT_CODE();

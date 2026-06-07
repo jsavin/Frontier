@@ -806,6 +806,15 @@ void boxen_window_scroll_by(boxen_window_t *win, int dx, int dy) {
 void boxen_window_ensure_visible(boxen_window_t *win, int cx, int cy) {
 	if (find_live_window_index(win) < 0) return;
 
+	/* Degenerate window with zero-dim viewport: nothing to scroll into. */
+	if (win->rect.w <= 0 || win->rect.h <= 0) return;
+
+	/* Defensive: reject pathological content coordinates before the
+	 * subtraction `cx - rect.w + 1` could underflow. Matches the
+	 * BOXEN_MAX_DIMENSION cap pattern from set_cell and A.2's rect cap. */
+	if (cx < -BOXEN_MAX_DIMENSION || cx > BOXEN_MAX_DIMENSION) return;
+	if (cy < -BOXEN_MAX_DIMENSION || cy > BOXEN_MAX_DIMENSION) return;
+
 	int new_sx = win->scroll_x;
 	int new_sy = win->scroll_y;
 
@@ -1228,6 +1237,14 @@ void boxen_layout_split_v(boxen_rect_t total, float ratio,
 void boxen_set_cell(boxen_window_t *win, int x, int y,
                     uint32_t ch, uint16_t fg, uint16_t bg, uint16_t attr) {
 	if (win == NULL || g_backend == NULL) return;
+
+	/* Defensive: reject pathological coordinates before the subtraction
+	 * with scroll_x/y could overflow. scroll_x/y are clamped to
+	 * [0, BOXEN_MAX_DIMENSION] but x/y are caller-supplied (the future
+	 * debugger TUI will derive these from runtime script-line state).
+	 * Matches A.2's BOXEN_MAX_DIMENSION rect cap. */
+	if (x < -BOXEN_MAX_DIMENSION || x > BOXEN_MAX_DIMENSION) return;
+	if (y < -BOXEN_MAX_DIMENSION || y > BOXEN_MAX_DIMENSION) return;
 
 	/* Translate content coords to window-local screen coords. */
 	int sx = x - win->scroll_x;
