@@ -558,10 +558,15 @@ boxen_cursor_tests: boxen_cursor_tests.c $(BOXEN_CORE_TEST_SRCS)
 # The mock backend replaces the real terminal; op_handler.h is satisfied by
 # the stub transport allocated inside debugger_tui_state_init().
 #
+# B.1 adds cJSON to parse debug/getSource responses in write_line.
+# cJSON has no Frontier runtime dependencies; it is safe to link here.
+#
 # 2026-06-06 JES Phase B.0 #691
+# 2026-06-07 JES Phase B.1 #691: add cJSON for JSON response parsing
 DEBUGGER_TUI_TEST_SRCS = \
 	$(BOXEN_CORE_TEST_SRCS) \
-	../frontier-cli/debugger_tui.c
+	../frontier-cli/debugger_tui.c \
+	$(THIRDPARTYDIR)/cJSON/cJSON.c
 
 # debugger_tui.c includes headless_threading.h for the GIL symbols.
 # In the test build those symbols are undefined (no Frontier runtime).
@@ -576,6 +581,7 @@ debugger_tui_tests: debugger_tui_tests.c $(DEBUGGER_TUI_TEST_SRCS)
 		-I$(HEADERDIR) \
 		-I$(SYSTEMHEADERDIR) \
 		-I../portable \
+		-I$(THIRDPARTYDIR) \
 		-DDEBUGGER_TUI_OMIT_MAIN \
 		debugger_tui_tests.c $(DEBUGGER_TUI_TEST_SRCS) \
 		-o $@ $(LINK_LIBS)
