@@ -380,7 +380,23 @@ void boxen_window_get_scroll(const boxen_window_t *win, int *x, int *y);
 void boxen_window_scroll_by(boxen_window_t *win, int dx, int dy);
 void boxen_window_ensure_visible(boxen_window_t *win, int cx, int cy);
 
-/* Mark a content row with a highlight attribute (A.5+; debugger current-line). */
+/* Mark a content row with a highlight attribute (A.5+; debugger current-line).
+ * Pass content_row = -1 to disable.
+ *
+ * Known limitation (A.5): the overlay writes ' ' (space) over each cell in the
+ * row, erasing any character the surface drew. Only the attr/fg/bg are
+ * preserved as visual indicators. This is because the backend vtable has no
+ * read_cell primitive to compose the highlight over existing content. A
+ * future vtable extension can address this if surface-character preservation
+ * becomes required.
+ *
+ * Z-order limitation (A.5): the highlight overlay paints onto every cell of
+ * the row in the window's terminal rect, including cells that may be covered
+ * by higher-z-order windows. For the debugger TUI's single-active-window case
+ * this is benign; for multi-window scenarios where a focused window's
+ * highlight underlies another window's content, the highlight will bleed
+ * through. A future per-window post-draw pass can clip against higher-z
+ * windows. */
 void boxen_window_set_row_highlight(boxen_window_t *win, int content_row,
                                     uint8_t highlight_attr,
                                     boxen_color_t fg, boxen_color_t bg);
