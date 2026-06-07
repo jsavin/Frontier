@@ -325,6 +325,9 @@ void boxen_window_set_resizable(boxen_window_t *win, bool resizable);
 void boxen_window_set_min_size(boxen_window_t *win, int min_w, int min_h);
 /* Phase A.6+: pin a window to a screen edge (e.g., a keybind footer). */
 void boxen_window_set_pinned(boxen_window_t *win, boxen_pin_edge_t edge);
+/* Phase A.6+: enable/disable border chrome (corners, edges, title, scrollbar).
+ * Default: ON. Disable for borderless surfaces like pinned footers or raw overlays. */
+void boxen_window_set_borders(boxen_window_t *win, bool borders);
 
 /* -------------------------------------------------------------------------
  * Z-order + focus (A.3+)

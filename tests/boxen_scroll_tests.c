@@ -36,6 +36,9 @@
  * ---------------------------------------------------------------------- */
 
 static void setup(void) {
+	/* Defensive: if a prior test failed mid-run (teardown never called), shut
+	 * down first so boxen_init does not return BOXEN_ERR_ALREADY. */
+	boxen_shutdown();
 	boxen_mock_reset(80, 24);
 	boxen_result_t r = boxen_init(boxen_mock_backend(), NULL, NULL);
 	assert(r == BOXEN_OK);
@@ -43,6 +46,17 @@ static void setup(void) {
 
 static void teardown(void) {
 	boxen_shutdown();
+}
+
+/* Open a window with borders DISABLED.
+ * The boxen_scroll_tests were written for the A.5 pre-chrome model where
+ * content_width == rect.w. A.6 introduced borders ON by default, which would
+ * reduce content dims and shift scroll math. This helper preserves the
+ * original test semantics. */
+static boxen_window_t *open_no_chrome(const char *title, boxen_rect_t rect, void *ud) {
+	boxen_window_t *w = boxen_window_open(title, rect, ud);
+	if (w != NULL) boxen_window_set_borders(w, false);
+	return w;
 }
 
 /* -------------------------------------------------------------------------
@@ -55,7 +69,7 @@ static void test_set_content_size_round_trip(void) {
 	setup();
 
 	/* 10x5 window with 10x100 content (tall virtual list) */
-	boxen_window_t *win = boxen_window_open("W",
+	boxen_window_t *win = open_no_chrome("W",
 		(boxen_rect_t){0, 0, 10, 5}, NULL);
 	assert(win != NULL);
 
@@ -108,7 +122,7 @@ static void test_set_scroll_clamps_to_content(void) {
 	setup();
 
 	/* Window: 10 wide, 5 tall. Content: 50 wide, 20 tall. */
-	boxen_window_t *win = boxen_window_open("W",
+	boxen_window_t *win = open_no_chrome("W",
 		(boxen_rect_t){2, 2, 10, 5}, NULL);
 	assert(win != NULL);
 	boxen_window_set_content_size(win, 50, 20);
@@ -149,7 +163,7 @@ static void test_set_scroll_clamps_to_content(void) {
 static void test_scroll_by_adjusts_position(void) {
 	setup();
 
-	boxen_window_t *win = boxen_window_open("W",
+	boxen_window_t *win = open_no_chrome("W",
 		(boxen_rect_t){0, 0, 10, 5}, NULL);
 	assert(win != NULL);
 	boxen_window_set_content_size(win, 50, 20);
@@ -199,7 +213,7 @@ static void test_scroll_by_adjusts_position(void) {
 static void test_ensure_visible_scrolls_into_view(void) {
 	setup();
 
-	boxen_window_t *win = boxen_window_open("W",
+	boxen_window_t *win = open_no_chrome("W",
 		(boxen_rect_t){0, 0, 10, 5}, NULL);
 	assert(win != NULL);
 	boxen_window_set_content_size(win, 50, 30);
@@ -251,7 +265,7 @@ static void test_ensure_visible_scrolls_into_view(void) {
 static void test_set_cell_takes_content_coords(void) {
 	setup();
 
-	boxen_window_t *win = boxen_window_open("W",
+	boxen_window_t *win = open_no_chrome("W",
 		(boxen_rect_t){2, 3, 10, 5}, NULL);
 	assert(win != NULL);
 	boxen_window_set_content_size(win, 10, 20);
@@ -292,7 +306,7 @@ static void test_set_cell_takes_content_coords(void) {
 static void test_set_cell_clips_at_viewport(void) {
 	setup();
 
-	boxen_window_t *win = boxen_window_open("W",
+	boxen_window_t *win = open_no_chrome("W",
 		(boxen_rect_t){2, 3, 10, 5}, NULL);
 	assert(win != NULL);
 	boxen_window_set_content_size(win, 10, 20);
@@ -337,7 +351,7 @@ static void test_set_cell_clips_at_viewport(void) {
 static void test_window_at_returns_content_coords(void) {
 	setup();
 
-	boxen_window_t *win = boxen_window_open("W",
+	boxen_window_t *win = open_no_chrome("W",
 		(boxen_rect_t){5, 2, 20, 10}, NULL);
 	assert(win != NULL);
 	boxen_window_set_content_size(win, 100, 100);
@@ -402,7 +416,7 @@ static void highlight_draw_fn(boxen_window_t *win, void *ud) {
 static void test_row_highlight_paints_visible_row(void) {
 	setup();
 
-	boxen_window_t *win = boxen_window_open("W",
+	boxen_window_t *win = open_no_chrome("W",
 		(boxen_rect_t){0, 0, 10, 5}, NULL);
 	assert(win != NULL);
 	highlight_test_win = win;
@@ -443,7 +457,7 @@ static void test_row_highlight_paints_visible_row(void) {
 	boxen_shutdown();
 	boxen_init(boxen_mock_backend(), NULL, NULL);
 	/* Re-open window since shutdown freed it. */
-	win = boxen_window_open("W2", (boxen_rect_t){0, 0, 10, 5}, NULL);
+	win = open_no_chrome("W2", (boxen_rect_t){0, 0, 10, 5}, NULL);
 	assert(win != NULL);
 	boxen_window_set_content_size(win, 10, 20);
 	boxen_window_set_scroll(win, 0, 5);
@@ -472,7 +486,7 @@ static void test_row_highlight_paints_visible_row(void) {
  * ---------------------------------------------------------------------- */
 static void test_extreme_coords_rejected(void) {
 	setup();
-	boxen_window_t *win = boxen_window_open("w", (boxen_rect_t){0, 0, 10, 5}, NULL);
+	boxen_window_t *win = open_no_chrome("w", (boxen_rect_t){0, 0, 10, 5}, NULL);
 	assert(win != NULL);
 	boxen_window_set_content_size(win, 100, 100);
 
@@ -505,7 +519,7 @@ static void test_extreme_coords_rejected(void) {
  * ---------------------------------------------------------------------- */
 static void test_ensure_visible_zero_dim_noop(void) {
 	setup();
-	boxen_window_t *win = boxen_window_open("w", (boxen_rect_t){0, 0, 0, 0}, NULL);
+	boxen_window_t *win = open_no_chrome("w", (boxen_rect_t){0, 0, 0, 0}, NULL);
 	assert(win != NULL);
 	boxen_window_set_content_size(win, 100, 100);
 

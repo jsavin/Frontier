@@ -440,4 +440,16 @@ tb2-smoke: $(TB2_IMPL_SRC) $(TB2_SMOKE_SRC)
 		-c $(TB2_SMOKE_SRC) -o $(TB2_SMOKE_OBJDIR)/tb2_smoke_main.o
 	$(CC) $(TB2_SMOKE_OBJDIR)/tb2_impl.o $(TB2_SMOKE_OBJDIR)/tb2_smoke_main.o -o $(TB2_SMOKE_BIN)
 
-.PHONY: all build clean strings_generated kernel_verbs_generated dist dist-clean clean-root validate-bigstrings lint lint-all lint-python lint-shell tb2-smoke
+# Phase A.6 split layout demo -- links against the tb2 backend and boxen core.
+# Sources: examples/split_demo.c + termbox2_impl.c + all boxen .c files.
+SPLIT_DEMO_SRC = $(BOXEN_DIR)/examples/split_demo.c
+SPLIT_DEMO_BIN = split_demo
+
+split_demo: $(SPLIT_DEMO_SRC) $(TB2_IMPL_SRC) $(BOXEN_SOURCES)
+	$(CC) $(CFLAGS) $(ARCH_FLAGS) $(INCLUDES) \
+		$(SPLIT_DEMO_SRC) \
+		$(TB2_IMPL_SRC) \
+		$(BOXEN_SOURCES) \
+		-o $(SPLIT_DEMO_BIN) $(LIBS) $(LDFLAGS) -lm
+
+.PHONY: all build clean strings_generated kernel_verbs_generated dist dist-clean clean-root validate-bigstrings lint lint-all lint-python lint-shell tb2-smoke split_demo

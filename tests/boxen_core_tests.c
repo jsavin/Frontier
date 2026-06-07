@@ -23,6 +23,9 @@
 
 /* Helper: init with the mock backend, canned 80x24 screen. */
 static void setup(void) {
+	/* Defensive: if a prior test failed mid-run (teardown never called), shut
+	 * down first so boxen_init does not return BOXEN_ERR_ALREADY. */
+	boxen_shutdown();
 	boxen_mock_reset(80, 24);
 	boxen_result_t r = boxen_init(boxen_mock_backend(), NULL, NULL);
 	assert(r == BOXEN_OK);
@@ -31,6 +34,16 @@ static void setup(void) {
 /* Helper: shut down cleanly. */
 static void teardown(void) {
 	boxen_shutdown();
+}
+
+/* Open a window with borders DISABLED.
+ * The boxen_core_tests were written for the A.2 pre-chrome model where borders
+ * were not yet rendered. A.6 introduced borders ON by default. This helper
+ * preserves the original test semantics (content coords == screen coords). */
+static boxen_window_t *open_no_chrome(const char *title, boxen_rect_t rect, void *ud) {
+	boxen_window_t *w = boxen_window_open(title, rect, ud);
+	if (w != NULL) boxen_window_set_borders(w, false);
+	return w;
 }
 
 /* -------------------------------------------------------------------------
@@ -68,7 +81,7 @@ static void test_window_open_close(void) {
 
 	boxen_rect_t r = {5, 3, 20, 10};
 	void *ud = (void *)0xDEAD;
-	boxen_window_t *w = boxen_window_open("hello", r, ud);
+	boxen_window_t *w = open_no_chrome("hello", r, ud);
 	assert(w != NULL);
 
 	/* Rect getter */
@@ -101,7 +114,7 @@ static void test_set_cell_writes_correct_terminal_coords(void) {
 
 	/* Window at terminal (5, 3), size 20x10 */
 	boxen_rect_t r = {5, 3, 20, 10};
-	boxen_window_t *w = boxen_window_open("t3", r, NULL);
+	boxen_window_t *w = open_no_chrome("t3", r, NULL);
 	assert(w != NULL);
 
 	/* Write at window-local (2, 1) -> terminal (7, 4) */
@@ -128,7 +141,7 @@ static void test_clip_left(void) {
 	setup();
 
 	boxen_rect_t r = {5, 3, 20, 10};
-	boxen_window_t *w = boxen_window_open("t4", r, NULL);
+	boxen_window_t *w = open_no_chrome("t4", r, NULL);
 	assert(w != NULL);
 
 	/* Write at window-local x=-1 -> terminal x=4, which is left of the window */
@@ -152,7 +165,7 @@ static void test_clip_right(void) {
 
 	/* Window width=20: valid x range is 0..19; x=20 is out of bounds */
 	boxen_rect_t r = {5, 3, 20, 10};
-	boxen_window_t *w = boxen_window_open("t5", r, NULL);
+	boxen_window_t *w = open_no_chrome("t5", r, NULL);
 	assert(w != NULL);
 
 	boxen_set_cell(w, 20, 0, 'R', BOXEN_COLOR_DEFAULT, BOXEN_COLOR_DEFAULT, 0);
@@ -180,7 +193,7 @@ static void test_clip_top(void) {
 	setup();
 
 	boxen_rect_t r = {5, 3, 20, 10};
-	boxen_window_t *w = boxen_window_open("t6", r, NULL);
+	boxen_window_t *w = open_no_chrome("t6", r, NULL);
 	assert(w != NULL);
 
 	boxen_set_cell(w, 0, -1, 'T', BOXEN_COLOR_DEFAULT, BOXEN_COLOR_DEFAULT, 0);
@@ -203,7 +216,7 @@ static void test_clip_bottom(void) {
 
 	/* Window height=10: valid y range is 0..9; y=10 is out of bounds */
 	boxen_rect_t r = {5, 3, 20, 10};
-	boxen_window_t *w = boxen_window_open("t7", r, NULL);
+	boxen_window_t *w = open_no_chrome("t7", r, NULL);
 	assert(w != NULL);
 
 	boxen_set_cell(w, 0, 10, 'B', BOXEN_COLOR_DEFAULT, BOXEN_COLOR_DEFAULT, 0);
@@ -226,7 +239,7 @@ static void test_boxen_window_at_inside(void) {
 
 	/* Window covers terminal x: 5..24, y: 3..12 (20 wide, 10 tall) */
 	boxen_rect_t r = {5, 3, 20, 10};
-	boxen_window_t *w = boxen_window_open("t8", r, NULL);
+	boxen_window_t *w = open_no_chrome("t8", r, NULL);
 	assert(w != NULL);
 
 	int cx = -1, cy = -1;
@@ -248,7 +261,7 @@ static void test_boxen_window_at_outside(void) {
 
 	/* Window at (5, 3, 20, 10) -- point (3, 3) is left of the window */
 	boxen_rect_t r = {5, 3, 20, 10};
-	boxen_window_t *w = boxen_window_open("t9", r, NULL);
+	boxen_window_t *w = open_no_chrome("t9", r, NULL);
 	assert(w != NULL);
 
 	int cx = 0, cy = 0;
@@ -274,8 +287,8 @@ static void test_boxen_window_at_topmost(void) {
 	boxen_rect_t r1 = {0, 0, 40, 20};
 	boxen_rect_t r2 = {5, 5, 30, 10};  /* overlaps r1 */
 
-	boxen_window_t *w1 = boxen_window_open("under", r1, NULL);
-	boxen_window_t *w2 = boxen_window_open("over",  r2, NULL);
+	boxen_window_t *w1 = open_no_chrome("under", r1, NULL);
+	boxen_window_t *w2 = open_no_chrome("over",  r2, NULL);
 	assert(w1 != NULL);
 	assert(w2 != NULL);
 
@@ -306,7 +319,7 @@ static void test_draw_text_writes_codepoints(void) {
 	setup();
 
 	boxen_rect_t r = {0, 0, 40, 10};
-	boxen_window_t *w = boxen_window_open("t11", r, NULL);
+	boxen_window_t *w = open_no_chrome("t11", r, NULL);
 	assert(w != NULL);
 
 	/* Draw ASCII "Hi" at window-local (0, 0) */
@@ -341,7 +354,7 @@ static void test_fill_rect_writes_block(void) {
 	setup();
 
 	boxen_rect_t wr = {0, 0, 40, 20};
-	boxen_window_t *w = boxen_window_open("t12", wr, NULL);
+	boxen_window_t *w = open_no_chrome("t12", wr, NULL);
 	assert(w != NULL);
 
 	/* Fill a 3x2 rect at window-local (4, 5) with '#' */
@@ -377,9 +390,9 @@ static void test_shutdown_with_open_windows(void) {
 	setup();
 
 	/* Open three windows and DO NOT close them before shutdown. */
-	boxen_window_t *w1 = boxen_window_open("a", (boxen_rect_t){0, 0, 10, 5}, NULL);
-	boxen_window_t *w2 = boxen_window_open("b", (boxen_rect_t){0, 0, 10, 5}, NULL);
-	boxen_window_t *w3 = boxen_window_open("c", (boxen_rect_t){0, 0, 10, 5}, NULL);
+	boxen_window_t *w1 = open_no_chrome("a", (boxen_rect_t){0, 0, 10, 5}, NULL);
+	boxen_window_t *w2 = open_no_chrome("b", (boxen_rect_t){0, 0, 10, 5}, NULL);
+	boxen_window_t *w3 = open_no_chrome("c", (boxen_rect_t){0, 0, 10, 5}, NULL);
 	assert(w1 != NULL); assert(w2 != NULL); assert(w3 != NULL);
 
 	/* Shutdown should iterate the list and free each one. After shutdown,
@@ -391,7 +404,7 @@ static void test_shutdown_with_open_windows(void) {
 
 	/* Verify the list is empty by opening a new window and confirming
 	 * boxen_window_at finds it (would fail if a stale pointer remained). */
-	boxen_window_t *w4 = boxen_window_open("d", (boxen_rect_t){0, 0, 10, 5}, NULL);
+	boxen_window_t *w4 = open_no_chrome("d", (boxen_rect_t){0, 0, 10, 5}, NULL);
 	assert(w4 != NULL);
 	int cx = -1, cy = -1;
 	assert(boxen_window_at(5, 2, &cx, &cy) == w4);
@@ -415,7 +428,7 @@ static void test_open_beyond_capacity(void) {
 		assert(handles[i] != NULL);
 	}
 
-	boxen_window_t *overflow = boxen_window_open("x", (boxen_rect_t){0, 0, 5, 5}, NULL);
+	boxen_window_t *overflow = open_no_chrome("x", (boxen_rect_t){0, 0, 5, 5}, NULL);
 	assert(overflow == NULL);
 
 	/* Cleanup. */
@@ -432,7 +445,7 @@ static void test_open_beyond_capacity(void) {
 static void test_double_close_rejected(void) {
 	setup();
 
-	boxen_window_t *w = boxen_window_open("w", (boxen_rect_t){0, 0, 10, 5}, NULL);
+	boxen_window_t *w = open_no_chrome("w", (boxen_rect_t){0, 0, 10, 5}, NULL);
 	assert(w != NULL);
 
 	boxen_window_close(w);

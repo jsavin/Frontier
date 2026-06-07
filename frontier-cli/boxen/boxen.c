@@ -1,13 +1,13 @@
 /*
  * boxen.c -- window manager core: primitive, clipping, z-order, redraw,
  *            focus, input dispatch, modal, event loop, resize/move state
- *            machine, scrolling content model (A.2 + A.3 + A.4 + A.5).
+ *            machine, scrolling content model, chrome (A.2..A.6).
  *
  * Implements (A.2):
  *   boxen_init / boxen_shutdown         -- library lifecycle
  *   boxen_window_open / close           -- window lifecycle
  *   boxen_window_set_* / get_*          -- window property accessors
- *   boxen_window_content_width/height   -- content dimensions (no chrome at A.2)
+ *   boxen_window_content_width/height   -- content dimensions (chrome-aware at A.6)
  *   boxen_set_cell                      -- content coord -> terminal coord + clipping
  *   boxen_draw_text                     -- UTF-8 decode + per-codepoint set_cell
  *   boxen_fill_rect                     -- filled rect via set_cell
@@ -45,22 +45,32 @@
  *   boxen_present (A.5 update)          -- after surface draw callbacks, applies
  *                                         row-highlight overlay for visible rows
  *
+ * Implements (A.6):
+ *   boxen_window_set_borders            -- enable/disable chrome (default: ON)
+ *   boxen_window_content_width/height   -- updated: subtract 2 when borders enabled
+ *   boxen_set_cell (A.6 update)         -- adds border offset (+1) when borders on
+ *   boxen_window_at (A.6 update)        -- accounts for border offset in coord mapping
+ *   draw_chrome (static)                -- draws corners/edges/title/scrollbar
+ *   boxen_present (A.6 update)          -- calls draw_chrome for each bordered window
+ *   boxen_layout_split_h/v              -- two-pane layout helpers
+ *   clamp_windows_to_terminal (A.6 upd) -- pinned BOXEN_PIN_BOTTOM windows tracked
+ *                                         to bottom edge after terminal resize
+ *
+ * A.6 coordinate contract:
+ *   boxen_set_cell() x and y are still CONTENT coordinates. When borders are
+ *   enabled, the translation adds 1 to both screen_x and screen_y before
+ *   adding (rect.x, rect.y):
+ *     tx = rect.x + 1 + (x - scroll_x)
+ *     ty = rect.y + 1 + (y - scroll_y)
+ *   When borders are disabled (borderless window), the A.5 formula applies:
+ *     tx = rect.x + (x - scroll_x)
+ *     ty = rect.y + (y - scroll_y)
+ *
+ *   boxen_window_at() subtracts the border offset from screen coords before
+ *   adding scroll, returning -1 for cx or cy when the screen coord lands on
+ *   a border cell rather than content.
+ *
  * Coordinate convention: 0-based, origin top-left.
- *
- * A.5 coordinate contract change:
- *   boxen_set_cell() now takes CONTENT coordinates. The implementation
- *   subtracts (scroll_x, scroll_y) to derive window-local screen coords,
- *   then adds (rect.x, rect.y) for the terminal position. Calls with
- *   content coords outside the visible viewport (i.e., content row < scroll_y
- *   or >= scroll_y + rect.h, and similarly for x) are silently clipped.
- *   Since scroll defaults to (0, 0) after boxen_window_open, existing code
- *   that passes window-local screen coords continues to work correctly with
- *   zero scroll.
- *
- *   boxen_window_at() now returns content coordinates in (*cx, *cy) by
- *   adding (scroll_x, scroll_y) to the window-local screen coords. With
- *   zero scroll the return value is identical to the pre-A.5 behavior.
- *
  * Thread contract: single-threaded; caller must hold the GIL (Frontier) or
  * equivalent external lock. No internal synchronization.
  */
@@ -285,6 +295,7 @@ boxen_window_t *boxen_window_open(const char *title, boxen_rect_t rect,
 	w->content_w     = 0;
 	w->content_h     = 0;
 	w->highlight_row = -1;
+	w->borders       = true;   /* A.6: chrome is ON by default */
 
 	g_windows[g_window_count++] = w;
 	return w;
@@ -396,16 +407,29 @@ boxen_rect_t boxen_window_get_rect(const boxen_window_t *win) {
 /*
  * Content dimensions.
  *
- * At A.2 there is no chrome (borders, title bar, scrollbars), so content
- * dimensions equal the window rect. A.6 will subtract chrome here.
+ * A.6: When borders are enabled, the content area is inset by 1 cell on each
+ * side (left, right, top, bottom = 2 cells total per dimension). We clamp to
+ * max(0, rect.dim - 2) so that very small (1x1, 2x2) bordered windows return
+ * 0 rather than a negative value.
+ *
+ * When borders are disabled, content dimensions equal the window rect (the
+ * pre-A.6 / A.2 behavior).
  */
 int boxen_window_content_width(const boxen_window_t *win) {
 	if (win == NULL) return 0;
+	if (win->borders) {
+		int cw = win->rect.w - 2;
+		return (cw > 0) ? cw : 0;
+	}
 	return win->rect.w;
 }
 
 int boxen_window_content_height(const boxen_window_t *win) {
 	if (win == NULL) return 0;
+	if (win->borders) {
+		int ch = win->rect.h - 2;
+		return (ch > 0) ? ch : 0;
+	}
 	return win->rect.h;
 }
 
@@ -442,6 +466,12 @@ void boxen_window_set_pinned(boxen_window_t *win, boxen_pin_edge_t edge) {
 	 * stale/foreign/NULL pointers via find_live_window_index. */
 	if (find_live_window_index(win) < 0) return;
 	win->pinned = edge;
+}
+
+void boxen_window_set_borders(boxen_window_t *win, bool borders) {
+	/* Validate before write per the A.4 mutator convention. */
+	if (find_live_window_index(win) < 0) return;
+	win->borders = borders;
 }
 
 /* -------------------------------------------------------------------------
@@ -538,6 +568,40 @@ static void clamp_windows_to_terminal(int new_w, int new_h) {
 
 		int min_w = (w->min_w > 0) ? w->min_w : 1;
 		int min_h = (w->min_h > 0) ? w->min_h : 1;
+
+		/* A.6: BOXEN_PIN_BOTTOM windows track the bottom edge of the terminal.
+		 * Their height is preserved; only rect.y is updated.
+		 * Width is still clamped (the window shouldn't exceed terminal width).
+		 *
+		 * BOXEN_PIN_TOP: similarly preserved at y=0, height kept. */
+		if (w->pinned == BOXEN_PIN_BOTTOM) {
+			/* Clamp width but keep height. */
+			if (w->rect.w > new_w) w->rect.w = new_w;
+			if (w->rect.w < min_w) w->rect.w = min_w;
+			if (w->rect.x + w->rect.w > new_w) {
+				w->rect.x = new_w - w->rect.w;
+			}
+			if (w->rect.x < 0) w->rect.x = 0;
+			/* Pin to bottom: y = new_h - h, clamped to >= 0. */
+			int new_y = new_h - w->rect.h;
+			if (new_y < 0) new_y = 0;
+			w->rect.y = new_y;
+			clamp_rect_to_bounds(&w->rect);
+			continue;
+		}
+
+		if (w->pinned == BOXEN_PIN_TOP) {
+			/* Clamp width but keep height; y stays at 0. */
+			if (w->rect.w > new_w) w->rect.w = new_w;
+			if (w->rect.w < min_w) w->rect.w = min_w;
+			if (w->rect.x + w->rect.w > new_w) {
+				w->rect.x = new_w - w->rect.w;
+			}
+			if (w->rect.x < 0) w->rect.x = 0;
+			w->rect.y = 0;
+			clamp_rect_to_bounds(&w->rect);
+			continue;
+		}
 
 		/* Horizontal: shrink width first, then shift origin if needed. */
 		if (w->rect.w > new_w) w->rect.w = new_w;
@@ -763,11 +827,12 @@ void boxen_window_set_content_size(boxen_window_t *win, int w, int h) {
 	win->content_h = h;
 
 	/* Re-clamp the existing scroll position in case the new content size
-	 * is smaller than the previous scroll offset. Without this, a caller
-	 * that shrinks the content could leave scroll_x / scroll_y beyond the
-	 * new valid range, causing set_cell to clip all visible content. */
-	int max_x = scroll_max(win->content_w, win->rect.w);
-	int max_y = scroll_max(win->content_h, win->rect.h);
+	 * is smaller than the previous scroll offset. Use the content viewport
+	 * (border-aware) to compute max scroll. */
+	int vw = boxen_window_content_width(win);
+	int vh = boxen_window_content_height(win);
+	int max_x = scroll_max(win->content_w, vw);
+	int max_y = scroll_max(win->content_h, vh);
 	if (win->scroll_x > max_x) win->scroll_x = max_x;
 	if (win->scroll_y > max_y) win->scroll_y = max_y;
 }
@@ -775,8 +840,11 @@ void boxen_window_set_content_size(boxen_window_t *win, int w, int h) {
 void boxen_window_set_scroll(boxen_window_t *win, int x, int y) {
 	if (find_live_window_index(win) < 0) return;
 
-	int max_x = scroll_max(win->content_w, win->rect.w);
-	int max_y = scroll_max(win->content_h, win->rect.h);
+	/* Use content viewport (border-aware) for max scroll computation. */
+	int vw = boxen_window_content_width(win);
+	int vh = boxen_window_content_height(win);
+	int max_x = scroll_max(win->content_w, vw);
+	int max_y = scroll_max(win->content_h, vh);
 
 	if (x < 0) x = 0;
 	if (x > max_x) x = max_x;
@@ -807,11 +875,12 @@ void boxen_window_ensure_visible(boxen_window_t *win, int cx, int cy) {
 	if (find_live_window_index(win) < 0) return;
 
 	/* Degenerate window with zero-dim viewport: nothing to scroll into. */
-	if (win->rect.w <= 0 || win->rect.h <= 0) return;
+	int vw = boxen_window_content_width(win);
+	int vh = boxen_window_content_height(win);
+	if (vw <= 0 || vh <= 0) return;
 
 	/* Defensive: reject pathological content coordinates before the
-	 * subtraction `cx - rect.w + 1` could underflow. Matches the
-	 * BOXEN_MAX_DIMENSION cap pattern from set_cell and A.2's rect cap. */
+	 * subtraction `cx - vw + 1` could underflow. */
 	if (cx < -BOXEN_MAX_DIMENSION || cx > BOXEN_MAX_DIMENSION) return;
 	if (cy < -BOXEN_MAX_DIMENSION || cy > BOXEN_MAX_DIMENSION) return;
 
@@ -822,15 +891,15 @@ void boxen_window_ensure_visible(boxen_window_t *win, int cx, int cy) {
 	 * right of viewport, scroll right so cx is at the right edge. */
 	if (cx < new_sx) {
 		new_sx = cx;
-	} else if (cx >= new_sx + win->rect.w) {
-		new_sx = cx - win->rect.w + 1;
+	} else if (cx >= new_sx + vw) {
+		new_sx = cx - vw + 1;
 	}
 
 	/* Vertical: same pattern. */
 	if (cy < new_sy) {
 		new_sy = cy;
-	} else if (cy >= new_sy + win->rect.h) {
-		new_sy = cy - win->rect.h + 1;
+	} else if (cy >= new_sy + vh) {
+		new_sy = cy - vh + 1;
 	}
 
 	/* Use set_scroll to apply clamping to [0, max]. */
@@ -848,20 +917,159 @@ void boxen_window_set_row_highlight(boxen_window_t *win, int content_row,
 }
 
 /* -------------------------------------------------------------------------
- * present -- back-to-front redraw + row-highlight overlay + backend->present()
+ * draw_chrome -- draw borders, title, and scrollbar for a bordered window
  *
- * Walks g_windows[0..g_window_count-1] (back to front) and calls each
- * window's draw_fn callback if: (a) draw_fn is non-NULL, and (b) the
- * window has non-zero width AND height.
+ * Called from boxen_present AFTER all surface draw callbacks so that chrome
+ * is always on top. For a focused window, double-line box characters are
+ * used; for unfocused, single-line.
  *
- * A.5: After all surface draw callbacks, applies the row-highlight overlay
- * for each window that has highlight_row >= 0 and that content row is
- * currently in the visible viewport. The highlight is laid down AFTER
- * surface drawing so it wins regardless of what the surface drew. The
- * highlight writes unconditionally to all cells in the highlighted screen
- * row -- the surface draw callback does not need to know about highlights.
+ * Box-drawing Unicode codepoints:
+ *   Single-line:  TL=U+250C  TR=U+2510  BL=U+2514  BR=U+2518
+ *                 H=U+2500   V=U+2502
+ *   Double-line:  TL=U+2554  TR=U+2557  BL=U+255A  BR=U+255D
+ *                 H=U+2550   V=U+2551
  *
- * After the overlay pass, calls backend->present() once to flush the frame.
+ * Title inset (top row): if win->title is non-NULL and the window is wide
+ * enough, render " title " centered (or left-leaning) between corners.
+ * Format: TL + H + SPACE + title[0..N] + SPACE + H... + TR
+ *
+ * Scrollbar: if content_h > visible_h, render a track + thumb on the
+ * right interior column (rect.x + rect.w - 2, rows rect.y+1..rect.y+h-2).
+ * ---------------------------------------------------------------------- */
+
+static void draw_chrome(boxen_window_t *w) {
+	if (w == NULL || g_backend == NULL) return;
+	if (!w->borders) return;
+	if (w->rect.w < 2 || w->rect.h < 2) return;  /* too small to draw chrome */
+
+	int x0 = w->rect.x;
+	int y0 = w->rect.y;
+	int x1 = w->rect.x + w->rect.w - 1;  /* right column */
+	int y1 = w->rect.y + w->rect.h - 1;  /* bottom row */
+
+	/* Select focused vs unfocused box-drawing chars. */
+	uint32_t tl, tr, bl, br, hc, vc;
+	if (w->focused) {
+		tl = 0x2554u; tr = 0x2557u; bl = 0x255Au; br = 0x255Du;
+		hc = 0x2550u; vc = 0x2551u;
+	} else {
+		tl = 0x250Cu; tr = 0x2510u; bl = 0x2514u; br = 0x2518u;
+		hc = 0x2500u; vc = 0x2502u;
+	}
+
+	uint16_t fg = BOXEN_COLOR_DEFAULT;
+	uint16_t bg = BOXEN_COLOR_DEFAULT;
+	uint16_t attr = 0;
+
+	/* Top row: corners + horizontal bar (+ title if present). */
+	g_backend->set_cell(x0, y0, tl, fg, bg, attr);
+	g_backend->set_cell(x1, y0, tr, fg, bg, attr);
+
+	/* Fill top row with horizontal bar first, then overlay the title. */
+	for (int col = x0 + 1; col < x1; col++) {
+		g_backend->set_cell(col, y0, hc, fg, bg, attr);
+	}
+
+	/* Title inset on top row. Format: "H SPACE title SPACE H..."
+	 * The available inner width is x1 - x0 - 1 (positions x0+1 to x1-1).
+	 * We need at least 4 cells: H + SPACE + one char + SPACE.
+	 * We draw starting at x0+2 (after TL and one H): SPACE + title + SPACE. */
+	if (w->title != NULL) {
+		int inner_w = x1 - x0 - 1;  /* number of cells between TL and TR corners */
+		/* Minimum to draw any title: 4 cells (H + space + 1 char + space). */
+		if (inner_w >= 4) {
+			/* Available for title text (after leading H and SPACE and trailing SPACE): */
+			int title_area = inner_w - 3;  /* -1 for leading H, -1 space, -1 trailing space */
+			if (title_area < 1) title_area = 1;
+
+			/* Write SPACE at x0+2, title chars from x0+3, trailing space. */
+			int draw_col = x0 + 2;
+			g_backend->set_cell(draw_col++, y0, (uint32_t)' ', fg, bg, attr);
+
+			const unsigned char *p = (const unsigned char *)w->title;
+			int chars_drawn = 0;
+			while (*p != 0 && chars_drawn < title_area) {
+				/* Simple ASCII only for now; treat each byte as a codepoint. */
+				uint32_t cp = *p++;
+				g_backend->set_cell(draw_col++, y0, cp, fg, bg, attr);
+				chars_drawn++;
+			}
+			g_backend->set_cell(draw_col++, y0, (uint32_t)' ', fg, bg, attr);
+			/* Remaining cells in top row are already filled with hc from above. */
+			(void)draw_col;
+		}
+	}
+
+	/* Bottom row: corners + horizontal bar. */
+	g_backend->set_cell(x0, y1, bl, fg, bg, attr);
+	g_backend->set_cell(x1, y1, br, fg, bg, attr);
+	for (int col = x0 + 1; col < x1; col++) {
+		g_backend->set_cell(col, y1, hc, fg, bg, attr);
+	}
+
+	/* Left and right columns (interior rows only, between corners). */
+	for (int row = y0 + 1; row < y1; row++) {
+		g_backend->set_cell(x0, row, vc, fg, bg, attr);
+		g_backend->set_cell(x1, row, vc, fg, bg, attr);
+	}
+
+	/* Scrollbar on the right INTERIOR column (x1 - 1) if content overflows.
+	 * The track occupies rows y0+1 to y1-1 (the interior vertical space).
+	 * The thumb position/height is proportional to visible/content ratio.
+	 *
+	 * Scrollbar chars:
+	 *   track: U+2502 (vertical bar / thin track)
+	 *   thumb: U+2588 (full block)
+	 *
+	 * The scrollbar is drawn on the rightmost INTERIOR column (x1-1), NOT
+	 * on x1 which is already the right border. This leaves a 1-cell margin
+	 * between scrollbar and right border. The content area still starts at
+	 * x0+1 and ends at x1-1 when no scrollbar, or x1-2 when scrollbar is
+	 * active -- but for A.6 we draw the scrollbar without shrinking content. */
+	int vh = w->rect.h - 2;  /* visible interior height */
+	if (vh > 0 && w->content_h > vh) {
+		int track_col = x1 - 1;  /* right interior column, just inside right border */
+		int track_top = y0 + 1;
+		int track_h   = vh;      /* number of track cells */
+
+		/* Thumb height: at least 1 cell, at most track_h. */
+		int thumb_h = (track_h * vh) / w->content_h;
+		if (thumb_h < 1) thumb_h = 1;
+		if (thumb_h > track_h) thumb_h = track_h;
+
+		/* Thumb position: proportional to scroll_y / max_scroll. */
+		int max_scroll = w->content_h - vh;
+		int thumb_top = 0;
+		if (max_scroll > 0 && w->scroll_y > 0) {
+			thumb_top = (w->scroll_y * (track_h - thumb_h)) / max_scroll;
+		}
+		if (thumb_top < 0) thumb_top = 0;
+		if (thumb_top + thumb_h > track_h) thumb_top = track_h - thumb_h;
+
+		/* Draw track (thin vertical bar for empty regions) then thumb. */
+		for (int r = 0; r < track_h; r++) {
+			int row = track_top + r;
+			uint32_t ch;
+			if (r >= thumb_top && r < thumb_top + thumb_h) {
+				ch = 0x2588u;  /* FULL BLOCK = thumb */
+			} else {
+				ch = 0x2502u;  /* VERTICAL LINE = track */
+			}
+			g_backend->set_cell(track_col, row, ch, fg, bg, attr);
+		}
+	}
+}
+
+/* -------------------------------------------------------------------------
+ * present -- back-to-front redraw + chrome + row-highlight overlay +
+ *            backend->present()
+ *
+ * Phase ordering:
+ *   1. Surface draw callbacks (back-to-front).
+ *   2. Chrome drawing (borders, title, scrollbar) for each bordered window,
+ *      also back-to-front -- chrome must overwrite content near the edges.
+ *   3. Row-highlight overlay.
+ *   4. backend->present().
  * ---------------------------------------------------------------------- */
 
 void boxen_present(void) {
@@ -877,48 +1085,31 @@ void boxen_present(void) {
 		}
 	}
 
-	/* Phase 2: row-highlight overlay. For each visible window that has a
+	/* Phase 2: chrome (borders, title, scrollbar) -- also back-to-front.
+	 * Chrome must be drawn AFTER surface content to ensure borders are
+	 * always visible on top of any content the surface may have drawn near
+	 * the window edges. */
+	for (int i = 0; i < g_window_count; i++) {
+		boxen_window_t *w = g_windows[i];
+		if (w == NULL) continue;
+		if (w->rect.w == 0 || w->rect.h == 0) continue;
+		if (w->borders) {
+			draw_chrome(w);
+		}
+	}
+
+	/* Phase 3: row-highlight overlay. For each visible window that has a
 	 * highlight_row set, check whether the row is in the current viewport.
-	 * If so, overwrite every cell in that screen row with the highlight
-	 * attr / fg / bg.
+	 * If so, overwrite every cell in the CONTENT area of that screen row
+	 * with the highlight attr / fg / bg.
 	 *
-	 * highlight_row is a CONTENT row. Convert to screen row:
+	 * A.6 update: use the content viewport (border-aware) for row/col bounds.
+	 * highlight_row is a CONTENT row. Convert to terminal row:
 	 *   screen_row = highlight_row - scroll_y
-	 * Check: 0 <= screen_row < rect.h (visible in viewport).
-	 * Terminal row: rect.y + screen_row.
+	 *   term_row   = rect.y + border + screen_row
+	 *   term_col   = rect.x + border + col   (col in 0..content_w-1)
 	 *
-	 * We write a space character (U+0020) to preserve the cell character
-	 * from the surface draw -- the highlight is an attribute-only overlay
-	 * applied by setting the attr/fg/bg while preserving the existing cell
-	 * character. However, because the mock backend stores full cells and
-	 * the backend->set_cell vtable always writes all four fields, we need
-	 * to read the existing character first. Since we are in the boxen core
-	 * and only the mock backend exposes cell inspection (backend_mock.h is
-	 * a test-only header), we cannot call boxen_mock_cell_at() here.
-	 *
-	 * Resolution: the highlight overlay writes the highlight attr/fg/bg with
-	 * the same character already written by the surface. Since we do not have
-	 * a "read cell" abstraction on the backend vtable (adding one is an A.6+
-	 * concern), the practical approach is to write a space as the character.
-	 * For the debugger TUI use case, the highlighted row is a source line and
-	 * the highlight is a full-row background color (REVERSE or explicit bg);
-	 * writing a space over the character would erase the text.
-	 *
-	 * Correct approach: write a NUL (0) character as a "no-character" signal,
-	 * but the tb2 backend may not support that idiom.
-	 *
-	 * Practical compromise: to avoid erasing surface-drawn characters while
-	 * still applying the highlight, the backend vtable needs a "set_cell_attr"
-	 * call that leaves the character alone. That vtable extension belongs in
-	 * A.6 (chrome). For A.5, we use the only correctly-testable path:
-	 * write the highlight onto the row using boxen_set_cell so the test's
-	 * draw callback runs first, then the highlight pass overwrites the entire
-	 * row via direct backend->set_cell calls with a space character.
-	 *
-	 * This is consistent with the A.5 test contract (test_row_highlight_
-	 * paints_visible_row): the test checks that highlight attr/fg/bg are
-	 * present after present(), without requiring that the surface's original
-	 * character is preserved. A.6 can refine this with a read-back approach. */
+	 * Cells in the border columns/rows are NOT highlighted (they are chrome). */
 	for (int i = 0; i < g_window_count; i++) {
 		boxen_window_t *w = g_windows[i];
 		if (w == NULL) continue;
@@ -926,11 +1117,14 @@ void boxen_present(void) {
 		if (w->highlight_row < 0) continue;  /* no highlight set */
 
 		int screen_row = w->highlight_row - w->scroll_y;
-		if (screen_row < 0 || screen_row >= w->rect.h) continue;  /* not visible */
+		int vh = boxen_window_content_height(w);
+		if (screen_row < 0 || screen_row >= vh) continue;  /* not visible */
 
-		int term_row = w->rect.y + screen_row;
-		for (int col = 0; col < w->rect.w; col++) {
-			int term_col = w->rect.x + col;
+		int border = w->borders ? 1 : 0;
+		int term_row = w->rect.y + border + screen_row;
+		int vw = boxen_window_content_width(w);
+		for (int col = 0; col < vw; col++) {
+			int term_col = w->rect.x + border + col;
 			g_backend->set_cell(term_col, term_row,
 				(uint32_t)' ',
 				(uint16_t)w->highlight_fg,
@@ -1201,20 +1395,69 @@ void boxen_quit(void) {
 	g_should_quit = true;
 }
 
-/* A.6 layout stubs */
+/* -------------------------------------------------------------------------
+ * A.6 layout helpers: split_h and split_v
+ *
+ * boxen_layout_split_h splits a rectangular region horizontally into a left
+ * and right pane at a given ratio. The left pane gets floor(total.w * ratio)
+ * columns; the right pane gets the remainder. Both panes span the full height.
+ *
+ * boxen_layout_split_v splits vertically: top pane gets floor(total.h * ratio)
+ * rows; bottom gets the remainder. Both panes span the full width.
+ *
+ * Each pane is opened via boxen_window_open and stored in the out-pointers.
+ * If boxen_window_open fails for either pane, the out-pointer is set to NULL.
+ * The caller is responsible for closing both windows when done.
+ *
+ * Ratio clamping: values outside (0.0, 1.0) exclusive are clamped so each
+ * pane is at least 1 column/row. This prevents a degenerate split where one
+ * pane has zero size.
+ * ---------------------------------------------------------------------- */
+
 void boxen_layout_split_h(boxen_rect_t total, float ratio,
                            const char *left_title,  boxen_window_t **left,
                            const char *right_title, boxen_window_t **right) {
-	(void)total; (void)ratio; (void)left_title; (void)right_title;
 	if (left)  *left  = NULL;
 	if (right) *right = NULL;
+	if (!g_initialized) return;
+
+	/* Clamp ratio so each side gets at least 1 column. */
+	int min_left = 1;
+	int min_right = 1;
+	int left_w = (int)((float)total.w * ratio);
+	if (left_w < min_left) left_w = min_left;
+	if (left_w > total.w - min_right) left_w = total.w - min_right;
+
+	int right_w = total.w - left_w;
+	if (right_w < 1) right_w = 1;
+
+	boxen_rect_t left_rect  = { total.x,             total.y, left_w,  total.h };
+	boxen_rect_t right_rect = { total.x + left_w,    total.y, right_w, total.h };
+
+	if (left)  *left  = boxen_window_open(left_title,  left_rect,  NULL);
+	if (right) *right = boxen_window_open(right_title, right_rect, NULL);
 }
+
 void boxen_layout_split_v(boxen_rect_t total, float ratio,
                            const char *top_title,    boxen_window_t **top,
                            const char *bottom_title, boxen_window_t **bottom) {
-	(void)total; (void)ratio; (void)top_title; (void)bottom_title;
 	if (top)    *top    = NULL;
 	if (bottom) *bottom = NULL;
+	if (!g_initialized) return;
+
+	/* Clamp ratio so each side gets at least 1 row. */
+	int top_h = (int)((float)total.h * ratio);
+	if (top_h < 1) top_h = 1;
+	if (top_h > total.h - 1) top_h = total.h - 1;
+
+	int bottom_h = total.h - top_h;
+	if (bottom_h < 1) bottom_h = 1;
+
+	boxen_rect_t top_rect    = { total.x, total.y,          total.w, top_h    };
+	boxen_rect_t bottom_rect = { total.x, total.y + top_h,  total.w, bottom_h };
+
+	if (top)    *top    = boxen_window_open(top_title,    top_rect,    NULL);
+	if (bottom) *bottom = boxen_window_open(bottom_title, bottom_rect, NULL);
 }
 
 /* -------------------------------------------------------------------------
@@ -1225,13 +1468,19 @@ void boxen_layout_split_v(boxen_rect_t total, float ratio,
  * The implementation translates to a window-local screen position by
  * subtracting (scroll_x, scroll_y), then adds the window's terminal origin.
  *
+ * A.6 border offset: when win->borders is true, the terminal origin of the
+ * content area is (rect.x + 1, rect.y + 1) -- the border consumes one cell
+ * on each edge. The viewport size for clipping purposes is then
+ * (content_width, content_height) = (rect.w - 2, rect.h - 2).
+ *
  * Clipping:
  *   1. Content coord is outside the visible viewport (screen coord would be
  *      negative or >= viewport dimension): silently clip (no-op).
- *   2. Terminal coord is within the window rect: forward to backend->set_cell.
+ *   2. Terminal coord is within the window content area: forward to backend.
  *
- * With scroll at (0, 0) -- the default after boxen_window_open -- this is
- * identical to the pre-A.5 behavior: content coords == screen coords.
+ * With scroll at (0, 0) and borders OFF, this is identical to the A.5
+ * behavior. With borders ON and scroll (0,0): content (0,0) maps to
+ * terminal (rect.x+1, rect.y+1).
  * ---------------------------------------------------------------------- */
 
 void boxen_set_cell(boxen_window_t *win, int x, int y,
@@ -1239,10 +1488,7 @@ void boxen_set_cell(boxen_window_t *win, int x, int y,
 	if (win == NULL || g_backend == NULL) return;
 
 	/* Defensive: reject pathological coordinates before the subtraction
-	 * with scroll_x/y could overflow. scroll_x/y are clamped to
-	 * [0, BOXEN_MAX_DIMENSION] but x/y are caller-supplied (the future
-	 * debugger TUI will derive these from runtime script-line state).
-	 * Matches A.2's BOXEN_MAX_DIMENSION rect cap. */
+	 * with scroll_x/y could overflow. Matches A.2's BOXEN_MAX_DIMENSION cap. */
 	if (x < -BOXEN_MAX_DIMENSION || x > BOXEN_MAX_DIMENSION) return;
 	if (y < -BOXEN_MAX_DIMENSION || y > BOXEN_MAX_DIMENSION) return;
 
@@ -1250,12 +1496,18 @@ void boxen_set_cell(boxen_window_t *win, int x, int y,
 	int sx = x - win->scroll_x;
 	int sy = y - win->scroll_y;
 
-	/* Clip against the visible viewport (window content area). */
-	if (sx < 0 || sx >= win->rect.w) return;
-	if (sy < 0 || sy >= win->rect.h) return;
+	/* Determine viewport dimensions: reduced by 2 on each axis when bordered. */
+	int vw = win->borders ? (win->rect.w > 2 ? win->rect.w - 2 : 0) : win->rect.w;
+	int vh = win->borders ? (win->rect.h > 2 ? win->rect.h - 2 : 0) : win->rect.h;
 
-	int tx = win->rect.x + sx;
-	int ty = win->rect.y + sy;
+	/* Clip against the visible content viewport. */
+	if (sx < 0 || sx >= vw) return;
+	if (sy < 0 || sy >= vh) return;
+
+	/* Apply terminal origin: content area starts at (rect.x + border, rect.y + border). */
+	int border = win->borders ? 1 : 0;
+	int tx = win->rect.x + border + sx;
+	int ty = win->rect.y + border + sy;
 
 	g_backend->set_cell(tx, ty, ch, fg, bg, attr);
 }
@@ -1343,8 +1595,10 @@ void boxen_draw_text(boxen_window_t *win, int x, int y,
 
 	const unsigned char *p = (const unsigned char *)utf8;
 	int cx = x;
-	/* Right edge of the visible content (exclusive upper bound for content x). */
-	int right_edge = win->scroll_x + win->rect.w;
+	/* Right edge of the visible content (exclusive upper bound for content x).
+	 * A.6: use the content viewport width (reduced by 2 when borders are on). */
+	int vw = win->borders ? (win->rect.w > 2 ? win->rect.w - 2 : 0) : win->rect.w;
+	int right_edge = win->scroll_x + vw;
 
 	while (*p != 0) {
 		uint32_t cp = utf8_next(&p);
@@ -1383,16 +1637,29 @@ void boxen_fill_rect(boxen_window_t *win, boxen_rect_t r,
  * Iterates the window list from last (topmost in z-order) to first (bottommost).
  * Returns the first window whose rect contains (sx, sy).
  *
- * A.5 coordinate contract: (*cx, *cy) are CONTENT coordinates, i.e., the
- * window-local screen offset plus the current scroll position:
+ * A.5 coordinate contract (borders OFF): (*cx, *cy) are CONTENT coordinates:
  *   *cx = (sx - rect.x) + scroll_x
  *   *cy = (sy - rect.y) + scroll_y
  *
- * This is what cmd-2-click identifier resolution needs: the content row/col
- * of the cell the user clicked, not its screen position.
+ * A.6 border-aware mapping (borders ON): the border cells are 1 cell wide.
+ * The content origin is at (rect.x + 1, rect.y + 1). The mapping becomes:
+ *   *cx = (sx - rect.x - 1) + scroll_x
+ *   *cy = (sy - rect.y - 1) + scroll_y
  *
- * With scroll at (0, 0) -- the default after boxen_window_open -- the
- * returned content coords equal the pre-A.5 window-local screen coords.
+ * Border sentinels: when the screen coord falls on a border cell (the outermost
+ * row or column of the window rect), the raw window-local offset is -1 (left/top
+ * border) or content_width/height (right/bottom border). The sentinel values
+ * are intentionally returned as-is so callers can distinguish border-hit from
+ * content-hit:
+ *   cx == -1            : left border column hit
+ *   cx == content_width : right border column hit
+ *   cy == -1            : top border row hit
+ *   cy == content_height: bottom border row hit
+ *
+ * This matches the test contract in test_window_at_accounts_for_borders.
+ *
+ * With scroll at (0, 0) and borders OFF, the returned content coords equal
+ * the pre-A.5 window-local screen coords.
  * ---------------------------------------------------------------------- */
 
 boxen_window_t *boxen_window_at(int sx, int sy, int *cx, int *cy) {
@@ -1406,8 +1673,14 @@ boxen_window_t *boxen_window_at(int sx, int sy, int *cx, int *cy) {
 		if (w == NULL) continue;
 		if (sx >= w->rect.x && sx < w->rect.x + w->rect.w &&
 		    sy >= w->rect.y && sy < w->rect.y + w->rect.h) {
-			if (cx != NULL) *cx = (sx - w->rect.x) + w->scroll_x;
-			if (cy != NULL) *cy = (sy - w->rect.y) + w->scroll_y;
+			if (w->borders) {
+				/* Border-aware: subtract 1 extra to account for the border inset. */
+				if (cx != NULL) *cx = (sx - w->rect.x - 1) + w->scroll_x;
+				if (cy != NULL) *cy = (sy - w->rect.y - 1) + w->scroll_y;
+			} else {
+				if (cx != NULL) *cx = (sx - w->rect.x) + w->scroll_x;
+				if (cy != NULL) *cy = (sy - w->rect.y) + w->scroll_y;
+			}
 			return w;
 		}
 	}
