@@ -1,7 +1,8 @@
 /*
- * boxen.c -- window primitive, clipping, and library lifecycle (A.2).
+ * boxen.c -- window manager core: primitive, clipping, z-order, redraw,
+ *            focus, input dispatch, modal, event loop (A.2 + A.3).
  *
- * Implements:
+ * Implements (A.2):
  *   boxen_init / boxen_shutdown         -- library lifecycle
  *   boxen_window_open / close           -- window lifecycle
  *   boxen_window_set_* / get_*          -- window property accessors
@@ -12,9 +13,17 @@
  *   boxen_window_at                     -- screen -> window-local coord mapping
  *   boxen_last_error_str                -- last error string accessor
  *
- * Out of scope at A.2 (stubs return gracefully):
- *   z-order (raise/lower/focus) -- A.3
- *   redraw / present / poll_event -- A.3
+ * Implements (A.3):
+ *   boxen_present                       -- back-to-front draw + backend->present
+ *   boxen_window_raise / lower          -- z-order manipulation
+ *   boxen_window_focus                  -- focus model + raise
+ *   boxen_window_set_modal              -- modal flag
+ *   boxen_window_invalidate             -- no-op (always-redraw model; API for future)
+ *   boxen_poll_event                    -- forwards to backend->poll_event
+ *   boxen_dispatch_event                -- focus/modal/at-point input routing
+ *   boxen_run / boxen_quit              -- convenience main loop with quit flag
+ *
+ * Stubs (later milestones):
  *   scrolling -- A.5
  *   chrome / borders / layout -- A.6
  *
@@ -41,9 +50,14 @@
 static const boxen_backend_t *g_backend    = NULL;
 static bool                   g_initialized = false;
 
-/* Window list -- simple fixed array; open appends, close swaps with last. */
+/* Window list -- simple fixed array; index 0 = bottommost, index
+ * g_window_count-1 = topmost. open appends (topmost); close swaps with last. */
 static boxen_window_t        *g_windows[BOXEN_MAX_WINDOWS];
 static int                    g_window_count = 0;
+
+/* A.3 focus and event loop state */
+static boxen_window_t        *g_focused_window = NULL;
+static bool                   g_should_quit     = false;
 
 /* -------------------------------------------------------------------------
  * Library lifecycle
@@ -94,8 +108,10 @@ void boxen_shutdown(void) {
 		g_backend->shutdown();
 	}
 
-	g_backend     = NULL;
-	g_initialized = false;
+	g_backend        = NULL;
+	g_initialized    = false;
+	g_focused_window = NULL;
+	g_should_quit    = false;
 }
 
 /* -------------------------------------------------------------------------
@@ -190,6 +206,11 @@ void boxen_window_close(boxen_window_t *win) {
 	g_windows[idx] = g_windows[--g_window_count];
 	g_windows[g_window_count] = NULL;
 
+	/* Clear focus pointer if this was the focused window. */
+	if (g_focused_window == win) {
+		g_focused_window = NULL;
+	}
+
 	win->magic = 0;  /* Mark as dead BEFORE freeing so a use-after-free read
 	                    sees a non-magic value if memory is read back. */
 	free(win->title);
@@ -282,16 +303,81 @@ void boxen_window_set_pinned(boxen_window_t *win, boxen_pin_edge_t edge) {
 	if (win != NULL) win->pinned = edge;
 }
 
-/* A.3 stubs */
-void boxen_window_raise(boxen_window_t *win)              { (void)win; }
-void boxen_window_lower(boxen_window_t *win)              { (void)win; }
-void boxen_window_focus(boxen_window_t *win)              { (void)win; }
-void boxen_window_set_modal(boxen_window_t *win, bool m)  { (void)win; (void)m; }
-void boxen_window_invalidate(boxen_window_t *win)         { (void)win; }
+/* -------------------------------------------------------------------------
+ * Z-order: raise / lower / focus
+ *
+ * The window list is ordered bottom-to-top: index 0 is the backmost window,
+ * index g_window_count-1 is the frontmost. raise() shifts a window to the
+ * top (last position); lower() shifts it to the bottom (index 0). Both
+ * preserve relative order of the other windows via a single-element shift.
+ * ---------------------------------------------------------------------- */
+
+void boxen_window_raise(boxen_window_t *win) {
+	if (win == NULL || g_window_count <= 1) return;
+
+	/* Find win in the list. */
+	int idx = -1;
+	for (int i = 0; i < g_window_count; i++) {
+		if (g_windows[i] == win) { idx = i; break; }
+	}
+	if (idx < 0 || idx == g_window_count - 1) return;  /* not found or already top */
+
+	/* Shift everything above idx down by one, place win at the top. */
+	for (int i = idx; i < g_window_count - 1; i++) {
+		g_windows[i] = g_windows[i + 1];
+	}
+	g_windows[g_window_count - 1] = win;
+}
+
+void boxen_window_lower(boxen_window_t *win) {
+	if (win == NULL || g_window_count <= 1) return;
+
+	int idx = -1;
+	for (int i = 0; i < g_window_count; i++) {
+		if (g_windows[i] == win) { idx = i; break; }
+	}
+	if (idx < 0 || idx == 0) return;  /* not found or already bottom */
+
+	/* Shift everything below idx up by one, place win at index 0. */
+	for (int i = idx; i > 0; i--) {
+		g_windows[i] = g_windows[i - 1];
+	}
+	g_windows[0] = win;
+}
+
+void boxen_window_focus(boxen_window_t *win) {
+	if (win == NULL) return;
+
+	/* Clear focused flag on all windows, then set it on win. */
+	for (int i = 0; i < g_window_count; i++) {
+		if (g_windows[i] != NULL) {
+			g_windows[i]->focused = false;
+		}
+	}
+	win->focused     = true;
+	g_focused_window = win;
+
+	/* Raise the newly focused window to the top. */
+	boxen_window_raise(win);
+}
+
+void boxen_window_set_modal(boxen_window_t *win, bool modal) {
+	if (win == NULL) return;
+	win->modal = modal;
+}
+
+/* boxen_window_invalidate: in the A.3 always-redraw model, every present()
+ * call redraws all windows regardless. This function is a no-op API surface
+ * for the future case where dirty-rect tracking is added (A.N+). */
+void boxen_window_invalidate(boxen_window_t *win) {
+	(void)win;
+	/* no-op: always-redraw model in A.3 */
+}
 
 void boxen_window_set_draw(boxen_window_t *win, boxen_draw_fn fn) {
 	if (win != NULL) win->draw_fn = fn;
 }
+
 void boxen_window_set_input(boxen_window_t *win, boxen_input_fn fn) {
 	if (win != NULL) win->input_fn = fn;
 }
@@ -324,14 +410,132 @@ void boxen_window_set_row_highlight(boxen_window_t *win, int content_row,
 	win->highlight_bg   = bg;
 }
 
-/* A.3 event loop stubs */
-boxen_result_t boxen_poll_event(boxen_event_t *out, int timeout_ms) {
-	(void)out; (void)timeout_ms;
-	return BOXEN_ERR_INVALID;
+/* -------------------------------------------------------------------------
+ * present -- back-to-front redraw + backend->present()
+ *
+ * Walks g_windows[0..g_window_count-1] (back to front) and calls each
+ * window's draw_fn callback if: (a) draw_fn is non-NULL, and (b) the
+ * window has non-zero width AND height. After all callbacks, calls
+ * backend->present() once to flush the composited frame.
+ * ---------------------------------------------------------------------- */
+
+void boxen_present(void) {
+	if (!g_initialized || g_backend == NULL) return;
+
+	for (int i = 0; i < g_window_count; i++) {
+		boxen_window_t *w = g_windows[i];
+		if (w == NULL) continue;
+		if (w->rect.w == 0 || w->rect.h == 0) continue;  /* skip degenerate/hidden */
+		if (w->draw_fn != NULL) {
+			w->draw_fn(w, w->user_data);
+		}
+	}
+
+	g_backend->present();
 }
-void boxen_present(void)  {}
-void boxen_run(void)      {}
-void boxen_quit(void)     {}
+
+/* -------------------------------------------------------------------------
+ * poll_event -- raw event fetch from the backend
+ *
+ * Returns BOXEN_OK on event, BOXEN_ERR_TIMEOUT when timeout_ms elapses
+ * with no event, or another negative error code on backend failure.
+ * Does NOT dispatch the event -- call boxen_dispatch_event() for that.
+ * ---------------------------------------------------------------------- */
+
+boxen_result_t boxen_poll_event(boxen_event_t *out, int timeout_ms) {
+	if (!g_initialized || g_backend == NULL) {
+		boxen__set_last_error("boxen not initialized");
+		return BOXEN_ERR_INVALID;
+	}
+	if (out == NULL) {
+		boxen__set_last_error("out must not be NULL");
+		return BOXEN_ERR_INVALID;
+	}
+	return g_backend->poll_event(out, timeout_ms);
+}
+
+/* -------------------------------------------------------------------------
+ * dispatch_event -- route an event to the right window(s)
+ *
+ * Key events:
+ *   If a modal window exists, dispatch to that window only.
+ *   Otherwise dispatch to the focused window (if any).
+ *
+ * Mouse events:
+ *   If a modal window exists, dispatch to the modal window only.
+ *   Otherwise dispatch to the topmost window at (ev->mouse.x, ev->mouse.y).
+ *
+ * Resize events:
+ *   Passed to the focused window (A.4 will handle clamping).
+ * ---------------------------------------------------------------------- */
+
+void boxen_dispatch_event(const boxen_event_t *ev) {
+	if (ev == NULL || !g_initialized) return;
+
+	/* Find the modal window, if any (last one with modal=true wins). */
+	boxen_window_t *modal_win = NULL;
+	for (int i = g_window_count - 1; i >= 0; i--) {
+		if (g_windows[i] != NULL && g_windows[i]->modal) {
+			modal_win = g_windows[i];
+			break;
+		}
+	}
+
+	boxen_window_t *target = NULL;
+
+	switch (ev->type) {
+	case BOXEN_EV_KEY:
+		target = (modal_win != NULL) ? modal_win : g_focused_window;
+		break;
+
+	case BOXEN_EV_MOUSE:
+		if (modal_win != NULL) {
+			target = modal_win;
+		} else {
+			/* Topmost window at (mouse.x, mouse.y) -- boxen_window_at scans
+			 * from the last (topmost) index, which is the z-order top. */
+			int cx, cy;
+			target = boxen_window_at(ev->mouse.x, ev->mouse.y, &cx, &cy);
+		}
+		break;
+
+	case BOXEN_EV_RESIZE:
+		target = g_focused_window;
+		break;
+
+	default:
+		break;
+	}
+
+	if (target != NULL && target->input_fn != NULL) {
+		target->input_fn(target, ev, target->user_data);
+	}
+}
+
+/* -------------------------------------------------------------------------
+ * run / quit -- convenience event loop
+ *
+ * Polls with a 100 ms timeout, dispatches via boxen_dispatch_event, then
+ * calls boxen_present. Exits when g_should_quit is true (set by boxen_quit).
+ * ---------------------------------------------------------------------- */
+
+void boxen_run(void) {
+	g_should_quit = false;
+
+	while (!g_should_quit) {
+		boxen_event_t ev;
+		boxen_result_t r = boxen_poll_event(&ev, 100);
+		if (r == BOXEN_OK) {
+			boxen_dispatch_event(&ev);
+		}
+		if (g_should_quit) break;
+		boxen_present();
+	}
+}
+
+void boxen_quit(void) {
+	g_should_quit = true;
+}
 
 /* A.6 layout stubs */
 void boxen_layout_split_h(boxen_rect_t total, float ratio,
@@ -481,13 +685,14 @@ void boxen_fill_rect(boxen_window_t *win, boxen_rect_t r,
 /* -------------------------------------------------------------------------
  * boxen_window_at -- screen-to-window-local coordinate mapping
  *
- * Iterates the window list from last (topmost at A.2) to first (bottommost).
+ * Iterates the window list from last (topmost in z-order) to first (bottommost).
  * Returns the first window whose rect contains (sx, sy).
  * If cx/cy are non-NULL, fills them with window-local coords.
  * ---------------------------------------------------------------------- */
 
 boxen_window_t *boxen_window_at(int sx, int sy, int *cx, int *cy) {
-	/* Scan from last (topmost in insertion order) to first. */
+	/* Scan from last (topmost in z-order) to first (bottommost). A.3 raise/lower
+	 * operations maintain g_windows[g_window_count-1] as the topmost window. */
 	for (int i = g_window_count - 1; i >= 0; i--) {
 		boxen_window_t *w = g_windows[i];
 		/* Defensive: slots 0..g_window_count-1 are invariant non-NULL

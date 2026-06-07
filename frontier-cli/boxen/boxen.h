@@ -384,13 +384,32 @@ void boxen_window_set_row_highlight(boxen_window_t *win, int content_row,
  * Event loop (A.3+)
  * ---------------------------------------------------------------------- */
 
-/* Low-level: poll for one event. Returns BOXEN_OK or BOXEN_ERR_TIMEOUT. */
+/* Low-level: poll for one event. Returns BOXEN_OK or BOXEN_ERR_TIMEOUT.
+ * Does NOT dispatch the event -- use boxen_dispatch_event() for that.
+ * The caller is responsible for GIL release/reacquire around blocking polls. */
 boxen_result_t boxen_poll_event(boxen_event_t *out, int timeout_ms);
+
+/* Dispatch an event to the appropriate window(s) according to focus and
+ * modal rules:
+ *   - If a modal window is present, key events go to the modal window only.
+ *   - Otherwise key events go to the focused window.
+ *   - Mouse events go to the topmost window at (ev->mouse.x, ev->mouse.y),
+ *     unless a modal window is present (in which case modal receives them).
+ *   - Resize events are passed to the focused window.
+ *
+ * Surface code that wants to interleave Frontier runtime events with boxen
+ * events should call boxen_poll_event() and then boxen_dispatch_event()
+ * separately. boxen_run() calls both internally.
+ *
+ * Calling from outside a boxen_run() loop is safe and supported. */
+void boxen_dispatch_event(const boxen_event_t *ev);
 
 /* Composite all windows and flush to the terminal. */
 void boxen_present(void);
 
-/* Convenience main loop for standalone programs. */
+/* Convenience main loop for standalone programs. Polls events with a 100 ms
+ * timeout, dispatches via boxen_dispatch_event, then calls boxen_present.
+ * Exits when boxen_quit() is called from an input callback. */
 void boxen_run(void);
 void boxen_quit(void);
 
