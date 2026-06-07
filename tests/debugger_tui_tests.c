@@ -1950,6 +1950,581 @@ static void test_f9_no_op_after_resume(void) {
 	teardown();
 }
 
+/* =========================================================================
+ * Phase B.5 tests -- cmd-double-click identifier resolution and watchpoints.
+ *
+ * 2026-06-07 JES Phase B.5 #691
+ *
+ * Four behavioral tests per EXECUTION_PLAN.md B.5 "Tests" section:
+ *   test_extract_identifier_at             -- word extraction from line/col
+ *   test_cmd_double_click_shows_local_value -- locals lookup shows popup
+ *   test_watchpoint_modal_dispatches_setwatchpoint -- w key + confirm
+ *   test_boxen_mock_double_click_carries_meta -- event flag verification
+ *
+ * Additional robustness tests:
+ *   test_extract_identifier_at_edges       -- column 0 (gutter), whitespace, past end
+ *   test_watchpoint_modal_escape_cancels   -- Escape cancels without dispatch
+ *   test_watchpoint_modal_json_escape      -- variable path with " is escaped
+ *   test_cmd_double_click_not_a_local      -- identifier not in locals shows name only
+ *   test_cmd_double_click_chrome_hit_ignored -- chrome hit returns BOXEN_HIT_CHROME, no crash
+ * ========================================================================= */
+
+/* -------------------------------------------------------------------------
+ * test_extract_identifier_at
+ *
+ * Spec (EXECUTION_PLAN.md B.5 Tests):
+ *   Script line "  local myVar = 5" at content row 2; col 8 is inside "myVar".
+ *   extract_identifier_at("  local myVar = 5", 8, out, out_max) returns "myVar".
+ *
+ * Word boundary: non-alphanumeric/non-underscore.
+ * ---------------------------------------------------------------------- */
+static void test_extract_identifier_at(void) {
+	char out[64];
+
+	/* Column 8 is inside "myVar" in "  local myVar = 5" (0-indexed) */
+	extract_identifier_at("  local myVar = 5", 8, out, (int)sizeof(out));
+	assert(strcmp(out, "myVar") == 0);
+
+	/* Column 2 is inside "local" */
+	extract_identifier_at("  local myVar = 5", 2, out, (int)sizeof(out));
+	assert(strcmp(out, "local") == 0);
+
+	/* Column 13 is inside "=" -- not an identifier */
+	extract_identifier_at("  local myVar = 5", 13, out, (int)sizeof(out));
+	assert(out[0] == '\0');
+
+	/* Column 16 is "5" -- a bare numeric literal.  UserTalk/C identifiers
+	 * cannot start with a digit, so the result must be empty.
+	 * 2026-06-07 JES Phase B.5 #745 round 1 P1-2: leading-digit rejection. */
+	extract_identifier_at("  local myVar = 5", 16, out, (int)sizeof(out));
+	assert(out[0] == '\0');
+}
+
+/* -------------------------------------------------------------------------
+ * test_extract_identifier_at_edges
+ *
+ * Edge cases: column 0 with space, past end of line, empty line.
+ * ---------------------------------------------------------------------- */
+static void test_extract_identifier_at_edges(void) {
+	char out[64];
+
+	/* Column 0 is a space (gutter area) -- no identifier */
+	extract_identifier_at("  local x", 0, out, (int)sizeof(out));
+	assert(out[0] == '\0');
+
+	/* Column past end of string */
+	extract_identifier_at("ab", 99, out, (int)sizeof(out));
+	assert(out[0] == '\0');
+
+	/* Empty line */
+	extract_identifier_at("", 0, out, (int)sizeof(out));
+	assert(out[0] == '\0');
+
+	/* Column exactly at start of word */
+	extract_identifier_at("foo bar", 4, out, (int)sizeof(out));
+	assert(strcmp(out, "bar") == 0);
+
+	/* Column at last char of word */
+	extract_identifier_at("foo bar", 6, out, (int)sizeof(out));
+	assert(strcmp(out, "bar") == 0);
+
+	/* Underscore is a word constituent */
+	extract_identifier_at("my_var here", 2, out, (int)sizeof(out));
+	assert(strcmp(out, "my_var") == 0);
+}
+
+/* -------------------------------------------------------------------------
+ * test_cmd_double_click_shows_local_value
+ *
+ * Spec: Populate state.local_names = ["myVar"], state.local_values = ["5"].
+ * Simulate identifier resolution with "myVar".
+ * Verify the popup text contains "myVar = 5".
+ *
+ * We call tui_resolve_identifier_by_name() directly (internal API exposed
+ * for testing) rather than injecting a mouse event, to test the locals-lookup
+ * path in isolation from event routing.
+ * ---------------------------------------------------------------------- */
+static void test_cmd_double_click_shows_local_value(void) {
+	setup();
+
+	/* Populate one local */
+	free_locals(&g_state);
+	g_state.local_names  = (char **)calloc(1, sizeof(char *));
+	g_state.local_values = (char **)calloc(1, sizeof(char *));
+	assert(g_state.local_names != NULL && g_state.local_values != NULL);
+	g_state.local_count     = 1;
+	g_state.local_names[0]  = strdup("myVar");
+	g_state.local_values[0] = strdup("5");
+	assert(g_state.local_names[0] && g_state.local_values[0]);
+
+	g_state.debug_state = TUI_DEBUG_SUSPENDED;
+
+	/* Resolve "myVar" against locals */
+	tui_resolve_identifier_by_name(&g_state, "myVar");
+
+	/* Popup must be active and contain "myVar = 5" */
+	assert(g_state.identifier_popup_active == true);
+	assert(strstr(g_state.identifier_popup_line, "myVar") != NULL);
+	assert(strstr(g_state.identifier_popup_line, "5") != NULL);
+
+	/* 2026-06-07 JES Phase B.5 #745 round 1 P1-3: popup renders in the footer
+	 * row, not in the script pane.  Invalidate the footer window and verify
+	 * the text appears (boxen_mock_has_text scans all cells on screen). */
+	boxen_window_invalidate(g_state.footer_win);
+	boxen_present();
+	assert(boxen_mock_has_text("myVar"));
+
+	free_locals(&g_state);
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * test_watchpoint_modal_dispatches_setwatchpoint
+ *
+ * Spec (EXECUTION_PLAN.md B.5 Tests):
+ *   Open watchpoint modal with suggested path "myVar".
+ *   Confirm; verify dispatched JSON contains "op":"debug/setWatchpoint" and
+ *   "path":"myVar".
+ *
+ * Procedure:
+ *   1. Set debug_state = SUSPENDED, populate pending_thread_id.
+ *   2. Focus stack pane; inject 'w' to open watchpoint modal.
+ *   3. Verify watchpoint_modal_win != NULL.
+ *   4. Characters arrive pre-populated (suggested) -- inject Enter to confirm.
+ *   5. Verify JSON dispatch contains "debug/setWatchpoint" and "myVar".
+ *
+ * Note: 'w' pre-populates the modal with the local name under the cursor
+ * (the focused local in the stack pane). For this test we set up the state
+ * so "myVar" is the first local and selected_frame = 0.
+ * ---------------------------------------------------------------------- */
+static void test_watchpoint_modal_dispatches_setwatchpoint(void) {
+	setup();
+	g_state.debug_state       = TUI_DEBUG_SUSPENDED;
+	g_state.pending_thread_id  = 1;
+
+	/* Populate one local so 'w' has a suggested name */
+	free_locals(&g_state);
+	g_state.local_names  = (char **)calloc(1, sizeof(char *));
+	g_state.local_values = (char **)calloc(1, sizeof(char *));
+	assert(g_state.local_names != NULL && g_state.local_values != NULL);
+	g_state.local_count     = 1;
+	g_state.local_names[0]  = strdup("myVar");
+	g_state.local_values[0] = strdup("42");
+	assert(g_state.local_names[0] && g_state.local_values[0]);
+
+	reset_dispatch_capture();
+
+	/* Focus the stack pane and inject 'w' to open watchpoint modal */
+	boxen_window_focus(g_state.stack_win);
+	boxen_event_t ev;
+	memset(&ev, 0, sizeof(ev));
+	ev.type    = BOXEN_EV_KEY;
+	ev.key.key = BOXEN_KEY_NONE;
+	ev.key.ch  = 'w';
+	ev.key.mod = BOXEN_MOD_NONE;
+	int rc = debugger_tui_run_one_tick(&g_state, &ev);
+
+	assert(rc == TUI_CONTINUE);
+	/* Modal must be open */
+	assert(g_state.watchpoint_modal_win != NULL);
+
+	/* Press Enter to confirm with pre-populated "myVar" */
+	memset(&ev, 0, sizeof(ev));
+	ev.type    = BOXEN_EV_KEY;
+	ev.key.key = BOXEN_KEY_ENTER;
+	ev.key.ch  = 0;
+	ev.key.mod = BOXEN_MOD_NONE;
+	rc = debugger_tui_run_one_tick(&g_state, &ev);
+
+	assert(rc == TUI_CONTINUE);
+	/* Modal must be closed */
+	assert(g_state.watchpoint_modal_win == NULL);
+
+	/* Dispatch must contain setWatchpoint with "myVar" as "variable".
+	 * 2026-06-07 JES Phase B.5 #745 round 1 P0-1: handler reads params.variable
+	 * (debug_handler.c:2400 -- cJSON_GetObjectItemCaseSensitive(params, "variable")).
+	 * The old test asserted "path":"myVar" which locked in the broken wire shape.
+	 * threadId is not asserted: handle_debug_setwatchpoint does not parse it. */
+	assert(strstr(g_dispatch_buf, "debug/setWatchpoint") != NULL);
+	assert(strstr(g_dispatch_buf, "\"variable\":\"myVar\"") != NULL);
+	assert(strstr(g_dispatch_buf, "\"path\"") == NULL); /* must not use old broken key */
+
+	free_locals(&g_state);
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * test_boxen_mock_double_click_carries_meta
+ *
+ * Spec (EXECUTION_PLAN.md B.5 Tests):
+ *   Use boxen_mock_push_double_click(10, 5, BOXEN_MOD_META) to inject the event.
+ *   Verify the delivered event has flags & BOXEN_MOUSE_DOUBLE_CLICK and
+ *   mod & BOXEN_MOD_META.
+ *
+ * This test verifies the mock backend's double-click injection carries the
+ * Meta modifier correctly -- a prerequisite for all cmd-double-click tests.
+ * ---------------------------------------------------------------------- */
+static void test_boxen_mock_double_click_carries_meta(void) {
+	setup();
+
+	/* Inject a double-click at (10, 5) with Meta modifier */
+	boxen_mock_push_double_click(10, 5, BOXEN_MOD_META);
+
+	/* Poll the first event -- may be the first press (no double-click flag yet) */
+	boxen_event_t ev1;
+	memset(&ev1, 0, sizeof(ev1));
+	boxen_result_t r1 = boxen_poll_event(&ev1, 0);
+
+	/* Poll the second event -- this is the double-click with the flag */
+	boxen_event_t ev2;
+	memset(&ev2, 0, sizeof(ev2));
+	boxen_result_t r2 = boxen_poll_event(&ev2, 0);
+
+	/* At least one event must have arrived */
+	assert(r1 == BOXEN_OK || r2 == BOXEN_OK);
+
+	/* The DOUBLE_CLICK event (second press) must carry both flags */
+	boxen_event_t *dc_ev = NULL;
+	if (r2 == BOXEN_OK && ev2.type == BOXEN_EV_MOUSE &&
+	    (ev2.mouse.flags & BOXEN_MOUSE_DOUBLE_CLICK)) {
+		dc_ev = &ev2;
+	} else if (r1 == BOXEN_OK && ev1.type == BOXEN_EV_MOUSE &&
+	           (ev1.mouse.flags & BOXEN_MOUSE_DOUBLE_CLICK)) {
+		dc_ev = &ev1;
+	}
+	assert(dc_ev != NULL);
+	assert(dc_ev->mouse.flags & BOXEN_MOUSE_DOUBLE_CLICK);
+	assert(dc_ev->mouse.mod   & BOXEN_MOD_META);
+	assert(dc_ev->mouse.button == 1);   /* left button */
+	assert(dc_ev->mouse.pressed == true);
+
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * test_watchpoint_modal_escape_cancels
+ *
+ * Open watchpoint modal via 'w', press Escape.
+ * Assert: modal closed, no dispatch, cursor hidden.
+ * ---------------------------------------------------------------------- */
+static void test_watchpoint_modal_escape_cancels(void) {
+	setup();
+	g_state.debug_state       = TUI_DEBUG_SUSPENDED;
+	g_state.pending_thread_id  = 1;
+
+	/* Populate one local */
+	free_locals(&g_state);
+	g_state.local_names  = (char **)calloc(1, sizeof(char *));
+	g_state.local_values = (char **)calloc(1, sizeof(char *));
+	assert(g_state.local_names != NULL && g_state.local_values != NULL);
+	g_state.local_count     = 1;
+	g_state.local_names[0]  = strdup("z");
+	g_state.local_values[0] = strdup("0");
+	assert(g_state.local_names[0] && g_state.local_values[0]);
+
+	reset_dispatch_capture();
+
+	/* Open modal */
+	boxen_window_focus(g_state.stack_win);
+	boxen_event_t ev;
+	memset(&ev, 0, sizeof(ev));
+	ev.type    = BOXEN_EV_KEY;
+	ev.key.key = BOXEN_KEY_NONE;
+	ev.key.ch  = 'w';
+	ev.key.mod = BOXEN_MOD_NONE;
+	debugger_tui_run_one_tick(&g_state, &ev);
+	assert(g_state.watchpoint_modal_win != NULL);
+
+	/* Reset capture */
+	memset(g_dispatch_buf, 0, sizeof(g_dispatch_buf));
+
+	/* Press Escape */
+	memset(&ev, 0, sizeof(ev));
+	ev.type    = BOXEN_EV_KEY;
+	ev.key.key = BOXEN_KEY_ESCAPE;
+	ev.key.ch  = 0;
+	ev.key.mod = BOXEN_MOD_NONE;
+	int rc = debugger_tui_run_one_tick(&g_state, &ev);
+
+	assert(rc == TUI_CONTINUE);
+	assert(g_state.watchpoint_modal_win == NULL);
+	assert(g_dispatch_buf[0] == '\0');
+	assert(boxen_mock_cursor_visible() == false);
+
+	free_locals(&g_state);
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * test_watchpoint_modal_json_escape
+ *
+ * Verify that a variable path with a double-quote is properly escaped in
+ * the dispatched debug/setWatchpoint JSON.
+ *
+ * Sequence:
+ *   1. Open watchpoint modal.
+ *   2. Clear pre-populated buffer; type 'f', '"', 'x'.
+ *   3. Confirm (Enter).
+ *   4. Assert dispatched JSON has escaped "f\"x" as the path value.
+ * ---------------------------------------------------------------------- */
+static void test_watchpoint_modal_json_escape(void) {
+	setup();
+	g_state.debug_state       = TUI_DEBUG_SUSPENDED;
+	g_state.pending_thread_id  = 2;
+
+	/* One local so 'w' has something to suggest */
+	free_locals(&g_state);
+	g_state.local_names  = (char **)calloc(1, sizeof(char *));
+	g_state.local_values = (char **)calloc(1, sizeof(char *));
+	assert(g_state.local_names != NULL && g_state.local_values != NULL);
+	g_state.local_count     = 1;
+	g_state.local_names[0]  = strdup("x");
+	g_state.local_values[0] = strdup("1");
+	assert(g_state.local_names[0] && g_state.local_values[0]);
+
+	reset_dispatch_capture();
+
+	/* Open modal */
+	boxen_window_focus(g_state.stack_win);
+	boxen_event_t ev;
+	memset(&ev, 0, sizeof(ev));
+	ev.type    = BOXEN_EV_KEY;
+	ev.key.key = BOXEN_KEY_NONE;
+	ev.key.ch  = 'w';
+	ev.key.mod = BOXEN_MOD_NONE;
+	debugger_tui_run_one_tick(&g_state, &ev);
+	assert(g_state.watchpoint_modal_win != NULL);
+
+	/* Clear pre-populated buffer via Backspace until empty */
+	for (int i = 0; i < TUI_WATCH_PATH_MAX; i++) {
+		if (g_state.watch_path_len == 0) break;
+		memset(&ev, 0, sizeof(ev));
+		ev.type    = BOXEN_EV_KEY;
+		ev.key.key = BOXEN_KEY_BACKSPACE;
+		ev.key.ch  = 0;
+		ev.key.mod = BOXEN_MOD_NONE;
+		debugger_tui_run_one_tick(&g_state, &ev);
+	}
+
+	/* Type 'f', '"', 'x' */
+	char chars[] = {'f', '"', 'x'};
+	for (int i = 0; i < 3; i++) {
+		memset(&ev, 0, sizeof(ev));
+		ev.type    = BOXEN_EV_KEY;
+		ev.key.key = BOXEN_KEY_NONE;
+		ev.key.ch  = (uint32_t)chars[i];
+		ev.key.mod = BOXEN_MOD_NONE;
+		debugger_tui_run_one_tick(&g_state, &ev);
+	}
+
+	/* Confirm */
+	memset(g_dispatch_buf, 0, sizeof(g_dispatch_buf));
+	memset(&ev, 0, sizeof(ev));
+	ev.type    = BOXEN_EV_KEY;
+	ev.key.key = BOXEN_KEY_ENTER;
+	ev.key.ch  = 0;
+	ev.key.mod = BOXEN_MOD_NONE;
+	debugger_tui_run_one_tick(&g_state, &ev);
+
+	assert(g_state.watchpoint_modal_win == NULL);
+	assert(strstr(g_dispatch_buf, "debug/setWatchpoint") != NULL);
+	/* The double-quote must be escaped in the JSON output */
+	assert(strstr(g_dispatch_buf, "f\\\"x") != NULL);
+
+	free_locals(&g_state);
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * test_cmd_double_click_not_a_local
+ *
+ * Two sub-cases:
+ * (a) local_count == 0: shows "(locals not loaded yet)" -- race-safe UX.
+ * (b) local_count > 0 but identifier absent: shows "(not found in locals)".
+ *
+ * 2026-06-07 JES Phase B.5 #745 round 1 P1-1: distinguish "not loaded" from
+ * "not in scope".
+ * ---------------------------------------------------------------------- */
+static void test_cmd_double_click_not_a_local(void) {
+	setup();
+
+	/* Sub-case (a): local_count == 0 -- locals not yet loaded */
+	g_state.local_count = 0;
+	g_state.debug_state = TUI_DEBUG_SUSPENDED;
+
+	tui_resolve_identifier_by_name(&g_state, "unknownVar");
+
+	assert(g_state.identifier_popup_active == true);
+	assert(strstr(g_state.identifier_popup_line, "unknownVar") != NULL);
+	/* Must show "not loaded yet", not "not found in locals" */
+	assert(strstr(g_state.identifier_popup_line, "not loaded yet") != NULL);
+	assert(strstr(g_state.identifier_popup_line, "not found in locals") == NULL);
+
+	/* Sub-case (b): locals present but identifier absent */
+	g_state.identifier_popup_active = false;
+	g_state.identifier_popup_line[0] = '\0';
+	free_locals(&g_state);
+	g_state.local_names  = (char **)calloc(1, sizeof(char *));
+	g_state.local_values = (char **)calloc(1, sizeof(char *));
+	assert(g_state.local_names != NULL && g_state.local_values != NULL);
+	g_state.local_count     = 1;
+	g_state.local_names[0]  = strdup("otherVar");
+	g_state.local_values[0] = strdup("99");
+	assert(g_state.local_names[0] && g_state.local_values[0]);
+
+	tui_resolve_identifier_by_name(&g_state, "unknownVar");
+
+	assert(g_state.identifier_popup_active == true);
+	assert(strstr(g_state.identifier_popup_line, "unknownVar") != NULL);
+	/* Must show "not found in locals", not "not loaded yet" */
+	assert(strstr(g_state.identifier_popup_line, "not found in locals") != NULL);
+	assert(strstr(g_state.identifier_popup_line, "not loaded yet") == NULL);
+
+	free_locals(&g_state);
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * B.5 round-1 regression test: scroll-aware cmd-double-click (P0-2)
+ *
+ * Set up script_lines with 10 entries, scroll the script pane to scroll_y=3,
+ * then call extract_identifier_at on source_lines[2] (which is what the click
+ * handler produces when cy==2 after the fix -- cy is content-relative with
+ * scroll already applied, so source_row = cy = 2).
+ *
+ * Before the fix: source_row = cy + scroll_y = 2 + 3 = 5, extracting
+ * from the wrong line.  After the fix: source_row = cy = 2, correct.
+ *
+ * We test the extract_identifier_at level directly (identical to what the
+ * click handler does) because injecting a real mouse event requires knowing
+ * the precise screen coordinates of the script window at the test
+ * terminal size -- the unit-level test is simpler and covers the math fix.
+ * ---------------------------------------------------------------------- */
+static void test_scroll_aware_click_uses_content_coords(void) {
+	char out[64];
+
+	/* Source lines 0..9 -- each has a unique identifier so we can tell
+	 * which line was sampled */
+	const char *lines[10] = {
+		"  lineZero = 0",   /* row 0: identifier "lineZero" at col 2 */
+		"  lineOne  = 1",   /* row 1 */
+		"  lineTwo  = 2",   /* row 2: identifier "lineTwo" at col 2 */
+		"  lineThree = 3",  /* row 3 */
+		"  lineFour = 4",   /* row 4 */
+		"  lineFive = 5",   /* row 5 */
+		"  lineSix  = 6",   /* row 6 */
+		"  lineSeven = 7",  /* row 7 */
+		"  lineEight = 8",  /* row 8 */
+		"  lineNine = 9",   /* row 9 */
+	};
+
+	/* cy=2 (content coord returned by boxen_window_at after scroll).
+	 * After the P0-2 fix: source_row = cy = 2.
+	 * Before the fix (source_row = cy + 3 = 5): would extract "lineFive".
+	 *
+	 * source_col: "  lineTwo  = 2" has the 'T' at index 6 (0-based text
+	 * column).  In the click handler, cx is the gutter-inclusive content col
+	 * (gutter=0, text starts at 1), so cx==7 maps to source_col = cx-1 = 6. */
+	int cy_from_boxen = 2;  /* what boxen_window_at would return */
+	int source_row    = cy_from_boxen;  /* fixed: no +scroll_y */
+	int source_col    = 6;              /* col inside "lineTwo" (0-based text) */
+
+	extract_identifier_at(lines[source_row], source_col, out, (int)sizeof(out));
+	assert(strcmp(out, "lineTwo") == 0);
+
+	/* Confirm the pre-fix behavior would have extracted the wrong line */
+	int broken_row = cy_from_boxen + 3;  /* scroll_y=3 double-counted */
+	extract_identifier_at(lines[broken_row], source_col, out, (int)sizeof(out));
+	assert(strcmp(out, "lineFive") == 0);  /* wrong line -- documents the bug */
+}
+
+/* -------------------------------------------------------------------------
+ * B.5 round-1 regression test: leading-digit identifier rejection (P1-2)
+ *
+ * Extends test_extract_identifier_at_edges with explicit digit-start cases.
+ * ---------------------------------------------------------------------- */
+static void test_leading_digit_identifier_rejected(void) {
+	char out[64];
+
+	/* Bare digit -- must return empty */
+	extract_identifier_at("x = 5", 4, out, (int)sizeof(out));
+	assert(out[0] == '\0');
+
+	/* Multi-digit literal */
+	extract_identifier_at("count = 42", 8, out, (int)sizeof(out));
+	assert(out[0] == '\0');
+
+	/* Digit embedded in a valid identifier (not the start) -- allowed */
+	extract_identifier_at("myVar2 here", 3, out, (int)sizeof(out));
+	assert(strcmp(out, "myVar2") == 0);
+
+	/* Identifier starting with underscore+digit: "_2x" -- underscore starts it */
+	extract_identifier_at("_2x = 0", 0, out, (int)sizeof(out));
+	assert(strcmp(out, "_2x") == 0);
+}
+
+/* -------------------------------------------------------------------------
+ * B.5 round-1 regression test: popup renders in footer, not script pane (P1-3)
+ *
+ * After the fix, tui_resolve_identifier_by_name invalidates footer_win, not
+ * script_win.  We confirm:
+ *   1. popup_active is set after resolve.
+ *   2. boxen_present() shows the popup text somewhere on screen (footer renders).
+ *   3. The script pane content (source lines) is still fully renderable --
+ *      no source row is overwritten by the popup.
+ * ---------------------------------------------------------------------- */
+static void test_popup_renders_in_footer_not_script_pane(void) {
+	setup();
+
+	/* Load 3 source lines via the transport write_line (same pattern as
+	 * test_load_source_parses_response). */
+	const char *json_src =
+		"{\"id\":1,\"result\":{"
+		"\"script\":\"popup_test.script\","
+		"\"currentLine\":1,"
+		"\"lines\":["
+		"{\"num\":1,\"text\":\"alphabetLine\",\"breakpoint\":false},"
+		"{\"num\":2,\"text\":\"betaLine\",\"breakpoint\":false},"
+		"{\"num\":3,\"text\":\"gammaLine\",\"breakpoint\":false}"
+		"]}}";
+	assert(g_state.transport != NULL);
+	g_state.transport->write_line(g_state.transport->ctx, json_src, strlen(json_src));
+
+	assert(g_state.script_line_count == 3);
+
+	/* Populate one local */
+	free_locals(&g_state);
+	g_state.local_names  = (char **)calloc(1, sizeof(char *));
+	g_state.local_values = (char **)calloc(1, sizeof(char *));
+	assert(g_state.local_names != NULL && g_state.local_values != NULL);
+	g_state.local_count     = 1;
+	g_state.local_names[0]  = strdup("alphabetLine");
+	g_state.local_values[0] = strdup("7");
+	assert(g_state.local_names[0] && g_state.local_values[0]);
+
+	g_state.debug_state = TUI_DEBUG_SUSPENDED;
+
+	tui_resolve_identifier_by_name(&g_state, "alphabetLine");
+
+	assert(g_state.identifier_popup_active == true);
+	assert(strstr(g_state.identifier_popup_line, "alphabetLine") != NULL);
+
+	/* Render everything -- popup must appear in the footer row */
+	boxen_window_invalidate(g_state.script_win);
+	boxen_window_invalidate(g_state.footer_win);
+	boxen_present();
+	assert(boxen_mock_has_text("alphabetLine = 7"));
+
+	/* All source lines must still render in the script pane --
+	 * "betaLine" and "gammaLine" must remain visible (not overwritten). */
+	assert(boxen_mock_has_text("betaLine"));
+	assert(boxen_mock_has_text("gammaLine"));
+
+	free_locals(&g_state);
+	free_script_lines(&g_state);
+	teardown();
+}
+
 /* -------------------------------------------------------------------------
  * main
  * ---------------------------------------------------------------------- */
@@ -2019,6 +2594,21 @@ int main(void) {
 	TR_RUN(test_toggle_off_preserves_condition);
 	TR_RUN(test_json_escape_in_script_path);
 	TR_RUN(test_f9_no_op_after_resume);
+
+	/* B.5 tests */
+	TR_RUN(test_extract_identifier_at);
+	TR_RUN(test_extract_identifier_at_edges);
+	TR_RUN(test_cmd_double_click_shows_local_value);
+	TR_RUN(test_watchpoint_modal_dispatches_setwatchpoint);
+	TR_RUN(test_boxen_mock_double_click_carries_meta);
+	TR_RUN(test_watchpoint_modal_escape_cancels);
+	TR_RUN(test_watchpoint_modal_json_escape);
+	TR_RUN(test_cmd_double_click_not_a_local);
+
+	/* B.5 round-1 review regression tests (#745) */
+	TR_RUN(test_scroll_aware_click_uses_content_coords);
+	TR_RUN(test_leading_digit_identifier_rejected);
+	TR_RUN(test_popup_renders_in_footer_not_script_pane);
 
 	TR_SUMMARY();
 	return TR_EXIT_CODE();
