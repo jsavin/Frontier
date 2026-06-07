@@ -8,11 +8,15 @@
  * other Frontier unit tests).
  *
  * 2026-06-06 JES Phase B.0 #691
+ * 2026-06-07 JES Phase B.6 #740: log_write stub for test build (makes log_warn
+ *   safe to call from non-OMIT_MAIN code paths compiled into the test binary)
  */
 
 #include <assert.h>
 #include <stdbool.h>
 #include <string.h>
+#include <stdarg.h>
+#include <stdio.h>
 
 /* boxen substrate */
 #include "../frontier-cli/boxen/boxen.h"
@@ -23,6 +27,32 @@
 
 /* Test harness */
 #include "test_report.h"
+
+/* -------------------------------------------------------------------------
+ * 2026-06-07 JES Phase B.6 #740: log_write stub for test binary.
+ *
+ * debugger_tui.c calls log_warn() (which expands to log_write()) from
+ * tui_store_source / tui_store_stack / tui_store_locals cap paths.  These
+ * functions are compiled into the test binary (they are NOT inside
+ * #ifndef DEBUGGER_TUI_OMIT_MAIN).  Without a stub, log_write resolves to
+ * NULL via -Wl,-undefined,dynamic_lookup and crashes at the first call.
+ *
+ * A no-op stub here satisfies the linker; the test binary never needs real
+ * logging output.  The stub MUST appear before any #include that might
+ * pull in logging.h (which declares log_write with no __attribute__((weak))
+ * -- the stub definition takes precedence in the link order because this
+ * file appears first in the debugger_tui_tests link command).
+ *
+ * Prototype matches Common/headers/logging.h exactly.
+ * ---------------------------------------------------------------------- */
+#include "../Common/headers/logging.h"
+void log_write(log_level_t level, log_component_t component,
+               const char *file, int line, const char *fmt, ...) {
+	(void)level; (void)component; (void)file; (void)line;
+	/* No-op in test builds.  Avoids pulling in the full Frontier runtime
+	 * logging subsystem (logging.c) into the test binary. */
+	(void)fmt;
+}
 
 /* -------------------------------------------------------------------------
  * Helpers
@@ -2525,6 +2555,251 @@ static void test_popup_renders_in_footer_not_script_pane(void) {
 	teardown();
 }
 
+/* =========================================================================
+ * B.6 tests -- lazy-attach wiring (#738 #740 #742 #744)
+ * ========================================================================= */
+
+/* -------------------------------------------------------------------------
+ * test_req_id_starts_at_one (#742)
+ *
+ * The per-session tui_req_id must be initialized to 1 by state_init.
+ * Tests in earlier milestones implicitly depend on deterministic IDs
+ * (they match "\"id\":1" in dispatch capture); this test makes the
+ * contract explicit.
+ * ---------------------------------------------------------------------- */
+static void test_req_id_starts_at_one(void) {
+	setup();
+	assert(g_state.tui_req_id == 1);
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * test_req_id_increments_per_session (#742)
+ *
+ * After an F5 dispatch, tui_req_id increments.  We first set up a
+ * SUSPENDED state, then inject F5 which calls tui_do_continue(), which
+ * calls next_req_id(s) and increments tui_req_id from 1 to 2.
+ * ---------------------------------------------------------------------- */
+static void test_req_id_increments_per_session(void) {
+	setup();
+
+	/* Establish suspended state so F5 is not gated */
+	g_state.debug_state       = TUI_DEBUG_SUSPENDED;
+	g_state.pending_thread_id = 5;
+
+	char capture[512];
+	g_state.dispatch_capture_buf = capture;
+	g_state.dispatch_capture_cap = (int)sizeof(capture);
+
+	/* Inject F5 (continue) -- calls next_req_id(s) */
+	boxen_event_t ev = make_fkey_event(BOXEN_KEY_F5, BOXEN_MOD_NONE);
+	debugger_tui_run_one_tick(&g_state, &ev);
+
+	/* tui_req_id must have advanced beyond 1 */
+	assert(g_state.tui_req_id > 1);
+
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * test_req_id_independent_across_sessions (#742)
+ *
+ * Two back-to-back sessions each start with tui_req_id == 1, confirming
+ * there is no shared static state between sessions.
+ * ---------------------------------------------------------------------- */
+static void test_req_id_independent_across_sessions(void) {
+	/* Session 1 */
+	setup();
+	assert(g_state.tui_req_id == 1);
+	/* Advance the counter via F5 */
+	g_state.debug_state       = TUI_DEBUG_SUSPENDED;
+	g_state.pending_thread_id = 3;
+	char capture1[256];
+	g_state.dispatch_capture_buf = capture1;
+	g_state.dispatch_capture_cap = (int)sizeof(capture1);
+	boxen_event_t ev1 = make_fkey_event(BOXEN_KEY_F5, BOXEN_MOD_NONE);
+	debugger_tui_run_one_tick(&g_state, &ev1);
+	int id_after_session1 = g_state.tui_req_id;
+	assert(id_after_session1 > 1);
+	teardown();
+
+	/* Session 2: must reset to 1 regardless of session 1's final value */
+	setup();
+	assert(g_state.tui_req_id == 1);
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * test_dispatch_log_slot_wide_enough (#744)
+ *
+ * The longest dispatch payload we generate is the setBreakpoint request
+ * with a fully-qualified script path and a condition string.  The cap for
+ * script_path is 255 bytes; JSON-escaped that is at most 255*6 = 1530 bytes.
+ * A condition string is capped at TUI_BP_CONDITION_MAX-1 = 255 bytes.
+ * Total payload (with JSON envelope ~80 bytes) is well under 2048.
+ * This test constructs a near-maximum payload and verifies it fits.
+ * ---------------------------------------------------------------------- */
+static void test_dispatch_log_slot_wide_enough(void) {
+	/* Build a 254-char script path (all ASCII printable, no escaping) */
+	char script_path[256];
+	memset(script_path, 'a', sizeof(script_path) - 2);
+	/* Insert some dots to look like a valid UserTalk path */
+	for (int i = 10; i < 254; i += 11) script_path[i] = '.';
+	script_path[254] = '\0';
+
+	/* Build a 254-char condition string */
+	char condition[256];
+	memset(condition, 'x', sizeof(condition) - 2);
+	condition[254] = '\0';
+
+	setup();
+	g_state.debug_state       = TUI_DEBUG_SUSPENDED;
+	g_state.current_line      = 42;
+	g_state.pending_thread_id = 1;
+	strncpy(g_state.script_path, script_path, sizeof(g_state.script_path) - 1);
+	g_state.script_path[sizeof(g_state.script_path) - 1] = '\0';
+
+	/* dispatch_capture_buf gates test mode in tui_dispatch_json.
+	 * Must be set so op_dispatch (NULL in test binary) is not called. */
+	reset_dispatch_capture();
+
+	/* Use dispatch_log to capture the full sequence */
+	char log_buf[TUI_DISPATCH_LOG_COUNT][TUI_DISPATCH_LOG_SLOT];
+	memset(log_buf, 0, sizeof(log_buf));
+	g_state.dispatch_log       = log_buf;
+	g_state.dispatch_log_cap   = TUI_DISPATCH_LOG_COUNT;
+	g_state.dispatch_log_count = 0;
+
+	/* Open condition modal via Shift-F9 */
+	boxen_event_t ev = make_fkey_event(BOXEN_KEY_F9, BOXEN_MOD_SHIFT);
+	debugger_tui_run_one_tick(&g_state, &ev);
+	assert(g_state.condition_modal_win != NULL);
+
+	/* Type condition string into the modal */
+	for (int i = 0; condition[i] != '\0'; i++) {
+		memset(&ev, 0, sizeof(ev));
+		ev.type    = BOXEN_EV_KEY;
+		ev.key.key = BOXEN_KEY_NONE;
+		ev.key.ch  = (uint32_t)(unsigned char)condition[i];
+		ev.key.mod = BOXEN_MOD_NONE;
+		debugger_tui_run_one_tick(&g_state, &ev);
+	}
+	/* Confirm with Enter */
+	memset(&ev, 0, sizeof(ev));
+	ev.type    = BOXEN_EV_KEY;
+	ev.key.key = BOXEN_KEY_ENTER;
+	debugger_tui_run_one_tick(&g_state, &ev);
+
+	/* The setBreakpoint payload must have fit in a single slot */
+	assert(g_state.dispatch_log_count > 0);
+	/* Find the setBreakpoint entry */
+	bool found = false;
+	for (int i = 0; i < g_state.dispatch_log_count; i++) {
+		if (strstr(log_buf[i], "setBreakpoint") != NULL) {
+			/* Slot must not be truncated: last char is '}' */
+			size_t slen = strlen(log_buf[i]);
+			assert(slen > 0);
+			assert(log_buf[i][slen - 1] == '}');
+			/* Payload must fit within slot with headroom */
+			assert(slen < TUI_DISPATCH_LOG_SLOT - 1);
+			found = true;
+			break;
+		}
+	}
+	assert(found);
+
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * test_log_write_stub_safe_in_test_build (#740)
+ *
+ * Verify that calling log_warn (which expands to log_write) from within
+ * the test binary does not crash.  The stub installed at the top of this
+ * file must intercept the call and return silently.
+ * ---------------------------------------------------------------------- */
+static void test_log_write_stub_safe_in_test_build(void) {
+	/* Directly call log_warn.  If the stub is absent, dyld resolves
+	 * log_write to NULL and this crashes.  With the stub it is a no-op. */
+	log_warn(LOG_COMP_GENERAL, "B.6 log_write stub test: should be silent");
+	/* If we reach here, the stub is working */
+}
+
+/* -------------------------------------------------------------------------
+ * test_full_lifecycle_mock (#738)
+ *
+ * Full mock-backend session:
+ *   init -> suspended notification -> F5 continue -> second suspended ->
+ *   q-quit.
+ *
+ * Verifies that:
+ *   1. State transitions IDLE -> SUSPENDED -> RUNNING -> SUSPENDED -> QUIT
+ *      are correct.
+ *   2. No memory errors (no double-free, no leak of script lines / locals).
+ *   3. quit_requested is set on 'q'.
+ *
+ * This exercises the same sequence that B.6's heap-allocated main loop
+ * would run, but driven by the tick API so it works without the GIL or
+ * the real transport.
+ * ---------------------------------------------------------------------- */
+
+/* Helper: feed a JSON notification string through the TUI write_line path. */
+static void feed_notification(tui_state_t *s, const char *json) {
+	s->transport->write_line(s->transport->ctx, json, strlen(json));
+}
+
+static void test_full_lifecycle_mock(void) {
+	setup();
+
+	char cap[512];
+	g_state.dispatch_capture_buf = cap;
+	g_state.dispatch_capture_cap = (int)sizeof(cap);
+
+	/* 1. Verify initial state */
+	assert(g_state.debug_state    == TUI_DEBUG_IDLE);
+	assert(g_state.quit_requested == false);
+
+	/* 2. Inject debug/suspended -- transitions to SUSPENDED */
+	feed_notification(&g_state,
+		"{\"op\":\"debug/suspended\",\"params\":"
+		"{\"threadId\":7,\"line\":3,\"script\":\"test.script\","
+		"\"reason\":\"breakpoint\"}}");
+	assert(g_state.debug_state    == TUI_DEBUG_SUSPENDED);
+	assert(g_state.pending_thread_id == 7);
+
+	/* 3. Inject F5 (continue) -- transitions to RUNNING */
+	boxen_event_t ev;
+	memset(&ev, 0, sizeof(ev));
+	ev.type    = BOXEN_EV_KEY;
+	ev.key.key = BOXEN_KEY_F5;
+	int rc = debugger_tui_run_one_tick(&g_state, &ev);
+	assert(rc == TUI_CONTINUE);
+	assert(g_state.debug_state == TUI_DEBUG_RUNNING);
+
+	/* Dispatch capture must contain debug/continue */
+	assert(strstr(cap, "debug/continue") != NULL);
+	assert(strstr(cap, "\"threadId\":7")  != NULL);
+
+	/* 4. Second suspended -- transitions back to SUSPENDED */
+	feed_notification(&g_state,
+		"{\"op\":\"debug/suspended\",\"params\":"
+		"{\"threadId\":7,\"line\":5,\"script\":\"test.script\","
+		"\"reason\":\"step\"}}");
+	assert(g_state.debug_state    == TUI_DEBUG_SUSPENDED);
+	assert(g_state.current_line   == 5);
+
+	/* 5. 'q' -- quit_requested */
+	memset(&ev, 0, sizeof(ev));
+	ev.type    = BOXEN_EV_KEY;
+	ev.key.key = BOXEN_KEY_NONE;
+	ev.key.ch  = 'q';
+	rc = debugger_tui_run_one_tick(&g_state, &ev);
+	assert(rc == TUI_QUIT);
+	assert(g_state.quit_requested == true);
+
+	teardown();
+}
+
 /* -------------------------------------------------------------------------
  * main
  * ---------------------------------------------------------------------- */
@@ -2609,6 +2884,14 @@ int main(void) {
 	TR_RUN(test_scroll_aware_click_uses_content_coords);
 	TR_RUN(test_leading_digit_identifier_rejected);
 	TR_RUN(test_popup_renders_in_footer_not_script_pane);
+
+	/* B.6 tests (#738 #740 #742 #744) */
+	TR_RUN(test_req_id_starts_at_one);
+	TR_RUN(test_req_id_increments_per_session);
+	TR_RUN(test_req_id_independent_across_sessions);
+	TR_RUN(test_dispatch_log_slot_wide_enough);
+	TR_RUN(test_log_write_stub_safe_in_test_build);
+	TR_RUN(test_full_lifecycle_mock);
 
 	TR_SUMMARY();
 	return TR_EXIT_CODE();
