@@ -28,6 +28,7 @@
  * 2026-06-07 JES Phase B.3 #691: F5/F10/F11/Shift-F11 keybinds + debug_state machine
  * 2026-06-07 JES Phase B.4 #691: F9 breakpoint toggle + condition modal (A.7 cursor)
  * 2026-06-07 JES Phase B.4 #743 round 1: condition preservation + JSON escape + F9 gate
+ * 2026-06-07 JES Phase B.5 #691: cmd-double-click identifier resolution + watchpoints
  *
  * SPDX-License-Identifier: MIT
  * Copyright (c) 2025-2026 Frontier contributors
@@ -376,6 +377,11 @@ static void tui_write_line(void *ctx, const char *json, size_t len) {
 		 * again, so it is safe. */
 		s->debug_state = TUI_DEBUG_SUSPENDED;
 
+		/* 2026-06-07 JES Phase B.5 #691: clear any stale identifier popup.
+		 * A new suspension point makes the previous resolution irrelevant. */
+		s->identifier_popup_active  = false;
+		s->identifier_popup_line[0] = '\0';
+
 		/* Invalidate both panes so the next present() redraws them */
 		if (s->script_win != NULL)
 			boxen_window_invalidate(s->script_win);
@@ -523,6 +529,44 @@ static void draw_script_pane(boxen_window_t *win, void *ud) {
 		linebuf[avail] = '\0';
 
 		boxen_draw_text(win, 1, content_row, linebuf, fg, bg, attr);
+	}
+
+	/* 2026-06-07 JES Phase B.5 #691: render identifier popup if active.
+	 * The popup is shown as a highlighted status line at the LAST visible
+	 * content row of the window.  We use the viewport height (not content size)
+	 * to determine the last visible row, then draw the popup there.
+	 *
+	 * The popup is drawn AFTER the source lines so it always overlays the
+	 * bottom row of the visible area.  This is a simple status-bar style: no
+	 * separate window, no modal -- just a DIM-highlighted row at the bottom.
+	 *
+	 * Scroll interaction: the popup is always visible regardless of scroll
+	 * position (it's drawn in screen-relative terms via the content viewport). */
+	if (s->identifier_popup_active && s->identifier_popup_line[0] != '\0') {
+		int viewport_h = boxen_window_content_height(win);
+		if (viewport_h > 0) {
+			int scroll_y = 0, scroll_x = 0;
+			boxen_window_get_scroll(win, &scroll_x, &scroll_y);
+			/* Draw on the last visible content row (scroll_y + viewport_h - 1) */
+			int popup_row = scroll_y + viewport_h - 1;
+
+			const char *popup = s->identifier_popup_line;
+			int popup_len = (int)strlen(popup);
+			char linebuf2[512];
+			int cap2  = (int)sizeof(linebuf2) - 1;
+			int avail2 = (w - 1) < cap2 ? (w - 1) : cap2;
+			if (avail2 < 0) avail2 = 0;
+			int copy2 = popup_len < avail2 ? popup_len : avail2;
+			memcpy(linebuf2, popup, (size_t)copy2);
+			memset(linebuf2 + copy2, ' ', (size_t)(avail2 - copy2));
+			linebuf2[avail2] = '\0';
+
+			/* Gutter cell for popup row: space */
+			boxen_set_cell(win, 0, popup_row, (uint32_t)' ',
+			               BOXEN_COLOR_DEFAULT, BOXEN_COLOR_DEFAULT, BOXEN_ATTR_DIM);
+			boxen_draw_text(win, 1, popup_row, linebuf2,
+			                BOXEN_COLOR_DEFAULT, BOXEN_COLOR_DEFAULT, BOXEN_ATTR_DIM);
+		}
 	}
 }
 
@@ -1130,6 +1174,282 @@ static void tui_open_condition_modal(tui_state_t *s, int tw, int th) {
 }
 
 /* -------------------------------------------------------------------------
+ * 2026-06-07 JES Phase B.5 #691: identifier extraction helper.
+ *
+ * extract_identifier_at -- extract the identifier word that covers column `col`
+ * (0-based) in `line`.  Word boundary characters: any character that is NOT
+ * alphanumeric (a-z, A-Z, 0-9) or underscore ('_').
+ *
+ * Edge cases (all return empty string in `out`):
+ *   - col < 0 or col >= strlen(line): out-of-range click
+ *   - character at col is a word boundary: no identifier at that position
+ *   - line is NULL or empty
+ *
+ * `out` is always NUL-terminated.  Truncated to `out_max - 1` characters.
+ *
+ * Exposed via debugger_tui_internal.h for direct testing.
+ * ---------------------------------------------------------------------- */
+
+/* Helper: true if character is an identifier constituent (alphanumeric or '_') */
+static bool is_ident_char(char c) {
+	return (c >= 'a' && c <= 'z') ||
+	       (c >= 'A' && c <= 'Z') ||
+	       (c >= '0' && c <= '9') ||
+	       (c == '_');
+}
+
+void extract_identifier_at(const char *line, int col, char *out, int out_max) {
+	if (out == NULL || out_max <= 0) return;
+	out[0] = '\0';
+	if (line == NULL || col < 0 || out_max <= 1) return;
+
+	int len = (int)strlen(line);
+	if (col >= len) return;                   /* past end of line */
+	if (!is_ident_char(line[col])) return;    /* not on an identifier character */
+
+	/* Scan left to find the start of the identifier */
+	int start = col;
+	while (start > 0 && is_ident_char(line[start - 1])) {
+		start--;
+	}
+
+	/* Scan right to find the end of the identifier */
+	int end = col;
+	while (end + 1 < len && is_ident_char(line[end + 1])) {
+		end++;
+	}
+
+	/* Copy [start..end] inclusive, truncate to out_max - 1 */
+	int ident_len = end - start + 1;
+	int copy = (ident_len < out_max - 1) ? ident_len : out_max - 1;
+	memcpy(out, line + start, (size_t)copy);
+	out[copy] = '\0';
+}
+
+/* -------------------------------------------------------------------------
+ * 2026-06-07 JES Phase B.5 #691: identifier resolution by name.
+ *
+ * tui_resolve_identifier_by_name -- look up `name` in state->local_names.
+ *
+ * If found: populate identifier_popup_line with "name = value", set
+ *   identifier_popup_active = true, invalidate script pane.
+ *
+ * If not found: populate identifier_popup_line with "name (not found in locals)",
+ *   set identifier_popup_active = true, invalidate script pane.
+ *
+ * The identifier_popup_active flag causes draw_script_pane to render a
+ * one-line status string at the bottom of the script pane's visible area.
+ *
+ * Exposed via debugger_tui_internal.h for direct testing.
+ * ---------------------------------------------------------------------- */
+
+void tui_resolve_identifier_by_name(tui_state_t *s, const char *name) {
+	if (s == NULL || name == NULL || name[0] == '\0') return;
+
+	/* Search local_names for a match */
+	for (int i = 0; i < s->local_count; i++) {
+		if (s->local_names[i] != NULL &&
+		    strcmp(s->local_names[i], name) == 0) {
+			/* Found: show "name = value" */
+			const char *value = (s->local_values && s->local_values[i])
+			                    ? s->local_values[i] : "";
+			snprintf(s->identifier_popup_line,
+			         sizeof(s->identifier_popup_line),
+			         "%s = %s", name, value);
+			s->identifier_popup_active = true;
+			if (s->script_win != NULL) boxen_window_invalidate(s->script_win);
+			return;
+		}
+	}
+
+	/* Not found: show informational message */
+	snprintf(s->identifier_popup_line,
+	         sizeof(s->identifier_popup_line),
+	         "%s (not found in locals)", name);
+	s->identifier_popup_active = true;
+	if (s->script_win != NULL) boxen_window_invalidate(s->script_win);
+}
+
+/* -------------------------------------------------------------------------
+ * 2026-06-07 JES Phase B.5 #691: watchpoint modal.
+ *
+ * Structurally identical to the B.4 condition modal.  The watchpoint modal
+ * is opened by pressing 'w' in the stack pane while debug_state is SUSPENDED.
+ * It is pre-populated with the local variable name at the current cursor
+ * position in the locals section (or the first local if no cursor tracking).
+ *
+ * On Enter: dispatch debug/setWatchpoint with the typed path and current threadId.
+ * On Escape: close without dispatching.
+ *
+ * Wire format per EXECUTION_PLAN.md B.5:
+ *   {"op":"debug/setWatchpoint","id":N,"params":{"path":"varname","threadId":TID}}
+ *
+ * handle_debug_setwatchpoint is confirmed at debug_handler.h:151.
+ *
+ * Security: tui_json_escape applied to watch_path_buf before dispatch (same
+ * as condition string in B.4 -- B.4 P1 class lesson).
+ *
+ * tui_close_watchpoint_modal: mirrors tui_close_condition_modal exactly.
+ * ---------------------------------------------------------------------- */
+
+static void tui_close_watchpoint_modal(tui_state_t *s) {
+	if (s->watchpoint_modal_win == NULL) return;
+	/* A.7 API: hide cursor before releasing modal ownership */
+	boxen_window_set_cursor_visible(s->watchpoint_modal_win, false);
+	/* Release modal gate */
+	boxen_window_set_modal(s->watchpoint_modal_win, false);
+	boxen_window_close(s->watchpoint_modal_win);
+	s->watchpoint_modal_win = NULL;
+	/* Restore focus to stack pane (watchpoint modal is always opened from stack pane) */
+	if (s->stack_win != NULL) boxen_window_focus(s->stack_win);
+}
+
+/* Forward declaration -- draw_watchpoint_modal referenced before definition */
+static void draw_watchpoint_modal(boxen_window_t *win, void *ud);
+
+static void input_watchpoint_modal(boxen_window_t *win, const boxen_event_t *ev, void *ud) {
+	(void)win;
+	tui_state_t *s = (tui_state_t *)ud;
+	if (ev->type != BOXEN_EV_KEY) return;
+
+	if (ev->key.key == BOXEN_KEY_ESCAPE) {
+		/* Cancel: close without dispatching */
+		tui_close_watchpoint_modal(s);
+		return;
+	}
+
+	if (ev->key.key == BOXEN_KEY_ENTER) {
+		/* Confirm: dispatch debug/setWatchpoint with the typed path.
+		 * 2026-06-07 JES Phase B.5 #691: tui_json_escape the path string
+		 * (B.4 P1 security class: ALL outbound JSON string fields that come from
+		 * runtime state must be escaped). */
+		char esc_path[TUI_WATCH_PATH_MAX * 6 + 1];
+		tui_json_escape(s->watch_path_buf, esc_path, sizeof(esc_path));
+
+		char req[512 + sizeof(esc_path)];
+		snprintf(req, sizeof(req),
+		         "{\"op\":\"debug/setWatchpoint\",\"id\":%d,"
+		         "\"params\":{\"path\":\"%s\",\"threadId\":%ld}}",
+		         next_req_id(), esc_path, s->pending_thread_id);
+
+		tui_close_watchpoint_modal(s);
+		tui_dispatch_json(s, req);
+		return;
+	}
+
+	if (ev->key.key == BOXEN_KEY_BACKSPACE) {
+		if (s->watch_path_len > 0) {
+			s->watch_path_len--;
+			s->watch_path_buf[s->watch_path_len] = '\0';
+		}
+	} else if (ev->key.key == BOXEN_KEY_NONE && ev->key.ch >= 0x20 && ev->key.ch < 0x7F) {
+		/* Printable ASCII: append if space permits (capped at TUI_WATCH_PATH_MAX-1) */
+		if (s->watch_path_len < TUI_WATCH_PATH_MAX - 1) {
+			s->watch_path_buf[s->watch_path_len++] = (char)ev->key.ch;
+			s->watch_path_buf[s->watch_path_len]   = '\0';
+		}
+	}
+
+	/* Reposition cursor to follow the input (A.7 API).
+	 * Modal content layout: row 0 = title, row 1 = blank, row 2 = input. */
+	if (s->watchpoint_modal_win != NULL) {
+		boxen_window_set_cursor(s->watchpoint_modal_win,
+		                        s->watch_path_len, 2);
+		boxen_window_invalidate(s->watchpoint_modal_win);
+	}
+}
+
+static void draw_watchpoint_modal(boxen_window_t *win, void *ud) {
+	tui_state_t *s = (tui_state_t *)ud;
+	int w = boxen_window_content_width(win);
+	if (w <= 0) return;
+
+	/* Cap to linebuf capacity (B.1 round-1 P1-A lesson) */
+	char linebuf[512];
+	int  cap   = (int)sizeof(linebuf) - 1;
+	int  avail = w < cap ? w : cap;
+
+	/* Row 0: title */
+	{
+		const char *title = "Set Watchpoint (Enter=confirm  Esc=cancel)";
+		int n = snprintf(linebuf, (size_t)(avail + 1), "%-*.*s", avail, avail, title);
+		(void)n;
+		boxen_draw_text(win, 0, 0, linebuf,
+		                BOXEN_COLOR_DEFAULT, BOXEN_COLOR_DEFAULT, BOXEN_ATTR_BOLD);
+	}
+
+	/* Row 1: blank separator */
+	{
+		memset(linebuf, ' ', (size_t)avail);
+		linebuf[avail] = '\0';
+		boxen_draw_text(win, 0, 1, linebuf,
+		                BOXEN_COLOR_DEFAULT, BOXEN_COLOR_DEFAULT, BOXEN_ATTR_NONE);
+	}
+
+	/* Row 2: variable path buffer.
+	 * Pad to avail with spaces so the input row is fully drawn. */
+	{
+		const char *path = s != NULL ? s->watch_path_buf : "";
+		int plen = s != NULL ? s->watch_path_len : 0;
+		int copy = plen < avail ? plen : avail;
+		memcpy(linebuf, path, (size_t)copy);
+		memset(linebuf + copy, ' ', (size_t)(avail - copy));
+		linebuf[avail] = '\0';
+		boxen_draw_text(win, 0, 2, linebuf,
+		                BOXEN_COLOR_DEFAULT, BOXEN_COLOR_DEFAULT, BOXEN_ATTR_NONE);
+	}
+
+	/* Position the real terminal cursor at the end of the typed text (A.7 API) */
+	if (s != NULL && s->watchpoint_modal_win != NULL) {
+		boxen_window_set_cursor(s->watchpoint_modal_win,
+		                        s->watch_path_len, 2);
+	}
+}
+
+static void tui_open_watchpoint_modal(tui_state_t *s, const char *suggested,
+                                      int tw, int th) {
+	/* Pre-populate the path buffer with the suggested local variable name.
+	 * If suggested is NULL or empty, the buffer starts blank. */
+	memset(s->watch_path_buf, 0, sizeof(s->watch_path_buf));
+	s->watch_path_len = 0;
+	if (suggested != NULL && suggested[0] != '\0') {
+		size_t slen = strlen(suggested);
+		if (slen > (size_t)(TUI_WATCH_PATH_MAX - 1)) slen = (size_t)(TUI_WATCH_PATH_MAX - 1);
+		memcpy(s->watch_path_buf, suggested, slen);
+		s->watch_path_buf[slen] = '\0';
+		s->watch_path_len = (int)slen;
+	}
+
+	/* Open a centered modal window -- same sizing as the condition modal */
+	int mw = 60;
+	int mh = 5;
+	if (mw > tw - 4) mw = tw - 4;
+	if (mh > th - 4) mh = th - 4;
+	if (mw < 20) mw = 20;
+	if (mh < 5)  mh = 5;
+
+	int mx = (tw - mw) / 2;
+	int my = (th - mh) / 2;
+	if (mx < 0) mx = 0;
+	if (my < 0) my = 0;
+
+	boxen_rect_t r = { mx, my, mw, mh };
+	s->watchpoint_modal_win = boxen_window_open("Set Watchpoint", r, NULL);
+	if (s->watchpoint_modal_win == NULL) return;
+
+	boxen_window_set_draw(s->watchpoint_modal_win,  draw_watchpoint_modal);
+	boxen_window_set_input(s->watchpoint_modal_win, input_watchpoint_modal);
+	boxen_window_set_user_data(s->watchpoint_modal_win, s);
+
+	/* A.7 API: modal gate + cursor */
+	boxen_window_set_modal(s->watchpoint_modal_win, true);
+	boxen_window_set_cursor(s->watchpoint_modal_win, s->watch_path_len, 2);
+	boxen_window_set_cursor_visible(s->watchpoint_modal_win, true);
+
+	boxen_window_invalidate(s->watchpoint_modal_win);
+}
+
+/* -------------------------------------------------------------------------
  * 2026-06-07 JES Phase B.3 #691: draw_footer.
  *
  * Footer state machine (EXECUTION_PLAN.md B.3 "Footer update"):
@@ -1275,6 +1595,29 @@ static void on_stack_input(boxen_window_t *win, const boxen_event_t *ev, void *u
 		return;
 	}
 
+	/* 2026-06-07 JES Phase B.5 #691: 'w' opens the watchpoint modal.
+	 * Only available while suspended and no modal is already open.
+	 * Pre-populate with the first local's name if locals are loaded. */
+	if ((ev->key.ch == 'w' || ev->key.ch == 'W') &&
+	    s->debug_state == TUI_DEBUG_SUSPENDED &&
+	    s->watchpoint_modal_win == NULL) {
+		/* Derive terminal dimensions from the footer window */
+		int tw = 80, th = 24;
+		if (s->footer_win != NULL) {
+			boxen_rect_t fr = boxen_window_get_rect(s->footer_win);
+			tw = fr.w;
+			th = fr.y + fr.h;
+		}
+		/* Suggest the first local variable name as the default path */
+		const char *suggested = NULL;
+		if (s->local_count > 0 && s->local_names != NULL &&
+		    s->local_names[0] != NULL) {
+			suggested = s->local_names[0];
+		}
+		tui_open_watchpoint_modal(s, suggested, tw, th);
+		return;
+	}
+
 	/* Pass quit keys through to the shared handler */
 	if (ev->key.key == BOXEN_KEY_ESCAPE ||
 	    ev->key.key == BOXEN_KEY_CTRL_C ||
@@ -1293,6 +1636,66 @@ static void on_stack_input(boxen_window_t *win, const boxen_event_t *ev, void *u
 static void on_input(boxen_window_t *win, const boxen_event_t *ev, void *ud) {
 	(void)win;
 	tui_state_t *s = (tui_state_t *)ud;
+
+	/* 2026-06-07 JES Phase B.5 #691: cmd-double-click identifier resolution.
+	 *
+	 * Gesture: Meta (Cmd on macOS) + left-button double-click on a word in
+	 * the script pane while suspended.
+	 *
+	 * Detection (EXECUTION_PLAN.md B.5 Sentinels):
+	 *   - ev->type == BOXEN_EV_MOUSE
+	 *   - ev->mouse.button == 1 (left button)
+	 *   - ev->mouse.mod & BOXEN_MOD_META
+	 *   - ev->mouse.flags & BOXEN_MOUSE_DOUBLE_CLICK
+	 *   - ev->mouse.pressed == true (second press event, not release)
+	 *
+	 * Only fires while TUI_DEBUG_SUSPENDED (locals are available for lookup).
+	 *
+	 * Identifier extraction: use boxen_window_at to get content coordinates
+	 * from screen coordinates.  Check for BOXEN_HIT_CHROME (INT_MIN sentinel)
+	 * before treating cx/cy as row/column content indices.
+	 *
+	 * Row conversion: content row cy corresponds to source line
+	 *   (cy + scroll_y + 1) in 1-based ODB line numbers.
+	 * Column cx into the content area: column 0 is the gutter; source text
+	 *   starts at column 1.  For identifier extraction, pass (cx - 1) as the
+	 *   column into the source text line (cx == 0 is the gutter, no identifier).
+	 */
+	if (ev->type == BOXEN_EV_MOUSE) {
+		if (ev->mouse.button == 1 &&
+		    (ev->mouse.mod   & BOXEN_MOD_META) &&
+		    (ev->mouse.flags & BOXEN_MOUSE_DOUBLE_CLICK) &&
+		    ev->mouse.pressed == true &&
+		    s->debug_state == TUI_DEBUG_SUSPENDED) {
+			/* Map screen coords to content coords in the script window */
+			int cx = 0, cy = 0;
+			boxen_window_t *hit_win = boxen_window_at(ev->mouse.x, ev->mouse.y, &cx, &cy);
+
+			if (hit_win == s->script_win &&
+			    cx != BOXEN_HIT_CHROME && cy != BOXEN_HIT_CHROME &&
+			    cx > 0 /* not gutter */) {
+				/* Content column (cx-1) is the 0-based column in the source text.
+				 * Content row cy + scroll_y gives the 0-based source line index. */
+				int scroll_x = 0, scroll_y = 0;
+				boxen_window_get_scroll(s->script_win, &scroll_x, &scroll_y);
+				int source_row = cy + scroll_y;   /* 0-based line index */
+				int source_col = cx - 1;          /* 0-based column in text */
+
+				if (source_row >= 0 && source_row < s->script_line_count) {
+					const char *line = s->script_lines[source_row];
+					if (line != NULL) {
+						char ident[256];
+						extract_identifier_at(line, source_col, ident, (int)sizeof(ident));
+						if (ident[0] != '\0') {
+							tui_resolve_identifier_by_name(s, ident);
+						}
+					}
+				}
+			}
+		}
+		return;   /* Mouse events do not fall through to key handler */
+	}
+
 	if (ev->type != BOXEN_EV_KEY) return;
 
 	/* 2026-06-06 JES Phase B.0 #734 round 1 P1-4: accept q/Q regardless of
@@ -1433,6 +1836,12 @@ void debugger_tui_state_init(tui_state_t *s, int tw, int th) {
 	s->dispatch_log_cap    = 0;
 	s->dispatch_log_count  = 0;
 
+	/* 2026-06-07 JES Phase B.5 #691: initialize watchpoint modal + popup state */
+	s->watchpoint_modal_win     = NULL;
+	s->watch_path_len           = 0;
+	s->identifier_popup_active  = false;
+	s->identifier_popup_line[0] = '\0';
+
 	/* Allocate heap transport (stub; B.6 wires debug_set_attach_transport) */
 	s->transport = calloc(1, sizeof(transport_t));
 	if (s->transport != NULL) {
@@ -1458,6 +1867,10 @@ void debugger_tui_state_teardown(tui_state_t *s) {
 	if (s->condition_modal_win != NULL) {
 		tui_close_condition_modal(s);
 	}
+	/* 2026-06-07 JES Phase B.5 #691: close watchpoint modal if open. */
+	if (s->watchpoint_modal_win != NULL) {
+		tui_close_watchpoint_modal(s);
+	}
 	if (s->footer_win != NULL)  { boxen_window_close(s->footer_win);  s->footer_win  = NULL; }
 	if (s->stack_win  != NULL)  { boxen_window_close(s->stack_win);   s->stack_win   = NULL; }
 	if (s->script_win != NULL)  { boxen_window_close(s->script_win);  s->script_win  = NULL; }
@@ -1479,6 +1892,10 @@ void debugger_tui_state_teardown(tui_state_t *s) {
 	s->dispatch_log       = NULL;
 	s->dispatch_log_cap   = 0;
 	s->dispatch_log_count = 0;
+	/* 2026-06-07 JES Phase B.5 #691: clear watchpoint + popup state */
+	s->watch_path_len           = 0;
+	s->identifier_popup_active  = false;
+	s->identifier_popup_line[0] = '\0';
 	s->debug_state = TUI_DEBUG_IDLE;
 }
 

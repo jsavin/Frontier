@@ -11,6 +11,7 @@
  * 2026-06-07 JES Phase B.3 #691: tui_debug_state_t, dispatch capture, keybind fields
  * 2026-06-07 JES Phase B.4 #691: breakpoint UI, condition modal, dispatch log
  * 2026-06-07 JES Phase B.4 #743 round 1: condition preservation, JSON escape, F9 gate
+ * 2026-06-07 JES Phase B.5 #691: cmd-double-click resolution, watchpoint modal
  */
 
 #ifndef DEBUGGER_TUI_INTERNAL_H
@@ -71,6 +72,14 @@ typedef enum {
  * a UserTalk expression; the modal input is capped at (TUI_BP_CONDITION_MAX - 1)
  * printable characters before accepting Enter. */
 #define TUI_BP_CONDITION_MAX 256
+
+/* 2026-06-07 JES Phase B.5 #691: maximum length of a watchpoint variable path
+ * string (including NUL terminator).  256 bytes matches TUI_BP_CONDITION_MAX. */
+#define TUI_WATCH_PATH_MAX 256
+
+/* 2026-06-07 JES Phase B.5 #691: maximum length of the identifier popup line
+ * displayed at the bottom of the script pane after a cmd-double-click. */
+#define TUI_IDENTIFIER_POPUP_MAX 512
 
 /* 2026-06-07 JES Phase B.4 #691: multi-dispatch log capacity for tests.
  * Tests that verify sequences (clearBreakpoints -> setBreakpoint for each
@@ -190,6 +199,38 @@ typedef struct {
 	boxen_window_t *condition_modal_win; /* NULL when modal is closed */
 	char  bp_condition_buf[TUI_BP_CONDITION_MAX]; /* condition expression buffer */
 	int   bp_condition_len;              /* current character count, 0..TUI_BP_CONDITION_MAX-1 */
+
+	/* 2026-06-07 JES Phase B.5 #691: watchpoint modal state.
+	 *
+	 * watchpoint_modal_win -- the open watchpoint modal; NULL when closed.
+	 *   Opened by 'w' in the stack pane while debug_state == TUI_DEBUG_SUSPENDED.
+	 *   Dismissed by Enter (confirm -> dispatch debug/setWatchpoint) or Escape (cancel).
+	 *   Structurally identical lifecycle to condition_modal_win from B.4.
+	 *
+	 * watch_path_buf -- the variable path being typed (pre-populated with the
+	 *   local variable name under the cursor if one is selected).
+	 *   Bounded to TUI_WATCH_PATH_MAX - 1 printable characters.
+	 *
+	 * watch_path_len -- current character count in watch_path_buf.
+	 */
+	boxen_window_t *watchpoint_modal_win;          /* NULL when modal is closed */
+	char  watch_path_buf[TUI_WATCH_PATH_MAX];      /* variable path buffer */
+	int   watch_path_len;                          /* current character count */
+
+	/* 2026-06-07 JES Phase B.5 #691: cmd-double-click identifier resolution popup.
+	 *
+	 * identifier_popup_active -- true when a resolved identifier value is displayed
+	 *   in the script pane's status line at the bottom.
+	 *
+	 * identifier_popup_line -- the text shown in the popup, e.g. "myVar = 5" or
+	 *   "unknownVar (not found in locals)".
+	 *   Bounded to TUI_IDENTIFIER_POPUP_MAX.
+	 *
+	 * The popup is cleared on the next debug/suspended notification (new suspension
+	 * point makes the old resolution stale) and on TUI state teardown.
+	 */
+	bool  identifier_popup_active;
+	char  identifier_popup_line[TUI_IDENTIFIER_POPUP_MAX];
 } tui_state_t;
 
 /*
@@ -201,6 +242,35 @@ typedef struct {
  * Returns TUI_QUIT if the user requested exit, TUI_CONTINUE otherwise.
  */
 int debugger_tui_run_one_tick(tui_state_t *s, const boxen_event_t *ev);
+
+/*
+ * 2026-06-07 JES Phase B.5 #691: identifier extraction helper.
+ *
+ * Extract the identifier word that contains column `col` (0-based) in `line`.
+ * Word boundary characters: any character that is NOT alphanumeric or '_'.
+ * The extracted word is written to `out` (NUL-terminated), truncated to
+ * `out_max - 1` characters.  `out` is set to "" for edge cases:
+ *   - col < 0 or col >= strlen(line)
+ *   - `line` is NULL or empty
+ *   - the character at col is not alphanumeric/underscore (no identifier there)
+ *
+ * Exposed in the internal header so tests can call it directly.
+ */
+void extract_identifier_at(const char *line, int col, char *out, int out_max);
+
+/*
+ * 2026-06-07 JES Phase B.5 #691: identifier resolution by name.
+ *
+ * Look up `name` in state->local_names. If found, set identifier_popup_active
+ * and populate identifier_popup_line with "name = value".  If not found, set
+ * identifier_popup_active and populate identifier_popup_line with
+ * "name (not found in locals)".  Invalidates the script pane so the popup
+ * renders on the next present() call.
+ *
+ * Exposed in the internal header so tests can call it directly without going
+ * through the full cmd-double-click event routing path.
+ */
+void tui_resolve_identifier_by_name(tui_state_t *s, const char *name);
 
 /*
  * Initialize a tui_state_t for testing.
