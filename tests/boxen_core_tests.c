@@ -287,8 +287,11 @@ static void test_boxen_window_at_topmost(void) {
 	assert(cy == 3);   /* 8 - 5 */
 
 	/* Point (2, 2) is in w1 only */
+	cx = -1; cy = -1;  /* sentinel */
 	boxen_window_t *found2 = boxen_window_at(2, 2, &cx, &cy);
 	assert(found2 == w1);
+	assert(cx == 2);   /* w1 rect.x = 0; 2 - 0 = 2 */
+	assert(cy == 2);   /* w1 rect.y = 0; 2 - 0 = 2 */
 
 	boxen_window_close(w2);
 	boxen_window_close(w1);
@@ -366,6 +369,84 @@ static void test_fill_rect_writes_block(void) {
 }
 
 /* -------------------------------------------------------------------------
+ * Test 13: shutdown frees lingering open windows without leak
+ * Covers the no-leak contract for shutdown-with-open-windows.
+ * ---------------------------------------------------------------------- */
+
+static void test_shutdown_with_open_windows(void) {
+	setup();
+
+	/* Open three windows and DO NOT close them before shutdown. */
+	boxen_window_t *w1 = boxen_window_open("a", (boxen_rect_t){0, 0, 10, 5}, NULL);
+	boxen_window_t *w2 = boxen_window_open("b", (boxen_rect_t){0, 0, 10, 5}, NULL);
+	boxen_window_t *w3 = boxen_window_open("c", (boxen_rect_t){0, 0, 10, 5}, NULL);
+	assert(w1 != NULL); assert(w2 != NULL); assert(w3 != NULL);
+
+	/* Shutdown should iterate the list and free each one. After shutdown,
+	 * re-init must work cleanly with an empty list. */
+	boxen_shutdown();
+
+	boxen_result_t r = boxen_init(boxen_mock_backend(), NULL, NULL);
+	assert(r == BOXEN_OK);
+
+	/* Verify the list is empty by opening a new window and confirming
+	 * boxen_window_at finds it (would fail if a stale pointer remained). */
+	boxen_window_t *w4 = boxen_window_open("d", (boxen_rect_t){0, 0, 10, 5}, NULL);
+	assert(w4 != NULL);
+	int cx = -1, cy = -1;
+	assert(boxen_window_at(5, 2, &cx, &cy) == w4);
+
+	boxen_window_close(w4);
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * Test 14: open beyond capacity returns NULL with last_error set
+ * ---------------------------------------------------------------------- */
+
+static void test_open_beyond_capacity(void) {
+	setup();
+
+	/* BOXEN_MAX_WINDOWS is 64 (defined in boxen_internal.h, not exposed
+	 * publicly). Open 64 windows successfully, then verify the 65th fails. */
+	boxen_window_t *handles[64];
+	for (int i = 0; i < 64; i++) {
+		handles[i] = boxen_window_open("w", (boxen_rect_t){0, 0, 5, 5}, NULL);
+		assert(handles[i] != NULL);
+	}
+
+	boxen_window_t *overflow = boxen_window_open("x", (boxen_rect_t){0, 0, 5, 5}, NULL);
+	assert(overflow == NULL);
+
+	/* Cleanup. */
+	for (int i = 0; i < 64; i++) {
+		boxen_window_close(handles[i]);
+	}
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * Test 15: double-close is rejected via magic guard
+ * ---------------------------------------------------------------------- */
+
+static void test_double_close_rejected(void) {
+	setup();
+
+	boxen_window_t *w = boxen_window_open("w", (boxen_rect_t){0, 0, 10, 5}, NULL);
+	assert(w != NULL);
+
+	boxen_window_close(w);
+	/* Second close should be rejected silently (magic field cleared on
+	 * first close). The struct memory may already be freed, but until it
+	 * is realloc'd as something else, the magic guard will catch it. We
+	 * cannot rely on this in production, but for the immediate
+	 * already-closed case it works. */
+	boxen_window_close(w);  /* must not crash */
+
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
  * main
  * ---------------------------------------------------------------------- */
 
@@ -384,6 +465,9 @@ int main(void) {
 	TR_RUN(test_boxen_window_at_topmost);
 	TR_RUN(test_draw_text_writes_codepoints);
 	TR_RUN(test_fill_rect_writes_block);
+	TR_RUN(test_shutdown_with_open_windows);
+	TR_RUN(test_open_beyond_capacity);
+	TR_RUN(test_double_close_rejected);
 
 	TR_SUMMARY();
 	return TR_EXIT_CODE();

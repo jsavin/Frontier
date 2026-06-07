@@ -102,6 +102,12 @@ void boxen_shutdown(void) {
  * Window lifecycle
  * ---------------------------------------------------------------------- */
 
+/* Sanity cap on window dimensions to prevent signed-int overflow during
+ * clip arithmetic (`win->rect.x + x` etc.) on pathological inputs. Real
+ * terminals are bounded by COLS/LINES (typically <= a few hundred); this
+ * bound is generous and catches misuse without limiting realistic usage. */
+#define BOXEN_MAX_DIMENSION  16384
+
 boxen_window_t *boxen_window_open(const char *title, boxen_rect_t rect,
                                   void *user_data) {
 	if (!g_initialized) {
@@ -112,6 +118,13 @@ boxen_window_t *boxen_window_open(const char *title, boxen_rect_t rect,
 		boxen__set_last_error("window count limit reached");
 		return NULL;
 	}
+	if (rect.w < 0 || rect.h < 0 ||
+	    rect.w > BOXEN_MAX_DIMENSION || rect.h > BOXEN_MAX_DIMENSION ||
+	    rect.x < -BOXEN_MAX_DIMENSION || rect.x > BOXEN_MAX_DIMENSION ||
+	    rect.y < -BOXEN_MAX_DIMENSION || rect.y > BOXEN_MAX_DIMENSION) {
+		boxen__set_last_error("window rect out of bounds");
+		return NULL;
+	}
 
 	boxen_window_t *w = (boxen_window_t *)calloc(1, sizeof(boxen_window_t));
 	if (w == NULL) {
@@ -119,7 +132,19 @@ boxen_window_t *boxen_window_open(const char *title, boxen_rect_t rect,
 		return NULL;
 	}
 
-	w->title     = (title != NULL) ? strdup(title) : NULL;
+	/* strdup may fail under OOM; if the caller asked for a title, we must
+	 * not silently leave it as NULL. Free the struct and surface the error. */
+	if (title != NULL) {
+		w->title = strdup(title);
+		if (w->title == NULL) {
+			free(w);
+			boxen__set_last_error("title allocation failed");
+			return NULL;
+		}
+	} else {
+		w->title = NULL;
+	}
+	w->magic     = BOXEN_WINDOW_MAGIC;
 	w->rect      = rect;
 	w->user_data = user_data;
 
@@ -137,6 +162,14 @@ boxen_window_t *boxen_window_open(const char *title, boxen_rect_t rect,
 
 void boxen_window_close(boxen_window_t *win) {
 	if (win == NULL) {
+		return;
+	}
+	/* Magic-field guard: catches double-close and stale-pointer reuse for
+	 * the common case (already-closed window struct, freed memory not yet
+	 * reallocated). Not bulletproof -- a freed-then-realloc'd-as-window
+	 * struct could match -- but cheap enough to be worth doing. */
+	if (win->magic != BOXEN_WINDOW_MAGIC) {
+		boxen__set_last_error("close of non-live window (double-close or stale pointer)");
 		return;
 	}
 
@@ -157,6 +190,8 @@ void boxen_window_close(boxen_window_t *win) {
 	g_windows[idx] = g_windows[--g_window_count];
 	g_windows[g_window_count] = NULL;
 
+	win->magic = 0;  /* Mark as dead BEFORE freeing so a use-after-free read
+	                    sees a non-magic value if memory is read back. */
 	free(win->title);
 	free(win);
 }
@@ -167,13 +202,33 @@ void boxen_window_close(boxen_window_t *win) {
 
 void boxen_window_set_rect(boxen_window_t *win, boxen_rect_t rect) {
 	if (win == NULL) return;
+	if (rect.w < 0 || rect.h < 0 ||
+	    rect.w > BOXEN_MAX_DIMENSION || rect.h > BOXEN_MAX_DIMENSION ||
+	    rect.x < -BOXEN_MAX_DIMENSION || rect.x > BOXEN_MAX_DIMENSION ||
+	    rect.y < -BOXEN_MAX_DIMENSION || rect.y > BOXEN_MAX_DIMENSION) {
+		boxen__set_last_error("window rect out of bounds");
+		return;
+	}
 	win->rect = rect;
 }
 
 void boxen_window_set_title(boxen_window_t *win, const char *title) {
 	if (win == NULL) return;
+	if (title == NULL) {
+		free(win->title);
+		win->title = NULL;
+		return;
+	}
+	/* Transactional: strdup first, only free the old title on success.
+	 * Under OOM the window retains its old title rather than ending up
+	 * with NULL. */
+	char *new_title = strdup(title);
+	if (new_title == NULL) {
+		boxen__set_last_error("title allocation failed");
+		return;
+	}
 	free(win->title);
-	win->title = (title != NULL) ? strdup(title) : NULL;
+	win->title = new_title;
 }
 
 void boxen_window_set_user_data(boxen_window_t *win, void *data) {
@@ -320,6 +375,18 @@ void boxen_set_cell(boxen_window_t *win, int x, int y,
  *
  * Handles 1-, 2-, 3-, and 4-byte sequences. Invalid lead bytes or
  * truncated sequences return 0xFFFD and advance by 1 byte.
+ *
+ * REQUIRES: *p points at a NUL-terminated byte sequence. The decoder
+ * stops short of reading past the terminator because the NUL byte fails
+ * the continuation-byte check (`(byte & 0xC0) != 0x80` is true for NUL)
+ * before any deeper read. For non-NUL-terminated buffers (e.g. binary
+ * slices from a network read), a length-bounded decoder variant is
+ * needed -- not provided in A.2; file an issue when first required.
+ *
+ * Display-relaxed: this decoder is intended for rendering caller-
+ * supplied UTF-8, not input validation. It accepts overlong encodings
+ * (e.g. "\xC0\x80" -> U+0000) and surrogate codepoints (U+D800-U+DFFF).
+ * Strict input validation must happen before draw_text is called.
  * ---------------------------------------------------------------------- */
 
 static uint32_t utf8_next(const unsigned char **p) {
@@ -423,6 +490,10 @@ boxen_window_t *boxen_window_at(int sx, int sy, int *cx, int *cy) {
 	/* Scan from last (topmost in insertion order) to first. */
 	for (int i = g_window_count - 1; i >= 0; i--) {
 		boxen_window_t *w = g_windows[i];
+		/* Defensive: slots 0..g_window_count-1 are invariant non-NULL
+		 * via the open/close protocol, but a NULL guard costs nothing
+		 * and survives future refactors. */
+		if (w == NULL) continue;
 		if (sx >= w->rect.x && sx < w->rect.x + w->rect.w &&
 		    sy >= w->rect.y && sy < w->rect.y + w->rect.h) {
 			if (cx != NULL) *cx = sx - w->rect.x;
