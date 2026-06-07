@@ -30,6 +30,12 @@ static boxen_mock_cell_t g_grid[MOCK_MAX_HEIGHT][MOCK_MAX_WIDTH];
 static int g_width  = 80;
 static int g_height = 24;
 
+/* Cursor state for A.7 test accessors. boxen_mock_reset() restores these
+ * to the "never called" defaults (-1, -1, false). */
+static int  g_cursor_x       = -1;
+static int  g_cursor_y       = -1;
+static bool g_cursor_visible = false;
+
 /* -------------------------------------------------------------------------
  * Event queue (FIFO ring buffer)
  * ---------------------------------------------------------------------- */
@@ -153,6 +159,19 @@ void boxen_mock_reset(int width, int height) {
 
 	g_last_press.valid = false;
 	g_default_clock_ms = 0;
+
+	g_cursor_x       = -1;
+	g_cursor_y       = -1;
+	g_cursor_visible = false;
+}
+
+void boxen_mock_get_cursor(int *x, int *y) {
+	if (x) *x = g_cursor_x;
+	if (y) *y = g_cursor_y;
+}
+
+bool boxen_mock_cursor_visible(void) {
+	return g_cursor_visible;
 }
 
 void boxen_mock_width_set(int w) {
@@ -277,12 +296,12 @@ static void mock_set_cell(int x, int y, uint32_t ch,
 }
 
 static void mock_set_cursor(int x, int y) {
-	(void)x;
-	(void)y;
+	g_cursor_x = x;
+	g_cursor_y = y;
 }
 
 static void mock_set_cursor_visible(bool visible) {
-	(void)visible;
+	g_cursor_visible = visible;
 }
 
 static void mock_present(void) {

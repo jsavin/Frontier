@@ -67,6 +67,26 @@ const boxen_mock_cell_t *boxen_mock_cell_at(int x, int y);
 bool boxen_mock_has_text(const char *s);
 
 /* -------------------------------------------------------------------------
+ * Cursor inspection (A.7+)
+ *
+ * Tests for boxen_window_set_cursor / boxen_window_set_cursor_visible read
+ * back the most recent backend call via these accessors. The mock tracks
+ * the last (x, y) passed to backend->set_cursor and the last visibility
+ * flag passed to backend->set_cursor_visible. boxen_mock_reset() resets
+ * both to (-1, -1) and false respectively, matching the terminal's
+ * initial state after init.
+ * ---------------------------------------------------------------------- */
+
+/* Returns the last cursor (x, y) set via backend->set_cursor.
+ * Writes the screen-absolute coordinates passed by the last call.
+ * Returns -1, -1 if set_cursor was never called since boxen_mock_reset. */
+void boxen_mock_get_cursor(int *x, int *y);
+
+/* Returns the last visibility passed to backend->set_cursor_visible.
+ * Defaults to false (matches terminal initial state after init). */
+bool boxen_mock_cursor_visible(void);
+
+/* -------------------------------------------------------------------------
  * Event injection
  * ---------------------------------------------------------------------- */
 
