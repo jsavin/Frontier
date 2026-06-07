@@ -92,6 +92,7 @@
 #include "repl_verbs.h"
 #include "protocol_handler.h"
 #include "debug_handler.h"
+#include "debugger_tui.h"  /* 2026-06-06 JES Phase B.0 #691 */
 #include "ws_server.h"
 #include "headless_threading.h"
 
@@ -847,7 +848,10 @@ int main(int argc, char* argv[]) {
 	boolean success = false;
 	int exit_code = 0;
 
-	if (g_cli_options.protocol_mode) {
+	if (g_cli_options.tui_mode) {
+		/* 2026-06-06 JES Phase B.0 #691: boxen TUI debug mode */
+		exit_code = debugger_tui_main(&g_cli_options);
+	} else if (g_cli_options.protocol_mode) {
 		// NDJSON protocol mode - structured JSON over stdin/stdout
 		exit_code = protocol_main(&g_cli_options, ws_server_ptr);
 	} else if (g_cli_options.script_file != NULL || g_cli_options.inline_script != NULL) {

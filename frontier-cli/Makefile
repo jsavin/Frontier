@@ -122,7 +122,8 @@ CLI_SOURCES = \
     scrollback_pane.c \
     window_registry.c \
     ut_sync.c \
-    ut_scan.c
+    ut_scan.c \
+    debugger_tui.c
 
 # cJSON (vendored JSON parser)
 CJSON_SOURCES = $(THIRDPARTYDIR)/cJSON/cJSON.c

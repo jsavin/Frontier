@@ -65,6 +65,8 @@ typedef struct {
 								// In-memory mutations still work, only disk writes are
 								// suppressed. Newly created roots (file.save / file.saveAs /
 								// db.compactDatabase) are unaffected. Issue #127.
+	boolean tui_mode;			// boxen TUI debug mode (--debug-tui). Mutually exclusive
+								// with --protocol. Phase B.0 #691.
 	int ws_port;				// WebSocket server port (--ws-port), 0 = disabled
 	char* ut_sync_dir;			// .ut sync corpus root (--ut-sync <dir>); NULL = feature off
 	boolean show_help;			// Show help flag
