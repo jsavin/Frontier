@@ -26,6 +26,8 @@
  * 2026-06-06 JES Phase B.0 #691
  * 2026-06-06 JES Phase B.0 #734 round 1: terminal size + resize + dead code + quit-key
  * 2026-06-07 JES Phase B.3 #691: F5/F10/F11/Shift-F11 keybinds + debug_state machine
+ * 2026-06-07 JES Phase B.4 #691: F9 breakpoint toggle + condition modal (A.7 cursor)
+ * 2026-06-07 JES Phase B.4 #743 round 1: condition preservation + JSON escape + F9 gate
  *
  * SPDX-License-Identifier: MIT
  * Copyright (c) 2025-2026 Frontier contributors
@@ -280,7 +282,13 @@ static void tui_store_source(tui_state_t *s, cJSON *result) {
 	 * reflects the true population of the array. */
 	s->script_line_count = count;
 
-	/* Reset breakpoints from this source load */
+	/* Reset breakpoints from this source load.
+	 * 2026-06-07 JES Phase B.4 #743 round 1: free any stored condition strings
+	 * before zeroing the count so we don't leak heap on source reload. */
+	for (int bi = 0; bi < s->bp_line_count; bi++) {
+		free(s->bp_conditions[bi]);
+		s->bp_conditions[bi] = NULL;
+	}
 	s->bp_line_count = 0;
 
 	int i = 0;
@@ -659,6 +667,19 @@ static void draw_stack_pane(boxen_window_t *win, void *ud) {
  * debugger_tui_internal.h. */
 static void tui_dispatch_json(tui_state_t *s, const char *json) {
 	size_t len = strlen(json);
+
+	/* 2026-06-07 JES Phase B.4 #691: multi-dispatch log (test mode only).
+	 * When dispatch_log is non-NULL, record each call in order up to cap.
+	 * This runs BEFORE the single-slot capture so both are always populated. */
+	if (s->dispatch_log != NULL && s->dispatch_log_count < s->dispatch_log_cap) {
+		int slot = s->dispatch_log_count;
+		int cap  = (int)sizeof(s->dispatch_log[0]) - 1;
+		int copy = (int)len < cap ? (int)len : cap;
+		memcpy(s->dispatch_log[slot], json, (size_t)copy);
+		s->dispatch_log[slot][copy] = '\0';
+		s->dispatch_log_count++;
+	}
+
 	if (s->dispatch_capture_buf != NULL && s->dispatch_capture_cap > 0) {
 		/* Test mode: capture the JSON instead of calling into the runtime */
 		int cap = s->dispatch_capture_cap - 1;
@@ -686,6 +707,9 @@ static void tui_do_continue(tui_state_t *s) {
 	         "{\"op\":\"debug/continue\",\"id\":%d,\"params\":{\"threadId\":%ld}}",
 	         next_req_id(), s->pending_thread_id);
 	s->debug_state = TUI_DEBUG_RUNNING;
+	/* 2026-06-07 JES Phase B.4 #743 round 1: clear current_line when transitioning
+	 * to RUNNING so F9 cannot fire against a stale last-suspended line position. */
+	s->current_line = 0;
 	tui_dispatch_json(s, req);
 }
 
@@ -697,12 +721,413 @@ static void tui_do_step(tui_state_t *s, const char *direction) {
 	         "{\"threadId\":%ld,\"direction\":\"%s\"}}",
 	         next_req_id(), s->pending_thread_id, direction);
 	s->debug_state = TUI_DEBUG_RUNNING;
+	/* 2026-06-07 JES Phase B.4 #743 round 1: clear current_line when transitioning
+	 * to RUNNING.  Symmetric with the continue path above. */
+	s->current_line = 0;
 	tui_dispatch_json(s, req);
 }
 
 static void tui_do_step_over(tui_state_t *s)  { tui_do_step(s, "over"); }
 static void tui_do_step_into(tui_state_t *s)  { tui_do_step(s, "into"); }
 static void tui_do_step_out(tui_state_t *s)   { tui_do_step(s, "out");  }
+
+/* -------------------------------------------------------------------------
+ * 2026-06-07 JES Phase B.4 #743 round 1: JSON string escape helper.
+ *
+ * tui_json_escape -- escape src into dst for safe interpolation into a JSON
+ * string value.  Handles: " -> \", \ -> \\, and control characters using
+ * \b \f \n \r \t and \uXXXX for all other code points < 0x20.
+ *
+ * Worst-case expansion: 6x (every byte -> \u00XX), so dst must be at least
+ * strlen(src)*6 + 1 bytes.  For a 256-byte script_path that is 1537 bytes.
+ *
+ * dst is always NUL-terminated even when src is empty.  The function returns
+ * the number of bytes written to dst (not counting the NUL).
+ *
+ * Callers allocate dst on the stack sized for the 6x worst case.  All four
+ * interpolation sites for script_path use a 1537-byte dst buffer.
+ * ---------------------------------------------------------------------- */
+static int tui_json_escape(const char *src, char *dst, size_t dst_cap) {
+	/* dst_cap must include space for the NUL terminator */
+	if (dst == NULL || dst_cap == 0) return 0;
+	int out = 0;
+	int cap = (int)dst_cap - 1; /* reserve one byte for NUL */
+	for (const char *p = src; *p != '\0'; p++) {
+		unsigned char c = (unsigned char)*p;
+		if (c == '"') {
+			if (out + 2 > cap) break;
+			dst[out++] = '\\';
+			dst[out++] = '"';
+		} else if (c == '\\') {
+			if (out + 2 > cap) break;
+			dst[out++] = '\\';
+			dst[out++] = '\\';
+		} else if (c == '\b') {
+			if (out + 2 > cap) break;
+			dst[out++] = '\\'; dst[out++] = 'b';
+		} else if (c == '\f') {
+			if (out + 2 > cap) break;
+			dst[out++] = '\\'; dst[out++] = 'f';
+		} else if (c == '\n') {
+			if (out + 2 > cap) break;
+			dst[out++] = '\\'; dst[out++] = 'n';
+		} else if (c == '\r') {
+			if (out + 2 > cap) break;
+			dst[out++] = '\\'; dst[out++] = 'r';
+		} else if (c == '\t') {
+			if (out + 2 > cap) break;
+			dst[out++] = '\\'; dst[out++] = 't';
+		} else if (c < 0x20) {
+			/* Other control characters: \u00XX */
+			if (out + 6 > cap) break;
+			dst[out++] = '\\'; dst[out++] = 'u';
+			dst[out++] = '0';  dst[out++] = '0';
+			static const char hex[] = "0123456789abcdef";
+			dst[out++] = hex[(c >> 4) & 0x0F];
+			dst[out++] = hex[c        & 0x0F];
+		} else {
+			if (out + 1 > cap) break;
+			dst[out++] = (char)c;
+		}
+	}
+	dst[out] = '\0';
+	return out;
+}
+
+/* -------------------------------------------------------------------------
+ * 2026-06-07 JES Phase B.4 #691: breakpoint toggle (F9).
+ *
+ * tui_toggle_breakpoint: toggle a breakpoint at (script_path, line).
+ *
+ * If no breakpoint exists at the line: dispatch debug/setBreakpoint.
+ * If a breakpoint exists: dispatch debug/clearBreakpoints (clears ALL), then
+ *   re-dispatch debug/setBreakpoint for every surviving breakpoint.
+ *
+ * This clear-and-readd N-1 round trip is the correct approach because
+ * handle_debug_clearbreakpoints clears ALL breakpoints (no per-line clear op
+ * exists in the current runtime).  See EXECUTION_PLAN.md B.4 "Note on clear".
+ *
+ * SENTINEL (EXECUTION_PLAN.md B.4): all these dispatches happen under the
+ * GIL with the thread suspended, so the responses arrive synchronously via
+ * write_line (the handlers run on the calling thread).  No async complication.
+ *
+ * tui_close_condition_modal: shared close path for Enter/Escape.
+ *   Hides cursor, releases modal gate, closes window, clears state field.
+ * ---------------------------------------------------------------------- */
+
+static void tui_toggle_breakpoint(tui_state_t *s, long line) {
+	/* SENTINEL: only call while TUI_DEBUG_SUSPENDED and line > 0 */
+	if (line <= 0 || s->script_path[0] == '\0') return;
+
+	/* 2026-06-07 JES Phase B.4 #743 round 1: JSON-escape script_path once for
+	 * all dispatch sites in this function.  Worst case: 256 bytes * 6 + NUL. */
+	char esc_path[256 * 6 + 1];
+	tui_json_escape(s->script_path, esc_path, sizeof(esc_path));
+
+	/* Check if a breakpoint exists at this line in the local cache */
+	bool bp_exists = false;
+	for (int i = 0; i < s->bp_line_count; i++) {
+		if (s->bp_lines[i] == (unsigned long)line) {
+			bp_exists = true;
+			break;
+		}
+	}
+
+	/* req must hold: JSON boilerplate + esc_path (up to 1537) + condition.
+	 * Use 512 + sizeof(esc_path) + TUI_BP_CONDITION_MAX*2 for safety. */
+	char req[512 + sizeof(esc_path) + TUI_BP_CONDITION_MAX * 2];
+
+	if (!bp_exists) {
+		/* Toggle ON: just add the unconditional breakpoint */
+		snprintf(req, sizeof(req),
+		         "{\"op\":\"debug/setBreakpoint\",\"id\":%d,"
+		         "\"params\":{\"script\":\"%s\",\"line\":%ld}}",
+		         next_req_id(), esc_path, line);
+		tui_dispatch_json(s, req);
+
+		/* Update local cache: no condition (unconditional BP) */
+		if (s->bp_line_count < TUI_MAX_BREAKPOINTS) {
+			s->bp_lines[s->bp_line_count]      = (unsigned long)line;
+			s->bp_conditions[s->bp_line_count] = NULL; /* unconditional */
+			s->bp_line_count++;
+		}
+	} else {
+		/* Toggle OFF: clear all, re-add all except the toggled line.
+		 * 2026-06-07 JES Phase B.4 #743 round 1: re-dispatch surviving breakpoints
+		 * WITH their stored conditions so conditions are not silently stripped. */
+		snprintf(req, sizeof(req),
+		         "{\"op\":\"debug/clearBreakpoints\",\"id\":%d,"
+		         "\"params\":{\"script\":\"%s\"}}",
+		         next_req_id(), esc_path);
+		tui_dispatch_json(s, req);
+
+		/* Re-add all surviving breakpoints, preserving each one's condition */
+		for (int i = 0; i < s->bp_line_count; i++) {
+			if (s->bp_lines[i] != (unsigned long)line) {
+				if (s->bp_conditions[i] != NULL) {
+					/* Conditional re-add: escape condition string */
+					char esc_cond[TUI_BP_CONDITION_MAX * 2 + 1];
+					tui_json_escape(s->bp_conditions[i], esc_cond, sizeof(esc_cond));
+					snprintf(req, sizeof(req),
+					         "{\"op\":\"debug/setBreakpoint\",\"id\":%d,"
+					         "\"params\":{\"script\":\"%s\",\"line\":%lu,"
+					         "\"condition\":\"%s\"}}",
+					         next_req_id(), esc_path,
+					         s->bp_lines[i], esc_cond);
+				} else {
+					/* Unconditional re-add */
+					snprintf(req, sizeof(req),
+					         "{\"op\":\"debug/setBreakpoint\",\"id\":%d,"
+					         "\"params\":{\"script\":\"%s\",\"line\":%lu}}",
+					         next_req_id(), esc_path, s->bp_lines[i]);
+				}
+				tui_dispatch_json(s, req);
+			}
+		}
+
+		/* Update local cache: remove the toggled line; free its condition */
+		int new_count = 0;
+		for (int i = 0; i < s->bp_line_count; i++) {
+			if (s->bp_lines[i] != (unsigned long)line) {
+				s->bp_lines[new_count]      = s->bp_lines[i];
+				s->bp_conditions[new_count] = s->bp_conditions[i];
+				new_count++;
+			} else {
+				/* Free condition string for the removed BP */
+				free(s->bp_conditions[i]);
+				s->bp_conditions[i] = NULL;
+			}
+		}
+		s->bp_line_count = new_count;
+	}
+
+	if (s->script_win != NULL) boxen_window_invalidate(s->script_win);
+}
+
+/* -------------------------------------------------------------------------
+ * 2026-06-07 JES Phase B.4 #691: conditional breakpoint modal.
+ *
+ * draw_condition_modal: draw callback.
+ *   Renders a centered overlay with title "Set Condition" and the current
+ *   condition_buf content followed by a visual cursor position marker.
+ *   Calls boxen_window_set_cursor via the A.7 API to position the real
+ *   terminal cursor at the input position.
+ *
+ * input_condition_modal: input callback for the modal window.
+ *   Printable characters appended to bp_condition_buf (capped at
+ *   TUI_BP_CONDITION_MAX - 1).
+ *   BACKSPACE trims the buffer.
+ *   ENTER confirms: dispatch setBreakpoint with condition, close modal.
+ *   ESCAPE cancels: close modal without dispatching.
+ *
+ * tui_close_condition_modal: shared close/cleanup path.
+ *   1. boxen_window_set_cursor_visible(modal, false)  -- hide terminal cursor
+ *   2. boxen_window_set_modal(modal, false)           -- release modal gate
+ *   3. boxen_window_close(modal)                      -- destroy window
+ *   4. s->condition_modal_win = NULL                  -- clear state
+ *   5. Refocus script_win so F-keys work again.
+ *
+ * tui_open_condition_modal: open a centered condition modal.
+ *   Creates a boxen_window_t via boxen_window_open, calls set_modal(true),
+ *   sets cursor position to content (0, 2) [the input row], calls
+ *   set_cursor_visible(true).
+ * ---------------------------------------------------------------------- */
+
+static void tui_close_condition_modal(tui_state_t *s) {
+	if (s->condition_modal_win == NULL) return;
+	/* A.7 API: hide cursor before releasing modal ownership */
+	boxen_window_set_cursor_visible(s->condition_modal_win, false);
+	/* Release modal gate -- this is the critical step that gives cursor
+	 * ownership back to the focused window. */
+	boxen_window_set_modal(s->condition_modal_win, false);
+	boxen_window_close(s->condition_modal_win);
+	s->condition_modal_win = NULL;
+	/* Restore focus to script pane so F-keys and frame navigation work */
+	if (s->script_win != NULL) boxen_window_focus(s->script_win);
+}
+
+/* Forward declaration: input_condition_modal calls tui_close_condition_modal
+ * and tui_toggle_breakpoint, which are defined above, so no forward decl
+ * needed for those.  draw_condition_modal is referenced by tui_open_ which
+ * is defined after; declare forward here. */
+static void draw_condition_modal(boxen_window_t *win, void *ud);
+
+static void input_condition_modal(boxen_window_t *win, const boxen_event_t *ev, void *ud) {
+	(void)win;
+	tui_state_t *s = (tui_state_t *)ud;
+	if (ev->type != BOXEN_EV_KEY) return;
+
+	if (ev->key.key == BOXEN_KEY_ESCAPE) {
+		/* Cancel: close without dispatching */
+		tui_close_condition_modal(s);
+		return;
+	}
+
+	if (ev->key.key == BOXEN_KEY_ENTER) {
+		/* Confirm: dispatch setBreakpoint with condition, then close.
+		 *
+		 * 2026-06-07 JES Phase B.4 #743 round 1: use tui_json_escape for both
+		 * script_path and condition (replaces the inline escape loop that only
+		 * handled " and \ -- tui_json_escape also covers control characters). */
+		char esc_path[256 * 6 + 1];
+		tui_json_escape(s->script_path, esc_path, sizeof(esc_path));
+
+		char esc_cond[TUI_BP_CONDITION_MAX * 6 + 1];
+		tui_json_escape(s->bp_condition_buf, esc_cond, sizeof(esc_cond));
+
+		char req[512 + sizeof(esc_path) + sizeof(esc_cond)];
+		snprintf(req, sizeof(req),
+		         "{\"op\":\"debug/setBreakpoint\",\"id\":%d,"
+		         "\"params\":{\"script\":\"%s\",\"line\":%ld,"
+		         "\"condition\":\"%s\"}}",
+		         next_req_id(), esc_path, s->current_line, esc_cond);
+
+		/* Update local cache: add or replace the conditional breakpoint.
+		 * Remove any existing entry for this line first (free its condition),
+		 * then insert the new conditional entry.
+		 * 2026-06-07 JES Phase B.4 #743 round 1: store condition in bp_conditions
+		 * so it survives a future toggle-off clear-and-readd cycle. */
+		int new_count = 0;
+		for (int i = 0; i < s->bp_line_count; i++) {
+			if (s->bp_lines[i] != (unsigned long)s->current_line) {
+				s->bp_lines[new_count]      = s->bp_lines[i];
+				s->bp_conditions[new_count] = s->bp_conditions[i];
+				new_count++;
+			} else {
+				/* Free old condition (may be NULL if it was unconditional) */
+				free(s->bp_conditions[i]);
+				s->bp_conditions[i] = NULL;
+			}
+		}
+		if (new_count < TUI_MAX_BREAKPOINTS) {
+			s->bp_lines[new_count]      = (unsigned long)s->current_line;
+			/* strdup the condition so it outlives bp_condition_buf (which is
+			 * cleared on the next modal open).  NULL on OOM -- treated as
+			 * unconditional in the re-dispatch path, which is safe. */
+			s->bp_conditions[new_count] = strdup(s->bp_condition_buf);
+			new_count++;
+		}
+		s->bp_line_count = new_count;
+
+		tui_close_condition_modal(s);
+		tui_dispatch_json(s, req);
+
+		if (s->script_win != NULL) boxen_window_invalidate(s->script_win);
+		return;
+	}
+
+	if (ev->key.key == BOXEN_KEY_BACKSPACE) {
+		if (s->bp_condition_len > 0) {
+			s->bp_condition_len--;
+			s->bp_condition_buf[s->bp_condition_len] = '\0';
+		}
+	} else if (ev->key.key == BOXEN_KEY_NONE && ev->key.ch >= 0x20 && ev->key.ch < 0x7F) {
+		/* Printable ASCII: append if space permits (capped at TUI_BP_CONDITION_MAX-1) */
+		if (s->bp_condition_len < TUI_BP_CONDITION_MAX - 1) {
+			s->bp_condition_buf[s->bp_condition_len++] = (char)ev->key.ch;
+			s->bp_condition_buf[s->bp_condition_len]   = '\0';
+		}
+	}
+
+	/* Reposition cursor to follow the input (A.7 API).
+	 * Modal content layout: row 0 = title, row 1 = blank, row 2 = input.
+	 * Cursor column = bp_condition_len (one past the last typed character). */
+	if (s->condition_modal_win != NULL) {
+		boxen_window_set_cursor(s->condition_modal_win,
+		                        s->bp_condition_len, 2);
+		/* Redraw so the typed character appears */
+		boxen_window_invalidate(s->condition_modal_win);
+	}
+}
+
+static void draw_condition_modal(boxen_window_t *win, void *ud) {
+	tui_state_t *s = (tui_state_t *)ud;
+	int w = boxen_window_content_width(win);
+	if (w <= 0) return;
+
+	/* Cap to linebuf capacity (B.1 round-1 P1-A lesson) */
+	char linebuf[512];
+	int  cap   = (int)sizeof(linebuf) - 1;
+	int  avail = w < cap ? w : cap;
+
+	/* Row 0: title */
+	{
+		const char *title = "Set Condition (Enter=confirm  Esc=cancel)";
+		int n = snprintf(linebuf, (size_t)(avail + 1), "%-*.*s", avail, avail, title);
+		(void)n;
+		boxen_draw_text(win, 0, 0, linebuf,
+		                BOXEN_COLOR_DEFAULT, BOXEN_COLOR_DEFAULT, BOXEN_ATTR_BOLD);
+	}
+
+	/* Row 1: blank separator */
+	{
+		memset(linebuf, ' ', (size_t)avail);
+		linebuf[avail] = '\0';
+		boxen_draw_text(win, 0, 1, linebuf,
+		                BOXEN_COLOR_DEFAULT, BOXEN_COLOR_DEFAULT, BOXEN_ATTR_NONE);
+	}
+
+	/* Row 2: condition input buffer.
+	 * Pad to avail with spaces so the input row is fully drawn. */
+	{
+		const char *cond = s != NULL ? s->bp_condition_buf : "";
+		int clen = s != NULL ? s->bp_condition_len : 0;
+		int copy = clen < avail ? clen : avail;
+		memcpy(linebuf, cond, (size_t)copy);
+		memset(linebuf + copy, ' ', (size_t)(avail - copy));
+		linebuf[avail] = '\0';
+		boxen_draw_text(win, 0, 2, linebuf,
+		                BOXEN_COLOR_DEFAULT, BOXEN_COLOR_DEFAULT, BOXEN_ATTR_NONE);
+	}
+
+	/* Position the real terminal cursor at the end of the typed text.
+	 * Uses the A.7 public API: chrome, scroll, and viewport clipping are
+	 * applied automatically.  DO NOT use the reverse-video block-cell
+	 * workaround -- the A.7 API is live (EXECUTION_PLAN.md B.4 Sentinel). */
+	if (s != NULL && s->condition_modal_win != NULL) {
+		boxen_window_set_cursor(s->condition_modal_win,
+		                        s->bp_condition_len, 2);
+	}
+}
+
+static void tui_open_condition_modal(tui_state_t *s, int tw, int th) {
+	/* Clear the condition buffer for fresh input */
+	memset(s->bp_condition_buf, 0, sizeof(s->bp_condition_buf));
+	s->bp_condition_len = 0;
+
+	/* Open a centered modal window.  Minimum useful size: 60 wide, 5 tall.
+	 * Clamp to terminal dimensions so the modal never overflows the screen. */
+	int mw = 60;
+	int mh = 5;
+	if (mw > tw - 4) mw = tw - 4;
+	if (mh > th - 4) mh = th - 4;
+	if (mw < 20) mw = 20; /* absolute minimum */
+	if (mh < 5)  mh = 5;
+
+	int mx = (tw - mw) / 2;
+	int my = (th - mh) / 2;
+	if (mx < 0) mx = 0;
+	if (my < 0) my = 0;
+
+	boxen_rect_t r = { mx, my, mw, mh };
+	s->condition_modal_win = boxen_window_open("Set Condition", r, NULL);
+	if (s->condition_modal_win == NULL) return;
+
+	boxen_window_set_draw(s->condition_modal_win,  draw_condition_modal);
+	boxen_window_set_input(s->condition_modal_win, input_condition_modal);
+	boxen_window_set_user_data(s->condition_modal_win, s);
+
+	/* A.7 API: set modal gate so cursor calls route to this window.
+	 * This also blocks cursor calls from non-modal windows (the script pane). */
+	boxen_window_set_modal(s->condition_modal_win, true);
+
+	/* Position cursor at content (0, 2) -- start of the input row.
+	 * set_cursor_visible(true) makes the terminal cursor appear. */
+	boxen_window_set_cursor(s->condition_modal_win, 0, 2);
+	boxen_window_set_cursor_visible(s->condition_modal_win, true);
+
+	boxen_window_invalidate(s->condition_modal_win);
+}
 
 /* -------------------------------------------------------------------------
  * 2026-06-07 JES Phase B.3 #691: draw_footer.
@@ -720,7 +1145,8 @@ static void draw_footer(boxen_window_t *win, void *ud) {
 
 	const char *text;
 	if (s != NULL && s->debug_state == TUI_DEBUG_SUSPENDED) {
-		text = "F5:continue  F10:step-over  F11:step-in  S-F11:step-out  q:quit";
+		/* 2026-06-07 JES Phase B.4 #691: added F9:bp and S-F9:cond */
+		text = "F5:continue  F9:bp  S-F9:cond  F10:step-over  F11:step-in  S-F11:step-out  q:quit";
 	} else if (s != NULL && s->debug_state == TUI_DEBUG_RUNNING) {
 		text = "[running...]  q:quit";
 	} else {
@@ -903,6 +1329,36 @@ static void on_input(boxen_window_t *win, const boxen_event_t *ev, void *ud) {
 			if (s->footer_win != NULL) boxen_window_invalidate(s->footer_win);
 			return;
 		}
+		if (ev->key.key == BOXEN_KEY_F9) {
+			/* 2026-06-07 JES Phase B.4 #691: breakpoint toggle.
+			 *
+			 * F9 (no shift): toggle breakpoint at current line.
+			 * Shift-F9:      open conditional breakpoint modal.
+			 *
+			 * Guard: current_line must be > 0 (thread must be suspended in
+			 * a specific line) and script_path must be non-empty. */
+			if (ev->key.mod & BOXEN_MOD_SHIFT) {
+				/* Open condition modal.  Derive terminal dimensions from the
+				 * footer window (footer is always full-width, placed at row th-1).
+				 * 2026-06-07 JES Phase B.4 #743 round 1: also guard script_path
+				 * (mirrors the bare-F9 guard; modal should not open without a path). */
+				if (s->condition_modal_win == NULL && s->current_line > 0 &&
+				    s->script_path[0] != '\0') {
+					int tw = 80, th = 24;
+					if (s->footer_win != NULL) {
+						boxen_rect_t fr = boxen_window_get_rect(s->footer_win);
+						tw = fr.w;
+						th = fr.y + fr.h;
+					}
+					tui_open_condition_modal(s, tw, th);
+				}
+			} else {
+				if (s->current_line > 0 && s->script_path[0] != '\0') {
+					tui_toggle_breakpoint(s, s->current_line);
+				}
+			}
+			return;
+		}
 		if (ev->key.key == BOXEN_KEY_F10) {
 			tui_do_step_over(s);
 			if (s->footer_win != NULL) boxen_window_invalidate(s->footer_win);
@@ -969,6 +1425,14 @@ void debugger_tui_state_init(tui_state_t *s, int tw, int th) {
 	/* dispatch_capture_buf is NULL by default (production mode);
 	 * tests set it explicitly after init. */
 
+	/* 2026-06-07 JES Phase B.4 #691: initialize condition modal state */
+	s->condition_modal_win = NULL;
+	s->bp_condition_len    = 0;
+	/* dispatch_log is NULL by default; tests set it for sequence verification */
+	s->dispatch_log        = NULL;
+	s->dispatch_log_cap    = 0;
+	s->dispatch_log_count  = 0;
+
 	/* Allocate heap transport (stub; B.6 wires debug_set_attach_transport) */
 	s->transport = calloc(1, sizeof(transport_t));
 	if (s->transport != NULL) {
@@ -989,10 +1453,21 @@ void debugger_tui_state_init(tui_state_t *s, int tw, int th) {
 }
 
 void debugger_tui_state_teardown(tui_state_t *s) {
+	/* 2026-06-07 JES Phase B.4 #691: close condition modal if open.
+	 * tui_close_condition_modal hides cursor + releases modal gate first. */
+	if (s->condition_modal_win != NULL) {
+		tui_close_condition_modal(s);
+	}
 	if (s->footer_win != NULL)  { boxen_window_close(s->footer_win);  s->footer_win  = NULL; }
 	if (s->stack_win  != NULL)  { boxen_window_close(s->stack_win);   s->stack_win   = NULL; }
 	if (s->script_win != NULL)  { boxen_window_close(s->script_win);  s->script_win  = NULL; }
 	if (s->transport  != NULL)  { free(s->transport);                 s->transport   = NULL; }
+	/* 2026-06-07 JES Phase B.4 #743 round 1: free heap condition strings */
+	for (int i = 0; i < s->bp_line_count; i++) {
+		free(s->bp_conditions[i]);
+		s->bp_conditions[i] = NULL;
+	}
+	s->bp_line_count = 0;
 	/* 2026-06-07 JES Phase B.1 #691: free source lines */
 	tui_free_script_lines(s);
 	/* 2026-06-07 JES Phase B.2 #691: free locals */
@@ -1000,6 +1475,10 @@ void debugger_tui_state_teardown(tui_state_t *s) {
 	/* 2026-06-07 JES Phase B.3 #691: clear dispatch capture (not heap; just NULL) */
 	s->dispatch_capture_buf = NULL;
 	s->dispatch_capture_cap = 0;
+	/* 2026-06-07 JES Phase B.4 #691: clear dispatch log (not heap; just NULL) */
+	s->dispatch_log       = NULL;
+	s->dispatch_log_cap   = 0;
+	s->dispatch_log_count = 0;
 	s->debug_state = TUI_DEBUG_IDLE;
 }
 
