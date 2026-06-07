@@ -1564,6 +1564,115 @@ void boxen_set_cell(boxen_window_t *win, int x, int y,
 }
 
 /* -------------------------------------------------------------------------
+ * Cursor positioning helpers (A.7)
+ *
+ * find_topmost_modal:
+ *   Walks the window stack from topmost to bottom and returns the first
+ *   live window with modal=true. NULL if none. Matches the modal lookup
+ *   pattern used by boxen_dispatch_event.
+ *
+ * cursor_owner_allowed:
+ *   The focus gate. Only the focused window OR the topmost modal may
+ *   drive the terminal cursor. When a modal is present, ONLY that modal
+ *   may drive (the focused window is shadowed). This prevents two
+ *   surfaces from racing to position a single terminal cursor.
+ *   Implicitly validates the win pointer: a non-live pointer can equal
+ *   neither g_focused_window (cleared on close) nor a current modal
+ *   (cleared on close + modal flag scrubbed on close).
+ * ---------------------------------------------------------------------- */
+
+static boxen_window_t *find_topmost_modal(void) {
+	for (int i = g_window_count - 1; i >= 0; i--) {
+		if (g_windows[i] != NULL && g_windows[i]->modal) {
+			return g_windows[i];
+		}
+	}
+	return NULL;
+}
+
+static bool cursor_owner_allowed(boxen_window_t *win) {
+	if (win == NULL) return false;
+	boxen_window_t *modal = find_topmost_modal();
+	if (modal != NULL) return win == modal;
+	return win == g_focused_window;
+}
+
+/* -------------------------------------------------------------------------
+ * boxen_window_set_cursor -- content-coord cursor positioning
+ *
+ * Translation pipeline mirrors boxen_set_cell:
+ *   1. BOXEN_MAX_DIMENSION input guard (overflow prevention).
+ *   2. Subtract scroll offset to get window-local screen coord.
+ *   3. Compute viewport dimensions (border-aware, scrollbar-aware).
+ *   4. Out-of-viewport target -> hide and bail.
+ *   5. Add window terminal origin (rect.x/y + border) -> terminal coord.
+ *
+ * Beyond set_cell:
+ *   - Focus gate (cursor_owner_allowed) gates the call entirely.
+ *   - Modal-occlusion check after translation: if a different modal
+ *     covers the target screen cell, hide and bail.
+ * ---------------------------------------------------------------------- */
+
+void boxen_window_set_cursor(boxen_window_t *win, int cx, int cy) {
+	if (win == NULL || g_backend == NULL) return;
+	if (!cursor_owner_allowed(win)) return;
+
+	if (cx < -BOXEN_MAX_DIMENSION || cx > BOXEN_MAX_DIMENSION) return;
+	if (cy < -BOXEN_MAX_DIMENSION || cy > BOXEN_MAX_DIMENSION) return;
+
+	int sx = cx - win->scroll_x;
+	int sy = cy - win->scroll_y;
+
+	int vw = win->borders ? (win->rect.w > 2 ? win->rect.w - 2 : 0) : win->rect.w;
+	int vh = win->borders ? (win->rect.h > 2 ? win->rect.h - 2 : 0) : win->rect.h;
+	if (win->borders && vh > 0 && win->content_h > vh && vw > 0) {
+		vw -= 1;
+	}
+
+	if (sx < 0 || sx >= vw || sy < 0 || sy >= vh) {
+		g_backend->set_cursor_visible(false);
+		return;
+	}
+
+	int border = win->borders ? 1 : 0;
+	int tx = win->rect.x + border + sx;
+	int ty = win->rect.y + border + sy;
+
+	/* Modal-occlusion check: if a modal window other than win covers the
+	 * target screen cell, hide the cursor rather than draw beneath the
+	 * modal. The cursor_owner_allowed gate above already ensures that
+	 * when a modal is present, win IS that modal -- so in practice this
+	 * branch is only reachable if a future change relaxes the gate.
+	 * Kept as defense-in-depth: an explicit hide is cheaper than a
+	 * surprise stale-cursor render. */
+	boxen_window_t *modal = find_topmost_modal();
+	if (modal != NULL && modal != win) {
+		if (tx >= modal->rect.x && tx < modal->rect.x + modal->rect.w &&
+		    ty >= modal->rect.y && ty < modal->rect.y + modal->rect.h) {
+			g_backend->set_cursor_visible(false);
+			return;
+		}
+	}
+
+	g_backend->set_cursor(tx, ty);
+	g_backend->set_cursor_visible(true);
+}
+
+/* -------------------------------------------------------------------------
+ * boxen_window_set_cursor_visible -- toggle cursor visibility
+ *
+ * Independent of position (does NOT re-issue a set_cursor). Obeys the
+ * focus gate so non-focused, non-modal callers cannot blindly hide
+ * another surface's cursor.
+ * ---------------------------------------------------------------------- */
+
+void boxen_window_set_cursor_visible(boxen_window_t *win, bool visible) {
+	if (win == NULL || g_backend == NULL) return;
+	if (!cursor_owner_allowed(win)) return;
+	g_backend->set_cursor_visible(visible);
+}
+
+/* -------------------------------------------------------------------------
  * Minimal UTF-8 decoder
  *
  * Decodes one Unicode codepoint from *p and advances *p past it.
