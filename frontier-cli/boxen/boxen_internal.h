@@ -47,7 +47,16 @@ void boxen__set_last_error(const char *msg);
  * Window struct (opaque to consumers; concrete here for internal use)
  * ---------------------------------------------------------------------- */
 
+/* Magic value stored at the head of every live window struct. Cleared on
+ * boxen_window_close so a double-close (or a stale pointer reused as a
+ * window) can be detected by boxen_window_close and rejected silently.
+ * Not perfect (a freed-then-realloced-as-window struct could match), but
+ * catches the common double-close mistake without runtime cost beyond
+ * an integer compare. */
+#define BOXEN_WINDOW_MAGIC  0x424F584Eu  /* "BOXN" */
+
 struct boxen_window {
+	uint32_t magic;       /* BOXEN_WINDOW_MAGIC when live; 0 after close */
 	char    *title;
 	boxen_rect_t rect;
 	void    *user_data;

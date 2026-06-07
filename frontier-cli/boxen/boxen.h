@@ -302,7 +302,8 @@ typedef struct boxen_window boxen_window_t;
  * Window lifecycle (A.2+)
  * ---------------------------------------------------------------------- */
 
-boxen_window_t *boxen_window_open(const char *title, boxen_rect_t rect);
+boxen_window_t *boxen_window_open(const char *title, boxen_rect_t rect,
+                                  void *user_data);
 void            boxen_window_close(boxen_window_t *win);
 
 void boxen_window_set_rect(boxen_window_t *win, boxen_rect_t rect);
