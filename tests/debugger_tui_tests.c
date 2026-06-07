@@ -1272,6 +1272,479 @@ static void test_panes_refresh_on_suspended(void) {
 	teardown();
 }
 
+/* =========================================================================
+ * Phase B.4 tests -- breakpoints UI.
+ *
+ * 2026-06-07 JES Phase B.4 #691
+ *
+ * Five behavioral tests per EXECUTION_PLAN.md B.4 "Tests" section:
+ *   test_f9_toggles_breakpoint_on          -- no BP, F9, setBreakpoint dispatched
+ *   test_f9_toggles_breakpoint_off         -- BP at line 3, F9, clear+readd sequence
+ *   test_gutter_renders_breakpoint_marker  -- bp_lines[0]=5, draw, cell at (0,4)=='*'
+ *   test_condition_modal_appears_on_shift_f9 -- Shift-F9, modal window exists+topmost
+ *   test_condition_modal_enter_confirms    -- type chars, Enter, modal closed, condition
+ *
+ * Additional robustness tests (applying B.1/B.2/B.3 round-1 lessons):
+ *   test_f9_no_op_when_not_suspended       -- F9 while IDLE/RUNNING is a no-op
+ *   test_f9_no_op_when_no_current_line     -- F9 with current_line <= 0 is a no-op
+ *   test_condition_modal_escape_cancels    -- Escape cancels without dispatching
+ *   test_condition_modal_cursor_visible    -- cursor is visible while modal is open
+ *   test_condition_modal_cursor_hidden_on_close -- cursor hidden after modal closes
+ *   test_gutter_shows_current_and_bp_overlap   -- line has both bp and current mark
+ *   test_footer_shows_f9_hint_when_suspended   -- footer includes F9:bp hint
+ * ========================================================================= */
+
+/* -------------------------------------------------------------------------
+ * test_f9_toggles_breakpoint_on
+ *
+ * Spec: State: no breakpoints; current_line = 3; inject F9.
+ * Verify dispatched JSON contains "op":"debug/setBreakpoint" with "line":3.
+ * ---------------------------------------------------------------------- */
+static void test_f9_toggles_breakpoint_on(void) {
+	setup();
+	g_state.debug_state      = TUI_DEBUG_SUSPENDED;
+	g_state.pending_thread_id = 1;
+	g_state.current_line     = 3;
+	g_state.bp_line_count    = 0;
+	strncpy(g_state.script_path, "test.script", sizeof(g_state.script_path) - 1);
+	g_state.script_path[sizeof(g_state.script_path) - 1] = '\0';
+	reset_dispatch_capture();
+
+	boxen_event_t ev = make_fkey_event(BOXEN_KEY_F9, BOXEN_MOD_NONE);
+	int rc = debugger_tui_run_one_tick(&g_state, &ev);
+
+	assert(rc == TUI_CONTINUE);
+	/* Must dispatch setBreakpoint for line 3 */
+	assert(strstr(g_dispatch_buf, "debug/setBreakpoint") != NULL);
+	assert(strstr(g_dispatch_buf, "\"line\":3") != NULL);
+
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * test_f9_toggles_breakpoint_off
+ *
+ * Spec: State: breakpoints at lines 3 and 7; current_line = 3; inject F9.
+ * Verify the dispatched sequence includes debug/clearBreakpoints first,
+ * then debug/setBreakpoint for line 7 (the surviving breakpoint) but NOT
+ * for line 3.
+ *
+ * The toggle-off implementation issues multiple op_dispatch calls in sequence.
+ * The dispatch_capture_buf captures the LAST call. Since the clear-and-readd
+ * sequence dispatches: clearBreakpoints, then setBreakpoint for each surviving
+ * line, the last dispatch will be setBreakpoint for line 7. The test also
+ * checks that a clearBreakpoints was dispatched by re-using a secondary buffer
+ * approach: we call the F9 handler with a larger capture that accumulates all
+ * calls via a counted dispatch mechanism.
+ *
+ * Simpler approach: use the multi-capture buffer technique (TUI_DISPATCH_LOG).
+ * For B.4, we use the single-buffer approach and check what the test can observe:
+ * - First F9 press when bp_line_count >= 2 must dispatch clearBreakpoints.
+ *   We verify this by checking that g_dispatch_buf at some point contained
+ *   "clearBreakpoints", using a counted-dispatch helper.
+ *
+ * Implementation note: the tui_state_t dispatch capture is a single slot that
+ * records the most-recent dispatch. For multi-step sequences, the test captures
+ * EACH dispatch call sequentially by resetting g_dispatch_buf to observe the
+ * clear step.
+ *
+ * To test multi-step dispatch: we use a dispatch log array that records all
+ * dispatches in order. This requires a new test-only mechanism: a multi-dispatch
+ * capture log in tui_state_t (see debugger_tui_internal.h B.4 additions).
+ * ---------------------------------------------------------------------- */
+static void test_f9_toggles_breakpoint_off(void) {
+	setup();
+	g_state.debug_state       = TUI_DEBUG_SUSPENDED;
+	g_state.pending_thread_id  = 1;
+	g_state.current_line      = 3;
+	/* Set up two breakpoints: lines 3 (to be removed) and 7 (to survive) */
+	g_state.bp_line_count     = 2;
+	g_state.bp_lines[0]       = 3;
+	g_state.bp_lines[1]       = 7;
+	strncpy(g_state.script_path, "test.script", sizeof(g_state.script_path) - 1);
+	g_state.script_path[sizeof(g_state.script_path) - 1] = '\0';
+	reset_dispatch_capture();
+
+	/* Use multi-dispatch log for sequence verification */
+	char dispatch_log[TUI_DISPATCH_LOG_COUNT][256];
+	memset(dispatch_log, 0, sizeof(dispatch_log));
+	g_state.dispatch_log      = (char (*)[256])dispatch_log;
+	g_state.dispatch_log_cap  = TUI_DISPATCH_LOG_COUNT;
+	g_state.dispatch_log_count = 0;
+
+	boxen_event_t ev = make_fkey_event(BOXEN_KEY_F9, BOXEN_MOD_NONE);
+	int rc = debugger_tui_run_one_tick(&g_state, &ev);
+
+	assert(rc == TUI_CONTINUE);
+
+	/* The sequence must be: clearBreakpoints, setBreakpoint(line=7) */
+	assert(g_state.dispatch_log_count >= 2);
+	/* First dispatch: clearBreakpoints */
+	assert(strstr(dispatch_log[0], "debug/clearBreakpoints") != NULL);
+	/* Second dispatch: setBreakpoint for line 7 (the surviving line) */
+	assert(strstr(dispatch_log[1], "debug/setBreakpoint") != NULL);
+	assert(strstr(dispatch_log[1], "\"line\":7") != NULL);
+	/* No setBreakpoint for line 3 in any dispatch */
+	bool found_line3_set = false;
+	for (int i = 0; i < g_state.dispatch_log_count; i++) {
+		if (strstr(dispatch_log[i], "debug/setBreakpoint") != NULL &&
+		    strstr(dispatch_log[i], "\"line\":3") != NULL) {
+			found_line3_set = true;
+		}
+	}
+	assert(!found_line3_set);
+
+	/* Clean up */
+	g_state.dispatch_log      = NULL;
+	g_state.dispatch_log_cap  = 0;
+	g_state.dispatch_log_count = 0;
+
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * test_gutter_renders_breakpoint_marker
+ *
+ * Spec: Set state.bp_lines[0] = 5; set state.script_line_count = 10; draw.
+ * Verify cell at content (0, 4) has ch == '*'.
+ *
+ * Off-by-one: line 5 (1-based) is content row 4 (0-based).
+ * Gutter is content column 0.
+ * Screen mapping: script_win at (0,0), borders on -> content (0,4) is at
+ *   screen (0 + 1 + 0, 0 + 1 + 4) = (1, 5).
+ * ---------------------------------------------------------------------- */
+static void test_gutter_renders_breakpoint_marker(void) {
+	setup();
+
+	fill_script_lines(&g_state, 10);
+	g_state.bp_line_count  = 1;
+	g_state.bp_lines[0]    = 5;      /* 1-based */
+	g_state.current_line   = -1;     /* not current, so plain '*' gutter */
+
+	boxen_window_invalidate(g_state.script_win);
+	boxen_present();
+
+	/* Content (0, 4) = screen (rect.x+1, rect.y+1+4) */
+	boxen_rect_t r = boxen_window_get_rect(g_state.script_win);
+	int screen_col = r.x + 1;       /* left border + content col 0 */
+	int screen_row = r.y + 1 + 4;   /* top border + content row 4 */
+	const boxen_mock_cell_t *cell = boxen_mock_cell_at(screen_col, screen_row);
+	assert(cell != NULL);
+	assert(cell->ch == (uint32_t)'*');
+
+	free_script_lines(&g_state);
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * test_condition_modal_appears_on_shift_f9
+ *
+ * Spec: Inject Shift-F9 with current_line = 5.
+ * Verify a modal window is now the topmost window at its center cell.
+ * Specifically: g_state.condition_modal_win must be non-NULL.
+ *
+ * We test via the state field (condition_modal_win != NULL) rather than
+ * boxen_window_at, because the modal center cell calculation requires
+ * knowing the terminal dimensions and the modal rect, which is internal
+ * to the implementation. The behavioral contract is that condition_modal_win
+ * is set when the modal is open and the cursor is visible.
+ * ---------------------------------------------------------------------- */
+static void test_condition_modal_appears_on_shift_f9(void) {
+	setup();
+	g_state.debug_state      = TUI_DEBUG_SUSPENDED;
+	g_state.pending_thread_id = 1;
+	g_state.current_line     = 5;
+	g_state.bp_line_count    = 0;
+	strncpy(g_state.script_path, "test.script", sizeof(g_state.script_path) - 1);
+	g_state.script_path[sizeof(g_state.script_path) - 1] = '\0';
+
+	boxen_event_t ev = make_fkey_event(BOXEN_KEY_F9, BOXEN_MOD_SHIFT);
+	int rc = debugger_tui_run_one_tick(&g_state, &ev);
+
+	assert(rc == TUI_CONTINUE);
+	/* Modal must be open */
+	assert(g_state.condition_modal_win != NULL);
+	/* Cursor must be visible (A.7 API used for text input) */
+	assert(boxen_mock_cursor_visible() == true);
+
+	/* Close the modal for clean teardown */
+	if (g_state.condition_modal_win != NULL) {
+		boxen_window_set_modal(g_state.condition_modal_win, false);
+		boxen_window_close(g_state.condition_modal_win);
+		g_state.condition_modal_win = NULL;
+	}
+	boxen_window_set_cursor_visible(g_state.script_win, false);
+
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * test_condition_modal_enter_confirms
+ *
+ * Spec: Open modal; push characters 'x', '>', '0'; push Enter.
+ * Verify the modal is closed (condition_modal_win == NULL).
+ * Verify dispatched debug/setBreakpoint JSON contains "condition":"x>0".
+ *
+ * Procedure:
+ *   1. Open modal via Shift-F9.
+ *   2. Push printable characters through run_one_tick while modal is open.
+ *   3. Push Enter.
+ *   4. Assert modal is closed.
+ *   5. Assert dispatched JSON contains "condition":"x>0" and "line":5.
+ * ---------------------------------------------------------------------- */
+static void test_condition_modal_enter_confirms(void) {
+	setup();
+	g_state.debug_state       = TUI_DEBUG_SUSPENDED;
+	g_state.pending_thread_id  = 1;
+	g_state.current_line      = 5;
+	g_state.bp_line_count     = 0;
+	strncpy(g_state.script_path, "test.script", sizeof(g_state.script_path) - 1);
+	g_state.script_path[sizeof(g_state.script_path) - 1] = '\0';
+
+	/* Step 1: open modal via Shift-F9 */
+	boxen_event_t ev = make_fkey_event(BOXEN_KEY_F9, BOXEN_MOD_SHIFT);
+	debugger_tui_run_one_tick(&g_state, &ev);
+	assert(g_state.condition_modal_win != NULL);
+
+	/* Step 2: type 'x', '>', '0' */
+	char chars[] = {'x', '>', '0'};
+	for (int i = 0; i < 3; i++) {
+		memset(&ev, 0, sizeof(ev));
+		ev.type    = BOXEN_EV_KEY;
+		ev.key.key = BOXEN_KEY_NONE;
+		ev.key.ch  = (uint32_t)chars[i];
+		ev.key.mod = BOXEN_MOD_NONE;
+		debugger_tui_run_one_tick(&g_state, &ev);
+	}
+
+	/* Step 3: push Enter to confirm */
+	reset_dispatch_capture();
+	memset(&ev, 0, sizeof(ev));
+	ev.type    = BOXEN_EV_KEY;
+	ev.key.key = BOXEN_KEY_ENTER;
+	ev.key.ch  = 0;
+	ev.key.mod = BOXEN_MOD_NONE;
+	int rc = debugger_tui_run_one_tick(&g_state, &ev);
+
+	assert(rc == TUI_CONTINUE);
+	/* Modal must be closed */
+	assert(g_state.condition_modal_win == NULL);
+	/* Cursor must be hidden after modal closes */
+	assert(boxen_mock_cursor_visible() == false);
+	/* Dispatch must have occurred with condition and line */
+	assert(strstr(g_dispatch_buf, "debug/setBreakpoint") != NULL);
+	assert(strstr(g_dispatch_buf, "\"condition\":\"x>0\"") != NULL);
+	assert(strstr(g_dispatch_buf, "\"line\":5") != NULL);
+
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * test_f9_no_op_when_not_suspended
+ *
+ * F9 pressed while TUI_DEBUG_IDLE or TUI_DEBUG_RUNNING must be a no-op:
+ * no dispatch, state unchanged.
+ * ---------------------------------------------------------------------- */
+static void test_f9_no_op_when_not_suspended(void) {
+	setup();
+	g_state.debug_state   = TUI_DEBUG_IDLE;
+	g_state.current_line  = 3;
+	g_state.bp_line_count = 0;
+	reset_dispatch_capture();
+
+	boxen_event_t ev = make_fkey_event(BOXEN_KEY_F9, BOXEN_MOD_NONE);
+	debugger_tui_run_one_tick(&g_state, &ev);
+
+	assert(g_dispatch_buf[0] == '\0');
+
+	/* Also verify no-op when RUNNING */
+	g_state.debug_state = TUI_DEBUG_RUNNING;
+	memset(g_dispatch_buf, 0, sizeof(g_dispatch_buf));
+	debugger_tui_run_one_tick(&g_state, &ev);
+
+	assert(g_dispatch_buf[0] == '\0');
+
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * test_f9_no_op_when_no_current_line
+ *
+ * F9 with current_line <= 0 (no suspended line) must be a no-op.
+ * ---------------------------------------------------------------------- */
+static void test_f9_no_op_when_no_current_line(void) {
+	setup();
+	g_state.debug_state   = TUI_DEBUG_SUSPENDED;
+	g_state.current_line  = -1;   /* not suspended in any line */
+	g_state.bp_line_count = 0;
+	reset_dispatch_capture();
+
+	boxen_event_t ev = make_fkey_event(BOXEN_KEY_F9, BOXEN_MOD_NONE);
+	debugger_tui_run_one_tick(&g_state, &ev);
+
+	assert(g_dispatch_buf[0] == '\0');
+
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * test_condition_modal_escape_cancels
+ *
+ * Open modal via Shift-F9, then press Escape.
+ * Assert: modal is closed, no dispatch occurred, cursor hidden.
+ * ---------------------------------------------------------------------- */
+static void test_condition_modal_escape_cancels(void) {
+	setup();
+	g_state.debug_state       = TUI_DEBUG_SUSPENDED;
+	g_state.pending_thread_id  = 1;
+	g_state.current_line      = 5;
+	g_state.bp_line_count     = 0;
+	strncpy(g_state.script_path, "test.script", sizeof(g_state.script_path) - 1);
+	g_state.script_path[sizeof(g_state.script_path) - 1] = '\0';
+	reset_dispatch_capture();
+
+	/* Open modal */
+	boxen_event_t ev = make_fkey_event(BOXEN_KEY_F9, BOXEN_MOD_SHIFT);
+	debugger_tui_run_one_tick(&g_state, &ev);
+	assert(g_state.condition_modal_win != NULL);
+
+	/* Reset dispatch buf to detect if anything is dispatched on cancel */
+	memset(g_dispatch_buf, 0, sizeof(g_dispatch_buf));
+
+	/* Press Escape to cancel */
+	memset(&ev, 0, sizeof(ev));
+	ev.type    = BOXEN_EV_KEY;
+	ev.key.key = BOXEN_KEY_ESCAPE;
+	ev.key.ch  = 0;
+	ev.key.mod = BOXEN_MOD_NONE;
+	int rc = debugger_tui_run_one_tick(&g_state, &ev);
+
+	assert(rc == TUI_CONTINUE);
+	/* Modal must be closed, no dispatch */
+	assert(g_state.condition_modal_win == NULL);
+	assert(g_dispatch_buf[0] == '\0');
+	/* Cursor must be hidden */
+	assert(boxen_mock_cursor_visible() == false);
+
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * test_condition_modal_cursor_visible
+ *
+ * When the condition modal is open, the cursor must be visible (A.7 API).
+ * Specifically: after Shift-F9, boxen_mock_cursor_visible() == true.
+ * ---------------------------------------------------------------------- */
+static void test_condition_modal_cursor_visible(void) {
+	setup();
+	g_state.debug_state      = TUI_DEBUG_SUSPENDED;
+	g_state.pending_thread_id = 1;
+	g_state.current_line     = 3;
+	g_state.bp_line_count    = 0;
+	strncpy(g_state.script_path, "s.script", sizeof(g_state.script_path) - 1);
+	g_state.script_path[sizeof(g_state.script_path) - 1] = '\0';
+
+	boxen_event_t ev = make_fkey_event(BOXEN_KEY_F9, BOXEN_MOD_SHIFT);
+	debugger_tui_run_one_tick(&g_state, &ev);
+
+	assert(g_state.condition_modal_win != NULL);
+	assert(boxen_mock_cursor_visible() == true);
+
+	/* Clean up */
+	boxen_window_set_modal(g_state.condition_modal_win, false);
+	boxen_window_close(g_state.condition_modal_win);
+	g_state.condition_modal_win = NULL;
+	boxen_window_set_cursor_visible(g_state.script_win, false);
+
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * test_condition_modal_cursor_hidden_on_close
+ *
+ * After the condition modal closes (via Enter or Escape), the cursor must
+ * be hidden. This verifies the modal lifecycle per EXECUTION_PLAN.md B.4
+ * sentinel: "when modal closes, MUST call boxen_window_set_cursor_visible(false)".
+ * ---------------------------------------------------------------------- */
+static void test_condition_modal_cursor_hidden_on_close(void) {
+	setup();
+	g_state.debug_state       = TUI_DEBUG_SUSPENDED;
+	g_state.pending_thread_id  = 1;
+	g_state.current_line      = 3;
+	g_state.bp_line_count     = 0;
+	strncpy(g_state.script_path, "s.script", sizeof(g_state.script_path) - 1);
+	g_state.script_path[sizeof(g_state.script_path) - 1] = '\0';
+	reset_dispatch_capture();
+
+	/* Open modal */
+	boxen_event_t ev = make_fkey_event(BOXEN_KEY_F9, BOXEN_MOD_SHIFT);
+	debugger_tui_run_one_tick(&g_state, &ev);
+	assert(boxen_mock_cursor_visible() == true);
+
+	/* Close via Escape */
+	memset(&ev, 0, sizeof(ev));
+	ev.type    = BOXEN_EV_KEY;
+	ev.key.key = BOXEN_KEY_ESCAPE;
+	ev.key.ch  = 0;
+	ev.key.mod = BOXEN_MOD_NONE;
+	debugger_tui_run_one_tick(&g_state, &ev);
+
+	assert(g_state.condition_modal_win == NULL);
+	assert(boxen_mock_cursor_visible() == false);
+
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * test_gutter_shows_current_and_bp_overlap
+ *
+ * When a line is BOTH the current execution line AND has a breakpoint,
+ * the gutter must show '>' (current-line takes precedence).
+ *
+ * Per draw_script_pane implementation: the current-line check runs first.
+ * This test verifies the priority ordering.
+ * ---------------------------------------------------------------------- */
+static void test_gutter_shows_current_and_bp_overlap(void) {
+	setup();
+
+	fill_script_lines(&g_state, 5);
+	g_state.bp_line_count  = 1;
+	g_state.bp_lines[0]    = 3;      /* breakpoint at line 3 */
+	g_state.current_line   = 3;      /* also the current line */
+
+	boxen_window_invalidate(g_state.script_win);
+	boxen_present();
+
+	/* Content row 2 = line 3.  Screen: (rect.x+1, rect.y+1+2). */
+	boxen_rect_t r = boxen_window_get_rect(g_state.script_win);
+	int screen_col = r.x + 1;
+	int screen_row = r.y + 1 + 2;
+	const boxen_mock_cell_t *cell = boxen_mock_cell_at(screen_col, screen_row);
+	assert(cell != NULL);
+	/* Current-line marker takes priority over breakpoint marker */
+	assert(cell->ch == (uint32_t)'>');
+
+	free_script_lines(&g_state);
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * test_footer_shows_f9_hint_when_suspended
+ *
+ * When debug_state == TUI_DEBUG_SUSPENDED, footer must include "F9:bp".
+ * ---------------------------------------------------------------------- */
+static void test_footer_shows_f9_hint_when_suspended(void) {
+	setup();
+	g_state.debug_state = TUI_DEBUG_SUSPENDED;
+
+	boxen_window_invalidate(g_state.footer_win);
+	boxen_present();
+
+	assert(boxen_mock_has_text("F9:bp"));
+
+	teardown();
+}
+
 /* -------------------------------------------------------------------------
  * main
  * ---------------------------------------------------------------------- */
@@ -1322,6 +1795,20 @@ int main(void) {
 	TR_RUN(test_footer_shows_hints_when_suspended);
 	TR_RUN(test_suspended_resets_debug_state);
 	TR_RUN(test_panes_refresh_on_suspended);
+
+	/* B.4 tests */
+	TR_RUN(test_f9_toggles_breakpoint_on);
+	TR_RUN(test_f9_toggles_breakpoint_off);
+	TR_RUN(test_gutter_renders_breakpoint_marker);
+	TR_RUN(test_condition_modal_appears_on_shift_f9);
+	TR_RUN(test_condition_modal_enter_confirms);
+	TR_RUN(test_f9_no_op_when_not_suspended);
+	TR_RUN(test_f9_no_op_when_no_current_line);
+	TR_RUN(test_condition_modal_escape_cancels);
+	TR_RUN(test_condition_modal_cursor_visible);
+	TR_RUN(test_condition_modal_cursor_hidden_on_close);
+	TR_RUN(test_gutter_shows_current_and_bp_overlap);
+	TR_RUN(test_footer_shows_f9_hint_when_suspended);
 
 	TR_SUMMARY();
 	return TR_EXIT_CODE();

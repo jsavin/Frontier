@@ -9,6 +9,7 @@
  *
  * 2026-06-06 JES Phase B.0 #691
  * 2026-06-07 JES Phase B.3 #691: tui_debug_state_t, dispatch capture, keybind fields
+ * 2026-06-07 JES Phase B.4 #691: breakpoint UI, condition modal, dispatch log
  */
 
 #ifndef DEBUGGER_TUI_INTERNAL_H
@@ -63,6 +64,17 @@ typedef enum {
 
 /* Maximum number of breakpoints tracked in TUI state. */
 #define TUI_MAX_BREAKPOINTS 256
+
+/* 2026-06-07 JES Phase B.4 #691: maximum length of a conditional breakpoint
+ * expression string (including NUL terminator).  256 bytes is generous for
+ * a UserTalk expression; the modal input is capped at (TUI_BP_CONDITION_MAX - 1)
+ * printable characters before accepting Enter. */
+#define TUI_BP_CONDITION_MAX 256
+
+/* 2026-06-07 JES Phase B.4 #691: multi-dispatch log capacity for tests.
+ * Tests that verify sequences (clearBreakpoints -> setBreakpoint for each
+ * surviving line) set dispatch_log to a stack array of this many slots. */
+#define TUI_DISPATCH_LOG_COUNT 32
 
 /* 2026-06-07 JES Phase B.1 #737 round 1 P1-B: cap source lines to prevent
  * a DoS via a malicious/oversized debug/getSource response.  ODB scripts are
@@ -130,6 +142,42 @@ typedef struct {
 	 */
 	char *dispatch_capture_buf;  /* NULL in production; test buffer pointer in tests */
 	int   dispatch_capture_cap;  /* capacity of dispatch_capture_buf (0 if NULL) */
+
+	/* 2026-06-07 JES Phase B.4 #691: multi-dispatch log for sequence tests.
+	 *
+	 * Some B.4 operations issue multiple op_dispatch calls in sequence
+	 * (e.g., clearBreakpoints then setBreakpoint for each surviving line).
+	 * The single dispatch_capture_buf captures only the most-recent call.
+	 * Tests that need to verify a dispatch sequence set dispatch_log to a
+	 * stack-allocated array of TUI_DISPATCH_LOG_COUNT fixed-size string slots,
+	 * and set dispatch_log_cap to the slot count.  Each tui_dispatch_json call
+	 * appends to the log (up to cap); dispatch_log_count tracks how many
+	 * calls were made.  In production all three are zero/NULL.
+	 *
+	 * The log is secondary to dispatch_capture_buf: when dispatch_capture_buf
+	 * is non-NULL, the existing single-slot capture still runs; the log records
+	 * all calls in addition.  Tests can use either or both.
+	 */
+	char (*dispatch_log)[256]; /* NULL in production; test array in tests */
+	int   dispatch_log_cap;    /* number of slots in dispatch_log (0 if NULL) */
+	int   dispatch_log_count;  /* number of calls logged so far */
+
+	/* 2026-06-07 JES Phase B.4 #691: breakpoint condition modal state.
+	 *
+	 * condition_modal_win -- the open modal window; NULL when no modal is active.
+	 *   Heap-allocated via boxen_window_open(); closed and set to NULL when
+	 *   the user confirms (Enter) or cancels (Escape).
+	 *
+	 * bp_condition_buf -- the condition expression being typed.
+	 *   Populated one character at a time by the modal's input callback.
+	 *   Bounded to TUI_BP_CONDITION_MAX - 1 printable characters.
+	 *   Cleared on modal open; used to construct "condition" JSON param on confirm.
+	 *
+	 * bp_condition_len -- current character count in bp_condition_buf.
+	 */
+	boxen_window_t *condition_modal_win; /* NULL when modal is closed */
+	char  bp_condition_buf[TUI_BP_CONDITION_MAX]; /* condition expression buffer */
+	int   bp_condition_len;              /* current character count, 0..TUI_BP_CONDITION_MAX-1 */
 } tui_state_t;
 
 /*
