@@ -653,15 +653,10 @@ static void draw_stack_pane(boxen_window_t *win, void *ud) {
  * ---------------------------------------------------------------------- */
 
 /* op_dispatch is defined in op_handler.c; not linked in test builds.
- * The DEBUGGER_TUI_OMIT_MAIN guard (used in test builds) does not cover
- * tui_dispatch_json because that function is exercised by tests.  Instead,
- * the dispatch_capture_buf path is taken in tests so op_dispatch is never
- * called (and never needs to be linked). */
-#ifndef DEBUGGER_TUI_OMIT_MAIN
-/* op_dispatch declaration; full prototype in op_handler.h which is included
- * via debugger_tui_internal.h -> op_handler.h already. */
-#endif
-
+ * tui_dispatch_json is exercised by tests via the dispatch_capture_buf path,
+ * so op_dispatch is never called (and never needs to be linked) in test
+ * builds.  The full prototype is in op_handler.h, included transitively via
+ * debugger_tui_internal.h. */
 static void tui_dispatch_json(tui_state_t *s, const char *json) {
 	size_t len = strlen(json);
 	if (s->dispatch_capture_buf != NULL && s->dispatch_capture_cap > 0) {
@@ -725,7 +720,7 @@ static void draw_footer(boxen_window_t *win, void *ud) {
 
 	const char *text;
 	if (s != NULL && s->debug_state == TUI_DEBUG_SUSPENDED) {
-		text = "F5:continue  F9:bp  F10:step-over  F11:step-in  S-F11:step-out  q:quit";
+		text = "F5:continue  F10:step-over  F11:step-in  S-F11:step-out  q:quit";
 	} else if (s != NULL && s->debug_state == TUI_DEBUG_RUNNING) {
 		text = "[running...]  q:quit";
 	} else {
