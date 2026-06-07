@@ -531,43 +531,9 @@ static void draw_script_pane(boxen_window_t *win, void *ud) {
 		boxen_draw_text(win, 1, content_row, linebuf, fg, bg, attr);
 	}
 
-	/* 2026-06-07 JES Phase B.5 #691: render identifier popup if active.
-	 * The popup is shown as a highlighted status line at the LAST visible
-	 * content row of the window.  We use the viewport height (not content size)
-	 * to determine the last visible row, then draw the popup there.
-	 *
-	 * The popup is drawn AFTER the source lines so it always overlays the
-	 * bottom row of the visible area.  This is a simple status-bar style: no
-	 * separate window, no modal -- just a DIM-highlighted row at the bottom.
-	 *
-	 * Scroll interaction: the popup is always visible regardless of scroll
-	 * position (it's drawn in screen-relative terms via the content viewport). */
-	if (s->identifier_popup_active && s->identifier_popup_line[0] != '\0') {
-		int viewport_h = boxen_window_content_height(win);
-		if (viewport_h > 0) {
-			int scroll_y = 0, scroll_x = 0;
-			boxen_window_get_scroll(win, &scroll_x, &scroll_y);
-			/* Draw on the last visible content row (scroll_y + viewport_h - 1) */
-			int popup_row = scroll_y + viewport_h - 1;
-
-			const char *popup = s->identifier_popup_line;
-			int popup_len = (int)strlen(popup);
-			char linebuf2[512];
-			int cap2  = (int)sizeof(linebuf2) - 1;
-			int avail2 = (w - 1) < cap2 ? (w - 1) : cap2;
-			if (avail2 < 0) avail2 = 0;
-			int copy2 = popup_len < avail2 ? popup_len : avail2;
-			memcpy(linebuf2, popup, (size_t)copy2);
-			memset(linebuf2 + copy2, ' ', (size_t)(avail2 - copy2));
-			linebuf2[avail2] = '\0';
-
-			/* Gutter cell for popup row: space */
-			boxen_set_cell(win, 0, popup_row, (uint32_t)' ',
-			               BOXEN_COLOR_DEFAULT, BOXEN_COLOR_DEFAULT, BOXEN_ATTR_DIM);
-			boxen_draw_text(win, 1, popup_row, linebuf2,
-			                BOXEN_COLOR_DEFAULT, BOXEN_COLOR_DEFAULT, BOXEN_ATTR_DIM);
-		}
-	}
+	/* 2026-06-07 JES Phase B.5 #745 round 1 P1-3: popup moved to draw_footer.
+	 * The script pane no longer renders the identifier popup; it goes in the
+	 * footer row instead so all source lines remain visible. */
 }
 
 /* -------------------------------------------------------------------------
@@ -1219,6 +1185,11 @@ void extract_identifier_at(const char *line, int col, char *out, int out_max) {
 		end++;
 	}
 
+	/* 2026-06-07 JES Phase B.5 #745 round 1 P1-2: reject leading-digit
+	 * identifiers. UserTalk/C identifiers cannot start with a digit; clicking
+	 * on a numeric literal (e.g. "5" in "myVar = 5") must return empty. */
+	if (line[start] >= '0' && line[start] <= '9') return;
+
 	/* Copy [start..end] inclusive, truncate to out_max - 1 */
 	int ident_len = end - start + 1;
 	int copy = (ident_len < out_max - 1) ? ident_len : out_max - 1;
@@ -1257,17 +1228,29 @@ void tui_resolve_identifier_by_name(tui_state_t *s, const char *name) {
 			         sizeof(s->identifier_popup_line),
 			         "%s = %s", name, value);
 			s->identifier_popup_active = true;
-			if (s->script_win != NULL) boxen_window_invalidate(s->script_win);
+			/* 2026-06-07 JES Phase B.5 #745 round 1 P1-3: popup renders in
+			 * footer row -- invalidate footer_win so it redraws. */
+			if (s->footer_win != NULL) boxen_window_invalidate(s->footer_win);
 			return;
 		}
 	}
 
-	/* Not found: show informational message */
-	snprintf(s->identifier_popup_line,
-	         sizeof(s->identifier_popup_line),
-	         "%s (not found in locals)", name);
+	/* Not found: distinguish "locals not loaded yet" from "not in scope".
+	 * 2026-06-07 JES Phase B.5 #745 round 1 P1-1: local_count == 0 could mean
+	 * debug/getLocals has not returned yet (race during B.2 fetch); showing
+	 * "(not found in locals)" is misleading in that case. */
+	if (s->local_count == 0) {
+		snprintf(s->identifier_popup_line,
+		         sizeof(s->identifier_popup_line),
+		         "%s (locals not loaded yet)", name);
+	} else {
+		snprintf(s->identifier_popup_line,
+		         sizeof(s->identifier_popup_line),
+		         "%s (not found in locals)", name);
+	}
 	s->identifier_popup_active = true;
-	if (s->script_win != NULL) boxen_window_invalidate(s->script_win);
+	/* 2026-06-07 JES Phase B.5 #745 round 1 P1-3: popup renders in footer row */
+	if (s->footer_win != NULL) boxen_window_invalidate(s->footer_win);
 }
 
 /* -------------------------------------------------------------------------
@@ -1278,13 +1261,14 @@ void tui_resolve_identifier_by_name(tui_state_t *s, const char *name) {
  * It is pre-populated with the local variable name at the current cursor
  * position in the locals section (or the first local if no cursor tracking).
  *
- * On Enter: dispatch debug/setWatchpoint with the typed path and current threadId.
+ * On Enter: dispatch debug/setWatchpoint with the typed variable name.
  * On Escape: close without dispatching.
  *
- * Wire format per EXECUTION_PLAN.md B.5:
- *   {"op":"debug/setWatchpoint","id":N,"params":{"path":"varname","threadId":TID}}
+ * Wire format (corrected 2026-06-07 JES #745 round 1 P0-1):
+ *   {"op":"debug/setWatchpoint","id":N,"params":{"variable":"varname"}}
+ * threadId omitted -- handle_debug_setwatchpoint does not read it.
  *
- * handle_debug_setwatchpoint is confirmed at debug_handler.h:151.
+ * handle_debug_setwatchpoint is confirmed at debug_handler.c:2400.
  *
  * Security: tui_json_escape applied to watch_path_buf before dispatch (same
  * as condition string in B.4 -- B.4 P1 class lesson).
@@ -1319,18 +1303,21 @@ static void input_watchpoint_modal(boxen_window_t *win, const boxen_event_t *ev,
 	}
 
 	if (ev->key.key == BOXEN_KEY_ENTER) {
-		/* Confirm: dispatch debug/setWatchpoint with the typed path.
-		 * 2026-06-07 JES Phase B.5 #691: tui_json_escape the path string
+		/* Confirm: dispatch debug/setWatchpoint with the typed variable name.
+		 * 2026-06-07 JES Phase B.5 #691: tui_json_escape the variable string
 		 * (B.4 P1 security class: ALL outbound JSON string fields that come from
-		 * runtime state must be escaped). */
+		 * runtime state must be escaped).
+		 * 2026-06-07 JES Phase B.5 #745 round 1 P0-1: key is "variable" not "path";
+		 * handle_debug_setwatchpoint reads params.variable (debug_handler.c:2400).
+		 * threadId omitted -- the handler does not parse it. */
 		char esc_path[TUI_WATCH_PATH_MAX * 6 + 1];
 		tui_json_escape(s->watch_path_buf, esc_path, sizeof(esc_path));
 
 		char req[512 + sizeof(esc_path)];
 		snprintf(req, sizeof(req),
 		         "{\"op\":\"debug/setWatchpoint\",\"id\":%d,"
-		         "\"params\":{\"path\":\"%s\",\"threadId\":%ld}}",
-		         next_req_id(), esc_path, s->pending_thread_id);
+		         "\"params\":{\"variable\":\"%s\"}}",
+		         next_req_id(), esc_path);
 
 		tui_close_watchpoint_modal(s);
 		tui_dispatch_json(s, req);
@@ -1462,6 +1449,21 @@ static void draw_footer(boxen_window_t *win, void *ud) {
 	tui_state_t *s = (tui_state_t *)ud;
 	int w = boxen_window_content_width(win);
 	if (w <= 0) return;
+
+	/* 2026-06-07 JES Phase B.5 #745 round 1 P1-3: identifier popup renders
+	 * in the footer row, NOT over the last source line of the script pane.
+	 * When popup_active is set, the footer shows the popup text instead of
+	 * the keybind hints.  This leaves all script pane source lines visible.
+	 * The popup stays until the next suspended notification clears it. */
+	if (s != NULL && s->identifier_popup_active &&
+	    s->identifier_popup_line[0] != '\0') {
+		char buf[256];
+		int n = snprintf(buf, sizeof(buf), "%-*.*s", w, w, s->identifier_popup_line);
+		(void)n;
+		boxen_draw_text(win, 0, 0, buf,
+		                BOXEN_COLOR_DEFAULT, BOXEN_COLOR_DEFAULT, BOXEN_ATTR_DIM);
+		return;
+	}
 
 	const char *text;
 	if (s != NULL && s->debug_state == TUI_DEBUG_SUSPENDED) {
@@ -1675,10 +1677,12 @@ static void on_input(boxen_window_t *win, const boxen_event_t *ev, void *ud) {
 			    cx != BOXEN_HIT_CHROME && cy != BOXEN_HIT_CHROME &&
 			    cx > 0 /* not gutter */) {
 				/* Content column (cx-1) is the 0-based column in the source text.
-				 * Content row cy + scroll_y gives the 0-based source line index. */
-				int scroll_x = 0, scroll_y = 0;
-				boxen_window_get_scroll(s->script_win, &scroll_x, &scroll_y);
-				int source_row = cy + scroll_y;   /* 0-based line index */
+				 * boxen_window_at already returns content coordinates with scroll
+				 * applied (boxen.c:1803-1874: *cy = (local_y - border) + scroll_y).
+				 * 2026-06-07 JES Phase B.5 #745 round 1 P0-2: do NOT add scroll_y
+				 * again -- that double-counts and maps to the wrong source line when
+				 * scroll_y > 0. cy IS the 0-based source line index. */
+				int source_row = cy;   /* 0-based line index (scroll already in cy) */
 				int source_col = cx - 1;          /* 0-based column in text */
 
 				if (source_row >= 0 && source_row < s->script_line_count) {
