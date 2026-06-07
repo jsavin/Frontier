@@ -78,6 +78,7 @@ struct boxen_window {
 	int      min_w;       /* Phase C */
 	int      min_h;       /* Phase C */
 	boxen_pin_edge_t pinned;  /* A.6+ */
+	bool     borders;     /* A.6+: draw chrome borders around the window */
 
 	/* Callbacks */
 	boxen_draw_fn  draw_fn;

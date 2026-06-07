@@ -325,6 +325,9 @@ void boxen_window_set_resizable(boxen_window_t *win, bool resizable);
 void boxen_window_set_min_size(boxen_window_t *win, int min_w, int min_h);
 /* Phase A.6+: pin a window to a screen edge (e.g., a keybind footer). */
 void boxen_window_set_pinned(boxen_window_t *win, boxen_pin_edge_t edge);
+/* Phase A.6+: enable/disable border chrome (corners, edges, title, scrollbar).
+ * Default: ON. Disable for borderless surfaces like pinned footers or raw overlays. */
+void boxen_window_set_borders(boxen_window_t *win, bool borders);
 
 /* -------------------------------------------------------------------------
  * Z-order + focus (A.3+)
@@ -347,9 +350,33 @@ void boxen_window_set_draw(boxen_window_t *win, boxen_draw_fn fn);
 void boxen_window_set_input(boxen_window_t *win, boxen_input_fn fn);
 
 /* -------------------------------------------------------------------------
- * Cell writing (A.2+)
- * Coordinates are window-local (content space), 0-based.
- * Clips silently if out of the window's content area.
+ * Cell writing (A.2+, content-coord semantics)
+ *
+ * Coordinates are window-local CONTENT coordinates, 0-based. The content
+ * area is the cells INSIDE any window chrome (borders, scrollbar).
+ *
+ * Chrome-aware translation (A.6+):
+ *
+ *   With borders enabled (default):
+ *     - content (0, 0) maps to terminal (rect.x + 1, rect.y + 1)
+ *     - content_width  = rect.w - 2  (left + right border consumed)
+ *     - content_height = rect.h - 2  (top + bottom border consumed)
+ *     - If content_h > content_height a vertical scrollbar is drawn on
+ *       the rightmost interior column. content_width is reduced by 1
+ *       further in that case so callers don't draw into the scrollbar.
+ *
+ *   With borders disabled (call boxen_window_set_borders(win, false)):
+ *     - content (0, 0) maps to terminal (rect.x, rect.y)
+ *     - content_width  = rect.w
+ *     - content_height = rect.h
+ *     - No scrollbar is drawn.
+ *
+ * Consumers that draw against the full rect (pre-A.6 behavior) must call
+ * boxen_window_set_borders(win, false) at window-open time. The default
+ * change from "no chrome" (A.2-A.5) to "borders on" (A.6) is the
+ * acknowledged pre-1.0 API break.
+ *
+ * All three functions clip silently if (x, y) is out of the content area.
  * ---------------------------------------------------------------------- */
 
 void boxen_set_cell(boxen_window_t *win, int x, int y,
@@ -366,7 +393,17 @@ void boxen_fill_rect(boxen_window_t *win, boxen_rect_t r,
  * Given screen position (sx, sy), find the topmost window there and
  * return window-local content coordinates in (*cx, *cy).
  * Returns NULL if no window is at (sx, sy).
+ *
+ * A.6+ chrome handling: when (sx, sy) lands on the border or scrollbar
+ * of a window, cx and cy are set to BOXEN_HIT_CHROME. This sentinel is
+ * distinct from any valid content coordinate (which lives in
+ * [-BOXEN_MAX_DIMENSION, BOXEN_MAX_DIMENSION]) regardless of the window's
+ * current scroll offset. Callers that act on content coords (e.g. the
+ * cmd-2-click identifier resolver) should check for BOXEN_HIT_CHROME
+ * before treating cx and cy as row/column indices.
  * ---------------------------------------------------------------------- */
+
+#define BOXEN_HIT_CHROME (-2147483647 - 1)  /* INT_MIN, sentinel for chrome hits */
 
 boxen_window_t *boxen_window_at(int sx, int sy, int *cx, int *cy);
 
