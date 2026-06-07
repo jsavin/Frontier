@@ -315,10 +315,15 @@ boxen_rect_t boxen_window_get_rect(const boxen_window_t *win);
 int boxen_window_content_width(const boxen_window_t *win);
 int boxen_window_content_height(const boxen_window_t *win);
 
-/* Phase C -- declared but not implemented until A.4 / C */
-void boxen_window_set_resizable(boxen_window_t *win, bool resizable);
+/* A.4+: resize/move property setters. */
+/* Enable/disable mouse and keyboard drag for moving this window. Default: false. */
 void boxen_window_set_movable(boxen_window_t *win, bool movable);
+/* Enable/disable mouse and keyboard drag for resizing this window. Default: false. */
+void boxen_window_set_resizable(boxen_window_t *win, bool resizable);
+/* Set minimum dimensions enforced during drag resize and terminal-resize clamping.
+ * Values <= 0 are treated as 1 internally. Default is (0, 0) (i.e., min 1x1). */
 void boxen_window_set_min_size(boxen_window_t *win, int min_w, int min_h);
+/* Phase A.6+: pin a window to a screen edge (e.g., a keybind footer). */
 void boxen_window_set_pinned(boxen_window_t *win, boxen_pin_edge_t edge);
 
 /* -------------------------------------------------------------------------
