@@ -18,9 +18,19 @@
 
 name: Boxen CI
 
+# Default-deny: workflow gets only the minimum needed (read repo contents for
+# checkout). Defense-in-depth against a future step or compromised third-party
+# action attempting to write to the repo, post comments, mint OIDC tokens, etc.
+permissions:
+  contents: read
+
 on:
   push:
     branches: [develop]
+    paths:
+      - 'frontier-cli/**'
+      - 'planning/boxen/**'
+      - '.github/workflows/boxen-ci.yml'
   pull_request:
     paths:
       - 'frontier-cli/**'

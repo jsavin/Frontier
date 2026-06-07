@@ -406,14 +406,24 @@ lint-shell:
 # Two-step compile is required because termbox2_impl.c must be compiled with
 # -DTB_IMPL (to activate the single-header implementation) while smoke_main.c
 # must NOT get -DTB_IMPL (would cause duplicate symbol errors at link time).
+#
+# The recipe hardcodes a minimal CFLAGS set instead of inheriting $(CFLAGS) on
+# purpose: the project CFLAGS include -fpascal-strings (Apple-clang-only) and
+# Mach-O linker flags. The smoke target must compile cleanly on Linux/Windows
+# when those CI jobs land, so it sticks to portable flags only.
+#
+# Object files land in obj/ (local, gitignored) rather than /tmp to avoid the
+# predictable-path race risk on shared dev machines.
 TB2_SMOKE_SRC = $(TB2_DIR)/smoke_main.c
 TB2_SMOKE_BIN = tb2-smoke
+TB2_SMOKE_OBJDIR = obj/tb2-smoke
 
 tb2-smoke: $(TB2_IMPL_SRC) $(TB2_SMOKE_SRC)
+	@mkdir -p $(TB2_SMOKE_OBJDIR)
 	$(CC) -std=c17 -Wall -Wextra -O0 -g -I$(TB2_DIR) \
-		-c $(TB2_IMPL_SRC) -o /tmp/tb2_impl_smoke.o
+		-c $(TB2_IMPL_SRC) -o $(TB2_SMOKE_OBJDIR)/tb2_impl.o
 	$(CC) -std=c17 -Wall -Wextra -O0 -g -I$(TB2_DIR) \
-		-c $(TB2_SMOKE_SRC) -o /tmp/tb2_smoke_main.o
-	$(CC) /tmp/tb2_impl_smoke.o /tmp/tb2_smoke_main.o -o $(TB2_SMOKE_BIN)
+		-c $(TB2_SMOKE_SRC) -o $(TB2_SMOKE_OBJDIR)/tb2_smoke_main.o
+	$(CC) $(TB2_SMOKE_OBJDIR)/tb2_impl.o $(TB2_SMOKE_OBJDIR)/tb2_smoke_main.o -o $(TB2_SMOKE_BIN)
 
 .PHONY: all build clean strings_generated kernel_verbs_generated dist dist-clean clean-root validate-bigstrings lint lint-all lint-python lint-shell tb2-smoke
