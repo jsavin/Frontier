@@ -389,6 +389,52 @@ void boxen_fill_rect(boxen_window_t *win, boxen_rect_t r,
                      uint32_t ch, uint16_t fg, uint16_t bg, uint16_t attr);
 
 /* -------------------------------------------------------------------------
+ * Cursor positioning (A.7+, content-coord semantics)
+ *
+ * Position the terminal cursor at a content-relative coordinate inside the
+ * given window. Mirrors boxen_set_cell's translation pipeline -- chrome
+ * (border) offset, scroll offset, and content-viewport clipping all apply
+ * identically. Beyond the set_cell pipeline these wrappers add two checks:
+ *
+ *   Modal-occlusion check:
+ *     If a modal window is present and covers the target screen cell, the
+ *     cursor is hidden (set_cursor_visible(false)) instead of drawn under
+ *     the modal. The modal itself bypasses the check for its own writes.
+ *
+ *   Focus gate:
+ *     Only the focused window OR the topmost modal window may drive the
+ *     terminal cursor. Calls from a non-focused, non-modal window are
+ *     silently ignored. This is deliberate footgun prevention -- two
+ *     windows fighting over a single terminal cursor produces undefined
+ *     behavior. Surfaces that need a non-focused indicator should draw a
+ *     cell-based caret with boxen_set_cell + BOXEN_ATTR_REVERSE.
+ *
+ * Out-of-viewport target:
+ *   When the translated screen coord falls outside the content viewport
+ *   (scroll-adjusted, clip-checked), the cursor is hidden rather than
+ *   left at a stale position. The call still succeeds.
+ *
+ * Visibility toggle:
+ *   boxen_window_set_cursor_visible is independent of position -- a hide
+ *   followed by a show restores the cursor at the last set_cursor coord.
+ *   It also obeys the focus gate: a non-focused, non-modal caller is
+ *   silently ignored.
+ *   If no prior boxen_window_set_cursor call successfully placed the cursor,
+ *   set_cursor_visible(true) makes the cursor visible at the backend's
+ *   default position (typically (0, 0) after init).
+ *
+ * Coordinates are validated against BOXEN_MAX_DIMENSION to prevent signed-
+ * int overflow in the translation arithmetic.
+ *
+ * First consumer: Phase B debugger TUI (issue #733) -- the breakpoint
+ * condition modal (B.4) and scratch-eval pane (B.7) both need cursor
+ * positioning in content coords.
+ * ---------------------------------------------------------------------- */
+
+void boxen_window_set_cursor(boxen_window_t *win, int cx, int cy);
+void boxen_window_set_cursor_visible(boxen_window_t *win, bool visible);
+
+/* -------------------------------------------------------------------------
  * Screen-to-window coordinate mapping (A.2+)
  * Given screen position (sx, sy), find the topmost window there and
  * return window-local content coordinates in (*cx, *cy).
