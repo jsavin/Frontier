@@ -55,7 +55,16 @@ static bool                   g_initialized = false;
 static boxen_window_t        *g_windows[BOXEN_MAX_WINDOWS];
 static int                    g_window_count = 0;
 
-/* A.3 focus and event loop state */
+/* A.3 focus and event loop state.
+ *
+ * Threading: both are plain (non-_Atomic) and assume single-threaded access
+ * under the caller's external lock (Frontier GIL). Concurrent focus mutation
+ * + dispatch read would be a torn-pointer race on g_focused_window;
+ * concurrent quit + run-loop read would be a data race on g_should_quit.
+ * If a future caller needs to set g_should_quit from a signal handler or
+ * other non-GIL context (e.g. SIGINT in a standalone consumer), upgrade
+ * to `_Atomic bool` with relaxed store/load. Same guidance applies to
+ * g_focused_window if cross-thread focus changes ever become a requirement. */
 static boxen_window_t        *g_focused_window = NULL;
 static bool                   g_should_quit     = false;
 
@@ -96,9 +105,14 @@ void boxen_shutdown(void) {
 		return;
 	}
 
-	/* Close all open windows in reverse order to avoid swap-with-last skipping. */
+	/* Close all open windows in reverse order to avoid swap-with-last skipping.
+	 * Zero the magic field before free so a stale caller pointer to a freed
+	 * window struct is rejected by find_live_window_index (if the heap
+	 * memory still reads back the zeroed magic). Matches the close-path
+	 * mark-dead step. */
 	while (g_window_count > 0) {
 		boxen_window_t *w = g_windows[g_window_count - 1];
+		w->magic = 0;
 		free(w->title);
 		free(w);
 		g_window_count--;
@@ -312,14 +326,25 @@ void boxen_window_set_pinned(boxen_window_t *win, boxen_pin_edge_t edge) {
  * preserve relative order of the other windows via a single-element shift.
  * ---------------------------------------------------------------------- */
 
-void boxen_window_raise(boxen_window_t *win) {
-	if (win == NULL || g_window_count <= 1) return;
-
-	/* Find win in the list. */
-	int idx = -1;
+/* Returns the index of win in g_windows[] if win is a live, in-list window,
+ * or -1 otherwise. Used by all the window mutators to reject stale, foreign,
+ * or post-shutdown pointers BEFORE writing anything -- without this guard a
+ * caller passing a freed or unrelated pointer could plant a dangling pointer
+ * in g_focused_window (UAF on next dispatch) or stomp arbitrary memory via
+ * a stray field write. The magic-field check is best-effort; the list-scan
+ * is authoritative. */
+static int find_live_window_index(const boxen_window_t *win) {
+	if (win == NULL) return -1;
+	if (win->magic != BOXEN_WINDOW_MAGIC) return -1;
 	for (int i = 0; i < g_window_count; i++) {
-		if (g_windows[i] == win) { idx = i; break; }
+		if (g_windows[i] == win) return i;
 	}
+	return -1;
+}
+
+void boxen_window_raise(boxen_window_t *win) {
+	if (g_window_count <= 1) return;
+	int idx = find_live_window_index(win);
 	if (idx < 0 || idx == g_window_count - 1) return;  /* not found or already top */
 
 	/* Shift everything above idx down by one, place win at the top. */
@@ -330,12 +355,8 @@ void boxen_window_raise(boxen_window_t *win) {
 }
 
 void boxen_window_lower(boxen_window_t *win) {
-	if (win == NULL || g_window_count <= 1) return;
-
-	int idx = -1;
-	for (int i = 0; i < g_window_count; i++) {
-		if (g_windows[i] == win) { idx = i; break; }
-	}
+	if (g_window_count <= 1) return;
+	int idx = find_live_window_index(win);
 	if (idx < 0 || idx == 0) return;  /* not found or already bottom */
 
 	/* Shift everything below idx up by one, place win at index 0. */
@@ -346,7 +367,11 @@ void boxen_window_lower(boxen_window_t *win) {
 }
 
 void boxen_window_focus(boxen_window_t *win) {
-	if (win == NULL) return;
+	/* Validate BEFORE writing anything. Without this, a caller passing a
+	 * stale pointer could leave g_focused_window pointing at freed memory,
+	 * which boxen_dispatch_event would then deref on the next key/resize
+	 * event -- UAF. */
+	if (find_live_window_index(win) < 0) return;
 
 	/* Clear focused flag on all windows, then set it on win. */
 	for (int i = 0; i < g_window_count; i++) {
@@ -362,7 +387,7 @@ void boxen_window_focus(boxen_window_t *win) {
 }
 
 void boxen_window_set_modal(boxen_window_t *win, bool modal) {
-	if (win == NULL) return;
+	if (find_live_window_index(win) < 0) return;
 	win->modal = modal;
 }
 
@@ -375,11 +400,13 @@ void boxen_window_invalidate(boxen_window_t *win) {
 }
 
 void boxen_window_set_draw(boxen_window_t *win, boxen_draw_fn fn) {
-	if (win != NULL) win->draw_fn = fn;
+	if (find_live_window_index(win) < 0) return;
+	win->draw_fn = fn;
 }
 
 void boxen_window_set_input(boxen_window_t *win, boxen_input_fn fn) {
-	if (win != NULL) win->input_fn = fn;
+	if (find_live_window_index(win) < 0) return;
+	win->input_fn = fn;
 }
 
 /* A.5 stubs */
@@ -466,7 +493,13 @@ boxen_result_t boxen_poll_event(boxen_event_t *out, int timeout_ms) {
  *   Otherwise dispatch to the topmost window at (ev->mouse.x, ev->mouse.y).
  *
  * Resize events:
- *   Passed to the focused window (A.4 will handle clamping).
+ *   Passed to the focused window. If no window has focus yet (e.g. before
+ *   the first boxen_window_focus call), the resize event is silently
+ *   dropped at this layer -- A.4 will replace this with terminal-resize
+ *   clamping logic that touches every window regardless of focus. Until
+ *   then, consumers that need pre-focus resize handling should call
+ *   boxen_poll_event() directly and handle BOXEN_EV_RESIZE before
+ *   delegating remaining events to boxen_dispatch_event().
  * ---------------------------------------------------------------------- */
 
 void boxen_dispatch_event(const boxen_event_t *ev) {
@@ -527,6 +560,13 @@ void boxen_run(void) {
 		boxen_result_t r = boxen_poll_event(&ev, 100);
 		if (r == BOXEN_OK) {
 			boxen_dispatch_event(&ev);
+		} else if (r != BOXEN_ERR_TIMEOUT) {
+			/* Persistent backend failure (terminal detached, broken pipe,
+			 * etc.). Without this break the loop would busy-spin at full
+			 * CPU until external quit. Surface the error to the caller by
+			 * exiting; standalone consumers can inspect via the log hook. */
+			boxen__set_last_error("boxen_run: backend poll failed");
+			break;
 		}
 		if (g_should_quit) break;
 		boxen_present();

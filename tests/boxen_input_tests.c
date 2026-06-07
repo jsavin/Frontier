@@ -415,6 +415,62 @@ static void test_quit_terminates_run_loop(void) {
 }
 
 /* -------------------------------------------------------------------------
+ * Test 11: focus rejects stale (closed) pointer
+ *
+ * Regression test for the security review P1: boxen_window_focus must not
+ * plant g_focused_window with a pointer to a closed/freed window, because
+ * the next dispatch would deref it and UAF. We open a window, close it,
+ * then call focus(stale) and verify dispatch with KEY routes to NO window
+ * (input_fn not invoked anywhere).
+ * ---------------------------------------------------------------------- */
+
+static int g_stale_input_count = 0;
+static void stale_input_fn(boxen_window_t *win, const boxen_event_t *ev,
+                           void *user_data) {
+	(void)win; (void)ev; (void)user_data;
+	g_stale_input_count++;
+}
+
+static void test_focus_rejects_stale_pointer(void) {
+	setup();
+	g_stale_input_count = 0;
+
+	/* Open a live window, then open + close another. */
+	boxen_rect_t r = {0, 0, 10, 5};
+	boxen_window_t *live  = boxen_window_open("live",  r, NULL);
+	boxen_window_t *stale = boxen_window_open("stale", r, NULL);
+	assert(live != NULL);
+	assert(stale != NULL);
+	boxen_window_set_input(live,  stale_input_fn);
+	boxen_window_set_input(stale, stale_input_fn);
+
+	boxen_window_close(stale);
+	/* `stale` is now a dangling pointer (struct freed). */
+
+	/* Attempt to focus the stale pointer: must reject silently. */
+	boxen_window_focus(stale);
+
+	/* Dispatch a key event. With the P1 fix, g_focused_window is unchanged
+	 * (still NULL because we never focused `live`), so no input_fn fires.
+	 * Pre-fix behavior: g_focused_window would point at freed memory and
+	 * dispatch would deref it (UAF). */
+	boxen_event_t ev = {0};
+	ev.type     = BOXEN_EV_KEY;
+	ev.key.key  = BOXEN_KEY_ENTER;
+	boxen_dispatch_event(&ev);
+
+	assert(g_stale_input_count == 0);
+
+	/* Sanity: focusing a LIVE window still works. */
+	boxen_window_focus(live);
+	boxen_dispatch_event(&ev);
+	assert(g_stale_input_count == 1);
+
+	boxen_window_close(live);
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
  * main
  * ---------------------------------------------------------------------- */
 
@@ -431,6 +487,7 @@ int main(void) {
 	TR_RUN(test_modal_blocks_input_to_non_modal);
 	TR_RUN(test_mouse_event_dispatches_to_window_at_point);
 	TR_RUN(test_quit_terminates_run_loop);
+	TR_RUN(test_focus_rejects_stale_pointer);
 
 	TR_SUMMARY();
 	return TR_EXIT_CODE();

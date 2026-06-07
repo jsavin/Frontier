@@ -409,8 +409,23 @@ void boxen_present(void);
 
 /* Convenience main loop for standalone programs. Polls events with a 100 ms
  * timeout, dispatches via boxen_dispatch_event, then calls boxen_present.
- * Exits when boxen_quit() is called from an input callback. */
+ * Exits when boxen_quit() is called from an input callback, or when the
+ * backend returns a persistent (non-timeout) error.
+ *
+ * THREADING WARNING: boxen_run() holds the caller's external lock (e.g.
+ * Frontier's GIL) for its entire duration -- it does NOT release the lock
+ * around boxen_poll_event(). Calling boxen_run() from a Frontier runtime
+ * callback or any GIL-holding context will block all other Frontier threads
+ * for as long as the loop runs (i.e., until quit is called). Frontier
+ * surfaces MUST use boxen_poll_event() + boxen_dispatch_event() directly,
+ * wrapping the poll with a GIL release/reacquire as documented in the
+ * debugger TUI handoff. boxen_run() is intended for standalone consumers
+ * (examples, future non-Frontier programs) only. */
 void boxen_run(void);
+
+/* Signal boxen_run()'s loop to exit at the next iteration boundary. Typically
+ * called from an input callback. Safe to call when boxen_run() is not active
+ * (the flag is reset at the start of each boxen_run() call). */
 void boxen_quit(void);
 
 /* -------------------------------------------------------------------------
