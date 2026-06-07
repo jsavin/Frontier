@@ -412,6 +412,194 @@ static void test_terminal_resize_respects_min_size(void) {
 }
 
 /* -------------------------------------------------------------------------
+ * Test 9: closing a window mid-drag clears g_drag (security P0 regression)
+ *
+ * Without the close-time drag-clear, the next mouse event after close
+ * would dereference g_drag.win (freed). We can't observe the UAF directly
+ * but we can verify that after close, a subsequent press on a fresh
+ * window starts a NEW drag rather than continuing the old one's state.
+ * ---------------------------------------------------------------------- */
+static void test_close_during_drag_clears_state(void) {
+	setup();
+	boxen_rect_t r = {10, 10, 20, 10};
+	boxen_window_t *w = boxen_window_open("w", r, NULL);
+	assert(w != NULL);
+	boxen_window_set_movable(w, true);
+
+	/* Start a drag on title (y=10 is top row). */
+	boxen_mock_push_mouse(15, 10, 1, true, 0);
+	drain_one();
+	/* Close the window mid-drag. */
+	boxen_window_close(w);
+
+	/* Open another window. Push a mouse motion that, pre-fix, would have
+	 * tried to update the dead window's rect (UAF). Post-fix, drag state
+	 * is cleared at close, so this motion event is just delivered. */
+	boxen_window_t *w2 = boxen_window_open("w2", (boxen_rect_t){0, 0, 5, 5}, NULL);
+	assert(w2 != NULL);
+	boxen_mock_push_mouse(20, 15, 0, false, 0);
+	drain_one();
+	/* If we reach here without crashing, the close-time clear worked. */
+	boxen_rect_t r2 = boxen_window_get_rect(w2);
+	assert(r2.x == 0 && r2.y == 0);  /* w2 untouched */
+
+	boxen_window_close(w2);
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * Test 10: drag respects BOXEN_MAX_DIMENSION cap (security P1 regression)
+ *
+ * Without clamp_rect_to_bounds() applied to drag updates, an extreme
+ * mouse coordinate would drive a window dimension past 16384, causing
+ * signed-int overflow in downstream arithmetic.
+ * ---------------------------------------------------------------------- */
+static void test_drag_respects_max_dimension(void) {
+	setup();
+	boxen_rect_t r = {5, 5, 20, 10};
+	boxen_window_t *w = boxen_window_open("w", r, NULL);
+	assert(w != NULL);
+	boxen_window_set_movable(w, true);
+
+	/* Start drag on title. */
+	boxen_mock_push_mouse(10, 5, 1, true, 0);
+	drain_one();
+	/* Motion to an extreme x. */
+	boxen_mock_push_mouse(99999, 5, 0, false, 0);
+	drain_one();
+
+	boxen_rect_t r_after = boxen_window_get_rect(w);
+	/* Must be clamped to BOXEN_MAX_DIMENSION (16384) -- not at the extreme. */
+	assert(r_after.x <= 16384);
+	assert(r_after.x >= -16384);
+
+	boxen_window_close(w);
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * Test 11: terminal resize during active drag cancels the drag
+ *
+ * Without this, start_rect is stale post-clamp and the next motion event
+ * would jump the window by the pre-clamp delta.
+ * ---------------------------------------------------------------------- */
+static void test_terminal_resize_cancels_active_drag(void) {
+	setup();
+	boxen_rect_t r = {5, 5, 20, 10};
+	boxen_window_t *w = boxen_window_open("w", r, NULL);
+	assert(w != NULL);
+	boxen_window_set_movable(w, true);
+
+	boxen_mock_push_mouse(15, 5, 1, true, 0);  /* start drag */
+	drain_one();
+
+	/* Terminal resize while drag is active. */
+	boxen_event_t ev = {0};
+	ev.type     = BOXEN_EV_RESIZE;
+	ev.resize.w = 40;
+	ev.resize.h = 20;
+	boxen_mock_width_set(40);
+	boxen_mock_height_set(20);
+	boxen_mock_push_event(&ev);
+	drain_one();
+
+	/* Now push a motion event. Pre-fix this would jump the window by the
+	 * stale-delta. Post-fix the drag was cancelled so the motion is
+	 * routed normally (no rect mutation). */
+	boxen_rect_t before = boxen_window_get_rect(w);
+	boxen_mock_push_mouse(25, 5, 0, false, 0);
+	drain_one();
+	boxen_rect_t after = boxen_window_get_rect(w);
+
+	assert(after.x == before.x);
+	assert(after.y == before.y);
+
+	boxen_window_close(w);
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * Test 12: keyboard drag mode arrow keys move the focused window
+ *
+ * Covers the previously-untested DRAG_MOVING_KB code path. Note: the
+ * BOXEN_KEY_CTRL_M entry chord is unreachable through the real tb2
+ * backend (which translates ASCII 0x0D to BOXEN_KEY_ENTER instead).
+ * This test exercises the state machine via direct event injection.
+ * ---------------------------------------------------------------------- */
+static void test_keyboard_drag_arrows_move_window(void) {
+	setup();
+	boxen_rect_t r = {10, 10, 20, 10};
+	boxen_window_t *w = boxen_window_open("w", r, NULL);
+	assert(w != NULL);
+	boxen_window_set_movable(w, true);
+	boxen_window_focus(w);
+
+	/* Enter keyboard-move mode via Ctrl-M chord (synthetic event). */
+	boxen_mock_push_key(BOXEN_KEY_CTRL_M, 0, 0);
+	drain_one();
+
+	/* Arrow keys: 2x RIGHT, 1x DOWN. */
+	boxen_mock_push_key(BOXEN_KEY_RIGHT, 0, 0);
+	boxen_mock_push_key(BOXEN_KEY_RIGHT, 0, 0);
+	boxen_mock_push_key(BOXEN_KEY_DOWN,  0, 0);
+	drain_one(); drain_one(); drain_one();
+
+	boxen_rect_t r2 = boxen_window_get_rect(w);
+	assert(r2.x == 12);  /* started at 10, +2 right */
+	assert(r2.y == 11);  /* started at 10, +1 down */
+
+	/* Escape exits the mode. */
+	boxen_mock_push_key(BOXEN_KEY_ESCAPE, 0, 0);
+	drain_one();
+
+	/* After exit, arrow keys should NOT move the window. */
+	boxen_mock_push_key(BOXEN_KEY_RIGHT, 0, 0);
+	drain_one();
+	boxen_rect_t r3 = boxen_window_get_rect(w);
+	assert(r3.x == 12);  /* unchanged after exit */
+
+	boxen_window_close(w);
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * Test 13: drag ends on release with button=0 (terminals that lose button
+ * info on release; bar-raiser P1 regression)
+ *
+ * Some terminals encode mouse release as (pressed=false, button=0) rather
+ * than (pressed=false, button=PREVIOUS). The press-to-release transition
+ * tracker ensures we end the drag either way.
+ * ---------------------------------------------------------------------- */
+static void test_drag_ends_on_button_zero_release(void) {
+	setup();
+	boxen_rect_t r = {10, 10, 20, 10};
+	boxen_window_t *w = boxen_window_open("w", r, NULL);
+	assert(w != NULL);
+	boxen_window_set_movable(w, true);
+
+	/* Start drag on title with button=1 press. */
+	boxen_mock_push_mouse(15, 10, 1, true, 0);
+	drain_one();
+
+	/* Release encoded as pressed=false with button=0. */
+	boxen_mock_push_mouse(16, 11, 0, false, 0);
+	drain_one();
+
+	/* A SECOND motion event must NOT continue the drag (would jump the
+	 * window). The release on the previous event ended it. */
+	boxen_rect_t before = boxen_window_get_rect(w);
+	boxen_mock_push_mouse(99, 99, 0, false, 0);
+	drain_one();
+	boxen_rect_t after = boxen_window_get_rect(w);
+
+	assert(after.x == before.x);
+	assert(after.y == before.y);
+
+	boxen_window_close(w);
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
  * main
  * ---------------------------------------------------------------------- */
 
@@ -426,6 +614,11 @@ int main(void) {
 	TR_RUN(test_mouse_drag_unresizable_window_does_not_resize);
 	TR_RUN(test_terminal_resize_clamps_windows);
 	TR_RUN(test_terminal_resize_respects_min_size);
+	TR_RUN(test_close_during_drag_clears_state);
+	TR_RUN(test_drag_respects_max_dimension);
+	TR_RUN(test_terminal_resize_cancels_active_drag);
+	TR_RUN(test_keyboard_drag_arrows_move_window);
+	TR_RUN(test_drag_ends_on_button_zero_release);
 
 	TR_SUMMARY();
 	return TR_EXIT_CODE();
