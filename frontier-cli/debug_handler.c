@@ -1176,7 +1176,7 @@ static boolean protocol_debugger_callback(hdltreenode hnode) {
 		}
 	}
 
-after_stepping: /* label for watchpoint goto — skips stepping when watchpoint fires */
+after_stepping: ; /* label for watchpoint goto — skips stepping when watchpoint fires */
 
 	/* Capture the thread globals handle in a local variable BEFORE releasing
 	 * the GIL. The global `hthreadglobals` is shared — other threads overwrite
