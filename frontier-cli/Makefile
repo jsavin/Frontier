@@ -73,7 +73,8 @@ BOXEN_SOURCES = \
 	$(BOXEN_DIR)/boxen_log.c \
 	$(BOXEN_DIR)/boxen_wcwidth.c \
 	$(BOXEN_DIR)/backend_tb2.c \
-	$(BOXEN_DIR)/backend_mock.c
+	$(BOXEN_DIR)/backend_mock.c \
+	$(BOXEN_DIR)/boxen.c
 
 # Strings compiler integration (shared with tests)
 STRINGS_COMPILER_DIR = ../tools/strings_compiler
