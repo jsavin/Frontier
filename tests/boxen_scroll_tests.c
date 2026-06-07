@@ -465,10 +465,6 @@ static void test_row_highlight_paints_visible_row(void) {
 }
 
 /* -------------------------------------------------------------------------
- * main
- * ---------------------------------------------------------------------- */
-
-/* -------------------------------------------------------------------------
  * Test 9: set_cell + ensure_visible reject pathological coords (security P2)
  *
  * Regression test for the BOXEN_MAX_DIMENSION clamp added to defend against
