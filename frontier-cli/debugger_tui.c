@@ -48,6 +48,7 @@
  * 2026-06-07 JES Phase B.5 #691: cmd-double-click identifier resolution + watchpoints
  * 2026-06-07 JES Phase B.6 #691 #738 #740 #742 #744 #746: lazy-attach wiring + polish
  * 2026-06-07 JES Phase B.7 #691: scratch-eval pane
+ * 2026-06-07 JES Phase B.7 #750: eval polish -- clear dispatched id, expr tag, monotonic [N], OOM fix
  *
  * SPDX-License-Identifier: MIT
  * Copyright (c) 2025-2026 Frontier contributors
@@ -440,8 +441,9 @@ static void tui_write_line(void *ctx, const char *json, size_t len) {
 		    (int)id_j2->valuedouble == s->eval_last_dispatched_id &&
 		    (cJSON_IsString(value_j) || cJSON_IsNull(value_j)) &&
 		    cJSON_IsString(type_j)) {
-			/* Eval response: extract string value and append to history. */
-			const char *expr_tag = "[eval]"; /* Phase B placeholder */
+			/* Eval response: extract string value and append to history.
+			 * 2026-06-07 JES Phase B.7 #750: clear id after consuming so
+			 * stale ids don't match a future unrelated response. */
 			const char *result_str;
 
 			if (cJSON_IsString(value_j) && value_j->valuestring != NULL)
@@ -449,7 +451,8 @@ static void tui_write_line(void *ctx, const char *json, size_t len) {
 			else
 				result_str = "null";
 
-			tui_eval_append_result(s, expr_tag, result_str);
+			s->eval_last_dispatched_id = 0;   /* consume: clear the pending id */
+			tui_eval_append_result(s, s->eval_last_expr, result_str);
 
 			if (s->footer_win != NULL)
 				boxen_window_invalidate(s->footer_win);
@@ -968,16 +971,30 @@ void tui_eval_dismiss(tui_state_t *s) {
 }
 
 void tui_eval_append_result(tui_state_t *s, const char *expr, const char *result) {
+	/* 2026-06-07 JES Phase B.7 #750: items 2, 3, 4.
+	 *
+	 * Item 2: use s->eval_last_expr (set at submit time) instead of a placeholder.
+	 *   Caller passes expr but we use s->eval_last_expr for the tag; the expr
+	 *   parameter is still accepted for direct test calls (tests pass the expression).
+	 *
+	 * Item 3: use s->eval_display_counter for [N] instead of eval_history_count+1.
+	 *   Counter increments before format so [1] appears on the first entry and
+	 *   continues past EVAL_HISTORY_MAX without wrapping.
+	 *
+	 * Item 4: on strdup OOM, undo the count/counter increments so visible count
+	 *   stays consistent with the number of non-NULL slots.
+	 */
 	if (s == NULL || expr == NULL || result == NULL) return;
 
-	/* Format: "[N] expr -> result" */
+	/* Format: "[N] expr -> result"
+	 * Cap each side to a sensible fraction of the 512-byte slot:
+	 *   expr  capped at 80 chars (generous for a UserTalk expression)
+	 *   result capped at 200 chars
+	 * Remaining bytes cover "[N] ", " -> ", and NUL. */
 	int slot = (s->eval_history_head + s->eval_history_count) % EVAL_HISTORY_MAX;
-	int entry_num = s->eval_history_count + 1; /* 1-based display index */
 
-	/* Compute how many entries we have vs cap */
 	if (s->eval_history_count < EVAL_HISTORY_MAX) {
 		/* Ring not yet full: append at the next available slot */
-		/* (slot is already computed correctly above) */
 		s->eval_history_count++;
 	} else {
 		/* Ring is full: overwrite oldest entry (at eval_history_head) */
@@ -985,17 +1002,41 @@ void tui_eval_append_result(tui_state_t *s, const char *expr, const char *result
 		free(s->eval_history[slot]);
 		s->eval_history[slot] = NULL;
 		s->eval_history_head = (s->eval_history_head + 1) % EVAL_HISTORY_MAX;
-		/* count stays at EVAL_HISTORY_MAX */
+		/* eval_history_count stays at EVAL_HISTORY_MAX */
 	}
 
-	/* Allocate formatted string.  Truncate expr+result to safe display lengths. */
+	/* Increment monotonic display counter BEFORE formatting */
+	s->eval_display_counter++;
+
 	char buf[512];
-	int n = snprintf(buf, sizeof(buf), "[%d] %s -> %s", entry_num, expr, result);
+	char expr_trunc[81];
+	char result_trunc[201];
+	strncpy(expr_trunc,   expr,   sizeof(expr_trunc)   - 1);
+	expr_trunc[sizeof(expr_trunc) - 1]     = '\0';
+	strncpy(result_trunc, result, sizeof(result_trunc) - 1);
+	result_trunc[sizeof(result_trunc) - 1] = '\0';
+
+	int n = snprintf(buf, sizeof(buf), "[%d] %s -> %s",
+	                 s->eval_display_counter, expr_trunc, result_trunc);
 	if (n < 0) n = 0;
 	if (n >= (int)sizeof(buf)) buf[sizeof(buf) - 1] = '\0';
 
 	s->eval_history[slot] = strdup(buf);
-	/* OOM: leave slot as NULL; the draw callback skips NULL entries */
+	if (s->eval_history[slot] == NULL) {
+		/* OOM: undo the count and counter increments so visible count
+		 * accurately reflects the number of non-NULL history slots.
+		 * The slot stays NULL; the draw callback skips NULL entries. */
+		if (s->eval_history_count > 0 &&
+		    s->eval_history_count < EVAL_HISTORY_MAX) {
+			/* Was in the not-full path: reverse the increment */
+			s->eval_history_count--;
+		}
+		/* If ring was full (count == EVAL_HISTORY_MAX), we already freed the
+		 * oldest and advanced head; that is unrecoverable without storing the
+		 * old string, so we only undo the counter. */
+		if (s->eval_display_counter > 0)
+			s->eval_display_counter--;
+	}
 }
 
 void tui_eval_submit(tui_state_t *s) {
@@ -1023,6 +1064,11 @@ void tui_eval_submit(tui_state_t *s) {
 	         "{\"op\":\"script/eval\",\"id\":%d,"
 	         "\"params\":{\"expression\":\"%s\"}}",
 	         eval_id, esc_expr);
+
+	/* 2026-06-07 JES Phase B.7 #750 item 2: stash expression for history tag.
+	 * Must be captured BEFORE clearing eval_input_buf below. */
+	strncpy(s->eval_last_expr, s->eval_input_buf, sizeof(s->eval_last_expr) - 1);
+	s->eval_last_expr[sizeof(s->eval_last_expr) - 1] = '\0';
 
 	/* Dispatch (test mode: goes to capture buf; production: goes to op_dispatch) */
 	tui_dispatch_json(s, req);
@@ -2283,6 +2329,9 @@ void debugger_tui_state_init(tui_state_t *s, int tw, int th) {
 	s->eval_history_head         = 0;
 	s->eval_history_scroll       = 0;
 	s->eval_last_dispatched_id   = 0;
+	/* 2026-06-07 JES Phase B.7 #750: initialize polish fields */
+	s->eval_last_expr[0]         = '\0';
+	s->eval_display_counter      = 0;
 
 	/* Allocate heap transport (stub; B.6 wires debug_set_attach_transport) */
 	s->transport = calloc(1, sizeof(transport_t));
@@ -2352,6 +2401,9 @@ void debugger_tui_state_teardown(tui_state_t *s) {
 	s->eval_input_buf[0]         = '\0';
 	s->eval_input_cursor         = 0;
 	s->eval_last_dispatched_id   = 0;
+	/* 2026-06-07 JES Phase B.7 #750: zero polish fields */
+	s->eval_last_expr[0]         = '\0';
+	s->eval_display_counter      = 0;
 	s->debug_state = TUI_DEBUG_IDLE;
 }
 
