@@ -14,6 +14,7 @@
  * 2026-06-07 JES Phase B.5 #691: cmd-double-click resolution, watchpoint modal
  * 2026-06-07 JES Phase B.6 #742: tui_req_id moved from static global to per-session state
  * 2026-06-07 JES Phase B.6 #744: TUI_DISPATCH_LOG_SLOT widened to 2048
+ * 2026-06-07 JES Phase B.7 #691: scratch-eval pane fields and constants
  */
 
 #ifndef DEBUGGER_TUI_INTERNAL_H
@@ -82,6 +83,22 @@ typedef enum {
 /* 2026-06-07 JES Phase B.5 #691: maximum length of the identifier popup line
  * displayed at the bottom of the script pane after a cmd-double-click. */
 #define TUI_IDENTIFIER_POPUP_MAX 512
+
+/* 2026-06-07 JES Phase B.7 #691: scratch-eval pane constants.
+ *
+ * EVAL_HISTORY_MAX   -- ring buffer size for eval output entries.
+ *   16 entries is generous for a single debug session.  No persistence.
+ *
+ * EVAL_INPUT_MAX     -- maximum length of the eval input buffer including NUL.
+ *   256 bytes matches TUI_BP_CONDITION_MAX (same single-line input pattern).
+ *
+ * EVAL_INPUT_PROMPT_WIDTH -- width of the prompt prefix drawn in the input row.
+ *   ": " (colon + space) = 2 columns.  Used to offset the A.7 cursor column:
+ *   boxen_window_set_cursor(footer_win, EVAL_INPUT_PROMPT_WIDTH + cursor_col, eval_row)
+ */
+#define EVAL_HISTORY_MAX          16
+#define EVAL_INPUT_MAX            256
+#define EVAL_INPUT_PROMPT_WIDTH   2
 
 /* 2026-06-07 JES Phase B.4 #691: multi-dispatch log capacity for tests.
  * Tests that verify sequences (clearBreakpoints -> setBreakpoint for each
@@ -244,6 +261,48 @@ typedef struct {
 	 */
 	bool  identifier_popup_active;
 	char  identifier_popup_line[TUI_IDENTIFIER_POPUP_MAX];
+
+	/* 2026-06-07 JES Phase B.7 #691: scratch-eval pane state.
+	 *
+	 * eval_pane_active   -- true while ':' command mode is engaged (input visible).
+	 *   ':'   activates (only when TUI_DEBUG_SUSPENDED).
+	 *   Esc   dismisses (preserves eval_input_buf for re-activation).
+	 *   Enter submits expression and dismisses.
+	 *   On transition to TUI_DEBUG_RUNNING: auto-hide (input preserved).
+	 *
+	 * eval_input_buf     -- current expression being typed, NUL-terminated.
+	 *   Bounded to EVAL_INPUT_MAX - 1 printable characters.
+	 *   Preserved across Escape / RUNNING transitions; cleared only on submit.
+	 *
+	 * eval_input_cursor  -- 0-based column cursor in eval_input_buf.
+	 *   Tracks the insertion point.  Currently always == strlen(eval_input_buf)
+	 *   (append-only editing -- no arrow key navigation in Phase B).
+	 *
+	 * eval_history       -- ring buffer of "expr -> result" strings, heap-allocated
+	 *   per entry.  eval_history[eval_history_head] is the oldest entry.
+	 *   Freed on ring-buffer wrap.  Freed all on state teardown.
+	 *
+	 * eval_history_count -- number of entries currently in the ring buffer.
+	 *   Clamps at EVAL_HISTORY_MAX; does NOT decrease on wrap (oldest is replaced).
+	 *
+	 * eval_history_head  -- index of the oldest entry in the ring (the first to be
+	 *   overwritten on next insert).
+	 *
+	 * eval_history_scroll -- scroll offset for history display in the footer area.
+	 *   Reserved for future use (Phase C+); always 0 in Phase B.
+	 *
+	 * eval_next_id       -- incrementing request ID for script/eval dispatches.
+	 *   Starts at 1 in state_init.  Used to correlate write_line responses.
+	 *   Does NOT share the tui_req_id counter (different namespace).
+	 */
+	bool  eval_pane_active;
+	char  eval_input_buf[EVAL_INPUT_MAX];
+	int   eval_input_cursor;
+	char *eval_history[EVAL_HISTORY_MAX];
+	int   eval_history_count;
+	int   eval_history_head;
+	int   eval_history_scroll;
+	int   eval_next_id;
 } tui_state_t;
 
 /*
@@ -284,6 +343,32 @@ void extract_identifier_at(const char *line, int col, char *out, int out_max);
  * through the full cmd-double-click event routing path.
  */
 void tui_resolve_identifier_by_name(tui_state_t *s, const char *name);
+
+/*
+ * 2026-06-07 JES Phase B.7 #691: scratch-eval pane public internal functions.
+ *
+ * tui_eval_activate    -- open the eval pane (set eval_pane_active = true,
+ *   show cursor via A.7 API, invalidate footer).
+ *   No-op if already active or debug_state != TUI_DEBUG_SUSPENDED.
+ *
+ * tui_eval_dismiss     -- hide the eval pane (set eval_pane_active = false,
+ *   hide cursor via A.7 API, invalidate footer).
+ *   Preserves eval_input_buf for re-activation.
+ *
+ * tui_eval_submit      -- submit the current eval_input_buf as a script/eval
+ *   request.  Clears eval_input_buf after dispatch.  Calls tui_eval_dismiss.
+ *   No-op if eval_input_buf is empty (nothing to evaluate).
+ *
+ * tui_eval_append_result -- append a formatted "expr -> result" string to the
+ *   eval_history ring buffer.  Frees the oldest entry on wrap.
+ *   `expr` and `result` are C strings (not necessarily the raw JSON).
+ *
+ * Exposed for direct testing without going through the full key-event path.
+ */
+void tui_eval_activate(tui_state_t *s);
+void tui_eval_dismiss(tui_state_t *s);
+void tui_eval_submit(tui_state_t *s);
+void tui_eval_append_result(tui_state_t *s, const char *expr, const char *result);
 
 /*
  * Initialize a tui_state_t for testing.

@@ -21,6 +21,15 @@
  *   - Shell integration test tests/debugger_tui_test.sh (#746)
  *   - Drain-before-free contract (#738)
  *
+ * Milestone B.7: scratch-eval pane.
+ *   - ':' activates single-line expression input (vi command-mode style)
+ *   - Escape dismisses (input preserved for re-activation)
+ *   - Enter submits via script/eval dispatch; response appended to history ring
+ *   - Output buffer (last EVAL_HISTORY_MAX evals) rendered in footer above input
+ *   - Auto-hide on RUNNING transition (continue/step); pane preserved on resuspend
+ *   - A.7 cursor API for text input cursor (boxen_window_set_cursor/set_cursor_visible)
+ *   - tui_json_escape applied to expression before JSON interpolation (B.4 P1 class)
+ *
  * GIL discipline:
  *   - Snapshot hthreadglobals before yielding; restore after poll returns.
  *   - Pattern copied verbatim from protocol_handler.c:348-354 and 411-421.
@@ -38,6 +47,7 @@
  * 2026-06-07 JES Phase B.4 #743 round 1: condition preservation + JSON escape + F9 gate
  * 2026-06-07 JES Phase B.5 #691: cmd-double-click identifier resolution + watchpoints
  * 2026-06-07 JES Phase B.6 #691 #738 #740 #742 #744 #746: lazy-attach wiring + polish
+ * 2026-06-07 JES Phase B.7 #691: scratch-eval pane
  *
  * SPDX-License-Identifier: MIT
  * Copyright (c) 2025-2026 Frontier contributors
@@ -405,8 +415,8 @@ static void tui_write_line(void *ctx, const char *json, size_t len) {
 		if (s->footer_win != NULL)
 			boxen_window_invalidate(s->footer_win);
 
-	} else if (cJSON_IsObject(result_j)) {
-		/* Case 2: response containing a "result" object.
+	} else if (!cJSON_IsNull(result_j) && cJSON_IsObject(result_j)) {
+		/* Case 2: response containing a "result" object (debug/* responses).
 		 * Discriminate by which array key is present in the result:
 		 *   "lines"  -> debug/getSource response  (B.1)
 		 *   "frames" -> debug/getStack response   (B.2)
@@ -438,6 +448,58 @@ static void tui_write_line(void *ctx, const char *json, size_t len) {
 			tui_store_locals(s, result_j);
 			if (s->stack_win != NULL)
 				boxen_window_invalidate(s->stack_win);
+		}
+
+	} else {
+		/* Case 3 (B.7): script/eval response.
+		 *
+		 * Shape from op_handler.c send_eval_success:
+		 *   {"id":N,"result":"<value-string>","success":true}
+		 *   or
+		 *   {"id":N,"error":{"message":"..."},"success":false}
+		 *
+		 * The "result" field for script/eval is a string (not an object),
+		 * so it is NOT caught by the cJSON_IsObject(result_j) branch above.
+		 *
+		 * SENTINEL (EXECUTION_PLAN.md B.7): match on the "id" field.
+		 * eval_next_id tracks the last eval request ID.  If the id matches,
+		 * route to tui_eval_append_result.  debug/suspended notifications
+		 * always go to the suspension path via the "op" branch above, so
+		 * there is no conflict even when an eval response and a suspended
+		 * notification are in-flight simultaneously.
+		 *
+		 * We keep this matching loose (any id that matches eval_next_id)
+		 * because in-flight debug/* responses arrive with different ids and
+		 * will not match.  If there is no pending eval (eval_next_id == 0)
+		 * we skip the whole case. */
+		cJSON *id_j      = cJSON_GetObjectItemCaseSensitive(root, "id");
+		cJSON *result_str_j = cJSON_GetObjectItemCaseSensitive(root, "result");
+		cJSON *error_j   = cJSON_GetObjectItemCaseSensitive(root, "error");
+
+		/* eval_next_id is incremented AFTER dispatch, so the most-recently
+		 * dispatched eval had id = (eval_next_id - 1).  Match against that. */
+		if (s->eval_next_id > 1 && cJSON_IsNumber(id_j) &&
+		    (int)id_j->valuedouble == s->eval_next_id - 1) {
+			/* Matched a pending eval response.  Reconstruct the expression
+			 * from the dispatched request is not possible here (write_line
+			 * only receives the response).  Use a placeholder expr tag. */
+			const char *result_str;
+			const char *expr_tag = "[eval]"; /* Phase B placeholder */
+
+			if (cJSON_IsString(result_str_j) && result_str_j->valuestring != NULL) {
+				result_str = result_str_j->valuestring;
+			} else if (cJSON_IsObject(error_j)) {
+				cJSON *msg_j = cJSON_GetObjectItemCaseSensitive(error_j, "message");
+				result_str = (cJSON_IsString(msg_j) && msg_j->valuestring != NULL)
+				             ? msg_j->valuestring : "error";
+			} else {
+				result_str = "ok";
+			}
+
+			tui_eval_append_result(s, expr_tag, result_str);
+
+			if (s->footer_win != NULL)
+				boxen_window_invalidate(s->footer_win);
 		}
 	}
 
@@ -738,6 +800,9 @@ static void tui_do_continue(tui_state_t *s) {
 	/* 2026-06-07 JES Phase B.4 #743 round 1: clear current_line when transitioning
 	 * to RUNNING so F9 cannot fire against a stale last-suspended line position. */
 	s->current_line = 0;
+	/* 2026-06-07 JES Phase B.7 #691: auto-hide eval pane on RUNNING transition.
+	 * Input buffer is preserved in eval_input_buf for re-activation on re-suspend. */
+	if (s->eval_pane_active) tui_eval_dismiss(s);
 	tui_dispatch_json(s, req);
 }
 
@@ -752,6 +817,8 @@ static void tui_do_step(tui_state_t *s, const char *direction) {
 	/* 2026-06-07 JES Phase B.4 #743 round 1: clear current_line when transitioning
 	 * to RUNNING.  Symmetric with the continue path above. */
 	s->current_line = 0;
+	/* 2026-06-07 JES Phase B.7 #691: auto-hide eval pane on RUNNING transition. */
+	if (s->eval_pane_active) tui_eval_dismiss(s);
 	tui_dispatch_json(s, req);
 }
 
@@ -820,6 +887,163 @@ static int tui_json_escape(const char *src, char *dst, size_t dst_cap) {
 	}
 	dst[out] = '\0';
 	return out;
+}
+
+/* -------------------------------------------------------------------------
+ * 2026-06-07 JES Phase B.7 #691: scratch-eval pane helpers.
+ *
+ * tui_eval_activate   -- enter ':' eval mode: set eval_pane_active, show cursor
+ *   via A.7 API, invalidate footer.  No-op if already active or not SUSPENDED.
+ *
+ * tui_eval_dismiss    -- leave eval mode: clear eval_pane_active, hide cursor,
+ *   invalidate footer.  Preserves eval_input_buf so the user's partial expression
+ *   is restored when they re-activate.
+ *
+ * tui_eval_submit     -- dispatch the eval_input_buf as a script/eval JSON
+ *   request, then clear the buffer and call tui_eval_dismiss.  No-op when
+ *   eval_input_buf is empty (nothing to evaluate).
+ *
+ *   Wire format (verified at op_handler.c:931):
+ *     {"op":"script/eval","id":N,"params":{"expression":"<escaped>"}}
+ *
+ *   SENTINEL: tui_json_escape applied to eval_input_buf before interpolation
+ *   (B.4 P1 security class: all user-originated JSON string fields must be
+ *   escaped before dispatch).  Worst-case: 256 bytes * 6 + NUL = 1537 bytes.
+ *
+ *   eval_next_id is used (NOT tui_req_id) so the eval responses can be
+ *   distinguished from debug/* responses in tui_write_line.
+ *
+ * tui_eval_append_result -- format "[N] expr -> result" and append to the
+ *   eval_history ring buffer.  Frees the oldest entry on wrap.
+ *
+ * Footer row layout (when eval_pane_active):
+ *   Rows 0 .. eval_history_count-1 (up to EVAL_HISTORY_MAX): history entries,
+ *     newest at the bottom (most recent = closest to input line).
+ *   Row eval_history_count (or EVAL_HISTORY_MAX): input line ": <buffer>"
+ *
+ * For a single-row footer (B.0 layout), all history + input rows stack above
+ * the usual keybind hint.  In the B.7 layout the footer is expanded to show
+ * EVAL_HISTORY_MAX + 2 rows when active (history + input + separator), but
+ * this layout expansion is deferred; Phase B.7 simply reuses the existing
+ * one-row footer and appends history text.  The net visible effect is that
+ * the footer will show the most-recent result in the single row, which is
+ * better than nothing and the correct incremental step.
+ *
+ * A.7 cursor: the input cursor is placed at
+ *   col = EVAL_INPUT_PROMPT_WIDTH + eval_input_cursor
+ *   row = 0 (the single footer content row in the current layout)
+ * ---------------------------------------------------------------------- */
+
+void tui_eval_activate(tui_state_t *s) {
+	if (s == NULL) return;
+	if (s->debug_state != TUI_DEBUG_SUSPENDED) return; /* guard: SUSPENDED only */
+	if (s->eval_pane_active) return;                   /* already active */
+
+	s->eval_pane_active = true;
+
+	/* A.7 cursor API: position cursor at start of eval input area.
+	 * Footer content row 0 is the only row in the current single-row footer.
+	 * Column = prompt width + current cursor position.
+	 *
+	 * cursor_owner_allowed() requires win == g_focused_window (or topmost modal).
+	 * footer_win has no on_input callback, so it must NOT hold focus for key routing.
+	 * Pattern: borrow focus temporarily for cursor calls, then restore.
+	 * script_win remains the key-routing target throughout the eval session;
+	 * on_input checks s->eval_pane_active to redirect keys to the eval handlers. */
+	if (s->footer_win != NULL) {
+		boxen_window_focus(s->footer_win);     /* borrow: satisfy cursor gate */
+		boxen_window_set_cursor(s->footer_win,
+		                        EVAL_INPUT_PROMPT_WIDTH + s->eval_input_cursor,
+		                        0);
+		boxen_window_set_cursor_visible(s->footer_win, true);
+		boxen_window_focus(s->script_win);     /* restore: keys still go to script */
+		boxen_window_invalidate(s->footer_win);
+	}
+}
+
+void tui_eval_dismiss(tui_state_t *s) {
+	if (s == NULL) return;
+	if (!s->eval_pane_active) return;
+
+	s->eval_pane_active = false;
+
+	/* A.7 cursor API: hide cursor on dismiss.
+	 * Borrow/restore pattern (same as activate): cursor gate requires focus,
+	 * but key routing must stay on script_win. */
+	if (s->footer_win != NULL) {
+		boxen_window_focus(s->footer_win);          /* borrow */
+		boxen_window_set_cursor_visible(s->footer_win, false);
+		boxen_window_focus(s->script_win);          /* restore */
+		boxen_window_invalidate(s->footer_win);
+	}
+}
+
+void tui_eval_append_result(tui_state_t *s, const char *expr, const char *result) {
+	if (s == NULL || expr == NULL || result == NULL) return;
+
+	/* Format: "[N] expr -> result" */
+	int slot = (s->eval_history_head + s->eval_history_count) % EVAL_HISTORY_MAX;
+	int entry_num = s->eval_history_count + 1; /* 1-based display index */
+
+	/* Compute how many entries we have vs cap */
+	if (s->eval_history_count < EVAL_HISTORY_MAX) {
+		/* Ring not yet full: append at the next available slot */
+		/* (slot is already computed correctly above) */
+		s->eval_history_count++;
+	} else {
+		/* Ring is full: overwrite oldest entry (at eval_history_head) */
+		slot = s->eval_history_head;
+		free(s->eval_history[slot]);
+		s->eval_history[slot] = NULL;
+		s->eval_history_head = (s->eval_history_head + 1) % EVAL_HISTORY_MAX;
+		/* count stays at EVAL_HISTORY_MAX */
+	}
+
+	/* Allocate formatted string.  Truncate expr+result to safe display lengths. */
+	char buf[512];
+	int n = snprintf(buf, sizeof(buf), "[%d] %s -> %s", entry_num, expr, result);
+	if (n < 0) n = 0;
+	if (n >= (int)sizeof(buf)) buf[sizeof(buf) - 1] = '\0';
+
+	s->eval_history[slot] = strdup(buf);
+	/* OOM: leave slot as NULL; the draw callback skips NULL entries */
+}
+
+void tui_eval_submit(tui_state_t *s) {
+	if (s == NULL) return;
+	if (s->eval_input_buf[0] == '\0') return; /* empty: nothing to evaluate */
+
+	/* SENTINEL: tui_json_escape the expression before JSON interpolation.
+	 * B.4 P1 security class: user input MUST be escaped.
+	 * Worst case: 256 bytes * 6 + NUL = 1537 bytes. */
+	char esc_expr[EVAL_INPUT_MAX * 6 + 1];
+	tui_json_escape(s->eval_input_buf, esc_expr, sizeof(esc_expr));
+
+	/* Construct script/eval JSON request.
+	 * Wire format verified at op_handler.c:931:
+	 *   if (strcmp(op, "script/eval") == 0) { handle_script_eval(id, ...) }
+	 * handle_script_eval reads params.expression (op_handler.c:458). */
+	char req[512 + sizeof(esc_expr)];
+	snprintf(req, sizeof(req),
+	         "{\"op\":\"script/eval\",\"id\":%d,"
+	         "\"params\":{\"expression\":\"%s\"}}",
+	         s->eval_next_id, esc_expr);
+
+	/* Dispatch (test mode: goes to capture buf; production: goes to op_dispatch) */
+	tui_dispatch_json(s, req);
+
+	/* Increment eval_next_id after dispatch so the next eval gets a fresh id.
+	 * write_line matches responses against (eval_next_id - 1) -- the last id
+	 * that was dispatched.  Wrap at 0x7FFF to stay positive. */
+	s->eval_next_id++;
+	if (s->eval_next_id > 0x7FFF) s->eval_next_id = 1;
+
+	/* Clear input after dispatch; preserve cursor at 0 */
+	s->eval_input_buf[0]  = '\0';
+	s->eval_input_cursor  = 0;
+
+	/* Dismiss the pane (hide cursor) */
+	tui_eval_dismiss(s);
 }
 
 /* -------------------------------------------------------------------------
@@ -1468,6 +1692,113 @@ static void draw_footer(boxen_window_t *win, void *ud) {
 	int w = boxen_window_content_width(win);
 	if (w <= 0) return;
 
+	/* 2026-06-07 JES Phase B.7 #691: when the eval pane is active, render
+	 * the most-recent history entry (if any) followed by the eval input row.
+	 * The single-row footer can only show one line; priority is:
+	 *   1. eval input line (the active editing state)
+	 * The history is shown when we have room (future multi-row footer in Phase C);
+	 * for now we show the most-recent result above the input line if the content
+	 * height allows more than one row. */
+	if (s != NULL && s->eval_pane_active) {
+		int content_h = boxen_window_content_height(win);
+
+		/* How many history rows can we show above the input line?
+		 * Reserve 1 row for the input line itself.
+		 * Any extra rows show history newest-first (bottom = newest). */
+		int history_rows = (content_h > 1) ? (content_h - 1) : 0;
+		int hist_to_show = s->eval_history_count < history_rows
+		                   ? s->eval_history_count : history_rows;
+
+		/* Update content size so boxen knows the total content height.
+		 * history rows + 1 input row */
+		boxen_window_set_content_size(win, w, hist_to_show + 1);
+
+		/* Cap to linebuf (B.1 round-1 P1-A lesson) */
+		char linebuf[512];
+		int  cap   = (int)sizeof(linebuf) - 1;
+		int  avail = w < cap ? w : cap;
+
+		/* Draw history rows (oldest first from top) */
+		for (int i = 0; i < hist_to_show; i++) {
+			/* Index into ring: oldest is at eval_history_head.
+			 * We want to show the newest entries if there are more than can fit.
+			 * newest_start = the first index we show (skipping older ones). */
+			int newest_start = s->eval_history_count - hist_to_show;
+			int ring_idx = (s->eval_history_head + newest_start + i) % EVAL_HISTORY_MAX;
+			const char *entry = s->eval_history[ring_idx];
+			if (entry == NULL) entry = "";
+			int elen  = (int)strlen(entry);
+			int copy  = elen < avail ? elen : avail;
+			memcpy(linebuf, entry, (size_t)copy);
+			memset(linebuf + copy, ' ', (size_t)(avail - copy));
+			linebuf[avail] = '\0';
+			boxen_draw_text(win, 0, i, linebuf,
+			                BOXEN_COLOR_DEFAULT, BOXEN_COLOR_DEFAULT, BOXEN_ATTR_DIM);
+		}
+
+		/* Draw input line: ": <eval_input_buf>"
+		 * When content_h == 1 (single-row footer, common in tests and on small
+		 * terminals), history is not shown above.  Instead, if there is history
+		 * and the input buffer is empty, show the most-recent result as a hint
+		 * inline: "[N] last_result | : " so the user can see what was evaluated.
+		 * This makes the test assertions (`boxen_mock_has_text`) work on the
+		 * single-row footer while preserving real UX readability. */
+		{
+			int input_row = hist_to_show;
+			char prompt_buf[EVAL_INPUT_MAX + 256];
+			int  plen;
+
+			if (hist_to_show == 0 && s->eval_history_count > 0) {
+				/* Compact form: most-recent history hint + prompt */
+				int last_slot = (s->eval_history_head +
+				                 s->eval_history_count - 1) % EVAL_HISTORY_MAX;
+				const char *last = s->eval_history[last_slot];
+				if (last == NULL) last = "";
+				if (s->eval_input_buf[0] != '\0') {
+					plen = snprintf(prompt_buf, sizeof(prompt_buf),
+					                "%s | : %s", last, s->eval_input_buf);
+				} else {
+					plen = snprintf(prompt_buf, sizeof(prompt_buf),
+					                "%s | : ", last);
+				}
+			} else {
+				plen = snprintf(prompt_buf, sizeof(prompt_buf),
+				                ": %s", s->eval_input_buf);
+			}
+
+			if (plen < 0) plen = 0;
+			if (plen > avail) plen = avail;
+			memcpy(linebuf, prompt_buf, (size_t)plen);
+			memset(linebuf + plen, ' ', (size_t)(avail - plen));
+			linebuf[avail] = '\0';
+			boxen_draw_text(win, 0, input_row, linebuf,
+			                BOXEN_COLOR_DEFAULT, BOXEN_COLOR_DEFAULT, BOXEN_ATTR_NONE);
+
+			/* Update cursor position to follow the input (A.7 API).
+			 * Column = prompt width + cursor position in the input buffer.
+			 * For the compact (hist_to_show==0) form, offset by the hint width
+			 * so the cursor stays at the input position.  For now use a simple
+			 * offset: if hist_to_show==0 and history exists, the prompt starts
+			 * after "last_entry | " which we do NOT track precisely; just set
+			 * the cursor at the right edge of the visible prompt.  In Phase C
+			 * the multi-row footer will eliminate this ambiguity. */
+			int cursor_col;
+			if (hist_to_show == 0 && s->eval_history_count > 0) {
+				int last_slot = (s->eval_history_head +
+				                 s->eval_history_count - 1) % EVAL_HISTORY_MAX;
+				const char *last = s->eval_history[last_slot] != NULL
+				                   ? s->eval_history[last_slot] : "";
+				/* hint prefix: "last | : " = strlen(last) + 5 */
+				int hint_len = (int)strlen(last) + 5;
+				cursor_col = hint_len + s->eval_input_cursor;
+			} else {
+				cursor_col = EVAL_INPUT_PROMPT_WIDTH + s->eval_input_cursor;
+			}
+			boxen_window_set_cursor(win, cursor_col, input_row);
+		}
+		return;
+	}
+
 	/* 2026-06-07 JES Phase B.5 #745 round 1 P1-3: identifier popup renders
 	 * in the footer row, NOT over the last source line of the script pane.
 	 * When popup_active is set, the footer shows the popup text instead of
@@ -1720,6 +2051,66 @@ static void on_input(boxen_window_t *win, const boxen_event_t *ev, void *ud) {
 
 	if (ev->type != BOXEN_EV_KEY) return;
 
+	/* 2026-06-07 JES Phase B.7 #691: eval pane key handling.
+	 *
+	 * When the eval pane is active, the input stream routes to the eval pane
+	 * BEFORE reaching the quit handler or F-key handler.  This lets the user
+	 * type ':' characters and 'q' inside the eval expression without triggering
+	 * quit.
+	 *
+	 * Key routing while eval_pane_active:
+	 *   ESCAPE  -> tui_eval_dismiss (preserves input)
+	 *   ENTER   -> tui_eval_submit (dispatch + clear + dismiss)
+	 *   BACKSPACE -> trim eval_input_buf
+	 *   printable (ch 0x20..0x7E, key BOXEN_KEY_NONE) -> append to eval_input_buf
+	 *   Anything else -> fall through (allow quit keys to still work)
+	 *
+	 * Cursor reposition after each edit (A.7 API): update column to follow
+	 * eval_input_cursor after every character append/delete. */
+	if (s->eval_pane_active) {
+		if (ev->key.key == BOXEN_KEY_ESCAPE) {
+			tui_eval_dismiss(s);
+			return;
+		}
+		if (ev->key.key == BOXEN_KEY_ENTER) {
+			tui_eval_submit(s);
+			if (s->footer_win != NULL) boxen_window_invalidate(s->footer_win);
+			return;
+		}
+		if (ev->key.key == BOXEN_KEY_BACKSPACE) {
+			int len = (int)strlen(s->eval_input_buf);
+			if (len > 0) {
+				s->eval_input_buf[len - 1] = '\0';
+				if (s->eval_input_cursor > 0) s->eval_input_cursor--;
+			}
+			if (s->footer_win != NULL) {
+				boxen_window_set_cursor(s->footer_win,
+				                        EVAL_INPUT_PROMPT_WIDTH + s->eval_input_cursor,
+				                        0);
+				boxen_window_invalidate(s->footer_win);
+			}
+			return;
+		}
+		if (ev->key.key == BOXEN_KEY_NONE && ev->key.ch >= 0x20 &&
+		    ev->key.ch < 0x7F) {
+			/* Printable ASCII: append if space permits */
+			int len = (int)strlen(s->eval_input_buf);
+			if (len < EVAL_INPUT_MAX - 1) {
+				s->eval_input_buf[len]     = (char)ev->key.ch;
+				s->eval_input_buf[len + 1] = '\0';
+				s->eval_input_cursor = len + 1;
+			}
+			if (s->footer_win != NULL) {
+				boxen_window_set_cursor(s->footer_win,
+				                        EVAL_INPUT_PROMPT_WIDTH + s->eval_input_cursor,
+				                        0);
+				boxen_window_invalidate(s->footer_win);
+			}
+			return;
+		}
+		/* Other keys while eval active: fall through to quit handler */
+	}
+
 	/* 2026-06-06 JES Phase B.0 #734 round 1 P1-4: accept q/Q regardless of
 	 * ev->key.key value. Real termbox2 may set key != BOXEN_KEY_NONE for
 	 * printable chars on some terminals; the BOXEN_KEY_NONE guard was too
@@ -1728,6 +2119,15 @@ static void on_input(boxen_window_t *win, const boxen_event_t *ev, void *ud) {
 	    ev->key.key == BOXEN_KEY_CTRL_C ||
 	    ev->key.ch == 'q' || ev->key.ch == 'Q') {
 		s->quit_requested = true;
+		return;
+	}
+
+	/* 2026-06-07 JES Phase B.7 #691: ':' activates the eval pane.
+	 * Only available when SUSPENDED and pane not already active.
+	 * When active, ':' is caught by the eval handler above. */
+	if (ev->key.key == BOXEN_KEY_NONE && ev->key.ch == ':' &&
+	    s->debug_state == TUI_DEBUG_SUSPENDED && !s->eval_pane_active) {
+		tui_eval_activate(s);
 		return;
 	}
 
@@ -1869,6 +2269,20 @@ void debugger_tui_state_init(tui_state_t *s, int tw, int th) {
 	s->identifier_popup_active  = false;
 	s->identifier_popup_line[0] = '\0';
 
+	/* 2026-06-07 JES Phase B.7 #691: initialize scratch-eval pane state.
+	 * eval_pane_active starts false (pane is hidden until ':' is pressed).
+	 * eval_input_buf starts empty (NUL at index 0 from the memset above).
+	 * eval_next_id starts at 1 so the first dispatch is easily distinguished
+	 * from "no eval dispatched yet" (eval_next_id == 0) when matching responses.
+	 * All ring buffer fields start at 0 from the memset; eval_history pointers
+	 * are all NULL (calloc-equivalent from memset + NUL-init). */
+	s->eval_pane_active    = false;
+	s->eval_input_cursor   = 0;
+	s->eval_history_count  = 0;
+	s->eval_history_head   = 0;
+	s->eval_history_scroll = 0;
+	s->eval_next_id        = 1;
+
 	/* Allocate heap transport (stub; B.6 wires debug_set_attach_transport) */
 	s->transport = calloc(1, sizeof(transport_t));
 	if (s->transport != NULL) {
@@ -1923,6 +2337,20 @@ void debugger_tui_state_teardown(tui_state_t *s) {
 	s->watch_path_len           = 0;
 	s->identifier_popup_active  = false;
 	s->identifier_popup_line[0] = '\0';
+	/* 2026-06-07 JES Phase B.7 #691: free eval history ring buffer.
+	 * Iterate all EVAL_HISTORY_MAX slots (not just eval_history_count) because
+	 * ring-wrap may leave non-NULL entries at indices >= eval_history_count when
+	 * the ring was filled and then partially overwritten. */
+	for (int i = 0; i < EVAL_HISTORY_MAX; i++) {
+		free(s->eval_history[i]);
+		s->eval_history[i] = NULL;
+	}
+	s->eval_history_count  = 0;
+	s->eval_history_head   = 0;
+	s->eval_pane_active    = false;
+	s->eval_input_buf[0]   = '\0';
+	s->eval_input_cursor   = 0;
+	s->eval_next_id        = 0;
 	s->debug_state = TUI_DEBUG_IDLE;
 }
 
