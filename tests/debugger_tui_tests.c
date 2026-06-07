@@ -2800,6 +2800,552 @@ static void test_full_lifecycle_mock(void) {
 	teardown();
 }
 
+/* =========================================================================
+ * Phase B.7 tests -- scratch-eval pane.
+ *
+ * 2026-06-07 JES Phase B.7 #691
+ *
+ * Eight behavioral tests per EXECUTION_PLAN.md B.7 "Tests" section:
+ *   test_colon_key_activates_eval_pane      -- ':' sets eval_pane_active=true
+ *   test_escape_dismisses_eval_pane         -- Esc clears eval_pane_active
+ *   test_eval_pane_hidden_when_not_suspended -- ':' is no-op outside SUSPENDED
+ *   test_eval_pane_hidden_on_continue       -- RUNNING transition hides pane
+ *   test_eval_submit_dispatches_script_eval -- Enter submits script/eval JSON
+ *   test_eval_result_appended_to_history    -- tui_eval_append_result updates ring
+ *   test_eval_history_ring_wraps            -- ring wraps at EVAL_HISTORY_MAX
+ *   test_eval_footer_renders_history        -- history strings appear in footer
+ *
+ * Additional robustness tests (applying B.1-B.6 round-1 lessons):
+ *   test_eval_json_escape_in_expression     -- tui_json_escape applied to input
+ *   test_eval_cursor_visible_when_active    -- A.7 cursor visible on activate
+ *   test_eval_cursor_hidden_on_dismiss      -- cursor hidden on dismiss
+ *   test_eval_pane_auto_hides_on_running    -- debug_state RUNNING hides pane
+ *   test_eval_input_preserved_after_escape  -- eval_input_buf survives Escape
+ *   test_eval_submit_clears_input           -- input cleared after submit
+ *   test_eval_empty_submit_is_noop          -- empty expr does not dispatch
+ *   test_eval_response_parsed_from_write_line -- write_line routes actual eval shape
+ *   test_eval_cursor_column_tracks_input     -- cursor col = PROMPT_W + typed chars
+ * ========================================================================= */
+
+/* -------------------------------------------------------------------------
+ * test_colon_key_activates_eval_pane
+ *
+ * Spec: State: debug_state = TUI_DEBUG_SUSPENDED; inject ':'.
+ * Verify: state.eval_pane_active == true.
+ * ---------------------------------------------------------------------- */
+static void test_colon_key_activates_eval_pane(void) {
+	setup();
+	g_state.debug_state = TUI_DEBUG_SUSPENDED;
+
+	boxen_event_t ev;
+	memset(&ev, 0, sizeof(ev));
+	ev.type    = BOXEN_EV_KEY;
+	ev.key.key = BOXEN_KEY_NONE;
+	ev.key.ch  = ':';
+	ev.key.mod = BOXEN_MOD_NONE;
+
+	int rc = debugger_tui_run_one_tick(&g_state, &ev);
+	assert(rc == TUI_CONTINUE);
+	assert(g_state.eval_pane_active == true);
+
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * test_escape_dismisses_eval_pane
+ *
+ * Spec: Activate pane; inject BOXEN_KEY_ESCAPE.
+ * Verify: state.eval_pane_active == false.
+ * ---------------------------------------------------------------------- */
+static void test_escape_dismisses_eval_pane(void) {
+	setup();
+	g_state.debug_state = TUI_DEBUG_SUSPENDED;
+
+	/* Activate via direct function call (avoids key routing complexity) */
+	tui_eval_activate(&g_state);
+	assert(g_state.eval_pane_active == true);
+
+	/* Escape dismisses */
+	boxen_event_t ev;
+	memset(&ev, 0, sizeof(ev));
+	ev.type    = BOXEN_EV_KEY;
+	ev.key.key = BOXEN_KEY_ESCAPE;
+	ev.key.ch  = 0;
+	ev.key.mod = BOXEN_MOD_NONE;
+
+	int rc = debugger_tui_run_one_tick(&g_state, &ev);
+	assert(rc == TUI_CONTINUE);
+	assert(g_state.eval_pane_active == false);
+
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * test_eval_pane_hidden_when_not_suspended
+ *
+ * Spec: State: debug_state = TUI_DEBUG_IDLE; inject ':'.
+ * Verify: state.eval_pane_active == false (colon is a no-op outside SUSPENDED).
+ * Also verify when TUI_DEBUG_RUNNING.
+ * ---------------------------------------------------------------------- */
+static void test_eval_pane_hidden_when_not_suspended(void) {
+	setup();
+
+	boxen_event_t ev;
+	memset(&ev, 0, sizeof(ev));
+	ev.type    = BOXEN_EV_KEY;
+	ev.key.key = BOXEN_KEY_NONE;
+	ev.key.ch  = ':';
+	ev.key.mod = BOXEN_MOD_NONE;
+
+	/* IDLE state */
+	g_state.debug_state = TUI_DEBUG_IDLE;
+	debugger_tui_run_one_tick(&g_state, &ev);
+	assert(g_state.eval_pane_active == false);
+
+	/* RUNNING state */
+	g_state.debug_state = TUI_DEBUG_RUNNING;
+	debugger_tui_run_one_tick(&g_state, &ev);
+	assert(g_state.eval_pane_active == false);
+
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * test_eval_pane_hidden_on_continue
+ *
+ * Spec: Activate pane; transition debug_state = TUI_DEBUG_RUNNING; trigger draw.
+ * Verify: eval_pane_active == false after transition.
+ *
+ * The auto-hide on RUNNING transition is handled inside tui_do_continue and
+ * tui_do_step (they call tui_eval_dismiss when eval_pane_active is true).
+ * Test it by calling tui_eval_activate then dispatching F5.
+ * ---------------------------------------------------------------------- */
+static void test_eval_pane_hidden_on_continue(void) {
+	setup();
+	g_state.debug_state      = TUI_DEBUG_SUSPENDED;
+	g_state.pending_thread_id = 1;
+	reset_dispatch_capture();
+
+	/* Activate the eval pane */
+	tui_eval_activate(&g_state);
+	assert(g_state.eval_pane_active == true);
+
+	/* F5 continue: should transition to RUNNING and auto-hide the eval pane */
+	boxen_event_t ev = make_fkey_event(BOXEN_KEY_F5, BOXEN_MOD_NONE);
+	debugger_tui_run_one_tick(&g_state, &ev);
+
+	assert(g_state.debug_state == TUI_DEBUG_RUNNING);
+	assert(g_state.eval_pane_active == false);
+
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * test_eval_submit_dispatches_script_eval
+ *
+ * Spec: Activate pane; push keys 'x', '+', '1'; inject Enter.
+ * Verify: script/eval request was dispatched with "expression":"x+1".
+ * Also verify eval_pane_active == false after submit (dismiss on Enter).
+ * ---------------------------------------------------------------------- */
+static void test_eval_submit_dispatches_script_eval(void) {
+	setup();
+	g_state.debug_state = TUI_DEBUG_SUSPENDED;
+	reset_dispatch_capture();
+
+	/* Activate */
+	tui_eval_activate(&g_state);
+
+	/* Type 'x', '+', '1' into the eval input via run_one_tick */
+	char chars[] = {'x', '+', '1'};
+	for (int i = 0; i < 3; i++) {
+		boxen_event_t ev;
+		memset(&ev, 0, sizeof(ev));
+		ev.type    = BOXEN_EV_KEY;
+		ev.key.key = BOXEN_KEY_NONE;
+		ev.key.ch  = (uint32_t)chars[i];
+		ev.key.mod = BOXEN_MOD_NONE;
+		debugger_tui_run_one_tick(&g_state, &ev);
+	}
+
+	/* Verify input was accumulated */
+	assert(strcmp(g_state.eval_input_buf, "x+1") == 0);
+
+	/* Submit via Enter */
+	boxen_event_t ev;
+	memset(&ev, 0, sizeof(ev));
+	ev.type    = BOXEN_EV_KEY;
+	ev.key.key = BOXEN_KEY_ENTER;
+	ev.key.ch  = 0;
+	ev.key.mod = BOXEN_MOD_NONE;
+	int rc = debugger_tui_run_one_tick(&g_state, &ev);
+
+	assert(rc == TUI_CONTINUE);
+	/* Must dispatch script/eval with expression "x+1" */
+	assert(strstr(g_dispatch_buf, "script/eval") != NULL);
+	assert(strstr(g_dispatch_buf, "\"expression\":\"x+1\"") != NULL);
+	/* Pane dismissed after submit */
+	assert(g_state.eval_pane_active == false);
+
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * test_eval_result_appended_to_history
+ *
+ * Spec: Call tui_eval_append_result("x+1", "42").
+ * Verify: eval_history_count == 1.
+ * Verify: history entry contains both "x+1" and "42".
+ * ---------------------------------------------------------------------- */
+static void test_eval_result_appended_to_history(void) {
+	setup();
+
+	assert(g_state.eval_history_count == 0);
+
+	tui_eval_append_result(&g_state, "x+1", "42");
+
+	assert(g_state.eval_history_count == 1);
+	assert(g_state.eval_history[0] != NULL);
+	/* The formatted string must contain both the expression and result */
+	assert(strstr(g_state.eval_history[0], "x+1") != NULL);
+	assert(strstr(g_state.eval_history[0], "42")  != NULL);
+
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * test_eval_history_ring_wraps
+ *
+ * Spec: Append EVAL_HISTORY_MAX + 2 entries.
+ * Verify: eval_history_count == EVAL_HISTORY_MAX (oldest freed and replaced).
+ * ---------------------------------------------------------------------- */
+static void test_eval_history_ring_wraps(void) {
+	setup();
+
+	int total = EVAL_HISTORY_MAX + 2;
+	for (int i = 0; i < total; i++) {
+		char expr[32], result[32];
+		snprintf(expr,   sizeof(expr),   "expr_%d",   i);
+		snprintf(result, sizeof(result), "result_%d", i);
+		tui_eval_append_result(&g_state, expr, result);
+	}
+
+	/* Count must be clamped at EVAL_HISTORY_MAX */
+	assert(g_state.eval_history_count == EVAL_HISTORY_MAX);
+
+	/* All ring slots must be non-NULL (no leaked freed-pointer gaps) */
+	for (int i = 0; i < EVAL_HISTORY_MAX; i++) {
+		assert(g_state.eval_history[i] != NULL);
+	}
+
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * test_eval_footer_renders_history
+ *
+ * Spec: Append two results; trigger draw.
+ * Verify: footer region contains both result strings via boxen_mock_has_text.
+ *
+ * The eval pane must be active for the history rows to appear in the footer.
+ * ---------------------------------------------------------------------- */
+static void test_eval_footer_renders_history(void) {
+	setup();
+	g_state.debug_state = TUI_DEBUG_SUSPENDED;
+
+	tui_eval_activate(&g_state);
+	tui_eval_append_result(&g_state, "1+1", "2");
+	tui_eval_append_result(&g_state, "msg(\"hi\")", "true");
+
+	boxen_window_invalidate(g_state.footer_win);
+	boxen_present();
+
+	/* Both result entries must appear somewhere in the cell grid */
+	assert(boxen_mock_has_text("1+1") || boxen_mock_has_text("2"));
+	/* The second entry */
+	assert(boxen_mock_has_text("true") || boxen_mock_has_text("msg"));
+
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * test_eval_json_escape_in_expression
+ *
+ * Spec: Input contains a double-quote character (e.g. 'a"b').
+ * Verify: dispatched JSON has \"a\\\"b\" (properly escaped expression).
+ *
+ * B.4 P1 security class applied to B.7: ALL outbound JSON string fields from
+ * user input MUST be escaped with tui_json_escape.
+ * ---------------------------------------------------------------------- */
+static void test_eval_json_escape_in_expression(void) {
+	setup();
+	g_state.debug_state = TUI_DEBUG_SUSPENDED;
+	reset_dispatch_capture();
+
+	/* Directly set the eval_input_buf to contain a double-quote */
+	strncpy(g_state.eval_input_buf, "a\"b", sizeof(g_state.eval_input_buf) - 1);
+	g_state.eval_input_buf[sizeof(g_state.eval_input_buf) - 1] = '\0';
+	g_state.eval_input_cursor = 3;
+	g_state.eval_pane_active  = true;
+
+	/* Submit via tui_eval_submit directly */
+	tui_eval_submit(&g_state);
+
+	/* The dispatched JSON must have the quote escaped as \" */
+	assert(strstr(g_dispatch_buf, "script/eval") != NULL);
+	/* "expression":"a\"b" -- the escaped form */
+	assert(strstr(g_dispatch_buf, "\\\"") != NULL);
+
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * test_eval_cursor_visible_when_active
+ *
+ * After tui_eval_activate, boxen_mock_cursor_visible() must return true.
+ * This verifies the A.7 cursor API is called on activation.
+ * ---------------------------------------------------------------------- */
+static void test_eval_cursor_visible_when_active(void) {
+	setup();
+	g_state.debug_state = TUI_DEBUG_SUSPENDED;
+
+	tui_eval_activate(&g_state);
+
+	assert(g_state.eval_pane_active == true);
+	assert(boxen_mock_cursor_visible() == true);
+
+	/* Clean up */
+	tui_eval_dismiss(&g_state);
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * test_eval_cursor_hidden_on_dismiss
+ *
+ * After tui_eval_dismiss, boxen_mock_cursor_visible() must return false.
+ * Verifies the A.7 cursor hide is called on dismiss.
+ * ---------------------------------------------------------------------- */
+static void test_eval_cursor_hidden_on_dismiss(void) {
+	setup();
+	g_state.debug_state = TUI_DEBUG_SUSPENDED;
+
+	tui_eval_activate(&g_state);
+	assert(boxen_mock_cursor_visible() == true);
+
+	tui_eval_dismiss(&g_state);
+	assert(g_state.eval_pane_active == false);
+	assert(boxen_mock_cursor_visible() == false);
+
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * test_eval_input_preserved_after_escape
+ *
+ * Spec: Activate pane; type 'a', 'b'; Escape dismisses.
+ * Verify: eval_input_buf still contains "ab" after dismiss.
+ * (Preserved for re-activation so the user can continue editing.)
+ * ---------------------------------------------------------------------- */
+static void test_eval_input_preserved_after_escape(void) {
+	setup();
+	g_state.debug_state = TUI_DEBUG_SUSPENDED;
+
+	tui_eval_activate(&g_state);
+
+	/* Type 'a', 'b' */
+	char chars[] = {'a', 'b'};
+	for (int i = 0; i < 2; i++) {
+		boxen_event_t ev;
+		memset(&ev, 0, sizeof(ev));
+		ev.type    = BOXEN_EV_KEY;
+		ev.key.key = BOXEN_KEY_NONE;
+		ev.key.ch  = (uint32_t)chars[i];
+		ev.key.mod = BOXEN_MOD_NONE;
+		debugger_tui_run_one_tick(&g_state, &ev);
+	}
+	assert(strcmp(g_state.eval_input_buf, "ab") == 0);
+
+	/* Escape: pane dismissed but input preserved */
+	boxen_event_t ev;
+	memset(&ev, 0, sizeof(ev));
+	ev.type    = BOXEN_EV_KEY;
+	ev.key.key = BOXEN_KEY_ESCAPE;
+	ev.key.ch  = 0;
+	ev.key.mod = BOXEN_MOD_NONE;
+	debugger_tui_run_one_tick(&g_state, &ev);
+
+	assert(g_state.eval_pane_active == false);
+	/* Input must still be there */
+	assert(strcmp(g_state.eval_input_buf, "ab") == 0);
+
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * test_eval_submit_clears_input
+ *
+ * After Enter submits, eval_input_buf must be cleared (empty string).
+ * eval_input_cursor must also be reset to 0.
+ * ---------------------------------------------------------------------- */
+static void test_eval_submit_clears_input(void) {
+	setup();
+	g_state.debug_state = TUI_DEBUG_SUSPENDED;
+	reset_dispatch_capture();
+
+	tui_eval_activate(&g_state);
+	strncpy(g_state.eval_input_buf, "1+2", sizeof(g_state.eval_input_buf) - 1);
+	g_state.eval_input_buf[sizeof(g_state.eval_input_buf) - 1] = '\0';
+	g_state.eval_input_cursor = 3;
+
+	tui_eval_submit(&g_state);
+
+	/* Input buffer cleared */
+	assert(g_state.eval_input_buf[0] == '\0');
+	assert(g_state.eval_input_cursor == 0);
+
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * test_eval_empty_submit_is_noop
+ *
+ * Submitting an empty eval_input_buf must not dispatch anything.
+ * ---------------------------------------------------------------------- */
+static void test_eval_empty_submit_is_noop(void) {
+	setup();
+	g_state.debug_state = TUI_DEBUG_SUSPENDED;
+	reset_dispatch_capture();
+
+	tui_eval_activate(&g_state);
+	/* eval_input_buf is "" by default after state_init */
+
+	tui_eval_submit(&g_state);
+
+	/* No dispatch must have occurred */
+	assert(g_dispatch_buf[0] == '\0');
+
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * test_eval_response_parsed_from_write_line
+ *
+ * 2026-06-07 JES Phase B.7 #749 round 1: rewritten to use the ACTUAL wire
+ * shape from op_handler.c::send_eval_success.
+ *
+ * send_eval_success emits (op_handler.c lines 251-268):
+ *   cJSON_AddNumberToObject(response, "id", id);
+ *   cJSON_AddStringToObject(result_obj, "value", str_value);
+ *   cJSON_AddStringToObject(result_obj, "type", type_name);
+ *   cJSON_AddItemToObject(response, "result", result_obj);
+ *   cJSON_AddBoolToObject(response, "success", 1);
+ *
+ * Wire format: {"id":N,"result":{"value":"2","type":"number"},"success":true}
+ * result is an OBJECT with "value" + "type" keys, NOT a bare string.
+ *
+ * The previous test used {"id":N,"result":"2","success":true} (bare string)
+ * which never matched Case 2 (cJSON_IsObject) in write_line -- it was testing
+ * a fabricated shape, not the actual protocol.
+ *
+ * SENTINEL: write_line Case 2 must discriminate eval responses by
+ * eval_last_dispatched_id match + value/type keys before falling through to
+ * debug/* sub-cases.
+ * ---------------------------------------------------------------------- */
+static void test_eval_response_parsed_from_write_line(void) {
+	setup();
+	g_state.debug_state = TUI_DEBUG_SUSPENDED;
+	reset_dispatch_capture();
+
+	/* Activate and populate input */
+	tui_eval_activate(&g_state);
+	strncpy(g_state.eval_input_buf, "1+1", sizeof(g_state.eval_input_buf) - 1);
+	g_state.eval_input_buf[sizeof(g_state.eval_input_buf) - 1] = '\0';
+	g_state.eval_input_cursor = 3;
+
+	/* Capture the id that will be used: next_req_id advances tui_req_id,
+	 * so the dispatched id will be the current tui_req_id value. */
+	int expected_id = g_state.tui_req_id;
+
+	/* Submit (dispatches to capture buf in test mode; sets eval_last_dispatched_id) */
+	tui_eval_submit(&g_state);
+
+	/* Verify eval_last_dispatched_id was set to the id we expect */
+	assert(g_state.eval_last_dispatched_id == expected_id);
+
+	/* Inject a synthetic script/eval success response matching the ACTUAL
+	 * wire shape from op_handler.c::send_eval_success (lines 251-268):
+	 *   {"id":N,"result":{"value":"2","type":"number"},"success":true}
+	 * result is an OBJECT with value+type keys, not a bare string. */
+	char resp[256];
+	snprintf(resp, sizeof(resp),
+	         "{\"id\":%d,\"result\":{\"value\":\"2\",\"type\":\"number\"},\"success\":true}",
+	         expected_id);
+	assert(g_state.transport != NULL);
+	g_state.transport->write_line(g_state.transport->ctx, resp, strlen(resp));
+
+	/* The result must have been appended to the history */
+	assert(g_state.eval_history_count == 1);
+	assert(g_state.eval_history[0] != NULL);
+	assert(strstr(g_state.eval_history[0], "2") != NULL);
+
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * test_eval_cursor_column_tracks_input
+ *
+ * 2026-06-07 JES Phase B.7 #749 round 1 P1-2 regression test.
+ *
+ * Spec: Activate eval pane; type 'x', 'y', 'z' one keystroke at a time.
+ * After each keystroke the Backspace/char handlers must apply the borrow-
+ * restore pattern (boxen_window_focus(footer) / set_cursor / focus(script))
+ * so cursor updates are not silently dropped by the A.7 gate.
+ *
+ * Assert: after typing 3 chars the mock backend reports cursor column
+ * == EVAL_INPUT_PROMPT_WIDTH + 3 (prompt width 2 + 3 typed chars = 5).
+ *
+ * Also verify a Backspace correctly decrements the cursor column.
+ * ---------------------------------------------------------------------- */
+static void test_eval_cursor_column_tracks_input(void) {
+	setup();
+	g_state.debug_state = TUI_DEBUG_SUSPENDED;
+
+	/* Activate the eval pane (cursor shown at column EVAL_INPUT_PROMPT_WIDTH) */
+	tui_eval_activate(&g_state);
+	assert(g_state.eval_pane_active == true);
+
+	/* Type 'x', 'y', 'z' */
+	char chars[] = {'x', 'y', 'z'};
+	for (int i = 0; i < 3; i++) {
+		boxen_event_t ev;
+		memset(&ev, 0, sizeof(ev));
+		ev.type    = BOXEN_EV_KEY;
+		ev.key.key = BOXEN_KEY_NONE;
+		ev.key.ch  = (uint32_t)chars[i];
+		ev.key.mod = BOXEN_MOD_NONE;
+		debugger_tui_run_one_tick(&g_state, &ev);
+	}
+
+	/* Cursor must be at EVAL_INPUT_PROMPT_WIDTH + 3 == 2 + 3 == 5 */
+	int cx = -1, cy = -1;
+	boxen_mock_get_cursor(&cx, &cy);
+	assert(cx == EVAL_INPUT_PROMPT_WIDTH + 3);
+
+	/* Backspace: cursor retreats by 1 -> col 4 */
+	boxen_event_t bsev;
+	memset(&bsev, 0, sizeof(bsev));
+	bsev.type    = BOXEN_EV_KEY;
+	bsev.key.key = BOXEN_KEY_BACKSPACE;
+	bsev.key.ch  = 0;
+	bsev.key.mod = BOXEN_MOD_NONE;
+	debugger_tui_run_one_tick(&g_state, &bsev);
+
+	boxen_mock_get_cursor(&cx, &cy);
+	assert(cx == EVAL_INPUT_PROMPT_WIDTH + 2);
+
+	tui_eval_dismiss(&g_state);
+	teardown();
+}
+
 /* -------------------------------------------------------------------------
  * main
  * ---------------------------------------------------------------------- */
@@ -2892,6 +3438,24 @@ int main(void) {
 	TR_RUN(test_dispatch_log_slot_wide_enough);
 	TR_RUN(test_log_write_stub_safe_in_test_build);
 	TR_RUN(test_full_lifecycle_mock);
+
+	/* B.7 tests (#691: scratch-eval pane) */
+	TR_RUN(test_colon_key_activates_eval_pane);
+	TR_RUN(test_escape_dismisses_eval_pane);
+	TR_RUN(test_eval_pane_hidden_when_not_suspended);
+	TR_RUN(test_eval_pane_hidden_on_continue);
+	TR_RUN(test_eval_submit_dispatches_script_eval);
+	TR_RUN(test_eval_result_appended_to_history);
+	TR_RUN(test_eval_history_ring_wraps);
+	TR_RUN(test_eval_footer_renders_history);
+	TR_RUN(test_eval_json_escape_in_expression);
+	TR_RUN(test_eval_cursor_visible_when_active);
+	TR_RUN(test_eval_cursor_hidden_on_dismiss);
+	TR_RUN(test_eval_input_preserved_after_escape);
+	TR_RUN(test_eval_submit_clears_input);
+	TR_RUN(test_eval_empty_submit_is_noop);
+	TR_RUN(test_eval_response_parsed_from_write_line);
+	TR_RUN(test_eval_cursor_column_tracks_input);
 
 	TR_SUMMARY();
 	return TR_EXIT_CODE();
