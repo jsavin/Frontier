@@ -63,6 +63,18 @@ TB2_DIR = third_party/termbox2
 INCLUDES += -I$(TB2_DIR)
 TB2_IMPL_SRC = $(TB2_DIR)/termbox2_impl.c
 
+# Boxen substrate (frontier-cli/boxen/).
+# All four .c files compile into frontier-cli at A.1 so regressions are caught
+# during normal builds. backend_mock.c is intentionally in the prod build;
+# unused statics get __attribute__((unused)) if the compiler complains.
+BOXEN_DIR = boxen
+INCLUDES += -I$(BOXEN_DIR)
+BOXEN_SOURCES = \
+	$(BOXEN_DIR)/boxen_log.c \
+	$(BOXEN_DIR)/boxen_wcwidth.c \
+	$(BOXEN_DIR)/backend_tb2.c \
+	$(BOXEN_DIR)/backend_mock.c
+
 # Strings compiler integration (shared with tests)
 STRINGS_COMPILER_DIR = ../tools/strings_compiler
 STRINGS_COMPILER = $(STRINGS_COMPILER_DIR)/strings_compiler
@@ -247,13 +259,14 @@ all: build dist
 # Use 'make build' when you don't need dist/ updated
 build: strings_generated kernel_verbs_generated $(TARGET)
 
-$(TARGET): $(CLI_SOURCES) $(FRONTIER_SOURCES) $(CJSON_SOURCES) $(LINENOISE_SRC) $(TB2_IMPL_SRC)
+$(TARGET): $(CLI_SOURCES) $(FRONTIER_SOURCES) $(CJSON_SOURCES) $(LINENOISE_SRC) $(TB2_IMPL_SRC) $(BOXEN_SOURCES)
 	$(CC) $(CFLAGS) $(ARCH_FLAGS) $(INCLUDES) \
 		$(CLI_SOURCES) \
 		$(CJSON_SOURCES) \
 		$(FRONTIER_SOURCES) \
 		$(LINENOISE_SRC) \
 		$(TB2_IMPL_SRC) \
+		$(BOXEN_SOURCES) \
 		-o $(TARGET) $(LIBS) $(LDFLAGS) -lm
 
 $(STRINGS_COMPILER):
