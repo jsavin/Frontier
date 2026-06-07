@@ -814,6 +814,204 @@ static void test_suspended_fires_getstack_getlocals(void) {
 	teardown();
 }
 
+/* =========================================================================
+ * Phase B.2 round-1 review regression tests (#739).
+ *
+ * 2026-06-07 JES Phase B.2 #739 round 1
+ *
+ * Four behavioral tests covering the three gate findings:
+ *   P1 (bar-raiser):
+ *     test_store_stack_clears_on_empty_array   -- frames=[] zeroes frame_count
+ *     test_store_locals_clears_on_empty_array  -- locals=[] zeroes local_count
+ *   P2 (security):
+ *     test_store_locals_caps_long_value        -- 50KB value clamped to TUI_LOCAL_VALUE_MAX
+ *   P2 (bar-raiser):
+ *     test_frame_select_clears_source_when_script_differs -- source blanked on cross-script select
+ * ========================================================================= */
+
+/* -------------------------------------------------------------------------
+ * test_store_stack_clears_on_empty_array
+ *
+ * Sequence:
+ *   1. Load frames [a, b, c] via write_line (frame_count == 3).
+ *   2. Inject {"result":{"frames":[]}} via write_line.
+ *   3. Assert frame_count == 0.
+ *
+ * Before the fix, the count <= 0 early-return in tui_store_stack left the
+ * old frame state on screen even when the runtime reported an empty stack.
+ * ---------------------------------------------------------------------- */
+static void test_store_stack_clears_on_empty_array(void) {
+	setup();
+
+	/* Step 1: load three frames */
+	const char *three_frames =
+		"{\"id\":1,\"result\":{\"frames\":["
+		"{\"level\":1,\"script\":\"a.script\",\"line\":1},"
+		"{\"level\":2,\"script\":\"b.script\",\"line\":2},"
+		"{\"level\":3,\"script\":\"c.script\",\"line\":3}"
+		"]},\"success\":true}";
+	g_state.transport->write_line(g_state.transport->ctx,
+	                              three_frames, strlen(three_frames));
+	assert(g_state.frame_count == 3);  /* RED: was 3, must stay 3 after load */
+
+	/* Step 2: inject empty frames array -- runtime popped all frames */
+	const char *empty_frames =
+		"{\"id\":2,\"result\":{\"frames\":[]},\"success\":true}";
+	g_state.transport->write_line(g_state.transport->ctx,
+	                              empty_frames, strlen(empty_frames));
+
+	/* Step 3: state must reflect the empty stack */
+	assert(g_state.frame_count == 0);
+
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * test_store_locals_clears_on_empty_array
+ *
+ * Sequence:
+ *   1. Load locals [x, y] via write_line (local_count == 2).
+ *   2. Inject {"result":{"locals":[]}} via write_line.
+ *   3. Assert local_count == 0.
+ *
+ * Before the fix, the count <= 0 early-return in tui_store_locals left the
+ * old local state on screen when the runtime reported a frame with no locals.
+ * ---------------------------------------------------------------------- */
+static void test_store_locals_clears_on_empty_array(void) {
+	setup();
+
+	/* Step 1: load two locals */
+	const char *two_locals =
+		"{\"id\":3,\"result\":{\"locals\":["
+		"{\"name\":\"x\",\"value\":\"1\",\"type\":\"integer\"},"
+		"{\"name\":\"y\",\"value\":\"2\",\"type\":\"integer\"}"
+		"],\"script\":\"s\",\"line\":1},\"success\":true}";
+	g_state.transport->write_line(g_state.transport->ctx,
+	                              two_locals, strlen(two_locals));
+	assert(g_state.local_count == 2);  /* RED: was 2, must stay 2 after load */
+
+	/* Step 2: inject empty locals array -- selected frame has no locals */
+	const char *empty_locals =
+		"{\"id\":4,\"result\":{\"locals\":[],"
+		"\"script\":\"s\",\"line\":1},\"success\":true}";
+	g_state.transport->write_line(g_state.transport->ctx,
+	                              empty_locals, strlen(empty_locals));
+
+	/* Step 3: state must reflect the empty locals */
+	assert(g_state.local_count == 0);
+
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * test_store_locals_caps_long_value
+ *
+ * Inject a local with a 50KB value string.
+ * Assert:
+ *   - local_count == 1 (parsed successfully)
+ *   - strlen(local_values[0]) == TUI_LOCAL_VALUE_MAX (clamped, not full 50KB)
+ *   - No crash.
+ *
+ * Before the fix, strdup accepted arbitrary length; a hostile/malformed
+ * debug/getLocals with a multi-MB value could drive heap to 500 * len(value).
+ * ---------------------------------------------------------------------- */
+static void test_store_locals_caps_long_value(void) {
+	setup();
+
+	/* Build a 50KB value string filled with 'A' */
+	const int VALUE_LEN = 50 * 1024;
+	char *big_value = (char *)malloc((size_t)(VALUE_LEN + 1));
+	assert(big_value != NULL);
+	memset(big_value, 'A', (size_t)VALUE_LEN);
+	big_value[VALUE_LEN] = '\0';
+
+	/* Build the JSON: {"id":5,"result":{"locals":[{"name":"x","value":"AAA..."}...]}} */
+	int bufsize = VALUE_LEN + 128;
+	char *buf   = (char *)malloc((size_t)bufsize);
+	assert(buf != NULL);
+	int pos = snprintf(buf, (size_t)bufsize,
+	                   "{\"id\":5,\"result\":{\"locals\":["
+	                   "{\"name\":\"x\",\"value\":\"%s\",\"type\":\"string\"}"
+	                   "],\"script\":\"s\",\"line\":1},\"success\":true}",
+	                   big_value);
+	assert(pos > 0 && pos < bufsize);
+	free(big_value);
+
+	g_state.transport->write_line(g_state.transport->ctx, buf, (size_t)pos);
+	free(buf);
+
+	/* local was parsed */
+	assert(g_state.local_count == 1);
+	assert(g_state.local_values != NULL);
+	assert(g_state.local_values[0] != NULL);
+	/* value must be clamped to TUI_LOCAL_VALUE_MAX, not the full 50KB */
+	assert((int)strlen(g_state.local_values[0]) == TUI_LOCAL_VALUE_MAX);
+
+	free_locals(&g_state);
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * test_frame_select_clears_source_when_script_differs
+ *
+ * Setup:
+ *   - Load source for "a.script" with 5 lines (script_line_count == 5).
+ *   - Set up two frames: frame[0] at "b.script":10, frame[1] at "a.script":5.
+ *   - selected_frame starts at 1 (innermost, "a.script").
+ *   - script_path is "a.script" (matches loaded source).
+ *
+ * Action: inject UP arrow on stack pane -> tui_select_frame(0) -> "b.script".
+ *
+ * Assert:
+ *   - script_line_count == 0 (source was blanked)
+ *   - script_path == "b.script" (updated to the new frame's script)
+ *
+ * Before the fix, tui_select_frame overwrote script_path and current_line
+ * but left script_lines pointing at "a.script"'s source, so the script pane
+ * displayed wrong-source-with-frame-line.
+ * ---------------------------------------------------------------------- */
+static void test_frame_select_clears_source_when_script_differs(void) {
+	setup();
+
+	/* Load source for "a.script" with 5 lines */
+	fill_script_lines(&g_state, 5);
+	strncpy(g_state.script_path, "a.script", sizeof(g_state.script_path) - 1);
+	g_state.script_path[sizeof(g_state.script_path) - 1] = '\0';
+	g_state.current_line = 5;
+
+	/* Set up two frames: outermost is "b.script", innermost is "a.script" */
+	g_state.frame_count = 2;
+	strncpy(g_state.frame_scripts[0], "b.script",
+	        sizeof(g_state.frame_scripts[0]) - 1);
+	g_state.frame_scripts[0][sizeof(g_state.frame_scripts[0]) - 1] = '\0';
+	g_state.frame_lines[0] = 10;
+	strncpy(g_state.frame_scripts[1], "a.script",
+	        sizeof(g_state.frame_scripts[1]) - 1);
+	g_state.frame_scripts[1][sizeof(g_state.frame_scripts[1]) - 1] = '\0';
+	g_state.frame_lines[1] = 5;
+	g_state.selected_frame = 1;  /* start at innermost: "a.script" */
+
+	/* Inject UP arrow on the stack pane to select outermost ("b.script") */
+	boxen_event_t ev;
+	memset(&ev, 0, sizeof(ev));
+	ev.type    = BOXEN_EV_KEY;
+	ev.key.key = BOXEN_KEY_UP;
+	ev.key.ch  = 0;
+	ev.key.mod = BOXEN_MOD_NONE;
+
+	boxen_window_focus(g_state.stack_win);
+	int rc = debugger_tui_run_one_tick(&g_state, &ev);
+
+	assert(rc == TUI_CONTINUE);
+	assert(g_state.selected_frame == 0);
+	/* Script pane must be blanked (no source for "b.script" yet) */
+	assert(g_state.script_line_count == 0);
+	/* script_path must reflect the newly selected frame */
+	assert(strcmp(g_state.script_path, "b.script") == 0);
+
+	teardown();
+}
+
 /* -------------------------------------------------------------------------
  * main
  * ---------------------------------------------------------------------- */
@@ -846,6 +1044,12 @@ int main(void) {
 	TR_RUN(test_stack_frame_count_capped);
 	TR_RUN(test_locals_count_capped);
 	TR_RUN(test_suspended_fires_getstack_getlocals);
+
+	/* B.2 round-1 review regression tests (#739) */
+	TR_RUN(test_store_stack_clears_on_empty_array);
+	TR_RUN(test_store_locals_clears_on_empty_array);
+	TR_RUN(test_store_locals_caps_long_value);
+	TR_RUN(test_frame_select_clears_source_when_script_differs);
 
 	TR_SUMMARY();
 	return TR_EXIT_CODE();

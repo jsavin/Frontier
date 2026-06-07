@@ -51,6 +51,14 @@
 #define TUI_MAX_FRAMES  200
 #define TUI_MAX_LOCALS  500
 
+/* 2026-06-07 JES Phase B.2 #739 round 1 P2: per-local string length caps.
+ * UserTalk types coerced to display form can be multi-MB (strings, RTF blobs).
+ * With TUI_MAX_LOCALS=500, an uncapped strdup could drive heap to 500 * len(value).
+ * Cap name at 256 bytes (dotted UT identifier budget) and value at 4096 bytes
+ * (enough to show the meaningful start of any display-form value). */
+#define TUI_LOCAL_NAME_MAX   256
+#define TUI_LOCAL_VALUE_MAX  4096
+
 typedef struct {
 	boxen_window_t *script_win;    /* left pane: script source (B.1) */
 	boxen_window_t *stack_win;     /* right pane: call stack + locals (B.2) */

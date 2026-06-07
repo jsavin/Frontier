@@ -78,23 +78,31 @@ static void tui_free_locals(tui_state_t *s) {
  *   result.locals = [{name, value, type}, ...]
  * Updates local_names, local_values, local_count.
  * Locals always reflect the innermost suspended frame -- no per-frame API
- * exists (EXECUTION_PLAN.md B.2 Sentinels). */
+ * exists (EXECUTION_PLAN.md B.2 Sentinels).
+ *
+ * 2026-06-07 JES Phase B.2 #739 round 1: empty-array carries definite info
+ * ("locals are now empty") -- distinct from B.1 P1-E's "field absent = preserve"
+ * case.  Commit to fresh state before the count check so an empty array
+ * clears stale locals rather than leaving them on screen. */
 static void tui_store_locals(tui_state_t *s, cJSON *result) {
 	cJSON *locals_j = cJSON_GetObjectItemCaseSensitive(result, "locals");
 	if (!cJSON_IsArray(locals_j)) return;
+
+	/* Commit to empty state -- an empty locals array carries definite info. */
+	tui_free_locals(s);
 
 	int count = cJSON_GetArraySize(locals_j);
 	if (count <= 0) return;
 
 	/* Cap to prevent allocation overflow from a malformed response.
+	 * UserTalk types coerced to display form can be multi-MB; per-value caps
+	 * below (TUI_LOCAL_NAME_MAX / TUI_LOCAL_VALUE_MAX) bound heap per slot.
 	 * Silent clamp: log_warn is a Frontier runtime call and crashes in the
 	 * test build (log_write resolves to NULL via dynamic lookup).  The B.1
 	 * tui_store_source uses the same silent-clamp pattern. */
 	if (count > TUI_MAX_LOCALS) {
 		count = TUI_MAX_LOCALS;
 	}
-
-	tui_free_locals(s);
 
 	/* calloc so unfilled slots are NULL even if strdup fails partway through */
 	s->local_names  = (char **)calloc((size_t)count, sizeof(char *));
@@ -120,8 +128,17 @@ static void tui_store_locals(tui_state_t *s, cJSON *result) {
 		const char *value = (cJSON_IsString(value_j) && value_j->valuestring != NULL)
 		                    ? value_j->valuestring : "";
 
-		s->local_names[i]  = strdup(name);
-		s->local_values[i] = strdup(value);
+		/* 2026-06-07 JES Phase B.2 #739 round 1 P2: cap name/value before
+		 * strdup to prevent memory exhaustion from hostile/malformed responses.
+		 * UserTalk types coerced to display form can be multi-MB; this bounds
+		 * heap per local to TUI_LOCAL_NAME_MAX + TUI_LOCAL_VALUE_MAX bytes. */
+		size_t name_len  = strlen(name);
+		size_t value_len = strlen(value);
+		if (name_len  > TUI_LOCAL_NAME_MAX)  name_len  = TUI_LOCAL_NAME_MAX;
+		if (value_len > TUI_LOCAL_VALUE_MAX) value_len = TUI_LOCAL_VALUE_MAX;
+
+		s->local_names[i]  = (char *)malloc(name_len  + 1);
+		s->local_values[i] = (char *)malloc(value_len + 1);
 		if (s->local_names[i] == NULL || s->local_values[i] == NULL) {
 			/* OOM: truncate to successfully populated slots */
 			free(s->local_names[i]);
@@ -131,6 +148,10 @@ static void tui_store_locals(tui_state_t *s, cJSON *result) {
 			s->local_count = i;
 			return;
 		}
+		memcpy(s->local_names[i],  name,  name_len);
+		s->local_names[i][name_len]   = '\0';
+		memcpy(s->local_values[i], value, value_len);
+		s->local_values[i][value_len] = '\0';
 		i++;
 	}
 	s->local_count = i;
@@ -142,9 +163,17 @@ static void tui_store_locals(tui_state_t *s, cJSON *result) {
  * Updates frame_count, frame_scripts, frame_lines.
  * selected_frame is set to the innermost frame on a fresh stack load so
  * the user's cursor lands at the currently executing frame by default. */
+/* 2026-06-07 JES Phase B.2 #739 round 1: empty-array carries definite info
+ * ("stack is now empty") -- distinct from B.1 P1-E's "field absent = preserve"
+ * case.  Commit to empty state before the count check so an empty frames
+ * array clears stale frame state rather than leaving it on screen. */
 static void tui_store_stack(tui_state_t *s, cJSON *result) {
 	cJSON *frames_j = cJSON_GetObjectItemCaseSensitive(result, "frames");
 	if (!cJSON_IsArray(frames_j)) return;
+
+	/* Commit to empty state -- an empty frames array carries definite info. */
+	s->frame_count    = 0;
+	s->selected_frame = 0;
 
 	int count = cJSON_GetArraySize(frames_j);
 	if (count <= 0) return;
@@ -670,7 +699,19 @@ static void tui_select_frame(tui_state_t *s, int new_frame) {
 	/* Cross-pane side effect: update script pane to show the selected frame's
 	 * script and line (EXECUTION_PLAN.md B.2 Sentinels).
 	 * Locals do NOT change -- debug/getLocals always returns the innermost
-	 * frame's locals; there is no per-frame locals API. */
+	 * frame's locals; there is no per-frame locals API.
+	 *
+	 * 2026-06-07 JES Phase B.2 #739 round 1 P2: if the selected frame belongs
+	 * to a different script than what is currently loaded, blank the script pane
+	 * so the UI shows empty content rather than wrong-source-with-frame-line.
+	 * B.6 wires the live op_dispatch reload; until then, empty is honest. */
+	if (strcmp(s->frame_scripts[new_frame], s->script_path) != 0) {
+		tui_free_script_lines(s);
+		s->script_line_count = 0;
+		/* script_path is updated below; the draw callback already renders
+		 * the placeholder text gracefully when script_lines is NULL. */
+	}
+
 	strncpy(s->script_path, s->frame_scripts[new_frame],
 	        sizeof(s->script_path) - 1);
 	s->script_path[sizeof(s->script_path) - 1] = '\0';
