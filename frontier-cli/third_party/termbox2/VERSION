@@ -1,0 +1,12 @@
+# termbox2 vendor pin -- boxen TUI substrate
+UPSTREAM_URL=https://github.com/termbox/termbox2
+UPSTREAM_TAG=v2.5.0
+UPSTREAM_SHA=9b5a5da862c06c554148c14fd38d2f796be22d57
+PINNED_DATE=2026-06-06
+PINNED_BY=Claude (session f1-boxen-tui-lib; task #147)
+PINNED_RATIONALE=Initial vendor drop for boxen Phase A milestone A.0.
+# Note: termbox2 v2.5.0 is a single-header library. There is no separate
+# termbox2.c upstream. The implementation is activated by #define TB_IMPL
+# before including termbox2.h. See termbox2_impl.c in this directory.
+SHA256_TERMBOX2_H=ef63b6bd6e3a1c8ad339b7aa0bf52dc21f3e92bd886264ebe588ab86ccd1e5d1
+SHA256_LICENSE=de32c2a6efe313c76fb56692a54a8b544ed31cc9ca04a052e134844740a0bb1e

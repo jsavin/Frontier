@@ -48,6 +48,7 @@ tests/tmp/results/
 a.out
 frontier-cli/frontier-cli
 frontier-cli/frontier-cli.dSYM/
+frontier-cli/tb2-smoke
 tests/cli_runtime_tests
 
 # Python artifacts
