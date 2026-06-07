@@ -43,39 +43,249 @@
 
 #include "../Common/headers/logging.h"
 
+/* 2026-06-07 JES Phase B.1 #691: cJSON for parsing debug/getSource responses.
+ * cJSON has no Frontier runtime dependencies; safe in both production and test. */
+#include "../third_party/cJSON/cJSON.h"
+
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
 
 /* -------------------------------------------------------------------------
- * 2026-06-06 JES Phase B.0 #691: stub transport write_line.
+ * 2026-06-07 JES Phase B.1 #691: source state helpers.
  *
- * B.0 does not wire any debug runtime notifications. The callback accepts
- * the three-parameter signature per op_handler.h:45 -- NOT the 2-param form
- * that the handoff doc incorrectly listed. B.1 fills in the body to parse
- * debug/suspended etc. and refresh pane content.
+ * tui_free_script_lines -- release the heap array of source line strings.
+ * tui_store_source     -- parse a debug/getSource result object into state.
  * ---------------------------------------------------------------------- */
 
-static void tui_write_line(void *ctx, const char *json, size_t len) {
-	/* 2026-06-06 JES Phase B.0 #691: no-op stub.
-	 * B.1 parses debug/suspended, debug/completed notifications here. */
-	(void)ctx;
-	(void)json;
-	(void)len;
+static void tui_free_script_lines(tui_state_t *s) {
+	if (s->script_lines != NULL) {
+		for (int i = 0; i < s->script_line_count; i++) {
+			free(s->script_lines[i]);
+		}
+		free(s->script_lines);
+		s->script_lines      = NULL;
+		s->script_line_count = 0;
+	}
+}
+
+/* Parse a debug/getSource result JSON object (the "result" sub-object) into
+ * tui_state_t. On success, updates script_path, script_lines,
+ * script_line_count, current_line, bp_lines, bp_line_count. */
+static void tui_store_source(tui_state_t *s, cJSON *result) {
+	cJSON *script_j = cJSON_GetObjectItemCaseSensitive(result, "script");
+	cJSON *curline_j = cJSON_GetObjectItemCaseSensitive(result, "currentLine");
+	cJSON *lines_j  = cJSON_GetObjectItemCaseSensitive(result, "lines");
+
+	if (!cJSON_IsString(script_j) || script_j->valuestring == NULL) return;
+	if (!cJSON_IsArray(lines_j)) return;
+
+	/* Store script path */
+	strncpy(s->script_path, script_j->valuestring, sizeof(s->script_path) - 1);
+	s->script_path[sizeof(s->script_path) - 1] = '\0';
+
+	/* Store current line (-1 if not present) */
+	s->current_line = cJSON_IsNumber(curline_j) ? (long)curline_j->valuedouble : -1;
+
+	/* Count lines */
+	int count = cJSON_GetArraySize(lines_j);
+	if (count <= 0) return;
+
+	/* Release old source */
+	tui_free_script_lines(s);
+
+	/* Allocate new array */
+	s->script_lines = (char **)malloc((size_t)count * sizeof(char *));
+	if (s->script_lines == NULL) return;
+	s->script_line_count = count;
+
+	/* Reset breakpoints from this source load */
+	s->bp_line_count = 0;
+
+	int i = 0;
+	cJSON *lineobj = NULL;
+	cJSON_ArrayForEach(lineobj, lines_j) {
+		cJSON *text_j = cJSON_GetObjectItemCaseSensitive(lineobj, "text");
+		cJSON *num_j  = cJSON_GetObjectItemCaseSensitive(lineobj, "num");
+		cJSON *bp_j   = cJSON_GetObjectItemCaseSensitive(lineobj, "breakpoint");
+
+		const char *text = (cJSON_IsString(text_j) && text_j->valuestring != NULL)
+		                   ? text_j->valuestring : "";
+		s->script_lines[i] = strdup(text);
+		if (s->script_lines[i] == NULL) s->script_lines[i] = strdup("");
+
+		/* Record breakpoint lines */
+		if (cJSON_IsTrue(bp_j) && cJSON_IsNumber(num_j) &&
+			s->bp_line_count < TUI_MAX_BREAKPOINTS) {
+			s->bp_lines[s->bp_line_count++] = (unsigned long)num_j->valuedouble;
+		}
+
+		i++;
+	}
 }
 
 /* -------------------------------------------------------------------------
- * 2026-06-06 JES Phase B.0 #691: draw callbacks (placeholder content).
+ * 2026-06-07 JES Phase B.1 #691: transport write_line -- parse NDJSON responses.
+ *
+ * Handles two cases:
+ *   1. Notification: {"id":null,"op":"debug/suspended","params":{...}}
+ *      -> stores pending_thread_id and current_line; triggers source load
+ *         by storing the script path and invalidating the script pane.
+ *         In B.1 the source load is done inline using the stored source; the
+ *         full op_dispatch path for live sessions is wired in B.6.
+ *
+ *   2. Response to debug/getSource: {"id":N,"result":{"script":...,"lines":[...]}}
+ *      -> parses and stores source lines via tui_store_source(); invalidates
+ *         the script pane.
+ *
+ * Three-parameter signature per op_handler.h:45 (NOT the 2-param form the
+ * handoff doc incorrectly listed; see EXECUTION_PLAN.md 2.1 Claim 1).
  * ---------------------------------------------------------------------- */
 
-static void draw_script(boxen_window_t *win, void *ud) {
-	(void)ud;
+static void tui_write_line(void *ctx, const char *json, size_t len) {
+	/* 2026-06-07 JES Phase B.1 #691: parse NDJSON responses/notifications. */
+	tui_state_t *s = (tui_state_t *)ctx;
+	if (s == NULL || json == NULL || len == 0) return;
+
+	cJSON *root = cJSON_ParseWithLength(json, len);
+	if (root == NULL) return;
+
+	cJSON *op_j     = cJSON_GetObjectItemCaseSensitive(root, "op");
+	cJSON *result_j = cJSON_GetObjectItemCaseSensitive(root, "result");
+
+	if (cJSON_IsString(op_j) && op_j->valuestring != NULL &&
+		strcmp(op_j->valuestring, "debug/suspended") == 0) {
+		/* Case 1: suspended notification */
+		cJSON *params_j  = cJSON_GetObjectItemCaseSensitive(root, "params");
+		cJSON *tid_j     = params_j ? cJSON_GetObjectItemCaseSensitive(params_j, "threadId") : NULL;
+		cJSON *line_j    = params_j ? cJSON_GetObjectItemCaseSensitive(params_j, "line")     : NULL;
+		cJSON *script_j2 = params_j ? cJSON_GetObjectItemCaseSensitive(params_j, "script")   : NULL;
+
+		if (cJSON_IsNumber(tid_j))
+			s->pending_thread_id = (long)tid_j->valuedouble;
+		if (cJSON_IsNumber(line_j))
+			s->current_line = (long)line_j->valuedouble;
+		if (cJSON_IsString(script_j2) && script_j2->valuestring != NULL) {
+			strncpy(s->script_path, script_j2->valuestring,
+			        sizeof(s->script_path) - 1);
+			s->script_path[sizeof(s->script_path) - 1] = '\0';
+		}
+
+		/* Invalidate the script pane so the next present() redraws it */
+		if (s->script_win != NULL)
+			boxen_window_invalidate(s->script_win);
+
+	} else if (cJSON_IsObject(result_j)) {
+		/* Case 2: response containing a "result" object -- treat as getSource
+		 * response if it has a "lines" array. */
+		cJSON *lines_j = cJSON_GetObjectItemCaseSensitive(result_j, "lines");
+		if (cJSON_IsArray(lines_j)) {
+			tui_store_source(s, result_j);
+
+			/* Auto-scroll to current line if suspended */
+			if (s->current_line > 0 && s->script_win != NULL) {
+				boxen_window_ensure_visible(s->script_win, 0,
+				                            (int)(s->current_line - 1));
+			}
+			if (s->script_win != NULL)
+				boxen_window_invalidate(s->script_win);
+		}
+	}
+
+	cJSON_Delete(root);
+}
+
+/* -------------------------------------------------------------------------
+ * 2026-06-07 JES Phase B.1 #691: draw callbacks.
+ *
+ * draw_script_pane -- renders source lines with current-line highlight.
+ *
+ * Current-line highlight: we draw highlighted manually (BOXEN_ATTR_REVERSE
+ * on every cell of that content row) rather than calling
+ * boxen_window_set_row_highlight(). Reason: set_row_highlight writes spaces
+ * over cell characters (A.5 known limitation documented in boxen.h:466-482),
+ * erasing the gutter marker and source text. Drawing the row manually with
+ * BOXEN_ATTR_REVERSE preserves the character content.
+ *
+ * Gutter column (content col 0):
+ *   '>' current execution line
+ *   '*' line with a breakpoint
+ *   ' ' otherwise
+ *
+ * Off-by-one (EXECUTION_PLAN.md B.1 Sentinels):
+ *   ODB line numbers are 1-based; boxen content rows are 0-based.
+ *   content_row = line_num - 1.
+ *
+ * Auto-scroll: boxen_window_ensure_visible is called here so that every
+ * redraw keeps the current line visible. This covers both the suspended-
+ * notification path (via write_line -> invalidate -> redraw) and any
+ * explicit script pane invalidation that could move the viewport.
+ * ---------------------------------------------------------------------- */
+
+static void draw_script_pane(boxen_window_t *win, void *ud) {
+	tui_state_t *s = (tui_state_t *)ud;
 	int w = boxen_window_content_width(win);
 	if (w <= 0) return;
-	/* B.1 will render actual source lines. B.0 shows a placeholder. */
-	boxen_draw_text(win, 0, 0,
-	                "Script source will appear here (B.1)",
-	                BOXEN_COLOR_DEFAULT, BOXEN_COLOR_DEFAULT, BOXEN_ATTR_DIM);
+
+	if (s == NULL || s->script_lines == NULL || s->script_line_count <= 0) {
+		/* No source loaded yet -- show placeholder */
+		boxen_draw_text(win, 0, 0,
+		                "Script source will appear here (B.1)",
+		                BOXEN_COLOR_DEFAULT, BOXEN_COLOR_DEFAULT, BOXEN_ATTR_DIM);
+		return;
+	}
+
+	/* Tell boxen the total content height so it can compute scroll limits and
+	 * render the scrollbar. Must be set before ensure_visible. */
+	boxen_window_set_content_size(win, w, s->script_line_count);
+
+	/* Auto-scroll: ensure the current line is visible in the viewport */
+	if (s->current_line > 0) {
+		boxen_window_ensure_visible(win, 0, (int)(s->current_line - 1));
+	}
+
+	/* Render each line */
+	for (int i = 0; i < s->script_line_count; i++) {
+		int content_row = i;      /* 0-based content row */
+		long line_num   = i + 1; /* 1-based line number */
+
+		/* Determine gutter character */
+		char gutter = ' ';
+		if (line_num == s->current_line) {
+			gutter = '>';
+		} else {
+			for (int b = 0; b < s->bp_line_count; b++) {
+				if (s->bp_lines[b] == (unsigned long)line_num) {
+					gutter = '*';
+					break;
+				}
+			}
+		}
+
+		bool is_current = (line_num == s->current_line);
+		uint16_t attr   = is_current ? BOXEN_ATTR_REVERSE : BOXEN_ATTR_NONE;
+		uint16_t fg     = BOXEN_COLOR_DEFAULT;
+		uint16_t bg     = BOXEN_COLOR_DEFAULT;
+
+		/* Draw gutter */
+		boxen_set_cell(win, 0, content_row, (uint32_t)gutter, fg, bg, attr);
+
+		/* Draw source text (truncated to available width) */
+		const char *text = s->script_lines[i];
+		int text_len = (int)strlen(text);
+		int avail    = w - 1; /* one column reserved for gutter */
+		if (avail <= 0) continue;
+
+		/* Build a padded/truncated line buffer for uniform cell coverage */
+		char linebuf[512];
+		int copy = text_len < avail ? text_len : avail;
+		memcpy(linebuf, text, (size_t)copy);
+		/* Pad remainder with spaces so REVERSE attr covers the full row */
+		memset(linebuf + copy, ' ', (size_t)(avail - copy));
+		linebuf[avail] = '\0';
+
+		boxen_draw_text(win, 1, content_row, linebuf, fg, bg, attr);
+	}
 }
 
 static void draw_stack(boxen_window_t *win, void *ud) {
@@ -179,7 +389,8 @@ static void on_input(boxen_window_t *win, const boxen_event_t *ev, void *ud) {
  * ---------------------------------------------------------------------- */
 static void tui_wire_callbacks(tui_state_t *s) {
 	if (s->script_win != NULL) {
-		boxen_window_set_draw(s->script_win,  draw_script);
+		/* 2026-06-07 JES Phase B.1 #691: real draw callback replaces placeholder */
+		boxen_window_set_draw(s->script_win,  draw_script_pane);
 		boxen_window_set_input(s->script_win, on_input);
 		boxen_window_set_user_data(s->script_win, s);
 	}
@@ -199,6 +410,10 @@ static void tui_wire_callbacks(tui_state_t *s) {
 void debugger_tui_state_init(tui_state_t *s, int tw, int th) {
 	memset(s, 0, sizeof(tui_state_t));
 
+	/* 2026-06-07 JES Phase B.1 #691: initialize source state sentinels */
+	s->current_line    = -1;  /* -1 = not suspended */
+	s->pending_thread_id = -1;
+
 	/* Allocate heap transport (stub; B.6 wires debug_set_attach_transport) */
 	s->transport = calloc(1, sizeof(transport_t));
 	if (s->transport != NULL) {
@@ -215,6 +430,8 @@ void debugger_tui_state_teardown(tui_state_t *s) {
 	if (s->stack_win  != NULL)  { boxen_window_close(s->stack_win);   s->stack_win   = NULL; }
 	if (s->script_win != NULL)  { boxen_window_close(s->script_win);  s->script_win  = NULL; }
 	if (s->transport  != NULL)  { free(s->transport);                 s->transport   = NULL; }
+	/* 2026-06-07 JES Phase B.1 #691: free source lines */
+	tui_free_script_lines(s);
 }
 
 int debugger_tui_run_one_tick(tui_state_t *s, const boxen_event_t *ev) {

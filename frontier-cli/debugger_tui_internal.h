@@ -29,14 +29,30 @@
 /*
  * TUI state -- the data shared between the event loop and draw callbacks.
  *
- * B.0: placeholder layout only. Source/stack fields added in B.1/B.2.
+ * B.0: placeholder layout only.
+ * B.1: script source fields added (script_path, script_lines, script_line_count,
+ *      current_line, bp_lines, bp_line_count, pending_thread_id).
+ * B.2: stack/locals fields added.
  */
+
+/* Maximum number of breakpoints tracked in TUI state. */
+#define TUI_MAX_BREAKPOINTS 256
+
 typedef struct {
 	boxen_window_t *script_win;    /* left pane: script source (B.1) */
 	boxen_window_t *stack_win;     /* right pane: call stack + locals (B.2) */
 	boxen_window_t *footer_win;    /* pinned bottom: keybind hints */
 	transport_t    *transport;     /* heap-allocated in-process transport */
 	bool            quit_requested;/* set by on_input when 'q' / Esc / Ctrl-C */
+
+	/* 2026-06-07 JES Phase B.1 #691: script source state */
+	char   script_path[256];        /* dotted path of loaded script, or "" */
+	char **script_lines;            /* heap array of strdup'd line text strings */
+	int    script_line_count;       /* number of entries in script_lines */
+	long   current_line;            /* 1-based; -1 if not suspended */
+	long   pending_thread_id;       /* thread ID from last debug/suspended, or -1 */
+	unsigned long bp_lines[TUI_MAX_BREAKPOINTS]; /* 1-based line numbers with breakpoints */
+	int           bp_line_count;    /* number of valid entries in bp_lines */
 } tui_state_t;
 
 /*
