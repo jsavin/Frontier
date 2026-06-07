@@ -416,8 +416,46 @@ static void tui_write_line(void *ctx, const char *json, size_t len) {
 			boxen_window_invalidate(s->footer_win);
 
 	} else if (!cJSON_IsNull(result_j) && cJSON_IsObject(result_j)) {
-		/* Case 2: response containing a "result" object (debug/* responses).
-		 * Discriminate by which array key is present in the result:
+		/* Case 2: response containing a "result" object.
+		 *
+		 * 2026-06-07 JES Phase B.7 #749 round 1: discriminate eval responses
+		 * FIRST before falling through to debug/* sub-cases.
+		 *
+		 * send_eval_success in op_handler.c emits:
+		 *   {"id":N,"result":{"value":"<str>","type":"<typename>"},"success":true}
+		 * result is an OBJECT with "value" + "type" keys (not a bare string).
+		 *
+		 * Discrimination: if id matches eval_last_dispatched_id AND result has
+		 * both "value" and "type" keys, treat as an eval response.  Otherwise
+		 * fall through to the debug/* sub-cases (lines/frames/locals).
+		 *
+		 * eval_last_dispatched_id == 0 means no eval is pending; skip the check.
+		 */
+		cJSON *id_j2    = cJSON_GetObjectItemCaseSensitive(root, "id");
+		cJSON *value_j  = cJSON_GetObjectItemCaseSensitive(result_j, "value");
+		cJSON *type_j   = cJSON_GetObjectItemCaseSensitive(result_j, "type");
+
+		if (s->eval_last_dispatched_id != 0 &&
+		    cJSON_IsNumber(id_j2) &&
+		    (int)id_j2->valuedouble == s->eval_last_dispatched_id &&
+		    (cJSON_IsString(value_j) || cJSON_IsNull(value_j)) &&
+		    cJSON_IsString(type_j)) {
+			/* Eval response: extract string value and append to history. */
+			const char *expr_tag = "[eval]"; /* Phase B placeholder */
+			const char *result_str;
+
+			if (cJSON_IsString(value_j) && value_j->valuestring != NULL)
+				result_str = value_j->valuestring;
+			else
+				result_str = "null";
+
+			tui_eval_append_result(s, expr_tag, result_str);
+
+			if (s->footer_win != NULL)
+				boxen_window_invalidate(s->footer_win);
+
+		} else {
+		/* debug/* sub-cases: discriminate by which array key is present.
 		 *   "lines"  -> debug/getSource response  (B.1)
 		 *   "frames" -> debug/getStack response   (B.2)
 		 *   "locals" -> debug/getLocals response  (B.2) */
@@ -449,59 +487,9 @@ static void tui_write_line(void *ctx, const char *json, size_t len) {
 			if (s->stack_win != NULL)
 				boxen_window_invalidate(s->stack_win);
 		}
+		} /* end: debug/* sub-cases else branch */
 
-	} else {
-		/* Case 3 (B.7): script/eval response.
-		 *
-		 * Shape from op_handler.c send_eval_success:
-		 *   {"id":N,"result":"<value-string>","success":true}
-		 *   or
-		 *   {"id":N,"error":{"message":"..."},"success":false}
-		 *
-		 * The "result" field for script/eval is a string (not an object),
-		 * so it is NOT caught by the cJSON_IsObject(result_j) branch above.
-		 *
-		 * SENTINEL (EXECUTION_PLAN.md B.7): match on the "id" field.
-		 * eval_next_id tracks the last eval request ID.  If the id matches,
-		 * route to tui_eval_append_result.  debug/suspended notifications
-		 * always go to the suspension path via the "op" branch above, so
-		 * there is no conflict even when an eval response and a suspended
-		 * notification are in-flight simultaneously.
-		 *
-		 * We keep this matching loose (any id that matches eval_next_id)
-		 * because in-flight debug/* responses arrive with different ids and
-		 * will not match.  If there is no pending eval (eval_next_id == 0)
-		 * we skip the whole case. */
-		cJSON *id_j      = cJSON_GetObjectItemCaseSensitive(root, "id");
-		cJSON *result_str_j = cJSON_GetObjectItemCaseSensitive(root, "result");
-		cJSON *error_j   = cJSON_GetObjectItemCaseSensitive(root, "error");
-
-		/* eval_next_id is incremented AFTER dispatch, so the most-recently
-		 * dispatched eval had id = (eval_next_id - 1).  Match against that. */
-		if (s->eval_next_id > 1 && cJSON_IsNumber(id_j) &&
-		    (int)id_j->valuedouble == s->eval_next_id - 1) {
-			/* Matched a pending eval response.  Reconstruct the expression
-			 * from the dispatched request is not possible here (write_line
-			 * only receives the response).  Use a placeholder expr tag. */
-			const char *result_str;
-			const char *expr_tag = "[eval]"; /* Phase B placeholder */
-
-			if (cJSON_IsString(result_str_j) && result_str_j->valuestring != NULL) {
-				result_str = result_str_j->valuestring;
-			} else if (cJSON_IsObject(error_j)) {
-				cJSON *msg_j = cJSON_GetObjectItemCaseSensitive(error_j, "message");
-				result_str = (cJSON_IsString(msg_j) && msg_j->valuestring != NULL)
-				             ? msg_j->valuestring : "error";
-			} else {
-				result_str = "ok";
-			}
-
-			tui_eval_append_result(s, expr_tag, result_str);
-
-			if (s->footer_win != NULL)
-				boxen_window_invalidate(s->footer_win);
-		}
-	}
+	} /* end: cJSON_IsObject(result_j) branch */
 
 	cJSON_Delete(root);
 }
@@ -910,8 +898,9 @@ static int tui_json_escape(const char *src, char *dst, size_t dst_cap) {
  *   (B.4 P1 security class: all user-originated JSON string fields must be
  *   escaped before dispatch).  Worst-case: 256 bytes * 6 + NUL = 1537 bytes.
  *
- *   eval_next_id is used (NOT tui_req_id) so the eval responses can be
- *   distinguished from debug/* responses in tui_write_line.
+ *   2026-06-07 JES Phase B.7 #749 round 1: uses the shared tui_req_id counter
+ *   (single ID namespace).  The dispatched id is stored in eval_last_dispatched_id
+ *   so write_line Case 2 can match and route the response correctly.
  *
  * tui_eval_append_result -- format "[N] expr -> result" and append to the
  *   eval_history ring buffer.  Frees the oldest entry on wrap.
@@ -1019,6 +1008,12 @@ void tui_eval_submit(tui_state_t *s) {
 	char esc_expr[EVAL_INPUT_MAX * 6 + 1];
 	tui_json_escape(s->eval_input_buf, esc_expr, sizeof(esc_expr));
 
+	/* 2026-06-07 JES Phase B.7 #749 round 1: use the shared tui_req_id counter
+	 * for script/eval requests (single ID namespace, P1-1 fix).
+	 * Store the dispatched id so write_line can match the response. */
+	int eval_id = next_req_id(s);
+	s->eval_last_dispatched_id = eval_id;
+
 	/* Construct script/eval JSON request.
 	 * Wire format verified at op_handler.c:931:
 	 *   if (strcmp(op, "script/eval") == 0) { handle_script_eval(id, ...) }
@@ -1027,16 +1022,10 @@ void tui_eval_submit(tui_state_t *s) {
 	snprintf(req, sizeof(req),
 	         "{\"op\":\"script/eval\",\"id\":%d,"
 	         "\"params\":{\"expression\":\"%s\"}}",
-	         s->eval_next_id, esc_expr);
+	         eval_id, esc_expr);
 
 	/* Dispatch (test mode: goes to capture buf; production: goes to op_dispatch) */
 	tui_dispatch_json(s, req);
-
-	/* Increment eval_next_id after dispatch so the next eval gets a fresh id.
-	 * write_line matches responses against (eval_next_id - 1) -- the last id
-	 * that was dispatched.  Wrap at 0x7FFF to stay positive. */
-	s->eval_next_id++;
-	if (s->eval_next_id > 0x7FFF) s->eval_next_id = 1;
 
 	/* Clear input after dispatch; preserve cursor at 0 */
 	s->eval_input_buf[0]  = '\0';
@@ -2083,10 +2072,16 @@ static void on_input(boxen_window_t *win, const boxen_event_t *ev, void *ud) {
 				s->eval_input_buf[len - 1] = '\0';
 				if (s->eval_input_cursor > 0) s->eval_input_cursor--;
 			}
+			/* 2026-06-07 JES Phase B.7 #749 round 1: borrow-restore pattern.
+			 * A.7 gate requires the cursor-owner window to be focused.
+			 * script_win holds focus for key routing; borrow footer_win
+			 * transiently for each cursor update, then restore. */
 			if (s->footer_win != NULL) {
+				boxen_window_focus(s->footer_win);
 				boxen_window_set_cursor(s->footer_win,
 				                        EVAL_INPUT_PROMPT_WIDTH + s->eval_input_cursor,
 				                        0);
+				boxen_window_focus(s->script_win);
 				boxen_window_invalidate(s->footer_win);
 			}
 			return;
@@ -2100,10 +2095,16 @@ static void on_input(boxen_window_t *win, const boxen_event_t *ev, void *ud) {
 				s->eval_input_buf[len + 1] = '\0';
 				s->eval_input_cursor = len + 1;
 			}
+			/* 2026-06-07 JES Phase B.7 #749 round 1: borrow-restore pattern.
+			 * A.7 gate requires the cursor-owner window to be focused.
+			 * script_win holds focus for key routing; borrow footer_win
+			 * transiently for each cursor update, then restore. */
 			if (s->footer_win != NULL) {
+				boxen_window_focus(s->footer_win);
 				boxen_window_set_cursor(s->footer_win,
 				                        EVAL_INPUT_PROMPT_WIDTH + s->eval_input_cursor,
 				                        0);
+				boxen_window_focus(s->script_win);
 				boxen_window_invalidate(s->footer_win);
 			}
 			return;
@@ -2270,18 +2271,18 @@ void debugger_tui_state_init(tui_state_t *s, int tw, int th) {
 	s->identifier_popup_line[0] = '\0';
 
 	/* 2026-06-07 JES Phase B.7 #691: initialize scratch-eval pane state.
+	 * 2026-06-07 JES Phase B.7 #749 round 1: eval_next_id removed; replaced by
+	 * eval_last_dispatched_id (0 = no eval pending).  eval uses tui_req_id.
 	 * eval_pane_active starts false (pane is hidden until ':' is pressed).
 	 * eval_input_buf starts empty (NUL at index 0 from the memset above).
-	 * eval_next_id starts at 1 so the first dispatch is easily distinguished
-	 * from "no eval dispatched yet" (eval_next_id == 0) when matching responses.
 	 * All ring buffer fields start at 0 from the memset; eval_history pointers
 	 * are all NULL (calloc-equivalent from memset + NUL-init). */
-	s->eval_pane_active    = false;
-	s->eval_input_cursor   = 0;
-	s->eval_history_count  = 0;
-	s->eval_history_head   = 0;
-	s->eval_history_scroll = 0;
-	s->eval_next_id        = 1;
+	s->eval_pane_active          = false;
+	s->eval_input_cursor         = 0;
+	s->eval_history_count        = 0;
+	s->eval_history_head         = 0;
+	s->eval_history_scroll       = 0;
+	s->eval_last_dispatched_id   = 0;
 
 	/* Allocate heap transport (stub; B.6 wires debug_set_attach_transport) */
 	s->transport = calloc(1, sizeof(transport_t));
@@ -2347,10 +2348,10 @@ void debugger_tui_state_teardown(tui_state_t *s) {
 	}
 	s->eval_history_count  = 0;
 	s->eval_history_head   = 0;
-	s->eval_pane_active    = false;
-	s->eval_input_buf[0]   = '\0';
-	s->eval_input_cursor   = 0;
-	s->eval_next_id        = 0;
+	s->eval_pane_active          = false;
+	s->eval_input_buf[0]         = '\0';
+	s->eval_input_cursor         = 0;
+	s->eval_last_dispatched_id   = 0;
 	s->debug_state = TUI_DEBUG_IDLE;
 }
 

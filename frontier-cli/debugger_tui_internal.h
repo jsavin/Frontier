@@ -263,6 +263,8 @@ typedef struct {
 	char  identifier_popup_line[TUI_IDENTIFIER_POPUP_MAX];
 
 	/* 2026-06-07 JES Phase B.7 #691: scratch-eval pane state.
+	 * 2026-06-07 JES Phase B.7 #749 round 1: eval_next_id removed; eval uses
+	 *   tui_req_id (single namespace) and eval_last_dispatched_id for matching.
 	 *
 	 * eval_pane_active   -- true while ':' command mode is engaged (input visible).
 	 *   ':'   activates (only when TUI_DEBUG_SUSPENDED).
@@ -291,9 +293,10 @@ typedef struct {
 	 * eval_history_scroll -- scroll offset for history display in the footer area.
 	 *   Reserved for future use (Phase C+); always 0 in Phase B.
 	 *
-	 * eval_next_id       -- incrementing request ID for script/eval dispatches.
-	 *   Starts at 1 in state_init.  Used to correlate write_line responses.
-	 *   Does NOT share the tui_req_id counter (different namespace).
+	 * eval_last_dispatched_id -- tui_req_id value used for the most recently
+	 *   submitted script/eval request.  0 when no eval has been dispatched.
+	 *   write_line matches incoming responses against this id to route eval
+	 *   results.  Uses the shared tui_req_id counter (single ID namespace).
 	 */
 	bool  eval_pane_active;
 	char  eval_input_buf[EVAL_INPUT_MAX];
@@ -302,7 +305,7 @@ typedef struct {
 	int   eval_history_count;
 	int   eval_history_head;
 	int   eval_history_scroll;
-	int   eval_next_id;
+	int   eval_last_dispatched_id;
 } tui_state_t;
 
 /*

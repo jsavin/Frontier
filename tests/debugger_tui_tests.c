@@ -2823,7 +2823,8 @@ static void test_full_lifecycle_mock(void) {
  *   test_eval_input_preserved_after_escape  -- eval_input_buf survives Escape
  *   test_eval_submit_clears_input           -- input cleared after submit
  *   test_eval_empty_submit_is_noop          -- empty expr does not dispatch
- *   test_eval_response_parsed_from_write_line -- write_line routes script/eval response
+ *   test_eval_response_parsed_from_write_line -- write_line routes actual eval shape
+ *   test_eval_cursor_column_tracks_input     -- cursor col = PROMPT_W + typed chars
  * ========================================================================= */
 
 /* -------------------------------------------------------------------------
@@ -3228,19 +3229,26 @@ static void test_eval_empty_submit_is_noop(void) {
 /* -------------------------------------------------------------------------
  * test_eval_response_parsed_from_write_line
  *
- * Spec: Dispatch a script/eval request (capture the eval_next_id used).
- * Inject a synthetic script/eval response through write_line matching that id.
- * Verify eval_history_count == 1 and the entry contains the result string.
+ * 2026-06-07 JES Phase B.7 #749 round 1: rewritten to use the ACTUAL wire
+ * shape from op_handler.c::send_eval_success.
  *
- * Wire format of script/eval response (from op_handler.c send_eval_success):
- *   {"id":N,"result":"<value-as-string>","success":true}
- *   OR {"id":N,"error":{"message":"..."},"success":false}
+ * send_eval_success emits (op_handler.c lines 251-268):
+ *   cJSON_AddNumberToObject(response, "id", id);
+ *   cJSON_AddStringToObject(result_obj, "value", str_value);
+ *   cJSON_AddStringToObject(result_obj, "type", type_name);
+ *   cJSON_AddItemToObject(response, "result", result_obj);
+ *   cJSON_AddBoolToObject(response, "success", 1);
  *
- * We test the success path here.
+ * Wire format: {"id":N,"result":{"value":"2","type":"number"},"success":true}
+ * result is an OBJECT with "value" + "type" keys, NOT a bare string.
  *
- * SENTINEL (EXECUTION_PLAN.md B.7): write_line must use the "id" field to
- * route script/eval responses to tui_eval_append_result.  debug/suspended
- * notifications always go to the suspension path regardless of pending eval.
+ * The previous test used {"id":N,"result":"2","success":true} (bare string)
+ * which never matched Case 2 (cJSON_IsObject) in write_line -- it was testing
+ * a fabricated shape, not the actual protocol.
+ *
+ * SENTINEL: write_line Case 2 must discriminate eval responses by
+ * eval_last_dispatched_id match + value/type keys before falling through to
+ * debug/* sub-cases.
  * ---------------------------------------------------------------------- */
 static void test_eval_response_parsed_from_write_line(void) {
 	setup();
@@ -3253,16 +3261,24 @@ static void test_eval_response_parsed_from_write_line(void) {
 	g_state.eval_input_buf[sizeof(g_state.eval_input_buf) - 1] = '\0';
 	g_state.eval_input_cursor = 3;
 
-	/* Capture the eval id before submitting */
-	int expected_id = g_state.eval_next_id;
+	/* Capture the id that will be used: next_req_id advances tui_req_id,
+	 * so the dispatched id will be the current tui_req_id value. */
+	int expected_id = g_state.tui_req_id;
 
-	/* Submit (this dispatches to capture buf in test mode) */
+	/* Submit (dispatches to capture buf in test mode; sets eval_last_dispatched_id) */
 	tui_eval_submit(&g_state);
 
-	/* Inject a synthetic script/eval success response matching the dispatched id */
+	/* Verify eval_last_dispatched_id was set to the id we expect */
+	assert(g_state.eval_last_dispatched_id == expected_id);
+
+	/* Inject a synthetic script/eval success response matching the ACTUAL
+	 * wire shape from op_handler.c::send_eval_success (lines 251-268):
+	 *   {"id":N,"result":{"value":"2","type":"number"},"success":true}
+	 * result is an OBJECT with value+type keys, not a bare string. */
 	char resp[256];
 	snprintf(resp, sizeof(resp),
-	         "{\"id\":%d,\"result\":\"2\",\"success\":true}", expected_id);
+	         "{\"id\":%d,\"result\":{\"value\":\"2\",\"type\":\"number\"},\"success\":true}",
+	         expected_id);
 	assert(g_state.transport != NULL);
 	g_state.transport->write_line(g_state.transport->ctx, resp, strlen(resp));
 
@@ -3271,6 +3287,62 @@ static void test_eval_response_parsed_from_write_line(void) {
 	assert(g_state.eval_history[0] != NULL);
 	assert(strstr(g_state.eval_history[0], "2") != NULL);
 
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * test_eval_cursor_column_tracks_input
+ *
+ * 2026-06-07 JES Phase B.7 #749 round 1 P1-2 regression test.
+ *
+ * Spec: Activate eval pane; type 'x', 'y', 'z' one keystroke at a time.
+ * After each keystroke the Backspace/char handlers must apply the borrow-
+ * restore pattern (boxen_window_focus(footer) / set_cursor / focus(script))
+ * so cursor updates are not silently dropped by the A.7 gate.
+ *
+ * Assert: after typing 3 chars the mock backend reports cursor column
+ * == EVAL_INPUT_PROMPT_WIDTH + 3 (prompt width 2 + 3 typed chars = 5).
+ *
+ * Also verify a Backspace correctly decrements the cursor column.
+ * ---------------------------------------------------------------------- */
+static void test_eval_cursor_column_tracks_input(void) {
+	setup();
+	g_state.debug_state = TUI_DEBUG_SUSPENDED;
+
+	/* Activate the eval pane (cursor shown at column EVAL_INPUT_PROMPT_WIDTH) */
+	tui_eval_activate(&g_state);
+	assert(g_state.eval_pane_active == true);
+
+	/* Type 'x', 'y', 'z' */
+	char chars[] = {'x', 'y', 'z'};
+	for (int i = 0; i < 3; i++) {
+		boxen_event_t ev;
+		memset(&ev, 0, sizeof(ev));
+		ev.type    = BOXEN_EV_KEY;
+		ev.key.key = BOXEN_KEY_NONE;
+		ev.key.ch  = (uint32_t)chars[i];
+		ev.key.mod = BOXEN_MOD_NONE;
+		debugger_tui_run_one_tick(&g_state, &ev);
+	}
+
+	/* Cursor must be at EVAL_INPUT_PROMPT_WIDTH + 3 == 2 + 3 == 5 */
+	int cx = -1, cy = -1;
+	boxen_mock_get_cursor(&cx, &cy);
+	assert(cx == EVAL_INPUT_PROMPT_WIDTH + 3);
+
+	/* Backspace: cursor retreats by 1 -> col 4 */
+	boxen_event_t bsev;
+	memset(&bsev, 0, sizeof(bsev));
+	bsev.type    = BOXEN_EV_KEY;
+	bsev.key.key = BOXEN_KEY_BACKSPACE;
+	bsev.key.ch  = 0;
+	bsev.key.mod = BOXEN_MOD_NONE;
+	debugger_tui_run_one_tick(&g_state, &bsev);
+
+	boxen_mock_get_cursor(&cx, &cy);
+	assert(cx == EVAL_INPUT_PROMPT_WIDTH + 2);
+
+	tui_eval_dismiss(&g_state);
 	teardown();
 }
 
@@ -3383,6 +3455,7 @@ int main(void) {
 	TR_RUN(test_eval_submit_clears_input);
 	TR_RUN(test_eval_empty_submit_is_noop);
 	TR_RUN(test_eval_response_parsed_from_write_line);
+	TR_RUN(test_eval_cursor_column_tracks_input);
 
 	TR_SUMMARY();
 	return TR_EXIT_CODE();
