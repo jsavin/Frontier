@@ -1,6 +1,7 @@
 /*
  * boxen.c -- window manager core: primitive, clipping, z-order, redraw,
- *            focus, input dispatch, modal, event loop (A.2 + A.3).
+ *            focus, input dispatch, modal, event loop, resize/move state
+ *            machine (A.2 + A.3 + A.4).
  *
  * Implements (A.2):
  *   boxen_init / boxen_shutdown         -- library lifecycle
@@ -22,6 +23,14 @@
  *   boxen_poll_event                    -- forwards to backend->poll_event
  *   boxen_dispatch_event                -- focus/modal/at-point input routing
  *   boxen_run / boxen_quit              -- convenience main loop with quit flag
+ *
+ * Implements (A.4):
+ *   boxen_window_set_resizable          -- enable/disable resize via mouse/keyboard
+ *   boxen_window_set_movable            -- enable/disable move via mouse/keyboard
+ *   boxen_window_set_min_size           -- minimum window dimensions for clamping
+ *   hit_test_window (static)            -- classify screen click relative to window
+ *   g_drag state machine                -- NONE / MOVING / RESIZING / MOVING_KB / RESIZING_KB
+ *   BOXEN_EV_RESIZE handling            -- clamp all windows to new terminal size
  *
  * Stubs (later milestones):
  *   scrolling -- A.5
@@ -69,6 +78,62 @@ static boxen_window_t        *g_focused_window = NULL;
 static bool                   g_should_quit     = false;
 
 /* -------------------------------------------------------------------------
+ * A.4 drag/resize state machine
+ *
+ * DRAG_NONE: normal event dispatch, no drag in progress.
+ * DRAG_MOVING: mouse is held on a movable window's title bar; motion events
+ *   update win->rect.x/y by (current - anchor) delta.
+ * DRAG_RESIZING: mouse is held on a resizable window's corner; motion events
+ *   update win->rect.w/h (and possibly x/y for non-BR corners), clamped to
+ *   win->min_w / win->min_h.
+ * DRAG_MOVING_KB: Ctrl-M was pressed on the focused window; arrow keys shift
+ *   win->rect.x/y by 1; Enter/Escape ends the mode.
+ * DRAG_RESIZING_KB: Ctrl-R was pressed on the focused window; arrow keys
+ *   shift win->rect.w/h by 1, clamped to min; Enter/Escape ends the mode.
+ *
+ * corner encoding (for DRAG_RESIZING):
+ *   0 = BR (bottom-right): drag changes w and h; origin fixed.
+ *   1 = BL (bottom-left):  drag changes w, h, and x; y fixed.
+ *   2 = TR (top-right):    drag changes w, h, and y; x fixed.
+ *   3 = TL (top-left):     drag changes all four: x, y, w, h.
+ * ---------------------------------------------------------------------- */
+
+typedef enum {
+	DRAG_NONE,
+	DRAG_MOVING,
+	DRAG_RESIZING,
+	DRAG_MOVING_KB,
+	DRAG_RESIZING_KB,
+} drag_state_t;
+
+/* Hit-test region codes returned by hit_test_window(). */
+#define HIT_NONE       0
+#define HIT_TITLE      1
+#define HIT_BODY       2
+#define HIT_CORNER_BR  3
+#define HIT_CORNER_BL  4
+#define HIT_CORNER_TR  5
+#define HIT_CORNER_TL  6
+
+static struct {
+	drag_state_t   state;
+	boxen_window_t *win;
+	int             anchor_x;    /* mouse x when drag started */
+	int             anchor_y;    /* mouse y when drag started */
+	boxen_rect_t    start_rect;  /* window rect when drag started */
+	int             corner;      /* which corner (0=BR,1=BL,2=TR,3=TL) */
+	bool            was_pressed; /* tracks press-to-release transition so
+	                              * the drag ends on any release event,
+	                              * regardless of whether the terminal
+	                              * preserves button info on release */
+} g_drag;
+
+/* Forward declaration: defined later in the Z-order section but used by the
+ * resize/move property setters above it in the file. */
+static int find_live_window_index(const boxen_window_t *win);
+static void clamp_rect_to_bounds(boxen_rect_t *r);
+
+/* -------------------------------------------------------------------------
  * Library lifecycle
  * ---------------------------------------------------------------------- */
 
@@ -95,6 +160,14 @@ boxen_result_t boxen_init(const boxen_backend_t *backend,
 	g_backend      = backend;
 	g_initialized  = true;
 	g_window_count = 0;
+	g_focused_window = NULL;
+	g_should_quit  = false;
+	/* Reset drag state for symmetry with shutdown. BSS-init guarantees this
+	 * on first call, but explicit reset handles the re-init-after-error case
+	 * where an embedder calls init() without a prior shutdown(). */
+	g_drag.state       = DRAG_NONE;
+	g_drag.win         = NULL;
+	g_drag.was_pressed = false;
 	boxen__set_last_error(NULL);
 
 	return BOXEN_OK;
@@ -126,6 +199,10 @@ void boxen_shutdown(void) {
 	g_initialized    = false;
 	g_focused_window = NULL;
 	g_should_quit    = false;
+
+	/* Reset drag state so a re-init starts clean. */
+	g_drag.state = DRAG_NONE;
+	g_drag.win   = NULL;
 }
 
 /* -------------------------------------------------------------------------
@@ -225,6 +302,15 @@ void boxen_window_close(boxen_window_t *win) {
 		g_focused_window = NULL;
 	}
 
+	/* Clear drag state if this window is the drag target. Without this,
+	 * the next mouse-motion or arrow-key event would call drag_*_update
+	 * with g_drag.win pointing at freed memory -- UAF write. Mirrors the
+	 * focus-clear pattern above. */
+	if (g_drag.win == win) {
+		g_drag.state = DRAG_NONE;
+		g_drag.win   = NULL;
+	}
+
 	win->magic = 0;  /* Mark as dead BEFORE freeing so a use-after-free read
 	                    sees a non-magic value if memory is read back. */
 	free(win->title);
@@ -300,21 +386,39 @@ int boxen_window_content_height(const boxen_window_t *win) {
 	return win->rect.h;
 }
 
-/* Phase C stubs -- declared in boxen.h; no-ops at A.2. */
+/* A.4: resize/move property setters.
+ * Use find_live_window_index guard to reject stale/NULL/non-live pointers.
+ * The min_w/min_h default is 0 (from calloc), which the drag/clamp code
+ * interprets as 1 (so a window can always be made at least 1x1). Callers
+ * that want a larger minimum must call set_min_size explicitly. */
 void boxen_window_set_resizable(boxen_window_t *win, bool resizable) {
-	if (win != NULL) win->resizable = resizable;
+	if (find_live_window_index(win) < 0) return;
+	win->resizable = resizable;
 }
 
 void boxen_window_set_movable(boxen_window_t *win, bool movable) {
-	if (win != NULL) win->movable = movable;
+	if (find_live_window_index(win) < 0) return;
+	win->movable = movable;
 }
 
 void boxen_window_set_min_size(boxen_window_t *win, int min_w, int min_h) {
-	if (win != NULL) { win->min_w = min_w; win->min_h = min_h; }
+	if (find_live_window_index(win) < 0) return;
+	/* Coerce non-positive to 1 at write time so read sites don't need to
+	 * compensate. Stale negative values were silently coerced at read
+	 * time previously; storing the canonical form is cheaper and clearer. */
+	if (min_w < 1) min_w = 1;
+	if (min_h < 1) min_h = 1;
+	if (min_w > BOXEN_MAX_DIMENSION) min_w = BOXEN_MAX_DIMENSION;
+	if (min_h > BOXEN_MAX_DIMENSION) min_h = BOXEN_MAX_DIMENSION;
+	win->min_w = min_w;
+	win->min_h = min_h;
 }
 
 void boxen_window_set_pinned(boxen_window_t *win, boxen_pin_edge_t edge) {
-	if (win != NULL) win->pinned = edge;
+	/* Consistent with A.4 pattern on the other window mutators: reject
+	 * stale/foreign/NULL pointers via find_live_window_index. */
+	if (find_live_window_index(win) < 0) return;
+	win->pinned = edge;
 }
 
 /* -------------------------------------------------------------------------
@@ -340,6 +444,200 @@ static int find_live_window_index(const boxen_window_t *win) {
 		if (g_windows[i] == win) return i;
 	}
 	return -1;
+}
+
+/* -------------------------------------------------------------------------
+ * A.4 hit-testing
+ *
+ * Given a screen position (sx, sy), classify the click relative to a window:
+ *
+ *   HIT_NONE      -- outside the window entirely
+ *   HIT_CORNER_TL -- single-cell at the top-left corner (rect.x, rect.y)
+ *   HIT_CORNER_TR -- single-cell at the top-right corner (rect.x+w-1, rect.y)
+ *   HIT_CORNER_BL -- single-cell at the bottom-left corner (rect.x, rect.y+h-1)
+ *   HIT_CORNER_BR -- single-cell at the bottom-right corner (rect.x+w-1, rect.y+h-1)
+ *   HIT_TITLE     -- top row (y == rect.y) excluding the two corner cells
+ *   HIT_BODY      -- everything else inside the window
+ *
+ * Chrome is not drawn at A.4 (that is A.6), but this geometry holds because
+ * the title row / corner cells are the universally-expected hit regions for
+ * a terminal window manager whether or not chrome is drawn.
+ * ---------------------------------------------------------------------- */
+
+static int hit_test_window(const boxen_window_t *win, int sx, int sy) {
+	if (win == NULL) return HIT_NONE;
+	int x0 = win->rect.x;
+	int y0 = win->rect.y;
+	int x1 = win->rect.x + win->rect.w - 1;  /* right edge column */
+	int y1 = win->rect.y + win->rect.h - 1;  /* bottom edge row */
+
+	/* Outside entirely */
+	if (sx < x0 || sx > x1 || sy < y0 || sy > y1) return HIT_NONE;
+
+	/* Corner cells (highest priority -- checked before title/body) */
+	if (sx == x0 && sy == y0) return HIT_CORNER_TL;
+	if (sx == x1 && sy == y0) return HIT_CORNER_TR;
+	if (sx == x0 && sy == y1) return HIT_CORNER_BL;
+	if (sx == x1 && sy == y1) return HIT_CORNER_BR;
+
+	/* Title row: topmost row, excluding corners already handled above */
+	if (sy == y0) return HIT_TITLE;
+
+	return HIT_BODY;
+}
+
+/* -------------------------------------------------------------------------
+ * A.4 terminal-resize clamping
+ *
+ * Called when a BOXEN_EV_RESIZE event arrives. Iterates every window and
+ * ensures its rect fits within the new (new_w x new_h) terminal:
+ *
+ *   1. Shrink w to fit if rect.x + w > new_w. Floor at min_w (default 1).
+ *   2. If rect.x >= new_w (window entirely off screen), shift left until
+ *      the left edge is just inside the terminal.
+ *   3. Same logic for h / rect.y / min_h.
+ *
+ * min_w and min_h default to 1 when not set (zero-valued from calloc).
+ * ---------------------------------------------------------------------- */
+
+static void clamp_windows_to_terminal(int new_w, int new_h) {
+	/* Defensive: an untrusted backend or synthetic event could supply
+	 * pathological dimensions. Cap at BOXEN_MAX_DIMENSION and floor at 0
+	 * before deriving rect-shift arithmetic that would otherwise overflow. */
+	if (new_w < 0) new_w = 0;
+	if (new_w > BOXEN_MAX_DIMENSION) new_w = BOXEN_MAX_DIMENSION;
+	if (new_h < 0) new_h = 0;
+	if (new_h > BOXEN_MAX_DIMENSION) new_h = BOXEN_MAX_DIMENSION;
+
+	for (int i = 0; i < g_window_count; i++) {
+		boxen_window_t *w = g_windows[i];
+		if (w == NULL) continue;
+
+		int min_w = (w->min_w > 0) ? w->min_w : 1;
+		int min_h = (w->min_h > 0) ? w->min_h : 1;
+
+		/* Horizontal: shrink width first, then shift origin if needed. */
+		if (w->rect.w > new_w) w->rect.w = new_w;
+		if (w->rect.w < min_w) w->rect.w = min_w;
+		if (w->rect.x + w->rect.w > new_w) {
+			w->rect.x = new_w - w->rect.w;
+		}
+		if (w->rect.x < 0) w->rect.x = 0;
+
+		/* Vertical: same pattern. */
+		if (w->rect.h > new_h) w->rect.h = new_h;
+		if (w->rect.h < min_h) w->rect.h = min_h;
+		if (w->rect.y + w->rect.h > new_h) {
+			w->rect.y = new_h - w->rect.h;
+		}
+		if (w->rect.y < 0) w->rect.y = 0;
+
+		/* Final invariant restoration. */
+		clamp_rect_to_bounds(&w->rect);
+	}
+}
+
+/* -------------------------------------------------------------------------
+ * A.4 drag update helpers
+ * ---------------------------------------------------------------------- */
+
+/* Clamp a rect's fields to BOXEN_MAX_DIMENSION bounds (A.2 invariant).
+ * boxen_window_set_rect enforces this on the public path; A.4's drag and
+ * keyboard-step paths write rect fields directly, bypassing that check, so
+ * this helper restores the invariant at the end of every direct write.
+ * Without this, an attacker-controlled or buggy mouse stream could drive
+ * a window dimension to multi-GB values and cause signed-int overflow in
+ * downstream arithmetic (hit_test rect.x + rect.w - 1, etc.). */
+static void clamp_rect_to_bounds(boxen_rect_t *r) {
+	if (r->x < -BOXEN_MAX_DIMENSION) r->x = -BOXEN_MAX_DIMENSION;
+	if (r->x >  BOXEN_MAX_DIMENSION) r->x =  BOXEN_MAX_DIMENSION;
+	if (r->y < -BOXEN_MAX_DIMENSION) r->y = -BOXEN_MAX_DIMENSION;
+	if (r->y >  BOXEN_MAX_DIMENSION) r->y =  BOXEN_MAX_DIMENSION;
+	if (r->w < 0) r->w = 0;
+	if (r->w > BOXEN_MAX_DIMENSION) r->w = BOXEN_MAX_DIMENSION;
+	if (r->h < 0) r->h = 0;
+	if (r->h > BOXEN_MAX_DIMENSION) r->h = BOXEN_MAX_DIMENSION;
+}
+
+/* Apply a move drag delta to the active window. Final position is clamped
+ * to BOXEN_MAX_DIMENSION bounds; terminal-extent clamping is NOT applied
+ * here so a user can briefly drag a window off-screen before releasing
+ * (matches typical TUI/desktop window manager behavior). */
+static void drag_move_update(int sx, int sy) {
+	if (g_drag.win == NULL) return;
+	int dx = sx - g_drag.anchor_x;
+	int dy = sy - g_drag.anchor_y;
+	int new_x = g_drag.start_rect.x + dx;
+	int new_y = g_drag.start_rect.y + dy;
+	g_drag.win->rect.x = new_x;
+	g_drag.win->rect.y = new_y;
+	clamp_rect_to_bounds(&g_drag.win->rect);
+}
+
+/* Apply a resize drag delta to the active window for a BR corner drag.
+ * Only BR is implemented for A.4; TL/TR/BL expansion is straightforward
+ * using the same pattern if needed for A.6+. */
+static void drag_resize_update(int sx, int sy) {
+	if (g_drag.win == NULL) return;
+	boxen_window_t *w  = g_drag.win;
+	int dx = sx - g_drag.anchor_x;
+	int dy = sy - g_drag.anchor_y;
+
+	int min_w = (w->min_w > 0) ? w->min_w : 1;
+	int min_h = (w->min_h > 0) ? w->min_h : 1;
+
+	int new_x = g_drag.start_rect.x;
+	int new_y = g_drag.start_rect.y;
+	int new_w = g_drag.start_rect.w;
+	int new_h = g_drag.start_rect.h;
+
+	switch (g_drag.corner) {
+	case 0: /* BR: grow/shrink right and bottom; origin fixed */
+		new_w = g_drag.start_rect.w + dx;
+		new_h = g_drag.start_rect.h + dy;
+		break;
+	case 1: /* BL: grow/shrink left and bottom; right edge and top fixed */
+		new_x = g_drag.start_rect.x + dx;
+		new_w = g_drag.start_rect.w - dx;
+		new_h = g_drag.start_rect.h + dy;
+		break;
+	case 2: /* TR: grow/shrink right and top; left edge and bottom fixed */
+		new_y = g_drag.start_rect.y + dy;
+		new_w = g_drag.start_rect.w + dx;
+		new_h = g_drag.start_rect.h - dy;
+		break;
+	case 3: /* TL: all four change */
+		new_x = g_drag.start_rect.x + dx;
+		new_y = g_drag.start_rect.y + dy;
+		new_w = g_drag.start_rect.w - dx;
+		new_h = g_drag.start_rect.h - dy;
+		break;
+	default:
+		break;
+	}
+
+	/* Clamp to minimum size. For non-BR corners, adjust origin to keep the
+	 * fixed edge in place when the minimum kicks in. */
+	if (new_w < min_w) {
+		if (g_drag.corner == 1 || g_drag.corner == 3) {
+			/* BL or TL: left edge was moving; fix the right edge. */
+			new_x = g_drag.start_rect.x + g_drag.start_rect.w - min_w;
+		}
+		new_w = min_w;
+	}
+	if (new_h < min_h) {
+		if (g_drag.corner == 2 || g_drag.corner == 3) {
+			/* TR or TL: top edge was moving; fix the bottom edge. */
+			new_y = g_drag.start_rect.y + g_drag.start_rect.h - min_h;
+		}
+		new_h = min_h;
+	}
+
+	w->rect.x = new_x;
+	w->rect.y = new_y;
+	w->rect.w = new_w;
+	w->rect.h = new_h;
+	clamp_rect_to_bounds(&w->rect);
 }
 
 void boxen_window_raise(boxen_window_t *win) {
@@ -487,19 +785,27 @@ boxen_result_t boxen_poll_event(boxen_event_t *out, int timeout_ms) {
  * Key events:
  *   If a modal window exists, dispatch to that window only.
  *   Otherwise dispatch to the focused window (if any).
+ *   While in a keyboard drag mode (DRAG_MOVING_KB / DRAG_RESIZING_KB),
+ *   arrow keys are intercepted to update the window rect; Enter/Escape
+ *   end the mode. Non-arrow keys fall through to the focused window.
  *
  * Mouse events:
- *   If a modal window exists, dispatch to the modal window only.
+ *   If in a drag state, mouse events continue to drive the drag regardless
+ *   of which window the pointer is over. This is "mouse capture" -- once a
+ *   drag starts, all motion/release events belong to the drag until release.
+ *   If a modal window exists and no drag is active, dispatch to the modal.
  *   Otherwise dispatch to the topmost window at (ev->mouse.x, ev->mouse.y).
  *
- * Resize events:
- *   Passed to the focused window. If no window has focus yet (e.g. before
- *   the first boxen_window_focus call), the resize event is silently
- *   dropped at this layer -- A.4 will replace this with terminal-resize
- *   clamping logic that touches every window regardless of focus. Until
- *   then, consumers that need pre-focus resize handling should call
- *   boxen_poll_event() directly and handle BOXEN_EV_RESIZE before
- *   delegating remaining events to boxen_dispatch_event().
+ *   Press on a movable window's title bar: enter DRAG_MOVING.
+ *   Press on a resizable window's corner: enter DRAG_RESIZING.
+ *   Motion while dragging: update rect (with min_size clamping for resize).
+ *   Release: end the drag.
+ *
+ * Resize events (BOXEN_EV_RESIZE):
+ *   Clamp all windows to the new terminal dimensions (A.4 behavior), then
+ *   dispatch to the focused window so the application can react (e.g.,
+ *   re-layout content). This replaces the A.3 stub that only passed the
+ *   event to the focused window.
  * ---------------------------------------------------------------------- */
 
 void boxen_dispatch_event(const boxen_event_t *ev) {
@@ -518,21 +824,156 @@ void boxen_dispatch_event(const boxen_event_t *ev) {
 
 	switch (ev->type) {
 	case BOXEN_EV_KEY:
+		/* A.4 keyboard drag mode: intercept arrows + Enter/Esc.
+		 * All rect mutations are followed by clamp_rect_to_bounds() to
+		 * preserve the A.2 invariant. */
+		if (g_drag.state == DRAG_MOVING_KB && g_drag.win != NULL) {
+			int step = 1;
+			boxen_window_t *kw = g_drag.win;
+			if (ev->key.key == BOXEN_KEY_UP)    { kw->rect.y -= step; clamp_rect_to_bounds(&kw->rect); return; }
+			if (ev->key.key == BOXEN_KEY_DOWN)  { kw->rect.y += step; clamp_rect_to_bounds(&kw->rect); return; }
+			if (ev->key.key == BOXEN_KEY_LEFT)  { kw->rect.x -= step; clamp_rect_to_bounds(&kw->rect); return; }
+			if (ev->key.key == BOXEN_KEY_RIGHT) { kw->rect.x += step; clamp_rect_to_bounds(&kw->rect); return; }
+			if (ev->key.key == BOXEN_KEY_ENTER || ev->key.key == BOXEN_KEY_ESCAPE) {
+				g_drag.state = DRAG_NONE;
+				g_drag.win   = NULL;
+				return;
+			}
+		} else if (g_drag.state == DRAG_RESIZING_KB && g_drag.win != NULL) {
+			boxen_window_t *w   = g_drag.win;
+			int min_w = (w->min_w > 0) ? w->min_w : 1;
+			int min_h = (w->min_h > 0) ? w->min_h : 1;
+			if (ev->key.key == BOXEN_KEY_LEFT) {
+				if (w->rect.w > min_w) w->rect.w--;
+				return;
+			}
+			if (ev->key.key == BOXEN_KEY_RIGHT) { w->rect.w++; clamp_rect_to_bounds(&w->rect); return; }
+			if (ev->key.key == BOXEN_KEY_UP) {
+				if (w->rect.h > min_h) w->rect.h--;
+				return;
+			}
+			if (ev->key.key == BOXEN_KEY_DOWN) { w->rect.h++; clamp_rect_to_bounds(&w->rect); return; }
+			if (ev->key.key == BOXEN_KEY_ENTER || ev->key.key == BOXEN_KEY_ESCAPE) {
+				g_drag.state = DRAG_NONE;
+				g_drag.win   = NULL;
+				return;
+			}
+		}
+
+		/* Ctrl-M on focused movable window: enter keyboard move mode. */
+		if (ev->key.key == BOXEN_KEY_CTRL_M && g_focused_window != NULL &&
+		    g_focused_window->movable) {
+			g_drag.state = DRAG_MOVING_KB;
+			g_drag.win   = g_focused_window;
+			return;
+		}
+		/* Ctrl-R on focused resizable window: enter keyboard resize mode. */
+		if (ev->key.key == BOXEN_KEY_CTRL_R && g_focused_window != NULL &&
+		    g_focused_window->resizable) {
+			g_drag.state = DRAG_RESIZING_KB;
+			g_drag.win   = g_focused_window;
+			return;
+		}
+
 		target = (modal_win != NULL) ? modal_win : g_focused_window;
 		break;
 
 	case BOXEN_EV_MOUSE:
+		/* Mouse capture: if a drag is active, all mouse events go to the
+		 * drag state machine regardless of where the pointer is.
+		 *
+		 * Event taxonomy under termbox2 (and our mock):
+		 *   pressed=true               -> button still held (drag continues)
+		 *   pressed=false, button==0   -> motion event with no button change
+		 *                                 (treated as drag continuation)
+		 *   pressed=false, button!=0   -> button release (drag ends)
+		 * All three cases apply the same final-position update; the release
+		 * case additionally clears the drag state. Consolidated to one
+		 * update call to avoid the repeated-branch-body pattern flagged by
+		 * static analysis. */
+		if (g_drag.state == DRAG_MOVING || g_drag.state == DRAG_RESIZING) {
+			if (g_drag.state == DRAG_MOVING) {
+				drag_move_update(ev->mouse.x, ev->mouse.y);
+			} else {
+				drag_resize_update(ev->mouse.x, ev->mouse.y);
+			}
+			/* End the drag on a press-to-release transition. We track
+			 * g_drag.was_pressed across events so we end the drag whether
+			 * the backend encodes the release as (pressed=false, button!=0)
+			 * or (pressed=false, button==0) -- some terminals lose button
+			 * info on release. The press that started the drag set
+			 * was_pressed=true; any subsequent pressed=false ends it. */
+			if (g_drag.was_pressed && !ev->mouse.pressed) {
+				g_drag.state       = DRAG_NONE;
+				g_drag.win         = NULL;
+				g_drag.was_pressed = false;
+			} else if (ev->mouse.pressed) {
+				g_drag.was_pressed = true;
+			}
+			return;  /* drag consumes the event */
+		}
+
+		/* No active drag. Check if this press starts one. */
+		if (ev->mouse.pressed && modal_win == NULL) {
+			/* Find the topmost window at the press location. */
+			int cx, cy;
+			boxen_window_t *hit_win = boxen_window_at(ev->mouse.x, ev->mouse.y, &cx, &cy);
+			if (hit_win != NULL) {
+				int region = hit_test_window(hit_win, ev->mouse.x, ev->mouse.y);
+				if (region == HIT_TITLE && hit_win->movable) {
+					/* Start a mouse move drag. */
+					g_drag.state       = DRAG_MOVING;
+					g_drag.win         = hit_win;
+					g_drag.anchor_x    = ev->mouse.x;
+					g_drag.anchor_y    = ev->mouse.y;
+					g_drag.start_rect  = hit_win->rect;
+					g_drag.was_pressed = true;  /* press that started us */
+					return;  /* drag start consumes the press */
+				}
+				if (hit_win->resizable) {
+					int corner = -1;
+					if (region == HIT_CORNER_BR) corner = 0;
+					else if (region == HIT_CORNER_BL) corner = 1;
+					else if (region == HIT_CORNER_TR) corner = 2;
+					else if (region == HIT_CORNER_TL) corner = 3;
+					if (corner >= 0) {
+						g_drag.state       = DRAG_RESIZING;
+						g_drag.win         = hit_win;
+						g_drag.anchor_x    = ev->mouse.x;
+						g_drag.anchor_y    = ev->mouse.y;
+						g_drag.start_rect  = hit_win->rect;
+						g_drag.corner      = corner;
+						g_drag.was_pressed = true;
+						return;  /* drag start consumes the press */
+					}
+				}
+			}
+		}
+
+		/* Standard dispatch: modal takes priority over at-point. */
 		if (modal_win != NULL) {
 			target = modal_win;
 		} else {
-			/* Topmost window at (mouse.x, mouse.y) -- boxen_window_at scans
-			 * from the last (topmost) index, which is the z-order top. */
 			int cx, cy;
 			target = boxen_window_at(ev->mouse.x, ev->mouse.y, &cx, &cy);
 		}
 		break;
 
 	case BOXEN_EV_RESIZE:
+		/* A.4: clamp all windows to the new terminal dimensions, then
+		 * dispatch the event to the focused window for app-level handling.
+		 *
+		 * Cancel any active drag: g_drag.start_rect was captured before
+		 * the resize and clamping may have shifted/shrunk the target
+		 * window, so subsequent motion events would compute deltas against
+		 * stale geometry and cause a visible jump. Safer to drop the drag
+		 * and let the user re-start. */
+		if (g_drag.state != DRAG_NONE) {
+			g_drag.state       = DRAG_NONE;
+			g_drag.win         = NULL;
+			g_drag.was_pressed = false;
+		}
+		clamp_windows_to_terminal(ev->resize.w, ev->resize.h);
 		target = g_focused_window;
 		break;
 
