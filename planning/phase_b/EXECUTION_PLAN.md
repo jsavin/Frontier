@@ -720,17 +720,25 @@ The modal is a small centered window (approximately 60x8) with:
 Text input in boxen: boxen does not provide a text widget (per `OVERVIEW.md` section
 3.3). The modal implements its own single-line input: maintain a `char condition_buf[256]`
 in the modal state; handle printable key events (`ev.key.ch != 0`) by appending to
-the buffer; handle BACKSPACE by trimming; render the buffer with a visible cursor via
-`boxen_window_set_cursor_visible(true)` and `boxen_set_cursor` (check boxen API -- if
-no `boxen_set_cursor` on a window, use `backend->set_cursor` directly or implement
-cursor via a highlighted cell -- VERIFY boxen.h has a cursor API for this).
+the buffer; handle BACKSPACE by trimming; render the buffer and use the **A.7 public
+cursor API** to position the terminal cursor at the right offset:
 
-CHECK: `boxen.h` exposes `set_cursor_visible` via the backend vtable but NOT a
-public `boxen_window_set_cursor` function. The correct approach is to draw a
-highlighted cell at the cursor position using `BOXEN_ATTR_REVERSE` on the character
-cell. This gives a "block cursor" visual without needing a dedicated cursor API.
-Flag as boxen follow-up: a `boxen_window_set_cursor(win, cx, cy)` API would simplify
-inline text editing for all future surfaces.
+```c
+boxen_window_set_modal(modal, true);
+boxen_window_set_cursor(modal, cursor_col, cursor_row);   /* content-local coords */
+boxen_window_set_cursor_visible(modal, true);
+```
+
+The modal-ownership gate is automatic per A.7: when the condition modal is set as
+`boxen_window_set_modal(..., true)`, the cursor calls route to the modal regardless
+of what window held focus before. Closing the modal reverts cursor ownership to the
+previously focused window. See `frontier-cli/boxen/boxen.h` "Cursor positioning (A.7+)"
+section for the full contract; `tests/boxen_cursor_tests.c` has 7 behavioral tests
+covering edges (out-of-viewport hides, visibility/position independence, etc.).
+
+This replaces the earlier reverse-video block-cell workaround. Issue #733 / PR #735
+(boxen A.7, merged at 12ce31082 on 2026-06-07) added the API specifically to
+unblock B.4 and B.7.
 
 #### Files to modify
 
@@ -787,10 +795,16 @@ suspended. The responses arrive synchronously via `write_line` (because the hand
 run under the GIL on the calling thread). There is no async complication here --
 clarify with a code comment.
 
-SENTINEL: `boxen.h` does not expose `boxen_set_cursor` on a window. The "block
-cursor" approach (reverse-video cell at cursor position) is the correct workaround.
-DO NOT reach into the termbox2 backend directly to call `tb_set_cursor`. That
-violates the backend abstraction discipline that Phase A established.
+SENTINEL: Use the A.7 public `boxen_window_set_cursor(win, cx, cy)` and
+`boxen_window_set_cursor_visible(win, bool)` API for the modal's text input
+cursor. DO NOT reach into the backend vtable directly or use the
+reverse-video block-cell workaround -- the A.7 API gives you a real terminal
+cursor (proper blink, shape, accessibility-tool handling) and handles
+chrome/scroll/clipping translation for you. The focus/modal gate is
+automatic: `boxen_window_set_modal(modal, true)` routes subsequent cursor
+calls to the modal; closing the modal reverts ownership to the focused
+window. Header docs in `frontier-cli/boxen/boxen.h` under "Cursor
+positioning (A.7+)"; tests at `tests/boxen_cursor_tests.c`.
 
 ---
 
@@ -1059,9 +1073,11 @@ leaves it. `Enter` submits the expression.
 
 The expression input area is a single line at the bottom of the TUI, rendered above
 the keybind footer. When the user presses `:` a visible cursor appears in the input
-area (using the reverse-video block-cursor approach from B.4 -- see the B.4 sentinel
-on `boxen_window_set_cursor`). The input area is NOT a separate window; it is a
-reserved row in the footer region drawn by the footer draw callback.
+area via the A.7 public `boxen_window_set_cursor(footer_win, cursor_col, eval_row)`
++ `boxen_window_set_cursor_visible(footer_win, true)` API. The input area is NOT a
+separate window; it is a reserved row in the footer region drawn by the footer draw
+callback. Since the footer window owns the row, no modal handoff is needed -- the
+cursor calls route to it as long as it has focus when `:` is pressed.
 
 Above the input line, an output buffer holds the last 10-20 evaluations (suggest
 `EVAL_HISTORY_MAX 16`) as formatted `[N] expression -> result` lines. The buffer
@@ -1100,35 +1116,37 @@ path. The scratch pane is best for expression evaluation (arithmetic, string ops
 quick UserTalk probes) rather than local-variable lookup, which already has a dedicated
 right-pane display. Document this scope boundary in a code comment.
 
-#### Boxen-side API gap -- FOLLOW-UP REQUIRED BEFORE B.7
+#### Boxen-side API: A.7 shipped before B.7
 
 The scratch-eval pane needs a positioned text cursor inside the footer-region draw
-callback. The existing approach (reverse-video block cursor, documented in B.4's
-`boxen_window_set_cursor` sentinel) works but is awkward: the draw callback must know
-the cursor column and paint one cell with `BOXEN_ATTR_REVERSE` at the right position.
-There is no `boxen_window_set_cursor(win, cx, cy)` public function.
+callback. Earlier drafts of this plan called for a reverse-video block-cursor
+workaround because boxen did not expose a public cursor API. **That gap is closed.**
 
-**This is acceptable for B.7 using the same reverse-video workaround as B.4.**
-
-However, B.7 is the second site that needs in-window cursor positioning (B.4's
-condition modal was the first). Two sites establish a pattern. Before or alongside
-B.7, a small boxen PR adding:
+Issue #733 was filed during Phase B.1 and the boxen session shipped A.7 (PR #735,
+merged at `12ce31082` on 2026-06-07) before B.4 / B.7 implementation. The public API:
 
 ```c
 void boxen_window_set_cursor(boxen_window_t *win, int cx, int cy);
-void boxen_window_hide_cursor(boxen_window_t *win);
+void boxen_window_set_cursor_visible(boxen_window_t *win, bool visible);
 ```
 
-...would let B.7 (and retroactively B.4's modal) use a clean API instead of the
-workaround. This is a boxen-side follow-up, NOT a Phase B blocker -- the workaround
-ships, the clean API follows. Flag the workaround at every call site with a TODO
-referencing this paragraph.
+`cx`, `cy` are content-local (chrome / scroll / viewport clipping applied for you).
+Out-of-viewport target hides the cursor automatically. Focus / modal gate is
+automatic. See `frontier-cli/boxen/boxen.h` "Cursor positioning (A.7+)" block;
+test coverage at `tests/boxen_cursor_tests.c` (7 behavioral tests).
 
-The backend vtable already has `set_cursor(int x, int y)` and
-`set_cursor_visible(bool visible)` (confirmed at `boxen.h:216-217`). A
-`boxen_window_set_cursor` wrapper translates window-local `(cx, cy)` coordinates
-to screen coordinates and calls the backend. This is a ~15-line addition to `boxen.c`.
-Flag it as "boxen-cursor-api" and track in the boxen follow-up list.
+B.7 uses this directly:
+
+```c
+/* On ':' activation, while the eval pane is active */
+boxen_window_set_cursor(footer_win, eval_input_cursor + INPUT_PROMPT_WIDTH, eval_row);
+boxen_window_set_cursor_visible(footer_win, true);
+
+/* On Escape / Enter (deactivation) */
+boxen_window_set_cursor_visible(footer_win, false);
+```
+
+Same pattern in B.4's condition modal. NO workaround code lands in either milestone.
 
 #### Data model additions
 
