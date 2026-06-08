@@ -16,6 +16,8 @@
  * 2026-06-07 JES Phase B.6 #744: TUI_DISPATCH_LOG_SLOT widened to 2048
  * 2026-06-07 JES Phase B.7 #691: scratch-eval pane fields and constants
  * 2026-06-07 JES Phase B.7 #750: eval_last_expr, eval_display_counter added
+ * 2026-06-07 JES Phase B.8 #691: odb_fetch_hook, tui_launch_startup_script,
+ *   tui_is_bare_odb_address
  */
 
 #ifndef DEBUGGER_TUI_INTERNAL_H
@@ -321,6 +323,27 @@ typedef struct {
 	 *   past EVAL_HISTORY_MAX as expected. */
 	char  eval_last_expr[EVAL_INPUT_MAX];
 	int   eval_display_counter;
+
+	/* 2026-06-07 JES Phase B.8 #691: ODB source-fetch hook.
+	 *
+	 * In production (non-OMIT_MAIN), debugger_tui_state_init sets this to
+	 * tui_real_odb_fetch -- the static helper that replicates the
+	 * handle_debug_getsource ODB-address-to-source-text pipeline (see
+	 * debug_handler.c:2105-2202).
+	 *
+	 * In test builds (DEBUGGER_TUI_OMIT_MAIN), tui_real_odb_fetch is not
+	 * compiled in.  Tests set odb_fetch_hook to a local mock before calling
+	 * tui_eval_submit or tui_launch_startup_script.  When the hook is NULL,
+	 * the fetch silently returns false (same outcome as an ODB error).
+	 *
+	 * Signature:
+	 *   path_no_at -- dotted ODB path WITHOUT the leading '@' (e.g. "some.address")
+	 *   out_buf    -- caller-supplied buffer to receive NUL-terminated source text
+	 *   out_bufsz  -- size of out_buf in bytes
+	 * Returns true on success, false on any failure (path not found, ODB error,
+	 * buffer too small after truncation would corrupt, etc.).
+	 */
+	bool (*odb_fetch_hook)(const char *path_no_at, char *out_buf, size_t out_bufsz);
 } tui_state_t;
 
 /*
@@ -400,5 +423,42 @@ void debugger_tui_state_init(tui_state_t *s, int tw, int th);
  * Caller is responsible for calling boxen_shutdown() afterwards.
  */
 void debugger_tui_state_teardown(tui_state_t *s);
+
+/*
+ * 2026-06-07 JES Phase B.8 #691: bare ODB address detection.
+ *
+ * Returns true iff `s` starts with '@' AND every subsequent character is
+ * [A-Za-z0-9_.] (no whitespace, no parens, no operators).
+ *
+ * This is the canonical detection rule: input is a bare ODB address iff
+ * it starts with '@' and the rest is purely a dotted identifier.  Anything
+ * else (multi-statement, expression with operators, etc.) is free-form and
+ * passes through verbatim.
+ */
+bool tui_is_bare_odb_address(const char *s);
+
+/*
+ * 2026-06-07 JES Phase B.8 #691: startup script launch.
+ *
+ * Resolves `script_expr` (bare ODB address or freeform expression), compiles
+ * it, and dispatches a debug/run request.  Called from debugger_tui_main after
+ * transport registration when the user passed --debug-tui with a script argument.
+ *
+ * Parameters:
+ *   s           -- TUI state (must be initialized; transport set up).
+ *   inline_expr -- inline expression string ("-e ...") or bare ODB address
+ *                  ("@workspace.foo"), or NULL if launching from a .ut file.
+ *   script_file -- path to a .ut file, or NULL if using inline_expr.
+ *
+ * Exactly one of inline_expr / script_file must be non-NULL.
+ * Does nothing (returns false) if both are NULL or both are non-NULL.
+ *
+ * Returns true if dispatch was sent, false on resolution / read failure.
+ *
+ * Exposed in the internal header so tests can call it directly.
+ */
+bool tui_launch_startup_script(tui_state_t *s,
+                                const char *inline_expr,
+                                const char *script_file);
 
 #endif /* DEBUGGER_TUI_INTERNAL_H */

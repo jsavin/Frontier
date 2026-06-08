@@ -11,9 +11,45 @@ For the protocol-level interface (used by IDEs and external tools), see [`docs/C
 
 ## Launching
 
+### Attach-only (wait for a breakpoint to fire)
+
 ```bash
 ./frontier-cli/frontier-cli --debug-tui
 ```
+
+The TUI opens in RUNNING state with no script loaded. Any `thread.callScript` thread that hits a breakpoint will lazy-attach and deliver a suspension notification. This is the workflow for debugging menu-triggered code.
+
+### Launch and debug a specific ODB script
+
+```bash
+./frontier-cli/frontier-cli --debug-tui @workspace.myVerb
+```
+
+The TUI starts, compiles the source body of `workspace.myVerb`, and spawns a debug thread that suspends at the first statement before executing anything. The source pane loads immediately; the user is dropped into the entry suspension with all F-key controls live.
+
+The `@path` form is a "bare ODB address": it must start with `@` and the rest must be a dotted identifier using only `[A-Za-z0-9_.]`. If the path has whitespace, parens, or operators, it is treated as a free-form expression (see below).
+
+Running the script body is the right semantic for debugging: most Frontier.root scripts have a bundle pattern at the bottom that calls the script's entry point with test arguments. That bundle is part of the script body and runs when you F5 from the entry suspension.
+
+### Launch with an inline expression
+
+```bash
+./frontier-cli/frontier-cli --debug-tui -e "local (t); new (tableType, @t); myScript (@t)"
+```
+
+Multi-statement expressions and any expression that is not a bare ODB address are passed through to the compiler verbatim. The expression is compiled and the resulting thread starts suspended at its first statement.
+
+### Launch from a .ut source file
+
+```bash
+./frontier-cli/frontier-cli --debug-tui path/to/script.ut
+```
+
+The file is read and its contents are dispatched as an inline expression. Useful for developing and testing UserTalk scripts that live outside the system root.
+
+---
+
+All three launch forms start the debug thread suspended at the first statement (`start_suspended=true`). This is the entry-suspension behavior: you are halted before any code runs, regardless of whether breakpoints are already saved in the script. Press **F5** to run until the next saved or in-session breakpoint.
 
 Requirements:
 
@@ -82,14 +118,30 @@ In the modal:
 
 ### Scratch eval pane
 
-| Key | Action |
-|-----|--------|
-| **`:`** (SUSPENDED only) | Activates the single-line eval pane (vi-command-mode style). |
-| typing | Builds the expression. |
-| **Enter** | Dispatches `script/eval` against the suspended frame; result appears in the history above the input row. |
-| **Escape** | Dismisses the pane (the partial expression is dropped). |
+| Key | State | Action |
+|-----|-------|--------|
+| **`:`** | RUNNING (no attached thread) | Activates the eval pane for a new debug-run launch. |
+| **`:`** | SUSPENDED | Activates the eval pane to evaluate in the current frame. |
+| typing | (pane active) | Builds the expression. |
+| **Enter** | RUNNING pane | Dispatches a `debug/run`; the new thread starts suspended at the first statement. Bare ODB addresses (`@some.path`) are resolved to source text first; all other expressions pass through verbatim. |
+| **Enter** | SUSPENDED pane | Dispatches `script/eval` against the suspended frame; result appears in the history above the input row. |
+| **Escape** | (pane active) | Dismisses the pane (the partial expression is preserved for re-activation). |
+
+`:` is a no-op in IDLE state (no transport thread is active).
 
 While the eval pane is active, `q` and `:` are typed into the expression — they don't trigger quit or re-activate the pane. The eval pane is suppressed while a modal (condition / watchpoint) is open.
+
+#### Setting persistent breakpoints
+
+Breakpoints set via F9 and Shift-F9 are stored in the scriptType external for the relevant script and persist when the `.root` saves (which happens automatically at exit). This means you can install breakpoints in a prior TUI session (or via `--protocol`), save, and then relaunch with `--debug-tui @that.script` in a fresh session. You will suspend at the first statement as usual; press F5 to run until the first saved breakpoint fires.
+
+The canonical workflow for debugging an existing Frontier.root script:
+
+1. Open the script in any tool (REPL, prior TUI session, or `--protocol` from an IDE).
+2. Set breakpoints with F9 (toggle plain) or Shift-F9 (conditional).
+3. Exit so the `.root` saves the breakpoints.
+4. `./frontier-cli/frontier-cli --debug-tui @workspace.myScript`
+5. TUI opens suspended at the first statement. Press F5 to run until the first saved breakpoint.
 
 History rendering caps the visible expression at 80 characters per entry and keeps a small ring of recent results.
 
@@ -127,7 +179,13 @@ The TUI is the supported way to debug menu-triggered UserTalk code that runs on 
 4. Step or continue. Set additional breakpoints with F9. When the thread completes, the TUI returns to RUNNING.
 5. Press `q` to exit.
 
-To stop at the very first line of a known verb (e.g. `commands.open`), set the breakpoint via the protocol-level `debug/setBreakpoint` op before triggering the menu. (Setting breakpoints purely from inside the TUI when no thread is yet suspended is a Phase C convenience; not in B.)
+To stop at the very first line of a known verb (e.g. `commands.open`), use the launch-from-address form:
+
+```bash
+./frontier-cli/frontier-cli --debug-tui @commands.open
+```
+
+The TUI launches and immediately suspends at the first statement of `commands.open`. No need to set a breakpoint first; the entry suspension is unconditional. See "Setting persistent breakpoints" above if you want subsequent breakpoints to fire on F5.
 
 ---
 
@@ -171,8 +229,8 @@ These are deliberate scope cuts, not bugs:
 |---------|-------|-----|
 | "boxen_init failed" then immediate exit | Stdin/stdout not a TTY (piped or redirected). | Run from a real terminal. The TUI cannot operate without `/dev/tty`. |
 | "--debug-tui and --protocol are mutually exclusive" | Both flags on the command line. | Pick one. |
-| Step/continue keys ignored | State is RUNNING — no frame is suspended. | Wait for a breakpoint to fire, or set one and trigger the code path. |
-| Eval pane `:` does nothing | State is RUNNING, or a modal is open. | Suspend first; close any open modal with Escape. |
+| Step/continue keys ignored | State is RUNNING — no frame is suspended. | Wait for a breakpoint to fire, or press `:` to launch a new debug-run from a script address or expression. |
+| Eval pane `:` does nothing | State is IDLE (no transport), or a modal is open. | Close any open modal with Escape. In IDLE state there is no active thread; launch with `--debug-tui @path` or `:` is available once the TUI is in RUNNING or SUSPENDED. |
 | Cmd-double-click does nothing | Click landed in the gutter column, or the identifier isn't in current locals, or state is RUNNING. | Click on the source text portion (right of the line number), while suspended, on a local identifier. |
 | Quit hangs briefly | Drain step waiting for a lazy-attached thread to release the transport. | Normal; should complete in milliseconds. If it hangs >5s, investigate runtime thread state via `--protocol` from a separate session. |
 
