@@ -268,14 +268,31 @@ void debug_unregister_thread(long threadid);
  * source text on success.  The caller owns the returned Handle and must call
  * disposehandle() when done.
  *
- * Returns nil on any error (path not found, not a script, ODB load failure).
+ * Returns nil on any error.  When out_reason is non-NULL on entry, it is
+ * populated with a fine-grained reason code so callers can map back to a
+ * specific user-facing error message.  Pass NULL when the caller does not
+ * need the discrimination (TUI logs a generic warning).
  *
  * GIL: must be called with GIL held (ODB operations are not thread-safe).
  *
  * Extracted from handle_debug_getsource to eliminate the parallel
  * implementation in tui_real_odb_fetch (debugger_tui.c).  Both call sites
  * now delegate to this helper.
+ *
+ * 2026-06-08 JES Phase B.8 #691 round 2 P2: added out_reason discrimination
+ * so handle_debug_getsource can preserve its pre-extraction wire-level error
+ * messages (path-not-qualified / table-not-found / script-not-found /
+ * load-failed / could-not-get).
  */
-Handle debug_get_script_source(const char *path_no_at);
+typedef enum {
+	DBG_SRC_OK = 0,            /* success -- htext returned */
+	DBG_SRC_PATH_NOT_QUALIFIED, /* path has no '.', cannot split into table+name */
+	DBG_SRC_TABLE_NOT_FOUND,    /* langfastaddresstotable failed */
+	DBG_SRC_SCRIPT_NOT_FOUND,   /* hashtablelookup returned false */
+	DBG_SRC_LOAD_FAILED,        /* opverbinmemory failed */
+	DBG_SRC_NO_TEXT             /* value not an external, or opgetlangtext returned nil */
+} dbg_source_reason;
+
+Handle debug_get_script_source(const char *path_no_at, dbg_source_reason *out_reason);
 
 #endif /* DEBUG_HANDLER_H */

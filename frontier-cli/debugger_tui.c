@@ -1135,8 +1135,13 @@ static bool tui_real_odb_fetch(const char *path_no_at,
 
 	/* P2-7 refactor (/gate round 1): delegate to the shared helper extracted
 	 * from debug_handler.c to eliminate the ~90-line duplicated ODB-traversal
-	 * body (P2-7 fix, /gate round 1 bar-raiser). */
-	Handle htext = debug_get_script_source(path_no_at);
+	 * body (P2-7 fix, /gate round 1 bar-raiser).
+	 *
+	 * 2026-06-08 JES Phase B.8 #691 round 2 P2: pass NULL for out_reason -- the
+	 * TUI logs a generic warning regardless of which step failed, so it does not
+	 * need the fine-grained discrimination that handle_debug_getsource needs to
+	 * preserve its protocol-level error messages. */
+	Handle htext = debug_get_script_source(path_no_at, NULL);
 	if (htext == nil) {
 		log_warn(LOG_COMP_GENERAL,
 		         "tui_real_odb_fetch: no source text for %s", path_no_at);

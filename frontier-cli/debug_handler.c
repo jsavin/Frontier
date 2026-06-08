@@ -2079,7 +2079,13 @@ void handle_debug_getstack(int id, const char *json_line, transport_t *transport
  * Extracted to eliminate the parallel implementation that was in
  * tui_real_odb_fetch (debugger_tui.c).  See debug_handler.h for full contract.
  */
-Handle debug_get_script_source(const char *path_no_at) {
+Handle debug_get_script_source(const char *path_no_at, dbg_source_reason *out_reason) {
+	/* Helper macro: set reason if caller asked for it, then return nil. */
+	#define DBG_SRC_FAIL(code) do { \
+		if (out_reason != NULL) *out_reason = (code); \
+		return nil; \
+	} while (0)
+
 	/* Parse the dotted path to find the containing table and leaf name. */
 	int pathlen = (int)strlen(path_no_at);
 	if (pathlen > 255) pathlen = 255;
@@ -2097,7 +2103,7 @@ Handle debug_get_script_source(const char *path_no_at) {
 	}
 
 	if (lastdot < 0)
-		return nil;
+		DBG_SRC_FAIL(DBG_SRC_PATH_NOT_QUALIFIED);
 
 	/* Split: table path is bsfullpath[1..lastdot-1], name is bsfullpath[lastdot+1..] */
 	bigstring bstablepath, bsname;
@@ -2111,13 +2117,13 @@ Handle debug_get_script_source(const char *path_no_at) {
 	/* Navigate to the table */
 	hdlhashtable htable;
 	if (!langfastaddresstotable(roottable, bstablepath, &htable))
-		return nil;
+		DBG_SRC_FAIL(DBG_SRC_TABLE_NOT_FOUND);
 
 	/* Look up the script */
 	tyvaluerecord val;
 	hdlhashnode hnode;
 	if (!hashtablelookup(htable, bsname, &val, &hnode))
-		return nil;
+		DBG_SRC_FAIL(DBG_SRC_SCRIPT_NOT_FOUND);
 
 	Handle htext = nil;
 	if (val.valuetype == externalvaluetype) {
@@ -2134,18 +2140,30 @@ Handle debug_get_script_source(const char *path_no_at) {
 					ctx.database = (**hv).hdatabase;
 			}
 			if (!opverbinmemory(&ctx, hv))
-				return nil;
+				DBG_SRC_FAIL(DBG_SRC_LOAD_FAILED);
 		}
 
 		hdloutlinerecord houtline = (hdloutlinerecord)(**hv).variabledata;
 		if (houtline != nil) {
+			/* 2026-06-08 JES Phase B.8 #691 round 2 P2: longjmp assumption.
+			 * Frontier's runtime propagates errors through the
+			 * langcallbacks.errormessagecallback mechanism, not setjmp/longjmp,
+			 * so opgetlangtext returns normally on failure and oppopoutline
+			 * always runs.  If this ever changes, the push/pop pair becomes
+			 * a silent outline-stack imbalance hazard. */
 			oppushoutline(houtline);
 			opgetlangtext(houtline, false, &htext);
 			oppopoutline();
 		}
 	}
 
+	if (htext == nil)
+		DBG_SRC_FAIL(DBG_SRC_NO_TEXT);
+
+	if (out_reason != NULL) *out_reason = DBG_SRC_OK;
 	return htext;
+
+	#undef DBG_SRC_FAIL
 }
 
 /*
@@ -2188,12 +2206,37 @@ void handle_debug_getsource(int id, const char *json_line, transport_t *transpor
 	/* 2026-06-08 JES Phase B.8 #691 P2-7: delegate to shared helper.
 	 * debug_get_script_source handles all ODB path parsing, table navigation,
 	 * opverbinmemory loading, and opgetlangtext extraction.  Previously this
-	 * function duplicated that ~90-line body from tui_real_odb_fetch. */
-	Handle htext = debug_get_script_source(script_path);
+	 * function duplicated that ~90-line body from tui_real_odb_fetch.
+	 *
+	 * 2026-06-08 JES Phase B.8 #691 round 2 P2: pass out_reason so we can
+	 * preserve the specific user-facing error messages from the pre-extraction
+	 * implementation (path-not-qualified / table-not-found / script-not-found
+	 * / load-failed / no-text). */
+	dbg_source_reason reason = DBG_SRC_OK;
+	Handle htext = debug_get_script_source(script_path, &reason);
 
 	if (htext == nil) {
+		const char *msg;
+		switch (reason) {
+		case DBG_SRC_PATH_NOT_QUALIFIED:
+			msg = "Script path must be fully qualified (e.g. system.temp.myFunc)";
+			break;
+		case DBG_SRC_TABLE_NOT_FOUND:
+			msg = "Table not found in path";
+			break;
+		case DBG_SRC_SCRIPT_NOT_FOUND:
+			msg = "Script not found";
+			break;
+		case DBG_SRC_LOAD_FAILED:
+			msg = "Failed to load script from database";
+			break;
+		case DBG_SRC_NO_TEXT:
+		default:
+			msg = "Could not get script source";
+			break;
+		}
 		char err[512];
-		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Could not get script source\"},\"success\":false}", id);
+		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"%s\"},\"success\":false}", id, msg);
 		transport->write_line(transport->ctx, err, strlen(err));
 		cJSON_Delete(root);
 		return;
