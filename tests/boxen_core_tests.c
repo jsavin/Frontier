@@ -12,6 +12,7 @@
  */
 
 #include <assert.h>
+#include <locale.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -460,6 +461,73 @@ static void test_double_close_rejected(void) {
 }
 
 /* -------------------------------------------------------------------------
+ * Test: boxen_init promotes the default "C" locale to the environment
+ * locale so non-ASCII codepoints (box-drawing chars, etc.) render.
+ *
+ * Regression for the diamond-question-mark glyph bug: termbox2's send_cluster
+ * calls iswprint(), which only knows ASCII under the default startup locale.
+ * Box-drawing characters got replaced with U+FFFD and showed up as the macOS
+ * Terminal missing-glyph placeholder.
+ * ---------------------------------------------------------------------- */
+
+static void test_boxen_init_promotes_default_locale(void) {
+	/* Reset to the C startup default. */
+	setlocale(LC_CTYPE, "C");
+	const char *before = setlocale(LC_CTYPE, NULL);
+	assert(before != NULL);
+	assert(strcmp(before, "C") == 0 || strcmp(before, "POSIX") == 0);
+
+	boxen_shutdown();   /* defensive */
+	boxen_mock_reset(80, 24);
+	boxen_result_t r = boxen_init(boxen_mock_backend(), NULL, NULL);
+	assert(r == BOXEN_OK);
+
+	const char *after = setlocale(LC_CTYPE, NULL);
+	assert(after != NULL);
+	/* Promotion happened: LC_CTYPE is no longer the C/POSIX default.
+	 * We can't assert an exact name because it depends on the host LANG. */
+	assert(strcmp(after, "C") != 0 && strcmp(after, "POSIX") != 0);
+
+	boxen_shutdown();
+}
+
+/* -------------------------------------------------------------------------
+ * Test: boxen_init respects a caller-set non-default locale.
+ *
+ * If an embedder has already chosen LC_CTYPE deliberately, boxen must not
+ * silently overwrite it with the environment locale.
+ * ---------------------------------------------------------------------- */
+
+static void test_boxen_init_respects_caller_locale(void) {
+	/* Try a likely-installed UTF-8 locale. If the host doesn't have it,
+	 * setlocale returns NULL and the test becomes a no-op for that locale
+	 * choice -- still meaningful for the C/POSIX guard branch coverage above. */
+	const char *chosen = setlocale(LC_CTYPE, "en_US.UTF-8");
+	if (chosen == NULL) {
+		setlocale(LC_CTYPE, "C");
+		return;   /* host lacks en_US.UTF-8 -- skip */
+	}
+	const char *before = setlocale(LC_CTYPE, NULL);
+	assert(before != NULL);
+	char before_copy[64];
+	strncpy(before_copy, before, sizeof(before_copy) - 1);
+	before_copy[sizeof(before_copy) - 1] = '\0';
+
+	boxen_shutdown();
+	boxen_mock_reset(80, 24);
+	boxen_result_t r = boxen_init(boxen_mock_backend(), NULL, NULL);
+	assert(r == BOXEN_OK);
+
+	const char *after = setlocale(LC_CTYPE, NULL);
+	assert(after != NULL);
+	/* boxen must NOT have overwritten the caller's choice. */
+	assert(strcmp(after, before_copy) == 0);
+
+	boxen_shutdown();
+	setlocale(LC_CTYPE, "C");   /* tidy for subsequent tests */
+}
+
+/* -------------------------------------------------------------------------
  * main
  * ---------------------------------------------------------------------- */
 
@@ -467,6 +535,8 @@ int main(void) {
 	TR_INIT("boxen_core_tests");
 
 	TR_RUN(test_init_shutdown_lifecycle);
+	TR_RUN(test_boxen_init_promotes_default_locale);
+	TR_RUN(test_boxen_init_respects_caller_locale);
 	TR_RUN(test_window_open_close);
 	TR_RUN(test_set_cell_writes_correct_terminal_coords);
 	TR_RUN(test_clip_left);
