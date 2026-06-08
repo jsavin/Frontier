@@ -219,6 +219,16 @@ boolean cli_validate_options(const cli_options_t* options) {
 		return false;
 	}
 
+	/* 2026-06-07 JES Phase B.8 #691: --debug-tui with both inline_script AND
+	 * script_file is ambiguous -- reject the combination.  Either one alone is
+	 * valid: the startup-launch path in debugger_tui_main handles each. */
+	if (options->tui_mode &&
+	    options->script_file != NULL && options->inline_script != NULL) {
+		log_error(LOG_COMP_GENERAL,
+		          "Error: --debug-tui cannot combine -e (inline) and a script file");
+		return false;
+	}
+
 	// Note: Conflict validation for positional .root argument is handled in cli_parse_arguments()
 	// when we detect a .root file and system_root is already set.
 

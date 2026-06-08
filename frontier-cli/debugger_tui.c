@@ -49,6 +49,8 @@
  * 2026-06-07 JES Phase B.6 #691 #738 #740 #742 #744 #746: lazy-attach wiring + polish
  * 2026-06-07 JES Phase B.7 #691: scratch-eval pane
  * 2026-06-07 JES Phase B.7 #750: eval polish -- clear dispatched id, expr tag, monotonic [N], OOM fix
+ * 2026-06-08 JES Phase B.8 #691: TUI launch entry points (positional script,
+ *   -e expression, : eval-from-RUNNING)
  *
  * SPDX-License-Identifier: MIT
  * Copyright (c) 2025-2026 Frontier contributors
@@ -74,6 +76,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#include <assert.h>       /* assert -- used in tui_real_odb_fetch GIL precondition */
+#include <stdio.h>        /* fileno */
+#include <sys/stat.h>     /* fstat, struct stat, S_ISREG */
 
 /* -------------------------------------------------------------------------
  * 2026-06-07 JES Phase B.2 #691: locals state helpers.
@@ -881,6 +886,280 @@ static int tui_json_escape(const char *src, char *dst, size_t dst_cap) {
 }
 
 /* -------------------------------------------------------------------------
+ * 2026-06-08 JES Phase B.8 #691: bare ODB address detection and source fetch.
+ *
+ * tui_is_bare_odb_address -- detection rule per spec:
+ *   Returns true iff s starts with '@' AND every subsequent character is
+ *   [A-Za-z0-9_.].  No whitespace, no parens, no operators.
+ *
+ * tui_real_odb_fetch -- production ODB source lookup (inside OMIT_MAIN guard).
+ *   Replicates the pipeline from debug_handler.c:2105-2202.  Not compiled in
+ *   test builds; the odb_fetch_hook on tui_state_t is NULL in that case.
+ *
+ * tui_dispatch_debug_run -- dispatch a debug/run JSON with the given source
+ *   expression text.  Used by both tui_eval_submit (RUNNING path) and
+ *   tui_launch_startup_script.
+ * ---------------------------------------------------------------------- */
+
+bool tui_is_bare_odb_address(const char *s) {
+	if (s == NULL || s[0] != '@') return false;
+	const char *p = s + 1;
+	if (*p == '\0') return false;  /* bare '@' alone is not an address */
+	while (*p != '\0') {
+		char c = *p;
+		if (!((c >= 'A' && c <= 'Z') ||
+		      (c >= 'a' && c <= 'z') ||
+		      (c >= '0' && c <= '9') ||
+		      c == '_' || c == '.')) {
+			return false;
+		}
+		p++;
+	}
+	return true;
+}
+
+/* Maximum source buffer size for bare-address resolution.
+ * ODB scripts are typically < 32 KB; 64 KB is generous. */
+#define TUI_ODB_SOURCE_MAX 65536
+
+/* 2026-06-08 JES Phase B.8 #691: dispatch a debug/run with the given expression.
+ *
+ * Wire format verified at debug_handler.c:1248 (handle_debug_run):
+ *   request:  {"op":"debug/run","id":N,"params":{"expression":"<escaped>"}}
+ *   response: {"id":N,"result":{"threadId":T,"status":"started"},"success":true}
+ *
+ * The TUI dispatches this via tui_dispatch_json.  In test builds the dispatch
+ * is captured in dispatch_capture_buf (no runtime call).  In production it
+ * routes to op_dispatch -> handle_debug_run -> headless_spawn_script_thread
+ * with start_suspended=true (hardcoded in handle_debug_run:1333). */
+static void tui_dispatch_debug_run(tui_state_t *s, const char *expr_text) {
+	/* JSON-escape the expression before interpolation (B.4 P1 class).
+	 *
+	 * tui_json_escape worst-case is 6x for control bytes (\u00XX expansion).
+	 * Allocate dynamically based on input length so the escape buffer is
+	 * always large enough.  The previous static char[TUI_ODB_SOURCE_MAX*2+1]
+	 * was sized for 2x, which would silently truncate on a source with many
+	 * control bytes.  (P1-1 fix: /gate round 1 bar-raiser + security.) */
+	size_t in_len = strlen(expr_text);
+	size_t esc_sz = in_len * 6 + 64;  /* 6x worst-case + NUL + margin */
+	char *esc_expr = malloc(esc_sz);
+	if (esc_expr == NULL) {
+		log_warn(LOG_COMP_GENERAL, "tui_dispatch_debug_run: OOM allocating escape buffer");
+		return;
+	}
+	tui_json_escape(expr_text, esc_expr, esc_sz);
+
+	int req_id = next_req_id(s);
+
+	/* +64 for JSON framing overhead. */
+	size_t req_sz = esc_sz + 64;
+	char *req = malloc(req_sz);
+	if (req == NULL) {
+		log_warn(LOG_COMP_GENERAL, "tui_dispatch_debug_run: OOM allocating request");
+		free(esc_expr);
+		return;
+	}
+	snprintf(req, req_sz,
+	         "{\"op\":\"debug/run\",\"id\":%d,"
+	         "\"params\":{\"expression\":\"%s\"}}",
+	         req_id, esc_expr);
+	tui_dispatch_json(s, req);
+	free(req);
+	free(esc_expr);
+}
+
+/* 2026-06-08 JES Phase B.8 #691: startup script launch.
+ *
+ * Called from debugger_tui_main after transport registration, and exposed
+ * in the internal header for direct unit tests.
+ *
+ * Resolution rules:
+ *   - If inline_expr is a bare ODB address (@path): call odb_fetch_hook to
+ *     get the source text, then dispatch debug/run with that source.
+ *   - If inline_expr is freeform: dispatch debug/run verbatim.
+ *   - If script_file is non-NULL: read the file, dispatch debug/run.
+ *   - Both NULL or both non-NULL: no-op, return false.
+ */
+bool tui_launch_startup_script(tui_state_t *s,
+                                const char *inline_expr,
+                                const char *script_file) {
+	if (s == NULL) return false;
+	if (inline_expr == NULL && script_file == NULL) return false;
+	if (inline_expr != NULL && script_file != NULL) return false;
+
+	if (inline_expr != NULL) {
+		if (tui_is_bare_odb_address(inline_expr)) {
+			/* Resolve ODB source via hook */
+			if (s->odb_fetch_hook == NULL) {
+				log_warn(LOG_COMP_GENERAL,
+				         "tui_launch_startup_script: odb_fetch_hook is NULL, "
+				         "cannot resolve %s", inline_expr);
+				return false;
+			}
+			char *src = malloc(TUI_ODB_SOURCE_MAX);
+			if (src == NULL) {
+				log_warn(LOG_COMP_GENERAL,
+				         "tui_launch_startup_script: OOM allocating source buffer");
+				return false;
+			}
+			bool ok = s->odb_fetch_hook(inline_expr + 1 /* skip '@' */,
+			                            src, (size_t)TUI_ODB_SOURCE_MAX);
+			if (!ok) {
+				log_warn(LOG_COMP_GENERAL,
+				         "tui_launch_startup_script: ODB source fetch failed for %s",
+				         inline_expr);
+				free(src);
+				return false;
+			}
+			tui_dispatch_debug_run(s, src);
+			free(src);
+			return true;
+		} else {
+			/* Freeform expression: pass through verbatim */
+			tui_dispatch_debug_run(s, inline_expr);
+			return true;
+		}
+	}
+
+	/* script_file path: read the whole file, dispatch its contents */
+#ifndef DEBUGGER_TUI_OMIT_MAIN
+	/* File I/O is available in production builds.
+	 * Use stdio: script files are typically small .ut source files.
+	 *
+	 * P1-2 fix (/gate round 1 security + bar-raiser): defensive checks added.
+	 *   a. fstat and reject non-regular files (FIFOs, character devices) to prevent
+	 *      hangs (/dev/zero) or blocking (FIFO with no writer).
+	 *   b. Check ferror() after fread to distinguish read error from empty file.
+	 *   c. Reject empty files with a clear log message.
+	 *   d. Warn if file was larger than TUI_ODB_SOURCE_MAX-1 bytes (truncation
+	 *      silently produces a compilation error with no breadcrumb otherwise). */
+	{
+		FILE *f = fopen(script_file, "r");
+		if (f == NULL) {
+			log_warn(LOG_COMP_GENERAL,
+			         "tui_launch_startup_script: cannot open %s", script_file);
+			return false;
+		}
+
+		/* Reject non-regular files: FIFOs hang on fread; /dev/zero fills buffer */
+		struct stat st;
+		if (fstat(fileno(f), &st) != 0 || !S_ISREG(st.st_mode)) {
+			log_warn(LOG_COMP_GENERAL,
+			         "tui_launch_startup_script: script file %s is not a regular file",
+			         script_file);
+			fclose(f);
+			return false;
+		}
+
+		char *buf = malloc(TUI_ODB_SOURCE_MAX);
+		if (buf == NULL) {
+			log_warn(LOG_COMP_GENERAL,
+			         "tui_launch_startup_script: OOM allocating file buffer");
+			fclose(f);
+			return false;
+		}
+		size_t n = fread(buf, 1, TUI_ODB_SOURCE_MAX - 1, f);
+		int had_error = ferror(f);
+		fclose(f);
+
+		if (had_error) {
+			log_warn(LOG_COMP_GENERAL,
+			         "tui_launch_startup_script: read error on %s", script_file);
+			free(buf);
+			return false;
+		}
+		if (n == 0) {
+			log_warn(LOG_COMP_GENERAL,
+			         "tui_launch_startup_script: empty file %s", script_file);
+			free(buf);
+			return false;
+		}
+		/* Warn if the file was truncated (actual file is larger than buffer) */
+		if (n == TUI_ODB_SOURCE_MAX - 1 && st.st_size > (off_t)(TUI_ODB_SOURCE_MAX - 1)) {
+			log_warn(LOG_COMP_GENERAL,
+			         "tui_launch_startup_script: script file %s truncated at %d bytes "
+			         "(file is %lld bytes); expression may be incomplete",
+			         script_file, TUI_ODB_SOURCE_MAX - 1, (long long)st.st_size);
+		}
+		buf[n] = '\0';
+		tui_dispatch_debug_run(s, buf);
+		free(buf);
+		return true;
+	}
+#else
+	/* Test builds: script_file path is not exercised (tests use inline_expr). */
+	(void)script_file;
+	return false;
+#endif
+}
+
+/* 2026-06-08 JES Phase B.8 #691: real ODB source fetch (production only).
+ *
+ * Replicates debug_handler.c:2105-2202 as a self-contained helper.  Called
+ * through the odb_fetch_hook pointer in tui_state_t; never called from test
+ * builds (the pointer is NULL in OMIT_MAIN builds).
+ *
+ * path_no_at -- dotted ODB path without leading '@' (e.g. "workspace.foo")
+ * out_buf    -- caller-allocated buffer, TUI_ODB_SOURCE_MAX bytes
+ * out_bufsz  -- must be TUI_ODB_SOURCE_MAX
+ *
+ * GIL: must be called with GIL held (ODB operations are not thread-safe).
+ * Called from (a) the startup-launch path in debugger_tui_main BEFORE the
+ * event loop begins (GIL held throughout) or (b) tui_eval_submit during the
+ * event loop AFTER pthread_mutex_lock reacquires the GIL post-poll. Both
+ * paths hold the GIL.  (P2-14 comment; P1-4 assert added at function entry.)
+ */
+#ifndef DEBUGGER_TUI_OMIT_MAIN
+/* These includes are for tui_real_odb_fetch only (and later debugger_tui_main).
+ * All are guarded by DEBUGGER_TUI_OMIT_MAIN because they bring in GIL and ODB
+ * symbols not linked in the test binary.
+ *
+ * After the P2-7 refactor (extracting debug_get_script_source), this function
+ * no longer duplicates the ODB-traversal body; the ODB-specific includes
+ * (tablestructure.h, langinternal.h, langexternal.h, opverbs.h, op.h,
+ * db_format.h) have been removed.  debug_handler.h (which provides
+ * debug_get_script_source) also pulls in frontier.h -> Handle type.
+ * gethandlesize/disposehandle come from memory.h (included below with
+ * debugger_tui_main). */
+#include "debug_handler.h"                       /* debug_get_script_source, Handle types */
+#include "headless_threading.h"                  /* frontier_gil, hthreadglobals */
+
+static bool tui_real_odb_fetch(const char *path_no_at,
+                                char *out_buf, size_t out_bufsz) {
+	/* P1-4 fix (/gate round 1 concurrency): assert GIL is held.
+	 * hthreadglobals is per-thread and only non-nil when this thread holds
+	 * runtime state (i.e., the GIL).  Both call sites (startup-launch in
+	 * debugger_tui_main and tui_eval_submit post-poll) hold the GIL; this
+	 * assert catches future callers that do not.  Pattern from debug_handler.c. */
+	assert(hthreadglobals != nil);
+
+	/* P2-7 refactor (/gate round 1): delegate to the shared helper extracted
+	 * from debug_handler.c to eliminate the ~90-line duplicated ODB-traversal
+	 * body (P2-7 fix, /gate round 1 bar-raiser).
+	 *
+	 * 2026-06-08 JES Phase B.8 #691 round 2 P2: pass NULL for out_reason -- the
+	 * TUI logs a generic warning regardless of which step failed, so it does not
+	 * need the fine-grained discrimination that handle_debug_getsource needs to
+	 * preserve its protocol-level error messages. */
+	Handle htext = debug_get_script_source(path_no_at, NULL);
+	if (htext == nil) {
+		log_warn(LOG_COMP_GENERAL,
+		         "tui_real_odb_fetch: no source text for %s", path_no_at);
+		return false;
+	}
+
+	/* Copy handle contents to out_buf (NUL-terminated, truncated if needed) */
+	long hsize = gethandlesize(htext);
+	long copy_len = hsize;
+	if (copy_len >= (long)out_bufsz) copy_len = (long)out_bufsz - 1;
+	memcpy(out_buf, *htext, (size_t)copy_len);
+	out_buf[copy_len] = '\0';
+	disposehandle(htext);
+	return true;
+}
+#endif /* !DEBUGGER_TUI_OMIT_MAIN */
+
+/* -------------------------------------------------------------------------
  * 2026-06-07 JES Phase B.7 #691: scratch-eval pane helpers.
  *
  * tui_eval_activate   -- enter ':' eval mode: set eval_pane_active, show cursor
@@ -928,7 +1207,11 @@ static int tui_json_escape(const char *src, char *dst, size_t dst_cap) {
 
 void tui_eval_activate(tui_state_t *s) {
 	if (s == NULL) return;
-	if (s->debug_state != TUI_DEBUG_SUSPENDED) return; /* guard: SUSPENDED only */
+	/* 2026-06-08 JES Phase B.8 #691: accept both SUSPENDED and RUNNING.
+	 * SUSPENDED -> evaluates in current frame (existing script/eval path).
+	 * RUNNING   -> launches a new debug-run (new tui_eval_submit branch).
+	 * IDLE remains excluded: no transport thread to dispatch to. */
+	if (s->debug_state == TUI_DEBUG_IDLE) return;
 	if (s->eval_pane_active) return;                   /* already active */
 
 	s->eval_pane_active = true;
@@ -1042,6 +1325,50 @@ void tui_eval_append_result(tui_state_t *s, const char *expr, const char *result
 void tui_eval_submit(tui_state_t *s) {
 	if (s == NULL) return;
 	if (s->eval_input_buf[0] == '\0') return; /* empty: nothing to evaluate */
+
+	/* 2026-06-08 JES Phase B.8 #691: branch on debug_state.
+	 *
+	 * RUNNING  -> new debug-run launch.  The expression (possibly a bare ODB
+	 *   address resolved to source text) is dispatched as debug/run.  This
+	 *   starts a new thread suspended at the first statement.
+	 *
+	 * SUSPENDED -> existing script/eval path (evaluate in current frame).
+	 *   Unchanged from B.7.
+	 *
+	 * Other states (IDLE): tui_eval_activate already prevents reaching here.
+	 */
+	if (s->debug_state == TUI_DEBUG_RUNNING) {
+		/* 2026-06-08 JES Phase B.8 #691 P1-3 fix: RUNNING path -- new debug-run launch.
+		 *
+		 * Detection: is the input a bare ODB address?
+		 *   Yes -> resolve source via odb_fetch_hook, dispatch debug/run
+		 *   No  -> dispatch debug/run with verbatim expression
+		 *
+		 * tui_launch_startup_script handles both sub-cases.  We pass
+		 * eval_input_buf as inline_expr and NULL as script_file.
+		 *
+		 * P1-3 fix (/gate round 1 bar-raiser): capture the return value.
+		 *   On failure: surface an error entry to the eval history so the user
+		 *   sees something, and preserve eval_input_buf so they can fix and retry.
+		 *   On success: clear input and dismiss as before. */
+		bool ok = tui_launch_startup_script(s, s->eval_input_buf, NULL);
+		if (!ok) {
+			/* Surface failure in the eval history so the user sees it.
+			 * Do NOT clear eval_input_buf -- preserve for retry. */
+			tui_eval_append_result(s, s->eval_input_buf, "error: launch failed (see log)");
+			/* Invalidate footer so the history entry renders immediately. */
+			if (s->footer_win != NULL)
+				boxen_window_invalidate(s->footer_win);
+			return;
+		}
+		/* Success: clear input and dismiss pane */
+		s->eval_input_buf[0] = '\0';
+		s->eval_input_cursor = 0;
+		tui_eval_dismiss(s);
+		return;
+	}
+
+	/* SUSPENDED path: existing script/eval dispatch (unchanged from B.7). */
 
 	/* SENTINEL: tui_json_escape the expression before JSON interpolation.
 	 * B.4 P1 security class: user input MUST be escaped.
@@ -2169,11 +2496,14 @@ static void on_input(boxen_window_t *win, const boxen_event_t *ev, void *ud) {
 		return;
 	}
 
-	/* 2026-06-07 JES Phase B.7 #691: ':' activates the eval pane.
-	 * Only available when SUSPENDED and pane not already active.
-	 * When active, ':' is caught by the eval handler above. */
+	/* 2026-06-08 JES Phase B.8 #691: ':' activates the eval pane.
+	 * Available when SUSPENDED (evaluate in frame) or RUNNING (new debug-run
+	 * launch).  IDLE is excluded: no transport thread to dispatch to.
+	 * When pane is already active, ':' is caught by the eval handler above
+	 * (typed into the expression buffer).
+	 * tui_eval_activate enforces the IDLE guard internally. */
 	if (ev->key.key == BOXEN_KEY_NONE && ev->key.ch == ':' &&
-	    s->debug_state == TUI_DEBUG_SUSPENDED && !s->eval_pane_active) {
+	    s->debug_state != TUI_DEBUG_IDLE && !s->eval_pane_active) {
 		tui_eval_activate(s);
 		return;
 	}
@@ -2333,6 +2663,16 @@ void debugger_tui_state_init(tui_state_t *s, int tw, int th) {
 	s->eval_last_expr[0]         = '\0';
 	s->eval_display_counter      = 0;
 
+	/* 2026-06-08 JES Phase B.8 #691: ODB source-fetch hook.
+	 * Production sets this to tui_real_odb_fetch (inside OMIT_MAIN guard below).
+	 * Test builds leave it NULL; tests that exercise the ODB path set it
+	 * explicitly to a mock before calling tui_eval_submit or
+	 * tui_launch_startup_script. */
+	s->odb_fetch_hook = NULL;
+#ifndef DEBUGGER_TUI_OMIT_MAIN
+	s->odb_fetch_hook = tui_real_odb_fetch;
+#endif
+
 	/* Allocate heap transport (stub; B.6 wires debug_set_attach_transport) */
 	s->transport = calloc(1, sizeof(transport_t));
 	if (s->transport != NULL) {
@@ -2404,6 +2744,10 @@ void debugger_tui_state_teardown(tui_state_t *s) {
 	/* 2026-06-07 JES Phase B.7 #750: zero polish fields */
 	s->eval_last_expr[0]         = '\0';
 	s->eval_display_counter      = 0;
+	/* 2026-06-08 JES Phase B.8 #691 P2-15: NULL odb_fetch_hook for defense-in-depth.
+	 * After teardown the hook pointer is stale; zeroing it prevents a future
+	 * accidental call through a dangling function pointer. */
+	s->odb_fetch_hook = NULL;
 	s->debug_state = TUI_DEBUG_IDLE;
 }
 
@@ -2466,7 +2810,6 @@ int debugger_tui_run_one_tick(tui_state_t *s, const boxen_event_t *ev) {
 #include <pthread.h>
 
 int debugger_tui_main(const cli_options_t *opts) {
-	(void)opts;
 
 	/* 2026-06-07 JES Phase B.6 #691 #738: heap-allocate tui_state_t.
 	 *
@@ -2537,6 +2880,24 @@ int debugger_tui_main(const cli_options_t *opts) {
 	 * Pattern mirrors protocol_handler.c:412-424 exactly.
 	 * See planning/phase_b/EXECUTION_PLAN.md B.6 "Teardown sequence". */
 	debug_set_attach_transport(state->transport);
+
+	/* 2026-06-08 JES Phase B.8 #691: startup-script launch.
+	 *
+	 * If the user passed a script argument (--debug-tui @path, --debug-tui -e expr,
+	 * or --debug-tui file.ut), kick off the debug-run now -- after transport
+	 * registration so the suspended notification can arrive through the transport
+	 * and the TUI can display it.
+	 *
+	 * state->debug_state starts at TUI_DEBUG_IDLE; this call will asynchronously
+	 * transition the TUI to TUI_DEBUG_SUSPENDED and load the source pane when the
+	 * spawned thread suspends at its entry point and calls back through
+	 * tui_write_line.  The transition is NOT synchronous with the call below --
+	 * it occurs during a future boxen_poll_event GIL yield.
+	 * (P1-5 fix: /gate round 1 concurrency -- corrected sync-implying comment.)
+	 */
+	if (opts->inline_script != NULL || opts->script_file != NULL) {
+		tui_launch_startup_script(state, opts->inline_script, opts->script_file);
+	}
 
 	log_info(LOG_COMP_GENERAL, "Debugger TUI: entering event loop (q/Esc/Ctrl-C to quit)");
 

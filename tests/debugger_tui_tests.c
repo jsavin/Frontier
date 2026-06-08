@@ -2883,9 +2883,15 @@ static void test_escape_dismisses_eval_pane(void) {
 /* -------------------------------------------------------------------------
  * test_eval_pane_hidden_when_not_suspended
  *
+ * 2026-06-07 JES Phase B.8 #691: updated -- ':' now activates in RUNNING too.
+ *
  * Spec: State: debug_state = TUI_DEBUG_IDLE; inject ':'.
- * Verify: state.eval_pane_active == false (colon is a no-op outside SUSPENDED).
- * Also verify when TUI_DEBUG_RUNNING.
+ * Verify: state.eval_pane_active == false (colon is a no-op only in IDLE).
+ *
+ * Note: RUNNING behavior is tested separately in
+ * test_colon_activates_eval_pane_when_running.  The RUNNING assertion in
+ * the old version of this test has been removed because ':' in RUNNING now
+ * activates the eval pane (for new-debug-run launch).
  * ---------------------------------------------------------------------- */
 static void test_eval_pane_hidden_when_not_suspended(void) {
 	setup();
@@ -2897,13 +2903,8 @@ static void test_eval_pane_hidden_when_not_suspended(void) {
 	ev.key.ch  = ':';
 	ev.key.mod = BOXEN_MOD_NONE;
 
-	/* IDLE state */
+	/* IDLE state: ':' must still be a no-op (no thread to attach to) */
 	g_state.debug_state = TUI_DEBUG_IDLE;
-	debugger_tui_run_one_tick(&g_state, &ev);
-	assert(g_state.eval_pane_active == false);
-
-	/* RUNNING state */
-	g_state.debug_state = TUI_DEBUG_RUNNING;
 	debugger_tui_run_one_tick(&g_state, &ev);
 	assert(g_state.eval_pane_active == false);
 
@@ -3559,6 +3560,295 @@ static void test_eval_modal_open_colon_does_not_activate_eval_pane(void) {
 	teardown();
 }
 
+/* =========================================================================
+ * 2026-06-07 JES Phase B.8 #691: TUI launch -- test seam and new tests.
+ *
+ * Four new tests for the launch-script feature:
+ *
+ *   test_eval_bare_address_resolves_to_source
+ *   test_eval_freeform_expression_passes_through
+ *   test_launch_with_inline_script_starts_suspended
+ *   test_launch_with_bare_address_resolves_source
+ *
+ * Also one test that updates the existing RUNNING-state ':' assertion:
+ *
+ *   test_colon_activates_eval_pane_when_running
+ *
+ * Seam design: tui_state_t carries an odb_fetch_hook function pointer.
+ * Tests set it to a local mock that returns a canned string without
+ * touching the ODB.  Production sets it to the real ODB lookup helper
+ * (inside #ifndef DEBUGGER_TUI_OMIT_MAIN).  When the hook is NULL the
+ * source fetch silently fails (returns false) -- the same result as an
+ * ODB lookup error.
+ * ========================================================================= */
+
+/* Mock ODB fetch: simulates a successful ODB source lookup.
+ * Returns the canned source text regardless of the path. */
+static bool g_mock_odb_called = false;
+static const char *g_mock_odb_source = "local x = 42\nlog(\"hello\")";
+
+static bool mock_odb_fetch(const char *path_no_at, char *out_buf, size_t out_bufsz) {
+	(void)path_no_at;
+	g_mock_odb_called = true;
+	size_t src_len = strlen(g_mock_odb_source);
+	if (src_len >= out_bufsz) src_len = out_bufsz - 1;
+	memcpy(out_buf, g_mock_odb_source, src_len);
+	out_buf[src_len] = '\0';
+	return true;
+}
+
+/* -------------------------------------------------------------------------
+ * test_eval_bare_address_resolves_to_source
+ *
+ * 2026-06-07 JES Phase B.8 #691.
+ *
+ * State: TUI_DEBUG_RUNNING, eval pane active, input = "@some.address".
+ * Submit via tui_eval_submit.
+ *
+ * Assert:
+ *   - odb_fetch_hook WAS called (bare address detected).
+ *   - The dispatched JSON contains the resolved source text
+ *     ("local x = 42"), NOT the literal "@some.address".
+ *   - The dispatch is a debug/run request (not script/eval).
+ * ---------------------------------------------------------------------- */
+static void test_eval_bare_address_resolves_to_source(void) {
+	setup();
+	g_state.debug_state = TUI_DEBUG_RUNNING;
+	reset_dispatch_capture();
+	g_mock_odb_called   = false;
+	g_state.odb_fetch_hook = mock_odb_fetch;
+
+	/* Load eval input directly (simulates what run_one_tick does on keypress) */
+	strncpy(g_state.eval_input_buf, "@some.address",
+	        sizeof(g_state.eval_input_buf) - 1);
+	g_state.eval_input_buf[sizeof(g_state.eval_input_buf) - 1] = '\0';
+	g_state.eval_input_cursor = (int)strlen(g_state.eval_input_buf);
+	g_state.eval_pane_active  = true;
+
+	tui_eval_submit(&g_state);
+
+	/* ODB hook must have been called (bare address was detected) */
+	assert(g_mock_odb_called == true);
+
+	/* Dispatched JSON must contain resolved source, not the bare address */
+	assert(strstr(g_dispatch_buf, "@some.address") == NULL);
+	assert(strstr(g_dispatch_buf, "local x = 42") != NULL);
+
+	/* Must be a debug/run request, not script/eval */
+	assert(strstr(g_dispatch_buf, "debug/run") != NULL);
+	assert(strstr(g_dispatch_buf, "script/eval") == NULL);
+
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * test_eval_freeform_expression_passes_through
+ *
+ * 2026-06-07 JES Phase B.8 #691.
+ *
+ * State: TUI_DEBUG_RUNNING, input = "local (t); new (tableType, @t); myScript(@t)".
+ * Submit via tui_eval_submit.
+ *
+ * Assert:
+ *   - odb_fetch_hook was NOT called (not a bare address).
+ *   - Dispatched JSON contains the verbatim expression.
+ *   - Dispatch is a debug/run request.
+ * ---------------------------------------------------------------------- */
+static void test_eval_freeform_expression_passes_through(void) {
+	setup();
+	g_state.debug_state = TUI_DEBUG_RUNNING;
+	reset_dispatch_capture();
+	g_mock_odb_called   = false;
+	g_state.odb_fetch_hook = mock_odb_fetch;   /* would be called if wrong path taken */
+
+	const char *freeform = "local (t); new (tableType, @t); myScript(@t)";
+	strncpy(g_state.eval_input_buf, freeform, sizeof(g_state.eval_input_buf) - 1);
+	g_state.eval_input_buf[sizeof(g_state.eval_input_buf) - 1] = '\0';
+	g_state.eval_input_cursor = (int)strlen(g_state.eval_input_buf);
+	g_state.eval_pane_active  = true;
+
+	tui_eval_submit(&g_state);
+
+	/* ODB hook must NOT have been called */
+	assert(g_mock_odb_called == false);
+
+	/* Expression must appear verbatim in the dispatch */
+	assert(strstr(g_dispatch_buf, "local (t)") != NULL);
+	assert(strstr(g_dispatch_buf, "debug/run") != NULL);
+
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * test_launch_with_inline_script_starts_suspended
+ *
+ * 2026-06-07 JES Phase B.8 #691.
+ *
+ * Verify the startup-launch helper dispatches a debug/run with the inline
+ * expression and that start_suspended semantics are represented (the debug/run
+ * op in the existing runtime always starts suspended; the test verifies the
+ * dispatch shape rather than a runtime boolean since start_suspended is
+ * hardcoded in handle_debug_run).
+ *
+ * Call tui_launch_startup_script with inline_script = "log(\"x\")".
+ *
+ * Assert:
+ *   - Dispatch happened (g_dispatch_buf non-empty).
+ *   - Dispatched op is "debug/run".
+ *   - Expression in dispatch matches the inline_script.
+ *   - odb_fetch_hook was NOT called (not a bare address).
+ * ---------------------------------------------------------------------- */
+static void test_launch_with_inline_script_starts_suspended(void) {
+	setup();
+	reset_dispatch_capture();
+	g_mock_odb_called   = false;
+	g_state.odb_fetch_hook = mock_odb_fetch;
+
+	tui_launch_startup_script(&g_state, "log(\"x\")", NULL);
+
+	/* Dispatch must have happened */
+	assert(g_dispatch_buf[0] != '\0');
+
+	/* Op must be debug/run */
+	assert(strstr(g_dispatch_buf, "debug/run") != NULL);
+
+	/* Expression must be the inline script */
+	assert(strstr(g_dispatch_buf, "log") != NULL);
+
+	/* ODB hook was not called (freeform expression, not a bare address) */
+	assert(g_mock_odb_called == false);
+
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * test_launch_with_bare_address_resolves_source
+ *
+ * 2026-06-07 JES Phase B.8 #691.
+ *
+ * Call tui_launch_startup_script with inline_script = "@some.address".
+ *
+ * Assert:
+ *   - odb_fetch_hook WAS called.
+ *   - Dispatched op is "debug/run".
+ *   - Expression in dispatch is the resolved source (not "@some.address").
+ * ---------------------------------------------------------------------- */
+static void test_launch_with_bare_address_resolves_source(void) {
+	setup();
+	reset_dispatch_capture();
+	g_mock_odb_called   = false;
+	g_state.odb_fetch_hook = mock_odb_fetch;
+
+	tui_launch_startup_script(&g_state, "@some.address", NULL);
+
+	/* ODB hook must have been called */
+	assert(g_mock_odb_called == true);
+
+	/* Op must be debug/run */
+	assert(strstr(g_dispatch_buf, "debug/run") != NULL);
+
+	/* Resolved source must appear, not the bare address */
+	assert(strstr(g_dispatch_buf, "@some.address") == NULL);
+	assert(strstr(g_dispatch_buf, "local x = 42") != NULL);
+
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * test_colon_activates_eval_pane_when_running
+ *
+ * 2026-06-07 JES Phase B.8 #691.
+ *
+ * ':' in TUI_DEBUG_RUNNING state must NOW activate the eval pane so the
+ * user can launch a new debug-run from the RUNNING state (no attached thread).
+ *
+ * This replaces the previous assertion in test_eval_pane_hidden_when_not_suspended
+ * that `:` was a no-op while RUNNING.  The IDLE no-op is preserved.
+ * ---------------------------------------------------------------------- */
+static void test_colon_activates_eval_pane_when_running(void) {
+	setup();
+
+	boxen_event_t ev;
+	memset(&ev, 0, sizeof(ev));
+	ev.type    = BOXEN_EV_KEY;
+	ev.key.key = BOXEN_KEY_NONE;
+	ev.key.ch  = ':';
+	ev.key.mod = BOXEN_MOD_NONE;
+
+	/* RUNNING state: ':' must activate the eval pane */
+	g_state.debug_state = TUI_DEBUG_RUNNING;
+	debugger_tui_run_one_tick(&g_state, &ev);
+	assert(g_state.eval_pane_active == true);
+
+	/* Cleanup: dismiss pane so teardown is clean */
+	tui_eval_dismiss(&g_state);
+
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * test_eval_submit_running_failure_path
+ *
+ * 2026-06-08 JES Phase B.8 #691 P1-3 fix: /gate round 1 bar-raiser.
+ *
+ * Before the fix, tui_eval_submit RUNNING branch ignored the return value of
+ * tui_launch_startup_script.  On failure: input was silently cleared, pane
+ * dismissed, and no feedback given to the user.
+ *
+ * After the fix, on failure:
+ *   1. An error entry appears in the eval history.
+ *   2. eval_input_buf is NOT cleared (preserved for retry).
+ *   3. The pane is NOT dismissed (eval_pane_active stays true).
+ *
+ * This test hooks the failure path by setting odb_fetch_hook to a mock that
+ * returns false (simulating an ODB lookup failure on a bare address).
+ * ---------------------------------------------------------------------- */
+
+static bool mock_odb_fetch_fail(const char *path_no_at, char *out_buf, size_t out_bufsz) {
+	(void)path_no_at;
+	(void)out_buf;
+	(void)out_bufsz;
+	return false; /* Always fail */
+}
+
+static void test_eval_submit_running_failure_path(void) {
+	setup();
+	g_state.debug_state = TUI_DEBUG_RUNNING;
+	reset_dispatch_capture();
+	g_state.odb_fetch_hook = mock_odb_fetch_fail;
+
+	/* Load a bare ODB address into the eval input (will trigger ODB fetch
+	 * which the mock will fail, exercising the P1-3 failure path). */
+	strncpy(g_state.eval_input_buf, "@some.bad.path",
+	        sizeof(g_state.eval_input_buf) - 1);
+	g_state.eval_input_buf[sizeof(g_state.eval_input_buf) - 1] = '\0';
+	g_state.eval_input_cursor = (int)strlen(g_state.eval_input_buf);
+	g_state.eval_pane_active  = true;
+
+	int history_before = g_state.eval_history_count;
+
+	tui_eval_submit(&g_state);
+
+	/* P1-3 assertion 1: eval history must have gained one entry (error entry) */
+	assert(g_state.eval_history_count == history_before + 1);
+	/* Find the most-recent history slot and verify it contains "error" */
+	int last_slot = (g_state.eval_history_head + g_state.eval_history_count - 1)
+	                % EVAL_HISTORY_MAX;
+	assert(g_state.eval_history[last_slot] != NULL);
+	assert(strstr(g_state.eval_history[last_slot], "error") != NULL);
+
+	/* P1-3 assertion 2: eval_input_buf must NOT be cleared (preserved for retry) */
+	assert(strcmp(g_state.eval_input_buf, "@some.bad.path") == 0);
+
+	/* P1-3 assertion 3: pane must NOT be dismissed */
+	assert(g_state.eval_pane_active == true);
+
+	/* No dispatch must have happened (launch failed before dispatch) */
+	assert(g_dispatch_buf[0] == '\0');
+
+	teardown();
+}
+
 /* -------------------------------------------------------------------------
  * main
  * ---------------------------------------------------------------------- */
@@ -3675,6 +3965,16 @@ int main(void) {
 	TR_RUN(test_eval_history_entry_contains_expression);
 	TR_RUN(test_eval_display_counter_monotonic_past_wrap);
 	TR_RUN(test_eval_modal_open_colon_does_not_activate_eval_pane);
+
+	/* B.8 tests (#691: TUI launch -- bare address, freeform, startup) */
+	TR_RUN(test_eval_bare_address_resolves_to_source);
+	TR_RUN(test_eval_freeform_expression_passes_through);
+	TR_RUN(test_launch_with_inline_script_starts_suspended);
+	TR_RUN(test_launch_with_bare_address_resolves_source);
+	TR_RUN(test_colon_activates_eval_pane_when_running);
+
+	/* B.8 /gate round 1 P1-3 fix: failure-path regression guard */
+	TR_RUN(test_eval_submit_running_failure_path);
 
 	TR_SUMMARY();
 	return TR_EXIT_CODE();
