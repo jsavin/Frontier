@@ -3787,6 +3787,69 @@ static void test_colon_activates_eval_pane_when_running(void) {
 }
 
 /* -------------------------------------------------------------------------
+ * test_eval_submit_running_failure_path
+ *
+ * 2026-06-08 JES Phase B.8 #691 P1-3 fix: /gate round 1 bar-raiser.
+ *
+ * Before the fix, tui_eval_submit RUNNING branch ignored the return value of
+ * tui_launch_startup_script.  On failure: input was silently cleared, pane
+ * dismissed, and no feedback given to the user.
+ *
+ * After the fix, on failure:
+ *   1. An error entry appears in the eval history.
+ *   2. eval_input_buf is NOT cleared (preserved for retry).
+ *   3. The pane is NOT dismissed (eval_pane_active stays true).
+ *
+ * This test hooks the failure path by setting odb_fetch_hook to a mock that
+ * returns false (simulating an ODB lookup failure on a bare address).
+ * ---------------------------------------------------------------------- */
+
+static bool mock_odb_fetch_fail(const char *path_no_at, char *out_buf, size_t out_bufsz) {
+	(void)path_no_at;
+	(void)out_buf;
+	(void)out_bufsz;
+	return false; /* Always fail */
+}
+
+static void test_eval_submit_running_failure_path(void) {
+	setup();
+	g_state.debug_state = TUI_DEBUG_RUNNING;
+	reset_dispatch_capture();
+	g_state.odb_fetch_hook = mock_odb_fetch_fail;
+
+	/* Load a bare ODB address into the eval input (will trigger ODB fetch
+	 * which the mock will fail, exercising the P1-3 failure path). */
+	strncpy(g_state.eval_input_buf, "@some.bad.path",
+	        sizeof(g_state.eval_input_buf) - 1);
+	g_state.eval_input_buf[sizeof(g_state.eval_input_buf) - 1] = '\0';
+	g_state.eval_input_cursor = (int)strlen(g_state.eval_input_buf);
+	g_state.eval_pane_active  = true;
+
+	int history_before = g_state.eval_history_count;
+
+	tui_eval_submit(&g_state);
+
+	/* P1-3 assertion 1: eval history must have gained one entry (error entry) */
+	assert(g_state.eval_history_count == history_before + 1);
+	/* Find the most-recent history slot and verify it contains "error" */
+	int last_slot = (g_state.eval_history_head + g_state.eval_history_count - 1)
+	                % EVAL_HISTORY_MAX;
+	assert(g_state.eval_history[last_slot] != NULL);
+	assert(strstr(g_state.eval_history[last_slot], "error") != NULL);
+
+	/* P1-3 assertion 2: eval_input_buf must NOT be cleared (preserved for retry) */
+	assert(strcmp(g_state.eval_input_buf, "@some.bad.path") == 0);
+
+	/* P1-3 assertion 3: pane must NOT be dismissed */
+	assert(g_state.eval_pane_active == true);
+
+	/* No dispatch must have happened (launch failed before dispatch) */
+	assert(g_dispatch_buf[0] == '\0');
+
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
  * main
  * ---------------------------------------------------------------------- */
 
@@ -3909,6 +3972,9 @@ int main(void) {
 	TR_RUN(test_launch_with_inline_script_starts_suspended);
 	TR_RUN(test_launch_with_bare_address_resolves_source);
 	TR_RUN(test_colon_activates_eval_pane_when_running);
+
+	/* B.8 /gate round 1 P1-3 fix: failure-path regression guard */
+	TR_RUN(test_eval_submit_running_failure_path);
 
 	TR_SUMMARY();
 	return TR_EXIT_CODE();

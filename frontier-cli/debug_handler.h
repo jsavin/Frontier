@@ -260,4 +260,22 @@ tydebugstate *debug_register_thread(long threadid, transport_t *transport,
  */
 void debug_unregister_thread(long threadid);
 
+/*
+ * 2026-06-08 JES Phase B.8 #691 P2-7: shared ODB source-fetch helper.
+ *
+ * Walk the ODB for the script at `path_no_at` (dotted path WITHOUT leading '@'),
+ * extract the outline text via opgetlangtext, and return a heap Handle of the
+ * source text on success.  The caller owns the returned Handle and must call
+ * disposehandle() when done.
+ *
+ * Returns nil on any error (path not found, not a script, ODB load failure).
+ *
+ * GIL: must be called with GIL held (ODB operations are not thread-safe).
+ *
+ * Extracted from handle_debug_getsource to eliminate the parallel
+ * implementation in tui_real_odb_fetch (debugger_tui.c).  Both call sites
+ * now delegate to this helper.
+ */
+Handle debug_get_script_source(const char *path_no_at);
+
 #endif /* DEBUG_HANDLER_H */

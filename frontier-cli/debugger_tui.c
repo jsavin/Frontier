@@ -49,6 +49,8 @@
  * 2026-06-07 JES Phase B.6 #691 #738 #740 #742 #744 #746: lazy-attach wiring + polish
  * 2026-06-07 JES Phase B.7 #691: scratch-eval pane
  * 2026-06-07 JES Phase B.7 #750: eval polish -- clear dispatched id, expr tag, monotonic [N], OOM fix
+ * 2026-06-08 JES Phase B.8 #691: TUI launch entry points (positional script,
+ *   -e expression, : eval-from-RUNNING)
  *
  * SPDX-License-Identifier: MIT
  * Copyright (c) 2025-2026 Frontier contributors
@@ -74,6 +76,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#include <assert.h>       /* assert -- used in tui_real_odb_fetch GIL precondition */
+#include <stdio.h>        /* fileno */
+#include <sys/stat.h>     /* fstat, struct stat, S_ISREG */
 
 /* -------------------------------------------------------------------------
  * 2026-06-07 JES Phase B.2 #691: locals state helpers.
@@ -881,7 +886,7 @@ static int tui_json_escape(const char *src, char *dst, size_t dst_cap) {
 }
 
 /* -------------------------------------------------------------------------
- * 2026-06-07 JES Phase B.8 #691: bare ODB address detection and source fetch.
+ * 2026-06-08 JES Phase B.8 #691: bare ODB address detection and source fetch.
  *
  * tui_is_bare_odb_address -- detection rule per spec:
  *   Returns true iff s starts with '@' AND every subsequent character is
@@ -917,7 +922,7 @@ bool tui_is_bare_odb_address(const char *s) {
  * ODB scripts are typically < 32 KB; 64 KB is generous. */
 #define TUI_ODB_SOURCE_MAX 65536
 
-/* 2026-06-07 JES Phase B.8 #691: dispatch a debug/run with the given expression.
+/* 2026-06-08 JES Phase B.8 #691: dispatch a debug/run with the given expression.
  *
  * Wire format verified at debug_handler.c:1248 (handle_debug_run):
  *   request:  {"op":"debug/run","id":N,"params":{"expression":"<escaped>"}}
@@ -928,18 +933,30 @@ bool tui_is_bare_odb_address(const char *s) {
  * routes to op_dispatch -> handle_debug_run -> headless_spawn_script_thread
  * with start_suspended=true (hardcoded in handle_debug_run:1333). */
 static void tui_dispatch_debug_run(tui_state_t *s, const char *expr_text) {
-	/* JSON-escape the expression before interpolation (B.4 P1 class). */
-	char esc_expr[TUI_ODB_SOURCE_MAX * 2 + 1];
-	tui_json_escape(expr_text, esc_expr, sizeof(esc_expr));
+	/* JSON-escape the expression before interpolation (B.4 P1 class).
+	 *
+	 * tui_json_escape worst-case is 6x for control bytes (\u00XX expansion).
+	 * Allocate dynamically based on input length so the escape buffer is
+	 * always large enough.  The previous static char[TUI_ODB_SOURCE_MAX*2+1]
+	 * was sized for 2x, which would silently truncate on a source with many
+	 * control bytes.  (P1-1 fix: /gate round 1 bar-raiser + security.) */
+	size_t in_len = strlen(expr_text);
+	size_t esc_sz = in_len * 6 + 64;  /* 6x worst-case + NUL + margin */
+	char *esc_expr = malloc(esc_sz);
+	if (esc_expr == NULL) {
+		log_warn(LOG_COMP_GENERAL, "tui_dispatch_debug_run: OOM allocating escape buffer");
+		return;
+	}
+	tui_json_escape(expr_text, esc_expr, esc_sz);
 
 	int req_id = next_req_id(s);
 
-	/* +64 for JSON framing overhead; esc_expr is already escaped so the
-	 * worst-case size is 2*TUI_ODB_SOURCE_MAX + framing. */
-	size_t req_sz = sizeof(esc_expr) + 64;
+	/* +64 for JSON framing overhead. */
+	size_t req_sz = esc_sz + 64;
 	char *req = malloc(req_sz);
 	if (req == NULL) {
 		log_warn(LOG_COMP_GENERAL, "tui_dispatch_debug_run: OOM allocating request");
+		free(esc_expr);
 		return;
 	}
 	snprintf(req, req_sz,
@@ -948,9 +965,10 @@ static void tui_dispatch_debug_run(tui_state_t *s, const char *expr_text) {
 	         req_id, esc_expr);
 	tui_dispatch_json(s, req);
 	free(req);
+	free(esc_expr);
 }
 
-/* 2026-06-07 JES Phase B.8 #691: startup script launch.
+/* 2026-06-08 JES Phase B.8 #691: startup script launch.
  *
  * Called from debugger_tui_main after transport registration, and exposed
  * in the internal header for direct unit tests.
@@ -1006,7 +1024,15 @@ bool tui_launch_startup_script(tui_state_t *s,
 	/* script_file path: read the whole file, dispatch its contents */
 #ifndef DEBUGGER_TUI_OMIT_MAIN
 	/* File I/O is available in production builds.
-	 * Use stdio: script files are typically small .ut source files. */
+	 * Use stdio: script files are typically small .ut source files.
+	 *
+	 * P1-2 fix (/gate round 1 security + bar-raiser): defensive checks added.
+	 *   a. fstat and reject non-regular files (FIFOs, character devices) to prevent
+	 *      hangs (/dev/zero) or blocking (FIFO with no writer).
+	 *   b. Check ferror() after fread to distinguish read error from empty file.
+	 *   c. Reject empty files with a clear log message.
+	 *   d. Warn if file was larger than TUI_ODB_SOURCE_MAX-1 bytes (truncation
+	 *      silently produces a compilation error with no breadcrumb otherwise). */
 	{
 		FILE *f = fopen(script_file, "r");
 		if (f == NULL) {
@@ -1014,6 +1040,17 @@ bool tui_launch_startup_script(tui_state_t *s,
 			         "tui_launch_startup_script: cannot open %s", script_file);
 			return false;
 		}
+
+		/* Reject non-regular files: FIFOs hang on fread; /dev/zero fills buffer */
+		struct stat st;
+		if (fstat(fileno(f), &st) != 0 || !S_ISREG(st.st_mode)) {
+			log_warn(LOG_COMP_GENERAL,
+			         "tui_launch_startup_script: script file %s is not a regular file",
+			         script_file);
+			fclose(f);
+			return false;
+		}
+
 		char *buf = malloc(TUI_ODB_SOURCE_MAX);
 		if (buf == NULL) {
 			log_warn(LOG_COMP_GENERAL,
@@ -1022,7 +1059,28 @@ bool tui_launch_startup_script(tui_state_t *s,
 			return false;
 		}
 		size_t n = fread(buf, 1, TUI_ODB_SOURCE_MAX - 1, f);
+		int had_error = ferror(f);
 		fclose(f);
+
+		if (had_error) {
+			log_warn(LOG_COMP_GENERAL,
+			         "tui_launch_startup_script: read error on %s", script_file);
+			free(buf);
+			return false;
+		}
+		if (n == 0) {
+			log_warn(LOG_COMP_GENERAL,
+			         "tui_launch_startup_script: empty file %s", script_file);
+			free(buf);
+			return false;
+		}
+		/* Warn if the file was truncated (actual file is larger than buffer) */
+		if (n == TUI_ODB_SOURCE_MAX - 1 && st.st_size > (off_t)(TUI_ODB_SOURCE_MAX - 1)) {
+			log_warn(LOG_COMP_GENERAL,
+			         "tui_launch_startup_script: script file %s truncated at %d bytes "
+			         "(file is %lld bytes); expression may be incomplete",
+			         script_file, TUI_ODB_SOURCE_MAX - 1, (long long)st.st_size);
+		}
 		buf[n] = '\0';
 		tui_dispatch_debug_run(s, buf);
 		free(buf);
@@ -1035,7 +1093,7 @@ bool tui_launch_startup_script(tui_state_t *s,
 #endif
 }
 
-/* 2026-06-07 JES Phase B.8 #691: real ODB source fetch (production only).
+/* 2026-06-08 JES Phase B.8 #691: real ODB source fetch (production only).
  *
  * Replicates debug_handler.c:2105-2202 as a self-contained helper.  Called
  * through the odb_fetch_hook pointer in tui_state_t; never called from test
@@ -1046,96 +1104,39 @@ bool tui_launch_startup_script(tui_state_t *s,
  * out_bufsz  -- must be TUI_ODB_SOURCE_MAX
  *
  * GIL: must be called with GIL held (ODB operations are not thread-safe).
- * In the event loop all non-poll code holds the GIL, so this is satisfied.
+ * Called from (a) the startup-launch path in debugger_tui_main BEFORE the
+ * event loop begins (GIL held throughout) or (b) tui_eval_submit during the
+ * event loop AFTER pthread_mutex_lock reacquires the GIL post-poll. Both
+ * paths hold the GIL.  (P2-14 comment; P1-4 assert added at function entry.)
  */
 #ifndef DEBUGGER_TUI_OMIT_MAIN
-/* These includes are for tui_real_odb_fetch only.  They mirror the include
- * list in debug_handler.c (handle_debug_getsource uses the same types).
- * All are guarded by DEBUGGER_TUI_OMIT_MAIN for the same reason as the
- * debugger_tui_main includes below: these bring in GIL and ODB symbols that
- * are not linked in the test binary. */
-#include "debug_handler.h"                       /* langfastaddresstotable */
+/* These includes are for tui_real_odb_fetch only (and later debugger_tui_main).
+ * All are guarded by DEBUGGER_TUI_OMIT_MAIN because they bring in GIL and ODB
+ * symbols not linked in the test binary.
+ *
+ * After the P2-7 refactor (extracting debug_get_script_source), this function
+ * no longer duplicates the ODB-traversal body; the ODB-specific includes
+ * (tablestructure.h, langinternal.h, langexternal.h, opverbs.h, op.h,
+ * db_format.h) have been removed.  debug_handler.h (which provides
+ * debug_get_script_source) also pulls in frontier.h -> Handle type.
+ * gethandlesize/disposehandle come from memory.h (included below with
+ * debugger_tui_main). */
+#include "debug_handler.h"                       /* debug_get_script_source, Handle types */
 #include "headless_threading.h"                  /* frontier_gil, hthreadglobals */
-#include "../Common/headers/tablestructure.h"    /* roottable */
-#include "../Common/headers/langinternal.h"      /* langfastaddresstotable */
-#include "../Common/headers/langexternal.h"      /* hdlexternalvariable */
-#include "../Common/headers/opverbs.h"           /* opverbinmemory */
-#include "../Common/headers/op.h"                /* oppushoutline, opgetlangtext, oppopoutline */
-#include "db_format.h"                           /* db_context, db_context_init */
 
 static bool tui_real_odb_fetch(const char *path_no_at,
                                 char *out_buf, size_t out_bufsz) {
-	/* Parse the dotted path to find the containing table and leaf name.
-	 * Mirrors debug_handler.c:2114-2144 exactly. */
-	int pathlen = (int)strlen(path_no_at);
-	if (pathlen > 255) pathlen = 255;
-	bigstring bsfullpath;
-	bsfullpath[0] = (unsigned char)pathlen;
-	memcpy(bsfullpath + 1, path_no_at, (size_t)pathlen);
+	/* P1-4 fix (/gate round 1 concurrency): assert GIL is held.
+	 * hthreadglobals is per-thread and only non-nil when this thread holds
+	 * runtime state (i.e., the GIL).  Both call sites (startup-launch in
+	 * debugger_tui_main and tui_eval_submit post-poll) hold the GIL; this
+	 * assert catches future callers that do not.  Pattern from debug_handler.c. */
+	assert(hthreadglobals != nil);
 
-	int lastdot = -1;
-	for (int i = pathlen; i > 0; i--) {
-		if (bsfullpath[i] == '.') {
-			lastdot = i;
-			break;
-		}
-	}
-	if (lastdot < 0) {
-		log_warn(LOG_COMP_GENERAL,
-		         "tui_real_odb_fetch: path not fully qualified: %s", path_no_at);
-		return false;
-	}
-
-	bigstring bstablepath, bsname;
-	bstablepath[0] = (unsigned char)(lastdot - 1);
-	memcpy(bstablepath + 1, bsfullpath + 1, (size_t)(lastdot - 1));
-
-	int namelen = pathlen - lastdot;
-	bsname[0] = (unsigned char)namelen;
-	memcpy(bsname + 1, bsfullpath + lastdot + 1, (size_t)namelen);
-
-	hdlhashtable htable;
-	if (!langfastaddresstotable(roottable, bstablepath, &htable)) {
-		log_warn(LOG_COMP_GENERAL,
-		         "tui_real_odb_fetch: table not found for %s", path_no_at);
-		return false;
-	}
-
-	tyvaluerecord val;
-	hdlhashnode hnode;
-	if (!hashtablelookup(htable, bsname, &val, &hnode)) {
-		log_warn(LOG_COMP_GENERAL,
-		         "tui_real_odb_fetch: script not found: %s", path_no_at);
-		return false;
-	}
-
-	Handle htext = nil;
-	if (val.valuetype == externalvaluetype) {
-		hdlexternalvariable hv = (hdlexternalvariable)val.data.externalvalue;
-		if (!(**hv).flinmemory) {
-			db_context ctx;
-			if ((**hv).hdatabase != nil && db_format_is_legacy_db((**hv).hdatabase)) {
-				db_context_init_legacy_read(&ctx, (**hv).hdatabase);
-			} else {
-				db_context_init(&ctx);
-				if ((**hv).hdatabase != nil)
-					ctx.database = (**hv).hdatabase;
-			}
-			if (!opverbinmemory(&ctx, hv)) {
-				log_warn(LOG_COMP_GENERAL,
-				         "tui_real_odb_fetch: opverbinmemory failed for %s",
-				         path_no_at);
-				return false;
-			}
-		}
-		hdloutlinerecord houtline = (hdloutlinerecord)(**hv).variabledata;
-		if (houtline != nil) {
-			oppushoutline(houtline);
-			opgetlangtext(houtline, false, &htext);
-			oppopoutline();
-		}
-	}
-
+	/* P2-7 refactor (/gate round 1): delegate to the shared helper extracted
+	 * from debug_handler.c to eliminate the ~90-line duplicated ODB-traversal
+	 * body (P2-7 fix, /gate round 1 bar-raiser). */
+	Handle htext = debug_get_script_source(path_no_at);
 	if (htext == nil) {
 		log_warn(LOG_COMP_GENERAL,
 		         "tui_real_odb_fetch: no source text for %s", path_no_at);
@@ -1201,7 +1202,7 @@ static bool tui_real_odb_fetch(const char *path_no_at,
 
 void tui_eval_activate(tui_state_t *s) {
 	if (s == NULL) return;
-	/* 2026-06-07 JES Phase B.8 #691: accept both SUSPENDED and RUNNING.
+	/* 2026-06-08 JES Phase B.8 #691: accept both SUSPENDED and RUNNING.
 	 * SUSPENDED -> evaluates in current frame (existing script/eval path).
 	 * RUNNING   -> launches a new debug-run (new tui_eval_submit branch).
 	 * IDLE remains excluded: no transport thread to dispatch to. */
@@ -1320,7 +1321,7 @@ void tui_eval_submit(tui_state_t *s) {
 	if (s == NULL) return;
 	if (s->eval_input_buf[0] == '\0') return; /* empty: nothing to evaluate */
 
-	/* 2026-06-07 JES Phase B.8 #691: branch on debug_state.
+	/* 2026-06-08 JES Phase B.8 #691: branch on debug_state.
 	 *
 	 * RUNNING  -> new debug-run launch.  The expression (possibly a bare ODB
 	 *   address resolved to source text) is dispatched as debug/run.  This
@@ -1332,17 +1333,30 @@ void tui_eval_submit(tui_state_t *s) {
 	 * Other states (IDLE): tui_eval_activate already prevents reaching here.
 	 */
 	if (s->debug_state == TUI_DEBUG_RUNNING) {
-		/* 2026-06-07 JES Phase B.8 #691: RUNNING path -- new debug-run launch.
+		/* 2026-06-08 JES Phase B.8 #691 P1-3 fix: RUNNING path -- new debug-run launch.
 		 *
 		 * Detection: is the input a bare ODB address?
 		 *   Yes -> resolve source via odb_fetch_hook, dispatch debug/run
 		 *   No  -> dispatch debug/run with verbatim expression
 		 *
 		 * tui_launch_startup_script handles both sub-cases.  We pass
-		 * eval_input_buf as inline_expr and NULL as script_file. */
-		tui_launch_startup_script(s, s->eval_input_buf, NULL);
-
-		/* Clear input after dispatch; dismiss pane */
+		 * eval_input_buf as inline_expr and NULL as script_file.
+		 *
+		 * P1-3 fix (/gate round 1 bar-raiser): capture the return value.
+		 *   On failure: surface an error entry to the eval history so the user
+		 *   sees something, and preserve eval_input_buf so they can fix and retry.
+		 *   On success: clear input and dismiss as before. */
+		bool ok = tui_launch_startup_script(s, s->eval_input_buf, NULL);
+		if (!ok) {
+			/* Surface failure in the eval history so the user sees it.
+			 * Do NOT clear eval_input_buf -- preserve for retry. */
+			tui_eval_append_result(s, s->eval_input_buf, "error: launch failed (see log)");
+			/* Invalidate footer so the history entry renders immediately. */
+			if (s->footer_win != NULL)
+				boxen_window_invalidate(s->footer_win);
+			return;
+		}
+		/* Success: clear input and dismiss pane */
 		s->eval_input_buf[0] = '\0';
 		s->eval_input_cursor = 0;
 		tui_eval_dismiss(s);
@@ -2477,7 +2491,7 @@ static void on_input(boxen_window_t *win, const boxen_event_t *ev, void *ud) {
 		return;
 	}
 
-	/* 2026-06-07 JES Phase B.8 #691: ':' activates the eval pane.
+	/* 2026-06-08 JES Phase B.8 #691: ':' activates the eval pane.
 	 * Available when SUSPENDED (evaluate in frame) or RUNNING (new debug-run
 	 * launch).  IDLE is excluded: no transport thread to dispatch to.
 	 * When pane is already active, ':' is caught by the eval handler above
@@ -2644,7 +2658,7 @@ void debugger_tui_state_init(tui_state_t *s, int tw, int th) {
 	s->eval_last_expr[0]         = '\0';
 	s->eval_display_counter      = 0;
 
-	/* 2026-06-07 JES Phase B.8 #691: ODB source-fetch hook.
+	/* 2026-06-08 JES Phase B.8 #691: ODB source-fetch hook.
 	 * Production sets this to tui_real_odb_fetch (inside OMIT_MAIN guard below).
 	 * Test builds leave it NULL; tests that exercise the ODB path set it
 	 * explicitly to a mock before calling tui_eval_submit or
@@ -2725,6 +2739,10 @@ void debugger_tui_state_teardown(tui_state_t *s) {
 	/* 2026-06-07 JES Phase B.7 #750: zero polish fields */
 	s->eval_last_expr[0]         = '\0';
 	s->eval_display_counter      = 0;
+	/* 2026-06-08 JES Phase B.8 #691 P2-15: NULL odb_fetch_hook for defense-in-depth.
+	 * After teardown the hook pointer is stale; zeroing it prevents a future
+	 * accidental call through a dangling function pointer. */
+	s->odb_fetch_hook = NULL;
 	s->debug_state = TUI_DEBUG_IDLE;
 }
 
@@ -2858,17 +2876,19 @@ int debugger_tui_main(const cli_options_t *opts) {
 	 * See planning/phase_b/EXECUTION_PLAN.md B.6 "Teardown sequence". */
 	debug_set_attach_transport(state->transport);
 
-	/* 2026-06-07 JES Phase B.8 #691: startup-script launch.
+	/* 2026-06-08 JES Phase B.8 #691: startup-script launch.
 	 *
 	 * If the user passed a script argument (--debug-tui @path, --debug-tui -e expr,
 	 * or --debug-tui file.ut), kick off the debug-run now -- after transport
 	 * registration so the suspended notification can arrive through the transport
 	 * and the TUI can display it.
 	 *
-	 * state->debug_state starts at TUI_DEBUG_IDLE; the thread spawned by
-	 * handle_debug_run will suspend at its first statement and send a
-	 * debug/suspended notification via write_line, which transitions the TUI to
-	 * TUI_DEBUG_SUSPENDED and loads the source pane.
+	 * state->debug_state starts at TUI_DEBUG_IDLE; this call will asynchronously
+	 * transition the TUI to TUI_DEBUG_SUSPENDED and load the source pane when the
+	 * spawned thread suspends at its entry point and calls back through
+	 * tui_write_line.  The transition is NOT synchronous with the call below --
+	 * it occurs during a future boxen_poll_event GIL yield.
+	 * (P1-5 fix: /gate round 1 concurrency -- corrected sync-implying comment.)
 	 */
 	if (opts->inline_script != NULL || opts->script_file != NULL) {
 		tui_launch_startup_script(state, opts->inline_script, opts->script_file);

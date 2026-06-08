@@ -16,7 +16,7 @@
  * 2026-06-07 JES Phase B.6 #744: TUI_DISPATCH_LOG_SLOT widened to 2048
  * 2026-06-07 JES Phase B.7 #691: scratch-eval pane fields and constants
  * 2026-06-07 JES Phase B.7 #750: eval_last_expr, eval_display_counter added
- * 2026-06-07 JES Phase B.8 #691: odb_fetch_hook, tui_launch_startup_script,
+ * 2026-06-08 JES Phase B.8 #691: odb_fetch_hook, tui_launch_startup_script,
  *   tui_is_bare_odb_address
  */
 
@@ -324,7 +324,7 @@ typedef struct {
 	char  eval_last_expr[EVAL_INPUT_MAX];
 	int   eval_display_counter;
 
-	/* 2026-06-07 JES Phase B.8 #691: ODB source-fetch hook.
+	/* 2026-06-08 JES Phase B.8 #691: ODB source-fetch hook.
 	 *
 	 * In production (non-OMIT_MAIN), debugger_tui_state_init sets this to
 	 * tui_real_odb_fetch -- the static helper that replicates the
@@ -342,6 +342,9 @@ typedef struct {
 	 *   out_bufsz  -- size of out_buf in bytes
 	 * Returns true on success, false on any failure (path not found, ODB error,
 	 * buffer too small after truncation would corrupt, etc.).
+	 *
+	 * Thread safety: written once at init; never reassigned. Read from main
+	 * thread only. No synchronization required.
 	 */
 	bool (*odb_fetch_hook)(const char *path_no_at, char *out_buf, size_t out_bufsz);
 } tui_state_t;
@@ -425,7 +428,7 @@ void debugger_tui_state_init(tui_state_t *s, int tw, int th);
 void debugger_tui_state_teardown(tui_state_t *s);
 
 /*
- * 2026-06-07 JES Phase B.8 #691: bare ODB address detection.
+ * 2026-06-08 JES Phase B.8 #691: bare ODB address detection.
  *
  * Returns true iff `s` starts with '@' AND every subsequent character is
  * [A-Za-z0-9_.] (no whitespace, no parens, no operators).
@@ -438,7 +441,7 @@ void debugger_tui_state_teardown(tui_state_t *s);
 bool tui_is_bare_odb_address(const char *s);
 
 /*
- * 2026-06-07 JES Phase B.8 #691: startup script launch.
+ * 2026-06-08 JES Phase B.8 #691: startup script launch.
  *
  * Resolves `script_expr` (bare ODB address or freeform expression), compiles
  * it, and dispatches a debug/run request.  Called from debugger_tui_main after
