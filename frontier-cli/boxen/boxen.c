@@ -75,6 +75,7 @@
  * equivalent external lock. No internal synchronization.
  */
 
+#include <locale.h>
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
@@ -184,6 +185,23 @@ boxen_result_t boxen_init(const boxen_backend_t *backend,
 	if (backend == NULL) {
 		boxen__set_last_error("backend must not be NULL");
 		return BOXEN_ERR_INVALID;
+	}
+
+	/* 2026-06-07 JES: opt LC_CTYPE into the user's UTF-8 locale before the
+	 * backend initializes its terminal layer. termbox2 (and any other
+	 * iswprint-based renderer) filters out non-ASCII codepoints under the
+	 * default "C" locale, replacing box-drawing chars with U+FFFD -- which
+	 * shows up as the diamond-question-mark glyph in macOS Terminal.
+	 *
+	 * Override-friendly: if the embedder has already set LC_CTYPE to anything
+	 * other than the C/POSIX defaults, leave their choice intact. Only flip
+	 * to the environment locale when the process is still in the startup
+	 * default state. */
+	const char *current_ctype = setlocale(LC_CTYPE, NULL);
+	if (current_ctype == NULL ||
+	    strcmp(current_ctype, "C") == 0 ||
+	    strcmp(current_ctype, "POSIX") == 0) {
+		setlocale(LC_CTYPE, "");
 	}
 
 	int rc = backend->init(backend_config);
