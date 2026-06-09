@@ -30,6 +30,7 @@
 
 #include "boxen_repl.h"
 #include "boxen_repl_internal.h"
+#include "boxen_outline.h"  /* boxen_outline_open, boxen_outline_close_all -- 2026-06-09 JES Phase C.1 #691 */
 
 #include "boxen/boxen.h"
 #include "../Common/headers/logging.h"
@@ -285,6 +286,40 @@ static void submit_input(boxen_repl_state_t *s) {
 	bool running = true;
 
 	if (s->input_buf[0] == '/') {
+		/* 2026-06-09 JES Phase C.1 #691: /edit [path] -- kernel intercept.
+		 *
+		 * Handled here before the UserTalk menubar so it works whether or not
+		 * the menubar has an "edit" leaf.  The path argument is stripped of
+		 * an optional leading "@".  With no arg, emits a usage hint instead
+		 * of reaching the menubar's "Unknown command" path.
+		 *
+		 * Only active in non-test builds; the test build stubs out
+		 * BOXEN_REPL_OMIT_MAIN and never calls boxen_outline_open. */
+		const char *slash_buf = s->input_buf + 1;   /* skip leading '/' */
+		while (*slash_buf == ' ') slash_buf++;       /* skip whitespace */
+		bool is_edit_cmd = (strncmp(slash_buf, "edit", 4) == 0 &&
+		                    (slash_buf[4] == '\0' || slash_buf[4] == ' '));
+		if (is_edit_cmd) {
+#ifndef BOXEN_REPL_OMIT_MAIN
+			const char *path = slash_buf + 4;
+			while (*path == ' ') path++;             /* skip whitespace after "edit" */
+			if (*path == '@') path++;                /* strip optional "@" prefix */
+			if (*path == '\0') {
+				boxen_repl_append_scrollback(s, "Usage: /edit <path>");
+			} else {
+				if (!boxen_outline_open(path)) {
+					char err[256];
+					snprintf(err, sizeof(err), "Error: could not open outline: %s", path);
+					boxen_repl_append_scrollback(s, err);
+				}
+			}
+#else
+			boxen_repl_append_scrollback(s, "(edit not available in test build)");
+#endif
+			/* Consumed -- skip menubar dispatch */
+			goto slash_done;
+		}
+
 		/* Slash command: route through the hook (or production implementation) */
 		if (s->slash_dispatch_hook != NULL) {
 			s->slash_dispatch_hook(s->input_buf, &running);
@@ -294,6 +329,7 @@ static void submit_input(boxen_repl_state_t *s) {
 			boxen_repl_real_slash_dispatch(s->input_buf, &running);
 		}
 #endif
+		slash_done:;
 	} else {
 		/* Expression evaluation */
 		char result_buf[BOXEN_REPL_SCROLLBACK_LINE_MAX];
@@ -927,6 +963,11 @@ int boxen_repl_main(const cli_options_t *opts) {
 
 	/* Step 9: uninstall verb host before teardown (P1-3). */
 	repl_uninstall_verb_host();
+
+	/* Step 9.5: close all outline editor windows before boxen shutdown.
+	 * 2026-06-09 JES Phase C.1 #691: outline windows hold boxen_window_t
+	 * handles; close them before boxen_shutdown frees the substrate. */
+	boxen_outline_close_all();
 
 	/* Step 10: teardown windows, ring, and launch_transport (P0 free). */
 	boxen_repl_state_teardown(state);
