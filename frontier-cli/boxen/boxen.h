@@ -292,6 +292,13 @@ boxen_result_t boxen_init(const boxen_backend_t *backend,
 /* Shut down boxen and release all resources. */
 void boxen_shutdown(void);
 
+/* Query terminal dimensions from the current backend.
+ * Writes the current width and height into *w and *h.
+ * Falls back to 80x24 if boxen is not initialized or the backend returns <= 0.
+ * 2026-06-09 JES #691 Phase C.1 round 2 P1: terminal dimensions for
+ * boxen_outline_open (avoid hardcoded 80x24). */
+void boxen_get_screen_size(int *w, int *h);
+
 /* -------------------------------------------------------------------------
  * Window type (opaque; defined in boxen_internal.h)
  * ---------------------------------------------------------------------- */

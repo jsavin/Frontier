@@ -223,7 +223,7 @@ USERTALK_OBJECT_TESTS = \
 	test_usertalk_runner
 
 # Buildable test executables on this branch
-RUN_BUILDABLE = core_tests db_format_tests runtime_tests parser_tests save_migration_tests test_efp_augmentation file_portable_tests file_readline_tests file_verb_tests handle_tests cli_runtime_tests paige_text_tests oppack_tests hashpack_modern_tests hash_corruption_tests langvalue_64_tests table_operations_integration refcon_tests refcon_phase2_tests op_context_tests table_context_tests time_portability_test test_sys_shell_command_verbs headless_selection_tests opattributes_stub_tests headless_thread_registry_tests test_callback_infrastructure tcp_phase1a_unit_tests menu_v7_refcon_tests menudata_headless_tests menu_list_describe_tests meuserselected_headless_tests test_stringerrorlist pane_compositor_tests mouse_parser_tests terminal_control_tests terminal_control_dsr_tests palette_state_tests palette_render_snapshot_tests palette_arg_inject_tests palette_arg_inject_concurrency_tests repl_palette_source_tests repl_verbs_tests repl_slash_resolver_tests scrollback_pane_tests lang_causedby_snapshot_tests test_getsystemtablescript test_window_bridge copyctopstring_tests ut_sync_canonicalize_tests ut_sync_pathmap_tests ut_sync_pctcodec_tests ut_sync_export_tests ut_sync_decanonicalize_tests ut_sync_import_tests boxen_backend_tests boxen_core_tests boxen_input_tests boxen_resize_tests boxen_scroll_tests boxen_chrome_tests boxen_cursor_tests debugger_tui_tests boxen_repl_tests
+RUN_BUILDABLE = core_tests db_format_tests runtime_tests parser_tests save_migration_tests test_efp_augmentation file_portable_tests file_readline_tests file_verb_tests handle_tests cli_runtime_tests paige_text_tests oppack_tests hashpack_modern_tests hash_corruption_tests langvalue_64_tests table_operations_integration refcon_tests refcon_phase2_tests op_context_tests table_context_tests time_portability_test test_sys_shell_command_verbs headless_selection_tests opattributes_stub_tests headless_thread_registry_tests test_callback_infrastructure tcp_phase1a_unit_tests menu_v7_refcon_tests menudata_headless_tests menu_list_describe_tests meuserselected_headless_tests test_stringerrorlist pane_compositor_tests mouse_parser_tests terminal_control_tests terminal_control_dsr_tests palette_state_tests palette_render_snapshot_tests palette_arg_inject_tests palette_arg_inject_concurrency_tests repl_palette_source_tests repl_verbs_tests repl_slash_resolver_tests scrollback_pane_tests lang_causedby_snapshot_tests test_getsystemtablescript test_window_bridge copyctopstring_tests ut_sync_canonicalize_tests ut_sync_pathmap_tests ut_sync_pctcodec_tests ut_sync_export_tests ut_sync_decanonicalize_tests ut_sync_import_tests boxen_backend_tests boxen_core_tests boxen_input_tests boxen_resize_tests boxen_scroll_tests boxen_chrome_tests boxen_cursor_tests debugger_tui_tests boxen_repl_tests boxen_outline_tests
 # Note: table_verb_tests skipped - pre-existing macOS path detection issue
 # Note: test_error_messages skipped - needs full runtime linking (tracked in separate task)
 # Note: test_table_sorting skipped - script execution errors cause segfault (Issue #449)
@@ -607,6 +607,28 @@ boxen_repl_tests: boxen_repl_tests.c $(BOXEN_REPL_TEST_SRCS)
 		-I../portable \
 		-DBOXEN_REPL_OMIT_MAIN \
 		boxen_repl_tests.c $(BOXEN_REPL_TEST_SRCS) \
+		-o $@ $(LINK_LIBS)
+
+# boxen Phase C.1 -- outline editor tests.
+# Links boxen_outline.c against the mock backend + boxen core.
+# Does NOT link the full Frontier runtime (no GIL, no ODB).
+# BOXEN_OUTLINE_OMIT_MAIN guards production hook implementations (same
+# pattern as BOXEN_REPL_OMIT_MAIN / DEBUGGER_TUI_OMIT_MAIN).
+#
+# 2026-06-09 JES Phase C.1 #691
+BOXEN_OUTLINE_TEST_SRCS = \
+	$(BOXEN_CORE_TEST_SRCS) \
+	../frontier-cli/boxen_outline.c
+
+boxen_outline_tests: boxen_outline_tests.c $(BOXEN_OUTLINE_TEST_SRCS)
+	$(CC) $(CFLAGS) \
+		-I$(BOXEN_DIR) \
+		-I../frontier-cli \
+		-I$(HEADERDIR) \
+		-I$(SYSTEMHEADERDIR) \
+		-I../portable \
+		-DBOXEN_OUTLINE_OMIT_MAIN \
+		boxen_outline_tests.c $(BOXEN_OUTLINE_TEST_SRCS) \
 		-o $@ $(LINK_LIBS)
 
 # Pure helper for arg-injection — no Frontier runtime / handle deps, so it
