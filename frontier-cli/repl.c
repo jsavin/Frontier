@@ -2402,8 +2402,11 @@ static ty_dispatch_result dispatch_leaf_via_menubar(hdlhashtable hleaf) {
  * Process a slash-prefixed line. See the comment block above for the full
  * dispatch flow. Returns true if the REPL should keep running; sets
  * *running = false on /exit dispatch.
+ *
+ * 2026-06-08 JES Phase C.0 #691: de-static'd so boxen_repl.c can call it
+ * directly via repl_slash_dispatch.h.
  */
-static boolean dispatch_slash_command(const char *line, boolean *running) {
+boolean dispatch_slash_command(const char *line, boolean *running) {
 	/* Self-healing reset: if a prior dispatch longjmp'd out of the
 	 * UserTalk runtime past the clear sites below, this resets the
 	 * flag on re-entry so subsequent reads can't be poisoned. The
