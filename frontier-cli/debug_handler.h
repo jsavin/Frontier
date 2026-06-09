@@ -25,6 +25,7 @@
 #include <stdatomic.h>
 
 #include "op_handler.h"
+#include "cli_parser.h"
 #include "../Common/headers/frontier.h"
 #include "../Common/headers/lang.h"
 
@@ -294,5 +295,31 @@ typedef enum {
 } dbg_source_reason;
 
 Handle debug_get_script_source(const char *path_no_at, dbg_source_reason *out_reason);
+
+/*
+ * 2026-06-08 JES #691 Phase C.0 round 2 P0-1: shared startup-script launch helper.
+ *
+ * Extracted from debugger_tui.c::tui_launch_startup_script so that both the
+ * standalone TUI debugger and the boxen REPL can call it without duplicating
+ * the source-resolution and JSON-dispatch logic.
+ *
+ * Resolution rules (same as tui_launch_startup_script):
+ *   - opts->inline_script is a bare ODB address (@path): use debug_get_script_source
+ *     to fetch the source text, then dispatch debug/run.
+ *   - opts->inline_script is freeform: dispatch debug/run verbatim.
+ *   - opts->script_file is non-NULL: read the file, dispatch debug/run.
+ *   - Both NULL: no-op, return false.
+ *   - Both non-NULL: no-op, return false (caller should have validated).
+ *
+ * transport: the transport_t to associate with the spawned debug thread.
+ *   For the boxen REPL this is a no-op stub (C.0 does not yet render debug
+ *   state); for the TUI this is the full TUI write-line transport.
+ *
+ * GIL: must be called with GIL held.  langcompiletext and
+ * headless_spawn_script_thread both require the GIL.
+ *
+ * Returns true if the debug thread was successfully spawned.
+ */
+bool debug_launch_from_options(const cli_options_t *opts, transport_t *transport);
 
 #endif /* DEBUG_HANDLER_H */

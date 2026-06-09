@@ -37,6 +37,15 @@
  * GIL: must be called while holding the GIL.
  * Thread safety: touches file-level statics in repl.c (g_repl_dispatching_from_slash,
  *   g_repl_exit_requested); single-threaded with GIL held.
+ *
+ * Side effect: if the /exit command is processed, the replverbhost_exit kernel-verb
+ *   host adapter sets g_repl_exit_requested = 1 (a file-static in repl.c).
+ *   Callers that drive the REPL event loop via a separate quit flag (e.g.,
+ *   boxen_repl_main's s->should_quit) should drive exit from this function's
+ *   return value and *running, not by polling g_repl_exit_requested directly.
+ *   Use repl_reset_exit_flag() (repl.h) to clear stale state at session start.
+ *
+ * 2026-06-08 JES #691 Phase C.0 round 2 P2-18
  */
 boolean dispatch_slash_command(const char *line, boolean *running);
 

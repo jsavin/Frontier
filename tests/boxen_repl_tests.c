@@ -277,6 +277,71 @@ static void test_scrollback_ring_drops_oldest_when_full(void) {
 }
 
 /* -------------------------------------------------------------------------
+ * Test 6: test_stdout_capture_routes_to_scrollback
+ *
+ * 2026-06-08 JES #691 Phase C.0 round 2 fix-loop: P0-2 TDD test.
+ *
+ * Verifies that drain_stdout_into_scrollback reads bytes written to a pipe
+ * fd, splits on newlines, and appends each complete line to the scrollback
+ * ring.  This is the behavioral contract the P0-2 stdout-capture fix must
+ * satisfy.
+ *
+ * The test directly exercises drain_stdout_into_scrollback with a pipe pair:
+ *   1. Create pipe.
+ *   2. Write "captured\n" to the write end.
+ *   3. Call drain_stdout_into_scrollback(state, pipefd[0]).
+ *   4. Assert scrollback ring has an entry containing "captured".
+ *
+ * In test builds (BOXEN_REPL_OMIT_MAIN defined), the production code does
+ * not set up the stdout dup2 path -- tests must NOT have their own stdout
+ * hijacked by default.  Only the drain helper is called here.
+ * ---------------------------------------------------------------------- */
+#include <unistd.h>   /* pipe, write, close */
+#include <fcntl.h>    /* fcntl, F_SETFL, O_NONBLOCK */
+
+static void test_stdout_capture_routes_to_scrollback(void) {
+	setup();
+
+	int pipefd[2];
+	int rc = pipe(pipefd);
+	assert(rc == 0);
+
+	/* Set read end non-blocking so drain_stdout_into_scrollback doesn't block */
+	fcntl(pipefd[0], F_SETFL, O_NONBLOCK);
+
+	/* Write a line to the write end (simulates stdout output from slash dispatch) */
+	const char *msg = "captured\n";
+	ssize_t written = write(pipefd[1], msg, strlen(msg));
+	assert(written == (ssize_t)strlen(msg));
+	close(pipefd[1]);
+
+	int ring_before = g_state.scrollback_count;
+
+	/* Call the drain helper -- should read "captured\n" and append "captured"
+	 * to scrollback */
+	drain_stdout_into_scrollback(&g_state, pipefd[0]);
+	close(pipefd[0]);
+
+	/* Ring must have grown */
+	assert(g_state.scrollback_count > ring_before);
+
+	/* Find "captured" in the ring */
+	bool found = false;
+	for (int i = 0; i < g_state.scrollback_count && i < BOXEN_REPL_SCROLLBACK_SIZE; i++) {
+		int idx = (g_state.scrollback_head - g_state.scrollback_count + i +
+		           BOXEN_REPL_SCROLLBACK_SIZE) % BOXEN_REPL_SCROLLBACK_SIZE;
+		if (g_state.scrollback[idx] != NULL &&
+		    strstr(g_state.scrollback[idx], "captured") != NULL) {
+			found = true;
+			break;
+		}
+	}
+	assert(found);
+
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
  * main
  * ---------------------------------------------------------------------- */
 int main(void) {
@@ -287,6 +352,7 @@ int main(void) {
 	TR_RUN(test_enter_dispatches_expression);
 	TR_RUN(test_backspace_deletes_char);
 	TR_RUN(test_scrollback_ring_drops_oldest_when_full);
+	TR_RUN(test_stdout_capture_routes_to_scrollback);
 
 	TR_SUMMARY();
 	return TR_EXIT_CODE();

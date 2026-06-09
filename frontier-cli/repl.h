@@ -49,6 +49,11 @@ int repl_main(cli_options_t *options, ws_server_t *ws_server);
 void repl_install_verb_host(void);
 void repl_uninstall_verb_host(void);
 
+/* 2026-06-08 JES #691 Phase C.0 round 2 P1-8: reset the g_repl_exit_requested
+ * flag to 0 so a stale value from a prior REPL session cannot pre-exit a new
+ * one.  Call at the start of any REPL entry point, before install_verb_host. */
+void repl_reset_exit_flag(void);
+
 /* Result from index-aware path navigation (repl_navigate_path_ex).
  * Can represent either a table or a scalar value at the end of a path. */
 typedef struct {

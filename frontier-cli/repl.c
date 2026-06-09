@@ -3628,6 +3628,17 @@ void repl_uninstall_verb_host(void) {
 	uninstall_repl_verbs_host();
 }
 
+/*
+ * 2026-06-08 JES #691 Phase C.0 round 2 P1-8: reset stale exit flag.
+ *
+ * Clears g_repl_exit_requested so a prior REPL session's exit state does
+ * not pre-exit a new session.  Called by boxen_repl_main at entry, before
+ * repl_install_verb_host.  repl_main already calls this inline at line 3814.
+ */
+void repl_reset_exit_flag(void) {
+	g_repl_exit_requested = 0;
+}
+
 
 /*
  * Boot the REPL menubar by invoking the UserTalk install script, then

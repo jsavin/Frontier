@@ -38,6 +38,9 @@
 #include <string.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <unistd.h>    /* dup, dup2, pipe, close, read */
+#include <fcntl.h>     /* fcntl, F_SETFL, O_NONBLOCK */
+#include <errno.h>     /* EAGAIN, EWOULDBLOCK */
 
 /* -------------------------------------------------------------------------
  * Forward declarations for draw and input callbacks
@@ -377,7 +380,12 @@ static void on_input(boxen_window_t *win, const boxen_event_t *ev,
 		return;
 	}
 
-	/* Printable ASCII */
+	/* Printable ASCII only (0x20..0x7E).
+	 * 2026-06-08 JES #691 Phase C.0 round 2 P2-14: the range 0x20..0x7E
+	 * is intentional.  Non-ASCII code points (0x7F and above) and control
+	 * characters (< 0x20) are dropped here.  Non-ASCII input would require
+	 * multi-byte handling and a Unicode-aware input cursor; that is deferred
+	 * to a future milestone. */
 	if (ev->key.key == BOXEN_KEY_NONE && ev->key.ch >= 0x20 && ev->key.ch < 0x7F) {
 		if (s->input_cursor < BOXEN_REPL_INPUT_MAX - 1) {
 			s->input_buf[s->input_cursor]     = (char)ev->key.ch;
@@ -404,6 +412,14 @@ void boxen_repl_state_init(boxen_repl_state_t *s, int tw, int th) {
 	s->repl_eval_hook      = boxen_repl_real_eval;
 #endif
 
+	/* Stdout capture fields: -1 means not active (same sentinel as open(2)
+	 * returns on failure, so teardown can guard with fd >= 0). */
+	s->saved_stdout    = -1;
+	s->saved_stderr    = -1;
+	s->pipe_read_fd    = -1;
+	s->partial_line[0] = '\0';
+	s->partial_line_len = 0;
+
 	repl_build_layout(s, tw, th);
 	repl_wire_callbacks(s);
 }
@@ -424,6 +440,18 @@ void boxen_repl_state_teardown(boxen_repl_state_t *s) {
 	s->should_quit      = false;
 	s->slash_dispatch_hook = NULL;
 	s->repl_eval_hook      = NULL;
+
+	/* Close the capture pipe read end if it is still open.
+	 * Production teardown (boxen_repl_main) closes it before calling here;
+	 * this guard is a safety net for error paths. */
+	if (s->pipe_read_fd >= 0) {
+		close(s->pipe_read_fd);
+		s->pipe_read_fd = -1;
+	}
+	s->saved_stdout     = -1;
+	s->saved_stderr     = -1;
+	s->partial_line[0]  = '\0';
+	s->partial_line_len = 0;
 }
 
 int boxen_repl_run_one_tick(boxen_repl_state_t *s, const boxen_event_t *ev) {
@@ -442,6 +470,68 @@ int boxen_repl_run_one_tick(boxen_repl_state_t *s, const boxen_event_t *ev) {
 }
 
 /* -------------------------------------------------------------------------
+ * 2026-06-08 JES #691 Phase C.0 round 2: drain_stdout_into_scrollback.
+ *
+ * Reads bytes from fd (must be non-blocking) until EAGAIN/EOF, splits on
+ * newlines, and appends each complete line to the scrollback ring.
+ * Incomplete lines are held in s->partial_line until the next call.
+ *
+ * No production runtime dependencies -- compiled in both production and
+ * test builds.  Tests call it directly with a test-supplied pipe fd.
+ * ---------------------------------------------------------------------- */
+void drain_stdout_into_scrollback(boxen_repl_state_t *s, int fd) {
+	if (s == NULL || fd < 0) return;
+
+	char buf[512];
+	ssize_t n;
+
+	while ((n = read(fd, buf, sizeof(buf))) > 0) {
+		const char *p   = buf;
+		const char *end = buf + n;
+
+		while (p < end) {
+			const char *nl = NULL;
+			/* Find next newline in this chunk */
+			for (const char *q = p; q < end; q++) {
+				if (*q == '\n') { nl = q; break; }
+			}
+
+			if (nl != NULL) {
+				/* We have a complete line: partial_line (if any) + this segment */
+				size_t seg_len = (size_t)(nl - p);
+				size_t avail   = sizeof(s->partial_line) - s->partial_line_len - 1;
+				if (seg_len > avail) seg_len = avail;
+
+				memcpy(s->partial_line + s->partial_line_len, p, seg_len);
+				s->partial_line_len += seg_len;
+				s->partial_line[s->partial_line_len] = '\0';
+
+				/* Append to scrollback (even if empty -- echoes a blank line) */
+				boxen_repl_append_scrollback(s, s->partial_line);
+
+				/* Reset partial buffer */
+				s->partial_line[0]  = '\0';
+				s->partial_line_len = 0;
+
+				p = nl + 1; /* advance past the newline */
+			} else {
+				/* No newline in remaining chunk -- accumulate into partial_line */
+				size_t seg_len = (size_t)(end - p);
+				size_t avail   = sizeof(s->partial_line) - s->partial_line_len - 1;
+				if (seg_len > avail) seg_len = avail;
+
+				memcpy(s->partial_line + s->partial_line_len, p, seg_len);
+				s->partial_line_len += seg_len;
+				s->partial_line[s->partial_line_len] = '\0';
+
+				p = end; /* consumed all of this chunk */
+			}
+		}
+	}
+	/* n == 0 (EOF) or n < 0 with errno == EAGAIN/EWOULDBLOCK: drain complete */
+}
+
+/* -------------------------------------------------------------------------
  * 2026-06-08 JES Phase C.0 #691: production-only section.
  *
  * headless_threading.h and debug_handler.h are included ONLY inside this
@@ -454,11 +544,19 @@ int boxen_repl_run_one_tick(boxen_repl_state_t *s, const boxen_event_t *ev) {
 #include "debug_handler.h"
 #include "headless_threading.h"
 #include "repl_eval.h"
+#include "repl.h"                        /* repl_install_verb_host, repl_uninstall_verb_host, repl_reset_exit_flag */
 #include "../Common/headers/strings.h"   /* copyptocstring */
 #include <pthread.h>
 
 /* repl_slash_dispatch.h declares the de-static'd dispatch_slash_command
- * from repl.c.  Only boxen_repl.c consumers include this header. */
+ * from repl.c.  Only boxen_repl.c consumers include this header.
+ *
+ * 2026-06-08 JES #691 Phase C.0 round 2 P2-18: note on g_repl_exit_requested
+ * side effect -- dispatch_slash_command may set g_repl_exit_requested (via the
+ * replverbhost_exit kernel-verb host adapter) when the /exit command is
+ * processed.  The boxen REPL drives exit from the return value (*running set
+ * false -> s->should_quit = true), not by polling g_repl_exit_requested
+ * directly. */
 #include "repl_slash_dispatch.h"
 
 /* -------------------------------------------------------------------------
@@ -466,8 +564,12 @@ int boxen_repl_run_one_tick(boxen_repl_state_t *s, const boxen_event_t *ev) {
  * ---------------------------------------------------------------------- */
 
 bool boxen_repl_real_slash_dispatch(const char *line, bool *running) {
-	boolean keep_running = dispatch_slash_command(line, (boolean *)running);
-	*running = (bool)keep_running;
+	/* 2026-06-08 JES #691 Phase C.0 round 2 P1-5: avoid strict aliasing violation.
+	 * dispatch_slash_command takes (boolean *) which may have different storage
+	 * size/alignment than C99 bool.  Use explicit local variables and cast. */
+	boolean br = (boolean)*running;
+	boolean keep_running = dispatch_slash_command(line, &br);
+	*running = (bool)br;
 	return (bool)keep_running;
 }
 
@@ -503,12 +605,41 @@ bool boxen_repl_real_eval(const char *expr,
 }
 
 /* -------------------------------------------------------------------------
- * 2026-06-08 JES Phase C.0 #691: boxen_repl_main -- public entry point.
+ * 2026-06-08 JES #691 Phase C.0 round 2: no-op transport write_line stub.
+ *
+ * The launch transport used by debug_launch_from_options below needs a
+ * write_line callback.  In C.0 the boxen REPL does not yet render debug
+ * notifications (suspended/completed) -- those are dropped here.  C.1 will
+ * wire in a real callback that queues notifications into the scrollback ring.
+ * ---------------------------------------------------------------------- */
+static void boxen_repl_noop_write_line(void *ctx, const char *line, size_t len) {
+	(void)ctx; (void)line; (void)len;
+	/* C.0: debug notifications are intentionally discarded until C.1 wires
+	 * the notification -> scrollback path. */
+}
+
+/* -------------------------------------------------------------------------
+ * 2026-06-08 JES #691 Phase C.0 round 2: boxen_repl_main -- public entry point.
  *
  * GIL yield/restore mirrors debugger_tui_main (debugger_tui.c:2905-2933).
  * Teardown mirrors debugger_tui_main (debugger_tui.c:2960-2975).
+ *
+ * Round 2 fixes applied (issue #691 /gate P0/P1):
+ *   P2-12: NULL check on opts.
+ *   P1-8:  reset g_repl_exit_requested before installing verb host.
+ *   P1-3:  install/uninstall repl verb host adapter.
+ *   P0-2:  stdout capture pipe -- all slash dispatch / eval output is routed
+ *           into the scrollback ring instead of written raw to the terminal.
+ *   P0-1:  debug_launch_from_options replaces broken /debug slash synthesis.
+ *   P1-6:  debug_set_attach_transport(NULL) in teardown.
  * ---------------------------------------------------------------------- */
 int boxen_repl_main(const cli_options_t *opts) {
+	/* 2026-06-08 JES #691 Phase C.0 round 2 P2-12: guard against NULL opts. */
+	if (opts == NULL) {
+		log_error(LOG_COMP_GENERAL, "boxen_repl: opts is NULL");
+		return 1;
+	}
+
 	boxen_repl_state_t *state = calloc(1, sizeof(boxen_repl_state_t));
 	if (state == NULL) {
 		log_error(LOG_COMP_GENERAL, "boxen_repl: out of memory allocating state");
@@ -532,27 +663,82 @@ int boxen_repl_main(const cli_options_t *opts) {
 	int tw = (be->width  && be->width()  > 0) ? be->width()  : 80;
 	int th = (be->height && be->height() > 0) ? be->height() : 24;
 
+	/* 2026-06-08 JES #691 Phase C.0 round 2 P1-8: clear stale exit flag from
+	 * any prior REPL session before installing the verb host adapter. */
+	repl_reset_exit_flag();
+
+	/* 2026-06-08 JES #691 Phase C.0 round 2 P1-3: install repl.* verb host.
+	 * Mirrors protocol_handler.c:149 and repl.c:repl_main exactly. */
+	repl_install_verb_host();
+
 	boxen_repl_state_init(state, tw, th);
 
-	/* 2026-06-08 JES Phase C.0 #691: auto-dispatch /debug on startup script.
+	/* 2026-06-08 JES #691 Phase C.0 round 2 P0-2: stdout capture setup.
 	 *
-	 * Preserves PR #756 launch UX: "frontier-cli --debug-tui @path" starts
-	 * the REPL and immediately dispatches "/debug <path>" as if the user
-	 * typed it.  This keeps B.8's launch-entry-point contract intact while
-	 * the interactive entry point changes from debugger_tui_main to this.
+	 * Redirect stdout and stderr to a pipe so that slash dispatch / eval output
+	 * (which calls fputs/printf to stdout) is captured and routed into the
+	 * scrollback ring rather than written raw to the terminal in raw mode
+	 * (which would corrupt the boxen display).
 	 *
-	 * The script_file takes precedence over inline_script; if both are set
-	 * the cli_parser.c validation rejects the combination before we get here
-	 * (see the mutual-exclusion check added in B.8). */
-	if (opts != NULL && (opts->script_file != NULL || opts->inline_script != NULL)) {
-		const char *launch_path = (opts->script_file != NULL)
-		                          ? opts->script_file
-		                          : opts->inline_script;
-		char auto_cmd[BOXEN_REPL_INPUT_MAX];
-		snprintf(auto_cmd, sizeof(auto_cmd), "/debug %s", launch_path);
-		strncpy(state->input_buf, auto_cmd, sizeof(state->input_buf) - 1);
-		state->input_cursor = (int)strlen(state->input_buf);
-		submit_input(state);
+	 * Pipe write end stays BLOCKING (see spec): the producer (slash dispatch)
+	 * runs synchronously between boxen_poll_event calls, so the drain happens
+	 * immediately after.  Long output (> 64 KB) could stall the producer, but
+	 * that is acceptable for C.0.  A future fix can add a separate drain thread
+	 * if needed.
+	 *
+	 * On any pipe setup failure, we fall through without capture (display will
+	 * be corrupted by raw stdout writes, but the REPL is still functional). */
+	int pipefd[2];
+	bool capture_active = false;
+	if (pipe(pipefd) == 0) {
+		/* Read end non-blocking so drain never blocks the event loop. */
+		fcntl(pipefd[0], F_SETFL, O_NONBLOCK);
+
+		int saved_out = dup(STDOUT_FILENO);
+		int saved_err = dup(STDERR_FILENO);
+
+		if (saved_out >= 0 && saved_err >= 0) {
+			dup2(pipefd[1], STDOUT_FILENO);
+			dup2(pipefd[1], STDERR_FILENO);
+			close(pipefd[1]);  /* write end is now duplicated into stdout/stderr */
+
+			state->saved_stdout = saved_out;
+			state->saved_stderr = saved_err;
+			state->pipe_read_fd = pipefd[0];
+			capture_active = true;
+		} else {
+			/* dup failed -- clean up without capturing */
+			if (saved_out >= 0) close(saved_out);
+			if (saved_err >= 0) close(saved_err);
+			close(pipefd[0]);
+			close(pipefd[1]);
+			log_warn(LOG_COMP_GENERAL, "boxen_repl: stdout dup failed; display may corrupt");
+		}
+	} else {
+		log_warn(LOG_COMP_GENERAL, "boxen_repl: pipe() failed; display may corrupt");
+	}
+
+	/* 2026-06-08 JES #691 Phase C.0 round 2 P0-1: startup-script launch.
+	 *
+	 * Replaces the broken "/debug <path>" slash synthesis (which had no
+	 * registered /debug command in the REPL menubar).
+	 * debug_launch_from_options handles: bare ODB @path, freeform inline
+	 * expression, and script file paths.  It calls op_dispatch -> handle_debug_run
+	 * which spawns the debug thread suspended.
+	 *
+	 * GIL is held throughout this auto-launch; debug_launch_from_options requires
+	 * the GIL for langcompiletext and headless_spawn_script_thread. */
+	transport_t launch_transport;
+	memset(&launch_transport, 0, sizeof(launch_transport));
+	launch_transport.write_line = boxen_repl_noop_write_line;
+	launch_transport.ctx = NULL;
+
+	/* Register the lazy-attach transport BEFORE spawning the debug thread.
+	 * Mirrors debugger_tui_main:2882 exactly. */
+	debug_set_attach_transport(&launch_transport);
+
+	if (opts->script_file != NULL || opts->inline_script != NULL) {
+		debug_launch_from_options(opts, &launch_transport);
 	}
 
 	log_info(LOG_COMP_GENERAL, "Boxen REPL: entering event loop (Ctrl-C to quit)");
@@ -571,6 +757,13 @@ int boxen_repl_main(const cli_options_t *opts) {
 		pthread_mutex_lock(&frontier_gil);
 		headless_restore_threadglobals(main_globals);
 
+		/* 2026-06-08 JES #691 Phase C.0 round 2 P0-2: drain captured stdout
+		 * after every poll (event or timeout) so slash dispatch output reaches
+		 * the scrollback ring promptly. */
+		if (capture_active) {
+			drain_stdout_into_scrollback(state, state->pipe_read_fd);
+		}
+
 		if (poll_rc == BOXEN_ERR_TIMEOUT) {
 			boxen_present();
 			continue;
@@ -584,20 +777,52 @@ int boxen_repl_main(const cli_options_t *opts) {
 		boxen_present();
 	}
 
-	/* 2026-06-08 JES Phase C.0 #691: drain-before-free teardown.
+	/* 2026-06-08 JES #691 Phase C.0 round 2: drain-before-free teardown.
 	 *
-	 * Mirrors debugger_tui_main teardown order exactly:
-	 *   1. debug_wait_lazy_threads_drained() -- drain /debug child threads
-	 *   2. headless_restore_threadglobals()  -- restore main-thread context
-	 *   3. (no transport to NULL-clear; C.0 has no attached transport)
-	 *   4. boxen_repl_state_teardown()       -- close windows, free ring
-	 *   5. free(state)
+	 * Mirrors debugger_tui_main teardown order (debugger_tui.c:2959-2975):
+	 *
+	 *   1. Snapshot before drain.
+	 *      Snapshot before drain so that lazy threads' headless_restore_threadglobals
+	 *      calls during the drain cannot clobber main_hglobals. The drain releases
+	 *      and reacquires the GIL multiple times; only the snapshot preserved here
+	 *      survives those yields.
+	 *   2. debug_wait_lazy_threads_drained() -- block until all lazy threads exit.
+	 *   3. headless_restore_threadglobals(main_hglobals) -- restore main context.
+	 *   4. debug_set_attach_transport(NULL) -- P1-6: prevent new lazy registrations.
+	 *   5. Restore stdout/stderr and close the capture pipe.
+	 *   6. repl_uninstall_verb_host() -- P1-3.
+	 *   7. boxen_repl_state_teardown() -- close windows, free ring.
+	 *   8. free(state).
 	 */
 	{
+		/* Snapshot before drain so that lazy threads' headless_restore_threadglobals
+		 * calls during the drain cannot clobber main_hglobals. The drain releases
+		 * and reacquires the GIL multiple times; only the snapshot preserved here
+		 * survives those yields. */
 		hdlthreadglobals main_hglobals = hthreadglobals;
 		debug_wait_lazy_threads_drained();
 		headless_restore_threadglobals(main_hglobals);
 	}
+
+	/* 2026-06-08 JES #691 Phase C.0 round 2 P1-6: clear attach transport.
+	 * Must come AFTER drain so threads in debug_send_completed still see a
+	 * valid transport pointer.  Mirrors debugger_tui_main:2968. */
+	debug_set_attach_transport(NULL);
+
+	/* 2026-06-08 JES #691 Phase C.0 round 2 P0-2: restore stdout/stderr.
+	 * Drain the pipe one last time before restoring so all buffered output
+	 * is in the scrollback ring before boxen_shutdown() clears the display. */
+	if (capture_active) {
+		drain_stdout_into_scrollback(state, state->pipe_read_fd);
+		dup2(state->saved_stdout, STDOUT_FILENO);
+		dup2(state->saved_stderr, STDERR_FILENO);
+		close(state->saved_stdout); state->saved_stdout = -1;
+		close(state->saved_stderr); state->saved_stderr = -1;
+		close(state->pipe_read_fd); state->pipe_read_fd = -1;
+	}
+
+	/* P1-3: uninstall verb host before teardown. */
+	repl_uninstall_verb_host();
 
 	boxen_repl_state_teardown(state);
 	if (boxen_initialized) {
