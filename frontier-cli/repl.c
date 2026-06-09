@@ -325,6 +325,30 @@ boolean repl_is_active(void) {
 	return g_repl_active;
 }
 
+/*
+ * 2026-06-08 JES #691 Phase C.0 round 3 P1: repl_set_active.
+ *
+ * Called by boxen_repl_main to publish g_repl_active so that
+ * repl.isActive() returns true during the boxen REPL session.
+ * repl_main sets g_repl_active directly inline; this wrapper exposes the
+ * same capability to boxen_repl_main without widening the public surface.
+ */
+void repl_set_active(boolean flag) {
+	g_repl_active = flag;
+}
+
+/*
+ * 2026-06-08 JES #691 Phase C.0 round 3 P1: repl_is_exit_requested.
+ *
+ * Getter for g_repl_exit_requested.  boxen_repl_main polls this each event
+ * loop iteration so that repl.exit() invoked from non-slash UserTalk code
+ * (which calls replverbhost_exit -> sets g_repl_exit_requested) terminates
+ * the boxen REPL session.
+ */
+boolean repl_is_exit_requested(void) {
+	return g_repl_exit_requested != 0;
+}
+
 /* Check if path looks like a script expression (contains ( ) or +) */
 static boolean path_is_script_expression(const char *path) {
 	if (path == NULL) return false;

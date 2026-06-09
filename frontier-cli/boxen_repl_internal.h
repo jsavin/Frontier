@@ -19,6 +19,9 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include "boxen/boxen.h"
+/* op_handler.h defines transport_t; it has no runtime or GIL dependencies,
+ * so it is safe to include in test builds (BOXEN_REPL_OMIT_MAIN defined). */
+#include "op_handler.h"
 
 /* Note: headless_threading.h (GIL symbols) is intentionally NOT included here.
  * The internal tick functions do not touch the GIL; only boxen_repl_main()
@@ -150,6 +153,24 @@ typedef struct {
 	int    pipe_read_fd;                         /* read end of capture pipe; -1 = no pipe */
 	char   partial_line[1024];                   /* incomplete line pending newline */
 	size_t partial_line_len;                     /* bytes in partial_line */
+
+	/*
+	 * 2026-06-08 JES #691 Phase C.0 round 3 P0: heap-allocated launch transport.
+	 *
+	 * boxen_repl_main allocates this on the heap and stores the pointer here so
+	 * boxen_repl_state_teardown can free it after debug_kill_all_threads /
+	 * debug_join_all_threads have run.  NULL means no transport was allocated
+	 * (auto-launch was skipped or allocation failed).
+	 *
+	 * Lifetime contract: the transport must outlive all joinable debug threads
+	 * that were spawned with it.  debug_join_all_threads() must complete before
+	 * this pointer is freed.  See debug_handler.h:196-214.
+	 *
+	 * In test builds the field exists but is never written by production code
+	 * (BOXEN_REPL_OMIT_MAIN is defined).  The P0-fix behavioral test writes it
+	 * directly to verify teardown NULLs it.
+	 */
+	transport_t *launch_transport;               /* heap-alloc'd; NULL if no auto-launch */
 } boxen_repl_state_t;
 
 /* -------------------------------------------------------------------------

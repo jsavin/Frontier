@@ -123,6 +123,25 @@ boolean repl_resolve_path_ex(const char *path, typathlookupresult *result,
 boolean repl_is_active(void);
 
 /*
+ * 2026-06-08 JES #691 Phase C.0 round 3 P1: set/clear the g_repl_active flag.
+ *
+ * Used by boxen_repl_main to publish active status without direct access to
+ * the file-static g_repl_active variable.  Call repl_set_active(true) after
+ * repl_install_verb_host() and repl_set_active(false) before
+ * repl_uninstall_verb_host() at teardown.
+ */
+void repl_set_active(boolean flag);
+
+/*
+ * 2026-06-08 JES #691 Phase C.0 round 3 P1: poll exit-requested flag.
+ *
+ * Returns true if g_repl_exit_requested has been set (by replverbhost_exit
+ * via repl.exit() from UserTalk).  Used by boxen_repl_main to detect
+ * repl.exit() calls that arrive outside the slash-command path.
+ */
+boolean repl_is_exit_requested(void);
+
+/*
  * SIGWINCH (window-size change) consumer.
  *
  * install_signal_handlers() registers a SIGWINCH handler that sets a

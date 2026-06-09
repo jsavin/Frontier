@@ -2216,8 +2216,10 @@ bool debug_launch_from_options(const cli_options_t *opts, transport_t *transport
 	if (opts->inline_script != NULL) {
 		const char *expr = opts->inline_script;
 
-		/* Bare ODB address (@path): resolve via debug_get_script_source. */
-		if (expr[0] == '@' && expr[1] != '\0') {
+		/* Bare ODB address (@path): resolve via debug_get_script_source.
+		 * 2026-06-08 JES #691 Phase C.0 round 3 P2-4: use shared debug_is_bare_address
+		 * (strict [A-Za-z0-9_.]+) instead of the former laxer (c != '\0') check. */
+		if (debug_is_bare_address(expr)) {
 			/* Strip leading '@' for debug_get_script_source */
 			Handle htext = debug_get_script_source(expr + 1, NULL);
 			if (htext == nil) {

@@ -322,4 +322,34 @@ Handle debug_get_script_source(const char *path_no_at, dbg_source_reason *out_re
  */
 bool debug_launch_from_options(const cli_options_t *opts, transport_t *transport);
 
+/*
+ * 2026-06-08 JES #691 Phase C.0 round 3 P2-4: shared bare-ODB-address detection.
+ *
+ * Returns true iff s starts with '@' AND every subsequent character is in
+ * [A-Za-z0-9_.].  No whitespace, no parens, no operators.
+ *
+ * This is the canonical detection rule -- inline in this header so both
+ * debug_launch_from_options (debug_handler.c) and tui_launch_startup_script
+ * (debugger_tui.c) share the same predicate without a link dependency.
+ * Previously debug_launch_from_options used laxer detection (@c, c!='\0')
+ * while tui_is_bare_odb_address required strict [A-Za-z0-9_.]+.  Both now
+ * delegate to this shared inline.
+ */
+static inline bool debug_is_bare_address(const char *s) {
+	if (s == NULL || s[0] != '@') return false;
+	const char *p = s + 1;
+	if (*p == '\0') return false;  /* bare '@' alone is not an address */
+	while (*p != '\0') {
+		char c = *p;
+		if (!((c >= 'A' && c <= 'Z') ||
+		      (c >= 'a' && c <= 'z') ||
+		      (c >= '0' && c <= '9') ||
+		      c == '_' || c == '.')) {
+			return false;
+		}
+		p++;
+	}
+	return true;
+}
+
 #endif /* DEBUG_HANDLER_H */

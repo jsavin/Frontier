@@ -452,6 +452,15 @@ void boxen_repl_state_teardown(boxen_repl_state_t *s) {
 	s->saved_stderr     = -1;
 	s->partial_line[0]  = '\0';
 	s->partial_line_len = 0;
+
+	/* 2026-06-08 JES #691 Phase C.0 round 3 P0: free heap-allocated launch transport.
+	 * boxen_repl_main must call debug_kill_all_threads + debug_join_all_threads
+	 * BEFORE calling boxen_repl_state_teardown, ensuring no thread holds a
+	 * reference to this pointer when it is freed here. */
+	if (s->launch_transport != NULL) {
+		free(s->launch_transport);
+		s->launch_transport = NULL;
+	}
 }
 
 int boxen_repl_run_one_tick(boxen_repl_state_t *s, const boxen_event_t *ev) {
@@ -500,10 +509,31 @@ void drain_stdout_into_scrollback(boxen_repl_state_t *s, int fd) {
 				/* We have a complete line: partial_line (if any) + this segment */
 				size_t seg_len = (size_t)(nl - p);
 				size_t avail   = sizeof(s->partial_line) - s->partial_line_len - 1;
-				if (seg_len > avail) seg_len = avail;
 
-				memcpy(s->partial_line + s->partial_line_len, p, seg_len);
-				s->partial_line_len += seg_len;
+				/* 2026-06-08 JES #691 Phase C.0 round 3 P2-5: truncation warning.
+				 * When a single line exceeds the partial buffer, append a visible
+				 * marker so the user knows content was dropped. */
+				if (seg_len > avail) {
+					static const char trunc_marker[] = "...[truncated]";
+					size_t marker_len = sizeof(trunc_marker) - 1;
+					/* Ensure we have room for the marker at the end of avail */
+					if (avail > marker_len) {
+						memcpy(s->partial_line + s->partial_line_len, p, avail - marker_len);
+						s->partial_line_len += avail - marker_len;
+					}
+					/* Stamp the marker; avail - marker_len may be 0 if buffer was
+					 * already full -- in that case we overwrite the last marker_len
+					 * bytes of whatever is already accumulated. */
+					size_t stamp_pos = (s->partial_line_len > marker_len)
+					                   ? (s->partial_line_len - marker_len)
+					                   : 0;
+					memcpy(s->partial_line + stamp_pos, trunc_marker, marker_len);
+					s->partial_line_len = stamp_pos + marker_len;
+					seg_len = avail; /* mark as consumed (clamp applied) */
+				} else {
+					memcpy(s->partial_line + s->partial_line_len, p, seg_len);
+					s->partial_line_len += seg_len;
+				}
 				s->partial_line[s->partial_line_len] = '\0';
 
 				/* Append to scrollback (even if empty -- echoes a blank line) */
@@ -634,7 +664,7 @@ static void boxen_repl_noop_write_line(void *ctx, const char *line, size_t len) 
  *   P1-6:  debug_set_attach_transport(NULL) in teardown.
  * ---------------------------------------------------------------------- */
 int boxen_repl_main(const cli_options_t *opts) {
-	/* 2026-06-08 JES #691 Phase C.0 round 2 P2-12: guard against NULL opts. */
+	/* 2026-06-08 JES #691 Phase C.0 rounds 2+3 P2-12: guard against NULL opts. */
 	if (opts == NULL) {
 		log_error(LOG_COMP_GENERAL, "boxen_repl: opts is NULL");
 		return 1;
@@ -663,13 +693,17 @@ int boxen_repl_main(const cli_options_t *opts) {
 	int tw = (be->width  && be->width()  > 0) ? be->width()  : 80;
 	int th = (be->height && be->height() > 0) ? be->height() : 24;
 
-	/* 2026-06-08 JES #691 Phase C.0 round 2 P1-8: clear stale exit flag from
-	 * any prior REPL session before installing the verb host adapter. */
+	/* 2026-06-08 JES #691 Phase C.0 round 2 P1-8 / round 3 P1: clear stale exit
+	 * flag from any prior REPL session before installing the verb host adapter. */
 	repl_reset_exit_flag();
 
 	/* 2026-06-08 JES #691 Phase C.0 round 2 P1-3: install repl.* verb host.
 	 * Mirrors protocol_handler.c:149 and repl.c:repl_main exactly. */
 	repl_install_verb_host();
+
+	/* 2026-06-08 JES #691 Phase C.0 round 3 P1: publish g_repl_active so that
+	 * repl.isActive() returns true during this REPL session. */
+	repl_set_active(true);
 
 	boxen_repl_state_init(state, tw, th);
 
@@ -691,28 +725,50 @@ int boxen_repl_main(const cli_options_t *opts) {
 	int pipefd[2];
 	bool capture_active = false;
 	if (pipe(pipefd) == 0) {
-		/* Read end non-blocking so drain never blocks the event loop. */
-		fcntl(pipefd[0], F_SETFL, O_NONBLOCK);
-
-		int saved_out = dup(STDOUT_FILENO);
-		int saved_err = dup(STDERR_FILENO);
-
-		if (saved_out >= 0 && saved_err >= 0) {
-			dup2(pipefd[1], STDOUT_FILENO);
-			dup2(pipefd[1], STDERR_FILENO);
-			close(pipefd[1]);  /* write end is now duplicated into stdout/stderr */
-
-			state->saved_stdout = saved_out;
-			state->saved_stderr = saved_err;
-			state->pipe_read_fd = pipefd[0];
-			capture_active = true;
-		} else {
-			/* dup failed -- clean up without capturing */
-			if (saved_out >= 0) close(saved_out);
-			if (saved_err >= 0) close(saved_err);
+		/* Read end non-blocking so drain never blocks the event loop.
+		 * 2026-06-08 JES #691 Phase C.0 round 3 P2-7: check fcntl return.
+		 * If F_SETFL fails, drain would block -- fall through without capture. */
+		if (fcntl(pipefd[0], F_SETFL, O_NONBLOCK) < 0) {
+			log_warn(LOG_COMP_GENERAL,
+			         "boxen_repl: fcntl(O_NONBLOCK) failed; skipping capture");
 			close(pipefd[0]);
 			close(pipefd[1]);
-			log_warn(LOG_COMP_GENERAL, "boxen_repl: stdout dup failed; display may corrupt");
+		} else {
+			int saved_out = dup(STDOUT_FILENO);
+			int saved_err = dup(STDERR_FILENO);
+
+			if (saved_out >= 0 && saved_err >= 0) {
+				/* 2026-06-08 JES #691 Phase C.0 round 3 P2-6: check dup2 returns.
+				 * If either dup2 fails, restore and skip capture so the display is
+				 * not left in a half-redirected state. */
+				int r1 = dup2(pipefd[1], STDOUT_FILENO);
+				int r2 = dup2(pipefd[1], STDERR_FILENO);
+				if (r1 < 0 || r2 < 0) {
+					/* Restore whichever dup2 succeeded */
+					dup2(saved_out, STDOUT_FILENO);
+					dup2(saved_err, STDERR_FILENO);
+					close(saved_out);
+					close(saved_err);
+					close(pipefd[0]);
+					close(pipefd[1]);
+					log_warn(LOG_COMP_GENERAL,
+					         "boxen_repl: dup2 failed; skipping capture");
+				} else {
+					close(pipefd[1]);  /* write end is now duplicated into stdout/stderr */
+
+					state->saved_stdout = saved_out;
+					state->saved_stderr = saved_err;
+					state->pipe_read_fd = pipefd[0];
+					capture_active = true;
+				}
+			} else {
+				/* dup failed -- clean up without capturing */
+				if (saved_out >= 0) close(saved_out);
+				if (saved_err >= 0) close(saved_err);
+				close(pipefd[0]);
+				close(pipefd[1]);
+				log_warn(LOG_COMP_GENERAL, "boxen_repl: stdout dup failed; display may corrupt");
+			}
 		}
 	} else {
 		log_warn(LOG_COMP_GENERAL, "boxen_repl: pipe() failed; display may corrupt");
@@ -727,18 +783,30 @@ int boxen_repl_main(const cli_options_t *opts) {
 	 * which spawns the debug thread suspended.
 	 *
 	 * GIL is held throughout this auto-launch; debug_launch_from_options requires
-	 * the GIL for langcompiletext and headless_spawn_script_thread. */
-	transport_t launch_transport;
-	memset(&launch_transport, 0, sizeof(launch_transport));
-	launch_transport.write_line = boxen_repl_noop_write_line;
-	launch_transport.ctx = NULL;
+	 * the GIL for langcompiletext and headless_spawn_script_thread.
+	 *
+	 * 2026-06-08 JES #691 Phase C.0 round 3 P0: heap-allocate the transport so
+	 * it outlives boxen_repl_main's stack frame.  The joinable debug/run thread
+	 * (fldetached=false) caches a pointer to this transport via
+	 * debug_register_thread; that pointer must remain valid until
+	 * debug_join_all_threads() returns.  See debug_handler.h:196-214. */
+	transport_t *launch_transport = calloc(1, sizeof(transport_t));
+	if (launch_transport == NULL) {
+		log_error(LOG_COMP_GENERAL,
+		          "boxen_repl_main: failed to allocate launch_transport; skipping auto-launch");
+		/* Continue into the REPL without auto-launch; not fatal. */
+	} else {
+		launch_transport->write_line = boxen_repl_noop_write_line;
+		launch_transport->ctx = NULL;
+		state->launch_transport = launch_transport;
 
-	/* Register the lazy-attach transport BEFORE spawning the debug thread.
-	 * Mirrors debugger_tui_main:2882 exactly. */
-	debug_set_attach_transport(&launch_transport);
+		/* Register the lazy-attach transport BEFORE spawning the debug thread.
+		 * Mirrors debugger_tui_main:2882 and protocol_handler.c:194. */
+		debug_set_attach_transport(launch_transport);
 
-	if (opts->script_file != NULL || opts->inline_script != NULL) {
-		debug_launch_from_options(opts, &launch_transport);
+		if (opts->script_file != NULL || opts->inline_script != NULL) {
+			debug_launch_from_options(opts, launch_transport);
+		}
 	}
 
 	log_info(LOG_COMP_GENERAL, "Boxen REPL: entering event loop (Ctrl-C to quit)");
@@ -764,6 +832,14 @@ int boxen_repl_main(const cli_options_t *opts) {
 			drain_stdout_into_scrollback(state, state->pipe_read_fd);
 		}
 
+		/* 2026-06-08 JES #691 Phase C.0 round 3 P1: poll repl.exit() flag.
+		 * replverbhost_exit() sets g_repl_exit_requested (via repl.exit() from
+		 * non-slash UserTalk code).  The slash path already sets should_quit via
+		 * submit_input's running=false path; this catches the direct-call path. */
+		if (repl_is_exit_requested()) {
+			state->should_quit = true;
+		}
+
 		if (poll_rc == BOXEN_ERR_TIMEOUT) {
 			boxen_present();
 			continue;
@@ -777,41 +853,58 @@ int boxen_repl_main(const cli_options_t *opts) {
 		boxen_present();
 	}
 
-	/* 2026-06-08 JES #691 Phase C.0 round 2: drain-before-free teardown.
+	/* 2026-06-08 JES #691 Phase C.0 round 3: teardown sequence (revised).
 	 *
-	 * Mirrors debugger_tui_main teardown order (debugger_tui.c:2959-2975):
+	 * Round 2 teardown drained lazy threads but did NOT kill/join the joinable
+	 * debug/run thread spawned by debug_launch_from_options.  That thread
+	 * (fldetached=false) caches &launch_transport in its debug state record;
+	 * if it runs after boxen_repl_main returns (or after the transport is freed)
+	 * it dereferences a dangling pointer.
 	 *
-	 *   1. Snapshot before drain.
-	 *      Snapshot before drain so that lazy threads' headless_restore_threadglobals
-	 *      calls during the drain cannot clobber main_hglobals. The drain releases
-	 *      and reacquires the GIL multiple times; only the snapshot preserved here
-	 *      survives those yields.
-	 *   2. debug_wait_lazy_threads_drained() -- block until all lazy threads exit.
+	 * Corrected order (mirrors main.c:1286-1298 for kill+join):
+	 *
+	 *   1. Snapshot main hglobals before the drain/kill/join cycle.
+	 *   2. debug_wait_lazy_threads_drained() -- drain detached lazy threads.
 	 *   3. headless_restore_threadglobals(main_hglobals) -- restore main context.
-	 *   4. debug_set_attach_transport(NULL) -- P1-6: prevent new lazy registrations.
-	 *   5. Restore stdout/stderr and close the capture pipe.
-	 *   6. repl_uninstall_verb_host() -- P1-3.
-	 *   7. boxen_repl_state_teardown() -- close windows, free ring.
-	 *   8. free(state).
+	 *   4. debug_kill_all_threads() -- signal joinable threads to stop.
+	 *   5. Release GIL, debug_join_all_threads(), reacquire GIL, restore hglobals.
+	 *      (mirrors main.c:1291-1298 exactly)
+	 *   6. debug_set_attach_transport(NULL) -- prevent new lazy registrations.
+	 *   7. Restore stdout/stderr; final drain of capture pipe.
+	 *   8. repl_set_active(false) -- P1: publish end of REPL session.
+	 *   9. repl_uninstall_verb_host() -- P1-3.
+	 *  10. boxen_repl_state_teardown() -- frees launch_transport (P0) + windows.
+	 *  11. boxen_shutdown(), free(state).
 	 */
 	{
-		/* Snapshot before drain so that lazy threads' headless_restore_threadglobals
-		 * calls during the drain cannot clobber main_hglobals. The drain releases
-		 * and reacquires the GIL multiple times; only the snapshot preserved here
-		 * survives those yields. */
+		/* Step 1+2+3: drain lazy (detached) threads, restore main hglobals. */
 		hdlthreadglobals main_hglobals = hthreadglobals;
+		headless_save_threadglobals(main_hglobals);
 		debug_wait_lazy_threads_drained();
 		headless_restore_threadglobals(main_hglobals);
+
+		/* Step 4: signal joinable debug threads to stop. */
+		debug_kill_all_threads();
+
+		/* Step 5: release GIL so killed threads can finish cleanup, then join.
+		 * Mirrors main.c:1291-1298 verbatim. */
+		{
+			hdlthreadglobals saved = hthreadglobals;
+			headless_save_threadglobals(saved);
+			pthread_mutex_unlock(&frontier_gil);
+			debug_join_all_threads();
+			pthread_mutex_lock(&frontier_gil);
+			headless_restore_threadglobals(saved);
+		}
 	}
 
-	/* 2026-06-08 JES #691 Phase C.0 round 2 P1-6: clear attach transport.
-	 * Must come AFTER drain so threads in debug_send_completed still see a
-	 * valid transport pointer.  Mirrors debugger_tui_main:2968. */
+	/* Step 6: clear attach transport.
+	 * All joinable threads are now joined; no thread holds a reference to
+	 * launch_transport.  Mirrors debugger_tui_main:2968 and
+	 * protocol_handler.c:422. */
 	debug_set_attach_transport(NULL);
 
-	/* 2026-06-08 JES #691 Phase C.0 round 2 P0-2: restore stdout/stderr.
-	 * Drain the pipe one last time before restoring so all buffered output
-	 * is in the scrollback ring before boxen_shutdown() clears the display. */
+	/* Step 7: restore stdout/stderr; final drain before display clears. */
 	if (capture_active) {
 		drain_stdout_into_scrollback(state, state->pipe_read_fd);
 		dup2(state->saved_stdout, STDOUT_FILENO);
@@ -821,13 +914,19 @@ int boxen_repl_main(const cli_options_t *opts) {
 		close(state->pipe_read_fd); state->pipe_read_fd = -1;
 	}
 
-	/* P1-3: uninstall verb host before teardown. */
+	/* Step 8: mark REPL session inactive (P1). */
+	repl_set_active(false);
+
+	/* Step 9: uninstall verb host before teardown (P1-3). */
 	repl_uninstall_verb_host();
 
+	/* Step 10: teardown windows, ring, and launch_transport (P0 free). */
 	boxen_repl_state_teardown(state);
 	if (boxen_initialized) {
 		boxen_shutdown();
 	}
+
+	/* Step 11: free state. */
 	free(state);
 	state = NULL;
 

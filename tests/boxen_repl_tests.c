@@ -342,6 +342,44 @@ static void test_stdout_capture_routes_to_scrollback(void) {
 }
 
 /* -------------------------------------------------------------------------
+ * Test 7: test_launch_transport_heap_alloc_and_teardown
+ *
+ * 2026-06-08 JES #691 Phase C.0 round 3: P0 UAF fix -- TDD guard.
+ *
+ * Verifies that boxen_repl_state_t carries a launch_transport pointer field,
+ * and that after boxen_repl_state_teardown() the field is NULL (i.e., any
+ * heap-allocated transport was freed and the pointer cleared).
+ *
+ * This test targets the state-machine contract only -- it does NOT call
+ * boxen_repl_main (which requires GIL + debug_handler symbols absent in the
+ * test build).  It exercises boxen_repl_state_init + a manual field write to
+ * simulate what boxen_repl_main does, then calls teardown to confirm cleanup.
+ *
+ * RED expectation before fix: compile error (no launch_transport field) OR
+ * teardown does not NULL the field (assert fires).
+ * ---------------------------------------------------------------------- */
+static void test_launch_transport_heap_alloc_and_teardown(void) {
+	setup();
+
+	/* Simulate what boxen_repl_main does: heap-allocate a transport and
+	 * store it in state->launch_transport.  In production, boxen_repl_main
+	 * does this; here we do it directly so teardown can be tested in isolation
+	 * without the production dependencies. */
+	transport_t *lt = (transport_t *)calloc(1, sizeof(transport_t));
+	assert(lt != NULL);
+	g_state.launch_transport = lt;
+
+	/* teardown must free the transport and NULL the field. */
+	boxen_repl_state_teardown(&g_state);
+
+	assert(g_state.launch_transport == NULL);
+
+	/* boxen_shutdown to pair with setup's boxen_init (teardown already called,
+	 * but we skip the duplicate teardown since it was already called above). */
+	boxen_shutdown();
+}
+
+/* -------------------------------------------------------------------------
  * main
  * ---------------------------------------------------------------------- */
 int main(void) {
@@ -353,6 +391,7 @@ int main(void) {
 	TR_RUN(test_backspace_deletes_char);
 	TR_RUN(test_scrollback_ring_drops_oldest_when_full);
 	TR_RUN(test_stdout_capture_routes_to_scrollback);
+	TR_RUN(test_launch_transport_heap_alloc_and_teardown);
 
 	TR_SUMMARY();
 	return TR_EXIT_CODE();
