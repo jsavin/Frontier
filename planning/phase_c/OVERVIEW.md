@@ -1,8 +1,16 @@
 # boxen Phase C -- boxen-native REPL with debugger as one surface
 
-Status: 2026-06-06. Phase B not yet started; Phase C is captured here for
-orientation and deferred planning. The execution plan for Phase C comes AFTER
-Phase B is complete.
+> **SUPERSEDED 2026-06-08.**  After shipping Phase B (#691, B.0-B.8 via PR #722,
+> #748, #749, #751, #752, #756) and interactive testing, the persistent-input-line
+> shape proposed here was found inadequate -- the debugger TUI as a separate mode
+> has no way for a typist to cause code to run.  The replacement design is in
+> `PROPOSAL_REVISED.md`: a Frontier REPL window plus separate script editor
+> windows, with the debugger as a split inside each editor.  See that document
+> for the authoritative Phase C plan.  This OVERVIEW is retained for historical
+> context.
+
+Status: 2026-06-06 (original draft).  Phase B was completed 2026-06-07.  Phase C
+shape revised 2026-06-08; see `PROPOSAL_REVISED.md`.
 
 ---
 
