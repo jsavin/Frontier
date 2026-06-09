@@ -606,13 +606,19 @@ bool boxen_outline_handle_key(boxen_outline_state_t *s,
 		 * list by boxen_window_close before we reach free(s), so no callback
 		 * can fire for this window after window_close returns.  This is safe.
 		 *
-		 * We set s->win = NULL before free to prevent boxen_outline_close_all
-		 * from calling boxen_window_close a second time on an already-freed
-		 * window if it races (it iterates the registry, which we clear first). */
+		 * Ordering: registry_remove(s) FIRST so boxen_outline_close_all() (which
+		 * iterates the registry and would call boxen_window_close on each slot's
+		 * win) can no longer see this s -- prevents a hypothetical double-close
+		 * if close_all races.  We do NOT need to NULL s->win after window_close
+		 * because s itself is freed on the very next line; the dangling field
+		 * has no reachable reader.
+		 *
+		 * 2026-06-09 JES #691 C.1 round 2: doc fix per /gate round 2 LOW note
+		 * -- previous comment claimed s->win = NULL but the code did not (and
+		 * does not need to) NULL it. Comment now matches the code. */
 		registry_remove(s);
 		if (s->win != NULL) {
 			boxen_window_close(s->win);
-			/* s->win is now a dangling pointer; do not read it after this. */
 		}
 		free(s);
 		/* Note: s is now freed.  This input callback returns immediately;
@@ -1240,6 +1246,12 @@ bool boxen_outline_real_toggle_breakpoint(boxen_outline_state_t *s, int node_idx
 	if (node->hnode_opaque == NULL) return false;
 	hdlheadrecord hnode = (hdlheadrecord)node->hnode_opaque;
 
+	/* 2026-06-09 JES #691 C.1 round 2 cosmetic per /gate concurrency note:
+	 * GIL held throughout this block.  The flbreakpoint bit write is
+	 * serialized against any debug-thread breakpoint check by the GIL
+	 * (ADR-014: only the GIL holder runs ODB-touching C code).  No
+	 * intervening yield points -- opdirtyoutline / oppopoutline do not
+	 * release the GIL. */
 	oppushoutline(ho);
 	boolean flrecentlychanged = (**ho).flrecentlychanged;
 	boolean new_val = !(**hnode).flbreakpoint;
@@ -1264,6 +1276,8 @@ bool boxen_outline_real_toggle_comment(boxen_outline_state_t *s, int node_idx) {
 	if (node->hnode_opaque == NULL) return false;
 	hdlheadrecord hnode = (hdlheadrecord)node->hnode_opaque;
 
+	/* GIL held throughout this block; same serialization argument as
+	 * toggle_breakpoint above. */
 	oppushoutline(ho);
 	boolean flrecentlychanged = (**ho).flrecentlychanged;
 	boolean new_val = !(**hnode).flcomment;
@@ -1308,6 +1322,11 @@ void boxen_outline_real_expand(boxen_outline_node_t *node, bool expand) {
 	 * relevant.  In that case, stash the hdloutlinerecord on the editor
 	 * state at fetch time and use oppushoutline/opexpand/oppopoutline. */
 	hdlheadrecord hnode = (hdlheadrecord)node->hnode_opaque;
+	/* 2026-06-09 JES #691 C.1 round 2 cosmetic per /gate concurrency note:
+	 * GIL held -- write is serialized.  flexpanded is a single-bit field
+	 * in tyheadrecord; under the GIL model (ADR-014) only the GIL holder
+	 * runs ODB-touching C code, so this byte-sized write cannot race with
+	 * any concurrent reader. */
 	(**hnode).flexpanded = expand;
 
 	/* Update the display node */

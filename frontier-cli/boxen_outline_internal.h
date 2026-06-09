@@ -162,8 +162,16 @@ typedef void (*script_run_fn_t)(const char *path);
 /*
  * outline_expand_fn_t -- expand or collapse a node.
  *
- * Production: calls opexpand / opcollapse under GIL; re-fetches display.
+ * Production: directly writes (**hnode).flexpanded under GIL.  Does NOT
+ *             route through opexpand / opcollapse because those dereference
+ *             op_get_outlinedata() which is nil in the REPL event loop
+ *             (no outline context is pushed).  The caller is expected to
+ *             follow up with boxen_outline_refresh() which rebuilds the
+ *             display list from the live outline structure.
  * Tests:      flips the expanded flag in the node array directly.
+ *
+ * 2026-06-09 JES #691 C.1 round 2 cosmetic: docblock previously said
+ * "calls opexpand / opcollapse"; corrected per /gate concurrency note.
  *
  * Parameters:
  *   node    -- pointer to the node in the editor's node array
