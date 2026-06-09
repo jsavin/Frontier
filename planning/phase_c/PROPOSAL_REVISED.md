@@ -35,7 +35,7 @@ Opened on demand by `/edit` or `/debug`.  Each script gets its own editor; multi
 - Source pane fills the window; full read/write line editing
 - Enter: commit + compile + run (no suspension); errors annotate the offending line
 - Option-Enter: commit + compile + spawn suspended -> transitions to debug mode
-- Cmd-S: explicit save to ODB
+- Cmd-S: triggers root-level save of all modified objects in the root owning this editor's script (see §5.2)
 - `:` does nothing here (it's a debug-frame thing; see below)
 
 **Debug mode** (after Option-Enter or `/debug`):
@@ -79,19 +79,22 @@ The user fixes the error and hits Enter or Option-Enter again.  No silent fallba
 
 ### 5.2 Save semantics
 
-Edits accumulate in an in-memory buffer.  ODB is updated only at:
+Legacy Frontier's Cmd-S is **not a per-window save** -- it saves all modified objects in the root that owns the frontmost window (or Frontier.root if no window has focus).  This convention is overridable per windowType / Tool at the UserTalk level.  Phase C preserves this semantic; the editor does not own its own save behavior, it participates in the root-level save model.
 
-- Explicit save (Cmd-S equivalent)
-- Compile (because compile reads from ODB), which happens on Enter / Option-Enter / `/debug`
-- Editor window close (with "save changes? [y/n/cancel]" prompt if buffer is dirty)
+Two distinct concepts are required, only one of which is per-editor:
 
-This matches the explicit-commit pattern used elsewhere in Frontier (e.g., `repl.syncscan()`).  No surprise auto-save on every keystroke.
+- **Commit-to-ODB** (per-editor): the editor flushes its in-memory edit buffer to the in-memory ODB representation, marking the script-external as modified.  This happens automatically on Enter / Option-Enter / `/debug` (because compile reads from ODB), and on editor window close (with a "discard changes? [y/n/cancel]" prompt if the buffer is dirty -- the prompt is about whether to commit, not whether to persist).
+- **Persist-to-disk** (root-level): the standard root-save flow walks all modified objects in the owning root and writes them.  Cmd-S is the keybind that triggers this for the root owning the frontmost window.  This includes any committed-but-not-yet-persisted editor buffers from any editor window backed by that root.
+
+The result: Cmd-S in any editor (or in the REPL) saves *every* modified object in the relevant root, exactly as legacy Frontier does.  An editor backed by a guest .root saves its guest root; an editor backed by Frontier.root saves Frontier.root.  No surprise; no per-editor save key needed.
+
+In-memory buffer commit is implicit at the run / debug / close points.  No surprise auto-commit on every keystroke.  Explicit "commit without saving to disk" is unnecessary -- the next compile/run/close handles it automatically and Cmd-S handles the persistence.
 
 ### 5.3 Concurrent edit detection
 
 When the editor first loads a script, it records the script's `timeModified` (the per-value modification timestamp that already exists on every script-external; see `reference_per_script_timemodified.md`).
 
-Before any save or compile, the editor re-reads `timeModified` and compares.  If it differs from the recorded value:
+Before any commit-to-ODB (Enter / Option-Enter / `/debug` / window close), the editor re-reads `timeModified` and compares.  If it differs from the recorded value:
 
 ```
 "@workspace.foo was modified outside this editor since you opened it.
@@ -99,9 +102,11 @@ Before any save or compile, the editor re-reads `timeModified` and compares.  If
 Reload? Your unsaved edits will be lost. [y/n]"
 ```
 
-Y: reload from ODB, discard in-memory buffer, recorded `timeModified` updates.  N: keep editing.  Note: if the user answers N and then saves, their save overwrites the external change.  That's their explicit choice; the warning made the trade-off clear.
+Y: reload from ODB, discard in-memory buffer, recorded `timeModified` updates.  N: keep editing.  If the user answers N and then commits, their commit overwrites the external change.  That's their explicit choice; the warning made the trade-off clear.
 
-This covers both inter-session conflicts (another `frontier-cli` process) and intra-session conflicts (another editor window in the same session).
+The detection runs at *commit* time, not at *persist* time.  Cmd-S (root-level save) doesn't trigger per-editor conflict checks -- by the time Cmd-S fires, every editor's commit has already happened (or the in-memory buffer is still pending, in which case Cmd-S simply doesn't include it).  This is the right layering: detection belongs to the editor, persistence belongs to the root.
+
+Coverage: both inter-session conflicts (another `frontier-cli` process modified the .root then exited, and we reloaded) and intra-session conflicts (another editor window in the same session committed changes to the same script-external).
 
 ## 6. What from Phase B carries forward
 
