@@ -775,8 +775,8 @@ bool boxen_outline_open(const char *path) {
 	 * The '@' was already stripped above; it does not appear in the stored path.
 	 *
 	 * Only in production builds -- tests do not have a REPL current path. */
-	char canonical[512];
 #ifndef BOXEN_OUTLINE_OMIT_MAIN
+	char canonical[512];
 	if (strchr(p, '.') == NULL) {
 		/* Relative path: prepend REPL current path if non-empty */
 		const char *cur = repl_get_current_path();

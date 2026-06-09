@@ -176,7 +176,12 @@ typedef void (*outline_expand_fn_t)(boxen_outline_node_t *node, bool expand);
  *
  * Heap-allocated per editor window.  Freed on window close.
  * ---------------------------------------------------------------------- */
-typedef struct boxen_outline_state {
+/* 2026-06-09 JES #691 Phase C.1 round 2: definition without typedef rename.
+ * The typedef was already established by the forward declaration at line 76
+ * (`typedef struct boxen_outline_state boxen_outline_state_t`).  Repeating
+ * `typedef struct {...} boxen_outline_state_t` here triggers a C11
+ * typedef-redefinition warning; we just complete the struct definition. */
+struct boxen_outline_state {
 	/* Dotted ODB path this editor is bound to (NUL-terminated). */
 	char path[256];
 
@@ -223,7 +228,7 @@ typedef struct boxen_outline_state {
 
 	/* True if the window should close on the next tick. */
 	bool should_close;
-} boxen_outline_state_t;
+};
 
 /* -------------------------------------------------------------------------
  * Open-editors registry
