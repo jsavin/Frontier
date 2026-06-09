@@ -70,6 +70,11 @@ typedef struct boxen_outline_node {
 	void    *hnode_opaque;
 } boxen_outline_node_t;
 
+/* Forward declaration so hook typedefs can reference boxen_outline_state_t
+ * before the full struct definition below.
+ * 2026-06-09 JES #691 C.1 round 2 P0-2. */
+typedef struct boxen_outline_state boxen_outline_state_t;
+
 /* -------------------------------------------------------------------------
  * Hook function-pointer typedefs
  *
@@ -81,45 +86,67 @@ typedef struct boxen_outline_node {
 /*
  * outline_fetch_fn_t -- given a dotted path, populate the node array.
  *
- * Production: walks live ODB via op verbs (GIL held).
- * Tests:      injects a canned tree.
+ * Production: walks live ODB via op verbs (GIL held).  Also stashes the
+ *   resolved hdloutlinerecord on s->houtline_opaque so that the toggle
+ *   hooks can use oppushoutline/opdirtyoutline/oppopoutline.
+ * Tests:      injects a canned tree; leaves s->houtline_opaque NULL.
  *
  * Parameters:
+ *   s         -- editor state (for stashing houtline_opaque on production path)
  *   path      -- NUL-terminated dotted ODB path
  *   nodes     -- caller-allocated array of at least BOXEN_OUTLINE_MAX_NODES
  *   node_count-- OUT: number of nodes populated
  *
  * Returns true on success.
+ *
+ * 2026-06-09 JES #691 C.1 round 2 P0-2: added state parameter so production
+ * fetch can stash houtline_opaque for the opdirtyoutline pattern.
  */
-typedef bool (*outline_fetch_fn_t)(const char *path,
+typedef bool (*outline_fetch_fn_t)(boxen_outline_state_t *s,
+                                   const char *path,
                                    boxen_outline_node_t *nodes,
                                    int *node_count);
 
 /*
  * outline_toggle_breakpoint_fn_t -- toggle the flbreakpoint flag on a node.
  *
- * Production: writes (**hnode).flbreakpoint = !(**hnode).flbreakpoint under GIL.
- * Tests:      records that the toggle was requested; modifies mock node state.
+ * Production: pushes the outline context, toggles (**hnode).flbreakpoint,
+ *   calls opdirtyoutline(), preserves flrecentlychanged, pops context.
+ *   Mirrors the canonical pattern in scripts.c:2863-2889 (optogglebreakpoint).
+ * Tests:      modifies the node's flbreakpoint field directly in nodes[].
  *
  * Parameters:
- *   node      -- pointer to the node in the editor's node array
+ *   s         -- editor state (provides houtline_opaque and nodes[] access)
+ *   node_idx  -- index into s->nodes[] identifying the target node
  *
  * Returns new flbreakpoint value.
+ *
+ * 2026-06-09 JES #691 C.1 round 2 P0-2: signature changed from (node) to
+ * (state, node_idx) to give the hook access to houtline_opaque for the
+ * oppushoutline/opdirtyoutline/oppopoutline pattern.
  */
-typedef bool (*outline_toggle_breakpoint_fn_t)(boxen_outline_node_t *node);
+typedef bool (*outline_toggle_breakpoint_fn_t)(boxen_outline_state_t *s,
+                                               int node_idx);
 
 /*
  * outline_toggle_comment_fn_t -- toggle the flcomment flag on a node.
  *
- * Production: writes (**hnode).flcomment = !(**hnode).flcomment under GIL.
- * Tests:      records the toggle; modifies mock node state.
+ * Production: pushes the outline context, toggles (**hnode).flcomment,
+ *   calls opdirtyoutline(), preserves flrecentlychanged, pops context.
+ *   Mirrors the canonical pattern in scripts.c:2863-2889.
+ * Tests:      modifies the node's flcomment field directly in nodes[].
  *
  * Parameters:
- *   node      -- pointer to the node in the editor's node array
+ *   s         -- editor state
+ *   node_idx  -- index into s->nodes[] identifying the target node
  *
  * Returns new flcomment value.
+ *
+ * 2026-06-09 JES #691 C.1 round 2 P0-2: signature changed from (node) to
+ * (state, node_idx) for the same reason as toggle_breakpoint above.
  */
-typedef bool (*outline_toggle_comment_fn_t)(boxen_outline_node_t *node);
+typedef bool (*outline_toggle_comment_fn_t)(boxen_outline_state_t *s,
+                                            int node_idx);
 
 /*
  * script_run_fn_t -- run the outline's path as a script.
@@ -155,6 +182,24 @@ typedef struct boxen_outline_state {
 
 	/* Boxen window handle */
 	boxen_window_t *win;
+
+	/* 2026-06-09 JES #691 C.1 round 2 P0-2: stashed hdloutlinerecord.
+	 * Set by boxen_outline_real_fetch after the outline is confirmed in
+	 * memory.  Used by the toggle hooks so they can push the outline
+	 * context (oppushoutline), call opdirtyoutline(), and pop without
+	 * requiring op_get_outlinedata() to already be set (which it isn't
+	 * in the boxen REPL event loop).
+	 *
+	 * Lifetime invariant: valid for the duration of the editor session,
+	 * as long as the script object itself is not deleted or re-serialized
+	 * to disk.  If UserTalk deletes the object while the editor is open,
+	 * this handle becomes a dangling pointer (UAF hazard).  C.1 accepts
+	 * this risk because the editor is read-only-with-flag-mutation and
+	 * the scenario is unlikely.  Tracked as a follow-up issue for C.2+.
+	 *
+	 * In test builds (BOXEN_OUTLINE_OMIT_MAIN) this is always NULL.
+	 */
+	void *houtline_opaque; /* hdloutlinerecord -- production only */
 
 	/* Flat visible-node array.  Populated by outline_fetch_hook. */
 	boxen_outline_node_t nodes[BOXEN_OUTLINE_MAX_NODES];
@@ -252,12 +297,20 @@ int boxen_outline_cursor_advance(boxen_outline_state_t *s, int delta);
  * NOT available in test builds.
  * ---------------------------------------------------------------------- */
 #ifndef BOXEN_OUTLINE_OMIT_MAIN
-bool boxen_outline_real_fetch(const char *path,
+/* 2026-06-09 JES #691 C.1 round 2 P0-2: takes state to stash houtline_opaque. */
+bool boxen_outline_real_fetch(boxen_outline_state_t *s,
+                              const char *path,
                               boxen_outline_node_t *nodes,
                               int *node_count);
-bool boxen_outline_real_toggle_breakpoint(boxen_outline_node_t *node);
-bool boxen_outline_real_toggle_comment(boxen_outline_node_t *node);
+/* 2026-06-09 JES #691 C.1 round 2 P0-2: signatures updated to (state, node_idx)
+ * to allow access to houtline_opaque for oppushoutline/opdirtyoutline pattern. */
+bool boxen_outline_real_toggle_breakpoint(boxen_outline_state_t *s,
+                                          int node_idx);
+bool boxen_outline_real_toggle_comment(boxen_outline_state_t *s,
+                                       int node_idx);
 void boxen_outline_real_script_run(const char *path);
+/* 2026-06-09 JES #691 C.1 round 2 P0-1: direct field flip instead of
+ * opexpand/opcollapse which require op_get_outlinedata() to be non-nil. */
 void boxen_outline_real_expand(boxen_outline_node_t *node, bool expand);
 #endif /* !BOXEN_OUTLINE_OMIT_MAIN */
 

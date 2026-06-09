@@ -51,6 +51,9 @@
 
 #ifndef BOXEN_OUTLINE_OMIT_MAIN
 #include "../Common/headers/logging.h"
+/* 2026-06-09 JES #691 C.1 round 2 P1: path canonicalization uses
+ * repl_get_current_path() in boxen_outline_open's production path. */
+#include "repl.h"
 #endif
 
 /* -------------------------------------------------------------------------
@@ -91,7 +94,10 @@ static void registry_init(void) {
 }
 
 static boxen_outline_state_t *registry_find(const char *path) {
-	for (int i = 0; i < g_registry.count; i++) {
+	/* 2026-06-09 JES #691 C.1 round 2 P1: iterate full array, not < count.
+	 * registry_remove NULLs a slot without compacting, so any entry at index
+	 * >= count would be unreachable if we stopped at count. */
+	for (int i = 0; i < BOXEN_OUTLINE_MAX_EDITORS; i++) {
 		boxen_outline_state_t *e = g_registry.editors[i];
 		if (e != NULL && strcmp(e->path, path) == 0) {
 			return e;
@@ -215,7 +221,7 @@ bool boxen_outline_refresh(boxen_outline_state_t *s) {
 	if (s->outline_fetch_hook == NULL) return false;
 
 	int count = 0;
-	bool ok = s->outline_fetch_hook(s->path, s->nodes, &count);
+	bool ok = s->outline_fetch_hook(s, s->path, s->nodes, &count);
 	if (!ok) return false;
 
 	s->node_count  = count;
@@ -448,9 +454,11 @@ bool boxen_outline_handle_key(boxen_outline_state_t *s,
 			boxen_outline_node_t *cur = &s->nodes[s->cursor];
 			if (cur->has_children && cur->expanded && s->expand_hook != NULL) {
 				s->expand_hook(cur, false);
-				/* Note: caller is responsible for calling boxen_outline_refresh
-				 * if they need the display list rebuilt.  The hook updates the
-				 * authoritative source; the test does an explicit refresh. */
+				/* 2026-06-09 JES #691 C.1 round 2 P1: call refresh so the
+				 * display list reflects the collapse immediately.  Without this,
+				 * the screen stays stale until the next unrelated refresh.
+				 * Matches the pattern in keypad-plus, Cmd-[, and left-arrow. */
+				boxen_outline_refresh(s);
 			}
 		}
 		return true;
@@ -471,7 +479,11 @@ bool boxen_outline_handle_key(boxen_outline_state_t *s,
 	/* Keypad-star '*': expand all descendants of current node */
 	if (key == BOXEN_KEY_NONE && ch == '*' && mod == BOXEN_MOD_NONE) {
 		expand_all_descendants(s);
-		/* Note: caller refreshes; test does explicit refresh. */
+		/* 2026-06-09 JES #691 C.1 round 2 P1: call refresh so the display list
+		 * is rebuilt after expand-all.  Matches keypad-plus and Cmd-Shift-] pattern.
+		 * Previously the test compensated by calling refresh explicitly -- that was
+		 * the test-fits-implementation antipattern. */
+		boxen_outline_refresh(s);
 		return true;
 	}
 
@@ -521,7 +533,10 @@ bool boxen_outline_handle_key(boxen_outline_state_t *s,
 	if (key == BOXEN_KEY_F9 && mod == BOXEN_MOD_NONE) {
 		if (s->node_count > 0 && s->cursor < s->node_count) {
 			if (s->toggle_breakpoint_hook != NULL) {
-				s->toggle_breakpoint_hook(&s->nodes[s->cursor]);
+				/* 2026-06-09 JES #691 C.1 round 2 P0-2: pass (state, node_idx)
+				 * so the production hook can use houtline_opaque for
+				 * oppushoutline/opdirtyoutline/oppopoutline. */
+				s->toggle_breakpoint_hook(s, s->cursor);
 			}
 			if (s->win != NULL) boxen_window_invalidate(s->win);
 		}
@@ -532,7 +547,9 @@ bool boxen_outline_handle_key(boxen_outline_state_t *s,
 	if (key == BOXEN_KEY_NONE && ch == '/' && mod == BOXEN_MOD_META) {
 		if (s->node_count > 0 && s->cursor < s->node_count) {
 			if (s->toggle_comment_hook != NULL) {
-				s->toggle_comment_hook(&s->nodes[s->cursor]);
+				/* 2026-06-09 JES #691 C.1 round 2 P0-2: same (state, node_idx)
+				 * signature as toggle_breakpoint. */
+				s->toggle_comment_hook(s, s->cursor);
 			}
 			if (s->win != NULL) boxen_window_invalidate(s->win);
 		}
@@ -573,12 +590,33 @@ bool boxen_outline_handle_key(boxen_outline_state_t *s,
 	if (key == BOXEN_KEY_ESCAPE ||
 	    (key == BOXEN_KEY_NONE && (ch == 'q' || ch == 'Q') &&
 	     mod == BOXEN_MOD_NONE)) {
-		s->should_close = true;
+		/* 2026-06-09 JES #691 C.1 round 2 P0-3: free the state struct.
+		 *
+		 * Previous code: registry_remove + window_close + NULL + should_close,
+		 * but no free(s).  The state struct is ~2MB; each close leaked it.
+		 *
+		 * boxen_window_close() is synchronous (see boxen.c:341-389): it removes
+		 * the window from the live list, clears focus/drag, zeroes the magic
+		 * field, and calls free(win).  There are no deferred callbacks, so we
+		 * can free 's' immediately after.  Precedent: debugger_tui_main and
+		 * boxen_repl_main both call free(state) after their teardown sequence.
+		 *
+		 * Lifetime invariant: the boxen draw/input callbacks both guard on
+		 * user_data != NULL, but the window is already removed from the live
+		 * list by boxen_window_close before we reach free(s), so no callback
+		 * can fire for this window after window_close returns.  This is safe.
+		 *
+		 * We set s->win = NULL before free to prevent boxen_outline_close_all
+		 * from calling boxen_window_close a second time on an already-freed
+		 * window if it races (it iterates the registry, which we clear first). */
+		registry_remove(s);
 		if (s->win != NULL) {
-			registry_remove(s);
 			boxen_window_close(s->win);
-			s->win = NULL;
+			/* s->win is now a dangling pointer; do not read it after this. */
 		}
+		free(s);
+		/* Note: s is now freed.  This input callback returns immediately;
+		 * the REPL event loop must not access s after this return. */
 		return true;
 	}
 
@@ -724,6 +762,31 @@ bool boxen_outline_open(const char *path) {
 	/* Strip leading '@' for lookup */
 	const char *p = (path[0] == '@') ? path + 1 : path;
 
+	/* 2026-06-09 JES #691 C.1 round 2 P1: canonicalize path for registry dedup.
+	 *
+	 * Problem: /edit foo, /edit @foo, and (after a cd) /edit workspace.foo all
+	 * opened separate windows because the registry compared paths byte-for-byte.
+	 *
+	 * Fix: if p has no dot, treat it as a relative name and prepend the REPL's
+	 * current path (repl_get_current_path()).  The repl_get_current_path() value
+	 * is the canonicalized absolute path the REPL cd'd into, so
+	 * "foo" relative to "workspace.systemTable" becomes "workspace.systemTable.foo".
+	 * If the current path is empty (REPL is at root), "foo" stays "foo".
+	 * The '@' was already stripped above; it does not appear in the stored path.
+	 *
+	 * Only in production builds -- tests do not have a REPL current path. */
+	char canonical[512];
+#ifndef BOXEN_OUTLINE_OMIT_MAIN
+	if (strchr(p, '.') == NULL) {
+		/* Relative path: prepend REPL current path if non-empty */
+		const char *cur = repl_get_current_path();
+		if (cur != NULL && cur[0] != '\0') {
+			snprintf(canonical, sizeof(canonical), "%s.%s", cur, p);
+			p = canonical;
+		}
+	}
+#endif
+
 	/* Check for existing editor on this path (raise instead of duplicating) */
 	boxen_outline_state_t *existing = registry_find(p);
 	if (existing != NULL && existing->win != NULL) {
@@ -742,14 +805,13 @@ bool boxen_outline_open(const char *path) {
 		return false;
 	}
 
-	/* Query terminal dimensions.
-	 * In production, boxen has been initialized; use a reasonable default
-	 * if the backend isn't available. */
+	/* 2026-06-09 JES #691 C.1 round 2 P1: query terminal dimensions from boxen.
+	 * boxen_get_screen_size() delegates to the initialized backend's width/height
+	 * callbacks, falling back to 80x24 if boxen is not yet initialized.
+	 * Previously hardcoded 80x24 here; this fix uses the actual terminal size. */
 	int tw = 80;
 	int th = 24;
-	/* boxen doesn't expose width/height directly through the public API.
-	 * Use the production backend if available; test builds pass tw/th through
-	 * boxen_outline_state_init directly. */
+	boxen_get_screen_size(&tw, &th);
 
 	/* Allocate and initialize editor state */
 	boxen_outline_state_t *s = (boxen_outline_state_t *)calloc(1, sizeof(*s));
@@ -888,6 +950,8 @@ static int boxen_outline_walk_nodes(hdloutlinerecord houtline,
 	walk_stack_entry_t stack[WALK_STACK_MAX];
 	int stack_top = 0;
 	int node_count = 0;
+	/* 2026-06-09 JES #691 C.1 round 2 P1: one-shot overflow warning. */
+	bool warned_stack = false;
 
 	/* Seed with the summit (level 0) */
 	stack[stack_top].hnode = hsummit;
@@ -962,6 +1026,12 @@ static int boxen_outline_walk_nodes(hdloutlinerecord houtline,
 				stack[stack_top].hnode = hnext_sibling;
 				stack[stack_top].level = level;
 				stack_top++;
+			} else if (!warned_stack) {
+				/* 2026-06-09 JES #691 C.1 round 2 P1: one-shot overflow warn */
+				log_warn(LOG_COMP_GENERAL,
+				         "boxen_outline: walk depth exceeded %d; deeper nodes omitted",
+				         WALK_STACK_MAX);
+				warned_stack = true;
 			}
 		}
 		if (has_children && fexpanded) {
@@ -969,6 +1039,12 @@ static int boxen_outline_walk_nodes(hdloutlinerecord houtline,
 				stack[stack_top].hnode = hfirst_child;
 				stack[stack_top].level = level + 1;
 				stack_top++;
+			} else if (!warned_stack) {
+				/* 2026-06-09 JES #691 C.1 round 2 P1: one-shot overflow warn */
+				log_warn(LOG_COMP_GENERAL,
+				         "boxen_outline: walk depth exceeded %d; deeper nodes omitted",
+				         WALK_STACK_MAX);
+				warned_stack = true;
 			}
 		}
 	}
@@ -1001,7 +1077,8 @@ static int boxen_outline_walk_nodes(hdloutlinerecord houtline,
  *   - opverbinmemory fails             -> log_warn, return false
  *   - variabledata is nil              -> log_warn, return false
  * ---------------------------------------------------------------------- */
-bool boxen_outline_real_fetch(const char *path,
+bool boxen_outline_real_fetch(boxen_outline_state_t *s,
+                              const char *path,
                               boxen_outline_node_t *nodes,
                               int *node_count) {
 	*node_count = 0;
@@ -1012,7 +1089,16 @@ bool boxen_outline_real_fetch(const char *path,
 	 * bigstring is a pascal string: byte[0] = length, bytes[1..255] = content.
 	 */
 	int pathlen = (int)strlen(path);
-	if (pathlen > 255) pathlen = 255;
+	if (pathlen > 255) {
+		/* 2026-06-09 JES #691 C.1 round 2 P1: explicit rejection instead of
+		 * silent truncation.  A path longer than 255 bytes cannot be a valid
+		 * bigstring (pascal-string cap is 255) so truncation would silently
+		 * resolve to a wrong path. */
+		log_warn(LOG_COMP_GENERAL,
+		         "boxen_outline: path too long (%d bytes, max 255): '%.*s...'",
+		         pathlen, 64, path);
+		return false;
+	}
 	bigstring bsfullpath;
 	bsfullpath[0] = (unsigned char)pathlen;
 	memcpy(bsfullpath + 1, path, (size_t)pathlen);
@@ -1107,6 +1193,13 @@ bool boxen_outline_real_fetch(const char *path,
 		return false;
 	}
 
+	/* 2026-06-09 JES #691 C.1 round 2 P0-2: stash houtline so the toggle
+	 * hooks can use oppushoutline/opdirtyoutline/oppopoutline.  The stash
+	 * is refreshed on every fetch, which covers re-open after serialize. */
+	if (s != NULL) {
+		s->houtline_opaque = (void *)houtline;
+	}
+
 	/* --- Step 7: walk the outline tree directly ---
 	 * No outline context push needed: we read tyheadrecord fields directly.
 	 * GIL is held by the REPL event loop for the duration of this call.
@@ -1119,30 +1212,67 @@ bool boxen_outline_real_fetch(const char *path,
 	return (count >= 0);
 }
 
-bool boxen_outline_real_toggle_breakpoint(boxen_outline_node_t *node) {
-	if (node == NULL || node->hnode_opaque == NULL) return false;
+bool boxen_outline_real_toggle_breakpoint(boxen_outline_state_t *s, int node_idx) {
+	/* 2026-06-09 JES #691 Phase C.1 round 2 P0-2: canonical toggle pattern.
+	 *
+	 * The original implementation wrote (**hnode).flbreakpoint directly
+	 * without opdirtyoutline(), so Cmd-S discarded the change (the outline
+	 * root did not know it was modified).
+	 *
+	 * Canonical pattern (Common/source/scripts.c:2863-2889 optogglebreakpoint):
+	 *   oppushoutline(ho)
+	 *   flrecentlychanged = (**ho).flrecentlychanged   // save
+	 *   (**hnode).flbreakpoint = !(**hnode).flbreakpoint
+	 *   opdirtyoutline()                               // marks outline dirty
+	 *   (**ho).flrecentlychanged = flrecentlychanged   // restore (prevent recompile)
+	 *   oppopoutline()
+	 *
+	 * oppushoutline makes ho the active outline context so that opdirtyoutline
+	 * can find it via op_get_outlinedata().  In the boxen REPL event loop there
+	 * is no outline context pushed, so we can't call opdirtyoutline without
+	 * pushing first.  The stash at s->houtline_opaque (set by real_fetch) gives
+	 * us the hdloutlinerecord to push. */
+	if (s == NULL || node_idx < 0 || node_idx >= s->node_count) return false;
+	hdloutlinerecord ho = (hdloutlinerecord)s->houtline_opaque;
+	if (ho == nil) return false;
 
-	/* Cast back to hdlheadrecord and toggle the bit.
-	 * Pattern from Common/source/scripts.c:2875-2878. */
+	boxen_outline_node_t *node = &s->nodes[node_idx];
+	if (node->hnode_opaque == NULL) return false;
 	hdlheadrecord hnode = (hdlheadrecord)node->hnode_opaque;
+
+	oppushoutline(ho);
+	boolean flrecentlychanged = (**ho).flrecentlychanged;
 	boolean new_val = !(**hnode).flbreakpoint;
 	(**hnode).flbreakpoint = new_val;
+	opdirtyoutline();
+	(**ho).flrecentlychanged = flrecentlychanged;
+	oppopoutline();
 
-	/* Update the display node */
+	/* Update the display node to match the live ODB state */
 	node->flbreakpoint = (bool)new_val;
 	return (bool)new_val;
 }
 
-bool boxen_outline_real_toggle_comment(boxen_outline_node_t *node) {
-	if (node == NULL || node->hnode_opaque == NULL) return false;
+bool boxen_outline_real_toggle_comment(boxen_outline_state_t *s, int node_idx) {
+	/* 2026-06-09 JES #691 Phase C.1 round 2 P0-2: same canonical pattern
+	 * as toggle_breakpoint above; toggles flcomment instead. */
+	if (s == NULL || node_idx < 0 || node_idx >= s->node_count) return false;
+	hdloutlinerecord ho = (hdloutlinerecord)s->houtline_opaque;
+	if (ho == nil) return false;
 
-	/* Cast back to hdlheadrecord and toggle the bit.
-	 * Pattern from Common/source/scripts.c:3034. */
+	boxen_outline_node_t *node = &s->nodes[node_idx];
+	if (node->hnode_opaque == NULL) return false;
 	hdlheadrecord hnode = (hdlheadrecord)node->hnode_opaque;
+
+	oppushoutline(ho);
+	boolean flrecentlychanged = (**ho).flrecentlychanged;
 	boolean new_val = !(**hnode).flcomment;
 	(**hnode).flcomment = new_val;
+	opdirtyoutline();
+	(**ho).flrecentlychanged = flrecentlychanged;
+	oppopoutline();
 
-	/* Update the display node */
+	/* Update the display node to match the live ODB state */
 	node->flcomment = (bool)new_val;
 	return (bool)new_val;
 }
@@ -1159,16 +1289,26 @@ void boxen_outline_real_script_run(const char *path) {
 void boxen_outline_real_expand(boxen_outline_node_t *node, bool expand) {
 	if (node == NULL || node->hnode_opaque == NULL) return;
 
-	/* Cast back to hdlheadrecord and call opexpand / opcollapse.
-	 * Pattern from Common/source/opexpand.c. */
+	/* 2026-06-09 JES #691 Phase C.1 round 2 P0-1: directly flip the
+	 * flexpanded bit instead of routing through opexpand/opcollapse.
+	 * Those functions dereference op_get_outlinedata() as their first
+	 * action (Common/source/opexpand.c:94 opcollapse_ctx, :220
+	 * opexpand_ctx), but op_get_outlinedata() returns nil in the boxen
+	 * REPL event loop -- there is no outline context pushed.  Calling
+	 * them crashes on the first expand/collapse keypress.
+	 *
+	 * The direct flip is sufficient for C.1 because boxen_outline_refresh
+	 * re-walks the structure after every expand/collapse operation, so the
+	 * display list is rebuilt from the new flexpanded state.  The
+	 * preexpand callbacks and drawing-invalidation side effects that
+	 * opexpand/opcollapse perform are GUI-side and irrelevant to the
+	 * boxen editor.
+	 *
+	 * C.2+ can revisit if GUI preexpand callbacks (e.g. lazy-load) become
+	 * relevant.  In that case, stash the hdloutlinerecord on the editor
+	 * state at fetch time and use oppushoutline/opexpand/oppopoutline. */
 	hdlheadrecord hnode = (hdlheadrecord)node->hnode_opaque;
-
-	if (expand) {
-		/* opexpand(hnode, level=0, flmaycreatesubs=false) */
-		opexpand(hnode, 0, false);
-	} else {
-		opcollapse(hnode);
-	}
+	(**hnode).flexpanded = expand;
 
 	/* Update the display node */
 	node->expanded = expand;

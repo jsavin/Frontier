@@ -140,9 +140,13 @@ static void init_canned_nodes(void) {
  * "Visible" means: a node is included unless it is a descendant of a
  * collapsed ancestor.  Level tracking is used to skip hidden nodes.
  * ---------------------------------------------------------------------- */
-static bool hook_fetch(const char *path,
+/* 2026-06-09 JES #691 C.1 round 2 P0-2: fetch hook signature updated to
+ * (state, path, nodes, count) so production hook can stash houtline_opaque. */
+static bool hook_fetch(boxen_outline_state_t *s,
+                       const char *path,
                        boxen_outline_node_t *nodes,
                        int *node_count) {
+	(void)s;
 	(void)path;
 
 	int out = 0;
@@ -179,9 +183,13 @@ static bool hook_fetch(const char *path,
 static boxen_outline_node_t g_checkbox_nodes[3];
 static bool g_checkbox_nodes_inited = false;
 
-static bool hook_fetch_checkbox(const char *path,
+/* 2026-06-09 JES #691 C.1 round 2 P0-2: checkbox fetch hook updated to new
+ * (state, path, nodes, count) signature. */
+static bool hook_fetch_checkbox(boxen_outline_state_t *s,
+                                const char *path,
                                 boxen_outline_node_t *nodes,
                                 int *node_count) {
+	(void)s;
 	(void)path;
 
 	if (!g_checkbox_nodes_inited) {
@@ -212,14 +220,20 @@ static bool hook_fetch_checkbox(const char *path,
 /* -------------------------------------------------------------------------
  * Mock toggle hooks
  * ---------------------------------------------------------------------- */
-static bool hook_toggle_breakpoint(boxen_outline_node_t *node) {
-	node->flbreakpoint = !node->flbreakpoint;
-	return node->flbreakpoint;
+/* 2026-06-09 JES #691 C.1 round 2 P0-2: toggle hooks updated to new
+ * (state, node_idx) signature to give production hook access to
+ * houtline_opaque for the oppushoutline/opdirtyoutline/oppopoutline pattern.
+ * Test implementation: directly toggles the node field in s->nodes[]. */
+static bool hook_toggle_breakpoint(boxen_outline_state_t *s, int node_idx) {
+	if (s == NULL || node_idx < 0 || node_idx >= s->node_count) return false;
+	s->nodes[node_idx].flbreakpoint = !s->nodes[node_idx].flbreakpoint;
+	return s->nodes[node_idx].flbreakpoint;
 }
 
-static bool hook_toggle_comment(boxen_outline_node_t *node) {
-	node->flcomment = !node->flcomment;
-	return node->flcomment;
+static bool hook_toggle_comment(boxen_outline_state_t *s, int node_idx) {
+	if (s == NULL || node_idx < 0 || node_idx >= s->node_count) return false;
+	s->nodes[node_idx].flcomment = !s->nodes[node_idx].flcomment;
+	return s->nodes[node_idx].flcomment;
 }
 
 /* -------------------------------------------------------------------------
@@ -391,12 +405,13 @@ static void test_keypad_minus_collapses_current(void) {
 
 	/* Keypad-minus: collapse current.
 	 * The editor maps plain '-' char (no modifier) to "collapse current node"
-	 * when the current node has children. */
+	 * when the current node has children.
+	 *
+	 * 2026-06-09 JES #691 C.1 round 2 P1: the handler now calls
+	 * boxen_outline_refresh itself after collapsing (test-fits-implementation
+	 * antipattern fixed).  No explicit refresh call needed here. */
 	boxen_event_t minus = make_char('-', BOXEN_MOD_NONE);
 	boxen_outline_handle_key(&g_state, &minus);
-
-	/* Re-fetch so the display list reflects the collapse */
-	boxen_outline_refresh(&g_state);
 
 	/* Now: root, child_a (collapsed), child_b -> 3 visible */
 	assert(g_state.node_count == 3);
@@ -421,12 +436,13 @@ static void test_keypad_star_expands_all_descendants(void) {
 
 	assert(g_state.node_count == 5); /* sanity: child_b collapsed */
 
-	/* Keypad-star: expand all descendants of current node */
+	/* Keypad-star: expand all descendants of current node.
+	 *
+	 * 2026-06-09 JES #691 C.1 round 2 P1: the handler now calls
+	 * boxen_outline_refresh itself after expand-all (test-fits-implementation
+	 * antipattern fixed).  No explicit refresh call needed here. */
 	boxen_event_t star = make_char('*', BOXEN_MOD_NONE);
 	boxen_outline_handle_key(&g_state, &star);
-
-	/* Re-fetch after expand-all */
-	boxen_outline_refresh(&g_state);
 
 	/* All 6 nodes now visible */
 	assert(g_state.node_count == 6);
@@ -541,6 +557,62 @@ static void test_checkbox_attribute_renders_box(void) {
 }
 
 /* -------------------------------------------------------------------------
+ * TEST 8: test_toggle_hook_uses_state_and_node_idx
+ *
+ * 2026-06-09 JES #691 C.1 round 2 P0-2 behavioral test.
+ *
+ * The toggle hooks now take (state, node_idx) instead of (node).  This test
+ * verifies that:
+ *   a) The hook operates on s->nodes[node_idx] (not a stale pointer from
+ *      before a potential node array rebuild).
+ *   b) Setting the cursor to a non-zero index and pressing F9 toggles the
+ *      correct node (by index), NOT node 0.
+ *   c) Pressing F9 again restores the flag to false.
+ *
+ * This exercises the production code path: boxen_outline_handle_key passes
+ * (s, s->cursor) to the toggle hook, not a raw node pointer.  The test mock
+ * hook_toggle_breakpoint operates on s->nodes[node_idx] directly, which is
+ * the behavioral contract the production hook must satisfy.
+ * ---------------------------------------------------------------------- */
+static void test_toggle_hook_uses_state_and_node_idx(void) {
+	setup();
+
+	/* Move cursor to leaf_aa (index 2) */
+	boxen_event_t down = make_key(BOXEN_KEY_DOWN, BOXEN_MOD_NONE);
+	boxen_outline_handle_key(&g_state, &down); /* cursor = 1 */
+	boxen_outline_handle_key(&g_state, &down); /* cursor = 2 */
+	assert(g_state.cursor == 2);
+	assert(strcmp(g_state.nodes[2].text, "leaf_aa") == 0);
+
+	/* Verify initial state: no flags set */
+	assert(!g_state.nodes[0].flbreakpoint); /* root: untouched */
+	assert(!g_state.nodes[2].flbreakpoint); /* leaf_aa: target */
+
+	/* Press F9: should toggle nodes[2] (cursor), NOT nodes[0] */
+	boxen_event_t f9 = make_key(BOXEN_KEY_F9, BOXEN_MOD_NONE);
+	boxen_outline_handle_key(&g_state, &f9);
+
+	/* nodes[2] toggled; nodes[0] still clear */
+	assert( g_state.nodes[2].flbreakpoint);
+	assert(!g_state.nodes[0].flbreakpoint);
+
+	/* F9 again: toggle back */
+	boxen_outline_handle_key(&g_state, &f9);
+	assert(!g_state.nodes[2].flbreakpoint);
+
+	/* Similarly verify Cmd-/ with flcomment at index 2 */
+	assert(!g_state.nodes[2].flcomment);
+	boxen_event_t cmd_slash = make_char('/', BOXEN_MOD_META);
+	boxen_outline_handle_key(&g_state, &cmd_slash);
+	assert( g_state.nodes[2].flcomment);
+	assert(!g_state.nodes[0].flcomment);  /* root: untouched */
+	boxen_outline_handle_key(&g_state, &cmd_slash);
+	assert(!g_state.nodes[2].flcomment);
+
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
  * Main
  * ---------------------------------------------------------------------- */
 
@@ -554,6 +626,7 @@ int main(void) {
 	TR_RUN(test_f9_toggles_flbreakpoint);
 	TR_RUN(test_cmd_slash_toggles_flcomment);
 	TR_RUN(test_checkbox_attribute_renders_box);
+	TR_RUN(test_toggle_hook_uses_state_and_node_idx);
 
 	TR_SUMMARY();
 	return TR_EXIT_CODE();

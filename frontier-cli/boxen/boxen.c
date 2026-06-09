@@ -259,6 +259,22 @@ void boxen_shutdown(void) {
 	g_drag.was_pressed = false;  /* match the init-path reset */
 }
 
+/* 2026-06-09 JES #691 Phase C.1 round 2 P1: boxen_get_screen_size.
+ * Used by boxen_outline_open to avoid hardcoded 80x24.
+ * Mirrors the pattern in boxen_repl_main (lines 729-730) and
+ * debugger_tui_main (lines 2847-2848): query be->width()/be->height()
+ * after init. Falls back to 80x24 if backend is unavailable. */
+void boxen_get_screen_size(int *w, int *h) {
+	int tw = 80;
+	int th = 24;
+	if (g_initialized && g_backend != NULL) {
+		if (g_backend->width  && g_backend->width()  > 0) tw = g_backend->width();
+		if (g_backend->height && g_backend->height() > 0) th = g_backend->height();
+	}
+	if (w != NULL) *w = tw;
+	if (h != NULL) *h = th;
+}
+
 /* -------------------------------------------------------------------------
  * Window lifecycle
  * ---------------------------------------------------------------------- */
