@@ -799,51 +799,324 @@ void boxen_outline_close_all(void) {
 
 #ifndef BOXEN_OUTLINE_OMIT_MAIN
 
-/* 2026-06-09 JES Phase C.1 #691: include op.h and related headers.
- * Only included in the production build (test build defines BOXEN_OUTLINE_OMIT_MAIN). */
+/* 2026-06-09 JES Phase C.1 #691 round 2: include headers for ODB walk.
+ * Only compiled in the production build (test build defines BOXEN_OUTLINE_OMIT_MAIN).
+ *
+ * Header chain that delivers the symbols we need:
+ *   op.h        -> lang.h -> db.h -> memory.h    (texthandletostring)
+ *   op.h        -> lang.h                         (externalvaluetype, hashtablelookup,
+ *                                                  tyvaluerecord, hdlhashnode)
+ *   op.h                                          (tyoutlinerecord.hsummit,
+ *                                                  tyheadrecord fields, getheadstring)
+ *   opinternal.h -> processinternal.h             (oppushoutline / oppopoutline stubs,
+ *                                                  not used here but pulled in transitively)
+ *   langexternal.h                                (tyexternalvariable.flinmemory,
+ *                                                  .variabledata, .hdatabase)
+ *   langinternal.h                                (langfastaddresstotable)
+ *   db_format.h                                   (db_context, db_context_init,
+ *                                                  db_context_init_legacy_read,
+ *                                                  db_format_is_legacy_db)
+ */
 #include "../Common/headers/op.h"
 #include "../Common/headers/opinternal.h"
-#include "../Common/headers/strings.h"   /* copyptocstring */
+#include "../Common/headers/strings.h"       /* copyptocstring, bigstring */
+#include "../Common/headers/langexternal.h"  /* tyexternalvariable, hdlexternalvariable */
+#include "../Common/headers/langinternal.h"  /* langfastaddresstotable */
+#include "db_format.h"                       /* db_context, db_context_init* */
 
-/* Production fetch hook: walk the live ODB outline structure.
+/* Forward declarations (same pattern as debug_handler.c lines 47-56). */
+extern hdlhashtable roottable;                                              /* tablestructure.h */
+extern boolean opverbinmemory(const struct db_context *, hdlexternalvariable); /* opverbs.c */
+extern boolean db_format_is_legacy_db(hdldatabaserecord);                  /* db_format.c */
+
+/* -------------------------------------------------------------------------
+ * 2026-06-09 JES #691 Phase C.1 round 2: boxen_outline_walk_nodes
  *
- * Strategy:
- *   1. Resolve the dotted path to an outline external value via langrunstringnoerror.
- *      (The existing REPL does this for other path-based operations.)
- *   2. Walk the outline's summit via headlinkdown / headlinkright traversal.
- *   3. Respect flexpanded to determine visibility.
- *   4. For each visible node, check opattributesgetoneattribute for "checkbox".
- *   5. Fill the nodes[] array.
+ * Depth-first traversal of an hdloutlinerecord, populating a flat
+ * boxen_outline_node_t array.  Called from boxen_outline_real_fetch after
+ * the outline has been confirmed in memory.
  *
- * For C.1, uses opmovecursor with flatdown to iterate visible nodes from
- * the summit.  The op verbs maintain the current outline context in
- * thread-local state (op_get_outlinedata).  This requires the outline to be
- * the current outline context, which means we must push/pop outline context.
+ * Walk algorithm:
+ *   The outline tree is a doubly-linked list of tyheadrecord nodes.
+ *   Each node's children are reachable via headlinkdown (first child).
+ *   Siblings are reachable via headlinkright.
+ *   headlinkup / headlinkleft provide reverse links; we don't use them here.
  *
- * 2026-06-09 JES #691 C.1: DEFERRED -- the full outline-context push/pop
- * for a non-focused outline is complex (opnewoutline + explicit push).
- * For C.1, provide a stub that returns an error and let the /edit slash
- * command surface a "not yet implemented" message.  The full implementation
- * of the production fetch hook belongs in C.1.1 after the test suite is green.
+ *   Field verification (from Common/headers/op.h:69-131):
+ *     headlinkdown  hdlheadrecord   -- first child (nil if leaf)
+ *     headlinkright hdlheadrecord   -- next sibling (nil if last)
+ *     headlevel     short           -- indent depth (0 = top-level summit)
+ *     flexpanded    boolean:1       -- true if children are visible
+ *     flbreakpoint  boolean:1       -- breakpoint flag
+ *     flcomment     boolean:1       -- comment flag
+ *     headstring    Handle          -- headline text (read via getheadstring macro)
  *
- * The hook seam architecture ensures tests pass today and the production
- * path can be wired incrementally.
+ *   getheadstring macro (op.h:480):
+ *     #define getheadstring(h,bs) texthandletostring((**(h)).headstring, bs)
+ *     Copies the Handle content into bigstring bs (pascal-string, 255 byte cap).
+ *
+ * We use an explicit stack rather than recursion to avoid deep call stacks
+ * on large outlines.  Maximum traversal depth is bounded by BOXEN_OUTLINE_MAX_NODES.
+ *
+ * GIL invariant: caller holds the GIL.  No op verbs are called; all accesses
+ * are direct field reads on heap-resident handles.  This is safe as long as
+ * flinmemory is true (ensured by opverbinmemory before this is called).
+ * ---------------------------------------------------------------------- */
+
+/*
+ * walk_stack_entry: explicit DFS stack entry.
+ * We push (hnode, indent_level) so we can resume sibling traversal after
+ * processing children.
  */
+typedef struct {
+	hdlheadrecord hnode;
+	int           level;
+} walk_stack_entry_t;
 
+#define WALK_STACK_MAX 256  /* max nesting depth for DFS traversal */
+
+static int boxen_outline_walk_nodes(hdloutlinerecord houtline,
+                                    boxen_outline_node_t *nodes,
+                                    int max_nodes) {
+	if (houtline == nil || nodes == NULL || max_nodes <= 0) return 0;
+
+	/* tyoutlinerecord.hsummit (op.h:227): first top-level node */
+	hdlheadrecord hsummit = (**houtline).hsummit;
+	if (hsummit == nil) return 0;
+
+	/* Explicit DFS stack: each entry is (current node, its level). */
+	walk_stack_entry_t stack[WALK_STACK_MAX];
+	int stack_top = 0;
+	int node_count = 0;
+
+	/* Seed with the summit (level 0) */
+	stack[stack_top].hnode = hsummit;
+	stack[stack_top].level = 0;
+	stack_top++;
+
+	while (stack_top > 0 && node_count < max_nodes) {
+		--stack_top;
+		hdlheadrecord hnode = stack[stack_top].hnode;
+		int           level  = stack[stack_top].level;
+
+		if (hnode == nil) continue;
+
+		/*
+		 * Read node fields.
+		 * tyheadrecord fields (op.h:71-131):
+		 *   headlinkdown  hdlheadrecord  -- first child
+		 *   headlinkright hdlheadrecord  -- next sibling
+		 *   headlevel     short          -- indent level
+		 *   flexpanded    boolean:1
+		 *   flbreakpoint  boolean:1
+		 *   flcomment     boolean:1
+		 *   headstring    Handle         -- text (getheadstring -> bigstring)
+		 */
+		hdlheadrecord hfirst_child = (**hnode).headlinkdown;
+		hdlheadrecord hnext_sibling = (**hnode).headlinkright;
+		boolean       fexpanded    = (**hnode).flexpanded;
+		boolean       fbreakpoint  = (**hnode).flbreakpoint;
+		boolean       fcomment     = (**hnode).flcomment;
+		bool          has_children = (hfirst_child != nil);
+
+		/* Extract headline text via getheadstring (op.h:480).
+		 * getheadstring copies headstring Handle into a pascal bigstring (255 byte cap). */
+		bigstring bshead;
+		setemptystring(bshead);
+		if ((**hnode).headstring != nil) {
+			getheadstring(hnode, bshead);
+		}
+
+		/* Populate display node */
+		boxen_outline_node_t *n = &nodes[node_count++];
+		memset(n, 0, sizeof(*n));
+
+		/* Convert pascal-string to NUL-terminated C string, clamped to TEXT_MAX-1. */
+		int textlen = (int)(unsigned char)bshead[0];
+		if (textlen >= BOXEN_OUTLINE_TEXT_MAX) textlen = BOXEN_OUTLINE_TEXT_MAX - 1;
+		memcpy(n->text, bshead + 1, (size_t)textlen);
+		n->text[textlen] = '\0';
+
+		n->level        = level;
+		n->expanded     = (bool)fexpanded;
+		n->has_children = has_children;
+		n->flbreakpoint = (bool)fbreakpoint;
+		n->flcomment    = (bool)fcomment;
+		n->hnode_opaque = (void *)hnode;
+
+		/* Marker */
+		if (has_children) {
+			n->marker = fexpanded ? BOXEN_OUTLINE_MARKER_EXPANDED
+			                      : BOXEN_OUTLINE_MARKER_COLLAPSED;
+		} else {
+			n->marker = BOXEN_OUTLINE_MARKER_LEAF;
+		}
+
+		/*
+		 * DFS ordering: push NEXT SIBLING first (so it's processed after
+		 * children), then push FIRST CHILD on top (processed next).
+		 * Only push children if the node is expanded or this is level 0.
+		 */
+		if (hnext_sibling != nil) {
+			if (stack_top < WALK_STACK_MAX) {
+				stack[stack_top].hnode = hnext_sibling;
+				stack[stack_top].level = level;
+				stack_top++;
+			}
+		}
+		if (has_children && fexpanded) {
+			if (stack_top < WALK_STACK_MAX) {
+				stack[stack_top].hnode = hfirst_child;
+				stack[stack_top].level = level + 1;
+				stack_top++;
+			}
+		}
+	}
+
+	if (node_count >= max_nodes) {
+		log_warn(LOG_COMP_GENERAL,
+		         "boxen_outline: node cap (%d) hit; some nodes not shown",
+		         max_nodes);
+	}
+
+	return node_count;
+}
+
+/* -------------------------------------------------------------------------
+ * 2026-06-09 JES #691 Phase C.1 round 2: boxen_outline_real_fetch
+ *
+ * Production hook.  Resolves a dotted ODB path to an outline external
+ * variable, loads it into memory if needed (opverbinmemory), then
+ * delegates the tree walk to boxen_outline_walk_nodes.
+ *
+ * Path-parse + table-navigate pattern copied from
+ * debug_handler.c::debug_get_script_source (lines 2085-2153).
+ * Both split on the last dot to get (table_path, leaf_name).
+ *
+ * Error paths:
+ *   - Path too short / no dot          -> log_warn, return false
+ *   - Table not found                  -> log_warn, return false
+ *   - Name not found in table          -> log_warn, return false
+ *   - Value is not externalvaluetype   -> log_warn, return false
+ *   - opverbinmemory fails             -> log_warn, return false
+ *   - variabledata is nil              -> log_warn, return false
+ * ---------------------------------------------------------------------- */
 bool boxen_outline_real_fetch(const char *path,
                               boxen_outline_node_t *nodes,
                               int *node_count) {
-	(void)path; (void)nodes;
 	*node_count = 0;
-	/* 2026-06-09 JES #691 C.1: production ODB walk deferred to C.1.1.
-	 * The outline-context push/pop required to walk a non-current outline
-	 * cleanly (without disturbing the active script context) needs additional
-	 * design work.  The hook architecture lets tests pass now; this hook
-	 * will be replaced with the real implementation in C.1.1. */
-	log_warn(LOG_COMP_GENERAL,
-	         "boxen_outline: real ODB fetch for '%s' not yet implemented (C.1.1)",
-	         path);
-	return false;
+	if (path == NULL || nodes == NULL) return false;
+
+	/* --- Step 1: parse dotted path into (table_path, leaf_name) ---
+	 * Mirror of debug_get_script_source path-parse block.
+	 * bigstring is a pascal string: byte[0] = length, bytes[1..255] = content.
+	 */
+	int pathlen = (int)strlen(path);
+	if (pathlen > 255) pathlen = 255;
+	bigstring bsfullpath;
+	bsfullpath[0] = (unsigned char)pathlen;
+	memcpy(bsfullpath + 1, path, (size_t)pathlen);
+
+	/* Find last dot */
+	int lastdot = -1;
+	for (int i = pathlen; i > 0; i--) {
+		if (bsfullpath[i] == '.') { lastdot = i; break; }
+	}
+	if (lastdot < 0) {
+		log_warn(LOG_COMP_GENERAL,
+		         "boxen_outline: path '%s' has no dot; must be fully qualified",
+		         path);
+		return false;
+	}
+
+	bigstring bstablepath, bsname;
+	bstablepath[0] = (unsigned char)(lastdot - 1);
+	memcpy(bstablepath + 1, bsfullpath + 1, (size_t)(lastdot - 1));
+
+	int namelen = pathlen - lastdot;
+	bsname[0] = (unsigned char)namelen;
+	memcpy(bsname + 1, bsfullpath + lastdot + 1, (size_t)namelen);
+
+	/* --- Step 2: navigate to the containing table --- */
+	hdlhashtable htable;
+	if (!langfastaddresstotable(roottable, bstablepath, &htable)) {
+		log_warn(LOG_COMP_GENERAL,
+		         "boxen_outline: table not found for path '%s'", path);
+		return false;
+	}
+
+	/* --- Step 3: look up the leaf value --- */
+	tyvaluerecord val;
+	hdlhashnode   hnode_table;
+	if (!hashtablelookup(htable, bsname, &val, &hnode_table)) {
+		log_warn(LOG_COMP_GENERAL,
+		         "boxen_outline: '%s' not found in table", path);
+		return false;
+	}
+
+	/* --- Step 4: verify it is an external (outline/script) value ---
+	 * externalvaluetype = 13 (lang.h:230)
+	 */
+	if (val.valuetype != externalvaluetype) {
+		log_warn(LOG_COMP_GENERAL,
+		         "boxen_outline: '%s' is not an external value (type %d)",
+		         path, (int)val.valuetype);
+		return false;
+	}
+
+	/* val.data.externalvalue is a Handle field of tyvaluerecord (lang.h:351).
+	 * Cast to hdlexternalvariable (langexternal.h:169). */
+	hdlexternalvariable hv = (hdlexternalvariable)val.data.externalvalue;
+	if (hv == nil) {
+		log_warn(LOG_COMP_GENERAL,
+		         "boxen_outline: '%s' external handle is nil", path);
+		return false;
+	}
+
+	/* --- Step 5: load from disk if not yet in memory ---
+	 * tyexternalvariable.flinmemory (langexternal.h:147):
+	 *   if true, variabledata is a Handle; else a dbaddress.
+	 * db_context setup mirrors debug_get_script_source (debug_handler.c:2136-2148).
+	 */
+	if (!(**hv).flinmemory) {
+		db_context ctx;
+		if ((**hv).hdatabase != nil && db_format_is_legacy_db((**hv).hdatabase)) {
+			db_context_init_legacy_read(&ctx, (**hv).hdatabase);
+		} else {
+			db_context_init(&ctx);
+			if ((**hv).hdatabase != nil)
+				ctx.database = (**hv).hdatabase;
+		}
+		if (!opverbinmemory(&ctx, hv)) {
+			log_warn(LOG_COMP_GENERAL,
+			         "boxen_outline: opverbinmemory failed for '%s'", path);
+			return false;
+		}
+	}
+
+	/* --- Step 6: get the outline record ---
+	 * tyexternalvariable.variabledata (langexternal.h:163): long, cast to Handle.
+	 * For outline/script externals, variabledata IS the hdloutlinerecord.
+	 * Pattern: debug_get_script_source line 2150:
+	 *   hdloutlinerecord houtline = (hdloutlinerecord)(**hv).variabledata;
+	 */
+	hdloutlinerecord houtline = (hdloutlinerecord)(**hv).variabledata;
+	if (houtline == nil) {
+		log_warn(LOG_COMP_GENERAL,
+		         "boxen_outline: outline record is nil for '%s'", path);
+		return false;
+	}
+
+	/* --- Step 7: walk the outline tree directly ---
+	 * No outline context push needed: we read tyheadrecord fields directly.
+	 * GIL is held by the REPL event loop for the duration of this call.
+	 */
+	int count = boxen_outline_walk_nodes(houtline, nodes, BOXEN_OUTLINE_MAX_NODES);
+	*node_count = count;
+
+	log_info(LOG_COMP_GENERAL,
+	         "boxen_outline: fetched %d nodes for '%s'", count, path);
+	return (count >= 0);
 }
 
 bool boxen_outline_real_toggle_breakpoint(boxen_outline_node_t *node) {
