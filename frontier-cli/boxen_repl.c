@@ -861,15 +861,25 @@ int boxen_repl_main(const cli_options_t *opts) {
 	 * if it runs after boxen_repl_main returns (or after the transport is freed)
 	 * it dereferences a dangling pointer.
 	 *
+	 * 2026-06-08 JES #691 Phase C.0 round 3 P1 (concurrency note): clear the
+	 * attach transport BEFORE kill+join, not after.  Mirrors protocol_handler.c
+	 * which NULLs the global transport pointer first so the lazy-attach fast
+	 * path gates on NULL during the kill/join window.  Without this reorder,
+	 * a callScript thread that lazy-attaches between the drain (step 2) and
+	 * the eventual NULL (was step 6) could register against launch_transport
+	 * AFTER drain returned 0, then be freed beneath itself by the state
+	 * teardown.  Inert in C.0 (no breakpoints set), real concern for C.1+.
+	 *
 	 * Corrected order (mirrors main.c:1286-1298 for kill+join):
 	 *
 	 *   1. Snapshot main hglobals before the drain/kill/join cycle.
 	 *   2. debug_wait_lazy_threads_drained() -- drain detached lazy threads.
 	 *   3. headless_restore_threadglobals(main_hglobals) -- restore main context.
-	 *   4. debug_kill_all_threads() -- signal joinable threads to stop.
-	 *   5. Release GIL, debug_join_all_threads(), reacquire GIL, restore hglobals.
+	 *   4. debug_set_attach_transport(NULL) -- prevent NEW lazy registrations
+	 *      during the kill/join window.  Mirrors protocol_handler.c:422.
+	 *   5. debug_kill_all_threads() -- signal joinable threads to stop.
+	 *   6. Release GIL, debug_join_all_threads(), reacquire GIL, restore hglobals.
 	 *      (mirrors main.c:1291-1298 exactly)
-	 *   6. debug_set_attach_transport(NULL) -- prevent new lazy registrations.
 	 *   7. Restore stdout/stderr; final drain of capture pipe.
 	 *   8. repl_set_active(false) -- P1: publish end of REPL session.
 	 *   9. repl_uninstall_verb_host() -- P1-3.
@@ -883,10 +893,14 @@ int boxen_repl_main(const cli_options_t *opts) {
 		debug_wait_lazy_threads_drained();
 		headless_restore_threadglobals(main_hglobals);
 
-		/* Step 4: signal joinable debug threads to stop. */
+		/* Step 4: clear attach transport BEFORE kill+join so no new lazy thread
+		 * can register against launch_transport during the kill/join window. */
+		debug_set_attach_transport(NULL);
+
+		/* Step 5: signal joinable debug threads to stop. */
 		debug_kill_all_threads();
 
-		/* Step 5: release GIL so killed threads can finish cleanup, then join.
+		/* Step 6: release GIL so killed threads can finish cleanup, then join.
 		 * Mirrors main.c:1291-1298 verbatim. */
 		{
 			hdlthreadglobals saved = hthreadglobals;
@@ -897,12 +911,6 @@ int boxen_repl_main(const cli_options_t *opts) {
 			headless_restore_threadglobals(saved);
 		}
 	}
-
-	/* Step 6: clear attach transport.
-	 * All joinable threads are now joined; no thread holds a reference to
-	 * launch_transport.  Mirrors debugger_tui_main:2968 and
-	 * protocol_handler.c:422. */
-	debug_set_attach_transport(NULL);
 
 	/* Step 7: restore stdout/stderr; final drain before display clears. */
 	if (capture_active) {
