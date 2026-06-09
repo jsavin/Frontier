@@ -2,6 +2,14 @@
 
 **Status:** approved 2026-06-08 (JES + Claude).  Supersedes the persistent-input-line shape in `OVERVIEW.md`.  This document is the authoritative Phase C scope; the OVERVIEW is retained for historical context only.
 
+**Delivered milestones (2026-06-09):**
+- **C.0** -- PR #758 (`16a4e9bac`) -- boxen-native REPL skeleton via `--debug-tui`
+- **C.1** -- PR #759 (`2c7929846`) -- outline editor MVP (read-only viewer + run)
+
+Direction shift during C.1 planning: the original "script editor with debug split" scope was inverted to "outline editor first; script editor reuses outline editor + adds script-specific extensions in C.2".  The outline editor is general-purpose (works on any outline, not just scripts) and the script editor in C.2 layers debug/breakpoint UI on top.
+
+**Metadata storage decision (2026-06-09):** C.1 ships breakpoint/comment toggles via the legacy `(**hnode).flbreakpoint` and `(**hnode).flcomment` bit-flag fields on `tyheadrecord`, NOT via the refcon-based attributes API.  Reasons: these flags are the canonical persistent storage today (packed in v7 outline format bits 0x0200 and 0x0400; read by every existing path: execution, rendering, export, pack/unpack).  The refcon-based attribute table (per OUTLINE_EDITOR.md) is for arbitrary freeform metadata (`checkbox`, `headline`, `time`, `author`, user-defined keys), not for migrating these two specific fields.  Migration to refcon-based storage is a separate effort that touches every reader; C.1 explicitly does not start it as a side effect.  Future renderer should also check refcon attributes like `checkbox` for visual treatment, which is a small addition that does not require migrating existing storage.
+
 ---
 
 ## 1. Why this proposal supersedes the OVERVIEW
@@ -130,9 +138,11 @@ Nothing is wasted from B.7 / B.8 / B.6:
 
 | Milestone | Scope | Notes |
 |-----------|-------|-------|
-| C.0 | Boxen-native Frontier REPL skeleton | Port `repl.c` event loop to boxen.  Input line + scrollback pane + slash dispatch.  Linenoise history file format preserved.  Tab completion works.  Slash-menu palette becomes a boxen modal.  **No editor yet.**  During this milestone, `--debug-tui` is reduced to a no-op alias (opens the REPL and immediately runs `/debug` on the positional argument if present) so users of B.8's launch flags aren't broken. |
-| C.1 | Script editor window -- edit mode only | `/edit [path]` opens an editor; Cmd-S saves; Enter compiles + runs; concurrent edit detection.  No debug split yet; running just executes and the editor stays editable.  Multiple editor windows OK. |
-| C.2 | Debug split on the editor | Add stack pane + locals pane that appear when Option-Enter or `/debug` triggers a suspended thread.  Replumb B.8's launch path so it goes through the editor's compile-on-run path.  Esc and Q transitions per §3. |
+| C.0 | Boxen-native Frontier REPL skeleton | **Shipped 2026-06-08 in PR #758 (`16a4e9bac`).**  Tracer-bullet that reused the C.0 vision with explicit deferrals: input line + scrollback + slash dispatch via `--debug-tui` opt-in; auto-launch path from B.8 preserved; stdout/stderr captured via pipe + dup2 + non-blocking drain into scrollback; heap-allocated state with drain-before-free kill+join teardown.  Defers history-file integration, tab completion, palette migration, async output, and flipping the default `frontier-cli` mode to follow-up milestones (C.0.x). |
+| C.1 | Outline editor MVP -- read-only viewer + run | **Shipped 2026-06-09 in PR #759 (`2c7929846`).**  Direction was inverted from the original scope ("script editor edit mode only") to general-purpose outline editor first.  `/edit [path]` opens a boxen window with structural rendering via op verbs, bar cursor navigation, expand/collapse, F9 toggle breakpoint (legacy `flbreakpoint` field), Cmd-/ toggle comment (legacy `flcomment` field), Cmd-R run (when target is a script-external), Cmd-S root-level save dispatch.  Multi-editor registry.  No text editing yet; that lands in C.1.1.  Walks ODB via `langfastaddresstotable` + `opverbinmemory` + DFS over `headlinkdown`/`headlinkright`. |
+| C.1.1 | Outline editor -- text-cursor editing within headings + Keypad-Enter mode toggle + Cmd-S commit semantics | Adds edit mode: type to modify current heading's text; Keypad-Enter toggles between bar-cursor (navigation) and text-cursor (edit) modes; the editor's in-memory buffer model + concurrent-edit detection via per-script `timeModified` per §5.3 lands here.  UserTalk `edit (@adrobject)` verb registration also lands here (deferred from C.1).  hnode_opaque UAF mitigation per #760 follow-up. |
+| C.1.2 | Outline editor -- full structural editing | Enter inserts new heading at same level + enters text mode; Tab/Shift-Tab indent/outdent; Option-Left/Right word skip in text mode; Cmd-/ exec + insert result with `flComment=true` (per legacy Frontier convention). |
+| C.2 | Script editor extensions (debug split) | Add stack pane + locals pane that appear when Option-Enter or `/debug` triggers a suspended thread.  Replumb B.8's launch path so it goes through the editor's compile-on-run path.  Esc and Q transitions per §3. |
 | C.3 | Step-into frame-following + `o` side-open keybind | Source pane swaps with selected frame.  Stack pane's `o` opens the selected frame in a new independent editor window. |
 | C.4 | Multi-editor coordination polish | Focus model, raise/lower, close-all-debug, window list / switcher.  Stress-test multiple simultaneous debug sessions to validate the drain-before-free contract under load. |
 | C.5 | Saved-breakpoint persistence end-to-end test | Set breakpoint in editor, save, restart, `/debug @same.path`, breakpoint fires. |
