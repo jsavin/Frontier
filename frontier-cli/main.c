@@ -93,6 +93,7 @@
 #include "protocol_handler.h"
 #include "debug_handler.h"
 #include "debugger_tui.h"  /* 2026-06-06 JES Phase B.0 #691 */
+#include "boxen_repl.h"    /* 2026-06-08 JES Phase C.0 #691: boxen-native REPL */
 #include "ws_server.h"
 #include "headless_threading.h"
 
@@ -849,8 +850,12 @@ int main(int argc, char* argv[]) {
 	int exit_code = 0;
 
 	if (g_cli_options.tui_mode) {
-		/* 2026-06-06 JES Phase B.0 #691: boxen TUI debug mode */
-		exit_code = debugger_tui_main(&g_cli_options);
+		/* 2026-06-08 JES Phase C.0 #691: --debug-tui now opens the boxen-native
+		 * Frontier REPL.  The standalone debugger TUI is reachable from inside
+		 * the REPL via the /debug slash command (PR #756 contract preserved).
+		 * debugger_tui_main is retained for direct testing; it is no longer
+		 * the --debug-tui entry point. */
+		exit_code = boxen_repl_main(&g_cli_options);
 	} else if (g_cli_options.protocol_mode) {
 		// NDJSON protocol mode - structured JSON over stdin/stdout
 		exit_code = protocol_main(&g_cli_options, ws_server_ptr);

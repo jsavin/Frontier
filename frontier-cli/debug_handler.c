@@ -23,6 +23,9 @@
 #include <strings.h>  /* strcasecmp */
 #include <pthread.h>
 #include <time.h>     /* clock_gettime, CLOCK_MONOTONIC */
+#include <sys/stat.h> /* fstat, S_ISREG */
+
+#include "cli_parser.h"  /* cli_options_t -- for debug_launch_from_options */
 
 #include "../Common/headers/frontier.h"
 #include "memory.h"
@@ -2164,6 +2167,186 @@ Handle debug_get_script_source(const char *path_no_at, dbg_source_reason *out_re
 	return htext;
 
 	#undef DBG_SRC_FAIL
+}
+
+/*
+ * 2026-06-08 JES #691 Phase C.0 round 2 P0-1: debug_launch_from_options.
+ *
+ * Local JSON-escape helper (same algorithm as tui_json_escape in
+ * debugger_tui.c; kept static here to avoid polluting the public API).
+ */
+static int dbg_json_escape(const char *src, char *dst, size_t dst_cap) {
+	if (dst == NULL || dst_cap == 0) return 0;
+	int out = 0;
+	int cap = (int)dst_cap - 1;
+	static const char hex[] = "0123456789abcdef";
+	for (const char *p = src; *p != '\0'; p++) {
+		unsigned char c = (unsigned char)*p;
+		if (c == '"')       { if (out + 2 > cap) break; dst[out++] = '\\'; dst[out++] = '"'; }
+		else if (c == '\\') { if (out + 2 > cap) break; dst[out++] = '\\'; dst[out++] = '\\'; }
+		else if (c == '\b') { if (out + 2 > cap) break; dst[out++] = '\\'; dst[out++] = 'b'; }
+		else if (c == '\f') { if (out + 2 > cap) break; dst[out++] = '\\'; dst[out++] = 'f'; }
+		else if (c == '\n') { if (out + 2 > cap) break; dst[out++] = '\\'; dst[out++] = 'n'; }
+		else if (c == '\r') { if (out + 2 > cap) break; dst[out++] = '\\'; dst[out++] = 'r'; }
+		else if (c == '\t') { if (out + 2 > cap) break; dst[out++] = '\\'; dst[out++] = 't'; }
+		else if (c < 0x20)  {
+			if (out + 6 > cap) break;
+			dst[out++] = '\\'; dst[out++] = 'u';
+			dst[out++] = '0';  dst[out++] = '0';
+			dst[out++] = hex[(c >> 4) & 0x0F];
+			dst[out++] = hex[c & 0x0F];
+		} else { if (out + 1 > cap) break; dst[out++] = (char)c; }
+	}
+	dst[out] = '\0';
+	return out;
+}
+
+/* Maximum source buffer for debug_launch_from_options (same as TUI path) */
+#define DBG_LAUNCH_SOURCE_MAX 65536
+
+bool debug_launch_from_options(const cli_options_t *opts, transport_t *transport) {
+	if (opts == NULL) return false;
+	if (opts->inline_script == NULL && opts->script_file == NULL) return false;
+	if (opts->inline_script != NULL && opts->script_file != NULL) return false;
+
+	/* Source text to dispatch -- heap-allocated, caller frees. */
+	char *src = NULL;
+	bool src_needs_free = false;
+
+	if (opts->inline_script != NULL) {
+		const char *expr = opts->inline_script;
+
+		/* Bare ODB address (@path): resolve via debug_get_script_source.
+		 * 2026-06-08 JES #691 Phase C.0 round 3 P2-4: use shared debug_is_bare_address
+		 * (strict [A-Za-z0-9_.]+) instead of the former laxer (c != '\0') check. */
+		if (debug_is_bare_address(expr)) {
+			/* Strip leading '@' for debug_get_script_source */
+			Handle htext = debug_get_script_source(expr + 1, NULL);
+			if (htext == nil) {
+				log_warn(LOG_COMP_GENERAL,
+				         "debug_launch_from_options: ODB fetch failed for %s", expr);
+				return false;
+			}
+			long textlen = gethandlesize(htext);
+			if (textlen <= 0) {
+				disposehandle(htext);
+				log_warn(LOG_COMP_GENERAL,
+				         "debug_launch_from_options: empty ODB source for %s", expr);
+				return false;
+			}
+			if (textlen >= DBG_LAUNCH_SOURCE_MAX) {
+				textlen = DBG_LAUNCH_SOURCE_MAX - 1;
+				log_warn(LOG_COMP_GENERAL,
+				         "debug_launch_from_options: ODB source for %s truncated to %d bytes",
+				         expr, DBG_LAUNCH_SOURCE_MAX - 1);
+			}
+			src = malloc((size_t)textlen + 1);
+			if (src == NULL) {
+				disposehandle(htext);
+				log_warn(LOG_COMP_GENERAL,
+				         "debug_launch_from_options: OOM allocating source buffer");
+				return false;
+			}
+			memcpy(src, *htext, (size_t)textlen);
+			src[textlen] = '\0';
+			disposehandle(htext);
+			src_needs_free = true;
+		} else {
+			/* Freeform expression: use verbatim. */
+			src = (char *)expr;
+			src_needs_free = false;
+		}
+	} else {
+		/* script_file: read the whole file. */
+		FILE *f = fopen(opts->script_file, "r");
+		if (f == NULL) {
+			log_warn(LOG_COMP_GENERAL,
+			         "debug_launch_from_options: cannot open %s", opts->script_file);
+			return false;
+		}
+		struct stat st;
+		if (fstat(fileno(f), &st) != 0 || !S_ISREG(st.st_mode)) {
+			log_warn(LOG_COMP_GENERAL,
+			         "debug_launch_from_options: %s is not a regular file", opts->script_file);
+			fclose(f);
+			return false;
+		}
+		src = malloc(DBG_LAUNCH_SOURCE_MAX);
+		if (src == NULL) {
+			log_warn(LOG_COMP_GENERAL,
+			         "debug_launch_from_options: OOM allocating file buffer");
+			fclose(f);
+			return false;
+		}
+		size_t n = fread(src, 1, (size_t)(DBG_LAUNCH_SOURCE_MAX - 1), f);
+		int had_error = ferror(f);
+		fclose(f);
+		if (had_error) {
+			log_warn(LOG_COMP_GENERAL,
+			         "debug_launch_from_options: read error on %s", opts->script_file);
+			free(src);
+			return false;
+		}
+		if (n == 0) {
+			log_warn(LOG_COMP_GENERAL,
+			         "debug_launch_from_options: empty file %s", opts->script_file);
+			free(src);
+			return false;
+		}
+		if (n == (size_t)(DBG_LAUNCH_SOURCE_MAX - 1) &&
+		    st.st_size > (off_t)(DBG_LAUNCH_SOURCE_MAX - 1)) {
+			log_warn(LOG_COMP_GENERAL,
+			         "debug_launch_from_options: script file %s truncated at %d bytes",
+			         opts->script_file, DBG_LAUNCH_SOURCE_MAX - 1);
+		}
+		src[n] = '\0';
+		src_needs_free = true;
+	}
+
+	/* JSON-escape src before interpolation (same class as B.4 P1-1 fix). */
+	size_t in_len = strlen(src);
+	size_t esc_sz = in_len * 6 + 64;
+	char *esc_src = malloc(esc_sz);
+	if (esc_src == NULL) {
+		log_warn(LOG_COMP_GENERAL,
+		         "debug_launch_from_options: OOM allocating JSON escape buffer");
+		if (src_needs_free) free(src);
+		return false;
+	}
+	dbg_json_escape(src, esc_src, esc_sz);
+	if (src_needs_free) free(src);
+
+	/* Build debug/run JSON request (id=0 since boxen REPL has no pending-id
+	 * table yet; the response notification goes to transport->write_line which
+	 * is a no-op stub in C.0). */
+	size_t req_sz = esc_sz + 80;
+	char *req = malloc(req_sz);
+	if (req == NULL) {
+		log_warn(LOG_COMP_GENERAL,
+		         "debug_launch_from_options: OOM allocating request buffer");
+		free(esc_src);
+		return false;
+	}
+	int n_written = snprintf(req, req_sz,
+	         "{\"op\":\"debug/run\",\"id\":0,"
+	         "\"params\":{\"expression\":\"%s\"}}",
+	         esc_src);
+	free(esc_src);
+
+	/* 2026-06-08 JES #691 Phase C.0 round 2 P2-11: check snprintf truncation. */
+	if (n_written < 0 || (size_t)n_written >= req_sz) {
+		log_warn(LOG_COMP_GENERAL,
+		         "debug_launch_from_options: request buffer too small (%zu bytes), truncated",
+		         req_sz);
+		free(req);
+		return false;
+	}
+
+	/* GIL is held throughout this call; op_dispatch requires the GIL for
+	 * langcompiletext and headless_spawn_script_thread. */
+	op_dispatch(req, (size_t)n_written, transport);
+	free(req);
+	return true;
 }
 
 /*

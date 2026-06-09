@@ -25,6 +25,7 @@
 #include <stdatomic.h>
 
 #include "op_handler.h"
+#include "cli_parser.h"
 #include "../Common/headers/frontier.h"
 #include "../Common/headers/lang.h"
 
@@ -294,5 +295,61 @@ typedef enum {
 } dbg_source_reason;
 
 Handle debug_get_script_source(const char *path_no_at, dbg_source_reason *out_reason);
+
+/*
+ * 2026-06-08 JES #691 Phase C.0 round 2 P0-1: shared startup-script launch helper.
+ *
+ * Extracted from debugger_tui.c::tui_launch_startup_script so that both the
+ * standalone TUI debugger and the boxen REPL can call it without duplicating
+ * the source-resolution and JSON-dispatch logic.
+ *
+ * Resolution rules (same as tui_launch_startup_script):
+ *   - opts->inline_script is a bare ODB address (@path): use debug_get_script_source
+ *     to fetch the source text, then dispatch debug/run.
+ *   - opts->inline_script is freeform: dispatch debug/run verbatim.
+ *   - opts->script_file is non-NULL: read the file, dispatch debug/run.
+ *   - Both NULL: no-op, return false.
+ *   - Both non-NULL: no-op, return false (caller should have validated).
+ *
+ * transport: the transport_t to associate with the spawned debug thread.
+ *   For the boxen REPL this is a no-op stub (C.0 does not yet render debug
+ *   state); for the TUI this is the full TUI write-line transport.
+ *
+ * GIL: must be called with GIL held.  langcompiletext and
+ * headless_spawn_script_thread both require the GIL.
+ *
+ * Returns true if the debug thread was successfully spawned.
+ */
+bool debug_launch_from_options(const cli_options_t *opts, transport_t *transport);
+
+/*
+ * 2026-06-08 JES #691 Phase C.0 round 3 P2-4: shared bare-ODB-address detection.
+ *
+ * Returns true iff s starts with '@' AND every subsequent character is in
+ * [A-Za-z0-9_.].  No whitespace, no parens, no operators.
+ *
+ * This is the canonical detection rule -- inline in this header so both
+ * debug_launch_from_options (debug_handler.c) and tui_launch_startup_script
+ * (debugger_tui.c) share the same predicate without a link dependency.
+ * Previously debug_launch_from_options used laxer detection (@c, c!='\0')
+ * while tui_is_bare_odb_address required strict [A-Za-z0-9_.]+.  Both now
+ * delegate to this shared inline.
+ */
+static inline bool debug_is_bare_address(const char *s) {
+	if (s == NULL || s[0] != '@') return false;
+	const char *p = s + 1;
+	if (*p == '\0') return false;  /* bare '@' alone is not an address */
+	while (*p != '\0') {
+		char c = *p;
+		if (!((c >= 'A' && c <= 'Z') ||
+		      (c >= 'a' && c <= 'z') ||
+		      (c >= '0' && c <= '9') ||
+		      c == '_' || c == '.')) {
+			return false;
+		}
+		p++;
+	}
+	return true;
+}
 
 #endif /* DEBUG_HANDLER_H */

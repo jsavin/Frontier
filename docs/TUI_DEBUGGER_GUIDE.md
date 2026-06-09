@@ -1,9 +1,15 @@
 # TUI Debugger Guide
 
 **Audience:** anyone using `frontier-cli` to debug a UserTalk script.
-**Last updated:** 2026-06-07
+**Last updated:** 2026-06-08
 
-The TUI debugger is a full-screen terminal interface for debugging UserTalk scripts. It runs inside `frontier-cli` and uses the same NDJSON debugger protocol that drives `--protocol` mode, presented as a two-pane source/state view with a keybind footer.
+> **Phase C.0 change (2026-06-08):** `--debug-tui` now opens the boxen-native
+> Frontier REPL instead of the standalone debugger TUI.  The REPL is a full
+> scrollback + input-bar interface; you type UserTalk expressions or slash
+> commands directly.  The debugger surfaces are reachable via the `/debug`
+> slash command.  A full doc revision will follow in C.1.
+
+The TUI debugger is a full-screen terminal interface for debugging UserTalk scripts. It runs inside `frontier-cli` and uses the same NDJSON debugger protocol that drives `--protocol` mode.
 
 For the protocol-level interface (used by IDEs and external tools), see [`docs/CLI_USAGE_GUIDE.md`](CLI_USAGE_GUIDE.md). For TUI internals (transport wiring, lazy-attach contract, teardown order), see [`docs/TUI_DEBUGGER_ARCHITECTURE.md`](TUI_DEBUGGER_ARCHITECTURE.md).
 
@@ -11,13 +17,27 @@ For the protocol-level interface (used by IDEs and external tools), see [`docs/C
 
 ## Launching
 
-### Attach-only (wait for a breakpoint to fire)
+### Open the boxen-native Frontier REPL
 
 ```bash
 ./frontier-cli/frontier-cli --debug-tui
 ```
 
-The TUI opens in RUNNING state with no script loaded. Any `thread.callScript` thread that hits a breakpoint will lazy-attach and deliver a suspension notification. This is the workflow for debugging menu-triggered code.
+The boxen REPL opens with a scrollback output pane and a single-line input bar. Type UserTalk expressions (e.g. `1 + 1`) and press Enter to evaluate. Type `/help` and press Enter to see available slash commands. Press Ctrl-C to quit.
+
+### Open the REPL and immediately start debugging a script
+
+```bash
+./frontier-cli/frontier-cli --debug-tui @workspace.myVerb
+```
+
+The REPL opens and automatically dispatches `/debug @workspace.myVerb`, starting a debug session on that script. Equivalent to opening the REPL and typing `/debug @workspace.myVerb` manually.
+
+Previously (Phase B), this opened the standalone debugger TUI directly on the script. The REPL-first launch is the new default; the standalone debugger is reachable via `/debug` inside the REPL.
+
+### Legacy attach-only mode
+
+The Phase B "attach-only" form (`--debug-tui` with no script argument) is now the REPL's default state. Evaluate expressions or dispatch `/debug <path>` to start a debug session. Any `thread.callScript` thread that hits a breakpoint will lazy-attach through the existing transport infrastructure.
 
 ### Launch and debug a specific ODB script
 

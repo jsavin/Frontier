@@ -325,6 +325,30 @@ boolean repl_is_active(void) {
 	return g_repl_active;
 }
 
+/*
+ * 2026-06-08 JES #691 Phase C.0 round 3 P1: repl_set_active.
+ *
+ * Called by boxen_repl_main to publish g_repl_active so that
+ * repl.isActive() returns true during the boxen REPL session.
+ * repl_main sets g_repl_active directly inline; this wrapper exposes the
+ * same capability to boxen_repl_main without widening the public surface.
+ */
+void repl_set_active(boolean flag) {
+	g_repl_active = flag;
+}
+
+/*
+ * 2026-06-08 JES #691 Phase C.0 round 3 P1: repl_is_exit_requested.
+ *
+ * Getter for g_repl_exit_requested.  boxen_repl_main polls this each event
+ * loop iteration so that repl.exit() invoked from non-slash UserTalk code
+ * (which calls replverbhost_exit -> sets g_repl_exit_requested) terminates
+ * the boxen REPL session.
+ */
+boolean repl_is_exit_requested(void) {
+	return g_repl_exit_requested != 0;
+}
+
 /* Check if path looks like a script expression (contains ( ) or +) */
 static boolean path_is_script_expression(const char *path) {
 	if (path == NULL) return false;
@@ -2402,8 +2426,11 @@ static ty_dispatch_result dispatch_leaf_via_menubar(hdlhashtable hleaf) {
  * Process a slash-prefixed line. See the comment block above for the full
  * dispatch flow. Returns true if the REPL should keep running; sets
  * *running = false on /exit dispatch.
+ *
+ * 2026-06-08 JES Phase C.0 #691: de-static'd so boxen_repl.c can call it
+ * directly via repl_slash_dispatch.h.
  */
-static boolean dispatch_slash_command(const char *line, boolean *running) {
+boolean dispatch_slash_command(const char *line, boolean *running) {
 	/* Self-healing reset: if a prior dispatch longjmp'd out of the
 	 * UserTalk runtime past the clear sites below, this resets the
 	 * flag on re-entry so subsequent reads can't be poisoned. The
@@ -3623,6 +3650,17 @@ void repl_install_verb_host(void) {
 }
 void repl_uninstall_verb_host(void) {
 	uninstall_repl_verbs_host();
+}
+
+/*
+ * 2026-06-08 JES #691 Phase C.0 round 2 P1-8: reset stale exit flag.
+ *
+ * Clears g_repl_exit_requested so a prior REPL session's exit state does
+ * not pre-exit a new session.  Called by boxen_repl_main at entry, before
+ * repl_install_verb_host.  repl_main already calls this inline at line 3814.
+ */
+void repl_reset_exit_flag(void) {
+	g_repl_exit_requested = 0;
 }
 
 
