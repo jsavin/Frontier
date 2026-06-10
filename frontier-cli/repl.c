@@ -48,6 +48,7 @@
 #include "repl_eval.h"
 #include "repl_variables.h"
 #include "repl_output.h"
+#include "repl_completion.h"
 #include "repl_slash_resolver.h"
 #include "repl_verbs.h"
 #include "completion.h"
@@ -1936,8 +1937,12 @@ static void cleanup_linenoise(void) {
 	free_session_commands();
 }
 
-/* List of REPL slash commands for tab completion */
-static const char *repl_slash_commands[] = {
+/* 2026-06-09 JES #691 Phase C.0.2: renamed from repl_slash_commands, made
+ * extern so the boxen REPL completion engine can iterate it without linking
+ * the full linenoise surface.  The header repl_completion.h declares the
+ * extern; this translation unit provides the definition.
+ * NULL-terminated list of slash command names (without the leading '/'). */
+const char *const repl_slash_commands_list[] = {
 	"exit",
 	"jump",
 	"help",
@@ -1947,8 +1952,14 @@ static const char *repl_slash_commands[] = {
 };
 
 /*
- * Helper: Complete a path argument for slash commands like /jump and /list.
- * Takes the full buffer, the offset where the path starts, and adds completions.
+ * 2026-06-09 JES #691 Phase C.0.2: renamed from complete_slash_command_path,
+ * made non-static, signature changed to accept a generic add-callback so the
+ * boxen REPL can use it without linking linenoise.  Legacy callers use
+ * linenoise_add_adapter below.
+ *
+ * Complete a path argument for slash commands like /jump and /list.
+ * Takes the full buffer, the offset where the path starts, and invokes
+ * add(ctx, candidate) for each completion.
  * Only includes tables (navigable items) in the results.
  *
  * Search order for single-component paths:
@@ -1959,8 +1970,9 @@ static const char *repl_slash_commands[] = {
  * This allows `/jump inetd` to find user.inetd when focused on user table,
  * while still falling back to system.paths if not found locally.
  */
-static void complete_slash_command_path(const char *buf, size_t buf_len,
-										size_t path_offset, linenoiseCompletions *lc) {
+void repl_complete_slash_command_path(const char *buf, size_t buf_len,
+                                      size_t path_offset,
+                                      repl_completion_add_fn add, void *add_ctx) {
 	const char *path_start = buf + path_offset;
 
 	// Skip leading @ if present
@@ -2063,9 +2075,16 @@ static void complete_slash_command_path(const char *buf, size_t buf_len,
 			remaining = sizeof(completion) - strlen(completion) - 1;
 			strncat(completion, ".", remaining);
 
-			linenoiseAddCompletion(lc, completion);
+			add(add_ctx, completion);
 		}
 	}
+}
+
+/* 2026-06-09 JES #691 Phase C.0.2: adapter that translates the generic
+ * add-callback API to linenoise's linenoiseAddCompletion.  Used by
+ * linenoise_completion_callback as the ctx/add pair for legacy callers. */
+static void linenoise_add_adapter(void *ctx, const char *s) {
+	linenoiseAddCompletion((linenoiseCompletions *)ctx, s);
 }
 
 /* Bridges linenoise tab completion to the Frontier completion engine. */
@@ -2076,11 +2095,11 @@ static void linenoise_completion_callback(const char *buf, linenoiseCompletions 
 	if (buf_len > 0 && buf[0] == '/') {
 		// Check if this is "/jump <path>" or "/list <path>" - complete the path argument
 		if (strncasecmp(buf, "/jump ", 6) == 0) {
-			complete_slash_command_path(buf, buf_len, 6, lc);
+			repl_complete_slash_command_path(buf, buf_len, 6, linenoise_add_adapter, lc);
 			return;
 		}
 		if (strncasecmp(buf, "/list ", 6) == 0) {
-			complete_slash_command_path(buf, buf_len, 6, lc);
+			repl_complete_slash_command_path(buf, buf_len, 6, linenoise_add_adapter, lc);
 			return;
 		}
 
@@ -2088,8 +2107,8 @@ static void linenoise_completion_callback(const char *buf, linenoiseCompletions 
 		const char *cmd_prefix = buf + 1;  // Skip the '/'
 		size_t prefix_len = buf_len - 1;
 
-		for (int i = 0; repl_slash_commands[i] != NULL; i++) {
-			const char *cmd = repl_slash_commands[i];
+		for (int i = 0; repl_slash_commands_list[i] != NULL; i++) {
+			const char *cmd = repl_slash_commands_list[i];
 			if (strncasecmp(cmd, cmd_prefix, prefix_len) == 0) {
 				// Build completion: "/" + command + " "
 				char completion[256];

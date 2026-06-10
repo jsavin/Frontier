@@ -596,7 +596,8 @@ debugger_tui_tests: debugger_tui_tests.c $(DEBUGGER_TUI_TEST_SRCS)
 # 2026-06-08 JES Phase C.0 #691
 BOXEN_REPL_TEST_SRCS = \
 	$(BOXEN_CORE_TEST_SRCS) \
-	../frontier-cli/boxen_repl.c
+	../frontier-cli/boxen_repl.c \
+	../frontier-cli/boxen_completion_popup.c
 
 boxen_repl_tests: boxen_repl_tests.c $(BOXEN_REPL_TEST_SRCS)
 	$(CC) $(CFLAGS) \

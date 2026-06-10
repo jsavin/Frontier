@@ -22,6 +22,8 @@
 /* op_handler.h defines transport_t; it has no runtime or GIL dependencies,
  * so it is safe to include in test builds (BOXEN_REPL_OMIT_MAIN defined). */
 #include "op_handler.h"
+/* 2026-06-09 JES #691 Phase C.0.2: completion popup module. */
+#include "boxen_completion_popup.h"
 
 /* Note: headless_threading.h (GIL symbols) is intentionally NOT included here.
  * The internal tick functions do not touch the GIL; only boxen_repl_main()
@@ -107,6 +109,25 @@ typedef bool (*slash_dispatch_fn_t)(const char *line, bool *running);
 typedef bool (*repl_eval_fn_t)(const char *expr,
                                char *result_out, size_t result_cap,
                                char *error_out,  size_t error_cap);
+
+/*
+ * repl_completion_fn_t -- provide tab-completion candidates for the current input.
+ *
+ * 2026-06-09 JES #691 Phase C.0.2: completion hook seam.
+ * Production wires this to boxen_repl_real_completion (which calls
+ * repl_complete_slash_command_path); tests inject synthetic mocks.
+ *
+ * Parameters:
+ *   buf            -- current input buffer (NUL-terminated), cursor is at buf_len
+ *   buf_len        -- number of characters typed (cursor position)
+ *   candidates     -- output array; hook fills candidates[0..count-1]
+ *   max_candidates -- maximum entries the hook may write
+ *
+ * Returns the number of candidates written (0 = no completions).
+ */
+typedef int (*repl_completion_fn_t)(const char *buf, size_t buf_len,
+                                    char candidates[][BOXEN_COMPLETION_CANDIDATE_MAX],
+                                    int max_candidates);
 
 /* -------------------------------------------------------------------------
  * REPL state struct
@@ -206,6 +227,19 @@ typedef struct {
 	int   history_head;           /* next write index */
 	int   history_nav_idx;        /* -1 = not navigating; else nth-from-newest */
 	char  history_saved_input[BOXEN_REPL_INPUT_MAX]; /* preserved typing during nav */
+
+	/* 2026-06-09 JES #691 Phase C.0.2: Tab completion state.
+	 *
+	 * completion_popup: non-NULL while a multi-candidate popup is open.
+	 *   Owned by the REPL state; closed/freed by the key handlers in on_input
+	 *   and defensively in boxen_repl_state_teardown.
+	 *
+	 * completion_hook: function pointer called on Tab to generate candidates.
+	 *   Production: boxen_repl_real_completion (set in boxen_repl_state_init
+	 *   under #ifndef BOXEN_REPL_OMIT_MAIN).
+	 *   Tests: inject a synthetic mock directly onto the field. */
+	boxen_completion_popup_t *completion_popup;
+	repl_completion_fn_t      completion_hook;
 } boxen_repl_state_t;
 
 /* -------------------------------------------------------------------------
@@ -293,6 +327,11 @@ bool boxen_repl_real_slash_dispatch(const char *line, bool *running);
 bool boxen_repl_real_eval(const char *expr,
                           char *result_out, size_t result_cap,
                           char *error_out,  size_t error_cap);
+/* 2026-06-09 JES #691 Phase C.0.2: production completion implementation.
+ * Mirrors linenoise_completion_callback dispatch logic from repl.c. */
+int  boxen_repl_real_completion(const char *buf, size_t buf_len,
+                                char candidates[][BOXEN_COMPLETION_CANDIDATE_MAX],
+                                int max_candidates);
 #endif
 
 #endif /* BOXEN_REPL_INTERNAL_H */
