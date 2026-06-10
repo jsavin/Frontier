@@ -119,6 +119,25 @@ static void repl_build_layout(boxen_repl_state_t *s, int tw, int th) {
 /* -------------------------------------------------------------------------
  * 2026-06-08 JES Phase C.0 #691: repl_wire_callbacks.
  * ---------------------------------------------------------------------- */
+/* 2026-06-10 JES #691 C.1.x: filter for boxen application-global keys.
+ *
+ * Returns true for keys that should always reach the REPL's on_input
+ * regardless of which window has focus.  Currently just Ctrl-C: without
+ * this, opening an outline editor with /edit @path would trap Ctrl-C
+ * inside the editor (which doesn't recognize it) and the user couldn't
+ * exit the REPL.
+ *
+ * Future additions (deferred):
+ *   - `/` to launch the slash-menu palette (palette migration is its own
+ *     follow-up milestone; not yet integrated with boxen REPL).
+ *   - Application function keys for window switching (cmd-`, etc.) if /
+ *     when multi-window editor focus becomes a UX problem. */
+static bool repl_is_global_key(const boxen_event_t *ev) {
+	if (ev == NULL || ev->type != BOXEN_EV_KEY) return false;
+	if (ev->key.key == BOXEN_KEY_CTRL_C) return true;
+	return false;
+}
+
 static void repl_wire_callbacks(boxen_repl_state_t *s) {
 	if (s->output_win != NULL) {
 		boxen_window_set_draw(s->output_win, draw_output_pane);
@@ -137,6 +156,12 @@ static void repl_wire_callbacks(boxen_repl_state_t *s) {
 	/* Focus the input bar so key events route to on_input */
 	if (s->input_win != NULL) {
 		boxen_window_focus(s->input_win);
+
+		/* 2026-06-10 JES #691 C.1.x: register the REPL input as the global
+		 * key target.  Ctrl-C (and any future global keys) will route here
+		 * before the focused window sees them, so an outline editor or
+		 * other child window can't trap them. */
+		boxen_set_global_key_handler(s->input_win, repl_is_global_key);
 	}
 }
 
