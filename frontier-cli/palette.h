@@ -382,7 +382,33 @@ typedef struct palette_state {
 	int arg_len;
 
 	const palette_menu_source_t *source;
+
+	/* 2026-06-10 JES #691 Phase C.0.3a: render backend abstraction.
+	 * NULL is never stored here at runtime -- palette_open and palette_open_ex
+	 * both resolve NULL to the default pane backend before first use. */
+	const struct palette_render_backend *backend;
 } palette_state_t;
+
+/* ---------- Render backend abstraction (C.0.3a) ----------
+ *
+ * A function-pointer vtable that decouples the palette state machine
+ * from its concrete renderer. The existing pane-compositor path is
+ * wrapped as the DEFAULT backend, returned by palette_render_pane_backend().
+ * A future boxen-window backend (C.0.3b) will provide a second implementation.
+ *
+ * All five functions are REQUIRED (no NULL slots). ctx is opaque to the
+ * palette; the backend stores per-instance state there.
+ *
+ * 2026-06-10 JES #691 Phase C.0.3a: render backend abstraction.
+ */
+typedef struct palette_render_backend {
+	void *ctx;  /* opaque, backend-private */
+	bool (*open)(palette_state_t *st, void *ctx);
+	void (*paint)(palette_state_t *st, void *ctx);
+	void (*paint_teardown)(palette_state_t *st, void *ctx);
+	void (*on_resize)(palette_state_t *st, int term_rows, int term_cols, void *ctx);
+	void (*close)(palette_state_t *st, void *ctx);
+} palette_render_backend_t;
 
 /* ---------- Public API ---------- */
 
@@ -394,16 +420,38 @@ typedef struct palette_state {
  * (PR 3). `source` must remain valid until palette_close().
  *
  * On entry the compositor must have been initialised with
- * compositor_on_resize(term_rows, term_cols) — palette does not call it.
+ * compositor_on_resize(term_rows, term_cols) -- palette does not call it.
  *
  * Returns true on success, false if the menubar source has zero menus or
  * the terminal is too small to render the menubar at all (cols < 4).
  *
  * GIL: must be held by the caller. The source vtable callbacks
- * (count_menus, menu_describe) run inline and may touch the ODB. */
+ * (count_menus, menu_describe) run inline and may touch the ODB.
+ *
+ * This is a thin wrapper around palette_open_ex that passes NULL as the
+ * backend, which resolves to the default pane backend. */
 bool palette_open(palette_state_t *st, int term_rows, int term_cols,
                   int prompt_row,
                   const palette_menu_source_t *source);
+
+/* Extended open: same contract as palette_open but accepts an explicit
+ * render backend. When `backend` is NULL the default pane-compositor
+ * backend is used (identical behavior to palette_open). Non-NULL backends
+ * are used by alternative renderers (e.g. boxen-window backend, C.0.3b).
+ *
+ * 2026-06-10 JES #691 Phase C.0.3a: render backend abstraction. */
+bool palette_open_ex(palette_state_t *st, int term_rows, int term_cols,
+                     int prompt_row,
+                     const palette_menu_source_t *source,
+                     const palette_render_backend_t *backend);
+
+/* Return a pointer to the singleton default pane-compositor render backend.
+ * The returned pointer is valid for the lifetime of the process.
+ * Use this when you need to name the default backend explicitly, e.g. in
+ * tests that want to assert st.backend == palette_render_pane_backend().
+ *
+ * 2026-06-10 JES #691 Phase C.0.3a: render backend abstraction. */
+const palette_render_backend_t *palette_render_pane_backend(void);
 
 /* Close the palette. Unregisters all panes from the compositor and
  * destroys their cell buffers. Idempotent.

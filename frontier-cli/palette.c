@@ -515,11 +515,109 @@ static void close_all_levels(palette_state_t *st) {
 	while (st->open_depth > 0) close_deepest_level(st);
 }
 
+/* ---------- Pane render backend (default) ----------
+ *
+ * The five static functions below are TEXT-MOVE extractions of the
+ * rendering logic that previously lived inline in palette_open,
+ * palette_paint_teardown, palette_close, palette_render_state, and
+ * palette_on_resize. No logic has been changed; the functions are
+ * only moved here so they can be named in the s_pane_backend vtable.
+ *
+ * 2026-06-10 JES #691 Phase C.0.3a: render backend abstraction.
+ */
+
+static bool pane_backend_open(palette_state_t *st, void *ctx) {
+	(void)ctx;
+	/* Menubar strip: full-width, single row, one row below the prompt. */
+	pane_init(&st->menubar, 0, st->prompt_row + 1, st->term_cols, 1);
+	compositor_register(&st->menubar);
+	return true;
+}
+
+static void pane_backend_paint(palette_state_t *st, void *ctx) {
+	(void)ctx;
+	render_menubar(st);
+	for (int d = 0; d < st->open_depth; ++d) {
+		render_level(st, d);
+	}
+}
+
+static void pane_backend_paint_teardown(palette_state_t *st, void *ctx) {
+	(void)ctx;
+	/* pane_clear zeroes every cell (ch=0, fg=0, bg=0, attr=0). The
+	 * compositor renders ch=0 as ' ' and emits no SGR for fg/bg/attr
+	 * == 0 (default), so the next compositor_render() emits a "go back
+	 * to terminal default" frame for every cell these panes cover. */
+	for (int d = 0; d < st->open_depth && d < PALETTE_MAX_DEPTH; ++d) {
+		pane_clear(&st->levels[d].pane);
+	}
+	pane_clear(&st->menubar);
+}
+
+static void pane_backend_on_resize(palette_state_t *st, int term_rows,
+                                   int term_cols, void *ctx) {
+	(void)ctx;
+	/* Clamp the menubar's anchor if the new height made the old row
+	 * fall off the bottom.  prompt_row never moves up automatically on
+	 * resize (the REPL prompt position is not tracked), so the menubar
+	 * stays at its original row unless that row would now be past the
+	 * bottom -- in that case we slide it up. */
+	int desired_y = st->prompt_row + 1;
+	if (desired_y >= term_rows) {
+		desired_y = term_rows - 1;
+		st->prompt_row = desired_y - 1;
+		if (st->prompt_row < 0) st->prompt_row = 0;
+	}
+	pane_move(&st->menubar, 0, desired_y);
+	pane_resize(&st->menubar, term_cols, 1);
+
+	if (st->menubar_cursor >= st->menu_count) {
+		st->menubar_cursor = imax(0, st->menu_count - 1);
+	}
+
+	/* Reposition open cascade strips.  Each level lives at
+	 * menubar.y + 1 + d; close any level that no longer fits. */
+	for (int d = 0; d < st->open_depth; /* incremented inside */) {
+		palette_level_t *lvl = &st->levels[d];
+		int px = 0, py = 0, pw = 0, ph = 0;
+		if (!place_cascade_strip(st, d, &px, &py, &pw, &ph)) {
+			while (st->open_depth > d) close_deepest_level(st);
+			break;
+		}
+		pane_move(&lvl->pane, px, py);
+		pane_resize(&lvl->pane, pw, ph);
+		if (lvl->cursor >= lvl->item_count) {
+			lvl->cursor = imax(0, lvl->item_count - 1);
+		}
+		++d;
+	}
+}
+
+static void pane_backend_close(palette_state_t *st, void *ctx) {
+	(void)ctx;
+	compositor_unregister(&st->menubar);
+	pane_destroy(&st->menubar);
+}
+
+static const palette_render_backend_t s_pane_backend = {
+	NULL,                      /* ctx */
+	pane_backend_open,
+	pane_backend_paint,
+	pane_backend_paint_teardown,
+	pane_backend_on_resize,
+	pane_backend_close,
+};
+
+const palette_render_backend_t *palette_render_pane_backend(void) {
+	return &s_pane_backend;
+}
+
 /* ---------- Public API ---------- */
 
-bool palette_open(palette_state_t *st, int term_rows, int term_cols,
-                  int prompt_row,
-                  const palette_menu_source_t *source) {
+bool palette_open_ex(palette_state_t *st, int term_rows, int term_cols,
+                     int prompt_row,
+                     const palette_menu_source_t *source,
+                     const palette_render_backend_t *backend) {
 	if (!st || !source) return false;
 	if (term_cols < 4 || term_rows < 2) return false;
 
@@ -557,9 +655,7 @@ bool palette_open(palette_state_t *st, int term_rows, int term_cols,
 	layout_menubar(st);
 	if (st->menu_count <= 0) return false;
 
-	/* Menubar strip: full-width, single row, one row below the prompt. */
-	pane_init(&st->menubar, 0, prompt_row + 1, st->term_cols, 1);
-	compositor_register(&st->menubar);
+	st->backend = backend ? backend : &s_pane_backend;
 	st->active = true;
 	st->menubar_cursor = 0;
 	st->open_depth = 0;
@@ -567,28 +663,30 @@ bool palette_open(palette_state_t *st, int term_rows, int term_cols,
 	st->csi_len = 0;
 	st->exec_script = NULL;
 	st->exec_arg[0] = '\0';
+
+	if (!st->backend->open(st, st->backend->ctx)) {
+		st->active = false;
+		return false;
+	}
 	return true;
 }
 
+bool palette_open(palette_state_t *st, int term_rows, int term_cols,
+                  int prompt_row,
+                  const palette_menu_source_t *source) {
+	return palette_open_ex(st, term_rows, term_cols, prompt_row, source, NULL);
+}
+
 void palette_paint_teardown(palette_state_t *st) {
-	if (!st) return;
-	if (!st->active) return;
-	/* pane_clear zeroes every cell (ch=0, fg=0, bg=0, attr=0). The
-	 * compositor renders ch=0 as ' ' and emits no SGR for fg/bg/attr
-	 * == 0 (default), so the next compositor_render() emits a "go back
-	 * to terminal default" frame for every cell these panes cover. */
-	for (int d = 0; d < st->open_depth && d < PALETTE_MAX_DEPTH; ++d) {
-		pane_clear(&st->levels[d].pane);
-	}
-	pane_clear(&st->menubar);
+	if (!st || !st->active) return;
+	st->backend->paint_teardown(st, st->backend->ctx);
 }
 
 void palette_close(palette_state_t *st) {
 	if (!st) return;
 	if (!st->active) return;
 	close_all_levels(st);
-	compositor_unregister(&st->menubar);
-	pane_destroy(&st->menubar);
+	st->backend->close(st, st->backend->ctx);
 	memset(st->menu_labels, 0, sizeof(st->menu_labels));
 	st->active = false;
 }
@@ -911,10 +1009,7 @@ palette_done_t palette_feed_mouse(palette_state_t *st, const mouse_event_t *ev) 
 
 void palette_render_state(palette_state_t *st) {
 	if (!st || !st->active) return;
-	render_menubar(st);
-	for (int d = 0; d < st->open_depth; ++d) {
-		render_level(st, d);
-	}
+	st->backend->paint(st, st->backend->ctx);
 }
 
 void palette_on_resize(palette_state_t *st, int term_rows, int term_cols) {
@@ -922,39 +1017,5 @@ void palette_on_resize(palette_state_t *st, int term_rows, int term_cols) {
 	if (term_cols < 4 || term_rows < 2) return;
 	st->term_rows = term_rows;
 	st->term_cols = term_cols;
-
-	/* Clamp the menubar's anchor if the new height made the old row
-	 * fall off the bottom.  prompt_row never moves up automatically on
-	 * resize (the REPL prompt position is not tracked), so the menubar
-	 * stays at its original row unless that row would now be past the
-	 * bottom -- in that case we slide it up. */
-	int desired_y = st->prompt_row + 1;
-	if (desired_y >= term_rows) {
-		desired_y = term_rows - 1;
-		st->prompt_row = desired_y - 1;
-		if (st->prompt_row < 0) st->prompt_row = 0;
-	}
-	pane_move(&st->menubar, 0, desired_y);
-	pane_resize(&st->menubar, term_cols, 1);
-
-	if (st->menubar_cursor >= st->menu_count) {
-		st->menubar_cursor = imax(0, st->menu_count - 1);
-	}
-
-	/* Reposition open cascade strips.  Each level lives at
-	 * menubar.y + 1 + d; close any level that no longer fits. */
-	for (int d = 0; d < st->open_depth; /* incremented inside */) {
-		palette_level_t *lvl = &st->levels[d];
-		int px = 0, py = 0, pw = 0, ph = 0;
-		if (!place_cascade_strip(st, d, &px, &py, &pw, &ph)) {
-			while (st->open_depth > d) close_deepest_level(st);
-			break;
-		}
-		pane_move(&lvl->pane, px, py);
-		pane_resize(&lvl->pane, pw, ph);
-		if (lvl->cursor >= lvl->item_count) {
-			lvl->cursor = imax(0, lvl->item_count - 1);
-		}
-		++d;
-	}
+	st->backend->on_resize(st, term_rows, term_cols, st->backend->ctx);
 }

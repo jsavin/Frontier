@@ -171,7 +171,7 @@ static void test_menubar_strip_full_width(void) {
 	compositor_on_resize(24, 80);
 	palette_state_t st;
 	palette_menu_source_t src = snap_source(&g_src);
-	palette_open(&st, 24, 80, 0, &src);
+	palette_open_ex(&st, 24, 80, 0, &src, palette_render_pane_backend());
 	render_all(&st);
 
 	int y = st.menubar.y;
@@ -207,7 +207,7 @@ static void test_horizontal_strip_full_width(void) {
 	compositor_on_resize(24, 80);
 	palette_state_t st;
 	palette_menu_source_t src = snap_source(&g_src);
-	palette_open(&st, 24, 80, 0, &src);
+	palette_open_ex(&st, 24, 80, 0, &src, palette_render_pane_backend());
 	palette_feed_byte(&st, '\r');           /* open REPL menu */
 	render_all(&st);
 
@@ -245,7 +245,7 @@ static void test_item_bracket_reservation(void) {
 	compositor_on_resize(24, 80);
 	palette_state_t st;
 	palette_menu_source_t src = snap_source(&g_src);
-	palette_open(&st, 24, 80, 0, &src);
+	palette_open_ex(&st, 24, 80, 0, &src, palette_render_pane_backend());
 
 	palette_feed_byte(&st, '\r');           /* open REPL */
 	render_all(&st);
@@ -297,7 +297,7 @@ static void test_selected_item_has_brackets(void) {
 	compositor_on_resize(24, 80);
 	palette_state_t st;
 	palette_menu_source_t src = snap_source(&g_src);
-	palette_open(&st, 24, 80, 0, &src);
+	palette_open_ex(&st, 24, 80, 0, &src, palette_render_pane_backend());
 
 	palette_feed_byte(&st, '\r');           /* open REPL, cursor on Help */
 	render_all(&st);
@@ -341,7 +341,7 @@ static void test_hotkey_bold_yellow_when_not_selected(void) {
 	compositor_on_resize(24, 80);
 	palette_state_t st;
 	palette_menu_source_t src = snap_source(&g_src);
-	palette_open(&st, 24, 80, 0, &src);
+	palette_open_ex(&st, 24, 80, 0, &src, palette_render_pane_backend());
 
 	palette_feed_byte(&st, '\r');           /* cursor on Help (item 0) */
 	render_all(&st);
@@ -370,7 +370,7 @@ static void test_hotkey_bold_only_when_selected(void) {
 	compositor_on_resize(24, 80);
 	palette_state_t st;
 	palette_menu_source_t src = snap_source(&g_src);
-	palette_open(&st, 24, 80, 0, &src);
+	palette_open_ex(&st, 24, 80, 0, &src, palette_render_pane_backend());
 
 	palette_feed_byte(&st, '\r');           /* cursor on Help (selected) */
 	render_all(&st);
@@ -416,7 +416,7 @@ static void test_checked_item_draws_check_glyph(void) {
 	compositor_on_resize(24, 80);
 	palette_state_t st;
 	palette_menu_source_t src = snap_source(&g_edit_src);
-	palette_open(&st, 24, 80, 0, &src);
+	palette_open_ex(&st, 24, 80, 0, &src, palette_render_pane_backend());
 	palette_feed_byte(&st, '\r');           /* open Edit menu */
 	render_all(&st);
 
@@ -453,7 +453,7 @@ static void test_separator_draws_dim_divider(void) {
 	compositor_on_resize(24, 80);
 	palette_state_t st;
 	palette_menu_source_t src = snap_source(&g_edit_src);
-	palette_open(&st, 24, 80, 0, &src);
+	palette_open_ex(&st, 24, 80, 0, &src, palette_render_pane_backend());
 	palette_feed_byte(&st, '\r');           /* open Edit menu */
 	render_all(&st);
 
@@ -482,7 +482,7 @@ static void test_cursor_skips_separator(void) {
 	compositor_on_resize(24, 80);
 	palette_state_t st;
 	palette_menu_source_t src = snap_source(&g_edit_src);
-	palette_open(&st, 24, 80, 0, &src);
+	palette_open_ex(&st, 24, 80, 0, &src, palette_render_pane_backend());
 	palette_feed_byte(&st, '\r');           /* open Edit menu */
 
 	assert(st.levels[0].cursor == 0);       /* Wrap, not the separator */
@@ -529,7 +529,7 @@ static void test_wide_menu_keeps_cursor_item_visible(void) {
 	compositor_on_resize(24, 80);
 	palette_state_t st;
 	palette_menu_source_t src = snap_source(&g_wide_src);
-	palette_open(&st, 24, 80, 0, &src);
+	palette_open_ex(&st, 24, 80, 0, &src, palette_render_pane_backend());
 	palette_feed_byte(&st, '\r');           /* open Edit menu */
 
 	/* Step RIGHT to the last item (index 4). */
@@ -593,7 +593,7 @@ static void test_menubar_hotkey_styling(void) {
 	compositor_on_resize(24, 80);
 	palette_state_t st;
 	palette_menu_source_t src = snap_source(&g_src);
-	palette_open(&st, 24, 80, 0, &src);
+	palette_open_ex(&st, 24, 80, 0, &src, palette_render_pane_backend());
 	render_all(&st);
 
 	int y = st.menubar.y;
