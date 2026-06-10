@@ -210,6 +210,17 @@ bool boxen_mock_has_text(const char *s) {
 	return false;
 }
 
+/* 2026-06-10 JES #691 C.1.x: codepoint-based grid scan.
+ * Use for non-ASCII glyphs that boxen_mock_has_text can't match. */
+bool boxen_mock_has_codepoint(uint32_t cp) {
+	for (int y = 0; y < g_height; y++) {
+		for (int x = 0; x < g_width; x++) {
+			if (g_grid[y][x].ch == cp) return true;
+		}
+	}
+	return false;
+}
+
 /* -------------------------------------------------------------------------
  * Event injection
  * ---------------------------------------------------------------------- */

@@ -69,10 +69,31 @@
 /* Gutter width: 1 column for breakpoint marker + 1 space */
 #define OUTLINE_GUTTER_WIDTH 2
 
-/* Marker column strings (NUL-terminated, drawn in the marker column) */
-#define MARKER_EXPANDED   "v"
-#define MARKER_COLLAPSED  ">"
-#define MARKER_LEAF       "o"
+/* Marker column strings (NUL-terminated, drawn in the marker column).
+ *
+ * 2026-06-09 JES #691 Phase C.1.x: switched from ASCII v/>/o to Unicode
+ * triangles + bullet.  Matches legacy Frontier desktop convention and
+ * modern outliner UI.  Multi-byte UTF-8 sequences (3 bytes per glyph for
+ * triangles, 3 bytes for bullet) -- boxen_draw_text decodes UTF-8 and
+ * advances the column by boxen_wcwidth (1 cell per codepoint here), so
+ * the visual layout reads as one column per marker even though the byte
+ * count differs.  PR #754's locale fix ensures these glyphs render
+ * (otherwise termbox2's iswprint() would replace them with U+FFFD).
+ *
+ *   U+25BC  BLACK DOWN-POINTING TRIANGLE     -- expanded (children visible)
+ *   U+25B6  BLACK RIGHT-POINTING TRIANGLE    -- collapsed (children hidden)
+ *   U+25B7  WHITE RIGHT-POINTING TRIANGLE    -- leaf (no children)
+ *
+ * Semantic distinction: filled triangles signal an actionable disclosure
+ * control; outlined triangle signals an inert node with no contents.  The
+ * leaf glyph matches the orientation of the collapsed glyph so they pair
+ * visually, but the fill/no-fill makes the affordance unambiguous.
+ *
+ * Checkbox markers remain ASCII [x]/[ ] for now -- 3 cells of explicit
+ * width is intentional for a checkbox affordance. */
+#define MARKER_EXPANDED   "\xE2\x96\xBC"   /* U+25BC */
+#define MARKER_COLLAPSED  "\xE2\x96\xB6"   /* U+25B6 */
+#define MARKER_LEAF       "\xE2\x96\xB7"   /* U+25B7 */
 #define MARKER_CHECKED    "[x]"
 #define MARKER_UNCHECKED  "[ ]"
 #define MARKER_BREAKPOINT "*"
