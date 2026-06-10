@@ -759,6 +759,29 @@ void boxen_outline_draw(boxen_outline_state_t *s, boxen_window_t *win) {
 		boxen_draw_text(win, 0, draw_row, linebuf,
 		                BOXEN_COLOR_DEFAULT, BOXEN_COLOR_DEFAULT, attr);
 	}
+
+	/* 2026-06-10 JES #691 C.1.x: hide the text cursor while the outline
+	 * editor has focus.
+	 *
+	 * The outline editor is a navigation surface, not a text-input surface;
+	 * the bar cursor (BOXEN_ATTR_REVERSE on the current row) already shows
+	 * "where you are."  A blinking text caret would be visually competing
+	 * noise.
+	 *
+	 * Also fixes a stale-cursor bug visible in PR #759 manual testing.
+	 * When the editor opens, focus moves to it but the REPL input window
+	 * may have last positioned the cursor mid-prompt (e.g. after the user
+	 * types "/edit @path<Enter>", the cursor is at column 14).  After focus
+	 * shifts, the REPL's draw_input_bar's set_cursor call is rejected by
+	 * the boxen focus gate (cursor_owner_allowed at boxen.c:1682), so the
+	 * cursor stays at column 14 over the prompt instead of moving to the
+	 * empty post-submit cursor position.  Hiding the cursor here paints
+	 * over that stale state cleanly.
+	 *
+	 * The cursor reappears at the correct column when the editor closes
+	 * and focus returns to the REPL input window, because draw_input_bar
+	 * then runs as the focus-owner and its set_cursor call is allowed. */
+	boxen_window_set_cursor_visible(win, false);
 }
 
 /* -------------------------------------------------------------------------
