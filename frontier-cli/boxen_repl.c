@@ -292,6 +292,290 @@ void boxen_repl_append_scrollback(boxen_repl_state_t *s, const char *line) {
 }
 
 /* -------------------------------------------------------------------------
+ * 2026-06-09 JES #691 Phase C.0.1: persistent command history.
+ *
+ * History ring constants.
+ * MUST stay byte-identical with repl.c:85-86 until linenoise REPL is
+ * removed in milestone C.6 (see planning/phase_c/REPL_SCHISM_EXECUTION_PLAN.md).
+ * Both REPLs read/write the same ~/.frontier_history file.
+ * ---------------------------------------------------------------------- */
+#define BOXEN_REPL_HISTORY_FILE  ".frontier_history"
+
+/* -------------------------------------------------------------------------
+ * 2026-06-09 JES #691 Phase C.0.1: test-only path override.
+ *
+ * Compiled only under BOXEN_REPL_OMIT_MAIN (test builds).  Redirects
+ * ~/.frontier_history resolution to a caller-supplied path so tests can
+ * exercise load/save without touching the real history file.
+ * ---------------------------------------------------------------------- */
+#ifdef BOXEN_REPL_OMIT_MAIN
+static char g_test_history_path[1024];
+static bool g_test_history_path_set = false;
+
+void boxen_repl_set_history_path_for_test(const char *path) {
+	if (path == NULL) {
+		g_test_history_path_set = false;
+		g_test_history_path[0]  = '\0';
+		return;
+	}
+	snprintf(g_test_history_path, sizeof(g_test_history_path), "%s", path);
+	g_test_history_path_set = true;
+}
+#endif /* BOXEN_REPL_OMIT_MAIN */
+
+/* -------------------------------------------------------------------------
+ * 2026-06-09 JES #691 Phase C.0.1: resolve_history_path.
+ *
+ * Fills `out` (capacity `cap`) with the path to the history file.
+ * In test builds, uses the override path if set.
+ * In production builds, reads $HOME and appends BOXEN_REPL_HISTORY_FILE.
+ * Returns true on success, false if the path could not be resolved.
+ * ---------------------------------------------------------------------- */
+static bool resolve_history_path(char *out, size_t cap) {
+#ifdef BOXEN_REPL_OMIT_MAIN
+	if (g_test_history_path_set) {
+		snprintf(out, cap, "%s", g_test_history_path);
+		return true;
+	}
+#endif
+	const char *home = getenv("HOME");
+	if (home == NULL) {
+		log_warn(LOG_COMP_GENERAL, "boxen_repl: HOME not set; history disabled");
+		return false;
+	}
+	int written = snprintf(out, cap, "%s/%s", home, BOXEN_REPL_HISTORY_FILE);
+	if (written < 0 || (size_t)written >= cap) {
+		log_warn(LOG_COMP_GENERAL, "boxen_repl: HOME path too long; history disabled");
+		return false;
+	}
+	return true;
+}
+
+/* -------------------------------------------------------------------------
+ * 2026-06-09 JES #691 Phase C.0.1: boxen_repl_history_append.
+ *
+ * Appends `line` to the history ring.  Skips NULL/empty lines and
+ * duplicates of the most-recent entry.  Resets navigation state.
+ * ---------------------------------------------------------------------- */
+void boxen_repl_history_append(boxen_repl_state_t *s, const char *line) {
+	if (s == NULL || line == NULL || line[0] == '\0') return;
+
+	/* Dedup: skip if equal to the most-recent entry */
+	if (s->history_count > 0) {
+		int prev_idx = (s->history_head - 1 + BOXEN_REPL_HISTORY_SIZE)
+		               % BOXEN_REPL_HISTORY_SIZE;
+		if (strcmp(s->history[prev_idx], line) == 0) {
+			/* Duplicate -- reset nav and return */
+			s->history_nav_idx         = -1;
+			s->history_saved_input[0]  = '\0';
+			return;
+		}
+	}
+
+	/* Write to ring */
+	snprintf(s->history[s->history_head],
+	         BOXEN_REPL_INPUT_MAX, "%s", line);
+	s->history_head = (s->history_head + 1) % BOXEN_REPL_HISTORY_SIZE;
+	if (s->history_count < BOXEN_REPL_HISTORY_SIZE) {
+		s->history_count++;
+	}
+
+	/* Reset navigation */
+	s->history_nav_idx        = -1;
+	s->history_saved_input[0] = '\0';
+}
+
+/* -------------------------------------------------------------------------
+ * 2026-06-09 JES #691 Phase C.0.1: boxen_repl_history_load.
+ *
+ * Loads history from the on-disk file into the ring.  Silent no-op if the
+ * file cannot be opened (first run, or no $HOME).  Strips trailing \r/\n;
+ * skips empty lines.
+ * ---------------------------------------------------------------------- */
+void boxen_repl_history_load(boxen_repl_state_t *s) {
+	if (s == NULL) return;
+
+	char path[1024];
+	if (!resolve_history_path(path, sizeof(path))) return;
+
+	FILE *f = fopen(path, "r");
+	if (f == NULL) return;  /* silent no-op on first run */
+
+	char line[BOXEN_REPL_INPUT_MAX];
+	while (fgets(line, sizeof(line), f)) {
+		/* Strip trailing \r and/or \n */
+		size_t len = strlen(line);
+		while (len > 0 && (line[len - 1] == '\n' || line[len - 1] == '\r')) {
+			line[--len] = '\0';
+		}
+		if (len == 0) continue;
+		boxen_repl_history_append(s, line);
+	}
+	fclose(f);
+}
+
+/* -------------------------------------------------------------------------
+ * 2026-06-09 JES #691 Phase C.0.1: boxen_repl_history_save.
+ *
+ * Merges the session ring with the existing on-disk file (read-merge-write),
+ * deduplicates, trims to BOXEN_REPL_HISTORY_SIZE, and writes back.
+ *
+ * Mirrors repl.c::merge_and_save_history (lines 1782-1884).
+ * ---------------------------------------------------------------------- */
+void boxen_repl_history_save(boxen_repl_state_t *s) {
+	if (s == NULL) return;
+
+	char path[1024];
+	if (!resolve_history_path(path, sizeof(path))) return;
+
+	/* ---- Step 1: read existing file into a dynamic array ---- */
+	char **file_lines   = NULL;
+	size_t file_count   = 0;
+	size_t file_cap     = 0;
+
+	FILE *f = fopen(path, "r");
+	if (f != NULL) {
+		char line[BOXEN_REPL_INPUT_MAX];
+		while (fgets(line, sizeof(line), f)) {
+			/* Strip trailing \r/\n */
+			size_t len = strlen(line);
+			while (len > 0 && (line[len - 1] == '\n' || line[len - 1] == '\r')) {
+				line[--len] = '\0';
+			}
+			if (len == 0) continue;
+
+			/* Grow array if needed */
+			if (file_count >= file_cap) {
+				file_cap = file_cap ? file_cap * 2 : 256;
+				char **tmp = realloc(file_lines, file_cap * sizeof(char *));
+				if (tmp == NULL) break;
+				file_lines = tmp;
+			}
+			file_lines[file_count] = strdup(line);
+			if (file_lines[file_count] != NULL) file_count++;
+		}
+		fclose(f);
+	}
+
+	/* ---- Step 2: build session view (oldest -> newest walk of ring) ---- */
+	/* Ring layout: history_head points at next-write; oldest is
+	 * (head - count + SIZE) % SIZE, newest is (head - 1 + SIZE) % SIZE. */
+	int    session_count = s->history_count;
+	int    session_start = (s->history_head - session_count
+	                        + BOXEN_REPL_HISTORY_SIZE) % BOXEN_REPL_HISTORY_SIZE;
+
+	/* ---- Step 3: merge file lines (skip those that match any session entry) ---- */
+	size_t total = (size_t)session_count + file_count;
+	if (total == 0) {
+		free(file_lines);
+		return;
+	}
+
+	char **merged = malloc(total * sizeof(char *));
+	if (merged == NULL) {
+		for (size_t i = 0; i < file_count; i++) free(file_lines[i]);
+		free(file_lines);
+		return;
+	}
+	size_t merged_count = 0;
+
+	/* Add file lines that are NOT in the session ring */
+	for (size_t i = 0; i < file_count; i++) {
+		int is_dup = 0;
+		for (int j = 0; j < session_count && !is_dup; j++) {
+			int idx = (session_start + j) % BOXEN_REPL_HISTORY_SIZE;
+			if (strcmp(file_lines[i], s->history[idx]) == 0) {
+				is_dup = 1;
+			}
+		}
+		if (!is_dup) {
+			merged[merged_count++] = file_lines[i];
+		} else {
+			free(file_lines[i]);
+		}
+	}
+
+	/* Append all session entries (oldest to newest) */
+	for (int j = 0; j < session_count; j++) {
+		int idx = (session_start + j) % BOXEN_REPL_HISTORY_SIZE;
+		char *dup = strdup(s->history[idx]);
+		if (dup != NULL) {
+			merged[merged_count++] = dup;
+		}
+	}
+
+	/* ---- Step 4: trim to BOXEN_REPL_HISTORY_SIZE (keep most recent) ---- */
+	size_t start = 0;
+	if (merged_count > BOXEN_REPL_HISTORY_SIZE) {
+		start = merged_count - BOXEN_REPL_HISTORY_SIZE;
+		for (size_t i = 0; i < start; i++) {
+			free(merged[i]);
+		}
+	}
+
+	/* ---- Step 5: write back ---- */
+	f = fopen(path, "w");
+	if (f != NULL) {
+		for (size_t i = start; i < merged_count; i++) {
+			fprintf(f, "%s\n", merged[i]);
+		}
+		fclose(f);
+	}
+
+	/* ---- Cleanup ---- */
+	for (size_t i = start; i < merged_count; i++) {
+		free(merged[i]);
+	}
+	free(merged);
+	free(file_lines);
+}
+
+/* -------------------------------------------------------------------------
+ * 2026-06-09 JES #691 Phase C.0.1: history_nav_up / history_nav_down.
+ *
+ * Called from on_input when UP/DOWN arrows are received.  Navigate the
+ * history ring and update input_buf / input_cursor accordingly.
+ * ---------------------------------------------------------------------- */
+static void history_nav_up(boxen_repl_state_t *s) {
+	if (s->history_count == 0) return;
+
+	if (s->history_nav_idx == -1) {
+		/* Save whatever the user has typed so far */
+		snprintf(s->history_saved_input, BOXEN_REPL_INPUT_MAX, "%s", s->input_buf);
+		s->history_nav_idx = 0;
+	} else if (s->history_nav_idx < s->history_count - 1) {
+		s->history_nav_idx++;
+	}
+	/* else already at oldest entry -- clamp */
+
+	int ring_idx = (s->history_head - 1 - s->history_nav_idx
+	                + BOXEN_REPL_HISTORY_SIZE) % BOXEN_REPL_HISTORY_SIZE;
+	snprintf(s->input_buf, BOXEN_REPL_INPUT_MAX, "%s", s->history[ring_idx]);
+	s->input_cursor = (int)strlen(s->input_buf);
+
+	if (s->input_win != NULL) boxen_window_invalidate(s->input_win);
+}
+
+static void history_nav_down(boxen_repl_state_t *s) {
+	if (s->history_nav_idx == -1) return;  /* not navigating */
+
+	if (s->history_nav_idx > 0) {
+		s->history_nav_idx--;
+		int ring_idx = (s->history_head - 1 - s->history_nav_idx
+		                + BOXEN_REPL_HISTORY_SIZE) % BOXEN_REPL_HISTORY_SIZE;
+		snprintf(s->input_buf, BOXEN_REPL_INPUT_MAX, "%s", s->history[ring_idx]);
+	} else {
+		/* nav_idx == 0: restore the saved typing */
+		snprintf(s->input_buf, BOXEN_REPL_INPUT_MAX, "%s", s->history_saved_input);
+		s->history_nav_idx        = -1;
+		s->history_saved_input[0] = '\0';
+	}
+	s->input_cursor = (int)strlen(s->input_buf);
+
+	if (s->input_win != NULL) boxen_window_invalidate(s->input_win);
+}
+
+/* -------------------------------------------------------------------------
  * 2026-06-08 JES Phase C.0 #691: submit_input.
  *
  * Called on Enter.  Echoes the input line to the scrollback, dispatches,
@@ -302,6 +586,10 @@ static void submit_input(boxen_repl_state_t *s) {
 		if (s->input_win != NULL) boxen_window_invalidate(s->input_win);
 		return;
 	}
+
+	/* 2026-06-09 JES #691 Phase C.0.1: append to history ring before dispatch.
+	 * Dedup-with-latest is enforced inside boxen_repl_history_append. */
+	boxen_repl_history_append(s, s->input_buf);
 
 	/* Echo with "> " prefix */
 	char echo_buf[BOXEN_REPL_INPUT_MAX + 4];
@@ -416,10 +704,12 @@ static void on_input(boxen_window_t *win, const boxen_event_t *ev,
 		return;
 	}
 
-	/* Escape: clear input line */
+	/* Escape: clear input line (also reset history nav state) */
 	if (ev->key.key == BOXEN_KEY_ESCAPE) {
-		s->input_buf[0] = '\0';
-		s->input_cursor = 0;
+		s->input_buf[0]           = '\0';
+		s->input_cursor           = 0;
+		s->history_nav_idx        = -1;
+		s->history_saved_input[0] = '\0';
 		if (s->input_win != NULL) boxen_window_invalidate(s->input_win);
 		return;
 	}
@@ -430,8 +720,23 @@ static void on_input(boxen_window_t *win, const boxen_event_t *ev,
 		return;
 	}
 
+	/* 2026-06-09 JES #691 Phase C.0.1: history navigation. */
+	if (ev->key.key == BOXEN_KEY_UP) {
+		history_nav_up(s);
+		return;
+	}
+	if (ev->key.key == BOXEN_KEY_DOWN) {
+		history_nav_down(s);
+		return;
+	}
+
 	/* Backspace: delete last character */
 	if (ev->key.key == BOXEN_KEY_BACKSPACE) {
+		/* If user edits during history nav, abandon navigation. */
+		if (s->history_nav_idx != -1) {
+			s->history_nav_idx        = -1;
+			s->history_saved_input[0] = '\0';
+		}
 		if (s->input_cursor > 0) {
 			s->input_cursor--;
 			s->input_buf[s->input_cursor] = '\0';
@@ -448,6 +753,11 @@ static void on_input(boxen_window_t *win, const boxen_event_t *ev,
 	 * multi-byte handling and a Unicode-aware input cursor; that is deferred
 	 * to a future milestone. */
 	if (ev->key.key == BOXEN_KEY_NONE && ev->key.ch >= 0x20 && ev->key.ch < 0x7F) {
+		/* If user types during history nav, abandon navigation. */
+		if (s->history_nav_idx != -1) {
+			s->history_nav_idx        = -1;
+			s->history_saved_input[0] = '\0';
+		}
 		if (s->input_cursor < BOXEN_REPL_INPUT_MAX - 1) {
 			s->input_buf[s->input_cursor]     = (char)ev->key.ch;
 			s->input_buf[s->input_cursor + 1] = '\0';
@@ -483,6 +793,9 @@ void boxen_repl_state_init(boxen_repl_state_t *s, int tw, int th) {
 
 	repl_build_layout(s, tw, th);
 	repl_wire_callbacks(s);
+
+	/* 2026-06-09 JES #691 Phase C.0.1: hydrate history ring from disk. */
+	boxen_repl_history_load(s);
 }
 
 void boxen_repl_state_teardown(boxen_repl_state_t *s) {
@@ -985,6 +1298,12 @@ int boxen_repl_main(const cli_options_t *opts) {
 
 	/* Step 8: mark REPL session inactive (P1). */
 	repl_set_active(false);
+
+	/* 2026-06-09 JES #691 Phase C.0.1: persist history before tearing down state.
+	 * Placed after repl_set_active(false) (Step 8) and before
+	 * repl_uninstall_verb_host() (Step 9) to match the plan's save contract:
+	 * save runs on clean exit, NOT in state_teardown (tests would silently write). */
+	boxen_repl_history_save(state);
 
 	/* Step 9: uninstall verb host before teardown (P1-3). */
 	repl_uninstall_verb_host();

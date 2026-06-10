@@ -54,6 +54,17 @@
 #define BOXEN_REPL_INPUT_MAX 1024
 
 /* -------------------------------------------------------------------------
+ * History ring constants
+ *
+ * 2026-06-09 JES #691 Phase C.0.1: persistent command history.
+ *
+ * MUST stay byte-identical with repl.c:85-86 until linenoise REPL is removed
+ * in milestone C.6 (see planning/phase_c/REPL_SCHISM_EXECUTION_PLAN.md).
+ * Both REPLs read/write the same ~/.frontier_history file.
+ * ---------------------------------------------------------------------- */
+#define BOXEN_REPL_HISTORY_SIZE 1000
+
+/* -------------------------------------------------------------------------
  * Hook function-pointer typedefs
  *
  * These seams allow tests to intercept dispatch without linking the full
@@ -171,6 +182,30 @@ typedef struct {
 	 * directly to verify teardown NULLs it.
 	 */
 	transport_t *launch_transport;               /* heap-alloc'd; NULL if no auto-launch */
+
+	/* 2026-06-09 JES #691 Phase C.0.1: persistent command history.
+	 *
+	 * Ring of past commands.  Shared on-disk format with repl.c
+	 * (~/.frontier_history) so users can switch between boxen and linenoise
+	 * REPLs without losing history.  See repl.c:1782+ for the merge-on-save
+	 * pattern this mirrors.
+	 *
+	 * Sizing: BOXEN_REPL_HISTORY_SIZE * BOXEN_REPL_INPUT_MAX = ~1 MiB per
+	 * state.  Acceptable for the single heap-allocated state used by
+	 * boxen_repl_main; keeps the append hot path malloc-free.
+	 *
+	 * Navigation:
+	 *   history_nav_idx == -1: input_buf shows freshly-typed input.
+	 *   history_nav_idx ==  0: input_buf shows most-recent history entry.
+	 *   history_nav_idx ==  N: input_buf shows the Nth-from-newest entry.
+	 *
+	 * Thread-safety: not thread-safe; must be accessed with the GIL held.
+	 * Boxen REPL runs single-threaded; no other thread touches this struct. */
+	char  history[BOXEN_REPL_HISTORY_SIZE][BOXEN_REPL_INPUT_MAX];
+	int   history_count;          /* valid entries (0..BOXEN_REPL_HISTORY_SIZE) */
+	int   history_head;           /* next write index */
+	int   history_nav_idx;        /* -1 = not navigating; else nth-from-newest */
+	char  history_saved_input[BOXEN_REPL_INPUT_MAX]; /* preserved typing during nav */
 } boxen_repl_state_t;
 
 /* -------------------------------------------------------------------------
@@ -210,6 +245,16 @@ int boxen_repl_run_one_tick(boxen_repl_state_t *s, const boxen_event_t *ev);
  * Thread-safety: not thread-safe; must be called with the GIL held.
  */
 void boxen_repl_append_scrollback(boxen_repl_state_t *s, const char *line);
+
+/* 2026-06-09 JES #691 Phase C.0.1: history ring + persistence API. */
+void boxen_repl_history_append(boxen_repl_state_t *s, const char *line);
+void boxen_repl_history_load(boxen_repl_state_t *s);
+void boxen_repl_history_save(boxen_repl_state_t *s);
+#ifdef BOXEN_REPL_OMIT_MAIN
+/* Test-only seam: redirects ~/.frontier_history resolution to `path`.
+ * Pass NULL to clear the override and revert to $HOME. */
+void boxen_repl_set_history_path_for_test(const char *path);
+#endif
 
 /*
  * drain_stdout_into_scrollback -- read bytes from fd and append complete lines
