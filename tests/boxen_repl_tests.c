@@ -296,8 +296,9 @@ static void test_scrollback_ring_drops_oldest_when_full(void) {
  * not set up the stdout dup2 path -- tests must NOT have their own stdout
  * hijacked by default.  Only the drain helper is called here.
  * ---------------------------------------------------------------------- */
-#include <unistd.h>   /* pipe, write, close */
+#include <unistd.h>   /* pipe, write, close, getpid */
 #include <fcntl.h>    /* fcntl, F_SETFL, O_NONBLOCK */
+#include <sys/stat.h> /* stat, st_mode -- 2026-06-09 JES #691 Phase C.0.1 */
 
 static void test_stdout_capture_routes_to_scrollback(void) {
 	setup();
@@ -380,6 +381,267 @@ static void test_launch_transport_heap_alloc_and_teardown(void) {
 }
 
 /* -------------------------------------------------------------------------
+ * History test helpers
+ * 2026-06-09 JES #691 Phase C.0.1
+ * ---------------------------------------------------------------------- */
+static boxen_event_t make_up_event(void)   { return make_key_event(BOXEN_KEY_UP); }
+static boxen_event_t make_down_event(void) { return make_key_event(BOXEN_KEY_DOWN); }
+
+static char g_tmp_history_path[256];
+static void make_tmp_history_path(void) {
+	snprintf(g_tmp_history_path, sizeof(g_tmp_history_path),
+	         "/tmp/boxen_repl_test_history_%d.txt", (int)getpid());
+}
+
+/* -------------------------------------------------------------------------
+ * Test 8: test_history_up_arrow_loads_previous
+ *
+ * 2026-06-09 JES #691 Phase C.0.1: history ring navigation.
+ *
+ * Inject three entries into the history ring directly (oldest -> newest:
+ * "cmd_a", "cmd_b", "cmd_c").  Then simulate:
+ *   1. UP: input_buf shows "cmd_c" (most recent), nav_idx = 0.
+ *   2. UP: input_buf shows "cmd_b", nav_idx = 1.
+ *   3. UP: input_buf shows "cmd_a" (oldest), nav_idx = 2.
+ *   4. UP again: stays at "cmd_a" (clamp at oldest).
+ *   5. DOWN: input_buf shows "cmd_b", nav_idx = 1.
+ *   6. DOWN: input_buf shows "cmd_c", nav_idx = 0.
+ *   7. DOWN: input_buf restored to saved typing, nav_idx = -1.
+ * ---------------------------------------------------------------------- */
+static void test_history_up_arrow_loads_previous(void) {
+	/* Point history at a nonexistent file so state_init's load is a no-op.
+	 * Without this, a real ~/.frontier_history would shift history_head and
+	 * break the ring-index assertions below. */
+	boxen_repl_set_history_path_for_test("/tmp/boxen_repl_test_nosuchfile_nav.txt");
+	setup();
+
+	/* Pre-load 3 commands into the ring by calling the append function. */
+	boxen_repl_history_append(&g_state, "cmd_a");
+	boxen_repl_history_append(&g_state, "cmd_b");
+	boxen_repl_history_append(&g_state, "cmd_c");
+
+	/* Simulate user having typed "partial" into the input bar */
+	strncpy(g_state.input_buf, "partial", sizeof(g_state.input_buf) - 1);
+	g_state.input_cursor = (int)strlen("partial");
+
+	boxen_event_t up   = make_up_event();
+	boxen_event_t down = make_down_event();
+
+	/* UP x1: most recent = cmd_c */
+	boxen_repl_run_one_tick(&g_state, &up);
+	assert(strcmp(g_state.input_buf, "cmd_c") == 0);
+	assert(g_state.history_nav_idx == 0);
+
+	/* UP x2: cmd_b */
+	boxen_repl_run_one_tick(&g_state, &up);
+	assert(strcmp(g_state.input_buf, "cmd_b") == 0);
+	assert(g_state.history_nav_idx == 1);
+
+	/* UP x3: cmd_a (oldest) */
+	boxen_repl_run_one_tick(&g_state, &up);
+	assert(strcmp(g_state.input_buf, "cmd_a") == 0);
+	assert(g_state.history_nav_idx == 2);
+
+	/* UP x4: clamp at oldest -- still cmd_a */
+	boxen_repl_run_one_tick(&g_state, &up);
+	assert(strcmp(g_state.input_buf, "cmd_a") == 0);
+	assert(g_state.history_nav_idx == 2);
+
+	/* DOWN x1: cmd_b */
+	boxen_repl_run_one_tick(&g_state, &down);
+	assert(strcmp(g_state.input_buf, "cmd_b") == 0);
+	assert(g_state.history_nav_idx == 1);
+
+	/* DOWN x2: cmd_c */
+	boxen_repl_run_one_tick(&g_state, &down);
+	assert(strcmp(g_state.input_buf, "cmd_c") == 0);
+	assert(g_state.history_nav_idx == 0);
+
+	/* DOWN x3: restore saved typing */
+	boxen_repl_run_one_tick(&g_state, &down);
+	assert(strcmp(g_state.input_buf, "partial") == 0);
+	assert(g_state.history_nav_idx == -1);
+
+	boxen_repl_set_history_path_for_test(NULL);  /* clear override */
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * Test 9: test_history_persists_via_file_roundtrip
+ *
+ * 2026-06-09 JES #691 Phase C.0.1: on-disk persistence.
+ *
+ * 1. Write a file with "older1\nolder2\n" to g_tmp_history_path.
+ * 2. Point the history override seam at that path.
+ * 3. Call boxen_repl_history_load: ring should contain older1 then older2.
+ * 4. Append "session_cmd" to the ring.
+ * 5. Call boxen_repl_history_save: merged file written.
+ * 6. Re-read the file and assert it contains "older1", "older2",
+ *    "session_cmd" in that order (older entries first, session entry last).
+ * 7. Clean up temp file.
+ * ---------------------------------------------------------------------- */
+static void test_history_persists_via_file_roundtrip(void) {
+	make_tmp_history_path();
+	/* Remove any leftover from a prior run */
+	(void)remove(g_tmp_history_path);
+
+	/* Step 1: write pre-existing history file */
+	FILE *fout = fopen(g_tmp_history_path, "w");
+	assert(fout != NULL);
+	fprintf(fout, "older1\n");
+	fprintf(fout, "older2\n");
+	fclose(fout);
+
+	/* Step 2: redirect history path to temp file BEFORE setup() so that
+	 * boxen_repl_state_init's load reads from our controlled file (not
+	 * from the real ~/.frontier_history, which would give unpredictable
+	 * history_count). */
+	boxen_repl_set_history_path_for_test(g_tmp_history_path);
+
+	setup();
+
+	/* Step 3: after setup, ring should have 2 entries from the file */
+	assert(g_state.history_count == 2);
+
+	/* Step 4: append a session command */
+	boxen_repl_history_append(&g_state, "session_cmd");
+	assert(g_state.history_count == 3);
+
+	/* Step 5: save -- merge and write back */
+	boxen_repl_history_save(&g_state);
+
+	/* Step 5a: verify file was created with mode 0600 (P1-1 regression guard).
+	 * 2026-06-09 JES #691 Phase C.0.1 */
+	{
+		struct stat st;
+		assert(stat(g_tmp_history_path, &st) == 0);
+		assert((st.st_mode & 0777) == 0600);
+	}
+
+	/* Step 6: re-read and verify order: older1, older2, session_cmd */
+	FILE *fin = fopen(g_tmp_history_path, "r");
+	assert(fin != NULL);
+
+	char lines[10][256];
+	int  line_count = 0;
+	while (line_count < 10 && fgets(lines[line_count], sizeof(lines[0]), fin)) {
+		/* Strip trailing newline */
+		size_t len = strlen(lines[line_count]);
+		if (len > 0 && lines[line_count][len - 1] == '\n') {
+			lines[line_count][len - 1] = '\0';
+		}
+		line_count++;
+	}
+	fclose(fin);
+
+	assert(line_count == 3);
+	assert(strcmp(lines[0], "older1")      == 0);
+	assert(strcmp(lines[1], "older2")      == 0);
+	assert(strcmp(lines[2], "session_cmd") == 0);
+
+	/* Step 7: clear override + clean up */
+	boxen_repl_set_history_path_for_test(NULL);
+	(void)remove(g_tmp_history_path);
+
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * Test 10: test_history_load_drops_overlong_lines
+ *
+ * 2026-06-09 JES #691 Phase C.0.1 P1-2 regression guard.
+ *
+ * A 2KB entry written by linenoise exceeds BOXEN_REPL_INPUT_MAX (1024).
+ * Without the fix, fgets would split it into two ring entries and both
+ * would be saved back, permanently corrupting the shared history file.
+ * With the fix, overlong lines are drained and skipped entirely.
+ *
+ * This test writes a file with:
+ *   - one 2048-char line  (overlong: must be dropped)
+ *   - one normal "ok_cmd" (must be kept)
+ *
+ * After load: history_count == 1 and the entry is "ok_cmd".
+ * ---------------------------------------------------------------------- */
+static void test_history_load_drops_overlong_lines(void) {
+	char tmp_path[256];
+	snprintf(tmp_path, sizeof(tmp_path),
+	         "/tmp/boxen_repl_test_overlong_%d.txt", (int)getpid());
+	(void)remove(tmp_path);
+
+	FILE *fout = fopen(tmp_path, "w");
+	assert(fout != NULL);
+	/* Write a 2048-char line (no newline until the very end). */
+	for (int i = 0; i < 2048; i++) fputc('x', fout);
+	fputc('\n', fout);
+	/* Write a normal command that must survive. */
+	fprintf(fout, "ok_cmd\n");
+	fclose(fout);
+
+	boxen_repl_set_history_path_for_test(tmp_path);
+	setup();
+
+	/* Overlong line dropped; only "ok_cmd" loaded. */
+	assert(g_state.history_count == 1);
+	/* The one entry in the ring must be "ok_cmd". */
+	int idx = (g_state.history_head - 1 + BOXEN_REPL_HISTORY_SIZE)
+	          % BOXEN_REPL_HISTORY_SIZE;
+	assert(strcmp(g_state.history[idx], "ok_cmd") == 0);
+
+	boxen_repl_set_history_path_for_test(NULL);
+	(void)remove(tmp_path);
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * Test 11 (P0 regression guard): test_history_down_arrow_preserves_input_when_empty
+ *
+ * 2026-06-09 JES #691 Phase C.0.1 P0 regression guard.
+ *
+ * First-run scenario: no history file, so history_load is a no-op and
+ * history_count == 0.  Before the fix, boxen_repl_state_init left
+ * history_nav_idx == 0 (memset zero) instead of -1.  Pressing DOWN
+ * before any append caused history_nav_down to skip its early-return
+ * guard (nav_idx == 0, not -1), take the "restore saved input" branch,
+ * copy history_saved_input (all zeros from memset) into input_buf, and
+ * wipe whatever the user had typed.
+ *
+ * This test verifies:
+ *   1. After init with no history file, history_nav_idx == -1.
+ *   2. Typing "hello" works normally.
+ *   3. Pressing DOWN does NOT clear input_buf.
+ *   4. history_nav_idx remains -1 after the spurious DOWN.
+ * ---------------------------------------------------------------------- */
+static void test_history_down_arrow_preserves_input_when_empty(void) {
+	/* Point at a file that does not exist -- load is a silent no-op. */
+	boxen_repl_set_history_path_for_test(
+	    "/tmp/boxen_repl_test_nosuchfile_p0_down.txt");
+	setup();
+
+	/* After init with no history file: count == 0, nav_idx must be -1. */
+	assert(g_state.history_count == 0);
+	assert(g_state.history_nav_idx == -1);
+
+	/* Type "hello" one char at a time. */
+	const char *word = "hello";
+	for (const char *p = word; *p != '\0'; p++) {
+		boxen_event_t ev = make_char_event(*p);
+		boxen_repl_run_one_tick(&g_state, &ev);
+	}
+	assert(strcmp(g_state.input_buf, "hello") == 0);
+
+	/* Press DOWN -- must be a no-op when history is empty and nav == -1. */
+	boxen_event_t down = make_down_event();
+	boxen_repl_run_one_tick(&g_state, &down);
+
+	/* Input must be preserved. */
+	assert(strcmp(g_state.input_buf, "hello") == 0);
+	assert(g_state.history_nav_idx == -1);
+
+	boxen_repl_set_history_path_for_test(NULL);
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
  * main
  * ---------------------------------------------------------------------- */
 int main(void) {
@@ -392,6 +654,10 @@ int main(void) {
 	TR_RUN(test_scrollback_ring_drops_oldest_when_full);
 	TR_RUN(test_stdout_capture_routes_to_scrollback);
 	TR_RUN(test_launch_transport_heap_alloc_and_teardown);
+	TR_RUN(test_history_up_arrow_loads_previous);
+	TR_RUN(test_history_persists_via_file_roundtrip);
+	TR_RUN(test_history_load_drops_overlong_lines);
+	TR_RUN(test_history_down_arrow_preserves_input_when_empty);
 
 	TR_SUMMARY();
 	return TR_EXIT_CODE();
