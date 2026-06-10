@@ -973,17 +973,33 @@ static int boxen_outline_walk_nodes(hdloutlinerecord houtline,
 
 		/*
 		 * Read node fields.
-		 * tyheadrecord fields (op.h:71-131):
-		 *   headlinkdown  hdlheadrecord  -- first child
-		 *   headlinkright hdlheadrecord  -- next sibling
-		 *   headlevel     short          -- indent level
-		 *   flexpanded    boolean:1
-		 *   flbreakpoint  boolean:1
-		 *   flcomment     boolean:1
-		 *   headstring    Handle         -- text (getheadstring -> bigstring)
+		 * tyheadrecord fields (op.h:71-131) per the LEGACY data model
+		 * (see Common/source/opops.c:201-213 and opstructure.c:1825-1829):
+		 *
+		 *   headlinkup    -- previous sibling (or self if first in list)
+		 *   headlinkdown  -- next sibling     (or self if last in list)
+		 *   headlinkleft  -- parent           (or self if top-level)
+		 *   headlinkright -- FIRST CHILD      (or self if no children)
+		 *   headlevel     -- indent level (canonical)
+		 *   flexpanded    -- bool:1
+		 *   flbreakpoint  -- bool:1
+		 *   flcomment     -- bool:1
+		 *   headstring    -- Handle (text)
+		 *
+		 * 2026-06-10 JES #691 C.1.x: corrected from the initial C.1
+		 * implementation which had headlinkright/headlinkdown swapped.
+		 * The bug caused siblings to be walked as if they were children
+		 * (wrong indent / progressively deeper level) -- visible in the
+		 * startup script /edit screenshot from PR #759 manual testing.
+		 *
+		 * "Self-pointer means none" sentinel: a leaf node's headlinkright
+		 * is itself; a last-in-list node's headlinkdown is itself.  Always
+		 * check `link != hnode` before treating it as a real pointer.
 		 */
-		hdlheadrecord hfirst_child = (**hnode).headlinkdown;
-		hdlheadrecord hnext_sibling = (**hnode).headlinkright;
+		hdlheadrecord hfirst_child  = (**hnode).headlinkright;
+		hdlheadrecord hnext_sibling = (**hnode).headlinkdown;
+		if (hfirst_child  == hnode) hfirst_child  = nil;
+		if (hnext_sibling == hnode) hnext_sibling = nil;
 		boolean       fexpanded    = (**hnode).flexpanded;
 		boolean       fbreakpoint  = (**hnode).flbreakpoint;
 		boolean       fcomment     = (**hnode).flcomment;
