@@ -347,6 +347,35 @@ void boxen_window_set_modal(boxen_window_t *win, bool modal);
 void boxen_window_invalidate(boxen_window_t *win);
 
 /* -------------------------------------------------------------------------
+ * 2026-06-10 JES #691 C.1.x: application-global key pre-dispatch.
+ *
+ * Application-level keys like Ctrl-C (quit) and `/` (slash-menu palette)
+ * should reach the REPL even when an editor window has focus.  Otherwise
+ * the user types Ctrl-C in an outline editor and nothing happens because
+ * the editor's input_fn doesn't recognize it.
+ *
+ * Usage: the application designates one window as the "global key target"
+ * (typically the REPL's input window) and a predicate that decides which
+ * key events qualify as global.  Before dispatching a key event to the
+ * focused window (or a modal), boxen_dispatch_event checks the predicate;
+ * if it returns true, the event goes to the global target instead.
+ *
+ * Mouse events are NEVER routed to the global target -- they always go
+ * to the at-point window or focused window per the standard rules.
+ *
+ * Pass NULL for either to clear the registration.  Reading both as NULL
+ * (the default) disables global pre-dispatch entirely.
+ *
+ * Threading: like all boxen state, this is GIL-protected at the
+ * application layer.  No internal locking.
+ * ---------------------------------------------------------------------- */
+
+typedef bool (*boxen_global_key_filter_fn)(const boxen_event_t *ev);
+
+void boxen_set_global_key_handler(boxen_window_t *target,
+                                  boxen_global_key_filter_fn filter);
+
+/* -------------------------------------------------------------------------
  * Draw callbacks (A.3+)
  * ---------------------------------------------------------------------- */
 

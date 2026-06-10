@@ -112,6 +112,12 @@ static int                    g_window_count = 0;
 static boxen_window_t        *g_focused_window = NULL;
 static bool                   g_should_quit     = false;
 
+/* 2026-06-10 JES #691 C.1.x: application-global key pre-dispatch.
+ * Storage for boxen_set_global_key_handler.  See boxen.h for rationale.
+ * Both NULL means "no global key routing". */
+static boxen_window_t              *g_global_key_target = NULL;
+static boxen_global_key_filter_fn   g_global_key_filter = NULL;
+
 /* -------------------------------------------------------------------------
  * A.4 drag/resize state machine
  *
@@ -380,6 +386,15 @@ void boxen_window_close(boxen_window_t *win) {
 	if (g_drag.win == win) {
 		g_drag.state = DRAG_NONE;
 		g_drag.win   = NULL;
+	}
+
+	/* 2026-06-10 JES #691 C.1.x: clear global key target if this window
+	 * was registered as it.  Same UAF-prevention rationale as focus and
+	 * drag above -- the next boxen_dispatch_event would deref freed memory
+	 * if we routed an event to a dead target. */
+	if (g_global_key_target == win) {
+		g_global_key_target = NULL;
+		g_global_key_filter = NULL;
 	}
 
 	win->magic = 0;  /* Mark as dead BEFORE freeing so a use-after-free read
@@ -825,6 +840,27 @@ void boxen_window_focus(boxen_window_t *win) {
 void boxen_window_set_modal(boxen_window_t *win, bool modal) {
 	if (find_live_window_index(win) < 0) return;
 	win->modal = modal;
+}
+
+/* -------------------------------------------------------------------------
+ * 2026-06-10 JES #691 C.1.x: application-global key pre-dispatch.
+ *
+ * Setter for g_global_key_target / g_global_key_filter (declared at the
+ * top of this file alongside g_focused_window).  See boxen.h for
+ * rationale.  The dispatch check lives inside boxen_dispatch_event below.
+ * ---------------------------------------------------------------------- */
+
+void boxen_set_global_key_handler(boxen_window_t *target,
+                                  boxen_global_key_filter_fn filter) {
+	/* If a target was passed, validate it is live.  If invalid, treat both
+	 * as a clear (NULL/NULL) -- safer than leaving a dangling target. */
+	if (target != NULL && find_live_window_index(target) < 0) {
+		g_global_key_target = NULL;
+		g_global_key_filter = NULL;
+		return;
+	}
+	g_global_key_target = target;
+	g_global_key_filter = filter;
 }
 
 /* boxen_window_invalidate: in the A.3 always-redraw model, every present()
@@ -1313,7 +1349,25 @@ void boxen_dispatch_event(const boxen_event_t *ev) {
 			return;
 		}
 
-		target = (modal_win != NULL) ? modal_win : g_focused_window;
+		/* 2026-06-10 JES #691 C.1.x: application-global key pre-dispatch.
+		 *
+		 * If a global key target + filter are registered and the filter
+		 * accepts this event, route it to the global target instead of
+		 * the focused window.  Modal windows still win over globals
+		 * because modal semantics are stronger (e.g. a confirmation
+		 * dialog should not have Ctrl-C exit the app).
+		 *
+		 * If the global target was the focused window, this is a no-op
+		 * (same destination either way); we don't bother optimizing the
+		 * lookup. */
+		if (modal_win == NULL &&
+		    g_global_key_target != NULL &&
+		    g_global_key_filter != NULL &&
+		    g_global_key_filter(ev)) {
+			target = g_global_key_target;
+		} else {
+			target = (modal_win != NULL) ? modal_win : g_focused_window;
+		}
 		break;
 
 	case BOXEN_EV_MOUSE:
