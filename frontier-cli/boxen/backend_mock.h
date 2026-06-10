@@ -66,6 +66,12 @@ const boxen_mock_cell_t *boxen_mock_cell_at(int x, int y);
  * inputs will not match correctly -- pass ASCII literals only. */
 bool boxen_mock_has_text(const char *s);
 
+/* 2026-06-10 JES #691 C.1.x: returns true if the given Unicode codepoint
+ * appears in any cell of the composited frame.  Use this instead of
+ * boxen_mock_has_text when checking for non-ASCII glyphs (e.g. wedge
+ * triangles, bullet, box-drawing). */
+bool boxen_mock_has_codepoint(uint32_t cp);
+
 /* -------------------------------------------------------------------------
  * Cursor inspection (A.7+)
  *

@@ -35,10 +35,17 @@
  * ---------------------------------------------------------------------- */
 
 /* Maximum nodes in the editor's flat display list.
- * C.1 renders outlines up to this depth.  An outline exceeding this cap
- * renders the first BOXEN_OUTLINE_MAX_NODES visible nodes; deeper nodes
- * are silently omitted.  Increase in a later milestone if needed. */
-#define BOXEN_OUTLINE_MAX_NODES 4096
+ *
+ * C.1 renders outlines up to this size.  An outline exceeding this cap
+ * renders the first BOXEN_OUTLINE_MAX_NODES visible nodes; further nodes
+ * are silently omitted with a one-shot log_warn.
+ *
+ * 2026-06-09 JES #691 Phase C.1.x: bumped from 4096 to 16384 per JES.  At
+ * sizeof(boxen_outline_node_t) ~= 545 bytes, the state struct's nodes[]
+ * array is ~8.5 MB -- well within reason for a per-window heap alloc on
+ * any modern system, and gives headroom for real Frontier.root outlines
+ * which can easily exceed 4K visible nodes when expanded. */
+#define BOXEN_OUTLINE_MAX_NODES 16384
 
 /* Maximum bytes for a single headline's text (display, NUL-terminated). */
 #define BOXEN_OUTLINE_TEXT_MAX 512

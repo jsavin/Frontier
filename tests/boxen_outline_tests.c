@@ -548,9 +548,10 @@ static void test_checkbox_attribute_renders_box(void) {
 	 * boxen_mock_has_text scans the composited frame for any ASCII substring. */
 	assert(boxen_mock_has_text("[x]"));
 	assert(boxen_mock_has_text("[ ]"));
-	/* Leaf marker: the draw function renders " o " for a plain leaf.
-	 * We check for the 'o' character surrounded by spaces. */
-	assert(boxen_mock_has_text(" o "));
+	/* 2026-06-10 JES #691 C.1.x: leaf marker is now U+25B7 (WHITE
+	 * RIGHT-POINTING TRIANGLE), multi-byte UTF-8.  Use the codepoint
+	 * scanner instead of has_text (which is ASCII-only). */
+	assert(boxen_mock_has_codepoint(0x25B7));
 
 	boxen_outline_state_teardown(&cs);
 	boxen_shutdown();
