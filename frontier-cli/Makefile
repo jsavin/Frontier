@@ -125,6 +125,7 @@ CLI_SOURCES = \
     ut_scan.c \
     debugger_tui.c \
     boxen_repl.c \
+    boxen_completion_popup.c \
     boxen_outline.c
 
 # cJSON (vendored JSON parser)

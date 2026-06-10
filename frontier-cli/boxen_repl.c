@@ -31,6 +31,7 @@
 #include "boxen_repl.h"
 #include "boxen_repl_internal.h"
 #include "boxen_outline.h"  /* boxen_outline_open, boxen_outline_close_all -- 2026-06-09 JES Phase C.1 #691 */
+#include "boxen_completion_popup.h"
 
 #include "boxen/boxen.h"
 #include "../Common/headers/logging.h"
@@ -727,6 +728,52 @@ static void on_input(boxen_window_t *win, const boxen_event_t *ev,
 		return;
 	}
 
+	/* 2026-06-09 JES #691 Phase C.0.2: popup-mode key routing.
+	 *
+	 * When a completion popup is open, intercept navigation/accept/dismiss keys
+	 * before the normal handlers see them.  Any key not handled here closes the
+	 * popup and falls through to normal processing.
+	 *
+	 * Key contract (D5 from REPL_SCHISM_EXECUTION_PLAN.md C.0.2):
+	 *   TAB / DOWN  -> navigate +1 (wrap)
+	 *   UP          -> navigate -1 (wrap)
+	 *   ENTER / CTRL_M -> accept selection, replace input_buf, close popup
+	 *   ESCAPE      -> dismiss popup, input_buf unchanged
+	 *   Any other   -> close popup, fall through to normal handler
+	 */
+	if (s->completion_popup != NULL) {
+		if (ev->key.key == BOXEN_KEY_TAB || ev->key.key == BOXEN_KEY_DOWN) {
+			boxen_completion_popup_navigate(s->completion_popup, +1);
+			return;
+		}
+		if (ev->key.key == BOXEN_KEY_UP) {
+			boxen_completion_popup_navigate(s->completion_popup, -1);
+			return;
+		}
+		if (ev->key.key == BOXEN_KEY_ENTER || ev->key.key == BOXEN_KEY_CTRL_M) {
+			const char *sel = boxen_completion_popup_selected(s->completion_popup);
+			if (sel != NULL) {
+				snprintf(s->input_buf, sizeof(s->input_buf), "%s", sel);
+				s->input_cursor = (int)strlen(s->input_buf);
+			}
+			boxen_completion_popup_close(s->completion_popup);
+			s->completion_popup = NULL;
+			if (s->input_win != NULL) boxen_window_invalidate(s->input_win);
+			return;
+		}
+		if (ev->key.key == BOXEN_KEY_ESCAPE) {
+			boxen_completion_popup_close(s->completion_popup);
+			s->completion_popup = NULL;
+			if (s->input_win != NULL) boxen_window_invalidate(s->input_win);
+			return;
+		}
+		/* Any other key: close popup and fall through to normal handling. */
+		boxen_completion_popup_close(s->completion_popup);
+		s->completion_popup = NULL;
+		if (s->input_win != NULL) boxen_window_focus(s->input_win);
+		/* fall through */
+	}
+
 	/* Escape: clear input line (also reset history nav state) */
 	if (ev->key.key == BOXEN_KEY_ESCAPE) {
 		s->input_buf[0]           = '\0';
@@ -750,6 +797,44 @@ static void on_input(boxen_window_t *win, const boxen_event_t *ev,
 	}
 	if (ev->key.key == BOXEN_KEY_DOWN) {
 		history_nav_down(s);
+		return;
+	}
+
+	/* 2026-06-09 JES #691 Phase C.0.2: Tab completion.
+	 *
+	 * Call the completion hook (if set).  Zero candidates: silent no-op.
+	 * One candidate: replace input_buf inline.
+	 * Two or more: open a completion popup above the input bar. */
+	if (ev->key.key == BOXEN_KEY_TAB) {
+		if (s->completion_hook == NULL) return;
+
+		char candidates[BOXEN_COMPLETION_MAX_CANDIDATES][BOXEN_COMPLETION_CANDIDATE_MAX];
+		int count = s->completion_hook(s->input_buf,
+		                               (size_t)s->input_cursor,
+		                               candidates,
+		                               BOXEN_COMPLETION_MAX_CANDIDATES);
+		if (count <= 0) return;  /* silent no-op */
+
+		if (count == 1) {
+			/* Single candidate: inline replace. */
+			snprintf(s->input_buf, sizeof(s->input_buf), "%s", candidates[0]);
+			s->input_cursor = (int)strlen(s->input_buf);
+			if (s->input_win != NULL) boxen_window_invalidate(s->input_win);
+			return;
+		}
+
+		/* Multiple candidates: open popup above the input bar. */
+		int sw = 0, sh = 0;
+		boxen_get_screen_size(&sw, &sh);
+
+		const char *ptrs[BOXEN_COMPLETION_MAX_CANDIDATES];
+		for (int i = 0; i < count; i++) ptrs[i] = candidates[i];
+
+		s->completion_popup = boxen_completion_popup_open(
+			ptrs, count,
+			0,      /* anchor_x */
+			sh - 2, /* anchor_y: the input bar row */
+			sw, sh);
 		return;
 	}
 
@@ -811,6 +896,8 @@ void boxen_repl_state_init(boxen_repl_state_t *s, int tw, int th) {
 #ifndef BOXEN_REPL_OMIT_MAIN
 	s->slash_dispatch_hook = boxen_repl_real_slash_dispatch;
 	s->repl_eval_hook      = boxen_repl_real_eval;
+	/* 2026-06-09 JES #691 Phase C.0.2: wire completion hook to production impl. */
+	s->completion_hook     = boxen_repl_real_completion;
 #endif
 
 	/* Stdout capture fields: -1 means not active (same sentinel as open(2)
@@ -829,6 +916,13 @@ void boxen_repl_state_init(boxen_repl_state_t *s, int tw, int th) {
 }
 
 void boxen_repl_state_teardown(boxen_repl_state_t *s) {
+	/* 2026-06-09 JES #691 Phase C.0.2: close any open completion popup before
+	 * the windows it overlaps are destroyed.  Normal exit paths close it via
+	 * on_input key handlers; this guard handles crash/abort paths. */
+	if (s->completion_popup != NULL) {
+		boxen_completion_popup_close(s->completion_popup);
+		s->completion_popup = NULL;
+	}
 	if (s->footer_win != NULL) { boxen_window_close(s->footer_win); s->footer_win = NULL; }
 	if (s->input_win  != NULL) { boxen_window_close(s->input_win);  s->input_win  = NULL; }
 	if (s->output_win != NULL) { boxen_window_close(s->output_win); s->output_win = NULL; }
@@ -979,6 +1073,7 @@ void drain_stdout_into_scrollback(boxen_repl_state_t *s, int fd) {
 #include "headless_threading.h"
 #include "repl_eval.h"
 #include "repl.h"                        /* repl_install_verb_host, repl_uninstall_verb_host, repl_reset_exit_flag */
+#include "repl_completion.h"             /* repl_complete_slash_command_path, repl_slash_commands_list */
 #include "../Common/headers/strings.h"   /* copyptocstring */
 #include <pthread.h>
 
@@ -1036,6 +1131,89 @@ bool boxen_repl_real_eval(const char *expr,
 	}
 
 	return (bool)ok;
+}
+
+/* -------------------------------------------------------------------------
+ * 2026-06-09 JES #691 Phase C.0.2: boxen_repl_real_completion.
+ *
+ * Production completion hook for the boxen REPL.  Mirrors the dispatch
+ * logic from repl.c::linenoise_completion_callback (lines 2072+) but fills
+ * a candidates array instead of calling linenoiseAddCompletion.
+ *
+ * For slash-command lines the hook does:
+ *   - "/jump <path>" or "/list <path>" -> delegate to repl_complete_slash_command_path
+ *   - "/<prefix>" -> prefix-match against repl_slash_commands_list
+ *   - "/" alone -> enumerate all slash commands
+ * For non-slash lines -> delegate to repl_complete_slash_command_path (ODB paths).
+ *
+ * 2026-06-09 JES #691 Phase C.0.2: scope note.
+ *   C.0.2 implements slash command + ODB path completion only.  The legacy
+ *   linenoise REPL (repl.c) provides richer non-slash completion: keyword
+ *   expansion, @-address context, verb-call context, roottable + systemtable
+ *   enumeration.  That richer path is deliberately out of scope for C.0.2 --
+ *   see planning/phase_c/REPL_SCHISM_EXECUTION_PLAN.md Section 2.
+ *   Follow-up: richer non-slash completion to be filed as a future enhancement.
+ *
+ * Returns the number of candidates written (0 = no completions available).
+ * ---------------------------------------------------------------------- */
+
+/* Collector context for the add-callback bridge below. */
+typedef struct {
+	char (*cands)[BOXEN_COMPLETION_CANDIDATE_MAX];
+	int   count;
+	int   max;
+} bc_coll_t;
+
+static void bc_add(void *add_ctx, const char *s) {
+	bc_coll_t *c = (bc_coll_t *)add_ctx;
+	if (c->count >= c->max) return;
+	strncpy(c->cands[c->count], s, BOXEN_COMPLETION_CANDIDATE_MAX - 1);
+	c->cands[c->count][BOXEN_COMPLETION_CANDIDATE_MAX - 1] = '\0';
+	c->count++;
+}
+
+int boxen_repl_real_completion(const char *buf, size_t buf_len,
+                               char candidates[][BOXEN_COMPLETION_CANDIDATE_MAX],
+                               int max_candidates)
+{
+	if (buf == NULL || candidates == NULL || max_candidates <= 0) return 0;
+
+	bc_coll_t coll;
+	coll.cands = candidates;
+	coll.count = 0;
+	coll.max   = max_candidates;
+
+	if (buf_len > 0 && buf[0] == '/') {
+		/* "/jump <path>" or "/list <path>" -- complete the path argument. */
+		if (buf_len >= 6) {
+			if (strncasecmp(buf, "/jump ", 6) == 0) {
+				repl_complete_slash_command_path(buf, buf_len, 6, bc_add, &coll);
+				return coll.count;
+			}
+			if (strncasecmp(buf, "/list ", 6) == 0) {
+				repl_complete_slash_command_path(buf, buf_len, 6, bc_add, &coll);
+				return coll.count;
+			}
+		}
+
+		/* Regular slash-command prefix completion: "/" + optional prefix. */
+		const char *cmd_prefix = buf + 1;
+		size_t prefix_len = buf_len - 1;
+
+		for (int i = 0; repl_slash_commands_list[i] != NULL && coll.count < max_candidates; i++) {
+			const char *cmd = repl_slash_commands_list[i];
+			if (strncasecmp(cmd, cmd_prefix, prefix_len) == 0) {
+				char completion[BOXEN_COMPLETION_CANDIDATE_MAX];
+				snprintf(completion, sizeof(completion), "/%s ", cmd);
+				bc_add(&coll, completion);
+			}
+		}
+		return coll.count;
+	}
+
+	/* Non-slash: ODB path completion. */
+	repl_complete_slash_command_path(buf, buf_len, 0, bc_add, &coll);
+	return coll.count;
 }
 
 /* -------------------------------------------------------------------------

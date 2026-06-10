@@ -642,6 +642,184 @@ static void test_history_down_arrow_preserves_input_when_empty(void) {
 }
 
 /* -------------------------------------------------------------------------
+ * 2026-06-09 JES #691 Phase C.0.2: completion mock hooks.
+ *
+ * Three static hooks that inject synthetic completion candidates so the
+ * completion tests never need to link the full Frontier ODB runtime.
+ *
+ * Signature matches repl_completion_fn_t:
+ *   int (*)(const char *buf, size_t buf_len,
+ *           char candidates[][BOXEN_COMPLETION_CANDIDATE_MAX], int max_candidates)
+ * ---------------------------------------------------------------------- */
+#include "../frontier-cli/boxen_completion_popup.h"
+
+static int hook_completion_single(const char *buf, size_t bl,
+                                  char cand[][BOXEN_COMPLETION_CANDIDATE_MAX], int max) {
+	(void)bl; (void)max;
+	if (strncmp(buf, "/h", 2) == 0) {
+		strcpy(cand[0], "/help");
+		return 1;
+	}
+	return 0;
+}
+
+static int hook_completion_multi(const char *buf, size_t bl,
+                                 char cand[][BOXEN_COMPLETION_CANDIDATE_MAX], int max) {
+	(void)bl; (void)max;
+	if (strcmp(buf, "/") == 0) {
+		strcpy(cand[0], "/help");
+		strcpy(cand[1], "/jump");
+		strcpy(cand[2], "/list");
+		return 3;
+	}
+	return 0;
+}
+
+static int hook_completion_odb(const char *buf, size_t bl,
+                               char cand[][BOXEN_COMPLETION_CANDIDATE_MAX], int max) {
+	(void)bl; (void)max;
+	if (strncmp(buf, "system.te", 9) == 0) {
+		strcpy(cand[0], "system.test");
+		return 1;
+	}
+	return 0;
+}
+
+/* -------------------------------------------------------------------------
+ * Test 12: test_tab_completes_single_slash_command
+ *
+ * 2026-06-09 JES #691 Phase C.0.2.
+ *
+ * Type "/h", press Tab with hook_completion_single wired.  The hook
+ * returns exactly one candidate ("/help"), so the REPL should replace
+ * input_buf inline (no popup opened).
+ * ---------------------------------------------------------------------- */
+static void test_tab_completes_single_slash_command(void) {
+	setup();
+	g_state.completion_hook = hook_completion_single;
+
+	/* Type "/h" */
+	boxen_event_t ev_slash = make_char_event('/');
+	boxen_event_t ev_h     = make_char_event('h');
+	boxen_repl_run_one_tick(&g_state, &ev_slash);
+	boxen_repl_run_one_tick(&g_state, &ev_h);
+	assert(strcmp(g_state.input_buf, "/h") == 0);
+
+	/* Press Tab */
+	boxen_event_t ev_tab = make_key_event(BOXEN_KEY_TAB);
+	boxen_repl_run_one_tick(&g_state, &ev_tab);
+
+	/* Single candidate: inline replace, no popup. */
+	assert(strcmp(g_state.input_buf, "/help") == 0);
+	assert(g_state.input_cursor == 5);
+	assert(g_state.completion_popup == NULL);
+
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * Test 13: test_tab_opens_popup_with_multiple_candidates
+ *
+ * 2026-06-09 JES #691 Phase C.0.2.
+ *
+ * Type "/", press Tab with hook_completion_multi wired.  The hook returns
+ * 3 candidates, so a completion popup should be open.  input_buf stays "/".
+ * ---------------------------------------------------------------------- */
+static void test_tab_opens_popup_with_multiple_candidates(void) {
+	setup();
+	g_state.completion_hook = hook_completion_multi;
+
+	/* Type "/" */
+	boxen_event_t ev_slash = make_char_event('/');
+	boxen_repl_run_one_tick(&g_state, &ev_slash);
+	assert(strcmp(g_state.input_buf, "/") == 0);
+
+	/* Press Tab */
+	boxen_event_t ev_tab = make_key_event(BOXEN_KEY_TAB);
+	boxen_repl_run_one_tick(&g_state, &ev_tab);
+
+	/* Multiple candidates: popup should be open. */
+	assert(g_state.completion_popup != NULL);
+	assert(boxen_completion_popup_is_open(g_state.completion_popup));
+	assert(boxen_completion_popup_count(g_state.completion_popup) == 3);
+
+	/* input_buf should be unchanged. */
+	assert(strcmp(g_state.input_buf, "/") == 0);
+
+	/* Close popup to avoid leak in teardown */
+	boxen_completion_popup_close(g_state.completion_popup);
+	g_state.completion_popup = NULL;
+
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * Test 14: test_tab_completes_odb_path_prefix
+ *
+ * 2026-06-09 JES #691 Phase C.0.2.
+ *
+ * Type "system.te", press Tab with hook_completion_odb wired.  Single
+ * candidate "system.test" -> inline replace, no popup.
+ * ---------------------------------------------------------------------- */
+static void test_tab_completes_odb_path_prefix(void) {
+	setup();
+	g_state.completion_hook = hook_completion_odb;
+
+	/* Type "system.te" character by character */
+	const char *prefix = "system.te";
+	for (const char *p = prefix; *p != '\0'; p++) {
+		boxen_event_t ev = make_char_event(*p);
+		boxen_repl_run_one_tick(&g_state, &ev);
+	}
+	assert(strcmp(g_state.input_buf, "system.te") == 0);
+
+	/* Press Tab */
+	boxen_event_t ev_tab = make_key_event(BOXEN_KEY_TAB);
+	boxen_repl_run_one_tick(&g_state, &ev_tab);
+
+	/* Single candidate: inline replace, no popup. */
+	assert(strcmp(g_state.input_buf, "system.test") == 0);
+	assert(g_state.input_cursor == 11);
+	assert(g_state.completion_popup == NULL);
+
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * Test 15: test_escape_dismisses_popup_without_accept
+ *
+ * 2026-06-09 JES #691 Phase C.0.2.
+ *
+ * Open a multi-candidate popup (same as test 13), then press Escape.
+ * The popup should close and input_buf should remain "/".
+ * ---------------------------------------------------------------------- */
+static void test_escape_dismisses_popup_without_accept(void) {
+	setup();
+	g_state.completion_hook = hook_completion_multi;
+
+	/* Type "/" and Tab to open the popup */
+	boxen_event_t ev_slash = make_char_event('/');
+	boxen_event_t ev_tab   = make_key_event(BOXEN_KEY_TAB);
+	boxen_repl_run_one_tick(&g_state, &ev_slash);
+	boxen_repl_run_one_tick(&g_state, &ev_tab);
+
+	/* Popup must be open first */
+	assert(g_state.completion_popup != NULL);
+
+	/* Press Escape while popup open */
+	boxen_event_t ev_esc = make_key_event(BOXEN_KEY_ESCAPE);
+	boxen_repl_run_one_tick(&g_state, &ev_esc);
+
+	/* Popup should be closed */
+	assert(g_state.completion_popup == NULL);
+
+	/* input_buf must still be "/" */
+	assert(strcmp(g_state.input_buf, "/") == 0);
+
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
  * main
  * ---------------------------------------------------------------------- */
 int main(void) {
@@ -658,6 +836,10 @@ int main(void) {
 	TR_RUN(test_history_persists_via_file_roundtrip);
 	TR_RUN(test_history_load_drops_overlong_lines);
 	TR_RUN(test_history_down_arrow_preserves_input_when_empty);
+	TR_RUN(test_tab_completes_single_slash_command);
+	TR_RUN(test_tab_opens_popup_with_multiple_candidates);
+	TR_RUN(test_tab_completes_odb_path_prefix);
+	TR_RUN(test_escape_dismisses_popup_without_accept);
 
 	TR_SUMMARY();
 	return TR_EXIT_CODE();
