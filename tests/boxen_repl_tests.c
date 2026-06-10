@@ -298,6 +298,7 @@ static void test_scrollback_ring_drops_oldest_when_full(void) {
  * ---------------------------------------------------------------------- */
 #include <unistd.h>   /* pipe, write, close, getpid */
 #include <fcntl.h>    /* fcntl, F_SETFL, O_NONBLOCK */
+#include <sys/stat.h> /* stat, st_mode -- 2026-06-09 JES #691 Phase C.0.1 */
 
 static void test_stdout_capture_routes_to_scrollback(void) {
 	setup();
@@ -509,6 +510,14 @@ static void test_history_persists_via_file_roundtrip(void) {
 	/* Step 5: save -- merge and write back */
 	boxen_repl_history_save(&g_state);
 
+	/* Step 5a: verify file was created with mode 0600 (P1-1 regression guard).
+	 * 2026-06-09 JES #691 Phase C.0.1 */
+	{
+		struct stat st;
+		assert(stat(g_tmp_history_path, &st) == 0);
+		assert((st.st_mode & 0777) == 0600);
+	}
+
 	/* Step 6: re-read and verify order: older1, older2, session_cmd */
 	FILE *fin = fopen(g_tmp_history_path, "r");
 	assert(fin != NULL);
@@ -538,6 +547,101 @@ static void test_history_persists_via_file_roundtrip(void) {
 }
 
 /* -------------------------------------------------------------------------
+ * Test 10: test_history_load_drops_overlong_lines
+ *
+ * 2026-06-09 JES #691 Phase C.0.1 P1-2 regression guard.
+ *
+ * A 2KB entry written by linenoise exceeds BOXEN_REPL_INPUT_MAX (1024).
+ * Without the fix, fgets would split it into two ring entries and both
+ * would be saved back, permanently corrupting the shared history file.
+ * With the fix, overlong lines are drained and skipped entirely.
+ *
+ * This test writes a file with:
+ *   - one 2048-char line  (overlong: must be dropped)
+ *   - one normal "ok_cmd" (must be kept)
+ *
+ * After load: history_count == 1 and the entry is "ok_cmd".
+ * ---------------------------------------------------------------------- */
+static void test_history_load_drops_overlong_lines(void) {
+	char tmp_path[256];
+	snprintf(tmp_path, sizeof(tmp_path),
+	         "/tmp/boxen_repl_test_overlong_%d.txt", (int)getpid());
+	(void)remove(tmp_path);
+
+	FILE *fout = fopen(tmp_path, "w");
+	assert(fout != NULL);
+	/* Write a 2048-char line (no newline until the very end). */
+	for (int i = 0; i < 2048; i++) fputc('x', fout);
+	fputc('\n', fout);
+	/* Write a normal command that must survive. */
+	fprintf(fout, "ok_cmd\n");
+	fclose(fout);
+
+	boxen_repl_set_history_path_for_test(tmp_path);
+	setup();
+
+	/* Overlong line dropped; only "ok_cmd" loaded. */
+	assert(g_state.history_count == 1);
+	/* The one entry in the ring must be "ok_cmd". */
+	int idx = (g_state.history_head - 1 + BOXEN_REPL_HISTORY_SIZE)
+	          % BOXEN_REPL_HISTORY_SIZE;
+	assert(strcmp(g_state.history[idx], "ok_cmd") == 0);
+
+	boxen_repl_set_history_path_for_test(NULL);
+	(void)remove(tmp_path);
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * Test 11 (P0 regression guard): test_history_down_arrow_preserves_input_when_empty
+ *
+ * 2026-06-09 JES #691 Phase C.0.1 P0 regression guard.
+ *
+ * First-run scenario: no history file, so history_load is a no-op and
+ * history_count == 0.  Before the fix, boxen_repl_state_init left
+ * history_nav_idx == 0 (memset zero) instead of -1.  Pressing DOWN
+ * before any append caused history_nav_down to skip its early-return
+ * guard (nav_idx == 0, not -1), take the "restore saved input" branch,
+ * copy history_saved_input (all zeros from memset) into input_buf, and
+ * wipe whatever the user had typed.
+ *
+ * This test verifies:
+ *   1. After init with no history file, history_nav_idx == -1.
+ *   2. Typing "hello" works normally.
+ *   3. Pressing DOWN does NOT clear input_buf.
+ *   4. history_nav_idx remains -1 after the spurious DOWN.
+ * ---------------------------------------------------------------------- */
+static void test_history_down_arrow_preserves_input_when_empty(void) {
+	/* Point at a file that does not exist -- load is a silent no-op. */
+	boxen_repl_set_history_path_for_test(
+	    "/tmp/boxen_repl_test_nosuchfile_p0_down.txt");
+	setup();
+
+	/* After init with no history file: count == 0, nav_idx must be -1. */
+	assert(g_state.history_count == 0);
+	assert(g_state.history_nav_idx == -1);
+
+	/* Type "hello" one char at a time. */
+	const char *word = "hello";
+	for (const char *p = word; *p != '\0'; p++) {
+		boxen_event_t ev = make_char_event(*p);
+		boxen_repl_run_one_tick(&g_state, &ev);
+	}
+	assert(strcmp(g_state.input_buf, "hello") == 0);
+
+	/* Press DOWN -- must be a no-op when history is empty and nav == -1. */
+	boxen_event_t down = make_down_event();
+	boxen_repl_run_one_tick(&g_state, &down);
+
+	/* Input must be preserved. */
+	assert(strcmp(g_state.input_buf, "hello") == 0);
+	assert(g_state.history_nav_idx == -1);
+
+	boxen_repl_set_history_path_for_test(NULL);
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
  * main
  * ---------------------------------------------------------------------- */
 int main(void) {
@@ -552,6 +656,8 @@ int main(void) {
 	TR_RUN(test_launch_transport_heap_alloc_and_teardown);
 	TR_RUN(test_history_up_arrow_loads_previous);
 	TR_RUN(test_history_persists_via_file_roundtrip);
+	TR_RUN(test_history_load_drops_overlong_lines);
+	TR_RUN(test_history_down_arrow_preserves_input_when_empty);
 
 	TR_SUMMARY();
 	return TR_EXIT_CODE();

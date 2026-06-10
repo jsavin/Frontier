@@ -42,6 +42,7 @@
 #include <unistd.h>    /* dup, dup2, pipe, close, read */
 #include <fcntl.h>     /* fcntl, F_SETFL, O_NONBLOCK */
 #include <errno.h>     /* EAGAIN, EWOULDBLOCK */
+#include <sys/stat.h>  /* umask, fchmod, mode_t -- 2026-06-09 JES #691 Phase C.0.1 */
 
 /* -------------------------------------------------------------------------
  * Forward declarations for draw and input callbacks
@@ -408,6 +409,21 @@ void boxen_repl_history_load(boxen_repl_state_t *s) {
 		while (len > 0 && (line[len - 1] == '\n' || line[len - 1] == '\r')) {
 			line[--len] = '\0';
 		}
+
+		/* 2026-06-09 JES #691 Phase C.0.1 P1: drop linenoise-written entries
+		 * that exceed BOXEN_REPL_INPUT_MAX rather than splitting them.
+		 * Preserves the invariant that every ring entry is something the user
+		 * could type in the boxen REPL, and avoids corrupting the shared
+		 * ~/.frontier_history file when linenoise had recorded a >INPUT_MAX
+		 * entry.  A full-capacity fgets read (sizeof(line)-1 bytes) with no
+		 * trailing newline AND not at EOF means the line continues. */
+		if (len == BOXEN_REPL_INPUT_MAX - 1 && !feof(f)) {
+			/* Line was too long: drain the rest and skip it. */
+			int c;
+			while ((c = fgetc(f)) != EOF && c != '\n') { /* discard */ }
+			continue;
+		}
+
 		if (len == 0) continue;
 		boxen_repl_history_append(s, line);
 	}
@@ -514,8 +530,15 @@ void boxen_repl_history_save(boxen_repl_state_t *s) {
 	}
 
 	/* ---- Step 5: write back ---- */
+	/* 2026-06-09 JES #691 Phase C.0.1: force ~/.frontier_history to mode 0600.
+	 * Matches linenoise.c behavior in repl.c to prevent world-readable history
+	 * across the migration window.  We save/restore the process umask rather
+	 * than relying on the ambient value (which may be 0022 -> file 0644). */
+	mode_t old_umask = umask(S_IXUSR | S_IRWXG | S_IRWXO);
 	f = fopen(path, "w");
+	umask(old_umask);
 	if (f != NULL) {
+		fchmod(fileno(f), S_IRUSR | S_IWUSR);
 		for (size_t i = start; i < merged_count; i++) {
 			fprintf(f, "%s\n", merged[i]);
 		}
@@ -774,6 +797,13 @@ static void on_input(boxen_window_t *win, const boxen_event_t *ev,
 
 void boxen_repl_state_init(boxen_repl_state_t *s, int tw, int th) {
 	memset(s, 0, sizeof(boxen_repl_state_t));
+
+	/* 2026-06-09 JES #691 Phase C.0.1: memset zeros history_nav_idx, but the
+	 * sentinel meaning "not navigating" is -1, not 0.  Set it explicitly here
+	 * so first-run users (no ~/.frontier_history file, so history_load is a
+	 * no-op and history_append is never called) don't have nav_idx stuck at 0.
+	 * Without this, pressing DOWN before typing anything silently wiped input. */
+	s->history_nav_idx = -1;
 
 	/* Production hooks (only set when not in test build).
 	 * BOXEN_REPL_OMIT_MAIN guards the production-only symbols (repl_eval_script,
