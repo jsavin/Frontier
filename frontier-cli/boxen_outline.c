@@ -1109,25 +1109,38 @@ bool boxen_outline_real_fetch(boxen_outline_state_t *s,
 	bsfullpath[0] = (unsigned char)pathlen;
 	memcpy(bsfullpath + 1, path, (size_t)pathlen);
 
-	/* Find last dot */
+	/* Find last dot.
+	 *
+	 * 2026-06-09 JES #691 Phase C.1.x: top-level paths (no dot) are legitimate
+	 * -- a scriptType or outlineType external can live at the top of any
+	 * .root file (the classic "#init" top-level script pattern, for example).
+	 * No-dot is no longer a rejection; we just route the lookup against
+	 * roottable directly with the whole path as the leaf name.
+	 *
+	 * langfastaddresstotable with an empty bigstring returns hstart unchanged
+	 * (langops.c:1234 -- the loop body never runs because nthword returns
+	 * false for an empty pascal-string), so this works by construction. */
 	int lastdot = -1;
 	for (int i = pathlen; i > 0; i--) {
 		if (bsfullpath[i] == '.') { lastdot = i; break; }
 	}
-	if (lastdot < 0) {
-		log_warn(LOG_COMP_GENERAL,
-		         "boxen_outline: path '%s' has no dot; must be fully qualified",
-		         path);
-		return false;
-	}
 
 	bigstring bstablepath, bsname;
-	bstablepath[0] = (unsigned char)(lastdot - 1);
-	memcpy(bstablepath + 1, bsfullpath + 1, (size_t)(lastdot - 1));
+	int namelen;
+	if (lastdot < 0) {
+		/* Top-level: entire path is the leaf name; table path is empty. */
+		bstablepath[0] = 0;
+		namelen = pathlen;
+		bsname[0] = (unsigned char)namelen;
+		memcpy(bsname + 1, bsfullpath + 1, (size_t)namelen);
+	} else {
+		bstablepath[0] = (unsigned char)(lastdot - 1);
+		memcpy(bstablepath + 1, bsfullpath + 1, (size_t)(lastdot - 1));
 
-	int namelen = pathlen - lastdot;
-	bsname[0] = (unsigned char)namelen;
-	memcpy(bsname + 1, bsfullpath + lastdot + 1, (size_t)namelen);
+		namelen = pathlen - lastdot;
+		bsname[0] = (unsigned char)namelen;
+		memcpy(bsname + 1, bsfullpath + lastdot + 1, (size_t)namelen);
+	}
 
 	/* --- Step 2: navigate to the containing table --- */
 	hdlhashtable htable;
@@ -1146,13 +1159,36 @@ bool boxen_outline_real_fetch(boxen_outline_state_t *s,
 		return false;
 	}
 
-	/* --- Step 4: verify it is an external (outline/script) value ---
-	 * externalvaluetype = 13 (lang.h:230)
-	 */
+	/* --- Step 4: verify it is an external outline-or-script value ---
+	 *
+	 * externalvaluetype (lang.h:230) is the umbrella for outline, script,
+	 * wp, table-as-external, menu, pict, etc.  The outline editor only
+	 * handles types backed by an hdloutlinerecord: idoutlineprocessor and
+	 * idscriptprocessor (langexternal.h:80,88).  wp/menu/pict have
+	 * different internal structure and would crash if we cast their
+	 * variabledata to hdloutlinerecord.
+	 *
+	 * 2026-06-09 JES #691 Phase C.1.x: friendlier error messages.  Before
+	 * this fix, /edit @workspace (a table at root) failed with the
+	 * misleading "path has no dot; must be fully qualified" -- but
+	 * @workspace IS fully qualified, it just resolves to the wrong
+	 * value type.  Now the message names the actual problem (it's a
+	 * table / wp / etc) and the user knows to point /edit at an outline
+	 * or script leaf instead. */
 	if (val.valuetype != externalvaluetype) {
+		const char *typename = "unknown";
+		switch (val.valuetype) {
+			case tablevaluetype:  typename = "table";   break;
+			case stringvaluetype: typename = "string";  break;
+			case longvaluetype:   typename = "long";    break;
+			case addressvaluetype:typename = "address"; break;
+			case binaryvaluetype: typename = "binary";  break;
+			case codevaluetype:   typename = "code";    break;
+			default: break;
+		}
 		log_warn(LOG_COMP_GENERAL,
-		         "boxen_outline: '%s' is not an external value (type %d)",
-		         path, (int)val.valuetype);
+		         "boxen_outline: '%s' is a %s (type %d), not an outline or script",
+		         path, typename, (int)val.valuetype);
 		return false;
 	}
 
@@ -1162,6 +1198,23 @@ bool boxen_outline_real_fetch(boxen_outline_state_t *s,
 	if (hv == nil) {
 		log_warn(LOG_COMP_GENERAL,
 		         "boxen_outline: '%s' external handle is nil", path);
+		return false;
+	}
+
+	/* Reject externals that don't have an hdloutlinerecord variabledata. */
+	if ((**hv).id != idoutlineprocessor && (**hv).id != idscriptprocessor) {
+		const char *typename = "external";
+		switch ((**hv).id) {
+			case idwordprocessor: typename = "wordprocessor"; break;
+			case idtableprocessor: typename = "external table"; break;
+			case idmenuprocessor: typename = "menu"; break;
+			case idpictprocessor: typename = "picture"; break;
+			case idappleprocessor: typename = "AppleEvent"; break;
+			default: break;
+		}
+		log_warn(LOG_COMP_GENERAL,
+		         "boxen_outline: '%s' is a %s, not an outline or script",
+		         path, typename);
 		return false;
 	}
 
