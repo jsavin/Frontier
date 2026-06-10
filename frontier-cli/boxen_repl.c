@@ -1146,6 +1146,14 @@ bool boxen_repl_real_eval(const char *expr,
  *   - "/" alone -> enumerate all slash commands
  * For non-slash lines -> delegate to repl_complete_slash_command_path (ODB paths).
  *
+ * 2026-06-09 JES #691 Phase C.0.2: scope note.
+ *   C.0.2 implements slash command + ODB path completion only.  The legacy
+ *   linenoise REPL (repl.c) provides richer non-slash completion: keyword
+ *   expansion, @-address context, verb-call context, roottable + systemtable
+ *   enumeration.  That richer path is deliberately out of scope for C.0.2 --
+ *   see planning/phase_c/REPL_SCHISM_EXECUTION_PLAN.md Section 2.
+ *   Follow-up: richer non-slash completion to be filed as a future enhancement.
+ *
  * Returns the number of candidates written (0 = no completions available).
  * ---------------------------------------------------------------------- */
 

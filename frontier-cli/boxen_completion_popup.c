@@ -7,10 +7,13 @@
  * REPL retains input focus via boxen_window_focus on the input window).
  *
  * Design notes (D2, D3 from REPL_SCHISM_EXECUTION_PLAN.md C.0.2):
- *   - boxen_window_set_modal(win, true) raises z-order above other windows.
- *   - The input window keeps actual key focus (boxen_window_focus is NOT
- *     transferred to the popup).  The popup redraws on navigate but does not
- *     handle keys itself.
+ *   - boxen_window_raise(win) places the popup above other windows in z-order.
+ *     We deliberately do NOT call boxen_window_set_modal: modal would redirect
+ *     key dispatch away from the input window, breaking Tab/Up/Down/Enter/Escape
+ *     handling while the popup is open.
+ *   - The input window retains actual key focus throughout.  Events route
+ *     through the REPL on_input handler, which inspects s->completion_popup
+ *     to determine whether completion keys should be intercepted.
  *   - The popup is freed by boxen_completion_popup_close(); the REPL clears
  *     its completion_popup pointer after calling close.
  *
@@ -128,7 +131,7 @@ boxen_completion_popup_t *boxen_completion_popup_open(
 
 	boxen_window_set_borders(p->win, false);
 	boxen_window_set_draw(p->win, draw_completion_popup);
-	boxen_window_set_user_data(p->win, p);
+	/* user_data already set via the third arg of boxen_window_open above. */
 
 	/* Raise for z-order (popup must appear above the input bar and output pane).
 	 * We deliberately do NOT call boxen_window_set_modal: modal would redirect

@@ -11,7 +11,8 @@
 
 #include <stddef.h>
 
-/* Generic add-completion callback.  ctx is opaque (caller-supplied). */
+/* Generic add-completion callback.  ctx is opaque (caller-supplied).
+ * completion MUST NOT be NULL. */
 typedef void (*repl_completion_add_fn)(void *ctx, const char *completion);
 
 /*

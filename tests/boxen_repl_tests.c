@@ -649,12 +649,12 @@ static void test_history_down_arrow_preserves_input_when_empty(void) {
  *
  * Signature matches repl_completion_fn_t:
  *   int (*)(const char *buf, size_t buf_len,
- *           char candidates[][BOXEN_REPL_INPUT_MAX], int max_candidates)
+ *           char candidates[][BOXEN_COMPLETION_CANDIDATE_MAX], int max_candidates)
  * ---------------------------------------------------------------------- */
 #include "../frontier-cli/boxen_completion_popup.h"
 
 static int hook_completion_single(const char *buf, size_t bl,
-                                  char cand[][BOXEN_REPL_INPUT_MAX], int max) {
+                                  char cand[][BOXEN_COMPLETION_CANDIDATE_MAX], int max) {
 	(void)bl; (void)max;
 	if (strncmp(buf, "/h", 2) == 0) {
 		strcpy(cand[0], "/help");
@@ -664,7 +664,7 @@ static int hook_completion_single(const char *buf, size_t bl,
 }
 
 static int hook_completion_multi(const char *buf, size_t bl,
-                                 char cand[][BOXEN_REPL_INPUT_MAX], int max) {
+                                 char cand[][BOXEN_COMPLETION_CANDIDATE_MAX], int max) {
 	(void)bl; (void)max;
 	if (strcmp(buf, "/") == 0) {
 		strcpy(cand[0], "/help");
@@ -676,7 +676,7 @@ static int hook_completion_multi(const char *buf, size_t bl,
 }
 
 static int hook_completion_odb(const char *buf, size_t bl,
-                               char cand[][BOXEN_REPL_INPUT_MAX], int max) {
+                               char cand[][BOXEN_COMPLETION_CANDIDATE_MAX], int max) {
 	(void)bl; (void)max;
 	if (strncmp(buf, "system.te", 9) == 0) {
 		strcpy(cand[0], "system.test");

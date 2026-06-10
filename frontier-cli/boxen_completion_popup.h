@@ -37,7 +37,7 @@ typedef struct boxen_completion_popup boxen_completion_popup_t;
  * screen_h    -- terminal height in rows
  *
  * The popup is placed above the anchor row.  Width = min(40, screen_w-2);
- * height = min(count+2, 12), clamped so the popup stays on screen.
+ * height = min(count, 10), clamped so the popup stays on screen.
  *
  * Returns a heap-allocated popup handle, or NULL on allocation / window failure.
  * The caller owns the handle and must call boxen_completion_popup_close() when done.
