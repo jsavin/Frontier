@@ -656,6 +656,10 @@ bool palette_open_ex(palette_state_t *st, int term_rows, int term_cols,
 	if (st->menu_count <= 0) return false;
 
 	st->backend = backend ? backend : &s_pane_backend;
+	/* 2026-06-10 JES #691 Phase C.0.3a: active flips true BEFORE
+	 * backend->open() so the backend's open callback can call palette
+	 * helpers that gate on active.  On failure (open returns false),
+	 * the rollback path resets state to all-zero. */
 	st->active = true;
 	st->menubar_cursor = 0;
 	st->open_depth = 0;
@@ -665,7 +669,9 @@ bool palette_open_ex(palette_state_t *st, int term_rows, int term_cols,
 	st->exec_arg[0] = '\0';
 
 	if (!st->backend->open(st, st->backend->ctx)) {
-		st->active = false;
+		/* 2026-06-10 JES #691 Phase C.0.3a: zero state on backend-open failure
+		 * so callers cannot observe partial layout_menubar fields. */
+		memset(st, 0, sizeof(*st));
 		return false;
 	}
 	return true;
@@ -678,13 +684,13 @@ bool palette_open(palette_state_t *st, int term_rows, int term_cols,
 }
 
 void palette_paint_teardown(palette_state_t *st) {
-	if (!st || !st->active) return;
+	if (!st || !st->active || !st->backend) return;
 	st->backend->paint_teardown(st, st->backend->ctx);
 }
 
 void palette_close(palette_state_t *st) {
 	if (!st) return;
-	if (!st->active) return;
+	if (!st->active || !st->backend) return;
 	close_all_levels(st);
 	st->backend->close(st, st->backend->ctx);
 	memset(st->menu_labels, 0, sizeof(st->menu_labels));
@@ -1008,12 +1014,12 @@ palette_done_t palette_feed_mouse(palette_state_t *st, const mouse_event_t *ev) 
 }
 
 void palette_render_state(palette_state_t *st) {
-	if (!st || !st->active) return;
+	if (!st || !st->active || !st->backend) return;
 	st->backend->paint(st, st->backend->ctx);
 }
 
 void palette_on_resize(palette_state_t *st, int term_rows, int term_cols) {
-	if (!st || !st->active) return;
+	if (!st || !st->active || !st->backend) return;
 	if (term_cols < 4 || term_rows < 2) return;
 	st->term_rows = term_rows;
 	st->term_cols = term_cols;

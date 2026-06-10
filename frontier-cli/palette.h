@@ -383,9 +383,12 @@ typedef struct palette_state {
 
 	const palette_menu_source_t *source;
 
-	/* 2026-06-10 JES #691 Phase C.0.3a: render backend abstraction.
-	 * NULL is never stored here at runtime -- palette_open and palette_open_ex
-	 * both resolve NULL to the default pane backend before first use. */
+	/* Render backend dispatch table.  NULL between palette_close() and the
+	 * next palette_open(_ex), or in zero-initialized state structs.  Public
+	 * dispatchers gate on st->active before dereferencing this, so a NULL
+	 * backend is never observable to backend code.  Set by palette_open_ex
+	 * (NULL caller-supplied backend resolves to &s_pane_backend).
+	 * 2026-06-10 JES #691 Phase C.0.3a: render backend abstraction. */
 	const struct palette_render_backend *backend;
 } palette_state_t;
 
@@ -403,6 +406,10 @@ typedef struct palette_state {
  */
 typedef struct palette_render_backend {
 	void *ctx;  /* opaque, backend-private */
+	/* Called by palette_open_ex during init.  Returns false on hard
+	 * failure -- in which case the backend MUST have cleaned up any
+	 * partial state itself; palette_open_ex will not call close() after
+	 * a failed open(). */
 	bool (*open)(palette_state_t *st, void *ctx);
 	void (*paint)(palette_state_t *st, void *ctx);
 	void (*paint_teardown)(palette_state_t *st, void *ctx);
@@ -438,6 +445,9 @@ bool palette_open(palette_state_t *st, int term_rows, int term_cols,
  * render backend. When `backend` is NULL the default pane-compositor
  * backend is used (identical behavior to palette_open). Non-NULL backends
  * are used by alternative renderers (e.g. boxen-window backend, C.0.3b).
+ *
+ * `backend` (when non-NULL) must remain valid until palette_close() returns,
+ * like `source` (see the lifetime note above).
  *
  * 2026-06-10 JES #691 Phase C.0.3a: render backend abstraction. */
 bool palette_open_ex(palette_state_t *st, int term_rows, int term_cols,
