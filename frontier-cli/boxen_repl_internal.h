@@ -55,6 +55,12 @@
 /* Maximum length of the input line buffer (including NUL). */
 #define BOXEN_REPL_INPUT_MAX 1024
 
+/* 2026-06-10 JES #691 Phase C.0.5: multi-line accumulator capacity.
+ * 8 KB covers realistic multi-line scripts while keeping the struct footprint
+ * modest (the struct is heap-allocated in production and stack-allocated in
+ * tests -- 8 KB is negligible in either case). */
+#define BOXEN_REPL_MULTILINE_MAX 8192
+
 /* -------------------------------------------------------------------------
  * History ring constants
  *
@@ -287,6 +293,37 @@ typedef struct {
 	palette_state_t     *palette_state;
 	palette_open_fn_t    palette_open_hook;
 	palette_dispatch_fn_t palette_dispatch_hook;
+
+	/* 2026-06-10 JES #691 Phase C.0.5: multi-line input accumulator.
+	 *
+	 * When the user ends a line with a trailing '\', submit_input appends the
+	 * line (without the backslash) plus a '\n' separator to multiline_buf and
+	 * increments multiline_lines.  The next Enter without trailing '\' is the
+	 * terminator: the current line is appended and the joined buffer is
+	 * dispatched through the existing slash/eval path.
+	 *
+	 * History interaction: multi-line entries are NOT persisted to
+	 * ~/.frontier_history because the on-disk format is line-oriented
+	 * (one entry per fgets/fprintf line).  Embedded '\n' would corrupt both
+	 * the boxen ring and the linenoise REPL's shared history file.  Deferred
+	 * to a future milestone with an on-disk format upgrade.  boxen_repl_history_append
+	 * is therefore skipped when multiline_lines > 0.
+	 *
+	 * Overflow recovery: if appending a continuation line would exceed
+	 * BOXEN_REPL_MULTILINE_MAX, the trailing '\' is treated as a terminator
+	 * and a warning is logged; the user sees their accumulated buffer
+	 * dispatched as-is (possibly with the final line truncated to fit).
+	 *
+	 * Ctrl-C semantics: when multiline_lines > 0, Ctrl-C discards the
+	 * accumulated buffer and returns to the single-line prompt -- it does NOT
+	 * set should_quit.  The existing Ctrl-C-exits behavior is preserved for
+	 * the single-line case (multiline_lines == 0).
+	 *
+	 * Zero-init by the existing memset in boxen_repl_state_init; no explicit
+	 * initialisation needed. */
+	char multiline_buf[BOXEN_REPL_MULTILINE_MAX]; /* lines joined with '\n' */
+	int  multiline_len;                            /* bytes currently in multiline_buf */
+	int  multiline_lines;                          /* number of continuation lines accumulated */
 } boxen_repl_state_t;
 
 /* -------------------------------------------------------------------------

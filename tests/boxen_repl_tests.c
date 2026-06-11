@@ -1100,6 +1100,106 @@ static void test_long_output_does_not_deadlock_event_loop(void) {
 }
 
 /* -------------------------------------------------------------------------
+ * test_backslash_continuation_accumulates
+ *
+ * 2026-06-10 JES #691 Phase C.0.5: trailing '\' accumulates across Enter
+ * presses; only the terminator line (no trailing '\') dispatches eval.
+ *
+ * Sequence:
+ *   "foo\" Enter  -> multiline_lines == 1, eval NOT called
+ *   "bar\" Enter  -> multiline_lines == 2, eval NOT called
+ *   "baz"  Enter  -> eval called with "foo\nbar\nbaz"; state reset
+ * ---------------------------------------------------------------------- */
+static void test_backslash_continuation_accumulates(void) {
+	setup();
+
+	/* Line 1: "foo\" + Enter */
+	boxen_event_t ev;
+	const char *line1 = "foo\\";
+	for (const char *p = line1; *p; p++) {
+		ev = make_char_event(*p);
+		boxen_repl_run_one_tick(&g_state, &ev);
+	}
+	ev = make_key_event(BOXEN_KEY_ENTER);
+	boxen_repl_run_one_tick(&g_state, &ev);
+
+	assert(g_state.multiline_lines == 1);
+	assert(g_eval_result[0] == '\0');  /* eval not called yet */
+
+	/* Line 2: "bar\" + Enter */
+	const char *line2 = "bar\\";
+	for (const char *p = line2; *p; p++) {
+		ev = make_char_event(*p);
+		boxen_repl_run_one_tick(&g_state, &ev);
+	}
+	ev = make_key_event(BOXEN_KEY_ENTER);
+	boxen_repl_run_one_tick(&g_state, &ev);
+
+	assert(g_state.multiline_lines == 2);
+	assert(g_eval_result[0] == '\0');  /* still not called */
+
+	/* Line 3: "baz" + Enter (terminator) */
+	const char *line3 = "baz";
+	for (const char *p = line3; *p; p++) {
+		ev = make_char_event(*p);
+		boxen_repl_run_one_tick(&g_state, &ev);
+	}
+	ev = make_key_event(BOXEN_KEY_ENTER);
+	boxen_repl_run_one_tick(&g_state, &ev);
+
+	assert(strcmp(g_eval_result, "EVAL:foo\nbar\nbaz") == 0);
+	assert(g_state.multiline_lines == 0);
+	assert(g_state.multiline_len   == 0);
+
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * test_ctrl_c_in_multiline_discards_buffer
+ *
+ * 2026-06-10 JES #691 Phase C.0.5: Ctrl-C in multi-line mode discards the
+ * accumulated buffer and resets to single-line prompt WITHOUT setting
+ * should_quit.  Eval is never called.
+ * ---------------------------------------------------------------------- */
+static void test_ctrl_c_in_multiline_discards_buffer(void) {
+	setup();
+
+	/* Accumulate 2 continuation lines */
+	boxen_event_t ev;
+	const char *line1 = "foo\\";
+	for (const char *p = line1; *p; p++) {
+		ev = make_char_event(*p);
+		boxen_repl_run_one_tick(&g_state, &ev);
+	}
+	ev = make_key_event(BOXEN_KEY_ENTER);
+	boxen_repl_run_one_tick(&g_state, &ev);
+
+	const char *line2 = "bar\\";
+	for (const char *p = line2; *p; p++) {
+		ev = make_char_event(*p);
+		boxen_repl_run_one_tick(&g_state, &ev);
+	}
+	ev = make_key_event(BOXEN_KEY_ENTER);
+	boxen_repl_run_one_tick(&g_state, &ev);
+
+	assert(g_state.multiline_lines == 2);
+
+	/* Send Ctrl-C: should discard accumulator, NOT quit */
+	ev = make_key_event(BOXEN_KEY_CTRL_C);
+	boxen_repl_run_one_tick(&g_state, &ev);
+
+	assert(g_state.multiline_lines == 0);
+	assert(g_state.multiline_len   == 0);
+	assert(g_state.multiline_buf[0] == '\0');
+	assert(g_state.input_buf[0]     == '\0');
+	assert(g_state.input_cursor     == 0);
+	assert(g_state.should_quit      == false);  /* critical: must NOT exit */
+	assert(g_eval_result[0]         == '\0');   /* eval never called */
+
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
  * main
  * ---------------------------------------------------------------------- */
 int main(void) {
@@ -1126,6 +1226,8 @@ int main(void) {
 	TR_RUN(test_slash_mid_input_still_inserts);
 	TR_RUN(test_stdout_drain_during_typing_does_not_corrupt_input);
 	TR_RUN(test_long_output_does_not_deadlock_event_loop);
+	TR_RUN(test_backslash_continuation_accumulates);
+	TR_RUN(test_ctrl_c_in_multiline_discards_buffer);
 
 	TR_SUMMARY();
 	return TR_EXIT_CODE();

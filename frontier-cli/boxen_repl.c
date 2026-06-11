@@ -218,13 +218,17 @@ static void draw_input_bar(boxen_window_t *win, void *user_data) {
 	int w = boxen_window_content_width(win);
 	if (w <= 0) return;
 
-	/* Build the full input row: "> " + typed text, padded to width */
+	/* Build the full input row: prompt + typed text, padded to width.
+	 * 2026-06-10 JES #691 Phase C.0.5: swap "> " for ".." in multi-line mode.
+	 * Both prompts are REPL_INPUT_PROMPT_LEN (2) chars wide, so cursor math
+	 * is unchanged. */
+	const char *prompt = (s->multiline_lines > 0) ? ".." : REPL_INPUT_PROMPT;
 	char linebuf[BOXEN_REPL_INPUT_MAX + REPL_INPUT_PROMPT_LEN + 4];
 	int  cap = (w < (int)(sizeof(linebuf) - 1)) ? w : (int)(sizeof(linebuf) - 1);
 
 	int n = snprintf(linebuf, (size_t)(cap + 1), "%-*.*s",
 	                 cap, cap,
-	                 REPL_INPUT_PROMPT);
+	                 prompt);
 	(void)n;
 
 	/* Overlay typed text starting at REPL_INPUT_PROMPT_LEN */
@@ -604,25 +608,140 @@ static void history_nav_down(boxen_repl_state_t *s) {
  *
  * Called on Enter.  Echoes the input line to the scrollback, dispatches,
  * and clears the input buffer.
+ *
+ * 2026-06-10 JES #691 Phase C.0.5: multi-line continuation via trailing '\'.
+ *
+ * If the input line ends with '\', the backslash is stripped and the line
+ * (plus a '\n' separator) is accumulated into multiline_buf.  The input bar
+ * is cleared and a new prompt is shown; the accumulated content is NOT
+ * dispatched yet.
+ *
+ * If multiline_lines > 0 and the current line does NOT end with '\', the
+ * current line is appended to multiline_buf and the joined buffer is
+ * dispatched through the normal slash/eval path.  The multiline state is
+ * then reset.
+ *
+ * History: boxen_repl_history_append is skipped while accumulating
+ * (multiline_lines > 0) because the on-disk format is line-oriented and
+ * embedded '\n' would corrupt ~/.frontier_history.
+ *
+ * Overflow: if appending a continuation line would exceed BOXEN_REPL_MULTILINE_MAX,
+ * log_warn is emitted and the backslash is treated as a terminator (dispatch
+ * what we have).
  * ---------------------------------------------------------------------- */
 static void submit_input(boxen_repl_state_t *s) {
-	if (s->input_cursor == 0) {
+	/* 2026-06-10 JES #691 Phase C.0.5: empty-line guard.
+	 * In single-line mode, empty Enter is a no-op.  In multi-line mode, empty
+	 * Enter is a valid terminator (submits the accumulated buffer). */
+	if (s->input_cursor == 0 && s->multiline_lines == 0) {
 		if (s->input_win != NULL) boxen_window_invalidate(s->input_win);
 		return;
 	}
 
-	/* 2026-06-09 JES #691 Phase C.0.1: append to history ring before dispatch.
-	 * Dedup-with-latest is enforced inside boxen_repl_history_append. */
-	boxen_repl_history_append(s, s->input_buf);
+	/* 2026-06-10 JES #691 Phase C.0.5: detect trailing '\' continuation.
+	 * The check fires regardless of context (matches standard shell semantics).
+	 * A '\' inside a UserTalk string literal at end of line will still cause
+	 * continuation; this is intentional and consistent with bash/Python REPL
+	 * behavior. */
+	int src_len = s->input_cursor;
+	bool is_continuation = (src_len > 0 && s->input_buf[src_len - 1] == '\\');
+	if (is_continuation) {
+		src_len--;   /* strip the trailing backslash */
+	}
 
-	/* Echo with "> " prefix */
-	char echo_buf[BOXEN_REPL_INPUT_MAX + 4];
-	snprintf(echo_buf, sizeof(echo_buf), "> %s", s->input_buf);
-	boxen_repl_append_scrollback(s, echo_buf);
+	/* 2026-06-10 JES #691 Phase C.0.5: accumulate continuation line. */
+	if (is_continuation) {
+		/* Overflow check: need src_len bytes + '\n' separator. */
+		bool overflow = ((s->multiline_len + src_len + 1) >= BOXEN_REPL_MULTILINE_MAX);
+		if (overflow) {
+			log_warn(LOG_COMP_GENERAL,
+			         "boxen_repl: multi-line accumulator overflow; treating as terminator");
+			/* Fall through with is_continuation = false to dispatch what we have. */
+			is_continuation = false;
+		} else {
+			/* Echo with prompt prefix */
+			char echo_buf[BOXEN_REPL_INPUT_MAX + 8];
+			const char *echo_prefix = (s->multiline_lines == 0) ? "> " : "..";
+			snprintf(echo_buf, sizeof(echo_buf), "%s%.*s\\",
+			         echo_prefix, src_len, s->input_buf);
+			boxen_repl_append_scrollback(s, echo_buf);
+
+			/* Append line (without backslash) + '\n' to accumulator */
+			if (src_len > 0) {
+				memcpy(s->multiline_buf + s->multiline_len, s->input_buf,
+				       (size_t)src_len);
+				s->multiline_len += src_len;
+			}
+			s->multiline_buf[s->multiline_len] = '\n';
+			s->multiline_len++;
+			s->multiline_buf[s->multiline_len] = '\0';
+
+			s->multiline_lines++;
+
+			/* Clear input and redraw */
+			s->input_buf[0] = '\0';
+			s->input_cursor = 0;
+			if (s->input_win  != NULL) boxen_window_invalidate(s->input_win);
+			if (s->output_win != NULL) boxen_window_invalidate(s->output_win);
+			return;
+		}
+	}
+
+	/* At this point we have a terminator line (with or without prior continuation).
+	 * Build the dispatch buffer: either the raw input_buf (single-line) or the
+	 * joined multiline_buf + current line (multi-line path). */
+
+	/* Buffer that holds the expression to dispatch.  In the multi-line case
+	 * we build it on the stack; in the single-line case it is input_buf itself. */
+	char joined[BOXEN_REPL_MULTILINE_MAX];
+	const char *dispatch_buf;
+
+	if (s->multiline_lines > 0) {
+		/* Echo the terminator line with ".." prefix */
+		char echo_buf[BOXEN_REPL_INPUT_MAX + 8];
+		snprintf(echo_buf, sizeof(echo_buf), "..%.*s", src_len, s->input_buf);
+		boxen_repl_append_scrollback(s, echo_buf);
+
+		/* Join: accumulator already ends with '\n'; append the current line */
+		int joined_len = s->multiline_len;
+		int avail = BOXEN_REPL_MULTILINE_MAX - joined_len - 1;
+		int copy_len = (src_len < avail) ? src_len : avail;
+		/* 2026-06-10 JES #691 Phase C.0.5: terminator line truncated to fit
+		 * the multi-line accumulator; matches the continuation-overflow
+		 * behavior at the top of submit_input. */
+		if (copy_len < src_len) {
+			log_warn(LOG_COMP_GENERAL,
+			         "boxen_repl: multi-line terminator truncated (%d -> %d bytes)",
+			         src_len, copy_len);
+		}
+		memcpy(joined, s->multiline_buf, (size_t)s->multiline_len);
+		if (copy_len > 0) {
+			memcpy(joined + joined_len, s->input_buf, (size_t)copy_len);
+			joined_len += copy_len;
+		}
+		joined[joined_len] = '\0';
+		dispatch_buf = joined;
+
+		/* 2026-06-10 JES #691 Phase C.0.5 (D5): skip history for multi-line
+		 * entries -- on-disk format is line-oriented; embedded '\n' corrupts
+		 * ~/.frontier_history.  Deferred to a future milestone. */
+	} else {
+		/* Single-line path: history append unchanged. */
+		/* 2026-06-09 JES #691 Phase C.0.1: append to history ring before dispatch.
+		 * Dedup-with-latest is enforced inside boxen_repl_history_append. */
+		boxen_repl_history_append(s, s->input_buf);
+
+		/* Echo with "> " prefix */
+		char echo_buf[BOXEN_REPL_INPUT_MAX + 4];
+		snprintf(echo_buf, sizeof(echo_buf), "> %s", s->input_buf);
+		boxen_repl_append_scrollback(s, echo_buf);
+
+		dispatch_buf = s->input_buf;
+	}
 
 	bool running = true;
 
-	if (s->input_buf[0] == '/') {
+	if (dispatch_buf[0] == '/') {
 		/* 2026-06-09 JES Phase C.1 #691: /edit [path] -- kernel intercept.
 		 *
 		 * Handled here before the UserTalk menubar so it works whether or not
@@ -632,8 +751,8 @@ static void submit_input(boxen_repl_state_t *s) {
 		 *
 		 * Only active in non-test builds; the test build stubs out
 		 * BOXEN_REPL_OMIT_MAIN and never calls boxen_outline_open. */
-		const char *slash_buf = s->input_buf + 1;   /* skip leading '/' */
-		while (*slash_buf == ' ') slash_buf++;       /* skip whitespace */
+		const char *slash_buf = dispatch_buf + 1;    /* skip leading '/' */
+		while (*slash_buf == ' ') slash_buf++;        /* skip whitespace */
 		bool is_edit_cmd = (strncmp(slash_buf, "edit", 4) == 0 &&
 		                    (slash_buf[4] == '\0' || slash_buf[4] == ' '));
 		if (is_edit_cmd) {
@@ -659,11 +778,11 @@ static void submit_input(boxen_repl_state_t *s) {
 
 		/* Slash command: route through the hook (or production implementation) */
 		if (s->slash_dispatch_hook != NULL) {
-			s->slash_dispatch_hook(s->input_buf, &running);
+			s->slash_dispatch_hook(dispatch_buf, &running);
 		}
 #ifndef BOXEN_REPL_OMIT_MAIN
 		else {
-			boxen_repl_real_slash_dispatch(s->input_buf, &running);
+			boxen_repl_real_slash_dispatch(dispatch_buf, &running);
 		}
 #endif
 		slash_done:;
@@ -676,12 +795,12 @@ static void submit_input(boxen_repl_state_t *s) {
 
 		bool ok;
 		if (s->repl_eval_hook != NULL) {
-			ok = s->repl_eval_hook(s->input_buf,
+			ok = s->repl_eval_hook(dispatch_buf,
 			                       result_buf, sizeof(result_buf),
 			                       error_buf,  sizeof(error_buf));
 		} else {
 #ifndef BOXEN_REPL_OMIT_MAIN
-			ok = boxen_repl_real_eval(s->input_buf,
+			ok = boxen_repl_real_eval(dispatch_buf,
 			                          result_buf, sizeof(result_buf),
 			                          error_buf,  sizeof(error_buf));
 #else
@@ -705,6 +824,11 @@ static void submit_input(boxen_repl_state_t *s) {
 		s->should_quit = true;
 	}
 
+	/* 2026-06-10 JES #691 Phase C.0.5: reset multi-line accumulator after dispatch */
+	s->multiline_buf[0] = '\0';
+	s->multiline_len    = 0;
+	s->multiline_lines  = 0;
+
 	/* Clear input */
 	s->input_buf[0] = '\0';
 	s->input_cursor = 0;
@@ -722,8 +846,26 @@ static void on_input(boxen_window_t *win, const boxen_event_t *ev,
 	boxen_repl_state_t *s = (boxen_repl_state_t *)user_data;
 	if (s == NULL || ev == NULL || ev->type != BOXEN_EV_KEY) return;
 
-	/* Ctrl-C: exit */
+	/* Ctrl-C: discard multi-line buffer if active, else exit */
 	if (ev->key.key == BOXEN_KEY_CTRL_C) {
+		if (s->multiline_lines > 0) {
+			/* 2026-06-10 JES #691 Phase C.0.5: discard accumulated buffer,
+			 * return to single-line prompt; do NOT exit the REPL. */
+			/* 2026-06-10 JES #691 Phase C.0.5: defensively close completion popup
+			 * if user opened it mid-continuation. The next key press would close
+			 * it anyway, but eager cleanup avoids the transient visual artifact. */
+			if (s->completion_popup != NULL) {
+				boxen_completion_popup_close(s->completion_popup);
+				s->completion_popup = NULL;
+			}
+			s->multiline_buf[0] = '\0';
+			s->multiline_len    = 0;
+			s->multiline_lines  = 0;
+			s->input_buf[0]     = '\0';
+			s->input_cursor     = 0;
+			if (s->input_win != NULL) boxen_window_invalidate(s->input_win);
+			return;
+		}
 		s->should_quit = true;
 		return;
 	}
