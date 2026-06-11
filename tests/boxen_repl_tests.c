@@ -1009,7 +1009,9 @@ static void test_stdout_drain_during_typing_does_not_corrupt_input(void) {
 	/* Create a test pipe, write one async line, then drain it */
 	int pipefd[2];
 	assert(pipe(pipefd) == 0);
-	fcntl(pipefd[0], F_SETFL, O_NONBLOCK);
+	/* 2026-06-10 JES #691 Phase C.0.4: assert fcntl so a silent O_NONBLOCK
+	 * failure surfaces as a clear assertion rather than a read() hang. */
+	assert(fcntl(pipefd[0], F_SETFL, O_NONBLOCK) == 0);
 	const char *msg = "async-msg\n";
 	ssize_t w = write(pipefd[1], msg, strlen(msg));
 	assert(w == (ssize_t)strlen(msg));
@@ -1048,14 +1050,23 @@ static void test_stdout_drain_during_typing_does_not_corrupt_input(void) {
  * O_NONBLOCK, so drain loops until EAGAIN without blocking the event loop.
  * A full pipe triggers EAGAIN / EWOULDBLOCK on the write side; draining first
  * makes room for the next write.
+ *
+ * Realistic ceiling is ~3 drain iterations (100 KB target / 64 KB pipe / 256 B
+ * chunks).  The 1000 cap below is the deadlock guard, NOT a tight bound --
+ * hitting it would mean drain itself stopped consuming the pipe.  Future
+ * maintainers seeing flake at the cap should suspect a regression in
+ * drain_stdout_into_scrollback, not raise the cap.
  * ---------------------------------------------------------------------- */
 static void test_long_output_does_not_deadlock_event_loop(void) {
 	setup();
 
 	int pipefd[2];
 	assert(pipe(pipefd) == 0);
-	fcntl(pipefd[0], F_SETFL, O_NONBLOCK);
-	fcntl(pipefd[1], F_SETFL, O_NONBLOCK);
+	/* 2026-06-10 JES #691 Phase C.0.4: assert fcntls so silent O_NONBLOCK
+	 * failures surface as clear assertions rather than as a producer-side
+	 * write() hang (test 2 would deadlock silently otherwise). */
+	assert(fcntl(pipefd[0], F_SETFL, O_NONBLOCK) == 0);
+	assert(fcntl(pipefd[1], F_SETFL, O_NONBLOCK) == 0);
 
 	const size_t target = 100 * 1024;
 	char chunk[256];
