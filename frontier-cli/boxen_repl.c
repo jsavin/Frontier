@@ -861,6 +861,29 @@ static void on_input(boxen_window_t *win, const boxen_event_t *ev,
 	 * multi-byte handling and a Unicode-aware input cursor; that is deferred
 	 * to a future milestone. */
 	if (ev->key.key == BOXEN_KEY_NONE && ev->key.ch >= 0x20 && ev->key.ch < 0x7F) {
+		/* 2026-06-10 JES #691 Phase C.0.3b: '/' at empty input opens palette modal.
+		 *
+		 * Gates:
+		 *   ch == '/'           -- only the slash key triggers the menu
+		 *   input_cursor == 0   -- only at the start of an empty line; mid-line
+		 *                         '/' (e.g. a path component) inserts normally
+		 *   palette_open_hook   -- NULL in test builds / when hook not installed
+		 *   palette_state       -- guard against re-entry (no double-open)
+		 *
+		 * Contrast with the global key handler (boxen_set_global_key_handler):
+		 * '/' only matters when the REPL input line is empty and focused.
+		 * A global handler would intercept '/' in editor windows too, which
+		 * is wrong.  The printable-ASCII branch here fires only when on_input
+		 * is receiving keys (i.e. the REPL input bar is the dispatch target),
+		 * which is exactly the right scope. */
+		if (ev->key.ch == '/' &&
+		    s->input_cursor == 0 &&
+		    s->palette_open_hook != NULL &&
+		    s->palette_state == NULL) {
+			s->palette_open_hook(s);
+			return;
+		}
+
 		/* If user types during history nav, abandon navigation. */
 		if (s->history_nav_idx != -1) {
 			s->history_nav_idx        = -1;
@@ -898,6 +921,9 @@ void boxen_repl_state_init(boxen_repl_state_t *s, int tw, int th) {
 	s->repl_eval_hook      = boxen_repl_real_eval;
 	/* 2026-06-09 JES #691 Phase C.0.2: wire completion hook to production impl. */
 	s->completion_hook     = boxen_repl_real_completion;
+	/* 2026-06-10 JES #691 Phase C.0.3b: wire palette hooks to production impls. */
+	s->palette_open_hook     = boxen_repl_real_palette_open;
+	s->palette_dispatch_hook = boxen_repl_real_palette_dispatch;
 #endif
 
 	/* Stdout capture fields: -1 means not active (same sentinel as open(2)
@@ -916,6 +942,29 @@ void boxen_repl_state_init(boxen_repl_state_t *s, int tw, int th) {
 }
 
 void boxen_repl_state_teardown(boxen_repl_state_t *s) {
+	/* 2026-06-10 JES #691 Phase C.0.3b: defensively close the palette modal if
+	 * it is still open when teardown runs.  Normal exit paths close it via the
+	 * done_cb -> on_palette_done flow; this guard handles crash/abort paths.
+	 * palette_close and free are gated on #ifndef BOXEN_REPL_OMIT_MAIN because
+	 * palette.c is not linked in test builds -- the field exists in test builds
+	 * (holding an opaque sentinel pointer) but teardown there sets it to NULL
+	 * directly without dereferencing.
+	 *
+	 * Forward declaration: palette_close() is declared in palette.h but that
+	 * header is only #included inside the big #ifndef BOXEN_REPL_OMIT_MAIN block
+	 * further down in this file.  Rather than reorganising all includes, a local
+	 * forward declaration here is sufficient (palette_state_t is already
+	 * forward-declared in boxen_repl_internal.h). */
+#ifndef BOXEN_REPL_OMIT_MAIN
+	extern void palette_close(palette_state_t *st);
+	if (s->palette_state != NULL) {
+		palette_close(s->palette_state);
+		free(s->palette_state);
+		s->palette_state = NULL;
+	}
+#else
+	s->palette_state = NULL;
+#endif
 	/* 2026-06-09 JES #691 Phase C.0.2: close any open completion popup before
 	 * the windows it overlaps are destroyed.  Normal exit paths close it via
 	 * on_input key handlers; this guard handles crash/abort paths. */
@@ -1076,6 +1125,14 @@ void drain_stdout_into_scrollback(boxen_repl_state_t *s, int fd) {
 #include "repl_completion.h"             /* repl_complete_slash_command_path, repl_slash_commands_list */
 #include "../Common/headers/strings.h"   /* copyptocstring */
 #include <pthread.h>
+/* 2026-06-10 JES #691 Phase C.0.3b: palette production headers.
+ * Included inside #ifndef BOXEN_REPL_OMIT_MAIN to keep test builds free of
+ * palette.c / ODB dependencies. */
+#include "palette.h"
+#include "repl_palette_source.h"
+#include "palette_arg_inject.h"
+#include "boxen_palette_backend.h"
+#include "../Common/headers/menudata_headless.h"  /* meuserselected_headless */
 
 /* repl_slash_dispatch.h declares the de-static'd dispatch_slash_command
  * from repl.c.  Only boxen_repl.c consumers include this header.
@@ -1535,4 +1592,217 @@ int boxen_repl_main(const cli_options_t *opts) {
 	return 0;
 }
 
+/* -------------------------------------------------------------------------
+ * 2026-06-10 JES #691 Phase C.0.3b: on_palette_done callback.
+ *
+ * Called by boxen_palette_backend's modal input_fn when the palette state
+ * machine reaches DONE_EXECUTE or DONE_CANCEL.
+ *
+ * Responsibilities:
+ *   1. Close the palette (backend->close destroys the modal window).
+ *   2. Free palette_state heap allocation; NULL the pointer.
+ *   3. Refocus the REPL input window.
+ *   4. On DONE_EXECUTE: dispatch via palette_dispatch_hook if wired.
+ * ---------------------------------------------------------------------- */
+static void on_palette_done(void *repl_state_opaque, palette_done_t done,
+                            void *exec_script, const char *exec_arg) {
+	boxen_repl_state_t *s = (boxen_repl_state_t *)repl_state_opaque;
+	if (s == NULL) return;
+
+	/* 1+2. Close and free palette. */
+	if (s->palette_state != NULL) {
+		palette_close(s->palette_state);
+		free(s->palette_state);
+		s->palette_state = NULL;
+	}
+
+	/* 3. Refocus the REPL input window. */
+	if (s->input_win != NULL) {
+		boxen_window_focus(s->input_win);
+	}
+
+	/* 4. Dispatch on execute. */
+	if (done == PALETTE_DONE_EXECUTE && exec_script != NULL &&
+	    s->palette_dispatch_hook != NULL) {
+		s->palette_dispatch_hook(exec_script, exec_arg ? exec_arg : "");
+	}
+}
+
+/* -------------------------------------------------------------------------
+ * 2026-06-10 JES #691 Phase C.0.3b: boxen_repl_real_palette_open.
+ *
+ * Called from on_input when '/' is typed at empty input.  Opens the
+ * slash-menu palette as a boxen modal window.
+ *
+ * GIL: must be held (repl_palette_source_init_all calls ODB).
+ * ---------------------------------------------------------------------- */
+bool boxen_repl_real_palette_open(void *s_opaque) {
+	boxen_repl_state_t *s = (boxen_repl_state_t *)s_opaque;
+	/* Allocate palette state on the heap; palette_open_ex memsets it. */
+	palette_state_t *pst = (palette_state_t *)calloc(1, sizeof(palette_state_t));
+	if (pst == NULL) {
+		log_warn(LOG_COMP_GENERAL, "boxen palette: OOM allocating palette_state");
+		return false;
+	}
+
+	/* Build the ODB-backed source (all installed menubars). */
+	palette_menu_source_t src;
+	if (!repl_palette_source_init_all(&src)) {
+		log_warn(LOG_COMP_GENERAL,
+		         "boxen palette: no installed menubars (system.menus.data.*)");
+		free(pst);
+		return false;
+	}
+
+	/* Query screen size for the palette geometry. */
+	int sw = 80, sh = 24;
+	boxen_get_screen_size(&sw, &sh);
+
+	/* Register the done-callback before calling palette_open_ex so the
+	 * backend ctx captures it before the modal goes interactive. */
+	palette_render_boxen_backend_set_done_cb(on_palette_done, s);
+
+	/* Prompt row: in boxen mode the palette's pane-row anchoring is irrelevant
+	 * (the boxen backend ignores prompt_row), but palette_open_ex validates
+	 * the row and we must pass something sane.  Use 0 (top of screen). */
+	if (!palette_open_ex(pst, sh, sw, 0, &src,
+	                     palette_render_boxen_backend())) {
+		log_warn(LOG_COMP_GENERAL,
+		         "boxen palette: palette_open_ex failed (terminal too small?)");
+		repl_palette_source_dispose(&src);
+		free(pst);
+		return false;
+	}
+
+	/* Source lifetime: palette_open_ex has cached all items; the source is
+	 * no longer needed.  Dispose immediately so handles don't leak if the
+	 * palette is closed before the dispatch hook runs. */
+	repl_palette_source_dispose(&src);
+
+	/* Install state pointer -- palette is now "open". */
+	s->palette_state = pst;
+
+	/* Initial render. */
+	palette_render_state(pst);
+	boxen_present();
+
+	return true;
+}
+
+/* -------------------------------------------------------------------------
+ * 2026-06-10 JES #691 Phase C.0.3b: boxen_repl_real_palette_dispatch.
+ *
+ * Dispatches the chosen menu leaf script.  Mirrors the dispatch path in
+ * repl.c (lines 4100-4155) with the same arg-injection logic.
+ *
+ * script_handle: a Handle (copied into adapter-private storage by
+ *   repl_palette_source's cache; caller does NOT own it post-dispatch).
+ *   meuserselected_headless does its own internal copyhandle, so we do NOT
+ *   need to copyhandle here before passing it.  The adapter's cache will
+ *   be freed by on_palette_done -> palette_close -> source_dispose path.
+ *
+ * exec_arg: NUL-terminated, may be empty.
+ * ---------------------------------------------------------------------- */
+bool boxen_repl_real_palette_dispatch(void *script_handle, const char *exec_arg) {
+	Handle hscript = (Handle)script_handle;
+	if (hscript == nil) return false;
+
+	boolean ok = false;
+	bool synth_used = false;
+
+	if (exec_arg != NULL && exec_arg[0] != '\0') {
+		/* Arg-injection path: escape the arg and synthesize a new source. */
+		char escaped[PALETTE_ARG_MAX * 2 + 4];
+		palette_arg_escape_result_t esc_r =
+			palette_arg_escape(exec_arg, escaped, sizeof(escaped));
+
+		if (esc_r == PALETTE_ARG_ESCAPE_OK) {
+			long n = gethandlesize(hscript);
+			if (n > 0) {
+				char *script_cstr = (char *)malloc((size_t)n + 1);
+				if (script_cstr != NULL) {
+					HLock(hscript);
+					memcpy(script_cstr, *hscript, (size_t)n);
+					HUnlock(hscript);
+					script_cstr[n] = '\0';
+
+					char *synth = NULL;
+					size_t synth_len = 0;
+					if (palette_arg_inject_into_script(script_cstr, (size_t)n,
+					                                   escaped, &synth, &synth_len)) {
+						/* Build a handle from the synthesized source and dispatch. */
+						Handle hsynth = nil;
+						if (newemptyhandle(&hsynth) &&
+						    sethandlesize(hsynth, (long)synth_len)) {
+							HLock(hsynth);
+							memcpy(*hsynth, synth, synth_len);
+							HUnlock(hsynth);
+							ok = (boolean)meuserselected_headless(hsynth);
+							disposehandle(hsynth);
+						}
+						free(synth);
+						synth_used = true;
+					}
+					free(script_cstr);
+				}
+			}
+		} else {
+			/* Forbidden byte or overflow -- skip dispatch, show diagnostic. */
+			switch (esc_r) {
+			case PALETTE_ARG_ESCAPE_FORBIDDEN_BYTE:
+				printf("(palette argument contains a forbidden character)\n");
+				break;
+			case PALETTE_ARG_ESCAPE_OVERFLOW:
+				printf("(palette argument is too long)\n");
+				break;
+			case PALETTE_ARG_ESCAPE_OK:
+				break; /* unreachable */
+			}
+			fflush(stdout);
+			synth_used = true;  /* skip no-arg fallback */
+			ok = true;           /* not a script failure */
+		}
+	}
+
+	if (!synth_used) {
+		/* No arg or synthesis failed -- dispatch the leaf script as-is. */
+		ok = (boolean)meuserselected_headless(hscript);
+	}
+
+	if (!ok) {
+		printf("(menu script failed)\n");
+		fflush(stdout);
+	}
+
+	return (bool)ok;
+}
+
 #endif /* !BOXEN_REPL_OMIT_MAIN */
+
+/* -------------------------------------------------------------------------
+ * 2026-06-10 JES #691 Phase C.0.3b: test-only palette close helper.
+ *
+ * Compiled only in BOXEN_REPL_OMIT_MAIN (test) builds.  Simulates the
+ * palette close path (NULL palette_state, refocus input_win) without
+ * calling palette_close or any production runtime symbols.  Tests use this
+ * after asserting palette opened to verify that subsequent keystrokes
+ * reach the REPL input window.
+ *
+ * Note: this replaces the previous (now missing) #endif so the structure
+ * is: production code block ends with #endif, then this test-only block
+ * is unconditionally visible but gated on #ifdef so the linker only sees
+ * it in test builds.
+ * ---------------------------------------------------------------------- */
+#ifdef BOXEN_REPL_OMIT_MAIN
+void boxen_repl_close_palette_for_test(void *s_opaque) {
+	boxen_repl_state_t *s = (boxen_repl_state_t *)s_opaque;
+	if (s == NULL) return;
+	/* Just NULL the pointer -- no real palette_close since palette.c is
+	 * not linked in the test binary. */
+	s->palette_state = NULL;
+	/* Refocus input_win if it exists (mock backend creates real windows). */
+	if (s->input_win != NULL) {
+		boxen_window_focus(s->input_win);
+	}
+}
+#endif

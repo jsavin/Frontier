@@ -129,6 +129,35 @@ typedef int (*repl_completion_fn_t)(const char *buf, size_t buf_len,
                                     char candidates[][BOXEN_COMPLETION_CANDIDATE_MAX],
                                     int max_candidates);
 
+/*
+ * 2026-06-10 JES #691 Phase C.0.3b: palette hook seams.
+ *
+ * Forward-declare palette_state_t as an opaque type so the test binary
+ * (which does NOT link palette.c) can hold a pointer to it without
+ * including palette.h.  The struct definition lives in palette.h; only
+ * production code that actually calls palette_* functions needs to include
+ * that header.
+ *
+ * palette_open_fn_t  -- called when '/' is typed at empty input.
+ *   Return true on success (palette_state was populated), false on failure.
+ *
+ * palette_dispatch_fn_t -- called on PALETTE_DONE_EXECUTE.
+ *   script_handle: the opaque script handle from palette_state.exec_script.
+ *   exec_arg:      the argument string (may be empty, never NULL).
+ *   Return true on successful dispatch.
+ */
+struct palette_state;
+typedef struct palette_state palette_state_t;
+
+/* palette_open_fn_t: called when '/' is typed at empty input.
+ *   Parameter is a boxen_repl_state_t * passed as void * to avoid a circular
+ *   typedef dependency (the hook type is used inside the struct definition
+ *   and boxen_repl_state_t is an anonymous struct with no tag).
+ *   Implementations cast to boxen_repl_state_t * before use.
+ *   Returns true on success (palette was opened), false on failure. */
+typedef bool (*palette_open_fn_t)(void *s);
+typedef bool (*palette_dispatch_fn_t)(void *script_handle, const char *exec_arg);
+
 /* -------------------------------------------------------------------------
  * REPL state struct
  *
@@ -240,6 +269,24 @@ typedef struct {
 	 *   Tests: inject a synthetic mock directly onto the field. */
 	boxen_completion_popup_t *completion_popup;
 	repl_completion_fn_t      completion_hook;
+
+	/* 2026-06-10 JES #691 Phase C.0.3b: slash-menu palette as boxen modal.
+	 *
+	 * palette_state: heap-allocated when the palette modal is open; NULL
+	 *   otherwise.  The pointer type is opaque (forward-declared below) so
+	 *   the test binary does not need to link palette.c.
+	 *
+	 * palette_open_hook: called when '/' is typed at empty input.  Production
+	 *   wires this to boxen_repl_real_palette_open under #ifndef
+	 *   BOXEN_REPL_OMIT_MAIN.  Tests inject a synthetic mock.  NULL means
+	 *   the '/' key opens no palette (existing 15 tests keep their existing
+	 *   behaviour because they never install this hook).
+	 *
+	 * palette_dispatch_hook: called on PALETTE_DONE_EXECUTE.  Production
+	 *   wires to boxen_repl_real_palette_dispatch.  Tests inject mocks. */
+	palette_state_t     *palette_state;
+	palette_open_fn_t    palette_open_hook;
+	palette_dispatch_fn_t palette_dispatch_hook;
 } boxen_repl_state_t;
 
 /* -------------------------------------------------------------------------
@@ -332,6 +379,20 @@ bool boxen_repl_real_eval(const char *expr,
 int  boxen_repl_real_completion(const char *buf, size_t buf_len,
                                 char candidates[][BOXEN_COMPLETION_CANDIDATE_MAX],
                                 int max_candidates);
+/* 2026-06-10 JES #691 Phase C.0.3b: production palette hook implementations.
+ * Parameters use void * (same reason as palette_open_fn_t). */
+bool boxen_repl_real_palette_open(void *s);
+bool boxen_repl_real_palette_dispatch(void *script_handle, const char *exec_arg);
+#endif
+
+#ifdef BOXEN_REPL_OMIT_MAIN
+/* 2026-06-10 JES #691 Phase C.0.3b: test-only helper.
+ *
+ * Simulates the palette close path (NULL palette_state, refocus input_win)
+ * without calling palette_close or any production runtime symbols.  Tests
+ * use this after asserting the palette opened to verify that subsequent
+ * keystrokes reach the REPL input window. */
+void boxen_repl_close_palette_for_test(void *s);
 #endif
 
 #endif /* BOXEN_REPL_INTERNAL_H */

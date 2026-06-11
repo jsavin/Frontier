@@ -820,6 +820,172 @@ static void test_escape_dismisses_popup_without_accept(void) {
 }
 
 /* -------------------------------------------------------------------------
+ * Test 16: test_slash_key_opens_palette_modal
+ *
+ * 2026-06-10 JES #691 Phase C.0.3b: '/' at empty input opens palette modal.
+ *
+ * Mock palette_open_hook sets palette_state to a sentinel and increments a
+ * counter. Type '/'. Assert:
+ *   - palette_state is non-NULL (mock hook fired)
+ *   - mock counter is 1
+ *   - input_buf is still empty ('/' was NOT inserted)
+ *   - input_cursor is 0
+ * ---------------------------------------------------------------------- */
+
+/* Capture counter for mock palette open calls. */
+static int g_mock_palette_open_count;
+
+static bool mock_palette_open(void *s_opaque) {
+	boxen_repl_state_t *s = (boxen_repl_state_t *)s_opaque;
+	g_mock_palette_open_count++;
+	/* Install a sentinel -- tests never dereference this pointer. */
+	s->palette_state = (palette_state_t *)0x1;
+	return true;
+}
+
+static bool mock_palette_dispatch(void *script_handle, const char *exec_arg) {
+	(void)script_handle;
+	(void)exec_arg;
+	return true;
+}
+
+/* Captured args from the last mock_palette_dispatch call. */
+static void  *g_captured_script_handle;
+static char   g_captured_exec_arg[256];
+
+static bool mock_palette_dispatch_capture(void *script_handle,
+                                          const char *exec_arg) {
+	g_captured_script_handle = script_handle;
+	snprintf(g_captured_exec_arg, sizeof(g_captured_exec_arg),
+	         "%s", exec_arg ? exec_arg : "");
+	return true;
+}
+
+static void test_slash_key_opens_palette_modal(void) {
+	setup();
+
+	g_mock_palette_open_count = 0;
+	g_state.palette_open_hook     = mock_palette_open;
+	g_state.palette_dispatch_hook = mock_palette_dispatch;
+
+	/* Type '/' at empty input. */
+	boxen_event_t ev = make_char_event('/');
+	boxen_repl_run_one_tick(&g_state, &ev);
+
+	/* palette_open_hook must have fired exactly once. */
+	assert(g_mock_palette_open_count == 1);
+	/* Sentinel must be installed. */
+	assert(g_state.palette_state != NULL);
+	/* '/' must NOT have been inserted into input_buf. */
+	assert(g_state.input_buf[0] == '\0');
+	assert(g_state.input_cursor == 0);
+
+	/* Clean up sentinel before teardown (teardown would try to call
+	 * palette_close if palette_state != NULL and the production guard
+	 * is compiled in; in the test build BOXEN_REPL_OMIT_MAIN is defined
+	 * so the guard body is skipped, but clear it anyway to stay clean). */
+	g_state.palette_state = NULL;
+
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * Test 17: test_palette_close_returns_focus_to_repl_input
+ *
+ * 2026-06-10 JES #691 Phase C.0.3b: after palette closes, input events go
+ * back to the REPL input window.
+ *
+ * Open palette via '/', then simulate palette close via the test-only helper
+ * boxen_repl_close_palette_for_test. Send a printable key and assert it lands
+ * in input_buf (proving input_win has focus again).
+ * ---------------------------------------------------------------------- */
+static void test_palette_close_returns_focus_to_repl_input(void) {
+	setup();
+
+	g_mock_palette_open_count = 0;
+	g_state.palette_open_hook     = mock_palette_open;
+	g_state.palette_dispatch_hook = mock_palette_dispatch;
+
+	/* Open palette. */
+	boxen_event_t ev_slash = make_char_event('/');
+	boxen_repl_run_one_tick(&g_state, &ev_slash);
+	assert(g_state.palette_state != NULL);
+
+	/* Simulate close from outside (production path: backend->close + refocus). */
+	boxen_repl_close_palette_for_test(&g_state);
+	assert(g_state.palette_state == NULL);
+
+	/* Now a printable key must land in input_buf. */
+	boxen_event_t ev_a = make_char_event('a');
+	boxen_repl_run_one_tick(&g_state, &ev_a);
+	assert(strcmp(g_state.input_buf, "a") == 0);
+	assert(g_state.input_cursor == 1);
+
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * Test 18: test_palette_dispatch_hook_contract
+ *
+ * 2026-06-10 JES #691 Phase C.0.3b: validate the dispatch hook signature
+ * contract (script_handle + exec_arg round-trip).
+ *
+ * Directly invoke the dispatch hook with fixture args and assert the
+ * captures match.  This validates the contract shape that production code
+ * must preserve when wiring boxen_repl_real_palette_dispatch.
+ * ---------------------------------------------------------------------- */
+static void test_palette_dispatch_hook_contract(void) {
+	setup();
+
+	g_state.palette_dispatch_hook = mock_palette_dispatch_capture;
+	g_captured_script_handle      = NULL;
+	g_captured_exec_arg[0]        = '\0';
+
+	/* Direct invocation: simulate what on_palette_done calls on DONE_EXECUTE. */
+	void *fixture_handle = (void *)0xABCD;
+	const char *fixture_arg = "fixture-arg";
+	g_state.palette_dispatch_hook(fixture_handle, fixture_arg);
+
+	assert(g_captured_script_handle == fixture_handle);
+	assert(strcmp(g_captured_exec_arg, "fixture-arg") == 0);
+
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * Test 19: test_slash_mid_input_still_inserts
+ *
+ * 2026-06-10 JES #691 Phase C.0.3b: '/' mid-input (cursor != 0) must
+ * insert normally; palette must NOT open.
+ * ---------------------------------------------------------------------- */
+static void test_slash_mid_input_still_inserts(void) {
+	setup();
+
+	g_mock_palette_open_count = 0;
+	g_state.palette_open_hook     = mock_palette_open;
+	g_state.palette_dispatch_hook = mock_palette_dispatch;
+
+	/* Type 'abc' first. */
+	boxen_event_t ev_a = make_char_event('a');
+	boxen_event_t ev_b = make_char_event('b');
+	boxen_event_t ev_c = make_char_event('c');
+	boxen_repl_run_one_tick(&g_state, &ev_a);
+	boxen_repl_run_one_tick(&g_state, &ev_b);
+	boxen_repl_run_one_tick(&g_state, &ev_c);
+	assert(strcmp(g_state.input_buf, "abc") == 0);
+
+	/* Now type '/'. cursor != 0, so palette must NOT open. */
+	boxen_event_t ev_slash = make_char_event('/');
+	boxen_repl_run_one_tick(&g_state, &ev_slash);
+
+	assert(strcmp(g_state.input_buf, "abc/") == 0);
+	assert(g_state.palette_state == NULL);
+	assert(g_mock_palette_open_count == 0);
+
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
  * main
  * ---------------------------------------------------------------------- */
 int main(void) {
@@ -840,6 +1006,10 @@ int main(void) {
 	TR_RUN(test_tab_opens_popup_with_multiple_candidates);
 	TR_RUN(test_tab_completes_odb_path_prefix);
 	TR_RUN(test_escape_dismisses_popup_without_accept);
+	TR_RUN(test_slash_key_opens_palette_modal);
+	TR_RUN(test_palette_close_returns_focus_to_repl_input);
+	TR_RUN(test_palette_dispatch_hook_contract);
+	TR_RUN(test_slash_mid_input_still_inserts);
 
 	TR_SUMMARY();
 	return TR_EXIT_CODE();
