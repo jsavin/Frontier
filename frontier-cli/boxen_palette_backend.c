@@ -31,6 +31,7 @@
 
 #include "boxen_palette_backend.h"
 
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -57,20 +58,6 @@ static uint16_t pal_attr_to_boxen(uint8_t pa) {
 	if (pa & PALETTE_ATTR_UNDERLINE) ba |= (uint16_t)BOXEN_ATTR_UNDERLINE;
 	if (pa & PALETTE_ATTR_INVERSE)   ba |= (uint16_t)BOXEN_ATTR_REVERSE;
 	return ba;
-}
-
-/* Draw a NUL-terminated string one character at a time to a boxen window at
- * content row `y`, starting at column `x`.  Clips silently at window edge. */
-static void draw_str(boxen_window_t *win, int x, int y,
-                     const char *s, uint8_t pal_fg, uint8_t pal_bg,
-                     uint8_t pal_attr) {
-	uint16_t fg   = pal_color_to_boxen(pal_fg);
-	uint16_t bg   = pal_color_to_boxen(pal_bg);
-	uint16_t attr = pal_attr_to_boxen(pal_attr);
-	int cw = boxen_window_content_width(win);
-	for (const char *p = s; *p && x < cw; ++p, ++x) {
-		boxen_set_cell(win, x, y, (uint32_t)(unsigned char)*p, fg, bg, attr);
-	}
 }
 
 /* Fill a horizontal run in a boxen window with a single character. */
@@ -364,6 +351,7 @@ static void palette_modal_on_input(boxen_window_t *win,
  * ---------------------------------------------------------------------- */
 
 static void palette_modal_on_draw(boxen_window_t *win, void *user_data) {
+	(void)win;
 	palette_state_t *st = (palette_state_t *)user_data;
 	if (st == NULL || !st->active) return;
 	/* Delegate to the vtable paint -- which calls boxen_backend_paint below. */
@@ -376,6 +364,9 @@ static void palette_modal_on_draw(boxen_window_t *win, void *user_data) {
 
 static bool boxen_backend_open(palette_state_t *st, void *ctx) {
 	(void)ctx;
+	/* 2026-06-10 JES #691 Phase C.0.3b: single-palette-at-a-time invariant
+	 * (file-static s_ctx).  Fail loudly if a future caller violates it. */
+	assert(s_ctx.modal_win == NULL);
 
 	/* Compute a centered rect for the modal window.
 	 * Window height: menubar (row 0) + one strip per open cascade level.
@@ -495,6 +486,10 @@ static void boxen_backend_close(palette_state_t *st, void *ctx) {
 		boxen_window_close(s_ctx.modal_win);
 		s_ctx.modal_win = NULL;
 	}
+	/* 2026-06-10 JES #691 Phase C.0.3b: clear stale callback fields so a
+	 * future re-entry can't observe a previous session's done_cb/repl_state. */
+	s_ctx.done_cb    = NULL;
+	s_ctx.repl_state = NULL;
 }
 
 /* -------------------------------------------------------------------------
@@ -540,6 +535,13 @@ palette_done_t boxen_palette_feed_event(palette_state_t *st,
 			return palette_feed_byte(st, (unsigned char)ev->key.ch);
 		}
 		return PALETTE_DONE_NONE;
+
+	case BOXEN_KEY_CTRL_C:
+		/* 2026-06-10 JES #691 Phase C.0.3b: Ctrl-C while palette is open.
+		 * Modal wins over the global key handler so the event lands here
+		 * rather than in the REPL input_fn.  Feed byte 0x03 (ETX) which
+		 * palette.c:858-862 treats as a cancel signal. */
+		return palette_feed_byte(st, 0x03);
 
 	case BOXEN_KEY_ESCAPE:
 		/* In boxen mode Escape is a named key, not an ambiguous byte

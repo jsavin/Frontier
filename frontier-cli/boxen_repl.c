@@ -1609,8 +1609,13 @@ static void on_palette_done(void *repl_state_opaque, palette_done_t done,
 	boxen_repl_state_t *s = (boxen_repl_state_t *)repl_state_opaque;
 	if (s == NULL) return;
 
-	/* 1+2. Close and free palette. */
+	/* 1+2. Close and free palette.
+	 * Call paint_teardown before close to match the linenoise contract
+	 * (repl.c:3394-3397).  For the boxen backend paint_teardown is a no-op
+	 * (boxen windows vanish atomically on close), but the protocol order
+	 * must be teardown-then-close for backend portability. */
 	if (s->palette_state != NULL) {
+		palette_paint_teardown(s->palette_state);
 		palette_close(s->palette_state);
 		free(s->palette_state);
 		s->palette_state = NULL;
@@ -1670,6 +1675,9 @@ bool boxen_repl_real_palette_open(void *s_opaque) {
 		log_warn(LOG_COMP_GENERAL,
 		         "boxen palette: palette_open_ex failed (terminal too small?)");
 		repl_palette_source_dispose(&src);
+		/* 2026-06-10 JES #691 Phase C.0.3b: clear stale registration so the
+		 * done_cb/repl_state set above don't outlive the failed open. */
+		palette_render_boxen_backend_set_done_cb(NULL, NULL);
 		free(pst);
 		return false;
 	}
@@ -1702,6 +1710,31 @@ bool boxen_repl_real_palette_open(void *s_opaque) {
  *   be freed by on_palette_done -> palette_close -> source_dispose path.
  *
  * exec_arg: NUL-terminated, may be empty.
+ *
+ * Dispatch-path divergence from linenoise (intentional):
+ *
+ *   Linenoise (repl.c) sets g_script_running = 1 around each
+ *   meuserselected_headless call (repl.c:2352, 4147-4149).  g_script_running
+ *   is declared static volatile sig_atomic_t in repl.c (not extern-visible),
+ *   so we cannot set it from here even if we wanted to.
+ *
+ *   The linenoise SIGINT handler (repl.c:1736) checks g_script_running to
+ *   decide whether to interrupt a running script vs. clear the input line.
+ *   That distinction is meaningful for linenoise because SIGINT arrives as a
+ *   raw Unix signal while the terminal is in raw mode.
+ *
+ *   Boxen has a different signal disposition: boxen owns terminal mode and
+ *   delivers Ctrl-C as a BOXEN_KEY_CTRL_C event (a boxen_event_t), not as a
+ *   raw SIGINT.  The palette modal intercepts Ctrl-C via boxen_palette_feed_event
+ *   before a script is ever dispatched; once dispatch is in progress the
+ *   boxen event loop is blocked in meuserselected_headless (GIL-held), so no
+ *   further Ctrl-C events arrive through boxen.  The divergence is therefore
+ *   correct for the boxen architecture.
+ *
+ *   Future cleanup: extract the newemptyhandle/sethandlesize/memcpy block to a
+ *   shared TU (e.g. repl_handle_utils.c) rather than inlining it here.  It is
+ *   inlined now to avoid linking the linenoise REPL (repl.c /
+ *   dispatch_synthesized_script) into boxen builds.
  * ---------------------------------------------------------------------- */
 bool boxen_repl_real_palette_dispatch(void *script_handle, const char *exec_arg) {
 	Handle hscript = (Handle)script_handle;
@@ -1730,14 +1763,17 @@ bool boxen_repl_real_palette_dispatch(void *script_handle, const char *exec_arg)
 					size_t synth_len = 0;
 					if (palette_arg_inject_into_script(script_cstr, (size_t)n,
 					                                   escaped, &synth, &synth_len)) {
-						/* Build a handle from the synthesized source and dispatch. */
+						/* Build a handle from the synthesized source and dispatch.
+						 * Nested if: disposehandle must run whenever newemptyhandle
+						 * succeeds, even if sethandlesize subsequently fails. */
 						Handle hsynth = nil;
-						if (newemptyhandle(&hsynth) &&
-						    sethandlesize(hsynth, (long)synth_len)) {
-							HLock(hsynth);
-							memcpy(*hsynth, synth, synth_len);
-							HUnlock(hsynth);
-							ok = (boolean)meuserselected_headless(hsynth);
+						if (newemptyhandle(&hsynth)) {
+							if (sethandlesize(hsynth, (long)synth_len)) {
+								HLock(hsynth);
+								memcpy(*hsynth, synth, synth_len);
+								HUnlock(hsynth);
+								ok = (boolean)meuserselected_headless(hsynth);
+							}
 							disposehandle(hsynth);
 						}
 						free(synth);
