@@ -638,7 +638,11 @@ static void submit_input(boxen_repl_state_t *s) {
 		return;
 	}
 
-	/* 2026-06-10 JES #691 Phase C.0.5: detect trailing '\' continuation. */
+	/* 2026-06-10 JES #691 Phase C.0.5: detect trailing '\' continuation.
+	 * The check fires regardless of context (matches standard shell semantics).
+	 * A '\' inside a UserTalk string literal at end of line will still cause
+	 * continuation; this is intentional and consistent with bash/Python REPL
+	 * behavior. */
 	int src_len = s->input_cursor;
 	bool is_continuation = (src_len > 0 && s->input_buf[src_len - 1] == '\\');
 	if (is_continuation) {
@@ -702,6 +706,14 @@ static void submit_input(boxen_repl_state_t *s) {
 		int joined_len = s->multiline_len;
 		int avail = BOXEN_REPL_MULTILINE_MAX - joined_len - 1;
 		int copy_len = (src_len < avail) ? src_len : avail;
+		/* 2026-06-10 JES #691 Phase C.0.5: terminator line truncated to fit
+		 * the multi-line accumulator; matches the continuation-overflow
+		 * behavior at the top of submit_input. */
+		if (copy_len < src_len) {
+			log_warn(LOG_COMP_GENERAL,
+			         "boxen_repl: multi-line terminator truncated (%d -> %d bytes)",
+			         src_len, copy_len);
+		}
 		memcpy(joined, s->multiline_buf, (size_t)s->multiline_len);
 		if (copy_len > 0) {
 			memcpy(joined + joined_len, s->input_buf, (size_t)copy_len);
@@ -839,6 +851,13 @@ static void on_input(boxen_window_t *win, const boxen_event_t *ev,
 		if (s->multiline_lines > 0) {
 			/* 2026-06-10 JES #691 Phase C.0.5: discard accumulated buffer,
 			 * return to single-line prompt; do NOT exit the REPL. */
+			/* 2026-06-10 JES #691 Phase C.0.5: defensively close completion popup
+			 * if user opened it mid-continuation. The next key press would close
+			 * it anyway, but eager cleanup avoids the transient visual artifact. */
+			if (s->completion_popup != NULL) {
+				boxen_completion_popup_close(s->completion_popup);
+				s->completion_popup = NULL;
+			}
 			s->multiline_buf[0] = '\0';
 			s->multiline_len    = 0;
 			s->multiline_lines  = 0;

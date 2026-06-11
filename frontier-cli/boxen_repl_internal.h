@@ -309,6 +309,11 @@ typedef struct {
 	 * to a future milestone with an on-disk format upgrade.  boxen_repl_history_append
 	 * is therefore skipped when multiline_lines > 0.
 	 *
+	 * Overflow recovery: if appending a continuation line would exceed
+	 * BOXEN_REPL_MULTILINE_MAX, the trailing '\' is treated as a terminator
+	 * and a warning is logged; the user sees their accumulated buffer
+	 * dispatched as-is (possibly with the final line truncated to fit).
+	 *
 	 * Ctrl-C semantics: when multiline_lines > 0, Ctrl-C discards the
 	 * accumulated buffer and returns to the single-line prompt -- it does NOT
 	 * set should_quit.  The existing Ctrl-C-exits behavior is preserved for
