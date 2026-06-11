@@ -349,10 +349,19 @@ void boxen_repl_set_history_path_for_test(const char *path);
  * '\n') are held in s->partial_line until the next drain call completes them.
  *
  * In production: called after every boxen_poll_event returns (event OR
- * timeout) to drain the stdout-capture pipe into the scrollback.
+ * timeout) to drain the stdout-capture pipe into the scrollback, AND once
+ * more immediately after boxen_repl_run_one_tick (Phase C.0.4 post-dispatch
+ * drain) so slash / eval output reaches scrollback before the next
+ * boxen_present().
  *
  * In test builds: called directly with a test-supplied pipe fd to verify
  * the drain behavior without touching real stdout.
+ *
+ * 2026-06-10 JES #691 Phase C.0.4: async-input invariant.
+ * Drain only mutates state->scrollback + state->partial_line.  It NEVER
+ * touches state->input_buf or state->input_cursor, so concurrent
+ * typing (or any input-bar state) is preserved across drain calls.
+ * Tested by test_stdout_drain_during_typing_does_not_corrupt_input.
  *
  * Parameters:
  *   s  -- REPL state; partial_line / partial_line_len accumulate across calls

@@ -1360,7 +1360,17 @@ int boxen_repl_main(const cli_options_t *opts) {
 	 * if needed.
 	 *
 	 * On any pipe setup failure, we fall through without capture (display will
-	 * be corrupted by raw stdout writes, but the REPL is still functional). */
+	 * be corrupted by raw stdout writes, but the REPL is still functional).
+	 *
+	 * 2026-06-10 JES #691 Phase C.0.4 follow-up:
+	 *   - Post-dispatch drain added (after boxen_repl_run_one_tick): slash
+	 *     output now reaches the scrollback before the next boxen_present().
+	 *   - The 100ms boxen_poll_event timeout means drain runs at >= 10 Hz even
+	 *     with zero input.  A full pipe stalls the producer at most one drain
+	 *     period (100ms); no hang is possible because the read end is O_NONBLOCK
+	 *     and drain_stdout_into_scrollback always empties the pipe before returning.
+	 *   - drain never touches input_buf or input_cursor -- async output during
+	 *     in-progress typing is safe.  See test_stdout_drain_during_typing_does_not_corrupt_input. */
 	int pipefd[2];
 	bool capture_active = false;
 	if (pipe(pipefd) == 0) {
@@ -1489,6 +1499,14 @@ int boxen_repl_main(const cli_options_t *opts) {
 		}
 
 		boxen_repl_run_one_tick(state, &ev);
+
+		/* 2026-06-10 JES #691 Phase C.0.4: post-dispatch drain.
+		 * Slash dispatch / eval may have written to stdout; drain promptly so
+		 * output reaches the scrollback before the next boxen_present(). */
+		if (capture_active) {
+			drain_stdout_into_scrollback(state, state->pipe_read_fd);
+		}
+
 		boxen_present();
 	}
 
