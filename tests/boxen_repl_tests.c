@@ -986,6 +986,109 @@ static void test_slash_mid_input_still_inserts(void) {
 }
 
 /* -------------------------------------------------------------------------
+ * test_stdout_drain_during_typing_does_not_corrupt_input
+ *
+ * 2026-06-10 JES #691 Phase C.0.4: regression guard for async-input invariant.
+ *
+ * Verifies that calling drain_stdout_into_scrollback() while the input bar
+ * holds in-progress typed characters leaves input_buf and input_cursor
+ * completely untouched.  Also confirms that scrollback_count grows by exactly
+ * one (the single "async-msg\n" line written to the test pipe).
+ * ---------------------------------------------------------------------- */
+static void test_stdout_drain_during_typing_does_not_corrupt_input(void) {
+	setup();
+
+	/* Type "abc" into the input bar */
+	boxen_event_t a = make_char_event('a');
+	boxen_event_t b = make_char_event('b');
+	boxen_event_t c = make_char_event('c');
+	boxen_repl_run_one_tick(&g_state, &a);
+	boxen_repl_run_one_tick(&g_state, &b);
+	boxen_repl_run_one_tick(&g_state, &c);
+
+	/* Create a test pipe, write one async line, then drain it */
+	int pipefd[2];
+	assert(pipe(pipefd) == 0);
+	fcntl(pipefd[0], F_SETFL, O_NONBLOCK);
+	const char *msg = "async-msg\n";
+	ssize_t w = write(pipefd[1], msg, strlen(msg));
+	assert(w == (ssize_t)strlen(msg));
+	close(pipefd[1]);
+
+	int ring_before = g_state.scrollback_count;
+
+	drain_stdout_into_scrollback(&g_state, pipefd[0]);
+	close(pipefd[0]);
+
+	/* Input bar must be completely untouched */
+	assert(strcmp(g_state.input_buf, "abc") == 0);
+	assert(g_state.input_cursor == 3);
+
+	/* Scrollback grew by exactly one line */
+	assert(g_state.scrollback_count == ring_before + 1);
+	int newest = (g_state.scrollback_head - 1 + BOXEN_REPL_SCROLLBACK_SIZE) %
+	             BOXEN_REPL_SCROLLBACK_SIZE;
+	assert(g_state.scrollback[newest] != NULL);
+	assert(strstr(g_state.scrollback[newest], "async-msg") != NULL);
+
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * test_long_output_does_not_deadlock_event_loop
+ *
+ * 2026-06-10 JES #691 Phase C.0.4: regression guard for no-hang invariant.
+ *
+ * Writes >100 KB to a non-blocking pipe and drains on backpressure.  Proves
+ * that the consumer (drain_stdout_into_scrollback) makes room promptly enough
+ * that the producer never loops more than 1000 times, and that scrollback
+ * does grow (data actually reached the ring).
+ *
+ * This mirrors the 10 Hz drain guarantee in production: the read end is
+ * O_NONBLOCK, so drain loops until EAGAIN without blocking the event loop.
+ * A full pipe triggers EAGAIN / EWOULDBLOCK on the write side; draining first
+ * makes room for the next write.
+ * ---------------------------------------------------------------------- */
+static void test_long_output_does_not_deadlock_event_loop(void) {
+	setup();
+
+	int pipefd[2];
+	assert(pipe(pipefd) == 0);
+	fcntl(pipefd[0], F_SETFL, O_NONBLOCK);
+	fcntl(pipefd[1], F_SETFL, O_NONBLOCK);
+
+	const size_t target = 100 * 1024;
+	char chunk[256];
+	memset(chunk, 'x', sizeof(chunk));
+	chunk[sizeof(chunk) - 1] = '\n';  /* ensure every chunk terminates a line */
+
+	size_t total_written = 0;
+	int    drain_iters   = 0;
+	int    ring_before   = g_state.scrollback_count;
+
+	while (total_written < target && drain_iters < 1000) {
+		ssize_t nw = write(pipefd[1], chunk, sizeof(chunk));
+		if (nw < 0) {
+			/* Pipe full -- drain and retry; proves consumer makes room */
+			drain_stdout_into_scrollback(&g_state, pipefd[0]);
+			drain_iters++;
+			continue;
+		}
+		total_written += (size_t)nw;
+	}
+	/* Final drain: consume whatever remains in the pipe */
+	drain_stdout_into_scrollback(&g_state, pipefd[0]);
+	close(pipefd[1]);
+	close(pipefd[0]);
+
+	assert(total_written >= target);
+	assert(drain_iters < 1000);
+	assert(g_state.scrollback_count > ring_before);
+
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
  * main
  * ---------------------------------------------------------------------- */
 int main(void) {
@@ -1010,6 +1113,8 @@ int main(void) {
 	TR_RUN(test_palette_close_returns_focus_to_repl_input);
 	TR_RUN(test_palette_dispatch_hook_contract);
 	TR_RUN(test_slash_mid_input_still_inserts);
+	TR_RUN(test_stdout_drain_during_typing_does_not_corrupt_input);
+	TR_RUN(test_long_output_does_not_deadlock_event_loop);
 
 	TR_SUMMARY();
 	return TR_EXIT_CODE();
