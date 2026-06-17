@@ -854,6 +854,70 @@ static void test_depth_cap_refuses_extra_open(void) {
 	palette_close(&st);
 }
 
+/* -------------------------------------------------------------------------
+ * 2026-06-17 JES #691 Phase C.0.7c: Ctrl-C (byte 0x03) must cancel the
+ * palette from ANY state -- menubar-only, one cascade level open, two
+ * cascade levels open.  Regression for the bug where 0x03 fell through
+ * the palette_feed_byte() switch with no handler and returned DONE_NONE.
+ * ---------------------------------------------------------------------- */
+
+static void test_ctrl_c_at_top_level_cancels(void) {
+	compositor_test_reset();
+	compositor_on_resize(24, 80);
+	palette_state_t st;
+	palette_menu_source_t src = make_default_source();
+	palette_open(&st, 24, 80, 0, &src);
+
+	/* Palette open, no cascade -- Ctrl-C must immediately cancel. */
+	assert(st.open_depth == 0);
+	palette_done_t r = palette_feed_byte(&st, 0x03);
+	assert(r == PALETTE_DONE_CANCEL);
+
+	palette_close(&st);
+}
+
+static void test_ctrl_c_with_cascade_open_cancels(void) {
+	compositor_test_reset();
+	compositor_on_resize(24, 80);
+	palette_state_t st;
+	palette_menu_source_t src = make_default_source();
+	palette_open(&st, 24, 80, 0, &src);
+
+	/* Open one cascade level (ENTER on the menubar). */
+	palette_feed_byte(&st, '\r');
+	assert(st.open_depth == 1);
+
+	/* Ctrl-C must cancel immediately, not just collapse one level. */
+	palette_done_t r = palette_feed_byte(&st, 0x03);
+	assert(r == PALETTE_DONE_CANCEL);
+
+	palette_close(&st);
+}
+
+static void test_ctrl_c_with_deep_cascade_cancels(void) {
+	compositor_test_reset();
+	compositor_on_resize(24, 80);
+	palette_state_t st;
+	palette_menu_source_t src = make_default_source();
+	palette_open(&st, 24, 80, 0, &src);
+
+	/* Navigate to File > Views (a submenu) and open it -- two levels deep.
+	 * 'F' opens File; RIGHT moves to Views; ENTER opens it. */
+	palette_feed_byte(&st, 'F');
+	assert(st.open_depth == 1);
+	/* Navigate right to "Views" (index 1). */
+	palette_feed_byte(&st, 0x1b); palette_feed_byte(&st, '['); palette_feed_byte(&st, 'C');
+	assert(st.levels[0].cursor == 1);
+	palette_feed_byte(&st, '\r');
+	assert(st.open_depth == 2);
+
+	/* Ctrl-C must cancel from two levels deep in one shot. */
+	palette_done_t r = palette_feed_byte(&st, 0x03);
+	assert(r == PALETTE_DONE_CANCEL);
+
+	palette_close(&st);
+}
+
 static void test_fast_timers_env_var_sets_short_esc_timeout(void) {
 	const char *saved = getenv("FRONTIER_PALETTE_FAST_TIMERS");
 	char saved_copy[64];
@@ -908,6 +972,9 @@ int main(void) {
 	TR_RUN(test_resize_clamps_menubar_cursor);
 	TR_RUN(test_depth_cap_refuses_extra_open);
 	TR_RUN(test_fast_timers_env_var_sets_short_esc_timeout);
+	TR_RUN(test_ctrl_c_at_top_level_cancels);
+	TR_RUN(test_ctrl_c_with_cascade_open_cancels);
+	TR_RUN(test_ctrl_c_with_deep_cascade_cancels);
 	TR_SUMMARY();
 	return TR_EXIT_CODE();
 }
