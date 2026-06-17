@@ -846,18 +846,32 @@ static void on_input(boxen_window_t *win, const boxen_event_t *ev,
 	boxen_repl_state_t *s = (boxen_repl_state_t *)user_data;
 	if (s == NULL || ev == NULL || ev->type != BOXEN_EV_KEY) return;
 
-	/* Ctrl-C: discard multi-line buffer if active, else exit */
+	/* 2026-06-17 JES #691 Phase C.0.7d: Ctrl-C handler.
+	 *
+	 * Order of operations (all three steps execute in sequence):
+	 *
+	 *   1. Close any open completion popup unconditionally.  Ctrl-C must
+	 *      always dismiss the popup regardless of whether multi-line mode is
+	 *      active -- without this, exiting via Ctrl-C while a popup was open
+	 *      would leave the popup window "open" through teardown.
+	 *
+	 *   2. If multi-line mode is active (multiline_lines > 0), discard the
+	 *      accumulated buffer and return WITHOUT setting should_quit.  The
+	 *      user pressed Ctrl-C to abort the current multi-line expression,
+	 *      not to exit the REPL.
+	 *
+	 *   3. Otherwise (single-line mode, no popup): set should_quit and exit.
+	 *
+	 * This ordering also ensures the popup-mode key-routing branch below never
+	 * sees Ctrl-C -- it is consumed here first. */
 	if (ev->key.key == BOXEN_KEY_CTRL_C) {
+		/* Step 1: always close popup on Ctrl-C */
+		if (s->completion_popup != NULL) {
+			boxen_completion_popup_close(s->completion_popup);
+			s->completion_popup = NULL;
+		}
+		/* Step 2: discard multi-line accumulator; return without exiting */
 		if (s->multiline_lines > 0) {
-			/* 2026-06-10 JES #691 Phase C.0.5: discard accumulated buffer,
-			 * return to single-line prompt; do NOT exit the REPL. */
-			/* 2026-06-10 JES #691 Phase C.0.5: defensively close completion popup
-			 * if user opened it mid-continuation. The next key press would close
-			 * it anyway, but eager cleanup avoids the transient visual artifact. */
-			if (s->completion_popup != NULL) {
-				boxen_completion_popup_close(s->completion_popup);
-				s->completion_popup = NULL;
-			}
 			s->multiline_buf[0] = '\0';
 			s->multiline_len    = 0;
 			s->multiline_lines  = 0;
@@ -866,6 +880,7 @@ static void on_input(boxen_window_t *win, const boxen_event_t *ev,
 			if (s->input_win != NULL) boxen_window_invalidate(s->input_win);
 			return;
 		}
+		/* Step 3: single-line mode -- exit the REPL */
 		s->should_quit = true;
 		return;
 	}
