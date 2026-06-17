@@ -141,7 +141,8 @@ static void test_input_line_accumulates_chars(void) {
 	boxen_repl_run_one_tick(&g_state, &c);
 
 	assert(strcmp(g_state.input_buf, "abc") == 0);
-	assert(g_state.input_cursor == 3);
+	assert(g_state.input_len == 3);
+	assert(g_state.input_cursor_pos == 3);
 
 	teardown();
 }
@@ -158,7 +159,8 @@ static void test_enter_dispatches_slash_command(void) {
 	/* Pre-load the input buffer directly */
 	strncpy(g_state.input_buf, "/help",
 	        sizeof(g_state.input_buf) - 1);
-	g_state.input_cursor = (int)strlen(g_state.input_buf);
+	g_state.input_len        = (int)strlen(g_state.input_buf);
+	g_state.input_cursor_pos = g_state.input_len;
 
 	int ring_before = g_state.scrollback_count;
 
@@ -184,7 +186,8 @@ static void test_enter_dispatches_expression(void) {
 
 	strncpy(g_state.input_buf, "1 + 1",
 	        sizeof(g_state.input_buf) - 1);
-	g_state.input_cursor = (int)strlen(g_state.input_buf);
+	g_state.input_len        = (int)strlen(g_state.input_buf);
+	g_state.input_cursor_pos = g_state.input_len;
 
 	/* Simulate Enter */
 	boxen_event_t enter = make_key_event(BOXEN_KEY_ENTER);
@@ -217,24 +220,28 @@ static void test_backspace_deletes_char(void) {
 
 	strncpy(g_state.input_buf, "abcd",
 	        sizeof(g_state.input_buf) - 1);
-	g_state.input_cursor = 4;
+	g_state.input_len        = 4;
+	g_state.input_cursor_pos = 4;
 
 	boxen_event_t bs = make_key_event(BOXEN_KEY_BACKSPACE);
 
 	boxen_repl_run_one_tick(&g_state, &bs);
 	assert(strcmp(g_state.input_buf, "abc") == 0);
-	assert(g_state.input_cursor == 3);
+	assert(g_state.input_len        == 3);
+	assert(g_state.input_cursor_pos == 3);
 
 	boxen_repl_run_one_tick(&g_state, &bs);
 	boxen_repl_run_one_tick(&g_state, &bs);
 	boxen_repl_run_one_tick(&g_state, &bs);
 	assert(strcmp(g_state.input_buf, "") == 0);
-	assert(g_state.input_cursor == 0);
+	assert(g_state.input_len        == 0);
+	assert(g_state.input_cursor_pos == 0);
 
 	/* Extra backspace on empty: no underflow */
 	boxen_repl_run_one_tick(&g_state, &bs);
 	assert(strcmp(g_state.input_buf, "") == 0);
-	assert(g_state.input_cursor == 0);
+	assert(g_state.input_len        == 0);
+	assert(g_state.input_cursor_pos == 0);
 
 	teardown();
 }
@@ -422,7 +429,8 @@ static void test_history_up_arrow_loads_previous(void) {
 
 	/* Simulate user having typed "partial" into the input bar */
 	strncpy(g_state.input_buf, "partial", sizeof(g_state.input_buf) - 1);
-	g_state.input_cursor = (int)strlen("partial");
+	g_state.input_len        = (int)strlen("partial");
+	g_state.input_cursor_pos = g_state.input_len;
 
 	boxen_event_t up   = make_up_event();
 	boxen_event_t down = make_down_event();
@@ -711,7 +719,8 @@ static void test_tab_completes_single_slash_command(void) {
 
 	/* Single candidate: inline replace, no popup. */
 	assert(strcmp(g_state.input_buf, "/help") == 0);
-	assert(g_state.input_cursor == 5);
+	assert(g_state.input_len        == 5);
+	assert(g_state.input_cursor_pos == 5);
 	assert(g_state.completion_popup == NULL);
 
 	teardown();
@@ -779,7 +788,8 @@ static void test_tab_completes_odb_path_prefix(void) {
 
 	/* Single candidate: inline replace, no popup. */
 	assert(strcmp(g_state.input_buf, "system.test") == 0);
-	assert(g_state.input_cursor == 11);
+	assert(g_state.input_len        == 11);
+	assert(g_state.input_cursor_pos == 11);
 	assert(g_state.completion_popup == NULL);
 
 	teardown();
@@ -901,9 +911,16 @@ static void test_slash_key_defers_palette_open(void) {
 	assert(g_state.palette_state == NULL);
 	/* '/' must NOT have been inserted into input_buf. */
 	assert(g_state.input_buf[0] == '\0');
-	assert(g_state.input_cursor == 0);
+	assert(g_state.input_len        == 0);
+	assert(g_state.input_cursor_pos == 0);
 	/* Debounce must be armed. */
 	assert(g_state.slash_pending_until_ms != 0);
+
+	/* Clean up sentinel before teardown (teardown would try to call
+	 * palette_close if palette_state != NULL and the production guard
+	 * is compiled in; in the test build BOXEN_REPL_OMIT_MAIN is defined
+	 * so the guard body is skipped, but clear it anyway to stay clean). */
+	g_state.palette_state = NULL;
 
 	teardown();
 }
@@ -947,7 +964,8 @@ static void test_palette_close_returns_focus_to_repl_input(void) {
 	boxen_event_t ev_a = make_char_event('a');
 	boxen_repl_run_one_tick(&g_state, &ev_a);
 	assert(strcmp(g_state.input_buf, "a") == 0);
-	assert(g_state.input_cursor == 1);
+	assert(g_state.input_len        == 1);
+	assert(g_state.input_cursor_pos == 1);
 
 	teardown();
 }
@@ -1052,7 +1070,8 @@ static void test_stdout_drain_during_typing_does_not_corrupt_input(void) {
 
 	/* Input bar must be completely untouched */
 	assert(strcmp(g_state.input_buf, "abc") == 0);
-	assert(g_state.input_cursor == 3);
+	assert(g_state.input_len        == 3);
+	assert(g_state.input_cursor_pos == 3);
 
 	/* Scrollback grew by exactly one line */
 	assert(g_state.scrollback_count == ring_before + 1);
@@ -1219,10 +1238,216 @@ static void test_ctrl_c_in_multiline_discards_buffer(void) {
 	assert(g_state.multiline_lines == 0);
 	assert(g_state.multiline_len   == 0);
 	assert(g_state.multiline_buf[0] == '\0');
-	assert(g_state.input_buf[0]     == '\0');
-	assert(g_state.input_cursor     == 0);
-	assert(g_state.should_quit      == false);  /* critical: must NOT exit */
-	assert(g_eval_result[0]         == '\0');   /* eval never called */
+	assert(g_state.input_buf[0]        == '\0');
+	assert(g_state.input_len           == 0);
+	assert(g_state.input_cursor_pos    == 0);
+	assert(g_state.should_quit         == false);  /* critical: must NOT exit */
+	assert(g_eval_result[0]            == '\0');   /* eval never called */
+
+	teardown();
+}
+
+/* =========================================================================
+ * 2026-06-17 JES Phase C.0.7e #691: cursor-based editing tests.
+ *
+ * All seven tests below reference input_cursor_pos and input_len.
+ * They will not compile until the rename is applied to boxen_repl_internal.h
+ * and boxen_repl.c -- that is the intended RED state.
+ * ========================================================================= */
+
+/* -------------------------------------------------------------------------
+ * Test 24: test_left_arrow_moves_cursor_left_within_buffer
+ *
+ * Pre-load "abc" (len 3, caret at 3).  Press LEFT twice.  Assert
+ * input_cursor_pos == 1, input_len == 3, input_buf unchanged.
+ * ---------------------------------------------------------------------- */
+static void test_left_arrow_moves_cursor_left_within_buffer(void) {
+	setup();
+
+	strncpy(g_state.input_buf, "abc", sizeof(g_state.input_buf) - 1);
+	g_state.input_len        = 3;
+	g_state.input_cursor_pos = 3;
+
+	boxen_event_t left = make_key_event(BOXEN_KEY_LEFT);
+
+	boxen_repl_run_one_tick(&g_state, &left);
+	assert(g_state.input_cursor_pos == 2);
+	assert(g_state.input_len        == 3);
+	assert(strcmp(g_state.input_buf, "abc") == 0);
+
+	boxen_repl_run_one_tick(&g_state, &left);
+	assert(g_state.input_cursor_pos == 1);
+	assert(g_state.input_len        == 3);
+
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * Test 25: test_right_arrow_moves_cursor_right_within_buffer
+ *
+ * Pre-load "abc" with caret at 1.  Press RIGHT twice.  Assert
+ * input_cursor_pos == 3, input_len == 3, input_buf unchanged.
+ * ---------------------------------------------------------------------- */
+static void test_right_arrow_moves_cursor_right_within_buffer(void) {
+	setup();
+
+	strncpy(g_state.input_buf, "abc", sizeof(g_state.input_buf) - 1);
+	g_state.input_len        = 3;
+	g_state.input_cursor_pos = 1;
+
+	boxen_event_t right = make_key_event(BOXEN_KEY_RIGHT);
+
+	boxen_repl_run_one_tick(&g_state, &right);
+	assert(g_state.input_cursor_pos == 2);
+	assert(g_state.input_len        == 3);
+	assert(strcmp(g_state.input_buf, "abc") == 0);
+
+	boxen_repl_run_one_tick(&g_state, &right);
+	assert(g_state.input_cursor_pos == 3);
+	assert(g_state.input_len        == 3);
+
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * Test 26: test_printable_mid_buffer_inserts_at_cursor
+ *
+ * Pre-load "ac" (len 2, caret at 1 between 'a' and 'c').
+ * Type 'b'.  Assert input_buf == "abc", input_len == 3,
+ * input_cursor_pos == 2.
+ * ---------------------------------------------------------------------- */
+static void test_printable_mid_buffer_inserts_at_cursor(void) {
+	setup();
+
+	strncpy(g_state.input_buf, "ac", sizeof(g_state.input_buf) - 1);
+	g_state.input_len        = 2;
+	g_state.input_cursor_pos = 1;
+
+	boxen_event_t b_ev = make_char_event('b');
+	boxen_repl_run_one_tick(&g_state, &b_ev);
+
+	assert(strcmp(g_state.input_buf, "abc") == 0);
+	assert(g_state.input_len        == 3);
+	assert(g_state.input_cursor_pos == 2);
+
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * Test 27: test_backspace_mid_buffer_deletes_before_cursor
+ *
+ * Pre-load "abc" (len 3, caret at 2 between 'b' and 'c').
+ * Press Backspace.  Assert input_buf == "ac", input_len == 2,
+ * input_cursor_pos == 1.
+ * ---------------------------------------------------------------------- */
+static void test_backspace_mid_buffer_deletes_before_cursor(void) {
+	setup();
+
+	strncpy(g_state.input_buf, "abc", sizeof(g_state.input_buf) - 1);
+	g_state.input_len        = 3;
+	g_state.input_cursor_pos = 2;
+
+	boxen_event_t bs = make_key_event(BOXEN_KEY_BACKSPACE);
+	boxen_repl_run_one_tick(&g_state, &bs);
+
+	assert(strcmp(g_state.input_buf, "ac") == 0);
+	assert(g_state.input_len        == 2);
+	assert(g_state.input_cursor_pos == 1);
+
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * Test 28: test_ctrl_a_jumps_cursor_to_start
+ *
+ * Pre-load "hello" (len 5, caret at 5).
+ * Press Ctrl-A.  Assert input_cursor_pos == 0, input_len == 5,
+ * input_buf unchanged.
+ * ---------------------------------------------------------------------- */
+static void test_ctrl_a_jumps_cursor_to_start(void) {
+	setup();
+
+	strncpy(g_state.input_buf, "hello", sizeof(g_state.input_buf) - 1);
+	g_state.input_len        = 5;
+	g_state.input_cursor_pos = 5;
+
+	boxen_event_t ctrl_a = make_key_event(BOXEN_KEY_CTRL_A);
+	boxen_repl_run_one_tick(&g_state, &ctrl_a);
+
+	assert(g_state.input_cursor_pos == 0);
+	assert(g_state.input_len        == 5);
+	assert(strcmp(g_state.input_buf, "hello") == 0);
+
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * Test 29: test_ctrl_e_jumps_cursor_to_end
+ *
+ * Pre-load "hello" (len 5, caret at 2 mid-word).
+ * Press Ctrl-E.  Assert input_cursor_pos == 5, input_len == 5,
+ * input_buf unchanged.
+ * ---------------------------------------------------------------------- */
+static void test_ctrl_e_jumps_cursor_to_end(void) {
+	setup();
+
+	strncpy(g_state.input_buf, "hello", sizeof(g_state.input_buf) - 1);
+	g_state.input_len        = 5;
+	g_state.input_cursor_pos = 2;
+
+	boxen_event_t ctrl_e = make_key_event(BOXEN_KEY_CTRL_E);
+	boxen_repl_run_one_tick(&g_state, &ctrl_e);
+
+	assert(g_state.input_cursor_pos == 5);
+	assert(g_state.input_len        == 5);
+	assert(strcmp(g_state.input_buf, "hello") == 0);
+
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * Test 30: test_cursor_stays_at_bounds
+ *
+ * Verify LEFT at col 0 is a no-op and RIGHT at end is a no-op.
+ *
+ * Also verify forward-delete (BOXEN_KEY_DELETE) at end is a no-op
+ * and at mid-buffer removes the char at cursor without moving it.
+ * ---------------------------------------------------------------------- */
+static void test_cursor_stays_at_bounds(void) {
+	setup();
+
+	/* --- LEFT at column 0 is a no-op --- */
+	strncpy(g_state.input_buf, "xy", sizeof(g_state.input_buf) - 1);
+	g_state.input_len        = 2;
+	g_state.input_cursor_pos = 0;
+
+	boxen_event_t left = make_key_event(BOXEN_KEY_LEFT);
+	boxen_repl_run_one_tick(&g_state, &left);
+	assert(g_state.input_cursor_pos == 0);   /* clamped at 0 */
+	assert(g_state.input_len        == 2);
+	assert(strcmp(g_state.input_buf, "xy") == 0);
+
+	/* --- RIGHT at end is a no-op --- */
+	g_state.input_cursor_pos = 2;
+	boxen_event_t right = make_key_event(BOXEN_KEY_RIGHT);
+	boxen_repl_run_one_tick(&g_state, &right);
+	assert(g_state.input_cursor_pos == 2);   /* clamped at len */
+	assert(g_state.input_len        == 2);
+	assert(strcmp(g_state.input_buf, "xy") == 0);
+
+	/* --- DELETE at end is a no-op --- */
+	boxen_event_t del = make_key_event(BOXEN_KEY_DELETE);
+	boxen_repl_run_one_tick(&g_state, &del);
+	assert(g_state.input_cursor_pos == 2);
+	assert(g_state.input_len        == 2);
+	assert(strcmp(g_state.input_buf, "xy") == 0);
+
+	/* --- DELETE mid-buffer removes char at cursor --- */
+	g_state.input_cursor_pos = 0;   /* caret before 'x'; delete removes 'x' */
+	boxen_repl_run_one_tick(&g_state, &del);
+	assert(strcmp(g_state.input_buf, "y") == 0);
+	assert(g_state.input_len        == 1);
+	assert(g_state.input_cursor_pos == 0);   /* cursor stays in place */
 
 	teardown();
 }
@@ -1270,7 +1495,7 @@ static void test_ctrl_c_in_multiline_with_popup_open_discards_both(void) {
 	/* Verify we are in multi-line mode */
 	assert(g_state.multiline_lines == 1);
 	assert(g_state.input_buf[0] == '\0');
-	assert(g_state.input_cursor == 0);
+	assert(g_state.input_len == 0);
 
 	/* Step 2: type "/" to get a non-empty input buffer, then Tab to open popup.
 	 * palette_open_hook is NULL in test setup, so '/' inserts normally. */
@@ -1299,7 +1524,7 @@ static void test_ctrl_c_in_multiline_with_popup_open_discards_both(void) {
 
 	/* Input bar must be cleared */
 	assert(g_state.input_buf[0]  == '\0');
-	assert(g_state.input_cursor  == 0);
+	assert(g_state.input_len  == 0);
 
 	/* Critical: must NOT exit the REPL */
 	assert(g_state.should_quit == false);
@@ -1343,7 +1568,7 @@ static void test_slash_then_letter_within_window_inserts_both(void) {
 	assert(g_state.slash_pending_until_ms != 0);
 	/* input_buf still empty (the '/' is deferred). */
 	assert(g_state.input_buf[0] == '\0');
-	assert(g_state.input_cursor == 0);
+	assert(g_state.input_len == 0);
 
 	/* Type 'h' -- mock time still 1000ms, well within the debounce window.
 	 * This must cancel the pending open and insert both '/' and 'h'. */
@@ -1355,7 +1580,7 @@ static void test_slash_then_letter_within_window_inserts_both(void) {
 	assert(g_state.palette_state == NULL);
 	/* input_buf must now contain "/h". */
 	assert(strcmp(g_state.input_buf, "/h") == 0);
-	assert(g_state.input_cursor == 2);
+	assert(g_state.input_len == 2);
 	/* Debounce cleared. */
 	assert(g_state.slash_pending_until_ms == 0);
 
@@ -1402,7 +1627,7 @@ static void test_slash_then_timeout_opens_palette(void) {
 	assert(g_state.palette_state != NULL);    /* sentinel installed */
 	/* input_buf must still be empty (the '/' was never inserted). */
 	assert(g_state.input_buf[0] == '\0');
-	assert(g_state.input_cursor == 0);
+	assert(g_state.input_len == 0);
 	/* Debounce cleared. */
 	assert(g_state.slash_pending_until_ms == 0);
 
@@ -1638,7 +1863,7 @@ static void test_completion_popup_printable_letter_closes_popup_no_crash(void) {
 
 	/* 'x' must have been inserted after "/" */
 	assert(strcmp(g_state.input_buf, "/x") == 0);
-	assert(g_state.input_cursor == 2);
+	assert(g_state.input_len == 2);
 
 	/* No palette state (hook not wired) */
 	assert(g_state.palette_state == NULL);
@@ -1692,7 +1917,7 @@ static void test_completion_popup_slash_with_empty_input_inserts_not_palette(voi
 	/* Popup must be open */
 	assert(g_state.completion_popup != NULL);
 	/* input_buf must still be empty (Tab doesn't insert) */
-	assert(g_state.input_cursor == 0);
+	assert(g_state.input_len == 0);
 
 	/* Now press '/': "any other key" in popup mode.
 	 * Bug: with cursor==0 and palette_open_hook set, the '/' falls through
@@ -1706,7 +1931,7 @@ static void test_completion_popup_slash_with_empty_input_inserts_not_palette(voi
 
 	/* '/' must be inserted into input_buf (not swallowed by palette open) */
 	assert(strcmp(g_state.input_buf, "/") == 0);
-	assert(g_state.input_cursor == 1);
+	assert(g_state.input_len == 1);
 
 	/* Palette must NOT have opened -- this is the bug assertion */
 	assert(g_state.palette_state == NULL);
@@ -1753,6 +1978,13 @@ int main(void) {
 	TR_RUN(test_completion_popup_enter_accepts_selection_no_crash);
 	TR_RUN(test_completion_popup_printable_letter_closes_popup_no_crash);
 	TR_RUN(test_completion_popup_slash_with_empty_input_inserts_not_palette);
+	TR_RUN(test_left_arrow_moves_cursor_left_within_buffer);
+	TR_RUN(test_right_arrow_moves_cursor_right_within_buffer);
+	TR_RUN(test_printable_mid_buffer_inserts_at_cursor);
+	TR_RUN(test_backspace_mid_buffer_deletes_before_cursor);
+	TR_RUN(test_ctrl_a_jumps_cursor_to_start);
+	TR_RUN(test_ctrl_e_jumps_cursor_to_end);
+	TR_RUN(test_cursor_stays_at_bounds);
 
 	TR_SUMMARY();
 	return TR_EXIT_CODE();

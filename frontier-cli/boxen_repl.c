@@ -285,7 +285,7 @@ static void draw_input_bar(boxen_window_t *win, void *user_data) {
 	(void)n;
 
 	/* Overlay typed text starting at REPL_INPUT_PROMPT_LEN */
-	int text_len = s->input_cursor;
+	int text_len = s->input_len;
 	int text_avail = cap - REPL_INPUT_PROMPT_LEN;
 	if (text_len > text_avail) text_len = text_avail;
 	if (text_len > 0 && text_avail > 0) {
@@ -301,8 +301,10 @@ static void draw_input_bar(boxen_window_t *win, void *user_data) {
 	boxen_draw_text(win, 0, 0, linebuf,
 	                BOXEN_COLOR_DEFAULT, BOXEN_COLOR_DEFAULT, BOXEN_ATTR_NONE);
 
-	/* Position the cursor at the end of the typed text */
-	int cursor_col = REPL_INPUT_PROMPT_LEN + s->input_cursor;
+	/* 2026-06-17 JES Phase C.0.7e #691: position the terminal cursor at
+	 * input_cursor_pos (the caret), not at the end of input.  Before C.0.7e
+	 * both were always equal (append-only); now they diverge during editing. */
+	int cursor_col = REPL_INPUT_PROMPT_LEN + s->input_cursor_pos;
 	if (cursor_col >= cap) cursor_col = cap - 1;
 	boxen_window_set_cursor(win, cursor_col, 0);
 }
@@ -632,7 +634,8 @@ static void history_nav_up(boxen_repl_state_t *s) {
 	int ring_idx = (s->history_head - 1 - s->history_nav_idx
 	                + BOXEN_REPL_HISTORY_SIZE) % BOXEN_REPL_HISTORY_SIZE;
 	snprintf(s->input_buf, BOXEN_REPL_INPUT_MAX, "%s", s->history[ring_idx]);
-	s->input_cursor = (int)strlen(s->input_buf);
+	s->input_len        = (int)strlen(s->input_buf);
+	s->input_cursor_pos = s->input_len;   /* caret jumps to end after history recall */
 
 	if (s->input_win != NULL) boxen_window_invalidate(s->input_win);
 }
@@ -651,7 +654,8 @@ static void history_nav_down(boxen_repl_state_t *s) {
 		s->history_nav_idx        = -1;
 		s->history_saved_input[0] = '\0';
 	}
-	s->input_cursor = (int)strlen(s->input_buf);
+	s->input_len        = (int)strlen(s->input_buf);
+	s->input_cursor_pos = s->input_len;   /* caret jumps to end after history recall */
 
 	if (s->input_win != NULL) boxen_window_invalidate(s->input_win);
 }
@@ -686,7 +690,7 @@ static void submit_input(boxen_repl_state_t *s) {
 	/* 2026-06-10 JES #691 Phase C.0.5: empty-line guard.
 	 * In single-line mode, empty Enter is a no-op.  In multi-line mode, empty
 	 * Enter is a valid terminator (submits the accumulated buffer). */
-	if (s->input_cursor == 0 && s->multiline_lines == 0) {
+	if (s->input_len == 0 && s->multiline_lines == 0) {
 		if (s->input_win != NULL) boxen_window_invalidate(s->input_win);
 		return;
 	}
@@ -696,7 +700,7 @@ static void submit_input(boxen_repl_state_t *s) {
 	 * A '\' inside a UserTalk string literal at end of line will still cause
 	 * continuation; this is intentional and consistent with bash/Python REPL
 	 * behavior. */
-	int src_len = s->input_cursor;
+	int src_len = s->input_len;
 	bool is_continuation = (src_len > 0 && s->input_buf[src_len - 1] == '\\');
 	if (is_continuation) {
 		src_len--;   /* strip the trailing backslash */
@@ -732,8 +736,9 @@ static void submit_input(boxen_repl_state_t *s) {
 			s->multiline_lines++;
 
 			/* Clear input and redraw */
-			s->input_buf[0] = '\0';
-			s->input_cursor = 0;
+			s->input_buf[0]     = '\0';
+			s->input_len        = 0;
+			s->input_cursor_pos = 0;
 			if (s->input_win  != NULL) boxen_window_invalidate(s->input_win);
 			if (s->output_win != NULL) boxen_window_invalidate(s->output_win);
 			return;
@@ -883,8 +888,9 @@ static void submit_input(boxen_repl_state_t *s) {
 	s->multiline_lines  = 0;
 
 	/* Clear input */
-	s->input_buf[0] = '\0';
-	s->input_cursor = 0;
+	s->input_buf[0]     = '\0';
+	s->input_len        = 0;
+	s->input_cursor_pos = 0;
 
 	if (s->input_win  != NULL) boxen_window_invalidate(s->input_win);
 	if (s->output_win != NULL) boxen_window_invalidate(s->output_win);
@@ -933,7 +939,8 @@ static void on_input(boxen_window_t *win, const boxen_event_t *ev,
 			s->multiline_len    = 0;
 			s->multiline_lines  = 0;
 			s->input_buf[0]     = '\0';
-			s->input_cursor     = 0;
+			s->input_len        = 0;
+			s->input_cursor_pos = 0;
 			if (s->input_win != NULL) boxen_window_invalidate(s->input_win);
 			return;
 		}
@@ -968,7 +975,8 @@ static void on_input(boxen_window_t *win, const boxen_event_t *ev,
 			const char *sel = boxen_completion_popup_selected(s->completion_popup);
 			if (sel != NULL) {
 				snprintf(s->input_buf, sizeof(s->input_buf), "%s", sel);
-				s->input_cursor = (int)strlen(s->input_buf);
+				s->input_len        = (int)strlen(s->input_buf);
+				s->input_cursor_pos = s->input_len;
 			}
 			boxen_completion_popup_close(s->completion_popup);
 			s->completion_popup = NULL;
@@ -1011,10 +1019,11 @@ static void on_input(boxen_window_t *win, const boxen_event_t *ev,
 				s->history_nav_idx        = -1;
 				s->history_saved_input[0] = '\0';
 			}
-			if (s->input_cursor < BOXEN_REPL_INPUT_MAX - 1) {
-				s->input_buf[s->input_cursor]     = (char)ev->key.ch;
-				s->input_buf[s->input_cursor + 1] = '\0';
-				s->input_cursor++;
+			if (s->input_len < BOXEN_REPL_INPUT_MAX - 1) {
+				s->input_buf[s->input_len]     = (char)ev->key.ch;
+				s->input_buf[s->input_len + 1] = '\0';
+				s->input_len++;
+				s->input_cursor_pos = s->input_len;
 			}
 			if (s->input_win != NULL) boxen_window_invalidate(s->input_win);
 			return;
@@ -1028,7 +1037,8 @@ static void on_input(boxen_window_t *win, const boxen_event_t *ev,
 	 * slash debounce -- 2026-06-17 JES #691 Phase C.0.7a). */
 	if (ev->key.key == BOXEN_KEY_ESCAPE) {
 		s->input_buf[0]           = '\0';
-		s->input_cursor           = 0;
+		s->input_len              = 0;
+		s->input_cursor_pos       = 0;
 		s->history_nav_idx        = -1;
 		s->history_saved_input[0] = '\0';
 		s->slash_pending_until_ms = 0;
@@ -1073,7 +1083,7 @@ static void on_input(boxen_window_t *win, const boxen_event_t *ev,
 
 		char candidates[BOXEN_COMPLETION_MAX_CANDIDATES][BOXEN_COMPLETION_CANDIDATE_MAX];
 		int count = s->completion_hook(s->input_buf,
-		                               (size_t)s->input_cursor,
+		                               (size_t)s->input_len,
 		                               candidates,
 		                               BOXEN_COMPLETION_MAX_CANDIDATES);
 		if (count <= 0) return;  /* silent no-op */
@@ -1081,7 +1091,8 @@ static void on_input(boxen_window_t *win, const boxen_event_t *ev,
 		if (count == 1) {
 			/* Single candidate: inline replace. */
 			snprintf(s->input_buf, sizeof(s->input_buf), "%s", candidates[0]);
-			s->input_cursor = (int)strlen(s->input_buf);
+			s->input_len        = (int)strlen(s->input_buf);
+			s->input_cursor_pos = s->input_len;
 			if (s->input_win != NULL) boxen_window_invalidate(s->input_win);
 			return;
 		}
@@ -1101,11 +1112,73 @@ static void on_input(boxen_window_t *win, const boxen_event_t *ev,
 		return;
 	}
 
-	/* Backspace: delete last character.
+	/* 2026-06-17 JES Phase C.0.7e #691: LEFT arrow -- move caret left one char. */
+	if (ev->key.key == BOXEN_KEY_LEFT) {
+		if (s->input_cursor_pos > 0) {
+			s->input_cursor_pos--;
+		}
+		/* Underflow guard: already at col 0, nothing to do */
+		if (s->input_win != NULL) boxen_window_invalidate(s->input_win);
+		return;
+	}
+
+	/* 2026-06-17 JES Phase C.0.7e #691: RIGHT arrow -- move caret right one char. */
+	if (ev->key.key == BOXEN_KEY_RIGHT) {
+		if (s->input_cursor_pos < s->input_len) {
+			s->input_cursor_pos++;
+		}
+		/* Overflow guard: already at end, nothing to do */
+		if (s->input_win != NULL) boxen_window_invalidate(s->input_win);
+		return;
+	}
+
+	/* 2026-06-17 JES Phase C.0.7e #691: Ctrl-A -- jump caret to beginning of line. */
+	if (ev->key.key == BOXEN_KEY_CTRL_A) {
+		s->input_cursor_pos = 0;
+		if (s->input_win != NULL) boxen_window_invalidate(s->input_win);
+		return;
+	}
+
+	/* 2026-06-17 JES Phase C.0.7e #691: Ctrl-E -- jump caret to end of line. */
+	if (ev->key.key == BOXEN_KEY_CTRL_E) {
+		s->input_cursor_pos = s->input_len;
+		if (s->input_win != NULL) boxen_window_invalidate(s->input_win);
+		return;
+	}
+
+	/* 2026-06-17 JES Phase C.0.7e #691: Delete (forward-delete) -- remove char
+	 * at caret position, shift rest left, caret stays. */
+	if (ev->key.key == BOXEN_KEY_DELETE) {
+		if (s->input_cursor_pos < s->input_len) {
+			/* If user edits during history nav, abandon navigation. */
+			if (s->history_nav_idx != -1) {
+				s->history_nav_idx        = -1;
+				s->history_saved_input[0] = '\0';
+			}
+			/* Shift bytes left by one starting at cursor_pos */
+			memmove(s->input_buf + s->input_cursor_pos,
+			        s->input_buf + s->input_cursor_pos + 1,
+			        (size_t)(s->input_len - s->input_cursor_pos));
+			s->input_len--;
+			s->input_buf[s->input_len] = '\0';
+		}
+		/* No-op guard when cursor is at end */
+		if (s->input_win != NULL) boxen_window_invalidate(s->input_win);
+		return;
+	}
+
+	/* Backspace: delete char BEFORE caret.
+	 *
+	 * 2026-06-17 JES Phase C.0.7e #691: when caret is at end
+	 * (input_cursor_pos == input_len), this is the original append-only
+	 * backspace: decrement both len and pos, null-terminate.  When caret
+	 * is mid-buffer, shift the tail left by one and decrement len; caret
+	 * position also decrements (it now points to the same logical position).
+	 *
 	 * 2026-06-17 JES #691 Phase C.0.7a: if a slash debounce is pending,
-	 * Backspace cancels it (user changed their mind).  input_cursor is 0
-	 * during the debounce window, so the delete below is a no-op, leaving
-	 * input_buf empty -- exactly what the user expects after Backspace on '/'. */
+	 * Backspace cancels it (user changed their mind).  input_len is 0 during
+	 * the debounce window, so the delete below is a no-op, leaving input_buf
+	 * empty -- exactly what the user expects after Backspace on '/'. */
 	if (ev->key.key == BOXEN_KEY_BACKSPACE) {
 		s->slash_pending_until_ms = 0;  /* cancel pending open, if any */
 		/* If user edits during history nav, abandon navigation. */
@@ -1113,11 +1186,16 @@ static void on_input(boxen_window_t *win, const boxen_event_t *ev,
 			s->history_nav_idx        = -1;
 			s->history_saved_input[0] = '\0';
 		}
-		if (s->input_cursor > 0) {
-			s->input_cursor--;
-			s->input_buf[s->input_cursor] = '\0';
+		if (s->input_cursor_pos > 0) {
+			/* Shift bytes left by one to fill the gap at cursor_pos - 1 */
+			memmove(s->input_buf + s->input_cursor_pos - 1,
+			        s->input_buf + s->input_cursor_pos,
+			        (size_t)(s->input_len - s->input_cursor_pos));
+			s->input_cursor_pos--;
+			s->input_len--;
+			s->input_buf[s->input_len] = '\0';
 		}
-		/* Underflow guard: cursor is already 0 when input is empty, nothing to do */
+		/* Underflow guard: caret already at 0, nothing to do */
 		if (s->input_win != NULL) boxen_window_invalidate(s->input_win);
 		return;
 	}
@@ -1145,10 +1223,11 @@ static void on_input(boxen_window_t *win, const boxen_event_t *ev,
 			/* Cancel the pending palette open. */
 			s->slash_pending_until_ms = 0;
 			/* Insert the deferred '/' into input_buf first. */
-			if (s->input_cursor < BOXEN_REPL_INPUT_MAX - 1) {
-				s->input_buf[s->input_cursor]     = '/';
-				s->input_buf[s->input_cursor + 1] = '\0';
-				s->input_cursor++;
+			if (s->input_len < BOXEN_REPL_INPUT_MAX - 1) {
+				s->input_buf[s->input_len]     = '/';
+				s->input_buf[s->input_len + 1] = '\0';
+				s->input_len++;
+				s->input_cursor_pos = s->input_len;
 			}
 			/* Fall through: the current char (e.g. 'h') inserts below. */
 		}
@@ -1157,7 +1236,7 @@ static void on_input(boxen_window_t *win, const boxen_event_t *ev,
 		 *
 		 * Gates:
 		 *   ch == '/'           -- only the slash key triggers the menu
-		 *   input_cursor == 0   -- only at the start of an empty line; mid-line
+		 *   input_len == 0      -- only at the start of an empty line; mid-line
 		 *                         '/' (e.g. a path component) inserts normally
 		 *   palette_open_hook   -- NULL in test builds / when hook not installed
 		 *   palette_state       -- guard against re-entry (no double-open)
@@ -1175,7 +1254,7 @@ static void on_input(boxen_window_t *win, const boxen_event_t *ev,
 		 * is receiving keys (i.e. the REPL input bar is the dispatch target),
 		 * which is exactly the right scope. */
 		if (ev->key.ch == '/' &&
-		    s->input_cursor == 0 &&
+		    s->input_len == 0 &&
 		    s->palette_open_hook != NULL &&
 		    s->palette_state == NULL) {
 			/* Start the debounce timer.  The palette fires when
@@ -1189,10 +1268,21 @@ static void on_input(boxen_window_t *win, const boxen_event_t *ev,
 			s->history_nav_idx        = -1;
 			s->history_saved_input[0] = '\0';
 		}
-		if (s->input_cursor < BOXEN_REPL_INPUT_MAX - 1) {
-			s->input_buf[s->input_cursor]     = (char)ev->key.ch;
-			s->input_buf[s->input_cursor + 1] = '\0';
-			s->input_cursor++;
+
+		/* 2026-06-17 JES Phase C.0.7e #691: insert at caret position.
+		 *
+		 * When caret is at end (cursor_pos == input_len) this is identical to
+		 * the original append: write at [cursor_pos], NUL-terminate at [+1].
+		 * When caret is mid-buffer, shift tail right by one byte first. */
+		if (s->input_len < BOXEN_REPL_INPUT_MAX - 1) {
+			/* Shift bytes after caret right by one to make room */
+			memmove(s->input_buf + s->input_cursor_pos + 1,
+			        s->input_buf + s->input_cursor_pos,
+			        (size_t)(s->input_len - s->input_cursor_pos));
+			s->input_buf[s->input_cursor_pos] = (char)ev->key.ch;
+			s->input_len++;
+			s->input_cursor_pos++;
+			s->input_buf[s->input_len] = '\0';
 		}
 		if (s->input_win != NULL) boxen_window_invalidate(s->input_win);
 		return;
@@ -1282,9 +1372,10 @@ void boxen_repl_state_teardown(boxen_repl_state_t *s) {
 	}
 	s->scrollback_head  = 0;
 	s->scrollback_count = 0;
-	s->input_buf[0]     = '\0';
-	s->input_cursor     = 0;
-	s->should_quit      = false;
+	s->input_buf[0]        = '\0';
+	s->input_len           = 0;
+	s->input_cursor_pos    = 0;
+	s->should_quit         = false;
 	s->slash_dispatch_hook = NULL;
 	s->repl_eval_hook      = NULL;
 
@@ -1678,7 +1769,7 @@ int boxen_repl_main(const cli_options_t *opts) {
 	 *     with zero input.  A full pipe stalls the producer at most one drain
 	 *     period (100ms); no hang is possible because the read end is O_NONBLOCK
 	 *     and drain_stdout_into_scrollback always empties the pipe before returning.
-	 *   - drain never touches input_buf or input_cursor -- async output during
+	 *   - drain never touches input_buf, input_len, or input_cursor_pos -- async output during
 	 *     in-progress typing is safe.  See test_stdout_drain_during_typing_does_not_corrupt_input. */
 	int pipefd[2];
 	bool capture_active = false;
