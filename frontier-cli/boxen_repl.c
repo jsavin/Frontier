@@ -39,11 +39,64 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <unistd.h>    /* dup, dup2, pipe, close, read */
 #include <fcntl.h>     /* fcntl, F_SETFL, O_NONBLOCK */
 #include <errno.h>     /* EAGAIN, EWOULDBLOCK */
 #include <sys/stat.h>  /* umask, fchmod, mode_t -- 2026-06-09 JES #691 Phase C.0.1 */
+#include <time.h>      /* clock_gettime, CLOCK_MONOTONIC -- 2026-06-17 JES #691 Phase C.0.7a */
+
+/* -------------------------------------------------------------------------
+ * 2026-06-17 JES #691 Phase C.0.7a: monotonic time helper.
+ *
+ * Returns the current time in milliseconds (CLOCK_MONOTONIC).  Used by
+ * the slash-palette debounce to measure elapsed time without blocking.
+ *
+ * Wrapped through the state->now_ms_hook seam so tests can inject a
+ * deterministic counter without sleeping (see test_slash_* tests).
+ * ---------------------------------------------------------------------- */
+static uint64_t repl_real_now_ms(void) {
+	struct timespec ts;
+	if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0) return 0;
+	return (uint64_t)ts.tv_sec * 1000ULL + (uint64_t)(ts.tv_nsec / 1000000LL);
+}
+
+static uint64_t repl_now_ms(boxen_repl_state_t *s) {
+	if (s->now_ms_hook != NULL) return s->now_ms_hook();
+	return repl_real_now_ms();
+}
+
+/* -------------------------------------------------------------------------
+ * 2026-06-17 JES #691 Phase C.0.7a: boxen_repl_check_pending_slash.
+ *
+ * Called after every event (and on timeout) to fire the deferred palette
+ * open if the debounce window has passed.  No-op when no debounce is pending
+ * or when the deadline has not yet been reached.
+ *
+ * Production event loop calls this on both:
+ *   - the BOXEN_ERR_TIMEOUT branch (user typed '/' and stopped typing)
+ *   - the post-event branch after boxen_repl_run_one_tick (handles the rare
+ *     case where a non-printable key -- e.g. resize -- arrives after the '/'
+ *     and more than 350ms of real time has elapsed)
+ *
+ * Tests call it directly after advancing now_ms_hook to simulate time elapse
+ * without any real sleep.
+ * ---------------------------------------------------------------------- */
+void boxen_repl_check_pending_slash(boxen_repl_state_t *s) {
+	if (s == NULL || s->slash_pending_until_ms == 0) return;
+	if (s->palette_open_hook == NULL || s->palette_state != NULL) {
+		/* Hook disappeared or palette already open: cancel pending. */
+		s->slash_pending_until_ms = 0;
+		return;
+	}
+	uint64_t now = repl_now_ms(s);
+	if (now < s->slash_pending_until_ms) return;  /* still within window */
+
+	/* Deadline passed: open the palette. */
+	s->slash_pending_until_ms = 0;
+	s->palette_open_hook(s);
+}
 
 /* -------------------------------------------------------------------------
  * Forward declarations for draw and input callbacks
@@ -863,8 +916,12 @@ static void on_input(boxen_window_t *win, const boxen_event_t *ev,
 	 *   3. Otherwise (single-line mode, no popup): set should_quit and exit.
 	 *
 	 * This ordering also ensures the popup-mode key-routing branch below never
-	 * sees Ctrl-C -- it is consumed here first. */
+	 * sees Ctrl-C -- it is consumed here first.
+	 *
+	 * 2026-06-17 JES #691 Phase C.0.7a: also cancel any pending slash debounce
+	 * so a deferred palette doesn't pop after the REPL has been told to abort. */
 	if (ev->key.key == BOXEN_KEY_CTRL_C) {
+		s->slash_pending_until_ms = 0;
 		/* Step 1: always close popup on Ctrl-C */
 		if (s->completion_popup != NULL) {
 			boxen_completion_popup_close(s->completion_popup);
@@ -931,12 +988,14 @@ static void on_input(boxen_window_t *win, const boxen_event_t *ev,
 		/* fall through */
 	}
 
-	/* Escape: clear input line (also reset history nav state) */
+	/* Escape: clear input line (also reset history nav state and cancel pending
+	 * slash debounce -- 2026-06-17 JES #691 Phase C.0.7a). */
 	if (ev->key.key == BOXEN_KEY_ESCAPE) {
 		s->input_buf[0]           = '\0';
 		s->input_cursor           = 0;
 		s->history_nav_idx        = -1;
 		s->history_saved_input[0] = '\0';
+		s->slash_pending_until_ms = 0;
 		if (s->input_win != NULL) boxen_window_invalidate(s->input_win);
 		return;
 	}
@@ -995,8 +1054,13 @@ static void on_input(boxen_window_t *win, const boxen_event_t *ev,
 		return;
 	}
 
-	/* Backspace: delete last character */
+	/* Backspace: delete last character.
+	 * 2026-06-17 JES #691 Phase C.0.7a: if a slash debounce is pending,
+	 * Backspace cancels it (user changed their mind).  input_cursor is 0
+	 * during the debounce window, so the delete below is a no-op, leaving
+	 * input_buf empty -- exactly what the user expects after Backspace on '/'. */
 	if (ev->key.key == BOXEN_KEY_BACKSPACE) {
+		s->slash_pending_until_ms = 0;  /* cancel pending open, if any */
 		/* If user edits during history nav, abandon navigation. */
 		if (s->history_nav_idx != -1) {
 			s->history_nav_idx        = -1;
@@ -1018,7 +1082,31 @@ static void on_input(boxen_window_t *win, const boxen_event_t *ev,
 	 * multi-byte handling and a Unicode-aware input cursor; that is deferred
 	 * to a future milestone. */
 	if (ev->key.key == BOXEN_KEY_NONE && ev->key.ch >= 0x20 && ev->key.ch < 0x7F) {
-		/* 2026-06-10 JES #691 Phase C.0.3b: '/' at empty input opens palette modal.
+		/* 2026-06-17 JES #691 Phase C.0.7a: slash-palette debounce.
+		 *
+		 * BEFORE the early-'/'-gate: if a debounce is pending and a printable
+		 * char arrived, cancel the pending open and insert '/' first.  The char
+		 * arriving here is the SECOND character the user typed (e.g. 'h' in
+		 * "/help"), so the REPL inserts both '/' and the char into input_buf.
+		 *
+		 * This path fires when:
+		 *   slash_pending_until_ms != 0   -- a '/' was recently typed
+		 *   any printable ch              -- user continued typing (not a timeout)
+		 *
+		 * On cancel, '/' is inserted manually then we fall through to insert ch. */
+		if (s->slash_pending_until_ms != 0) {
+			/* Cancel the pending palette open. */
+			s->slash_pending_until_ms = 0;
+			/* Insert the deferred '/' into input_buf first. */
+			if (s->input_cursor < BOXEN_REPL_INPUT_MAX - 1) {
+				s->input_buf[s->input_cursor]     = '/';
+				s->input_buf[s->input_cursor + 1] = '\0';
+				s->input_cursor++;
+			}
+			/* Fall through: the current char (e.g. 'h') inserts below. */
+		}
+
+		/* 2026-06-10 JES #691 Phase C.0.3b: '/' at empty input starts debounce.
 		 *
 		 * Gates:
 		 *   ch == '/'           -- only the slash key triggers the menu
@@ -1026,6 +1114,12 @@ static void on_input(boxen_window_t *win, const boxen_event_t *ev,
 		 *                         '/' (e.g. a path component) inserts normally
 		 *   palette_open_hook   -- NULL in test builds / when hook not installed
 		 *   palette_state       -- guard against re-entry (no double-open)
+		 *
+		 * 2026-06-17 JES #691 Phase C.0.7a: changed from immediate open to a
+		 * 350ms debounce.  The palette actually opens in boxen_repl_check_pending_slash
+		 * (called by the production event loop on timeout and post-event paths).
+		 * This matches the linenoise REPL's behavior (repl.c:4004) which polls
+		 * stdin for slash_menu_trigger_delay_ms() before opening the palette.
 		 *
 		 * Contrast with the global key handler (boxen_set_global_key_handler):
 		 * '/' only matters when the REPL input line is empty and focused.
@@ -1037,7 +1131,9 @@ static void on_input(boxen_window_t *win, const boxen_event_t *ev,
 		    s->input_cursor == 0 &&
 		    s->palette_open_hook != NULL &&
 		    s->palette_state == NULL) {
-			s->palette_open_hook(s);
+			/* Start the debounce timer.  The palette fires when
+			 * boxen_repl_check_pending_slash sees the deadline pass. */
+			s->slash_pending_until_ms = repl_now_ms(s) + BOXEN_REPL_SLASH_DEBOUNCE_MS;
 			return;
 		}
 
@@ -1174,10 +1270,19 @@ int boxen_repl_run_one_tick(boxen_repl_state_t *s, const boxen_event_t *ev) {
 		int nh = (ev->resize.h > 0) ? ev->resize.h : 24;
 		repl_build_layout(s, nw, nh);
 		repl_wire_callbacks(s);
+		/* 2026-06-17 JES #691 Phase C.0.7a: check pending slash on resize too
+		 * (unlikely to fire, but keeps the check uniform). */
+		boxen_repl_check_pending_slash(s);
 		return REPL_CONTINUE;
 	}
 
 	boxen_dispatch_event(ev);
+
+	/* 2026-06-17 JES #691 Phase C.0.7a: check slash debounce after every event.
+	 * Fires the palette if the user typed '/' then waited long enough without
+	 * typing a follow-up char.  Also fires when a non-printable event (e.g. UP
+	 * arrow, Ctrl-key) arrives after the debounce window. */
+	boxen_repl_check_pending_slash(s);
 
 	return s->should_quit ? REPL_QUIT : REPL_CONTINUE;
 }
@@ -1647,6 +1752,13 @@ int boxen_repl_main(const cli_options_t *opts) {
 		}
 
 		if (poll_rc == BOXEN_ERR_TIMEOUT) {
+			/* 2026-06-17 JES #691 Phase C.0.7a: on timeout, check whether the
+			 * slash debounce window has expired.  This is the primary path by
+			 * which the palette opens after the user types '/' and waits: the
+			 * 100ms poll timeout fires several times before the 350ms debounce
+			 * elapses, and check_pending_slash fires the open on the first tick
+			 * after the deadline. */
+			boxen_repl_check_pending_slash(state);
 			boxen_present();
 			continue;
 		}

@@ -820,16 +820,38 @@ static void test_escape_dismisses_popup_without_accept(void) {
 }
 
 /* -------------------------------------------------------------------------
- * Test 16: test_slash_key_opens_palette_modal
+ * 2026-06-17 JES #691 Phase C.0.7a: mock time source for slash debounce tests.
  *
- * 2026-06-10 JES #691 Phase C.0.3b: '/' at empty input opens palette modal.
+ * g_mock_now_ms is a simple counter incremented explicitly by tests.
+ * Inject via g_state.now_ms_hook = mock_now_ms to give the debounce logic
+ * a deterministic clock.
  *
- * Mock palette_open_hook sets palette_state to a sentinel and increments a
- * counter. Type '/'. Assert:
- *   - palette_state is non-NULL (mock hook fired)
- *   - mock counter is 1
- *   - input_buf is still empty ('/' was NOT inserted)
+ * Tests that do NOT set now_ms_hook leave it NULL (= real clock), which is
+ * fine for non-debounce behavior.
+ * ---------------------------------------------------------------------- */
+static uint64_t g_mock_now_ms;
+
+static uint64_t mock_now_ms(void) {
+	return g_mock_now_ms;
+}
+
+/* -------------------------------------------------------------------------
+ * Test 16: test_slash_key_defers_palette_open
+ *
+ * 2026-06-17 JES #691 Phase C.0.7a: '/' at empty input DEFERS palette open.
+ *
+ * Previously (C.0.3b) typing '/' opened the palette immediately.  The
+ * debounce fix changes the contract: after '/', palette_state is still NULL
+ * (not opened yet) but slash_pending_until_ms is non-zero (debounce armed).
+ * The palette fires only after the debounce window elapses (tested separately
+ * in test_slash_then_timeout_opens_palette).
+ *
+ * Asserts:
+ *   - palette_state is NULL immediately after '/' (NOT opened yet)
+ *   - mock_palette_open_count is 0
+ *   - input_buf is empty ('/' was NOT inserted)
  *   - input_cursor is 0
+ *   - slash_pending_until_ms is non-zero (debounce armed)
  * ---------------------------------------------------------------------- */
 
 /* Capture counter for mock palette open calls. */
@@ -861,30 +883,27 @@ static bool mock_palette_dispatch_capture(void *script_handle,
 	return true;
 }
 
-static void test_slash_key_opens_palette_modal(void) {
+static void test_slash_key_defers_palette_open(void) {
 	setup();
 
+	g_mock_now_ms             = 1000;  /* arbitrary start time */
 	g_mock_palette_open_count = 0;
 	g_state.palette_open_hook     = mock_palette_open;
 	g_state.palette_dispatch_hook = mock_palette_dispatch;
+	g_state.now_ms_hook           = mock_now_ms;
 
 	/* Type '/' at empty input. */
 	boxen_event_t ev = make_char_event('/');
 	boxen_repl_run_one_tick(&g_state, &ev);
 
-	/* palette_open_hook must have fired exactly once. */
-	assert(g_mock_palette_open_count == 1);
-	/* Sentinel must be installed. */
-	assert(g_state.palette_state != NULL);
+	/* Palette must NOT have opened immediately (debounce in progress). */
+	assert(g_mock_palette_open_count == 0);
+	assert(g_state.palette_state == NULL);
 	/* '/' must NOT have been inserted into input_buf. */
 	assert(g_state.input_buf[0] == '\0');
 	assert(g_state.input_cursor == 0);
-
-	/* Clean up sentinel before teardown (teardown would try to call
-	 * palette_close if palette_state != NULL and the production guard
-	 * is compiled in; in the test build BOXEN_REPL_OMIT_MAIN is defined
-	 * so the guard body is skipped, but clear it anyway to stay clean). */
-	g_state.palette_state = NULL;
+	/* Debounce must be armed. */
+	assert(g_state.slash_pending_until_ms != 0);
 
 	teardown();
 }
@@ -895,20 +914,29 @@ static void test_slash_key_opens_palette_modal(void) {
  * 2026-06-10 JES #691 Phase C.0.3b: after palette closes, input events go
  * back to the REPL input window.
  *
- * Open palette via '/', then simulate palette close via the test-only helper
- * boxen_repl_close_palette_for_test. Send a printable key and assert it lands
- * in input_buf (proving input_win has focus again).
+ * 2026-06-17 JES #691 Phase C.0.7a: updated to advance mock time past the
+ * debounce window before asserting palette_state != NULL, since '/' now
+ * defers the open rather than firing immediately.
  * ---------------------------------------------------------------------- */
 static void test_palette_close_returns_focus_to_repl_input(void) {
 	setup();
 
+	g_mock_now_ms             = 1000;
 	g_mock_palette_open_count = 0;
 	g_state.palette_open_hook     = mock_palette_open;
 	g_state.palette_dispatch_hook = mock_palette_dispatch;
+	g_state.now_ms_hook           = mock_now_ms;
 
-	/* Open palette. */
+	/* Type '/' -- this arms the debounce, does NOT open palette yet. */
 	boxen_event_t ev_slash = make_char_event('/');
 	boxen_repl_run_one_tick(&g_state, &ev_slash);
+	assert(g_state.palette_state == NULL);  /* still pending */
+
+	/* Advance mock time past the debounce window. */
+	g_mock_now_ms += BOXEN_REPL_SLASH_DEBOUNCE_MS + 1;
+	boxen_repl_check_pending_slash(&g_state);
+
+	/* Now the palette must be open. */
 	assert(g_state.palette_state != NULL);
 
 	/* Simulate close from outside (production path: backend->close + refocus). */
@@ -1283,6 +1311,107 @@ static void test_ctrl_c_in_multiline_with_popup_open_discards_both(void) {
 }
 
 /* -------------------------------------------------------------------------
+ * Test 24: test_slash_then_letter_within_window_inserts_both
+ *
+ * 2026-06-17 JES #691 Phase C.0.7a: debounce cancellation.
+ *
+ * Typing '/' then 'h' rapidly (mock time does NOT advance) must:
+ *   - NOT open the palette
+ *   - Insert "/h" into input_buf (the deferred '/' is inserted first, then 'h')
+ *   - Clear slash_pending_until_ms (debounce cancelled)
+ *
+ * This is the primary regression guard: before the debounce fix, typing
+ * '/h<Tab>' triggered the palette on '/' and the user never got to type 'h'.
+ * ---------------------------------------------------------------------- */
+static void test_slash_then_letter_within_window_inserts_both(void) {
+	setup();
+
+	g_mock_now_ms             = 1000;
+	g_mock_palette_open_count = 0;
+	g_state.palette_open_hook     = mock_palette_open;
+	g_state.palette_dispatch_hook = mock_palette_dispatch;
+	g_state.now_ms_hook           = mock_now_ms;
+
+	/* Type '/' -- arms the debounce.  Mock time does NOT advance. */
+	boxen_event_t ev_slash = make_char_event('/');
+	boxen_repl_run_one_tick(&g_state, &ev_slash);
+
+	/* Palette must NOT be open. */
+	assert(g_mock_palette_open_count == 0);
+	assert(g_state.palette_state == NULL);
+	/* Debounce must be pending. */
+	assert(g_state.slash_pending_until_ms != 0);
+	/* input_buf still empty (the '/' is deferred). */
+	assert(g_state.input_buf[0] == '\0');
+	assert(g_state.input_cursor == 0);
+
+	/* Type 'h' -- mock time still 1000ms, well within the debounce window.
+	 * This must cancel the pending open and insert both '/' and 'h'. */
+	boxen_event_t ev_h = make_char_event('h');
+	boxen_repl_run_one_tick(&g_state, &ev_h);
+
+	/* Palette must still be closed. */
+	assert(g_mock_palette_open_count == 0);
+	assert(g_state.palette_state == NULL);
+	/* input_buf must now contain "/h". */
+	assert(strcmp(g_state.input_buf, "/h") == 0);
+	assert(g_state.input_cursor == 2);
+	/* Debounce cleared. */
+	assert(g_state.slash_pending_until_ms == 0);
+
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * Test 25: test_slash_then_timeout_opens_palette
+ *
+ * 2026-06-17 JES #691 Phase C.0.7a: debounce expiry fires palette.
+ *
+ * Type '/', advance mock time past BOXEN_REPL_SLASH_DEBOUNCE_MS, call
+ * boxen_repl_check_pending_slash.  Assert palette opened and input_buf empty.
+ *
+ * This test exercises the primary user path: type '/' alone and wait for the
+ * palette to appear.
+ * ---------------------------------------------------------------------- */
+static void test_slash_then_timeout_opens_palette(void) {
+	setup();
+
+	g_mock_now_ms             = 5000;  /* arbitrary start */
+	g_mock_palette_open_count = 0;
+	g_state.palette_open_hook     = mock_palette_open;
+	g_state.palette_dispatch_hook = mock_palette_dispatch;
+	g_state.now_ms_hook           = mock_now_ms;
+
+	/* Type '/' -- arms the debounce. */
+	boxen_event_t ev_slash = make_char_event('/');
+	boxen_repl_run_one_tick(&g_state, &ev_slash);
+
+	assert(g_mock_palette_open_count == 0);   /* not yet */
+	assert(g_state.slash_pending_until_ms != 0);
+
+	/* Advance time to just BEFORE the deadline -- palette must not fire. */
+	g_mock_now_ms = g_state.slash_pending_until_ms - 1;
+	boxen_repl_check_pending_slash(&g_state);
+	assert(g_mock_palette_open_count == 0);   /* still waiting */
+
+	/* Advance time PAST the deadline -- palette must fire on next check. */
+	g_mock_now_ms = g_state.slash_pending_until_ms + 1;
+	boxen_repl_check_pending_slash(&g_state);
+
+	assert(g_mock_palette_open_count == 1);   /* fired */
+	assert(g_state.palette_state != NULL);    /* sentinel installed */
+	/* input_buf must still be empty (the '/' was never inserted). */
+	assert(g_state.input_buf[0] == '\0');
+	assert(g_state.input_cursor == 0);
+	/* Debounce cleared. */
+	assert(g_state.slash_pending_until_ms == 0);
+
+	/* Clean up sentinel. */
+	g_state.palette_state = NULL;
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
  * main
  * ---------------------------------------------------------------------- */
 int main(void) {
@@ -1303,7 +1432,7 @@ int main(void) {
 	TR_RUN(test_tab_opens_popup_with_multiple_candidates);
 	TR_RUN(test_tab_completes_odb_path_prefix);
 	TR_RUN(test_escape_dismisses_popup_without_accept);
-	TR_RUN(test_slash_key_opens_palette_modal);
+	TR_RUN(test_slash_key_defers_palette_open);
 	TR_RUN(test_palette_close_returns_focus_to_repl_input);
 	TR_RUN(test_palette_dispatch_hook_contract);
 	TR_RUN(test_slash_mid_input_still_inserts);
@@ -1312,6 +1441,8 @@ int main(void) {
 	TR_RUN(test_backslash_continuation_accumulates);
 	TR_RUN(test_ctrl_c_in_multiline_discards_buffer);
 	TR_RUN(test_ctrl_c_in_multiline_with_popup_open_discards_both);
+	TR_RUN(test_slash_then_letter_within_window_inserts_both);
+	TR_RUN(test_slash_then_timeout_opens_palette);
 
 	TR_SUMMARY();
 	return TR_EXIT_CODE();
