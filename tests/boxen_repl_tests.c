@@ -1200,6 +1200,89 @@ static void test_ctrl_c_in_multiline_discards_buffer(void) {
 }
 
 /* -------------------------------------------------------------------------
+ * test_ctrl_c_in_multiline_with_popup_open_discards_both
+ *
+ * 2026-06-17 JES #691 Phase C.0.7d: Ctrl-C in multi-line mode WITH a
+ * completion popup open must:
+ *   - close the popup (completion_popup == NULL)
+ *   - discard the accumulated multi-line buffer (multiline_lines == 0)
+ *   - clear the input bar (input_buf[0] == '\0')
+ *   - NOT exit the REPL (should_quit == false)
+ *
+ * Regression guard for the case where popup + multiline were both active
+ * and Ctrl-C was falling through to should_quit = true.
+ * ---------------------------------------------------------------------- */
+static int hook_completion_multi_for_slash(const char *buf, size_t bl,
+                                           char cand[][BOXEN_COMPLETION_CANDIDATE_MAX],
+                                           int max) {
+	(void)bl; (void)max;
+	if (strcmp(buf, "/") == 0) {
+		strcpy(cand[0], "/help");
+		strcpy(cand[1], "/jump");
+		strcpy(cand[2], "/list");
+		return 3;
+	}
+	return 0;
+}
+
+static void test_ctrl_c_in_multiline_with_popup_open_discards_both(void) {
+	setup();
+	g_state.completion_hook = hook_completion_multi_for_slash;
+
+	/* Step 1: enter multi-line mode by typing "foo\" then Enter */
+	boxen_event_t ev;
+	const char *line1 = "foo\\";
+	for (const char *p = line1; *p; p++) {
+		ev = make_char_event(*p);
+		boxen_repl_run_one_tick(&g_state, &ev);
+	}
+	ev = make_key_event(BOXEN_KEY_ENTER);
+	boxen_repl_run_one_tick(&g_state, &ev);
+
+	/* Verify we are in multi-line mode */
+	assert(g_state.multiline_lines == 1);
+	assert(g_state.input_buf[0] == '\0');
+	assert(g_state.input_cursor == 0);
+
+	/* Step 2: type "/" to get a non-empty input buffer, then Tab to open popup.
+	 * palette_open_hook is NULL in test setup, so '/' inserts normally. */
+	ev = make_char_event('/');
+	boxen_repl_run_one_tick(&g_state, &ev);
+	assert(g_state.input_buf[0] == '/');
+
+	ev = make_key_event(BOXEN_KEY_TAB);
+	boxen_repl_run_one_tick(&g_state, &ev);
+
+	/* Verify popup is open */
+	assert(g_state.completion_popup != NULL);
+	assert(boxen_completion_popup_is_open(g_state.completion_popup));
+
+	/* Step 3: press Ctrl-C -- must discard both multiline state AND popup */
+	ev = make_key_event(BOXEN_KEY_CTRL_C);
+	boxen_repl_run_one_tick(&g_state, &ev);
+
+	/* Popup must be gone */
+	assert(g_state.completion_popup == NULL);
+
+	/* Multi-line accumulator must be cleared */
+	assert(g_state.multiline_lines == 0);
+	assert(g_state.multiline_len   == 0);
+	assert(g_state.multiline_buf[0] == '\0');
+
+	/* Input bar must be cleared */
+	assert(g_state.input_buf[0]  == '\0');
+	assert(g_state.input_cursor  == 0);
+
+	/* Critical: must NOT exit the REPL */
+	assert(g_state.should_quit == false);
+
+	/* Eval must never have been called */
+	assert(g_eval_result[0] == '\0');
+
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
  * main
  * ---------------------------------------------------------------------- */
 int main(void) {
@@ -1228,6 +1311,7 @@ int main(void) {
 	TR_RUN(test_long_output_does_not_deadlock_event_loop);
 	TR_RUN(test_backslash_continuation_accumulates);
 	TR_RUN(test_ctrl_c_in_multiline_discards_buffer);
+	TR_RUN(test_ctrl_c_in_multiline_with_popup_open_discards_both);
 
 	TR_SUMMARY();
 	return TR_EXIT_CODE();
