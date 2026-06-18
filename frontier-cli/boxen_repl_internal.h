@@ -18,6 +18,7 @@
 
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
 #include "boxen/boxen.h"
 /* op_handler.h defines transport_t; it has no runtime or GIL dependencies,
  * so it is safe to include in test builds (BOXEN_REPL_OMIT_MAIN defined). */
@@ -54,6 +55,21 @@
 
 /* Maximum length of the input line buffer (including NUL). */
 #define BOXEN_REPL_INPUT_MAX 1024
+
+/* 2026-06-17 JES #691 Phase C.0.7a: slash-palette debounce window.
+ *
+ * When the user types '/' at empty input (cursor == 0) and a palette_open_hook
+ * is installed, the REPL does NOT open the palette immediately.  Instead it
+ * sets slash_pending_until_ms = now_ms() + BOXEN_REPL_SLASH_DEBOUNCE_MS and
+ * waits.  On the next event (or tick):
+ *   - A printable char arrived before the deadline: cancel the pending open,
+ *     insert '/' followed by the char (user is typing a slash command).
+ *   - Deadline passed with no printable: open the palette.
+ *
+ * Matches SLASH_MENU_TRIGGER_DELAY_DEFAULT_MS (palette.h) which is 350ms.
+ * Defined here (not via palette.h) so test builds compile without linking
+ * palette.c. */
+#define BOXEN_REPL_SLASH_DEBOUNCE_MS 350
 
 /* 2026-06-10 JES #691 Phase C.0.5: multi-line accumulator capacity.
  * 8 KB covers realistic multi-line scripts while keeping the struct footprint
@@ -115,6 +131,15 @@ typedef bool (*slash_dispatch_fn_t)(const char *line, bool *running);
 typedef bool (*repl_eval_fn_t)(const char *expr,
                                char *result_out, size_t result_cap,
                                char *error_out,  size_t error_cap);
+
+/*
+ * 2026-06-17 JES #691 Phase C.0.7a: time-source hook seam.
+ *
+ * Returns the current time in milliseconds (monotonic clock).  NULL means
+ * use the real clock (clock_gettime CLOCK_MONOTONIC).  Tests inject a
+ * deterministic mock so they can advance time without sleeping.
+ */
+typedef uint64_t (*now_ms_fn_t)(void);
 
 /*
  * repl_completion_fn_t -- provide tab-completion candidates for the current input.
@@ -294,6 +319,20 @@ typedef struct {
 	palette_open_fn_t    palette_open_hook;
 	palette_dispatch_fn_t palette_dispatch_hook;
 
+	/* 2026-06-17 JES #691 Phase C.0.7a: slash-palette debounce.
+	 *
+	 * slash_pending_until_ms: absolute monotonic deadline (ms) at which the
+	 *   palette should open if no printable has arrived.  0 means no debounce
+	 *   is pending.  Set when '/' is typed at empty input with palette_open_hook
+	 *   installed; cleared when a printable arrives (cancel) or the deadline
+	 *   passes (fire).
+	 *
+	 * now_ms_hook: mockable time source.  NULL -> real clock_gettime.
+	 *   Tests inject a deterministic counter to advance time without sleeping.
+	 *   Zero-init by the memset in boxen_repl_state_init (= use real clock). */
+	uint64_t             slash_pending_until_ms;
+	now_ms_fn_t          now_ms_hook;
+
 	/* 2026-06-10 JES #691 Phase C.0.5: multi-line input accumulator.
 	 *
 	 * When the user ends a line with a trailing '\', submit_input appends the
@@ -353,6 +392,20 @@ void boxen_repl_state_teardown(boxen_repl_state_t *s);
  * Returns REPL_CONTINUE or REPL_QUIT.
  */
 int boxen_repl_run_one_tick(boxen_repl_state_t *s, const boxen_event_t *ev);
+
+/*
+ * boxen_repl_check_pending_slash -- fire the deferred palette open if the
+ * debounce window has passed.
+ *
+ * 2026-06-17 JES #691 Phase C.0.7a.
+ *
+ * Called by the production event loop on BOTH the timeout path and the
+ * post-event path so the palette fires even when the user doesn't type.
+ * Tests call it directly after advancing now_ms_hook to simulate time elapse.
+ *
+ * No-op when slash_pending_until_ms == 0 or deadline has not yet passed.
+ */
+void boxen_repl_check_pending_slash(boxen_repl_state_t *s);
 
 /*
  * boxen_repl_append_scrollback -- append one line to the ring buffer.
