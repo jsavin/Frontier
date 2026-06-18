@@ -203,9 +203,21 @@ typedef struct {
 	boxen_window_t *input_win;    /* single-line input bar (bottom row) */
 	boxen_window_t *footer_win;   /* optional hint footer (one row above input) */
 
-	/* Input line state */
+	/* Input line state.
+	 *
+	 * 2026-06-17 JES Phase C.0.7e #691: cursor-based editing.
+	 *
+	 * input_len        -- total number of valid characters in input_buf
+	 *                     (i.e. the buffer length, not the caret position).
+	 * input_cursor_pos -- 0-based caret column within input_buf.
+	 *                     Invariant: 0 <= input_cursor_pos <= input_len.
+	 *
+	 * Before C.0.7e the single field `input_cursor` served both roles
+	 * (append-only input kept them equal).  The rename makes the two
+	 * concepts explicit and allows the caret to sit anywhere in the buffer. */
 	char  input_buf[BOXEN_REPL_INPUT_MAX]; /* typed characters, NUL-terminated */
-	int   input_cursor;                    /* number of characters in input_buf */
+	int   input_len;                        /* number of characters in input_buf */
+	int   input_cursor_pos;                 /* caret position (0..input_len) */
 
 	/* Scrollback ring buffer.
 	 * Ring head points at the slot for the NEXT append.
@@ -449,7 +461,7 @@ void boxen_repl_set_history_path_for_test(const char *path);
  *
  * 2026-06-10 JES #691 Phase C.0.4: async-input invariant.
  * Drain only mutates state->scrollback + state->partial_line.  It NEVER
- * touches state->input_buf or state->input_cursor, so concurrent
+ * touches state->input_buf, state->input_len, or state->input_cursor_pos, so concurrent
  * typing (or any input-bar state) is preserved across drain calls.
  * Tested by test_stdout_drain_during_typing_does_not_corrupt_input.
  *
