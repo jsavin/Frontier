@@ -866,6 +866,18 @@ palette_done_t palette_feed_byte(palette_state_t *st, unsigned char b) {
 			return PALETTE_DONE_NONE;
 		}
 
+		/* 2026-06-17 JES #691 Phase C.0.7c: Ctrl-C (ETX, 0x03) cancels the
+		 * palette unconditionally from any state -- menubar, cascade, mid-CSI
+		 * escape (that path returns early above, so we don't reach here with
+		 * a partial CSI).  ESC collapses one cascade level at a time; Ctrl-C
+		 * is the "abort everything" key and must return DONE_CANCEL directly
+		 * regardless of open_depth.  The boxen backend routes Ctrl-C here
+		 * only when the modal is open (boxen_dispatch_event: global key handler
+		 * fires only when modal_win == NULL, so the modal always wins). */
+		if (b == 0x03) {
+			return PALETTE_DONE_CANCEL;
+		}
+
 		if (b == '\r' || b == '\n') {
 			if (st->open_depth == 0) {
 				open_level(st, 0);
