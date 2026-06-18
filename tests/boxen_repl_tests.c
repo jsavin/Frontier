@@ -1517,6 +1517,205 @@ static void test_slash_then_tab_cancels_pending_palette(void) {
 }
 
 /* -------------------------------------------------------------------------
+ * 2026-06-17 JES #691 Phase C.0.7b: crash regression tests.
+ *
+ * Tests 24-26 target three crashes reported from manual testing of the
+ * boxen --debug-tui REPL:
+ *
+ *   Test 24: popup Enter -- press Enter on the completion popup to accept
+ *     the selected candidate.  Must: replace input_buf, close popup, not crash.
+ *
+ *   Test 25: popup printable letter -- press a printable letter while popup
+ *     is open (the "any other key" fallthrough).  Must: close popup, insert
+ *     the letter into input_buf, not crash.  A sub-case: pressing '/' while
+ *     the popup is open and input_cursor > 0 must NOT open the palette.
+ *
+ *   Test 26: popup '/' with empty input -- if the popup was somehow opened
+ *     with an empty input buffer and the user types '/', the "any other key"
+ *     fallthrough must NOT open the palette (palette guard requires
+ *     input_cursor == 0 AND palette_open_hook != NULL -- but closing the
+ *     popup and falling through should insert '/' normally, not open palette,
+ *     because the '/' gate fires AFTER the cursor check).
+ *     Actually: the '/' gate fires in the printable handler which checks
+ *     input_cursor == 0. If cursor was 0 when popup was open AND the hook is
+ *     wired, pressing '/' (which is a printable non-Enter/Esc/Tab key) would:
+ *       1. close popup (completion_popup = NULL)
+ *       2. call boxen_window_focus (input_win already focused -- no-op)
+ *       3. fall through to the printable handler
+ *       4. printable handler: ch=='/', cursor==0, palette_open_hook!=NULL,
+ *          palette_state==NULL -> FIRES PALETTE OPEN
+ *     This is the hotkey-letter crash: any letter that maps to the palette
+ *     trigger does NOT need to be '/'; rather the existing mock_palette_open
+ *     installs a sentinel that the test build's teardown skips safely.
+ *     The real crash occurs in production because palette_open_hook is the
+ *     real boxen_repl_real_palette_open and s->palette_state still NULL
+ *     allows the assert(s_ctx.modal_win == NULL) in boxen_backend_open to fire
+ *     IF s_ctx.modal_win was left non-NULL from a prior uncleaned session, OR
+ *     more likely: the assert fires because the popup is closed WHILE the
+ *     palette is supposedly already open (double-open).  The fix is to guard
+ *     the '/' trigger in the popup fallthrough path so it does NOT open the
+ *     palette when falling through from a closed popup.
+ *
+ * NOTE: Test 26 is intentionally a behavioural regression guard; it exercises
+ * the specific path (popup open, cursor==0, '/' pressed, palette hook wired)
+ * that could open the palette from the popup fallthrough.  The expected
+ * behaviour AFTER the fix: '/' is inserted into input_buf normally (popup
+ * closes, '/' inserted, no palette open).
+ * ---------------------------------------------------------------------- */
+
+/* -------------------------------------------------------------------------
+ * Test 24: test_completion_popup_enter_accepts_selection_no_crash
+ *
+ * 2026-06-17 JES #691 Phase C.0.7b.
+ *
+ * Open a multi-candidate popup (same hook as test 13), then press Enter.
+ * Expected: popup closes, selected candidate replaces input_buf, no crash.
+ * ---------------------------------------------------------------------- */
+static void test_completion_popup_enter_accepts_selection_no_crash(void) {
+	setup();
+	g_state.completion_hook = hook_completion_multi;
+
+	/* Type "/" to get candidates when Tab is pressed */
+	boxen_event_t ev_slash = make_char_event('/');
+	boxen_repl_run_one_tick(&g_state, &ev_slash);
+	assert(strcmp(g_state.input_buf, "/") == 0);
+
+	/* Press Tab: multi hook returns 3 candidates -> popup opens */
+	boxen_event_t ev_tab = make_key_event(BOXEN_KEY_TAB);
+	boxen_repl_run_one_tick(&g_state, &ev_tab);
+	assert(g_state.completion_popup != NULL);
+
+	/* Press Enter: should accept selection (first candidate "/help"),
+	 * close popup, update input_buf -- and NOT crash. */
+	boxen_event_t ev_enter = make_key_event(BOXEN_KEY_ENTER);
+	boxen_repl_run_one_tick(&g_state, &ev_enter);
+
+	/* Popup must be gone */
+	assert(g_state.completion_popup == NULL);
+
+	/* input_buf must be the first candidate (selected == 0 on open) */
+	assert(strcmp(g_state.input_buf, "/help") == 0);
+
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * Test 25: test_completion_popup_printable_letter_closes_popup_no_crash
+ *
+ * 2026-06-17 JES #691 Phase C.0.7b.
+ *
+ * Open a multi-candidate popup (with slash in input), then press a
+ * printable letter 'x'.  The "any other key" path should close the popup
+ * and insert 'x' into input_buf.  Must not crash.
+ *
+ * Note: we do NOT wire palette_open_hook here so that typing '/' at
+ * empty input inserts normally (palette_open_hook == NULL skips the gate).
+ * This isolates the "printable char in popup fallthrough inserts correctly"
+ * behavior without the palette interaction.
+ * ---------------------------------------------------------------------- */
+static void test_completion_popup_printable_letter_closes_popup_no_crash(void) {
+	setup();
+	g_state.completion_hook = hook_completion_multi;
+	/* NOTE: palette_open_hook intentionally NOT wired so '/' inserts normally. */
+
+	/* Type "/" -> Tab -> popup opens (hook returns 3 candidates for "/") */
+	boxen_event_t ev_slash = make_char_event('/');
+	boxen_event_t ev_tab   = make_key_event(BOXEN_KEY_TAB);
+	boxen_repl_run_one_tick(&g_state, &ev_slash);
+	boxen_repl_run_one_tick(&g_state, &ev_tab);
+	assert(g_state.completion_popup != NULL);
+	assert(strcmp(g_state.input_buf, "/") == 0);
+
+	/* Press 'x' while popup is open: popup should close, 'x' should be
+	 * inserted (input_cursor was 1 for the "/", now becomes 2).
+	 * After fix: the "any other key" branch inserts 'x' directly without
+	 * going through the palette-open gate. */
+	boxen_event_t ev_x = make_char_event('x');
+	boxen_repl_run_one_tick(&g_state, &ev_x);
+
+	/* Popup must be gone */
+	assert(g_state.completion_popup == NULL);
+
+	/* 'x' must have been inserted after "/" */
+	assert(strcmp(g_state.input_buf, "/x") == 0);
+	assert(g_state.input_cursor == 2);
+
+	/* No palette state (hook not wired) */
+	assert(g_state.palette_state == NULL);
+
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * Test 26: test_completion_popup_slash_with_empty_input_inserts_not_palette
+ *
+ * 2026-06-17 JES #691 Phase C.0.7b.
+ *
+ * This test targets the specific crash path: a popup can be open even with
+ * input_cursor == 0 (e.g. if the completion hook fires for empty input, or
+ * if the popup was left open after Backspace deleted the last char).
+ * Simulate this by directly installing a popup on an empty input bar, then
+ * press '/' (a printable key that is NOT Tab/Enter/Esc).
+ *
+ * With the palette_open_hook wired:
+ *   BEFORE fix: popup closes, falls through, '/' gate fires because
+ *     input_cursor==0 && palette_open_hook!=NULL && palette_state==NULL
+ *     -> palette opens (wrong) OR assert fires (crash in production).
+ *   AFTER fix: '/' closes popup and is inserted into input_buf normally
+ *     (no palette open).
+ *
+ * The correct post-fix behaviour: '/' is inserted, palette_state stays NULL.
+ * ---------------------------------------------------------------------- */
+static int hook_completion_empty(const char *buf, size_t bl,
+                                 char cand[][BOXEN_COMPLETION_CANDIDATE_MAX],
+                                 int max) {
+	(void)buf; (void)bl; (void)max;
+	/* Returns 2 candidates even for an empty buffer to force popup open. */
+	strcpy(cand[0], "alpha");
+	strcpy(cand[1], "beta");
+	return 2;
+}
+
+static void test_completion_popup_slash_with_empty_input_inserts_not_palette(void) {
+	setup();
+
+	/* Wire both hooks so the '/' gate CAN fire if the code has the bug. */
+	g_state.completion_hook   = hook_completion_empty;
+	g_state.palette_open_hook = mock_palette_open;
+	g_mock_palette_open_count = 0;
+
+	/* Open popup with empty input by pressing Tab (completion hook always
+	 * returns 2 candidates regardless of buf content). */
+	boxen_event_t ev_tab = make_key_event(BOXEN_KEY_TAB);
+	boxen_repl_run_one_tick(&g_state, &ev_tab);
+
+	/* Popup must be open */
+	assert(g_state.completion_popup != NULL);
+	/* input_buf must still be empty (Tab doesn't insert) */
+	assert(g_state.input_cursor == 0);
+
+	/* Now press '/': "any other key" in popup mode.
+	 * Bug: with cursor==0 and palette_open_hook set, the '/' falls through
+	 * and triggers the palette open gate.  Fix: the popup fallthrough must
+	 * NOT open the palette; '/' should be inserted normally. */
+	boxen_event_t ev_slash = make_char_event('/');
+	boxen_repl_run_one_tick(&g_state, &ev_slash);
+
+	/* Popup must be closed */
+	assert(g_state.completion_popup == NULL);
+
+	/* '/' must be inserted into input_buf (not swallowed by palette open) */
+	assert(strcmp(g_state.input_buf, "/") == 0);
+	assert(g_state.input_cursor == 1);
+
+	/* Palette must NOT have opened -- this is the bug assertion */
+	assert(g_state.palette_state == NULL);
+	assert(g_mock_palette_open_count == 0);
+
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
  * main
  * ---------------------------------------------------------------------- */
 int main(void) {
@@ -1551,6 +1750,9 @@ int main(void) {
 	TR_RUN(test_ctrl_c_in_multiline_with_popup_open_discards_both);
 	TR_RUN(test_slash_then_letter_within_window_inserts_both);
 	TR_RUN(test_slash_then_timeout_opens_palette);
+	TR_RUN(test_completion_popup_enter_accepts_selection_no_crash);
+	TR_RUN(test_completion_popup_printable_letter_closes_popup_no_crash);
+	TR_RUN(test_completion_popup_slash_with_empty_input_inserts_not_palette);
 
 	TR_SUMMARY();
 	return TR_EXIT_CODE();

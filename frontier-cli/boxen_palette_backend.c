@@ -329,13 +329,28 @@ static void palette_modal_on_input(boxen_window_t *win,
 		strncpy(exec_arg_copy, st->exec_arg, sizeof(exec_arg_copy) - 1);
 		exec_arg_copy[sizeof(exec_arg_copy) - 1] = '\0';
 
-		if (s_ctx.done_cb != NULL) {
+		/* 2026-06-17 JES #691 Phase C.0.7b: snapshot done_cb pointer BEFORE
+		 * invoking it.  boxen_backend_close (called by on_palette_done ->
+		 * palette_close) sets s_ctx.done_cb = NULL as part of its own cleanup.
+		 * The fallback check below must distinguish "done_cb was never
+		 * registered" from "done_cb ran and cleared itself"; without
+		 * snapshotting, the check fires even when done_cb ran successfully,
+		 * causing palette_paint_teardown / palette_close on already-freed `st`
+		 * -- a use-after-free crash.
+		 *
+		 * After the snapshot, the code uses `had_done_cb` to gate the fallback:
+		 *   had_done_cb == true  -> done_cb ran; `st` is now freed; skip fallback
+		 *   had_done_cb == false -> no done_cb; we must teardown ourselves */
+		bool had_done_cb = (s_ctx.done_cb != NULL);
+		if (had_done_cb) {
 			s_ctx.done_cb(s_ctx.repl_state, done, exec_script, exec_arg_copy);
 		}
 		/* done_cb is responsible for calling palette_close and freeing st.
-		 * If no done_cb is registered, do a defensive teardown here so the
-		 * modal window can be destroyed without holding a dangling palette. */
-		if (s_ctx.done_cb == NULL) {
+		 * If no done_cb was registered, do a defensive teardown here so the
+		 * modal window can be destroyed without holding a dangling palette.
+		 * MUST gate on `had_done_cb` (snapshotted above), NOT on the current
+		 * value of s_ctx.done_cb (which done_cb clears as a side effect). */
+		if (!had_done_cb) {
 			palette_paint_teardown(st);
 			palette_close(st);
 		}
@@ -362,43 +377,60 @@ static void palette_modal_on_draw(boxen_window_t *win, void *user_data) {
  * Backend vtable functions
  * ---------------------------------------------------------------------- */
 
+/* 2026-06-17 JES #691 Phase C.0.7b: compute the correct window geometry for
+ * the palette modal based on current terminal size and open cascade depth.
+ *
+ * Content height = 1 (menubar row) + open_depth (one row per open cascade).
+ * Full window height adds 1-cell borders on each side.
+ * The window is horizontally centered and anchored one row below the top
+ * screen border so the palette behaves like a desktop menubar.
+ *
+ * This helper is used both at open time (depth=0, height=1+2=3 including
+ * borders) and from boxen_backend_paint when cascade levels open/close so
+ * the window tracks actual content without pre-allocating all PALETTE_MAX_DEPTH
+ * rows.  JES reported a 7-8-line bordered window on first open because the
+ * original code set content_h = 1 + PALETTE_MAX_DEPTH = 9 unconditionally. */
+static boxen_rect_t bpb_compute_rect(int open_depth, int sw, int sh) {
+	int content_w = sw - 4;
+	if (content_w < 20) content_w = 20;
+	if (content_w > sw - 2) content_w = sw - 2;
+
+	/* Height: 1 menubar row + one row per open cascade level. */
+	int content_h = 1 + open_depth;
+	/* Sanity clamps: at least 1, at most what the terminal can fit. */
+	if (content_h < 1) content_h = 1;
+	int max_content_h = sh - 4;
+	if (max_content_h < 1) max_content_h = 1;
+	if (content_h > max_content_h) content_h = max_content_h;
+
+	int win_w = content_w + 2;
+	int win_h = content_h + 2;
+
+	int win_x = (sw - win_w) / 2;
+	int win_y = 1;  /* one row below the top screen border */
+	if (win_x < 0) win_x = 0;
+	if (win_y + win_h > sh) win_y = sh - win_h;
+	if (win_y < 0) win_y = 0;
+
+	boxen_rect_t r = { win_x, win_y, win_w, win_h };
+	return r;
+}
+
 static bool boxen_backend_open(palette_state_t *st, void *ctx) {
 	(void)ctx;
 	/* 2026-06-10 JES #691 Phase C.0.3b: single-palette-at-a-time invariant
 	 * (file-static s_ctx).  Fail loudly if a future caller violates it. */
 	assert(s_ctx.modal_win == NULL);
 
-	/* Compute a centered rect for the modal window.
-	 * Window height: menubar (row 0) + one strip per open cascade level.
-	 * At open time no levels are open, so height = 1 (menubar only) plus
-	 * borders (set_borders true adds 2 rows / 2 cols).  Reserve space for
-	 * PALETTE_MAX_DEPTH cascade strips plus the menubar (1+depth rows
-	 * content) so the window does not need to resize as menus open. */
 	int sw = 80, sh = 24;
 	boxen_get_screen_size(&sw, &sh);
 
-	int content_w = sw - 4;
-	if (content_w < 20) content_w = 20;
-	if (content_w > sw - 2) content_w = sw - 2;
-
-	/* Height: 1 (menubar) + PALETTE_MAX_DEPTH (max cascade strips). */
-	int content_h = 1 + PALETTE_MAX_DEPTH;
-	if (content_h > sh - 4) content_h = sh - 4;
-	if (content_h < 3) content_h = 3;
-
-	/* Full window size including 1-cell borders on each side. */
-	int win_w = content_w + 2;
-	int win_h = content_h + 2;
-
-	/* Center the window.  Prefer to anchor near the top of the screen so
-	 * the palette behaves like a menubar; clamp to screen bounds. */
-	int win_x = (sw - win_w) / 2;
-	int win_y = 1;  /* one row below the top border */
-	if (win_x < 0) win_x = 0;
-	if (win_y + win_h > sh) win_y = sh - win_h;
-	if (win_y < 0) win_y = 0;
-
-	boxen_rect_t rect = { win_x, win_y, win_w, win_h };
+	/* 2026-06-17 JES #691 Phase C.0.7b: open at depth=0 (menubar only).
+	 * The window grows as cascade levels open via boxen_backend_paint's
+	 * resize-before-paint step.  This replaces the previous fixed
+	 * content_h = 1 + PALETTE_MAX_DEPTH which caused a 7-8 line bordered
+	 * window to appear even before any submenu was opened. */
+	boxen_rect_t rect = bpb_compute_rect(0, sw, sh);
 
 	/* Open modal window; pass palette state as user_data so input and draw
 	 * callbacks can access it directly. */
@@ -424,6 +456,24 @@ static bool boxen_backend_open(palette_state_t *st, void *ctx) {
 static void boxen_backend_paint(palette_state_t *st, void *ctx) {
 	(void)ctx;
 	if (s_ctx.modal_win == NULL) return;
+
+	/* 2026-06-17 JES #691 Phase C.0.7b: resize the modal window to match
+	 * the current open_depth before painting.  The window was opened at
+	 * depth=0 (3 rows including borders); as cascade levels open or close
+	 * via navigate/hotkey, the window height tracks the content exactly.
+	 * This prevents the initial 7-8 line bordered window JES reported
+	 * (the old code opened at depth=PALETTE_MAX_DEPTH unconditionally). */
+	{
+		int sw = 80, sh = 24;
+		boxen_get_screen_size(&sw, &sh);
+		boxen_rect_t needed  = bpb_compute_rect(st->open_depth, sw, sh);
+		boxen_rect_t current = boxen_window_get_rect(s_ctx.modal_win);
+		/* Only resize if dimensions differ -- avoids unnecessary repaints. */
+		if (current.w != needed.w || current.h != needed.h ||
+		    current.x != needed.x || current.y != needed.y) {
+			boxen_window_set_rect(s_ctx.modal_win, needed);
+		}
+	}
 
 	/* Fill entire content area to avoid stale cells. */
 	int cw = boxen_window_content_width(s_ctx.modal_win);
@@ -455,28 +505,11 @@ static void boxen_backend_paint_teardown(palette_state_t *st, void *ctx) {
 
 static void boxen_backend_on_resize(palette_state_t *st,
                                     int term_rows, int term_cols, void *ctx) {
-	(void)st; (void)ctx;
+	(void)ctx;
 	if (s_ctx.modal_win == NULL) return;
-
-	int sw = term_cols, sh = term_rows;
-
-	int content_w = sw - 4;
-	if (content_w < 20) content_w = 20;
-	if (content_w > sw - 2) content_w = sw - 2;
-
-	int content_h = 1 + PALETTE_MAX_DEPTH;
-	if (content_h > sh - 4) content_h = sh - 4;
-	if (content_h < 3) content_h = 3;
-
-	int win_w = content_w + 2;
-	int win_h = content_h + 2;
-	int win_x = (sw - win_w) / 2;
-	int win_y = 1;
-	if (win_x < 0) win_x = 0;
-	if (win_y + win_h > sh) win_y = sh - win_h;
-	if (win_y < 0) win_y = 0;
-
-	boxen_rect_t rect = { win_x, win_y, win_w, win_h };
+	/* 2026-06-17 JES #691 Phase C.0.7b: use bpb_compute_rect so the resized
+	 * window tracks open_depth rather than pre-allocating PALETTE_MAX_DEPTH. */
+	boxen_rect_t rect = bpb_compute_rect(st->open_depth, term_cols, term_rows);
 	boxen_window_set_rect(s_ctx.modal_win, rect);
 }
 

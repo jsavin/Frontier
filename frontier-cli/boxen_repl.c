@@ -981,10 +981,46 @@ static void on_input(boxen_window_t *win, const boxen_event_t *ev,
 			if (s->input_win != NULL) boxen_window_invalidate(s->input_win);
 			return;
 		}
-		/* Any other key: close popup and fall through to normal handling. */
+		/* 2026-06-17 JES #691 Phase C.0.7b: any other key closes popup.
+		 *
+		 * For printable ASCII: insert the character directly and return.
+		 * We must NOT fall through to the printable-ASCII handler below
+		 * because that handler contains the '/' palette-open gate
+		 * (input_cursor == 0 check).  If the popup was open with an empty
+		 * input bar (cursor == 0) and the user types '/' (or any char that
+		 * happens to match the palette gate condition), falling through
+		 * would incorrectly open the palette modal -- in production this
+		 * triggers assert(s_ctx.modal_win == NULL) if a prior palette
+		 * session left the window live, crashing the TUI.
+		 *
+		 * For non-printable keys that are not explicitly handled above
+		 * (e.g. function keys, modifier-only events), fall through so the
+		 * normal non-popup handlers (Escape, Enter, Backspace, Tab, arrows)
+		 * below can process them.
+		 *
+		 * The previous code called boxen_window_focus(s->input_win) here,
+		 * which was wrong: the popup uses boxen_window_raise (z-order only,
+		 * no set_modal), so the input window ALWAYS retains focus.  Use
+		 * boxen_window_invalidate instead to redraw the now-uncovered area. */
 		boxen_completion_popup_close(s->completion_popup);
 		s->completion_popup = NULL;
-		if (s->input_win != NULL) boxen_window_focus(s->input_win);
+		if (ev->key.key == BOXEN_KEY_NONE &&
+		    ev->key.ch >= 0x20 && ev->key.ch < 0x7F) {
+			/* Printable char: insert it directly, skip the palette gate. */
+			if (s->history_nav_idx != -1) {
+				s->history_nav_idx        = -1;
+				s->history_saved_input[0] = '\0';
+			}
+			if (s->input_cursor < BOXEN_REPL_INPUT_MAX - 1) {
+				s->input_buf[s->input_cursor]     = (char)ev->key.ch;
+				s->input_buf[s->input_cursor + 1] = '\0';
+				s->input_cursor++;
+			}
+			if (s->input_win != NULL) boxen_window_invalidate(s->input_win);
+			return;
+		}
+		/* Non-printable: fall through to the normal handlers below. */
+		if (s->input_win != NULL) boxen_window_invalidate(s->input_win);
 		/* fall through */
 	}
 
