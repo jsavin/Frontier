@@ -1412,6 +1412,111 @@ static void test_slash_then_timeout_opens_palette(void) {
 }
 
 /* -------------------------------------------------------------------------
+ * Test 26: test_slash_then_enter_cancels_pending_palette
+ *
+ * 2026-06-17 JES #691 Phase C.0.7a P1: pressing Enter (or UP/DOWN/Tab) after
+ * '/' must cancel the pending slash-debounce so a deferred palette doesn't
+ * pop 350ms later.  Without the cancel, type '/' + Enter + wait, and the
+ * palette unexpectedly opens at the now-empty prompt.
+ *
+ * This regression test was added in response to the C.0.7a /gate round-1 P1
+ * finding.
+ * ---------------------------------------------------------------------- */
+static void test_slash_then_enter_cancels_pending_palette(void) {
+	setup();
+
+	g_mock_now_ms             = 5000;
+	g_mock_palette_open_count = 0;
+	g_state.palette_open_hook     = mock_palette_open;
+	g_state.palette_dispatch_hook = mock_palette_dispatch;
+	g_state.now_ms_hook           = mock_now_ms;
+
+	/* Type '/' -- arms the debounce. */
+	boxen_event_t ev_slash = make_char_event('/');
+	boxen_repl_run_one_tick(&g_state, &ev_slash);
+	assert(g_state.slash_pending_until_ms != 0);
+
+	/* Press Enter -- must cancel the pending palette. */
+	boxen_event_t ev_enter = make_key_event(BOXEN_KEY_ENTER);
+	boxen_repl_run_one_tick(&g_state, &ev_enter);
+	assert(g_state.slash_pending_until_ms == 0);  /* cancelled */
+
+	/* Advance time past where the deadline would have been. */
+	g_mock_now_ms = 5000 + BOXEN_REPL_SLASH_DEBOUNCE_MS + 100;
+	boxen_repl_check_pending_slash(&g_state);
+
+	/* Palette must NOT have fired -- the cancel held. */
+	assert(g_mock_palette_open_count == 0);
+	assert(g_state.palette_state == NULL);
+
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * Test 27: test_slash_then_up_cancels_pending_palette
+ *
+ * 2026-06-17 JES #691 Phase C.0.7a P1: same as test 26 but for UP arrow.
+ * History nav must not be shadowed by a deferred palette pop.
+ * ---------------------------------------------------------------------- */
+static void test_slash_then_up_cancels_pending_palette(void) {
+	setup();
+
+	g_mock_now_ms             = 5000;
+	g_mock_palette_open_count = 0;
+	g_state.palette_open_hook     = mock_palette_open;
+	g_state.palette_dispatch_hook = mock_palette_dispatch;
+	g_state.now_ms_hook           = mock_now_ms;
+
+	boxen_event_t ev_slash = make_char_event('/');
+	boxen_repl_run_one_tick(&g_state, &ev_slash);
+	assert(g_state.slash_pending_until_ms != 0);
+
+	boxen_event_t ev_up = make_key_event(BOXEN_KEY_UP);
+	boxen_repl_run_one_tick(&g_state, &ev_up);
+	assert(g_state.slash_pending_until_ms == 0);
+
+	g_mock_now_ms = 5000 + BOXEN_REPL_SLASH_DEBOUNCE_MS + 100;
+	boxen_repl_check_pending_slash(&g_state);
+
+	assert(g_mock_palette_open_count == 0);
+	assert(g_state.palette_state == NULL);
+
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
+ * Test 28: test_slash_then_tab_cancels_pending_palette
+ *
+ * 2026-06-17 JES #691 Phase C.0.7a P1: same as test 26 but for Tab.
+ * Tab completion must not be shadowed by a deferred palette pop.
+ * ---------------------------------------------------------------------- */
+static void test_slash_then_tab_cancels_pending_palette(void) {
+	setup();
+
+	g_mock_now_ms             = 5000;
+	g_mock_palette_open_count = 0;
+	g_state.palette_open_hook     = mock_palette_open;
+	g_state.palette_dispatch_hook = mock_palette_dispatch;
+	g_state.now_ms_hook           = mock_now_ms;
+
+	boxen_event_t ev_slash = make_char_event('/');
+	boxen_repl_run_one_tick(&g_state, &ev_slash);
+	assert(g_state.slash_pending_until_ms != 0);
+
+	boxen_event_t ev_tab = make_key_event(BOXEN_KEY_TAB);
+	boxen_repl_run_one_tick(&g_state, &ev_tab);
+	assert(g_state.slash_pending_until_ms == 0);
+
+	g_mock_now_ms = 5000 + BOXEN_REPL_SLASH_DEBOUNCE_MS + 100;
+	boxen_repl_check_pending_slash(&g_state);
+
+	assert(g_mock_palette_open_count == 0);
+	assert(g_state.palette_state == NULL);
+
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
  * main
  * ---------------------------------------------------------------------- */
 int main(void) {
@@ -1433,6 +1538,9 @@ int main(void) {
 	TR_RUN(test_tab_completes_odb_path_prefix);
 	TR_RUN(test_escape_dismisses_popup_without_accept);
 	TR_RUN(test_slash_key_defers_palette_open);
+	TR_RUN(test_slash_then_enter_cancels_pending_palette);
+	TR_RUN(test_slash_then_up_cancels_pending_palette);
+	TR_RUN(test_slash_then_tab_cancels_pending_palette);
 	TR_RUN(test_palette_close_returns_focus_to_repl_input);
 	TR_RUN(test_palette_dispatch_hook_contract);
 	TR_RUN(test_slash_mid_input_still_inserts);

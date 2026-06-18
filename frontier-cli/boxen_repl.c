@@ -1000,18 +1000,25 @@ static void on_input(boxen_window_t *win, const boxen_event_t *ev,
 		return;
 	}
 
-	/* Enter or Ctrl-M: submit */
+	/* Enter or Ctrl-M: submit.
+	 * 2026-06-17 JES #691 Phase C.0.7a P1: cancel pending slash-debounce so
+	 * a deferred palette doesn't pop 350ms after the user pressed Enter. */
 	if (ev->key.key == BOXEN_KEY_ENTER || ev->key.key == BOXEN_KEY_CTRL_M) {
+		s->slash_pending_until_ms = 0;
 		submit_input(s);
 		return;
 	}
 
-	/* 2026-06-09 JES #691 Phase C.0.1: history navigation. */
+	/* 2026-06-09 JES #691 Phase C.0.1: history navigation.
+	 * 2026-06-17 JES #691 Phase C.0.7a P1: cancel pending slash-debounce so
+	 * a deferred palette doesn't pop while the user is browsing history. */
 	if (ev->key.key == BOXEN_KEY_UP) {
+		s->slash_pending_until_ms = 0;
 		history_nav_up(s);
 		return;
 	}
 	if (ev->key.key == BOXEN_KEY_DOWN) {
+		s->slash_pending_until_ms = 0;
 		history_nav_down(s);
 		return;
 	}
@@ -1020,8 +1027,12 @@ static void on_input(boxen_window_t *win, const boxen_event_t *ev,
 	 *
 	 * Call the completion hook (if set).  Zero candidates: silent no-op.
 	 * One candidate: replace input_buf inline.
-	 * Two or more: open a completion popup above the input bar. */
+	 * Two or more: open a completion popup above the input bar.
+	 *
+	 * 2026-06-17 JES #691 Phase C.0.7a P1: cancel pending slash-debounce so
+	 * a deferred palette doesn't pop while completion is in flight. */
 	if (ev->key.key == BOXEN_KEY_TAB) {
+		s->slash_pending_until_ms = 0;
 		if (s->completion_hook == NULL) return;
 
 		char candidates[BOXEN_COMPLETION_MAX_CANDIDATES][BOXEN_COMPLETION_CANDIDATE_MAX];
