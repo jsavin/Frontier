@@ -331,6 +331,17 @@ typedef struct {
 	palette_open_fn_t    palette_open_hook;
 	palette_dispatch_fn_t palette_dispatch_hook;
 
+	/* 2026-06-21 JES #691 C.0.7f: palette source lifetime.
+	 *
+	 * The palette holds a borrowed pointer to its source vtable (st->source)
+	 * and dereferences it lazily as the user opens cascade levels.  The source
+	 * must therefore outlive the palette_state.  Stored here as a heap pointer
+	 * paired 1:1 with palette_state; allocated in boxen_repl_real_palette_open
+	 * and disposed+freed on every palette close path (on_palette_done, the
+	 * teardown crash/abort guard).  Opaque void* so the test binary need not
+	 * pull in repl_palette_source.h. */
+	void                 *palette_source;
+
 	/* 2026-06-17 JES #691 Phase C.0.7a: slash-palette debounce.
 	 *
 	 * slash_pending_until_ms: absolute monotonic deadline (ms) at which the
