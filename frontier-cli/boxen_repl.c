@@ -36,6 +36,16 @@
 #include "boxen/boxen.h"
 #include "../Common/headers/logging.h"
 
+/* 2026-06-21 JES #691 C.0.7f: forward-declare the palette source vtable
+ * struct + dispose entry point at file scope so the teardown path can free
+ * the palette_source field on the boxen_repl_state_t without pulling
+ * repl_palette_source.h up out of the BOXEN_REPL_OMIT_MAIN block further
+ * down.  File-scope declaration -- not function-scope -- so it does not
+ * shadow the typedef declared in palette.h when that header is included
+ * later in the production block. */
+struct palette_menu_source;
+extern void repl_palette_source_dispose(struct palette_menu_source *src);
+
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
@@ -1347,13 +1357,24 @@ void boxen_repl_state_teardown(boxen_repl_state_t *s) {
 	 * forward-declared in boxen_repl_internal.h). */
 #ifndef BOXEN_REPL_OMIT_MAIN
 	extern void palette_close(palette_state_t *st);
+	/* repl_palette_source_dispose forward-declared at file scope above so the
+	 * test build (OMIT_MAIN) compiles without pulling in palette.h. */
 	if (s->palette_state != NULL) {
 		palette_close(s->palette_state);
 		free(s->palette_state);
 		s->palette_state = NULL;
 	}
+	/* Free the paired source on crash/abort teardown so leaks are not
+	 * introduced when on_palette_done never runs. */
+	if (s->palette_source != NULL) {
+		repl_palette_source_dispose(
+			(struct palette_menu_source *)s->palette_source);
+		free(s->palette_source);
+		s->palette_source = NULL;
+	}
 #else
 	s->palette_state = NULL;
+	s->palette_source = NULL;
 #endif
 	/* 2026-06-09 JES #691 Phase C.0.2: close any open completion popup before
 	 * the windows it overlaps are destroyed.  Normal exit paths close it via
@@ -2046,6 +2067,16 @@ static void on_palette_done(void *repl_state_opaque, palette_done_t done,
 		s->palette_state = NULL;
 	}
 
+	/* 2026-06-21 JES #691 C.0.7f: dispose source AFTER palette_close so any
+	 * close-time callbacks the palette runs against st->source (currently
+	 * none, but the contract allows it) still see a live vtable. */
+	if (s->palette_source != NULL) {
+		repl_palette_source_dispose(
+			(palette_menu_source_t *)s->palette_source);
+		free(s->palette_source);
+		s->palette_source = NULL;
+	}
+
 	/* 3. Refocus the REPL input window. */
 	if (s->input_win != NULL) {
 		boxen_window_focus(s->input_win);
@@ -2075,11 +2106,26 @@ bool boxen_repl_real_palette_open(void *s_opaque) {
 		return false;
 	}
 
-	/* Build the ODB-backed source (all installed menubars). */
-	palette_menu_source_t src;
-	if (!repl_palette_source_init_all(&src)) {
+	/* Build the ODB-backed source (all installed menubars).
+	 *
+	 * 2026-06-21 JES #691 C.0.7f: heap-allocate the source so its address
+	 * stays valid for the palette's lifetime.  palette_open_ex stores a
+	 * borrowed pointer (st->source) and dereferences it lazily when the user
+	 * opens cascade levels via open_level().  A stack-local `src` (the prior
+	 * shape) became a dangling pointer the moment this function returned,
+	 * so any DOWN / RIGHT-arrow / hotkey activation that triggered
+	 * st->source->item_count() crashed with frame#0 PC=0 (NULL fp).
+	 * See test_99_repl_menu_crash.py. */
+	palette_menu_source_t *src = (palette_menu_source_t *)calloc(1, sizeof(*src));
+	if (src == NULL) {
+		log_warn(LOG_COMP_GENERAL, "boxen palette: OOM allocating palette_source");
+		free(pst);
+		return false;
+	}
+	if (!repl_palette_source_init_all(src)) {
 		log_warn(LOG_COMP_GENERAL,
 		         "boxen palette: no installed menubars (system.menus.data.*)");
+		free(src);
 		free(pst);
 		return false;
 	}
@@ -2095,11 +2141,12 @@ bool boxen_repl_real_palette_open(void *s_opaque) {
 	/* Prompt row: in boxen mode the palette's pane-row anchoring is irrelevant
 	 * (the boxen backend ignores prompt_row), but palette_open_ex validates
 	 * the row and we must pass something sane.  Use 0 (top of screen). */
-	if (!palette_open_ex(pst, sh, sw, 0, &src,
+	if (!palette_open_ex(pst, sh, sw, 0, src,
 	                     palette_render_boxen_backend())) {
 		log_warn(LOG_COMP_GENERAL,
 		         "boxen palette: palette_open_ex failed (terminal too small?)");
-		repl_palette_source_dispose(&src);
+		repl_palette_source_dispose(src);
+		free(src);
 		/* 2026-06-10 JES #691 Phase C.0.3b: clear stale registration so the
 		 * done_cb/repl_state set above don't outlive the failed open. */
 		palette_render_boxen_backend_set_done_cb(NULL, NULL);
@@ -2107,13 +2154,14 @@ bool boxen_repl_real_palette_open(void *s_opaque) {
 		return false;
 	}
 
-	/* Source lifetime: palette_open_ex has cached all items; the source is
-	 * no longer needed.  Dispose immediately so handles don't leak if the
-	 * palette is closed before the dispatch hook runs. */
-	repl_palette_source_dispose(&src);
-
-	/* Install state pointer -- palette is now "open". */
+	/* 2026-06-21 JES #691 C.0.7f: source lifetime is now tied to palette_state.
+	 * palette.c stores a borrowed st->source pointer and dereferences it
+	 * lazily when the user opens cascade levels (open_level -> item_count /
+	 * item_describe).  Keep `src` alive and pair it with palette_state; the
+	 * dispose+free fires on every close path (on_palette_done and the
+	 * teardown crash/abort guard). */
 	s->palette_state = pst;
+	s->palette_source = src;
 
 	/* Initial render. */
 	palette_render_state(pst);
@@ -2258,9 +2306,10 @@ bool boxen_repl_real_palette_dispatch(void *script_handle, const char *exec_arg)
 void boxen_repl_close_palette_for_test(void *s_opaque) {
 	boxen_repl_state_t *s = (boxen_repl_state_t *)s_opaque;
 	if (s == NULL) return;
-	/* Just NULL the pointer -- no real palette_close since palette.c is
-	 * not linked in the test binary. */
+	/* Just NULL the pointers -- no real palette_close / source_dispose since
+	 * palette.c / repl_palette_source.c are not linked in the test binary. */
 	s->palette_state = NULL;
+	s->palette_source = NULL;
 	/* Refocus input_win if it exists (mock backend creates real windows). */
 	if (s->input_win != NULL) {
 		boxen_window_focus(s->input_win);
