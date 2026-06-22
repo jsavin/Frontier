@@ -2067,25 +2067,33 @@ static void on_palette_done(void *repl_state_opaque, palette_done_t done,
 		s->palette_state = NULL;
 	}
 
-	/* 2026-06-21 JES #691 C.0.7f: dispose source AFTER palette_close so any
-	 * close-time callbacks the palette runs against st->source (currently
-	 * none, but the contract allows it) still see a live vtable. */
-	if (s->palette_source != NULL) {
-		repl_palette_source_dispose(
-			(palette_menu_source_t *)s->palette_source);
-		free(s->palette_source);
-		s->palette_source = NULL;
-	}
-
 	/* 3. Refocus the REPL input window. */
 	if (s->input_win != NULL) {
 		boxen_window_focus(s->input_win);
 	}
 
-	/* 4. Dispatch on execute. */
+	/* 4. Dispatch on execute.
+	 *
+	 * 2026-06-22 JES #691 C.0.7f follow-up: dispatch BEFORE disposing the
+	 * source.  exec_script is a Handle owned by the source's per-item script
+	 * cache (cache_script_handle in repl_palette_source.c).  Disposing the
+	 * source first would disposehandle() every cached entry including this
+	 * one -- yielding a use-after-free that surfaced as "(menu script
+	 * failed)" on every dispatch.  The dispatch hook performs its own
+	 * copyhandle (meuserselected_headless) so by the time control returns
+	 * here it is safe to release the cache. */
 	if (done == PALETTE_DONE_EXECUTE && exec_script != NULL &&
 	    s->palette_dispatch_hook != NULL) {
 		s->palette_dispatch_hook(exec_script, exec_arg ? exec_arg : "");
+	}
+
+	/* 5. Dispose the source after dispatch -- the cache that owns
+	 * exec_script must outlive step 4. */
+	if (s->palette_source != NULL) {
+		repl_palette_source_dispose(
+			(palette_menu_source_t *)s->palette_source);
+		free(s->palette_source);
+		s->palette_source = NULL;
 	}
 }
 

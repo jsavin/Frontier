@@ -83,3 +83,42 @@ def test_repl_menu_activation_via_arrows_doesnt_crash():
             "REPL exited after RIGHT-RIGHT-RIGHT-DOWN navigation to REPL "
             "menu — crash is menu-activation, not hotkey-specific"
         )
+
+
+def test_repl_menu_item_dispatches_without_use_after_free():
+    """★ JES manual report 2026-06-22: after C.0.7f fixed the palette-source
+    lifetime crash, every menu item dispatch returned "(menu script failed)".
+
+    Root cause: on_palette_done disposed the source BEFORE invoking the
+    dispatch hook, freeing the script Handle the hook was about to call.
+    Use-after-free surfaced as a no-op dispatch reported through the host's
+    "(menu script failed)" path.
+
+    This test drives /R H (slash, REPL menu hotkey, then Help hotkey) and
+    asserts the menu actually ran by looking for Help text in the
+    scrollback AND the absence of the failure marker.  Failure pre-fix:
+    "(menu script failed)" appears in the capture.
+    """
+    with TUI(boot_wait=1.5) as t:
+        t.wait_for(">", timeout=5)
+        t.send("/")
+        time.sleep(0.6)
+        t.wait_for("╔", timeout=2)
+
+        # Open REPL menu via hotkey R, then activate Help via hotkey H.
+        t.send("R")
+        time.sleep(0.3)
+        t.send("H")
+        # Help is a no-arg script that writes lines to scrollback.  Give it
+        # a moment to compile + run + render.
+        time.sleep(1.0)
+        snapshot(t, "repl-menu-help-dispatch-result")
+
+        assert t.is_alive(), "REPL exited during menu dispatch"
+
+        text = t.capture()
+        assert "(menu script failed)" not in text, (
+            "Menu dispatch returned the host failure marker — script "
+            "Handle was freed before the dispatch hook could use it.  "
+            "Capture:\n" + text
+        )
