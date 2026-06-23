@@ -8,6 +8,7 @@
 #include "dialog_prompts.h"
 #include "terminal_control.h"
 #include "cli_utils.h"
+#include "boxen_ui.h"		/* 2026-06-23 JES #691 Phase C.0.7g */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -139,6 +140,14 @@ bool dialog_get_int(const char *prompt, long default_value, long *out_value) {
 	long result = 0;
 	char *endptr;
 
+	/* 2026-06-23 JES #691 Phase C.0.7g: when running under the boxen
+	 * REPL, route the prompt through the boxen modal bridge instead of
+	 * raw terminal IO (which the boxen compositor would render
+	 * incorrectly via the captured stderr pipe). */
+	if (boxen_ui_is_active()) {
+		return boxen_ui_get_int(prompt, default_value, out_value);
+	}
+
 	if (!isInteractiveMode()) {
 		return false;
 	}
@@ -181,6 +190,13 @@ bool dialog_get_int(const char *prompt, long default_value, long *out_value) {
 char* dialog_get_string(const char *prompt, const char *default_value) {
 	char *input = NULL;
 
+	/* 2026-06-23 JES #691 Phase C.0.7g: boxen modal bridge -- see
+	 * boxen_ui.c.  When inactive (linenoise mode) falls through to the
+	 * existing fprintf+read_line_with_editing path below. */
+	if (boxen_ui_is_active()) {
+		return boxen_ui_get_string(prompt, default_value);
+	}
+
 	if (!isInteractiveMode()) {
 		return NULL;
 	}
@@ -216,6 +232,12 @@ char* dialog_get_password(const char *prompt) {
 	size_t bufsize = 0;
 	size_t len = 0;
 	terminal_state *term_state = NULL;
+
+	/* 2026-06-23 JES #691 Phase C.0.7g: boxen modal bridge -- see
+	 * boxen_ui.c. */
+	if (boxen_ui_is_active()) {
+		return boxen_ui_get_password(prompt);
+	}
 
 	if (!isInteractiveMode()) {
 		return NULL;

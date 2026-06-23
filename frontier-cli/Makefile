@@ -127,7 +127,8 @@ CLI_SOURCES = \
     boxen_repl.c \
     boxen_completion_popup.c \
     boxen_palette_backend.c \
-    boxen_outline.c
+    boxen_outline.c \
+    boxen_ui.c
 
 # cJSON (vendored JSON parser)
 CJSON_SOURCES = $(THIRDPARTYDIR)/cJSON/cJSON.c
