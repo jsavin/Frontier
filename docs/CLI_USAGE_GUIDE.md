@@ -78,6 +78,7 @@ To run `frontier-cli` from any directory, either:
 | | `--non-interactive` | | Alias for `--batch` |
 | `-v` | `--verbose` | | Enable verbose output |
 | | `--debug` | | Enable debug mode |
+| | `--debug-tui` | `[PATH]` | Launch the boxen REPL (boxen-composited terminal UI). Optional `PATH` auto-spawns a suspended debug thread on a UserTalk script or ODB script. Default remains the linenoise REPL through milestone C.6. |
 | | `--lock-opened-roots` | | Suppress save-on-exit for every loaded-from-disk DB; in-memory mutations still work. Also `FRONTIER_LOCK_OPENED_ROOTS=1` |
 | `-h` | `--help` | | Show help message |
 | | `--version` | | Show version information |
@@ -238,6 +239,59 @@ Enable debug mode. Shows DEBUG-level messages and above.
 ```bash
 ./frontier-cli/frontier-cli --debug -e "1 + 1"
 ```
+
+#### `--debug-tui [PATH]`
+
+Launch the boxen REPL — a multi-pane terminal UI with composited windows. Replaces the linenoise prompt with a scrollback pane, an input bar, and (when needed) modal windows for the slash-menu palette, dialog prompts, and outline editors.
+
+The default REPL is still the linenoise one (no flag). The default flips in milestone C.6.
+
+**When to use which REPL.**
+
+`frontier-cli` (default, linenoise):
+- Tab completion, persistent history, slash-menu palette, async output — everything documented above
+- Best for quick UserTalk evaluation, debugging the runtime via the protocol mode, and any workflow that doesn't need editor windows
+
+`frontier-cli --debug-tui` (boxen):
+- Everything the linenoise REPL does, plus:
+  - Multi-window UX (editor windows can coexist with the REPL — required for `/edit @path`)
+  - Composited stdout/stderr so script output never corrupts the prompt
+  - Native modal dialog prompts (`dialog.getString` / `dialog.getInt` / `dialog.getPassword` render as centered boxen modals rather than raw-stderr prompts)
+  - Optional `PATH` argument for auto-launching a debug session against a script
+- Best for working with the editor (Phase C.1+), launching a debug session from a path, and developing TUI-side features
+- Feature comparison: see [`BOXEN_REPL_PARITY.md`](BOXEN_REPL_PARITY.md)
+
+**Usage:**
+```bash
+# Open the boxen REPL with no startup script
+./frontier-cli/frontier-cli --debug-tui
+
+# Open the boxen REPL with a system root loaded
+./frontier-cli/frontier-cli --debug-tui --system-root databases/Frontier.root
+
+# Auto-spawn a suspended debug thread on a script
+./frontier-cli/frontier-cli --debug-tui --system-root databases/Frontier.root @workspace.foo
+./frontier-cli/frontier-cli --debug-tui --system-root databases/Frontier.root path/to/script.ut
+```
+
+**Key bindings inside the boxen REPL.**
+
+Most keys do what they do in the linenoise REPL. Boxen-specific:
+
+| Key | Action |
+|-----|--------|
+| `/` | Open the slash-menu palette after a brief debounce (350 ms) |
+| `Esc` | Close any open modal (palette, dialog prompt) without dispatching |
+| `Ctrl-C` | Cancel the current modal if one is open; otherwise quit the REPL |
+| `Enter` | Submit input — either the input bar or the active modal |
+| Arrow keys | Navigate within the input bar; navigate within a modal |
+
+**Known limitations as of 2026-06-23** (track via the C.0.x follow-ups in [`BOXEN_REPL_PARITY.md`](BOXEN_REPL_PARITY.md)):
+
+- Dialog input fields are capped at 256 bytes (#795). Long paths and passphrases are silently truncated.
+- `dialog.alert`, `dialog.notify`, `dialog.twoway`, `dialog.threeway` still use raw-terminal prompts in boxen mode (Phase 2 of the UI bridge).
+- File dialog verbs (`file.getFileDialog` etc.) are unreachable from both REPLs in current builds.
+- `repl.printKeyCodes()` corrupts the boxen framebuffer if invoked under `--debug-tui` (#794).
 
 ---
 
