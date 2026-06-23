@@ -103,6 +103,29 @@ bool boxen_ui_get_int(const char *prompt, long default_val, long *out);
 /* Masked password input (asterisks per char).  Returns NULL on cancel. */
 char *boxen_ui_get_password(const char *prompt);
 
+/* 2026-06-23 JES #691 Phase C.0.7g Phase 2A: info-and-wait modal.
+ * Shows `message` in a centered modal with a "Press Enter to continue"
+ * hint.  If `beep` is true, rings the terminal bell on open.  Returns
+ * true on Enter, false on Esc / Ctrl-C.
+ *
+ * Bridges dialog.alert(message) -> beep=true and dialog.notify(message)
+ * -> beep=false. */
+bool boxen_ui_alert(const char *message, bool beep);
+
+/* 2026-06-23 JES #691 Phase C.0.7g Phase 2A: button-selector modal.
+ * Shows `prompt` above a horizontal row of buttons; Left/Right move
+ * the selection; Enter chooses; Esc / Ctrl-C cancel.  Hotkey: a typed
+ * letter matching the first character of a button label (case-
+ * insensitive) selects + activates that button immediately, matching
+ * the legacy dialog_twoway/threeway behavior.
+ *
+ * `buttons` is an array of `count` C strings (must be 2..4).  Returns
+ * the 1-based index of the chosen button, or 0 on cancel.
+ *
+ * Bridges dialog.twoway (count=2) and dialog.threeway (count=3). */
+int boxen_ui_button_select(const char *prompt,
+                           const char *const *buttons, int count);
+
 #ifdef __cplusplus
 }
 #endif

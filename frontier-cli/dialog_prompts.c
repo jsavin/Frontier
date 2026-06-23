@@ -331,6 +331,11 @@ char* dialog_get_password(const char *prompt) {
 
 /* Displays an alert message with audible beep, waits for Enter to continue. */
 bool dialog_alert(const char *message) {
+	/* 2026-06-23 JES #691 Phase C.0.7g Phase 2A: boxen UI bridge. */
+	if (boxen_ui_is_active()) {
+		return boxen_ui_alert(message, true /* beep */);
+	}
+
 	if (!isInteractiveMode()) {
 		return false;
 	}
@@ -383,6 +388,11 @@ bool dialog_alert(const char *message) {
 
 /* Displays a notification message without beep, waits for Enter to continue. */
 bool dialog_notify(const char *message) {
+	/* 2026-06-23 JES #691 Phase C.0.7g Phase 2A: boxen UI bridge. */
+	if (boxen_ui_is_active()) {
+		return boxen_ui_alert(message, false /* no beep */);
+	}
+
 	if (!isInteractiveMode()) {
 		return false;
 	}
@@ -456,6 +466,17 @@ bool dialog_twoway(const char *prompt, const char *button1, const char *button2)
 	int selection = 0;  /* 0 = button1, 1 = button2 */
 	terminal_state *term_state = NULL;
 	const char *buttons[2] = { button1, button2 };
+
+	/* 2026-06-23 JES #691 Phase C.0.7g Phase 2A: boxen UI bridge.
+	 * Returns 1 for button1, 2 for button2, 0 on cancel.  Map back to
+	 * legacy bool: true == button1, false == button2 OR cancel (legacy
+	 * defaults to "true" in batch mode, so cancel -> false here is the
+	 * safer translation: a script that branches on the return won't
+	 * accidentally take the first-button path when the user bailed). */
+	if (boxen_ui_is_active()) {
+		int r = boxen_ui_button_select(prompt, buttons, 2);
+		return (r == 1);
+	}
 
 	if (!isInteractiveMode()) {
 		return true;  /* Default to button1 in batch mode */
@@ -549,6 +570,15 @@ int dialog_threeway(const char *prompt, const char *button1, const char *button2
 	int selection = 0;  /* 0 = button1, 1 = button2, 2 = button3 */
 	terminal_state *term_state = NULL;
 	const char *buttons[3] = { button1, button2, button3 };
+
+	/* 2026-06-23 JES #691 Phase C.0.7g Phase 2A: boxen UI bridge.
+	 * Returns 1/2/3 for the chosen button.  Map cancel (0) to 1
+	 * (button1) -- legacy threeway has no cancel return; defaulting
+	 * to button1 matches the batch-mode behavior below. */
+	if (boxen_ui_is_active()) {
+		int r = boxen_ui_button_select(prompt, buttons, 3);
+		return (r == 0) ? 1 : r;
+	}
 
 	if (!isInteractiveMode()) {
 		return 1;  /* Default to button1 in batch mode */
