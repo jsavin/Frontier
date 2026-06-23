@@ -32,6 +32,7 @@
 #include "boxen_repl_internal.h"
 #include "boxen_outline.h"  /* boxen_outline_open, boxen_outline_close_all -- 2026-06-09 JES Phase C.1 #691 */
 #include "boxen_completion_popup.h"
+#include "boxen_ui.h"		/* 2026-06-23 JES #691 Phase C.0.7g: dialog modal bridge */
 
 #include "boxen/boxen.h"
 #include "../Common/headers/logging.h"
@@ -1456,6 +1457,26 @@ int boxen_repl_run_one_tick(boxen_repl_state_t *s, const boxen_event_t *ev) {
  * No production runtime dependencies -- compiled in both production and
  * test builds.  Tests call it directly with a test-supplied pipe fd.
  * ---------------------------------------------------------------------- */
+/* 2026-06-23 JES #691 Phase C.0.7g: drain thunk used by the boxen_ui
+ * bridge to keep the scrollback ring current while a dialog modal is
+ * waiting for input.  Reads ctx as the boxen_repl_state_t* passed in
+ * boxen_ui_host.drain_ctx; the bridge does not know that type. */
+void boxen_repl_drain_capture_pipe_thunk(void *ctx) {
+	boxen_repl_state_t *s = (boxen_repl_state_t *)ctx;
+	if (s == NULL) return;
+	drain_stdout_into_scrollback(s, s->pipe_read_fd);
+}
+
+/* 2026-06-23 JES #691 Phase C.0.7g: focus-restore thunk for the boxen_ui
+ * bridge.  After a dialog modal closes the bridge calls this so the
+ * REPL input bar reclaims keyboard focus.  No-op if input_win has been
+ * torn down. */
+void boxen_repl_restore_focus_thunk(void *ctx) {
+	boxen_repl_state_t *s = (boxen_repl_state_t *)ctx;
+	if (s == NULL || s->input_win == NULL) return;
+	boxen_window_focus(s->input_win);
+}
+
 void drain_stdout_into_scrollback(boxen_repl_state_t *s, int fd) {
 	if (s == NULL || fd < 0) return;
 
@@ -1844,6 +1865,23 @@ int boxen_repl_main(const cli_options_t *opts) {
 		log_warn(LOG_COMP_GENERAL, "boxen_repl: pipe() failed; display may corrupt");
 	}
 
+	/* 2026-06-23 JES #691 Phase C.0.7g: register the boxen UI bridge so
+	 * dialog.* verbs invoked from dispatched scripts route through a
+	 * boxen modal instead of raw terminal IO.  The bridge calls back
+	 * into drain_stdout_into_scrollback during its mini event loop so
+	 * the scrollback ring stays current while the modal waits.  The
+	 * host struct lives on this function's stack; it stays valid until
+	 * the matching boxen_ui_set_active(NULL) just before
+	 * boxen_shutdown() below. */
+	boxen_ui_host_t ui_host = {
+		.capture_pipe_fd    = capture_active ? state->pipe_read_fd : -1,
+		.drain_capture_pipe = boxen_repl_drain_capture_pipe_thunk,
+		.drain_ctx          = state,
+		.restore_focus      = boxen_repl_restore_focus_thunk,
+		.restore_focus_ctx  = state,
+	};
+	boxen_ui_set_active(&ui_host);
+
 	/* 2026-06-08 JES #691 Phase C.0 round 2 P0-1: startup-script launch.
 	 *
 	 * Replaces the broken "/debug <path>" slash synthesis (which had no
@@ -2024,8 +2062,19 @@ int boxen_repl_main(const cli_options_t *opts) {
 	 * handles; close them before boxen_shutdown frees the substrate. */
 	boxen_outline_close_all();
 
+	/* 2026-06-23 JES #691 Phase C.0.7g: deregister the boxen UI bridge
+	 * BEFORE boxen_repl_state_teardown so the drain_ctx (which points
+	 * at state) can no longer be reached from a stray bridge call
+	 * after state's pipe_read_fd is closed.  Also ahead of
+	 * boxen_shutdown since bridge entry points touch boxen primitives.
+	 * ui_host (above) is about to leave scope when boxen_repl_main
+	 * returns; null the global so a stray late call cannot dereference
+	 * it. */
+	boxen_ui_set_active(NULL);
+
 	/* Step 10: teardown windows, ring, and launch_transport (P0 free). */
 	boxen_repl_state_teardown(state);
+
 	if (boxen_initialized) {
 		boxen_shutdown();
 	}
