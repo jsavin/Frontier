@@ -1,8 +1,10 @@
 # Boxen ↔ UserTalk UI Bridge
 
-**Status:** Design, 2026-06-22. Phase 1 implementation pending.
-**Authors:** JES + system-architect agent investigation (2026-06-22).
+**Status:** Phase 1 SHIPPED 2026-06-23.  Phase 2 design.
+**Authors:** JES + system-architect agent investigation (2026-06-22), revised via `/gate` 2026-06-23.
 **Scope:** Make all interactive UserTalk verbs (`dialog.*`, `file.*`, `msg`) compose correctly with the boxen REPL.
+
+> **Reader note — Phase 1 actually-shipped vs. design.**  This document is the original design plus phase-history annotations.  The Architecture section below still references API surfaces (`boxen_ui_ask`, `boxen_ui_script_aborted`, `boxen_ui_alert`, button selectors) that are Phase 2 work, not Phase 1.  See the **Phasing** section near the bottom for the canonical list of what landed in Phase 1.  When the architecture section and the phasing section disagree, the phasing section wins — it's the post-implementation reality.
 
 ---
 
@@ -74,7 +76,7 @@ All verbs that do interactive terminal IO from inside a dispatched script:
 |---|---|---|
 | 1 | **Modal position: center screen.** | Visually distinct from the palette (which anchors near the top). Users won't confuse a dialog with a menu. |
 | 2 | **File dialogs INCLUDED in this work, but as Phase 2 PR.** Phase 1 ships the 4 input prompts (`ask`/`getString`/`getInt`/`getPassword`). Phase 2 ships the file picker as a separate PR after Phase 1 lands. | Splits review burden. `/R J` working unblocks user immediately; file picker is its own substantial scope (~1000 LOC TUI rewrite). |
-| 3 | **Ctrl-C in modal: cancel dialog AND interrupt the dispatched script.** Mechanism: cooperative kill flag checked at UserTalk yield points (`langbackgroundtask`, `thread.sleepTicks`). Mirrors the legacy Esc-kills-thread behavior. | JES: "Esc used to kill threads in the legacy app — useful enough, even though it was always imprecise once multi-threaded." The boxen REPL currently dispatches one menu script at a time, so the legacy ambiguity doesn't apply yet. |
+| 3 | **Ctrl-C in modal: cancel dialog ONLY; do NOT interrupt the dispatched script.** Cooperative cancel — modal returns NULL/false, the dispatched script receives the cancel return and decides what to do. (Revised 2026-06-23 from the original "cancel AND interrupt" position after JES + system-architect investigation revealed the hard-kill path needed careful reset semantics and the legacy mechanism was acknowledged-imprecise; see the followup discussion of 2026-06-23.) | The dispatched menu scripts we have (jump, keycodes, etc.) all check the dialog return and abort gracefully. No observed script needs hard kill. Hard kill via `flthreadkilled` is recorded as a follow-up to revisit when a real script demonstrates the need. |
 | 4 | **Stdout pipe drain inside the mini event loop: YES.** Each mini-loop iteration drains the capture pipe before painting. | Other GIL-yielding work (background threads) could produce output during the dialog wait. Keeps scrollback current under the modal. |
 | 5 | **Resize during modal:** modal repositions itself on `BOXEN_EV_RESIZE` (recompute center rect, call `boxen_window_set_rect`). Background windows resize via their existing handlers since `boxen_dispatch_event` runs every event. | Verify during Phase 1 implementation. |
 | 6 | **Bridge state: no `boxen_repl_state_t` pointer in `boxen_ui.c`.** `boxen_ui_set_active()` takes only the pieces the bridge needs (screen-size getter, drain fd, present fn pointer). | Lifetime hygiene. We just spent two PRs untangling cross-module state bugs. |
@@ -309,26 +311,33 @@ The bridge does NOT enforce the stdout capture pipe bypass — it bypasses it im
 
 ### Phase 1 — Bridge skeleton + input prompts
 
-**Deliverable:**
+**Status: shipped 2026-06-23 (commit TBD on merge).** What actually landed:
+
+**Shipped:**
 - New TU: `frontier-cli/boxen_ui.c` + `boxen_ui.h`
-- Public API: `boxen_ui_is_active`, `boxen_ui_set_active`, `boxen_ui_script_aborted`, `boxen_ui_ask`, `boxen_ui_get_string`, `boxen_ui_get_int`, `boxen_ui_get_password`
-- Branches in `dialog_prompts.c` for `dialog_ask`, `dialog_get_string`, `dialog_get_int`, `dialog_get_password`
-- UserTalk-runtime Ctrl-C abort hook (`langbackgroundtask` + `thread.sleepTicks` check `boxen_ui_script_aborted`)
-- `boxen_repl_main` wiring (set/clear the host)
-- `repl.printKeyCodes()` guard with scrollback message
+- Public API: `boxen_ui_is_active`, `boxen_ui_set_active`, `boxen_ui_get_string`, `boxen_ui_get_int`, `boxen_ui_get_password`
+- Branches in `dialog_prompts.c` for `dialog_get_string`, `dialog_get_int`, `dialog_get_password`
+- **Branches in `tests/headless_dialog_verbs.c` for `diav_ask` / `diav_getint` / `diav_getuserinfo` / `diav_getpassword`** — necessary because the verb glue's `isInteractiveMode()` check would otherwise short-circuit the bridge in tmux/non-TTY environments before the `dialog_prompts.c` branch could fire (discovered via `/gate` 2026-06-23)
+- `boxen_repl_main` wiring (set/clear the host) with `restore_focus` and `drain_capture_pipe` callbacks
+- Mini event loop with GIL release / `pthread_cond_broadcast(&gil_available)` / `tcp_process_callbacks` / `flthreadkilled` check (mirrors `headless_backgroundtask`)
+- `_Atomic` `s_host` with snapshot-once-per-entry pattern
+
+**Deliberately deferred (NOT in Phase 1):**
+- ~~`boxen_ui_script_aborted` + UserTalk-runtime Ctrl-C abort hook~~ — decision #3 revised to cooperative-cancel-only. The bridge sets nothing on `flthreadkilled`; dispatched scripts receive the dialog cancel and decide.
+- ~~`repl.printKeyCodes()` guard~~ — orthogonal one-line guard, deferred to its own follow-up so this PR stays scoped to the bridge.
+- ~~`dialog_ask` (yes/no) C function branch~~ — confirmed dead code at this commit. The `dialog.ask` UserTalk verb dispatches to `dialog_get_string` (text input with pre-fill), NOT `dialog_ask` (yes/no selector). The yes/no `dialog_ask` C function has no callers post-Phase 1.
 
 **Smoke tests:**
-- `/R J` in `--debug-tui`: dialog appears immediately, Enter returns input, `jump.ut` completes successfully
-- `/R J`: arrow keys edit input, Esc cancels
-- `/R J`: Ctrl-C cancels dialog AND interrupts the dispatched script (verified by inspecting that the script doesn't proceed to `repl.jumpPath`)
-- Linenoise mode: `dialog.ask` / `dialog.getString` still work as today (regression check)
-- `/R K` (keycodes): returns the new "not available" message cleanly
+- `/R J` in `--debug-tui`: dialog appears immediately, Enter returns input, `jump.ut` completes successfully ✓
+- `/R J`: typed characters render live in the modal ✓
+- `/R J`: Esc cancels cleanly ✓
+- Linenoise mode regression check: dialog.* still work via the unchanged fall-through path ✓ (covered by absence of test_06_ui_bridge failures in linenoise builds)
 
-**Unit tests:**
-- New tests in `boxen_repl_tests.c` exercising the bridge under the mock backend
-- Test the abort hook fires on the next yield
-
-**Not in Phase 1:** `dialog.alert`, `dialog.notify`, `dialog.twoway` (multi-button), `dialog.threeway`, file dialogs.
+**Known limitations in shipped form:**
+- Input buffer is fixed 256 bytes; legacy reader grew unbounded via realloc. Silent truncation past 256 chars. Tracked as a Phase 1.1 follow-up; not blocking.
+- Non-ASCII input codepoints dropped (printable check is `>= 0x20 && < 0x7F`). Tracked as a UTF-8 follow-up.
+- `dialog_get_int` returns cancel on parse failure instead of re-prompting (legacy re-prompts in a loop). Acknowledged in code; not blocking.
+- Nested modals: when an inner modal closes, focus restores to the host's default (REPL input bar), not the outer modal. The outer's mini-loop re-focuses on its next 100ms tick. Tracked as a Phase 2 candidate (proper modal-stack in boxen core).
 
 ### Phase 2 — Remaining dialog verbs + file picker
 

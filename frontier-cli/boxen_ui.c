@@ -15,14 +15,16 @@
 #include "boxen_ui.h"
 
 #include <pthread.h>
+#include <stdatomic.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "boxen/boxen.h"
-#include "headless_threading.h"     /* frontier_gil, hthreadglobals, save/restore */
+#include "headless_threading.h"     /* frontier_gil, gil_available, hthreadglobals, save/restore */
 #include "../Common/headers/threadregistry.h" /* hdlthreadglobals */
+#include "../Common/headers/tcpverbs.h"       /* tcp_process_callbacks */
 
 /* -------------------------------------------------------------------------
  * Host registration
@@ -30,16 +32,25 @@
 
 /* Set to non-NULL by boxen_repl_main once the REPL has finished bringing
  * boxen up; reset to NULL during teardown.  Linenoise mode never touches
- * it.  Single-writer (the REPL main thread); the bridge entry points are
- * called with the GIL held so reads are safe. */
-static const boxen_ui_host_t *s_host = NULL;
+ * it.  Single-writer (the REPL main thread).  Atomic so a future thread
+ * that survives debug_join_all_threads cannot observe a torn pointer if
+ * it races teardown; today the invariant is "no live threads when set
+ * to NULL," but encoding it in the type is cheap insurance for the long
+ * haul. */
+static _Atomic(const boxen_ui_host_t *) s_host = NULL;
 
 void boxen_ui_set_active(const boxen_ui_host_t *host) {
-	s_host = host;
+	atomic_store_explicit(&s_host, host, memory_order_release);
 }
 
 bool boxen_ui_is_active(void) {
-	return s_host != NULL;
+	return atomic_load_explicit(&s_host, memory_order_acquire) != NULL;
+}
+
+/* Local helper for the bridge to snapshot the host pointer once per
+ * entry-point so we don't risk read-then-deref on a torn store. */
+static const boxen_ui_host_t *load_host(void) {
+	return atomic_load_explicit(&s_host, memory_order_acquire);
 }
 
 /* -------------------------------------------------------------------------
@@ -304,11 +315,11 @@ static void handle_key_event(ui_ctx_t *ctx, const boxen_event_t *ev) {
  * across the wait.
  * ---------------------------------------------------------------------- */
 
-static void run_modal(ui_ctx_t *ctx) {
+static void run_modal(ui_ctx_t *ctx, const boxen_ui_host_t *host) {
 	/* Initial paint before entering the wait loop. */
 	boxen_window_invalidate(ctx->win);
-	if (s_host && s_host->drain_capture_pipe) {
-		s_host->drain_capture_pipe(s_host->drain_ctx);
+	if (host && host->drain_capture_pipe) {
+		host->drain_capture_pipe(host->drain_ctx);
 	}
 	boxen_present();
 
@@ -316,15 +327,35 @@ static void run_modal(ui_ctx_t *ctx) {
 		boxen_event_t ev;
 		memset(&ev, 0, sizeof(ev));
 
+		/* 2026-06-23 JES #691 Phase C.0.7g: pump pending TCP callbacks
+		 * before yielding so socket activity arriving during a long
+		 * modal does not accumulate in the queue.  Mirrors
+		 * headless_backgroundtask:693. */
+		tcp_process_callbacks();
+
 		hdlthreadglobals saved = hthreadglobals;
 		headless_save_threadglobals(saved);
 		pthread_mutex_unlock(&frontier_gil);
+		/* Broadcast that the GIL is available so sibling threads
+		 * waiting on gil_available cond don't stall for the duration
+		 * of the modal.  Mirrors headless_backgroundtask:699. */
+		pthread_cond_broadcast(&gil_available);
 		boxen_result_t rc = boxen_poll_event(&ev, 100 /* ms */);
 		pthread_mutex_lock(&frontier_gil);
 		headless_restore_threadglobals(saved);
 
-		if (s_host && s_host->drain_capture_pipe) {
-			s_host->drain_capture_pipe(s_host->drain_ctx);
+		/* Check if this script's thread was killed while we yielded
+		 * the GIL.  Mirrors headless_backgroundtask:728.  Without
+		 * this, thread.kill on the dispatched script would never
+		 * break the modal out of the wait loop. */
+		if ((**saved).flthreadkilled) {
+			ctx->cancelled = true;
+			ctx->done = true;
+			break;
+		}
+
+		if (host && host->drain_capture_pipe) {
+			host->drain_capture_pipe(host->drain_ctx);
 		}
 
 		if (rc == BOXEN_ERR_TIMEOUT) {
@@ -375,7 +406,13 @@ static void run_modal(ui_ctx_t *ctx) {
 
 static char *run_input(boxen_ui_mode_t mode, const char *prompt,
                        const char *default_val) {
-	if (!s_host) return NULL;
+	/* 2026-06-23 JES #691 Phase C.0.7g: snapshot the host pointer once
+	 * up front so all subsequent uses see a consistent view, even if a
+	 * concurrent boxen_ui_set_active(NULL) lands while we're mid-modal
+	 * (today: prevented by GIL discipline + teardown ordering; the
+	 * snapshot is belt-and-suspenders). */
+	const boxen_ui_host_t *host = load_host();
+	if (!host) return NULL;
 
 	int sw = 80, sh = 24;
 	boxen_get_screen_size(&sw, &sh);
@@ -417,10 +454,25 @@ static char *run_input(boxen_ui_mode_t mode, const char *prompt,
 	boxen_window_focus(win);
 	boxen_window_raise(win);
 
-	run_modal(&ctx);
+	run_modal(&ctx, host);
 
 	boxen_window_set_cursor_visible(win, false);
 	boxen_window_close(win);
+
+	/* 2026-06-23 JES #691 Phase C.0.7g: hand focus back to the host's
+	 * default (typically the REPL input bar).  boxen does NOT maintain a
+	 * focus stack; without this, after our modal closes nothing is
+	 * focused and keystrokes go unrouted until the user clicks
+	 * something.  Nested modals: the host's restore_focus typically
+	 * focuses input_win, which is wrong if an outer modal is still up.
+	 * The outer's mini-loop will re-focus its own window on its next
+	 * iteration via boxen_window_invalidate + present, but that takes
+	 * up to one 100ms tick.  Acceptable for Phase 1.  Phase 2 candidate:
+	 * proper modal-stack in boxen core. */
+	if (host && host->restore_focus) {
+		host->restore_focus(host->restore_focus_ctx);
+	}
+
 	boxen_present();
 
 	if (ctx.cancelled) return NULL;

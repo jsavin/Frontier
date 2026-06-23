@@ -27,6 +27,7 @@
 /* Include interactive dialog prompt functions */
 #include "../frontier-cli/dialog_prompts.h"
 #include "../frontier-cli/cli_utils.h"
+#include "../frontier-cli/boxen_ui.h"		/* 2026-06-23 JES #691 Phase C.0.7g */
 
 /* Token enum for all verbs in the dialog processor */
 enum {
@@ -227,7 +228,12 @@ static boolean dialog_valueproc(short token, hdltreenode hparam1,
             hdlhashtable htable;
             bigstring bsvarname;
 
-            if (!isInteractiveMode()) {
+            /* 2026-06-23 JES #691 Phase C.0.7g: the boxen UI bridge IS a
+             * real interactive UI even when isatty() would say otherwise
+             * (tmux subshells, non-TTY pipes).  Allow the verb when boxen
+             * is owning the terminal so dialog.ask in dispatched scripts
+             * works under --debug-tui. */
+            if (!isInteractiveMode() && !boxen_ui_is_active()) {
                 if (bserror) copystring(PSTRING("\044", "Can't use dialog verbs in batch mode"), bserror);
                 return false;
             }
@@ -300,7 +306,9 @@ static boolean dialog_valueproc(short token, hdltreenode hparam1,
             hdlhashtable htable;
             bigstring bsvarname;
 
-            if (!isInteractiveMode()) {
+            /* 2026-06-23 JES #691 Phase C.0.7g: boxen UI bridge bypass --
+             * see comment on diav_ask above. */
+            if (!isInteractiveMode() && !boxen_ui_is_active()) {
                 if (bserror) copystring(PSTRING("\044", "Can't use dialog verbs in batch mode"), bserror);
                 return false;
             }
@@ -360,7 +368,8 @@ static boolean dialog_valueproc(short token, hdltreenode hparam1,
 
             (void)has_default;  /* Reserved for future default handling */
 
-            if (!isInteractiveMode()) {
+            /* 2026-06-23 JES #691 Phase C.0.7g: boxen UI bridge bypass. */
+            if (!isInteractiveMode() && !boxen_ui_is_active()) {
                 if (bserror) copystring(PSTRING("\044", "Can't use dialog verbs in batch mode"), bserror);
                 return false;
             }
@@ -410,7 +419,8 @@ static boolean dialog_valueproc(short token, hdltreenode hparam1,
             hdlhashtable htable;
             bigstring bsvarname;
 
-            if (!isInteractiveMode()) {
+            /* 2026-06-23 JES #691 Phase C.0.7g: boxen UI bridge bypass. */
+            if (!isInteractiveMode() && !boxen_ui_is_active()) {
                 if (bserror) copystring(PSTRING("\044", "Can't use dialog verbs in batch mode"), bserror);
                 return false;
             }

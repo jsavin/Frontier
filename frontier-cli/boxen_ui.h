@@ -57,6 +57,16 @@ typedef struct boxen_ui_host {
 	 * bridge stays out of boxen_repl_state_t internals. */
 	void (*drain_capture_pipe)(void *ctx);
 	void *drain_ctx;
+
+	/* Restore-focus callback: bridge invokes this after closing a modal
+	 * to hand keyboard focus back to whichever window the host considers
+	 * the "default" caller (typically the REPL input bar).  Nested
+	 * modals don't need this -- closing the inner one leaves the outer
+	 * still marked modal and the boxen layer picks "last modal wins".
+	 * The callback is invoked unconditionally; the host should no-op if
+	 * the default focus target is gone. */
+	void (*restore_focus)(void *ctx);
+	void *restore_focus_ctx;
 } boxen_ui_host_t;
 
 void boxen_ui_set_active(const boxen_ui_host_t *host);
