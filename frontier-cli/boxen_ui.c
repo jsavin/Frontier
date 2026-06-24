@@ -542,6 +542,12 @@ typedef struct {
 	boxen_window_t *win;
 	bool  done;
 	bool  cancelled;
+	/* Host snapshot stashed for future renderer use.  Today the
+	 * renderer doesn't touch the host, but if it ever grows
+	 * host-mediated logic (a status line that drains the capture pipe,
+	 * a host-driven theme accessor), reading the file-static s_host
+	 * raw would be a race risk.  Phase-1-pattern parity. */
+	const boxen_ui_host_t *host;
 } alert_ctx_t;
 
 #define BOXEN_UI_ALERT_HINT "[Enter] dismiss"
@@ -591,7 +597,7 @@ static void render_alert_cb(boxen_window_t *win, void *user_data) {
 	boxen_window_set_cursor_visible(ctx->win, false);
 }
 
-static boxen_rect_t place_alert_modal(int screen_w, int screen_h,
+static boxen_rect_t place_centered_modal(int screen_w, int screen_h,
                                        int min_field_w) {
 	int content_w = min_field_w;
 	if (content_w < 30) content_w = 30;
@@ -614,7 +620,16 @@ static boxen_rect_t place_alert_modal(int screen_w, int screen_h,
 
 bool boxen_ui_alert(const char *message, bool beep) {
 	const boxen_ui_host_t *host = load_host();
-	if (!host) return false;
+	if (!host) {
+		/* Reachable only on a set_active(NULL) race that GIL discipline
+		 * prevents today, but if it ever happens we still need to honor
+		 * the documented contract: dialog.alert / dialog.notify always
+		 * return true once the user has "dismissed" the prompt.  No
+		 * prompt was shown here, but the verb's bool return must not
+		 * differ from the legacy "always true" semantics or scripts
+		 * branching on a falsy result will misbehave. */
+		return true;
+	}
 
 	int sw = 80, sh = 24;
 	boxen_get_screen_size(&sw, &sh);
@@ -630,8 +645,9 @@ bool boxen_ui_alert(const char *message, bool beep) {
 	alert_ctx_t ctx;
 	memset(&ctx, 0, sizeof(ctx));
 	ctx.message = message;
+	ctx.host = host;
 
-	boxen_rect_t rect = place_alert_modal(sw, sh, field_w);
+	boxen_rect_t rect = place_centered_modal(sw, sh, field_w);
 	boxen_window_t *win = boxen_window_open(NULL, rect, &ctx);
 	if (!win) return false;
 
@@ -646,12 +662,12 @@ bool boxen_ui_alert(const char *message, bool beep) {
 	boxen_window_focus(win);
 	boxen_window_raise(win);
 
-	if (beep) {
-		/* Bell character into the captured stderr; the drain inside
-		 * the mini-loop will deliver it.  This is the same beep the
-		 * legacy dialog_alert produces. */
-		fputc('\a', stderr);
-		fflush(stderr);
+	if (beep && host->ring_bell) {
+		/* Route through the host so the bell reaches the real terminal
+		 * fd rather than getting absorbed by the boxen stdout/stderr
+		 * capture pipe (which would render the byte as a visible ^G
+		 * glyph in the scrollback rather than ringing the bell). */
+		host->ring_bell(host->ring_bell_ctx);
 	}
 
 	/* Mini event loop (parallel to run_modal). */
@@ -688,7 +704,7 @@ bool boxen_ui_alert(const char *message, bool beep) {
 			int new_sw = ev.resize.w, new_sh = ev.resize.h;
 			if (new_sw < 20) new_sw = 20;
 			if (new_sh < 6)  new_sh = 6;
-			boxen_rect_t r = place_alert_modal(new_sw, new_sh, ctx.content_w);
+			boxen_rect_t r = place_centered_modal(new_sw, new_sh, ctx.content_w);
 			boxen_window_set_rect(win, r);
 			ctx.content_w = boxen_window_content_width(win);
 			boxen_window_invalidate(win);
@@ -717,9 +733,9 @@ bool boxen_ui_alert(const char *message, bool beep) {
 	/* Both Enter and Esc/Ctrl-C return true today (matches the legacy
 	 * dialog_alert / dialog_notify behavior of always returning true
 	 * once dismissed -- there's no "I disagree with this message"
-	 * outcome).  cancelled is tracked separately in case a future
-	 * caller wants a "user bailed via Esc" distinction. */
-	(void)ctx.cancelled;
+	 * outcome).  ctx.cancelled remains tracked inside the loop in case
+	 * a future caller wants the "user bailed via Esc" distinction;
+	 * unused in the current return. */
 	return true;
 }
 
@@ -738,6 +754,7 @@ typedef struct {
 	boxen_window_t *win;
 	bool  done;
 	bool  cancelled;
+	const boxen_ui_host_t *host;	/* see alert_ctx_t.host */
 } button_ctx_t;
 
 /* Total width of the button row laid out with single-space gutters. */
@@ -869,6 +886,7 @@ int boxen_ui_button_select(const char *prompt,
 	ctx.count = count;
 	for (int i = 0; i < count; i++) ctx.labels[i] = buttons[i];
 	ctx.selection = 0;
+	ctx.host = host;
 
 	/* Field width: max(prompt, button row) + margin. */
 	int prompt_w = prompt ? (int)strlen(prompt) : 0;
@@ -877,7 +895,7 @@ int boxen_ui_button_select(const char *prompt,
 	field_w += 4;
 	if (field_w < 40) field_w = 40;
 
-	boxen_rect_t rect = place_alert_modal(sw, sh, field_w);
+	boxen_rect_t rect = place_centered_modal(sw, sh, field_w);
 	boxen_window_t *win = boxen_window_open(NULL, rect, &ctx);
 	if (!win) return 0;
 
@@ -925,7 +943,7 @@ int boxen_ui_button_select(const char *prompt,
 			int new_sw = ev.resize.w, new_sh = ev.resize.h;
 			if (new_sw < 20) new_sw = 20;
 			if (new_sh < 6)  new_sh = 6;
-			boxen_rect_t r = place_alert_modal(new_sw, new_sh, ctx.content_w);
+			boxen_rect_t r = place_centered_modal(new_sw, new_sh, ctx.content_w);
 			boxen_window_set_rect(win, r);
 			ctx.content_w = boxen_window_content_width(win);
 			boxen_window_invalidate(win);
@@ -956,10 +974,13 @@ int boxen_ui_button_select(const char *prompt,
 				ctx.selection = ctx.count - 1;
 				break;
 			default: {
-				/* Printable hotkey?  Match first letter of any label;
-				 * if matched, select + activate immediately. */
-				if (ev.key.key == BOXEN_KEY_NONE
-				    && ev.key.ch >= 0x20 && ev.key.ch < 0x7F) {
+				/* Reaching `default` means ev.key.key == BOXEN_KEY_NONE
+				 * (every non-NONE key is named in a case above), so
+				 * ev.key.ch holds a Unicode codepoint.  Hotkey match:
+				 * printable ASCII first-letter == label's first
+				 * letter (case-insensitive) selects + activates that
+				 * button immediately. */
+				if (ev.key.ch >= 0x20 && ev.key.ch < 0x7F) {
 					int idx = hotkey_match(&ctx, ev.key.ch);
 					if (idx >= 0) {
 						ctx.selection = idx;

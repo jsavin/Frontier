@@ -468,11 +468,11 @@ bool dialog_twoway(const char *prompt, const char *button1, const char *button2)
 	const char *buttons[2] = { button1, button2 };
 
 	/* 2026-06-23 JES #691 Phase C.0.7g Phase 2A: boxen UI bridge.
-	 * Returns 1 for button1, 2 for button2, 0 on cancel.  Map back to
-	 * legacy bool: true == button1, false == button2 OR cancel (legacy
-	 * defaults to "true" in batch mode, so cancel -> false here is the
-	 * safer translation: a script that branches on the return won't
-	 * accidentally take the first-button path when the user bailed). */
+	 * Returns 1 for button1, 2 for button2, 0 on Esc/Ctrl-C cancel.
+	 * Map back to legacy bool: true iff button1.  Cancel (0) and
+	 * button2 (2) both map to false -- this matches the legacy
+	 * interactive dialog_twoway behavior, which returns false on Esc
+	 * (see dialog_prompts.c:525-530 below). */
 	if (boxen_ui_is_active()) {
 		int r = boxen_ui_button_select(prompt, buttons, 2);
 		return (r == 1);
@@ -572,12 +572,20 @@ int dialog_threeway(const char *prompt, const char *button1, const char *button2
 	const char *buttons[3] = { button1, button2, button3 };
 
 	/* 2026-06-23 JES #691 Phase C.0.7g Phase 2A: boxen UI bridge.
-	 * Returns 1/2/3 for the chosen button.  Map cancel (0) to 1
-	 * (button1) -- legacy threeway has no cancel return; defaulting
-	 * to button1 matches the batch-mode behavior below. */
+	 * Returns 1/2/3 for the chosen button, or 0 on Esc/Ctrl-C cancel.
+	 *
+	 * Legacy interactive dialog_threeway has no cancel return path (Esc
+	 * beeps and the user must pick a button).  The boxen modal cancel
+	 * is a new addition; we surface it as 0 so safety-sensitive scripts
+	 * can detect "user bailed" without mis-coercing it into button1
+	 * (which by convention is often the destructive default like
+	 * "Save").  Callers that always expect 1/2/3 should test `if r > 0`
+	 * before branching, or treat 0 as a no-op.  Button labels are
+	 * caller-defined, so the bridge cannot infer which button is the
+	 * "Cancel" by convention; 0-on-cancel is the only signal-preserving
+	 * mapping. */
 	if (boxen_ui_is_active()) {
-		int r = boxen_ui_button_select(prompt, buttons, 3);
-		return (r == 0) ? 1 : r;
+		return boxen_ui_button_select(prompt, buttons, 3);
 	}
 
 	if (!isInteractiveMode()) {

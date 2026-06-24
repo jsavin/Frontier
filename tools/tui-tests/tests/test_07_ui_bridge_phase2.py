@@ -185,3 +185,40 @@ def test_dialog_threeway_returns_2_via_right_then_enter():
 			"dialog.threeway did not echo 2 after second-button selection.  "
 			"Capture:\n" + text2
 		)
+
+
+def test_dialog_threeway_esc_returns_zero():
+	"""Esc inside a threeway modal cancels and returns 0.  Phase 2A
+	gate-fix: legacy interactive threeway has no cancel return; the
+	boxen bridge surfaces cancel as 0 so safety-sensitive scripts can
+	detect "user bailed" without mis-coercing it into button1 (which by
+	convention is often a destructive default like "Save").  Scripts
+	that always expect 1/2/3 should test `if r > 0` before branching.
+	"""
+	with TUI(boot_wait=1.5) as t:
+		t.wait_for(">", timeout=5)
+		_eval(t, 'dialog.threeway ("PhaseTwoThreewayCancelQ", "Save", "Discard", "Cancel")')
+		time.sleep(0.6)
+		text = t.capture()
+		assert t.is_alive(), "REPL exited during dialog.threeway pre-Esc"
+		assert _modal_visible(text), (
+			"threeway modal did not render.  Capture:\n" + text
+		)
+		# Cancel the modal.
+		t.send_key("Escape")
+		time.sleep(0.4)
+		snapshot(t, "ui-bridge-p2-threeway-esc-zero")
+		text2 = t.capture()
+		assert t.is_alive(), "REPL exited after threeway Esc-cancel"
+		# UserTalk eval prints the returned integer on its own line.
+		# 0 must appear as a standalone result, NOT as part of the
+		# typed prompt text.
+		lines = text2.split("\n")
+		zero_lines = [
+			ln for ln in lines
+			if ln.strip() == "0"
+		]
+		assert len(zero_lines) > 0, (
+			"dialog.threeway did not return 0 on Esc cancel.  "
+			"Expected a line containing just '0'.  Capture:\n" + text2
+		)

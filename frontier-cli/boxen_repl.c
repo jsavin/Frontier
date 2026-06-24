@@ -1477,6 +1477,21 @@ void boxen_repl_restore_focus_thunk(void *ctx) {
 	boxen_window_focus(s->input_win);
 }
 
+/* 2026-06-23 JES #691 Phase C.0.7g Phase 2A: ring-bell thunk for the
+ * boxen_ui bridge.  Writes \a (BEL, 0x07) directly to the saved-stderr
+ * fd captured before the dup2 redirect, so the byte reaches the real
+ * terminal instead of being absorbed by the capture pipe + rendered as
+ * a visible ^G glyph in the scrollback.  No-op if the saved fd is
+ * absent (capture pipe disabled) -- writing to the captured stderr
+ * would be visibly wrong, and the user can survive a missed bell. */
+void boxen_repl_ring_bell_thunk(void *ctx) {
+	boxen_repl_state_t *s = (boxen_repl_state_t *)ctx;
+	if (s == NULL || s->saved_stderr < 0) return;
+	const char bel = '\a';
+	ssize_t w = write(s->saved_stderr, &bel, 1);
+	(void)w; /* best-effort; nothing useful to do on partial / failed write */
+}
+
 void drain_stdout_into_scrollback(boxen_repl_state_t *s, int fd) {
 	if (s == NULL || fd < 0) return;
 
@@ -1879,6 +1894,8 @@ int boxen_repl_main(const cli_options_t *opts) {
 		.drain_ctx          = state,
 		.restore_focus      = boxen_repl_restore_focus_thunk,
 		.restore_focus_ctx  = state,
+		.ring_bell          = boxen_repl_ring_bell_thunk,
+		.ring_bell_ctx      = state,
 	};
 	boxen_ui_set_active(&ui_host);
 

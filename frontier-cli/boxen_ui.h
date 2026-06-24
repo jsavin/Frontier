@@ -67,6 +67,17 @@ typedef struct boxen_ui_host {
 	 * the default focus target is gone. */
 	void (*restore_focus)(void *ctx);
 	void *restore_focus_ctx;
+
+	/* Ring-bell callback: bridge invokes this when the user-facing
+	 * modal needs to produce an audible cue (currently only
+	 * dialog.alert).  The host writes \a (or equivalent) directly to
+	 * the real terminal fd, bypassing the boxen stdout/stderr capture
+	 * pipe -- if the bridge wrote \a to its own captured stderr the
+	 * byte would be drained into the scrollback as a visible ^G glyph
+	 * rather than ringing the terminal bell.  NULL is allowed (no-op
+	 * = silent). */
+	void (*ring_bell)(void *ctx);
+	void *ring_bell_ctx;
 } boxen_ui_host_t;
 
 void boxen_ui_set_active(const boxen_ui_host_t *host);
