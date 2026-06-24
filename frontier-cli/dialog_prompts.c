@@ -331,6 +331,11 @@ char* dialog_get_password(const char *prompt) {
 
 /* Displays an alert message with audible beep, waits for Enter to continue. */
 bool dialog_alert(const char *message) {
+	/* 2026-06-23 JES #691 Phase C.0.7g Phase 2A: boxen UI bridge. */
+	if (boxen_ui_is_active()) {
+		return boxen_ui_alert(message, true /* beep */);
+	}
+
 	if (!isInteractiveMode()) {
 		return false;
 	}
@@ -383,6 +388,11 @@ bool dialog_alert(const char *message) {
 
 /* Displays a notification message without beep, waits for Enter to continue. */
 bool dialog_notify(const char *message) {
+	/* 2026-06-23 JES #691 Phase C.0.7g Phase 2A: boxen UI bridge. */
+	if (boxen_ui_is_active()) {
+		return boxen_ui_alert(message, false /* no beep */);
+	}
+
 	if (!isInteractiveMode()) {
 		return false;
 	}
@@ -456,6 +466,17 @@ bool dialog_twoway(const char *prompt, const char *button1, const char *button2)
 	int selection = 0;  /* 0 = button1, 1 = button2 */
 	terminal_state *term_state = NULL;
 	const char *buttons[2] = { button1, button2 };
+
+	/* 2026-06-23 JES #691 Phase C.0.7g Phase 2A: boxen UI bridge.
+	 * Returns 1 for button1, 2 for button2, 0 on Esc/Ctrl-C cancel.
+	 * Map back to legacy bool: true iff button1.  Cancel (0) and
+	 * button2 (2) both map to false -- this matches the legacy
+	 * interactive dialog_twoway behavior, which returns false on Esc
+	 * (see dialog_prompts.c:525-530 below). */
+	if (boxen_ui_is_active()) {
+		int r = boxen_ui_button_select(prompt, buttons, 2);
+		return (r == 1);
+	}
 
 	if (!isInteractiveMode()) {
 		return true;  /* Default to button1 in batch mode */
@@ -549,6 +570,23 @@ int dialog_threeway(const char *prompt, const char *button1, const char *button2
 	int selection = 0;  /* 0 = button1, 1 = button2, 2 = button3 */
 	terminal_state *term_state = NULL;
 	const char *buttons[3] = { button1, button2, button3 };
+
+	/* 2026-06-23 JES #691 Phase C.0.7g Phase 2A: boxen UI bridge.
+	 * Returns 1/2/3 for the chosen button, or 0 on Esc/Ctrl-C cancel.
+	 *
+	 * Legacy interactive dialog_threeway has no cancel return path (Esc
+	 * beeps and the user must pick a button).  The boxen modal cancel
+	 * is a new addition; we surface it as 0 so safety-sensitive scripts
+	 * can detect "user bailed" without mis-coercing it into button1
+	 * (which by convention is often the destructive default like
+	 * "Save").  Callers that always expect 1/2/3 should test `if r > 0`
+	 * before branching, or treat 0 as a no-op.  Button labels are
+	 * caller-defined, so the bridge cannot infer which button is the
+	 * "Cancel" by convention; 0-on-cancel is the only signal-preserving
+	 * mapping. */
+	if (boxen_ui_is_active()) {
+		return boxen_ui_button_select(prompt, buttons, 3);
+	}
 
 	if (!isInteractiveMode()) {
 		return 1;  /* Default to button1 in batch mode */

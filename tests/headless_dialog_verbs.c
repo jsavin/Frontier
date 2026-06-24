@@ -60,7 +60,8 @@ static boolean dialog_valueproc(short token, hdltreenode hparam1,
             /* dialog.alert(message) - Display message with beep and OK button */
             bigstring bsmessage;
 
-            if (!isInteractiveMode()) {
+            /* 2026-06-23 JES #691 Phase C.0.7g Phase 2A: boxen UI bridge bypass. */
+            if (!isInteractiveMode() && !boxen_ui_is_active()) {
                 if (bserror) copystring(PSTRING("\044", "Can't use dialog verbs in batch mode"), bserror);
                 return false;
             }
@@ -82,7 +83,8 @@ static boolean dialog_valueproc(short token, hdltreenode hparam1,
             /* dialog.notify(message) - Display message with OK button (no beep) */
             bigstring bsmessage;
 
-            if (!isInteractiveMode()) {
+            /* 2026-06-23 JES #691 Phase C.0.7g Phase 2A: boxen UI bridge bypass. */
+            if (!isInteractiveMode() && !boxen_ui_is_active()) {
                 if (bserror) copystring(PSTRING("\044", "Can't use dialog verbs in batch mode"), bserror);
                 return false;
             }
@@ -104,7 +106,8 @@ static boolean dialog_valueproc(short token, hdltreenode hparam1,
             /* dialog.twoway(prompt, button1, button2) - Two-button choice */
             bigstring bsprompt, bsbutton1, bsbutton2;
 
-            if (!isInteractiveMode()) {
+            /* 2026-06-23 JES #691 Phase C.0.7g Phase 2A: boxen UI bridge bypass. */
+            if (!isInteractiveMode() && !boxen_ui_is_active()) {
                 if (bserror) copystring(PSTRING("\044", "Can't use dialog verbs in batch mode"), bserror);
                 return false;
             }
@@ -133,7 +136,8 @@ static boolean dialog_valueproc(short token, hdltreenode hparam1,
             /* dialog.threeway(prompt, button1, button2, button3) - Three-button choice */
             bigstring bsprompt, bsbutton1, bsbutton2, bsbutton3;
 
-            if (!isInteractiveMode()) {
+            /* 2026-06-23 JES #691 Phase C.0.7g Phase 2A: boxen UI bridge bypass. */
+            if (!isInteractiveMode() && !boxen_ui_is_active()) {
                 if (bserror) copystring(PSTRING("\044", "Can't use dialog verbs in batch mode"), bserror);
                 return false;
             }

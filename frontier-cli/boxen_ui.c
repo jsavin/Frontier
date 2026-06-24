@@ -526,3 +526,478 @@ bool boxen_ui_get_int(const char *prompt, long default_val, long *out) {
 char *boxen_ui_get_password(const char *prompt) {
 	return run_input(BOXEN_UI_MODE_PASSWORD, prompt, NULL);
 }
+
+/* -------------------------------------------------------------------------
+ * 2026-06-23 JES #691 Phase C.0.7g Phase 2A: info-and-wait + button-
+ * selector modals.  Shape parallels run_input but with different
+ * content and key handling, so the modal context and render callback
+ * are separate.  Kept inline in this TU rather than abstracted into a
+ * shared "generic modal" loop -- the variants diverge enough that a
+ * shared abstraction would cost more clarity than it'd save.
+ * ---------------------------------------------------------------------- */
+
+typedef struct {
+	const char *message;
+	int   content_w;
+	boxen_window_t *win;
+	bool  done;
+	bool  cancelled;
+	/* Host snapshot stashed for future renderer use.  Today the
+	 * renderer doesn't touch the host, but if it ever grows
+	 * host-mediated logic (a status line that drains the capture pipe,
+	 * a host-driven theme accessor), reading the file-static s_host
+	 * raw would be a race risk.  Phase-1-pattern parity. */
+	const boxen_ui_host_t *host;
+} alert_ctx_t;
+
+#define BOXEN_UI_ALERT_HINT "[Enter] dismiss"
+
+static void render_alert_cb(boxen_window_t *win, void *user_data) {
+	(void)win;
+	alert_ctx_t *ctx = (alert_ctx_t *)user_data;
+	if (ctx == NULL || ctx->win == NULL) return;
+
+	int w = ctx->content_w;
+
+	/* Row 0: message, clipped to width. */
+	const char *m = ctx->message ? ctx->message : "";
+	int i;
+	for (i = 0; i < w; i++) {
+		char ch = m[i];
+		if (ch == '\0') break;
+		boxen_set_cell(ctx->win, i, 0, (uint32_t)(unsigned char)ch,
+		               BOXEN_COLOR_DEFAULT, BOXEN_COLOR_DEFAULT,
+		               BOXEN_ATTR_NONE);
+	}
+	for (; i < w; i++) {
+		boxen_set_cell(ctx->win, i, 0, ' ',
+		               BOXEN_COLOR_DEFAULT, BOXEN_COLOR_DEFAULT,
+		               BOXEN_ATTR_NONE);
+	}
+
+	/* Row 1: blank spacer. */
+	for (int j = 0; j < w; j++) {
+		boxen_set_cell(ctx->win, j, 1, ' ',
+		               BOXEN_COLOR_DEFAULT, BOXEN_COLOR_DEFAULT,
+		               BOXEN_ATTR_NONE);
+	}
+
+	/* Row 2: dismiss hint, dim. */
+	const char *hint = BOXEN_UI_ALERT_HINT;
+	int hint_len = (int)strlen(hint);
+	int hint_x = (w - hint_len) / 2;
+	if (hint_x < 0) hint_x = 0;
+	for (int k = 0; k < w; k++) {
+		char ch = (k >= hint_x && (k - hint_x) < hint_len) ? hint[k - hint_x] : ' ';
+		boxen_set_cell(ctx->win, k, 2, (uint32_t)(unsigned char)ch,
+		               BOXEN_COLOR_DEFAULT, BOXEN_COLOR_DEFAULT,
+		               BOXEN_ATTR_DIM);
+	}
+
+	boxen_window_set_cursor_visible(ctx->win, false);
+}
+
+static boxen_rect_t place_centered_modal(int screen_w, int screen_h,
+                                       int min_field_w) {
+	int content_w = min_field_w;
+	if (content_w < 30) content_w = 30;
+	int max_w = screen_w - 4;
+	if (max_w < 20) max_w = 20;
+	if (content_w > max_w) content_w = max_w;
+
+	int win_w = content_w + 2;
+	int win_h = 5;
+
+	int x = (screen_w - win_w) / 2;
+	if (x < 0) x = 0;
+	int y = screen_h / 3;
+	if (y + win_h > screen_h - 1) y = screen_h - win_h - 1;
+	if (y < 0) y = 0;
+
+	boxen_rect_t r = { x, y, win_w, win_h };
+	return r;
+}
+
+bool boxen_ui_alert(const char *message, bool beep) {
+	const boxen_ui_host_t *host = load_host();
+	if (!host) {
+		/* Reachable only on a set_active(NULL) race that GIL discipline
+		 * prevents today, but if it ever happens we still need to honor
+		 * the documented contract: dialog.alert / dialog.notify always
+		 * return true once the user has "dismissed" the prompt.  No
+		 * prompt was shown here, but the verb's bool return must not
+		 * differ from the legacy "always true" semantics or scripts
+		 * branching on a falsy result will misbehave. */
+		return true;
+	}
+
+	int sw = 80, sh = 24;
+	boxen_get_screen_size(&sw, &sh);
+	if (sw < 20) sw = 20;
+	if (sh < 6)  sh = 6;
+
+	int msg_w = message ? (int)strlen(message) : 0;
+	int hint_w = (int)strlen(BOXEN_UI_ALERT_HINT);
+	int field_w = msg_w > hint_w ? msg_w : hint_w;
+	field_w += 4; /* margin */
+	if (field_w < 40) field_w = 40;
+
+	alert_ctx_t ctx;
+	memset(&ctx, 0, sizeof(ctx));
+	ctx.message = message;
+	ctx.host = host;
+
+	boxen_rect_t rect = place_centered_modal(sw, sh, field_w);
+	boxen_window_t *win = boxen_window_open(NULL, rect, &ctx);
+	if (!win) return false;
+
+	ctx.win = win;
+	ctx.content_w = boxen_window_content_width(win);
+
+	boxen_window_set_borders(win, true);
+	boxen_window_set_modal(win, true);
+	boxen_window_set_movable(win, false);
+	boxen_window_set_resizable(win, false);
+	boxen_window_set_draw(win, render_alert_cb);
+	boxen_window_focus(win);
+	boxen_window_raise(win);
+
+	if (beep && host->ring_bell) {
+		/* Route through the host so the bell reaches the real terminal
+		 * fd rather than getting absorbed by the boxen stdout/stderr
+		 * capture pipe (which would render the byte as a visible ^G
+		 * glyph in the scrollback rather than ringing the bell). */
+		host->ring_bell(host->ring_bell_ctx);
+	}
+
+	/* Mini event loop (parallel to run_modal). */
+	boxen_window_invalidate(win);
+	if (host->drain_capture_pipe) host->drain_capture_pipe(host->drain_ctx);
+	boxen_present();
+
+	while (!ctx.done) {
+		boxen_event_t ev;
+		memset(&ev, 0, sizeof(ev));
+
+		tcp_process_callbacks();
+
+		hdlthreadglobals saved = hthreadglobals;
+		headless_save_threadglobals(saved);
+		pthread_mutex_unlock(&frontier_gil);
+		pthread_cond_broadcast(&gil_available);
+		boxen_result_t rc = boxen_poll_event(&ev, 100);
+		pthread_mutex_lock(&frontier_gil);
+		headless_restore_threadglobals(saved);
+
+		if ((**saved).flthreadkilled) {
+			ctx.cancelled = true;
+			ctx.done = true;
+			break;
+		}
+
+		if (host->drain_capture_pipe) host->drain_capture_pipe(host->drain_ctx);
+
+		if (rc == BOXEN_ERR_TIMEOUT) { boxen_present(); continue; }
+		if (rc != BOXEN_OK) { ctx.cancelled = true; ctx.done = true; break; }
+
+		if (ev.type == BOXEN_EV_RESIZE) {
+			int new_sw = ev.resize.w, new_sh = ev.resize.h;
+			if (new_sw < 20) new_sw = 20;
+			if (new_sh < 6)  new_sh = 6;
+			boxen_rect_t r = place_centered_modal(new_sw, new_sh, ctx.content_w);
+			boxen_window_set_rect(win, r);
+			ctx.content_w = boxen_window_content_width(win);
+			boxen_window_invalidate(win);
+			boxen_present();
+			continue;
+		}
+
+		if (ev.type == BOXEN_EV_KEY) {
+			if (ev.key.key == BOXEN_KEY_ENTER) {
+				ctx.done = true;
+			} else if (ev.key.key == BOXEN_KEY_ESCAPE
+			           || ev.key.key == BOXEN_KEY_CTRL_C) {
+				ctx.cancelled = true;
+				ctx.done = true;
+			}
+			/* All other keys ignored -- alert is dismiss-only. */
+			boxen_window_invalidate(win);
+			boxen_present();
+		}
+	}
+
+	boxen_window_close(win);
+	if (host->restore_focus) host->restore_focus(host->restore_focus_ctx);
+	boxen_present();
+
+	/* Both Enter and Esc/Ctrl-C return true today (matches the legacy
+	 * dialog_alert / dialog_notify behavior of always returning true
+	 * once dismissed -- there's no "I disagree with this message"
+	 * outcome).  ctx.cancelled remains tracked inside the loop in case
+	 * a future caller wants the "user bailed via Esc" distinction;
+	 * unused in the current return. */
+	return true;
+}
+
+/* -------------------------------------------------------------------------
+ * Button selector (dialog.twoway / dialog.threeway)
+ * ---------------------------------------------------------------------- */
+
+#define BOXEN_UI_BUTTON_MAX 4
+
+typedef struct {
+	const char *prompt;
+	const char *labels[BOXEN_UI_BUTTON_MAX];
+	int   count;
+	int   selection;     /* 0..count-1 */
+	int   content_w;
+	boxen_window_t *win;
+	bool  done;
+	bool  cancelled;
+	const boxen_ui_host_t *host;	/* see alert_ctx_t.host */
+} button_ctx_t;
+
+/* Total width of the button row laid out with single-space gutters. */
+static int button_row_width(const button_ctx_t *ctx) {
+	int total = 0;
+	for (int i = 0; i < ctx->count; i++) {
+		const char *l = ctx->labels[i] ? ctx->labels[i] : "";
+		total += 4 + (int)strlen(l); /* "[ " + label + " ]" */
+		if (i < ctx->count - 1) total += 2; /* gutter */
+	}
+	return total;
+}
+
+static void render_button_cb(boxen_window_t *win, void *user_data) {
+	(void)win;
+	button_ctx_t *ctx = (button_ctx_t *)user_data;
+	if (ctx == NULL || ctx->win == NULL) return;
+
+	int w = ctx->content_w;
+
+	/* Row 0: prompt, bold. */
+	const char *p = ctx->prompt ? ctx->prompt : "";
+	int i;
+	for (i = 0; i < w; i++) {
+		char ch = p[i];
+		if (ch == '\0') break;
+		boxen_set_cell(ctx->win, i, 0, (uint32_t)(unsigned char)ch,
+		               BOXEN_COLOR_DEFAULT, BOXEN_COLOR_DEFAULT,
+		               BOXEN_ATTR_BOLD);
+	}
+	for (; i < w; i++) {
+		boxen_set_cell(ctx->win, i, 0, ' ',
+		               BOXEN_COLOR_DEFAULT, BOXEN_COLOR_DEFAULT,
+		               BOXEN_ATTR_NONE);
+	}
+
+	/* Row 1: blank spacer. */
+	for (int j = 0; j < w; j++) {
+		boxen_set_cell(ctx->win, j, 1, ' ',
+		               BOXEN_COLOR_DEFAULT, BOXEN_COLOR_DEFAULT,
+		               BOXEN_ATTR_NONE);
+	}
+
+	/* Row 2: button row, centered.  Selected button drawn in reverse
+	 * video.  Each button rendered as "[ Label ]" with the label's
+	 * first letter (the hotkey) bold + underlined when non-selected
+	 * and just underlined when selected (reverse video makes bold
+	 * redundant). */
+	int row_w = button_row_width(ctx);
+	int x = (w - row_w) / 2;
+	if (x < 0) x = 0;
+	/* Clear the row first. */
+	for (int j = 0; j < w; j++) {
+		boxen_set_cell(ctx->win, j, 2, ' ',
+		               BOXEN_COLOR_DEFAULT, BOXEN_COLOR_DEFAULT,
+		               BOXEN_ATTR_NONE);
+	}
+	for (int b = 0; b < ctx->count; b++) {
+		const char *l = ctx->labels[b] ? ctx->labels[b] : "";
+		int ll = (int)strlen(l);
+		bool sel = (b == ctx->selection);
+		uint16_t base = sel ? BOXEN_ATTR_REVERSE : BOXEN_ATTR_NONE;
+
+		if (x < w) boxen_set_cell(ctx->win, x++, 2, '[',
+		                          BOXEN_COLOR_DEFAULT,
+		                          BOXEN_COLOR_DEFAULT, base);
+		if (x < w) boxen_set_cell(ctx->win, x++, 2, ' ',
+		                          BOXEN_COLOR_DEFAULT,
+		                          BOXEN_COLOR_DEFAULT, base);
+		for (int k = 0; k < ll && x < w; k++, x++) {
+			uint16_t a = base | ((k == 0 && !sel) ?
+			                     (BOXEN_ATTR_BOLD | BOXEN_ATTR_UNDERLINE)
+			                     : (k == 0 ? BOXEN_ATTR_UNDERLINE : 0));
+			boxen_set_cell(ctx->win, x, 2,
+			               (uint32_t)(unsigned char)l[k],
+			               BOXEN_COLOR_DEFAULT, BOXEN_COLOR_DEFAULT, a);
+		}
+		if (x < w) boxen_set_cell(ctx->win, x++, 2, ' ',
+		                          BOXEN_COLOR_DEFAULT,
+		                          BOXEN_COLOR_DEFAULT, base);
+		if (x < w) boxen_set_cell(ctx->win, x++, 2, ']',
+		                          BOXEN_COLOR_DEFAULT,
+		                          BOXEN_COLOR_DEFAULT, base);
+		if (b < ctx->count - 1) {
+			/* Gutter. */
+			if (x < w) boxen_set_cell(ctx->win, x++, 2, ' ',
+			                          BOXEN_COLOR_DEFAULT,
+			                          BOXEN_COLOR_DEFAULT, BOXEN_ATTR_NONE);
+			if (x < w) boxen_set_cell(ctx->win, x++, 2, ' ',
+			                          BOXEN_COLOR_DEFAULT,
+			                          BOXEN_COLOR_DEFAULT, BOXEN_ATTR_NONE);
+		}
+	}
+
+	boxen_window_set_cursor_visible(ctx->win, false);
+}
+
+static int hotkey_match(const button_ctx_t *ctx, uint32_t ch) {
+	if (ch == 0) return -1;
+	/* Case-insensitive first-letter match against each label. */
+	char up = (char)ch;
+	if (up >= 'a' && up <= 'z') up = (char)(up - 'a' + 'A');
+	for (int i = 0; i < ctx->count; i++) {
+		const char *l = ctx->labels[i];
+		if (!l || !l[0]) continue;
+		char first = l[0];
+		if (first >= 'a' && first <= 'z') first = (char)(first - 'a' + 'A');
+		if (first == up) return i;
+	}
+	return -1;
+}
+
+int boxen_ui_button_select(const char *prompt,
+                           const char *const *buttons, int count) {
+	if (count < 2 || count > BOXEN_UI_BUTTON_MAX) return 0;
+	if (!buttons) return 0;
+
+	const boxen_ui_host_t *host = load_host();
+	if (!host) return 0;
+
+	int sw = 80, sh = 24;
+	boxen_get_screen_size(&sw, &sh);
+	if (sw < 20) sw = 20;
+	if (sh < 6)  sh = 6;
+
+	button_ctx_t ctx;
+	memset(&ctx, 0, sizeof(ctx));
+	ctx.prompt = prompt;
+	ctx.count = count;
+	for (int i = 0; i < count; i++) ctx.labels[i] = buttons[i];
+	ctx.selection = 0;
+	ctx.host = host;
+
+	/* Field width: max(prompt, button row) + margin. */
+	int prompt_w = prompt ? (int)strlen(prompt) : 0;
+	int row_w = button_row_width(&ctx);
+	int field_w = prompt_w > row_w ? prompt_w : row_w;
+	field_w += 4;
+	if (field_w < 40) field_w = 40;
+
+	boxen_rect_t rect = place_centered_modal(sw, sh, field_w);
+	boxen_window_t *win = boxen_window_open(NULL, rect, &ctx);
+	if (!win) return 0;
+
+	ctx.win = win;
+	ctx.content_w = boxen_window_content_width(win);
+
+	boxen_window_set_borders(win, true);
+	boxen_window_set_modal(win, true);
+	boxen_window_set_movable(win, false);
+	boxen_window_set_resizable(win, false);
+	boxen_window_set_draw(win, render_button_cb);
+	boxen_window_focus(win);
+	boxen_window_raise(win);
+
+	boxen_window_invalidate(win);
+	if (host->drain_capture_pipe) host->drain_capture_pipe(host->drain_ctx);
+	boxen_present();
+
+	while (!ctx.done) {
+		boxen_event_t ev;
+		memset(&ev, 0, sizeof(ev));
+
+		tcp_process_callbacks();
+
+		hdlthreadglobals saved = hthreadglobals;
+		headless_save_threadglobals(saved);
+		pthread_mutex_unlock(&frontier_gil);
+		pthread_cond_broadcast(&gil_available);
+		boxen_result_t rc = boxen_poll_event(&ev, 100);
+		pthread_mutex_lock(&frontier_gil);
+		headless_restore_threadglobals(saved);
+
+		if ((**saved).flthreadkilled) {
+			ctx.cancelled = true;
+			ctx.done = true;
+			break;
+		}
+
+		if (host->drain_capture_pipe) host->drain_capture_pipe(host->drain_ctx);
+
+		if (rc == BOXEN_ERR_TIMEOUT) { boxen_present(); continue; }
+		if (rc != BOXEN_OK) { ctx.cancelled = true; ctx.done = true; break; }
+
+		if (ev.type == BOXEN_EV_RESIZE) {
+			int new_sw = ev.resize.w, new_sh = ev.resize.h;
+			if (new_sw < 20) new_sw = 20;
+			if (new_sh < 6)  new_sh = 6;
+			boxen_rect_t r = place_centered_modal(new_sw, new_sh, ctx.content_w);
+			boxen_window_set_rect(win, r);
+			ctx.content_w = boxen_window_content_width(win);
+			boxen_window_invalidate(win);
+			boxen_present();
+			continue;
+		}
+
+		if (ev.type == BOXEN_EV_KEY) {
+			switch (ev.key.key) {
+			case BOXEN_KEY_ENTER:
+				ctx.done = true;
+				break;
+			case BOXEN_KEY_ESCAPE:
+			case BOXEN_KEY_CTRL_C:
+				ctx.cancelled = true;
+				ctx.done = true;
+				break;
+			case BOXEN_KEY_LEFT:
+				if (ctx.selection > 0) ctx.selection--;
+				break;
+			case BOXEN_KEY_RIGHT:
+				if (ctx.selection < ctx.count - 1) ctx.selection++;
+				break;
+			case BOXEN_KEY_HOME:
+				ctx.selection = 0;
+				break;
+			case BOXEN_KEY_END:
+				ctx.selection = ctx.count - 1;
+				break;
+			default: {
+				/* Reaching `default` means ev.key.key == BOXEN_KEY_NONE
+				 * (every non-NONE key is named in a case above), so
+				 * ev.key.ch holds a Unicode codepoint.  Hotkey match:
+				 * printable ASCII first-letter == label's first
+				 * letter (case-insensitive) selects + activates that
+				 * button immediately. */
+				if (ev.key.ch >= 0x20 && ev.key.ch < 0x7F) {
+					int idx = hotkey_match(&ctx, ev.key.ch);
+					if (idx >= 0) {
+						ctx.selection = idx;
+						ctx.done = true;
+					}
+				}
+				break;
+			}
+			}
+			boxen_window_invalidate(win);
+			boxen_present();
+		}
+	}
+
+	int result = ctx.cancelled ? 0 : (ctx.selection + 1);
+	boxen_window_close(win);
+	if (host->restore_focus) host->restore_focus(host->restore_focus_ctx);
+	boxen_present();
+	return result;
+}
