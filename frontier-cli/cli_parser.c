@@ -219,6 +219,25 @@ boolean cli_validate_options(const cli_options_t* options) {
 		return false;
 	}
 
+	/* 2026-06-25 JES C.6 #691: --plain and --protocol are mutually exclusive.
+	 * --plain forces the legacy linenoise REPL; --protocol is its own
+	 * non-interactive mode.  Same rationale as --debug-tui / --protocol. */
+	if (options->plain_mode && options->protocol_mode) {
+		log_error(LOG_COMP_GENERAL, "Error: --plain and --protocol are mutually exclusive");
+		return false;
+	}
+
+	/* 2026-06-25 JES C.6 #691: --plain and --debug-tui specify conflicting
+	 * REPLs.  Reject the combination so the user re-issues with one or the
+	 * other (vs silently picking a winner). */
+	if (options->plain_mode && options->tui_mode) {
+		log_error(LOG_COMP_GENERAL,
+		          "Error: --plain and --debug-tui are mutually exclusive "
+		          "(--debug-tui is a deprecated no-op alias for the default; "
+		          "use --plain to opt into the legacy linenoise REPL)");
+		return false;
+	}
+
 	/* 2026-06-07 JES Phase B.8 #691: --debug-tui with both inline_script AND
 	 * script_file is ambiguous -- reject the combination.  Either one alone is
 	 * valid: the startup-launch path in debugger_tui_main handles each. */
@@ -265,6 +284,7 @@ boolean cli_parse_arguments(int argc, char* argv[], cli_options_t* options) {
 		OPT_LOCK_OPENED_ROOTS = 256,
 		OPT_UT_SYNC_DIR,
 		OPT_DEBUG_TUI,		/* 2026-06-06 JES Phase B.0 #691: --debug-tui */
+		OPT_PLAIN,			/* 2026-06-25 JES C.6 #691: --plain */
 	};
 
 	// Define long options
@@ -287,6 +307,7 @@ boolean cli_parse_arguments(int argc, char* argv[], cli_options_t* options) {
 		{"lock-opened-roots", no_argument, 0, OPT_LOCK_OPENED_ROOTS},
 		{"ut-sync-dir", required_argument, 0, OPT_UT_SYNC_DIR},
 		{"debug-tui", no_argument, 0, OPT_DEBUG_TUI},
+		{"plain", no_argument, 0, OPT_PLAIN},
 		{"help", no_argument, 0, 'h'},
 		{"version", no_argument, 0, 'V'},
 		{0, 0, 0, 0}
@@ -526,8 +547,15 @@ boolean cli_parse_arguments(int argc, char* argv[], cli_options_t* options) {
 			case 'S':  options->skip_startup = true; break;
 			case 'P':  options->protocol_mode = true; break;
 			case OPT_LOCK_OPENED_ROOTS: options->lock_opened_roots = true; break;
-			/* 2026-06-06 JES Phase B.0 #691: TUI debug mode */
+			/* 2026-06-06 JES Phase B.0 #691: TUI debug mode (boxen REPL).
+			 * 2026-06-25 JES C.6 #691: --debug-tui is now the default
+			 * (boxen REPL).  Flag retained as a no-op alias to avoid
+			 * breaking existing scripts; main.c logs a deprecation
+			 * warning when set. */
 			case OPT_DEBUG_TUI: options->tui_mode = true; break;
+			/* 2026-06-25 JES C.6 #691: explicit opt-in to legacy
+			 * linenoise REPL. */
+			case OPT_PLAIN: options->plain_mode = true; break;
 
 			case OPT_UT_SYNC_DIR:
 				if (options->ut_sync_dir != NULL) {

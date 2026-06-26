@@ -1,13 +1,20 @@
 # TUI Debugger Guide
 
 **Audience:** anyone using `frontier-cli` to debug a UserTalk script.
-**Last updated:** 2026-06-08
+**Last updated:** 2026-06-25
 
-> **Phase C.0 change (2026-06-08):** `--debug-tui` now opens the boxen-native
-> Frontier REPL instead of the standalone debugger TUI.  The REPL is a full
-> scrollback + input-bar interface; you type UserTalk expressions or slash
-> commands directly.  The debugger surfaces are reachable via the `/debug`
-> slash command.  A full doc revision will follow in C.1.
+> **C.6 change (2026-06-25):** the boxen REPL is now the default for
+> `frontier-cli` (no flag).  `--debug-tui` is preserved as a deprecated
+> no-op alias and emits a one-line warning at startup.  The legacy
+> linenoise REPL is reachable via `--plain`.  Examples in this guide use
+> the no-flag form; substitute `--debug-tui` if you have older scripts
+> wired against it (they still work).
+>
+> **Phase C.0 change (2026-06-08, retained for context):** `--debug-tui`
+> originally opted into the boxen-native Frontier REPL (vs. the standalone
+> debugger TUI).  The REPL is a full scrollback + input-bar interface; you
+> type UserTalk expressions or slash commands directly.  The debugger
+> surfaces are reachable via the `/debug` slash command.
 
 The TUI debugger is a full-screen terminal interface for debugging UserTalk scripts. It runs inside `frontier-cli` and uses the same NDJSON debugger protocol that drives `--protocol` mode.
 
@@ -20,7 +27,7 @@ For the protocol-level interface (used by IDEs and external tools), see [`docs/C
 ### Open the boxen-native Frontier REPL
 
 ```bash
-./frontier-cli/frontier-cli --debug-tui
+./frontier-cli/frontier-cli
 ```
 
 The boxen REPL opens with a scrollback output pane and a single-line input bar. Type UserTalk expressions (e.g. `1 + 1`) and press Enter to evaluate. Type `/help` and press Enter to see available slash commands. Press Ctrl-C to quit.
