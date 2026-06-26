@@ -39,6 +39,7 @@
 // 2025-10-27 Codex: Added diagnostics around system table hydration to surface missing subtables.
 // 2025-10-27 Codex: Stop recreating system tables during headless load and follow Cancoon root pointer so persisted tables stay wired.
 
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -868,6 +869,18 @@ int main(int argc, char* argv[]) {
 	 *      execute_script_mode (legacy behavior unchanged).
 	 *   4. --plain -> linenoise REPL (explicit legacy opt-in).
 	 *   5. default (interactive, no flag) -> boxen REPL. */
+
+	/* 2026-06-25 JES C.6 #691 gate-fix: defense-in-depth.  Validator
+	 * rejects all three pairwise REPL-flag combinations
+	 * (cli_parser.c:217-239), but if a future caller ever builds
+	 * cli_options_t programmatically without re-running
+	 * cli_validate_options, dispatch below would silently pick a winner
+	 * (tui_mode > protocol_mode > plain_mode).  Assert catches that
+	 * drift loudly in debug builds; cheap in release. */
+	assert(!(g_cli_options.tui_mode && g_cli_options.protocol_mode));
+	assert(!(g_cli_options.plain_mode && g_cli_options.tui_mode));
+	assert(!(g_cli_options.plain_mode && g_cli_options.protocol_mode));
+
 	if (g_cli_options.tui_mode) {
 		log_warn(LOG_COMP_GENERAL,
 		         "--debug-tui is now the default (boxen REPL); the flag is "

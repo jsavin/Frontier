@@ -20,6 +20,12 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 CLI="$PROJECT_ROOT/frontier-cli/frontier-cli"
+
+# Every accepting invocation below passes --lock-opened-roots in addition
+# to --skip-startup.  These tests open Frontier.root read-only as far as
+# the flag-parsing logic is concerned, but the runtime would still save
+# on exit by default, drifting the dist-staged DB.  --lock-opened-roots
+# suppresses save-on-exit -- correct for the test intent.
 DB="$PROJECT_ROOT/databases/Frontier.root"
 
 if [ ! -x "$CLI" ]; then
@@ -88,13 +94,30 @@ expect_accept() {
 }
 
 # Run CLI; check that the deprecation warning IS or IS NOT present in
-# stderr (independent of exit code; -e mode is expected to succeed).
+# stderr AND that the CLI exited as the third arg expects (0 for clean
+# exit, "any" for "we don't care about the exit code, just the warning").
+#
+# The "any" mode is needed for --debug-tui invocations: that flag always
+# routes through boxen_repl_main which fails to init on a non-TTY (test
+# environment).  The deprecation warning fires BEFORE the init attempt,
+# so the warning-presence check is still meaningful even with a non-zero
+# exit.
 expect_warning_presence() {
     local name="$1"
-    local should_warn="$2"   # "yes" or "no"
-    shift 2
+    local should_warn="$2"      # "yes" or "no"
+    local expect_exit="$3"      # "0" or "any"
+    shift 3
     local stderr_out
-    stderr_out=$("$CLI" "$@" 2>&1 >/dev/null)
+    local exit_code=0
+    stderr_out=$("$CLI" "$@" 2>&1 >/dev/null) || exit_code=$?
+
+    if [ "$expect_exit" = "0" ] && [ "$exit_code" -ne 0 ]; then
+        echo -e "  ${RED}✗ FAIL${NC}: $name (CLI exited $exit_code; warning-check skipped)"
+        echo "    Stderr:"
+        echo "$stderr_out" | sed 's/^/      /'
+        FAILED=$((FAILED + 1))
+        return
+    fi
 
     local has_warning=no
     if echo "$stderr_out" | grep -qF "debug-tui is now the default"; then
@@ -120,7 +143,7 @@ echo
 echo "--- Mutual exclusion ---"
 expect_rejection "--debug-tui + --plain rejected" \
     "--plain and --debug-tui are mutually exclusive" \
-    --debug-tui --plain --system-root "$DB" -e "1"
+    --debug-tui --plain --lock-opened-roots --system-root "$DB" -e "1"
 
 expect_rejection "--debug-tui + --protocol rejected" \
     "--debug-tui and --protocol are mutually exclusive" \
@@ -136,7 +159,7 @@ echo "--- Flag acceptance via -e (batch) ---"
 # WOULD be taken if there were no script.  With -e, execute_script_mode
 # runs regardless; the flag still parses successfully.
 expect_accept "default + -e works" "42" \
-    --skip-startup --system-root "$DB" -e "42"
+    --skip-startup --lock-opened-roots --system-root "$DB" -e "42"
 
 expect_accept "--plain + -e works (--plain doesn't force REPL launch)" "42" \
     --skip-startup --plain --system-root "$DB" -e "42"
@@ -149,14 +172,18 @@ expect_accept "--plain + -e works (--plain doesn't force REPL launch)" "42" \
 
 echo
 echo "--- Deprecation warning ---"
-expect_warning_presence "default (no flag) emits NO deprecation warning" "no" \
-    --skip-startup --system-root "$DB" -e "1"
+expect_warning_presence "default (no flag) emits NO deprecation warning" "no" "0" \
+    --skip-startup --lock-opened-roots --system-root "$DB" -e "1"
 
-expect_warning_presence "--plain emits NO deprecation warning" "no" \
-    --skip-startup --plain --system-root "$DB" -e "1"
+expect_warning_presence "--plain emits NO deprecation warning" "no" "0" \
+    --skip-startup --lock-opened-roots --plain --system-root "$DB" -e "1"
 
-expect_warning_presence "--debug-tui emits deprecation warning" "yes" \
-    --skip-startup --debug-tui --system-root "$DB" -e "1"
+# --debug-tui always routes to boxen_repl_main, which fails to init on
+# a non-TTY (test environment).  The deprecation warning fires BEFORE
+# the init attempt, so the warning-presence check is still meaningful
+# even with a non-zero exit.  Pass "any" for expect_exit.
+expect_warning_presence "--debug-tui emits deprecation warning" "yes" "any" \
+    --skip-startup --lock-opened-roots --debug-tui --system-root "$DB" -e "1"
 
 echo
 echo "--- --help text ---"
