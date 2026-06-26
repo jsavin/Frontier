@@ -442,8 +442,15 @@ class FrontierCLI:
         Returns:
             CompletedProcess with stdout, stderr, and returncode
         """
-        # Build command for REPL mode (no --output-json, no -e)
-        cmd = [self.cli_path, '--skip-startup']
+        # Build command for REPL mode (no --output-json, no -e).
+        # 2026-06-25 JES C.6 #691: pass --plain so the test exercises the
+        # legacy linenoise REPL with its established stdin-line protocol
+        # (typed commands + "/exit").  The boxen REPL (post-C.6 default)
+        # uses a different I/O model that this runner can't drive with
+        # pipe-fed stdin.  When linenoise is finally removed (post-soak),
+        # the REPL session tests will need to be ported to the boxen
+        # input model or replaced by tui-tests harness coverage.
+        cmd = [self.cli_path, '--plain', '--skip-startup']
 
         if self.system_root:
             cmd.extend(['--system-root', self.system_root])
@@ -511,8 +518,13 @@ class FrontierCLI:
                 stderr='pexpect is not installed'
             )
 
-        # Build command as argument list (avoids shell interpretation)
-        cmd_args = [self.cli_path, '--skip-startup']
+        # Build command as argument list (avoids shell interpretation).
+        # 2026-06-25 JES C.6 #691: --plain pins to the linenoise REPL.
+        # FRONTIER_PLAIN_REPL (set below) is a *separate* env knob inside
+        # linenoise that selects the blocking-read path; the CLI flag
+        # selects WHICH REPL to launch.  Both are needed for pexpect-
+        # driven interactive testing.
+        cmd_args = [self.cli_path, '--plain', '--skip-startup']
         if self.system_root:
             cmd_args.extend(['--system-root', self.system_root])
 
@@ -648,7 +660,11 @@ class FrontierCLI:
                 stderr=pyte_err or 'pyte is not installed (required for palette tests)',
             )
 
-        cmd_args = [self.cli_path, '--skip-startup']
+        # 2026-06-25 JES C.6 #691: --plain pins to the linenoise REPL.
+        # The palette-mode tests are exercising the LINENOISE termbox2
+        # palette overlay (palette.c).  Boxen has its own palette modal
+        # tested separately by the tui-tests harness.
+        cmd_args = [self.cli_path, '--plain', '--skip-startup']
         if self.system_root:
             cmd_args.extend(['--system-root', self.system_root])
 

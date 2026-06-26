@@ -861,6 +861,14 @@ test-custom-args:
 	@echo "Running custom CLI args tests..."
 	@./custom_cli_args_test.sh
 
+# Run REPL selection flag tests (shell-based, uses -e mode + --help)
+# 2026-06-25 JES C.6 #691: covers --plain / --debug-tui / --protocol
+# mutual exclusion, the --debug-tui deprecation warning, and the new
+# REPL Selection section of --help.
+test-repl-flags:
+	@echo "Running REPL selection flag tests..."
+	@./repl_selection_flags_test.sh
+
 # Run debug protocol tests (Python-based, uses --protocol mode)
 test-debug:
 	@echo "Running debug protocol tests..."
@@ -892,7 +900,7 @@ check-license:
 	@python3 ../tools/relicense_headers.py --check
 
 # Run all tests (unit + integration + CLI migration + custom args + debug + hooks + license check)
-test-all: test test-integration test-migrate-flag test-migrate-long-path test-system-root-long-path test-system-root-temp-path-boundary test-sys-getenv-long-value test-custom-args test-debug test-debug-tui test-cow-idempotent test-ut-sync-lifecycle test-hooks check-license
+test-all: test test-integration test-migrate-flag test-migrate-long-path test-system-root-long-path test-system-root-temp-path-boundary test-sys-getenv-long-value test-custom-args test-repl-flags test-debug test-debug-tui test-cow-idempotent test-ut-sync-lifecycle test-hooks check-license
 	@echo "All test suites completed"
 
 # Verify Virgin.root <-> .ut corpus sync (issue #675).
@@ -984,7 +992,7 @@ verify-errors:
 	@echo "Verifying error message coverage..."
 	@../tools/verify_error_coverage.sh
 
-.PHONY: all test test-report test-integration test-integration-verbose test-migrate-flag test-migrate-long-path test-system-root-long-path test-system-root-temp-path-boundary test-sys-getenv-long-value test-custom-args test-debug test-debug-tui test-hooks test-all verify-odb-sync test-odb-sync clean install uninstall help results strings_generated kernel_verbs_generated verify-errors validate-bigstrings check-python-deps
+.PHONY: all test test-report test-integration test-integration-verbose test-migrate-flag test-migrate-long-path test-system-root-long-path test-system-root-temp-path-boundary test-sys-getenv-long-value test-custom-args test-repl-flags test-debug test-debug-tui test-hooks test-all verify-odb-sync test-odb-sync clean install uninstall help results strings_generated kernel_verbs_generated verify-errors validate-bigstrings check-python-deps
 
 check_v6_tables: check_v6_tables.c $(LANG_RUNTIME_SOURCES) ../Common/source/odbengine.c ../frontier-cli/stubs/headless_shell.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -DHEADLESS_TEST_PORTABLE_FILE -DHEADLESS_LINKS_REAL_DB -I../Common/headers -I../Common/SystemHeaders -I../portable check_v6_tables.c \

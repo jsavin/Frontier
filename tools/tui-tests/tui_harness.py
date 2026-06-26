@@ -1,5 +1,5 @@
 """
-TUI Test Harness — drives `dist/frontier-cli --debug-tui` through tmux.
+TUI Test Harness — drives `dist/frontier-cli` (boxen REPL, the default since C.6) through tmux.
 
 Each test creates a TUI session, sends keystrokes via `tmux send-keys`,
 captures the pane content via `tmux capture-pane`, and asserts on the
@@ -56,7 +56,7 @@ class TUIError(RuntimeError):
 
 class TUI:
     """
-    Driver for one instance of `dist/frontier-cli --debug-tui` in a detached tmux session.
+    Driver for one instance of `dist/frontier-cli` (boxen REPL, the default since C.6) in a detached tmux session.
 
     Parameters
     ----------
@@ -118,9 +118,12 @@ class TUI:
     def open(self):
         if self._opened:
             raise TUIError("session already open")
+        # 2026-06-25 JES C.6 #691: `frontier-cli` (no flag) launches the
+        # boxen REPL by default.  The harness no longer needs --debug-tui
+        # to opt in -- the flag is now a deprecated no-op alias that
+        # also emits a startup warning we don't want to fight in tests.
         cmd_parts = [
             str(self.bin),
-            "--debug-tui",
             "--system-root",
             str(self.system_root),
             *self.extra_args,

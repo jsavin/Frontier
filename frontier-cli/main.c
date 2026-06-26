@@ -849,12 +849,30 @@ int main(int argc, char* argv[]) {
 	boolean success = false;
 	int exit_code = 0;
 
+	/* 2026-06-25 JES C.6 #691: REPL dispatch flip.
+	 *
+	 * Default `frontier-cli` (no flag) launches the boxen REPL.  `--plain`
+	 * is the explicit opt-in to the legacy linenoise REPL (formerly the
+	 * default).  `--debug-tui` is a deprecated no-op alias for the new
+	 * default; a one-time log_warn surfaces in the scrollback ring so
+	 * users notice the change without breaking existing scripts.
+	 *
+	 * Dispatch priority (mirrors B.0 / C.0 behavior except for the flip
+	 * between linenoise-default and boxen-default):
+	 *   1. --debug-tui (alias) -> boxen REPL (with deprecation warning).
+	 *      Takes priority over batch-mode so `--debug-tui SCRIPT` still
+	 *      routes through boxen_repl_main's auto-launch path, matching
+	 *      the B.8 contract preserved through Phase C.
+	 *   2. --protocol -> NDJSON protocol mode (unchanged).
+	 *   3. batch (-e / script file) without any REPL flag -> headless
+	 *      execute_script_mode (legacy behavior unchanged).
+	 *   4. --plain -> linenoise REPL (explicit legacy opt-in).
+	 *   5. default (interactive, no flag) -> boxen REPL. */
 	if (g_cli_options.tui_mode) {
-		/* 2026-06-08 JES Phase C.0 #691: --debug-tui now opens the boxen-native
-		 * Frontier REPL.  The standalone debugger TUI is reachable from inside
-		 * the REPL via the /debug slash command (PR #756 contract preserved).
-		 * debugger_tui_main is retained for direct testing; it is no longer
-		 * the --debug-tui entry point. */
+		log_warn(LOG_COMP_GENERAL,
+		         "--debug-tui is now the default (boxen REPL); the flag is "
+		         "a no-op alias and will be removed in a future release.  "
+		         "Pass --plain to opt into the legacy linenoise REPL.");
 		exit_code = boxen_repl_main(&g_cli_options);
 	} else if (g_cli_options.protocol_mode) {
 		// NDJSON protocol mode - structured JSON over stdin/stdout
@@ -863,9 +881,12 @@ int main(int argc, char* argv[]) {
 		// Batch mode - execute script and exit
 		success = execute_script_mode();
 		exit_code = success ? 0 : 1;
-	} else {
-		// Interactive mode - enter REPL
+	} else if (g_cli_options.plain_mode) {
+		// Explicit legacy linenoise REPL (--plain).
 		exit_code = repl_main(&g_cli_options, ws_server_ptr);
+	} else {
+		// Default: boxen REPL.
+		exit_code = boxen_repl_main(&g_cli_options);
 	}
 
 	// Shutdown WebSocket server
@@ -1103,6 +1124,26 @@ static void print_usage(const char* program_name) {
 	printf("                       Example: --ut-sync-dir usertalk_scripts\n");
 	printf("  -h, --help			   Show this help message\n");
 	printf("  --version				   Show version information\n");
+	printf("\n");
+
+	printf("REPL Selection:\n");
+	printf("  (default)            Boxen REPL -- multi-pane TUI with composited windows,\n");
+	printf("                       boxen-native dialog modals, slash-menu palette.  See\n");
+	printf("                       docs/BOXEN_REPL_PARITY.md for the full feature table.\n");
+	printf("  --plain              Legacy linenoise REPL (single-line prompt, raw terminal\n");
+	printf("                       I/O).  Use when you need the historical behavior or when\n");
+	printf("                       boxen can't run (extremely small terminals, unusual ttys).\n");
+	printf("                       Mutually exclusive with --debug-tui and --protocol.\n");
+	printf("  --debug-tui          DEPRECATED no-op alias for the default boxen REPL.\n");
+	printf("                       Originally the opt-in for boxen; preserved so existing\n");
+	printf("                       scripts and aliases keep working.  Emits a one-line\n");
+	printf("                       deprecation warning at startup.  Will be removed in a\n");
+	printf("                       future release.  Mutually exclusive with --plain and\n");
+	printf("                       --protocol.\n");
+	printf("  --protocol           NDJSON protocol mode over stdin/stdout (no REPL).  For\n");
+	printf("                       programmatic ODB access; documented in\n");
+	printf("                       docs/CLI_USAGE_GUIDE.md and the protocol op_handler.\n");
+	printf("                       Mutually exclusive with --debug-tui and --plain.\n");
 	printf("\n");
 
 	printf("Custom Arguments:\n");
