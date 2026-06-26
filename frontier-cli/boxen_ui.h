@@ -26,6 +26,7 @@
 #define BOXEN_UI_H
 
 #include <stdbool.h>
+#include <stddef.h>		/* size_t */
 
 #ifdef __cplusplus
 extern "C" {
@@ -136,6 +137,50 @@ bool boxen_ui_alert(const char *message, bool beep);
  * Bridges dialog.twoway (count=2) and dialog.threeway (count=3). */
 int boxen_ui_button_select(const char *prompt,
                            const char *const *buttons, int count);
+
+/* 2026-06-24 JES #691 Phase C.0.7g Phase 2B: file-picker modal.
+ *
+ * Bridges the four UserTalk file dialog verbs to a boxen-native
+ * single-pane list picker.  Layout: prompt + breadcrumb header, list
+ * of entries (directories first, then files), separator, hint row;
+ * PUT_FILE mode adds a filename input row above the hint.
+ *
+ * `mode` selects the dialog flavour:
+ *   - BOXEN_UI_PICK_GET_FILE   -- file.getFileDialog: pick existing file
+ *   - BOXEN_UI_PICK_PUT_FILE   -- file.putFileDialog: pick directory + type filename
+ *   - BOXEN_UI_PICK_GET_FOLDER -- file.getFolderDialog: pick existing folder
+ *   - BOXEN_UI_PICK_GET_DISK   -- file.getDiskDialog: pick a mount point
+ *
+ * `start_path` is the initial directory (NULL = current working dir).
+ *   PUT_FILE accepts a path with trailing filename component as the
+ *   default filename.  GET_DISK ignores it (browses /Volumes/ on
+ *   macOS).
+ *
+ * `type_filter` (GET_FILE only) is a file extension WITHOUT the dot
+ *   (e.g. "txt").  Non-matching files are dimmed but still selectable
+ *   per JES decision 2026-06-24.  NULL means no filter.
+ *
+ * `out_path` receives the absolute path of the chosen file/folder/
+ *   volume; for PUT_FILE this is the directory joined with the
+ *   filename input.  `out_cap` is the buffer capacity (caller-sized).
+ *
+ * Returns true on commit, false on Esc/Ctrl-C cancel (out_path
+ * untouched).
+ *
+ * Must be called with the GIL held.  Cooperative cancel only -- see
+ * the 2026-06-23 followup to decision #3 in the design doc.  */
+typedef enum {
+	BOXEN_UI_PICK_GET_FILE,
+	BOXEN_UI_PICK_PUT_FILE,
+	BOXEN_UI_PICK_GET_FOLDER,
+	BOXEN_UI_PICK_GET_DISK,
+} boxen_ui_pick_mode_t;
+
+bool boxen_ui_pick_file(boxen_ui_pick_mode_t mode,
+                        const char *prompt,
+                        const char *start_path,
+                        const char *type_filter,
+                        char *out_path, size_t out_cap);
 
 #ifdef __cplusplus
 }

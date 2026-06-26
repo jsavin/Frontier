@@ -11,6 +11,7 @@
 #include "file_browser.h"
 #include "tab_completion.h"
 #include "terminal_control.h"
+#include "boxen_ui.h"		/* 2026-06-24 JES #691 Phase C.0.7g Phase 2B */
 #include "../Common/headers/logging.h"
 
 #include <limits.h>
@@ -368,6 +369,21 @@ file_dialog_result file_dialog_get_file(const char *prompt,
                                          const char *type_filter) {
 	const char *effective_prompt = (prompt && prompt[0]) ? prompt : "Select an existing file:";
 
+	/* 2026-06-24 JES #691 Phase C.0.7g Phase 2B: route through the
+	 * boxen-native file picker when the boxen REPL is active.  The
+	 * picker IS interactive even when isatty() would return false (tmux
+	 * subshells, non-TTY pipes), so the bridge check must precede the
+	 * isatty() branch below. */
+	if (boxen_ui_is_active()) {
+		file_dialog_result r;
+		r.path[0] = '\0';
+		r.success = boxen_ui_pick_file(BOXEN_UI_PICK_GET_FILE,
+		                                effective_prompt, start_path,
+		                                type_filter,
+		                                r.path, sizeof(r.path));
+		return r;
+	}
+
 	if (isatty(STDIN_FILENO))
 		return file_browser_get_file(effective_prompt, start_path, type_filter);
 
@@ -382,6 +398,16 @@ file_dialog_result file_dialog_get_file(const char *prompt,
 file_dialog_result file_dialog_put_file(const char *prompt,
                                          const char *start_path) {
 	const char *effective_prompt = (prompt && prompt[0]) ? prompt : "Choose location to save file:";
+
+	/* 2026-06-24 JES #691 Phase C.0.7g Phase 2B: boxen picker. */
+	if (boxen_ui_is_active()) {
+		file_dialog_result r;
+		r.path[0] = '\0';
+		r.success = boxen_ui_pick_file(BOXEN_UI_PICK_PUT_FILE,
+		                                effective_prompt, start_path, NULL,
+		                                r.path, sizeof(r.path));
+		return r;
+	}
 
 	if (isatty(STDIN_FILENO))
 		return file_browser_put_file(effective_prompt, start_path);
@@ -398,6 +424,16 @@ file_dialog_result file_dialog_get_folder(const char *prompt,
                                            const char *start_path) {
 	const char *effective_prompt = (prompt && prompt[0]) ? prompt : "Select a directory:";
 
+	/* 2026-06-24 JES #691 Phase C.0.7g Phase 2B: boxen picker. */
+	if (boxen_ui_is_active()) {
+		file_dialog_result r;
+		r.path[0] = '\0';
+		r.success = boxen_ui_pick_file(BOXEN_UI_PICK_GET_FOLDER,
+		                                effective_prompt, start_path, NULL,
+		                                r.path, sizeof(r.path));
+		return r;
+	}
+
 	if (isatty(STDIN_FILENO))
 		return file_browser_get_folder(effective_prompt, start_path);
 
@@ -411,6 +447,18 @@ file_dialog_result file_dialog_get_folder(const char *prompt,
 /* Routes to two-pane browser (TTY) or fallback numbered list (piped input). */
 file_dialog_result file_dialog_get_disk(const char *prompt) {
 	const char *effective_prompt = (prompt && prompt[0]) ? prompt : "Select a volume:";
+
+	/* 2026-06-24 JES #691 Phase C.0.7g Phase 2B: boxen picker.
+	 * The boxen picker browses /Volumes/ on macOS (where mounted disks
+	 * appear as directory entries) rather than calling getfsstat. */
+	if (boxen_ui_is_active()) {
+		file_dialog_result r;
+		r.path[0] = '\0';
+		r.success = boxen_ui_pick_file(BOXEN_UI_PICK_GET_DISK,
+		                                effective_prompt, NULL, NULL,
+		                                r.path, sizeof(r.path));
+		return r;
+	}
 
 	if (isatty(STDIN_FILENO))
 		return file_browser_get_disk(effective_prompt);

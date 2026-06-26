@@ -2041,8 +2041,16 @@ boolean portable_filefunctionvalue(short token, hdltreenode hparam1,
 				extern boolean isInteractiveMode(void);
 				extern boolean portable_file_dialog_verb(short token, hdltreenode hparam1,
 				                                         tyvaluerecord *vreturned, bigstring bserror);
+				/* 2026-06-24 JES #691 Phase C.0.7g Phase 2B: the boxen
+				 * UI bridge IS a real interactive UI even when isatty()
+				 * would say otherwise (tmux subshells, non-TTY pipes).
+				 * Allow the verb when boxen is owning the terminal so
+				 * file.* dialogs in dispatched scripts work under
+				 * --debug-tui.  Boxen ui_pick_file is the routing
+				 * destination via file_dialog_*. */
+				extern bool boxen_ui_is_active(void);
 
-				if (!isInteractiveMode()) {
+				if (!isInteractiveMode() && !boxen_ui_is_active()) {
 					/* In non-interactive mode, return false as the dialog result
 					 * (same as user clicking Cancel), not a verb error. This lets
 					 * scripts handle it gracefully via if/try. */
