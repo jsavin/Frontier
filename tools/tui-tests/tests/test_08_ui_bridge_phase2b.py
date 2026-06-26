@@ -128,6 +128,68 @@ def test_getfolderdialog_renders_modal():
 		time.sleep(0.3)
 
 
+def test_putfiledialog_overwrite_confirm_when_file_exists():
+	"""Phase 2B gate-fix: file.putFileDialog must prompt before
+	overwriting an existing file.  Legacy file_browser.c had this
+	check; the boxen picker initially shipped without it
+	(data-loss footgun caught by /gate review 2026-06-24).
+
+	Setup: pre-create a known file, then drive the picker with that
+	filename pre-typed.  Pressing Enter triggers the overwrite-confirm
+	modal, which must render box-drawing characters AND surface the
+	"File already exists" phrasing (so the user sees a real prompt
+	rather than a silent commit).
+	"""
+	# Use a tempfile under /tmp that we know exists.
+	target_dir = "/tmp"
+	target_name = "phase2b_overwrite_target.txt"
+	target_path = os.path.join(target_dir, target_name)
+	with open(target_path, "w") as f:
+		f.write("existing content")
+
+	try:
+		with TUI(boot_wait=1.5) as t:
+			t.wait_for(">", timeout=5)
+			# Pre-populate the picker's start_path with the target so the
+			# picker opens in /tmp with the filename pre-filled.
+			_eval(t, 'workspace.tmpPickResult = "/tmp/'
+			       + target_name + '"')
+			time.sleep(0.3)
+			_eval(t,
+				'file.putFileDialog ("PhaseTwoBOverwriteMarker", '
+				'@workspace.tmpPickResult)')
+			time.sleep(0.8)
+			# Focus the filename input row + press Enter to trigger commit.
+			t.send_key("Tab")
+			time.sleep(0.2)
+			t.send_key("Enter")
+			time.sleep(0.5)
+			snapshot(t, "ui-bridge-p2b-overwrite-confirm")
+
+			text = t.capture()
+			assert t.is_alive(), "REPL exited during overwrite-confirm"
+			assert _modal_visible(text), (
+				"Overwrite-confirm modal did not render box-drawing "
+				"characters.  Capture:\n" + text
+			)
+			assert _text_inside_modal(text, "already exists"), (
+				"Overwrite-confirm prompt missing 'already exists' "
+				"phrasing.  Silent overwrite would be a data-loss "
+				"regression vs the legacy file_browser.  Capture:\n"
+				+ text
+			)
+			# Cancel out so the test doesn't actually overwrite.
+			t.send_key("Escape")
+			time.sleep(0.3)
+			t.send_key("Escape")
+			time.sleep(0.3)
+	finally:
+		try:
+			os.remove(target_path)
+		except OSError:
+			pass
+
+
 def test_putfiledialog_renders_with_filename_input_row():
 	"""file.putFileDialog shows the list + a filename input row at the
 	bottom of the modal.  Typing characters should land in the filename
