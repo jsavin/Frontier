@@ -228,6 +228,21 @@ typedef struct {
 	int   scrollback_head;                         /* next write position */
 	int   scrollback_count;                        /* valid entries */
 
+	/* 2026-06-29 JES #803: output-pane scrollback offset.
+	 *
+	 * 0 = view pinned to bottom (newest line at last visible row).
+	 * N > 0 = view shifted up by N lines (older content visible).
+	 *
+	 * Clamped at render time to (scrollback_count - 1) so at least one
+	 * line stays visible no matter how far back PgUp walks.
+	 *
+	 * Auto-resets to 0 on submit_input (scroll-on-output: typing
+	 * unsticks the view).  Async output appended via
+	 * boxen_repl_append_scrollback does NOT reset the offset -- the
+	 * user can keep reviewing old content while a background script
+	 * prints.  PgUp/PgDn key handlers in on_input mutate this. */
+	int   output_scroll_offset;
+
 	/* Loop control */
 	bool  should_quit;  /* set by Ctrl-C handler */
 

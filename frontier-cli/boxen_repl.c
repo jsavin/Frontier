@@ -131,7 +131,8 @@ static void on_input(boxen_window_t *win, const boxen_event_t *ev,
 
 #define REPL_INPUT_PROMPT "> "
 
-#define REPL_FOOTER_TEXT "Ctrl-C: quit  Enter: run  Esc: clear  /help: commands"
+/* 2026-06-29 JES #803: PgUp/PgDn advertise output-pane scrollback. */
+#define REPL_FOOTER_TEXT "Ctrl-C: quit  Enter: run  Esc: clear  PgUp/PgDn: scroll"
 
 /* Width of the "> " prompt prefix in the input bar */
 #define REPL_INPUT_PROMPT_LEN 2
@@ -251,15 +252,35 @@ static void draw_output_pane(boxen_window_t *win, void *user_data) {
 	}
 
 	/* Render scrollback lines bottom-justified: most-recent at row (h-1).
-	 * Show the last `show_count` entries where show_count = min(count, h). */
-	int count = s->scrollback_count;
+	 * Show the last `show_count` entries where show_count = min(count, h).
+	 *
+	 * 2026-06-29 JES #803: when output_scroll_offset > 0, the view is
+	 * shifted up by that many lines.  The newest visible line becomes
+	 * (scrollback_count - 1 - offset), and we walk back `h` lines from
+	 * there.  Clamp the offset so at least one line stays visible. */
+	int total  = s->scrollback_count;
+	int offset = s->output_scroll_offset;
+	if (offset < 0) offset = 0;
+	if (total > 0 && offset > total - 1) offset = total - 1;
+	/* Write the clamp back so PgUp/PgDn don't accumulate past the bounds. */
+	s->output_scroll_offset = offset;
+
+	int count = total - offset;
 	if (count > h) count = h;
+	if (count <= 0) return;
 
 	char linebuf[BOXEN_REPL_SCROLLBACK_LINE_MAX];
 	int  cap = (w < (int)(sizeof(linebuf) - 1)) ? w : (int)(sizeof(linebuf) - 1);
 
 	for (int i = 0; i < count; i++) {
-		int ring_idx = (s->scrollback_head - count + i + BOXEN_REPL_SCROLLBACK_SIZE)
+		/* Newest visible entry is at logical position (total - 1 - offset).
+		 * Walk back `count` entries from there.  Ring index for the i-th
+		 * row (0 = topmost visible) is:
+		 *   (scrollback_head - 1 - offset - (count - 1 - i)) % SIZE
+		 * which simplifies to:
+		 *   (scrollback_head - offset - count + i) % SIZE */
+		int ring_idx = (s->scrollback_head - offset - count + i
+		                + BOXEN_REPL_SCROLLBACK_SIZE)
 		               % BOXEN_REPL_SCROLLBACK_SIZE;
 		const char *line = s->scrollback[ring_idx];
 		if (line == NULL) continue;
@@ -903,6 +924,13 @@ static void submit_input(boxen_repl_state_t *s) {
 	s->input_len        = 0;
 	s->input_cursor_pos = 0;
 
+	/* 2026-06-29 JES #803: snap the output-pane view back to bottom on
+	 * submit (scroll-on-output).  Async output that arrives via
+	 * boxen_repl_append_scrollback does NOT reset the offset, but the
+	 * user's own Enter is a deliberate "show me what just happened"
+	 * signal -- matches less/man behavior on `>` follow. */
+	s->output_scroll_offset = 0;
+
 	if (s->input_win  != NULL) boxen_window_invalidate(s->input_win);
 	if (s->output_win != NULL) boxen_window_invalidate(s->output_win);
 }
@@ -1077,6 +1105,59 @@ static void on_input(boxen_window_t *win, const boxen_event_t *ev,
 	if (ev->key.key == BOXEN_KEY_DOWN) {
 		s->slash_pending_until_ms = 0;
 		history_nav_down(s);
+		return;
+	}
+
+	/* 2026-06-29 JES #803: output-pane scrollback (PgUp/PgDn).
+	 *
+	 * The boxen REPL owns the alternate screen buffer, so terminal-native
+	 * scrollback can't reach lines that scroll off the top of the output
+	 * pane.  Without these handlers, large output (e.g. system.verbs.builtins,
+	 * a wide table dump) was unreachable once it scrolled past the visible
+	 * region; users had to fall back to --plain (linenoise) for that.
+	 *
+	 * Page step is (output_h - 1) so one line of context overlaps between
+	 * pages -- standard less/man behavior.  Clamping to >= 1 protects
+	 * tiny terminals.  Final clamping against scrollback_count happens
+	 * in draw_output_pane (which writes the clamped value back).
+	 *
+	 * Cancel pending slash-debounce here for the same reason as the other
+	 * non-character keys above (history, tab): a deferred palette open
+	 * mid-scroll would be jarring.
+	 *
+	 * Mouse wheel is intentionally NOT wired in this change (issue #805
+	 * tracks remapping the existing wheel binding). */
+	if (ev->key.key == BOXEN_KEY_PGUP) {
+		s->slash_pending_until_ms = 0;
+		int page = 1;
+		if (s->output_win != NULL) {
+			page = boxen_window_content_height(s->output_win) - 1;
+			if (page < 1) page = 1;
+		}
+		s->output_scroll_offset += page;
+		/* Upper-bound clamp: keep at least one line visible.  The same
+		 * clamp runs in draw_output_pane as defensive belt-and-suspenders,
+		 * but writing it back here keeps the field's value in-bounds so
+		 * test assertions and successive PgUp presses behave predictably
+		 * (without it, the offset would grow unbounded above the ring). */
+		int max_offset = s->scrollback_count - 1;
+		if (max_offset < 0) max_offset = 0;
+		if (s->output_scroll_offset > max_offset) {
+			s->output_scroll_offset = max_offset;
+		}
+		if (s->output_win != NULL) boxen_window_invalidate(s->output_win);
+		return;
+	}
+	if (ev->key.key == BOXEN_KEY_PGDN) {
+		s->slash_pending_until_ms = 0;
+		int page = 1;
+		if (s->output_win != NULL) {
+			page = boxen_window_content_height(s->output_win) - 1;
+			if (page < 1) page = 1;
+		}
+		s->output_scroll_offset -= page;
+		if (s->output_scroll_offset < 0) s->output_scroll_offset = 0;
+		if (s->output_win != NULL) boxen_window_invalidate(s->output_win);
 		return;
 	}
 

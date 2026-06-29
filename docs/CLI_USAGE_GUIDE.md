@@ -16,8 +16,8 @@
 7. [Examples](#examples)
 8. [Troubleshooting](#troubleshooting)
 9. [Advanced Usage](#advanced-usage)
-10. [REPL Navigation and Guest Databases](#repl-navigation-and-guest-databases)
-11. [REPL Known Limitations](#repl-known-limitations)
+10. [REPL Keybindings (Boxen REPL)](#repl-keybindings-boxen-repl)
+11. [REPL Navigation and Guest Databases](#repl-navigation-and-guest-databases)
 
 ---
 
@@ -1000,6 +1000,40 @@ This follows proven Frontier patterns:
 
 For technical details about the QuickScript architecture, see:
 - `planning/architectural_decision_records/ADR-009-repl-hash-table-stack-management.md`
+
+---
+
+## REPL Keybindings (Boxen REPL)
+
+The default REPL (`frontier-cli` with no flag) is the multi-pane boxen REPL.  The following keys are recognized while focus is on the input bar:
+
+| Key | Action |
+|-----|--------|
+| `Enter` / `Ctrl-M` | Submit the current line for evaluation |
+| `Escape` | Clear the input buffer |
+| `Ctrl-C` | Quit the REPL (or cancel a pending multi-line continuation) |
+| `Left` / `Right` | Move the caret one character within the input |
+| `Ctrl-A` / `Ctrl-E` | Jump caret to start / end of line |
+| `Backspace` / `Delete` | Delete character before / after the caret |
+| `Up` / `Down` | Navigate command history |
+| `Tab` | Trigger completion (slash commands or ODB paths) |
+| `PgUp` / `PgDn` | Scroll the output pane back / forward through scrollback |
+| `/` (at start of line) | Open the slash-menu palette (after a short debounce) |
+| `\` (at end of line) | Continue the expression on the next line (multi-line input) |
+
+### Output-pane scrollback (PgUp/PgDn)
+
+The boxen REPL owns the terminal's alternate screen buffer, so the terminal's own scrollback (the scroll wheel / shift-PgUp at the OS terminal level) cannot reach output that has scrolled off the top of the visible region.  Use **PgUp** to walk the output pane view back through up to 1024 lines of scrollback, and **PgDn** to return toward the newest line.
+
+Each key press scrolls by one page (the output pane height minus one line of context overlap), matching `less` / `man` conventions.
+
+Behavior notes:
+
+- **Submitting a new expression** (Enter) automatically snaps the view back to the bottom -- you immediately see the new result.  This is "scroll-on-output" behavior.
+- **Async output from background scripts** does NOT snap the view back.  You can review old content while a long-running script keeps printing to the REPL.
+- **Modals** (file picker, dialog prompts) do not disturb the scroll position; closing a modal returns you to wherever the view was scrolled to.
+
+If you need true terminal-native scrollback (e.g. unbounded scrollback in your OS terminal application), use `--plain` to launch the legacy linenoise REPL instead.
 
 ---
 

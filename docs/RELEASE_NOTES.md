@@ -4,6 +4,33 @@ Most-recent first.  Each entry summarizes user-visible changes for the release.
 
 ---
 
+## C.6.1 — boxen REPL output-pane scrollback (2026-06-29)
+
+### Summary
+
+The boxen REPL output pane now supports in-app scrollback via **PgUp** and **PgDn**.  Output that has scrolled off the top of the visible region (e.g. dumping `system.verbs.builtins`, a wide table, or a long stack trace) is reachable again without falling back to `--plain`.
+
+### What changed
+
+- **PgUp** scrolls the output pane up by one page (output height minus one line of context overlap), revealing older content.
+- **PgDn** scrolls back toward the newest line; clamped at the bottom.
+- **Submitting** a new expression (Enter) auto-snaps the view back to the bottom -- standard scroll-on-output behavior, matching `less` and most pagers when new content arrives via a follow-style trigger.
+- **Async output** (background scripts printing via `drain_stdout_into_scrollback`) does NOT reset the offset.  You can review old content while a long-running script keeps emitting lines.
+- **Footer hint updated** to advertise the new binding.
+- Backing buffer is the existing 1024-line scrollback ring; no new memory cost.
+- Dialog/file-picker modals and the completion popup are unaffected -- they don't touch the output pane state.
+
+### Why now
+
+Before C.6, the linenoise REPL wrote to the normal terminal buffer, so terminal-native scrollback could reach scrolled-off content.  C.6 flipped boxen to the default, and boxen owns the alternate screen buffer -- terminal scrollback can't see past the visible region.  Resolves #803.
+
+### Out of scope (deferred)
+
+- Mouse-wheel scrolling: tracked under #805 (touches the same file as this change; queued behind it).
+- Scroll position indicator in the footer (e.g. `[+42]`): nice-to-have polish for a follow-up.
+
+---
+
 ## C.6 — boxen REPL is now the default (2026-06-25)
 
 ### Summary
