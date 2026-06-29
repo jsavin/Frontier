@@ -365,6 +365,11 @@ void boxen_repl_append_scrollback(boxen_repl_state_t *s, const char *line) {
 
 	int idx = s->scrollback_head;
 
+	/* 2026-06-29 JES #803: snapshot ring-fullness before the append so the
+	 * anchor-follows-content logic below can tell whether this append
+	 * actually overwrote an old slot (vs. the ring still filling). */
+	bool was_full_before = (s->scrollback_count == BOXEN_REPL_SCROLLBACK_SIZE);
+
 	/* Free the slot being overwritten (oldest entry when ring is full) */
 	if (s->scrollback[idx] != NULL) {
 		free(s->scrollback[idx]);
@@ -377,6 +382,29 @@ void boxen_repl_append_scrollback(boxen_repl_state_t *s, const char *line) {
 	/* Count grows until the ring is full */
 	if (s->scrollback_count < BOXEN_REPL_SCROLLBACK_SIZE) {
 		s->scrollback_count++;
+	}
+
+	/* 2026-06-29 JES #803: anchor-follows-content when ring is full.
+	 *
+	 * When the user is scrolled back (output_scroll_offset > 0) and the
+	 * ring was already full before this append, the oldest slot just
+	 * got overwritten.  Without compensation, the user's view -- which
+	 * is "N lines back from the newest" -- silently slides one line
+	 * newer and the content they were reading gets overwritten under
+	 * them.  Bumping the offset by 1 keeps them anchored to the same
+	 * logical content.  Less/tmux follow this convention.
+	 *
+	 * Cap at (scrollback_count - 1) so at least one line stays visible.
+	 * Guard on output_scroll_offset > 0: pinned-to-bottom view (offset
+	 * == 0) is by convention "always show newest" and must NOT auto-
+	 * advance, since that's the whole point of the snap-on-submit
+	 * behavior in submit_input. */
+	if (was_full_before && s->output_scroll_offset > 0) {
+		int max_offset = s->scrollback_count - 1;
+		if (max_offset < 0) max_offset = 0;
+		if (s->output_scroll_offset < max_offset) {
+			s->output_scroll_offset++;
+		}
 	}
 
 	if (s->output_win != NULL) {

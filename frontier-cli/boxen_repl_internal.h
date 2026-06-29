@@ -238,9 +238,20 @@ typedef struct {
 	 *
 	 * Auto-resets to 0 on submit_input (scroll-on-output: typing
 	 * unsticks the view).  Async output appended via
-	 * boxen_repl_append_scrollback does NOT reset the offset -- the
-	 * user can keep reviewing old content while a background script
-	 * prints.  PgUp/PgDn key handlers in on_input mutate this. */
+	 * boxen_repl_append_scrollback does NOT reset the offset, but when
+	 * the ring is full the append bumps the offset by 1 (capped at
+	 * scrollback_count - 1) so the user's anchor follows the content
+	 * that just slid under it -- less/tmux convention.  The user can
+	 * keep reviewing old content while a background script prints, and
+	 * the "old content" they pinned won't silently get overwritten.
+	 * PgUp/PgDn key handlers in on_input mutate this.
+	 *
+	 * Concurrency: serialized by the same convention as the sibling
+	 * ring fields above -- all read/write sites (draw_output_pane,
+	 * submit_input, on_input PgUp/PgDn, boxen_repl_append_scrollback)
+	 * run on the single REPL event-loop thread under the GIL.  If
+	 * multi-threaded readers are ever added, add the same locking the
+	 * ring fields would need. */
 	int   output_scroll_offset;
 
 	/* Loop control */

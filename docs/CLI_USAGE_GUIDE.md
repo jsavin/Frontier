@@ -1030,7 +1030,7 @@ Each key press scrolls by one page (the output pane height minus one line of con
 Behavior notes:
 
 - **Submitting a new expression** (Enter) automatically snaps the view back to the bottom -- you immediately see the new result.  This is "scroll-on-output" behavior.
-- **Async output from background scripts** does NOT snap the view back.  You can review old content while a long-running script keeps printing to the REPL.
+- **Async output from background scripts** does NOT snap the view back.  You can review old content while a long-running script keeps printing to the REPL.  When the 1024-line scrollback ring fills up, the view position auto-advances in lockstep with the new lines so the content you were reading stays on screen (rather than silently sliding under newer output).
 - **Modals** (file picker, dialog prompts) do not disturb the scroll position; closing a modal returns you to wherever the view was scrolled to.
 
 If you need true terminal-native scrollback (e.g. unbounded scrollback in your OS terminal application), use `--plain` to launch the legacy linenoise REPL instead.

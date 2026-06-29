@@ -2055,10 +2055,88 @@ static void test_append_while_scrolled_preserves_offset(void) {
 	/* Simulate async output landing in scrollback (e.g. background script
 	 * stdout drained through boxen_repl_append_scrollback). The user's
 	 * scrolled-back view must NOT snap to the bottom -- they need to keep
-	 * reading old content. */
+	 * reading old content.
+	 *
+	 * Ring is NOT full here (count=50 < SIZE), so no anchor-follows-
+	 * content bump fires; the offset is genuinely unchanged. */
 	boxen_repl_append_scrollback(&g_state, "async output");
 
 	assert(g_state.output_scroll_offset == 25);
+	assert(g_state.scrollback_count == 51);  /* ring still filling */
+
+	teardown();
+}
+
+/* 2026-06-29 JES #803: bar-raiser P1.2 -- when the ring is full and the
+ * user is scrolled back, every append overwrites the oldest slot.  The
+ * user's anchor must follow the content so the lines they were reading
+ * don't get silently overwritten under them.  Verifies the same line
+ * stays at the user's view position across appends. */
+static void test_append_when_ring_full_advances_offset_to_pin_content(void) {
+	setup();
+
+	/* Fill the ring exactly to capacity with marker lines. */
+	char buf[64];
+	for (int i = 0; i < BOXEN_REPL_SCROLLBACK_SIZE; i++) {
+		snprintf(buf, sizeof(buf), "fill%d", i);
+		boxen_repl_append_scrollback(&g_state, buf);
+	}
+	assert(g_state.scrollback_count == BOXEN_REPL_SCROLLBACK_SIZE);
+
+	/* Scroll the user back 10 lines.  Capture the content at their
+	 * anchor position so we can verify it stays the same across appends. */
+	g_state.output_scroll_offset = 10;
+	int anchor_idx_before =
+	    (g_state.scrollback_head - g_state.output_scroll_offset - 1
+	     + BOXEN_REPL_SCROLLBACK_SIZE)
+	    % BOXEN_REPL_SCROLLBACK_SIZE;
+	char anchor_content_before[64];
+	snprintf(anchor_content_before, sizeof(anchor_content_before),
+	         "%s", g_state.scrollback[anchor_idx_before]);
+
+	/* Append 5 new "async" lines (e.g. background-thread stdout). */
+	for (int i = 0; i < 5; i++) {
+		snprintf(buf, sizeof(buf), "async%d", i);
+		boxen_repl_append_scrollback(&g_state, buf);
+	}
+
+	/* Offset must have advanced by 5 to keep the anchor on the same
+	 * logical content (newest moved 5 forward, so offset compensates). */
+	assert(g_state.output_scroll_offset == 15);
+
+	/* The ring slot at (head - offset - 1) should hold the SAME content
+	 * the user was anchored to before any appends -- they kept reading
+	 * the same line, not silently sliding to whatever overwrote it. */
+	int anchor_idx_after =
+	    (g_state.scrollback_head - g_state.output_scroll_offset - 1
+	     + BOXEN_REPL_SCROLLBACK_SIZE)
+	    % BOXEN_REPL_SCROLLBACK_SIZE;
+	assert(g_state.scrollback[anchor_idx_after] != NULL);
+	assert(strcmp(g_state.scrollback[anchor_idx_after],
+	              anchor_content_before) == 0);
+
+	teardown();
+}
+
+/* 2026-06-29 JES #803: anchor-follows-content must NOT fire when the
+ * view is pinned to the bottom (offset == 0).  Pinned-to-bottom users
+ * expect "always show newest"; auto-incrementing would silently scroll
+ * them off-newest on every async append. */
+static void test_append_when_pinned_to_bottom_does_not_bump_offset(void) {
+	setup();
+
+	/* Fill the ring to capacity. */
+	char buf[64];
+	for (int i = 0; i < BOXEN_REPL_SCROLLBACK_SIZE; i++) {
+		snprintf(buf, sizeof(buf), "fill%d", i);
+		boxen_repl_append_scrollback(&g_state, buf);
+	}
+	assert(g_state.output_scroll_offset == 0);
+
+	boxen_repl_append_scrollback(&g_state, "async output");
+
+	/* Pinned (offset == 0) must stay pinned. */
+	assert(g_state.output_scroll_offset == 0);
 
 	teardown();
 }
@@ -2115,6 +2193,8 @@ int main(void) {
 	TR_RUN(test_pgup_clamps_at_top_of_scrollback);
 	TR_RUN(test_submit_resets_scroll_offset_to_zero);
 	TR_RUN(test_append_while_scrolled_preserves_offset);
+	TR_RUN(test_append_when_ring_full_advances_offset_to_pin_content);
+	TR_RUN(test_append_when_pinned_to_bottom_does_not_bump_offset);
 
 	TR_SUMMARY();
 	return TR_EXIT_CODE();

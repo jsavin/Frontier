@@ -15,7 +15,7 @@ The boxen REPL output pane now supports in-app scrollback via **PgUp** and **PgD
 - **PgUp** scrolls the output pane up by one page (output height minus one line of context overlap), revealing older content.
 - **PgDn** scrolls back toward the newest line; clamped at the bottom.
 - **Submitting** a new expression (Enter) auto-snaps the view back to the bottom -- standard scroll-on-output behavior, matching `less` and most pagers when new content arrives via a follow-style trigger.
-- **Async output** (background scripts printing via `drain_stdout_into_scrollback`) does NOT reset the offset.  You can review old content while a long-running script keeps emitting lines.
+- **Async output** (background scripts printing via `drain_stdout_into_scrollback`) does NOT reset the offset.  You can review old content while a long-running script keeps emitting lines.  When the 1024-line ring fills, the offset auto-advances in lockstep with the overwrites so the line you were reading stays on screen instead of silently sliding under newer content (less/tmux convention).
 - **Footer hint updated** to advertise the new binding.
 - Backing buffer is the existing 1024-line scrollback ring; no new memory cost.
 - Dialog/file-picker modals and the completion popup are unaffected -- they don't touch the output pane state.
