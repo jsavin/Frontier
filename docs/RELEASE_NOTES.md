@@ -4,6 +4,24 @@ Most-recent first.  Each entry summarizes user-visible changes for the release.
 
 ---
 
+## C.6.2 — boxen REPL: visible errors for slash commands (2026-06-29)
+
+### Summary
+
+Fixes a silent-failure class in the boxen REPL: slash-command error messages (e.g. `/list builtins` when `builtins` is not a valid path) now appear in the scrollback, matching the behavior of the linenoise (`--plain`) REPL.
+
+### What changed
+
+- `/list <bad-path>` now prints `Error: '<path>' is not a valid table path (...)` in the boxen scrollback. Previously the line returned a fresh prompt with no output and no error (#804).
+- The same fix restores visibility for any other slash-command code path whose diagnostic was written via `fputs(stdout)` without an explicit `fflush(stdout)`.
+- Linenoise (`--plain`) behavior is unchanged.
+
+### Why it was silent
+
+When the boxen REPL captures `stdout`/`stderr` into its scrollback pipe, libc switches those streams from line-buffered (tty default) to block-buffered (pipe default). Any diagnostic that wrote a newline-terminated message via `fputs` without an explicit `fflush` sat in the libc buffer and never reached the scrollback drain. The fix forces line-buffering on the captured streams via `setvbuf(_, NULL, _IOLBF, 0)` immediately after the pipe redirect, so newline-terminated writes flush automatically — eliminating the entire class of missing-`fflush` silent-failure bugs.
+
+---
+
 ## C.6.1 — boxen REPL output-pane scrollback (2026-06-29)
 
 ### Summary

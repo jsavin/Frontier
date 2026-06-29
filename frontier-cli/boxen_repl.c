@@ -1971,6 +1971,27 @@ int boxen_repl_main(const cli_options_t *opts) {
 				} else {
 					close(pipefd[1]);  /* write end is now duplicated into stdout/stderr */
 
+					/* 2026-06-29 JES #804: force stdout/stderr to line-buffered
+					 * after pipe redirect.  By default libc switches a FILE* to
+					 * block-buffered when its underlying fd is not a tty (which
+					 * the pipe is not), so any code that writes a newline-
+					 * terminated diagnostic via fputs/printf without an explicit
+					 * fflush(stdout) sits in the libc buffer and never reaches
+					 * drain_stdout_into_scrollback.  That swallowed the visible
+					 * error for `/list builtins` (and any other slash-command
+					 * error path that omitted fflush -- a whole class of
+					 * silent-failure bugs).  Restoring line-buffering matches
+					 * the linenoise/--plain semantics where stdout is a tty and
+					 * line-buffered by default, so error messages flush on the
+					 * trailing '\n' the same way they always have.
+					 *
+					 * setvbuf may fail (e.g. allocator pressure); the comment
+					 * notes the failure mode but we still want capture to come
+					 * up.  A silent revert to block-buffering is no worse than
+					 * the prior behavior, so we don't gate capture on success. */
+					(void)setvbuf(stdout, NULL, _IOLBF, 0);
+					(void)setvbuf(stderr, NULL, _IOLBF, 0);
+
 					state->saved_stdout = saved_out;
 					state->saved_stderr = saved_err;
 					state->pipe_read_fd = pipefd[0];
