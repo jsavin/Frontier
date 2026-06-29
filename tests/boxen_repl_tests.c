@@ -1941,6 +1941,207 @@ static void test_completion_popup_slash_with_empty_input_inserts_not_palette(voi
 }
 
 /* -------------------------------------------------------------------------
+ * 2026-06-29 JES #803: output-pane scrollback (PgUp/PgDn).
+ *
+ * The boxen REPL owns the alternate screen buffer, so terminal-native
+ * scrollback can't reach lines that scroll off the top of the output pane.
+ * These tests pin the behavioral contract for in-app scrollback:
+ *
+ *   1. PgUp increments output_scroll_offset by (output_h - 1) "page" lines.
+ *   2. PgDn decrements output_scroll_offset by the same page step,
+ *      clamped at 0 (can't scroll past newest).
+ *   3. Offset is clamped at (scrollback_count - 1) on the upward side
+ *      (can't scroll past oldest -- at least one line stays visible).
+ *   4. Submitting a new expression resets offset to 0 (scroll-on-output:
+ *      typing/submitting unsticks the view).
+ *   5. Appending output while scrolled does NOT reset offset (user can
+ *      review old content while a background script prints).
+ * ---------------------------------------------------------------------- */
+
+/* Helper: fill the ring so PgUp has something to scroll into. */
+static void fill_scrollback(int n) {
+	char buf[64];
+	for (int i = 0; i < n; i++) {
+		snprintf(buf, sizeof(buf), "line%d", i);
+		boxen_repl_append_scrollback(&g_state, buf);
+	}
+}
+
+static void test_pgup_increments_output_scroll_offset(void) {
+	setup();
+
+	/* Fill with more lines than fit in the pane. Output pane height in
+	 * test setup is TEST_HEIGHT - 2 = 22 rows. */
+	fill_scrollback(50);
+	assert(g_state.output_scroll_offset == 0);
+
+	boxen_event_t ev = make_key_event(BOXEN_KEY_PGUP);
+	boxen_repl_run_one_tick(&g_state, &ev);
+
+	/* Page step is output_h - 1 = 21. */
+	assert(g_state.output_scroll_offset == 21);
+
+	boxen_repl_run_one_tick(&g_state, &ev);
+	/* Second PgUp -> 42, still within (count=50 - 1=49) clamp. */
+	assert(g_state.output_scroll_offset == 42);
+
+	teardown();
+}
+
+static void test_pgdn_decrements_offset_and_clamps_at_zero(void) {
+	setup();
+	fill_scrollback(50);
+
+	/* Manually advance the offset, then walk it back with PgDn. */
+	g_state.output_scroll_offset = 30;
+
+	boxen_event_t ev = make_key_event(BOXEN_KEY_PGDN);
+	boxen_repl_run_one_tick(&g_state, &ev);
+	assert(g_state.output_scroll_offset == 9);  /* 30 - 21 */
+
+	boxen_repl_run_one_tick(&g_state, &ev);
+	assert(g_state.output_scroll_offset == 0);  /* clamped, not -12 */
+
+	/* Further PgDn at zero stays at zero. */
+	boxen_repl_run_one_tick(&g_state, &ev);
+	assert(g_state.output_scroll_offset == 0);
+
+	teardown();
+}
+
+static void test_pgup_clamps_at_top_of_scrollback(void) {
+	setup();
+	fill_scrollback(10);  /* fewer lines than the pane height (22) */
+
+	/* PgUp once: page step would be 21, but only 9 = (count-1) lines
+	 * of scroll headroom exist (we keep one line visible). */
+	boxen_event_t ev = make_key_event(BOXEN_KEY_PGUP);
+	boxen_repl_run_one_tick(&g_state, &ev);
+	assert(g_state.output_scroll_offset == 9);
+
+	/* Additional PgUp doesn't push past the oldest entry. */
+	boxen_repl_run_one_tick(&g_state, &ev);
+	assert(g_state.output_scroll_offset == 9);
+
+	teardown();
+}
+
+static void test_submit_resets_scroll_offset_to_zero(void) {
+	setup();
+	fill_scrollback(50);
+
+	g_state.output_scroll_offset = 30;
+
+	/* Pre-load input_buf with an expression and dispatch via Enter. */
+	snprintf(g_state.input_buf, sizeof(g_state.input_buf), "1 + 1");
+	g_state.input_len        = (int)strlen(g_state.input_buf);
+	g_state.input_cursor_pos = g_state.input_len;
+
+	boxen_event_t enter = make_key_event(BOXEN_KEY_ENTER);
+	boxen_repl_run_one_tick(&g_state, &enter);
+
+	/* After dispatch the view snaps back to the bottom. */
+	assert(g_state.output_scroll_offset == 0);
+
+	teardown();
+}
+
+static void test_append_while_scrolled_preserves_offset(void) {
+	setup();
+	fill_scrollback(50);
+
+	g_state.output_scroll_offset = 25;
+
+	/* Simulate async output landing in scrollback (e.g. background script
+	 * stdout drained through boxen_repl_append_scrollback). The user's
+	 * scrolled-back view must NOT snap to the bottom -- they need to keep
+	 * reading old content.
+	 *
+	 * Ring is NOT full here (count=50 < SIZE), so no anchor-follows-
+	 * content bump fires; the offset is genuinely unchanged. */
+	boxen_repl_append_scrollback(&g_state, "async output");
+
+	assert(g_state.output_scroll_offset == 25);
+	assert(g_state.scrollback_count == 51);  /* ring still filling */
+
+	teardown();
+}
+
+/* 2026-06-29 JES #803: bar-raiser P1.2 -- when the ring is full and the
+ * user is scrolled back, every append overwrites the oldest slot.  The
+ * user's anchor must follow the content so the lines they were reading
+ * don't get silently overwritten under them.  Verifies the same line
+ * stays at the user's view position across appends. */
+static void test_append_when_ring_full_advances_offset_to_pin_content(void) {
+	setup();
+
+	/* Fill the ring exactly to capacity with marker lines. */
+	char buf[64];
+	for (int i = 0; i < BOXEN_REPL_SCROLLBACK_SIZE; i++) {
+		snprintf(buf, sizeof(buf), "fill%d", i);
+		boxen_repl_append_scrollback(&g_state, buf);
+	}
+	assert(g_state.scrollback_count == BOXEN_REPL_SCROLLBACK_SIZE);
+
+	/* Scroll the user back 10 lines.  Capture the content at their
+	 * anchor position so we can verify it stays the same across appends. */
+	g_state.output_scroll_offset = 10;
+	int anchor_idx_before =
+	    (g_state.scrollback_head - g_state.output_scroll_offset - 1
+	     + BOXEN_REPL_SCROLLBACK_SIZE)
+	    % BOXEN_REPL_SCROLLBACK_SIZE;
+	char anchor_content_before[64];
+	snprintf(anchor_content_before, sizeof(anchor_content_before),
+	         "%s", g_state.scrollback[anchor_idx_before]);
+
+	/* Append 5 new "async" lines (e.g. background-thread stdout). */
+	for (int i = 0; i < 5; i++) {
+		snprintf(buf, sizeof(buf), "async%d", i);
+		boxen_repl_append_scrollback(&g_state, buf);
+	}
+
+	/* Offset must have advanced by 5 to keep the anchor on the same
+	 * logical content (newest moved 5 forward, so offset compensates). */
+	assert(g_state.output_scroll_offset == 15);
+
+	/* The ring slot at (head - offset - 1) should hold the SAME content
+	 * the user was anchored to before any appends -- they kept reading
+	 * the same line, not silently sliding to whatever overwrote it. */
+	int anchor_idx_after =
+	    (g_state.scrollback_head - g_state.output_scroll_offset - 1
+	     + BOXEN_REPL_SCROLLBACK_SIZE)
+	    % BOXEN_REPL_SCROLLBACK_SIZE;
+	assert(g_state.scrollback[anchor_idx_after] != NULL);
+	assert(strcmp(g_state.scrollback[anchor_idx_after],
+	              anchor_content_before) == 0);
+
+	teardown();
+}
+
+/* 2026-06-29 JES #803: anchor-follows-content must NOT fire when the
+ * view is pinned to the bottom (offset == 0).  Pinned-to-bottom users
+ * expect "always show newest"; auto-incrementing would silently scroll
+ * them off-newest on every async append. */
+static void test_append_when_pinned_to_bottom_does_not_bump_offset(void) {
+	setup();
+
+	/* Fill the ring to capacity. */
+	char buf[64];
+	for (int i = 0; i < BOXEN_REPL_SCROLLBACK_SIZE; i++) {
+		snprintf(buf, sizeof(buf), "fill%d", i);
+		boxen_repl_append_scrollback(&g_state, buf);
+	}
+	assert(g_state.output_scroll_offset == 0);
+
+	boxen_repl_append_scrollback(&g_state, "async output");
+
+	/* Pinned (offset == 0) must stay pinned. */
+	assert(g_state.output_scroll_offset == 0);
+
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
  * main
  * ---------------------------------------------------------------------- */
 int main(void) {
@@ -1985,6 +2186,15 @@ int main(void) {
 	TR_RUN(test_ctrl_a_jumps_cursor_to_start);
 	TR_RUN(test_ctrl_e_jumps_cursor_to_end);
 	TR_RUN(test_cursor_stays_at_bounds);
+
+	/* 2026-06-29 JES #803: output-pane scrollback */
+	TR_RUN(test_pgup_increments_output_scroll_offset);
+	TR_RUN(test_pgdn_decrements_offset_and_clamps_at_zero);
+	TR_RUN(test_pgup_clamps_at_top_of_scrollback);
+	TR_RUN(test_submit_resets_scroll_offset_to_zero);
+	TR_RUN(test_append_while_scrolled_preserves_offset);
+	TR_RUN(test_append_when_ring_full_advances_offset_to_pin_content);
+	TR_RUN(test_append_when_pinned_to_bottom_does_not_bump_offset);
 
 	TR_SUMMARY();
 	return TR_EXIT_CODE();
