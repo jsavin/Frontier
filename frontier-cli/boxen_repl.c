@@ -1545,6 +1545,78 @@ int boxen_repl_run_one_tick(boxen_repl_state_t *s, const boxen_event_t *ev) {
 		return REPL_CONTINUE;
 	}
 
+	/* 2026-06-29 JES #812 Phase C M4: bracketed-paste handler.
+	 *
+	 * The input decoder emits BOXEN_EV_PASTE when a paste sequence
+	 * (\e[200~ ... \e[201~) completes.  ev.paste.data is a heap-allocated
+	 * UTF-8 byte block with CR/LF already normalized to LF by the
+	 * decoder; we own it and must free() it.
+	 *
+	 * Insertion contract: drop the paste at the input bar's cursor
+	 * position, shifting any tail bytes right.  Bytes that would
+	 * overflow BOXEN_REPL_INPUT_MAX are truncated -- the alternative
+	 * (allocate a larger input_buf) would force a runtime malloc path
+	 * for every paste; truncation at the current cap is consistent with
+	 * the existing typed-char path (boxen_repl.c:1397) which already
+	 * silently drops the char when input_buf is full.
+	 *
+	 * Newlines inside the paste are inserted as literal LF bytes; we do
+	 * NOT auto-submit on embedded newlines.  The user must press Enter
+	 * explicitly to dispatch.  Auto-submit is a future enhancement
+	 * tracked under M6 cutover discussion -- some users want
+	 * multi-statement paste-and-run, others want paste-and-edit-then-
+	 * submit.  Keeping the current behavior aligned with typed-char
+	 * input (no auto-submit) is the safer default.
+	 *
+	 * If a slash-palette debounce is pending, cancel it: a paste means
+	 * the user is committing to filling the input line, not opening the
+	 * palette.  Same rationale as the printable-char path's
+	 * history_nav_idx reset above. */
+	if (ev->type == BOXEN_EV_PASTE) {
+		if (s != NULL && ev->paste.data != NULL && ev->paste.len > 0 &&
+		    s->input_len < BOXEN_REPL_INPUT_MAX - 1) {
+			/* Cancel any pending slash-palette debounce. */
+			if (s->slash_pending_until_ms != 0) {
+				s->slash_pending_until_ms = 0;
+			}
+			/* If user was navigating history, abandon nav. */
+			if (s->history_nav_idx != -1) {
+				s->history_nav_idx        = -1;
+				s->history_saved_input[0] = '\0';
+			}
+
+			size_t available = (size_t)(BOXEN_REPL_INPUT_MAX - 1 -
+			                            s->input_len);
+			size_t to_insert = (ev->paste.len < available)
+			                   ? ev->paste.len : available;
+
+			/* Shift the tail right by to_insert bytes to make room. */
+			size_t tail_len = (size_t)(s->input_len -
+			                           s->input_cursor_pos);
+			if (tail_len > 0) {
+				memmove(s->input_buf + s->input_cursor_pos + to_insert,
+				        s->input_buf + s->input_cursor_pos,
+				        tail_len);
+			}
+			memcpy(s->input_buf + s->input_cursor_pos,
+			       ev->paste.data, to_insert);
+			s->input_len        += (int)to_insert;
+			s->input_cursor_pos += (int)to_insert;
+			s->input_buf[s->input_len] = '\0';
+
+			if (s->input_win != NULL) {
+				boxen_window_invalidate(s->input_win);
+			}
+		}
+		/* Free the decoder-allocated paste data regardless of whether
+		 * we inserted anything.  free(NULL) is a no-op, so the
+		 * defensive guard is just on data!=NULL.  Per the
+		 * BOXEN_EV_PASTE contract on boxen.h, the event consumer
+		 * (this branch) owns the data and must free it. */
+		free(ev->paste.data);
+		return s != NULL && s->should_quit ? REPL_QUIT : REPL_CONTINUE;
+	}
+
 	boxen_dispatch_event(ev);
 
 	/* 2026-06-17 JES #691 Phase C.0.7a: check slash debounce after every event.

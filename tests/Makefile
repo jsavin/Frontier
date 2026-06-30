@@ -644,11 +644,16 @@ boxen_outline_tests: boxen_outline_tests.c $(BOXEN_OUTLINE_TEST_SRCS)
 # INPUT_DECODER_TEST_SEAM define exposes input_decoder_inject_bytes() and
 # input_decoder_buffered_bytes() so the harness can drive bytes without a
 # real PTY.  See planning/phase_c/INPUT_DECODER_PLAN.md section 6.1.
-input_decoder_tests: input_decoder_tests.c $(BOXEN_DIR)/input_decoder.c $(BOXEN_DIR)/input_decoder.h
+#
+# 2026-06-29 JES #812 M4: link boxen_log.c so input_decoder.c's BOXEN_LOG_W
+# (used on the paste-size-cap truncation path) resolves, and so the M4
+# tests can install boxen_set_log_hook() to observe the warning.
+input_decoder_tests: input_decoder_tests.c $(BOXEN_DIR)/input_decoder.c $(BOXEN_DIR)/input_decoder.h $(BOXEN_DIR)/boxen_log.c
 	$(CC) $(CFLAGS) \
 		-I$(BOXEN_DIR) \
 		-DINPUT_DECODER_TEST_SEAM \
 		input_decoder_tests.c $(BOXEN_DIR)/input_decoder.c \
+		$(BOXEN_DIR)/boxen_log.c \
 		-o $@ $(LINK_LIBS)
 
 # Pure helper for arg-injection — no Frontier runtime / handle deps, so it

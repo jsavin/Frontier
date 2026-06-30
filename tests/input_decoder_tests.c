@@ -1904,27 +1904,271 @@ static void test_x10_mouse_malformed_payload_under_min(void) {
 }
 
 /* -------------------------------------------------------------------------
- * M4 SKIP stubs -- bracketed paste + BOXEN_EV_PASTE.
+ * 2026-06-29 JES #812 Phase C M4: bracketed-paste behavioral tests.
+ *
+ * Plan reference: planning/phase_c/INPUT_DECODER_PLAN.md sections 3.8, 5.3,
+ * 4 (PASTE_ACTIVE state), 7 (M4 spec).
+ *
+ * Each test installs (or relies on calloc-zeroed) a log hook so we can
+ * observe BOXEN_LOG_W emission on the size-cap path.  The hook state is
+ * test-local (static counters) and reset at the top of every test.
  * ---------------------------------------------------------------------- */
 
-static void test_skip_bracketed_paste_simple(void) {
-	tr_skip("M4: \\e[200~hello\\e[201~ -> BOXEN_EV_PASTE data=\"hello\" "
-	        "(plan section 3.8); requires boxen.h ABI add for BOXEN_EV_PASTE");
+static int      g_paste_warn_count = 0;
+static char     g_paste_last_log[512];
+
+static void paste_log_hook(boxen_log_level_t level, const char *file,
+                           int line, const char *msg, void *user_data) {
+	(void)file; (void)line; (void)user_data;
+	if (level == BOXEN_LOG_WARN) {
+		g_paste_warn_count++;
+		snprintf(g_paste_last_log, sizeof(g_paste_last_log), "%s",
+		         msg ? msg : "");
+	}
 }
 
-static void test_skip_bracketed_paste_with_newlines(void) {
-	tr_skip("M4: paste with embedded \\n / \\r\\n -> single PASTE event "
-	        "(plan section 7 M4)");
+static void paste_log_reset(void) {
+	g_paste_warn_count = 0;
+	g_paste_last_log[0] = '\0';
+	boxen_set_log_hook(paste_log_hook, NULL);
 }
 
-static void test_skip_bracketed_paste_size_cap_truncation(void) {
-	tr_skip("M4: paste > 256 KiB -> truncated + BOXEN_LOG_W "
-	        "(plan section 3.8, R5)");
+/* 2026-06-29 JES #812 M4: simple paste round-trip.
+ *
+ * \e[200~hello\e[201~ -> BOXEN_EV_PASTE with data="hello", len=5.
+ * The caller owns ev.paste.data and must free() it (the test does so
+ * explicitly even though the harness exits afterward; matches production
+ * contract). */
+static void test_bracketed_paste_simple(void) {
+	paste_log_reset();
+	input_decoder_t *dec = input_decoder_create(-1);
+	assert(dec != NULL);
+
+	static const uint8_t bytes[] = "\x1b[200~hello\x1b[201~";
+	boxen_event_t ev;
+	inject_and_poll(dec, bytes, sizeof(bytes) - 1, BOXEN_OK, &ev);
+
+	assert(ev.type == BOXEN_EV_PASTE);
+	assert(ev.paste.len == 5);
+	assert(ev.paste.data != NULL);
+	assert(memcmp(ev.paste.data, "hello", 5) == 0);
+	/* No warning on the happy path. */
+	assert(g_paste_warn_count == 0);
+
+	free(ev.paste.data);
+	input_decoder_destroy(dec);
 }
 
-static void test_skip_bracketed_paste_embedded_esc_is_literal(void) {
-	tr_skip("M4: ESC sequences inside paste markers -> treated as literal "
-	        "text, not parsed (plan section 7 M4)");
+/* 2026-06-29 JES #812 M4: paste with embedded newlines.
+ *
+ * The plan calls for CR/LF normalization (terminals typically send CR for
+ * line breaks inside paste; we normalize to LF so downstream consumers
+ * see consistent line terminators regardless of how the user's clipboard
+ * encoded the original text).
+ *
+ * Input contains a mix: "a\nb\r\nc\rd" (LF, CRLF, lone CR).
+ * Expected after normalization: "a\nb\nc\nd" -- every CR / CRLF collapses
+ * to a single LF; a bare LF passes through unchanged. */
+static void test_bracketed_paste_with_newlines(void) {
+	paste_log_reset();
+	input_decoder_t *dec = input_decoder_create(-1);
+	assert(dec != NULL);
+
+	static const uint8_t bytes[] = "\x1b[200~a\nb\r\nc\rd\x1b[201~";
+	boxen_event_t ev;
+	inject_and_poll(dec, bytes, sizeof(bytes) - 1, BOXEN_OK, &ev);
+
+	assert(ev.type == BOXEN_EV_PASTE);
+	assert(ev.paste.data != NULL);
+	assert(ev.paste.len == 7);
+	assert(memcmp(ev.paste.data, "a\nb\nc\nd", 7) == 0);
+
+	free(ev.paste.data);
+	input_decoder_destroy(dec);
+}
+
+/* 2026-06-29 JES #812 M4: paste at the 256 KiB size cap.
+ *
+ * Inject a paste whose body is exactly cap+1024 bytes ('x' repeated).  The
+ * decoder must:
+ *   (a) truncate the emitted data to the cap (262144 bytes),
+ *   (b) emit exactly one BOXEN_LOG_W,
+ *   (c) still emit a single well-formed BOXEN_EV_PASTE event when the
+ *       closing \e[201~ arrives,
+ *   (d) resync to GROUND after the close marker (a subsequent printable
+ *       byte produces a normal key event, not garbage). */
+static void test_bracketed_paste_size_cap_truncation(void) {
+	paste_log_reset();
+	input_decoder_t *dec = input_decoder_create(-1);
+	assert(dec != NULL);
+
+	enum { BODY_LEN = 256 * 1024 + 1024 };  /* cap + 1 KiB */
+	enum { EXPECTED_TRUNCATED = 256 * 1024 };
+
+	/* Heap the body buffer (262K + headers on the stack would push us past
+	 * the default thread stack on some platforms). */
+	uint8_t *body = (uint8_t *)malloc(BODY_LEN);
+	assert(body != NULL);
+	memset(body, 'x', BODY_LEN);
+
+	/* Open marker + body + close marker, fed in pieces so the decoder
+	 * exercises the multi-inject path that real read(2) bursts will use. */
+	static const uint8_t open_marker[]  = "\x1b[200~";
+	static const uint8_t close_marker[] = "\x1b[201~";
+
+	/* Open the paste. */
+	size_t n = input_decoder_inject_bytes(dec, open_marker,
+	                                      sizeof(open_marker) - 1);
+	assert(n == sizeof(open_marker) - 1);
+
+	/* Drain any partial state (open marker alone produces no event). */
+	boxen_event_t ev;
+	int rc = input_decoder_poll(dec, &ev, 0);
+	assert(rc == BOXEN_ERR_TIMEOUT);
+
+	/* Feed body in chunks small enough to fit in the 4 KiB ring buffer at
+	 * once, draining between each.  Real paste flow will be similar: read(2)
+	 * fills the ring, poll() drains.  The paste state machine is
+	 * responsible for accumulating bytes into its OWN growing buffer (the
+	 * 4 KiB ring is for inter-poll back-pressure; paste content lives in
+	 * the heap-allocated paste_buf inside the decoder). */
+	enum { CHUNK = 1024 };  /* well under INPUT_DECODER_BUFFER_SIZE = 4096 */
+	for (size_t off = 0; off < BODY_LEN; off += CHUNK) {
+		size_t want = (off + CHUNK > BODY_LEN) ? (BODY_LEN - off) : CHUNK;
+		size_t accepted = input_decoder_inject_bytes(dec, body + off, want);
+		assert(accepted == want);
+		rc = input_decoder_poll(dec, &ev, 0);
+		/* Mid-paste polls return TIMEOUT (no event yet -- still buffering). */
+		assert(rc == BOXEN_ERR_TIMEOUT);
+	}
+
+	/* Close the paste. */
+	n = input_decoder_inject_bytes(dec, close_marker,
+	                               sizeof(close_marker) - 1);
+	assert(n == sizeof(close_marker) - 1);
+
+	rc = input_decoder_poll(dec, &ev, 0);
+	assert(rc == BOXEN_OK);
+	assert(ev.type == BOXEN_EV_PASTE);
+	assert(ev.paste.data != NULL);
+	assert(ev.paste.len == EXPECTED_TRUNCATED);
+	/* All bytes are 'x'. */
+	for (size_t i = 0; i < ev.paste.len; i++) {
+		assert(ev.paste.data[i] == 'x');
+	}
+	/* Exactly one truncation warning. */
+	assert(g_paste_warn_count == 1);
+	assert(strstr(g_paste_last_log, "paste") != NULL ||
+	       strstr(g_paste_last_log, "truncated") != NULL);
+
+	free(ev.paste.data);
+	free(body);
+
+	/* Resync check: a printable after close-marker must decode as a normal
+	 * key event, proving we returned to GROUND. */
+	static const uint8_t one_char[] = "Z";
+	inject_and_poll(dec, one_char, sizeof(one_char) - 1, BOXEN_OK, &ev);
+	assert(ev.type == BOXEN_EV_KEY);
+	assert(ev.key.ch == 'Z');
+
+	input_decoder_destroy(dec);
+}
+
+/* 2026-06-29 JES #812 M4: ESC bytes inside paste are literal text.
+ *
+ * The PASTE_ACTIVE state must NOT re-enter the CSI parser when ESC
+ * arrives inside the paste body.  Only the literal byte sequence
+ * "\e[201~" terminates the paste; everything else is verbatim content.
+ *
+ * Test body: "\e[A\e[B\e]999\\X" between the markers.  Without the
+ * literal-bytes guard, the decoder would parse \e[A as KEY_UP, \e[B as
+ * KEY_DOWN, etc., losing the paste content entirely. */
+static void test_bracketed_paste_embedded_esc_is_literal(void) {
+	paste_log_reset();
+	input_decoder_t *dec = input_decoder_create(-1);
+	assert(dec != NULL);
+
+	static const uint8_t bytes[] =
+	    "\x1b[200~""\x1b[A""\x1b[B""\x1b]999\\X""\x1b[201~";
+	static const char expected[] = "\x1b[A\x1b[B\x1b]999\\X";
+
+	boxen_event_t ev;
+	inject_and_poll(dec, bytes, sizeof(bytes) - 1, BOXEN_OK, &ev);
+
+	assert(ev.type == BOXEN_EV_PASTE);
+	assert(ev.paste.data != NULL);
+	assert(ev.paste.len == sizeof(expected) - 1);
+	assert(memcmp(ev.paste.data, expected, sizeof(expected) - 1) == 0);
+
+	free(ev.paste.data);
+	input_decoder_destroy(dec);
+}
+
+/* 2026-06-29 JES #812 M4: empty paste round-trip.
+ *
+ * \e[200~\e[201~ with no content should still emit a BOXEN_EV_PASTE
+ * (len=0).  Production REPL handler treats this as a no-op insertion;
+ * the event still needs to fire so the consumer can clear any
+ * paste-in-progress UI state. */
+static void test_bracketed_paste_empty(void) {
+	paste_log_reset();
+	input_decoder_t *dec = input_decoder_create(-1);
+	assert(dec != NULL);
+
+	static const uint8_t bytes[] = "\x1b[200~\x1b[201~";
+	boxen_event_t ev;
+	inject_and_poll(dec, bytes, sizeof(bytes) - 1, BOXEN_OK, &ev);
+
+	assert(ev.type == BOXEN_EV_PASTE);
+	assert(ev.paste.len == 0);
+	/* data may be NULL or non-NULL with len==0; either is acceptable per
+	 * the boxen.h contract.  Free is a no-op on NULL. */
+	free(ev.paste.data);
+	input_decoder_destroy(dec);
+}
+
+/* 2026-06-29 JES #812 M4: paste split across multiple inject calls.
+ *
+ * Mirrors the M2 partial-sequence tests: split the open marker, body, and
+ * close marker across multiple inject_bytes / poll calls.  The decoder
+ * state must survive across calls (the PASTE_ACTIVE state and paste_buf
+ * are decoder fields, not poll-local). */
+static void test_bracketed_paste_split_across_inject(void) {
+	paste_log_reset();
+	input_decoder_t *dec = input_decoder_create(-1);
+	assert(dec != NULL);
+
+	boxen_event_t ev;
+
+	/* Split 1: half the open marker. */
+	static const uint8_t part1[] = "\x1b[20";
+	input_decoder_inject_bytes(dec, part1, sizeof(part1) - 1);
+	int rc = input_decoder_poll(dec, &ev, 0);
+	assert(rc == BOXEN_ERR_TIMEOUT);
+
+	/* Split 2: rest of open + start of body. */
+	static const uint8_t part2[] = "0~hel";
+	input_decoder_inject_bytes(dec, part2, sizeof(part2) - 1);
+	rc = input_decoder_poll(dec, &ev, 0);
+	assert(rc == BOXEN_ERR_TIMEOUT);
+
+	/* Split 3: rest of body + partial close marker. */
+	static const uint8_t part3[] = "lo\x1b[20";
+	input_decoder_inject_bytes(dec, part3, sizeof(part3) - 1);
+	rc = input_decoder_poll(dec, &ev, 0);
+	assert(rc == BOXEN_ERR_TIMEOUT);
+
+	/* Split 4: finish close marker. */
+	static const uint8_t part4[] = "1~";
+	input_decoder_inject_bytes(dec, part4, sizeof(part4) - 1);
+	rc = input_decoder_poll(dec, &ev, 0);
+	assert(rc == BOXEN_OK);
+	assert(ev.type == BOXEN_EV_PASTE);
+	assert(ev.paste.len == 5);
+	assert(memcmp(ev.paste.data, "hello", 5) == 0);
+
+	free(ev.paste.data);
+	input_decoder_destroy(dec);
 }
 
 /* -------------------------------------------------------------------------
@@ -2099,11 +2343,13 @@ int main(void) {
 	TR_RUN(test_sgr_mouse_malformed_zero_coord);
 	TR_RUN(test_x10_mouse_malformed_payload_under_min);
 
-	/* M4 SKIP -- bracketed paste. */
-	TR_RUN(test_skip_bracketed_paste_simple);
-	TR_RUN(test_skip_bracketed_paste_with_newlines);
-	TR_RUN(test_skip_bracketed_paste_size_cap_truncation);
-	TR_RUN(test_skip_bracketed_paste_embedded_esc_is_literal);
+	/* 2026-06-29 JES #812 M4: bracketed paste + BOXEN_EV_PASTE. */
+	TR_RUN(test_bracketed_paste_simple);
+	TR_RUN(test_bracketed_paste_with_newlines);
+	TR_RUN(test_bracketed_paste_size_cap_truncation);
+	TR_RUN(test_bracketed_paste_embedded_esc_is_literal);
+	TR_RUN(test_bracketed_paste_empty);
+	TR_RUN(test_bracketed_paste_split_across_inject);
 
 	/* M5 SKIP -- Kitty keyboard protocol. */
 	TR_RUN(test_skip_kitty_csi_u_letter);
@@ -2116,7 +2362,7 @@ int main(void) {
 	 * tally in the test log without polluting the JSON tally itself.
 	 * tr_count was updated by TR_RUN as each test ran; g_skip_count tracks
 	 * the subset that called tr_skip() instead of asserting behavior. */
-	printf("[skip-summary] %d of %d tests are SKIP stubs deferred to M2-M5\n",
+	printf("[skip-summary] %d of %d tests are SKIP stubs deferred to M5\n",
 	       g_skip_count, tr_count);
 
 	TR_SUMMARY();

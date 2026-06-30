@@ -7,6 +7,9 @@
  *   events from the buffered byte stream.
  * 2026-06-29 JES #811 M3: SGR mouse parsing, X10 fallback, double-click
  *   synthesis, burst-read contract.
+ * 2026-06-29 JES #812 M4: bracketed-paste handling (PASTE_ACTIVE state +
+ *   heap-grown paste buffer + BOXEN_EV_PASTE emission with CR/LF
+ *   normalization, 256 KiB size cap, and BOXEN_LOG_W on truncation).
  *
  * Scope of this file at M2:
  *   - Allocate / free the input_decoder_t struct.
@@ -67,6 +70,35 @@
  * masked-index arithmetic if we move from memmove-on-drain to a true ring. */
 #define INPUT_DECODER_BUFFER_SIZE 4096
 
+/* 2026-06-29 JES #812 M4: bracketed-paste sizing.
+ *
+ * INPUT_DECODER_PASTE_CAP is the hard ceiling on a single paste's accepted
+ * byte count.  Past this size we keep PARSING the paste body (so the
+ * \e[201~ marker still terminates cleanly and we return to GROUND) but
+ * STOP appending bytes to the heap buffer.  The cap fires once per paste;
+ * BOXEN_LOG_W is emitted the first time we drop a byte on this path so
+ * the operator sees a single deterministic warning per truncated paste.
+ *
+ * INPUT_DECODER_PASTE_INITIAL is the first heap allocation size.  Reads
+ * grow geometrically (doubling) up to the cap; the initial size matters
+ * only for short pastes (the common case -- a clipboard snippet is
+ * typically <1 KiB) so we don't waste pages on a single keypress-worth
+ * of data.  256 bytes covers most identifier / URL pastes without a
+ * realloc; longer pastes pay one or two realloc costs to reach 256 KiB.
+ *
+ * Plan reference: section 3.8 (size limits + truncation contract),
+ * section 7 M4 (deliverable scope), risk R5 (size-cap overflow). */
+#define INPUT_DECODER_PASTE_CAP     (256 * 1024)
+#define INPUT_DECODER_PASTE_INITIAL 256
+
+/* 2026-06-29 JES #812 M4: bracketed-paste close-marker length.
+ *
+ * The closing sequence "\x1b[201~" is 6 bytes.  We scan a 6-byte suffix
+ * window of the paste buffer after each appended byte to detect the
+ * close marker.  Keeping the constant near the buffer cap and the
+ * append site makes the suffix-scan invariant easy to audit. */
+#define INPUT_DECODER_PASTE_CLOSE_LEN 6
+
 /* 2026-06-30 JES #810 M2: CSI parameter buffer.
  *
  * A modifier-rich CSI sequence holds at most ~3 semicolon-separated params
@@ -125,6 +157,17 @@ typedef enum {
 	 * GROUND on overflow, which let `\e[ <65+ digits> A` inject the trailing
 	 * digits into the input stream after the cap was hit). */
 	DEC_STATE_CSI_SWALLOW,
+	/* 2026-06-29 JES #812 M4: inside a bracketed paste.
+	 *
+	 * Entered when decode_csi sees \e[200~; left when the trailing
+	 * "\x1b[201~" byte sequence is observed in the paste content.  While
+	 * in this state EVERY byte (including ESC and CSI introducers) is
+	 * treated as literal paste content -- the state machine NEVER falls
+	 * back into CSI parsing for bytes that arrive during a paste, even
+	 * if they would be valid escape sequences in GROUND.  This is the
+	 * point of bracketed paste: a Cmd-V containing "\e[A" must appear as
+	 * literal text in the paste buffer, not as a KEY_UP event. */
+	DEC_STATE_PASTE_ACTIVE,
 } dec_state_t;
 
 struct input_decoder {
@@ -237,6 +280,46 @@ struct input_decoder {
 	 * 3 raw payload bytes from the ring before emitting the event.  This flag
 	 * suspends normal state-machine processing until the bytes arrive. */
 	bool x10_pending;
+
+	/* 2026-06-29 JES #812 M4: bracketed-paste accumulator.
+	 *
+	 * paste_buf is heap-allocated lazily on entry to PASTE_ACTIVE (when
+	 * decode_csi sees \e[200~).  paste_len tracks the number of bytes
+	 * appended so far.  paste_cap tracks the current allocated capacity,
+	 * grown geometrically up to INPUT_DECODER_PASTE_CAP.  paste_truncated
+	 * latches true the first time we drop a byte (one BOXEN_LOG_W per
+	 * paste, not one per dropped byte).
+	 *
+	 * paste_close_match is the count of consecutive bytes of the
+	 * "\x1b[201~" close marker matched so far.  Tracked independently of
+	 * the paste buffer because, after the truncation cap is reached, we
+	 * STOP appending to paste_buf but must KEEP scanning the byte stream
+	 * for the close marker -- otherwise a paste larger than the cap
+	 * never terminates and the decoder stays wedged in PASTE_ACTIVE
+	 * forever.  On a partial mismatch (e.g., "\x1b[20" followed by 'x'),
+	 * the previously matched bytes are committed to paste_buf and the
+	 * matcher resets (see flush_partial_close_match in poll).
+	 *
+	 * On a successful close (\x1b[201~ seen), ownership of paste_buf
+	 * transfers to the emitted BOXEN_EV_PASTE event (ev.paste.data); the
+	 * decoder zeroes its own pointer and the caller owns the free().  On
+	 * input_decoder_destroy with an in-progress paste, paste_buf is freed
+	 * to prevent a leak.  See plan section 3.8 + risk R7 (caller-free
+	 * contract).
+	 *
+	 * Memory model: paste_buf can be NULL if the paste body is empty (no
+	 * bytes between markers); in that case the emitted event has
+	 * data=NULL, len=0.  Otherwise paste_buf is a single contiguous
+	 * malloc'd region of paste_cap bytes, of which the first paste_len
+	 * are populated.
+	 *
+	 * Single-owner / GIL invariant from input_decoder.h applies; no
+	 * locking. */
+	char    *paste_buf;
+	size_t   paste_len;
+	size_t   paste_cap;
+	bool     paste_truncated;
+	uint8_t  paste_close_match;   /* 0..INPUT_DECODER_PASTE_CLOSE_LEN */
 };
 
 /* -------------------------------------------------------------------------
@@ -262,6 +345,14 @@ input_decoder_t *input_decoder_create(int tty_fd) {
 	dec->utf8_remaining = 0;
 	dec->utf8_codepoint = 0;
 	dec->parse_errors = 0;
+	/* 2026-06-29 JES #812 M4: paste buffer is lazy-allocated on entry to
+	 * PASTE_ACTIVE.  All fields zeroed by calloc above; explicit reset
+	 * here documents the post-condition. */
+	dec->paste_buf         = NULL;
+	dec->paste_len         = 0;
+	dec->paste_cap         = 0;
+	dec->paste_truncated   = false;
+	dec->paste_close_match = 0;
 	return dec;
 }
 
@@ -269,9 +360,14 @@ void input_decoder_destroy(input_decoder_t *dec) {
 	if (dec == NULL) {
 		return;
 	}
-	/* M1: no resources beyond the struct itself.  M3 / M4 will own paste
-	 * buffers and possibly an escape-write retry queue; both will be freed
-	 * here. */
+	/* 2026-06-29 JES #812 M4: free the in-progress paste buffer if any.
+	 * The buffer is normally consumed by the BOXEN_EV_PASTE emission
+	 * (ownership transfers to the caller, who frees ev.paste.data); if
+	 * the decoder is destroyed mid-paste -- e.g., shutdown during a
+	 * runaway paste burst, or a test that exits early -- this prevents a
+	 * leak.  free(NULL) is a no-op, so this is safe whether or not a
+	 * paste was active. */
+	free(dec->paste_buf);
 	free(dec);
 }
 
@@ -753,6 +849,84 @@ static bool decode_sgr_mouse(input_decoder_t *dec, const uint8_t *csi_buf,
 	return true;
 }
 
+/* 2026-06-29 JES #812 M4: paste-buffer helpers.
+ *
+ * paste_buf_append: append a single content byte to dec->paste_buf, growing
+ *   the heap allocation geometrically (doubling) up to INPUT_DECODER_PASTE_CAP.
+ *   Past the cap, byte is dropped and paste_truncated is latched (one
+ *   BOXEN_LOG_W per paste).  Returns nothing -- success vs. truncation is
+ *   reflected only in dec->paste_truncated; the caller continues parsing
+ *   the rest of the paste regardless.
+ *
+ * paste_buf_reset: zero the paste accumulator fields without freeing.  Used
+ *   after the BOXEN_EV_PASTE event takes ownership of the buffer (so we
+ *   don't double-free).
+ *
+ * Growth strategy: 256 -> 512 -> 1024 -> ... -> 256 KiB.  Realloc on each
+ * doubling; ~10 reallocs total to reach the cap.  Cheap; not the hot path.
+ * The previous content survives realloc by definition.
+ *
+ * On allocation failure inside paste_buf_append we latch paste_truncated
+ * and stop growing (we keep whatever bytes we already buffered).  This
+ * matches the "truncate + warn" contract: a paste that hits ENOMEM
+ * mid-flight still emits the partial event so the user sees something
+ * rather than nothing. */
+static void paste_buf_append(input_decoder_t *dec, uint8_t b) {
+	/* 2026-06-29 JES #812 M4 gate-fix: once truncation is latched (cap
+	 * reached OR realloc failed) we are committed to dropping further
+	 * bytes for the rest of this paste -- don't re-enter the realloc
+	 * branch on every subsequent byte (which under sustained OOM would
+	 * call malloc thousands of times for nothing).  The early return
+	 * also keeps the BOXEN_LOG_W call sites single-use per paste. */
+	if (dec->paste_truncated) {
+		return;
+	}
+	if (dec->paste_len >= INPUT_DECODER_PASTE_CAP) {
+		dec->paste_truncated = true;
+		BOXEN_LOG_W("bracketed paste exceeds %zu-byte cap; truncated",
+		            (size_t)INPUT_DECODER_PASTE_CAP);
+		return;
+	}
+	if (dec->paste_len >= dec->paste_cap) {
+		size_t new_cap = dec->paste_cap == 0
+		                 ? (size_t)INPUT_DECODER_PASTE_INITIAL
+		                 : dec->paste_cap * 2;
+		if (new_cap > (size_t)INPUT_DECODER_PASTE_CAP) {
+			new_cap = (size_t)INPUT_DECODER_PASTE_CAP;
+		}
+		char *grown = (char *)realloc(dec->paste_buf, new_cap);
+		if (grown == NULL) {
+			/* OOM: keep what we have, latch truncation, stop appending.
+			 * realloc preserves dec->paste_buf on failure, so the
+			 * already-buffered bytes remain valid for the eventual emit. */
+			dec->paste_truncated = true;
+			BOXEN_LOG_W("bracketed paste realloc failed at %zu bytes; "
+			            "truncated", dec->paste_len);
+			return;
+		}
+		dec->paste_buf = grown;
+		dec->paste_cap = new_cap;
+	}
+	dec->paste_buf[dec->paste_len++] = (char)b;
+}
+
+static void paste_buf_reset(input_decoder_t *dec) {
+	dec->paste_buf         = NULL;
+	dec->paste_len         = 0;
+	dec->paste_cap         = 0;
+	dec->paste_truncated   = false;
+	dec->paste_close_match = 0;
+}
+
+/* 2026-06-29 JES #812 M4: close-marker bytes.
+ *
+ * The terminating sequence "\x1b[201~" (6 bytes).  Stored as a file-scope
+ * constant so the streaming matcher and a future audit reader share one
+ * source of truth. */
+static const uint8_t PASTE_CLOSE_MARKER[INPUT_DECODER_PASTE_CLOSE_LEN] = {
+	0x1B, '[', '2', '0', '1', '~'
+};
+
 /* 2026-06-30 JES #810 M2: dispatch a complete CSI sequence to a boxen_event.
  * 2026-06-29 JES #811 M3: added dec param for SGR mouse / double-click state;
  *   added 'M' (SGR press / X10 indicator) and 'm' (SGR release) final bytes.
@@ -865,7 +1039,24 @@ static bool decode_csi(input_decoder_t *dec, const uint8_t *csi_buf,
 		case 21: emit_key(out, BOXEN_KEY_F10,    0, tilde_mod); return true;
 		case 23: emit_key(out, BOXEN_KEY_F11,    0, tilde_mod); return true;
 		case 24: emit_key(out, BOXEN_KEY_F12,    0, tilde_mod); return true;
-		/* params[0] == 200 / 201 are bracketed paste markers (M4). */
+		case 200:
+			/* 2026-06-29 JES #812 M4: bracketed paste opens.  Enter
+			 * PASTE_ACTIVE; the poll loop's per-state branch buffers
+			 * subsequent bytes into dec->paste_buf until the close
+			 * marker (\x1b[201~) is seen.  Note: we do NOT emit an
+			 * event here -- the open marker is silent; only the
+			 * complete paste (on close) produces BOXEN_EV_PASTE.
+			 * Return false (no event yet) so poll continues. */
+			dec->state = DEC_STATE_PASTE_ACTIVE;
+			paste_buf_reset(dec);
+			return false;
+		case 201:
+			/* 2026-06-29 JES #812 M4: spurious close marker outside a
+			 * paste body.  Ignore -- a stray \e[201~ from a buggy
+			 * terminal or a mid-stream desync must not break the input
+			 * stream.  Returning false flows into the poll loop's
+			 * "no event" branch which bumps parse_errors. */
+			return false;
 		default: return false;
 		}
 	}
@@ -1054,6 +1245,116 @@ int input_decoder_poll(input_decoder_t *dec, boxen_event_t *out, int timeout_ms)
 	memset(out, 0, sizeof(*out));
 
 	while (dec->head < dec->fill_len) {
+		/* 2026-06-29 JES #812 M4: PASTE_ACTIVE branch.
+		 *
+		 * Inside a paste, EVERY byte is literal content -- ESC, [, ~,
+		 * UTF-8 leads, anything.  We stream-match the close marker
+		 * (\x1b[201~) byte-by-byte against the incoming byte.  Bytes
+		 * that EXTEND the partial close match are buffered ONLY when
+		 * the match completes (close detected) or aborts (mismatch ->
+		 * those bytes are part of the paste body and get flushed to
+		 * paste_buf).
+		 *
+		 * Independent close-match tracking is load-bearing: once the
+		 * paste exceeds INPUT_DECODER_PASTE_CAP we stop appending to
+		 * paste_buf but MUST keep scanning for the close marker --
+		 * otherwise a paste bigger than the cap wedges the decoder in
+		 * PASTE_ACTIVE forever.  See paste_close_match doc on the
+		 * struct.
+		 *
+		 * Burst safety: this branch consumes one byte per iteration and
+		 * returns to the top of the while loop on every byte, so a
+		 * megabyte-sized paste burst polls forward one byte at a time.
+		 * That's fine for the M2/M3 byte-at-a-time event cadence; the
+		 * full paste emits as one event regardless. */
+		if (dec->state == DEC_STATE_PASTE_ACTIVE) {
+			uint8_t b = dec->buf[dec->head];
+			dec->head++;
+
+			if (b == PASTE_CLOSE_MARKER[dec->paste_close_match]) {
+				/* Byte extends the partial close match.  Hold off on
+				 * buffering -- if the full marker arrives we trim it
+				 * out of the paste body. */
+				dec->paste_close_match++;
+				if (dec->paste_close_match <
+				    (uint8_t)INPUT_DECODER_PASTE_CLOSE_LEN) {
+					continue;
+				}
+				/* Full close match -- fall through to emit. */
+			} else {
+				/* Mismatch.  Flush the previously matched bytes to
+				 * paste_buf (they were literal content after all),
+				 * then handle the current byte.
+				 *
+				 * Edge case: the current byte may itself be the start
+				 * of a NEW partial close match (e.g., paste body
+				 * contains "\x1b[201X\x1b[201~" -- the X aborts the
+				 * first match attempt, then a new ESC starts a fresh
+				 * one).  Handle this by re-checking the current byte
+				 * against marker[0] after flushing the partial match. */
+				for (uint8_t i = 0; i < dec->paste_close_match; i++) {
+					paste_buf_append(dec, PASTE_CLOSE_MARKER[i]);
+				}
+				dec->paste_close_match = 0;
+
+				if (b == PASTE_CLOSE_MARKER[0]) {
+					dec->paste_close_match = 1;
+				} else {
+					paste_buf_append(dec, b);
+				}
+				continue;
+			}
+
+			/* Close detected.  paste_close_match == close_len; the
+			 * matched bytes were held back so paste_buf does NOT need
+			 * trimming.  Just reset the matcher and emit. */
+			dec->paste_close_match = 0;
+
+			/* CR/LF normalization in place.
+			 *
+			 * Two-pointer scan: write_pos always <= read_pos so the
+			 * compaction is safe.  Rules:
+			 *   - "\r\n" collapses to "\n"
+			 *   - lone "\r" becomes "\n"
+			 *   - "\n" passes through unchanged
+			 * Result: every line break is a single LF regardless of how
+			 * the user's clipboard or source platform encoded it. */
+			size_t w = 0;
+			for (size_t r = 0; r < dec->paste_len; r++) {
+				char c = dec->paste_buf[r];
+				if (c == '\r') {
+					dec->paste_buf[w++] = '\n';
+					/* If the next byte is LF, skip it (CRLF -> LF). */
+					if (r + 1 < dec->paste_len &&
+					    dec->paste_buf[r + 1] == '\n') {
+						r++;
+					}
+				} else {
+					dec->paste_buf[w++] = c;
+				}
+			}
+			dec->paste_len = w;
+
+			/* Emit BOXEN_EV_PASTE.  Ownership of paste_buf transfers to
+			 * the caller (ev.paste.data); decoder zeroes its own
+			 * pointer so destroy doesn't double-free.
+			 *
+			 * Empty paste: data may be a real allocation of paste_cap
+			 * bytes with len==0, or NULL (no append ever happened).
+			 * Either is acceptable per the boxen.h contract; we hand
+			 * back whatever we have and the consumer's free() handles
+			 * both cases. */
+			memset(out, 0, sizeof(*out));
+			out->type       = BOXEN_EV_PASTE;
+			out->paste.data = dec->paste_buf;
+			out->paste.len  = dec->paste_len;
+
+			paste_buf_reset(dec);
+			dec->state = DEC_STATE_GROUND;
+			compact_buffer(dec);
+			return BOXEN_OK;
+		}
+
 		/* 2026-06-29 JES #811 M3: X10 mouse raw-payload consumer.
 		 *
 		 * After \e[M is seen (csi_buf empty, final='M'), decode_csi sets
@@ -1236,11 +1537,23 @@ int input_decoder_poll(input_decoder_t *dec, boxen_event_t *out, int timeout_ms)
 				continue;
 			}
 			if (b >= 0x40 && b <= 0x7E) {
-				/* Final byte: decode. */
+				/* Final byte: decode.
+				 *
+				 * 2026-06-29 JES #812 M4: decode_csi may mutate dec->state
+				 * (entering DEC_STATE_PASTE_ACTIVE on \e[200~).  Therefore
+				 * the post-decode state reset to GROUND must be conditional:
+				 * leave the state alone if decode_csi transitioned us to a
+				 * non-GROUND target.  Without this check the paste-open
+				 * transition would be silently reverted and the paste body
+				 * bytes would re-enter the GROUND state machine instead of
+				 * being buffered.  csi_len reset is always safe -- the
+				 * paste buffer is a different field. */
 				dec->head++;
 				bool emitted = decode_csi(dec, dec->csi_buf, dec->csi_len, b, out);
-				dec->state = DEC_STATE_GROUND;
 				dec->csi_len = 0;
+				if (dec->state == DEC_STATE_CSI_COLLECTING) {
+					dec->state = DEC_STATE_GROUND;
+				}
 				if (emitted) {
 					compact_buffer(dec);
 					return BOXEN_OK;
@@ -1249,6 +1562,14 @@ int input_decoder_poll(input_decoder_t *dec, boxen_event_t *out, int timeout_ms)
 				 * continue the loop so the 3 raw X10 bytes are consumed next.
 				 * Don't count this as a parse error -- it's the X10 introducer. */
 				if (dec->x10_pending) {
+					continue;
+				}
+				/* 2026-06-29 JES #812 M4: if decode_csi entered
+				 * PASTE_ACTIVE (saw \e[200~), continue the loop so the
+				 * paste-active branch at the top consumes subsequent
+				 * bytes.  Don't count as a parse error -- it's the
+				 * paste open marker, by design. */
+				if (dec->state == DEC_STATE_PASTE_ACTIVE) {
 					continue;
 				}
 				/* Unknown final: discard silently, keep parsing. */
@@ -1337,6 +1658,15 @@ int input_decoder_poll(input_decoder_t *dec, boxen_event_t *out, int timeout_ms)
 			/* Still need more continuation bytes. */
 			continue;
 		}
+
+		case DEC_STATE_PASTE_ACTIVE:
+			/* 2026-06-29 JES #812 M4: handled by the early-return branch
+			 * at the top of the while loop.  Unreachable here; assert
+			 * the invariant so a future refactor that drops the early
+			 * branch fails loudly instead of silently mis-parsing paste
+			 * bytes through the GROUND state machine. */
+			assert(false && "PASTE_ACTIVE handled before state switch");
+			return BOXEN_ERR_IO;
 		}
 	}
 

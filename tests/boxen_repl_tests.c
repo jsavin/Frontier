@@ -2142,6 +2142,148 @@ static void test_append_when_pinned_to_bottom_does_not_bump_offset(void) {
 }
 
 /* -------------------------------------------------------------------------
+ * 2026-06-29 JES #812 Phase C M4: BOXEN_EV_PASTE dispatch tests.
+ *
+ * Build a BOXEN_EV_PASTE event with a heap-allocated payload and feed it
+ * through boxen_repl_run_one_tick.  Assert the input bar's input_buf
+ * reflects the paste at the cursor position.  The handler is required to
+ * free(ev.paste.data) regardless of insertion outcome, so the test does
+ * NOT free it -- a leak here would surface in a future ASan / leak-sanitizer
+ * run (the harness is built with -O0 -g and tests are short-lived, but the
+ * pattern matters for future tooling).
+ * ---------------------------------------------------------------------- */
+
+/* Build a BOXEN_EV_PASTE event with strdup'd data so the handler can
+ * free() it without affecting test-side storage. */
+static boxen_event_t make_paste_event(const char *text) {
+	boxen_event_t ev;
+	memset(&ev, 0, sizeof(ev));
+	ev.type = BOXEN_EV_PASTE;
+	size_t len = (text != NULL) ? strlen(text) : 0;
+	if (len == 0) {
+		ev.paste.data = NULL;
+		ev.paste.len  = 0;
+		return ev;
+	}
+	char *buf = (char *)malloc(len);
+	assert(buf != NULL);
+	memcpy(buf, text, len);
+	ev.paste.data = buf;
+	ev.paste.len  = len;
+	return ev;
+}
+
+/* 2026-06-29 JES #812 M4: paste into empty input bar appends at the
+ * start (cursor at 0). */
+static void test_paste_into_empty_input_appends(void) {
+	setup();
+
+	boxen_event_t ev = make_paste_event("hello world");
+	boxen_repl_run_one_tick(&g_state, &ev);
+
+	assert(strcmp(g_state.input_buf, "hello world") == 0);
+	assert(g_state.input_len == 11);
+	assert(g_state.input_cursor_pos == 11);
+
+	teardown();
+}
+
+/* 2026-06-29 JES #812 M4: paste inserts at cursor position when the
+ * cursor is mid-buffer.  Pre-load "abXYZ", caret at 2; paste "12" ->
+ * "ab12XYZ", caret at 4. */
+static void test_paste_mid_buffer_inserts_at_cursor(void) {
+	setup();
+
+	strncpy(g_state.input_buf, "abXYZ",
+	        sizeof(g_state.input_buf) - 1);
+	g_state.input_len        = 5;
+	g_state.input_cursor_pos = 2;
+
+	boxen_event_t ev = make_paste_event("12");
+	boxen_repl_run_one_tick(&g_state, &ev);
+
+	assert(strcmp(g_state.input_buf, "ab12XYZ") == 0);
+	assert(g_state.input_len == 7);
+	assert(g_state.input_cursor_pos == 4);
+
+	teardown();
+}
+
+/* 2026-06-29 JES #812 M4: oversize paste truncates at the input cap.
+ *
+ * input_buf size is BOXEN_REPL_INPUT_MAX (1024).  Paste a string longer
+ * than the cap and verify the bar fills to cap-1 (the NUL byte reserves
+ * the final slot, same convention as the typed-char path).  No crash, no
+ * heap corruption. */
+static void test_paste_oversize_truncates_at_input_cap(void) {
+	setup();
+
+	/* Build a 2048-byte paste body (all 'q'). */
+	char *big = (char *)malloc(2048);
+	assert(big != NULL);
+	memset(big, 'q', 2048);
+
+	boxen_event_t ev;
+	memset(&ev, 0, sizeof(ev));
+	ev.type       = BOXEN_EV_PASTE;
+	ev.paste.data = big;
+	ev.paste.len  = 2048;
+
+	boxen_repl_run_one_tick(&g_state, &ev);
+
+	/* Should fill to BOXEN_REPL_INPUT_MAX - 1 (reserve NUL). */
+	assert(g_state.input_len == BOXEN_REPL_INPUT_MAX - 1);
+	assert(g_state.input_buf[g_state.input_len] == '\0');
+	/* Every inserted byte is 'q'. */
+	for (int i = 0; i < g_state.input_len; i++) {
+		assert(g_state.input_buf[i] == 'q');
+	}
+
+	teardown();
+}
+
+/* 2026-06-29 JES #812 M4: empty paste is a no-op.
+ *
+ * data=NULL, len=0 should not crash and should not modify the input
+ * buffer.  Pre-load "abc" and assert it is unchanged after the paste. */
+static void test_paste_empty_is_noop(void) {
+	setup();
+
+	strncpy(g_state.input_buf, "abc",
+	        sizeof(g_state.input_buf) - 1);
+	g_state.input_len        = 3;
+	g_state.input_cursor_pos = 3;
+
+	boxen_event_t ev = make_paste_event("");
+	/* ev.paste.data is NULL via make_paste_event's empty-string branch. */
+	boxen_repl_run_one_tick(&g_state, &ev);
+
+	assert(strcmp(g_state.input_buf, "abc") == 0);
+	assert(g_state.input_len == 3);
+	assert(g_state.input_cursor_pos == 3);
+
+	teardown();
+}
+
+/* 2026-06-29 JES #812 M4: paste cancels a pending slash-palette
+ * debounce.  Simulate the user pressing '/' (which starts the debounce
+ * window), then pasting -- the palette must NOT open. */
+static void test_paste_cancels_pending_slash_palette(void) {
+	setup();
+
+	/* Mimic the state set by the '/' debounce path. */
+	g_state.slash_pending_until_ms = 999999999ULL;
+
+	boxen_event_t ev = make_paste_event("text");
+	boxen_repl_run_one_tick(&g_state, &ev);
+
+	assert(g_state.slash_pending_until_ms == 0);
+	assert(strcmp(g_state.input_buf, "text") == 0);
+
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
  * main
  * ---------------------------------------------------------------------- */
 int main(void) {
@@ -2195,6 +2337,13 @@ int main(void) {
 	TR_RUN(test_append_while_scrolled_preserves_offset);
 	TR_RUN(test_append_when_ring_full_advances_offset_to_pin_content);
 	TR_RUN(test_append_when_pinned_to_bottom_does_not_bump_offset);
+
+	/* 2026-06-29 JES #812 Phase C M4: bracketed paste dispatch. */
+	TR_RUN(test_paste_into_empty_input_appends);
+	TR_RUN(test_paste_mid_buffer_inserts_at_cursor);
+	TR_RUN(test_paste_oversize_truncates_at_input_cap);
+	TR_RUN(test_paste_empty_is_noop);
+	TR_RUN(test_paste_cancels_pending_slash_palette);
 
 	TR_SUMMARY();
 	return TR_EXIT_CODE();
