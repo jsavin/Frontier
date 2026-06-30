@@ -92,8 +92,18 @@ void             input_decoder_destroy(input_decoder_t *dec);
  * (Terminal.app) or the configured pass-through modifier (iTerm2 / Alacritty).
  *
  * M1 stub: records the requested state and returns; no write(2) to the TTY.
- * M3 / M4 will wire the actual escape-sequence writes once the parser side
- * is in place. */
+ * M3 wires the actual escape-sequence writes (\e[?1000h \e[?1006h \e[?2004h
+ * and their disable counterparts) when tty_fd >= 0.  Test-seam paths still
+ * use tty_fd == -1 and skip the writes.
+ *
+ * 2026-06-29 JES #811 M3 gate-fix (concurrency reviewer #818): the threading
+ * contract above (lines 27-38) is now load-bearing.  set_mouse performs a
+ * write(2) to tty_fd; if this races with a concurrent read(2) on the same
+ * fd from inside the M6 poll loop, the writes can interleave and corrupt
+ * either side.  CALLERS MUST NOT call set_mouse while another thread is
+ * blocked in input_decoder_poll on the same decoder.  M6 will enforce this
+ * with an explicit poll_active flag and an assert in set_mouse; for now the
+ * single-owner invariant is the only safeguard. */
 void             input_decoder_set_mouse(input_decoder_t *dec, bool enable);
 
 /* Query current mouse-enable state. Safe to call on a freshly-created
@@ -196,6 +206,14 @@ size_t input_decoder_dropped_bytes(const input_decoder_t *dec);
  *
  * Returns 0 for a NULL decoder.  Monotonic; never decreases. */
 size_t input_decoder_parse_errors(const input_decoder_t *dec);
+
+/* 2026-06-29 JES #811 M3 gate-fix: clock override for deterministic
+ * double-click tests.  When enable=true, dec_now_ms() returns value_ms on
+ * every subsequent call until either a new value is set or enable=false
+ * releases the override.  Allows tests to assert both the positive (within
+ * window) and negative (past window) double-click paths without depending
+ * on wall-clock timing.  No-op effect on production paths (test-seam only). */
+void input_decoder_set_clock_for_testing(bool enable, uint64_t value_ms);
 #endif
 
 #ifdef __cplusplus
