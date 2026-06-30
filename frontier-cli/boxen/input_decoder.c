@@ -57,11 +57,13 @@
 #include "boxen_internal.h"   /* BOXEN_DOUBLE_CLICK_MS, BOXEN_DOUBLE_CLICK_RADIUS */
 
 #include <assert.h>
+#include <errno.h>            /* 2026-06-29 JES #805 M6: EINTR / EAGAIN handling on read(2) */
 #include <limits.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/select.h>       /* 2026-06-29 JES #805 M6: select(2) for blocking poll wait */
 #include <time.h>             /* clock_gettime for double-click synthesis */
-#include <unistd.h>           /* write(2) for mouse-enable sequences (M3) */
+#include <unistd.h>           /* write(2) for mouse-enable sequences (M3); read(2) for M6 */
 
 /* 2026-06-29 JES #809 M1: ring-buffer sizing.
  *
@@ -1355,27 +1357,174 @@ static bool utf8_codepoint_valid(uint32_t cp, int lead_len) {
 }
 
 /* -------------------------------------------------------------------------
- * 2026-06-30 JES #810 M2: poll -- run the state machine against buffered
- * bytes until one event emits or we run out of bytes.
+ * 2026-06-29 JES #805 M6: TTY fill helpers.
+ *
+ * The M2 poll body consumed only bytes already in the ring buffer (deposited
+ * by inject_bytes in the test seam).  M6 wires the real read(2) path: when
+ * tty_fd >= 0 and the parser exhausts the buffer without emitting an event,
+ * we block (via select(2)) up to timeout_ms for more bytes, drain the pipe
+ * with one or more non-blocking reads, then re-run the parser.
+ *
+ * Plan reference: section 4.4 (ESC disambiguation strategy).  The contract:
+ *   - Initial wait uses select(2) with timeout_ms.
+ *   - When the first read arrives, do a non-blocking follow-up read to drain
+ *     the pipe.  This collapses a multi-byte escape sequence that arrived
+ *     as one OS burst into a single parse cycle, and gives sub-millisecond
+ *     ESC-alone disambiguation (no extra delay when ESC really is alone).
+ *   - Bytes that don't fit are counted in dropped_bytes (same back-pressure
+ *     contract as inject_bytes overflow).
+ *
+ * Threading: the parent (tb2_poll_event) holds the GIL on entry; it must
+ * drop the GIL around this call before invoking input_decoder_poll if the
+ * REPL needs other threads to make progress during the blocking wait.
+ * That GIL hand-off is the tb2 backend's responsibility, not the decoder's.
+ * The single-owner invariant from input_decoder.h means no other thread
+ * touches *dec during the GIL-dropped window.
+ * ---------------------------------------------------------------------- */
+
+/* Append bytes from the TTY into the decoder ring buffer.  Returns the
+ * number of bytes appended.  On short fills (ring near capacity) the
+ * excess is counted in dropped_bytes.  Called only when tty_fd >= 0. */
+static size_t dec_append_from_fd(input_decoder_t *dec, const uint8_t *src, size_t len) {
+	compact_buffer(dec);
+	size_t avail = INPUT_DECODER_BUFFER_SIZE - dec->fill_len;
+	size_t to_copy = len < avail ? len : avail;
+	if (to_copy > 0) {
+		memcpy(dec->buf + dec->fill_len, src, to_copy);
+		dec->fill_len += to_copy;
+	}
+	size_t dropped = len - to_copy;
+	if (dropped > 0) {
+		dec->dropped_bytes += dropped;
+	}
+	return to_copy;
+}
+
+/* Read whatever bytes are immediately available on tty_fd without blocking.
+ * Uses a select(2) with zero timeout to probe readability, then read(2) once
+ * to drain.  Returns the count of bytes deposited into the ring buffer (may
+ * be 0 if nothing is pending or the read got EAGAIN).  Returns SIZE_MAX on
+ * a hard read error (closed fd or unexpected errno) -- caller surfaces as
+ * BOXEN_ERR_IO.  EINTR is treated as "no data this time" (caller may retry).
+ *
+ * Bytes that don't fit in the ring are counted in dropped_bytes via
+ * dec_append_from_fd.  We cap the read size at the ring's remaining space
+ * so we never read more bytes than we can store -- the kernel will buffer
+ * the rest for the next call.  Slightly suboptimal in pathological bursts
+ * (a paste of 8 KB arrives in two select rounds instead of one) but
+ * preserves the back-pressure invariant and avoids stack staging. */
+static size_t dec_read_nonblocking(input_decoder_t *dec) {
+	compact_buffer(dec);
+	size_t avail = INPUT_DECODER_BUFFER_SIZE - dec->fill_len;
+	if (avail == 0) {
+		/* Buffer full; do not read -- caller must drain via the parser
+		 * before more bytes can arrive.  Returning 0 lets the parser
+		 * consume what's already buffered on the next iteration. */
+		return 0;
+	}
+
+	fd_set rfds;
+	FD_ZERO(&rfds);
+	FD_SET(dec->tty_fd, &rfds);
+	struct timeval tv = {0, 0};   /* non-blocking probe */
+	int r = select(dec->tty_fd + 1, &rfds, NULL, NULL, &tv);
+	if (r < 0) {
+		if (errno == EINTR) {
+			return 0;
+		}
+		return SIZE_MAX;
+	}
+	if (r == 0) {
+		return 0;
+	}
+
+	uint8_t stage[INPUT_DECODER_BUFFER_SIZE];
+	size_t to_read = avail < sizeof(stage) ? avail : sizeof(stage);
+	ssize_t got = read(dec->tty_fd, stage, to_read);
+	if (got < 0) {
+		if (errno == EINTR || errno == EAGAIN) {
+			return 0;
+		}
+		return SIZE_MAX;
+	}
+	if (got == 0) {
+		/* EOF on the TTY -- closed or detached.  Treat as IO error so
+		 * the caller can surface and shut down rather than spin. */
+		return SIZE_MAX;
+	}
+	(void)dec_append_from_fd(dec, stage, (size_t)got);
+	return (size_t)got;
+}
+
+/* Block until at least one byte is readable on tty_fd or timeout_ms elapses.
+ * Returns 1 if readable, 0 on timeout, -1 on hard error.  EINTR is treated
+ * as "retry" -- the loop re-enters select with the remaining time deducted.
+ * timeout_ms of -1 blocks indefinitely; 0 returns immediately. */
+static int dec_select_readable(int fd, int timeout_ms) {
+	struct timespec start;
+	if (timeout_ms > 0) {
+		clock_gettime(CLOCK_MONOTONIC, &start);
+	}
+
+	for (;;) {
+		fd_set rfds;
+		FD_ZERO(&rfds);
+		FD_SET(fd, &rfds);
+
+		struct timeval tv;
+		struct timeval *ptv;
+		int remaining_ms = timeout_ms;
+		if (timeout_ms < 0) {
+			ptv = NULL;
+		} else {
+			tv.tv_sec  = remaining_ms / 1000;
+			tv.tv_usec = (remaining_ms % 1000) * 1000;
+			ptv = &tv;
+		}
+
+		int r = select(fd + 1, &rfds, NULL, NULL, ptv);
+		if (r > 0) {
+			return 1;
+		}
+		if (r == 0) {
+			return 0;
+		}
+		/* r < 0 */
+		if (errno != EINTR) {
+			return -1;
+		}
+		/* EINTR: recompute remaining timeout and retry. */
+		if (timeout_ms > 0) {
+			struct timespec now;
+			clock_gettime(CLOCK_MONOTONIC, &now);
+			long elapsed_ms = (long)(now.tv_sec - start.tv_sec) * 1000
+			                + (long)(now.tv_nsec - start.tv_nsec) / 1000000;
+			if (elapsed_ms >= timeout_ms) {
+				return 0;
+			}
+			timeout_ms -= (int)elapsed_ms;
+			clock_gettime(CLOCK_MONOTONIC, &start);
+		}
+		/* timeout_ms == 0 was handled by initial select returning 0;
+		 * timeout_ms < 0 just loops back into another blocking wait. */
+	}
+}
+
+/* -------------------------------------------------------------------------
+ * 2026-06-30 JES #810 M2: drain helper -- run the state machine against
+ *   buffered bytes until one event emits or we run out of bytes.
+ * 2026-06-29 JES #805 M6: split from input_decoder_poll so the orchestrator
+ *   can call us, then fill from TTY, then call us again.
  *
  * Returns BOXEN_OK + writes *out on a successful emit.
  * Returns BOXEN_ERR_TIMEOUT (with *out zeroed) when no event can be
  *   produced from the currently-buffered bytes (empty buffer OR partial
  *   sequence still waiting for more bytes).
- * Returns BOXEN_ERR_INVALID for NULL args.
  *
- * timeout_ms is currently unused (M6 will use it for the select(2) wait
- * on tty_fd).  In the test seam the caller drives bytes via inject_bytes
- * before each poll, so a timeout has no observable effect.
+ * Pre-condition: dec and out are non-NULL.  Caller is input_decoder_poll
+ * (which validates) -- not called directly from outside this file.
  * ---------------------------------------------------------------------- */
-int input_decoder_poll(input_decoder_t *dec, boxen_event_t *out, int timeout_ms) {
-	(void)timeout_ms;   /* M6 wires the select(2) timeout. */
-
-	if (dec == NULL || out == NULL) {
-		return BOXEN_ERR_INVALID;
-	}
-	memset(out, 0, sizeof(*out));
-
+static int dec_drain_buffer(input_decoder_t *dec, boxen_event_t *out) {
 	while (dec->head < dec->fill_len) {
 		/* 2026-06-29 JES #812 M4: PASTE_ACTIVE branch.
 		 *
@@ -1823,6 +1972,105 @@ int input_decoder_poll(input_decoder_t *dec, boxen_event_t *out, int timeout_ms)
 	}
 
 	compact_buffer(dec);
+	return BOXEN_ERR_TIMEOUT;
+}
+
+/* -------------------------------------------------------------------------
+ * 2026-06-29 JES #805 M6: public poll orchestrator.
+ *
+ * Contract (extends the M2 contract):
+ *   - Always try to emit from the existing buffer first (handles a burst
+ *     where the prior poll left additional complete events behind).
+ *   - If the buffer is exhausted (or only a partial sequence remains) AND
+ *     tty_fd >= 0, block on select(2) for up to timeout_ms.  When data
+ *     arrives, drain the pipe with non-blocking reads (collapse a multi-
+ *     byte escape sequence that arrived in one OS burst into one parse
+ *     cycle).  Then re-run the parser.
+ *   - If tty_fd == -1 (test seam): no read attempted; behavior matches the
+ *     M2 contract -- caller drives bytes via input_decoder_inject_bytes
+ *     before each poll.
+ *   - timeout_ms semantics: 0 = non-blocking probe; positive = block up to
+ *     that many milliseconds; negative = block indefinitely.  The tb2
+ *     backend passes timeout_ms straight through from boxen_poll_event.
+ *
+ * Returns BOXEN_OK + writes *out on a successful emit.
+ * Returns BOXEN_ERR_TIMEOUT (with *out zeroed) when no event materialized
+ *   within the timeout (empty buffer, no TTY data, or partial sequence
+ *   awaiting more bytes).
+ * Returns BOXEN_ERR_IO on a hard read(2) error or EOF on tty_fd.
+ * Returns BOXEN_ERR_INVALID for NULL args.
+ *
+ * Plan reference: section 2.3 (integration), section 4.4 (ESC disambig),
+ *   section 3.12 (burst-read robustness).
+ * ---------------------------------------------------------------------- */
+int input_decoder_poll(input_decoder_t *dec, boxen_event_t *out, int timeout_ms) {
+	if (dec == NULL || out == NULL) {
+		return BOXEN_ERR_INVALID;
+	}
+	memset(out, 0, sizeof(*out));
+
+	/* First: drain anything already buffered.  This handles bursts where
+	 * the prior poll consumed only one of several queued events, and the
+	 * test-seam path where inject_bytes deposited bytes before the call. */
+	int r = dec_drain_buffer(dec, out);
+	if (r == BOXEN_OK) {
+		return BOXEN_OK;
+	}
+
+	/* Test seam: no TTY fd, so nothing more to do -- caller will inject
+	 * before the next poll.  Preserves M1..M5 test contract. */
+	if (dec->tty_fd < 0) {
+		return BOXEN_ERR_TIMEOUT;
+	}
+
+	/* Block (up to timeout_ms) for the first byte to arrive on the TTY.
+	 * Special case: timeout_ms == 0 is a non-blocking probe; skip the
+	 * blocking select and go straight to the non-blocking drain so we
+	 * still pick up bytes already queued at the OS level. */
+	if (timeout_ms != 0) {
+		int sr = dec_select_readable(dec->tty_fd, timeout_ms);
+		if (sr < 0) {
+			return BOXEN_ERR_IO;
+		}
+		if (sr == 0) {
+			memset(out, 0, sizeof(*out));
+			return BOXEN_ERR_TIMEOUT;
+		}
+	}
+
+	/* Drain the pipe non-blocking: collapses a multi-byte escape sequence
+	 * that arrived as one OS burst into one parse cycle, and gives sub-
+	 * millisecond ESC-alone disambiguation (a single ESC byte returns no
+	 * follow-up bytes from the second read, so the parser's stored
+	 * ESC_RECEIVED state will be flushed as KEY_ESCAPE on the next poll
+	 * via the existing flush-on-no-more-bytes path in dec_drain_buffer).
+	 *
+	 * Loop the non-blocking reads up to a small bound to soak up any
+	 * pipe bytes that arrived between our select(2) and our first read.
+	 * Bound prevents starvation -- after a few rounds we surrender and
+	 * let the parser run so partial sequences in the buffer get a chance
+	 * to complete on the next poll. */
+	for (int i = 0; i < 4; i++) {
+		size_t got = dec_read_nonblocking(dec);
+		if (got == SIZE_MAX) {
+			return BOXEN_ERR_IO;
+		}
+		if (got == 0) {
+			break;
+		}
+	}
+
+	/* Re-run the parser against the freshly populated buffer. */
+	r = dec_drain_buffer(dec, out);
+	if (r == BOXEN_OK) {
+		return BOXEN_OK;
+	}
+
+	/* Nothing parsed yet (partial sequence in flight, or only a lone ESC
+	 * sitting in ESC_RECEIVED waiting for disambiguation).  Caller will
+	 * poll again; ESC_RECEIVED will flush on the next call if no more
+	 * bytes arrive within the next timeout window. */
+	memset(out, 0, sizeof(*out));
 	return BOXEN_ERR_TIMEOUT;
 }
 
