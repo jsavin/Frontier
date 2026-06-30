@@ -1722,8 +1722,13 @@ static void test_burst_read_multiple_events_one_inject(void) {
 	input_decoder_destroy(dec);
 }
 
-/* Double-click synthesis: two SGR left-press events at the same position
- * injected in one call (sub-ms apart) -> second event has DOUBLE_CLICK flag. */
+/* 2026-06-29 JES #811 M3 gate-fix (bar-raiser PR #818 review): the double-
+ * click tests use the input_decoder_set_clock_for_testing seam to lock the
+ * clock at deterministic millisecond values.  Previously this test relied on
+ * two back-to-back inject calls landing sub-ms apart in real CLOCK_MONOTONIC
+ * time; that was brittle under CI load / sanitizers / valgrind.  The seam
+ * also lets us exercise the negative path (second press past the window) at
+ * unit-test speed without sleeping. */
 static void test_double_click_synthesis(void) {
 	input_decoder_t *dec = input_decoder_create(-1);
 	static const uint8_t seq[] = {
@@ -1737,7 +1742,8 @@ static void test_double_click_synthesis(void) {
 
 	boxen_event_t ev;
 
-	/* First press: no double-click flag. */
+	/* First press at t=1000ms: no double-click flag. */
+	input_decoder_set_clock_for_testing(true, 1000);
 	memset(&ev, 0x7f, sizeof(ev));
 	int rc = input_decoder_poll(dec, &ev, 0);
 	assert(rc == BOXEN_OK);
@@ -1745,7 +1751,9 @@ static void test_double_click_synthesis(void) {
 	assert(ev.mouse.pressed == true);
 	assert((ev.mouse.flags & BOXEN_MOUSE_DOUBLE_CLICK) == 0);
 
-	/* Second press within window: DOUBLE_CLICK set. */
+	/* Second press at t=1100ms (100ms later, within the 500ms window):
+	 * DOUBLE_CLICK set. */
+	input_decoder_set_clock_for_testing(true, 1100);
 	memset(&ev, 0x7f, sizeof(ev));
 	rc = input_decoder_poll(dec, &ev, 0);
 	assert(rc == BOXEN_OK);
@@ -1753,6 +1761,145 @@ static void test_double_click_synthesis(void) {
 	assert(ev.mouse.pressed == true);
 	assert((ev.mouse.flags & BOXEN_MOUSE_DOUBLE_CLICK) != 0);
 
+	/* Release the clock override so subsequent tests see wall-clock again. */
+	input_decoder_set_clock_for_testing(false, 0);
+	input_decoder_destroy(dec);
+}
+
+/* 2026-06-29 JES #811 M3 gate-fix: negative-path companion to the above.
+ * Second press past the BOXEN_DOUBLE_CLICK_MS window must NOT set the flag.
+ * Without the clock seam this path was untestable. */
+static void test_double_click_outside_window(void) {
+	input_decoder_t *dec = input_decoder_create(-1);
+	static const uint8_t seq[] = {
+	    0x1b, '[', '<', '0', ';', '5', ';', '3', 'M',
+	    0x1b, '[', '<', '0', ';', '5', ';', '3', 'M',
+	};
+	size_t accepted = input_decoder_inject_bytes(dec, seq, sizeof(seq));
+	assert(accepted == sizeof(seq));
+
+	boxen_event_t ev;
+
+	/* First press at t=1000ms. */
+	input_decoder_set_clock_for_testing(true, 1000);
+	memset(&ev, 0x7f, sizeof(ev));
+	int rc = input_decoder_poll(dec, &ev, 0);
+	assert(rc == BOXEN_OK);
+	assert((ev.mouse.flags & BOXEN_MOUSE_DOUBLE_CLICK) == 0);
+
+	/* Second press at t=2000ms (1000ms later, well past the 500ms window):
+	 * the flag must NOT be set. */
+	input_decoder_set_clock_for_testing(true, 2000);
+	memset(&ev, 0x7f, sizeof(ev));
+	rc = input_decoder_poll(dec, &ev, 0);
+	assert(rc == BOXEN_OK);
+	assert(ev.type == BOXEN_EV_MOUSE);
+	assert(ev.mouse.pressed == true);
+	assert((ev.mouse.flags & BOXEN_MOUSE_DOUBLE_CLICK) == 0);
+
+	input_decoder_set_clock_for_testing(false, 0);
+	input_decoder_destroy(dec);
+}
+
+/* 2026-06-29 JES #811 M3 gate-fix: companion test verifying that a second
+ * press at a position OUTSIDE BOXEN_DOUBLE_CLICK_RADIUS does NOT trigger
+ * the double-click flag even when within the time window. */
+static void test_double_click_outside_radius(void) {
+	input_decoder_t *dec = input_decoder_create(-1);
+	static const uint8_t seq[] = {
+	    /* press 1 at col=5, row=3 */
+	    0x1b, '[', '<', '0', ';', '5', ';', '3', 'M',
+	    /* press 2 at col=20, row=3 (dx=15, well past radius=1) */
+	    0x1b, '[', '<', '0', ';', '2', '0', ';', '3', 'M',
+	};
+	size_t accepted = input_decoder_inject_bytes(dec, seq, sizeof(seq));
+	assert(accepted == sizeof(seq));
+
+	boxen_event_t ev;
+
+	input_decoder_set_clock_for_testing(true, 1000);
+	memset(&ev, 0x7f, sizeof(ev));
+	int rc = input_decoder_poll(dec, &ev, 0);
+	assert(rc == BOXEN_OK);
+
+	/* Second press within window but at a far-off position. */
+	input_decoder_set_clock_for_testing(true, 1100);
+	memset(&ev, 0x7f, sizeof(ev));
+	rc = input_decoder_poll(dec, &ev, 0);
+	assert(rc == BOXEN_OK);
+	assert(ev.type == BOXEN_EV_MOUSE);
+	assert((ev.mouse.flags & BOXEN_MOUSE_DOUBLE_CLICK) == 0);
+
+	input_decoder_set_clock_for_testing(false, 0);
+	input_decoder_destroy(dec);
+}
+
+/* 2026-06-29 JES #811 M3 gate-fix (bar-raiser PR #818): malformed SGR
+ * sequences must be REJECTED rather than coerced into plausible-looking
+ * events.  Each case bumps parse_errors and produces no event. */
+static void test_sgr_mouse_malformed_empty_param(void) {
+	input_decoder_t *dec = input_decoder_create(-1);
+	/* Empty first param: \e[<;5;3M -- previously decoded as (4,2) left click. */
+	static const uint8_t seq[] = {
+	    0x1b, '[', '<', ';', '5', ';', '3', 'M'};
+	size_t before = input_decoder_parse_errors(dec);
+	size_t accepted = input_decoder_inject_bytes(dec, seq, sizeof(seq));
+	assert(accepted == sizeof(seq));
+	boxen_event_t ev;
+	memset(&ev, 0x7f, sizeof(ev));
+	int rc = input_decoder_poll(dec, &ev, 0);
+	assert(rc == BOXEN_ERR_TIMEOUT);
+	assert(input_decoder_parse_errors(dec) > before);
+	input_decoder_destroy(dec);
+}
+
+static void test_sgr_mouse_malformed_excess_params(void) {
+	input_decoder_t *dec = input_decoder_create(-1);
+	/* Four params: \e[<0;10;5;99M -- previously silently dropped the 4th. */
+	static const uint8_t seq[] = {
+	    0x1b, '[', '<', '0', ';', '1', '0', ';', '5', ';', '9', '9', 'M'};
+	size_t before = input_decoder_parse_errors(dec);
+	size_t accepted = input_decoder_inject_bytes(dec, seq, sizeof(seq));
+	assert(accepted == sizeof(seq));
+	boxen_event_t ev;
+	memset(&ev, 0x7f, sizeof(ev));
+	int rc = input_decoder_poll(dec, &ev, 0);
+	assert(rc == BOXEN_ERR_TIMEOUT);
+	assert(input_decoder_parse_errors(dec) > before);
+	input_decoder_destroy(dec);
+}
+
+static void test_sgr_mouse_malformed_zero_coord(void) {
+	input_decoder_t *dec = input_decoder_create(-1);
+	/* col=0 (1-based protocol; underflows to -1): \e[<0;0;3M */
+	static const uint8_t seq[] = {
+	    0x1b, '[', '<', '0', ';', '0', ';', '3', 'M'};
+	size_t before = input_decoder_parse_errors(dec);
+	size_t accepted = input_decoder_inject_bytes(dec, seq, sizeof(seq));
+	assert(accepted == sizeof(seq));
+	boxen_event_t ev;
+	memset(&ev, 0x7f, sizeof(ev));
+	int rc = input_decoder_poll(dec, &ev, 0);
+	assert(rc == BOXEN_ERR_TIMEOUT);
+	assert(input_decoder_parse_errors(dec) > before);
+	input_decoder_destroy(dec);
+}
+
+/* 2026-06-29 JES #811 M3 gate-fix (bar-raiser PR #818): X10 payload bytes
+ * below the protocol minimum (32 for button, 33 for coords) must be rejected
+ * rather than emitted as negative-coordinate events that pollute last_press. */
+static void test_x10_mouse_malformed_payload_under_min(void) {
+	input_decoder_t *dec = input_decoder_create(-1);
+	/* \e[M followed by three NULs -- garbage trailer. */
+	static const uint8_t seq[] = {0x1b, '[', 'M', 0x00, 0x00, 0x00};
+	size_t before = input_decoder_parse_errors(dec);
+	size_t accepted = input_decoder_inject_bytes(dec, seq, sizeof(seq));
+	assert(accepted == sizeof(seq));
+	boxen_event_t ev;
+	memset(&ev, 0x7f, sizeof(ev));
+	int rc = input_decoder_poll(dec, &ev, 0);
+	assert(rc == BOXEN_ERR_TIMEOUT);
+	assert(input_decoder_parse_errors(dec) > before);
 	input_decoder_destroy(dec);
 }
 
@@ -1942,6 +2089,15 @@ int main(void) {
 	TR_RUN(test_x10_mouse_wheel_down);
 	TR_RUN(test_burst_read_multiple_events_one_inject);
 	TR_RUN(test_double_click_synthesis);
+
+	/* 2026-06-29 JES #811 M3 gate-fix (PR #818): negative-path coverage
+	 * for double-click radius/window and SGR/X10 input-validation paths. */
+	TR_RUN(test_double_click_outside_window);
+	TR_RUN(test_double_click_outside_radius);
+	TR_RUN(test_sgr_mouse_malformed_empty_param);
+	TR_RUN(test_sgr_mouse_malformed_excess_params);
+	TR_RUN(test_sgr_mouse_malformed_zero_coord);
+	TR_RUN(test_x10_mouse_malformed_payload_under_min);
 
 	/* M4 SKIP -- bracketed paste. */
 	TR_RUN(test_skip_bracketed_paste_simple);

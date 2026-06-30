@@ -83,6 +83,29 @@
  * same bound. */
 #define INPUT_DECODER_CSI_BUF_SIZE 64
 
+/* 2026-06-29 JES #811 M3: SGR mouse coordinate saturation cap.
+ *
+ * Used by decode_sgr_mouse to clamp multi-digit params (col / row / button)
+ * before they overflow `int`.  9999 is intentionally well below INT_MAX/10
+ * (no overflow possible on the next *10 step) and well above any realistic
+ * terminal dimension (modern terminals top out near 4000 cols).  Kept smaller
+ * than CSI_PARAM_CAP (100000, used by the generic CSI parser) because the
+ * mouse path has no need for the larger range and a tighter bound is a
+ * smaller hostile-input surface.  If a future ultra-wide terminal needs more
+ * room, raise both caps together and re-audit the generic parser. */
+#define SGR_COORD_CAP 9999
+
+/* 2026-06-29 JES #811 M3: SGR mouse modifier bitmask.
+ *
+ * Bits in the SGR button byte that encode keyboard modifiers (plan section 3.6
+ * and xterm ctlseqs):
+ *   bit 2 (value  4) = Shift
+ *   bit 3 (value  8) = Meta / Alt
+ *   bit 4 (value 16) = Ctrl
+ * Same encoding for X10 (3.7).  Centralizing the mask keeps the SGR and X10
+ * code paths visibly symmetric and prevents drift if the mapping changes. */
+#define SGR_MOUSE_MOD_MASK ((unsigned)(4 | 8 | 16))
+
 /* 2026-06-30 JES #810 M2: parser state machine states.
  *
  * Names match plan section 4.1 one-to-one for grep'ability.  PASTE_ACTIVE,
@@ -183,16 +206,24 @@ struct input_decoder {
 	 *
 	 * Ported from backend_tb2.c:46-83 (tb2_maybe_set_double_click).  The
 	 * decoder owns this state from M3 onward; backend_tb2.c will drop its
-	 * own copy when M6 cuts over.  The invariant: last_press.valid is true
-	 * after any mouse press event is emitted; cleared when a double-click
-	 * is synthesized or when the position/button no longer matches.  The
-	 * time window and radius are defined in boxen_internal.h:
+	 * own copy when M6 cuts over (tracked: see backend_tb2.c comment marker
+	 * "M6 DELETE: g_tb2_last_press").  The invariant: last_press.valid is
+	 * true after any mouse press event is emitted; cleared when a double-
+	 * click is synthesized or when the position/button no longer matches.
+	 * The time window and radius are defined in boxen_internal.h:
 	 *   BOXEN_DOUBLE_CLICK_MS     = 500
 	 *   BOXEN_DOUBLE_CLICK_RADIUS = 1
 	 *
+	 * NOT thread-safe; single-owner invariant required (see input_decoder.h
+	 * threading contract, lines 27-38).  If a future milestone adds a second
+	 * concurrent caller to mouse_maybe_double_click (e.g., a background paste
+	 * reader thread), this field must be protected or moved to a per-thread
+	 * context before that work lands.
+	 *
 	 * x10_pending: set when the X10 \e[M introducer has been seen but the
 	 * three payload bytes have not yet arrived.  The poll loop transitions
-	 * to consuming 3 raw bytes instead of running the state machine. */
+	 * to consuming 3 raw bytes instead of running the state machine.  Same
+	 * single-owner constraint applies. */
 	struct {
 		uint64_t time_ms;
 		int      x;
@@ -386,8 +417,36 @@ static void emit_mouse(boxen_event_t *out, uint8_t button, bool pressed,
  *
  * Same implementation as backend_tb2.c:tb2_now_ms().  Returns milliseconds
  * since an arbitrary epoch (CLOCK_MONOTONIC).  Used only for double-click
- * synthesis; accuracy to 1 ms is sufficient. */
+ * synthesis; accuracy to 1 ms is sufficient.
+ *
+ * 2026-06-29 JES #811 M3 gate-fix: per concurrency-reviewer PR #818, note that
+ * CLOCK_MONOTONIC on macOS 10.12+ is immune to NTP and sleep/wake adjustments.
+ * On pre-10.12 macOS it can regress across sleep; the elapsed computation
+ * below uses unsigned subtraction, so a backward jump produces a huge
+ * wrap-around value which always fails the "<= BOXEN_DOUBLE_CLICK_MS" test
+ * cleanly -- no double-click is synthesized, and last_press is replaced as
+ * if this were a fresh first press.  Behavior is safe (no UB, no spurious
+ * double-click); the only observable effect is a missed double-click that
+ * straddles a sleep cycle.  Documented rather than worked around because the
+ * Frontier build minimum has been macOS 10.13+ for years.
+ *
+ * 2026-06-29 JES #811 M3 gate-fix: also adds a test-only clock seam.  When
+ * dec_clock_for_testing is non-NULL, dec_now_ms returns its value instead of
+ * the wall-clock.  This lets double-click tests assert both the positive
+ * (within window) and negative (past window) paths deterministically without
+ * depending on real-time scheduling.  Set via input_decoder_set_clock_for_testing
+ * (INPUT_DECODER_TEST_SEAM only). */
+#ifdef INPUT_DECODER_TEST_SEAM
+static bool     dec_clock_override_set = false;
+static uint64_t dec_clock_override_ms  = 0;
+#endif
+
 static uint64_t dec_now_ms(void) {
+#ifdef INPUT_DECODER_TEST_SEAM
+	if (dec_clock_override_set) {
+		return dec_clock_override_ms;
+	}
+#endif
 	struct timespec ts;
 	clock_gettime(CLOCK_MONOTONIC, &ts);
 	return (uint64_t)ts.tv_sec * 1000 + (uint64_t)ts.tv_nsec / 1000000;
@@ -571,21 +630,42 @@ static bool decode_sgr_mouse(input_decoder_t *dec, const uint8_t *csi_buf,
 		return false;
 	}
 
-	/* Parse three semicolon-separated params from csi_buf+1. */
+	/* Parse three semicolon-separated params from csi_buf+1.
+	 *
+	 * 2026-06-29 JES #811 M3 gate-fix: per bar-raiser PR #818 review, the
+	 * parser must REJECT malformed sequences rather than coerce them into
+	 * plausible-looking events.  Three rejection rules below:
+	 *   (a) empty param (";;" or leading/trailing ";")  -> false
+	 *   (b) more than 3 params (extra ";N" or junk after the third)  -> false
+	 *   (c) zero coord (col=0 or row=0)  -> false (1-based; col-1 underflow)
+	 * Without these, e.g. "\e[<;5;3M" became a left-click at (4,2), and
+	 * "\e[<0;10;5;99M" silently dropped the fourth param and accepted (9,4).
+	 * Both are confused-deputy hazards for any UI that trusts the event. */
 	int params[3] = {0, 0, 0};
 	size_t count = 0;
 	int cur = 0;
 	bool in_param = false;
 
-	for (size_t i = 1; i < csi_len && count < 3; i++) {
+	for (size_t i = 1; i < csi_len; i++) {
 		uint8_t b = csi_buf[i];
 		if (b >= '0' && b <= '9') {
 			cur = cur * 10 + (b - '0');
-			/* Saturate at a safe limit to prevent overflow. */
-			if (cur > 9999) cur = 9999;
+			/* Saturate at SGR_COORD_CAP to prevent integer overflow on a
+			 * pathological multi-digit param.  9999 is well above any
+			 * realistic terminal width/height (modern terminals top out
+			 * near 4000 cols) and well below INT_MAX/10. */
+			if (cur > SGR_COORD_CAP) cur = SGR_COORD_CAP;
 			in_param = true;
 		} else if (b == ';') {
-			params[count++] = in_param ? cur : 0;
+			/* Empty param (no digit before ';') -> malformed. */
+			if (!in_param) {
+				return false;
+			}
+			/* Too many params (would write past params[2]) -> malformed. */
+			if (count >= 3) {
+				return false;
+			}
+			params[count++] = cur;
 			cur = 0;
 			in_param = false;
 		} else {
@@ -593,7 +673,10 @@ static bool decode_sgr_mouse(input_decoder_t *dec, const uint8_t *csi_buf,
 		}
 	}
 	/* Last param (no trailing ';'). */
-	if (in_param && count < 3) {
+	if (in_param) {
+		if (count >= 3) {
+			return false;  /* too many params */
+		}
 		params[count++] = cur;
 	}
 
@@ -602,18 +685,25 @@ static bool decode_sgr_mouse(input_decoder_t *dec, const uint8_t *csi_buf,
 	}
 
 	int raw_button = params[0];
-	int col        = params[1];  /* 1-based */
-	int row        = params[2];  /* 1-based */
+	int col        = params[1];  /* 1-based; 0 is malformed */
+	int row        = params[2];  /* 1-based; 0 is malformed */
+
+	/* SGR mouse coords are 1-based per the protocol; col=0 or row=0 is
+	 * malformed (would underflow to -1 when converted to 0-based below).
+	 * Reject rather than emit a negative-coord event. */
+	if (col < 1 || row < 1) {
+		return false;
+	}
 
 	/* Extract modifier bits from the button byte (plan section 3.6).
-	 * bits 2 (value 4) = Shift, bits 3 (value 8) = Meta, bits 4 (value 16) = Ctrl. */
+	 * See SGR_MOUSE_MOD_MASK; bits 2/3/4 = Shift/Meta/Ctrl. */
 	uint16_t mod = 0;
 	if (raw_button & 4)  mod |= BOXEN_MOD_SHIFT;
 	if (raw_button & 8)  mod |= BOXEN_MOD_META;
 	if (raw_button & 16) mod |= BOXEN_MOD_CTRL;
 
 	/* Strip modifier bits to get the base button. */
-	int base = raw_button & ~(4 | 8 | 16);
+	int base = (int)((unsigned)raw_button & ~SGR_MOUSE_MOD_MASK);
 
 	/* Map to boxen button numbers.
 	 * base 32 = motion (drag); mask off the motion bit. */
@@ -985,6 +1075,21 @@ int input_decoder_poll(input_decoder_t *dec, boxen_event_t *out, int timeout_ms)
 			dec->head += 3;
 			dec->x10_pending = false;
 
+			/* 2026-06-29 JES #811 M3 gate-fix: per bar-raiser PR #818 review,
+			 * validate the X10 payload before decoding.  The protocol offsets
+			 * button by 32 and coords by 33 (32 offset + 1 for 1-based); any
+			 * byte below those minimums is malformed and would produce a
+			 * negative coordinate or button.  A garbage trailer (e.g. three
+			 * NULs after a stray "\e[M") MUST NOT silently emit an event
+			 * with bogus coords or pollute last_press for future double-click
+			 * matching.  Bump parse_errors so tests can observe the rejection
+			 * and continue parsing rather than returning a synthetic event. */
+			if (btn_raw < 32 || x_raw < 33 || y_raw < 33) {
+				dec->parse_errors++;
+				compact_buffer(dec);
+				continue;
+			}
+
 			/* Decode: subtract 32 for button and coords; coords also -1 for
 			 * 0-based (terminal sends 1-based after the 32 offset).
 			 * plan section 3.7: button_raw-32, x_raw-32-1, y_raw-32-1. */
@@ -992,13 +1097,14 @@ int input_decoder_poll(input_decoder_t *dec, boxen_event_t *out, int timeout_ms)
 			int x = (int)(x_raw) - 32 - 1;
 			int y = (int)(y_raw) - 32 - 1;
 
-			/* Extract modifier bits (same encoding as SGR). */
+			/* Extract modifier bits (same encoding as SGR;
+			 * see SGR_MOUSE_MOD_MASK). */
 			uint16_t mod = 0;
 			if (raw_button & 4)  mod |= BOXEN_MOD_SHIFT;
 			if (raw_button & 8)  mod |= BOXEN_MOD_META;
 			if (raw_button & 16) mod |= BOXEN_MOD_CTRL;
 
-			int base = raw_button & ~(4 | 8 | 16);
+			int base = (int)((unsigned)raw_button & ~SGR_MOUSE_MOD_MASK);
 			uint8_t button;
 			if (base == 64)      button = 4;           /* wheel up */
 			else if (base == 65) button = 5;           /* wheel down */
@@ -1333,6 +1439,20 @@ size_t input_decoder_parse_errors(const input_decoder_t *dec) {
 		return 0;
 	}
 	return dec->parse_errors;
+}
+
+/* 2026-06-29 JES #811 M3 gate-fix: clock override for deterministic
+ * double-click tests.  Pass enable=true plus a value to lock dec_now_ms()
+ * to that value (subsequent calls return the same locked value until updated
+ * with another call).  Pass enable=false to release the override and return
+ * to wall-clock.  Per bar-raiser PR #818 review: previously the double-click
+ * test relied on two presses being injected sub-millisecond apart so real
+ * CLOCK_MONOTONIC elapsed < 500ms.  Under CI load or sanitizers this was
+ * brittle; the override makes both the positive (within window) and negative
+ * (past window) paths deterministic. */
+void input_decoder_set_clock_for_testing(bool enable, uint64_t value_ms) {
+	dec_clock_override_set = enable;
+	dec_clock_override_ms  = value_ms;
 }
 
 #endif /* INPUT_DECODER_TEST_SEAM */
