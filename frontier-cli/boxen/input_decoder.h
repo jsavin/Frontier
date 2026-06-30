@@ -123,15 +123,23 @@ bool             input_decoder_mouse_enabled(const input_decoder_t *dec);
  * calls (see section 3.12 of the plan: burst-read robustness). */
 int  input_decoder_poll(input_decoder_t *dec, boxen_event_t *out, int timeout_ms);
 
-/* 2026-06-29 JES #809 M1: Kitty keyboard protocol enable (deferred to M5).
+/* 2026-06-29 JES #809 M1: Kitty keyboard protocol enable.
+ * 2026-06-29 JES #813 M5: write side wired -- sends "\x1b[=1u" to tty_fd
+ *   when tty_fd >= 0.  Test seam (tty_fd == -1) still flips the bit only.
  *
- * Sends the enable sequence (\e[=1u) and records that progressive
- * enhancement was requested.  Responses arrive via normal
- * input_decoder_poll.  Idempotent.  No-op if already enabled or if the
- * terminal does not respond to the probe.
+ * Sends the enable sequence (\e[=1u: "disambiguate escape codes" flag) and
+ * records that progressive enhancement was requested.  CSI-u replies
+ * (\e[KEYCODE;MODIFIER u) arrive via normal input_decoder_poll and are
+ * decoded by the same state machine that handles standard CSI sequences.
+ * Idempotent -- a second call after the first is a no-op (the bit is
+ * already set; we skip the duplicate write).
  *
- * M1 stub: records the request but emits nothing.  M5 wires the write
- * and decodes CSI-u replies. */
+ * Probe-and-read for the terminal's acknowledgement (\e[=FLAGS u) is
+ * deferred to M6 where the read(2) loop lives.  Terminals that don't
+ * support kitty (Terminal.app, iTerm2 as of writing) silently ignore the
+ * enable; no CSI-u traffic arrives and the decoder operates as if
+ * kitty_enable had never been called -- standard CSI parsing from M2
+ * continues to handle their input. */
 void input_decoder_kitty_enable(input_decoder_t *dec);
 
 /* Query whether kitty_enable has been called on this decoder.  Symmetric

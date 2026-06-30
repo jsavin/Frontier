@@ -10,6 +10,13 @@
  * 2026-06-29 JES #812 M4: bracketed-paste handling (PASTE_ACTIVE state +
  *   heap-grown paste buffer + BOXEN_EV_PASTE emission with CR/LF
  *   normalization, 256 KiB size cap, and BOXEN_LOG_W on truncation).
+ * 2026-06-29 JES #813 M5: Kitty keyboard protocol -- input_decoder_kitty_enable
+ *   writes "\x1b[=1u" (progressive enhancement: disambiguate escape codes)
+ *   on the TTY fd, and decode_csi gains a 'u' case that decodes the CSI-u
+ *   form (\e[KEYCODE;MODIFIER u) to boxen_event_t.  Terminals that don't
+ *   support kitty (Terminal.app, iTerm2) silently ignore the enable and
+ *   send no CSI-u traffic -- the standard CSI path from M2 still handles
+ *   their input correctly.
  *
  * Scope of this file at M2:
  *   - Allocate / free the input_decoder_t struct.
@@ -432,9 +439,53 @@ void input_decoder_kitty_enable(input_decoder_t *dec) {
 	if (dec == NULL) {
 		return;
 	}
+	/* 2026-06-29 JES #813 M5: idempotent.  If kitty was already enabled
+	 * (a second slash command, a re-init after a SIGWINCH-driven probe,
+	 * etc.) skip the duplicate write so we don't pile up enable sequences
+	 * in the terminal's input queue.  The decode path in decode_csi
+	 * doesn't actually consult dec->kitty_enabled -- a terminal that
+	 * sends CSI-u sequences without us asking is decoded just the same --
+	 * so the bit is documentary plus the gate for the one-shot write
+	 * below. */
+	if (dec->kitty_enabled) {
+		return;
+	}
 	dec->kitty_enabled = true;
-	/* M5: write "\e[=1u" to dec->tty_fd; subsequent polls decode the
-	 * \e[CODE;MOD u replies. M1 stub records the bit only. */
+
+	/* 2026-06-29 JES #813 M5: write the progressive-enhancement enable.
+	 *
+	 * "\x1b[=1u" sets the "disambiguate escape codes" flag, which is the
+	 * minimum kitty progressive-enhancement level that gives us
+	 * unambiguous reports for Escape, Tab, Enter, and the modifier-
+	 * disambiguated keys we care about for issue #805.  Higher flag
+	 * values (2 = report event types, 4 = report alternate keys) are
+	 * post-launch -- the M5 decoder only handles the two-part
+	 * KEYCODE;MODIFIER form.  Asking for more flags than we can decode
+	 * would be a protocol-conformance footgun: the terminal would send
+	 * the three-part form and the decoder would silently drop it via
+	 * the count==0 / unknown-keycode branches in decode_csi 'u'.
+	 *
+	 * Probe-and-read for terminal acknowledgement (the optional
+	 * \e[=FLAGS u response) is deferred to M6, where the read(2) loop
+	 * lives -- M5 ships only the decoder's ability to handle CSI-u when
+	 * it arrives, per the milestone scope in plan section 7.  If the
+	 * terminal does NOT support kitty (Terminal.app, iTerm2 as of this
+	 * writing), the enable sequence is silently ignored by the terminal
+	 * and no CSI-u traffic arrives -- the decoder operates as if
+	 * kitty_enable had never been called.  Standard CSI parsing from M2
+	 * continues to handle the keys those terminals do send.
+	 *
+	 * Test-seam path (tty_fd == -1) skips the write -- mirrors the
+	 * pattern from input_decoder_set_mouse (lines 409..417 above).
+	 * write(2) errors are silently ignored for the same reason as in
+	 * set_mouse: a write failure means the fd is closed and the next
+	 * read will surface the same condition cleanly via the poll loop.
+	 * Short control sequences fit in a single pipe buffer page so
+	 * partial-write handling is not required. */
+	if (dec->tty_fd >= 0) {
+		static const char ENABLE[] = "\x1b[=1u";
+		(void)write(dec->tty_fd, ENABLE, sizeof(ENABLE) - 1);
+	}
 }
 
 bool input_decoder_kitty_enabled(const input_decoder_t *dec) {
@@ -1060,10 +1111,91 @@ static bool decode_csi(input_decoder_t *dec, const uint8_t *csi_buf,
 		default: return false;
 		}
 	}
+	case 'u': {
+		/* 2026-06-29 JES #813 M5: Kitty keyboard protocol CSI-u decode.
+		 *
+		 * Form: \e[KEYCODE u             (no modifier)
+		 *       \e[KEYCODE;MODIFIER u    (with modifier; 1=none, 2=Shift,
+		 *                                 3=Alt, 5=Ctrl, ... same encoding
+		 *                                 as the standard CSI cursor-key
+		 *                                 modifier param -- see
+		 *                                 modifier_from_param).
+		 *
+		 * Plan section 3.9: KEYCODE for printable keys is the Unicode
+		 * code point of the character produced ('A' = 65, 'a' = 97, ...).
+		 * Functional identifiers reuse the Unicode control-code values
+		 * for keys that have one: 13 (CR) = Enter, 27 (ESC) = Escape,
+		 * 9 (HT) = Tab, 127 (DEL) = Backspace.  This M5 milestone
+		 * implements the two-part form; the three-part form with event
+		 * type and alternate key is post-launch (plan section 3.9,
+		 * "For M5 scope...").
+		 *
+		 * params[0] is required (no keycode => malformed; drop quietly
+		 * via the false-return + caller's parse_errors bump).  params[1]
+		 * may be absent -- modifier_from_param treats 0 / absent as
+		 * BOXEN_MOD_NONE so the no-modifier path coalesces cleanly with
+		 * the single-param form above. */
+		if (count == 0) {
+			return false;
+		}
+		uint16_t kitty_mod = (count >= 2) ? modifier_from_param(params[1])
+		                                  : BOXEN_MOD_NONE;
+		int keycode = params[0];
+
+		/* Functional identifiers first.  Each maps to a dedicated
+		 * BOXEN_KEY_* so downstream consumers can keymap them
+		 * separately from the printable form.  Codes that aren't on
+		 * this list (and aren't printable) fall through to the
+		 * "unknown -- drop" branch at the bottom; this keeps the M5
+		 * surface narrow.  A future post-launch milestone can extend
+		 * the table with kitty's full functional set (arrows, F-keys,
+		 * etc.) without changing the dispatch shape. */
+		switch (keycode) {
+		case 9:    /* Tab */
+			emit_key(out, BOXEN_KEY_TAB, 0, kitty_mod);
+			return true;
+		case 13:   /* Enter */
+			emit_key(out, BOXEN_KEY_ENTER, 0, kitty_mod);
+			return true;
+		case 27:   /* Escape */
+			emit_key(out, BOXEN_KEY_ESCAPE, 0, kitty_mod);
+			return true;
+		case 127:  /* Backspace */
+			emit_key(out, BOXEN_KEY_BACKSPACE, 0, kitty_mod);
+			return true;
+		default:
+			break;
+		}
+
+		/* Printable keycode.  Accept any Unicode scalar value in the
+		 * BMP-and-supplementary range, excluding the C0 / C1 control
+		 * ranges that didn't match a functional identifier above.
+		 * Surrogates (U+D800..U+DFFF) and out-of-range codepoints
+		 * (> U+10FFFF) are rejected -- the same UTF-8 validation
+		 * boundary the GROUND-state decoder applies, so the input
+		 * surface stays consistent regardless of which protocol path
+		 * the keystroke arrived on. */
+		if (keycode <= 0 || keycode > 0x10FFFF) {
+			return false;
+		}
+		if (keycode >= 0xD800 && keycode <= 0xDFFF) {
+			return false;
+		}
+		if (keycode < 0x20 || (keycode >= 0x7F && keycode < 0xA0)) {
+			/* Unmapped C0 (other than the functional codes handled
+			 * above) and C1 control range.  Reject -- emitting these
+			 * as printable ch would let a terminal smuggle raw
+			 * control bytes through the CSI-u path. */
+			return false;
+		}
+		emit_key(out, BOXEN_KEY_NONE, (uint32_t)keycode, kitty_mod);
+		return true;
+	}
 	default:
-		/* u (Kitty, M5) and unknown finals land here.
-		 * M / m (mouse) are handled above before reaching this switch.
-		 * Silently discarded -- never emit as printable. */
+		/* Unknown finals land here.  M / m (mouse) are handled above
+		 * before reaching this switch; u (Kitty) is handled by its own
+		 * case immediately above.  Silently discarded -- never emit as
+		 * printable. */
 		return false;
 	}
 }

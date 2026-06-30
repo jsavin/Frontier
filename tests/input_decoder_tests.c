@@ -12,6 +12,10 @@
  * ESC-prefix Meta, partial-sequence split, control characters 0x01-0x1A,
  * UTF-8 multi-byte decode.  M3/M4/M5 stubs remain SKIP.
  *
+ * 2026-06-29 JES #813 M5: un-SKIP the M5-scope Kitty CSI-u tests --
+ * `\e[N u` and `\e[N;Nu` decoding for printable + functional keycodes
+ * (A, a, Enter, Escape).  All SKIP stubs are now behavioral asserts.
+ *
  * SKIP mechanism note (no TR_SKIP exists in test_report.h):
  *   The TR_RUN macro records a test as "passed" if its body returns without
  *   firing assert().  Each protocol stub below prints a SKIP line to stderr
@@ -70,8 +74,16 @@
  * function is named test_skip_* -- a grep over the JSON tally for
  * "test_skip_" produces the deferred set without parsing stderr.
  *
- * 2026-06-29 JES #809 M1. */
+ * 2026-06-29 JES #809 M1.
+ *
+ * 2026-06-29 JES #813 M5: M5 un-skipped the last SKIP stub so tr_skip has
+ * no callers today.  Kept in place (marked __attribute__((unused)) so
+ * -Wunused-function stays clean) because any future deferred test should
+ * use the same accounting path -- the printf("[skip-summary] ...") in
+ * main reads g_skip_count.  Removing the helper would force the next
+ * person who needs a SKIP path to recreate the accounting plumbing. */
 static int g_skip_count = 0;
+__attribute__((unused))
 static void tr_skip(const char *reason) {
 	g_skip_count++;
 	fprintf(stderr, "[SKIP] %s\n", reason);
@@ -2172,23 +2184,169 @@ static void test_bracketed_paste_split_across_inject(void) {
 }
 
 /* -------------------------------------------------------------------------
- * M5 SKIP stubs -- Kitty keyboard protocol.
+ * 2026-06-29 JES #813 M5: Kitty keyboard protocol -- CSI-u decode.
+ *
+ * Plan section 3.9: terminals that advertise the Kitty progressive-enhancement
+ * protocol send `\e[KEYCODE;MODIFIERu` for keys (the CSI-u form).  KEYCODE is
+ * the Unicode code point for printable keys (e.g. 65 = 'A') and a small set
+ * of "functional" identifiers for special keys (13 = Enter, 27 = Escape, etc.
+ * -- the subset used by M5 tests follows the kitty spec's "key identifier"
+ * table).  MODIFIER, when present, uses the same 1-based encoding as the
+ * standard CSI cursor-key modifier param (1=none, 2=Shift, 3=Alt, 5=Ctrl,
+ * ...) so the existing modifier_from_param helper applies unchanged.
+ *
+ * M5 scope (per plan section 7): decode the two-part `\e[N;Nu` form
+ * (keycode + modifier).  The three-part form (with event type and
+ * alternate key) is post-launch.
  * ---------------------------------------------------------------------- */
 
-static void test_skip_kitty_csi_u_letter(void) {
-	tr_skip("M5: \\e[65u -> ch='A', mod=NONE (plan section 3.9)");
+/* `\e[65u` -- 'A' with no modifier.  Verifies the simplest CSI-u path:
+ * single param, no modifier, keycode is a printable Unicode code point that
+ * passes through as ev.key.ch with key=NONE. */
+static void test_kitty_csi_u_letter_a(void) {
+	input_decoder_t *dec = input_decoder_create(-1);
+	assert(dec != NULL);
+
+	static const uint8_t seq[] = {0x1B, '[', '6', '5', 'u'};
+	boxen_event_t ev;
+	inject_and_poll(dec, seq, sizeof(seq), BOXEN_OK, &ev);
+
+	assert(ev.type == BOXEN_EV_KEY);
+	assert(ev.key.key == BOXEN_KEY_NONE);
+	assert(ev.key.ch  == 'A');
+	assert(ev.key.mod == BOXEN_MOD_NONE);
+
+	input_decoder_destroy(dec);
 }
 
-static void test_skip_kitty_csi_u_letter_with_alt(void) {
-	tr_skip("M5: \\e[65;3u -> ch='A', mod=ALT (plan section 3.9)");
+/* `\e[65;3u` -- 'A' with Alt.  Verifies the two-param form: keycode +
+ * modifier.  Modifier param 3 = Alt per modifier_from_param. */
+static void test_kitty_csi_u_letter_a_with_alt(void) {
+	input_decoder_t *dec = input_decoder_create(-1);
+	assert(dec != NULL);
+
+	static const uint8_t seq[] = {0x1B, '[', '6', '5', ';', '3', 'u'};
+	boxen_event_t ev;
+	inject_and_poll(dec, seq, sizeof(seq), BOXEN_OK, &ev);
+
+	assert(ev.type == BOXEN_EV_KEY);
+	assert(ev.key.key == BOXEN_KEY_NONE);
+	assert(ev.key.ch  == 'A');
+	assert(ev.key.mod == BOXEN_MOD_ALT);
+
+	input_decoder_destroy(dec);
 }
 
-static void test_skip_kitty_csi_u_enter_with_ctrl(void) {
-	tr_skip("M5: \\e[13;5u -> KEY_ENTER, mod=CTRL (plan section 3.9)");
+/* `\e[13;5u` -- Enter with Ctrl.  Keycode 13 (0x0D) is the Enter functional
+ * identifier in the kitty key map; modifier 5 = Ctrl.  Verifies that
+ * functional keycodes route to the matching BOXEN_KEY_* constant rather than
+ * emitting as a printable ch=13. */
+static void test_kitty_csi_u_enter_with_ctrl(void) {
+	input_decoder_t *dec = input_decoder_create(-1);
+	assert(dec != NULL);
+
+	static const uint8_t seq[] = {0x1B, '[', '1', '3', ';', '5', 'u'};
+	boxen_event_t ev;
+	inject_and_poll(dec, seq, sizeof(seq), BOXEN_OK, &ev);
+
+	assert(ev.type == BOXEN_EV_KEY);
+	assert(ev.key.key == BOXEN_KEY_ENTER);
+	assert(ev.key.ch  == 0);
+	assert(ev.key.mod == BOXEN_MOD_CTRL);
+
+	input_decoder_destroy(dec);
 }
 
-static void test_skip_kitty_csi_u_escape_with_alt(void) {
-	tr_skip("M5: \\e[27;3u -> KEY_ESCAPE, mod=ALT (plan section 3.9)");
+/* `\e[27;3u` -- Escape with Alt.  Keycode 27 (0x1B) is the Escape
+ * functional identifier; modifier 3 = Alt.  Verifies the disambiguated
+ * Escape path: the CSI-u form lets the terminal report "Escape with Alt"
+ * unambiguously, unlike the legacy ESC-prefix Meta form (\e<key>) which
+ * cannot represent Escape itself. */
+static void test_kitty_csi_u_escape_with_alt(void) {
+	input_decoder_t *dec = input_decoder_create(-1);
+	assert(dec != NULL);
+
+	static const uint8_t seq[] = {0x1B, '[', '2', '7', ';', '3', 'u'};
+	boxen_event_t ev;
+	inject_and_poll(dec, seq, sizeof(seq), BOXEN_OK, &ev);
+
+	assert(ev.type == BOXEN_EV_KEY);
+	assert(ev.key.key == BOXEN_KEY_ESCAPE);
+	assert(ev.key.ch  == 0);
+	assert(ev.key.mod == BOXEN_MOD_ALT);
+
+	input_decoder_destroy(dec);
+}
+
+/* `\e[97u` -- lowercase 'a' with no modifier.  Sanity check that the
+ * decoder doesn't case-fold or otherwise transform the printable keycode. */
+static void test_kitty_csi_u_lowercase_a(void) {
+	input_decoder_t *dec = input_decoder_create(-1);
+	assert(dec != NULL);
+
+	static const uint8_t seq[] = {0x1B, '[', '9', '7', 'u'};
+	boxen_event_t ev;
+	inject_and_poll(dec, seq, sizeof(seq), BOXEN_OK, &ev);
+
+	assert(ev.type == BOXEN_EV_KEY);
+	assert(ev.key.key == BOXEN_KEY_NONE);
+	assert(ev.key.ch  == 'a');
+	assert(ev.key.mod == BOXEN_MOD_NONE);
+
+	input_decoder_destroy(dec);
+}
+
+/* Round-trip: kitty_enable + several CSI-u sequences in one inject.
+ *
+ * Mirrors the burst-read pattern used by M3 tests.  Verifies (a) that
+ * input_decoder_kitty_enable() does not consume or pollute the byte stream
+ * (it only flips the bit, since tty_fd == -1 here suppresses the write),
+ * and (b) that a multi-event inject containing a mix of bare and modified
+ * CSI-u sequences drains correctly with three separate poll calls. */
+static void test_kitty_enable_then_csi_u_round_trip(void) {
+	input_decoder_t *dec = input_decoder_create(-1);
+	assert(dec != NULL);
+
+	input_decoder_kitty_enable(dec);
+	assert(input_decoder_kitty_enabled(dec) == true);
+
+	/* Three CSI-u sequences concatenated:
+	 *   \e[65u       -- 'A'
+	 *   \e[66;2u     -- 'B' with Shift
+	 *   \e[13;5u     -- Enter with Ctrl
+	 */
+	static const uint8_t seq[] = {
+		0x1B, '[', '6', '5', 'u',
+		0x1B, '[', '6', '6', ';', '2', 'u',
+		0x1B, '[', '1', '3', ';', '5', 'u',
+	};
+	size_t accepted = input_decoder_inject_bytes(dec, seq, sizeof(seq));
+	assert(accepted == sizeof(seq));
+
+	boxen_event_t ev;
+
+	memset(&ev, 0x7f, sizeof(ev));
+	assert(input_decoder_poll(dec, &ev, 0) == BOXEN_OK);
+	assert(ev.type == BOXEN_EV_KEY);
+	assert(ev.key.ch == 'A');
+	assert(ev.key.mod == BOXEN_MOD_NONE);
+
+	memset(&ev, 0x7f, sizeof(ev));
+	assert(input_decoder_poll(dec, &ev, 0) == BOXEN_OK);
+	assert(ev.type == BOXEN_EV_KEY);
+	assert(ev.key.ch == 'B');
+	assert(ev.key.mod == BOXEN_MOD_SHIFT);
+
+	memset(&ev, 0x7f, sizeof(ev));
+	assert(input_decoder_poll(dec, &ev, 0) == BOXEN_OK);
+	assert(ev.type == BOXEN_EV_KEY);
+	assert(ev.key.key == BOXEN_KEY_ENTER);
+	assert(ev.key.mod == BOXEN_MOD_CTRL);
+
+	/* Buffer fully drained. */
+	assert(input_decoder_poll(dec, &ev, 0) == BOXEN_ERR_TIMEOUT);
+
+	input_decoder_destroy(dec);
 }
 
 /* -------------------------------------------------------------------------
@@ -2351,18 +2509,26 @@ int main(void) {
 	TR_RUN(test_bracketed_paste_empty);
 	TR_RUN(test_bracketed_paste_split_across_inject);
 
-	/* M5 SKIP -- Kitty keyboard protocol. */
-	TR_RUN(test_skip_kitty_csi_u_letter);
-	TR_RUN(test_skip_kitty_csi_u_letter_with_alt);
-	TR_RUN(test_skip_kitty_csi_u_enter_with_ctrl);
-	TR_RUN(test_skip_kitty_csi_u_escape_with_alt);
+	/* 2026-06-29 JES #813 M5: Kitty keyboard protocol CSI-u decode. */
+	TR_RUN(test_kitty_csi_u_letter_a);
+	TR_RUN(test_kitty_csi_u_letter_a_with_alt);
+	TR_RUN(test_kitty_csi_u_enter_with_ctrl);
+	TR_RUN(test_kitty_csi_u_escape_with_alt);
+	TR_RUN(test_kitty_csi_u_lowercase_a);
+	TR_RUN(test_kitty_enable_then_csi_u_round_trip);
 
 	/* 2026-06-29 JES #809 M1: skip-stub visibility (see file header).
 	 * Printed BEFORE TR_SUMMARY so the count appears alongside the green
 	 * tally in the test log without polluting the JSON tally itself.
 	 * tr_count was updated by TR_RUN as each test ran; g_skip_count tracks
-	 * the subset that called tr_skip() instead of asserting behavior. */
-	printf("[skip-summary] %d of %d tests are SKIP stubs deferred to M5\n",
+	 * the subset that called tr_skip() instead of asserting behavior.
+	 *
+	 * 2026-06-29 JES #813 M5: M5 was the last milestone with SKIP stubs;
+	 * with the Kitty CSI-u tests un-skipped the expected count is 0 of N.
+	 * Left the printf in place rather than removing it so any future
+	 * deferred test stub re-using tr_skip() surfaces in CI without an
+	 * extra plumbing change. */
+	printf("[skip-summary] %d of %d tests are SKIP stubs\n",
 	       g_skip_count, tr_count);
 
 	TR_SUMMARY();
