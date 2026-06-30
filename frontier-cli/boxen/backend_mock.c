@@ -338,6 +338,16 @@ static void mock_clear(void) {
  * Vtable and accessor
  * ---------------------------------------------------------------------- */
 
+/* 2026-06-29 JES #805: mock-backend no-op for mouse mode.
+ *
+ * The mock backend does not emit mouse events, so tracking mouse mode
+ * state is unnecessary.  Provide an explicit hook (rather than relying
+ * on the designated-initializer NULL default + g_backend's NULL guard)
+ * so test code that asserts "mouse mode was requested" can hook in. */
+static void mock_set_mouse_enabled(bool enabled) {
+	(void)enabled;
+}
+
 static const boxen_backend_t g_mock_backend = {
 	.init               = mock_init,
 	.shutdown           = mock_shutdown,
@@ -350,6 +360,7 @@ static const boxen_backend_t g_mock_backend = {
 	.present            = mock_present,
 	.poll_event         = mock_poll_event,
 	.clear              = mock_clear,
+	.set_mouse_enabled  = mock_set_mouse_enabled,
 };
 
 const boxen_backend_t *boxen_mock_backend(void) {

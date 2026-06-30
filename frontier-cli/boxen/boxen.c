@@ -281,6 +281,21 @@ void boxen_get_screen_size(int *w, int *h) {
 	if (h != NULL) *h = th;
 }
 
+/* 2026-06-29 JES #805: boxen_set_mouse_enabled.
+ *
+ * Forwards to the backend vtable's set_mouse_enabled hook.  When the
+ * hook is NULL (e.g. on the mock backend, or any future backend without
+ * mouse support) this is a silent no-op so callers can request mouse
+ * unconditionally without backend-specific branching.
+ *
+ * Pre-init: silently ignored (g_backend == NULL).  The boxen REPL calls
+ * this immediately after boxen_init, which is the documented order. */
+void boxen_set_mouse_enabled(bool enabled) {
+	if (g_backend == NULL) return;
+	if (g_backend->set_mouse_enabled == NULL) return;
+	g_backend->set_mouse_enabled(enabled);
+}
+
 /* -------------------------------------------------------------------------
  * Window lifecycle
  * ---------------------------------------------------------------------- */

@@ -4,6 +4,33 @@ Most-recent first.  Each entry summarizes user-visible changes for the release.
 
 ---
 
+## C.6.3 — mouse-wheel scrollback and Option-arrow word-jump in boxen REPL (2026-06-29)
+
+### Summary
+
+Two input-handling regressions surfaced by the C.6 flip to the boxen REPL are fixed:
+
+- **Mouse wheel** now scrolls the output pane (3 lines per tick), like every other terminal UI.  Previously the wheel was being interpreted as up/down arrows by the host terminal and routed to history navigation -- a muscle-memory regression versus the legacy linenoise REPL.
+- **Option-Left** / **Option-Right** now jump the input caret by one word (readline `M-b` / `M-f` convention).  Previously these inserted literal `b` / `f` characters into the input bar because the Option-key Esc-prefix was being decoded but the resulting Alt modifier was ignored.
+
+### What changed
+
+- Mouse mode is enabled in the boxen REPL's terminal backend.  Wheel events arrive as real mouse events (button 4/5) and are routed to the same scroll-offset mechanism as PgUp/PgDn (#803).  Three-line wheel step matches the `less` and macOS Terminal.app convention.
+- Both Esc-prefix (`ESC b` / `ESC f`, the macOS Terminal.app default) and CSI (`ESC[1;3D` / `ESC[1;3C`, iTerm2 with "Left/Right option as Esc+") encodings of Option-arrow are recognized.
+- Word boundaries follow alphanumeric runs.  `foo_bar_baz` splits into three words; underscores and other non-alphanumerics are treated as separators (matches bash readline).
+- Unrecognized Alt-modified printable keys (e.g. Option-x) are silently swallowed rather than inserting the literal character -- protects against the same class of bug recurring with other Option-letter combos.
+- CLI usage guide updated with both bindings.
+
+### Trade-off (mouse mode)
+
+Enabling mouse mode means click-and-drag text selection within the REPL goes through xterm mouse tracking rather than the terminal's native selection.  To select text natively, hold `Option` (macOS Terminal.app) or `Cmd` (iTerm2) while dragging to bypass mouse mode.
+
+### Why now
+
+The C.6 flip to boxen as the default REPL surfaced these as the first user-reported keystroke regressions versus linenoise.  Both have a workaround (`--plain` falls back to linenoise), but defaulting to a REPL where the wheel maps to history and Option-arrows insert literal letters is hostile to muscle memory.  Resolves #805.
+
+---
+
 ## C.6.2 — boxen REPL: visible errors for slash commands (2026-06-29)
 
 ### Summary
@@ -44,7 +71,7 @@ Before C.6, the linenoise REPL wrote to the normal terminal buffer, so terminal-
 
 ### Out of scope (deferred)
 
-- Mouse-wheel scrolling: tracked under #805 (touches the same file as this change; queued behind it).
+- Mouse-wheel scrolling: addressed in C.6.2 (#805).
 - Scroll position indicator in the footer (e.g. `[+42]`): nice-to-have polish for a follow-up.
 
 ---

@@ -276,6 +276,15 @@ static void test_wcwidth_cjk_returns_two(void) {
 }
 
 /* -------------------------------------------------------------------------
+ * 2026-06-29 JES #805: boxen_set_mouse_enabled coverage lives in
+ * boxen_repl_tests.c (which links boxen.c and exercises mouse events
+ * end-to-end via make_wheel_event()).  No backend-level test added here
+ * because this binary intentionally does not link boxen.c, only the
+ * mock backend -- so calling boxen_set_mouse_enabled at this layer
+ * would link against a NULL symbol.
+ * ---------------------------------------------------------------------- */
+
+/* -------------------------------------------------------------------------
  * main
  * ---------------------------------------------------------------------- */
 
