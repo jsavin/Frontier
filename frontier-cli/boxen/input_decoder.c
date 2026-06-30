@@ -872,12 +872,19 @@ static bool decode_sgr_mouse(input_decoder_t *dec, const uint8_t *csi_buf,
  * mid-flight still emits the partial event so the user sees something
  * rather than nothing. */
 static void paste_buf_append(input_decoder_t *dec, uint8_t b) {
+	/* 2026-06-29 JES #812 M4 gate-fix: once truncation is latched (cap
+	 * reached OR realloc failed) we are committed to dropping further
+	 * bytes for the rest of this paste -- don't re-enter the realloc
+	 * branch on every subsequent byte (which under sustained OOM would
+	 * call malloc thousands of times for nothing).  The early return
+	 * also keeps the BOXEN_LOG_W call sites single-use per paste. */
+	if (dec->paste_truncated) {
+		return;
+	}
 	if (dec->paste_len >= INPUT_DECODER_PASTE_CAP) {
-		if (!dec->paste_truncated) {
-			dec->paste_truncated = true;
-			BOXEN_LOG_W("bracketed paste exceeds %zu-byte cap; truncated",
-			            (size_t)INPUT_DECODER_PASTE_CAP);
-		}
+		dec->paste_truncated = true;
+		BOXEN_LOG_W("bracketed paste exceeds %zu-byte cap; truncated",
+		            (size_t)INPUT_DECODER_PASTE_CAP);
 		return;
 	}
 	if (dec->paste_len >= dec->paste_cap) {
@@ -889,12 +896,12 @@ static void paste_buf_append(input_decoder_t *dec, uint8_t b) {
 		}
 		char *grown = (char *)realloc(dec->paste_buf, new_cap);
 		if (grown == NULL) {
-			/* OOM: keep what we have, latch truncation, stop appending. */
-			if (!dec->paste_truncated) {
-				dec->paste_truncated = true;
-				BOXEN_LOG_W("bracketed paste realloc failed at %zu bytes; "
-				            "truncated", dec->paste_len);
-			}
+			/* OOM: keep what we have, latch truncation, stop appending.
+			 * realloc preserves dec->paste_buf on failure, so the
+			 * already-buffered bytes remain valid for the eventual emit. */
+			dec->paste_truncated = true;
+			BOXEN_LOG_W("bracketed paste realloc failed at %zu bytes; "
+			            "truncated", dec->paste_len);
 			return;
 		}
 		dec->paste_buf = grown;

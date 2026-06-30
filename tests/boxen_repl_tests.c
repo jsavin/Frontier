@@ -2218,11 +2218,10 @@ static void test_paste_mid_buffer_inserts_at_cursor(void) {
 static void test_paste_oversize_truncates_at_input_cap(void) {
 	setup();
 
-	/* Build a 2048-byte paste body. */
+	/* Build a 2048-byte paste body (all 'q'). */
 	char *big = (char *)malloc(2048);
 	assert(big != NULL);
 	memset(big, 'q', 2048);
-	big[2048 - 1] = 'q';
 
 	boxen_event_t ev;
 	memset(&ev, 0, sizeof(ev));
