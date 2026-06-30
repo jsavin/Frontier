@@ -174,6 +174,28 @@ size_t input_decoder_buffered_bytes(const input_decoder_t *dec);
  * (in production) a runaway terminal burst that the state machine
  * failed to drain. */
 size_t input_decoder_dropped_bytes(const input_decoder_t *dec);
+
+/* 2026-06-30 JES #810 M2 review-followup: cumulative parse-error count.
+ *
+ * Bumped on every silent rejection path inside the state machine:
+ *   - CSI buffer overflow (sequence drained via CSI_SWALLOW state)
+ *   - CSI parameter byte rejected as non-numeric
+ *   - Unknown CSI final byte (legitimate sequence we have no mapping for)
+ *   - Unknown SS3 final byte
+ *   - Stray UTF-8 continuation byte in GROUND
+ *   - Invalid 5+ byte UTF-8 lead in GROUND
+ *   - Premature non-continuation byte mid-UTF-8
+ *   - Invalid UTF-8 codepoint (surrogate, overlong, > U+10FFFF) -- the
+ *     event still emits as U+FFFD, but the counter is bumped so the
+ *     rejection is observable.
+ *
+ * The complement of dropped_bytes: dropped_bytes counts back-pressure
+ * (ring full), parse_errors counts protocol rejection.  Together they
+ * cover every "input arrived but no event was produced" path so a
+ * desync between bytes-in and events-out is always attributable.
+ *
+ * Returns 0 for a NULL decoder.  Monotonic; never decreases. */
+size_t input_decoder_parse_errors(const input_decoder_t *dec);
 #endif
 
 #ifdef __cplusplus
