@@ -141,6 +141,19 @@ typedef enum {
 	BOXEN_EV_KEY,
 	BOXEN_EV_MOUSE,
 	BOXEN_EV_RESIZE,
+	/* 2026-06-29 JES #812 Phase C M4: bracketed-paste event.
+	 *
+	 * Emitted by the input decoder when a paste sequence (\e[200~ ... \e[201~)
+	 * is fully buffered.  The data field is a heap-allocated UTF-8 byte
+	 * string (NOT NUL-terminated -- len is authoritative); the consumer of
+	 * the event takes ownership and MUST free(ev.paste.data) after handling
+	 * the event.  This is the only event variant whose union arm transfers
+	 * heap ownership to the caller; all other event variants are POD.
+	 *
+	 * See planning/phase_c/INPUT_DECODER_PLAN.md sections 3.8 and 5.3 for
+	 * the rationale (Cmd-V into the REPL under mouse mode must not be
+	 * shredded into per-keystroke events). */
+	BOXEN_EV_PASTE,
 } boxen_event_type_t;
 
 typedef struct boxen_event {
@@ -161,6 +174,26 @@ typedef struct boxen_event {
 		struct {
 			int w, h;
 		} resize;
+		/* 2026-06-29 JES #812 Phase C M4: bracketed-paste payload.
+		 *
+		 * data: heap-allocated, owned by the event consumer.  NOT NUL-
+		 *   terminated -- len is the authoritative byte count.  CR/LF
+		 *   line endings inside the paste are normalized to LF (\n) by
+		 *   the decoder; embedded NULs are passed through unchanged
+		 *   (callers that treat the buffer as a C string must filter).
+		 * len: byte length of data (0 if data is NULL).
+		 *
+		 * If len == 0 and data == NULL the event represents an empty paste
+		 * (the user pasted nothing between the markers).  Consumers should
+		 * still call free(data) defensively -- free(NULL) is a no-op.
+		 *
+		 * The decoder caps paste size at 256 KiB; oversize pastes are
+		 * truncated to the cap and a BOXEN_LOG_W is emitted at the
+		 * truncation point. */
+		struct {
+			char   *data;
+			size_t  len;
+		} paste;
 	};
 } boxen_event_t;
 
