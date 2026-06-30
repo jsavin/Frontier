@@ -2349,6 +2349,165 @@ static void test_kitty_enable_then_csi_u_round_trip(void) {
 	input_decoder_destroy(dec);
 }
 
+/* 2026-06-29 JES #813 M5 gate-fix: negative-path coverage for the CSI-u
+ * decoder.  Each test injects a malformed or out-of-policy sequence and
+ * asserts (a) no event is emitted, (b) the parse_errors counter is
+ * bumped so the silent rejection is observable from tests / metrics.
+ * Without these, a regression that started emitting events for surrogate
+ * codepoints, C0 controls, or empty-keycode sequences would silently
+ * smuggle bytes downstream until a user-facing symptom surfaced.
+ *
+ * `parse_errors` is bumped by the CSI-collect loop's "unknown final" path
+ * when decode_csi returns false -- so all the rejection branches inside
+ * the 'u' case roll up to one observable counter delta of +1 per
+ * rejected sequence (same as the rejection bookkeeping the M2 / M3
+ * paths use). */
+
+/* `\e[u` -- no keycode (count==0).  Drop. */
+static void test_kitty_csi_u_no_keycode_rejected(void) {
+	input_decoder_t *dec = input_decoder_create(-1);
+	assert(dec != NULL);
+	size_t pe0 = input_decoder_parse_errors(dec);
+
+	static const uint8_t seq[] = {0x1B, '[', 'u'};
+	boxen_event_t ev;
+	inject_and_poll(dec, seq, sizeof(seq), BOXEN_ERR_TIMEOUT, &ev);
+
+	assert(input_decoder_parse_errors(dec) == pe0 + 1);
+	input_decoder_destroy(dec);
+}
+
+/* `\e[0u` -- keycode 0 (would underflow the printable-range guard).  Drop. */
+static void test_kitty_csi_u_zero_keycode_rejected(void) {
+	input_decoder_t *dec = input_decoder_create(-1);
+	assert(dec != NULL);
+	size_t pe0 = input_decoder_parse_errors(dec);
+
+	static const uint8_t seq[] = {0x1B, '[', '0', 'u'};
+	boxen_event_t ev;
+	inject_and_poll(dec, seq, sizeof(seq), BOXEN_ERR_TIMEOUT, &ev);
+
+	assert(input_decoder_parse_errors(dec) == pe0 + 1);
+	input_decoder_destroy(dec);
+}
+
+/* `\e[7u` -- C0 control 0x07 (BEL).  Not a functional identifier; rejected
+ * so the CSI-u path can't be used to smuggle raw control bytes that the
+ * GROUND-state decoder would reject. */
+static void test_kitty_csi_u_c0_control_rejected(void) {
+	input_decoder_t *dec = input_decoder_create(-1);
+	assert(dec != NULL);
+	size_t pe0 = input_decoder_parse_errors(dec);
+
+	static const uint8_t seq[] = {0x1B, '[', '7', 'u'};
+	boxen_event_t ev;
+	inject_and_poll(dec, seq, sizeof(seq), BOXEN_ERR_TIMEOUT, &ev);
+
+	assert(input_decoder_parse_errors(dec) == pe0 + 1);
+	input_decoder_destroy(dec);
+}
+
+/* `\e[55296u` -- surrogate codepoint U+D800.  Invalid Unicode scalar value
+ * per RFC 3629; same rejection boundary as the UTF-8 GROUND validator. */
+static void test_kitty_csi_u_surrogate_rejected(void) {
+	input_decoder_t *dec = input_decoder_create(-1);
+	assert(dec != NULL);
+	size_t pe0 = input_decoder_parse_errors(dec);
+
+	static const uint8_t seq[] = {0x1B, '[', '5', '5', '2', '9', '6', 'u'};
+	boxen_event_t ev;
+	inject_and_poll(dec, seq, sizeof(seq), BOXEN_ERR_TIMEOUT, &ev);
+
+	assert(input_decoder_parse_errors(dec) == pe0 + 1);
+	input_decoder_destroy(dec);
+}
+
+/* `\e[160u` -- U+00A0 NO-BREAK SPACE.  Just above the C1 control range
+ * (0x80..0x9F), should pass through as a printable code point.  Pins
+ * the upper boundary of the C1 rejection so a regression that moved the
+ * fence to "< 0xA1" instead of "< 0xA0" would fail this test. */
+static void test_kitty_csi_u_nbsp_emits(void) {
+	input_decoder_t *dec = input_decoder_create(-1);
+	assert(dec != NULL);
+
+	static const uint8_t seq[] = {0x1B, '[', '1', '6', '0', 'u'};
+	boxen_event_t ev;
+	inject_and_poll(dec, seq, sizeof(seq), BOXEN_OK, &ev);
+
+	assert(ev.type == BOXEN_EV_KEY);
+	assert(ev.key.key == BOXEN_KEY_NONE);
+	assert(ev.key.ch  == 0xA0);
+	assert(ev.key.mod == BOXEN_MOD_NONE);
+
+	input_decoder_destroy(dec);
+}
+
+/* `\e[128u` -- U+0080 C1 control.  Should reject (paired with the NBSP
+ * test to fence both sides of the C1 range). */
+static void test_kitty_csi_u_c1_control_rejected(void) {
+	input_decoder_t *dec = input_decoder_create(-1);
+	assert(dec != NULL);
+	size_t pe0 = input_decoder_parse_errors(dec);
+
+	static const uint8_t seq[] = {0x1B, '[', '1', '2', '8', 'u'};
+	boxen_event_t ev;
+	inject_and_poll(dec, seq, sizeof(seq), BOXEN_ERR_TIMEOUT, &ev);
+
+	assert(input_decoder_parse_errors(dec) == pe0 + 1);
+	input_decoder_destroy(dec);
+}
+
+/* `\e[9;3u` -- Tab with Alt.  Sanity check that the functional-key
+ * branch applies modifiers correctly. */
+static void test_kitty_csi_u_tab_with_alt(void) {
+	input_decoder_t *dec = input_decoder_create(-1);
+	assert(dec != NULL);
+
+	static const uint8_t seq[] = {0x1B, '[', '9', ';', '3', 'u'};
+	boxen_event_t ev;
+	inject_and_poll(dec, seq, sizeof(seq), BOXEN_OK, &ev);
+
+	assert(ev.type == BOXEN_EV_KEY);
+	assert(ev.key.key == BOXEN_KEY_TAB);
+	assert(ev.key.mod == BOXEN_MOD_ALT);
+
+	input_decoder_destroy(dec);
+}
+
+/* `\e[127;2u` -- Backspace with Shift.  Same as above for Backspace. */
+static void test_kitty_csi_u_backspace_with_shift(void) {
+	input_decoder_t *dec = input_decoder_create(-1);
+	assert(dec != NULL);
+
+	static const uint8_t seq[] = {0x1B, '[', '1', '2', '7', ';', '2', 'u'};
+	boxen_event_t ev;
+	inject_and_poll(dec, seq, sizeof(seq), BOXEN_OK, &ev);
+
+	assert(ev.type == BOXEN_EV_KEY);
+	assert(ev.key.key == BOXEN_KEY_BACKSPACE);
+	assert(ev.key.mod == BOXEN_MOD_SHIFT);
+
+	input_decoder_destroy(dec);
+}
+
+/* Idempotent kitty_enable: second call must not flip the bit back and
+ * must not produce side effects.  In the test seam (tty_fd == -1) there's
+ * no write to observe, but the bit-state invariant is the contract.  In
+ * production the M5 gate (`if (dec->kitty_enabled) return;`) prevents the
+ * duplicate write -- documented in the function header. */
+static void test_kitty_enable_idempotent(void) {
+	input_decoder_t *dec = input_decoder_create(-1);
+	assert(dec != NULL);
+
+	assert(input_decoder_kitty_enabled(dec) == false);
+	input_decoder_kitty_enable(dec);
+	assert(input_decoder_kitty_enabled(dec) == true);
+	input_decoder_kitty_enable(dec);  /* second call: no-op */
+	assert(input_decoder_kitty_enabled(dec) == true);
+
+	input_decoder_destroy(dec);
+}
+
 /* -------------------------------------------------------------------------
  * main
  * ---------------------------------------------------------------------- */
@@ -2516,6 +2675,20 @@ int main(void) {
 	TR_RUN(test_kitty_csi_u_escape_with_alt);
 	TR_RUN(test_kitty_csi_u_lowercase_a);
 	TR_RUN(test_kitty_enable_then_csi_u_round_trip);
+
+	/* 2026-06-29 JES #813 M5 gate-fix: negative-path coverage + boundary
+	 * pins for the CSI-u rejection branches (no-keycode, zero, C0, C1,
+	 * surrogate, NBSP fence) plus functional-modifier coverage and the
+	 * kitty_enable idempotency contract. */
+	TR_RUN(test_kitty_csi_u_no_keycode_rejected);
+	TR_RUN(test_kitty_csi_u_zero_keycode_rejected);
+	TR_RUN(test_kitty_csi_u_c0_control_rejected);
+	TR_RUN(test_kitty_csi_u_surrogate_rejected);
+	TR_RUN(test_kitty_csi_u_nbsp_emits);
+	TR_RUN(test_kitty_csi_u_c1_control_rejected);
+	TR_RUN(test_kitty_csi_u_tab_with_alt);
+	TR_RUN(test_kitty_csi_u_backspace_with_shift);
+	TR_RUN(test_kitty_enable_idempotent);
 
 	/* 2026-06-29 JES #809 M1: skip-stub visibility (see file header).
 	 * Printed BEFORE TR_SUMMARY so the count appears alongside the green
