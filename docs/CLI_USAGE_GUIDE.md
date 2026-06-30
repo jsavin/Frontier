@@ -1013,11 +1013,13 @@ The default REPL (`frontier-cli` with no flag) is the multi-pane boxen REPL.  Th
 | `Escape` | Clear the input buffer |
 | `Ctrl-C` | Quit the REPL (or cancel a pending multi-line continuation) |
 | `Left` / `Right` | Move the caret one character within the input |
+| `Option-Left` / `Option-Right` | Jump caret backward / forward by one word (readline `M-b` / `M-f`) |
 | `Ctrl-A` / `Ctrl-E` | Jump caret to start / end of line |
 | `Backspace` / `Delete` | Delete character before / after the caret |
 | `Up` / `Down` | Navigate command history |
 | `Tab` | Trigger completion (slash commands or ODB paths) |
 | `PgUp` / `PgDn` | Scroll the output pane back / forward through scrollback |
+| Mouse wheel up / down | Scroll the output pane (3 lines per tick) |
 | `/` (at start of line) | Open the slash-menu palette (after a short debounce) |
 | `\` (at end of line) | Continue the expression on the next line (multi-line input) |
 
@@ -1034,6 +1036,16 @@ Behavior notes:
 - **Modals** (file picker, dialog prompts) do not disturb the scroll position; closing a modal returns you to wherever the view was scrolled to.
 
 If you need true terminal-native scrollback (e.g. unbounded scrollback in your OS terminal application), use `--plain` to launch the legacy linenoise REPL instead.
+
+### Mouse-wheel scrolling
+
+The mouse wheel scrolls the output pane (3 lines per tick, matching the `less` / Terminal.app convention).  This binding works anywhere the pointer is over the REPL panes -- output pane or input bar.
+
+Trade-off: enabling mouse mode means click-and-drag text selection within the REPL goes through xterm mouse tracking rather than the terminal's native selection.  To select text natively, hold `Option` (macOS Terminal.app) or `Cmd` (iTerm2) while dragging to bypass mouse mode.
+
+### Word-jump with Option-arrow
+
+`Option-Left` and `Option-Right` jump the input caret backward / forward by one word -- the standard readline / bash binding (`M-b` / `M-f`).  Word boundaries follow alphanumeric runs, so `foo_bar_baz` splits into three words.  Both the macOS Terminal.app default (`ESC b` / `ESC f`) and iTerm2's CSI sequences (`ESC[1;3D` / `ESC[1;3C`) are recognized.
 
 ---
 

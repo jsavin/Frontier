@@ -209,6 +209,13 @@ static void repl_wire_callbacks(boxen_repl_state_t *s) {
 	if (s->output_win != NULL) {
 		boxen_window_set_draw(s->output_win, draw_output_pane);
 		boxen_window_set_user_data(s->output_win, s);
+		/* 2026-06-29 JES #805: wire on_input on the output pane too so
+		 * mouse-wheel events (BOXEN_EV_MOUSE button==4/5) -- which
+		 * boxen routes to the topmost window at the pointer location --
+		 * reach the same scroll-offset handler used by PgUp/PgDn.  The
+		 * handler ignores BOXEN_EV_KEY on this window (keyboard focus
+		 * remains the input bar). */
+		boxen_window_set_input(s->output_win, on_input);
 	}
 	if (s->input_win != NULL) {
 		boxen_window_set_draw(s->input_win,  draw_input_bar);
@@ -966,11 +973,118 @@ static void submit_input(boxen_repl_state_t *s) {
 /* -------------------------------------------------------------------------
  * 2026-06-08 JES Phase C.0 #691: on_input (key event handler).
  * ---------------------------------------------------------------------- */
+/* 2026-06-29 JES #805: word-boundary helpers for Option-Left/Right cursor
+ * jumps.  Word char = ASCII alphanumeric (matching readline's default
+ * vi/emacs M-b/M-f semantics on byte-oriented input; non-ASCII multi-byte
+ * is out of scope per the existing printable-ASCII restriction in
+ * on_input -- when that restriction is lifted to support UTF-8 these
+ * helpers will need codepoint-aware semantics).  Bash/readline treats
+ * '_' as a non-word char in M-b/M-f mode, so we do too -- the goal is
+ * "stops at any non-alphanumeric run" which matches user expectations
+ * for camelCase / snake_case identifiers in UserTalk paths.
+ *
+ * Algorithm follows GNU readline's backward-word/forward-word:
+ *
+ *   M-b (word_back_from): starting at cursor, skip non-word chars left,
+ *     then skip word chars left.  Result: cursor at start of the word
+ *     just left of (or under) the original cursor.  Returns 0 if already
+ *     at the beginning of the line.
+ *
+ *   M-f (word_forward_from): starting at cursor, skip non-word chars
+ *     right, then skip word chars right.  Result: cursor at the position
+ *     just past the end of the word just right of (or under) the
+ *     original cursor.  Returns input_len if already at the end.
+ *
+ * Both helpers are pure -- no I/O, no allocation -- and the caller
+ * updates input_cursor_pos with the returned position.  Separated from
+ * the keybinding so the unit tests can verify boundary semantics
+ * directly without setting up a full event. */
+static bool repl_is_word_char(char c) {
+	return ((c >= '0' && c <= '9') ||
+	        (c >= 'A' && c <= 'Z') ||
+	        (c >= 'a' && c <= 'z'));
+}
+
+static int word_back_from(const char *buf, int len, int pos) {
+	if (pos > len) pos = len;
+	if (pos <= 0) return 0;
+	int i = pos;
+	/* Skip non-word chars left. */
+	while (i > 0 && !repl_is_word_char(buf[i - 1])) i--;
+	/* Skip word chars left. */
+	while (i > 0 && repl_is_word_char(buf[i - 1])) i--;
+	return i;
+}
+
+static int word_forward_from(const char *buf, int len, int pos) {
+	if (pos < 0) pos = 0;
+	if (pos >= len) return len;
+	int i = pos;
+	/* Skip non-word chars right. */
+	while (i < len && !repl_is_word_char(buf[i])) i++;
+	/* Skip word chars right. */
+	while (i < len && repl_is_word_char(buf[i])) i++;
+	return i;
+}
+
+/* 2026-06-29 JES #805: scroll the output pane by `lines` rows.
+ *
+ * Positive `lines` scrolls up (older content into view); negative scrolls
+ * down (back toward the newest line).  Clamps at both ends -- never
+ * negative, never past (scrollback_count - 1) which keeps at least one
+ * line visible.  Mirrors the clamp logic in the PgUp/PgDn handlers so
+ * the wheel and PgUp/PgDn always agree on bounds.
+ *
+ * Called from on_input's mouse-wheel branch.  Centralized so both wheel
+ * directions share one clamp implementation. */
+static void output_scroll_by_lines(boxen_repl_state_t *s, int lines) {
+	if (s == NULL || lines == 0) return;
+	int next = s->output_scroll_offset + lines;
+	if (next < 0) next = 0;
+	int max_offset = s->scrollback_count - 1;
+	if (max_offset < 0) max_offset = 0;
+	if (next > max_offset) next = max_offset;
+	s->output_scroll_offset = next;
+	if (s->output_win != NULL) boxen_window_invalidate(s->output_win);
+}
+
+/* 2026-06-29 JES #805: lines per wheel tick.  Three matches the common
+ * convention across less, vim, and macOS Terminal.app's native
+ * scrollback (which uses a 3-line wheel step for vertical scrolling). */
+#define BOXEN_REPL_WHEEL_LINES_PER_TICK 3
+
 static void on_input(boxen_window_t *win, const boxen_event_t *ev,
                      void *user_data) {
 	(void)win;
 	boxen_repl_state_t *s = (boxen_repl_state_t *)user_data;
-	if (s == NULL || ev == NULL || ev->type != BOXEN_EV_KEY) return;
+	if (s == NULL || ev == NULL) return;
+
+	/* 2026-06-29 JES #805: mouse-wheel scrolls the output pane.
+	 *
+	 * Wheel events arrive as BOXEN_EV_MOUSE with button==4 (up) or
+	 * button==5 (down).  Routing: boxen_dispatch_event sends mouse
+	 * events to the topmost window at the pointer location.  We wire
+	 * on_input on BOTH output_win and input_win so wheel-anywhere-in-
+	 * the-REPL works (the typist may have the pointer over the input
+	 * bar while scrolling output -- a common ergonomic case).
+	 *
+	 * Wheel up reveals older content -> increment offset.
+	 * Wheel down returns toward the newest -> decrement offset.
+	 * Same clamp semantics as PgUp/PgDn via output_scroll_by_lines.
+	 *
+	 * Mouse clicks and drags are deliberately not handled here -- the
+	 * REPL only needs the wheel binding; mouse selection / cursor
+	 * positioning can be added in a future change. */
+	if (ev->type == BOXEN_EV_MOUSE) {
+		if (ev->mouse.button == 4 && ev->mouse.pressed) {
+			output_scroll_by_lines(s, +BOXEN_REPL_WHEEL_LINES_PER_TICK);
+		} else if (ev->mouse.button == 5 && ev->mouse.pressed) {
+			output_scroll_by_lines(s, -BOXEN_REPL_WHEEL_LINES_PER_TICK);
+		}
+		return;
+	}
+
+	if (ev->type != BOXEN_EV_KEY) return;
 
 	/* 2026-06-17 JES #691 Phase C.0.7d: Ctrl-C handler.
 	 *
@@ -1232,9 +1346,20 @@ static void on_input(boxen_window_t *win, const boxen_event_t *ev,
 		return;
 	}
 
-	/* 2026-06-17 JES Phase C.0.7e #691: LEFT arrow -- move caret left one char. */
+	/* 2026-06-17 JES Phase C.0.7e #691: LEFT arrow -- move caret left one char.
+	 *
+	 * 2026-06-29 JES #805: Option-Left (Alt modifier) jumps one word back.
+	 * iTerm2 with "Left/Right option as Esc+" sends ESC[1;3D for
+	 * Option-Left, which termbox2 decodes as BOXEN_KEY_LEFT with
+	 * mod & BOXEN_MOD_ALT.  macOS Terminal.app sends ESC b instead
+	 * (handled below in the printable-ASCII Alt branch).  Both paths
+	 * delegate to word_back_from for unified semantics. */
 	if (ev->key.key == BOXEN_KEY_LEFT) {
-		if (s->input_cursor_pos > 0) {
+		if (ev->key.mod & BOXEN_MOD_ALT) {
+			s->input_cursor_pos = word_back_from(s->input_buf,
+			                                     s->input_len,
+			                                     s->input_cursor_pos);
+		} else if (s->input_cursor_pos > 0) {
 			s->input_cursor_pos--;
 		}
 		/* Underflow guard: already at col 0, nothing to do */
@@ -1242,9 +1367,16 @@ static void on_input(boxen_window_t *win, const boxen_event_t *ev,
 		return;
 	}
 
-	/* 2026-06-17 JES Phase C.0.7e #691: RIGHT arrow -- move caret right one char. */
+	/* 2026-06-17 JES Phase C.0.7e #691: RIGHT arrow -- move caret right one char.
+	 *
+	 * 2026-06-29 JES #805: Option-Right (Alt modifier) jumps one word
+	 * forward (CSI sequence sibling of Option-Left above). */
 	if (ev->key.key == BOXEN_KEY_RIGHT) {
-		if (s->input_cursor_pos < s->input_len) {
+		if (ev->key.mod & BOXEN_MOD_ALT) {
+			s->input_cursor_pos = word_forward_from(s->input_buf,
+			                                        s->input_len,
+			                                        s->input_cursor_pos);
+		} else if (s->input_cursor_pos < s->input_len) {
 			s->input_cursor_pos++;
 		}
 		/* Overflow guard: already at end, nothing to do */
@@ -1317,6 +1449,44 @@ static void on_input(boxen_window_t *win, const boxen_event_t *ev,
 		}
 		/* Underflow guard: caret already at 0, nothing to do */
 		if (s->input_win != NULL) boxen_window_invalidate(s->input_win);
+		return;
+	}
+
+	/* 2026-06-29 JES #805: Alt-modified printable keys (the ESC-prefix
+	 * variant of Option-key combos).
+	 *
+	 * macOS Terminal.app sends ESC b for Option-Left and ESC f for
+	 * Option-Right by default.  termbox2 decodes the ESC prefix into the
+	 * ALT modifier, so these arrive as BOXEN_KEY_NONE with ch=='b'/'f'
+	 * and mod & BOXEN_MOD_ALT.  Before #805 these fell through to the
+	 * printable-ASCII branch below and inserted literal 'b'/'f' into the
+	 * input buffer -- the muscle-memory regression in the issue.
+	 *
+	 * Decode the same readline bindings users get from bash:
+	 *   M-b -> word back
+	 *   M-f -> word forward
+	 *
+	 * Any other Alt-modified printable is swallowed silently rather than
+	 * inserting the literal character (also readline convention -- an
+	 * unbound M-x produces a bell, not the literal 'x').  We choose
+	 * silent over bell because boxen has no terminal bell facility and
+	 * the alternative (literal insert) is the bug we're fixing. */
+	if (ev->key.key == BOXEN_KEY_NONE &&
+	    (ev->key.mod & BOXEN_MOD_ALT) &&
+	    ev->key.ch >= 0x20 && ev->key.ch < 0x7F) {
+		if (ev->key.ch == 'b' || ev->key.ch == 'B') {
+			s->input_cursor_pos = word_back_from(s->input_buf,
+			                                     s->input_len,
+			                                     s->input_cursor_pos);
+			if (s->input_win != NULL) boxen_window_invalidate(s->input_win);
+		} else if (ev->key.ch == 'f' || ev->key.ch == 'F') {
+			s->input_cursor_pos = word_forward_from(s->input_buf,
+			                                        s->input_len,
+			                                        s->input_cursor_pos);
+			if (s->input_win != NULL) boxen_window_invalidate(s->input_win);
+		}
+		/* Other Alt-printable: silently swallow (do NOT insert the
+		 * literal char -- that is exactly the bug #805 reports). */
 		return;
 	}
 
@@ -1894,6 +2064,16 @@ int boxen_repl_main(const cli_options_t *opts) {
 		return 1;
 	}
 	boxen_initialized = true;
+
+	/* 2026-06-29 JES #805: enable xterm mouse tracking so wheel events
+	 * arrive as BOXEN_EV_MOUSE (button==4/5) and route to the output-pane
+	 * scroll-offset handler -- rather than being translated by the host
+	 * terminal to up/down arrow keys and routed to history navigation
+	 * (the muscle-memory regression #805 addresses).  Only enabled on
+	 * the production REPL surface, not the unit-test mock backend; mock
+	 * backend's set_mouse_enabled is a no-op so this call is safe in any
+	 * build. */
+	boxen_set_mouse_enabled(true);
 
 	int tw = (be->width  && be->width()  > 0) ? be->width()  : 80;
 	int th = (be->height && be->height() > 0) ? be->height() : 24;

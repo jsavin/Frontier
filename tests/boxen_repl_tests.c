@@ -2142,6 +2142,355 @@ static void test_append_when_pinned_to_bottom_does_not_bump_offset(void) {
 }
 
 /* -------------------------------------------------------------------------
+ * 2026-06-29 JES #805: mouse-wheel scrolls output pane; Option-Left/Right
+ * jumps cursor by one word.  Tests below verify both bindings behave
+ * symmetrically with PgUp/PgDn (#803) on the wheel side, and match
+ * readline M-b/M-f semantics on the word-jump side.
+ * ---------------------------------------------------------------------- */
+
+/* Build a wheel mouse event.  button: 4 = wheel up, 5 = wheel down.
+ * Coordinates default to (0,0) -- the dispatch layer routes wheel events
+ * to the topmost window at the pointer location, but boxen_repl_run_one_tick
+ * is invoked directly in unit tests (bypassing window dispatch) so the
+ * coordinates are irrelevant to the on_input handler's wheel branch. */
+static boxen_event_t make_wheel_event(uint8_t button) {
+	boxen_event_t ev;
+	memset(&ev, 0, sizeof(ev));
+	ev.type = BOXEN_EV_MOUSE;
+	ev.mouse.button  = button;
+	ev.mouse.pressed = true;
+	ev.mouse.x = 0;
+	ev.mouse.y = 0;
+	return ev;
+}
+
+/* Build a printable-char event with the ALT modifier set.  Models how
+ * termbox2 decodes the ESC-prefix sequences macOS Terminal.app sends for
+ * Option-letter combos (e.g. Option-b -> ESC b -> {key=NONE, ch='b',
+ * mod=ALT}). */
+static boxen_event_t make_alt_char_event(char ch) {
+	boxen_event_t ev;
+	memset(&ev, 0, sizeof(ev));
+	ev.type    = BOXEN_EV_KEY;
+	ev.key.key = BOXEN_KEY_NONE;
+	ev.key.ch  = (uint32_t)ch;
+	ev.key.mod = BOXEN_MOD_ALT;
+	return ev;
+}
+
+/* Build a special-key event with the ALT modifier set.  Models the
+ * iTerm2 "Left/Right option as Esc+" CSI sequences (ESC[1;3D /
+ * ESC[1;3C) which termbox2 decodes as ARROW_LEFT/ARROW_RIGHT with the
+ * ALT mod bit set. */
+static boxen_event_t make_alt_key_event(boxen_key_t key) {
+	boxen_event_t ev;
+	memset(&ev, 0, sizeof(ev));
+	ev.type    = BOXEN_EV_KEY;
+	ev.key.key = key;
+	ev.key.ch  = 0;
+	ev.key.mod = BOXEN_MOD_ALT;
+	return ev;
+}
+
+static void test_wheel_up_scrolls_output_pane(void) {
+	setup();
+	fill_scrollback(50);
+	assert(g_state.output_scroll_offset == 0);
+
+	boxen_event_t wheel_up = make_wheel_event(4);
+	boxen_repl_run_one_tick(&g_state, &wheel_up);
+	/* Wheel step is 3 lines per tick (less / Terminal.app convention). */
+	assert(g_state.output_scroll_offset == 3);
+
+	boxen_repl_run_one_tick(&g_state, &wheel_up);
+	assert(g_state.output_scroll_offset == 6);
+
+	teardown();
+}
+
+static void test_wheel_down_scrolls_back_toward_newest(void) {
+	setup();
+	fill_scrollback(50);
+	g_state.output_scroll_offset = 20;
+
+	boxen_event_t wheel_down = make_wheel_event(5);
+	boxen_repl_run_one_tick(&g_state, &wheel_down);
+	assert(g_state.output_scroll_offset == 17);
+
+	boxen_repl_run_one_tick(&g_state, &wheel_down);
+	assert(g_state.output_scroll_offset == 14);
+
+	teardown();
+}
+
+static void test_wheel_down_clamps_at_zero(void) {
+	setup();
+	fill_scrollback(50);
+	g_state.output_scroll_offset = 2;  /* less than one tick from bottom */
+
+	boxen_event_t wheel_down = make_wheel_event(5);
+	boxen_repl_run_one_tick(&g_state, &wheel_down);
+	/* Step is 3, but cannot go below 0. */
+	assert(g_state.output_scroll_offset == 0);
+
+	/* Further wheel-down at zero stays at zero. */
+	boxen_repl_run_one_tick(&g_state, &wheel_down);
+	assert(g_state.output_scroll_offset == 0);
+
+	teardown();
+}
+
+static void test_wheel_up_clamps_at_top_of_scrollback(void) {
+	setup();
+	fill_scrollback(4);  /* count - 1 = 3 lines of headroom */
+
+	boxen_event_t wheel_up = make_wheel_event(4);
+	boxen_repl_run_one_tick(&g_state, &wheel_up);
+	/* Step is 3, count-1 is 3, so first tick lands exactly at the cap. */
+	assert(g_state.output_scroll_offset == 3);
+
+	/* Further wheel-up does not push past the oldest entry. */
+	boxen_repl_run_one_tick(&g_state, &wheel_up);
+	assert(g_state.output_scroll_offset == 3);
+
+	teardown();
+}
+
+/* Regression guard for the #805 user-visible symptom: BEFORE the fix, the
+ * up-arrow key code (which was what wheel events translated to under
+ * Terminal.app) loaded prior history into the input bar.  AFTER the fix,
+ * wheel events arrive as MOUSE events distinct from arrow keys and never
+ * touch history -- this test would have failed with the old binding. */
+static void test_wheel_does_not_navigate_history(void) {
+	/* Point history at a nonexistent file so state_init's load is a no-op
+	 * (same pattern as test_history_up_arrow_loads_previous above). */
+	boxen_repl_set_history_path_for_test("/tmp/boxen_repl_test_wheel_nohist.txt");
+	setup();
+
+	/* Seed history. */
+	boxen_repl_history_append(&g_state, "older");
+	boxen_repl_history_append(&g_state, "newer");
+	assert(g_state.history_count == 2);
+
+	fill_scrollback(50);
+	assert(g_state.input_len == 0);
+
+	boxen_event_t wheel_up = make_wheel_event(4);
+	boxen_repl_run_one_tick(&g_state, &wheel_up);
+
+	/* The wheel must scroll output, NOT load history into the input bar. */
+	assert(g_state.input_len == 0);
+	assert(g_state.input_buf[0] == '\0');
+	assert(g_state.history_nav_idx == -1);  /* no history-nav state engaged */
+	assert(g_state.output_scroll_offset == 3);  /* but it DID scroll */
+
+	teardown();
+}
+
+static void test_alt_b_jumps_word_back(void) {
+	setup();
+
+	/* Buffer "one two three", caret at end (13). */
+	const char *line = "one two three";
+	int line_len = (int)strlen(line);
+	strncpy(g_state.input_buf, line, sizeof(g_state.input_buf) - 1);
+	g_state.input_len        = line_len;
+	g_state.input_cursor_pos = line_len;
+
+	boxen_event_t alt_b = make_alt_char_event('b');
+
+	boxen_repl_run_one_tick(&g_state, &alt_b);
+	/* Caret should jump to start of "three" (position 8). */
+	assert(g_state.input_cursor_pos == 8);
+	assert(g_state.input_len == line_len);
+	assert(strcmp(g_state.input_buf, line) == 0);
+
+	boxen_repl_run_one_tick(&g_state, &alt_b);
+	/* Start of "two" -> position 4. */
+	assert(g_state.input_cursor_pos == 4);
+
+	boxen_repl_run_one_tick(&g_state, &alt_b);
+	/* Start of "one" -> position 0. */
+	assert(g_state.input_cursor_pos == 0);
+
+	/* Further M-b at position 0 stays at 0. */
+	boxen_repl_run_one_tick(&g_state, &alt_b);
+	assert(g_state.input_cursor_pos == 0);
+
+	teardown();
+}
+
+static void test_alt_f_jumps_word_forward(void) {
+	setup();
+
+	const char *line = "one two three";
+	int line_len = (int)strlen(line);
+	strncpy(g_state.input_buf, line, sizeof(g_state.input_buf) - 1);
+	g_state.input_len        = line_len;
+	g_state.input_cursor_pos = 0;
+
+	boxen_event_t alt_f = make_alt_char_event('f');
+
+	boxen_repl_run_one_tick(&g_state, &alt_f);
+	/* End of "one" -> position 3. */
+	assert(g_state.input_cursor_pos == 3);
+
+	boxen_repl_run_one_tick(&g_state, &alt_f);
+	/* End of "two" -> position 7. */
+	assert(g_state.input_cursor_pos == 7);
+
+	boxen_repl_run_one_tick(&g_state, &alt_f);
+	/* End of "three" -> position 13 (end of line). */
+	assert(g_state.input_cursor_pos == 13);
+
+	/* Further M-f at end stays at end. */
+	boxen_repl_run_one_tick(&g_state, &alt_f);
+	assert(g_state.input_cursor_pos == 13);
+
+	/* Buffer is unchanged -- no letters got inserted. */
+	assert(g_state.input_len == line_len);
+	assert(strcmp(g_state.input_buf, line) == 0);
+
+	teardown();
+}
+
+/* Regression guard for the #805 user-visible symptom: BEFORE the fix,
+ * Option-b inserted a literal 'b' into the input buffer.  AFTER the fix,
+ * the Alt modifier is honored and the cursor jumps instead -- this test
+ * would have failed with the old behavior (input_buf would equal "b"). */
+static void test_alt_b_does_not_insert_literal_b(void) {
+	setup();
+	assert(g_state.input_len == 0);
+
+	boxen_event_t alt_b = make_alt_char_event('b');
+	boxen_repl_run_one_tick(&g_state, &alt_b);
+
+	assert(g_state.input_len == 0);
+	assert(g_state.input_buf[0] == '\0');
+	assert(g_state.input_cursor_pos == 0);
+
+	teardown();
+}
+
+static void test_alt_f_does_not_insert_literal_f(void) {
+	setup();
+	assert(g_state.input_len == 0);
+
+	boxen_event_t alt_f = make_alt_char_event('f');
+	boxen_repl_run_one_tick(&g_state, &alt_f);
+
+	assert(g_state.input_len == 0);
+	assert(g_state.input_buf[0] == '\0');
+	assert(g_state.input_cursor_pos == 0);
+
+	teardown();
+}
+
+/* iTerm2 path: Option-Left and Option-Right arrive as ARROW_LEFT and
+ * ARROW_RIGHT with the ALT modifier set, NOT as ESC-prefix printables. */
+static void test_alt_left_jumps_word_back(void) {
+	setup();
+
+	const char *line = "alpha beta gamma";
+	int line_len = (int)strlen(line);
+	strncpy(g_state.input_buf, line, sizeof(g_state.input_buf) - 1);
+	g_state.input_len        = line_len;
+	g_state.input_cursor_pos = line_len;
+
+	boxen_event_t alt_left = make_alt_key_event(BOXEN_KEY_LEFT);
+	boxen_repl_run_one_tick(&g_state, &alt_left);
+	/* Start of "gamma" -> position 11. */
+	assert(g_state.input_cursor_pos == 11);
+
+	boxen_repl_run_one_tick(&g_state, &alt_left);
+	/* Start of "beta" -> position 6. */
+	assert(g_state.input_cursor_pos == 6);
+
+	teardown();
+}
+
+static void test_alt_right_jumps_word_forward(void) {
+	setup();
+
+	const char *line = "alpha beta gamma";
+	int line_len = (int)strlen(line);
+	strncpy(g_state.input_buf, line, sizeof(g_state.input_buf) - 1);
+	g_state.input_len        = line_len;
+	g_state.input_cursor_pos = 0;
+
+	boxen_event_t alt_right = make_alt_key_event(BOXEN_KEY_RIGHT);
+	boxen_repl_run_one_tick(&g_state, &alt_right);
+	/* End of "alpha" -> position 5. */
+	assert(g_state.input_cursor_pos == 5);
+
+	boxen_repl_run_one_tick(&g_state, &alt_right);
+	/* End of "beta" -> position 10. */
+	assert(g_state.input_cursor_pos == 10);
+
+	teardown();
+}
+
+/* Unmodified arrow keys must still do single-char movement (no regression
+ * from the modifier branch). */
+static void test_plain_left_still_moves_one_char(void) {
+	setup();
+	strncpy(g_state.input_buf, "abc", sizeof(g_state.input_buf) - 1);
+	g_state.input_len        = 3;
+	g_state.input_cursor_pos = 3;
+
+	boxen_event_t left = make_key_event(BOXEN_KEY_LEFT);
+	boxen_repl_run_one_tick(&g_state, &left);
+	assert(g_state.input_cursor_pos == 2);
+
+	boxen_repl_run_one_tick(&g_state, &left);
+	assert(g_state.input_cursor_pos == 1);
+
+	teardown();
+}
+
+/* Word boundaries with non-word separators: snake_case must split on '_',
+ * matching bash readline's M-b/M-f behavior. */
+static void test_word_jump_treats_underscore_as_separator(void) {
+	setup();
+
+	const char *line = "foo_bar_baz";
+	int line_len = (int)strlen(line);
+	strncpy(g_state.input_buf, line, sizeof(g_state.input_buf) - 1);
+	g_state.input_len        = line_len;
+	g_state.input_cursor_pos = line_len;
+
+	boxen_event_t alt_b = make_alt_char_event('b');
+
+	boxen_repl_run_one_tick(&g_state, &alt_b);
+	assert(g_state.input_cursor_pos == 8);  /* start of "baz" */
+
+	boxen_repl_run_one_tick(&g_state, &alt_b);
+	assert(g_state.input_cursor_pos == 4);  /* start of "bar" */
+
+	boxen_repl_run_one_tick(&g_state, &alt_b);
+	assert(g_state.input_cursor_pos == 0);  /* start of "foo" */
+
+	teardown();
+}
+
+/* Unrecognized Alt-printable (e.g. Option-x) must NOT insert the literal
+ * char.  Without the swallow branch this would insert 'x' into input_buf,
+ * which is the #805 bug class even though the user didn't see this exact
+ * key combo (they typed Option-Left/Right, which yields 'b'/'f'). */
+static void test_alt_other_letter_is_swallowed(void) {
+	setup();
+	assert(g_state.input_len == 0);
+
+	boxen_event_t alt_x = make_alt_char_event('x');
+	boxen_repl_run_one_tick(&g_state, &alt_x);
+
+	assert(g_state.input_len == 0);
+	assert(g_state.input_buf[0] == '\0');
+
+	teardown();
+}
+
+/* -------------------------------------------------------------------------
  * main
  * ---------------------------------------------------------------------- */
 int main(void) {
@@ -2195,6 +2544,23 @@ int main(void) {
 	TR_RUN(test_append_while_scrolled_preserves_offset);
 	TR_RUN(test_append_when_ring_full_advances_offset_to_pin_content);
 	TR_RUN(test_append_when_pinned_to_bottom_does_not_bump_offset);
+
+	/* 2026-06-29 JES #805: mouse-wheel scrolls output; Option-Left/Right
+	 * jumps cursor by one word. */
+	TR_RUN(test_wheel_up_scrolls_output_pane);
+	TR_RUN(test_wheel_down_scrolls_back_toward_newest);
+	TR_RUN(test_wheel_down_clamps_at_zero);
+	TR_RUN(test_wheel_up_clamps_at_top_of_scrollback);
+	TR_RUN(test_wheel_does_not_navigate_history);
+	TR_RUN(test_alt_b_jumps_word_back);
+	TR_RUN(test_alt_f_jumps_word_forward);
+	TR_RUN(test_alt_b_does_not_insert_literal_b);
+	TR_RUN(test_alt_f_does_not_insert_literal_f);
+	TR_RUN(test_alt_left_jumps_word_back);
+	TR_RUN(test_alt_right_jumps_word_forward);
+	TR_RUN(test_plain_left_still_moves_one_char);
+	TR_RUN(test_word_jump_treats_underscore_as_separator);
+	TR_RUN(test_alt_other_letter_is_swallowed);
 
 	TR_SUMMARY();
 	return TR_EXIT_CODE();
