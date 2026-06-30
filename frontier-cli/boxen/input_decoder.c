@@ -44,6 +44,7 @@
 #include "input_decoder.h"
 
 #include <assert.h>
+#include <limits.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -88,6 +89,14 @@ typedef enum {
 	DEC_STATE_CSI_COLLECTING,
 	DEC_STATE_SS3_RECEIVED,
 	DEC_STATE_UTF8_CONT,
+	/* 2026-06-30 JES #810 M2 review-followup: drain a malformed/oversized CSI
+	 * sequence to its final byte without emitting any event.  Entered when
+	 * csi_buf overflows or when csi_parse_params rejects a non-numeric byte.
+	 * Prevents the post-overflow parameter tail from being emitted as
+	 * synthetic printable keystrokes (the original M2 implementation reset to
+	 * GROUND on overflow, which let `\e[ <65+ digits> A` inject the trailing
+	 * digits into the input stream after the cap was hit). */
+	DEC_STATE_CSI_SWALLOW,
 } dec_state_t;
 
 struct input_decoder {
@@ -136,16 +145,34 @@ struct input_decoder {
 	 *   poll calls so partial sequences resume correctly.
 	 * csi_buf / csi_len -- parameter + intermediate bytes between the CSI
 	 *   introducer (\e[) and the final byte (0x40..0x7E).  Capped at
-	 *   INPUT_DECODER_CSI_BUF_SIZE; overflow forces a reset to GROUND.
-	 * utf8_buf / utf8_remaining / utf8_codepoint -- UTF-8 lead byte +
-	 *   continuation accumulator.  remaining == 0 in GROUND state. */
+	 *   INPUT_DECODER_CSI_BUF_SIZE; overflow transitions to CSI_SWALLOW so
+	 *   the rest of the sequence is consumed without emitting.
+	 * utf8_lead / utf8_remaining / utf8_codepoint -- UTF-8 lead byte +
+	 *   continuation accumulator.  remaining == 0 in GROUND state.  The
+	 *   lead byte is retained so the overlong-encoding check (see
+	 *   decode_utf8_codepoint_valid) can compare the assembled codepoint
+	 *   against the minimum-encoding boundary for its byte length. */
 	dec_state_t state;
 	uint8_t     csi_buf[INPUT_DECODER_CSI_BUF_SIZE];
 	size_t      csi_len;
 
-	uint8_t     utf8_buf[4];
+	uint8_t     utf8_lead;
 	uint8_t     utf8_remaining;
 	uint32_t    utf8_codepoint;
+
+	/* 2026-06-30 JES #810 M2 review-followup: parse-error counter.
+	 *
+	 * Incremented on every silent rejection path (CSI overflow, unknown CSI
+	 * final byte, malformed CSI parameter, invalid SS3 final, invalid UTF-8
+	 * codepoint -- surrogate, overlong, out-of-range).  Surfaced via the
+	 * test-seam accessor input_decoder_parse_errors() so tests can assert
+	 * the rejection path actually fired (otherwise a "no event emitted"
+	 * outcome is indistinguishable from a benign buffer-empty timeout).
+	 *
+	 * Monotonic; never decreases.  The M6 production path will use the same
+	 * counter as a runaway-terminal detection signal alongside
+	 * dropped_bytes. */
+	size_t      parse_errors;
 };
 
 /* -------------------------------------------------------------------------
@@ -167,8 +194,10 @@ input_decoder_t *input_decoder_create(int tty_fd) {
 	dec->dropped_bytes = 0;
 	dec->state = DEC_STATE_GROUND;
 	dec->csi_len = 0;
+	dec->utf8_lead = 0;
 	dec->utf8_remaining = 0;
 	dec->utf8_codepoint = 0;
+	dec->parse_errors = 0;
 	return dec;
 }
 
@@ -236,6 +265,13 @@ bool input_decoder_kitty_enabled(const input_decoder_t *dec) {
  * Invariant: head == 0 on return.
  * ---------------------------------------------------------------------- */
 static void compact_buffer(input_decoder_t *dec) {
+	/* 2026-06-30 JES #810 M2 review-followup: defense-in-depth on the
+	 * head <= fill_len invariant.  Without the assert, a hypothetical future
+	 * off-by-one in the parser that pushed head past fill_len would silently
+	 * underflow `live` (size_t subtraction) and produce a catastrophic OOB
+	 * memmove.  The state machine has 5+ head++ sites; cheap to pin the
+	 * invariant at the choke point. */
+	assert(dec->head <= dec->fill_len);
 	if (dec->head == 0) {
 		return;
 	}
@@ -309,6 +345,16 @@ static uint16_t modifier_from_param(int n) {
 static bool csi_parse_params(const uint8_t *csi_buf, size_t csi_len,
                              int *out_params, size_t max_params,
                              size_t *out_count) {
+	/* 2026-06-30 JES #810 M2 review-followup: cap accumulator below INT_MAX
+	 * to defeat signed-integer-overflow UB on adversarial input.  No
+	 * legitimate CSI parameter exceeds ~10000 (largest in spec is the SGR
+	 * mouse coord, bounded by terminal width/height).  Saturating at
+	 * CSI_PARAM_CAP and refusing to grow it further keeps the accumulator
+	 * far from INT_MAX even on a runaway terminal that fills the entire
+	 * 64-byte CSI buffer with digits.  modifier_from_param's `n > 16`
+	 * guard rejects the saturated value cleanly. */
+	enum { CSI_PARAM_CAP = 100000 };
+
 	size_t count = 0;
 	int    cur = 0;
 	bool   in_param = false;
@@ -316,13 +362,29 @@ static bool csi_parse_params(const uint8_t *csi_buf, size_t csi_len,
 	for (size_t i = 0; i < csi_len; i++) {
 		uint8_t b = csi_buf[i];
 		if (b >= '0' && b <= '9') {
-			cur = (cur * 10) + (b - '0');
+			int digit = b - '0';
+			if (cur >= CSI_PARAM_CAP) {
+				/* Already saturated; ignore further digits to avoid
+				 * approaching INT_MAX. */
+				cur = CSI_PARAM_CAP;
+			} else {
+				cur = (cur * 10) + digit;
+				if (cur > CSI_PARAM_CAP) {
+					cur = CSI_PARAM_CAP;
+				}
+			}
 			in_param = true;
 		} else if (b == ';') {
 			if (count < max_params) {
 				out_params[count] = in_param ? cur : 0;
+				count++;
+			} else {
+				/* 2026-06-30 JES #810 M2 review-followup: clamp count at
+				 * max_params to keep the contract honest -- the caller
+				 * reads params[0..count); allowing count to grow past
+				 * max_params would let a future caller read uninitialized
+				 * stack memory. */
 			}
-			count++;
 			cur = 0;
 			in_param = false;
 		} else {
@@ -336,9 +398,9 @@ static bool csi_parse_params(const uint8_t *csi_buf, size_t csi_len,
 	if (in_param || csi_len == 0) {
 		if (count < max_params) {
 			out_params[count] = cur;
-		}
-		if (in_param) {
-			count++;
+			if (in_param) {
+				count++;
+			}
 		}
 	}
 	*out_count = count;
@@ -515,10 +577,11 @@ static void decode_byte_ground(uint8_t b, boxen_event_t *out) {
 		emit_key(out, BOXEN_KEY_NONE, (uint32_t)b, BOXEN_MOD_NONE);
 		return;
 	}
-	/* Anything else (0x1B is handled in poll before we reach here; 0x1D
-	 * 0x1E 0x1F have no boxen mapping today) -> printable as raw byte.
-	 * Conservative: surfaces unexpected bytes rather than silently
-	 * dropping. */
+	/* Anything else (0x1B is handled in poll before we reach here;
+	 * high-bit bytes 0x80+ are also dropped in poll's GROUND branch
+	 * before reaching us; only 0x1D / 0x1E / 0x1F group separator
+	 * controls remain).  Conservative: surfaces unexpected bytes as
+	 * raw ch rather than silently dropping. */
 	emit_key(out, BOXEN_KEY_NONE, (uint32_t)b, BOXEN_MOD_NONE);
 }
 
@@ -527,9 +590,21 @@ static void decode_byte_ground(uint8_t b, boxen_event_t *out) {
  * Returns the number of continuation bytes the lead expects (1..3) or 0
  * if the byte is not a valid UTF-8 lead (i.e., it's ASCII or invalid).
  * The lead byte's payload bits are written to *out_codepoint -- the
- * partial codepoint that subsequent continuation bytes shift in. */
+ * partial codepoint that subsequent continuation bytes shift in.
+ *
+ * 2026-06-30 JES #810 M2 review-followup: reject overlong-prone 2-byte
+ * leads 0xC0 and 0xC1 (they can only encode U+0000..U+007F, which must
+ * arrive as ASCII).  Also reject 0xF5..0xFF leads, which can only encode
+ * codepoints > U+10FFFF (above the Unicode maximum).  These early
+ * rejections close the most common UTF-8 smuggling vectors (overlong NUL
+ * 0xC0 0x80 etc.) without waiting for the assembled-codepoint validator
+ * to catch them post-assembly. */
 static int utf8_lead_classify(uint8_t b, uint32_t *out_codepoint) {
 	if ((b & 0xE0) == 0xC0) {            /* 110xxxxx */
+		if (b < 0xC2) {
+			/* 0xC0 / 0xC1 -- only used for overlong ASCII. */
+			return 0;
+		}
 		*out_codepoint = b & 0x1F;
 		return 1;
 	}
@@ -538,10 +613,48 @@ static int utf8_lead_classify(uint8_t b, uint32_t *out_codepoint) {
 		return 2;
 	}
 	if ((b & 0xF8) == 0xF0) {            /* 11110xxx */
+		if (b > 0xF4) {
+			/* 0xF5..0xF7 leads encode codepoints > U+10FFFF. */
+			return 0;
+		}
 		*out_codepoint = b & 0x07;
 		return 3;
 	}
 	return 0;
+}
+
+/* 2026-06-30 JES #810 M2 review-followup: assembled-codepoint validator.
+ *
+ * Belt-and-suspenders to the lead-byte rejection above.  Catches:
+ *   - Surrogates (U+D800..U+DFFF) -- invalid in UTF-8 by RFC 3629.
+ *   - Above-max codepoints (> U+10FFFF) -- only reachable via the
+ *     borderline 4-byte lead 0xF4 with high continuation bytes
+ *     (0xF4 0x90 0x80 0x80 = U+110000).
+ *   - Overlong encodings -- codepoint smaller than the minimum the byte
+ *     length can encode (lead_len is the number of CONTINUATION bytes,
+ *     so 1=2-byte sequence, 2=3-byte, 3=4-byte; the minimum codepoints
+ *     are 0x80, 0x800, 0x10000 respectively).
+ *
+ * Returns true if the codepoint is a valid Unicode scalar value for its
+ * UTF-8 byte length, false otherwise.  Callers treat false as "emit
+ * U+FFFD replacement character and bump parse_errors". */
+static bool utf8_codepoint_valid(uint32_t cp, int lead_len) {
+	if (cp >= 0xD800 && cp <= 0xDFFF) {
+		return false;
+	}
+	if (cp > 0x10FFFF) {
+		return false;
+	}
+	if (lead_len == 1 && cp < 0x80) {
+		return false;
+	}
+	if (lead_len == 2 && cp < 0x800) {
+		return false;
+	}
+	if (lead_len == 3 && cp < 0x10000) {
+		return false;
+	}
+	return true;
 }
 
 /* -------------------------------------------------------------------------
@@ -588,10 +701,26 @@ int input_decoder_poll(input_decoder_t *dec, boxen_event_t *out, int timeout_ms)
 					dec->head++;
 					dec->utf8_codepoint = codepoint;
 					dec->utf8_remaining = (uint8_t)needed;
-					dec->utf8_buf[0] = b;
+					dec->utf8_lead = b;
 					dec->state = DEC_STATE_UTF8_CONT;
 					continue;
 				}
+			}
+			/* 2026-06-30 JES #810 M2 review-followup: any high-bit byte
+			 * (>= 0x80) that wasn't classified as a valid UTF-8 lead is
+			 * silently dropped.  This covers:
+			 *   - 0x80..0xBF (stray continuation bytes)
+			 *   - 0xC0..0xC1 (overlong-only leads, rejected above)
+			 *   - 0xF5..0xF7 (encode codepoints > U+10FFFF, rejected above)
+			 *   - 0xF8..0xFF (invalid 5+ byte leads)
+			 * Emitting any of these as raw ch=byte would let Latin-1-
+			 * looking garbage and the classic UTF-8 smuggling primitives
+			 * (overlong NUL, overlong slash) flow downstream.  Bump the
+			 * parse-error counter so tests can observe the rejection. */
+			if (b >= 0x80) {
+				dec->head++;
+				dec->parse_errors++;
+				continue;
 			}
 			/* Single-byte: control char or printable ASCII (or high-bit
 			 * non-lead).  Emit and consume. */
@@ -647,15 +776,23 @@ int input_decoder_poll(input_decoder_t *dec, boxen_event_t *out, int timeout_ms)
 		case DEC_STATE_CSI_COLLECTING: {
 			/* Parameter / intermediate bytes are 0x20..0x3F per the
 			 * standard.  Final bytes are 0x40..0x7E.  Anything else is a
-			 * parse error -> reset to GROUND with no emit (the rogue byte
-			 * itself is not re-processed; cleanest contract). */
+			 * parse error -> transition to CSI_SWALLOW so the rest of the
+			 * sequence (including any trailing param bytes that would
+			 * otherwise be processed in GROUND as printable keystrokes)
+			 * is drained quietly. */
 			if (b >= 0x20 && b <= 0x3F) {
 				if (dec->csi_len >= INPUT_DECODER_CSI_BUF_SIZE) {
-					/* Overflow: bail to GROUND and consume so we don't
-					 * loop forever on a malicious / runaway stream. */
+					/* 2026-06-30 JES #810 M2 review-followup: overflow
+					 * goes to CSI_SWALLOW, not GROUND.  Resetting to
+					 * GROUND let post-overflow parameter bytes
+					 * (typically digits and ';') be emitted as
+					 * printable keystrokes -- a malicious terminal could
+					 * inject ~65+ synthetic chars via one long CSI.
+					 * SWALLOW drops bytes until a final byte arrives. */
 					dec->head++;
-					dec->state = DEC_STATE_GROUND;
+					dec->state = DEC_STATE_CSI_SWALLOW;
 					dec->csi_len = 0;
+					dec->parse_errors++;
 					continue;
 				}
 				dec->csi_buf[dec->csi_len++] = b;
@@ -673,14 +810,34 @@ int input_decoder_poll(input_decoder_t *dec, boxen_event_t *out, int timeout_ms)
 					return BOXEN_OK;
 				}
 				/* Unknown final: discard silently, keep parsing. */
+				dec->parse_errors++;
 				continue;
 			}
-			/* Garbage in the middle of a CSI: reset and drop. */
+			/* Garbage in the middle of a CSI (byte outside the
+			 * parameter / intermediate / final ranges): switch to
+			 * SWALLOW so any remaining param-like bytes are drained
+			 * cleanly rather than reinterpreted as input. */
 			dec->head++;
-			dec->state = DEC_STATE_GROUND;
+			dec->state = DEC_STATE_CSI_SWALLOW;
 			dec->csi_len = 0;
+			dec->parse_errors++;
 			continue;
 		}
+
+		case DEC_STATE_CSI_SWALLOW:
+			/* 2026-06-30 JES #810 M2 review-followup: drain the tail of
+			 * a malformed / oversized CSI.  Consume bytes silently until
+			 * the final byte (0x40..0x7E) is seen, then return to
+			 * GROUND.  Non-final / non-param bytes are also tolerated
+			 * here -- the goal is to NEVER emit while swallowing.  A
+			 * sequence that never terminates lives in this state until
+			 * a final byte or until the buffer empties (in which case
+			 * the next inject continues swallowing). */
+			dec->head++;
+			if (b >= 0x40 && b <= 0x7E) {
+				dec->state = DEC_STATE_GROUND;
+			}
+			continue;
 
 		case DEC_STATE_SS3_RECEIVED: {
 			dec->head++;
@@ -690,6 +847,7 @@ int input_decoder_poll(input_decoder_t *dec, boxen_event_t *out, int timeout_ms)
 				compact_buffer(dec);
 				return BOXEN_OK;
 			}
+			dec->parse_errors++;
 			continue;
 		}
 
@@ -703,6 +861,7 @@ int input_decoder_poll(input_decoder_t *dec, boxen_event_t *out, int timeout_ms)
 				dec->state = DEC_STATE_GROUND;
 				dec->utf8_remaining = 0;
 				dec->utf8_codepoint = 0;
+				dec->parse_errors++;
 				continue;
 			}
 			/* Valid continuation byte: shift in the 6 payload bits. */
@@ -710,10 +869,26 @@ int input_decoder_poll(input_decoder_t *dec, boxen_event_t *out, int timeout_ms)
 			dec->utf8_codepoint = (dec->utf8_codepoint << 6) | (b & 0x3F);
 			dec->utf8_remaining--;
 			if (dec->utf8_remaining == 0) {
-				emit_key(out, BOXEN_KEY_NONE, dec->utf8_codepoint,
-				         BOXEN_MOD_NONE);
+				/* 2026-06-30 JES #810 M2 review-followup: validate the
+				 * assembled codepoint before emit.  Rejects surrogates,
+				 * codepoints above U+10FFFF, and overlong encodings
+				 * (the canonical UTF-8 smuggling vectors -- overlong
+				 * NUL, overlong slash, etc.).  Per the Unicode standard
+				 * recommendation, emit U+FFFD REPLACEMENT CHARACTER so
+				 * downstream consumers see an unambiguous "this was
+				 * invalid input" marker rather than a silently dropped
+				 * keystroke or a smuggled control code. */
+				int lead_len = (int)(dec->utf8_lead >= 0xF0 ? 3 :
+				                     dec->utf8_lead >= 0xE0 ? 2 : 1);
+				uint32_t cp = dec->utf8_codepoint;
+				if (!utf8_codepoint_valid(cp, lead_len)) {
+					cp = 0xFFFD;
+					dec->parse_errors++;
+				}
+				emit_key(out, BOXEN_KEY_NONE, cp, BOXEN_MOD_NONE);
 				dec->state = DEC_STATE_GROUND;
 				dec->utf8_codepoint = 0;
+				dec->utf8_lead = 0;
 				compact_buffer(dec);
 				return BOXEN_OK;
 			}
@@ -815,6 +990,13 @@ size_t input_decoder_dropped_bytes(const input_decoder_t *dec) {
 		return 0;
 	}
 	return dec->dropped_bytes;
+}
+
+size_t input_decoder_parse_errors(const input_decoder_t *dec) {
+	if (dec == NULL) {
+		return 0;
+	}
+	return dec->parse_errors;
 }
 
 #endif /* INPUT_DECODER_TEST_SEAM */

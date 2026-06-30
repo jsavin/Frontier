@@ -1095,6 +1095,386 @@ static void test_utf8_continuation_split_across_inject(void) {
 }
 
 /* -------------------------------------------------------------------------
+ * 2026-06-30 JES #810 M2 review-followup: gate review fixes.
+ *
+ * P1 hardening tests (CSI overflow byte-injection, UTF-8 overlong /
+ * surrogate / out-of-range smuggling) and the bar-raiser-flagged
+ * coverage gaps (F7-F10 individual tests, full CTRL sweep, two-event
+ * burst in one inject, 0x00/0x1C controls, stray UTF-8 continuation).
+ * ---------------------------------------------------------------------- */
+
+/* P1-1: CSI buffer overflow used to reset to GROUND with the remaining
+ * sequence bytes still in the buffer, which got emitted as printable
+ * keystrokes.  The fix transitions to CSI_SWALLOW and drops bytes until
+ * the final byte arrives.  Inject a CSI with > 64 param bytes followed by
+ * a single 'B' printable, then poll: the only event should be 'B', and
+ * the parse-error counter should be non-zero. */
+static void test_csi_overflow_does_not_inject_keystrokes(void) {
+	input_decoder_t *dec = input_decoder_create(-1);
+	/* \e[ + 80 ';' + 'X' (final byte) + 'B' (post-sequence printable) */
+	uint8_t seq[256];
+	size_t n = 0;
+	seq[n++] = 0x1b;
+	seq[n++] = '[';
+	for (int i = 0; i < 80; i++) {
+		seq[n++] = ';';
+	}
+	seq[n++] = 'X';   /* final byte for the malformed CSI */
+	seq[n++] = 'B';   /* a real printable; should be the only emit */
+	size_t accepted = input_decoder_inject_bytes(dec, seq, n);
+	assert(accepted == n);
+
+	boxen_event_t ev;
+	int rc = input_decoder_poll(dec, &ev, 0);
+	/* First emit must be the 'B' printable -- not any of the swallowed
+	 * sequence bytes. */
+	assert(rc == BOXEN_OK);
+	assert(ev.type == BOXEN_EV_KEY);
+	assert(ev.key.key == BOXEN_KEY_NONE);
+	assert(ev.key.ch == 'B');
+
+	/* No further events queued. */
+	memset(&ev, 0x7f, sizeof(ev));
+	rc = input_decoder_poll(dec, &ev, 0);
+	assert(rc == BOXEN_ERR_TIMEOUT);
+
+	/* The rejection path was observable via the counter. */
+	assert(input_decoder_parse_errors(dec) > 0);
+
+	input_decoder_destroy(dec);
+}
+
+/* P1-1 variant: CSI overflow split across inject boundaries -- swallow
+ * state must persist across polls.  Inject \e[ + 70 ';' (forces overflow
+ * mid-stream); poll (TIMEOUT, swallow active); inject 'X' (final);
+ * poll (TIMEOUT, swallow ended); inject 'C' (printable); poll -> 'C'. */
+static void test_csi_swallow_persists_across_polls(void) {
+	input_decoder_t *dec = input_decoder_create(-1);
+
+	uint8_t seq[80];
+	size_t n = 0;
+	seq[n++] = 0x1b;
+	seq[n++] = '[';
+	for (int i = 0; i < 70; i++) {
+		seq[n++] = ';';
+	}
+	input_decoder_inject_bytes(dec, seq, n);
+
+	boxen_event_t ev;
+	int rc = input_decoder_poll(dec, &ev, 0);
+	assert(rc == BOXEN_ERR_TIMEOUT);
+	assert(input_decoder_parse_errors(dec) > 0);
+
+	static const uint8_t final[] = {'X'};
+	input_decoder_inject_bytes(dec, final, sizeof(final));
+	rc = input_decoder_poll(dec, &ev, 0);
+	assert(rc == BOXEN_ERR_TIMEOUT);   /* swallow drained, no event */
+
+	static const uint8_t printable[] = {'C'};
+	input_decoder_inject_bytes(dec, printable, sizeof(printable));
+	rc = input_decoder_poll(dec, &ev, 0);
+	assert(rc == BOXEN_OK);
+	assert(ev.key.ch == 'C');
+
+	input_decoder_destroy(dec);
+}
+
+/* P1-1: a runaway long parameter (~63 digits) inside the CSI buffer used
+ * to feed a signed-int accumulator overflow (UB).  The fix saturates
+ * cur at CSI_PARAM_CAP (100000) before it can approach INT_MAX.  Verify
+ * the sequence still decodes safely (modifier > 16 -> NONE) and no
+ * crash. */
+static void test_csi_param_overflow_saturates_safely(void) {
+	input_decoder_t *dec = input_decoder_create(-1);
+
+	/* \e[1;<60 nines>A -- modifier param huge; should clamp to NONE. */
+	uint8_t seq[80];
+	size_t n = 0;
+	seq[n++] = 0x1b;
+	seq[n++] = '[';
+	seq[n++] = '1';
+	seq[n++] = ';';
+	for (int i = 0; i < 60; i++) {
+		seq[n++] = '9';
+	}
+	seq[n++] = 'A';
+	input_decoder_inject_bytes(dec, seq, n);
+
+	boxen_event_t ev;
+	int rc = input_decoder_poll(dec, &ev, 0);
+	assert(rc == BOXEN_OK);
+	assert(ev.type == BOXEN_EV_KEY);
+	assert(ev.key.key == BOXEN_KEY_UP);
+	assert(ev.key.mod == BOXEN_MOD_NONE);   /* saturated -> no modifier */
+
+	input_decoder_destroy(dec);
+}
+
+/* P1-3: overlong NUL encoding (\xC0\x80) -- the canonical UTF-8 smuggling
+ * primitive.  Must NOT decode to U+0000; must emit U+FFFD and bump
+ * parse_errors.  Belt-and-suspenders: lead-byte rejection (0xC0 is now
+ * rejected outright in utf8_lead_classify) drops this before the
+ * continuation byte even matters, so the second byte falls through as a
+ * stray continuation that ALSO bumps parse_errors. */
+static void test_utf8_overlong_nul_rejected(void) {
+	input_decoder_t *dec = input_decoder_create(-1);
+	static const uint8_t seq[] = {0xC0, 0x80};
+	input_decoder_inject_bytes(dec, seq, sizeof(seq));
+
+	boxen_event_t ev;
+	int rc = input_decoder_poll(dec, &ev, 0);
+	/* Both bytes were rejected silently (0xC0 invalid lead, 0x80 stray
+	 * continuation in GROUND); no event emits. */
+	assert(rc == BOXEN_ERR_TIMEOUT);
+	assert(input_decoder_parse_errors(dec) >= 2);
+
+	input_decoder_destroy(dec);
+}
+
+/* P1-3: overlong slash (\xC0\xAF would encode U+002F as 2-byte).
+ * Symmetric to overlong NUL but pinning the lead-byte rejection. */
+static void test_utf8_overlong_slash_rejected(void) {
+	input_decoder_t *dec = input_decoder_create(-1);
+	static const uint8_t seq[] = {0xC0, 0xAF};
+	input_decoder_inject_bytes(dec, seq, sizeof(seq));
+
+	boxen_event_t ev;
+	int rc = input_decoder_poll(dec, &ev, 0);
+	assert(rc == BOXEN_ERR_TIMEOUT);
+	assert(input_decoder_parse_errors(dec) >= 2);
+
+	input_decoder_destroy(dec);
+}
+
+/* P1-3: overlong 3-byte encoding of U+007F (\xE0\x81\xBF).  This one has
+ * a valid 3-byte lead (0xE0), so it passes the lead check; the
+ * codepoint validator must catch it as overlong. */
+static void test_utf8_overlong_3byte_emits_fffd(void) {
+	input_decoder_t *dec = input_decoder_create(-1);
+	static const uint8_t seq[] = {0xE0, 0x81, 0xBF};
+	input_decoder_inject_bytes(dec, seq, sizeof(seq));
+
+	boxen_event_t ev;
+	int rc = input_decoder_poll(dec, &ev, 0);
+	assert(rc == BOXEN_OK);
+	assert(ev.type == BOXEN_EV_KEY);
+	assert(ev.key.ch == 0xFFFD);   /* replacement character */
+	assert(input_decoder_parse_errors(dec) >= 1);
+
+	input_decoder_destroy(dec);
+}
+
+/* P1-3: UTF-16 surrogate U+D800 encoded as 3-byte UTF-8 (\xED\xA0\x80).
+ * Lead 0xED is valid; codepoint validator rejects the surrogate range. */
+static void test_utf8_surrogate_rejected(void) {
+	input_decoder_t *dec = input_decoder_create(-1);
+	static const uint8_t seq[] = {0xED, 0xA0, 0x80};
+	input_decoder_inject_bytes(dec, seq, sizeof(seq));
+
+	boxen_event_t ev;
+	int rc = input_decoder_poll(dec, &ev, 0);
+	assert(rc == BOXEN_OK);
+	assert(ev.key.ch == 0xFFFD);
+	assert(input_decoder_parse_errors(dec) >= 1);
+
+	input_decoder_destroy(dec);
+}
+
+/* P1-3: codepoint above Unicode max -- 0xF4 0x90 0x80 0x80 = U+110000.
+ * Lead 0xF4 is valid (< 0xF5 rejection threshold), but the assembled
+ * codepoint exceeds 0x10FFFF. */
+static void test_utf8_above_max_rejected(void) {
+	input_decoder_t *dec = input_decoder_create(-1);
+	static const uint8_t seq[] = {0xF4, 0x90, 0x80, 0x80};
+	input_decoder_inject_bytes(dec, seq, sizeof(seq));
+
+	boxen_event_t ev;
+	int rc = input_decoder_poll(dec, &ev, 0);
+	assert(rc == BOXEN_OK);
+	assert(ev.key.ch == 0xFFFD);
+	assert(input_decoder_parse_errors(dec) >= 1);
+
+	input_decoder_destroy(dec);
+}
+
+/* P1-3: invalid 5-byte UTF-8 lead 0xF8 should be silently dropped (not
+ * emitted as a raw ch=0xF8 -- that would let Latin-1 garbage flow
+ * downstream). */
+static void test_utf8_invalid_5byte_lead_dropped(void) {
+	input_decoder_t *dec = input_decoder_create(-1);
+	static const uint8_t seq[] = {0xF8, 'X'};
+	input_decoder_inject_bytes(dec, seq, sizeof(seq));
+
+	boxen_event_t ev;
+	int rc = input_decoder_poll(dec, &ev, 0);
+	/* 0xF8 dropped; 'X' is the next event. */
+	assert(rc == BOXEN_OK);
+	assert(ev.key.ch == 'X');
+	assert(input_decoder_parse_errors(dec) >= 1);
+
+	input_decoder_destroy(dec);
+}
+
+/* P1-3: stray UTF-8 continuation byte (0x80-0xBF) in GROUND used to be
+ * emitted as a raw ch=byte (Latin-1 smuggling).  Must now drop with
+ * parse-error bump. */
+static void test_utf8_stray_continuation_in_ground_dropped(void) {
+	input_decoder_t *dec = input_decoder_create(-1);
+	static const uint8_t seq[] = {0x80, 0xBF, 'Y'};
+	input_decoder_inject_bytes(dec, seq, sizeof(seq));
+
+	boxen_event_t ev;
+	int rc = input_decoder_poll(dec, &ev, 0);
+	assert(rc == BOXEN_OK);
+	assert(ev.key.ch == 'Y');   /* 0x80 and 0xBF were dropped */
+	assert(input_decoder_parse_errors(dec) >= 2);
+
+	input_decoder_destroy(dec);
+}
+
+/* P1-3: premature non-continuation byte mid-UTF-8.  \xC2 (2-byte lead
+ * expecting 1 continuation) followed by 'A' (not a continuation): partial
+ * codepoint discarded, 'A' decoded fresh in GROUND. */
+static void test_utf8_invalid_continuation_fallback(void) {
+	input_decoder_t *dec = input_decoder_create(-1);
+	static const uint8_t seq[] = {0xC2, 'A'};
+	input_decoder_inject_bytes(dec, seq, sizeof(seq));
+
+	boxen_event_t ev;
+	int rc = input_decoder_poll(dec, &ev, 0);
+	assert(rc == BOXEN_OK);
+	assert(ev.key.ch == 'A');
+	assert(input_decoder_parse_errors(dec) >= 1);
+
+	input_decoder_destroy(dec);
+}
+
+/* Polish: F7..F10 (~-form), each with one dedicated assertion.  The
+ * decode table covers them but the per-key behavioral pin was missing. */
+static void test_function_key_f7_csi(void) {
+	input_decoder_t *dec = input_decoder_create(-1);
+	static const uint8_t seq[] = {0x1b, '[', '1', '8', '~'};
+	boxen_event_t ev;
+	inject_and_poll(dec, seq, sizeof(seq), BOXEN_OK, &ev);
+	assert(ev.key.key == BOXEN_KEY_F7);
+	input_decoder_destroy(dec);
+}
+
+static void test_function_key_f8_csi(void) {
+	input_decoder_t *dec = input_decoder_create(-1);
+	static const uint8_t seq[] = {0x1b, '[', '1', '9', '~'};
+	boxen_event_t ev;
+	inject_and_poll(dec, seq, sizeof(seq), BOXEN_OK, &ev);
+	assert(ev.key.key == BOXEN_KEY_F8);
+	input_decoder_destroy(dec);
+}
+
+static void test_function_key_f9_csi(void) {
+	input_decoder_t *dec = input_decoder_create(-1);
+	static const uint8_t seq[] = {0x1b, '[', '2', '0', '~'};
+	boxen_event_t ev;
+	inject_and_poll(dec, seq, sizeof(seq), BOXEN_OK, &ev);
+	assert(ev.key.key == BOXEN_KEY_F9);
+	input_decoder_destroy(dec);
+}
+
+static void test_function_key_f10_csi(void) {
+	input_decoder_t *dec = input_decoder_create(-1);
+	static const uint8_t seq[] = {0x1b, '[', '2', '1', '~'};
+	boxen_event_t ev;
+	inject_and_poll(dec, seq, sizeof(seq), BOXEN_OK, &ev);
+	assert(ev.key.key == BOXEN_KEY_F10);
+	input_decoder_destroy(dec);
+}
+
+/* Polish: full CTRL sweep.  The decode_byte_ground table maps 0x01..0x1A
+ * to BOXEN_KEY_CTRL_A..CTRL_Z via a single enum arithmetic; one regression
+ * there would break all 26 silently.  This loop pins every slot. */
+static void test_control_chars_full_sweep(void) {
+	input_decoder_t *dec = input_decoder_create(-1);
+	for (uint8_t b = 0x01; b <= 0x1A; b++) {
+		uint8_t seq[] = {b};
+		boxen_event_t ev;
+		size_t accepted = input_decoder_inject_bytes(dec, seq, 1);
+		assert(accepted == 1);
+		memset(&ev, 0x7f, sizeof(ev));
+		int rc = input_decoder_poll(dec, &ev, 0);
+		assert(rc == BOXEN_OK);
+		assert(ev.type == BOXEN_EV_KEY);
+		/* TAB (0x09) and ENTER (0x0D) are surfaced via their dedicated
+		 * key codes per the boxen header (which alias CTRL_I and
+		 * CTRL_M); BACKSPACE (0x08) likewise.  Skip those slots here --
+		 * they have dedicated tests above. */
+		if (b == 0x08) {
+			assert(ev.key.key == BOXEN_KEY_BACKSPACE);
+		} else if (b == 0x09) {
+			assert(ev.key.key == BOXEN_KEY_TAB);
+		} else if (b == 0x0D) {
+			assert(ev.key.key == BOXEN_KEY_ENTER);
+		} else {
+			boxen_key_t expected = (boxen_key_t)(BOXEN_KEY_CTRL_A + (b - 0x01));
+			assert(ev.key.key == expected);
+		}
+	}
+	input_decoder_destroy(dec);
+}
+
+/* Polish: 0x00 -> CTRL_SPACE, 0x1C -> CTRL_BACKSLASH (the two
+ * special-cased control-code mappings outside the 0x01..0x1A range). */
+static void test_control_char_ctrl_space(void) {
+	input_decoder_t *dec = input_decoder_create(-1);
+	static const uint8_t seq[] = {0x00};
+	boxen_event_t ev;
+	inject_and_poll(dec, seq, sizeof(seq), BOXEN_OK, &ev);
+	assert(ev.key.key == BOXEN_KEY_CTRL_SPACE);
+	input_decoder_destroy(dec);
+}
+
+static void test_control_char_ctrl_backslash(void) {
+	input_decoder_t *dec = input_decoder_create(-1);
+	static const uint8_t seq[] = {0x1c};
+	boxen_event_t ev;
+	inject_and_poll(dec, seq, sizeof(seq), BOXEN_OK, &ev);
+	assert(ev.key.key == BOXEN_KEY_CTRL_BACKSLASH);
+	input_decoder_destroy(dec);
+}
+
+/* Polish: two complete sequences in one inject.  The burst-read
+ * contract requires the decoder to dequeue them across two poll calls
+ * in order.  M3 will extend this to the wheel-spam scenario; M2 pins
+ * the basic case so the M3 SKIP-stub remains the new-scope guard. */
+static void test_burst_two_events_one_inject(void) {
+	input_decoder_t *dec = input_decoder_create(-1);
+	static const uint8_t seq[] = {0x1b, '[', 'A', 0x1b, '[', 'B'};
+	size_t accepted = input_decoder_inject_bytes(dec, seq, sizeof(seq));
+	assert(accepted == sizeof(seq));
+
+	boxen_event_t ev;
+	int rc = input_decoder_poll(dec, &ev, 0);
+	assert(rc == BOXEN_OK);
+	assert(ev.key.key == BOXEN_KEY_UP);
+
+	memset(&ev, 0x7f, sizeof(ev));
+	rc = input_decoder_poll(dec, &ev, 0);
+	assert(rc == BOXEN_OK);
+	assert(ev.key.key == BOXEN_KEY_DOWN);
+
+	/* No more events. */
+	rc = input_decoder_poll(dec, &ev, 0);
+	assert(rc == BOXEN_ERR_TIMEOUT);
+
+	input_decoder_destroy(dec);
+}
+
+/* Polish: parse_errors accessor NULL-safety and starts at zero. */
+static void test_parse_errors_accessor_smoke(void) {
+	assert(input_decoder_parse_errors(NULL) == 0);
+	input_decoder_t *dec = input_decoder_create(-1);
+	assert(input_decoder_parse_errors(dec) == 0);
+	input_decoder_destroy(dec);
+}
+
+/* -------------------------------------------------------------------------
  * M3 SKIP stubs -- SGR mouse + X10 fallback + burst-read.
  * ---------------------------------------------------------------------- */
 
@@ -1289,6 +1669,28 @@ int main(void) {
 	TR_RUN(test_utf8_three_byte_em_dash);
 	TR_RUN(test_utf8_four_byte_emoji);
 	TR_RUN(test_utf8_continuation_split_across_inject);
+
+	/* 2026-06-30 JES #810 M2 review-followup: P1 hardening + polish. */
+	TR_RUN(test_csi_overflow_does_not_inject_keystrokes);
+	TR_RUN(test_csi_swallow_persists_across_polls);
+	TR_RUN(test_csi_param_overflow_saturates_safely);
+	TR_RUN(test_utf8_overlong_nul_rejected);
+	TR_RUN(test_utf8_overlong_slash_rejected);
+	TR_RUN(test_utf8_overlong_3byte_emits_fffd);
+	TR_RUN(test_utf8_surrogate_rejected);
+	TR_RUN(test_utf8_above_max_rejected);
+	TR_RUN(test_utf8_invalid_5byte_lead_dropped);
+	TR_RUN(test_utf8_stray_continuation_in_ground_dropped);
+	TR_RUN(test_utf8_invalid_continuation_fallback);
+	TR_RUN(test_function_key_f7_csi);
+	TR_RUN(test_function_key_f8_csi);
+	TR_RUN(test_function_key_f9_csi);
+	TR_RUN(test_function_key_f10_csi);
+	TR_RUN(test_control_chars_full_sweep);
+	TR_RUN(test_control_char_ctrl_space);
+	TR_RUN(test_control_char_ctrl_backslash);
+	TR_RUN(test_burst_two_events_one_inject);
+	TR_RUN(test_parse_errors_accessor_smoke);
 
 	/* M3 SKIP -- SGR mouse, X10 fallback, burst-read. */
 	TR_RUN(test_skip_sgr_mouse_left_press);
