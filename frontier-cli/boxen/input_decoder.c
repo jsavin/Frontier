@@ -1374,12 +1374,15 @@ static bool utf8_codepoint_valid(uint32_t cp, int lead_len) {
  *   - Bytes that don't fit are counted in dropped_bytes (same back-pressure
  *     contract as inject_bytes overflow).
  *
- * Threading: the parent (tb2_poll_event) holds the GIL on entry; it must
- * drop the GIL around this call before invoking input_decoder_poll if the
- * REPL needs other threads to make progress during the blocking wait.
- * That GIL hand-off is the tb2 backend's responsibility, not the decoder's.
- * The single-owner invariant from input_decoder.h means no other thread
- * touches *dec during the GIL-dropped window.
+ * Threading: input_decoder_poll runs with the Frontier GIL NOT held.
+ * The REPL event loop (boxen_repl.c:2147-2152) releases the GIL via
+ * `pthread_mutex_unlock(&frontier_gil)` BEFORE calling boxen_poll_event
+ * (which forwards through tb2_poll_event into this function), and
+ * reacquires it after.  That's by design -- it lets other Frontier
+ * threads run while the REPL is parked in select(2).  The single-owner
+ * invariant from input_decoder.h still holds because the REPL thread
+ * is the only caller; other GIL-acquiring threads run UserTalk code
+ * that never touches *dec.  No locks or atomics needed.
  * ---------------------------------------------------------------------- */
 
 /* Append bytes from the TTY into the decoder ring buffer.  Returns the

@@ -245,12 +245,19 @@ static void tb2_present(void) {
  * timeout_ms flows straight through to input_decoder_poll, which uses
  * select(2) for the blocking wait and read(2) to drain the TTY pipe.
  *
- * Threading: caller (boxen_poll_event -> usertalk dispatch) is GIL-held
- * on entry.  The decoder may block inside select(2) for timeout_ms; that
- * block happens with the GIL still held -- the GIL hand-off for cross-
- * thread progress during the wait is the REPL event loop's responsibility,
- * not the backend's.  M6 preserves the prior behavior in this respect:
- * tb_peek_event was also called with the GIL held.
+ * Threading: the caller (`boxen_repl_event_loop` at boxen_repl.c:2147-2152,
+ * mirroring `debugger_tui_main` per ADR-014) DROPS the Frontier GIL via
+ * `pthread_mutex_unlock(&frontier_gil)` BEFORE calling boxen_poll_event,
+ * and reacquires it after.  So this function -- and `input_decoder_poll`
+ * underneath -- runs with the GIL NOT held during the blocking wait.
+ * That's by design: it lets other Frontier threads make progress while
+ * the REPL is parked in select(2).  M6 preserves the prior behavior in
+ * this respect (tb_peek_event also ran with the GIL released).
+ *
+ * The single-owner invariant from input_decoder.h still holds because
+ * the REPL thread is the only one that touches *g_decoder; the other
+ * GIL-acquiring threads run UserTalk code that never reaches the
+ * decoder.  No locks or atomics needed inside the decoder.
  *
  * Risk R3 (mouse-enable timing window) is mitigated inside the decoder
  * (mouse writes are synchronous + the decoder accepts both SGR and X10
