@@ -69,12 +69,19 @@ TB2_IMPL_SRC = $(TB2_DIR)/termbox2_impl.c
 # unused statics get __attribute__((unused)) if the compiler complains.
 BOXEN_DIR = boxen
 INCLUDES += -I$(BOXEN_DIR)
+#
+# 2026-06-29 JES #809 Phase C M1: input_decoder.c added.  At M1 it is a stub
+# (create / destroy / inject-test-seam / poll-returns-timeout).  Compiled into
+# the production binary so the M2-M6 sub-agents land their work without a
+# separate build-system change.  It is NOT yet wired into backend_tb2.c --
+# tb2_poll_event continues to call tb_peek_event() until M6 cutover.
 BOXEN_SOURCES = \
 	$(BOXEN_DIR)/boxen_log.c \
 	$(BOXEN_DIR)/boxen_wcwidth.c \
 	$(BOXEN_DIR)/backend_tb2.c \
 	$(BOXEN_DIR)/backend_mock.c \
-	$(BOXEN_DIR)/boxen.c
+	$(BOXEN_DIR)/boxen.c \
+	$(BOXEN_DIR)/input_decoder.c
 
 # Strings compiler integration (shared with tests)
 STRINGS_COMPILER_DIR = ../tools/strings_compiler
