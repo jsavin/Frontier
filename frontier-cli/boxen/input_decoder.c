@@ -24,9 +24,11 @@
  * tests/input_decoder_tests.c harness has a real linkable surface that
  * exercises the API shape (create / inject / poll / destroy).
  *
- * Threading: single-threaded; the caller (M6: tb2_poll_event) is responsible
- * for GIL release/reacquire around any future blocking read.  The M1 stub
- * never blocks because it never reads.
+ * Threading: see the contract block in input_decoder.h.  Summary: single
+ * owner thread; GIL-held at every API entry/exit; the GIL is dropped only
+ * inside the M6 blocking read inside input_decoder_poll, and the
+ * single-owner invariant means no other thread can touch the decoder
+ * during that window.  No locks, no atomics -- by design.
  *
  * See planning/phase_c/INPUT_DECODER_PLAN.md sections 2, 6, 7 for the full
  * design.
@@ -34,6 +36,7 @@
 
 #include "input_decoder.h"
 
+#include <assert.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -65,15 +68,29 @@ struct input_decoder {
 	bool   kitty_enabled;
 
 	/* Linear scratch buffer used as a simple drain-from-head queue.
-	 * head_len is the number of unread bytes starting at buf[0].
+	 * fill_len is the number of bytes currently held, starting at buf[0]
+	 * (the "fill level" -- not an index, despite the future plan to grow
+	 * into a head/tail ring).
 	 *
 	 * Future-tense: the M2 state machine will consume from the head and
 	 * compact (memmove) on drain, or be promoted to a head/tail ring if
 	 * profiling shows the memmove is hot.  For M1 the buffer is filled by
 	 * inject_bytes (test seam) and never drained because poll always returns
-	 * BOXEN_ERR_TIMEOUT. */
+	 * BOXEN_ERR_TIMEOUT.
+	 *
+	 * Invariant: fill_len <= INPUT_DECODER_BUFFER_SIZE.  Enforced by clamp
+	 * in inject_bytes; asserted at top of inject_bytes so a future drain
+	 * regression cannot violate it silently. */
 	uint8_t buf[INPUT_DECODER_BUFFER_SIZE];
-	size_t  head_len;
+	size_t  fill_len;
+
+	/* Cumulative count of bytes dropped because the ring was full when
+	 * inject_bytes (or future M2 / M3 read(2) loop) tried to deposit them.
+	 * Exposed via input_decoder_dropped_bytes() so tests and (post-M2)
+	 * production callers can detect silent desync.  Monotonic; never
+	 * decreases.  This is the security-relevant back-pressure signal
+	 * called out by plan section 3.12 (burst-read robustness). */
+	size_t  dropped_bytes;
 };
 
 /* -------------------------------------------------------------------------
@@ -88,7 +105,8 @@ input_decoder_t *input_decoder_create(int tty_fd) {
 	dec->tty_fd = tty_fd;
 	dec->mouse_enabled = false;
 	dec->kitty_enabled = false;
-	dec->head_len = 0;
+	dec->fill_len = 0;
+	dec->dropped_bytes = 0;
 	return dec;
 }
 
@@ -157,43 +175,68 @@ void input_decoder_kitty_enable(input_decoder_t *dec) {
 	 * \e[CODE;MOD u replies. M1 stub records the bit only. */
 }
 
+bool input_decoder_kitty_enabled(const input_decoder_t *dec) {
+	if (dec == NULL) {
+		return false;
+	}
+	return dec->kitty_enabled;
+}
+
 /* -------------------------------------------------------------------------
  * Test seam (compile-guarded)
  * ---------------------------------------------------------------------- */
 
 #ifdef INPUT_DECODER_TEST_SEAM
 
-void input_decoder_inject_bytes(input_decoder_t *dec,
-                                const uint8_t *bytes, size_t len) {
+size_t input_decoder_inject_bytes(input_decoder_t *dec,
+                                  const uint8_t *bytes, size_t len) {
 	if (dec == NULL || len == 0) {
-		return;
+		return 0;
 	}
-	if (bytes == NULL) {
-		return;
-	}
+	/* bytes == NULL with len > 0 is a programmer error; the test seam is
+	 * exactly where we want such bugs to surface (rather than silently
+	 * no-op'ing and looking like the inject succeeded). */
+	assert(bytes != NULL);
 
-	/* M1: drop bytes silently on overflow.  M2 will refine the contract --
-	 * once the state machine is draining the buffer, the realistic failure
-	 * mode is "a paste larger than 256 KiB" (handled by the paste-specific
-	 * cap in M4) rather than "the ring filled because nobody read it".
-	 *
-	 * For the M1 harness, the smoke tests inject a handful of bytes; a
-	 * future test that floods the buffer past INPUT_DECODER_BUFFER_SIZE
-	 * is documenting an unwanted behavior, not an expected one. */
-	size_t available = INPUT_DECODER_BUFFER_SIZE - dec->head_len;
+	/* Load-bearing invariant: fill_len never exceeds buffer size.  Cheap
+	 * to assert here; protects M2 / M3 future drain code from a partial-
+	 * compaction bug that would otherwise produce an underflow on the
+	 * available-space calculation below. */
+	assert(dec->fill_len <= INPUT_DECODER_BUFFER_SIZE);
+
+	size_t available = INPUT_DECODER_BUFFER_SIZE - dec->fill_len;
 	size_t to_copy = (len < available) ? len : available;
 
 	if (to_copy > 0) {
-		memcpy(dec->buf + dec->head_len, bytes, to_copy);
-		dec->head_len += to_copy;
+		memcpy(dec->buf + dec->fill_len, bytes, to_copy);
+		dec->fill_len += to_copy;
 	}
+
+	/* Surface overflow rather than swallow it.  Plan section 3.12 calls
+	 * for burst-read robustness; the dropped_bytes counter is the test-
+	 * observable signal that M2 / M3 / M4 will use to assert their drain
+	 * cadences are correct.  See input_decoder.h for the back-pressure
+	 * contract. */
+	size_t dropped = len - to_copy;
+	if (dropped > 0) {
+		dec->dropped_bytes += dropped;
+	}
+
+	return to_copy;
 }
 
 size_t input_decoder_buffered_bytes(const input_decoder_t *dec) {
 	if (dec == NULL) {
 		return 0;
 	}
-	return dec->head_len;
+	return dec->fill_len;
+}
+
+size_t input_decoder_dropped_bytes(const input_decoder_t *dec) {
+	if (dec == NULL) {
+		return 0;
+	}
+	return dec->dropped_bytes;
 }
 
 #endif /* INPUT_DECODER_TEST_SEAM */

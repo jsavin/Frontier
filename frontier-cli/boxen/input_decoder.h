@@ -5,11 +5,38 @@
  * Unicode (UTF-8) decoding, mouse-mode enable/disable.
  *
  * Does NOT own: rendering, alternate screen, SIGWINCH, cell buffer,
- * color, cursor positioning. termbox2 retains all of those.
+ * color, cursor positioning. termbox2 retains all of those.  SIGWINCH
+ * does not touch any decoder field; termbox2 handles screen resize via
+ * its own signal pipe, separate from the decoder's tty_fd, so no
+ * async-signal coordination is needed here.
  *
- * Threading: same contract as the rest of boxen -- single-threaded, GIL-held.
- * The caller (tb2_poll_event) releases the GIL before entering the read loop
- * and reacquires before calling back into Frontier.
+ * Threading contract -- READ THIS BEFORE EDITING:
+ *
+ *   Single-owner invariant: there is exactly one input_decoder_t per
+ *   process (the tb2 backend's static g_decoder, post-M6).  No other
+ *   Frontier thread holds a pointer to it.  Safety relies on that
+ *   invariant -- the decoder has no internal locks and no atomics.
+ *
+ *   The owner thread is the GIL holder when entering and leaving any
+ *   decoder API.  input_decoder_poll is the one function that releases
+ *   the GIL around its blocking select(2) / read(2) (M6 wires this);
+ *   the decoder's fields are mutated inside that GIL-dropped window.
+ *   This is safe because the single-owner invariant means no other
+ *   thread can call into the decoder during that window.
+ *
+ *   set_mouse / kitty_enable must be called only from GIL-held context
+ *   and only when no poll is in progress -- i.e., from slash-command
+ *   dispatch, init, or shutdown, NEVER from inside the GIL-drop window
+ *   around boxen_poll_event.  Future writes to tty_fd from set_mouse
+ *   (M3+) would race the in-flight read(2) otherwise.  The REPL event
+ *   loop satisfies this naturally: slash commands run between polls,
+ *   not during them.
+ *
+ *   Memory ordering: the GIL release/reacquire pair around poll
+ *   provides the happens-before edge for any cross-call observation
+ *   of decoder state (e.g., the REPL reading mouse_enabled after a
+ *   prior set_mouse call).  No additional barriers are required as
+ *   long as the single-owner invariant holds.
  *
  * This header is PRIVATE to the boxen subsystem (sibling to boxen_internal.h).
  * Only boxen.h is the public boxen header; do NOT include input_decoder.h
@@ -41,6 +68,12 @@ typedef struct input_decoder input_decoder_t;
  * is the convention used by the PTY-replay test harness -- the decoder will
  * never call read(2) in that case; bytes are supplied exclusively through
  * input_decoder_inject_bytes().
+ *
+ * Ownership: the decoder does NOT take ownership of tty_fd, does NOT close
+ * it on destroy, and does NOT validate it at create time.  The caller is
+ * responsible for the fd's lifecycle (tb2 init/shutdown in M6).  A garbage
+ * non-negative integer will not be caught here; the future read(2) call
+ * will surface it as a normal I/O error returned from input_decoder_poll.
  *
  * Returns NULL on allocation failure (ENOMEM).  Mouse reporting starts
  * DISABLED; call input_decoder_set_mouse(true) to enable SGR + bracketed
@@ -91,23 +124,40 @@ int  input_decoder_poll(input_decoder_t *dec, boxen_event_t *out, int timeout_ms
  * and decodes CSI-u replies. */
 void input_decoder_kitty_enable(input_decoder_t *dec);
 
+/* Query whether kitty_enable has been called on this decoder.  Symmetric
+ * to input_decoder_mouse_enabled.  Safe on a freshly-created or NULL
+ * decoder (returns false).  Reflects the request, not the terminal's
+ * confirmed support -- M5 will not flip the bit back if the probe times
+ * out, because the decoder remains a valid no-op in that case. */
+bool             input_decoder_kitty_enabled(const input_decoder_t *dec);
+
 /* 2026-06-29 JES #809 M1: test seam.
  *
  * Inject raw bytes into the decoder's ring buffer.  Compile-guarded by
  * INPUT_DECODER_TEST_SEAM so the symbol is invisible to production builds
  * (and any well-meaning future caller cannot accidentally smuggle bytes
- * past the TTY read loop).  Normal production code never calls this.
+ * past the TTY read loop).  Normal production code never calls this --
+ * the real read(2) path lands in M2.
  *
- * On overflow, the excess bytes are dropped silently for now -- M2 will
- * formalize the back-pressure contract.  The M1 buffer is sized for the
- * largest single protocol burst we expect (worst case: bracketed paste,
- * which M4 caps at 256 KB but for the M1 stub a much smaller value is
- * adequate to exercise the state machine that M2 lands).
+ * Returns the number of bytes actually accepted into the buffer.  This
+ * is normally equal to `len`, but on overflow it is clamped to the
+ * available space and the remainder is counted in
+ * input_decoder_dropped_bytes() (which the M2 / M3 read loop will also
+ * increment when a real read(2) burst overflows the ring).  Tests that
+ * inject > INPUT_DECODER_BUFFER_SIZE bytes can therefore detect the
+ * drop without relying on stderr inspection.
  *
- * Safe to call with len == 0 (no-op) or bytes == NULL when len == 0. */
+ * Safe to call with len == 0 (no-op, returns 0).  bytes == NULL with
+ * len > 0 is a programmer error and triggers an assert -- a test seam
+ * is exactly where you want such bugs to surface.
+ *
+ * The dropped_bytes counter and the inject return value together define
+ * the M2 back-pressure contract: the read loop must either keep up (no
+ * drops) or surface drops to logging / metrics so silent desync is
+ * impossible.  See plan section 3.12 (burst-read robustness). */
 #ifdef INPUT_DECODER_TEST_SEAM
-void input_decoder_inject_bytes(input_decoder_t *dec,
-                                const uint8_t *bytes, size_t len);
+size_t input_decoder_inject_bytes(input_decoder_t *dec,
+                                  const uint8_t *bytes, size_t len);
 
 /* Test-only accessor: number of bytes currently held in the ring buffer.
  * Returns 0 for a NULL decoder.  Used by M1 harness tests to assert the
@@ -115,6 +165,15 @@ void input_decoder_inject_bytes(input_decoder_t *dec,
  * them, so the count after inject equals the number injected up to buffer
  * capacity). */
 size_t input_decoder_buffered_bytes(const input_decoder_t *dec);
+
+/* Test-only accessor: cumulative count of bytes dropped due to ring
+ * overflow since decoder creation.  Returns 0 for a NULL decoder.  M2 /
+ * M3 also bump this counter when a real read(2) cannot fit into the
+ * remaining ring space.  Always-zero return is the M1 / M2 happy path;
+ * non-zero indicates the test deliberately exceeded buffer capacity OR
+ * (in production) a runaway terminal burst that the state machine
+ * failed to drain. */
+size_t input_decoder_dropped_bytes(const input_decoder_t *dec);
 #endif
 
 #ifdef __cplusplus
