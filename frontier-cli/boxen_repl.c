@@ -1006,6 +1006,12 @@ static bool repl_is_word_char(char c) {
 }
 
 static int word_back_from(const char *buf, int len, int pos) {
+	/* 2026-06-29 JES #805 (gate P2): defensive NULL/negative-len guards
+	 * for the pure-helper contract.  All current call sites pass
+	 * s->input_buf which is never NULL and len >= 0, but the function
+	 * header advertises these as reusable helpers -- be tolerant of
+	 * future callers passing edge values. */
+	if (buf == NULL || len <= 0) return 0;
 	if (pos > len) pos = len;
 	if (pos <= 0) return 0;
 	int i = pos;
@@ -1017,6 +1023,9 @@ static int word_back_from(const char *buf, int len, int pos) {
 }
 
 static int word_forward_from(const char *buf, int len, int pos) {
+	/* 2026-06-29 JES #805 (gate P2): same defensive guards as
+	 * word_back_from -- pure-helper contract tolerates NULL/empty. */
+	if (buf == NULL || len <= 0) return 0;
 	if (pos < 0) pos = 0;
 	if (pos >= len) return len;
 	int i = pos;
@@ -1076,6 +1085,27 @@ static void on_input(boxen_window_t *win, const boxen_event_t *ev,
 	 * REPL only needs the wheel binding; mouse selection / cursor
 	 * positioning can be added in a future change. */
 	if (ev->type == BOXEN_EV_MOUSE) {
+		if (ev->mouse.button == 4 || ev->mouse.button == 5) {
+			/* 2026-06-29 JES #805 (gate P1): cancel pending slash debounce
+			 * on wheel scroll for the same reason the keyboard-scroll
+			 * handlers (PgUp/PgDn) do: a deferred palette opening
+			 * mid-scroll, 350ms after the user typed '/', is jarring
+			 * and breaks the navigation flow.  Also matches the
+			 * cancel-on-nav contract every other non-character event
+			 * follows in this function (Up/Down, Tab, Esc, Enter). */
+			s->slash_pending_until_ms = 0;
+			/* 2026-06-29 JES #805 (gate P2): close any open completion
+			 * popup before scrolling so the popup, which is anchored to
+			 * the input bar's view, does not remain visible over a
+			 * scrolled-back output pane.  Mirrors the "any other key
+			 * closes popup" semantics in the popup-routing branch
+			 * below -- a wheel event is "any other input". */
+			if (s->completion_popup != NULL) {
+				boxen_completion_popup_close(s->completion_popup);
+				s->completion_popup = NULL;
+				if (s->input_win != NULL) boxen_window_invalidate(s->input_win);
+			}
+		}
 		if (ev->mouse.button == 4 && ev->mouse.pressed) {
 			output_scroll_by_lines(s, +BOXEN_REPL_WHEEL_LINES_PER_TICK);
 		} else if (ev->mouse.button == 5 && ev->mouse.pressed) {
