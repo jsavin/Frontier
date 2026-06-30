@@ -5,6 +5,8 @@
  * 2026-06-30 JES #810 M2: cursor-key / SS3 / modifier-param / control-char
  *   / UTF-8 state machine.  This is the first milestone that emits real
  *   events from the buffered byte stream.
+ * 2026-06-29 JES #811 M3: SGR mouse parsing, X10 fallback, double-click
+ *   synthesis, burst-read contract.
  *
  * Scope of this file at M2:
  *   - Allocate / free the input_decoder_t struct.
@@ -42,11 +44,14 @@
  */
 
 #include "input_decoder.h"
+#include "boxen_internal.h"   /* BOXEN_DOUBLE_CLICK_MS, BOXEN_DOUBLE_CLICK_RADIUS */
 
 #include <assert.h>
 #include <limits.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>             /* clock_gettime for double-click synthesis */
+#include <unistd.h>           /* write(2) for mouse-enable sequences (M3) */
 
 /* 2026-06-29 JES #809 M1: ring-buffer sizing.
  *
@@ -173,6 +178,34 @@ struct input_decoder {
 	 * counter as a runaway-terminal detection signal alongside
 	 * dropped_bytes. */
 	size_t      parse_errors;
+
+	/* 2026-06-29 JES #811 M3: double-click synthesis state.
+	 *
+	 * Ported from backend_tb2.c:46-83 (tb2_maybe_set_double_click).  The
+	 * decoder owns this state from M3 onward; backend_tb2.c will drop its
+	 * own copy when M6 cuts over.  The invariant: last_press.valid is true
+	 * after any mouse press event is emitted; cleared when a double-click
+	 * is synthesized or when the position/button no longer matches.  The
+	 * time window and radius are defined in boxen_internal.h:
+	 *   BOXEN_DOUBLE_CLICK_MS     = 500
+	 *   BOXEN_DOUBLE_CLICK_RADIUS = 1
+	 *
+	 * x10_pending: set when the X10 \e[M introducer has been seen but the
+	 * three payload bytes have not yet arrived.  The poll loop transitions
+	 * to consuming 3 raw bytes instead of running the state machine. */
+	struct {
+		uint64_t time_ms;
+		int      x;
+		int      y;
+		uint8_t  button;
+		bool     valid;
+	} last_press;
+
+	/* X10 mouse pending: after seeing the \e[M introducer with no '<' prefix
+	 * (i.e., csi_buf was empty when final byte 'M' arrived), we need to read
+	 * 3 raw payload bytes from the ring before emitting the event.  This flag
+	 * suspends normal state-machine processing until the bytes arrive. */
+	bool x10_pending;
 };
 
 /* -------------------------------------------------------------------------
@@ -220,8 +253,41 @@ void input_decoder_set_mouse(input_decoder_t *dec, bool enable) {
 		return;
 	}
 	dec->mouse_enabled = enable;
-	/* M3 / M4: write \e[?1006h / \e[?1006l and \e[?2004h / \e[?2004l to
-	 * dec->tty_fd. M1 stub records the bit only. */
+
+	/* 2026-06-29 JES #811 M3: write the escape sequences to the TTY fd.
+	 *
+	 * When tty_fd == -1 (test harness) we skip the write -- the tests
+	 * inject bytes directly and do not need real terminal mode changes.
+	 *
+	 * Enable path:  \e[?1006h  (SGR mouse mode 1006 on)
+	 *               \e[?1000h  (basic mouse on -- required by some terminals
+	 *                           before 1006 takes effect)
+	 *               \e[?2004h  (bracketed paste on, M4 -- included here so
+	 *                           the enable/disable pair stays symmetric;
+	 *                           the M4 paste parser handles the markers)
+	 *
+	 * Disable path: \e[?1006l  (SGR off)
+	 *               \e[?1000l  (basic mouse off)
+	 *               \e[?2004l  (bracketed paste off)
+	 *
+	 * Per plan section 5.3 / 5.5: bracketed paste (mode 2004) is always
+	 * toggled in lockstep with mouse to keep the terminal's input model
+	 * consistent -- enabling mouse without paste breaks Cmd-V.
+	 *
+	 * write(2) errors are silently ignored: a write failure means the fd
+	 * is closed or the terminal closed -- the next read(2) will surface
+	 * the same condition and let the poll loop handle it cleanly.  Retrying
+	 * a partial write is unnecessary for short control sequences (they fit
+	 * in one pipe buffer page) and adds noise in the test-seam path. */
+	if (dec->tty_fd >= 0) {
+		if (enable) {
+			static const char ON[] = "\x1b[?1000h\x1b[?1006h\x1b[?2004h";
+			(void)write(dec->tty_fd, ON, sizeof(ON) - 1);
+		} else {
+			static const char OFF[] = "\x1b[?1006l\x1b[?1000l\x1b[?2004l";
+			(void)write(dec->tty_fd, OFF, sizeof(OFF) - 1);
+		}
+	}
 }
 
 bool input_decoder_mouse_enabled(const input_decoder_t *dec) {
@@ -298,6 +364,74 @@ static void emit_key(boxen_event_t *out, boxen_key_t key, uint32_t ch,
 	out->key.key = key;
 	out->key.ch = ch;
 	out->key.mod = mod;
+}
+
+/* 2026-06-29 JES #811 M3: mouse event emitter.
+ *
+ * Fills *out as a BOXEN_EV_MOUSE event with the decoded fields.
+ * All M3 emit sites funnel through here for consistency. */
+static void emit_mouse(boxen_event_t *out, uint8_t button, bool pressed,
+                       int x, int y, uint16_t mod, uint16_t flags) {
+	memset(out, 0, sizeof(*out));
+	out->type         = BOXEN_EV_MOUSE;
+	out->mouse.button  = button;
+	out->mouse.pressed = pressed;
+	out->mouse.x       = x;
+	out->mouse.y       = y;
+	out->mouse.mod     = mod;
+	out->mouse.flags   = flags;
+}
+
+/* 2026-06-29 JES #811 M3: monotonic millisecond clock.
+ *
+ * Same implementation as backend_tb2.c:tb2_now_ms().  Returns milliseconds
+ * since an arbitrary epoch (CLOCK_MONOTONIC).  Used only for double-click
+ * synthesis; accuracy to 1 ms is sufficient. */
+static uint64_t dec_now_ms(void) {
+	struct timespec ts;
+	clock_gettime(CLOCK_MONOTONIC, &ts);
+	return (uint64_t)ts.tv_sec * 1000 + (uint64_t)ts.tv_nsec / 1000000;
+}
+
+/* 2026-06-29 JES #811 M3: double-click synthesis.
+ *
+ * Ported from backend_tb2.c:54-83 (tb2_maybe_set_double_click).
+ * Called after filling *ev with a BOXEN_EV_MOUSE press event.
+ * If the press matches the previous press in position, button, and time,
+ * sets BOXEN_MOUSE_DOUBLE_CLICK on ev->mouse.flags and clears last_press.
+ * Otherwise records this press as the new candidate.
+ *
+ * Non-press events (pressed==false, motion) are passed through unchanged
+ * without updating last_press. */
+static void mouse_maybe_double_click(input_decoder_t *dec, boxen_event_t *ev) {
+	if (!ev->mouse.pressed) {
+		return;
+	}
+
+	uint64_t now = dec_now_ms();
+
+	if (dec->last_press.valid) {
+		uint64_t elapsed = now - dec->last_press.time_ms;
+		int dx = ev->mouse.x - dec->last_press.x;
+		int dy = ev->mouse.y - dec->last_press.y;
+		if (dx < 0) dx = -dx;
+		if (dy < 0) dy = -dy;
+		int dist = dx > dy ? dx : dy;
+
+		if (elapsed <= BOXEN_DOUBLE_CLICK_MS
+		    && dist  <= BOXEN_DOUBLE_CLICK_RADIUS
+		    && ev->mouse.button == dec->last_press.button) {
+			ev->mouse.flags |= BOXEN_MOUSE_DOUBLE_CLICK;
+			dec->last_press.valid = false;
+			return;
+		}
+	}
+
+	dec->last_press.time_ms = now;
+	dec->last_press.x       = ev->mouse.x;
+	dec->last_press.y       = ev->mouse.y;
+	dec->last_press.button  = ev->mouse.button;
+	dec->last_press.valid   = true;
 }
 
 /* 2026-06-30 JES #810 M2: modifier param decoder.
@@ -407,23 +541,172 @@ static bool csi_parse_params(const uint8_t *csi_buf, size_t csi_len,
 	return true;
 }
 
+/* 2026-06-29 JES #811 M3: SGR mouse decoder.
+ *
+ * Called when the CSI collector saw a '<' intermediate byte and the final byte
+ * is 'M' (press) or 'm' (release).  The csi_buf at that point holds
+ * '<button;col;row' (the '<' is in csi_buf[0] because it's an intermediate
+ * byte in the 0x20..0x3F range).
+ *
+ * SGR button encoding (plan section 3.6):
+ *   button raw value | meaning
+ *   0                | left press
+ *   1                | middle press
+ *   2                | right press
+ *   32               | motion (drag)
+ *   64               | wheel up
+ *   65               | wheel down
+ *   +4               | shift modifier
+ *   +8               | meta modifier
+ *   +16              | ctrl modifier
+ *
+ * Produces boxen button numbers: left=1, middle=2, right=3, wheel-up=4,
+ * wheel-down=5, motion=0 (no button active).
+ *
+ * Returns true on success, false if the param string is malformed. */
+static bool decode_sgr_mouse(input_decoder_t *dec, const uint8_t *csi_buf,
+                             size_t csi_len, bool pressed, boxen_event_t *out) {
+	/* csi_buf[0] must be '<'; skip it for numeric parsing. */
+	if (csi_len == 0 || csi_buf[0] != '<') {
+		return false;
+	}
+
+	/* Parse three semicolon-separated params from csi_buf+1. */
+	int params[3] = {0, 0, 0};
+	size_t count = 0;
+	int cur = 0;
+	bool in_param = false;
+
+	for (size_t i = 1; i < csi_len && count < 3; i++) {
+		uint8_t b = csi_buf[i];
+		if (b >= '0' && b <= '9') {
+			cur = cur * 10 + (b - '0');
+			/* Saturate at a safe limit to prevent overflow. */
+			if (cur > 9999) cur = 9999;
+			in_param = true;
+		} else if (b == ';') {
+			params[count++] = in_param ? cur : 0;
+			cur = 0;
+			in_param = false;
+		} else {
+			return false;  /* unexpected byte */
+		}
+	}
+	/* Last param (no trailing ';'). */
+	if (in_param && count < 3) {
+		params[count++] = cur;
+	}
+
+	if (count < 3) {
+		return false;  /* need button;col;row */
+	}
+
+	int raw_button = params[0];
+	int col        = params[1];  /* 1-based */
+	int row        = params[2];  /* 1-based */
+
+	/* Extract modifier bits from the button byte (plan section 3.6).
+	 * bits 2 (value 4) = Shift, bits 3 (value 8) = Meta, bits 4 (value 16) = Ctrl. */
+	uint16_t mod = 0;
+	if (raw_button & 4)  mod |= BOXEN_MOD_SHIFT;
+	if (raw_button & 8)  mod |= BOXEN_MOD_META;
+	if (raw_button & 16) mod |= BOXEN_MOD_CTRL;
+
+	/* Strip modifier bits to get the base button. */
+	int base = raw_button & ~(4 | 8 | 16);
+
+	/* Map to boxen button numbers.
+	 * base 32 = motion (drag); mask off the motion bit. */
+	uint8_t button;
+	bool    is_motion = false;
+
+	if (base & 32) {
+		/* Drag / motion: strip the motion bit and map the underlying button.
+		 * SGR button=32 alone = pure motion (no button pressed).
+		 * SGR button=32+0=32 = left drag, 32+1=33 = middle drag, etc.
+		 * BUT: the convention used by xterm/Terminal.app is that the motion
+		 * bit is added ON TOP of the button number.  So base=32 with
+		 * modifier bits stripped:
+		 *   32 alone (base_no_motion=0): pure motion, no button -> button=0
+		 *   33 (base_no_motion=1): left drag -> button=1
+		 *   34 (base_no_motion=2): middle drag -> button=2
+		 *   35 (base_no_motion=3): right drag -> button=3
+		 * Plan section 3.6: \e[<32;10;5M = motion, button=0.
+		 * This is what Terminal.app sends for cursor movement with no button. */
+		int base_no_motion = base & ~32;
+		is_motion = true;
+		if (base_no_motion == 0)      button = 0;   /* pure motion, no button */
+		else if (base_no_motion == 1) button = 1;   /* left drag */
+		else if (base_no_motion == 2) button = 2;   /* middle drag */
+		else if (base_no_motion == 3) button = 3;   /* right drag */
+		else                          button = 0;   /* unknown -> no button */
+	} else if (base == 64) {
+		button = 4;   /* wheel up */
+	} else if (base == 65) {
+		button = 5;   /* wheel down */
+	} else {
+		/* Standard buttons: 0=left, 1=middle, 2=right -> 1=left, 2=middle, 3=right */
+		button = (uint8_t)(base + 1);
+	}
+
+	/* Motion events don't have press/release semantics; always not-pressed. */
+	bool ev_pressed = is_motion ? false : pressed;
+
+	/* Convert 1-based terminal coords to 0-based. */
+	emit_mouse(out, button, ev_pressed, col - 1, row - 1, mod, 0);
+
+	/* Double-click synthesis: only for non-motion press events. */
+	if (!is_motion) {
+		mouse_maybe_double_click(dec, out);
+	}
+
+	return true;
+}
+
 /* 2026-06-30 JES #810 M2: dispatch a complete CSI sequence to a boxen_event.
+ * 2026-06-29 JES #811 M3: added dec param for SGR mouse / double-click state;
+ *   added 'M' (SGR press / X10 indicator) and 'm' (SGR release) final bytes.
  *
  * Returns true if an event was emitted, false if the sequence is unknown
  * (silently discarded -- never emitted as printable; plan section 3.12).
  *
- * The CSI dispatch table follows plan section 4.3 with M2-scope final
- * bytes only: A/B/C/D (arrows), H/F (Home/End), ~ (Ins/Del/PgUp/PgDn,
- * F1-legacy, F5..F12), P/Q/R/S (F1..F4 with modifier).  M, m, u are
- * reserved for M3 / M5 and currently fall through to "unknown".
+ * The CSI dispatch table follows plan section 4.3.  M, m dispatch:
+ *   - If csi_buf starts with '<': SGR mouse (decode_sgr_mouse).
+ *   - If csi_buf is empty and final='M': X10 mouse introducer -- the caller
+ *     sets dec->x10_pending=true so the poll loop reads 3 raw bytes next.
  *
  * For the ~ form, plan section 3.3 / 3.4 specify the first param identifies
  * the key (2=Ins, 3=Del, 5=PgUp, 6=PgDn, 11..24=function keys) and the
  * second param (when present) is the modifier.  For the letter form, the
  * standard convention is \e[1;NLetter where N is the modifier; the M2
  * tests reflect this. */
-static bool decode_csi(const uint8_t *csi_buf, size_t csi_len,
-                       uint8_t final_byte, boxen_event_t *out) {
+static bool decode_csi(input_decoder_t *dec, const uint8_t *csi_buf,
+                       size_t csi_len, uint8_t final_byte, boxen_event_t *out) {
+	/* 2026-06-29 JES #811 M3: SGR and X10 mouse routing.
+	 *
+	 * Must be checked BEFORE csi_parse_params because the '<' byte in
+	 * csi_buf would fail the numeric-only parser.
+	 *
+	 * Case 1: SGR mouse (final='M' or final='m', csi_buf[0]=='<').
+	 * Case 2: X10 mouse introducer (final='M', csi_buf empty).
+	 *   Set x10_pending so the poll loop reads 3 raw bytes next.
+	 *   Return false here (no event yet); the poll loop emits it. */
+	if (final_byte == 'M' || final_byte == 'm') {
+		if (csi_len > 0 && csi_buf[0] == '<') {
+			/* SGR press or release. */
+			bool pressed = (final_byte == 'M');
+			return decode_sgr_mouse(dec, csi_buf, csi_len, pressed, out);
+		}
+		if (csi_len == 0 && final_byte == 'M') {
+			/* X10 mouse: \e[M followed by 3 raw bytes.  Signal the poll
+			 * loop to consume them on the next iteration. */
+			dec->x10_pending = true;
+			return false;   /* no event yet; poll loop handles payload */
+		}
+		/* 'M' with non-empty non-'<' prefix (unusual): discard. */
+		return false;
+	}
+
 	int params[8];
 	size_t count = 0;
 	if (!csi_parse_params(csi_buf, csi_len, params, 8, &count)) {
@@ -497,8 +780,9 @@ static bool decode_csi(const uint8_t *csi_buf, size_t csi_len,
 		}
 	}
 	default:
-		/* M / m (mouse, M3), u (Kitty, M5), and unknown finals all land
-		 * here.  Silently discarded -- never emit as printable. */
+		/* u (Kitty, M5) and unknown finals land here.
+		 * M / m (mouse) are handled above before reaching this switch.
+		 * Silently discarded -- never emit as printable. */
 		return false;
 	}
 }
@@ -680,6 +964,52 @@ int input_decoder_poll(input_decoder_t *dec, boxen_event_t *out, int timeout_ms)
 	memset(out, 0, sizeof(*out));
 
 	while (dec->head < dec->fill_len) {
+		/* 2026-06-29 JES #811 M3: X10 mouse raw-payload consumer.
+		 *
+		 * After \e[M is seen (csi_buf empty, final='M'), decode_csi sets
+		 * x10_pending.  We need 3 raw bytes: button-raw, x-raw, y-raw (each
+		 * offset by 32).  This check runs BEFORE the state switch so the
+		 * normal GROUND handler doesn't consume the payload bytes.
+		 *
+		 * Wait until all 3 bytes are available in the buffer; if not, return
+		 * TIMEOUT and resume on the next poll call (partial-sequence safety). */
+		if (dec->x10_pending) {
+			if (dec->fill_len - dec->head < 3) {
+				/* Not enough bytes yet; keep them in the buffer. */
+				compact_buffer(dec);
+				return BOXEN_ERR_TIMEOUT;
+			}
+			uint8_t btn_raw = dec->buf[dec->head];
+			uint8_t x_raw   = dec->buf[dec->head + 1];
+			uint8_t y_raw   = dec->buf[dec->head + 2];
+			dec->head += 3;
+			dec->x10_pending = false;
+
+			/* Decode: subtract 32 for button and coords; coords also -1 for
+			 * 0-based (terminal sends 1-based after the 32 offset).
+			 * plan section 3.7: button_raw-32, x_raw-32-1, y_raw-32-1. */
+			int raw_button = (int)(btn_raw) - 32;
+			int x = (int)(x_raw) - 32 - 1;
+			int y = (int)(y_raw) - 32 - 1;
+
+			/* Extract modifier bits (same encoding as SGR). */
+			uint16_t mod = 0;
+			if (raw_button & 4)  mod |= BOXEN_MOD_SHIFT;
+			if (raw_button & 8)  mod |= BOXEN_MOD_META;
+			if (raw_button & 16) mod |= BOXEN_MOD_CTRL;
+
+			int base = raw_button & ~(4 | 8 | 16);
+			uint8_t button;
+			if (base == 64)      button = 4;           /* wheel up */
+			else if (base == 65) button = 5;           /* wheel down */
+			else                 button = (uint8_t)(base + 1); /* 0->1, 1->2, 2->3 */
+
+			emit_mouse(out, button, /*pressed=*/true, x, y, mod, 0);
+			mouse_maybe_double_click(dec, out);
+			compact_buffer(dec);
+			return BOXEN_OK;
+		}
+
 		uint8_t b = dec->buf[dec->head];
 
 		switch (dec->state) {
@@ -802,12 +1132,18 @@ int input_decoder_poll(input_decoder_t *dec, boxen_event_t *out, int timeout_ms)
 			if (b >= 0x40 && b <= 0x7E) {
 				/* Final byte: decode. */
 				dec->head++;
-				bool emitted = decode_csi(dec->csi_buf, dec->csi_len, b, out);
+				bool emitted = decode_csi(dec, dec->csi_buf, dec->csi_len, b, out);
 				dec->state = DEC_STATE_GROUND;
 				dec->csi_len = 0;
 				if (emitted) {
 					compact_buffer(dec);
 					return BOXEN_OK;
+				}
+				/* 2026-06-29 JES #811 M3: if x10_pending was set by decode_csi,
+				 * continue the loop so the 3 raw X10 bytes are consumed next.
+				 * Don't count this as a parse error -- it's the X10 introducer. */
+				if (dec->x10_pending) {
+					continue;
 				}
 				/* Unknown final: discard silently, keep parsing. */
 				dec->parse_errors++;

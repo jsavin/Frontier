@@ -1475,51 +1475,285 @@ static void test_parse_errors_accessor_smoke(void) {
 }
 
 /* -------------------------------------------------------------------------
- * M3 SKIP stubs -- SGR mouse + X10 fallback + burst-read.
+ * 2026-06-29 JES #811 M3: SGR mouse + X10 fallback + burst-read.
+ * Previously SKIP stubs; now behavioral tests.
  * ---------------------------------------------------------------------- */
 
-static void test_skip_sgr_mouse_left_press(void) {
-	tr_skip("M3: \\e[<0;10;5M -> MOUSE button=1 pressed=true x=9 y=4 "
-	        "(plan section 3.6)");
+/* SGR left press: \e[<0;10;5M -> button=1, pressed=true, x=9, y=4. */
+static void test_sgr_mouse_left_press(void) {
+	input_decoder_t *dec = input_decoder_create(-1);
+	static const uint8_t seq[] = {
+	    0x1b, '[', '<', '0', ';', '1', '0', ';', '5', 'M'
+	};
+	boxen_event_t ev;
+	inject_and_poll(dec, seq, sizeof(seq), BOXEN_OK, &ev);
+	assert(ev.type == BOXEN_EV_MOUSE);
+	assert(ev.mouse.button == 1);
+	assert(ev.mouse.pressed == true);
+	assert(ev.mouse.x == 9);
+	assert(ev.mouse.y == 4);
+	assert(ev.mouse.mod == BOXEN_MOD_NONE);
+	input_decoder_destroy(dec);
 }
 
-static void test_skip_sgr_mouse_left_release(void) {
-	tr_skip("M3: \\e[<0;10;5m -> MOUSE button=1 pressed=false (plan section 3.6)");
+/* SGR left release: \e[<0;10;5m -> button=1, pressed=false. */
+static void test_sgr_mouse_left_release(void) {
+	input_decoder_t *dec = input_decoder_create(-1);
+	static const uint8_t seq[] = {
+	    0x1b, '[', '<', '0', ';', '1', '0', ';', '5', 'm'
+	};
+	boxen_event_t ev;
+	inject_and_poll(dec, seq, sizeof(seq), BOXEN_OK, &ev);
+	assert(ev.type == BOXEN_EV_MOUSE);
+	assert(ev.mouse.button == 1);
+	assert(ev.mouse.pressed == false);
+	assert(ev.mouse.x == 9);
+	assert(ev.mouse.y == 4);
+	input_decoder_destroy(dec);
 }
 
-static void test_skip_sgr_mouse_wheel_up(void) {
-	tr_skip("M3: \\e[<64;10;5M -> MOUSE button=4 (wheel-up) -- the #805 "
-	        "mousewheel case (plan section 3.6)");
+/* SGR middle press: \e[<1;10;5M -> button=2, pressed=true. */
+static void test_sgr_mouse_middle_press(void) {
+	input_decoder_t *dec = input_decoder_create(-1);
+	static const uint8_t seq[] = {0x1b, '[', '<', '1', ';', '1', '0', ';', '5', 'M'};
+	boxen_event_t ev;
+	inject_and_poll(dec, seq, sizeof(seq), BOXEN_OK, &ev);
+	assert(ev.type == BOXEN_EV_MOUSE);
+	assert(ev.mouse.button == 2);
+	assert(ev.mouse.pressed == true);
+	input_decoder_destroy(dec);
 }
 
-static void test_skip_sgr_mouse_wheel_down(void) {
-	tr_skip("M3: \\e[<65;10;5M -> MOUSE button=5 (wheel-down) (plan section 3.6)");
+/* SGR right press: \e[<2;10;5M -> button=3, pressed=true. */
+static void test_sgr_mouse_right_press(void) {
+	input_decoder_t *dec = input_decoder_create(-1);
+	static const uint8_t seq[] = {0x1b, '[', '<', '2', ';', '1', '0', ';', '5', 'M'};
+	boxen_event_t ev;
+	inject_and_poll(dec, seq, sizeof(seq), BOXEN_OK, &ev);
+	assert(ev.type == BOXEN_EV_MOUSE);
+	assert(ev.mouse.button == 3);
+	assert(ev.mouse.pressed == true);
+	input_decoder_destroy(dec);
 }
 
-static void test_skip_sgr_mouse_motion(void) {
-	tr_skip("M3: \\e[<32;10;5M -> MOUSE motion (plan section 3.6)");
+/* SGR Meta modifier: raw_button=8 -> left(0) + Meta(8) -> button=1, mod=META. */
+static void test_sgr_mouse_meta_modifier(void) {
+	input_decoder_t *dec = input_decoder_create(-1);
+	static const uint8_t seq[] = {0x1b, '[', '<', '8', ';', '1', '0', ';', '5', 'M'};
+	boxen_event_t ev;
+	inject_and_poll(dec, seq, sizeof(seq), BOXEN_OK, &ev);
+	assert(ev.type == BOXEN_EV_MOUSE);
+	assert(ev.mouse.button == 1);
+	assert(ev.mouse.mod == BOXEN_MOD_META);
+	input_decoder_destroy(dec);
 }
 
-static void test_skip_sgr_mouse_shift_modifier(void) {
-	tr_skip("M3: SGR button bit 4 -> mod=SHIFT (plan section 3.6)");
+/* SGR Ctrl modifier: raw_button=16 -> left(0) + Ctrl(16) -> button=1, mod=CTRL. */
+static void test_sgr_mouse_ctrl_modifier(void) {
+	input_decoder_t *dec = input_decoder_create(-1);
+	static const uint8_t seq[] = {0x1b, '[', '<', '1', '6', ';', '1', '0', ';', '5', 'M'};
+	boxen_event_t ev;
+	inject_and_poll(dec, seq, sizeof(seq), BOXEN_OK, &ev);
+	assert(ev.type == BOXEN_EV_MOUSE);
+	assert(ev.mouse.button == 1);
+	assert(ev.mouse.mod == BOXEN_MOD_CTRL);
+	input_decoder_destroy(dec);
 }
 
-static void test_skip_x10_mouse_left_press(void) {
-	tr_skip("M3: \\e[M\\x20\\x2a\\x19 -> MOUSE left press (plan section 3.7)");
+/* X10 wheel-down: button_raw=0x61=97 -> 97-32=65 -> wheel-down=5. */
+static void test_x10_mouse_wheel_down(void) {
+	input_decoder_t *dec = input_decoder_create(-1);
+	static const uint8_t seq[] = {0x1b, '[', 'M', 0x61, 0x2a, 0x21};
+	boxen_event_t ev;
+	inject_and_poll(dec, seq, sizeof(seq), BOXEN_OK, &ev);
+	assert(ev.type == BOXEN_EV_MOUSE);
+	assert(ev.mouse.button == 5);
+	assert(ev.mouse.pressed == true);
+	assert(ev.mouse.x == 9);
+	assert(ev.mouse.y == 0);
+	input_decoder_destroy(dec);
 }
 
-static void test_skip_x10_mouse_wheel_up(void) {
-	tr_skip("M3: \\e[M\\x60\\x2a\\x19 -> MOUSE wheel-up (plan section 3.7)");
+/* 2026-06-29 JES #811 M3: SGR wheel-up -- the #805 mousewheel fix.
+ * \e[<64;10;5M -> BOXEN_EV_MOUSE button=4 (wheel-up), pressed=true,
+ * x=9 (1-based 10 -> 0-based 9), y=4 (1-based 5 -> 0-based 4).
+ * SGR format: \e[<button;col;rowM  (M=press, m=release) */
+static void test_sgr_mouse_wheel_up(void) {
+	input_decoder_t *dec = input_decoder_create(-1);
+	/* \e[<64;10;5M */
+	static const uint8_t seq[] = {0x1b, '[', '<', '6', '4', ';', '1', '0', ';', '5', 'M'};
+	boxen_event_t ev;
+	inject_and_poll(dec, seq, sizeof(seq), BOXEN_OK, &ev);
+	assert(ev.type == BOXEN_EV_MOUSE);
+	assert(ev.mouse.button == 4);          /* wheel-up */
+	assert(ev.mouse.pressed == true);
+	assert(ev.mouse.x == 9);               /* 1-based 10 -> 0-based 9 */
+	assert(ev.mouse.y == 4);               /* 1-based 5 -> 0-based 4 */
+	input_decoder_destroy(dec);
 }
 
-static void test_skip_burst_read_multiple_events_one_inject(void) {
-	tr_skip("M3: inject 3 complete events in one inject_bytes call; poll() "
-	        "dequeues all three in order (plan section 7 M3)");
+/* SGR wheel-down: \e[<65;10;5M -> button=5, pressed=true. */
+static void test_sgr_mouse_wheel_down(void) {
+	input_decoder_t *dec = input_decoder_create(-1);
+	static const uint8_t seq[] = {
+	    0x1b, '[', '<', '6', '5', ';', '1', '0', ';', '5', 'M'
+	};
+	boxen_event_t ev;
+	inject_and_poll(dec, seq, sizeof(seq), BOXEN_OK, &ev);
+	assert(ev.type == BOXEN_EV_MOUSE);
+	assert(ev.mouse.button == 5);
+	assert(ev.mouse.pressed == true);
+	assert(ev.mouse.x == 9);
+	assert(ev.mouse.y == 4);
+	input_decoder_destroy(dec);
 }
 
-static void test_skip_double_click_synthesis(void) {
-	tr_skip("M3: two SGR left-press within window -> BOXEN_MOUSE_DOUBLE_CLICK "
-	        "flag set on second (plan section 7 M3)");
+/* SGR motion: \e[<32;10;5M -> pure motion, button=0, pressed=false. */
+static void test_sgr_mouse_motion(void) {
+	input_decoder_t *dec = input_decoder_create(-1);
+	static const uint8_t seq[] = {
+	    0x1b, '[', '<', '3', '2', ';', '1', '0', ';', '5', 'M'
+	};
+	boxen_event_t ev;
+	inject_and_poll(dec, seq, sizeof(seq), BOXEN_OK, &ev);
+	assert(ev.type == BOXEN_EV_MOUSE);
+	/* plan section 3.6: \e[<32;10;5M -> button=0 (motion), pressed=false */
+	assert(ev.mouse.button == 0);
+	assert(ev.mouse.pressed == false);
+	assert(ev.mouse.x == 9);
+	assert(ev.mouse.y == 4);
+	input_decoder_destroy(dec);
+}
+
+/* SGR modifier: raw_button=4 = left(base 0) + Shift(4).
+ * -> button=1, mod=SHIFT. */
+static void test_sgr_mouse_shift_modifier(void) {
+	input_decoder_t *dec = input_decoder_create(-1);
+	/* \e[<4;10;5M */
+	static const uint8_t seq[] = {
+	    0x1b, '[', '<', '4', ';', '1', '0', ';', '5', 'M'
+	};
+	boxen_event_t ev;
+	inject_and_poll(dec, seq, sizeof(seq), BOXEN_OK, &ev);
+	assert(ev.type == BOXEN_EV_MOUSE);
+	assert(ev.mouse.button == 1);
+	assert(ev.mouse.pressed == true);
+	assert(ev.mouse.mod == BOXEN_MOD_SHIFT);
+	input_decoder_destroy(dec);
+}
+
+/* X10 left press: \e[M + 3 raw bytes.
+ * button_raw=0x20=32 -> 32-32=0 -> button=1 (left)
+ * x_raw=0x2a=42 -> 42-32-1=9 (x=9)
+ * y_raw=0x21=33 -> 33-32-1=0 (y=0)
+ * Note: plan section 3.7 shows y_raw=0x19 for y=0 which appears to be
+ * a typo; 0x19=25 would give 25-32-1 < 0.  We use 0x21 which is
+ * consistent with the algorithm (32+0+1=33=0x21 for y=0). */
+static void test_x10_mouse_left_press(void) {
+	input_decoder_t *dec = input_decoder_create(-1);
+	static const uint8_t seq[] = {0x1b, '[', 'M', 0x20, 0x2a, 0x21};
+	boxen_event_t ev;
+	inject_and_poll(dec, seq, sizeof(seq), BOXEN_OK, &ev);
+	assert(ev.type == BOXEN_EV_MOUSE);
+	assert(ev.mouse.button == 1);
+	assert(ev.mouse.pressed == true);
+	assert(ev.mouse.x == 9);
+	assert(ev.mouse.y == 0);
+	input_decoder_destroy(dec);
+}
+
+/* X10 wheel-up: \e[M + button_raw=0x60 (96) -> 96-32=64 -> wheel-up=4. */
+static void test_x10_mouse_wheel_up(void) {
+	input_decoder_t *dec = input_decoder_create(-1);
+	/* button_raw=0x60=96 -> 96-32=64 -> wheel-up (button=4)
+	 * x_raw=0x2a=42 -> 42-32-1=9, y_raw=0x21=33 -> 33-32-1=0 */
+	static const uint8_t seq[] = {0x1b, '[', 'M', 0x60, 0x2a, 0x21};
+	boxen_event_t ev;
+	inject_and_poll(dec, seq, sizeof(seq), BOXEN_OK, &ev);
+	assert(ev.type == BOXEN_EV_MOUSE);
+	assert(ev.mouse.button == 4);
+	assert(ev.mouse.pressed == true);
+	assert(ev.mouse.x == 9);
+	assert(ev.mouse.y == 0);
+	input_decoder_destroy(dec);
+}
+
+/* Burst-read: inject 3 complete SGR events in one call; poll dequeues all
+ * three in order.  Plan section 7 M3. */
+static void test_burst_read_multiple_events_one_inject(void) {
+	input_decoder_t *dec = input_decoder_create(-1);
+	static const uint8_t seq[] = {
+	    /* event 1: \e[<64;1;1M */
+	    0x1b, '[', '<', '6', '4', ';', '1', ';', '1', 'M',
+	    /* event 2: \e[<64;2;1M */
+	    0x1b, '[', '<', '6', '4', ';', '2', ';', '1', 'M',
+	    /* event 3: \e[<64;3;1M */
+	    0x1b, '[', '<', '6', '4', ';', '3', ';', '1', 'M',
+	};
+	size_t accepted = input_decoder_inject_bytes(dec, seq, sizeof(seq));
+	assert(accepted == sizeof(seq));
+
+	boxen_event_t ev;
+
+	memset(&ev, 0x7f, sizeof(ev));
+	int rc = input_decoder_poll(dec, &ev, 0);
+	assert(rc == BOXEN_OK);
+	assert(ev.type == BOXEN_EV_MOUSE);
+	assert(ev.mouse.button == 4);
+	assert(ev.mouse.x == 0);   /* col 1 -> x=0 */
+
+	memset(&ev, 0x7f, sizeof(ev));
+	rc = input_decoder_poll(dec, &ev, 0);
+	assert(rc == BOXEN_OK);
+	assert(ev.type == BOXEN_EV_MOUSE);
+	assert(ev.mouse.button == 4);
+	assert(ev.mouse.x == 1);   /* col 2 -> x=1 */
+
+	memset(&ev, 0x7f, sizeof(ev));
+	rc = input_decoder_poll(dec, &ev, 0);
+	assert(rc == BOXEN_OK);
+	assert(ev.type == BOXEN_EV_MOUSE);
+	assert(ev.mouse.button == 4);
+	assert(ev.mouse.x == 2);   /* col 3 -> x=2 */
+
+	rc = input_decoder_poll(dec, &ev, 0);
+	assert(rc == BOXEN_ERR_TIMEOUT);
+
+	input_decoder_destroy(dec);
+}
+
+/* Double-click synthesis: two SGR left-press events at the same position
+ * injected in one call (sub-ms apart) -> second event has DOUBLE_CLICK flag. */
+static void test_double_click_synthesis(void) {
+	input_decoder_t *dec = input_decoder_create(-1);
+	static const uint8_t seq[] = {
+	    /* press 1 */
+	    0x1b, '[', '<', '0', ';', '5', ';', '3', 'M',
+	    /* press 2 at same position */
+	    0x1b, '[', '<', '0', ';', '5', ';', '3', 'M',
+	};
+	size_t accepted = input_decoder_inject_bytes(dec, seq, sizeof(seq));
+	assert(accepted == sizeof(seq));
+
+	boxen_event_t ev;
+
+	/* First press: no double-click flag. */
+	memset(&ev, 0x7f, sizeof(ev));
+	int rc = input_decoder_poll(dec, &ev, 0);
+	assert(rc == BOXEN_OK);
+	assert(ev.type == BOXEN_EV_MOUSE);
+	assert(ev.mouse.pressed == true);
+	assert((ev.mouse.flags & BOXEN_MOUSE_DOUBLE_CLICK) == 0);
+
+	/* Second press within window: DOUBLE_CLICK set. */
+	memset(&ev, 0x7f, sizeof(ev));
+	rc = input_decoder_poll(dec, &ev, 0);
+	assert(rc == BOXEN_OK);
+	assert(ev.type == BOXEN_EV_MOUSE);
+	assert(ev.mouse.pressed == true);
+	assert((ev.mouse.flags & BOXEN_MOUSE_DOUBLE_CLICK) != 0);
+
+	input_decoder_destroy(dec);
 }
 
 /* -------------------------------------------------------------------------
@@ -1692,17 +1926,22 @@ int main(void) {
 	TR_RUN(test_burst_two_events_one_inject);
 	TR_RUN(test_parse_errors_accessor_smoke);
 
-	/* M3 SKIP -- SGR mouse, X10 fallback, burst-read. */
-	TR_RUN(test_skip_sgr_mouse_left_press);
-	TR_RUN(test_skip_sgr_mouse_left_release);
-	TR_RUN(test_skip_sgr_mouse_wheel_up);
-	TR_RUN(test_skip_sgr_mouse_wheel_down);
-	TR_RUN(test_skip_sgr_mouse_motion);
-	TR_RUN(test_skip_sgr_mouse_shift_modifier);
-	TR_RUN(test_skip_x10_mouse_left_press);
-	TR_RUN(test_skip_x10_mouse_wheel_up);
-	TR_RUN(test_skip_burst_read_multiple_events_one_inject);
-	TR_RUN(test_skip_double_click_synthesis);
+	/* 2026-06-29 JES #811 M3: SGR mouse, X10 fallback, burst-read. */
+	TR_RUN(test_sgr_mouse_left_press);
+	TR_RUN(test_sgr_mouse_left_release);
+	TR_RUN(test_sgr_mouse_middle_press);
+	TR_RUN(test_sgr_mouse_right_press);
+	TR_RUN(test_sgr_mouse_wheel_up);
+	TR_RUN(test_sgr_mouse_wheel_down);
+	TR_RUN(test_sgr_mouse_motion);
+	TR_RUN(test_sgr_mouse_shift_modifier);
+	TR_RUN(test_sgr_mouse_meta_modifier);
+	TR_RUN(test_sgr_mouse_ctrl_modifier);
+	TR_RUN(test_x10_mouse_left_press);
+	TR_RUN(test_x10_mouse_wheel_up);
+	TR_RUN(test_x10_mouse_wheel_down);
+	TR_RUN(test_burst_read_multiple_events_one_inject);
+	TR_RUN(test_double_click_synthesis);
 
 	/* M4 SKIP -- bracketed paste. */
 	TR_RUN(test_skip_bracketed_paste_simple);
