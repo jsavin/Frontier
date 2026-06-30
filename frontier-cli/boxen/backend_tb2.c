@@ -313,30 +313,6 @@ static void tb2_present(void) {
 	tb_present();
 }
 
-/* 2026-06-29 JES #805: enable/disable xterm mouse tracking.
- *
- * The default termbox2 input mode is TB_INPUT_ESC (no mouse).  With
- * TB_INPUT_MOUSE bit-OR'd in, termbox2 emits TB_EVENT_MOUSE events for
- * presses, releases, and wheel scrolls -- which translate_mouse() then
- * maps to BOXEN_EV_MOUSE with button==4 (wheel up) / button==5 (wheel
- * down).  Without this, terminals like macOS Terminal.app translate
- * wheel events to up/down arrow key sequences (xterm "Alternate Scroll
- * Mode" convention), which the boxen REPL would route to history
- * navigation -- the user-visible muscle-memory regression #805 addresses.
- *
- * Trade-off: with mouse mode on, click-and-drag text selection in the
- * pane goes through xterm mouse tracking rather than the terminal's
- * native selection.  Both macOS Terminal.app and iTerm2 support
- * Option-drag (Terminal.app) or Cmd-drag (iTerm2) to bypass mouse mode
- * and select text natively, so this is an acceptable cost for the
- * mouse-wheel-scrolls-output binding users expect. */
-static void tb2_set_mouse_enabled(bool enabled) {
-	int current = tb_set_input_mode(TB_INPUT_CURRENT);
-	int next = enabled ? (current | TB_INPUT_MOUSE)
-	                   : (current & ~TB_INPUT_MOUSE);
-	tb_set_input_mode(next);
-}
-
 static int tb2_poll_event(boxen_event_t *out, int timeout_ms) {
 	struct tb_event te;
 	int r;
@@ -400,7 +376,6 @@ static const boxen_backend_t g_tb2_backend = {
 	.present            = tb2_present,
 	.poll_event         = tb2_poll_event,
 	.clear              = tb2_clear,
-	.set_mouse_enabled  = tb2_set_mouse_enabled,
 };
 
 const boxen_backend_t *boxen_tb2_backend(void) {

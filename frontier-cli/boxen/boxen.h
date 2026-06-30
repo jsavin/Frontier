@@ -218,13 +218,6 @@ typedef struct boxen_backend {
 	void (*present)(void);
 	int  (*poll_event)(boxen_event_t *out, int timeout_ms);
 	void (*clear)(void);
-	/* 2026-06-29 JES #805: enable/disable xterm mouse tracking so wheel
-	 * events arrive as BOXEN_EV_MOUSE button=4/5 (rather than being
-	 * translated by the host terminal to up/down arrow keys, which the
-	 * REPL would otherwise route to history navigation -- a muscle-memory
-	 * regression after the C.6 default flip to the boxen REPL).
-	 * NULL is permitted: backends without mouse support are a no-op. */
-	void (*set_mouse_enabled)(bool enabled);
 } boxen_backend_t;
 
 /* -------------------------------------------------------------------------
@@ -298,22 +291,6 @@ boxen_result_t boxen_init(const boxen_backend_t *backend,
 
 /* Shut down boxen and release all resources. */
 void boxen_shutdown(void);
-
-/* 2026-06-29 JES #805: enable/disable xterm mouse tracking.
- *
- * When enabled, wheel-up/down and button presses arrive as BOXEN_EV_MOUSE
- * (button==4/5 for wheel) on the topmost window at the pointer location.
- * When disabled (the default), wheel events are typically translated by
- * the host terminal into up/down arrow key sequences -- which the boxen
- * REPL would route to history navigation rather than output scrollback.
- *
- * Safe to call before or after boxen_init; falls through to the backend
- * vtable's set_mouse_enabled (may be NULL for backends that do not
- * support mouse, in which case this is a no-op).
- *
- * Threading: caller must hold any external lock (e.g. Frontier's GIL)
- * that serializes concurrent access to boxen state. */
-void boxen_set_mouse_enabled(bool enabled);
 
 /* Query terminal dimensions from the current backend.
  * Writes the current width and height into *w and *h.
