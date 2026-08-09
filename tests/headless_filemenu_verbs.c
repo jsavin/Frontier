@@ -106,9 +106,13 @@ enum {
  * Note: Safe to call during normal operation. Do NOT call during v6->v7 migration
  * as the database state may be incomplete.
  *
+ * Exported (non-static) since Unit 1.2: the protocol odb/save op
+ * (frontier-cli/op_handler.c) reuses this exact save path via extern so
+ * fileMenu.save() and odb/save cannot drift apart.
+ *
  * Returns: true on success, false on failure (with error logged)
  */
-static boolean filemenu_save_systemroot(void) {
+boolean filemenu_save_systemroot(void) {
     dbaddress root_adr;
     db_context ctx;
 

@@ -60,6 +60,7 @@ typedef struct {
 #define OP_ERRCODE_LIMIT_EXCEEDED "limit_exceeded"   /* breakpoint/watchpoint slots full */
 #define OP_ERRCODE_NOT_FOUND      "not_found"        /* thread/table/script not found */
 #define OP_ERRCODE_BAD_STATE      "bad_state"        /* op invalid for target's current state */
+#define OP_ERRCODE_LOCKED         "locked"           /* root save-locked (--lock-opened-roots) */
 #define OP_ERRCODE_SCRIPT_ERROR   "script_error"     /* compile or runtime script failure */
 #define OP_ERRCODE_INTERNAL       "internal_error"   /* allocation/spawn/load failure */
 #define OP_ERRCODE_LINE_TOO_LONG  "line_too_long"    /* request line exceeds PROTOCOL_LINE_MAX */

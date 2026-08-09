@@ -55,6 +55,17 @@
 
 #include "../third_party/cJSON/cJSON.h"
 
+/* System-root persistence state and save entry point (Unit 1.2, odb/save).
+ * Defined in frontier-cli/main.c and tests/headless_filemenu_verbs.c, both
+ * linked into every build of this file (op_handler.c is CLI-only). Extern
+ * declarations follow the established pattern for main.c accessors
+ * (see repl.c). */
+extern boolean cli_is_system_root_loaded(void);
+extern boolean cli_is_system_root_read_only(void);
+extern boolean cli_system_root_is_dirty(void);
+extern const char *cli_get_system_root_basename(void);
+extern boolean filemenu_save_systemroot(void);
+
 /* Maximum number of items in a single ODB batch request */
 #define OP_MAX_BATCH_SIZE 1000
 #define STRINGIFY_HELPER(x) #x
@@ -732,6 +743,10 @@ static void handle_odb_set(long id, const char *json_line, transport_t *transpor
 	cJSON *response = cJSON_CreateObject();
 	cJSON_AddNumberToObject(response, "id", id);
 	cJSON_AddBoolToObject(response, "success", 1);
+	/* Unit 1.2: unsaved-changes state of the system root after this batch.
+	 * Mutations are in-memory until odb/save (or a clean shutdown of a
+	 * read-write root); dirty:true tells the client a save is pending. */
+	cJSON_AddBoolToObject(response, "dirty", cli_system_root_is_dirty() ? 1 : 0);
 	cJSON_AddItemToObject(response, "results", results);
 
 	char *json_out = cJSON_PrintUnformatted(response);
@@ -866,6 +881,9 @@ static void handle_odb_delete(long id, const char *json_line, transport_t *trans
 	cJSON *response = cJSON_CreateObject();
 	cJSON_AddNumberToObject(response, "id", id);
 	cJSON_AddBoolToObject(response, "success", 1);
+	/* Unit 1.2: same unsaved-changes indicator as odb/set — deletes are
+	 * in-memory until odb/save, exactly like assignments. */
+	cJSON_AddBoolToObject(response, "dirty", cli_system_root_is_dirty() ? 1 : 0);
 	cJSON_AddItemToObject(response, "results", results);
 
 	char *json_out = cJSON_PrintUnformatted(response);
@@ -876,6 +894,92 @@ static void handle_odb_delete(long id, const char *json_line, transport_t *trans
 
 	cJSON_Delete(response);
 	cJSON_Delete(root);
+}
+
+/*
+ * handle_odb_save — persist the system root to disk on demand (Unit 1.2).
+ *
+ * Protocol twin of fileMenu.save() for the system root: reuses
+ * filemenu_save_systemroot() (tablesavesystemtable + release-stack flush +
+ * view update + disk flush; the process stays usable) so protocol clients
+ * and UserTalk share one save path. odb/set and odb/delete mutations are
+ * in-memory until this op runs (or a read-write root exits cleanly, whose
+ * legacy exit save persists them — issue #127); abnormal termination loses
+ * anything unsaved. That loss-without-save is the documented contract, and
+ * this op is how a protocol client opts into durability.
+ *
+ * Takes no parameters — all odb/* paths resolve within the loaded system
+ * root, so it is the only addressable save target (guest DBs save via
+ * script/eval db.save()). Extra params are ignored, like script/clearContext.
+ *
+ * Response: {"result": {"root": "<basename>", "saved": bool, "dirty": false}}.
+ * saved:false means the root was already clean and the save was skipped
+ * (mirrors the exit path's clean short-circuit; keeps a no-op save from
+ * rewriting every reachable block).
+ *
+ * Refusals:
+ *   locked    — --lock-opened-roots / FRONTIER_LOCK_OPENED_ROOTS=1: save
+ *               suppression is that flag's documented contract, enforced
+ *               here at the protocol boundary (filemenu_save_systemroot
+ *               re-checks as defense in depth).
+ *   bad_state — no system root loaded, or a debug thread was killed this
+ *               session (killed threads leave pushed hash-table scopes that
+ *               make pack traversal unsafe — same guard as the exit save).
+ */
+static void handle_odb_save(long id, const char *json_line, transport_t *transport) {
+	(void)json_line;
+
+	if (!cli_is_system_root_loaded()) {
+		send_error(id, OP_ERRCODE_BAD_STATE, "No system root loaded", transport);
+		return;
+	}
+
+	if (cli_is_system_root_read_only()) {
+		send_error(id, OP_ERRCODE_LOCKED,
+			"System root is save-locked (--lock-opened-roots); odb/save refused",
+			transport);
+		return;
+	}
+
+	if (!debug_is_safe_to_save()) {
+		send_error(id, OP_ERRCODE_BAD_STATE,
+			"Save unavailable: a debug thread was killed this session",
+			transport);
+		return;
+	}
+
+	boolean flwasdirty = cli_system_root_is_dirty();
+
+	if (flwasdirty) {
+		if (!filemenu_save_systemroot()) {
+			send_error(id, OP_ERRCODE_INTERNAL, "System root save failed", transport);
+			return;
+		}
+	}
+
+	cJSON *response = cJSON_CreateObject();
+	if (response == NULL) {
+		transport_send(transport, OOM_FALLBACK);
+		return;
+	}
+
+	cJSON *result = cJSON_CreateObject();
+	if (result == NULL) {
+		cJSON_Delete(response);
+		transport_send(transport, OOM_FALLBACK);
+		return;
+	}
+
+	cJSON_AddNumberToObject(response, "id", id);
+	cJSON_AddBoolToObject(response, "success", 1);
+	cJSON_AddStringToObject(result, "root", cli_get_system_root_basename());
+	cJSON_AddBoolToObject(result, "saved", flwasdirty ? 1 : 0);
+	/* Re-read rather than assert false: if the pack left anything dirty,
+	 * the client should see it and can save again. */
+	cJSON_AddBoolToObject(result, "dirty", cli_system_root_is_dirty() ? 1 : 0);
+	cJSON_AddItemToObject(response, "result", result);
+
+	send_cjson_response(transport, response);
 }
 
 /* ========================================================================
@@ -958,6 +1062,8 @@ int op_dispatch(const char *json_line, size_t len, transport_t *transport) {
 		handle_odb_list(id, json_line, transport);
 	} else if (strcmp(op, "odb/delete") == 0) {
 		handle_odb_delete(id, json_line, transport);
+	} else if (strcmp(op, "odb/save") == 0) {
+		handle_odb_save(id, json_line, transport);
 	} else if (strcmp(op, "debug/run") == 0) {
 		handle_debug_run(id, json_line, transport);
 	} else if (strcmp(op, "debug/step") == 0) {
