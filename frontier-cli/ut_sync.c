@@ -1156,14 +1156,33 @@ int ut_sync_state_record(const char *sync_base, const char *dotted_path,
 		return 0;
 	if (!ut_sync_state_path(sync_base, NULL, state_path, sizeof(state_path)))
 		return 0;
-	n = snprintf(tmp_path, sizeof(tmp_path), "%s.tmp%d",
-	             state_path, (int)getpid());
-	if (n < 0 || n >= (int)sizeof(tmp_path))
-		return 0;
 
-	out = fopen(tmp_path, "w");
-	if (out == NULL)
-		return 0;
+	/* O_EXCL + O_NOFOLLOW with a randomized suffix, same defense as the
+	 * .ut temp write in ut_export_script: a pre-planted file or symlink at
+	 * the temp path cannot be reused or followed. */
+	{
+		int fd = -1;
+		for (int attempt = 0; attempt < 8 && fd < 0; attempt++) {
+			unsigned int r = (unsigned int)(getpid() ^ (attempt * 2654435761u));
+			r ^= (unsigned int)time(NULL);
+			r = r * 1103515245u + 12345u;
+			n = snprintf(tmp_path, sizeof(tmp_path), "%s.tmp%08x",
+			             state_path, r);
+			if (n < 0 || n >= (int)sizeof(tmp_path))
+				return 0;
+			fd = open(tmp_path, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW, 0644);
+			if (fd < 0 && errno != EEXIST)
+				return 0;
+		}
+		if (fd < 0)
+			return 0;
+		out = fdopen(fd, "w");
+		if (out == NULL) {
+			close(fd);
+			unlink(tmp_path);
+			return 0;
+		}
+	}
 
 	/* Copy every line except any existing entry for dotted_path. A missing
 	 * manifest is fine (first record creates it). */
