@@ -64,7 +64,11 @@ typedef struct input_decoder input_decoder_t;
 /* 2026-06-29 JES #809 M1: lifecycle.
  *
  * Create a decoder attached to the given file descriptor (usually the TTY fd
- * obtained from tb_get_fds() or /dev/tty). A tty_fd of -1 is permitted and
+ * obtained from tb_get_fds() or /dev/tty).  The fd must be open READ-WRITE:
+ * the decoder reads input bytes from it AND writes control sequences to it
+ * (mouse-mode toggles, bracketed-paste enable, Kitty enable) -- and those
+ * writes are deliberately (void)-discarded, so a read-only fd fails
+ * silently.  A tty_fd of -1 is permitted and
  * is the convention used by the PTY-replay test harness -- the decoder will
  * never call read(2) in that case; bytes are supplied exclusively through
  * input_decoder_inject_bytes().

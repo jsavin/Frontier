@@ -77,11 +77,15 @@ static int tb2_obtain_tty_fd(bool *fd_was_opened_out) {
 		return ttyfd;
 	}
 
-	/* Fallback: open /dev/tty directly.  O_NONBLOCK is NOT set because
-	 * the decoder uses select(2) + read(2) with explicit timeouts; a
-	 * non-blocking fd would cause spurious EAGAIN returns inside the
-	 * decoder's blocking-poll path. */
-	int fd = open("/dev/tty", O_RDONLY | O_CLOEXEC);
+	/* Fallback: open /dev/tty directly.  O_RDWR, not O_RDONLY: the decoder
+	 * WRITES control sequences to this fd (mouse-mode toggles in
+	 * input_decoder_set_mouse, the Kitty enable in
+	 * input_decoder_kitty_enable) and those writes are (void)-discarded,
+	 * so a read-only fd would make them fail silently with EBADF.
+	 * O_NONBLOCK is NOT set because the decoder uses select(2) + read(2)
+	 * with explicit timeouts; a non-blocking fd would cause spurious
+	 * EAGAIN returns inside the decoder's blocking-poll path. */
+	int fd = open("/dev/tty", O_RDWR | O_CLOEXEC);
 	if (fd < 0) {
 		return -1;
 	}

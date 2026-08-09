@@ -1385,24 +1385,6 @@ static bool utf8_codepoint_valid(uint32_t cp, int lead_len) {
  * that never touches *dec.  No locks or atomics needed.
  * ---------------------------------------------------------------------- */
 
-/* Append bytes from the TTY into the decoder ring buffer.  Returns the
- * number of bytes appended.  On short fills (ring near capacity) the
- * excess is counted in dropped_bytes.  Called only when tty_fd >= 0. */
-static size_t dec_append_from_fd(input_decoder_t *dec, const uint8_t *src, size_t len) {
-	compact_buffer(dec);
-	size_t avail = INPUT_DECODER_BUFFER_SIZE - dec->fill_len;
-	size_t to_copy = len < avail ? len : avail;
-	if (to_copy > 0) {
-		memcpy(dec->buf + dec->fill_len, src, to_copy);
-		dec->fill_len += to_copy;
-	}
-	size_t dropped = len - to_copy;
-	if (dropped > 0) {
-		dec->dropped_bytes += dropped;
-	}
-	return to_copy;
-}
-
 /* Read whatever bytes are immediately available on tty_fd without blocking.
  * Uses a select(2) with zero timeout to probe readability, then read(2) once
  * to drain.  Returns the count of bytes deposited into the ring buffer (may
@@ -1410,12 +1392,14 @@ static size_t dec_append_from_fd(input_decoder_t *dec, const uint8_t *src, size_
  * a hard read error (closed fd or unexpected errno) -- caller surfaces as
  * BOXEN_ERR_IO.  EINTR is treated as "no data this time" (caller may retry).
  *
- * Bytes that don't fit in the ring are counted in dropped_bytes via
- * dec_append_from_fd.  We cap the read size at the ring's remaining space
- * so we never read more bytes than we can store -- the kernel will buffer
- * the rest for the next call.  Slightly suboptimal in pathological bursts
- * (a paste of 8 KB arrives in two select rounds instead of one) but
- * preserves the back-pressure invariant and avoids stack staging. */
+ * The read is capped at the ring's remaining space and lands directly in
+ * the ring (compact_buffer has just run, so the tail is contiguous) --
+ * we never read more bytes than we can store, the kernel buffers the rest
+ * for the next call, and no staging copy is needed.  Slightly suboptimal
+ * in pathological bursts (a paste of 8 KB arrives in two select rounds
+ * instead of one) but preserves the back-pressure invariant.  Unlike the
+ * inject_bytes seam there is no dropped_bytes path here: the cap means an
+ * oversized burst is deferred, not dropped. */
 static size_t dec_read_nonblocking(input_decoder_t *dec) {
 	compact_buffer(dec);
 	size_t avail = INPUT_DECODER_BUFFER_SIZE - dec->fill_len;
@@ -1441,9 +1425,7 @@ static size_t dec_read_nonblocking(input_decoder_t *dec) {
 		return 0;
 	}
 
-	uint8_t stage[INPUT_DECODER_BUFFER_SIZE];
-	size_t to_read = avail < sizeof(stage) ? avail : sizeof(stage);
-	ssize_t got = read(dec->tty_fd, stage, to_read);
+	ssize_t got = read(dec->tty_fd, dec->buf + dec->fill_len, avail);
 	if (got < 0) {
 		if (errno == EINTR || errno == EAGAIN) {
 			return 0;
@@ -1455,7 +1437,7 @@ static size_t dec_read_nonblocking(input_decoder_t *dec) {
 		 * the caller can surface and shut down rather than spin. */
 		return SIZE_MAX;
 	}
-	(void)dec_append_from_fd(dec, stage, (size_t)got);
+	dec->fill_len += (size_t)got;
 	return (size_t)got;
 }
 
