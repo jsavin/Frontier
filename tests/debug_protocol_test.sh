@@ -28,8 +28,18 @@ DB="$STAGE_DIR/Virgin.root"
 cp "$SOURCE_DB" "$DB"
 trap 'rm -rf "$STAGE_DIR"' EXIT
 
+# Stage StartupTasks.root as a guest database for Test 23 (guest-db
+# breakpoint matching). Staged copy only -- the canonical file is never
+# opened, and the guest db is never saved (in-memory mutation only).
+SOURCE_GUEST_DB="$PROJECT_ROOT/databases/StartupTasks.root"
+GUEST_DB="$STAGE_DIR/StartupTasks.root"
+if [ -f "$SOURCE_GUEST_DB" ]; then
+    cp "$SOURCE_GUEST_DB" "$GUEST_DB"
+fi
+
 export DEBUG_TEST_CLI="$CLI"
 export DEBUG_TEST_DB="$DB"
+export DEBUG_TEST_GUEST_DB="$GUEST_DB"
 
 python3 << 'PYEOF'
 import subprocess, json, sys, os, threading, time
@@ -1192,6 +1202,103 @@ with DebugSession(timeout=10) as s_cleanup:
         "expression": "try {delete(@system.temp.drainBp)}"
     }})
     s_cleanup.send_and_wait({"op": "debug/clearBreakpoints", "id": 2, "params": {}})
+
+# --- Test 23: guest-database breakpoint matching (unit 1.3 verification) ---
+# All prior breakpoint tests target system.temp.* scripts in the SYSTEM root.
+# Breakpoint matching compares the debug/setBreakpoint script string against
+# the path debug_push_sourcecode computes via langexternalgetfullpath
+# (frontier-cli/debug_handler.c:579). For a table in a DIFFERENT database
+# than the system root, getfullpath takes the filewindowtable branch
+# (Common/source/langexternal.c:2079-2081) -- an untested path for the
+# debugger. This test installs a script inside a staged guest database
+# (opened via fileMenu.open), sets a breakpoint on it by its full dotted
+# path, dispatches it via thread.callScript, and asserts suspend + script
+# identity + resume.
+#
+# The guest db is a staged copy of StartupTasks.root; the script is created
+# in-memory only and never saved.
+print()
+print("--- guest-db breakpoint matching (unit 1.3) ---")
+
+GUEST_DB = os.environ.get("DEBUG_TEST_GUEST_DB", "")
+
+if not GUEST_DB or not os.path.isfile(GUEST_DB):
+    assert_test("guest-db: staged guest database available", False,
+                f"Missing staged guest db: {GUEST_DB!r}")
+else:
+    with DebugSession(timeout=15) as s:
+        # Step 1: open the staged guest database
+        open_resp = s.send_and_wait({"op": "script/eval", "id": 1, "params": {
+            "expression": 'fileMenu.open("' + GUEST_DB + '", true)'
+        }})
+        assert_test("guest-db: fileMenu.open succeeds",
+                    open_resp is not None and open_resp.get("success") is not False,
+                    f"Response: {open_resp}")
+
+        # Step 2: confirm the guest db's top-level table resolves
+        defined_resp = s.send_and_wait({"op": "script/eval", "id": 2, "params": {
+            "expression": "defined(StartupTasksSuite)"
+        }})
+        assert_test("guest-db: guest table resolves after open",
+                    defined_resp is not None and defined_resp.get("result", {}).get("value") == "true",
+                    f"Response: {defined_resp}")
+
+        # Step 3: install a script INSIDE the guest database (in-memory only)
+        s.send_and_wait({"op": "script/eval", "id": 3, "params": {
+            "expression": 'new(scriptType, @StartupTasksSuite.u13GuestBp); script.newScriptObject("local (x = 1)\\rreturn (x + 1)", @StartupTasksSuite.u13GuestBp)'
+        }})
+        installed = s.send_and_wait({"op": "script/eval", "id": 4, "params": {
+            "expression": "typeOf(StartupTasksSuite.u13GuestBp)"
+        }})
+        assert_test("guest-db: script installed in guest table",
+                    installed is not None and installed.get("result", {}).get("value") == "scpt",
+                    f"Response: {installed}")
+
+        # Step 4: set a breakpoint on the guest script by its full dotted path
+        bp_resp = s.send_and_wait({"op": "debug/setBreakpoint", "id": 5, "params": {
+            "script": "StartupTasksSuite.u13GuestBp", "line": 1
+        }})
+        assert_test("guest-db: setBreakpoint returns action=set",
+                    bp_resp is not None and bp_resp.get("result", {}).get("action") == "set",
+                    f"Response: {bp_resp}")
+
+        # Step 5: dispatch the guest script via thread.callScript
+        s.send_and_wait({"op": "script/eval", "id": 6, "params": {
+            "expression": "thread.callScript(@StartupTasksSuite.u13GuestBp, {})"
+        }})
+
+        # Step 6: the spawned thread must suspend at the breakpoint with the
+        # guest script's identity
+        suspended = s.wait_for_notification(op="debug/suspended", reason="breakpoint", timeout=5)
+        assert_test("guest-db: callScript thread suspends at breakpoint",
+                    suspended is not None,
+                    f"Expected debug/suspended(reason=breakpoint); messages: {[m for m in s.messages if m.get('op') == 'debug/suspended']}")
+
+        guest_tid = None
+        if suspended:
+            params_g = suspended.get("params", {})
+            guest_tid = params_g.get("threadId")
+            assert_test("guest-db: suspended.script == StartupTasksSuite.u13GuestBp",
+                        params_g.get("script") == "StartupTasksSuite.u13GuestBp",
+                        f"Expected 'StartupTasksSuite.u13GuestBp', got {params_g.get('script')!r}")
+            assert_test("guest-db: suspended.line == 1",
+                        params_g.get("line") == 1,
+                        f"Expected 1, got {params_g.get('line')!r}")
+
+        # Step 7: resume and confirm completion
+        if guest_tid is not None:
+            s.send_and_wait({"op": "debug/continue", "id": 7, "params": {"threadId": int(guest_tid)}})
+            completed = s.wait_for_notification(op="debug/completed", timeout=5)
+            assert_test("guest-db: callScript thread completes after continue",
+                        completed is not None and completed.get("params", {}).get("success") is True,
+                        f"Expected debug/completed(success=true); got: {completed}")
+        else:
+            assert_test("guest-db: callScript thread completes after continue",
+                        False, "skipped - no threadId from suspend step")
+
+        # Cleanup: clear breakpoints; guest db mutation is in-memory only and
+        # the staged file is deleted with STAGE_DIR
+        s.send_and_wait({"op": "debug/clearBreakpoints", "id": 8, "params": {}})
 
 print()
 print("=" * 46)
