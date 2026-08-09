@@ -763,7 +763,9 @@ tests:
         description: "completion notification"
 
   - name: "debug lifecycle - step from entry suspension, then kill"
-    description: "step resumes the thread until the next statement (notification reason:step); kill wakes a suspended thread and it dies, emitting debug/completed success:false."
+    description: "step resumes the thread until the next statement (notification reason:step); kill wakes a suspended thread and it dies, emitting debug/completed success:false. Runs on a dedicated executor (environment block): debug/kill leaves the runtime's hash tables inconsistent by design, which must not leak into the shared batch executor used by later test files."
+    environment:
+      FRONTIER_U11_KILL_ISOLATION: "1"
     protocol_ops:
       - op: "debug/run"
         params:
@@ -812,6 +814,9 @@ tests:
         description: "killed thread reports unsuccessful completion"
 
   - name: "debug/step - invalid direction"
+    description: "Dedicated executor: ends with debug/kill (see kill-isolation note on the step lifecycle test)."
+    environment:
+      FRONTIER_U11_KILL_ISOLATION: "1"
     protocol_ops:
       - op: "debug/run"
         params:
@@ -849,7 +854,9 @@ tests:
         description: "thread drained"
 
   - name: "debug lifecycle - pause states (already suspended, interrupt, step while running)"
-    description: "pause on a suspended thread is bad_state; pause on a running thread returns status:interrupting then a reason:interrupted suspension; step on a running thread is bad_state."
+    description: "pause on a suspended thread is bad_state; pause on a running thread returns status:interrupting then a reason:interrupted suspension; step on a running thread is bad_state. Runs on a dedicated executor: ends with debug/kill (see kill-isolation note on the step lifecycle test)."
+    environment:
+      FRONTIER_U11_KILL_ISOLATION: "1"
     protocol_ops:
       - op: "debug/run"
         params:
