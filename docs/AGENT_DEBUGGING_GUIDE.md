@@ -273,6 +273,14 @@ After completion, the thread is unregistered — further ops on its
 database and are readable via `script/eval`; verifying an expected side
 effect is the standard "did it really finish" check.
 
+**Prefer continue-to-completion over `debug/kill` when you intend to
+save.** A killed thread leaves its hash-table scopes in a state that is
+unsafe to pack, and the `odb/save` op (added in Unit 1.2, branch
+`unit-1-2-odb-save`) deliberately refuses with `bad_state` for the rest of
+the session after ANY `debug/kill` — the same guard that suppresses the
+exit save. If you need the database saved afterward, clear breakpoints and
+let threads run to `debug/completed` instead of killing them.
+
 **KNOWN BUG: one spurious eval failure after a debug thread completes.**
 After a lazily attached (`thread.callScript`) debug thread finishes, the
 next `script/eval` of `new(...)` reliably fails once with a generic
