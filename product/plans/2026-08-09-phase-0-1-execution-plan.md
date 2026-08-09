@@ -173,11 +173,11 @@ graph LR
 
 Parallel-safe from day one: 0.1, 0.3, 0.4, 1.1, 1.5 (and 1.3's diagnosis). 0.5 can start its repo-skeleton half immediately; extraction waits for M6/M7 to land.
 
-## Decisions Jake owns (blocking their units only)
+## Decisions — resolved by JES 2026-08-09
 
-1. Unit 0.4 — archive destination repo/name.
-2. Unit 0.5 — boxen repo name, visibility, initial version tag.
-3. Unit 1.2 — explicit `odb/save` op vs autosave policy (recommendation: explicit op + dirty flag).
+1. Unit 0.4 — **public archive repo** (`jsavin/userland-docs-archive`) plus an rsync copy to the NAS as second home.
+2. Unit 0.5 — **`jsavin/boxen`, private first**; flip public once the extraction builds green and a real README exists. Initial tag **v0.9.0** (pre-API-freeze; 1.0.0 reserved for API freeze + submodule consumption per boxen Phase E).
+3. Unit 1.2 — **explicit `odb/save` protocol op + dirty indicator** in `odb/set` responses (no autosave; composes with `--lock-opened-roots`, deterministic for the byte-drift-sensitive test runner).
 
 ## Out of scope (resist the temptation)
 
