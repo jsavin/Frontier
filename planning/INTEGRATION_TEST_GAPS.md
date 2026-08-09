@@ -26,7 +26,7 @@ These gaps risk silent data loss or corruption.
 | 1 | **`filemenu.save()` via protocol** | No test verifies `script/eval "filemenu.save()"` through the protocol layer. This is the path a GUI client will use to trigger File > Save. Must verify the database file is actually updated on disk. | Done — `persistence_save_tests.yaml` |
 | 2 | **Guest DB full lifecycle round-trip** | Individual pieces are tested, but no single test covers: open guest DB → modify values → `filemenu.save()` → close → reopen → verify values survived. | Done — `persistence_save_tests.yaml` |
 | 3 | **System root + guest DB both modified and saved** | No test modifies BOTH databases, saves both, closes, reopens, and verifies both. Pack/unpack context switching between databases is a corruption risk area (cf. databasedata elimination work). | Done — `persistence_save_tests.yaml` |
-| 4 | **Protocol mutations are in-memory only** | No test verifies that `odb/set` changes are NOT persisted if the process exits without an explicit save. Users and client apps need to understand this contract. | Partial — in-memory contract verified; restart non-persistence cannot be tested with current framework |
+| 4 | **Protocol mutations are in-memory only** | No test verifies that `odb/set` changes are NOT persisted if the process exits without an explicit save. Users and client apps need to understand this contract. | Done — `protocol_odb_save.yaml` (Unit 1.2): runner gained `private_system_root` + `restart_executor` + root-hash steps; proves unsaved-mutation loss on kill, `odb/save` durability, `locked` refusal with byte-identical file, dirty lifecycle, and the issue #127 clean-exit save |
 | 5 | **Guest DBs flushed on shutdown** | No test verifies that guest databases are properly saved/closed when the process exits (via `shutdown` op or normal exit). Risk: data loss if guest DB handles not flushed. | Done — `persistence_save_tests.yaml` |
 
 ## P1: Error Recovery & Concurrency
@@ -94,7 +94,7 @@ For persistence tests, the key pattern is:
 3. Shut down or restart the process
 4. Reopen and verify state survived
 
-The integration test framework supports multi-step sequences within a single test case — use `steps` with sequential script/eval calls. For restart verification, a separate test case can read values written by a prior test (since all tests run against the same .root7 copy per worker).
+The integration test framework supports multi-step sequences within a single test case — use `steps` with sequential script/eval calls. For restart verification, use the Unit 1.2 protocol_ops capabilities (`private_system_root: true` + `restart_executor: "kill"|"shutdown"` + `capture_root_hash`/`verify_root_hash` steps) — see `protocol_odb_save.yaml` for the pattern.
 
 ### Known blockers
 
