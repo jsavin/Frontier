@@ -167,7 +167,7 @@ The unit and integration commands above are also listed in the Quick Reference s
 
 Full protocol workflow, indentation rules, braces/semicolons in outline vs string format, complete verb-addition checklist: `docs/ODB_SCRIPT_EDITING.md`.
 
-**Runtime ODB<->.ut sync (`--ut-sync-dir`).** When the live `.ut` mirror is active, edit/debug in protocol mode (ODB is authoritative; `.ut` is an outbound text projection refreshed on shutdown) rather than hand-editing `.ut` files. Agent workflow + caveats (mtime last-write-wins, silent broken-`.ut` import, `repl.syncscan()` reconcile): `docs/usertalk/UT_SYNC_WORKFLOW.md`.
+**Runtime ODB<->.ut sync (`--ut-sync-dir`).** When the live `.ut` mirror is active, edit/debug in protocol mode (ODB is authoritative; `.ut` is an outbound text projection refreshed on shutdown) rather than hand-editing `.ut` files. Agent workflow + caveats (compile-gated import rejects broken `.ut`, two-sided-edit conflict refusal via `.ut-sync-state`, `repl.syncscan()` reconcile): `docs/usertalk/UT_SYNC_WORKFLOW.md`.
 
 ---
 
