@@ -609,6 +609,193 @@ else
     pass "FIFO boot-hang: boot returned (RC=$FIFO_RC, non-zero but not timeout)"
 fi
 
+# ===========================================================================
+# Unit 1.5 caveat closure (TDD RED until implemented):
+#
+#   Test 13: a .ut that fails to COMPILE must be rejected on import -- the
+#            existing ODB script is kept and a loud diagnostic is logged.
+#            (Previously: the broken text imported silently as a
+#            non-compiling outline; the verb broke with no announcement.)
+#   Test 14: when BOTH sides changed since the last sync (recorded content
+#            hash), neither side may clobber the other -- the import is
+#            refused, the shutdown export is refused, and the conflict is
+#            logged loudly. (Previously: newer mtime silently won.)
+#   Test 15: a broken NEW .ut (no existing ODB node) must NOT be created by
+#            the import-discovery scan. (Previously: created silently as a
+#            non-compiling script.)
+# ---------------------------------------------------------------------------
+
+# run_protocol_err ERRFILE -- like run_protocol but append stderr to ERRFILE
+# so tests can assert on logged diagnostics.
+run_protocol_err() {
+    local errfile="$1"
+    "$CLI" --protocol --skip-startup --ut-sync-dir "$SYNC_DIR" --system-root "$DB" 2>>"$errfile"
+}
+
+# eval_verb_named DOTTED_PATH -- like eval_verb but for an arbitrary verb path.
+eval_verb_named() {
+    "$CLI" --system-root "$DB" --lock-opened-roots -e "$1()" 2>/dev/null | tail -1 | tr -d '[:space:]'
+}
+
+# install_named_verb DOTTED_PATH HANDLER_NAME RETVAL -- generic variant of
+# install_verb: installs "on HANDLER() { return (RETVAL) }" at DOTTED_PATH
+# via script.newScriptObject, then shuts down (export fires on exit).
+install_named_verb() {
+    local vpath="$1" hname="$2" retval="$3" proto
+    proto=$(cat <<'PROTOEOF'
+{"id":1,"op":"script/eval","params":{"expression":"script.newScriptObject(\"on HNAME() {\\r\\treturn (RETVAL)}\", @VPATH)"}}
+{"id":2,"op":"shutdown","params":{}}
+PROTOEOF
+)
+    proto="${proto//VPATH/$vpath}"
+    proto="${proto//HNAME/$hname}"
+    proto="${proto//RETVAL/$retval}"
+    printf '%s\n' "$proto" | run_protocol "" >/dev/null
+}
+
+# ---------------------------------------------------------------------------
+# Test 13: broken .ut import is REJECTED (compile-check before install).
+# ---------------------------------------------------------------------------
+echo "==> Test 13: broken .ut import rejected, ODB version kept, loud log"
+V13_UT="$ROOT_SYNC/scratchpad/utBroken13.ut"
+T13_ERR="$STAGE_DIR/t13.stderr"
+install_named_verb "scratchpad.utBroken13" "utBroken13" 41
+
+if [ -f "$V13_UT" ]; then
+    # Outline-parseable but non-compiling body (unbalanced parens), future
+    # mtime so the import gate fires on next materialization.
+    printf 'on utBroken13() {\n\tif ((( broken\n\treturn (41)}\n' > "$V13_UT"
+    set_mtime_offset "$V13_UT" 3600
+    T13_MD5_BEFORE="$(md5_of "$V13_UT")"
+
+    T13_OUT=$(printf '%s\n' \
+        '{"id":1,"op":"script/eval","params":{"expression":"scratchpad.utBroken13()"}}' \
+        '{"id":2,"op":"shutdown","params":{}}' \
+        | run_protocol_err "$T13_ERR")
+    T13_VAL="$(probe_value "$T13_OUT" 1)"
+
+    if [ "$T13_VAL" = "41" ]; then
+        pass "broken .ut rejected: verb still returns 41 from the ODB"
+    else
+        fail "broken .ut imported: expected 41, got '${T13_VAL:-<none>}'"
+    fi
+    # The diagnostic must name the affected script (a generic boot-time
+    # "reject" line from the scan pre-flight must not satisfy this).
+    if grep -i "reject" "$T13_ERR" | grep -q "utBroken13"; then
+        pass "rejection diagnostic logged (names utBroken13)"
+    else
+        fail "no rejection diagnostic naming utBroken13 in stderr log ($T13_ERR)"
+    fi
+    # The rejected .ut must be left in place (neither side clobbered).
+    if [ "$(md5_of "$V13_UT")" = "$T13_MD5_BEFORE" ]; then
+        pass "rejected .ut left untouched on disk"
+    else
+        fail "rejected .ut was rewritten on disk"
+    fi
+else
+    fail "skipping test 13: exported .ut absent at $V13_UT"
+fi
+
+# ---------------------------------------------------------------------------
+# Test 14: both-sides-changed conflict -- refuse to clobber either side.
+#
+# Sequence: install (61) + shutdown = the recorded sync point. In ONE
+# session: edit the ODB (62), then out-of-band rewrite the .ut (63) with a
+# future mtime, sleep past the hot-path throttle, and call the verb. The
+# hot-path import check sees the .ut as newer; with both sides changed since
+# the sync point it must REFUSE (verb stays 62). At shutdown the export must
+# also refuse to overwrite the conflicted .ut (file stays 63).
+# ---------------------------------------------------------------------------
+echo "==> Test 14: both-sides-changed conflict is detected, nothing clobbered"
+V14_UT="$ROOT_SYNC/scratchpad/utConflict14.ut"
+T14_ERR="$STAGE_DIR/t14.stderr"
+install_named_verb "scratchpad.utConflict14" "utConflict14" 61
+
+if [ -f "$V14_UT" ]; then
+    T14_STAGED="$STAGE_DIR/t14_staged.ut"
+    printf 'on utConflict14() {\n\treturn (63)}\n' > "$T14_STAGED"
+
+    # Future timestamp (touch -t format) so the conflicted .ut wins the
+    # mtime gate; BSD and GNU date forms.
+    if date -v +1H +%Y%m%d%H%M.%S >/dev/null 2>&1; then
+        T14_STAMP="$(date -v +1H +%Y%m%d%H%M.%S)"
+    else
+        T14_STAMP="$(date -d '+1 hour' +%Y%m%d%H%M.%S)"
+    fi
+
+    T14_REQ="$STAGE_DIR/t14_req.jsonl"
+    cat > "$T14_REQ" <<'T14EOF'
+{"id":1,"op":"script/eval","params":{"expression":"script.newScriptObject(\"on utConflict14() {\\r\\treturn (62)}\", @scratchpad.utConflict14)"}}
+{"id":2,"op":"script/eval","params":{"expression":"sys.unixShellCommand(\"CPCMD\")"}}
+{"id":3,"op":"script/eval","params":{"expression":"scratchpad.utConflict14()"}}
+{"id":4,"op":"shutdown","params":{}}
+T14EOF
+    # sleep 2 outlasts the hot-path import-check throttle (1s), so the
+    # id=3 call re-checks the filesystem and sees the conflicted .ut.
+    T14_CMD="cp $T14_STAGED $V14_UT && touch -t $T14_STAMP $V14_UT && sleep 2"
+    T14_PROTO="$(cat "$T14_REQ")"
+    T14_PROTO="${T14_PROTO//CPCMD/$T14_CMD}"
+    printf '%s\n' "$T14_PROTO" > "$T14_REQ"
+
+    T14_OUT=$(run_protocol_err "$T14_ERR" < "$T14_REQ")
+    T14_VAL="$(probe_value "$T14_OUT" 3)"
+
+    if [ "$T14_VAL" = "62" ]; then
+        pass "conflicted .ut did not clobber in-session ODB edit (verb = 62)"
+    else
+        fail "conflict not detected: expected 62, got '${T14_VAL:-<none>}' (silent clobber)"
+    fi
+
+    RB14="$(eval_verb_named scratchpad.utConflict14)"
+    if [ "$RB14" = "62" ]; then
+        pass "ODB kept its edit across shutdown (62)"
+    else
+        fail "ODB edit lost after shutdown: expected 62, got '$RB14'"
+    fi
+
+    if grep -q "63" "$V14_UT"; then
+        pass "conflicted .ut left untouched on disk (still 63)"
+    else
+        fail "conflicted .ut was overwritten by export"
+    fi
+
+    if grep -i "conflict" "$T14_ERR" | grep -q "utConflict14"; then
+        pass "conflict diagnostic logged (names utConflict14)"
+    else
+        fail "no conflict diagnostic naming utConflict14 in stderr log ($T14_ERR)"
+    fi
+else
+    fail "skipping test 14: exported .ut absent at $V14_UT"
+fi
+
+# ---------------------------------------------------------------------------
+# Test 15: broken NEW .ut (no ODB node) must NOT be created by the scan.
+# Probe the GRANDCHILD of builtins (honest signal -- see Test 6 note).
+# ---------------------------------------------------------------------------
+echo "==> Test 15: discovery scan rejects a broken new .ut"
+T15_DIR="$ROOT_SYNC/system/verbs/builtins/zzbroken15"
+T15_FILE="$T15_DIR/bad.ut"
+T15_ERR="$STAGE_DIR/t15.stderr"
+mkdir -p "$T15_DIR"
+printf 'on bad() {\n\tif ((( nope\n' > "$T15_FILE"
+
+T15_OUT=$(printf '%s\n' \
+    '{"id":1,"op":"script/eval","params":{"expression":"defined(@system.verbs.builtins.zzbroken15.bad)"}}' \
+    '{"id":2,"op":"shutdown","params":{}}' \
+    | run_protocol_err "$T15_ERR")
+T15_DEFINED="$(probe_value "$T15_OUT" 1)"
+
+if [ "$T15_DEFINED" != "true" ]; then
+    pass "broken new .ut not created (defined -> '${T15_DEFINED:-false}')"
+else
+    fail "broken new .ut WAS created as a non-compiling script"
+fi
+if grep -iE "reject|compile" "$T15_ERR" | grep -q "zzbroken15"; then
+    pass "scan rejection diagnostic logged (names zzbroken15)"
+else
+    fail "no scan rejection diagnostic naming zzbroken15 in stderr log ($T15_ERR)"
+fi
+
 # ---------------------------------------------------------------------------
 # Canonical protection: the source Virgin.root must be untouched.
 # ---------------------------------------------------------------------------
