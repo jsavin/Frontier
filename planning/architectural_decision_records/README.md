@@ -19,11 +19,22 @@ This directory contains architectural decisions and design patterns that affect 
 | ADR-009 | `[IMPLEMENTED]` | REPL Hash Table Stack - QuickScript model (PR #304) |
 | ADR-010 | `[IN PROGRESS]` | Thread Testing - Phase 1 done (PR #318), Phase 2 planned |
 | ADR-011 | `[IMPLEMENTED]` | Search Path Priority - Fixed (PR #342) |
+| ADR-012 | `[PROPOSED]` | Main Thread Dispatch Queue - TCP-specific prototype (PR #363), generalization needed |
+| ADR-013 | `[ACCEPTED]` | REPL Event Loop Architecture - non-blocking REPL so TCP callbacks run while awaiting input (2026-01-30) |
+| ADR-014 | `[ACCEPTED]` | GIL-Based Cooperative Threading for headless mode - real pthreads serialized by a single lock (2026-02-10) |
+| ADR-015 | `[ACCEPTED]` | Verb Registration Consolidation - single generated registration path for tests and CLI (2026-02-14) |
+| ADR-016 | `[ACCEPTED]` | Headless Projection of the Frontier Menu System - commits to a model, not an implementation (2026-05-05) |
+| ADR-017 | `[GO — exploration]` | Filesystem-Canonical ODB Sources - `.root` becomes a build artifact (2026-05-09) |
+
+*Index extended 2026-08-09 to cover ADR-012 through ADR-017 (previously stopped at ADR-011).*
 
 **Legend**:
 - `[IMPLEMENTED]` - Fully implemented and in production use
 - `[IN PROGRESS]` - Partially implemented, ongoing work
 - `[NOT STARTED]` - Design accepted, implementation not yet begun
+- `[ACCEPTED]` - Decision agreed; implementation state tracked in the ADR itself
+- `[PROPOSED]` - Written up, decision not yet ratified
+- `[GO — exploration]` - Direction approved, in exploration phase
 - `[SUPERSEDED]` - Replaced by a newer ADR or approach
 
 ---

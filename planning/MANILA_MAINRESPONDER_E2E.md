@@ -2,10 +2,19 @@
 
 Status
 - State: In Progress
-- Phase: Phase A (inetd E2E Foundation) — not started
-- Last Updated: 2026-04-17
+- Phase: Phases A and B merged (#541, #543); Phase C not started — **blocked on issue #620 triage**
+- Last Updated: 2026-08-09 (status correction)
 - Owner: Jake + autonomous agents (/doit, /auto)
-- Last Reviewed: 2026-04-17
+- Last Reviewed: 2026-08-09
+
+> **Status correction (2026-08-09).** This document previously showed Phase A "in review" and
+> Phase B "not started". Both are merged. More importantly, Phase B's smoke test is currently
+> `skip: true` — the whole webserver/inetd E2E surface is skipped under umbrella issue **#620** —
+> so the phase gates that follow are resting on tests that do not run. The integration baseline
+> quoted throughout this document as "0 failures" is also stale; see the correction below.
+>
+> Direction of record: `product/VISION_1_0.md` and
+> `product/plans/2026-08-09-phase-0-1-execution-plan.md`.
 - Notes: Living document. Update the "Status Snapshot" and "Change Log" sections after each work session. Survives context compaction — start a new session by reading this file.
 
 Related Docs
@@ -22,6 +31,7 @@ Related Docs
 Change Log
 - 2026-04-17: Initial document created after /plan session. Baseline: 2209 integration tests, 0 failures; PRs #538/#539/#540 merged.
 - 2026-04-17: Phase A — added `tests/integration/test_cases/webserver_inetd_e2e.yaml` (4 tests, all passing) exercising full inetd → webserver.server → webserver.dispatch → custom responder flow. Integration suite: 2213 total, 0 failures. Unit suite: 302 passed. PR #541 opened against develop.
+- 2026-08-09: Status correction (docs-only). Phase A merged as `d8db43416` (#541); Phase B merged as `c17fc2272` (#543). Phase B's smoke test — and the whole webserver/inetd E2E surface — is currently `skip: true` under umbrella issue #620, so Phase C is blocked on #620 triage rather than ready to start. Test baseline restated from "0 failures" to ~2186 passing / 21 known failures / 47 skipped.
 
 ---
 
@@ -29,24 +39,37 @@ Change Log
 
 Update this table after every session. Keep phases in order — don't start N+1 until N is merged.
 
+*Snapshot corrected 2026-08-09 — Phases A and B are both merged; the table previously showed A "in
+review" and B "not started".*
+
 | Phase | Title | State | PR | Notes |
 |-------|-------|-------|----|----|
-| A | inetd E2E Foundation | In review | #541 | 4 tests passing; 2213 total, 0 failures |
-| B | mainResponder Dispatch Smoke Test | Not started | — | Depends on A |
+| A | inetd E2E Foundation | Merged | #541 | Merged as `d8db43416`; 4 tests added |
+| B | mainResponder Dispatch Smoke Test | Merged | #543 | Merged as `c17fc2272`; smoke test currently `skip: true` under #620 |
 | C | inetd + mainResponder Integration | Not started | — | Depends on B |
 | D | Manila Installation + First Page | Not started | — | Human-led |
 | E | Concurrent Load Safety Audit | Not started | — | Human-led |
 | F | Manila Feature Parity | Deferred | — | Post-launch |
 
-**Current blocker:** Phase A PR awaiting user merge approval.
+**Current blocker:** Phase B's smoke test is not actually exercising anything. It is marked
+`skip: true`, along with the entire webserver/inetd E2E test surface, under umbrella issue **#620**.
+Phase C cannot be trusted to build on Phase B until that surface is un-skipped and triaged — a green
+suite today does not mean the mainResponder path works.
 
-**Next action:** Once Phase A merges, kick off Phase B (mainResponder Dispatch Smoke Test).
+**Next action:** Triage issue **#620** (un-skip and repair the webserver/inetd E2E tests, including
+Phase B's smoke test). This is Phase 2 of `product/plans/2026-08-09-phase-0-1-execution-plan.md`.
+Do not kick off Phase C before #620 triage lands.
 
 ---
 
 ## Context
 
-**Where we are (April 2026):** With PRs #538/#539/#540 merged, all P0 architectural launch blockers are resolved, the integration suite is at 0 failures (2209 total), and the infrastructure for safe autonomous work is in place. TCP (23/23 verbs), webserver kernel verbs (7/7), and `inetd.supervisor` are all implemented. `mainResponder.root` (2.5 MB) and `manila.root` (21 MB) exist on disk with full UserTalk script trees.
+**Where we are (April 2026, with 2026-08-09 corrections):** With PRs #538/#539/#540 merged, all P0
+architectural launch blockers are resolved and the infrastructure for safe autonomous work is in
+place. The "0 failures (2209 total)" baseline stated here no longer holds — the current baseline is
+approximately **2,186 passing / 21 known failures / 47 skipped** under umbrella issue #620
+(eval-trap unmasking, PRs #618/#619), and the known-failures list currently lives only in `/tmp`
+(persisting it is scheduled in Phase 2 of the product execution plan). TCP (23/23 verbs), webserver kernel verbs (7/7), and `inetd.supervisor` are all implemented. `mainResponder.root` (2.5 MB) and `manila.root` (21 MB) exist on disk with full UserTalk script trees.
 
 **Where we want to go:** Serve a real Manila blog over HTTP from `frontier-cli`, with an autonomous workflow managing as much of the gap-closing as possible — without a human catching regressions after they ship.
 
@@ -310,7 +333,8 @@ Estimated human engagement: ~1–2 hours per phase of focused review, plus async
 **Yes, with qualifications.**
 
 **Safe parts:**
-- Test infrastructure mature (0 failures baseline, good isolation, YAML metadata)
+- Test infrastructure mature (good isolation, YAML metadata) — though the baseline is no longer
+  clean: ~21 known failures and 47 tests skipped under #620, tracked outside the repo in `/tmp`
 - `/auto` merge-safety gate enforces all-green before auto-merge
 - `/gate` review catches concurrency/security issues pre-PR
 - Each phase has a clear exit criterion and scope boundary
@@ -349,7 +373,9 @@ When resuming this work in a new session (including post-compaction):
 
 1. Read this file top to bottom (especially Status Snapshot and Change Log).
 2. Check PR state for the current phase: `gh pr view <PR> --json state,mergeStateStatus,reviews`.
-3. Check test baseline: `cd tests && make test-integration` should show 0 failures (or document drift).
+3. Check test baseline: `cd tests && make test-integration`. Expect roughly **2,186 passing / 21
+   known failures / 47 skipped** (issue #620) — *not* 0 failures. Compare against the known-failures
+   baseline list before treating any failure as new; that list lives only in `/tmp` today.
 4. Pick up at the "Next action" listed in Status Snapshot.
 5. After any meaningful progress (commit, PR, merge, decision), update Status Snapshot + Change Log in this file and commit.
 

@@ -6,6 +6,13 @@ This document explains key architectural decisions in the TCP Phase 1A/1B/3 impl
 **PRs**: #327 (Phase 1A), #330 (Phase 1B + Phase 3)
 **Last Updated**: 2026-01-24
 
+> **Status correction (2026-08-09).** TCP is **complete at 23/23 verbs**, landed in PR #361
+> (`c2ec8d109`), which also migrated the implementation off the legacy API. The phase-by-phase
+> status line above and any verb counts in the sections below describe the January 2026 state
+> (Phases 1A/1B/3 only) and undercount what is implemented. The architectural explanations
+> themselves — stream slots, refcounting, rate limiting, SSRF/private-IP validation — remain
+> accurate; only the completion counts are stale.
+
 ## Stream Slot Design
 
 ### Why is Stream Slot 0 Reserved?

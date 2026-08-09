@@ -6,6 +6,31 @@
 
 ---
 
+## Status correction (2026-08-09)
+
+The tracker below is stale. It says P0a is "Not Started" with "0 / 10 globals eliminated"; that is
+wrong. Corrections of record, verified against git history:
+
+- **`currenthashtable` is thread-local**, migrated in PR #536 (`f46fa7abd`, 2026-04-15). It now
+  resolves through `hthreadglobals` (`Common/headers/processinternal.h:312`).
+- **`hashtablestack` remains a global.** Its thread-local macro is deliberately commented out at
+  `Common/headers/processinternal.h:295` because bootstrap runs before `hthreadglobals` is created
+  and needs direct access to the stack.
+- **This split is the live problem, not an oversight.** One half of the hash-table context is
+  thread-local and the other half is not; that split-brain is what produced bug **#706**. Anyone
+  resuming P0a should treat resolving it — not starting from zero — as the task.
+
+Direction of record for current work is `product/VISION_1_0.md` plus
+`product/plans/2026-08-09-phase-0-1-execution-plan.md`. The week-by-week timeline below was never
+executed as written and should be read as an original plan, not as status.
+
+Test-baseline note: the "Testing Status" table below claims a clean baseline. The current
+integration baseline is approximately **2,186 passing / 21 known failures / 47 skipped** under
+umbrella issue #620 (eval-trap unmasking, PRs #618/#619). The known-failures list currently lives
+only in `/tmp`; persisting it into the repo is scheduled in Phase 2 of the product plan.
+
+---
+
 ## Timeline Overview
 
 | Phase | Timeline | Status | Milestone |

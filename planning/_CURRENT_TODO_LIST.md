@@ -2,6 +2,23 @@
 
 Status: In Progress (Updated 2026-03-25)
 
+> ## ⚠️ Status correction (2026-08-09) — read this first
+>
+> **This work queue is stale as of 2026-03-25.** The direction of record is now:
+>
+> - `product/VISION_1_0.md` — the 1.0 vision and phase definitions
+> - `product/plans/2026-08-09-phase-0-1-execution-plan.md` — the active execution plan (Phases 0–1)
+>
+> Everything below this banner is **historical**. Take the current work queue from the product
+> execution plan, not from this file. Specific corrections:
+>
+> - **TCP verbs**: 23/23 complete (PR #361).
+> - **Phase 4 P0a**: `currenthashtable` is thread-local since PR #536 (2026-04-15); `hashtablestack`
+>   is still a global (bootstrap-ordering constraint), and that split-brain caused bug #706.
+> - **Integration test baseline**: not "0 failures". Roughly **2186 passing / 21 known failures /
+>   47 skipped** under umbrella issue #620 (eval-trap unmasking, PRs #618/#619). The known-failures
+>   list currently lives only in `/tmp`; persisting it is scheduled in Phase 2 of the product plan.
+
 ## Recently Completed Milestones
 
 ### CLI-to-UserTalk Argument Bridge - MERGED (Mar 23)
@@ -214,8 +231,14 @@ These require design/planning before implementation can proceed.
 
 Reference: `reports/coverage/verb-binding/2026-01-27-01.md`
 
-### Integration Tests: 2,017 total — 0 failures
-- 1,827 passed, 190 skipped, **0 failed** (8-worker parallel batch mode, ~37s)
+### Integration Tests: 2,017 total — 0 failures *(March 2026 snapshot — superseded)*
+
+**Corrected 2026-08-09**: current baseline is approximately **2,186 passing / 21 known failures /
+47 skipped** under umbrella issue #620 (eval-trap unmasking, PRs #618/#619). The known-failures
+baseline list lives only in `/tmp` today; persisting it is scheduled in Phase 2 of
+`product/plans/2026-08-09-phase-0-1-execution-plan.md`.
+
+- 1,827 passed, 190 skipped, 0 failed (8-worker parallel batch mode, ~37s)
 - +66 tests added Mar 13-25 (PRs #481, #483-#485): protocol ODB, persistence, webserver, error recovery, concurrency
 - Fixed from 755 failures (single-worker) via PRs #428-#433, #468
 
@@ -478,7 +501,8 @@ See planning/_STATUS_ARCHIVE.md for:
 - **Current focus**: CLI extensibility, distribution workflow, test gap coverage, Manila testing
 - **Planning complete**: Full GUI specs documented (architecture, protocol, all editors)
 - **Verb coverage**: 68% (482/710) - all core processors complete
-- **Test health**: 2,017 integration tests — **0 failures** (8-worker parallel, ~37s)
+- **Test health** *(corrected 2026-08-09)*: ~2,186 passing / 21 known failures / 47 skipped under
+  issue #620. The March figure below ("2,017 tests, 0 failures") is a historical snapshot.
 - **Latest release**: v1.0.0-alpha.7 (February 16, 2026)
 - **Compiler warnings**: Zero (fully eliminated)
 

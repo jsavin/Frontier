@@ -1,7 +1,24 @@
-# Modernization Decision Log
+# Modernization Decision Log — ABANDONED
+
+> ## ⚠️ ABANDONED (marked 2026-08-09) — do not use this document
+>
+> This decision log was never adopted and is **not** the project's decision record. Two concrete
+> problems make it actively misleading:
+>
+> 1. It instructs contributors to add ADRs under `planning/adr/` — **that directory does not
+>    exist.** The real ADRs live in `planning/architectural_decision_records/`.
+> 2. Its numbering (ADR 0003–0010) **conflicts** with the real ADR sequence. The "ADR 0009" and
+>    "ADR 0010" named below are unrelated to the actual ADR-009 and ADR-010.
+>
+> **Go here instead:** `planning/architectural_decision_records/README.md` — the live index,
+> currently covering ADR-001 through ADR-017.
+>
+> The content below is retained only as a historical record of which topics were once flagged as
+> needing decisions. Do not cite its numbering, statuses, or paths.
 
 Status
-- State: In Progress
+- State: ABANDONED (superseded by `planning/architectural_decision_records/`)
+- Historical state: In Progress
 - Phase: Multi-Phase
 - Last Updated: 2025-11-23
 - Owner: Codex

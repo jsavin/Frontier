@@ -6,6 +6,28 @@
 
 ---
 
+## Status correction (2026-08-09)
+
+P0a is **partially landed**, not unstarted. The hash-table context work listed in "Scope" below has
+already moved, and it moved only halfway:
+
+- **`currenthashtable` — DONE.** Migrated to thread-local storage in PR #536 (`f46fa7abd`,
+  2026-04-15); the accessor macro lives at `Common/headers/processinternal.h:312`.
+- **`hashtablestack` — STILL GLOBAL.** Its thread-local macro is commented out at
+  `Common/headers/processinternal.h:295`. This is a deliberate constraint, not a missed step:
+  bootstrap runs before `hthreadglobals` exists and requires direct access to the stack.
+- **`hmagictable`** — unchanged from the original scope.
+
+**Why this matters:** the resulting split-brain — half the hash-table context thread-local, half of
+it global — is the direct cause of bug **#706**. Whoever picks P0a back up is resolving that
+bootstrap-ordering constraint, not starting a fresh migration. Treat the "Scope" and week-by-week
+sections below as the original plan rather than as current status.
+
+Direction of record for current work: `product/VISION_1_0.md` and
+`product/plans/2026-08-09-phase-0-1-execution-plan.md`.
+
+---
+
 ## Scope
 
 **What We're Fixing**: 30 critical globals that create race conditions

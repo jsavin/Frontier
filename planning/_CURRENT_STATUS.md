@@ -2,9 +2,29 @@
 
 Last Updated: 2026-03-25
 
+> ## ⚠️ Status correction (2026-08-09) — read this first
+>
+> **This document is stale as of 2026-03-25.** The direction of record is now:
+>
+> - `product/VISION_1_0.md` — the 1.0 vision and phase definitions
+> - `product/plans/2026-08-09-phase-0-1-execution-plan.md` — the active execution plan (Phases 0–1)
+>
+> Everything below this banner is **historical** — a snapshot of March 2026 that has since been
+> overtaken by merged work. Specific corrections applied inline below:
+>
+> - **TCP verbs**: 23/23 complete (PR #361), not 22 total with 13 done.
+> - **Phase 4 P0a**: not "queued" — `currenthashtable` became thread-local in PR #536 (2026-04-15).
+>   `hashtablestack` remains a global (bootstrap-ordering constraint); this split-brain caused bug #706.
+> - **Integration test baseline**: not "0 failures". Current baseline is roughly **2186 passing /
+>   21 known failures / 47 skipped** under umbrella issue #620 (eval-trap unmasking, PRs #618/#619).
+>   The known-failures list currently lives only in `/tmp` — persisting it is scheduled in Phase 2
+>   of the product execution plan.
+>
+> Do not treat the "Next Steps" section below as the current work queue.
+
 ## Current Focus: CLI Extensibility, Distribution Workflow & Test Gap Coverage
 
-**Status**: Integration tests at **0 failures** (2,017 tests, 8-worker parallel execution in ~37s). 302 unit tests. CLI arguments bridge to UserTalk via `system.environment.args`. Clean Virgin.root with `make clean-root` target. PSTRING compile-time validation active. ODB script editing workflow established via protocol.
+**Status** *(historical, 2026-03-25)*: Integration tests reported **0 failures** at the time (2,017 tests, 8-worker parallel execution in ~37s) — see the correction banner above for the current baseline. 302 unit tests. CLI arguments bridge to UserTalk via `system.environment.args`. Clean Virgin.root with `make clean-root` target. PSTRING compile-time validation active. ODB script editing workflow established via protocol.
 
 **Latest Release**: **v1.0.0-alpha.7** (February 16, 2026)
 
@@ -198,10 +218,18 @@ Last Updated: 2026-03-25
 Reference: `reports/coverage/verb-binding/2026-01-27-01.md`
 
 ### Integration Test Status
-- **Current**: 2,017 tests total
+
+**Corrected 2026-08-09** — the current baseline is approximately **2,186 passing / 21 known
+failures / 47 skipped** under umbrella issue #620 (eval-trap unmasking, PRs #618/#619). The
+known-failures baseline list currently lives only in `/tmp`; persisting it into the repo is
+scheduled in Phase 2 of `product/plans/2026-08-09-phase-0-1-execution-plan.md`.
+
+Historical March 2026 snapshot:
+
+- **Total**: 2,017 tests
 - **Passed**: 1,827 (was 1,761)
 - **Skipped**: 190
-- **Failed**: **0**
+- **Failed**: 0 *(no longer true — see correction above)*
 - Execution: 8 workers, parallel batch mode, ~37 seconds
 - NDJSON protocol mode eliminates ~210ms startup cost per test
 
@@ -241,10 +269,13 @@ All tests running via:
 - Third-party UI connection support
 - Reference: planning/gui/ARCHITECTURE.md, planning/gui/PROTOCOL.md
 
-**Phase 4 P0a: Global State Elimination** (Queued - Launch Blocking):
-- Hash table context migration
-- Parser state migration
-- Control flow & error state cleanup
+**Phase 4 P0a: Global State Elimination** (Partially landed - Launch Blocking):
+- Hash table context migration — **partially complete**: `currenthashtable` is thread-local as of
+  PR #536 (2026-04-15); `hashtablestack` remains a global because bootstrap runs before
+  `hthreadglobals` exists (macro commented out at `Common/headers/processinternal.h:295`). This
+  split-brain caused bug #706.
+- Parser state migration — not started
+- Control flow & error state cleanup — not started
 - Reference: planning/phase4/INDEX.md, planning/phase4/p0a-critical-thread-safety/README.md
 
 **REPL Enhancements** (Future):

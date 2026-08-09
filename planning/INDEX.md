@@ -6,6 +6,25 @@
 
 **Keep This Synced With**: `_CURRENT_STATUS.md` and `_CURRENT_TODO_LIST.md`
 
+> ## ⚠️ Status correction (2026-08-09) — read this first
+>
+> **The direction of record is no longer this file.** Start here instead:
+>
+> - `product/VISION_1_0.md` — the 1.0 vision and phase definitions
+> - `product/plans/2026-08-09-phase-0-1-execution-plan.md` — the active execution plan (Phases 0–1)
+>
+> This index and its two companions (`_CURRENT_STATUS.md`, `_CURRENT_TODO_LIST.md`) are stale as of
+> 2026-03-25 and are kept for **historical navigation**. Corrections that matter most:
+>
+> - **TCP**: 23/23 verbs complete (PR #361) — the "13 complete, Phase 2 next" text below is obsolete.
+> - **Phase 4 P0a**: `currenthashtable` is thread-local since PR #536 (2026-04-15); `hashtablestack`
+>   remains a global (bootstrap-ordering constraint). The split-brain caused bug #706.
+> - **ADRs**: the index runs through ADR-017, not ADR-011.
+> - **Integration tests**: ~2186 passing / 21 known failures / 47 skipped under umbrella issue #620
+>   (eval-trap unmasking, PRs #618/#619) — not "0 failures". The known-failures baseline list lives
+>   only in `/tmp` today; persisting it is scheduled in Phase 2 of the product plan.
+> - `planning/DECISIONS.md` is **abandoned** — use `planning/architectural_decision_records/`.
+
 ## Current Focus (Mar 2026)
 
 **CLI Extensibility & Distribution** (ACTIVE)
@@ -31,7 +50,7 @@ Related Docs
 - planning/phase_overview.md
 - planning/Frontier_Refactoring_Plan.md
 - planning/phase_gates.md
-- planning/DECISIONS.md
+- planning/DECISIONS.md *(ABANDONED — use `planning/architectural_decision_records/` instead)*
 - planning/phase3/carbon_migration/README.md *(current plan)*
 
 Change Log
@@ -44,8 +63,8 @@ Change Log
 ### Phase 4: Threading & Networking (Current Priority)
 
 **Networking** - `planning/phase4/networking/`
-- ✅ TCP Phase 1A/1B/3 complete (13 verbs, PRs #327, #329, #330)
-- 🚀 TCP Phase 2 next (Buffered I/O, 4 verbs) - HTTP client milestone
+- ✅ **TCP complete: 23/23 verbs (PR #361)** — corrected 2026-08-09; all phases landed
+- ✅ TCP Phase 1A/1B/3 complete (PRs #327, #329, #330)
 - [Networking INDEX](phase4/networking/INDEX.md) - Phase status and execution plan
 - [TCP Verbs Analysis](phase4/networking/TCP_VERBS_ANALYSIS.md) - Complete API reference
 - [Implementation Plan](phase4/networking/IMPLEMENTATION_PLAN.md) - Phased execution strategy
@@ -53,7 +72,8 @@ Change Log
 **Threading & Global State** - `planning/phase4/threading/`
 - ✅ Thread Registry complete (PR #317)
 - ✅ Deterministic testing foundation complete (PR #318, Phase 1)
-- ⏸️ P0a (Hash table context migration) queued for weeks 7-9
+- ◐ P0a (Hash table context migration) **partially landed** — `currenthashtable` thread-local since
+  PR #536 (2026-04-15); `hashtablestack` still global (bootstrap constraint); caused bug #706
 - [Threading INDEX](phase4/threading/README.md) - 5-phase roadmap
 - [P0a Critical Thread Safety](phase4/p0a-critical-thread-safety/README.md) - Launch blocking work
 
@@ -136,9 +156,15 @@ The archive holds completed/retired material for historical reference.
 
 ### Architecture Decision Records (ADRs)
 - **ADR Index**: `planning/architectural_decision_records/README.md`
-- **Recent ADRs**:
-  - ADR-010: Deterministic Thread Testing (3-phase roadmap)
+- **Recent ADRs** *(updated 2026-08-09 — the record now runs through ADR-017)*:
+  - ADR-017: Filesystem-Canonical ODB Sources (.root as build artifact)
+  - ADR-016: Headless Projection of the Frontier Menu System
+  - ADR-015: Verb Registration Consolidation
+  - ADR-014: GIL-Based Cooperative Threading
+  - ADR-013: REPL Event Loop Architecture
+  - ADR-012: Main Thread Dispatch Queue (proposed)
   - ADR-011: Search Path Priority in Name Resolution
+  - ADR-010: Deterministic Thread Testing (3-phase roadmap)
   - ADR-005: Parameter State Thread-Safety (thread-local pattern)
 - **Patterns**: Explicit Context Passing (`architectural_decision_records/explicit-context-passing/`)
 
