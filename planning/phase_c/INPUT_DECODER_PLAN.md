@@ -2,6 +2,39 @@
 
 **Date**: 2026-06-29
 **Status**: ACTIVE -- feeds /fleet execution
+
+**Milestone status** (updated 2026-08-09):
+
+| Milestone | Status |
+|-----------|--------|
+| M1 (harness + stub) | Merged to develop (PR #816) |
+| M2 (CSI cursor keys + modifiers + ESC) | Merged to develop (PR #817) |
+| M3 (SGR mouse + X10 + burst-read) | Merged to develop (PR #818) |
+| M4 (bracketed paste + BOXEN_EV_PASTE) | Merged to develop (PR #819) |
+| M5 (Kitty enable + CSI-u decode) | Merged to develop (PR #820) |
+| M6 (cutover) | Complete on branch `phase-c-m6-cutover` (1abd73962); PR pending |
+| M7 (mouse policy + /mouse) | Complete on branch `phase-c-m7-mouse-policy` (stacked on M6); PR pending |
+
+M7 implementation decisions (deferred-to-implementation items from section 7):
+- Backend plumbing: the vtable extension was chosen (12th slot `set_mouse`,
+  the "preferred for testability" option) over a tb2-specific accessor; the
+  mock backend records calls so policy tests are behavioral.  This
+  deliberately supersedes section 1.2's "vtable shape unchanged" line, which
+  was scoped to the decoder core work (M1-M6).
+- `/mouse` lives as a kernel intercept in `boxen_repl.c` (the `/edit`
+  pattern), NOT as a `repl.c` menubar registration: slash dispatch became
+  menubar-driven after this plan was written, and mouse mode is a property
+  of the boxen terminal session, not a scriptable verb.  It is also live in
+  test builds, which is how `tests/boxen_repl_tests.c` drives it.  It is
+  intentionally NOT added to `repl_slash_commands_list` (completion), since
+  the linenoise REPL has no mouse mode to toggle (same treatment as /edit).
+- Preference persistence (5.4): standalone `~/.frontier_mouse` dotfile
+  ("on"/"off"), written only on explicit toggle; the shared line-oriented
+  history file must not grow a config section while linenoise still reads it.
+- The decoder now restores native state on destroy: if mouse reporting is
+  enabled at teardown, `input_decoder_destroy` writes the disable triplet
+  (the "future milestone" write anticipated by the M6 shutdown-ordering
+  comments in `backend_tb2.c`).
 **Author**: JES + Claude (system-architect)
 **Scope**: Custom terminal input decoder for the boxen REPL; replaces termbox2's
   input layer while keeping termbox2's rendering layer intact.
