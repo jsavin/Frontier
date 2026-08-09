@@ -18,7 +18,7 @@ Priority order of identities (each real, in this order):
 1. The integrated box (Frontier as Frontier)
 2. The authoring environment (boxen REPL, editors, debugger)
 3. Manila reborn (browser-based publishing)
-4. AI-scriptable personal server (protocol mode, agent-drivable debugger) — load-bearing infrastructure, not the headline
+4. AI-scriptable personal server (protocol mode, agent-drivable debugger) — load-bearing infrastructure, not the headline. Not the headline does not mean deferred: the **agent-drivable debugger is P0 and lands before Manila**, and **protocol mode is its prerequisite** — as well as the prerequisite for treating the ODB as a source-code object (script editing, sync, and inspection through the protocol rather than hand-edited exports)
 
 **Users, in concentric rings**: Jake (ring zero) → Dave Winer → old Frontier hands (Ted Howard, Rogers Cadenhead, Oliver Wrede, ex-UserLand orbit) → curious developers → writers. Every ring gets a door into the box; the install-to-aha path is optimized inward-out.
 
@@ -55,29 +55,37 @@ No release criteria existed before this document (last tag: v1.0.0-alpha.7, 2026
 - Status-refresh pass on the actively misleading planning docs (`_CURRENT_STATUS.md`, `_CURRENT_TODO_LIST.md`, `INDEX.md`, `phase4/PROGRESS.md`, `phase4/p0a-critical-thread-safety/README.md`, ADR `README.md`) and correct the Phase A/B status table in `MANILA_MAINRESPONDER_E2E.md`. For an agent-driven project, stale ground-truth docs are launch-blocking hygiene.
 - Mirror frontier.userland.com, docserver.userland.com, and manila.userland.com locally — still live in 2026, HTTP-only, single-homed, one hosting lapse from gone.
 
-### Phase 1 — Web stack revival
+### Phase 1 — Protocol + agent-drivable debugger (P0, before any Manila work)
+
+Protocol mode is the prerequisite layer for everything in this phase and for ODB-as-source-code workflows generally.
+
+- Harden and complete `--protocol` as the stable machine interface: coverage and contract tests for the ops agents rely on (eval, odb get/set, debug/getSource, script editing), documented error semantics, and persistence semantics that cannot silently lose mutations (the in-memory-only `odb/set` gap is currently untestable — make it testable and explicit).
+- Agent-driven debugging end-to-end over the protocol: attach, breakpoints, step, stack/locals inspection, watch evaluation — verified by an agent actually driving a debug session, not just by unit tests. Includes fixing debugger attach for scripts running on `thread.callScript` threads (currently invisible to the debugger), which is the known blocker for debugging menu-launched and background code.
+- ODB as a source-code object: the protocol + `--ut-sync-dir` path is the supported way to read, edit, and reconcile scripts (feeds ADR-017's filesystem-canonical direction); close the known sync caveats (mtime last-write-wins, silent broken-`.ut` import).
+
+### Phase 2 — Web stack revival
 
 - Triage umbrella issue #620: un-skip the 47 affected tests (all webserver/inetd/mainResponder E2E among them) and learn what actually still works. The March 2026 "HTTP pipeline works" milestone rested partly on a broken eval-trap assertion; current state is unknown.
 - Fix the two known accept-callback kernel bugs: (a) server-side `writeStream` fires before the accepted stream is writable; (b) server closes the stream before the client polls (needs stream event notification).
 - Make the integration-test baseline reproducible from a fresh clone (the accepted 21-known-failures list currently lives in `/tmp`).
 
-### Phase 2 — Manila end-to-end
+### Phase 3 — Manila end-to-end
 
 - Phase C of `MANILA_MAINRESPONDER_E2E.md`: inetd + mainResponder integration.
 - Startup stabilization (`planning/phase4/STARTUP_STABILIZATION_PLAN.md`): first run → mainResponder + Manila install → HTTP server running → setupFrontier page. Known risks already enumerated there (betty.init, pikeRenderer.init, wp.newTextObject headless).
 - Phase D: headless Manila installation + first served page (never attempted; human-in-loop).
 
-### Phase 3 — Linux + Docker
+### Phase 4 — Linux + Docker
 
 - Port the runtime to Linux (endianness settled big-endian; the clang/Mach-O macOS-isms are bounded), add runtime Linux CI (today only boxen has an ubuntu job), ship the Docker image.
 
-### Phase 4 — Hardening
+### Phase 5 — Hardening
 
 - Resolve #88 (networking / HTTP security model) per the "hardened core, proxied edge" posture.
 - Manila password hashing + sessions; bundled Caddy config.
 - Fix the data-loss trio: #264 (db.close+db.open segfault), #270 (duplicate-open guard), #271 (auto-migration TOCTOU race).
 
-### Phase 5 — Proof and ship
+### Phase 6 — Proof and ship
 
 - Phase E concurrent-load safety audit (human-led) — the genuine unknown: GIL-era integration seams under real load.
 - Full-circle demo on both platforms; deployment proof on Jake's hardware; tag v1.0.0.
