@@ -104,6 +104,13 @@ extern boolean opedit (hdlexternalvariable, hdlwindowinfo, ptrfilespec, bigstrin
 
 extern boolean opvaltoscript (tyvaluerecord, hdloutlinerecord *);
 
+#ifdef FRONTIER_HEADLESS
+/* Compile-check outline source text (kernel MacRoman/CR form) without
+ * touching any ODB node; the compile error lands in the bigstring on
+ * failure. Backs the ut-sync broken-.ut rejection (unit 1.5). */
+extern boolean opverbscriptcompiles (const unsigned char *, long, bigstring);
+#endif
+
 extern boolean opverbgetheadstring (hdlheadrecord, bigstring);
 
 extern boolean opverbclose (void);

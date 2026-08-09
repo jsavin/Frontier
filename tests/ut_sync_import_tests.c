@@ -43,6 +43,24 @@
 #define MAC_TO_UNIX_EPOCH_OFFSET ((int64_t)2082844800LL)
 
 /*
+ * Legacy-signature wrappers (unit 1.5 added sync-state outs to
+ * ut_import_check and a conflict out to ut_export_script). The pre-existing
+ * tests exercise mtime/decanonicalize behavior and pass NULL/ignore for the
+ * new outputs; the new sync-state tests below use the full signatures.
+ */
+static int import_check6(const char *dotted, const char *base, int64_t odb,
+                         unsigned char **out, size_t *outlen, int64_t *mt) {
+	return ut_import_check(dotted, base, odb, out, outlen, mt,
+	                       NULL, NULL, NULL, NULL);
+}
+
+static int export_script5(const unsigned char *raw, size_t rawlen,
+                          const char *dotted, const char *sync_dir,
+                          int64_t mac_mtime) {
+	return ut_export_script(raw, rawlen, dotted, sync_dir, mac_mtime, NULL);
+}
+
+/*
  * Make a mkdtemp() scratch dir under $TMPDIR (or /tmp).
  * Template name: ut_sync_import_XXXXXX
  * Returns malloc'd path (caller frees and rmrf's).
@@ -164,7 +182,7 @@ static void test_newer_ut_imports(void) {
 	size_t outlen = 0;
 	int64_t got_ut_mac_mtime = 0;
 
-	int rc = ut_import_check("test.hello", tmpdir,
+	int rc = import_check6("test.hello", tmpdir,
 	                         odb_mac_mtime, &out, &outlen, &got_ut_mac_mtime);
 	assert(rc == 1);
 	assert(out != NULL);
@@ -235,13 +253,13 @@ static void test_older_ut_no_import(void) {
 	size_t outlen = 0;
 	int64_t got_ut_mac_mtime = 0;
 
-	int rc = ut_import_check("a.b", tmpdir,
+	int rc = import_check6("a.b", tmpdir,
 	                         odb_mac_mtime, &out, &outlen, &got_ut_mac_mtime);
 	assert(rc == 0);
 	assert(out == NULL);
 
 	/* Also check strictly older (ODB mtime > .ut mtime). */
-	rc = ut_import_check("a.b", tmpdir,
+	rc = import_check6("a.b", tmpdir,
 	                     ut_mac_mtime + 1, &out, &outlen, &got_ut_mac_mtime);
 	assert(rc == 0);
 	assert(out == NULL);
@@ -261,7 +279,7 @@ static void test_missing_ut_returns_0(void) {
 	size_t outlen = 0;
 	int64_t got_ut_mac_mtime = 0;
 
-	int rc = ut_import_check("no.such.script", tmpdir,
+	int rc = import_check6("no.such.script", tmpdir,
 	                         (int64_t)0, &out, &outlen, &got_ut_mac_mtime);
 	assert(rc == 0);
 	assert(out == NULL);
@@ -296,7 +314,7 @@ static void test_non_macroman_returns_0(void) {
 	size_t outlen = 0;
 	int64_t got_ut_mac_mtime = 0;
 
-	int rc = ut_import_check("emoji.script", tmpdir,
+	int rc = import_check6("emoji.script", tmpdir,
 	                         odb_mac_mtime, &out, &outlen, &got_ut_mac_mtime);
 	assert(rc == 0);
 	assert(out == NULL);
@@ -318,13 +336,13 @@ static void test_unsafe_dotted_path_returns_0(void) {
 	int64_t got_ut_mac_mtime = 0;
 
 	/* ".." segment is unsafe */
-	int rc = ut_import_check("a..b", tmpdir,
+	int rc = import_check6("a..b", tmpdir,
 	                         (int64_t)0, &out, &outlen, &got_ut_mac_mtime);
 	assert(rc == 0);
 	assert(out == NULL);
 
 	/* Empty dotted path */
-	rc = ut_import_check("", tmpdir,
+	rc = import_check6("", tmpdir,
 	                     (int64_t)0, &out, &outlen, &got_ut_mac_mtime);
 	assert(rc == 0);
 	assert(out == NULL);
@@ -366,7 +384,7 @@ static void test_roundtrip(void) {
 	time_t unix_mtime_export = (time_t)(mac_mtime_export - MAC_TO_UNIX_EPOCH_OFFSET);
 
 	/* Export the script to .ut */
-	int exported = ut_export_script(raw, rawlen, "round.trip", tmpdir,
+	int exported = export_script5(raw, rawlen, "round.trip", tmpdir,
 	                                mac_mtime_export);
 	assert(exported == 1);
 
@@ -383,7 +401,7 @@ static void test_roundtrip(void) {
 	size_t outlen = 0;
 	int64_t got_ut_mac_mtime = 0;
 
-	int rc = ut_import_check("round.trip", tmpdir,
+	int rc = import_check6("round.trip", tmpdir,
 	                         odb_mac_mtime, &out, &outlen, &got_ut_mac_mtime);
 	assert(rc == 1);
 	assert(out != NULL);
@@ -417,6 +435,114 @@ static void test_roundtrip(void) {
 }
 
 /* ----------------------------------------------------------------------- */
+/* Unit 1.5: content hash + sync-state manifest                             */
+/* ----------------------------------------------------------------------- */
+
+/*
+ * test_content_hash - trailing-newline insensitivity and change detection.
+ */
+static void test_content_hash(void) {
+	const unsigned char a1[] = "x = 1";
+	const unsigned char a2[] = "x = 1\n";
+	const unsigned char a3[] = "x = 1\r\n";
+	const unsigned char b[]  = "x = 2";
+
+	uint64_t h1 = ut_content_hash(a1, sizeof(a1) - 1);
+	uint64_t h2 = ut_content_hash(a2, sizeof(a2) - 1);
+	uint64_t h3 = ut_content_hash(a3, sizeof(a3) - 1);
+	uint64_t hb = ut_content_hash(b, sizeof(b) - 1);
+
+	assert(h1 == h2);
+	assert(h1 == h3);
+	assert(h1 != hb);
+	assert(ut_content_hash(NULL, 0) == ut_content_hash((const unsigned char *)"\n", 1));
+}
+
+/*
+ * test_sync_state_roundtrip - record, lookup, replace, and miss behavior of
+ * the .ut-sync-state manifest.
+ */
+static void test_sync_state_roundtrip(void) {
+	char *tmpdir = make_tmpdir();
+	assert(tmpdir != NULL);
+
+	uint64_t ut_h = 0, odb_h = 0;
+
+	/* Missing manifest: lookup misses. */
+	assert(ut_sync_state_lookup(tmpdir, "a.b", &ut_h, &odb_h) == 0);
+
+	/* Record two entries (one with a space in the key, which ODB allows). */
+	assert(ut_sync_state_record(tmpdir, "a.b", 0x1111, 0x2222) == 1);
+	assert(ut_sync_state_record(tmpdir, "a.spaced key", 0x3333, 0x4444) == 1);
+
+	assert(ut_sync_state_lookup(tmpdir, "a.b", &ut_h, &odb_h) == 1);
+	assert(ut_h == 0x1111 && odb_h == 0x2222);
+	assert(ut_sync_state_lookup(tmpdir, "a.spaced key", &ut_h, &odb_h) == 1);
+	assert(ut_h == 0x3333 && odb_h == 0x4444);
+
+	/* Replace an entry; the other must survive. */
+	assert(ut_sync_state_record(tmpdir, "a.b", 0x5555, 0x6666) == 1);
+	assert(ut_sync_state_lookup(tmpdir, "a.b", &ut_h, &odb_h) == 1);
+	assert(ut_h == 0x5555 && odb_h == 0x6666);
+	assert(ut_sync_state_lookup(tmpdir, "a.spaced key", &ut_h, &odb_h) == 1);
+	assert(ut_h == 0x3333 && odb_h == 0x4444);
+
+	/* Different path still misses. */
+	assert(ut_sync_state_lookup(tmpdir, "a.c", &ut_h, &odb_h) == 0);
+
+	rmrf(tmpdir);
+	free(tmpdir);
+}
+
+/*
+ * test_import_meta - a full-signature import check reports the .ut hash and
+ * the recorded sync point, giving the caller everything it needs to detect
+ * a two-sided conflict before installing.
+ */
+static void test_import_meta(void) {
+	char *tmpdir = make_tmpdir();
+	assert(tmpdir != NULL);
+
+	const unsigned char raw[] = { 'x', ' ', '=', ' ', '1' };
+	int64_t mac_mtime = (int64_t)3831796800LL;
+
+	/* Export records the sync point. */
+	assert(export_script5(raw, sizeof(raw), "meta.check", tmpdir, mac_mtime) == 1);
+
+	uint64_t rec_ut = 0, rec_odb = 0;
+	assert(ut_sync_state_lookup(tmpdir, "meta.check", &rec_ut, &rec_odb) == 1);
+	assert(rec_ut == rec_odb); /* export records the written content twice */
+
+	/* Hand-edit the .ut (newer mtime, different content). */
+	char ut_path[4096];
+	snprintf(ut_path, sizeof(ut_path), "%s/meta/check.ut", tmpdir);
+	FILE *fp = fopen(ut_path, "w");
+	assert(fp != NULL);
+	fputs("x = 2\n", fp);
+	fclose(fp);
+
+	unsigned char *out = NULL;
+	size_t outlen = 0;
+	int64_t got_mt = 0;
+	uint64_t ut_hash = 0, got_rec_ut = 0, got_rec_odb = 0;
+	int have_recorded = 0;
+
+	int rc = ut_import_check("meta.check", tmpdir, mac_mtime - 1,
+	                         &out, &outlen, &got_mt,
+	                         &ut_hash, &have_recorded,
+	                         &got_rec_ut, &got_rec_odb);
+	assert(rc == 1);
+	assert(have_recorded == 1);
+	assert(got_rec_ut == rec_ut && got_rec_odb == rec_odb);
+	assert(ut_hash != rec_ut); /* the .ut side changed */
+	assert(ut_hash == ut_content_hash((const unsigned char *)"x = 2", 5));
+
+	free(out);
+	rmrf(tmpdir);
+	free(tmpdir);
+}
+
+/* ----------------------------------------------------------------------- */
 /* main                                                                     */
 /* ----------------------------------------------------------------------- */
 
@@ -428,6 +554,9 @@ int main(void) {
 	TR_RUN(test_non_macroman_returns_0);
 	TR_RUN(test_unsafe_dotted_path_returns_0);
 	TR_RUN(test_roundtrip);
+	TR_RUN(test_content_hash);
+	TR_RUN(test_sync_state_roundtrip);
+	TR_RUN(test_import_meta);
 	TR_SUMMARY();
 	return TR_EXIT_CODE();
 }

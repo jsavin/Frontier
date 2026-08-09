@@ -37,6 +37,17 @@
 
 #include "../frontier-cli/ut_sync.h"
 
+/*
+ * Legacy-signature wrapper (unit 1.5 added a conflict out-param). The
+ * pre-existing tests ignore it; the conflict-guard tests below use the full
+ * signature.
+ */
+static int export_script5(const unsigned char *raw, size_t rawlen,
+                          const char *dotted, const char *sync_dir,
+                          int64_t mac_mtime) {
+	return ut_export_script(raw, rawlen, dotted, sync_dir, mac_mtime, NULL);
+}
+
 /* ----------------------------------------------------------------------- */
 /* Helpers                                                                  */
 /* ----------------------------------------------------------------------- */
@@ -151,7 +162,7 @@ static void test_basic_export(void) {
 	 *   Mac epoch             = 1748952000 + 2082844800 = 3831796800 */
 	int64_t mac_mtime = (int64_t)3831796800LL;
 
-	int rc = ut_export_script(
+	int rc = export_script5(
 		raw, sizeof(raw),
 		"test.hello",
 		tmpdir,
@@ -206,7 +217,7 @@ static void test_deep_path_creates_dirs(void) {
 	const char *expected = "x = 1";
 	int64_t mac_mtime = (int64_t)3831796800LL;
 
-	int rc = ut_export_script(
+	int rc = export_script5(
 		raw, sizeof(raw) - 1, /* exclude NUL */
 		"system.verbs.builtins.op",
 		tmpdir,
@@ -242,8 +253,8 @@ static void test_idempotent_overwrite(void) {
 	int64_t mtime1 = (int64_t)3831796800LL;
 	int64_t mtime2 = (int64_t)3831796860LL; /* 60 seconds later */
 
-	assert(ut_export_script(raw1, sizeof(raw1) - 1, "a.b", tmpdir, mtime1) == 1);
-	assert(ut_export_script(raw2, sizeof(raw2) - 1, "a.b", tmpdir, mtime2) == 1);
+	assert(export_script5(raw1, sizeof(raw1) - 1, "a.b", tmpdir, mtime1) == 1);
+	assert(export_script5(raw2, sizeof(raw2) - 1, "a.b", tmpdir, mtime2) == 1);
 
 	char path[1024];
 	snprintf(path, sizeof(path), "%s/a/b.ut", tmpdir);
@@ -276,11 +287,11 @@ static void test_unsafe_path_rejected(void) {
 	int64_t mtime = (int64_t)3831796800LL;
 
 	/* ".." segment is rejected by ut_odb_path_to_fs */
-	int rc = ut_export_script(raw, sizeof(raw) - 1, "a..b", tmpdir, mtime);
+	int rc = export_script5(raw, sizeof(raw) - 1, "a..b", tmpdir, mtime);
 	assert(rc == 0);
 
 	/* empty dotted path */
-	rc = ut_export_script(raw, sizeof(raw) - 1, "", tmpdir, mtime);
+	rc = export_script5(raw, sizeof(raw) - 1, "", tmpdir, mtime);
 	assert(rc == 0);
 
 	rmrf(tmpdir);
@@ -296,7 +307,7 @@ static void test_empty_script(void) {
 	assert(tmpdir != NULL);
 
 	int64_t mtime = (int64_t)3831796800LL;
-	int rc = ut_export_script(
+	int rc = export_script5(
 		(const unsigned char *)"", 0,
 		"empty.script",
 		tmpdir,
@@ -317,6 +328,77 @@ static void test_empty_script(void) {
 	free(tmpdir);
 }
 
+/*
+ * test_conflict_guard - unit 1.5: when sync state is recorded and the .ut on
+ * disk was edited to something that matches NEITHER the recorded sync point
+ * NOR the content about to be written, the export must refuse (conflict out
+ * set, file untouched). Same-content and no-state cases keep exporting.
+ */
+static void test_conflict_guard(void) {
+	char *tmpdir = make_tmpdir();
+	assert(tmpdir != NULL);
+
+	const unsigned char v1[] = { 'x', ' ', '=', ' ', '1' };
+	const unsigned char v2[] = { 'x', ' ', '=', ' ', '2' };
+	int64_t mtime = (int64_t)3831796800LL;
+	char path[1024];
+	snprintf(path, sizeof(path), "%s/con/flict.ut", tmpdir);
+
+	/* Sync point: export v1 (records state). */
+	assert(export_script5(v1, sizeof(v1), "con.flict", tmpdir, mtime) == 1);
+
+	/* Hand-edit the .ut to a THIRD content. */
+	FILE *fp = fopen(path, "w");
+	assert(fp != NULL);
+	fputs("x = 3\n", fp);
+	fclose(fp);
+
+	/* Export v2 must refuse: disk differs from both the sync point and v2. */
+	int conflict = 0;
+	int rc = ut_export_script(v2, sizeof(v2), "con.flict", tmpdir,
+	                          mtime + 10, &conflict);
+	assert(rc == 0);
+	assert(conflict == 1);
+
+	unsigned char *got = NULL;
+	size_t got_len = 0;
+	assert(read_file(path, &got, &got_len) == 1);
+	assert(got_len == 6 && memcmp(got, "x = 3\n", 6) == 0); /* untouched */
+	free(got);
+
+	/* Same-content case: exporting content whose canonical form equals the
+	 * on-disk edit is not a conflict (the sides agree). */
+	conflict = 0;
+	const unsigned char v3[] = { 'x', ' ', '=', ' ', '3' };
+	rc = ut_export_script(v3, sizeof(v3), "con.flict", tmpdir,
+	                      mtime + 20, &conflict);
+	assert(rc == 1);
+	assert(conflict == 0);
+
+	/* No-state (legacy) case: remove the manifest; a hand-edited .ut is
+	 * overwritten as before the manifest existed. */
+	char state[1024];
+	snprintf(state, sizeof(state), "%s/.ut-sync-state", tmpdir);
+	assert(unlink(state) == 0);
+	fp = fopen(path, "w");
+	assert(fp != NULL);
+	fputs("x = 9\n", fp);
+	fclose(fp);
+	conflict = 0;
+	rc = ut_export_script(v2, sizeof(v2), "con.flict", tmpdir,
+	                      mtime + 30, &conflict);
+	assert(rc == 1);
+	assert(conflict == 0);
+	got = NULL;
+	got_len = 0;
+	assert(read_file(path, &got, &got_len) == 1);
+	assert(got_len == 5 && memcmp(got, "x = 2", 5) == 0);
+	free(got);
+
+	rmrf(tmpdir);
+	free(tmpdir);
+}
+
 /* ----------------------------------------------------------------------- */
 /* main                                                                     */
 /* ----------------------------------------------------------------------- */
@@ -328,6 +410,7 @@ int main(void) {
 	TR_RUN(test_idempotent_overwrite);
 	TR_RUN(test_unsafe_path_rejected);
 	TR_RUN(test_empty_script);
+	TR_RUN(test_conflict_guard);
 	TR_SUMMARY();
 	return TR_EXIT_CODE();
 }

@@ -763,6 +763,155 @@ static int ut_build_dotted_path_from_hv(hdlexternalvariable hv,
  */
 #define UT_HOTPATH_CHECK_INTERVAL_SECS ((time_t)1)
 
+/*
+ * opverbscriptcompiles - compile-check outline source text WITHOUT touching
+ * any existing ODB node (unit 1.5, broken-.ut import rejection).
+ *
+ * Builds a throwaway script external, installs the text through the same
+ * optexttooutline path the importer uses, regenerates the compilable lang
+ * text, and runs it through scriptbuildtree -- the exact chain the runtime
+ * uses to compile an installed script (see headless_scriptgetcode /
+ * scriptgetcode). So "this returns true" == "the installed script would
+ * compile".
+ *
+ * src is the kernel in-memory form (MacRoman, CR line endings, 0xC7 comment
+ * markers) -- exactly what ut_decanonicalize_outline_text produces. On
+ * failure the compile error message is left in bserror (never empty). The
+ * scratch external is disposed either way; no ODB state is modified.
+ *
+ * Mirrors the issue #618 pattern: a scan-level error (illegal token) sets
+ * fllangerror without failing yyparse, so a true return from scriptbuildtree
+ * with fllangerror set is still a failed compile. fllangerror is cleared
+ * before returning so a rejected import cannot poison the caller's error
+ * state.
+ */
+boolean opverbscriptcompiles (const unsigned char *src, long len, bigstring bserror) {
+
+	tyvaluerecord vscript;
+	hdloutlinerecord ho = nil;
+	hdlheadrecord hsummit = nil;
+	Handle htext = nil;
+	Handle hlangtext = nil;
+	hdltreenode hcode = nil;
+	long signature = 0;
+	boolean fl = false;
+	langerrormessagecallback savecallback;
+	ptrvoid saverefcon;
+
+	setemptystring (bserror);
+
+	if (src == nil || len < 0)
+		return (false);
+
+	if (!newhandle (len, &htext))
+		return (false);
+
+	moveleft ((ptrvoid) src, *htext, len);
+
+	if (!langexternalnewvalue (idscriptprocessor, nil, &vscript)) {
+		disposehandle (htext);
+		return (false);
+	}
+
+	opvaltoscript (vscript, &ho);
+
+	if (ho == nil)
+		goto exit;
+
+	if (!optexttooutline (ho, htext, &hsummit)) /*copies htext internally*/
+		goto exit;
+
+	disposehandle (htext);
+
+	htext = nil;
+
+	opsetsummit (ho, hsummit);
+
+	opsetctexpanded (ho);
+
+	if (!opverbgetlangtext ((hdlexternalvariable) vscript.data.externalvalue,
+	                        false, &hlangtext, &signature))
+		goto exit;
+
+	langtraperrors (bserror, &savecallback, &saverefcon);
+
+	fl = scriptbuildtree (hlangtext, signature, &hcode); /*disposes hlangtext*/
+
+	if (fl && fllangerror) { /*scan-level error: see issue #618*/
+
+		fl = false;
+
+		if (hcode != nil)
+			langdisposetree (hcode);
+
+		hcode = nil;
+		}
+
+	languntraperrors (savecallback, saverefcon, !fl);
+
+	fllangerror = false;
+
+	if (fl && hcode != nil)
+		langdisposetree (hcode); /*only wanted the verdict, not the tree*/
+
+exit:
+	if (htext != nil)
+		disposehandle (htext);
+
+	disposevaluerecord (vscript, true);
+
+	return (fl);
+	} /*opverbscriptcompiles*/
+
+
+/*
+ * ut_odb_canonical_hash - hash the CURRENT ODB script content in .ut
+ * canonical form, for comparison against the recorded sync-state hashes
+ * (unit 1.5 two-sided-conflict detection).
+ *
+ * Uses the same text source as the export walk (opverbgetlangtext with
+ * flpretty=true) and the same canonicalizer as ut_export_script, so an
+ * unchanged script hashes identically to what the last export recorded.
+ *
+ * The ut_sync.c helpers are weak for the same reason ut_import_check is:
+ * unit-test binaries that link opverbs.c without ut_sync.c must skip the
+ * whole feature (they also have no sync dir, so the hook never gets here).
+ */
+static boolean ut_odb_canonical_hash (hdlexternalvariable hv, uint64_t *hash_out) {
+
+	extern int ut_canonicalize_outline_text (const unsigned char *, size_t,
+	                                         unsigned char **, size_t *) __attribute__((weak));
+	extern uint64_t ut_content_hash (const unsigned char *, size_t) __attribute__((weak));
+
+	Handle htext = nil;
+	long signature = 0;
+	unsigned char *canon = NULL;
+	size_t canon_len = 0;
+	boolean fl = false;
+
+	if (ut_canonicalize_outline_text == NULL || ut_content_hash == NULL)
+		return (false);
+
+	if (!opverbgetlangtext (hv, true, &htext, &signature))
+		return (false);
+
+	if (ut_canonicalize_outline_text ((const unsigned char *) *htext,
+	                                  (size_t) gethandlesize (htext),
+	                                  &canon, &canon_len)) {
+
+		*hash_out = ut_content_hash (canon, canon_len);
+
+		free (canon);
+
+		fl = true;
+		}
+
+	disposehandle (htext);
+
+	return (fl);
+	} /*ut_odb_canonical_hash*/
+
+
 static int ut_hotpath_check_due(void) {
 	static time_t last_check = 0;
 	time_t now = time(NULL);
@@ -782,7 +931,13 @@ static void ut_import_hook(hdloutlinevariable hv, hdloutlinerecord ho,
 	extern int ut_import_check(const char *dotted_path, const char *sync_base,
 	                           int64_t odb_mac_mtime,
 	                           unsigned char **out, size_t *outlen,
-	                           int64_t *ut_mac_mtime) __attribute__((weak));
+	                           int64_t *ut_mac_mtime,
+	                           uint64_t *ut_hash_out,
+	                           int *have_recorded_out,
+	                           uint64_t *rec_ut_hash_out,
+	                           uint64_t *rec_odb_hash_out) __attribute__((weak));
+	extern int ut_sync_state_record(const char *sync_base, const char *dotted_path,
+	                                uint64_t ut_hash, uint64_t odb_hash) __attribute__((weak));
 
 	if (ho == nil)
 		return;
@@ -831,11 +986,77 @@ static void ut_import_hook(hdloutlinevariable hv, hdloutlinerecord ho,
 	unsigned char *decan_buf = NULL;
 	size_t decan_len = 0;
 	int64_t ut_mac_mtime = 0;
+	uint64_t ut_hash = 0;
+	int have_recorded = 0;
+	uint64_t rec_ut_hash = 0;
+	uint64_t rec_odb_hash = 0;
 
 	if (ut_import_check == NULL ||
 	    !ut_import_check(dotted_path, sync_base, odb_mac_mtime,
-	                     &decan_buf, &decan_len, &ut_mac_mtime))
+	                     &decan_buf, &decan_len, &ut_mac_mtime,
+	                     &ut_hash, &have_recorded, &rec_ut_hash, &rec_odb_hash))
 		return;
+
+	/*
+	 * Two-sided-conflict guard (unit 1.5). When a sync point is recorded in
+	 * .ut-sync-state and BOTH sides changed since then, moving content in
+	 * either direction would silently discard someone's edit -- refuse, keep
+	 * both versions, and say so loudly. (The export side refuses the mirror
+	 * write; see ut_export_script.) With no recorded sync point (legacy
+	 * tree) the pre-manifest last-write-wins behavior is preserved.
+	 */
+	if (have_recorded) {
+		uint64_t odb_hash = 0;
+
+		if (ut_odb_canonical_hash((hdlexternalvariable) hv, &odb_hash)) {
+			int ut_changed  = (ut_hash != rec_ut_hash);
+			int odb_changed = (odb_hash != rec_odb_hash);
+
+			if (ut_changed && odb_changed) {
+				log_error(LOG_COMP_OP,
+				          "ut-sync CONFLICT for %s: both the ODB script and its .ut "
+				          "changed since the last sync; keeping both versions "
+				          "(no import; the export will refuse to overwrite the .ut "
+				          "too). To resolve, make one side current, then delete this "
+				          "script's line from .ut-sync-state.",
+				          dotted_path);
+				free(decan_buf);
+				return;
+			}
+			if (odb_changed && !ut_changed) {
+				/* .ut merely re-dated, content unchanged: importing it would
+				 * silently revert the ODB edit. ODB is authoritative. */
+				log_warn(LOG_COMP_OP,
+				         "ut-sync: skipping re-import of %s: .ut mtime is newer but "
+				         "its content is unchanged since the last sync while the ODB "
+				         "changed; the ODB version wins",
+				         dotted_path);
+				free(decan_buf);
+				return;
+			}
+		}
+	}
+
+	/*
+	 * Compile gate (unit 1.5). A .ut that does not compile must never be
+	 * installed: it would replace a working script with a non-compiling
+	 * outline and only fail later, at call time, with no pointer back to
+	 * the bad .ut (the Virgin.root startup-script drift incident, ADR-017).
+	 * Reject loudly and keep the ODB version. Outline (non-script) imports
+	 * are not compiled, matching their runtime semantics.
+	 */
+	if ((**hv).id == idscriptprocessor) {
+		bigstring bscompileerror;
+
+		if (!opverbscriptcompiles(decan_buf, (long) decan_len, bscompileerror)) {
+			log_error(LOG_COMP_OP,
+			          "ut-sync import REJECTED for %s: the .ut does not compile "
+			          "(%s); keeping the ODB version",
+			          dotted_path, PSTR(bscompileerror));
+			free(decan_buf);
+			return;
+		}
+	}
 
 	/*
 	 * .ut is newer: install its content into ho. Wrap the decanonicalized
@@ -866,6 +1087,16 @@ static void ut_import_hook(hdloutlinevariable hv, hdloutlinerecord ho,
 			/* Record for re-dirty pass after clear_post_hydration_dirty_flags. */
 			if (cli_record_ut_import != NULL)
 				cli_record_ut_import(dotted_path);
+			/* Record the new sync point: .ut side = the imported file's
+			 * hash; ODB side = the canonical hash of what was installed
+			 * (they differ when the .ut was not canonically formatted). */
+			if (ut_sync_state_record != NULL) {
+				uint64_t odb_hash_after = 0;
+				if (ut_odb_canonical_hash((hdlexternalvariable) hv,
+				                          &odb_hash_after))
+					(void) ut_sync_state_record(sync_base, dotted_path,
+					                            ut_hash, odb_hash_after);
+			}
 			log_info(LOG_COMP_OP,
 			         "ut-sync import: installed %s from .ut", dotted_path);
 		} else {
