@@ -309,6 +309,24 @@ const char *debug_reason_string(debug_suspend_reason_t reason) {
 }
 
 /* ========================================================================
+ * Error responses
+ * ======================================================================== */
+
+/* Unit 1.1 (protocol contracts): shared emit for debug op error responses,
+ * so every error carries a stable machine-readable error.code alongside
+ * the message. code is one of the OP_ERRCODE_* constants (op_handler.h).
+ * message must already be JSON-safe -- all callers pass fixed strings, or
+ * strings formatted from fixed text plus numeric values. */
+static void dbg_send_error(transport_t *transport, int id, const char *code,
+                           const char *message) {
+	char err[640];
+	snprintf(err, sizeof(err),
+			 "{\"id\":%d,\"error\":{\"code\":\"%s\",\"message\":\"%s\"},\"success\":false}",
+			 id, code, message);
+	transport->write_line(transport->ctx, err, strlen(err));
+}
+
+/* ========================================================================
  * Debug state management
  * ======================================================================== */
 
@@ -1253,9 +1271,7 @@ void handle_debug_run(int id, const char *json_line, transport_t *transport) {
 	/* Parse the expression from params */
 	cJSON *root = cJSON_Parse(json_line);
 	if (root == NULL) {
-		char err[512];
-		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Invalid JSON\"},\"success\":false}", id);
-		transport->write_line(transport->ctx, err, strlen(err));
+		dbg_send_error(transport, id, OP_ERRCODE_PARSE, "Invalid JSON");
 		return;
 	}
 
@@ -1263,9 +1279,7 @@ void handle_debug_run(int id, const char *json_line, transport_t *transport) {
 	cJSON *expr_json = params ? cJSON_GetObjectItemCaseSensitive(params, "expression") : NULL;
 
 	if (!cJSON_IsString(expr_json) || expr_json->valuestring == NULL) {
-		char err[512];
-		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Missing 'expression' in params\"},\"success\":false}", id);
-		transport->write_line(transport->ctx, err, strlen(err));
+		dbg_send_error(transport, id, OP_ERRCODE_BAD_PARAMS, "Missing 'expression' in params");
 		cJSON_Delete(root);
 		return;
 	}
@@ -1277,9 +1291,7 @@ void handle_debug_run(int id, const char *json_line, transport_t *transport) {
 	hdltreenode hcode;
 
 	if (!newfilledhandle((void *)expression, strlen(expression), &htext)) {
-		char err[512];
-		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Memory allocation failed\"},\"success\":false}", id);
-		transport->write_line(transport->ctx, err, strlen(err));
+		dbg_send_error(transport, id, OP_ERRCODE_INTERNAL, "Memory allocation failed");
 		cJSON_Delete(root);
 		return;
 	}
@@ -1292,6 +1304,7 @@ void handle_debug_run(int id, const char *json_line, transport_t *transport) {
 		cJSON *resp = cJSON_CreateObject();
 		cJSON_AddNumberToObject(resp, "id", id);
 		cJSON *errobj = cJSON_CreateObject();
+		cJSON_AddStringToObject(errobj, "code", OP_ERRCODE_SCRIPT_ERROR);
 		if (errmsg != NULL && errmsg[0] > 0) {
 			int msglen = (int)errmsg[0];
 			char msgbuf[256];
@@ -1340,9 +1353,7 @@ void handle_debug_run(int id, const char *json_line, transport_t *transport) {
 	if (!headless_spawn_script_thread(hcode, &run_spec, &debug_opts, &user_threadid)) {
 		/* spawn failed -- all resources freed inside the primitive,
 		 * including debug registration (debugstate is NULL). */
-		char err[512];
-		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Failed to spawn debug thread\"},\"success\":false}", id);
-		transport->write_line(transport->ctx, err, strlen(err));
+		dbg_send_error(transport, id, OP_ERRCODE_INTERNAL, "Failed to spawn debug thread");
 		cJSON_Delete(root);
 		return;
 	}
@@ -1368,9 +1379,7 @@ void handle_debug_continue(int id, const char *json_line, transport_t *transport
 	cJSON *tid_json = params ? cJSON_GetObjectItemCaseSensitive(params, "threadId") : NULL;
 
 	if (!cJSON_IsNumber(tid_json)) {
-		char err[512];
-		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Missing 'threadId' in params\"},\"success\":false}", id);
-		transport->write_line(transport->ctx, err, strlen(err));
+		dbg_send_error(transport, id, OP_ERRCODE_BAD_PARAMS, "Missing 'threadId' in params");
 		cJSON_Delete(root);
 		return;
 	}
@@ -1379,9 +1388,7 @@ void handle_debug_continue(int id, const char *json_line, transport_t *transport
 	tydebugstate *state = debug_get_state_for_thread(threadid);
 
 	if (state == NULL) {
-		char err[512];
-		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"No debug thread with that ID\"},\"success\":false}", id);
-		transport->write_line(transport->ctx, err, strlen(err));
+		dbg_send_error(transport, id, OP_ERRCODE_NOT_FOUND, "No debug thread with that ID");
 		cJSON_Delete(root);
 		return;
 	}
@@ -1406,9 +1413,7 @@ void handle_debug_step(int id, const char *json_line, transport_t *transport) {
 	cJSON *root = cJSON_Parse(json_line);
 
 	if (root == NULL) {
-		char err[512];
-		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Invalid JSON\"},\"success\":false}", id);
-		transport->write_line(transport->ctx, err, strlen(err));
+		dbg_send_error(transport, id, OP_ERRCODE_PARSE, "Invalid JSON");
 		return;
 	}
 
@@ -1417,9 +1422,7 @@ void handle_debug_step(int id, const char *json_line, transport_t *transport) {
 	cJSON *dir_json = params ? cJSON_GetObjectItemCaseSensitive(params, "direction") : NULL;
 
 	if (!cJSON_IsNumber(tid_json)) {
-		char err[512];
-		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Missing 'threadId' in params\"},\"success\":false}", id);
-		transport->write_line(transport->ctx, err, strlen(err));
+		dbg_send_error(transport, id, OP_ERRCODE_BAD_PARAMS, "Missing 'threadId' in params");
 		cJSON_Delete(root);
 		return;
 	}
@@ -1428,9 +1431,7 @@ void handle_debug_step(int id, const char *json_line, transport_t *transport) {
 	tydebugstate *state = debug_get_state_for_thread(threadid);
 
 	if (state == NULL) {
-		char err[512];
-		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"No debug thread with that ID\"},\"success\":false}", id);
-		transport->write_line(transport->ctx, err, strlen(err));
+		dbg_send_error(transport, id, OP_ERRCODE_NOT_FOUND, "No debug thread with that ID");
 		cJSON_Delete(root);
 		return;
 	}
@@ -1441,9 +1442,9 @@ void handle_debug_step(int id, const char *json_line, transport_t *transport) {
 	 * check-and-modify sequence to prevent concurrent continue/kill races. */
 	if (!atomic_load(&state->flsuspended)) {
 		debug_release_state(state);
-		char err[512];
-		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Thread %ld is not suspended\"},\"success\":false}", id, threadid);
-		transport->write_line(transport->ctx, err, strlen(err));
+		char msg[256];
+		snprintf(msg, sizeof(msg), "Thread %ld is not suspended", threadid);
+		dbg_send_error(transport, id, OP_ERRCODE_BAD_STATE, msg);
 		cJSON_Delete(root);
 		return;
 	}
@@ -1460,9 +1461,7 @@ void handle_debug_step(int id, const char *json_line, transport_t *transport) {
 			dir = DEBUG_STEP_OVER;
 		else {
 			debug_release_state(state);
-			char err[512];
-			snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Unknown step direction (use 'over', 'into', or 'out')\"},\"success\":false}", id);
-			transport->write_line(transport->ctx, err, strlen(err));
+			dbg_send_error(transport, id, OP_ERRCODE_BAD_PARAMS, "Unknown step direction (use 'over', 'into', or 'out')");
 			cJSON_Delete(root);
 			return;
 		}
@@ -1495,9 +1494,7 @@ void handle_debug_kill(int id, const char *json_line, transport_t *transport) {
 	cJSON *tid_json = params ? cJSON_GetObjectItemCaseSensitive(params, "threadId") : NULL;
 
 	if (!cJSON_IsNumber(tid_json)) {
-		char err[512];
-		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Missing 'threadId' in params\"},\"success\":false}", id);
-		transport->write_line(transport->ctx, err, strlen(err));
+		dbg_send_error(transport, id, OP_ERRCODE_BAD_PARAMS, "Missing 'threadId' in params");
 		cJSON_Delete(root);
 		return;
 	}
@@ -1506,9 +1503,7 @@ void handle_debug_kill(int id, const char *json_line, transport_t *transport) {
 	tydebugstate *state = debug_get_state_for_thread(threadid);
 
 	if (state == NULL) {
-		char err[512];
-		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"No debug thread with that ID\"},\"success\":false}", id);
-		transport->write_line(transport->ctx, err, strlen(err));
+		dbg_send_error(transport, id, OP_ERRCODE_NOT_FOUND, "No debug thread with that ID");
 		cJSON_Delete(root);
 		return;
 	}
@@ -1534,9 +1529,7 @@ void handle_debug_pause(int id, const char *json_line, transport_t *transport) {
 	cJSON *tid_json = params ? cJSON_GetObjectItemCaseSensitive(params, "threadId") : NULL;
 
 	if (!cJSON_IsNumber(tid_json)) {
-		char err[512];
-		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Missing 'threadId' in params\"},\"success\":false}", id);
-		transport->write_line(transport->ctx, err, strlen(err));
+		dbg_send_error(transport, id, OP_ERRCODE_BAD_PARAMS, "Missing 'threadId' in params");
 		cJSON_Delete(root);
 		return;
 	}
@@ -1545,9 +1538,7 @@ void handle_debug_pause(int id, const char *json_line, transport_t *transport) {
 	tydebugstate *state = debug_get_state_for_thread(threadid);
 
 	if (state == NULL) {
-		char err[512];
-		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"No debug thread with that ID\"},\"success\":false}", id);
-		transport->write_line(transport->ctx, err, strlen(err));
+		dbg_send_error(transport, id, OP_ERRCODE_NOT_FOUND, "No debug thread with that ID");
 		cJSON_Delete(root);
 		return;
 	}
@@ -1555,9 +1546,9 @@ void handle_debug_pause(int id, const char *json_line, transport_t *transport) {
 	/* Already suspended — return error instead of setting interrupt flag */
 	if (atomic_load(&state->flsuspended)) {
 		debug_release_state(state);
-		char err[256];
-		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Thread %ld is already suspended\"},\"success\":false}", id, threadid);
-		transport->write_line(transport->ctx, err, strlen(err));
+		char msg[256];
+		snprintf(msg, sizeof(msg), "Thread %ld is already suspended", threadid);
+		dbg_send_error(transport, id, OP_ERRCODE_BAD_STATE, msg);
 		cJSON_Delete(root);
 		return;
 	}
@@ -1596,9 +1587,7 @@ void handle_debug_setbreakpoint(int id, const char *json_line, transport_t *tran
 	cJSON *root = cJSON_Parse(json_line);
 
 	if (root == NULL) {
-		char err[512];
-		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Invalid JSON\"},\"success\":false}", id);
-		transport->write_line(transport->ctx, err, strlen(err));
+		dbg_send_error(transport, id, OP_ERRCODE_PARSE, "Invalid JSON");
 		return;
 	}
 
@@ -1608,17 +1597,13 @@ void handle_debug_setbreakpoint(int id, const char *json_line, transport_t *tran
 	cJSON *cond_json = params ? cJSON_GetObjectItemCaseSensitive(params, "condition") : NULL;
 
 	if (!cJSON_IsString(script_json) || script_json->valuestring == NULL) {
-		char err[512];
-		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Missing 'script' in params\"},\"success\":false}", id);
-		transport->write_line(transport->ctx, err, strlen(err));
+		dbg_send_error(transport, id, OP_ERRCODE_BAD_PARAMS, "Missing 'script' in params");
 		cJSON_Delete(root);
 		return;
 	}
 
 	if (!cJSON_IsNumber(line_json)) {
-		char err[512];
-		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Missing 'line' in params\"},\"success\":false}", id);
-		transport->write_line(transport->ctx, err, strlen(err));
+		dbg_send_error(transport, id, OP_ERRCODE_BAD_PARAMS, "Missing 'line' in params");
 		cJSON_Delete(root);
 		return;
 	}
@@ -1627,9 +1612,7 @@ void handle_debug_setbreakpoint(int id, const char *json_line, transport_t *tran
 	double line_raw = line_json->valuedouble;
 
 	if (line_raw < 1.0 || line_raw > 1000000.0 || line_raw != (double)(unsigned long)line_raw) {
-		char err[512];
-		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Line must be a positive integer\"},\"success\":false}", id);
-		transport->write_line(transport->ctx, err, strlen(err));
+		dbg_send_error(transport, id, OP_ERRCODE_BAD_PARAMS, "Line must be a positive integer");
 		cJSON_Delete(root);
 		return;
 	}
@@ -1641,9 +1624,7 @@ void handle_debug_setbreakpoint(int id, const char *json_line, transport_t *tran
 		script++;
 
 	if (strlen(script) >= DEBUG_SCRIPT_PATH_MAX) {
-		char err[512];
-		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Script path too long\"},\"success\":false}", id);
-		transport->write_line(transport->ctx, err, strlen(err));
+		dbg_send_error(transport, id, OP_ERRCODE_BAD_PARAMS, "Script path too long");
 		cJSON_Delete(root);
 		return;
 	}
@@ -1699,9 +1680,9 @@ void handle_debug_setbreakpoint(int id, const char *json_line, transport_t *tran
 	pthread_mutex_unlock(&g_debug_mutex);
 
 	if (!cleared && !set) {
-		char err[512];
-		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Too many breakpoints (max %d)\"},\"success\":false}", id, MAX_BREAKPOINTS);
-		transport->write_line(transport->ctx, err, strlen(err));
+		char msg[256];
+		snprintf(msg, sizeof(msg), "Too many breakpoints (max %d)", MAX_BREAKPOINTS);
+		dbg_send_error(transport, id, OP_ERRCODE_LIMIT_EXCEEDED, msg);
 		cJSON_Delete(root);
 		return;
 	}
@@ -1744,9 +1725,7 @@ void handle_debug_listbreakpoints(int id, const char *json_line, transport_t *tr
 
 	cJSON *resp = cJSON_CreateObject();
 	if (resp == NULL) {
-		char err[128];
-		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Memory allocation failed\"},\"success\":false}", id);
-		transport->write_line(transport->ctx, err, strlen(err));
+		dbg_send_error(transport, id, OP_ERRCODE_INTERNAL, "Memory allocation failed");
 		return;
 	}
 	cJSON_AddNumberToObject(resp, "id", id);
@@ -1808,9 +1787,7 @@ void handle_debug_clearbreakpoints(int id, const char *json_line, transport_t *t
 
 	cJSON *resp_bp = cJSON_CreateObject();
 	if (resp_bp == NULL) {
-		char err[128];
-		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Memory allocation failed\"},\"success\":false}", id);
-		transport->write_line(transport->ctx, err, strlen(err));
+		dbg_send_error(transport, id, OP_ERRCODE_INTERNAL, "Memory allocation failed");
 		return;
 	}
 	cJSON_AddNumberToObject(resp_bp, "id", id);
@@ -1845,9 +1822,7 @@ static tydebugstate *parse_thread_param(int id, const char *json_line,
 	cJSON *root = cJSON_Parse(json_line);
 
 	if (root == NULL) {
-		char err[512];
-		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Invalid JSON\"},\"success\":false}", id);
-		transport->write_line(transport->ctx, err, strlen(err));
+		dbg_send_error(transport, id, OP_ERRCODE_PARSE, "Invalid JSON");
 		*out_root = NULL;
 		return NULL;
 	}
@@ -1858,9 +1833,7 @@ static tydebugstate *parse_thread_param(int id, const char *json_line,
 	cJSON *tid_json = params ? cJSON_GetObjectItemCaseSensitive(params, "threadId") : NULL;
 
 	if (!cJSON_IsNumber(tid_json)) {
-		char err[512];
-		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Missing 'threadId' in params\"},\"success\":false}", id);
-		transport->write_line(transport->ctx, err, strlen(err));
+		dbg_send_error(transport, id, OP_ERRCODE_BAD_PARAMS, "Missing 'threadId' in params");
 		cJSON_Delete(root);
 		*out_root = NULL;
 		return NULL;
@@ -1870,9 +1843,7 @@ static tydebugstate *parse_thread_param(int id, const char *json_line,
 	tydebugstate *state = debug_get_state_for_thread(threadid);
 
 	if (state == NULL) {
-		char err[512];
-		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"No debug thread with that ID\"},\"success\":false}", id);
-		transport->write_line(transport->ctx, err, strlen(err));
+		dbg_send_error(transport, id, OP_ERRCODE_NOT_FOUND, "No debug thread with that ID");
 		cJSON_Delete(root);
 		*out_root = NULL;
 		return NULL;
@@ -1880,9 +1851,9 @@ static tydebugstate *parse_thread_param(int id, const char *json_line,
 
 	if (!atomic_load(&state->flsuspended)) {
 		debug_release_state(state);
-		char err[512];
-		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Thread %ld is not suspended\"},\"success\":false}", id, threadid);
-		transport->write_line(transport->ctx, err, strlen(err));
+		char msg[256];
+		snprintf(msg, sizeof(msg), "Thread %ld is not suspended", threadid);
+		dbg_send_error(transport, id, OP_ERRCODE_BAD_STATE, msg);
 		cJSON_Delete(root);
 		*out_root = NULL;
 		return NULL;
@@ -1915,9 +1886,7 @@ void handle_debug_getlocals(int id, const char *json_line, transport_t *transpor
 
 	cJSON *resp = cJSON_CreateObject();
 	if (resp == NULL) {
-		char err[128];
-		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Memory allocation failed\"},\"success\":false}", id);
-		transport->write_line(transport->ctx, err, strlen(err));
+		dbg_send_error(transport, id, OP_ERRCODE_INTERNAL, "Memory allocation failed");
 		debug_release_state(state);
 		cJSON_Delete(root);
 		return;
@@ -2021,9 +1990,7 @@ void handle_debug_getstack(int id, const char *json_line, transport_t *transport
 
 	cJSON *resp = cJSON_CreateObject();
 	if (resp == NULL) {
-		char err[128];
-		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Memory allocation failed\"},\"success\":false}", id);
-		transport->write_line(transport->ctx, err, strlen(err));
+		dbg_send_error(transport, id, OP_ERRCODE_INTERNAL, "Memory allocation failed");
 		debug_release_state(state);
 		cJSON_Delete(root);
 		return;
@@ -2364,9 +2331,7 @@ void handle_debug_getsource(int id, const char *json_line, transport_t *transpor
 	cJSON *root = cJSON_Parse(json_line);
 
 	if (root == NULL) {
-		char err[512];
-		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Invalid JSON\"},\"success\":false}", id);
-		transport->write_line(transport->ctx, err, strlen(err));
+		dbg_send_error(transport, id, OP_ERRCODE_PARSE, "Invalid JSON");
 		return;
 	}
 
@@ -2375,9 +2340,7 @@ void handle_debug_getsource(int id, const char *json_line, transport_t *transpor
 	cJSON *tid_json = params ? cJSON_GetObjectItemCaseSensitive(params, "threadId") : NULL;
 
 	if (!cJSON_IsString(script_json) || script_json->valuestring == NULL) {
-		char err[512];
-		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Missing 'script' in params\"},\"success\":false}", id);
-		transport->write_line(transport->ctx, err, strlen(err));
+		dbg_send_error(transport, id, OP_ERRCODE_BAD_PARAMS, "Missing 'script' in params");
 		cJSON_Delete(root);
 		return;
 	}
@@ -2400,27 +2363,31 @@ void handle_debug_getsource(int id, const char *json_line, transport_t *transpor
 
 	if (htext == nil) {
 		const char *msg;
+		const char *code;
 		switch (reason) {
 		case DBG_SRC_PATH_NOT_QUALIFIED:
 			msg = "Script path must be fully qualified (e.g. system.temp.myFunc)";
+			code = OP_ERRCODE_BAD_PARAMS;
 			break;
 		case DBG_SRC_TABLE_NOT_FOUND:
 			msg = "Table not found in path";
+			code = OP_ERRCODE_NOT_FOUND;
 			break;
 		case DBG_SRC_SCRIPT_NOT_FOUND:
 			msg = "Script not found";
+			code = OP_ERRCODE_NOT_FOUND;
 			break;
 		case DBG_SRC_LOAD_FAILED:
 			msg = "Failed to load script from database";
+			code = OP_ERRCODE_INTERNAL;
 			break;
 		case DBG_SRC_NO_TEXT:
 		default:
 			msg = "Could not get script source";
+			code = OP_ERRCODE_NOT_FOUND;
 			break;
 		}
-		char err[512];
-		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"%s\"},\"success\":false}", id, msg);
-		transport->write_line(transport->ctx, err, strlen(err));
+		dbg_send_error(transport, id, code, msg);
 		cJSON_Delete(root);
 		return;
 	}
@@ -2446,9 +2413,7 @@ void handle_debug_getsource(int id, const char *json_line, transport_t *transpor
 
 	cJSON *resp = cJSON_CreateObject();
 	if (resp == NULL) {
-		char err[128];
-		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Memory allocation failed\"},\"success\":false}", id);
-		transport->write_line(transport->ctx, err, strlen(err));
+		dbg_send_error(transport, id, OP_ERRCODE_INTERNAL, "Memory allocation failed");
 		disposehandle(htext);
 		cJSON_Delete(root);
 		return;
@@ -2537,9 +2502,7 @@ void handle_debug_listthreads(int id, const char *json_line, transport_t *transp
 
 	cJSON *resp = cJSON_CreateObject();
 	if (resp == NULL) {
-		char err[128];
-		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Memory allocation failed\"},\"success\":false}", id);
-		transport->write_line(transport->ctx, err, strlen(err));
+		dbg_send_error(transport, id, OP_ERRCODE_INTERNAL, "Memory allocation failed");
 		return;
 	}
 	cJSON_AddNumberToObject(resp, "id", id);
@@ -2606,9 +2569,7 @@ void handle_debug_setwatchpoint(int id, const char *json_line, transport_t *tran
 	cJSON *root = cJSON_Parse(json_line);
 
 	if (root == NULL) {
-		char err[512];
-		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Invalid JSON\"},\"success\":false}", id);
-		transport->write_line(transport->ctx, err, strlen(err));
+		dbg_send_error(transport, id, OP_ERRCODE_PARSE, "Invalid JSON");
 		return;
 	}
 
@@ -2616,9 +2577,7 @@ void handle_debug_setwatchpoint(int id, const char *json_line, transport_t *tran
 	cJSON *var_json = params_json ? cJSON_GetObjectItemCaseSensitive(params_json, "variable") : NULL;
 
 	if (!cJSON_IsString(var_json) || var_json->valuestring == NULL) {
-		char err[512];
-		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Missing 'variable' in params\"},\"success\":false}", id);
-		transport->write_line(transport->ctx, err, strlen(err));
+		dbg_send_error(transport, id, OP_ERRCODE_BAD_PARAMS, "Missing 'variable' in params");
 		cJSON_Delete(root);
 		return;
 	}
@@ -2626,9 +2585,7 @@ void handle_debug_setwatchpoint(int id, const char *json_line, transport_t *tran
 	const char *varname = var_json->valuestring;
 
 	if (strlen(varname) >= DEBUG_VARNAME_MAX) {
-		char err[512];
-		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Variable name too long\"},\"success\":false}", id);
-		transport->write_line(transport->ctx, err, strlen(err));
+		dbg_send_error(transport, id, OP_ERRCODE_BAD_PARAMS, "Variable name too long");
 		cJSON_Delete(root);
 		return;
 	}
@@ -2675,9 +2632,9 @@ void handle_debug_setwatchpoint(int id, const char *json_line, transport_t *tran
 	pthread_mutex_unlock(&g_debug_mutex);
 
 	if (!cleared && !set) {
-		char err[512];
-		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Too many watchpoints (max %d)\"},\"success\":false}", id, MAX_WATCHPOINTS);
-		transport->write_line(transport->ctx, err, strlen(err));
+		char msg[256];
+		snprintf(msg, sizeof(msg), "Too many watchpoints (max %d)", MAX_WATCHPOINTS);
+		dbg_send_error(transport, id, OP_ERRCODE_LIMIT_EXCEEDED, msg);
 		cJSON_Delete(root);
 		return;
 	}
@@ -2714,9 +2671,7 @@ void handle_debug_listwatchpoints(int id, const char *json_line, transport_t *tr
 
 	cJSON *resp = cJSON_CreateObject();
 	if (resp == NULL) {
-		char err[128];
-		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Memory allocation failed\"},\"success\":false}", id);
-		transport->write_line(transport->ctx, err, strlen(err));
+		dbg_send_error(transport, id, OP_ERRCODE_INTERNAL, "Memory allocation failed");
 		return;
 	}
 	cJSON_AddNumberToObject(resp, "id", id);
@@ -2776,9 +2731,7 @@ void handle_debug_clearwatchpoints(int id, const char *json_line, transport_t *t
 
 	cJSON *resp_wp = cJSON_CreateObject();
 	if (resp_wp == NULL) {
-		char err[128];
-		snprintf(err, sizeof(err), "{\"id\":%d,\"error\":{\"message\":\"Memory allocation failed\"},\"success\":false}", id);
-		transport->write_line(transport->ctx, err, strlen(err));
+		dbg_send_error(transport, id, OP_ERRCODE_INTERNAL, "Memory allocation failed");
 		return;
 	}
 	cJSON_AddNumberToObject(resp_wp, "id", id);

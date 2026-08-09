@@ -54,6 +54,15 @@
 #define PROTOCOL_LINE_MAX 65536
 #define PROTOCOL_POLL_TIMEOUT_MS 10
 
+/* Unit 1.1 (protocol contracts): single stable error response for a request
+ * line exceeding PROTOCOL_LINE_MAX. id is null because the oversized line is
+ * discarded unparsed. Previously the fgets path fed the fragments to the
+ * dispatcher as separate garbage lines and the poll path dropped the line
+ * silently -- either way the client got no usable signal. */
+static const char *LINE_TOO_LONG_RESPONSE =
+	"{\"id\":null,\"error\":{\"code\":\"line_too_long\","
+	"\"message\":\"Request line exceeds 65536 bytes\"},\"success\":false}";
+
 /* Protocol output stream. In protocol mode, we redirect the C library's stdout
  * to stderr (so stray printf output from verb implementations appears in
  * diagnostic output) and write protocol messages to this saved copy of the
@@ -253,6 +262,8 @@ int protocol_main(cli_options_t *options, ws_server_t *ws_server) {
 					log_error(LOG_COMP_GENERAL,
 							  "protocol: line exceeds %d bytes, discarding",
 							  PROTOCOL_LINE_MAX);
+					transport->write_line(transport->ctx, LINE_TOO_LONG_RESPONSE,
+										  strlen(LINE_TOO_LONG_RESPONSE));
 					line_pos = 0;
 					draining = true;
 					continue;
@@ -357,6 +368,36 @@ int protocol_main(cli_options_t *options, ws_server_t *ws_server) {
 				break;
 
 			size_t len = strlen(line_buf);
+
+			/* Oversized request line: fgets filled the buffer without
+			 * reaching the newline. Discard through the end of the line,
+			 * answer with a single line_too_long error, and keep serving.
+			 * (A final line at EOF without a trailing newline is shorter
+			 * than the buffer and takes the normal path below.) */
+			if (len == PROTOCOL_LINE_MAX - 1 && line_buf[len - 1] != '\n') {
+				boolean fl_eof = false;
+				for (;;) {
+					headless_save_threadglobals(main_globals);
+					pthread_mutex_unlock(&frontier_gil);
+					result = fgets(line_buf, PROTOCOL_LINE_MAX, stdin);
+					pthread_mutex_lock(&frontier_gil);
+					headless_restore_threadglobals(main_globals);
+
+					if (result == NULL) {
+						fl_eof = true;
+						break;
+					}
+					size_t dlen = strlen(line_buf);
+					if (dlen > 0 && line_buf[dlen - 1] == '\n')
+						break;
+				}
+				transport->write_line(transport->ctx, LINE_TOO_LONG_RESPONSE,
+									  strlen(LINE_TOO_LONG_RESPONSE));
+				if (fl_eof)
+					break;
+				continue;
+			}
+
 			if (process_line(line_buf, len, transport)) {
 				break;
 			}
