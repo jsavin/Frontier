@@ -716,7 +716,9 @@ tests:
           error_contains: "Compilation failed"
 
   - name: "debug lifecycle - run, entry suspension, inspect, continue, completed"
-    description: "debug/run starts a thread suspended before the first statement (notification reason:entry, line 0). While suspended, getStack and getLocals succeed. continue resumes; normal completion emits debug/completed with success:true."
+    description: "debug/run starts a thread suspended before the first statement (notification reason:entry, line 0). While suspended, getStack and getLocals succeed. continue resumes; normal completion emits debug/completed with success:true. Runs on a dedicated executor: a debug/run thread on the long-lived shared executor corrupts cached script code trees later in the session (second invocation of an ODB script handler fails with 'too many parameters' -- latent thread-globals/GIL interaction in the same family as the #691 teardown fixes; to be root-caused in Unit 1.3)."
+    environment:
+      FRONTIER_U11_DEBUG_ISOLATION: "1"
     protocol_ops:
       - op: "debug/run"
         params:

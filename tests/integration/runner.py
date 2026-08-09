@@ -1928,6 +1928,21 @@ class TestRunner:
                     dedicated_executor.stop()
                 except Exception:
                     pass
+                # Restart the shared executor after a dedicated-executor
+                # test. The multi-second pause while the dedicated process
+                # runs gives lingering detached threads from earlier tests
+                # a window to run inside the idle shared process and
+                # trample its thread-global / name-resolution state (#706
+                # family; observed as a later ODB handler call failing
+                # with "the only script it contains is named evaluate" on
+                # an unmodified develop binary). A fresh process guarantees
+                # later tests never run against a poisoned executor.
+                if self.protocol_executor is not None:
+                    try:
+                        self.protocol_executor._restart()
+                    except Exception as e:
+                        print(f"  [protocol] restart after dedicated test failed: {e}",
+                              file=sys.stderr)
             elif self.protocol_executor is not None:
                 self.protocol_executor.reset()
 
