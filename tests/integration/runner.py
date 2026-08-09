@@ -9,6 +9,7 @@ import argparse
 import concurrent.futures
 import difflib
 import json
+import logging
 import multiprocessing
 import os
 import re
@@ -949,6 +950,16 @@ class ProtocolExecutor:
         self._proc: Optional[subprocess.Popen] = None
         self._stderr_file = None
         self._next_id = 1
+        # Server-initiated notification lines (id:null + op field, e.g.
+        # debug/suspended, debug/completed) buffered here when they arrive
+        # interleaved with request/response traffic. See _read_message().
+        self._notifications: List[dict] = []
+        # Raw bytes read from the process but not yet consumed as lines.
+        # We do our own line buffering over os.read() because mixing
+        # select() with a buffered readline() loses lines: when two lines
+        # arrive in one chunk, readline() buffers the second and select()
+        # never reports the fd ready for it.
+        self._read_buf = b''
 
     def start(self, env_overrides: Optional[Dict[str, str]] = None):
         """Spawn the frontier-cli --protocol subprocess.
@@ -1004,6 +1015,7 @@ class ProtocolExecutor:
             self._close_stderr_file()
             raise
         self._next_id = 1
+        self._read_buf = b''
 
     def _send_recv(self, msg: dict, timeout: float = 10.0) -> dict:
         """Send a JSON message and read the JSON response line."""
@@ -1021,25 +1033,124 @@ class ProtocolExecutor:
         except BrokenPipeError:
             raise RuntimeError("Protocol process died unexpectedly")
 
-        # Wait for response with timeout using select
-        rlist, _, _ = select.select([self._proc.stdout], [], [], timeout)
-        if not rlist:
-            raise TimeoutError(f"Protocol response timed out after {timeout}s")
-
-        resp_line = self._proc.stdout.readline()
-        if not resp_line or resp_line.strip() == '':
-            raise RuntimeError("Protocol process closed stdout (EOF)")
-
-        try:
-            resp = json.loads(resp_line)
-        except json.JSONDecodeError as e:
-            raise RuntimeError(f"Invalid JSON from protocol process: {resp_line!r}: {e}")
+        resp = self._read_message(timeout)
 
         # Verify response ID matches
         if resp.get('id') != msg_id:
             raise RuntimeError(f"Protocol ID mismatch: sent {msg_id}, got {resp.get('id')}")
 
         return resp
+
+    def _read_raw_line(self, deadline: float) -> str:
+        """Read one complete line from the process stdout.
+
+        Does its own byte-level line buffering over os.read() on the raw
+        fd (never the TextIOWrapper's readline) so that select() and line
+        availability agree. Raises TimeoutError at `deadline`, RuntimeError
+        on EOF.
+        """
+        fd = self._proc.stdout.fileno()
+        while b'\n' not in self._read_buf:
+            remaining = deadline - time.time()
+            if remaining <= 0:
+                raise TimeoutError("Protocol response timed out")
+            rlist, _, _ = select.select([fd], [], [], remaining)
+            if not rlist:
+                raise TimeoutError("Protocol response timed out")
+            chunk = os.read(fd, 65536)
+            if chunk == b'':
+                raise RuntimeError("Protocol process closed stdout (EOF)")
+            self._read_buf += chunk
+        line, self._read_buf = self._read_buf.split(b'\n', 1)
+        return line.decode('utf-8', errors='replace')
+
+    def _read_message(self, timeout: float = 10.0) -> dict:
+        """Read the next non-notification message line from the process.
+
+        Server-initiated notifications ({"id":null,"op":...,"params":...},
+        e.g. debug/suspended) can arrive interleaved with request/response
+        traffic. They are buffered into self._notifications and skipped so
+        request/response correlation stays intact. Responses with id:null
+        but NO op field (envelope-level errors for unparseable requests)
+        are returned as normal responses.
+        """
+        deadline = time.time() + timeout
+        while True:
+            try:
+                resp_line = self._read_raw_line(deadline)
+            except TimeoutError:
+                raise TimeoutError(f"Protocol response timed out after {timeout}s")
+
+            if resp_line.strip() == '':
+                continue
+
+            try:
+                resp = json.loads(resp_line)
+            except json.JSONDecodeError as e:
+                raise RuntimeError(f"Invalid JSON from protocol process: {resp_line!r}: {e}")
+
+            if isinstance(resp, dict) and resp.get('id') is None and 'op' in resp:
+                self._notifications.append(resp)
+                continue
+
+            return resp
+
+    def send_raw_line(self, raw_line: str, timeout: float = 10.0) -> Optional[dict]:
+        """Send a literal line (possibly invalid JSON) and read one response.
+
+        Used by envelope contract tests (unparseable JSON, missing id,
+        oversized lines). Returns the parsed response dict, or None if no
+        response arrived within `timeout` (documents silent-drop behavior).
+        """
+        if self._proc is None or self._proc.poll() is not None:
+            raise RuntimeError("Protocol process not running")
+
+        try:
+            self._proc.stdin.write(raw_line + '\n')
+            self._proc.stdin.flush()
+        except BrokenPipeError:
+            raise RuntimeError("Protocol process died unexpectedly")
+
+        try:
+            return self._read_message(timeout)
+        except TimeoutError:
+            return None
+
+    def wait_notification(self, op_name: str, timeout: float = 10.0) -> dict:
+        """Wait for a server-initiated notification with the given op.
+
+        Checks buffered notifications first, then reads from the pipe.
+        Non-matching notifications stay buffered in arrival order. A
+        non-notification line while waiting is a protocol violation
+        (no request is in flight) and raises RuntimeError.
+        """
+        for i, note in enumerate(self._notifications):
+            if note.get('op') == op_name:
+                return self._notifications.pop(i)
+
+        deadline = time.time() + timeout
+        while True:
+            try:
+                resp_line = self._read_raw_line(deadline)
+            except TimeoutError:
+                raise TimeoutError(f"Timed out waiting for notification op={op_name}")
+
+            if resp_line.strip() == '':
+                continue
+
+            try:
+                resp = json.loads(resp_line)
+            except json.JSONDecodeError as e:
+                raise RuntimeError(f"Invalid JSON from protocol process: {resp_line!r}: {e}")
+
+            if isinstance(resp, dict) and resp.get('id') is None and 'op' in resp:
+                if resp.get('op') == op_name:
+                    return resp
+                self._notifications.append(resp)
+                continue
+
+            raise RuntimeError(
+                f"Unexpected non-notification line while waiting for {op_name}: {resp!r}")
 
     def _restart(self):
         """Restart the protocol process after it dies."""
@@ -1156,6 +1267,7 @@ class ProtocolExecutor:
 
     def reset(self):
         """Clear REPL variables and reset focus between tests."""
+        self._notifications.clear()
         if self._proc is None or self._proc.poll() is not None:
             # Process already dead — restart for subsequent tests.
             # No clearContext needed after restart (fresh process has clean state).
@@ -1676,12 +1788,88 @@ class TestRunner:
                     error="Protocol executor not available (required for protocol_ops tests)")
             executor = self.protocol_executor
 
+        # Values captured from responses via the `capture:` step key, for
+        # substitution into later steps' params as "$name" (e.g. the
+        # threadId returned by debug/run, consumed by debug/continue).
+        captures: Dict[str, object] = {}
+
         try:
             for step_idx, step in enumerate(test.protocol_ops):
                 op = step.get('op')
-                params = step.get('params', {})
+                params = self._resolve_captures(step.get('params', {}), captures)
                 validate = step.get('validate', {})
                 step_desc = step.get('description', f'step {step_idx + 1}')
+
+                # Envelope contract step: send a literal (possibly invalid)
+                # line instead of a well-formed op message. Validates either
+                # the response, or that no response arrives (no_response).
+                # raw_line is a string, or a list of parts where each part
+                # is a string or {repeat: <str>, count: <n>} (for building
+                # oversized / large-batch lines without huge YAML literals).
+                if 'raw_line' in step:
+                    raw_spec = step['raw_line']
+                    if isinstance(raw_spec, list):
+                        pieces = []
+                        for part in raw_spec:
+                            if isinstance(part, dict):
+                                pieces.append(part['repeat'] * int(part['count']))
+                            else:
+                                pieces.append(part)
+                        raw_spec = ''.join(pieces)
+                    raw_timeout = step.get('timeout', 3.0)
+                    try:
+                        resp = executor.send_raw_line(raw_spec, timeout=raw_timeout)
+                    except RuntimeError as e:
+                        try:
+                            executor._restart()
+                        except Exception as restart_err:
+                            logging.warning("Protocol executor restart failed: %s", restart_err)
+                        return TestResult(
+                            test.name, False,
+                            error=f"Protocol error at {step_desc}: {e}")
+                    if validate.get('no_response'):
+                        if resp is not None:
+                            return TestResult(
+                                test.name, False,
+                                error=f"[{step_desc}] Expected no response, got: {resp!r}")
+                        continue
+                    if resp is None:
+                        return TestResult(
+                            test.name, False,
+                            error=f"[{step_desc}] Expected a response, got none "
+                                  f"(timed out after {raw_timeout}s)")
+                    err = self._validate_protocol_response(resp, validate, step_desc)
+                    if err is not None:
+                        details = f"Response: {json.dumps(resp, indent=2)}" if self.verbose else None
+                        return TestResult(test.name, False, error=err, details=details)
+                    continue
+
+                # Notification step: wait for a server-initiated line
+                # (id:null + op), e.g. debug/suspended after debug/run.
+                if 'wait_notification' in step:
+                    want_op = step['wait_notification']
+                    note_timeout = step.get('timeout', 10.0)
+                    try:
+                        note = executor.wait_notification(want_op, timeout=note_timeout)
+                    except TimeoutError:
+                        return TestResult(
+                            test.name, False,
+                            error=f"[{step_desc}] Timed out waiting for notification {want_op}")
+                    except RuntimeError as e:
+                        return TestResult(
+                            test.name, False,
+                            error=f"[{step_desc}] {e}")
+                    expected_params = self._resolve_captures(
+                        validate.get('params', {}), captures)
+                    actual_params = note.get('params', {})
+                    for key, expected in expected_params.items():
+                        actual = actual_params.get(key)
+                        if actual != expected:
+                            return TestResult(
+                                test.name, False,
+                                error=f"[{step_desc}] Notification {want_op} params.{key}: "
+                                      f"expected {expected!r}, got {actual!r}")
+                    continue
 
                 if op is None:
                     return TestResult(
@@ -1716,6 +1904,19 @@ class TestRunner:
                     details = f"Response: {json.dumps(resp, indent=2)}" if self.verbose else None
                     return TestResult(test.name, False, error=err, details=details)
 
+                # Capture response values for later steps, e.g.
+                # capture: {tid: "result.threadId"}
+                for name, path in step.get('capture', {}).items():
+                    node = resp
+                    for part in path.split('.'):
+                        node = node.get(part) if isinstance(node, dict) else None
+                    if node is None:
+                        return TestResult(
+                            test.name, False,
+                            error=f"[{step_desc}] capture {name!r}: path {path!r} "
+                                  f"not found in response")
+                    captures[name] = node
+
             # All steps passed
             return TestResult(test.name, True)
 
@@ -1729,6 +1930,21 @@ class TestRunner:
                     pass
             elif self.protocol_executor is not None:
                 self.protocol_executor.reset()
+
+    @staticmethod
+    def _resolve_captures(obj, captures: dict):
+        """Deep-copy obj, replacing string values of the exact form "$name"
+        with the captured value of that name (see the `capture:` step key).
+        Unknown "$name" strings are left as-is so genuine dollar-prefixed
+        payloads aren't corrupted."""
+        if isinstance(obj, dict):
+            return {k: TestRunner._resolve_captures(v, captures)
+                    for k, v in obj.items()}
+        if isinstance(obj, list):
+            return [TestRunner._resolve_captures(v, captures) for v in obj]
+        if isinstance(obj, str) and obj.startswith('$') and obj[1:] in captures:
+            return captures[obj[1:]]
+        return obj
 
     @staticmethod
     def _validate_protocol_response(resp: dict, validate: dict, step_desc: str) -> Optional[str]:
@@ -1756,6 +1972,16 @@ class TestRunner:
             error_msg = error_obj.get('message', '') if isinstance(error_obj, dict) else str(error_obj)
             if expected_substr not in error_msg:
                 return f"[{step_desc}] Expected error containing {expected_substr!r}, got {error_msg!r}"
+
+        # Check the stable machine-readable error code (error.code).
+        # Unit 1.1 protocol contract: every top-level error response carries
+        # a code from the documented set (see STDIO_PROTOCOL.md).
+        if 'error_code' in validate:
+            expected_code = validate['error_code']
+            error_obj = resp.get('error', {})
+            actual_code = error_obj.get('code') if isinstance(error_obj, dict) else None
+            if actual_code != expected_code:
+                return f"[{step_desc}] Expected error.code={expected_code!r}, got {actual_code!r}"
 
         # PR1 (REPL error context): structured error.location assertions.
         # expected_error_location is a dict with any subset of:
