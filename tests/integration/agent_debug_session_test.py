@@ -332,10 +332,54 @@ with DebugSession(timeout=20) as s:
     assert_test("script ran to completion: u14Result == 6 (buggy sum persisted)",
                 r is not None and r.get("result", {}).get("value") == "6", r)
 
-    # --- Cleanup (staged DB is discarded by the wrapper; in-memory only) ---
-    eval_ok(s, 19, "delete(@system.temp.u14SumTo)")
-    eval_ok(s, 20, "delete(@system.temp.u14Main)")
-    eval_ok(s, 21, "delete(@system.temp.u14Result)")
+    # --- Cleanup (staged DB is discarded by the wrapper; in-memory only).
+    # A post-debug eval can fail once spuriously (see the canary session
+    # below), so cleanup retries each delete once without asserting. ---
+    for rid, path in ((19, "u14SumTo"), (21, "u14Main"), (23, "u14Result")):
+        r = eval_ok(s, rid, "delete(@system.temp." + path + ")")
+        if not (r and r.get("success")):
+            eval_ok(s, rid + 1, "delete(@system.temp." + path + ")")
+
+# --- Canary session: post-debug eval poisoning (pre-existing bug) ---
+# In a session where NO script/eval ran while the debug thread was
+# suspended, the first new(...) eval after a lazily-attached callScript
+# debug thread completes fails once with a generic script_error; the
+# failure consumes the poisoned state and the retry works. Reproduced
+# 18/18 across 0-500ms post-completion delays (also observed with a
+# script.newScriptObject reinstall in a longer session); sessions that DID
+# eval while suspended -- like the main flow above -- do not exhibit it,
+# which is why this canary runs the minimal reproducer in its own session.
+# Not prevented by script/clearContext. Present before the Unit 1.4
+# lazy-attach changes (reproduced at dc68b3187) -- same latent
+# thread-globals family as the shared-executor poisoning note in
+# protocol_contract_tests.yaml. These asserts pin the behavior so the
+# eventual root-cause fix is flagged here and this canary (plus the retry
+# guidance in docs/AGENT_DEBUGGING_GUIDE.md) can be removed.
+print()
+print("--- post-debug eval poisoning canary (dedicated session) ---")
+with DebugSession(timeout=20) as s:
+    eval_ok(s, 1, "new(scriptType, @system.temp.u14Poke)")
+    eval_ok(s, 2, 'script.newScriptObject("local (a = 1)\\rreturn (a)", @system.temp.u14Poke)')
+    r = s.send_and_wait({"op": "debug/setBreakpoint", "id": 3,
+                         "params": {"script": "system.temp.u14Poke", "line": 1}})
+    assert_test("canary: breakpoint set",
+                r is not None and r.get("result", {}).get("action") == "set", r)
+    eval_ok(s, 4, "thread.callScript(@system.temp.u14Poke, {})")
+    sus = s.wait_notification(op="debug/suspended", reason="breakpoint", timeout=10)
+    assert_test("canary: thread suspends", sus is not None)
+    if sus:
+        ctid = int(sus["params"]["threadId"])
+        s.send_and_wait({"op": "debug/clearBreakpoints", "id": 5, "params": {}})
+        s.send_and_wait({"op": "debug/continue", "id": 6, "params": {"threadId": ctid}})
+        done = s.wait_notification(op="debug/completed", timeout=10)
+        assert_test("canary: thread completes", done is not None, done)
+        r = eval_ok(s, 7, "new(scriptType, @system.temp.u14Canary)")
+        assert_test("KNOWN BUG: first new() eval after debug completion fails",
+                    r is not None and r.get("success") is False
+                    and r.get("error", {}).get("code") == "script_error", r)
+        r = eval_ok(s, 8, "new(scriptType, @system.temp.u14Canary)")
+        assert_test("canary: retry after the one-shot failure succeeds",
+                    r is not None and r.get("success") is True, r)
 
 print()
 print("=" * 46)

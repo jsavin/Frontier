@@ -219,6 +219,8 @@ Expectations to calibrate against:
 - After resuming from a suspension, breakpoints on the same line are
   suppressed until the line number changes (so a multi-node source line
   doesn't re-trigger). A loop returning to the line fires normally.
+- Stepping from a loop body lands on the loop header (the next statement
+  executed is the iteration test), not the following source line.
 - Stepping off the end of a script completes the thread
   (`debug/completed`) rather than suspending again.
 
@@ -270,6 +272,38 @@ After completion, the thread is unregistered — further ops on its
 `threadId` return `not_found`. Side effects persist in the (in-memory)
 database and are readable via `script/eval`; verifying an expected side
 effect is the standard "did it really finish" check.
+
+**KNOWN BUG: one spurious eval failure after a debug thread completes.**
+After a lazily attached (`thread.callScript`) debug thread finishes, the
+next `script/eval` of `new(...)` reliably fails once with a generic
+`script_error` (reproduced 18/18 across 0-500ms delays; also observed with
+a `script.newScriptObject` reinstall). The failure consumes the poisoned
+state — the retry works. The trigger is session-history-dependent: bare
+table reads and some verbs (`delete`) pass through unaffected, and
+sessions that ran a `script/eval` while the thread was suspended did not
+exhibit the failure at all — so treat it as nondeterministic. Not
+prevented by `script/clearContext`. Captured live — identical `new()`
+requests, back to back:
+
+```text
+-> {"op": "script/eval", "id": 19, "params": {"expression": "new(scriptType, @system.temp.u14Canary)"}}
+<- {"id":19,"error":{"code":"script_error","message":"Script evaluation failed","location":{"script":"<eval>","line":1,"column":39,"tokenStart":38,"tokenEnd":39},"stack":[{"script":"<eval>","line":1,"column":39}]},"success":false}
+-> {"op": "script/eval", "id": 20, "params": {"expression": "new(scriptType, @system.temp.u14Canary)"}}
+<- {"id":20,"result":{"value":"true","type":"boolean"},"success":true}
+```
+
+Mitigation: after `debug/completed`, treat the FIRST `script_error` from
+any post-debug eval as suspect — retry it once before believing it. This
+is the same latent thread-globals family as the shared-executor poisoning
+note in `protocol_contract_tests.yaml`;
+`tests/integration/agent_debug_session_test.py` pins the behavior as a
+canary so the eventual root-cause fix is flagged.
+
+**Re-running without breakpoints is unobserved.** `debug/completed` only
+fires for debugger-attached threads. If you re-dispatch via
+`thread.callScript` after clearing breakpoints (e.g. to verify a fix),
+there will be NO notification — poll the expected side effect via
+`script/eval` instead of waiting.
 
 Detach sequence at end of session:
 
