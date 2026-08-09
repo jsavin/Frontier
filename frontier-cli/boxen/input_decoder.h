@@ -85,7 +85,14 @@ typedef struct input_decoder input_decoder_t;
  * to the fd). */
 input_decoder_t *input_decoder_create(int tty_fd);
 
-/* Free all resources. Does NOT close tty_fd. Safe to pass NULL. */
+/* Free all resources. Does NOT close tty_fd. Safe to pass NULL.
+ *
+ * 2026-08-09 JES C M7: if mouse reporting is still enabled and tty_fd >= 0,
+ * destroy writes the mouse/paste disable triplet first so the terminal's
+ * native input model is restored at teardown (termbox2 cannot do this --
+ * it never saw the decoder's mouse-mode writes).  Callers must therefore
+ * destroy the decoder while the tty fd is still open and in raw mode
+ * (tb2_shutdown destroys BEFORE tb_shutdown for exactly this reason). */
 void             input_decoder_destroy(input_decoder_t *dec);
 
 /* 2026-06-29 JES #809 M1: mouse-mode policy seam.

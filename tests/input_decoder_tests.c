@@ -46,11 +46,13 @@
  */
 
 #include <assert.h>
+#include <fcntl.h>            /* O_NONBLOCK for the M7 pipe-observer tests */
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>           /* pipe(2) / read(2) / close(2) for M7 tests */
 
 #include "../frontier-cli/boxen/boxen.h"
 #include "../frontier-cli/boxen/input_decoder.h"
@@ -2509,6 +2511,150 @@ static void test_kitty_enable_idempotent(void) {
 }
 
 /* -------------------------------------------------------------------------
+ * 2026-08-09 JES C M7: mouse-mode write-side tests.
+ *
+ * Every prior test uses tty_fd == -1, which suppresses the decoder's
+ * write(2) side entirely.  These tests hand the decoder the WRITE end of
+ * a pipe as its tty fd and read the control bytes back from the READ end,
+ * so the escape sequences the terminal would receive are asserted as
+ * bytes, not inferred from the mouse_enabled bit.
+ *
+ * The decoder never calls read(2) on its fd in these tests (poll is not
+ * invoked), so a unidirectional pipe is a faithful stand-in for the
+ * write-only half of the tty contract.
+ * ---------------------------------------------------------------------- */
+
+/* Expected sequences -- must stay byte-identical with input_decoder.c
+ * (plan section 5: SGR 1006 + basic 1000 + bracketed paste 2004, toggled
+ * in lockstep). */
+#define MOUSE_ON_SEQ  "\x1b[?1000h\x1b[?1006h\x1b[?2004h"
+#define MOUSE_OFF_SEQ "\x1b[?1006l\x1b[?1000l\x1b[?2004l"
+
+/* Create a pipe whose read end is non-blocking so an empty pipe reads as
+ * 0 bytes instead of hanging the test binary. */
+static void make_observer_pipe(int *rfd_out, int *wfd_out) {
+	int fds[2];
+	int rc = pipe(fds);
+	assert(rc == 0);
+	rc = fcntl(fds[0], F_SETFL, O_NONBLOCK);
+	assert(rc == 0);
+	*rfd_out = fds[0];
+	*wfd_out = fds[1];
+}
+
+/* Drain whatever is currently in the pipe into buf (NUL-terminated).
+ * Returns the byte count; 0 when the pipe is empty. */
+static size_t drain_observer_pipe(int rfd, char *buf, size_t cap) {
+	ssize_t n = read(rfd, buf, cap - 1);
+	if (n < 0) {
+		n = 0;   /* EAGAIN: nothing was written */
+	}
+	buf[n] = '\0';
+	return (size_t)n;
+}
+
+/* set_mouse(true) must write the SGR + basic + paste enable triplet. */
+static void test_set_mouse_enable_writes_sequence_to_fd(void) {
+	int rfd, wfd;
+	make_observer_pipe(&rfd, &wfd);
+	input_decoder_t *dec = input_decoder_create(wfd);
+	assert(dec != NULL);
+
+	char got[128];
+	assert(drain_observer_pipe(rfd, got, sizeof(got)) == 0);  /* create writes nothing */
+
+	input_decoder_set_mouse(dec, true);
+	drain_observer_pipe(rfd, got, sizeof(got));
+	assert(strcmp(got, MOUSE_ON_SEQ) == 0);
+
+	input_decoder_destroy(dec);
+	close(rfd);
+	close(wfd);
+}
+
+/* set_mouse(false) after enable must write the disable triplet (reverse
+ * order: SGR off before basic off, per input_decoder.c). */
+static void test_set_mouse_disable_writes_sequence_to_fd(void) {
+	int rfd, wfd;
+	make_observer_pipe(&rfd, &wfd);
+	input_decoder_t *dec = input_decoder_create(wfd);
+	assert(dec != NULL);
+
+	char got[128];
+	input_decoder_set_mouse(dec, true);
+	drain_observer_pipe(rfd, got, sizeof(got));   /* discard enable bytes */
+
+	input_decoder_set_mouse(dec, false);
+	drain_observer_pipe(rfd, got, sizeof(got));
+	assert(strcmp(got, MOUSE_OFF_SEQ) == 0);
+
+	input_decoder_destroy(dec);
+	close(rfd);
+	close(wfd);
+}
+
+/* M7 policy: destroy must restore the terminal's native input model when
+ * mouse reporting is still enabled.  termbox2 never saw the mouse-mode
+ * change (the decoder writes the sequences itself since M3), so without
+ * this write an exit taken while /mouse is on leaves the user's terminal
+ * spewing mouse escapes into their shell. */
+static void test_destroy_with_mouse_enabled_restores_native_state(void) {
+	int rfd, wfd;
+	make_observer_pipe(&rfd, &wfd);
+	input_decoder_t *dec = input_decoder_create(wfd);
+	assert(dec != NULL);
+
+	char got[128];
+	input_decoder_set_mouse(dec, true);
+	drain_observer_pipe(rfd, got, sizeof(got));   /* discard enable bytes */
+
+	input_decoder_destroy(dec);
+	drain_observer_pipe(rfd, got, sizeof(got));
+	assert(strcmp(got, MOUSE_OFF_SEQ) == 0);
+
+	close(rfd);
+	close(wfd);
+}
+
+/* Destroy with mouse never enabled must write nothing -- a REPL session
+ * that never opted in must not emit gratuitous control bytes at exit
+ * (same default-native principle as startup, plan section 5.1). */
+static void test_destroy_with_mouse_disabled_writes_nothing(void) {
+	int rfd, wfd;
+	make_observer_pipe(&rfd, &wfd);
+	input_decoder_t *dec = input_decoder_create(wfd);
+	assert(dec != NULL);
+
+	input_decoder_destroy(dec);
+
+	char got[128];
+	assert(drain_observer_pipe(rfd, got, sizeof(got)) == 0);
+
+	close(rfd);
+	close(wfd);
+}
+
+/* Destroy after an explicit disable must not write a second disable --
+ * the mouse_enabled bit gates the destroy-path write. */
+static void test_destroy_after_explicit_disable_writes_nothing_more(void) {
+	int rfd, wfd;
+	make_observer_pipe(&rfd, &wfd);
+	input_decoder_t *dec = input_decoder_create(wfd);
+	assert(dec != NULL);
+
+	char got[128];
+	input_decoder_set_mouse(dec, true);
+	input_decoder_set_mouse(dec, false);
+	drain_observer_pipe(rfd, got, sizeof(got));   /* discard toggle bytes */
+
+	input_decoder_destroy(dec);
+	assert(drain_observer_pipe(rfd, got, sizeof(got)) == 0);
+
+	close(rfd);
+	close(wfd);
+}
+
+/* -------------------------------------------------------------------------
  * main
  * ---------------------------------------------------------------------- */
 
@@ -2689,6 +2835,14 @@ int main(void) {
 	TR_RUN(test_kitty_csi_u_tab_with_alt);
 	TR_RUN(test_kitty_csi_u_backspace_with_shift);
 	TR_RUN(test_kitty_enable_idempotent);
+
+	/* 2026-08-09 JES C M7: mouse-mode write side observed through a pipe
+	 * (enable/disable sequences + native-state restore on destroy). */
+	TR_RUN(test_set_mouse_enable_writes_sequence_to_fd);
+	TR_RUN(test_set_mouse_disable_writes_sequence_to_fd);
+	TR_RUN(test_destroy_with_mouse_enabled_restores_native_state);
+	TR_RUN(test_destroy_with_mouse_disabled_writes_nothing);
+	TR_RUN(test_destroy_after_explicit_disable_writes_nothing_more);
 
 	/* 2026-06-29 JES #809 M1: skip-stub visibility (see file header).
 	 * Printed BEFORE TR_SUMMARY so the count appears alongside the green
