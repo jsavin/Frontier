@@ -881,7 +881,7 @@ static void handle_odb_delete(long id, const char *json_line, transport_t *trans
 	cJSON *response = cJSON_CreateObject();
 	cJSON_AddNumberToObject(response, "id", id);
 	cJSON_AddBoolToObject(response, "success", 1);
-	/* Unit 1.2: same unsaved-changes indicator as odb/set — deletes are
+	/* Unit 1.2: same unsaved-changes indicator as odb/set -- deletes are
 	 * in-memory until odb/save, exactly like assignments. */
 	cJSON_AddBoolToObject(response, "dirty", cli_system_root_is_dirty() ? 1 : 0);
 	cJSON_AddItemToObject(response, "results", results);
@@ -897,18 +897,18 @@ static void handle_odb_delete(long id, const char *json_line, transport_t *trans
 }
 
 /*
- * handle_odb_save — persist the system root to disk on demand (Unit 1.2).
+ * handle_odb_save -- persist the system root to disk on demand (Unit 1.2).
  *
  * Protocol twin of fileMenu.save() for the system root: reuses
  * filemenu_save_systemroot() (tablesavesystemtable + release-stack flush +
  * view update + disk flush; the process stays usable) so protocol clients
  * and UserTalk share one save path. odb/set and odb/delete mutations are
  * in-memory until this op runs (or a read-write root exits cleanly, whose
- * legacy exit save persists them — issue #127); abnormal termination loses
+ * legacy exit save persists them -- issue #127); abnormal termination loses
  * anything unsaved. That loss-without-save is the documented contract, and
  * this op is how a protocol client opts into durability.
  *
- * Takes no parameters — all odb/* paths resolve within the loaded system
+ * Takes no parameters -- all odb/* paths resolve within the loaded system
  * root, so it is the only addressable save target (guest DBs save via
  * script/eval db.save()). Extra params are ignored, like script/clearContext.
  *
@@ -918,13 +918,13 @@ static void handle_odb_delete(long id, const char *json_line, transport_t *trans
  * rewriting every reachable block).
  *
  * Refusals:
- *   locked    — --lock-opened-roots / FRONTIER_LOCK_OPENED_ROOTS=1: save
+ *   locked    -- --lock-opened-roots / FRONTIER_LOCK_OPENED_ROOTS=1: save
  *               suppression is that flag's documented contract, enforced
  *               here at the protocol boundary (filemenu_save_systemroot
  *               re-checks as defense in depth).
- *   bad_state — no system root loaded, or a debug thread was killed this
+ *   bad_state -- no system root loaded, or a debug thread was killed this
  *               session (killed threads leave pushed hash-table scopes that
- *               make pack traversal unsafe — same guard as the exit save).
+ *               make pack traversal unsafe -- same guard as the exit save).
  */
 static void handle_odb_save(long id, const char *json_line, transport_t *transport) {
 	(void)json_line;

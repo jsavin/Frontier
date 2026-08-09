@@ -1,4 +1,4 @@
-# Unit 1.2 — odb/save persistence semantics (explicit and testable)
+# Unit 1.2 -- odb/save persistence semantics (explicit and testable)
 #
 # Closes INTEGRATION_TEST_GAPS.md gap #4: protocol odb/set mutations are
 # in-memory only; without an explicit save they are lost when the process
@@ -6,14 +6,14 @@
 # could not restart the CLI mid-test. These tests use the Unit 1.2 runner
 # capabilities:
 #
-#   private_system_root: true  — dedicated executor against a private COPY
+#   private_system_root: true  -- dedicated executor against a private COPY
 #       of the staged system root (on-disk saves + restarts cannot touch
 #       the shared executor's root file)
-#   restart_executor: "kill"   — SIGKILL, models abnormal termination
+#   restart_executor: "kill"   -- SIGKILL, models abnormal termination
 #       (no exit-time save runs)
-#   restart_executor: "shutdown" — clean protocol shutdown (the issue #127
+#   restart_executor: "shutdown" -- clean protocol shutdown (the issue #127
 #       legacy exit-save DOES run for a read-write root)
-#   capture_root_hash / verify_root_hash — md5 the private root file
+#   capture_root_hash / verify_root_hash -- md5 the private root file
 #
 # Persistence contract under test (STDIO_PROTOCOL.md section 4.3/4.12):
 #   - mutations are in-memory until odb/save (or clean shutdown of a RW root)
@@ -198,7 +198,7 @@ tests:
 
   # ======================================================================
   # Companion contract: clean shutdown of a read-write root runs the
-  # legacy exit save (issue #127) — loss-on-exit applies to ABNORMAL
+  # legacy exit save (issue #127) -- loss-on-exit applies to ABNORMAL
   # termination, or any termination under lock-opened-roots.
   # ======================================================================
   - name: "odb/save persistence - clean shutdown auto-saves a read-write root"

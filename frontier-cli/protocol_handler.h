@@ -13,6 +13,7 @@
       odb/set            - Set (create or overwrite) values in the ODB
       odb/list           - List children of a table with optional depth
       odb/delete         - Delete values from the ODB
+      odb/save           - Persist the system root to disk (see STDIO_PROTOCOL.md 4.4)
       shutdown           - Clean exit
 
     When --ws-port is specified, also serves the same operations over WebSocket.

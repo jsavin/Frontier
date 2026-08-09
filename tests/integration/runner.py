@@ -1180,11 +1180,11 @@ class ProtocolExecutor:
         """Deliberately restart the subprocess against the same system root
         and environment (Unit 1.2 restart-then-verify tests).
 
-        mode 'kill': SIGKILL the process — models abnormal termination
+        mode 'kill': SIGKILL the process -- models abnormal termination
             (crash, power loss). The on-exit save path never runs, so
             unsaved in-memory mutations are lost. This is the data-loss
             scenario odb/save exists to close.
-        mode 'shutdown': protocol shutdown op + clean exit — the CLI's
+        mode 'shutdown': protocol shutdown op + clean exit -- the CLI's
             exit path runs, which (issue #127) saves a read-write system
             root on the way out. Pins the legacy save-on-exit contract.
         """

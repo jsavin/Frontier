@@ -394,7 +394,7 @@ boolean cli_is_system_root_read_only(void) {
  * Unit 1.2 (odb/save): backs the "dirty" field in protocol odb/set,
  * odb/delete, and odb/save responses (op_handler.c, via extern).
  *
- * Uses the runtime's own dirty accounting — the same signal the exit save
+ * Uses the runtime's own dirty accounting -- the same signal the exit save
  * trusts: propagate flsubsdirty up from loaded subtables (the preflight
  * every save path runs), then read the root table's flags. Hydration
  * pre-clears link-phase dirty bits (see clear_post_hydration_dirty_flags),
