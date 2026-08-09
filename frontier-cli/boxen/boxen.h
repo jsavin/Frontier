@@ -233,7 +233,7 @@ typedef struct boxen_rect {
 } boxen_rect_t;
 
 /* -------------------------------------------------------------------------
- * Backend vtable (11 functions)
+ * Backend vtable (12 functions)
  * Only backend_tb2.c and backend_mock.c implement this interface.
  * No other file may reference termbox2 symbols directly.
  * ---------------------------------------------------------------------- */
@@ -251,6 +251,12 @@ typedef struct boxen_backend {
 	void (*present)(void);
 	int  (*poll_event)(boxen_event_t *out, int timeout_ms);
 	void (*clear)(void);
+	/* 2026-08-09 JES C M7: enable/disable terminal mouse reporting (SGR
+	 * mouse + bracketed paste, toggled in lockstep).  Mouse starts DISABLED
+	 * -- backends must not enable it in init() (plan section 5.1; the PR
+	 * #808 regression).  May be NULL in a backend that has no mouse
+	 * concept; boxen_set_mouse reports BOXEN_ERR_INVALID in that case. */
+	void (*set_mouse)(bool enable);
 } boxen_backend_t;
 
 /* -------------------------------------------------------------------------
@@ -331,6 +337,25 @@ void boxen_shutdown(void);
  * 2026-06-09 JES #691 Phase C.1 round 2 P1: terminal dimensions for
  * boxen_outline_open (avoid hardcoded 80x24). */
 void boxen_get_screen_size(int *w, int *h);
+
+/* -------------------------------------------------------------------------
+ * Mouse-mode policy (Phase C M7)
+ *
+ * Mouse reporting starts DISABLED so the terminal's native selection
+ * works on startup (plan section 5.1 -- the PR #808 regression lesson).
+ * The embedder opts in on demand: the REPL's /mouse slash command and the
+ * palette's auto-enable both route through boxen_set_mouse.
+ * ---------------------------------------------------------------------- */
+
+/* Forward the enable/disable request to the backend and record the state.
+ * Returns BOXEN_OK on success, BOXEN_ERR_INIT if boxen is not initialized,
+ * BOXEN_ERR_INVALID if the backend has no set_mouse implementation.
+ * 2026-08-09 JES C M7. */
+boxen_result_t boxen_set_mouse(bool enable);
+
+/* Current mouse-mode state as last set via boxen_set_mouse.  False when
+ * boxen is not initialized or mouse was never enabled. */
+bool boxen_mouse_enabled(void);
 
 /* -------------------------------------------------------------------------
  * Window type (opaque; defined in boxen_internal.h)

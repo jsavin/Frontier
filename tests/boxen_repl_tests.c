@@ -2284,6 +2284,281 @@ static void test_paste_cancels_pending_slash_palette(void) {
 }
 
 /* -------------------------------------------------------------------------
+ * 2026-08-09 JES C M7: mouse-mode policy + /mouse toggle.
+ *
+ * Plan sections 5.1-5.4 (planning/phase_c/INPUT_DECODER_PLAN.md):
+ *   - mouse mode is OFF by default; startup must not touch the backend's
+ *     mouse state at all (the PR #808 regression lesson)
+ *   - /mouse on|off toggles it explicitly (intercepted in boxen_repl.c
+ *     before the menubar dispatch, like /edit)
+ *   - the palette auto-enables mouse while open and auto-restores on
+ *     close UNLESS the user explicitly turned mouse on
+ *   - the explicit preference persists across sessions
+ *   - the footer hint bar shows the current state
+ *
+ * The mock backend records set_mouse calls (boxen_mock_mouse_enabled /
+ * boxen_mock_set_mouse_calls) so these are behavioral wire assertions,
+ * not state-flag inspection.
+ * ---------------------------------------------------------------------- */
+
+/* Type each character of `line` through the tick API, then press Enter.
+ * palette_open_hook is NULL in these tests unless installed explicitly,
+ * so a leading '/' inserts normally (no debounce). */
+static void type_line_and_enter(const char *line) {
+	for (const char *p = line; *p != '\0'; p++) {
+		boxen_event_t ev = make_char_event(*p);
+		boxen_repl_run_one_tick(&g_state, &ev);
+	}
+	boxen_event_t enter = make_key_event(BOXEN_KEY_ENTER);
+	boxen_repl_run_one_tick(&g_state, &enter);
+}
+
+/* Newest scrollback entry, or "" if the ring is empty. */
+static const char *newest_scrollback(void) {
+	if (g_state.scrollback_count == 0) return "";
+	int idx = (g_state.scrollback_head - 1 + BOXEN_REPL_SCROLLBACK_SIZE)
+	          % BOXEN_REPL_SCROLLBACK_SIZE;
+	return g_state.scrollback[idx] ? g_state.scrollback[idx] : "";
+}
+
+/* Startup must leave the backend's mouse state untouched: zero set_mouse
+ * calls, mouse reported off.  This is the policy-layer half of the PR
+ * #808 regression guard (the decoder-layer half lives in
+ * input_decoder_tests.c: no writes at create). */
+static void test_mouse_off_by_default_no_backend_calls_at_startup(void) {
+	setup();
+
+	assert(boxen_mock_set_mouse_calls() == 0);
+	assert(boxen_mock_mouse_enabled() == false);
+	assert(boxen_mouse_enabled() == false);
+	assert(g_state.mouse_user_on == false);
+	assert(g_state.mouse_palette_auto == false);
+
+	teardown();
+}
+
+/* /mouse on must reach the backend (set_mouse(true)), record the explicit
+ * user preference, confirm in scrollback, and NOT fall through to the
+ * menubar slash dispatch. */
+static void test_slash_mouse_on_enables_backend_mouse(void) {
+	setup();
+
+	type_line_and_enter("/mouse on");
+
+	assert(boxen_mock_mouse_enabled() == true);
+	assert(boxen_mock_set_mouse_calls() == 1);
+	assert(boxen_mouse_enabled() == true);
+	assert(g_state.mouse_user_on == true);
+	/* Intercepted before the slash hook: the mock dispatch must NOT run. */
+	assert(g_slash_result[0] == '\0');
+	assert(strstr(newest_scrollback(), "Mouse mode on") != NULL);
+
+	teardown();
+}
+
+/* /mouse off after /mouse on restores native state at the backend. */
+static void test_slash_mouse_off_restores_native_state(void) {
+	setup();
+
+	type_line_and_enter("/mouse on");
+	type_line_and_enter("/mouse off");
+
+	assert(boxen_mock_mouse_enabled() == false);
+	assert(boxen_mock_set_mouse_calls() == 2);
+	assert(boxen_mouse_enabled() == false);
+	assert(g_state.mouse_user_on == false);
+	assert(strstr(newest_scrollback(), "Mouse mode off") != NULL);
+
+	teardown();
+}
+
+/* Toggle round-trip ends enabled; each toggle is one backend call. */
+static void test_slash_mouse_toggle_round_trip(void) {
+	setup();
+
+	type_line_and_enter("/mouse on");
+	type_line_and_enter("/mouse off");
+	type_line_and_enter("/mouse on");
+
+	assert(boxen_mock_mouse_enabled() == true);
+	assert(boxen_mock_set_mouse_calls() == 3);
+	assert(g_state.mouse_user_on == true);
+
+	teardown();
+}
+
+/* Bare /mouse reports the current state without touching the backend. */
+static void test_slash_mouse_no_arg_reports_state(void) {
+	setup();
+
+	type_line_and_enter("/mouse");
+
+	assert(boxen_mock_set_mouse_calls() == 0);
+	assert(strstr(newest_scrollback(), "Mouse mode is off") != NULL);
+	assert(g_slash_result[0] == '\0');   /* intercepted, not dispatched */
+
+	teardown();
+}
+
+/* An unrecognized argument prints usage and changes nothing. */
+static void test_slash_mouse_bad_arg_shows_usage(void) {
+	setup();
+
+	type_line_and_enter("/mouse banana");
+
+	assert(boxen_mock_set_mouse_calls() == 0);
+	assert(boxen_mock_mouse_enabled() == false);
+	assert(strstr(newest_scrollback(), "Usage: /mouse") != NULL);
+
+	teardown();
+}
+
+/* Palette open auto-enables mouse (click-to-select needs it); palette
+ * close auto-restores because the user never opted in explicitly. */
+static void test_palette_open_auto_enables_and_close_restores(void) {
+	setup();
+
+	g_mock_now_ms             = 1000;
+	g_mock_palette_open_count = 0;
+	g_state.palette_open_hook     = mock_palette_open;
+	g_state.palette_dispatch_hook = mock_palette_dispatch;
+	g_state.now_ms_hook           = mock_now_ms;
+
+	/* '/' arms the debounce; advancing time fires the palette open. */
+	boxen_event_t ev = make_char_event('/');
+	boxen_repl_run_one_tick(&g_state, &ev);
+	g_mock_now_ms += BOXEN_REPL_SLASH_DEBOUNCE_MS + 1;
+	boxen_repl_check_pending_slash(&g_state);
+	assert(g_state.palette_state != NULL);
+
+	/* Palette open must have auto-enabled mouse at the backend. */
+	assert(boxen_mock_mouse_enabled() == true);
+	assert(g_state.mouse_palette_auto == true);
+	assert(g_state.mouse_user_on == false);
+
+	/* Close: auto-restore (user never said /mouse on). */
+	boxen_repl_close_palette_for_test(&g_state);
+	assert(boxen_mock_mouse_enabled() == false);
+	assert(g_state.mouse_palette_auto == false);
+
+	teardown();
+}
+
+/* When the user explicitly enabled mouse, palette close must NOT turn it
+ * off behind their back. */
+static void test_palette_close_keeps_mouse_when_user_explicit(void) {
+	setup();
+
+	g_mock_now_ms             = 1000;
+	g_mock_palette_open_count = 0;
+	g_state.palette_open_hook     = mock_palette_open;
+	g_state.palette_dispatch_hook = mock_palette_dispatch;
+	g_state.now_ms_hook           = mock_now_ms;
+
+	type_line_and_enter("/mouse on");
+	assert(boxen_mock_mouse_enabled() == true);
+
+	boxen_event_t ev = make_char_event('/');
+	boxen_repl_run_one_tick(&g_state, &ev);
+	g_mock_now_ms += BOXEN_REPL_SLASH_DEBOUNCE_MS + 1;
+	boxen_repl_check_pending_slash(&g_state);
+	assert(g_state.palette_state != NULL);
+
+	boxen_repl_close_palette_for_test(&g_state);
+	assert(boxen_mock_mouse_enabled() == true);   /* still on */
+	assert(g_state.mouse_user_on == true);
+
+	teardown();
+}
+
+/* The footer hint bar shows the current mouse state and the toggle. */
+static void test_footer_shows_mouse_state(void) {
+	setup();
+
+	boxen_present();
+	assert(boxen_mock_has_text("Mouse: off"));
+
+	type_line_and_enter("/mouse on");
+	boxen_present();
+	assert(boxen_mock_has_text("Mouse: on"));
+
+	type_line_and_enter("/mouse off");
+	boxen_present();
+	assert(boxen_mock_has_text("Mouse: off"));
+
+	teardown();
+}
+
+/* The explicit preference persists across sessions via the pref file
+ * (plan section 5.4).  Session 1 sets /mouse on; session 2 must come up
+ * with mouse enabled without any user action. */
+static void test_mouse_pref_persists_across_sessions(void) {
+	char tmp_path[256];
+	snprintf(tmp_path, sizeof(tmp_path),
+	         "/tmp/boxen_repl_test_mousepref_%d.txt", (int)getpid());
+	(void)remove(tmp_path);
+
+	boxen_repl_set_mouse_pref_path_for_test(tmp_path);
+
+	/* Session 1: explicit /mouse on writes the pref. */
+	setup();
+	type_line_and_enter("/mouse on");
+	teardown();
+
+	{
+		FILE *fin = fopen(tmp_path, "r");
+		assert(fin != NULL);
+		char word[16] = "";
+		assert(fgets(word, sizeof(word), fin) != NULL);
+		fclose(fin);
+		word[strcspn(word, "\r\n")] = '\0';
+		assert(strcmp(word, "on") == 0);
+	}
+
+	/* Session 2: state_init must hydrate the preference and enable. */
+	setup();
+	assert(g_state.mouse_user_on == true);
+	assert(boxen_mock_mouse_enabled() == true);
+	assert(boxen_mouse_enabled() == true);
+
+	/* Session 2 turns it off; the file must record that. */
+	type_line_and_enter("/mouse off");
+	teardown();
+
+	{
+		FILE *fin = fopen(tmp_path, "r");
+		assert(fin != NULL);
+		char word[16] = "";
+		assert(fgets(word, sizeof(word), fin) != NULL);
+		fclose(fin);
+		word[strcspn(word, "\r\n")] = '\0';
+		assert(strcmp(word, "off") == 0);
+	}
+
+	boxen_repl_set_mouse_pref_path_for_test(NULL);
+	(void)remove(tmp_path);
+}
+
+/* Without an explicit toggle, no pref file appears (no dotfile litter)
+ * and startup performs no backend mouse calls even with the seam set. */
+static void test_mouse_pref_not_written_without_toggle(void) {
+	char tmp_path[256];
+	snprintf(tmp_path, sizeof(tmp_path),
+	         "/tmp/boxen_repl_test_mousepref_notouch_%d.txt", (int)getpid());
+	(void)remove(tmp_path);
+
+	boxen_repl_set_mouse_pref_path_for_test(tmp_path);
+	setup();
+	type_line_and_enter("1 + 1");
+	teardown();
+	boxen_repl_set_mouse_pref_path_for_test(NULL);
+
+	FILE *fin = fopen(tmp_path, "r");
+	assert(fin == NULL);
+	(void)remove(tmp_path);
+}
+
+/* -------------------------------------------------------------------------
  * main
  * ---------------------------------------------------------------------- */
 int main(void) {
@@ -2344,6 +2619,19 @@ int main(void) {
 	TR_RUN(test_paste_oversize_truncates_at_input_cap);
 	TR_RUN(test_paste_empty_is_noop);
 	TR_RUN(test_paste_cancels_pending_slash_palette);
+
+	/* 2026-08-09 JES C M7: mouse-mode policy + /mouse toggle. */
+	TR_RUN(test_mouse_off_by_default_no_backend_calls_at_startup);
+	TR_RUN(test_slash_mouse_on_enables_backend_mouse);
+	TR_RUN(test_slash_mouse_off_restores_native_state);
+	TR_RUN(test_slash_mouse_toggle_round_trip);
+	TR_RUN(test_slash_mouse_no_arg_reports_state);
+	TR_RUN(test_slash_mouse_bad_arg_shows_usage);
+	TR_RUN(test_palette_open_auto_enables_and_close_restores);
+	TR_RUN(test_palette_close_keeps_mouse_when_user_explicit);
+	TR_RUN(test_footer_shows_mouse_state);
+	TR_RUN(test_mouse_pref_persists_across_sessions);
+	TR_RUN(test_mouse_pref_not_written_without_toggle);
 
 	TR_SUMMARY();
 	return TR_EXIT_CODE();

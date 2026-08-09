@@ -288,6 +288,24 @@ static void tb2_clear(void) {
 }
 
 /* -------------------------------------------------------------------------
+ * 2026-08-09 JES C M7: mouse-mode passthrough.
+ *
+ * Forwards to the input decoder, which owns the terminal writes (SGR
+ * mouse + bracketed paste, plan section 5).  Deliberately does NOT call
+ * tb_set_input_mode(TB_INPUT_MOUSE) -- termbox2's input path is dead
+ * post-M6, and that call was the PR #808 regression.
+ *
+ * Threading: callers reach this via boxen_set_mouse from GIL-held,
+ * between-polls context only (slash-command dispatch, palette open /
+ * close) -- see the set_mouse contract in input_decoder.h.
+ * ---------------------------------------------------------------------- */
+static void tb2_set_mouse(bool enable) {
+	/* NULL g_decoder (init failed / shutdown raced) is safe: the decoder's
+	 * own NULL guard makes this a no-op. */
+	input_decoder_set_mouse(g_decoder, enable);
+}
+
+/* -------------------------------------------------------------------------
  * Vtable and accessor
  * ---------------------------------------------------------------------- */
 
@@ -303,6 +321,7 @@ static const boxen_backend_t g_tb2_backend = {
 	.present            = tb2_present,
 	.poll_event         = tb2_poll_event,
 	.clear              = tb2_clear,
+	.set_mouse          = tb2_set_mouse,
 };
 
 const boxen_backend_t *boxen_tb2_backend(void) {

@@ -121,6 +121,21 @@ void boxen_mock_push_mouse(int x, int y, uint8_t button, bool pressed, uint16_t 
 void boxen_mock_push_double_click(int x, int y, uint16_t mod);
 
 /* -------------------------------------------------------------------------
+ * Mouse-mode inspection (Phase C M7)
+ *
+ * The mock records every backend->set_mouse call so policy tests can
+ * assert both the final state AND the call count (zero calls at startup
+ * is the PR #808 regression guard).  boxen_mock_reset() restores the
+ * "never called" defaults (false, 0).
+ * ---------------------------------------------------------------------- */
+
+/* Last value passed to backend->set_mouse; false if never called. */
+bool boxen_mock_mouse_enabled(void);
+
+/* Number of backend->set_mouse calls since boxen_mock_reset(). */
+int  boxen_mock_set_mouse_calls(void);
+
+/* -------------------------------------------------------------------------
  * Clock injection for deterministic double-click testing
  *
  * By default the mock uses a monotonically-advancing internal counter
