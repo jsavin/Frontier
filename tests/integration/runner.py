@@ -1912,6 +1912,11 @@ class TestRunner:
                     continue
 
                 if 'verify_root_hash' in step:
+                    if not test.private_system_root:
+                        return TestResult(
+                            test.name, False,
+                            error=f"[{step_desc}] verify_root_hash requires "
+                                  f"private_system_root: true")
                     expected_hash = self._resolve_captures(
                         step['verify_root_hash'], captures)
                     with open(executor.system_root, 'rb') as f:
