@@ -239,6 +239,57 @@ tests:
 | `needs_guest_dbs` | `false` | When `true`, the runner copies sibling `.root` files and `Guest Databases/` into the worker's temp directory. Use for tests that call `fileMenu.open()` or reference paths relative to `Frontier.getFilePath()`. |
 | `protocol_mode` | `true` | When `false`, the runner skips the NDJSON protocol executor and spawns a new process per test. Use for tests that block or need special process behavior. |
 
+### Protocol Contract Tests (`protocol_ops`)
+
+Instead of `script:`, a test may declare `protocol_ops:` — a list of raw
+NDJSON protocol steps executed against the shared `--protocol` executor.
+Used to pin wire-level contracts (see
+`tests/integration/test_cases/protocol_contract_tests.yaml` for the full
+op catalog and `planning/gui/STDIO_PROTOCOL.md` for the documented
+contract).
+
+Step forms:
+
+```yaml
+protocol_ops:
+  # 1. Regular op step: send {op, id, params}, validate the response.
+  - op: "debug/run"
+    params:
+      expression: "1 + 1"
+    capture:
+      tid: "result.threadId"   # store response value for later steps
+    validate:
+      success: true            # strict bool match
+      result:                  # flat subset match on result object
+        status: "started"
+      error_code: "bad_params" # match stable error.code
+      error_contains: "text"   # substring match on error.message
+
+  # 2. Notification step: wait for a server-initiated line
+  #    ({"id":null,"op":...}). Non-matching notifications stay queued.
+  - wait_notification: "debug/suspended"
+    timeout: 15                # seconds (default 10)
+    validate:
+      params:
+        threadId: "$tid"       # "$name" substitutes captured values
+        reason: "entry"
+
+  # 3. Envelope step: send a literal (possibly invalid) line.
+  - raw_line: '{"op":"script/eval",'   # string, or list of parts where
+    validate:                          # a part may be {repeat, count}
+      success: false                   # for oversized/large payloads
+      error_code: "parse_error"
+      # or: no_response: true  (assert silent drop)
+```
+
+`params` values of the exact form `"$name"` are replaced with values
+captured earlier in the same test via `capture:`. The executor
+transparently queues notification lines that arrive between a request and
+its response; `reset()` clears the queue between tests. Batch validation
+keys (`results`, `result_count`, `_contains`, `_strict_type`, `_exists`,
+`_pattern`, `entries_*`) are documented by example in
+`protocol_odb_ops.yaml`.
+
 ### Test Path Placeholders
 
 For portable file path handling in test scripts, use the `{FRONTIER_TEST_TMP_DIR}` placeholder instead of hardcoded paths:

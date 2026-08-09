@@ -2,10 +2,11 @@
 
 | | |
 |---|---|
-| **Version** | 1.0.0 |
+| **Version** | 1.1.0 |
 | **Status** | Implemented |
-| **Last Updated** | 2026-02-15 |
-| **Implementation** | `frontier-cli/protocol_handler.c` |
+| **Last Updated** | 2026-08-09 |
+| **Implementation** | `frontier-cli/protocol_handler.c` (framing), `frontier-cli/op_handler.c` (dispatch + script/odb ops), `frontier-cli/debug_handler.c` (debug ops + notifications), `frontier-cli/odb_ops.c` (per-item odb results) |
+| **Contract tests** | `tests/integration/test_cases/protocol_contract_tests.yaml` |
 
 ## 1. Overview
 
@@ -70,6 +71,7 @@ This prevents verb implementations that call `printf()`, `msg()`, or dialog prom
 
 - Each message is exactly one line (terminated by `\n`)
 - Maximum line length: 64 KB (`PROTOCOL_LINE_MAX`)
+- A request line exceeding the maximum is discarded through its terminating newline and answered with a single `{"id":null, "error":{"code":"line_too_long", ...}, "success":false}` response; the session remains usable
 - JSON encoding: standard JSON with `\n`, `\t`, `\\`, `\"`, `\uXXXX` escapes
 - Surrogate pairs (`\uD800`–`\uDBFF` + `\uDC00`–`\uDFFF`) are decoded to UTF-8
 
@@ -89,6 +91,9 @@ This prevents verb implementations that call `printf()`, `msg()`, or dialog prom
 | `id` | integer | Yes | Request ID for correlation |
 | `params` | object | Depends | Operation-specific parameters |
 
+Envelope validation order: `id` is checked first, then `op`. A request
+missing (or mistyping) both gets the `missing_id` error.
+
 ### 3.2 Success Response (CLI → client)
 
 ```json
@@ -98,8 +103,13 @@ This prevents verb implementations that call `printf()`, `msg()`, or dialog prom
 ### 3.3 Error Response (CLI → client)
 
 ```json
-{"id": <integer>, "error": {"message": "<text>", "category": "<category>"}, "success": false}
+{"id": <integer|null>, "error": {"code": "<code>", "message": "<text>"}, "success": false}
 ```
+
+`error.code` is a stable machine-readable code from the set in §5. `id` is
+`null` when the request's id could not be recovered (unparseable JSON,
+missing/mistyped id, oversized line). `script/eval` errors may additionally
+carry `error.location`, `error.stack`, and `error.causedBy` (see §4.1).
 
 ### 3.4 Acknowledgement (CLI → client)
 
@@ -109,13 +119,43 @@ For operations with no result payload:
 {"id": <integer>, "success": true}
 ```
 
+### 3.5 Notification (CLI → client, server-initiated)
+
+Debug threads emit unsolicited notification lines. They are distinguishable
+from responses by `"id": null` **plus** the presence of an `op` field:
+
+```json
+{"id": null, "op": "debug/suspended", "params": {"threadId": 3, "line": 0, "reason": "entry"}}
+{"id": null, "op": "debug/completed", "params": {"threadId": 3, "success": true}}
+```
+
+Clients must tolerate notification lines interleaved between a request and
+its response. `debug/suspended` reasons: `entry`, `interrupted`,
+`breakpoint`, `step`, `watchpoint`, `error`. `debug/suspended` includes a
+`script` field when the suspended statement is inside a named script.
+`debug/completed` fires on normal completion (`success: true`) and on kill
+or error (`success: false`).
+
 ---
 
 ## 4. Operations
 
-### 4.1 `script/eval` — Evaluate UserTalk Expression
+Dispatch table (`op_handler.c::op_dispatch`), 22 operations:
 
-Evaluates a UserTalk expression and returns the result.
+| Group | Operations |
+|-------|------------|
+| Script | `script/eval`, `script/clearContext` |
+| ODB | `odb/get`, `odb/set`, `odb/list`, `odb/delete` |
+| Debug execution | `debug/run`, `debug/step`, `debug/continue`, `debug/kill`, `debug/pause` |
+| Breakpoints | `debug/setBreakpoint`, `debug/listBreakpoints`, `debug/clearBreakpoints` |
+| Inspection | `debug/getLocals`, `debug/getSource`, `debug/getStack`, `debug/listThreads` |
+| Watchpoints | `debug/setWatchpoint`, `debug/listWatchpoints`, `debug/clearWatchpoints` |
+| Lifecycle | `shutdown` |
+
+There are no dedicated sync ops: `.ut` sync is driven through UserTalk verbs
+(`repl.syncScan()` etc.) via `script/eval`.
+
+### 4.1 `script/eval` — Evaluate UserTalk Expression
 
 **Request:**
 ```json
@@ -129,7 +169,7 @@ Evaluates a UserTalk expression and returns the result.
 
 **Error response:**
 ```json
-{"id": 1, "error": {"message": "Can't compile this expression", "category": "script"}, "success": false}
+{"id": 1, "error": {"code": "script_error", "message": "...", "location": {"script": "<eval>", "line": 1, "column": 3, "tokenStart": 2, "tokenEnd": 3}, "stack": [{"script": "<eval>", "line": 1, "column": 3}]}, "success": false}
 ```
 
 **Notes:**
@@ -138,52 +178,200 @@ Evaluates a UserTalk expression and returns the result.
 - Tables return `"[table]"` as their value representation
 - `novaluetype` results return `null` for value and `"none"` for type
 - REPL variables from previous evaluations persist until `clearContext`
+- Missing/non-string `expression` → `bad_params`; compile and runtime failures → `script_error`
+- `error.location` / `error.stack` / `error.causedBy` are attached when the runtime captured them
+- KNOWN GAP: bare runtime errors (e.g. `scriptError("x")` outside try/else) currently report the generic message `"Script evaluation failed"` — the real message is lost on the protocol eval path (#618/#620 context); location/stack are still populated
 
 ### 4.2 `script/clearContext` — Reset Evaluation State
 
-Clears all REPL variables, resets focus to root, and resets error state.
+**Request:** `{"op": "script/clearContext", "id": 2}` — extra params are ignored.
 
-**Request:**
+**Response:** bare ack `{"id": 2, "success": true}`.
+
+**What gets reset:** REPL variables table (emptied), focus/jump path (reset
+to root), `langerrordisable` / `langerrorlogdisable` counters,
+`fllangerror` flag, TCP rate-limit window. Breakpoints and watchpoints are
+NOT cleared (use `debug/clearBreakpoints` / `debug/clearWatchpoints`).
+
+### 4.3 ODB Operations — `odb/get`, `odb/set`, `odb/list`, `odb/delete`
+
+All four share batch semantics: `params.items` is always an array (max
+1000 items, else `batch_too_large`), and the response envelope is always
+`{"id": N, "success": true, "results": [...]}` with one result object per
+item, in order. Per-item failures do NOT fail the envelope.
+
+**Envelope errors:** missing/non-array `items` → `bad_params`.
+
+**Per-item error shape** (note: per-item errors carry `message` only — the
+stable codes of §5 apply to top-level `error` objects):
+
 ```json
-{"op": "script/clearContext", "id": 2}
+{"path": "<echoed path>", "error": {"message": "Path not found"}, "success": false}
 ```
 
-**Response:**
-```json
-{"id": 2, "success": true}
-```
+**Per-item success shapes:**
 
-**What gets reset:**
-- REPL variables table (emptied)
-- Focus/jump path (reset to root)
-- `langerrordisable` counter (reset to 0)
-- `langerrorlogdisable` counter (reset to 0)
-- `fllangerror` flag (reset to false)
+| Op | Item request fields | Item success result |
+|----|---------------------|---------------------|
+| `odb/get` | `path` (required) | `{"path", "name", "type", "value", "success": true}` |
+| `odb/set` | `path` (required), `type` (optional, inferred from JSON value when omitted), `value` | `{"path", "success": true}` |
+| `odb/list` | `path` (required), `depth` (default 1, `-1` recursive), `maxResults` (default 10000) | `{"path", "entries": [{"name", "path", "type"}...], "truncated"?: true, "success": true}` |
+| `odb/delete` | `path` (required) | `{"path", "success": true}` |
 
-This operation should be called between logical test sessions to prevent state leaks.
+Item-level validation: missing/non-string `path` → per-item
+`{"error": {"message": "Missing 'path'"}, "success": false}`. Paths are
+restricted to a letters/digits/dots allowlist (spaces, hyphens, semicolons
+rejected per item). `odb/set` cannot create tables (use `script/eval` with
+`new(tableType, @path)`). Mutations are in-memory; persistence semantics
+(explicit `odb/save`) are Unit 1.2.
 
-### 4.3 `shutdown` — Clean Exit
+### 4.4 `debug/run` — Spawn a Debuggable Script Thread
 
-Requests the CLI process to exit cleanly.
+**Request:** `{"op": "debug/run", "id": 5, "params": {"expression": "<UserTalk>"}}`
 
-**Request:**
-```json
-{"op": "shutdown", "id": 3}
-```
+**Success response:** `{"id": 5, "result": {"threadId": 3, "status": "started"}, "success": true}`
 
-**Response:** The process writes an ack and exits with code 0.
+The thread starts **suspended before its first statement**; a
+`debug/suspended` notification with `reason: "entry"`, `line: 0` follows.
+Set breakpoints, then `debug/continue` or `debug/step`.
+
+**Errors:** missing `expression` → `bad_params`; compile failure →
+`script_error` (`"Compilation failed: <msg>"`); spawn failure →
+`internal_error`.
+
+### 4.5 `debug/continue`, `debug/step`, `debug/pause`, `debug/kill`
+
+All take `params.threadId` (number). Shared errors: missing/non-numeric
+`threadId` → `bad_params`; unknown thread → `not_found`
+(`"No debug thread with that ID"`).
+
+| Op | Precondition | Success result | State errors (`bad_state`) |
+|----|--------------|----------------|----------------------------|
+| `debug/continue` | — | `{"threadId", "status": "running"}` | — |
+| `debug/step` | thread suspended | `{"threadId", "status": "stepping"}` | `"Thread N is not suspended"` |
+| `debug/pause` | thread running | `{"threadId", "status": "interrupting"}` | `"Thread N is already suspended"` |
+| `debug/kill` | — | `{"threadId", "status": "killed"}` | — |
+
+`debug/step` takes optional `direction`: `"over"` (default), `"into"`,
+`"out"`; anything else → `bad_params`. After `step`, a `debug/suspended`
+notification with `reason: "step"` follows; after `pause`, one with
+`reason: "interrupted"` (at the next executed statement). A killed thread
+emits `debug/completed` with `success: false`.
+
+### 4.6 `debug/setBreakpoint`, `debug/listBreakpoints`, `debug/clearBreakpoints`
+
+**setBreakpoint** — toggle semantics: setting an existing script+line
+clears it.
+
+Request params: `script` (dotted path, leading `@` stripped), `line`
+(integer 1–1000000), optional `condition` (UserTalk expression).
+
+Success result: `{"action": "set"|"cleared", "script", "line", "condition"?}`.
+
+Errors: missing/non-string `script`, missing/non-numeric `line` →
+`bad_params`; non-integer or out-of-range line → `bad_params`
+(`"Line must be a positive integer"`); path ≥ 256 bytes → `bad_params`;
+all 256 slots full → `limit_exceeded`.
+
+**listBreakpoints** — no params. Result:
+`{"breakpoints": [{"script", "line", "type": "session", "condition"?}...]}`.
+
+**clearBreakpoints** — no params. Result: `{"cleared": <count>}`.
+
+### 4.7 `debug/getLocals`, `debug/getStack` — Inspect a Suspended Thread
+
+Both take `params.threadId` and require the thread to be **suspended**
+(else `bad_state`). Unknown thread → `not_found`; missing/mistyped
+threadId → `bad_params`.
+
+**getLocals** result: `{"locals": [{"name", "value", "type"}...], "script"?, "line"}`
+— the innermost local table's entries (values as display strings, truncated
+at 255 chars).
+
+**getStack** result: `{"frames": [{"level", "script", "line"?}...]}` —
+outermost caller first, current script last.
+
+### 4.8 `debug/getSource` — Fetch Script Source with Breakpoint Overlay
+
+Request params: `script` (fully qualified dotted path; leading `@`
+stripped), optional `threadId` (adds `currentLine` when that thread is
+suspended in this script).
+
+Success result:
+`{"script", "currentLine"?, "lines": [{"num", "text", "breakpoint": bool, "current"?: true}...]}`.
+
+Errors: missing `script` → `bad_params`; unqualified path → `bad_params`
+(`"Script path must be fully qualified (e.g. system.temp.myFunc)"`); table
+or script not found, or object has no source → `not_found`; database load
+failure → `internal_error`.
+
+### 4.9 `debug/listThreads` — List Registered Debug Threads
+
+No params. Result: `{"threads": [{"threadId", "suspended": bool, "script"?, "line"?}...]}`
+— `script`/`line` only present for suspended threads.
+
+### 4.10 `debug/setWatchpoint`, `debug/listWatchpoints`, `debug/clearWatchpoints`
+
+**setWatchpoint** — toggle semantics, like setBreakpoint. Request params:
+`variable` (name, < 64 bytes). Success result:
+`{"action": "set"|"cleared", "variable"}`. Errors: missing/non-string
+`variable` → `bad_params`; name too long → `bad_params`; 64 slots full →
+`limit_exceeded`.
+
+**listWatchpoints** — no params. Result:
+`{"watchpoints": [{"variable", "lastValue"?}...]}`.
+
+**clearWatchpoints** — no params. Result: `{"cleared": <count>}`.
+
+### 4.11 `shutdown` — Clean Exit
+
+**Request:** `{"op": "shutdown", "id": 3}`
+
+**Response:** bare ack, then the process exits with code 0.
 
 ---
 
-## 5. Error State Management
+## 5. Error Semantics
 
-### 5.1 The Problem
+Every top-level error response carries `error.code` from this stable set
+(constants `OP_ERRCODE_*` in `frontier-cli/op_handler.h` — keep in sync):
+
+| Code | Meaning | `id` in response |
+|------|---------|------------------|
+| `parse_error` | Request line is not valid JSON | `null` |
+| `missing_id` | No numeric `id` field | `null` |
+| `missing_op` | No string `op` field | echoed |
+| `unknown_op` | `op` not in the dispatch table | echoed |
+| `bad_params` | Missing or wrong-typed parameter (a wrong-typed param is treated as missing) | echoed |
+| `batch_too_large` | `params.items` exceeds 1000 items | echoed |
+| `limit_exceeded` | Breakpoint (256) or watchpoint (64) slots full | echoed |
+| `not_found` | Debug thread / table / script not found | echoed |
+| `bad_state` | Op invalid for the target's current state (step on running thread, pause on suspended thread) | echoed |
+| `script_error` | UserTalk compile or runtime failure | echoed |
+| `internal_error` | Allocation, spawn, or database-load failure | echoed |
+| `line_too_long` | Request line exceeds 64 KB | `null` |
+
+Notes:
+
+- Per-item errors inside `results` arrays (odb ops) carry `message` only;
+  codes are envelope-level.
+- The message text is human-readable and NOT part of the stable contract;
+  branch on `code`, not on message content.
+- Contract coverage: every code above except `internal_error` and
+  `limit_exceeded` (not reachable without fault injection / 256+ set
+  calls) is exercised by `protocol_contract_tests.yaml`.
+
+---
+
+## 6. Error State Management
+
+### 6.1 The Problem
 
 Some verb implementations (notably `xml.frontiervaluetotaggedtext()`) use `disablelangerror()`/`enablelangerror()` internally. If an error occurs between the disable/enable calls, the global `langerrordisable` counter can be left > 0, which causes `langerrorenabled()` to return false. This prevents `try/else` blocks from catching errors in subsequent evaluations.
 
 In a per-process model (one process per test), this doesn't matter because the process exits. In a long-lived protocol process, the stale state leaks into the next evaluation.
 
-### 5.2 The Fix
+### 6.2 The Fix
 
 `script/clearContext` resets all error-related globals:
 
@@ -197,7 +385,7 @@ Clients MUST call `script/clearContext` between independent evaluation sessions.
 
 ---
 
-## 6. Example Session
+## 7. Example Session
 
 ```
 → {"op":"script/eval","id":1,"params":{"expression":"2 + 2"}}
@@ -213,7 +401,7 @@ Clients MUST call `script/clearContext` between independent evaluation sessions.
 ← {"id":4,"success":true}
 
 → {"op":"script/eval","id":5,"params":{"expression":"x"}}
-← {"id":5,"error":{"message":"Can't compile this expression","category":"script"},"success":false}
+← {"id":5,"error":{"code":"script_error","message":"...","location":{...},"stack":[...]},"success":false}
 
 → {"op":"shutdown","id":6}
 ← {"id":6,"success":true}
@@ -222,7 +410,7 @@ Clients MUST call `script/clearContext` between independent evaluation sessions.
 
 ---
 
-## 7. Future: GUI Application over Stdio
+## 8. Future: GUI Application over Stdio
 
 When the GUI application connects to `frontier-cli`, it can use this same stdio protocol as the transport layer. The path forward:
 
@@ -231,7 +419,7 @@ When the GUI application connects to `frontier-cli`, it can use this same stdio 
 3. **Keep stdout isolation** — The `g_protocol_out` pattern ensures clean protocol output regardless of what verb implementations print
 4. **Consider structured output for stderr** — Currently stderr carries unstructured log output; for GUI use, consider a structured log format or a separate logging channel
 
-### 7.1 Key Differences from WebSocket
+### 8.1 Key Differences from WebSocket
 
 | Aspect | Stdio | WebSocket |
 |--------|-------|-----------|
@@ -248,4 +436,5 @@ For single-user desktop use, stdio is simpler and avoids the overhead of HTTP/We
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 1.1.0 | 2026-08-09 | Unit 1.1 protocol contract hardening: documented all 22 dispatch-table ops + debug notifications; stable `error.code` set (§5); unparseable JSON now answered with `parse_error` (was: silent drop); id validated before op; oversized lines answered with a single `line_too_long` error; removed the never-implemented `error.category` field from examples |
 | 1.0.0 | 2026-02-15 | Initial specification (from working implementation) |
