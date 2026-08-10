@@ -1,4 +1,4 @@
-sequential: true  # Binds to TCP port — conflicts between parallel workers
+sequential: true  # Binds to TCP port -- conflicts between parallel workers
 
 # Integration tests for Webserver Hello World
 # Tests the complete webserver stack end-to-end using the built-in helloWorld responder
@@ -9,9 +9,11 @@ sequential: true  # Binds to TCP port — conflicts between parallel workers
 # 3. The helloWorld responder can handle requests and return HTML
 # 4. The TCP-based networking (fwsNetEvent*) works in headless mode
 #
-# EXPECTED INITIAL STATE: FAILING
-# The fwsNetEvent* functions in langhtml.c are currently stubbed out for headless mode.
-# This test proves the gap exists and will pass once the migration to tcp_* API is complete.
+# STATUS: PASSING
+# These tests were originally written against a headless build whose fwsNetEvent*
+# functions in langhtml.c were stubbed out, and were expected to fail. The webserver
+# path now runs on the tcp_* API and the full stack works headless, so the whole file
+# is expected to pass; a failure here is a real regression, not a known gap.
 #
 # Reference:
 #   - docs/webserver-hello-world/IMPLEMENTATION_PLAN.md (Migration plan)

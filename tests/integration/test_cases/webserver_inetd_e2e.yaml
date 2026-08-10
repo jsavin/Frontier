@@ -1,4 +1,4 @@
-sequential: true         # inetd listeners bind TCP ports — conflicts between parallel workers
+sequential: true         # inetd listeners bind TCP ports -- conflicts between parallel workers
 needs_guest_dbs: false   # Self-contained: only uses system root + user.webserver/inetd
 protocol_mode: true      # Default; stated explicitly for clarity
 
@@ -23,13 +23,15 @@ protocol_mode: true      # Default; stated explicitly for clarity
 #   OS outbound-connection collisions.
 #
 #   If a test fails with "inetd.startOne failed for port NNNN", another process on the
-#   host is bound to that port — change the four `local(port = 92xx)` constants to any
+#   host is bound to that port -- change the four `local(port = 92xx)` constants to any
 #   other free range in 1024–32767 (e.g. 8810–8813).
 #
-# Listener-shutdown race workaround (issue #364):
-#   After calling inetd.stopOne() we insert a short thread.sleepFor() to let the accept
-#   thread observe the closed socket and exit before the next test starts a new listener.
-#   We are NOT attempting to fix #364 here — see planning/MANILA_MAINRESPONDER_E2E.md.
+# Post-shutdown settling delay:
+#   After inetd.stopOne() we insert a short thread.sleepTicks() before the next test
+#   starts a listener. This is no longer the issue #364 race workaround: tcp_close_listen
+#   now pthread_join()s the accept thread (Common/source/tcpverbs.c), so the close itself
+#   is synchronous and the thread is fully gone when stopOne returns. The remaining sleep
+#   covers OS-level socket teardown (TIME_WAIT / port release) between back-to-back binds.
 #
 # References:
 #   - planning/MANILA_MAINRESPONDER_E2E.md (Phase A)
@@ -40,7 +42,7 @@ protocol_mode: true      # Default; stated explicitly for clarity
 
 tests:
   # =============================================================================
-  # TEST 1 — Listener lifecycle with a custom responder
+  # TEST 1 -- Listener lifecycle with a custom responder
   # =============================================================================
   - name: "inetd E2E - listener lifecycle with custom helloE2E responder"
     description: "Register a custom responder, start a listener, verify tracking, stop cleanly"
@@ -50,7 +52,7 @@ tests:
       webserver.init();
 
       local(port = 9210);
-      // Capture original port so we can restore it on exit — keeps system-root
+      // Capture original port so we can restore it on exit -- keeps system-root
       // port mutation local to the test, matches Tests 2–4.
       local(originalPort = user.inetd.config.http.port);
       user.inetd.config.http.port = port;
@@ -91,7 +93,7 @@ tests:
 
       // Stop cleanly
       inetd.stopOne (@user.inetd.config.http);
-      thread.sleepTicks (30);  // Workaround for issue #364 (listener shutdown race)
+      thread.sleepTicks (30);  // let the OS release the port before the next bind
 
       // Verify listener is no longer tracked
       local(removed = not defined (user.inetd.listens.[port]));
@@ -106,7 +108,7 @@ tests:
     notes: "Validates listener startup, registration in user.inetd.listens, and clean shutdown"
 
   # =============================================================================
-  # TEST 2 — Full HTTP GET round trip via the webserver dispatch path
+  # TEST 2 -- Full HTTP GET round trip via the webserver dispatch path
   # =============================================================================
   - name: "inetd E2E - HTTP GET round trip to custom responder"
     description: "Start listener, send HTTP GET, assert 200 status + custom body"
@@ -116,14 +118,14 @@ tests:
       webserver.init();
 
       local(port = 9211);
-      // Capture original port so we can restore it on exit — keeps system-root
+      // Capture original port so we can restore it on exit -- keeps system-root
       // port mutation local to the test.
       local(originalPort = user.inetd.config.http.port);
       user.inetd.config.http.port = port;
 
       // Install a custom responder whose GET returns "hello E2E".
       // NOTE: The 4 tests in this file each install helloE2E locally rather than
-      // sharing a setup block — the YAML integration-test framework has no
+      // sharing a setup block -- the YAML integration-test framework has no
       // setup/teardown mechanism, and per-test isolation is more important here
       // than DRY. If the responder shape changes, update all 4 tests in parallel.
       if not defined (user.webserver.responders.helloE2E) {
@@ -163,7 +165,7 @@ tests:
       try {
         stream = tcp.openAddrStream (tcp.addressEncode ("127.0.0.1"), port);
 
-        // HTTP/1.0 with Connection: close — simplest possible request
+        // HTTP/1.0 with Connection: close -- simplest possible request
         local(request = "GET /helloE2E HTTP/1.0\r\nHost: localhost\r\nConnection: close\r\n\r\n");
         tcp.writeStream (stream, request);
 
@@ -171,7 +173,7 @@ tests:
         // (2) keep reading until the server closes the connection so we
         // capture the full body (HTTP/1.0 + Connection: close).  Guarded by
         // a ticks-based timeout.  If we exit the loop with connectionClosed
-        // still false, the timeout fired — scriptError below so CI logs
+        // still false, the timeout fired -- scriptError below so CI logs
         // distinguish "server never closed" from "server returned wrong data".
         local(response = "");
         local(startTicks = clock.ticks ());
@@ -198,10 +200,10 @@ tests:
         stream = 0;
 
         if not connectionClosed {
-          scriptError ("read loop timed out — server never closed connection on port " + port)
+          scriptError ("read loop timed out -- server never closed connection on port " + port)
         };
 
-        // Match the HTTP status line — "200 OK" appears only in the status
+        // Match the HTTP status line -- "200 OK" appears only in the status
         // line, not in these headers/body. UserTalk 'contains' is a literal
         // substring match (no wildcards), and Frontier's webserver answers with
         // an HTTP/1.1 status line regardless of the request's HTTP version.
@@ -222,7 +224,7 @@ tests:
       };
 
       inetd.stopOne (@user.inetd.config.http);
-      thread.sleepTicks (30);  // #364 workaround
+      thread.sleepTicks (30);  // let the OS release the port before the next bind
       delete (@user.webserver.responders.helloE2E);
       user.inetd.config.http.port = originalPort;
 
@@ -232,7 +234,7 @@ tests:
     notes: "Full stack: tcp.openAddrStream -> inetd.supervisor -> webserver.server -> webserver.dispatch -> helloE2E.GET"
 
   # =============================================================================
-  # TEST 3 — Multiple sequential requests on the same listener
+  # TEST 3 -- Multiple sequential requests on the same listener
   # =============================================================================
   - name: "inetd E2E - multiple sequential GETs on same listener"
     description: "Send two HTTP GETs back-to-back, both should succeed"
@@ -242,7 +244,7 @@ tests:
       webserver.init();
 
       local(port = 9212);
-      // Capture original port so we can restore it on exit — keeps system-root
+      // Capture original port so we can restore it on exit -- keeps system-root
       // port mutation local to the test.
       local(originalPort = user.inetd.config.http.port);
       user.inetd.config.http.port = port;
@@ -315,7 +317,7 @@ tests:
           stream = 0;
 
           if not connectionClosed {
-            scriptError ("read loop timed out on iteration " + i + " — server never closed connection on port " + port)
+            scriptError ("read loop timed out on iteration " + i + " -- server never closed connection on port " + port)
           };
 
           // "200 OK" appears only in the status line. UserTalk 'contains' is a
@@ -340,7 +342,7 @@ tests:
       };
 
       inetd.stopOne (@user.inetd.config.http);
-      thread.sleepTicks (30);  // #364 workaround
+      thread.sleepTicks (30);  // let the OS release the port before the next bind
       delete (@user.webserver.responders.helloE2E);
       user.inetd.config.http.port = originalPort;
 
@@ -350,7 +352,7 @@ tests:
     notes: "Validates the listener handles multiple sequential HTTP connections correctly"
 
   # =============================================================================
-  # TEST 4 — 404 / error response for unknown path (no matching responder condition)
+  # TEST 4 -- 404 / error response for unknown path (no matching responder condition)
   # =============================================================================
   - name: "inetd E2E - unknown path falls through to default responder error"
     description: "GET to a path no custom responder matches returns an HTTP error (4xx/5xx)"
@@ -360,13 +362,13 @@ tests:
       webserver.init();
 
       local(port = 9213);
-      // Capture original port so we can restore it on exit — keeps system-root
+      // Capture original port so we can restore it on exit -- keeps system-root
       // port mutation local to the test.
       local(originalPort = user.inetd.config.http.port);
       user.inetd.config.http.port = port;
 
       // Install helloE2E responder that only matches /helloE2E paths.  The GET
-      // handler is intentionally omitted — this test never matches the condition,
+      // handler is intentionally omitted -- this test never matches the condition,
       // so the handler would be dead code.  The goal is to verify dispatch falls
       // through to the default responder when no custom condition matches.
       if not defined (user.webserver.responders.helloE2E) {
@@ -402,7 +404,7 @@ tests:
         // (2) keep reading until the server closes the connection so we
         // capture the full body (HTTP/1.0 + Connection: close).  Guarded by
         // a ticks-based timeout.  If we exit the loop with connectionClosed
-        // still false, the timeout fired — scriptError below so CI logs
+        // still false, the timeout fired -- scriptError below so CI logs
         // distinguish "server never closed" from "server returned wrong data".
         local(response = "");
         local(startTicks = clock.ticks ());
@@ -429,16 +431,16 @@ tests:
         stream = 0;
 
         if not connectionClosed {
-          scriptError ("read loop timed out — server never closed connection on port " + port)
+          scriptError ("read loop timed out -- server never closed connection on port " + port)
         };
 
         // UserTalk 'contains' is a literal substring match (no wildcards).
         // Frontier answers with an HTTP/1.1 status line, so "HTTP/1.1 4" matches
-        // any 4xx status line (403/404/410/etc.) — the expected default-responder
-        // result for an unmatched path — and "HTTP/1.1 5" covers a 5xx internal
+        // any 4xx status line (403/404/410/etc.) -- the expected default-responder
+        // result for an unmatched path -- and "HTTP/1.1 5" covers a 5xx internal
         // dispatch error, which is also a correct "unknown path" signal (better
         // than a silent pass). We intentionally do NOT fall back to body-text
-        // matches like "Not Found" — those could mask a 200 response whose body
+        // matches like "Not Found" -- those could mask a 200 response whose body
         // happens to contain the word.
         isError = (response contains "HTTP/1.1 4") or (response contains "HTTP/1.1 5")
       }
@@ -456,7 +458,7 @@ tests:
       };
 
       inetd.stopOne (@user.inetd.config.http);
-      thread.sleepTicks (30);  // #364 workaround
+      thread.sleepTicks (30);  // let the OS release the port before the next bind
       delete (@user.webserver.responders.helloE2E);
       user.inetd.config.http.port = originalPort;
 
@@ -467,6 +469,6 @@ tests:
       When no custom responder matches, webserver.dispatch falls back to the default
       responder which returns a 4xx status (typically 404 Not Found, sometimes 403
       Forbidden). A 5xx dispatch error would also satisfy the "unknown path" assertion
-      — better than a silent pass if the dispatch path regresses. This validates that
+      -- better than a silent pass if the dispatch path regresses. This validates that
       the dispatch path works correctly when the custom responder's condition does
       not match.
