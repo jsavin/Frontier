@@ -600,10 +600,14 @@ debugger_tui_tests: debugger_tui_tests.c $(DEBUGGER_TUI_TEST_SRCS)
 # DEBUGGER_TUI_OMIT_MAIN in debugger_tui_tests).
 #
 # 2026-06-08 JES Phase C.0 #691
+# 2026-08-10 JES unit 2.4: cJSON added for the debug notification/response
+# formatter (parse debug/suspended notifications + op responses).  Same
+# no-runtime-dependency rationale as DEBUGGER_TUI_TEST_SRCS above.
 BOXEN_REPL_TEST_SRCS = \
 	$(BOXEN_CORE_TEST_SRCS) \
 	../frontier-cli/boxen_repl.c \
-	../frontier-cli/boxen_completion_popup.c
+	../frontier-cli/boxen_completion_popup.c \
+	$(THIRDPARTYDIR)/cJSON/cJSON.c
 
 boxen_repl_tests: boxen_repl_tests.c $(BOXEN_REPL_TEST_SRCS)
 	$(CC) $(CFLAGS) \
@@ -612,6 +616,7 @@ boxen_repl_tests: boxen_repl_tests.c $(BOXEN_REPL_TEST_SRCS)
 		-I$(HEADERDIR) \
 		-I$(SYSTEMHEADERDIR) \
 		-I../portable \
+		-I$(THIRDPARTYDIR) \
 		-DBOXEN_REPL_OMIT_MAIN \
 		boxen_repl_tests.c $(BOXEN_REPL_TEST_SRCS) \
 		-o $@ $(LINK_LIBS)
