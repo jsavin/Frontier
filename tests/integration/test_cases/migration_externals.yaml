@@ -40,18 +40,16 @@ tests:
     reason: "Runtime script creation has pre-existing issues - not related to migration fix"
 
   - name: "Deep script access - nested table script"
-    skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
-    description: "Scripts deeply nested in tables should migrate"
+    description: "Scripts deeply nested in tables should migrate. NOTE: the local must not be named scriptType -- that shadows the built-in type constant and is a compile error (was masked by the pre-#618 eval-trap)."
     script: |
       // Access a deeply nested script (3+ levels)
       // system.verbs.builtins.file.exists is a good example
       if not defined(system.verbs.builtins.file.exists) {
         return "file.exists not found"
       };
-      local(scriptType = typeOf(system.verbs.builtins.file.exists));
-      if scriptType != 'scpt' {
-        return "wrong type: " + string(scriptType)
+      local(objType = typeOf(system.verbs.builtins.file.exists));
+      if objType != 'scpt' {
+        return "wrong type: " + string(objType)
       };
       // Test execution - check if this file exists
       return file.exists(frontier.getprogrampath())
@@ -59,13 +57,11 @@ tests:
     expected_result: "true"
 
   - name: "Multiple deep scripts - verify all string verbs"
-    skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
-    description: "Test multiple scripts in system.verbs.string table"
+    description: "Test multiple scripts in the string verb table. The table is system.verbs.builtins.string (system.verbs.string does not exist; system.verbs.globals.string is the coercion script)."
     script: |
       local(ct = 0);
       // Count scripts in string verb table
-      for adr in @system.verbs.string {
+      for adr in @system.verbs.builtins.string {
         if typeOf(adr^) == 'scpt' {
           ct = ct + 1
         }
@@ -128,9 +124,7 @@ tests:
     reason: "Runtime wptext creation has pre-existing issues - not related to migration fix"
 
   - name: "Deep WPText access - nested documentation"
-    skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
-    description: "WPText in deep tables should be accessible"
+    description: "WPText in deep tables should be accessible. wp.setText/wp.getText are target-based one-arg verbs headless (no @address overload) -- the fallback creates a nested wptext and round-trips its text via target.set."
     script: |
       // Look for WPText in system tables (documentation often stored as WPText)
       local(found = false);
@@ -154,12 +148,16 @@ tests:
         // WPText might not exist in system tables, create one for testing
         lang.new(tableType, @system.temp.wptest);
         lang.new(wptextType, @system.temp.wptest.doc);
-        wp.setText("Deep WPText", @system.temp.wptest.doc);
+        target.set(@system.temp.wptest.doc);
+        wp.setText("Deep WPText");
         if typeOf(system.temp.wptest.doc) == 'wptx' {
-          local(txt = wp.getText(@system.temp.wptest.doc));
+          local(txt = wp.getText());
+          target.clear();
           delete(@system.temp.wptest);
           return txt
         };
+        target.clear();
+        delete(@system.temp.wptest);
         return "wptext creation failed"
       }
     expected_success: true
@@ -170,8 +168,6 @@ tests:
   # ==========================================================================
 
   - name: "Menu type verification"
-    skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
     description: "Check if any menus exist in the database"
     script: |
       // Menus are less common, check if any exist
@@ -193,11 +189,14 @@ tests:
       if menuCount > 0 {
         return "found " + string(menuCount) + " menus"
       } else {
-        // Create a test menu if none exist
-        lang.new(menuType, @system.temp.testMenu);
-        if typeOf(system.temp.testMenu) == 'menu' {
+        // Create a test menubar if none exist. The type constant is
+        // menubarType (menuType does not exist) and typeOf reports 'mbar'.
+        lang.new(menubarType, @system.temp.testMenu);
+        if typeOf(system.temp.testMenu) == 'mbar' {
+          delete(@system.temp.testMenu);
           return "created test menu"
         };
+        delete(@system.temp.testMenu);
         return "no menus found"
       }
     expected_success: true
@@ -237,64 +236,47 @@ tests:
   # ==========================================================================
 
   - name: "Full migration verification - all external types"
-    skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
-    description: "Verify all external object types survive migration"
+    description: "Verify all external object types survive migration. (Original was written in a pseudo-record style -- dotted assignment into an empty-list local -- which UserTalk does not support; rewritten with plain locals asserting the same three checks.)"
     script: |
-      local(results = {});
-      local(errors = {});
+      local(failures = "");
+      local(passCount = 0);
 
       // Test script access (most critical)
+      local(scriptOK = false);
       try {
-        local(s = string(123));
-        results.script = "PASS"
+        scriptOK = (string(123) == "123")
+      };
+      if scriptOK {
+        passCount = passCount + 1
       } else {
-        results.script = "FAIL: " + tryError;
-        errors.script = tryError
+        failures = failures + "script; "
       };
 
       // Test table access
-      if defined(system.verbs.builtins) && typeOf(system.verbs.builtins) == 'tabl' {
-        results.table = "PASS"
+      if defined(system.verbs.builtins) and (typeOf(system.verbs.builtins) == 'tabl') {
+        passCount = passCount + 1
       } else {
-        results.table = "FAIL";
-        errors.table = "builtins table not accessible"
+        failures = failures + "table; "
       };
 
-      // Test outline access (if exists)
+      // Test outline access. The outline type code is outlineType ('optx'),
+      // not 'outl' as the original test assumed.
       if defined(examples.["Sample Outline 1"]) {
-        if typeOf(examples.["Sample Outline 1"]) == 'outl' {
-          results.outline = "PASS"
-        } else {
-          results.outline = "FAIL: wrong type"
-        }
-      } else {
-        results.outline = "SKIP: no outlines in database"
-      };
-
-      // Count passes
-      local(passCount = 0);
-      local(failCount = 0);
-      for item in results {
-        if string.beginsWith(string(item^), "PASS") {
+        if typeOf(examples.["Sample Outline 1"]) == outlineType {
           passCount = passCount + 1
-        } else if string.beginsWith(string(item^), "FAIL") {
-          failCount = failCount + 1
+        } else {
+          failures = failures + "outline wrong type; "
         }
+      } else {
+        failures = failures + "Sample Outline 1 missing; "
       };
 
-      if failCount > 0 {
-        // Return detailed error info
-        local(msg = "FAILURES: ");
-        for item in errors {
-          msg = msg + nameOf(item) + "=" + string(item^) + "; "
-        };
-        return msg
-      } else {
-        return "All tests passed: " + string(passCount) + " external types verified"
-      }
+      if sizeOf(failures) > 0 {
+        return "FAILURES: " + failures
+      };
+      return "All tests passed: " + string(passCount) + " external types verified"
     expected_success: true
-    expected_result_type: "string"
+    expected_result: "All tests passed: 3 external types verified"
 
   # ==========================================================================
   # REGRESSION TEST - String verb variations

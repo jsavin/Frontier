@@ -136,69 +136,43 @@ tests:
   # ==========================================================================
 
   - name: "menu.getScript - retrieve script from menu item"
-    skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
-    description: "Get the script attached to a menu item"
+    description: "Headless contract (ADR-016 / #585): menu.getScript is a GUI-only stub that always returns the empty string. Real script data is read from the system.menus.data projection (see the setScript tests and menu.describe)."
     script: |
-      new(menubarType, @system.temp.testMenu);
-
-      menu.addMenuCommand(@system.temp.testMenu, "Test", "MyItem", "dialog.alert(\"Hello\")");
-
-      target.set(@system.temp.testMenu);
-
-      local(ok = menu.getScript(@system.temp.retrievedScript));
-
-      local(result = defined(system.temp.retrievedScript));
-
-      delete(@system.temp.testMenu);
-      try {delete(@system.temp.retrievedScript)};
-
-      return result
+      local(s = menu.getScript());
+      return s == ""
     expected_success: true
     expected_result: "true"
 
   - name: "menu.setScript - change script on menu item"
-    skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
-    description: "Set a new script on a menu item using address"
+    description: "Headless overload: menu.setScript(@leaf, scriptText) updates the leaf's .script field in the system.menus.data projection. The old cursor-based one-arg form is GUI-only."
     script: |
-      new(menubarType, @system.temp.testMenu);
+      try {delete(@system.menus.data.tstSetScript)};
+      menu.addMenuCommand(@system.menus.data.tstSetScript, "Test", "MyItem", "original()");
 
-      menu.addMenuCommand(@system.temp.testMenu, "Test", "MyItem", "original()");
+      local(ok = menu.setScript(@system.menus.data.tstSetScript.Test.MyItem, "replacement()"));
+      local(changed = (system.menus.data.tstSetScript.Test.MyItem.script == "replacement()"));
 
-      system.temp.newScript = "replacement()";
+      delete(@system.menus.data.tstSetScript);
 
-      target.set(@system.temp.testMenu);
-
-      local(ok = menu.setScript(@system.temp.newScript));
-
-      delete(@system.temp.testMenu);
-      delete(@system.temp.newScript);
-
-      return ok
+      return ok and changed
     expected_success: true
     expected_result: "true"
 
   - name: "menu.getScript and setScript - round-trip verification"
-    skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
-    description: "Set a script, get it back, verify they match"
+    description: "Data round trip in headless mode: setScript(@leaf, text) writes the projection; the projection field is the read side (getScript is a GUI-only stub returning empty string)."
     script: |
-      new(menubarType, @system.temp.testMenu);
-
+      try {delete(@system.menus.data.tstScriptRT)};
       local(originalScript = "dialog.notify(\"test\")");
-      menu.addMenuCommand(@system.temp.testMenu, "File", "Test", originalScript);
+      menu.addMenuCommand(@system.menus.data.tstScriptRT, "File", "Test", originalScript);
 
-      target.set(@system.temp.testMenu);
+      local(stored = (system.menus.data.tstScriptRT.File.Test.script == originalScript));
+      menu.setScript(@system.menus.data.tstScriptRT.File.Test, "updated()");
+      local(updated = (system.menus.data.tstScriptRT.File.Test.script == "updated()"));
+      local(stubEmpty = (menu.getScript() == ""));
 
-      menu.getScript(@system.temp.retrieved);
+      delete(@system.menus.data.tstScriptRT);
 
-      local(match = (system.temp.retrieved == originalScript));
-
-      delete(@system.temp.testMenu);
-      try {delete(@system.temp.retrieved)};
-
-      return match
+      return stored and updated and stubEmpty
     expected_success: true
     expected_result: "true"
 
@@ -209,81 +183,65 @@ tests:
   # ==========================================================================
 
   - name: "menu.setCommandKey - set keyboard shortcut"
-    skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
-    description: "Set a command key (keyboard shortcut) on a menu item"
+    description: "Headless overload: menu.setCommandKey(@leaf, singleChar) updates the leaf's .cmdkey field in the system.menus.data projection. The old cursor-based one-arg form is GUI-only."
     script: |
-      new(menubarType, @system.temp.testMenu);
+      try {delete(@system.menus.data.tstCmdKeySet)};
+      menu.addMenuCommand(@system.menus.data.tstCmdKeySet, "File", "Save", "file.save()");
 
-      menu.addMenuCommand(@system.temp.testMenu, "File", "Save", "file.save()");
+      local(ok = menu.setCommandKey(@system.menus.data.tstCmdKeySet.File.Save, "S"));
+      local(stored = (system.menus.data.tstCmdKeySet.File.Save.cmdkey == 'S'));
 
-      target.set(@system.temp.testMenu);
-
-      local(ok = menu.setCommandKey("S"));
-
-      delete(@system.temp.testMenu);
-      return ok
+      delete(@system.menus.data.tstCmdKeySet);
+      return ok and stored
     expected_success: true
     expected_result: "true"
 
   - name: "menu.getCommandKey - retrieve keyboard shortcut"
-    skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
-    description: "Get the command key from a menu item"
+    description: "Headless contract: menu.getCommandKey is a GUI-only stub that always returns the null char. The real shortcut lives in the projection leaf's .cmdkey field after setCommandKey(@leaf, key)."
     script: |
-      new(menubarType, @system.temp.testMenu);
+      try {delete(@system.menus.data.tstCmdKeyGet)};
+      menu.addMenuCommand(@system.menus.data.tstCmdKeyGet, "File", "Open", "file.open()");
+      menu.setCommandKey(@system.menus.data.tstCmdKeyGet.File.Open, "O");
 
-      menu.addMenuCommand(@system.temp.testMenu, "File", "Open", "file.open()");
-      target.set(@system.temp.testMenu);
-      menu.setCommandKey("O");
+      local(projected = (system.menus.data.tstCmdKeyGet.File.Open.cmdkey == 'O'));
+      local(stubNull = (number(menu.getCommandKey()) == 0));
 
-      local(key = menu.getCommandKey());
-
-      local(hasKey = (key contains "O"));
-
-      delete(@system.temp.testMenu);
-      return hasKey
+      delete(@system.menus.data.tstCmdKeyGet);
+      return projected and stubNull
     expected_success: true
     expected_result: "true"
 
   - name: "menu.setCommandKey - clear shortcut with empty string"
-    skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
-    description: "Setting empty string should clear the command key"
+    description: "Headless contract: the @leaf overload coerces the key to a single char, so an empty string is a coercion ERROR (\"isn't exactly one character long\"), not a clear operation, and the existing cmdkey is left untouched."
     script: |
-      new(menubarType, @system.temp.testMenu);
+      try {delete(@system.menus.data.tstCmdKeyClr)};
+      menu.addMenuCommand(@system.menus.data.tstCmdKeyClr, "File", "Test", "test()");
+      menu.setCommandKey(@system.menus.data.tstCmdKeyClr.File.Test, "T");
 
-      menu.addMenuCommand(@system.temp.testMenu, "File", "Test", "test()");
-      target.set(@system.temp.testMenu);
-      menu.setCommandKey("T");
+      local(errored = false);
+      try {
+        menu.setCommandKey(@system.menus.data.tstCmdKeyClr.File.Test, "")
+      }
+      else {
+        errored = tryError contains "one character"
+      };
+      local(unchanged = (system.menus.data.tstCmdKeyClr.File.Test.cmdkey == 'T'));
 
-      menu.setCommandKey("");
-
-      local(key = menu.getCommandKey());
-      local(cleared = (key == "") or (sizeof(key) == 0));
-
-      delete(@system.temp.testMenu);
-      return cleared
+      delete(@system.menus.data.tstCmdKeyClr);
+      return errored and unchanged
     expected_success: true
     expected_result: "true"
 
   - name: "menu.getCommandKey and setCommandKey - round-trip"
-    skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
-    description: "Set a key, get it back, verify round-trip works"
+    description: "Data round trip in headless mode: setCommandKey(@leaf, key) writes the projection's .cmdkey; the projection field is the read side (getCommandKey is a GUI-only stub returning the null char)."
     script: |
-      new(menubarType, @system.temp.testMenu);
+      try {delete(@system.menus.data.tstCmdKeyRT)};
+      menu.addMenuCommand(@system.menus.data.tstCmdKeyRT, "Edit", "Find", "edit.find()");
 
-      menu.addMenuCommand(@system.temp.testMenu, "Edit", "Find", "edit.find()");
-      target.set(@system.temp.testMenu);
+      menu.setCommandKey(@system.menus.data.tstCmdKeyRT.Edit.Find, "F");
+      local(match = (system.menus.data.tstCmdKeyRT.Edit.Find.cmdkey == 'F'));
 
-      menu.setCommandKey("F");
-
-      local(key = menu.getCommandKey());
-
-      local(match = (key contains "F"));
-
-      delete(@system.temp.testMenu);
+      delete(@system.menus.data.tstCmdKeyRT);
       return match
     expected_success: true
     expected_result: "true"
@@ -373,15 +331,12 @@ tests:
     expected_result: "true"
 
   - name: "menu.install - no-op in headless mode"
-    skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
-    description: "menu.install is a no-op in headless mode, returns true"
+    description: "menu.install(@bar) for a bar OUTSIDE the system.menus.data projection is a documented no-op returning true (projection bars get .installed=true instead)."
     script: |
       new(menubarType, @system.temp.testMenu);
       menu.addMenuCommand(@system.temp.testMenu, "Custom", "Test", "test()");
 
-      target.set(@system.temp.testMenu);
-      local(result = menu.install());
+      local(result = menu.install(@system.temp.testMenu));
 
       delete(@system.temp.testMenu);
       return result
@@ -389,14 +344,11 @@ tests:
     expected_result: "true"
 
   - name: "menu.isInstalled - returns false in headless mode"
-    skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
-    description: "menu.isInstalled should return false without GUI (requires address param)"
+    description: "menu.isInstalled(@bar) for a bar outside the system.menus.data projection returns false (no projection entry means not installed). The verb requires the address param."
     script: |
       new(menubarType, @system.temp.testMenu);
 
-      target.set(@system.temp.testMenu);
-      local(result = menu.isInstalled());
+      local(result = menu.isInstalled(@system.temp.testMenu));
       local(noError = true);
 
       delete(@system.temp.testMenu);
@@ -647,7 +599,7 @@ tests:
 
   - name: "cursor navigation - navigate to item and getScript"
     skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
+    skip_reason: "GUI-only surface with no headless equivalent (#620 triage 2026-08-10): the cursor-based menu.getScript/setScript API operates on the GUI menu editor selection. Headless getScript/getCommandKey are stubs (empty string / null char) and the set* verbs take explicit @leaf overloads into the system.menus.data projection -- covered by the rewritten setScript/setCommandKey tests and menu_data_write_projection.yaml. Cursor navigation over a menubar value cannot read or write script data headless."
     description: "Navigate to specific menu item using op verbs, then get its script"
     script: |
       new(menubarType, @system.temp.testMenu);
@@ -675,7 +627,7 @@ tests:
 
   - name: "cursor navigation - navigate and setScript"
     skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
+    skip_reason: "GUI-only surface with no headless equivalent (#620 triage 2026-08-10): the cursor-based menu.getScript/setScript API operates on the GUI menu editor selection. Headless getScript/getCommandKey are stubs (empty string / null char) and the set* verbs take explicit @leaf overloads into the system.menus.data projection -- covered by the rewritten setScript/setCommandKey tests and menu_data_write_projection.yaml. Cursor navigation over a menubar value cannot read or write script data headless."
     description: "Navigate to item, change its script, verify change"
     script: |
       new(menubarType, @system.temp.testMenu);
@@ -702,7 +654,7 @@ tests:
 
   - name: "cursor navigation - navigate to third item"
     skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
+    skip_reason: "GUI-only surface with no headless equivalent (#620 triage 2026-08-10): the cursor-based menu.getScript/setScript API operates on the GUI menu editor selection. Headless getScript/getCommandKey are stubs (empty string / null char) and the set* verbs take explicit @leaf overloads into the system.menus.data projection -- covered by the rewritten setScript/setCommandKey tests and menu_data_write_projection.yaml. Cursor navigation over a menubar value cannot read or write script data headless."
     description: "Navigate deeper into menu structure"
     script: |
       new(menubarType, @system.temp.testMenu);
@@ -827,7 +779,7 @@ tests:
 
   - name: "persistence - script content survives save/reload"
     skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
+    skip_reason: "Written against APIs that do not exist headless (#620 triage 2026-08-10): db.load is undefined, file.new/file.open take (path) not (path, type/mode), and menu.addMenuCommand is a documented no-op outside the system.menus.data projection, so the standalone menubar this test saves was always EMPTY. Also found: db.close does NOT save -- db.setValue mutations are lost unless db.save(path) is called first (candidate data-loss issue). Headless menu persistence = the projection table persisting inside the root DB; needs a projection save/reload harness to test."
     description: "Verify script text is preserved through save/reload cycle"
     script: |
       local(testScript = "dialog.alert(\"Hello World!\")");
@@ -865,7 +817,7 @@ tests:
 
   - name: "persistence - menu names survive save/reload"
     skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
+    skip_reason: "Written against APIs that do not exist headless (#620 triage 2026-08-10): db.load is undefined, file.new/file.open take (path) not (path, type/mode), and menu.addMenuCommand is a documented no-op outside the system.menus.data projection, so the standalone menubar this test saves was always EMPTY. Also found: db.close does NOT save -- db.setValue mutations are lost unless db.save(path) is called first (candidate data-loss issue). Headless menu persistence = the projection table persisting inside the root DB; needs a projection save/reload harness to test."
     description: "Verify menu and item names are preserved"
     script: |
       new(menubarType, @system.temp.testMenu);
@@ -905,15 +857,13 @@ tests:
   # ==========================================================================
 
   - name: "menu.buildMenuBar - returns true without error in headless"
-    skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
-    description: "buildMenuBar is a no-op returning true in headless without throwing error"
+    description: "buildMenuBar is a no-op returning true in headless without throwing error. (Original test had a '#' comment in the script body -- UserTalk has no '#' comments, so it was a compile error masked by the pre-#618 eval-trap.)"
     script: |
       new(menubarType, @system.temp.testMenu);
       menu.addMenuCommand(@system.temp.testMenu, "File", "New", "test()");
 
       local(result = menu.buildMenuBar());
-      local(noError = true);  # If we got here, no error was thrown
+      local(noError = true);
 
       delete(@system.temp.testMenu);
       return (result == true) and noError
@@ -921,15 +871,12 @@ tests:
     expected_result: "true"
 
   - name: "menu.install - returns true without error in headless"
-    skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
-    description: "install is a no-op returning true in headless without throwing error"
+    description: "install(@bar) outside the projection is a no-op returning true without throwing error"
     script: |
       new(menubarType, @system.temp.testMenu);
       menu.addMenuCommand(@system.temp.testMenu, "Custom", "Test", "test()");
 
-      target.set(@system.temp.testMenu);
-      local(result = menu.install());
+      local(result = menu.install(@system.temp.testMenu));
       local(noError = true);
 
       delete(@system.temp.testMenu);
@@ -938,14 +885,11 @@ tests:
     expected_result: "true"
 
   - name: "menu.isInstalled - returns false without error"
-    skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
-    description: "isInstalled should return false in headless without throwing error"
+    description: "isInstalled(@bar) outside the projection returns false without throwing error"
     script: |
       new(menubarType, @system.temp.testMenu);
 
-      target.set(@system.temp.testMenu);
-      local(result = menu.isInstalled());
+      local(result = menu.isInstalled(@system.temp.testMenu));
       local(noError = true);
 
       delete(@system.temp.testMenu);
@@ -954,15 +898,12 @@ tests:
     expected_result: "true"
 
   - name: "menu.remove - returns true without error in headless"
-    skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
-    description: "remove is a no-op returning true in headless without throwing error"
+    description: "remove(@bar) outside the projection is a no-op returning true without throwing error"
     script: |
       new(menubarType, @system.temp.testMenu);
       menu.addMenuCommand(@system.temp.testMenu, "File", "Test", "test()");
 
-      target.set(@system.temp.testMenu);
-      local(result = menu.remove());
+      local(result = menu.remove(@system.temp.testMenu));
       local(noError = true);
 
       delete(@system.temp.testMenu);

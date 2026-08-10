@@ -66,7 +66,7 @@ tests:
   - name: "inetd.startOne - start HTTP listener on port 8080"
     description: "Start the HTTP listener on a non-privileged port"
     skip: true
-    skip_reason: "inetd verb infrastructure causes port conflicts in batch test runs"
+    skip_reason: "STALE REASON CORRECTED 2026-08-10 (#620 triage): not a port conflict. inetd.startOne's legacy classic-Mac branch opens count/2-1 EXTRA listeners on the same port on modern macOS and throws Socket error: Bind failed after registering the primary listener; stopOne then errors on the never-created ref2 entry (see webserver_inetd_e2e.yaml). Empirically re-verified at unit-2-2-accept-callbacks head 8e0c11065: still fails identically, so 2.2's GIL-yield/readStream fixes do not cover it. Un-skip when the startOne/stopOne legacy branch is fixed."
     requires_system_root: true
     timeout: 15
     script: |
@@ -82,7 +82,7 @@ tests:
   - name: "inetd.startOne - listener appears in user.inetd.listens"
     description: "Verify listener is tracked in user.inetd.listens table"
     skip: true
-    skip_reason: "inetd verb infrastructure causes port conflicts in batch test runs"
+    skip_reason: "STALE REASON CORRECTED 2026-08-10 (#620 triage): not a port conflict. inetd.startOne's legacy classic-Mac branch opens count/2-1 EXTRA listeners on the same port on modern macOS and throws Socket error: Bind failed after registering the primary listener; stopOne then errors on the never-created ref2 entry (see webserver_inetd_e2e.yaml). Empirically re-verified at unit-2-2-accept-callbacks head 8e0c11065: still fails identically, so 2.2's GIL-yield/readStream fixes do not cover it. Un-skip when the startOne/stopOne legacy branch is fixed."
     requires_system_root: true
     timeout: 15
     script: |
@@ -102,7 +102,7 @@ tests:
 
   - name: "webserver Hello World - GET /helloworld returns HTML"
     skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
+    skip_reason: "Blocked by two product bugs verified in isolation 2026-08-10 (#620 triage): (1) inetd.startOne legacy classic-Mac branch opens extra listeners on the same port on modern macOS and throws Socket error: Bind failed (see webserver_inetd_e2e.yaml for detail); (2) accept-callback kernel bugs -- callback writes never reach the client (branch unit-2-2-accept-callbacks). Additionally Virgin.root carries a stale user.webserver.postFilters.serverMonitor address into a deleted worktree path (p1-batch-fixes) that errors every response once (1) and (2) are fixed. Test content fixed during triage: enabled flag now set on user.webserver.responders (webserver.init copies webserver.data at init, so post-init writes to webserver.data were no-ops)."
     description: "Complete end-to-end test: start server, send HTTP request, verify response"
     requires_system_root: true
     timeout: 30
@@ -111,7 +111,7 @@ tests:
 
       user.inetd.config.http.port = 8082;
 
-      webserver.data.responders.helloWorld.enabled = true;
+      user.webserver.responders.helloWorld.enabled = true;
 
       inetd.startOne(@user.inetd.config.http);
 
@@ -136,7 +136,7 @@ tests:
 
       inetd.stopOne(@user.inetd.config.http);
 
-      webserver.data.responders.helloWorld.enabled = false;
+      user.webserver.responders.helloWorld.enabled = false;
 
       local(hasHelloWorld = response contains "Hello World");
       local(hasHtml = response contains "<html>" or response contains "<body>");
@@ -155,7 +155,7 @@ tests:
 
   - name: "webserver Hello World - response contains HTTP headers"
     skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
+    skip_reason: "Blocked by two product bugs verified in isolation 2026-08-10 (#620 triage): (1) inetd.startOne legacy classic-Mac branch opens extra listeners on the same port on modern macOS and throws Socket error: Bind failed (see webserver_inetd_e2e.yaml for detail); (2) accept-callback kernel bugs -- callback writes never reach the client (branch unit-2-2-accept-callbacks). Additionally Virgin.root carries a stale user.webserver.postFilters.serverMonitor address into a deleted worktree path (p1-batch-fixes) that errors every response once (1) and (2) are fixed. Test content fixed during triage: enabled flag now set on user.webserver.responders (webserver.init copies webserver.data at init, so post-init writes to webserver.data were no-ops)."
     description: "Verify response includes proper HTTP headers"
     requires_system_root: true
     timeout: 30
@@ -163,7 +163,7 @@ tests:
       webserver.init();
 
       user.inetd.config.http.port = 8083;
-      webserver.data.responders.helloWorld.enabled = true;
+      user.webserver.responders.helloWorld.enabled = true;
 
       inetd.startOne(@user.inetd.config.http);
       thread.sleepFor(100);
@@ -184,7 +184,7 @@ tests:
 
       tcp.closeStream(stream);
       inetd.stopOne(@user.inetd.config.http);
-      webserver.data.responders.helloWorld.enabled = false;
+      user.webserver.responders.helloWorld.enabled = false;
 
       local(hasStatus = response contains "HTTP/1.");
       local(hasContentType = response contains "Content-Type:");
@@ -200,7 +200,7 @@ tests:
 
   - name: "webserver - 404 for unknown path"
     skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
+    skip_reason: "Blocked by two product bugs verified in isolation 2026-08-10 (#620 triage): (1) inetd.startOne legacy classic-Mac branch opens extra listeners on the same port on modern macOS and throws Socket error: Bind failed (see webserver_inetd_e2e.yaml for detail); (2) accept-callback kernel bugs -- callback writes never reach the client (branch unit-2-2-accept-callbacks). Additionally Virgin.root carries a stale user.webserver.postFilters.serverMonitor address into a deleted worktree path (p1-batch-fixes) that errors every response once (1) and (2) are fixed. Test content fixed during triage: enabled flag now set on user.webserver.responders (webserver.init copies webserver.data at init, so post-init writes to webserver.data were no-ops)."
     description: "Verify server returns 404 for non-existent path"
     requires_system_root: true
     timeout: 30
@@ -241,7 +241,7 @@ tests:
   - name: "inetd.stopOne - stop HTTP listener"
     description: "Verify listener can be stopped cleanly"
     skip: true
-    skip_reason: "inetd verb infrastructure causes port conflicts in batch test runs"
+    skip_reason: "STALE REASON CORRECTED 2026-08-10 (#620 triage): not a port conflict. inetd.startOne's legacy classic-Mac branch opens count/2-1 EXTRA listeners on the same port on modern macOS and throws Socket error: Bind failed after registering the primary listener; stopOne then errors on the never-created ref2 entry (see webserver_inetd_e2e.yaml). Empirically re-verified at unit-2-2-accept-callbacks head 8e0c11065: still fails identically, so 2.2's GIL-yield/readStream fixes do not cover it. Un-skip when the startOne/stopOne legacy branch is fixed."
     requires_system_root: true
     timeout: 15
     script: |
@@ -257,7 +257,7 @@ tests:
   - name: "inetd.stopOne - listener removed from user.inetd.listens"
     description: "Verify listener is removed from tracking table after stop"
     skip: true
-    skip_reason: "inetd verb infrastructure causes port conflicts in batch test runs"
+    skip_reason: "STALE REASON CORRECTED 2026-08-10 (#620 triage): not a port conflict. inetd.startOne's legacy classic-Mac branch opens count/2-1 EXTRA listeners on the same port on modern macOS and throws Socket error: Bind failed after registering the primary listener; stopOne then errors on the never-created ref2 entry (see webserver_inetd_e2e.yaml). Empirically re-verified at unit-2-2-accept-callbacks head 8e0c11065: still fails identically, so 2.2's GIL-yield/readStream fixes do not cover it. Un-skip when the startOne/stopOne legacy branch is fixed."
     requires_system_root: true
     timeout: 15
     script: |

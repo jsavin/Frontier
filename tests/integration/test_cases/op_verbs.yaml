@@ -1233,8 +1233,6 @@ tests:
     expected_result: "Modified Line 1"
 
   - name: "workflow - promote children of current heading"
-    skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
     description: "Promote all subheads beneath current heading one level to the left"
     script: |
       lang.new(outlineType, @system.temp.outline);
@@ -1243,7 +1241,7 @@ tests:
       op.insert("Child1", right);        // Level 2, child of Parent
       op.insert("Child2", down);         // Level 2, sibling of Child1
       op.insert("GrandChild", right);    // Level 3, child of Child2
-      op.go(up, 2);                      // Move back to Parent (cursor on Parent)
+      op.go(left, 2);                    // up = previous sibling (GrandChild has none); left = parent: GrandChild -> Child2 -> Parent
       local(parentLevel = op.level());   // Should be 1
       local(promoteResult = op.promote()); // Promotes Child1, Child2, and GrandChild
       // After promote: Child1 and Child2 should be level 1 (siblings of Parent)
@@ -1255,8 +1253,6 @@ tests:
     expected_result: "true"
 
   - name: "workflow - demote following siblings"
-    skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
     description: "Demote all following siblings to be children of current heading"
     script: |
       lang.new(outlineType, @system.temp.outline);
@@ -1268,7 +1264,7 @@ tests:
       local(demoteResult = op.demote());  // Demotes Sibling2 and Sibling3 to children
       // After demote: Sibling1 is still level 1, Sibling2 and Sibling3 are level 2
       local(sibling1Level = op.level());  // Should still be 1
-      op.go(down, 1);                     // Move to first demoted child
+      op.go(right, 1);                    // down = next sibling (none after demote); right = first demoted child
       local(sibling2LevelAfter = op.level()); // Should be 2 (demoted from 1)
       return demoteResult and (sibling1Level == 1) and (sibling2LevelAfter == 2)
     expected_success: true
@@ -2838,8 +2834,6 @@ tests:
     expected_result: "true"
 
   - name: "stress test - expansion state with deep nesting"
-    skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
     description: "Save and restore expansion state in deeply nested outline"
     script: |
       lang.new(outlineType, @system.temp.outline);
@@ -2855,9 +2849,9 @@ tests:
       local(savedState = op.getExpansionState());  // Save expansion state at L1
       op.collapse();               // Collapse L1 (and all descendants)
       op.setExpansionState(savedState); // Restore expansion state should re-expand
-      op.go(down, 1);              // Go to first child L2 (level 2)
+      op.go(right, 1);             // down = next sibling; L2 is L1's CHILD, so go right
       local(level2Check = op.level()); // Should be 2
-      op.go(down, 1);              // Go to first child L3 (level 3)
+      op.go(right, 1);             // Go to first child L3 (level 3)
       local(level3Check = op.level()); // Should be 3
       return (level2Check == 2) and (level3Check == 3)
     expected_success: true
@@ -3506,7 +3500,7 @@ tests:
 
   - name: "op.xmltooutline - round trip"
     skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
+    skip_reason: "op.xmltooutline drops every sibling after the first outline element at each level (verified in isolation 2026-08-10, #620 triage: body with A,B imports only A; nested A1,A2 under A imports only A1). Genuine kernel bug in the headless OPML import traversal -- a round trip cannot preserve a multi-node outline. The passing basic-import test only covers a single node. Un-skip when sibling traversal is fixed."
     description: "Export outline to XML and re-import preserves content"
     script: |
       lang.new(outlineType, @system.temp.out1);

@@ -46,8 +46,6 @@ protocol_mode: true
 
 tests:
   - name: "mainresponder_respond_smoke"
-    skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
     description: "Smoke test: does mainResponder.respond() run and return a response table?"
     timeout: 30
     script: |
@@ -70,8 +68,38 @@ tests:
       // table so that if init() created a brand-new branch (e.g. the whole
       // user.rootUpdates.callbacks.afterInstallPart subtree) we can delete
       // the branch at its root rather than leaving empty parent tables.
+      // NOTE: defined(@config) is true even when no top-level "config" table
+      // exists (the address itself is valid), so test the name directly.
+      local(preConfig = defined(config));
       local(preConfigMainResponder = defined(@config.mainResponder));
       local(preIsRadio = defined(@system.environment.isRadio));
+
+      // mainResponder.init() assumes a top-level "config" table exists
+      // (classic deployments got it from config.root, created by the Manila
+      // installer — it does not ship with Virgin.root).  Provision an empty
+      // one so init() can build config.mainResponder inside it; the cleanup
+      // blocks below delete it again when we created it.
+      if not preConfig {
+        new(tableType, @config)
+      };
+
+      // init() derives four folder prefs via Frontier.getSubFolder(), which
+      // errors under the protocol batch executor's --skip-startup mode (the
+      // Frontier-folder root is only computed during startup).  Every call is
+      // guarded by "if not defined", so pre-provision the prefs with paths
+      // under the staged (disposable) system-root directory.  Only do this
+      // when we created config.mainResponder ourselves — then the whole
+      // subtree is ours and cleanup deletes it wholesale, so nothing leaks.
+      if not preConfigMainResponder {
+        new(tableType, @config.mainResponder);
+        new(tableType, @config.mainResponder.prefs);
+        new(tableType, @config.mainResponder.domains);
+        local(base = file.folderFromPath(Frontier.getFilePath()));
+        config.mainResponder.prefs.backupFolder = base + "ops-backups/";
+        config.mainResponder.prefs.discussArchiveFolder = base + "ops-discussArchive/";
+        config.mainResponder.prefs.logFolder = base + "ops-logs/";
+        config.mainResponder.domains.default = base + "www/"
+      };
       local(preInetdConfig = defined(@user.inetd.config));
       local(preHttp2 = defined(@user.inetd.config.http2));
       local(preRootUpdatesCallbacks = defined(@user.rootUpdates.callbacks));
@@ -127,6 +155,7 @@ tests:
         try { thread.sleepTicks(12) };
         try { fileMenu.close(guestpath) };
         if not preConfigMainResponder { try { delete(@config.mainResponder) } };
+        if not preConfig { try { delete(@config) } };
         if not preIsRadio { try { delete(@system.environment.isRadio) } };
         if not preHttp2 { try { delete(@user.inetd.config.http2) } };
         if not preInetdConfig { try { delete(@user.inetd.config) } };
@@ -149,6 +178,7 @@ tests:
       try { thread.sleepTicks(12) };
       try { fileMenu.close(guestpath) };
       if not preConfigMainResponder { try { delete(@config.mainResponder) } };
+      if not preConfig { try { delete(@config) } };
       if not preIsRadio { try { delete(@system.environment.isRadio) } };
       if not preHttp2 { try { delete(@user.inetd.config.http2) } };
       if not preInetdConfig { try { delete(@user.inetd.config) } };

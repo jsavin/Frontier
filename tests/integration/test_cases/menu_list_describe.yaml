@@ -77,10 +77,15 @@ tests:
   # ==========================================================================
 
   - name: "menu.describe - returns script field that was stored"
-    skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
-    description: "After storing a leaf with label/script, describe returns a record whose script field matches what was set."
+    description: "After storing a leaf with label/script, describe returns a record whose script field matches what was set. Records have NO dotted-name access in UserTalk (docs/usertalk/records_and_tables.md) — fields are read by ordinal iteration."
     script: |
+      on getField(r, nm) {
+        local(i);
+        for i = 1 to sizeOf(r) {
+          if nameOf(r[i]) == nm {
+            return r[i]}};
+        return "((missing))"};
+
       new(tableType, @system.menus.data.testDescribeOne);
       new(tableType, @system.menus.data.testDescribeOne.Menu);
       new(tableType, @system.menus.data.testDescribeOne.Menu.Item);
@@ -88,7 +93,7 @@ tests:
       system.menus.data.testDescribeOne.Menu.Item.script = "the script";
 
       local(rec = menu.describe(@system.menus.data.testDescribeOne.Menu.Item));
-      local(s = rec.script);
+      local(s = getField(rec, "script"));
 
       delete(@system.menus.data.testDescribeOne);
 
@@ -97,10 +102,15 @@ tests:
     expected_result: "true"
 
   - name: "menu.describe - missing optional fields fall back to documented defaults"
-    skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
-    description: "A leaf with only label and script populated reports enabled=true, hidden=false, shortcut=empty, accepts_args=false."
+    description: "A leaf with only label and script populated reports enabled=true, hidden=false, shortcut=empty, accepts_args=false. Fields read ordinally — records have no dotted-name access."
     script: |
+      on getField(r, nm) {
+        local(i);
+        for i = 1 to sizeOf(r) {
+          if nameOf(r[i]) == nm {
+            return r[i]}};
+        return "((missing))"};
+
       new(tableType, @system.menus.data.testDescribeDefaults);
       new(tableType, @system.menus.data.testDescribeDefaults.M);
       new(tableType, @system.menus.data.testDescribeDefaults.M.I);
@@ -109,10 +119,10 @@ tests:
 
       local(rec = menu.describe(@system.menus.data.testDescribeDefaults.M.I));
 
-      local(okEnabled = rec.enabled == true);
-      local(okHidden = rec.hidden == false);
-      local(okShortcut = rec.shortcut == "");
-      local(okArgs = rec.accepts_args == false);
+      local(okEnabled = getField(rec, "enabled") == true);
+      local(okHidden = getField(rec, "hidden") == false);
+      local(okShortcut = getField(rec, "shortcut") == "");
+      local(okArgs = getField(rec, "accepts_args") == false);
 
       delete(@system.menus.data.testDescribeDefaults);
 
@@ -121,10 +131,15 @@ tests:
     expected_result: "true"
 
   - name: "menu.describe - explicitly-set cmdkey is reported"
-    skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
-    description: "When the leaf has a cmdkey field, describe reflects it."
+    description: "When the leaf has a cmdkey field, describe reflects it. Field read ordinally — records have no dotted-name access."
     script: |
+      on getField(r, nm) {
+        local(i);
+        for i = 1 to sizeOf(r) {
+          if nameOf(r[i]) == nm {
+            return r[i]}};
+        return "((missing))"};
+
       new(tableType, @system.menus.data.testDescribeCmdkey);
       new(tableType, @system.menus.data.testDescribeCmdkey.M);
       new(tableType, @system.menus.data.testDescribeCmdkey.M.I);
@@ -133,7 +148,7 @@ tests:
       system.menus.data.testDescribeCmdkey.M.I.cmdkey = 'S';
 
       local(rec = menu.describe(@system.menus.data.testDescribeCmdkey.M.I));
-      local(k = rec.cmdkey);
+      local(k = getField(rec, "cmdkey"));
 
       delete(@system.menus.data.testDescribeCmdkey);
 
