@@ -190,6 +190,47 @@ class BaselinedPassFailsRunTest(unittest.TestCase):
         self.assertNotIn("now passes", out.lower())
 
 
+class FlakyBaselineEntryTest(unittest.TestCase):
+    """Entries whose reason starts with 'flaky:' tolerate BOTH outcomes.
+
+    An order-dependent test that passes on some full-suite runs and fails
+    on others cannot live under exact-match semantics: off the list its
+    failures randomly break the run, on the list its passes trip the
+    now-passes rot rule. The 'flaky:' reason prefix documents the state
+    and exempts the entry from the stale-pass failure only.
+    """
+
+    FLAKY = {"html.runoutlinedirectives - multiple outline directives":
+             "flaky: order-dependent, passes only after sibling tests"}
+
+    def test_flaky_entry_failing_is_known_fail(self):
+        ok, out = _summarize(
+            [_fail("html.runoutlinedirectives - multiple outline directives")],
+            baseline=self.FLAKY,
+        )
+        self.assertTrue(ok,
+                        f"flaky entry failing must not fail the run; output:\n{out}")
+        self.assertIn("known-fail (baselined)", out)
+
+    def test_flaky_entry_passing_is_not_stale_and_run_stays_green(self):
+        ok, out = _summarize(
+            [_pass("html.runoutlinedirectives - multiple outline directives")],
+            baseline=self.FLAKY,
+        )
+        self.assertTrue(ok,
+                        f"flaky entry passing must not fail the run; output:\n{out}")
+        self.assertNotIn("now passes", out.lower())
+        # But the pass is still surfaced so flaky entries stay visible.
+        self.assertIn("flaky", out.lower())
+
+    def test_non_flaky_reason_still_rots(self):
+        baseline = {"some test": "reason mentioning flaky elsewhere is fine"}
+        ok, out = _summarize([_pass("some test")], baseline=baseline)
+        self.assertFalse(ok,
+                         "only a 'flaky:' PREFIX exempts the stale-pass rule; "
+                         f"output:\n{out}")
+
+
 class BaselineEntryNotInRunTest(unittest.TestCase):
     """A baseline entry matching no result warns but does not fail.
 

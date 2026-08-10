@@ -133,6 +133,10 @@ the exit semantics:
 - A baselined test that was *skipped* is neutral. A baseline entry matching no
   executed test prints a warning (renamed/removed test) but does not fail the
   run.
+- An entry whose reason starts with `flaky:` marks a nondeterministic test
+  (e.g. order-dependent state): its failures are baselined *and* its passes are
+  reported informationally instead of failing the run. Use sparingly —
+  deflaking beats annotating.
 
 Net effect: the suite exits 0 exactly when the set of failures matches the
 baseline, so the post-YAML shell steps in `tests/Makefile` (debug protocol,

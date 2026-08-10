@@ -2670,10 +2670,11 @@ class TestRunner:
                           if not r.passed and not r.skipped]
             known: List[TestResult] = []
             stale: List[TestResult] = []
+            flaky_passes: List[TestResult] = []
             unmatched: List[str] = []
         else:
-            unexpected, known, stale, unmatched = classify_against_baseline(
-                self.results, baseline)
+            unexpected, known, stale, flaky_passes, unmatched = \
+                classify_against_baseline(self.results, baseline)
 
         print("\n" + "=" * 70)
         print("TEST SUMMARY")
@@ -2709,6 +2710,11 @@ class TestRunner:
             print("A stale baseline entry fails the run so the list cannot rot.")
             print("!" * 70)
 
+        if flaky_passes:
+            print("\nFlaky baselined tests that passed this run (entry kept):")
+            for result in flaky_passes:
+                print(f"  ~ {result.name} [{baseline.get(result.name, '')}]")
+
         if unmatched:
             print("\nWarning: baseline entries did not run this invocation")
             print("(renamed/removed test, or a targeted run excluded them):")
@@ -2740,11 +2746,12 @@ class TestRunner:
             'batch_mode': batch_mode,
         }
         if baseline is not None:
-            unexpected, known, stale, unmatched = classify_against_baseline(
-                self.results, baseline)
+            unexpected, known, stale, flaky_passes, unmatched = \
+                classify_against_baseline(self.results, baseline)
             summary['known_failed'] = len(known)
             summary['unexpected_failed'] = len(unexpected)
             summary['stale_baseline_passes'] = sorted(r.name for r in stale)
+            summary['flaky_baseline_passes'] = sorted(r.name for r in flaky_passes)
             summary['baseline_entries_not_run'] = unmatched
 
         output_dir = os.path.join(self.test_root_dir, 'tmp', 'integration')
@@ -2782,35 +2789,52 @@ def load_baseline(path: str) -> Dict[str, str]:
     return baseline
 
 
+def baseline_entry_is_flaky(reason: str) -> bool:
+    """True when a baseline entry's reason marks the test flaky.
+
+    A 'flaky:' PREFIX (case-insensitive) on the reason marks a test whose
+    outcome is nondeterministic (e.g. order-dependent state): its failures
+    are baselined AND its passes are exempt from the stale-entry rule.
+    """
+    return reason.strip().lower().startswith('flaky:')
+
+
 def classify_against_baseline(results: List[TestResult],
                               baseline: Dict[str, str]
                               ) -> Tuple[List[TestResult], List[TestResult],
-                                         List[TestResult], List[str]]:
+                                         List[TestResult], List[TestResult],
+                                         List[str]]:
     """Split results against a baseline.
 
     Returns (unexpected_failures, known_failures, stale_passes,
-    unmatched_names). Skipped results are neutral: they are neither
-    known failures nor stale passes, but they do count as "the test
-    ran" for unmatched-entry detection (a skip is a deliberate state,
-    not baseline rot).
+    flaky_passes, unmatched_names). Skipped results are neutral: they are
+    neither known failures nor stale passes, but they do count as "the
+    test ran" for unmatched-entry detection (a skip is a deliberate
+    state, not baseline rot). A pass on an entry marked flaky (see
+    baseline_entry_is_flaky) is reported informationally instead of
+    failing the run as stale.
     """
     names_seen = set()
     unexpected: List[TestResult] = []
     known: List[TestResult] = []
     stale: List[TestResult] = []
+    flaky_passes: List[TestResult] = []
     for r in results:
         names_seen.add(r.name)
         if r.skipped:
             continue
         if r.passed:
             if r.name in baseline:
-                stale.append(r)
+                if baseline_entry_is_flaky(baseline[r.name]):
+                    flaky_passes.append(r)
+                else:
+                    stale.append(r)
         elif r.name in baseline:
             known.append(r)
         else:
             unexpected.append(r)
     unmatched = sorted(n for n in baseline if n not in names_seen)
-    return unexpected, known, stale, unmatched
+    return unexpected, known, stale, flaky_passes, unmatched
 
 
 def _collect_test_names_per_file(yaml_paths: List[str]) -> Dict[str, set]:
