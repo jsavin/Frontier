@@ -2294,6 +2294,48 @@ typedef enum {
  * - For TCP_READ_UNTIL_PATTERN, we only scan newly-read bytes plus overlap
  * - This provides O(n) performance instead of O(n²) for large buffers
  */
+/* Yield the GIL while a blocking-wait loop is idle, then revalidate the
+ * stream before the caller touches sockfd again.
+ *
+ * WHY THE YIELD: the buffered read/write verbs wait in select() loops
+ * while holding the GIL. When such a verb runs inside a tcp.listenStream
+ * accept callback (its own GIL thread, see ADR-014), the peer script on
+ * the main thread can never run to produce/consume the data being waited
+ * for -- the wait always expires. Yielding at each idle iteration lets
+ * the other threads make progress; the wait then completes as soon as the
+ * data actually arrives (state-driven, no fixed sleeps).
+ *
+ * ORDERING INVARIANT: while we are parked in langbackgroundtask() another
+ * UserTalk thread may call tcp.closeStream on this stream. Our refcount
+ * keeps the SLOT from being reused, but tcp_close_stream closes the fd
+ * immediately regardless of refcount, and the kernel can recycle that fd
+ * number for an unrelated socket. The caller's cached sockfd must
+ * therefore be revalidated against the slot (state still CONNECTED or
+ * ACCEPTED, sockfd unchanged) after every yield, BEFORE the next
+ * select()/recv()/send(). Returns false (with the script error set) if
+ * the thread was killed or the stream went away; callers must release
+ * their reference and abort. */
+static boolean tcp_yield_and_revalidate(tcp_stream_t *stream, int sockfd) {
+    boolean still_open;
+
+    if (!langbackgroundtask(false)) {
+        tcp_set_error(TCP_ERR_SOCKET_ERROR, "Read cancelled");
+        return false;
+    }
+
+    TCP_LOCK();
+    still_open = (stream->state == STREAM_CONNECTED || stream->state == STREAM_ACCEPTED)
+        && stream->sockfd == sockfd;
+    TCP_UNLOCK();
+
+    if (!still_open) {
+        tcp_set_error(TCP_ERR_INVALID_STREAM, "Stream not connected");
+        return false;
+    }
+
+    return true;
+}
+
 static boolean tcp_read_until_condition(
     long stream_id,
     Handle hbuffer,
@@ -2382,11 +2424,13 @@ static boolean tcp_read_until_condition(
         }
         /* TCP_READ_UNTIL_CLOSED continues until recv returns 0 */
 
-        /* Use select() with short timeout to check for data */
+        /* Use select() with short timeout to check for data. The slice is
+         * kept small (10ms) because it runs with the GIL held: it bounds
+         * how long other UserTalk threads stall per idle iteration. */
         FD_ZERO(&readset);
         FD_SET(sockfd, &readset);
         tv.tv_sec = 0;
-        tv.tv_usec = 100000;  /* 100ms poll interval */
+        tv.tv_usec = 10000;  /* 10ms poll slice (GIL held during select) */
 
         select_result = select(sockfd + 1, &readset, NULL, NULL, &tv);
 
@@ -2399,7 +2443,15 @@ static boolean tcp_read_until_condition(
         }
 
         if (select_result == 0) {
-            /* No data available yet, continue waiting */
+            /* No data available yet: yield the GIL so the thread that is
+             * supposed to send the data (e.g. the main script, when this
+             * read runs inside an accept callback) can execute. Must
+             * revalidate the stream afterwards -- see
+             * tcp_yield_and_revalidate for the ordering invariant. */
+            if (!tcp_yield_and_revalidate(stream, sockfd)) {
+                tcp_stream_release(stream);
+                return false;
+            }
             continue;
         }
 
@@ -2598,7 +2650,6 @@ boolean tcp_read_stream_inetd(long stream_id, Handle hbuffer, long timeout_secs)
     int sockfd;
     long current_size;
     boolean first_packet_received = false;
-    long effective_timeout;
     time_t start_time, last_read_time;
     boolean result = false;
 
@@ -2634,7 +2685,6 @@ boolean tcp_read_stream_inetd(long stream_id, Handle hbuffer, long timeout_secs)
     current_size = gethandlesize(hbuffer);
     start_time = time(NULL);
     last_read_time = start_time;
-    effective_timeout = timeout_secs;
 
     while (true) {
         fd_set readset;
@@ -2655,9 +2705,8 @@ boolean tcp_read_stream_inetd(long stream_id, Handle hbuffer, long timeout_secs)
                 result = true;
                 goto cleanup;
             }
-            effective_timeout = TCP_INETD_SUBSEQUENT_TIMEOUT_SECS;
         } else {
-            /* Before first packet, use full timeout with bounds check */
+            /* Before first packet, use full timeout */
             elapsed = (long)(now - start_time);
             if (elapsed >= timeout_secs) {
                 /* Timeout before any data - also SUCCESS for inetd (empty request) */
@@ -2665,17 +2714,20 @@ boolean tcp_read_stream_inetd(long stream_id, Handle hbuffer, long timeout_secs)
                 result = true;
                 goto cleanup;
             }
-            /* Bounds check: ensure effective_timeout is positive */
-            effective_timeout = timeout_secs - elapsed;
-            if (effective_timeout <= 0)
-                effective_timeout = 1;  /* Minimum 1 second */
         }
 
-        /* Use select() with remaining timeout */
+        /* Wait for data in short slices instead of one select() spanning
+         * the whole remaining timeout: this loop holds the GIL, and inetd
+         * reads run inside accept-callback threads, so a long select()
+         * here would stall the client script for the full timeout (it
+         * could never send the request being waited for). The elapsed
+         * checks at the top of the loop keep the original inetd timeout
+         * semantics (timeout == success); a slice expiring is NOT a
+         * timeout by itself. */
         FD_ZERO(&readset);
         FD_SET(sockfd, &readset);
-        tv.tv_sec = effective_timeout;
-        tv.tv_usec = 0;
+        tv.tv_sec = 0;
+        tv.tv_usec = 10000;  /* 10ms poll slice (GIL held during select) */
 
         select_result = select(sockfd + 1, &readset, NULL, NULL, &tv);
 
@@ -2687,10 +2739,13 @@ boolean tcp_read_stream_inetd(long stream_id, Handle hbuffer, long timeout_secs)
         }
 
         if (select_result == 0) {
-            /* Timeout - this is SUCCESS for inetd */
-            log_debug(LOG_COMP_LANG, "tcp_read_stream_inetd: select timeout, total=%ld", current_size);
-            result = true;
-            goto cleanup;
+            /* No data this slice: yield the GIL so the peer thread can
+             * run, then revalidate the stream (see tcp_yield_and_revalidate
+             * for the ordering invariant). Loop back for the elapsed-time
+             * checks, which own the timeout-is-success decision. */
+            if (!tcp_yield_and_revalidate(stream, sockfd))
+                goto cleanup;
+            continue;
         }
 
         /* Data available - check how many bytes */

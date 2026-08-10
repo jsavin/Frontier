@@ -444,12 +444,12 @@ tests:
     expected_result: "true"
 
   - name: "tcp connection lifecycle - full data exchange"
-    description: "Test complete client-server data exchange cycle"
+    description: "Test complete client-server data exchange cycle. The handler uses tcp.readStreamBytes (blocking with timeout) rather than a single non-blocking tcp.readStream: the accept callback can win the GIL and run before the client script has sent its request, so the handler must wait for the request bytes (state-driven, completes as soon as the 12 bytes of 'Hello Server' arrive). This also exercises the kernel GIL-yield in the buffered-read wait loop -- without it the callback would hold the GIL for the whole timeout and the client could never send. The server closes its stream before the client polls, verifying delivered data remains readable after peer close."
     timeout: 15
     script: |
       new(tableType, @system.temp.tcpNet9112);
       system.temp.tcpNet9112.fired = false;
-      script.newScriptObject("on myHandler(sid, refcon) {\r  local(data = tcp.readStream(sid, 1024));\r  tcp.writeStream(sid, \"ECHO: \" + data);\r  tcp.closeStream(sid);\r  system.temp.tcpNet9112.fired = true;\r  return true}", @system.temp.tcpNet9112.myHandler);
+      script.newScriptObject("on myHandler(sid, refcon) {\r  local(data = \"\");\r  tcp.readStreamBytes(sid, 12, 5, @data);\r  tcp.writeStream(sid, \"ECHO: \" + data);\r  tcp.closeStream(sid);\r  system.temp.tcpNet9112.fired = true;\r  return true}", @system.temp.tcpNet9112.myHandler);
 
       local(listenID = tcp.listenStream(9112, 5, @system.temp.tcpNet9112.myHandler));
       local(clientStream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 9112));
