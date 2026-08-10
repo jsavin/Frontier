@@ -787,6 +787,31 @@ static boolean protocol_debugger_callback(hdltreenode hnode) {
 		/* Wire the TLS current_script into the debug state so the existing
 		 * suspension-and-wait path (below) sees the right script name. */
 		memcpy(state->current_script, tls_current_script, DEBUG_SCRIPT_PATH_MAX);
+		/* Wire the thread-globals cross-pointer, mirroring the debug/run
+		 * spawn path (headless_spawn.c unified_thread_entry). Without it,
+		 * debug/getLocals has no hash-table context for this thread and
+		 * reports empty locals. Safe to write here: this thread holds the
+		 * GIL, and protocol handlers only read hglobals while the thread
+		 * is suspended. */
+		state->hglobals = (void *)hthreadglobals;
+		/* Seed caller frames from the TLS script stack, which is maintained
+		 * unconditionally on every thread (the push/pop callbacks update TLS
+		 * before checking debug state). Frames entered before this lazy
+		 * attach would otherwise be missing from debug/getStack, and their
+		 * eventual pops would underflow the debug-state stack, clearing
+		 * current_script while still inside a caller. TLS records no line
+		 * numbers; 0 means "omit line" in the getStack frame emit. calldepth
+		 * mirrors the seeded depth so step-over/step-out see the same
+		 * nesting the eager-registration path would have counted. */
+		short seed_depth = tls_script_depth;
+		if (seed_depth > DEBUG_SCRIPT_STACK_MAX)
+			seed_depth = DEBUG_SCRIPT_STACK_MAX;
+		for (short fi = 0; fi < seed_depth; fi++) {
+			memcpy(state->script_stack[fi], tls_script_stack[fi], DEBUG_SCRIPT_PATH_MAX);
+			state->script_stack_lines[fi] = 0;
+		}
+		state->script_stack_depth = seed_depth;
+		atomic_store(&state->calldepth, seed_depth);
 		log_debug(LOG_COMP_LANG,
 				  "lazy debug attach: registered thread %ld at %s line %ld",
 				  idthread, tls_current_script, lazy_lnum);

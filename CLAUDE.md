@@ -29,7 +29,7 @@ The unit and integration commands above are also declared in the `## /auto Test 
 All docs live in `docs/`. Notable entry points:
 - **Getting started / CLI**: `GETTING_STARTED.md`, `CLI_USAGE_GUIDE.md`
 - **Implementation**: `VERB_IMPLEMENTATION_GUIDE.md`, `ODB_SCRIPT_EDITING.md`, `TESTING_GUIDE.md`, `LOGGING_STANDARDS.md`
-- **Debugging / architecture**: `VERB_RESOLUTION_ARCHITECTURE.md`, `DEBUGGING_GUIDE.md`, `ARCHITECTURAL_ANTIPATTERNS.md`
+- **Debugging / architecture**: `VERB_RESOLUTION_ARCHITECTURE.md`, `DEBUGGING_GUIDE.md`, `AGENT_DEBUGGING_GUIDE.md` (protocol-driven debugging playbook for AI agents), `ARCHITECTURAL_ANTIPATTERNS.md`
 - **Workflow**: `DOIT_WORKFLOW.md`, `WORKTREE_WORKFLOW.md`
 - **UserTalk reference**: `docs/usertalk/docserver/` (75+ verb categories)
 
