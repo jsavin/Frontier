@@ -54,6 +54,7 @@ tests:
       local (a = @system.menus.data.frontier);
       local (ok = defined (a^) and menu.isInstalled (a));
       try {delete (@system.menus.data.frontier)};
+      try {delete (@system.temp.windowTypes)};
       return (ok)
     expected_success: true
     expected_result: "true"
@@ -78,6 +79,7 @@ tests:
       local (a = @system.menus.data.frontier.File.Quit);
       local (ok = defined (a^));
       try {delete (@system.menus.data.frontier)};
+      try {delete (@system.temp.windowTypes)};
       return (ok)
     expected_success: true
     expected_result: "true"
@@ -101,6 +103,7 @@ tests:
       local (a = @system.menus.data.frontier.Edit.Find);
       local (ok = defined (a^));
       try {delete (@system.menus.data.frontier)};
+      try {delete (@system.temp.windowTypes)};
       return (ok)
     expected_success: true
     expected_result: "true"
@@ -126,6 +129,7 @@ tests:
       local (a = @system.menus.data.frontier.View.Medium);
       local (ok = defined (a^));
       try {delete (@system.menus.data.frontier)};
+      try {delete (@system.temp.windowTypes)};
       return (ok)
     expected_success: true
     expected_result: "true"
@@ -152,6 +156,7 @@ tests:
       Frontier.tools.data.windowTypes.ReplWindow.openWindow (@system.temp.windowTypes.windows.repl);
       local (n2 = sizeOf (system.menus.data.frontier.File));
       try {delete (@system.menus.data.frontier)};
+      try {delete (@system.temp.windowTypes)};
       return (n1 == n2 and n1 > 0)
     expected_success: true
     expected_result: "true"
@@ -198,6 +203,7 @@ tests:
       local (s = system.menus.data.frontier.File.Quit.script);
       local (ok = s contains "repl.exit (");
       try {delete (@system.menus.data.frontier)};
+      try {delete (@system.temp.windowTypes)};
       return (ok)
     expected_success: true
     expected_result: "true"

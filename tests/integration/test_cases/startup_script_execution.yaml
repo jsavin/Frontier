@@ -22,6 +22,18 @@
 # system.temp.Frontier for the lifetime of that process. Tests are self-contained:
 # each script checks its own observable state in one atomic operation.
 # sequential: true prevents parallel runs from racing on system.temp.Frontier.
+#
+# user.prefs.firstRootRun MUST STAY FALSE IN Virgin.root (Unit 3.1):
+# cleanRoot.ut:68 sets the flag true, so a literally-virgin root would carry
+# true and startupScript.ut:177 would call userland.firstRootRun() on the first
+# startup. That handler is a heavy re-initialization -- among other things it
+# does table.emptyTable(@user.scheduler.hourly) and a full webserver.init(),
+# which wipes the scheduler task times and responder wiring these tests and the
+# webserver tests read back. Flipping the flag to true was tried and reverted:
+# it turned 9 tests red across this file, webserver_hello_world.yaml and
+# webserver_inetd_e2e.yaml, and flipping it back turned all 9 green again.
+# If a future change needs a true first-run flag, the fix is to make the
+# affected tests provision their own state, not to flip this flag alone.
 
 sequential: true
 
@@ -52,7 +64,7 @@ tests:
       and = false at the very last line. A false value proves execution reached
       the end of the script body, not just the early guard return. This is the
       tightest available signal that the full script ran to completion.
-      Builds on Test 1 — system.temp.Frontier already exists so the idempotency
+      Builds on Test 1 -- system.temp.Frontier already exists so the idempotency
       guard returns early; this test works because it reads the state left by Test 1.
     timeout: 5
     script: |
@@ -80,7 +92,7 @@ tests:
     expected_result: "true"
 
   # ============================================================
-  # Test 4: Idempotency guard — second call returns early
+  # Test 4: Idempotency guard -- second call returns early
   # ============================================================
   - name: "startup: second call to startupScript is a no-op (idempotency guard)"
     description: |
@@ -109,7 +121,7 @@ tests:
       Test 1 (no re-run needed; idempotency guard would make a second call a no-op
       anyway). everyMinute is intentionally excluded: its 1-minute window is too
       narrow for reliable CI timing. Re-calling startupScript() is avoided because
-      it triggers inetd.start(), which binds TCP ports — an unneeded side effect.
+      it triggers inetd.start(), which binds TCP ports -- an unneeded side effect.
     timeout: 5
     script: |
       local(hourly = user.scheduler.tasks.hourly.taskTime);
@@ -159,5 +171,25 @@ tests:
           compiled = defined(system.temp.startupRoundtripTest.startupScript)};
       delete(@system.temp.startupRoundtripTest);
       return compiled
+    expected_success: true
+    expected_result: "true"
+
+  # ============================================================
+  # Test 8: Release the HTTP listener startupScript left bound
+  # ============================================================
+  - name: "startup: cleanup -- stop the inetd daemons startupScript started"
+    description: |
+      startupScript calls inetd.start(), which binds the configured daemons --
+      including the HTTP listener on port 8080 -- for the lifetime of the shared
+      sequential protocol session. Left running, that listener collides with
+      webserver_hello_world's "inetd.startOne - start HTTP listener on port 8080"
+      test, which fails to bind. This test runs last in the file and releases the
+      listeners so later files in the shared session start from a clean port map.
+      Test 5's description already flags inetd.start as a known side effect of
+      startupScript; this is where we undo it.
+    timeout: 10
+    script: |
+      try {inetd.stop()};
+      return true
     expected_success: true
     expected_result: "true"

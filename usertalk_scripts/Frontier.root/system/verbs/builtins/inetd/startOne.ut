@@ -1,5 +1,9 @@
 on startOne (daemonTableAdr) {
 	//Change Notes
+		//8/10/26 by JES
+			//Commented out the trailing top-level test call. If the script was run directly rather than called as a verb, that line silently started an INADDR_ANY listener on port 8080. Follows the commented test-bundle convention already used in isDaemonRunning. (#841)
+		//8/10/26 by JES
+			//Removed the classic-Mac multi-listener branch. tcp.listenStream already accepts the full backlog count, so registering count/2-1 extra single-connection listeners on the same already-bound port is obsolete; on modern (non-PPC) macOS the guard always fired and every extra bind failed, throwing after the primary listener was registered. (#840)
 		//1/16/00; 11:58:55 AM by RAB
 			//In Frontier 6.2a4 the daemon table can contain an item called "ip" which tells Frontier which dotted IP address it should listen on.
 		//Mon, Apr 24, 2000 at 8:19:54 PM by AR
@@ -17,12 +21,6 @@ on startOne (daemonTableAdr) {
 		new (tableType, @user.inetd.listens.[port]);
 		user.inetd.listens.[port].ref = listenRef;
 		user.inetd.listens.[port].adrTable = daemonTableAdr;
-		if system.environment.isMac { //04/24/00 AR
-			if date.versionLessThan (Frontier.version (), "6.2b8") or (not Frontier.isPowerPC ()) {
-				local (i);
-				for i = 2 to count / 2 {
-					listenRef = tcp.listenStream (port, 1, @inetd.supervisor, port, addr);
-					user.inetd.listens.[port].["ref" + i] = listenRef}}};
-		return (true)}};
-
-startOne (@user.inetd.config.http)
+		return (true)}}
+//bundle //test code
+	//startOne (@user.inetd.config.http)

@@ -63,11 +63,11 @@ tcp.listenStream - read/write on accepted connection | accepted-connection read/
 tcp.readStream - read after write using echo server | echo-server read fails under runner, issues #710 #333
 tcp.readStream - zero byte count | echo-server read fails under runner, issues #710 #333
 
-# --- startup family (2) ---------------------------------------------------
-# startup.startupScript() invoked explicitly inside the protocol executor
-# (runner uses --skip-startup) does not complete; see the background notes in
-# tests/integration/test_cases/startup_script_execution.yaml (#616 #618 #621
-# #622 touched this path). No open tracking issue found.
-
-startup: startingUp flag is false after completion | startup.startupScript() incomplete under protocol executor; no tracking issue yet
-startup: startupScript completes and sets system.temp.Frontier | startup.startupScript() incomplete under protocol executor; no tracking issue yet
+# --- startup family: RESOLVED (Unit 3.1) ----------------------------------
+# The two startup entries here were symptoms, not causes.
+# replwindow_openwindow_menus_phase_e.yaml created the headless window-registry
+# sentinel system.temp.windowTypes and never deleted it, poisoning the shared
+# sequential protocol session: a later startup.startupScript() aborted
+# mid-flight and left system.temp.Frontier.startingUp stuck true. Adding the
+# missing cleanup to that file makes both startup tests pass, so their entries
+# are removed here in the same change.
