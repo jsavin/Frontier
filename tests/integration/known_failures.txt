@@ -16,7 +16,12 @@
 #     test -- its failures are baselined AND its passes do not fail the run
 #     (they are reported informationally). Use sparingly; deflaking beats
 #     annotating.
+#   - the "#min_total:" directive below records the minimum plausible suite
+#     size; a baseline run that collects fewer results fails loudly (guards
+#     against collapsed test discovery reading as a clean exit-0 run).
 # See docs/TESTING_GUIDE.md, "Known-Failure Baseline".
+
+#min_total: 2400
 #
 # Generated from three full-suite runs on develop @ 721820aaf (2026-08-10):
 # 20 failures identical across all three runs (runs at 2243/20/207 twice,
@@ -26,7 +31,7 @@
 # fixes) are in flight on sibling branches and are expected to SHRINK this
 # list; remove entries as those branches land and turn tests green.
 
-# --- html page-framework family (11) -------------------------------------
+# --- html page-framework family (12: 11 stable + 1 flaky) -----------------
 # Phase 2 page-framework verbs (langhtml.c) fail directive processing and
 # page-table override lookups under the headless runner. No tracking issue
 # filed yet; failure predates Phase C (was in the /tmp integ-failures
