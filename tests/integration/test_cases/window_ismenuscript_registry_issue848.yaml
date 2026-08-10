@@ -1,0 +1,117 @@
+# Issue #848: window.isMenuScript must not error for registry-backed windows
+#
+# What this file proves
+# ---------------------
+# With the REPL window sentinel present (the shape window_registry_init()
+# creates at frontier-cli/window_registry.c, and which every real REPL
+# session therefore has), the window.isMenuScript() kernel verb answers
+# false instead of raising "not implemented", and the untried callers above
+# it -- system.menus.buildMenuBar() and in turn startup.startupScript() --
+# run to completion.
+#
+# Why these tests fail without the fix
+# ------------------------------------
+# The headless window processor (tests/headless_window_verbs.c, case
+# winv_ismenuscript) returned an error for every call.  buildMenuBar.ut
+# line 32 calls window.isMenuScript() without a try guard, and
+# startupScript.ut line 208 calls buildMenuBar() without one either, so the
+# error aborted startup with system.temp.Frontier.startingUp still true.
+# The kernel webserver loop (Common/source/langhtml.c:6551-6557) sleeps for
+# as long as startingUp is set, so the server accepted connections and never
+# answered them for the life of the session.
+#
+# Test isolation
+# --------------
+# Each test creates the sentinel inline rather than relying on any other
+# file having created it (replwindow_openwindow_menus_phase_e.yaml now
+# cleans up its own registry), and deletes system.temp.windowTypes on the
+# way out so later tests see a clean ODB.
+#
+# Test 4 deletes system.temp.Frontier before calling startup.startupScript().
+# That guard table is what makes startupScript return early ("only run once"
+# at startupScript.ut line 33); without deleting it the call is a no-op and
+# the test would pass vacuously against the broken build.  Deleting it is
+# safe here because startupScript rebuilds it as its first action.
+
+sequential: true
+
+tests:
+
+  # ========================================================================
+  # 1. The verb answers false rather than raising
+  # ========================================================================
+
+  - name: "window.isMenuScript returns false for a registry window"
+    description: |
+      Registry-backed windows are non-graphical and can never hold a
+      menubar script, so the verb must answer false.  Before the fix this
+      raised "not implemented".
+    script: |
+      if not defined (system.temp.windowTypes) {new (tableType, @system.temp.windowTypes)};
+      if not defined (system.temp.windowTypes.windows) {new (tableType, @system.temp.windowTypes.windows)};
+      if not defined (system.temp.windowTypes.windows.repl) {new (tableType, @system.temp.windowTypes.windows.repl)};
+      local (result = window.isMenuScript (@system.temp.windowTypes.windows.repl));
+      try {delete (@system.temp.windowTypes)};
+      return (result)
+    expected_success: true
+    expected_result: "false"
+
+  # ========================================================================
+  # 2. window.getType resolves instead of propagating the error
+  # ========================================================================
+
+  - name: "window.getType resolves for a registry window"
+    description: |
+      getType.ut calls window.isMenuScript() as its first branch, so the
+      raising verb made getType unusable too.  With the verb answering
+      false, getType falls through to typeOf() and reports the registry
+      node's own type.
+    script: |
+      if not defined (system.temp.windowTypes) {new (tableType, @system.temp.windowTypes)};
+      if not defined (system.temp.windowTypes.windows) {new (tableType, @system.temp.windowTypes.windows)};
+      if not defined (system.temp.windowTypes.windows.repl) {new (tableType, @system.temp.windowTypes.windows.repl)};
+      local (t = window.getType (@system.temp.windowTypes.windows.repl));
+      try {delete (@system.temp.windowTypes)};
+      return (t == tableType)
+    expected_success: true
+    expected_result: "true"
+
+  # ========================================================================
+  # 3. buildMenuBar -- the untried caller -- completes
+  # ========================================================================
+
+  - name: "system.menus.buildMenuBar completes with a registry window present"
+    description: |
+      buildMenuBar.ut line 32 calls window.getType (window.frontmost ()),
+      which reaches window.isMenuScript with no try guard.  This is the
+      call that aborted startup before the fix.
+    script: |
+      if not defined (system.temp.windowTypes) {new (tableType, @system.temp.windowTypes)};
+      if not defined (system.temp.windowTypes.windows) {new (tableType, @system.temp.windowTypes.windows)};
+      if not defined (system.temp.windowTypes.windows.repl) {new (tableType, @system.temp.windowTypes.windows.repl)};
+      system.menus.buildMenuBar ();
+      try {delete (@system.temp.windowTypes)};
+      return (true)
+    expected_success: true
+    expected_result: "true"
+
+  # ========================================================================
+  # 4. startupScript finishes and clears startingUp -- the webserver gate
+  # ========================================================================
+
+  - name: "startupScript clears startingUp with a registry window present"
+    description: |
+      The exit criterion for issue #848.  system.temp.Frontier.startingUp
+      must end false; if startupScript aborts at buildMenuBar the flag
+      sticks true and the kernel webserver never answers a request.
+    script: |
+      if not defined (system.temp.windowTypes) {new (tableType, @system.temp.windowTypes)};
+      if not defined (system.temp.windowTypes.windows) {new (tableType, @system.temp.windowTypes.windows)};
+      if not defined (system.temp.windowTypes.windows.repl) {new (tableType, @system.temp.windowTypes.windows.repl)};
+      try {delete (@system.temp.Frontier)};
+      try {startup.startupScript ()};
+      local (flStartingUp = system.temp.Frontier.startingUp);
+      try {delete (@system.temp.windowTypes)};
+      return (flStartingUp)
+    expected_success: true
+    expected_result: "false"

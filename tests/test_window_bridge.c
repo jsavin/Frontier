@@ -359,6 +359,98 @@ static bool test_injection_attempt_is_safe(void) {
 }
 
 /* ================================================================== */
+/*  Issue #848: window.ismenuscript must not error on registry windows */
+/*                                                                     */
+/*  system.menus.buildMenuBar() calls window.isMenuScript() without a  */
+/*  try guard, from startupScript.  When the headless verb returned    */
+/*  "not implemented", startupScript aborted and left                  */
+/*  system.temp.Frontier.startingUp permanently true, which wedges the */
+/*  kernel webserver loop.  Registry-backed windows are non-graphical  */
+/*  and can never carry a menubar script, so the verb must answer      */
+/*  false rather than raise.                                           */
+/* ================================================================== */
+
+/*
+ * Create system.temp.windowTypes.windows.repl -- the same sentinel shape
+ * window_registry_init() builds at REPL boot.
+ *
+ * Built with the C table API rather than the UserTalk "new (tableType, ...)"
+ * statements window_registry_init uses, because the bare "new" name is not
+ * resolvable in this minimal headless runtime (it is registered as lang.new);
+ * this is the same limitation clear_markers() works around for "delete".
+ */
+static boolean find_or_make_table(hdlhashtable hparent, const char *name,
+                                  hdlhashtable *hresult) {
+	bigstring bsname;
+
+	copyctopstring(name, bsname);
+
+	if (findnamedtable(hparent, bsname, hresult))
+		return true;
+
+	return tablenewsystemtable(hparent, bsname, hresult);
+}
+
+static boolean make_registry_window(void) {
+	bigstring bssystem, bstemp;
+	hdlhashtable hsystem, htemp, htypes, hwindows, hrepl;
+
+	copyctopstring("system", bssystem);
+	copyctopstring("temp", bstemp);
+
+	if (!findnamedtable(roottable, bssystem, &hsystem))
+		return false;
+	if (!findnamedtable(hsystem, bstemp, &htemp))
+		return false;
+
+	return find_or_make_table(htemp, "windowTypes", &htypes)
+	    && find_or_make_table(htypes, "windows", &hwindows)
+	    && find_or_make_table(hwindows, "repl", &hrepl);
+}
+
+static bool test_ismenuscript_registry_window_returns_false(void) {
+	g_test_stats.current_test_name =
+		"window.ismenuscript on a registry window returns false without erroring";
+
+	bigstring bsresult;
+
+	TEST_ASSERT(make_registry_window(),
+		"setup: REPL window sentinel must be creatable");
+
+	TEST_ASSERT(run_expr("window.ismenuscript (@system.temp.windowTypes.windows.repl)",
+	                     bsresult),
+		"window.ismenuscript must evaluate without raising an error");
+
+	TEST_ASSERT(bs_equals(bsresult, "false"),
+		"window.ismenuscript on a registry window must return false");
+
+	TEST_PASS("window.ismenuscript on a registry window returns false without erroring");
+}
+
+/*
+ * buildMenuBar.ut reaches the verb through window.getType (a UserTalk verb
+ * that is not present in this minimal runtime), so we exercise the same
+ * shape the script uses: the address produced by window.frontmost().
+ */
+static bool test_ismenuscript_accepts_frontmost_address(void) {
+	g_test_stats.current_test_name =
+		"window.ismenuscript accepts the address returned by window.frontmost()";
+
+	bigstring bsresult;
+
+	TEST_ASSERT(make_registry_window(),
+		"setup: REPL window sentinel must be creatable");
+
+	TEST_ASSERT(run_expr("window.ismenuscript (window.frontmost ())", bsresult),
+		"window.ismenuscript (window.frontmost ()) must evaluate without raising");
+
+	TEST_ASSERT(bs_equals(bsresult, "false"),
+		"window.ismenuscript (window.frontmost ()) must return false headless");
+
+	TEST_PASS("window.ismenuscript accepts the address returned by window.frontmost()");
+}
+
+/* ================================================================== */
 /*  Suite registration                                                 */
 /* ================================================================== */
 
@@ -368,6 +460,8 @@ static test_case_t test_cases[] = {
 	{"nil to nil is noop",            test_nil_to_nil_noop},
 	{"same window no double fire",    test_same_window_no_double_fire},
 	{"injection attempt is safe",     test_injection_attempt_is_safe},
+	{"ismenuscript registry window",  test_ismenuscript_registry_window_returns_false},
+	{"ismenuscript frontmost addr",   test_ismenuscript_accepts_frontmost_address},
 };
 
 int main(void) {
