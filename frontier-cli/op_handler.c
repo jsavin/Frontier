@@ -67,7 +67,7 @@
 
 /* Static fallback for OOM conditions where cJSON_CreateObject() returns NULL.
  * Ensures the client always gets a response and doesn't hang. */
-static const char *OOM_FALLBACK = "{\"id\":0,\"success\":false,\"error\":{\"message\":\"Server out of memory\"}}";
+static const char *OOM_FALLBACK = "{\"id\":0,\"success\":false,\"error\":{\"code\":\"internal_error\",\"message\":\"Server out of memory\"}}";
 
 /*
  * Send a pre-formatted JSON string via the transport.
@@ -122,8 +122,13 @@ static void send_ack(long id, transport_t *transport) {
  * same ownership semantics as location/stack. Used when an else-block
  * re-failure is the primary error and the originating try-block failure
  * provides additional context.
+ *
+ * Unit 1.1 (protocol contracts): added code parameter -- a stable
+ * machine-readable error code (OP_ERRCODE_* in op_handler.h) attached
+ * as error.code alongside the human-readable message.
  */
-static void send_error_with_metadata(long id, const char *message,
+static void send_error_with_metadata(long id, const char *code,
+                                     const char *message,
                                      cJSON *location, cJSON *stack,
                                      cJSON *caused_by,
                                      transport_t *transport) {
@@ -147,6 +152,7 @@ static void send_error_with_metadata(long id, const char *message,
 		if (caused_by != NULL) cJSON_Delete(caused_by);
 		cJSON_AddStringToObject(response, "error", message);
 	} else {
+		cJSON_AddStringToObject(error_obj, "code", code);
 		cJSON_AddStringToObject(error_obj, "message", message);
 		if (location != NULL)
 			cJSON_AddItemToObject(error_obj, "location", location);
@@ -161,8 +167,9 @@ static void send_error_with_metadata(long id, const char *message,
 	send_cjson_response(transport, response);
 }
 
-static void send_error(long id, const char *message, transport_t *transport) {
-	send_error_with_metadata(id, message, NULL, NULL, NULL, transport);
+static void send_error(long id, const char *code, const char *message,
+                       transport_t *transport) {
+	send_error_with_metadata(id, code, message, NULL, NULL, NULL, transport);
 }
 
 /*
@@ -451,20 +458,20 @@ static void handle_script_eval(long id, const char *json_line, transport_t *tran
 	 * could match "expression" inside a string value from untrusted WebSocket input. */
 	cJSON *root = cJSON_Parse(json_line);
 	if (root == NULL) {
-		send_error(id, "Invalid JSON", transport);
+		send_error(id, OP_ERRCODE_PARSE, "Invalid JSON", transport);
 		return;
 	}
 	cJSON *params = cJSON_GetObjectItemCaseSensitive(root, "params");
 	cJSON *expr_json = params ? cJSON_GetObjectItemCaseSensitive(params, "expression") : NULL;
 	if (!cJSON_IsString(expr_json) || expr_json->valuestring == NULL) {
-		send_error(id, "Missing 'expression' in params", transport);
+		send_error(id, OP_ERRCODE_BAD_PARAMS, "Missing 'expression' in params", transport);
 		cJSON_Delete(root);
 		return;
 	}
 	char *expression = strdup(expr_json->valuestring);
 	cJSON_Delete(root);
 	if (expression == NULL) {
-		send_error(id, "Memory allocation failed", transport);
+		send_error(id, OP_ERRCODE_INTERNAL, "Memory allocation failed", transport);
 		return;
 	}
 
@@ -548,7 +555,7 @@ static void handle_script_eval(long id, const char *json_line, transport_t *tran
 		}
 
 		langclearevalinputoffset();
-		send_error_with_metadata(id, c_error, location, stack, caused_by, transport);
+		send_error_with_metadata(id, OP_ERRCODE_SCRIPT_ERROR, c_error, location, stack, caused_by, transport);
 	}
 
 	disposevaluerecord(result, false);
@@ -610,7 +617,7 @@ static void cjson_add_error_object(cJSON *item, const char *message) {
 static void handle_odb_get(long id, const char *json_line, transport_t *transport) {
 	cJSON *root = cJSON_Parse(json_line);
 	if (root == NULL) {
-		send_error(id, "Invalid JSON", transport);
+		send_error(id, OP_ERRCODE_PARSE, "Invalid JSON", transport);
 		return;
 	}
 
@@ -618,14 +625,14 @@ static void handle_odb_get(long id, const char *json_line, transport_t *transpor
 	cJSON *items = params ? cJSON_GetObjectItemCaseSensitive(params, "items") : NULL;
 
 	if (!cJSON_IsArray(items)) {
-		send_error(id, "Missing or invalid 'items' array in params", transport);
+		send_error(id, OP_ERRCODE_BAD_PARAMS, "Missing or invalid 'items' array in params", transport);
 		cJSON_Delete(root);
 		return;
 	}
 
 	int count = cJSON_GetArraySize(items);
 	if (count > OP_MAX_BATCH_SIZE) {
-		send_error(id, OP_BATCH_ERR, transport);
+		send_error(id, OP_ERRCODE_BATCH_TOO_LARGE, OP_BATCH_ERR, transport);
 		cJSON_Delete(root);
 		return;
 	}
@@ -673,7 +680,7 @@ static void handle_odb_get(long id, const char *json_line, transport_t *transpor
 static void handle_odb_set(long id, const char *json_line, transport_t *transport) {
 	cJSON *root = cJSON_Parse(json_line);
 	if (root == NULL) {
-		send_error(id, "Invalid JSON", transport);
+		send_error(id, OP_ERRCODE_PARSE, "Invalid JSON", transport);
 		return;
 	}
 
@@ -681,14 +688,14 @@ static void handle_odb_set(long id, const char *json_line, transport_t *transpor
 	cJSON *items = params ? cJSON_GetObjectItemCaseSensitive(params, "items") : NULL;
 
 	if (!cJSON_IsArray(items)) {
-		send_error(id, "Missing or invalid 'items' array in params", transport);
+		send_error(id, OP_ERRCODE_BAD_PARAMS, "Missing or invalid 'items' array in params", transport);
 		cJSON_Delete(root);
 		return;
 	}
 
 	int count = cJSON_GetArraySize(items);
 	if (count > OP_MAX_BATCH_SIZE) {
-		send_error(id, OP_BATCH_ERR, transport);
+		send_error(id, OP_ERRCODE_BATCH_TOO_LARGE, OP_BATCH_ERR, transport);
 		cJSON_Delete(root);
 		return;
 	}
@@ -740,7 +747,7 @@ static void handle_odb_set(long id, const char *json_line, transport_t *transpor
 static void handle_odb_list(long id, const char *json_line, transport_t *transport) {
 	cJSON *root = cJSON_Parse(json_line);
 	if (root == NULL) {
-		send_error(id, "Invalid JSON", transport);
+		send_error(id, OP_ERRCODE_PARSE, "Invalid JSON", transport);
 		return;
 	}
 
@@ -748,14 +755,14 @@ static void handle_odb_list(long id, const char *json_line, transport_t *transpo
 	cJSON *items = params ? cJSON_GetObjectItemCaseSensitive(params, "items") : NULL;
 
 	if (!cJSON_IsArray(items)) {
-		send_error(id, "Missing or invalid 'items' array in params", transport);
+		send_error(id, OP_ERRCODE_BAD_PARAMS, "Missing or invalid 'items' array in params", transport);
 		cJSON_Delete(root);
 		return;
 	}
 
 	int count = cJSON_GetArraySize(items);
 	if (count > OP_MAX_BATCH_SIZE) {
-		send_error(id, OP_BATCH_ERR, transport);
+		send_error(id, OP_ERRCODE_BATCH_TOO_LARGE, OP_BATCH_ERR, transport);
 		cJSON_Delete(root);
 		return;
 	}
@@ -811,7 +818,7 @@ static void handle_odb_list(long id, const char *json_line, transport_t *transpo
 static void handle_odb_delete(long id, const char *json_line, transport_t *transport) {
 	cJSON *root = cJSON_Parse(json_line);
 	if (root == NULL) {
-		send_error(id, "Invalid JSON", transport);
+		send_error(id, OP_ERRCODE_PARSE, "Invalid JSON", transport);
 		return;
 	}
 
@@ -819,14 +826,14 @@ static void handle_odb_delete(long id, const char *json_line, transport_t *trans
 	cJSON *items = params ? cJSON_GetObjectItemCaseSensitive(params, "items") : NULL;
 
 	if (!cJSON_IsArray(items)) {
-		send_error(id, "Missing or invalid 'items' array in params", transport);
+		send_error(id, OP_ERRCODE_BAD_PARAMS, "Missing or invalid 'items' array in params", transport);
 		cJSON_Delete(root);
 		return;
 	}
 
 	int count = cJSON_GetArraySize(items);
 	if (count > OP_MAX_BATCH_SIZE) {
-		send_error(id, OP_BATCH_ERR, transport);
+		send_error(id, OP_ERRCODE_BATCH_TOO_LARGE, OP_BATCH_ERR, transport);
 		cJSON_Delete(root);
 		return;
 	}
@@ -895,6 +902,13 @@ int op_dispatch(const char *json_line, size_t len, transport_t *transport) {
 	 * extraction would match keys inside string values. */
 	cJSON *envelope = cJSON_Parse(json_line);
 	if (envelope == NULL) {
+		/* Unit 1.1 (protocol contracts): an unparseable request previously
+		 * got NO response, leaving machine clients waiting forever. Respond
+		 * with id:null (no id can be recovered from a garbage line). */
+		const char *err_resp =
+			"{\"id\":null,\"error\":{\"code\":\"parse_error\","
+			"\"message\":\"Invalid JSON\"},\"success\":false}";
+		transport_send(transport, err_resp);
 		return 0;
 	}
 
@@ -914,17 +928,21 @@ int op_dispatch(const char *json_line, size_t len, transport_t *transport) {
 	 * The shutdown handler frees op before its early return. All other paths
 	 * fall through to the free(op) at function end. No leak on any path. */
 
-	if (op == NULL) {
-		send_error(id, "Missing 'op' field", transport);
+	/* Require id field so clients can correlate responses. Checked BEFORE
+	 * the op field so a request missing both gets the id:null missing_id
+	 * response (previously it got a confusing "id":0 missing-op error).
+	 * Send "id":null (not "id":0) for missing ids per JSON-RPC convention. */
+	if (!id_present) {
+		const char *err_resp =
+			"{\"id\":null,\"error\":{\"code\":\"missing_id\","
+			"\"message\":\"Missing 'id' field\"},\"success\":false}";
+		transport_send(transport, err_resp);
+		free(op);
 		return 0;
 	}
 
-	/* Require id field so clients can correlate responses.
-	 * Send "id":null (not "id":0) for missing ids per JSON-RPC convention. */
-	if (!id_present) {
-		const char *err_resp = "{\"id\":null,\"error\":{\"message\":\"Missing 'id' field\"},\"success\":false}";
-		transport_send(transport, err_resp);
-		free(op);
+	if (op == NULL) {
+		send_error(id, OP_ERRCODE_MISSING_OP, "Missing 'op' field", transport);
 		return 0;
 	}
 
@@ -979,7 +997,7 @@ int op_dispatch(const char *json_line, size_t len, transport_t *transport) {
 		 * the op string, so no injection risk from crafted op names. */
 		char err[256];
 		snprintf(err, sizeof(err), "Unknown operation: %s", op);
-		send_error(id, err, transport);
+		send_error(id, OP_ERRCODE_UNKNOWN_OP, err, transport);
 	}
 
 	free(op);

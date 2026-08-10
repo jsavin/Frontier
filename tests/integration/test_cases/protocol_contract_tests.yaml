@@ -1,0 +1,942 @@
+# Protocol contract test suite (Unit 1.1, Phase 1)
+#
+# Pins the request/response/error contract for EVERY op in the protocol
+# dispatch table (op_handler.c op_dispatch), plus envelope-level semantics
+# (unparseable JSON, missing/mistyped id and op, oversized lines) and the
+# two server-initiated notifications (debug/suspended, debug/completed).
+#
+# Contract documented in planning/gui/STDIO_PROTOCOL.md. Every top-level
+# error response carries a stable machine-readable error.code from the set:
+#   parse_error, missing_id, missing_op, unknown_op, bad_params,
+#   batch_too_large, limit_exceeded, not_found, bad_state, script_error,
+#   internal_error, line_too_long
+# Per-item odb errors keep the {message} shape (codes are envelope-level).
+#
+# Wire-format sources quoted before writing these tests (mandatory rule):
+# op_handler.c (dispatch + send_error_with_metadata + send_eval_success +
+# per-op handlers), debug_handler.c (all handle_debug_* emit sites,
+# debug_send_suspended/completed), odb_ops.c (make_error_result + per-item
+# success emits), protocol_handler.c (framing, PROTOCOL_LINE_MAX drain),
+# headless_spawn.c (entry suspension + completion notification).
+#
+# sequential: these tests spawn debug threads and consume server-initiated
+# notifications on the shared executor's stdout; parallel interleaving from
+# other files' tests is not possible (per-file processes), but the debug
+# thread + REPL global state interactions warrant sequential execution.
+
+description: "NDJSON protocol contract tests (Unit 1.1)"
+sequential: true
+
+tests:
+  # ========================================================================
+  # Envelope contracts
+  # ========================================================================
+
+  - name: "envelope - unparseable JSON gets parse_error response"
+    description: "A line that is not valid JSON must produce an id:null error response with code parse_error (previously: silently dropped, which hangs machine clients awaiting a response). Session must remain usable."
+    protocol_ops:
+      - raw_line: '{"op":"script/eval",'
+        validate:
+          success: false
+          error_code: "parse_error"
+        description: "send unparseable line"
+      - op: "script/eval"
+        params:
+          expression: "1 + 1"
+        validate:
+          success: true
+          result:
+            value: "2"
+        description: "session still usable"
+
+  - name: "envelope - missing id field"
+    description: "A request without an id gets an id:null error response with code missing_id (clients can't correlate, so id is null per JSON-RPC convention)."
+    protocol_ops:
+      - raw_line: '{"op":"script/eval","params":{"expression":"1 + 1"}}'
+        validate:
+          success: false
+          error_code: "missing_id"
+          error_contains: "id"
+
+  - name: "envelope - non-numeric id field"
+    description: "An id of the wrong JSON type (string) is treated as missing: code missing_id."
+    protocol_ops:
+      - raw_line: '{"op":"script/eval","id":"abc","params":{"expression":"1 + 1"}}'
+        validate:
+          success: false
+          error_code: "missing_id"
+
+  - name: "envelope - missing op field"
+    description: "A request with a valid id but no op gets an error echoing the id, code missing_op."
+    protocol_ops:
+      - raw_line: '{"id":424242}'
+        validate:
+          success: false
+          error_code: "missing_op"
+          error_contains: "op"
+
+  - name: "envelope - empty object"
+    description: "An empty JSON object is missing both id and op; id is validated first, so the response is id:null with code missing_id."
+    protocol_ops:
+      - raw_line: '{}'
+        validate:
+          success: false
+          error_code: "missing_id"
+
+  - name: "envelope - non-string op field"
+    description: "An op of the wrong JSON type (number) is treated as missing: code missing_op."
+    protocol_ops:
+      - op: 12345
+        validate:
+          success: false
+          error_code: "missing_op"
+
+  - name: "envelope - unknown operation"
+    description: "An op not in the dispatch table returns code unknown_op with the op name echoed in the message."
+    protocol_ops:
+      - op: "no/such/operation"
+        validate:
+          success: false
+          error_code: "unknown_op"
+          error_contains: "Unknown operation"
+
+  - name: "envelope - oversized line gets one line_too_long error"
+    description: "A request line exceeding PROTOCOL_LINE_MAX (64 KB) must produce exactly one id:null error with code line_too_long, and the session must survive (previously: the fgets path processed the fragments as two garbage lines with no response at all)."
+    protocol_ops:
+      - raw_line:
+          - '{"op":"script/eval","id":424243,"params":{"expression":"'
+          - repeat: "x"
+            count: 70000
+          - '"}}'
+        timeout: 10
+        validate:
+          success: false
+          error_code: "line_too_long"
+        description: "send 70KB line"
+      - op: "script/eval"
+        params:
+          expression: "2 + 2"
+        validate:
+          success: true
+          result:
+            value: "4"
+        description: "session still usable after oversized line"
+
+  # ========================================================================
+  # script/eval
+  # ========================================================================
+
+  - name: "script/eval - happy path result shapes"
+    description: "Result object is {value: <string|null>, type: <usertalk type>}; tables render as [table]/table."
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "1 + 1"
+        validate:
+          success: true
+          result:
+            value: "2"
+            type: "long"
+        description: "long result"
+      - op: "script/eval"
+        params:
+          expression: '"a" + "b"'
+        validate:
+          success: true
+          result:
+            value: "ab"
+            type: "string"
+        description: "string result"
+      - op: "script/eval"
+        params:
+          expression: "system.temp"
+        validate:
+          success: true
+          result:
+            value: "[table]"
+            type: "table"
+        description: "table result"
+
+  - name: "script/eval - missing expression param"
+    description: "Omitting params.expression returns code bad_params."
+    protocol_ops:
+      - op: "script/eval"
+        params: {}
+        validate:
+          success: false
+          error_code: "bad_params"
+          error_contains: "expression"
+
+  - name: "script/eval - expression wrong type"
+    description: "A non-string expression (number) is treated as missing: code bad_params."
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: 42
+        validate:
+          success: false
+          error_code: "bad_params"
+
+  - name: "script/eval - runtime error carries script_error code, location, stack"
+    description: "A runtime error surfaces as success:false with code script_error plus error.location ({script,line,column,tokenStart,tokenEnd}) and error.stack. KNOWN GAP (pre-existing, out of scope for Unit 1.1): the message for bare runtime errors (scriptError, divide-by-zero) is the generic 'Script evaluation failed' -- langruntraperror leaves bserror empty on the protocol eval path, so the real message is lost unless a try/else causedBy snapshot exists (#618/#620 context). This test pins the shape; message propagation is a separate fix."
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: 'scriptError("u11 contract boom")'
+        validate:
+          success: false
+          error_code: "script_error"
+          expected_error_location:
+            script: "<eval>"
+            line: 1
+          expected_error_stack_min: 1
+
+  - name: "script/eval - compile error carries script_error code"
+    description: "A compile failure surfaces as success:false with code script_error."
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "@@@garbage@@@"
+        validate:
+          success: false
+          error_code: "script_error"
+
+  # ========================================================================
+  # script/clearContext
+  # ========================================================================
+
+  - name: "script/clearContext - ack shape and variable reset"
+    description: "clearContext returns a bare ack {id, success:true} and empties the REPL variables table."
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "u11ctxvar = 5"
+        validate:
+          success: true
+        description: "define REPL variable"
+      - op: "script/clearContext"
+        validate:
+          success: true
+        description: "ack shape"
+      - op: "script/eval"
+        params:
+          expression: "u11ctxvar"
+        validate:
+          success: false
+        description: "variable gone after clearContext"
+
+  # ========================================================================
+  # odb/get, odb/set, odb/list, odb/delete
+  # ========================================================================
+
+  - name: "odb ops - roundtrip and per-item shapes"
+    description: "set/get/list/delete happy-path shapes against system.temp; per-item error shape on get-after-delete is {path, error:{message}, success:false} inside a success:true envelope."
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "new (tableType, @system.temp.u11contract)"
+        validate:
+          success: true
+        description: "create scratch table"
+      - op: "odb/set"
+        params:
+          items:
+            - path: "system.temp.u11contract.sval"
+              type: "string"
+              value: "hello contract"
+        validate:
+          success: true
+          result_count: 1
+          results:
+            - success: true
+              path: "system.temp.u11contract.sval"
+        description: "set shape"
+      - op: "odb/get"
+        params:
+          items:
+            - path: "system.temp.u11contract.sval"
+        validate:
+          success: true
+          result_count: 1
+          results:
+            - success: true
+              name: "sval"
+              type: "string"
+              value: "hello contract"
+        description: "get shape"
+      - op: "odb/list"
+        params:
+          items:
+            - path: "system.temp.u11contract"
+              depth: 1
+        validate:
+          success: true
+          result_count: 1
+          entries_include:
+            - name: "sval"
+              type: "string"
+        description: "list shape"
+      - op: "odb/delete"
+        params:
+          items:
+            - path: "system.temp.u11contract.sval"
+        validate:
+          success: true
+          results:
+            - success: true
+              path: "system.temp.u11contract.sval"
+        description: "delete shape"
+      - op: "odb/get"
+        params:
+          items:
+            - path: "system.temp.u11contract.sval"
+        validate:
+          success: true
+          results:
+            - success: false
+              _contains:
+                error: "not found"
+        description: "per-item error shape after delete"
+      - op: "script/eval"
+        params:
+          expression: "delete (@system.temp.u11contract)"
+        validate:
+          success: true
+        description: "cleanup scratch table"
+
+  - name: "odb/get - missing items array"
+    description: "Omitting params.items returns code bad_params."
+    protocol_ops:
+      - op: "odb/get"
+        params: {}
+        validate:
+          success: false
+          error_code: "bad_params"
+          error_contains: "items"
+
+  - name: "odb/set - items wrong type"
+    description: "A non-array items (string) returns code bad_params."
+    protocol_ops:
+      - op: "odb/set"
+        params:
+          items: "not an array"
+        validate:
+          success: false
+          error_code: "bad_params"
+
+  - name: "odb/list - missing params entirely"
+    description: "Omitting params returns code bad_params."
+    protocol_ops:
+      - op: "odb/list"
+        validate:
+          success: false
+          error_code: "bad_params"
+
+  - name: "odb/delete - items wrong type"
+    description: "A non-array items (object) returns code bad_params."
+    protocol_ops:
+      - op: "odb/delete"
+        params:
+          items:
+            path: "system.temp.x"
+        validate:
+          success: false
+          error_code: "bad_params"
+
+  - name: "odb/get - per-item missing path"
+    description: "An item without a path yields a per-item error {error:{message:'Missing path'}, success:false}; the envelope stays success:true."
+    protocol_ops:
+      - op: "odb/get"
+        params:
+          items:
+            - depth: 1
+        validate:
+          success: true
+          result_count: 1
+          results:
+            - success: false
+              _contains:
+                error: "Missing 'path'"
+
+  - name: "odb/get - batch too large"
+    description: "More than 1000 items returns code batch_too_large (limit OP_MAX_BATCH_SIZE)."
+    protocol_ops:
+      - raw_line:
+          - '{"op":"odb/get","id":424244,"params":{"items":['
+          - repeat: '{"path":"a"},'
+            count: 1000
+          - '{"path":"a"}]}}'
+        timeout: 10
+        validate:
+          success: false
+          error_code: "batch_too_large"
+          error_contains: "Batch too large"
+
+  # ========================================================================
+  # debug/setBreakpoint, listBreakpoints, clearBreakpoints
+  # ========================================================================
+
+  - name: "debug breakpoints - set/toggle/list/clear shapes"
+    description: "setBreakpoint toggles: first call action:set (echoes script+line), second call action:cleared. listBreakpoints returns {breakpoints:[...]}, clearBreakpoints returns {cleared:N}."
+    protocol_ops:
+      - op: "debug/clearBreakpoints"
+        validate:
+          success: true
+        description: "baseline clear"
+      - op: "debug/setBreakpoint"
+        params:
+          script: "system.temp.u11bpscript"
+          line: 3
+        validate:
+          success: true
+          result:
+            action: "set"
+            script: "system.temp.u11bpscript"
+            line: 3
+        description: "set shape"
+      - op: "debug/listBreakpoints"
+        validate:
+          success: true
+        description: "list shape"
+      - op: "debug/setBreakpoint"
+        params:
+          script: "system.temp.u11bpscript"
+          line: 3
+        validate:
+          success: true
+          result:
+            action: "cleared"
+        description: "toggle clears"
+      - op: "debug/setBreakpoint"
+        params:
+          script: "system.temp.u11bpscript"
+          line: 7
+          condition: "x > 2"
+        validate:
+          success: true
+          result:
+            action: "set"
+            condition: "x > 2"
+        description: "conditional set echoes condition"
+      - op: "debug/clearBreakpoints"
+        validate:
+          success: true
+          result:
+            cleared: 1
+        description: "clear count"
+
+  - name: "debug/setBreakpoint - missing script"
+    protocol_ops:
+      - op: "debug/setBreakpoint"
+        params:
+          line: 3
+        validate:
+          success: false
+          error_code: "bad_params"
+          error_contains: "script"
+
+  - name: "debug/setBreakpoint - missing line"
+    protocol_ops:
+      - op: "debug/setBreakpoint"
+        params:
+          script: "system.temp.u11bpscript"
+        validate:
+          success: false
+          error_code: "bad_params"
+          error_contains: "line"
+
+  - name: "debug/setBreakpoint - line zero rejected"
+    protocol_ops:
+      - op: "debug/setBreakpoint"
+        params:
+          script: "system.temp.u11bpscript"
+          line: 0
+        validate:
+          success: false
+          error_code: "bad_params"
+          error_contains: "positive integer"
+
+  - name: "debug/setBreakpoint - fractional line rejected"
+    protocol_ops:
+      - op: "debug/setBreakpoint"
+        params:
+          script: "system.temp.u11bpscript"
+          line: 2.5
+        validate:
+          success: false
+          error_code: "bad_params"
+
+  - name: "debug/setBreakpoint - non-string script rejected"
+    description: "Wrong-typed script (number) is treated as missing: bad_params."
+    protocol_ops:
+      - op: "debug/setBreakpoint"
+        params:
+          script: 99
+          line: 1
+        validate:
+          success: false
+          error_code: "bad_params"
+
+  # ========================================================================
+  # debug/setWatchpoint, listWatchpoints, clearWatchpoints
+  # ========================================================================
+
+  - name: "debug watchpoints - set/toggle/list/clear shapes"
+    protocol_ops:
+      - op: "debug/clearWatchpoints"
+        validate:
+          success: true
+        description: "baseline clear"
+      - op: "debug/setWatchpoint"
+        params:
+          variable: "u11watchvar"
+        validate:
+          success: true
+          result:
+            action: "set"
+            variable: "u11watchvar"
+        description: "set shape"
+      - op: "debug/listWatchpoints"
+        validate:
+          success: true
+        description: "list shape"
+      - op: "debug/setWatchpoint"
+        params:
+          variable: "u11watchvar"
+        validate:
+          success: true
+          result:
+            action: "cleared"
+        description: "toggle clears"
+      - op: "debug/clearWatchpoints"
+        validate:
+          success: true
+          result:
+            cleared: 0
+        description: "clear count after toggle-off"
+
+  - name: "debug/setWatchpoint - missing variable"
+    protocol_ops:
+      - op: "debug/setWatchpoint"
+        params: {}
+        validate:
+          success: false
+          error_code: "bad_params"
+          error_contains: "variable"
+
+  - name: "debug/setWatchpoint - variable name too long"
+    protocol_ops:
+      - op: "debug/setWatchpoint"
+        params:
+          variable: "u11_very_long_variable_name_that_exceeds_the_sixty_four_byte_limit_x"
+        validate:
+          success: false
+          error_code: "bad_params"
+          error_contains: "too long"
+
+  # ========================================================================
+  # debug thread-targeted ops - error paths (no such thread / bad params)
+  # ========================================================================
+
+  - name: "debug/listThreads - shape"
+    protocol_ops:
+      - op: "debug/listThreads"
+        validate:
+          success: true
+
+  - name: "debug/continue - unknown thread"
+    protocol_ops:
+      - op: "debug/continue"
+        params:
+          threadId: 999999
+        validate:
+          success: false
+          error_code: "not_found"
+          error_contains: "No debug thread"
+
+  - name: "debug/step - unknown thread"
+    protocol_ops:
+      - op: "debug/step"
+        params:
+          threadId: 999999
+        validate:
+          success: false
+          error_code: "not_found"
+
+  - name: "debug/kill - unknown thread"
+    protocol_ops:
+      - op: "debug/kill"
+        params:
+          threadId: 999999
+        validate:
+          success: false
+          error_code: "not_found"
+
+  - name: "debug/pause - unknown thread"
+    protocol_ops:
+      - op: "debug/pause"
+        params:
+          threadId: 999999
+        validate:
+          success: false
+          error_code: "not_found"
+
+  - name: "debug/getLocals - unknown thread"
+    protocol_ops:
+      - op: "debug/getLocals"
+        params:
+          threadId: 999999
+        validate:
+          success: false
+          error_code: "not_found"
+
+  - name: "debug/getStack - unknown thread"
+    protocol_ops:
+      - op: "debug/getStack"
+        params:
+          threadId: 999999
+        validate:
+          success: false
+          error_code: "not_found"
+
+  - name: "debug/continue - missing threadId"
+    protocol_ops:
+      - op: "debug/continue"
+        params: {}
+        validate:
+          success: false
+          error_code: "bad_params"
+          error_contains: "threadId"
+
+  - name: "debug/getStack - threadId wrong type"
+    protocol_ops:
+      - op: "debug/getStack"
+        params:
+          threadId: "abc"
+        validate:
+          success: false
+          error_code: "bad_params"
+
+  # ========================================================================
+  # debug/getSource
+  # ========================================================================
+
+  - name: "debug/getSource - happy path and @-prefix normalization"
+    protocol_ops:
+      - op: "script/eval"
+        params:
+          expression: "new (tableType, @system.temp.u11src); script.newScriptObject (\"return 42\", @system.temp.u11src.answer)"
+        validate:
+          success: true
+        description: "install fixture script"
+      - op: "debug/getSource"
+        params:
+          script: "system.temp.u11src.answer"
+        validate:
+          success: true
+          result:
+            script: "system.temp.u11src.answer"
+        description: "plain path"
+      - op: "debug/getSource"
+        params:
+          script: "@system.temp.u11src.answer"
+        validate:
+          success: true
+          result:
+            script: "system.temp.u11src.answer"
+        description: "@-prefix stripped in echo"
+      - op: "script/eval"
+        params:
+          expression: "delete (@system.temp.u11src)"
+        validate:
+          success: true
+        description: "cleanup"
+
+  - name: "debug/getSource - missing script param"
+    protocol_ops:
+      - op: "debug/getSource"
+        params: {}
+        validate:
+          success: false
+          error_code: "bad_params"
+          error_contains: "script"
+
+  - name: "debug/getSource - unqualified path"
+    protocol_ops:
+      - op: "debug/getSource"
+        params:
+          script: "u11notqualified"
+        validate:
+          success: false
+          error_code: "bad_params"
+          error_contains: "fully qualified"
+
+  - name: "debug/getSource - table not found"
+    protocol_ops:
+      - op: "debug/getSource"
+        params:
+          script: "system.temp.u11_no_such_table.someScript"
+        validate:
+          success: false
+          error_code: "not_found"
+          error_contains: "Table not found"
+
+  - name: "debug/getSource - script not found"
+    protocol_ops:
+      - op: "debug/getSource"
+        params:
+          script: "system.temp.u11_no_such_script"
+        validate:
+          success: false
+          error_code: "not_found"
+          error_contains: "Script not found"
+
+  # ========================================================================
+  # debug/run lifecycle (entry suspension, notifications, step, continue,
+  # pause, kill)
+  # ========================================================================
+
+  - name: "debug/run - missing expression"
+    protocol_ops:
+      - op: "debug/run"
+        params: {}
+        validate:
+          success: false
+          error_code: "bad_params"
+          error_contains: "expression"
+
+  - name: "debug/run - compile error"
+    protocol_ops:
+      - op: "debug/run"
+        params:
+          expression: "@@@garbage@@@"
+        validate:
+          success: false
+          error_code: "script_error"
+          error_contains: "Compilation failed"
+
+  - name: "debug lifecycle - run, entry suspension, inspect, continue, completed"
+    description: "debug/run starts a thread suspended before the first statement (notification reason:entry, line 0). While suspended, getStack and getLocals succeed. continue resumes; normal completion emits debug/completed with success:true. Runs on a dedicated executor: a debug/run thread on the long-lived shared executor corrupts cached script code trees later in the session (second invocation of an ODB script handler fails with 'too many parameters' -- latent thread-globals/GIL interaction in the same family as the #691 teardown fixes; to be root-caused in Unit 1.3)."
+    environment:
+      FRONTIER_U11_DEBUG_ISOLATION: "1"
+    protocol_ops:
+      - op: "debug/run"
+        params:
+          expression: "local (u11a = 1); u11a + 1"
+        capture:
+          tid: "result.threadId"
+        validate:
+          success: true
+          result:
+            status: "started"
+        description: "spawn suspended thread"
+      - wait_notification: "debug/suspended"
+        validate:
+          params:
+            threadId: "$tid"
+            reason: "entry"
+            line: 0
+        description: "entry suspension notification"
+      - op: "debug/getStack"
+        params:
+          threadId: "$tid"
+        validate:
+          success: true
+        description: "stack inspectable while suspended"
+      - op: "debug/getLocals"
+        params:
+          threadId: "$tid"
+        validate:
+          success: true
+        description: "locals inspectable while suspended"
+      - op: "debug/continue"
+        params:
+          threadId: "$tid"
+        validate:
+          success: true
+          result:
+            status: "running"
+        description: "resume"
+      - wait_notification: "debug/completed"
+        validate:
+          params:
+            threadId: "$tid"
+            success: true
+        description: "completion notification"
+
+  - name: "debug lifecycle - step from entry suspension, then kill"
+    description: "step resumes the thread until the next statement (notification reason:step); kill wakes a suspended thread and it dies, emitting debug/completed success:false. Runs on a dedicated executor (environment block): debug/kill leaves the runtime's hash tables inconsistent by design, which must not leak into the shared batch executor used by later test files."
+    environment:
+      FRONTIER_U11_KILL_ISOLATION: "1"
+    protocol_ops:
+      - op: "debug/run"
+        params:
+          expression: "local (u11b = 1); local (u11c = 2); u11b + u11c"
+        capture:
+          tid: "result.threadId"
+        validate:
+          success: true
+          result:
+            status: "started"
+        description: "spawn suspended thread"
+      - wait_notification: "debug/suspended"
+        validate:
+          params:
+            threadId: "$tid"
+            reason: "entry"
+        description: "entry suspension"
+      - op: "debug/step"
+        params:
+          threadId: "$tid"
+          direction: "over"
+        validate:
+          success: true
+          result:
+            status: "stepping"
+        description: "step over"
+      - wait_notification: "debug/suspended"
+        validate:
+          params:
+            threadId: "$tid"
+            reason: "step"
+        description: "suspended again after one statement"
+      - op: "debug/kill"
+        params:
+          threadId: "$tid"
+        validate:
+          success: true
+          result:
+            status: "killed"
+        description: "kill suspended thread"
+      - wait_notification: "debug/completed"
+        validate:
+          params:
+            threadId: "$tid"
+            success: false
+        description: "killed thread reports unsuccessful completion"
+
+  - name: "debug/step - invalid direction"
+    description: "Dedicated executor: ends with debug/kill (see kill-isolation note on the step lifecycle test)."
+    environment:
+      FRONTIER_U11_KILL_ISOLATION: "1"
+    protocol_ops:
+      - op: "debug/run"
+        params:
+          expression: "1 + 1"
+        capture:
+          tid: "result.threadId"
+        validate:
+          success: true
+        description: "spawn suspended thread"
+      - wait_notification: "debug/suspended"
+        validate:
+          params:
+            threadId: "$tid"
+            reason: "entry"
+        description: "entry suspension"
+      - op: "debug/step"
+        params:
+          threadId: "$tid"
+          direction: "sideways"
+        validate:
+          success: false
+          error_code: "bad_params"
+          error_contains: "step direction"
+        description: "bad direction rejected"
+      - op: "debug/kill"
+        params:
+          threadId: "$tid"
+        validate:
+          success: true
+        description: "cleanup thread"
+      - wait_notification: "debug/completed"
+        validate:
+          params:
+            threadId: "$tid"
+        description: "thread drained"
+
+  - name: "debug lifecycle - pause states (already suspended, interrupt, step while running)"
+    description: "pause on a suspended thread is bad_state; pause on a running thread returns status:interrupting then a reason:interrupted suspension; step on a running thread is bad_state. Runs on a dedicated executor: ends with debug/kill (see kill-isolation note on the step lifecycle test)."
+    environment:
+      FRONTIER_U11_KILL_ISOLATION: "1"
+    protocol_ops:
+      - op: "debug/run"
+        params:
+          expression: "loop {thread.sleepTicks (1)}"
+        capture:
+          tid: "result.threadId"
+        validate:
+          success: true
+        description: "spawn endless-loop thread (suspended at entry)"
+      - wait_notification: "debug/suspended"
+        validate:
+          params:
+            threadId: "$tid"
+            reason: "entry"
+        description: "entry suspension"
+      - op: "debug/pause"
+        params:
+          threadId: "$tid"
+        validate:
+          success: false
+          error_code: "bad_state"
+          error_contains: "already suspended"
+        description: "pause while suspended is bad_state"
+      - op: "debug/continue"
+        params:
+          threadId: "$tid"
+        validate:
+          success: true
+          result:
+            status: "running"
+        description: "resume the loop"
+      - op: "debug/step"
+        params:
+          threadId: "$tid"
+        validate:
+          success: false
+          error_code: "bad_state"
+          error_contains: "not suspended"
+        description: "step while running is bad_state"
+      - op: "debug/pause"
+        params:
+          threadId: "$tid"
+        validate:
+          success: true
+          result:
+            status: "interrupting"
+        description: "pause running thread"
+      - wait_notification: "debug/suspended"
+        timeout: 15
+        validate:
+          params:
+            threadId: "$tid"
+            reason: "interrupted"
+        description: "interrupt suspension"
+      - op: "debug/kill"
+        params:
+          threadId: "$tid"
+        validate:
+          success: true
+          result:
+            status: "killed"
+        description: "kill the loop thread"
+      - wait_notification: "debug/completed"
+        validate:
+          params:
+            threadId: "$tid"
+            success: false
+        description: "killed loop reports unsuccessful completion"
+
+  # ========================================================================
+  # shutdown (dedicated executor so the shared one survives)
+  # ========================================================================
+
+  - name: "shutdown - ack then exit"
+    description: "shutdown returns a bare ack {id, success:true} and the process exits. Runs on a dedicated executor (environment block forces one) so the shared batch executor is unaffected."
+    environment:
+      U11_CONTRACT_SHUTDOWN: "1"
+    protocol_ops:
+      - op: "shutdown"
+        validate:
+          success: true

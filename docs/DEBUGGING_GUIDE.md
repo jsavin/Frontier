@@ -459,6 +459,7 @@ Multiple `debug/run` calls create independent threads. Use `debug/listThreads` t
 - Breakpoints and watchpoints persist for the process lifetime. Use `debug/clearBreakpoints` / `debug/clearWatchpoints` for a clean slate.
 - Variable lookups (getLocals, conditions, watchpoints) search the full scope chain: locals → enclosing scopes → globals.
 - `debug/getSource` loads scripts from disk on demand if not yet in memory.
+- Error responses carry a stable machine-readable `error.code` (`bad_params`, `not_found`, `bad_state`, `script_error`, ...). Branch on the code, not the message text. Full request/response/error contract for every op: `planning/gui/STDIO_PROTOCOL.md`, pinned by `tests/integration/test_cases/protocol_contract_tests.yaml`.
 
 ---
 

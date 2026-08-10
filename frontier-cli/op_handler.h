@@ -46,6 +46,25 @@ typedef struct {
 } transport_t;
 
 /*
+ * Stable machine-readable error codes for protocol error responses.
+ * Every top-level error object carries error.code from this set so
+ * clients can branch without string-matching messages. Documented in
+ * planning/gui/STDIO_PROTOCOL.md (keep both in sync).
+ */
+#define OP_ERRCODE_PARSE          "parse_error"      /* request line is not valid JSON */
+#define OP_ERRCODE_MISSING_ID     "missing_id"       /* no numeric id field */
+#define OP_ERRCODE_MISSING_OP     "missing_op"       /* no string op field */
+#define OP_ERRCODE_UNKNOWN_OP     "unknown_op"       /* op not in dispatch table */
+#define OP_ERRCODE_BAD_PARAMS     "bad_params"       /* missing or wrong-typed parameter */
+#define OP_ERRCODE_BATCH_TOO_LARGE "batch_too_large" /* params.items exceeds batch limit */
+#define OP_ERRCODE_LIMIT_EXCEEDED "limit_exceeded"   /* breakpoint/watchpoint slots full */
+#define OP_ERRCODE_NOT_FOUND      "not_found"        /* thread/table/script not found */
+#define OP_ERRCODE_BAD_STATE      "bad_state"        /* op invalid for target's current state */
+#define OP_ERRCODE_SCRIPT_ERROR   "script_error"     /* compile or runtime script failure */
+#define OP_ERRCODE_INTERNAL       "internal_error"   /* allocation/spawn/load failure */
+#define OP_ERRCODE_LINE_TOO_LONG  "line_too_long"    /* request line exceeds PROTOCOL_LINE_MAX */
+
+/*
  * Dispatch a single JSON operation message.
  *
  * Parses the "op" and "id" fields, delegates to the appropriate handler,
