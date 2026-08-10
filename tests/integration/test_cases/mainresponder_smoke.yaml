@@ -68,11 +68,23 @@ tests:
       // table so that if init() created a brand-new branch (e.g. the whole
       // user.rootUpdates.callbacks.afterInstallPart subtree) we can delete
       // the branch at its root rather than leaving empty parent tables.
-      // NOTE: defined(@config) is true even when no top-level "config" table
-      // exists (the address itself is valid), so test the name directly.
-      local(preConfig = defined(config));
-      local(preConfigMainResponder = defined(@config.mainResponder));
-      local(preIsRadio = defined(@system.environment.isRadio));
+      // NOTE: all snapshots below use the BARE-PATH form defined(x.y), never
+      // the address form defined(@x.y). The address form is parent-resolution
+      // only -- true for a non-existent leaf whenever its parent exists -- so
+      // address-form snapshots are permanently true and their conditional
+      // deletes never fire, leaking state into later sequential files.
+      //
+      // All config paths below are ABSOLUTE (@root.config.*).  Protocol mode
+      // wraps every script: block in
+      // `with system.temp.FrontierREPL.variables { ... }`, so a bare
+      // `new (tableType, @config)` creates config INSIDE that wrapper table
+      // rather than at the ODB root.  mainResponder.respond() resolves plain
+      // `config` at the root and would fail with "Can't find a sub-table named
+      // config" -- which it renders as an error page rather than raising, so
+      // the body-only assertion below used to pass on a broken call.
+      local(preConfig = defined(root.config));
+      local(preConfigMainResponder = defined(root.config.mainResponder));
+      local(preIsRadio = defined(system.environment.isRadio));
 
       // mainResponder.init() assumes a top-level "config" table exists
       // (classic deployments got it from config.root, created by the Manila
@@ -80,7 +92,7 @@ tests:
       // one so init() can build config.mainResponder inside it; the cleanup
       // blocks below delete it again when we created it.
       if not preConfig {
-        new(tableType, @config)
+        new(tableType, @root.config)
       };
 
       // init() derives four folder prefs via Frontier.getSubFolder(), which
@@ -91,20 +103,57 @@ tests:
       // when we created config.mainResponder ourselves — then the whole
       // subtree is ours and cleanup deletes it wholesale, so nothing leaks.
       if not preConfigMainResponder {
-        new(tableType, @config.mainResponder);
-        new(tableType, @config.mainResponder.prefs);
-        new(tableType, @config.mainResponder.domains);
+        new(tableType, @root.config.mainResponder);
+        new(tableType, @root.config.mainResponder.prefs);
+        new(tableType, @root.config.mainResponder.domains);
         local(base = file.folderFromPath(Frontier.getFilePath()));
-        config.mainResponder.prefs.backupFolder = base + "ops-backups/";
-        config.mainResponder.prefs.discussArchiveFolder = base + "ops-discussArchive/";
-        config.mainResponder.prefs.logFolder = base + "ops-logs/";
-        config.mainResponder.domains.default = base + "www/"
+        root.config.mainResponder.prefs.backupFolder = base + "ops-backups/";
+        root.config.mainResponder.prefs.discussArchiveFolder = base + "ops-discussArchive/";
+        root.config.mainResponder.prefs.logFolder = base + "ops-logs/";
+        root.config.mainResponder.domains.default = base + "www/"
       };
-      local(preInetdConfig = defined(@user.inetd.config));
-      local(preHttp2 = defined(@user.inetd.config.http2));
-      local(preRootUpdatesCallbacks = defined(@user.rootUpdates.callbacks));
-      local(preAfterInstallPart = defined(@user.rootUpdates.callbacks.afterInstallPart));
-      local(preAfterInstall = defined(@user.rootUpdates.callbacks.afterInstallPart.mainResponder));
+
+      // respond() maps the request to a site folder and serves a file from it.
+      // Without a real folder + page it errors ("There is no folder or object
+      // database named www") and renders an error page -- which the strengthened
+      // assertion below correctly rejects.  Provision both; cleanup removes only
+      // what we created.
+      local(smokeSite = file.folderFromPath(Frontier.getFilePath()) + "www/");
+      local(preSmokeSite = file.exists(smokeSite));
+      if not preSmokeSite {
+        file.newFolder(smokeSite)
+      };
+      local(smokeIndex = smokeSite + "index.html");
+      local(preSmokeIndex = file.exists(smokeIndex));
+      if not preSmokeIndex {
+        file.writeWholeFile(smokeIndex, "<html><body>MRSMOKE-PAGE</body></html>")
+      };
+      local(preInetdConfig = defined(user.inetd.config));
+      local(preHttp2 = defined(user.inetd.config.http2));
+      local(preRootUpdatesCallbacks = defined(user.rootUpdates.callbacks));
+      local(preAfterInstallPart = defined(user.rootUpdates.callbacks.afterInstallPart));
+      local(preAfterInstall = defined(user.rootUpdates.callbacks.afterInstallPart.mainResponder));
+
+      // Frontier.pathString ships pointing at a DELETED worktree
+      // (.claude/worktrees/menu-port-phase-c-bridge/databases/), so
+      // Frontier.getSubFolder("www") -- which respond() calls -- fails with
+      // "Can't create folder".  Repoint it at the staged DB folder for the
+      // duration of the test and restore it on every exit path.  Same
+      // machine-specific-path pollution family as #841.
+      local(origPathString = Frontier.pathString);
+      Frontier.pathString = file.folderFromPath(Frontier.getFilePath());
+
+      // respond() also reads system.temp.Frontier, which is created by
+      // system.startup.startupScript and so does not exist under the protocol
+      // batch executor's --skip-startup mode.  startingUp MUST be false: a true
+      // value makes kernel webserver.server wait forever on every request
+      // (#848/#849).  Harmless here (respond() is called directly) but kept
+      // correct so this provisioning can be copied safely.
+      local(preTempFrontier = defined(system.temp.Frontier));
+      if not preTempFrontier {
+        new(tableType, @system.temp.Frontier)
+      };
+      system.temp.Frontier.startingUp = false;
 
       // Prepare the param table BEFORE try — so else branch can clean it up
       new(tableType, @system.temp.mrSmoke);
@@ -116,6 +165,15 @@ tests:
       system.temp.mrSmoke.req.client = "127.0.0.1";
       new(tableType, @system.temp.mrSmoke.req.requestHeaders);
       system.temp.mrSmoke.req.requestHeaders.["User-Agent"] = "Testing in Debugger";
+      // respond() writes adrparamtable^.responseHeaders.["Content-Type"] without
+      // creating the table first.  On the real HTTP path kernel webserver.server
+      // builds it; a hand-made param table must supply it or respond() fails with
+      // "Can't find a sub-table named responseHeaders" -- which it renders as an
+      // error page, not a raise.  Same for searchArgs / pathArgs.
+      new(tableType, @system.temp.mrSmoke.req.responseHeaders);
+      system.temp.mrSmoke.req.searchArgs = "";
+      system.temp.mrSmoke.req.pathArgs = "";
+      system.temp.mrSmoke.req.port = 80;
 
       try {
         fileMenu.open(guestpath, true);
@@ -130,11 +188,27 @@ tests:
           scriptError("mainResponder.respond returned no responseBody (or non-string)")
         };
 
-        // Even in a headless environment without a real www folder, respond()
-        // should produce a non-empty body (error page, 404, etc.).  An empty
-        // string would indicate it bailed out silently.
+        // respond() must produce a non-empty body.  An empty string would
+        // indicate it bailed out silently.
         if string.length(system.temp.mrSmoke.req.responseBody) == 0 {
           scriptError("mainResponder.respond returned an empty responseBody")
+        };
+
+        // A non-empty body is NOT sufficient.  mainResponder.respond() catches
+        // its own errors and renders a "UserLand Frontier Server Error" page
+        // naming the handler -- a perfectly non-empty string.  This test passed
+        // that way from 2026-04-19 until 2026-08-10 (Unit 3.3) while every call
+        // was actually failing on "Can't find a sub-table named config".
+        // Assert the error signature is ABSENT so a regression cannot hide
+        // behind a plausible-looking body again.
+        if system.temp.mrSmoke.req.responseBody contains "in mainResponder.respond" {
+          scriptError("mainResponder.respond returned its own error page: " + system.temp.mrSmoke.req.responseBody)
+        };
+
+        // Positive assertion: the body must be the page we provisioned, not just
+        // "some non-empty string that isn't an error page".
+        if not (system.temp.mrSmoke.req.responseBody contains "MRSMOKE-PAGE") {
+          scriptError("mainResponder.respond did not serve the provisioned page; got: " + system.temp.mrSmoke.req.responseBody)
         }
       }
       else {
@@ -154,8 +228,8 @@ tests:
         // the residual risk.
         try { thread.sleepTicks(12) };
         try { fileMenu.close(guestpath) };
-        if not preConfigMainResponder { try { delete(@config.mainResponder) } };
-        if not preConfig { try { delete(@config) } };
+        if not preConfigMainResponder { try { delete(@root.config.mainResponder) } };
+        if not preConfig { try { delete(@root.config) } };
         if not preIsRadio { try { delete(@system.environment.isRadio) } };
         if not preHttp2 { try { delete(@user.inetd.config.http2) } };
         if not preInetdConfig { try { delete(@user.inetd.config) } };
@@ -163,6 +237,17 @@ tests:
         if not preAfterInstallPart { try { delete(@user.rootUpdates.callbacks.afterInstallPart) } };
         if not preRootUpdatesCallbacks { try { delete(@user.rootUpdates.callbacks) } };
         try { delete(@system.temp.mrSmoke) };
+        if not preSmokeIndex { try { file.delete(smokeIndex) } };
+        if not preSmokeSite { try { file.delete(smokeSite) } };
+        if not preSmokeIndex { try { file.delete(smokeIndex) } };
+      if not preSmokeSite { try { file.delete(smokeSite) } };
+      if not preTempFrontier { try { delete(@system.temp.Frontier) } };
+        if not preSmokeIndex { try { file.delete(smokeIndex) } };
+        if not preSmokeSite { try { file.delete(smokeSite) } };
+        if not preSmokeIndex { try { file.delete(smokeIndex) } };
+      if not preSmokeSite { try { file.delete(smokeSite) } };
+      if not preTempFrontier { try { delete(@system.temp.Frontier) } };
+      try { Frontier.pathString = origPathString };
         scriptError("mainResponder.respond smoke failed: " + err)
       };
 
@@ -177,8 +262,8 @@ tests:
       // drain before deletes — see the longer note in the else branch.
       try { thread.sleepTicks(12) };
       try { fileMenu.close(guestpath) };
-      if not preConfigMainResponder { try { delete(@config.mainResponder) } };
-      if not preConfig { try { delete(@config) } };
+      if not preConfigMainResponder { try { delete(@root.config.mainResponder) } };
+      if not preConfig { try { delete(@root.config) } };
       if not preIsRadio { try { delete(@system.environment.isRadio) } };
       if not preHttp2 { try { delete(@user.inetd.config.http2) } };
       if not preInetdConfig { try { delete(@user.inetd.config) } };
@@ -186,6 +271,10 @@ tests:
       if not preAfterInstallPart { try { delete(@user.rootUpdates.callbacks.afterInstallPart) } };
       if not preRootUpdatesCallbacks { try { delete(@user.rootUpdates.callbacks) } };
       try { delete(@system.temp.mrSmoke) };
+      if not preSmokeIndex { try { file.delete(smokeIndex) } };
+      if not preSmokeSite { try { file.delete(smokeSite) } };
+      if not preTempFrontier { try { delete(@system.temp.Frontier) } };
+      try { Frontier.pathString = origPathString };
 
       // Reached only on the success path — the else branch above always
       // calls scriptError() which does not return.

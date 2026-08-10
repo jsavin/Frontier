@@ -221,17 +221,24 @@ tests:
       tcp.closeStream(stream);
       inetd.stopOne(@user.inetd.config.http);
 
-      // An unknown path with no matching responder must yield an HTTP error
-      // status, not a 200. In a system-root-only run (no mainResponder guest
-      // DB loaded) the default responder chain raises a 500 Server Error; with
-      // mainResponder present it would be a 4xx. Accept either 4xx or 5xx so the
-      // assertion tracks "unknown path is an error" rather than one exact code.
+      // An unknown path with no matching responder must not silently succeed.
+      // In a system-root-only run (no mainResponder guest DB loaded) the default
+      // responder chain raises a 500 Server Error, because that responder's `any`
+      // method calls mainResponder.respond and the name does not resolve.
+      //
+      // When mainResponder IS loaded -- which happens whenever an earlier file in
+      // the shared sequential session opened it, since fileMenu.close does NOT
+      // unload a guest DB -- mainResponder handles the path itself and renders a
+      // "UserLand Frontier Server Error" page carrying a 200 status line, not a
+      // 4xx. Match that error signature as a third accepted form so this test is
+      // independent of file ordering. See the Unit 3.3 report.
+      //
       // 'contains' is a literal substring match, and Frontier always answers
       // with an HTTP/1.1 status line.
-      return (response contains "HTTP/1.1 4") or (response contains "HTTP/1.1 5")
+      return (response contains "HTTP/1.1 4") or (response contains "HTTP/1.1 5") or (response contains "in mainResponder.respond")
     expected_success: true
     expected_result: "true"
-    notes: "Server returns an HTTP error (4xx/5xx) for unknown paths. In headless system-root-only runs the default responder chain references mainResponder (a guest DB not loaded here), so the concrete status is 500 Server Error."
+    notes: "Unknown paths must not silently succeed. System-root-only runs give 500 (default responder calls mainResponder, name unresolved); if an earlier file loaded mainResponder.root it answers with its own error page under a 200 status. Both accepted."
 
   # =============================================================================
   # CATEGORY 6: Cleanup and Shutdown

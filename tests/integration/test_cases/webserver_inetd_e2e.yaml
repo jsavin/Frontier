@@ -439,10 +439,23 @@ tests:
         // any 4xx status line (403/404/410/etc.) -- the expected default-responder
         // result for an unmatched path -- and "HTTP/1.1 5" covers a 5xx internal
         // dispatch error, which is also a correct "unknown path" signal (better
-        // than a silent pass). We intentionally do NOT fall back to body-text
-        // matches like "Not Found" -- those could mask a 200 response whose body
-        // happens to contain the word.
-        isError = (response contains "HTTP/1.1 4") or (response contains "HTTP/1.1 5")
+        // than a silent pass). We intentionally do NOT fall back to loose
+        // body-text matches like "Not Found" -- those could mask a 200 response
+        // whose body happens to contain the word.
+        //
+        // Third accepted form: mainResponder's own error page. The shipped
+        // default responder's `any` method is
+        //     on any (adrParamTable) {return (mainResponder.respond (adrParamTable))}
+        // so when mainResponder.root is loaded into the session, an unmatched
+        // path is answered by mainResponder -- which renders a "UserLand
+        // Frontier Server Error" page carrying a 200 status line rather than a
+        // 4xx. That is still the "unknown path did not silently succeed" signal
+        // this test exists to assert. Matching it keeps the test correct
+        // regardless of whether an earlier file in the shared sequential
+        // session (mainresponder_e2e.yaml, mainresponder_smoke.yaml) has
+        // already opened that guest DB -- note fileMenu.close does NOT unload
+        // it, so load state leaks forward across files. See the Unit 3.3 report.
+        isError = (response contains "HTTP/1.1 4") or (response contains "HTTP/1.1 5") or (response contains "in mainResponder.respond")
       }
       else {
         // Ensure the stream is closed even if an exception fired mid-body.
