@@ -351,10 +351,35 @@ static boolean window_valueproc(short token, hdltreenode hparam1,
             /* window.update - no-op in headless mode (no GUI to update) */
             setbooleanvalue(true, vreturned);
             return true;
-        case winv_ismenuscript:
-            /* Verb: window.ismenuscript - not yet implemented */
-            if (bserror) copystring(PSTRING("\017", "not implemented"), bserror);
-            return false;
+        case winv_ismenuscript: {
+            /* window.ismenuscript(adr) — false in headless mode.
+             *
+             * A menubar script is a script window whose editor is showing a
+             * menubar rather than an outline. Headless windows are registry
+             * entries under system.temp.windowTypes.windows (see
+             * frontier-cli/window_registry.c), never graphical editors, so
+             * none of them can hold a menubar script.
+             *
+             * Returning an error here is not an option: system.menus.
+             * buildMenuBar() calls window.isMenuScript() untried, and
+             * startupScript calls buildMenuBar untried, so an error aborts
+             * startup with system.temp.Frontier.startingUp still true —
+             * which wedges the kernel webserver loop for the life of the
+             * session (issue #848).
+             *
+             * The parameter is consumed but not resolved as an address:
+             * window.getType passes whatever window.frontmost() returned,
+             * which is an empty string when no sentinel exists yet. The
+             * answer is false either way, so we only need to consume it. */
+            tyvaluerecord paramval;
+
+            flnextparamislast = true;
+
+            if (!getreadonlyparamvalue(hparam1, 1, &paramval))
+                return false;
+
+            return setbooleanvalue(false, vreturned);
+        }
         case winv_getposition: {
             /* window.getPosition(title, horizAddr, vertAddr)
              * In headless mode, return reasonable default position (100, 100).
