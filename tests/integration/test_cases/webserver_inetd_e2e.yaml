@@ -44,7 +44,7 @@ tests:
   # =============================================================================
   - name: "inetd E2E - listener lifecycle with custom helloE2E responder"
     skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
+    skip_reason: "inetd.startOne legacy classic-Mac branch (startOne.ut: if isMac and (versionLessThan 6.2b8 or not isPowerPC), open count/2-1 EXTRA listeners on the same port) runs on modern macOS and every extra bind fails: startOne throws Socket error: Bind failed AFTER registering the primary listener, and stopOne then errors on the never-created ref2 entry. Genuine product script bug, verified in isolation 2026-08-10 (#620 triage). Also blocked by the accept-callback kernel bugs (branch unit-2-2-accept-callbacks)."
     description: "Register a custom responder, start a listener, verify tracking, stop cleanly"
     requires_system_root: true
     timeout: 20
@@ -112,7 +112,7 @@ tests:
   # =============================================================================
   - name: "inetd E2E - HTTP GET round trip to custom responder"
     skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
+    skip_reason: "inetd.startOne legacy classic-Mac branch (startOne.ut: if isMac and (versionLessThan 6.2b8 or not isPowerPC), open count/2-1 EXTRA listeners on the same port) runs on modern macOS and every extra bind fails: startOne throws Socket error: Bind failed AFTER registering the primary listener, and stopOne then errors on the never-created ref2 entry. Genuine product script bug, verified in isolation 2026-08-10 (#620 triage). Also blocked by the accept-callback kernel bugs (branch unit-2-2-accept-callbacks)."
     description: "Start listener, send HTTP GET, assert 200 status + custom body"
     requires_system_root: true
     timeout: 30
@@ -240,7 +240,7 @@ tests:
   # =============================================================================
   - name: "inetd E2E - multiple sequential GETs on same listener"
     skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
+    skip_reason: "inetd.startOne legacy classic-Mac branch (startOne.ut: if isMac and (versionLessThan 6.2b8 or not isPowerPC), open count/2-1 EXTRA listeners on the same port) runs on modern macOS and every extra bind fails: startOne throws Socket error: Bind failed AFTER registering the primary listener, and stopOne then errors on the never-created ref2 entry. Genuine product script bug, verified in isolation 2026-08-10 (#620 triage). Also blocked by the accept-callback kernel bugs (branch unit-2-2-accept-callbacks)."
     description: "Send two HTTP GETs back-to-back, both should succeed"
     requires_system_root: true
     timeout: 40
@@ -360,7 +360,7 @@ tests:
   # =============================================================================
   - name: "inetd E2E - unknown path falls through to default responder error"
     skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
+    skip_reason: "inetd.startOne legacy classic-Mac branch (startOne.ut: if isMac and (versionLessThan 6.2b8 or not isPowerPC), open count/2-1 EXTRA listeners on the same port) runs on modern macOS and every extra bind fails: startOne throws Socket error: Bind failed AFTER registering the primary listener, and stopOne then errors on the never-created ref2 entry. Genuine product script bug, verified in isolation 2026-08-10 (#620 triage). Also blocked by the accept-callback kernel bugs (branch unit-2-2-accept-callbacks)."
     description: "GET to a path no custom responder matches returns an HTTP error (4xx/5xx)"
     requires_system_root: true
     timeout: 30

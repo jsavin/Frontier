@@ -53,7 +53,7 @@ tests:
 
   - name: "HTTP round-trip - GET request and response via TCP"
     skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
+    skip_reason: "Accept-callback kernel bug: tcp.writeStream from a tcp.listenStream callback never delivers data to the client (accepted-stream write/close path broken in headless kernel), so the client read loop times out and the assertion returns false. Verified in isolation 2026-08-10 (#620 triage; script runs clean, returns false). Fix in progress on branch unit-2-2-accept-callbacks -- un-skip these 7 when it lands."
     description: "Send HTTP GET, receive HTTP response via raw TCP server callback"
     timeout: 15
     script: |
@@ -95,7 +95,7 @@ tests:
 
   - name: "HTTP round-trip - response contains correct Content-Type header"
     skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
+    skip_reason: "Accept-callback kernel bug: tcp.writeStream from a tcp.listenStream callback never delivers data to the client (accepted-stream write/close path broken in headless kernel), so the client read loop times out and the assertion returns false. Verified in isolation 2026-08-10 (#620 triage; script runs clean, returns false). Fix in progress on branch unit-2-2-accept-callbacks -- un-skip these 7 when it lands."
     description: "Verify HTTP response headers are received intact"
     timeout: 15
     script: |
@@ -137,7 +137,7 @@ tests:
 
   - name: "HTTP round-trip - POST request with body"
     skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
+    skip_reason: "Accept-callback kernel bug: tcp.writeStream from a tcp.listenStream callback never delivers data to the client (accepted-stream write/close path broken in headless kernel), so the client read loop times out and the assertion returns false. Verified in isolation 2026-08-10 (#620 triage; script runs clean, returns false). Fix in progress on branch unit-2-2-accept-callbacks -- un-skip these 7 when it lands."
     description: "Send HTTP POST with body, verify server receives it"
     timeout: 15
     script: |
@@ -195,7 +195,7 @@ tests:
 
   - name: "HTTP round-trip - request path extraction"
     skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
+    skip_reason: "Accept-callback kernel bug: tcp.writeStream from a tcp.listenStream callback never delivers data to the client (accepted-stream write/close path broken in headless kernel), so the client read loop times out and the assertion returns false. Verified in isolation 2026-08-10 (#620 triage; script runs clean, returns false). Fix in progress on branch unit-2-2-accept-callbacks -- un-skip these 7 when it lands."
     description: "Verify server callback can extract the request path from GET request"
     timeout: 15
     script: |
@@ -249,7 +249,7 @@ tests:
 
   - name: "HTTP round-trip - multiple sequential requests on same port"
     skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
+    skip_reason: "Accept-callback kernel bug: tcp.writeStream from a tcp.listenStream callback never delivers data to the client (accepted-stream write/close path broken in headless kernel), so the client read loop times out and the assertion returns false. Verified in isolation 2026-08-10 (#620 triage; script runs clean, returns false). Fix in progress on branch unit-2-2-accept-callbacks -- un-skip these 7 when it lands."
     description: "Send multiple HTTP requests sequentially to the same server"
     timeout: 20
     script: |
@@ -310,7 +310,7 @@ tests:
 
   - name: "HTTP round-trip - 404 Not Found response"
     skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
+    skip_reason: "Accept-callback kernel bug: tcp.writeStream from a tcp.listenStream callback never delivers data to the client (accepted-stream write/close path broken in headless kernel), so the client read loop times out and the assertion returns false. Verified in isolation 2026-08-10 (#620 triage; script runs clean, returns false). Fix in progress on branch unit-2-2-accept-callbacks -- un-skip these 7 when it lands."
     description: "Server returns HTTP 404 status line and error body"
     timeout: 15
     script: |
@@ -351,7 +351,7 @@ tests:
 
   - name: "HTTP round-trip - large response body"
     skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
+    skip_reason: "Accept-callback kernel bug: tcp.writeStream from a tcp.listenStream callback never delivers data to the client (accepted-stream write/close path broken in headless kernel), so the client read loop times out and the assertion returns false. Verified in isolation 2026-08-10 (#620 triage; script runs clean, returns false). Fix in progress on branch unit-2-2-accept-callbacks -- un-skip these 7 when it lands."
     description: "Server returns a response body larger than 255 bytes"
     timeout: 15
     script: |
