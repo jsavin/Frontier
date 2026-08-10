@@ -2,11 +2,11 @@
 
 | | |
 |---|---|
-| **Version** | 1.1.0 |
+| **Version** | 1.2.0 |
 | **Status** | Implemented |
 | **Last Updated** | 2026-08-09 |
 | **Implementation** | `frontier-cli/protocol_handler.c` (framing), `frontier-cli/op_handler.c` (dispatch + script/odb ops), `frontier-cli/debug_handler.c` (debug ops + notifications), `frontier-cli/odb_ops.c` (per-item odb results) |
-| **Contract tests** | `tests/integration/test_cases/protocol_contract_tests.yaml` |
+| **Contract tests** | `tests/integration/test_cases/protocol_contract_tests.yaml`, `tests/integration/test_cases/protocol_odb_save.yaml` (persistence) |
 
 ## 1. Overview
 
@@ -140,12 +140,12 @@ or error (`success: false`).
 
 ## 4. Operations
 
-Dispatch table (`op_handler.c::op_dispatch`), 22 operations:
+Dispatch table (`op_handler.c::op_dispatch`), 23 operations:
 
 | Group | Operations |
 |-------|------------|
 | Script | `script/eval`, `script/clearContext` |
-| ODB | `odb/get`, `odb/set`, `odb/list`, `odb/delete` |
+| ODB | `odb/get`, `odb/set`, `odb/list`, `odb/delete`, `odb/save` |
 | Debug execution | `debug/run`, `debug/step`, `debug/continue`, `debug/kill`, `debug/pause` |
 | Breakpoints | `debug/setBreakpoint`, `debug/listBreakpoints`, `debug/clearBreakpoints` |
 | Inspection | `debug/getLocals`, `debug/getSource`, `debug/getStack`, `debug/listThreads` |
@@ -200,6 +200,11 @@ All four share batch semantics: `params.items` is always an array (max
 `{"id": N, "success": true, "results": [...]}` with one result object per
 item, in order. Per-item failures do NOT fail the envelope.
 
+`odb/set` and `odb/delete` response envelopes additionally carry a
+top-level `"dirty"` boolean: the unsaved-changes state of the system root
+after the batch (`true` = a save is pending; see §4.4 for the persistence
+contract). Read-only ops (`odb/get`, `odb/list`) do not carry it.
+
 **Envelope errors:** missing/non-array `items` → `bad_params`.
 
 **Per-item error shape** (note: per-item errors carry `message` only — the
@@ -222,10 +227,54 @@ Item-level validation: missing/non-string `path` → per-item
 `{"error": {"message": "Missing 'path'"}, "success": false}`. Paths are
 restricted to a letters/digits/dots allowlist (spaces, hyphens, semicolons
 rejected per item). `odb/set` cannot create tables (use `script/eval` with
-`new(tableType, @path)`). Mutations are in-memory; persistence semantics
-(explicit `odb/save`) are Unit 1.2.
+`new(tableType, @path)`). Mutations are **in-memory until an explicit
+`odb/save`** — see §4.4.
 
-### 4.4 `debug/run` — Spawn a Debuggable Script Thread
+### 4.4 `odb/save` — Persist the System Root
+
+**Request:** `{"op": "odb/save", "id": 7}` — no parameters (all odb paths
+resolve within the loaded system root, so it is the only addressable save
+target; guest databases save via `script/eval` `db.save()`). Extra params
+are ignored, like `script/clearContext`.
+
+**Success response:**
+```json
+{"id": 7, "result": {"root": "Frontier.root", "saved": true, "dirty": false}, "success": true}
+```
+
+`saved` is `false` when the root was already clean — the save is skipped
+entirely (no blocks rewritten). `dirty` is the post-save state (normally
+`false`; if `true`, something re-dirtied during pack and the client may
+save again). Implementation reuses the exact save path behind
+`fileMenu.save()` (`filemenu_save_systemroot`), so the protocol op and the
+UserTalk verb cannot drift apart. The process remains open and usable
+after the save.
+
+**Errors:**
+
+| Condition | Code |
+|-----------|------|
+| `--lock-opened-roots` / `FRONTIER_LOCK_OPENED_ROOTS=1` active | `locked` |
+| No system root loaded | `bad_state` |
+| A debug thread was killed this session (pack traversal unsafe — same guard as the exit save) | `bad_state` |
+| Save failed (disk/pack error) | `internal_error` |
+
+**Persistence contract** (proven by `protocol_odb_save.yaml`):
+
+`odb/set` / `odb/delete` mutations live in memory only. Loss of unsaved
+mutations on process termination is **by design** — `odb/save` is how a
+client opts into durability. The full matrix:
+
+| Root mode | `odb/save` | Clean exit (`shutdown` op) | Abnormal termination |
+|-----------|-----------|----------------------------|----------------------|
+| Read-write (default) | persists immediately | legacy exit save persists unsaved mutations (issue #127) | unsaved mutations LOST |
+| Locked (`--lock-opened-roots`) | refused with `locked`; file untouched | nothing saved (flag's contract) | nothing saved |
+
+A GUI/agent client that must not lose data should treat `dirty: true` in
+any `odb/set`/`odb/delete` response as "call `odb/save` before exit" and
+must not rely on the clean-exit save (a crash forfeits it).
+
+### 4.5 `debug/run` — Spawn a Debuggable Script Thread
 
 **Request:** `{"op": "debug/run", "id": 5, "params": {"expression": "<UserTalk>"}}`
 
@@ -239,7 +288,7 @@ Set breakpoints, then `debug/continue` or `debug/step`.
 `script_error` (`"Compilation failed: <msg>"`); spawn failure →
 `internal_error`.
 
-### 4.5 `debug/continue`, `debug/step`, `debug/pause`, `debug/kill`
+### 4.6 `debug/continue`, `debug/step`, `debug/pause`, `debug/kill`
 
 All take `params.threadId` (number). Shared errors: missing/non-numeric
 `threadId` → `bad_params`; unknown thread → `not_found`
@@ -258,7 +307,7 @@ notification with `reason: "step"` follows; after `pause`, one with
 `reason: "interrupted"` (at the next executed statement). A killed thread
 emits `debug/completed` with `success: false`.
 
-### 4.6 `debug/setBreakpoint`, `debug/listBreakpoints`, `debug/clearBreakpoints`
+### 4.7 `debug/setBreakpoint`, `debug/listBreakpoints`, `debug/clearBreakpoints`
 
 **setBreakpoint** — toggle semantics: setting an existing script+line
 clears it.
@@ -278,7 +327,7 @@ all 256 slots full → `limit_exceeded`.
 
 **clearBreakpoints** — no params. Result: `{"cleared": <count>}`.
 
-### 4.7 `debug/getLocals`, `debug/getStack` — Inspect a Suspended Thread
+### 4.8 `debug/getLocals`, `debug/getStack` — Inspect a Suspended Thread
 
 Both take `params.threadId` and require the thread to be **suspended**
 (else `bad_state`). Unknown thread → `not_found`; missing/mistyped
@@ -291,7 +340,7 @@ at 255 chars).
 **getStack** result: `{"frames": [{"level", "script", "line"?}...]}` —
 outermost caller first, current script last.
 
-### 4.8 `debug/getSource` — Fetch Script Source with Breakpoint Overlay
+### 4.9 `debug/getSource` — Fetch Script Source with Breakpoint Overlay
 
 Request params: `script` (fully qualified dotted path; leading `@`
 stripped), optional `threadId` (adds `currentLine` when that thread is
@@ -305,12 +354,12 @@ Errors: missing `script` → `bad_params`; unqualified path → `bad_params`
 or script not found, or object has no source → `not_found`; database load
 failure → `internal_error`.
 
-### 4.9 `debug/listThreads` — List Registered Debug Threads
+### 4.10 `debug/listThreads` — List Registered Debug Threads
 
 No params. Result: `{"threads": [{"threadId", "suspended": bool, "script"?, "line"?}...]}`
 — `script`/`line` only present for suspended threads.
 
-### 4.10 `debug/setWatchpoint`, `debug/listWatchpoints`, `debug/clearWatchpoints`
+### 4.11 `debug/setWatchpoint`, `debug/listWatchpoints`, `debug/clearWatchpoints`
 
 **setWatchpoint** — toggle semantics, like setBreakpoint. Request params:
 `variable` (name, < 64 bytes). Success result:
@@ -323,7 +372,7 @@ No params. Result: `{"threads": [{"threadId", "suspended": bool, "script"?, "lin
 
 **clearWatchpoints** — no params. Result: `{"cleared": <count>}`.
 
-### 4.11 `shutdown` — Clean Exit
+### 4.12 `shutdown` — Clean Exit
 
 **Request:** `{"op": "shutdown", "id": 3}`
 
@@ -346,7 +395,8 @@ Every top-level error response carries `error.code` from this stable set
 | `batch_too_large` | `params.items` exceeds 1000 items | echoed |
 | `limit_exceeded` | Breakpoint (256) or watchpoint (64) slots full | echoed |
 | `not_found` | Debug thread / table / script not found | echoed |
-| `bad_state` | Op invalid for the target's current state (step on running thread, pause on suspended thread) | echoed |
+| `bad_state` | Op invalid for the target's current state (step on running thread, pause on suspended thread, save after a killed debug thread) | echoed |
+| `locked` | `odb/save` refused: the root is save-locked (`--lock-opened-roots` / `FRONTIER_LOCK_OPENED_ROOTS=1`) | echoed |
 | `script_error` | UserTalk compile or runtime failure | echoed |
 | `internal_error` | Allocation, spawn, or database-load failure | echoed |
 | `line_too_long` | Request line exceeds 64 KB | `null` |
@@ -359,7 +409,8 @@ Notes:
   branch on `code`, not on message content.
 - Contract coverage: every code above except `internal_error` and
   `limit_exceeded` (not reachable without fault injection / 256+ set
-  calls) is exercised by `protocol_contract_tests.yaml`.
+  calls) is exercised by `protocol_contract_tests.yaml`; `locked` is
+  exercised by `protocol_odb_save.yaml`.
 
 ---
 
@@ -436,5 +487,6 @@ For single-user desktop use, stdio is simpler and avoids the overhead of HTTP/We
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 1.2.0 | 2026-08-09 | Unit 1.2 persistence semantics: new `odb/save` op (§4.4) reusing the `fileMenu.save()` kernel path; top-level `dirty` boolean on `odb/set`/`odb/delete` responses; new stable error code `locked`; explicit persistence contract matrix (in-memory until save; abnormal-termination loss is by design; clean-exit save of a RW root per issue #127) proven by restart-then-verify tests (`protocol_odb_save.yaml`) |
 | 1.1.0 | 2026-08-09 | Unit 1.1 protocol contract hardening: documented all 22 dispatch-table ops + debug notifications; stable `error.code` set (§5); unparseable JSON now answered with `parse_error` (was: silent drop); id validated before op; oversized lines answered with a single `line_too_long` error; removed the never-implemented `error.category` field from examples |
 | 1.0.0 | 2026-02-15 | Initial specification (from working implementation) |

@@ -8,6 +8,7 @@ Executes YAML test cases against frontier-cli and validates results.
 import argparse
 import concurrent.futures
 import difflib
+import hashlib
 import json
 import logging
 import multiprocessing
@@ -949,6 +950,7 @@ class ProtocolExecutor:
         self.system_root = system_root
         self._proc: Optional[subprocess.Popen] = None
         self._stderr_file = None
+        self._env_overrides: Optional[Dict[str, str]] = None
         self._next_id = 1
         # Server-initiated notification lines (id:null + op field, e.g.
         # debug/suspended, debug/completed) buffered here when they arrive
@@ -981,6 +983,12 @@ class ProtocolExecutor:
         cmd = [self.cli_path, '--protocol', '--skip-startup']
         if self.system_root:
             cmd.extend(['--system-root', self.system_root])
+
+        # Remember overrides so _restart() / restart_for_test() respawn with
+        # the SAME environment. Before Unit 1.2 a restart silently dropped
+        # per-test overrides (e.g. FRONTIER_LOCK_OPENED_ROOTS=0), flipping a
+        # dedicated executor back to the locked default mid-test.
+        self._env_overrides = dict(env_overrides) if env_overrides else None
 
         # Redirect stderr to temp file to capture crash diagnostics
         # (using a file avoids pipe buffer deadlocks)
@@ -1164,9 +1172,44 @@ class ProtocolExecutor:
         self._proc = None
         self._close_stderr_file()
         try:
-            self.start()
+            self.start(env_overrides=self._env_overrides)
         except Exception as e:
             raise RuntimeError(f"Protocol executor restart failed: {e}") from e
+
+    def restart_for_test(self, mode: str = 'kill'):
+        """Deliberately restart the subprocess against the same system root
+        and environment (Unit 1.2 restart-then-verify tests).
+
+        mode 'kill': SIGKILL the process -- models abnormal termination
+            (crash, power loss). The on-exit save path never runs, so
+            unsaved in-memory mutations are lost. This is the data-loss
+            scenario odb/save exists to close.
+        mode 'shutdown': protocol shutdown op + clean exit -- the CLI's
+            exit path runs, which (issue #127) saves a read-write system
+            root on the way out. Pins the legacy save-on-exit contract.
+        """
+        if self._proc is not None:
+            if mode == 'shutdown':
+                try:
+                    self._send_recv({'op': 'shutdown'}, timeout=30)
+                except Exception as e:
+                    raise RuntimeError(f"shutdown op failed during restart: {e}") from e
+                try:
+                    self._proc.wait(timeout=30)
+                except subprocess.TimeoutExpired:
+                    raise RuntimeError("process did not exit after shutdown op")
+            elif mode == 'kill':
+                self._proc.kill()
+                try:
+                    self._proc.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    pass
+            else:
+                raise RuntimeError(f"unknown restart_executor mode: {mode!r}")
+        self._proc = None
+        self._close_stderr_file()
+        self._notifications = []
+        self.start(env_overrides=self._env_overrides)
 
     def _log_stderr_on_crash(self):
         """Read and log any stderr output from the protocol process."""
@@ -1548,6 +1591,14 @@ class TestCase:
         # Protocol-native test support (raw NDJSON operations like odb/get, odb/set, etc.)
         self.protocol_ops = data.get('protocol_ops', [])  # List of {op, params, validate} dicts
 
+        # Unit 1.2 (odb/save restart-then-verify): when true, the test runs on
+        # a dedicated executor against a PRIVATE copy of the system root, so
+        # on-disk saves and executor restarts (restart_executor steps) cannot
+        # interfere with the shared executor, which holds the worker's staged
+        # root open for the rest of the file. Required for any protocol_ops
+        # test that saves the system root or restarts its process.
+        self.private_system_root = data.get('private_system_root', False)
+
     def get_script_with_substitutions(self, test_root_dir: Optional[str] = None) -> str:
         """Get the script with path substitutions applied."""
         script = self.script
@@ -1769,14 +1820,41 @@ class TestRunner:
         # batch executor is started with FRONTIER_LOCK_OPENED_ROOTS=1 by
         # default and can't accept per-test overrides at send time.
         dedicated_executor: Optional[ProtocolExecutor] = None
-        if test.environment:
+        private_root_dir: Optional[str] = None
+        if test.environment or test.private_system_root:
+            executor_root = (self.protocol_executor.system_root
+                             if self.protocol_executor else self.cli.system_root)
+
+            # Unit 1.2: stage a private copy of the system root for tests
+            # that save to disk or restart their executor. The shared
+            # executor keeps the worker's staged root open; another process
+            # rewriting that same file under it would corrupt its cache.
+            if test.private_system_root:
+                if not executor_root or not os.path.isfile(executor_root):
+                    return TestResult(
+                        test.name, True, error=None, skipped=True,
+                        details="private_system_root requires a file-backed system root")
+                staging_parent = None
+                if self.test_root_dir:
+                    staging_parent = os.path.join(
+                        self.test_root_dir, 'tmp', 'integration')
+                    os.makedirs(staging_parent, exist_ok=True)
+                private_root_dir = tempfile.mkdtemp(
+                    prefix='private_root_', dir=staging_parent)
+                private_root = os.path.join(
+                    private_root_dir, os.path.basename(executor_root))
+                shutil.copy2(executor_root, private_root)
+                executor_root = private_root
+
             dedicated_executor = ProtocolExecutor(
                 cli_path=self.cli.cli_path,
-                system_root=self.protocol_executor.system_root if self.protocol_executor else None,
+                system_root=executor_root,
             )
             try:
-                dedicated_executor.start(env_overrides=test.environment)
+                dedicated_executor.start(env_overrides=test.environment or None)
             except Exception as e:
+                if private_root_dir:
+                    shutil.rmtree(private_root_dir, ignore_errors=True)
                 return TestResult(
                     test.name, False,
                     error=f"Failed to start dedicated protocol executor: {e}")
@@ -1799,6 +1877,56 @@ class TestRunner:
                 params = self._resolve_captures(step.get('params', {}), captures)
                 validate = step.get('validate', {})
                 step_desc = step.get('description', f'step {step_idx + 1}')
+
+                # Unit 1.2 restart-then-verify steps. Only meaningful on a
+                # dedicated executor with a private root: restarting the
+                # SHARED executor would tear state out from under every
+                # later test in the file, and hashing the shared root races
+                # against its own executor's writes.
+                if 'restart_executor' in step:
+                    if dedicated_executor is None or not test.private_system_root:
+                        return TestResult(
+                            test.name, False,
+                            error=f"[{step_desc}] restart_executor requires "
+                                  f"private_system_root: true")
+                    mode = step['restart_executor']
+                    if mode is True:
+                        mode = 'kill'
+                    try:
+                        executor.restart_for_test(mode)
+                    except RuntimeError as e:
+                        return TestResult(
+                            test.name, False,
+                            error=f"[{step_desc}] restart ({mode}) failed: {e}")
+                    continue
+
+                if 'capture_root_hash' in step:
+                    if not test.private_system_root:
+                        return TestResult(
+                            test.name, False,
+                            error=f"[{step_desc}] capture_root_hash requires "
+                                  f"private_system_root: true")
+                    with open(executor.system_root, 'rb') as f:
+                        captures[step['capture_root_hash']] = \
+                            hashlib.md5(f.read()).hexdigest()
+                    continue
+
+                if 'verify_root_hash' in step:
+                    if not test.private_system_root:
+                        return TestResult(
+                            test.name, False,
+                            error=f"[{step_desc}] verify_root_hash requires "
+                                  f"private_system_root: true")
+                    expected_hash = self._resolve_captures(
+                        step['verify_root_hash'], captures)
+                    with open(executor.system_root, 'rb') as f:
+                        actual_hash = hashlib.md5(f.read()).hexdigest()
+                    if actual_hash != expected_hash:
+                        return TestResult(
+                            test.name, False,
+                            error=f"[{step_desc}] root file hash changed: "
+                                  f"expected {expected_hash}, got {actual_hash}")
+                    continue
 
                 # Envelope contract step: send a literal (possibly invalid)
                 # line instead of a well-formed op message. Validates either
@@ -1928,6 +2056,8 @@ class TestRunner:
                     dedicated_executor.stop()
                 except Exception:
                     pass
+                if private_root_dir:
+                    shutil.rmtree(private_root_dir, ignore_errors=True)
                 # Restart the shared executor after a dedicated-executor
                 # test. The multi-second pause while the dedicated process
                 # runs gives lingering detached threads from earlier tests
@@ -1979,6 +2109,15 @@ class TestRunner:
             actual = resp.get('success')
             if actual != expected:
                 return f"[{step_desc}] Expected success={expected}, got success={actual}"
+
+        # Unit 1.2: top-level dirty indicator on odb/set / odb/delete /
+        # odb/save responses. Strict bool match (like success) so a string
+        # "true" on the wire fails rather than passing via coercion.
+        if 'dirty' in validate:
+            expected = validate['dirty']
+            actual = resp.get('dirty')
+            if type(actual) is not bool or actual != expected:
+                return f"[{step_desc}] Expected dirty={expected}, got dirty={actual!r}"
 
         # Check error message contains
         if 'error_contains' in validate:

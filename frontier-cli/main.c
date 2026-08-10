@@ -390,6 +390,25 @@ boolean cli_is_system_root_read_only(void) {
 	return g_system_root_read_only;
 }
 
+/* Returns whether the loaded system root has unsaved in-memory changes.
+ * Unit 1.2 (odb/save): backs the "dirty" field in protocol odb/set,
+ * odb/delete, and odb/save responses (op_handler.c, via extern).
+ *
+ * Uses the runtime's own dirty accounting -- the same signal the exit save
+ * trusts: propagate flsubsdirty up from loaded subtables (the preflight
+ * every save path runs), then read the root table's flags. Hydration
+ * pre-clears link-phase dirty bits (see clear_post_hydration_dirty_flags),
+ * so a true here means genuine user mutation since load or last save. */
+boolean cli_system_root_is_dirty(void) {
+	if (!g_system_root_loaded || databasedata == nil
+		|| rootvariable == nil || roottable == nil)
+		return false;
+
+	tablepreflightsubsdirtyflag((hdlexternalvariable) rootvariable);
+
+	return (**roottable).fldirty || (**roottable).flsubsdirty;
+}
+
 /* system.environment.args key names (camelCase from CLI flags). */
 #define str_systemRoot		BIGSTRING ("\x0a" "systemRoot")
 #define str_skipStartup		BIGSTRING ("\x0b" "skipStartup")

@@ -286,9 +286,37 @@ protocol_ops:
 captured earlier in the same test via `capture:`. The executor
 transparently queues notification lines that arrive between a request and
 its response; `reset()` clears the queue between tests. Batch validation
-keys (`results`, `result_count`, `_contains`, `_strict_type`, `_exists`,
-`_pattern`, `entries_*`) are documented by example in
+keys (`results`, `result_count`, `dirty`, `_contains`, `_strict_type`,
+`_exists`, `_pattern`, `entries_*`) are documented by example in
 `protocol_odb_ops.yaml`.
+
+### Restart-Then-Verify Protocol Tests (Unit 1.2)
+
+Tests that save the system root to disk or restart their CLI process must
+set `private_system_root: true` at the TEST level (alongside
+`environment:`). The runner then stages a private copy of the staged root
+for a dedicated executor, so on-disk saves and restarts cannot corrupt the
+shared executor's open root file. Additional step forms become available:
+
+```yaml
+tests:
+  - name: "example restart-then-verify"
+    private_system_root: true
+    environment:
+      FRONTIER_LOCK_OPENED_ROOTS: "0"   # "1" to test the save lock
+    protocol_ops:
+      - capture_root_hash: "before"     # md5 the private root file
+      - op: "odb/set"
+        params: {items: [{path: "workspace.x", type: "string", value: "v"}]}
+        validate: {success: true, dirty: true}
+      - restart_executor: "kill"        # abnormal termination (no exit save)
+        # or: restart_executor: "shutdown"  (clean exit; issue #127 exit
+        # save persists a read-write root)
+      - verify_root_hash: "$before"     # assert file bytes unchanged
+```
+
+See `protocol_odb_save.yaml` for the persistence-contract proofs built on
+these steps.
 
 ### Test Path Placeholders
 

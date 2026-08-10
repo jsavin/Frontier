@@ -1,0 +1,233 @@
+# Unit 1.2 -- odb/save persistence semantics (explicit and testable)
+#
+# Closes INTEGRATION_TEST_GAPS.md gap #4: protocol odb/set mutations are
+# in-memory only; without an explicit save they are lost when the process
+# terminates. That contract was previously untestable because the framework
+# could not restart the CLI mid-test. These tests use the Unit 1.2 runner
+# capabilities:
+#
+#   private_system_root: true  -- dedicated executor against a private COPY
+#       of the staged system root (on-disk saves + restarts cannot touch
+#       the shared executor's root file)
+#   restart_executor: "kill"   -- SIGKILL, models abnormal termination
+#       (no exit-time save runs)
+#   restart_executor: "shutdown" -- clean protocol shutdown (the issue #127
+#       legacy exit-save DOES run for a read-write root)
+#   capture_root_hash / verify_root_hash -- md5 the private root file
+#
+# Persistence contract under test (STDIO_PROTOCOL.md section 4.3/4.12):
+#   - mutations are in-memory until odb/save (or clean shutdown of a RW root)
+#   - odb/set and odb/delete responses carry a top-level "dirty" boolean
+#   - odb/save persists now and reports {root, saved, dirty}
+#   - under --lock-opened-roots / FRONTIER_LOCK_OPENED_ROOTS=1 odb/save is
+#     refused with stable error code "locked" and the file is untouched
+#
+# These tests intentionally write under workspace.* (not system.temp):
+# persistence across restart is the behavior under test, and each test's
+# root is a private disposable copy, so no shared state is mutated.
+
+tests:
+  # ======================================================================
+  # Proof (a): mutation -> NO save -> restart -> value ABSENT
+  # ======================================================================
+  - name: "odb/save persistence - unsaved mutation lost on abnormal exit"
+    description: "odb/set without odb/save is in-memory only: after the process is killed and restarted on the same root, the value is gone"
+    private_system_root: true
+    environment:
+      FRONTIER_LOCK_OPENED_ROOTS: "0"
+    protocol_ops:
+      - op: "odb/set"
+        params:
+          items:
+            - path: "workspace.u12_unsaved"
+              type: "string"
+              value: "ephemeral"
+        validate:
+          success: true
+          dirty: true
+          results:
+            - success: true
+        description: "mutate in memory (response reports dirty root)"
+      - op: "odb/get"
+        params:
+          items:
+            - path: "workspace.u12_unsaved"
+        validate:
+          success: true
+          results:
+            - success: true
+              value: "ephemeral"
+        description: "value visible in the live process"
+      - restart_executor: "kill"
+        description: "abnormal termination - no exit save"
+      - op: "odb/get"
+        params:
+          items:
+            - path: "workspace.u12_unsaved"
+        validate:
+          success: true
+          results:
+            - success: false
+        description: "value absent after restart: loss without save is the contract"
+
+  # ======================================================================
+  # Proof (b): mutation -> odb/save -> restart -> value PRESENT
+  # ======================================================================
+  - name: "odb/save persistence - saved mutation survives abnormal exit"
+    description: "odb/save persists the system root immediately: the value survives a kill + restart"
+    private_system_root: true
+    environment:
+      FRONTIER_LOCK_OPENED_ROOTS: "0"
+    protocol_ops:
+      - op: "odb/set"
+        params:
+          items:
+            - path: "workspace.u12_saved"
+              type: "string"
+              value: "durable"
+        validate:
+          success: true
+          dirty: true
+          results:
+            - success: true
+        description: "mutate in memory"
+      - op: "odb/save"
+        validate:
+          success: true
+          result:
+            saved: true
+            dirty: false
+        description: "explicit save persists and clears the dirty state"
+      - restart_executor: "kill"
+        description: "abnormal termination after save"
+      - op: "odb/get"
+        params:
+          items:
+            - path: "workspace.u12_saved"
+        validate:
+          success: true
+          results:
+            - success: true
+              value: "durable"
+        description: "value present after restart: odb/save reached disk"
+
+  # ======================================================================
+  # Proof (c): odb/save under lock-opened-roots -> stable refusal +
+  #            on-disk file byte-identical
+  # ======================================================================
+  - name: "odb/save - refused under lock-opened-roots, file untouched"
+    description: "FRONTIER_LOCK_OPENED_ROOTS=1 makes odb/save refuse with stable error code 'locked'; the root file's bytes do not change"
+    private_system_root: true
+    environment:
+      FRONTIER_LOCK_OPENED_ROOTS: "1"
+    protocol_ops:
+      - capture_root_hash: "before"
+        description: "hash the private root before any mutation"
+      - op: "odb/set"
+        params:
+          items:
+            - path: "workspace.u12_locked"
+              type: "string"
+              value: "never-hits-disk"
+        validate:
+          success: true
+          dirty: true
+          results:
+            - success: true
+        description: "in-memory mutation still evaluates under the lock"
+      - op: "odb/save"
+        validate:
+          success: false
+          error_code: "locked"
+        description: "save refused with stable machine-readable code"
+      - verify_root_hash: "$before"
+        description: "root file byte-identical after refused save"
+
+  # ======================================================================
+  # Proof (d): dirty flag lifecycle across set / save / delete
+  # ======================================================================
+  - name: "odb/save - dirty flag lifecycle across set, save, delete"
+    description: "dirty starts false on a fresh root, flips true on odb/set and odb/delete, and returns false after each odb/save; a clean save is a no-op (saved: false)"
+    private_system_root: true
+    environment:
+      FRONTIER_LOCK_OPENED_ROOTS: "0"
+    protocol_ops:
+      - op: "odb/save"
+        validate:
+          success: true
+          result:
+            saved: false
+            dirty: false
+        description: "fresh root is clean - save is a no-op"
+      - op: "odb/set"
+        params:
+          items:
+            - path: "workspace.u12_lifecycle"
+              type: "string"
+              value: "v1"
+        validate:
+          success: true
+          dirty: true
+          results:
+            - success: true
+        description: "set marks the root dirty"
+      - op: "odb/save"
+        validate:
+          success: true
+          result:
+            saved: true
+            dirty: false
+        description: "save writes and clears dirty"
+      - op: "odb/delete"
+        params:
+          items:
+            - path: "workspace.u12_lifecycle"
+        validate:
+          success: true
+          dirty: true
+          results:
+            - success: true
+        description: "delete marks the root dirty again"
+      - op: "odb/save"
+        validate:
+          success: true
+          result:
+            saved: true
+            dirty: false
+        description: "save after delete clears dirty again"
+
+  # ======================================================================
+  # Companion contract: clean shutdown of a read-write root runs the
+  # legacy exit save (issue #127) -- loss-on-exit applies to ABNORMAL
+  # termination, or any termination under lock-opened-roots.
+  # ======================================================================
+  - name: "odb/save persistence - clean shutdown auto-saves a read-write root"
+    description: "Without odb/save, a clean shutdown of a RW root still persists mutations via the issue #127 exit save; only abnormal termination (or the lock) loses them"
+    private_system_root: true
+    environment:
+      FRONTIER_LOCK_OPENED_ROOTS: "0"
+    protocol_ops:
+      - op: "odb/set"
+        params:
+          items:
+            - path: "workspace.u12_exitsave"
+              type: "string"
+              value: "saved-on-exit"
+        validate:
+          success: true
+          dirty: true
+          results:
+            - success: true
+        description: "mutate in memory"
+      - restart_executor: "shutdown"
+        description: "clean shutdown - exit save runs for a RW root"
+      - op: "odb/get"
+        params:
+          items:
+            - path: "workspace.u12_exitsave"
+        validate:
+          success: true
+          results:
+            - success: true
+              value: "saved-on-exit"
+        description: "value present: clean shutdown persisted it"
