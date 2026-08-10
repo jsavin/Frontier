@@ -218,8 +218,6 @@ tests:
 
   - name: "tcp.readStream - read data from server"
     description: "Server writes data, client reads it"
-    skip: true
-    skip_reason: "Server-side writeStream in accept callback raises 'Invalid stream ID: Stream not connected' — the accepted sid is not yet in a writable state when the callback fires; requires kernel fix"
     timeout: 15
     script: |
       new(tableType, @system.temp.tcpNet9106);
@@ -447,8 +445,6 @@ tests:
 
   - name: "tcp connection lifecycle - full data exchange"
     description: "Test complete client-server data exchange cycle"
-    skip: true
-    skip_reason: "Race condition: server callback closes stream before client polls; tcp.readStream on a closed server stream returns false — requires kernel-level stream event notification"
     timeout: 15
     script: |
       new(tableType, @system.temp.tcpNet9112);
