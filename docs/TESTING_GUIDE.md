@@ -106,6 +106,49 @@ cd tests && make test-custom-args
 ./tools/run_integration_tests.sh tests/integration/test_cases/string_verbs.yaml
 ```
 
+### Known-Failure Baseline
+
+The canonical list of accepted integration-test failures lives in
+`tests/integration/known_failures.txt` — one entry per line:
+
+```
+<exact test name> | <one-line reason, tracking issue where known>
+```
+
+Blank lines and `#` lines are comments. The file is version-controlled, so the
+failure baseline is reproducible from a fresh clone.
+
+When the suite runs in run-everything mode (`make test-integration` or
+`./tools/run_integration_tests.sh` with no file arguments), the wrapper passes
+`--baseline tests/integration/known_failures.txt` to `runner.py`, which changes
+the exit semantics:
+
+- A failure whose test name **is on the list** is reported as
+  `known-fail (baselined)` and does **not** fail the run.
+- A failure whose test name is **not on the list** fails the run.
+- A **pass** whose test name is on the list is loudly reported as
+  `BASELINED TEST NOW PASSES` and **fails the run** — remove the entry from
+  `known_failures.txt` in the same PR that fixed the test, so the list cannot
+  rot.
+- A baselined test that was *skipped* is neutral. A baseline entry matching no
+  executed test prints a warning (renamed/removed test) but does not fail the
+  run.
+
+Net effect: the suite exits 0 exactly when the set of failures matches the
+baseline, so the post-YAML shell steps in `tests/Makefile` (debug protocol,
+agent debug session, ODB sync, etc.) always run instead of aborting on known
+failures.
+
+Targeted runs (explicit YAML file arguments, or invoking `runner.py` directly
+without `--baseline`) stay strict: every failure fails the run. The runner's
+JSON summary (`tests/tmp/integration/last_run.json`) records `failures` by name
+plus `known_failed` / `unexpected_failed` / `stale_baseline_passes` when a
+baseline is active.
+
+Behavioral coverage for these semantics lives in
+`tests/integration/baseline_self_test.py` (run as part of
+`make test-integration`).
+
 ### Custom CLI Arguments
 
 Any unknown `--flag` is accepted and exposed to UserTalk scripts via `system.environment.args`:
