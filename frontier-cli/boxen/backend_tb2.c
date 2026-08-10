@@ -5,157 +5,104 @@
  * or include termbox2.h. All other boxen source files work through the
  * boxen_backend_t vtable and must never use termbox2 directly.
  *
- * Responsibilities:
- *   - Translate TB_KEY_* -> BOXEN_KEY_* for special keys
- *   - Translate TB_MOD_* -> BOXEN_MOD_* modifiers
- *   - Translate TB_EVENT_* -> BOXEN_EV_* event types
- *   - Translate TB_KEY_MOUSE_* -> BOXEN_EV_MOUSE with button field
- *   - Synthesize double-click using tracked timestamp + position state
- *   - Translate BOXEN_ATTR_* -> TB_BOLD / TB_UNDERLINE / TB_REVERSE / TB_ITALIC
+ * Responsibilities (post-M6):
+ *   - Bring up termbox2 for the rendering side (alternate screen, raw mode,
+ *     SIGWINCH, cell buffer, color, cursor positioning).
+ *   - Bring up the input_decoder for the read side -- it owns the TTY fd
+ *     read loop, escape-sequence parsing, mouse-mode writes, bracketed
+ *     paste, Kitty protocol enable, and double-click synthesis.  All key
+ *     and mouse translation that used to live in this file is now inside
+ *     the decoder; this file just forwards bytes between the two layers.
+ *   - Translate BOXEN_ATTR_* -> termbox2 attribute bits (rendering-side).
+ *   - Translate BOXEN_COLOR_* -> termbox2 color values (rendering-side).
  *
- * Key translation notes (per EXECUTION_PLAN.md Section 6):
- *   Tab/Enter/Esc/Backspace are translated BEFORE the generic CTRL_* range.
- *   TB_KEY_TAB   (0x09) -> BOXEN_KEY_TAB   (not BOXEN_KEY_CTRL_I)
- *   TB_KEY_ENTER (0x0d) -> BOXEN_KEY_ENTER (not BOXEN_KEY_CTRL_M)
- *   TB_KEY_ESC   (0x1b) -> BOXEN_KEY_ESCAPE (not BOXEN_KEY_CTRL_BRACKET)
- *   TB_KEY_BACKSPACE (0x08) -> BOXEN_KEY_BACKSPACE (not BOXEN_KEY_CTRL_H)
+ * 2026-06-29 JES #805 M6: Cutover -- replaced tb_peek_event with
+ *   input_decoder_poll.  Removed translate_key, translate_mod,
+ *   translate_mouse, and the g_tb2_last_press double-click state struct --
+ *   the input decoder subsumes all of that.  The rendering path
+ *   (translate_attr / translate_color / tb_set_cell / tb_present / etc.)
+ *   is untouched.  Mouse mode is NOT enabled in tb2_init; the decoder
+ *   keeps it off by default per plan section 5.1, and the M7 /mouse
+ *   slash command will toggle it.  See planning/phase_c/INPUT_DECODER_PLAN.md
+ *   sections 2.3, 5, 7 (M6 spec), and 8 (R1, R3, R4).
  */
 
 #include "termbox2.h"
 #include "boxen_internal.h"
+#include "input_decoder.h"
 
+#include <fcntl.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
-#include <time.h>
+#include <unistd.h>
 
 /* -------------------------------------------------------------------------
- * Clock for double-click synthesis
- * ---------------------------------------------------------------------- */
-
-static uint64_t tb2_now_ms(void) {
-	struct timespec ts;
-	clock_gettime(CLOCK_MONOTONIC, &ts);
-	return (uint64_t)ts.tv_sec * 1000 + (uint64_t)ts.tv_nsec / 1000000;
-}
-
-/* -------------------------------------------------------------------------
- * Double-click state
- * ---------------------------------------------------------------------- */
-
-static struct {
-	uint64_t time_ms;
-	int      x;
-	int      y;
-	uint8_t  button;
-	bool     valid;
-} g_tb2_last_press;
-
-static void tb2_maybe_set_double_click(boxen_event_t *ev) {
-	if (!ev->mouse.pressed) {
-		return;
-	}
-
-	uint64_t now = tb2_now_ms();
-
-	if (g_tb2_last_press.valid) {
-		uint64_t elapsed = now - g_tb2_last_press.time_ms;
-		int dx = ev->mouse.x - g_tb2_last_press.x;
-		int dy = ev->mouse.y - g_tb2_last_press.y;
-		if (dx < 0) dx = -dx;
-		if (dy < 0) dy = -dy;
-		int dist = dx > dy ? dx : dy;
-
-		if (elapsed <= BOXEN_DOUBLE_CLICK_MS
-		    && dist  <= BOXEN_DOUBLE_CLICK_RADIUS
-		    && ev->mouse.button == g_tb2_last_press.button) {
-			ev->mouse.flags |= BOXEN_MOUSE_DOUBLE_CLICK;
-			g_tb2_last_press.valid = false;
-			return;
-		}
-	}
-
-	g_tb2_last_press.time_ms = now;
-	g_tb2_last_press.x       = ev->mouse.x;
-	g_tb2_last_press.y       = ev->mouse.y;
-	g_tb2_last_press.button  = ev->mouse.button;
-	g_tb2_last_press.valid   = true;
-}
-
-/* -------------------------------------------------------------------------
- * TB_KEY_* -> BOXEN_KEY_* translation
+ * 2026-06-29 JES #805 M6: input decoder lifetime.
  *
- * Order matters: check explicit aliases (Tab, Enter, Esc, Backspace) FIRST,
- * before the generic CTRL_* numeric range check, because several TB_KEY_*
- * values are assigned the same numeric value (e.g., TB_KEY_TAB == TB_KEY_CTRL_I).
+ * Created in tb2_init after tb_init() (which sets up raw mode and the
+ * alternate screen on the TTY).  Destroyed in tb2_shutdown BEFORE
+ * tb_shutdown() so the decoder's writes (mouse-disable / paste-disable on
+ * destroy paths in future milestones) land while the TTY is still in raw
+ * mode and the fd is still valid.
+ *
+ * Single instance per process -- the boxen_backend_t vtable is global and
+ * boxen_repl owns the only init/shutdown pair.  This matches the single-
+ * owner threading invariant documented in input_decoder.h.
  * ---------------------------------------------------------------------- */
+static input_decoder_t *g_decoder = NULL;
 
-static boxen_key_t translate_key(uint16_t tb_key, uint32_t tb_ch) {
-	/* Printable character: key field is 0, ch carries the codepoint. */
-	if (tb_ch != 0) {
-		return BOXEN_KEY_NONE;
+/* -------------------------------------------------------------------------
+ * 2026-06-29 JES #805 M6 / risk R1: obtain TTY fd from termbox2 if possible,
+ * otherwise open /dev/tty directly.
+ *
+ * The vendored termbox2 (frontier-cli/third_party/termbox2/termbox2.h) does
+ * export tb_get_fds() -- verified at M6 implementation time.  If a future
+ * vendored update drops or renames the symbol, the fallback opens /dev/tty
+ * which is what termbox2 itself opens internally when no fd is passed to
+ * tb_init.  Risk R1 disposition: LOW; both paths are well-trodden.
+ *
+ * Returns -1 on failure -- caller must surface as BOXEN_ERR_INIT so the
+ * REPL can refuse to start cleanly instead of running with a wedged input
+ * path.  fd_was_opened_out is set true when we opened /dev/tty ourselves
+ * (caller closes on shutdown) and false when we borrowed termbox2's fd
+ * (caller leaves alone -- tb_shutdown() closes it).
+ * ---------------------------------------------------------------------- */
+static int tb2_obtain_tty_fd(bool *fd_was_opened_out) {
+	*fd_was_opened_out = false;
+
+	int ttyfd = -1;
+	int resizefd = -1;
+	if (tb_get_fds(&ttyfd, &resizefd) == TB_OK && ttyfd >= 0) {
+		return ttyfd;
 	}
 
-	/* Named aliases FIRST -- must precede the generic CTRL_* range */
-	switch (tb_key) {
-		case TB_KEY_TAB:       return BOXEN_KEY_TAB;
-		case TB_KEY_ENTER:     return BOXEN_KEY_ENTER;
-		case TB_KEY_ESC:       return BOXEN_KEY_ESCAPE;
-		case TB_KEY_BACKSPACE: return BOXEN_KEY_BACKSPACE;
-		case TB_KEY_BACKSPACE2:return BOXEN_KEY_BACKSPACE;
-		case TB_KEY_SPACE:     return BOXEN_KEY_NONE;  /* space is printable via ch */
-
-		/* Function keys */
-		case TB_KEY_F1:        return BOXEN_KEY_F1;
-		case TB_KEY_F2:        return BOXEN_KEY_F2;
-		case TB_KEY_F3:        return BOXEN_KEY_F3;
-		case TB_KEY_F4:        return BOXEN_KEY_F4;
-		case TB_KEY_F5:        return BOXEN_KEY_F5;
-		case TB_KEY_F6:        return BOXEN_KEY_F6;
-		case TB_KEY_F7:        return BOXEN_KEY_F7;
-		case TB_KEY_F8:        return BOXEN_KEY_F8;
-		case TB_KEY_F9:        return BOXEN_KEY_F9;
-		case TB_KEY_F10:       return BOXEN_KEY_F10;
-		case TB_KEY_F11:       return BOXEN_KEY_F11;
-		case TB_KEY_F12:       return BOXEN_KEY_F12;
-
-		/* Navigation */
-		case TB_KEY_ARROW_UP:    return BOXEN_KEY_UP;
-		case TB_KEY_ARROW_DOWN:  return BOXEN_KEY_DOWN;
-		case TB_KEY_ARROW_LEFT:  return BOXEN_KEY_LEFT;
-		case TB_KEY_ARROW_RIGHT: return BOXEN_KEY_RIGHT;
-		case TB_KEY_HOME:        return BOXEN_KEY_HOME;
-		case TB_KEY_END:         return BOXEN_KEY_END;
-		case TB_KEY_PGUP:        return BOXEN_KEY_PGUP;
-		case TB_KEY_PGDN:        return BOXEN_KEY_PGDN;
-		case TB_KEY_INSERT:      return BOXEN_KEY_INSERT;
-		case TB_KEY_DELETE:      return BOXEN_KEY_DELETE;
-
-		default:
-			break;
+	/* Fallback: open /dev/tty directly.  O_RDWR, not O_RDONLY: the decoder
+	 * WRITES control sequences to this fd (mouse-mode toggles in
+	 * input_decoder_set_mouse, the Kitty enable in
+	 * input_decoder_kitty_enable) and those writes are (void)-discarded,
+	 * so a read-only fd would make them fail silently with EBADF.
+	 * O_NONBLOCK is NOT set because the decoder uses select(2) + read(2)
+	 * with explicit timeouts; a non-blocking fd would cause spurious
+	 * EAGAIN returns inside the decoder's blocking-poll path. */
+	int fd = open("/dev/tty", O_RDWR | O_CLOEXEC);
+	if (fd < 0) {
+		return -1;
 	}
-
-	/* Generic CTRL_* range (1-26) -- AFTER the aliases above */
-	if (tb_key >= 0x01 && tb_key <= 0x1a) {
-		/* Map 0x01 -> CTRL_A (index 0), 0x1a -> CTRL_Z (index 25) */
-		return (boxen_key_t)(BOXEN_KEY_CTRL_A + (tb_key - 0x01));
-	}
-	if (tb_key == TB_KEY_CTRL_BACKSLASH) {
-		return BOXEN_KEY_CTRL_BACKSLASH;
-	}
-	if (tb_key == 0x1b) {
-		/* ESC / CTRL_LSQ_BRACKET -- handled above as BOXEN_KEY_ESCAPE */
-		return BOXEN_KEY_ESCAPE;
-	}
-	if (tb_key == TB_KEY_CTRL_TILDE) {
-		return BOXEN_KEY_CTRL_SPACE;
-	}
-
-	return BOXEN_KEY_NONE;
+	*fd_was_opened_out = true;
+	return fd;
 }
+
+/* Track whether we own (and must close) the TTY fd.  False when borrowed
+ * from termbox2 (tb_shutdown closes it); true when we opened /dev/tty. */
+static bool g_tb2_owns_tty_fd = false;
+static int  g_tb2_tty_fd      = -1;
 
 /* -------------------------------------------------------------------------
  * Attribute translation: BOXEN_ATTR_* -> termbox2 uintattr_t bits
+ *
+ * Rendering-side translator -- NOT subsumed by the input decoder.  Kept
+ * intact from pre-M6 backend_tb2.c.
  * ---------------------------------------------------------------------- */
 
 static uintattr_t translate_attr(uint16_t boxen_attr) {
@@ -174,72 +121,13 @@ static uintattr_t translate_attr(uint16_t boxen_attr) {
  * have the same numeric values as TB_DEFAULT and TB_BLACK..TB_WHITE. This
  * function exists to make that coincidence explicit and local: if termbox2
  * ever renumbers its color constants, only this function needs to change.
+ *
+ * Rendering-side translator -- NOT subsumed by the input decoder.  Kept
+ * intact from pre-M6 backend_tb2.c.
  * ---------------------------------------------------------------------- */
 
 static uintattr_t translate_color(boxen_color_t c) {
 	return (uintattr_t)c;
-}
-
-/* -------------------------------------------------------------------------
- * Modifier translation: TB_MOD_* -> BOXEN_MOD_*
- * ---------------------------------------------------------------------- */
-
-static uint16_t translate_mod(uint8_t tb_mod) {
-	uint16_t m = 0;
-	if (tb_mod & TB_MOD_ALT)   m |= BOXEN_MOD_ALT;
-	if (tb_mod & TB_MOD_CTRL)  m |= BOXEN_MOD_CTRL;
-	if (tb_mod & TB_MOD_SHIFT) m |= BOXEN_MOD_SHIFT;
-	return m;
-}
-
-/* -------------------------------------------------------------------------
- * Mouse event translation
- *
- * termbox2 encodes mouse events as TB_EVENT_MOUSE with a key field set to
- * one of the TB_KEY_MOUSE_* constants. Release has no button identity.
- * ---------------------------------------------------------------------- */
-
-static void translate_mouse(const struct tb_event *te, boxen_event_t *out) {
-	out->type  = BOXEN_EV_MOUSE;
-	out->mouse.x     = te->x;
-	out->mouse.y     = te->y;
-	out->mouse.mod   = translate_mod(te->mod);
-	out->mouse.flags = 0;
-
-	switch (te->key) {
-		case TB_KEY_MOUSE_LEFT:
-			out->mouse.button  = 1;
-			out->mouse.pressed = true;
-			break;
-		case TB_KEY_MOUSE_RIGHT:
-			out->mouse.button  = 3;
-			out->mouse.pressed = true;
-			break;
-		case TB_KEY_MOUSE_MIDDLE:
-			out->mouse.button  = 2;
-			out->mouse.pressed = true;
-			break;
-		case TB_KEY_MOUSE_RELEASE:
-			out->mouse.button  = 0;
-			out->mouse.pressed = false;
-			break;
-		case TB_KEY_MOUSE_WHEEL_UP:
-			out->mouse.button  = 4;
-			out->mouse.pressed = true;
-			break;
-		case TB_KEY_MOUSE_WHEEL_DOWN:
-			out->mouse.button  = 5;
-			out->mouse.pressed = true;
-			break;
-		default:
-			out->mouse.button  = 0;
-			out->mouse.pressed = false;
-			break;
-	}
-
-	if (out->mouse.pressed) {
-		tb2_maybe_set_double_click(out);
-	}
 }
 
 /* -------------------------------------------------------------------------
@@ -248,9 +136,39 @@ static void translate_mouse(const struct tb_event *te, boxen_event_t *out) {
 
 static int tb2_init(void *config) {
 	(void)config;
-	memset(&g_tb2_last_press, 0, sizeof(g_tb2_last_press));
+
 	int r = tb_init();
-	return (r == TB_OK) ? BOXEN_OK : BOXEN_ERR_INIT;
+	if (r != TB_OK) {
+		return BOXEN_ERR_INIT;
+	}
+
+	/* 2026-06-29 JES #805 M6: mouse mode is NOT enabled here.  Per plan
+	 * section 5.1, the decoder keeps mouse off by default so native
+	 * terminal selection works on REPL startup.  The M7 /mouse slash
+	 * command and palette-open auto-enable will flip it on demand via
+	 * input_decoder_set_mouse(g_decoder, true).  Do NOT add a
+	 * tb_set_input_mode(TB_INPUT_MOUSE) call here -- that was the PR
+	 * #808 regression that broke selection for everyone. */
+
+	bool opened_tty = false;
+	int tty_fd = tb2_obtain_tty_fd(&opened_tty);
+	if (tty_fd < 0) {
+		tb_shutdown();
+		return BOXEN_ERR_INIT;
+	}
+
+	g_decoder = input_decoder_create(tty_fd);
+	if (g_decoder == NULL) {
+		if (opened_tty) {
+			close(tty_fd);
+		}
+		tb_shutdown();
+		return BOXEN_ERR_INIT;
+	}
+	g_tb2_tty_fd      = tty_fd;
+	g_tb2_owns_tty_fd = opened_tty;
+
+	return BOXEN_OK;
 }
 
 /* Last cursor position passed to tb_set_cursor(). Used by
@@ -261,9 +179,20 @@ static int g_tb2_cursor_x = 0;
 static int g_tb2_cursor_y = 0;
 
 static void tb2_shutdown(void) {
-	/* Symmetric with init: clear double-click state so a re-init starts fresh
-	 * even if init's memset is ever removed or the cycle is reused. */
-	memset(&g_tb2_last_press, 0, sizeof(g_tb2_last_press));
+	/* 2026-06-29 JES #805 M6: destroy decoder BEFORE tb_shutdown.  Any
+	 * decoder-side writes (e.g., a mouse-disable sequence the decoder
+	 * may emit on destroy in a future milestone) must land while the
+	 * TTY is still in raw mode and the fd is still valid.  Order
+	 * matters; do not reorder these two calls. */
+	input_decoder_destroy(g_decoder);
+	g_decoder = NULL;
+
+	if (g_tb2_owns_tty_fd && g_tb2_tty_fd >= 0) {
+		close(g_tb2_tty_fd);
+	}
+	g_tb2_tty_fd      = -1;
+	g_tb2_owns_tty_fd = false;
+
 	g_tb2_cursor_x = 0;
 	g_tb2_cursor_y = 0;
 	tb_shutdown();
@@ -313,47 +242,45 @@ static void tb2_present(void) {
 	tb_present();
 }
 
+/* -------------------------------------------------------------------------
+ * 2026-06-29 JES #805 M6: poll event via the input decoder.
+ *
+ * The decoder emits boxen_event_t directly -- no translation layer needed.
+ * timeout_ms flows straight through to input_decoder_poll, which uses
+ * select(2) for the blocking wait and read(2) to drain the TTY pipe.
+ *
+ * Threading: the caller (`boxen_repl_event_loop` at boxen_repl.c:2147-2152,
+ * mirroring `debugger_tui_main` per ADR-014) DROPS the Frontier GIL via
+ * `pthread_mutex_unlock(&frontier_gil)` BEFORE calling boxen_poll_event,
+ * and reacquires it after.  So this function -- and `input_decoder_poll`
+ * underneath -- runs with the GIL NOT held during the blocking wait.
+ * That's by design: it lets other Frontier threads make progress while
+ * the REPL is parked in select(2).  M6 preserves the prior behavior in
+ * this respect (tb_peek_event also ran with the GIL released).
+ *
+ * The single-owner invariant from input_decoder.h still holds because
+ * the REPL thread is the only one that touches *g_decoder; the other
+ * GIL-acquiring threads run UserTalk code that never reaches the
+ * decoder.  No locks or atomics needed inside the decoder.
+ *
+ * Risk R3 (mouse-enable timing window) is mitigated inside the decoder
+ * (mouse writes are synchronous + the decoder accepts both SGR and X10
+ * formats during the handshake window).  Risk R4 (silent breakage) is
+ * mitigated by the PTY-replay test suite (138 tests at M5; M6 adds none
+ * because inject_bytes still bypasses tty_fd in the test seam).
+ * ---------------------------------------------------------------------- */
 static int tb2_poll_event(boxen_event_t *out, int timeout_ms) {
-	struct tb_event te;
-	int r;
-
-	memset(out, 0, sizeof(*out));
-
-	if (timeout_ms == 0) {
-		/* Non-blocking peek */
-		r = tb_peek_event(&te, 0);
-	} else {
-		r = tb_peek_event(&te, timeout_ms);
+	if (out == NULL) {
+		return BOXEN_ERR_INVALID;
 	}
-
-	if (r == TB_ERR_NO_EVENT || r == TB_ERR_POLL) {
+	if (g_decoder == NULL) {
+		/* Defensive: tb2_init was not called or failed.  Return TIMEOUT
+		 * rather than IO so an over-eager poll during teardown is not
+		 * mistaken for a hard error. */
+		memset(out, 0, sizeof(*out));
 		return BOXEN_ERR_TIMEOUT;
 	}
-	if (r != TB_OK) {
-		return BOXEN_ERR_IO;
-	}
-
-	switch (te.type) {
-		case TB_EVENT_KEY:
-			out->type    = BOXEN_EV_KEY;
-			out->key.key = translate_key(te.key, te.ch);
-			out->key.ch  = te.ch;
-			out->key.mod = translate_mod(te.mod);
-			break;
-		case TB_EVENT_MOUSE:
-			translate_mouse(&te, out);
-			break;
-		case TB_EVENT_RESIZE:
-			out->type     = BOXEN_EV_RESIZE;
-			out->resize.w = te.w;
-			out->resize.h = te.h;
-			break;
-		default:
-			out->type = BOXEN_EV_NONE;
-			break;
-	}
-
-	return BOXEN_OK;
+	return input_decoder_poll(g_decoder, out, timeout_ms);
 }
 
 static void tb2_clear(void) {
