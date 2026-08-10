@@ -45,14 +45,16 @@ if _HERE not in sys.path:
 import runner  # noqa: E402
 
 
-def _make_runner(results):
+def _make_runner(results, test_root_dir=None):
     """Build a TestRunner with synthetic results and no real CLI.
 
     TestRunner.__init__ only stores the cli object; print_summary never
     touches it, so a MagicMock keeps the test free of binary dependencies.
+    test_root_dir defaults to the system temp dir (a stable, existing
+    path); tests that write run summaries pass their own directory.
     """
-    with tempfile.TemporaryDirectory() as tmp:
-        r = runner.TestRunner(mock.MagicMock(), test_root_dir=tmp)
+    r = runner.TestRunner(mock.MagicMock(),
+                          test_root_dir=test_root_dir or tempfile.gettempdir())
     r.results = list(results)
     return r
 
@@ -247,6 +249,146 @@ class BaselineEntryNotInRunTest(unittest.TestCase):
         self.assertTrue(ok)
         self.assertIn("deleted test - no longer exists", out)
         self.assertIn("did not run", out)
+
+
+class NameCollisionFailWinsTest(unittest.TestCase):
+    """A baselined name with BOTH a pass and a fail classifies as known-fail.
+
+    Test names are only unique per YAML file; the same name can run (and
+    report) from two files -- e.g. "tcp.readStream - zero byte count"
+    exists in tcp_client_verbs.yaml and tcp_verbs_network.yaml. When one
+    occurrence fails (baselined) and the other passes, the fail wins:
+    the entry is a known-fail and the pass must NOT trip the stale-entry
+    ("now passes") failure.
+    """
+
+    def test_pass_plus_fail_on_same_baselined_name_is_known_fail(self):
+        baseline = {"tcp.readStream - zero byte count": "listener race, issue #710"}
+        ok, out = _summarize(
+            [_pass("tcp.readStream - zero byte count"),
+             _fail("tcp.readStream - zero byte count")],
+            baseline=baseline,
+        )
+        self.assertTrue(ok,
+                        f"fail must win for a colliding baselined name; output:\n{out}")
+        self.assertIn("known-fail (baselined)", out)
+        self.assertNotIn("now passes", out.lower())
+
+    def test_collision_on_flaky_entry_also_suppresses_pass_report(self):
+        baseline = {"colliding flaky": "flaky: order-dependent"}
+        ok, out = _summarize(
+            [_pass("colliding flaky"), _fail("colliding flaky")],
+            baseline=baseline,
+        )
+        self.assertTrue(ok)
+        self.assertIn("known-fail (baselined)", out)
+        # The pass occurrence is subsumed by the failing one -- no
+        # separate flaky-pass informational line for the same name.
+        self.assertNotIn("passed this run", out)
+
+
+class SuiteSizeFloorTest(unittest.TestCase):
+    """#min_total: N directive fails baseline runs on collapsed discovery.
+
+    Without a floor, a discovery collapse that runs ONLY the baselined
+    tests (all failing) would exit 0. The baseline file records the
+    minimum plausible suite size; baseline mode fails the run loudly
+    when fewer results than that were collected.
+    """
+
+    def _baseline_with_floor(self, entries, floor):
+        fd, path = tempfile.mkstemp(suffix='.txt', text=True)
+        with os.fdopen(fd, 'w') as f:
+            f.write(f"#min_total: {floor}\n")
+            for name, reason in entries.items():
+                f.write(f"{name} | {reason}\n")
+        self.addCleanup(os.unlink, path)
+        return runner.load_baseline(path)
+
+    def test_min_total_directive_is_parsed(self):
+        baseline = self._baseline_with_floor({"t1": "r1"}, 2400)
+        self.assertEqual(baseline.get("t1"), "r1")
+        self.assertEqual(baseline.min_total, 2400)
+
+    def test_run_below_floor_fails_loudly(self):
+        baseline = self._baseline_with_floor({"t1": "r1"}, 10)
+        ok, out = _summarize([_fail("t1")], baseline=baseline)
+        self.assertFalse(ok,
+                         f"run below min_total floor must fail; output:\n{out}")
+        self.assertIn("min_total", out)
+
+    def test_run_at_or_above_floor_unaffected(self):
+        baseline = self._baseline_with_floor({"t1": "r1"}, 3)
+        ok, _out = _summarize(
+            [_fail("t1"), _pass("t2"), _pass("t3")],
+            baseline=baseline,
+        )
+        self.assertTrue(ok)
+
+    def test_plain_dict_baseline_has_no_floor(self):
+        # print_summary must tolerate a bare dict (no min_total attr).
+        ok, _out = _summarize([_fail("t1")], baseline={"t1": "r1"})
+        self.assertTrue(ok)
+
+
+class SaveRunSummaryFailureErrorsTest(unittest.TestCase):
+    """last_run.json persists each failure's error text alongside its name."""
+
+    def test_failures_include_error_text(self):
+        import json as _json
+        with tempfile.TemporaryDirectory() as tmp:
+            r = _make_runner(
+                [_pass("ok test"),
+                 _fail("bad test", error="Expected result='true', got 'false'")],
+                test_root_dir=tmp,
+            )
+            r.save_run_summary(1.0, 1, True)
+            with open(os.path.join(tmp, 'tmp', 'integration',
+                                   'last_run.json')) as f:
+                summary = _json.load(f)
+        failures = summary['failures']
+        self.assertEqual(len(failures), 1)
+        self.assertEqual(failures[0]['name'], "bad test")
+        self.assertEqual(failures[0]['error'],
+                         "Expected result='true', got 'false'")
+
+
+class BaselinedSkipVisibilityTest(unittest.TestCase):
+    """Baselined-but-skipped entries get an informational summary line.
+
+    Unit 2.1 converts several failing tests to skips; without visibility
+    a baselined test that becomes a skip would sit on the list unnoticed
+    (skips are neutral for exit semantics, which stays true).
+    """
+
+    def test_baselined_skip_is_listed_informationally(self):
+        baseline = {"tcp.connect - refused": "listener race"}
+        ok, out = _summarize([_skip("tcp.connect - refused")],
+                             baseline=baseline)
+        self.assertTrue(ok, "skip stays neutral for exit semantics")
+        self.assertIn("skipped", out.lower())
+        self.assertIn("tcp.connect - refused", out)
+
+
+class DuplicateBaselineEntryWarningTest(unittest.TestCase):
+    """Duplicate names in the baseline file warn on stderr (last wins)."""
+
+    def test_duplicate_line_warns_on_stderr(self):
+        fd, path = tempfile.mkstemp(suffix='.txt', text=True)
+        with os.fdopen(fd, 'w') as f:
+            f.write("dup test | first reason\n")
+            f.write("dup test | second reason\n")
+        self.addCleanup(os.unlink, path)
+
+        captured = io.StringIO()
+        with contextlib.redirect_stderr(captured):
+            baseline = runner.load_baseline(path)
+
+        self.assertEqual(baseline["dup test"], "second reason",
+                         "last occurrence wins")
+        err = captured.getvalue()
+        self.assertIn("duplicate", err.lower())
+        self.assertIn("dup test", err)
 
 
 class NoBaselineUnchangedTest(unittest.TestCase):
