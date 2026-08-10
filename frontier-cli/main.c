@@ -2249,10 +2249,11 @@ static void ut_export_walk_table(hdlhashtable htable, const char *path,
 					size_t rawlen = gethandlesize(htext);
 					const unsigned char *raw =
 						(const unsigned char *)(*htext);
+					int conflict = 0;
 					int ok = ut_export_script(raw, rawlen,
 					                          nodepath,
 					                          ctx->sync_dir,
-					                          tm);
+					                          tm, &conflict);
 					disposehandle(htext);
 					htext = nil;
 
@@ -2260,6 +2261,15 @@ static void ut_export_walk_table(hdlhashtable htable, const char *path,
 						cli_log_debug(
 							"ut-sync: exported %s", nodepath);
 						ctx->exported++;
+					} else if (conflict) {
+						cli_log_error(
+							"ut-sync export CONFLICT for %s: the .ut changed "
+							"since the last sync and differs from the ODB "
+							"version; NOT overwriting it. The ODB keeps its "
+							"edit; to resolve, make one side current, then "
+							"delete this script's line from .ut-sync-state.",
+							nodepath);
+						ctx->errors++;
 					} else {
 						cli_log_warn(
 							"ut-sync: ut_export_script failed for %s",

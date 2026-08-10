@@ -35,7 +35,7 @@ The motivating failure: `system.menus.buildMenubar` (the authoritative menubar b
 | Per-table mod timestamp | EXISTS (rarely used) | `tyhashtable.timelastsave` (`lang.h:532`); `odbGetModDate` / `db.getModDate` (`odbengine.c:1237-1267`) — JES: "we almost never used db.getModDate" |
 | Kernel-body / comment normalization (round-trip) | EXISTS (C authoritative) | `ut_canonicalize_outline_text` / `ut_decanonicalize_outline_text` in `frontier-cli/ut_sync.c`; Python `normalize_kernel_body` is now a parity-tracked reference (`tests/ut_sync_canonicalize_tests.c` proves byte-equality) |
 | ODB -> .ut exporter (runtime) | EXISTS | `ut_export_script` (`ut_sync.c`), driven by the save-on-exit walk `ut_export_walk_table` (`main.c`); gated by `--ut-sync-dir` / `FRONTIER_UT_SYNC_DIR` |
-| .ut -> ODB importer (runtime) | EXISTS | `ut_import_hook` + `ut_import_check` fired from `opverbinmemory` (`opverbs.c`) on hydrate/materialize; last-write-wins by mtime |
+| .ut -> ODB importer (runtime) | EXISTS | `ut_import_hook` + `ut_import_check` fired from `opverbinmemory` (`opverbs.c`) on hydrate/materialize; mtime-newer gate + compile gate + two-sided-conflict guard (Section 5) |
 | Save hook (ODB write -> .ut export) | EXISTS | `save_system_root_on_exit` -> `ut_export_walk_table` (`main.c`) |
 | Boot import pass (.ut -> ODB) | EXISTS | import site inside the kernel `opverbinmemory` materialize path (catches live out-of-band .ut edits) |
 | Pre-commit / CI gating | PARTIAL | git-time drift verifier is manual / warn-only; runtime sync now lifecycle-tested (`tests/ut_sync_lifecycle_test.sh`) |
@@ -113,18 +113,20 @@ The original choice is directly implementable:
 
 This is enough for the common single-editor case (one human or one agent editing at a time), which is the current reality.
 
-### Optional safety layer: sidecar sync manifest
+### Safety layer: sidecar sync manifest (SHIPPED, unit 1.5)
 
-Pure mtime-wins has two well-known weaknesses: it silently clobbers when **both** sides changed since the last sync (it just picks the newer one), and it is vulnerable to clock skew between the ODB-host clock and the filesystem clock. To harden against those, add a version-controlled manifest (e.g. `usertalk_scripts/.sync-manifest.json`) mapping each script path to `{ ut_hash, odb_hash_at_last_sync, last_synced_utc }`:
+Pure mtime-wins has two well-known weaknesses: it silently clobbers when **both** sides changed since the last sync (it just picks the newer one), and it is vulnerable to clock skew between the ODB-host clock and the filesystem clock. The hardening shipped as part of Phase 1 unit 1.5, in a leaner form than the original sketch:
 
-- Only `.ut` content-hash changed -> import.
-- Only ODB content-hash changed -> export.
-- **Both changed -> CONFLICT**: halt that script, report it, do not clobber. mtime *ranks* the conflict list but never auto-resolves a two-sided edit.
-- Neither changed -> skip.
+- The manifest is `<sync_base>/.ut-sync-state` (plain text, one line per script: `<ut_hash> <odb_hash> <dotted_path>`, FNV-1a 64 over trailing-newline-stripped canonical bytes). It is **per-machine state, gitignored** — not version-controlled, because hashes record *this* ODB instance's sync points, like mtimes do.
+- Recorded on every successful export and import (`ut_sync_state_record` in `frontier-cli/ut_sync.c`).
+- Only `.ut` content-hash changed -> import (mtime gate still applies first).
+- Only ODB content-hash changed -> export on shutdown; a re-dated but content-unchanged `.ut` no longer re-imports over the ODB edit.
+- **Both changed -> CONFLICT**: the import hook refuses to install AND the export walk refuses to overwrite the `.ut`; both log errors naming the script. No auto-merge. Recovery: reconcile by hand, then delete the script's manifest line to fall back to newest-wins.
+- No manifest line (legacy tree, or never synced since the manifest shipped) -> the original last-write-wins behavior, so existing trees keep working and state accrues from the first sync.
 
-The manifest turns "both sides edited since last sync" into a *detectable, surfaced* event instead of a silent loss. It is **optional hardening**, not a prerequisite — ship mtime-wins first; add the manifest when concurrent two-sided editing (or untrusted clocks) becomes a real risk.
+The same unit also closed the **silent broken-`.ut` import**: inbound script imports (and discovery-scan creations) are compile-checked via the runtime's own compile chain (`opverbscriptcompiles` in `opverbs.c`, backed by `scriptbuildtree`) before install; failures are rejected loudly and the ODB version is kept. See `docs/usertalk/UT_SYNC_WORKFLOW.md` for the agent-facing behavior, and `tests/ut_sync_lifecycle_test.sh` tests 13-15 for the behavioral contract.
 
-**Conflict rule summary**: mtime-wins as the primary arbiter (uses `timeModified(@script)`); optional manifest content-hash layer to detect and halt true two-sided conflicts. Both honor JES's original "newer wins" choice — the manifest only adds a guard rail, it does not replace the rule.
+**Conflict rule summary**: mtime-wins as the primary arbiter (uses `timeModified(@script)`); the manifest content-hash layer detects and halts true two-sided conflicts. Both honor JES's original "newer wins" choice — the manifest only adds a guard rail, it does not replace the rule.
 
 ---
 

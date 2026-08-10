@@ -281,6 +281,75 @@ int ut_fs_path_to_odb(const char *fs_path, const char *sync_dir,
 
 
 /*
+ * CONTENT HASH + SYNC-STATE MANIFEST
+ * ----------------------------------
+ * Pure mtime last-write-wins silently clobbers when BOTH sides changed since
+ * the last reconcile. To detect that, the sync layer records a per-script
+ * content-hash pair at every sync point (export or import) in a manifest file
+ * "<sync_base>/.ut-sync-state". Each line is:
+ *
+ *   <16-hex ut_hash> <16-hex odb_hash> <dotted_path>
+ *
+ * ut_hash  = ut_content_hash of the .ut file bytes at the sync point.
+ * odb_hash = ut_content_hash of the ODB script's canonical (.ut-form) text
+ *            at the sync point. After an export the two are identical; after
+ *            an import they can differ when the imported .ut was not in
+ *            canonical formatting (the ODB side is re-canonicalized).
+ *
+ * A side "changed since last sync" when its current hash differs from its
+ * recorded hash. When both sides changed, the sync layer REFUSES to move
+ * content in either direction (see ut_export_script / the import hook) and
+ * the caller reports the conflict loudly. Recovery: make one side current,
+ * then delete that script's line from .ut-sync-state (or the whole file) to
+ * fall back to newest-wins for the next reconcile.
+ *
+ * The manifest is per-machine sync state (like mtimes), NOT part of the
+ * corpus; it is gitignored. A missing manifest or missing line preserves the
+ * legacy last-write-wins behavior, so existing trees keep working and state
+ * accrues from the first sync.
+ */
+
+/*
+ * ut_content_hash - FNV-1a 64-bit hash of a byte buffer, with any trailing
+ * CR/LF bytes stripped before hashing.
+ *
+ * The trailing-newline strip makes the hash insensitive to the one formatting
+ * difference that legitimately arises between a hand-written .ut (usually
+ * ends with a newline) and the canonical form (never does).
+ *
+ * This is a drift-detection hash, not a cryptographic one: the threat model
+ * is accidental concurrent edits, and a deliberate collision merely restores
+ * the pre-manifest last-write-wins behavior.
+ *
+ * Pure function: no globals, thread-safe.
+ */
+uint64_t ut_content_hash(const unsigned char *data, size_t len);
+
+/*
+ * ut_sync_state_lookup - fetch the recorded hash pair for dotted_path from
+ * "<sync_base>/.ut-sync-state".
+ *
+ * Returns 1 and fills *ut_hash_out / *odb_hash_out (each may be NULL) when a
+ * line for dotted_path exists. Returns 0 when the manifest or the line is
+ * absent, or on any read/parse problem (callers fall back to legacy
+ * last-write-wins).
+ */
+int ut_sync_state_lookup(const char *sync_base, const char *dotted_path,
+                         uint64_t *ut_hash_out, uint64_t *odb_hash_out);
+
+/*
+ * ut_sync_state_record - record (replace or append) the hash pair for
+ * dotted_path in "<sync_base>/.ut-sync-state".
+ *
+ * The manifest is rewritten via a temp file + atomic rename. Returns 1 on
+ * success, 0 on any I/O failure (non-fatal for callers: the worst case of a
+ * missed record is legacy last-write-wins on the next reconcile).
+ */
+int ut_sync_state_record(const char *sync_base, const char *dotted_path,
+                         uint64_t ut_hash, uint64_t odb_hash);
+
+
+/*
  * EXPORT PRIMITIVE
  * ----------------
  * ut_export_script - write one dirty script to its .ut file.
@@ -310,13 +379,26 @@ int ut_fs_path_to_odb(const char *fs_path, const char *sync_dir,
  * Behavior:
  *   1. Canonicalize raw -> UTF-8/LF/"//" form via ut_canonicalize_outline_text.
  *   2. Map dotted_path -> fs path via ut_odb_path_to_fs.
- *   3. Create all parent directories (mkdir -p semantics).
- *   4. Write canonical bytes to a temp file in the same directory, then
+ *   3. CONFLICT GUARD: when a sync-state line exists for dotted_path AND the
+ *      existing .ut's content hash differs BOTH from the recorded ut_hash and
+ *      from the hash of the content about to be written, the .ut has an
+ *      unreconciled edit of its own -- the export REFUSES to overwrite it,
+ *      sets *conflict_out = 1, and returns 0. No sync-state line (legacy
+ *      tree) or no existing file preserves the old overwrite behavior.
+ *   4. Create all parent directories (mkdir -p semantics).
+ *   5. Write canonical bytes to a temp file in the same directory, then
  *      rename into place (atomic on POSIX). The previous .ut (if any) is
- *      silently overwritten.
- *   5. Set the .ut file's mtime via utimes()/utimensat() from mac_mtime.
+ *      overwritten.
+ *   6. Set the .ut file's mtime via utimes()/utimensat() from mac_mtime.
+ *   7. Record the sync-state hash pair for dotted_path (both sides equal the
+ *      written canonical content).
+ *
+ * conflict_out may be NULL. When non-NULL it is set to 0 on entry and to 1
+ * only when the export was refused by the conflict guard (step 3), so the
+ * caller can report the conflict loudly instead of as a generic failure.
  *
  * Returns 1 on success. Returns 0 if:
+ *   - the conflict guard refused the overwrite (*conflict_out = 1)
  *   - dotted_path fails the ut_odb_path_to_fs safety check
  *   - any directory could not be created
  *   - the file could not be written
@@ -336,7 +418,7 @@ int ut_fs_path_to_odb(const char *fs_path, const char *sync_dir,
  */
 int ut_export_script(const unsigned char *raw, size_t rawlen,
                      const char *dotted_path, const char *sync_dir,
-                     int64_t mac_mtime);
+                     int64_t mac_mtime, int *conflict_out);
 
 
 /*
@@ -371,6 +453,14 @@ int ut_export_script(const unsigned char *raw, size_t rawlen,
  *                    outline content so subsequent loads see them as in-sync
  *                    (convergence -- prevents oscillation).
  *
+ * Sync-state outputs (each may be NULL; only meaningful when return == 1;
+ * see CONTENT HASH + SYNC-STATE MANIFEST above). The caller uses these to
+ * detect a two-sided conflict BEFORE installing the returned content:
+ *   *ut_hash_out        - ut_content_hash of the raw .ut file bytes.
+ *   *have_recorded_out  - 1 when a sync-state line exists for dotted_path.
+ *   *rec_ut_hash_out    - the recorded ut_hash (valid when *have_recorded_out).
+ *   *rec_odb_hash_out   - the recorded odb_hash (valid when *have_recorded_out).
+ *
  * Returns:
  *   1  -> .ut is newer; *out holds the decanonicalized bytes to install.
  *   0  -> no import needed (or not possible). *out is NULL. This is the
@@ -391,7 +481,11 @@ int ut_export_script(const unsigned char *raw, size_t rawlen,
 int ut_import_check(const char *dotted_path, const char *sync_base,
                     int64_t odb_mac_mtime,
                     unsigned char **out, size_t *outlen,
-                    int64_t *ut_mac_mtime);
+                    int64_t *ut_mac_mtime,
+                    uint64_t *ut_hash_out,
+                    int *have_recorded_out,
+                    uint64_t *rec_ut_hash_out,
+                    uint64_t *rec_odb_hash_out);
 
 
 #ifdef __cplusplus

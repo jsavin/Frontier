@@ -459,6 +459,54 @@ static int create_orphan_node(const char *encoded_dotted, const char *fspath, in
 	}
 
 	/*
+	 * Read + decanonicalize + compile-check BEFORE any ODB mutation (unit
+	 * 1.5): a rejected .ut must leave no partially-created table chain
+	 * behind, and a .ut that does not compile must never become an ODB
+	 * script node -- it would sit there as a silently non-compiling verb
+	 * (the same failure class as the broken-.ut import).
+	 */
+	unsigned char *decan_bytes = NULL;
+	size_t decan_len = 0;
+	{
+		unsigned char *ut_bytes = NULL;
+		size_t ut_len = 0;
+		int read_ok;
+		/* Use the pre-opened fd when available (openat path from
+		 * scan_dir_fd); fall back to open-by-path when prefd == -1. */
+		if (prefd >= 0) {
+			read_ok = read_ut_file_fd(prefd, fspath, &ut_bytes, &ut_len);
+			prefd = -1; /* read_ut_file_fd took ownership and closed it */
+		} else {
+			read_ok = read_ut_file(fspath, &ut_bytes, &ut_len);
+		}
+		if (!read_ok) {
+			log_warn(LOG_COMP_STARTUP,
+			         "ut-scan: could not read .ut file: %s", fspath);
+			goto done;
+		}
+		if (!ut_decanonicalize_outline_text(ut_bytes, ut_len,
+		                                    &decan_bytes, &decan_len)) {
+			log_warn(LOG_COMP_STARTUP,
+			         "ut-scan: decanonicalization failed for: %s", fspath);
+			free(ut_bytes);
+			goto done;
+		}
+		free(ut_bytes);
+	}
+
+	{
+		bigstring bscompileerror;
+		if (!opverbscriptcompiles(decan_bytes, (long)decan_len,
+		                          bscompileerror)) {
+			log_error(LOG_COMP_STARTUP,
+			          "ut-scan: REJECTED %s ('%s'): the .ut does not compile "
+			          "(%s); node not created",
+			          fspath, encoded_dotted, PSTR(bscompileerror));
+			goto done;
+		}
+	}
+
+	/*
 	 * Walk from roottable, creating missing intermediate tables, until we
 	 * reach the parent of the leaf (nseg-1 segments). The leaf itself is
 	 * created as a script external. All segment encodings were validated
@@ -542,50 +590,18 @@ static int create_orphan_node(const char *encoded_dotted, const char *fspath, in
 		bsleaf[0] = (unsigned char)leaflen;
 		memcpy(&bsleaf[1], leaf_raw, leaflen);
 
-		/* Read the .ut file bytes.  Use the pre-opened fd when available
-		 * (openat path from scan_dir_fd); fall back to open-by-path when
-		 * prefd == -1 (legacy callers that have no pinned parent fd). */
-		unsigned char *ut_bytes = NULL;
-		size_t ut_len = 0;
-		int read_ok;
-		if (prefd >= 0) {
-			read_ok = read_ut_file_fd(prefd, fspath, &ut_bytes, &ut_len);
-			prefd = -1; /* read_ut_file_fd took ownership and closed it */
-		} else {
-			read_ok = read_ut_file(fspath, &ut_bytes, &ut_len);
-		}
-		if (!read_ok) {
-			log_warn(LOG_COMP_STARTUP,
-			         "ut-scan: could not read .ut file: %s", fspath);
-			goto done;
-		}
-
 		/*
-		 * Decanonicalize the .ut bytes (UTF-8/LF/"//") back to the kernel's
-		 * in-memory form (MacRoman/CR/0xC7) so optexttooutline can parse them.
-		 */
-		unsigned char *decan_bytes = NULL;
-		size_t decan_len = 0;
-		if (!ut_decanonicalize_outline_text(ut_bytes, ut_len, &decan_bytes, &decan_len)) {
-			log_warn(LOG_COMP_STARTUP,
-			         "ut-scan: decanonicalization failed for: %s", fspath);
-			free(ut_bytes);
-			goto done;
-		}
-		free(ut_bytes);
-
-		/*
-		 * Build a kernel Handle from the decanonicalized bytes so
-		 * optexttooutline can consume them. optexttooutline copies internally;
-		 * we dispose the handle after the call.
+		 * Build a kernel Handle from the decanonicalized bytes (read,
+		 * decanonicalized, and compile-checked above, before any ODB
+		 * mutation) so optexttooutline can consume them. optexttooutline
+		 * copies internally; we dispose the handle after the call.
 		 */
 		Handle htext = nil;
-		if (!newhandle((long)decan_len, &htext)) {
-			free(decan_bytes);
+		if (!newhandle((long)decan_len, &htext))
 			goto done;
-		}
 		moveleft(decan_bytes, *htext, (long)decan_len);
 		free(decan_bytes);
+		decan_bytes = NULL;
 
 		/*
 		 * Create a new script external value, convert to outline, install the
@@ -628,6 +644,7 @@ static int create_orphan_node(const char *encoded_dotted, const char *fspath, in
 	}
 
 done:
+	free(decan_bytes);
 	free(buf);
 close_prefd:
 	/* Close prefd if it was not consumed by read_ut_file_fd (every early

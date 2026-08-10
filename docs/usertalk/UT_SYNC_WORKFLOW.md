@@ -153,16 +153,42 @@ the filesystem to win.
 Import runs from the kernel materialize hook, so it catches boot-time loads,
 lazy loads, and live out-of-band edits.
 
-> **Sharp edge — broken `.ut` import is effectively silent.** Import installs the
-> `.ut` as an *outline*; it does **not compile** the script at import time. A
-> `.ut` that parses as outline text but won't compile is accepted into the ODB
-> and only fails later when run or packed. The only loud-ish failures are
-> decanonicalize errors (e.g. non-MacRoman bytes), which log a warning and fall
-> through to the ODB version. **Import failure never blocks execution and rarely
-> announces itself.** If you hand-edit a `.ut` and the behavior doesn't change,
-> suspect (a) mtime not newer, or (b) a syntax error that imported as a
-> non-compiling outline. Verify by *calling the verb* in protocol mode, not by
+> **Broken `.ut` files are rejected loudly (compile gate).** Before installing
+> an inbound script `.ut`, the importer compile-checks it through the same
+> chain the runtime uses to compile installed scripts. A `.ut` that does not
+> compile is **rejected**: the existing ODB version is kept, the `.ut` is left
+> on disk untouched, and an error naming the script is logged
+> (`ut-sync import REJECTED for <path>: the .ut does not compile (<error>)`).
+> The same gate applies to the import-discovery scan: a broken brand-new `.ut`
+> does not create an ODB node (`ut-scan: REJECTED <file>`). Plain outlines
+> (non-script) are not compiled, matching their runtime semantics. If you
+> hand-edit a `.ut` and the behavior doesn't change, suspect (a) mtime not
+> newer, (b) a compile rejection — check the log, or (c) a two-sided conflict
+> (see below). Verify by *calling the verb* in protocol mode, not by
 > re-reading the file.
+
+### Two-sided conflict detection (`.ut-sync-state`)
+
+Every successful export or import records a per-script content-hash pair in
+`<sync_base>/.ut-sync-state` (one line per script; per-machine state,
+gitignored — not part of the corpus). A side "changed since the last sync"
+when its current hash differs from its recorded hash:
+
+- Only the `.ut` changed → import (normal mtime rule applies).
+- Only the ODB changed → export on shutdown (as always). A `.ut` whose mtime
+  was bumped but whose *content* is unchanged no longer re-imports over an
+  ODB edit — the ODB wins, with a warning.
+- **Both changed → CONFLICT.** Nothing is clobbered in either direction: the
+  import is refused (ODB keeps its edit) *and* the shutdown export refuses to
+  overwrite the `.ut`. Both refusals log errors naming the script
+  (`ut-sync CONFLICT for <path>` / `ut-sync export CONFLICT for <path>`).
+  There is no auto-merge. **To resolve**: make one side current (edit the
+  `.ut` or the ODB so they agree), then delete that script's line from
+  `.ut-sync-state` (or the whole file) — the next reconcile falls back to
+  newest-wins and re-records the sync point.
+
+Scripts with no recorded line (trees that predate the manifest) keep the
+legacy last-write-wins behavior; state accrues from the first sync.
 
 ---
 
@@ -201,19 +227,25 @@ When reviewing a change that touches UserTalk:
 - **A new dotted-key node** should appear as a single `%XX`-encoded `.ut` file,
   not a nested directory tree. If you see literal `.`-split directories for a key
   that contains dots, the encoding path was bypassed.
-- **Don't trust a green `.ut` text diff as proof the script compiles.** Import
-  doesn't compile. Verify behavior via tests / protocol-mode calls.
+- **Don't trust a green `.ut` text diff as proof the script behaves.** Import
+  compile-checks (a non-compiling `.ut` is rejected, so it never silently
+  lands in the ODB), but compiling is not running. Verify behavior via tests /
+  protocol-mode calls.
 
 ---
 
 ## Known limitations / caveats
 
-- **Future-dated `.ut` can clobber a newer in-session ODB edit (#697).** Because
-  LWW is mtime-only and strict-`>`, a `.ut` with a future mtime legitimately wins
-  and can overwrite a later in-session edit. Documented contract, not a bug;
-  hardening options (clamp `.ut` mtime to `<= now`, content-hash tiebreak,
-  logical clocks) are tracked in #697. Tests age `.ut` files into the past to
-  sidestep it.
+- **Future-dated `.ut` clobber (#697) — largely closed by the sync-state
+  manifest.** Once a script has a recorded sync point in `.ut-sync-state`, a
+  future-dated `.ut` can no longer silently overwrite an in-session ODB edit:
+  unchanged-content re-dating is skipped (ODB wins), and a genuine two-sided
+  edit is a refused, loudly-reported conflict (see "Two-sided conflict
+  detection" above). The mtime-only clobber remains possible only for scripts
+  with no recorded sync point (never exported or imported since the manifest
+  shipped). Remaining hardening options (mtime clamp, logical clocks) stay
+  tracked in #697. Tests age `.ut` files into the past to sidestep mtime
+  ambiguity.
 - **Deletions do NOT sync, and deleted nodes resurrect on next boot (#702).**
   Sync mirrors *creates* and *edits* in both directions, but **not deletions**.
   Deleting a script/table from the ODB does **not** remove the corresponding
@@ -224,7 +256,9 @@ When reviewing a change that touches UserTalk:
   *and* manually delete its `.ut` file (for a table, the whole subtree directory).
   Don't rely on either side propagating the deletion.
 - **Export fires on clean shutdown, not `fileMenu.save()`** (see above).
-- **Broken-`.ut` import is silent** (see above).
+- **Broken-`.ut` import is rejected with a logged error**, not installed (see
+  the compile-gate note above). The rejection repeats on every import attempt
+  until the `.ut` is fixed, so a stale broken `.ut` keeps announcing itself.
 - **Verifier / corpus follow-ups (#700).** A structural-existence probe fix for
   the git-time verifier and re-export of a handful of RSS module-driver `.ut`
   files to the `%XX` scheme are tracked separately. Do not re-export the corpus

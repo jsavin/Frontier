@@ -1024,13 +1024,282 @@ static int mkdir_p(char *path) {
 #define UT_MAX_FILE_BYTES ((size_t)(8u * 1024u * 1024u))
 
 /* ------------------------------------------------------------------------- */
+/* Content hash + sync-state manifest                                         */
+/* ------------------------------------------------------------------------- */
+
+uint64_t ut_content_hash(const unsigned char *data, size_t len) {
+	uint64_t h = 14695981039346656037ULL; /* FNV-1a 64 offset basis */
+	size_t i;
+
+	if (data == NULL)
+		len = 0;
+
+	/* Strip trailing newline bytes: canonical .ut has no trailing newline,
+	 * hand-written files usually do; the difference is not a content edit. */
+	while (len > 0 && (data[len - 1] == 0x0A || data[len - 1] == 0x0D))
+		len--;
+
+	for (i = 0; i < len; i++) {
+		h ^= (uint64_t)data[i];
+		h *= 1099511628211ULL; /* FNV-1a 64 prime */
+	}
+	return h;
+}
+
+#define UT_SYNC_STATE_FILENAME ".ut-sync-state"
+/* hash(16) + sp + hash(16) + sp + dotted path (512 max, matching the dotted
+ * path buffers elsewhere) + newline + NUL */
+#define UT_SYNC_STATE_LINE_MAX (16 + 1 + 16 + 1 + 512 + 2)
+
+/* Build "<sync_base>/.ut-sync-state" (optionally with a suffix appended for
+ * temp files). Returns 1 on success, 0 on overflow/NULL input. */
+static int ut_sync_state_path(const char *sync_base, const char *suffix,
+                              char *out, size_t outsz) {
+	int n;
+	if (sync_base == NULL || out == NULL || outsz == 0)
+		return 0;
+	n = snprintf(out, outsz, "%s/%s%s", sync_base, UT_SYNC_STATE_FILENAME,
+	             (suffix != NULL) ? suffix : "");
+	if (n < 0 || n >= (int)outsz) {
+		out[0] = '\0';
+		return 0;
+	}
+	return 1;
+}
+
+/*
+ * Parse one manifest line into its hash pair and path. The line format is
+ * "<16-hex> <16-hex> <path>\n"; the path may contain spaces (ODB keys can),
+ * so it runs to end of line. Returns 1 on a well-formed line.
+ */
+static int ut_sync_state_parse_line(const char *line,
+                                    uint64_t *ut_hash, uint64_t *odb_hash,
+                                    const char **path_out) {
+	char *end = NULL;
+	uint64_t h1, h2;
+
+	h1 = (uint64_t)strtoull(line, &end, 16);
+	if (end == NULL || end == line || *end != ' ')
+		return 0;
+	line = end + 1;
+	h2 = (uint64_t)strtoull(line, &end, 16);
+	if (end == NULL || end == line || *end != ' ')
+		return 0;
+	*ut_hash = h1;
+	*odb_hash = h2;
+	*path_out = end + 1;
+	return 1;
+}
+
+/* Compare a parsed line path (which may end in '\n') against dotted_path. */
+static int ut_sync_state_path_matches(const char *line_path,
+                                      const char *dotted_path) {
+	size_t n = strlen(line_path);
+	size_t dn = strlen(dotted_path);
+	while (n > 0 && (line_path[n - 1] == '\n' || line_path[n - 1] == '\r'))
+		n--;
+	return (n == dn) && (memcmp(line_path, dotted_path, dn) == 0);
+}
+
+int ut_sync_state_lookup(const char *sync_base, const char *dotted_path,
+                         uint64_t *ut_hash_out, uint64_t *odb_hash_out) {
+	char state_path[4096];
+	char line[UT_SYNC_STATE_LINE_MAX];
+	FILE *fp;
+	int found = 0;
+
+	if (dotted_path == NULL)
+		return 0;
+	if (!ut_sync_state_path(sync_base, NULL, state_path, sizeof(state_path)))
+		return 0;
+
+	fp = fopen(state_path, "r");
+	if (fp == NULL)
+		return 0;
+
+	while (fgets(line, (int)sizeof(line), fp) != NULL) {
+		uint64_t h1, h2;
+		const char *lpath;
+		size_t linelen = strlen(line);
+
+		/* Skip (the remainder of) an overlong line defensively. */
+		if (linelen == sizeof(line) - 1 && line[linelen - 1] != '\n') {
+			int c;
+			while ((c = fgetc(fp)) != EOF && c != '\n')
+				;
+			continue;
+		}
+		if (!ut_sync_state_parse_line(line, &h1, &h2, &lpath))
+			continue;
+		if (ut_sync_state_path_matches(lpath, dotted_path)) {
+			if (ut_hash_out) *ut_hash_out = h1;
+			if (odb_hash_out) *odb_hash_out = h2;
+			found = 1;
+			break;
+		}
+	}
+	fclose(fp);
+	return found;
+}
+
+int ut_sync_state_record(const char *sync_base, const char *dotted_path,
+                         uint64_t ut_hash, uint64_t odb_hash) {
+	char state_path[4096];
+	char tmp_path[4096 + 32];
+	char line[UT_SYNC_STATE_LINE_MAX];
+	FILE *in = NULL;
+	FILE *out = NULL;
+	int n;
+
+	if (dotted_path == NULL || dotted_path[0] == '\0' ||
+	    strlen(dotted_path) > 512)
+		return 0;
+	if (!ut_sync_state_path(sync_base, NULL, state_path, sizeof(state_path)))
+		return 0;
+
+	/* O_EXCL + O_NOFOLLOW with a randomized suffix, same defense as the
+	 * .ut temp write in ut_export_script: a pre-planted file or symlink at
+	 * the temp path cannot be reused or followed. */
+	{
+		int fd = -1;
+		for (int attempt = 0; attempt < 8 && fd < 0; attempt++) {
+			unsigned int r = (unsigned int)(getpid() ^ (attempt * 2654435761u));
+			r ^= (unsigned int)time(NULL);
+			r = r * 1103515245u + 12345u;
+			n = snprintf(tmp_path, sizeof(tmp_path), "%s.tmp%08x",
+			             state_path, r);
+			if (n < 0 || n >= (int)sizeof(tmp_path))
+				return 0;
+			fd = open(tmp_path, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW, 0644);
+			if (fd < 0 && errno != EEXIST)
+				return 0;
+		}
+		if (fd < 0)
+			return 0;
+		out = fdopen(fd, "w");
+		if (out == NULL) {
+			close(fd);
+			unlink(tmp_path);
+			return 0;
+		}
+	}
+
+	/* Copy every line except any existing entry for dotted_path. A missing
+	 * manifest is fine (first record creates it). */
+	in = fopen(state_path, "r");
+	if (in != NULL) {
+		while (fgets(line, (int)sizeof(line), in) != NULL) {
+			uint64_t h1, h2;
+			const char *lpath;
+			size_t linelen = strlen(line);
+
+			if (linelen == sizeof(line) - 1 && line[linelen - 1] != '\n') {
+				int c;
+				while ((c = fgetc(in)) != EOF && c != '\n')
+					;
+				continue; /* drop overlong garbage lines */
+			}
+			if (ut_sync_state_parse_line(line, &h1, &h2, &lpath) &&
+			    ut_sync_state_path_matches(lpath, dotted_path))
+				continue; /* replaced below */
+			if (fputs(line, out) == EOF)
+				goto fail;
+			if (linelen > 0 && line[linelen - 1] != '\n' &&
+			    fputc('\n', out) == EOF)
+				goto fail;
+		}
+		fclose(in);
+		in = NULL;
+	}
+
+	if (fprintf(out, "%016llx %016llx %s\n",
+	            (unsigned long long)ut_hash,
+	            (unsigned long long)odb_hash,
+	            dotted_path) < 0)
+		goto fail;
+
+	if (fclose(out) != 0) {
+		out = NULL;
+		goto fail;
+	}
+	out = NULL;
+
+	if (rename(tmp_path, state_path) != 0)
+		goto fail;
+	return 1;
+
+fail:
+	if (in != NULL)
+		fclose(in);
+	if (out != NULL)
+		fclose(out);
+	unlink(tmp_path);
+	return 0;
+}
+
+/*
+ * Read a regular file's bytes for hashing (size-capped). Returns 1 with a
+ * malloc'd buffer, 0 when the file is absent / not regular / unreadable /
+ * oversized. Empty files return a 1-byte buffer with *lenp == 0.
+ */
+static int ut_read_file_bytes(const char *path, unsigned char **bufp,
+                              size_t *lenp) {
+	struct stat st;
+	int fd;
+	unsigned char *buf;
+	size_t want, got = 0;
+
+	*bufp = NULL;
+	*lenp = 0;
+
+	fd = open(path, O_RDONLY | O_NOFOLLOW | O_NONBLOCK);
+	if (fd < 0)
+		return 0;
+	if (fstat(fd, &st) != 0 || !S_ISREG(st.st_mode) || st.st_size < 0 ||
+	    (size_t)st.st_size > UT_MAX_FILE_BYTES) {
+		close(fd);
+		return 0;
+	}
+	want = (size_t)st.st_size;
+	buf = (unsigned char *)malloc(want + 1);
+	if (buf == NULL) {
+		close(fd);
+		return 0;
+	}
+	while (got < want) {
+		ssize_t r = read(fd, buf + got, want - got);
+		if (r < 0) {
+			if (errno == EINTR)
+				continue;
+			break;
+		}
+		if (r == 0)
+			break;
+		got += (size_t)r;
+	}
+	close(fd);
+	if (got != want) {
+		free(buf);
+		return 0;
+	}
+	buf[want] = '\0';
+	*bufp = buf;
+	*lenp = want;
+	return 1;
+}
+
+/* ------------------------------------------------------------------------- */
 /* Import primitive                                                           */
 /* ------------------------------------------------------------------------- */
 
 int ut_import_check(const char *dotted_path, const char *sync_base,
                     int64_t odb_mac_mtime,
                     unsigned char **out, size_t *outlen,
-                    int64_t *ut_mac_mtime) {
+                    int64_t *ut_mac_mtime,
+                    uint64_t *ut_hash_out,
+                    int *have_recorded_out,
+                    uint64_t *rec_ut_hash_out,
+                    uint64_t *rec_odb_hash_out) {
 	char fs_path[4096];
 	struct stat st;
 	int64_t dot_mac_mtime;
@@ -1044,6 +1313,10 @@ int ut_import_check(const char *dotted_path, const char *sync_base,
 	if (out) *out = NULL;
 	if (outlen) *outlen = 0;
 	if (ut_mac_mtime) *ut_mac_mtime = 0;
+	if (ut_hash_out) *ut_hash_out = 0;
+	if (have_recorded_out) *have_recorded_out = 0;
+	if (rec_ut_hash_out) *rec_ut_hash_out = 0;
+	if (rec_odb_hash_out) *rec_odb_hash_out = 0;
 
 	if (dotted_path == NULL || sync_base == NULL || out == NULL ||
 	    outlen == NULL || ut_mac_mtime == NULL)
@@ -1113,6 +1386,12 @@ int ut_import_check(const char *dotted_path, const char *sync_base,
 		*out          = decan;
 		*outlen       = 0;
 		*ut_mac_mtime = dot_mac_mtime;
+		if (ut_hash_out)
+			*ut_hash_out = ut_content_hash(NULL, 0);
+		if (have_recorded_out)
+			*have_recorded_out = ut_sync_state_lookup(sync_base, dotted_path,
+			                                          rec_ut_hash_out,
+			                                          rec_odb_hash_out);
 		return 1;
 	}
 	raw = (unsigned char *)malloc(raw_len);
@@ -1150,6 +1429,15 @@ int ut_import_check(const char *dotted_path, const char *sync_base,
 		free(raw);
 		return 0;
 	}
+
+	/* Step 6: sync-state metadata for the caller's two-sided-conflict check
+	 * (hash the raw canonical file bytes, not the decanonicalized form). */
+	if (ut_hash_out)
+		*ut_hash_out = ut_content_hash(raw, raw_len);
+	if (have_recorded_out)
+		*have_recorded_out = ut_sync_state_lookup(sync_base, dotted_path,
+		                                          rec_ut_hash_out,
+		                                          rec_odb_hash_out);
 	free(raw);
 
 	*out          = decan;
@@ -1164,7 +1452,7 @@ int ut_import_check(const char *dotted_path, const char *sync_base,
 
 int ut_export_script(const unsigned char *raw, size_t rawlen,
                      const char *dotted_path, const char *sync_dir,
-                     int64_t mac_mtime) {
+                     int64_t mac_mtime, int *conflict_out) {
 	unsigned char *canon = NULL;
 	size_t canon_len = 0;
 	char fs_path[4096];
@@ -1174,6 +1462,9 @@ int ut_export_script(const unsigned char *raw, size_t rawlen,
 	int fd = -1;
 	ssize_t written;
 	int ok = 0;
+
+	if (conflict_out)
+		*conflict_out = 0;
 
 	if (raw == NULL || dotted_path == NULL || sync_dir == NULL)
 		return 0;
@@ -1186,7 +1477,30 @@ int ut_export_script(const unsigned char *raw, size_t rawlen,
 	if (!ut_odb_path_to_fs(dotted_path, sync_dir, fs_path, sizeof(fs_path)))
 		goto done;
 
-	/* Step 3: Create parent directories (mkdir -p). */
+	/* Step 3: two-sided-conflict guard. When sync state exists for this
+	 * script and the on-disk .ut differs BOTH from what was last synced and
+	 * from what we are about to write, the .ut carries an unreconciled edit
+	 * of its own -- refuse to overwrite it. No state line or no existing
+	 * file keeps the legacy overwrite behavior. */
+	{
+		uint64_t rec_ut = 0, rec_odb = 0;
+		if (ut_sync_state_lookup(sync_dir, dotted_path, &rec_ut, &rec_odb)) {
+			unsigned char *disk = NULL;
+			size_t disk_len = 0;
+			if (ut_read_file_bytes(fs_path, &disk, &disk_len)) {
+				uint64_t disk_hash = ut_content_hash(disk, disk_len);
+				uint64_t new_hash = ut_content_hash(canon, canon_len);
+				free(disk);
+				if (disk_hash != rec_ut && disk_hash != new_hash) {
+					if (conflict_out)
+						*conflict_out = 1;
+					goto done; /* ok stays 0; .ut untouched */
+				}
+			}
+		}
+	}
+
+	/* Step 4: Create parent directories (mkdir -p). */
 	if (strlen(fs_path) >= sizeof(parent)) {
 		goto done;
 	}
@@ -1198,7 +1512,7 @@ int ut_export_script(const unsigned char *raw, size_t rawlen,
 			goto done;
 	}
 
-	/* Step 4: Write to a temp file in the same directory, then rename.
+	/* Step 5: Write to a temp file in the same directory, then rename.
 	 *
 	 * Temp name: <fs_path>.tmp<pid>.<rand> -- the random suffix plus O_EXCL
 	 * means a pre-planted file or symlink at the temp path can't be reused or
@@ -1250,7 +1564,7 @@ int ut_export_script(const unsigned char *raw, size_t rawlen,
 		goto done;
 	}
 
-	/* Step 5: Set mtime from mac_mtime.
+	/* Step 6: Set mtime from mac_mtime.
 	 *
 	 * Skip stamping if mac_mtime is at or before the Unix epoch (i.e. the
 	 * Mac timestamp predates 1970). In practice every real script has a
@@ -1264,6 +1578,14 @@ int ut_export_script(const unsigned char *raw, size_t rawlen,
 		tv[1].tv_usec = 0;
 		/* utimes() is POSIX; ignore failure (best-effort mtime stamp) */
 		(void)utimes(fs_path, tv);
+	}
+
+	/* Step 7: record the sync point. Both sides now equal the canonical
+	 * content just written. Best-effort: a failed record only means legacy
+	 * last-write-wins on the next reconcile. */
+	{
+		uint64_t h = ut_content_hash(canon, canon_len);
+		(void)ut_sync_state_record(sync_dir, dotted_path, h, h);
 	}
 
 	ok = 1;
