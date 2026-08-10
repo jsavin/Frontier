@@ -2697,20 +2697,6 @@ int boxen_repl_real_completion(const char *buf, size_t buf_len,
 }
 
 /* -------------------------------------------------------------------------
- * 2026-06-08 JES #691 Phase C.0 round 2: no-op transport write_line stub.
- *
- * The launch transport used by debug_launch_from_options below needs a
- * write_line callback.  In C.0 the boxen REPL does not yet render debug
- * notifications (suspended/completed) -- those are dropped here.  C.1 will
- * wire in a real callback that queues notifications into the scrollback ring.
- * ---------------------------------------------------------------------- */
-static void boxen_repl_noop_write_line(void *ctx, const char *line, size_t len) {
-	(void)ctx; (void)line; (void)len;
-	/* C.0: debug notifications are intentionally discarded until C.1 wires
-	 * the notification -> scrollback path. */
-}
-
-/* -------------------------------------------------------------------------
  * 2026-06-08 JES #691 Phase C.0 round 2: boxen_repl_main -- public entry point.
  *
  * GIL yield/restore mirrors debugger_tui_main (debugger_tui.c:2905-2933).
@@ -2908,8 +2894,15 @@ int boxen_repl_main(const cli_options_t *opts) {
 		          "boxen_repl_main: failed to allocate launch_transport; skipping auto-launch");
 		/* Continue into the REPL without auto-launch; not fatal. */
 	} else {
-		launch_transport->write_line = boxen_repl_noop_write_line;
-		launch_transport->ctx = NULL;
+		/* 2026-08-10 JES unit 2.4: the C.0 no-op write_line stub is replaced
+		 * by the real enqueue callback -- debug/suspended and debug/completed
+		 * notifications now land in the state's locked queue and render on
+		 * the main thread's next tick instead of being discarded.  ctx = state
+		 * is safe under the teardown contract below: the transport is NULLed,
+		 * threads are killed/joined, and lazy threads are drained (twice)
+		 * before state is freed. */
+		launch_transport->write_line = boxen_repl_debug_write_line;
+		launch_transport->ctx = state;
 		state->launch_transport = launch_transport;
 
 		/* Register the lazy-attach transport BEFORE spawning the debug thread.
@@ -2944,6 +2937,12 @@ int boxen_repl_main(const cli_options_t *opts) {
 			drain_stdout_into_scrollback(state, state->pipe_read_fd);
 		}
 
+		/* 2026-08-10 JES unit 2.4: render debug notifications queued by
+		 * suspended runtime threads since the last tick.  Runs on every
+		 * poll return (event or timeout), so a breakpoint hit surfaces
+		 * within one 100ms poll cycle. */
+		boxen_repl_drain_debug_notifications(state);
+
 		/* 2026-06-08 JES #691 Phase C.0 round 3 P1: poll repl.exit() flag.
 		 * replverbhost_exit() sets g_repl_exit_requested (via repl.exit() from
 		 * non-slash UserTalk code).  The slash path already sets should_quit via
@@ -2976,6 +2975,10 @@ int boxen_repl_main(const cli_options_t *opts) {
 		if (capture_active) {
 			drain_stdout_into_scrollback(state, state->pipe_read_fd);
 		}
+
+		/* 2026-08-10 JES unit 2.4: post-dispatch notification drain, same
+		 * rationale -- surface anything queued before the present below. */
+		boxen_repl_drain_debug_notifications(state);
 
 		boxen_present();
 	}
@@ -3035,6 +3038,32 @@ int boxen_repl_main(const cli_options_t *opts) {
 			pthread_mutex_unlock(&frontier_gil);
 			debug_join_all_threads();
 			pthread_mutex_lock(&frontier_gil);
+			headless_restore_threadglobals(saved);
+		}
+
+		/* Step 6.5 (2026-08-10 JES unit 2.4): second lazy-thread drain.
+		 *
+		 * Closes the race documented above (round 3 P1 note): a callScript
+		 * thread that lazy-attached between the first drain (step 2) and the
+		 * transport NULL (step 4) is now a registered DETACHED thread that
+		 * join_all does not join.  It still holds pointers to
+		 * launch_transport and (via ctx) to state, and after the step-5 kill
+		 * it will wake, emit debug/completed through write_line, and
+		 * unregister -- potentially AFTER state is freed below.  That was
+		 * inert while write_line was the C.0 no-op stub; now that /bp can
+		 * arm real breakpoints it is a live use-after-free.
+		 *
+		 * Waiting for the lazy count to drain a second time closes it: the
+		 * transport is already NULL, so no NEW thread can pass the callback's
+		 * attach gate (the gate-load-to-registration window runs entirely
+		 * under the GIL and cannot straddle these teardown steps), and every
+		 * thread that slipped in earlier decrements the count only after its
+		 * final write_line.  Fast path is a single atomic load when nothing
+		 * slipped in. */
+		{
+			hdlthreadglobals saved = hthreadglobals;
+			headless_save_threadglobals(saved);
+			debug_wait_lazy_threads_drained();
 			headless_restore_threadglobals(saved);
 		}
 	}
