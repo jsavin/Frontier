@@ -10,10 +10,13 @@ sequential: true  # Binds to TCP port — conflicts between parallel workers
 #   end-to-end tests (Category 3+) rely on fwsNetEvent* functions that were
 #   stubbed out for headless mode.
 #
-#   This file takes a different approach: rather than testing through the full
-#   inetd/webserver stack (which requires fwsNetEvent* migration), we test the
-#   HTTP round-trip at the TCP transport layer using tcp.listenStream callbacks.
-#   This validates the actual data path that HTTP requests follow.
+#   Category 1 tests the HTTP round-trip at the TCP transport layer using
+#   tcp.listenStream callbacks. Those remain skipped -- see the residual
+#   accept-callback echo family (#710, #333) in each skip_reason.
+#
+#   Category 2 drives the full inetd/webserver stack. Those were un-skipped in
+#   Unit 3.3: the fwsNetEvent* -> tcp_* migration their skip_reason waited on
+#   has landed (Common/source/langhtml.c). See the Category 2 header.
 #
 # Callback pattern note:
 #   (Historical) tcp.readStream() used to return a malformed binary value --
@@ -36,8 +39,8 @@ sequential: true  # Binds to TCP port — conflicts between parallel workers
 #   49204 - multiple sequential requests
 #   49205 - 404 Not Found response
 #   49206 - large response body (500 bytes)
-#   49207 - (skipped) full webserver stack inetd test
-#   49208 - (skipped) dynamic responder dispatch test
+#   49207 - full webserver stack inetd test (un-skipped in Unit 3.3)
+#   49208 - dynamic responder dispatch test (un-skipped in Unit 3.3)
 #
 # References:
 #   - planning/INTEGRATION_TEST_GAPS.md (Gap #9)
@@ -399,75 +402,233 @@ tests:
 
   # =============================================================================
   # CATEGORY 2: Full Webserver Stack (inetd + webserver dispatch)
-  # These tests require the complete inetd/webserver infrastructure.
-  # Currently skipped because fwsNetEvent* functions are stubbed in headless mode.
+  # These tests exercise the complete inetd/webserver infrastructure.
+  #
+  # Un-skipped in Unit 3.3.  Their previous skip_reason ("fwsNetEvent* functions
+  # are stubbed in headless mode; requires migration to tcp_* API") is stale:
+  # that migration has landed -- Common/source/langhtml.c now maps the
+  # fwsNetEvent* entry points onto the tcp_* API for headless builds, and Unit
+  # 3.1 demonstrated the full inetd -> webserver.server -> webserver.dispatch
+  # chain serving pages (webserver_inetd_e2e.yaml).
+  #
+  # Both tests also carried three bugs that would have failed them even with the
+  # stack working, all fixed here:
+  #   - thread.sleepFor (N) takes SECONDS, so sleepFor(100) parked the test for
+  #     100s and blew the 30s timeout. Now thread.sleepTicks (N) (60/sec).
+  #   - the single-shot read loop exited on the first non-empty read, which can
+  #     land mid-response. Now the same two-phase read the other webserver E2E
+  #     files use: accumulate to end-of-headers, then read until close.
+  #   - 'contains' is a LITERAL substring match with no wildcards, so the
+  #     second test's `response contains "HTTP/1."` only ever matched by luck of
+  #     the status line's spelling. It now asserts the real status text.
+  # Both restore user.inetd.config.http.port on every exit path (#852).
   # =============================================================================
 
   - name: "webserver stack - inetd start and HTTP GET via webserver dispatch"
     description: "Full stack: inetd.startOne -> HTTP request -> webserver.dispatch -> responder -> response"
-    skip: true
-    skip_reason: "fwsNetEvent* functions are stubbed in headless mode; requires migration to tcp_* API (see webserver_hello_world.yaml)"
     requires_system_root: true
     timeout: 30
     script: |
       webserver.init();
-      user.inetd.config.http.port = 49207;
-      webserver.data.responders.helloWorld.enabled = true;
 
-      inetd.startOne(@user.inetd.config.http);
-      thread.sleepFor(100);
+      local(port = 49207);
 
-      local(stream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 49207));
-      tcp.writeStream(stream, "GET /helloworld HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n");
+      // ALL pre-state reads happen before ANY write, so every snapshot records
+      // the true pre-test value. Reading preHelloEnabled after the port write
+      // would still be correct today, but the read-then-write ordering is the
+      // invariant worth keeping -- it is what makes the restores below sound.
+      local(originalPort = user.inetd.config.http.port);
+      // Dispatch iterates user.webserver.responders -- enabling only the
+      // webserver.data copy (as this test originally did) has no effect.
+      local(preHelloEnabled = user.webserver.responders.helloWorld.enabled);
 
-      local(response = "");
-      local(startTicks = clock.ticks());
-      while (sizeOf(response) == 0) and ((clock.ticks() - startTicks) < 300) {
-        response = tcp.readStream(stream, 4096);
-        thread.sleepFor(10)
+      local(hasStatus200 = false);
+      local(hasBody = false);
+      local(stream = 0);
+      local(listenerUp = false);
+
+      // Mutations live inside the try so a throw during setup still restores
+      // the port and the responder-enabled flag into the shared session.
+      try {
+        user.inetd.config.http.port = port;
+        user.webserver.responders.helloWorld.enabled = true;
+
+        if not inetd.startOne(@user.inetd.config.http) {
+          scriptError("inetd.startOne failed for port " + port)
+        };
+        listenerUp = true;
+        thread.sleepTicks(50);
+
+        stream = tcp.openAddrStream(tcp.addressEncode("127.0.0.1"), port);
+        tcp.writeStream(stream, "GET /helloworld HTTP/1.0\r\nHost: localhost\r\nConnection: close\r\n\r\n");
+
+        local(response = "");
+        local(startTicks = clock.ticks());
+        local(headersComplete = false);
+        local(connectionClosed = false);
+        while (not connectionClosed) and ((clock.ticks() - startTicks) < 300) {
+          local(chunk = tcp.readStream(stream, 4096));
+          if sizeOf(chunk) > 0 {
+            response = response + chunk
+          }
+          else {
+            if headersComplete {
+              connectionClosed = true
+            }
+          };
+          if (not headersComplete) and (response contains "\r\n\r\n") {
+            headersComplete = true
+          };
+          thread.sleepTicks(10)
+        };
+
+        tcp.closeStream(stream);
+        stream = 0;
+
+        if not connectionClosed {
+          scriptError("read loop timed out -- server never closed connection on port " + port)
+        };
+
+        hasStatus200 = response contains "200 OK";
+        hasBody = response contains "Hello World"
+      }
+      else {
+        if stream != 0 {
+          tcp.closeStream(stream);
+          stream = 0
+        };
+        if listenerUp {
+          inetd.stopOne(@user.inetd.config.http);
+          thread.sleepTicks(30)
+        };
+        user.webserver.responders.helloWorld.enabled = preHelloEnabled;
+        user.inetd.config.http.port = originalPort;
+        scriptError(tryError)
       };
 
-      tcp.closeStream(stream);
       inetd.stopOne(@user.inetd.config.http);
-      webserver.data.responders.helloWorld.enabled = false;
+      thread.sleepTicks(30);
+      user.webserver.responders.helloWorld.enabled = preHelloEnabled;
+      user.inetd.config.http.port = originalPort;
 
-      return (response contains "200 OK") and (response contains "Hello World")
+      return hasStatus200 and hasBody
     expected_success: true
     expected_result: "true"
     notes: |
-      Full webserver stack test. Blocked on fwsNetEvent* migration to tcp_* API.
-      When this migration is complete, remove skip and this test validates the
-      entire HTTP pipeline: inetd listener -> webserver.server -> webserver.dispatch -> responder.
+      Validates the entire HTTP pipeline through the built-in helloWorld
+      responder: inetd listener -> webserver.server -> webserver.dispatch ->
+      responder -> response.
 
   - name: "webserver stack - dynamic responder script via dispatch"
     description: "Test custom responder script invoked via webserver dispatch"
-    skip: true
-    skip_reason: "fwsNetEvent* functions are stubbed in headless mode; requires migration to tcp_* API"
     requires_system_root: true
     timeout: 30
     script: |
       webserver.init();
-      user.inetd.config.http.port = 49208;
 
-      inetd.startOne(@user.inetd.config.http);
-      thread.sleepFor(100);
+      local(port = 49208);
 
-      local(stream = tcp.openStream(tcp.addressEncode("127.0.0.1"), 49208));
-      tcp.writeStream(stream, "GET /custom HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n");
+      // All pre-state reads before any write -- see the 49207 test above.
+      local(originalPort = user.inetd.config.http.port);
+      // Bare-path form: defined(@x.y) is parent-resolution only and would be
+      // true even when the responder does not exist, so the cleanup below
+      // would delete a responder this test did not create.
+      local(preCustom = defined (user.webserver.responders.customDispatch));
 
-      local(response = "");
-      local(startTicks = clock.ticks());
-      while (sizeOf(response) == 0) and ((clock.ticks() - startTicks) < 300) {
-        response = tcp.readStream(stream, 4096);
-        thread.sleepFor(10)
+      local(routedToCustom = false);
+      local(stream = 0);
+      local(listenerUp = false);
+
+      // Mutations inside the try so a throw during setup still restores the
+      // port and removes the responder.
+      try {
+        user.inetd.config.http.port = port;
+
+        // Install a responder for /custom so this test asserts on ITS OWN body
+        // rather than on whatever the default responder happens to return --
+        // the point of the test is that dispatch routes by URL path.
+        if not preCustom {
+          new (tableType, @user.webserver.responders.customDispatch)
+        };
+        user.webserver.responders.customDispatch.enabled = true;
+        script.newScriptObject(
+          "on condition (adrParamTable) {" + cr +
+          tab + "return (adrParamTable^.path beginsWith \"/custom\")}",
+          @user.webserver.responders.customDispatch.condition);
+        if not defined (user.webserver.responders.customDispatch.methods) {
+          new (tableType, @user.webserver.responders.customDispatch.methods)
+        };
+        script.newScriptObject(
+          "on GET (adrParamTable) {" + cr +
+          tab + "adrParamTable^.code = 200;" + cr +
+          tab + "adrParamTable^.responseHeaders.[\"Content-Type\"] = \"text/plain\";" + cr +
+          tab + "adrParamTable^.responseBody = \"custom dispatch body\";" + cr +
+          tab + "return (true)}",
+          @user.webserver.responders.customDispatch.methods.GET);
+
+        if not inetd.startOne(@user.inetd.config.http) {
+          scriptError("inetd.startOne failed for port " + port)
+        };
+        listenerUp = true;
+        thread.sleepTicks(50);
+
+        stream = tcp.openAddrStream(tcp.addressEncode("127.0.0.1"), port);
+        tcp.writeStream(stream, "GET /custom HTTP/1.0\r\nHost: localhost\r\nConnection: close\r\n\r\n");
+
+        local(response = "");
+        local(startTicks = clock.ticks());
+        local(headersComplete = false);
+        local(connectionClosed = false);
+        while (not connectionClosed) and ((clock.ticks() - startTicks) < 300) {
+          local(chunk = tcp.readStream(stream, 4096));
+          if sizeOf(chunk) > 0 {
+            response = response + chunk
+          }
+          else {
+            if headersComplete {
+              connectionClosed = true
+            }
+          };
+          if (not headersComplete) and (response contains "\r\n\r\n") {
+            headersComplete = true
+          };
+          thread.sleepTicks(10)
+        };
+
+        tcp.closeStream(stream);
+        stream = 0;
+
+        if not connectionClosed {
+          scriptError("read loop timed out -- server never closed connection on port " + port)
+        };
+
+        // Assert on the custom responder's own body: that is what proves
+        // dispatch routed by path. A bare status-line check would pass even if
+        // the default responder answered.
+        routedToCustom = (response contains "200 OK") and (response contains "custom dispatch body")
+      }
+      else {
+        if stream != 0 {
+          tcp.closeStream(stream);
+          stream = 0
+        };
+        if listenerUp {
+          inetd.stopOne(@user.inetd.config.http);
+          thread.sleepTicks(30)
+        };
+        if not preCustom { try { delete(@user.webserver.responders.customDispatch) } };
+        user.inetd.config.http.port = originalPort;
+        scriptError(tryError)
       };
 
-      tcp.closeStream(stream);
       inetd.stopOne(@user.inetd.config.http);
+      thread.sleepTicks(30);
+      if not preCustom { try { delete(@user.webserver.responders.customDispatch) } };
+      user.inetd.config.http.port = originalPort;
 
-      return response contains "HTTP/1."
+      return routedToCustom
     expected_success: true
     expected_result: "true"
     notes: |
-      Tests custom responder dispatch. Blocked on same fwsNetEvent* migration.
-      Purpose: verify webserver.dispatch routes to correct responder based on URL path.
+      Verifies webserver.dispatch routes to the correct responder based on URL
+      path, asserting on that responder's own response body.

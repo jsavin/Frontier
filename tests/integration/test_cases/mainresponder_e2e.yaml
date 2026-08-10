@@ -1,0 +1,506 @@
+sequential: true         # inetd listeners bind TCP ports -- conflicts between parallel workers
+needs_guest_dbs: true    # opens Guest Databases/apps/mainResponder.root via fileMenu.open
+protocol_mode: true      # Default; stated explicitly for clarity
+
+# Unit 3.3 -- inetd + webserver + mainResponder end-to-end integration.
+#
+# Serve a REAL PAGE through the COMPLETE production dispatch chain, off a real
+# TCP socket:
+#
+#   tcp.listenStream (inetd listener)
+#     -> inetd.supervisor                    [kernel]
+#       -> webserver.server                  [kernel]
+#         -> webserver.dispatch              [kernel]
+#           -> user.webserver.responders.default.methods.any   [shipped UserTalk]
+#             -> mainResponder.respond ()    [~1000-line legacy UserTalk dispatcher]
+#
+# This closes the gap between two halves proven separately by earlier units:
+#   - webserver_inetd_e2e.yaml (Unit 3.1 / Phase A) proved inetd ->
+#     webserver.dispatch -> responder serves pages, but only to a trivial
+#     test-local responder writing a literal string.
+#   - mainresponder_smoke.yaml (Phase B) proved mainResponder.respond ()
+#     executes headless, but called it directly against a hand-built param
+#     table -- nothing HTTP touched it.
+#
+# NO BRIDGE RESPONDER IS NEEDED -- and this is the main discovery of the unit.
+# Virgin.root already ships the wiring. user.webserver.responders.default
+# carries an `any` method whose entire body is:
+#
+#     on any (adrParamTable) {
+#         return (mainResponder.respond (adrParamTable))}
+#
+# so every request that matches no more specific responder condition lands in
+# mainResponder. These tests therefore drive the SHIPPED path and install no
+# responder of their own. (That `any` method exists in the ODB but has no
+# .ut export under usertalk_scripts/ -- see the unit report; tracked as ODB
+# <-> .ut drift, not fixed here.)
+#
+# Two pieces of startup state must be provisioned because the protocol batch
+# executor runs with --skip-startup:
+#
+#   1. system.temp.Frontier -- normally built by system.startup.startupScript.
+#      startingUp MUST be false: a true value makes kernel webserver.server
+#      wait forever on every request, accepting but never responding
+#      (#848/#849).
+#
+#   2. Frontier.pathString -- Virgin.root ships it pointing at a DELETED
+#      worktree (.../worktrees/menu-port-phase-c-bridge/databases/).
+#      mainResponder.respond calls Frontier.getSubFolder ("www"), which builds
+#      <pathString>Guest Databases/www/ and tries to create it; against the
+#      dead path that fails with "Can't create folder" and mainResponder
+#      renders an error page WITH A 200 STATUS. Pointing pathString at the
+#      staged DB folder for the duration of the test clears it. This is the
+#      same machine-specific-path pollution family as #841 (Unit 3.1), which
+#      cleaned six such values but missed this one; the Virgin.root fix is out
+#      of scope for this unit. See the unit report.
+#
+#      Where it is load-bearing: Test 2 (named-file requests) FAILS without the
+#      repoint -- verified by probe. Test 1 ("GET /") resolves via
+#      config.mainResponder.domains.default without reaching getSubFolder, so
+#      it passes either way; the repoint is kept in both so the two tests do
+#      not drift and Test 1 stays correct if its request path ever changes.
+#
+# Assertion discipline -- read before weakening any assertion here:
+#   mainResponder.respond () catches its own errors and renders a "UserLand
+#   Frontier Server Error" page returned with a 200 status line. So
+#   "200 + non-empty body" is NOT evidence of success; an error page satisfies
+#   both, and an earlier draft of this file passed while every request was
+#   erroring. Each test below therefore asserts BOTH:
+#     - the response contains the unique marker string written into the served
+#       file (proves real content came back through the socket), AND
+#     - the response does NOT contain mainResponder's error-page signature
+#       ("in mainResponder.respond").
+#
+# Session-state discipline (#852):
+#   Sequential yaml files share ONE long-lived ProtocolExecutor session, so
+#   every mutation is snapshot-then-restored within this file:
+#     - user.inetd.config.http.port             -> restored to originalPort
+#     - Frontier.pathString                     -> restored to original
+#     - root.config / root.config.mainResponder -> conditionally deleted
+#     - system.temp.Frontier                    -> conditionally deleted
+#     - system.environment.isRadio, user.inetd.config.http2,
+#       user.rootUpdates.callbacks.*            -> conditionally deleted
+#     - the served index.html + site folder     -> deleted
+#     - the opened mainResponder.root           -> fileMenu.close
+#   Conditional-delete + defined() snapshot pattern inherited from
+#   mainresponder_smoke.yaml; see that file's header for full rationale.
+#
+# Port strategy:
+#   Uses 9310-9311. Outside 8080-8087 (webserver_hello_world), 9210-9213
+#   (webserver_inetd_e2e) and 49200-49208 (webserver_http_roundtrip_tests),
+#   so this file cannot collide with another webserver test file.
+#
+# References:
+#   - planning/MANILA_MAINRESPONDER_E2E.md (Phase C)
+#   - tests/integration/test_cases/webserver_inetd_e2e.yaml (structural template)
+#   - tests/integration/test_cases/mainresponder_smoke.yaml (cleanup template)
+#   - usertalk_scripts/mainResponder.root/mainResponder/respond.ut
+
+tests:
+  # =============================================================================
+  # TEST 1 -- Real page served end-to-end through mainResponder
+  # =============================================================================
+  - name: "mainResponder E2E - real page served over HTTP via inetd and mainResponder"
+    description: "GET / off a real socket returns file content rendered by mainResponder through the shipped default responder, with no error page"
+    requires_system_root: true
+    timeout: 60
+    script: |
+      local(guestpath);
+      guestpath = file.folderFromPath (Frontier.getFilePath ()) + "Guest Databases/apps/mainResponder.root";
+      if not file.exists (guestpath) {
+        return "skip"
+      };
+
+      webserver.init ();
+
+      local(base = file.folderFromPath (Frontier.getFilePath ()));
+      local(port = 9310);
+      local(originalPort = user.inetd.config.http.port);
+
+      // Snapshot everything we may create so cleanup restores the shared
+      // session exactly (#852).
+      //
+      // Every snapshot uses the BARE-PATH form defined (x.y), never the
+      // address form defined (@x.y). The address form is parent-resolution
+      // only -- it answers "is this address well-formed / creatable", so it
+      // returns TRUE for a leaf that does not exist as long as its parent
+      // does. Probed on a genuinely absent leaf: defined (@a.b) = true while
+      // defined (a.b) = false. Address-form snapshots would therefore be
+      // permanently true, the conditional deletes below would never fire, and
+      // system.environment.isRadio / user.inetd.config.http2 would leak into
+      // every later file in the shared sequential session.
+      local(preConfig = defined (root.config));
+      local(preConfigMainResponder = defined (root.config.mainResponder));
+      local(preIsRadio = defined (system.environment.isRadio));
+      local(preInetdConfig = defined (user.inetd.config));
+      local(preHttp2 = defined (user.inetd.config.http2));
+      local(preRootUpdatesCallbacks = defined (user.rootUpdates.callbacks));
+      local(preAfterInstallPart = defined (user.rootUpdates.callbacks.afterInstallPart));
+      local(preAfterInstall = defined (user.rootUpdates.callbacks.afterInstallPart.mainResponder));
+      local(preTempFrontier = defined (system.temp.Frontier));
+
+      // Snapshot the remaining pre-state (pure reads -- no mutation yet).
+      // Track whether the site folder and the ops/ tree (created by
+      // mainResponder.init under Frontier.pathString) pre-existed, so cleanup
+      // removes only what this test added and the staged Guest Databases tree
+      // comes out byte-identical -- the runner md5-checks it for drift.
+      local(origPathString = Frontier.pathString);
+      local(siteFolder = base + "Guest Databases/www/");
+      local(preSiteFolder = file.exists (siteFolder));
+      local(opsFolder = base + "Guest Databases/ops/");
+      local(preOpsFolder = file.exists (opsFolder));
+
+      local(servedRealPage = false);
+      local(sawErrorPage = true);
+      local(stream = 0);
+      local(listenerUp = false);
+
+      // EVERY mutation lives inside the try, so a throw anywhere in setup still
+      // runs the else-branch restore. Nothing above this line writes state:
+      // a throw before the try would leave the repointed pathString and the
+      // mutated port in the shared sequential session with no way to undo them.
+      try {
+        user.inetd.config.http.port = port;
+
+        // Frontier.pathString ships pointing at a deleted worktree; repoint it
+        // at the staged DB folder so Frontier.getSubFolder ("www") resolves.
+        // See the file header.
+        Frontier.pathString = base;
+
+        // startingUp MUST be false (#848/#849) or webserver.server never answers.
+        if not preTempFrontier {
+          new (tableType, @system.temp.Frontier)
+        };
+        system.temp.Frontier.startingUp = false;
+
+        // Provision the site folder and the page mainResponder serves for
+        // "GET /". Absolute @root.* paths for config -- protocol mode wraps each
+        // script in `with system.temp.FrontierREPL.variables { }`, so a bare
+        // `new (tableType, @config)` would create config INSIDE that wrapper,
+        // invisible to mainResponder running on the inetd worker thread.
+        if not preSiteFolder {
+          file.newFolder (siteFolder)
+        };
+        file.writeWholeFile (siteFolder + "index.html", "<html><body>MRE2E-REAL-PAGE-1</body></html>");
+
+        if not preConfig {
+          new (tableType, @root.config)
+        };
+        if not preConfigMainResponder {
+          new (tableType, @root.config.mainResponder);
+          new (tableType, @root.config.mainResponder.prefs);
+          new (tableType, @root.config.mainResponder.domains);
+          root.config.mainResponder.prefs.backupFolder = base + "ops-backups/";
+          root.config.mainResponder.prefs.discussArchiveFolder = base + "ops-discussArchive/";
+          root.config.mainResponder.prefs.logFolder = base + "ops-logs/";
+          root.config.mainResponder.domains.default = siteFolder
+        };
+
+        fileMenu.open (guestpath, true);
+        mainResponder.init ();
+
+        // No responder is installed: the shipped default responder's `any`
+        // method routes this into mainResponder.respond.
+        if not inetd.startOne (@user.inetd.config.http) {
+          scriptError ("inetd.startOne failed for port " + port)
+        };
+        listenerUp = true;
+        thread.sleepTicks (50);
+
+        stream = tcp.openAddrStream (tcp.addressEncode ("127.0.0.1"), port);
+        tcp.writeStream (stream, "GET / HTTP/1.0\r\nHost: localhost\r\nConnection: close\r\n\r\n");
+
+        // Two-phase read (matches webserver_inetd_e2e.yaml): accumulate until
+        // end-of-headers, then read until the server closes so the full body is
+        // captured. A timeout is a hard error so CI can tell "never closed"
+        // apart from "wrong content".
+        local(response = "");
+        local(startTicks = clock.ticks ());
+        local(headersComplete = false);
+        local(connectionClosed = false);
+        while (not connectionClosed) and ((clock.ticks () - startTicks) < 900) {
+          local(chunk = tcp.readStream (stream, 4096));
+          if sizeOf (chunk) > 0 {
+            response = response + chunk
+          }
+          else {
+            if headersComplete {
+              connectionClosed = true
+            }
+          };
+          if (not headersComplete) and (response contains "\r\n\r\n") {
+            headersComplete = true
+          };
+          thread.sleepTicks (10)
+        };
+
+        tcp.closeStream (stream);
+        stream = 0;
+
+        if not connectionClosed {
+          scriptError ("read loop timed out -- server never closed connection on port " + port)
+        };
+
+        // Both halves matter -- see "Assertion discipline" in the file header.
+        servedRealPage = response contains "MRE2E-REAL-PAGE-1";
+        sawErrorPage = response contains "in mainResponder.respond";
+        if sawErrorPage {
+          scriptError ("mainResponder returned an error page instead of the file: " + response)
+        };
+        if not servedRealPage {
+          scriptError ("served body did not contain the page marker; got: " + response)
+        }
+      }
+      else {
+        local(err = tryError);
+        if stream != 0 {
+          tcp.closeStream (stream);
+          stream = 0
+        };
+        if listenerUp {
+          inetd.stopOne (@user.inetd.config.http);
+          thread.sleepTicks (30)
+        };
+        // Yield so init()'s background subscriptions thread can drain before
+        // deletes -- see mainresponder_smoke.yaml for the full note.
+        try { thread.sleepTicks (12) };
+        try { fileMenu.close (guestpath) };
+        try { file.delete (siteFolder + "index.html") };
+        if not preSiteFolder { try { file.delete (siteFolder) } };
+        if not preOpsFolder { try { file.delete (opsFolder) } };
+        if not preConfigMainResponder { try { delete (@root.config.mainResponder) } };
+        if not preConfig { try { delete (@root.config) } };
+        if not preIsRadio { try { delete (@system.environment.isRadio) } };
+        if not preHttp2 { try { delete (@user.inetd.config.http2) } };
+        if not preInetdConfig { try { delete (@user.inetd.config) } };
+        if not preAfterInstall { try { delete (@user.rootUpdates.callbacks.afterInstallPart.mainResponder) } };
+        if not preAfterInstallPart { try { delete (@user.rootUpdates.callbacks.afterInstallPart) } };
+        if not preRootUpdatesCallbacks { try { delete (@user.rootUpdates.callbacks) } };
+        if not preTempFrontier { try { delete (@system.temp.Frontier) } };
+        try { Frontier.pathString = origPathString };
+        user.inetd.config.http.port = originalPort;
+        scriptError (err)
+      };
+
+      inetd.stopOne (@user.inetd.config.http);
+      thread.sleepTicks (30);
+      try { thread.sleepTicks (12) };
+      try { fileMenu.close (guestpath) };
+      try { file.delete (siteFolder + "index.html") };
+      if not preSiteFolder { try { file.delete (siteFolder) } };
+      if not preOpsFolder { try { file.delete (opsFolder) } };
+      if not preConfigMainResponder { try { delete (@root.config.mainResponder) } };
+      if not preConfig { try { delete (@root.config) } };
+      if not preIsRadio { try { delete (@system.environment.isRadio) } };
+      if not preHttp2 { try { delete (@user.inetd.config.http2) } };
+      if not preInetdConfig { try { delete (@user.inetd.config) } };
+      if not preAfterInstall { try { delete (@user.rootUpdates.callbacks.afterInstallPart.mainResponder) } };
+      if not preAfterInstallPart { try { delete (@user.rootUpdates.callbacks.afterInstallPart) } };
+      if not preRootUpdatesCallbacks { try { delete (@user.rootUpdates.callbacks) } };
+      if not preTempFrontier { try { delete (@system.temp.Frontier) } };
+      try { Frontier.pathString = origPathString };
+      user.inetd.config.http.port = originalPort;
+
+      return servedRealPage and (not sawErrorPage)
+    expected_success: true
+    expected_result: "true"
+    notes: |
+      The Phase 3 core deliverable: a request off a real socket is served real
+      file content by mainResponder.respond() through the production kernel
+      chain (inetd.supervisor -> webserver.server -> webserver.dispatch ->
+      shipped default responder), not by a hand-built param table and not by a
+      test-local bridge.
+
+      Verified non-vacuous during development: with Frontier.pathString left at
+      its shipped (dead-worktree) value, mainResponder returns an error page
+      with a 200 status and this test fails on the sawErrorPage assertion --
+      which is exactly the state an earlier "200 + non-empty body" assertion
+      passed silently.
+
+  # =============================================================================
+  # TEST 2 -- Multiple sequential requests, each serving a distinct page
+  # =============================================================================
+  - name: "mainResponder E2E - multiple sequential GETs each serve their own page"
+    description: "Two back-to-back socket requests for different paths each return that page's content, verifying the dispatcher is correct across connections"
+    requires_system_root: true
+    timeout: 90
+    script: |
+      local(guestpath);
+      guestpath = file.folderFromPath (Frontier.getFilePath ()) + "Guest Databases/apps/mainResponder.root";
+      if not file.exists (guestpath) {
+        return "skip"
+      };
+
+      webserver.init ();
+
+      local(base = file.folderFromPath (Frontier.getFilePath ()));
+      local(port = 9311);
+      local(originalPort = user.inetd.config.http.port);
+
+      local(preConfig = defined (root.config));
+      local(preConfigMainResponder = defined (root.config.mainResponder));
+      local(preIsRadio = defined (system.environment.isRadio));
+      local(preInetdConfig = defined (user.inetd.config));
+      local(preHttp2 = defined (user.inetd.config.http2));
+      local(preRootUpdatesCallbacks = defined (user.rootUpdates.callbacks));
+      local(preAfterInstallPart = defined (user.rootUpdates.callbacks.afterInstallPart));
+      local(preAfterInstall = defined (user.rootUpdates.callbacks.afterInstallPart.mainResponder));
+      local(preTempFrontier = defined (system.temp.Frontier));
+
+      // Snapshot the remaining pre-state (pure reads -- no mutation yet).
+      local(origPathString = Frontier.pathString);
+      local(siteFolder = base + "Guest Databases/www/");
+      local(preSiteFolder = file.exists (siteFolder));
+      local(opsFolder = base + "Guest Databases/ops/");
+      local(preOpsFolder = file.exists (opsFolder));
+
+      local(successCount = 0);
+      local(stream = 0);
+      local(listenerUp = false);
+
+      // EVERY mutation lives inside the try -- see Test 1 for the rationale.
+      try {
+        user.inetd.config.http.port = port;
+        Frontier.pathString = base;
+
+        if not preTempFrontier {
+          new (tableType, @system.temp.Frontier)
+        };
+        system.temp.Frontier.startingUp = false;
+
+        // Two distinct pages so each response can be matched to its own request
+        // -- a single shared page could not catch the dispatcher returning a
+        // stale or cached body on the second connection.
+        if not preSiteFolder {
+          file.newFolder (siteFolder)
+        };
+        file.writeWholeFile (siteFolder + "mrpage1.html", "<html><body>MRE2E-SEQ-PAGE-ONE</body></html>");
+        file.writeWholeFile (siteFolder + "mrpage2.html", "<html><body>MRE2E-SEQ-PAGE-TWO</body></html>");
+
+        if not preConfig {
+          new (tableType, @root.config)
+        };
+        if not preConfigMainResponder {
+          new (tableType, @root.config.mainResponder);
+          new (tableType, @root.config.mainResponder.prefs);
+          new (tableType, @root.config.mainResponder.domains);
+          root.config.mainResponder.prefs.backupFolder = base + "ops-backups/";
+          root.config.mainResponder.prefs.discussArchiveFolder = base + "ops-discussArchive/";
+          root.config.mainResponder.prefs.logFolder = base + "ops-logs/";
+          root.config.mainResponder.domains.default = siteFolder
+        };
+
+        fileMenu.open (guestpath, true);
+        mainResponder.init ();
+
+        if not inetd.startOne (@user.inetd.config.http) {
+          scriptError ("inetd.startOne failed for port " + port)
+        };
+        listenerUp = true;
+        thread.sleepTicks (50);
+
+        local(i);
+        local(wanted);
+        for i = 1 to 2 {
+          if i == 1 {
+            wanted = "MRE2E-SEQ-PAGE-ONE"
+          }
+          else {
+            wanted = "MRE2E-SEQ-PAGE-TWO"
+          };
+
+          stream = tcp.openAddrStream (tcp.addressEncode ("127.0.0.1"), port);
+          tcp.writeStream (stream, "GET /mrpage" + i + ".html HTTP/1.0\r\nHost: localhost\r\nConnection: close\r\n\r\n");
+
+          local(response = "");
+          local(startTicks = clock.ticks ());
+          local(headersComplete = false);
+          local(connectionClosed = false);
+          while (not connectionClosed) and ((clock.ticks () - startTicks) < 900) {
+            local(chunk = tcp.readStream (stream, 4096));
+            if sizeOf (chunk) > 0 {
+              response = response + chunk
+            }
+            else {
+              if headersComplete {
+                connectionClosed = true
+              }
+            };
+            if (not headersComplete) and (response contains "\r\n\r\n") {
+              headersComplete = true
+            };
+            thread.sleepTicks (10)
+          };
+
+          tcp.closeStream (stream);
+          stream = 0;
+
+          if not connectionClosed {
+            scriptError ("read loop timed out on iteration " + i + " -- server never closed connection on port " + port)
+          };
+          if response contains "in mainResponder.respond" {
+            scriptError ("iteration " + i + " got an error page instead of the file: " + response)
+          };
+          if not (response contains wanted) {
+            scriptError ("iteration " + i + " did not return " + wanted + "; got: " + response)
+          };
+          successCount = successCount + 1
+        }
+      }
+      else {
+        local(err = tryError);
+        if stream != 0 {
+          tcp.closeStream (stream);
+          stream = 0
+        };
+        if listenerUp {
+          inetd.stopOne (@user.inetd.config.http);
+          thread.sleepTicks (30)
+        };
+        try { thread.sleepTicks (12) };
+        try { fileMenu.close (guestpath) };
+        try { file.delete (siteFolder + "mrpage1.html") };
+        try { file.delete (siteFolder + "mrpage2.html") };
+        if not preSiteFolder { try { file.delete (siteFolder) } };
+        if not preOpsFolder { try { file.delete (opsFolder) } };
+        if not preConfigMainResponder { try { delete (@root.config.mainResponder) } };
+        if not preConfig { try { delete (@root.config) } };
+        if not preIsRadio { try { delete (@system.environment.isRadio) } };
+        if not preHttp2 { try { delete (@user.inetd.config.http2) } };
+        if not preInetdConfig { try { delete (@user.inetd.config) } };
+        if not preAfterInstall { try { delete (@user.rootUpdates.callbacks.afterInstallPart.mainResponder) } };
+        if not preAfterInstallPart { try { delete (@user.rootUpdates.callbacks.afterInstallPart) } };
+        if not preRootUpdatesCallbacks { try { delete (@user.rootUpdates.callbacks) } };
+        if not preTempFrontier { try { delete (@system.temp.Frontier) } };
+        try { Frontier.pathString = origPathString };
+        user.inetd.config.http.port = originalPort;
+        scriptError (err)
+      };
+
+      inetd.stopOne (@user.inetd.config.http);
+      thread.sleepTicks (30);
+      try { thread.sleepTicks (12) };
+      try { fileMenu.close (guestpath) };
+      try { file.delete (siteFolder + "mrpage1.html") };
+      try { file.delete (siteFolder + "mrpage2.html") };
+      if not preSiteFolder { try { file.delete (siteFolder) } };
+      if not preOpsFolder { try { file.delete (opsFolder) } };
+      if not preConfigMainResponder { try { delete (@root.config.mainResponder) } };
+      if not preConfig { try { delete (@root.config) } };
+      if not preIsRadio { try { delete (@system.environment.isRadio) } };
+      if not preHttp2 { try { delete (@user.inetd.config.http2) } };
+      if not preInetdConfig { try { delete (@user.inetd.config) } };
+      if not preAfterInstall { try { delete (@user.rootUpdates.callbacks.afterInstallPart.mainResponder) } };
+      if not preAfterInstallPart { try { delete (@user.rootUpdates.callbacks.afterInstallPart) } };
+      if not preRootUpdatesCallbacks { try { delete (@user.rootUpdates.callbacks) } };
+      if not preTempFrontier { try { delete (@system.temp.Frontier) } };
+      try { Frontier.pathString = origPathString };
+      user.inetd.config.http.port = originalPort;
+
+      return successCount == 2
+    expected_success: true
+    expected_result: "true"
+    notes: |
+      Each connection requests a different file and must receive that file's
+      unique marker, so a dispatcher returning a stale body on the second
+      connection fails here rather than passing on a generic 200.
