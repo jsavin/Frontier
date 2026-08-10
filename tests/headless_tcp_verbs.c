@@ -224,7 +224,21 @@ static boolean tcp_valueproc(short token, hdltreenode hparam1,
             if (!tcp_read_stream(stream_id, bytes_to_read, &hdata))
                 return false;
 
-            return setheapvalue(hdata, binaryvaluetype, v);
+            /* Return TEXT, not binary. tcp_read_stream hands back the raw
+             * recv() bytes; a binaryvaluetype value must carry a 4-byte
+             * OSType prefix (setbinaryvalue prepends it), so wrapping the
+             * raw handle as binary makes every consumer strip 4 payload
+             * bytes (string coercion, sizeOf). String values are plain
+             * byte handles, no prefix, and match the documented contract:
+             * "Returns empty string if no data is available" plus the
+             * string-typed buffers used by readStreamUntil/Bytes.
+             *
+             * INTENTIONAL DIVERGENCE: the desktop glue (langverbs.c
+             * netreadstream) wraps the same bytes as binary '????'; that
+             * code is unreachable in the headless build. Do NOT align
+             * either site to the other without deciding the cross-build
+             * contract -- see the matching note there. */
+            return setheapvalue(hdata, stringvaluetype, v);
         }
 
         case tcpv_writestream: {

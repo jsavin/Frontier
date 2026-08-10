@@ -50,16 +50,15 @@ html.runoutlinedirectives - directives removed from outline | outline directive 
 html.runoutlinedirectives - multiple outline directives | flaky: fails in isolation (5/5) and in some full-suite runs, passes in others -- order-dependent page-framework state; no tracking issue yet
 html.runoutlinedirectives - outline with directives | outline directive processing fails in headless runner; no tracking issue yet
 
-# --- tcp family (7) -------------------------------------------------------
+# --- tcp family (5) -------------------------------------------------------
 # Callback-fire and accepted-connection stream tests fail under the runner
 # but work in direct protocol mode (issue #710; timing background in #333).
-# The tcp.listenStream accepted-connection cases are the target of Unit 2.2
-# (sibling branch unit-2-2-accept-callbacks).
+# Unit 2.2 (this branch) fixed the accepted-connection lifecycle cases
+# ("connection closes after callback returns", "connections survive listener
+# close") -- entries removed here in the same change that turned them green.
 
 TCP callback - dispatched from deep scope nesting still runs (#690) | callback does not fire under runner, issue #710
 tcp connection lifecycle - full echo exchange | echo exchange fails under runner, issues #710 #333
-tcp.listenStream - connection closes after callback returns | accepted-connection lifecycle, Unit 2.2 fix in flight, issue #710
-tcp.listenStream - connections survive listener close | accepted-connection lifecycle, Unit 2.2 fix in flight, issue #710
 tcp.listenStream - read/write on accepted connection | accepted-connection read/write, Unit 2.2 fix in flight, issue #710
 tcp.readStream - read after write using echo server | echo-server read fails under runner, issues #710 #333
 tcp.readStream - zero byte count | echo-server read fails under runner, issues #710 #333

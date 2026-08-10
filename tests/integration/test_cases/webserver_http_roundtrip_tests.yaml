@@ -16,12 +16,12 @@ sequential: true  # Binds to TCP port — conflicts between parallel workers
 #   This validates the actual data path that HTTP requests follow.
 #
 # Callback pattern note:
-#   tcp.readStream() returns binary data type (not string) for empty reads.
-#   sizeOf() on empty binary returns -4, which breaks the sizeOf == 0 polling
-#   condition. To work around this, a thread.sleepFor(100) is placed between
-#   writing the request and starting the response poll loop. This gives the
-#   callback thread time to execute (GIL yield) before the client starts
-#   reading. This matches the pattern in tcp_server_verbs.yaml.
+#   (Historical) tcp.readStream() used to return a malformed binary value --
+#   sizeOf() reported -4 on empty reads, breaking sizeOf == 0 polling, which
+#   is why these tests interpose thread.sleepFor(100) between writing the
+#   request and polling the response. Unit 2.2 fixed readStream to return a
+#   TEXT value (sizeOf 0 when empty), so the workaround is no longer load-
+#   bearing; the sleeps can be removed when these tests are un-skipped.
 #
 # Error-path cleanup:
 #   All active tests wrap client-side operations in try/else blocks so that

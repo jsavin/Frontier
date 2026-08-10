@@ -328,6 +328,13 @@ int tcp_process_callbacks(void) {
 #define LISTENERS_LOCK() pthread_mutex_lock(&g_listeners_mutex)
 #define LISTENERS_UNLOCK() pthread_mutex_unlock(&g_listeners_mutex)
 
+/* GIL yield + stream revalidation for blocking I/O loops, and the
+ * identity-guarded post-loop activity stamp; defined with the
+ * buffered-read implementation (see the ordering-invariant comments at
+ * the definitions). */
+static boolean tcp_yield_and_revalidate(tcp_stream_t *stream, unsigned long generation);
+static void tcp_stream_stamp_activity(tcp_stream_t *stream, unsigned long generation);
+
 /* ========================================================================
  * Internal Helper Functions
  * ======================================================================== */
@@ -377,6 +384,9 @@ void tcp_set_error(tcp_error_t err, const char *detail) {
         case TCP_ERR_ALREADY_CLOSED:
             snprintf(error_msg, sizeof(error_msg), "Stream already closed: %s", detail);
             break;
+        case TCP_ERR_CANCELLED:
+            snprintf(error_msg, sizeof(error_msg), "Cancelled: %s", detail);
+            break;
         default:
             snprintf(error_msg, sizeof(error_msg), "Unknown error: %s", detail);
             break;
@@ -386,18 +396,40 @@ void tcp_set_error(tcp_error_t err, const char *detail) {
     bigstring bs;
     copyctopstring(error_msg, bs);
     langerrormessage(bs);
+
+#ifdef FRONTIER_TESTS
+    /* Record the last error for the C-level contract tests (see
+     * tcp_test_last_error / tcp_test_last_error_code). */
+    extern void tcp_test_record_error(tcp_error_t err, const char *msg);
+    tcp_test_record_error(err, error_msg);
+#endif
 }
 
 /* Internal function: Find free stream slot
  * Must be called with TCP_LOCK() held */
 static int tcp_alloc_stream_id(void) {
     for (int i = TCP_FIRST_STREAM_ID; i < TCP_MAX_STREAMS; i++) {  /* Start at 1 (0 is invalid) */
-        if (g_tcp_context.streams[i].sockfd == -1) {
-            /* Initialize stream record */
-            memset(&g_tcp_context.streams[i], 0, sizeof(tcp_stream_t));
-            g_tcp_context.streams[i].sockfd = -1;  /* Will be set by caller */
-            g_tcp_context.streams[i].state = STREAM_INVALID;
-            g_tcp_context.streams[i].created_at = time(NULL);
+        tcp_stream_t *slot = &g_tcp_context.streams[i];
+
+        /* A slot is free only when nothing references it. sockfd == -1
+         * alone is NOT sufficient: a deferred close (tcp_close_stream
+         * with refcount > 0) leaves sockfd == -1, state STREAM_CLOSING
+         * and the slot un-freed while a reader parked in a GIL yield
+         * still holds its reference. Reclaiming such a slot would memset
+         * that reader's refcount away and splice two connections into
+         * one slot. */
+        if (slot->sockfd == -1 && slot->refcount == 0 && slot->state != STREAM_CLOSING) {
+            /* Initialize stream record. The generation counter survives
+             * the memset and increments on every allocation: it is the
+             * stream identity used by post-yield revalidation (see
+             * tcp_stream_revalidate). */
+            unsigned long next_generation = slot->generation + 1;
+
+            memset(slot, 0, sizeof(tcp_stream_t));
+            slot->sockfd = -1;  /* Will be set by caller */
+            slot->state = STREAM_INVALID;
+            slot->generation = next_generation;
+            slot->created_at = time(NULL);
             return i;
         }
     }
@@ -1010,6 +1042,11 @@ boolean tcp_write_stream(long stream_id, Handle hdata) {
 
     sockfd = stream->sockfd;
 
+    /* Capture the stream identity for post-yield revalidation. Stable to
+     * read without the lock: our refcount blocks reallocation, and the
+     * generation only changes on allocation. */
+    unsigned long generation = stream->generation;
+
     data_size = gethandlesize(hdata);
     if (data_size == 0) {
         /* Nothing to write - succeed immediately */
@@ -1039,22 +1076,31 @@ boolean tcp_write_stream(long stream_id, Handle hdata) {
 
         total_written += bytes_written;
 
-        /* Yield to other threads every 64KB */
-        if ((total_written % 65536) < bytes_written && !langbackgroundtask(false)) {
-            /* User cancelled */
+        /* Yield to other threads every 64KB. The handle must not stay
+         * locked with a raw buffer pointer across the yield: other
+         * threads run arbitrary UserTalk while we are parked, and under
+         * a compacting handle heap (HLock semantics) the block could
+         * move. Portable handles do not compact today, but this path
+         * must be safe under both memory models, so unlock before and
+         * relock/refetch after (mirrors the read path, which never
+         * holds a lock across a yield). Revalidation guards the cached
+         * sockfd -- see tcp_yield_and_revalidate for the ordering
+         * invariant. */
+        if ((total_written % 65536) < bytes_written) {
             unlockhandle(hdata);
-            tcp_stream_release(stream);
-            tcp_set_error(TCP_ERR_SOCKET_ERROR, "Write cancelled");
-            return false;
+            if (!tcp_yield_and_revalidate(stream, generation)) {
+                tcp_stream_release(stream);
+                return false;  /* error already set by helper */
+            }
+            lockhandle(hdata);
+            buffer = (char *) *hdata;
         }
     }
 
     unlockhandle(hdata);
 
-    /* Update activity timestamp while still holding reference */
-    TCP_LOCK();
-    stream->last_activity = time(NULL);
-    TCP_UNLOCK();
+    /* Update activity timestamp, identity-guarded (this path yields) */
+    tcp_stream_stamp_activity(stream, generation);
 
     tcp_stream_release(stream);
 
@@ -1566,12 +1612,18 @@ static void *tcp_accept_thread(void *arg) {
                  * and the client hangs indefinitely waiting for a response that never comes.
                  */
                 log_error(LOG_COMP_LANG, "tcp_accept_thread: queue full, closing stream_id=%d to prevent resource leak", stream_id);
-                close(client_sock);
+                /* Mark the slot dead BEFORE closing the fd -- same
+                 * mark-then-close order tcp_close_stream documents as
+                 * load-bearing. This runs off-GIL on a slot already
+                 * published as STREAM_ACCEPTED; closing first would leave
+                 * a window where another thread validates the slot and
+                 * then operates on a closed (and possibly recycled) fd. */
                 TCP_LOCK();
                 stream->state = STREAM_CLOSED;
                 stream->sockfd = -1;
                 g_tcp_context.active_count--;
                 TCP_UNLOCK();
+                close(client_sock);
             }
         }
     }
@@ -2294,6 +2346,82 @@ typedef enum {
  * - For TCP_READ_UNTIL_PATTERN, we only scan newly-read bytes plus overlap
  * - This provides O(n) performance instead of O(n²) for large buffers
  */
+/* Revalidate a stream after the GIL was released and reacquired.
+ *
+ * IDENTITY INVARIANT: the caller captured stream->generation while
+ * holding a reference. While parked in a yield, another UserTalk thread
+ * may close the stream; the allocator refuses to reclaim a slot whose
+ * refcount is non-zero (see tcp_alloc_stream_id), so the slot memory
+ * stays ours -- but state alone is not identity, and fd numbers are
+ * recycled by the kernel, so neither can decide "still my stream". The
+ * generation counter is bumped on every allocation and never repeats:
+ * state CONNECTED/ACCEPTED plus an unchanged generation proves the slot
+ * still holds the connection the caller started with. */
+static boolean tcp_stream_revalidate(tcp_stream_t *stream, unsigned long generation) {
+    boolean still_open;
+
+    TCP_LOCK();
+    still_open = (stream->state == STREAM_CONNECTED || stream->state == STREAM_ACCEPTED)
+        && stream->generation == generation;
+    TCP_UNLOCK();
+
+    return still_open;
+}
+
+/* Post-loop activity stamp, identity-guarded. The verbs that yield the
+ * GIL update stream->last_activity after their I/O loop; that write must
+ * not land on a slot whose identity changed mid-loop (same "trusted the
+ * index without revalidating identity" class as the allocator race --
+ * unreachable while the allocator honors refcounts, kept as defense in
+ * depth). Check and stamp under one lock acquisition. */
+static void tcp_stream_stamp_activity(tcp_stream_t *stream, unsigned long generation) {
+    TCP_LOCK();
+    if ((stream->state == STREAM_CONNECTED || stream->state == STREAM_ACCEPTED)
+        && stream->generation == generation)
+        stream->last_activity = time(NULL);
+    TCP_UNLOCK();
+}
+
+/* Yield the GIL while a blocking-wait loop is idle, then revalidate the
+ * stream before the caller touches its cached sockfd again.
+ *
+ * WHY THE YIELD: the buffered read/write verbs wait in select() loops
+ * while holding the GIL. When such a verb runs inside a tcp.listenStream
+ * accept callback (its own GIL thread, see ADR-014), the peer script on
+ * the main thread can never run to produce/consume the data being waited
+ * for -- the wait always expires. Yielding at each idle iteration lets
+ * the other threads make progress; the wait then completes as soon as the
+ * data actually arrives (state-driven, no fixed sleeps).
+ *
+ * ORDERING INVARIANT: while we are parked in langbackgroundtask() another
+ * UserTalk thread may call tcp.closeStream on this stream. The caller's
+ * refcount keeps the slot from being reallocated, but the fd is closed
+ * immediately and its number can be recycled. After every yield, and
+ * BEFORE the next select()/recv()/send() on the cached fd, the captured
+ * generation must revalidate -- see tcp_stream_revalidate. Returns false
+ * (with the script error set) if the thread was killed or the stream
+ * went away; callers must release their reference and abort. */
+/* Revalidate and set the script error on failure. Split from the yield
+ * so the error contract is unit-testable without a scheduler (see
+ * tcp_test_revalidate_or_error). */
+static boolean tcp_revalidate_or_error(tcp_stream_t *stream, unsigned long generation) {
+    if (!tcp_stream_revalidate(stream, generation)) {
+        tcp_set_error(TCP_ERR_INVALID_STREAM, "Stream not connected");
+        return false;
+    }
+
+    return true;
+}
+
+static boolean tcp_yield_and_revalidate(tcp_stream_t *stream, unsigned long generation) {
+    if (!langbackgroundtask(false)) {
+        tcp_set_error(TCP_ERR_CANCELLED, "Thread killed during network wait");
+        return false;
+    }
+
+    return tcp_revalidate_or_error(stream, generation);
+}
+
 static boolean tcp_read_until_condition(
     long stream_id,
     Handle hbuffer,
@@ -2304,6 +2432,7 @@ static boolean tcp_read_until_condition(
 {
     tcp_stream_t *stream;
     int sockfd;
+    unsigned long generation;
     tcp_timeout_t timeout;
     long current_size;
     long bytes_read_total;
@@ -2316,6 +2445,15 @@ static boolean tcp_read_until_condition(
     /* Validate timeout */
     if (timeout_secs <= 0)
         timeout_secs = TCP_DEFAULT_TIMEOUT_SECS;
+
+    /* SECURITY: bound the aggregate read like tcp_read_stream bounds a
+     * single read. Without a cap, a hostile peer that keeps trickling
+     * data resets the idle timeout forever and grows the buffer without
+     * limit -- memory-exhaustion DoS on the server-facing read paths. */
+    if (condition == TCP_READ_UNTIL_BYTES && target_bytes > TCP_MAX_READ_BYTES) {
+        tcp_set_error(TCP_ERR_SOCKET_ERROR, "Read size exceeds maximum (16MB limit)");
+        return false;
+    }
 
     /* Acquire stream reference (TOCTOU protection) */
     stream = tcp_stream_acquire(stream_id);
@@ -2333,6 +2471,11 @@ static boolean tcp_read_until_condition(
     }
 
     sockfd = stream->sockfd;
+
+    /* Capture the stream identity for post-yield revalidation. Stable to
+     * read without the lock: our refcount blocks reallocation, and the
+     * generation only changes on allocation. */
+    generation = stream->generation;
 
     /* Initialize timeout */
     tcp_timeout_init(&timeout, timeout_secs);
@@ -2382,11 +2525,13 @@ static boolean tcp_read_until_condition(
         }
         /* TCP_READ_UNTIL_CLOSED continues until recv returns 0 */
 
-        /* Use select() with short timeout to check for data */
+        /* Use select() with short timeout to check for data. The slice is
+         * kept small (10ms) because it runs with the GIL held: it bounds
+         * how long other UserTalk threads stall per idle iteration. */
         FD_ZERO(&readset);
         FD_SET(sockfd, &readset);
         tv.tv_sec = 0;
-        tv.tv_usec = 100000;  /* 100ms poll interval */
+        tv.tv_usec = 10000;  /* 10ms poll slice (GIL held during select) */
 
         select_result = select(sockfd + 1, &readset, NULL, NULL, &tv);
 
@@ -2399,7 +2544,15 @@ static boolean tcp_read_until_condition(
         }
 
         if (select_result == 0) {
-            /* No data available yet, continue waiting */
+            /* No data available yet: yield the GIL so the thread that is
+             * supposed to send the data (e.g. the main script, when this
+             * read runs inside an accept callback) can execute. Must
+             * revalidate the stream afterwards -- see
+             * tcp_yield_and_revalidate for the ordering invariant. */
+            if (!tcp_yield_and_revalidate(stream, generation)) {
+                tcp_stream_release(stream);
+                return false;
+            }
             continue;
         }
 
@@ -2428,6 +2581,19 @@ static boolean tcp_read_until_condition(
             long remaining = target_bytes - bytes_read_total;
             if (bytes_to_read > remaining)
                 bytes_to_read = remaining;
+        }
+
+        /* SECURITY: clamp aggregate growth at TCP_MAX_READ_BYTES (see the
+         * cap rationale at the top of this function). A clamped-to-zero
+         * read with the condition still unmet means the peer exceeded the
+         * limit -- fail rather than loop forever. */
+        if (current_size + bytes_to_read > TCP_MAX_READ_BYTES) {
+            bytes_to_read = TCP_MAX_READ_BYTES - current_size;
+            if (bytes_to_read <= 0) {
+                tcp_stream_release(stream);
+                tcp_set_error(TCP_ERR_SOCKET_ERROR, "Read exceeds maximum (16MB limit)");
+                return false;
+            }
         }
 
         /* Expand buffer to hold new data */
@@ -2478,10 +2644,8 @@ static boolean tcp_read_until_condition(
                   recv_result, bytes_read_total);
     }
 
-    /* Update activity timestamp */
-    TCP_LOCK();
-    stream->last_activity = time(NULL);
-    TCP_UNLOCK();
+    /* Update activity timestamp, identity-guarded (this path yields) */
+    tcp_stream_stamp_activity(stream, generation);
 
     tcp_stream_release(stream);
 
@@ -2596,9 +2760,9 @@ boolean tcp_read_stream_until_closed(long stream_id, Handle hbuffer, long timeou
 boolean tcp_read_stream_inetd(long stream_id, Handle hbuffer, long timeout_secs) {
     tcp_stream_t *stream = NULL;
     int sockfd;
+    unsigned long generation;
     long current_size;
     boolean first_packet_received = false;
-    long effective_timeout;
     time_t start_time, last_read_time;
     boolean result = false;
 
@@ -2630,11 +2794,15 @@ boolean tcp_read_stream_inetd(long stream_id, Handle hbuffer, long timeout_secs)
 
     sockfd = stream->sockfd;
 
+    /* Capture the stream identity for post-yield revalidation. Stable to
+     * read without the lock: our refcount blocks reallocation, and the
+     * generation only changes on allocation. */
+    generation = stream->generation;
+
     /* Get initial buffer size */
     current_size = gethandlesize(hbuffer);
     start_time = time(NULL);
     last_read_time = start_time;
-    effective_timeout = timeout_secs;
 
     while (true) {
         fd_set readset;
@@ -2655,9 +2823,8 @@ boolean tcp_read_stream_inetd(long stream_id, Handle hbuffer, long timeout_secs)
                 result = true;
                 goto cleanup;
             }
-            effective_timeout = TCP_INETD_SUBSEQUENT_TIMEOUT_SECS;
         } else {
-            /* Before first packet, use full timeout with bounds check */
+            /* Before first packet, use full timeout */
             elapsed = (long)(now - start_time);
             if (elapsed >= timeout_secs) {
                 /* Timeout before any data - also SUCCESS for inetd (empty request) */
@@ -2665,17 +2832,20 @@ boolean tcp_read_stream_inetd(long stream_id, Handle hbuffer, long timeout_secs)
                 result = true;
                 goto cleanup;
             }
-            /* Bounds check: ensure effective_timeout is positive */
-            effective_timeout = timeout_secs - elapsed;
-            if (effective_timeout <= 0)
-                effective_timeout = 1;  /* Minimum 1 second */
         }
 
-        /* Use select() with remaining timeout */
+        /* Wait for data in short slices instead of one select() spanning
+         * the whole remaining timeout: this loop holds the GIL, and inetd
+         * reads run inside accept-callback threads, so a long select()
+         * here would stall the client script for the full timeout (it
+         * could never send the request being waited for). The elapsed
+         * checks at the top of the loop keep the original inetd timeout
+         * semantics (timeout == success); a slice expiring is NOT a
+         * timeout by itself. */
         FD_ZERO(&readset);
         FD_SET(sockfd, &readset);
-        tv.tv_sec = effective_timeout;
-        tv.tv_usec = 0;
+        tv.tv_sec = 0;
+        tv.tv_usec = 10000;  /* 10ms poll slice (GIL held during select) */
 
         select_result = select(sockfd + 1, &readset, NULL, NULL, &tv);
 
@@ -2687,10 +2857,13 @@ boolean tcp_read_stream_inetd(long stream_id, Handle hbuffer, long timeout_secs)
         }
 
         if (select_result == 0) {
-            /* Timeout - this is SUCCESS for inetd */
-            log_debug(LOG_COMP_LANG, "tcp_read_stream_inetd: select timeout, total=%ld", current_size);
-            result = true;
-            goto cleanup;
+            /* No data this slice: yield the GIL so the peer thread can
+             * run, then revalidate the stream (see tcp_yield_and_revalidate
+             * for the ordering invariant). Loop back for the elapsed-time
+             * checks, which own the timeout-is-success decision. */
+            if (!tcp_yield_and_revalidate(stream, generation))
+                goto cleanup;
+            continue;
         }
 
         /* Data available - check how many bytes */
@@ -2704,6 +2877,21 @@ boolean tcp_read_stream_inetd(long stream_id, Handle hbuffer, long timeout_secs)
             log_debug(LOG_COMP_LANG, "tcp_read_stream_inetd: connection closed, total=%ld", current_size);
             result = true;
             goto cleanup;
+        }
+
+        /* SECURITY: cap the aggregate request size. The idle timeout
+         * resets on every read, so without a cap a hostile client can
+         * trickle bytes forever and grow the request buffer without
+         * limit -- memory-exhaustion DoS on the public-facing inetd
+         * path. Oversized requests fail the read (the supervisor drops
+         * the connection). */
+        if (current_size + bytes_available > TCP_MAX_READ_BYTES) {
+            long room = TCP_MAX_READ_BYTES - current_size;
+            if (room <= 0) {
+                tcp_set_error(TCP_ERR_SOCKET_ERROR, "Request exceeds maximum (16MB limit)");
+                goto cleanup;
+            }
+            bytes_available = (int) room;
         }
 
         /* Expand buffer to hold new data */
@@ -2749,10 +2937,8 @@ boolean tcp_read_stream_inetd(long stream_id, Handle hbuffer, long timeout_secs)
 
 cleanup:
     if (stream) {
-        /* Update activity timestamp */
-        TCP_LOCK();
-        stream->last_activity = time(NULL);
-        TCP_UNLOCK();
+        /* Update activity timestamp, identity-guarded (this path yields) */
+        tcp_stream_stamp_activity(stream, generation);
 
         tcp_stream_release(stream);
     }
@@ -2818,6 +3004,20 @@ boolean tcp_write_string_to_stream(long stream_id, Handle hdata, long chunk_size
 
     sockfd = stream->sockfd;
 
+    /* Capture the stream identity for post-yield revalidation. Stable to
+     * read without the lock: our refcount blocks reallocation, and the
+     * generation only changes on allocation. */
+    unsigned long generation = stream->generation;
+
+    /* Writability is awaited in short slices rather than one select()
+     * spanning the whole timeout: this loop holds the GIL, and inetd /
+     * webserver responses are written from accept-callback threads, so a
+     * full-timeout select() here would stall every other UserTalk thread
+     * for up to timeout_secs whenever the socket buffer fills. The
+     * wait_start clock preserves the original semantics: the timeout
+     * applies to each wait-for-writability, restarting after progress. */
+    time_t wait_start = time(NULL);
+
     lockhandle(hdata);
 
     while (bytes_written < data_size) {
@@ -2835,8 +3035,8 @@ boolean tcp_write_string_to_stream(long stream_id, Handle hdata, long chunk_size
         /* Wait for socket to be writable */
         FD_ZERO(&writeset);
         FD_SET(sockfd, &writeset);
-        tv.tv_sec = timeout_secs;
-        tv.tv_usec = 0;
+        tv.tv_sec = 0;
+        tv.tv_usec = 10000;  /* 10ms poll slice (GIL held during select) */
 
         select_result = select(sockfd + 1, NULL, &writeset, NULL, &tv);
 
@@ -2850,11 +3050,25 @@ boolean tcp_write_string_to_stream(long stream_id, Handle hdata, long chunk_size
         }
 
         if (select_result == 0) {
-            /* Timeout */
+            /* Not writable this slice. Overall-timeout check first, then
+             * yield the GIL so the peer can drain the socket; revalidate
+             * before the next select on the cached fd (see
+             * tcp_yield_and_revalidate for the ordering invariant). The
+             * handle must not stay locked across the yield -- see the
+             * matching comment in tcp_write_stream. */
+            if ((long)(time(NULL) - wait_start) >= timeout_secs) {
+                unlockhandle(hdata);
+                tcp_stream_release(stream);
+                tcp_set_error(TCP_ERR_TIMEOUT, "Write timeout");
+                return false;
+            }
             unlockhandle(hdata);
-            tcp_stream_release(stream);
-            tcp_set_error(TCP_ERR_TIMEOUT, "Write timeout");
-            return false;
+            if (!tcp_yield_and_revalidate(stream, generation)) {
+                tcp_stream_release(stream);
+                return false;  /* error already set by helper */
+            }
+            lockhandle(hdata);
+            continue;
         }
 
         /* Send chunk */
@@ -2872,6 +3086,7 @@ boolean tcp_write_string_to_stream(long stream_id, Handle hdata, long chunk_size
         }
 
         bytes_written += send_result;
+        wait_start = time(NULL);  /* progress made; timeout restarts */
 
         log_trace(LOG_COMP_LANG, "tcp_write_string_to_stream: wrote %zd bytes, total=%ld/%ld",
                   send_result, bytes_written, data_size);
@@ -2879,10 +3094,8 @@ boolean tcp_write_string_to_stream(long stream_id, Handle hdata, long chunk_size
 
     unlockhandle(hdata);
 
-    /* Update activity timestamp */
-    TCP_LOCK();
-    stream->last_activity = time(NULL);
-    TCP_UNLOCK();
+    /* Update activity timestamp, identity-guarded (this path yields) */
+    tcp_stream_stamp_activity(stream, generation);
 
     tcp_stream_release(stream);
 
@@ -2936,6 +3149,11 @@ boolean tcp_write_file_to_stream(long stream_id, Handle hprefix, Handle hsuffix,
     }
 
     sockfd = stream->sockfd;
+
+    /* Capture the stream identity for the post-loop stamp; all socket
+     * writes (and their yields) happen inside tcp_write_string_to_stream,
+     * which carries its own revalidation. */
+    unsigned long generation = stream->generation;
 
     /* Write prefix if provided */
     if (hprefix != nil && gethandlesize(hprefix) > 0) {
@@ -3002,10 +3220,8 @@ boolean tcp_write_file_to_stream(long stream_id, Handle hprefix, Handle hsuffix,
         }
     }
 
-    /* Update activity timestamp */
-    TCP_LOCK();
-    stream->last_activity = time(NULL);
-    TCP_UNLOCK();
+    /* Update activity timestamp, identity-guarded (the delegated writes yield) */
+    tcp_stream_stamp_activity(stream, generation);
 
     tcp_stream_release(stream);
 
@@ -3158,3 +3374,56 @@ boolean tcp_shutdown_context(void) {
 
     return true;
 }
+
+#ifdef FRONTIER_TESTS
+/* ========================================================================
+ * Test-only hooks (compiled with -DFRONTIER_TESTS; absent in frontier-cli)
+ *
+ * Expose the slot allocator and post-yield revalidation predicate so the
+ * unit tests (tests/tcp_phase1a_unit_tests.c, Category 9) can pin the
+ * slot-reuse invariants with exact, single-threaded interleavings.
+ * ======================================================================== */
+
+int tcp_test_alloc_stream_id(void) {
+    int stream_id;
+
+    TCP_LOCK();
+    stream_id = tcp_alloc_stream_id();
+    TCP_UNLOCK();
+
+    return stream_id;
+}
+
+tcp_stream_t *tcp_test_slot(int stream_id) {
+    if (stream_id < TCP_FIRST_STREAM_ID || stream_id >= TCP_MAX_STREAMS)
+        return NULL;
+
+    return &g_tcp_context.streams[stream_id];
+}
+
+boolean tcp_test_revalidate(tcp_stream_t *stream, unsigned long generation) {
+    return tcp_stream_revalidate(stream, generation);
+}
+
+boolean tcp_test_revalidate_or_error(tcp_stream_t *stream, unsigned long generation) {
+    return tcp_revalidate_or_error(stream, generation);
+}
+
+/* Last-error capture: tcp_set_error records its code and formatted
+ * message here so the tests can pin the error contract. */
+static tcp_error_t tcp_test_last_err = TCP_ERR_SUCCESS;
+static char tcp_test_last_msg[256] = "";
+
+void tcp_test_record_error(tcp_error_t err, const char *msg) {
+    tcp_test_last_err = err;
+    snprintf(tcp_test_last_msg, sizeof(tcp_test_last_msg), "%s", msg);
+}
+
+tcp_error_t tcp_test_last_error_code(void) {
+    return tcp_test_last_err;
+}
+
+const char *tcp_test_last_error_message(void) {
+    return tcp_test_last_msg;
+}
+#endif /* FRONTIER_TESTS */

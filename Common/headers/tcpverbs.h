@@ -45,6 +45,12 @@ typedef struct tcp_stream {
     int             sockfd;        /* POSIX socket file descriptor (-1 if unused) */
     stream_state_t  state;         /* Current stream state */
     int             refcount;      /* Reference count for TOCTOU protection */
+    unsigned long   generation;    /* Slot-reuse counter: incremented on every
+                                    * allocation and preserved across the slot
+                                    * memset. Code that resumes after releasing
+                                    * the GIL must treat (slot, generation) as
+                                    * the stream identity: states and fd numbers
+                                    * get recycled, generations do not. */
 
     /* Address info */
     uint16_t        local_port;    /* Local port (host byte order) */
@@ -120,6 +126,7 @@ typedef enum {
     TCP_ERR_SOCKET_ERROR      = 6,
     TCP_ERR_NO_FREE_STREAMS   = 7,
     TCP_ERR_ALREADY_CLOSED    = 8,
+    TCP_ERR_CANCELLED         = 9,  /* Thread killed while parked in a GIL yield */
 } tcp_error_t;
 
 /* Function Prototypes - Verb Implementations */
@@ -187,5 +194,19 @@ void tcp_set_error(tcp_error_t err, const char *detail);
 tcp_stream_t* tcp_stream_acquire(int stream_id);
 void tcp_stream_release(tcp_stream_t *stream);
 boolean tcp_is_private_ip(uint32_t addr);
+
+#ifdef FRONTIER_TESTS
+/* Test-only hooks for pinning the slot allocator and post-yield
+ * revalidation invariants without network connectivity or timing
+ * dependence (tests/tcp_phase1a_unit_tests.c). Compiled only into the
+ * unit-test binaries (-DFRONTIER_TESTS); not present in frontier-cli. */
+int tcp_test_alloc_stream_id(void);              /* TCP_LOCK-wrapped alloc */
+tcp_stream_t *tcp_test_slot(int stream_id);      /* raw slot, no validation */
+boolean tcp_test_revalidate(tcp_stream_t *stream, unsigned long generation);
+boolean tcp_test_revalidate_or_error(tcp_stream_t *stream, unsigned long generation);
+void tcp_test_record_error(tcp_error_t err, const char *msg);
+tcp_error_t tcp_test_last_error_code(void);
+const char *tcp_test_last_error_message(void);
+#endif
 
 #endif /* __TCPVERBS_H__ */

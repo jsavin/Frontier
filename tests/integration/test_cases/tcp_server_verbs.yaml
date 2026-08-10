@@ -761,9 +761,8 @@ tests:
 # ============================================================================
 
   - name: "tcp.listenStream - wildcard address (0.0.0.0)"
-    description: "Verify listener can bind to INADDR_ANY (0.0.0.0)"
-    skip: true
-    skip_reason: "5-parameter tcp.listenStream with address binding not yet implemented"
+    description: "Verify listener can bind to INADDR_ANY (0.0.0.0). Skip reason was stale: the headless glue parses all 5 parameters including the bind address; verified 3x green in isolation (Unit 2.2 gate follow-up)."
+    timeout: 10
     script: |
       local(listenID = tcp.listenStream(9025, 5, "", 0, tcp.addressEncode("0.0.0.0")));
       local(validBind = listenID > 0);
