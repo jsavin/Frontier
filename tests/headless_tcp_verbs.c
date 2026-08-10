@@ -231,7 +231,13 @@ static boolean tcp_valueproc(short token, hdltreenode hparam1,
              * bytes (string coercion, sizeOf). String values are plain
              * byte handles, no prefix, and match the documented contract:
              * "Returns empty string if no data is available" plus the
-             * string-typed buffers used by readStreamUntil/Bytes. */
+             * string-typed buffers used by readStreamUntil/Bytes.
+             *
+             * INTENTIONAL DIVERGENCE: the desktop glue (langverbs.c
+             * netreadstream) wraps the same bytes as binary '????'; that
+             * code is unreachable in the headless build. Do NOT align
+             * either site to the other without deciding the cross-build
+             * contract -- see the matching note there. */
             return setheapvalue(hdata, stringvaluetype, v);
         }
 

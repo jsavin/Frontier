@@ -126,6 +126,7 @@ typedef enum {
     TCP_ERR_SOCKET_ERROR      = 6,
     TCP_ERR_NO_FREE_STREAMS   = 7,
     TCP_ERR_ALREADY_CLOSED    = 8,
+    TCP_ERR_CANCELLED         = 9,  /* Thread killed while parked in a GIL yield */
 } tcp_error_t;
 
 /* Function Prototypes - Verb Implementations */
@@ -202,6 +203,10 @@ boolean tcp_is_private_ip(uint32_t addr);
 int tcp_test_alloc_stream_id(void);              /* TCP_LOCK-wrapped alloc */
 tcp_stream_t *tcp_test_slot(int stream_id);      /* raw slot, no validation */
 boolean tcp_test_revalidate(tcp_stream_t *stream, unsigned long generation);
+boolean tcp_test_revalidate_or_error(tcp_stream_t *stream, unsigned long generation);
+void tcp_test_record_error(tcp_error_t err, const char *msg);
+tcp_error_t tcp_test_last_error_code(void);
+const char *tcp_test_last_error_message(void);
 #endif
 
 #endif /* __TCPVERBS_H__ */

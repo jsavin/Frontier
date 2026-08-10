@@ -4047,6 +4047,13 @@ static boolean langfunctionvalue (short token, hdltreenode hparam1, tyvaluerecor
 			if (!getlongvalue (hparam1, 2, &len))
 				return (false);
 
+			/* INTENTIONAL DIVERGENCE: the headless glue
+			(tests/headless_tcp_verbs.c tcpv_readstream, the dispatch
+			actually reachable in frontier-cli) returns these bytes as a
+			STRING value; this desktop path keeps the legacy binary
+			'????' wrap. Do not align one site to the other without
+			deciding the cross-build contract. */
+
 			if (tcp_read_stream (stream, len, &buf))
 				return (setbinaryvalue (buf, '\?\?\?\?', v));
 
