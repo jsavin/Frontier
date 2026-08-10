@@ -37,6 +37,11 @@
 #include "boxen/boxen.h"
 #include "../Common/headers/logging.h"
 
+/* 2026-08-10 JES unit 2.4: cJSON for parsing debug notifications/responses.
+ * cJSON has no Frontier runtime dependencies; safe in both production and
+ * test builds (same rationale as debugger_tui.c). */
+#include "../third_party/cJSON/cJSON.h"
+
 /* 2026-06-21 JES #691 C.0.7f: forward-declare the palette source vtable
  * struct + dispose entry point at file scope so the teardown path can free
  * the palette_source field on the boxen_repl_state_t without pulling
@@ -131,6 +136,13 @@ static void draw_input_bar(boxen_window_t *win, void *user_data);
 static void draw_footer_hint(boxen_window_t *win, void *user_data);
 static void on_input(boxen_window_t *win, const boxen_event_t *ev,
                      void *user_data);
+
+/* 2026-08-10 JES unit 2.4: debug slash-command intercept + response
+ * formatting.  Defined in the debug-surface section below (after the
+ * scrollback helpers); declared here because submit_input calls the
+ * intercept and boxen_repl_state_init wires the response transport. */
+static bool repl_debug_slash_intercept(boxen_repl_state_t *s, const char *slash_buf);
+static void repl_debug_response_write_line(void *ctx, const char *line, size_t len);
 
 /* -------------------------------------------------------------------------
  * 2026-06-08 JES Phase C.0 #691: layout constants.
@@ -356,7 +368,7 @@ static void draw_input_bar(boxen_window_t *win, void *user_data) {
 }
 
 static void draw_footer_hint(boxen_window_t *win, void *user_data) {
-	(void)user_data;
+	boxen_repl_state_t *s = (boxen_repl_state_t *)user_data;
 	int w = boxen_window_content_width(win);
 	if (w <= 0) return;
 
@@ -365,9 +377,22 @@ static void draw_footer_hint(boxen_window_t *win, void *user_data) {
 	 * directly -- the live backend state, which also reflects the palette
 	 * auto-enable -- rather than the state struct's preference bit.  The
 	 * toggle paths invalidate footer_win so this redraws on change. */
-	char text[600];
-	snprintf(text, sizeof(text), "%s  Mouse: %s (/mouse)",
+	char base[640];
+	snprintf(base, sizeof(base), "%s  Mouse: %s (/mouse)",
 	         REPL_FOOTER_TEXT, boxen_mouse_enabled() ? "on" : "off");
+
+	/* 2026-08-10 JES unit 2.4: when debug threads are parked at a
+	 * suspension point, lead the footer with a hint so the park is never
+	 * invisible.  suspended_count is main-thread-only state maintained by
+	 * the notification drain / response formatter. */
+	char text[720];
+	if (s != NULL && s->suspended_count > 0) {
+		snprintf(text, sizeof(text), "%d thread%s suspended -- /threads  |  %s",
+		         s->suspended_count, (s->suspended_count == 1) ? "" : "s",
+		         base);
+	} else {
+		snprintf(text, sizeof(text), "%s", base);
+	}
 
 	char linebuf[512];
 	int cap = (w < (int)(sizeof(linebuf) - 1)) ? w : (int)(sizeof(linebuf) - 1);
@@ -1108,6 +1133,15 @@ static void submit_input(boxen_repl_state_t *s) {
 			goto slash_done;
 		}
 
+		/* 2026-08-10 JES unit 2.4: debug slash commands -- kernel intercept.
+		 * Same rationale as /edit above: handled before the UserTalk menubar
+		 * so they work whether or not the menubar has matching leaves.
+		 * Compiled in both builds; test builds capture the dispatched op via
+		 * the debug_dispatch_capture_buf seam instead of calling op_dispatch. */
+		if (repl_debug_slash_intercept(s, slash_buf)) {
+			goto slash_done;
+		}
+
 		/* Slash command: route through the hook (or production implementation) */
 		if (s->slash_dispatch_hook != NULL) {
 			s->slash_dispatch_hook(dispatch_buf, &running);
@@ -1658,6 +1692,16 @@ void boxen_repl_state_init(boxen_repl_state_t *s, int tw, int th) {
 	s->partial_line[0] = '\0';
 	s->partial_line_len = 0;
 
+	/* 2026-08-10 JES unit 2.4: debug surface.  The queue mutex must be
+	 * initialized before the lazy-attach transport is registered (runtime
+	 * threads lock it inside boxen_repl_debug_write_line).  The response
+	 * transport is main-thread-only; op_dispatch writes through it
+	 * synchronously from the slash-command intercept. */
+	pthread_mutex_init(&s->debug_queue_mutex, NULL);
+	s->debug_response_transport.ctx        = s;
+	s->debug_response_transport.write_line = repl_debug_response_write_line;
+	s->debug_req_id_counter = 1;
+
 	repl_build_layout(s, tw, th);
 	repl_wire_callbacks(s);
 
@@ -1749,6 +1793,20 @@ void boxen_repl_state_teardown(boxen_repl_state_t *s) {
 		free(s->launch_transport);
 		s->launch_transport = NULL;
 	}
+
+	/* 2026-08-10 JES unit 2.4: debug queue teardown.  boxen_repl_main's
+	 * teardown sequence (transport-NULL, kill, join, second lazy drain)
+	 * ensures no runtime thread is still inside boxen_repl_debug_write_line
+	 * when state teardown runs -- except through the drain's bounded
+	 * give-up path (~5.5s, then log_warn and proceed; see the step 6.5
+	 * note in boxen_repl_main).  On that process-exit path a wedged thread
+	 * may still hold the mutex; the bounded race is the documented
+	 * trade-off inherited from protocol_main. */
+	pthread_mutex_destroy(&s->debug_queue_mutex);
+	s->debug_queue_head    = 0;
+	s->debug_queue_count   = 0;
+	s->debug_queue_dropped = 0;
+	s->suspended_count     = 0;
 }
 
 int boxen_repl_run_one_tick(boxen_repl_state_t *s, const boxen_event_t *ev) {
@@ -1867,6 +1925,16 @@ void boxen_repl_drain_capture_pipe_thunk(void *ctx) {
 	drain_stdout_into_scrollback(s, s->pipe_read_fd);
 }
 
+/* 2026-08-10 JES unit 2.4 hardening: debug-drain thunk for the boxen_ui
+ * bridge.  Without it, a breakpoint hit while a dialog modal is open sat
+ * in the debug queue until the dialog closed -- the invisible-park bug
+ * this unit fixes, reintroduced in the modal's mini event loop. */
+void boxen_repl_drain_debug_thunk(void *ctx) {
+	boxen_repl_state_t *s = (boxen_repl_state_t *)ctx;
+	if (s == NULL) return;
+	boxen_repl_drain_debug_notifications(s);
+}
+
 /* 2026-06-23 JES #691 Phase C.0.7g: focus-restore thunk for the boxen_ui
  * bridge.  After a dialog modal closes the bridge calls this so the
  * REPL input bar reclaims keyboard focus.  No-op if input_win has been
@@ -1963,6 +2031,530 @@ void drain_stdout_into_scrollback(boxen_repl_state_t *s, int fd) {
 		}
 	}
 	/* n == 0 (EOF) or n < 0 with errno == EAGAIN/EWOULDBLOCK: drain complete */
+}
+
+/* =========================================================================
+ * 2026-08-10 JES unit 2.4: default-REPL debug surface.
+ *
+ * Threading contract (the load-bearing part -- see docs/TUI_DEBUGGER_ARCHITECTURE.md):
+ *
+ *   - boxen_repl_debug_write_line runs on a SUSPENDED RUNTIME THREAD'S
+ *     stack (debug_send_suspended / debug_send_completed call it with the
+ *     GIL held, from inside protocol_debugger_callback or the debug thread
+ *     entry).  It ONLY enqueues into the mutex-guarded debug queue.
+ *
+ *   - boxen_repl_drain_debug_notifications runs on the boxen MAIN thread
+ *     each event-loop tick.  It pops queued lines and renders them.  All
+ *     scrollback / boxen-window access stays main-thread-only.
+ *
+ *   - repl_debug_response_write_line also runs on the MAIN thread: it is
+ *     only ever invoked synchronously from inside op_dispatch, which the
+ *     slash-command intercept calls from submit_input under the GIL.
+ *
+ * No production runtime dependencies in this section -- compiled in both
+ * production and test builds (cJSON only).
+ * ======================================================================= */
+
+void boxen_repl_debug_write_line(void *ctx, const char *line, size_t len) {
+	boxen_repl_state_t *s = (boxen_repl_state_t *)ctx;
+	if (s == NULL || line == NULL || len == 0) return;
+
+	/* SUSPENDED RUNTIME THREAD'S stack: enqueue under the queue mutex and
+	 * nothing else.  Rendering happens on the main thread's next tick. */
+	pthread_mutex_lock(&s->debug_queue_mutex);
+	if (s->debug_queue_count < BOXEN_REPL_DEBUG_QUEUE_SIZE) {
+		size_t n = (len < BOXEN_REPL_DEBUG_LINE_MAX - 1)
+		           ? len : BOXEN_REPL_DEBUG_LINE_MAX - 1;
+		memcpy(s->debug_queue[s->debug_queue_head], line, n);
+		s->debug_queue[s->debug_queue_head][n] = '\0';
+		s->debug_queue_head = (s->debug_queue_head + 1) % BOXEN_REPL_DEBUG_QUEUE_SIZE;
+		s->debug_queue_count++;
+	} else {
+		/* Newest-loses overflow policy; the drain reports the count. */
+		s->debug_queue_dropped++;
+	}
+	pthread_mutex_unlock(&s->debug_queue_mutex);
+}
+
+/* Suspended-thread tracking (main thread only).  Both helpers invalidate
+ * the footer so the suspension hint tracks the set. */
+static void repl_debug_mark_suspended(boxen_repl_state_t *s, long tid) {
+	for (int i = 0; i < s->suspended_count; i++) {
+		if (s->suspended_tids[i] == tid) return;  /* already tracked */
+	}
+	if (s->suspended_count < BOXEN_REPL_MAX_SUSPENDED) {
+		s->suspended_tids[s->suspended_count++] = tid;
+	}
+	if (s->footer_win != NULL) boxen_window_invalidate(s->footer_win);
+}
+
+static void repl_debug_unmark_suspended(boxen_repl_state_t *s, long tid) {
+	for (int i = 0; i < s->suspended_count; i++) {
+		if (s->suspended_tids[i] == tid) {
+			s->suspended_tids[i] = s->suspended_tids[s->suspended_count - 1];
+			s->suspended_count--;
+			if (s->footer_win != NULL) boxen_window_invalidate(s->footer_win);
+			return;
+		}
+	}
+}
+
+/* -------------------------------------------------------------------------
+ * repl_debug_format_line -- parse one debug NDJSON line and render it as
+ * formatted scrollback.  MAIN THREAD ONLY (touches scrollback + windows).
+ *
+ * Handles both channels with one grammar:
+ *   - notifications ("op" field): debug/suspended, debug/completed
+ *   - op responses ("result" object): setBreakpoint action, clearBreakpoints
+ *     count, continue/step status, getLocals locals[], listThreads threads[]
+ *   - op errors ("error" object)
+ *
+ * Response shapes verified against the emit sites in debug_handler.c
+ * (debug_send_suspended :541, debug_send_completed :561,
+ * handle_debug_setbreakpoint :1716, handle_debug_clearbreakpoints :1813,
+ * handle_debug_continue :1430, handle_debug_step :1509,
+ * handle_debug_getlocals :1980, handle_debug_listthreads :2544,
+ * dbg_send_error :320).
+ * ---------------------------------------------------------------------- */
+static void repl_debug_format_line(boxen_repl_state_t *s, const char *json, size_t len) {
+	char out[BOXEN_REPL_SCROLLBACK_LINE_MAX];
+
+	cJSON *root = cJSON_ParseWithLength(json, len);
+	if (root == NULL) {
+		snprintf(out, sizeof(out), "[debug] %.*s", (int)len, json);
+		boxen_repl_append_scrollback(s, out);
+		return;
+	}
+
+	cJSON *op_j     = cJSON_GetObjectItemCaseSensitive(root, "op");
+	cJSON *result_j = cJSON_GetObjectItemCaseSensitive(root, "result");
+	cJSON *error_j  = cJSON_GetObjectItemCaseSensitive(root, "error");
+
+	if (cJSON_IsString(op_j) && op_j->valuestring != NULL) {
+		/* Notification channel. */
+		cJSON *params_j = cJSON_GetObjectItemCaseSensitive(root, "params");
+		cJSON *tid_j    = params_j ? cJSON_GetObjectItemCaseSensitive(params_j, "threadId") : NULL;
+		long   tid      = cJSON_IsNumber(tid_j) ? (long)tid_j->valuedouble : -1;
+
+		if (strcmp(op_j->valuestring, "debug/suspended") == 0) {
+			cJSON *line_j   = params_j ? cJSON_GetObjectItemCaseSensitive(params_j, "line")   : NULL;
+			cJSON *reason_j = params_j ? cJSON_GetObjectItemCaseSensitive(params_j, "reason") : NULL;
+			cJSON *script_j = params_j ? cJSON_GetObjectItemCaseSensitive(params_j, "script") : NULL;
+			long        lnum   = cJSON_IsNumber(line_j) ? (long)line_j->valuedouble : 0;
+			const char *reason = (cJSON_IsString(reason_j) && reason_j->valuestring != NULL)
+			                     ? reason_j->valuestring : "suspended";
+			const char *script = (cJSON_IsString(script_j) && script_j->valuestring != NULL)
+			                     ? script_j->valuestring : "(unknown script)";
+
+			snprintf(out, sizeof(out), "[debug] thread %ld suspended at %s:%ld (%s)",
+			         tid, script, lnum, reason);
+			boxen_repl_append_scrollback(s, out);
+			snprintf(out, sizeof(out),
+			         "[debug] commands: /locals %ld, /step %ld, /continue %ld, /threads",
+			         tid, tid, tid);
+			boxen_repl_append_scrollback(s, out);
+			if (tid >= 0) repl_debug_mark_suspended(s, tid);
+
+		} else if (strcmp(op_j->valuestring, "debug/completed") == 0) {
+			cJSON *success_j = params_j ? cJSON_GetObjectItemCaseSensitive(params_j, "success") : NULL;
+			bool   success   = cJSON_IsTrue(success_j);
+
+			snprintf(out, sizeof(out), "[debug] thread %ld completed%s",
+			         tid, success ? "" : " (failed)");
+			boxen_repl_append_scrollback(s, out);
+			if (tid >= 0) repl_debug_unmark_suspended(s, tid);
+
+		} else {
+			snprintf(out, sizeof(out), "[debug] %.*s", (int)len, json);
+			boxen_repl_append_scrollback(s, out);
+		}
+
+	} else if (cJSON_IsObject(error_j)) {
+		cJSON *code_j = cJSON_GetObjectItemCaseSensitive(error_j, "code");
+		cJSON *msg_j  = cJSON_GetObjectItemCaseSensitive(error_j, "message");
+		snprintf(out, sizeof(out), "[debug] error (%s): %s",
+		         (cJSON_IsString(code_j) && code_j->valuestring != NULL)
+		         ? code_j->valuestring : "unknown",
+		         (cJSON_IsString(msg_j) && msg_j->valuestring != NULL)
+		         ? msg_j->valuestring : "(no message)");
+		boxen_repl_append_scrollback(s, out);
+
+	} else if (cJSON_IsObject(result_j)) {
+		cJSON *action_j  = cJSON_GetObjectItemCaseSensitive(result_j, "action");
+		cJSON *cleared_j = cJSON_GetObjectItemCaseSensitive(result_j, "cleared");
+		cJSON *status_j  = cJSON_GetObjectItemCaseSensitive(result_j, "status");
+		cJSON *locals_j  = cJSON_GetObjectItemCaseSensitive(result_j, "locals");
+		cJSON *threads_j = cJSON_GetObjectItemCaseSensitive(result_j, "threads");
+		cJSON *script_j  = cJSON_GetObjectItemCaseSensitive(result_j, "script");
+		cJSON *line_j    = cJSON_GetObjectItemCaseSensitive(result_j, "line");
+		cJSON *tid_j     = cJSON_GetObjectItemCaseSensitive(result_j, "threadId");
+
+		if (cJSON_IsString(action_j) && action_j->valuestring != NULL) {
+			/* debug/setBreakpoint response (toggle: "set" or "cleared") */
+			snprintf(out, sizeof(out), "[debug] breakpoint %s: %s:%ld",
+			         action_j->valuestring,
+			         (cJSON_IsString(script_j) && script_j->valuestring != NULL)
+			         ? script_j->valuestring : "?",
+			         cJSON_IsNumber(line_j) ? (long)line_j->valuedouble : 0);
+			boxen_repl_append_scrollback(s, out);
+
+		} else if (cJSON_IsNumber(cleared_j)) {
+			/* debug/clearBreakpoints response */
+			snprintf(out, sizeof(out), "[debug] cleared %ld breakpoint(s)",
+			         (long)cleared_j->valuedouble);
+			boxen_repl_append_scrollback(s, out);
+
+		} else if (cJSON_IsString(status_j) && status_j->valuestring != NULL &&
+		           cJSON_IsNumber(tid_j)) {
+			/* debug/continue ("running") or debug/step ("stepping") response.
+			 * Either way the thread has left the suspended set; a step that
+			 * re-suspends announces itself with a fresh debug/suspended. */
+			long tid = (long)tid_j->valuedouble;
+			snprintf(out, sizeof(out), "[debug] thread %ld %s", tid, status_j->valuestring);
+			boxen_repl_append_scrollback(s, out);
+			repl_debug_unmark_suspended(s, tid);
+
+		} else if (cJSON_IsArray(locals_j)) {
+			/* debug/getLocals response */
+			if (cJSON_IsString(script_j) && script_j->valuestring != NULL) {
+				snprintf(out, sizeof(out), "[debug] locals at %s:%ld:",
+				         script_j->valuestring,
+				         cJSON_IsNumber(line_j) ? (long)line_j->valuedouble : 0);
+			} else {
+				snprintf(out, sizeof(out), "[debug] locals:");
+			}
+			boxen_repl_append_scrollback(s, out);
+			if (cJSON_GetArraySize(locals_j) == 0) {
+				boxen_repl_append_scrollback(s, "  (none)");
+			}
+			cJSON *entry_j = NULL;
+			cJSON_ArrayForEach(entry_j, locals_j) {
+				cJSON *name_j  = cJSON_GetObjectItemCaseSensitive(entry_j, "name");
+				cJSON *value_j = cJSON_GetObjectItemCaseSensitive(entry_j, "value");
+				cJSON *type_j  = cJSON_GetObjectItemCaseSensitive(entry_j, "type");
+				snprintf(out, sizeof(out), "  %s = %s (%s)",
+				         (cJSON_IsString(name_j) && name_j->valuestring != NULL)
+				         ? name_j->valuestring : "?",
+				         (cJSON_IsString(value_j) && value_j->valuestring != NULL)
+				         ? value_j->valuestring : "?",
+				         (cJSON_IsString(type_j) && type_j->valuestring != NULL)
+				         ? type_j->valuestring : "?");
+				boxen_repl_append_scrollback(s, out);
+			}
+
+		} else if (cJSON_IsArray(threads_j)) {
+			/* debug/listThreads response.  The payload is authoritative for
+			 * which threads are suspended -- rebuild the tracked set from it
+			 * so any drift (e.g. missed notification on queue overflow)
+			 * self-heals. */
+			s->suspended_count = 0;
+			if (cJSON_GetArraySize(threads_j) == 0) {
+				boxen_repl_append_scrollback(s, "[debug] no debug threads");
+			} else {
+				boxen_repl_append_scrollback(s, "[debug] threads:");
+			}
+			cJSON *entry_j = NULL;
+			cJSON_ArrayForEach(entry_j, threads_j) {
+				cJSON *etid_j = cJSON_GetObjectItemCaseSensitive(entry_j, "threadId");
+				cJSON *susp_j = cJSON_GetObjectItemCaseSensitive(entry_j, "suspended");
+				cJSON *escr_j = cJSON_GetObjectItemCaseSensitive(entry_j, "script");
+				cJSON *elin_j = cJSON_GetObjectItemCaseSensitive(entry_j, "line");
+				long etid = cJSON_IsNumber(etid_j) ? (long)etid_j->valuedouble : -1;
+				if (cJSON_IsTrue(susp_j)) {
+					snprintf(out, sizeof(out), "  %ld: suspended at %s:%ld", etid,
+					         (cJSON_IsString(escr_j) && escr_j->valuestring != NULL)
+					         ? escr_j->valuestring : "(unknown script)",
+					         cJSON_IsNumber(elin_j) ? (long)elin_j->valuedouble : 0);
+					if (etid >= 0 && s->suspended_count < BOXEN_REPL_MAX_SUSPENDED) {
+						s->suspended_tids[s->suspended_count++] = etid;
+					}
+				} else {
+					snprintf(out, sizeof(out), "  %ld: running", etid);
+				}
+				boxen_repl_append_scrollback(s, out);
+			}
+			if (s->footer_win != NULL) boxen_window_invalidate(s->footer_win);
+
+		} else {
+			snprintf(out, sizeof(out), "[debug] %.*s", (int)len, json);
+			boxen_repl_append_scrollback(s, out);
+		}
+
+	} else {
+		snprintf(out, sizeof(out), "[debug] %.*s", (int)len, json);
+		boxen_repl_append_scrollback(s, out);
+	}
+
+	cJSON_Delete(root);
+}
+
+void boxen_repl_drain_debug_notifications(boxen_repl_state_t *s) {
+	if (s == NULL) return;
+
+	for (;;) {
+		char local[BOXEN_REPL_DEBUG_LINE_MAX];
+		int  dropped = 0;
+		bool have    = false;
+
+		/* Pop one entry and snapshot the drop count under the mutex; parse
+		 * and render outside it so write_line enqueues never wait on cJSON.
+		 * The drop count is checked on EVERY pass (not just when the queue
+		 * empties) so the report lands at the scrollback point where the
+		 * loss was detected, ahead of the surviving entries. */
+		pthread_mutex_lock(&s->debug_queue_mutex);
+		if (s->debug_queue_dropped > 0) {
+			dropped = s->debug_queue_dropped;
+			s->debug_queue_dropped = 0;
+		}
+		if (s->debug_queue_count > 0) {
+			int tail = (s->debug_queue_head - s->debug_queue_count
+			            + BOXEN_REPL_DEBUG_QUEUE_SIZE) % BOXEN_REPL_DEBUG_QUEUE_SIZE;
+			memcpy(local, s->debug_queue[tail], BOXEN_REPL_DEBUG_LINE_MAX);
+			s->debug_queue_count--;
+			have = true;
+		}
+		pthread_mutex_unlock(&s->debug_queue_mutex);
+
+		if (dropped > 0) {
+			char out[128];
+			snprintf(out, sizeof(out),
+			         "[debug] %d debug notification(s) dropped (queue full)", dropped);
+			boxen_repl_append_scrollback(s, out);
+		}
+
+		if (!have) return;
+
+		repl_debug_format_line(s, local, strlen(local));
+	}
+}
+
+/* Response transport callback: op handlers write through this synchronously
+ * inside op_dispatch, which the slash intercept calls on the MAIN thread
+ * under the GIL -- so formatting directly into the scrollback is safe. */
+static void repl_debug_response_write_line(void *ctx, const char *line, size_t len) {
+	boxen_repl_state_t *s = (boxen_repl_state_t *)ctx;
+	if (s == NULL || line == NULL || len == 0) return;
+	repl_debug_format_line(s, line, len);
+}
+
+/* -------------------------------------------------------------------------
+ * Outbound dispatch for the debug slash commands.
+ * ---------------------------------------------------------------------- */
+
+/* JSON string escape for user-supplied path arguments.  Same contract as
+ * tui_json_escape (debugger_tui.c:841): worst-case 6x expansion, always
+ * NUL-terminates. */
+static int repl_debug_json_escape(const char *src, char *dst, size_t dst_cap) {
+	if (dst == NULL || dst_cap == 0) return 0;
+	int out = 0;
+	int cap = (int)dst_cap - 1;
+	for (const char *p = src; *p != '\0'; p++) {
+		unsigned char c = (unsigned char)*p;
+		if (c == '"' || c == '\\') {
+			if (out + 2 > cap) break;
+			dst[out++] = '\\';
+			dst[out++] = (char)c;
+		} else if (c == '\b') {
+			if (out + 2 > cap) break;
+			dst[out++] = '\\'; dst[out++] = 'b';
+		} else if (c == '\f') {
+			if (out + 2 > cap) break;
+			dst[out++] = '\\'; dst[out++] = 'f';
+		} else if (c == '\n') {
+			if (out + 2 > cap) break;
+			dst[out++] = '\\'; dst[out++] = 'n';
+		} else if (c == '\r') {
+			if (out + 2 > cap) break;
+			dst[out++] = '\\'; dst[out++] = 'r';
+		} else if (c == '\t') {
+			if (out + 2 > cap) break;
+			dst[out++] = '\\'; dst[out++] = 't';
+		} else if (c < 0x20) {
+			if (out + 6 > cap) break;
+			static const char hex[] = "0123456789abcdef";
+			dst[out++] = '\\'; dst[out++] = 'u';
+			dst[out++] = '0';  dst[out++] = '0';
+			dst[out++] = hex[(c >> 4) & 0x0F];
+			dst[out++] = hex[c        & 0x0F];
+		} else {
+			if (out + 1 > cap) break;
+			dst[out++] = (char)c;
+		}
+	}
+	dst[out] = '\0';
+	return out;
+}
+
+/* Dispatch a debug op request.  Test builds capture the JSON in
+ * debug_dispatch_capture_buf (op_dispatch is not linked there); production
+ * routes through op_dispatch with the response transport. */
+static void repl_debug_dispatch(boxen_repl_state_t *s, const char *req) {
+	if (s->debug_dispatch_capture_buf != NULL && s->debug_dispatch_capture_cap > 0) {
+		snprintf(s->debug_dispatch_capture_buf,
+		         (size_t)s->debug_dispatch_capture_cap, "%s", req);
+		return;
+	}
+#ifndef BOXEN_REPL_OMIT_MAIN
+	op_dispatch(req, strlen(req), &s->debug_response_transport);
+#else
+	(void)req;
+#endif
+}
+
+/* Match `word` at the start of buf followed by space or NUL.  Returns a
+ * pointer past the word and any following spaces, or NULL if no match. */
+static const char *repl_debug_match_cmd(const char *buf, const char *word) {
+	size_t wlen = strlen(word);
+	if (strncmp(buf, word, wlen) != 0) return NULL;
+	if (buf[wlen] != '\0' && buf[wlen] != ' ') return NULL;
+	const char *rest = buf + wlen;
+	while (*rest == ' ') rest++;
+	return rest;
+}
+
+/* Parse a strictly-numeric positive long (trailing spaces allowed).
+ * Returns false on empty/garbage/overflow input. */
+static bool repl_debug_parse_long(const char *str, long *out) {
+	if (str == NULL || *str == '\0') return false;
+	char *end = NULL;
+	errno = 0;
+	long v = strtol(str, &end, 10);
+	if (errno != 0 || end == str || v < 0) return false;
+	while (*end == ' ') end++;
+	if (*end != '\0') return false;
+	*out = v;
+	return true;
+}
+
+/* Resolve the target thread for /continue, /step, /locals.  With an explicit
+ * arg, parse it.  With no arg: exactly one suspended thread means use it;
+ * otherwise print a hint and return false (command consumed, no dispatch). */
+static bool repl_debug_resolve_tid(boxen_repl_state_t *s, const char *args,
+                                   const char *cmd_name, long *out_tid) {
+	if (*args != '\0') {
+		if (!repl_debug_parse_long(args, out_tid)) {
+			char out[128];
+			snprintf(out, sizeof(out), "Usage: /%s [threadId]", cmd_name);
+			boxen_repl_append_scrollback(s, out);
+			return false;
+		}
+		return true;
+	}
+	if (s->suspended_count == 1) {
+		*out_tid = s->suspended_tids[0];
+		return true;
+	}
+	if (s->suspended_count == 0) {
+		boxen_repl_append_scrollback(s, "[debug] no suspended threads");
+	} else {
+		char out[128];
+		snprintf(out, sizeof(out),
+		         "[debug] %d threads suspended -- /%s <threadId> (see /threads)",
+		         s->suspended_count, cmd_name);
+		boxen_repl_append_scrollback(s, out);
+	}
+	return false;
+}
+
+/* Debug slash-command intercept.  slash_buf points just past the '/' with
+ * leading spaces already skipped (see submit_input).  Returns true when the
+ * command was consumed (whether or not an op was dispatched). */
+static bool repl_debug_slash_intercept(boxen_repl_state_t *s, const char *slash_buf) {
+	char req[2048];
+	const char *args;
+	long tid;
+
+	if ((args = repl_debug_match_cmd(slash_buf, "bp")) != NULL) {
+		if (*args == '\0') {
+			boxen_repl_append_scrollback(s, "Usage: /bp <path> <line> | /bp clear");
+			return true;
+		}
+		const char *clear_rest = repl_debug_match_cmd(args, "clear");
+		if (clear_rest != NULL && *clear_rest == '\0') {
+			snprintf(req, sizeof(req),
+			         "{\"op\":\"debug/clearBreakpoints\",\"id\":%d}",
+			         s->debug_req_id_counter++);
+			repl_debug_dispatch(s, req);
+			return true;
+		}
+		/* "<path> <line>" -- the line number is the LAST space-separated
+		 * token, so bracketed script names containing spaces (e.g.
+		 * system.temp.["my script"]) pass through intact.  Trim trailing
+		 * spaces first so the last token is never empty. */
+		size_t alen = strlen(args);
+		while (alen > 0 && args[alen - 1] == ' ') alen--;
+		const char *sp = NULL;
+		for (size_t i = alen; i > 0; i--) {
+			if (args[i - 1] == ' ') { sp = args + i - 1; break; }
+		}
+		long lnum = 0;
+		if (sp == NULL || !repl_debug_parse_long(sp + 1, &lnum) || lnum < 1) {
+			boxen_repl_append_scrollback(s, "Usage: /bp <path> <line> | /bp clear");
+			return true;
+		}
+		char path[BOXEN_REPL_INPUT_MAX];
+		size_t plen = (size_t)(sp - args);
+		while (plen > 0 && args[plen - 1] == ' ') plen--;  /* trim before line */
+		if (plen >= sizeof(path)) plen = sizeof(path) - 1;
+		memcpy(path, args, plen);
+		path[plen] = '\0';
+		const char *p = path;
+		if (*p == '@') p++;  /* normalize like the /edit intercept + server */
+		if (*p == '\0') {
+			boxen_repl_append_scrollback(s, "Usage: /bp <path> <line> | /bp clear");
+			return true;
+		}
+		char esc[BOXEN_REPL_INPUT_MAX * 6 + 1];
+		repl_debug_json_escape(p, esc, sizeof(esc));
+		snprintf(req, sizeof(req),
+		         "{\"op\":\"debug/setBreakpoint\",\"id\":%d,"
+		         "\"params\":{\"script\":\"%s\",\"line\":%ld}}",
+		         s->debug_req_id_counter++, esc, lnum);
+		repl_debug_dispatch(s, req);
+		return true;
+	}
+
+	if ((args = repl_debug_match_cmd(slash_buf, "continue")) != NULL) {
+		if (!repl_debug_resolve_tid(s, args, "continue", &tid)) return true;
+		snprintf(req, sizeof(req),
+		         "{\"op\":\"debug/continue\",\"id\":%d,\"params\":{\"threadId\":%ld}}",
+		         s->debug_req_id_counter++, tid);
+		repl_debug_dispatch(s, req);
+		return true;
+	}
+
+	if ((args = repl_debug_match_cmd(slash_buf, "step")) != NULL) {
+		if (!repl_debug_resolve_tid(s, args, "step", &tid)) return true;
+		/* direction omitted: handle_debug_step defaults to "over" */
+		snprintf(req, sizeof(req),
+		         "{\"op\":\"debug/step\",\"id\":%d,\"params\":{\"threadId\":%ld}}",
+		         s->debug_req_id_counter++, tid);
+		repl_debug_dispatch(s, req);
+		return true;
+	}
+
+	if ((args = repl_debug_match_cmd(slash_buf, "locals")) != NULL) {
+		if (!repl_debug_resolve_tid(s, args, "locals", &tid)) return true;
+		snprintf(req, sizeof(req),
+		         "{\"op\":\"debug/getLocals\",\"id\":%d,\"params\":{\"threadId\":%ld}}",
+		         s->debug_req_id_counter++, tid);
+		repl_debug_dispatch(s, req);
+		return true;
+	}
+
+	if ((args = repl_debug_match_cmd(slash_buf, "threads")) != NULL) {
+		if (*args != '\0') {
+			boxen_repl_append_scrollback(s, "Usage: /threads");
+			return true;
+		}
+		snprintf(req, sizeof(req),
+		         "{\"op\":\"debug/listThreads\",\"id\":%d}",
+		         s->debug_req_id_counter++);
+		repl_debug_dispatch(s, req);
+		return true;
+	}
+
+	return false;
 }
 
 /* -------------------------------------------------------------------------
@@ -2128,20 +2720,6 @@ int boxen_repl_real_completion(const char *buf, size_t buf_len,
 	/* Non-slash: ODB path completion. */
 	repl_complete_slash_command_path(buf, buf_len, 0, bc_add, &coll);
 	return coll.count;
-}
-
-/* -------------------------------------------------------------------------
- * 2026-06-08 JES #691 Phase C.0 round 2: no-op transport write_line stub.
- *
- * The launch transport used by debug_launch_from_options below needs a
- * write_line callback.  In C.0 the boxen REPL does not yet render debug
- * notifications (suspended/completed) -- those are dropped here.  C.1 will
- * wire in a real callback that queues notifications into the scrollback ring.
- * ---------------------------------------------------------------------- */
-static void boxen_repl_noop_write_line(void *ctx, const char *line, size_t len) {
-	(void)ctx; (void)line; (void)len;
-	/* C.0: debug notifications are intentionally discarded until C.1 wires
-	 * the notification -> scrollback path. */
 }
 
 /* -------------------------------------------------------------------------
@@ -2313,6 +2891,8 @@ int boxen_repl_main(const cli_options_t *opts) {
 		.capture_pipe_fd    = capture_active ? state->pipe_read_fd : -1,
 		.drain_capture_pipe = boxen_repl_drain_capture_pipe_thunk,
 		.drain_ctx          = state,
+		.drain_debug        = boxen_repl_drain_debug_thunk,
+		.drain_debug_ctx    = state,
 		.restore_focus      = boxen_repl_restore_focus_thunk,
 		.restore_focus_ctx  = state,
 		.ring_bell          = boxen_repl_ring_bell_thunk,
@@ -2342,8 +2922,15 @@ int boxen_repl_main(const cli_options_t *opts) {
 		          "boxen_repl_main: failed to allocate launch_transport; skipping auto-launch");
 		/* Continue into the REPL without auto-launch; not fatal. */
 	} else {
-		launch_transport->write_line = boxen_repl_noop_write_line;
-		launch_transport->ctx = NULL;
+		/* 2026-08-10 JES unit 2.4: the C.0 no-op write_line stub is replaced
+		 * by the real enqueue callback -- debug/suspended and debug/completed
+		 * notifications now land in the state's locked queue and render on
+		 * the main thread's next tick instead of being discarded.  ctx = state
+		 * is safe under the teardown contract below: the transport is NULLed,
+		 * threads are killed/joined, and lazy threads are drained (twice)
+		 * before state is freed. */
+		launch_transport->write_line = boxen_repl_debug_write_line;
+		launch_transport->ctx = state;
 		state->launch_transport = launch_transport;
 
 		/* Register the lazy-attach transport BEFORE spawning the debug thread.
@@ -2378,6 +2965,12 @@ int boxen_repl_main(const cli_options_t *opts) {
 			drain_stdout_into_scrollback(state, state->pipe_read_fd);
 		}
 
+		/* 2026-08-10 JES unit 2.4: render debug notifications queued by
+		 * suspended runtime threads since the last tick.  Runs on every
+		 * poll return (event or timeout), so a breakpoint hit surfaces
+		 * within one 100ms poll cycle. */
+		boxen_repl_drain_debug_notifications(state);
+
 		/* 2026-06-08 JES #691 Phase C.0 round 3 P1: poll repl.exit() flag.
 		 * replverbhost_exit() sets g_repl_exit_requested (via repl.exit() from
 		 * non-slash UserTalk code).  The slash path already sets should_quit via
@@ -2410,6 +3003,10 @@ int boxen_repl_main(const cli_options_t *opts) {
 		if (capture_active) {
 			drain_stdout_into_scrollback(state, state->pipe_read_fd);
 		}
+
+		/* 2026-08-10 JES unit 2.4: post-dispatch notification drain, same
+		 * rationale -- surface anything queued before the present below. */
+		boxen_repl_drain_debug_notifications(state);
 
 		boxen_present();
 	}
@@ -2469,6 +3066,42 @@ int boxen_repl_main(const cli_options_t *opts) {
 			pthread_mutex_unlock(&frontier_gil);
 			debug_join_all_threads();
 			pthread_mutex_lock(&frontier_gil);
+			headless_restore_threadglobals(saved);
+		}
+
+		/* Step 6.5 (2026-08-10 JES unit 2.4): second lazy-thread drain.
+		 *
+		 * NARROWS the race documented above (round 3 P1 note): a callScript
+		 * thread that lazy-attached between the first drain (step 2) and the
+		 * transport NULL (step 4) is now a registered DETACHED thread that
+		 * join_all does not join.  It still holds pointers to
+		 * launch_transport and (via ctx) to state, and after the step-5 kill
+		 * it will wake, emit debug/completed through write_line, and
+		 * unregister -- potentially AFTER state is freed below.  That was
+		 * inert while write_line was the C.0 no-op stub; now that /bp can
+		 * arm real breakpoints it is a live use-after-free.
+		 *
+		 * Why the second wait helps: the transport is already NULL, so no
+		 * NEW thread can pass the callback's attach gate (the gate-load-to-
+		 * registration window runs entirely under the GIL and cannot
+		 * straddle these teardown steps), and every thread that slipped in
+		 * earlier decrements the lazy count only after its final write_line
+		 * (headless_spawn.c: debug_send_completed precedes
+		 * debug_unregister_thread).  Fast path is a single atomic load when
+		 * nothing slipped in.
+		 *
+		 * NOT a guarantee: debug_wait_lazy_threads_drained has a bounded
+		 * give-up path (~5s drain + 500ms grace, then log_warn and proceed
+		 * -- see the timeout design note above its definition in
+		 * debug_handler.c).  A wedged thread blocked outside the interpreter
+		 * callback loop can outlive the wait, so this step inherits the same
+		 * documented drain-timeout trade-off as protocol_main: on this
+		 * process-exit path, a bounded race remains preferable to hanging
+		 * shutdown forever. */
+		{
+			hdlthreadglobals saved = hthreadglobals;
+			headless_save_threadglobals(saved);
+			debug_wait_lazy_threads_drained();
 			headless_restore_threadglobals(saved);
 		}
 	}

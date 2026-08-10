@@ -182,6 +182,22 @@ There is no other build flag controlling the TUI. `--debug-tui` is always compil
 
 ---
 
+## The default-REPL debug surface (unit 2.4)
+
+The boxen REPL (`boxen_repl.c`, the default mode since C.6) carries a minimal debug surface built on the same two channels as the TUI, with a stricter threading split:
+
+**Inbound (runtime -> REPL).** `boxen_repl_main` registers its heap-allocated launch transport as the lazy-attach transport with `boxen_repl_debug_write_line` as the callback and the REPL state as `ctx`. Unlike `tui_write_line`, this callback does **not** parse or update UI state on the caller's stack: it copies the raw NDJSON line into a fixed-size ring (`debug_queue` on `boxen_repl_state_t`) under `debug_queue_mutex` and returns. The main thread drains the queue each event-loop tick (`boxen_repl_drain_debug_notifications`), parses with cJSON, appends formatted `[debug]` lines to the scrollback, and maintains the suspended-thread set that drives the footer hint. Rationale: `boxen_repl_append_scrollback` frees/strdups ring entries with no synchronization and is main-thread-only, so the runtime-thread callback must never touch it. Queue overflow drops the newest line and the drain reports the drop count; a later `/threads` rebuilds the suspended set from the authoritative payload, so drift self-heals.
+
+**Outbound (REPL -> runtime).** The `/bp`, `/continue`, `/step`, `/locals`, `/threads` slash commands (kernel intercepts in `submit_input`, same pattern as `/edit`) synthesize request JSON and call `op_dispatch` directly with a second transport (`debug_response_transport`). Op handlers respond synchronously on the main thread through it, so its `write_line` formats straight into the scrollback with no queue hop. Test builds capture the request JSON via `debug_dispatch_capture_buf` (the `dispatch_capture_buf` pattern from the TUI tests) instead of linking `op_dispatch`.
+
+**Teardown.** The REPL follows the same drain-before-free contract as the TUI, plus one extra step: after transport-NULL + kill + join it calls `debug_wait_lazy_threads_drained()` a second time. A lazy thread that attached between the first drain and the transport-NULL is detached (never joined) and still holds the transport and `ctx` pointers; its final `write_line` (the `debug/completed` emit in `headless_spawn.c`) happens before it decrements the lazy count, so the second wait covers every thread that responds to the kill flag. This narrows the window rather than closing it: the drain has a bounded give-up path (~5s + 500ms grace, then log-and-proceed — the documented trade-off in `debug_handler.c`), so a thread wedged outside the interpreter callback loop can still outlive it on this process-exit path.
+
+**Dialog modals.** `run_modal_loop` in `boxen_ui.c` drains the debug queue each iteration via the `drain_debug` slot on `boxen_ui_host_t` (wired to `boxen_repl_drain_debug_thunk`), so a breakpoint hit while a `dialog.*` modal is open renders behind the dialog instead of parking invisibly until the modal closes.
+
+Coverage: `tests/boxen_repl_tests.c` (enqueue-only contract, drain rendering, command dispatch shapes, response rendering, footer hint) and `tools/tui-tests/tests/test_10_debug_surface.py` (real-binary `/bp` + `thread.callScript` + `/continue` round trip). User-facing command reference: [`CLI_USAGE_GUIDE.md`](CLI_USAGE_GUIDE.md).
+
+---
+
 ## Where Phase C goes
 
 Per `planning/phase_c/OVERVIEW.md`, Phase C is the boxen-native REPL. The B.7 eval pane is structurally the seed of the Phase C input line:

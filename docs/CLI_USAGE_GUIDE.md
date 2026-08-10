@@ -293,6 +293,21 @@ Enable debug mode. Shows DEBUG-level messages and above.
 | `Enter` | Submit input — either the input bar or the active modal |
 | Arrow keys | Navigate within the input bar; navigate within a modal |
 
+**Debugging from the boxen REPL (2026-08-10, unit 2.4).**
+
+The default REPL has a minimal debug surface over the same protocol ops that `--protocol` mode uses. `debug/suspended` and `debug/completed` notifications render as `[debug]` scrollback lines (script, line, thread id, reason), and while any thread is parked at a suspension point the footer leads with `N thread(s) suspended -- /threads` so the park is never invisible.
+
+| Command | Action |
+|---------|--------|
+| `/bp <path> <line>` | Set a breakpoint on a fully qualified script path (`@` prefix optional). Repeating the same `/bp` toggles it off (reported as `breakpoint cleared`). The line number is the final space-separated token, so bracketed names containing spaces (e.g. `system.temp.["my script"] 3`) work unquoted. Pathologically long commands (over ~2 KB) are truncated and degrade to a server-side `parse_error` response. |
+| `/bp clear` | Clear all session breakpoints |
+| `/continue [threadId]` | Resume a suspended thread |
+| `/step [threadId]` | Step over (one statement at the same call depth) |
+| `/locals [threadId]` | Print the suspended thread's locals to the scrollback |
+| `/threads` | List debug threads and their suspension state |
+
+`threadId` may be omitted when exactly one thread is suspended. Breakpoints fire on `thread.callScript`-dispatched scripts via the lazy-attach path (PR #722) — set the breakpoint first, then dispatch. Script paths use the same addressing rules as the protocol ops (fully qualified dotted path; guest databases use the bare path from their root, no file prefix — see [`AGENT_DEBUGGING_GUIDE.md`](AGENT_DEBUGGING_GUIDE.md)).
+
 **Known limitations as of 2026-06-25** (track via the issues in [`BOXEN_REPL_PARITY.md`](BOXEN_REPL_PARITY.md)):
 
 - Dialog input fields are capped at 256 bytes (#795).  Long paths and passphrases are silently truncated.

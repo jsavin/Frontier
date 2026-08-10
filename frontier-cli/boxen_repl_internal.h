@@ -19,6 +19,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <pthread.h>  /* debug notification queue mutex -- 2026-08-10 JES unit 2.4 */
 #include "boxen/boxen.h"
 /* op_handler.h defines transport_t; it has no runtime or GIL dependencies,
  * so it is safe to include in test builds (BOXEN_REPL_OMIT_MAIN defined). */
@@ -70,6 +71,31 @@
  * Defined here (not via palette.h) so test builds compile without linking
  * palette.c. */
 #define BOXEN_REPL_SLASH_DEBOUNCE_MS 350
+
+/* -------------------------------------------------------------------------
+ * Debug notification queue constants
+ *
+ * 2026-08-10 JES unit 2.4: default-REPL debug surface.
+ *
+ * Notifications (debug/suspended, debug/completed) arrive through the
+ * lazy-attach transport's write_line callback ON THE SUSPENDED RUNTIME
+ * THREAD'S STACK.  That callback must never render, never call UserTalk,
+ * and never touch boxen or the scrollback ring (its free/strdup cycle is
+ * unsynchronized and main-thread-only).  Instead write_line copies the raw
+ * NDJSON line into this fixed-size queue under debug_queue_mutex; the boxen
+ * main thread drains, parses, and renders on its next tick.
+ *
+ * Line max 640 matches the largest notification emit buffer
+ * (debug_send_suspended, debug_handler.c).  Overflow drops the newest line
+ * and counts it in debug_queue_dropped; the drain reports the drop count.
+ * ---------------------------------------------------------------------- */
+#define BOXEN_REPL_DEBUG_QUEUE_SIZE 64
+#define BOXEN_REPL_DEBUG_LINE_MAX   640
+
+/* Max number of concurrently-suspended threads tracked for the footer hint
+ * and for the /continue-without-tid default.  MAX_DEBUG_THREADS is 16 in
+ * debug_handler.c; mirror it. */
+#define BOXEN_REPL_MAX_SUSPENDED 16
 
 /* 2026-06-10 JES #691 Phase C.0.5: multi-line accumulator capacity.
  * 8 KB covers realistic multi-line scripts while keeping the struct footprint
@@ -432,6 +458,50 @@ typedef struct {
 	 * mouse never comes up enabled by default (the PR #808 lesson). */
 	bool mouse_user_on;
 	bool mouse_palette_auto;
+
+	/* 2026-08-10 JES unit 2.4: debug notification queue.
+	 *
+	 * Written by boxen_repl_debug_write_line on SUSPENDED RUNTIME THREADS
+	 * (the lazy-attach transport callback).  Read by
+	 * boxen_repl_drain_debug_notifications on the boxen main thread each
+	 * tick.  ALL access goes through debug_queue_mutex -- this is the ONLY
+	 * cross-thread surface in the REPL state; every other field keeps the
+	 * main-thread-only convention documented above.
+	 *
+	 * debug_queue is a ring: debug_queue_head is the next write slot; the
+	 * oldest entry is (head - count + SIZE) % SIZE.  When full, new lines
+	 * are dropped (newest-loses) and counted in debug_queue_dropped so the
+	 * drain can report the loss instead of silently discarding it. */
+	char            debug_queue[BOXEN_REPL_DEBUG_QUEUE_SIZE][BOXEN_REPL_DEBUG_LINE_MAX];
+	int             debug_queue_head;     /* next write slot */
+	int             debug_queue_count;    /* valid entries */
+	int             debug_queue_dropped;  /* lines dropped since last drain report */
+	pthread_mutex_t debug_queue_mutex;
+
+	/* 2026-08-10 JES unit 2.4: suspended-thread tracking (main thread only).
+	 *
+	 * Updated by the drain/response formatter: debug/suspended adds a tid,
+	 * debug/completed and a successful continue/step response remove it.
+	 * Drives the footer hint and the /continue-/step-/locals default tid. */
+	long suspended_tids[BOXEN_REPL_MAX_SUSPENDED];
+	int  suspended_count;
+
+	/* 2026-08-10 JES unit 2.4: outbound debug op dispatch.
+	 *
+	 * debug_response_transport is handed to op_dispatch for the /bp,
+	 * /continue, /step, /locals, /threads slash commands.  op handlers write
+	 * their response synchronously through it ON THE MAIN THREAD (op_dispatch
+	 * is called from submit_input under the GIL), so its write_line formats
+	 * straight into the scrollback -- no queue hop needed.
+	 *
+	 * debug_dispatch_capture_buf: test seam mirroring
+	 * tui_state_t::dispatch_capture_buf.  When non-NULL, dispatch copies the
+	 * request JSON here instead of calling op_dispatch (which is not linked
+	 * in test builds). */
+	transport_t debug_response_transport;
+	int         debug_req_id_counter;         /* per-session outbound request ids */
+	char       *debug_dispatch_capture_buf;   /* test seam; NULL in production */
+	int         debug_dispatch_capture_cap;
 } boxen_repl_state_t;
 
 /* -------------------------------------------------------------------------
@@ -485,6 +555,39 @@ void boxen_repl_check_pending_slash(boxen_repl_state_t *s);
  * Thread-safety: not thread-safe; must be called with the GIL held.
  */
 void boxen_repl_append_scrollback(boxen_repl_state_t *s, const char *line);
+
+/*
+ * boxen_repl_debug_write_line -- lazy-attach transport callback (unit 2.4).
+ *
+ * ctx is the boxen_repl_state_t.  Runs on the SUSPENDED RUNTIME THREAD'S
+ * stack (GIL held) when debug_send_suspended / debug_send_completed fire.
+ * ONLY enqueues a copy of the line into the locked debug queue -- never
+ * renders, never calls UserTalk, never touches boxen or the scrollback.
+ */
+void boxen_repl_debug_write_line(void *ctx, const char *line, size_t len);
+
+/*
+ * boxen_repl_drain_debug_notifications -- main-thread drain + render.
+ *
+ * Pops every queued notification line, parses it, appends formatted
+ * scrollback lines, and updates suspended-thread tracking + footer.
+ * Production calls it each event-loop tick (both timeout and event paths);
+ * tests call it directly after feeding lines through
+ * boxen_repl_debug_write_line.
+ *
+ * Thread-safety: main thread only (renders); the queue pop itself is
+ * mutex-guarded against concurrent write_line enqueues.
+ */
+void boxen_repl_drain_debug_notifications(boxen_repl_state_t *s);
+
+/*
+ * boxen_repl_drain_debug_thunk -- boxen_ui bridge adapter (hardening P1).
+ *
+ * ctx is the boxen_repl_state_t.  Wired into boxen_ui_host_t.drain_debug
+ * so run_modal_loop renders debug notifications while a dialog modal is
+ * open.  Main thread only (the modal loop runs on the boxen main thread).
+ */
+void boxen_repl_drain_debug_thunk(void *ctx);
 
 /* 2026-06-09 JES #691 Phase C.0.1: history ring + persistence API. */
 void boxen_repl_history_append(boxen_repl_state_t *s, const char *line);

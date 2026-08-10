@@ -2283,6 +2283,495 @@ static void test_paste_cancels_pending_slash_palette(void) {
 	teardown();
 }
 
+/* =========================================================================
+ * 2026-08-10 JES unit 2.4: default-REPL debug surface tests.
+ *
+ * Cover the three behavioral surfaces:
+ *   1. Notification path: write_line (suspended runtime thread) enqueues
+ *      ONLY; the main-thread drain renders formatted scrollback lines and
+ *      updates suspended-thread tracking.
+ *   2. Slash commands: /bp, /continue, /step, /locals, /threads dispatch
+ *      the correct debug op JSON (captured via debug_dispatch_capture_buf).
+ *   3. Response formatting: op responses fed through the response transport
+ *      render to scrollback and maintain the suspended set.
+ * ======================================================================= */
+
+/* Search the scrollback ring for a line containing `needle`. */
+static bool scrollback_contains(const char *needle) {
+	for (int i = 0; i < g_state.scrollback_count && i < BOXEN_REPL_SCROLLBACK_SIZE; i++) {
+		int idx = (g_state.scrollback_head - g_state.scrollback_count + i +
+		           BOXEN_REPL_SCROLLBACK_SIZE) % BOXEN_REPL_SCROLLBACK_SIZE;
+		if (g_state.scrollback[idx] != NULL &&
+		    strstr(g_state.scrollback[idx], needle) != NULL) {
+			return true;
+		}
+	}
+	return false;
+}
+
+/* Feed a notification line through the lazy-attach write_line callback,
+ * exactly as debug_send_suspended / debug_send_completed would. */
+static void feed_notification(const char *json) {
+	boxen_repl_debug_write_line(&g_state, json, strlen(json));
+}
+
+/* Feed a response line through the response transport, exactly as an op
+ * handler invoked by op_dispatch would. */
+static void feed_response(const char *json) {
+	g_state.debug_response_transport.write_line(
+		g_state.debug_response_transport.ctx, json, strlen(json));
+}
+
+/* Submit a line as if the user typed it and pressed Enter. */
+static void submit_line(const char *line) {
+	strncpy(g_state.input_buf, line, sizeof(g_state.input_buf) - 1);
+	g_state.input_buf[sizeof(g_state.input_buf) - 1] = '\0';
+	g_state.input_len        = (int)strlen(g_state.input_buf);
+	g_state.input_cursor_pos = g_state.input_len;
+	boxen_event_t enter = make_key_event(BOXEN_KEY_ENTER);
+	boxen_repl_run_one_tick(&g_state, &enter);
+}
+
+static char g_debug_dispatch_capture[1024];
+
+static void setup_debug(void) {
+	setup();
+	g_debug_dispatch_capture[0]          = '\0';
+	g_state.debug_dispatch_capture_buf   = g_debug_dispatch_capture;
+	g_state.debug_dispatch_capture_cap   = (int)sizeof(g_debug_dispatch_capture);
+}
+
+#define SUSPENDED_NOTIF_TID3 \
+	"{\"id\":null,\"op\":\"debug/suspended\",\"params\":" \
+	"{\"threadId\":3,\"line\":12,\"reason\":\"breakpoint\"," \
+	"\"script\":\"system.temp.foo\"}}"
+
+#define COMPLETED_NOTIF_TID3 \
+	"{\"id\":null,\"op\":\"debug/completed\",\"params\":" \
+	"{\"threadId\":3,\"success\":true}}"
+
+/* --- 1. Notification path ---------------------------------------------- */
+
+/* The write_line callback runs on the suspended runtime thread; it must
+ * ONLY enqueue -- nothing may reach the scrollback until the main-thread
+ * drain runs. */
+static void test_debug_write_line_enqueues_without_rendering(void) {
+	setup_debug();
+
+	feed_notification(SUSPENDED_NOTIF_TID3);
+
+	assert(g_state.debug_queue_count == 1);
+	assert(g_state.scrollback_count == 0);
+	assert(g_state.suspended_count == 0);  /* tracking updates on drain, not enqueue */
+
+	teardown();
+}
+
+static void test_debug_suspended_renders_on_drain(void) {
+	setup_debug();
+
+	feed_notification(SUSPENDED_NOTIF_TID3);
+	boxen_repl_drain_debug_notifications(&g_state);
+
+	assert(g_state.debug_queue_count == 0);
+	/* Formatted line carries script, line, thread id, and reason. */
+	assert(scrollback_contains("system.temp.foo:12"));
+	assert(scrollback_contains("thread 3"));
+	assert(scrollback_contains("breakpoint"));
+	/* Suspension tracking feeds the footer hint + default tid. */
+	assert(g_state.suspended_count == 1);
+	assert(g_state.suspended_tids[0] == 3);
+
+	teardown();
+}
+
+static void test_debug_completed_renders_and_clears_suspended(void) {
+	setup_debug();
+
+	feed_notification(SUSPENDED_NOTIF_TID3);
+	feed_notification(COMPLETED_NOTIF_TID3);
+	boxen_repl_drain_debug_notifications(&g_state);
+
+	assert(scrollback_contains("thread 3 completed"));
+	assert(g_state.suspended_count == 0);
+
+	teardown();
+}
+
+static void test_debug_queue_overflow_reports_dropped(void) {
+	setup_debug();
+
+	for (int i = 0; i < BOXEN_REPL_DEBUG_QUEUE_SIZE + 5; i++) {
+		feed_notification(COMPLETED_NOTIF_TID3);
+	}
+	assert(g_state.debug_queue_count == BOXEN_REPL_DEBUG_QUEUE_SIZE);
+	assert(g_state.debug_queue_dropped == 5);
+
+	boxen_repl_drain_debug_notifications(&g_state);
+	assert(scrollback_contains("5 debug notification"));
+	assert(g_state.debug_queue_dropped == 0);
+
+	teardown();
+}
+
+/* --- 2. Slash commands ------------------------------------------------- */
+
+static void test_slash_bp_dispatches_setbreakpoint(void) {
+	setup_debug();
+
+	submit_line("/bp system.temp.foo 12");
+
+	assert(strstr(g_debug_dispatch_capture, "\"op\":\"debug/setBreakpoint\"") != NULL);
+	assert(strstr(g_debug_dispatch_capture, "\"script\":\"system.temp.foo\"") != NULL);
+	assert(strstr(g_debug_dispatch_capture, "\"line\":12") != NULL);
+
+	teardown();
+}
+
+/* A leading "@" on the path is accepted and stripped before dispatch
+ * (matches the /edit intercept and the server-side normalization). */
+static void test_slash_bp_strips_at_prefix(void) {
+	setup_debug();
+
+	submit_line("/bp @system.temp.foo 12");
+
+	assert(strstr(g_debug_dispatch_capture, "\"script\":\"system.temp.foo\"") != NULL);
+
+	teardown();
+}
+
+static void test_slash_bp_clear_dispatches_clearbreakpoints(void) {
+	setup_debug();
+
+	submit_line("/bp clear");
+
+	assert(strstr(g_debug_dispatch_capture, "\"op\":\"debug/clearBreakpoints\"") != NULL);
+
+	teardown();
+}
+
+static void test_slash_bp_without_args_shows_usage(void) {
+	setup_debug();
+
+	submit_line("/bp");
+
+	assert(g_debug_dispatch_capture[0] == '\0');  /* nothing dispatched */
+	assert(scrollback_contains("Usage: /bp"));
+
+	teardown();
+}
+
+static void test_slash_bp_bad_line_shows_usage(void) {
+	setup_debug();
+
+	submit_line("/bp system.temp.foo twelve");
+
+	assert(g_debug_dispatch_capture[0] == '\0');
+	assert(scrollback_contains("Usage: /bp"));
+
+	teardown();
+}
+
+static void test_slash_continue_with_explicit_tid(void) {
+	setup_debug();
+
+	submit_line("/continue 7");
+
+	assert(strstr(g_debug_dispatch_capture, "\"op\":\"debug/continue\"") != NULL);
+	assert(strstr(g_debug_dispatch_capture, "\"threadId\":7") != NULL);
+
+	teardown();
+}
+
+/* With exactly one suspended thread, /continue needs no tid argument. */
+static void test_slash_continue_defaults_to_sole_suspended_thread(void) {
+	setup_debug();
+
+	feed_notification(SUSPENDED_NOTIF_TID3);
+	boxen_repl_drain_debug_notifications(&g_state);
+
+	submit_line("/continue");
+
+	assert(strstr(g_debug_dispatch_capture, "\"op\":\"debug/continue\"") != NULL);
+	assert(strstr(g_debug_dispatch_capture, "\"threadId\":3") != NULL);
+
+	teardown();
+}
+
+static void test_slash_continue_without_suspended_thread_reports(void) {
+	setup_debug();
+
+	submit_line("/continue");
+
+	assert(g_debug_dispatch_capture[0] == '\0');
+	assert(scrollback_contains("no suspended"));
+
+	teardown();
+}
+
+static void test_slash_step_dispatches_debug_step(void) {
+	setup_debug();
+
+	submit_line("/step 7");
+
+	assert(strstr(g_debug_dispatch_capture, "\"op\":\"debug/step\"") != NULL);
+	assert(strstr(g_debug_dispatch_capture, "\"threadId\":7") != NULL);
+
+	teardown();
+}
+
+static void test_slash_locals_dispatches_getlocals(void) {
+	setup_debug();
+
+	submit_line("/locals 7");
+
+	assert(strstr(g_debug_dispatch_capture, "\"op\":\"debug/getLocals\"") != NULL);
+	assert(strstr(g_debug_dispatch_capture, "\"threadId\":7") != NULL);
+
+	teardown();
+}
+
+static void test_slash_threads_dispatches_listthreads(void) {
+	setup_debug();
+
+	submit_line("/threads");
+
+	assert(strstr(g_debug_dispatch_capture, "\"op\":\"debug/listThreads\"") != NULL);
+
+	teardown();
+}
+
+/* Path arguments containing JSON-special characters must be escaped, not
+ * interpolated raw (B.4 P1 bug class from the TUI reviews). */
+static void test_slash_bp_escapes_json_specials_in_path(void) {
+	setup_debug();
+
+	submit_line("/bp bad\"path 3");
+
+	assert(strstr(g_debug_dispatch_capture, "\"script\":\"bad\\\"path\"") != NULL);
+
+	teardown();
+}
+
+/* --- 3. Response formatting -------------------------------------------- */
+
+static void test_response_continue_unmarks_suspended(void) {
+	setup_debug();
+
+	feed_notification(SUSPENDED_NOTIF_TID3);
+	boxen_repl_drain_debug_notifications(&g_state);
+	assert(g_state.suspended_count == 1);
+
+	feed_response("{\"id\":1,\"result\":{\"threadId\":3,\"status\":\"running\"},\"success\":true}");
+
+	assert(g_state.suspended_count == 0);
+	assert(scrollback_contains("thread 3 running"));
+
+	teardown();
+}
+
+static void test_response_setbreakpoint_renders_action(void) {
+	setup_debug();
+
+	feed_response("{\"id\":1,\"result\":{\"action\":\"set\",\"script\":\"system.temp.foo\",\"line\":12},\"success\":true}");
+	assert(scrollback_contains("breakpoint set"));
+	assert(scrollback_contains("system.temp.foo:12"));
+
+	/* Toggle semantics: dispatching the same breakpoint again clears it;
+	 * the "cleared" action must render honestly. */
+	feed_response("{\"id\":2,\"result\":{\"action\":\"cleared\",\"script\":\"system.temp.foo\",\"line\":12},\"success\":true}");
+	assert(scrollback_contains("breakpoint cleared"));
+
+	teardown();
+}
+
+static void test_response_locals_renders_entries(void) {
+	setup_debug();
+
+	feed_response(
+		"{\"id\":1,\"result\":{\"locals\":["
+		"{\"name\":\"x\",\"value\":\"1\",\"type\":\"long\"},"
+		"{\"name\":\"msg\",\"value\":\"hi\",\"type\":\"string\"}],"
+		"\"script\":\"system.temp.foo\",\"line\":12},\"success\":true}");
+
+	assert(scrollback_contains("x = 1 (long)"));
+	assert(scrollback_contains("msg = hi (string)"));
+
+	teardown();
+}
+
+static void test_response_threads_renders_list(void) {
+	setup_debug();
+
+	feed_response(
+		"{\"id\":1,\"result\":{\"threads\":["
+		"{\"threadId\":3,\"suspended\":true,\"script\":\"system.temp.foo\",\"line\":12},"
+		"{\"threadId\":4,\"suspended\":false}]},\"success\":true}");
+
+	assert(scrollback_contains("3: suspended at system.temp.foo:12"));
+	assert(scrollback_contains("4: running"));
+
+	teardown();
+}
+
+static void test_response_error_renders_message(void) {
+	setup_debug();
+
+	feed_response("{\"id\":1,\"error\":{\"code\":\"bad_state\",\"message\":\"Thread 7 is not suspended\"},\"success\":false}");
+
+	assert(scrollback_contains("Thread 7 is not suspended"));
+
+	teardown();
+}
+
+/* --- Hardening round ---------------------------------------------------- */
+
+/* Logical scrollback index of the first line containing `needle`; -1 if
+ * absent.  Used for ordering assertions. */
+static int scrollback_index_of(const char *needle) {
+	for (int i = 0; i < g_state.scrollback_count && i < BOXEN_REPL_SCROLLBACK_SIZE; i++) {
+		int idx = (g_state.scrollback_head - g_state.scrollback_count + i +
+		           BOXEN_REPL_SCROLLBACK_SIZE) % BOXEN_REPL_SCROLLBACK_SIZE;
+		if (g_state.scrollback[idx] != NULL &&
+		    strstr(g_state.scrollback[idx], needle) != NULL) {
+			return i;
+		}
+	}
+	return -1;
+}
+
+/* P1: the boxen_ui modal loop drains via this thunk; it must render
+ * queued notifications exactly like the event-loop drain. */
+static void test_debug_drain_thunk_renders_queued_notifications(void) {
+	setup_debug();
+
+	feed_notification(SUSPENDED_NOTIF_TID3);
+	boxen_repl_drain_debug_thunk(&g_state);
+
+	assert(g_state.debug_queue_count == 0);
+	assert(scrollback_contains("suspended at system.temp.foo:12"));
+	assert(g_state.suspended_count == 1);
+
+	teardown();
+}
+
+/* P2: the drop report must land on the drain pass where the drop is
+ * detected, BEFORE the surviving entries render -- not after the queue
+ * empties (which in production could be a later, unrelated scrollback
+ * point). */
+static void test_debug_drop_report_precedes_entries_in_same_drain(void) {
+	setup_debug();
+
+	for (int i = 0; i < BOXEN_REPL_DEBUG_QUEUE_SIZE + 3; i++) {
+		feed_notification(COMPLETED_NOTIF_TID3);
+	}
+	boxen_repl_drain_debug_notifications(&g_state);
+
+	int report_idx = scrollback_index_of("notification(s) dropped");
+	int entry_idx  = scrollback_index_of("thread 3 completed");
+	assert(report_idx >= 0);
+	assert(entry_idx >= 0);
+	assert(report_idx < entry_idx);
+	assert(g_state.debug_queue_dropped == 0);
+
+	teardown();
+}
+
+/* P2: transport_t's contract is (line, len); the raw fallback must not
+ * read past len even when the buffer has trailing bytes. */
+static void test_response_raw_fallback_respects_length(void) {
+	setup_debug();
+
+	const char *buf = "not-json-at-all TRAILING";
+	g_state.debug_response_transport.write_line(
+		g_state.debug_response_transport.ctx, buf, 15 /* excludes "TRAILING" */);
+
+	assert(scrollback_contains("not-json-at-all"));
+	assert(!scrollback_contains("TRAILING"));
+
+	teardown();
+}
+
+/* P2: unparseable JSON from the notification channel renders as a raw
+ * [debug]-prefixed line rather than being silently dropped. */
+static void test_notification_unparseable_json_renders_raw(void) {
+	setup_debug();
+
+	feed_notification("{broken json##");
+	boxen_repl_drain_debug_notifications(&g_state);
+
+	assert(scrollback_contains("[debug] {broken json##"));
+
+	teardown();
+}
+
+/* P2: bare /continue with MULTIPLE suspended threads prints the count
+ * hint and dispatches nothing. */
+static void test_slash_continue_multiple_suspended_prints_hint(void) {
+	setup_debug();
+
+	feed_notification(SUSPENDED_NOTIF_TID3);
+	feed_notification(
+		"{\"id\":null,\"op\":\"debug/suspended\",\"params\":"
+		"{\"threadId\":4,\"line\":7,\"reason\":\"breakpoint\","
+		"\"script\":\"system.temp.bar\"}}");
+	boxen_repl_drain_debug_notifications(&g_state);
+	assert(g_state.suspended_count == 2);
+
+	submit_line("/continue");
+
+	assert(g_debug_dispatch_capture[0] == '\0');
+	assert(scrollback_contains("2 threads suspended"));
+
+	teardown();
+}
+
+/* P2: line 0 is rejected client-side with usage, no dispatch. */
+static void test_slash_bp_line_zero_shows_usage(void) {
+	setup_debug();
+
+	submit_line("/bp system.temp.foo 0");
+
+	assert(g_debug_dispatch_capture[0] == '\0');
+	assert(scrollback_contains("Usage: /bp"));
+
+	teardown();
+}
+
+/* P2: the line number is the LAST space-separated token, so bracketed
+ * script names containing spaces dispatch intact. */
+static void test_slash_bp_path_with_spaces_uses_last_token_as_line(void) {
+	setup_debug();
+
+	submit_line("/bp system.temp.[\"my script\"] 4");
+
+	assert(strstr(g_debug_dispatch_capture,
+	              "\"script\":\"system.temp.[\\\"my script\\\"]\"") != NULL);
+	assert(strstr(g_debug_dispatch_capture, "\"line\":4") != NULL);
+
+	teardown();
+}
+
+/* --- Footer hint -------------------------------------------------------- */
+
+/* The park must never be invisible: with >=1 suspended thread the footer
+ * carries a hint; when the set empties the hint disappears. */
+static void test_footer_hint_follows_suspension_state(void) {
+	setup_debug();
+
+	feed_notification(SUSPENDED_NOTIF_TID3);
+	boxen_repl_drain_debug_notifications(&g_state);
+	boxen_present();
+	assert(boxen_mock_has_text("1 thread suspended"));
+
+	feed_notification(COMPLETED_NOTIF_TID3);
+	boxen_repl_drain_debug_notifications(&g_state);
+	boxen_present();
+	assert(!boxen_mock_has_text("1 thread suspended"));
+
+	teardown();
+}
+
 /* -------------------------------------------------------------------------
  * 2026-08-09 JES C M7: mouse-mode policy + /mouse toggle.
  *
@@ -2632,6 +3121,39 @@ int main(void) {
 	TR_RUN(test_footer_shows_mouse_state);
 	TR_RUN(test_mouse_pref_persists_across_sessions);
 	TR_RUN(test_mouse_pref_not_written_without_toggle);
+
+	/* 2026-08-10 JES unit 2.4: default-REPL debug surface. */
+	TR_RUN(test_debug_write_line_enqueues_without_rendering);
+	TR_RUN(test_debug_suspended_renders_on_drain);
+	TR_RUN(test_debug_completed_renders_and_clears_suspended);
+	TR_RUN(test_debug_queue_overflow_reports_dropped);
+	TR_RUN(test_slash_bp_dispatches_setbreakpoint);
+	TR_RUN(test_slash_bp_strips_at_prefix);
+	TR_RUN(test_slash_bp_clear_dispatches_clearbreakpoints);
+	TR_RUN(test_slash_bp_without_args_shows_usage);
+	TR_RUN(test_slash_bp_bad_line_shows_usage);
+	TR_RUN(test_slash_continue_with_explicit_tid);
+	TR_RUN(test_slash_continue_defaults_to_sole_suspended_thread);
+	TR_RUN(test_slash_continue_without_suspended_thread_reports);
+	TR_RUN(test_slash_step_dispatches_debug_step);
+	TR_RUN(test_slash_locals_dispatches_getlocals);
+	TR_RUN(test_slash_threads_dispatches_listthreads);
+	TR_RUN(test_slash_bp_escapes_json_specials_in_path);
+	TR_RUN(test_response_continue_unmarks_suspended);
+	TR_RUN(test_response_setbreakpoint_renders_action);
+	TR_RUN(test_response_locals_renders_entries);
+	TR_RUN(test_response_threads_renders_list);
+	TR_RUN(test_response_error_renders_message);
+	TR_RUN(test_footer_hint_follows_suspension_state);
+
+	/* 2026-08-10 JES unit 2.4 hardening round. */
+	TR_RUN(test_debug_drain_thunk_renders_queued_notifications);
+	TR_RUN(test_debug_drop_report_precedes_entries_in_same_drain);
+	TR_RUN(test_response_raw_fallback_respects_length);
+	TR_RUN(test_notification_unparseable_json_renders_raw);
+	TR_RUN(test_slash_continue_multiple_suspended_prints_hint);
+	TR_RUN(test_slash_bp_line_zero_shows_usage);
+	TR_RUN(test_slash_bp_path_with_spaces_uses_last_token_as_line);
 
 	TR_SUMMARY();
 	return TR_EXIT_CODE();
