@@ -2646,12 +2646,41 @@ class TestRunner:
             except Exception as e:
                 print(f"Warning: Failed to clean up test artifacts: {e}", file=sys.stderr)
 
-    def print_summary(self):
-        """Print test summary."""
+    def print_summary(self, baseline: Optional[Dict[str, str]] = None,
+                      time_note: Optional[str] = None):
+        """Print test summary; returns True when the run should exit 0.
+
+        With a baseline (name -> reason map from load_baseline()):
+        - failures whose name IS on the list are reported as
+          "known-fail (baselined)" and do NOT fail the run;
+        - failures whose name is NOT on the list fail the run;
+        - a PASS whose name is on the list is loudly reported as
+          "baselined test now passes" and FAILS the run, so the
+          baseline cannot rot;
+        - baseline entries matching no executed test warn only
+          (targeted runs execute a subset of the suite);
+        - a baseline min_total directive below the collected result
+          count fails the run (collapsed-discovery guard).
+        """
         total = len(self.results)
         skipped = sum(1 for r in self.results if r.skipped)
         passed = sum(1 for r in self.results if r.passed and not r.skipped)
         failed = total - passed - skipped
+
+        if baseline is None:
+            unexpected = [r for r in self.results
+                          if not r.passed and not r.skipped]
+            known: List[TestResult] = []
+            stale: List[TestResult] = []
+            flaky_passes: List[TestResult] = []
+            baselined_skips: List[TestResult] = []
+            unmatched: List[str] = []
+        else:
+            unexpected, known, stale, flaky_passes, baselined_skips, unmatched = \
+                classify_against_baseline(self.results, baseline)
+        min_total = getattr(baseline, 'min_total', None) \
+            if baseline is not None else None
+        suite_too_small = min_total is not None and total < min_total
 
         print("\n" + "=" * 70)
         print("TEST SUMMARY")
@@ -2659,19 +2688,66 @@ class TestRunner:
         print(f"Total:   {total}")
         print(f"Passed:  {passed}")
         print(f"Skipped: {skipped}")
-        print(f"Failed:  {failed}")
+        if baseline is not None:
+            print(f"Known-fail (baselined): {len(known)}")
+            print(f"Failed:  {len(unexpected)}")
+        else:
+            print(f"Failed:  {failed}")
+        if time_note:
+            print(f"Time:    {time_note}")
 
-        if failed > 0:
+        if known:
+            print("\nKnown failures (baselined -- not failing the run):")
+            for result in known:
+                reason = baseline.get(result.name, '')
+                suffix = f" [{reason}]" if reason else ""
+                print(f"  ~ known-fail (baselined): {result.name}{suffix}")
+
+        if unexpected:
             print("\nFailed tests:")
-            for result in self.results:
-                if not result.passed and not result.skipped:
-                    print(f"  - {result.name}: {result.error}")
+            for result in unexpected:
+                print(f"  - {result.name}: {result.error}")
+
+        if stale:
+            print("\n" + "!" * 70)
+            print("BASELINED TEST NOW PASSES -- remove it from the baseline file:")
+            for result in stale:
+                print(f"  + {result.name}")
+            print("A stale baseline entry fails the run so the list cannot rot.")
+            print("!" * 70)
+
+        if flaky_passes:
+            print("\nFlaky baselined tests that passed this run (entry kept):")
+            for result in flaky_passes:
+                print(f"  ~ {result.name} [{baseline.get(result.name, '')}]")
+
+        if baselined_skips:
+            print("\nBaselined entries SKIPPED this run (check whether the "
+                  "entry is still needed):")
+            for result in baselined_skips:
+                print(f"  ~ {result.name}")
+
+        if unmatched:
+            print("\nWarning: baseline entries did not run this invocation")
+            print("(renamed/removed test, or a targeted run excluded them):")
+            for name in unmatched:
+                print(f"  ? {name}")
+
+        if suite_too_small:
+            print("\n" + "!" * 70)
+            print(f"SUITE SIZE BELOW BASELINE FLOOR: collected {total} results "
+                  f"but the baseline file requires min_total: {min_total}.")
+            print("Test discovery has likely collapsed (missing YAML files or "
+                  "a broken glob); failing the run.")
+            print("!" * 70)
 
         print("=" * 70)
 
-        return failed == 0
+        return (len(unexpected) == 0 and len(stale) == 0
+                and not suite_too_small)
 
-    def save_run_summary(self, duration_seconds: float, workers: int, batch_mode: bool):
+    def save_run_summary(self, duration_seconds: float, workers: int, batch_mode: bool,
+                         baseline: Optional[Dict[str, str]] = None):
         """Write a JSON summary of the test run to tmp/integration/last_run.json."""
         total = len(self.results)
         skipped = sum(1 for r in self.results if r.skipped)
@@ -2684,10 +2760,24 @@ class TestRunner:
             'passed': passed,
             'skipped': skipped,
             'failed': failed,
+            'failures': sorted(
+                ({'name': r.name, 'error': r.error} for r in self.results
+                 if not r.passed and not r.skipped),
+                key=lambda d: d['name']),
             'duration_seconds': round(duration_seconds, 1),
             'workers': workers,
             'batch_mode': batch_mode,
         }
+        if baseline is not None:
+            unexpected, known, stale, flaky_passes, baselined_skips, unmatched = \
+                classify_against_baseline(self.results, baseline)
+            summary['known_failed'] = len(known)
+            summary['unexpected_failed'] = len(unexpected)
+            summary['stale_baseline_passes'] = sorted(r.name for r in stale)
+            summary['flaky_baseline_passes'] = sorted(r.name for r in flaky_passes)
+            summary['baselined_skipped'] = sorted(r.name for r in baselined_skips)
+            summary['baseline_entries_not_run'] = unmatched
+            summary['baseline_min_total'] = getattr(baseline, 'min_total', None)
 
         output_dir = os.path.join(self.test_root_dir, 'tmp', 'integration')
         os.makedirs(output_dir, exist_ok=True)
@@ -2696,6 +2786,118 @@ class TestRunner:
         with open(output_path, 'w') as f:
             json.dump(summary, f, indent=2)
             f.write('\n')
+
+
+class Baseline(dict):
+    """Known-failure name -> reason map plus file-level directives.
+
+    min_total: minimum plausible suite size from a '#min_total: N'
+    comment-directive, or None. Guards against a collapsed test
+    discovery (only the baselined tests running, all failing) reading
+    as a clean exit-0 run.
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.min_total: Optional[int] = None
+
+
+def load_baseline(path: str) -> Baseline:
+    """Parse a known-failures baseline file into a Baseline map.
+
+    Format: one expected-failing test per line,
+        <exact test name> | <one-line reason, tracking issue>
+    The ' | ' separator and reason are optional (a bare name is a valid
+    entry). Blank lines and lines whose first non-space character is '#'
+    are comments -- except the '#min_total: N' directive, which records
+    the minimum plausible suite size (see Baseline). Names are matched
+    exactly against TestResult.name. Duplicate names warn on stderr;
+    the last occurrence wins.
+
+    Raises OSError when the file cannot be read -- the caller decides
+    whether a missing baseline is fatal.
+    """
+    baseline = Baseline()
+    with open(path, encoding='utf-8') as f:
+        for raw in f:
+            line = raw.strip()
+            if not line:
+                continue
+            if line.startswith('#'):
+                m = re.match(r'#\s*min_total:\s*(\d+)$', line)
+                if m:
+                    baseline.min_total = int(m.group(1))
+                continue
+            if ' | ' in line:
+                name, reason = line.split(' | ', 1)
+                name, reason = name.strip(), reason.strip()
+            else:
+                name, reason = line, ''
+            if name in baseline:
+                print(f"Warning: duplicate baseline entry {name!r} in {path} "
+                      f"(last occurrence wins)", file=sys.stderr)
+            baseline[name] = reason
+    return baseline
+
+
+def baseline_entry_is_flaky(reason: str) -> bool:
+    """True when a baseline entry's reason marks the test flaky.
+
+    A 'flaky:' PREFIX (case-insensitive) on the reason marks a test whose
+    outcome is nondeterministic (e.g. order-dependent state): its failures
+    are baselined AND its passes are exempt from the stale-entry rule.
+    """
+    return reason.strip().lower().startswith('flaky:')
+
+
+def classify_against_baseline(results: List[TestResult],
+                              baseline: Dict[str, str]
+                              ) -> Tuple[List[TestResult], List[TestResult],
+                                         List[TestResult], List[TestResult],
+                                         List[str]]:
+    """Split results against a baseline.
+
+    Returns (unexpected_failures, known_failures, stale_passes,
+    flaky_passes, baselined_skips, unmatched_names). Skipped results are
+    neutral for exit semantics: they are neither known failures nor
+    stale passes, but they do count as "the test ran" for
+    unmatched-entry detection (a skip is a deliberate state, not
+    baseline rot); baselined skips are returned for informational
+    reporting. A pass on an entry marked flaky (see
+    baseline_entry_is_flaky) is reported informationally instead of
+    failing the run as stale.
+
+    Test names are only unique per YAML file, so the same name can
+    appear in several results (e.g. one file's copy fails while
+    another's passes). For a baselined name with both outcomes the fail
+    wins: the name classifies as known-fail and its pass occurrences
+    are suppressed from both the stale-pass and flaky-pass buckets.
+    """
+    names_seen = set()
+    failed_names = {r.name for r in results if not r.passed and not r.skipped}
+    unexpected: List[TestResult] = []
+    known: List[TestResult] = []
+    stale: List[TestResult] = []
+    flaky_passes: List[TestResult] = []
+    baselined_skips: List[TestResult] = []
+    for r in results:
+        names_seen.add(r.name)
+        if r.skipped:
+            if r.name in baseline:
+                baselined_skips.append(r)
+            continue
+        if r.passed:
+            if r.name in baseline and r.name not in failed_names:
+                if baseline_entry_is_flaky(baseline[r.name]):
+                    flaky_passes.append(r)
+                else:
+                    stale.append(r)
+        elif r.name in baseline:
+            known.append(r)
+        else:
+            unexpected.append(r)
+    unmatched = sorted(n for n in baseline if n not in names_seen)
+    return unexpected, known, stale, flaky_passes, baselined_skips, unmatched
 
 
 def _collect_test_names_per_file(yaml_paths: List[str]) -> Dict[str, set]:
@@ -2764,8 +2966,23 @@ def main():
                        help='Run only tests whose name exactly matches TEST_NAME. '
                             'Pass multiple times to select multiple tests. '
                             'File arguments are still required.')
+    parser.add_argument('--baseline', metavar='FILE', default=None,
+                       help='Known-failure baseline file (see '
+                            'tests/integration/known_failures.txt). Failures on '
+                            'the list become "known-fail (baselined)" and do not '
+                            'fail the run; failures off the list still fail it; '
+                            'passes on the list fail it (stale entry).')
 
     args = parser.parse_args()
+
+    baseline = None
+    if args.baseline:
+        try:
+            baseline = load_baseline(args.baseline)
+        except OSError as e:
+            print(f"Error: cannot read baseline file: {e}", file=sys.stderr)
+            return 1
+        print(f"Known-failure baseline: {args.baseline} ({len(baseline)} entries)")
 
     # Resolve worker count
     if args.workers == 0:
@@ -2837,8 +3054,9 @@ def main():
             executor.stop()
 
         runner.cleanup_test_artifacts()
-        all_passed = runner.print_summary()
-        runner.save_run_summary(seq_elapsed, args.workers, args.batch)
+        all_passed = runner.print_summary(baseline=baseline)
+        runner.save_run_summary(seq_elapsed, args.workers, args.batch,
+                                baseline=baseline)
         return 0 if all_passed else 1
 
     # === Parallel mode ===
@@ -2933,35 +3151,18 @@ def main():
     if os.path.exists(test_tmp_dir):
         shutil.rmtree(test_tmp_dir, ignore_errors=True)
 
-    # Print unified summary
-    total = len(all_results)
-    skipped = sum(1 for r in all_results if r.skipped)
-    passed = sum(1 for r in all_results if r.passed and not r.skipped)
-    failed = total - passed - skipped
-
-    print(f"\n{'=' * 70}")
-    print("TEST SUMMARY")
-    print(f"{'=' * 70}")
-    print(f"Total:   {total}")
-    print(f"Passed:  {passed}")
-    print(f"Skipped: {skipped}")
-    print(f"Failed:  {failed}")
-    print(f"Time:    {elapsed:.1f}s ({args.workers} workers, batch={'on' if args.batch else 'off'})")
-
-    if failed > 0:
-        print("\nFailed tests:")
-        for result in all_results:
-            if not result.passed and not result.skipped:
-                print(f"  - {result.name}: {result.error}")
-
-    print(f"{'=' * 70}")
-
-    # Save JSON summary
+    # Print unified summary (shared with the sequential path so the
+    # baseline classification and exit semantics cannot diverge).
     summary_runner = TestRunner(cli, test_root_dir=test_root_dir)
     summary_runner.results = all_results
-    summary_runner.save_run_summary(elapsed, args.workers, args.batch)
+    time_note = (f"{elapsed:.1f}s ({args.workers} workers, "
+                 f"batch={'on' if args.batch else 'off'})")
+    all_passed = summary_runner.print_summary(baseline=baseline,
+                                              time_note=time_note)
+    summary_runner.save_run_summary(elapsed, args.workers, args.batch,
+                                    baseline=baseline)
 
-    return 0 if failed == 0 else 1
+    return 0 if all_passed else 1
 
 
 if __name__ == '__main__':

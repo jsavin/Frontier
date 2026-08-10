@@ -59,14 +59,21 @@ Expect 1-2 fix-loop rounds per milestone based on Phase B/C experience with simi
 
 ### 0.5 Integration baseline
 
-`/tmp/integ-failures-bf51d18.txt` lists the 21 documented known-baseline integration failures (html / tcp / startup categories). Every milestone's integration test run must match this baseline character-for-character. New failures or fixed-but-not-yet-documented failures BLOCK merge.
+> **Updated 2026-08-10 (Phase 2 Unit 2.3):** the baseline is no longer a /tmp
+> scratch file. The canonical, version-controlled list is
+> `tests/integration/known_failures.txt`, enforced automatically by the runner's
+> `--baseline` mode (see `docs/TESTING_GUIDE.md`, "Known-Failure Baseline").
+> The original reference to `/tmp/integ-failures-bf51d18.txt` below is retained
+> for history but that file was machine-local and unreproducible.
+
+`/tmp/integ-failures-bf51d18.txt` listed the 21 documented known-baseline integration failures (html / tcp / startup categories). Every milestone's integration test run must match the baseline: new failures, or fixed-but-not-yet-documented failures, BLOCK merge — the suite now exits non-zero on either automatically.
 
 ### 0.6 Standing autonomy
 
 For each milestone, /auto is pre-authorized to merge if:
 1. /gate verdict is PASS or PASS WITH NOTES
 2. Unit tests show baseline + N new tests (where N matches the plan), all passing
-3. Integration shows 2186/21 baseline character-for-character (`diff /tmp/integ-failures-bf51d18.txt <current>` returns empty)
+3. Integration suite exits 0 under the known-failure baseline (`tests/integration/known_failures.txt`; exit 0 means failures == baseline exactly)
 4. macOS CI green
 5. No CHANGES_REQUESTED reviewer comment
 

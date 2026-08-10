@@ -106,6 +106,65 @@ cd tests && make test-custom-args
 ./tools/run_integration_tests.sh tests/integration/test_cases/string_verbs.yaml
 ```
 
+### Known-Failure Baseline
+
+The canonical list of accepted integration-test failures lives in
+`tests/integration/known_failures.txt` — one entry per line:
+
+```
+<exact test name> | <one-line reason, tracking issue where known>
+```
+
+Blank lines and `#` lines are comments. The file is version-controlled, so the
+failure baseline is reproducible from a fresh clone.
+
+When the suite runs in run-everything mode (`make test-integration` or
+`./tools/run_integration_tests.sh` with no file arguments), the wrapper passes
+`--baseline tests/integration/known_failures.txt` to `runner.py`, which changes
+the exit semantics:
+
+- A failure whose test name **is on the list** is reported as
+  `known-fail (baselined)` and does **not** fail the run.
+- A failure whose test name is **not on the list** fails the run.
+- A **pass** whose test name is on the list is loudly reported as
+  `BASELINED TEST NOW PASSES` and **fails the run** — remove the entry from
+  `known_failures.txt` in the same PR that fixed the test, so the list cannot
+  rot.
+- A baselined test that was *skipped* is neutral. A baseline entry matching no
+  executed test prints a warning (renamed/removed test) but does not fail the
+  run.
+- An entry whose reason starts with `flaky:` marks a nondeterministic test
+  (e.g. order-dependent state): its failures are baselined *and* its passes are
+  reported informationally instead of failing the run. Use sparingly —
+  deflaking beats annotating.
+- Test names are only unique per YAML file. When a baselined name has both a
+  failing and a passing occurrence in one run, the fail wins: the entry counts
+  as known-fail and the pass does not trip the now-passes rule.
+- A `#min_total: N` comment-directive in the file records the minimum
+  plausible suite size; a baseline run that collects fewer results fails
+  loudly. This guards against collapsed test discovery (only the baselined
+  tests running, all failing) reading as a clean exit-0 run.
+- Baselined entries that were *skipped* this run are listed informationally so
+  entries for tests converted to skips stay visible. Duplicate names in the
+  file produce a stderr warning (last occurrence wins).
+
+Net effect: the suite exits 0 exactly when the set of failures matches the
+baseline, so the post-YAML shell steps in `tests/Makefile` (debug protocol,
+agent debug session, ODB sync, etc.) always run instead of aborting on known
+failures.
+
+Targeted runs (explicit YAML file arguments — flag-only invocations like
+`--verbose` still count as run-everything mode — or invoking `runner.py`
+directly without `--baseline`) stay strict: every failure fails the run. The
+runner's JSON summary (`tests/tmp/integration/last_run.json`) records
+`failures` as `{name, error}` objects plus `known_failed` /
+`unexpected_failed` / `stale_baseline_passes` / `baselined_skipped` /
+`baseline_min_total` when a baseline is active.
+
+Behavioral coverage for these semantics lives in
+`tests/integration/baseline_self_test.py` (run as part of
+`make test-integration`).
+
 ### Custom CLI Arguments
 
 Any unknown `--flag` is accepted and exposed to UserTalk scripts via `system.environment.args`:

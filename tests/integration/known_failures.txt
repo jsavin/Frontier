@@ -1,0 +1,74 @@
+# Known-failure baseline for the integration test suite (Phase 2 Unit 2.3).
+#
+# Format: one expected-failing test per line,
+#   <exact test name> | <one-line reason, tracking issue where known>
+# Blank lines and lines starting with '#' are comments. Names must match
+# TestResult names exactly (runner.py --baseline does exact string match).
+#
+# Semantics (enforced by tests/integration/runner.py --baseline, wired in by
+# tools/run_integration_tests.sh in run-everything mode):
+#   - a failure ON this list is reported as "known-fail (baselined)" and does
+#     NOT fail the run;
+#   - a failure OFF this list fails the run;
+#   - a test on this list that PASSES fails the run ("baselined test now
+#     passes") -- remove its entry in the same PR that fixes the test;
+#   - EXCEPTION: a reason starting with "flaky:" marks a nondeterministic
+#     test -- its failures are baselined AND its passes do not fail the run
+#     (they are reported informationally). Use sparingly; deflaking beats
+#     annotating.
+#   - the "#min_total:" directive below records the minimum plausible suite
+#     size; a baseline run that collects fewer results fails loudly (guards
+#     against collapsed test discovery reading as a clean exit-0 run).
+# See docs/TESTING_GUIDE.md, "Known-Failure Baseline".
+
+#min_total: 2400
+#
+# Generated from three full-suite runs on develop @ 721820aaf (2026-08-10):
+# 20 failures identical across all three runs (runs at 2243/20/207 twice,
+# 2242/21/207 once); one additional order-dependent test flickered and is
+# annotated flaky below.
+# NOTE: Phase 2 Units 2.1 (#620 skip triage) and 2.2 (tcp accept-callback
+# fixes) are in flight on sibling branches and are expected to SHRINK this
+# list; remove entries as those branches land and turn tests green.
+
+# --- html page-framework family (12: 11 stable + 1 flaky) -----------------
+# Phase 2 page-framework verbs (langhtml.c) fail directive processing and
+# page-table override lookups under the headless runner. No tracking issue
+# filed yet; failure predates Phase C (was in the /tmp integ-failures
+# baseline referenced by planning/phase_c/REPL_SCHISM_EXECUTION_PLAN.md 0.5).
+
+html - cleanforexport in publishing pipeline | headless page-framework pipeline failure; no tracking issue yet
+html - complete page generation workflow | headless page-framework pipeline failure; no tracking issue yet
+html - preference inheritance chain | headless page-framework pipeline failure; no tracking issue yet
+html.getpref - page table override | page-table override lookup returns false in headless runner; no tracking issue yet
+html.glossarypatcher - multiple patches | glossary patching fails in headless runner; no tracking issue yet
+html.rundirectives - directives only at beginning | directive processing fails in headless runner; no tracking issue yet
+html.rundirectives - directives throughout text | directive processing fails in headless runner; no tracking issue yet
+html.rundirectives - multiple directives | directive processing fails in headless runner; no tracking issue yet
+html.rundirectives - strip processed directives | directive processing fails in headless runner; no tracking issue yet
+html.runoutlinedirectives - directives removed from outline | outline directive processing fails in headless runner; no tracking issue yet
+html.runoutlinedirectives - multiple outline directives | flaky: fails in isolation (5/5) and in some full-suite runs, passes in others -- order-dependent page-framework state; no tracking issue yet
+html.runoutlinedirectives - outline with directives | outline directive processing fails in headless runner; no tracking issue yet
+
+# --- tcp family (7) -------------------------------------------------------
+# Callback-fire and accepted-connection stream tests fail under the runner
+# but work in direct protocol mode (issue #710; timing background in #333).
+# The tcp.listenStream accepted-connection cases are the target of Unit 2.2
+# (sibling branch unit-2-2-accept-callbacks).
+
+TCP callback - dispatched from deep scope nesting still runs (#690) | callback does not fire under runner, issue #710
+tcp connection lifecycle - full echo exchange | echo exchange fails under runner, issues #710 #333
+tcp.listenStream - connection closes after callback returns | accepted-connection lifecycle, Unit 2.2 fix in flight, issue #710
+tcp.listenStream - connections survive listener close | accepted-connection lifecycle, Unit 2.2 fix in flight, issue #710
+tcp.listenStream - read/write on accepted connection | accepted-connection read/write, Unit 2.2 fix in flight, issue #710
+tcp.readStream - read after write using echo server | echo-server read fails under runner, issues #710 #333
+tcp.readStream - zero byte count | echo-server read fails under runner, issues #710 #333
+
+# --- startup family (2) ---------------------------------------------------
+# startup.startupScript() invoked explicitly inside the protocol executor
+# (runner uses --skip-startup) does not complete; see the background notes in
+# tests/integration/test_cases/startup_script_execution.yaml (#616 #618 #621
+# #622 touched this path). No open tracking issue found.
+
+startup: startingUp flag is false after completion | startup.startupScript() incomplete under protocol executor; no tracking issue yet
+startup: startupScript completes and sets system.temp.Frontier | startup.startupScript() incomplete under protocol executor; no tracking issue yet

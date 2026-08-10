@@ -18,6 +18,11 @@ SOURCE_ROOT="$SOURCE_DB_DIR/Virgin.root"
 STAGE_DIR="$PROJECT_ROOT/tests/tmp/results/db"
 SYSTEM_ROOT="$STAGE_DIR/Frontier.root"
 TEST_CASES_DIR="$PROJECT_ROOT/tests/integration/test_cases"
+# Known-failure baseline (Unit 2.3). In run-everything mode the runner is
+# given this list so accepted failures don't fail the suite; a failure off
+# the list, or a baselined test that now passes, still fails it. Targeted
+# runs (explicit file args) stay strict: every failure fails the run.
+BASELINE_FILE="$PROJECT_ROOT/tests/integration/known_failures.txt"
 
 # Colors for output
 RED='\033[0;31m'
@@ -86,10 +91,77 @@ WORKERS_FLAG="-j 0"
 # Track whether the user invoked us without args (run-everything mode) so
 # the post-YAML shell test pass can opt out for targeted runs.
 ORIG_ARG_COUNT=$#
+# Track whether any explicit YAML file argument was given. Flag-only
+# invocations (e.g. --verbose) still mean "run everything", so baseline
+# application keys off this rather than the raw argument count.
+HAS_FILE_ARGS=0
 
-if [ $# -eq 0 ]; then
-    # No arguments - run all tests. Files matching *_network.yaml were
-    # historically gated on FRONTIER_RUN_NETWORK_TESTS=1 because they hit
+# Parse arguments (no-op when none were given)
+while [ $# -gt 0 ]; do
+    case "$1" in
+        -v|--verbose)
+            VERBOSE="--verbose"
+            shift
+            ;;
+        --no-batch)
+            BATCH_FLAG="--no-batch"
+            shift
+            ;;
+        --batch)
+            BATCH_FLAG="--batch"
+            shift
+            ;;
+        -j)
+            shift
+            WORKERS_FLAG="-j $1"
+            shift
+            ;;
+        -h|--help)
+            echo "Usage: $0 [OPTIONS] [TEST_FILES...]"
+            echo
+            echo "Options:"
+            echo "  -v, --verbose      Verbose output"
+            echo "  --batch            Use NDJSON protocol for batch execution (default)"
+            echo "  --no-batch         Disable NDJSON protocol, use per-process execution"
+            echo "  -j N               Number of parallel workers (0=auto, 1=sequential)"
+            echo "  -h, --help         Show this help"
+            echo
+            echo "If no test files are specified, all tests in tests/integration/test_cases/"
+            echo "will be run, including *_network.yaml files (which now use localhost"
+            echo "listeners and are self-contained). Run-everything mode also applies the"
+            echo "known-failure baseline (tests/integration/known_failures.txt): failures"
+            echo "on the list are reported as known-fail (baselined) and do not fail the"
+            echo "run; failures off the list, and baselined tests that now pass, do."
+            echo
+            echo "Environment Variables:"
+            echo "  FRONTIER_SKIP_NETWORK_TESTS=1    Opt out of *_network.yaml files (e.g."
+            echo "                                   for environments that hijack NXDOMAIN"
+            echo "                                   DNS responses)"
+            echo
+            echo "Examples:"
+            echo "  $0                                    # Run all tests (batch + parallel)"
+            echo "  $0 --no-batch -j 1                   # Old behavior (per-process, sequential)"
+            echo "  FRONTIER_SKIP_NETWORK_TESTS=1 $0      # Skip *_network.yaml files"
+            echo "  $0 tests/integration/test_cases/string_verbs.yaml"
+            echo "  $0 --verbose tests/integration/test_cases/*.yaml"
+            exit 0
+            ;;
+        *)
+            if [ -f "$1" ]; then
+                TEST_FILES+=("$1")
+                HAS_FILE_ARGS=1
+            else
+                echo -e "${RED}Error: Test file not found: $1${NC}"
+                exit 1
+            fi
+            shift
+            ;;
+    esac
+done
+
+if [ "$HAS_FILE_ARGS" -eq 0 ]; then
+    # No explicit test files - run all tests. Files matching *_network.yaml
+    # were historically gated on FRONTIER_RUN_NETWORK_TESTS=1 because they hit
     # external network resources. Those tests have since been migrated to
     # localhost listeners and are self-contained, so they now run by default.
     # (One DNS-resolution test in tcp_verbs_network.yaml depends on the
@@ -105,65 +177,6 @@ if [ $# -eq 0 ]; then
             fi
             TEST_FILES+=("$f")
         fi
-    done
-else
-    # Parse arguments
-    while [ $# -gt 0 ]; do
-        case "$1" in
-            -v|--verbose)
-                VERBOSE="--verbose"
-                shift
-                ;;
-            --no-batch)
-                BATCH_FLAG="--no-batch"
-                shift
-                ;;
-            --batch)
-                BATCH_FLAG="--batch"
-                shift
-                ;;
-            -j)
-                shift
-                WORKERS_FLAG="-j $1"
-                shift
-                ;;
-            -h|--help)
-                echo "Usage: $0 [OPTIONS] [TEST_FILES...]"
-                echo
-                echo "Options:"
-                echo "  -v, --verbose      Verbose output"
-                echo "  --batch            Use NDJSON protocol for batch execution (default)"
-                echo "  --no-batch         Disable NDJSON protocol, use per-process execution"
-                echo "  -j N               Number of parallel workers (0=auto, 1=sequential)"
-                echo "  -h, --help         Show this help"
-                echo
-                echo "If no test files are specified, all tests in tests/integration/test_cases/"
-                echo "will be run, including *_network.yaml files (which now use localhost"
-                echo "listeners and are self-contained)."
-                echo
-                echo "Environment Variables:"
-                echo "  FRONTIER_SKIP_NETWORK_TESTS=1    Opt out of *_network.yaml files (e.g."
-                echo "                                   for environments that hijack NXDOMAIN"
-                echo "                                   DNS responses)"
-                echo
-                echo "Examples:"
-                echo "  $0                                    # Run all tests (batch + parallel)"
-                echo "  $0 --no-batch -j 1                   # Old behavior (per-process, sequential)"
-                echo "  FRONTIER_SKIP_NETWORK_TESTS=1 $0      # Skip *_network.yaml files"
-                echo "  $0 tests/integration/test_cases/string_verbs.yaml"
-                echo "  $0 --verbose tests/integration/test_cases/*.yaml"
-                exit 0
-                ;;
-            *)
-                if [ -f "$1" ]; then
-                    TEST_FILES+=("$1")
-                else
-                    echo -e "${RED}Error: Test file not found: $1${NC}"
-                    exit 1
-                fi
-                shift
-                ;;
-        esac
     done
 fi
 
@@ -261,9 +274,21 @@ for entry in "$STAGE_DIR"/*; do
     CHECKSUMS_BEFORE+=("$(_hash_path "$entry")")
 done
 
-# Run the tests (using v7 source database directly)
-"$RUNNER" $VERBOSE $BATCH_FLAG $WORKERS_FLAG --cli "$CLI_PATH" --system-root "$SYSTEM_ROOT" "${TEST_FILES[@]}"
-EXIT_CODE=$?
+# Apply the known-failure baseline only in run-everything mode (no
+# explicit YAML file args -- flag-only invocations like --verbose still
+# run everything); targeted runs execute a subset of the suite, where
+# baseline semantics (especially unmatched-entry warnings) would be noise.
+BASELINE_ARGS=()
+if [ "$HAS_FILE_ARGS" -eq 0 ] && [ -f "$BASELINE_FILE" ]; then
+    BASELINE_ARGS=(--baseline "$BASELINE_FILE")
+fi
+
+# Run the tests (using v7 source database directly).
+# `|| EXIT_CODE=$?` keeps a failing runner from tripping `set -e` so the
+# post-YAML shell tests and the staged-DB drift check below still run;
+# the aggregated EXIT_CODE is returned at the end.
+EXIT_CODE=0
+"$RUNNER" $VERBOSE $BATCH_FLAG $WORKERS_FLAG --cli "$CLI_PATH" --system-root "$SYSTEM_ROOT" "${BASELINE_ARGS[@]}" "${TEST_FILES[@]}" || EXIT_CODE=$?
 
 # Shell-based protocol read-only tests (issue #588). Independent from the
 # YAML runner because they exercise CLI argv parsing and on-disk md5
@@ -273,8 +298,8 @@ EXIT_CODE=$?
 PROTOCOL_RO_TESTS="$PROJECT_ROOT/tests/integration/protocol_readonly_tests.sh"
 if [ "$ORIG_ARG_COUNT" -eq 0 ] && [ -x "$PROTOCOL_RO_TESTS" ]; then
     echo
-    "$PROTOCOL_RO_TESTS"
-    PROTOCOL_RO_RC=$?
+    PROTOCOL_RO_RC=0
+    "$PROTOCOL_RO_TESTS" || PROTOCOL_RO_RC=$?
     if [ $PROTOCOL_RO_RC -ne 0 ]; then
         EXIT_CODE=$PROTOCOL_RO_RC
     fi
@@ -286,8 +311,8 @@ fi
 EDIT_VIRGIN_TESTS="$PROJECT_ROOT/tests/integration/edit_virgin_root_wrapper_test.sh"
 if [ "$ORIG_ARG_COUNT" -eq 0 ] && [ -x "$EDIT_VIRGIN_TESTS" ]; then
     echo
-    "$EDIT_VIRGIN_TESTS"
-    EDIT_VIRGIN_RC=$?
+    EDIT_VIRGIN_RC=0
+    "$EDIT_VIRGIN_TESTS" || EDIT_VIRGIN_RC=$?
     if [ $EDIT_VIRGIN_RC -ne 0 ]; then
         EXIT_CODE=$EDIT_VIRGIN_RC
     fi
@@ -301,8 +326,8 @@ fi
 LONG_PATH_MIGRATE_TEST="$PROJECT_ROOT/tests/integration/cli_migrate_long_path_test.sh"
 if [ "$ORIG_ARG_COUNT" -eq 0 ] && [ -x "$LONG_PATH_MIGRATE_TEST" ]; then
     echo
-    "$LONG_PATH_MIGRATE_TEST"
-    LONG_PATH_RC=$?
+    LONG_PATH_RC=0
+    "$LONG_PATH_MIGRATE_TEST" || LONG_PATH_RC=$?
     if [ $LONG_PATH_RC -ne 0 ]; then
         EXIT_CODE=$LONG_PATH_RC
     fi
@@ -317,8 +342,8 @@ fi
 SYSTEM_ROOT_LONG_PATH_TEST="$PROJECT_ROOT/tests/integration/cli_system_root_long_path_test.sh"
 if [ "$ORIG_ARG_COUNT" -eq 0 ] && [ -x "$SYSTEM_ROOT_LONG_PATH_TEST" ]; then
     echo
-    "$SYSTEM_ROOT_LONG_PATH_TEST"
-    SYSTEM_ROOT_LONG_PATH_RC=$?
+    SYSTEM_ROOT_LONG_PATH_RC=0
+    "$SYSTEM_ROOT_LONG_PATH_TEST" || SYSTEM_ROOT_LONG_PATH_RC=$?
     if [ $SYSTEM_ROOT_LONG_PATH_RC -ne 0 ]; then
         EXIT_CODE=$SYSTEM_ROOT_LONG_PATH_RC
     fi
@@ -332,8 +357,8 @@ fi
 SYSTEM_ROOT_TEMP_PATH_TEST="$PROJECT_ROOT/tests/integration/cli_system_root_temp_path_boundary_test.sh"
 if [ "$ORIG_ARG_COUNT" -eq 0 ] && [ -x "$SYSTEM_ROOT_TEMP_PATH_TEST" ]; then
     echo
-    "$SYSTEM_ROOT_TEMP_PATH_TEST"
-    SYSTEM_ROOT_TEMP_PATH_RC=$?
+    SYSTEM_ROOT_TEMP_PATH_RC=0
+    "$SYSTEM_ROOT_TEMP_PATH_TEST" || SYSTEM_ROOT_TEMP_PATH_RC=$?
     if [ $SYSTEM_ROOT_TEMP_PATH_RC -ne 0 ]; then
         EXIT_CODE=$SYSTEM_ROOT_TEMP_PATH_RC
     fi
