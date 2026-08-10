@@ -2658,7 +2658,9 @@ class TestRunner:
           "baselined test now passes" and FAILS the run, so the
           baseline cannot rot;
         - baseline entries matching no executed test warn only
-          (targeted runs execute a subset of the suite).
+          (targeted runs execute a subset of the suite);
+        - a baseline min_total directive below the collected result
+          count fails the run (collapsed-discovery guard).
         """
         total = len(self.results)
         skipped = sum(1 for r in self.results if r.skipped)
@@ -2671,10 +2673,14 @@ class TestRunner:
             known: List[TestResult] = []
             stale: List[TestResult] = []
             flaky_passes: List[TestResult] = []
+            baselined_skips: List[TestResult] = []
             unmatched: List[str] = []
         else:
-            unexpected, known, stale, flaky_passes, unmatched = \
+            unexpected, known, stale, flaky_passes, baselined_skips, unmatched = \
                 classify_against_baseline(self.results, baseline)
+        min_total = getattr(baseline, 'min_total', None) \
+            if baseline is not None else None
+        suite_too_small = min_total is not None and total < min_total
 
         print("\n" + "=" * 70)
         print("TEST SUMMARY")
@@ -2715,15 +2721,30 @@ class TestRunner:
             for result in flaky_passes:
                 print(f"  ~ {result.name} [{baseline.get(result.name, '')}]")
 
+        if baselined_skips:
+            print("\nBaselined entries SKIPPED this run (check whether the "
+                  "entry is still needed):")
+            for result in baselined_skips:
+                print(f"  ~ {result.name}")
+
         if unmatched:
             print("\nWarning: baseline entries did not run this invocation")
             print("(renamed/removed test, or a targeted run excluded them):")
             for name in unmatched:
                 print(f"  ? {name}")
 
+        if suite_too_small:
+            print("\n" + "!" * 70)
+            print(f"SUITE SIZE BELOW BASELINE FLOOR: collected {total} results "
+                  f"but the baseline file requires min_total: {min_total}.")
+            print("Test discovery has likely collapsed (missing YAML files or "
+                  "a broken glob); failing the run.")
+            print("!" * 70)
+
         print("=" * 70)
 
-        return len(unexpected) == 0 and len(stale) == 0
+        return (len(unexpected) == 0 and len(stale) == 0
+                and not suite_too_small)
 
     def save_run_summary(self, duration_seconds: float, workers: int, batch_mode: bool,
                          baseline: Optional[Dict[str, str]] = None):
@@ -2739,20 +2760,24 @@ class TestRunner:
             'passed': passed,
             'skipped': skipped,
             'failed': failed,
-            'failures': sorted(r.name for r in self.results
-                               if not r.passed and not r.skipped),
+            'failures': sorted(
+                ({'name': r.name, 'error': r.error} for r in self.results
+                 if not r.passed and not r.skipped),
+                key=lambda d: d['name']),
             'duration_seconds': round(duration_seconds, 1),
             'workers': workers,
             'batch_mode': batch_mode,
         }
         if baseline is not None:
-            unexpected, known, stale, flaky_passes, unmatched = \
+            unexpected, known, stale, flaky_passes, baselined_skips, unmatched = \
                 classify_against_baseline(self.results, baseline)
             summary['known_failed'] = len(known)
             summary['unexpected_failed'] = len(unexpected)
             summary['stale_baseline_passes'] = sorted(r.name for r in stale)
             summary['flaky_baseline_passes'] = sorted(r.name for r in flaky_passes)
+            summary['baselined_skipped'] = sorted(r.name for r in baselined_skips)
             summary['baseline_entries_not_run'] = unmatched
+            summary['baseline_min_total'] = getattr(baseline, 'min_total', None)
 
         output_dir = os.path.join(self.test_root_dir, 'tmp', 'integration')
         os.makedirs(output_dir, exist_ok=True)
@@ -2763,29 +2788,55 @@ class TestRunner:
             f.write('\n')
 
 
-def load_baseline(path: str) -> Dict[str, str]:
-    """Parse a known-failures baseline file into a name -> reason map.
+class Baseline(dict):
+    """Known-failure name -> reason map plus file-level directives.
+
+    min_total: minimum plausible suite size from a '#min_total: N'
+    comment-directive, or None. Guards against a collapsed test
+    discovery (only the baselined tests running, all failing) reading
+    as a clean exit-0 run.
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.min_total: Optional[int] = None
+
+
+def load_baseline(path: str) -> Baseline:
+    """Parse a known-failures baseline file into a Baseline map.
 
     Format: one expected-failing test per line,
         <exact test name> | <one-line reason, tracking issue>
     The ' | ' separator and reason are optional (a bare name is a valid
     entry). Blank lines and lines whose first non-space character is '#'
-    are comments. Names are matched exactly against TestResult.name.
+    are comments -- except the '#min_total: N' directive, which records
+    the minimum plausible suite size (see Baseline). Names are matched
+    exactly against TestResult.name. Duplicate names warn on stderr;
+    the last occurrence wins.
 
     Raises OSError when the file cannot be read -- the caller decides
     whether a missing baseline is fatal.
     """
-    baseline: Dict[str, str] = {}
+    baseline = Baseline()
     with open(path, encoding='utf-8') as f:
         for raw in f:
             line = raw.strip()
-            if not line or line.startswith('#'):
+            if not line:
+                continue
+            if line.startswith('#'):
+                m = re.match(r'#\s*min_total:\s*(\d+)$', line)
+                if m:
+                    baseline.min_total = int(m.group(1))
                 continue
             if ' | ' in line:
                 name, reason = line.split(' | ', 1)
-                baseline[name.strip()] = reason.strip()
+                name, reason = name.strip(), reason.strip()
             else:
-                baseline[line] = ''
+                name, reason = line, ''
+            if name in baseline:
+                print(f"Warning: duplicate baseline entry {name!r} in {path} "
+                      f"(last occurrence wins)", file=sys.stderr)
+            baseline[name] = reason
     return baseline
 
 
@@ -2807,24 +2858,36 @@ def classify_against_baseline(results: List[TestResult],
     """Split results against a baseline.
 
     Returns (unexpected_failures, known_failures, stale_passes,
-    flaky_passes, unmatched_names). Skipped results are neutral: they are
-    neither known failures nor stale passes, but they do count as "the
-    test ran" for unmatched-entry detection (a skip is a deliberate
-    state, not baseline rot). A pass on an entry marked flaky (see
+    flaky_passes, baselined_skips, unmatched_names). Skipped results are
+    neutral for exit semantics: they are neither known failures nor
+    stale passes, but they do count as "the test ran" for
+    unmatched-entry detection (a skip is a deliberate state, not
+    baseline rot); baselined skips are returned for informational
+    reporting. A pass on an entry marked flaky (see
     baseline_entry_is_flaky) is reported informationally instead of
     failing the run as stale.
+
+    Test names are only unique per YAML file, so the same name can
+    appear in several results (e.g. one file's copy fails while
+    another's passes). For a baselined name with both outcomes the fail
+    wins: the name classifies as known-fail and its pass occurrences
+    are suppressed from both the stale-pass and flaky-pass buckets.
     """
     names_seen = set()
+    failed_names = {r.name for r in results if not r.passed and not r.skipped}
     unexpected: List[TestResult] = []
     known: List[TestResult] = []
     stale: List[TestResult] = []
     flaky_passes: List[TestResult] = []
+    baselined_skips: List[TestResult] = []
     for r in results:
         names_seen.add(r.name)
         if r.skipped:
+            if r.name in baseline:
+                baselined_skips.append(r)
             continue
         if r.passed:
-            if r.name in baseline:
+            if r.name in baseline and r.name not in failed_names:
                 if baseline_entry_is_flaky(baseline[r.name]):
                     flaky_passes.append(r)
                 else:
@@ -2834,7 +2897,7 @@ def classify_against_baseline(results: List[TestResult],
         else:
             unexpected.append(r)
     unmatched = sorted(n for n in baseline if n not in names_seen)
-    return unexpected, known, stale, flaky_passes, unmatched
+    return unexpected, known, stale, flaky_passes, baselined_skips, unmatched
 
 
 def _collect_test_names_per_file(yaml_paths: List[str]) -> Dict[str, set]:
