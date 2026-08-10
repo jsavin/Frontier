@@ -328,6 +328,11 @@ int tcp_process_callbacks(void) {
 #define LISTENERS_LOCK() pthread_mutex_lock(&g_listeners_mutex)
 #define LISTENERS_UNLOCK() pthread_mutex_unlock(&g_listeners_mutex)
 
+/* GIL yield + stream revalidation for blocking I/O loops; defined with
+ * the buffered-read implementation (see the ordering-invariant comment
+ * at the definition). */
+static boolean tcp_yield_and_revalidate(tcp_stream_t *stream, int sockfd);
+
 /* ========================================================================
  * Internal Helper Functions
  * ======================================================================== */
@@ -1039,13 +1044,15 @@ boolean tcp_write_stream(long stream_id, Handle hdata) {
 
         total_written += bytes_written;
 
-        /* Yield to other threads every 64KB */
-        if ((total_written % 65536) < bytes_written && !langbackgroundtask(false)) {
-            /* User cancelled */
+        /* Yield to other threads every 64KB. The revalidation matters:
+         * another thread may close this stream while we are yielded, and
+         * the cached sockfd must not be reused after that -- see
+         * tcp_yield_and_revalidate for the ordering invariant. */
+        if ((total_written % 65536) < bytes_written
+            && !tcp_yield_and_revalidate(stream, sockfd)) {
             unlockhandle(hdata);
             tcp_stream_release(stream);
-            tcp_set_error(TCP_ERR_SOCKET_ERROR, "Write cancelled");
-            return false;
+            return false;  /* error already set by helper */
         }
     }
 
@@ -2319,7 +2326,7 @@ static boolean tcp_yield_and_revalidate(tcp_stream_t *stream, int sockfd) {
     boolean still_open;
 
     if (!langbackgroundtask(false)) {
-        tcp_set_error(TCP_ERR_SOCKET_ERROR, "Read cancelled");
+        tcp_set_error(TCP_ERR_SOCKET_ERROR, "Cancelled during network wait");
         return false;
     }
 
