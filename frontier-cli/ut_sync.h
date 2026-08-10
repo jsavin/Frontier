@@ -340,6 +340,99 @@ int ut_export_script(const unsigned char *raw, size_t rawlen,
 
 
 /*
+ * DELETION SUPPORT
+ * ----------------
+ * These functions implement deferred .ut deletion when an ODB node is removed.
+ * On ODB delete, the dotted-encoded path is recorded (ut_sync_record_deletion).
+ * At shutdown, after the export walk, the recorded deletions are replayed
+ * (ut_sync_replay_deletions): each .ut is unlinked and empty parent directories
+ * are pruned upward, stopping at the per-root sync base.
+ *
+ * Deferred (not immediate) deletion is correct: if the ODB save rolls back or
+ * aborts, we have not already unlinked .ut files for nodes that still exist in
+ * the persisted ODB.
+ *
+ * Threading: all functions touch only process-global state that is accessed
+ * exclusively while the GIL is held (the deletion hook fires on the GIL holder's
+ * thread). No additional locking is needed.
+ */
+
+/*
+ * ut_sync_unlink_leaf_and_prune - unlink a .ut file and prune empty parents.
+ *
+ * Inputs:
+ *   sync_base  - per-root sync directory (e.g., "/tmp/utsync/Frontier.root").
+ *                MUST NOT be deleted by this function under any circumstances.
+ *   dotted     - dot-joined, PERCENT-ENCODED ODB path of the deleted node
+ *                (e.g., "scratchpad.zzprune.foo"). Each '.' separates one
+ *                path segment. The final segment is the deleted key; intermediate
+ *                segments are parent table names.
+ *
+ * Behavior:
+ *   1. Maps dotted -> "<sync_base>/<seg1>/<seg2>/.../<segN>.ut". Calls unlink().
+ *      ENOENT is a silent no-op (leaf was never synced, or already gone).
+ *      Other unlink errors are logged as warnings but do not abort.
+ *   2. Tries rmdir on "<sync_base>/<seg1>/.../last-dir>" (i.e., the directory
+ *      form without .ut -- handles the case where the deleted ODB node was a
+ *      table whose subdir exists and is now empty).
+ *   3. Walks UP the directory chain calling rmdir on each parent in turn.
+ *      Stops when:
+ *        (a) rmdir returns ENOTEMPTY -- parent has siblings still on disk.
+ *        (b) rmdir returns ENOENT -- parent already gone.
+ *        (c) The candidate path equals sync_base -- NEVER rmdir the sync base.
+ *        (d) The candidate path is shorter than sync_base (paranoid escape guard).
+ *
+ * Returns: count of paths unlinked + dirs removed (>= 0), or -1 on a hard
+ *          error (e.g., dotted is empty, starts with '/', or path overflows the
+ *          internal buffer).
+ *
+ * Pure apart from file-system side effects. No kernel state. GIL-free.
+ */
+int ut_sync_unlink_leaf_and_prune(const char *sync_base, const char *dotted);
+
+/*
+ * ut_sync_record_deletion - record a dotted-encoded ODB path for deferred
+ * unlink at shutdown.
+ *
+ * Stores a strdup copy of dotted_encoded_path in a process-global growable
+ * array. Does nothing if --ut-sync-dir is not active (caller must gate on
+ * cli_get_ut_sync_dir() != NULL before calling). Logs a warning and silently
+ * drops the entry if allocation fails (best-effort).
+ *
+ * Called from the symboldeletedcallback while the GIL is held.
+ */
+void ut_sync_record_deletion(const char *dotted_encoded_path);
+
+/*
+ * ut_sync_replay_deletions - apply all recorded deletions against sync_base.
+ *
+ * For each path recorded via ut_sync_record_deletion, calls
+ * ut_sync_unlink_leaf_and_prune(sync_base, dotted). Calls
+ * ut_sync_clear_deletions() on exit (whether or not all deletes succeeded).
+ *
+ * Returns the count of recorded paths processed (0 if none were pending).
+ *
+ * Called from save_system_root_on_exit() after the export walk and before
+ * tablesavesystemtable.
+ */
+int ut_sync_replay_deletions(const char *sync_base);
+
+/*
+ * ut_sync_clear_deletions - free all recorded deletion entries and reset the
+ * list to empty. Called implicitly by ut_sync_replay_deletions; also callable
+ * standalone in error paths.
+ */
+void ut_sync_clear_deletions(void);
+
+/*
+ * ut_sync_pending_deletion_count - return the number of deletions currently
+ * recorded and not yet replayed. Used by save_system_root_on_exit to decide
+ * whether the replay path must run even when the ODB tree is otherwise clean.
+ */
+int ut_sync_pending_deletion_count(void);
+
+
+/*
  * IMPORT PRIMITIVE
  * ----------------
  * ut_import_check - decide whether a script's .ut file is newer than the ODB

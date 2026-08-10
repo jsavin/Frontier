@@ -1274,3 +1274,177 @@ done:
 		close(fd);
 	return ok;
 }
+
+
+/* =========================================================================
+ * DELETION SUPPORT
+ * =========================================================================
+ *
+ * ut_sync_unlink_leaf_and_prune: unlink the .ut file for a deleted ODB node
+ * and prune any empty parent directories upward, stopping at sync_base.
+ *
+ * ut_sync_record_deletion / ut_sync_replay_deletions / ut_sync_clear_deletions:
+ * deferred deletion queue -- records at ODB-delete time, replays at shutdown.
+ */
+
+/* Internal helper: check whether path is lexically a prefix (with separator)
+ * of candidate. Used to decide when prune walk has reached sync_base. */
+static int path_is_prefix_or_equal(const char *prefix, const char *candidate) {
+	size_t plen = strlen(prefix);
+	size_t clen = strlen(candidate);
+	if (clen < plen)
+		return 0;
+	if (strncmp(prefix, candidate, plen) != 0)
+		return 0;
+	/* Equal, or candidate has a '/' immediately after the prefix. */
+	if (clen == plen)
+		return 1;
+	return candidate[plen] == '/';
+}
+
+int ut_sync_unlink_leaf_and_prune(const char *sync_base, const char *dotted) {
+	/* Defensive input checks. */
+	if (sync_base == NULL || sync_base[0] == '\0' ||
+	    dotted == NULL || dotted[0] == '\0' ||
+	    dotted[0] == '/' || dotted[0] == '.')
+		return -1;
+	/* Reject embedded ".." that could escape the sync tree. */
+	if (strstr(dotted, "..") != NULL)
+		return -1;
+
+	/* Build the .ut path: sync_base + "/" + dotted-with-dots-as-slashes + ".ut"
+	 * Max segment encoded size: 255 * 3 = 765; total dotted path: ~4 KB.
+	 * Internal buffer: generously sized. */
+	char fs_path[4096];
+	size_t base_len = strlen(sync_base);
+	if (base_len + 1 + strlen(dotted) + 3 + 1 > sizeof(fs_path))
+		return -1; /* path overflow */
+
+	/* Assemble: replace '.' with '/' to build directory form. */
+	int n = snprintf(fs_path, sizeof(fs_path), "%s/%s", sync_base, dotted);
+	if (n <= 0 || (size_t)n >= sizeof(fs_path))
+		return -1;
+	/* Replace dots with slashes. */
+	for (char *p = fs_path + base_len + 1; *p; p++) {
+		if (*p == '.')
+			*p = '/';
+	}
+
+	int removed = 0;
+
+	/* Step 1: unlink the .ut file. Build the .ut path by appending ".ut". */
+	char ut_path[4096];
+	if ((size_t)snprintf(ut_path, sizeof(ut_path), "%s.ut", fs_path) >= sizeof(ut_path))
+		return -1;
+
+	if (unlink(ut_path) == 0) {
+		removed++;
+	} else if (errno != ENOENT) {
+		/* Non-ENOENT unlink failure: warn but continue to prune. */
+		/* (Cannot use log_warn here -- ut_sync.c is kernel-independent.) */
+		/* Caller's wrapper in main.c handles logging. */
+		(void)0; /* intentional no-op */
+	}
+
+	/* Step 2: try rmdir on the directory form of the same path (handles table
+	 * deletions where the ODB node was a table, not a script -- its subdir may
+	 * now be empty after the leaf delete in step 1 or a prior replay entry). */
+	if (rmdir(fs_path) == 0) {
+		removed++;
+	}
+	/* ENOENT or ENOTEMPTY are both fine here -- just means the dir didn't
+	 * exist or wasn't empty yet. Either way we now prune upward. */
+
+	/* Step 3: prune empty parent directories upward, stopping at sync_base. */
+	char dir[4096];
+	if ((size_t)snprintf(dir, sizeof(dir), "%s", fs_path) >= sizeof(dir))
+		return removed;
+
+	while (1) {
+		/* Walk to the last '/' to get the parent directory. */
+		char *last_slash = strrchr(dir, '/');
+		if (last_slash == NULL)
+			break;
+		*last_slash = '\0';
+
+		/* Safety guard (d): if dir is now shorter than sync_base, stop. */
+		if (strlen(dir) < strlen(sync_base))
+			break;
+
+		/* Safety guard (c): never rmdir the sync_base itself. */
+		if (strcmp(dir, sync_base) == 0)
+			break;
+
+		/* Paranoid: if dir is somehow not under sync_base, stop. */
+		if (!path_is_prefix_or_equal(sync_base, dir))
+			break;
+
+		if (rmdir(dir) == 0) {
+			removed++;
+			/* Continue walking up -- this directory was empty. */
+		} else if (errno == ENOTEMPTY || errno == ENOENT) {
+			/* ENOTEMPTY: sibling still present -- stop pruning. */
+			/* ENOENT: already gone somehow -- stop pruning. */
+			break;
+		} else {
+			/* Unexpected error: stop pruning. */
+			break;
+		}
+	}
+
+	return removed;
+}
+
+
+/* ---- Deferred deletion queue ---- */
+
+static char **g_ut_pending_deletions = NULL;
+static int g_ut_del_count = 0;
+static int g_ut_del_cap = 0;
+
+void ut_sync_record_deletion(const char *dotted_encoded_path) {
+	if (dotted_encoded_path == NULL || dotted_encoded_path[0] == '\0')
+		return;
+
+	if (g_ut_del_count >= g_ut_del_cap) {
+		int newcap = (g_ut_del_cap == 0) ? 32 : g_ut_del_cap * 2;
+		char **grown = (char **)realloc(g_ut_pending_deletions,
+		                                (size_t)newcap * sizeof(char *));
+		if (grown == NULL)
+			return; /* silent drop -- best-effort */
+		g_ut_pending_deletions = grown;
+		g_ut_del_cap = newcap;
+	}
+
+	char *copy = strdup(dotted_encoded_path);
+	if (copy == NULL)
+		return; /* silent drop -- best-effort */
+
+	g_ut_pending_deletions[g_ut_del_count++] = copy;
+}
+
+void ut_sync_clear_deletions(void) {
+	for (int i = 0; i < g_ut_del_count; i++) {
+		free(g_ut_pending_deletions[i]);
+		g_ut_pending_deletions[i] = NULL;
+	}
+	free(g_ut_pending_deletions);
+	g_ut_pending_deletions = NULL;
+	g_ut_del_count = 0;
+	g_ut_del_cap = 0;
+}
+
+int ut_sync_replay_deletions(const char *sync_base) {
+	int processed = g_ut_del_count;
+	for (int i = 0; i < g_ut_del_count; i++) {
+		if (g_ut_pending_deletions[i] != NULL)
+			(void)ut_sync_unlink_leaf_and_prune(sync_base,
+			                                    g_ut_pending_deletions[i]);
+	}
+	ut_sync_clear_deletions();
+	return processed;
+}
+
+int ut_sync_pending_deletion_count(void) {
+	return g_ut_del_count;
+}

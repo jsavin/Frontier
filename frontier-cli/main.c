@@ -353,6 +353,181 @@ static void cli_redirty_ut_imported_paths(void) {
 }
 
 /*
+ * cli_compute_effective_sync_base - compute the per-root sync base path.
+ *
+ * The effective sync base is "<ut_sync_dir>/<rootBasename>", e.g.
+ * "/tmp/utsync/Frontier.root". This is the directory under which all .ut
+ * files for the loaded system root live. It is the boundary that the prune
+ * walk must never cross or delete.
+ *
+ * Returns 1 on success (out is NUL-terminated). Returns 0 if --ut-sync-dir
+ * is NULL or the result would not fit in outsz.
+ */
+static int cli_compute_effective_sync_base(char *out, size_t outsz) {
+	const char *sync_dir = cli_get_ut_sync_dir();
+	if (sync_dir == NULL || out == NULL || outsz == 0)
+		return 0;
+	const char *rbn = cli_get_system_root_basename();
+	int n;
+	if (rbn[0] != '\0') {
+		n = snprintf(out, outsz, "%s/%s", sync_dir, rbn);
+	} else {
+		n = snprintf(out, outsz, "%s", sync_dir);
+	}
+	if (n <= 0 || (size_t)n >= outsz)
+		return 0;
+	return 1;
+}
+
+/*
+ * cli_symboldeleted - langcallbacks.symboldeletedcallback for frontier-cli.
+ *
+ * Called from langsymboldeleted() (Common/source/langcallbacks.c) after every
+ * successful hashdelete(). The value has already been disposed; only the parent
+ * table handle and the deleted key's Pascal string are available.
+ *
+ * This callback reconstructs the dotted-encoded ODB path of the deleted node
+ * by walking up the parenthashtable chain from htable to roottable, then
+ * records it for deferred unlink at shutdown via ut_sync_record_deletion().
+ *
+ * No-op when --ut-sync-dir is not active.
+ *
+ * Threading: fires on the GIL holder's thread only. ut_sync_record_deletion
+ * touches process-global state that is only accessed under the GIL.
+ */
+static boolean cli_symboldeleted(hdlhashtable htable, const bigstring bsname) {
+	log_warn(LOG_COMP_DB, "ut-sync: cli_symboldeleted FIRED htable=%p sync_dir=%s",
+	         (void *)htable, cli_get_ut_sync_dir() ? cli_get_ut_sync_dir() : "(null)");
+	/* No-op when ut-sync is not active. */
+	if (cli_get_ut_sync_dir() == NULL)
+		return true;
+
+	/* Build the dotted-encoded path by walking up the parenthashtable chain.
+	 *
+	 * Strategy: collect segment names into a small stack array (leaf-to-root),
+	 * then join them in reverse (root-to-leaf) with '.' separators.
+	 *
+	 * thistableshashnode is NOT populated for headless in-memory hashtables.
+	 * Instead, at each level we search the parent table's hash buckets for the
+	 * node whose value is an in-memory table external variable pointing to the
+	 * current table. That node's hashkey is the segment name for this level.
+	 *
+	 * This is O(siblings) per level, which is acceptable since deletion is a
+	 * user-triggered operation, not a bulk operation.
+	 *
+	 * Maximum practical depth in ODB: ~15-20 levels. Cap at 32 for safety. */
+#define MAX_SEG_DEPTH 32
+	bigstring segs[MAX_SEG_DEPTH];
+	int seg_count = 0;
+
+	/* Collect intermediate table segments (excluding the deleted leaf).
+	 *
+	 * Walk: ht is the table we need the name of; parent is where we search.
+	 * We stop when ht IS roottable (no segment needed for the root itself). */
+	hdlhashtable ht = htable;
+	while (ht != nil && ht != roottable && seg_count < MAX_SEG_DEPTH - 1) {
+		hdlhashtable parent = (**ht).parenthashtable;
+		if (parent == nil)
+			break; /* detached table -- cannot reconstruct full path */
+
+		/* Search parent's hash buckets for a node pointing to ht. */
+		bigstring found_key;
+		setemptystring(found_key);
+		boolean found_seg = false;
+		int bi;
+		log_debug(LOG_COMP_DB, "ut-sync: path walk: ht=%p parent=%p roottable=%p",
+		          (void *)ht, (void *)parent, (void *)roottable);
+		for (bi = 0; bi < ctbuckets && !found_seg; bi++) {
+			hdlhashnode n = (**parent).hashbucket[bi];
+			while (n != nil && !found_seg) {
+				tyvaluerecord *vp = &(**n).val;
+				log_debug(LOG_COMP_DB, "ut-sync: bucket[%d] node=%p valuetype=%d extval=%p",
+				          bi, (void *)n, (int)vp->valuetype,
+				          (void *)(vp->data.externalvalue));
+				if (vp->valuetype == externalvaluetype
+					&& vp->data.externalvalue != NULL) {
+					hdltablevariable hv =
+						(hdltablevariable)(vp->data.externalvalue);
+					boolean istbl = istablevariable((hdlexternalvariable)hv);
+					log_debug(LOG_COMP_DB,
+					          "ut-sync:   istable=%d flinmemory=%d variabledata=%p want=%p",
+					          (int)istbl,
+					          istbl ? (int)(**hv).flinmemory : -1,
+					          istbl ? (void *)(long)((**hv).variabledata) : NULL,
+					          (void *)ht);
+					if (istbl
+						&& (**hv).flinmemory
+						&& (hdlhashtable)(long)((**hv).variabledata) == ht) {
+						gethashkey(n, found_key);
+						found_seg = true;
+					}
+				}
+				n = (**n).hashlink;
+			}
+		}
+		if (!found_seg) {
+			log_debug(LOG_COMP_DB, "ut-sync: could not find parent segment for ht=%p -- dropping record",
+			          (void *)ht);
+			break; /* could not locate this table in parent -- drop record */
+		}
+		copystring(found_key, segs[seg_count]);
+		seg_count++;
+		ht = parent;
+	}
+
+	/* Append the deleted key itself as the final (leaf) segment. */
+	if (seg_count < MAX_SEG_DEPTH) {
+		copystring(bsname, segs[seg_count]);
+		seg_count++;
+	} else {
+		/* Too deep -- silently drop this deletion record. */
+		log_warn(LOG_COMP_DB, "ut-sync: deleted node too deep (> %d levels), "
+		         "skipping .ut deletion", MAX_SEG_DEPTH - 1);
+		return true;
+	}
+#undef MAX_SEG_DEPTH
+
+	/* Join segments in ROOT-to-LEAF order (reverse of collection order).
+	 * Each segment is percent-encoded before joining. */
+	char dotted[4096];
+	size_t pos = 0;
+	dotted[0] = '\0';
+
+	for (int i = seg_count - 1; i >= 0; i--) {
+		/* Encode this segment. */
+		unsigned char *raw = (unsigned char *)(&segs[i][1]);
+		size_t rawlen = (size_t)(unsigned char)segs[i][0];
+		char enc[256 * 3 + 1]; /* max encoded: 255 bytes * 3 chars + NUL */
+		if (!ut_pct_encode_segment((const char *)raw, rawlen,
+		                           enc, sizeof(enc))) {
+			/* Encoding failed (segment too long after encoding). Log and skip. */
+			log_warn(LOG_COMP_DB, "ut-sync: segment encoding failed, "
+			         "skipping .ut deletion");
+			return true;
+		}
+		/* Append separator (not before the first segment). */
+		if (pos > 0) {
+			if (pos + 1 >= sizeof(dotted))
+				return true; /* overflow */
+			dotted[pos++] = '.';
+			dotted[pos] = '\0';
+		}
+		size_t enclen = strlen(enc);
+		if (pos + enclen >= sizeof(dotted))
+			return true; /* overflow */
+		memcpy(dotted + pos, enc, enclen + 1);
+		pos += enclen;
+	}
+
+	if (pos == 0)
+		return true; /* empty path -- shouldn't happen */
+
+	log_debug(LOG_COMP_DB, "ut-sync: recording deletion of '%s'", dotted);
+	ut_sync_record_deletion(dotted);
+	return true;
+}
+
+/*
  * Decide whether to open the system root read-only based on parsed CLI flags.
  *
  * Policy:
@@ -1157,6 +1332,12 @@ static boolean initialize_frontier_runtime(void) {
 		cli_cleanup_logging();
 		return false;
 	}
+
+	/* Install the ut-sync deletion callback. db_format_prepare_runtime() calls
+	 * langinitstartup() which installs cb_noop_address as the default; we
+	 * override it here so any hashdelete that fires during the session (from
+	 * UserTalk's delete() verb or any other caller) is captured. */
+	langcallbacks.symboldeletedcallback = &cli_symboldeleted;
 
 #ifdef FRONTIER_HEADLESS
 	/* Install protocol-aware debugger callback (replaces no-op from langstartup.c).
@@ -2199,6 +2380,30 @@ static void save_system_root_on_exit(void) {
 	              roottable ? (**roottable).fldirty : -1,
 	              roottable ? (**roottable).flsubsdirty : -1);
 
+	/* ODB -> .ut deletion replay: MUST run unconditionally when deletions are
+	 * pending, regardless of the dirty-bit state. If only deletions occurred
+	 * (no other mutation), the ODB tree may be clean (delete clears the dirty
+	 * flag when nothing remains in the parent table), but the pending .ut files
+	 * must still be removed. This block runs BEFORE the dirty-short-circuit
+	 * guard below so it fires even on a "clean" save.
+	 *
+	 * The export walk (below) must still run first for the dirty-tree case,
+	 * but for the deletion-only case we only need the replay here. We use the
+	 * same effective_sync_base computation as the export block. */
+	if (g_cli_options.ut_sync_dir != NULL &&
+	    ut_sync_pending_deletion_count() > 0) {
+		char effective_sync_base[CLI_MAX_PATH_LENGTH * 2 + 4];
+		if (cli_compute_effective_sync_base(effective_sync_base,
+		                                    sizeof(effective_sync_base))) {
+			int del_count = ut_sync_replay_deletions(effective_sync_base);
+			cli_log_info("ut-sync: replayed %d deletion(s) against %s",
+			             del_count, effective_sync_base);
+		} else {
+			/* Could not compute base (no sync dir or basename empty). */
+			ut_sync_clear_deletions();
+		}
+	}
+
 	if (roottable != nil
 		&& !(**roottable).fldirty
 		&& !(**roottable).flsubsdirty) {
@@ -2217,31 +2422,30 @@ static void save_system_root_on_exit(void) {
 	 * runs opverbpack per dirty script which sets (**ho).fldirty=false, so
 	 * export must happen here, before the pack pass.
 	 *
-	 * Effective sync base = <ut_sync_dir>/<rootBasename>. The path functions
-	 * in ut_sync.c remain unchanged; we build the base here and pass it as
-	 * sync_dir to ut_export_script (via the walk ctx). */
+	 * Effective sync base = <ut_sync_dir>/<rootBasename>. Uses the factored
+	 * cli_compute_effective_sync_base helper (same logic as above). */
 	if (g_cli_options.ut_sync_dir != NULL && roottable != nil) {
 		char effective_sync_base[CLI_MAX_PATH_LENGTH * 2 + 4];
-		const char *rbn = cli_get_system_root_basename();
-		if (rbn[0] != '\0') {
-			snprintf(effective_sync_base, sizeof(effective_sync_base),
-			         "%s/%s", g_cli_options.ut_sync_dir, rbn);
-		} else {
-			/* No root basename (unusual): fall back to sync_dir itself. */
-			snprintf(effective_sync_base, sizeof(effective_sync_base),
-			         "%s", g_cli_options.ut_sync_dir);
+		if (cli_compute_effective_sync_base(effective_sync_base,
+		                                    sizeof(effective_sync_base))) {
+			ut_export_walk_ctx export_ctx;
+			export_ctx.sync_dir = effective_sync_base;
+			export_ctx.exported = 0;
+			export_ctx.errors   = 0;
+			/* Walk starting from the root hashtable (roottable IS the
+			 * hdlhashtable; it is not an external variable wrapping one). */
+			ut_export_walk_table(roottable, "", &export_ctx);
+			cli_log_info("ut-sync: exported %d dirty script(s) to %s (%d error(s))",
+			             export_ctx.exported, effective_sync_base,
+			             export_ctx.errors);
+			/* Replay any deletions recorded during the session (if the export
+			 * walk ran, there may be additional deletions recorded by scripts
+			 * that ran before shutdown). Any already replayed above are gone. */
+			if (ut_sync_pending_deletion_count() > 0) {
+				int del_count = ut_sync_replay_deletions(effective_sync_base);
+				cli_log_info("ut-sync: replayed %d additional deletion(s)", del_count);
+			}
 		}
-
-		ut_export_walk_ctx export_ctx;
-		export_ctx.sync_dir = effective_sync_base;
-		export_ctx.exported = 0;
-		export_ctx.errors   = 0;
-		/* Walk starting from the root hashtable (roottable IS the
-		 * hdlhashtable; it is not an external variable wrapping one). */
-		ut_export_walk_table(roottable, "", &export_ctx);
-		cli_log_info("ut-sync: exported %d dirty script(s) to %s (%d error(s))",
-		             export_ctx.exported, effective_sync_base,
-		             export_ctx.errors);
 	}
 
 	/* Remember the prior view so we can avoid an unnecessary header flush. */

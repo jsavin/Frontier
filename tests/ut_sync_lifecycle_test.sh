@@ -609,6 +609,291 @@ else
     pass "FIFO boot-hang: boot returned (RC=$FIFO_RC, non-zero but not timeout)"
 fi
 
+# ===========================================================================
+# Issue #702: ODB deletions propagate to .ut (orphan files + boot resurrection)
+#
+# These tests confirm that when a script or table node is deleted from the ODB,
+# the corresponding .ut file (and empty parent directories) are removed from the
+# sync tree on shutdown, and that a subsequent boot does NOT resurrect the node
+# from the now-absent .ut.
+#
+# EFP phantom-true note: defined() on direct children of ANY top-level table
+# (scratchpad, workspace, system.temp, etc.) returns phantom "true" via EFP even
+# for keys that were never inserted. Confirmed by probe. Therefore deletion tests
+# use the .ut file presence/absence on disk as the PRIMARY authoritative signal,
+# not defined(). For resurrection tests (Test 14), we verify the .ut file remains
+# absent and that the node cannot be called (which would require a real script
+# object). For parent-prune tests, we verify the directory exists/absent.
+#
+# Script creation pattern: assign a scalar first (creates the slot in the parent
+# table), then use script.newScriptObject to overwrite it with a script object.
+# This is required for grandchild paths where the intermediate table does not
+# pre-exist; for direct children of existing tables (like scratchpad.*), a direct
+# script.newScriptObject works.
+# ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# Test 13 -- Leaf deletion mirrors to .ut on shutdown.
+#
+# Setup: install scratchpad.utSyncDel13 (direct child of scratchpad -- same
+# pattern as Test 1). Shutdown fires export; verify .ut exists. Then in a
+# fresh session: delete @scratchpad.utSyncDel13, shutdown. Assert .ut is gone.
+# ---------------------------------------------------------------------------
+echo "==> Test 13: leaf deletion removes .ut on shutdown"
+
+# Use a fresh DB for deletion tests to keep state independent of tests 1-12.
+STAGE_DIR2="$(mktemp -d -t frontier-utsync-del-XXXXXX)"
+trap 'rm -rf "$STAGE_DIR"  "$STAGE_DIR2"' EXIT
+DB2="$STAGE_DIR2/Frontier.root"
+cp "$SOURCE_DB" "$DB2"
+SYNC_DIR2="$STAGE_DIR2/utsync"
+mkdir -p "$SYNC_DIR2"
+
+run_protocol2() {
+	local extra="$1"
+	# shellcheck disable=SC2086
+	"$CLI" --protocol --skip-startup --ut-sync-dir "$SYNC_DIR2" $extra --system-root "$DB2" 2>/dev/null
+}
+
+T13_UT="$SYNC_DIR2/Frontier.root/scratchpad/utSyncDel13.ut"
+
+# Install the leaf script and shutdown to trigger export.
+printf '%s\n' \
+	'{"id":1,"op":"script/eval","params":{"expression":"script.newScriptObject(\"on utSyncDel13 () {\\r\\treturn (1)}\", @scratchpad.utSyncDel13)"}}' \
+	'{"id":2,"op":"shutdown","params":{}}' \
+	| run_protocol2 "" >/dev/null
+
+if [ -f "$T13_UT" ]; then
+	pass "Test 13 setup: .ut exists after install+save"
+else
+	fail "Test 13 setup: .ut missing at $T13_UT (export did not run?)"
+	echo "    sync tree:"; find "$SYNC_DIR2" -type f 2>/dev/null | sed 's/^/      /'
+fi
+
+# Now delete the leaf in a fresh session and shutdown.
+printf '%s\n' \
+	'{"id":1,"op":"script/eval","params":{"expression":"delete (@scratchpad.utSyncDel13)"}}' \
+	'{"id":2,"op":"shutdown","params":{}}' \
+	| run_protocol2 "" >/dev/null
+
+if [ ! -f "$T13_UT" ]; then
+	pass "Test 13: .ut removed from disk after ODB delete + shutdown"
+else
+	fail "Test 13: .ut still present at $T13_UT after ODB delete + shutdown"
+fi
+
+# ---------------------------------------------------------------------------
+# Test 14 -- Boot scan does NOT resurrect the deleted node.
+#
+# Continuing from Test 13 state (.ut is absent). Reboot the CLI (triggering
+# boot-discovery scan). Primary signal: .ut remains absent (the scan has
+# nothing to discover). Secondary: calling the deleted verb errors out (it is
+# truly gone, not just phantom-defined via EFP).
+# ---------------------------------------------------------------------------
+echo "==> Test 14: boot scan does not resurrect deleted node"
+
+PROBE_14=$(printf '%s\n' \
+	'{"id":1,"op":"script/eval","params":{"expression":"scratchpad.utSyncDel13()"}}' \
+	'{"id":2,"op":"shutdown","params":{}}' \
+	| run_protocol2 "")
+
+T14_CALL="$(probe_value "$PROBE_14" 1)"
+T14_UT_STILL_ABSENT=0
+[ ! -f "$T13_UT" ] && T14_UT_STILL_ABSENT=1
+
+# Primary: .ut file must remain absent (not re-exported from a resurrected node).
+if [ "$T14_UT_STILL_ABSENT" -eq 1 ]; then
+	pass "Test 14: .ut remains absent after boot (not re-exported)"
+else
+	fail "Test 14: .ut reappeared at $T13_UT after boot (node resurrected)"
+fi
+
+# Secondary: calling the deleted verb must fail (error response, not a value).
+# probe_value returns empty string when the response has no "value" field
+# (i.e., when the eval returns an error). A resurrected node would return "1".
+if [ -z "$T14_CALL" ]; then
+	pass "Test 14: deleted verb call returns error (node not resurrected)"
+else
+	fail "Test 14: deleted verb returned '$T14_CALL' -- node was resurrected by boot scan"
+fi
+
+# ---------------------------------------------------------------------------
+# Test 15 -- Empty-parent prune.
+#
+# Create two levels: scratchpad.zzprune15 (a table, created as scalar then
+# overwritten), then install scratchpad.zzprune15.foo as a script. Shutdown.
+# Verify both the .ut and parent directory exist. Then delete the leaf AND the
+# now-empty parent table. Shutdown. Assert:
+#   (a) foo.ut is gone
+#   (b) zzprune15/ directory is gone (pruned, was empty after leaf delete)
+#   (c) Frontier.root/scratchpad/ directory still exists (prune stops there)
+#   (d) The per-root sync base Frontier.root/ still exists
+#
+# Note: deleting @scratchpad.zzprune15 fires the deletion hook for the table.
+# The hook tries unlink(scratchpad/zzprune15.ut) (ENOENT -- fine, it's a table
+# not a script), then rmdir(scratchpad/zzprune15) -- succeeds if empty from the
+# prior leaf delete. Prune then walks up: scratchpad/ is NOT empty (other nodes
+# exist), so prune stops there.
+# ---------------------------------------------------------------------------
+echo "==> Test 15: empty-parent directory pruned after leaf deletion"
+
+STAGE_DIR3="$(mktemp -d -t frontier-utsync-prune-XXXXXX)"
+trap 'rm -rf "$STAGE_DIR"  "$STAGE_DIR2"  "$STAGE_DIR3"' EXIT
+DB3="$STAGE_DIR3/Frontier.root"
+cp "$SOURCE_DB" "$DB3"
+SYNC_DIR3="$STAGE_DIR3/utsync"
+mkdir -p "$SYNC_DIR3"
+
+run_protocol3() {
+	local extra="$1"
+	# shellcheck disable=SC2086
+	"$CLI" --protocol --skip-startup --ut-sync-dir "$SYNC_DIR3" $extra --system-root "$DB3" 2>/dev/null
+}
+
+T15_UT="$SYNC_DIR3/Frontier.root/scratchpad/zzprune15/foo.ut"
+T15_DIR="$SYNC_DIR3/Frontier.root/scratchpad/zzprune15"
+T15_SCRATCH="$SYNC_DIR3/Frontier.root/scratchpad"
+T15_ROOT="$SYNC_DIR3/Frontier.root"
+
+# Create parent table via new(tableType, @adr), then install the leaf script.
+printf '%s\n' \
+	'{"id":1,"op":"script/eval","params":{"expression":"new(tableType, @scratchpad.zzprune15)"}}' \
+	'{"id":2,"op":"script/eval","params":{"expression":"script.newScriptObject(\"on foo () {\\r\\treturn (1)}\", @scratchpad.zzprune15.foo)"}}' \
+	'{"id":3,"op":"shutdown","params":{}}' \
+	| run_protocol3 "" >/dev/null
+
+if [ -f "$T15_UT" ] && [ -d "$T15_DIR" ]; then
+	pass "Test 15 setup: foo.ut and zzprune15/ dir exist after install"
+else
+	fail "Test 15 setup: missing foo.ut ($T15_UT) or zzprune15/ ($T15_DIR)"
+	echo "    sync tree:"; find "$SYNC_DIR3" -type f 2>/dev/null | sed 's/^/      /'
+fi
+
+# Delete leaf then empty parent, then shutdown.
+printf '%s\n' \
+	'{"id":1,"op":"script/eval","params":{"expression":"delete (@scratchpad.zzprune15.foo)"}}' \
+	'{"id":2,"op":"script/eval","params":{"expression":"delete (@scratchpad.zzprune15)"}}' \
+	'{"id":3,"op":"shutdown","params":{}}' \
+	| run_protocol3 "" >/dev/null
+
+if [ ! -f "$T15_UT" ]; then
+	pass "Test 15(a): foo.ut removed from disk"
+else
+	fail "Test 15(a): foo.ut still present at $T15_UT"
+fi
+
+if [ ! -d "$T15_DIR" ]; then
+	pass "Test 15(b): zzprune15/ directory pruned (was empty)"
+else
+	fail "Test 15(b): zzprune15/ still exists at $T15_DIR (prune did not fire)"
+fi
+
+if [ -d "$T15_SCRATCH" ]; then
+	pass "Test 15(c): scratchpad/ directory still exists (prune stopped)"
+else
+	fail "Test 15(c): scratchpad/ directory was incorrectly pruned"
+fi
+
+if [ -d "$T15_ROOT" ]; then
+	pass "Test 15(d): per-root sync base Frontier.root/ still exists"
+else
+	fail "Test 15(d): per-root sync base Frontier.root/ was incorrectly deleted"
+fi
+
+# ---------------------------------------------------------------------------
+# Test 16 -- Non-empty parent stops the prune.
+#
+# Create scratchpad.zzkeep16 with two children: a and b. Shutdown (export).
+# Delete only @scratchpad.zzkeep16.a. Shutdown. Assert:
+#   (a) zzkeep16/a.ut is gone
+#   (b) zzkeep16/b.ut still exists
+#   (c) zzkeep16/ directory still exists (NOT pruned -- b.ut is there)
+# ---------------------------------------------------------------------------
+echo "==> Test 16: non-empty parent stops the prune"
+
+STAGE_DIR4="$(mktemp -d -t frontier-utsync-keep-XXXXXX)"
+trap 'rm -rf "$STAGE_DIR"  "$STAGE_DIR2"  "$STAGE_DIR3"  "$STAGE_DIR4"' EXIT
+DB4="$STAGE_DIR4/Frontier.root"
+cp "$SOURCE_DB" "$DB4"
+SYNC_DIR4="$STAGE_DIR4/utsync"
+mkdir -p "$SYNC_DIR4"
+
+run_protocol4() {
+	local extra="$1"
+	# shellcheck disable=SC2086
+	"$CLI" --protocol --skip-startup --ut-sync-dir "$SYNC_DIR4" $extra --system-root "$DB4" 2>/dev/null
+}
+
+T16_A="$SYNC_DIR4/Frontier.root/scratchpad/zzkeep16/a.ut"
+T16_B="$SYNC_DIR4/Frontier.root/scratchpad/zzkeep16/b.ut"
+T16_DIR="$SYNC_DIR4/Frontier.root/scratchpad/zzkeep16"
+
+# Install both siblings (create parent table via new(tableType,...), then both leaves).
+printf '%s\n' \
+	'{"id":1,"op":"script/eval","params":{"expression":"new(tableType, @scratchpad.zzkeep16)"}}' \
+	'{"id":2,"op":"script/eval","params":{"expression":"script.newScriptObject(\"on a () {\\r\\treturn (1)}\", @scratchpad.zzkeep16.a)"}}' \
+	'{"id":3,"op":"script/eval","params":{"expression":"script.newScriptObject(\"on b () {\\r\\treturn (2)}\", @scratchpad.zzkeep16.b)"}}' \
+	'{"id":4,"op":"shutdown","params":{}}' \
+	| run_protocol4 "" >/dev/null
+
+if [ -f "$T16_A" ] && [ -f "$T16_B" ]; then
+	pass "Test 16 setup: a.ut and b.ut exist after install"
+else
+	fail "Test 16 setup: missing a.ut or b.ut under zzkeep16/"
+	echo "    sync tree:"; find "$SYNC_DIR4" -type f 2>/dev/null | sed 's/^/      /'
+fi
+
+# Delete only 'a', keep 'b'. Shutdown.
+printf '%s\n' \
+	'{"id":1,"op":"script/eval","params":{"expression":"delete (@scratchpad.zzkeep16.a)"}}' \
+	'{"id":2,"op":"shutdown","params":{}}' \
+	| run_protocol4 "" >/dev/null
+
+if [ ! -f "$T16_A" ]; then
+	pass "Test 16(a): a.ut removed"
+else
+	fail "Test 16(a): a.ut still present at $T16_A"
+fi
+
+if [ -f "$T16_B" ]; then
+	pass "Test 16(b): b.ut still exists (sibling untouched)"
+else
+	fail "Test 16(b): b.ut missing at $T16_B (sibling incorrectly removed)"
+fi
+
+if [ -d "$T16_DIR" ]; then
+	pass "Test 16(c): zzkeep16/ directory still exists (non-empty parent not pruned)"
+else
+	fail "Test 16(c): zzkeep16/ directory incorrectly pruned (b.ut was still there)"
+fi
+
+# ---------------------------------------------------------------------------
+# Test 17 -- Per-root sync base is never deleted.
+#
+# Safety guard: even when the tree under Frontier.root/ becomes empty,
+# the Frontier.root/ directory itself must NOT be deleted by the prune walk.
+#
+# Use STAGE_DIR4 state. Delete @scratchpad.zzkeep16.b and @scratchpad.zzkeep16
+# (the last leaf + its now-empty parent). Shutdown. Assert Frontier.root/ still
+# exists as a directory.
+# ---------------------------------------------------------------------------
+echo "==> Test 17: per-root sync base Frontier.root/ never deleted"
+
+T17_ROOT="$SYNC_DIR4/Frontier.root"
+
+# Delete the remaining leaf and its empty parent from the previous test state.
+printf '%s\n' \
+	'{"id":1,"op":"script/eval","params":{"expression":"delete (@scratchpad.zzkeep16.b)"}}' \
+	'{"id":2,"op":"script/eval","params":{"expression":"delete (@scratchpad.zzkeep16)"}}' \
+	'{"id":3,"op":"shutdown","params":{}}' \
+	| run_protocol4 "" >/dev/null
+
+if [ -d "$T17_ROOT" ]; then
+	pass "Test 17: per-root sync base Frontier.root/ still exists after all leaves deleted"
+else
+	fail "Test 17: per-root sync base Frontier.root/ was incorrectly deleted"
+fi
+
 # ---------------------------------------------------------------------------
 # Canonical protection: the source Virgin.root must be untouched.
 # ---------------------------------------------------------------------------
