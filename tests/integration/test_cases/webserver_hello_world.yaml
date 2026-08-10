@@ -66,7 +66,7 @@ tests:
   - name: "inetd.startOne - start HTTP listener on port 8080"
     description: "Start the HTTP listener on a non-privileged port"
     skip: true
-    skip_reason: "inetd verb infrastructure causes port conflicts in batch test runs"
+    skip_reason: "STALE REASON CORRECTED 2026-08-10 (#620 triage): not a port conflict. inetd.startOne's legacy classic-Mac branch opens count/2-1 EXTRA listeners on the same port on modern macOS and throws Socket error: Bind failed after registering the primary listener; stopOne then errors on the never-created ref2 entry (see webserver_inetd_e2e.yaml). Empirically re-verified at unit-2-2-accept-callbacks head 8e0c11065: still fails identically, so 2.2's GIL-yield/readStream fixes do not cover it. Un-skip when the startOne/stopOne legacy branch is fixed."
     requires_system_root: true
     timeout: 15
     script: |
@@ -82,7 +82,7 @@ tests:
   - name: "inetd.startOne - listener appears in user.inetd.listens"
     description: "Verify listener is tracked in user.inetd.listens table"
     skip: true
-    skip_reason: "inetd verb infrastructure causes port conflicts in batch test runs"
+    skip_reason: "STALE REASON CORRECTED 2026-08-10 (#620 triage): not a port conflict. inetd.startOne's legacy classic-Mac branch opens count/2-1 EXTRA listeners on the same port on modern macOS and throws Socket error: Bind failed after registering the primary listener; stopOne then errors on the never-created ref2 entry (see webserver_inetd_e2e.yaml). Empirically re-verified at unit-2-2-accept-callbacks head 8e0c11065: still fails identically, so 2.2's GIL-yield/readStream fixes do not cover it. Un-skip when the startOne/stopOne legacy branch is fixed."
     requires_system_root: true
     timeout: 15
     script: |
@@ -241,7 +241,7 @@ tests:
   - name: "inetd.stopOne - stop HTTP listener"
     description: "Verify listener can be stopped cleanly"
     skip: true
-    skip_reason: "inetd verb infrastructure causes port conflicts in batch test runs"
+    skip_reason: "STALE REASON CORRECTED 2026-08-10 (#620 triage): not a port conflict. inetd.startOne's legacy classic-Mac branch opens count/2-1 EXTRA listeners on the same port on modern macOS and throws Socket error: Bind failed after registering the primary listener; stopOne then errors on the never-created ref2 entry (see webserver_inetd_e2e.yaml). Empirically re-verified at unit-2-2-accept-callbacks head 8e0c11065: still fails identically, so 2.2's GIL-yield/readStream fixes do not cover it. Un-skip when the startOne/stopOne legacy branch is fixed."
     requires_system_root: true
     timeout: 15
     script: |
@@ -257,7 +257,7 @@ tests:
   - name: "inetd.stopOne - listener removed from user.inetd.listens"
     description: "Verify listener is removed from tracking table after stop"
     skip: true
-    skip_reason: "inetd verb infrastructure causes port conflicts in batch test runs"
+    skip_reason: "STALE REASON CORRECTED 2026-08-10 (#620 triage): not a port conflict. inetd.startOne's legacy classic-Mac branch opens count/2-1 EXTRA listeners on the same port on modern macOS and throws Socket error: Bind failed after registering the primary listener; stopOne then errors on the never-created ref2 entry (see webserver_inetd_e2e.yaml). Empirically re-verified at unit-2-2-accept-callbacks head 8e0c11065: still fails identically, so 2.2's GIL-yield/readStream fixes do not cover it. Un-skip when the startOne/stopOne legacy branch is fixed."
     requires_system_root: true
     timeout: 15
     script: |
