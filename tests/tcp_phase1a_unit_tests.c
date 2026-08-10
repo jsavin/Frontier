@@ -827,6 +827,123 @@ TEST(security_private_ip_multicast_reserved) {
 }
 
 /* ========================================================================
+ * Test Category 9: Slot Reuse Safety
+ *
+ * Guards the invariants introduced with the GIL-yielding blocking reads:
+ * a thread parked in tcp_yield_and_revalidate holds a refcount on its
+ * slot while other threads may close the stream and open new ones. The
+ * allocator must never hand out a slot that is still referenced, and
+ * revalidation must use the slot generation as the stream identity
+ * (states and fd numbers get recycled; generations do not).
+ *
+ * These tests drive the internals directly through the FRONTIER_TESTS
+ * hooks (tcp_test_alloc_stream_id / tcp_test_slot / tcp_test_revalidate)
+ * so the interleavings are exact -- no threads, no timing. The test
+ * binary is single-threaded, so raw slot mutation without TCP_LOCK is
+ * safe here.
+ *
+ * These tests use hard-failing asserts (abort) instead of the file's
+ * soft ASSERT macro: the soft macro only increments a local counter
+ * that TR_EXIT_CODE never sees, so a soft failure would not fail the
+ * suite. abort() routes through test_report.h's SIGABRT handler, which
+ * records the failure and produces a non-zero exit.
+ * ======================================================================== */
+
+#define HARD_ASSERT(cond) do { \
+    if (!(cond)) { \
+        printf("FAILED at %s:%d: %s\n", __FILE__, __LINE__, #cond); \
+        fflush(stdout); \
+        abort(); \
+    } \
+} while(0)
+
+/*
+ * Test 9.1: Allocator must not reclaim a slot with a held reference
+ *
+ * Scenario: tcp_close_stream on a stream whose reader is parked in a
+ * yield leaves sockfd == -1, state == STREAM_CLOSING, refcount > 0 and
+ * defers the free. A concurrent open must NOT claim that slot: the
+ * allocator memset would zero the parked reader's refcount and splice
+ * two connections into one slot.
+ * Reference: tcpverbs.c:tcp_alloc_stream_id()
+ */
+TEST(slot_reuse_deferred_close_not_reclaimed) {
+    int id = tcp_test_alloc_stream_id();
+    HARD_ASSERT(id > 0);
+    tcp_stream_t *slot = tcp_test_slot(id);
+    HARD_ASSERT(slot != NULL);
+
+    /* Put the slot in exactly the state a deferred close leaves it in */
+    slot->state = STREAM_CLOSING;
+    slot->sockfd = -1;
+    slot->refcount = 1;
+
+    int id2 = tcp_test_alloc_stream_id();
+    HARD_ASSERT(id2 > 0);
+    HARD_ASSERT(id2 != id);   /* referenced slot must be skipped */
+    HARD_ASSERT(slot->refcount == 1);   /* and left untouched */
+    HARD_ASSERT(slot->state == STREAM_CLOSING);
+
+    /* Complete the deferred close the way tcp_stream_release does */
+    slot->refcount = 0;
+    slot->state = STREAM_INVALID;
+
+    int id3 = tcp_test_alloc_stream_id();
+    HARD_ASSERT(id3 == id);   /* released slot is reclaimable again */
+
+    /* Leave both slots inert for later tests */
+    tcp_test_slot(id2)->state = STREAM_INVALID;
+    tcp_test_slot(id3)->state = STREAM_INVALID;
+}
+
+/*
+ * Test 9.2: Generation is the stream identity across a yield
+ *
+ * Scenario: a caller captures the slot generation before yielding the
+ * GIL. While parked, the stream is closed and the slot reallocated to a
+ * new connection whose fd number happens to match the old one (kernel
+ * fd recycling). Revalidation with the stale generation must fail --
+ * state and fd equality are not identity.
+ * Reference: tcpverbs.c:tcp_stream_revalidate(), tcp_yield_and_revalidate()
+ */
+TEST(slot_generation_identity_after_yield) {
+    int id = tcp_test_alloc_stream_id();
+    HARD_ASSERT(id > 0);
+    tcp_stream_t *slot = tcp_test_slot(id);
+    HARD_ASSERT(slot != NULL);
+
+    unsigned long gen1 = slot->generation;
+    slot->state = STREAM_CONNECTED;
+    slot->sockfd = 999;   /* arbitrary fd number; never dereferenced */
+
+    /* Untouched slot: same generation revalidates */
+    HARD_ASSERT(tcp_test_revalidate(slot, gen1) == true);
+
+    /* Closed slot: revalidation fails on state */
+    slot->state = STREAM_CLOSING;
+    HARD_ASSERT(tcp_test_revalidate(slot, gen1) == false);
+
+    /* Free and reallocate the same slot */
+    slot->refcount = 0;
+    slot->sockfd = -1;
+    slot->state = STREAM_INVALID;
+    int id2 = tcp_test_alloc_stream_id();
+    HARD_ASSERT(id2 == id);
+    HARD_ASSERT(slot->generation > gen1);   /* generation is monotonic */
+
+    /* New connection in the same slot with the same fd number: the
+     * stale generation must NOT revalidate; the current one must. */
+    slot->state = STREAM_CONNECTED;
+    slot->sockfd = 999;
+    HARD_ASSERT(tcp_test_revalidate(slot, gen1) == false);
+    HARD_ASSERT(tcp_test_revalidate(slot, slot->generation) == true);
+
+    /* Leave slot inert */
+    slot->state = STREAM_INVALID;
+    slot->sockfd = -1;
+}
+
+/* ========================================================================
  * Main Test Runner
  * ======================================================================== */
 
@@ -911,6 +1028,10 @@ int main(void) {
     TR_RUN(test_security_private_ip_rfc1918);
     TR_RUN(test_security_public_ip_allowed);
     TR_RUN(test_security_private_ip_multicast_reserved);
+
+    printf("\nTest Category 9: Slot Reuse Safety\n");
+    TR_RUN(test_slot_reuse_deferred_close_not_reclaimed);
+    TR_RUN(test_slot_generation_identity_after_yield);
 
     /* Cleanup */
     tcp_shutdown_context();

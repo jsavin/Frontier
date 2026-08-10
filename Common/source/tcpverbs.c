@@ -331,7 +331,7 @@ int tcp_process_callbacks(void) {
 /* GIL yield + stream revalidation for blocking I/O loops; defined with
  * the buffered-read implementation (see the ordering-invariant comment
  * at the definition). */
-static boolean tcp_yield_and_revalidate(tcp_stream_t *stream, int sockfd);
+static boolean tcp_yield_and_revalidate(tcp_stream_t *stream, unsigned long generation);
 
 /* ========================================================================
  * Internal Helper Functions
@@ -397,12 +397,27 @@ void tcp_set_error(tcp_error_t err, const char *detail) {
  * Must be called with TCP_LOCK() held */
 static int tcp_alloc_stream_id(void) {
     for (int i = TCP_FIRST_STREAM_ID; i < TCP_MAX_STREAMS; i++) {  /* Start at 1 (0 is invalid) */
-        if (g_tcp_context.streams[i].sockfd == -1) {
-            /* Initialize stream record */
-            memset(&g_tcp_context.streams[i], 0, sizeof(tcp_stream_t));
-            g_tcp_context.streams[i].sockfd = -1;  /* Will be set by caller */
-            g_tcp_context.streams[i].state = STREAM_INVALID;
-            g_tcp_context.streams[i].created_at = time(NULL);
+        tcp_stream_t *slot = &g_tcp_context.streams[i];
+
+        /* A slot is free only when nothing references it. sockfd == -1
+         * alone is NOT sufficient: a deferred close (tcp_close_stream
+         * with refcount > 0) leaves sockfd == -1, state STREAM_CLOSING
+         * and the slot un-freed while a reader parked in a GIL yield
+         * still holds its reference. Reclaiming such a slot would memset
+         * that reader's refcount away and splice two connections into
+         * one slot. */
+        if (slot->sockfd == -1 && slot->refcount == 0 && slot->state != STREAM_CLOSING) {
+            /* Initialize stream record. The generation counter survives
+             * the memset and increments on every allocation: it is the
+             * stream identity used by post-yield revalidation (see
+             * tcp_stream_revalidate). */
+            unsigned long next_generation = slot->generation + 1;
+
+            memset(slot, 0, sizeof(tcp_stream_t));
+            slot->sockfd = -1;  /* Will be set by caller */
+            slot->state = STREAM_INVALID;
+            slot->generation = next_generation;
+            slot->created_at = time(NULL);
             return i;
         }
     }
@@ -1015,6 +1030,11 @@ boolean tcp_write_stream(long stream_id, Handle hdata) {
 
     sockfd = stream->sockfd;
 
+    /* Capture the stream identity for post-yield revalidation. Stable to
+     * read without the lock: our refcount blocks reallocation, and the
+     * generation only changes on allocation. */
+    unsigned long generation = stream->generation;
+
     data_size = gethandlesize(hdata);
     if (data_size == 0) {
         /* Nothing to write - succeed immediately */
@@ -1044,15 +1064,24 @@ boolean tcp_write_stream(long stream_id, Handle hdata) {
 
         total_written += bytes_written;
 
-        /* Yield to other threads every 64KB. The revalidation matters:
-         * another thread may close this stream while we are yielded, and
-         * the cached sockfd must not be reused after that -- see
-         * tcp_yield_and_revalidate for the ordering invariant. */
-        if ((total_written % 65536) < bytes_written
-            && !tcp_yield_and_revalidate(stream, sockfd)) {
+        /* Yield to other threads every 64KB. The handle must not stay
+         * locked with a raw buffer pointer across the yield: other
+         * threads run arbitrary UserTalk while we are parked, and under
+         * a compacting handle heap (HLock semantics) the block could
+         * move. Portable handles do not compact today, but this path
+         * must be safe under both memory models, so unlock before and
+         * relock/refetch after (mirrors the read path, which never
+         * holds a lock across a yield). Revalidation guards the cached
+         * sockfd -- see tcp_yield_and_revalidate for the ordering
+         * invariant. */
+        if ((total_written % 65536) < bytes_written) {
             unlockhandle(hdata);
-            tcp_stream_release(stream);
-            return false;  /* error already set by helper */
+            if (!tcp_yield_and_revalidate(stream, generation)) {
+                tcp_stream_release(stream);
+                return false;  /* error already set by helper */
+            }
+            lockhandle(hdata);
+            buffer = (char *) *hdata;
         }
     }
 
@@ -2301,8 +2330,30 @@ typedef enum {
  * - For TCP_READ_UNTIL_PATTERN, we only scan newly-read bytes plus overlap
  * - This provides O(n) performance instead of O(n²) for large buffers
  */
+/* Revalidate a stream after the GIL was released and reacquired.
+ *
+ * IDENTITY INVARIANT: the caller captured stream->generation while
+ * holding a reference. While parked in a yield, another UserTalk thread
+ * may close the stream; the allocator refuses to reclaim a slot whose
+ * refcount is non-zero (see tcp_alloc_stream_id), so the slot memory
+ * stays ours -- but state alone is not identity, and fd numbers are
+ * recycled by the kernel, so neither can decide "still my stream". The
+ * generation counter is bumped on every allocation and never repeats:
+ * state CONNECTED/ACCEPTED plus an unchanged generation proves the slot
+ * still holds the connection the caller started with. */
+static boolean tcp_stream_revalidate(tcp_stream_t *stream, unsigned long generation) {
+    boolean still_open;
+
+    TCP_LOCK();
+    still_open = (stream->state == STREAM_CONNECTED || stream->state == STREAM_ACCEPTED)
+        && stream->generation == generation;
+    TCP_UNLOCK();
+
+    return still_open;
+}
+
 /* Yield the GIL while a blocking-wait loop is idle, then revalidate the
- * stream before the caller touches sockfd again.
+ * stream before the caller touches its cached sockfd again.
  *
  * WHY THE YIELD: the buffered read/write verbs wait in select() loops
  * while holding the GIL. When such a verb runs inside a tcp.listenStream
@@ -2313,29 +2364,20 @@ typedef enum {
  * data actually arrives (state-driven, no fixed sleeps).
  *
  * ORDERING INVARIANT: while we are parked in langbackgroundtask() another
- * UserTalk thread may call tcp.closeStream on this stream. Our refcount
- * keeps the SLOT from being reused, but tcp_close_stream closes the fd
- * immediately regardless of refcount, and the kernel can recycle that fd
- * number for an unrelated socket. The caller's cached sockfd must
- * therefore be revalidated against the slot (state still CONNECTED or
- * ACCEPTED, sockfd unchanged) after every yield, BEFORE the next
- * select()/recv()/send(). Returns false (with the script error set) if
- * the thread was killed or the stream went away; callers must release
- * their reference and abort. */
-static boolean tcp_yield_and_revalidate(tcp_stream_t *stream, int sockfd) {
-    boolean still_open;
-
+ * UserTalk thread may call tcp.closeStream on this stream. The caller's
+ * refcount keeps the slot from being reallocated, but the fd is closed
+ * immediately and its number can be recycled. After every yield, and
+ * BEFORE the next select()/recv()/send() on the cached fd, the captured
+ * generation must revalidate -- see tcp_stream_revalidate. Returns false
+ * (with the script error set) if the thread was killed or the stream
+ * went away; callers must release their reference and abort. */
+static boolean tcp_yield_and_revalidate(tcp_stream_t *stream, unsigned long generation) {
     if (!langbackgroundtask(false)) {
         tcp_set_error(TCP_ERR_SOCKET_ERROR, "Cancelled during network wait");
         return false;
     }
 
-    TCP_LOCK();
-    still_open = (stream->state == STREAM_CONNECTED || stream->state == STREAM_ACCEPTED)
-        && stream->sockfd == sockfd;
-    TCP_UNLOCK();
-
-    if (!still_open) {
+    if (!tcp_stream_revalidate(stream, generation)) {
         tcp_set_error(TCP_ERR_INVALID_STREAM, "Stream not connected");
         return false;
     }
@@ -2353,6 +2395,7 @@ static boolean tcp_read_until_condition(
 {
     tcp_stream_t *stream;
     int sockfd;
+    unsigned long generation;
     tcp_timeout_t timeout;
     long current_size;
     long bytes_read_total;
@@ -2382,6 +2425,11 @@ static boolean tcp_read_until_condition(
     }
 
     sockfd = stream->sockfd;
+
+    /* Capture the stream identity for post-yield revalidation. Stable to
+     * read without the lock: our refcount blocks reallocation, and the
+     * generation only changes on allocation. */
+    generation = stream->generation;
 
     /* Initialize timeout */
     tcp_timeout_init(&timeout, timeout_secs);
@@ -2455,7 +2503,7 @@ static boolean tcp_read_until_condition(
              * read runs inside an accept callback) can execute. Must
              * revalidate the stream afterwards -- see
              * tcp_yield_and_revalidate for the ordering invariant. */
-            if (!tcp_yield_and_revalidate(stream, sockfd)) {
+            if (!tcp_yield_and_revalidate(stream, generation)) {
                 tcp_stream_release(stream);
                 return false;
             }
@@ -2655,6 +2703,7 @@ boolean tcp_read_stream_until_closed(long stream_id, Handle hbuffer, long timeou
 boolean tcp_read_stream_inetd(long stream_id, Handle hbuffer, long timeout_secs) {
     tcp_stream_t *stream = NULL;
     int sockfd;
+    unsigned long generation;
     long current_size;
     boolean first_packet_received = false;
     time_t start_time, last_read_time;
@@ -2687,6 +2736,11 @@ boolean tcp_read_stream_inetd(long stream_id, Handle hbuffer, long timeout_secs)
     }
 
     sockfd = stream->sockfd;
+
+    /* Capture the stream identity for post-yield revalidation. Stable to
+     * read without the lock: our refcount blocks reallocation, and the
+     * generation only changes on allocation. */
+    generation = stream->generation;
 
     /* Get initial buffer size */
     current_size = gethandlesize(hbuffer);
@@ -2750,7 +2804,7 @@ boolean tcp_read_stream_inetd(long stream_id, Handle hbuffer, long timeout_secs)
              * run, then revalidate the stream (see tcp_yield_and_revalidate
              * for the ordering invariant). Loop back for the elapsed-time
              * checks, which own the timeout-is-success decision. */
-            if (!tcp_yield_and_revalidate(stream, sockfd))
+            if (!tcp_yield_and_revalidate(stream, generation))
                 goto cleanup;
             continue;
         }
@@ -3220,3 +3274,34 @@ boolean tcp_shutdown_context(void) {
 
     return true;
 }
+
+#ifdef FRONTIER_TESTS
+/* ========================================================================
+ * Test-only hooks (compiled with -DFRONTIER_TESTS; absent in frontier-cli)
+ *
+ * Expose the slot allocator and post-yield revalidation predicate so the
+ * unit tests (tests/tcp_phase1a_unit_tests.c, Category 9) can pin the
+ * slot-reuse invariants with exact, single-threaded interleavings.
+ * ======================================================================== */
+
+int tcp_test_alloc_stream_id(void) {
+    int stream_id;
+
+    TCP_LOCK();
+    stream_id = tcp_alloc_stream_id();
+    TCP_UNLOCK();
+
+    return stream_id;
+}
+
+tcp_stream_t *tcp_test_slot(int stream_id) {
+    if (stream_id < TCP_FIRST_STREAM_ID || stream_id >= TCP_MAX_STREAMS)
+        return NULL;
+
+    return &g_tcp_context.streams[stream_id];
+}
+
+boolean tcp_test_revalidate(tcp_stream_t *stream, unsigned long generation) {
+    return tcp_stream_revalidate(stream, generation);
+}
+#endif /* FRONTIER_TESTS */
