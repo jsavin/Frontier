@@ -18,6 +18,11 @@ SOURCE_ROOT="$SOURCE_DB_DIR/Virgin.root"
 STAGE_DIR="$PROJECT_ROOT/tests/tmp/results/db"
 SYSTEM_ROOT="$STAGE_DIR/Frontier.root"
 TEST_CASES_DIR="$PROJECT_ROOT/tests/integration/test_cases"
+# Known-failure baseline (Unit 2.3). In run-everything mode the runner is
+# given this list so accepted failures don't fail the suite; a failure off
+# the list, or a baselined test that now passes, still fails it. Targeted
+# runs (explicit file args) stay strict: every failure fails the run.
+BASELINE_FILE="$PROJECT_ROOT/tests/integration/known_failures.txt"
 
 # Colors for output
 RED='\033[0;31m'
@@ -139,7 +144,10 @@ else
                 echo
                 echo "If no test files are specified, all tests in tests/integration/test_cases/"
                 echo "will be run, including *_network.yaml files (which now use localhost"
-                echo "listeners and are self-contained)."
+                echo "listeners and are self-contained). Run-everything mode also applies the"
+                echo "known-failure baseline (tests/integration/known_failures.txt): failures"
+                echo "on the list are reported as known-fail (baselined) and do not fail the"
+                echo "run; failures off the list, and baselined tests that now pass, do."
                 echo
                 echo "Environment Variables:"
                 echo "  FRONTIER_SKIP_NETWORK_TESTS=1    Opt out of *_network.yaml files (e.g."
@@ -261,9 +269,20 @@ for entry in "$STAGE_DIR"/*; do
     CHECKSUMS_BEFORE+=("$(_hash_path "$entry")")
 done
 
-# Run the tests (using v7 source database directly)
-"$RUNNER" $VERBOSE $BATCH_FLAG $WORKERS_FLAG --cli "$CLI_PATH" --system-root "$SYSTEM_ROOT" "${TEST_FILES[@]}"
-EXIT_CODE=$?
+# Apply the known-failure baseline only in run-everything mode; targeted
+# runs execute a subset of the suite, where baseline semantics (especially
+# unmatched-entry warnings) would be noise.
+BASELINE_ARGS=()
+if [ "$ORIG_ARG_COUNT" -eq 0 ] && [ -f "$BASELINE_FILE" ]; then
+    BASELINE_ARGS=(--baseline "$BASELINE_FILE")
+fi
+
+# Run the tests (using v7 source database directly).
+# `|| EXIT_CODE=$?` keeps a failing runner from tripping `set -e` so the
+# post-YAML shell tests and the staged-DB drift check below still run;
+# the aggregated EXIT_CODE is returned at the end.
+EXIT_CODE=0
+"$RUNNER" $VERBOSE $BATCH_FLAG $WORKERS_FLAG --cli "$CLI_PATH" --system-root "$SYSTEM_ROOT" "${BASELINE_ARGS[@]}" "${TEST_FILES[@]}" || EXIT_CODE=$?
 
 # Shell-based protocol read-only tests (issue #588). Independent from the
 # YAML runner because they exercise CLI argv parsing and on-disk md5

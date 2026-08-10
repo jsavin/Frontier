@@ -175,7 +175,7 @@ class BaselinedPassFailsRunTest(unittest.TestCase):
                              baseline=baseline)
         self.assertFalse(ok,
                          f"stale baseline entry must fail the run; output:\n{out}")
-        self.assertIn("now passes", out)
+        self.assertIn("now passes", out.lower())
         self.assertIn("remove", out.lower())
         self.assertIn("tcp.connect - refused", out)
 
@@ -187,7 +187,7 @@ class BaselinedPassFailsRunTest(unittest.TestCase):
                              baseline=baseline)
         self.assertTrue(ok,
                         f"baselined skip must be neutral; output:\n{out}")
-        self.assertNotIn("now passes", out)
+        self.assertNotIn("now passes", out.lower())
 
 
 class BaselineEntryNotInRunTest(unittest.TestCase):
