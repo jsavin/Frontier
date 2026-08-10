@@ -185,19 +185,24 @@ tests:
   # ==========================================================================
 
   - name: "end-to-end: install + add + describe sees new leaf"
-    skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
     description: |
       Combine install, two add calls, and a describe — the describe must
       return the script field set by addMenuCommand.
     script: |
+      on getField(r, nm) {
+        local(i);
+        for i = 1 to sizeOf(r) {
+          if nameOf(r[i]) == nm {
+            return r[i]}};
+        return "((missing))"};
+
       menu.install(@system.menus.data.tst9);
       menu.addMenuCommand(@system.menus.data.tst9, "App", "Quit", "repl.exit()");
       menu.addMenuCommand(@system.menus.data.tst9, "App", "About", "help.about()");
 
       local(rec = menu.describe(@system.menus.data.tst9.App.Quit));
 
-      local(scriptOk = rec.script contains "repl.exit()");
+      local(scriptOk = getField(rec, "script") contains "repl.exit()");
       local(installedOk = (system.menus.data.tst9.installed == true));
       delete(@system.menus.data.tst9);
       return scriptOk and installedOk
