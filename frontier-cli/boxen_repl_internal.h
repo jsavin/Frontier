@@ -580,6 +580,15 @@ void boxen_repl_debug_write_line(void *ctx, const char *line, size_t len);
  */
 void boxen_repl_drain_debug_notifications(boxen_repl_state_t *s);
 
+/*
+ * boxen_repl_drain_debug_thunk -- boxen_ui bridge adapter (hardening P1).
+ *
+ * ctx is the boxen_repl_state_t.  Wired into boxen_ui_host_t.drain_debug
+ * so run_modal_loop renders debug notifications while a dialog modal is
+ * open.  Main thread only (the modal loop runs on the boxen main thread).
+ */
+void boxen_repl_drain_debug_thunk(void *ctx);
+
 /* 2026-06-09 JES #691 Phase C.0.1: history ring + persistence API. */
 void boxen_repl_history_append(boxen_repl_state_t *s, const char *line);
 void boxen_repl_history_load(boxen_repl_state_t *s);

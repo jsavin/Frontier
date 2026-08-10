@@ -2624,6 +2624,134 @@ static void test_response_error_renders_message(void) {
 	teardown();
 }
 
+/* --- Hardening round ---------------------------------------------------- */
+
+/* Logical scrollback index of the first line containing `needle`; -1 if
+ * absent.  Used for ordering assertions. */
+static int scrollback_index_of(const char *needle) {
+	for (int i = 0; i < g_state.scrollback_count && i < BOXEN_REPL_SCROLLBACK_SIZE; i++) {
+		int idx = (g_state.scrollback_head - g_state.scrollback_count + i +
+		           BOXEN_REPL_SCROLLBACK_SIZE) % BOXEN_REPL_SCROLLBACK_SIZE;
+		if (g_state.scrollback[idx] != NULL &&
+		    strstr(g_state.scrollback[idx], needle) != NULL) {
+			return i;
+		}
+	}
+	return -1;
+}
+
+/* P1: the boxen_ui modal loop drains via this thunk; it must render
+ * queued notifications exactly like the event-loop drain. */
+static void test_debug_drain_thunk_renders_queued_notifications(void) {
+	setup_debug();
+
+	feed_notification(SUSPENDED_NOTIF_TID3);
+	boxen_repl_drain_debug_thunk(&g_state);
+
+	assert(g_state.debug_queue_count == 0);
+	assert(scrollback_contains("suspended at system.temp.foo:12"));
+	assert(g_state.suspended_count == 1);
+
+	teardown();
+}
+
+/* P2: the drop report must land on the drain pass where the drop is
+ * detected, BEFORE the surviving entries render -- not after the queue
+ * empties (which in production could be a later, unrelated scrollback
+ * point). */
+static void test_debug_drop_report_precedes_entries_in_same_drain(void) {
+	setup_debug();
+
+	for (int i = 0; i < BOXEN_REPL_DEBUG_QUEUE_SIZE + 3; i++) {
+		feed_notification(COMPLETED_NOTIF_TID3);
+	}
+	boxen_repl_drain_debug_notifications(&g_state);
+
+	int report_idx = scrollback_index_of("notification(s) dropped");
+	int entry_idx  = scrollback_index_of("thread 3 completed");
+	assert(report_idx >= 0);
+	assert(entry_idx >= 0);
+	assert(report_idx < entry_idx);
+	assert(g_state.debug_queue_dropped == 0);
+
+	teardown();
+}
+
+/* P2: transport_t's contract is (line, len); the raw fallback must not
+ * read past len even when the buffer has trailing bytes. */
+static void test_response_raw_fallback_respects_length(void) {
+	setup_debug();
+
+	const char *buf = "not-json-at-all TRAILING";
+	g_state.debug_response_transport.write_line(
+		g_state.debug_response_transport.ctx, buf, 15 /* excludes "TRAILING" */);
+
+	assert(scrollback_contains("not-json-at-all"));
+	assert(!scrollback_contains("TRAILING"));
+
+	teardown();
+}
+
+/* P2: unparseable JSON from the notification channel renders as a raw
+ * [debug]-prefixed line rather than being silently dropped. */
+static void test_notification_unparseable_json_renders_raw(void) {
+	setup_debug();
+
+	feed_notification("{broken json##");
+	boxen_repl_drain_debug_notifications(&g_state);
+
+	assert(scrollback_contains("[debug] {broken json##"));
+
+	teardown();
+}
+
+/* P2: bare /continue with MULTIPLE suspended threads prints the count
+ * hint and dispatches nothing. */
+static void test_slash_continue_multiple_suspended_prints_hint(void) {
+	setup_debug();
+
+	feed_notification(SUSPENDED_NOTIF_TID3);
+	feed_notification(
+		"{\"id\":null,\"op\":\"debug/suspended\",\"params\":"
+		"{\"threadId\":4,\"line\":7,\"reason\":\"breakpoint\","
+		"\"script\":\"system.temp.bar\"}}");
+	boxen_repl_drain_debug_notifications(&g_state);
+	assert(g_state.suspended_count == 2);
+
+	submit_line("/continue");
+
+	assert(g_debug_dispatch_capture[0] == '\0');
+	assert(scrollback_contains("2 threads suspended"));
+
+	teardown();
+}
+
+/* P2: line 0 is rejected client-side with usage, no dispatch. */
+static void test_slash_bp_line_zero_shows_usage(void) {
+	setup_debug();
+
+	submit_line("/bp system.temp.foo 0");
+
+	assert(g_debug_dispatch_capture[0] == '\0');
+	assert(scrollback_contains("Usage: /bp"));
+
+	teardown();
+}
+
+/* P2: the line number is the LAST space-separated token, so bracketed
+ * script names containing spaces dispatch intact. */
+static void test_slash_bp_path_with_spaces_uses_last_token_as_line(void) {
+	setup_debug();
+
+	submit_line("/bp system.temp.[\"my script\"] 4");
+
+	assert(strstr(g_debug_dispatch_capture,
+	              "\"script\":\"system.temp.[\\\"my script\\\"]\"") != NULL);
+	assert(strstr(g_debug_dispatch_capture, "\"line\":4") != NULL);
+
+	teardown();
+}
+
 /* --- Footer hint -------------------------------------------------------- */
 
 /* The park must never be invisible: with >=1 suspended thread the footer
@@ -3017,6 +3145,15 @@ int main(void) {
 	TR_RUN(test_response_threads_renders_list);
 	TR_RUN(test_response_error_renders_message);
 	TR_RUN(test_footer_hint_follows_suspension_state);
+
+	/* 2026-08-10 JES unit 2.4 hardening round. */
+	TR_RUN(test_debug_drain_thunk_renders_queued_notifications);
+	TR_RUN(test_debug_drop_report_precedes_entries_in_same_drain);
+	TR_RUN(test_response_raw_fallback_respects_length);
+	TR_RUN(test_notification_unparseable_json_renders_raw);
+	TR_RUN(test_slash_continue_multiple_suspended_prints_hint);
+	TR_RUN(test_slash_bp_line_zero_shows_usage);
+	TR_RUN(test_slash_bp_path_with_spaces_uses_last_token_as_line);
 
 	TR_SUMMARY();
 	return TR_EXIT_CODE();

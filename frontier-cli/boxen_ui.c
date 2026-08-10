@@ -96,6 +96,9 @@ static void run_modal_loop(boxen_window_t *win,
 	if (host && host->drain_capture_pipe) {
 		host->drain_capture_pipe(host->drain_ctx);
 	}
+	if (host && host->drain_debug) {
+		host->drain_debug(host->drain_debug_ctx);
+	}
 	boxen_present();
 
 	while (!*done) {
@@ -122,6 +125,14 @@ static void run_modal_loop(boxen_window_t *win,
 
 		if (host && host->drain_capture_pipe) {
 			host->drain_capture_pipe(host->drain_ctx);
+		}
+
+		/* 2026-08-10 JES unit 2.4 hardening: drain debug notifications
+		 * queued by suspended runtime threads while this modal is open,
+		 * so the suspension renders behind the dialog instead of parking
+		 * invisibly until the modal closes. */
+		if (host && host->drain_debug) {
+			host->drain_debug(host->drain_debug_ctx);
 		}
 
 		if (rc == BOXEN_ERR_TIMEOUT) { boxen_present(); continue; }

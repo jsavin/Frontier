@@ -299,7 +299,7 @@ The default REPL has a minimal debug surface over the same protocol ops that `--
 
 | Command | Action |
 |---------|--------|
-| `/bp <path> <line>` | Set a breakpoint on a fully qualified script path (`@` prefix optional). Repeating the same `/bp` toggles it off (reported as `breakpoint cleared`). |
+| `/bp <path> <line>` | Set a breakpoint on a fully qualified script path (`@` prefix optional). Repeating the same `/bp` toggles it off (reported as `breakpoint cleared`). The line number is the final space-separated token, so bracketed names containing spaces (e.g. `system.temp.["my script"] 3`) work unquoted. Pathologically long commands (over ~2 KB) are truncated and degrade to a server-side `parse_error` response. |
 | `/bp clear` | Clear all session breakpoints |
 | `/continue [threadId]` | Resume a suspended thread |
 | `/step [threadId]` | Step over (one statement at the same call depth) |

@@ -59,6 +59,16 @@ typedef struct boxen_ui_host {
 	void (*drain_capture_pipe)(void *ctx);
 	void *drain_ctx;
 
+	/* 2026-08-10 JES unit 2.4 hardening: debug-notification drain.
+	 * Invoked next to drain_capture_pipe each mini-loop iteration so a
+	 * debug/suspended notification that lands while a dialog modal is
+	 * open renders immediately (scrollback line + footer hint) instead
+	 * of sitting in the REPL's debug queue until the dialog closes.
+	 * Pass-through to boxen_repl_drain_debug_notifications.  NULL is
+	 * allowed (no-op) for hosts without a debug surface. */
+	void (*drain_debug)(void *ctx);
+	void *drain_debug_ctx;
+
 	/* Restore-focus callback: bridge invokes this after closing a modal
 	 * to hand keyboard focus back to whichever window the host considers
 	 * the "default" caller (typically the REPL input bar).  Nested

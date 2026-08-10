@@ -1794,10 +1794,14 @@ void boxen_repl_state_teardown(boxen_repl_state_t *s) {
 		s->launch_transport = NULL;
 	}
 
-	/* 2026-08-10 JES unit 2.4: debug queue teardown.  Safe to destroy the
-	 * mutex here: boxen_repl_main's teardown sequence (transport-NULL, kill,
-	 * join, second lazy drain) guarantees no runtime thread can still be
-	 * inside boxen_repl_debug_write_line when state teardown runs. */
+	/* 2026-08-10 JES unit 2.4: debug queue teardown.  boxen_repl_main's
+	 * teardown sequence (transport-NULL, kill, join, second lazy drain)
+	 * ensures no runtime thread is still inside boxen_repl_debug_write_line
+	 * when state teardown runs -- except through the drain's bounded
+	 * give-up path (~5.5s, then log_warn and proceed; see the step 6.5
+	 * note in boxen_repl_main).  On that process-exit path a wedged thread
+	 * may still hold the mutex; the bounded race is the documented
+	 * trade-off inherited from protocol_main. */
 	pthread_mutex_destroy(&s->debug_queue_mutex);
 	s->debug_queue_head    = 0;
 	s->debug_queue_count   = 0;
@@ -1919,6 +1923,16 @@ void boxen_repl_drain_capture_pipe_thunk(void *ctx) {
 	boxen_repl_state_t *s = (boxen_repl_state_t *)ctx;
 	if (s == NULL) return;
 	drain_stdout_into_scrollback(s, s->pipe_read_fd);
+}
+
+/* 2026-08-10 JES unit 2.4 hardening: debug-drain thunk for the boxen_ui
+ * bridge.  Without it, a breakpoint hit while a dialog modal is open sat
+ * in the debug queue until the dialog closed -- the invisible-park bug
+ * this unit fixes, reintroduced in the modal's mini event loop. */
+void boxen_repl_drain_debug_thunk(void *ctx) {
+	boxen_repl_state_t *s = (boxen_repl_state_t *)ctx;
+	if (s == NULL) return;
+	boxen_repl_drain_debug_notifications(s);
 }
 
 /* 2026-06-23 JES #691 Phase C.0.7g: focus-restore thunk for the boxen_ui
@@ -2107,7 +2121,7 @@ static void repl_debug_format_line(boxen_repl_state_t *s, const char *json, size
 
 	cJSON *root = cJSON_ParseWithLength(json, len);
 	if (root == NULL) {
-		snprintf(out, sizeof(out), "[debug] %s", json);
+		snprintf(out, sizeof(out), "[debug] %.*s", (int)len, json);
 		boxen_repl_append_scrollback(s, out);
 		return;
 	}
@@ -2151,7 +2165,7 @@ static void repl_debug_format_line(boxen_repl_state_t *s, const char *json, size
 			if (tid >= 0) repl_debug_unmark_suspended(s, tid);
 
 		} else {
-			snprintf(out, sizeof(out), "[debug] %s", json);
+			snprintf(out, sizeof(out), "[debug] %.*s", (int)len, json);
 			boxen_repl_append_scrollback(s, out);
 		}
 
@@ -2262,12 +2276,12 @@ static void repl_debug_format_line(boxen_repl_state_t *s, const char *json, size
 			if (s->footer_win != NULL) boxen_window_invalidate(s->footer_win);
 
 		} else {
-			snprintf(out, sizeof(out), "[debug] %s", json);
+			snprintf(out, sizeof(out), "[debug] %.*s", (int)len, json);
 			boxen_repl_append_scrollback(s, out);
 		}
 
 	} else {
-		snprintf(out, sizeof(out), "[debug] %s", json);
+		snprintf(out, sizeof(out), "[debug] %.*s", (int)len, json);
 		boxen_repl_append_scrollback(s, out);
 	}
 
@@ -2282,30 +2296,33 @@ void boxen_repl_drain_debug_notifications(boxen_repl_state_t *s) {
 		int  dropped = 0;
 		bool have    = false;
 
-		/* Pop one entry (or collect the drop count) under the mutex; parse
-		 * and render outside it so write_line enqueues never wait on cJSON. */
+		/* Pop one entry and snapshot the drop count under the mutex; parse
+		 * and render outside it so write_line enqueues never wait on cJSON.
+		 * The drop count is checked on EVERY pass (not just when the queue
+		 * empties) so the report lands at the scrollback point where the
+		 * loss was detected, ahead of the surviving entries. */
 		pthread_mutex_lock(&s->debug_queue_mutex);
+		if (s->debug_queue_dropped > 0) {
+			dropped = s->debug_queue_dropped;
+			s->debug_queue_dropped = 0;
+		}
 		if (s->debug_queue_count > 0) {
 			int tail = (s->debug_queue_head - s->debug_queue_count
 			            + BOXEN_REPL_DEBUG_QUEUE_SIZE) % BOXEN_REPL_DEBUG_QUEUE_SIZE;
 			memcpy(local, s->debug_queue[tail], BOXEN_REPL_DEBUG_LINE_MAX);
 			s->debug_queue_count--;
 			have = true;
-		} else {
-			dropped = s->debug_queue_dropped;
-			s->debug_queue_dropped = 0;
 		}
 		pthread_mutex_unlock(&s->debug_queue_mutex);
 
-		if (!have) {
-			if (dropped > 0) {
-				char out[128];
-				snprintf(out, sizeof(out),
-				         "[debug] %d debug notification(s) dropped (queue full)", dropped);
-				boxen_repl_append_scrollback(s, out);
-			}
-			return;
+		if (dropped > 0) {
+			char out[128];
+			snprintf(out, sizeof(out),
+			         "[debug] %d debug notification(s) dropped (queue full)", dropped);
+			boxen_repl_append_scrollback(s, out);
 		}
+
+		if (!have) return;
 
 		repl_debug_format_line(s, local, strlen(local));
 	}
@@ -2452,16 +2469,24 @@ static bool repl_debug_slash_intercept(boxen_repl_state_t *s, const char *slash_
 			boxen_repl_append_scrollback(s, "Usage: /bp <path> <line> | /bp clear");
 			return true;
 		}
-		if (repl_debug_match_cmd(args, "clear") != NULL &&
-		    *repl_debug_match_cmd(args, "clear") == '\0') {
+		const char *clear_rest = repl_debug_match_cmd(args, "clear");
+		if (clear_rest != NULL && *clear_rest == '\0') {
 			snprintf(req, sizeof(req),
 			         "{\"op\":\"debug/clearBreakpoints\",\"id\":%d}",
 			         s->debug_req_id_counter++);
 			repl_debug_dispatch(s, req);
 			return true;
 		}
-		/* "<path> <line>" */
-		const char *sp = strchr(args, ' ');
+		/* "<path> <line>" -- the line number is the LAST space-separated
+		 * token, so bracketed script names containing spaces (e.g.
+		 * system.temp.["my script"]) pass through intact.  Trim trailing
+		 * spaces first so the last token is never empty. */
+		size_t alen = strlen(args);
+		while (alen > 0 && args[alen - 1] == ' ') alen--;
+		const char *sp = NULL;
+		for (size_t i = alen; i > 0; i--) {
+			if (args[i - 1] == ' ') { sp = args + i - 1; break; }
+		}
 		long lnum = 0;
 		if (sp == NULL || !repl_debug_parse_long(sp + 1, &lnum) || lnum < 1) {
 			boxen_repl_append_scrollback(s, "Usage: /bp <path> <line> | /bp clear");
@@ -2469,6 +2494,7 @@ static bool repl_debug_slash_intercept(boxen_repl_state_t *s, const char *slash_
 		}
 		char path[BOXEN_REPL_INPUT_MAX];
 		size_t plen = (size_t)(sp - args);
+		while (plen > 0 && args[plen - 1] == ' ') plen--;  /* trim before line */
 		if (plen >= sizeof(path)) plen = sizeof(path) - 1;
 		memcpy(path, args, plen);
 		path[plen] = '\0';
@@ -2865,6 +2891,8 @@ int boxen_repl_main(const cli_options_t *opts) {
 		.capture_pipe_fd    = capture_active ? state->pipe_read_fd : -1,
 		.drain_capture_pipe = boxen_repl_drain_capture_pipe_thunk,
 		.drain_ctx          = state,
+		.drain_debug        = boxen_repl_drain_debug_thunk,
+		.drain_debug_ctx    = state,
 		.restore_focus      = boxen_repl_restore_focus_thunk,
 		.restore_focus_ctx  = state,
 		.ring_bell          = boxen_repl_ring_bell_thunk,
@@ -3043,7 +3071,7 @@ int boxen_repl_main(const cli_options_t *opts) {
 
 		/* Step 6.5 (2026-08-10 JES unit 2.4): second lazy-thread drain.
 		 *
-		 * Closes the race documented above (round 3 P1 note): a callScript
+		 * NARROWS the race documented above (round 3 P1 note): a callScript
 		 * thread that lazy-attached between the first drain (step 2) and the
 		 * transport NULL (step 4) is now a registered DETACHED thread that
 		 * join_all does not join.  It still holds pointers to
@@ -3053,13 +3081,23 @@ int boxen_repl_main(const cli_options_t *opts) {
 		 * inert while write_line was the C.0 no-op stub; now that /bp can
 		 * arm real breakpoints it is a live use-after-free.
 		 *
-		 * Waiting for the lazy count to drain a second time closes it: the
-		 * transport is already NULL, so no NEW thread can pass the callback's
-		 * attach gate (the gate-load-to-registration window runs entirely
-		 * under the GIL and cannot straddle these teardown steps), and every
-		 * thread that slipped in earlier decrements the count only after its
-		 * final write_line.  Fast path is a single atomic load when nothing
-		 * slipped in. */
+		 * Why the second wait helps: the transport is already NULL, so no
+		 * NEW thread can pass the callback's attach gate (the gate-load-to-
+		 * registration window runs entirely under the GIL and cannot
+		 * straddle these teardown steps), and every thread that slipped in
+		 * earlier decrements the lazy count only after its final write_line
+		 * (headless_spawn.c: debug_send_completed precedes
+		 * debug_unregister_thread).  Fast path is a single atomic load when
+		 * nothing slipped in.
+		 *
+		 * NOT a guarantee: debug_wait_lazy_threads_drained has a bounded
+		 * give-up path (~5s drain + 500ms grace, then log_warn and proceed
+		 * -- see the timeout design note above its definition in
+		 * debug_handler.c).  A wedged thread blocked outside the interpreter
+		 * callback loop can outlive the wait, so this step inherits the same
+		 * documented drain-timeout trade-off as protocol_main: on this
+		 * process-exit path, a bounded race remains preferable to hanging
+		 * shutdown forever. */
 		{
 			hdlthreadglobals saved = hthreadglobals;
 			headless_save_threadglobals(saved);
