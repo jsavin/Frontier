@@ -555,35 +555,45 @@ tests:
   # Test 19: Auto-migration of v6 database
   # ========================================================================
   - name: "db.open - auto-migration of v6 database"
-    skip: true
-    skip_reason: "Pre-existing failure surfaced by #618 fix (eval-trap was masking compile/runtime errors as success: true). Tracked in umbrella issue #620 for per-category triage."
-    description: "Open v6 database in read-write mode, verify auto-migration to v7"
+    environment:
+      FRONTIER_LOCK_OPENED_ROOTS: "0"
+    description: "Open v6 database in read-write mode, verify in-place auto-migration to v7"
     script: |
       local(tmpDir = "{FRONTIER_TEST_TMP_DIR}");
       local(srcPath = tmpDir + "/" + "v6_automigrate_src.root");
-      local(v7Path = tmpDir + "/" + "v6_automigrate_src.root7");
+      local(backupPath = tmpDir + "/" + "v6_automigrate_src.v6.root");
 
-      // Copy v6 fixture to temp location
-      file.copy("tests/fixtures/v6/test.root", srcPath);
+      // Copy v6 fixture to temp location. Derive the fixture path from the
+      // substituted tmp dir (<tests>/tmp/integration) so the test works
+      // regardless of the caller's cwd (repo root vs tests/ via make).
+      file.copy(tmpDir + "/../../fixtures/v6/test.root", srcPath);
 
-      // Open in read-write mode (should trigger auto-migration)
+      // Open in read-write mode (triggers auto-migration).
+      // Migration is IN PLACE: srcPath becomes v7, the original v6 file is
+      // backed up to <name>.v6.root. The old .root7 sidecar is deprecated
+      // (2026-03-22 simplification in dbverbs.c) and must NOT appear.
       local(ok = db.open(srcPath, false));
 
-      // Verify .root7 was created
-      local(v7Exists = file.exists(v7Path));
+      local(backupExists = file.exists(backupPath));
+      local(noRoot7 = not file.exists(srcPath + "7"));
 
-      // Verify can read data from migrated database (root table exists in v6 fixture)
-      local(rootExists = db.defined(srcPath, "root"));
+      // Verify migrated data is readable: the v6 fixture's single top-level
+      // entry is the "testData" table.
+      local(dataReadable = db.defined(srcPath, "testData"));
+
+      // Verify the migrated database accepts writes (read-write mode)
+      db.setValue(srcPath, "migrationProbe", 42);
+      local(writeReadable = db.getValue(srcPath, "migrationProbe") == 42);
 
       db.close(srcPath);
 
       // Clean up
       file.delete(srcPath);
-      if v7Exists {
-        file.delete(v7Path)
+      if backupExists {
+        file.delete(backupPath)
       };
 
-      return ok and v7Exists and rootExists
+      return ok and backupExists and noRoot7 and dataReadable and writeReadable
     expected_success: true
     expected_result: "true"
 
