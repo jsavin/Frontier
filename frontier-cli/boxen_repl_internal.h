@@ -412,6 +412,26 @@ typedef struct {
 	char multiline_buf[BOXEN_REPL_MULTILINE_MAX]; /* lines joined with '\n' */
 	int  multiline_len;                            /* bytes currently in multiline_buf */
 	int  multiline_lines;                          /* number of continuation lines accumulated */
+
+	/* 2026-08-09 JES C M7: mouse-mode policy state (plan sections 5.1-5.4).
+	 *
+	 * mouse_user_on: the user's EXPLICIT preference set via /mouse on|off.
+	 *   Hydrated from the pref file at state_init; persisted on every
+	 *   explicit toggle.  Distinct from boxen_mouse_enabled() (the live
+	 *   backend state) because the palette can enable mouse temporarily
+	 *   without the user having opted in.
+	 *
+	 * mouse_palette_auto: true while mouse is enabled ONLY because the
+	 *   palette is open.  Set when the palette open auto-enables mouse;
+	 *   cleared on palette close (auto-restore) and on any explicit
+	 *   /mouse toggle (the explicit preference supersedes the automatic
+	 *   one).  When set and mouse_user_on is false, palette close turns
+	 *   mouse back off so native selection returns.
+	 *
+	 * Both zero-init to false via the memset in boxen_repl_state_init --
+	 * mouse never comes up enabled by default (the PR #808 lesson). */
+	bool mouse_user_on;
+	bool mouse_palette_auto;
 } boxen_repl_state_t;
 
 /* -------------------------------------------------------------------------
@@ -474,6 +494,13 @@ void boxen_repl_history_save(boxen_repl_state_t *s);
 /* Test-only seam: redirects ~/.frontier_history resolution to `path`.
  * Pass NULL to clear the override and revert to $HOME. */
 void boxen_repl_set_history_path_for_test(const char *path);
+
+/* 2026-08-09 JES C M7: test-only seam for the mouse-preference file.
+ * Unlike the history seam, there is NO $HOME fallback in test builds --
+ * with no override set, pref load/save are skipped entirely so a
+ * developer's real ~/.frontier_mouse cannot alter test control flow.
+ * Pass NULL to clear the override. */
+void boxen_repl_set_mouse_pref_path_for_test(const char *path);
 #endif
 
 /*

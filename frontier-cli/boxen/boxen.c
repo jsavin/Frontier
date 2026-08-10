@@ -112,6 +112,12 @@ static int                    g_window_count = 0;
 static boxen_window_t        *g_focused_window = NULL;
 static bool                   g_should_quit     = false;
 
+/* 2026-08-09 JES C M7: mouse-mode state as last set via boxen_set_mouse.
+ * Starts false and is reset on init/shutdown -- mouse must never come up
+ * enabled (plan section 5.1).  Same single-threaded-under-GIL contract as
+ * the sibling globals above. */
+static bool                   g_mouse_enabled   = false;
+
 /* 2026-06-10 JES #691 C.1.x: application-global key pre-dispatch.
  * Storage for boxen_set_global_key_handler.  See boxen.h for rationale.
  * Both NULL means "no global key routing". */
@@ -221,6 +227,7 @@ boxen_result_t boxen_init(const boxen_backend_t *backend,
 	g_window_count = 0;
 	g_focused_window = NULL;
 	g_should_quit  = false;
+	g_mouse_enabled = false;   /* mouse never comes up enabled (M7, 5.1) */
 	/* Reset drag state for symmetry with shutdown. BSS-init guarantees this
 	 * on first call, but explicit reset handles the re-init-after-error case
 	 * where an embedder calls init() without a prior shutdown(). */
@@ -258,6 +265,7 @@ void boxen_shutdown(void) {
 	g_initialized    = false;
 	g_focused_window = NULL;
 	g_should_quit    = false;
+	g_mouse_enabled  = false;
 
 	/* Reset drag state so a re-init starts clean. */
 	g_drag.state       = DRAG_NONE;
@@ -279,6 +287,35 @@ void boxen_get_screen_size(int *w, int *h) {
 	}
 	if (w != NULL) *w = tw;
 	if (h != NULL) *h = th;
+}
+
+/* -------------------------------------------------------------------------
+ * 2026-08-09 JES C M7: mouse-mode policy passthrough.
+ *
+ * Forwards to backend->set_mouse and records the state so embedder-level
+ * policy code (the REPL's /mouse toggle, the palette auto-enable) can
+ * query the current mode without reaching into the backend.  The backend
+ * owns the actual terminal writes (tb2: input_decoder_set_mouse; mock:
+ * records the call for tests).
+ * ---------------------------------------------------------------------- */
+
+boxen_result_t boxen_set_mouse(bool enable) {
+	if (!g_initialized || g_backend == NULL) {
+		boxen__set_last_error("boxen not initialized");
+		return BOXEN_ERR_INIT;
+	}
+	if (g_backend->set_mouse == NULL) {
+		boxen__set_last_error("backend does not support mouse mode");
+		return BOXEN_ERR_INVALID;
+	}
+	g_backend->set_mouse(enable);
+	g_mouse_enabled = enable;
+	boxen__set_last_error(NULL);
+	return BOXEN_OK;
+}
+
+bool boxen_mouse_enabled(void) {
+	return g_initialized && g_mouse_enabled;
 }
 
 /* -------------------------------------------------------------------------

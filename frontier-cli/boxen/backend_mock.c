@@ -36,6 +36,12 @@ static int  g_cursor_x       = -1;
 static int  g_cursor_y       = -1;
 static bool g_cursor_visible = false;
 
+/* 2026-08-09 JES C M7: mouse-mode recorder for the set_mouse vtable slot.
+ * The call counter lets tests assert that startup performs ZERO backend
+ * mouse calls (plan section 5.1), not merely that the final state is off. */
+static bool g_mock_mouse_enabled   = false;
+static int  g_mock_set_mouse_calls = 0;
+
 /* -------------------------------------------------------------------------
  * Event queue (FIFO ring buffer)
  * ---------------------------------------------------------------------- */
@@ -163,6 +169,17 @@ void boxen_mock_reset(int width, int height) {
 	g_cursor_x       = -1;
 	g_cursor_y       = -1;
 	g_cursor_visible = false;
+
+	g_mock_mouse_enabled   = false;
+	g_mock_set_mouse_calls = 0;
+}
+
+bool boxen_mock_mouse_enabled(void) {
+	return g_mock_mouse_enabled;
+}
+
+int boxen_mock_set_mouse_calls(void) {
+	return g_mock_set_mouse_calls;
 }
 
 void boxen_mock_get_cursor(int *x, int *y) {
@@ -334,6 +351,12 @@ static void mock_clear(void) {
 	}
 }
 
+/* 2026-08-09 JES C M7: record mouse-mode requests for test inspection. */
+static void mock_set_mouse(bool enable) {
+	g_mock_mouse_enabled = enable;
+	g_mock_set_mouse_calls++;
+}
+
 /* -------------------------------------------------------------------------
  * Vtable and accessor
  * ---------------------------------------------------------------------- */
@@ -350,6 +373,7 @@ static const boxen_backend_t g_mock_backend = {
 	.present            = mock_present,
 	.poll_event         = mock_poll_event,
 	.clear              = mock_clear,
+	.set_mouse          = mock_set_mouse,
 };
 
 const boxen_backend_t *boxen_mock_backend(void) {

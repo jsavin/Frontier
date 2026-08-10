@@ -107,6 +107,20 @@ void boxen_repl_check_pending_slash(boxen_repl_state_t *s) {
 	/* Deadline passed: open the palette. */
 	s->slash_pending_until_ms = 0;
 	s->palette_open_hook(s);
+
+	/* 2026-08-09 JES C M7: auto-enable mouse while the palette is up so
+	 * click-to-select works (plan section 5.2).  Gated on the palette
+	 * actually being open (the hook can fail) and on mouse being off --
+	 * if the user already ran /mouse on, there is nothing to do and
+	 * mouse_palette_auto stays false so the close path won't disable
+	 * behind their back.  Restored in repl_mouse_after_palette_close. */
+	if (s->palette_state != NULL && !boxen_mouse_enabled()) {
+		boxen_set_mouse(true);
+		s->mouse_palette_auto = true;
+		if (s->footer_win != NULL) {
+			boxen_window_invalidate(s->footer_win);
+		}
+	}
 }
 
 /* -------------------------------------------------------------------------
@@ -346,9 +360,18 @@ static void draw_footer_hint(boxen_window_t *win, void *user_data) {
 	int w = boxen_window_content_width(win);
 	if (w <= 0) return;
 
+	/* 2026-08-09 JES C M7: the footer shows the live mouse-mode state and
+	 * the toggle command (plan section 5.4).  Reads boxen_mouse_enabled()
+	 * directly -- the live backend state, which also reflects the palette
+	 * auto-enable -- rather than the state struct's preference bit.  The
+	 * toggle paths invalidate footer_win so this redraws on change. */
+	char text[600];
+	snprintf(text, sizeof(text), "%s  Mouse: %s (/mouse)",
+	         REPL_FOOTER_TEXT, boxen_mouse_enabled() ? "on" : "off");
+
 	char linebuf[512];
 	int cap = (w < (int)(sizeof(linebuf) - 1)) ? w : (int)(sizeof(linebuf) - 1);
-	int n = snprintf(linebuf, (size_t)(cap + 1), "%-*.*s", cap, cap, REPL_FOOTER_TEXT);
+	int n = snprintf(linebuf, (size_t)(cap + 1), "%-*.*s", cap, cap, text);
 	(void)n;
 	boxen_draw_text(win, 0, 0, linebuf,
 	                BOXEN_COLOR_DEFAULT, BOXEN_COLOR_DEFAULT, BOXEN_ATTR_DIM);
@@ -470,6 +493,183 @@ static bool resolve_history_path(char *out, size_t cap) {
 		return false;
 	}
 	return true;
+}
+
+/* -------------------------------------------------------------------------
+ * 2026-08-09 JES C M7: mouse-mode preference persistence.
+ *
+ * Plan section 5.4: the explicit /mouse on|off preference persists across
+ * sessions.  Mechanism (deferred to M7 by the plan): a standalone dotfile
+ * ~/.frontier_mouse containing "on" or "off".  A separate file, not a
+ * config section in ~/.frontier_history, because the history file's
+ * line-oriented format is shared byte-for-byte with the linenoise REPL
+ * (see the C.6 note above) and must not grow structure.
+ *
+ * The file is written ONLY on an explicit /mouse toggle -- never at
+ * startup and never by the palette auto-enable -- so users who never
+ * touch /mouse never get the dotfile.
+ * ---------------------------------------------------------------------- */
+#define BOXEN_REPL_MOUSE_PREF_FILE ".frontier_mouse"
+
+#ifdef BOXEN_REPL_OMIT_MAIN
+static char g_test_mouse_pref_path[1024];
+static bool g_test_mouse_pref_path_set = false;
+
+void boxen_repl_set_mouse_pref_path_for_test(const char *path) {
+	if (path == NULL) {
+		g_test_mouse_pref_path_set = false;
+		g_test_mouse_pref_path[0]  = '\0';
+		return;
+	}
+	snprintf(g_test_mouse_pref_path, sizeof(g_test_mouse_pref_path), "%s", path);
+	g_test_mouse_pref_path_set = true;
+}
+#endif /* BOXEN_REPL_OMIT_MAIN */
+
+/* Resolve the pref-file path.  Test builds resolve ONLY the explicit
+ * override -- no $HOME fallback -- so a developer's real preference file
+ * cannot change test behavior (a pref alters control flow, unlike
+ * history content; see boxen_repl_internal.h). */
+static bool resolve_mouse_pref_path(char *out, size_t cap) {
+#ifdef BOXEN_REPL_OMIT_MAIN
+	if (!g_test_mouse_pref_path_set) {
+		return false;
+	}
+	snprintf(out, cap, "%s", g_test_mouse_pref_path);
+	return true;
+#else
+	const char *home = getenv("HOME");
+	if (home == NULL) {
+		return false;   /* no HOME: preference silently disabled */
+	}
+	int written = snprintf(out, cap, "%s/%s", home, BOXEN_REPL_MOUSE_PREF_FILE);
+	return written >= 0 && (size_t)written < cap;
+#endif
+}
+
+/* Persist an explicit /mouse toggle.  Failures are logged and otherwise
+ * ignored: the in-session toggle already took effect and losing the
+ * cross-session preference is not worth interrupting the user. */
+static void mouse_pref_save(bool on) {
+	char path[1024];
+	if (!resolve_mouse_pref_path(path, sizeof(path))) {
+		return;
+	}
+	FILE *f = fopen(path, "w");
+	if (f == NULL) {
+		log_warn(LOG_COMP_GENERAL,
+		         "boxen_repl: cannot write mouse pref file %s", path);
+		return;
+	}
+	fputs(on ? "on\n" : "off\n", f);
+	fclose(f);
+}
+
+/* Hydrate the explicit preference at state_init.  Only "on" does work:
+ * mouse is off by default, so "off", a missing file, or unparseable
+ * content all leave the startup state untouched -- in particular, NO
+ * backend mouse call happens unless the user previously opted in
+ * (plan section 5.1: startup must not disturb native selection). */
+static void mouse_pref_load(boxen_repl_state_t *s) {
+	char path[1024];
+	if (!resolve_mouse_pref_path(path, sizeof(path))) {
+		return;
+	}
+	FILE *f = fopen(path, "r");
+	if (f == NULL) {
+		return;   /* no preference recorded */
+	}
+	char word[8] = "";
+	if (fgets(word, sizeof(word), f) == NULL) {
+		word[0] = '\0';
+	}
+	fclose(f);
+	word[strcspn(word, "\r\n")] = '\0';
+	if (strcmp(word, "on") == 0) {
+		s->mouse_user_on = true;
+		boxen_set_mouse(true);
+	}
+}
+
+/* -------------------------------------------------------------------------
+ * 2026-08-09 JES C M7: /mouse slash-command handler.
+ *
+ * Kernel intercept in submit_input, like /edit: handled before the
+ * UserTalk menubar because mouse mode is a property of THIS terminal
+ * session's input path, not a scriptable verb -- and unlike /edit it is
+ * fully live in test builds (no runtime dependencies), which is how the
+ * behavioral tests in tests/boxen_repl_tests.c drive it.
+ *
+ * Grammar:  /mouse            -> report current state
+ *           /mouse on         -> enable + record explicit preference
+ *           /mouse off        -> disable + record explicit preference
+ *           anything else     -> usage line, no state change
+ * ---------------------------------------------------------------------- */
+static void repl_handle_mouse_command(boxen_repl_state_t *s, const char *args) {
+	while (*args == ' ') args++;
+
+	/* First word of the argument (bounded); anything after it is junk. */
+	char word[8];
+	size_t n = 0;
+	while (args[n] != '\0' && args[n] != ' ' && n < sizeof(word) - 1) {
+		word[n] = args[n];
+		n++;
+	}
+	word[n] = '\0';
+	const char *rest = args + n;
+	while (*rest == ' ') rest++;
+
+	if (word[0] == '\0') {
+		char msg[96];
+		snprintf(msg, sizeof(msg),
+		         "Mouse mode is %s -- /mouse on|off to change",
+		         boxen_mouse_enabled() ? "on" : "off");
+		boxen_repl_append_scrollback(s, msg);
+		return;
+	}
+
+	bool enable;
+	if (*rest == '\0' && strcmp(word, "on") == 0) {
+		enable = true;
+	} else if (*rest == '\0' && strcmp(word, "off") == 0) {
+		enable = false;
+	} else {
+		boxen_repl_append_scrollback(s, "Usage: /mouse [on|off]");
+		return;
+	}
+
+	/* The explicit preference supersedes any palette auto-enable. */
+	s->mouse_user_on      = enable;
+	s->mouse_palette_auto = false;
+	boxen_set_mouse(enable);
+	mouse_pref_save(enable);
+	boxen_repl_append_scrollback(s, enable
+	    ? "Mouse mode on -- click and wheel active; hold Shift to select text natively"
+	    : "Mouse mode off -- native selection restored");
+	if (s->footer_win != NULL) {
+		boxen_window_invalidate(s->footer_win);
+	}
+}
+
+/* -------------------------------------------------------------------------
+ * 2026-08-09 JES C M7: palette auto-restore.
+ *
+ * Called on every palette close path (on_palette_done in production,
+ * boxen_repl_close_palette_for_test in test builds).  Undoes the
+ * palette-open auto-enable UNLESS the user explicitly opted in with
+ * /mouse on while the palette was up (mouse_user_on wins).
+ * ---------------------------------------------------------------------- */
+static void repl_mouse_after_palette_close(boxen_repl_state_t *s) {
+	if (s == NULL || !s->mouse_palette_auto) {
+		return;
+	}
+	s->mouse_palette_auto = false;
+	if (!s->mouse_user_on) {
+		boxen_set_mouse(false);
+	}
+	if (s->footer_win != NULL) {
+		boxen_window_invalidate(s->footer_win);
+	}
 }
 
 /* -------------------------------------------------------------------------
@@ -890,6 +1090,20 @@ static void submit_input(boxen_repl_state_t *s) {
 #else
 			boxen_repl_append_scrollback(s, "(edit not available in test build)");
 #endif
+			/* Consumed -- skip menubar dispatch */
+			goto slash_done;
+		}
+
+		/* 2026-08-09 JES C M7: /mouse [on|off] -- kernel intercept.
+		 *
+		 * Handled here (like /edit) because mouse mode is a property of
+		 * this terminal session's input path, not a menubar verb.  Live
+		 * in BOTH production and test builds -- the handler has no
+		 * runtime dependencies beyond boxen itself. */
+		bool is_mouse_cmd = (strncmp(slash_buf, "mouse", 5) == 0 &&
+		                     (slash_buf[5] == '\0' || slash_buf[5] == ' '));
+		if (is_mouse_cmd) {
+			repl_handle_mouse_command(s, slash_buf + 5);
 			/* Consumed -- skip menubar dispatch */
 			goto slash_done;
 		}
@@ -1449,6 +1663,11 @@ void boxen_repl_state_init(boxen_repl_state_t *s, int tw, int th) {
 
 	/* 2026-06-09 JES #691 Phase C.0.1: hydrate history ring from disk. */
 	boxen_repl_history_load(s);
+
+	/* 2026-08-09 JES C M7: hydrate the explicit mouse preference.  Only a
+	 * recorded "on" performs a backend call; the default path stays
+	 * write-free so startup never disturbs native selection (5.1). */
+	mouse_pref_load(s);
 }
 
 void boxen_repl_state_teardown(boxen_repl_state_t *s) {
@@ -2340,6 +2559,11 @@ static void on_palette_done(void *repl_state_opaque, palette_done_t done,
 		boxen_window_focus(s->input_win);
 	}
 
+	/* 3b. 2026-08-09 JES C M7: undo the palette-open mouse auto-enable
+	 * (no-op unless this open auto-enabled it).  Before step 4 so a
+	 * dispatched command observes the post-palette mouse state. */
+	repl_mouse_after_palette_close(s);
+
 	/* 4. Dispatch on execute.
 	 *
 	 * 2026-06-22 JES #691 C.0.7f follow-up: dispatch BEFORE disposing the
@@ -2590,5 +2814,8 @@ void boxen_repl_close_palette_for_test(void *s_opaque) {
 	if (s->input_win != NULL) {
 		boxen_window_focus(s->input_win);
 	}
+	/* 2026-08-09 JES C M7: mirror on_palette_done's mouse auto-restore so
+	 * the policy is testable without linking palette.c. */
+	repl_mouse_after_palette_close(s);
 }
 #endif

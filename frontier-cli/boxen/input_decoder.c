@@ -332,6 +332,19 @@ struct input_decoder {
 };
 
 /* -------------------------------------------------------------------------
+ * 2026-08-09 JES C M7: mouse-mode control sequences.
+ *
+ * Hoisted to file scope (from locals in input_decoder_set_mouse) because
+ * the destroy path now shares the disable triplet to restore the
+ * terminal's native input model at teardown.  Enable order: basic (1000)
+ * before SGR (1006) -- some terminals require the base mode first.
+ * Disable order is the mirror: SGR off before basic off.  Bracketed
+ * paste (2004) toggles in lockstep per plan sections 5.3 / 5.5.
+ * ---------------------------------------------------------------------- */
+static const char DEC_MOUSE_ON_SEQ[]  = "\x1b[?1000h\x1b[?1006h\x1b[?2004h";
+static const char DEC_MOUSE_OFF_SEQ[] = "\x1b[?1006l\x1b[?1000l\x1b[?2004l";
+
+/* -------------------------------------------------------------------------
  * Lifecycle
  * ---------------------------------------------------------------------- */
 
@@ -368,6 +381,20 @@ input_decoder_t *input_decoder_create(int tty_fd) {
 void input_decoder_destroy(input_decoder_t *dec) {
 	if (dec == NULL) {
 		return;
+	}
+	/* 2026-08-09 JES C M7: restore the terminal's native input model if
+	 * mouse reporting is still enabled at teardown.  termbox2 never saw a
+	 * mouse-mode change (this decoder writes the sequences itself, M3), so
+	 * tb_shutdown() will not send the disable -- without this write an exit
+	 * taken while mouse mode is on leaves the user's terminal emitting
+	 * mouse escapes into their shell.  Ordering guarantee: tb2_shutdown
+	 * destroys the decoder BEFORE tb_shutdown, so tty_fd is still valid
+	 * and in raw mode here (see backend_tb2.c).  write(2) errors are
+	 * ignored for the same reason as in set_mouse: a dead fd means the
+	 * terminal is gone and there is no native state left to corrupt. */
+	if (dec->mouse_enabled && dec->tty_fd >= 0) {
+		(void)write(dec->tty_fd, DEC_MOUSE_OFF_SEQ,
+		            sizeof(DEC_MOUSE_OFF_SEQ) - 1);
 	}
 	/* 2026-06-29 JES #812 M4: free the in-progress paste buffer if any.
 	 * The buffer is normally consumed by the BOXEN_EV_PASTE emission
@@ -417,11 +444,11 @@ void input_decoder_set_mouse(input_decoder_t *dec, bool enable) {
 	 * in one pipe buffer page) and adds noise in the test-seam path. */
 	if (dec->tty_fd >= 0) {
 		if (enable) {
-			static const char ON[] = "\x1b[?1000h\x1b[?1006h\x1b[?2004h";
-			(void)write(dec->tty_fd, ON, sizeof(ON) - 1);
+			(void)write(dec->tty_fd, DEC_MOUSE_ON_SEQ,
+			            sizeof(DEC_MOUSE_ON_SEQ) - 1);
 		} else {
-			static const char OFF[] = "\x1b[?1006l\x1b[?1000l\x1b[?2004l";
-			(void)write(dec->tty_fd, OFF, sizeof(OFF) - 1);
+			(void)write(dec->tty_fd, DEC_MOUSE_OFF_SEQ,
+			            sizeof(DEC_MOUSE_OFF_SEQ) - 1);
 		}
 	}
 }
