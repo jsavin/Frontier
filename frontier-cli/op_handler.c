@@ -908,8 +908,8 @@ static void handle_odb_delete(long id, const char *json_line, transport_t *trans
  * anything unsaved. That loss-without-save is the documented contract, and
  * this op is how a protocol client opts into durability.
  *
- * Takes no parameters -- all odb/* paths resolve within the loaded system
- * root, so it is the only addressable save target (guest DBs save via
+ * Takes no parameters -- paths in every odb op resolve within the loaded
+ * system root, so it is the only addressable save target (guest DBs save via
  * script/eval db.save()). Extra params are ignored, like script/clearContext.
  *
  * Response: {"result": {"root": "<basename>", "saved": bool, "dirty": false}}.
