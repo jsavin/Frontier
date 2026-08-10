@@ -43,8 +43,6 @@ tests:
   # TEST 1 — Listener lifecycle with a custom responder
   # =============================================================================
   - name: "inetd E2E - listener lifecycle with custom helloE2E responder"
-    skip: true
-    skip_reason: "inetd.startOne legacy classic-Mac branch (startOne.ut: if isMac and (versionLessThan 6.2b8 or not isPowerPC), open count/2-1 EXTRA listeners on the same port) runs on modern macOS and every extra bind fails: startOne throws Socket error: Bind failed AFTER registering the primary listener, and stopOne then errors on the never-created ref2 entry. Genuine product script bug, verified in isolation 2026-08-10 (#620 triage). Also blocked by the accept-callback kernel bugs (branch unit-2-2-accept-callbacks)."
     description: "Register a custom responder, start a listener, verify tracking, stop cleanly"
     requires_system_root: true
     timeout: 20
@@ -86,14 +84,14 @@ tests:
         user.inetd.config.http.port = originalPort;
         scriptError ("inetd.startOne failed for port " + port)
       };
-      thread.sleepFor (30);
+      thread.sleepTicks (30);
 
       // Verify listener is tracked
       local(tracked = defined (user.inetd.listens.[port]));
 
       // Stop cleanly
       inetd.stopOne (@user.inetd.config.http);
-      thread.sleepFor (30);  // Workaround for issue #364 (listener shutdown race)
+      thread.sleepTicks (30);  // Workaround for issue #364 (listener shutdown race)
 
       // Verify listener is no longer tracked
       local(removed = not defined (user.inetd.listens.[port]));
@@ -111,8 +109,6 @@ tests:
   # TEST 2 — Full HTTP GET round trip via the webserver dispatch path
   # =============================================================================
   - name: "inetd E2E - HTTP GET round trip to custom responder"
-    skip: true
-    skip_reason: "inetd.startOne legacy classic-Mac branch (startOne.ut: if isMac and (versionLessThan 6.2b8 or not isPowerPC), open count/2-1 EXTRA listeners on the same port) runs on modern macOS and every extra bind fails: startOne throws Socket error: Bind failed AFTER registering the primary listener, and stopOne then errors on the never-created ref2 entry. Genuine product script bug, verified in isolation 2026-08-10 (#620 triage). Also blocked by the accept-callback kernel bugs (branch unit-2-2-accept-callbacks)."
     description: "Start listener, send HTTP GET, assert 200 status + custom body"
     requires_system_root: true
     timeout: 30
@@ -156,7 +152,7 @@ tests:
         user.inetd.config.http.port = originalPort;
         scriptError ("inetd.startOne failed for port " + port)
       };
-      thread.sleepFor (50);  // 50 ticks to ensure the accept socket is ready before we connect
+      thread.sleepTicks (50);  // 50 ticks to ensure the accept socket is ready before we connect
 
       local(hasStatus200 = false);
       local(hasBody = false);
@@ -195,7 +191,7 @@ tests:
           if (not headersComplete) and (response contains "\r\n\r\n") {
             headersComplete = true
           };
-          thread.sleepFor (10)
+          thread.sleepTicks (10)
         };
 
         tcp.closeStream (stream);
@@ -205,11 +201,11 @@ tests:
           scriptError ("read loop timed out — server never closed connection on port " + port)
         };
 
-        // Match the HTTP status line precisely, not just any "200" in headers/body.
-        // "HTTP/1. 200" covers both HTTP/1.0 and HTTP/1.1 response lines.
-        // UserTalk 'contains' treats "." as a single-char wildcard, so "HTTP/1. 200"
-        // matches "HTTP/1.0 200" and "HTTP/1.1 200" — this is intentional, not a typo.
-        hasStatus200 = response contains "HTTP/1. 200";
+        // Match the HTTP status line — "200 OK" appears only in the status
+        // line, not in these headers/body. UserTalk 'contains' is a literal
+        // substring match (no wildcards), and Frontier's webserver answers with
+        // an HTTP/1.1 status line regardless of the request's HTTP version.
+        hasStatus200 = response contains "200 OK";
         hasBody = response contains "hello E2E"
       }
       else {
@@ -219,14 +215,14 @@ tests:
           stream = 0
         };
         inetd.stopOne (@user.inetd.config.http);
-        thread.sleepFor (30);
+        thread.sleepTicks (30);
         delete (@user.webserver.responders.helloE2E);
         user.inetd.config.http.port = originalPort;
         scriptError (tryError)
       };
 
       inetd.stopOne (@user.inetd.config.http);
-      thread.sleepFor (30);  // #364 workaround
+      thread.sleepTicks (30);  // #364 workaround
       delete (@user.webserver.responders.helloE2E);
       user.inetd.config.http.port = originalPort;
 
@@ -239,8 +235,6 @@ tests:
   # TEST 3 — Multiple sequential requests on the same listener
   # =============================================================================
   - name: "inetd E2E - multiple sequential GETs on same listener"
-    skip: true
-    skip_reason: "inetd.startOne legacy classic-Mac branch (startOne.ut: if isMac and (versionLessThan 6.2b8 or not isPowerPC), open count/2-1 EXTRA listeners on the same port) runs on modern macOS and every extra bind fails: startOne throws Socket error: Bind failed AFTER registering the primary listener, and stopOne then errors on the never-created ref2 entry. Genuine product script bug, verified in isolation 2026-08-10 (#620 triage). Also blocked by the accept-callback kernel bugs (branch unit-2-2-accept-callbacks)."
     description: "Send two HTTP GETs back-to-back, both should succeed"
     requires_system_root: true
     timeout: 40
@@ -279,7 +273,7 @@ tests:
         user.inetd.config.http.port = originalPort;
         scriptError ("inetd.startOne failed for port " + port)
       };
-      thread.sleepFor (50);  // 50 ticks to ensure the accept socket is ready before we connect
+      thread.sleepTicks (50);  // 50 ticks to ensure the accept socket is ready before we connect
 
       local(successCount = 0);
       // Stream is declared at outer scope so the try/else can close it even if
@@ -314,7 +308,7 @@ tests:
             if (not headersComplete) and (response contains "\r\n\r\n") {
               headersComplete = true
             };
-            thread.sleepFor (10)
+            thread.sleepTicks (10)
           };
 
           tcp.closeStream (stream);
@@ -324,10 +318,10 @@ tests:
             scriptError ("read loop timed out on iteration " + i + " — server never closed connection on port " + port)
           };
 
-          // "HTTP/1. 200" covers both HTTP/1.0 and HTTP/1.1 status lines.
-          // UserTalk 'contains' treats "." as a single-char wildcard, so this matches
-          // "HTTP/1.0 200" and "HTTP/1.1 200" without a false match on "Content-Length: 200".
-          if (response contains "HTTP/1. 200") and (response contains "hello E2E") {
+          // "200 OK" appears only in the status line. UserTalk 'contains' is a
+          // literal substring match (no wildcards); Frontier answers with an
+          // HTTP/1.1 status line regardless of the request's HTTP version.
+          if (response contains "200 OK") and (response contains "hello E2E") {
             successCount = successCount + 1
           }
         }
@@ -339,14 +333,14 @@ tests:
           stream = 0
         };
         inetd.stopOne (@user.inetd.config.http);
-        thread.sleepFor (30);
+        thread.sleepTicks (30);
         delete (@user.webserver.responders.helloE2E);
         user.inetd.config.http.port = originalPort;
         scriptError (tryError)
       };
 
       inetd.stopOne (@user.inetd.config.http);
-      thread.sleepFor (30);  // #364 workaround
+      thread.sleepTicks (30);  // #364 workaround
       delete (@user.webserver.responders.helloE2E);
       user.inetd.config.http.port = originalPort;
 
@@ -359,8 +353,6 @@ tests:
   # TEST 4 — 404 / error response for unknown path (no matching responder condition)
   # =============================================================================
   - name: "inetd E2E - unknown path falls through to default responder error"
-    skip: true
-    skip_reason: "inetd.startOne legacy classic-Mac branch (startOne.ut: if isMac and (versionLessThan 6.2b8 or not isPowerPC), open count/2-1 EXTRA listeners on the same port) runs on modern macOS and every extra bind fails: startOne throws Socket error: Bind failed AFTER registering the primary listener, and stopOne then errors on the never-created ref2 entry. Genuine product script bug, verified in isolation 2026-08-10 (#620 triage). Also blocked by the accept-callback kernel bugs (branch unit-2-2-accept-callbacks)."
     description: "GET to a path no custom responder matches returns an HTTP error (4xx/5xx)"
     requires_system_root: true
     timeout: 30
@@ -393,7 +385,7 @@ tests:
         user.inetd.config.http.port = originalPort;
         scriptError ("inetd.startOne failed for port " + port)
       };
-      thread.sleepFor (50);  // 50 ticks to ensure the accept socket is ready before we connect
+      thread.sleepTicks (50);  // 50 ticks to ensure the accept socket is ready before we connect
 
       local(isError = false);
       // Stream is declared at outer scope so the try/else can close it even if
@@ -430,7 +422,7 @@ tests:
           if (not headersComplete) and (response contains "\r\n\r\n") {
             headersComplete = true
           };
-          thread.sleepFor (10)
+          thread.sleepTicks (10)
         };
 
         tcp.closeStream (stream);
@@ -440,16 +432,15 @@ tests:
           scriptError ("read loop timed out — server never closed connection on port " + port)
         };
 
-        // UserTalk 'contains' treats "." as a single-char wildcard, so "HTTP/1."
-        // matches "HTTP/1.0" and "HTTP/1.1" — this is intentional, not a typo.
-        // Match status line precisely to avoid false matches against body/header content.
-        // "HTTP/1. 4" matches any 4xx status line (403/404/410/etc.) — the expected
-        // default-responder result for an unmatched path. "HTTP/1. 5" covers a 5xx
-        // internal dispatch error, which is also a correct "unknown path" signal
-        // (better than a silent pass). We intentionally do NOT fall back to body-text
+        // UserTalk 'contains' is a literal substring match (no wildcards).
+        // Frontier answers with an HTTP/1.1 status line, so "HTTP/1.1 4" matches
+        // any 4xx status line (403/404/410/etc.) — the expected default-responder
+        // result for an unmatched path — and "HTTP/1.1 5" covers a 5xx internal
+        // dispatch error, which is also a correct "unknown path" signal (better
+        // than a silent pass). We intentionally do NOT fall back to body-text
         // matches like "Not Found" — those could mask a 200 response whose body
         // happens to contain the word.
-        isError = (response contains "HTTP/1. 4") or (response contains "HTTP/1. 5")
+        isError = (response contains "HTTP/1.1 4") or (response contains "HTTP/1.1 5")
       }
       else {
         // Ensure the stream is closed even if an exception fired mid-body.
@@ -458,14 +449,14 @@ tests:
           stream = 0
         };
         inetd.stopOne (@user.inetd.config.http);
-        thread.sleepFor (30);
+        thread.sleepTicks (30);
         delete (@user.webserver.responders.helloE2E);
         user.inetd.config.http.port = originalPort;
         scriptError (tryError)
       };
 
       inetd.stopOne (@user.inetd.config.http);
-      thread.sleepFor (30);  // #364 workaround
+      thread.sleepTicks (30);  // #364 workaround
       delete (@user.webserver.responders.helloE2E);
       user.inetd.config.http.port = originalPort;
 
