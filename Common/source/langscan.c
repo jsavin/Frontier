@@ -1380,34 +1380,39 @@ boolean langstripstructuremarkers (Handle hin, Handle *hout) {
 
 			/*scan forward from the indent boundary to find the start of any
 			trailing comment (« or //) outside a string literal. UserTalk
-			strings use ASCII " (chdoublequote, 0x22) OR the Mac smart-quote
-			pair chopencurlyquote (0xD2) / chclosecurlyquote (0xD3); the
-			scanner accepts both forms (langscan.c parsepopstringconst), so
-			we track both here. Without that, a string like "a // b" with
-			"" delimiters works, but "a // b" with «...» smart quotes would
-			get its // misread as a comment start and the rest of the line
-			truncated. flqcurly distinguishes the closing delimiter to use.*/
+			has three literal delimiters, and all three must be tracked here
+			or a comment marker inside one gets misread as a real comment:
+			ASCII " (chdoublequote, 0x22); the Mac smart-quote pair
+			chopencurlyquote (0xD2) / chclosecurlyquote (0xD3); and
+			chsinglequote (0x27) for character and string4 constants
+			(parsepopstringconst / the single-quote branch below both accept
+			these). Without that, a string like "a // b" with "" delimiters
+			works, but «a // b» or 'Ç' would get its comment byte misread as
+			a comment start, truncating the rest of the line. Losing the
+			trailing structural-marker strip that way leaves a `{` in the
+			stored node text that the outline export re-emits from the level
+			transition, so each reinstall adds another brace (#866).
+			chclose is the delimiter that ends the literal we are inside.*/
 			long i = linestart + indent;
-			boolean flqcurly = false;
+			byte chclose = 0;
 			while (i < lineend) {
 				byte ch = buf [i];
 				if (flinstring) {
 					/*\ escapes the next byte (e.g. \" inside ASCII strings).
-					Same convention applies inside curly-quote strings; the
-					scanner doesn't distinguish.*/
+					Same convention applies inside curly-quote and
+					single-quote strings; the scanner doesn't distinguish.*/
 					if (ch == '\\' && i + 1 < lineend) {
 						i += 2;
 						continue;
 						}
-					if ((!flqcurly && ch == '"')
-					    || (flqcurly && ch == (byte) chclosecurlyquote))
+					if (ch == chclose)
 						flinstring = false;
 					++i;
 					continue;
 					}
-				if (ch == '"' || ch == chopencurlyquote) {
+				if (ch == '"' || ch == chopencurlyquote || ch == (byte) chsinglequote) {
 					flinstring = true;
-					flqcurly = (ch == chopencurlyquote);
+					chclose = (ch == chopencurlyquote) ? (byte) chclosecurlyquote : ch;
 					++i;
 					continue;
 					}
@@ -1453,13 +1458,17 @@ boolean langstripstructuremarkers (Handle hin, Handle *hout) {
 					surplus closing braces. If not, the brace we are about
 					to strip is needed to close an inline one-line block;
 					stop. Count {/} in the kept content, respecting
-					string-literal state for both " and « forms (escape
-					with backslash applies to both).*/
+					string-literal state for the ", « and ' forms (escape
+					with backslash applies to all three). Single quotes
+					must be tracked here for the same reason as in the
+					comment-start scan above: a brace inside a character
+					or string4 constant is not structural (#866).
+					k_close is the delimiter ending the current literal.*/
 					long try_from = stripfrom - 1;
 					long open_ct = 0;
 					long close_ct = 0;
 					boolean in_str = false;
-					boolean qcurly = false;
+					byte k_close = 0;
 					boolean esc = false;
 					long k;
 					for (k = linestart + indent; k < try_from; ++k) {
@@ -1467,14 +1476,13 @@ boolean langstripstructuremarkers (Handle hin, Handle *hout) {
 						if (esc) { esc = false; continue; }
 						if (in_str) {
 							if (kc == '\\') esc = true;
-							else if ((!qcurly && kc == '"')
-							         || (qcurly && kc == (byte) chclosecurlyquote))
+							else if (kc == k_close)
 								in_str = false;
 							continue;
 							}
-						if (kc == '"' || kc == chopencurlyquote) {
+						if (kc == '"' || kc == chopencurlyquote || kc == (byte) chsinglequote) {
 							in_str = true;
-							qcurly = (kc == chopencurlyquote);
+							k_close = (kc == chopencurlyquote) ? (byte) chclosecurlyquote : kc;
 							continue;
 							}
 						if (kc == '{') ++open_ct;
