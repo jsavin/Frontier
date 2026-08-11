@@ -182,6 +182,79 @@ const char *cli_get_system_root_basename(void) {
 }
 
 /*
+ * langrunstringnoerror: compile and run a UserTalk bigstring expression.
+ * Declared in lang.h/langinternal.h; also used by window_registry.c.
+ */
+extern boolean langrunstringnoerror(const bigstring bsprogram, bigstring bsresult);
+
+/*
+ * cli_init_frontier_pathstring -- set Frontier.pathString from the loaded root.
+ *
+ * Issue #859. Frontier.pathString anchors every Frontier.getSubFolder() call
+ * (getSubFolder.ut:5 builds pathString + "Guest Databases" + pathChar). Until
+ * now the only writer was startupScript.ut:60:
+ *
+ *     Frontier.pathstring = file.folderFromPath (frontier.getFilePath ())
+ *
+ * which never runs under --skip-startup or --protocol. On those surfaces
+ * pathString kept whatever absolute path was serialized into the shipped root
+ * -- in Virgin.root, a deleted worktree directory. getSubFolder then built
+ * paths under a nonexistent parent and file.newFolder threw "Can't create
+ * folder" (getSubFolder.ut:10), which is what stranded startupScript above the
+ * #849 guards when firstRootRun was true (#855).
+ *
+ * A shipped absolute path cannot be correct: the dist layout, the repo layout,
+ * and the per-worker staged-test layout put the root in three different places.
+ * So the value is computed at load instead of stored.
+ *
+ * ROOT-relative, not BINARY-relative: "Guest Databases" is a sibling of the
+ * ROOT FILE in every layout (dist/, databases/, and the staged worker dir),
+ * while the binary lives in frontier-cli/ with no such sibling. startupScript
+ * already encodes this distinction deliberately -- line 48 uses
+ * frontier.getProgramPath() for the app folder, line 60 uses
+ * frontier.getFilePath() for pathString. Deriving from the root keeps this
+ * function and startupScript in agreement, so a later real startup recomputes
+ * the identical value and the with-startup path is unchanged.
+ *
+ * The script calls frontier.getFilePath() rather than interpolating the C-side
+ * path into the source text. That is deliberate: it keeps a filesystem path --
+ * which can contain quotes or other metacharacters -- out of a UserTalk string
+ * literal entirely, so there is no injection surface to escape (contrast the
+ * langdeparsestring contract fire_window_script must honor in window_registry.c).
+ *
+ * Boot-failure-safe: a failure here is logged and ignored rather than aborting
+ * the load. A minimal headless root may have no Frontier table at all, and a
+ * runtime that boots with a stale pathString is no worse off than before this
+ * function existed.
+ *
+ * Must be called AFTER g_system_root_path/g_system_root_loaded are set, since
+ * frontier.getFilePath() reads them.
+ */
+static void cli_init_frontier_pathstring(void) {
+	bigstring bs_program;
+	bigstring bs_result;
+
+	if (!copyctopstring("Frontier.pathString = file.folderFromPath (frontier.getFilePath ())",
+	                    bs_program)) {
+		log_warn(LOG_COMP_STARTUP,
+		         "cli_init_frontier_pathstring: script text exceeded 255 bytes; "
+		         "Frontier.pathString not initialized");
+		return;
+	}
+
+	if (!langrunstringnoerror(bs_program, bs_result)) {
+		log_warn(LOG_COMP_STARTUP,
+		         "cli_init_frontier_pathstring: failed to set Frontier.pathString from %s -- "
+		         "Frontier.getSubFolder() paths may be wrong",
+		         g_system_root_path);
+		return;
+	}
+
+	log_debug(LOG_COMP_STARTUP, "Frontier.pathString initialized from system root: %s",
+	          g_system_root_path);
+}
+
+/*
  * .ut import boot-time re-dirty infrastructure.
  *
  * During bulk hydrate, opverbinmemory calls cli_record_ut_import for every
@@ -1837,6 +1910,11 @@ static boolean hydrate_system_root_database(const char* path, boolean read_only)
 	snprintf(g_system_root_path, sizeof(g_system_root_path), "%s", path);
 	g_system_root_loaded = true;
 
+	/* Issue #859 -- derive Frontier.pathString from the root just loaded, so it is
+	 * correct on boot modes that never run startupScript (--skip-startup, --protocol).
+	 * Must follow the two assignments above; see the function comment. */
+	cli_init_frontier_pathstring();
+
 	/* NOTE: Startup scripts are NOT run here during hydration.
 	 * They are run in main() AFTER hydration completes, which ensures:
 	 * 1. EFP tables are properly linked (linksystemtablestructure)
@@ -2123,6 +2201,10 @@ static boolean load_system_root_database_internal(const char* path, boolean allo
 	g_system_root_fnum = fnum;
 	snprintf(g_system_root_path, sizeof(g_system_root_path), "%s", path);
 	g_system_root_loaded = true;
+
+	/* Issue #859 -- see cli_init_frontier_pathstring(). Both load paths need this:
+	 * this one runs when hydration is skipped (allow_hydrate false). */
+	cli_init_frontier_pathstring();
 
 	/* NOTE: Startup scripts are NOT run here. They are run in main() AFTER
 	 * hydrate_system_root_database() completes, which ensures EFP tables are
