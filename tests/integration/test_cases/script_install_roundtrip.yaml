@@ -150,8 +150,33 @@ tests:
     expected_success: true
     expected_result: "true"
 
+  - name: "round-trip: brace inside a single-quoted constant is not counted as structure (#866)"
+    description: "Exercises the brace-balance counter rather than the comment-start scan. That counter decides whether a trailing } is load-bearing (the #621 inline-block check); it tracked the same two delimiters and so counted a { or } inside a character constant as structural. Here the constant holds a brace and the line ends with an inline one-line block, so a miscount changes the strip decision and unbalances the stored node text. Both scanners now track ' as a delimiter."
+    script: |
+      local (src = "on f (c) {\r\tif c == '{' {\r\t\ttry {local (x = 1)}};\r\treturn (1)}");
+      new (tabletype, @system.temp.rt);
+      script.newScriptObject (src, @system.temp.rt.f);
+      local (back = string (system.temp.rt.f));
+      local (result = system.temp.rt.f ("{"));
+      delete (@system.temp.rt);
+      return (back == src and result == 1)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "round-trip: comment marker inside a curly-quote string literal (0xD2/0xD3)"
+    description: "Coverage gap predating #866: the curly-quote string form was tracked by both scanners but never exercised by a test, and the delimiter refactor touches that path. A comment marker inside a Mac smart-quote string must not be read as a trailing comment. Uses the \\xd2 and \\xd3 escapes so the bytes survive the runner writing the script file as UTF-8."
+    script: |
+      local (src = "on f () {\r\tlocal (s = \xd2a \xc7 b\xd3);\r\treturn (s)}");
+      new (tabletype, @system.temp.rt);
+      script.newScriptObject (src, @system.temp.rt.f);
+      local (back = string (system.temp.rt.f));
+      delete (@system.temp.rt);
+      return (back == src)
+    expected_success: true
+    expected_result: "true"
+
   - name: "round-trip: inline one-line nested block at outermost depth (#621)"
-    description: "Same shape as the previous test but the inline block sits at the outermost body level (no enclosing if/while). Confirms the brace-balance check generalizes across nesting depths and isn't depth-1-specific."
+    description: "Same shape as the depth-1 inline-block case above but the inline block sits at the outermost body level (no enclosing if/while). Confirms the brace-balance check generalizes across nesting depths and isn't depth-1-specific."
     script: |
       local (src = "on f () {\r\ttry {local (x = 7)};\r\treturn (1)}");
       new (tabletype, @system.temp.rt);
