@@ -19,6 +19,7 @@ Related Docs
 
 1. `make build` from a fresh clone succeeds (documented toolchain only).
 2. First launch on the shipped Virgin.root runs the complete first-run flow with no hand-provisioning and no errors that strand startup (`startingUp` ends false; `user.prefs.firstRootRun` ships true and flips false).
+   - **Clarification (2026-08-11):** genuine first-run is OPERATOR-ATTENDED onboarding, not zero-input. Legacy Frontier launched the owner's browser to setupFrontier to collect config (site name, admin creds) from potentially non-technical server owners -- that is a REQUIRED feature, not a bug (see #891). "Unattended" applies to the AGENT-BROWSER verification path (which drives the setup page programmatically), NOT to a real human first-run. Headless servers LOG the setup URL for a remote operator instead of launching a local browser (#891); #867 keeps that URL reachable after restart. Do not "fix" first-run to require no human input -- that deletes onboarding.
 3. The setup page is reachable at its published URL — including after a restart — and completes setup.
 4. mainResponder and Manila are installed by that flow; a Manila site renders in a real browser.
 5. Verification is two-layer: agent-browser drives and checks the flow end-to-end; JES visually signs off the rendered site (held decision — never autonomous).
