@@ -1,5 +1,5 @@
 on isValidUrl (s) { //3/21/26 by JES
-		//Validates that s is a well-formed URL with an allowed scheme.
+	//Validates that s is a well-formed URL with an allowed scheme.
 		//Rejects javascript:, data:, and other potentially dangerous schemes.
 		//file:// is allowed for opening local HTML files and documents.
 	if sizeof (s) == 0 {
