@@ -990,7 +990,7 @@ on respond (adrparamtable, fldebug=false) {
 					if system.environment.isMac {
 						htmltext = string.iso8859encode (htmltext, @html.data.iso8859.mac)}};
 				
-				adrparamtable^.responseBody = htmltext}};
+				adrparamtable^.code = 500; adrparamtable^.responseBody = htmltext}}; //8/10/26 JES #862: error pages must not report success
 		try { //logging code, we want to log everything, including errors
 			if config.mainresponder.prefs.flLog {
 				mainResponder.log.add (adrparamtable)};
