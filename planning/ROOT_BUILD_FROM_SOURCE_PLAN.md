@@ -1,7 +1,7 @@
 # Root-Build-From-Source Implementation Plan
 
 Status
-- State: Draft (decision points open — see Section 9)
+- State: Draft (decision 9.6 resolved: sources/; 9.1-9.5, 9.7 open)
 - Phase: Cross-cutting infrastructure (post-Phase-3 wave)
 - Last Updated: 2026-08-11
 - Notes: Maintainer directive 2026-08-11: get out of diff-against-binary; make .root files generateable from sources. This doc is the granular landing plan. Census (in flight) and provenance results refine scope numbers, not the design.
@@ -147,7 +147,12 @@ Parsing is a small dedicated reader in the build tool — NOT the interpreter (n
 3. **wptext form:** RTF file when styled, plain .txt when not (my recommendation) vs always-RTF.
 4. **Per-value modification dates:** preserve in manifest (keeps the 25-year history that scripts carry — my recommendation) vs regenerate at build (cleaner but lossy). Affects determinism: preserved dates make builds fully deterministic; regenerated dates need a pinned build timestamp.
 5. **Transition length (Step 6):** one wave of dual-source with drift check (my recommendation — short; the walker makes long overlap pointless) vs longer.
-6. **Tree root name:** `sources/` (my recommendation) vs extending `usertalk_scripts/` in place. Migration of the existing tree's git history argues for extending in place; clarity argues for `sources/` with `git mv`.
+6. **Tree root name:** DECIDED 2026-08-11 (maintainer): `sources/`. Existing `usertalk_scripts/` history carries over via `git mv` during Step 2.
+7. **Codepage (added 2026-08-11):** sources stay MacRoman-bytes-with-tooling-enforcement forever, vs a deliberate UTF-8 migration for UserTalk source with conversion at the build/runtime seam. Affects human/agent editing ergonomics for every text file in `sources/`. OPEN.
+
+## 9.5 Workflow contract after the flip (added 2026-08-11)
+
+Live editing in a running Frontier remains the development/debugging surface (protocol debugger substrate). Promoting a live change to shipped truth means expressing it in sources/ and rebuilding: the live root is a scratchpad, never a source. This is a ONE-WAY VALVE by design; any tooling that captures live edits back into sources/ must be an explicit, reviewed export action, never an automatic sync (that would be the retired UT-sync layer reinventing itself).
 
 ## 10. Risks
 
