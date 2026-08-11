@@ -65,6 +65,8 @@ Full details: `docs/PERMANENT_BRANCHES.md`.
 
 ## Strategic Roadmap & Project Context
 
+**Standing goal: `planning/_CURRENT_GOAL.md`** — the objective and done-criteria autonomous work is measured against. Read it before non-trivial work; update it at milestones.
+
 Planning source of truth: `planning/INDEX.md`, `planning/phase_overview.md`, `planning/phase6/CRDT_FOUNDATION_ROADMAP.md`.
 
 **Key context:**
