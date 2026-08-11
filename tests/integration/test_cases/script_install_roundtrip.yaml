@@ -111,8 +111,72 @@ tests:
     expected_success: true
     expected_result: "true"
 
+  - name: "round-trip: comment marker inside a single-quoted literal is not a comment (#866)"
+    description: "A single-quoted character/string4 constant holding the comment-marker byte (0xC7) must round-trip unchanged. The strip pass tracked \" and the curly-quote pair but not ', so the 0xC7 inside 'C' was mis-read as the start of a trailing comment. That set commentstart mid-literal, skipped the trailing structural-marker strip, and left a { in the stored node text that the export pass re-emitted from the level transition -- adding one extra { per install, cumulatively, until the script no longer compiled."
+    script: |
+      local (src = "on f () {\r\tlocal (s = \"x\");\r\tif s contains '\xc7' {\r\t\ts = \"y\"};\r\treturn (s)}");
+      new (tabletype, @system.temp.rt);
+      script.newScriptObject (src, @system.temp.rt.f);
+      local (back = string (system.temp.rt.f));
+      delete (@system.temp.rt);
+      return (back == src)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "round-trip: single-quoted comment marker stays idempotent across reinstall (#866)"
+    description: "Reinstalling a script's own unmodified source must be idempotent. With the single-quote gap, each install appended another { to the same line, so the second read-back differed from the first and the script stopped compiling."
+    script: |
+      local (src = "on f () {\r\tlocal (s = \"x\");\r\tif s contains '\xc7' {\r\t\ts = \"y\"};\r\treturn (s)}");
+      new (tabletype, @system.temp.rt);
+      script.newScriptObject (src, @system.temp.rt.f);
+      local (first = string (system.temp.rt.f));
+      script.newScriptObject (first, @system.temp.rt.f);
+      local (second = string (system.temp.rt.f));
+      delete (@system.temp.rt);
+      return (first == second)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "round-trip: single-quoted comment marker still compiles and runs (#866)"
+    description: "End-to-end behavioral check: after install the script must actually execute, not merely read back. suites.commercial.parseAete in Virgin.root is the real-world instance of this shape."
+    script: |
+      local (src = "on f (s) {\r\tif s contains '\xc7' {\r\t\treturn (1)};\r\treturn (0)}");
+      new (tabletype, @system.temp.rt);
+      script.newScriptObject (src, @system.temp.rt.f);
+      local (hit = system.temp.rt.f ("a\xc7b"));
+      local (miss = system.temp.rt.f ("ab"));
+      delete (@system.temp.rt);
+      return (hit == 1 and miss == 0)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "round-trip: brace inside a single-quoted constant is not counted as structure (#866)"
+    description: "Exercises the brace-balance counter rather than the comment-start scan. That counter decides whether a trailing } is load-bearing (the #621 inline-block check); it tracked the same two delimiters and so counted a { or } inside a character constant as structural. Here the constant holds a brace and the line ends with an inline one-line block, so a miscount changes the strip decision and unbalances the stored node text. Both scanners now track ' as a delimiter."
+    script: |
+      local (src = "on f (c) {\r\tif c == '{' {\r\t\ttry {local (x = 1)}};\r\treturn (1)}");
+      new (tabletype, @system.temp.rt);
+      script.newScriptObject (src, @system.temp.rt.f);
+      local (back = string (system.temp.rt.f));
+      local (result = system.temp.rt.f ("{"));
+      delete (@system.temp.rt);
+      return (back == src and result == 1)
+    expected_success: true
+    expected_result: "true"
+
+  - name: "round-trip: comment marker inside a curly-quote string literal (0xD2/0xD3)"
+    description: "Coverage gap predating #866: the curly-quote string form was tracked by both scanners but never exercised by a test, and the delimiter refactor touches that path. A comment marker inside a Mac smart-quote string must not be read as a trailing comment. Uses the \\xd2 and \\xd3 escapes so the bytes survive the runner writing the script file as UTF-8."
+    script: |
+      local (src = "on f () {\r\tlocal (s = \xd2a \xc7 b\xd3);\r\treturn (s)}");
+      new (tabletype, @system.temp.rt);
+      script.newScriptObject (src, @system.temp.rt.f);
+      local (back = string (system.temp.rt.f));
+      delete (@system.temp.rt);
+      return (back == src)
+    expected_success: true
+    expected_result: "true"
+
   - name: "round-trip: inline one-line nested block at outermost depth (#621)"
-    description: "Same shape as the previous test but the inline block sits at the outermost body level (no enclosing if/while). Confirms the brace-balance check generalizes across nesting depths and isn't depth-1-specific."
+    description: "Same shape as the depth-1 inline-block case above but the inline block sits at the outermost body level (no enclosing if/while). Confirms the brace-balance check generalizes across nesting depths and isn't depth-1-specific."
     script: |
       local (src = "on f () {\r\ttry {local (x = 7)};\r\treturn (1)}");
       new (tabletype, @system.temp.rt);
