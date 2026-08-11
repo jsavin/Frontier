@@ -2027,7 +2027,18 @@ static boolean hydrate_system_root_database(const char* path, boolean read_only)
 
 	/* Issue #859 -- derive Frontier.pathString from the root just loaded, so it is
 	 * correct on boot modes that never run startupScript (--skip-startup, --protocol).
-	 * Must follow the two assignments above; see the function comment. */
+	 * Must follow the two assignments above; see the function comment.
+	 *
+	 * ORDERING: this write is deliberately placed BEFORE the
+	 * clear_post_hydration_dirty_flags(hroot) call below, which wipes the dirty bit
+	 * it sets. Do not move the write after that clear, and do not move the clear
+	 * above this call: either reorder would leave the root dirty at every boot and
+	 * make save_system_root_on_exit rewrite the whole file on every shutdown (the
+	 * ~1.2 MB drift #127 removed). The compare-before-assign inside the helper keeps
+	 * the common case clean regardless -- an unchanged value is never written -- but
+	 * that is a second line of defence, not a substitute for this ordering.
+	 * The sibling call in load_system_root_database_internal has NO equivalent clear
+	 * after it and relies solely on compare-before-assign; see the note there. */
 	cli_init_frontier_pathstring();
 
 	/* NOTE: Startup scripts are NOT run here during hydration.
@@ -2318,7 +2329,15 @@ static boolean load_system_root_database_internal(const char* path, boolean allo
 	g_system_root_loaded = true;
 
 	/* Issue #859 -- see cli_init_frontier_pathstring(). Both load paths need this:
-	 * this one runs when hydration is skipped (allow_hydrate false). */
+	 * this one runs when hydration is skipped (allow_hydrate false).
+	 *
+	 * ORDERING, and how it differs from the hydrate path: there is NO
+	 * clear_post_hydration_dirty_flags call after this one, so unlike its sibling
+	 * this write is not incidentally undone -- a dirty bit set here survives toward
+	 * save_system_root_on_exit and would rewrite the whole root at shutdown. The
+	 * compare-before-assign inside the helper is therefore the ONLY thing keeping a
+	 * no-op session clean on this path. Do not weaken or bypass that check, and if a
+	 * dirty-clear is ever added here, keep this call ahead of it. */
 	cli_init_frontier_pathstring();
 
 	/* NOTE: Startup scripts are NOT run here. They are run in main() AFTER
