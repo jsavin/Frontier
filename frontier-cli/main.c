@@ -181,11 +181,11 @@ const char *cli_get_system_root_basename(void) {
 	return bn_buf;
 }
 
-/*
- * langrunstringnoerror: compile and run a UserTalk bigstring expression.
- * Declared in lang.h/langinternal.h; also used by window_registry.c.
- */
-extern boolean langrunstringnoerror(const bigstring bsprogram, bigstring bsresult);
+/* Forward declaration from file_portable_posix.c -- the primitive that backs the
+ * file.folderFromPath verb (portable/fileverbs_portable.c:733). The Mac-only
+ * folderfrompath declared in file.h has NO definition in the headless build; the
+ * link succeeds via -undefined dynamic_lookup and then segfaults when called. */
+extern boolean portable_folderfrompath(const bigstring bspath, bigstring bsfolder);
 
 /*
  * cli_init_frontier_pathstring -- set Frontier.pathString from the loaded root.
@@ -216,11 +216,21 @@ extern boolean langrunstringnoerror(const bigstring bsprogram, bigstring bsresul
  * function and startupScript in agreement, so a later real startup recomputes
  * the identical value and the with-startup path is unchanged.
  *
- * The script calls frontier.getFilePath() rather than interpolating the C-side
- * path into the source text. That is deliberate: it keeps a filesystem path --
- * which can contain quotes or other metacharacters -- out of a UserTalk string
- * literal entirely, so there is no injection surface to escape (contrast the
- * langdeparsestring contract fire_window_script must honor in window_registry.c).
+ * NO INTERPRETER, BY DESIGN (security). An earlier revision evaluated the
+ * UserTalk one-liner above via langrunstringnoerror. Keeping the path out of the
+ * source text closed string-literal injection, but not VERB RESOLUTION: the names
+ * file.folderFromPath and frontier.getFilePath resolve through the loaded root's
+ * own tables before the kernel efptable, and verb shadowing is a supported feature
+ * (docs/VERB_RESOLUTION_ARCHITECTURE.md). A hostile root that stores a script at
+ * either path therefore got arbitrary UserTalk executed at load -- including under
+ * --skip-startup --lock-opened-roots, an inspection posture that otherwise runs no
+ * root code at all. Demonstrated before this rewrite: a root with a shadowing
+ * file.folderFromPath made pathString "/tmp/pwned/" and ran the attacker's side
+ * effect. Computing in C removes the interpreter from the load path entirely.
+ * Two further hazards retire with it: langrunstringnoerror releases the GIL for up
+ * to 1ms per call in headless builds (fldisableyield is Mac-only and
+ * headless_backgroundtask never checks it), and it force-clears fllangerror.
+ * Do not reintroduce an eval here.
  *
  * The value keeps the trailing path separator that file.folderFromPath returns.
  * Roughly twenty call sites concatenate onto pathString directly rather than going
@@ -228,15 +238,22 @@ extern boolean langrunstringnoerror(const bigstring bsprogram, bigstring bsresul
  * cleanRoot.ut:178 builds pathString + "Virgin.root"), so dropping the separator
  * would silently yield ".../FrontierLogs" instead of ".../Frontier/Logs".
  *
- * PERSISTENCE CONSEQUENCE (by design; do not "fix" by skipping the write):
- * this sets the in-memory Frontier table, so a read-write session that saves on
- * exit (#127) persists the running machine's absolute path into the stored cell.
- * That is the mechanism that produced #859's original pollution, but the impact is
- * now confined to byte-remanence/privacy (#854's domain) and git-diff noise on
- * databases/Virgin.root -- it is NOT a correctness bug, because the stored value is
- * dead by construction: unconditionally overwritten at every load before any script
- * can read it. Verified by saving a root carrying one pathString and then loading
- * that same file from a different directory -- the new location wins.
+ * COMPARE BEFORE ASSIGN. The cell is written only when the computed value differs
+ * from what is already stored. hashtableassign dirties the node unconditionally, so
+ * an unconditional write would dirty the root on every load and defeat the
+ * clear_post_hydration_dirty_flags save-skip (#127) -- every read-write session
+ * would rewrite the file, and every worktree ODB edit would carry a spurious
+ * pathString delta in the committed binary. Skipping the no-op write keeps a
+ * clean-tree session clean.
+ *
+ * PERSISTENCE CONSEQUENCE of the write that does happen (by design): it sets the
+ * in-memory Frontier table, so a read-write session that saves on exit persists the
+ * running machine's absolute path into the stored cell. That is the mechanism that
+ * produced #859's original pollution, but the impact is confined to
+ * byte-remanence/privacy (#854's domain) and diff noise -- it is NOT a correctness
+ * bug, because the stored value is dead by construction: recomputed at every load
+ * before any script can read it. Verified by saving a root carrying one pathString
+ * and loading that same file from a different directory -- the new location wins.
  * Corollary for future path-pollution walkers: treat Frontier.pathstring as
  * dead-by-construction rather than flagging it as a live polluted reference.
  * Inspection sessions (--lock-opened-roots) do not persist it at all.
@@ -246,31 +263,110 @@ extern boolean langrunstringnoerror(const bigstring bsprogram, bigstring bsresul
  * runtime that boots with a stale pathString is no worse off than before this
  * function existed.
  *
- * Must be called AFTER g_system_root_path/g_system_root_loaded are set, since
- * frontier.getFilePath() reads them.
+ * Must be called AFTER g_system_root_path is set and roottable is assigned.
+ *
+ * The Frontier table is looked up, never created: findnamedtable is a read-only
+ * resolve. A root without one is left alone rather than gaining a new table.
  */
 static void cli_init_frontier_pathstring(void) {
-	bigstring bs_program;
-	bigstring bs_result;
+	bigstring bsfolder;
+	bigstring bspath;
+	bigstring bsexisting;
+	hdlhashtable frontiertable = nil;
+	tyvaluerecord val;
+	hdlhashnode hnode = nil;
+	char abspath[CLI_MAX_PATH_LENGTH * 2 + 2];
+	const char *rootpath = g_system_root_path;
 
-	if (!copyctopstring("Frontier.pathString = file.folderFromPath (frontier.getFilePath ())",
-	                    bs_program)) {
+	if (roottable == nil || g_system_root_path[0] == '\0')
+		return;
+
+	/* Absolutize a relative --system-root against the cwd before deriving the
+	 * folder, matching what the frontier.getFilePath verb does
+	 * (tests/headless_frontier_verbs.c). Without this, `--system-root
+	 * databases/Virgin.root` would yield the relative pathString "databases/",
+	 * and every getSubFolder consumer would resolve against whatever the process
+	 * cwd happened to be. */
+	if (g_system_root_path[0] != '/') {
+		char cwd[CLI_MAX_PATH_LENGTH + 1];
+
+		if (getcwd(cwd, sizeof(cwd)) == NULL) {
+			log_warn(LOG_COMP_STARTUP,
+			         "cli_init_frontier_pathstring: getcwd failed; "
+			         "Frontier.pathString not initialized");
+			return;
+		}
+
+		if (snprintf(abspath, sizeof(abspath), "%s/%s", cwd, g_system_root_path)
+		    >= (int) sizeof(abspath)) {
+			log_warn(LOG_COMP_STARTUP,
+			         "cli_init_frontier_pathstring: absolute path too long; "
+			         "Frontier.pathString not initialized");
+			return;
+		}
+		rootpath = abspath;
+	}
+
+	if (!copyctopstring(rootpath, bspath)) {
 		log_warn(LOG_COMP_STARTUP,
-		         "cli_init_frontier_pathstring: script text exceeded 255 bytes; "
+		         "cli_init_frontier_pathstring: system root path exceeds 255 bytes; "
 		         "Frontier.pathString not initialized");
 		return;
 	}
 
-	if (!langrunstringnoerror(bs_program, bs_result)) {
+	/* Same derivation as file.folderFromPath: everything up to and including the
+	 * last separator, so the trailing separator the concatenation sites rely on
+	 * is preserved. */
+	if (!portable_folderfrompath(bspath, bsfolder) || stringlength(bsfolder) == 0) {
 		log_warn(LOG_COMP_STARTUP,
-		         "cli_init_frontier_pathstring: failed to set Frontier.pathString from %s -- "
+		         "cli_init_frontier_pathstring: could not derive folder from %s; "
+		         "Frontier.pathString not initialized",
+		         rootpath);
+		return;
+	}
+
+	/* The Frontier table is NOT at root level -- it lives at
+	 * system.verbs.builtins.Frontier, and the bare name "Frontier" only resolves
+	 * through UserTalk's verb search. Walk the explicit path so this stays a
+	 * plain table lookup with no interpreter involved. Each step is a lookup, not
+	 * a create: a root missing any segment is left untouched. */
+	if (!findnamedtable(roottable, BIGSTRING("\006" "system"), &frontiertable)
+	    || frontiertable == nil
+	    || !findnamedtable(frontiertable, BIGSTRING("\005" "verbs"), &frontiertable)
+	    || frontiertable == nil
+	    || !findnamedtable(frontiertable, BIGSTRING("\010" "builtins"), &frontiertable)
+	    || frontiertable == nil
+	    || !findnamedtable(frontiertable, BIGSTRING("\010" "Frontier"), &frontiertable)
+	    || frontiertable == nil) {
+		log_debug(LOG_COMP_STARTUP,
+		          "cli_init_frontier_pathstring: system.verbs.builtins.Frontier not "
+		          "resolvable in this root; skipping");
+		return;
+	}
+
+	/* Compare before assign -- see the header comment. hashtablelookup matches
+	 * case-insensitively, so this finds the cell whichever way it is spelled, and
+	 * assigning through the same key preserves the stored node rather than adding
+	 * a sibling. */
+	if (hashtablelookup(frontiertable, BIGSTRING("\012" "pathString"), &val, &hnode)
+	    && val.valuetype == stringvaluetype
+	    && hashgetvaluestring(val, bsexisting)
+	    && equalstrings(bsexisting, bsfolder)) {
+		log_debug(LOG_COMP_STARTUP,
+		          "Frontier.pathString already current; leaving node clean");
+		return;
+	}
+
+	if (!langassignstringvalue(frontiertable, BIGSTRING("\012" "pathString"), bsfolder)) {
+		log_warn(LOG_COMP_STARTUP,
+		         "cli_init_frontier_pathstring: failed to assign Frontier.pathString from %s -- "
 		         "Frontier.getSubFolder() paths may be wrong",
-		         g_system_root_path);
+		         rootpath);
 		return;
 	}
 
 	log_debug(LOG_COMP_STARTUP, "Frontier.pathString initialized from system root: %s",
-	          g_system_root_path);
+	          rootpath);
 }
 
 /*

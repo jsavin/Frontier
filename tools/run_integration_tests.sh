@@ -364,6 +364,23 @@ if [ "$ORIG_ARG_COUNT" -eq 0 ] && [ -x "$SYSTEM_ROOT_TEMP_PATH_TEST" ]; then
     fi
 fi
 
+# Shell-based security regression for issue #859: the load-time
+# Frontier.pathString initialization must not invoke the UserTalk interpreter,
+# because verb resolution would let a hostile root shadow file.folderFromPath
+# and get arbitrary code executed at load -- even under the
+# --skip-startup --lock-opened-roots inspection posture. Needs a throwaway root
+# with a shadowing verb installed, so it lives outside the yaml suite.
+# Self-skips if the fixture cannot be built.
+PATHSTRING_NO_EVAL_TEST="$PROJECT_ROOT/tests/integration/cli_pathstring_no_eval_test.sh"
+if [ "$ORIG_ARG_COUNT" -eq 0 ] && [ -x "$PATHSTRING_NO_EVAL_TEST" ]; then
+    echo
+    PATHSTRING_NO_EVAL_RC=0
+    "$PATHSTRING_NO_EVAL_TEST" || PATHSTRING_NO_EVAL_RC=$?
+    if [ $PATHSTRING_NO_EVAL_RC -ne 0 ]; then
+        EXIT_CODE=$PATHSTRING_NO_EVAL_RC
+    fi
+fi
+
 # Verify integrity of every staged database after tests.
 #
 # Drift is reported as a warning only and does NOT fail EXIT_CODE. This
