@@ -65,6 +65,13 @@
 #include "../Common/headers/shell_api.h"
 #include "../Common/headers/db.h"
 #include "../Common/headers/file.h"
+/* file_portable.h declares portable_folderfrompath, the primitive that backs the
+ * file.folderFromPath verb (portable/fileverbs_portable.c:733). Note the Mac-only
+ * folderfrompath declared in file.h above has NO definition in the headless build:
+ * the link succeeds via -undefined dynamic_lookup and then segfaults when called,
+ * so pathString derivation must use the portable_ entry point. */
+#include "../Common/headers/file_portable.h"
+#include "../Common/headers/langinternal.h"
 #include "../Common/headers/db_format.h"
 #include "../Common/headers/tableverbs.h"
 #include "../Common/headers/langexternal.h"
@@ -179,6 +186,200 @@ const char *cli_get_system_root_basename(void) {
 	const char *base = (slash != NULL) ? (slash + 1) : g_system_root_path;
 	snprintf(bn_buf, sizeof(bn_buf), "%s", base);
 	return bn_buf;
+}
+
+/*
+ * cli_init_frontier_pathstring -- set Frontier.pathString from the loaded root.
+ *
+ * Issue #859. Frontier.pathString anchors every Frontier.getSubFolder() call
+ * (getSubFolder.ut:5 builds pathString + "Guest Databases" + pathChar). Until
+ * now the only writer was startupScript.ut:60:
+ *
+ *     Frontier.pathstring = file.folderFromPath (frontier.getFilePath ())
+ *
+ * which never runs under --skip-startup or --protocol. On those surfaces
+ * pathString kept whatever absolute path was serialized into the shipped root
+ * -- in Virgin.root, a deleted worktree directory. getSubFolder then built
+ * paths under a nonexistent parent and file.newFolder threw "Can't create
+ * folder" (getSubFolder.ut:10), which is what stranded startupScript above the
+ * #849 guards when firstRootRun was true (#855).
+ *
+ * A shipped absolute path cannot be correct: the dist layout, the repo layout,
+ * and the per-worker staged-test layout put the root in three different places.
+ * So the value is computed at load instead of stored.
+ *
+ * ROOT-relative, not BINARY-relative: "Guest Databases" is a sibling of the
+ * ROOT FILE in every layout (dist/, databases/, and the staged worker dir),
+ * while the binary lives in frontier-cli/ with no such sibling. startupScript
+ * already encodes this distinction deliberately -- line 48 uses
+ * frontier.getProgramPath() for the app folder, line 60 uses
+ * frontier.getFilePath() for pathString. Deriving from the root keeps this
+ * function and startupScript in agreement, so a later real startup recomputes
+ * the identical value and the with-startup path is unchanged.
+ *
+ * NO INTERPRETER, BY DESIGN (security). An earlier revision evaluated the
+ * UserTalk one-liner above via langrunstringnoerror. Keeping the path out of the
+ * source text closed string-literal injection, but not VERB RESOLUTION: the names
+ * file.folderFromPath and frontier.getFilePath resolve through the loaded root's
+ * own tables before the kernel efptable, and verb shadowing is a supported feature
+ * (docs/VERB_RESOLUTION_ARCHITECTURE.md). A hostile root that stores a script at
+ * either path therefore got arbitrary UserTalk executed at load -- including under
+ * --skip-startup --lock-opened-roots, an inspection posture that otherwise runs no
+ * root code at all. Demonstrated before this rewrite: a root with a shadowing
+ * file.folderFromPath made pathString "/tmp/pwned/" and ran the attacker's side
+ * effect. Computing in C removes the interpreter from the load path entirely.
+ * Two further hazards retire with it: langrunstringnoerror releases the GIL for up
+ * to 1ms per call in headless builds (fldisableyield is Mac-only and
+ * headless_backgroundtask never checks it), and it force-clears fllangerror.
+ * Do not reintroduce an eval here.
+ *
+ * The value keeps the trailing path separator that file.folderFromPath returns.
+ * Roughly twenty call sites concatenate onto pathString directly rather than going
+ * through getSubFolder (log/startup.ut:11 builds pathString + "Logs" + pathChar,
+ * cleanRoot.ut:178 builds pathString + "Virgin.root"), so dropping the separator
+ * would silently yield ".../FrontierLogs" instead of ".../Frontier/Logs".
+ *
+ * COMPARE BEFORE ASSIGN. The cell is written only when the computed value differs
+ * from what is already stored. hashtableassign dirties the node unconditionally, so
+ * an unconditional write would dirty the root on every load and defeat the
+ * clear_post_hydration_dirty_flags save-skip (#127) -- every read-write session
+ * would rewrite the file, and every worktree ODB edit would carry a spurious
+ * pathString delta in the committed binary. Skipping the no-op write keeps a
+ * clean-tree session clean.
+ *
+ * PERSISTENCE CONSEQUENCE of the write that does happen (by design): it sets the
+ * in-memory Frontier table, so a read-write session that saves on exit persists the
+ * running machine's absolute path into the stored cell. That is the mechanism that
+ * produced #859's original pollution, but the impact is confined to
+ * byte-remanence/privacy (#854's domain) and diff noise -- it is NOT a correctness
+ * bug, because the stored value is dead by construction: recomputed at every load
+ * before any script can read it. Verified by saving a root carrying one pathString
+ * and loading that same file from a different directory -- the new location wins.
+ * Corollary for future path-pollution walkers: treat Frontier.pathstring as
+ * dead-by-construction rather than flagging it as a live polluted reference.
+ * Inspection sessions (--lock-opened-roots) do not persist it at all.
+ *
+ * Boot-failure-safe: a failure here is logged and ignored rather than aborting
+ * the load. A minimal headless root may have no Frontier table at all, and a
+ * runtime that boots with a stale pathString is no worse off than before this
+ * function existed.
+ *
+ * Must be called AFTER g_system_root_path is set and roottable is assigned.
+ *
+ * The Frontier table is looked up, never created: findnamedtable is a read-only
+ * resolve. A root without one is left alone rather than gaining a new table.
+ */
+static void cli_init_frontier_pathstring(void) {
+	bigstring bsfolder;
+	bigstring bspath;
+	bigstring bsexisting;
+	hdlhashtable frontiertable = nil;
+	tyvaluerecord val;
+	hdlhashnode hnode = nil;
+	char abspath[CLI_MAX_PATH_LENGTH * 2 + 2];
+	const char *rootpath = g_system_root_path;
+
+	if (roottable == nil || g_system_root_path[0] == '\0')
+		return;
+
+	/* Absolutize a relative --system-root against the cwd before deriving the
+	 * folder, matching what the frontier.getFilePath verb does
+	 * (tests/headless_frontier_verbs.c). Without this, `--system-root
+	 * databases/Virgin.root` would yield the relative pathString "databases/",
+	 * and every getSubFolder consumer would resolve against whatever the process
+	 * cwd happened to be. */
+	if (g_system_root_path[0] != '/') {
+		char cwd[CLI_MAX_PATH_LENGTH + 1];
+
+		if (getcwd(cwd, sizeof(cwd)) == NULL) {
+			log_warn(LOG_COMP_STARTUP,
+			         "cli_init_frontier_pathstring: getcwd failed; "
+			         "Frontier.pathString not initialized");
+			return;
+		}
+
+		if (snprintf(abspath, sizeof(abspath), "%s/%s", cwd, g_system_root_path)
+		    >= (int) sizeof(abspath)) {
+			log_warn(LOG_COMP_STARTUP,
+			         "cli_init_frontier_pathstring: absolute path too long; "
+			         "Frontier.pathString not initialized");
+			return;
+		}
+		rootpath = abspath;
+	}
+
+	if (!copyctopstring(rootpath, bspath)) {
+		log_warn(LOG_COMP_STARTUP,
+		         "cli_init_frontier_pathstring: system root path exceeds 255 bytes; "
+		         "Frontier.pathString not initialized");
+		return;
+	}
+
+	/* Same derivation as file.folderFromPath: everything up to and including the
+	 * last separator, so the trailing separator the concatenation sites rely on
+	 * is preserved. */
+	if (!portable_folderfrompath(bspath, bsfolder) || stringlength(bsfolder) == 0) {
+		log_warn(LOG_COMP_STARTUP,
+		         "cli_init_frontier_pathstring: could not derive folder from %s; "
+		         "Frontier.pathString not initialized",
+		         rootpath);
+		return;
+	}
+
+	/* The Frontier table is NOT at root level -- it lives at
+	 * system.verbs.builtins.Frontier, and the bare name "Frontier" only resolves
+	 * through UserTalk's verb search. Walk the explicit path so this stays a
+	 * plain table lookup with no interpreter involved. Each step is a lookup, not
+	 * a create: a root missing any segment is left untouched. */
+	if (!findnamedtable(roottable, BIGSTRING("\006" "system"), &frontiertable)
+	    || frontiertable == nil
+	    || !findnamedtable(frontiertable, BIGSTRING("\005" "verbs"), &frontiertable)
+	    || frontiertable == nil
+	    || !findnamedtable(frontiertable, BIGSTRING("\010" "builtins"), &frontiertable)
+	    || frontiertable == nil
+	    || !findnamedtable(frontiertable, BIGSTRING("\010" "Frontier"), &frontiertable)
+	    || frontiertable == nil) {
+		log_debug(LOG_COMP_STARTUP,
+		          "cli_init_frontier_pathstring: system.verbs.builtins.Frontier not "
+		          "resolvable in this root; skipping");
+		return;
+	}
+
+	/* Compare before assign -- see the header comment. hashtablelookup matches
+	 * case-insensitively, so this finds the cell whichever way it is spelled, and
+	 * assigning through the same key preserves the stored node rather than adding
+	 * a sibling.
+	 *
+	 * pullstringvalue, NOT hashgetvaluestring: the latter is a display-oriented
+	 * coercion that deparses non-printing characters ("2.1b4 dmb: don't deparse
+	 * quotes, just non-printing characters", langhash.c). A stored path containing
+	 * a backslash or control character would come back escaped, never compare equal
+	 * to the raw computed value, and re-dirty the node on every load -- which on the
+	 * internal-loader path, where no dirty-clear follows, resurrects per-session
+	 * full-root rewrites for exactly those paths. pullstringvalue is a raw
+	 * texthandletostring. It returns void, so the stringvaluetype guard above is
+	 * what makes reading data.stringvalue safe. */
+	if (hashtablelookup(frontiertable, BIGSTRING("\012" "pathString"), &val, &hnode)
+	    && val.valuetype == stringvaluetype) {
+		pullstringvalue(&val, bsexisting);
+
+		if (equalstrings(bsexisting, bsfolder)) {
+			log_debug(LOG_COMP_STARTUP,
+			          "Frontier.pathString already current; leaving node clean");
+			return;
+		}
+	}
+
+	if (!langassignstringvalue(frontiertable, BIGSTRING("\012" "pathString"), bsfolder)) {
+		log_warn(LOG_COMP_STARTUP,
+		         "cli_init_frontier_pathstring: failed to assign Frontier.pathString from %s -- "
+		         "Frontier.getSubFolder() paths may be wrong",
+		         rootpath);
+		return;
+	}
+
+	log_debug(LOG_COMP_STARTUP, "Frontier.pathString initialized from system root: %s",
+	          rootpath);
 }
 
 /*
@@ -1837,6 +2038,22 @@ static boolean hydrate_system_root_database(const char* path, boolean read_only)
 	snprintf(g_system_root_path, sizeof(g_system_root_path), "%s", path);
 	g_system_root_loaded = true;
 
+	/* Issue #859 -- derive Frontier.pathString from the root just loaded, so it is
+	 * correct on boot modes that never run startupScript (--skip-startup, --protocol).
+	 * Must follow the two assignments above; see the function comment.
+	 *
+	 * ORDERING: this write is deliberately placed BEFORE the
+	 * clear_post_hydration_dirty_flags(hroot) call below, which wipes the dirty bit
+	 * it sets. Do not move the write after that clear, and do not move the clear
+	 * above this call: either reorder would leave the root dirty at every boot and
+	 * make save_system_root_on_exit rewrite the whole file on every shutdown (the
+	 * ~1.2 MB drift #127 removed). The compare-before-assign inside the helper keeps
+	 * the common case clean regardless -- an unchanged value is never written -- but
+	 * that is a second line of defence, not a substitute for this ordering.
+	 * The sibling call in load_system_root_database_internal has NO equivalent clear
+	 * after it and relies solely on compare-before-assign; see the note there. */
+	cli_init_frontier_pathstring();
+
 	/* NOTE: Startup scripts are NOT run here during hydration.
 	 * They are run in main() AFTER hydration completes, which ensures:
 	 * 1. EFP tables are properly linked (linksystemtablestructure)
@@ -2123,6 +2340,18 @@ static boolean load_system_root_database_internal(const char* path, boolean allo
 	g_system_root_fnum = fnum;
 	snprintf(g_system_root_path, sizeof(g_system_root_path), "%s", path);
 	g_system_root_loaded = true;
+
+	/* Issue #859 -- see cli_init_frontier_pathstring(). Both load paths need this:
+	 * this one runs when hydration is skipped (allow_hydrate false).
+	 *
+	 * ORDERING, and how it differs from the hydrate path: there is NO
+	 * clear_post_hydration_dirty_flags call after this one, so unlike its sibling
+	 * this write is not incidentally undone -- a dirty bit set here survives toward
+	 * save_system_root_on_exit and would rewrite the whole root at shutdown. The
+	 * compare-before-assign inside the helper is therefore the ONLY thing keeping a
+	 * no-op session clean on this path. Do not weaken or bypass that check, and if a
+	 * dirty-clear is ever added here, keep this call ahead of it. */
+	cli_init_frontier_pathstring();
 
 	/* NOTE: Startup scripts are NOT run here. They are run in main() AFTER
 	 * hydrate_system_root_database() completes, which ensures EFP tables are

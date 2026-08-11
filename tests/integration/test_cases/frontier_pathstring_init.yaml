@@ -1,0 +1,134 @@
+# Integration tests for Frontier.pathString initialization (issue #859).
+#
+# BACKGROUND:
+# Frontier.pathString is the anchor every Frontier.getSubFolder() call builds on
+# (getSubFolder.ut:5 -> pathString + "Guest Databases" + pathChar). Historically
+# only startupScript.ut:60 ever set it:
+#
+#     Frontier.pathstring = file.folderFromPath (frontier.getFilePath ())
+#
+# The integration runner and all protocol tooling boot with --skip-startup, so
+# that line never ran and pathString kept whatever absolute path happened to be
+# serialized into the shipped root. In Virgin.root that was a deleted worktree
+# directory, which made it LIVE and wrong for the entire test/protocol surface:
+# getSubFolder built paths under a nonexistent parent and file.newFolder threw
+# "Can't create folder" (getSubFolder.ut:10). That is what stranded startupScript
+# above the #849 guards when firstRootRun=true (#855).
+#
+# A shipped absolute path is wrong by definition -- no stored string can be right
+# in the dist layout, the repo layout, and the per-worker staged-test layout at
+# once. The fix is therefore compute-at-load, C-side, so it covers every boot mode
+# including --skip-startup and --protocol.
+#
+# ROOT-relative, not BINARY-relative: "Guest Databases" is a sibling of the ROOT
+# FILE in every layout (dist/, databases/, and the staged worker dir the runner
+# builds), while the binary lives in frontier-cli/ with no such sibling. Legacy
+# startupScript already encodes this distinction deliberately -- line 48 uses
+# frontier.getProgramPath() for the app folder, line 60 uses frontier.getFilePath()
+# for pathString.
+#
+# These tests assert the invariant behaviorally: pathString must point at a folder
+# that EXISTS, and getSubFolder() must be able to resolve/create beneath it. They
+# do not hardcode any absolute path, so they hold in every layout.
+#
+# All folder creation is confined to the staged system-root directory that the
+# runner builds per worker (tests/tmp/integration/worker_N), never the canonical
+# databases/ tree and never anywhere outside test staging.
+
+tests:
+  # ============================================================
+  # Test 1: pathString is set at load, without a startup script
+  # ============================================================
+  - name: "pathString: defined and non-empty under --skip-startup"
+    description: |
+      The runner boots with --skip-startup, so startupScript.ut:60 never executes.
+      pathString must still be populated by the load-time initialization.
+    timeout: 20
+    script: |
+      return defined(Frontier.pathString) and (sizeOf(Frontier.pathString) > 0)
+    expected_success: true
+    expected_result: "true"
+
+  # ============================================================
+  # Test 2: pathString points at a folder that actually exists
+  # ============================================================
+  - name: "pathString: resolves to an existing folder"
+    description: |
+      The regression that motivated #859: pathString held a deleted worktree path,
+      so file.exists() was false and every getSubFolder() call built paths under a
+      nonexistent parent. Asserting existence (not a literal path) keeps this test
+      valid in the dist, repo, and staged-test layouts alike.
+    timeout: 20
+    script: |
+      return file.exists(Frontier.pathString)
+    expected_success: true
+    expected_result: "true"
+
+  # ============================================================
+  # Test 3: pathString tracks the loaded ROOT file, not the binary
+  # ============================================================
+  - name: "pathString: equals the folder of the loaded system root"
+    description: |
+      Pins the semantics decided in #859. pathString must equal
+      file.folderFromPath(frontier.getFilePath()) -- the folder containing the
+      loaded root -- which is what startupScript.ut:60 computes on the
+      with-startup path. This makes the two paths agree, so the load-time
+      initialization is idempotent with respect to a later real startup.
+    timeout: 20
+    script: |
+      return Frontier.pathString == file.folderFromPath(frontier.getFilePath())
+    expected_success: true
+    expected_result: "true"
+
+  # ============================================================
+  # Test 4: pathString ends with the platform path separator
+  # ============================================================
+  - name: "pathString: ends with the platform path separator"
+    description: |
+      Roughly twenty call sites concatenate onto pathString directly instead of
+      going through getSubFolder -- log/startup.ut:11 builds
+      pathString + "Logs" + pathChar, cleanRoot.ut:178 builds
+      pathString + "Virgin.root". A value missing its trailing separator would
+      silently produce ".../FrontierLogs" instead of ".../Frontier/Logs", so the
+      invariant is pinned here rather than left implicit in the behavior of
+      file.folderFromPath.
+    timeout: 20
+    script: |
+      return Frontier.pathString endsWith file.getPathChar()
+    expected_success: true
+    expected_result: "true"
+
+  # ============================================================
+  # Test 5: getSubFolder resolves beneath pathString
+  # ============================================================
+  - name: "pathString: getSubFolder resolves an existing subfolder"
+    description: |
+      End-to-end check of the consumer that actually broke. getSubFolder("ops/backups/")
+      is the exact call firstRootRun's backups.init() makes; under the stale pathString
+      it threw "Can't create folder" at getSubFolder.ut:10. Asserts the returned path
+      exists rather than comparing strings.
+    timeout: 20
+    script: |
+      local (f = Frontier.getSubFolder("ops/backups/"));
+      return file.exists(f)
+    expected_success: true
+    expected_result: "true"
+
+  # ============================================================
+  # Test 6: getSubFolder can CREATE a new subfolder
+  # ============================================================
+  - name: "pathString: getSubFolder creates a new subfolder successfully"
+    description: |
+      The stale-pathString failure mode was specifically a creation failure, so
+      exercise creation rather than only lookup of a folder that already ships.
+      Uses a test-specific name under the staged Guest Databases tree and deletes
+      it again, leaving no residue for later tests in the shared sequential session.
+    timeout: 20
+    script: |
+      local (f);
+      f = Frontier.getSubFolder("ops/pathStringInitTest/");
+      local (created = file.exists(f));
+      try {file.deleteFolder(f)};
+      return created
+    expected_success: true
+    expected_result: "true"
