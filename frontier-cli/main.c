@@ -222,6 +222,25 @@ extern boolean langrunstringnoerror(const bigstring bsprogram, bigstring bsresul
  * literal entirely, so there is no injection surface to escape (contrast the
  * langdeparsestring contract fire_window_script must honor in window_registry.c).
  *
+ * The value keeps the trailing path separator that file.folderFromPath returns.
+ * Roughly twenty call sites concatenate onto pathString directly rather than going
+ * through getSubFolder (log/startup.ut:11 builds pathString + "Logs" + pathChar,
+ * cleanRoot.ut:178 builds pathString + "Virgin.root"), so dropping the separator
+ * would silently yield ".../FrontierLogs" instead of ".../Frontier/Logs".
+ *
+ * PERSISTENCE CONSEQUENCE (by design; do not "fix" by skipping the write):
+ * this sets the in-memory Frontier table, so a read-write session that saves on
+ * exit (#127) persists the running machine's absolute path into the stored cell.
+ * That is the mechanism that produced #859's original pollution, but the impact is
+ * now confined to byte-remanence/privacy (#854's domain) and git-diff noise on
+ * databases/Virgin.root -- it is NOT a correctness bug, because the stored value is
+ * dead by construction: unconditionally overwritten at every load before any script
+ * can read it. Verified by saving a root carrying one pathString and then loading
+ * that same file from a different directory -- the new location wins.
+ * Corollary for future path-pollution walkers: treat Frontier.pathstring as
+ * dead-by-construction rather than flagging it as a live polluted reference.
+ * Inspection sessions (--lock-opened-roots) do not persist it at all.
+ *
  * Boot-failure-safe: a failure here is logged and ignored rather than aborting
  * the load. A minimal headless root may have no Frontier table at all, and a
  * runtime that boots with a stale pathString is no worse off than before this
