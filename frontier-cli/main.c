@@ -65,6 +65,13 @@
 #include "../Common/headers/shell_api.h"
 #include "../Common/headers/db.h"
 #include "../Common/headers/file.h"
+/* file_portable.h declares portable_folderfrompath, the primitive that backs the
+ * file.folderFromPath verb (portable/fileverbs_portable.c:733). Note the Mac-only
+ * folderfrompath declared in file.h above has NO definition in the headless build:
+ * the link succeeds via -undefined dynamic_lookup and then segfaults when called,
+ * so pathString derivation must use the portable_ entry point. */
+#include "../Common/headers/file_portable.h"
+#include "../Common/headers/langinternal.h"
 #include "../Common/headers/db_format.h"
 #include "../Common/headers/tableverbs.h"
 #include "../Common/headers/langexternal.h"
@@ -180,12 +187,6 @@ const char *cli_get_system_root_basename(void) {
 	snprintf(bn_buf, sizeof(bn_buf), "%s", base);
 	return bn_buf;
 }
-
-/* Forward declaration from file_portable_posix.c -- the primitive that backs the
- * file.folderFromPath verb (portable/fileverbs_portable.c:733). The Mac-only
- * folderfrompath declared in file.h has NO definition in the headless build; the
- * link succeeds via -undefined dynamic_lookup and then segfaults when called. */
-extern boolean portable_folderfrompath(const bigstring bspath, bigstring bsfolder);
 
 /*
  * cli_init_frontier_pathstring -- set Frontier.pathString from the loaded root.
@@ -347,14 +348,26 @@ static void cli_init_frontier_pathstring(void) {
 	/* Compare before assign -- see the header comment. hashtablelookup matches
 	 * case-insensitively, so this finds the cell whichever way it is spelled, and
 	 * assigning through the same key preserves the stored node rather than adding
-	 * a sibling. */
+	 * a sibling.
+	 *
+	 * pullstringvalue, NOT hashgetvaluestring: the latter is a display-oriented
+	 * coercion that deparses non-printing characters ("2.1b4 dmb: don't deparse
+	 * quotes, just non-printing characters", langhash.c). A stored path containing
+	 * a backslash or control character would come back escaped, never compare equal
+	 * to the raw computed value, and re-dirty the node on every load -- which on the
+	 * internal-loader path, where no dirty-clear follows, resurrects per-session
+	 * full-root rewrites for exactly those paths. pullstringvalue is a raw
+	 * texthandletostring. It returns void, so the stringvaluetype guard above is
+	 * what makes reading data.stringvalue safe. */
 	if (hashtablelookup(frontiertable, BIGSTRING("\012" "pathString"), &val, &hnode)
-	    && val.valuetype == stringvaluetype
-	    && hashgetvaluestring(val, bsexisting)
-	    && equalstrings(bsexisting, bsfolder)) {
-		log_debug(LOG_COMP_STARTUP,
-		          "Frontier.pathString already current; leaving node clean");
-		return;
+	    && val.valuetype == stringvaluetype) {
+		pullstringvalue(&val, bsexisting);
+
+		if (equalstrings(bsexisting, bsfolder)) {
+			log_debug(LOG_COMP_STARTUP,
+			          "Frontier.pathString already current; leaving node clean");
+			return;
+		}
 	}
 
 	if (!langassignstringvalue(frontiertable, BIGSTRING("\012" "pathString"), bsfolder)) {
