@@ -32,6 +32,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>	/* setenv/unsetenv for the ut-sync guard tests */
 
 #include "test_report.h"
 
@@ -222,6 +223,42 @@ static void test_compare_missing_file_is_operational_failure(void) {
 	                           &options, &ctfindings));
 }
 
+/* ---- ut-sync must never be active under a read-only walk ---- */
+
+static void test_compare_refuses_when_ut_sync_env_set(void) {
+	tydiffoptions options;
+	long ctfindings = -1;
+
+	memset(&options, 0, sizeof(options));
+	options.flquiet = true;
+
+	/*
+	 * ut-sync's import hook rewrites outlines, sets dirty flags, and writes
+	 * .ut-sync-state -- writes, under a mode whose contract is that neither
+	 * root is touched. The CLI rejects the combination, but this entry point is
+	 * callable directly and FRONTIER_UT_SYNC_DIR can enable ut-sync with no
+	 * flag on the command line, so the refusal also lives inside the walker.
+	 *
+	 * HONEST SCOPE OF THIS TEST: it asserts the call is refused, but it cannot
+	 * prove the ut-sync guard specifically is what refused it. Every input a
+	 * unit test can supply without shipping a multi-MB fixture (missing file,
+	 * non-v7 file) is rejected by an earlier check anyway, so a mutation that
+	 * removes the guard still leaves this passing -- verified, it did.
+	 *
+	 * The guard's real proof is at the acceptance layer, where the CLI is run
+	 * with FRONTIER_UT_SYNC_DIR set against two genuine v7 roots that otherwise
+	 * compare clean, and the run is rejected. This case is kept as a
+	 * regression tripwire for the refusal contract (operational failure ->
+	 * false, never "a diff with findings"), not as proof of the mechanism.
+	 */
+	setenv("FRONTIER_UT_SYNC_DIR", "/tmp/diff-roots-must-refuse", 1);
+
+	assert(!diff_roots_compare("/nonexistent/a.root", "/nonexistent/b.root",
+	                           &options, &ctfindings));
+
+	unsetenv("FRONTIER_UT_SYNC_DIR");
+}
+
 /* ---- packed-header volatile regions: pinned to the real struct ---- */
 
 /*
@@ -335,6 +372,7 @@ int main(void) {
 	TR_RUN(test_appendsegment_preserves_high_bit_bytes);
 	TR_RUN(test_appendsegment_overflow_reports_and_preserves);
 	TR_RUN(test_compare_missing_file_is_operational_failure);
+	TR_RUN(test_compare_refuses_when_ut_sync_env_set);
 	TR_RUN(test_packed_header_size_matches_format);
 	TR_RUN(test_volatile_regions_are_the_proven_three);
 	TR_RUN(test_volatile_regions_exclude_fltextmode);

@@ -1137,6 +1137,79 @@ static int comparenames (const unsigned char *bsa, const unsigned char *bsb) {
 	} /*comparenames*/
 
 
+/*
+	One table entry, buffered so a table can be sorted by name before matching.
+	`name` is a COPY of the node's Pascal key -- gethashkey writes into a
+	caller-supplied bigstring, so the bytes must be captured rather than
+	pointed at.
+*/
+typedef struct tynodeentry {
+
+	bigstring name;
+	hdlhashnode node;
+
+	} tynodeentry;
+
+
+static int comparenodeentries (const void *a, const void *b) {
+
+	return (comparenames (((const tynodeentry *) a)->name,
+	                      ((const tynodeentry *) b)->name));
+	} /*comparenodeentries*/
+
+
+/*
+	Buffer every node of a table and sort by raw name bytes.
+
+	Sorting is what makes matching correct AND output deterministic: hfirstsort
+	is insertion order in this build (see walkpair), so neither property comes
+	for free. Sorting by the same byte comparison used for matching keeps the
+	two consistent.
+
+	Returns false only on allocation failure. An empty table yields ct 0 and a
+	NULL array, which the caller handles as "nothing on this side".
+*/
+static boolean collectnodes (hdlhashtable htable, tynodeentry **pentries, long *pct) {
+
+	hdlhashnode nomad;
+	long ct = 0;
+	long i = 0;
+	tynodeentry *entries;
+
+	*pentries = NULL;
+	*pct = 0;
+
+	if (htable == nil)
+		return (true);
+
+	for (nomad = (**htable).hfirstsort; nomad != nil; nomad = (**nomad).sortedlink)
+		ct++;
+
+	if (ct == 0)
+		return (true);
+
+	entries = (tynodeentry *) malloc ((size_t) ct * sizeof (tynodeentry));
+
+	if (entries == NULL)
+		return (false);
+
+	for (nomad = (**htable).hfirstsort; (nomad != nil) && (i < ct);
+	     nomad = (**nomad).sortedlink) {
+
+		gethashkey (nomad, entries [i].name);
+		entries [i].node = nomad;
+		i++;
+		}
+
+	qsort (entries, (size_t) i, sizeof (tynodeentry), comparenodeentries);
+
+	*pentries = entries;
+	*pct = i;
+
+	return (true);
+	} /*collectnodes*/
+
+
 static void reportsubtree (tywalkstate *state, const char *parentpath,
                            hdlhashnode node, tydiffkind kind, int depth);
 
@@ -1229,9 +1302,6 @@ static void walkpair (tywalkstate *state, const char *path,
                       tyrootside *sidea, tyrootside *sideb,
                       hdlhashtable tablea, hdlhashtable tableb, int depth) {
 
-	hdlhashnode nodea;
-	hdlhashnode nodeb;
-
 	if (depth >= maxwalkdepth) {
 		report (state, diffkind_unreadable, path, "tabl", "tabl", -1, -1, -1,
 		        "maximum walk depth exceeded");
@@ -1244,43 +1314,67 @@ static void walkpair (tywalkstate *state, const char *path,
 		return;
 		}
 
-	nodea = (**tablea).hfirstsort;
-	nodeb = (**tableb).hfirstsort;
-
 	/*
-	Sorted merge. Both sides are in the ODB's own stored order, so a single
-	lockstep pass yields every finding in deterministic order with no sorting
-	and no allocation.
-	*/
-	while ((nodea != nil) || (nodeb != nil)) {
+	NAME-KEYED MATCHING, not a positional merge over hfirstsort.
 
-		bigstring bsa;
-		bigstring bsb;
+	hfirstsort is NOT alphabetical in this build. Sorted insertion consults
+	langcallbacks.comparenodescallback (langhash.c:1464), and the headless
+	startup wires that to cb_noop_compare, which always returns 0
+	(langstartup.c:81, :1172) -- so every node appends and the list is in
+	INSERTION order.
+
+	An earlier version merged the two lists positionally on that assumption.
+	Two roots holding identical values inserted in different orders produced
+	four spurious findings for three values, each reported as BOTH only-in-A
+	and only-in-B, while their payloads were never compared at all. That is the
+	exact hazard: not just noise, but masked payload comparisons.
+
+	So: buffer both sides, sort each by raw name bytes, then merge. Sorting
+	makes the output deterministic regardless of how either root happens to
+	store its nodes, which is what a drift check needs.
+	*/
+	{
+	tynodeentry *entriesa = NULL;
+	tynodeentry *entriesb = NULL;
+	long cta = 0;
+	long ctb = 0;
+	long ia = 0;
+	long ib = 0;
+
+	if (!collectnodes (tablea, &entriesa, &cta) || !collectnodes (tableb, &entriesb, &ctb)) {
+
+		free (entriesa);
+		free (entriesb);
+
+		report (state, diffkind_unreadable, path, "tabl", "tabl", -1, -1, -1,
+		        "out of memory collecting table entries");
+		return;
+		}
+
+	while ((ia < cta) || (ib < ctb)) {
+
 		int order;
 
-		if (nodea == nil)
+		if (ia >= cta)
 			order = 1;
-		else if (nodeb == nil)
+		else if (ib >= ctb)
 			order = -1;
-		else {
-			gethashkey (nodea, bsa);
-			gethashkey (nodeb, bsb);
-			order = comparenames (bsa, bsb);
-			}
+		else
+			order = comparenames (entriesa [ia].name, entriesb [ib].name);
 
 		if (order < 0) {
-			gethashkey (nodea, bsa);
-			reportonlyside (state, path, bsa, &(**nodea).val, diffkind_only_in_a,
-			                nodea, depth);
-			nodea = (**nodea).sortedlink;
+			reportonlyside (state, path, entriesa [ia].name,
+			                &(**(entriesa [ia].node)).val, diffkind_only_in_a,
+			                entriesa [ia].node, depth);
+			ia++;
 			continue;
 			}
 
 		if (order > 0) {
-			gethashkey (nodeb, bsb);
-			reportonlyside (state, path, bsb, &(**nodeb).val, diffkind_only_in_b,
-			                nodeb, depth);
-			nodeb = (**nodeb).sortedlink;
+			reportonlyside (state, path, entriesb [ib].name,
+			                &(**(entriesb [ib].node)).val, diffkind_only_in_b,
+			                entriesb [ib].node, depth);
+			ib++;
 			continue;
 			}
 
@@ -1289,29 +1383,35 @@ static void walkpair (tywalkstate *state, const char *path,
 		char *childpath = (char *) malloc (maxdiffpath);
 
 		if (childpath == NULL) {
+			free (entriesa);
+			free (entriesb);
 			report (state, diffkind_unreadable, path, "-", "-", -1, -1, -1,
 			        "out of memory building path");
 			return;
 			}
 
-		gethashkey (nodea, bsa);
-
 		snprintf (childpath, maxdiffpath, "%s", path);
 
 		if (!diff_roots_appendsegment (childpath, maxdiffpath,
-		                               (const char *) &bsa [1], (size_t) bsa [0]))
+		                               (const char *) &entriesa [ia].name [1],
+		                               (size_t) entriesa [ia].name [0]))
 			report (state, diffkind_unreadable, path, "-", "-", -1, -1, -1,
 			        "path too long to report");
 		else
 			comparevalue (state, childpath, sidea, sideb,
-			              &(**nodea).val, &(**nodeb).val, depth);
+			              &(**(entriesa [ia].node)).val,
+			              &(**(entriesb [ib].node)).val, depth);
 
 		free (childpath);
 		}
 
-		nodea = (**nodea).sortedlink;
-		nodeb = (**nodeb).sortedlink;
+		ia++;
+		ib++;
 		}
+
+	free (entriesa);
+	free (entriesb);
+	}
 	} /*walkpair*/
 
 
@@ -1438,6 +1538,28 @@ boolean diff_roots_compare (const char *patha, const char *pathb,
 	state.options = options;
 	state.out = (options->out != NULL) ? options->out : stdout;
 	state.ctfindings = 0;
+
+	/*
+	Structural guard, not merely a CLI check. ut-sync's import hook rewrites
+	outlines, sets dirty flags, and writes .ut-sync-state -- all writes, under a
+	mode that promises neither root is touched. cli_validate_options rejects the
+	combination on the CLI path, but this function is callable directly (the
+	unit tests do exactly that), and FRONTIER_UT_SYNC_DIR can turn ut-sync on
+	from the environment with no flag on the command line at all.
+
+	The env var is checked here rather than calling back into the CLI layer:
+	this module must not depend on main.c, and the env var is the source that
+	can be set without anyone passing an argument.
+	*/
+	{
+	const char *utsyncenv = getenv ("FRONTIER_UT_SYNC_DIR");
+
+	if ((utsyncenv != NULL) && (utsyncenv [0] != '\0')) {
+		fprintf (err, "diff-roots: refusing to run with FRONTIER_UT_SYNC_DIR set; "
+		         "ut-sync writes to roots this mode opens read-only\n");
+		return (false);
+		}
+	}
 
 	if (!db_format_prepare_runtime ()) {
 		fprintf (err, "diff-roots: database runtime failed to initialize\n");

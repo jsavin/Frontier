@@ -187,6 +187,17 @@ boolean cli_validate_options(const cli_options_t* options) {
 			log_error(LOG_COMP_GENERAL, "Error: --diff-roots runs standalone; do not combine with --migrate, --system-root, scripts, or REPL mode");
 			return false;
 		}
+		/* ut-sync is a WRITE path: its import hook rewrites outlines, sets
+		 * dirty flags, and writes .ut-sync-state. It must never run under a
+		 * mode whose entire contract is that neither root is modified.
+		 * Rejected loudly rather than quietly ignored, because
+		 * FRONTIER_UT_SYNC_DIR populates this field from the environment just
+		 * above this validation -- so it can be on without appearing on the
+		 * command line at all. */
+		if (options->ut_sync_dir != NULL) {
+			log_error(LOG_COMP_GENERAL, "Error: --diff-roots cannot be combined with --ut-sync-dir or FRONTIER_UT_SYNC_DIR; the walker opens both roots read-only and ut-sync would write to them");
+			return false;
+		}
 		return true;
 	}
 
