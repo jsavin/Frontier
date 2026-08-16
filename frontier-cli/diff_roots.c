@@ -8,10 +8,13 @@
 	See diff_roots.h for the design commitments. Implementation notes that are
 	not obvious from the header:
 
-	- Traversal is hfirstsort/sortedlink, which is the ODB's own stored
-	  alphabetical order (lang.h:436,474). Walking two roots in that order lets
-	  the comparison be a single sorted merge with no sorting pass, no
-	  allocation, and deterministic output.
+	- Traversal buffers each table and sorts by raw name bytes before matching.
+	  hfirstsort is NOT alphabetical in this build: sorted insertion consults
+	  langcallbacks.comparenodescallback (langhash.c:1464) and headless startup
+	  wires that to cb_noop_compare, which always returns 0 (langstartup.c:81,
+	  :1172), so nodes append in INSERTION order. Sorting is what makes matching
+	  correct across roots with different insertion histories, and what makes
+	  output deterministic.
 
 	- Names are compared as RAW BYTES (memcmp over the Pascal string), never
 	  case-folded and never newline-normalized. Storage is case-preserving, and
@@ -148,6 +151,39 @@ boolean diff_roots_appendsegment (char *path, size_t pathsz, const char *name, s
 	} /*diff_roots_appendsegment*/
 
 
+/*
+	Emit an ODB path to a stream with high-bit bytes escaped.
+
+	THE ONLY WAY a path reaches human-readable output. Every emission site must
+	route through here -- an earlier version escaped in the findings reporter
+	but printed the raw path in an audit note, which is the same class of
+	inconsistency in a smaller place.
+
+	Escaping happens at the REPORT layer only. The shared name codec
+	(ut_pct_encode_segment) passes >= 0x80 through untouched, and that is
+	correct: it is a lossless bijection used for filesystem paths, and MacRoman
+	bytes must survive it byte-for-byte (#880). But a terminal renders those
+	bytes through whatever locale it happens to have, so raw emission is
+	ambiguous to read and unsafe to paste into a bug report. Findings handed to
+	a callback still carry the raw bytes.
+*/
+static void emitpath (FILE *out, const char *path) {
+
+	const unsigned char *p;
+
+	if (path == NULL)
+		return;
+
+	for (p = (const unsigned char *) path; *p != '\0'; p++) {
+
+		if (*p >= 0x80)
+			fprintf (out, "%%%02X", (unsigned) *p);
+		else
+			fputc ((int) *p, out);
+		}
+	} /*emitpath*/
+
+
 static void report (tywalkstate *state, tydiffkind kind, const char *path,
                     const char *typea, const char *typeb,
                     long sizea, long sizeb, long firstdiff, const char *detail) {
@@ -173,29 +209,7 @@ static void report (tywalkstate *state, tydiffkind kind, const char *path,
 
 	fprintf (state->out, "%-16s ", diff_roots_kindname (kind));
 
-	/*
-	High-bit bytes are escaped HERE, at the report layer only.
-
-	The shared name codec (ut_pct_encode_segment) passes >= 0x80 through
-	untouched, and that is correct -- it is a lossless bijection used for
-	filesystem paths, and MacRoman bytes must survive it byte-for-byte (#880).
-	But a terminal will render those bytes through whatever locale it happens
-	to have, so a REPORT that emits them raw is ambiguous to read and unsafe to
-	paste into a bug. Escaping at the point of display keeps the stored path
-	lossless everywhere else -- the finding handed to a callback still carries
-	the raw bytes.
-	*/
-	{
-	const unsigned char *p;
-
-	for (p = (const unsigned char *) path; *p != '\0'; p++) {
-
-		if (*p >= 0x80)
-			fprintf (state->out, "%%%02X", (unsigned) *p);
-		else
-			fputc ((int) *p, state->out);
-		}
-	}
+	emitpath (state->out, path);
 
 	if ((kind == diffkind_type) || (kind == diffkind_unsupported))
 		fprintf (state->out, "  A=%s B=%s", finding.typea, finding.typeb);
@@ -407,6 +421,13 @@ static boolean resolvediskvalue (tyrootside *side, const tyvaluerecord *val, Han
 
 	Returns nildbaddress only when the value genuinely has no stored block; the
 	caller must treat that as reportable, never as equality.
+
+	KNOWN-LOUD: the returned address is used as-is, with no normalization
+	(dbrefhandle_context's underlying read does none). If a stored address were
+	somehow interior or stale, the read fails and the caller emits an
+	`unreadable` finding naming the path -- a visible, attributable failure
+	rather than a silent wrong answer. That is the intended behavior, not an
+	unhandled case.
 */
 static dbaddress storedaddressof (hdlexternalvariable hv) {
 
@@ -554,11 +575,16 @@ static boolean packoutlinebytes (hdlexternalvariable hv, Handle *hpacked) {
 	The regions are NOT hardcoded here. They come from
 	op_packed_header_volatile_regions() (op.h / oppack_v7.c), derived with
 	offsetof()/sizeof() on the real struct. That indirection exists because the
-	first version of this walker DID hardcode them and got them wrong by +6: a
-	local probe of the struct written WITHOUT #pragma pack(2) reported
-	24/32/40/48 with a 1080-byte header, while the real packed layout is
-	18/26/34 with 1068 bytes. The _Static_assert at oppack_v7.c:154 pins 1068
-	and would have caught it. Two silent failures resulted -- timecreated
+	first version of this walker DID hardcode them and got them wrong by +6.
+
+	The cause was THIS UNIT'S OWN throwaway offset probe (a scratch program
+	written while designing the walker, never committed): it declared a copy of
+	typortablediskheader WITHOUT #pragma pack(2), so it reported 24/32/40/48
+	with a 1080-byte header, while the real packed layout is 18/26/34 with 1068
+	bytes. The _Static_assert at oppack_v7.c:154 pins 1068 and would have caught
+	it immediately had the probe's own output been checked against it --
+	measuring instruments need their own invariant checks, the same lesson this
+	walker exists to enforce one level up. Two silent failures resulted -- timecreated
 	(18-23) was left UNSKIPPED, producing false diffs whenever creation stamps
 	differ, and fltextmode (38-39) was WRONGLY skipped, letting real content
 	compare equal. Deriving from the struct makes that class of error
@@ -620,13 +646,19 @@ static boolean g_headerregionsready = false;
 /*
 	Load the volatile-region table once, from oppack_v7.c via offsetof/sizeof on
 	the real struct. Hardcoding these offsets is how the first version of this
-	walker got them wrong by +6: a local probe of the struct WITHOUT
-	#pragma pack(2) reported 24/32/40/48 and a 1080-byte header, when the real
-	packed layout is 18/26/34 and 1068 bytes (the _Static_assert at
-	oppack_v7.c:154 is the invariant that would have caught it).
+	walker got them wrong by +6: this unit's own scratch offset probe declared
+	the struct WITHOUT #pragma pack(2) and so reported 24/32/40/48 with a
+	1080-byte header, when the real packed layout is 18/26/34 with 1068 bytes
+	(the _Static_assert at oppack_v7.c:154 is the invariant that would have
+	caught it).
 
 	Returns false if the table cannot be obtained, in which case the caller
 	compares the whole buffer verbatim -- over-reporting, never under-reporting.
+
+	The static cache is not thread-safe. That is fine here and nowhere else:
+	this mode runs in main.c's early-exit band, before any runtime or thread
+	registry exists, single-threaded by construction. Anything reusing this in
+	a threaded context must not reuse the cache.
 */
 static boolean loadheaderregions (void) {
 
@@ -914,9 +946,12 @@ static void compareexternal (tywalkstate *state, const char *path,
 			*/
 			if ((adra == nildbaddress) && (adrb == nildbaddress)) {
 
-				if (!state->options->flquiet)
-					fprintf (stderr, "note: %s never stored on either side (%s); "
-					         "treated as equal\n", path, typename_for (vala));
+				if (!state->options->flquiet) {
+					fprintf (stderr, "note: ");
+					emitpath (stderr, path);	/*escaped, like every other path emission*/
+					fprintf (stderr, " never stored on either side (%s); treated as equal\n",
+					         typename_for (vala));
+					}
 
 				return;
 				}
@@ -1268,6 +1303,12 @@ static int comparenodeentries (const void *a, const void *b) {
 
 	Returns false only on allocation failure. An empty table yields ct 0 and a
 	NULL array, which the caller handles as "nothing on this side".
+
+	Assumes names within one table are unique, which the ODB enforces (a
+	hashtable cannot hold two entries under the same key). If duplicates could
+	occur, qsort's unspecified ordering among equal keys would make the pairing
+	of A-side to B-side entries arbitrary; the merge below would still pair
+	them one-for-one, but which-with-which would not be meaningful.
 */
 static boolean collectnodes (hdlhashtable htable, tynodeentry **pentries, long *pct) {
 
@@ -1714,9 +1755,23 @@ boolean diff_roots_compare (const char *patha, const char *pathb,
 		}
 
 	/*
-	Opening a second database clears the table-structure globals, which would
-	destroy the first root's state. The guard saves and restores all of them --
-	this is the documented hazard at db.h:285-289.
+	DEFENSE IN DEPTH, not a load-bearing fix for a demonstrated corruption.
+
+	An earlier version of this comment claimed that opening a second database
+	clears the table-structure globals. An audit disproved that: dbopenfile
+	touches only databasedata. cleartablestructureglobals is called from
+	cancoon.c:601 and the compaction/migration path in db_format.c, neither of
+	which this mode enters. The hazard db.h:285-289 documents is real for the
+	guest-DB open path; it is simply not reached from here.
+
+	The guard is kept anyway because this mode holds two roots open at once and
+	sets databasedata directly, so restoring the caller's context on every exit
+	path costs nothing and removes a whole class of future coupling. Keeping it
+	for an honest reason is better than keeping it for an invented one.
+
+	Note it does NOT save the db_format mode globals (g_mode_state). That is
+	inert here: the walker is v7-only and never switches modes, and closeside's
+	dbdispose pops the mode pushed by that side's dbopenfile.
 	*/
 	odb_guard_enter (&guard);
 

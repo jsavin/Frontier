@@ -846,10 +846,21 @@ int main(int argc, char* argv[]) {
 
 	// Parse command line arguments
 	if (!cli_parse_arguments(argc, argv, &g_cli_options)) {
+		/*
+		 * --diff-roots exits 2 for ANY operational failure, including one
+		 * detected during argument validation (an unreadable root is rejected
+		 * there, not by the walker). Without this, a missing or unreadable
+		 * database would exit 1 -- indistinguishable from "differences found",
+		 * so a broken CI drift check would read as a real drift report. The
+		 * mode is read before cli_free_options frees it.
+		 */
+		boolean diff_roots_mode = (g_cli_options.diff_roots_a != NULL)
+		                          || (g_cli_options.diff_roots_b != NULL);
+
 		log_error(LOG_COMP_GENERAL, "Error: Invalid command line arguments");
 		print_usage(argv[0]);
 		cli_free_options(&g_cli_options); /* honor parse-failure cleanup contract */
-		return 1;
+		return diff_roots_mode ? 2 : 1;
 	}
 
 	// Apply --log spec if provided (overrides env var settings)

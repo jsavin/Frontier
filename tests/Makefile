@@ -911,6 +911,14 @@ test-openurl-guard:
 	@echo "Running headless sys.openUrl guard tests..."
 	@./openurl_headless_guard_test.sh
 
+# Behavioral fixtures for --diff-roots (root-build Step 1). Every compare path is
+# proven by a root that DIFFERS in one known way -- the gate found two P0s that
+# survived agreement-only evidence. Fixtures are generated at run time from
+# databases/StartupTasks.root; no binary fixtures are committed.
+test-diff-roots-fixtures:
+	@echo "Running diff-roots behavioral fixture tests..."
+	@./diff_roots_fixtures_test.sh
+
 # Run REPL selection flag tests (shell-based, uses -e mode + --help)
 # 2026-06-25 JES C.6 #691: covers --plain / --debug-tui / --protocol
 # mutual exclusion, the --debug-tui deprecation warning, and the new
@@ -1055,4 +1063,3 @@ verify-errors:
 check_v6_tables: check_v6_tables.c $(LANG_RUNTIME_SOURCES) ../Common/source/odbengine.c ../frontier-cli/stubs/headless_shell.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -DHEADLESS_TEST_PORTABLE_FILE -DHEADLESS_LINKS_REAL_DB -I../Common/headers -I../Common/SystemHeaders -I../portable check_v6_tables.c \
 		$(LANG_RUNTIME_SOURCES) ../Common/source/odbengine.c ../frontier-cli/stubs/headless_shell.c -o $@ $(LINK_LIBS)
-

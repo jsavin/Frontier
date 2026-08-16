@@ -167,18 +167,26 @@ boolean op_packed_header_volatile_regions (typackedheaderregion *regions, long *
 	rather than hardcoded so a layout change cannot silently desynchronize a
 	caller. See op.h for why callers need these.
 
-	Only DEMONSTRATED volatility is listed:
+	This is an ALLOWLIST: a field earns a place only by demonstrated
+	volatility, with the mechanism named. Adding to it on suspicion is how a
+	real difference gets silently swallowed.
 
-	  timecreated   -- per-value creation stamp
-	  timelastsave  -- rewritten on every save
-	  ctsaves       -- incremented by oppack() itself, below, so it differs
-	                   even between two packs of one resident value
+	  timecreated   -- per-value creation stamp; differs between a built root
+	                   and its ancestor without the content differing
+	  timelastsave  -- rewritten by the act of saving
+	  ctsaves       -- INCREMENTED by oppack() itself (see below, where it is
+	                   bumped and written back into the outline record), so it
+	                   differs even between two packs of one resident value
 
-	outlinesignature is deliberately NOT listed. It is a caller-defined cookie
-	that is constant in practice (observed as 'LAND' throughout the shipped
-	roots), and excluding a field with no demonstrated volatility would let a
-	real difference pass silently -- the exact failure mode these exclusions
-	exist to avoid.
+	outlinesignature is deliberately NOT listed, and it is not a close call:
+	it is SEMANTIC CONTENT, not metadata. It selects the OSA server that will
+	run the script (scripts.c:943, getosaserver), drives tree building
+	(scripts.c:1302), and gates UserTalk-specific text handling
+	(scripts.c:3049, `outlinesignature == typeLAND`). A difference in this
+	field means a different LANGUAGE, which is exactly the kind of difference
+	the walker exists to report. That it reads as a constant 'LAND' throughout
+	the shipped roots is a fact about today's data, not a license to exclude
+	it.
 	*/
 
 	const typackedheaderregion volatileregions [] = {
