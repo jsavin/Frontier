@@ -363,6 +363,34 @@ static boolean resolvediskvalue (tyrootside *side, const tyvaluerecord *val, Han
 
 
 /*
+	Read the raw stored block at `adr` from one side, without materializing the
+	value it belongs to. Used for the types that must not be brought into memory
+	(see compareexternal). The caller disposes the handle.
+
+	A nil address is a legitimate "nothing stored" state and yields an empty
+	handle so two nil-address values compare equal rather than both failing.
+*/
+static boolean readstoredbytes (tyrootside *side, dbaddress adr, Handle *h) {
+
+	hdldatabaserecord saved = databasedata;
+	boolean fl;
+
+	*h = nil;
+
+	if (adr == nildbaddress)
+		return (newemptyhandle (h));
+
+	databasedata = side->database;	/*callee-saves; see resolvediskvalue*/
+
+	fl = dbrefhandle_context (&side->context, adr, h);
+
+	databasedata = saved;
+
+	return (fl);
+	} /*readstoredbytes*/
+
+
+/*
 	Inline scalars: compared by value, not by dereference. Returns false when
 	this type is not an inline scalar.
 */
@@ -700,24 +728,75 @@ static void compareexternal (tywalkstate *state, const char *path,
 		case idwordprocessor: {
 
 			/*
-			Deliberately NOT materialized. mbar: the headless stub fakes
-			flinmemory without loading, so any dereference segfaults
-			(stubs/headless_menu_stubs.c:618). wptx: force-materializing
-			exhausts memory on a full-root walk (db_format.c:1694).
+			Compared at the STORED level: the raw disk bytes at each side's
+			external address, never materialized.
 
-			Compare where they actually live -- their stored addresses. Equal
-			addresses mean the identical stored block; unequal addresses are
-			reported honestly as "cannot compare content here" rather than
-			being claimed as a content difference.
+			Stored bytes are the ODB's ground truth, and the round-trip law
+			requires the assembler to reproduce them anyway, so this is the
+			right basis for these types rather than a concession.
+
+			The two types are here for DIFFERENT reasons, and the reason-codes
+			below are kept distinct on purpose so a later reader does not merge
+			them:
+
+			  mbar  -- cannot be materialized headless AT ALL. The stub
+			           menuverbinmemory_context (stubs/headless_menu_stubs.c:618)
+			           sets flinmemory = true WITHOUT loading, leaving
+			           variabledata a raw dbaddress; dereferencing it segfaults.
+			           Filed as #896.
+
+			  wptx  -- CAN be materialized, but must not be during a full-root
+			           walk: force-materializing wptext externals exhausts
+			           memory and hangs for minutes (db_format.c:1694).
 			*/
-			dbaddress adra = (**hva).oldaddress;
-			dbaddress adrb = (**hvb).oldaddress;
+			const char *reason = (extid == idmenuprocessor)
+			        ? "mbar: not materializable headless (#896); compared at stored level"
+			        : "wptx: materialization hazard (db_format.c:1694); compared at stored level";
 
-			if (adra != adrb)
-				report (state, diffkind_unsupported, path,
+			Handle ha = nil;
+			Handle hb = nil;
+			boolean oka;
+			boolean okb;
+
+			oka = readstoredbytes (sidea, (**hva).oldaddress, &ha);
+			okb = readstoredbytes (sideb, (**hvb).oldaddress, &hb);
+
+			if (!oka || !okb) {
+
+				if (ha != nil)
+					disposehandle (ha);
+
+				if (hb != nil)
+					disposehandle (hb);
+
+				/*
+				Could not read one or both stored blocks. Report rather than
+				assume equality -- an unreadable value is a finding.
+				*/
+				report (state, diffkind_unreadable, path,
 				        typename_for (vala), typename_for (valb), -1, -1, -1,
-				        "not comparable headless; stored addresses differ");
+				        reason);
+				return;
+				}
 
+			{
+			long sizea = gethandlesize (ha);
+			long sizeb = gethandlesize (hb);
+
+			if ((sizea != sizeb)
+			        || ((sizea > 0)
+			            && (memcmp (*ha, *hb, (size_t) sizea) != 0)))
+				report (state, diffkind_payload, path,
+				        typename_for (vala), typename_for (valb), sizea, sizeb,
+				        (sizea == sizeb)
+				                ? firstdifference ((const unsigned char *) *ha,
+				                                   (const unsigned char *) *hb, sizea)
+				                : -1,
+				        reason);
+			}
+
+			disposehandle (ha);
+			disposehandle (hb);
 			return;
 			}
 
