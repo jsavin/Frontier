@@ -1387,8 +1387,12 @@ static void print_usage(const char* program_name) {
 	printf("							 --my-flag value  ->  system.environment.args.myFlag\n");
 	printf("\n");
 	printf("  Built-in custom flags:\n");
-	printf("  --browser MODE		   Set browser for sys.openUrl (default: system default)\n");
-	printf("						   MODE: \"default\" or \"agent-browser\"\n");
+	printf("  --browser MODE		   Set browser for sys.openUrl (default: log the URL only)\n");
+	printf("						   MODE: \"default\", \"agent-browser\" or \"allow-gui\"\n");
+	printf("						   default:	   log the URL, set\n");
+	printf("									   system.temp.Frontier.pendingBrowserUrl, no exec\n");
+	printf("						   agent-browser: drive the URL with agent-browser\n");
+	printf("						   allow-gui:	   launch this machine's GUI browser\n");
 	printf("\n");
 
 	printf("Environment Variables:\n");

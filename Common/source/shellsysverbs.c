@@ -838,11 +838,28 @@ static boolean sysfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord
 			 * macOS: execlp("open", ...), Linux: execlp("xdg-open", ...).
 			 *
 			 * 3/23/26 JES: Respect --browser CLI arg via system.environment.args.browser.
-			 * Allowed values: "default" (system browser) or "agent-browser".
+			 * Allowed values: "default", "agent-browser" or "allow-gui".
 			 * Note: Scripts can also set system.environment.args.browser directly;
 			 * this is intentional — scripts are trusted code within the ODB.
 			 * The browser check is guarded by FRONTIER_HEADLESS; GUI builds
 			 * always use the system default browser (no --browser flag).
+			 *
+			 * 2026-08-15 JES #891: in headless builds the default no longer execs a
+			 * host GUI browser -- it logs the URL and records it at
+			 * system.temp.Frontier.pendingBrowserUrl. The onboarding intent (legacy
+			 * Frontier opened the owner's browser at setupFrontier to collect config)
+			 * is preserved; only the host-GUI launch from a headless/server context is
+			 * wrong, since no human is at that machine's desktop. --browser allow-gui
+			 * restores the launch. GUI builds are unaffected: the whole block is
+			 * inside FRONTIER_HEADLESS.
+			 *
+			 * TWIN: tests/headless_sys_verbs.c case sysv_openurl is the parallel
+			 * implementation and must change in lockstep. NOTE that despite living
+			 * under Common/source, THIS file is not linked into frontier-cli (it is
+			 * absent from frontier-cli/Makefile); the headless twin is what the CLI
+			 * runs. The two are NOT observably identical: the twin also logs the URL
+			 * and sets system.temp.Frontier.pendingBrowserUrl, neither of which is in
+			 * scope here, so this path only suppresses the exec. Dedup tracked in #893.
 			 */
 
 			Handle hurl;
@@ -878,8 +895,15 @@ static boolean sysfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord
 				 * only sets it to true in headless mode. */
 				boolean use_agent_browser = false;
 
+				/* Stays false in a GUI build, so the exec proceeds: the correct
+				 * legacy behavior, since there IS a human at this machine's
+				 * desktop. allow_gui_browser is scoped to the headless block
+				 * below, where it is the only place it can be read. */
+				boolean fl_no_exec = false;
+
 #ifdef FRONTIER_HEADLESS
 				{
+					boolean allow_gui_browser = false;
 					hdlhashnode hnode;
 					tyvaluerecord vargs;
 					bigstring bsargs = BIGSTRING ("\x04" "args");
@@ -903,11 +927,14 @@ static boolean sysfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord
 										if (len == (long)(sizeof ("agent-browser") - 1) && memcmp (*vbrowser.data.stringvalue, "agent-browser", sizeof ("agent-browser") - 1) == 0) {
 											use_agent_browser = true;
 										}
+										else if (len == (long)(sizeof ("allow-gui") - 1) && memcmp (*vbrowser.data.stringvalue, "allow-gui", sizeof ("allow-gui") - 1) == 0) {
+											allow_gui_browser = true;
+										}
 										else if (len != (long)(sizeof ("default") - 1) || memcmp (*vbrowser.data.stringvalue, "default", sizeof ("default") - 1) != 0) {
 											/* Unknown browser value — reject for security */
 											unlockhandle (hurl);
 											disposehandle (hurl);
-											langerrormessage (BIGSTRING ("\x45" "Can't open URL: --browser must be \"default\" or \"agent-browser\"."));
+											langerrormessage (BIGSTRING ("\x4c" "Can't open URL: --browser must be \"default\", \"agent-browser\" or \"allow-gui\"."));
 											return (false);
 										}
 									}
@@ -915,8 +942,23 @@ static boolean sysfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord
 							}
 						}
 					}
+
+					/* #891: headless default performs no exec. Kept in lockstep with
+					 * the headless twin; see the TWIN note above. */
+					fl_no_exec = !use_agent_browser && !allow_gui_browser;
 				}
 #endif
+
+				if (fl_no_exec) {
+					unlockhandle (hurl);
+					disposehandle (hurl);
+
+					/* True: the onboarding step was reached, which is what the caller
+					 * asks about. The headless twin additionally logs the URL and sets
+					 * system.temp.Frontier.pendingBrowserUrl; this classic path has
+					 * neither the logging nor the marker helper in scope. */
+					return (setbooleanvalue (true, v));
+				}
 
 #if defined(__APPLE__) || defined(__linux__)
 				/*
@@ -939,7 +981,7 @@ static boolean sysfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord
 						if (use_agent_browser) {
 							execlp ("agent-browser", "agent-browser", "open", url, NULL);
 						}
-						else {
+						else { /* allow_gui_browser, or any GUI build (#891) */
 #ifdef __APPLE__
 							execlp ("open", "open", url, NULL);
 #else

@@ -385,15 +385,16 @@ tests:
   # even without a display server).
   # ============================================================================
 
-  # sys.openUrl - Opens a URL via fork/execlp. In headless CI the fork succeeds
-  # even if the platform launcher (open/xdg-open) isn't available, so we only
-  # verify the verb is callable and returns a boolean.
-  # Note: These tests cannot verify actual browser launch — only that the
-  # verb compiles, dispatches, and returns the expected type.
+  # sys.openUrl in the headless default mode performs NO process exec (#891):
+  # it logs the URL and records it at system.temp.Frontier.pendingBrowserUrl so
+  # a remote operator (or a test) can pick it up. These tests are therefore safe
+  # to run anywhere — they cannot launch a browser on the host.
+  # The exec opt-ins (--browser allow-gui / agent-browser) need CLI flags the
+  # protocol runner can't pass, so they are covered by
+  # tests/openurl_headless_guard_test.sh with PATH-stubbed launchers.
 
   - name: "sys.openUrl - returns boolean type"
-    skip: "sys.openUrl not implemented"
-    description: "openUrl should return a boolean regardless of fork outcome"
+    description: "openUrl should return a boolean in the headless default mode"
     script: 'typeof(sys.openUrl("https://example.com"))'
     expected_success: true
     expected_result: "bool"
@@ -406,11 +407,44 @@ tests:
   # getexempttextvalue coerces numbers to strings — standard Frontier behavior.
   # The verb accepts any non-empty string (no URL scheme validation).
   - name: "sys.openUrl - number coerced to string succeeds"
-    skip: "sys.openUrl not implemented"
-    description: "Passing a number coerces to string; fork succeeds even for non-URL"
+    description: "Passing a number coerces to string; accepted even for non-URL"
     script: 'typeof(sys.openUrl(12345))'
     expected_success: true
     expected_result: "bool"
+
+  - name: "sys.openUrl - headless default records the pending browser URL"
+    description: "The onboarding intent is asserted via the marker, not a browser launch"
+    script: 'sys.openUrl("http://127.0.0.1:5336/setupFrontier");system.temp.Frontier.pendingBrowserUrl'
+    expected_success: true
+    expected_result: "http://127.0.0.1:5336/setupFrontier"
+
+  - name: "sys.openUrl - marker holds the most recent URL"
+    description: "Each call overwrites the marker (last URL that wanted a browser)"
+    script: 'sys.openUrl("http://example.com/first");sys.openUrl("http://example.com/second");system.temp.Frontier.pendingBrowserUrl'
+    expected_success: true
+    expected_result: "http://example.com/second"
+
+  # A table pre-created at the marker path does NOT force the assign-failure
+  # branch in this build: hashassign's protect block is gated on
+  # fllanghashassignprotect, which headless_threadglobals.c:60 initializes to
+  # false (and tableverbs.c:288/294 leaves its only toggles commented out). The
+  # assign therefore succeeds and overwrites the table, verified directly. So
+  # this asserts the observable behavior rather than a failure that cannot occur;
+  # the cleanup correctness of that branch is covered by inspection, not a test.
+  - name: "sys.openUrl - marker overwrites a pre-existing table at its path"
+    description: "hashassign protection is off in headless, so the marker write wins"
+    script: 'if not defined(system.temp.Frontier) {new(tableType, @system.temp.Frontier)};if defined(system.temp.Frontier.pendingBrowserUrl) {delete(@system.temp.Frontier.pendingBrowserUrl)};new(tableType, @system.temp.Frontier.pendingBrowserUrl);sys.openUrl("http://example.com/overwrite");system.temp.Frontier.pendingBrowserUrl'
+    expected_success: true
+    expected_result: "http://example.com/overwrite"
+
+  # Sequential tests share one session (#852), so an earlier openUrl case may have
+  # left a marker behind. Clear it first: this asserts a rejected URL does not
+  # WRITE a marker, which is independent of test ordering.
+  - name: "sys.openUrl - empty URL does not set the marker"
+    description: "A rejected URL must not leave a pending onboarding marker behind"
+    script: 'if defined(system.temp.Frontier.pendingBrowserUrl) {delete(@system.temp.Frontier.pendingBrowserUrl)};try {sys.openUrl("")};defined(system.temp.Frontier.pendingBrowserUrl)'
+    expected_success: true
+    expected_result: "false"
 
   # ============================================================================
   # sys.unixshellcommand Tests (4 parameter variants)
