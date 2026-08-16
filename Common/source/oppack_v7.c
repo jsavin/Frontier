@@ -154,6 +154,62 @@ typedef struct typortablediskheader {
 _Static_assert (sizeof (typortablediskheader) == 1068, "typortablediskheader must be 1068 bytes");
 
 
+long op_packed_header_size (void) {
+
+	return ((long) sizeof (typortablediskheader));
+	} /*op_packed_header_size*/
+
+
+boolean op_packed_header_volatile_regions (typackedheaderregion *regions, long *ctregions) {
+
+	/*
+	The save-metadata fields of the packed header, derived from the struct
+	rather than hardcoded so a layout change cannot silently desynchronize a
+	caller. See op.h for why callers need these.
+
+	Only DEMONSTRATED volatility is listed:
+
+	  timecreated   -- per-value creation stamp
+	  timelastsave  -- rewritten on every save
+	  ctsaves       -- incremented by oppack() itself, below, so it differs
+	                   even between two packs of one resident value
+
+	outlinesignature is deliberately NOT listed. It is a caller-defined cookie
+	that is constant in practice (observed as 'LAND' throughout the shipped
+	roots), and excluding a field with no demonstrated volatility would let a
+	real difference pass silently -- the exact failure mode these exclusions
+	exist to avoid.
+	*/
+
+	const typackedheaderregion volatileregions [] = {
+		{(long) offsetof (typortablediskheader, timecreated),
+		 (long) sizeof (((typortablediskheader *) 0)->timecreated)},
+		{(long) offsetof (typortablediskheader, timelastsave),
+		 (long) sizeof (((typortablediskheader *) 0)->timelastsave)},
+		{(long) offsetof (typortablediskheader, ctsaves),
+		 (long) sizeof (((typortablediskheader *) 0)->ctsaves)}
+		};
+
+	const long ctvolatile = (long) (sizeof (volatileregions) / sizeof (volatileregions [0]));
+	long i;
+
+	if ((regions == NULL) || (ctregions == NULL))
+		return (false);
+
+	if (*ctregions < ctvolatile) {
+		*ctregions = ctvolatile; /*tell the caller how much room it needs*/
+		return (false);
+		}
+
+	for (i = 0; i < ctvolatile; i++)
+		regions [i] = volatileregions [i];
+
+	*ctregions = ctvolatile;
+
+	return (true);
+	} /*op_packed_header_volatile_regions*/
+
+
 typedef struct tyoppackinfo {
 
 	handlestream *packstream;

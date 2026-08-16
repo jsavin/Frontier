@@ -280,7 +280,10 @@ oppack_tests: oppack_tests.c
 		oppack_tests.c $(LANG_RUNTIME_SOURCES) ../frontier-cli/stubs/headless_shell.c -o $@ $(LINK_LIBS)
 
 # --diff-roots equality walker (root-build Step 1).
-diff_roots_tests: diff_roots_tests.c ../frontier-cli/diff_roots.c ../frontier-cli/diff_roots.h
+# oppack_v7.c is a listed prerequisite because it supplies the packed-header
+# volatile-region table these tests pin; without it a stale binary silently
+# passes after that table changes (observed during the fix round).
+diff_roots_tests: diff_roots_tests.c ../frontier-cli/diff_roots.c ../frontier-cli/diff_roots.h ../Common/source/oppack_v7.c ../Common/headers/op.h
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable -I../frontier-cli \
 		diff_roots_tests.c ../frontier-cli/diff_roots.c $(LANG_RUNTIME_SOURCES) ../frontier-cli/stubs/headless_shell.c -o $@ $(LINK_LIBS)
 
@@ -1052,3 +1055,4 @@ verify-errors:
 check_v6_tables: check_v6_tables.c $(LANG_RUNTIME_SOURCES) ../Common/source/odbengine.c ../frontier-cli/stubs/headless_shell.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -DHEADLESS_TEST_PORTABLE_FILE -DHEADLESS_LINKS_REAL_DB -I../Common/headers -I../Common/SystemHeaders -I../portable check_v6_tables.c \
 		$(LANG_RUNTIME_SOURCES) ../Common/source/odbengine.c ../frontier-cli/stubs/headless_shell.c -o $@ $(LINK_LIBS)
+

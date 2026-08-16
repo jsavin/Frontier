@@ -609,6 +609,36 @@ extern boolean oppack (Handle *); /*oppack.c*/
 
 extern boolean oppackoutline (hdloutlinerecord, Handle *);
 
+/*
+	Volatile (save-metadata) regions of the packed-outline header, for tools
+	that compare packed outlines for CONTENT equality.
+
+	These fields are rewritten by the act of saving -- and ctsaves is
+	INCREMENTED by oppack itself -- so an equality check over raw packed bytes
+	must exclude them, or two semantically identical outlines compare unequal.
+
+	Exposed as a table derived with offsetof()/sizeof() on the real struct
+	(which is file-local to oppack_v7.c) so callers cannot drift out of
+	agreement with the on-disk layout. Only fields with DEMONSTRATED volatility
+	are listed; anything else must surface as a real difference rather than be
+	silently swallowed.
+
+	op_packed_header_volatile_regions() writes up to *ctregions entries into
+	regions[] and sets *ctregions to the number written; returns false if the
+	caller's array is too small. op_packed_header_size() is the total header
+	size, so a caller can bound-check an offset before consulting the table.
+*/
+typedef struct typackedheaderregion {
+
+	long offset;
+	long length;
+
+	} typackedheaderregion;
+
+extern long op_packed_header_size (void);
+
+extern boolean op_packed_header_volatile_regions (typackedheaderregion *regions, long *ctregions);
+
 extern boolean opunpack (Handle, long *, hdloutlinerecord *);
 
 extern boolean opunpackoutline (Handle, hdloutlinerecord *);

@@ -35,6 +35,7 @@
 
 #include "test_report.h"
 
+#include "../Common/headers/op.h"	/* op_packed_header_volatile_regions */
 #include "../frontier-cli/diff_roots.h"
 
 /* ---- finding-kind names are stable and total ---- */
@@ -221,6 +222,106 @@ static void test_compare_missing_file_is_operational_failure(void) {
 	                           &options, &ctfindings));
 }
 
+/* ---- packed-header volatile regions: pinned to the real struct ---- */
+
+/*
+ * These pin the exact bug that shipped in the first version of this walker: the
+ * skip regions were hardcoded from a probe of the header struct written WITHOUT
+ * #pragma pack(2), so every offset was 6 bytes too high. That left timecreated
+ * unskipped (false diffs whenever creation stamps differ) and wrongly skipped
+ * fltextmode (real content silently comparing equal).
+ *
+ * The regions now come from op_packed_header_volatile_regions(), derived with
+ * offsetof() on the real struct. These tests assert what that derivation must
+ * produce, so a layout change is caught here rather than by a silently wrong
+ * diff months later.
+ */
+
+static void test_packed_header_size_matches_format(void) {
+	/* The _Static_assert in oppack_v7.c pins this. If it ever changes, every
+	   skip window moves and that must be a deliberate decision, not a surprise. */
+	assert(op_packed_header_size() == 1068);
+}
+
+static void test_volatile_regions_are_the_proven_three(void) {
+	typackedheaderregion regions[8];
+	long ct = 8;
+
+	assert(op_packed_header_volatile_regions(regions, &ct));
+
+	/* Exactly the fields with DEMONSTRATED volatility -- no speculative
+	   entries. outlinesignature is deliberately absent: it reads as the
+	   constant 'LAND' throughout the shipped roots, and skipping an unproven
+	   field is the same silent-false-equality class this mechanism exists to
+	   prevent. */
+	assert(ct == 3);
+
+	assert(regions[0].offset == 18);	/* timecreated */
+	assert(regions[0].length == 8);
+	assert(regions[1].offset == 26);	/* timelastsave */
+	assert(regions[1].length == 8);
+	assert(regions[2].offset == 34);	/* ctsaves */
+	assert(regions[2].length == 4);
+}
+
+static void test_volatile_regions_exclude_fltextmode(void) {
+	typackedheaderregion regions[8];
+	long ct = 8;
+	long i;
+
+	assert(op_packed_header_volatile_regions(regions, &ct));
+
+	/* fltextmode lives at 38..39 and is real CONTENT. The old +6 table covered
+	   it, which made text-mode changes invisible. */
+	for (i = 0; i < ct; i++) {
+		long lo = regions[i].offset;
+		long hi = regions[i].offset + regions[i].length;
+		assert(!(38 >= lo && 38 < hi));
+		assert(!(39 >= lo && 39 < hi));
+	}
+}
+
+static void test_volatile_regions_cover_timecreated(void) {
+	typackedheaderregion regions[8];
+	long ct = 8;
+	long i;
+	int covered18 = 0;
+	int covered23 = 0;
+
+	assert(op_packed_header_volatile_regions(regions, &ct));
+
+	/* The old table started at 24, leaving timecreated's first six bytes
+	   (18..23) exposed. Both ends must be covered now. */
+	for (i = 0; i < ct; i++) {
+		long lo = regions[i].offset;
+		long hi = regions[i].offset + regions[i].length;
+		if (18 >= lo && 18 < hi) covered18 = 1;
+		if (23 >= lo && 23 < hi) covered23 = 1;
+	}
+
+	assert(covered18);
+	assert(covered23);
+}
+
+static void test_volatile_regions_reports_needed_size(void) {
+	typackedheaderregion regions[1];
+	long ct = 1;
+
+	/* Too small: must fail AND report how much room is needed, rather than
+	   silently truncating the skip table -- which would resurrect the original
+	   bug in a new form. */
+	assert(!op_packed_header_volatile_regions(regions, &ct));
+	assert(ct == 3);
+}
+
+static void test_volatile_regions_rejects_null(void) {
+	typackedheaderregion regions[8];
+	long ct = 8;
+
+	assert(!op_packed_header_volatile_regions(NULL, &ct));
+	assert(!op_packed_header_volatile_regions(regions, NULL));
+}
+
 int main(void) {
 	TR_INIT("diff_roots_tests");
 	TR_RUN(test_kindname_covers_every_kind);
@@ -234,6 +335,12 @@ int main(void) {
 	TR_RUN(test_appendsegment_preserves_high_bit_bytes);
 	TR_RUN(test_appendsegment_overflow_reports_and_preserves);
 	TR_RUN(test_compare_missing_file_is_operational_failure);
+	TR_RUN(test_packed_header_size_matches_format);
+	TR_RUN(test_volatile_regions_are_the_proven_three);
+	TR_RUN(test_volatile_regions_exclude_fltextmode);
+	TR_RUN(test_volatile_regions_cover_timecreated);
+	TR_RUN(test_volatile_regions_reports_needed_size);
+	TR_RUN(test_volatile_regions_rejects_null);
 	TR_SUMMARY();
 	return TR_EXIT_CODE();
 }

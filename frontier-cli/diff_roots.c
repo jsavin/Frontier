@@ -363,12 +363,51 @@ static boolean resolvediskvalue (tyrootside *side, const tyvaluerecord *val, Han
 
 
 /*
+	Where an unmaterialized external's stored block actually lives.
+
+	oldaddress is NOT the answer on its own. For a value that has never been
+	materialized, langnewexternalvariable initializes oldaddress to nildbaddress
+	(langexternal.c:2932, :2997) and puts the stored address in variabledata --
+	menuverbunpack (menuverbs.c:501-509) is the concrete path: it reads the
+	address off disk and passes it as newmenuvariable's variabledata argument.
+
+	An earlier version of this walker read only oldaddress. For every
+	never-materialized menubar that was nil on BOTH sides, which combined with a
+	nil-means-empty-handle rule to make every mbar and wptext compare EQUAL
+	regardless of content. The comparison was vacuous, and self-diff plus a
+	cross-era diff both "passed" it because neither had a fixture where a
+	menubar actually differed.
+
+	The fallback below mirrors what the menu stub itself does
+	(headless_menu_stubs.c:551-553).
+
+	Returns nildbaddress only when the value genuinely has no stored block; the
+	caller must treat that as reportable, never as equality.
+*/
+static dbaddress storedaddressof (hdlexternalvariable hv) {
+
+	dbaddress adr;
+
+	if (hv == nil)
+		return (nildbaddress);
+
+	adr = (**hv).oldaddress;
+
+	if ((adr == nildbaddress) && !(**hv).flinmemory)
+		adr = (dbaddress) (**hv).variabledata;
+
+	return (adr);
+	} /*storedaddressof*/
+
+
+/*
 	Read the raw stored block at `adr` from one side, without materializing the
 	value it belongs to. Used for the types that must not be brought into memory
 	(see compareexternal). The caller disposes the handle.
 
-	A nil address is a legitimate "nothing stored" state and yields an empty
-	handle so two nil-address values compare equal rather than both failing.
+	A nil address returns FALSE rather than an empty handle. Treating "no
+	address" as "empty content" is what made the mbar comparison silently
+	vacuous; the caller reports it instead.
 */
 static boolean readstoredbytes (tyrootside *side, dbaddress adr, Handle *h) {
 
@@ -378,7 +417,7 @@ static boolean readstoredbytes (tyrootside *side, dbaddress adr, Handle *h) {
 	*h = nil;
 
 	if (adr == nildbaddress)
-		return (newemptyhandle (h));
+		return (false);
 
 	databasedata = side->database;	/*callee-saves; see resolvediskvalue*/
 
@@ -476,22 +515,43 @@ static boolean packoutlinebytes (hdlexternalvariable hv, Handle *hpacked) {
 
 
 /*
-	Volatile regions of the packed-outline header (oppack_v7.c:115-152), given
-	as [offset, offset+length). These carry SAVE METADATA, not content, and they
-	must be excluded from an equality basis or every value in a re-saved root
-	reports as different.
+	The packed-outline header carries SAVE METADATA, not content, and those
+	fields must be excluded from an equality basis or every value in a re-saved
+	root reports as different.
 
-	Verified empirically: comparing a root against a copy that had been opened
-	and saved once produced 3,527 spurious payload findings, 3,495 of them
-	differing first at offset 37 (inside timelastsave) and 27 at offset 49
-	(inside outlinesignature).
+	The regions are NOT hardcoded here. They come from
+	op_packed_header_volatile_regions() (op.h / oppack_v7.c), derived with
+	offsetof()/sizeof() on the real struct. That indirection exists because the
+	first version of this walker DID hardcode them and got them wrong by +6: a
+	local probe of the struct written WITHOUT #pragma pack(2) reported
+	24/32/40/48 with a 1080-byte header, while the real packed layout is
+	18/26/34 with 1068 bytes. The _Static_assert at oppack_v7.c:154 pins 1068
+	and would have caught it. Two silent failures resulted -- timecreated
+	(18-23) was left UNSKIPPED, producing false diffs whenever creation stamps
+	differ, and fltextmode (38-39) was WRONGLY skipped, letting real content
+	compare equal. Deriving from the struct makes that class of error
+	impossible.
 
-	  timecreated       offset 24, 8 bytes   -- creation stamp, per-value
-	  timelastsave      offset 32, 8 bytes   -- rewritten on every save
-	  ctsaves           offset 40, 4 bytes   -- INCREMENTED by oppack itself
-	                                            (oppack_v7.c:622), so it differs
-	                                            even between two packs
-	  outlinesignature  offset 48, 4 bytes   -- caller-defined cookie
+	Excluded, all with demonstrated volatility:
+
+	  timecreated   -- per-value creation stamp
+	  timelastsave  -- rewritten on every save
+	  ctsaves       -- INCREMENTED by oppack itself (oppack_v7.c), so it differs
+	                   even between two packs of one resident value
+
+	NOT excluded: outlinesignature. An earlier version skipped it on the
+	assumption it was volatile. Dumping real packed values from Virgin.root
+	shows it is the constant 'LAND' throughout, and excluding a field with no
+	demonstrated volatility is precisely the silent-false-equality failure this
+	whole exclusion mechanism must avoid. If a signature difference ever appears
+	it should surface as a finding and be attributed, not pre-swallowed.
+
+	Empirical note on the original 3,527 spurious findings: 3,495 first differed
+	at offset 37 and 27 at offset 49. Both are ctsaves -- offset 37 is its last
+	byte in a bare packed outline (34..37), and offset 49 is its last byte
+	inside a packed LIST, displaced by the 12-byte list header (12+34=46..49).
+	The earlier attribution of those to timelastsave and outlinesignature was
+	wrong; the DATA was right, the field names were not.
 
 	timecreated is excluded too: it is per-VALUE provenance metadata that the
 	root-build plan preserves in the manifest (decision 9.4), so it is exactly
@@ -517,31 +577,52 @@ static boolean packoutlinebytes (hdlexternalvariable hv, Handle *hpacked) {
 	NOTE: this makes --diff-roots a CONTENT comparison. A dedicated metadata
 	comparison is a separate tool if one is ever wanted.
 */
-typedef struct tyskipregion {
-	long offset;
-	long length;
-	} tyskipregion;
+#define maxheaderregions 8
 
-static const tyskipregion outlineheaderskips [] = {
-	{24, 8},	/*timecreated*/
-	{32, 8},	/*timelastsave*/
-	{40, 4},	/*ctsaves*/
-	{48, 4}		/*outlinesignature*/
-	};
+static typackedheaderregion g_headerregions [maxheaderregions];
+static long g_ctheaderregions = 0;
+static long g_headerbytes = 0;
+static boolean g_headerregionsready = false;
 
-#define ctoutlineheaderskips ((long) (sizeof (outlineheaderskips) / sizeof (outlineheaderskips [0])))
 
-/*Total packed-outline header size (_Static_assert at oppack_v7.c:154).*/
-#define outlineheaderbytes 1068
+/*
+	Load the volatile-region table once, from oppack_v7.c via offsetof/sizeof on
+	the real struct. Hardcoding these offsets is how the first version of this
+	walker got them wrong by +6: a local probe of the struct WITHOUT
+	#pragma pack(2) reported 24/32/40/48 and a 1080-byte header, when the real
+	packed layout is 18/26/34 and 1068 bytes (the _Static_assert at
+	oppack_v7.c:154 is the invariant that would have caught it).
+
+	Returns false if the table cannot be obtained, in which case the caller
+	compares the whole buffer verbatim -- over-reporting, never under-reporting.
+*/
+static boolean loadheaderregions (void) {
+
+	if (g_headerregionsready)
+		return (g_ctheaderregions > 0);
+
+	g_headerregionsready = true;
+
+	g_ctheaderregions = maxheaderregions;
+
+	if (!op_packed_header_volatile_regions (g_headerregions, &g_ctheaderregions)) {
+		g_ctheaderregions = 0;
+		return (false);
+		}
+
+	g_headerbytes = op_packed_header_size ();
+
+	return (g_ctheaderregions > 0);
+	} /*loadheaderregions*/
 
 
 static boolean inskipregion (long offset) {
 
 	long i;
 
-	for (i = 0; i < ctoutlineheaderskips; i++) {
+	for (i = 0; i < g_ctheaderregions; i++) {
 
-		const tyskipregion *r = &outlineheaderskips [i];
+		const typackedheaderregion *r = &g_headerregions [i];
 
 		if ((offset >= r->offset) && (offset < (r->offset + r->length)))
 			return (true);
@@ -567,6 +648,7 @@ static long outlinecontentdifference (const unsigned char *a, long cta,
                                       long outlinebase) {
 
 	long i;
+	boolean haveregions = loadheaderregions ();
 
 	if (cta != ctb)
 		return ((cta < ctb) ? cta : ctb); /*length difference is a content difference*/
@@ -580,7 +662,9 @@ static long outlinecontentdifference (const unsigned char *a, long cta,
 
 		relative = i - outlinebase;
 
-		if ((relative >= 0) && (relative < outlineheaderbytes) && inskipregion (relative))
+		if (haveregions
+		        && (relative >= 0) && (relative < g_headerbytes)
+		        && inskipregion (relative))
 			continue;
 
 		return (i);
@@ -774,8 +858,8 @@ static void compareexternal (tywalkstate *state, const char *path,
 			boolean oka;
 			boolean okb;
 
-			oka = readstoredbytes (sidea, (**hva).oldaddress, &ha);
-			okb = readstoredbytes (sideb, (**hvb).oldaddress, &hb);
+			oka = readstoredbytes (sidea, storedaddressof (hva), &ha);
+			okb = readstoredbytes (sideb, storedaddressof (hvb), &hb);
 
 			if (!oka || !okb) {
 
