@@ -20,6 +20,7 @@
 #include "standard.h"
 
 #include <stdlib.h>  /* for getenv, setenv */
+#include <string.h>  /* 2026-08-15 JES #891: for strlen in setpendingbrowserurl */
 #include <unistd.h>  /* for fork, execlp, _exit */
 #include <sys/wait.h> /* for waitpid */
 #include "memory.h"
@@ -27,6 +28,7 @@
 #include "lang.h"
 #include "langinternal.h"
 #include "tablestructure.h"
+#include "tableverbs.h"  /* 2026-08-15 JES #891: for findnamedtable */
 #include "sysshellcall.h"
 #include "logging.h"
 #include "langexternal.h"
@@ -71,6 +73,67 @@ static void trimtrailingwhitespace(Handle h) {
         sethandlesize(h, size);
     }
 }
+
+/*
+ * #891: record the URL that wanted a browser at
+ * system.temp.Frontier.pendingBrowserUrl, creating the intervening tables if
+ * needed. Semantics are "last URL that wanted a browser" -- each call
+ * overwrites, and no URL sniffing is done, so first-run flows assert the
+ * setup URL by equality rather than a bare boolean.
+ *
+ * The value is stored as a heap string (newfilledhandle) rather than via the
+ * bigstring assign helpers because a URL can exceed the 255-byte Pascal-string
+ * limit.
+ */
+static boolean setpendingbrowserurl (const char *url) {
+    hdlhashtable httemp;
+    hdlhashtable htfrontier;
+    bigstring bstemp;
+    bigstring bsfrontier;
+    bigstring bsurl;
+    Handle hvalue;
+    tyvaluerecord val;
+    long len;
+
+    if (systemtable == nil)
+        return (false);
+
+    copystring (PSTRING ("\x04", "temp"), bstemp);
+    copystring (PSTRING ("\x08", "Frontier"), bsfrontier);
+    copystring (PSTRING ("\x11", "pendingBrowserUrl"), bsurl);
+
+    if (!findnamedtable (systemtable, bstemp, &httemp)) {
+        if (!tablenewsubtable (systemtable, bstemp, &httemp))
+            return (false);
+    }
+
+    if (!findnamedtable (httemp, bsfrontier, &htfrontier)) {
+        if (!tablenewsubtable (httemp, bsfrontier, &htfrontier))
+            return (false);
+    }
+
+    len = (long) strlen (url);
+
+    if (!newfilledhandle ((ptrvoid) url, len, &hvalue))
+        return (false);
+
+    if (!setheapvalue (hvalue, stringvaluetype, &val)) {
+        disposehandle (hvalue);
+        return (false);
+    }
+
+    if (!hashtableassign (htfrontier, bsurl, val)) {
+        disposehandle (hvalue);
+        return (false);
+    }
+
+    /* The table now owns the handle; keep it off the tmp stack so it is not
+     * released out from under the marker. */
+    exemptfromtmpstack (&val);
+
+    return (true);
+} /*setpendingbrowserurl*/
+
 
 /* Helper function to safely escape shell arguments for single-quote wrapping
  * Converts: foo'bar -> 'foo'\''bar'
@@ -642,8 +705,23 @@ static boolean sys_valueproc(short token, hdltreenode hparam1,
              * Uses fork/execlp to avoid shell injection.
              * Respects --browser CLI arg via system.environment.args.browser:
              *   "agent-browser" → execlp("agent-browser", "agent-browser", "open", url)
-             *   "default" or absent → execlp("open", "open", url) on macOS
-             * See shellsysverbs.c openurlfunc for the equivalent classic implementation.
+             *   "allow-gui" → execlp("open", "open", url) on macOS / xdg-open on Linux
+             *   "default" or absent → no exec; log the URL and record it at
+             *                         system.temp.Frontier.pendingBrowserUrl
+             *
+             * 2026-08-15 JES #891: the headless default no longer execs a host GUI
+             * browser. Legacy Frontier launched the owner's browser at the
+             * setupFrontier page to collect config from the server owner, and that
+             * onboarding intent is preserved -- but a headless/server/CI process has
+             * no human at its desktop, and the daemon host is frequently not the
+             * operator's workstation. The default logs the URL for a remote operator
+             * and records it in the marker; --browser allow-gui restores the launch
+             * for a local desktop-style session.
+             *
+             * TWIN: Common/source/shellsysverbs.c openurlfunc carries the identical
+             * logic for the classic build and must change in lockstep. That file is
+             * NOT in the frontier-cli link (grep frontier-cli/Makefile); this TU is
+             * the one the CLI actually runs.
              */
 
             /* No URL scheme validation — any non-empty string is passed through
@@ -678,6 +756,7 @@ static boolean sys_valueproc(short token, hdltreenode hparam1,
 
                 /* Check --browser arg from system.environment.args */
                 boolean use_agent_browser = false;
+                boolean allow_gui_browser = false;
 
                 {
                     hdlhashnode hnode;
@@ -704,10 +783,13 @@ static boolean sys_valueproc(short token, hdltreenode hparam1,
                                         if (len == (long)(sizeof ("agent-browser") - 1) && memcmp (*vbrowser.data.stringvalue, "agent-browser", sizeof ("agent-browser") - 1) == 0) {
                                             use_agent_browser = true;
                                         }
+                                        else if (len == (long)(sizeof ("allow-gui") - 1) && memcmp (*vbrowser.data.stringvalue, "allow-gui", sizeof ("allow-gui") - 1) == 0) {
+                                            allow_gui_browser = true;
+                                        }
                                         else if (len != (long)(sizeof ("default") - 1) || memcmp (*vbrowser.data.stringvalue, "default", sizeof ("default") - 1) != 0) {
                                             unlockhandle (hurl);
                                             disposehandle (hurl);
-                                            langerrormessage (PSTRING ("\x3f", "Can't open URL: --browser must be \"default\" or \"agent-browser\"."));
+                                            langerrormessage (PSTRING ("\x4c", "Can't open URL: --browser must be \"default\", \"agent-browser\" or \"allow-gui\"."));
                                             return (false);
                                         }
                                     }
@@ -715,6 +797,25 @@ static boolean sys_valueproc(short token, hdltreenode hparam1,
                             }
                         }
                     }
+                }
+
+                /* #891: headless default -- no host GUI browser. Log the URL so a
+                 * remote operator can open it from their own machine, record it for
+                 * flows and tests, and return true: the onboarding step was reached,
+                 * which is what the caller is asking about. */
+                if (!use_agent_browser && !allow_gui_browser) {
+                    boolean flmarked = setpendingbrowserurl (url);
+
+                    log_info (LOG_COMP_GENERAL,
+                              "Frontier first-run: complete setup at %s", url);
+
+                    unlockhandle (hurl);
+                    disposehandle (hurl);
+
+                    if (!flmarked)
+                        return (false);
+
+                    return (setbooleanvalue (true, vreturned));
                 }
 
 #if defined(__APPLE__) || defined(__linux__)
@@ -725,11 +826,13 @@ static boolean sys_valueproc(short token, hdltreenode hparam1,
                     pid_t pid2 = fork ();
 
                     if (pid2 == 0) {
-                        /* All execlp calls rely on a trusted PATH. */
+                        /* All execlp calls rely on a trusted PATH.
+                         * Only reachable when an opt-in was named: the default
+                         * returned above without forking (#891). */
                         if (use_agent_browser) {
                             execlp ("agent-browser", "agent-browser", "open", url, NULL);
                         }
-                        else {
+                        else { /* allow_gui_browser */
 #ifdef __APPLE__
                             execlp ("open", "open", url, NULL);
 #else
