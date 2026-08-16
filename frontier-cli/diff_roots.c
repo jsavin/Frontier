@@ -498,6 +498,22 @@ static boolean packoutlinebytes (hdlexternalvariable hv, Handle *hpacked) {
 	the kind of thing that legitimately differs between a built root and its
 	ancestor without the CONTENT differing.
 
+	CONSEQUENCE, stated plainly so it is not later mistaken for a hole:
+	excluding timecreated/timelastsave makes this tool BLIND TO CREATE/MOD-DATE
+	DRIFT BY DESIGN. That is correct for Step 1 drift detection -- a re-saved
+	root with identical content must compare equal, or the acceptance gate is
+	useless. Dates are covered long-term by plan decision 9.4: the exporter
+	preserves per-value dates in the source manifests, so the round-trip law
+	checks them AS MANIFEST TEXT, not as packed bytes. Content equality here,
+	date equality there; neither check subsumes the other.
+
+	Packed LISTS inherit these same fields, because oppacklist emits a list
+	header followed by a packed outline (oplist.c:708-711). The displacement is
+	READ FROM THE LIST HEADER'S OWN recordsize field (oplist.c:88, "number of
+	bytes in this header") rather than hardcoded -- see listoutlinebase() -- so
+	the walker cannot silently drift out of agreement with the format if
+	tydisklistrecord changes shape.
+
 	NOTE: this makes --diff-roots a CONTENT comparison. A dedicated metadata
 	comparison is a separate tool if one is ever wanted.
 */
