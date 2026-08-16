@@ -171,7 +171,31 @@ static void report (tywalkstate *state, tydiffkind kind, const char *path,
 	if (state->options->flquiet)
 		return;
 
-	fprintf (state->out, "%-16s %s", diff_roots_kindname (kind), path);
+	fprintf (state->out, "%-16s ", diff_roots_kindname (kind));
+
+	/*
+	High-bit bytes are escaped HERE, at the report layer only.
+
+	The shared name codec (ut_pct_encode_segment) passes >= 0x80 through
+	untouched, and that is correct -- it is a lossless bijection used for
+	filesystem paths, and MacRoman bytes must survive it byte-for-byte (#880).
+	But a terminal will render those bytes through whatever locale it happens
+	to have, so a REPORT that emits them raw is ambiguous to read and unsafe to
+	paste into a bug. Escaping at the point of display keeps the stored path
+	lossless everywhere else -- the finding handed to a callback still carries
+	the raw bytes.
+	*/
+	{
+	const unsigned char *p;
+
+	for (p = (const unsigned char *) path; *p != '\0'; p++) {
+
+		if (*p >= 0x80)
+			fprintf (state->out, "%%%02X", (unsigned) *p);
+		else
+			fputc ((int) *p, state->out);
+		}
+	}
 
 	if ((kind == diffkind_type) || (kind == diffkind_unsupported))
 		fprintf (state->out, "  A=%s B=%s", finding.typea, finding.typeb);
@@ -477,7 +501,15 @@ static boolean inlineequal (const tyvaluerecord *a, const tyvaluerecord *b, bool
 			return (true);
 
 		case singlevaluetype:
-			*pequal = ((*a).data.singlevalue == (*b).data.singlevalue);
+			/*
+			memcmp, not ==. This is a STORED-BYTES comparison, and float
+			equality is the wrong predicate for it twice over: NaN != NaN would
+			report two identical stored values as different, and +0.0 == -0.0
+			would report two different stored values as identical. Comparing
+			the bytes answers the question actually being asked.
+			*/
+			*pequal = (memcmp (&(*a).data.singlevalue, &(*b).data.singlevalue,
+			                   sizeof ((*a).data.singlevalue)) == 0);
 			return (true);
 
 		case pointvaluetype:
@@ -901,9 +933,19 @@ static void compareexternal (tywalkstate *state, const char *path,
 			}
 
 		default:
+			/*
+			Reached only by external kinds that do not occur in any shipped
+			root: the 2026-08-11 census records no pict (and no filespec, alias
+			or code scalars) across Virgin.root, mainResponder.root or
+			manila.root. Rather than write comparison code that cannot be
+			exercised -- and so cannot be trusted when it finally is -- these
+			fail loudly with the path, which is the documented contract. The
+			first root that carries one turns into a red build naming exactly
+			what to implement.
+			*/
 			report (state, diffkind_unsupported, path,
 			        typename_for (vala), typename_for (valb), -1, -1, -1,
-			        "unhandled external kind");
+			        "unhandled external kind (not present in any shipped root)");
 			return;
 		}
 	} /*compareexternal*/
@@ -1138,6 +1180,32 @@ static int comparenames (const unsigned char *bsa, const unsigned char *bsb) {
 
 
 /*
+	Exact buffer size for `parent` + '.' + one encoded segment + NUL.
+
+	The buffer GROWS with the path instead of sitting at a fixed cap. A diff
+	tool must never fail to NAME a path, and a fixed cap silently converts a
+	deep path into an unreportable one -- the failure mode both existing ODB
+	walkers have (main.c:2429, langhash.c:297). Worst case per segment is three
+	characters per raw byte, when every byte percent-escapes.
+
+	maxdiffpath survives only as a sanity ceiling for absurd input, not as the
+	working size.
+*/
+static size_t pathbufsize (const char *parent, size_t namelen) {
+
+	size_t need = strlen (parent) + 1 /*separator*/ + (namelen * 3) + 1 /*NUL*/;
+
+	if (need < 64)
+		need = 64;
+
+	if (need > (size_t) maxdiffpath)
+		need = (size_t) maxdiffpath;
+
+	return (need);
+	} /*pathbufsize*/
+
+
+/*
 	One table entry, buffered so a table can be sorted by name before matching.
 	`name` is a COPY of the node's Pascal key -- gethashkey writes into a
 	caller-supplied bigstring, so the bytes must be captured rather than
@@ -1210,7 +1278,7 @@ static boolean collectnodes (hdlhashtable htable, tynodeentry **pentries, long *
 	} /*collectnodes*/
 
 
-static void reportsubtree (tywalkstate *state, const char *parentpath,
+static void reportsubtree (tywalkstate *state, tyrootside *side, const char *parentpath,
                            hdlhashnode node, tydiffkind kind, int depth);
 
 
@@ -1218,7 +1286,7 @@ static void reportsubtree (tywalkstate *state, const char *parentpath,
 	Report an entire present-on-one-side-only subtree, so a missing table is
 	not reported as a single line that hides thousands of values.
 */
-static void reportonlyside (tywalkstate *state, const char *parentpath,
+static void reportonlyside (tywalkstate *state, tyrootside *side, const char *parentpath,
                             const unsigned char *bsname, const tyvaluerecord *val,
                             tydiffkind kind, hdlhashnode node, int depth) {
 
@@ -1229,7 +1297,8 @@ static void reportonlyside (tywalkstate *state, const char *parentpath,
 	frame overflows the 8 MB default stack well before that depth. Learned the
 	hard way: the first build segfaulted here on manila.root.
 	*/
-	char *path = (char *) malloc (maxdiffpath);
+	size_t pathsz = pathbufsize (parentpath, (size_t) bsname [0]);
+	char *path = (char *) malloc (pathsz);
 
 	if (path == NULL) {
 		report (state, diffkind_unreadable, parentpath, "-", "-", -1, -1, -1,
@@ -1237,9 +1306,9 @@ static void reportonlyside (tywalkstate *state, const char *parentpath,
 		return;
 		}
 
-	snprintf (path, maxdiffpath, "%s", parentpath);
+	snprintf (path, pathsz, "%s", parentpath);
 
-	if (!diff_roots_appendsegment (path, maxdiffpath,
+	if (!diff_roots_appendsegment (path, pathsz,
 	                               (const char *) &bsname [1], (size_t) bsname [0])) {
 		report (state, diffkind_unreadable, parentpath, "-", "-", -1, -1, -1,
 		        "path too long to report");
@@ -1252,13 +1321,13 @@ static void reportonlyside (tywalkstate *state, const char *parentpath,
 	        (kind == diffkind_only_in_b) ? typename_for (val) : "-",
 	        -1, -1, -1, NULL);
 
-	reportsubtree (state, path, node, kind, depth);
+	reportsubtree (state, side, path, node, kind, depth);
 
 	free (path);
 	} /*reportonlyside*/
 
 
-static void reportsubtree (tywalkstate *state, const char *parentpath,
+static void reportsubtree (tywalkstate *state, tyrootside *side, const char *parentpath,
                            hdlhashnode node, tydiffkind kind, int depth) {
 
 	tyvaluerecord *val;
@@ -1279,8 +1348,21 @@ static void reportsubtree (tywalkstate *state, const char *parentpath,
 	if ((hv == nil) || ((**hv).id != idtableprocessor))
 		return;
 
-	if (!(**hv).flinmemory)
-		return; /*not loaded on this side; the table itself was already reported*/
+	if (!(**hv).flinmemory) {
+
+		/*
+		Materialize rather than stop. Returning here would silently truncate
+		the report: the table itself was named, but none of the values beneath
+		it would be -- so a present-on-one-side-only subtree would look far
+		smaller than it is. That is the same blind spot the .ut exporter has
+		(main.c:2444), and a diff tool cannot afford it.
+		*/
+		if (!ensure_external_in_memory (&side->context, hv)) {
+			report (state, diffkind_unreadable, parentpath, "tabl", "tabl", -1, -1, -1,
+			        "subtree could not be loaded to enumerate its contents");
+			return;
+			}
+		}
 
 	child = (hdlhashtable) (**hv).variabledata;
 
@@ -1293,7 +1375,7 @@ static void reportsubtree (tywalkstate *state, const char *parentpath,
 
 		gethashkey (nomad, bsname);
 
-		reportonlyside (state, parentpath, bsname, &(**nomad).val, kind, nomad, depth + 1);
+		reportonlyside (state, side, parentpath, bsname, &(**nomad).val, kind, nomad, depth + 1);
 		}
 	} /*reportsubtree*/
 
@@ -1363,7 +1445,7 @@ static void walkpair (tywalkstate *state, const char *path,
 			order = comparenames (entriesa [ia].name, entriesb [ib].name);
 
 		if (order < 0) {
-			reportonlyside (state, path, entriesa [ia].name,
+			reportonlyside (state, sidea, path, entriesa [ia].name,
 			                &(**(entriesa [ia].node)).val, diffkind_only_in_a,
 			                entriesa [ia].node, depth);
 			ia++;
@@ -1371,7 +1453,7 @@ static void walkpair (tywalkstate *state, const char *path,
 			}
 
 		if (order > 0) {
-			reportonlyside (state, path, entriesb [ib].name,
+			reportonlyside (state, sideb, path, entriesb [ib].name,
 			                &(**(entriesb [ib].node)).val, diffkind_only_in_b,
 			                entriesb [ib].node, depth);
 			ib++;
@@ -1380,7 +1462,8 @@ static void walkpair (tywalkstate *state, const char *path,
 
 		{
 		/*Heap, not stack -- see the note in reportonlyside.*/
-		char *childpath = (char *) malloc (maxdiffpath);
+		size_t childsz = pathbufsize (path, (size_t) entriesa [ia].name [0]);
+		char *childpath = (char *) malloc (childsz);
 
 		if (childpath == NULL) {
 			free (entriesa);
@@ -1390,9 +1473,9 @@ static void walkpair (tywalkstate *state, const char *path,
 			return;
 			}
 
-		snprintf (childpath, maxdiffpath, "%s", path);
+		snprintf (childpath, childsz, "%s", path);
 
-		if (!diff_roots_appendsegment (childpath, maxdiffpath,
+		if (!diff_roots_appendsegment (childpath, childsz,
 		                               (const char *) &entriesa [ia].name [1],
 		                               (size_t) entriesa [ia].name [0]))
 			report (state, diffkind_unreadable, path, "-", "-", -1, -1, -1,
@@ -1421,15 +1504,37 @@ static void closeside (tyrootside *side) {
 		return;
 
 	/*
-	Point the database globals back at this side before closing, so dbclose
-	tears down the right database when two are open.
+	Full teardown, in this order:
+
+	  databasedata = side  -- dbclose/dbdispose operate on the global, so it
+	                          must name THIS side while two roots are open.
+	  dbclose()            -- flushes the header only (db.c:4823); it does NOT
+	                          free the record or close the file, so stopping
+	                          here leaks both.
+	  dbdispose()          -- frees the databaserecord and sets databasedata to
+	                          nil (db.c:4530-4542).
+	  closefile()          -- releases the file number itself.
+
+	Ordering matters and is not cosmetic: dbzeroreleasestack's comment
+	(db.c:4500-4510) records a real bug where a guard restored databasedata and
+	dbdispose then freed it, leaving a dangling global that segfaulted at exit.
+	So the guard exit must happen AFTER this, never around it -- see
+	diff_roots_compare, which calls closeside for both sides before
+	odb_guard_exit.
 	*/
 	databasedata = side->database;
 
 	dbclose ();
 
+	dbdispose (); /*frees the record and nils databasedata*/
+
+	if (side->fnum != 0)
+		closefile (side->fnum);
+
 	side->flopen = false;
+	side->fnum = 0;
 	side->database = nil;
+	side->hrootvariable = nil;
 	side->roottable = nil;
 	} /*closeside*/
 

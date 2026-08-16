@@ -17,9 +17,17 @@
 	  `list` value HARD-ABORTS through try, #887), no hashgetvaluestring
 	  (deparses and would false-diff). Payloads are compared as stored bytes.
 
-	- BOTH ROOTS OPEN READ-ONLY. Neither file is written, and neither is
-	  dirtied on purpose. dbwrite() itself refuses writes to a flreadonly
-	  database (db.c:715-728), so this is enforced below us as well.
+	- BOTH ROOTS OPEN READ-ONLY. Neither file is written on disk, and the
+	  walker sets no dirty flag itself. dbwrite() refuses writes to a
+	  flreadonly database (db.c:715-728) and dbflushheader skips them
+	  (db.c:855), so the on-disk guarantee is enforced below this layer too.
+
+	  Precisely: the walker DOES bring values into memory (subtables and
+	  outlines must be resident to be compared) and materialization sets
+	  residency flags. What it never does is set a dirty flag, write a block,
+	  or let anything it calls do so -- disk-value reads deliberately stop at
+	  dbrefhandle_context rather than using the kernel resolver, which would
+	  mark the owning table dirty as a side effect (langhash.c:2211).
 
 	- NAMES ARE BYTES. ODB names legitimately contain tabs and raw CR/LF --
 	  Virgin.root has sibling values named with the single bytes 0x0A/0x0B/
