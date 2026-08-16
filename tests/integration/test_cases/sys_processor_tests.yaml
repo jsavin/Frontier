@@ -424,6 +424,19 @@ tests:
     expected_success: true
     expected_result: "http://example.com/second"
 
+  # A table pre-created at the marker path does NOT force the assign-failure
+  # branch in this build: hashassign's protect block is gated on
+  # fllanghashassignprotect, which headless_threadglobals.c:60 initializes to
+  # false (and tableverbs.c:288/294 leaves its only toggles commented out). The
+  # assign therefore succeeds and overwrites the table, verified directly. So
+  # this asserts the observable behavior rather than a failure that cannot occur;
+  # the cleanup correctness of that branch is covered by inspection, not a test.
+  - name: "sys.openUrl - marker overwrites a pre-existing table at its path"
+    description: "hashassign protection is off in headless, so the marker write wins"
+    script: 'if not defined(system.temp.Frontier) {new(tableType, @system.temp.Frontier)};if defined(system.temp.Frontier.pendingBrowserUrl) {delete(@system.temp.Frontier.pendingBrowserUrl)};new(tableType, @system.temp.Frontier.pendingBrowserUrl);sys.openUrl("http://example.com/overwrite");system.temp.Frontier.pendingBrowserUrl'
+    expected_success: true
+    expected_result: "http://example.com/overwrite"
+
   # Sequential tests share one session (#852), so an earlier openUrl case may have
   # left a marker behind. Clear it first: this asserts a rejected URL does not
   # WRITE a marker, which is independent of test ordering.

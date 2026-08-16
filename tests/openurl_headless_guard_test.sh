@@ -21,14 +21,14 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 CLI="$PROJECT_ROOT/frontier-cli/frontier-cli"
-DB="$PROJECT_ROOT/databases/Frontier.root"
+SOURCE_DB="$PROJECT_ROOT/databases/Frontier.root"
 
 if [ ! -x "$CLI" ]; then
     echo "Error: frontier-cli not found at $CLI" >&2
     exit 1
 fi
-if [ ! -f "$DB" ]; then
-    echo "Error: database not found at $DB" >&2
+if [ ! -f "$SOURCE_DB" ]; then
+    echo "Error: database not found at $SOURCE_DB" >&2
     exit 1
 fi
 
@@ -41,14 +41,22 @@ FAILED=0
 
 TESTURL="http://127.0.0.1:5336/setupFrontier"
 
-# Scratch dir holding the PATH stubs and their recording file.
+# Scratch dir holding the PATH stubs, their recording file, and a private copy
+# of the database. The CLI opens the system root read-write, so these runs must
+# never point at the shared working DB in databases/.
 STUBDIR=$(mktemp -d "${TMPDIR:-/tmp}/openurl_guard.XXXXXX")
 RECORD="$STUBDIR/exec_record.txt"
+DB="$STUBDIR/Frontier.root"
 
 cleanup() {
     rm -rf "$STUBDIR"
 }
 trap cleanup EXIT
+
+cp "$SOURCE_DB" "$DB" || {
+    echo "Error: could not copy $SOURCE_DB to the scratch dir" >&2
+    exit 1
+}
 
 # Stub launchers. Named exactly as the ones execlp() resolves through PATH, so
 # a stub firing proves an exec happened and the real browser is never invoked.

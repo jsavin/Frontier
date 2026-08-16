@@ -117,18 +117,25 @@ static boolean setpendingbrowserurl (const char *url) {
     if (!newfilledhandle ((ptrvoid) url, len, &hvalue))
         return (false);
 
-    if (!setheapvalue (hvalue, stringvaluetype, &val)) {
-        disposehandle (hvalue);
+    /* setheapvalue disposes the handle itself on failure (langvalue.c:594 --
+     * "the caller isn't managing the memory any more"), so do NOT dispose here. */
+    if (!setheapvalue (hvalue, stringvaluetype, &val))
         return (false);
-    }
 
     if (!hashtableassign (htfrontier, bsurl, val)) {
-        disposehandle (hvalue);
+        /* val is still on the tmp stack; disposetmpvalue removes it from the
+         * stack AND disposes the handle. A bare disposehandle would leave a
+         * dangling tmp-stack entry. Reachable from script: pre-creating
+         * system.temp.Frontier.pendingBrowserUrl as a table makes hashassign
+         * refuse the non-external-over-external overwrite. */
+        disposetmpvalue (&val);
         return (false);
     }
 
     /* The table now owns the handle; keep it off the tmp stack so it is not
-     * released out from under the marker. */
+     * released out from under the marker. The assign->exempt pair must stay
+     * yield-free: a yield in between could let the tmp stack unwind the value
+     * the table now references. */
     exemptfromtmpstack (&val);
 
     return (true);
@@ -718,10 +725,12 @@ static boolean sys_valueproc(short token, hdltreenode hparam1,
              * and records it in the marker; --browser allow-gui restores the launch
              * for a local desktop-style session.
              *
-             * TWIN: Common/source/shellsysverbs.c openurlfunc carries the identical
-             * logic for the classic build and must change in lockstep. That file is
-             * NOT in the frontier-cli link (grep frontier-cli/Makefile); this TU is
-             * the one the CLI actually runs.
+             * TWIN: Common/source/shellsysverbs.c openurlfunc is the parallel
+             * implementation for the classic build and must change in lockstep.
+             * That file is NOT in the frontier-cli link (grep frontier-cli/Makefile);
+             * this TU is the one the CLI actually runs. The two are NOT observably
+             * identical: the classic path suppresses the exec but does not log the
+             * URL or set the marker, neither being in scope there. Dedup: #893.
              */
 
             /* No URL scheme validation — any non-empty string is passed through
@@ -806,8 +815,13 @@ static boolean sys_valueproc(short token, hdltreenode hparam1,
                 if (!use_agent_browser && !allow_gui_browser) {
                     boolean flmarked = setpendingbrowserurl (url);
 
-                    log_info (LOG_COMP_GENERAL,
-                              "Frontier first-run: complete setup at %s", url);
+                    /* Log only after the marker write succeeded: the log line is
+                     * the operator's instruction to go complete setup, and it must
+                     * not claim the onboarding step was reached when the marker
+                     * flows and tests rely on was never recorded. */
+                    if (flmarked)
+                        log_info (LOG_COMP_GENERAL,
+                                  "Frontier first-run: complete setup at %s", url);
 
                     unlockhandle (hurl);
                     disposehandle (hurl);

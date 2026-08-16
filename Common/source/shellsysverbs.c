@@ -853,10 +853,13 @@ static boolean sysfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord
 			 * restores the launch. GUI builds are unaffected: the whole block is
 			 * inside FRONTIER_HEADLESS.
 			 *
-			 * TWIN: tests/headless_sys_verbs.c case sysv_openurl carries the identical
-			 * logic and must change in lockstep. NOTE that despite living under
-			 * Common/source, THIS file is not linked into frontier-cli (it is absent
-			 * from frontier-cli/Makefile); the headless twin is what the CLI runs.
+			 * TWIN: tests/headless_sys_verbs.c case sysv_openurl is the parallel
+			 * implementation and must change in lockstep. NOTE that despite living
+			 * under Common/source, THIS file is not linked into frontier-cli (it is
+			 * absent from frontier-cli/Makefile); the headless twin is what the CLI
+			 * runs. The two are NOT observably identical: the twin also logs the URL
+			 * and sets system.temp.Frontier.pendingBrowserUrl, neither of which is in
+			 * scope here, so this path only suppresses the exec. Dedup tracked in #893.
 			 */
 
 			Handle hurl;
@@ -889,15 +892,18 @@ static boolean sysfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord
 				 * fall through to the platform default (open/xdg-open).
 				 */
 				/* Always false in non-headless (GUI) builds — the ifdef below
-				 * only sets them in headless mode. In a GUI build both stay false
-				 * and the exec proceeds, which is the correct legacy behavior:
-				 * there IS a human at this machine's desktop. */
+				 * only sets it to true in headless mode. */
 				boolean use_agent_browser = false;
-				boolean allow_gui_browser = false;
+
+				/* Stays false in a GUI build, so the exec proceeds: the correct
+				 * legacy behavior, since there IS a human at this machine's
+				 * desktop. allow_gui_browser is scoped to the headless block
+				 * below, where it is the only place it can be read. */
 				boolean fl_no_exec = false;
 
 #ifdef FRONTIER_HEADLESS
 				{
+					boolean allow_gui_browser = false;
 					hdlhashnode hnode;
 					tyvaluerecord vargs;
 					bigstring bsargs = BIGSTRING ("\x04" "args");
@@ -936,11 +942,11 @@ static boolean sysfunctionvalue (short token, hdltreenode hparam1, tyvaluerecord
 							}
 						}
 					}
-				}
 
-				/* #891: headless default performs no exec. Kept in lockstep with the
-				 * headless twin; see the TWIN note above. */
-				fl_no_exec = !use_agent_browser && !allow_gui_browser;
+					/* #891: headless default performs no exec. Kept in lockstep with
+					 * the headless twin; see the TWIN note above. */
+					fl_no_exec = !use_agent_browser && !allow_gui_browser;
+				}
 #endif
 
 				if (fl_no_exec) {
