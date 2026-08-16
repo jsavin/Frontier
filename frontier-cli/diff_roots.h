@@ -60,6 +60,20 @@
 
 
 /*
+	The exact text emitted when the walker refuses to run because ut-sync is
+	active.
+
+	Exposed so a test can assert on THIS refusal specifically, rather than on
+	"the call returned false" -- which every bad input also produces, and which
+	therefore cannot distinguish a working guard from a missing one. Paired
+	with the guard being checked FIRST in diff_roots_compare, that makes the
+	refusal genuinely observable.
+*/
+#define diff_roots_utsyncrefusal \
+	"--diff-roots refuses to run with UT-sync active (FRONTIER_UT_SYNC_DIR is set)"
+
+
+/*
 	Finding kinds, in the order the reporter prints their names.
 */
 typedef enum tydiffkind {

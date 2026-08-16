@@ -887,11 +887,42 @@ static void compareexternal (tywalkstate *state, const char *path,
 
 			Handle ha = nil;
 			Handle hb = nil;
+			dbaddress adra = storedaddressof (hva);
+			dbaddress adrb = storedaddressof (hvb);
 			boolean oka;
 			boolean okb;
 
-			oka = readstoredbytes (sidea, storedaddressof (hva), &ha);
-			okb = readstoredbytes (sideb, storedaddressof (hvb), &hb);
+			/*
+			NEVER-STORED ON BOTH SIDES.
+
+			With the old nil-means-empty-handle rule removed (it is what made
+			the mbar comparison vacuous), a value with no stored block on
+			EITHER side would otherwise be reported unreadable -- which would
+			break the self-diff law, since a root compared against itself would
+			produce findings.
+
+			Two values that are both genuinely never-stored ARE equal: there is
+			no content on either side to differ. So report no difference, but
+			emit an auditable note naming the path, so the case can be reviewed
+			by a human without the exit code lying in either direction. The
+			note goes to stderr, keeping the findings stream on stdout clean
+			for diffing.
+
+			The shipped roots contain no such values (every mbar and wptx
+			resolves through the variabledata fallback), but the tool has to be
+			correct in general, not just on today's inputs.
+			*/
+			if ((adra == nildbaddress) && (adrb == nildbaddress)) {
+
+				if (!state->options->flquiet)
+					fprintf (stderr, "note: %s never stored on either side (%s); "
+					         "treated as equal\n", path, typename_for (vala));
+
+				return;
+				}
+
+			oka = readstoredbytes (sidea, adra, &ha);
+			okb = readstoredbytes (sideb, adrb, &hb);
 
 			if (!oka || !okb) {
 
@@ -902,8 +933,9 @@ static void compareexternal (tywalkstate *state, const char *path,
 					disposehandle (hb);
 
 				/*
-				Could not read one or both stored blocks. Report rather than
-				assume equality -- an unreadable value is a finding.
+				One side has a stored block the other lacks, or a read failed.
+				Either way this is a real finding, not an equality: reporting
+				it is what keeps a missing value from passing silently.
 				*/
 				report (state, diffkind_unreadable, path,
 				        typename_for (vala), typename_for (valb), -1, -1, -1,
@@ -1631,6 +1663,38 @@ boolean diff_roots_compare (const char *patha, const char *pathb,
 	if (ctfindings != NULL)
 		*ctfindings = 0;
 
+	/*
+	MODE PRECONDITION -- checked FIRST, before any input validation, because it
+	is a statement about whether this mode may run at all, not about whether
+	its arguments are good.
+
+	ut-sync's import hook rewrites outlines, sets dirty flags, and writes
+	.ut-sync-state: all writes, under a mode that promises neither root is
+	touched. cli_validate_options rejects the combination on the CLI path, but
+	this function is callable directly (the unit tests do exactly that), and
+	FRONTIER_UT_SYNC_DIR turns ut-sync on from the environment with no flag on
+	the command line at all.
+
+	Checked via the env var rather than by calling back into the CLI layer:
+	this module must not depend on main.c, and the env var is precisely the
+	source that needs no argument to be present.
+
+	Ordering it first also makes the refusal OBSERVABLE and therefore testable.
+	Behind the argument checks, every input a test can supply is rejected for
+	some other reason first, so a test could not tell this guard from a
+	file-not-found -- verified: with the guard stubbed out, such a test still
+	passed. First position plus the distinct message below means a test can
+	assert on this specific refusal.
+	*/
+	{
+	const char *utsyncenv = getenv ("FRONTIER_UT_SYNC_DIR");
+
+	if ((utsyncenv != NULL) && (utsyncenv [0] != '\0')) {
+		fprintf (err, "%s\n", diff_roots_utsyncrefusal);
+		return (false);
+		}
+	}
+
 	if ((patha == NULL) || (pathb == NULL))
 		return (false);
 
@@ -1643,28 +1707,6 @@ boolean diff_roots_compare (const char *patha, const char *pathb,
 	state.options = options;
 	state.out = (options->out != NULL) ? options->out : stdout;
 	state.ctfindings = 0;
-
-	/*
-	Structural guard, not merely a CLI check. ut-sync's import hook rewrites
-	outlines, sets dirty flags, and writes .ut-sync-state -- all writes, under a
-	mode that promises neither root is touched. cli_validate_options rejects the
-	combination on the CLI path, but this function is callable directly (the
-	unit tests do exactly that), and FRONTIER_UT_SYNC_DIR can turn ut-sync on
-	from the environment with no flag on the command line at all.
-
-	The env var is checked here rather than calling back into the CLI layer:
-	this module must not depend on main.c, and the env var is the source that
-	can be set without anyone passing an argument.
-	*/
-	{
-	const char *utsyncenv = getenv ("FRONTIER_UT_SYNC_DIR");
-
-	if ((utsyncenv != NULL) && (utsyncenv [0] != '\0')) {
-		fprintf (err, "diff-roots: refusing to run with FRONTIER_UT_SYNC_DIR set; "
-		         "ut-sync writes to roots this mode opens read-only\n");
-		return (false);
-		}
-	}
 
 	if (!db_format_prepare_runtime ()) {
 		fprintf (err, "diff-roots: database runtime failed to initialize\n");

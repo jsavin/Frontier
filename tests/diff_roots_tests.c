@@ -33,6 +33,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>	/* setenv/unsetenv for the ut-sync guard tests */
+#include <unistd.h>	/* dup/dup2 for capturing the refusal message */
 
 #include "test_report.h"
 
@@ -225,38 +226,116 @@ static void test_compare_missing_file_is_operational_failure(void) {
 
 /* ---- ut-sync must never be active under a read-only walk ---- */
 
-static void test_compare_refuses_when_ut_sync_env_set(void) {
+/*
+ * Run diff_roots_compare with stderr captured, reporting both the return value
+ * and whether the ut-sync refusal message specifically was emitted.
+ *
+ * Capturing the message is what makes these tests DISCRIMINATE. Asserting only
+ * "returned false" cannot tell a working guard from a missing one, because the
+ * inputs a unit test can supply are rejected for other reasons too -- verified
+ * by stubbing the guard, which left the earlier version of this test passing.
+ */
+static boolean run_compare_capturing_refusal(const char *patha, const char *pathb,
+                                             boolean *psawrefusal) {
 	tydiffoptions options;
 	long ctfindings = -1;
+	char captured[4096];
+	boolean result;
+	int savedfd;
+	FILE *tmp;
+	size_t ct;
 
 	memset(&options, 0, sizeof(options));
 	options.flquiet = true;
+
+	captured[0] = '\0';
+	*psawrefusal = false;
+
+	tmp = tmpfile();
+	assert(tmp != NULL);
+
+	fflush(stderr);
+	savedfd = dup(fileno(stderr));
+	assert(savedfd >= 0);
+	assert(dup2(fileno(tmp), fileno(stderr)) >= 0);
+
+	result = diff_roots_compare(patha, pathb, &options, &ctfindings);
+
+	fflush(stderr);
+	assert(dup2(savedfd, fileno(stderr)) >= 0);
+	close(savedfd);
+
+	rewind(tmp);
+	ct = fread(captured, 1, sizeof(captured) - 1, tmp);
+	captured[ct] = '\0';
+	fclose(tmp);
+
+	*psawrefusal = (strstr(captured, diff_roots_utsyncrefusal) != NULL);
+
+	return (result);
+}
+
+static void test_compare_refuses_when_ut_sync_env_set(void) {
+	boolean sawrefusal = false;
+	boolean result;
 
 	/*
 	 * ut-sync's import hook rewrites outlines, sets dirty flags, and writes
 	 * .ut-sync-state -- writes, under a mode whose contract is that neither
 	 * root is touched. The CLI rejects the combination, but this entry point is
-	 * callable directly and FRONTIER_UT_SYNC_DIR can enable ut-sync with no
-	 * flag on the command line, so the refusal also lives inside the walker.
+	 * callable directly and FRONTIER_UT_SYNC_DIR enables ut-sync with no flag
+	 * on the command line, so the refusal also lives inside the walker.
 	 *
-	 * HONEST SCOPE OF THIS TEST: it asserts the call is refused, but it cannot
-	 * prove the ut-sync guard specifically is what refused it. Every input a
-	 * unit test can supply without shipping a multi-MB fixture (missing file,
-	 * non-v7 file) is rejected by an earlier check anyway, so a mutation that
-	 * removes the guard still leaves this passing -- verified, it did.
-	 *
-	 * The guard's real proof is at the acceptance layer, where the CLI is run
-	 * with FRONTIER_UT_SYNC_DIR set against two genuine v7 roots that otherwise
-	 * compare clean, and the run is rejected. This case is kept as a
-	 * regression tripwire for the refusal contract (operational failure ->
-	 * false, never "a diff with findings"), not as proof of the mechanism.
+	 * The paths are deliberately BOGUS, which is what makes this test prove
+	 * something. The guard is a mode precondition checked BEFORE any argument
+	 * validation, so with the guard present the call is refused for ut-sync;
+	 * with the guard removed the same call fails on the missing file and emits
+	 * no refusal message, and the second assertion catches that.
 	 */
 	setenv("FRONTIER_UT_SYNC_DIR", "/tmp/diff-roots-must-refuse", 1);
 
-	assert(!diff_roots_compare("/nonexistent/a.root", "/nonexistent/b.root",
-	                           &options, &ctfindings));
+	result = run_compare_capturing_refusal("/nonexistent/a.root",
+	                                       "/nonexistent/b.root", &sawrefusal);
 
 	unsetenv("FRONTIER_UT_SYNC_DIR");
+
+	assert(!result);	/*operational failure, never "a diff with findings"*/
+	assert(sawrefusal);	/*and refused for THIS reason, not some other*/
+}
+
+static void test_compare_without_ut_sync_fails_for_other_reasons(void) {
+	boolean sawrefusal = true;
+	boolean result;
+
+	/*
+	 * The discriminating half: identical bogus paths, env var absent. Still an
+	 * operational failure (missing file), but it must NOT be the ut-sync
+	 * refusal -- otherwise the guard fires when it should not, and the test
+	 * above would be passing for the wrong reason.
+	 */
+	unsetenv("FRONTIER_UT_SYNC_DIR");
+
+	result = run_compare_capturing_refusal("/nonexistent/a.root",
+	                                       "/nonexistent/b.root", &sawrefusal);
+
+	assert(!result);
+	assert(!sawrefusal);
+}
+
+static void test_compare_ignores_empty_ut_sync_env(void) {
+	boolean sawrefusal = true;
+	boolean result;
+
+	/* An empty value means the feature is off; it must not trip the guard. */
+	setenv("FRONTIER_UT_SYNC_DIR", "", 1);
+
+	result = run_compare_capturing_refusal("/nonexistent/a.root",
+	                                       "/nonexistent/b.root", &sawrefusal);
+
+	unsetenv("FRONTIER_UT_SYNC_DIR");
+
+	assert(!result);
+	assert(!sawrefusal);
 }
 
 /* ---- packed-header volatile regions: pinned to the real struct ---- */
@@ -373,6 +452,8 @@ int main(void) {
 	TR_RUN(test_appendsegment_overflow_reports_and_preserves);
 	TR_RUN(test_compare_missing_file_is_operational_failure);
 	TR_RUN(test_compare_refuses_when_ut_sync_env_set);
+	TR_RUN(test_compare_without_ut_sync_fails_for_other_reasons);
+	TR_RUN(test_compare_ignores_empty_ut_sync_env);
 	TR_RUN(test_packed_header_size_matches_format);
 	TR_RUN(test_volatile_regions_are_the_proven_three);
 	TR_RUN(test_volatile_regions_exclude_fltextmode);
