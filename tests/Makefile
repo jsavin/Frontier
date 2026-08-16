@@ -279,6 +279,14 @@ oppack_tests: oppack_tests.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable \
 		oppack_tests.c $(LANG_RUNTIME_SOURCES) ../frontier-cli/stubs/headless_shell.c -o $@ $(LINK_LIBS)
 
+# Determinism spike for --diff-roots (root-build Step 1). Deliberately NOT in
+# RUN_BUILDABLE: it takes a .root path argument and is run by hand to qualify
+# oppackoutline as the equality basis for script/outline/menubar values.
+# See tests/diff_roots_spike.c header for what it proves and why.
+diff_roots_spike: diff_roots_spike.c
+	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable -I../frontier-cli \
+		diff_roots_spike.c $(LANG_RUNTIME_SOURCES) ../frontier-cli/stubs/headless_shell.c -o $@ $(LINK_LIBS)
+
 hashpack_modern_tests: hashpack_modern_tests.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable \
 		hashpack_modern_tests.c $(LANG_RUNTIME_SOURCES) ../frontier-cli/stubs/headless_shell.c -o $@ $(LINK_LIBS)
