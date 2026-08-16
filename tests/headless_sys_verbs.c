@@ -125,9 +125,16 @@ static boolean setpendingbrowserurl (const char *url) {
     if (!hashtableassign (htfrontier, bsurl, val)) {
         /* val is still on the tmp stack; disposetmpvalue removes it from the
          * stack AND disposes the handle. A bare disposehandle would leave a
-         * dangling tmp-stack entry. Reachable from script: pre-creating
-         * system.temp.Frontier.pendingBrowserUrl as a table makes hashassign
-         * refuse the non-external-over-external overwrite. */
+         * dangling tmp-stack entry.
+         *
+         * The headless trigger for this branch is allocation failure inside
+         * hashassign (newhashnode). The protect-block refusal path
+         * (non-external value over an external one) does NOT apply here: it is
+         * gated on fllanghashassignprotect, which is false in this build --
+         * tests/headless_threadglobals.c:60 initializes it false and the only
+         * toggles, tableverbs.c:288/294, are commented out. Verified live: with
+         * pendingBrowserUrl pre-created as a table, the assign SUCCEEDS and
+         * overwrites it (covered by an integration case). */
         disposetmpvalue (&val);
         return (false);
     }
