@@ -1,7 +1,7 @@
 # Root-Build-From-Source Implementation Plan
 
 Status
-- State: Draft (decision 9.6 resolved: sources/; 9.1-9.5, 9.7 open)
+- State: Active (decisions resolved: 9.4 preserve-dates, 9.6 sources/, 9.7 UTF-8-migration [2026-08-15, maintainer]; 9.1 colocated / 9.2 name:type=value / 9.3 RTF-when-styled / 9.5 short-transition adopted per recommendation without objection [reversible]. Step 1 dispatched 2026-08-15.)
 - Phase: Cross-cutting infrastructure (post-Phase-3 wave)
 - Last Updated: 2026-08-11
 - Notes: Maintainer directive 2026-08-11: get out of diff-against-binary; make .root files generateable from sources. This doc is the granular landing plan. Census (in flight) and provenance results refine scope numbers, not the design.
@@ -145,10 +145,10 @@ Parsing is a small dedicated reader in the build tool — NOT the interpreter (n
 1. **Asset placement:** colocated (`inetd/ftpText.bin` next to its manifest — my recommendation: locality wins) vs a parallel `assets/` tree.
 2. **Manifest syntax:** the `name : type = value` line format above (my recommendation) vs pure UserTalk record literal blocks vs OPML. Criteria: line-diff = value-diff; no interpreter needed; greppable.
 3. **wptext form:** RTF file when styled, plain .txt when not (my recommendation) vs always-RTF.
-4. **Per-value modification dates:** preserve in manifest (keeps the 25-year history that scripts carry — my recommendation) vs regenerate at build (cleaner but lossy). Affects determinism: preserved dates make builds fully deterministic; regenerated dates need a pinned build timestamp.
+4. **Per-value modification dates:** DECIDED 2026-08-15 (maintainer): PRESERVE in manifest. Keeps UserLand-era provenance (per-VALUE mod/create dates back to the 1990s; `timeModified(@adr)`) and makes builds fully deterministic with no build-time clock. Git blame carries OUR history; the manifest carries UserLand's.
 5. **Transition length (Step 6):** one wave of dual-source with drift check (my recommendation — short; the walker makes long overlap pointless) vs longer.
 6. **Tree root name:** DECIDED 2026-08-11 (maintainer): `sources/`. Existing `usertalk_scripts/` history carries over via `git mv` during Step 2.
-7. **Codepage (added 2026-08-11):** sources stay MacRoman-bytes-with-tooling-enforcement forever, vs a deliberate UTF-8 migration for UserTalk source with conversion at the build/runtime seam. Affects human/agent editing ergonomics for every text file in `sources/`. OPEN.
+7. **Codepage:** DECIDED 2026-08-15 (maintainer): UTF-8 MIGRATION, as its own gated unit. `sources/` is UTF-8; the assembler converts to MacRoman on the way into the root; the exporter converts on the way out. Makes UserTalk source natively editable by humans and agents and permanently kills the #880 mangling class. Treated as a first-class unit with its own round-trip proof (byte-exact MacRoman round-trip through UTF-8 for the full corpus, including the 0xC7 comment marker, guillemets, and every high-bit byte the census found) and its own gate. Sequencing: the conversion layer must exist and be proven BEFORE Step 2 (exporter) emits a tree, so the tree is born UTF-8 rather than converted later.
 
 ## 9.5 Workflow contract after the flip (added 2026-08-11)
 
