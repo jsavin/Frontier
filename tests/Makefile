@@ -223,7 +223,7 @@ USERTALK_OBJECT_TESTS = \
 	test_usertalk_runner
 
 # Buildable test executables on this branch
-RUN_BUILDABLE = core_tests db_format_tests runtime_tests parser_tests save_migration_tests test_efp_augmentation file_portable_tests file_readline_tests file_verb_tests handle_tests cli_runtime_tests paige_text_tests oppack_tests hashpack_modern_tests hash_corruption_tests langvalue_64_tests table_operations_integration refcon_tests refcon_phase2_tests op_context_tests table_context_tests time_portability_test test_sys_shell_command_verbs headless_selection_tests opattributes_stub_tests headless_thread_registry_tests test_callback_infrastructure tcp_phase1a_unit_tests menu_v7_refcon_tests menudata_headless_tests menu_list_describe_tests meuserselected_headless_tests test_stringerrorlist pane_compositor_tests mouse_parser_tests terminal_control_tests terminal_control_dsr_tests palette_state_tests palette_render_snapshot_tests palette_render_backend_tests palette_arg_inject_tests palette_arg_inject_concurrency_tests repl_palette_source_tests repl_verbs_tests repl_slash_resolver_tests scrollback_pane_tests lang_causedby_snapshot_tests test_getsystemtablescript test_window_bridge copyctopstring_tests ut_sync_canonicalize_tests ut_sync_pathmap_tests ut_sync_pctcodec_tests ut_sync_export_tests ut_sync_decanonicalize_tests ut_sync_import_tests boxen_backend_tests boxen_core_tests boxen_input_tests boxen_resize_tests boxen_scroll_tests boxen_chrome_tests boxen_cursor_tests debugger_tui_tests boxen_repl_tests boxen_outline_tests input_decoder_tests
+RUN_BUILDABLE = core_tests db_format_tests runtime_tests parser_tests save_migration_tests test_efp_augmentation file_portable_tests file_readline_tests file_verb_tests handle_tests cli_runtime_tests paige_text_tests oppack_tests hashpack_modern_tests hash_corruption_tests langvalue_64_tests table_operations_integration refcon_tests refcon_phase2_tests op_context_tests table_context_tests time_portability_test test_sys_shell_command_verbs headless_selection_tests opattributes_stub_tests headless_thread_registry_tests test_callback_infrastructure tcp_phase1a_unit_tests menu_v7_refcon_tests menudata_headless_tests menu_list_describe_tests meuserselected_headless_tests test_stringerrorlist pane_compositor_tests mouse_parser_tests terminal_control_tests terminal_control_dsr_tests palette_state_tests palette_render_snapshot_tests palette_render_backend_tests palette_arg_inject_tests palette_arg_inject_concurrency_tests repl_palette_source_tests repl_verbs_tests repl_slash_resolver_tests scrollback_pane_tests lang_causedby_snapshot_tests test_getsystemtablescript test_window_bridge copyctopstring_tests ut_sync_canonicalize_tests ut_sync_pathmap_tests ut_sync_pctcodec_tests ut_sync_export_tests ut_sync_decanonicalize_tests ut_sync_import_tests diff_roots_tests boxen_backend_tests boxen_core_tests boxen_input_tests boxen_resize_tests boxen_scroll_tests boxen_chrome_tests boxen_cursor_tests debugger_tui_tests boxen_repl_tests boxen_outline_tests input_decoder_tests
 # Note: table_verb_tests skipped - pre-existing macOS path detection issue
 # Note: test_error_messages skipped - needs full runtime linking (tracked in separate task)
 # Note: test_table_sorting skipped - script execution errors cause segfault (Issue #449)
@@ -278,6 +278,22 @@ db_format_tests: db_format_tests.c
 oppack_tests: oppack_tests.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable \
 		oppack_tests.c $(LANG_RUNTIME_SOURCES) ../frontier-cli/stubs/headless_shell.c -o $@ $(LINK_LIBS)
+
+# --diff-roots equality walker (root-build Step 1).
+# oppack_v7.c is a listed prerequisite because it supplies the packed-header
+# volatile-region table these tests pin; without it a stale binary silently
+# passes after that table changes (observed during the fix round).
+diff_roots_tests: diff_roots_tests.c ../frontier-cli/diff_roots.c ../frontier-cli/diff_roots.h ../Common/source/oppack_v7.c ../Common/headers/op.h
+	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable -I../frontier-cli \
+		diff_roots_tests.c ../frontier-cli/diff_roots.c $(LANG_RUNTIME_SOURCES) ../frontier-cli/stubs/headless_shell.c -o $@ $(LINK_LIBS)
+
+# Determinism spike for --diff-roots (root-build Step 1). Deliberately NOT in
+# RUN_BUILDABLE: it takes a .root path argument and is run by hand to qualify
+# oppackoutline as the equality basis for script/outline/menubar values.
+# See tests/diff_roots_spike.c header for what it proves and why.
+diff_roots_spike: diff_roots_spike.c
+	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable -I../frontier-cli \
+		diff_roots_spike.c $(LANG_RUNTIME_SOURCES) ../frontier-cli/stubs/headless_shell.c -o $@ $(LINK_LIBS)
 
 hashpack_modern_tests: hashpack_modern_tests.c
 	$(CC) $(CFLAGS) -DFRONTIER_HEADLESS -I../Common/headers -I../Common/SystemHeaders -I../portable \
@@ -894,6 +910,14 @@ test-custom-args:
 test-openurl-guard:
 	@echo "Running headless sys.openUrl guard tests..."
 	@./openurl_headless_guard_test.sh
+
+# Behavioral fixtures for --diff-roots (root-build Step 1). Every compare path is
+# proven by a root that DIFFERS in one known way -- the gate found two P0s that
+# survived agreement-only evidence. Fixtures are generated at run time from
+# databases/StartupTasks.root; no binary fixtures are committed.
+test-diff-roots-fixtures:
+	@echo "Running diff-roots behavioral fixture tests..."
+	@./diff_roots_fixtures_test.sh
 
 # Run REPL selection flag tests (shell-based, uses -e mode + --help)
 # 2026-06-25 JES C.6 #691: covers --plain / --debug-tui / --protocol

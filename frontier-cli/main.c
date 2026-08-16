@@ -92,6 +92,7 @@
 // CLI-specific headers
 #include "ut_sync.h"
 #include "ut_scan.h"
+#include "diff_roots.h"
 #include "cli_parser.h"
 #include "cli_executor.h"
 #include "cli_utils.h"
@@ -845,10 +846,21 @@ int main(int argc, char* argv[]) {
 
 	// Parse command line arguments
 	if (!cli_parse_arguments(argc, argv, &g_cli_options)) {
+		/*
+		 * --diff-roots exits 2 for ANY operational failure, including one
+		 * detected during argument validation (an unreadable root is rejected
+		 * there, not by the walker). Without this, a missing or unreadable
+		 * database would exit 1 -- indistinguishable from "differences found",
+		 * so a broken CI drift check would read as a real drift report. The
+		 * mode is read before cli_free_options frees it.
+		 */
+		boolean diff_roots_mode = (g_cli_options.diff_roots_a != NULL)
+		                          || (g_cli_options.diff_roots_b != NULL);
+
 		log_error(LOG_COMP_GENERAL, "Error: Invalid command line arguments");
 		print_usage(argv[0]);
 		cli_free_options(&g_cli_options); /* honor parse-failure cleanup contract */
-		return 1;
+		return diff_roots_mode ? 2 : 1;
 	}
 
 	// Apply --log spec if provided (overrides env var settings)
@@ -865,6 +877,48 @@ int main(int argc, char* argv[]) {
 	if (g_cli_options.show_version) {
 		print_version();
 		return 0;
+	}
+
+	/*
+	 * Handle --diff-roots mode: compare two roots read-only and exit.
+	 *
+	 * Placed in the same early-exit band as --migrate, and for the same
+	 * reason: it returns directly from main(), so it never reaches
+	 * initialize_frontier_runtime() and therefore never reaches the
+	 * save-system-root-on-exit path. Nothing here boots the interpreter or
+	 * runs startup scripts; diff_roots_compare() opens both databases
+	 * read-only and walks them in pure C.
+	 *
+	 * Exit codes: 0 = empty diff, 1 = differences found, 2 = operational
+	 * failure (cannot open, not v7, walk aborted). Callers -- CI drift checks
+	 * and the round-trip acceptance law -- depend on 1 and 2 being distinct;
+	 * a broken check must never look like a clean comparison.
+	 */
+	if (g_cli_options.diff_roots_a != NULL) {
+		long ctfindings = 0;
+		tydiffoptions diffoptions;
+		boolean walked;
+
+		memset(&diffoptions, 0, sizeof(diffoptions));
+		diffoptions.out = stdout;
+
+		walked = diff_roots_compare(g_cli_options.diff_roots_a,
+		                            g_cli_options.diff_roots_b,
+		                            &diffoptions, &ctfindings);
+
+		if (!walked) {
+			cli_free_options(&g_cli_options);
+			return 2;
+		}
+
+		if (ctfindings == 0)
+			fprintf(stderr, "no differences\n");
+		else
+			fprintf(stderr, "%ld difference%s\n", ctfindings, (ctfindings == 1) ? "" : "s");
+
+		cli_free_options(&g_cli_options);
+
+		return (ctfindings == 0) ? 0 : 1;
 	}
 
 	/* Handle --migrate mode: migrate database to v7 and exit */
@@ -1332,6 +1386,10 @@ static void print_usage(const char* program_name) {
 	printf("  --non-interactive		   Alias for --batch\n");
 	printf("  --migrate PATH		   Migrate v6 database to v7 format and exit\n");
 	printf("  --output PATH			   Output path for migrated database (default: in-place, v6 backed up)\n");
+	printf("  --diff-roots PATH	   Compare two v7 roots value-by-value and exit. Requires\n");
+	printf("						   --against. Both are opened READ-ONLY and never written.\n");
+	printf("						   Exit 0 = identical, 1 = differences found, 2 = error.\n");
+	printf("  --against PATH		   The second root to compare (used with --diff-roots)\n");
 	printf("  -f, --force			   Overwrite existing output file (only applies with --output)\n");
 	printf("  --skip-startup		   Skip system.startup scripts (they run by default)\n");
 	printf("  --output-json			   Output results in JSON format\n");
