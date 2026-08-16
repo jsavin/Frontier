@@ -214,10 +214,6 @@ static void walktable (hdlhashtable htable, char *path, size_t pathsz, int depth
 		snprintf (childpath, sizeof (childpath), "%s", path);
 		appendsegment (childpath, sizeof (childpath), bsname);
 
-		if (getenv ("SPIKE_TRACE") != NULL) {
-			fprintf (stderr, "TRACE %s type=%d\n", childpath, (int) (*val).valuetype);
-			fflush (stderr);
-			}
 
 		if ((*val).valuetype != externalvaluetype)
 			continue;
@@ -271,10 +267,6 @@ static void walktable (hdlhashtable htable, char *path, size_t pathsz, int depth
 
 			if (!(**hv).flinmemory) {
 
-				if (getenv ("SPIKE_TRACE") != NULL) {
-					fprintf (stderr, "  materialize extid=%d %s\n", (int) extid, childpath);
-					fflush (stderr);
-					}
 
 				if (!ensure_external_in_memory (&g_walkcontext, hv)) {
 					printf ("LOADFAIL\t%s\textid=%d\n", childpath, (int) extid);
@@ -282,10 +274,6 @@ static void walktable (hdlhashtable htable, char *path, size_t pathsz, int depth
 					}
 				}
 
-			if (getenv ("SPIKE_TRACE") != NULL) {
-				fprintf (stderr, "  pack extid=%d %s\n", (int) extid, childpath);
-				fflush (stderr);
-				}
 
 			packone (hv, extid, childpath);
 			}
@@ -362,16 +350,6 @@ static boolean loadandpack (const char *cpath) {
 
 	path [0] = '\0';
 
-	{
-	long ctnodes = 0;
-	hdlhashnode n;
-
-	for (n = (**hroot).hfirstsort; n != nil; n = (**n).sortedlink)
-		ctnodes++;
-
-	fprintf (stderr, "spike: root table adr=0x%llx has %ld top-level nodes\n",
-	         (unsigned long long) rootaddress, ctnodes);
-	}
 
 	walktable (hroot, path, sizeof (path), 0);
 

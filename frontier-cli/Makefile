@@ -130,6 +130,7 @@ CLI_SOURCES = \
     window_registry.c \
     ut_sync.c \
     ut_scan.c \
+    diff_roots.c \
     debugger_tui.c \
     boxen_repl.c \
     boxen_completion_popup.c \

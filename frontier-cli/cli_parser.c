@@ -167,6 +167,35 @@ boolean cli_validate_options(const cli_options_t* options) {
 	boolean hydration_mode = options->hydrate_system_root;
 	boolean migrate_mode = (options->migrate_database != NULL);
 
+	/* --diff-roots mode: compare two roots read-only and exit. Both paths are
+	   required and both must be readable; the walker never writes either. */
+	if (options->diff_roots_a != NULL) {
+		if (options->diff_roots_b == NULL) {
+			log_error(LOG_COMP_GENERAL, "Error: --diff-roots requires --against <other.root>");
+			return false;
+		}
+		if (!cli_file_exists(options->diff_roots_a) || !cli_file_readable(options->diff_roots_a)) {
+			log_error(LOG_COMP_GENERAL, "Error: Cannot read database: %s", options->diff_roots_a);
+			return false;
+		}
+		if (!cli_file_exists(options->diff_roots_b) || !cli_file_readable(options->diff_roots_b)) {
+			log_error(LOG_COMP_GENERAL, "Error: Cannot read database: %s", options->diff_roots_b);
+			return false;
+		}
+		if (migrate_mode || hydration_mode || options->system_root != NULL
+		    || options->script_file != NULL || options->inline_script != NULL) {
+			log_error(LOG_COMP_GENERAL, "Error: --diff-roots runs standalone; do not combine with --migrate, --system-root, scripts, or REPL mode");
+			return false;
+		}
+		return true;
+	}
+
+	/* --against requires --diff-roots */
+	if (options->diff_roots_b != NULL) {
+		log_error(LOG_COMP_GENERAL, "Error: --against requires --diff-roots");
+		return false;
+	}
+
 	/* --migrate mode: migrate a database to v7 and exit */
 	if (migrate_mode) {
 		if (!cli_file_exists(options->migrate_database)) {
@@ -285,6 +314,8 @@ boolean cli_parse_arguments(int argc, char* argv[], cli_options_t* options) {
 		OPT_UT_SYNC_DIR,
 		OPT_DEBUG_TUI,		/* 2026-06-06 JES Phase B.0 #691: --debug-tui */
 		OPT_PLAIN,			/* 2026-06-25 JES C.6 #691: --plain */
+		OPT_DIFF_ROOTS,		/* root-build Step 1: --diff-roots A */
+		OPT_AGAINST,		/* root-build Step 1: --against B */
 	};
 
 	// Define long options
@@ -293,6 +324,11 @@ boolean cli_parse_arguments(int argc, char* argv[], cli_options_t* options) {
 		{"system-root", required_argument, 0, 'R'},
 		{"migrate", required_argument, 0, 'm'},
 		{"output", required_argument, 0, 'o'},
+		/* Two-path mode. getopt_long has no two-argument option form, so the
+		   second path arrives via a paired option -- the same shape --migrate
+		   and --output already use. */
+		{"diff-roots", required_argument, 0, OPT_DIFF_ROOTS},
+		{"against", required_argument, 0, OPT_AGAINST},
 		{"force", no_argument, 0, 'f'},
 		{"batch", no_argument, 0, 'b'},
 		{"non-interactive", no_argument, 0, 'b'},  /* Alias for --batch */
@@ -526,6 +562,30 @@ boolean cli_parse_arguments(int argc, char* argv[], cli_options_t* options) {
 				options->migrate_database = strdup(optarg);
 				break;
 
+			case OPT_DIFF_ROOTS:
+				if (options->diff_roots_a != NULL) {
+					log_error(LOG_COMP_GENERAL, "Error: Multiple --diff-roots options not allowed");
+					goto parse_error;
+				}
+				if (strlen(optarg) > CLI_MAX_PATH_LENGTH) {
+					log_error(LOG_COMP_GENERAL, "Error: --diff-roots path too long (max %d characters)", CLI_MAX_PATH_LENGTH);
+					goto parse_error;
+				}
+				options->diff_roots_a = strdup(optarg);
+				break;
+
+			case OPT_AGAINST:
+				if (options->diff_roots_b != NULL) {
+					log_error(LOG_COMP_GENERAL, "Error: Multiple --against options not allowed");
+					goto parse_error;
+				}
+				if (strlen(optarg) > CLI_MAX_PATH_LENGTH) {
+					log_error(LOG_COMP_GENERAL, "Error: --against path too long (max %d characters)", CLI_MAX_PATH_LENGTH);
+					goto parse_error;
+				}
+				options->diff_roots_b = strdup(optarg);
+				break;
+
 			case 'o':
 				if (options->output_path != NULL) {
 					log_error(LOG_COMP_GENERAL, "Error: Multiple --output options not allowed");
@@ -750,6 +810,16 @@ void cli_free_options(cli_options_t* options) {
 	if (options->migrate_database != NULL) {
 		free(options->migrate_database);
 		options->migrate_database = NULL;
+	}
+
+	if (options->diff_roots_a != NULL) {
+		free(options->diff_roots_a);
+		options->diff_roots_a = NULL;
+	}
+
+	if (options->diff_roots_b != NULL) {
+		free(options->diff_roots_b);
+		options->diff_roots_b = NULL;
 	}
 
 	if (options->output_path != NULL) {
